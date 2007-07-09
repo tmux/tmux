@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.2 2007-07-09 19:34:55 nicm Exp $ */
+/* $Id: local.c,v 1.3 2007-07-09 19:39:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -236,9 +236,10 @@ local_init(struct buffer **in, struct buffer **out)
 	if (tcsetattr(local_fd, TCSANOW, &tio) != 0)
 		log_fatal("tcsetattr");
 
-	if (enter_ca_mode)
+	if (enter_ca_mode != NULL)
 		local_putp(enter_ca_mode);
-	local_putp(keypad_xmit);
+	if (keypad_xmit != NULL)
+		local_putp(keypad_xmit);
 	local_putp(clear_screen);
 
 	for (lk = local_keys; lk->name != NULL; lk++) {
@@ -283,12 +284,15 @@ local_done(void)
 		log_fatal("tcsetattr");
 	close(local_fd);
 
-	putp(keypad_local);	/* not local_putp */
-	if (exit_ca_mode)
+	if (keypad_local != NULL)
+		putp(keypad_local);	/* not local_putp */
+	if (exit_ca_mode != NULL)
 		putp(exit_ca_mode);
 	putp(clear_screen);
-	putp(cursor_normal);
-	putp(exit_attribute_mode);
+	if (cursor_normal != NULL)
+		putp(cursor_normal);
+	if (exit_attribute_mode != NULL)
+		putp(exit_attribute_mode);
 }
 
 /* Put a character. Used as parameter to tputs. */
@@ -370,21 +374,21 @@ local_output(struct buffer *b, size_t size)
 		if (ch != '\e') {
 			switch (ch) {
 			case '\n':	/* LF */
-				if (cursor_down) {
+				if (cursor_down != NULL) {
 					local_putp(cursor_down);
 					break;
 				}
 				log_warnx("cursor_down not supported");
 				break;
 			case '\r':	/* CR */
-				if (carriage_return) {
+				if (carriage_return != NULL) {
 					local_putp(carriage_return);
 					break;
 				}
 				log_warnx("carriage_return not supported");
 				break;
 			case '\010':	/* BS */
-				if (cursor_left) {
+				if (cursor_left != NULL) {
 					local_putp(cursor_left);
 					break;
 				}
@@ -454,7 +458,7 @@ local_output(struct buffer *b, size_t size)
 			size -= 4;
 			ua = input_extract16(b);
 			ub = input_extract16(b);
-			if (cursor_address) {
+			if (cursor_address == NULL) {
 				log_warnx("cursor_address not supported");
 				break;
 			}
@@ -489,8 +493,10 @@ local_output(struct buffer *b, size_t size)
 			local_putp(clr_bol);
 			break;
 		case CODE_CLEARLINE:
-			if (clr_eol == NULL)
-				log_fatalx("local_output: clr_eol");
+			if (clr_eol == NULL) {
+				log_warnx("clr_eol not suppported");
+				break;
+			}
 			local_putp(clr_eol);	/* XXX */
 			break;
 		case CODE_INSERTLINE:
@@ -546,7 +552,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_CURSOROFF:
 			if (cursor_invisible == NULL) {
-				log_warnx("cursor_invisible");
+				log_warnx("cursor_invisible not supported");
 				break;
 			}
 			local_putp(cursor_invisible);
@@ -645,8 +651,7 @@ local_output(struct buffer *b, size_t size)
 				break;
 			}
 			if (ua == 0) {
-				if (exit_attribute_mode)
-					local_putp(exit_attribute_mode);
+				local_putp(exit_attribute_mode);
 				break;
 			}
 
@@ -714,12 +719,11 @@ local_output(struct buffer *b, size_t size)
 				case 39:
 					if (set_a_foreground == NULL)
 						break;
-					if (tigetflag("AX") == TRUE)
+					if (tigetflag("AX") == TRUE) {
 						local_putp("\e[39m");
-					else {
-						local_putp(
-						    tparm(set_a_foreground, 7));
+						break;
 					}
+					local_putp(tparm(set_a_foreground, 7));
 					break;
 				case 40:
 				case 41:
@@ -737,12 +741,11 @@ local_output(struct buffer *b, size_t size)
 				case 49:
 					if (set_a_background == NULL)
 						break;
-					if (tigetflag("AX") == TRUE)
+					if (tigetflag("AX") == TRUE) {
 						local_putp("\e[49m");
-					else {
-						local_putp(
-						    tparm(set_a_background, 0));
+						break;
 					}
+					local_putp(tparm(set_a_background, 0));
 					break;
 				}
 			}
