@@ -1,0 +1,31 @@
+Command prefix is C-b.
+
+Commands: d detach
+          c create new terminal
+          n next terminal
+          p previous terminal
+	  r refresh screen
+ 	  t set window name
+	0-9 select window
+
+There is one default server process per user which puts its socket in
+/tmp/tmux-UID. It is created the first time tmux is run and subsequent
+invocations will connect to the same server. The server holds multiple
+sessions, call tmux with "-n <session name>" to create a session or attach to
+an existing session. All the sessions may be listed with -l, or the windows of
+a single session with "-ln <session name>". Sessions are destroyed when no
+windows remain attached to them.
+
+Another server process can be used by specifying an alternative socket path with
+"-s <path>" but it shouldn't normally be required.
+
+You can set the window title (listed in -l), using the \e] escape sequence. For
+example:
+
+	$ echo -n \\033]0;My Title\\007
+
+There is currently no method for setting the window name (what will eventually
+be shown in the status bar).
+
+You might get message "couldn't find server" after a crash, in this case you
+must remove the /tmp/tmux-`id -u` file manually.
