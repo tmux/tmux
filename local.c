@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.1.1.1 2007-07-09 19:03:30 nicm Exp $ */
+/* $Id: local.c,v 1.2 2007-07-09 19:34:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -374,19 +374,21 @@ local_output(struct buffer *b, size_t size)
 					local_putp(cursor_down);
 					break;
 				}
-				log_fatalx("local_output: cursor_down");
+				log_warnx("cursor_down not supported");
+				break;
 			case '\r':	/* CR */
 				if (carriage_return) {
 					local_putp(carriage_return);
 					break;
 				}
-				log_fatalx("local_output: carriage_return");
+				log_warnx("carriage_return not supported");
+				break;
 			case '\010':	/* BS */
 				if (cursor_left) {
 					local_putp(cursor_left);
 					break;
 				}
-				log_fatalx("local_output: cursor_left");
+				log_warnx("cursor_left not supported");
 				break;
 			default:
 				local_putc(ch);
@@ -407,8 +409,10 @@ local_output(struct buffer *b, size_t size)
 				log_fatalx("local_output: underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (!parm_up_cursor)
-				log_fatalx("local_output: parm_up_cursor");
+			if (parm_up_cursor == NULL) {
+				log_warnx("parm_up_cursor not supported");
+				break;
+			}
 			local_putp(tparm(parm_up_cursor, ua));
 			break;
 		case CODE_CURSORDOWN:
@@ -416,8 +420,10 @@ local_output(struct buffer *b, size_t size)
 				log_fatalx("local_output: underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (!parm_down_cursor)
-				log_fatalx("local_output: parm_down_cursor");
+			if (parm_down_cursor == NULL) {
+				log_warnx("parm_down_cursor not supported");
+				break;
+			}
 			local_putp(tparm(parm_down_cursor, ua));
 			break;
 		case CODE_CURSORRIGHT:
@@ -425,8 +431,10 @@ local_output(struct buffer *b, size_t size)
 				log_fatalx("local_output: underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (!parm_right_cursor)
-				log_fatalx("local_output: parm_right_cursor");
+			if (parm_right_cursor == NULL) {
+				log_warnx("parm_right_cursor not supported");
+				break;
+			}
 			local_putp(tparm(parm_right_cursor, ua));
 			break;
 		case CODE_CURSORLEFT:
@@ -434,8 +442,10 @@ local_output(struct buffer *b, size_t size)
 				log_fatalx("local_output: underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (!parm_left_cursor)
-				log_fatalx("local_output: parm_left_cursor");
+			if (parm_left_cursor == NULL) {
+				log_warnx("parm_left_cursor not supported");
+				break;
+			}
 			local_putp(tparm(parm_left_cursor, ua));
 			break;
 		case CODE_CURSORMOVE:
@@ -444,32 +454,42 @@ local_output(struct buffer *b, size_t size)
 			size -= 4;
 			ua = input_extract16(b);
 			ub = input_extract16(b);
-			if (!cursor_address)
-				log_fatalx("local_output: cursor_address");
+			if (cursor_address) {
+				log_warnx("cursor_address not supported");
+				break;
+			}
 			local_putp(tparm(cursor_address, ua - 1, ub - 1));
 			break;
 		case CODE_CLEARENDOFSCREEN:
-			if (!clr_eos)
-				log_fatalx("local_output: clr_eos");
+			if (clr_eos == NULL) {
+				log_warnx("clr_eos not supported");
+				break;
+			}
 			local_putp(clr_eos);
 			break;
 		case CODE_CLEARSCREEN:
-			if (!clear_screen)
-				log_fatalx("local_output: clear_screen");
+			if (clear_screen == NULL) {
+				log_warnx("clear_screen not supported");
+				break;
+			}
 			local_putp(clear_screen);
 			break;
 		case CODE_CLEARENDOFLINE:
-			if (!clr_eol)
-				log_fatalx("local_output: clr_eol");
+			if (clr_eol == NULL) {
+				log_warnx("clr_eol not supported");
+				break;
+			}
 			local_putp(clr_eol);
 			break;
 		case CODE_CLEARSTARTOFLINE:
-			if (!clr_bol)
-				log_fatalx("local_output: clr_bol");
+			if (clr_bol == NULL) {
+				log_warnx("clr_bol not supported");
+				break;
+			}
 			local_putp(clr_bol);
 			break;
 		case CODE_CLEARLINE:
-			if (!clr_eol)
+			if (clr_eol == NULL)
 				log_fatalx("local_output: clr_eol");
 			local_putp(clr_eol);	/* XXX */
 			break;
@@ -478,8 +498,10 @@ local_output(struct buffer *b, size_t size)
 				log_fatalx("local_output: underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (!parm_insert_line)
-				log_fatalx("local_output: parm_insert_line");
+			if (parm_insert_line == NULL) {
+				log_warnx("parm_insert_line not supported");
+				break;
+			}
 			local_putp(tparm(parm_insert_line, ua));
 			break;
 		case CODE_DELETELINE:
@@ -487,8 +509,10 @@ local_output(struct buffer *b, size_t size)
 				log_fatalx("local_output: underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (!parm_delete_line)
-				log_fatalx("local_output: parm_delete");
+			if (parm_delete_line == NULL) {
+				log_warnx("parm_delete not supported");
+				break;
+			}
 			local_putp(tparm(parm_delete_line, ua));
 			break;
 		case CODE_INSERTCHARACTER:
@@ -496,8 +520,10 @@ local_output(struct buffer *b, size_t size)
 				log_fatalx("local_output: underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (!parm_ich)
-				log_fatalx("local_output: parm_ich");
+			if (parm_ich == NULL) {
+				log_warnx("parm_ich not supported");
+				break;
+			}
 			local_putp(tparm(parm_ich, ua));
 			break;
 		case CODE_DELETECHARACTER:
@@ -505,28 +531,38 @@ local_output(struct buffer *b, size_t size)
 				log_fatalx("local_output: underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (!parm_dch)
-				log_fatalx("local_output: parm_dch");
+			if (parm_dch == NULL) {
+				log_warnx("parm_dch not supported");
+				break;
+			}
 			local_putp(tparm(parm_dch, ua));
 			break;
 		case CODE_CURSORON:
-			if (!cursor_normal)
-				log_fatalx("local_output: cursor_normal");
+			if (cursor_normal == NULL) {
+				log_warnx("cursor_normal not supported");
+				break;
+			}
  			local_putp(cursor_normal);
 			break;
 		case CODE_CURSOROFF:
-			if (!cursor_invisible)
-				log_fatalx("local_output: cursor_invisible");
+			if (cursor_invisible == NULL) {
+				log_warnx("cursor_invisible");
+				break;
+			}
 			local_putp(cursor_invisible);
 			break;
 		case CODE_CURSORUPSCROLL:
-			if (!scroll_reverse)
-				log_fatalx("local_output: scroll_reverse");
+			if (scroll_reverse == NULL) {
+				log_warnx("scroll_reverse not supported");
+				break;
+			}
 			local_putp(scroll_reverse);
 			break;
 		case CODE_CURSORDOWNSCROLL:
-			if (!scroll_forward)
-				log_fatalx("local_output: scroll_forward");
+			if (scroll_forward == NULL) {
+				log_warnx("scroll_forward not supported");
+				break;
+			}
 			local_putp(scroll_forward);
 			break;
 		case CODE_SCROLLREGION:
@@ -535,41 +571,57 @@ local_output(struct buffer *b, size_t size)
 			size -= 4;
 			ua = input_extract16(b);
 			ub = input_extract16(b);
-			if (!change_scroll_region) {
-				log_fatalx(
-				    "local_output: change_scroll_region");
+			if (change_scroll_region == NULL) {
+				log_warnx("change_scroll_region not supported");
+				break;
 			}
 			local_putp(tparm(change_scroll_region, ua - 1, ub - 1));
 			break;
 		case CODE_INSERTON:
-			if (!enter_insert_mode)
-				log_fatalx("local_output: enter_insert_mode");
+			if (enter_insert_mode == NULL) {
+				log_warnx("enter_insert_mode not supported");
+				break;
+			}
 			local_putp(enter_insert_mode);
 			break;
 		case CODE_INSERTOFF:
-			if (!exit_insert_mode)
-				log_fatalx("local_output: exit_insert_mode");
+			if (exit_insert_mode == NULL) {
+				log_warnx("exit_insert_mode not supported");
+				break;
+			}
 			local_putp(exit_insert_mode);
 			break;
 		case CODE_KCURSOROFF:
-			/*t = tigetstr("CE");
+			/*
+			t = tigetstr("CE");
 			if (t != (char *) 0 && t != (char *) -1)
-			local_putp(t);*/
+				local_putp(t);
+			*/
 			break;
 		case CODE_KCURSORON:
-			/*t = tigetstr("CS");
+			/*
+			t = tigetstr("CS");
 			if (t != (char *) 0 && t != (char *) -1)
-			local_putp(t);*/
+				local_putp(t);
+			*/
 			break;
-		case CODE_KKEYPADOFF:/*
-			if (!keypad_local)
-				log_fatalx("local_output: keypad_local");
-			local_putp(keypad_local);*/
+		case CODE_KKEYPADOFF:
+			/*
+			if (keypad_local == NULL) {
+				log_warnx("keypad_local not supported");
+				break;
+			}
+			local_putp(keypad_local);
+			*/
 			break;
-		case CODE_KKEYPADON:/*
-			if (!keypad_xmit)
-				log_fatalx("local_output: keypad_xmit");
-			local_putp(keypad_xmit);*/
+		case CODE_KKEYPADON:
+			/*
+			if (keypad_xmit == NULL) {
+				log_warnx("keypad_xmit not supported");
+				break;
+			}
+			local_putp(keypad_xmit);
+			*/
 			break;
 		case CODE_TITLE:
 			if (size < 2)
@@ -588,8 +640,10 @@ local_output(struct buffer *b, size_t size)
 			size -= 2;
 			ua = input_extract16(b);
 
-			if (!exit_attribute_mode)
-				log_fatalx("local_output: exit_attribute_mode");
+			if (exit_attribute_mode == NULL) {
+				log_warnx("exit_attribute_mode not supported");
+				break;
+			}
 			if (ua == 0) {
 				if (exit_attribute_mode)
 					local_putp(exit_attribute_mode);
@@ -652,15 +706,19 @@ local_output(struct buffer *b, size_t size)
 				case 35:
 				case 36:
 				case 37:
+					if (set_a_foreground == NULL)
+						break;
 					local_putp(
 					    tparm(set_a_foreground, ub - 30));
 					break;
 				case 39:
+					if (set_a_foreground == NULL)
+						break;
 					if (tigetflag("AX") == TRUE)
 						local_putp("\e[39m");
 					else {
 						local_putp(
-						    tparm(set_a_background, 0));
+						    tparm(set_a_foreground, 7));
 					}
 					break;
 				case 40:
@@ -671,10 +729,14 @@ local_output(struct buffer *b, size_t size)
 				case 45:
 				case 46:
 				case 47:
+					if (set_a_background == NULL)
+						break;
 					local_putp(
 					    tparm(set_a_background, ub - 40));
 					break;
 				case 49:
+					if (set_a_background == NULL)
+						break;
 					if (tigetflag("AX") == TRUE)
 						local_putp("\e[49m");
 					else {
