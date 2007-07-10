@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.1.1.1 2007-07-09 19:03:54 nicm Exp $ */
+/* $Id: screen.c,v 1.2 2007-07-10 10:21:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -69,7 +69,7 @@ screen_create(struct screen *s, u_int sx, u_int sy)
 	s->cy = 0;
 
 	s->ry_upper = 0;
-	s->ry_lower = sy - 1;
+	s->ry_lower = screen_last_y(s);
 
 	s->attr = SCREEN_DEFATTR;
 	s->colr = SCREEN_DEFCOLR;
@@ -172,17 +172,15 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 
 /* Draw a set of lines on the screen. */
 void
-screen_draw(struct screen *s, struct buffer *b, u_int py_upper, u_int py_lower)
+screen_draw(struct screen *s, struct buffer *b, u_int uy, u_int ly)
 {
 	u_char		 attr, colr;
 	size_t		 size;
 	u_int		 i, j;
 	uint16_t	 n;
 
-	if (py_upper > s->sy || py_lower > s->sy || py_upper > py_lower) {
-		log_fatalx(
-		    "screen_draw_lines: invalid, %u to %u", py_upper, py_lower);
-	}
+	if (uy > screen_last_y(s) || ly > screen_last_y(s) || ly < uy)
+		log_fatalx("screen_draw_lines: bad range");
 
 	/* XXX. This is naive and rough right now. */
 	attr = 0;
@@ -192,10 +190,10 @@ screen_draw(struct screen *s, struct buffer *b, u_int py_upper, u_int py_lower)
 
 	input_store_one(b, CODE_ATTRIBUTES, 0);
 
-	for (j = py_upper; j <= py_lower; j++) {
+	for (j = uy; j <= ly; j++) {
 		input_store_two(b, CODE_CURSORMOVE, j + 1, 1);
 
-		for (i = 0; i < s->sx; i++) {
+		for (i = 0; i <= screen_last_x(s); i++) {
 			
 			size = BUFFER_USED(b);
 			input_store_one(b, CODE_ATTRIBUTES, 0);
@@ -327,11 +325,11 @@ screen_free_lines(struct screen *s, u_int uy, u_int ly)
 
 	for (i = uy; i <= ly; i++) {
 		xfree(s->grid_data[i]);
-		s->grid_data[i] = (u_char *) 0xabcdabcd;
+		s->grid_data[i] = (u_char *) 0xffffffff;
 		xfree(s->grid_attr[i]);
-		s->grid_attr[i] = (u_char *) 0xabcdabcd;
+		s->grid_attr[i] = (u_char *) 0xffffffff;
 		xfree(s->grid_colr[i]);
-		s->grid_colr[i] = (u_char *) 0xabcdabcd;
+		s->grid_colr[i] = (u_char *) 0xffffffff;
 	}
 }
 
@@ -343,12 +341,15 @@ screen_move_lines(struct screen *s, u_int dy, u_int uy, u_int ly)
 
 	log_debug("moving lines %u:%u to %u", uy, ly, dy);
 
+	ny = (ly - uy) + 1;
+
 	if (uy > screen_last_y(s) || ly > screen_last_y(s) || ly < uy)
 		log_fatalx("screen_move_lines: bad range");
 	if (dy > screen_last_y(s))
 		log_fatalx("screen_move_lines: bad destination");
-	
-	ny = (ly - uy) + 1;
+	if (dy + ny - 1 > screen_last_y(s))
+		log_fatalx("screen_move_lines: bad destination");
+
 	memmove(
 	    s->grid_data + dy, s->grid_data + uy, ny * (sizeof *s->grid_data));
 	memmove(
@@ -423,8 +424,8 @@ screen_sequence(struct screen *s, u_char *ptr)
 		break;
 	case CODE_CURSORDOWN:
 		ua = screen_extract(ptr);
-		if (s->cy + ua >= s->sy)
-			ua = s->sy - 1 - s->cy;
+		if (s->cy + ua > screen_last_y(s))
+			ua = screen_last_y(s) - s->cy;
 		s->cy += ua;
 		break;
 	case CODE_CURSORLEFT:
@@ -435,8 +436,8 @@ screen_sequence(struct screen *s, u_char *ptr)
 		break;
 	case CODE_CURSORRIGHT:
 		ua = screen_extract(ptr);
-		if (s->cx + ua >= s->sx)
-			ua = s->sx - 1 - s->cx;
+		if (s->cx + ua > screen_last_x(s))
+			ua = screen_last_x(s) - s->cx;
 		s->cx += ua;
 		break;
 	case CODE_CURSORMOVE:
@@ -624,7 +625,7 @@ screen_write_character(struct screen *s, u_char ch)
 	s->grid_colr[s->cy][s->cx] = s->colr;
 
 	s->cx++;
-	if (s->cx >= s->sx) {
+	if (s->cx > screen_last_x(s)) {
 		s->cx = 0;
 		screen_cursor_down_scroll(s, 1);
 	}
@@ -645,9 +646,9 @@ screen_cursor_up_scroll(struct screen *s, u_int ny)
 void
 screen_cursor_down_scroll(struct screen *s, u_int ny)
 {
-	if (s->sy - 1 - s->cy < ny) {
-		screen_scroll_up(s, ny - (s->sy - 1 - s->cy));
-		s->cy = s->sy - 1;
+	if (screen_last_y(s) - s->cy < ny) {
+		screen_scroll_up(s, ny - (screen_last_y(s) - s->cy));
+		s->cy = screen_last_y(s);
 	} else
 		s->cy += ny;
 }
@@ -656,7 +657,7 @@ screen_cursor_down_scroll(struct screen *s, u_int ny)
 void
 screen_scroll_up(struct screen *s, u_int ny)
 {
-	if (s->ry_upper == 0 && s->ry_lower == s->sy - 1) {
+	if (s->ry_upper == 0 && s->ry_lower == screen_last_y(s)) {
 		screen_delete_lines(s, 0, ny);
 		return;
 	}
@@ -668,7 +669,7 @@ screen_scroll_up(struct screen *s, u_int ny)
 void
 screen_scroll_down(struct screen *s, u_int ny)
 {
-	if (s->ry_upper == 0 && s->ry_lower == s->sy - 1) {
+	if (s->ry_upper == 0 && s->ry_lower == screen_last_y(s)) {
 		screen_insert_lines(s, 0, ny);
 		return;
 	}
@@ -696,17 +697,19 @@ void
 screen_fill_end_of_screen(
     struct screen *s, u_int px, u_int py, u_char data, u_char attr, u_char colr)
 {
-	if (py >= s->sy)
+	if (py > screen_last_y(s))
 		return;
 
 	if (px != 0) {
 		screen_fill_end_of_line(s, px, py, data, attr, colr);
-		if (py++ >= s->sy)
+		if (py++ > screen_last_y(s))
 			return;
 	}
 
-	while (py++ < s->sy)
-		screen_fill_line(s, py - 1, data, attr, colr);
+	while (py <= screen_last_y(s)) {
+		screen_fill_line(s, py, data, attr, colr);
+		py++;
+	}
 }
 
 /* Fill to end of line. */
@@ -714,9 +717,9 @@ void
 screen_fill_end_of_line(
     struct screen *s, u_int px, u_int py, u_char data, u_char attr, u_char colr)
 {
-	if (px >= s->sx)
+	if (px > screen_last_x(s))
 		return;
-	if (py >= s->sy)
+	if (py > screen_last_y(s))
 		return;
 
 	memset(s->grid_data[py] + px, data, s->sx - px);
@@ -729,9 +732,9 @@ void
 screen_fill_start_of_line(
     struct screen *s, u_int px, u_int py, u_char data, u_char attr, u_char colr)
 {
-	if (px >= s->sx)
+	if (px > screen_last_x(s))
 		return;
-	if (py >= s->sy)
+	if (py > screen_last_y(s))
 		return;
 
 	memset(s->grid_data[py], data, px);
