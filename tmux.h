@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.1.1.1 2007-07-09 19:03:50 nicm Exp $ */
+/* $Id: tmux.h,v 1.2 2007-07-25 23:13:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,6 +20,7 @@
 #define NSCR_H
 
 #include <sys/param.h>
+#include <sys/tree.h>
 #include <sys/queue.h>
 
 #include <poll.h>
@@ -30,8 +31,12 @@
 
 extern char	*__progname;
 
-#define MAXNAMELEN 32
-#define MAXTITLELEN 192
+#define MAXNAMELEN	32
+#define MAXTITLELEN	192
+
+/* Fatal errors. */
+#define fatal(msg) log_fatal("%s: %s", __func__, msg);
+#define fatalx(msg) log_fatal("%s: %s", __func__, msg);
 
 /* Definition to shut gcc up about unused arguments. */
 #define unused __attribute__ ((unused))
@@ -579,5 +584,17 @@ int		 xvsnprintf(char *, size_t, const char *, va_list);
 int printflike3	 printpath(char *, size_t, const char *, ...);
 char 		*xdirname(const char *);
 char 		*xbasename(const char *);
+
+/* xmalloc-debug.c */
+#ifdef DEBUG
+#define xmalloc_caller() __builtin_return_address(0)
+
+void		 xmalloc_clear(void);
+void		 xmalloc_report(pid_t, const char *);
+
+void		 xmalloc_new(void *, void *, size_t);
+void		 xmalloc_change(void *, void *, void *, size_t);
+void		 xmalloc_free(void *);
+#endif
 
 #endif

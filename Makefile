@@ -1,6 +1,6 @@
-# $Id: Makefile,v 1.1.1.1 2007-07-09 19:03:33 nicm Exp $
+# $Id: Makefile,v 1.2 2007-07-25 23:13:18 nicm Exp $
 
-.SUFFIXES: .c .o .y .l .h
+.SUFFIXES: .c .o .y .h
 .PHONY: clean
 
 PROG= tmux
@@ -10,19 +10,22 @@ OS!= uname
 REL!= uname -r
 DATE!= date +%Y%m%d-%H%M
 
-SRCS= tmux.c server.c buffer.c buffer-poll.c xmalloc.c input.c screen.c \
-      window.c session.c local.c log.c command.c
-HDRS= tmux.h
+# This must be empty as OpenBSD includes it in default CFLAGS.
+DEBUG=
 
-LEX= lex
+SRCS= tmux.c server.c buffer.c buffer-poll.c xmalloc.c xmalloc-debug.c \
+      input.c screen.c window.c session.c local.c log.c command.c
+
 YACC= yacc -d
 
 CC= cc
 INCDIRS+= -I. -I- -I/usr/local/include
 CFLAGS+= -DBUILD="\"$(VERSION) ($(DATE))\""
+.ifdef DEBUG
 CFLAGS+= -g -ggdb -DDEBUG
+LDFLAGS+= -Wl,-E
+.endif
 #CFLAGS+= -pedantic -std=c99
-#CFLAGS+= -Wredundant-decls  -Wdisabled-optimization -Wendif-labels
 CFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wcast-qual -Wsign-compare
@@ -35,28 +38,21 @@ INSTALLMAN= install -g bin -o root -m 444
 LDFLAGS+= -L/usr/local/lib
 LIBS+= -lutil -lncurses
 
-OBJS= ${SRCS:S/.c/.o/:S/.y/.o/:S/.l/.o/}
+OBJS= ${SRCS:S/.c/.o/:S/.y/.o/}
 
 CLEANFILES= ${PROG} *.o .depend *~ ${PROG}.core *.log
 
 .c.o:
 		${CC} ${CFLAGS} ${INCDIRS} -c ${.IMPSRC} -o ${.TARGET}
 
-.l.o:
-		${LEX} ${.IMPSRC}
-		${CC} ${CFLAGS} ${INCDIRS} -c lex.yy.c -o ${.TARGET}
-
 .y.o:
 		${YACC} ${.IMPSRC}
 		${CC} ${CFLAGS} ${INCDIRS} -c y.tab.c -o ${.TARGET}
 
-all:		.depend ${PROG}
+all:		${PROG}
 
 ${PROG}:	${OBJS}
 		${CC} ${LDFLAGS} -o ${PROG} ${LIBS} ${OBJS}
-
-.depend:	${HDRS}
-		-mkdep ${CFLAGS} ${INCDIRS} ${SRCS:M*.c}
 
 depend:
 		mkdep ${CFLAGS} ${INCDIRS} ${SRCS:M*.c}

@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.1.1.1 2007-07-09 19:04:12 nicm Exp $ */
+/* $Id: session.c,v 1.2 2007-07-25 23:13:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -76,7 +76,7 @@ session_destroy(struct session *s)
 	u_int	i;
 
 	if (session_index(s, &i) != 0)
-		log_fatalx("session not found");
+		fatalx("session not found");
 	ARRAY_REMOVE(&sessions, i);
 
 	while (!ARRAY_EMPTY(&s->windows))

@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.2 2007-07-10 10:21:58 nicm Exp $ */
+/* $Id: screen.c,v 1.3 2007-07-25 23:13:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,6 +58,12 @@ void	 screen_delete_characters(struct screen *, u_int, u_int, u_int);
 
 #define screen_last_y(s) ((s)->sy - 1)
 #define screen_last_x(s) ((s)->sx - 1)
+
+#define screen_range_y(lx, rx) (((rx) - (lx)) + 1)
+#define screen_range_x(ux, lx) (((lx) - (ux)) + 1)
+
+#define screen_offset_y(py, ny) ((py) + (ny) - 1)
+#define screen_offset_x(px, nx) ((px) + (nx) - 1)
 
 /* Create a new screen. */
 void
@@ -180,7 +186,7 @@ screen_draw(struct screen *s, struct buffer *b, u_int uy, u_int ly)
 	uint16_t	 n;
 
 	if (uy > screen_last_y(s) || ly > screen_last_y(s) || ly < uy)
-		log_fatalx("screen_draw_lines: bad range");
+		fatalx("bad range");
 
 	/* XXX. This is naive and rough right now. */
 	attr = 0;
@@ -303,7 +309,7 @@ screen_make_lines(struct screen *s, u_int uy, u_int ly)
 	log_debug("making lines %u:%u", uy, ly);
 
 	if (uy > screen_last_y(s) || ly > screen_last_y(s) || ly < uy)
-		log_fatalx("screen_make_lines: bad range");
+		fatalx("bad range");
 	
 	for (i = uy; i <= ly; i++) {
 		s->grid_data[i] = xmalloc(s->sx);
@@ -321,7 +327,7 @@ screen_free_lines(struct screen *s, u_int uy, u_int ly)
 	log_debug("freeing lines %u:%u", uy, ly);
 
 	if (uy > screen_last_y(s) || ly > screen_last_y(s) || ly < uy)
-		log_fatalx("screen_free_lines: bad range");
+		fatalx("bad range");
 
 	for (i = uy; i <= ly; i++) {
 		xfree(s->grid_data[i]);
@@ -344,18 +350,20 @@ screen_move_lines(struct screen *s, u_int dy, u_int uy, u_int ly)
 	ny = (ly - uy) + 1;
 
 	if (uy > screen_last_y(s) || ly > screen_last_y(s) || ly < uy)
-		log_fatalx("screen_move_lines: bad range");
+		fatalx("bad range");
 	if (dy > screen_last_y(s))
-		log_fatalx("screen_move_lines: bad destination");
+		fatalx("bad destination");
 	if (dy + ny - 1 > screen_last_y(s))
-		log_fatalx("screen_move_lines: bad destination");
+		fatalx("bad size");
+	if (dy == uy)
+		fatalx("null move");
 
 	memmove(
-	    s->grid_data + dy, s->grid_data + uy, ny * (sizeof *s->grid_data));
+	    &s->grid_data[dy], &s->grid_data[uy], ny * (sizeof *s->grid_data));
 	memmove(
-	    s->grid_attr + dy, s->grid_attr + uy, ny * (sizeof *s->grid_attr));
+	    &s->grid_attr[dy], &s->grid_attr[uy], ny * (sizeof *s->grid_attr));
 	memmove(
-	    s->grid_colr + dy, s->grid_colr + uy, ny * (sizeof *s->grid_colr));
+	    &s->grid_colr[dy], &s->grid_colr[uy], ny * (sizeof *s->grid_colr));
 }
 
 /* Fill a range of lines. */
@@ -368,7 +376,7 @@ screen_fill_lines(
 	log_debug("filling lines %u:%u", uy, ly);
 
 	if (uy > screen_last_y(s) || ly > screen_last_y(s) || ly < uy)
-		log_fatalx("screen_fill_lines: bad range");
+		fatalx("bad range");
 
 	for (i = uy; i <= ly; i++)
 		screen_fill_line(s, i, data, attr, colr);
@@ -391,7 +399,7 @@ screen_character(struct screen *s, u_char ch)
 		break;
 	default:
 		if (ch < ' ')
-			log_fatalx("screen_character: bad control: %hhu", ch);
+			fatalx("bad control");
 		screen_write_character(s, ch);
 		break;
 	}
@@ -662,7 +670,7 @@ screen_scroll_up(struct screen *s, u_int ny)
 		return;
 	}
 
-	log_fatalx("screen_scroll_up: %u %u", s->ry_upper, s->ry_lower);
+	fatalx("unimplemented");
 }
 
 /* Scroll screen down. */
@@ -674,7 +682,7 @@ screen_scroll_down(struct screen *s, u_int ny)
 		return;
 	}
 
-	log_fatalx("screen_scroll_down: %u %u", s->ry_upper, s->ry_lower);
+	fatalx("unimplemented");
 }
 
 /* Fill entire screen. */
@@ -722,9 +730,9 @@ screen_fill_end_of_line(
 	if (py > screen_last_y(s))
 		return;
 
-	memset(s->grid_data[py] + px, data, s->sx - px);
-	memset(s->grid_attr[py] + px, attr, s->sx - px);
-	memset(s->grid_colr[py] + px, colr, s->sx - px);
+	memset(&s->grid_data[py][px], data, s->sx - px);
+	memset(&s->grid_attr[py][px], attr, s->sx - px);
+	memset(&s->grid_colr[py][px], colr, s->sx - px);
 }
 
 /* Fill to start of line. */
@@ -787,44 +795,64 @@ screen_delete_lines(struct screen *s, u_int py, u_int ny)
 void
 screen_insert_characters(struct screen *s, u_int px, u_int py, u_int nx)
 {
-	if (px >= s->sx || py >= s->sy)
+	u_int	lx, rx;
+
+	if (px > screen_last_x(s) || py > screen_last_y(s))
 		return;
 
-	if (px + nx > s->sx)
-		nx = s->sx - px;
+	lx = px;
+	rx = screen_offset_x(px, nx);
+	if (rx > screen_last_x(s))
+		rx = screen_last_x(s);
 
-	if (px - nx != s->sx) {
-		memmove(s->grid_data[py] + px + nx,
-		    s->grid_data[py] + px, s->sx - px - nx);
-		memmove(s->grid_attr[py] + px + nx,
-		    s->grid_attr[py] + px, s->sx - px - nx);
-		memmove(s->grid_colr[py] + px + nx,
-		    s->grid_colr[py] + px, s->sx - px - nx);
+	/*
+	 * Inserting a range from lx to rx, inclusive.
+	 *
+	 * - If rx is not the last x, move from lx to rx + 1.
+	 * - Clear the range from lx to rx.
+	 */
+	if (rx != screen_last_x(s)) {
+		nx = screen_range_x(rx + 1, screen_last_x(s));
+		memmove(&s->grid_data[py][rx + 1], &s->grid_data[py][lx], nx);
+		memmove(&s->grid_attr[py][rx + 1], &s->grid_attr[py][lx], nx);
+		memmove(&s->grid_colr[py][rx + 1], &s->grid_colr[py][lx], nx);
 	}
-	memset(s->grid_data[py] + px, SCREEN_DEFDATA, nx);
-	memset(s->grid_attr[py] + px, SCREEN_DEFATTR, nx);
-	memset(s->grid_colr[py] + px, SCREEN_DEFCOLR, nx);
+	memset(&s->grid_data[py][lx], SCREEN_DEFDATA, screen_range_x(lx, rx));
+	memset(&s->grid_attr[py][lx], SCREEN_DEFATTR, screen_range_x(lx, rx));
+	memset(&s->grid_colr[py][lx], SCREEN_DEFCOLR, screen_range_x(lx, rx));
 }
 
 /* Delete characters. */
 void
 screen_delete_characters(struct screen *s, u_int px, u_int py, u_int nx)
 {
-	if (px >= s->sx || py >= s->sy)
+	u_int	lx, rx;
+
+	if (px > screen_last_x(s) || py > screen_last_y(s))
 		return;
 
-	if (px + nx > s->sx)
-		nx = s->sx - px;
+	lx = px;
+	rx = screen_offset_x(px, nx);
+	if (rx > screen_last_x(s))
+		rx = screen_last_x(s);
 
-	if (px - nx != s->sx) {
-		memmove(s->grid_data[py] + px,
-		    s->grid_data[py] + px + nx, s->sx - px - nx);
-		memmove(s->grid_attr[py] + px,
-		    s->grid_attr[py] + px + nx, s->sx - px - nx);
-		memmove(s->grid_colr[py] + px,
-		    s->grid_colr[py] + px + nx, s->sx - px - nx);
+	/*
+	 * Deleting the range from lx to rx, inclusive.
+	 *
+	 * - If rx is not the last x, move the range from rx + 1 to lx.
+	 * - Clear the range from the last x - (rx - lx)  to the last x.
+	 */
+
+	if (rx != screen_last_x(s)) {
+		nx = screen_range_x(rx + 1, screen_last_x(s));
+		memmove(&s->grid_data[py][lx], &s->grid_data[py][rx + 1], nx);
+		memmove(&s->grid_attr[py][lx], &s->grid_attr[py][rx + 1], nx);
+		memmove(&s->grid_colr[py][lx], &s->grid_colr[py][rx + 1], nx);
 	}
-	memset(s->grid_data[py] + px + nx, SCREEN_DEFDATA, s->sx - px - nx);
-	memset(s->grid_attr[py] + px + nx, SCREEN_DEFATTR, s->sx - px - nx);
-	memset(s->grid_colr[py] + px + nx, SCREEN_DEFCOLR, s->sx - px - nx);
+
+	/* If lx == rx, then nx = 1. */ 
+	nx = screen_range_x(lx, rx);
+	memset(&s->grid_data[py][s->sx - nx], SCREEN_DEFDATA, nx);
+	memset(&s->grid_attr[py][s->sx - nx], SCREEN_DEFATTR, nx);
+	memset(&s->grid_colr[py][s->sx - nx], SCREEN_DEFCOLR, nx);
 }

@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.1.1.1 2007-07-09 19:03:42 nicm Exp $ */
+/* $Id: server.c,v 1.2 2007-07-25 23:13:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -114,27 +114,27 @@ server_start(void)
 	sz = strlcpy(sa.sun_path, socket_path, sizeof sa.sun_path);
 	if (sz >= sizeof sa.sun_path) {
 		errno = ENAMETOOLONG;
-		log_fatal("socket");
+		fatal("socket failed");
 	}
 	unlink(sa.sun_path);
 
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-		log_fatal("socket");
+		fatal("socket failed");
 
 	mode = umask(S_IXUSR|S_IRWXG|S_IRWXO);
 	if (bind(fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1)
-		log_fatal("bind");
+		fatal("bind failed");
 	umask(mode);
 
 	if (listen(fd, 16) == -1)
-		log_fatal("listen");
+		fatal("listen failed");
 
 	/*
 	 * Detach into the background. This means the PID changes which will
 	 * have to be fixed in some way at some point... XXX
 	 */
 	if (daemon(1, 1) != 0)
-		log_fatal("daemon");
+		fatal("daemon failed");
 	log_debug("server daemonised, pid now %ld", (long) getpid());
 
 	setproctitle("server (%s)", socket_path);
@@ -154,24 +154,24 @@ server_main(int srv_fd)
 
 	act.sa_handler = SIG_IGN;
 	if (sigaction(SIGPIPE, &act, NULL) != 0)
-		log_fatal("sigaction");
+		fatal("sigaction failed");
 	if (sigaction(SIGUSR1, &act, NULL) != 0)
-		log_fatal("sigaction");
+		fatal("sigaction failed");
 	if (sigaction(SIGUSR2, &act, NULL) != 0)
-		log_fatal("sigaction");
+		fatal("sigaction failed");
 	if (sigaction(SIGINT, &act, NULL) != 0)
-		log_fatal("sigaction");
+		fatal("sigaction failed");
 	if (sigaction(SIGQUIT, &act, NULL) != 0)
-		log_fatal("sigaction");
+		fatal("sigaction failed");
 
 	ARRAY_INIT(&windows);
 	ARRAY_INIT(&clients);
 	ARRAY_INIT(&sessions);
 
 	if ((mode = fcntl(srv_fd, F_GETFL)) == -1)
-		log_fatal("fcntl");
+		fatal("fcntl failed");
 	if (fcntl(srv_fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		log_fatal("fcntl");
+		fatal("fcntl failed");
 
 	pfds = NULL;
 	while (!sigterm) {
@@ -193,13 +193,13 @@ server_main(int srv_fd)
 		if (poll(pfds, nfds, INFTIM) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
-			log_fatal("poll");
+			fatal("poll failed");
 		}
 		pfd = pfds;
 
 		/* Handle server socket. */
 		if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP))
-			log_fatalx("lost server socket");
+			fatalx("lost server socket");
 		if (pfd->revents & POLLIN) {
 			accept_client(srv_fd);
 			continue;
@@ -319,12 +319,12 @@ accept_client(int srv_fd)
 	if (client_fd == -1) {
 		if (errno == EAGAIN || errno == EINTR || errno == ECONNABORTED)
 			return (NULL);
-		log_fatal("accept");
+		fatal("accept failed");
 	}
 	if ((mode = fcntl(client_fd, F_GETFL)) == -1)
-		log_fatal("fcntl");
+		fatal("fcntl failed");
 	if (fcntl(client_fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		log_fatal("fcntl");
+		fatal("fcntl failed");
 
 	c = xmalloc(sizeof *c);
 	c->fd = client_fd;
@@ -477,7 +477,7 @@ user_input(struct client *c, size_t in)
 		key = input_extract8(c->in);
 		if (key == '\e') {
 			if (in < 2)
-				log_fatalx("user_input: underflow");
+				fatalx("underflow");
 			in -= 2;
 			key = (int16_t) input_extract16(c->in);
 		}
@@ -762,7 +762,7 @@ process_identify_msg(struct client *c, struct hdr *hdr)
 	struct identify_data	 data;
 
 	if (hdr->size != sizeof data)
-		log_fatalx("bad MSG_IDENTIFY size");
+		fatalx("bad MSG_IDENTIFY size");
 	buffer_read(c->in, &data, hdr->size);
 
 	c->sx = data.sx;
@@ -779,7 +779,7 @@ process_identify_msg(struct client *c, struct hdr *hdr)
 		    session_create(data.name, "/bin/ksh -l", c->sx, c->sy);
 	}
 	if (c->session == NULL)
-		log_fatalx("process_identify_msg: session_create failed");
+		fatalx("session_create failed");
 
 	draw_client(c, 0, c->sy - 1);
 }
@@ -789,12 +789,12 @@ void
 process_create_msg(struct client *c, struct hdr *hdr)
 {
 	if (c->session == NULL)
-		log_fatalx("MSG_CREATE before identified");
+		fatalx("MSG_CREATE before identified");
 	if (hdr->size != 0)
-		log_fatalx("bad MSG_CREATE size");
+		fatalx("bad MSG_CREATE size");
 
 	if (session_new(c->session, "/bin/ksh -l", c->sx, c->sy) != 0)
-		log_fatalx("process_create_msg: session_new failed");
+		fatalx("session_new failed");
 
 	draw_client(c, 0, c->sy - 1);
 }
@@ -804,9 +804,9 @@ void
 process_next_msg(struct client *c, struct hdr *hdr)
 {
 	if (c->session == NULL)
-		log_fatalx("MSG_NEXT before identified");
+		fatalx("MSG_NEXT before identified");
 	if (hdr->size != 0)
-		log_fatalx("bad MSG_NEXT size");
+		fatalx("bad MSG_NEXT size");
 
 	if (session_next(c->session) == 0)
 		changed_window(c);
@@ -819,9 +819,9 @@ void
 process_previous_msg(struct client *c, struct hdr *hdr)
 {
 	if (c->session == NULL)
-		log_fatalx("MSG_PREVIOUS before identified");
+		fatalx("MSG_PREVIOUS before identified");
 	if (hdr->size != 0)
-		log_fatalx("bad MSG_PREVIOUS size");
+		fatalx("bad MSG_PREVIOUS size");
 
 	if (session_previous(c->session) == 0)
 		changed_window(c);
@@ -836,9 +836,9 @@ process_size_msg(struct client *c, struct hdr *hdr)
 	struct size_data	data;
 
 	if (c->session == NULL)
-		log_fatalx("MSG_SIZE before identified");
+		fatalx("MSG_SIZE before identified");
 	if (hdr->size != sizeof data)
-		log_fatalx("bad MSG_SIZE size");
+		fatalx("bad MSG_SIZE size");
 	buffer_read(c->in, &data, hdr->size);
 
 	c->sx = data.sx;
@@ -857,7 +857,7 @@ void
 process_input_msg(struct client *c, struct hdr *hdr)
 {
 	if (c->session == NULL)
-		log_fatalx("MSG_INPUT before identified");
+		fatalx("MSG_INPUT before identified");
 
 	if (c->prompt == NULL)
 		window_input(c->session->window, c->in, hdr->size);
@@ -872,9 +872,9 @@ process_refresh_msg(struct client *c, struct hdr *hdr)
 	struct refresh_data	data;
 
 	if (c->session == NULL)
-		log_fatalx("MSG_REFRESH before identified");
+		fatalx("MSG_REFRESH before identified");
 	if (hdr->size != 0 && hdr->size != sizeof data)
-		log_fatalx("bad MSG_REFRESH size");
+		fatalx("bad MSG_REFRESH size");
 
 	draw_client(c, 0, c->sy - 1);
 }
@@ -886,9 +886,9 @@ process_select_msg(struct client *c, struct hdr *hdr)
 	struct select_data	data;
 
 	if (c->session == NULL)
-		log_fatalx("MSG_SELECT before identified");
+		fatalx("MSG_SELECT before identified");
 	if (hdr->size != sizeof data)
-		log_fatalx("bad MSG_SELECT size");
+		fatalx("bad MSG_SELECT size");
 	buffer_read(c->in, &data, hdr->size);
 
 	if (c->session == NULL)
@@ -909,7 +909,7 @@ process_sessions_msg(struct client *c, struct hdr *hdr)
 	u_int			 i, j;
 
 	if (hdr->size != sizeof data)
-		log_fatalx("bad MSG_SESSIONS size");
+		fatalx("bad MSG_SESSIONS size");
 	buffer_read(c->in, &data, hdr->size);
 
 	data.sessions = 0;
@@ -946,7 +946,7 @@ process_windows_msg(struct client *c, struct hdr *hdr)
 	u_int			 i;
 
 	if (hdr->size != sizeof data)
-		log_fatalx("bad MSG_WINDOWS size");
+		fatalx("bad MSG_WINDOWS size");
 	buffer_read(c->in, &data, hdr->size);
 
 	s = session_find(data.name);
@@ -982,9 +982,9 @@ void
 process_rename_msg(struct client *c, struct hdr *hdr)
 {
 	if (c->session == NULL)
-		log_fatalx("MSG_RENAME before identified");
+		fatalx("MSG_RENAME before identified");
 	if (hdr->size != 0)
-		log_fatalx("bad MSG_RENAME size");
+		fatalx("bad MSG_RENAME size");
 
 	user_start(c, "Window name: ",
 	    c->session->window->name, MAXNAMELEN, rename_callback);

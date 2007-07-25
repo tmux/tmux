@@ -1,4 +1,4 @@
-/* $Id: buffer.c,v 1.1.1.1 2007-07-09 19:03:33 nicm Exp $ */
+/* $Id: buffer.c,v 1.2 2007-07-25 23:13:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ buffer_create(size_t size)
 	struct buffer	*b;
 
 	if (size == 0)
-		log_fatalx("buffer_create: zero size");
+		fatalx("zero size");
 
 	b = xcalloc(1, sizeof *b);
 
@@ -60,7 +60,7 @@ void
 buffer_ensure(struct buffer *b, size_t size)
 {
 	if (size == 0)
-		log_fatalx("buffer_ensure: zero size");
+		fatalx("zero size");
 
 	if (BUFFER_FREE(b) >= size)
 		return;
@@ -79,9 +79,9 @@ void
 buffer_add(struct buffer *b, size_t size)
 {
 	if (size == 0)
-		log_fatalx("buffer_add: zero size");
+		fatalx("zero size");
 	if (size > b->space - b->size)
-		log_fatalx("buffer_add: overflow");
+		fatalx("overflow");
 
 	b->size += size;
 }
@@ -91,9 +91,9 @@ void
 buffer_reverse_add(struct buffer *b, size_t size)
 {
 	if (size == 0)
-		log_fatalx("buffer_reverse_add: zero size");
+		fatalx("zero size");
 	if (size > b->size)
-		log_fatalx("buffer_reverse_add: underflow");
+		fatalx("underflow");
 
 	b->size -= size;
 }
@@ -103,9 +103,9 @@ void
 buffer_remove(struct buffer *b, size_t size)
 {
 	if (size == 0)
-		log_fatalx("buffer_remove: zero size");
+		fatalx("zero size");
 	if (size > b->size)
-		log_fatalx("buffer_remove: underflow");
+		fatalx("underflow");
 
 	b->size -= size;
 	b->off += size;
@@ -116,9 +116,9 @@ void
 buffer_reverse_remove(struct buffer *b, size_t size)
 {
 	if (size == 0)
-		log_fatalx("buffer_reverse_remove: zero size");
+		fatalx("zero size");
 	if (size > b->off)
-		log_fatalx("buffer_reverse_remove: overflow");
+		fatalx("overflow");
 
 	b->size += size;
 	b->off -= size;
@@ -129,9 +129,9 @@ void
 buffer_insert_range(struct buffer *b, size_t base, size_t size)
 {
 	if (size == 0)
-		log_fatalx("buffer_insert_range: zero size");
+		fatalx("zero size");
 	if (base > b->size)
-		log_fatalx("buffer_insert_range: range overflows buffer");
+		fatalx("range outside buffer");
 
 	buffer_ensure(b, size);
 	memmove(b->base + b->off + base + size,
@@ -144,11 +144,11 @@ void
 buffer_delete_range(struct buffer *b, size_t base, size_t size)
 {
 	if (size == 0)
-		log_fatalx("buffer_delete_range: zero size");
+		fatalx("zero size");
 	if (size > b->size)
-		log_fatalx("buffer_delete_range: size too big");
+		fatalx("size too big");
 	if (base + size > b->size)
-		log_fatalx("buffer_delete_range: range overflows buffer");
+		fatalx("range outside buffer");
 
 	memmove(b->base + b->off + base,
 	    b->base + b->off + base + size, b->size - base - size);
@@ -160,7 +160,7 @@ void
 buffer_write(struct buffer *b, const void *data, size_t size)
 {
 	if (size == 0)
-		log_fatalx("buffer_write: zero size");
+		fatalx("zero size");
 
 	buffer_ensure(b, size);
 	memcpy(BUFFER_IN(b), data, size);
@@ -172,9 +172,9 @@ void
 buffer_read(struct buffer *b, void *data, size_t size)
 {
 	if (size == 0)
-		log_fatalx("buffer_read: zero size");
+		fatalx("zero size");
 	if (size > b->size)
-		log_fatalx("buffer_read: underflow");
+		fatalx("underflow");
 
 	memcpy(data, BUFFER_OUT(b), size);
 	buffer_remove(b, size);

@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.1.1.1 2007-07-09 19:04:12 nicm Exp $ */
+/* $Id: window.c,v 1.2 2007-07-25 23:13:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -78,23 +78,23 @@ window_create(const char *cmd, u_int sx, u_int sy)
 		return (NULL);
 	case 0:
 		if (setenv("TMUX", pid, 1) != 0)
-			log_fatal("setenv");
+			fatal("setenv failed");
 		if (setenv("TERM", "screen", 1) != 0)
-			log_fatal("setenv");
+			fatal("setenv failed");
 		log_close();
 
 		execl(_PATH_BSHELL, "sh", "-c", cmd, (char *) NULL);
-		log_fatal("execl");
+		fatal("execl failed");
 	}
 
 	if ((mode = fcntl(fd, F_GETFL)) == -1)
-		log_fatal("fcntl");
+		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		log_fatal("fcntl");
+		fatal("fcntl failed");
 
 	mode = 1;
 	if (ioctl(fd, TIOCPKT, &mode) == -1)
-		log_fatal("ioctl(TIOCPKT)");
+		fatal("ioctl failed");
 
 	w = xmalloc(sizeof *w);
 	w->fd = fd;
@@ -156,7 +156,7 @@ window_remove(struct windows *ww, struct window *w)
 	u_int	i;
 
 	if (window_index(ww, w, &i) != 0)
-		log_fatalx("window_remove: window not found");
+		fatalx("window not found");
 	ARRAY_REMOVE(ww, i);
 
 	w->references--;
@@ -184,7 +184,7 @@ window_next(struct windows *ww, struct window *w)
 	u_int	i;
 
 	if (window_index(ww, w, &i) != 0)
-		log_fatalx("window_next: window not found");
+		fatalx("window not found");
 
 	if (i == ARRAY_LENGTH(ww) - 1)
 		return (NULL);
@@ -204,7 +204,7 @@ window_previous(struct windows *ww, struct window *w)
 	u_int	i;
 
 	if (window_index(ww, w, &i) != 0)
-		log_fatalx("window_previous: window not found");
+		fatalx("window not found");
 	if (i == 0)
 		return (NULL);
 	do {
@@ -241,7 +241,7 @@ window_resize(struct window *w, u_int sx, u_int sy)
 	screen_resize(&w->screen, sx, sy);
 
 	if (ioctl(w->fd, TIOCSWINSZ, &ws) == -1)
-		log_fatal("ioctl(TIOCSWINSZ)");
+		fatal("ioctl failed");
 	return (0);
 }
 
@@ -293,7 +293,7 @@ window_input(struct window *w, struct buffer *b, size_t size)
 		key = input_extract8(b);
 		if (key == '\e') {
 			if (size < 2)
-				log_fatalx("window_input: underflow");
+				fatalx("underflow");
 			size -= 2;
 			key = (int16_t) input_extract16(b);
 		}

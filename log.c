@@ -1,4 +1,4 @@
-/* $Id: log.c,v 1.1.1.1 2007-07-09 19:03:33 nicm Exp $ */
+/* $Id: log.c,v 1.2 2007-07-25 23:13:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,11 +35,14 @@ FILE	*log_stream;
 /* Debug level. */
 int	 log_level;
 
-/* Open log. */
+/* Open logging. */
 void
 log_open(FILE *f, int facility, int level)
 {
 	log_stream = f;
+	if (f != NULL)
+		setlinebuf(f);
+
 	log_level = level;
 
 	if (f == NULL)
@@ -61,32 +64,37 @@ log_close(void)
 
 /* Write a log message. */
 void
-log_write(FILE *f, int priority, const char *fmt, ...)
+log_write(FILE *f, int priority, const char *msg, ...)
 {
 	va_list	ap;
 
-	va_start(ap, fmt);
-	log_vwrite(f, priority, fmt, ap);
+	va_start(ap, msg);
+	log_vwrite(f, priority, msg, ap);
 	va_end(ap);
 }
 
 /* Write a log message. */
 void
-log_vwrite(FILE *f, int priority, const char *fmt, va_list ap)
+log_vwrite(FILE *f, int priority, const char *msg, va_list ap)
 {
+	char	*fmt;
+
 	if (!log_enabled)
 		return;
 
+	if (f == NULL)
+		f = log_stream;
 	if (f == NULL) {
-		vsyslog(priority, fmt, ap);
+		vsyslog(priority, msg, ap);
 		return;
 	}
 
+	if (asprintf(&fmt, "%s\n", msg) == -1)
+		exit(1);
 	if (vfprintf(f, fmt, ap) == -1)
 		exit(1);
-	if (fputc('\n', f) == EOF)
-		exit(1);
-	fflush(log_stream);
+	fflush(f);
+	free(fmt);
 }
 
 /* Log a warning with error string. */
@@ -102,8 +110,8 @@ log_warn(const char *msg, ...)
 	va_start(ap, msg);
 	if (asprintf(&fmt, "%s: %s", msg, strerror(errno)) == -1)
 		exit(1);
-	log_vwrite(log_stream, LOG_CRIT, fmt, ap);
-	xfree(fmt);
+	log_vwrite(NULL, LOG_CRIT, fmt, ap);
+	free(fmt);
 	va_end(ap);
 }
 
@@ -114,7 +122,7 @@ log_warnx(const char *msg, ...)
 	va_list	ap;
 
 	va_start(ap, msg);
-	log_vwrite(log_stream, LOG_CRIT, msg, ap);
+	log_vwrite(NULL, LOG_CRIT, msg, ap);
 	va_end(ap);
 }
 
@@ -126,10 +134,10 @@ log_info(const char *msg, ...)
 
 	if (log_level > -1) {
 		va_start(ap, msg);
-		if (log_stream == stderr)
+		if (log_stream == stderr) /* XXX */
 			log_vwrite(stdout, LOG_INFO, msg, ap);
 		else
-			log_vwrite(log_stream, LOG_INFO, msg, ap);
+			log_vwrite(NULL, LOG_INFO, msg, ap);
 		va_end(ap);
 	}
 }
@@ -142,7 +150,7 @@ log_debug(const char *msg, ...)
 
 	if (log_level > 0) {
 		va_start(ap, msg);
-		log_vwrite(log_stream, LOG_DEBUG, msg, ap);
+		log_vwrite(NULL, LOG_DEBUG, msg, ap);
 		va_end(ap);
 	}
 }
@@ -155,7 +163,7 @@ log_debug2(const char *msg, ...)
 
 	if (log_level > 1) {
 		va_start(ap, msg);
-		log_vwrite(log_stream, LOG_DEBUG, msg, ap);
+		log_vwrite(NULL, LOG_DEBUG, msg, ap);
 		va_end(ap);
 	}
 }
@@ -168,7 +176,7 @@ log_debug3(const char *msg, ...)
 
 	if (log_level > 2) {
 		va_start(ap, msg);
-		log_vwrite(log_stream, LOG_DEBUG, msg, ap);
+		log_vwrite(NULL, LOG_DEBUG, msg, ap);
 		va_end(ap);
 	}
 }
@@ -185,13 +193,13 @@ log_vfatal(const char *msg, va_list ap)
 	if (errno != 0) {
 		if (asprintf(&fmt, "fatal: %s: %s", msg, strerror(errno)) == -1)
 			exit(1);
-		log_vwrite(log_stream, LOG_CRIT, fmt, ap);
+		log_vwrite(NULL, LOG_CRIT, fmt, ap);
 	} else {
 		if (asprintf(&fmt, "fatal: %s", msg) == -1)
 			exit(1);
-		log_vwrite(log_stream, LOG_CRIT, fmt, ap);
+		log_vwrite(NULL, LOG_CRIT, fmt, ap);
 	}
-	xfree(fmt);
+	free(fmt);
 
 	exit(1);
 }

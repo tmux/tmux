@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.1.1.1 2007-07-09 19:03:33 nicm Exp $ */
+/* $Id: tmux.c,v 1.2 2007-07-25 23:13:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -237,7 +237,7 @@ main(int argc, char **argv)
 		/* Handle SIGWINCH if necessary. */
 		if (sigwinch) {
 			if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
-				log_fatal("ioctl(TIOCGWINSZ)");
+				fatal("ioctl failed");
 
 			hdr.code = MSG_SIZE;
 			hdr.size = sizeof sd;
@@ -263,14 +263,14 @@ main(int argc, char **argv)
 		if (poll(pfds, 2, INFTIM) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
-			log_fatal("poll");
+			fatal("poll failed");
 		}
 
 		/* Read/write from sockets. */
 		if (buffer_poll(&pfds[0], srv_in, srv_out) != 0)
 			goto server_dead;
 		if (buffer_poll(&pfds[1], loc_in, loc_out) != 0)
-			log_fatalx("lost local socket");
+			fatalx("lost local socket");
 
 		/* Output flushed; pause if requested. */
 		if (n)
@@ -341,7 +341,7 @@ process_server(struct buffer *srv_in)
 			break;
 		case MSG_PAUSE:
 			if (hdr.size != 0)
-				log_fatalx("bad MSG_PAUSE size");
+				fatalx("bad MSG_PAUSE size");
 			return (1);
 		case MSG_EXIT:
 			return (-1);

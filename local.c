@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.3 2007-07-09 19:39:47 nicm Exp $ */
+/* $Id: local.c,v 1.4 2007-07-25 23:13:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -214,13 +214,13 @@ local_init(struct buffer **in, struct buffer **out)
 	struct local_key *lk;
 
 	if ((tty = ttyname(STDOUT_FILENO)) == NULL)
-		log_fatal("ttyname");
+		fatal("ttyname failed");
 	if ((local_fd = open(tty, O_RDWR)) == -1)
-		log_fatal("open(\"%s\")", tty);
+		fatal("open failed");
 	if ((mode = fcntl(local_fd, F_GETFL)) == -1)
-		log_fatal("fcntl");
+		fatal("fcntl failed");
 	if (fcntl(local_fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		log_fatal("fcntl");
+		fatal("fcntl failed");
 
 	*in = local_in = buffer_create(BUFSIZ);
 	*out = local_out = buffer_create(BUFSIZ);
@@ -228,13 +228,13 @@ local_init(struct buffer **in, struct buffer **out)
 	setupterm(NULL, STDOUT_FILENO, NULL);
 
 	if (tcgetattr(local_fd, &local_tio) != 0)
-		log_fatal("tcgetattr");
+		fatal("tcgetattr failed");
 	memcpy(&tio, &local_tio, sizeof tio);
 	tio.c_iflag &= ~(IXON|IXOFF|ICRNL|INLCR);
 	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET);
 	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHOKE|ECHOCTL|ISIG);
 	if (tcsetattr(local_fd, TCSANOW, &tio) != 0)
-		log_fatal("tcsetattr");
+		fatal("tcsetattr failed");
 
 	if (enter_ca_mode != NULL)
 		local_putp(enter_ca_mode);
@@ -281,7 +281,7 @@ local_done(void)
 	xfree(local_out);
 
 	if (tcsetattr(local_fd, TCSANOW, &local_tio) != 0)
-		log_fatal("tcsetattr");
+		fatal("tcsetattr failed");
 	close(local_fd);
 
 	if (keypad_local != NULL)
@@ -303,7 +303,7 @@ local_putc(int c)
 	u_char	ch = c;
 
 	if (c < 0 || c > (int) UCHAR_MAX)
-		log_fatalx("local_putc: invalid character");
+		fatalx("invalid character");
 
 	if (debug_level > 1) {
 		f = fopen("tmux-out.log", "a+");
@@ -320,7 +320,7 @@ void
 local_putp(const char *s)
 {
 	if (s == NULL)
-		log_fatalx("local_putp: null pointer");
+		fatalx("null pointer");
 
 	tputs(s, 1, local_putc);
 }
@@ -402,7 +402,7 @@ local_output(struct buffer *b, size_t size)
 		}
 
 		if (size < 1)
-			log_fatalx("local_output: underflow");
+			fatalx("underflow");
 		size--;
 		ch = input_extract8(b);
 
@@ -410,7 +410,7 @@ local_output(struct buffer *b, size_t size)
 		switch (ch) {
 		case CODE_CURSORUP:
 			if (size < 2)
-				log_fatalx("local_output: underflow");
+				fatalx("underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_up_cursor == NULL) {
@@ -421,7 +421,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_CURSORDOWN:
 			if (size < 2)
-				log_fatalx("local_output: underflow");
+				fatalx("underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_down_cursor == NULL) {
@@ -432,7 +432,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_CURSORRIGHT:
 			if (size < 2)
-				log_fatalx("local_output: underflow");
+				fatalx("underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_right_cursor == NULL) {
@@ -443,7 +443,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_CURSORLEFT:
 			if (size < 2)
-				log_fatalx("local_output: underflow");
+				fatalx("underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_left_cursor == NULL) {
@@ -454,7 +454,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_CURSORMOVE:
 			if (size < 4)
-				log_fatalx("local_output: underflow");
+				fatalx("underflow");
 			size -= 4;
 			ua = input_extract16(b);
 			ub = input_extract16(b);
@@ -501,7 +501,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_INSERTLINE:
 			if (size < 2)
-				log_fatalx("local_output: underflow");
+				fatalx("underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_insert_line == NULL) {
@@ -512,7 +512,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_DELETELINE:
 			if (size < 2)
-				log_fatalx("local_output: underflow");
+				fatalx("underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_delete_line == NULL) {
@@ -523,7 +523,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_INSERTCHARACTER:
 			if (size < 2)
-				log_fatalx("local_output: underflow");
+				fatalx("underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_ich == NULL) {
@@ -534,7 +534,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_DELETECHARACTER:
 			if (size < 2)
-				log_fatalx("local_output: underflow");
+				fatalx("underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_dch == NULL) {
@@ -573,7 +573,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_SCROLLREGION:
 			if (size < 4)
-				log_fatalx("local_output: underflow");
+				fatalx("underflow");
 			size -= 4;
 			ua = input_extract16(b);
 			ub = input_extract16(b);
@@ -631,18 +631,18 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_TITLE:
 			if (size < 2)
-				log_fatalx("local_output: underflow");
+				fatalx("underflow");
 			size -= 2;
 			ua = input_extract16(b);
 
 			if (size < ua)
-				log_fatalx("local_output: underflow");
+				fatalx("underflow");
 			size -= ua;
 			buffer_remove(b, ua);
 			break;
 		case CODE_ATTRIBUTES:
 			if (size < 2)
-				log_fatalx("local_output: underflow");
+				fatalx("underflow");
 			size -= 2;
 			ua = input_extract16(b);
 
@@ -657,7 +657,7 @@ local_output(struct buffer *b, size_t size)
 
 			while (ua-- != 0) {
 				if (size < 2)
-					log_fatalx("local_output: underflow");
+					fatalx("underflow");
 				size -= 2;
 				ub = input_extract16(b);
 
