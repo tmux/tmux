@@ -11,10 +11,31 @@ Commands: d detach
 There is one default server process per user which puts its socket in
 /tmp/tmux-UID. It is created the first time tmux is run and subsequent
 invocations will connect to the same server. The server holds multiple
-sessions, call tmux with "-n <session name>" to create a session or attach to
-an existing session. All the sessions may be listed with -l, or the windows of
-a single session with "-ln <session name>". Sessions are destroyed when no
-windows remain attached to them.
+sessions.
+
+Syntax is: tmux [-v] [-n name] [-s path] command
+
+The command is either list, new or attach. Create a new session with:
+
+	tmux new
+
+Optionally giving it a name with:
+
+	tmux -n <session name> new
+
+Attach to a previous session with:
+
+	tmux -n <session name> attach
+
+List all sessions with:
+
+	tmux list
+
+Or the windows of a single session with:
+
+	tmux -n <session name> list
+
+Sessions are destroyed when no windows remain attached to them.
 
 Another server process can be used by specifying an alternative socket path with
 "-s <path>" but it shouldn't normally be required.

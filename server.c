@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.5 2007-08-27 12:05:15 nicm Exp $ */
+/* $Id: server.c,v 1.6 2007-08-27 13:45:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,7 +63,8 @@ void		 lost_window(struct window *);
 void		 changed_window(struct client *);
 void		 draw_client(struct client *, u_int, u_int);
 void	 	 process_client(struct client *);
-void		 process_identify_msg(struct client *, struct hdr *);
+void		 process_new_msg(struct client *, struct hdr *);
+void		 process_attach_msg(struct client *, struct hdr *);
 void		 process_create_msg(struct client *, struct hdr *);
 void		 process_next_msg(struct client *, struct hdr *);
 void		 process_previous_msg(struct client *, struct hdr *);
@@ -388,11 +389,11 @@ write_message(struct client *c, const char *fmt, ...)
 		input_store8(c->out, ' ');
 
 	size = BUFFER_USED(c->out) - size;
-	hdr.code = MSG_OUTPUT;
+	hdr.type = MSG_OUTPUT;
 	hdr.size = size;
 	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
 
-	hdr.code = MSG_PAUSE;
+	hdr.type = MSG_PAUSE;
 	hdr.size = 0;
 	buffer_write(c->out, &hdr, sizeof hdr);
 
@@ -403,7 +404,7 @@ write_message(struct client *c, const char *fmt, ...)
 	screen_draw(&c->session->window->screen, c->out, c->sy - 1, c->sy - 1);
 
 	size = BUFFER_USED(c->out) - size;
-	hdr.code = MSG_OUTPUT;
+	hdr.type = MSG_OUTPUT;
 	hdr.size = size;
 	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
 }
@@ -452,7 +453,7 @@ user_start(struct client *c, const char *prompt, const char *now,
 	input_store_zero(c->out, CODE_CURSORON);
 
 	size = BUFFER_USED(c->out) - size;
-	hdr.code = MSG_OUTPUT;
+	hdr.type = MSG_OUTPUT;
 	hdr.size = size;
 	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
 }
@@ -589,7 +590,7 @@ user_input(struct client *c, size_t in)
 
 	size = BUFFER_USED(c->out) - size;
 	if (size != 0) {
-		hdr.code = MSG_OUTPUT;
+		hdr.type = MSG_OUTPUT;
 		hdr.size = size;
 		memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
 	} else
@@ -602,7 +603,7 @@ write_client(struct client *c, u_int cmd, void *buf, size_t len)
 {
 	struct hdr	 hdr;
 
-	hdr.code = cmd;
+	hdr.type = cmd;
 	hdr.size = len;
 
 	buffer_write(c->out, &hdr, sizeof hdr);
@@ -617,7 +618,7 @@ write_client2(struct client *c,
 {
 	struct hdr	 hdr;
 
-	hdr.code = cmd;
+	hdr.type = cmd;
 	hdr.size = len1 + len2;
 
 	buffer_write(c->out, &hdr, sizeof hdr);
@@ -635,7 +636,7 @@ write_clients(struct window *w, u_int cmd, void *buf, size_t len)
  	struct hdr	 hdr;
 	u_int		 i;
 
-	hdr.code = cmd;
+	hdr.type = cmd;
 	hdr.size = len;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
@@ -714,7 +715,7 @@ draw_client(struct client *c, u_int py_upper, u_int py_lower)
 	size = BUFFER_USED(c->out) - size;
 	log_debug("redrawing screen, %zu bytes", size);
 	if (size != 0) {
-		hdr.code = MSG_OUTPUT;
+		hdr.type = MSG_OUTPUT;
 		hdr.size = size;
 		memcpy(
 		    BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
@@ -735,9 +736,12 @@ process_client(struct client *c)
 		return;
 	buffer_remove(c->in, sizeof hdr);
 
-	switch (hdr.code) {
-	case MSG_IDENTIFY:
-		process_identify_msg(c, &hdr);
+	switch (hdr.type) {
+	case MSG_NEW:
+		process_new_msg(c, &hdr);
+		break;
+	case MSG_ATTACH:
+		process_attach_msg(c, &hdr);
 		break;
 	case MSG_CREATE:
 		process_create_msg(c, &hdr);
@@ -769,19 +773,23 @@ process_client(struct client *c)
 	case MSG_RENAME:
 		process_rename_msg(c, &hdr);
 		break;
+	default:
+		fatalx("unexpected message");
 	}
 }
 
-/* Identify message from client. */
+/* New message from client. */
 void
-process_identify_msg(struct client *c, struct hdr *hdr)
+process_new_msg(struct client *c, struct hdr *hdr)
 {
-	struct identify_data	 data;
-	const char		*shell;
-	char			*cmd;
+	struct new_data	 data;
+	const char      *shell;
+	char		*cmd, *msg;
 	
+	if (c->session != NULL)
+		return;
 	if (hdr->size != sizeof data)
-		fatalx("bad MSG_IDENTIFY size");
+		fatalx("bad MSG_NEW size");
 	buffer_read(c->in, &data, hdr->size);
 
 	c->sx = data.sx;
@@ -790,21 +798,57 @@ process_identify_msg(struct client *c, struct hdr *hdr)
 	c->sy = data.sy;
 	if (c->sy == 0)
 		c->sy = 25;
-	
-	/* Try and find session or create if not found. */
-	c->session = session_find(data.name);
-	if (c->session == NULL) {
-		shell = getenv("SHELL");
-		if (shell == NULL)
-			shell = "/bin/ksh";
-		xasprintf(&cmd, "%s -l", shell);
-		c->session =
-		    session_create(data.name, cmd, c->sx, c->sy);
-		xfree(cmd);
+
+	if (*data.name != '\0' && session_find(data.name) != NULL) {
+		xasprintf(&msg, "duplicate session: %s", data.name);
+		write_client(c, MSG_READY, msg, strlen(msg));
+		xfree(msg);
+		return;
 	}
+
+	shell = getenv("SHELL");
+	if (shell == NULL)
+		shell = "/bin/ksh";
+	xasprintf(&cmd, "%s -l", shell);
+	c->session = session_create(data.name, cmd, c->sx, c->sy);
 	if (c->session == NULL)
 		fatalx("session_create failed");
+	xfree(cmd);
+	
+	write_client(c, MSG_READY, NULL, 0);
+	draw_client(c, 0, c->sy - 1);
+}
 
+/* Attach message from client. */
+void
+process_attach_msg(struct client *c, struct hdr *hdr)
+{
+	struct attach_data	 data;
+	char			*msg;
+	
+	if (c->session != NULL)
+		return;
+	if (hdr->size != sizeof data)
+		fatalx("bad MSG_ATTACH size");
+	buffer_read(c->in, &data, hdr->size);
+
+	c->sx = data.sx;
+	if (c->sx == 0)
+		c->sx = 80;
+	c->sy = data.sy;
+	if (c->sy == 0)
+		c->sy = 25;
+
+	if (*data.name != '\0')
+		c->session = session_find(data.name);
+	if (c->session == NULL) {
+		xasprintf(&msg, "session not found: %s", data.name);
+		write_client(c, MSG_READY, msg, strlen(msg));
+		xfree(msg);
+		return;
+	}
+
+	write_client(c, MSG_READY, NULL, 0);
 	draw_client(c, 0, c->sy - 1);
 }
 
@@ -816,7 +860,7 @@ process_create_msg(struct client *c, struct hdr *hdr)
 	char		*cmd;
 
 	if (c->session == NULL)
-		fatalx("MSG_CREATE before identified");
+		return;
 	if (hdr->size != 0)
 		fatalx("bad MSG_CREATE size");
 
@@ -836,7 +880,7 @@ void
 process_next_msg(struct client *c, struct hdr *hdr)
 {
 	if (c->session == NULL)
-		fatalx("MSG_NEXT before identified");
+		return;
 	if (hdr->size != 0)
 		fatalx("bad MSG_NEXT size");
 
@@ -851,7 +895,7 @@ void
 process_previous_msg(struct client *c, struct hdr *hdr)
 {
 	if (c->session == NULL)
-		fatalx("MSG_PREVIOUS before identified");
+		return;
 	if (hdr->size != 0)
 		fatalx("bad MSG_PREVIOUS size");
 
@@ -868,7 +912,7 @@ process_size_msg(struct client *c, struct hdr *hdr)
 	struct size_data	data;
 
 	if (c->session == NULL)
-		fatalx("MSG_SIZE before identified");
+		return;
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_SIZE size");
 	buffer_read(c->in, &data, hdr->size);
@@ -889,7 +933,7 @@ void
 process_input_msg(struct client *c, struct hdr *hdr)
 {
 	if (c->session == NULL)
-		fatalx("MSG_INPUT before identified");
+		return;
 
 	if (c->prompt == NULL)
 		window_input(c->session->window, c->in, hdr->size);
@@ -904,7 +948,7 @@ process_refresh_msg(struct client *c, struct hdr *hdr)
 	struct refresh_data	data;
 
 	if (c->session == NULL)
-		fatalx("MSG_REFRESH before identified");
+		return;
 	if (hdr->size != 0 && hdr->size != sizeof data)
 		fatalx("bad MSG_REFRESH size");
 
@@ -918,7 +962,7 @@ process_select_msg(struct client *c, struct hdr *hdr)
 	struct select_data	data;
 
 	if (c->session == NULL)
-		fatalx("MSG_SELECT before identified");
+		return;
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_SELECT size");
 	buffer_read(c->in, &data, hdr->size);
@@ -1014,7 +1058,7 @@ void
 process_rename_msg(struct client *c, struct hdr *hdr)
 {
 	if (c->session == NULL)
-		fatalx("MSG_RENAME before identified");
+		return;
 	if (hdr->size != 0)
 		fatalx("bad MSG_RENAME size");
 

@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.4 2007-08-27 12:05:15 nicm Exp $ */
+/* $Id: session.c,v 1.5 2007-08-27 13:45:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,8 +50,7 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	u_int		 i;
 
 	s = xmalloc(sizeof *s);
-	s->tim = time(NULL); 
-	strlcpy(s->name, name, sizeof s->name);
+	s->tim = time(NULL);
 	ARRAY_INIT(&s->windows);
 
 	if (session_new(s, cmd, sx, sy) != 0) {
@@ -60,13 +59,19 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	}
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		s = ARRAY_ITEM(&sessions, i);
-		if (s == NULL) {
+		if (ARRAY_ITEM(&sessions, i) == NULL) {
 			ARRAY_SET(&sessions, i, s);
-			return (s);
+			break;
 		}
 	}
-	ARRAY_ADD(&sessions, s);
+	if (i == ARRAY_LENGTH(&sessions))
+		ARRAY_ADD(&sessions, s);
+
+	if (*name != '\0')
+		strlcpy(s->name, name, sizeof s->name);
+	else
+		xsnprintf(s->name, sizeof s->name, "session-%u", i);
+
 	return (s);
 }
 
@@ -128,7 +133,6 @@ session_detach(struct session *s, struct window *w)
 	}
 
 	window_remove(&s->windows, w);
-	return (0);
 }
 
 /* Flush session if it is empty. */

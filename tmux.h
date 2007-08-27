@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.4 2007-08-27 12:05:15 nicm Exp $ */
+/* $Id: tmux.h,v 1.5 2007-08-27 13:45:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -226,68 +226,6 @@ struct buffer {
 #define KEYC_UP -149
 #define KEYC_MOUSE -150
 
-/* Escape codes. */
-/*
-	AL=\E[%dL	parm_insert_line
-	DC=\E[%dP	parm_dch
-	DL=\E[%dM	parm_delete_line
-	DO=\E[%dB	parm_down_cursor
-	IC=\E[%d@	parm_ich
-	Km=\E[M		key_mouse
-	LE=\E[%dD	parm_left_cursor
-	RI=\E[%dC	parm_right_cursor
-	UP=\E[%dA	parm_up_cursor
-	ac=++,,--..00``aaffgghhiijjkkllmmnnooppqqrrssttuuvvwwxxyyzz{{||}}~~
-			acs_chars
-	ae=^O		exit_alt_charset_mode
-	al=\E[L		insert_line
-	as=^N		enter_alt_charset_mode
-	bl=^G		bell
-	bt=\E[Z		back_tab
-	cb=\E[1K	clear_bol
-	cd=\E[J		clear_eos
-	ce=\E[K		clear_eol
-	cl=\E[H\E[J	clear_screen
-	cm=\E[%i%d;%dH	cursor_address
-	cr=^M		carriage_return
-	cs=\E[%i%d;%dr	change_scroll_region
-	ct=\E[3g	clear_all_tabs
-	dc=\E[P		delete_character
-	dl=\E[M		delete_line
-	do=^J		cursor_down
-	eA=\E(B\E)0	ena_acs
-	ei=\E[4l	exit_insert_mode
-	ho=\E[H		cursor_home
-	im=\E[4h	enter_insert_mode
-	is=\E)0		init_2string
-	le=^H		cursor_left
-	mb=\E[5m	enter_blink_mode
-	md=\E[1m	enter_bold_mode
-	me=\E[m		exit_attrbute_mode
-	mr=\E[7m	enter_reverse_mode
-	nd=\E[C		cursor_right
-	nw=\EE		newline
-	rc=\E8		restore_cursor
-	rs=\Ec		reset_string
-	sc=\E7		save_cursor
-	se=\E[23m	exit_standout_mode
-	sf=^J		scroll_forward
-	so=\E[3m	enter_standout_mode
-	sr=\EM		scroll_reverse
-	st=\EH		set_tab
-	ta=^I		tab
-	ue=\E[24m	exit_underline_mode
-	up=\EM		cursor_up
-	s=\E[4m
-	vb=\Eg		flash_screen
-	ve=\E[34h\E[?25h
-			cursor_normal
-	vi=\E[?25l	cursor_invisible
-	vs=\E[34l	cursor_visible
-	E0=\E(B
-	S0=\E(%p1%c
- */
-
 /* Translated escape codes. */
 #define CODE_CURSORUP 0
 #define CODE_CURSORDOWN 1
@@ -317,25 +255,47 @@ struct buffer {
 #define CODE_KKEYPADON 25
 #define CODE_TITLE 26
 
+/* Command-line commands. */
+enum op {
+	OP_LIST = 0,
+	OP_NEW,
+	OP_ATTACH
+};
+
 /* Message codes. */
-#define MSG_IDENTIFY 0
-#define MSG_CREATE 1
-#define MSG_EXIT 2
-#define MSG_SIZE 3
-#define MSG_NEXT 4
-#define MSG_PREVIOUS 5
-#define MSG_INPUT 6	/* input from client to server */
-#define MSG_OUTPUT 7	/* output from server to client */
-#define MSG_REFRESH 8
-#define MSG_SELECT 9
-#define MSG_SESSIONS 10
-#define MSG_WINDOWS 11
-#define MSG_PAUSE 12
-#define MSG_RENAME 13
+enum hdrtype {
+	MSG_NEW = 0,
+	MSG_ATTACH,
+	MSG_READY,
+	MSG_CREATE,
+	MSG_EXIT,
+	MSG_SIZE,
+	MSG_NEXT,
+	MSG_PREVIOUS,
+	MSG_INPUT,
+	MSG_OUTPUT,
+	MSG_REFRESH,
+	MSG_SELECT,
+	MSG_SESSIONS,
+	MSG_WINDOWS,
+	MSG_PAUSE,
+	MSG_RENAME
+};
 
-struct identify_data {
+/* Message header structure. */
+struct hdr {
+	enum hdrtype	type;
+	size_t		size;
+};
+
+struct new_data {
 	char	name[MAXNAMELEN];
+	u_int	sx;
+	u_int	sy;
+};
 
+struct attach_data {
+	char	name[MAXNAMELEN];
 	u_int	sx;
 	u_int	sy;
 };
@@ -375,12 +335,6 @@ struct select_data {
 struct refresh_data {
 	u_int	py_upper;
 	u_int	py_lower;
-};
-
-/* Message header structure. */
-struct hdr {
-	u_int	code;
-	size_t	size;
 };
 
 /* Attributes. */
