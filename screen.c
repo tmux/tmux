@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.6 2007-08-27 10:08:44 nicm Exp $ */
+/* $Id: screen.c,v 1.7 2007-08-27 11:21:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -621,15 +621,16 @@ screen_sequence(struct screen *s, u_char *ptr)
 void
 screen_write_character(struct screen *s, u_char ch)
 {
+	if (s->cx > screen_last_x(s)) {
+		s->cx = 0;
+		screen_cursor_down_scroll(s, 1);
+	}
+
 	s->grid_data[s->cy][s->cx] = ch;
 	s->grid_attr[s->cy][s->cx] = s->attr;
 	s->grid_colr[s->cy][s->cx] = s->colr;
 
 	s->cx++;
-	if (s->cx > screen_last_x(s)) {
-		s->cx = 0;
-		screen_cursor_down_scroll(s, 1);
-	}
 }
 
 /* Move cursor up and scroll if necessary. */
@@ -647,7 +648,7 @@ screen_cursor_up_scroll(struct screen *s, u_int ny)
 void
 screen_cursor_down_scroll(struct screen *s, u_int ny)
 {
-	if (screen_last_y(s) - s->cy < ny) {
+	if (s->cy + ny > screen_last_y(s)) {
 		screen_scroll_up(s, ny - (screen_last_y(s) - s->cy));
 		s->cy = screen_last_y(s);
 	} else
