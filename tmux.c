@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.3 2007-08-27 13:45:26 nicm Exp $ */
+/* $Id: tmux.c,v 1.4 2007-08-27 13:53:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -178,6 +178,7 @@ main(int argc, char **argv)
 	server_in = buffer_create(BUFSIZ);
 	server_out = buffer_create(BUFSIZ);
 
+	/* Skip to list function if listing. */
 	if (op == OP_LIST)
 		main_list(name);
 
@@ -545,7 +546,7 @@ process_list(const char *name)
 			buffer_read(server_in, &wd, sizeof wd);
 			hdr.size -= sizeof wd; 
 			if (wd.windows == 0 && hdr.size == 0)
-				errx(1, "session \"%s\" not found", name);
+				errx(1, "session not found: %s", name);
 			if (hdr.size < wd.windows * sizeof we)
 				errx(1, "bad MSG_WINDOWS size");
 			while (wd.windows-- > 0) {
