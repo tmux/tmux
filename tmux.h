@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.2 2007-07-25 23:13:18 nicm Exp $ */
+/* $Id: tmux.h,v 1.3 2007-08-27 11:05:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,7 +36,7 @@ extern char	*__progname;
 
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
-#define fatalx(msg) log_fatal("%s: %s", __func__, msg);
+#define fatalx(msg) log_fatalx("%s: %s", __func__, msg);
 
 /* Definition to shut gcc up about unused arguments. */
 #define unused __attribute__ ((unused))

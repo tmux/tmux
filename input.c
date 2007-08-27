@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.2 2007-08-27 08:12:23 nicm Exp $ */
+/* $Id: input.c,v 1.3 2007-08-27 11:05:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -438,8 +438,10 @@ input_pair_control(u_char **buf, size_t *len,
 		if (**buf == ';' && (ch == '0' || ch == '1')) {
 			log_debug("title found, length %zu bytes: %.*s",
 			    size - 1, (int) size - 1, *buf + 1);
-			input_store_one(b, CODE_TITLE, size - 1);
-			buffer_write(b, *buf + 1, size - 1);
+			if (size > 1) {
+				input_store_one(b, CODE_TITLE, size - 1);
+				buffer_write(b, *buf + 1, size - 1);
+			}
 		}
 
 		/* Skip the title; add one for the \007. */
