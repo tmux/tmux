@@ -1,4 +1,4 @@
-/* $Id: command.c,v 1.1.1.1 2007-07-09 19:03:50 nicm Exp $ */
+/* $Id: command.c,v 1.2 2007-08-27 10:30:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -78,7 +78,7 @@ cmd_execute(int key, struct buffer *srv_out)
 
 /* Handle select command. */
 int
-cmd_fn_select(unused struct buffer *srv_out, int arg)
+cmd_fn_select(struct buffer *srv_out, int arg)
 {
  	struct hdr		hdr;
 	struct select_data	data;
@@ -94,7 +94,7 @@ cmd_fn_select(unused struct buffer *srv_out, int arg)
 
 /* Handle create command. */
 int
-cmd_fn_create(unused struct buffer *srv_out, unused int arg)
+cmd_fn_create(struct buffer *srv_out, unused int arg)
 {
  	struct hdr	hdr;
 
@@ -114,7 +114,7 @@ cmd_fn_detach(unused struct buffer *srv_out, unused int arg)
 
 /* Handle next command. */
 int
-cmd_fn_next(unused struct buffer *srv_out, unused int arg)
+cmd_fn_next(struct buffer *srv_out, unused int arg)
 {
  	struct hdr	hdr;
 
@@ -127,7 +127,7 @@ cmd_fn_next(unused struct buffer *srv_out, unused int arg)
 
 /* Handle previous command. */
 int
-cmd_fn_previous(unused struct buffer *srv_out, unused int arg)
+cmd_fn_previous(struct buffer *srv_out, unused int arg)
 {
  	struct hdr	hdr;
 
@@ -140,7 +140,7 @@ cmd_fn_previous(unused struct buffer *srv_out, unused int arg)
 
 /* Handle refresh command. */
 int
-cmd_fn_refresh(unused struct buffer *srv_out, unused int arg)
+cmd_fn_refresh(struct buffer *srv_out, unused int arg)
 {
  	struct hdr	hdr;
 
