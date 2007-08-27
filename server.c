@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.2 2007-07-25 23:13:18 nicm Exp $ */
+/* $Id: server.c,v 1.3 2007-08-27 10:24:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -760,7 +760,9 @@ void
 process_identify_msg(struct client *c, struct hdr *hdr)
 {
 	struct identify_data	 data;
-
+	const char		*shell;
+	char			*cmd;
+	
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_IDENTIFY size");
 	buffer_read(c->in, &data, hdr->size);
@@ -775,8 +777,13 @@ process_identify_msg(struct client *c, struct hdr *hdr)
 	/* Try and find session or create if not found. */
 	c->session = session_find(data.name);
 	if (c->session == NULL) {
+		shell = getenv("SHELL");
+		if (shell == NULL)
+			shell = "/bin/ksh";
+		xasprintf(&cmd, "%s -l", shell);
 		c->session =
-		    session_create(data.name, "/bin/ksh -l", c->sx, c->sy);
+		    session_create(data.name, cmd, c->sx, c->sy);
+		xfree(cmd);
 	}
 	if (c->session == NULL)
 		fatalx("session_create failed");
@@ -788,13 +795,21 @@ process_identify_msg(struct client *c, struct hdr *hdr)
 void
 process_create_msg(struct client *c, struct hdr *hdr)
 {
+	const char	*shell;
+	char		*cmd;
+
 	if (c->session == NULL)
 		fatalx("MSG_CREATE before identified");
 	if (hdr->size != 0)
 		fatalx("bad MSG_CREATE size");
 
-	if (session_new(c->session, "/bin/ksh -l", c->sx, c->sy) != 0)
+	shell = getenv("SHELL");
+	if (shell == NULL)
+		shell = "/bin/ksh";
+	xasprintf(&cmd, "%s -l", shell);
+	if (session_new(c->session, cmd, c->sx, c->sy) != 0)
 		fatalx("session_new failed");
+	xfree(cmd);
 
 	draw_client(c, 0, c->sy - 1);
 }
