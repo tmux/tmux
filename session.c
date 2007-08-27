@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.6 2007-08-27 15:28:07 nicm Exp $ */
+/* $Id: session.c,v 1.7 2007-08-27 20:36:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -124,7 +124,7 @@ session_attach(struct session *s, struct window *w)
 }
 
 /* Detach a window from a session. */
-void
+int
 session_detach(struct session *s, struct window *w)
 {
 	if (s->window == w) {
@@ -133,15 +133,10 @@ session_detach(struct session *s, struct window *w)
 	}
 
 	window_remove(&s->windows, w);
-}
 
-/* Flush session if it is empty. */
-int
-session_flush(struct session *s)
-{
+	/* Destroy session if it is empty. */
 	if (!ARRAY_EMPTY(&s->windows))
 		return (0);
-
 	session_destroy(s);
 	return (1);
 }

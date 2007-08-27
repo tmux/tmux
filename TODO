@@ -13,3 +13,4 @@
 - new window command prompt
 - mouse handling and some other bits elinks needs
 - scrollback
+- server doesn't handle SIGTERM anymore...
