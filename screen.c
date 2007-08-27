@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.3 2007-07-25 23:13:18 nicm Exp $ */
+/* $Id: screen.c,v 1.4 2007-08-27 08:15:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,6 +24,8 @@
 
 /*
  * Virtual screen and basic ANSI terminal emulator.
+ *
+ * XXX Most of this file sucks. There be memory corruption somewhere here.
  */
 
 size_t	 screen_store_attributes(struct buffer *, u_char);
