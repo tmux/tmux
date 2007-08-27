@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.1.1.1 2007-07-09 19:03:45 nicm Exp $ */
+/* $Id: input.c,v 1.2 2007-08-27 08:12:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -479,7 +479,7 @@ input_control_sequence(
 
 	log_debug(
 	    "sequence:  %c (%hhu) [%c] [cx %u, cy %u, sx %u, sy %u]: %u", code,
-	    code, private, s->cx + 1, s->cy + 1, s->sx + 1, s->sy + 1, argc);
+	    code, private, s->cx, s->cy, s->sx, s->sy, argc);
 	for (i = 0; i < argc; i++)
 		log_debug("\targument %u: %u", i, argv[i]);
 
