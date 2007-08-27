@@ -1,3 +1,7 @@
+27 August 2007
+
+* Change screen.c to work more logically and hopefully fix heap corruption.
+
 09 July 2007
 
 * Initial import to CVS. Basic functions are working, albeit with a couple of 
@@ -8,5 +12,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.2 2007-07-10 10:21:58 nicm Exp $
+$Id: CHANGES,v 1.3 2007-08-27 09:53:38 nicm Exp $
 

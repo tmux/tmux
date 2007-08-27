@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.4 2007-08-27 08:15:39 nicm Exp $ */
+/* $Id: screen.c,v 1.5 2007-08-27 09:53:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,7 +25,7 @@
 /*
  * Virtual screen and basic ANSI terminal emulator.
  *
- * XXX Most of this file sucks. There be memory corruption somewhere here.
+ * XXX Much of this file sucks.
  */
 
 size_t	 screen_store_attributes(struct buffer *, u_char);
@@ -88,7 +88,7 @@ screen_create(struct screen *s, u_int sx, u_int sy)
 	s->grid_data = xmalloc(sy * (sizeof *s->grid_data));
 	s->grid_attr = xmalloc(sy * (sizeof *s->grid_attr));
 	s->grid_colr = xmalloc(sy * (sizeof *s->grid_colr));
-	screen_make_lines(s, 0, screen_last_y(s));
+	screen_make_lines(s, 0, sy);
 	screen_fill_screen(s, SCREEN_DEFDATA, 0, SCREEN_DEFCOLR);
 }
 
@@ -304,16 +304,16 @@ screen_store_colours(struct buffer *b, u_char colr)
 
 /* Make a range of lines. */
 void
-screen_make_lines(struct screen *s, u_int uy, u_int ly)
+screen_make_lines(struct screen *s, u_int py, u_int ny)
 {
 	u_int	i;
 
-	log_debug("making lines %u:%u", uy, ly);
+	log_debug("making lines %u,%u", py, ny);
 
-	if (uy > screen_last_y(s) || ly > screen_last_y(s) || ly < uy)
+	if (py > screen_last_y(s) || py + ny - 1 > screen_last_y(s))
 		fatalx("bad range");
 	
-	for (i = uy; i <= ly; i++) {
+	for (i = py; i < py + ny; i++) {
 		s->grid_data[i] = xmalloc(s->sx);
 		s->grid_attr[i] = xmalloc(s->sx);
 		s->grid_colr[i] = xmalloc(s->sx);
@@ -322,65 +322,56 @@ screen_make_lines(struct screen *s, u_int uy, u_int ly)
 
 /* Free a range of lines. */
 void
-screen_free_lines(struct screen *s, u_int uy, u_int ly)
+screen_free_lines(struct screen *s, u_int py, u_int ny)
 {
 	u_int	i;
 
-	log_debug("freeing lines %u:%u", uy, ly);
+	log_debug("freeing lines %u,%u", py, ny);
 
-	if (uy > screen_last_y(s) || ly > screen_last_y(s) || ly < uy)
+	if (py > screen_last_y(s) || py + ny - 1 > screen_last_y(s))
 		fatalx("bad range");
 
-	for (i = uy; i <= ly; i++) {
+	for (i = py; i < py + ny; i++) {
 		xfree(s->grid_data[i]);
-		s->grid_data[i] = (u_char *) 0xffffffff;
 		xfree(s->grid_attr[i]);
-		s->grid_attr[i] = (u_char *) 0xffffffff;
 		xfree(s->grid_colr[i]);
-		s->grid_colr[i] = (u_char *) 0xffffffff;
 	}
 }
 
 /* Move a range of lines. */
 void
-screen_move_lines(struct screen *s, u_int dy, u_int uy, u_int ly)
+screen_move_lines(struct screen *s, u_int dy, u_int py, u_int ny)
 {
-	u_int	ny;
+	log_debug("moving lines %u,%u to %u", py, ny, dy);
 
-	log_debug("moving lines %u:%u to %u", uy, ly, dy);
-
-	ny = (ly - uy) + 1;
-
-	if (uy > screen_last_y(s) || ly > screen_last_y(s) || ly < uy)
+	if (py > screen_last_y(s) || py + ny - 1 > screen_last_y(s))
 		fatalx("bad range");
-	if (dy > screen_last_y(s))
+	if (dy > screen_last_y(s) || dy == py)
 		fatalx("bad destination");
 	if (dy + ny - 1 > screen_last_y(s))
 		fatalx("bad size");
-	if (dy == uy)
-		fatalx("null move");
 
 	memmove(
-	    &s->grid_data[dy], &s->grid_data[uy], ny * (sizeof *s->grid_data));
+	    &s->grid_data[dy], &s->grid_data[py], ny * (sizeof *s->grid_data));
 	memmove(
-	    &s->grid_attr[dy], &s->grid_attr[uy], ny * (sizeof *s->grid_attr));
+	    &s->grid_attr[dy], &s->grid_attr[py], ny * (sizeof *s->grid_attr));
 	memmove(
-	    &s->grid_colr[dy], &s->grid_colr[uy], ny * (sizeof *s->grid_colr));
+	    &s->grid_colr[dy], &s->grid_colr[py], ny * (sizeof *s->grid_colr));
 }
 
 /* Fill a range of lines. */
 void
 screen_fill_lines(
-    struct screen *s, u_int uy, u_int ly, u_char data, u_char attr, u_char colr)
+    struct screen *s, u_int py, u_int ny, u_char data, u_char attr, u_char colr)
 {
 	u_int	i;
 
-	log_debug("filling lines %u:%u", uy, ly);
+	log_debug("filling lines %u,%u", py, ny);
 
-	if (uy > screen_last_y(s) || ly > screen_last_y(s) || ly < uy)
+	if (py > screen_last_y(s) || py + ny - 1 > screen_last_y(s))
 		fatalx("bad range");
 
-	for (i = uy; i <= ly; i++)
+	for (i = py; i < py + ny; i++)
 		screen_fill_line(s, i, data, attr, colr);
 }
 
@@ -763,13 +754,28 @@ screen_insert_lines(struct screen *s, u_int py, u_int ny)
 		ny = screen_last_y(s) - py;
 	log_debug("inserting lines: %u,%u", py, ny);
 
-	screen_free_lines(s, (screen_last_y(s) - ny) + 1, screen_last_y(s));
+
+	/*
+	 * Insert range of ny lines at py:
+	 *	- Free ny lines from end of screen.
+	 *	- Move from py to end of screen - ny to py + ny.
+	 *	- Create ny lines at py.
+	 *
+	 * Example: insert 2 lines at 4.
+	 *	sy = 10, py = 4, ny = 2
+	 *	screen_free_lines(s, 8, 2);	- delete lines 8,9
+	 *	screen_move_lines(s, 6, 4, 4);	- move 4,5,6,7 to 6,7,8,9
+	 *	screen_make_lines(s, 4, 2);	- make lines 4,5
+	 */
+
+	screen_free_lines(s, s->sy - ny, ny);
 
 	if (py != screen_last_y(s))
-		screen_move_lines(s, py + ny, py, screen_last_y(s) - ny);
+		screen_move_lines(s, py + ny, py, s->sy - py - ny);
 
+	screen_make_lines(s, py, ny);
 	screen_fill_lines(
-	    s, py, py + ny - 1, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
+	    s, py, ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 }
 
 /* Delete lines. */
@@ -783,14 +789,27 @@ screen_delete_lines(struct screen *s, u_int py, u_int ny)
 		ny = screen_last_y(s) - py;
 	log_debug("deleting lines: %u,%u", py, ny);
 
-	screen_free_lines(s, py, py + ny - 1);
+	/*
+	 * Delete range of ny lines at py:
+	 * 	- Free ny lines at py.
+	 *	- Move from py + ny to end of screen to py.
+	 *	- Free and recreate last ny lines.
+	 *
+	 * Example: delete lines 3,4.
+	 *	sy = 10, py = 3, ny = 2
+	 *	screen_free_lines(s, 3, 2);	- delete lines 3,4
+	 *	screen_move_lines(s, 3, 5, 5);	- move 5,6,7,8,9 to 3
+	 *	screen_make_lines(s, 8, 2);	- make lines 8,9
+	 */
+
+	screen_free_lines(s, py, ny);
 
 	if (py != screen_last_y(s))
-		screen_move_lines(s, py, py + ny, screen_last_y(s));
+		screen_move_lines(s, py, py + ny, s->sy - py - ny);
 
-	screen_make_lines(s, (screen_last_y(s) - ny) + 1, screen_last_y(s));
-	screen_fill_lines(s, (screen_last_y(s) - ny) + 1,
-	    screen_last_y(s), SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
+	screen_make_lines(s, s->sy - ny, ny);
+	screen_fill_lines(
+	    s, s->sy - ny, ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 }
 
 /* Insert characters. */

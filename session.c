@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.2 2007-07-25 23:13:18 nicm Exp $ */
+/* $Id: session.c,v 1.3 2007-08-27 09:53:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <string.h>
+#include <stdlib.h>
 
 #include "tmux.h"
 
