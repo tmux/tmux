@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.2 2007-07-25 23:13:18 nicm Exp $ */
+/* $Id: window.c,v 1.3 2007-08-27 10:08:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,9 +35,10 @@
  * Each window is attached to a pty. This file contains code to handle them.
  *
  * A window has two buffers attached, these are filled and emptied by the main
- * server poll loop. Output data is received from pty's in ANSI format,
- * translated and returned as a series of ANSI escape sequences and strings.
- * Input data is received in ANSI format and written directly to the pty.
+ * server poll loop. Output data is received from pty's in screen format,
+ * translated and returned as a series of escape sequences and strings.
+ * Input data is received in screen format and written directly to the pty
+ * (translation is done in the client).
  *
  * Each window also has a "virtual" screen (screen.c) which contains the
  * current state and is redisplayed when the window is reattached to a client.
@@ -302,7 +303,7 @@ window_input(struct window *w, struct buffer *b, size_t size)
 }
 
 /*
- * Process window output. Output is translated into a series of ANSI escape
+ * Process window output. Output is translated into a series of escape
  * sequences and strings and returned.
  */
 void

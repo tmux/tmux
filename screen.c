@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.5 2007-08-27 09:53:38 nicm Exp $ */
+/* $Id: screen.c,v 1.6 2007-08-27 10:08:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,7 +23,7 @@
 #include "tmux.h"
 
 /*
- * Virtual screen and basic ANSI terminal emulator.
+ * Virtual screen and basic terminal emulator.
  *
  * XXX Much of this file sucks.
  */
