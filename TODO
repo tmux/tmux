@@ -12,3 +12,4 @@
 - wrap windows with forward/back
 - new window command prompt
 - mouse handling and some other bits elinks needs
+- scrollback

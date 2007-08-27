@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.6 2007-08-27 13:45:26 nicm Exp $ */
+/* $Id: server.c,v 1.7 2007-08-27 15:28:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -658,31 +658,29 @@ lost_window(struct window *w)
 	struct client	*c;
 	struct session	*s;
 	u_int		 i, j;
+	int		 destroyed;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		s = ARRAY_ITEM(&sessions, i);
+		if (s == NULL)
 			continue;
-		if (!session_has(c->session, w))
+		if (!session_has(s, w))
 			continue;
-		s = c->session;
 
 		/* Detach window from session. */
 		session_detach(s, w);
 
-		/* Try to flush session and redraw if not destroyed. */
-		if (session_flush(s) == 0) {
-			changed_window(c);
-			continue;
-		}
-		
-		/* Kill all clients attached to this session. */
+		/* Try to flush session and either redraw or kill clients. */
+		destroyed = session_flush(s);		
 		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
 			c = ARRAY_ITEM(&clients, j);
 			if (c == NULL || c->session != s)
 				continue;
-			c->session = NULL;
-			write_client(c, MSG_EXIT, NULL, 0);
+			if (destroyed) {
+				c->session = NULL;
+				write_client(c, MSG_EXIT, NULL, 0);
+			} else
+				changed_window(c);
 		}
 	}
 }

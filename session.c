@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.5 2007-08-27 13:45:26 nicm Exp $ */
+/* $Id: session.c,v 1.6 2007-08-27 15:28:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,7 +70,7 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	if (*name != '\0')
 		strlcpy(s->name, name, sizeof s->name);
 	else
-		xsnprintf(s->name, sizeof s->name, "session-%u", i);
+		xsnprintf(s->name, sizeof s->name, "%u", i);
 
 	return (s);
 }

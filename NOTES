@@ -27,6 +27,8 @@ Attach to a previous session with:
 
 	tmux -n <session name> attach
 
+A name must (currently) be specified when attaching. This may change.
+
 List all sessions with:
 
 	tmux list
@@ -37,8 +39,8 @@ Or the windows of a single session with:
 
 Sessions are destroyed when no windows remain attached to them.
 
-Another server process can be used by specifying an alternative socket path with
-"-s <path>" but it shouldn't normally be required.
+Another server process can be used by specifying an alternative socket path
+with "-s <path>" but it shouldn't normally be required.
 
 You can set the window title (listed in -l), using the \e] escape sequence. For
 example:
