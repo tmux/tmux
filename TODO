@@ -14,3 +14,4 @@
 - mouse handling and some other bits elinks needs
 - scrollback
 - server doesn't handle SIGTERM anymore...
+- sleep(1) to wait for server frankly sucks
