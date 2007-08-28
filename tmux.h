@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.6 2007-08-27 20:36:52 nicm Exp $ */
+/* $Id: tmux.h,v 1.7 2007-08-28 09:19:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -244,8 +244,8 @@ struct buffer {
 #define CODE_ATTRIBUTES 14
 #define CODE_CURSOROFF 15
 #define CODE_CURSORON 16
-#define CODE_CURSORUPSCROLL 17
-#define CODE_CURSORDOWNSCROLL 18
+#define CODE_REVERSEINDEX 17
+/* 18 unused */
 #define CODE_SCROLLREGION 19
 #define CODE_INSERTON 20
 #define CODE_INSERTOFF 21

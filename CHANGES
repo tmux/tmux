@@ -1,3 +1,7 @@
+28 August 2007
+
+* Scrolling region (\e[r) support.
+
 27 August 2007
 
 * Change screen.c to work more logically and hopefully fix heap corruption.
@@ -12,5 +16,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.3 2007-08-27 09:53:38 nicm Exp $
+$Id: CHANGES,v 1.4 2007-08-28 09:19:50 nicm Exp $
 

@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.7 2007-08-27 11:21:05 nicm Exp $ */
+/* $Id: screen.c,v 1.8 2007-08-28 09:19:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -37,8 +37,10 @@ void	 screen_fill_lines(
 	     struct screen *, u_int, u_int, u_char, u_char, u_char);
 uint16_t screen_extract(u_char *);
 void	 screen_write_character(struct screen *, u_char);
-void	 screen_cursor_up_scroll(struct screen *, u_int);
-void	 screen_cursor_down_scroll(struct screen *, u_int);
+void	 screen_cursor_up_scroll(struct screen *);
+void	 screen_cursor_down_scroll(struct screen *);
+void	 screen_scroll_region_up(struct screen *);
+void	 screen_scroll_region_down(struct screen *);
 void	 screen_scroll_up(struct screen *, u_int);
 void	 screen_scroll_down(struct screen *, u_int);
 void	 screen_fill_screen(struct screen *, u_char, u_char, u_char);
@@ -381,7 +383,7 @@ screen_character(struct screen *s, u_char ch)
 {
 	switch (ch) {
 	case '\n':	/* LF */
-		screen_cursor_down_scroll(s, 1);
+		screen_cursor_down_scroll(s);
 		break;
 	case '\r':	/* CR */
 		s->cx = 0;
@@ -492,13 +494,8 @@ screen_sequence(struct screen *s, u_char *ptr)
 	case CODE_CURSOROFF:
 		s->mode &= ~MODE_CURSOR;
 		break;
-	case CODE_CURSORDOWNSCROLL:
-		ua = screen_extract(ptr);
-		screen_cursor_down_scroll(s, ua);
-		break;
-	case CODE_CURSORUPSCROLL:
-		ua = screen_extract(ptr);
-		screen_cursor_up_scroll(s, ua);
+	case CODE_REVERSEINDEX:
+		screen_cursor_up_scroll(s);
 		break;
 	case CODE_SCROLLREGION:
 		ua = screen_extract(ptr);
@@ -623,7 +620,7 @@ screen_write_character(struct screen *s, u_char ch)
 {
 	if (s->cx > screen_last_x(s)) {
 		s->cx = 0;
-		screen_cursor_down_scroll(s, 1);
+		screen_cursor_down_scroll(s);
 	}
 
 	s->grid_data[s->cy][s->cx] = ch;
@@ -635,48 +632,98 @@ screen_write_character(struct screen *s, u_char ch)
 
 /* Move cursor up and scroll if necessary. */
 void
-screen_cursor_up_scroll(struct screen *s, u_int ny)
+screen_cursor_up_scroll(struct screen *s)
 {
-	if (s->cy < ny) {
-		screen_scroll_down(s, ny - s->cy);
-		s->cy = 0;
-	} else
-		s->cy -= ny;
+	if (s->cy == s->ry_upper)
+		screen_scroll_region_down(s);
+	else if (s->cy > 0)
+		s->cy--;
 }
 
 /* Move cursor down and scroll if necessary. */
 void
-screen_cursor_down_scroll(struct screen *s, u_int ny)
+screen_cursor_down_scroll(struct screen *s)
 {
-	if (s->cy + ny > screen_last_y(s)) {
-		screen_scroll_up(s, ny - (screen_last_y(s) - s->cy));
-		s->cy = screen_last_y(s);
-	} else
-		s->cy += ny;
+	if (s->cy == s->ry_lower)
+		screen_scroll_region_up(s);
+	else if (s->cy < screen_last_y(s))
+		s->cy++;
+}
+
+/* Scroll region up. */
+void
+screen_scroll_region_up(struct screen *s)
+{
+	log_debug("scrolling region up: %u:%u", s->ry_upper, s->ry_lower);
+
+	/* 
+	 * Scroll scrolling region up:
+	 * 	- delete ry_upper
+	 *	- move ry_upper + 1 to ry_lower to ry_upper
+	 *	- make new line at ry_lower
+	 *
+	 * Example: region is 12 to 24.
+	 *	ry_lower = 24, ry_upper = 12
+	 *	screen_free_lines(s, 12, 1);
+	 *	screen_move_lines(s, 12, 13, 12);
+	 *	screen_make_lines(s, 24, 1);
+	 */
+
+	screen_free_lines(s, s->ry_upper, 1);
+
+	if (s->ry_upper != s->ry_lower) {
+		screen_move_lines(s, 
+		    s->ry_upper, s->ry_upper + 1, s->ry_lower - s->ry_upper);
+	}
+
+	screen_make_lines(s, s->ry_lower, 1);
+	screen_fill_lines(
+	    s, s->ry_lower, 1, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
+}
+
+/* Scroll region down. */
+void
+screen_scroll_region_down(struct screen *s)
+{
+	log_debug("scrolling region down: %u:%u", s->ry_upper, s->ry_lower);
+
+	/* 
+	 * Scroll scrolling region down:
+	 * 	- delete ry_lower
+	 *	- move ry_upper to ry_lower - 1 to ry_upper + 1
+	 *	- make new line at ry_upper
+	 *
+	 * Example: region is 12 to 24.
+	 *	ry_lower = 24, ry_upper = 12
+	 *	screen_free_lines(s, 24, 1);
+	 *	screen_move_lines(s, 13, 12, 11);
+	 *	screen_make_lines(s, 12, 1);
+	 */
+
+	screen_free_lines(s, s->ry_lower, 1);
+
+	if (s->ry_upper != s->ry_lower) {
+		screen_move_lines(s,
+		    s->ry_upper + 1, s->ry_upper, s->ry_lower - s->ry_upper);
+	}
+
+	screen_make_lines(s, s->ry_upper, 1);
+	screen_fill_lines(
+	    s, s->ry_upper, 1, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 }
 
 /* Scroll screen up. */
 void
 screen_scroll_up(struct screen *s, u_int ny)
 {
-	if (s->ry_upper == 0 && s->ry_lower == screen_last_y(s)) {
-		screen_delete_lines(s, 0, ny);
-		return;
-	}
-
-	fatalx("unimplemented");
+	screen_delete_lines(s, 0, ny);
 }
 
 /* Scroll screen down. */
 void
 screen_scroll_down(struct screen *s, u_int ny)
 {
-	if (s->ry_upper == 0 && s->ry_lower == screen_last_y(s)) {
-		screen_insert_lines(s, 0, ny);
-		return;
-	}
-
-	fatalx("unimplemented");
+	screen_insert_lines(s, 0, ny);
 }
 
 /* Fill entire screen. */
@@ -754,7 +801,6 @@ screen_insert_lines(struct screen *s, u_int py, u_int ny)
 	if (py + ny > screen_last_y(s))
 		ny = screen_last_y(s) - py;
 	log_debug("inserting lines: %u,%u", py, ny);
-
 
 	/*
 	 * Insert range of ny lines at py:

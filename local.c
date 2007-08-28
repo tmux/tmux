@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.4 2007-07-25 23:13:18 nicm Exp $ */
+/* $Id: local.c,v 1.5 2007-08-28 09:19:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -557,19 +557,12 @@ local_output(struct buffer *b, size_t size)
 			}
 			local_putp(cursor_invisible);
 			break;
-		case CODE_CURSORUPSCROLL:
+		case CODE_REVERSEINDEX:
 			if (scroll_reverse == NULL) {
 				log_warnx("scroll_reverse not supported");
 				break;
 			}
 			local_putp(scroll_reverse);
-			break;
-		case CODE_CURSORDOWNSCROLL:
-			if (scroll_forward == NULL) {
-				log_warnx("scroll_forward not supported");
-				break;
-			}
-			local_putp(scroll_forward);
 			break;
 		case CODE_SCROLLREGION:
 			if (size < 4)

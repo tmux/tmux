@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.3 2007-08-27 11:05:21 nicm Exp $ */
+/* $Id: input.c,v 1.4 2007-08-28 09:19:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -449,7 +449,7 @@ input_pair_control(u_char **buf, size_t *len,
 		(*len) -= size + 1;
 		break;
 	case 'M':	/* RI */
-		input_store_one(b, CODE_CURSORUPSCROLL, 1);
+		input_store_zero(b, CODE_REVERSEINDEX);
 		break;
 	default:
 		log_debug("unknown control2: %c (%hhu)", ch, ch);
