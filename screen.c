@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.8 2007-08-28 09:19:50 nicm Exp $ */
+/* $Id: screen.c,v 1.9 2007-08-28 09:26:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -530,8 +530,8 @@ screen_sequence(struct screen *s, u_char *ptr)
 		ua = screen_extract(ptr);
 		ptr += 2;
 		log_debug("new title: %u:%.*s", ua, (int) ua, ptr);
-		if (ua > MAXTITLELEN - 1)
-			ua = MAXTITLELEN - 1;
+		if (ua > (sizeof s->title) - 1)
+			ua = (sizeof s->title) - 1;
 		memcpy(s->title, ptr, ua);
 		s->title[ua] = '\0';
 		break;
@@ -696,7 +696,7 @@ screen_scroll_region_down(struct screen *s)
 	 * Example: region is 12 to 24.
 	 *	ry_lower = 24, ry_upper = 12
 	 *	screen_free_lines(s, 24, 1);
-	 *	screen_move_lines(s, 13, 12, 11);
+	 *	screen_move_lines(s, 13, 12, 12);
 	 *	screen_make_lines(s, 12, 1);
 	 */
 
