@@ -15,3 +15,6 @@
 - scrollback
 - server doesn't handle SIGTERM anymore...
 - sleep(1) to wait for server frankly sucks
+- two-way communication (rename) sucks. lose it and use a comamnd line option
+  for everythin
+- cleanup/redesign IPC
