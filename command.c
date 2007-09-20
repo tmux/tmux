@@ -1,4 +1,4 @@
-/* $Id: command.c,v 1.5 2007-09-20 18:48:04 nicm Exp $ */
+/* $Id: command.c,v 1.6 2007-09-20 18:51:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,13 +23,8 @@
 int	cmd_prefix = META;
 
 int	cmd_fn_select(struct buffer *, int);
-int	cmd_fn_create(struct buffer *, int);
 int	cmd_fn_detach(struct buffer *, int);
-int	cmd_fn_next(struct buffer *, int);
-int	cmd_fn_previous(struct buffer *, int);
-int	cmd_fn_refresh(struct buffer *, int);
-int	cmd_fn_rename(struct buffer *, int);
-int	cmd_fn_last(struct buffer *, int);
+int	cmd_fn_msg(struct buffer *, int);
 
 struct cmd {
 	int	key;
@@ -48,20 +43,20 @@ struct cmd cmd_table[] = {
 	{ '7', cmd_fn_select, 7 },
 	{ '8', cmd_fn_select, 8 },
 	{ '9', cmd_fn_select, 9 },
-	{ 'C', cmd_fn_create, 0 },
-	{ 'c', cmd_fn_create, 0 },
+	{ 'C', cmd_fn_msg, MSG_CREATE },
+	{ 'c', cmd_fn_msg, MSG_CREATE },
 	{ 'D', cmd_fn_detach, 0 },
 	{ 'd', cmd_fn_detach, 0 },
-	{ 'N', cmd_fn_next, 0 },
-	{ 'n', cmd_fn_next, 0 },
-	{ 'P', cmd_fn_previous, 0 },
-	{ 'p', cmd_fn_previous, 0 },
-	{ 'R', cmd_fn_refresh, 0 },
-	{ 'r', cmd_fn_refresh, 0 },
-	{ 'T', cmd_fn_rename, 0 },
-	{ 't', cmd_fn_rename, 0 },
-	{ 'L', cmd_fn_last, 0 },
-	{ 'l', cmd_fn_last, 0 }
+	{ 'N', cmd_fn_msg, MSG_NEXT },
+	{ 'n', cmd_fn_msg, MSG_NEXT },
+	{ 'P', cmd_fn_msg, MSG_PREVIOUS },
+	{ 'p', cmd_fn_msg, MSG_PREVIOUS },
+	{ 'R', cmd_fn_msg, MSG_REFRESH },
+	{ 'r', cmd_fn_msg, MSG_REFRESH },
+	{ 'T', cmd_fn_msg, MSG_RENAME },
+	{ 't', cmd_fn_msg, MSG_RENAME },
+	{ 'L', cmd_fn_msg, MSG_LAST },
+	{ 'l', cmd_fn_msg, MSG_LAST }
 };
 
 /* Dispatch to a command. */
@@ -77,6 +72,19 @@ cmd_execute(int key, struct buffer *srv_out)
 			return (cmd->fn(srv_out, cmd->arg));
 	}
 	return (0);
+}
+
+/* Handle generic command. */
+int
+cmd_fn_msg(struct buffer *srv_out, int type)
+{
+ 	struct hdr	hdr;
+
+	hdr.type = type;
+	hdr.size = 0;
+	buffer_write(srv_out, &hdr, sizeof hdr);
+
+ 	return (0);
 }
 
 /* Handle select command. */
@@ -95,88 +103,9 @@ cmd_fn_select(struct buffer *srv_out, int arg)
 	return (0);
 }
 
-/* Handle create command. */
-int
-cmd_fn_create(struct buffer *srv_out, unused int arg)
-{
- 	struct hdr	hdr;
-
-	hdr.type = MSG_CREATE;
-	hdr.size = 0;
-	buffer_write(srv_out, &hdr, sizeof hdr);
-
-	return (0);
-}
-
 /* Handle detach command. */
 int
 cmd_fn_detach(unused struct buffer *srv_out, unused int arg)
 {
 	return (-1);
 }
-
-/* Handle next command. */
-int
-cmd_fn_next(struct buffer *srv_out, unused int arg)
-{
- 	struct hdr	hdr;
-
-	hdr.type = MSG_NEXT;
-	hdr.size = 0;
-	buffer_write(srv_out, &hdr, sizeof hdr);
-
- 	return (0);
-}
-
-/* Handle previous command. */
-int
-cmd_fn_previous(struct buffer *srv_out, unused int arg)
-{
- 	struct hdr	hdr;
-
-	hdr.type = MSG_PREVIOUS;
-	hdr.size = 0;
-	buffer_write(srv_out, &hdr, sizeof hdr);
-
- 	return (0);
-}
-
-/* Handle refresh command. */
-int
-cmd_fn_refresh(struct buffer *srv_out, unused int arg)
-{
- 	struct hdr	hdr;
-
-	hdr.type = MSG_REFRESH;
-	hdr.size = 0;
-	buffer_write(srv_out, &hdr, sizeof hdr);
-
- 	return (0);
-}
-
-/* Handle rename command. */
-int
-cmd_fn_rename(struct buffer *srv_out, unused int arg)
-{
- 	struct hdr	hdr;
-
-	hdr.type = MSG_RENAME;
-	hdr.size = 0;
-	buffer_write(srv_out, &hdr, sizeof hdr);
-
-	return (0);
-}
-
-/* Handle last command. */
-int
-cmd_fn_last(struct buffer *srv_out, unused int arg)
-{
- 	struct hdr	hdr;
-
-	hdr.type = MSG_LAST;
-	hdr.size = 0;
-	buffer_write(srv_out, &hdr, sizeof hdr);
-
-	return (0);
-}
-
