@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.6 2007-09-19 16:00:55 nicm Exp $ */
+/* $Id: window.c,v 1.7 2007-09-20 09:43:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,6 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
-#define TTYDEFCHARS
 #include <termios.h>
 #include <unistd.h>
 #include <util.h>
@@ -58,6 +57,7 @@ window_create(const char *cmd, u_int sx, u_int sy)
 	struct window	*w;
 	struct winsize	 ws;
 	struct termios	 tio;
+	struct sigaction act;
 	int		 fd, mode;
 	char		 pid[16], *ptr, *name;
 
@@ -84,6 +84,29 @@ window_create(const char *cmd, u_int sx, u_int sy)
 			fatal("setenv failed");
 		log_close();
 
+		memset(&act, 0, sizeof act);
+		sigemptyset(&act.sa_mask);
+
+		act.sa_handler = SIG_DFL;
+		if (sigaction(SIGPIPE, &act, NULL) != 0)
+			fatal("sigaction failed");
+		if (sigaction(SIGUSR1, &act, NULL) != 0)
+			fatal("sigaction failed");
+		if (sigaction(SIGUSR2, &act, NULL) != 0)
+			fatal("sigaction failed");
+		if (sigaction(SIGINT, &act, NULL) != 0)
+			fatal("sigaction failed");
+		if (sigaction(SIGTSTP, &act, NULL) != 0)
+			fatal("sigaction failed");
+		if (sigaction(SIGQUIT, &act, NULL) != 0)
+			fatal("sigaction failed");
+		if (sigaction(SIGWINCH, &act, NULL) != 0)
+			fatal("sigaction failed");
+		if (sigaction(SIGTERM, &act, NULL) != 0)
+			fatal("sigaction failed");
+		if (sigaction(SIGCHLD, &act, NULL) != 0)
+			fatal("sigaction failed");
+		
 		execl(_PATH_BSHELL, "sh", "-c", cmd, (char *) NULL);
 		fatal("execl failed");
 	}

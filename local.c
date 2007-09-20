@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.5 2007-08-28 09:19:50 nicm Exp $ */
+/* $Id: local.c,v 1.6 2007-09-20 09:43:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#define TTYDEFCHARS
 #include <termios.h>
 #include <term.h>
 #include <unistd.h>
@@ -229,10 +230,14 @@ local_init(struct buffer **in, struct buffer **out)
 
 	if (tcgetattr(local_fd, &local_tio) != 0)
 		fatal("tcgetattr failed");
-	memcpy(&tio, &local_tio, sizeof tio);
-	tio.c_iflag &= ~(IXON|IXOFF|ICRNL|INLCR);
-	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET);
-	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHOKE|ECHOCTL|ISIG);
+	memset(&tio, 0, sizeof tio);
+	tio.c_iflag = TTYDEF_IFLAG & ~(IXON|IXOFF|ICRNL|INLCR);
+	tio.c_oflag = TTYDEF_OFLAG & ~(OPOST|ONLCR|OCRNL|ONLRET);
+	tio.c_lflag = 
+	    TTYDEF_LFLAG & ~(IEXTEN|ICANON|ECHO|ECHOE|ECHOKE|ECHOCTL|ISIG);
+	tio.c_cflag = TTYDEF_CFLAG;
+	memcpy(&tio.c_cc, ttydefchars, sizeof tio.c_cc);
+	cfsetspeed(&tio, TTYDEF_SPEED);
 	if (tcsetattr(local_fd, TCSANOW, &tio) != 0)
 		fatal("tcsetattr failed");
 

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.6 2007-08-28 09:36:33 nicm Exp $ */
+/* $Id: tmux.c,v 1.7 2007-09-20 09:43:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -155,6 +155,7 @@ main(int argc, char **argv)
 	xfree(path);
 
 	/* Set up signal handlers. */
+	memset(&act, 0, sizeof act);
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = SA_RESTART;
 

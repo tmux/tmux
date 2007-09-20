@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.7 2007-08-28 09:19:50 nicm Exp $ */
+/* $Id: tmux.h,v 1.8 2007-09-20 09:43:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -16,8 +16,8 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef NSCR_H
-#define NSCR_H
+#ifndef TMUX_H
+#define TMUX_H
 
 #include <sys/param.h>
 #include <sys/tree.h>
@@ -26,9 +26,11 @@
 #include <poll.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <termios.h>
 
 #include "array.h"
 
+extern cc_t	ttydefchars[];
 extern char	*__progname;
 
 #define MAXNAMELEN	32

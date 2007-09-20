@@ -8,7 +8,6 @@
 - sort out who controls the buffers in local.c a bit
 - better checking/emulation for missing term requirements
 - alt charset, borders etc (terminfo(5)/Line Graphics)
-- wrap windows with forward/back
 - new window command prompt
 - mouse handling and some other bits elinks needs
 - scrollback
