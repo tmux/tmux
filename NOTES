@@ -2,7 +2,9 @@
   don't expect a lot of progress soon. Contributions welcome!
 					    -- Nicholas <nicm@users.sf.net>
 
-Command prefix is C-b.
+Command prefix is C-b. This can be changed by building with, for example:
+
+	META=\\001 make
 
 Commands: d detach
           c create new terminal

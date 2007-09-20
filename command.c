@@ -1,4 +1,4 @@
-/* $Id: command.c,v 1.4 2007-09-20 18:03:23 nicm Exp $ */
+/* $Id: command.c,v 1.5 2007-09-20 18:48:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,7 +20,7 @@
 
 #include "tmux.h"
 
-int	cmd_prefix = '\002';	/* C-b */
+int	cmd_prefix = META;
 
 int	cmd_fn_select(struct buffer *, int);
 int	cmd_fn_create(struct buffer *, int);
