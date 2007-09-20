@@ -1,3 +1,7 @@
+20 September 2007
+
+* Wrap on next/previous. From Maximilian Gass.
+
 19 September 2007
 
 * Don't renumber windows on close.
@@ -20,5 +24,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.5 2007-09-19 15:16:23 nicm Exp $
+$Id: CHANGES,v 1.6 2007-09-20 08:21:59 nicm Exp $
 
