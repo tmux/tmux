@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.8 2007-09-20 09:43:33 nicm Exp $ */
+/* $Id: tmux.h,v 1.9 2007-09-20 18:03:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -281,7 +281,8 @@ enum hdrtype {
 	MSG_SESSIONS,
 	MSG_WINDOWS,
 	MSG_PAUSE,
-	MSG_RENAME
+	MSG_RENAME,
+	MSG_LAST
 };
 
 /* Message header structure. */
@@ -403,6 +404,7 @@ struct session {
 	time_t		 tim;
 
 	struct window	*window;
+	struct window	*last;
 	struct windows	 windows;
 };
 ARRAY_DECL(sessions, struct session *);
@@ -492,6 +494,7 @@ int		 session_has(struct session *, struct window *);
 int		 session_next(struct session *);
 int		 session_previous(struct session *);
 int		 session_select(struct session *, u_int);
+int		 session_last(struct session *);
 
 /* buffer.c */
 struct buffer 	*buffer_create(size_t);

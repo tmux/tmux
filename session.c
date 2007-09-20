@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.8 2007-09-20 08:21:59 nicm Exp $ */
+/* $Id: session.c,v 1.9 2007-09-20 18:03:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,6 +51,7 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 
 	s = xmalloc(sizeof *s);
 	s->tim = time(NULL);
+	s->window = s->last = NULL;
 	ARRAY_INIT(&s->windows);
 
 	if (session_new(s, cmd, sx, sy) != 0) {
@@ -112,6 +113,7 @@ session_new(struct session *s, const char *cmd, u_int sx, u_int sy)
 		return (-1);
 	session_attach(s, w);
 
+	s->last = s->window;
 	s->window = w;
 	return (0);
 }
@@ -128,7 +130,7 @@ int
 session_detach(struct session *s, struct window *w)
 {
 	if (s->window == w) {
-		if (session_next(s) != 0)
+		if (session_last(s) == -1) 
 			session_previous(s);
 	}
 
@@ -168,6 +170,7 @@ session_next(struct session *s)
 		if (w == s->window)
 			return (1);
 	}
+	s->last = s->window;
 	s->window = w;
 	return (0);
 }
@@ -187,6 +190,7 @@ session_previous(struct session *s)
 		if (w == s->window)
 			return (1);
 	}
+	s->last = s->window;
 	s->window = w;
 	return (0);
 }
@@ -200,6 +204,24 @@ session_select(struct session *s, u_int i)
 	w = window_at(&s->windows, i);
 	if (w == NULL)
 		return (-1);
+	s->last = s->window;
+	s->window = w;
+	return (0);
+}
+
+/* Move session to last used window. */ 
+int
+session_last(struct session *s)
+{
+	struct window	*w;
+
+	w = s->last;
+	if (w == NULL)
+		return (-1);
+	if (w == s->window) 
+		return (1);
+
+	s->last = s->window;
 	s->window = w;
 	return (0);
 }

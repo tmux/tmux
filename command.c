@@ -1,4 +1,4 @@
-/* $Id: command.c,v 1.3 2007-08-27 13:45:26 nicm Exp $ */
+/* $Id: command.c,v 1.4 2007-09-20 18:03:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,6 +29,7 @@ int	cmd_fn_next(struct buffer *, int);
 int	cmd_fn_previous(struct buffer *, int);
 int	cmd_fn_refresh(struct buffer *, int);
 int	cmd_fn_rename(struct buffer *, int);
+int	cmd_fn_last(struct buffer *, int);
 
 struct cmd {
 	int	key;
@@ -58,7 +59,9 @@ struct cmd cmd_table[] = {
 	{ 'R', cmd_fn_refresh, 0 },
 	{ 'r', cmd_fn_refresh, 0 },
 	{ 'T', cmd_fn_rename, 0 },
-	{ 't', cmd_fn_rename, 0 }
+	{ 't', cmd_fn_rename, 0 },
+	{ 'L', cmd_fn_last, 0 },
+	{ 'l', cmd_fn_last, 0 }
 };
 
 /* Dispatch to a command. */
@@ -163,3 +166,17 @@ cmd_fn_rename(struct buffer *srv_out, unused int arg)
 
 	return (0);
 }
+
+/* Handle last command. */
+int
+cmd_fn_last(struct buffer *srv_out, unused int arg)
+{
+ 	struct hdr	hdr;
+
+	hdr.type = MSG_LAST;
+	hdr.size = 0;
+	buffer_write(srv_out, &hdr, sizeof hdr);
+
+	return (0);
+}
+

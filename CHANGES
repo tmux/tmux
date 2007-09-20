@@ -1,5 +1,6 @@
 20 September 2007
 
+* Record last window and ^L key to switch to it. Largely from Maximilian Gass.
 * Reset ignored signals in child after forkpty, makes ^C work.
 * Wrap on next/previous. From Maximilian Gass.
 
@@ -25,5 +26,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.7 2007-09-20 09:43:33 nicm Exp $
+$Id: CHANGES,v 1.8 2007-09-20 18:03:23 nicm Exp $
 

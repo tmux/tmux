@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.8 2007-08-27 20:36:52 nicm Exp $ */
+/* $Id: server.c,v 1.9 2007-09-20 18:03:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -75,6 +75,7 @@ void		 process_refresh_msg(struct client *, struct hdr *);
 void		 process_sessions_msg(struct client *, struct hdr *);
 void		 process_windows_msg(struct client *, struct hdr *);
 void		 process_rename_msg(struct client *, struct hdr *);
+void		 process_last_msg(struct client *, struct hdr *);
 void		 rename_callback(struct client *, const char *);
 
 /* Fork and start server process. */
@@ -768,6 +769,9 @@ process_client(struct client *c)
 	case MSG_RENAME:
 		process_rename_msg(c, &hdr);
 		break;
+	case MSG_LAST:
+		process_last_msg(c, &hdr);
+		break;
 	default:
 		fatalx("unexpected message");
 	}
@@ -1059,6 +1063,21 @@ process_rename_msg(struct client *c, struct hdr *hdr)
 
 	user_start(c, "Window name: ",
 	    c->session->window->name, MAXNAMELEN, rename_callback);
+}
+
+/* Last window message from client */
+void
+process_last_msg(struct client *c, struct hdr *hdr)
+{
+	if (c->session == NULL)
+		return;
+	if (hdr->size != 0)
+		fatalx("bad MSG_LAST size");
+
+	if (session_last(c->session) == 0)
+		changed_window(c);
+	else
+		write_message(c, "No last window"); 
 }
 
 /* Callback for rename. */
