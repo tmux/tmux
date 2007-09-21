@@ -20,3 +20,4 @@
 - some of the uses of buffers really sucks. buffer_reverse_add/remove,
   and buffer_insert_range/delete_range are abominations. this should be
   rethought
+- figure out once and for all what is going on with backspace and del

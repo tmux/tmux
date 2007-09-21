@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.4 2007-08-28 09:19:50 nicm Exp $ */
+/* $Id: input.c,v 1.5 2007-09-21 19:24:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,29 +48,29 @@ struct input_key {
 };
 
 struct input_key input_keys[] = {
-	{ KEYC_BACKSPACE, "" },
-	{ KEYC_DC,     "[3~" },
-	{ KEYC_DOWN,   "OB" },
-	{ KEYC_F1,     "OP" },
-	{ KEYC_F10,    "[21~" },
-	{ KEYC_F11,    "[23~" },
-	{ KEYC_F12,    "[24~" },
-	{ KEYC_F2,     "OQ" },
-	{ KEYC_F3,     "OR" },
-	{ KEYC_F4,     "OS" },
-	{ KEYC_F5,     "[15~" },
-	{ KEYC_F6,     "[17~" },
-	{ KEYC_F7,     "[18~" },
-	{ KEYC_F8,     "[19~" },
-	{ KEYC_F9,     "[20~" },
-	{ KEYC_HOME,   "[1~" },
-	{ KEYC_IC,     "[2~" },
-	{ KEYC_LEFT,   "OD" },
-	{ KEYC_LL,     "[4~" },
-	{ KEYC_NPAGE,  "[6~" },
-	{ KEYC_PPAGE,  "[5~" },
-	{ KEYC_RIGHT,  "OC" },
-	{ KEYC_UP,     "OA" }
+/*	{ KEYC_BACKSPACE, "\010" }, */
+	{ KEYC_DC,     "\e[3~" },
+	{ KEYC_DOWN,   "\eOB" },
+	{ KEYC_F1,     "\eOP" },
+	{ KEYC_F10,    "\e[21~" },
+	{ KEYC_F11,    "\e[23~" },
+	{ KEYC_F12,    "\e[24~" },
+	{ KEYC_F2,     "\eOQ" },
+	{ KEYC_F3,     "\eOR" },
+	{ KEYC_F4,     "\eOS" },
+	{ KEYC_F5,     "\e[15~" },
+	{ KEYC_F6,     "\e[17~" },
+	{ KEYC_F7,     "\e[18~" },
+	{ KEYC_F8,     "\e[19~" },
+	{ KEYC_F9,     "\e[20~" },
+	{ KEYC_HOME,   "\e[1~" },
+	{ KEYC_IC,     "\e[2~" },
+	{ KEYC_LEFT,   "\eOD" },
+	{ KEYC_LL,     "\e[4~" },
+	{ KEYC_NPAGE,  "\e[6~" },
+	{ KEYC_PPAGE,  "\e[5~" },
+	{ KEYC_RIGHT,  "\eOC" },
+	{ KEYC_UP,     "\eOA" }
 };
 
 /*

@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.10 2007-09-21 18:00:58 nicm Exp $ */
+/* $Id: screen.c,v 1.11 2007-09-21 19:24:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -394,6 +394,9 @@ screen_character(struct screen *s, u_char ch)
 	case '\010':	/* BS */
 		if (s->cx > 0)
 			s->cx--;
+		break;
+	case '\177':	/* DC */
+		/* XXX */
 		break;
 	default:
 		if (ch < ' ')

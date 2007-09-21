@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.9 2007-09-20 18:03:23 nicm Exp $ */
+/* $Id: server.c,v 1.10 2007-09-21 19:24:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -574,6 +574,12 @@ user_input(struct client *c, size_t in)
 				goto again;
 			case '\005':
 				key = KEYC_LL;
+				goto again;
+			case '\010':
+				key = KEYC_BACKSPACE;
+				goto again;
+			case '\177':
+				key = KEYC_DC;
 				goto again;
 			case '\013':
 				c->buf[c->idx + 1] = '\0';
