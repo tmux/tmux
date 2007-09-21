@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.8 2007-09-21 18:11:25 nicm Exp $ */
+/* $Id: window.c,v 1.9 2007-09-21 18:20:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -187,10 +187,10 @@ window_remove(struct windows *ww, struct window *w)
 		ARRAY_TRUNC(ww, 1);
 
 	w->references--;
-	if (w->references == 1)
-		window_remove(&windows, w);
 	if (w->references == 0)
 		window_destroy(w);
+	if (w->references == 1)
+		window_remove(&windows, w);
 }
 
 /* Destroy a window. */
