@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.9 2007-09-21 18:20:44 nicm Exp $ */
+/* $Id: window.c,v 1.10 2007-09-21 20:45:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -181,9 +181,8 @@ window_remove(struct windows *ww, struct window *w)
 
 	if (window_index(ww, w, &i) != 0)
 		fatalx("window not found");
-	if (i != ARRAY_LENGTH(ww) - 1)
-		ARRAY_SET(ww, i, NULL);
-	else
+	ARRAY_SET(ww, i, NULL);
+	while (!ARRAY_EMPTY(ww) && ARRAY_LAST(ww) == NULL)
 		ARRAY_TRUNC(ww, 1);
 
 	w->references--;
