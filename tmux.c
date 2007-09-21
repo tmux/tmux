@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.7 2007-09-20 09:43:33 nicm Exp $ */
+/* $Id: tmux.c,v 1.8 2007-09-21 18:00:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -190,7 +190,7 @@ restart:
 		else if (op != OP_LIST) {
 			if (server_start() != 0)
 				errx(1, "couldn't start server");	
-			sleep(1);
+			sleep(1); /* XXX this sucks */
 		}
 	} else {
 		if (!S_ISSOCK(sb.st_mode))
