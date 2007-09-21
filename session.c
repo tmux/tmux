@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.13 2007-09-21 20:00:28 nicm Exp $ */
+/* $Id: session.c,v 1.14 2007-09-21 20:02:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -138,6 +138,7 @@ session_detach(struct session *s, struct window *w)
 	if (s->last == w)
 		s->last = NULL;
 	if (s->window == w) {
+		/* Reset s->window to stop it ending up in s->last. */
 		s->window = NULL;
 		if (session_last(s) != 0 && session_previous(s) != 0)
 			session_next(s);
