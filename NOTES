@@ -7,11 +7,13 @@ Command prefix is C-b. This can be changed by building with, for example:
 	META=\\001 make
 
 Commands: d detach
-          c create new terminal
-          n next terminal
-          p previous terminal
+          c create new window
+          n next window
+          p previous window
+	  l last (next to last selected) window
 	  r refresh screen
  	  t set window name
+	  w list current windows
 	0-9 select window
 
 There is one default server process per user which puts its socket in

@@ -1,4 +1,4 @@
-/* $Id: command.c,v 1.6 2007-09-20 18:51:34 nicm Exp $ */
+/* $Id: command.c,v 1.7 2007-09-22 11:50:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,7 +56,9 @@ struct cmd cmd_table[] = {
 	{ 'T', cmd_fn_msg, MSG_RENAME },
 	{ 't', cmd_fn_msg, MSG_RENAME },
 	{ 'L', cmd_fn_msg, MSG_LAST },
-	{ 'l', cmd_fn_msg, MSG_LAST }
+	{ 'l', cmd_fn_msg, MSG_LAST },
+	{ 'W', cmd_fn_msg, MSG_WINDOWLIST },
+	{ 'w', cmd_fn_msg, MSG_WINDOWLIST }
 };
 
 /* Dispatch to a command. */

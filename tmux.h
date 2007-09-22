@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.9 2007-09-20 18:03:23 nicm Exp $ */
+/* $Id: tmux.h,v 1.10 2007-09-22 11:50:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -282,7 +282,8 @@ enum hdrtype {
 	MSG_WINDOWS,
 	MSG_PAUSE,
 	MSG_RENAME,
-	MSG_LAST
+	MSG_LAST,
+	MSG_WINDOWLIST
 };
 
 /* Message header structure. */

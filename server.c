@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.10 2007-09-21 19:24:37 nicm Exp $ */
+/* $Id: server.c,v 1.11 2007-09-22 11:50:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -76,6 +76,7 @@ void		 process_sessions_msg(struct client *, struct hdr *);
 void		 process_windows_msg(struct client *, struct hdr *);
 void		 process_rename_msg(struct client *, struct hdr *);
 void		 process_last_msg(struct client *, struct hdr *);
+void		 process_windowlist_msg(struct client *, struct hdr *);
 void		 rename_callback(struct client *, const char *);
 
 /* Fork and start server process. */
@@ -383,11 +384,11 @@ write_message(struct client *c, const char *fmt, ...)
 	input_store16(c->out, 7);
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
-	buffer_write(c->out, msg, strlen(msg));
-	xfree(msg);
 	va_end(ap);
+	buffer_write(c->out, msg, strlen(msg));
 	for (i = strlen(msg); i < c->sx; i++)
 		input_store8(c->out, ' ');
+	xfree(msg);
 
 	size = BUFFER_USED(c->out) - size;
 	hdr.type = MSG_OUTPUT;
@@ -778,6 +779,9 @@ process_client(struct client *c)
 	case MSG_LAST:
 		process_last_msg(c, &hdr);
 		break;
+	case MSG_WINDOWLIST:
+		process_windowlist_msg(c, &hdr);
+		break;
 	default:
 		fatalx("unexpected message");
 	}
@@ -1084,6 +1088,39 @@ process_last_msg(struct client *c, struct hdr *hdr)
 		changed_window(c);
 	else
 		write_message(c, "No last window"); 
+}
+
+/* Window list message from client */
+void
+process_windowlist_msg(struct client *c, struct hdr *hdr)
+{
+	struct window	*w;
+	char 		*buf;
+	size_t		 len, off;
+	u_int 		 i;
+
+	if (c->session == NULL)
+		return;
+	if (hdr->size != 0)
+		fatalx("bad MSG_WINDOWLIST size");
+
+	len = c->sx + 1;
+	buf = xmalloc(len);
+	off = 0;
+
+	*buf = '\0';
+	for (i = 0; i < ARRAY_LENGTH(&c->session->windows); i++) {
+		w = ARRAY_ITEM(&c->session->windows, i);
+		if (w == NULL)
+			continue;
+		off += xsnprintf(buf + off, len - off, "%u:%s%s ", i, w->name, 
+		    w == c->session->window ? "*" : "");
+		if (off >= len)
+			break;
+	}
+
+	write_message(c, "%s", buf);
+	xfree(buf);
 }
 
 /* Callback for rename. */

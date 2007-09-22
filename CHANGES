@@ -1,3 +1,7 @@
+22 September 2007
+
+* Window list command (C-b W). Started by Maximilian Gass, finished by me.
+
 20 September 2007
 
 * Specify meta via environment variable (META).
@@ -27,5 +31,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.9 2007-09-20 18:48:04 nicm Exp $
+$Id: CHANGES,v 1.10 2007-09-22 11:50:33 nicm Exp $
 
