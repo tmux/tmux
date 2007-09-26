@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.2 2007-09-26 18:12:19 nicm Exp $ */
+/* $Id: client.c,v 1.3 2007-09-26 18:32:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,7 +36,7 @@ void	client_handle_winch(struct client_ctx *);
 int	client_process_local(struct client_ctx *, const char **);
 
 int
-client_init(char *path, struct client_ctx *cctx, int ws)
+client_init(char *path, struct client_ctx *cctx, int start_server)
 {
 	struct sockaddr_un	sa;
 	struct stat		sb;
@@ -52,7 +52,7 @@ client_init(char *path, struct client_ctx *cctx, int ws)
 	retries = 0;
 retry:
 	if (stat(path, &sb) != 0) {
-		if (errno != ENOENT) {
+		if (!start_server || errno != ENOENT) {
 			log_warn("%s", path);
 			return (-1);
 		}
@@ -66,7 +66,7 @@ retry:
 		return (-1);
 	}
 
-	if (ws) {
+	if (start_server) {
 		if (!isatty(STDIN_FILENO)) {
 			log_warnx("stdin is not a tty");
 			return (-1);
@@ -96,7 +96,7 @@ retry:
 	}
 	if (connect(
 	    cctx->srv_fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
-		if (errno == ECONNREFUSED && retries < 5) {
+		if (start_server && errno == ECONNREFUSED && retries < 5) {
 			if (unlink(path) != 0) {
 				log_warn("%s: unlink", path);
 				return (-1);

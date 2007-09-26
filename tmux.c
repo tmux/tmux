@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.10 2007-09-26 14:08:16 nicm Exp $ */
+/* $Id: tmux.c,v 1.11 2007-09-26 18:32:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,7 +43,7 @@ struct op {
 	int		(*fn)(char *, int, char **);
 };
 struct op op_table[] = {
-//	{ "list", op_list },
+	{ "list", op_list },
 	{ "new", op_new },
 	{ "attach", op_attach }
 };

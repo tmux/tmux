@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.13 2007-09-26 18:09:23 nicm Exp $ */
+/* $Id: tmux.h,v 1.14 2007-09-26 18:32:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -441,6 +441,9 @@ void		 sigreset(void);
 /* op.c */
 int	 op_new(char *, int, char **);
 int	 op_attach(char *, int, char **);
+
+/* op-list.c */
+int	 op_list(char *, int, char **);
 
 /* client.c */
 int	 client_init(char *, struct client_ctx *, int);
