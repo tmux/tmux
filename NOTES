@@ -12,7 +12,6 @@ Commands: d detach
           p previous window
 	  l last (next to last selected) window
 	  r refresh screen
- 	  t set window name
 	  w list current windows
 	0-9 select window
 
@@ -21,7 +20,7 @@ There is one default server process per user which puts its socket in
 invocations will connect to the same server. The server holds multiple
 sessions.
 
-Syntax is: tmux [-v] [-n name] [-s path] command
+Syntax is: tmux [-v] [-s path] command [flags]
 
 The command is either list, new or attach. Create a new session with:
 
@@ -29,11 +28,11 @@ The command is either list, new or attach. Create a new session with:
 
 Optionally giving it a name with:
 
-	tmux -n <session name> new
+	tmux new -n <session name>
 
 Attach to a previous session with:
 
-	tmux -n <session name> attach
+	tmux attach -n <session name>
 
 A name must (currently) be specified when attaching. This may change.
 
@@ -43,7 +42,7 @@ List all sessions with:
 
 Or the windows of a single session with:
 
-	tmux -n <session name> list
+	tmux list -n <session name>
 
 Sessions are destroyed when no windows remain attached to them.
 

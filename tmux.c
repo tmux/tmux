@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.9 2007-09-26 13:43:15 nicm Exp $ */
+/* $Id: tmux.c,v 1.10 2007-09-26 14:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,7 +53,7 @@ int
 usage(const char *s)
 {
 	if (s == NULL)
-		s = "command ...";
+		s = "command [flags]";
 	fprintf(stderr, "usage: %s [-v] [-s path] %s\n", __progname, s);
 	return (1);
 }
@@ -182,11 +182,8 @@ main(int argc, char **argv)
 
 	for (i = 0; i < NOP; i++) {
 		op = op_table + i;
-		if (strncmp(argv[0], op->cmd, strlen(op->cmd)) == 0) {
-			argc--;
-			argv++;
+		if (strncmp(argv[0], op->cmd, strlen(op->cmd)) == 0)
 			exit(op->fn(path, argc, argv));
-		}
 	}
 
 	exit(usage(NULL));
