@@ -1,4 +1,4 @@
-/* $Id: op.c,v 1.3 2007-09-26 18:14:48 nicm Exp $ */
+/* $Id: op.c,v 1.4 2007-09-26 18:18:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,6 +31,7 @@ op_new(char *path, int argc, char **argv)
 	char			name[MAXNAMELEN];
 	int			opt;
 
+	*name = '\0';
 	optind = 1;
 	while ((opt = getopt(argc, argv, "n:?")) != EOF) {
 		switch (opt) {
@@ -69,6 +70,7 @@ op_attach(char *path, int argc, char **argv)
 	char			name[MAXNAMELEN];
 	int			opt;
 
+	*name = '\0';
 	optind = 1;
 	while ((opt = getopt(argc, argv, "n:?")) != EOF) {
 		switch (opt) {
