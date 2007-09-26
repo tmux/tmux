@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.2 2007-09-26 13:43:15 nicm Exp $ */
+/* $Id: server-msg.c,v 1.3 2007-09-26 18:09:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -114,7 +114,7 @@ server_msg_fn_new(struct hdr *hdr, struct client *c)
 
 	if (*data.name != '\0' && session_find(data.name) != NULL) {
 		xasprintf(&msg, "duplicate session: %s", data.name);
-		write_client(c, MSG_ERROR, msg, strlen(msg));
+		server_write_client(c, MSG_ERROR, msg, strlen(msg));
 		xfree(msg);
 		return (0);
 	}
@@ -128,7 +128,7 @@ server_msg_fn_new(struct hdr *hdr, struct client *c)
 		fatalx("session_create failed");
 	xfree(cmd);
 	
-	draw_client(c, 0, c->sy - 1);
+	server_draw_client(c, 0, c->sy - 1);
 
 	return (0);
 }
@@ -157,12 +157,12 @@ server_msg_fn_attach(struct hdr *hdr, struct client *c)
 		c->session = session_find(data.name);
 	if (c->session == NULL) {
 		xasprintf(&msg, "session not found: %s", data.name);
-		write_client(c, MSG_ERROR, msg, strlen(msg));
+		server_write_client(c, MSG_ERROR, msg, strlen(msg));
 		xfree(msg);
 		return (0);
 	}
 
-	draw_client(c, 0, c->sy - 1);
+	server_draw_client(c, 0, c->sy - 1);
 
 	return (0);
 }
@@ -187,7 +187,7 @@ server_msg_fn_create(struct hdr *hdr, struct client *c)
 		fatalx("session_new failed");
 	xfree(cmd);
 
-	draw_client(c, 0, c->sy - 1);
+	server_draw_client(c, 0, c->sy - 1);
 
 	return (0);
 }
@@ -202,9 +202,9 @@ server_msg_fn_next(struct hdr *hdr, struct client *c)
 		fatalx("bad MSG_NEXT size");
 
 	if (session_next(c->session) == 0)
-		changed_window(c);
+		server_window_changed(c);
 	else
-		write_message(c, "No next window"); 
+		server_write_message(c, "No next window"); 
 
 	return (0);
 }
@@ -219,9 +219,9 @@ server_msg_fn_previous(struct hdr *hdr, struct client *c)
 		fatalx("bad MSG_PREVIOUS size");
 
 	if (session_previous(c->session) == 0)
-		changed_window(c);
+		server_window_changed(c);
 	else
-		write_message(c, "No previous window"); 
+		server_write_message(c, "No previous window"); 
 
 	return (0);
 }
@@ -246,7 +246,7 @@ server_msg_fn_size(struct hdr *hdr, struct client *c)
 		c->sy = 25;
 
 	if (window_resize(c->session->window, c->sx, c->sy) != 0)
-		draw_client(c, 0, c->sy - 1);
+		server_draw_client(c, 0, c->sy - 1);
 
 	return (0);
 }
@@ -274,7 +274,7 @@ server_msg_fn_refresh(struct hdr *hdr, struct client *c)
 	if (hdr->size != 0 && hdr->size != sizeof data)
 		fatalx("bad MSG_REFRESH size");
 
-	draw_client(c, 0, c->sy - 1);
+	server_draw_client(c, 0, c->sy - 1);
 
 	return (0);
 }
@@ -294,9 +294,9 @@ server_msg_fn_select(struct hdr *hdr, struct client *c)
 	if (c->session == NULL)
 		return (0);
 	if (session_select(c->session, data.idx) == 0)
-		changed_window(c);
+		server_window_changed(c);
 	else
-		write_message(c, "Window %u not present", data.idx); 
+		server_write_message(c, "Window %u not present", data.idx); 
 
 	return (0);
 }
@@ -319,7 +319,7 @@ server_msg_fn_sessions(struct hdr *hdr, struct client *c)
 		if (ARRAY_ITEM(&sessions, i) != NULL)
 			data.sessions++;
 	}
-	write_client2(c, MSG_SESSIONS,
+	server_write_client2(c, MSG_SESSIONS,
 	    &data, sizeof data, NULL, data.sessions * sizeof entry);
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
@@ -356,7 +356,7 @@ server_msg_fn_windows(struct hdr *hdr, struct client *c)
 	s = session_find(data.name);
 	if (s == NULL) {
 		data.windows = 0;
-		write_client(c, MSG_WINDOWS, &data, sizeof data);
+		server_write_client(c, MSG_WINDOWS, &data, sizeof data);
 		return (0);
 	}
 
@@ -365,7 +365,7 @@ server_msg_fn_windows(struct hdr *hdr, struct client *c)
 		if (ARRAY_ITEM(&windows, i) != NULL)
 			data.windows++;
 	}
-	write_client2(c, MSG_WINDOWS,
+	server_write_client2(c, MSG_WINDOWS,
 	    &data, sizeof data, NULL, data.windows * sizeof entry);
 	
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
@@ -405,9 +405,9 @@ server_msg_fn_last(struct hdr *hdr, struct client *c)
 		fatalx("bad MSG_LAST size");
 
 	if (session_last(c->session) == 0)
-		changed_window(c);
+		server_window_changed(c);
 	else
-		write_message(c, "No last window"); 
+		server_write_message(c, "No last window"); 
 
 	return (0);
 }
@@ -441,7 +441,7 @@ server_msg_fn_windowlist(struct hdr *hdr, struct client *c)
 			break;
 	}
 
-	write_message(c, "%s", buf);
+	server_write_message(c, "%s", buf);
 	xfree(buf);
 
 	return (0);

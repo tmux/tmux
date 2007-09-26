@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.13 2007-09-26 13:43:15 nicm Exp $ */
+/* $Id: server.c,v 1.14 2007-09-26 18:09:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,22 +45,23 @@
 struct clients	 clients;
 
 int		 server_main(char *, int);
-void		 fill_windows(struct pollfd **);
-void		 handle_windows(struct pollfd **);
-void		 fill_clients(struct pollfd **);
-void		 handle_clients(struct pollfd **);
-struct client	*accept_client(int);
-void		 lost_client(struct client *);
-void	 	 lost_window(struct window *);
+void		 server_fill_windows(struct pollfd **);
+void		 server_handle_windows(struct pollfd **);
+void		 server_fill_clients(struct pollfd **);
+void		 server_handle_clients(struct pollfd **);
+struct client	*server_accept_client(int);
+void		 server_lost_client(struct client *);
+void	 	 server_lost_window(struct window *);
 
+/* Fork new server. */
 int
 server_start(char *path)
 {
 	struct sockaddr_un	sa;
 	size_t			sz;
 	pid_t			pid;
-	mode_t			mode;
-	int		   	fd;
+	mode_t			mask;
+	int		   	fd, mode;
 
 	switch (pid = fork()) {
 	case -1:
@@ -74,10 +75,8 @@ server_start(char *path)
 
 	logfile("server");
 	setproctitle("server (%s)", path);
-
 	log_debug("server started, pid %ld", (long) getpid());
 
-	/* Create the socket. */
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
 	sz = strlcpy(sa.sun_path, path, sizeof sa.sun_path);
@@ -90,13 +89,18 @@ server_start(char *path)
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		fatal("socket failed");
 
-	mode = umask(S_IXUSR|S_IRWXG|S_IRWXO);
+	mask = umask(S_IXUSR|S_IRWXG|S_IRWXO);
 	if (bind(fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1)
 		fatal("bind failed");
-	umask(mode);
+	umask(mask);
 
 	if (listen(fd, 16) == -1)
 		fatal("listen failed");
+
+	if ((mode = fcntl(fd, F_GETFL)) == -1)
+		fatal("fcntl failed");
+	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
+		fatal("fcntl failed");
 
 	/*
 	 * Detach into the background. This means the PID changes which will
@@ -113,19 +117,14 @@ server_start(char *path)
 int
 server_main(char *srv_path, int srv_fd)
 {
-	struct pollfd  		*pfds, *pfd;
-	int			 nfds, mode;
+	struct pollfd	*pfds, *pfd;
+	int		 nfds;
 
 	siginit();
 
 	ARRAY_INIT(&windows);
 	ARRAY_INIT(&clients);
 	ARRAY_INIT(&sessions);
-
-	if ((mode = fcntl(srv_fd, F_GETFL)) == -1)
-		fatal("fcntl failed");
-	if (fcntl(srv_fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failed");
 
 	pfds = NULL;
 	while (!sigterm) {
@@ -140,8 +139,8 @@ server_main(char *srv_path, int srv_fd)
 		pfd++;
 
 		/* Fill window and client sockets. */
-		fill_windows(&pfd);
-		fill_clients(&pfd);
+		server_fill_windows(&pfd);
+		server_fill_clients(&pfd);
 
 		/* Do the poll. */
 		if (poll(pfds, nfds, INFTIM) == -1) {
@@ -155,7 +154,7 @@ server_main(char *srv_path, int srv_fd)
 		if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP))
 			fatalx("lost server socket");
 		if (pfd->revents & POLLIN) {
-			accept_client(srv_fd);
+			server_accept_client(srv_fd);
 			continue;
 		}
 		pfd++;
@@ -165,8 +164,8 @@ server_main(char *srv_path, int srv_fd)
 		 * windows, so windows must come first to avoid messing up by
 		 * increasing the array size.
 		 */
-		handle_windows(&pfd);
-		handle_clients(&pfd);
+		server_handle_windows(&pfd);
+		server_handle_clients(&pfd);
 	}
 
 	close(srv_fd);
@@ -177,7 +176,7 @@ server_main(char *srv_path, int srv_fd)
 
 /* Fill window pollfds. */
 void
-fill_windows(struct pollfd **pfd)
+server_fill_windows(struct pollfd **pfd)
 {
 	struct window	*w;
 	u_int		 i;
@@ -197,7 +196,7 @@ fill_windows(struct pollfd **pfd)
 
 /* Handle window pollfds. */
 void
-handle_windows(struct pollfd **pfd)
+server_handle_windows(struct pollfd **pfd)
 {
 	struct window	*w;
 	u_int		 i;
@@ -206,12 +205,12 @@ handle_windows(struct pollfd **pfd)
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		if ((w = ARRAY_ITEM(&windows, i)) != NULL) {
 			if (window_poll(w, *pfd) != 0)
-				lost_window(w);
+				server_lost_window(w);
 			else {
 				b = buffer_create(BUFSIZ);
 				window_output(w, b);
 				if (BUFFER_USED(b) != 0) {
-					write_clients(w, MSG_OUTPUT,
+					server_write_clients(w, MSG_OUTPUT,
 					    BUFFER_OUT(b), BUFFER_USED(b));
 				}
 				buffer_destroy(b);
@@ -223,7 +222,7 @@ handle_windows(struct pollfd **pfd)
 
 /* Fill client pollfds. */
 void
-fill_clients(struct pollfd **pfd)
+server_fill_clients(struct pollfd **pfd)
 {
 	struct client	*c;
 	u_int		 i;
@@ -243,7 +242,7 @@ fill_clients(struct pollfd **pfd)
 
 /* Handle client pollfds. */
 void
-handle_clients(struct pollfd *(*pfd))
+server_handle_clients(struct pollfd *(*pfd))
 {
 	struct client	*c;
 	u_int		 i;
@@ -251,7 +250,7 @@ handle_clients(struct pollfd *(*pfd))
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		if ((c = ARRAY_ITEM(&clients, i)) != NULL) {
 			if (buffer_poll((*pfd), c->in, c->out) != 0)
-				lost_client(c);
+				server_lost_client(c);
 			else
 				server_msg_dispatch(c);
 		}
@@ -261,7 +260,7 @@ handle_clients(struct pollfd *(*pfd))
 
 /* accept(2) and create new client. */
 struct client *
-accept_client(int srv_fd)
+server_accept_client(int srv_fd)
 {
 	struct client	       *c;
 	struct sockaddr_storage	sa;
@@ -298,7 +297,7 @@ accept_client(int srv_fd)
 
 /* Lost a client. */
 void
-lost_client(struct client *c)
+server_lost_client(struct client *c)
 {
 	u_int	i;
 
@@ -315,7 +314,7 @@ lost_client(struct client *c)
 
 /* Lost window: move clients on to next window. */
 void
-lost_window(struct window *w)
+server_lost_window(struct window *w)
 {
 	struct client	*c;
 	struct session	*s;
@@ -337,9 +336,9 @@ lost_window(struct window *w)
 				continue;
 			if (destroyed) {
 				c->session = NULL;
-				write_client(c, MSG_EXIT, NULL, 0);
+				server_write_client(c, MSG_EXIT, NULL, 0);
 			} else
-				changed_window(c);
+				server_window_changed(c);
 		}
 	}
 }

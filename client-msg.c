@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.1 2007-09-26 13:43:14 nicm Exp $ */
+/* $Id: client-msg.c,v 1.2 2007-09-26 18:09:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -69,7 +69,7 @@ client_msg_dispatch(struct client_ctx *cctx, const char **error)
 	}
 }
 
-/* Output message from client. */
+/* Output message from server. */
 int
 client_msg_fn_output(
     struct hdr *hdr, struct client_ctx *cctx, unused const char **error)

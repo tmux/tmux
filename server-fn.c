@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.1 2007-09-26 10:35:24 nicm Exp $ */
+/* $Id: server-fn.c,v 1.2 2007-09-26 18:09:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
 
 /* Write command to a client. */
 void
-write_client(struct client *c, u_int cmd, void *buf, size_t len)
+server_write_client(struct client *c, u_int cmd, void *buf, size_t len)
 {
 	struct hdr	 hdr;
 
@@ -38,7 +38,7 @@ write_client(struct client *c, u_int cmd, void *buf, size_t len)
 
 /* Write command to a client with two buffers. */
 void
-write_client2(struct client *c,
+server_write_client2(struct client *c,
     u_int cmd, void *buf1, size_t len1, void *buf2, size_t len2)
 {
 	struct hdr	 hdr;
@@ -55,7 +55,7 @@ write_client2(struct client *c,
 
 /* Write command to all clients attached to a specific window. */
 void
-write_clients(struct window *w, u_int cmd, void *buf, size_t len)
+server_write_clients(struct window *w, u_int cmd, void *buf, size_t len)
 {
 	struct client	*c;
  	struct hdr	 hdr;
@@ -78,19 +78,19 @@ write_clients(struct window *w, u_int cmd, void *buf, size_t len)
 
 /* Changed client window. */
 void
-changed_window(struct client *c)
+server_window_changed(struct client *c)
 {
 	struct window	*w;
 
 	w = c->session->window;
 	if (c->sx != w->screen.sx || c->sy != w->screen.sy)
 		window_resize(w, c->sx, c->sy);
-	draw_client(c, 0, c->sy - 1);
+	server_draw_client(c, 0, c->sy - 1);
 }
 
 /* Draw window on client. */
 void
-draw_client(struct client *c, u_int py_upper, u_int py_lower)
+server_draw_client(struct client *c, u_int py_upper, u_int py_lower)
 {
 	struct hdr	hdr;
 	size_t		size;
@@ -115,7 +115,7 @@ draw_client(struct client *c, u_int py_upper, u_int py_lower)
 
 /* Write message command to a client. */
 void
-write_message(struct client *c, const char *fmt, ...)
+server_write_message(struct client *c, const char *fmt, ...)
 {
 	struct hdr	 hdr;
 	va_list		 ap;

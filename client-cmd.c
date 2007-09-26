@@ -1,4 +1,4 @@
-/* $Id: client-cmd.c,v 1.1 2007-09-26 13:43:14 nicm Exp $ */
+/* $Id: client-cmd.c,v 1.2 2007-09-26 18:09:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,7 +62,6 @@ struct cmd client_cmd_table[] = {
 };
 #define NCLIENTCMD (sizeof client_cmd_table / sizeof client_cmd_table[0])
 
-/* Dispatch to a command. */
 int
 client_cmd_dispatch(int key, struct client_ctx *cctx, const char **error)
 {
