@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.11 2007-09-26 18:32:16 nicm Exp $ */
+/* $Id: tmux.c,v 1.12 2007-09-26 19:09:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,13 +39,14 @@ int		 debug_level;
 void		 sighandler(int);
 
 struct op {
-	const char     *cmd;	
+	const char     *cmd;
+	const char     *alias;
 	int		(*fn)(char *, int, char **);
 };
 struct op op_table[] = {
-	{ "list", op_list },
-	{ "new", op_new },
-	{ "attach", op_attach }
+	{ "attach", NULL, op_attach },
+	{ "list-sessions", "ls", op_list },
+	{ "new-session", "new", op_new },
 };
 #define NOP (sizeof op_table / sizeof op_table[0])
 
@@ -182,7 +183,8 @@ main(int argc, char **argv)
 
 	for (i = 0; i < NOP; i++) {
 		op = op_table + i;
-		if (strncmp(argv[0], op->cmd, strlen(op->cmd)) == 0)
+		if (strncmp(argv[0], op->cmd, strlen(op->cmd)) == 0 ||
+		    (op->alias != NULL && strcmp(argv[0], op->alias) == 0))
 			exit(op->fn(path, argc, argv));
 	}
 

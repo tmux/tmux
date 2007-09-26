@@ -2,6 +2,8 @@
   don't expect a lot of progress soon. Contributions welcome!
 					    -- Nicholas <nicm@users.sf.net>
 
+XXX This is out of date!
+
 Command prefix is C-b. This can be changed by building with, for example:
 
 	META=\\001 make
