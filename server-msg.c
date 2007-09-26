@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.3 2007-09-26 18:09:23 nicm Exp $ */
+/* $Id: server-msg.c,v 1.4 2007-09-26 18:50:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -139,6 +139,8 @@ server_msg_fn_attach(struct hdr *hdr, struct client *c)
 {
 	struct attach_data	 data;
 	char			*msg;
+	struct session		*s;
+	u_int			 i;
 	
 	if (c->session != NULL)
 		return (0);
@@ -153,10 +155,21 @@ server_msg_fn_attach(struct hdr *hdr, struct client *c)
 	if (c->sy == 0)
 		c->sy = 25;
 
-	if (*data.name != '\0')
-		c->session = session_find(data.name);
+	if (*data.name != '\0') {
+		if ((c->session = session_find(data.name)) == NULL)
+			xasprintf(&msg, "session not found: %s", data.name);
+	} else {
+		/* Find the oldest session. */
+		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+			if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
+				continue;
+			if (c->session == NULL || s->tim < c->session->tim)
+				c->session = s;
+		}
+		if (c->session == NULL)
+			xasprintf(&msg, "no sessions found");
+	}
 	if (c->session == NULL) {
-		xasprintf(&msg, "session not found: %s", data.name);
 		server_write_client(c, MSG_ERROR, msg, strlen(msg));
 		xfree(msg);
 		return (0);

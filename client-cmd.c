@@ -1,4 +1,4 @@
-/* $Id: client-cmd.c,v 1.2 2007-09-26 18:09:23 nicm Exp $ */
+/* $Id: client-cmd.c,v 1.3 2007-09-26 18:50:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,13 +22,13 @@
 
 int	client_cmd_prefix = META;
 
-int	client_cmd_fn_select(int, struct client_ctx *, const char **);
-int	client_cmd_fn_detach(int, struct client_ctx *, const char **);
-int	client_cmd_fn_msg(int, struct client_ctx *, const char **);
+int	client_cmd_fn_select(int, struct client_ctx *, char **);
+int	client_cmd_fn_detach(int, struct client_ctx *, char **);
+int	client_cmd_fn_msg(int, struct client_ctx *, char **);
 
 struct cmd {
 	int	key;
-	int	(*fn)(int, struct client_ctx *, const char **);
+	int	(*fn)(int, struct client_ctx *, char **);
 	int	arg;
 };
 
@@ -63,7 +63,7 @@ struct cmd client_cmd_table[] = {
 #define NCLIENTCMD (sizeof client_cmd_table / sizeof client_cmd_table[0])
 
 int
-client_cmd_dispatch(int key, struct client_ctx *cctx, const char **error)
+client_cmd_dispatch(int key, struct client_ctx *cctx, char **error)
 {
 	struct cmd	*cmd;
 	u_int		 i;
@@ -78,7 +78,7 @@ client_cmd_dispatch(int key, struct client_ctx *cctx, const char **error)
 
 /* Handle generic command. */
 int
-client_cmd_fn_msg(int arg, struct client_ctx *cctx, unused const char **error)
+client_cmd_fn_msg(int arg, struct client_ctx *cctx, unused char **error)
 {
 	client_write_server(cctx, arg, NULL, 0);
 
@@ -87,8 +87,7 @@ client_cmd_fn_msg(int arg, struct client_ctx *cctx, unused const char **error)
 
 /* Handle select command. */
 int
-client_cmd_fn_select(
-    int arg, struct client_ctx *cctx, unused const char **error)
+client_cmd_fn_select(int arg, struct client_ctx *cctx, unused char **error)
 {
 	struct select_data	data;
 
@@ -101,7 +100,7 @@ client_cmd_fn_select(
 /* Handle detach command. */
 int
 client_cmd_fn_detach(
-    unused int arg, unused struct client_ctx *cctx, unused const char **error)
+    unused int arg, unused struct client_ctx *cctx, unused char **error)
 {
 	return (-1);
 }

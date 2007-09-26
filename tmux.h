@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.14 2007-09-26 18:32:17 nicm Exp $ */
+/* $Id: tmux.h,v 1.15 2007-09-26 18:50:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -259,24 +259,24 @@ struct buffer {
 
 /* Message codes. */
 enum hdrtype {
-	MSG_NEW = 0,
 	MSG_ATTACH,
-	MSG_ERROR,
 	MSG_CREATE,
+	MSG_ERROR,
 	MSG_EXIT,
-	MSG_SIZE,
-	MSG_NEXT,
-	MSG_PREVIOUS,
 	MSG_INPUT,
+	MSG_LAST,
+	MSG_NEW,
+	MSG_NEXT,
 	MSG_OUTPUT,
+	MSG_PAUSE,
+	MSG_PREVIOUS,
 	MSG_REFRESH,
+	MSG_RENAME,
 	MSG_SELECT,
 	MSG_SESSIONS,
+	MSG_SIZE,
+	MSG_WINDOWLIST,
 	MSG_WINDOWS,
-	MSG_PAUSE,
-	MSG_RENAME,
-	MSG_LAST,
-	MSG_WINDOWLIST
 };
 
 /* Message header structure. */
@@ -451,11 +451,11 @@ int	 client_main(struct client_ctx *);
 void	 client_write_server(struct client_ctx *, enum hdrtype, void *, size_t);
 
 /* client-msg.c */
-int	 client_msg_dispatch(struct client_ctx *, const char **);
+int	 client_msg_dispatch(struct client_ctx *, char **);
 
 /* command.c */
 extern int client_cmd_prefix;
-int	 client_cmd_dispatch(int, struct client_ctx *, const char **);
+int	 client_cmd_dispatch(int, struct client_ctx *, char **);
 
 /* server.c */
 extern struct clients clients;

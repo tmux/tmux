@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.3 2007-09-26 18:32:16 nicm Exp $ */
+/* $Id: client.c,v 1.4 2007-09-26 18:50:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,7 @@
 #include "tmux.h"
 
 void	client_handle_winch(struct client_ctx *);
-int	client_process_local(struct client_ctx *, const char **);
+int	client_process_local(struct client_ctx *, char **);
 
 int
 client_init(char *path, struct client_ctx *cctx, int start_server)
@@ -126,7 +126,7 @@ int
 client_main(struct client_ctx *cctx)
 {
 	struct pollfd	 pfds[2];
-	const char	*error;
+	char		*error;
 	int		 n;
 
 	logfile("client");
@@ -174,11 +174,13 @@ client_main(struct client_ctx *cctx)
 
 	local_done();
 
-	if (sigterm) 
-		error = "received SIGTERM";
 	if (error != NULL) {
-		printf("[terminated: %s]\n", error);
-		return (0);
+		printf("[error: %s]\n", error);
+		return (1);
+	}
+	if (sigterm) {
+		printf("[terminated]\n");
+		return (1);
 	}
 	printf("[detached]\n");
 	return (0);
@@ -223,7 +225,7 @@ client_handle_winch(struct client_ctx *cctx)
 }
 
 int
-client_process_local(struct client_ctx *cctx, const char **error)
+client_process_local(struct client_ctx *cctx, char **error)
 {
 	struct buffer	*b;
 	size_t		 size;
