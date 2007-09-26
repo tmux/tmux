@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.4 2007-09-26 10:35:24 nicm Exp $
+# $Id: Makefile,v 1.5 2007-09-26 13:43:14 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean
@@ -18,7 +18,7 @@ META?= \002 # C-b
 
 SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c \
       xmalloc.c xmalloc-debug.c input.c screen.c window.c session.c local.c \
-      log.c command.c
+      log.c client.c client-msg.c client-cmd.c op.c
 
 YACC= yacc -d
 

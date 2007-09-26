@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.1 2007-09-26 10:35:24 nicm Exp $ */
+/* $Id: server-msg.c,v 1.2 2007-09-26 13:43:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,25 +24,25 @@
 
 #include "tmux.h"
 
-void	server_msg_fn_attach(struct client *, struct hdr *);
-void	server_msg_fn_create(struct client *, struct hdr *);
-void	server_msg_fn_input(struct client *, struct hdr *);
-void	server_msg_fn_last(struct client *, struct hdr *);
-void	server_msg_fn_new(struct client *, struct hdr *);
-void	server_msg_fn_next(struct client *, struct hdr *);
-void	server_msg_fn_previous(struct client *, struct hdr *);
-void	server_msg_fn_refresh(struct client *, struct hdr *);
-void	server_msg_fn_rename(struct client *, struct hdr *);
-void	server_msg_fn_select(struct client *, struct hdr *);
-void	server_msg_fn_sessions(struct client *, struct hdr *);
-void	server_msg_fn_size(struct client *, struct hdr *);
-void	server_msg_fn_windowlist(struct client *, struct hdr *);
-void	server_msg_fn_windows(struct client *, struct hdr *);
+int	server_msg_fn_attach(struct hdr *, struct client *);
+int	server_msg_fn_create(struct hdr *, struct client *);
+int	server_msg_fn_input(struct hdr *, struct client *);
+int	server_msg_fn_last(struct hdr *, struct client *);
+int	server_msg_fn_new(struct hdr *, struct client *);
+int	server_msg_fn_next(struct hdr *, struct client *);
+int	server_msg_fn_previous(struct hdr *, struct client *);
+int	server_msg_fn_refresh(struct hdr *, struct client *);
+int	server_msg_fn_rename(struct hdr *, struct client *);
+int	server_msg_fn_select(struct hdr *, struct client *);
+int	server_msg_fn_sessions(struct hdr *, struct client *);
+int	server_msg_fn_size(struct hdr *, struct client *);
+int	server_msg_fn_windowlist(struct hdr *, struct client *);
+int	server_msg_fn_windows(struct hdr *, struct client *);
 
 struct server_msg {
 	enum hdrtype	type;
 	
-	void	        (*fn)(struct client *, struct hdr *);
+	int	        (*fn)(struct hdr *, struct client *);
 };
 struct server_msg server_msg_table[] = {
 	{ MSG_ATTACH, server_msg_fn_attach },
@@ -62,41 +62,45 @@ struct server_msg server_msg_table[] = {
 };
 #define NSERVERMSG (sizeof server_msg_table / sizeof server_msg_table[0])
 
-void
+int
 server_msg_dispatch(struct client *c)
 {
 	struct hdr		 hdr;
 	struct server_msg	*msg;
 	u_int		 	 i;
+	int			 n;
 
-	if (BUFFER_USED(c->in) < sizeof hdr)
-		return;
-	memcpy(&hdr, BUFFER_OUT(c->in), sizeof hdr);
-	if (BUFFER_USED(c->in) < (sizeof hdr) + hdr.size)
-		return;
-	buffer_remove(c->in, sizeof hdr);
-
-	for (i = 0; i < NSERVERMSG; i++) {
-		msg = server_msg_table + i;
-		if (msg->type == hdr.type) {
-			msg->fn(c, &hdr);
-			return;
-		}
+	for (;;) {
+		if (BUFFER_USED(c->in) < sizeof hdr)
+			return (0);
+		memcpy(&hdr, BUFFER_OUT(c->in), sizeof hdr);
+		if (BUFFER_USED(c->in) < (sizeof hdr) + hdr.size)
+			return (0);
+		buffer_remove(c->in, sizeof hdr);
+		
+		for (i = 0; i < NSERVERMSG; i++) {
+			msg = server_msg_table + i;
+			if (msg->type == hdr.type) {
+				if ((n = msg->fn(&hdr, c)) != 0)
+					return (n);
+				break;
+			}
+		}	
+		if (i == NSERVERMSG)
+			fatalx("unexpected message");
 	}
-
-	fatalx("unexpected message");
 }
 
 /* New message from client. */
-void
-server_msg_fn_new(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_new(struct hdr *hdr, struct client *c)
 {
 	struct new_data	 data;
 	const char      *shell;
 	char		*cmd, *msg;
 	
 	if (c->session != NULL)
-		return;
+		return (0);
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_NEW size");
 	buffer_read(c->in, &data, hdr->size);
@@ -110,9 +114,9 @@ server_msg_fn_new(struct client *c, struct hdr *hdr)
 
 	if (*data.name != '\0' && session_find(data.name) != NULL) {
 		xasprintf(&msg, "duplicate session: %s", data.name);
-		write_client(c, MSG_READY, msg, strlen(msg));
+		write_client(c, MSG_ERROR, msg, strlen(msg));
 		xfree(msg);
-		return;
+		return (0);
 	}
 
 	shell = getenv("SHELL");
@@ -124,19 +128,20 @@ server_msg_fn_new(struct client *c, struct hdr *hdr)
 		fatalx("session_create failed");
 	xfree(cmd);
 	
-	write_client(c, MSG_READY, NULL, 0);
 	draw_client(c, 0, c->sy - 1);
+
+	return (0);
 }
 
 /* Attach message from client. */
-void
-server_msg_fn_attach(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_attach(struct hdr *hdr, struct client *c)
 {
 	struct attach_data	 data;
 	char			*msg;
 	
 	if (c->session != NULL)
-		return;
+		return (0);
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_ATTACH size");
 	buffer_read(c->in, &data, hdr->size);
@@ -152,24 +157,25 @@ server_msg_fn_attach(struct client *c, struct hdr *hdr)
 		c->session = session_find(data.name);
 	if (c->session == NULL) {
 		xasprintf(&msg, "session not found: %s", data.name);
-		write_client(c, MSG_READY, msg, strlen(msg));
+		write_client(c, MSG_ERROR, msg, strlen(msg));
 		xfree(msg);
-		return;
+		return (0);
 	}
 
-	write_client(c, MSG_READY, NULL, 0);
 	draw_client(c, 0, c->sy - 1);
+
+	return (0);
 }
 
 /* Create message from client. */
-void
-server_msg_fn_create(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_create(struct hdr *hdr, struct client *c)
 {
 	const char	*shell;
 	char		*cmd;
 
 	if (c->session == NULL)
-		return;
+		return (0);
 	if (hdr->size != 0)
 		fatalx("bad MSG_CREATE size");
 
@@ -182,14 +188,16 @@ server_msg_fn_create(struct client *c, struct hdr *hdr)
 	xfree(cmd);
 
 	draw_client(c, 0, c->sy - 1);
+
+	return (0);
 }
 
 /* Next message from client. */
-void
-server_msg_fn_next(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_next(struct hdr *hdr, struct client *c)
 {
 	if (c->session == NULL)
-		return;
+		return (0);
 	if (hdr->size != 0)
 		fatalx("bad MSG_NEXT size");
 
@@ -197,14 +205,16 @@ server_msg_fn_next(struct client *c, struct hdr *hdr)
 		changed_window(c);
 	else
 		write_message(c, "No next window"); 
+
+	return (0);
 }
 
 /* Previous message from client. */
-void
-server_msg_fn_previous(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_previous(struct hdr *hdr, struct client *c)
 {
 	if (c->session == NULL)
-		return;
+		return (0);
 	if (hdr->size != 0)
 		fatalx("bad MSG_PREVIOUS size");
 
@@ -212,16 +222,18 @@ server_msg_fn_previous(struct client *c, struct hdr *hdr)
 		changed_window(c);
 	else
 		write_message(c, "No previous window"); 
+
+	return (0);
 }
 
 /* Size message from client. */
-void
-server_msg_fn_size(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_size(struct hdr *hdr, struct client *c)
 {
 	struct size_data	data;
 
 	if (c->session == NULL)
-		return;
+		return (0);
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_SIZE size");
 	buffer_read(c->in, &data, hdr->size);
@@ -235,55 +247,63 @@ server_msg_fn_size(struct client *c, struct hdr *hdr)
 
 	if (window_resize(c->session->window, c->sx, c->sy) != 0)
 		draw_client(c, 0, c->sy - 1);
+
+	return (0);
 }
 
 /* Input message from client. */
-void
-server_msg_fn_input(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_input(struct hdr *hdr, struct client *c)
 {
 	if (c->session == NULL)
-		return;
+		return (0);
 	
 	window_input(c->session->window, c->in, hdr->size);
+
+	return (0);
 }
 
 /* Refresh message from client. */
-void
-server_msg_fn_refresh(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_refresh(struct hdr *hdr, struct client *c)
 {
 	struct refresh_data	data;
 
 	if (c->session == NULL)
-		return;
+		return (0);
 	if (hdr->size != 0 && hdr->size != sizeof data)
 		fatalx("bad MSG_REFRESH size");
 
 	draw_client(c, 0, c->sy - 1);
+
+	return (0);
 }
 
 /* Select message from client. */
-void
-server_msg_fn_select(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_select(struct hdr *hdr, struct client *c)
 {
 	struct select_data	data;
 
 	if (c->session == NULL)
-		return;
+		return (0);
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_SELECT size");
 	buffer_read(c->in, &data, hdr->size);
 
 	if (c->session == NULL)
-		return;
+		return (0);
 	if (session_select(c->session, data.idx) == 0)
 		changed_window(c);
 	else
 		write_message(c, "Window %u not present", data.idx); 
+
+	return (0);
 }
 
 /* Sessions message from client. */
-void
-server_msg_fn_sessions(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_sessions(struct hdr *hdr, struct client *c)
 {
 	struct sessions_data	 data;
 	struct sessions_entry	 entry;
@@ -315,11 +335,13 @@ server_msg_fn_sessions(struct client *c, struct hdr *hdr)
 		}
 		buffer_write(c->out, &entry, sizeof entry);
 	}
+
+	return (0);
 }
 
 /* Windows message from client. */
-void
-server_msg_fn_windows(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_windows(struct hdr *hdr, struct client *c)
 {
 	struct windows_data	 data;
 	struct windows_entry	 entry;
@@ -335,7 +357,7 @@ server_msg_fn_windows(struct client *c, struct hdr *hdr)
 	if (s == NULL) {
 		data.windows = 0;
 		write_client(c, MSG_WINDOWS, &data, sizeof data);
-		return;
+		return (0);
 	}
 
 	data.windows = 0;
@@ -357,14 +379,16 @@ server_msg_fn_windows(struct client *c, struct hdr *hdr)
 			*entry.tty = '\0';
 		buffer_write(c->out, &entry, sizeof entry);
 	}
+
+	return (0);
 }
 
 /* Rename message from client. */
-void
-server_msg_fn_rename(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_rename(struct hdr *hdr, struct client *c)
 {
 	if (c->session == NULL)
-		return;
+		return (0);
 	if (hdr->size != 0)
 		fatalx("bad MSG_RENAME size");
 
@@ -372,11 +396,11 @@ server_msg_fn_rename(struct client *c, struct hdr *hdr)
 }
 
 /* Last window message from client */
-void
-server_msg_fn_last(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_last(struct hdr *hdr, struct client *c)
 {
 	if (c->session == NULL)
-		return;
+		return (0);
 	if (hdr->size != 0)
 		fatalx("bad MSG_LAST size");
 
@@ -384,11 +408,13 @@ server_msg_fn_last(struct client *c, struct hdr *hdr)
 		changed_window(c);
 	else
 		write_message(c, "No last window"); 
+
+	return (0);
 }
 
 /* Window list message from client */
-void
-server_msg_fn_windowlist(struct client *c, struct hdr *hdr)
+int
+server_msg_fn_windowlist(struct hdr *hdr, struct client *c)
 {
 	struct window	*w;
 	char 		*buf;
@@ -396,7 +422,7 @@ server_msg_fn_windowlist(struct client *c, struct hdr *hdr)
 	u_int 		 i;
 
 	if (c->session == NULL)
-		return;
+		return (0);
 	if (hdr->size != 0)
 		fatalx("bad MSG_WINDOWLIST size");
 
@@ -417,4 +443,6 @@ server_msg_fn_windowlist(struct client *c, struct hdr *hdr)
 
 	write_message(c, "%s", buf);
 	xfree(buf);
+
+	return (0);
 }

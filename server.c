@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.12 2007-09-26 10:35:24 nicm Exp $ */
+/* $Id: server.c,v 1.13 2007-09-26 13:43:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,6 +24,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <paths.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdio.h>
@@ -43,7 +44,7 @@
 /* Client list. */
 struct clients	 clients;
 
-int		 server_main(int);
+int		 server_main(char *, int);
 void		 fill_windows(struct pollfd **);
 void		 handle_windows(struct pollfd **);
 void		 fill_clients(struct pollfd **);
@@ -52,21 +53,18 @@ struct client	*accept_client(int);
 void		 lost_client(struct client *);
 void	 	 lost_window(struct window *);
 
-/* Fork and start server process. */
 int
-server_start(void)
+server_start(char *path)
 {
-	mode_t			mode;
-	int		   	fd;
 	struct sockaddr_un	sa;
 	size_t			sz;
 	pid_t			pid;
-	FILE		       *f;
-	char		       *path;
+	mode_t			mode;
+	int		   	fd;
 
-	/* Fork the server process. */
 	switch (pid = fork()) {
 	case -1:
+		log_warn("fork");
 		return (-1);
 	case 0:
 		break;
@@ -74,20 +72,15 @@ server_start(void)
 		return (0);
 	}
 
-	/* Start logging to file. */
-	if (debug_level > 0) {
-		xasprintf(&path,
-		    "%s-server-%ld.log", __progname, (long) getpid());
-		f = fopen(path, "w");
-		log_open(f, LOG_DAEMON, debug_level);
-		xfree(path);
-	}
+	logfile("server");
+	setproctitle("server (%s)", path);
+
 	log_debug("server started, pid %ld", (long) getpid());
 
 	/* Create the socket. */
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
-	sz = strlcpy(sa.sun_path, socket_path, sizeof sa.sun_path);
+	sz = strlcpy(sa.sun_path, path, sizeof sa.sun_path);
 	if (sz >= sizeof sa.sun_path) {
 		errno = ENAMETOOLONG;
 		fatal("socket failed");
@@ -113,32 +106,17 @@ server_start(void)
 		fatal("daemon failed");
 	log_debug("server daemonised, pid now %ld", (long) getpid());
 
-	setproctitle("server (%s)", socket_path);
-	exit(server_main(fd));
+	exit(server_main(path, fd));
 }
 
 /* Main server loop. */
 int
-server_main(int srv_fd)
+server_main(char *srv_path, int srv_fd)
 {
 	struct pollfd  		*pfds, *pfd;
 	int			 nfds, mode;
-	struct sigaction	 act;
 
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = SA_RESTART;
-
-	act.sa_handler = SIG_IGN;
-	if (sigaction(SIGPIPE, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGUSR1, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGUSR2, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGINT, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGQUIT, &act, NULL) != 0)
-		fatal("sigaction failed");
+	siginit();
 
 	ARRAY_INIT(&windows);
 	ARRAY_INIT(&clients);
@@ -192,7 +170,7 @@ server_main(int srv_fd)
 	}
 
 	close(srv_fd);
-	unlink(socket_path);
+	unlink(srv_path);
 
 	return (0);
 }

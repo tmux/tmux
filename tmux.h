@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.11 2007-09-26 10:35:24 nicm Exp $ */
+/* $Id: tmux.h,v 1.12 2007-09-26 13:43:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -257,18 +257,11 @@ struct buffer {
 #define CODE_KKEYPADON 25
 #define CODE_TITLE 26
 
-/* Command-line commands. */
-enum op {
-	OP_LIST = 0,
-	OP_NEW,
-	OP_ATTACH
-};
-
 /* Message codes. */
 enum hdrtype {
 	MSG_NEW = 0,
 	MSG_ATTACH,
-	MSG_READY,
+	MSG_ERROR,
 	MSG_CREATE,
 	MSG_EXIT,
 	MSG_SIZE,
@@ -423,17 +416,50 @@ struct client {
 };
 ARRAY_DECL(clients, struct client *);
 
+/* Client context. */
+struct client_ctx {
+	int		 srv_fd;
+	struct buffer	*srv_in;
+	struct buffer	*srv_out;
+
+	int		 loc_fd;
+	struct buffer	*loc_in;
+	struct buffer	*loc_out;
+
+	struct winsize	 ws;
+};
+
 /* tmux.c */
-volatile sig_atomic_t sigterm;
-extern int   debug_level;
-extern char  socket_path[MAXPATHLEN];
+extern volatile sig_atomic_t sigwinch;
+extern volatile sig_atomic_t sigterm;
+extern int debug_level;
+int	 	 usage(const char *);
+void		 logfile(const char *);
+void		 siginit(void);
+void		 sigreset(void);
+
+/* op.c */
+int	 op_new(char *, int, char **);
+int	 op_attach(char *, int, char **);
+
+/* client.c */
+int	 client_init(char *, struct client_ctx *, int);
+int	 client_main(struct client_ctx *);
+void	 client_write_server(struct client_ctx *, enum hdrtype, void *, size_t);
+
+/* client-msg.c */
+int	 client_msg_dispatch(struct client_ctx *, const char **);
+
+/* command.c */
+extern int client_cmd_prefix;
+int	 client_cmd_dispatch(int, struct client_ctx *, const char **);
 
 /* server.c */
 extern struct clients clients;
-int	 server_start(void);
+int	 server_start(char *);
 
 /* server-msg.c */
-void	 server_msg_dispatch(struct client *);
+int	 server_msg_dispatch(struct client *);
 
 /* server-fn.c */
 void	 write_message(struct client *, const char *, ...);
@@ -467,10 +493,6 @@ int	 local_init(struct buffer **, struct buffer **);
 void	 local_done(void);
 int	 local_key(size_t *);
 void	 local_output(struct buffer *, size_t);
-
-/* command.c */
-extern int cmd_prefix;
-int	 cmd_execute(int, struct buffer *);
 
 /* window.c */
 extern struct windows windows;
