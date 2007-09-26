@@ -1,4 +1,4 @@
-/* $Id: op.c,v 1.2 2007-09-26 14:08:16 nicm Exp $ */
+/* $Id: op.c,v 1.3 2007-09-26 18:14:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
 #include "tmux.h"
 
 int
-op_new(char *path, int argc, unused char **argv)
+op_new(char *path, int argc, char **argv)
 {
 	struct new_data	 	data;	
 	struct client_ctx	cctx;
@@ -62,7 +62,7 @@ op_new(char *path, int argc, unused char **argv)
 }
 
 int
-op_attach(char *path, int argc, unused char **argv)
+op_attach(char *path, int argc, char **argv)
 {
 	struct attach_data	data;
 	struct client_ctx	cctx;
