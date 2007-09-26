@@ -1,4 +1,4 @@
-/* $Id: op-list.c,v 1.2 2007-09-26 18:32:16 nicm Exp $ */
+/* $Id: op-list.c,v 1.3 2007-09-26 19:38:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,9 +39,9 @@ op_list(char *path, int argc, char **argv)
 
 	*name = '\0';
 	optind = 1;
-	while ((opt = getopt(argc, argv, "n:?")) != EOF) {
+	while ((opt = getopt(argc, argv, "s:?")) != EOF) {
 		switch (opt) {
-		case 'n':
+		case 's':
 			if (strlcpy(name, optarg, sizeof name) >= sizeof name) {
 				log_warnx("%s: session name too long", optarg);
 				return (1);
@@ -49,13 +49,13 @@ op_list(char *path, int argc, char **argv)
 			break;
 		case '?':
 		default:
-			return (usage("list [-n session]"));
+			return (usage("list [-s session]"));
 		}
 	}	
 	argc -= optind;
 	argv += optind;			
 	if (argc != 0)
-		return (usage("list [-n session]"));
+		return (usage("list [-s session]"));
 
 	if (client_init(path, &cctx, 0) != 0)
 		return (1);

@@ -1,4 +1,4 @@
-/* $Id: op.c,v 1.4 2007-09-26 18:18:39 nicm Exp $ */
+/* $Id: op.c,v 1.5 2007-09-26 19:38:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,9 +33,9 @@ op_new(char *path, int argc, char **argv)
 
 	*name = '\0';
 	optind = 1;
-	while ((opt = getopt(argc, argv, "n:?")) != EOF) {
+	while ((opt = getopt(argc, argv, "s:?")) != EOF) {
 		switch (opt) {
-		case 'n':
+		case 's':
 			if (strlcpy(name, optarg, sizeof name) >= sizeof name) {
 				log_warnx("%s: session name too long", optarg);
 				return (1);
@@ -43,13 +43,13 @@ op_new(char *path, int argc, char **argv)
 			break;
 		case '?':
 		default:
-			return (usage("new [-n session]"));
+			return (usage("new [-s session]"));
 		}
 	}	
 	argc -= optind;
 	argv += optind;			
 	if (argc != 0)
-		return (usage("new [-n session]"));
+		return (usage("new [-s session]"));
 
 	if (client_init(path, &cctx, 1) != 0)
 		return (1);
@@ -72,9 +72,9 @@ op_attach(char *path, int argc, char **argv)
 
 	*name = '\0';
 	optind = 1;
-	while ((opt = getopt(argc, argv, "n:?")) != EOF) {
+	while ((opt = getopt(argc, argv, "s:?")) != EOF) {
 		switch (opt) {
-		case 'n':
+		case 's':
 			if (strlcpy(name, optarg, sizeof name) >= sizeof name) {
 				log_warnx("%s: session name too long", optarg);
 				return (1);
@@ -82,13 +82,13 @@ op_attach(char *path, int argc, char **argv)
 			break;
 		case '?':
 		default:
-			return (usage("attach [-n session]"));
+			return (usage("attach [-s session]"));
 		}
 	}	
 	argc -= optind;
 	argv += optind;			
 	if (argc != 0)
-		return (usage("attach [-n session]"));
+		return (usage("attach [-s session]"));
 
 	if (client_init(path, &cctx, 1) != 0)
 		return (1);

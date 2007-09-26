@@ -21,4 +21,14 @@
   and buffer_insert_range/delete_range are abominations. this should be
   rethought
 - figure out once and for all what is going on with backspace and del
+- deal properly with ambiguous ops... list-sessions & list-windows
 - split list into list-sessions and list-windows
+- command form:
+	tmux <flags> cmd [-s session] <flags> data
+  eg
+	tmux rename-session -ssession newname
+	tmux rename-window -ssession 5 newname
+  if no session specified:
+	- inside tmux, check $TMUX (pid:session or something)
+        - otherwise if 1 session, use it
+	- otherwise bail with error
