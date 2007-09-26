@@ -1,4 +1,4 @@
-/* $Id: log.c,v 1.2 2007-07-25 23:13:18 nicm Exp $ */
+/* $Id: log.c,v 1.3 2007-09-26 18:55:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,7 +56,7 @@ log_open(FILE *f, int facility, int level)
 void
 log_close(void)
 {
-	if (log_stream != NULL)
+	if (log_stream != NULL && log_stream != stderr) /* XXX */
 		fclose(log_stream);
 
 	log_enabled = 0;
