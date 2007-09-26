@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.1 2007-09-26 13:43:15 nicm Exp $ */
+/* $Id: client.c,v 1.2 2007-09-26 18:12:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,12 +42,14 @@ client_init(char *path, struct client_ctx *cctx, int ws)
 	struct stat		sb;
 	size_t			sz;
 	int			mode;
+	u_int			retries;
 
 	if (path == NULL) {
 		xasprintf(&path,
 		    "%s/%s-%lu", _PATH_TMP, __progname, (u_long) getuid());
 	}
 
+	retries = 0;
 retry:
 	if (stat(path, &sb) != 0) {
 		if (errno != ENOENT) {
@@ -94,6 +96,14 @@ retry:
 	}
 	if (connect(
 	    cctx->srv_fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
+		if (errno == ECONNREFUSED && retries < 5) {
+			if (unlink(path) != 0) {
+				log_warn("%s: unlink", path);
+				return (-1);
+			}
+			retries++;
+			goto retry;
+		}
 		log_warn("%s: connect", path);
 		return (-1);
 	}
