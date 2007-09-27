@@ -1,4 +1,4 @@
-/* $Id: op-list.c,v 1.4 2007-09-27 09:52:03 nicm Exp $ */
+/* $Id: op-list.c,v 1.5 2007-09-27 10:09:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,47 +25,21 @@
 #include "tmux.h"
 
 int
-op_list(char *path, int argc, char **argv)
+op_list_sessions(char *path, int argc, unused char **argv)
 {
 	struct client_ctx	cctx;
-	char			name[MAXNAMELEN], *tim;
-	int			opt;
-	struct sessions_data	sdata;
-	struct sessions_entry	sent;
-	struct windows_data	wdata;
-	struct windows_entry	went;
+	char		       *tim;
+	struct sessions_data    data;
+	struct sessions_entry	ent;
 	struct pollfd		pfd;
 	struct hdr		hdr;
 
-	*name = '\0';
-	optind = 1;
-	while ((opt = getopt(argc, argv, "s:?")) != EOF) {
-		switch (opt) {
-		case 's':
-			if (strlcpy(name, optarg, sizeof name) >= sizeof name) {
-				log_warnx("%s: session name too long", optarg);
-				return (1);
-			}
-			break;
-		case '?':
-		default:
-			return (usage("list [-s session]"));
-		}
-	}	
-	argc -= optind;
-	argv += optind;			
-	if (argc != 0)
-		return (usage("list [-s session]"));
+	if (argc != 1)
+		return (usage("list-sessions"));
 
 	if (client_init(path, &cctx, 0) != 0)
 		return (1);
- 
-	if (*name == '\0')
-		client_write_server(&cctx, MSG_SESSIONS, &sdata, sizeof sdata);
-	else {
-		client_fill_sessid(&wdata.sid, name);
-		client_write_server(&cctx, MSG_WINDOWS, &wdata, sizeof wdata);
-	}
+	client_write_server(&cctx, MSG_SESSIONS, &data, sizeof data);
 
 	for (;;) {
 		pfd.fd = cctx.srv_fd;
@@ -92,48 +66,120 @@ op_list(char *path, int argc, char **argv)
 			continue;
 		buffer_remove(cctx.srv_in, sizeof hdr);
 		
-		switch (hdr.type) {
-		case MSG_SESSIONS:
-			if (hdr.size < sizeof sdata)
-				fatalx("bad MSG_SESSIONS size");
-			buffer_read(cctx.srv_in, &sdata, sizeof sdata);
-			hdr.size -= sizeof sdata; 
-			if (sdata.sessions == 0 && hdr.size == 0)
-				return (0);
-			if (hdr.size < sdata.sessions * sizeof sent)
-				fatalx("bad MSG_SESSIONS size");
-			while (sdata.sessions-- > 0) {
-				buffer_read(cctx.srv_in, &sent, sizeof sent);
-				tim = ctime(&sent.tim);
-				*strchr(tim, '\n') = '\0';
-				printf("%s: %u windows (created %s)\n",
-				    sent.name, sent.windows, tim);
-			}
+		if (hdr.type != MSG_SESSIONS)
+			fatalx("unexpected message");
+
+		if (hdr.size < sizeof data)
+			fatalx("bad MSG_SESSIONS size");
+		buffer_read(cctx.srv_in, &data, sizeof data);
+		hdr.size -= sizeof data; 
+		if (data.sessions == 0 && hdr.size == 0)
 			return (0);
-		case MSG_WINDOWS:
-			if (hdr.size < sizeof wdata)
-				fatalx("bad MSG_WINDOWS size");
-			buffer_read(cctx.srv_in, &wdata, sizeof wdata);
-			hdr.size -= sizeof wdata; 
-			if (wdata.windows == 0 && hdr.size == 0) {
-				log_warnx("session not found: %s", name);
+		if (hdr.size < data.sessions * sizeof ent)
+			fatalx("bad MSG_SESSIONS size");
+
+		while (data.sessions-- > 0) {
+			buffer_read(cctx.srv_in, &ent, sizeof ent);
+
+			tim = ctime(&ent.tim);
+			*strchr(tim, '\n') = '\0';
+
+			printf("%s: %u windows "
+			    "(created %s)\n", ent.name, ent.windows, tim);
+		}
+
+		return (0);
+	}
+}
+
+int
+op_list_windows(char *path, int argc, char **argv)
+{
+	struct client_ctx	cctx;
+	char			name[MAXNAMELEN];
+	int			opt;
+	struct windows_data	data;
+	struct windows_entry	ent;
+	struct pollfd		pfd;
+	struct hdr		hdr;
+
+	*name = '\0';
+	optind = 1;
+	while ((opt = getopt(argc, argv, "s:?")) != EOF) {
+		switch (opt) {
+		case 's':
+			if (strlcpy(name, optarg, sizeof name) >= sizeof name) {
+				log_warnx("%s: session name too long", optarg);
 				return (1);
 			}
-			if (hdr.size < wdata.windows * sizeof went)
-				fatalx("bad MSG_WINDOWS size");
-			while (wdata.windows-- > 0) {
-				buffer_read(cctx.srv_in, &went, sizeof went);
-				if (*went.title != '\0') {
-					printf("%u: %s \"%s\" (%s)\n", went.idx,
-					    went.name, went.title, went.tty);
-				} else {
-					printf("%u: %s (%s)\n",
-					    went.idx, went.name, went.tty);
-				}
-			}
-			return (0);
+			break;
+		case '?':
 		default:
-			fatalx("unexpected message");
+			return (usage("list-windows [-s session]"));
 		}
+	}	
+	argc -= optind;
+	argv += optind;			
+	if (argc != 0)
+		return (usage("list-windows [-s session]"));
+
+	if (client_init(path, &cctx, 0) != 0)
+		return (1);
+ 
+	client_fill_sessid(&data.sid, name);
+	client_write_server(&cctx, MSG_WINDOWS, &data, sizeof data);
+
+	for (;;) {
+		pfd.fd = cctx.srv_fd;
+		pfd.events = POLLIN;
+		if (BUFFER_USED(cctx.srv_out) > 0)
+			pfd.events |= POLLOUT;
+
+		if (poll(&pfd, 1, INFTIM) == -1) {
+			if (errno == EAGAIN || errno == EINTR)
+				continue;
+			log_warn("poll");
+			return (-1);
+		}
+
+		if (buffer_poll(&pfd, cctx.srv_in, cctx.srv_out) != 0) {
+			log_warnx("lost server");
+			return (-1);
+		}
+
+		if (BUFFER_USED(cctx.srv_in) < sizeof hdr)
+			continue;
+		memcpy(&hdr, BUFFER_OUT(cctx.srv_in), sizeof hdr);
+		if (BUFFER_USED(cctx.srv_in) < (sizeof hdr) + hdr.size)
+			continue;
+		buffer_remove(cctx.srv_in, sizeof hdr);
+		
+		if (hdr.type != MSG_WINDOWS)
+			fatalx("unexpected message");
+
+		if (hdr.size < sizeof data)
+			fatalx("bad MSG_WINDOWS size");
+		buffer_read(cctx.srv_in, &data, sizeof data);
+		hdr.size -= sizeof data; 
+		if (data.windows == 0 && hdr.size == 0) {
+			log_warnx("session not found: %s", name);
+			return (1);
+		}
+		if (hdr.size < data.windows * sizeof ent)
+			fatalx("bad MSG_WINDOWS size");
+
+		while (data.windows-- > 0) {
+			buffer_read(cctx.srv_in, &ent, sizeof ent);
+
+			if (*ent.title != '\0') {
+				printf("%u: %s \"%s\" (%s)\n", ent.idx,
+				    ent.name, ent.title, ent.tty);
+			} else {
+				printf("%u: %s (%s)\n",
+				    ent.idx, ent.name, ent.tty);
+			}
+		}
+
+		return (0);
 	}
 }

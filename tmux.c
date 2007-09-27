@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.14 2007-09-27 09:15:58 nicm Exp $ */
+/* $Id: tmux.c,v 1.15 2007-09-27 10:09:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,8 +45,10 @@ struct op {
 };
 struct op op_table[] = {
 	{ "attach", NULL, op_attach },
-	{ "list-sessions", "ls", op_list/*_sessions*/ },
+	{ "list-sessions", "ls", op_list_sessions },
+	{ "list-windows", "lsw", op_list_windows },
 	{ "new-session", "new", op_new/*_session*/ },
+//	{ "new-window", "neww", op_new_window },
 //	{ "rename-window", "rw", op_rename_window },
 //	{ "rename-session", "rs", op_rename_session },
 };

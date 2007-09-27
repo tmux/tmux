@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.17 2007-09-27 09:52:03 nicm Exp $ */
+/* $Id: tmux.h,v 1.18 2007-09-27 10:09:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -450,7 +450,8 @@ int	 op_new(char *, int, char **);
 int	 op_attach(char *, int, char **);
 
 /* op-list.c */
-int	 op_list(char *, int, char **);
+int	 op_list_sessions(char *, int, char **);
+int	 op_list_windows(char *, int, char **);
 
 /* client.c */
 int	 client_init(char *, struct client_ctx *, int);

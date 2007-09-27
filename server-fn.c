@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.4 2007-09-27 09:52:03 nicm Exp $ */
+/* $Id: server-fn.c,v 1.5 2007-09-27 10:09:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,7 @@ server_find_sessid(struct sessid *sid, char **cause)
 			xasprintf(cause, "index out of range: %u", sid->idx);
 			return (NULL);
 		}
-		if ((s = ARRAY_ITEM(&sessions, sid->idx) = NULL)) {
+		if ((s = ARRAY_ITEM(&sessions, sid->idx)) == NULL) {
 			xasprintf(cause, "session doesn't exist: %u", sid->idx);
 			return (NULL);
 		}
