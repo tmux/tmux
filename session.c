@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.15 2007-09-21 20:45:05 nicm Exp $ */
+/* $Id: session.c,v 1.16 2007-09-27 09:15:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,6 +20,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -54,11 +55,6 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	s->window = s->last = NULL;
 	ARRAY_INIT(&s->windows);
 
-	if (session_new(s, cmd, sx, sy) != 0) {
-		xfree(s);
-		return (NULL);
-	}
-
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		if (ARRAY_ITEM(&sessions, i) == NULL) {
 			ARRAY_SET(&sessions, i, s);
@@ -73,6 +69,11 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	else
 		xsnprintf(s->name, sizeof s->name, "%u", i);
 
+	if (session_new(s, cmd, sx, sy) != 0) {
+		session_destroy(s);
+		return (NULL);
+	}
+
 	return (s);
 }
 
@@ -84,8 +85,10 @@ session_destroy(struct session *s)
 
 	if (session_index(s, &i) != 0)
 		fatalx("session not found");
-	ARRAY_REMOVE(&sessions, i);
-
+	ARRAY_SET(&sessions, i, NULL);
+	while (!ARRAY_EMPTY(&sessions) && ARRAY_LAST(&sessions) == NULL)
+		ARRAY_TRUNC(&sessions, 1);
+	
 	while (!ARRAY_EMPTY(&s->windows))
 		window_remove(&s->windows, ARRAY_FIRST(&s->windows));
 
@@ -108,8 +111,16 @@ int
 session_new(struct session *s, const char *cmd, u_int sx, u_int sy)
 {
 	struct window	*w;
+	const char	*environ[] = { NULL, "TERM=screen", NULL };
+	char		 blk[256];
+	u_int		 i;
 
-	if ((w = window_create(cmd, sx, sy)) == NULL)
+	if (session_index(s, &i) != 0)
+		fatalx("session not found");
+	xsnprintf(blk, sizeof blk, "TMUX=%ld,%u", (long) getpid(), i);
+	environ[0] = blk;
+	
+	if ((w = window_create(cmd, environ, sx, sy)) == NULL)
 		return (-1);
 	session_attach(s, w);
 

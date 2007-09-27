@@ -1,4 +1,4 @@
-/* $Id: client-cmd.c,v 1.3 2007-09-26 18:50:49 nicm Exp $ */
+/* $Id: client-cmd.c,v 1.4 2007-09-27 09:15:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,7 +58,7 @@ struct cmd client_cmd_table[] = {
 	{ 'L', client_cmd_fn_msg, MSG_LAST },
 	{ 'l', client_cmd_fn_msg, MSG_LAST },
 	{ 'W', client_cmd_fn_msg, MSG_WINDOWLIST },
-	{ 'w', client_cmd_fn_msg, MSG_WINDOWLIST }
+	{ 'w', client_cmd_fn_msg, MSG_WINDOWLIST },
 };
 #define NCLIENTCMD (sizeof client_cmd_table / sizeof client_cmd_table[0])
 

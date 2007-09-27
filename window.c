@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.10 2007-09-21 20:45:06 nicm Exp $ */
+/* $Id: window.c,v 1.11 2007-09-27 09:15:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,14 +52,14 @@ struct windows	windows;
 
 /* Create a new window. */
 struct window *
-window_create(const char *cmd, u_int sx, u_int sy)
+window_create(const char *cmd, const char **environ, u_int sx, u_int sy)
 {
 	struct window	*w;
 	struct winsize	 ws;
 	struct termios	 tio;
-	struct sigaction act;
 	int		 fd, mode;
-	char		 pid[16], *ptr, *name;
+	char		*ptr, *name;
+	const char     **entry;
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = sx;
@@ -73,40 +73,17 @@ window_create(const char *cmd, u_int sx, u_int sy)
 	memcpy(&tio.c_cc, ttydefchars, sizeof tio.c_cc);
 	cfsetspeed(&tio, TTYDEF_SPEED);
 
-	xsnprintf(pid, sizeof pid, "%ld", (long) getpid());
 	switch (forkpty(&fd, NULL, &tio, &ws)) {
 	case -1:
 		return (NULL);
 	case 0:
-		if (setenv("TMUX", pid, 1) != 0)
-			fatal("setenv failed");
-		if (setenv("TERM", "screen", 1) != 0)
-			fatal("setenv failed");
+		for (entry = environ; *entry != NULL; entry++) {
+			if (putenv(*entry) != 0)
+				fatal("putenv failed");
+		}
+		sigreset();
 		log_close();
 
-		memset(&act, 0, sizeof act);
-		sigemptyset(&act.sa_mask);
-
-		act.sa_handler = SIG_DFL;
-		if (sigaction(SIGPIPE, &act, NULL) != 0)
-			fatal("sigaction failed");
-		if (sigaction(SIGUSR1, &act, NULL) != 0)
-			fatal("sigaction failed");
-		if (sigaction(SIGUSR2, &act, NULL) != 0)
-			fatal("sigaction failed");
-		if (sigaction(SIGINT, &act, NULL) != 0)
-			fatal("sigaction failed");
-		if (sigaction(SIGTSTP, &act, NULL) != 0)
-			fatal("sigaction failed");
-		if (sigaction(SIGQUIT, &act, NULL) != 0)
-			fatal("sigaction failed");
-		if (sigaction(SIGWINCH, &act, NULL) != 0)
-			fatal("sigaction failed");
-		if (sigaction(SIGTERM, &act, NULL) != 0)
-			fatal("sigaction failed");
-		if (sigaction(SIGCHLD, &act, NULL) != 0)
-			fatal("sigaction failed");
-		
 		execl(_PATH_BSHELL, "sh", "-c", cmd, (char *) NULL);
 		fatal("execl failed");
 	}

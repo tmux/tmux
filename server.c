@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.14 2007-09-26 18:09:23 nicm Exp $ */
+/* $Id: server.c,v 1.15 2007-09-27 09:15:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -320,6 +320,8 @@ server_lost_window(struct window *w)
 	struct session	*s;
 	u_int		 i, j;
 	int		 destroyed;
+
+	log_debug("lost window %d", w->fd);
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);

@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.2 2007-09-26 18:09:23 nicm Exp $ */
+/* $Id: server-fn.c,v 1.3 2007-09-27 09:15:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,11 +24,13 @@
 
 /* Write command to a client. */
 void
-server_write_client(struct client *c, u_int cmd, void *buf, size_t len)
+server_write_client(struct client *c, enum hdrtype type, void *buf, size_t len)
 {
 	struct hdr	 hdr;
 
-	hdr.type = cmd;
+	log_debug("writing %d to client %d", type, c->fd);
+
+	hdr.type = type;
 	hdr.size = len;
 
 	buffer_write(c->out, &hdr, sizeof hdr);
@@ -39,11 +41,13 @@ server_write_client(struct client *c, u_int cmd, void *buf, size_t len)
 /* Write command to a client with two buffers. */
 void
 server_write_client2(struct client *c,
-    u_int cmd, void *buf1, size_t len1, void *buf2, size_t len2)
+    enum hdrtype type, void *buf1, size_t len1, void *buf2, size_t len2)
 {
 	struct hdr	 hdr;
 
-	hdr.type = cmd;
+	log_debug("writing %d to client %d", type, c->fd);
+
+	hdr.type = type;
 	hdr.size = len1 + len2;
 
 	buffer_write(c->out, &hdr, sizeof hdr);
@@ -55,19 +59,22 @@ server_write_client2(struct client *c,
 
 /* Write command to all clients attached to a specific window. */
 void
-server_write_clients(struct window *w, u_int cmd, void *buf, size_t len)
+server_write_clients(
+    struct window *w, enum hdrtype type, void *buf, size_t len)
 {
 	struct client	*c;
  	struct hdr	 hdr;
 	u_int		 i;
 
-	hdr.type = cmd;
+	hdr.type = type;
 	hdr.size = len;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (c != NULL && c->session != NULL) {
 			if (c->session->window == w) {
+				log_debug(
+				    "writing %d to clients: %d", type, c->fd);
 				buffer_write(c->out, &hdr, sizeof hdr);
 				if (buf != NULL)
 					buffer_write(c->out, buf, len);

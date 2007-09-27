@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.15 2007-09-26 18:50:49 nicm Exp $ */
+/* $Id: tmux.h,v 1.16 2007-09-27 09:15:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -466,10 +466,10 @@ int	 server_msg_dispatch(struct client *);
 
 /* server-fn.c */
 void	 server_write_message(struct client *, const char *, ...);
-void	 server_write_client(struct client *, u_int, void *, size_t);
+void	 server_write_client(struct client *, enum hdrtype, void *, size_t);
 void	 server_write_client2(
-	     struct client *, u_int, void *, size_t, void *, size_t);
-void	 server_write_clients(struct window *, u_int, void *, size_t);
+	     struct client *, enum hdrtype, void *, size_t, void *, size_t);
+void	 server_write_clients(struct window *, enum hdrtype, void *, size_t);
 void	 server_window_changed(struct client *);
 void	 server_draw_client(struct client *, u_int, u_int);
 
@@ -499,7 +499,7 @@ void	 local_output(struct buffer *, size_t);
 
 /* window.c */
 extern struct windows windows;
-struct window	*window_create(const char *, u_int, u_int);
+struct window	*window_create(const char *, const char **, u_int, u_int);
 int		 window_index(struct windows *, struct window *, u_int *);
 void		 window_add(struct windows *, struct window *);
 void		 window_remove(struct windows *, struct window *);

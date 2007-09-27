@@ -13,10 +13,10 @@
 - scrollback
 - server doesn't handle SIGTERM anymore...
 - sleep(1) to wait for server frankly sucks
-- two-way communication (rename) sucks. lose it and use a command line option
-  for everythin
 - toolbar, copy/paste
 - cleanup/redesign IPC
+- the whole input/screen/local thing sucks a bit, reorganise/redesign it
+- line mode/char-at-a-time mode a la telnet?
 - some of the uses of buffers really sucks. buffer_reverse_add/remove,
   and buffer_insert_range/delete_range are abominations. this should be
   rethought
@@ -32,3 +32,13 @@
 	- inside tmux, check $TMUX (pid:session or something)
         - otherwise if 1 session, use it
 	- otherwise bail with error
+- keys to add:
+	i : show window info (show name, title, size, tty, ...)
+- commands to add:
+	rename window/sessions
+	swap windows
+	link/copy windows
+	detach session
+	unlink window (... what about windows not linked to any session???)
+	close window
+	kill session
