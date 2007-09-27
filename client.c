@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.6 2007-09-27 09:52:03 nicm Exp $ */
+/* $Id: client.c,v 1.7 2007-09-27 20:53:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,23 +49,6 @@ client_init(char *path, struct client_ctx *cctx, int start_server)
 		    "%s/%s-%lu", _PATH_TMP, __progname, (u_long) getuid());
 	}
 
-	retries = 0;
-retry:
-	if (stat(path, &sb) != 0) {
-		if (!start_server || errno != ENOENT) {
-			log_warn("%s", path);
-			return (-1);
-		}
-		if (server_start(path) != 0)
-			return (-1);
-		sleep(1); /* XXX */
-		goto retry;
-	}
-	if (!S_ISSOCK(sb.st_mode)) {
-		log_warnx("%s: %s", path, strerror(ENOTSOCK));
-		return (-1);
-	}
-
 	if (start_server) {
 		if (!isatty(STDIN_FILENO)) {
 			log_warnx("stdin is not a tty");
@@ -82,6 +65,24 @@ retry:
 		}
 	}
 
+	retries = 0;
+retry:
+	if (stat(path, &sb) != 0) {
+		if (start_server && errno == ENOENT && retries < 10) {
+			if (server_start(path) != 0)
+				return (-1);
+			usleep(10000);
+			retries++;
+			goto retry;
+		}
+		log_warn("%s: stat", path);
+		return (-1);
+	}
+	if (!S_ISSOCK(sb.st_mode)) {
+		log_warnx("%s: %s", path, strerror(ENOTSOCK));
+		return (-1);
+	}
+
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
 	sz = strlcpy(sa.sun_path, path, sizeof sa.sun_path);
@@ -96,11 +97,12 @@ retry:
 	}
 	if (connect(
 	    cctx->srv_fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
-		if (start_server && errno == ECONNREFUSED && retries < 5) {
+		if (start_server && errno == ECONNREFUSED && retries < 10) {
 			if (unlink(path) != 0) {
 				log_warn("%s: unlink", path);
 				return (-1);
 			}
+			usleep(10000);
 			retries++;
 			goto retry;
 		}

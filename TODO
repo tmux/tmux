@@ -12,7 +12,6 @@
 - mouse handling and some other bits elinks needs
 - scrollback
 - server doesn't handle SIGTERM anymore...
-- sleep(1) to wait for server frankly sucks
 - toolbar, copy/paste
 - cleanup/redesign IPC
 - the whole input/screen/local thing sucks a bit, reorganise/redesign it
