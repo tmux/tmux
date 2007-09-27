@@ -24,6 +24,7 @@
 - deal properly with ambiguous ops... list-sessions & list-windows
 - keys to add:
 	i : show window info (show name, title, size, tty, ...)
+	meta-meta : pass through meta (will need this...)
 - commands to add:
 	rename window/sessions
 	swap windows
