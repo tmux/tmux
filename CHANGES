@@ -1,3 +1,27 @@
+27 September 2007
+
+* Split "tmux list" into "tmux list-sessions" (ls) and "list-windows" (lsw).
+* New command session selection:
+	- if name is specified, look for it and use it if it exists, otherwise
+	  error
+	- if no name specified, try the current session from $TMUX
+	- if $TMUX doesn't exist, and there is only one session, use it,
+	  otherwise error
+
+26 September 2007
+
+* Add command aliases, so "ls" is an alias for "list".
+* Rename some commands and alter syntax to take options after a la CVS. Also
+  change some flags. So:
+
+	tmux -s/socket -nabc new
+
+  Becomes:
+	
+	tmux -S/socket new -sabc
+
+* Major tidy and split of client/server code.
+
 22 September 2007
 
 * Window list command (C-b W). Started by Maximilian Gass, finished by me.
@@ -31,5 +55,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.10 2007-09-22 11:50:33 nicm Exp $
+$Id: CHANGES,v 1.11 2007-09-27 10:14:10 nicm Exp $
 
