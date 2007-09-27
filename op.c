@@ -1,4 +1,4 @@
-/* $Id: op.c,v 1.5 2007-09-26 19:38:42 nicm Exp $ */
+/* $Id: op.c,v 1.6 2007-09-27 09:52:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -93,7 +93,7 @@ op_attach(char *path, int argc, char **argv)
 	if (client_init(path, &cctx, 1) != 0)
 		return (1);
 
-	strlcpy(data.name, name, sizeof data.name);
+	client_fill_sessid(&data.sid, name);
 	data.sx = cctx.ws.ws_col;
 	data.sy = cctx.ws.ws_row;
 	client_write_server(&cctx, MSG_ATTACH, &data, sizeof data);

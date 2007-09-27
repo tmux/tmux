@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.5 2007-09-26 19:09:30 nicm Exp $ */
+/* $Id: client.c,v 1.6 2007-09-27 09:52:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -194,6 +194,36 @@ server_dead:
 local_dead:
 	/* Can't do much here. Log and die. */
 	fatalx("local socket dead");
+}
+
+void
+client_fill_sessid(struct sessid *sid, char name[MAXNAMELEN])
+{
+	char		*env, *ptr, buf[256];
+	const char	*errstr;
+	long long	 ll;
+
+	strlcpy(sid->name, name, sizeof sid->name);
+
+	sid->pid = -1;
+	if ((env = getenv("TMUX")) == NULL)
+		return;
+	if ((ptr = strchr(env, ',')) == NULL)
+		return;
+	if ((size_t) (ptr - env) > sizeof buf)
+		return;
+	memcpy(buf, env, ptr - env);
+	buf[ptr - env] = '\0';
+
+	ll = strtonum(ptr + 1, 0, UINT_MAX, &errstr);
+	if (errstr != NULL)
+		return;
+	sid->idx = ll;
+
+	ll = strtonum(buf, 0, LLONG_MAX, &errstr);
+	if (errstr != NULL)
+		return;
+	sid->pid = ll;
 }
 
 void

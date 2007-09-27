@@ -1,4 +1,4 @@
-/* $Id: op-list.c,v 1.3 2007-09-26 19:38:42 nicm Exp $ */
+/* $Id: op-list.c,v 1.4 2007-09-27 09:52:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,7 +63,7 @@ op_list(char *path, int argc, char **argv)
 	if (*name == '\0')
 		client_write_server(&cctx, MSG_SESSIONS, &sdata, sizeof sdata);
 	else {
-		strlcpy(wdata.name, name, sizeof wdata.name);
+		client_fill_sessid(&wdata.sid, name);
 		client_write_server(&cctx, MSG_WINDOWS, &wdata, sizeof wdata);
 	}
 

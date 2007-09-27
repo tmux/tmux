@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.3 2007-09-27 09:15:58 nicm Exp $ */
+/* $Id: server-fn.c,v 1.4 2007-09-27 09:52:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,8 +19,59 @@
 #include <sys/types.h>
 
 #include <string.h>
+#include <unistd.h>
 
 #include "tmux.h"
+
+/* Find session from sessid. */
+struct session *
+server_find_sessid(struct sessid *sid, char **cause)
+{
+	struct session *s;
+	u_int		i, n;
+
+	if (*sid->name != '\0') {
+		if ((s = session_find(sid->name)) == NULL) {
+			xasprintf(cause, "session not found: %s", sid->name);
+			return (NULL);
+		}
+		return (s);
+	}
+
+	if (sid->pid != -1) {
+		if (sid->pid != getpid()) {
+			xasprintf(cause, "wrong server: %lld", sid->pid);
+			return (NULL);
+		}
+		if (sid->idx > ARRAY_LENGTH(&sessions)) {
+			xasprintf(cause, "index out of range: %u", sid->idx);
+			return (NULL);
+		}
+		if ((s = ARRAY_ITEM(&sessions, sid->idx) = NULL)) {
+			xasprintf(cause, "session doesn't exist: %u", sid->idx);
+			return (NULL);
+		}
+		return (s);
+	}
+
+	s = NULL;
+	n = 0;
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		if (ARRAY_ITEM(&sessions, i) != NULL) {
+			s = ARRAY_ITEM(&sessions, i);
+			n++;
+		}
+	}
+	if (s == NULL) {
+		xasprintf(cause, "no sessions");
+		return (NULL);
+	}
+	if (n != 1) {
+		xasprintf(cause, "multiple sessions and session not specified");
+		return (NULL);
+	}
+	return (s);		
+}
 
 /* Write command to a client. */
 void

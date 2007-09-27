@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.16 2007-09-27 09:15:58 nicm Exp $ */
+/* $Id: tmux.h,v 1.17 2007-09-27 09:52:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -285,53 +285,60 @@ struct hdr {
 	size_t		size;
 };
 
+/* Session identification. */
+struct sessid {
+	long long	pid;			/* pid from $TMUX or -1 */
+	u_int		idx;			/* index from $TMUX */
+	char		name[MAXNAMELEN];	/* empty for current */
+};
+
 struct new_data {
-	char	name[MAXNAMELEN];
-	u_int	sx;
-	u_int	sy;
+	char		name[MAXNAMELEN];
+	u_int		sx;
+	u_int		sy;
 };
 
 struct attach_data {
-	char	name[MAXNAMELEN];
-	u_int	sx;
-	u_int	sy;
+	struct sessid	sid;
+	u_int		sx;
+	u_int		sy;
 };
 
 struct sessions_data {
-	u_int	sessions;
+	u_int		sessions;
 };
 
 struct sessions_entry {
-	char	name[MAXNAMELEN];
-	time_t	tim;
-	u_int	windows;
+	char		name[MAXNAMELEN];
+	time_t		tim;
+	u_int		windows;
 };
 
 struct windows_data {
-	char	name[MAXNAMELEN];
-	u_int	windows;
+	struct sessid	sid;
+	u_int		windows;
 };
 
 struct windows_entry {
-	u_int	idx;
-	char	tty[TTY_NAME_MAX];
+	u_int		idx;
+	char		tty[TTY_NAME_MAX];
 
-	char	name[MAXNAMELEN];
-	char	title[MAXTITLELEN];
+	char		name[MAXNAMELEN];
+	char		title[MAXTITLELEN];
 };
 
 struct size_data {
-	u_int	sx;
-	u_int	sy;
+	u_int		sx;
+	u_int		sy;
 };
 
 struct select_data {
-	u_int	idx;
+	u_int		idx;
 };
 
 struct refresh_data {
-	u_int	py_upper;
-	u_int	py_lower;
+	u_int		py_upper;
+	u_int		py_lower;
 };
 
 /* Attributes. */
@@ -449,6 +456,7 @@ int	 op_list(char *, int, char **);
 int	 client_init(char *, struct client_ctx *, int);
 int	 client_main(struct client_ctx *);
 void	 client_write_server(struct client_ctx *, enum hdrtype, void *, size_t);
+void	 client_fill_sessid(struct sessid *, char [MAXNAMELEN]);
 
 /* client-msg.c */
 int	 client_msg_dispatch(struct client_ctx *, char **);
@@ -465,6 +473,7 @@ int	 server_start(char *);
 int	 server_msg_dispatch(struct client *);
 
 /* server-fn.c */
+struct session *server_find_sessid(struct sessid *, char **);
 void	 server_write_message(struct client *, const char *, ...);
 void	 server_write_client(struct client *, enum hdrtype, void *, size_t);
 void	 server_write_client2(
