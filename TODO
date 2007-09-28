@@ -42,3 +42,4 @@
 	- encode and pass to client
   split input.c into input-client.c for keys and input-server.c and for data
 - nuke '?' on getopts
+- client_flush should wait and expect an error/success response from the server
