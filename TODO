@@ -33,3 +33,12 @@
 	close window
 	kill session
 - update NOTES!!!!
+- in order to do status line, everything needs to be range checked. we can't
+  just fire stuff back to the client, since it can have a different idea of
+  window size. so, merge input and screen command parsers to do the following:
+	- parse escape sequence
+	- range check and limit it
+	- update screen
+	- encode and pass to client
+  split input.c into input-client.c for keys and input-server.c and for data
+- nuke '?' on getopts
