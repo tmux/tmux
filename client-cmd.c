@@ -1,4 +1,4 @@
-/* $Id: client-cmd.c,v 1.4 2007-09-27 09:15:58 nicm Exp $ */
+/* $Id: client-cmd.c,v 1.5 2007-09-28 21:41:52 mxey Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,8 +53,6 @@ struct cmd client_cmd_table[] = {
 	{ 'p', client_cmd_fn_msg, MSG_PREVIOUS },
 	{ 'R', client_cmd_fn_msg, MSG_REFRESH },
 	{ 'r', client_cmd_fn_msg, MSG_REFRESH },
-	{ 'T', client_cmd_fn_msg, MSG_RENAME },
-	{ 't', client_cmd_fn_msg, MSG_RENAME },
 	{ 'L', client_cmd_fn_msg, MSG_LAST },
 	{ 'l', client_cmd_fn_msg, MSG_LAST },
 	{ 'W', client_cmd_fn_msg, MSG_WINDOWLIST },

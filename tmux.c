@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.16 2007-09-27 20:54:43 nicm Exp $ */
+/* $Id: tmux.c,v 1.17 2007-09-28 21:41:52 mxey Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,9 +48,7 @@ struct op op_table[] = {
 	{ "list-sessions", "ls", op_list_sessions },
 	{ "list-windows", "lsw", op_list_windows },
 	{ "new-session", "new", op_new/*_session*/ },
-//	{ "new-window", "neww", op_new_window },
-//	{ "rename-window", "rw", op_rename_window },
-//	{ "rename-session", "rs", op_rename_session },
+	{ "rename-window", NULL, op_rename },
 };
 #define NOP (sizeof op_table / sizeof op_table[0])
 

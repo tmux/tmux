@@ -1,7 +1,6 @@
 - key remapping
 - decide if TIOCPKT is necessary and either handle it or remove the code
 - it would be nice if there wasn't so much copying buffers about, audit uses
-- window names
 - status bar
 - useful env vars like WINDOW
 - lots of scripting love: add, remove, move around windows, status bar
@@ -25,7 +24,7 @@
 	i : show window info (show name, title, size, tty, ...)
 	meta-meta : pass through meta (will need this...)
 - commands to add:
-	rename window/sessions
+    rename sessions
 	swap windows
 	link/copy windows
 	detach session

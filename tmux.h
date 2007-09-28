@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.19 2007-09-28 19:04:21 nicm Exp $ */
+/* $Id: tmux.h,v 1.20 2007-09-28 21:41:52 mxey Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -341,6 +341,12 @@ struct refresh_data {
 	u_int		py_lower;
 };
 
+struct rename_data {
+	int		idx;
+	struct sessid	sid;
+	char		newname[MAXNAMELEN];
+};
+
 /* Attributes. */
 #define ATTR_BRIGHT 0x1
 #define ATTR_DIM 0x2
@@ -448,6 +454,7 @@ void		 sigreset(void);
 /* op.c */
 int	 op_new(char *, int, char **);
 int	 op_attach(char *, int, char **);
+int	 op_rename(char *, int, char **);
 
 /* op-list.c */
 int	 op_list_sessions(char *, int, char **);

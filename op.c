@@ -1,4 +1,4 @@
-/* $Id: op.c,v 1.6 2007-09-27 09:52:03 nicm Exp $ */
+/* $Id: op.c,v 1.7 2007-09-28 21:41:52 mxey Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -101,3 +102,54 @@ op_attach(char *path, int argc, char **argv)
 	return (client_main(&cctx));
 }
 
+int
+op_rename(char *path, int argc, char **argv)
+{
+	struct rename_data	data;	
+	struct client_ctx	cctx;
+	char			sname[MAXNAMELEN];
+	int			opt;  
+	const char	       *errstr;
+
+	*sname = '\0';
+	data.idx = -1;
+	optind = 1;
+	while ((opt = getopt(argc, argv, "i:s:?")) != EOF) {
+		switch (opt) {
+		case 's':
+			if (strlcpy(sname, optarg, sizeof sname) 
+			    >= sizeof sname) {
+				log_warnx("%s: session name too long", optarg);
+				return (1);
+			}
+			break;
+		case 'i':
+			data.idx = strtonum(optarg, 0, INT_MAX, &errstr);
+			if (errstr != NULL)
+				log_warnx("%s: window index %s", optarg, 
+				    errstr);
+				return (1);
+			break;
+		case '?':
+		default:
+			return (usage("rename [-s session] [-i index] name"));
+		}
+	}
+	argc -= optind;
+	argv += optind;
+	if (argc != 1)
+		return (usage("rename [-s session] [-i index] name"));
+
+	if (client_init(path, &cctx, 1) != 0)
+		return (1);
+
+	client_fill_sessid(&data.sid, sname);
+	if ((strlcpy(data.newname, argv[0], sizeof data.newname) 
+	    >= sizeof data.newname)) {
+		log_warnx("%s: new window name too long", argv[0]);
+		return (1);
+	}
+	client_write_server(&cctx, MSG_RENAME, &data, sizeof data);
+
+	return (client_flush(&cctx));
+}

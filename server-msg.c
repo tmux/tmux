@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.6 2007-09-28 21:08:30 nicm Exp $ */
+/* $Id: server-msg.c,v 1.7 2007-09-28 21:41:52 mxey Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -385,12 +385,38 @@ server_msg_fn_windows(struct hdr *hdr, struct client *c)
 int
 server_msg_fn_rename(struct hdr *hdr, struct client *c)
 {
-	if (c->session == NULL)
-		return (0);
-	if (hdr->size != 0)
+	struct rename_data	data;
+	char                   *cause;
+	struct window	       *w;
+	struct session	       *s;
+	
+
+	if (hdr->size != sizeof data)
 		fatalx("bad MSG_RENAME size");
 
-	fatalx("not implemented");
+	buffer_read(c->in, &data, hdr->size);
+
+	data.newname[sizeof data.newname] = '\0';
+	
+	if ((s = server_find_sessid(&data.sid, &cause)) == NULL) {
+		/* XXX: Send message to client */
+		return (0);
+	}
+
+	if (data.idx == -1) 
+		w = s->window;
+	else
+		w = window_at(&s->windows, data.idx);
+
+	if (w == NULL) {
+		/* XXX: Send message to client */
+		return (0);
+	}
+
+	strlcpy(w->name, data.newname, sizeof w->name);
+
+	return (0);
+
 }
 
 /* Last window message from client */

@@ -1,3 +1,6 @@
+28 September 2007
+ * (mxey) Added window remaming, like "tmux rename [-s session] [-i index] name"
+    
 27 September 2007
 
 * Split "tmux list" into "tmux list-sessions" (ls) and "list-windows" (lsw).
@@ -55,5 +58,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.11 2007-09-27 10:14:10 nicm Exp $
+$Id: CHANGES,v 1.12 2007-09-28 21:41:51 mxey Exp $
 
