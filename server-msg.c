@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.7 2007-09-28 21:41:52 mxey Exp $ */
+/* $Id: server-msg.c,v 1.8 2007-09-28 22:47:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -389,14 +389,13 @@ server_msg_fn_rename(struct hdr *hdr, struct client *c)
 	char                   *cause;
 	struct window	       *w;
 	struct session	       *s;
-	
 
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_RENAME size");
 
 	buffer_read(c->in, &data, hdr->size);
 
-	data.newname[sizeof data.newname] = '\0';
+	data.newname[(sizeof data.newname) - 1] = '\0';
 	
 	if ((s = server_find_sessid(&data.sid, &cause)) == NULL) {
 		/* XXX: Send message to client */

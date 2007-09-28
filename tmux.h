@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.20 2007-09-28 21:41:52 mxey Exp $ */
+/* $Id: tmux.h,v 1.21 2007-09-28 22:47:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -391,6 +391,50 @@ struct screen {
 	int		 mode;
 };
 
+/* Screen default contents. */
+#define SCREEN_DEFDATA ' '
+#define SCREEN_DEFATTR 0
+#define SCREEN_DEFCOLR 0x88
+
+/* Input parser sequence argument. */
+struct input_arg {
+	size_t		 off;
+	size_t		 len;
+};
+
+/* Input character classes. */
+enum input_class {
+	INPUT_C0CONTROL,
+	INPUT_SPACE,
+	INPUT_INTERMEDIATE,
+	INPUT_PARAMETER,
+	INPUT_UPPERCASE,
+	INPUT_LOWERCASE,
+	INPUT_DELETE,
+	INPUT_C1CONTROL,
+	INPUT_G1DISPLAYABLE,
+	INPUT_SPECIAL
+};
+
+/* Input parser context. */
+struct input_ctx {
+	u_char		*buf;
+	size_t		 len;
+	size_t		 off;
+
+	struct buffer	*b;
+	struct screen	*s;
+
+	void 		*(*state)(u_char, enum input_class, struct input_ctx *);
+
+	size_t		 intoff;
+	size_t		 intlen;
+
+	size_t		 saved;
+	u_char		 private;
+	ARRAY_DECL(, struct input_arg) args;
+};
+
 /* Window structure. */
 struct window {
 	char		 name[MAXNAMELEN];
@@ -400,6 +444,8 @@ struct window {
 	struct buffer	*out;
 
 	u_int		 references;
+
+	struct input_ctx ictx;
 
 	struct screen	 screen;
 };
@@ -492,8 +538,9 @@ void	 server_window_changed(struct client *);
 void	 server_draw_client(struct client *, u_int, u_int);
 
 /* input.c */
-void	 input_key(struct buffer *, int);
-size_t	 input_parse(u_char *, size_t, struct buffer *, struct screen *);
+void	 input_init(struct input_ctx *, struct screen *);
+void	 input_free(struct input_ctx *);
+size_t	 input_parse(struct input_ctx *, u_char *, size_t, struct buffer *);
 uint8_t  input_extract8(struct buffer *);
 uint16_t input_extract16(struct buffer *);
 void	 input_store8(struct buffer *, uint8_t);
@@ -502,12 +549,32 @@ void	 input_store_zero(struct buffer *, u_char);
 void	 input_store_one(struct buffer *, u_char, uint16_t);
 void	 input_store_two(struct buffer *, u_char, uint16_t, uint16_t);
 
+/* input-key.c */
+void	 input_translate_key(struct buffer *, int);
+
 /* screen.c */
 void	 screen_create(struct screen *, u_int, u_int);
 void	 screen_resize(struct screen *, u_int, u_int);
 void	 screen_draw(struct screen *, struct buffer *, u_int, u_int);
-void	 screen_character(struct screen *, u_char);
-void 	 screen_sequence(struct screen *, u_char *);
+void	 screen_write_character(struct screen *, u_char);
+void	 screen_insert_lines(struct screen *, u_int, u_int);
+void	 screen_delete_lines(struct screen *, u_int, u_int);
+void	 screen_insert_characters(struct screen *, u_int, u_int, u_int);
+void	 screen_delete_characters(struct screen *, u_int, u_int, u_int);
+void	 screen_cursor_up_scroll(struct screen *);
+void	 screen_cursor_down_scroll(struct screen *);
+void	 screen_scroll_region_up(struct screen *);
+void	 screen_scroll_region_down(struct screen *);
+void	 screen_scroll_up(struct screen *, u_int);
+void	 screen_scroll_down(struct screen *, u_int);
+void	 screen_fill_screen(struct screen *, u_char, u_char, u_char);
+void	 screen_fill_line(struct screen *, u_int, u_char, u_char, u_char);
+void	 screen_fill_end_of_screen(
+    	     struct screen *, u_int, u_int, u_char, u_char, u_char);
+void	 screen_fill_end_of_line(
+    	     struct screen *, u_int, u_int, u_char, u_char, u_char);
+void	 screen_fill_start_of_line(
+    	     struct screen *, u_int, u_int, u_char, u_char, u_char);
 
 /* local.c */
 int	 local_init(struct buffer **, struct buffer **);

@@ -1,5 +1,15 @@
 28 September 2007
- * (mxey) Added window remaming, like "tmux rename [-s session] [-i index] name"
+
+* (nicm) Major rewrite of input parser:
+	- Lose the old weirdness in favour of a state machine.
+	- Merge in parsing from screen.c.
+	- Split key parsing off into a separate file.
+  This is step one towards hopefully allowing a status line. It requires
+  that we output data as if the terminal had one line less than it really does -
+  a serious problem when it comes to things like scrolling. This change 
+  consolidates all the range checking and limiting together which should make
+  it easier.
+* (mxey) Added window remaming, like "tmux rename [-s session] [-i index] name"
     
 27 September 2007
 
@@ -58,5 +68,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.12 2007-09-28 21:41:51 mxey Exp $
+$Id: CHANGES,v 1.13 2007-09-28 22:47:21 nicm Exp $
 

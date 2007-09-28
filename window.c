@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.11 2007-09-27 09:15:58 nicm Exp $ */
+/* $Id: window.c,v 1.12 2007-09-28 22:47:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -102,6 +102,7 @@ window_create(const char *cmd, const char **environ, u_int sx, u_int sy)
 	w->in = buffer_create(BUFSIZ);
 	w->out = buffer_create(BUFSIZ);
 	screen_create(&w->screen, sx, sy);
+	input_init(&w->ictx, &w->screen);
 
 	name = xstrdup(cmd);
 	if ((ptr = strchr(name, ' ')) != NULL) {
@@ -174,6 +175,8 @@ void
 window_destroy(struct window *w)
 {
 	close(w->fd);
+
+	input_free(&w->ictx);
 
 	buffer_destroy(w->in);
 	buffer_destroy(w->out);
@@ -300,7 +303,7 @@ window_input(struct window *w, struct buffer *b, size_t size)
 			size -= 2;
 			key = (int16_t) input_extract16(b);
 		}
-		input_key(w->out, key);
+		input_translate_key(w->out, key);
 	}
 }
 
@@ -313,8 +316,7 @@ window_output(struct window *w, struct buffer *b)
 {
 	size_t	used;
 
-	used = input_parse(
-	    BUFFER_OUT(w->in), BUFFER_USED(w->in), b, &w->screen);
+	used = input_parse(&w->ictx, BUFFER_OUT(w->in), BUFFER_USED(w->in), b);
 	if (used != 0)
 		buffer_remove(w->in, used);
 }

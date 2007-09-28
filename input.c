@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.5 2007-09-21 19:24:37 nicm Exp $ */
+/* $Id: input.c,v 1.6 2007-09-28 22:47:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,753 +19,999 @@
 #include <sys/types.h>
 
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "tmux.h"
 
-size_t	input_sequence(
-	    u_char *, size_t, u_char *, u_char *, uint16_t **, u_int *);
-int	input_control(
-	    u_char **, size_t *, struct buffer *, struct screen *, u_char);
-int	input_pair_private(
-	    u_char **, size_t *, struct buffer *, struct screen *, u_char);
-int	input_pair_standard(
-	    u_char **, size_t *, struct buffer *, struct screen *, u_char);
-int	input_pair_control(
-	    u_char **, size_t *, struct buffer *, struct screen *, u_char);
-int	input_control_sequence(
-	    u_char **, size_t *, struct buffer *, struct screen *);
-int	input_check_one(uint16_t *, u_int, uint16_t *, uint16_t);
-int	input_check_one2(
-	    uint16_t *, u_int, uint16_t *, uint16_t, uint16_t, uint16_t);
-int	input_check_two(
-	    uint16_t *, u_int, uint16_t *, uint16_t, uint16_t *, uint16_t);
-
-struct input_key {
-	int		 key;
-	const char	*string;
+struct {
+	u_char		 first;
+	u_char		 last;
+	enum input_class class;
+} input_table[] = {
+	{ 0x00, 0x1f, INPUT_C0CONTROL },
+	{ 0x20, 0x20, INPUT_SPACE },
+	{ 0x21, 0x2F, INPUT_INTERMEDIATE },	/* also INPUT_SPACE */
+	{ 0x30, 0x3F, INPUT_PARAMETER },
+	{ 0x40, 0x5F, INPUT_UPPERCASE },
+	{ 0x60, 0x7E, INPUT_LOWERCASE },
+	{ 0x7F, 0x7F, INPUT_DELETE },
+	{ 0x80, 0x9F, INPUT_C1CONTROL },
+	{ 0xA0, 0xA0, INPUT_SPACE },
+	{ 0xA1, 0xFE, INPUT_G1DISPLAYABLE },
+	{ 0xFF, 0xFF, INPUT_SPECIAL },
 };
+#define NINPUTCLASS (sizeof input_table / sizeof input_table[0])
 
-struct input_key input_keys[] = {
-/*	{ KEYC_BACKSPACE, "\010" }, */
-	{ KEYC_DC,     "\e[3~" },
-	{ KEYC_DOWN,   "\eOB" },
-	{ KEYC_F1,     "\eOP" },
-	{ KEYC_F10,    "\e[21~" },
-	{ KEYC_F11,    "\e[23~" },
-	{ KEYC_F12,    "\e[24~" },
-	{ KEYC_F2,     "\eOQ" },
-	{ KEYC_F3,     "\eOR" },
-	{ KEYC_F4,     "\eOS" },
-	{ KEYC_F5,     "\e[15~" },
-	{ KEYC_F6,     "\e[17~" },
-	{ KEYC_F7,     "\e[18~" },
-	{ KEYC_F8,     "\e[19~" },
-	{ KEYC_F9,     "\e[20~" },
-	{ KEYC_HOME,   "\e[1~" },
-	{ KEYC_IC,     "\e[2~" },
-	{ KEYC_LEFT,   "\eOD" },
-	{ KEYC_LL,     "\e[4~" },
-	{ KEYC_NPAGE,  "\e[6~" },
-	{ KEYC_PPAGE,  "\e[5~" },
-	{ KEYC_RIGHT,  "\eOC" },
-	{ KEYC_UP,     "\eOA" }
-};
+enum input_class input_lookup_class(u_char);
+int	 input_get_argument(struct input_ctx *, u_int, uint16_t *, uint16_t);
 
-/*
- * This parses CSI escape sequences into a code and a block of uint16_t
- * arguments. buf must be the next byte after the \e[ and len the remaining
- * data.
- */
-size_t
-input_sequence(u_char *buf, size_t len,
-    u_char *code, u_char *private, uint16_t **argv, u_int *argc)
+void	*input_state_first(u_char, enum input_class, struct input_ctx *);
+void	*input_state_escape(u_char, enum input_class, struct input_ctx *);
+void	*input_state_intermediate(u_char, enum input_class, struct input_ctx *);
+void	*input_state_sequence_first(
+	     u_char, enum input_class, struct input_ctx *);
+void	*input_state_sequence_next(
+    	     u_char, enum input_class, struct input_ctx *);
+void	*input_state_sequence_intermediate(
+    	     u_char, enum input_class, struct input_ctx *);
+
+void	 input_handle_character(u_char, struct input_ctx *);
+void	 input_handle_c0_control(u_char, struct input_ctx *);
+void	 input_handle_c1_control(u_char, struct input_ctx *);
+void	 input_handle_private_two(u_char, struct input_ctx *);
+void	 input_handle_standard_two(u_char, struct input_ctx *);
+void	 input_handle_sequence(u_char, struct input_ctx *);
+
+void	 input_handle_sequence_cuu(struct input_ctx *);
+void	 input_handle_sequence_cud(struct input_ctx *);
+void	 input_handle_sequence_cuf(struct input_ctx *);
+void	 input_handle_sequence_cub(struct input_ctx *);
+void	 input_handle_sequence_dch(struct input_ctx *);
+void	 input_handle_sequence_dl(struct input_ctx *);
+void	 input_handle_sequence_ich(struct input_ctx *);
+void	 input_handle_sequence_il(struct input_ctx *);
+void	 input_handle_sequence_vpa(struct input_ctx *);
+void	 input_handle_sequence_hpa(struct input_ctx *);
+void	 input_handle_sequence_cup(struct input_ctx *);
+void	 input_handle_sequence_cup(struct input_ctx *);
+void	 input_handle_sequence_ed(struct input_ctx *);
+void	 input_handle_sequence_el(struct input_ctx *);
+void	 input_handle_sequence_sm(struct input_ctx *);
+void	 input_handle_sequence_rm(struct input_ctx *);
+void	 input_handle_sequence_decstbm(struct input_ctx *);
+void	 input_handle_sequence_sgr(struct input_ctx *);
+
+enum input_class
+input_lookup_class(u_char ch)
 {
-	char		 ch;
-	u_char		*ptr, *saved;
-	const char	*errstr;
+	enum input_class	iclass;
+	u_int			i;
 
-	*code = 0;
+	iclass = INPUT_SPACE;
+	for (i = 0; i < NINPUTCLASS; i++) {
+		if (ch >= input_table[i].first && ch <= input_table[i].last) {
+			iclass = input_table[i].class;
+			break;
+		}
+	}
+	if (i == NINPUTCLASS)
+		fatalx("character without class");
 
-	*argc = 0;
-	*argv = NULL;
+	return (iclass);
+}
 
-	if (len == 0)
+int
+input_get_argument(struct input_ctx *ictx, u_int i, uint16_t *n, uint16_t d)
+{
+	struct input_arg	*arg;
+	char			 tmp[64];
+	const char		*errstr;
+
+	*n = d;
+	if (i >= ARRAY_LENGTH(&ictx->args))
 		return (0);
-	saved = buf;
 
-	/*
-	 * 0x3c (<) to 0x3f (?) mark private sequences when appear as the first
-	 * character.
-	 */
-	*private = '\0';
-	if (*buf >= '<' && *buf <= '?') {
-		*private = *buf;
-		buf++; len--;
-	} else if (*buf < '0' || *buf > ';')
-		goto complete;
+	arg = &ARRAY_ITEM(&ictx->args, i);
+	if (arg->len == 0)
+		return (0);
 
-	while (len > 0) {
-		/*
-		 * Every parameter substring is bytes from 0x30 (0) to 0x3a (:),
-		 * terminated by 0x3b (;). 0x3a is an internal seperator.
-		 */
+	if (arg->len > sizeof tmp - 1)
+		return (-1);
+	memcpy(tmp, ictx->buf + arg->off, arg->len);
+	tmp[arg->len] = '\0';
 
-		/* Find the end of the substring. */
-		ptr = buf;
-		while (len != 0 && *ptr >= '0' && *ptr <= '9') {
-			ptr++;
-			len--;
-		}
-		if (len == 0)
-			break;
-
-		/* An 0x3a is unsupported. */
-		if (*ptr == ':')
-			goto invalid;
-
-		/* Create a new argument. */
-		(*argc)++;
-		*argv = xrealloc(*argv, *argc, sizeof **argv);
-
-		/* Fill in argument value. */
-		errstr = NULL;
-		if (ptr == buf)
-			(*argv)[*argc - 1] = UINT16_MAX;
-		else {
-			ch = *ptr; *ptr = '\0';
-			(*argv)[*argc - 1] =
-			    strtonum(buf, 0, UINT16_MAX - 1, &errstr);
-			*ptr = ch;
-		}
-		buf = ptr;
-
-		/* If the conversion had errors, abort now. */
-		if (errstr != NULL)
-			goto invalid;
-
-		/* Break for any non-terminator. */
-		if (*buf != ';')
-			goto complete;
-		buf++; len--;
-	}
-	if (len == 0)
-		goto incomplete;
-
-complete:
-	/* Valid final characters are 0x40 (@) to 0x7e (~). */
-	if (*buf < '@' || *buf > '~')
-		goto invalid;
-
-	*code = *buf;
-	return (buf - saved + 1);
-
-invalid:
-	if (*argv != NULL) {
-		xfree(*argv);
-		*argv = NULL;
-	}
-	*argc = 0;
-
-	/* Invalid. Consume until a valid terminator. */
-	while (len > 0) {
-		if (*buf >= '@' && *buf <= '~')
-			break;
-		buf++; len--;
-	}
-	if (len == 0)
-		goto incomplete;
-
-	*code = '\0';
-	return (buf - saved + 1);
-
-incomplete:
-	if (*argv != NULL) {
-		xfree(*argv);
-		*argv = NULL;
-	}
-	*argc = 0;
-
-	*code = '\0';
+	*n = strtonum(tmp, 0, UINT16_MAX, &errstr);
+	if (errstr != NULL)
+		return (-1);
 	return (0);
 }
 
-/* Translate a key code into an output key sequence. */
 void
-input_key(struct buffer *b, int key)
+input_init(struct input_ctx *ictx, struct screen *s)
 {
-	struct input_key	*ak;
-	u_int		 i;
+	ictx->s = s;
 
-	log_debug("writing key %d", key);
-	if (key != KEYC_NONE && key >= 0) {
-		input_store8(b, key);
-		return;
-	}
+	ictx->intoff = 0;
+	ictx->intlen = 0;
 
-	for (i = 0; i < (sizeof input_keys / sizeof input_keys[0]); i++) {
-		ak = input_keys + i;
-		if (ak->key == key) {
-			log_debug("found key %d: \"%s\"", key, ak->string);
-			buffer_write(b, ak->string, strlen(ak->string));
-			return;
-		}
-	}
+	ARRAY_INIT(&ictx->args);
+
+	ictx->state = input_state_first;
 }
 
-/*
- * Parse a block of data and normalise escape sequences into a \e, a single
- * character code and the correct number of arguments. This includes adding
- * missing arguments and default values, and enforcing limits. Returns the
- * number of bytes consumed. The screen is updated with the data and used
- * to fill in current cursor positions and sizes.
- */
+void
+input_free(struct input_ctx *ictx)
+{
+	ARRAY_FREE(&ictx->args);
+}
+
 size_t
-input_parse(u_char *buf, size_t len, struct buffer *b, struct screen *s)
+input_parse(struct input_ctx *ictx, u_char *buf, size_t len, struct buffer *b)
 {
-	u_char	*saved, ch;
-	size_t	 size;
-	FILE	*f;
+	enum input_class	iclass;
+	u_char			ch;
 
-	saved = buf;
+	ictx->buf = buf;
+	ictx->len = len;
+	ictx->off = 0;
 
-	if (debug_level > 1) {
-		f = fopen("tmux-in.log", "a+");
-		fwrite(buf, len, 1, f);
-		fclose(f);
+	ictx->b = b;
+
+	log_debug2("entry; buffer=%zu", ictx->len);
+
+	while (ictx->off < ictx->len) {
+		ch = ictx->buf[ictx->off++];
+		iclass = input_lookup_class(ch);
+		ictx->state = ictx->state(ch, iclass, ictx);
 	}
 
-	while (len > 0) {
-		ch = *buf++; len--;
-
-		/* Handle control characters. */
-		if (ch != '\e') {
-			if (ch < ' ') {
-				if (input_control(&buf, &len, b, s, ch) == 1) {
-					*--buf = ch;
-					break;
-				}
-			} else {
-				log_debug("character: %c (%hhu)", ch, ch);
-				screen_character(s, ch);
-				input_store8(b, ch);
-			}
-			continue;
-		}
-		if (len == 0) {
-			*--buf = '\e';
-			break;
-		}
-
-		/* Read the first character. */
-		ch = *buf++; len--;
-
-		/* Ignore delete. */
-		if (ch == '\177') {
-			if (len == 0) {
-				*--buf = '\e';
-				break;
-			}
-			ch = *buf++; len--;
-		}
-
-		/* Interpret C0 immediately. */
-		if (ch < ' ') {
-			if (input_control(&buf, &len, b, s, ch) == 1) {
-				*--buf = ch;
-				break;
-			}
-
-			if (len == 0) {
-				*--buf = '\e';
-				break;
-			}
-			ch = *buf++; len--;
-		}
-
-		/*
-		 * Save used size to work out how much to pass to
-		 * screen_sequence later.
-		 */
-		size = BUFFER_USED(b);
-
-		/* Skip until the end of intermediate strings. */
-		if (ch >= ' ' && ch <= '/') {
-			while (len != 0) {
-				if (ch >= 0x30 && ch <= 0x3f)
-					break;
-				if (ch >= 0x40 && ch <= 0x5f)
-					break;
-				ch = *buf++; len--;
-			}
-			continue;
-		}
-
-		/* Handle two-character sequences. */
-		if (ch >= '0' && ch <= '?') {
-			if (input_pair_private(&buf, &len, b, s, ch) == 1)
-				goto incomplete;
-			goto next;
-		}
-		if (ch >= '`' && ch <= '~') {
-			if (input_pair_standard(&buf, &len, b, s, ch) == 1)
-				goto incomplete;
-			goto next;
-		}
-		if (ch >= '@' && ch <= '_' && ch != '[') {
-			if (input_pair_control(&buf, &len, b, s, ch) == 1)
-				goto incomplete;
-			goto next;
-		}
-
-		/* If not CSI at this point, invalid. */
-		if (ch != '[')
-			continue;
-
-		if (input_control_sequence(&buf, &len, b, s) == 1)
-			goto incomplete;
-
-	next:
-		size = BUFFER_USED(b) - size;
-		log_debug("output is %zu bytes", size);
-		if (size > 0) /* XXX only one command? */
-			screen_sequence(s, BUFFER_IN(b) - size);
-		log_debug("remaining data %zu bytes", len);
-	}
-
-	return (buf - saved);
-
-incomplete:
-	*--buf = ch;
-	*--buf = '\e';
-	return (buf - saved);
+	return (ictx->len);
 }
 
-/* Handle single control characters. */
-int
-input_control(unused u_char **buf, unused size_t *len,
-    struct buffer *b, struct screen *s, u_char ch)
+void *
+input_state_first(u_char ch, enum input_class iclass, struct input_ctx *ictx)
 {
+	log_debug2("first (%hhu); sx=%u, sy=%u, cx=%u, cy=%u",
+	    ch, ictx->s->sx, ictx->s->sy, ictx->s->cx, ictx->s->cy);
+
+	switch (iclass) {
+	case INPUT_C0CONTROL:
+		if (ch == 0x1b)
+			return (input_state_escape);
+		input_handle_c0_control(ch, ictx);
+		break;
+	case INPUT_C1CONTROL:
+		ch -= 0x40;
+		if (ch == '[')
+			return (input_state_sequence_first);
+		input_handle_c1_control(ch, ictx);
+		break;
+	case INPUT_SPACE:
+	case INPUT_INTERMEDIATE:
+	case INPUT_PARAMETER:
+	case INPUT_UPPERCASE:
+	case INPUT_LOWERCASE:
+	case INPUT_DELETE:
+	case INPUT_G1DISPLAYABLE:
+	case INPUT_SPECIAL:
+		input_handle_character(ch, ictx);
+		break;
+	}
+	return (input_state_first);
+}
+
+void *
+input_state_escape(u_char ch, enum input_class iclass, struct input_ctx *ictx)
+{
+	if (iclass == INPUT_C1CONTROL || iclass == INPUT_G1DISPLAYABLE) {
+		/* Treat as 7-bit equivalent. */
+		ch &= 0x7f;
+		iclass = input_lookup_class(ch);
+	}
+
+	switch (iclass) {
+	case INPUT_C0CONTROL:
+		input_handle_c0_control(ch, ictx);
+		return (input_state_escape);
+	case INPUT_SPACE:
+	case INPUT_INTERMEDIATE:
+		ictx->intoff = ictx->off;
+		ictx->intlen = 1;
+		return (input_state_intermediate);
+	case INPUT_PARAMETER:
+		input_handle_private_two(ch, ictx);
+		break;
+	case INPUT_UPPERCASE:
+		if (ch == '[')
+			return (input_state_sequence_first);
+		input_handle_c1_control(ch, ictx);
+		break;
+	case INPUT_LOWERCASE:
+		input_handle_standard_two(ch, ictx);
+		break;
+	case INPUT_DELETE:
+	case INPUT_SPECIAL:
+	case INPUT_C1CONTROL:
+	case INPUT_G1DISPLAYABLE:
+		break;
+	}	
+	return (input_state_first);
+}
+
+void *
+input_state_intermediate(
+    u_char ch, enum input_class iclass, struct input_ctx *ictx)
+{
+	switch (iclass) {
+	case INPUT_SPACE:
+	case INPUT_INTERMEDIATE:
+		ictx->intlen++;
+		return (input_state_intermediate);
+	case INPUT_PARAMETER:
+		input_handle_private_two(ch, ictx);
+		break;
+	case INPUT_UPPERCASE:
+	case INPUT_LOWERCASE:
+		input_handle_standard_two(ch, ictx);
+		break;
+	case INPUT_C0CONTROL:
+	case INPUT_DELETE:
+	case INPUT_SPECIAL:
+	case INPUT_C1CONTROL:
+	case INPUT_G1DISPLAYABLE:
+		break;
+	}	
+	return (input_state_first);
+}
+
+void *
+input_state_sequence_first(
+    u_char ch, enum input_class iclass, struct input_ctx *ictx)
+{
+	ictx->private = '\0';
+
+	switch (iclass) {
+	case INPUT_PARAMETER:
+		if (ch >= 0x3c && ch <= 0x3f) {
+			/* Private control sequence. */
+			ictx->private = ch;
+			
+			ictx->saved = ictx->off;
+			return (input_state_sequence_next);
+		}
+		break;
+	case INPUT_C0CONTROL:
+	case INPUT_C1CONTROL:
+	case INPUT_SPACE:
+	case INPUT_INTERMEDIATE:
+	case INPUT_UPPERCASE:
+	case INPUT_LOWERCASE:
+	case INPUT_DELETE:
+	case INPUT_G1DISPLAYABLE:
+	case INPUT_SPECIAL:
+		break;
+	}		
+
+	/* Pass this character to next state directly. */
+	ictx->saved = ictx->off - 1;
+	return (input_state_sequence_next(ch, iclass, ictx));
+}
+
+void *
+input_state_sequence_next(
+    u_char ch, enum input_class iclass, struct input_ctx *ictx)
+{
+	struct input_arg	*iarg;
+
+	switch (iclass) {
+	case INPUT_SPACE:
+	case INPUT_INTERMEDIATE:
+		if (ictx->saved != ictx->off) {
+			ARRAY_EXPAND(&ictx->args, 1);
+			iarg = &ARRAY_LAST(&ictx->args);
+			iarg->off = ictx->saved;
+			iarg->len = ictx->off - ictx->saved - 1;
+		}
+		ictx->intoff = ictx->off;
+		ictx->intlen = 1;
+		return (input_state_sequence_intermediate);
+	case INPUT_PARAMETER:
+		if (ch == ';') {
+			ARRAY_EXPAND(&ictx->args, 1);
+			iarg = &ARRAY_LAST(&ictx->args);
+			iarg->off = ictx->saved;
+			iarg->len = ictx->off - ictx->saved - 1;
+
+			ictx->saved = ictx->off;
+			return (input_state_sequence_next);
+		}
+		return (input_state_sequence_next);
+	case INPUT_UPPERCASE:
+	case INPUT_LOWERCASE:
+		if (ictx->saved != ictx->off) {
+			ARRAY_EXPAND(&ictx->args, 1);
+			iarg = &ARRAY_LAST(&ictx->args);
+			iarg->off = ictx->saved;
+			iarg->len = ictx->off - ictx->saved - 1;
+		}
+		input_handle_sequence(ch, ictx);
+		break;
+	case INPUT_C0CONTROL:
+	case INPUT_C1CONTROL:
+	case INPUT_DELETE:
+	case INPUT_SPECIAL:
+	case INPUT_G1DISPLAYABLE:
+		break;
+	}	
+	return (input_state_first);
+}
+
+void *
+input_state_sequence_intermediate(
+    u_char ch, enum input_class iclass, struct input_ctx *ictx)
+{
+	switch (iclass) {
+	case INPUT_SPACE:
+	case INPUT_INTERMEDIATE:
+		ictx->intlen++;
+		return (input_state_sequence_intermediate);
+	case INPUT_UPPERCASE:
+	case INPUT_LOWERCASE:
+		input_handle_sequence(ch, ictx);
+		break;
+	case INPUT_PARAMETER:
+	case INPUT_C0CONTROL:
+	case INPUT_DELETE:
+	case INPUT_SPECIAL:
+	case INPUT_C1CONTROL:
+	case INPUT_G1DISPLAYABLE:
+		break;
+	}	
+	return (input_state_first);
+}
+
+void
+input_handle_character(u_char ch, struct input_ctx *ictx)
+{
+	log_debug2("-- ch %zu: %hhu (%c)", ictx->off, ch, ch);
+
+	screen_write_character(ictx->s, ch);
+	input_store8(ictx->b, ch);
+}
+
+void
+input_handle_c0_control(u_char ch, struct input_ctx *ictx)
+{
+	log_debug2("-- c0 %zu: %hhu", ictx->off, ch);
+
 	switch (ch) {
 	case '\0':	/* NUL */
 		break;
 	case '\n':	/* LF */
+ 		screen_cursor_down_scroll(ictx->s);
+		break;
 	case '\r':	/* CR */
+		ictx->s->cx = 0;
+		break;
 	case '\010': 	/* BS */
-		log_debug("control:   %hhu", ch);
-		screen_character(s, ch);
-		input_store8(b, ch);
+		if (ictx->s->cx > 0)
+			ictx->s->cx--;
 		break;
 	default:
-		log_debug("unknown control: %c (%hhu)", ch, ch);
-		break;
+		log_debug("unknown c0: %hhu", ch);
+		return;
 	}
-
-	return (0);
+	input_store8(ictx->b, ch);
 }
 
-/* Translate a private two-character sequence. */
-int
-input_pair_private(unused u_char **buf, unused size_t *len,
-    unused struct buffer *b, unused struct screen *s, unused u_char ch)
+void
+input_handle_c1_control(u_char ch, struct input_ctx *ictx)
 {
-	log_debug("private2:  %c (%hhu)", ch, ch);
+	log_debug2("-- c1 %zu: %hhu (%c)", ictx->off, ch, ch);
+
+	/* XXX window title */
+	switch (ch) {
+	case 'M':	/* RI */
+		screen_cursor_up_scroll(ictx->s);
+		input_store_zero(ictx->b, CODE_REVERSEINDEX);
+		break;
+	default:
+		log_debug("unknown c1: %hhu", ch);
+		break;
+	}
+}
+
+void
+input_handle_private_two(u_char ch, struct input_ctx *ictx)
+{
+	log_debug2("-- p2 %zu: %hhu (%c) (%zu, %zu)",
+	    ictx->off, ch, ch, ictx->intoff, ictx->intlen);
 
 	switch (ch) {
 	case '=':	/* DECKPAM */
-		input_store_zero(b, CODE_KKEYPADON);
+		input_store_zero(ictx->b, CODE_KKEYPADON);
 		break;
 	case '>':	/* DECKPNM*/
-		input_store_zero(b, CODE_KKEYPADOFF);
+		input_store_zero(ictx->b, CODE_KKEYPADOFF);
 		break;
 	default:
-		log_debug("unknown private2: %c (%hhu)", ch, ch);
+		log_debug("unknown p2: %hhu", ch);
 		break;
 	}
-
-	return (0);
 }
 
-/* Translate a standard two-character sequence. */
-int
-input_pair_standard(unused u_char **buf, unused size_t *len,
-    unused struct buffer *b, unused struct screen *s, u_char ch)
+void
+input_handle_standard_two(u_char ch, struct input_ctx *ictx)
 {
-	log_debug("unknown standard2: %c (%hhu)", ch, ch);
+	log_debug2("-- s2 %zu: %hhu (%c) (%zu,%zu)",
+	    ictx->off, ch, ch, ictx->intoff, ictx->intlen);
 
-	return (0);
+	log_debug("unknown s2: %hhu", ch);
 }
 
-/* Translate a control two-character sequence. */
-int
-input_pair_control(u_char **buf, size_t *len,
-    struct buffer *b, unused struct screen *s, u_char ch)
+void
+input_handle_sequence(u_char ch, struct input_ctx *ictx)
 {
-	u_char 	*ptr;
-	size_t	 size;
-
-	log_debug("control2:  %c (%hhu)", ch, ch);
-
-	switch (ch) {
-	case ']':	/* window title */
-		if (*len < 3)
-			return (1);
-		ch = *(*buf)++; (*len)--;
-
-		/*
-		 * Search MAXTITLELEN + 1 to allow space for the ;. The
-		 * \007 is also included, but space is needed for a \0 so
-		 * it doesn't need to be compensated for.
-		 */
-		size = *len > MAXTITLELEN + 1 ? MAXTITLELEN + 1 : *len;
-		if ((ptr = memchr(*buf, '\007', size)) == NULL) {
-			log_debug("title not found in %zu bytes", size);
-			if (*len >= MAXTITLELEN + 1)
-				break;
-			(*buf)--; (*len)++;
-			return (1);
+	static const struct {
+		u_char	ch;
+		void	(*fn)(struct input_ctx *);
+	} table[] = {
+		{ 'A', input_handle_sequence_cuu },
+		{ 'B', input_handle_sequence_cud },
+		{ 'C', input_handle_sequence_cuf },
+		{ 'D', input_handle_sequence_cub },
+		{ 'P', input_handle_sequence_dch },
+		{ 'M', input_handle_sequence_dl },
+		{ '@', input_handle_sequence_ich },
+		{ 'L', input_handle_sequence_il },
+		{ 'd', input_handle_sequence_vpa },
+		{ 'G', input_handle_sequence_hpa },
+		{ 'H', input_handle_sequence_cup },
+		{ 'f', input_handle_sequence_cup },
+		{ 'J', input_handle_sequence_ed },
+		{ 'K', input_handle_sequence_el },
+		{ 'h', input_handle_sequence_sm },
+		{ 'l', input_handle_sequence_rm },
+		{ 'r', input_handle_sequence_decstbm },
+		{ 'm', input_handle_sequence_sgr },
+	};
+	u_int	i;
+	struct input_arg *iarg;
+	
+	log_debug2("-- sq %zu: %hhu (%c) (%zu,%zu): %u",
+	    ictx->off, ch, ch, ictx->intoff, ictx->intlen, 
+	    ARRAY_LENGTH(&ictx->args));
+	for (i = 0; i < ARRAY_LENGTH(&ictx->args); i++) {
+		iarg = &ARRAY_ITEM(&ictx->args, i);
+		if (iarg->len > 0) {
+			log_debug("      ++ %u: (%zu) %.*s", i,
+			    iarg->len, (int) iarg->len, ictx->buf + iarg->off);
 		}
-		size = ptr - *buf;
-
-		/* A zero size means no ;, just skip the \007 and return. */
-		if (size == 0) {
-			(*buf)++; (*len)--;
-			break;
-		}
-
-		/* Set the title if appropriate. */
-		if (**buf == ';' && (ch == '0' || ch == '1')) {
-			log_debug("title found, length %zu bytes: %.*s",
-			    size - 1, (int) size - 1, *buf + 1);
-			if (size > 1) {
-				input_store_one(b, CODE_TITLE, size - 1);
-				buffer_write(b, *buf + 1, size - 1);
-			}
-		}
-
-		/* Skip the title; add one for the \007. */
-		(*buf) += size + 1;
-		(*len) -= size + 1;
-		break;
-	case 'M':	/* RI */
-		input_store_zero(b, CODE_REVERSEINDEX);
-		break;
-	default:
-		log_debug("unknown control2: %c (%hhu)", ch, ch);
-		break;
 	}
 
-	return (0);
+	/* XXX bsearch? */
+	for (i = 0; i < (sizeof table / sizeof table[0]); i++) {
+		if (table[i].ch == ch) {
+			table[i].fn(ictx);
+			ARRAY_CLEAR(&ictx->args);
+			return;
+		}
+	}
+	ARRAY_CLEAR(&ictx->args);
+
+	log_debug("unknown sq: %c (%hhu %hhu)", ch, ch, ictx->private);
 }
 
-/* Translate a control sequence. */
-int
-input_control_sequence(
-    u_char **buf, size_t *len, struct buffer *b, struct screen *s)
+void
+input_handle_sequence_cuu(struct input_ctx *ictx)
 {
-	u_char		 code, private;
-	size_t		 used;
-	uint16_t	*argv, ua, ub;
-	u_int		 argc, i;
+	uint16_t	n;
 
-	used = input_sequence(*buf, *len, &code, &private, &argv, &argc);
-	if (used == 0)		/* incomplete */
-		return (1);
+	if (ictx->private != '\0')
+		return;
 
-	(*buf) += used;
-	(*len) -= used;
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
 
-	if (code == '\0')	/* invalid */
-		return (-1);
+	if (n == 0 || n > ictx->s->cy) {
+		log_debug3("cuu: out of range: %hu", n);
+		return;
+	}
 
-	log_debug(
-	    "sequence:  %c (%hhu) [%c] [cx %u, cy %u, sx %u, sy %u]: %u", code,
-	    code, private, s->cx, s->cy, s->sx, s->sy, argc);
-	for (i = 0; i < argc; i++)
-		log_debug("\targument %u: %u", i, argv[i]);
+	ictx->s->cy -= n;
+	input_store_one(ictx->b, CODE_CURSORUP, n);
+}
 
-	switch (code) {
-	case 'A':	/* CUU */
-		if (private != '\0')
-			break;
-		if (input_check_one(argv, argc, &ua, 1) != 0)
-			break;
-		if (ua == 0)
-			break;
-		input_store_one(b, CODE_CURSORUP, ua);
+void
+input_handle_sequence_cud(struct input_ctx *ictx)
+{
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
+
+	if (n == 0 || n > ictx->s->sy - ictx->s->cy - 1) {
+		log_debug3("cud: out of range: %hu", n);
+		return;
+	}
+
+	ictx->s->cy += n;
+	input_store_one(ictx->b, CODE_CURSORDOWN, n);
+}
+
+void
+input_handle_sequence_cuf(struct input_ctx *ictx)
+{
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
+
+	if (n == 0 || n > ictx->s->sx - ictx->s->cx - 1) {
+		log_debug3("cuf: out of range: %hu", n);
+		return;
+	}
+
+	ictx->s->cx += n;
+	input_store_one(ictx->b, CODE_CURSORRIGHT, n);
+}
+
+void
+input_handle_sequence_cub(struct input_ctx *ictx)
+{
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
+
+	if (n == 0 || n > ictx->s->cx) {
+		log_debug3("cub: out of range: %hu", n);
+		return;
+	}
+
+	ictx->s->cx -= n;
+	input_store_one(ictx->b, CODE_CURSORLEFT, n);
+}
+
+void
+input_handle_sequence_dch(struct input_ctx *ictx)
+{
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
+
+	if (n == 0 || n > ictx->s->sx - ictx->s->cx - 1) {
+		log_debug3("dch: out of range: %hu", n);
+		return;
+	}
+
+	screen_delete_characters(ictx->s, ictx->s->cx, ictx->s->cy, n);
+	input_store_one(ictx->b, CODE_DELETECHARACTER, n);
+}
+
+void
+input_handle_sequence_dl(struct input_ctx *ictx)
+{
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
+
+	if (n == 0 || n > ictx->s->sy - ictx->s->cy - 1) {
+		log_debug3("dl: out of range: %hu", n);
+		return;
+	}
+
+	screen_delete_lines(ictx->s, ictx->s->cy, n);
+	input_store_one(ictx->b, CODE_DELETELINE, n);
+}
+
+void
+input_handle_sequence_ich(struct input_ctx *ictx)
+{
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
+
+	if (n == 0 || n > ictx->s->sx - ictx->s->cx - 1) {
+		log_debug3("ich: out of range: %hu", n);
+		return;
+	}
+
+	screen_insert_characters(ictx->s, ictx->s->cx, ictx->s->cy, n);
+	input_store_one(ictx->b, CODE_INSERTCHARACTER, n);
+}
+
+void
+input_handle_sequence_il(struct input_ctx *ictx)
+{
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
+
+	if (n == 0 || n > ictx->s->sy - ictx->s->cy - 1) {
+		log_debug3("il: out of range: %hu", n);
+		return;
+	}
+
+	screen_insert_lines(ictx->s, ictx->s->cy, n);
+	input_store_one(ictx->b, CODE_INSERTLINE, n);
+}
+
+void
+input_handle_sequence_vpa(struct input_ctx *ictx)
+{
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
+
+	if (n == 0 || n > ictx->s->sy) {
+		log_debug3("vpa: out of range: %hu", n);
+		return;
+	}
+
+	ictx->s->cy = n - 1;
+	input_store_two(ictx->b, CODE_CURSORMOVE, n, ictx->s->cx + 1);
+}
+
+void
+input_handle_sequence_hpa(struct input_ctx *ictx)
+{
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
+
+	if (n == 0 || n > ictx->s->sx) {
+		log_debug3("hpa: out of range: %hu", n);
+		return;
+	}
+
+	ictx->s->cx = n - 1;
+	input_store_two(ictx->b, CODE_CURSORMOVE, ictx->s->cy + 1, n);
+}
+
+void
+input_handle_sequence_cup(struct input_ctx *ictx)
+{
+	uint16_t	n, m;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 2)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
+	if (input_get_argument(ictx, 1, &m, 1) != 0)
+		return;
+
+	if (n == 0 || n > ictx->s->sy || m == 0 || m > ictx->s->sx) {
+		log_debug3("cup: out of range: %hu", n);
+		return;
+	}
+
+	ictx->s->cx = m - 1;
+	ictx->s->cy = n - 1;
+	input_store_two(ictx->b, CODE_CURSORMOVE, n, m);
+}
+
+void
+input_handle_sequence_ed(struct input_ctx *ictx)
+{
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 0) != 0)
+		return;
+
+	if (n > 2)
+		return;
+
+	switch (n) {
+	case 0:
+		screen_fill_end_of_screen(ictx->s, ictx->s->cx, ictx->s->cy,
+		    SCREEN_DEFDATA, ictx->s->attr, ictx->s->colr);
+		input_store_zero(ictx->b, CODE_CLEARENDOFSCREEN);
 		break;
-	case 'B':	/* CUD */
-		if (private != '\0')
-			break;
-		if (input_check_one(argv, argc, &ua, 1) != 0)
-			break;
-		if (ua == 0)
-			break;
-		input_store_one(b, CODE_CURSORDOWN, ua);
+	case 2:
+		screen_fill_screen(
+		    ictx->s, SCREEN_DEFDATA, ictx->s->attr, ictx->s->colr);
+		input_store_zero(ictx->b, CODE_CLEARSCREEN);
 		break;
-	case 'C':	/* CUF */
-		if (private != '\0')
-			break;
-		if (input_check_one(argv, argc, &ua, 1) != 0)
-			break;
-		if (ua == 0)
-			break;
-		input_store_one(b, CODE_CURSORRIGHT, ua);
+	}
+}
+
+void
+input_handle_sequence_el(struct input_ctx *ictx)
+{
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 0) != 0)
+		return;
+
+	if (n > 2)
+		return;
+
+	switch (n) {
+	case 0:
+		screen_fill_end_of_line(ictx->s, ictx->s->cx, ictx->s->cy,
+		    SCREEN_DEFDATA, ictx->s->attr, ictx->s->colr);
+		input_store_zero(ictx->b, CODE_CLEARENDOFLINE);
 		break;
-	case 'D':	/* CUB */
-		if (private != '\0')
-			break;
-		if (input_check_one(argv, argc, &ua, 1) != 0)
-			break;
-		if (ua == 0)
-			break;
-		input_store_one(b, CODE_CURSORLEFT, ua);
+	case 1:
+		screen_fill_start_of_line(ictx->s, ictx->s->cx, ictx->s->cy,
+		    SCREEN_DEFDATA, ictx->s->attr, ictx->s->colr);
+		input_store_zero(ictx->b, CODE_CLEARSTARTOFLINE);
 		break;
-	case 'P':	/* DCH */
-		if (private != '\0')
-			break;
-		if (input_check_one(argv, argc, &ua, 1) != 0)
-			break;
-		if (ua == 0)
-			break;
-		input_store_one(b, CODE_DELETECHARACTER, ua);
+	case 2:
+		screen_fill_line(ictx->s, ictx->s->cy,
+		    SCREEN_DEFDATA, ictx->s->attr, ictx->s->colr);
+		input_store_zero(ictx->b, CODE_CLEARLINE);
 		break;
-	case 'M':	/* DL */
-		if (private != '\0')
+	}
+}
+
+void
+input_handle_sequence_sm(struct input_ctx *ictx)
+{
+	uint16_t	n;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 0) != 0)
+		return;
+
+	if (ictx->private == '?') {
+		switch (n) {
+		case 1:		/* GATM */
+			ictx->s->mode |= MODE_KCURSOR;
+			input_store_zero(ictx->b, CODE_KCURSORON);
 			break;
-		if (input_check_one(argv, argc, &ua, 1) != 0)
+		case 25:	/* TCEM */
+			ictx->s->mode |= MODE_CURSOR;
+			input_store_zero(ictx->b, CODE_CURSORON);
 			break;
-		if (ua == 0)
-			break;
-		input_store_one(b, CODE_DELETELINE, ua);
-		break;
-	case '@':	/* ICH */
-		if (private != '\0')
-			break;
-		if (input_check_one(argv, argc, &ua, 1) != 0)
-			break;
-		if (ua == 0)
-			break;
-		input_store_one(b, CODE_INSERTCHARACTER, ua);
-		break;
-	case 'L':	/* IL */
-		if (private != '\0')
-			break;
-		if (input_check_one(argv, argc, &ua, 1) != 0)
-			break;
-		if (ua == 0)
-			break;
-		input_store_one(b, CODE_INSERTLINE, ua);
-		break;
-	case 'd':	/* VPA */
-		if (private != '\0')
-			break;
-		if (input_check_one(argv, argc, &ua, 1) != 0)
-				break;
-		if (ua == 0)
-			break;
-		input_store_two(b, CODE_CURSORMOVE, ua, s->cx + 1);
-		break;
-	case 'G':	/* HPA */
-		if (private != '\0')
-			break;
-		if (input_check_one(argv, argc, &ua, 1) != 0)
-			break;
-		if (ua == 0)
-			break;
-		input_store_two(b, CODE_CURSORMOVE, s->cy + 1, ua);
-		break;
-	case 'H':	/* CUP */
-	case 'f':	/* HVP */
-		if (private != '\0')
-			break;
-		if (input_check_two(argv, argc, &ua, 1, &ub, 1) != 0)
-			break;
-		if (ua == 0 || ub == 0)
-			break;
-		input_store_two(b, CODE_CURSORMOVE, ua, ub);
-		break;
-	case 'J':	/* ED */
-		if (private != '\0')
-			break;
-		if (input_check_one2(argv, argc, &ua, 0, 0, 2) != 0)
-			break;
-		switch (ua) {
-		case 0:
-			input_store_zero(b, CODE_CLEARENDOFSCREEN);
-			break;
-		case 2:
-			input_store_zero(b, CODE_CLEARSCREEN);
+		default:
+			log_debug("unknown SM [%hhu]: %u", ictx->private, n);
 			break;
 		}
-		break;
-	case 'K':	/* EL */
-		if (private != '\0')
+	} else {
+		switch (n) {
+		case 4:		/* IRM */
+			ictx->s->mode |= MODE_INSERT;
+			input_store_zero(ictx->b, CODE_INSERTON);
 			break;
-		if (input_check_one2(argv, argc, &ua, 0, 0, 2) != 0)
+		case 34:
+			/* Cursor high visibility not supported. */
 			break;
-		switch (ua) {
-		case 0:
-			input_store_zero(b, CODE_CLEARENDOFLINE);
-			break;
-		case 1:
-			input_store_zero(b, CODE_CLEARSTARTOFLINE);
-			break;
-		case 2:
-			input_store_zero(b, CODE_CLEARLINE);
+		default:
+			log_debug("unknown SM [%hhu]: %u", ictx->private, n);
 			break;
 		}
-		break;
-	case 'h':	/* SM */
-		if (input_check_one(argv, argc, &ua, 0) != 0)
+	}
+}
+
+void
+input_handle_sequence_rm(struct input_ctx *ictx)
+{
+	uint16_t	n;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 0) != 0)
+		return;
+
+	if (ictx->private == '?') {
+		switch (n) {
+		case 1:		/* GATM */
+			ictx->s->mode &= ~MODE_KCURSOR;
+			input_store_zero(ictx->b, CODE_KCURSOROFF);
 			break;
-		switch (private) {
-		case '?':
-			switch (ua) {
-			case 1:		/* GATM */
-				input_store_zero(b, CODE_KCURSORON);
-				break;
-			case 25:	/* TCEM */
-				input_store_zero(b, CODE_CURSORON);
-				break;
-			default:
-				log_debug("unknown SM [%d]: %u", private, ua);
+		case 25:	/* TCEM */
+			ictx->s->mode &= ~MODE_CURSOR;
+			input_store_zero(ictx->b, CODE_CURSOROFF);
+			break;
+		default:
+			log_debug("unknown RM [%hhu]: %u", ictx->private, n);
+			break;
+		}
+	} else if (ictx->private == '\0') {
+		switch (n) {
+		case 4:		/* IRM */
+			ictx->s->mode &= ~MODE_INSERT;
+			input_store_zero(ictx->b, CODE_INSERTOFF);
+			break;
+		case 34:
+			/* Cursor high visibility not supported. */
+			break;
+		default:
+			log_debug("unknown RM [%hhu]: %u", ictx->private, n);
+			break;
+		}
+	}
+}
+
+void
+input_handle_sequence_decstbm(struct input_ctx *ictx)
+{
+	uint16_t	n, m;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 2)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
+	if (input_get_argument(ictx, 1, &m, 1) != 0)
+		return;
+
+	if (n == 0 || n > ictx->s->sy - 1 || m == 0 || m > ictx->s->sx - 1) {
+		log_debug3("decstbm: out of range: %hu,%hu", m, n);
+		return;
+	}
+	if (m > n) {
+		log_debug3("decstbm: out of range: %hu,%hu", m, n);
+		return;
+	}
+
+	ictx->s->ry_upper = n - 1;
+	ictx->s->ry_lower = m - 1;
+	input_store_two(ictx->b, CODE_SCROLLREGION, n, m);
+}
+
+void
+input_handle_sequence_sgr(struct input_ctx *ictx)
+{
+	u_int		i, n;
+	uint16_t	m;
+
+	n = ARRAY_LENGTH(&ictx->args);
+
+	input_store_zero(ictx->b, CODE_ATTRIBUTES);
+	if (n == 0) {
+		ictx->s->attr = 0;
+		ictx->s->colr = SCREEN_DEFCOLR;
+		input_store16(ictx->b, 1);
+		input_store16(ictx->b, 0);
+	} else {
+		input_store16(ictx->b, n);
+		for (i = 0; i < n; i++) {
+			if (input_get_argument(ictx, i, &m, 0) != 0) {
+				/* XXX XXX partial write to client */
+				return;
 			}
-			break;
-		case '\0':
-			switch (ua) {
-			case 4:		/* IRM */
-				input_store_zero(b, CODE_INSERTON);
+			switch (m) {
+			case 0:
+			case 10:
+				ictx->s->attr = 0;
+				ictx->s->colr = SCREEN_DEFCOLR;
 				break;
+			case 1:
+				ictx->s->attr |= ATTR_BRIGHT;
+				break;
+			case 2:
+				ictx->s->attr |= ATTR_DIM;
+				break;
+			case 3:
+				ictx->s->attr |= ATTR_ITALICS;
+				break;
+			case 4:
+				ictx->s->attr |= ATTR_UNDERSCORE;
+				break;
+			case 5:
+				ictx->s->attr |= ATTR_BLINK;
+				break;
+			case 7:
+				ictx->s->attr |= ATTR_REVERSE;
+				break;
+			case 8:
+				ictx->s->attr |= ATTR_HIDDEN;
+				break;
+			case 23:
+				ictx->s->attr &= ~ATTR_ITALICS;
+				break;
+			case 24:
+				ictx->s->attr &= ~ATTR_UNDERSCORE;
+				break;
+			case 30:
+			case 31:
+			case 32:
+			case 33:
 			case 34:
-				/* Cursor high visibility not supported. */
+			case 35:
+			case 36:
+			case 37:
+				ictx->s->colr &= 0x0f;
+				ictx->s->colr |= (m - 30) << 4;
 				break;
-			default:
-				log_debug("unknown SM [%d]: %u", private, ua);
+			case 39:
+				ictx->s->colr &= 0x0f;
+				ictx->s->colr |= 0x80;
+				break;
+			case 40:
+			case 41:
+			case 42:
+			case 43:
+			case 44:
+			case 45:
+			case 46:
+			case 47:
+				ictx->s->colr &= 0xf0;
+				ictx->s->colr |= m - 40;
+				break;
+			case 49:
+				ictx->s->colr &= 0xf0;
+				ictx->s->colr |= 0x08;
 				break;
 			}
-			break;
+			input_store16(ictx->b, m);
 		}
-		break;
-	case 'l':	/* RM */
-		if (input_check_one(argv, argc, &ua, 0) != 0)
-			break;
-		switch (private) {
-		case '?':
-			switch (ua) {
-			case 1:		/* GATM */
-				input_store_zero(b, CODE_KCURSOROFF);
-				break;
-			case 25:	/* TCEM */
-				input_store_zero(b, CODE_CURSOROFF);
-				break;
-			default:
-				log_debug("unknown RM [%d]: %u", private, ua);
-			}
-			break;
-		case '\0':
-			switch (ua) {
-			case 4:		/* IRM */
-				input_store_zero(b, CODE_INSERTOFF);
-				break;
-			case 34:
-				/* Cursor high visibility not supported. */
-				break;
-			default:
-				log_debug("unknown RM [%d]: %u", private, ua);
-				break;
-			}
-			break;
-		}
-		break;
-	case 'r':	/* DECSTBM */
-		if (private != '\0')
-			break;
-		if (input_check_two(argv, argc,
-		    &ua, s->ry_upper + 1, &ub, s->ry_lower + 1) != 0)
-			break;
-		if (ua == 0 || ub == 0 || ub < ua)
-			break;
-		input_store_two(b, CODE_SCROLLREGION, ua, ub);
-		break;
-	case 'm':	/* SGR */
-		input_store_zero(b, CODE_ATTRIBUTES);
-		if (argc == 0) {
-			input_store16(b, 1);
-			input_store16(b, 0);
-		} else {
-			input_store16(b, argc);
-			for (i = 0; i < argc; i++) {
-				if (argv[i] == UINT16_MAX)
-					argv[i] = 0;
-				input_store16(b, argv[i]);
-			}
-		}
-		break;
-	default:
-		log_debug("unknown sequence: %c (%hhu)", code, code);
-		break;
 	}
-
-	if (argv != NULL) {
-		xfree(argv);
-		argv = NULL;
-	}
-
-	return (0);
 }
 
-/* Check for one argument. */
-int
-input_check_one(uint16_t *argv, u_int argc, uint16_t *a, uint16_t ad)
-{
-	*a = ad;
-	if (argc == 1) {
-		if (argv[0] != UINT16_MAX)
-			*a = argv[0];
-	} else if (argc != 0)
-		return (-1);
-	return (0);
-}
-
-/* Check for one argument with limits. */
-int
-input_check_one2(uint16_t *argv, u_int argc,
-    uint16_t *a, uint16_t ad, uint16_t al, uint16_t au)
-{
-	*a = ad;
-	if (argc == 1) {
-		if (argv[0] != UINT16_MAX)
-			*a = argv[0];
-	} else if (argc != 0)
-		return (-1);
-	if (*a < al || *a > au)
-		return (-1);
-	return (0);
-}
-
-/* Check for two arguments. */
-int
-input_check_two(uint16_t *argv, u_int argc,
-    uint16_t *a, uint16_t ad, uint16_t *b, uint16_t bd)
-{
-	*a = ad;
-	*b = bd;
-	if (argc == 1) {
-		if (argv[0] != UINT16_MAX)
-			*a = argv[0];
-	} else if (argc == 2) {
-		if (argv[0] != UINT16_MAX)
-			*a = argv[0];
-		if (argv[1] != UINT16_MAX)
-			*b = argv[1];
-	} else if (argc != 0)
-		return (-1);
-	return (0);
-}
-
-/* Store a code without arguments. */
 void
 input_store_zero(struct buffer *b, u_char code)
 {
@@ -773,7 +1019,6 @@ input_store_zero(struct buffer *b, u_char code)
 	input_store8(b, code);
 }
 
-/* Store a code with a single argument. */
 void
 input_store_one(struct buffer *b, u_char code, uint16_t ua)
 {
@@ -782,7 +1027,6 @@ input_store_one(struct buffer *b, u_char code, uint16_t ua)
 	input_store16(b, ua);
 }
 
-/* Store a code with two arguments. */
 void
 input_store_two(struct buffer *b, u_char code, uint16_t ua, uint16_t ub)
 {
@@ -792,21 +1036,18 @@ input_store_two(struct buffer *b, u_char code, uint16_t ua, uint16_t ub)
 	input_store16(b, ub);
 }
 
-/* Write an 8-bit quantity to a buffer. */
 void
 input_store8(struct buffer *b, uint8_t n)
 {
 	buffer_write(b, &n, sizeof n);
 }
 
-/* Write a 16-bit argument to a buffer. */
 void
 input_store16(struct buffer *b, uint16_t n)
 {
 	buffer_write(b, &n, sizeof n);
 }
 
-/* Extract an 8-bit quantity from a buffer. */
 uint8_t
 input_extract8(struct buffer *b)
 {
@@ -816,7 +1057,6 @@ input_extract8(struct buffer *b)
 	return (n);
 }
 
-/* Extract a 16-bit argument from a pointer. */
 uint16_t
 input_extract16(struct buffer *b)
 {

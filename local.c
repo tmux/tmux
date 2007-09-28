@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.7 2007-09-21 19:24:37 nicm Exp $ */
+/* $Id: local.c,v 1.8 2007-09-28 22:47:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -310,7 +310,7 @@ local_putc(int c)
 	if (c < 0 || c > (int) UCHAR_MAX)
 		fatalx("invalid character");
 
-	if (debug_level > 1) {
+	if (debug_level > 2) {
 		f = fopen("tmux-out.log", "a+");
 		fprintf(f, "%c", ch);
 		fclose(f);
@@ -416,7 +416,7 @@ local_output(struct buffer *b, size_t size)
 		switch (ch) {
 		case CODE_CURSORUP:
 			if (size < 2)
-				fatalx("underflow");
+				fatalx("CODE_CURSORUP underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_up_cursor == NULL) {
@@ -427,7 +427,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_CURSORDOWN:
 			if (size < 2)
-				fatalx("underflow");
+				fatalx("CODE_CURSORDOWN underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_down_cursor == NULL) {
@@ -438,7 +438,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_CURSORRIGHT:
 			if (size < 2)
-				fatalx("underflow");
+				fatalx("CODE_CURSORRIGHT underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_right_cursor == NULL) {
@@ -449,7 +449,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_CURSORLEFT:
 			if (size < 2)
-				fatalx("underflow");
+				fatalx("CODE_CURSORLEFT underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_left_cursor == NULL) {
@@ -460,7 +460,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_CURSORMOVE:
 			if (size < 4)
-				fatalx("underflow");
+				fatalx("CODE_CURSORMOVE underflow");
 			size -= 4;
 			ua = input_extract16(b);
 			ub = input_extract16(b);
@@ -507,7 +507,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_INSERTLINE:
 			if (size < 2)
-				fatalx("underflow");
+				fatalx("CODE_INSERTLINE underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_insert_line == NULL) {
@@ -518,7 +518,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_DELETELINE:
 			if (size < 2)
-				fatalx("underflow");
+				fatalx("CODE_DELETELINE underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_delete_line == NULL) {
@@ -529,7 +529,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_INSERTCHARACTER:
 			if (size < 2)
-				fatalx("underflow");
+				fatalx("CODE_INSERTCHARACTER underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_ich == NULL) {
@@ -540,7 +540,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_DELETECHARACTER:
 			if (size < 2)
-				fatalx("underflow");
+				fatalx("CODE_DELETECHARACTER underflow");
 			size -= 2;
 			ua = input_extract16(b);
 			if (parm_dch == NULL) {
@@ -572,7 +572,7 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_SCROLLREGION:
 			if (size < 4)
-				fatalx("underflow");
+				fatalx("CODE_SCROLLREGION underflow");
 			size -= 4;
 			ua = input_extract16(b);
 			ub = input_extract16(b);
@@ -630,18 +630,18 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_TITLE:
 			if (size < 2)
-				fatalx("underflow");
+				fatalx("CODE_TITLE underflow");
 			size -= 2;
 			ua = input_extract16(b);
 
 			if (size < ua)
-				fatalx("underflow");
+				fatalx("CODE_TITLE underflow");
 			size -= ua;
 			buffer_remove(b, ua);
 			break;
 		case CODE_ATTRIBUTES:
 			if (size < 2)
-				fatalx("underflow");
+				fatalx("CODE_ATTRIBUTES underflow");
 			size -= 2;
 			ua = input_extract16(b);
 
@@ -656,7 +656,7 @@ local_output(struct buffer *b, size_t size)
 
 			while (ua-- != 0) {
 				if (size < 2)
-					fatalx("underflow");
+					fatalx("CODE_ATTRIBUTES underflow");
 				size -= 2;
 				ub = input_extract16(b);
 
