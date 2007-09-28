@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.18 2007-09-27 10:09:37 nicm Exp $ */
+/* $Id: tmux.h,v 1.19 2007-09-28 19:04:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -455,6 +455,7 @@ int	 op_list_windows(char *, int, char **);
 
 /* client.c */
 int	 client_init(char *, struct client_ctx *, int);
+int	 client_flush(struct client_ctx *);
 int	 client_main(struct client_ctx *);
 void	 client_write_server(struct client_ctx *, enum hdrtype, void *, size_t);
 void	 client_fill_sessid(struct sessid *, char [MAXNAMELEN]);

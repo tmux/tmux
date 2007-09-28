@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.7 2007-09-27 20:53:13 nicm Exp $ */
+/* $Id: client.c,v 1.8 2007-09-28 19:04:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -120,6 +120,31 @@ retry:
 	}
 	cctx->srv_in = buffer_create(BUFSIZ);
 	cctx->srv_out = buffer_create(BUFSIZ);
+
+	return (0);
+}
+
+int
+client_flush(struct client_ctx *cctx)
+{
+	struct pollfd	 pfd;
+
+	/* XXX error response! */
+	while (BUFFER_USED(cctx->srv_out) > 0) {
+		pfd.fd = cctx->srv_fd;
+		pfd.events = POLLIN|POLLOUT;
+	
+		if (poll(&pfd, 1, INFTIM) == -1) {
+			if (errno == EAGAIN || errno == EINTR)
+				continue;
+			fatal("poll failed");
+		}
+
+		if (buffer_poll(&pfd, cctx->srv_in, cctx->srv_out) != 0) {
+			log_warnx("lost server");
+			return (1);
+		}
+	}
 
 	return (0);
 }
