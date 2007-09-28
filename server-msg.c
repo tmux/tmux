@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.5 2007-09-27 09:52:03 nicm Exp $ */
+/* $Id: server-msg.c,v 1.6 2007-09-28 21:08:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -112,6 +112,7 @@ server_msg_fn_new(struct hdr *hdr, struct client *c)
 	if (c->sy == 0)
 		c->sy = 25;
 
+	data.name[(sizeof data.name) - 1] = '\0';
 	if (*data.name != '\0' && session_find(data.name) != NULL) {
 		xasprintf(&msg, "duplicate session: %s", data.name);
 		server_write_client(c, MSG_ERROR, msg, strlen(msg));

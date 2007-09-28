@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.5 2007-09-27 10:09:37 nicm Exp $ */
+/* $Id: server-fn.c,v 1.6 2007-09-28 21:08:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,6 +31,7 @@ server_find_sessid(struct sessid *sid, char **cause)
 	u_int		i, n;
 
 	if (*sid->name != '\0') {
+		sid->name[(sizeof sid->name) - 1] = '\0';
 		if ((s = session_find(sid->name)) == NULL) {
 			xasprintf(cause, "session not found: %s", sid->name);
 			return (NULL);
