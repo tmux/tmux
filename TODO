@@ -24,7 +24,7 @@
 	i : show window info (show name, title, size, tty, ...)
 	meta-meta : pass through meta (will need this...)
 - commands to add:
-    rename sessions
+	rename sessions
 	swap windows
 	link/copy windows
 	detach session
@@ -39,6 +39,6 @@
 	- range check and limit it
 	- update screen
 	- encode and pass to client
-  split input.c into input-client.c for keys and input-server.c and for data
+  scrolling is a problem...
 - nuke '?' on getopts
 - client_flush should wait and expect an error/success response from the server
