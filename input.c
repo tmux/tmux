@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.6 2007-09-28 22:47:21 nicm Exp $ */
+/* $Id: input.c,v 1.7 2007-09-28 22:54:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,8 +19,8 @@
 #include <sys/types.h>
 
 #include <stdint.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
