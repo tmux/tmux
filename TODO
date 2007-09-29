@@ -37,3 +37,4 @@
 - const char *opusage = ... on ops rather than dup usage args
 - store_attr/colr could be two-pass and avoid reverse_add/remove games
 - window creation/idle time
+- attributes could be 8 not 16 bits
