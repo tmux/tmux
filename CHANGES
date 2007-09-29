@@ -1,3 +1,7 @@
+29 September 2007
+
+* (nicm) Pass through bell in any window to current.
+
 28 September 2007
 
 * (nicm) Major rewrite of input parser:
@@ -68,5 +72,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.13 2007-09-28 22:47:21 nicm Exp $
+$Id: CHANGES,v 1.14 2007-09-29 09:53:25 nicm Exp $
 

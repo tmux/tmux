@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.8 2007-09-28 22:47:21 nicm Exp $ */
+/* $Id: local.c,v 1.9 2007-09-29 09:53:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -392,6 +392,13 @@ local_output(struct buffer *b, size_t size)
 					break;
 				}
 				log_warnx("carriage_return not supported");
+				break;
+			case '\007':	/* BEL */
+				if (bell != NULL) {
+					local_putp(bell);
+					break;
+				}
+				log_warnx("bell not supported");
 				break;
 			case '\010':	/* BS */
 				if (cursor_left != NULL) {

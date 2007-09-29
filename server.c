@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.15 2007-09-27 09:15:58 nicm Exp $ */
+/* $Id: server.c,v 1.16 2007-09-29 09:53:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,6 +50,7 @@ void		 server_handle_windows(struct pollfd **);
 void		 server_fill_clients(struct pollfd **);
 void		 server_handle_clients(struct pollfd **);
 struct client	*server_accept_client(int);
+void		 server_handle_window(struct window *);
 void		 server_lost_client(struct client *);
 void	 	 server_lost_window(struct window *);
 
@@ -200,21 +201,13 @@ server_handle_windows(struct pollfd **pfd)
 {
 	struct window	*w;
 	u_int		 i;
-	struct buffer	*b;
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		if ((w = ARRAY_ITEM(&windows, i)) != NULL) {
 			if (window_poll(w, *pfd) != 0)
 				server_lost_window(w);
-			else {
-				b = buffer_create(BUFSIZ);
-				window_output(w, b);
-				if (BUFFER_USED(b) != 0) {
-					server_write_clients(w, MSG_OUTPUT,
-					    BUFFER_OUT(b), BUFFER_USED(b));
-				}
-				buffer_destroy(b);
-			}
+			else 
+				server_handle_window(w);
 		}
 		(*pfd)++;
 	}
@@ -310,6 +303,49 @@ server_lost_client(struct client *c)
 	buffer_destroy(c->in);
 	buffer_destroy(c->out);
 	xfree(c);
+}
+
+/* Handle window data. */
+void
+server_handle_window(struct window *w)
+{
+	struct client	*c;
+	struct session	*s;
+	struct buffer	*b;
+	u_int		 i, j, p;
+
+	b = buffer_create(BUFSIZ);
+	window_output(w, b);
+
+	if (BUFFER_USED(b) != 0) {
+		server_write_clients(
+		    w, MSG_OUTPUT, BUFFER_OUT(b), BUFFER_USED(b));
+	}
+	buffer_destroy(b);
+
+	if (!(w->flags & WINDOW_BELL))
+		return;
+
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		s = ARRAY_ITEM(&sessions, i);
+		if (s == NULL)
+			continue;
+		if (window_index(&s->windows, w, &p) != 0)
+			continue;
+
+		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
+			c = ARRAY_ITEM(&clients, j);
+			if (c == NULL || c->session != s)
+				continue;
+			/*
+			  if (s->window != w)
+			  	server_write_message(c, "Bell in window %u", p);
+			*/
+			server_write_client(c, MSG_OUTPUT, "\007", 1);
+		}
+	}
+	
+	w->flags &= ~WINDOW_BELL;
 }
 
 /* Lost window: move clients on to next window. */

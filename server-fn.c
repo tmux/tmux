@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.6 2007-09-28 21:08:30 nicm Exp $ */
+/* $Id: server-fn.c,v 1.7 2007-09-29 09:53:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -76,7 +76,8 @@ server_find_sessid(struct sessid *sid, char **cause)
 
 /* Write command to a client. */
 void
-server_write_client(struct client *c, enum hdrtype type, void *buf, size_t len)
+server_write_client(
+    struct client *c, enum hdrtype type, const void *buf, size_t len)
 {
 	struct hdr	 hdr;
 
@@ -92,8 +93,8 @@ server_write_client(struct client *c, enum hdrtype type, void *buf, size_t len)
 
 /* Write command to a client with two buffers. */
 void
-server_write_client2(struct client *c,
-    enum hdrtype type, void *buf1, size_t len1, void *buf2, size_t len2)
+server_write_client2(struct client *c, enum hdrtype type,
+    const void *buf1, size_t len1, const void *buf2, size_t len2)
 {
 	struct hdr	 hdr;
 
@@ -112,7 +113,7 @@ server_write_client2(struct client *c,
 /* Write command to all clients attached to a specific window. */
 void
 server_write_clients(
-    struct window *w, enum hdrtype type, void *buf, size_t len)
+    struct window *w, enum hdrtype type, const void *buf, size_t len)
 {
 	struct client	*c;
  	struct hdr	 hdr;
