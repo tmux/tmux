@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.10 2007-09-29 14:57:07 nicm Exp $ */
+/* $Id: server-msg.c,v 1.11 2007-09-29 19:53:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -361,14 +361,14 @@ server_msg_fn_windows(struct hdr *hdr, struct client *c)
 
 	data.windows = 0;
 	for (i = 0; i < ARRAY_LENGTH(&s->windows); i++) {
-		if (ARRAY_ITEM(&windows, i) != NULL)
+		if (ARRAY_ITEM(&s->windows, i) != NULL)
 			data.windows++;
 	}
 	server_write_client2(c, MSG_WINDOWS,
 	    &data, sizeof data, NULL, data.windows * sizeof entry);
 	
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		w = ARRAY_ITEM(&windows, i);
+	for (i = 0; i < ARRAY_LENGTH(&s->windows); i++) {
+		w = ARRAY_ITEM(&s->windows, i);
 		if (w == NULL)
 			continue;
 		entry.idx = i;
