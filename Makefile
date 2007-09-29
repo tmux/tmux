@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.7 2007-09-28 22:47:21 nicm Exp $
+# $Id: Makefile,v 1.8 2007-09-29 21:05:21 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean
@@ -63,3 +63,6 @@ depend:
 
 clean:
 		rm -f ${CLEANFILES}
+
+install:	all
+		${INSTALLBIN} ${PROG} ${DESTDIR}${PREFIX}/bin/${PROG}
