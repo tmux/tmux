@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.8 2007-09-29 09:15:49 nicm Exp $ */
+/* $Id: input.c,v 1.9 2007-09-29 09:50:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -497,7 +497,7 @@ input_handle_sequence(u_char ch, struct input_ctx *ictx)
 	for (i = 0; i < ARRAY_LENGTH(&ictx->args); i++) {
 		iarg = &ARRAY_ITEM(&ictx->args, i);
 		if (iarg->len > 0) {
-			log_debug("      ++ %u: (%zu) %.*s", i,
+			log_debug2("      ++ %u: (%zu) %.*s", i,
 			    iarg->len, (int) iarg->len, ictx->buf + iarg->off);
 		}
 	}
