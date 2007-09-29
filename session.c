@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.17 2007-09-27 09:52:03 nicm Exp $ */
+/* $Id: session.c,v 1.18 2007-09-29 21:01:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -180,6 +180,8 @@ session_next(struct session *s)
 		if (w == s->window)
 			return (1);
 	}
+	if (w == s->window)
+		return (0);
 	s->last = s->window;
 	s->window = w;
 	return (0);
@@ -200,6 +202,8 @@ session_previous(struct session *s)
 		if (w == s->window)
 			return (1);
 	}
+	if (w == s->window)
+		return (0);
 	s->last = s->window;
 	s->window = w;
 	return (0);
