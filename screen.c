@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.16 2007-09-29 18:51:26 nicm Exp $ */
+/* $Id: screen.c,v 1.17 2007-09-29 18:57:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -592,7 +592,7 @@ screen_insert_lines_region(struct screen *s, u_int py, u_int ny)
 
 	screen_free_lines(s, (s->ry_lower + 1) - ny, ny);
 
-	if (py != s->ry_upper)
+	if (py != s->ry_lower)
 		screen_move_lines(s, py + ny, py, (s->ry_lower + 1) - py - ny);
 
 	screen_make_lines(s, py, ny);
