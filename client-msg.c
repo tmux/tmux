@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.3 2007-09-26 18:50:49 nicm Exp $ */
+/* $Id: client-msg.c,v 1.4 2007-09-29 14:57:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,6 +26,7 @@
 
 int	client_msg_fn_output(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_pause(struct hdr *, struct client_ctx *, char **);
+int	client_msg_fn_done(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_exit(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_error(struct hdr *, struct client_ctx *, char **);
 
@@ -37,6 +38,7 @@ struct client_msg {
 struct client_msg client_msg_table[] = {
 	{ MSG_OUTPUT, client_msg_fn_output },
 	{ MSG_PAUSE, client_msg_fn_pause },
+	{ MSG_DONE, client_msg_fn_done },
 	{ MSG_EXIT, client_msg_fn_exit },
 	{ MSG_ERROR, client_msg_fn_error },
 };
@@ -98,6 +100,16 @@ client_msg_fn_exit(
 	if (hdr->size != 0)
 		fatalx("bad MSG_EXIT size");
 	return (-1);
+}
+
+/* Done message from server. */
+int
+client_msg_fn_done(
+    struct hdr *hdr, unused struct client_ctx *cctx, unused char **error)
+{
+	if (hdr->size != 0)
+		fatalx("bad MSG_DONE size");
+	return (0);
 }
 
 /* Error message from server. */

@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.9 2007-09-29 13:22:15 nicm Exp $ */
+/* $Id: server-msg.c,v 1.10 2007-09-29 14:57:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -128,7 +128,8 @@ server_msg_fn_new(struct hdr *hdr, struct client *c)
 	if (c->session == NULL)
 		fatalx("session_create failed");
 	xfree(cmd);
-	
+
+	server_write_client(c, MSG_DONE, NULL, 0);
 	server_draw_client(c, 0, c->sy - 1);
 
 	return (0);
