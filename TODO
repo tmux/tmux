@@ -27,7 +27,8 @@
 	rename sessions
 	swap windows
 	link/copy windows
-	detach session
+	detach session remotely
+	create window remotely
 	unlink window (... what about windows not linked to any session???)
 	close window
 	kill session
