@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.12 2007-09-29 17:45:10 nicm Exp $ */
+/* $Id: input.c,v 1.13 2007-09-29 18:48:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -203,9 +203,6 @@ input_parse(struct input_ctx *ictx, u_char *buf, size_t len, struct buffer *b)
 void *
 input_state_first(u_char ch, enum input_class iclass, struct input_ctx *ictx)
 {
-	log_debug2("first (%hhu); sx=%u, sy=%u, cx=%u, cy=%u",
-	    ch, ictx->s->sx, ictx->s->sy, ictx->s->cx, ictx->s->cy);
-
 	switch (iclass) {
 	case INPUT_C0CONTROL:
 		if (ch == 0x1b)
@@ -493,8 +490,9 @@ input_handle_sequence(u_char ch, struct input_ctx *ictx)
 	u_int	i;
 	struct input_arg *iarg;
 	
-	log_debug2("-- sq "
-	    "%zu: %hhu (%c): %u", ictx->off, ch, ch, ARRAY_LENGTH(&ictx->args));
+	log_debug2("-- sq %zu: %hhu (%c): %u [sx=%u, sy=%u, cx=%u, cy=%u]",
+	    ictx->off, ch, ch, ARRAY_LENGTH(&ictx->args),
+	    ictx->s->sx, ictx->s->sy, ictx->s->cx, ictx->s->cy);
 	for (i = 0; i < ARRAY_LENGTH(&ictx->args); i++) {
 		iarg = &ARRAY_ITEM(&ictx->args, i);
 		if (*iarg->data != '\0')
@@ -640,7 +638,10 @@ input_handle_sequence_dl(struct input_ctx *ictx)
 		return;
 	}
 
-	screen_delete_lines(ictx->s, ictx->s->cy, n);
+	if (n < ictx->s->ry_upper || n > ictx->s->ry_lower)
+		screen_delete_lines(ictx->s, ictx->s->cy, n);
+	else
+		screen_delete_lines_region(ictx->s, ictx->s->cy, n);
 	input_store_one(ictx->b, CODE_DELETELINE, n);
 }
 
@@ -683,8 +684,10 @@ input_handle_sequence_il(struct input_ctx *ictx)
 		log_debug3("il: out of range: %hu", n);
 		return;
 	}
-
-	screen_insert_lines(ictx->s, ictx->s->cy, n);
+	if (n < ictx->s->ry_upper || n > ictx->s->ry_lower)
+		screen_insert_lines(ictx->s, ictx->s->cy, n);
+	else
+		screen_insert_lines_region(ictx->s, ictx->s->cy, n);
 	input_store_one(ictx->b, CODE_INSERTLINE, n);
 }
 

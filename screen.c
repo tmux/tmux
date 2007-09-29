@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.14 2007-09-29 18:07:18 nicm Exp $ */
+/* $Id: screen.c,v 1.15 2007-09-29 18:48:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -173,7 +173,7 @@ screen_draw(struct screen *s, struct buffer *b, u_int uy, u_int ly)
 	attr = 0;
 	colr = SCREEN_DEFCOLR;
 
-	input_store_two(b, CODE_SCROLLREGION, 1, s->sy);
+	input_store_two(b, CODE_SCROLLREGION, s->ry_upper + 1, s->ry_lower + 1);
 
 	input_store_zero(b, CODE_CURSOROFF);
 
@@ -566,6 +566,40 @@ screen_insert_lines(struct screen *s, u_int py, u_int ny)
 	    s, py, ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 }
 
+/* Insert lines in region. */
+void
+screen_insert_lines_region(struct screen *s, u_int py, u_int ny)
+{
+	if (py < s->ry_upper || py > s->ry_lower)
+		return;
+	if (py + ny > s->ry_lower)
+		ny = s->ry_lower - py;
+	log_debug("inserting lines in region: %u,%u (%u,%u)", py, ny,
+	    s->ry_upper, s->ry_lower);
+
+	/*
+	 * Insert range of ny lines at py:
+	 *	- Free ny lines from end of screen.
+	 *	- Move from py to end of screen - ny to py + ny.
+	 *	- Create ny lines at py.
+	 *
+	 * Example: insert 2 lines at 4.
+	 *	ryu = 11, ryl = 16, py = 13, ny = 2
+	 *	screen_free_lines(s, 15, 2);	- delete lines 15,16
+	 *	screen_move_lines(s, 13, 15, 2);- move 13,14 to 15,16
+	 *	screen_make_lines(s, 13, 2);	- make lines 13,14
+	 */
+
+	screen_free_lines(s, (s->ry_upper + 1) - ny, ny);
+
+	if (py != s->ry_upper)
+		screen_move_lines(s, py + ny, py, (s->ry_upper + 1) - py - ny);
+
+	screen_make_lines(s, py, ny);
+	screen_fill_lines(
+	    s, py, ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
+}
+
 /* Delete lines. */
 void
 screen_delete_lines(struct screen *s, u_int py, u_int ny)
@@ -598,6 +632,40 @@ screen_delete_lines(struct screen *s, u_int py, u_int ny)
 	screen_make_lines(s, s->sy - ny, ny);
 	screen_fill_lines(
 	    s, s->sy - ny, ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
+}
+
+/* Delete lines inside scroll region. */
+void
+screen_delete_lines_region(struct screen *s, u_int py, u_int ny)
+{
+	if (py < s->ry_upper || py > s->ry_lower)
+		return;
+	if (py + ny > s->ry_lower)
+		ny = s->ry_lower - py;
+	log_debug("deleting lines in region: %u,%u (%u,%u)", py, ny,
+	    s->ry_upper, s->ry_lower);
+
+	/*
+	 * Delete range of ny lines at py:
+	 * 	- Free ny lines at py.
+	 *	- Move from py + ny to end of region to py.
+	 *	- Free and recreate last ny lines.
+	 *
+	 * Example: delete lines 13,14.
+	 *	ryu = 11, ryl = 16, py = 13, ny = 2
+	 *	screen_free_lines(s, 13, 2);	- delete lines 13,14
+	 *	screen_move_lines(s, 15, 16, 2);- move 15,16 to 13
+	 *	screen_make_lines(s, 15, 16);	- make lines 15,16
+	 */
+
+	screen_free_lines(s, py, ny);
+
+	if (py != s->ry_lower)
+		screen_move_lines(s, py, py + ny, (s->ry_lower + 1) - py - ny);
+
+	screen_make_lines(s, (s->ry_lower + 1) - ny, ny);
+	screen_fill_lines(s, (s->ry_lower + 1) - ny,
+	    ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 }
 
 /* Insert characters. */
