@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.7 2007-09-28 22:54:21 nicm Exp $ */
+/* $Id: input.c,v 1.8 2007-09-29 09:15:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -146,7 +146,17 @@ input_free(struct input_ctx *ictx)
 	ARRAY_FREE(&ictx->args);
 }
 
-size_t
+void
+input_parse1(struct screen *s, u_char *buf, size_t len, struct buffer *b)
+{
+	struct input_ctx	ictx;
+
+	input_init(&ictx, s);
+	input_parse(&ictx, buf, len, b);
+	input_free(&ictx);
+}
+
+void
 input_parse(struct input_ctx *ictx, u_char *buf, size_t len, struct buffer *b)
 {
 	enum input_class	iclass;
@@ -157,6 +167,7 @@ input_parse(struct input_ctx *ictx, u_char *buf, size_t len, struct buffer *b)
 	ictx->off = 0;
 
 	ictx->b = b;
+	ictx->flags = 0;
 
 	log_debug2("entry; buffer=%zu", ictx->len);
 
@@ -165,8 +176,6 @@ input_parse(struct input_ctx *ictx, u_char *buf, size_t len, struct buffer *b)
 		iclass = input_lookup_class(ch);
 		ictx->state = ictx->state(ch, iclass, ictx);
 	}
-
-	return (ictx->len);
 }
 
 void *
@@ -393,6 +402,9 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 		break;
 	case '\r':	/* CR */
 		ictx->s->cx = 0;
+		break;
+	case '\007':	/* BELL */
+		ictx->flags |= INPUT_BELL;
 		break;
 	case '\010': 	/* BS */
 		if (ictx->s->cx > 0)

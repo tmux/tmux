@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.12 2007-09-28 22:47:22 nicm Exp $ */
+/* $Id: window.c,v 1.13 2007-09-29 09:15:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -314,9 +314,12 @@ window_input(struct window *w, struct buffer *b, size_t size)
 void
 window_output(struct window *w, struct buffer *b)
 {
-	size_t	used;
+	if (BUFFER_USED(w->in) == 0)
+		return;
 
-	used = input_parse(&w->ictx, BUFFER_OUT(w->in), BUFFER_USED(w->in), b);
-	if (used != 0)
-		buffer_remove(w->in, used);
+	input_parse(&w->ictx, BUFFER_OUT(w->in), BUFFER_USED(w->in), b);
+	buffer_remove(w->in, BUFFER_USED(w->in));
+
+	if (INPUT_FLAGS(&w->ictx) & INPUT_BELL)
+		w->flags |= WINDOW_BELL;
 }

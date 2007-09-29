@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.21 2007-09-28 22:47:21 nicm Exp $ */
+/* $Id: tmux.h,v 1.22 2007-09-29 09:15:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -422,6 +422,9 @@ struct input_ctx {
 	size_t		 len;
 	size_t		 off;
 
+	int		 flags;
+#define INPUT_BELL 0x1
+
 	struct buffer	*b;
 	struct screen	*s;
 
@@ -435,6 +438,9 @@ struct input_ctx {
 	ARRAY_DECL(, struct input_arg) args;
 };
 
+/* Input context macros. */
+#define INPUT_FLAGS(ictx) ((ictx)->flags)
+
 /* Window structure. */
 struct window {
 	char		 name[MAXNAMELEN];
@@ -446,6 +452,9 @@ struct window {
 	u_int		 references;
 
 	struct input_ctx ictx;
+
+	int		 flags;
+#define WINDOW_BELL 0x1
 
 	struct screen	 screen;
 };
@@ -540,7 +549,8 @@ void	 server_draw_client(struct client *, u_int, u_int);
 /* input.c */
 void	 input_init(struct input_ctx *, struct screen *);
 void	 input_free(struct input_ctx *);
-size_t	 input_parse(struct input_ctx *, u_char *, size_t, struct buffer *);
+void	 input_parse1(struct screen *, u_char *, size_t, struct buffer *);
+void	 input_parse(struct input_ctx *, u_char *, size_t, struct buffer *);
 uint8_t  input_extract8(struct buffer *);
 uint16_t input_extract16(struct buffer *);
 void	 input_store8(struct buffer *, uint8_t);
