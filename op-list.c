@@ -1,4 +1,4 @@
-/* $Id: op-list.c,v 1.5 2007-09-27 10:09:37 nicm Exp $ */
+/* $Id: op-list.c,v 1.6 2007-09-29 15:06:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,7 +65,14 @@ op_list_sessions(char *path, int argc, unused char **argv)
 		if (BUFFER_USED(cctx.srv_in) < (sizeof hdr) + hdr.size)
 			continue;
 		buffer_remove(cctx.srv_in, sizeof hdr);
-		
+
+		if (hdr.type == MSG_ERROR) {
+			if (hdr.size > INT_MAX - 1)
+				fatalx("bad MSG_ERROR size");
+			log_warnx(
+			    "%.*s", (int) hdr.size, BUFFER_OUT(cctx.srv_in));
+			return (1);
+		}		
 		if (hdr.type != MSG_SESSIONS)
 			fatalx("unexpected message");
 
@@ -154,6 +161,13 @@ op_list_windows(char *path, int argc, char **argv)
 			continue;
 		buffer_remove(cctx.srv_in, sizeof hdr);
 		
+		if (hdr.type == MSG_ERROR) {
+			if (hdr.size > INT_MAX - 1)
+				fatalx("bad MSG_ERROR size");
+			log_warnx(
+			    "%.*s", (int) hdr.size, BUFFER_OUT(cctx.srv_in));
+			return (1);
+		}		
 		if (hdr.type != MSG_WINDOWS)
 			fatalx("unexpected message");
 
