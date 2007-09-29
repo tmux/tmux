@@ -31,14 +31,7 @@
 	unlink window (... what about windows not linked to any session???)
 	close window
 	kill session
-- update NOTES!!!!
-- in order to do status line, everything needs to be range checked. we can't
-  just fire stuff back to the client, since it can have a different idea of
-  window size. so, merge input and screen command parsers to do the following:
-	- parse escape sequence
-	- range check and limit it
-	- update screen
-	- encode and pass to client
-  scrolling is a problem...
+- update NOTES
 - nuke '?' on getopts
 - client_flush should wait and expect an error/success response from the server
+- store_attr/colr could be two-pass and avoid reverse_add/remove games
