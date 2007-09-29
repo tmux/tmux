@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.13 2007-09-29 09:15:49 nicm Exp $ */
+/* $Id: window.c,v 1.14 2007-09-29 14:25:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -314,8 +314,16 @@ window_input(struct window *w, struct buffer *b, size_t size)
 void
 window_output(struct window *w, struct buffer *b)
 {
+	FILE	*f;
+
 	if (BUFFER_USED(w->in) == 0)
 		return;
+
+	if (debug_level > 2) {
+		f = fopen("tmux-in.log", "a+");
+		fwrite(BUFFER_OUT(w->in), BUFFER_USED(w->in), 1, f);
+		fclose(f);
+	}
 
 	input_parse(&w->ictx, BUFFER_OUT(w->in), BUFFER_USED(w->in), b);
 	buffer_remove(w->in, BUFFER_USED(w->in));

@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.10 2007-09-29 10:57:39 nicm Exp $ */
+/* $Id: input.c,v 1.11 2007-09-29 14:25:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,6 +45,8 @@ struct {
 
 enum input_class input_lookup_class(u_char);
 int	 input_get_argument(struct input_ctx *, u_int, uint16_t *, uint16_t);
+int	 input_new_argument(struct input_ctx *);
+int	 input_add_argument(struct input_ctx *, u_char ch);
 
 void	*input_state_first(u_char, enum input_class, struct input_ctx *);
 void	*input_state_escape(u_char, enum input_class, struct input_ctx *);
@@ -102,10 +104,38 @@ input_lookup_class(u_char ch)
 }
 
 int
+input_new_argument(struct input_ctx *ictx)
+{
+	struct input_arg       *arg;
+
+	ARRAY_EXPAND(&ictx->args, 1);
+
+	arg = &ARRAY_LAST(&ictx->args);
+	arg->used = 0;
+
+	return (0);
+}
+
+int
+input_add_argument(struct input_ctx *ictx, u_char ch)
+{
+	struct input_arg       *arg;
+
+	if (ARRAY_LENGTH(&ictx->args) == 0)
+		return (0);
+
+	arg = &ARRAY_LAST(&ictx->args);
+	if (arg->used > (sizeof arg->data) - 1)
+		return (-1);
+	arg->data[arg->used++] = ch;
+
+	return (0);
+}
+
+int
 input_get_argument(struct input_ctx *ictx, u_int i, uint16_t *n, uint16_t d)
 {
 	struct input_arg	*arg;
-	char			 tmp[64];
 	const char		*errstr;
 
 	*n = d;
@@ -113,15 +143,10 @@ input_get_argument(struct input_ctx *ictx, u_int i, uint16_t *n, uint16_t d)
 		return (0);
 
 	arg = &ARRAY_ITEM(&ictx->args, i);
-	if (arg->len == 0)
+	if (*arg->data == '\0')
 		return (0);
 
-	if (arg->len > sizeof tmp - 1)
-		return (-1);
-	memcpy(tmp, ictx->buf + arg->off, arg->len);
-	tmp[arg->len] = '\0';
-
-	*n = strtonum(tmp, 0, UINT16_MAX, &errstr);
+	*n = strtonum(arg->data, 0, UINT16_MAX, &errstr);
 	if (errstr != NULL)
 		return (-1);
 	return (0);
@@ -131,9 +156,6 @@ void
 input_init(struct input_ctx *ictx, struct screen *s)
 {
 	ictx->s = s;
-
-	ictx->intoff = 0;
-	ictx->intlen = 0;
 
 	ARRAY_INIT(&ictx->args);
 
@@ -225,8 +247,6 @@ input_state_escape(u_char ch, enum input_class iclass, struct input_ctx *ictx)
 		return (input_state_escape);
 	case INPUT_SPACE:
 	case INPUT_INTERMEDIATE:
-		ictx->intoff = ictx->off;
-		ictx->intlen = 1;
 		return (input_state_intermediate);
 	case INPUT_PARAMETER:
 		input_handle_private_two(ch, ictx);
@@ -255,7 +275,6 @@ input_state_intermediate(
 	switch (iclass) {
 	case INPUT_SPACE:
 	case INPUT_INTERMEDIATE:
-		ictx->intlen++;
 		return (input_state_intermediate);
 	case INPUT_PARAMETER:
 		input_handle_private_two(ch, ictx);
@@ -279,31 +298,30 @@ input_state_sequence_first(
     u_char ch, enum input_class iclass, struct input_ctx *ictx)
 {
 	ictx->private = '\0';
+	ARRAY_CLEAR(&ictx->args);
 
 	switch (iclass) {
 	case INPUT_PARAMETER:
 		if (ch >= 0x3c && ch <= 0x3f) {
 			/* Private control sequence. */
 			ictx->private = ch;
-			
-			ictx->saved = ictx->off;
 			return (input_state_sequence_next);
 		}
+		input_new_argument(ictx);
 		break;
-	case INPUT_C0CONTROL:
-	case INPUT_C1CONTROL:
 	case INPUT_SPACE:
 	case INPUT_INTERMEDIATE:
 	case INPUT_UPPERCASE:
 	case INPUT_LOWERCASE:
+	case INPUT_C0CONTROL:
+	case INPUT_C1CONTROL:
 	case INPUT_DELETE:
 	case INPUT_G1DISPLAYABLE:
 	case INPUT_SPECIAL:
 		break;
 	}		
 
-	/* Pass this character to next state directly. */
-	ictx->saved = ictx->off - 1;
+	/* Pass character on directly. */
 	return (input_state_sequence_next(ch, iclass, ictx));
 }
 
@@ -311,39 +329,26 @@ void *
 input_state_sequence_next(
     u_char ch, enum input_class iclass, struct input_ctx *ictx)
 {
-	struct input_arg	*iarg;
-
 	switch (iclass) {
 	case INPUT_SPACE:
 	case INPUT_INTERMEDIATE:
-		if (ictx->saved != ictx->off) {
-			ARRAY_EXPAND(&ictx->args, 1);
-			iarg = &ARRAY_LAST(&ictx->args);
-			iarg->off = ictx->saved;
-			iarg->len = ictx->off - ictx->saved - 1;
-		}
-		ictx->intoff = ictx->off;
-		ictx->intlen = 1;
+		if (input_add_argument(ictx, '\0') != 0)
+			break;
 		return (input_state_sequence_intermediate);
 	case INPUT_PARAMETER:
 		if (ch == ';') {
-			ARRAY_EXPAND(&ictx->args, 1);
-			iarg = &ARRAY_LAST(&ictx->args);
-			iarg->off = ictx->saved;
-			iarg->len = ictx->off - ictx->saved - 1;
-
-			ictx->saved = ictx->off;
+			if (input_add_argument(ictx, '\0') != 0)
+				break;
+			input_new_argument(ictx);
 			return (input_state_sequence_next);
 		}
+		if (input_add_argument(ictx, ch) != 0)
+			break;
 		return (input_state_sequence_next);
 	case INPUT_UPPERCASE:
 	case INPUT_LOWERCASE:
-		if (ictx->saved != ictx->off) {
-			ARRAY_EXPAND(&ictx->args, 1);
-			iarg = &ARRAY_LAST(&ictx->args);
-			iarg->off = ictx->saved;
-			iarg->len = ictx->off - ictx->saved - 1;
-		}
+		if (input_add_argument(ictx, '\0') != 0)
+			break;
 		input_handle_sequence(ch, ictx);
 		break;
 	case INPUT_C0CONTROL:
@@ -363,7 +368,6 @@ input_state_sequence_intermediate(
 	switch (iclass) {
 	case INPUT_SPACE:
 	case INPUT_INTERMEDIATE:
-		ictx->intlen++;
 		return (input_state_sequence_intermediate);
 	case INPUT_UPPERCASE:
 	case INPUT_LOWERCASE:
@@ -437,8 +441,7 @@ input_handle_c1_control(u_char ch, struct input_ctx *ictx)
 void
 input_handle_private_two(u_char ch, struct input_ctx *ictx)
 {
-	log_debug2("-- p2 %zu: %hhu (%c) (%zu, %zu)",
-	    ictx->off, ch, ch, ictx->intoff, ictx->intlen);
+	log_debug2("-- p2 %zu: %hhu (%c)", ictx->off, ch, ch);
 
 	switch (ch) {
 	case '=':	/* DECKPAM */
@@ -456,8 +459,7 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 void
 input_handle_standard_two(u_char ch, struct input_ctx *ictx)
 {
-	log_debug2("-- s2 %zu: %hhu (%c) (%zu,%zu)",
-	    ictx->off, ch, ch, ictx->intoff, ictx->intlen);
+	log_debug2("-- s2 %zu: %hhu (%c)", ictx->off, ch, ch);
 
 	log_debug("unknown s2: %hhu", ch);
 }
@@ -491,26 +493,21 @@ input_handle_sequence(u_char ch, struct input_ctx *ictx)
 	u_int	i;
 	struct input_arg *iarg;
 	
-	log_debug2("-- sq %zu: %hhu (%c) (%zu,%zu): %u",
-	    ictx->off, ch, ch, ictx->intoff, ictx->intlen, 
-	    ARRAY_LENGTH(&ictx->args));
+	log_debug2("-- sq "
+	    "%zu: %hhu (%c): %u", ictx->off, ch, ch, ARRAY_LENGTH(&ictx->args));
 	for (i = 0; i < ARRAY_LENGTH(&ictx->args); i++) {
 		iarg = &ARRAY_ITEM(&ictx->args, i);
-		if (iarg->len > 0) {
-			log_debug2("      ++ %u: (%zu) %.*s", i,
-			    iarg->len, (int) iarg->len, ictx->buf + iarg->off);
-		}
+		if (*iarg->data != '\0')
+			log_debug2("      ++ %u: %s", i, iarg->data);
 	}
 
 	/* XXX bsearch? */
 	for (i = 0; i < (sizeof table / sizeof table[0]); i++) {
 		if (table[i].ch == ch) {
 			table[i].fn(ictx);
-			ARRAY_CLEAR(&ictx->args);
 			return;
 		}
 	}
-	ARRAY_CLEAR(&ictx->args);
 
 	log_debug("unknown sq: %c (%hhu %hhu)", ch, ch, ictx->private);
 }

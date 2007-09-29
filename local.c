@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.10 2007-09-29 10:57:39 nicm Exp $ */
+/* $Id: local.c,v 1.11 2007-09-29 14:25:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -310,11 +310,13 @@ local_putc(int c)
 	if (c < 0 || c > (int) UCHAR_MAX)
 		fatalx("invalid character");
 
+/* XXX
 	if (debug_level > 2) {
 		f = fopen("tmux-out.log", "a+");
 		fprintf(f, "%c", ch);
 		fclose(f);
 	}
+*/
 
 	buffer_write(local_out, &ch, 1);
 	return (c);

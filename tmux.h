@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.25 2007-09-29 13:22:15 nicm Exp $ */
+/* $Id: tmux.h,v 1.26 2007-09-29 14:25:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -396,11 +396,11 @@ struct screen {
 #define SCREEN_DEFDATA ' '
 #define SCREEN_DEFATTR 0
 #define SCREEN_DEFCOLR 0x88
-
+ 
 /* Input parser sequence argument. */
 struct input_arg {
-	size_t		 off;
-	size_t		 len;
+	u_char		 data[64];
+	size_t		 used;
 };
 
 /* Input character classes. */
@@ -431,10 +431,6 @@ struct input_ctx {
 
 	void 		*(*state)(u_char, enum input_class, struct input_ctx *);
 
-	size_t		 intoff;
-	size_t		 intlen;
-
-	size_t		 saved;
 	u_char		 private;
 	ARRAY_DECL(, struct input_arg) args;
 };
@@ -663,6 +659,7 @@ __dead void	 log_fatalx(const char *, ...);
 /* xmalloc.c */
 void		*ensure_size(void *, size_t *, size_t, size_t);
 void		*ensure_for(void *, size_t *, size_t, size_t);
+char		*xmemstrdup(const char *, size_t);
 char		*xstrdup(const char *);
 void		*xcalloc(size_t, size_t);
 void		*xmalloc(size_t);
