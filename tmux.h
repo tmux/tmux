@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.23 2007-09-29 09:53:25 nicm Exp $ */
+/* $Id: tmux.h,v 1.24 2007-09-29 10:57:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -238,9 +238,9 @@ struct buffer {
 #define CODE_INSERTLINE 6
 #define CODE_DELETELINE 7
 #define CODE_CLEARLINE 8
-#define CODE_CLEARSCREEN 9
+/* 9 unused */
 #define CODE_CLEARENDOFLINE 10
-#define CODE_CLEARENDOFSCREEN 11
+/* 11 unused */
 #define CODE_CLEARSTARTOFLINE 12
 #define CODE_CURSORMOVE 13
 #define CODE_ATTRIBUTES 14
@@ -568,6 +568,8 @@ void	 input_translate_key(struct buffer *, int);
 void	 screen_create(struct screen *, u_int, u_int);
 void	 screen_resize(struct screen *, u_int, u_int);
 void	 screen_draw(struct screen *, struct buffer *, u_int, u_int);
+size_t	 screen_store_attributes(struct buffer *, u_char);
+size_t	 screen_store_colours(struct buffer *, u_char);
 void	 screen_write_character(struct screen *, u_char);
 void	 screen_insert_lines(struct screen *, u_int, u_int);
 void	 screen_delete_lines(struct screen *, u_int, u_int);

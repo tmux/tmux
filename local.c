@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.9 2007-09-29 09:53:25 nicm Exp $ */
+/* $Id: local.c,v 1.10 2007-09-29 10:57:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -476,20 +476,6 @@ local_output(struct buffer *b, size_t size)
 				break;
 			}
 			local_putp(tparm(cursor_address, ua - 1, ub - 1));
-			break;
-		case CODE_CLEARENDOFSCREEN:
-			if (clr_eos == NULL) {
-				log_warnx("clr_eos not supported");
-				break;
-			}
-			local_putp(clr_eos);
-			break;
-		case CODE_CLEARSCREEN:
-			if (clear_screen == NULL) {
-				log_warnx("clear_screen not supported");
-				break;
-			}
-			local_putp(clear_screen);
 			break;
 		case CODE_CLEARENDOFLINE:
 			if (clr_eol == NULL) {

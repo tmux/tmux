@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.9 2007-09-29 09:50:59 nicm Exp $ */
+/* $Id: input.c,v 1.10 2007-09-29 10:57:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -764,6 +764,7 @@ void
 input_handle_sequence_ed(struct input_ctx *ictx)
 {
 	uint16_t	n;
+	u_int		i;
 
 	if (ictx->private != '\0')
 		return;
@@ -780,12 +781,21 @@ input_handle_sequence_ed(struct input_ctx *ictx)
 	case 0:
 		screen_fill_end_of_screen(ictx->s, ictx->s->cx, ictx->s->cy,
 		    SCREEN_DEFDATA, ictx->s->attr, ictx->s->colr);
-		input_store_zero(ictx->b, CODE_CLEARENDOFSCREEN);
+		for (i = ictx->s->cy; i < ictx->s->sy; i++) {
+			input_store_zero(ictx->b, CODE_CLEARLINE);
+			input_store_two(ictx->b, CODE_CURSORMOVE, i + 1, 1);
+		}
+		input_store_two(
+		    ictx->b, CODE_CURSORMOVE, ictx->s->cy + 1, ictx->s->cx + 1);
 		break;
 	case 2:
 		screen_fill_screen(
 		    ictx->s, SCREEN_DEFDATA, ictx->s->attr, ictx->s->colr);
-		input_store_zero(ictx->b, CODE_CLEARSCREEN);
+		for (i = 0; i < ictx->s->sy; i++) {
+			input_store_two(ictx->b, CODE_CURSORMOVE, i + 1, 1);
+			input_store_zero(ictx->b, CODE_CLEARLINE);
+		}
+		input_store_two(ictx->b, CODE_CURSORMOVE, 1, 1);
 		break;
 	}
 }
@@ -920,7 +930,7 @@ input_handle_sequence_decstbm(struct input_ctx *ictx)
 	if (input_get_argument(ictx, 1, &m, 1) != 0)
 		return;
 
-	if (n == 0 || n > ictx->s->sy - 1 || m == 0 || m > ictx->s->sx - 1) {
+	if (n == 0 || n > ictx->s->sy || m == 0 || m > ictx->s->sx) {
 		log_debug3("decstbm: out of range: %hu,%hu", m, n);
 		return;
 	}

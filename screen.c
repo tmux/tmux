@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.12 2007-09-28 22:47:21 nicm Exp $ */
+/* $Id: screen.c,v 1.13 2007-09-29 10:57:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,8 +28,6 @@
  * XXX Much of this file sucks.
  */
 
-size_t	 screen_store_attributes(struct buffer *, u_char);
-size_t	 screen_store_colours(struct buffer *, u_char);
 void	 screen_free_lines(struct screen *, u_int, u_int);
 void	 screen_make_lines(struct screen *, u_int, u_int);
 void	 screen_move_lines(struct screen *, u_int, u_int, u_int);
@@ -175,6 +173,8 @@ screen_draw(struct screen *s, struct buffer *b, u_int uy, u_int ly)
 	attr = 0;
 	colr = SCREEN_DEFCOLR;
 
+	input_store_two(b, CODE_SCROLLREGION, 1, s->sy);
+
 	input_store_zero(b, CODE_CURSOROFF);
 
 	input_store_one(b, CODE_ATTRIBUTES, 0);
@@ -192,7 +192,7 @@ screen_draw(struct screen *s, struct buffer *b, u_int uy, u_int ly)
 				attr = s->grid_attr[j][i];
 				n += screen_store_attributes(b, attr);
 				if (attr == 0)
-				colr = SCREEN_DEFCOLR;
+					colr = SCREEN_DEFCOLR;
 			}
 			if (s->grid_colr[j][i] != colr) {
 				colr = s->grid_colr[j][i];
