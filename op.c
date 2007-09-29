@@ -1,4 +1,4 @@
-/* $Id: op.c,v 1.7 2007-09-28 21:41:52 mxey Exp $ */
+/* $Id: op.c,v 1.8 2007-09-29 13:22:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,7 +38,7 @@ op_new(char *path, int argc, char **argv)
 		switch (opt) {
 		case 's':
 			if (strlcpy(name, optarg, sizeof name) >= sizeof name) {
-				log_warnx("%s: session name too long", optarg);
+				log_warnx("session name too long: %s", optarg);
 				return (1);
 			}
 			break;
@@ -77,7 +77,7 @@ op_attach(char *path, int argc, char **argv)
 		switch (opt) {
 		case 's':
 			if (strlcpy(name, optarg, sizeof name) >= sizeof name) {
-				log_warnx("%s: session name too long", optarg);
+				log_warnx("session name too long: %s", optarg);
 				return (1);
 			}
 			break;
@@ -119,16 +119,17 @@ op_rename(char *path, int argc, char **argv)
 		case 's':
 			if (strlcpy(sname, optarg, sizeof sname) 
 			    >= sizeof sname) {
-				log_warnx("%s: session name too long", optarg);
+				log_warnx("session name too long: %s", optarg);
 				return (1);
 			}
 			break;
 		case 'i':
 			data.idx = strtonum(optarg, 0, INT_MAX, &errstr);
-			if (errstr != NULL)
-				log_warnx("%s: window index %s", optarg, 
-				    errstr);
+			if (errstr != NULL) {
+				log_warnx(
+				    "window index %s: %s", errstr, optarg); 
 				return (1);
+			}
 			break;
 		case '?':
 		default:
@@ -146,7 +147,7 @@ op_rename(char *path, int argc, char **argv)
 	client_fill_sessid(&data.sid, sname);
 	if ((strlcpy(data.newname, argv[0], sizeof data.newname) 
 	    >= sizeof data.newname)) {
-		log_warnx("%s: new window name too long", argv[0]);
+		log_warnx("new window name too long: %s", argv[0]);
 		return (1);
 	}
 	client_write_server(&cctx, MSG_RENAME, &data, sizeof data);

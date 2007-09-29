@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.8 2007-09-28 19:04:21 nicm Exp $ */
+/* $Id: client.c,v 1.9 2007-09-29 13:22:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -128,11 +128,13 @@ int
 client_flush(struct client_ctx *cctx)
 {
 	struct pollfd	 pfd;
+	struct hdr	 hdr;
 
-	/* XXX error response! */
-	while (BUFFER_USED(cctx->srv_out) > 0) {
+	for (;;) {
 		pfd.fd = cctx->srv_fd;
-		pfd.events = POLLIN|POLLOUT;
+		pfd.events = POLLIN;
+		if (BUFFER_USED(cctx->srv_out) > 0)
+			pfd.events |= POLLOUT;
 	
 		if (poll(&pfd, 1, INFTIM) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
@@ -144,9 +146,25 @@ client_flush(struct client_ctx *cctx)
 			log_warnx("lost server");
 			return (1);
 		}
-	}
 
-	return (0);
+		if (BUFFER_USED(cctx->srv_in) < sizeof hdr)
+			continue;
+		memcpy(&hdr, BUFFER_OUT(cctx->srv_in), sizeof hdr);
+		if (BUFFER_USED(cctx->srv_in) < (sizeof hdr) + hdr.size)
+			continue;
+		buffer_remove(cctx->srv_in, sizeof hdr);
+
+		if (hdr.type == MSG_DONE)
+			return (0);
+		if (hdr.type == MSG_ERROR) {
+			if (hdr.size > INT_MAX - 1)
+				fatalx("bad MSG_ERROR size");
+			log_warnx(
+			    "%.*s", (int) hdr.size, BUFFER_OUT(cctx->srv_in));
+			return (1);
+		}
+		fatalx("unexpected message");
+	}
 }
 
 int

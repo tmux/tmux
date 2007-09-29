@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.24 2007-09-29 10:57:39 nicm Exp $ */
+/* $Id: tmux.h,v 1.25 2007-09-29 13:22:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -261,6 +261,7 @@ struct buffer {
 enum hdrtype {
 	MSG_ATTACH,
 	MSG_CREATE,
+	MSG_DONE,
 	MSG_ERROR,
 	MSG_EXIT,
 	MSG_INPUT,
@@ -538,6 +539,7 @@ int	 server_msg_dispatch(struct client *);
 
 /* server-fn.c */
 struct session *server_find_sessid(struct sessid *, char **);
+void	 server_write_error(struct client *, const char *, ...);
 void	 server_write_message(struct client *, const char *, ...);
 void	 server_write_client(
              struct client *, enum hdrtype, const void *, size_t);

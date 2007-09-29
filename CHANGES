@@ -1,5 +1,7 @@
 29 September 2007
 
+* (nicm) Permit error messages to be passed back for transient clients like 
+  rename. Also make rename -i work.
 * (nicm) Pass through bell in any window to current.
 
 28 September 2007
@@ -72,5 +74,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.14 2007-09-29 09:53:25 nicm Exp $
+$Id: CHANGES,v 1.15 2007-09-29 13:22:15 nicm Exp $
 

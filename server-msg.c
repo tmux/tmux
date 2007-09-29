@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.8 2007-09-28 22:47:21 nicm Exp $ */
+/* $Id: server-msg.c,v 1.9 2007-09-29 13:22:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -155,7 +155,7 @@ server_msg_fn_attach(struct hdr *hdr, struct client *c)
 		c->sy = 25;
 
 	if ((c->session = server_find_sessid(&data.sid, &cause)) == NULL) {
-		server_write_client(c, MSG_ERROR, cause, strlen(cause));
+		server_write_error(c, "%s", cause);
 		xfree(cause);
 		return (0);
 	}
@@ -353,7 +353,7 @@ server_msg_fn_windows(struct hdr *hdr, struct client *c)
 	buffer_read(c->in, &data, hdr->size);
 
 	if ((s = server_find_sessid(&data.sid, &cause)) == NULL) {
-		server_write_client(c, MSG_ERROR, cause, strlen(cause));
+		server_write_error(c, "%s", cause);
 		xfree(cause);
 		return (0);
 	}
@@ -396,26 +396,28 @@ server_msg_fn_rename(struct hdr *hdr, struct client *c)
 	buffer_read(c->in, &data, hdr->size);
 
 	data.newname[(sizeof data.newname) - 1] = '\0';
-	
 	if ((s = server_find_sessid(&data.sid, &cause)) == NULL) {
-		/* XXX: Send message to client */
+		server_write_error(c, "%s", cause);
+		xfree(cause);
 		return (0);
 	}
 
-	if (data.idx == -1) 
+	if (data.idx == -1)
 		w = s->window;
-	else
+	else {
+		if (data.idx < 0)
+			fatalx("bad window index");
 		w = window_at(&s->windows, data.idx);
-
-	if (w == NULL) {
-		/* XXX: Send message to client */
-		return (0);
+		if (w == NULL) { 
+			server_write_error(c, "window not found: %d", data.idx);
+			return (0);
+		}
 	}
 
 	strlcpy(w->name, data.newname, sizeof w->name);
 
+	server_write_client(c, MSG_DONE, NULL, 0);
 	return (0);
-
 }
 
 /* Last window message from client */
