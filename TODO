@@ -34,5 +34,6 @@
 	kill session
 - update NOTES
 - nuke '?' on getopts
-- client_flush should wait and expect an error/success response from the server
+- const char *opusage = ... on ops rather than dup usage args
 - store_attr/colr could be two-pass and avoid reverse_add/remove games
+- window creation/idle time
