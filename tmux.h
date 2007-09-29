@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.26 2007-09-29 14:25:49 nicm Exp $ */
+/* $Id: tmux.h,v 1.27 2007-09-29 18:48:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -570,7 +570,9 @@ size_t	 screen_store_attributes(struct buffer *, u_char);
 size_t	 screen_store_colours(struct buffer *, u_char);
 void	 screen_write_character(struct screen *, u_char);
 void	 screen_insert_lines(struct screen *, u_int, u_int);
+void	 screen_insert_lines_region(struct screen *, u_int, u_int);
 void	 screen_delete_lines(struct screen *, u_int, u_int);
+void	 screen_delete_lines_region(struct screen *, u_int, u_int);
 void	 screen_insert_characters(struct screen *, u_int, u_int, u_int);
 void	 screen_delete_characters(struct screen *, u_int, u_int, u_int);
 void	 screen_cursor_up_scroll(struct screen *);
