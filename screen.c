@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.13 2007-09-29 10:57:39 nicm Exp $ */
+/* $Id: screen.c,v 1.14 2007-09-29 18:07:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -183,7 +183,6 @@ screen_draw(struct screen *s, struct buffer *b, u_int uy, u_int ly)
 		input_store_two(b, CODE_CURSORMOVE, j + 1, 1);
 
 		for (i = 0; i <= screen_last_x(s); i++) {
-			
 			size = BUFFER_USED(b);
 			input_store_one(b, CODE_ATTRIBUTES, 0);
 			
