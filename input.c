@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.13 2007-09-29 18:48:03 nicm Exp $ */
+/* $Id: input.c,v 1.14 2007-09-30 13:29:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -468,24 +468,24 @@ input_handle_sequence(u_char ch, struct input_ctx *ictx)
 		u_char	ch;
 		void	(*fn)(struct input_ctx *);
 	} table[] = {
+		{ '@', input_handle_sequence_ich },
 		{ 'A', input_handle_sequence_cuu },
 		{ 'B', input_handle_sequence_cud },
 		{ 'C', input_handle_sequence_cuf },
 		{ 'D', input_handle_sequence_cub },
-		{ 'P', input_handle_sequence_dch },
-		{ 'M', input_handle_sequence_dl },
-		{ '@', input_handle_sequence_ich },
-		{ 'L', input_handle_sequence_il },
-		{ 'd', input_handle_sequence_vpa },
 		{ 'G', input_handle_sequence_hpa },
 		{ 'H', input_handle_sequence_cup },
-		{ 'f', input_handle_sequence_cup },
 		{ 'J', input_handle_sequence_ed },
 		{ 'K', input_handle_sequence_el },
+		{ 'L', input_handle_sequence_il },
+		{ 'M', input_handle_sequence_dl },
+		{ 'P', input_handle_sequence_dch },
+		{ 'd', input_handle_sequence_vpa },
+		{ 'f', input_handle_sequence_cup },
 		{ 'h', input_handle_sequence_sm },
 		{ 'l', input_handle_sequence_rm },
-		{ 'r', input_handle_sequence_decstbm },
 		{ 'm', input_handle_sequence_sgr },
+		{ 'r', input_handle_sequence_decstbm },
 	};
 	u_int	i;
 	struct input_arg *iarg;
@@ -779,11 +779,12 @@ input_handle_sequence_ed(struct input_ctx *ictx)
 
 	switch (n) {
 	case 0:
-		screen_fill_end_of_screen(ictx->s, ictx->s->cx, ictx->s->cy,
+		screen_fill_end_of_screen(ictx->s, 0, ictx->s->cy,
 		    SCREEN_DEFDATA, ictx->s->attr, ictx->s->colr);
-		for (i = ictx->s->cy; i < ictx->s->sy; i++) {
-			input_store_zero(ictx->b, CODE_CLEARLINE);
+		input_store_zero(ictx->b, CODE_CLEARLINE);
+		for (i = ictx->s->cy + 1; i < ictx->s->sy; i++) {
 			input_store_two(ictx->b, CODE_CURSORMOVE, i + 1, 1);
+			input_store_zero(ictx->b, CODE_CLEARLINE);
 		}
 		input_store_two(
 		    ictx->b, CODE_CURSORMOVE, ictx->s->cy + 1, ictx->s->cx + 1);
@@ -795,7 +796,8 @@ input_handle_sequence_ed(struct input_ctx *ictx)
 			input_store_two(ictx->b, CODE_CURSORMOVE, i + 1, 1);
 			input_store_zero(ictx->b, CODE_CLEARLINE);
 		}
-		input_store_two(ictx->b, CODE_CURSORMOVE, 1, 1);
+		input_store_two(
+		    ictx->b, CODE_CURSORMOVE, ictx->s->cy + 1, ictx->s->cx + 1);
 		break;
 	}
 }
