@@ -21,7 +21,6 @@
 - figure out once and for all what is going on with backspace and del
 - deal properly with ambiguous ops... list-sessions & list-windows
 - keys to add:
-	i : show window info (show name, title, size, tty, ...)
 	meta-meta : pass through meta (will need this...)
 - commands to add:
 	rename sessions

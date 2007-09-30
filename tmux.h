@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.27 2007-09-29 18:48:54 nicm Exp $ */
+/* $Id: tmux.h,v 1.28 2007-09-30 13:02:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -276,6 +276,7 @@ enum hdrtype {
 	MSG_SELECT,
 	MSG_SESSIONS,
 	MSG_SIZE,
+	MSG_WINDOWINFO,
 	MSG_WINDOWLIST,
 	MSG_WINDOWS,
 };

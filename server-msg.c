@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.11 2007-09-29 19:53:39 nicm Exp $ */
+/* $Id: server-msg.c,v 1.12 2007-09-30 13:02:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -37,6 +37,7 @@ int	server_msg_fn_select(struct hdr *, struct client *);
 int	server_msg_fn_sessions(struct hdr *, struct client *);
 int	server_msg_fn_size(struct hdr *, struct client *);
 int	server_msg_fn_windowlist(struct hdr *, struct client *);
+int	server_msg_fn_windowinfo(struct hdr *, struct client *);
 int	server_msg_fn_windows(struct hdr *, struct client *);
 
 struct server_msg {
@@ -58,6 +59,7 @@ struct server_msg server_msg_table[] = {
 	{ MSG_SESSIONS, server_msg_fn_sessions },
 	{ MSG_SIZE, server_msg_fn_size },
 	{ MSG_WINDOWLIST, server_msg_fn_windowlist },
+	{ MSG_WINDOWINFO, server_msg_fn_windowinfo },
 	{ MSG_WINDOWS, server_msg_fn_windows },
 };
 #define NSERVERMSG (sizeof server_msg_table / sizeof server_msg_table[0])
@@ -466,6 +468,36 @@ server_msg_fn_windowlist(struct hdr *hdr, struct client *c)
 		if (off >= len)
 			break;
 	}
+
+	server_write_message(c, "%s", buf);
+	xfree(buf);
+
+	return (0);
+}
+
+/* Window info message from client */
+int
+server_msg_fn_windowinfo(struct hdr *hdr, struct client *c)
+{
+	struct window	*w;
+	char 		*buf;
+	size_t		 len;
+	u_int		 i;
+
+	if (c->session == NULL)
+		return (0);
+	if (hdr->size != 0)
+		fatalx("bad MSG_WINDOWINFO size");
+
+	len = c->sx + 1;
+	buf = xmalloc(len);
+
+	w = c->session->window;
+	window_index(&c->session->windows, w, &i);
+	xsnprintf(buf, len, "%u:%s \"%s\" (size %u,%u) (cursor %u,%u) "
+	    "(region %u,%u)", i, w->name, w->screen.title, w->screen.sx,
+	    w->screen.sy, w->screen.cx, w->screen.cy, w->screen.ry_upper,
+	    w->screen.ry_lower);
 
 	server_write_message(c, "%s", buf);
 	xfree(buf);

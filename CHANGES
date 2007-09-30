@@ -1,3 +1,7 @@
+30 September 2007
+
+* (nicm) Window info command for debugging, C-b I.
+
 29 September 2007
 
 * (nicm) Deleting/inserting lines should follow scrolling region. Fix.
@@ -76,5 +80,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.17 2007-09-29 21:10:26 nicm Exp $
+$Id: CHANGES,v 1.18 2007-09-30 13:02:14 nicm Exp $
 
