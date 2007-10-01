@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.30 2007-10-01 14:18:42 nicm Exp $ */
+/* $Id: tmux.h,v 1.31 2007-10-01 14:53:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -499,6 +499,7 @@ struct client_ctx {
 extern volatile sig_atomic_t sigwinch;
 extern volatile sig_atomic_t sigterm;
 extern int debug_level;
+extern u_int status_lines;
 int	 	 usage(const char *);
 void		 logfile(const char *);
 void		 siginit(void);
@@ -546,6 +547,9 @@ void	 server_write_clients(
     	     struct window *, enum hdrtype, const void *, size_t);
 void	 server_window_changed(struct client *);
 void	 server_draw_client(struct client *, u_int, u_int);
+
+/* status.c */
+void	 status_write(struct client *c);
 
 /* input.c */
 void	 input_init(struct input_ctx *, struct screen *);

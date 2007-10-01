@@ -1,3 +1,7 @@
+01 October 2007
+
+* (nicm) Simple uncustomisable status line with window list.
+
 30 September 2007
 
 * (nicm) Window info command for debugging, C-b I.
@@ -80,5 +84,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.18 2007-09-30 13:02:14 nicm Exp $
+$Id: CHANGES,v 1.19 2007-10-01 14:53:29 nicm Exp $
 

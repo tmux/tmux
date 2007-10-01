@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.12 2007-09-30 13:02:14 nicm Exp $ */
+/* $Id: server-msg.c,v 1.13 2007-10-01 14:53:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -114,6 +114,9 @@ server_msg_fn_new(struct hdr *hdr, struct client *c)
 	if (c->sy == 0)
 		c->sy = 25;
 
+	if (c->sy >= status_lines)
+		c->sy -= status_lines;
+
 	data.name[(sizeof data.name) - 1] = '\0';
 	if (*data.name != '\0' && session_find(data.name) != NULL) {
 		xasprintf(&msg, "duplicate session: %s", data.name);
@@ -156,6 +159,9 @@ server_msg_fn_attach(struct hdr *hdr, struct client *c)
 	c->sy = data.sy;
 	if (c->sy == 0)
 		c->sy = 25;
+
+	if (c->sy >= status_lines)
+		c->sy -= status_lines;
 
 	if ((c->session = server_find_sessid(&data.sid, &cause)) == NULL) {
 		server_write_error(c, "%s", cause);
@@ -245,6 +251,9 @@ server_msg_fn_size(struct hdr *hdr, struct client *c)
 	c->sy = data.sy;
 	if (c->sy == 0)
 		c->sy = 25;
+
+	if (c->sy >= status_lines)
+		c->sy -= status_lines;
 
 	if (window_resize(c->session->window, c->sx, c->sy) != 0)
 		server_draw_client(c, 0, c->sy - 1);

@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.9 2007-10-01 14:18:42 nicm Exp $ */
+/* $Id: server-fn.c,v 1.10 2007-10-01 14:53:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,6 +22,8 @@
 #include <unistd.h>
 
 #include "tmux.h"
+
+void	server_draw_status(struct client *);
 
 /* Find session from sessid. */
 struct session *
@@ -170,6 +172,30 @@ server_draw_client(struct client *c, u_int py_upper, u_int py_lower)
 		    BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
 	} else
 		buffer_reverse_add(c->out, sizeof hdr);
+
+	server_draw_status(c);
+}
+
+/* Draw status line. */
+void
+server_draw_status(struct client *c)
+{
+	struct hdr	hdr;
+	size_t		size;
+
+	if (status_lines == 0)
+		return;
+
+	buffer_ensure(c->out, sizeof hdr);
+	buffer_add(c->out, sizeof hdr);
+	size = BUFFER_USED(c->out);
+
+	status_write(c);
+
+	size = BUFFER_USED(c->out) - size;
+	hdr.type = MSG_OUTPUT;
+	hdr.size = size;
+	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
 }
 
 /* Send error message command to client. */
@@ -202,7 +228,7 @@ server_write_message(struct client *c, const char *fmt, ...)
 	size = BUFFER_USED(c->out);
 
 	input_store_zero(c->out, CODE_CURSOROFF);
-	input_store_two(c->out, CODE_CURSORMOVE, c->sy, 1);
+	input_store_two(c->out, CODE_CURSORMOVE, c->sy + status_lines, 1);
 	input_store_two(c->out, CODE_ATTRIBUTES, ATTR_REVERSE, 0x88);
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
@@ -225,7 +251,11 @@ server_write_message(struct client *c, const char *fmt, ...)
 	buffer_add(c->out, sizeof hdr);
 	size = BUFFER_USED(c->out);
 
-	screen_draw(&c->session->window->screen, c->out, c->sy - 1, c->sy - 1);
+	if (status_lines == 0) {
+		screen_draw(
+		    &c->session->window->screen, c->out, c->sy - 1, c->sy - 1);
+	} else
+		status_write(c);
 
 	size = BUFFER_USED(c->out) - size;
 	hdr.type = MSG_OUTPUT;

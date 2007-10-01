@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.8 2007-09-29 21:05:21 nicm Exp $
+# $Id: Makefile,v 1.9 2007-10-01 14:53:29 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean
@@ -16,7 +16,7 @@ DEBUG=
 # Command prefix. This will go when we get a configuration file...
 META?= \002 # C-b
 
-SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c \
+SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       xmalloc.c xmalloc-debug.c input.c input-keys.c screen.c window.c \
       session.c local.c log.c client.c client-msg.c client-cmd.c op.c op-list.c
 
