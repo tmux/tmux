@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.28 2007-09-30 13:02:14 nicm Exp $ */
+/* $Id: tmux.h,v 1.29 2007-10-01 14:15:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -565,6 +565,7 @@ void	 input_translate_key(struct buffer *, int);
 
 /* screen.c */
 void	 screen_create(struct screen *, u_int, u_int);
+void	 screen_destroy(struct screen *);
 void	 screen_resize(struct screen *, u_int, u_int);
 void	 screen_draw(struct screen *, struct buffer *, u_int, u_int);
 size_t	 screen_store_attributes(struct buffer *, u_char);

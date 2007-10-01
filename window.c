@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.14 2007-09-29 14:25:49 nicm Exp $ */
+/* $Id: window.c,v 1.15 2007-10-01 14:15:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -177,6 +177,8 @@ window_destroy(struct window *w)
 	close(w->fd);
 
 	input_free(&w->ictx);
+
+	screen_destroy(&w->screen);
 
 	buffer_destroy(w->in);
 	buffer_destroy(w->out);
