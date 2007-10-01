@@ -2,7 +2,7 @@ Command prefix is C-b. This can be changed by building with, for example:
 
     META='\001' make
 
-Keybindings:
+Key bindings:
     d detach
     c create new window
     n next window
@@ -24,7 +24,7 @@ Syntax is: tmux [-v] [-S path] command [flags]
     -S Set different server socket path
 
 Commands:
-    (Commands can be shortened, as long as they are unambigous)
+    (Commands can be shortened, as long as they are unambiguous)
 
     new-session [-s <session name>] [-d]
         Create new session. Attaches to new session unless -d is given.
@@ -40,6 +40,11 @@ Commands:
 
     rename-window [-s <session name>] [-i <window index>] name
         Rename window.
+
+If a session name is not given, the current session is assumed if a command
+is run from inside tmux and the TMUX environment variable is available,
+otherwise if only one exists, it is used or if multiple exist, an error is
+generated.
 
 Sessions are destroyed when no windows remain attached to them.
 
