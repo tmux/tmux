@@ -37,3 +37,5 @@
 - store_attr/colr could be two-pass and avoid reverse_add/remove games
 - window creation/idle time
 - attributes could be 8 not 16 bits
+- put title setting back
+- profile/optimise, particularly (i suspect) input.c

@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.11 2007-09-29 14:25:49 nicm Exp $ */
+/* $Id: local.c,v 1.12 2007-10-01 14:18:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -37,6 +37,7 @@
 int	local_cmp(const void *, const void *);
 int	local_putc(int);
 void	local_putp(const char *);
+void	local_attributes(u_char, u_char);
 
 /* Local key types and key codes. */
 struct local_key {
@@ -204,6 +205,8 @@ int		 local_fd;
 struct buffer	*local_in;
 struct buffer	*local_out;
 struct termios	 local_tio;
+u_char		 local_attr;
+u_char		 local_colr;
 
 /* Initialise local terminal. */
 int
@@ -260,6 +263,9 @@ local_init(struct buffer **in, struct buffer **out)
 	qsort(local_keys, sizeof local_keys /
 	    sizeof local_keys[0], sizeof local_keys[0], local_cmp);
 
+	local_attr = 0;
+	local_colr = 0x88;
+
 	return (local_fd);
 }
 
@@ -304,7 +310,7 @@ local_done(void)
 int
 local_putc(int c)
 {
-	FILE	*f;
+	/* XXX FILE	*f;*/
 	u_char	ch = c;
 
 	if (c < 0 || c > (int) UCHAR_MAX)
@@ -635,115 +641,77 @@ local_output(struct buffer *b, size_t size)
 			buffer_remove(b, ua);
 			break;
 		case CODE_ATTRIBUTES:
-			if (size < 2)
+			if (size < 4)
 				fatalx("CODE_ATTRIBUTES underflow");
-			size -= 2;
+			size -= 4;
 			ua = input_extract16(b);
+			ub = input_extract16(b);
 
-			if (exit_attribute_mode == NULL) {
-				log_warnx("exit_attribute_mode not supported");
-				break;
-			}
-			if (ua == 0) {
-				local_putp(exit_attribute_mode);
-				break;
-			}
-
-			while (ua-- != 0) {
-				if (size < 2)
-					fatalx("CODE_ATTRIBUTES underflow");
-				size -= 2;
-				ub = input_extract16(b);
-
-				switch (ub) {
-				case 0:
-				case 10:
-					if (exit_attribute_mode)
-						local_putp(exit_attribute_mode);
-					break;
-				case 1:
-					if (enter_bold_mode)
-						local_putp(enter_bold_mode);
-					break;
-				case 2:
-					if (enter_dim_mode)
-						local_putp(enter_dim_mode);
-					break;
-				case 3:
-					if (enter_standout_mode)
-						local_putp(enter_standout_mode);
-					break;
-				case 4:
-					if (enter_underline_mode)
-						local_putp(enter_underline_mode);
-					break;
-				case 5:
-					if (enter_blink_mode)
-						local_putp(enter_blink_mode);
-					break;
-				case 7:
-					if (enter_reverse_mode)
-						local_putp(enter_reverse_mode);
-					break;
-				case 8:
-					if (enter_secure_mode)
-						local_putp(enter_secure_mode);
-					break;
-				case 23:
-					if (exit_standout_mode)
-						local_putp(exit_standout_mode);
-					break;
-				case 24:
-					if (exit_underline_mode)
-						local_putp(exit_underline_mode);
-					break;
-				case 30:
-				case 31:
-				case 32:
-				case 33:
-				case 34:
-				case 35:
-				case 36:
-				case 37:
-					if (set_a_foreground == NULL)
-						break;
-					local_putp(
-					    tparm(set_a_foreground, ub - 30));
-					break;
-				case 39:
-					if (set_a_foreground == NULL)
-						break;
-					if (tigetflag("AX") == TRUE) {
-						local_putp("\e[39m");
-						break;
-					}
-					local_putp(tparm(set_a_foreground, 7));
-					break;
-				case 40:
-				case 41:
-				case 42:
-				case 43:
-				case 44:
-				case 45:
-				case 46:
-				case 47:
-					if (set_a_background == NULL)
-						break;
-					local_putp(
-					    tparm(set_a_background, ub - 40));
-					break;
-				case 49:
-					if (set_a_background == NULL)
-						break;
-					if (tigetflag("AX") == TRUE) {
-						local_putp("\e[49m");
-						break;
-					}
-					local_putp(tparm(set_a_background, 0));
-					break;
-				}
-			}
+			local_attributes(ua, ub);
 			break;
 		}
 	}
+}
+
+void
+local_attributes(u_char attr, u_char colr)
+{
+	u_char	fg, bg;
+
+	if (attr == local_attr && colr == local_colr)
+		return;
+	if (exit_attribute_mode == NULL) {
+		log_warnx("exit_attribute_mode not supported");
+		return;
+	}
+
+	/* If any bits are being cleared, reset everything. */
+	if (local_attr & ~attr) {
+		local_putp(exit_attribute_mode);
+		local_colr = 0x88;
+		local_attr = 0;
+	}
+
+	/* Filter out bits already set. */
+	attr &= ~local_attr;
+	local_attr |= attr;
+
+	if ((attr & ATTR_BRIGHT) && enter_bold_mode != NULL)
+		local_putp(enter_bold_mode);
+	if ((attr & ATTR_DIM) && enter_dim_mode != NULL)
+		local_putp(enter_dim_mode);
+	if ((attr & ATTR_ITALICS) && enter_standout_mode != NULL)
+		local_putp(enter_standout_mode);
+	if ((attr & ATTR_UNDERSCORE) && enter_underline_mode != NULL)
+		local_putp(enter_underline_mode);
+	if ((attr & ATTR_BLINK) && enter_blink_mode != NULL)
+		local_putp(enter_blink_mode);
+	if ((attr & ATTR_REVERSE) && enter_reverse_mode != NULL)
+		local_putp(enter_reverse_mode);
+	if ((attr & ATTR_HIDDEN) && enter_secure_mode != NULL)
+		local_putp(enter_secure_mode);
+
+	fg = (colr >> 4) & 0xf;
+	if (fg != ((local_colr >> 4) & 0xf)) {
+		if (fg == 8) {
+			if (tigetflag("AX") == TRUE)
+				local_putp("\e[39m");
+			else if (set_a_foreground != NULL)
+				local_putp(tparm(set_a_foreground, 7));
+		} else if (set_a_foreground != NULL)
+			local_putp(tparm(set_a_foreground, fg));
+	}
+	
+	bg = colr & 0xf;
+	if (bg != (local_colr & 0xf)) {
+		if (bg == 8) {
+			if (tigetflag("AX") == TRUE)
+				local_putp("\e[49m");
+			else if (set_a_background != NULL)
+				local_putp(tparm(set_a_background, 0));
+		} else if (set_a_background != NULL)
+			local_putp(tparm(set_a_background, bg));
+	}
+
+	local_colr = colr;
 }

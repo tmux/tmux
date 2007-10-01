@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.18 2007-10-01 14:15:48 nicm Exp $ */
+/* $Id: screen.c,v 1.19 2007-10-01 14:18:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -172,9 +172,7 @@ void
 screen_draw(struct screen *s, struct buffer *b, u_int uy, u_int ly)
 {
 	u_char		 attr, colr;
-	size_t		 size;
 	u_int		 i, j;
-	uint16_t	 n;
 
 	if (uy > screen_last_y(s) || ly > screen_last_y(s) || ly < uy)
 		fatalx("bad range");
@@ -186,110 +184,27 @@ screen_draw(struct screen *s, struct buffer *b, u_int uy, u_int ly)
 	input_store_two(b, CODE_SCROLLREGION, s->ry_upper + 1, s->ry_lower + 1);
 
 	input_store_zero(b, CODE_CURSOROFF);
-
-	input_store_one(b, CODE_ATTRIBUTES, 0);
+	input_store_two(b, CODE_ATTRIBUTES, attr, colr);
 
 	for (j = uy; j <= ly; j++) {
 		input_store_two(b, CODE_CURSORMOVE, j + 1, 1);
 
 		for (i = 0; i <= screen_last_x(s); i++) {
-			size = BUFFER_USED(b);
-			input_store_one(b, CODE_ATTRIBUTES, 0);
-			
-			n = 0;
-			if (s->grid_attr[j][i] != attr) {
+			if (s->grid_attr[j][i] != attr ||
+			    s->grid_colr[j][i] != colr) {
+				input_store_two(b, CODE_ATTRIBUTES,
+				    s->grid_attr[j][i], s->grid_colr[j][i]);
 				attr = s->grid_attr[j][i];
-				n += screen_store_attributes(b, attr);
-				if (attr == 0)
-					colr = SCREEN_DEFCOLR;
-			}
-			if (s->grid_colr[j][i] != colr) {
 				colr = s->grid_colr[j][i];
-				n += screen_store_colours(b, colr);
 			}
-			if (n == 0)
-				buffer_reverse_add(b, 4);
-			else {
-				size = BUFFER_USED(b) - size;
-				memcpy(BUFFER_IN(b) - size + 2, &n, 2);
-			}
-		
 			input_store8(b, s->grid_data[j][i]);
 		}
 	}
-
-	size = BUFFER_USED(b);
-	input_store_one(b, CODE_ATTRIBUTES, 0);
-	n = screen_store_attributes(b, s->attr);
-	n += screen_store_colours(b, s->colr);
-	size = BUFFER_USED(b) - size;
-	memcpy(BUFFER_IN(b) - size + 2, &n, 2);
-
 	input_store_two(b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
 
+	input_store_two(b, CODE_ATTRIBUTES, s->attr, s->colr);
 	if (s->mode & MODE_CURSOR)
 		input_store_zero(b, CODE_CURSORON);
-}
-
-/* Store screen atttributes in buffer. */
-size_t
-screen_store_attributes(struct buffer *b, u_char attr)
-{
-	size_t	n;
-
-	if (attr == 0) {
-		input_store16(b, 0);
-		return (1);
-	}
-
-	n = 0;
-	if (attr & ATTR_BRIGHT) {
-		input_store16(b, 1);
-		n++;
-	}
-	if (attr & ATTR_DIM) {
-		input_store16(b, 2);
-		n++;
-	}
-	if (attr & ATTR_ITALICS) {
-		input_store16(b, 3);
-		n++;
-	}
-	if (attr & ATTR_UNDERSCORE) {
-		input_store16(b, 4);
-		n++;
-	}
-	if (attr & ATTR_BLINK) {
-		input_store16(b, 5);
-		n++;
-	}
-	if (attr & ATTR_REVERSE) {
-		input_store16(b, 7);
-		n++;
-	}
-	if (attr & ATTR_HIDDEN) {
-		input_store16(b, 8);
-		n++;
-	}
-	return (n);
-}
-
-/* Store screen colours in buffer. */
-size_t
-screen_store_colours(struct buffer *b, u_char colr)
-{
-	uint16_t	v;
-
-	v = colr >> 4;
-	if (v == 8)
-		v = 9;
-	input_store16(b, 30 + v);
-	v = colr & 0xf;
-	if (v == 8)
-		v = 9;
-	input_store16(b, 40 + v);
-
-	return (2);
 }
 
 /* Make a range of lines. */

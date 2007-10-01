@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.14 2007-09-30 13:29:28 nicm Exp $ */
+/* $Id: input.c,v 1.15 2007-10-01 14:18:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -953,20 +953,13 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 	uint16_t	m;
 
 	n = ARRAY_LENGTH(&ictx->args);
-
-	input_store_zero(ictx->b, CODE_ATTRIBUTES);
 	if (n == 0) {
 		ictx->s->attr = 0;
 		ictx->s->colr = SCREEN_DEFCOLR;
-		input_store16(ictx->b, 1);
-		input_store16(ictx->b, 0);
 	} else {
-		input_store16(ictx->b, n);
 		for (i = 0; i < n; i++) {
-			if (input_get_argument(ictx, i, &m, 0) != 0) {
-				/* XXX XXX partial write to client */
+			if (input_get_argument(ictx, i, &m, 0) != 0)
 				return;
-			}
 			switch (m) {
 			case 0:
 			case 10:
@@ -1031,9 +1024,9 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 				ictx->s->colr |= 0x08;
 				break;
 			}
-			input_store16(ictx->b, m);
 		}
 	}
+	input_store_two(ictx->b, CODE_ATTRIBUTES, ictx->s->attr, ictx->s->colr);
 }
 
 void
