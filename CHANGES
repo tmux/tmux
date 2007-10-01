@@ -1,5 +1,6 @@
 01 October 2007
 
+* (nicm) Restore window title handling.
 * (nicm) Simple uncustomisable status line with window list.
 
 30 September 2007
@@ -84,5 +85,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.19 2007-10-01 14:53:29 nicm Exp $
+$Id: CHANGES,v 1.20 2007-10-01 17:37:41 nicm Exp $
 

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.31 2007-10-01 14:53:29 nicm Exp $ */
+/* $Id: tmux.h,v 1.32 2007-10-01 17:37:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -429,6 +429,10 @@ struct input_ctx {
 
 	struct buffer	*b;
 	struct screen	*s;
+
+	u_char		 title_buf[MAXTITLELEN];
+	size_t		 title_len;
+	u_int		 title_type;
 
 	void 		*(*state)(u_char, enum input_class, struct input_ctx *);
 

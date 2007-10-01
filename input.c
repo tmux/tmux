@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.15 2007-10-01 14:18:42 nicm Exp $ */
+/* $Id: input.c,v 1.16 2007-10-01 17:37:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,6 +51,9 @@ int	 input_add_argument(struct input_ctx *, u_char ch);
 void	*input_state_first(u_char, enum input_class, struct input_ctx *);
 void	*input_state_escape(u_char, enum input_class, struct input_ctx *);
 void	*input_state_intermediate(u_char, enum input_class, struct input_ctx *);
+void	*input_state_title_first(u_char, enum input_class, struct input_ctx *);
+void	*input_state_title_second(u_char, enum input_class, struct input_ctx *);
+void	*input_state_title_next(u_char, enum input_class, struct input_ctx *);
 void	*input_state_sequence_first(
 	     u_char, enum input_class, struct input_ctx *);
 void	*input_state_sequence_next(
@@ -213,6 +216,8 @@ input_state_first(u_char ch, enum input_class iclass, struct input_ctx *ictx)
 		ch -= 0x40;
 		if (ch == '[')
 			return (input_state_sequence_first);
+		if (ch == ']')
+			return (input_state_title_first);
 		input_handle_c1_control(ch, ictx);
 		break;
 	case INPUT_SPACE:
@@ -251,6 +256,8 @@ input_state_escape(u_char ch, enum input_class iclass, struct input_ctx *ictx)
 	case INPUT_UPPERCASE:
 		if (ch == '[')
 			return (input_state_sequence_first);
+		if (ch == ']')
+			return (input_state_title_first);
 		input_handle_c1_control(ch, ictx);
 		break;
 	case INPUT_LOWERCASE:
@@ -263,6 +270,51 @@ input_state_escape(u_char ch, enum input_class iclass, struct input_ctx *ictx)
 		break;
 	}	
 	return (input_state_first);
+}
+
+void *
+input_state_title_first(
+    u_char ch, unused enum input_class iclass, struct input_ctx *ictx)
+{
+	if (ch >= '0' && ch <= '9') {
+		ictx->title_type = ch - '0';
+		return (input_state_title_second);
+	}
+	return (input_state_first);
+}
+
+void *
+input_state_title_second(
+    u_char ch, unused enum input_class iclass, struct input_ctx *ictx)
+{
+	if (ch == ';') {
+		ictx->title_len = 0;
+		return (input_state_title_next);
+	}
+	return (input_state_first);
+}
+
+void *
+input_state_title_next(
+    u_char ch, unused enum input_class iclass, struct input_ctx *ictx)
+{
+	if (ch == '\007') {
+		ictx->title_buf[ictx->title_len] = '\0';
+		switch (ictx->title_type) {
+		case 0:
+			strlcpy(ictx->s->title, 
+			    ictx->title_buf, sizeof ictx->s->title);
+			input_store_one(ictx->b, CODE_TITLE, ictx->title_len);
+			buffer_write(ictx->b, ictx->title_buf, ictx->title_len);
+			break;
+		}
+	} else if (ch >= 0x20) {
+		if (ictx->title_len < (sizeof ictx->title_buf) - 1) {
+			ictx->title_buf[ictx->title_len++] = ch;
+			return (input_state_title_next);
+		}
+	}
+ 	return (input_state_first);
 }
 
 void *
@@ -423,7 +475,6 @@ input_handle_c1_control(u_char ch, struct input_ctx *ictx)
 {
 	log_debug2("-- c1 %zu: %hhu (%c)", ictx->off, ch, ch);
 
-	/* XXX window title */
 	switch (ch) {
 	case 'M':	/* RI */
 		screen_cursor_up_scroll(ictx->s);

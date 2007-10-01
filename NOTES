@@ -54,7 +54,7 @@ with "-s <path>" but it shouldn't normally be required.
 You can set the window title (listed in -l), using the \e] escape sequence. For
 example:
 
-	$ echo -n \\033]0;My Title\\007
+	$ echo -n \\033]0\;My Title\\007
 
 There is currently no method for setting the window name (what will eventually
 be shown in the status bar).
