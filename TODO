@@ -1,9 +1,7 @@
 - key remapping
 - decide if TIOCPKT is necessary and either handle it or remove the code
 - it would be nice if there wasn't so much copying buffers about, audit uses
-- status bar
 - useful env vars like WINDOW
-- lots of scripting love: add, remove, move around windows, status bar
 - sort out who controls the buffers in local.c a bit
 - better checking/emulation for missing term requirements
 - alt charset, borders etc (terminfo(5)/Line Graphics)
@@ -11,7 +9,7 @@
 - mouse handling and some other bits elinks needs
 - scrollback
 - server doesn't handle SIGTERM anymore...
-- toolbar, copy/paste
+- copy/paste
 - cleanup/redesign IPC
 - the whole input/screen/local thing sucks a bit, reorganise/redesign it
 - line mode/char-at-a-time mode a la telnet?
@@ -19,24 +17,32 @@
   and buffer_insert_range/delete_range are abominations. this should be
   rethought
 - figure out once and for all what is going on with backspace and del
-- deal properly with ambiguous ops... list-sessions & list-windows
 - keys to add:
 	NONE?
-- commands to add:
-	rename sessions
-	swap windows
-	link/copy windows
-	detach session remotely
-	create window remotely
-	unlink window (... what about windows not linked to any session???)
-	close window
-	kill session
-- update NOTES
 - nuke '?' on getopts
 - const char *opusage = ... on ops rather than dup usage args
-- store_attr/colr could be two-pass and avoid reverse_add/remove games
 - window creation/idle time
 - attributes could be 8 not 16 bits
 - profile/optimise, particularly (i suspect) input.c
 - tidy up input.c a bit
 - decide about customised status line
+- rethink data structures. window->index is O(n), could have a w->idx member
+	or use queues/trees and avoid NULLs?
+- client could pass tty fd up to server and then do nothing. what problems 
+  would this cause?
+
+-- For 0.1 --------------------------------------------------------------------
+- man page
+- commands:
+	rename sessions
+	swap windows
+	link/copy windows
+	detach session remotely
+	create window remotely
+	unlink window (error if window only linked to one session)
+	close window
+	kill session
+- fix resize (width problems with multiple clients?)
+- deal properly with ambiguous ops... list-sessions & list-windows
+- handle tmux in tmux (check $TMUX and abort)
+- check for some reqd terminfo caps on startup
