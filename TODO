@@ -21,7 +21,7 @@
 - figure out once and for all what is going on with backspace and del
 - deal properly with ambiguous ops... list-sessions & list-windows
 - keys to add:
-	meta-meta : pass through meta (will need this...)
+	NONE?
 - commands to add:
 	rename sessions
 	swap windows
