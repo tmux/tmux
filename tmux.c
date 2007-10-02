@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.18 2007-10-01 14:53:29 nicm Exp $ */
+/* $Id: tmux.c,v 1.19 2007-10-02 17:35:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,7 +49,7 @@ struct op op_table[] = {
 	{ "list-sessions", "ls", op_list_sessions },
 	{ "list-windows", "lsw", op_list_windows },
 	{ "new-session", "new", op_new/*_session*/ },
-	{ "rename-window", NULL, op_rename },
+	{ "rename-window", "renw", op_rename },
 };
 #define NOP (sizeof op_table / sizeof op_table[0])
 
@@ -158,7 +158,7 @@ sigreset(void)
 int
 main(int argc, char **argv)
 {
-	struct op		*op;
+	struct op		*op, *found;
 	char			*path;
 	int	 		 opt;
 	u_int			 i;
@@ -185,13 +185,22 @@ main(int argc, char **argv)
 	log_open(stderr, LOG_USER, debug_level);
 
 	status_lines = 1;
-       
+
+	found = NULL;
 	for (i = 0; i < NOP; i++) {
 		op = op_table + i;
-		if (strncmp(argv[0], op->cmd, strlen(argv[0])) == 0 ||
-		    (op->alias != NULL && strcmp(argv[0], op->alias) == 0))
+		if (op->alias != NULL && strcmp(argv[0], op->alias) == 0)
 			exit(op->fn(path, argc, argv));
+		if (strncmp(argv[0], op->cmd, strlen(argv[0])) == 0) {
+			if (found != NULL) {
+				log_warnx("ambiguous command: %s", argv[0]);
+				exit(1);
+			}
+			found = op;
+		}
 	}
+	if (found != NULL)
+		exit(found->fn(path, argc, argv));
 
 	exit(usage(NULL));
 }

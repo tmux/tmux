@@ -43,6 +43,5 @@
 	close window
 	kill session
 - fix resize (width problems with multiple clients?)
-- deal properly with ambiguous ops... list-sessions & list-windows
 - handle tmux in tmux (check $TMUX and abort)
 - check for some reqd terminfo caps on startup
