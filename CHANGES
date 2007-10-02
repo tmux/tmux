@@ -1,3 +1,7 @@
+02 October 2007
+
+* (nicm) Error on ambiguous command.
+
 01 October 2007
 
 * (nicm) Restore window title handling.
@@ -85,5 +89,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.20 2007-10-01 17:37:41 nicm Exp $
+$Id: CHANGES,v 1.21 2007-10-02 17:36:16 nicm Exp $
 
