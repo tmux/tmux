@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.10 2007-10-01 14:53:29 nicm Exp $ */
+/* $Id: server-fn.c,v 1.11 2007-10-02 17:45:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,8 +22,6 @@
 #include <unistd.h>
 
 #include "tmux.h"
-
-void	server_draw_status(struct client *);
 
 /* Find session from sessid. */
 struct session *

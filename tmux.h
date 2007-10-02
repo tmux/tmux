@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.32 2007-10-01 17:37:41 nicm Exp $ */
+/* $Id: tmux.h,v 1.33 2007-10-02 17:45:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -551,6 +551,7 @@ void	 server_write_clients(
     	     struct window *, enum hdrtype, const void *, size_t);
 void	 server_window_changed(struct client *);
 void	 server_draw_client(struct client *, u_int, u_int);
+void	 server_draw_status(struct client *);
 
 /* status.c */
 void	 status_write(struct client *c);

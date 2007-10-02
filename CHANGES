@@ -1,5 +1,6 @@
 02 October 2007
 
+* (nicm) Redraw client status lines on rename.
 * (nicm) Error on ambiguous command.
 
 01 October 2007
@@ -89,5 +90,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.21 2007-10-02 17:36:16 nicm Exp $
+$Id: CHANGES,v 1.22 2007-10-02 17:45:05 nicm Exp $
 

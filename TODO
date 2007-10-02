@@ -42,6 +42,7 @@
 	unlink window (error if window only linked to one session)
 	close window
 	kill session
+	set status on/off
 - fix resize (width problems with multiple clients?)
 - handle tmux in tmux (check $TMUX and abort)
 - check for some reqd terminfo caps on startup
