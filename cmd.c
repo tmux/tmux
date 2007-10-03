@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.3 2007-10-03 12:34:16 nicm Exp $ */
+/* $Id: cmd.c,v 1.4 2007-10-03 12:43:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,15 +25,15 @@
 
 int	cmd_prefix = META;
 
-void	cmd_fn_create(struct client *, struct cmd *);
 void	cmd_fn_detach(struct client *, struct cmd *);
 void	cmd_fn_last(struct client *, struct cmd *);
 void	cmd_fn_meta(struct client *, struct cmd *);
+void	cmd_fn_new(struct client *, struct cmd *);
 void	cmd_fn_next(struct client *, struct cmd *);
 void	cmd_fn_previous(struct client *, struct cmd *);
 void	cmd_fn_refresh(struct client *, struct cmd *);
 void	cmd_fn_select(struct client *, struct cmd *);
-void	cmd_fn_windowinfo(struct client *, struct cmd *);
+void	cmd_fn_info(struct client *, struct cmd *);
 
 const struct cmd cmd_default[] = {
 	{ '0', cmd_fn_select, 0, NULL },
@@ -46,8 +46,8 @@ const struct cmd cmd_default[] = {
 	{ '7', cmd_fn_select, 7, NULL },
 	{ '8', cmd_fn_select, 8, NULL },
 	{ '9', cmd_fn_select, 9, NULL },
-	{ 'C', cmd_fn_create, 0, NULL },
-	{ 'c', cmd_fn_create, 0, NULL },
+	{ 'C', cmd_fn_new, 0, NULL },
+	{ 'c', cmd_fn_new, 0, NULL },
 	{ 'D', cmd_fn_detach, 0, NULL },
 	{ 'd', cmd_fn_detach, 0, NULL },
 	{ 'N', cmd_fn_next, 0, NULL },
@@ -58,23 +58,23 @@ const struct cmd cmd_default[] = {
 	{ 'r', cmd_fn_refresh, 0, NULL },
 	{ 'L', cmd_fn_last, 0, NULL },
 	{ 'l', cmd_fn_last, 0, NULL },
-	{ 'I', cmd_fn_windowinfo, 0, NULL },
-	{ 'i', cmd_fn_windowinfo, 0, NULL },
+	{ 'I', cmd_fn_info, 0, NULL },
+	{ 'i', cmd_fn_info, 0, NULL },
 	{ META, cmd_fn_meta, 0, NULL },
 };
 u_int	cmd_count = (sizeof cmd_default / sizeof cmd_default[0]);
 struct cmd *cmd_table;
 
 const struct bind cmd_bind_table[] = {
-	{ "select", 	cmd_fn_select, BIND_NUMBER|BIND_USER },
-	{ "create", 	cmd_fn_create, BIND_STRING|BIND_USER },
 	{ "detach", 	cmd_fn_detach, 0 },
+	{ "info",	cmd_fn_info, 0 },
+	{ "last",	cmd_fn_last, 0 },
+	{ "meta",	cmd_fn_meta, 0 },
+	{ "new", 	cmd_fn_new, BIND_STRING|BIND_USER },
 	{ "next",	cmd_fn_next, 0 },
 	{ "previous", 	cmd_fn_previous, 0 },
 	{ "refresh",	cmd_fn_refresh, 0 },
-	{ "last",	cmd_fn_last, 0 },
-	{ "window-info",cmd_fn_windowinfo, 0 },
-	{ "meta",	cmd_fn_meta, 0 }
+	{ "select", 	cmd_fn_select, BIND_NUMBER|BIND_USER },
 };
 #define NCMDBIND (sizeof cmd_bind_table / sizeof cmd_bind_table[0])
 
@@ -170,7 +170,7 @@ cmd_dispatch(struct client *c, int key)
 }
 
 void
-cmd_fn_create(struct client *c, struct cmd *cmd)
+cmd_fn_new(struct client *c, struct cmd *cmd)
 {
 	char	*s;
 
@@ -238,7 +238,7 @@ cmd_fn_select(struct client *c, struct cmd *cmd)
 }
 
 void
-cmd_fn_windowinfo(struct client *c, unused struct cmd *cmd)
+cmd_fn_info(struct client *c, unused struct cmd *cmd)
 {
 	struct window	*w;
 	char 		*buf;

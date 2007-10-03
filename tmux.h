@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.36 2007-10-03 12:34:16 nicm Exp $ */
+/* $Id: tmux.h,v 1.37 2007-10-03 12:43:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -528,9 +528,9 @@ void		 siginit(void);
 void		 sigreset(void);
 
 /* op.c */
-int	 op_new(char *, int, char **);
+int	 op_new_session(char *, int, char **);
 int	 op_attach(char *, int, char **);
-int	 op_rename(char *, int, char **);
+int	 op_rename_window(char *, int, char **);
 int	 op_bind_key(char *, int, char **);
 int	 op_unbind_key(char *, int, char **);
 

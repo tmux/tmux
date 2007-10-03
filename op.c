@@ -1,4 +1,4 @@
-/* $Id: op.c,v 1.11 2007-10-03 12:34:16 nicm Exp $ */
+/* $Id: op.c,v 1.12 2007-10-03 12:43:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,7 +25,7 @@
 #include "tmux.h"
 
 int
-op_new(char *path, int argc, char **argv)
+op_new_session(char *path, int argc, char **argv)
 {
 	struct new_data	 	data;	
 	struct client_ctx	cctx;
@@ -48,13 +48,13 @@ op_new(char *path, int argc, char **argv)
 			break;
 		case '?':
 		default:
-			return (usage("new [-d] [-s session]"));
+			return (usage("new-session [-d] [-s session]"));
 		}
 	}	
 	argc -= optind;
 	argv += optind;			
 	if (argc != 0)
-		return (usage("new [-s session]"));
+		return (usage("new-session [-s session]"));
 
 	if (client_init(path, &cctx, 1) != 0)
 		return (1);
@@ -109,7 +109,7 @@ op_attach(char *path, int argc, char **argv)
 }
 
 int
-op_rename(char *path, int argc, char **argv)
+op_rename_window(char *path, int argc, char **argv)
 {
 	struct rename_data	data;	
 	struct client_ctx	cctx;
@@ -139,13 +139,14 @@ op_rename(char *path, int argc, char **argv)
 			break;
 		case '?':
 		default:
-			return (usage("rename [-s session] [-i index] name"));
+			return (usage(
+			    "rename-window [-s session] [-i index] name"));
 		}
 	}
 	argc -= optind;
 	argv += optind;
 	if (argc != 1)
-		return (usage("rename [-s session] [-i index] name"));
+		return (usage("rename-window [-s session] [-i index] name"));
 
 	if (client_init(path, &cctx, 1) != 0)
 		return (1);
@@ -213,7 +214,7 @@ op_bind_key(char *path, int argc, char **argv)
 			len = strlen(str);
 		} else if (bind->flags & BIND_NUMBER) {
 			data.flags |= BIND_NUMBER;
-			data.num = strtonum(argv[2], 0, INT_MAX, &errstr);
+			data.num = strtonum(argv[2], 0, UINT_MAX, &errstr);
 			if (errstr != NULL) {
 				log_warnx("argument %s: %s", errstr, argv[2]); 
 				return (1);
