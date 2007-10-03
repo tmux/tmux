@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.2 2007-10-03 11:26:34 nicm Exp $ */
+/* $Id: cmd.c,v 1.3 2007-10-03 12:34:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,54 +25,49 @@
 
 int	cmd_prefix = META;
 
-void	cmd_fn_create(struct client *, int);
-void	cmd_fn_detach(struct client *, int);
-void	cmd_fn_last(struct client *, int);
-void	cmd_fn_meta(struct client *, int);
-void	cmd_fn_next(struct client *, int);
-void	cmd_fn_previous(struct client *, int);
-void	cmd_fn_refresh(struct client *, int);
-void	cmd_fn_select(struct client *, int);
-void	cmd_fn_windowinfo(struct client *, int);
+void	cmd_fn_create(struct client *, struct cmd *);
+void	cmd_fn_detach(struct client *, struct cmd *);
+void	cmd_fn_last(struct client *, struct cmd *);
+void	cmd_fn_meta(struct client *, struct cmd *);
+void	cmd_fn_next(struct client *, struct cmd *);
+void	cmd_fn_previous(struct client *, struct cmd *);
+void	cmd_fn_refresh(struct client *, struct cmd *);
+void	cmd_fn_select(struct client *, struct cmd *);
+void	cmd_fn_windowinfo(struct client *, struct cmd *);
 
-struct cmd {
-	int	key;
-	void	(*fn)(struct client *, int);
-	int	arg;
-};
 const struct cmd cmd_default[] = {
-	{ '0', cmd_fn_select, 0 },
-	{ '1', cmd_fn_select, 1 },
-	{ '2', cmd_fn_select, 2 },
-	{ '3', cmd_fn_select, 3 },
-	{ '4', cmd_fn_select, 4 },
-	{ '5', cmd_fn_select, 5 },
-	{ '6', cmd_fn_select, 6 },
-	{ '7', cmd_fn_select, 7 },
-	{ '8', cmd_fn_select, 8 },
-	{ '9', cmd_fn_select, 9 },
-	{ 'C', cmd_fn_create, 0 },
-	{ 'c', cmd_fn_create, 0 },
-	{ 'D', cmd_fn_detach, 0 },
-	{ 'd', cmd_fn_detach, 0 },
-	{ 'N', cmd_fn_next, 0 },
-	{ 'n', cmd_fn_next, 0 },
-	{ 'P', cmd_fn_previous, 0 },
-	{ 'p', cmd_fn_previous, 0 },
-	{ 'R', cmd_fn_refresh, 0 },
-	{ 'r', cmd_fn_refresh, 0 },
-	{ 'L', cmd_fn_last, 0 },
-	{ 'l', cmd_fn_last, 0 },
-	{ 'I', cmd_fn_windowinfo, 0 },
-	{ 'i', cmd_fn_windowinfo, 0 },
-	{ META, cmd_fn_meta, 0 },
+	{ '0', cmd_fn_select, 0, NULL },
+	{ '1', cmd_fn_select, 1, NULL },
+	{ '2', cmd_fn_select, 2, NULL },
+	{ '3', cmd_fn_select, 3, NULL },
+	{ '4', cmd_fn_select, 4, NULL },
+	{ '5', cmd_fn_select, 5, NULL },
+	{ '6', cmd_fn_select, 6, NULL },
+	{ '7', cmd_fn_select, 7, NULL },
+	{ '8', cmd_fn_select, 8, NULL },
+	{ '9', cmd_fn_select, 9, NULL },
+	{ 'C', cmd_fn_create, 0, NULL },
+	{ 'c', cmd_fn_create, 0, NULL },
+	{ 'D', cmd_fn_detach, 0, NULL },
+	{ 'd', cmd_fn_detach, 0, NULL },
+	{ 'N', cmd_fn_next, 0, NULL },
+	{ 'n', cmd_fn_next, 0, NULL },
+	{ 'P', cmd_fn_previous, 0, NULL },
+	{ 'p', cmd_fn_previous, 0, NULL },
+	{ 'R', cmd_fn_refresh, 0, NULL },
+	{ 'r', cmd_fn_refresh, 0, NULL },
+	{ 'L', cmd_fn_last, 0, NULL },
+	{ 'l', cmd_fn_last, 0, NULL },
+	{ 'I', cmd_fn_windowinfo, 0, NULL },
+	{ 'i', cmd_fn_windowinfo, 0, NULL },
+	{ META, cmd_fn_meta, 0, NULL },
 };
 u_int	cmd_count = (sizeof cmd_default / sizeof cmd_default[0]);
 struct cmd *cmd_table;
 
 const struct bind cmd_bind_table[] = {
-	{ "select", 	cmd_fn_select, -1 },
-	{ "create", 	cmd_fn_create, 0 },
+	{ "select", 	cmd_fn_select, BIND_NUMBER|BIND_USER },
+	{ "create", 	cmd_fn_create, BIND_STRING|BIND_USER },
 	{ "detach", 	cmd_fn_detach, 0 },
 	{ "next",	cmd_fn_next, 0 },
 	{ "previous", 	cmd_fn_previous, 0 },
@@ -98,7 +93,7 @@ cmd_lookup_bind(const char *name)
 }
 
 void
-cmd_add_bind(int key, int arg, const struct bind *bind)
+cmd_add_bind(int key, u_int num, char *str, const struct bind *bind)
 {
 	struct cmd	*cmd = NULL;
 	u_int		 i;
@@ -124,10 +119,12 @@ cmd_add_bind(int key, int arg, const struct bind *bind)
 
 	cmd->key = key;
 	cmd->fn = bind->fn;
-	if (bind->arg != -1)
-		cmd->arg = bind->arg;
-	else
-		cmd->arg = arg;
+	if (bind->flags & BIND_USER) {
+		if (bind->flags & BIND_STRING)
+			cmd->str = xstrdup(str);
+		if (bind->flags & BIND_NUMBER)
+			cmd->num = num;
+	}
 }
 
 void
@@ -155,6 +152,7 @@ cmd_init(void)
 void
 cmd_free(void)
 {
+	/* XXX free strings */
 	xfree(cmd_table);
 }
 
@@ -167,35 +165,32 @@ cmd_dispatch(struct client *c, int key)
 	for (i = 0; i < cmd_count; i++) {
 		cmd = cmd_table + i;
 		if (cmd->key != KEYC_NONE && cmd->key == key)
-			cmd->fn(c, cmd->arg);
+			cmd->fn(c, cmd);
 	}
 }
 
 void
-cmd_fn_create(struct client *c, unused int arg)
+cmd_fn_create(struct client *c, struct cmd *cmd)
 {
-	const char	*shell;
-	char		*cmd;
+	char	*s;
 
-	shell = getenv("SHELL");
-	if (shell == NULL)
-		shell = "/bin/ksh";
-	xasprintf(&cmd, "%s -l", shell);
-	if (session_new(c->session, cmd, c->sx, c->sy) != 0)
-		fatalx("session_new failed");
-	xfree(cmd);
-
-	server_draw_client(c, 0, c->sy - 1);
+	s = cmd->str;
+	if (s == NULL)
+		s = default_command;
+	if (session_new(c->session, s, c->sx, c->sy) != 0)
+		server_write_message(c, "%s failed", s); /* XXX */
+	else
+		server_draw_client(c, 0, c->sy - 1);
 }
 
 void
-cmd_fn_detach(struct client *c, unused int arg)
+cmd_fn_detach(struct client *c, unused struct cmd *cmd)
 {
 	server_write_client(c, MSG_DETACH, NULL, 0);
 }
 
 void
-cmd_fn_last(struct client *c, unused int arg)
+cmd_fn_last(struct client *c, unused struct cmd *cmd)
 {
 	if (session_last(c->session) == 0)
 		server_window_changed(c);
@@ -204,13 +199,13 @@ cmd_fn_last(struct client *c, unused int arg)
 }
 
 void
-cmd_fn_meta(struct client *c, unused int arg)
+cmd_fn_meta(struct client *c, unused struct cmd *cmd)
 {
 	window_key(c->session->window, cmd_prefix);
 }
 
 void
-cmd_fn_next(struct client *c, unused int arg)
+cmd_fn_next(struct client *c, unused struct cmd *cmd)
 {
 	if (session_next(c->session) == 0)
 		server_window_changed(c);
@@ -219,7 +214,7 @@ cmd_fn_next(struct client *c, unused int arg)
 }
 
 void
-cmd_fn_previous(struct client *c, unused int arg)
+cmd_fn_previous(struct client *c, unused struct cmd *cmd)
 {
 	if (session_previous(c->session) == 0)
 		server_window_changed(c);
@@ -228,22 +223,22 @@ cmd_fn_previous(struct client *c, unused int arg)
 }
 
 void
-cmd_fn_refresh(struct client *c, unused int arg)
+cmd_fn_refresh(struct client *c, unused struct cmd *cmd)
 {
 	server_draw_client(c, 0, c->sy - 1);
 }
 
 void
-cmd_fn_select(struct client *c, int arg)
+cmd_fn_select(struct client *c, struct cmd *cmd)
 {
-	if (session_select(c->session, arg) == 0)
+	if (session_select(c->session, cmd->num) == 0)
 		server_window_changed(c);
 	else
-		server_write_message(c, "Window %u not present", arg); 
+		server_write_message(c, "Window %u not present", cmd->num);
 }
 
 void
-cmd_fn_windowinfo(struct client *c, unused int arg)
+cmd_fn_windowinfo(struct client *c, unused struct cmd *cmd)
 {
 	struct window	*w;
 	char 		*buf;

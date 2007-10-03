@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.17 2007-10-03 11:26:34 nicm Exp $ */
+/* $Id: server-msg.c,v 1.18 2007-10-03 12:34:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -88,14 +88,13 @@ int
 server_msg_fn_new(struct hdr *hdr, struct client *c)
 {
 	struct new_data	 data;
-	const char      *shell;
-	char		*cmd, *msg;
+	char	         *msg;
 	
 	if (c->session != NULL)
 		return (0);
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_NEW size");
-	buffer_read(c->in, &data, hdr->size);
+	buffer_read(c->in, &data, sizeof data);
 
 	c->sx = data.sx;
 	if (c->sx == 0)
@@ -115,14 +114,9 @@ server_msg_fn_new(struct hdr *hdr, struct client *c)
 		return (0);
 	}
 
-	shell = getenv("SHELL");
-	if (shell == NULL)
-		shell = "/bin/ksh";
-	xasprintf(&cmd, "%s -l", shell);
-	c->session = session_create(data.name, cmd, c->sx, c->sy);
+	c->session = session_create(data.name, default_command, c->sx, c->sy);
 	if (c->session == NULL)
 		fatalx("session_create failed");
-	xfree(cmd);
 
 	server_write_client(c, MSG_OKAY, NULL, 0);
 	server_draw_client(c, 0, c->sy - 1);
@@ -141,7 +135,7 @@ server_msg_fn_attach(struct hdr *hdr, struct client *c)
 		return (0);
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_ATTACH size");
-	buffer_read(c->in, &data, hdr->size);
+	buffer_read(c->in, &data, sizeof data);
 
 	c->sx = data.sx;
 	if (c->sx == 0)
@@ -174,7 +168,7 @@ server_msg_fn_size(struct hdr *hdr, struct client *c)
 		return (0);
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_SIZE size");
-	buffer_read(c->in, &data, hdr->size);
+	buffer_read(c->in, &data, sizeof data);
 
 	c->sx = data.sx;
 	if (c->sx == 0)
@@ -206,7 +200,7 @@ server_msg_fn_keys(struct hdr *hdr, struct client *c)
 
 	size = hdr->size;
 	while (size != 0) {
-		key = input_extract16(c->in);
+		key = (int16_t) input_extract16(c->in);
 		size -= 2;
 
 		if (c->prefix) {
@@ -235,7 +229,7 @@ server_msg_fn_sessions(struct hdr *hdr, struct client *c)
 
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_SESSIONS size");
-	buffer_read(c->in, &data, hdr->size);
+	buffer_read(c->in, &data, sizeof data);
 
 	data.sessions = 0;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
@@ -275,7 +269,7 @@ server_msg_fn_windows(struct hdr *hdr, struct client *c)
 
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_WINDOWS size");
-	buffer_read(c->in, &data, hdr->size);
+	buffer_read(c->in, &data, sizeof data);
 
 	if ((s = server_find_sessid(&data.sid, &cause)) == NULL) {
 		server_write_error(c, "%s", cause);
@@ -318,8 +312,7 @@ server_msg_fn_rename(struct hdr *hdr, struct client *c)
 
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_RENAME size");
-
-	buffer_read(c->in, &data, hdr->size);
+	buffer_read(c->in, &data, sizeof data);
 
  	data.newname[(sizeof data.newname) - 1] = '\0';
 	if ((s = server_find_sessid(&data.sid, &cause)) == NULL) {
@@ -395,28 +388,40 @@ server_msg_fn_bindkey(struct hdr *hdr, struct client *c)
 {
 	struct bind_data	data;
 	const struct bind      *bind;
+	char		       *str;
 
-	if (hdr->size != sizeof data)
-		fatalx("bad MSG_BIND size");
+	if (hdr->size < sizeof data)
+		fatalx("bad MSG_BINDKEY size");
+	buffer_read(c->in, &data, sizeof data);
 
-	buffer_read(c->in, &data, hdr->size);
+	str = NULL;
+	if (data.flags & BIND_STRING) {
+		hdr->size -= sizeof data;
+
+		if (hdr->size != 0) {
+			str = xmalloc(hdr->size + 1);
+			buffer_read(c->in, str, hdr->size);
+			str[hdr->size] = '\0';
+		}
+		if (*str == '\0') {
+			xfree(str);
+			str = NULL;
+		}
+	}
 
  	data.cmd[(sizeof data.cmd) - 1] = '\0';	
-	if ((bind = cmd_lookup_bind(data.cmd)) == NULL) {
-		server_write_error(c, "unknown command: %s", data.cmd);
-		return (0);
-	}
-
-	if (bind->arg != -1 && data.arg != -1) { 
-		server_write_error(c, "%s cannot have an argument", data.cmd);
-		return (0);
-	}
-	if (bind->arg == -1 && data.arg == -1) {
-		server_write_error(c, "%s requires an argument", data.cmd);
-		return (0);
-	}		
+	if ((bind = cmd_lookup_bind(data.cmd)) == NULL)
+		fatalx("unknown command");
+	if (!(bind->flags & BIND_USER) &&
+	    (data.flags & (BIND_NUMBER|BIND_STRING)) != 0)
+		fatalx("argument missing");
+	if ((bind->flags & BIND_USER) &&
+	    (data.flags & (BIND_NUMBER|BIND_STRING)) == 0)
+		fatalx("argument required");
 	
-	cmd_add_bind(data.key, data.arg, bind);
+	cmd_add_bind(data.key, data.num, str, bind);
+	if (str != NULL)
+		xfree(str);
 
 	server_write_client(c, MSG_OKAY, NULL, 0);
 
@@ -430,7 +435,7 @@ server_msg_fn_unbindkey(struct hdr *hdr, struct client *c)
 	struct bind_data	data;
 
 	if (hdr->size != sizeof data)
-		fatalx("bad MSG_UNBIND size");
+		fatalx("bad MSG_UNBINDKEY size");
 
 	buffer_read(c->in, &data, hdr->size);
 

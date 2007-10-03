@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.35 2007-10-03 11:26:34 nicm Exp $ */
+/* $Id: tmux.h,v 1.36 2007-10-03 12:34:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -339,7 +339,10 @@ struct rename_data {
 struct bind_data {
 	int		key;
 	char		cmd[MAXNAMELEN];
-	int		arg;
+
+	int		flags;
+
+	u_int		num;
 };
 
 /* Attributes. */
@@ -494,18 +497,31 @@ struct client_ctx {
 	struct winsize	 ws;
 };
 
+/* Key command. */
+struct cmd {
+	int	key;
+	void	(*fn)(struct client *, struct cmd *);
+	u_int	num;
+	char   *str;
+};
+
 /* Key binding. */
 struct bind {
 	const char	*name;
-	void		 (*fn)(struct client *, int);
-	int     	 arg;	/* -1 if user specifies */
+	void		 (*fn)(struct client *, struct cmd *);
+	
+#define BIND_USER 0x1
+#define BIND_NUMBER 0x2
+#define BIND_STRING 0x4
+	int		 flags;
 };
 
 /* tmux.c */
 extern volatile sig_atomic_t sigwinch;
 extern volatile sig_atomic_t sigterm;
-extern int debug_level;
-extern u_int status_lines;
+extern int	debug_level;
+extern u_int	status_lines;
+extern char    *default_command;
 int	 	 usage(const char *, ...);
 void		 logfile(const char *);
 void		 siginit(void);
@@ -532,12 +548,14 @@ int	 client_msg_dispatch(struct client_ctx *, char **);
 
 /* client-fn.c */
 void	 client_write_server(struct client_ctx *, enum hdrtype, void *, size_t);
+void	 client_write_server2(
+    	     struct client_ctx *, enum hdrtype, void *, size_t, void *, size_t);
 void	 client_fill_sessid(struct sessid *, char [MAXNAMELEN]);
 
 /* cmd.c */
 extern int cmd_prefix;
 const struct bind *cmd_lookup_bind(const char *);
-void	 cmd_add_bind(int, int, const struct bind *);
+void	 cmd_add_bind(int, u_int, char *, const struct bind *);
 void	 cmd_remove_bind(int);
 void     cmd_init(void);
 void     cmd_free(void);

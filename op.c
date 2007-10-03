@@ -1,4 +1,4 @@
-/* $Id: op.c,v 1.10 2007-10-03 11:26:34 nicm Exp $ */
+/* $Id: op.c,v 1.11 2007-10-03 12:34:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -168,7 +168,10 @@ op_bind_key(char *path, int argc, char **argv)
 	struct client_ctx	cctx;
 	int			opt;
 	const char	       *errstr;
-
+	char		       *str;
+	size_t			len;
+ 	const struct bind      *bind;
+	
 	optind = 1;
 	while ((opt = getopt(argc, argv, "?")) != EOF) {
 		switch (opt) {
@@ -190,19 +193,46 @@ op_bind_key(char *path, int argc, char **argv)
 		return (1);
 	}
 
-	if (argc == 3) {
-		data.arg = strtonum(argv[2], 0, INT_MAX, &errstr);
-		if (errstr != NULL) {
-			log_warnx("argument %s: %s", errstr, argv[2]); 
+	if ((bind = cmd_lookup_bind(data.cmd)) == NULL) {
+		log_warnx("unknown command: %s", data.cmd);
+		return (1);
+	}
+
+	str = NULL;
+	len = 0;
+	if (bind->flags & BIND_USER) {
+		if (argc != 3) {
+			log_warnx("%s requires an argument", data.cmd);
 			return (1);
 		}
-	} else
-		data.arg = -1;
+
+		data.flags |= BIND_USER;
+		if (bind->flags & BIND_STRING) {
+			data.flags |= BIND_STRING;
+			str = argv[2];
+			len = strlen(str);
+		} else if (bind->flags & BIND_NUMBER) {
+			data.flags |= BIND_NUMBER;
+			data.num = strtonum(argv[2], 0, INT_MAX, &errstr);
+			if (errstr != NULL) {
+				log_warnx("argument %s: %s", errstr, argv[2]); 
+				return (1);
+			}
+		} else
+			fatalx("no argument type");
+	} else {
+		if (argc != 2) {
+			log_warnx("%s cannot have an argument", data.cmd);
+			return (1);
+		}
+
+		data.flags = 0;
+	}
 
 	if (client_init(path, &cctx, 1) != 0)
 		return (1);
 
-	client_write_server(&cctx, MSG_BINDKEY, &data, sizeof data);
+	client_write_server2(&cctx, MSG_BINDKEY, &data, sizeof data, str, len);
 
 	return (client_flush(&cctx));
 }
