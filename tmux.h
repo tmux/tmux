@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.38 2007-10-03 21:31:07 nicm Exp $ */
+/* $Id: tmux.h,v 1.39 2007-10-03 23:32:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -395,7 +395,7 @@ struct input_ctx {
 
 /* Window structure. */
 struct window {
-	char		 name[MAXNAMELEN];
+	char		*name;
 
 	int		 fd;
 	struct buffer	*in;
@@ -416,6 +416,9 @@ ARRAY_DECL(windows, struct window *);
 struct session {
 	char		*name;
 	time_t		 tim;
+
+	u_int		 sx;
+	u_int		 sy;
 
 	struct window	*window;
 	struct window	*last;
@@ -454,9 +457,10 @@ struct client_ctx {
 
 /* Key/command line command. */
 enum cmd_type {
-	CMD_NEWSESSION,
 	CMD_DETACHSESSION,
 	CMD_LISTSESSIONS,
+	CMD_NEWSESSION,
+	CMD_NEWWINDOW,
 };
 
 struct cmd_ctx {
@@ -518,9 +522,10 @@ struct cmd	*cmd_recv(struct buffer *);
 void		 cmd_free(struct cmd *);
 void		 cmd_send_string(struct buffer *, const char *);
 char		*cmd_recv_string(struct buffer *);
-extern const struct cmd_entry  cmd_new_session_entry;
 extern const struct cmd_entry  cmd_detach_session_entry;
 extern const struct cmd_entry  cmd_list_sessions_entry;
+extern const struct cmd_entry  cmd_new_session_entry;
+extern const struct cmd_entry  cmd_new_window_entry;
 
 /* bind.c */
 const struct bind *cmdx_lookup_bind(const char *);
@@ -628,7 +633,8 @@ void	 local_output(struct buffer *, size_t);
 
 /* window.c */
 extern struct windows windows;
-struct window	*window_create(const char *, const char **, u_int, u_int);
+struct window	*window_create(
+    		     const char *, const char *, const char **, u_int, u_int);
 int		 window_index(struct windows *, struct window *, u_int *);
 void		 window_add(struct windows *, struct window *);
 void		 window_remove(struct windows *, struct window *);
@@ -647,7 +653,8 @@ struct session	*session_find(const char *);
 struct session	*session_create(const char *, const char *, u_int, u_int);
 void		 session_destroy(struct session *);
 int		 session_index(struct session *, u_int *);
-int		 session_new(struct session *, const char *, u_int, u_int);
+int		 session_new(
+		     struct session *, const char *, const char *, u_int *);
 void		 session_attach(struct session *, struct window *);
 int		 session_detach(struct session *, struct window *);
 int		 session_has(struct session *, struct window *);

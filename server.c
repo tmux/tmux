@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.20 2007-10-03 21:31:07 nicm Exp $ */
+/* $Id: server.c,v 1.21 2007-10-03 23:32:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -379,7 +379,7 @@ server_lost_window(struct window *w)
 				c->session = NULL;
 				server_write_client(c, MSG_EXIT, NULL, 0);
 			} else
-				server_window_changed(c);
+				server_draw_client(c);
 		}
 	}
 }

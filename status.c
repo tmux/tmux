@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.1 2007-10-01 14:53:29 nicm Exp $ */
+/* $Id: status.c,v 1.2 2007-10-03 23:32:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,7 +34,7 @@ status_write(struct client *c)
 	u_int		 i;
 
 	input_store_zero(b, CODE_CURSOROFF);
-	input_store_two(b, CODE_CURSORMOVE, s->sy + 1, 1);
+	input_store_two(b, CODE_CURSORMOVE, c->sy - status_lines + 1, 1);
 	input_store_two(b, CODE_ATTRIBUTES, ATTR_REVERSE, 0x20);
 
 	size = s->sx;

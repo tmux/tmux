@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.1 2007-10-03 21:31:07 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.2 2007-10-03 23:32:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -71,7 +71,7 @@ cmd_new_session_parse(void **ptr, int argc, char **argv, char **cause)
 		}
 	}	
 	argc -= optind;
-	argv -= optind;
+	argv += optind;
 	if (argc != 0)
 		goto usage;
 

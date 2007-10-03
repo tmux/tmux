@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.14 2007-10-03 21:31:07 nicm Exp $ */
+/* $Id: server-fn.c,v 1.15 2007-10-03 23:32:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -138,18 +138,6 @@ server_write_clients(
 	}
 }
 
-/* Changed client window. */
-void
-server_window_changed(struct client *c)
-{
-	struct window	*w;
-
-	w = c->session->window;
-	if (c->sx != w->screen.sx || c->sy != w->screen.sy)
-		window_resize(w, c->sx, c->sy);
-	server_draw_client(c);
-}
-
 /* Draw window on client. */
 void
 server_draw_client(struct client *c)
@@ -228,7 +216,7 @@ server_write_message(struct client *c, const char *fmt, ...)
 	size = BUFFER_USED(c->out);
 
 	input_store_zero(c->out, CODE_CURSOROFF);
-	input_store_two(c->out, CODE_CURSORMOVE, c->sy + status_lines, 1);
+	input_store_two(c->out, CODE_CURSORMOVE, c->sy, 1);
 	input_store_two(c->out, CODE_ATTRIBUTES, ATTR_REVERSE, 0x88);
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);

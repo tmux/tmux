@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.17 2007-10-03 13:07:42 nicm Exp $ */
+/* $Id: window.c,v 1.18 2007-10-03 23:32:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,13 +52,14 @@ struct windows	windows;
 
 /* Create a new window. */
 struct window *
-window_create(const char *cmd, const char **environ, u_int sx, u_int sy)
+window_create(
+    const char *name, const char *cmd, const char **environ, u_int sx, u_int sy)
 {
 	struct window	*w;
 	struct winsize	 ws;
 	struct termios	 tio;
 	int		 fd, mode;
-	char		*ptr, *name;
+	char		*ptr, *copy;
 	const char     **entry;
 
 	memset(&ws, 0, sizeof ws);
@@ -104,25 +105,28 @@ window_create(const char *cmd, const char **environ, u_int sx, u_int sy)
 	screen_create(&w->screen, sx, sy);
 	input_init(&w->ictx, &w->screen);
 
-	/* XXX */
-	if (strncmp(cmd, "exec ", (sizeof "exec ") - 1) == 0)
-		name = xstrdup(cmd + sizeof "exec ");
-	else
-		name = xstrdup(cmd);
-	if ((ptr = strchr(name, ' ')) != NULL) {
-		if (ptr != name && ptr[-1] != '\\')
-			*ptr = '\0';
-		else {
-			while ((ptr = strchr(ptr + 1, ' ')) != NULL) {
-				if (ptr[-1] != '\\') {
-					*ptr = '\0';
-					break;
+	if (name == NULL) {
+		/* XXX */
+		if (strncmp(cmd, "exec ", (sizeof "exec ") - 1) == 0)
+			copy = xstrdup(cmd + sizeof "exec ");
+		else
+			copy = xstrdup(cmd);
+		if ((ptr = strchr(copy, ' ')) != NULL) {
+			if (ptr != copy && ptr[-1] != '\\')
+				*ptr = '\0';
+			else {
+				while ((ptr = strchr(ptr + 1, ' ')) != NULL) {
+					if (ptr[-1] != '\\') {
+						*ptr = '\0';
+						break;
+					}
 				}
 			}
 		}
-	}
-	strlcpy(w->name, xbasename(name), sizeof w->name);
-	xfree(name);
+		w->name = xstrdup(xbasename(copy));
+		xfree(copy);
+	} else
+		w->name = xstrdup(name);
 
 	window_add(&windows, w);
 	w->references = 1;
@@ -186,6 +190,8 @@ window_destroy(struct window *w)
 
 	buffer_destroy(w->in);
 	buffer_destroy(w->out);
+
+	xfree(w->name);
 	xfree(w);
 }
 

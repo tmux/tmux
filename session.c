@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.20 2007-10-03 21:31:07 nicm Exp $ */
+/* $Id: session.c,v 1.21 2007-10-03 23:32:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,6 +55,9 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	s->window = s->last = NULL;
 	ARRAY_INIT(&s->windows);
 
+	s->sx = sx;
+	s->sy = sy;
+
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		if (ARRAY_ITEM(&sessions, i) == NULL) {
 			ARRAY_SET(&sessions, i, s);
@@ -68,10 +71,11 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 		s->name = xstrdup(name);
 	else
 		xasprintf(&s->name, "%u", i);
-	if (session_new(s, cmd, sx, sy) != 0) {
+	if (session_new(s, NULL, cmd, &i) != 0) {
 		session_destroy(s);
 		return (NULL);
 	}
+	session_select(s, i);
 
 	return (s);
 }
@@ -108,24 +112,22 @@ session_index(struct session *s, u_int *i)
 
 /* Create a new window on a session. */
 int
-session_new(struct session *s, const char *cmd, u_int sx, u_int sy)
+session_new(struct session *s, const char *name, const char *cmd, u_int *i)
 {
 	struct window	*w;
 	const char	*environ[] = { NULL, "TERM=screen", NULL };
 	char		 buf[256];
-	u_int		 i;
 
-	if (session_index(s, &i) != 0)
+	if (session_index(s, i) != 0)
 		fatalx("session not found");
-	xsnprintf(buf, sizeof buf, "TMUX=%ld,%u", (long) getpid(), i);
+	xsnprintf(buf, sizeof buf, "TMUX=%ld,%u", (long) getpid(), *i);
 	environ[0] = buf;
 	
-	if ((w = window_create(cmd, environ, sx, sy)) == NULL)
+	if ((w = window_create(name, cmd, environ, s->sx, s->sy)) == NULL)
 		return (-1);
 	session_attach(s, w);
-
-	s->last = s->window;
-	s->window = w;
+	
+	window_index(&s->windows, w, i);
 	return (0);
 }
 
