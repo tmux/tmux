@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.26 2007-10-03 21:39:16 nicm Exp $ */
+/* $Id: tmux.c,v 1.27 2007-10-03 22:32:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -205,7 +205,7 @@ main(int argc, char **argv)
 	if ((cmd = cmd_parse(argc, argv, &cause)) == NULL) {
 		if (cause == NULL)
 			goto usage;
-		log_warnx("%s: %s", __progname, cause);
+		log_warnx("%s", cause);
 		exit(1);
 	}
 
@@ -250,14 +250,14 @@ main(int argc, char **argv)
 		case MSG_PRINT:
 			if (hdr.size > INT_MAX - 1)
 				fatalx("bad MSG_PRINT size");
-			log_info(
-			    "%.*s", (int) hdr.size, BUFFER_OUT(cctx.srv_in));
+			log_info("%.*s",
+			    (int) hdr.size, BUFFER_OUT(cctx.srv_in));
 			buffer_remove(cctx.srv_in, hdr.size);
 			goto restart;
 		case MSG_ERROR:
 			if (hdr.size > INT_MAX - 1)
 				fatalx("bad MSG_ERROR size");
-			log_warnx("%s: %.*s", __progname,
+			log_warnx("%.*s",
 			    (int) hdr.size, BUFFER_OUT(cctx.srv_in));	
 			buffer_remove(cctx.srv_in, hdr.size);
 			exit(1);
