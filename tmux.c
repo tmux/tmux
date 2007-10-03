@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.23 2007-10-03 12:43:47 nicm Exp $ */
+/* $Id: tmux.c,v 1.24 2007-10-03 12:56:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -202,9 +202,9 @@ main(int argc, char **argv)
 	status_lines = 1;
 
 	shell = getenv("SHELL");
-	if (shell == NULL)
+	if (shell == NULL || *shell == '\0')
 		shell = "/bin/ksh";
-	xasprintf(&default_command, "%s -l", shell);
+	xasprintf(&default_command, "exec %s -l", shell);
 
 	found = NULL;
 	for (i = 0; i < NOP; i++) {
