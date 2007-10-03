@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.25 2007-10-03 21:31:07 nicm Exp $ */
+/* $Id: tmux.c,v 1.26 2007-10-03 21:39:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -205,7 +205,7 @@ main(int argc, char **argv)
 	if ((cmd = cmd_parse(argc, argv, &cause)) == NULL) {
 		if (cause == NULL)
 			goto usage;
-		log_warnx("%s", cause);
+		log_warnx("%s: %s", __progname, cause);
 		exit(1);
 	}
 
