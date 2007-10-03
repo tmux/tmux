@@ -1,5 +1,8 @@
 03 October 2007
 
+* (nicm) Key binding. tmux bind key command [argument] and tmux unbind key.
+  Key names are in a table in key-string.c, plus A is A, ^A is ctrl-A.
+  Possible commands are in cmd.c (look at cmd_bind_table).
 * (nicm) Move command parsing into the client. Also rename some messages and
   tidy up a few bits. Lots more tidying up needed :-/.
 
@@ -95,5 +98,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.23 2007-10-03 10:18:31 nicm Exp $
+$Id: CHANGES,v 1.24 2007-10-03 11:26:33 nicm Exp $
 

@@ -1,4 +1,4 @@
-/* $Id: op.c,v 1.9 2007-09-29 14:57:07 nicm Exp $ */
+/* $Id: op.c,v 1.10 2007-10-03 11:26:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -157,6 +157,84 @@ op_rename(char *path, int argc, char **argv)
 		return (1);
 	}
 	client_write_server(&cctx, MSG_RENAME, &data, sizeof data);
+
+	return (client_flush(&cctx));
+}
+
+int
+op_bind_key(char *path, int argc, char **argv)
+{
+	struct bind_data	data;	
+	struct client_ctx	cctx;
+	int			opt;
+	const char	       *errstr;
+
+	optind = 1;
+	while ((opt = getopt(argc, argv, "?")) != EOF) {
+		switch (opt) {
+		default:
+			return (usage("bind-key key command [argument]"));
+		}
+	}
+	argc -= optind;
+	argv += optind;
+	if (argc != 2 && argc != 3)
+		return (usage("bind-key key command [argument]"));
+
+	if ((data.key = key_string_lookup(argv[0])) == KEYC_NONE) {
+		log_warnx("unknown key: %s", argv[0]);
+		return (1);
+	}
+	if (strlcpy(data.cmd, argv[1], sizeof data.cmd) >= sizeof data.cmd) {
+		log_warnx("command too long: %s", argv[1]);
+		return (1);
+	}
+
+	if (argc == 3) {
+		data.arg = strtonum(argv[2], 0, INT_MAX, &errstr);
+		if (errstr != NULL) {
+			log_warnx("argument %s: %s", errstr, argv[2]); 
+			return (1);
+		}
+	} else
+		data.arg = -1;
+
+	if (client_init(path, &cctx, 1) != 0)
+		return (1);
+
+	client_write_server(&cctx, MSG_BINDKEY, &data, sizeof data);
+
+	return (client_flush(&cctx));
+}
+
+int
+op_unbind_key(char *path, int argc, char **argv)
+{
+	struct bind_data	data;	
+	struct client_ctx	cctx;
+	int			opt;
+
+	optind = 1;
+	while ((opt = getopt(argc, argv, "?")) != EOF) {
+		switch (opt) {
+		default:
+			return (usage("unbind-key key"));
+		}
+	}
+	argc -= optind;
+	argv += optind;
+	if (argc != 1)
+		return (usage("unbind-key key"));
+
+	if ((data.key = key_string_lookup(argv[0])) == KEYC_NONE) {
+		log_warnx("unknown key: %s", argv[0]);
+		return (1);
+	}
+
+	if (client_init(path, &cctx, 1) != 0)
+		return (1);
+
+	client_write_server(&cctx, MSG_UNBINDKEY, &data, sizeof data);
 
 	return (client_flush(&cctx));
 }

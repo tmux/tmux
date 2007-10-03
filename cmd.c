@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.1 2007-10-03 10:18:32 nicm Exp $ */
+/* $Id: cmd.c,v 1.2 2007-10-03 11:26:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -39,8 +40,7 @@ struct cmd {
 	void	(*fn)(struct client *, int);
 	int	arg;
 };
-
-struct cmd cmd_table[] = {
+const struct cmd cmd_default[] = {
 	{ '0', cmd_fn_select, 0 },
 	{ '1', cmd_fn_select, 1 },
 	{ '2', cmd_fn_select, 2 },
@@ -67,7 +67,96 @@ struct cmd cmd_table[] = {
 	{ 'i', cmd_fn_windowinfo, 0 },
 	{ META, cmd_fn_meta, 0 },
 };
-#define NCMD (sizeof cmd_table / sizeof cmd_table[0])
+u_int	cmd_count = (sizeof cmd_default / sizeof cmd_default[0]);
+struct cmd *cmd_table;
+
+const struct bind cmd_bind_table[] = {
+	{ "select", 	cmd_fn_select, -1 },
+	{ "create", 	cmd_fn_create, 0 },
+	{ "detach", 	cmd_fn_detach, 0 },
+	{ "next",	cmd_fn_next, 0 },
+	{ "previous", 	cmd_fn_previous, 0 },
+	{ "refresh",	cmd_fn_refresh, 0 },
+	{ "last",	cmd_fn_last, 0 },
+	{ "window-info",cmd_fn_windowinfo, 0 },
+	{ "meta",	cmd_fn_meta, 0 }
+};
+#define NCMDBIND (sizeof cmd_bind_table / sizeof cmd_bind_table[0])
+
+const struct bind *
+cmd_lookup_bind(const char *name)
+{
+	const struct bind	*bind;
+	u_int		         i;
+
+	for (i = 0; i < NCMDBIND; i++) {
+		bind = cmd_bind_table + i;
+		if (strcmp(bind->name, name) == 0)
+			return (bind);
+	}
+	return (NULL);
+}
+
+void
+cmd_add_bind(int key, int arg, const struct bind *bind)
+{
+	struct cmd	*cmd = NULL;
+	u_int		 i;
+
+	for (i = 0; i < cmd_count; i++) {
+		cmd = cmd_table + i;
+		if (cmd->key == key)
+			break;
+	}
+	if (i == cmd_count) {
+		for (i = 0; i < cmd_count; i++) {
+			cmd = cmd_table + i;
+			if (cmd->key == KEYC_NONE)
+				break;
+		}
+		if (i == cmd_count) {
+			cmd_count++;
+			cmd_table = xrealloc(cmd_table,
+			    cmd_count, sizeof cmd_table[0]);
+			cmd = cmd_table + cmd_count - 1;
+		}
+	}
+
+	cmd->key = key;
+	cmd->fn = bind->fn;
+	if (bind->arg != -1)
+		cmd->arg = bind->arg;
+	else
+		cmd->arg = arg;
+}
+
+void
+cmd_remove_bind(int key)
+{
+	struct cmd	*cmd;
+	u_int		 i;
+
+	for (i = 0; i < cmd_count; i++) {
+		cmd = cmd_table + i;
+		if (cmd->key == key) {
+			cmd->key = KEYC_NONE;
+			break;
+		}
+	}
+}
+
+void
+cmd_init(void)
+{
+	cmd_table = xmalloc(sizeof cmd_default);
+	memcpy(cmd_table, cmd_default, sizeof cmd_default);
+}
+
+void
+cmd_free(void)
+{
+	xfree(cmd_table);
+}
 
 void
 cmd_dispatch(struct client *c, int key)
@@ -75,9 +164,9 @@ cmd_dispatch(struct client *c, int key)
 	struct cmd	*cmd;
 	u_int		 i;
 
-	for (i = 0; i < NCMD; i++) {
+	for (i = 0; i < cmd_count; i++) {
 		cmd = cmd_table + i;
-		if (cmd->key == key)
+		if (cmd->key != KEYC_NONE && cmd->key == key)
 			cmd->fn(c, cmd->arg);
 	}
 }

@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.16 2007-10-03 10:18:32 nicm Exp $ */
+/* $Id: server-msg.c,v 1.17 2007-10-03 11:26:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,11 +25,13 @@
 #include "tmux.h"
 
 int	server_msg_fn_attach(struct hdr *, struct client *);
+int	server_msg_fn_bindkey(struct hdr *, struct client *);
 int	server_msg_fn_keys(struct hdr *, struct client *);
 int	server_msg_fn_new(struct hdr *, struct client *);
 int	server_msg_fn_rename(struct hdr *, struct client *);
 int	server_msg_fn_sessions(struct hdr *, struct client *);
 int	server_msg_fn_size(struct hdr *, struct client *);
+int	server_msg_fn_unbindkey(struct hdr *, struct client *);
 int	server_msg_fn_windowlist(struct hdr *, struct client *);
 int	server_msg_fn_windows(struct hdr *, struct client *);
 
@@ -40,11 +42,13 @@ struct server_msg {
 };
 const struct server_msg server_msg_table[] = {
 	{ MSG_ATTACH, server_msg_fn_attach },
+	{ MSG_BINDKEY, server_msg_fn_bindkey },
 	{ MSG_KEYS, server_msg_fn_keys },
 	{ MSG_NEW, server_msg_fn_new },
 	{ MSG_RENAME, server_msg_fn_rename },
 	{ MSG_SESSIONS, server_msg_fn_sessions },
 	{ MSG_SIZE, server_msg_fn_size },
+	{ MSG_UNBINDKEY, server_msg_fn_unbindkey },
 	{ MSG_WINDOWLIST, server_msg_fn_windowlist },
 	{ MSG_WINDOWS, server_msg_fn_windows },
 };
@@ -317,7 +321,7 @@ server_msg_fn_rename(struct hdr *hdr, struct client *c)
 
 	buffer_read(c->in, &data, hdr->size);
 
-	data.newname[(sizeof data.newname) - 1] = '\0';
+ 	data.newname[(sizeof data.newname) - 1] = '\0';
 	if ((s = server_find_sessid(&data.sid, &cause)) == NULL) {
 		server_write_error(c, "%s", cause);
 		xfree(cause);
@@ -381,6 +385,58 @@ server_msg_fn_windowlist(struct hdr *hdr, struct client *c)
 
 	server_write_message(c, "%s", buf);
 	xfree(buf);
+
+	return (0);
+}
+
+/* Bind key message from client */
+int
+server_msg_fn_bindkey(struct hdr *hdr, struct client *c)
+{
+	struct bind_data	data;
+	const struct bind      *bind;
+
+	if (hdr->size != sizeof data)
+		fatalx("bad MSG_BIND size");
+
+	buffer_read(c->in, &data, hdr->size);
+
+ 	data.cmd[(sizeof data.cmd) - 1] = '\0';	
+	if ((bind = cmd_lookup_bind(data.cmd)) == NULL) {
+		server_write_error(c, "unknown command: %s", data.cmd);
+		return (0);
+	}
+
+	if (bind->arg != -1 && data.arg != -1) { 
+		server_write_error(c, "%s cannot have an argument", data.cmd);
+		return (0);
+	}
+	if (bind->arg == -1 && data.arg == -1) {
+		server_write_error(c, "%s requires an argument", data.cmd);
+		return (0);
+	}		
+	
+	cmd_add_bind(data.key, data.arg, bind);
+
+	server_write_client(c, MSG_OKAY, NULL, 0);
+
+	return (0);
+}
+
+/* Unbind key message from client */
+int
+server_msg_fn_unbindkey(struct hdr *hdr, struct client *c)
+{
+	struct bind_data	data;
+
+	if (hdr->size != sizeof data)
+		fatalx("bad MSG_UNBIND size");
+
+	buffer_read(c->in, &data, hdr->size);
+
+	cmd_remove_bind(data.key);
+
+	server_write_client(c, MSG_OKAY, NULL, 0);
 
 	return (0);
 }

@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.18 2007-10-03 10:20:33 nicm Exp $ */
+/* $Id: server.c,v 1.19 2007-10-03 11:26:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -127,6 +127,8 @@ server_main(char *srv_path, int srv_fd)
 	ARRAY_INIT(&clients);
 	ARRAY_INIT(&sessions);
 
+	cmd_init();
+
 	pfds = NULL;
 	while (!sigterm) {
 		/* Initialise pollfd array. */
@@ -168,6 +170,8 @@ server_main(char *srv_path, int srv_fd)
 		server_handle_windows(&pfd);
 		server_handle_clients(&pfd);
 	}
+
+	cmd_free();
 
 	close(srv_fd);
 	unlink(srv_path);

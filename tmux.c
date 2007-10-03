@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.20 2007-10-03 09:17:00 nicm Exp $ */
+/* $Id: tmux.c,v 1.21 2007-10-03 11:26:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,15 +50,28 @@ const struct op op_table[] = {
 	{ "list-windows", "lsw", op_list_windows },
 	{ "new-session", "new", op_new/*_session*/ },
 	{ "rename-window", "renw", op_rename },
+	{ "bind-key", "bind", op_bind_key },
+	{ "unbind-key", "unbind", op_unbind_key },
 };
 #define NOP (sizeof op_table / sizeof op_table[0])
 
 int
-usage(const char *s)
+usage(const char *fmt, ...)
 {
-	if (s == NULL)
-		s = "command [flags]";
-	fprintf(stderr, "usage: %s [-v] [-S path] %s\n", __progname, s);
+	char	*msg;
+	va_list	 ap;
+
+	if (fmt == NULL) {
+		fprintf(stderr,
+		    "usage: %s [-v] [-S path] command [flags]\n", __progname);
+		return (1);
+	}
+
+	va_start(ap, fmt);
+	xvasprintf(&msg, fmt, ap);
+	va_end(ap);
+	fprintf(stderr, "usage: %s [-v] [-S path] %s\n", __progname, msg);
+	xfree(msg);
 	return (1);
 }
 

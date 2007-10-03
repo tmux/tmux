@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.34 2007-10-03 10:18:32 nicm Exp $ */
+/* $Id: tmux.h,v 1.35 2007-10-03 11:26:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@
 #include "array.h"
 
 extern cc_t	ttydefchars[];
-extern char	*__progname;
+extern char    *__progname;
 
 #define MAXNAMELEN	32
 #define MAXTITLELEN	192
@@ -273,6 +273,8 @@ enum hdrtype {
 	MSG_SIZE,
 	MSG_WINDOWLIST,
 	MSG_WINDOWS,
+	MSG_BINDKEY,
+	MSG_UNBINDKEY,
 };
 
 /* Message header structure. */
@@ -328,19 +330,16 @@ struct size_data {
 	u_int		sy;
 };
 
-struct select_data {
-	u_int		idx;
-};
-
-struct refresh_data {
-	u_int		py_upper;
-	u_int		py_lower;
-};
-
 struct rename_data {
 	int		idx;
 	struct sessid	sid;
 	char		newname[MAXNAMELEN];
+};
+
+struct bind_data {
+	int		key;
+	char		cmd[MAXNAMELEN];
+	int		arg;
 };
 
 /* Attributes. */
@@ -495,12 +494,19 @@ struct client_ctx {
 	struct winsize	 ws;
 };
 
+/* Key binding. */
+struct bind {
+	const char	*name;
+	void		 (*fn)(struct client *, int);
+	int     	 arg;	/* -1 if user specifies */
+};
+
 /* tmux.c */
 extern volatile sig_atomic_t sigwinch;
 extern volatile sig_atomic_t sigterm;
 extern int debug_level;
 extern u_int status_lines;
-int	 	 usage(const char *);
+int	 	 usage(const char *, ...);
 void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);
@@ -509,6 +515,8 @@ void		 sigreset(void);
 int	 op_new(char *, int, char **);
 int	 op_attach(char *, int, char **);
 int	 op_rename(char *, int, char **);
+int	 op_bind_key(char *, int, char **);
+int	 op_unbind_key(char *, int, char **);
 
 /* op-list.c */
 int	 op_list_sessions(char *, int, char **);
@@ -528,7 +536,15 @@ void	 client_fill_sessid(struct sessid *, char [MAXNAMELEN]);
 
 /* cmd.c */
 extern int cmd_prefix;
+const struct bind *cmd_lookup_bind(const char *);
+void	 cmd_add_bind(int, int, const struct bind *);
+void	 cmd_remove_bind(int);
+void     cmd_init(void);
+void     cmd_free(void);
 void	 cmd_dispatch(struct client *, int);
+
+/* key-string.c */
+int	 key_string_lookup(const char *);
 
 /* server.c */
 extern struct clients clients;
