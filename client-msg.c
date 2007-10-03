@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.5 2007-10-03 10:18:31 nicm Exp $ */
+/* $Id: client-msg.c,v 1.6 2007-10-03 21:31:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,7 +39,6 @@ struct client_msg client_msg_table[] = {
 	{ MSG_DATA, client_msg_fn_data },
 	{ MSG_DETACH, client_msg_fn_detach },
 	{ MSG_ERROR, client_msg_fn_error },
-	{ MSG_OKAY, client_msg_fn_okay },
 	{ MSG_PAUSE, client_msg_fn_pause },
 };
 #define NCLIENTMSG (sizeof client_msg_table / sizeof client_msg_table[0])
@@ -73,7 +72,6 @@ client_msg_dispatch(struct client_ctx *cctx, char **error)
 	}
 }
 
-/* Data message from server. */
 int
 client_msg_fn_data(
     struct hdr *hdr, struct client_ctx *cctx, unused char **error)
@@ -82,7 +80,6 @@ client_msg_fn_data(
 	return (0);
 }
 
-/* Pause message from server. */
 int
 client_msg_fn_pause(
     struct hdr *hdr, unused struct client_ctx *cctx, unused char **error)
@@ -92,17 +89,6 @@ client_msg_fn_pause(
 	return (1);
 }
 
-/* Okay message from server. */
-int
-client_msg_fn_okay(
-    struct hdr *hdr, unused struct client_ctx *cctx, unused char **error)
-{
-	if (hdr->size != 0)
-		fatalx("bad MSG_OKAY size");
-	return (0);
-}
-
-/* Error message from server. */
 int
 client_msg_fn_error(struct hdr *hdr, struct client_ctx *cctx, char **error)
 {
@@ -116,7 +102,6 @@ client_msg_fn_error(struct hdr *hdr, struct client_ctx *cctx, char **error)
 	return (-1);
 }
 
-/* Detach message from server. */
 int
 client_msg_fn_detach(
     struct hdr *hdr, unused struct client_ctx *cctx, char **error)

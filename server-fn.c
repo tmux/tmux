@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.13 2007-10-03 12:34:16 nicm Exp $ */
+/* $Id: server-fn.c,v 1.14 2007-10-03 21:31:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -64,7 +64,7 @@ server_find_sessid(struct sessid *sid, char **cause)
 		}
 	}
 	if (s == NULL) {
-		xasprintf(cause, "no sessions");
+		xasprintf(cause, "no sessions found");
 		return (NULL);
 	}
 	if (n != 1) {
@@ -125,6 +125,8 @@ server_write_clients(
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (c != NULL && c->session != NULL) {
+			if (c->flags & CLIENT_HOLD) /* XXX OUTPUT only */
+				continue;
 			if (c->session->window == w) {
 				log_debug(
 				    "writing %d to clients: %d", type, c->fd);
@@ -145,21 +147,22 @@ server_window_changed(struct client *c)
 	w = c->session->window;
 	if (c->sx != w->screen.sx || c->sy != w->screen.sy)
 		window_resize(w, c->sx, c->sy);
-	server_draw_client(c, 0, c->sy - 1);
+	server_draw_client(c);
 }
 
 /* Draw window on client. */
 void
-server_draw_client(struct client *c, u_int py_upper, u_int py_lower)
+server_draw_client(struct client *c)
 {
-	struct hdr	hdr;
-	size_t		size;
+	struct hdr	 hdr;
+	size_t		 size;
+	struct screen	*s = &c->session->window->screen;
 
 	buffer_ensure(c->out, sizeof hdr);
 	buffer_add(c->out, sizeof hdr);
 	size = BUFFER_USED(c->out);
 
-	screen_draw(&c->session->window->screen, c->out, py_upper, py_lower);
+	screen_draw(s, c->out, 0, s->sy - 1);
 
 	size = BUFFER_USED(c->out) - size;
 	log_debug("redrawing screen, %zu bytes", size);

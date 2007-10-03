@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.37 2007-10-03 12:43:47 nicm Exp $ */
+/* $Id: tmux.h,v 1.38 2007-10-03 21:31:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -259,28 +259,17 @@ struct buffer {
 
 /* Message codes. */
 enum hdrtype {
-	MSG_ATTACH,
-	MSG_DATA,
-	MSG_DETACH,
+	MSG_COMMAND,
 	MSG_ERROR,
+	MSG_PRINT,
 	MSG_EXIT,
+	MSG_IDENTIFY,
+	MSG_READY,
+	MSG_DETACH,
+	MSG_RESIZE,
+	MSG_DATA,
 	MSG_KEYS,
-	MSG_NEW,
-	MSG_OKAY,
 	MSG_PAUSE,
-	MSG_RENAME,
-	MSG_SESSIONS,
-	MSG_SIZE,
-	MSG_WINDOWLIST,
-	MSG_WINDOWS,
-	MSG_BINDKEY,
-	MSG_UNBINDKEY,
-};
-
-/* Message header structure. */
-struct hdr {
-	enum hdrtype	type;
-	size_t		size;
 };
 
 /* Session identification. */
@@ -290,59 +279,24 @@ struct sessid {
 	char		name[MAXNAMELEN];	/* empty for current */
 };
 
-struct new_data {
-	char		name[MAXNAMELEN];
+/* Message header structure. */
+struct hdr {
+	enum hdrtype	type;
+	size_t		size;
+};
+
+struct msg_command_data {
+	struct sessid   sid;
+};
+
+struct msg_identify_data {
 	u_int		sx;
 	u_int		sy;
 };
 
-struct attach_data {
-	struct sessid	sid;
+struct msg_resize_data {
 	u_int		sx;
 	u_int		sy;
-};
-
-struct sessions_data {
-	u_int		sessions;
-};
-
-struct sessions_entry {
-	char		name[MAXNAMELEN];
-	time_t		tim;
-	u_int		windows;
-};
-
-struct windows_data {
-	struct sessid	sid;
-	u_int		windows;
-};
-
-struct windows_entry {
-	u_int		idx;
-	char		tty[TTY_NAME_MAX];
-
-	char		name[MAXNAMELEN];
-	char		title[MAXTITLELEN];
-};
-
-struct size_data {
-	u_int		sx;
-	u_int		sy;
-};
-
-struct rename_data {
-	int		idx;
-	struct sessid	sid;
-	char		newname[MAXNAMELEN];
-};
-
-struct bind_data {
-	int		key;
-	char		cmd[MAXNAMELEN];
-
-	int		flags;
-
-	u_int		num;
 };
 
 /* Attributes. */
@@ -460,7 +414,7 @@ ARRAY_DECL(windows, struct window *);
 
 /* Client session. */
 struct session {
-	char		 name[MAXNAMELEN];
+	char		*name;
 	time_t		 tim;
 
 	struct window	*window;
@@ -478,7 +432,10 @@ struct client {
 	u_int		 sx;
 	u_int		 sy;
 
-	int		 prefix;	/* waiting for command */
+#define CLIENT_TERMINAL 0x1
+#define CLIENT_PREFIX 0x2
+#define CLIENT_HOLD 0x4
+	int		 flags;
 
 	struct session	*session;
 };
@@ -493,50 +450,85 @@ struct client_ctx {
 	int		 loc_fd;
 	struct buffer	*loc_in;
 	struct buffer	*loc_out;
-
-	struct winsize	 ws;
 };
 
-/* Key command. */
+/* Key/command line command. */
+enum cmd_type {
+	CMD_NEWSESSION,
+	CMD_DETACHSESSION,
+	CMD_LISTSESSIONS,
+};
+
+struct cmd_ctx {
+	struct client  *client;
+	struct session *session;
+
+	void		(*print)(struct cmd_ctx *, const char *, ...);
+	void		(*error)(struct cmd_ctx *, const char *, ...);
+
+#define CMD_KEY 0x1
+	int		flags;
+};
+
+struct cmd_entry {
+	enum cmd_type	 type;
+	const char	*name;
+	const char	*alias;
+
+#define CMD_STARTSERVER 0x1
+#define CMD_NOSESSION 0x2
+	int		 flags;
+
+	int		 (*parse)(void **, int, char **, char **);
+	const char 	*(*usage)(void);
+	void		 (*exec)(void *, struct cmd_ctx *);
+	void		 (*send)(void *, struct buffer *);
+	void	         (*recv)(void **, struct buffer *);
+	void		 (*free)(void *);
+};
+
 struct cmd {
-	int	key;
-	void	(*fn)(struct client *, struct cmd *);
-	u_int	num;
-	char   *str;
+	const struct cmd_entry *entry;
+	void	       	*data;
 };
 
 /* Key binding. */
-struct bind {
-	const char	*name;
-	void		 (*fn)(struct client *, struct cmd *);
-	
-#define BIND_USER 0x1
-#define BIND_NUMBER 0x2
-#define BIND_STRING 0x4
-	int		 flags;
+struct binding {
+	int		 key;
+	struct cmd	*cmd;
 };
 
 /* tmux.c */
 extern volatile sig_atomic_t sigwinch;
 extern volatile sig_atomic_t sigterm;
+extern int	prefix_key;
 extern int	debug_level;
 extern u_int	status_lines;
 extern char    *default_command;
-int	 	 usage(const char *, ...);
+void		 usage(char **, const char *, ...);
 void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);
 
-/* op.c */
-int	 op_new_session(char *, int, char **);
-int	 op_attach(char *, int, char **);
-int	 op_rename_window(char *, int, char **);
-int	 op_bind_key(char *, int, char **);
-int	 op_unbind_key(char *, int, char **);
+/* cmd.c */
+struct cmd	*cmd_parse(int, char **, char **);
+void		 cmd_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_send(struct cmd *, struct buffer *);
+struct cmd	*cmd_recv(struct buffer *);
+void		 cmd_free(struct cmd *);
+void		 cmd_send_string(struct buffer *, const char *);
+char		*cmd_recv_string(struct buffer *);
+extern const struct cmd_entry  cmd_new_session_entry;
+extern const struct cmd_entry  cmd_detach_session_entry;
+extern const struct cmd_entry  cmd_list_sessions_entry;
 
-/* op-list.c */
-int	 op_list_sessions(char *, int, char **);
-int	 op_list_windows(char *, int, char **);
+/* bind.c */
+const struct bind *cmdx_lookup_bind(const char *);
+void	 cmdx_add_bind(int, u_int, char *, const struct bind *);
+void	 cmdx_remove_bind(int);
+void     cmdx_init(void);
+void     cmdx_free(void);
+void	 cmdx_dispatch(struct client *, int);
 
 /* client.c */
 int	 client_init(char *, struct client_ctx *, int);
@@ -552,14 +544,12 @@ void	 client_write_server2(
     	     struct client_ctx *, enum hdrtype, void *, size_t, void *, size_t);
 void	 client_fill_sessid(struct sessid *, char [MAXNAMELEN]);
 
-/* cmd.c */
-extern int cmd_prefix;
-const struct bind *cmd_lookup_bind(const char *);
-void	 cmd_add_bind(int, u_int, char *, const struct bind *);
-void	 cmd_remove_bind(int);
-void     cmd_init(void);
-void     cmd_free(void);
-void	 cmd_dispatch(struct client *, int);
+/* key-bindings.c */
+void	 key_bindings_add(int, struct cmd *);
+void	 key_bindings_remove(int);
+void	 key_bindings_init(void);
+void	 key_bindings_free(void);
+void	 key_bindings_dispatch(int, struct client *);
 
 /* key-string.c */
 int	 key_string_lookup(const char *);
@@ -582,7 +572,7 @@ void	 server_write_client2(struct client *,
 void	 server_write_clients(
     	     struct window *, enum hdrtype, const void *, size_t);
 void	 server_window_changed(struct client *);
-void	 server_draw_client(struct client *, u_int, u_int);
+void	 server_draw_client(struct client *);
 void	 server_draw_status(struct client *);
 
 /* status.c */

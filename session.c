@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.19 2007-09-29 21:02:26 nicm Exp $ */
+/* $Id: session.c,v 1.20 2007-10-03 21:31:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -64,11 +64,10 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	if (i == ARRAY_LENGTH(&sessions))
 		ARRAY_ADD(&sessions, s);
 
-	if (*name != '\0')
-		strlcpy(s->name, name, sizeof s->name);
+	if (name != NULL)
+		s->name = xstrdup(name);
 	else
-		xsnprintf(s->name, sizeof s->name, "%u", i);
-
+		xasprintf(&s->name, "%u", i);
 	if (session_new(s, cmd, sx, sy) != 0) {
 		session_destroy(s);
 		return (NULL);
@@ -92,6 +91,7 @@ session_destroy(struct session *s)
 	while (!ARRAY_EMPTY(&s->windows))
 		window_remove(&s->windows, ARRAY_FIRST(&s->windows));
 
+	xfree(s->name);
 	xfree(s);
 }
 

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.24 2007-10-03 12:56:02 nicm Exp $ */
+/* $Id: tmux.c,v 1.25 2007-10-03 21:31:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <err.h>
+#include <errno.h>
 #include <paths.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,45 +38,29 @@ const char	*malloc_options = "AFGJPX";
 volatile sig_atomic_t sigwinch;
 volatile sig_atomic_t sigterm;
 int		 debug_level;
+int		 prefix_key = META;
 u_int		 status_lines;
 char		*default_command;
 
 void		 sighandler(int);
 
-struct op {
-	const char     *cmd;
-	const char     *alias;
-	int		(*fn)(char *, int, char **);
-};
-const struct op op_table[] = {
-	{ "attach", NULL, op_attach },
-	{ "bind-key", "bind", op_bind_key },
-	{ "list-sessions", "ls", op_list_sessions },
-	{ "list-windows", "lsw", op_list_windows },
-	{ "new-session", "new", op_new_session },
-	{ "rename-window", "renw", op_rename_window },
-	{ "unbind-key", "unbind", op_unbind_key },
-};
-#define NOP (sizeof op_table / sizeof op_table[0])
-
-int
-usage(const char *fmt, ...)
+void
+usage(char **ptr, const char *fmt, ...)
 {
 	char	*msg;
 	va_list	 ap;
 
 	if (fmt == NULL) {
-		fprintf(stderr,
-		    "usage: %s [-v] [-S path] command [flags]\n", __progname);
-		return (1);
-	}
+		xasprintf(ptr,
+		    "usage: %s [-v] [-S path] command [flags]", __progname);
+	} else {
+		va_start(ap, fmt);
+		xvasprintf(&msg, fmt, ap);
+		va_end(ap);
 
-	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
-	va_end(ap);
-	fprintf(stderr, "usage: %s [-v] [-S path] %s\n", __progname, msg);
-	xfree(msg);
-	return (1);
+		xasprintf(ptr, "usage: %s [-v] [-S path] %s", __progname, msg);
+		xfree(msg);
+	}
 }
 
 void
@@ -172,30 +159,39 @@ sigreset(void)
 int
 main(int argc, char **argv)
 {
-	const struct op		*op, *found;
+	struct client_ctx	 cctx;
+	struct msg_command_data	 data;
+	struct buffer		*b;
+	struct cmd		*cmd;
+	struct pollfd	 	 pfd;
+	struct hdr	 	 hdr;
 	const char		*shell;
-	char			*path;
+	char			*path, *cause, name[MAXNAMELEN];
 	int	 		 opt;
-	u_int			 i;
 
+	*name = '\0';
 	path = NULL;
-        while ((opt = getopt(argc, argv, "S:v?")) != EOF) {
+        while ((opt = getopt(argc, argv, "S:s:v?")) != EOF) {
                 switch (opt) {
 		case 'S':
 			path = xstrdup(optarg);
+			break;
+		case 's':
+			if (strlcpy(name, optarg, sizeof name) >= sizeof name)
+				errx(1, "session name too long: %s", optarg);
 			break;
 		case 'v':
 			debug_level++;
 			break;
                 case '?':
                 default:
-                        exit(usage(NULL));
+			goto usage;
                 }
         }
 	argc -= optind;
 	argv += optind;
 	if (argc == 0)
-		exit(usage(NULL));
+		goto usage;
 
 	log_open(stderr, LOG_USER, debug_level);
 
@@ -206,21 +202,75 @@ main(int argc, char **argv)
 		shell = "/bin/ksh";
 	xasprintf(&default_command, "exec %s -l", shell);
 
-	found = NULL;
-	for (i = 0; i < NOP; i++) {
-		op = op_table + i;
-		if (op->alias != NULL && strcmp(argv[0], op->alias) == 0)
-			exit(op->fn(path, argc, argv));
-		if (strncmp(argv[0], op->cmd, strlen(argv[0])) == 0) {
-			if (found != NULL) {
-				log_warnx("ambiguous command: %s", argv[0]);
-				exit(1);
-			}
-			found = op;
+	if ((cmd = cmd_parse(argc, argv, &cause)) == NULL) {
+		if (cause == NULL)
+			goto usage;
+		log_warnx("%s", cause);
+		exit(1);
+	}
+
+	if (!(cmd->entry->flags & CMD_NOSESSION))
+		client_fill_sessid(&data.sid, name);
+	if (client_init(path, &cctx, cmd->entry->flags & CMD_STARTSERVER) != 0)
+		exit(1);
+	b = buffer_create(BUFSIZ);
+	cmd_send(cmd, b);
+	cmd_free(cmd);
+
+	client_write_server2(&cctx,
+	    MSG_COMMAND, &data, sizeof data, BUFFER_OUT(b), BUFFER_USED(b));
+	buffer_destroy(b);
+	
+	for (;;) {
+		pfd.fd = cctx.srv_fd;
+		pfd.events = POLLIN;
+		if (BUFFER_USED(cctx.srv_out) > 0)
+			pfd.events |= POLLOUT;
+	
+		if (poll(&pfd, 1, INFTIM) == -1) {
+			if (errno == EAGAIN || errno == EINTR)
+				continue;
+			fatal("poll failed");
+		}
+
+		if (buffer_poll(&pfd, cctx.srv_in, cctx.srv_out) != 0)
+			fatalx("lost server");
+
+	restart:
+		if (BUFFER_USED(cctx.srv_in) < sizeof hdr)
+			continue;
+		memcpy(&hdr, BUFFER_OUT(cctx.srv_in), sizeof hdr);
+		if (BUFFER_USED(cctx.srv_in) < (sizeof hdr) + hdr.size)
+			continue;
+		buffer_remove(cctx.srv_in, sizeof hdr);
+
+		switch (hdr.type) {
+		case MSG_EXIT:
+			exit(0);
+		case MSG_PRINT:
+			if (hdr.size > INT_MAX - 1)
+				fatalx("bad MSG_PRINT size");
+			log_info(
+			    "%.*s", (int) hdr.size, BUFFER_OUT(cctx.srv_in));
+			buffer_remove(cctx.srv_in, hdr.size);
+			goto restart;
+		case MSG_ERROR:
+			if (hdr.size > INT_MAX - 1)
+				fatalx("bad MSG_ERROR size");
+			log_warnx("%s: %.*s", __progname,
+			    (int) hdr.size, BUFFER_OUT(cctx.srv_in));	
+			buffer_remove(cctx.srv_in, hdr.size);
+			exit(1);
+		case MSG_READY:
+			exit(client_main(&cctx));
+		default:
+			fatalx("unexpected command");
 		}
 	}
-	if (found != NULL)
-		exit(found->fn(path, argc, argv));
+	/* NOTREACHED */
 
-	exit(usage(NULL));
+usage:
+	usage(&cause, NULL);
+	fprintf(stderr, "%s\n", cause);
+	exit(1);
 }

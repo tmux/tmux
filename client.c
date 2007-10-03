@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.10 2007-10-03 10:18:32 nicm Exp $ */
+/* $Id: client.c,v 1.11 2007-10-03 21:31:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,31 +38,17 @@ int	client_process_local(struct client_ctx *, char **);
 int
 client_init(char *path, struct client_ctx *cctx, int start_server)
 {
-	struct sockaddr_un	sa;
-	struct stat		sb;
-	size_t			sz;
-	int			mode;
-	u_int			retries;
+	struct sockaddr_un		sa;
+	struct stat			sb;
+	struct msg_identify_data	data;
+	struct winsize			ws;
+	size_t				sz;
+	int				mode;
+	u_int				retries;
 
 	if (path == NULL) {
 		xasprintf(&path,
 		    "%s/%s-%lu", _PATH_TMP, __progname, (u_long) getuid());
-	}
-
-	if (start_server) {
-		if (!isatty(STDIN_FILENO)) {
-			log_warnx("stdin is not a tty");
-			return (-1);
-		}
-		if (!isatty(STDOUT_FILENO)) {
-			log_warnx("stdout is not a tty");
-			return (-1);
-		}
-
-		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &cctx->ws) == -1) {
-			log_warn("ioctl(TIOCGWINSZ)");
-			return (-1);
-		}
 	}
 
 	retries = 0;
@@ -121,50 +107,18 @@ retry:
 	cctx->srv_in = buffer_create(BUFSIZ);
 	cctx->srv_out = buffer_create(BUFSIZ);
 
-	return (0);
-}
-
-int
-client_flush(struct client_ctx *cctx)
-{
-	struct pollfd	 pfd;
-	struct hdr	 hdr;
-
-	for (;;) {
-		pfd.fd = cctx->srv_fd;
-		pfd.events = POLLIN;
-		if (BUFFER_USED(cctx->srv_out) > 0)
-			pfd.events |= POLLOUT;
-	
-		if (poll(&pfd, 1, INFTIM) == -1) {
-			if (errno == EAGAIN || errno == EINTR)
-				continue;
-			fatal("poll failed");
+	if (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) {
+		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1) {
+			log_warn("ioctl(TIOCGWINSZ)");
+			return (-1);
 		}
 
-		if (buffer_poll(&pfd, cctx->srv_in, cctx->srv_out) != 0) {
-			log_warnx("lost server");
-			return (1);
-		}
-
-		if (BUFFER_USED(cctx->srv_in) < sizeof hdr)
-			continue;
-		memcpy(&hdr, BUFFER_OUT(cctx->srv_in), sizeof hdr);
-		if (BUFFER_USED(cctx->srv_in) < (sizeof hdr) + hdr.size)
-			continue;
-		buffer_remove(cctx->srv_in, sizeof hdr);
-
-		if (hdr.type == MSG_OKAY)
-			return (0);
-		if (hdr.type == MSG_ERROR) {
-			if (hdr.size > INT_MAX - 1)
-				fatalx("bad MSG_ERROR size");
-			log_warnx(
-			    "%.*s", (int) hdr.size, BUFFER_OUT(cctx->srv_in));
-			return (1);
-		}
-		fatalx("unexpected message");
+		data.sx = ws.ws_col;
+		data.sy = ws.ws_row;
+		client_write_server(cctx, MSG_IDENTIFY, &data, sizeof data);
 	}
+
+	return (0);
 }
 
 int
@@ -244,14 +198,15 @@ local_dead:
 void
 client_handle_winch(struct client_ctx *cctx)
 {
-	struct size_data	data;
-
-	if (ioctl(STDIN_FILENO, TIOCGWINSZ, &cctx->ws) == -1)
+	struct msg_resize_data	data;
+	struct winsize		ws;
+	
+	if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
 		fatal("ioctl failed");
 
-	data.sx = cctx->ws.ws_col;
-	data.sy = cctx->ws.ws_row;
-	client_write_server(cctx, MSG_SIZE, &data, sizeof data);
+	data.sx = ws.ws_col;
+	data.sy = ws.ws_row;
+	client_write_server(cctx, MSG_RESIZE, &data, sizeof data);
 	
 	sigwinch = 0;
 }

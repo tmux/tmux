@@ -33,8 +33,11 @@
 	IPC is arse-about-face: too much overhead. 8-byte header for each
 	packet... hrm. already scanning output for \e, could add an extra
 	byte to it for message
-- could use bsearch all over the place
+- could use bsearch all over the place or get rid of smaller tables (clientmsg)
 - better errors when creating new windows/sessions (how?)
+- commands should have to care less about CMD_KEY
+- CLIENT_HOLD sucks
+- session with CMD_NOSESSION should be an error
 
 -- For 0.1 --------------------------------------------------------------------
 - man page

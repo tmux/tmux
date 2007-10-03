@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.4 2007-10-03 12:43:47 nicm Exp $ */
+/* $Id: cmd.c,v 1.5 2007-10-03 21:31:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,243 +18,163 @@
 
 #include <sys/types.h>
 
-#include <stdlib.h>
+#include <getopt.h>
 #include <string.h>
 
 #include "tmux.h"
 
-int	cmd_prefix = META;
-
-void	cmd_fn_detach(struct client *, struct cmd *);
-void	cmd_fn_last(struct client *, struct cmd *);
-void	cmd_fn_meta(struct client *, struct cmd *);
-void	cmd_fn_new(struct client *, struct cmd *);
-void	cmd_fn_next(struct client *, struct cmd *);
-void	cmd_fn_previous(struct client *, struct cmd *);
-void	cmd_fn_refresh(struct client *, struct cmd *);
-void	cmd_fn_select(struct client *, struct cmd *);
-void	cmd_fn_info(struct client *, struct cmd *);
-
-const struct cmd cmd_default[] = {
-	{ '0', cmd_fn_select, 0, NULL },
-	{ '1', cmd_fn_select, 1, NULL },
-	{ '2', cmd_fn_select, 2, NULL },
-	{ '3', cmd_fn_select, 3, NULL },
-	{ '4', cmd_fn_select, 4, NULL },
-	{ '5', cmd_fn_select, 5, NULL },
-	{ '6', cmd_fn_select, 6, NULL },
-	{ '7', cmd_fn_select, 7, NULL },
-	{ '8', cmd_fn_select, 8, NULL },
-	{ '9', cmd_fn_select, 9, NULL },
-	{ 'C', cmd_fn_new, 0, NULL },
-	{ 'c', cmd_fn_new, 0, NULL },
-	{ 'D', cmd_fn_detach, 0, NULL },
-	{ 'd', cmd_fn_detach, 0, NULL },
-	{ 'N', cmd_fn_next, 0, NULL },
-	{ 'n', cmd_fn_next, 0, NULL },
-	{ 'P', cmd_fn_previous, 0, NULL },
-	{ 'p', cmd_fn_previous, 0, NULL },
-	{ 'R', cmd_fn_refresh, 0, NULL },
-	{ 'r', cmd_fn_refresh, 0, NULL },
-	{ 'L', cmd_fn_last, 0, NULL },
-	{ 'l', cmd_fn_last, 0, NULL },
-	{ 'I', cmd_fn_info, 0, NULL },
-	{ 'i', cmd_fn_info, 0, NULL },
-	{ META, cmd_fn_meta, 0, NULL },
+const struct cmd_entry *cmd_table[] = {
+	&cmd_detach_session_entry,
+	&cmd_list_sessions_entry,
+	&cmd_new_session_entry,
+	NULL
 };
-u_int	cmd_count = (sizeof cmd_default / sizeof cmd_default[0]);
-struct cmd *cmd_table;
 
-const struct bind cmd_bind_table[] = {
-	{ "detach", 	cmd_fn_detach, 0 },
-	{ "info",	cmd_fn_info, 0 },
-	{ "last",	cmd_fn_last, 0 },
-	{ "meta",	cmd_fn_meta, 0 },
-	{ "new", 	cmd_fn_new, BIND_STRING|BIND_USER },
-	{ "next",	cmd_fn_next, 0 },
-	{ "previous", 	cmd_fn_previous, 0 },
-	{ "refresh",	cmd_fn_refresh, 0 },
-	{ "select", 	cmd_fn_select, BIND_NUMBER|BIND_USER },
-};
-#define NCMDBIND (sizeof cmd_bind_table / sizeof cmd_bind_table[0])
-
-const struct bind *
-cmd_lookup_bind(const char *name)
+struct cmd *
+cmd_parse(int argc, char **argv, char **cause)
 {
-	const struct bind	*bind;
-	u_int		         i;
+	const struct cmd_entry **this, *entry;
+	struct cmd	        *cmd;
+	int			 opt;
 
-	for (i = 0; i < NCMDBIND; i++) {
-		bind = cmd_bind_table + i;
-		if (strcmp(bind->name, name) == 0)
-			return (bind);
+	*cause = NULL;
+	if (argc == 0)
+		return (NULL);
+
+	entry = NULL;
+	for (this = cmd_table; *this != NULL; this++) {
+		if (strcmp((*this)->alias, argv[0]) == 0) {
+			entry = *this;
+			break;
+		}
+
+		if (strncmp((*this)->name, argv[0], strlen(argv[0])) != 0)
+			continue;
+		if (entry != NULL) {
+			xasprintf(cause, "ambiguous command: %s", argv[0]);
+			return (NULL);
+		}
+		entry = *this;
 	}
+	if (entry == NULL) {
+		xasprintf(cause, "unknown command: %s", argv[0]);
+		return (NULL);
+	}
+
+	optind = 1;
+	if (entry->parse == NULL) {
+		while ((opt = getopt(argc, argv, "")) != EOF) {
+			switch (opt) {
+			default:
+				goto usage;
+			}
+		}
+		argc -= optind;
+		argv += optind;
+		if (argc != 0)
+			goto usage;
+	}
+
+	cmd = xmalloc(sizeof *cmd);
+	cmd->entry = entry;
+	if (entry->parse != NULL) {
+		if (entry->parse(&cmd->data, argc, argv, cause) != 0) {
+			xfree(cmd);
+			return (NULL);
+		}
+	}
+	return (cmd);
+
+usage:
+	if (entry->usage == NULL)
+		usage(cause, "%s", entry->name);
+	else
+		usage(cause, "%s", entry->usage());
 	return (NULL);
 }
 
 void
-cmd_add_bind(int key, u_int num, char *str, const struct bind *bind)
+cmd_exec(struct cmd *cmd, struct cmd_ctx *ctx)
 {
-	struct cmd	*cmd = NULL;
-	u_int		 i;
-
-	for (i = 0; i < cmd_count; i++) {
-		cmd = cmd_table + i;
-		if (cmd->key == key)
-			break;
-	}
-	if (i == cmd_count) {
-		for (i = 0; i < cmd_count; i++) {
-			cmd = cmd_table + i;
-			if (cmd->key == KEYC_NONE)
-				break;
-		}
-		if (i == cmd_count) {
-			cmd_count++;
-			cmd_table = xrealloc(cmd_table,
-			    cmd_count, sizeof cmd_table[0]);
-			cmd = cmd_table + cmd_count - 1;
-		}
-	}
-
-	cmd->key = key;
-	cmd->fn = bind->fn;
-	if (bind->flags & BIND_USER) {
-		if (bind->flags & BIND_STRING)
-			cmd->str = xstrdup(str);
-		if (bind->flags & BIND_NUMBER)
-			cmd->num = num;
-	}
+	return (cmd->entry->exec(cmd->data, ctx));
 }
 
 void
-cmd_remove_bind(int key)
+cmd_send(struct cmd *cmd, struct buffer *b)
 {
-	struct cmd	*cmd;
-	u_int		 i;
+	buffer_write(b, &cmd->entry->type, sizeof cmd->entry->type);
 
-	for (i = 0; i < cmd_count; i++) {
-		cmd = cmd_table + i;
-		if (cmd->key == key) {
-			cmd->key = KEYC_NONE;
+	if (cmd->entry->send == NULL)
+		return;
+	return (cmd->entry->send(cmd->data, b));
+}
+
+struct cmd *
+cmd_recv(struct buffer *b)
+{
+	const struct cmd_entry **this, *entry;
+	struct cmd   	        *cmd;
+	enum cmd_type		 type;
+
+	buffer_read(b, &type, sizeof type);
+	
+	entry = NULL;
+	for (this = cmd_table; *this != NULL; this++) {
+		if ((*this)->type == type) {
+			entry = *this;
 			break;
 		}
 	}
+	if (*this == NULL)
+		return (NULL);
+
+	cmd = xmalloc(sizeof *cmd);
+	cmd->entry = entry;
+
+	if (cmd->entry->recv != NULL)
+		cmd->entry->recv(&cmd->data, b);
+	return (cmd);
 }
 
 void
-cmd_init(void)
+cmd_free(struct cmd *cmd)
 {
-	cmd_table = xmalloc(sizeof cmd_default);
-	memcpy(cmd_table, cmd_default, sizeof cmd_default);
+	if (cmd->entry->free != NULL)
+		cmd->entry->free(cmd->data);
+	xfree(cmd);
 }
 
 void
-cmd_free(void)
+cmd_send_string(struct buffer *b, const char *s)
 {
-	/* XXX free strings */
-	xfree(cmd_table);
-}
-
-void
-cmd_dispatch(struct client *c, int key)
-{
-	struct cmd	*cmd;
-	u_int		 i;
-
-	for (i = 0; i < cmd_count; i++) {
-		cmd = cmd_table + i;
-		if (cmd->key != KEYC_NONE && cmd->key == key)
-			cmd->fn(c, cmd);
+	size_t	n;
+	
+	if (s == NULL) {
+		n = 0;
+		buffer_write(b, &n, sizeof n);
+		return;
 	}
+
+	n = strlen(s) + 1;
+	buffer_write(b, &n, sizeof n);
+
+	buffer_write(b, s, n);
 }
 
-void
-cmd_fn_new(struct client *c, struct cmd *cmd)
+char *
+cmd_recv_string(struct buffer *b)
 {
-	char	*s;
+	char   *s;
+	size_t	n;
 
-	s = cmd->str;
-	if (s == NULL)
-		s = default_command;
-	if (session_new(c->session, s, c->sx, c->sy) != 0)
-		server_write_message(c, "%s failed", s); /* XXX */
-	else
-		server_draw_client(c, 0, c->sy - 1);
-}
+	buffer_read(b, &n, sizeof n);
 
-void
-cmd_fn_detach(struct client *c, unused struct cmd *cmd)
-{
-	server_write_client(c, MSG_DETACH, NULL, 0);
-}
+	if (n == 0)
+		return (NULL);
+	
+	s = xmalloc(n);
+	buffer_read(b, s, n);
+	s[n - 1] = '\0';
 
-void
-cmd_fn_last(struct client *c, unused struct cmd *cmd)
-{
-	if (session_last(c->session) == 0)
-		server_window_changed(c);
-	else
-		server_write_message(c, "No last window"); 
-}
-
-void
-cmd_fn_meta(struct client *c, unused struct cmd *cmd)
-{
-	window_key(c->session->window, cmd_prefix);
-}
-
-void
-cmd_fn_next(struct client *c, unused struct cmd *cmd)
-{
-	if (session_next(c->session) == 0)
-		server_window_changed(c);
-	else
-		server_write_message(c, "No next window"); 
-}
-
-void
-cmd_fn_previous(struct client *c, unused struct cmd *cmd)
-{
-	if (session_previous(c->session) == 0)
-		server_window_changed(c);
-	else
-		server_write_message(c, "No previous window"); 
-}
-
-void
-cmd_fn_refresh(struct client *c, unused struct cmd *cmd)
-{
-	server_draw_client(c, 0, c->sy - 1);
-}
-
-void
-cmd_fn_select(struct client *c, struct cmd *cmd)
-{
-	if (session_select(c->session, cmd->num) == 0)
-		server_window_changed(c);
-	else
-		server_write_message(c, "Window %u not present", cmd->num);
-}
-
-void
-cmd_fn_info(struct client *c, unused struct cmd *cmd)
-{
-	struct window	*w;
-	char 		*buf;
-	size_t		 len;
-	u_int		 i;
-
-	len = c->sx + 1;
-	buf = xmalloc(len);
-
-	w = c->session->window;
-	window_index(&c->session->windows, w, &i);
-	xsnprintf(buf, len, "%u:%s \"%s\" (size %u,%u) (cursor %u,%u) "
-	    "(region %u,%u)", i, w->name, w->screen.title, w->screen.sx,
-	    w->screen.sy, w->screen.cx, w->screen.cy, w->screen.ry_upper,
-	    w->screen.ry_lower);
-
-	server_write_message(c, "%s", buf);
-	xfree(buf);
+	return (s);
 }

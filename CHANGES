@@ -1,5 +1,9 @@
 03 October 2007
 
+* (nicm) Rewrite command handling so commands are much more generic and the
+  same commands are used for command line and keys (although most will probably
+  need to check how they are called). Currently incomplete (only new/detach/ls
+  implemented).
 * (nicm) String number arguments. So you can do: tmux bind ^Q create "blah".
 * (nicm) Key binding. tmux bind key command [argument] and tmux unbind key.
   Key names are in a table in key-string.c, plus A is A, ^A is ctrl-A.
@@ -99,5 +103,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.25 2007-10-03 12:34:16 nicm Exp $
+$Id: CHANGES,v 1.26 2007-10-03 21:31:06 nicm Exp $
 
