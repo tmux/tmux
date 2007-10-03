@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.9 2007-09-29 13:22:15 nicm Exp $ */
+/* $Id: client.c,v 1.10 2007-10-03 10:18:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -154,7 +154,7 @@ client_flush(struct client_ctx *cctx)
 			continue;
 		buffer_remove(cctx->srv_in, sizeof hdr);
 
-		if (hdr.type == MSG_DONE)
+		if (hdr.type == MSG_OKAY)
 			return (0);
 		if (hdr.type == MSG_ERROR) {
 			if (hdr.size > INT_MAX - 1)
@@ -242,49 +242,6 @@ local_dead:
 }
 
 void
-client_fill_sessid(struct sessid *sid, char name[MAXNAMELEN])
-{
-	char		*env, *ptr, buf[256];
-	const char	*errstr;
-	long long	 ll;
-
-	strlcpy(sid->name, name, sizeof sid->name);
-
-	sid->pid = -1;
-	if ((env = getenv("TMUX")) == NULL)
-		return;
-	if ((ptr = strchr(env, ',')) == NULL)
-		return;
-	if ((size_t) (ptr - env) > sizeof buf)
-		return;
-	memcpy(buf, env, ptr - env);
-	buf[ptr - env] = '\0';
-
-	ll = strtonum(ptr + 1, 0, UINT_MAX, &errstr);
-	if (errstr != NULL)
-		return;
-	sid->idx = ll;
-
-	ll = strtonum(buf, 0, LLONG_MAX, &errstr);
-	if (errstr != NULL)
-		return;
-	sid->pid = ll;
-}
-
-void
-client_write_server(
-    struct client_ctx *cctx, enum hdrtype type, void *buf, size_t len)
-{
-	struct hdr	hdr;
-
-	hdr.type = type;
-	hdr.size = len;
-	buffer_write(cctx->srv_out, &hdr, sizeof hdr);
-	if (len > 0)
-		buffer_write(cctx->srv_out, buf, len);
-}
-
-void
 client_handle_winch(struct client_ctx *cctx)
 {
 	struct size_data	data;
@@ -300,39 +257,22 @@ client_handle_winch(struct client_ctx *cctx)
 }
 
 int
-client_process_local(struct client_ctx *cctx, char **error)
+client_process_local(struct client_ctx *cctx, unused char **error)
 {
 	struct buffer	*b;
-	size_t		 size;
-	int		 n, key;
+	int		 key;
 
-	n = 0;
 	b = buffer_create(BUFSIZ);
-
-	while ((key = local_key(&size)) != KEYC_NONE) {
-		log_debug("key code: %d", key);
-
-		if (key == client_cmd_prefix) {
-			if ((key = local_key(NULL)) == KEYC_NONE) {
-				/* XXX sux */
-				buffer_reverse_remove(cctx->loc_in, size);
-				break;
-			}
-			n = client_cmd_dispatch(key, cctx, error);
-			break;
-		}
-
-		input_store8(b, '\e');
-		input_store16(b, (uint16_t) key /*XXX*/);
-	}
+	while ((key = local_key()) != KEYC_NONE)
+		input_store16(b, (uint16_t) key);
 
 	log_debug("transmitting %zu bytes of input", BUFFER_USED(b));
-	if (BUFFER_USED(b) == 0) {
-		buffer_destroy(b);
-		return (n);
+	if (BUFFER_USED(b) != 0) {
+		client_write_server(
+		    cctx, MSG_KEYS, BUFFER_OUT(b), BUFFER_USED(b));
 	}
-	client_write_server(cctx, MSG_INPUT, BUFFER_OUT(b), BUFFER_USED(b));
+
 	buffer_destroy(b);
-	return (n);
+	return (0);
 }
 

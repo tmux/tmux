@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.16 2007-09-29 09:53:25 nicm Exp $ */
+/* $Id: server.c,v 1.17 2007-10-03 10:18:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -315,11 +315,10 @@ server_handle_window(struct window *w)
 	u_int		 i, j, p;
 
 	b = buffer_create(BUFSIZ);
-	window_output(w, b);
-
+	window_data(w, b);
 	if (BUFFER_USED(b) != 0) {
 		server_write_clients(
-		    w, MSG_OUTPUT, BUFFER_OUT(b), BUFFER_USED(b));
+		    w, MSG_DATA, BUFFER_OUT(b), BUFFER_USED(b));
 	}
 	buffer_destroy(b);
 
@@ -341,7 +340,7 @@ server_handle_window(struct window *w)
 			  if (s->window != w)
 			  	server_write_message(c, "Bell in window %u", p);
 			*/
-			server_write_client(c, MSG_OUTPUT, "\007", 1);
+			server_write_client(c, MSG_DATA, "\007", 1);
 		}
 	}
 	

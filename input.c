@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.18 2007-10-03 09:16:59 nicm Exp $ */
+/* $Id: input.c,v 1.19 2007-10-03 10:18:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -169,16 +169,6 @@ void
 input_free(struct input_ctx *ictx)
 {
 	ARRAY_FREE(&ictx->args);
-}
-
-void
-input_parse1(struct screen *s, u_char *buf, size_t len, struct buffer *b)
-{
-	struct input_ctx	ictx;
-
-	input_init(&ictx, s);
-	input_parse(&ictx, buf, len, b);
-	input_free(&ictx);
 }
 
 void

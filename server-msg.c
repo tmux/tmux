@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.15 2007-10-03 09:17:00 nicm Exp $ */
+/* $Id: server-msg.c,v 1.16 2007-10-03 10:18:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,19 +25,12 @@
 #include "tmux.h"
 
 int	server_msg_fn_attach(struct hdr *, struct client *);
-int	server_msg_fn_create(struct hdr *, struct client *);
-int	server_msg_fn_input(struct hdr *, struct client *);
-int	server_msg_fn_last(struct hdr *, struct client *);
+int	server_msg_fn_keys(struct hdr *, struct client *);
 int	server_msg_fn_new(struct hdr *, struct client *);
-int	server_msg_fn_next(struct hdr *, struct client *);
-int	server_msg_fn_previous(struct hdr *, struct client *);
-int	server_msg_fn_refresh(struct hdr *, struct client *);
 int	server_msg_fn_rename(struct hdr *, struct client *);
-int	server_msg_fn_select(struct hdr *, struct client *);
 int	server_msg_fn_sessions(struct hdr *, struct client *);
 int	server_msg_fn_size(struct hdr *, struct client *);
 int	server_msg_fn_windowlist(struct hdr *, struct client *);
-int	server_msg_fn_windowinfo(struct hdr *, struct client *);
 int	server_msg_fn_windows(struct hdr *, struct client *);
 
 struct server_msg {
@@ -47,19 +40,12 @@ struct server_msg {
 };
 const struct server_msg server_msg_table[] = {
 	{ MSG_ATTACH, server_msg_fn_attach },
-	{ MSG_CREATE, server_msg_fn_create },
-	{ MSG_INPUT, server_msg_fn_input },
-	{ MSG_LAST, server_msg_fn_last },
+	{ MSG_KEYS, server_msg_fn_keys },
 	{ MSG_NEW, server_msg_fn_new },
-	{ MSG_NEXT, server_msg_fn_next },
-	{ MSG_PREVIOUS, server_msg_fn_previous },
-	{ MSG_REFRESH, server_msg_fn_refresh },
 	{ MSG_RENAME, server_msg_fn_rename },
-	{ MSG_SELECT, server_msg_fn_select },
 	{ MSG_SESSIONS, server_msg_fn_sessions },
 	{ MSG_SIZE, server_msg_fn_size },
 	{ MSG_WINDOWLIST, server_msg_fn_windowlist },
-	{ MSG_WINDOWINFO, server_msg_fn_windowinfo },
 	{ MSG_WINDOWS, server_msg_fn_windows },
 };
 #define NSERVERMSG (sizeof server_msg_table / sizeof server_msg_table[0])
@@ -134,7 +120,7 @@ server_msg_fn_new(struct hdr *hdr, struct client *c)
 		fatalx("session_create failed");
 	xfree(cmd);
 
-	server_write_client(c, MSG_DONE, NULL, 0);
+	server_write_client(c, MSG_OKAY, NULL, 0);
 	server_draw_client(c, 0, c->sy - 1);
 
 	return (0);
@@ -174,65 +160,6 @@ server_msg_fn_attach(struct hdr *hdr, struct client *c)
 	return (0);
 }
 
-/* Create message from client. */
-int
-server_msg_fn_create(struct hdr *hdr, struct client *c)
-{
-	const char	*shell;
-	char		*cmd;
-
-	if (c->session == NULL)
-		return (0);
-	if (hdr->size != 0)
-		fatalx("bad MSG_CREATE size");
-
-	shell = getenv("SHELL");
-	if (shell == NULL)
-		shell = "/bin/ksh";
-	xasprintf(&cmd, "%s -l", shell);
-	if (session_new(c->session, cmd, c->sx, c->sy) != 0)
-		fatalx("session_new failed");
-	xfree(cmd);
-
-	server_draw_client(c, 0, c->sy - 1);
-
-	return (0);
-}
-
-/* Next message from client. */
-int
-server_msg_fn_next(struct hdr *hdr, struct client *c)
-{
-	if (c->session == NULL)
-		return (0);
-	if (hdr->size != 0)
-		fatalx("bad MSG_NEXT size");
-
-	if (session_next(c->session) == 0)
-		server_window_changed(c);
-	else
-		server_write_message(c, "No next window"); 
-
-	return (0);
-}
-
-/* Previous message from client. */
-int
-server_msg_fn_previous(struct hdr *hdr, struct client *c)
-{
-	if (c->session == NULL)
-		return (0);
-	if (hdr->size != 0)
-		fatalx("bad MSG_PREVIOUS size");
-
-	if (session_previous(c->session) == 0)
-		server_window_changed(c);
-	else
-		server_write_message(c, "No previous window"); 
-
-	return (0);
-}
-
 /* Size message from client. */
 int
 server_msg_fn_size(struct hdr *hdr, struct client *c)
@@ -261,52 +188,34 @@ server_msg_fn_size(struct hdr *hdr, struct client *c)
 	return (0);
 }
 
-/* Input message from client. */
+/* Keys message from client. */
 int
-server_msg_fn_input(struct hdr *hdr, struct client *c)
+server_msg_fn_keys(struct hdr *hdr, struct client *c)
 {
-	if (c->session == NULL)
-		return (0);
-	
-	window_input(c->session->window, c->in, hdr->size);
-
-	return (0);
-}
-
-/* Refresh message from client. */
-int
-server_msg_fn_refresh(struct hdr *hdr, struct client *c)
-{
-	struct refresh_data	data;
+	int	key;
+	size_t	size;
 
 	if (c->session == NULL)
 		return (0);
-	if (hdr->size != 0 && hdr->size != sizeof data)
-		fatalx("bad MSG_REFRESH size");
+	if (hdr->size & 0x1)
+		fatalx("bad MSG_KEYS size");
 
-	server_draw_client(c, 0, c->sy - 1);
+	size = hdr->size;
+	while (size != 0) {
+		key = input_extract16(c->in);
+		size -= 2;
 
-	return (0);
-}
+		if (c->prefix) {
+			cmd_dispatch(c, key);
+			c->prefix = 0;
+			continue;
+		}
 
-/* Select message from client. */
-int
-server_msg_fn_select(struct hdr *hdr, struct client *c)
-{
-	struct select_data	data;
-
-	if (c->session == NULL)
-		return (0);
-	if (hdr->size != sizeof data)
-		fatalx("bad MSG_SELECT size");
-	buffer_read(c->in, &data, hdr->size);
-
-	if (c->session == NULL)
-		return (0);
-	if (session_select(c->session, data.idx) == 0)
-		server_window_changed(c);
-	else
-		server_write_message(c, "Window %u not present", data.idx); 
+		if (key == cmd_prefix)
+			c->prefix = 1;
+		else
+			window_key(c->session->window, key);
+	}
 
 	return (0);
 }
@@ -429,7 +338,7 @@ server_msg_fn_rename(struct hdr *hdr, struct client *c)
 
 	strlcpy(w->name, data.newname, sizeof w->name);
 
-	server_write_client(c, MSG_DONE, NULL, 0);
+	server_write_client(c, MSG_OKAY, NULL, 0);
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (c != NULL && c->session != NULL) {
@@ -437,23 +346,6 @@ server_msg_fn_rename(struct hdr *hdr, struct client *c)
 				server_draw_status(c);
 		}
 	}
-
-	return (0);
-}
-
-/* Last window message from client */
-int
-server_msg_fn_last(struct hdr *hdr, struct client *c)
-{
-	if (c->session == NULL)
-		return (0);
-	if (hdr->size != 0)
-		fatalx("bad MSG_LAST size");
-
-	if (session_last(c->session) == 0)
-		server_window_changed(c);
-	else
-		server_write_message(c, "No last window"); 
 
 	return (0);
 }
@@ -486,36 +378,6 @@ server_msg_fn_windowlist(struct hdr *hdr, struct client *c)
 		if (off >= len)
 			break;
 	}
-
-	server_write_message(c, "%s", buf);
-	xfree(buf);
-
-	return (0);
-}
-
-/* Window info message from client */
-int
-server_msg_fn_windowinfo(struct hdr *hdr, struct client *c)
-{
-	struct window	*w;
-	char 		*buf;
-	size_t		 len;
-	u_int		 i;
-
-	if (c->session == NULL)
-		return (0);
-	if (hdr->size != 0)
-		fatalx("bad MSG_WINDOWINFO size");
-
-	len = c->sx + 1;
-	buf = xmalloc(len);
-
-	w = c->session->window;
-	window_index(&c->session->windows, w, &i);
-	xsnprintf(buf, len, "%u:%s \"%s\" (size %u,%u) (cursor %u,%u) "
-	    "(region %u,%u)", i, w->name, w->screen.title, w->screen.sx,
-	    w->screen.sy, w->screen.cx, w->screen.cy, w->screen.ry_upper,
-	    w->screen.ry_lower);
 
 	server_write_message(c, "%s", buf);
 	xfree(buf);

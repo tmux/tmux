@@ -1,3 +1,8 @@
+03 October 2007
+
+* (nicm) Move command parsing into the client. Also rename some messages and
+  tidy up a few bits. Lots more tidying up needed :-/.
+
 02 October 2007
 
 * (nicm) Redraw client status lines on rename.
@@ -90,5 +95,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.22 2007-10-02 17:45:05 nicm Exp $
+$Id: CHANGES,v 1.23 2007-10-03 10:18:31 nicm Exp $
 

@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.4 2007-09-29 14:57:07 nicm Exp $ */
+/* $Id: client-msg.c,v 1.5 2007-10-03 10:18:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,11 +24,11 @@
 
 #include "tmux.h"
 
-int	client_msg_fn_output(struct hdr *, struct client_ctx *, char **);
-int	client_msg_fn_pause(struct hdr *, struct client_ctx *, char **);
-int	client_msg_fn_done(struct hdr *, struct client_ctx *, char **);
-int	client_msg_fn_exit(struct hdr *, struct client_ctx *, char **);
+int	client_msg_fn_data(struct hdr *, struct client_ctx *, char **);
+int	client_msg_fn_detach(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_error(struct hdr *, struct client_ctx *, char **);
+int	client_msg_fn_okay(struct hdr *, struct client_ctx *, char **);
+int	client_msg_fn_pause(struct hdr *, struct client_ctx *, char **);
 
 struct client_msg {
 	enum hdrtype   type;
@@ -36,11 +36,11 @@ struct client_msg {
 	int	       (*fn)(struct hdr *, struct client_ctx *, char **);
 };
 struct client_msg client_msg_table[] = {
-	{ MSG_OUTPUT, client_msg_fn_output },
-	{ MSG_PAUSE, client_msg_fn_pause },
-	{ MSG_DONE, client_msg_fn_done },
-	{ MSG_EXIT, client_msg_fn_exit },
+	{ MSG_DATA, client_msg_fn_data },
+	{ MSG_DETACH, client_msg_fn_detach },
 	{ MSG_ERROR, client_msg_fn_error },
+	{ MSG_OKAY, client_msg_fn_okay },
+	{ MSG_PAUSE, client_msg_fn_pause },
 };
 #define NCLIENTMSG (sizeof client_msg_table / sizeof client_msg_table[0])
 
@@ -73,9 +73,9 @@ client_msg_dispatch(struct client_ctx *cctx, char **error)
 	}
 }
 
-/* Output message from server. */
+/* Data message from server. */
 int
-client_msg_fn_output(
+client_msg_fn_data(
     struct hdr *hdr, struct client_ctx *cctx, unused char **error)
 {
 	local_output(cctx->srv_in, hdr->size);
@@ -92,23 +92,13 @@ client_msg_fn_pause(
 	return (1);
 }
 
-/* Exit message from server. */
+/* Okay message from server. */
 int
-client_msg_fn_exit(
+client_msg_fn_okay(
     struct hdr *hdr, unused struct client_ctx *cctx, unused char **error)
 {
 	if (hdr->size != 0)
-		fatalx("bad MSG_EXIT size");
-	return (-1);
-}
-
-/* Done message from server. */
-int
-client_msg_fn_done(
-    struct hdr *hdr, unused struct client_ctx *cctx, unused char **error)
-{
-	if (hdr->size != 0)
-		fatalx("bad MSG_DONE size");
+		fatalx("bad MSG_OKAY size");
 	return (0);
 }
 
@@ -122,6 +112,19 @@ client_msg_fn_error(struct hdr *hdr, struct client_ctx *cctx, char **error)
 	*error = xmalloc(hdr->size + 1);
 	buffer_read(cctx->srv_in, *error, hdr->size);
 	(*error)[hdr->size] = '\0';
+
+	return (-1);
+}
+
+/* Detach message from server. */
+int
+client_msg_fn_detach(
+    struct hdr *hdr, unused struct client_ctx *cctx, char **error)
+{
+	if (hdr->size != 0)
+		fatalx("bad MSG_DETACH size");
+
+	*error = NULL;
 
 	return (-1);
 }

@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.15 2007-10-01 14:15:48 nicm Exp $ */
+/* $Id: window.c,v 1.16 2007-10-03 10:18:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -288,25 +288,11 @@ window_poll(struct window *w, struct pollfd *pfd)
 	return (0);
 }
 
-/* Process window input. */
+/* Process window key. */
 void
-window_input(struct window *w, struct buffer *b, size_t size)
+window_key(struct window *w, int key)
 {
-	int	key;
-
-	while (size != 0) {
-		if (size < 1)
-			break;
-		size--;
-		key = input_extract8(b);
-		if (key == '\e') {
-			if (size < 2)
-				fatalx("underflow");
-			size -= 2;
-			key = (int16_t) input_extract16(b);
-		}
-		input_translate_key(w->out, key);
-	}
+	input_translate_key(w->out, key);
 }
 
 /*
@@ -314,7 +300,7 @@ window_input(struct window *w, struct buffer *b, size_t size)
  * sequences and strings and returned.
  */
 void
-window_output(struct window *w, struct buffer *b)
+window_data(struct window *w, struct buffer *b)
 {
 	FILE	*f;
 

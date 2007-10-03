@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.11 2007-10-02 17:45:05 nicm Exp $ */
+/* $Id: server-fn.c,v 1.12 2007-10-03 10:18:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -164,10 +164,9 @@ server_draw_client(struct client *c, u_int py_upper, u_int py_lower)
 	size = BUFFER_USED(c->out) - size;
 	log_debug("redrawing screen, %zu bytes", size);
 	if (size != 0) {
-		hdr.type = MSG_OUTPUT;
+		hdr.type = MSG_DATA;
 		hdr.size = size;
-		memcpy(
-		    BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
+		memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
 	} else
 		buffer_reverse_add(c->out, sizeof hdr);
 
@@ -191,7 +190,7 @@ server_draw_status(struct client *c)
 	status_write(c);
 
 	size = BUFFER_USED(c->out) - size;
-	hdr.type = MSG_OUTPUT;
+	hdr.type = MSG_DATA;
 	hdr.size = size;
 	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
 }
@@ -237,7 +236,7 @@ server_write_message(struct client *c, const char *fmt, ...)
 	xfree(msg);
 
 	size = BUFFER_USED(c->out) - size;
-	hdr.type = MSG_OUTPUT;
+	hdr.type = MSG_DATA;
 	hdr.size = size;
 	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
 
@@ -256,7 +255,7 @@ server_write_message(struct client *c, const char *fmt, ...)
 		status_write(c);
 
 	size = BUFFER_USED(c->out) - size;
-	hdr.type = MSG_OUTPUT;
+	hdr.type = MSG_DATA;
 	hdr.size = size;
 	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
 }

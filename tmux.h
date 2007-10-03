@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.33 2007-10-02 17:45:05 nicm Exp $ */
+/* $Id: tmux.h,v 1.34 2007-10-03 10:18:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -260,23 +260,17 @@ struct buffer {
 /* Message codes. */
 enum hdrtype {
 	MSG_ATTACH,
-	MSG_CREATE,
-	MSG_DONE,
+	MSG_DATA,
+	MSG_DETACH,
 	MSG_ERROR,
 	MSG_EXIT,
-	MSG_INPUT,
-	MSG_LAST,
+	MSG_KEYS,
 	MSG_NEW,
-	MSG_NEXT,
-	MSG_OUTPUT,
+	MSG_OKAY,
 	MSG_PAUSE,
-	MSG_PREVIOUS,
-	MSG_REFRESH,
 	MSG_RENAME,
-	MSG_SELECT,
 	MSG_SESSIONS,
 	MSG_SIZE,
-	MSG_WINDOWINFO,
 	MSG_WINDOWLIST,
 	MSG_WINDOWS,
 };
@@ -482,6 +476,8 @@ struct client {
 	u_int		 sx;
 	u_int		 sy;
 
+	int		 prefix;	/* waiting for command */
+
 	struct session	*session;
 };
 ARRAY_DECL(clients, struct client *);
@@ -522,15 +518,17 @@ int	 op_list_windows(char *, int, char **);
 int	 client_init(char *, struct client_ctx *, int);
 int	 client_flush(struct client_ctx *);
 int	 client_main(struct client_ctx *);
-void	 client_write_server(struct client_ctx *, enum hdrtype, void *, size_t);
-void	 client_fill_sessid(struct sessid *, char [MAXNAMELEN]);
 
 /* client-msg.c */
 int	 client_msg_dispatch(struct client_ctx *, char **);
 
-/* command.c */
-extern int client_cmd_prefix;
-int	 client_cmd_dispatch(int, struct client_ctx *, char **);
+/* client-fn.c */
+void	 client_write_server(struct client_ctx *, enum hdrtype, void *, size_t);
+void	 client_fill_sessid(struct sessid *, char [MAXNAMELEN]);
+
+/* cmd.c */
+extern int cmd_prefix;
+void	 cmd_dispatch(struct client *, int);
 
 /* server.c */
 extern struct clients clients;
@@ -559,7 +557,6 @@ void	 status_write(struct client *c);
 /* input.c */
 void	 input_init(struct input_ctx *, struct screen *);
 void	 input_free(struct input_ctx *);
-void	 input_parse1(struct screen *, u_char *, size_t, struct buffer *);
 void	 input_parse(struct input_ctx *, u_char *, size_t, struct buffer *);
 uint8_t  input_extract8(struct buffer *);
 uint16_t input_extract16(struct buffer *);
@@ -602,7 +599,7 @@ void	 screen_fill_start_of_line(
 /* local.c */
 int	 local_init(struct buffer **, struct buffer **);
 void	 local_done(void);
-int	 local_key(size_t *);
+int	 local_key(void);
 void	 local_output(struct buffer *, size_t);
 
 /* window.c */
@@ -617,8 +614,8 @@ struct window	*window_previous(struct windows *, struct window *);
 struct window	*window_at(struct windows *, u_int); 
 int		 window_resize(struct window *, u_int, u_int);
 int		 window_poll(struct window *, struct pollfd *);
-void		 window_input(struct window *, struct buffer *, size_t);
-void		 window_output(struct window *, struct buffer *);
+void		 window_key(struct window *, int);
+void		 window_data(struct window *, struct buffer *);
 
 /* session.c */
 extern struct sessions sessions;

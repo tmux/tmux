@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.13 2007-10-02 15:13:59 nicm Exp $ */
+/* $Id: local.c,v 1.14 2007-10-03 10:18:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -349,7 +349,7 @@ local_putp(const char *s)
 
 /* Return waiting keys if any. */
 int
-local_key(size_t *used)
+local_key(void)
 {
 	struct local_key	*lk;
 	u_int			 i;
@@ -368,8 +368,6 @@ local_key(size_t *used)
 			log_debug("got key: "
 			    "%s %d \"%s\"", lk->name, lk->code, lk->string);
 			buffer_remove(local_in, lk->size);
-			if (used != NULL)
-				*used = lk->size;
 			return (lk->code);
 		}
 
@@ -377,8 +375,6 @@ local_key(size_t *used)
 		lk = local_keys + i;
 	}
 
-	if (used != NULL)
-		*used = 1;
 	return (input_extract8(local_in));
 }
 

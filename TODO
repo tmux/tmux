@@ -27,8 +27,8 @@
 - decide about customised status line
 - rethink data structures. window->index is O(n), could have a w->idx member
 	or use queues/trees and avoid NULLs?
-- client could pass tty fd up to server and then do nothing. what problems 
-  would this cause?
+- client could pass term/tty fd up to server and then do nothing. what problems 
+  would this cause? -- need access to all terminfo data at once... signals?
 - cleanup/redesign IPC
 	IPC is arse-about-face: too much overhead. 8-byte header for each
 	packet... hrm. already scanning output for \e, could add an extra
@@ -52,3 +52,4 @@
 - fix resize (width problems with multiple clients?)
 - handle tmux in tmux (check $TMUX and abort)
 - check for some reqd terminfo caps on startup
+- sort out the pause mess
