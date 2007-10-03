@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.17 2007-10-03 00:13:46 nicm Exp $ */
+/* $Id: input.c,v 1.18 2007-10-03 09:16:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
 
 #include "tmux.h"
 
-struct {
+const struct {
 	u_char		 first;
 	u_char		 last;
 	enum input_class class;
