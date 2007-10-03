@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.16 2007-10-01 17:37:41 nicm Exp $ */
+/* $Id: input.c,v 1.17 2007-10-03 00:13:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1107,13 +1107,18 @@ input_store_two(struct buffer *b, u_char code, uint16_t ua, uint16_t ub)
 void
 input_store8(struct buffer *b, uint8_t n)
 {
-	buffer_write(b, &n, sizeof n);
+	buffer_ensure(b, 1);
+	BUFFER_IN(b)[0] = n;
+	buffer_add(b, 1);
 }
 
 void
 input_store16(struct buffer *b, uint16_t n)
 {
-	buffer_write(b, &n, sizeof n);
+	buffer_ensure(b, 2);
+	BUFFER_IN(b)[0] = n & 0xff;
+	BUFFER_IN(b)[1] = n >> 8;
+	buffer_add(b, 2);
 }
 
 uint8_t
@@ -1121,7 +1126,8 @@ input_extract8(struct buffer *b)
 {
 	uint8_t	n;
 
-	buffer_read(b, &n, sizeof n);
+	n = BUFFER_OUT(b)[0];
+	buffer_remove(b, 1);
 	return (n);
 }
 
@@ -1130,6 +1136,7 @@ input_extract16(struct buffer *b)
 {
 	uint16_t	n;
 
-	buffer_read(b, &n, sizeof n);
+	n = BUFFER_OUT(b)[0] | (BUFFER_OUT(b)[1] << 8);
+	buffer_remove(b, 2);
 	return (n);
 }
