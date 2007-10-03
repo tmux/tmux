@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.16 2007-10-03 10:18:32 nicm Exp $ */
+/* $Id: window.c,v 1.17 2007-10-03 13:07:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -104,7 +104,11 @@ window_create(const char *cmd, const char **environ, u_int sx, u_int sy)
 	screen_create(&w->screen, sx, sy);
 	input_init(&w->ictx, &w->screen);
 
-	name = xstrdup(cmd);
+	/* XXX */
+	if (strncmp(cmd, "exec ", (sizeof "exec ") - 1) == 0)
+		name = xstrdup(cmd + sizeof "exec ");
+	else
+		name = xstrdup(cmd);
 	if ((ptr = strchr(name, ' ')) != NULL) {
 		if (ptr != name && ptr[-1] != '\\')
 			*ptr = '\0';

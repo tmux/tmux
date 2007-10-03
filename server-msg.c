@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.18 2007-10-03 12:34:16 nicm Exp $ */
+/* $Id: server-msg.c,v 1.19 2007-10-03 13:07:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -398,15 +398,9 @@ server_msg_fn_bindkey(struct hdr *hdr, struct client *c)
 	if (data.flags & BIND_STRING) {
 		hdr->size -= sizeof data;
 
-		if (hdr->size != 0) {
-			str = xmalloc(hdr->size + 1);
-			buffer_read(c->in, str, hdr->size);
-			str[hdr->size] = '\0';
-		}
-		if (*str == '\0') {
-			xfree(str);
-			str = NULL;
-		}
+		str = xmemstrdup(BUFFER_OUT(c->in), hdr->size);
+		if (hdr->size > 0)
+			buffer_remove(c->in, hdr->size);
 	}
 
  	data.cmd[(sizeof data.cmd) - 1] = '\0';	
