@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.17 2007-10-03 10:18:32 nicm Exp $ */
+/* $Id: server.c,v 1.18 2007-10-03 10:20:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -272,7 +272,7 @@ server_accept_client(int srv_fd)
 	if (fcntl(client_fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
 
-	c = xmalloc(sizeof *c);
+	c = xcalloc(1, sizeof *c);
 	c->fd = client_fd;
 	c->in = buffer_create(BUFSIZ);
 	c->out = buffer_create(BUFSIZ);
