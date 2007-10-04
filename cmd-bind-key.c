@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.2 2007-10-04 10:11:32 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.3 2007-10-04 21:48:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,6 @@
  */
 
 int		 cmd_bind_key_parse(void **, int, char **, char **);
-const char	*cmd_bind_key_usage(void);
 void		 cmd_bind_key_exec(void *, struct cmd_ctx *);
 void		 cmd_bind_key_send(void *, struct buffer *);
 void		 cmd_bind_key_recv(void **, struct buffer *);
@@ -39,9 +38,9 @@ struct cmd_bind_key_data {
 };
 
 const struct cmd_entry cmd_bind_key_entry = {
-	CMD_BINDKEY, "bind-key", "bind", CMD_NOSESSION,
+	CMD_BINDKEY, "bind-key", "bind", "key command [arguments]",
+	CMD_NOSESSION,
 	cmd_bind_key_parse,
-	cmd_bind_key_usage,
 	cmd_bind_key_exec, 
 	cmd_bind_key_send,
 	cmd_bind_key_recv,
@@ -81,17 +80,12 @@ cmd_bind_key_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s", cmd_bind_key_usage());
+	usage(cause, "%s %s",
+	    cmd_bind_key_entry.name, cmd_bind_key_entry.usage);
 
 error:
 	cmd_bind_key_free(data);
 	return (-1);
-}
-
-const char *
-cmd_bind_key_usage(void)
-{
-	return ("bind-key key command [arguments]");
 }
 
 void

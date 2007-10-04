@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.12 2007-10-04 11:52:03 nicm Exp $ */
+/* $Id: cmd.c,v 1.13 2007-10-04 21:48:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -98,10 +98,7 @@ cmd_parse(int argc, char **argv, char **cause)
 	return (cmd);
 
 usage:
-	if (entry->usage == NULL)
-		usage(cause, "%s", entry->name);
-	else
-		usage(cause, "%s", entry->usage());
+	usage(cause, "%s %s", entry->name, entry->usage);
 	return (NULL);
 }
 

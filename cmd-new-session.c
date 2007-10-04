@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.8 2007-10-04 20:01:09 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.9 2007-10-04 21:48:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,6 @@
  */
 
 int		 cmd_new_session_parse(void **, int, char **, char **);
-const char	*cmd_new_session_usage(void);
 void		 cmd_new_session_exec(void *, struct cmd_ctx *);
 void		 cmd_new_session_send(void *, struct buffer *);
 void		 cmd_new_session_recv(void **, struct buffer *);
@@ -40,9 +39,9 @@ struct cmd_new_session_data {
 };
 
 const struct cmd_entry cmd_new_session_entry = {
-	CMD_NEWSESSION, "new-session", "new", CMD_STARTSERVER|CMD_NOSESSION,
+	CMD_NEWSESSION, "new-session", "new", "[-d] [-n session name] [command]",
+	CMD_STARTSERVER|CMD_NOSESSION,
 	cmd_new_session_parse,
-	cmd_new_session_usage,
 	cmd_new_session_exec, 
 	cmd_new_session_send,
 	cmd_new_session_recv,
@@ -83,16 +82,11 @@ cmd_new_session_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s", cmd_new_session_usage());
+	usage(cause, "%s %s",
+	    cmd_new_session_entry.name, cmd_new_session_entry.usage);
 	
 	cmd_new_session_free(data);
 	return (-1);
-}
-
-const char *
-cmd_new_session_usage(void)
-{
-	return ("new-session [-d] [-n session name] [command]");
 }
 
 void

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.48 2007-10-04 19:03:52 nicm Exp $ */
+/* $Id: tmux.h,v 1.49 2007-10-04 21:48:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -489,13 +489,13 @@ struct cmd_entry {
 	enum cmd_type	 type;
 	const char	*name;
 	const char	*alias;
+	const char	*usage;
 
 #define CMD_STARTSERVER 0x1
 #define CMD_NOSESSION 0x2
 	int		 flags;
 
 	int		 (*parse)(void **, int, char **, char **);
-	const char 	*(*usage)(void);
 	void		 (*exec)(void *, struct cmd_ctx *);
 	void		 (*send)(void *, struct buffer *);
 	void	         (*recv)(void **, struct buffer *);

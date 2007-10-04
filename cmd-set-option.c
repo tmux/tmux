@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.1 2007-10-04 10:11:32 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.2 2007-10-04 21:48:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,9 +41,9 @@ struct cmd_set_option_data {
 };
 
 const struct cmd_entry cmd_set_option_entry = {
-	CMD_SETOPTION, "set-option", "set", CMD_NOSESSION,
+	CMD_SETOPTION, "set-option", "set", "option value",
+	CMD_NOSESSION,
 	cmd_set_option_parse,
-	cmd_set_option_usage,
 	cmd_set_option_exec, 
 	cmd_set_option_send,
 	cmd_set_option_recv,
@@ -78,16 +78,11 @@ cmd_set_option_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s", cmd_set_option_usage());
+	usage(cause, "%s %s",
+	    cmd_set_option_entry.name, cmd_set_option_entry.usage);
 
 	cmd_set_option_free(data);
 	return (-1);
-}
-
-const char *
-cmd_set_option_usage(void)
-{
-	return ("set-option option value");
 }
 
 void

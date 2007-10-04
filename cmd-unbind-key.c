@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.2 2007-10-04 10:11:32 nicm Exp $ */
+/* $Id: cmd-unbind-key.c,v 1.3 2007-10-04 21:48:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,9 +38,9 @@ struct cmd_unbind_key_data {
 };
 
 const struct cmd_entry cmd_unbind_key_entry = {
-	CMD_UNBINDKEY, "unbind-key", "unbind", CMD_NOSESSION,
+	CMD_UNBINDKEY, "unbind-key", "unbind", "key",
+	CMD_NOSESSION,
 	cmd_unbind_key_parse,
-	cmd_unbind_key_usage,
 	cmd_unbind_key_exec, 
 	cmd_unbind_key_send,
 	cmd_unbind_key_recv,
@@ -74,17 +74,12 @@ cmd_unbind_key_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s", cmd_unbind_key_usage());
+	usage(cause, "%s %s",
+	    cmd_unbind_key_entry.name, cmd_unbind_key_entry.usage);
 
 error:
 	xfree(data);
 	return (-1);
-}
-
-const char *
-cmd_unbind_key_usage(void)
-{
-	return ("unbind-key key");
 }
 
 void

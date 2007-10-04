@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.3 2007-10-04 21:21:48 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.4 2007-10-04 21:48:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,6 @@
  */
 
 int		 cmd_attach_session_parse(void **, int, char **, char **);
-const char	*cmd_attach_session_usage(void);
 void		 cmd_attach_session_exec(void *, struct cmd_ctx *);
 void		 cmd_attach_session_send(void *, struct buffer *);
 void		 cmd_attach_session_recv(void **, struct buffer *);
@@ -38,9 +37,9 @@ struct cmd_attach_session_data {
 };
 
 const struct cmd_entry cmd_attach_session_entry = {
-	CMD_NEWWINDOW, "attach-session", "attach", 0,
+	CMD_NEWWINDOW, "attach-session", "attach", "[-d]",
+	0,
 	cmd_attach_session_parse,
-	cmd_attach_session_usage,
 	cmd_attach_session_exec, 
 	cmd_attach_session_send,
 	cmd_attach_session_recv,
@@ -73,16 +72,11 @@ cmd_attach_session_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s", cmd_attach_session_usage());
+	usage(cause, "%s %s",
+	    cmd_attach_session_entry.name, cmd_attach_session_entry.usage);
 
 	cmd_attach_session_free(data);
 	return (-1);
-}
-
-const char *
-cmd_attach_session_usage(void)
-{
-	return ("attach-session [-d]");
 }
 
 void

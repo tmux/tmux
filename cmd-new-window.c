@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.5 2007-10-04 12:40:56 mxey Exp $ */
+/* $Id: cmd-new-window.c,v 1.6 2007-10-04 21:48:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,6 @@
  */
 
 int		 cmd_new_window_parse(void **, int, char **, char **);
-const char	*cmd_new_window_usage(void);
 void		 cmd_new_window_exec(void *, struct cmd_ctx *);
 void		 cmd_new_window_send(void *, struct buffer *);
 void		 cmd_new_window_recv(void **, struct buffer *);
@@ -40,9 +39,9 @@ struct cmd_new_window_data {
 };
 
 const struct cmd_entry cmd_new_window_entry = {
-	CMD_NEWWINDOW, "new-window", "neww", 0,
+	CMD_NEWWINDOW, "new-window", "neww", "[-d] [-n name] [command]",
+	0,
 	cmd_new_window_parse,
-	cmd_new_window_usage,
 	cmd_new_window_exec, 
 	cmd_new_window_send,
 	cmd_new_window_recv,
@@ -83,16 +82,11 @@ cmd_new_window_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s", cmd_new_window_usage());
+	usage(cause, "%s %s",
+	    cmd_new_window_entry.name, cmd_new_window_entry.usage);
 
 	cmd_new_window_free(data);
 	return (-1);
-}
-
-const char *
-cmd_new_window_usage(void)
-{
-	return ("new-window [-d] [-n name] [command]");
 }
 
 void

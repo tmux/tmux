@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-window.c,v 1.2 2007-10-04 10:54:20 nicm Exp $ */
+/* $Id: cmd-rename-window.c,v 1.3 2007-10-04 21:48:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,7 +28,6 @@
  */
 
 int		 cmd_rename_window_parse(void **, int, char **, char **);
-const char	*cmd_rename_window_usage(void);
 void		 cmd_rename_window_exec(void *, struct cmd_ctx *);
 void		 cmd_rename_window_send(void *, struct buffer *);
 void		 cmd_rename_window_recv(void **, struct buffer *);
@@ -40,9 +39,9 @@ struct cmd_rename_window_data {
 };
 
 const struct cmd_entry cmd_rename_window_entry = {
-	CMD_RENAMEWINDOW, "rename-window", "renamew", 0,
+	CMD_RENAMEWINDOW, "rename-window", "renamew", "[-i index] newname",
+	0,
 	cmd_rename_window_parse,
-	cmd_rename_window_usage,
 	cmd_rename_window_exec, 
 	cmd_rename_window_send,
 	cmd_rename_window_recv,
@@ -83,17 +82,12 @@ cmd_rename_window_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s", cmd_rename_window_usage());
+	usage(cause, "%s %s",
+	    cmd_rename_window_entry.name, cmd_rename_window_entry.usage);
 
 error:
 	cmd_rename_window_free(data);
 	return (-1);
-}
-
-const char *
-cmd_rename_window_usage(void)
-{
-	return ("rename-window [-i index] newname");
 }
 
 void
