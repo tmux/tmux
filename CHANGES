@@ -1,5 +1,6 @@
 04 October 2007
 
+* (mxey) Added my tmux start script as an example (examples/start-tmux.sh)
 * (mxey) New sessions can now be given a command for their first window
 * (mxey) Fixed usage statemnt for new-window
 * (nicm) attach-session (can't believe I forgot it until now!) and list-windows
@@ -114,5 +115,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.33 2007-10-04 13:43:14 mxey Exp $
+$Id: CHANGES,v 1.34 2007-10-04 14:14:12 mxey Exp $
 
