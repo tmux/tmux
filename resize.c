@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.1 2007-10-04 19:03:51 nicm Exp $ */
+/* $Id: resize.c,v 1.2 2007-10-04 20:01:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,6 +61,8 @@ recalculate_sizes(void)
 			if (c->sy < ssy)
 				ssy = c->sy;
 		}
+		if (ssx == UINT_MAX || ssy == UINT_MAX)
+			continue;
 		if (ssy < status_lines)
 			ssy = status_lines + 1;
 		ssy -= status_lines;
@@ -89,6 +91,8 @@ recalculate_sizes(void)
 			if (s->sy < ssy)
 				ssy = s->sy;
 		}
+		if (ssx == UINT_MAX || ssy == UINT_MAX)
+			continue;
 		if (w->screen.sx == ssx && w->screen.sy == ssy)
 			continue;
 

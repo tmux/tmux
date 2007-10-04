@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.7 2007-10-04 19:03:51 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.8 2007-10-04 20:01:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,7 +74,6 @@ cmd_new_session_parse(void **ptr, int argc, char **argv, char **cause)
 	}	
 	argc -= optind;
 	argv += optind;
-
 	if (argc != 0 && argc != 1)
 		goto usage;
 
@@ -128,7 +127,6 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 	cmd = data->cmd;
 	if (cmd == NULL)
 		cmd = default_command;
-
 	
 	c->session = session_create(data->name, cmd, c->sx, sy);
 	if (c->session == NULL)

@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.24 2007-10-04 19:03:52 nicm Exp $ */
+/* $Id: server.c,v 1.25 2007-10-04 20:01:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -282,7 +282,10 @@ server_accept_client(int srv_fd)
 	c->fd = client_fd;
 	c->in = buffer_create(BUFSIZ);
 	c->out = buffer_create(BUFSIZ);
+
 	c->session = NULL;
+	c->sx = 80;
+	c->sy = 25;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		if (ARRAY_ITEM(&clients, i) == NULL) {
