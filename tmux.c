@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.27 2007-10-03 22:32:24 nicm Exp $ */
+/* $Id: tmux.c,v 1.28 2007-10-04 11:23:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -171,7 +171,7 @@ main(int argc, char **argv)
 
 	*name = '\0';
 	path = NULL;
-        while ((opt = getopt(argc, argv, "S:s:v?")) != EOF) {
+        while ((opt = getopt(argc, argv, "S:s:v")) != EOF) {
                 switch (opt) {
 		case 'S':
 			path = xstrdup(optarg);
@@ -183,7 +183,6 @@ main(int argc, char **argv)
 		case 'v':
 			debug_level++;
 			break;
-                case '?':
                 default:
 			goto usage;
                 }
