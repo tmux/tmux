@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.24 2007-10-04 19:03:52 nicm Exp $ */
+/* $Id: server-msg.c,v 1.25 2007-10-04 22:04:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -115,8 +115,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	buffer_read(c->in, &data, sizeof data);
 
 	cmd = cmd_recv(c->in);
-	log_debug("got command %u %s from client %d",
-	    cmd->entry->type, cmd->entry->name, c->fd);
+	log_debug("got command %s from client %d", cmd->entry->name, c->fd);
 
 	ctx.error = server_msg_fn_command_error;
 	ctx.print = server_msg_fn_command_print;

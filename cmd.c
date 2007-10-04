@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.13 2007-10-04 21:48:11 nicm Exp $ */
+/* $Id: cmd.c,v 1.14 2007-10-04 22:04:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,7 +45,7 @@ const struct cmd_entry *cmd_table[] = {
 struct cmd *
 cmd_parse(int argc, char **argv, char **cause)
 {
-	const struct cmd_entry **this, *entry;
+	const struct cmd_entry **entryp, *entry;
 	struct cmd	        *cmd;
 	int			 opt;
 
@@ -54,19 +54,19 @@ cmd_parse(int argc, char **argv, char **cause)
 		return (NULL);
 
 	entry = NULL;
-	for (this = cmd_table; *this != NULL; this++) {
-		if (strcmp((*this)->alias, argv[0]) == 0) {
-			entry = *this;
+	for (entryp = cmd_table; *entryp != NULL; entryp++) {
+		if (strcmp((*entryp)->alias, argv[0]) == 0) {
+			entry = *entryp;
 			break;
 		}
 
-		if (strncmp((*this)->name, argv[0], strlen(argv[0])) != 0)
+		if (strncmp((*entryp)->name, argv[0], strlen(argv[0])) != 0)
 			continue;
 		if (entry != NULL) {
 			xasprintf(cause, "ambiguous command: %s", argv[0]);
 			return (NULL);
 		}
-		entry = *this;
+		entry = *entryp;
 	}
 	if (entry == NULL) {
 		xasprintf(cause, "unknown command: %s", argv[0]);
@@ -111,34 +111,44 @@ cmd_exec(struct cmd *cmd, struct cmd_ctx *ctx)
 void
 cmd_send(struct cmd *cmd, struct buffer *b)
 {
-	buffer_write(b, &cmd->entry->type, sizeof cmd->entry->type);
+	const struct cmd_entry **entryp;
+	u_int			 n;
 
-	if (cmd->entry->send == NULL)
-		return;
-	return (cmd->entry->send(cmd->data, b));
+	n = 0;
+	for (entryp = cmd_table; *entryp != NULL; entryp++) {
+		if (*entryp == cmd->entry)
+			break;
+		n++;
+	}
+	if (*entryp == NULL)
+		fatalx("command not found");
+
+	buffer_write(b, &n, sizeof n);
+
+	if (cmd->entry->send != NULL)
+		cmd->entry->send(cmd->data, b);
 }
 
 struct cmd *
 cmd_recv(struct buffer *b)
 {
-	const struct cmd_entry **this, *entry;
+	const struct cmd_entry **entryp;
 	struct cmd   	        *cmd;
-	enum cmd_type		 type;
+	u_int			 m, n;
 
-	buffer_read(b, &type, sizeof type);
+	buffer_read(b, &m, sizeof m);
 	
-	entry = NULL;
-	for (this = cmd_table; *this != NULL; this++) {
-		if ((*this)->type == type) {
-			entry = *this;
+	n = 0;
+	for (entryp = cmd_table; *entryp != NULL; entryp++) {
+		if (n == m)
 			break;
-		}
+		n++;
 	}
-	if (*this == NULL)
-		return (NULL);
+	if (*entryp == NULL)
+		fatalx("command not found");
 
 	cmd = xmalloc(sizeof *cmd);
-	cmd->entry = entry;
+	cmd->entry = *entryp;
 
 	if (cmd->entry->recv != NULL)
 		cmd->entry->recv(&cmd->data, b);

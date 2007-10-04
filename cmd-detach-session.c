@@ -1,4 +1,4 @@
-/* $Id: cmd-detach-session.c,v 1.4 2007-10-04 21:48:11 nicm Exp $ */
+/* $Id: cmd-detach-session.c,v 1.5 2007-10-04 22:04:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,7 +38,7 @@ struct cmd_detach_session_data {
 };
 
 const struct cmd_entry cmd_detach_session_entry = {
-	CMD_DETACHSESSION, "detach-session", "detach", "[-a]",
+	"detach-session", "detach", "[-a]",
 	0,
 	cmd_detach_session_parse,
 	cmd_detach_session_exec,
