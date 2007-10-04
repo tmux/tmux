@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.16 2007-10-04 00:02:10 nicm Exp $ */
+/* $Id: server-fn.c,v 1.17 2007-10-04 10:39:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -113,7 +113,8 @@ server_write_window(
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session->window == w) {
+		if (c != NULL &&
+		    c->session != NULL && c->session->window == w) {
 			if (c->flags & CLIENT_HOLD) /* XXX OUTPUT only */
 				continue;
 			server_write_client(c, type, buf, len);
@@ -188,7 +189,7 @@ server_redraw_window(struct window *w)
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session->window == w)
+		if (c != NULL && c->session != NULL && c->session->window == w)
 			server_redraw_client(c);
 	}
 }

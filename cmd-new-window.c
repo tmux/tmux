@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.3 2007-10-04 10:11:32 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.4 2007-10-04 10:39:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -77,7 +77,6 @@ cmd_new_window_parse(void **ptr, int argc, char **argv, char **cause)
 	if (argc != 0 && argc != 1)
 		goto usage;
 
-	data->cmd = NULL;
 	if (argc == 1)
 		data->cmd = xstrdup(argv[0]);
 
