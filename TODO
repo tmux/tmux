@@ -43,6 +43,7 @@
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
+- flag to detach others on attach, like screen
 - commands:
 	refresh client	
 	rename sessions
