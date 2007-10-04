@@ -1,5 +1,6 @@
 04 October 2007
 
+* (nicm) -d option to attach to detach all other clients on the same session.
 * (nicm) Partial resizing support. Still buggy. A C-b S and back sometimes fixes
   it when it goes wonky.
 * (mxey) Added my tmux start script as an example (examples/start-tmux.sh).
@@ -117,5 +118,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.35 2007-10-04 19:03:51 nicm Exp $
+$Id: CHANGES,v 1.36 2007-10-04 21:21:48 nicm Exp $
 

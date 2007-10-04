@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.25 2007-10-04 20:01:10 nicm Exp $ */
+/* $Id: server.c,v 1.26 2007-10-04 21:21:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,7 +74,9 @@ server_start(char *path)
 		return (0);
 	}
 
+#ifdef DEBUG
 	xmalloc_clear();
+#endif
 
 	logfile("server");
 	setproctitle("server (%s)", path);

@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.23 2007-10-04 19:03:51 nicm Exp $
+# $Id: Makefile,v 1.24 2007-10-04 21:21:48 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean
@@ -26,7 +26,7 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
 
 YACC= yacc -d
 
-CC= cc
+CC?= cc
 INCDIRS+= -I. -I- -I/usr/local/include
 CFLAGS+= -DBUILD="\"$(VERSION) ($(DATE))\"" -DMETA="'${META}'"
 .ifdef PROFILE
