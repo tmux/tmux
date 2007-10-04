@@ -43,7 +43,6 @@
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
-- flag to detach others on attach, like screen
 - commands:
 	refresh client	
 	rename sessions
@@ -54,7 +53,6 @@
 	kill session
 	set status on/off
 	set shell
-- fix resize (check for width problems with multiple clients)
 - handle tmux in tmux (check $TMUX and abort)
 - check for some reqd terminfo caps on startup
 - sort out the pause mess
