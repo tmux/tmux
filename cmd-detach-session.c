@@ -1,4 +1,4 @@
-/* $Id: cmd-detach-session.c,v 1.2 2007-10-03 23:32:26 nicm Exp $ */
+/* $Id: cmd-detach-session.c,v 1.3 2007-10-04 10:11:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -76,7 +76,7 @@ cmd_detach_session_parse(void **ptr, int argc, char **argv, char **cause)
 usage:
 	usage(cause, "%s", cmd_detach_session_usage());
 
-	xfree(data);
+	cmd_detach_session_free(data);
 	return (-1);
 }
 

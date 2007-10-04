@@ -1,5 +1,6 @@
 04 October 2007
 
+* (nicm) set-option command (alias set): "tmux set-option prefix ^A".
 * (nicm) Key binding and unbinding is back.
 
 03 October 2007
@@ -108,5 +109,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.27 2007-10-04 09:30:53 nicm Exp $
+$Id: CHANGES,v 1.28 2007-10-04 10:11:32 nicm Exp $
 

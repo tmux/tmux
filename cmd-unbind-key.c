@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.1 2007-10-04 09:30:53 nicm Exp $ */
+/* $Id: cmd-unbind-key.c,v 1.2 2007-10-04 10:11:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,7 +63,7 @@ cmd_unbind_key_parse(void **ptr, int argc, char **argv, char **cause)
 	}	
 	argc -= optind;
 	argv += optind;
-	if (argc < 1)
+	if (argc != 1)
 		goto usage;
 
 	if ((data->key = key_string_lookup_string(argv[0])) == KEYC_NONE) {

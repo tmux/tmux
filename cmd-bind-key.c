@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.1 2007-10-04 09:30:53 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.2 2007-10-04 10:11:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -84,9 +84,7 @@ usage:
 	usage(cause, "%s", cmd_bind_key_usage());
 
 error:
-	if (data->cmd != NULL)
-		cmd_free(data->cmd);
-	xfree(data);
+	cmd_bind_key_free(data);
 	return (-1);
 }
 

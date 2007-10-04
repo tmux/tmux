@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.17 2007-10-04 09:30:53 nicm Exp $
+# $Id: Makefile,v 1.18 2007-10-04 10:11:32 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean
@@ -21,7 +21,8 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       session.c local.c log.c client.c client-msg.c client-fn.c key-string.c \
       key-bindings.c cmd.c cmd-new-session.c cmd-detach-session.c \
       cmd-list-sessions.c cmd-new-window.c cmd-next-window.c cmd-bind-key.c \
-      cmd-unbind-key.c cmd-previous-window.c cmd-last-window.c cmd-list-keys.c
+      cmd-unbind-key.c cmd-previous-window.c cmd-last-window.c cmd-list-keys.c \
+      cmd-set-option.c
 
 YACC= yacc -d
 

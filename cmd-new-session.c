@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.3 2007-10-04 00:02:10 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.4 2007-10-04 10:11:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -79,10 +79,8 @@ cmd_new_session_parse(void **ptr, int argc, char **argv, char **cause)
 
 usage:
 	usage(cause, "%s", cmd_new_session_usage());
-
-	if (data->name != NULL)
-		xfree(data->name);
-	xfree(data);
+	
+	cmd_new_session_free(data);
 	return (-1);
 }
 

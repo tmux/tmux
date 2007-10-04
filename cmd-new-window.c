@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.2 2007-10-04 00:02:10 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.3 2007-10-04 10:11:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -86,11 +86,7 @@ cmd_new_window_parse(void **ptr, int argc, char **argv, char **cause)
 usage:
 	usage(cause, "%s", cmd_new_window_usage());
 
-	if (data->name != NULL)
-		xfree(data->name);
-	if (data->cmd != NULL)
-		xfree(data->cmd);
-	xfree(data);
+	cmd_new_window_free(data);
 	return (-1);
 }
 
