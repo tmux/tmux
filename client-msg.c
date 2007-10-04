@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.6 2007-10-03 21:31:07 nicm Exp $ */
+/* $Id: client-msg.c,v 1.7 2007-10-04 11:52:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,6 +27,7 @@
 int	client_msg_fn_data(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_detach(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_error(struct hdr *, struct client_ctx *, char **);
+int	client_msg_fn_exit(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_okay(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_pause(struct hdr *, struct client_ctx *, char **);
 
@@ -39,6 +40,7 @@ struct client_msg client_msg_table[] = {
 	{ MSG_DATA, client_msg_fn_data },
 	{ MSG_DETACH, client_msg_fn_detach },
 	{ MSG_ERROR, client_msg_fn_error },
+	{ MSG_EXIT, client_msg_fn_exit },
 	{ MSG_PAUSE, client_msg_fn_pause },
 };
 #define NCLIENTMSG (sizeof client_msg_table / sizeof client_msg_table[0])
@@ -98,6 +100,18 @@ client_msg_fn_error(struct hdr *hdr, struct client_ctx *cctx, char **error)
 	*error = xmalloc(hdr->size + 1);
 	buffer_read(cctx->srv_in, *error, hdr->size);
 	(*error)[hdr->size] = '\0';
+
+	return (-1);
+}
+
+int
+client_msg_fn_exit(
+    struct hdr *hdr, unused struct client_ctx *cctx, char **error)
+{
+	if (hdr->size != 0)
+		fatalx("bad MSG_EXIT size");
+
+	*error = xstrdup("");
 
 	return (-1);
 }

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.46 2007-10-04 11:23:17 nicm Exp $ */
+/* $Id: tmux.h,v 1.47 2007-10-04 11:52:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -457,6 +457,7 @@ struct client_ctx {
 
 /* Key/command line command. */
 enum cmd_type {
+	CMD_ATTACHSESSION,
 	CMD_BINDKEY,
 	CMD_DETACHSESSION,
 	CMD_LASTWINDOW,
@@ -533,6 +534,7 @@ struct cmd	*cmd_recv(struct buffer *);
 void		 cmd_free(struct cmd *);
 void		 cmd_send_string(struct buffer *, const char *);
 char		*cmd_recv_string(struct buffer *);
+extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_detach_session_entry;
 extern const struct cmd_entry cmd_last_window_entry;

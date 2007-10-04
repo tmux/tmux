@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.22 2007-10-04 00:02:10 nicm Exp $ */
+/* $Id: server.c,v 1.23 2007-10-04 11:52:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,7 +62,7 @@ server_start(char *path)
 	size_t			sz;
 	pid_t			pid;
 	mode_t			mask;
-	int		   	fd, mode;
+	int		   	n, fd, mode;
 
 	switch (pid = fork()) {
 	case -1:
@@ -73,6 +73,8 @@ server_start(char *path)
 	default:
 		return (0);
 	}
+
+	xmalloc_clear();
 
 	logfile("server");
 	setproctitle("server (%s)", path);
@@ -103,15 +105,15 @@ server_start(char *path)
 	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
 
-	/*
-	 * Detach into the background. This means the PID changes which will
-	 * have to be fixed in some way at some point... XXX
-	 */
 	if (daemon(1, 1) != 0)
 		fatal("daemon failed");
 	log_debug("server daemonised, pid now %ld", (long) getpid());
 
-	exit(server_main(path, fd));
+	n = server_main(path, fd);
+#ifdef DEBUG
+	xmalloc_report(getpid(), "server");
+#endif
+	exit(n);
 }
 
 /* Main server loop. */

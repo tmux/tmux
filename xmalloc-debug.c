@@ -1,4 +1,4 @@
-/* $Id: xmalloc-debug.c,v 1.1 2007-07-25 23:13:18 nicm Exp $ */
+/* $Id: xmalloc-debug.c,v 1.2 2007-10-04 11:52:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,7 +51,7 @@ u_int	xmalloc_mallocs;
 u_int	xmalloc_reallocs;
 
 /* Print function. */
-#define XMALLOC_PRINT log_debug3
+#define XMALLOC_PRINT log_debug
 
 /* Bytes of unallocated blocks and number of allocated blocks to show. */
 #define XMALLOC_BYTES 8

@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.11 2007-10-04 11:23:17 nicm Exp $ */
+/* $Id: cmd.c,v 1.12 2007-10-04 11:52:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,6 +24,7 @@
 #include "tmux.h"
 
 const struct cmd_entry *cmd_table[] = {
+	&cmd_attach_session_entry,
 	&cmd_bind_key_entry,
 	&cmd_detach_session_entry,
 	&cmd_last_window_entry,

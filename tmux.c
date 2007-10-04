@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.28 2007-10-04 11:23:17 nicm Exp $ */
+/* $Id: tmux.c,v 1.29 2007-10-04 11:52:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -167,7 +167,7 @@ main(int argc, char **argv)
 	struct hdr	 	 hdr;
 	const char		*shell;
 	char			*path, *cause, name[MAXNAMELEN];
-	int	 		 opt;
+	int	 		 n, opt;
 
 	*name = '\0';
 	path = NULL;
@@ -245,7 +245,8 @@ main(int argc, char **argv)
 
 		switch (hdr.type) {
 		case MSG_EXIT:
-			exit(0);
+			n = 0;
+			goto out;
 		case MSG_PRINT:
 			if (hdr.size > INT_MAX - 1)
 				fatalx("bad MSG_PRINT size");
@@ -259,14 +260,21 @@ main(int argc, char **argv)
 			log_warnx("%.*s",
 			    (int) hdr.size, BUFFER_OUT(cctx.srv_in));	
 			buffer_remove(cctx.srv_in, hdr.size);
-			exit(1);
+			n = 1;
+			goto out;
 		case MSG_READY:
-			exit(client_main(&cctx));
+			n = client_main(&cctx);
+			goto out;
 		default:
 			fatalx("unexpected command");
 		}
 	}
-	/* NOTREACHED */
+
+out:
+#ifdef DEBUG
+	xmalloc_report(getpid(), "client");
+#endif
+	return (n);
 
 usage:
 	usage(&cause, NULL);
