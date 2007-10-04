@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.1 2007-10-03 11:26:34 nicm Exp $ */
+/* $Id: key-string.c,v 1.2 2007-10-04 00:18:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -206,7 +206,7 @@ struct {
 #define NKEYSTRINGS (sizeof key_string_table / sizeof key_string_table[0])
 
 int
-key_string_lookup(const char *string)
+key_string_lookup_string(const char *string)
 {
 	u_int	i;
 
@@ -220,4 +220,23 @@ key_string_lookup(const char *string)
 			return (key_string_table[i].key);
 	}
 	return (KEYC_NONE);
+}
+
+const char *
+key_string_lookup_key(int key)
+{
+	static char tmp[2];
+	u_int	    i;
+
+	if (key > 31 && key < 256) {
+		tmp[0] = key;
+		tmp[1] = '\0';
+		return (tmp);
+	}
+
+	for (i = 0; i < NKEYSTRINGS; i++) {
+		if (key == key_string_table[i].key)
+			return (key_string_table[i].string);
+	}
+	return (NULL);
 }

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.40 2007-10-04 00:02:10 nicm Exp $ */
+/* $Id: tmux.h,v 1.41 2007-10-04 00:18:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -459,6 +459,7 @@ struct client_ctx {
 enum cmd_type {
 	CMD_DETACHSESSION,
 	CMD_LASTWINDOW,
+	CMD_LISTKEYS,
 	CMD_LISTSESSIONS,
 	CMD_NEWSESSION,
 	CMD_NEWWINDOW,
@@ -504,6 +505,7 @@ struct binding {
 	int		 key;
 	struct cmd	*cmd;
 };
+ARRAY_DECL(bindings, struct binding *);
 
 /* tmux.c */
 extern volatile sig_atomic_t sigwinch;
@@ -525,13 +527,14 @@ struct cmd	*cmd_recv(struct buffer *);
 void		 cmd_free(struct cmd *);
 void		 cmd_send_string(struct buffer *, const char *);
 char		*cmd_recv_string(struct buffer *);
-extern const struct cmd_entry  cmd_detach_session_entry;
-extern const struct cmd_entry  cmd_last_window_entry;
-extern const struct cmd_entry  cmd_list_sessions_entry;
-extern const struct cmd_entry  cmd_new_session_entry;
-extern const struct cmd_entry  cmd_new_window_entry;
-extern const struct cmd_entry  cmd_next_window_entry;
-extern const struct cmd_entry  cmd_previous_window_entry;
+extern const struct cmd_entry cmd_detach_session_entry;
+extern const struct cmd_entry cmd_last_window_entry;
+extern const struct cmd_entry cmd_list_keys_entry;
+extern const struct cmd_entry cmd_list_sessions_entry;
+extern const struct cmd_entry cmd_new_session_entry;
+extern const struct cmd_entry cmd_new_window_entry;
+extern const struct cmd_entry cmd_next_window_entry;
+extern const struct cmd_entry cmd_previous_window_entry;
 
 /* bind.c */
 const struct bind *cmdx_lookup_bind(const char *);
@@ -556,6 +559,7 @@ void	 client_write_server2(
 void	 client_fill_sessid(struct sessid *, char [MAXNAMELEN]);
 
 /* key-bindings.c */
+extern struct bindings key_bindings;
 void	 key_bindings_add(int, struct cmd *);
 void	 key_bindings_remove(int);
 void	 key_bindings_init(void);
@@ -563,7 +567,8 @@ void	 key_bindings_free(void);
 void	 key_bindings_dispatch(int, struct client *);
 
 /* key-string.c */
-int	 key_string_lookup(const char *);
+int	 key_string_lookup_string(const char *);
+const char *key_string_lookup_key(int);
 
 /* server.c */
 extern struct clients clients;

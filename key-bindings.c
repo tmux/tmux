@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.3 2007-10-04 00:02:10 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.4 2007-10-04 00:18:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
 
 #include "tmux.h"
 
-ARRAY_DECL(, struct binding *) key_bindings;
+struct bindings	key_bindings;
 
 void	key_bindings_error(struct cmd_ctx *, const char *, ...);
 void	key_bindings_print(struct cmd_ctx *, const char *, ...);
@@ -80,6 +80,8 @@ key_bindings_init(void)
 		{ 'd', &cmd_detach_session_entry },
 		{ 'S', &cmd_list_sessions_entry },
 		{ 's', &cmd_list_sessions_entry },
+		{ '?', &cmd_list_keys_entry },
+		{ '/', &cmd_list_keys_entry },
 		{ 'C', &cmd_new_window_entry },
 		{ 'c', &cmd_new_window_entry },
 		{ 'N', &cmd_next_window_entry },
@@ -107,6 +109,8 @@ key_bindings_init(void)
 	};
 	u_int		 i;
 	struct cmd	*cmd;
+
+	ARRAY_INIT(&key_bindings);
 
 	for (i = 0; i < (sizeof table / sizeof table[0]); i++) {
 		cmd = xmalloc(sizeof *cmd);
