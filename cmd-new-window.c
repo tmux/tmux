@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.4 2007-10-04 10:39:06 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.5 2007-10-04 12:40:56 mxey Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -92,7 +92,7 @@ usage:
 const char *
 cmd_new_window_usage(void)
 {
-	return ("new-window [command]");
+	return ("new-window [-d] [-n name] [command]");
 }
 
 void

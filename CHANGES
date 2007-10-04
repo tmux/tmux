@@ -1,5 +1,6 @@
 04 October 2007
 
+* (mxey) Fixed usage statemnt for new-window
 * (nicm) attach-session (can't believe I forgot it until now!) and list-windows
   commands.
 * (nicm) rename-window and select-window commands.
@@ -112,5 +113,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.31 2007-10-04 11:52:02 nicm Exp $
+$Id: CHANGES,v 1.32 2007-10-04 12:40:56 mxey Exp $
 
