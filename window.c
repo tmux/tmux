@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.18 2007-10-03 23:32:26 nicm Exp $ */
+/* $Id: window.c,v 1.19 2007-10-04 20:33:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,7 +108,7 @@ window_create(
 	if (name == NULL) {
 		/* XXX */
 		if (strncmp(cmd, "exec ", (sizeof "exec ") - 1) == 0)
-			copy = xstrdup(cmd + sizeof "exec ");
+			copy = xstrdup(cmd + (sizeof "exec ") - 1);
 		else
 			copy = xstrdup(cmd);
 		if ((ptr = strchr(copy, ' ')) != NULL) {
