@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.6 2007-10-04 11:23:17 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.7 2007-10-04 11:55:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -138,7 +138,7 @@ key_bindings_free(void)
 		xfree(bd);
 	}
 	
-	ARRAY_FREEALL(&key_bindings);
+	ARRAY_FREE(&key_bindings);
 }
 
 void
