@@ -35,8 +35,11 @@
 - CLIENT_HOLD sucks
 - session with CMD_NOSESSION should be an error
 - each command should have a print op as well for list keys
+- get rid of MAXNAMELEN limits (sessid)
 - List available commands on ambigous command
 - Implicitly add exec to the commands for new windows (switch to disable it)
+- nested sessions, ie session as window - moving to it moves into session
+  (remembering parent)
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
