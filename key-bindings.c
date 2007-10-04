@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.4 2007-10-04 00:18:59 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.5 2007-10-04 10:54:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -75,36 +75,37 @@ key_bindings_init(void)
 	struct {
 		int			 key;
 		const struct cmd_entry	*entry;
+		void 			 (*fn)(void **, int);
 	} table[] = {
-		{ 'D', &cmd_detach_session_entry },
-		{ 'd', &cmd_detach_session_entry },
-		{ 'S', &cmd_list_sessions_entry },
-		{ 's', &cmd_list_sessions_entry },
-		{ '?', &cmd_list_keys_entry },
-		{ '/', &cmd_list_keys_entry },
-		{ 'C', &cmd_new_window_entry },
-		{ 'c', &cmd_new_window_entry },
-		{ 'N', &cmd_next_window_entry },
-		{ 'n', &cmd_next_window_entry },
-		{ 'P', &cmd_previous_window_entry },
-		{ 'p', &cmd_previous_window_entry },
-		{ 'L', &cmd_last_window_entry },
-		{ 'l', &cmd_last_window_entry },
+		{ 'D', &cmd_detach_session_entry, NULL },
+		{ 'd', &cmd_detach_session_entry, NULL },
+		{ 'S', &cmd_list_sessions_entry, NULL },
+		{ 's', &cmd_list_sessions_entry, NULL },
+		{ '?', &cmd_list_keys_entry, NULL },
+		{ '/', &cmd_list_keys_entry, NULL },
+		{ 'C', &cmd_new_window_entry, NULL },
+		{ 'c', &cmd_new_window_entry, NULL },
+		{ 'N', &cmd_next_window_entry, NULL },
+		{ 'n', &cmd_next_window_entry, NULL },
+		{ 'P', &cmd_previous_window_entry, NULL },
+		{ 'p', &cmd_previous_window_entry, NULL },
+		{ 'L', &cmd_last_window_entry, NULL },
+		{ 'l', &cmd_last_window_entry, NULL },
+		{ '0', &cmd_select_window_entry, cmd_select_window_default },
+		{ '1', &cmd_select_window_entry, cmd_select_window_default },
+		{ '2', &cmd_select_window_entry, cmd_select_window_default },
+		{ '3', &cmd_select_window_entry, cmd_select_window_default },
+		{ '4', &cmd_select_window_entry, cmd_select_window_default },
+		{ '5', &cmd_select_window_entry, cmd_select_window_default },
+		{ '6', &cmd_select_window_entry, cmd_select_window_default },
+		{ '7', &cmd_select_window_entry, cmd_select_window_default },
+		{ '8', &cmd_select_window_entry, cmd_select_window_default },
+		{ '9', &cmd_select_window_entry, cmd_select_window_default },
 /*		{ 'R', &cmd_refresh_client_entry },
 		{ 'r', &cmd_refresh_client_entry },
 		{ 'I', &cmd_windo_info_entry },
 		{ 'i', &cmd_window_info_entry },
 		{ META, &cmd_meta_entry_entry },
-*//*	{ '0', cmdx_fn_select, 0, NULL },
-	{ '1', cmdx_fn_select, 1, NULL },
-	{ '2', cmdx_fn_select, 2, NULL },
-	{ '3', cmdx_fn_select, 3, NULL },
-	{ '4', cmdx_fn_select, 4, NULL },
-	{ '5', cmdx_fn_select, 5, NULL },
-	{ '6', cmdx_fn_select, 6, NULL },
-	{ '7', cmdx_fn_select, 7, NULL },
-	{ '8', cmdx_fn_select, 8, NULL },
-	{ '9', cmdx_fn_select, 9, NULL },
 */
 	};
 	u_int		 i;
@@ -116,6 +117,8 @@ key_bindings_init(void)
 		cmd = xmalloc(sizeof *cmd);
 		cmd->entry = table[i].entry;
 		cmd->data = NULL;
+		if (table[i].fn != NULL)
+			table[i].fn(&cmd->data, table[i].key);
 		key_bindings_add(table[i].key, cmd);
 	}
 }

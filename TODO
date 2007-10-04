@@ -43,7 +43,7 @@
 -- For 0.1 --------------------------------------------------------------------
 - man page
 - commands:
-	rename windows
+	refresh client	
 	rename sessions
 	swap windows
 	link/copy windows

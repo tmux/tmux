@@ -1,6 +1,6 @@
 04 October 2007
 
-* (nicm) rename-window command.
+* (nicm) rename-window and select-window commands.
 * (nicm) set-option command (alias set): "tmux set-option prefix ^A".
 * (nicm) Key binding and unbinding is back.
 
@@ -110,5 +110,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.29 2007-10-04 10:39:06 nicm Exp $
+$Id: CHANGES,v 1.30 2007-10-04 10:54:20 nicm Exp $
 

@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.9 2007-10-04 10:39:07 nicm Exp $ */
+/* $Id: cmd.c,v 1.10 2007-10-04 10:54:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,6 +34,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_next_window_entry,
 	&cmd_previous_window_entry,
 	&cmd_rename_window_entry,
+	&cmd_select_window_entry,
 	&cmd_set_option_entry,
 	&cmd_unbind_key_entry,
 	NULL

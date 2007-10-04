@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-window.c,v 1.1 2007-10-04 10:39:06 nicm Exp $ */
+/* $Id: cmd-rename-window.c,v 1.2 2007-10-04 10:54:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -111,7 +111,7 @@ cmd_rename_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (data->idx == -1)
 		w = s->window;
 	else if ((w = window_at(&s->windows, data->idx)) == NULL) {
-		ctx->error(ctx, "no window at index %u", data->idx);
+		ctx->error(ctx, "no window %u", data->idx);
 		return;
 	}
 	xfree(w->name);
