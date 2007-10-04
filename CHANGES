@@ -1,5 +1,6 @@
 04 October 2007
 
+* (mxey) New sessions can now be given a command for their first window
 * (mxey) Fixed usage statemnt for new-window
 * (nicm) attach-session (can't believe I forgot it until now!) and list-windows
   commands.
@@ -113,5 +114,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.32 2007-10-04 12:40:56 mxey Exp $
+$Id: CHANGES,v 1.33 2007-10-04 13:43:14 mxey Exp $
 
