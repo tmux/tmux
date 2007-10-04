@@ -43,19 +43,16 @@
 -- For 0.1 --------------------------------------------------------------------
 - man page
 - commands:
+	rename windows
 	rename sessions
 	swap windows
 	link/copy windows
-	detach session remotely
-	create window remotely
 	unlink window (error if window only linked to one session)
 	close window
 	kill session
 	set status on/off
-	set meta
 	set shell
-	list-keys (list key bindings)
-- fix resize (width problems with multiple clients?)
+- fix resize (check for width problems with multiple clients)
 - handle tmux in tmux (check $TMUX and abort)
 - check for some reqd terminfo caps on startup
 - sort out the pause mess
