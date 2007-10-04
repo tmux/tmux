@@ -16,10 +16,6 @@
   and buffer_insert_range/delete_range are abominations. this should be
   rethought
 - figure out once and for all what is going on with backspace and del
-- keys to add:
-	NONE?
-- nuke '?' on getopts
-- const char *opusage = ... on ops rather than dup usage args
 - window creation/idle time
 - attributes could be 8 not 16 bits
 - profile/optimise, particularly (i suspect) input.c
@@ -48,7 +44,7 @@
 	swap windows
 	link/copy windows
 	unlink window (error if window only linked to one session)
-	close window
+	kill window
 	kill session
 	set status on/off
 	set shell
