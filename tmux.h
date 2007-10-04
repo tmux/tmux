@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.39 2007-10-03 23:32:26 nicm Exp $ */
+/* $Id: tmux.h,v 1.40 2007-10-04 00:02:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -458,9 +458,12 @@ struct client_ctx {
 /* Key/command line command. */
 enum cmd_type {
 	CMD_DETACHSESSION,
+	CMD_LASTWINDOW,
 	CMD_LISTSESSIONS,
 	CMD_NEWSESSION,
 	CMD_NEWWINDOW,
+	CMD_NEXTWINDOW,
+	CMD_PREVIOUSWINDOW,
 };
 
 struct cmd_ctx {
@@ -523,9 +526,12 @@ void		 cmd_free(struct cmd *);
 void		 cmd_send_string(struct buffer *, const char *);
 char		*cmd_recv_string(struct buffer *);
 extern const struct cmd_entry  cmd_detach_session_entry;
+extern const struct cmd_entry  cmd_last_window_entry;
 extern const struct cmd_entry  cmd_list_sessions_entry;
 extern const struct cmd_entry  cmd_new_session_entry;
 extern const struct cmd_entry  cmd_new_window_entry;
+extern const struct cmd_entry  cmd_next_window_entry;
+extern const struct cmd_entry  cmd_previous_window_entry;
 
 /* bind.c */
 const struct bind *cmdx_lookup_bind(const char *);
@@ -568,17 +574,17 @@ int	 server_msg_dispatch(struct client *);
 
 /* server-fn.c */
 struct session *server_find_sessid(struct sessid *, char **);
-void	 server_write_error(struct client *, const char *, ...);
-void	 server_write_message(struct client *, const char *, ...);
 void	 server_write_client(
              struct client *, enum hdrtype, const void *, size_t);
-void	 server_write_client2(struct client *,
-    	     enum hdrtype, const void *, size_t, const void *, size_t);
-void	 server_write_clients(
-    	     struct window *, enum hdrtype, const void *, size_t);
-void	 server_window_changed(struct client *);
-void	 server_draw_client(struct client *);
-void	 server_draw_status(struct client *);
+void	 server_write_session(
+             struct session *, enum hdrtype, const void *, size_t);
+void	 server_write_window(
+             struct window *, enum hdrtype, const void *, size_t);
+void	 server_redraw_status(struct client *);
+void	 server_redraw_client(struct client *);
+void	 server_redraw_session(struct session *);
+void	 server_redraw_window(struct window *);
+void	 server_write_message(struct client *, const char *, ...);
 
 /* status.c */
 void	 status_write(struct client *c);

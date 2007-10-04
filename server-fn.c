@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.15 2007-10-03 23:32:26 nicm Exp $ */
+/* $Id: server-fn.c,v 1.16 2007-10-04 00:02:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,7 +74,6 @@ server_find_sessid(struct sessid *sid, char **cause)
 	return (s);		
 }
 
-/* Write command to a client. */
 void
 server_write_client(
     struct client *c, enum hdrtype type, const void *buf, size_t len)
@@ -91,56 +90,60 @@ server_write_client(
 		buffer_write(c->out, buf, len);
 }
 
-/* Write command to a client with two buffers. */
 void
-server_write_client2(struct client *c, enum hdrtype type,
-    const void *buf1, size_t len1, const void *buf2, size_t len2)
-{
-	struct hdr	 hdr;
-
-	log_debug("writing %d to client %d", type, c->fd);
-
-	hdr.type = type;
-	hdr.size = len1 + len2;
-
-	buffer_write(c->out, &hdr, sizeof hdr);
-	if (buf1 != NULL)
-		buffer_write(c->out, buf1, len1);
-	if (buf2 != NULL)
-		buffer_write(c->out, buf2, len2);
-}
-
-/* Write command to all clients attached to a specific window. */
-void
-server_write_clients(
-    struct window *w, enum hdrtype type, const void *buf, size_t len)
+server_write_session(
+    struct session *s, enum hdrtype type, const void *buf, size_t len)
 {
 	struct client	*c;
- 	struct hdr	 hdr;
 	u_int		 i;
-
-	hdr.type = type;
-	hdr.size = len;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session != NULL) {
+		if (c != NULL && c->session == s)
+			server_write_client(c, type, buf, len);
+	}
+}
+
+void
+server_write_window(
+    struct window *w, enum hdrtype type, const void *buf, size_t len)
+{
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL && c->session->window == w) {
 			if (c->flags & CLIENT_HOLD) /* XXX OUTPUT only */
 				continue;
-			if (c->session->window == w) {
-				log_debug(
-				    "writing %d to clients: %d", type, c->fd);
-				buffer_write(c->out, &hdr, sizeof hdr);
-				if (buf != NULL)
-					buffer_write(c->out, buf, len);
-			}
+			server_write_client(c, type, buf, len);
 		}
 	}
 }
 
-/* Draw window on client. */
 void
-server_draw_client(struct client *c)
+server_redraw_status(struct client *c)
+{
+	struct hdr	hdr;
+	size_t		size;
+
+	if (status_lines == 0)
+		return;
+
+	buffer_ensure(c->out, sizeof hdr);
+	buffer_add(c->out, sizeof hdr);
+	size = BUFFER_USED(c->out);
+
+	status_write(c);
+
+	size = BUFFER_USED(c->out) - size;
+	hdr.type = MSG_DATA;
+	hdr.size = size;
+	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
+}
+
+void
+server_redraw_client(struct client *c)
 {
 	struct hdr	 hdr;
 	size_t		 size;
@@ -161,47 +164,35 @@ server_draw_client(struct client *c)
 	} else
 		buffer_reverse_add(c->out, sizeof hdr);
 
-	server_draw_status(c);
+	server_redraw_status(c);
 }
 
-/* Draw status line. */
 void
-server_draw_status(struct client *c)
+server_redraw_session(struct session *s)
 {
-	struct hdr	hdr;
-	size_t		size;
+	struct client	*c;
+	u_int		 i;
 
-	if (status_lines == 0)
-		return;
-
-	buffer_ensure(c->out, sizeof hdr);
-	buffer_add(c->out, sizeof hdr);
-	size = BUFFER_USED(c->out);
-
-	status_write(c);
-
-	size = BUFFER_USED(c->out) - size;
-	hdr.type = MSG_DATA;
-	hdr.size = size;
-	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL && c->session == s)
+			server_redraw_client(c);
+	}
 }
 
-/* Send error message command to client. */
 void
-server_write_error(struct client *c, const char *fmt, ...)
+server_redraw_window(struct window *w)
 {
-	va_list	ap;
-	char   *msg;
+	struct client	*c;
+	u_int		 i;
 
-	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
-	va_end(ap);
-
-	server_write_client(c, MSG_ERROR, msg, strlen(msg));
-	xfree(msg);
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL && c->session->window == w)
+			server_redraw_client(c);
+	}
 }
 
-/* Write message command to a client. */
 void
 server_write_message(struct client *c, const char *fmt, ...)
 {

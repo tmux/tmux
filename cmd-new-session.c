@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.2 2007-10-03 23:32:26 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.3 2007-10-04 00:02:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -128,7 +128,7 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 		server_write_client(c, MSG_EXIT, NULL, 0);
 	else {
 		server_write_client(c, MSG_READY, NULL, 0);
-		server_draw_client(c);
+		server_redraw_client(c);
 	}
 }
 

@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.21 2007-10-03 23:32:26 nicm Exp $ */
+/* $Id: server.c,v 1.22 2007-10-04 00:02:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -316,14 +316,12 @@ server_handle_window(struct window *w)
 	struct client	*c;
 	struct session	*s;
 	struct buffer	*b;
-	u_int		 i, j, p;
+	u_int		 i, j;
 
 	b = buffer_create(BUFSIZ);
 	window_data(w, b);
-	if (BUFFER_USED(b) != 0) {
-		server_write_clients(
-		    w, MSG_DATA, BUFFER_OUT(b), BUFFER_USED(b));
-	}
+	if (BUFFER_USED(b) != 0)
+		server_write_window(w, MSG_DATA, BUFFER_OUT(b), BUFFER_USED(b));
 	buffer_destroy(b);
 
 	if (!(w->flags & WINDOW_BELL))
@@ -331,19 +329,13 @@ server_handle_window(struct window *w)
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
-		if (s == NULL)
-			continue;
-		if (window_index(&s->windows, w, &p) != 0)
+		if (s == NULL || !session_has(s, w))
 			continue;
 
 		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
 			c = ARRAY_ITEM(&clients, j);
 			if (c == NULL || c->session != s)
 				continue;
-			/*
-			  if (s->window != w)
-			  	server_write_message(c, "Bell in window %u", p);
-			*/
 			server_write_client(c, MSG_DATA, "\007", 1);
 		}
 	}
@@ -379,7 +371,7 @@ server_lost_window(struct window *w)
 				c->session = NULL;
 				server_write_client(c, MSG_EXIT, NULL, 0);
 			} else
-				server_draw_client(c);
+				server_redraw_client(c);
 		}
 	}
 }

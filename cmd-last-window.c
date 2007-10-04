@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.2 2007-10-04 00:02:10 nicm Exp $ */
+/* $Id: cmd-last-window.c,v 1.1 2007-10-04 00:02:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,45 +24,32 @@
 #include "tmux.h"
 
 /*
- * List all sessions.
+ * Move to last window.
  */
 
-void	cmd_list_sessions_exec(void *, struct cmd_ctx *);
+void	cmd_last_window_exec(void *, struct cmd_ctx *);
 
-const struct cmd_entry cmd_list_sessions_entry = {
-	CMD_LISTSESSIONS, "list-sessions", "ls", CMD_NOSESSION,
+const struct cmd_entry cmd_last_window_entry = {
+	CMD_LASTWINDOW, "last-window", "last", 0,
 	NULL,
 	NULL,
-	cmd_list_sessions_exec,
+	cmd_last_window_exec,
 	NULL,
 	NULL,
 	NULL
 };
 
 void
-cmd_list_sessions_exec(unused void *ptr, struct cmd_ctx *ctx)
+cmd_last_window_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
 	struct client	*c = ctx->client;
 	struct session	*s = ctx->session;
-	char		*tim;
-	u_int		 i, j, n;
 
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		s = ARRAY_ITEM(&sessions, i);
-		if (s == NULL)
-			continue;
-
-		n = 0;
-		for (j = 0; j < ARRAY_LENGTH(&s->windows); j++) {
-			if (ARRAY_ITEM(&s->windows, j) != NULL)
-				n++;
-		}
-		tim = ctime(&s->tim);
-		*strchr(tim, '\n') = '\0';
-
-		ctx->print(ctx, "%s: %u windows (created %s)", s->name, n, tim);
-	}
-
+	if (session_last(s) == 0)
+		server_redraw_session(s);
+	else
+		ctx->error(ctx, "no last window"); 
+	
 	if (!(ctx->flags & CMD_KEY))
 		server_write_client(c, MSG_EXIT, NULL, 0);
 }

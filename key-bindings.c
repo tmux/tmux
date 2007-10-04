@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.2 2007-10-03 23:32:26 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.3 2007-10-04 00:02:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -81,17 +82,17 @@ key_bindings_init(void)
 		{ 's', &cmd_list_sessions_entry },
 		{ 'C', &cmd_new_window_entry },
 		{ 'c', &cmd_new_window_entry },
-/*		{ 'N', &cmd_next_window },
-		{ 'n', &cmd_next_window },
-		{ 'P', &cmd_previous_window },
-		{ 'p', &cmd_previous_window },
-		{ 'R', &cmd_refresh_client },
-		{ 'r', &cmd_refresh_client },
-		{ 'L', &cmd_last_window },
-		{ 'l', &cmd_last_window },
-		{ 'I', &cmd_windo_info },
-		{ 'i', &cmd_window_info },
-		{ META, &cmd_meta_entry },
+		{ 'N', &cmd_next_window_entry },
+		{ 'n', &cmd_next_window_entry },
+		{ 'P', &cmd_previous_window_entry },
+		{ 'p', &cmd_previous_window_entry },
+		{ 'L', &cmd_last_window_entry },
+		{ 'l', &cmd_last_window_entry },
+/*		{ 'R', &cmd_refresh_client_entry },
+		{ 'r', &cmd_refresh_client_entry },
+		{ 'I', &cmd_windo_info_entry },
+		{ 'i', &cmd_window_info_entry },
+		{ META, &cmd_meta_entry_entry },
 *//*	{ '0', cmdx_fn_select, 0, NULL },
 	{ '1', cmdx_fn_select, 1, NULL },
 	{ '2', cmdx_fn_select, 2, NULL },
@@ -141,6 +142,7 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 	xvasprintf(&msg, fmt, ap);
 	va_end(ap);
 
+	*msg = toupper((u_char) *msg);
 	server_write_message(ctx->client, msg);
 	xfree(msg);
 }
