@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.17 2007-10-04 10:39:07 nicm Exp $ */
+/* $Id: server-fn.c,v 1.18 2007-10-04 19:03:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -128,7 +128,7 @@ server_redraw_status(struct client *c)
 	struct hdr	hdr;
 	size_t		size;
 
-	if (status_lines == 0)
+	if (status_lines == 0 || c->sy <= status_lines)
 		return;
 
 	buffer_ensure(c->out, sizeof hdr);
@@ -144,11 +144,35 @@ server_redraw_status(struct client *c)
 }
 
 void
-server_redraw_client(struct client *c)
+server_clear_client(struct client *c)
 {
+	struct screen	*s = &c->session->window->screen;
 	struct hdr	 hdr;
 	size_t		 size;
+	u_int		 i;
+
+	buffer_ensure(c->out, sizeof hdr);
+	buffer_add(c->out, sizeof hdr);
+	size = BUFFER_USED(c->out);
+	
+	input_store_zero(c->out, CODE_CURSOROFF);
+	for (i = 0; i < s->sy; i++) {
+		input_store_two(c->out, CODE_CURSORMOVE, i + 1, 1);
+		input_store_zero(c->out, CODE_CLEARLINE);
+	}
+	
+	size = BUFFER_USED(c->out) - size;
+	hdr.type = MSG_DATA;
+	hdr.size = size;
+	memcpy(BUFFER_IN(c->out) - size - sizeof hdr,  &hdr, sizeof hdr);
+}
+
+void
+server_redraw_client(struct client *c)
+{
 	struct screen	*s = &c->session->window->screen;
+	struct hdr	 hdr;
+	size_t		 size;
 
 	buffer_ensure(c->out, sizeof hdr);
 	buffer_add(c->out, sizeof hdr);
@@ -178,6 +202,19 @@ server_redraw_session(struct session *s)
 		c = ARRAY_ITEM(&clients, i);
 		if (c != NULL && c->session == s)
 			server_redraw_client(c);
+	}
+}
+
+void
+server_clear_window(struct window *w)
+{
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL && c->session != NULL && c->session->window == w)
+			server_clear_client(c);
 	}
 }
 

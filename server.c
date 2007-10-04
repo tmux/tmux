@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.23 2007-10-04 11:52:03 nicm Exp $ */
+/* $Id: server.c,v 1.24 2007-10-04 19:03:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -309,6 +309,8 @@ server_lost_client(struct client *c)
 	buffer_destroy(c->in);
 	buffer_destroy(c->out);
 	xfree(c);
+
+	recalculate_sizes();
 }
 
 /* Handle window data. */
@@ -376,5 +378,7 @@ server_lost_window(struct window *w)
 				server_redraw_client(c);
 		}
 	}
+
+	recalculate_sizes();
 }
 

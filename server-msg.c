@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.23 2007-10-04 11:52:03 nicm Exp $ */
+/* $Id: server-msg.c,v 1.24 2007-10-04 19:03:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -150,7 +150,7 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 		fatalx("bad MSG_IDENTIFY size");
 	buffer_read(c->in, &data, sizeof data);
 
-	log_debug("got identify msg from client: %u,%u", data.sx, data.sy);
+	log_debug("identify msg from client: %u,%u", data.sx, data.sy);
 
 	c->sx = data.sx;
 	c->sy = data.sy;
@@ -164,11 +164,12 @@ int
 server_msg_fn_resize(struct hdr *hdr, struct client *c)
 {
 	struct msg_resize_data	data;
-	u_int			sy;
 
 	if (hdr->size != sizeof data)
 		fatalx("bad MSG_RESIZE size");
 	buffer_read(c->in, &data, sizeof data);
+
+	log_debug("resize msg from client: %u,%u", data.sx, data.sy);
 
 	c->sx = data.sx;
 	if (c->sx == 0)
@@ -177,27 +178,7 @@ server_msg_fn_resize(struct hdr *hdr, struct client *c)
 	if (c->sy == 0)
 		c->sy = 25;
 
-	sy = c->sy;
-	if (sy < status_lines)
-		sy = status_lines + 1;
-	sy -= status_lines;
-
-	/* XXX */
-	/*
-	 * Okay. Need to be able to recalculate sizes:
-	 *	- every session has the size of the smallest client it is 
-	 *	  attached to
-	 *	- every window has the size of the smallest session it is
-	 *	  attached to
-	 *
-	 * So, when a client is resized or a session added to a new client:
-	 *	- find the smallest client it is attached to, and resize to
-	 *	  that size
-	 * And when a session's window changes or a window is added/removed
-	 * from a session:
-	 *	- find the smallest session the window is attached to
-	 *	  and use that
-	 */
+	recalculate_sizes();
 
 	return (0);
 }

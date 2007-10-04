@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.6 2007-10-04 13:43:14 mxey Exp $ */
+/* $Id: cmd-new-session.c,v 1.7 2007-10-04 19:03:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -99,7 +99,7 @@ cmd_new_session_usage(void)
 void
 cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 {
-	struct cmd_new_session_data	*data = ptr, std = { NULL, 0 };
+	struct cmd_new_session_data	*data = ptr, std = { NULL, NULL, 0 };
 	struct client			*c = ctx->client;
 	char				*cmd;
 	u_int				 sy;

@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.12 2007-10-04 11:52:02 nicm Exp $ */
+/* $Id: client.c,v 1.13 2007-10-04 19:03:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -175,7 +175,7 @@ client_main(struct client_ctx *cctx)
 
 	if (error != NULL) {
 		if (*error == '\0') {
-			printf("[exited]\n", error);
+			printf("[exited]\n");
 			return (0);
 		}
 		printf("[error: %s]\n", error);

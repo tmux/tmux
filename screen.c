@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.19 2007-10-01 14:18:42 nicm Exp $ */
+/* $Id: screen.c,v 1.20 2007-10-04 19:03:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -86,6 +86,9 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 	oy = s->sy;
 	s->sx = sx;
 	s->sy = sy;
+
+	s->ry_upper = 0;
+	s->ry_lower = screen_last_y(s);
 
 	log_debug("resizing screen (%u, %u) -> (%u, %u)", ox, oy, sx, sy);
 

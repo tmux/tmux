@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.1 2007-10-04 11:52:03 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.2 2007-10-04 19:03:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,5 +55,6 @@ cmd_attach_session_exec(unused void *ptr, struct cmd_ctx *ctx)
 	c->session = s;
 
 	server_write_client(c, MSG_READY, NULL, 0);
+	recalculate_sizes();
 	server_redraw_client(c);
 }
