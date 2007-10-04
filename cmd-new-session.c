@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.4 2007-10-04 10:11:32 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.5 2007-10-04 12:27:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,12 +58,12 @@ cmd_new_session_parse(void **ptr, int argc, char **argv, char **cause)
 	data->flag_detached = 0;
 	data->name = NULL;
 
-	while ((opt = getopt(argc, argv, "ds:")) != EOF) {
+	while ((opt = getopt(argc, argv, "dn:")) != EOF) {
 		switch (opt) {
 		case 'd':
 			data->flag_detached = 1;
 			break;
-		case 's':
+		case 'n':
 			data->name = xstrdup(optarg);
 			break;
 		default:
