@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.41 2007-10-04 00:18:59 nicm Exp $ */
+/* $Id: tmux.h,v 1.42 2007-10-04 09:30:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -457,6 +457,7 @@ struct client_ctx {
 
 /* Key/command line command. */
 enum cmd_type {
+	CMD_BINDKEY,
 	CMD_DETACHSESSION,
 	CMD_LASTWINDOW,
 	CMD_LISTKEYS,
@@ -465,6 +466,7 @@ enum cmd_type {
 	CMD_NEWWINDOW,
 	CMD_NEXTWINDOW,
 	CMD_PREVIOUSWINDOW,
+	CMD_UNBINDKEY,
 };
 
 struct cmd_ctx {
@@ -527,6 +529,7 @@ struct cmd	*cmd_recv(struct buffer *);
 void		 cmd_free(struct cmd *);
 void		 cmd_send_string(struct buffer *, const char *);
 char		*cmd_recv_string(struct buffer *);
+extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_detach_session_entry;
 extern const struct cmd_entry cmd_last_window_entry;
 extern const struct cmd_entry cmd_list_keys_entry;
@@ -535,14 +538,7 @@ extern const struct cmd_entry cmd_new_session_entry;
 extern const struct cmd_entry cmd_new_window_entry;
 extern const struct cmd_entry cmd_next_window_entry;
 extern const struct cmd_entry cmd_previous_window_entry;
-
-/* bind.c */
-const struct bind *cmdx_lookup_bind(const char *);
-void	 cmdx_add_bind(int, u_int, char *, const struct bind *);
-void	 cmdx_remove_bind(int);
-void     cmdx_init(void);
-void     cmdx_free(void);
-void	 cmdx_dispatch(struct client *, int);
+extern const struct cmd_entry cmd_unbind_key_entry;
 
 /* client.c */
 int	 client_init(char *, struct client_ctx *, int);

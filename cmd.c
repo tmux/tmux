@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.6 2007-10-03 23:32:26 nicm Exp $ */
+/* $Id: cmd.c,v 1.7 2007-10-04 09:30:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,10 +24,16 @@
 #include "tmux.h"
 
 const struct cmd_entry *cmd_table[] = {
+	&cmd_bind_key_entry,
 	&cmd_detach_session_entry,
+	&cmd_last_window_entry,
+	&cmd_list_keys_entry,
 	&cmd_list_sessions_entry,
 	&cmd_new_session_entry,
 	&cmd_new_window_entry,
+	&cmd_next_window_entry,
+	&cmd_previous_window_entry,
+	&cmd_unbind_key_entry,
 	NULL
 };
 
@@ -140,7 +146,7 @@ cmd_recv(struct buffer *b)
 void
 cmd_free(struct cmd *cmd)
 {
-	if (cmd->entry->free != NULL)
+	if (cmd->data != NULL && cmd->entry->free != NULL)
 		cmd->entry->free(cmd->data);
 	xfree(cmd);
 }
