@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.51 2007-10-05 14:23:28 nicm Exp $ */
+/* $Id: tmux.h,v 1.52 2007-10-05 18:25:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -423,6 +423,9 @@ struct session {
 	struct window	*window;
 	struct window	*last;
 	struct windows	 windows;
+
+#define SESSION_UNATTACHED 0x1	/* not attached to any clients */
+	int		 flags;
 };
 ARRAY_DECL(sessions, struct session *);
 
