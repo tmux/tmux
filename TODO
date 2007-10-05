@@ -40,6 +40,7 @@
 - Implicitly add exec to the commands for new windows (switch to disable it)
 - nested sessions, ie session as window - moving to it moves into session
   (remembering parent)
+- Nested sessions over the network, plug-in another tmux as a window/subsession
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
