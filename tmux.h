@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.50 2007-10-04 22:04:01 nicm Exp $ */
+/* $Id: tmux.h,v 1.51 2007-10-05 14:23:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -453,6 +453,11 @@ struct client_ctx {
 	int		 loc_fd;
 	struct buffer	*loc_in;
 	struct buffer	*loc_out;
+
+#define CCTX_PAUSE 0x1
+#define CCTX_DETACH 0x2
+#define CCTX_EXIT 0x4
+	int 		 flags;
 };
 
 /* Key/command line command. */

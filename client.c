@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.13 2007-10-04 19:03:51 nicm Exp $ */
+/* $Id: client.c,v 1.14 2007-10-05 14:23:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -126,7 +126,7 @@ client_main(struct client_ctx *cctx)
 {
 	struct pollfd	 pfds[2];
 	char		*error;
-	int		 n;
+	int		 timeout;
 
 	logfile("client");
 	setproctitle("client");
@@ -135,8 +135,8 @@ client_main(struct client_ctx *cctx)
 	if ((cctx->loc_fd = local_init(&cctx->loc_in, &cctx->loc_out)) == -1)
 		return (1);
 
-	n = 0;
 	error = NULL;
+	timeout = INFTIM;
 	while (!sigterm) {
 		if (sigwinch)
 			client_handle_winch(cctx);
@@ -150,7 +150,7 @@ client_main(struct client_ctx *cctx)
 		if (BUFFER_USED(cctx->loc_out) > 0)
 			pfds[1].events |= POLLOUT;
 	
-		if (poll(pfds, 2, INFTIM) == -1) {
+		if (poll(pfds, 2, timeout) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			fatal("poll failed");
@@ -161,32 +161,48 @@ client_main(struct client_ctx *cctx)
 		if (buffer_poll(&pfds[1], cctx->loc_in, cctx->loc_out) != 0)
 			goto local_dead;
 
-		/* XXX Output flushed; pause if required. */
-		if (n)
-			usleep(750000);
-		/* XXX XXX special return code for pause? or flag in cctx? */
-		if ((n = client_process_local(cctx, &error)) == -1)
-			break;
-		if ((n = client_msg_dispatch(cctx, &error)) == -1)
-			break;
-	}
-
-	local_done();
-
-	if (error != NULL) {
-		if (*error == '\0') {
-			printf("[exited]\n");
-			return (0);
+		if (cctx->flags & CCTX_PAUSE) {
+			usleep(750000);	
+			cctx->flags = 0;
 		}
-		printf("[error: %s]\n", error);
-		return (1);
+
+		if (client_process_local(cctx, &error) == -1)
+			goto out;
+		
+		switch (client_msg_dispatch(cctx, &error)) {
+		case -1:
+			goto out;
+		case 0:
+			/* May be more in buffer, don't let poll block. */
+			timeout = 0;
+			break;
+		default:
+			/* Out of data, poll may block. */
+			timeout = INFTIM;
+			break;
+		}
 	}
-	if (sigterm) {
-		printf("[terminated]\n");
-		return (1);
+ 
+out:
+ 	local_done();
+ 
+ 	if (sigterm) {
+ 		printf("[terminated]\n");
+ 		return (1);
+ 	}
+ 
+	if (cctx->flags & CCTX_EXIT) {
+		printf("[exited]\n");
+		return (0);
 	}
-	printf("[detached]\n");
-	return (0);
+	
+	if (cctx->flags & CCTX_DETACH) {
+		printf("[detached]\n");
+		return (0);
+	}
+
+	printf("[error: %s]\n", error);
+	return (1);
 
 server_dead:
 	local_done();

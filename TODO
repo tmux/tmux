@@ -44,6 +44,8 @@
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
+- sort out bell: passing through should be optional, and toolbar should change
+  window colour or something
 - commands:
 	refresh client	
 	rename sessions
@@ -56,4 +58,3 @@
 	set shell
 - handle tmux in tmux (check $TMUX and abort)
 - check for some reqd terminfo caps on startup
-- sort out the pause mess
