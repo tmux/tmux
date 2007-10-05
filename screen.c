@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.21 2007-10-04 19:22:26 nicm Exp $ */
+/* $Id: screen.c,v 1.22 2007-10-05 17:51:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -284,20 +284,13 @@ screen_fill_lines(
 		screen_fill_line(s, i, data, attr, colr);
 }
 
-/* Write a single character to the screen at the cursor and move forward. */
+/* Write a single character to the screen at the cursor. */
 void
 screen_write_character(struct screen *s, u_char ch)
 {
-	if (s->cx > screen_last_x(s)) {
-		s->cx = 0;
-		screen_cursor_down_scroll(s);
-	}
-
 	s->grid_data[s->cy][s->cx] = ch;
 	s->grid_attr[s->cy][s->cx] = s->attr;
 	s->grid_colr[s->cy][s->cx] = s->colr;
-
-	s->cx++;
 }
 
 /* Move cursor up and scroll if necessary. */
