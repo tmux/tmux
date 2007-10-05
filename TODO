@@ -46,7 +46,8 @@
 - sort out bell: passing through should be optional, and toolbar should change
   window colour or something
 - commands:
-	refresh client	
+	refresh session (similar to detach: -a for all, else if key redraw cur,
+	    else do nothing)
 	rename sessions
 	swap windows
 	link/copy windows
