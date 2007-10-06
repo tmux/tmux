@@ -29,7 +29,8 @@ Commands:
     (Commands can be shortened, as long as they are unambiguous)
 
     new-session [-d] [-s session name] [-n window name] [command]
-        Create new session. Attaches to new session unless -d is given.
+        Create new session. Attaches to new session unless -d is given. The
+	window name and command are the same as for new-window below.
 
     attach-session [-d]
         Attach to session. Detaches other clients if -d is given.
@@ -40,7 +41,12 @@ Commands:
     list-windows
         List windows (can be shortened to lsw).
 
-    rename-window [-i <window index>] new name
+    new-window [-d] [-n window name] [command]
+	Create a new window. If -d is given, the window is created in the
+	background (it doesn't become the current window). The window name
+	and the command to run in the window may also be specified.
+
+    rename-window [-i window index] new name
         Rename window.
 
     bind-key key command
