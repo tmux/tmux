@@ -16,7 +16,7 @@ There is one default server process per user which puts its socket in
 invocations will connect to the same server. The server holds multiple
 sessions.
 
-Syntax is: tmux [-v] [-S path] [-s sessioon] command [flags]
+Syntax is: tmux [-v] [-S path] [-s session] command [flags]
 
     -v Create logfiles, verbosity increases with more -v
     -S Set different server socket path
@@ -59,3 +59,10 @@ Commands:
 	Set command prefix (meta) key.
 
 Sessions are destroyed when no windows remain attached to them.
+
+Status bar colour is currently fixed, it can be changed by changing the
+last argument of line 38 in status.c:
+
+	input_store_two(b, CODE_ATTRIBUTES, ATTR_REVERSE, 0x20);
+
+0x47 is white-on-blue.
