@@ -1,6 +1,4 @@
-Command prefix is C-b. This can be changed by building with, for example:
-
-    META='\001' make
+Command prefix is C-b by default.
 
 Key bindings:
     d detach
