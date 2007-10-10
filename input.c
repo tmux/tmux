@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.21 2007-10-05 17:51:56 nicm Exp $ */
+/* $Id: input.c,v 1.22 2007-10-10 19:45:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,42 +24,29 @@
 
 #include "tmux.h"
 
-const struct {
-	u_char		 first;
-	u_char		 last;
-	enum input_class class;
-} input_table[] = {
-	{ 0x00, 0x1f, INPUT_C0CONTROL },
-	{ 0x20, 0x20, INPUT_SPACE },
-	{ 0x21, 0x2F, INPUT_INTERMEDIATE },	/* also INPUT_SPACE */
-	{ 0x30, 0x3F, INPUT_PARAMETER },
-	{ 0x40, 0x5F, INPUT_UPPERCASE },
-	{ 0x60, 0x7E, INPUT_LOWERCASE },
-	{ 0x7F, 0x7F, INPUT_DELETE },
-	{ 0x80, 0x9F, INPUT_C1CONTROL },
-	{ 0xA0, 0xA0, INPUT_SPACE },
-	{ 0xA1, 0xFE, INPUT_G1DISPLAYABLE },
-	{ 0xFF, 0xFF, INPUT_SPECIAL },
-};
-#define NINPUTCLASS (sizeof input_table / sizeof input_table[0])
+#define INPUT_C0CONTROL(ch) 	(ch <= 0x1f)
+#define INPUT_INTERMEDIATE(ch)	(ch == 0xa0 || (ch >= 0x20 && ch <= 0x2f))
+#define INPUT_PARAMETER(ch)	(ch >= 0x30 && ch <= 0x3f)
+#define INPUT_UPPERCASE(ch)	(ch >= 0x40 && ch <= 0x5f)
+#define INPUT_LOWERCASE(ch)	(ch >= 0x60 && ch <= 0x7e)
+#define INPUT_DELETE(ch)	(ch == 0x7f)
+#define INPUT_C1CONTROL(ch)	(ch >= 0x80 && ch <= 0x9f)
+#define INPUT_G1DISPLAYABLE(ch)	(ch >= 0xa1 && ch <= 0xfe)
+#define INPUT_SPECIAL(ch)	(ch == 0xff)
 
-enum input_class input_lookup_class(u_char);
 int	 input_get_argument(struct input_ctx *, u_int, uint16_t *, uint16_t);
 int	 input_new_argument(struct input_ctx *);
 int	 input_add_argument(struct input_ctx *, u_char ch);
 
-void	*input_state_first(u_char, enum input_class, struct input_ctx *);
-void	*input_state_escape(u_char, enum input_class, struct input_ctx *);
-void	*input_state_intermediate(u_char, enum input_class, struct input_ctx *);
-void	*input_state_title_first(u_char, enum input_class, struct input_ctx *);
-void	*input_state_title_second(u_char, enum input_class, struct input_ctx *);
-void	*input_state_title_next(u_char, enum input_class, struct input_ctx *);
-void	*input_state_sequence_first(
-	     u_char, enum input_class, struct input_ctx *);
-void	*input_state_sequence_next(
-    	     u_char, enum input_class, struct input_ctx *);
-void	*input_state_sequence_intermediate(
-    	     u_char, enum input_class, struct input_ctx *);
+void	*input_state_first(u_char, struct input_ctx *);
+void	*input_state_escape(u_char, struct input_ctx *);
+void	*input_state_intermediate(u_char, struct input_ctx *);
+void	*input_state_title_first(u_char, struct input_ctx *);
+void	*input_state_title_second(u_char, struct input_ctx *);
+void	*input_state_title_next(u_char, struct input_ctx *);
+void	*input_state_sequence_first(u_char, struct input_ctx *);
+void	*input_state_sequence_next(u_char, struct input_ctx *);
+void	*input_state_sequence_intermediate(u_char, struct input_ctx *);
 
 void	 input_handle_character(u_char, struct input_ctx *);
 void	 input_handle_c0_control(u_char, struct input_ctx *);
@@ -86,25 +73,6 @@ void	 input_handle_sequence_sm(struct input_ctx *);
 void	 input_handle_sequence_rm(struct input_ctx *);
 void	 input_handle_sequence_decstbm(struct input_ctx *);
 void	 input_handle_sequence_sgr(struct input_ctx *);
-
-enum input_class
-input_lookup_class(u_char ch)
-{
-	enum input_class	iclass;
-	u_int			i;
-
-	iclass = INPUT_SPACE;
-	for (i = 0; i < NINPUTCLASS; i++) {
-		if (ch >= input_table[i].first && ch <= input_table[i].last) {
-			iclass = input_table[i].class;
-			break;
-		}
-	}
-	if (i == NINPUTCLASS)
-		fatalx("character without class");
-
-	return (iclass);
-}
 
 int
 input_new_argument(struct input_ctx *ictx)
@@ -174,8 +142,7 @@ input_free(struct input_ctx *ictx)
 void
 input_parse(struct input_ctx *ictx, u_char *buf, size_t len, struct buffer *b)
 {
-	enum input_class	iclass;
-	u_char			ch;
+	u_char	ch;
 
 	ictx->buf = buf;
 	ictx->len = len;
@@ -188,105 +155,95 @@ input_parse(struct input_ctx *ictx, u_char *buf, size_t len, struct buffer *b)
 
 	while (ictx->off < ictx->len) {
 		ch = ictx->buf[ictx->off++];
-		iclass = input_lookup_class(ch);
-		ictx->state = ictx->state(ch, iclass, ictx);
+		ictx->state = ictx->state(ch, ictx);
 	}
 }
 
 void *
-input_state_first(u_char ch, enum input_class iclass, struct input_ctx *ictx)
+input_state_first(u_char ch, struct input_ctx *ictx)
 {
-	switch (iclass) {
-	case INPUT_C0CONTROL:
+	if (INPUT_C0CONTROL(ch)) {
 		if (ch == 0x1b)
 			return (input_state_escape);
 		input_handle_c0_control(ch, ictx);
-		break;
-	case INPUT_C1CONTROL:
+		return (input_state_first);
+	}
+
+	if (INPUT_C1CONTROL(ch)) {
 		ch -= 0x40;
 		if (ch == '[')
 			return (input_state_sequence_first);
 		if (ch == ']')
 			return (input_state_title_first);
 		input_handle_c1_control(ch, ictx);
-		break;
-	case INPUT_SPACE:
-	case INPUT_INTERMEDIATE:
-	case INPUT_PARAMETER:
-	case INPUT_UPPERCASE:
-	case INPUT_LOWERCASE:
-	case INPUT_DELETE:
-	case INPUT_G1DISPLAYABLE:
-	case INPUT_SPECIAL:
-		input_handle_character(ch, ictx);
-		break;
+		return (input_state_first);
 	}
+
+	input_handle_character(ch, ictx);
 	return (input_state_first);
 }
-
+	    
 void *
-input_state_escape(u_char ch, enum input_class iclass, struct input_ctx *ictx)
+input_state_escape(u_char ch, struct input_ctx *ictx)
 {
-	if (iclass == INPUT_C1CONTROL || iclass == INPUT_G1DISPLAYABLE) {
-		/* Treat as 7-bit equivalent. */
+	/* Treat C1 control and G1 displayable as 7-bit equivalent. */
+	if (INPUT_C1CONTROL(ch) || INPUT_G1DISPLAYABLE(ch))
 		ch &= 0x7f;
-		iclass = input_lookup_class(ch);
-	}
 
-	switch (iclass) {
-	case INPUT_C0CONTROL:
+	if (INPUT_C0CONTROL(ch)) {
 		input_handle_c0_control(ch, ictx);
 		return (input_state_escape);
-	case INPUT_SPACE:
-	case INPUT_INTERMEDIATE:
+	}
+
+	if (INPUT_INTERMEDIATE(ch))
 		return (input_state_intermediate);
-	case INPUT_PARAMETER:
+
+	if (INPUT_PARAMETER(ch)) {
 		input_handle_private_two(ch, ictx);
-		break;
-	case INPUT_UPPERCASE:
+		return (input_state_first);
+	}
+
+	if (INPUT_UPPERCASE(ch)) {
 		if (ch == '[')
 			return (input_state_sequence_first);
 		if (ch == ']')
 			return (input_state_title_first);
 		input_handle_c1_control(ch, ictx);
-		break;
-	case INPUT_LOWERCASE:
+		return (input_state_first);
+	}
+
+	if (INPUT_LOWERCASE(ch)) {
 		input_handle_standard_two(ch, ictx);
-		break;
-	case INPUT_DELETE:
-	case INPUT_SPECIAL:
-	case INPUT_C1CONTROL:
-	case INPUT_G1DISPLAYABLE:
-		break;
-	}	
+		return (input_state_first);
+	}
+
 	return (input_state_first);
 }
 
 void *
-input_state_title_first(
-    u_char ch, unused enum input_class iclass, struct input_ctx *ictx)
+input_state_title_first(u_char ch, struct input_ctx *ictx)
 {
 	if (ch >= '0' && ch <= '9') {
 		ictx->title_type = ch - '0';
 		return (input_state_title_second);
 	}
+
 	return (input_state_first);
 }
 
 void *
-input_state_title_second(
-    u_char ch, unused enum input_class iclass, struct input_ctx *ictx)
+input_state_title_second(u_char ch, struct input_ctx *ictx)
 {
 	if (ch == ';') {
 		ictx->title_len = 0;
 		return (input_state_title_next);
 	}
+
 	return (input_state_first);
 }
 
 void *
-input_state_title_next(
-    u_char ch, unused enum input_class iclass, struct input_ctx *ictx)
+input_state_title_next(u_char ch, struct input_ctx *ictx)
 {
 	if (ch == '\007') {
 		ictx->title_buf[ictx->title_len] = '\0';
@@ -298,128 +255,100 @@ input_state_title_next(
 			buffer_write(ictx->b, ictx->title_buf, ictx->title_len);
 			break;
 		}
-	} else if (ch >= 0x20) {
+		return (input_state_first);
+	}
+
+	if (ch >= 0x20) {
 		if (ictx->title_len < (sizeof ictx->title_buf) - 1) {
 			ictx->title_buf[ictx->title_len++] = ch;
 			return (input_state_title_next);
 		}
+		return (input_state_first);
 	}
+
  	return (input_state_first);
 }
 
 void *
-input_state_intermediate(
-    u_char ch, enum input_class iclass, struct input_ctx *ictx)
+input_state_intermediate(u_char ch, struct input_ctx *ictx)
 {
-	switch (iclass) {
-	case INPUT_SPACE:
-	case INPUT_INTERMEDIATE:
+	if (INPUT_INTERMEDIATE(ch))
 		return (input_state_intermediate);
-	case INPUT_PARAMETER:
+
+	if (INPUT_PARAMETER(ch)) {
 		input_handle_private_two(ch, ictx);
-		break;
-	case INPUT_UPPERCASE:
-	case INPUT_LOWERCASE:
+		return (input_state_first);
+	}
+
+	if (INPUT_UPPERCASE(ch) || INPUT_LOWERCASE(ch)) {
 		input_handle_standard_two(ch, ictx);
-		break;
-	case INPUT_C0CONTROL:
-	case INPUT_DELETE:
-	case INPUT_SPECIAL:
-	case INPUT_C1CONTROL:
-	case INPUT_G1DISPLAYABLE:
-		break;
-	}	
+		return (input_state_first);
+	}
+
 	return (input_state_first);
 }
 
 void *
-input_state_sequence_first(
-    u_char ch, enum input_class iclass, struct input_ctx *ictx)
+input_state_sequence_first(u_char ch, struct input_ctx *ictx)
 {
 	ictx->private = '\0';
 	ARRAY_CLEAR(&ictx->args);
 
-	switch (iclass) {
-	case INPUT_PARAMETER:
+	if (INPUT_PARAMETER(ch)) {
 		if (ch >= 0x3c && ch <= 0x3f) {
 			/* Private control sequence. */
 			ictx->private = ch;
 			return (input_state_sequence_next);
 		}
 		input_new_argument(ictx);
-		break;
-	case INPUT_SPACE:
-	case INPUT_INTERMEDIATE:
-	case INPUT_UPPERCASE:
-	case INPUT_LOWERCASE:
-	case INPUT_C0CONTROL:
-	case INPUT_C1CONTROL:
-	case INPUT_DELETE:
-	case INPUT_G1DISPLAYABLE:
-	case INPUT_SPECIAL:
-		break;
 	}		
 
 	/* Pass character on directly. */
-	return (input_state_sequence_next(ch, iclass, ictx));
+	return (input_state_sequence_next(ch, ictx));
 }
 
 void *
-input_state_sequence_next(
-    u_char ch, enum input_class iclass, struct input_ctx *ictx)
+input_state_sequence_next(u_char ch, struct input_ctx *ictx)
 {
-	switch (iclass) {
-	case INPUT_SPACE:
-	case INPUT_INTERMEDIATE:
+	if (INPUT_INTERMEDIATE(ch)) {
 		if (input_add_argument(ictx, '\0') != 0)
-			break;
+			return (input_state_first);
 		return (input_state_sequence_intermediate);
-	case INPUT_PARAMETER:
+	}
+
+	if (INPUT_PARAMETER(ch)) {
 		if (ch == ';') {
 			if (input_add_argument(ictx, '\0') != 0)
-				break;
+				return (input_state_first);
 			input_new_argument(ictx);
 			return (input_state_sequence_next);
 		}
 		if (input_add_argument(ictx, ch) != 0)
-			break;
+			return (input_state_first);
 		return (input_state_sequence_next);
-	case INPUT_UPPERCASE:
-	case INPUT_LOWERCASE:
+	}
+
+	if (INPUT_UPPERCASE(ch) || INPUT_LOWERCASE(ch)) {
 		if (input_add_argument(ictx, '\0') != 0)
-			break;
+			return (input_state_first);
 		input_handle_sequence(ch, ictx);
-		break;
-	case INPUT_C0CONTROL:
-	case INPUT_C1CONTROL:
-	case INPUT_DELETE:
-	case INPUT_SPECIAL:
-	case INPUT_G1DISPLAYABLE:
-		break;
-	}	
+		return (input_state_first);
+	}
+
 	return (input_state_first);
 }
 
 void *
-input_state_sequence_intermediate(
-    u_char ch, enum input_class iclass, struct input_ctx *ictx)
+input_state_sequence_intermediate(u_char ch, struct input_ctx *ictx)
 {
-	switch (iclass) {
-	case INPUT_SPACE:
-	case INPUT_INTERMEDIATE:
+	if (INPUT_INTERMEDIATE(ch))
 		return (input_state_sequence_intermediate);
-	case INPUT_UPPERCASE:
-	case INPUT_LOWERCASE:
+
+	if (INPUT_UPPERCASE(ch) || INPUT_LOWERCASE(ch)) {
 		input_handle_sequence(ch, ictx);
-		break;
-	case INPUT_PARAMETER:
-	case INPUT_C0CONTROL:
-	case INPUT_DELETE:
-	case INPUT_SPECIAL:
-	case INPUT_C1CONTROL:
-	case INPUT_G1DISPLAYABLE:
-		break;
-	}	
+		return (input_state_first);
+	}
+
 	return (input_state_first);
 }
 
