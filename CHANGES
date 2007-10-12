@@ -1,5 +1,6 @@
 12 October 2007
 
+* (nicm) send-prefix command. Bound to C-b by default.
 * (nicm) set status, status-fg, status-bg commands. fg and bg are as a number
   from 0 to 7. status may be 0/1/on/off/yes/no.
 * (nicm) Make status line mark window in yellow on bell.
@@ -124,5 +125,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.38 2007-10-12 12:32:34 nicm Exp $
+$Id: CHANGES,v 1.39 2007-10-12 13:03:58 nicm Exp $
 

@@ -58,6 +58,5 @@
 	kill window (C-b backsp)
 	kill session (no not bind by default)
 	set shell
-	send prefix
 - handle tmux in tmux (check $TMUX and abort)
 - check for some reqd terminfo caps on startup
