@@ -40,6 +40,8 @@
 - nested sessions, ie session as window - moving to it moves into session
   (remembering parent)
 - Nested sessions over the network, plug-in another tmux as a window/subsession
+- it would be nice to have multichar commands so you could have C-b K K for
+  kill-window to limit accidental presses
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
@@ -52,9 +54,10 @@
 	swap windows
 	link/copy windows
 	unlink window (error if window only linked to one session)
-	kill window
-	kill session
+	kill window (C-b backsp)
+	kill session (no not bind by default)
 	set status on/off
 	set shell
+	send prefix
 - handle tmux in tmux (check $TMUX and abort)
 - check for some reqd terminfo caps on startup
