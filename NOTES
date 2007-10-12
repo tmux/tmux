@@ -110,11 +110,15 @@ A more extensive, but rough, todo list is included in the TODO file.
 
 tmux also depends on several features of the client terminal (TERM), if these
 are missing it may not behave correctly. It is possible to emulate some of
-these but tmux does not do this at present. Known working are TERM=screen (tmux
+these but tmux this is not done at present. Known working are TERM=screen (tmux
 in screen), xterm, xterm-color and rxvt.
 
 For debugging, running tmux with -v or -vv will generate server and client log
-files in the current directory.
+files in the current directory. In particular, client log files will contain
+messages such as "cursor_down not supported," if your TERM type is missing
+features expected by tmux. If these are present, please send a note of your TERM
+and the log file to the email address below - it will help to prioritise
+features that should be avoided or emulated, if possible.
 
 Bug reports, feature suggestions and especially code contributions (or offers
 to work on code) are most welcome. Please email:
@@ -126,4 +130,4 @@ freenode or efnet IRC. I sometimes ignore private msgs from people I don't
 know, so please mention tmux initially (rather than just saying "hi" ;-).
 
 -- Nicholas Marriott <nicm@users.sf.net>
-$Id: NOTES,v 1.19 2007-10-12 17:50:33 nicm Exp $
+$Id: NOTES,v 1.20 2007-10-12 18:00:16 nicm Exp $
