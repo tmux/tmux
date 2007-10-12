@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.30 2007-10-12 12:08:51 nicm Exp $ */
+/* $Id: tmux.c,v 1.31 2007-10-12 14:46:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -210,7 +210,8 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	if (!(cmd->entry->flags & CMD_NOSESSION))
+	if (!(cmd->entry->flags & CMD_NOSESSION) ||
+	    (cmd->entry->flags & CMD_CANTNEST))
 		client_fill_sessid(&data.sid, name);
 	if (client_init(path, &cctx, cmd->entry->flags & CMD_STARTSERVER) != 0)
 		exit(1);

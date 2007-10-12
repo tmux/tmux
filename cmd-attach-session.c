@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.5 2007-10-04 22:04:01 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.6 2007-10-12 14:46:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,7 +38,7 @@ struct cmd_attach_session_data {
 
 const struct cmd_entry cmd_attach_session_entry = {
 	"attach-session", "attach", "[-d]",
-	0,
+	CMD_CANTNEST,
 	cmd_attach_session_parse,
 	cmd_attach_session_exec, 
 	cmd_attach_session_send,
