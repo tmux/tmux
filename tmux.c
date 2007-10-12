@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.31 2007-10-12 14:46:48 nicm Exp $ */
+/* $Id: tmux.c,v 1.32 2007-10-12 17:52:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -194,6 +194,7 @@ main(int argc, char **argv)
 		goto usage;
 
 	log_open(stderr, LOG_USER, debug_level);
+	siginit();
 
 	status_lines = 1;
 	status_colour = 0x02;
