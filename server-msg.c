@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.26 2007-10-12 14:46:48 nicm Exp $ */
+/* $Id: server-msg.c,v 1.27 2007-10-12 17:50:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -125,7 +125,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 
 	if (data.sid.pid != -1 && (cmd->entry->flags & CMD_CANTNEST)) {
 		server_msg_fn_command_error(&ctx, "sessions should be nested "
-		    "with care. unset $TMUX and retry to force");
+		    "with care. unset $TMUX to force");
 		return (0);
 	}
 

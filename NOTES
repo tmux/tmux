@@ -100,7 +100,7 @@ The following is a summary of major features implemented in this version:
 
 And major missing features:
 
-- Support for VT100 line drawing characters (they will appear  as jklmx, etc).
+- Support for VT100 line drawing characters (they will appear as jklmx, etc).
 - Status line customisation, beyond presence and colour.
 - Copy and paste.
 - Scrollback.
@@ -126,4 +126,4 @@ freenode or efnet IRC. I sometimes ignore private msgs from people I don't
 know, so please mention tmux initially (rather than just saying "hi" ;-).
 
 -- Nicholas Marriott <nicm@users.sf.net>
-$Id: NOTES,v 1.18 2007-10-12 17:32:20 nicm Exp $
+$Id: NOTES,v 1.19 2007-10-12 17:50:33 nicm Exp $
