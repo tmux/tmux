@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.15 2007-10-12 13:03:58 nicm Exp $ */
+/* $Id: cmd.c,v 1.16 2007-10-12 13:51:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,7 +56,8 @@ cmd_parse(int argc, char **argv, char **cause)
 
 	entry = NULL;
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
-		if (strcmp((*entryp)->alias, argv[0]) == 0) {
+		if ((*entryp)->alias != NULL && 
+		    strcmp((*entryp)->alias, argv[0]) == 0) {
 			entry = *entryp;
 			break;
 		}

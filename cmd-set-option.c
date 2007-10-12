@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.6 2007-10-12 12:11:40 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.7 2007-10-12 13:51:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -139,7 +139,8 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 			ctx->error(ctx, "invalid value");
 			return;
 		}
-		if (errstr != NULL || number > 7) {
+		number = screen_stringcolour(data->value);
+		if (number > 8) {
 			ctx->error(ctx, "bad colour: %s", data->value);
 			return;
 		}
@@ -157,7 +158,8 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 			ctx->error(ctx, "invalid value");
 			return;
 		}
-		if (errstr != NULL || number > 7) {
+		number = screen_stringcolour(data->value);
+		if (number > 8) {
 			ctx->error(ctx, "bad colour: %s", data->value);
 			return;
 		}

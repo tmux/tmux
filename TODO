@@ -42,8 +42,7 @@
 - Nested sessions over the network, plug-in another tmux as a window/subsession
 - it would be nice to have multichar commands so you could have C-b K K for
   kill-window to limit accidental presses
-- status-fg/status-bg should be able to a) use strings for colours "red" etc
-  b) set attributes too ("bold-red"?)
+- status-fg/status-bg should be to set attributes: bold, etc
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
