@@ -62,11 +62,6 @@ Commands:
     set-option prefix key
 	Set command prefix (meta) key.
 
+XXX set-option status,status-fg,status-bg
+
 Sessions are destroyed when no windows remain attached to them.
-
-There is currently no command to change status bar colour, it can be altered
-by adjusting the last argument of line 38 in status.c:
-
-	input_store_two(b, CODE_ATTRIBUTES, ATTR_REVERSE, 0x20);
-
-0x47 is white-on-blue.

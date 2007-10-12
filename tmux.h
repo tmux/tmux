@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.54 2007-10-12 11:24:15 nicm Exp $ */
+/* $Id: tmux.h,v 1.55 2007-10-12 12:08:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -497,6 +497,7 @@ extern volatile sig_atomic_t sigterm;
 extern int	prefix_key;
 extern int	debug_level;
 extern u_int	status_lines;
+extern u_char	status_colour;
 extern char    *default_command;
 void		 usage(char **, const char *, ...);
 void		 logfile(const char *);

@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.4 2007-10-12 11:24:15 nicm Exp $ */
+/* $Id: status.c,v 1.5 2007-10-12 12:08:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,20 +35,24 @@ status_write(struct client *c)
 
 	input_store_zero(b, CODE_CURSOROFF);
 	input_store_two(b, CODE_CURSORMOVE, c->sy - status_lines + 1, 1);
-	input_store_two(b, CODE_ATTRIBUTES, ATTR_REVERSE, 0x20);
+	input_store_two(b, CODE_ATTRIBUTES, 0, status_colour);
 
 	size = c->sx;
 	for (i = 0; i < ARRAY_LENGTH(&c->session->windows); i++) {
 		w = ARRAY_ITEM(&c->session->windows, i);
 		if (w == NULL)
 			continue;
-		if (session_hasbell(c->session, w))
-			input_store_two(b, CODE_ATTRIBUTES, ATTR_REVERSE, 0x30);
+
+		if (session_hasbell(c->session, w)) {
+			input_store_two(
+			    b, CODE_ATTRIBUTES, ATTR_REVERSE, status_colour);
+		}
 		status_print(b, &size,
 		    "%u:%s%s", i, w->name, w == c->session->window ? "*" : "");
 		if (session_hasbell(c->session, w))
-			input_store_two(b, CODE_ATTRIBUTES, ATTR_REVERSE, 0x20);
+			input_store_two(b, CODE_ATTRIBUTES, 0, status_colour);
 		status_print(b, &size, " ");
+
 		if (size == 0)
 			break;
 	}

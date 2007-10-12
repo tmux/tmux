@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.4 2007-10-04 22:18:48 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.5 2007-10-12 12:08:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -91,7 +91,7 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 	struct cmd_set_option_data	*data = ptr;
 	struct client			*c = ctx->client;
 	const char			*errstr;
-	u_int				 number;
+	u_int				 number, i;
 	int				 bool, key;
 
 	if (data == NULL)
@@ -102,6 +102,7 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 		return;
 	}
 
+	number = -1;
 	if (data->value != NULL) {
 		number = strtonum(data->value, 0, UINT_MAX, &errstr);
 		
@@ -126,6 +127,49 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 			return;
 		}
 		prefix_key = key;
+	} else if (strcmp(data->option, "status") == 0) {
+		if (bool == -1) {
+			ctx->error(ctx, "bad value: %s", data->value);
+			return;
+		}
+		status_lines = bool;
+		recalculate_sizes();
+	} else if (strcmp(data->option, "status-fg") == 0) {
+		if (data->value == NULL) {
+			ctx->error(ctx, "invalid value");
+			return;
+		}
+		if (errstr != NULL || number > 7) {
+			ctx->error(ctx, "bad colour: %s", data->value);
+			return;
+		}
+		status_colour &= 0x0f;
+		status_colour |= number << 4;
+		if (status_lines > 0) {
+			for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+				c = ARRAY_ITEM(&clients, i);
+				if (c != NULL && c->session != NULL)
+					server_redraw_client(c);
+			}
+		}
+	} else if (strcmp(data->option, "status-bg") == 0) {
+		if (data->value == NULL) {
+			ctx->error(ctx, "invalid value");
+			return;
+		}
+		if (errstr != NULL || number > 7) {
+			ctx->error(ctx, "bad colour: %s", data->value);
+			return;
+		}
+		status_colour &= 0xf0;
+		status_colour |= number;
+		if (status_lines > 0) {
+			for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+				c = ARRAY_ITEM(&clients, i);
+				if (c != NULL && c->session != NULL)
+					server_redraw_client(c);
+			}
+		}
 	} else {
 		ctx->error(ctx, "unknown option: %s", data->option);
 		return;

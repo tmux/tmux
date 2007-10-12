@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.29 2007-10-04 11:52:03 nicm Exp $ */
+/* $Id: tmux.c,v 1.30 2007-10-12 12:08:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -40,6 +40,7 @@ volatile sig_atomic_t sigterm;
 int		 debug_level;
 int		 prefix_key = META;
 u_int		 status_lines;
+u_char		 status_colour;
 char		*default_command;
 
 void		 sighandler(int);
@@ -195,6 +196,7 @@ main(int argc, char **argv)
 	log_open(stderr, LOG_USER, debug_level);
 
 	status_lines = 1;
+	status_colour = 0x02;
 
 	shell = getenv("SHELL");
 	if (shell == NULL || *shell == '\0')
