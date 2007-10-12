@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.3 2007-10-04 19:03:52 nicm Exp $ */
+/* $Id: status.c,v 1.4 2007-10-12 11:24:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,8 +42,13 @@ status_write(struct client *c)
 		w = ARRAY_ITEM(&c->session->windows, i);
 		if (w == NULL)
 			continue;
+		if (session_hasbell(c->session, w))
+			input_store_two(b, CODE_ATTRIBUTES, ATTR_REVERSE, 0x30);
 		status_print(b, &size,
-		    "%u:%s%s ", i, w->name, w == c->session->window ? "*" : "");
+		    "%u:%s%s", i, w->name, w == c->session->window ? "*" : "");
+		if (session_hasbell(c->session, w))
+			input_store_two(b, CODE_ATTRIBUTES, ATTR_REVERSE, 0x20);
+		status_print(b, &size, " ");
 		if (size == 0)
 			break;
 	}

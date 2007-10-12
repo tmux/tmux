@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.21 2007-10-03 23:32:26 nicm Exp $ */
+/* $Id: session.c,v 1.22 2007-10-12 11:24:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,6 +27,36 @@
 /* Global session list. */
 struct sessions	sessions;	
 
+void
+session_cancelbell(struct session *s, struct window *w)
+{
+	u_int	i;
+
+	if (window_index(&s->bells, w, &i) == 0)
+		window_remove(&s->bells, w);
+}
+
+void
+session_addbell(struct session *s, struct window *w)
+{
+	u_int	i;
+
+	/* Never bell in the current window. */
+	if (w == s->window || !session_has(s, w))
+		return;
+
+	if (window_index(&s->bells, w, &i) != 0)
+		window_add(&s->bells, w);
+}
+
+int
+session_hasbell(struct session *s, struct window *w)
+{
+	u_int	i;
+
+	return (window_index(&s->bells, w, &i) == 0);
+}
+
 /* Find session by name. */
 struct session *
 session_find(const char *name)
@@ -54,6 +84,7 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	s->tim = time(NULL);
 	s->window = s->last = NULL;
 	ARRAY_INIT(&s->windows);
+	ARRAY_INIT(&s->bells);
 
 	s->sx = sx;
 	s->sy = sy;
@@ -186,6 +217,7 @@ session_next(struct session *s)
 		return (0);
 	s->last = s->window;
 	s->window = w;
+	session_cancelbell(s, w);
 	return (0);
 }
 
@@ -208,6 +240,7 @@ session_previous(struct session *s)
 		return (0);
 	s->last = s->window;
 	s->window = w;
+	session_cancelbell(s, w);
 	return (0);
 }
 
@@ -224,6 +257,7 @@ session_select(struct session *s, u_int i)
 		return (0);
 	s->last = s->window;
 	s->window = w;
+	session_cancelbell(s, w);
 	return (0);
 }
 
@@ -241,5 +275,6 @@ session_last(struct session *s)
 
 	s->last = s->window;
 	s->window = w;
+	session_cancelbell(s, w);
 	return (0);
 }

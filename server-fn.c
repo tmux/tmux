@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.19 2007-10-04 19:22:26 nicm Exp $ */
+/* $Id: server-fn.c,v 1.20 2007-10-12 11:24:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -123,7 +123,7 @@ server_write_window(
 }
 
 void
-server_redraw_status(struct client *c)
+server_status_client(struct client *c)
 {
 	struct hdr	hdr;
 	size_t		size;
@@ -192,7 +192,7 @@ server_redraw_client(struct client *c)
 	} else
 		buffer_reverse_add(c->out, sizeof hdr);
 
-	server_redraw_status(c);
+	server_status_client(c);
 }
 
 void
@@ -205,6 +205,19 @@ server_redraw_session(struct session *s)
 		c = ARRAY_ITEM(&clients, i);
 		if (c != NULL && c->session == s)
 			server_redraw_client(c);
+	}
+}
+
+void
+server_status_session(struct session *s)
+{
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL && c->session == s)
+			server_status_client(c);
 	}
 }
 
@@ -231,6 +244,21 @@ server_redraw_window(struct window *w)
 		c = ARRAY_ITEM(&clients, i);
 		if (c != NULL && c->session != NULL && c->session->window == w)
 			server_redraw_client(c);
+	}
+}
+
+void
+server_status_window(struct window *w)
+{
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (session_has(c->session, w))
+			server_status_client(c);
 	}
 }
 

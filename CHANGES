@@ -1,3 +1,7 @@
+12 October 2007
+
+* (nicm) Make status line mark window in yellow on bell.
+
 04 October 2007
 
 * (nicm) -d option to attach to detach all other clients on the same session.
@@ -118,5 +122,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.36 2007-10-04 21:21:48 nicm Exp $
+$Id: CHANGES,v 1.37 2007-10-12 11:24:14 nicm Exp $
 

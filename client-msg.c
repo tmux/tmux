@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.8 2007-10-05 14:23:28 nicm Exp $ */
+/* $Id: client-msg.c,v 1.9 2007-10-12 11:24:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -67,8 +67,7 @@ client_msg_dispatch(struct client_ctx *cctx, char **error)
 			return (0);
 		}
 	}
-	if (i == NCLIENTMSG)
-		fatalx("unexpected message");
+	fatalx("unexpected message");
 }
 
 int

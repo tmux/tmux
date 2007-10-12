@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.26 2007-10-04 21:21:48 nicm Exp $ */
+/* $Id: server.c,v 1.27 2007-10-12 11:24:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -322,10 +322,9 @@ server_lost_client(struct client *c)
 void
 server_handle_window(struct window *w)
 {
-	struct client	*c;
-	struct session	*s;
 	struct buffer	*b;
-	u_int		 i, j;
+	struct session	*s;
+	u_int		 i;
 
 	b = buffer_create(BUFSIZ);
 	window_data(w, b);
@@ -338,17 +337,13 @@ server_handle_window(struct window *w)
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
-		if (s == NULL || !session_has(s, w))
-			continue;
-
-		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
-			c = ARRAY_ITEM(&clients, j);
-			if (c == NULL || c->session != s)
-				continue;
-			server_write_client(c, MSG_DATA, "\007", 1);
-		}
+		if (s != NULL)
+			session_addbell(s, w);
 	}
-	
+
+	server_write_window(w, MSG_DATA, "\007", 1);
+	server_status_window(w);
+
 	w->flags &= ~WINDOW_BELL;
 }
 

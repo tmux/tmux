@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.53 2007-10-10 19:45:20 nicm Exp $ */
+/* $Id: tmux.h,v 1.54 2007-10-12 11:24:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -410,6 +410,8 @@ struct session {
 	struct window	*last;
 	struct windows	 windows;
 
+	struct windows	 bells;	/* windows with bells */
+
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
 	int		 flags;
 };
@@ -567,10 +569,12 @@ void	 server_write_session(
              struct session *, enum hdrtype, const void *, size_t);
 void	 server_write_window(
              struct window *, enum hdrtype, const void *, size_t);
-void	 server_redraw_status(struct client *);
+void	 server_status_client(struct client *);
 void	 server_clear_client(struct client *);
 void	 server_redraw_client(struct client *);
+void	 server_status_session(struct session *);
 void	 server_redraw_session(struct session *);
+void	 server_status_window(struct window *);
 void	 server_clear_window(struct window *);
 void	 server_redraw_window(struct window *);
 void	 server_write_message(struct client *, const char *, ...);
@@ -647,6 +651,9 @@ void		 window_data(struct window *, struct buffer *);
 
 /* session.c */
 extern struct sessions sessions;
+void		 session_cancelbell(struct session *, struct window *);
+void		 session_addbell(struct session *, struct window *);
+int		 session_hasbell(struct session *, struct window *);
 struct session	*session_find(const char *);
 struct session	*session_create(const char *, const char *, u_int, u_int);
 void		 session_destroy(struct session *);

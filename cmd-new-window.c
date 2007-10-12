@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.7 2007-10-04 22:04:01 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.8 2007-10-12 11:24:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -112,14 +112,8 @@ cmd_new_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (!data->flag_detached) {
 		session_select(s, i);
 		server_redraw_session(s);
-	} else {
-		/* XXX */
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c != NULL && c->session == s)
-				server_redraw_status(c); 
-		}
-	}
+	} else
+		server_status_session(s);
 	
 	if (!(ctx->flags & CMD_KEY))
 		server_write_client(c, MSG_EXIT, NULL, 0);

@@ -45,8 +45,7 @@
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
-- sort out bell: passing through should be optional, and toolbar should change
-  window colour or something
+- sort out bell: passing through should be optional
 - commands:
 	refresh session (similar to detach: -a for all, else if key redraw cur,
 	    else do nothing)
