@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.22 2007-10-10 19:45:20 nicm Exp $ */
+/* $Id: input.c,v 1.23 2007-10-12 11:44:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -357,20 +357,21 @@ input_handle_character(u_char ch, struct input_ctx *ictx)
 {
 	log_debug2("-- ch %zu: %hhu (%c)", ictx->off, ch, ch);
 	
-	if (ictx->s->cx > ictx->s->sx - 1 || ictx->s->cy > ictx->s->sy - 1)
+	if (ictx->s->cx > ictx->s->sx || ictx->s->cy > ictx->s->sy - 1)
 		return;
+
+	if (ictx->s->cx == ictx->s->sx) {
+		input_store8(ictx->b, '\r');
+		input_store8(ictx->b, '\n');
+
+		ictx->s->cx = 0;
+		screen_cursor_down_scroll(ictx->s);
+	}
 
 	screen_write_character(ictx->s, ch);
 	input_store8(ictx->b, ch);
 
-	if (ictx->s->cx == ictx->s->sx - 1) {
-		ictx->s->cx = 0;
-		screen_cursor_down_scroll(ictx->s);
-
-		input_store8(ictx->b, '\r');
-		input_store8(ictx->b, '\n');
-	} else
-		ictx->s->cx++;
+	ictx->s->cx++;
 }
 
 void
