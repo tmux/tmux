@@ -65,3 +65,65 @@ Commands:
 XXX set-option status,status-fg,status-bg
 
 Sessions are destroyed when no windows remain attached to them.
+
+--- XXX cut here XXX above this line is reformatted into man page XXX ----------
+
+Welcome to tmux!
+
+tmux is a "terminal multiplexer," it enables a number of terminals (or windows)
+to be accessed and controlled from a single terminal. tmux is intended to be a
+simple, modern, BSD-licensed alternative to programs such as GNU screen.
+
+This 0.1 release should be considered a beta release. It runs only on OpenBSD,
+has many missing features and is expected to have a good number of bugs.
+
+tmux consists of a server part and multiple clients. The server is created
+when required and runs continuously unless killed by the user. Clients access
+the server through a socket in /tmp. Multiple sessions may be created on a
+single server and attached to a number of clients. Each session may then
+have a number of windows. Commands are available to create, rename and destroy
+windows and sessions; to attach and detach sessions from client terminals;
+to set configuration options; and to bind and unbind command keys (invoked
+preceded by a prefix key, by default ctrl-b). Please see the tmux(1) man page
+for further information.
+
+The following is a summary of major features implemented in this version:
+
+- Basic multiplexing, window switching, attaching and detaching.
+- Window listing and renaming.
+- Key binding.
+- Handling of client terminal resize.
+- Terminal emulation sufficient to handle most curses applications. Without
+  known issues are: emacs, irssi, mutt, ncmpc (resize problems are present in
+  both tmux and screen), vim and various tools and games in OpenBSD base.
+- A optional status line (enabled by default).
+
+And major missing features:
+
+- Support for VT100 line drawing characters (they will appear  as jklmx, etc).
+- Status line customisation, beyond presence and colour.
+- Copy and paste.
+- Scrollback.
+- Mouse support.
+
+A more extensive, but rough, todo list is included in the TODO file.
+
+tmux also depends on several features of the client terminal (TERM), if these
+are missing it may not behave correctly. It is possible to emulate some of
+these but tmux does not do this at present. Known working are TERM=screen (tmux
+in screen), xterm, xterm-color and rxvt.
+
+For debugging, running tmux with -v or -vv will generate server and client log
+files in the current directory.
+
+Bug reports, feature suggestions and especially code contributions (or offers
+to work on code) are most welcome. Please email:
+
+	nicm@users.sf.net
+
+Or contact me during UK daytime hours (0900 to 1200 UTC or so) as "NicM" on
+freenode or efnet IRC. I sometimes ignore private msgs from people I don't
+know, so please mention tmux initially (rather than just saying "hi" ;-).
+
+-- Nicholas Marriott <nicm@users.sf.net>
+$Id: NOTES,v 1.18 2007-10-12 17:32:20 nicm Exp $
