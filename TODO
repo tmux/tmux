@@ -43,6 +43,7 @@
 - it would be nice to have multichar commands so you could have C-b K K for
   kill-window to limit accidental presses
 - status-fg/status-bg should be to set attributes: bold, etc
+- show-options command
 
 -- For 0.1 --------------------------------------------------------------------
 - man page

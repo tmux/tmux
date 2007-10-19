@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.12 2007-10-19 09:21:25 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.13 2007-10-19 17:15:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,12 +34,14 @@ void	cmd_new_session_free(void *);
 
 struct cmd_new_session_data {
 	char	*name;
+	char	*winname;
 	char	*cmd;
 	int	 flag_detached;
 };
 
 const struct cmd_entry cmd_new_session_entry = {
-	"new-session", "new", "[-d] [-n session name] [command]",
+	"new-session", "new",
+	"[-d] [-s session name] [-n window name] [command]",
 	CMD_STARTSERVER|CMD_NOSESSION|CMD_CANTNEST,
 	cmd_new_session_parse,
 	cmd_new_session_exec, 
@@ -57,15 +59,19 @@ cmd_new_session_parse(void **ptr, int argc, char **argv, char **cause)
 	*ptr = data = xmalloc(sizeof *data);
 	data->flag_detached = 0;
 	data->name = NULL;
+	data->winname = NULL;
 	data->cmd = NULL;
 
-	while ((opt = getopt(argc, argv, "dn:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ds:n:")) != EOF) {
 		switch (opt) {
 		case 'd':
 			data->flag_detached = 1;
 			break;
-		case 'n':
+		case 's':
 			data->name = xstrdup(optarg);
+			break;
+		case 'n':
+			data->winname = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -92,7 +98,8 @@ usage:
 void
 cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 {
-	struct cmd_new_session_data	*data = ptr, std = { NULL, NULL, 0 };
+	struct cmd_new_session_data	*data = ptr;
+	struct cmd_new_session_data	 std = { NULL, NULL, NULL, 0 };
 	struct client			*c = ctx->client;
 	char				*cmd;
 	u_int				 sy;
@@ -125,6 +132,10 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 	c->session = session_create(data->name, cmd, c->sx, sy);
 	if (c->session == NULL)
 		fatalx("session_create failed");
+	if (data->winname != NULL) {
+		xfree(c->session->window->name);
+		c->session->window->name = xstrdup(data->winname);
+	}
 
 	if (data->flag_detached)
 		server_write_client(c, MSG_EXIT, NULL, 0);
@@ -141,6 +152,7 @@ cmd_new_session_send(void *ptr, struct buffer *b)
 
 	buffer_write(b, data, sizeof *data);
 	cmd_send_string(b, data->name);
+	cmd_send_string(b, data->winname);
 	cmd_send_string(b, data->cmd);
 }
 
@@ -152,6 +164,7 @@ cmd_new_session_recv(void **ptr, struct buffer *b)
 	*ptr = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
 	data->name = cmd_recv_string(b);
+	data->winname = cmd_recv_string(b);
 	data->cmd = cmd_recv_string(b);
 }
 
@@ -162,6 +175,8 @@ cmd_new_session_free(void *ptr)
 
 	if (data->name != NULL)
 		xfree(data->name);
+	if (data->winname != NULL)
+		xfree(data->winname);
 	if (data->cmd != NULL)
 		xfree(data->cmd);
 	xfree(data);

@@ -1,5 +1,7 @@
 19 October 2007
 
+* (nicm) -n on new-session is now -s, and -n is now the initial window name.
+  This was documented but not implemented :-/.
 * (nicm) kill-window command, bound to & by default (because it should be hard
   to hit accidently).
 * (nicm) bell-style option with three choices: "none" completely ignore bell;
@@ -137,5 +139,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.44 2007-10-19 11:10:34 nicm Exp $
+$Id: CHANGES,v 1.45 2007-10-19 17:15:28 nicm Exp $
 
