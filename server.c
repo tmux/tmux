@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.27 2007-10-12 11:24:15 nicm Exp $ */
+/* $Id: server.c,v 1.28 2007-10-19 10:21:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -328,8 +328,10 @@ server_handle_window(struct window *w)
 
 	b = buffer_create(BUFSIZ);
 	window_data(w, b);
-	if (BUFFER_USED(b) != 0)
-		server_write_window(w, MSG_DATA, BUFFER_OUT(b), BUFFER_USED(b));
+	if (BUFFER_USED(b) != 0) {
+		server_write_window_cur(
+		    w, MSG_DATA, BUFFER_OUT(b), BUFFER_USED(b));
+	}
 	buffer_destroy(b);
 
 	if (!(w->flags & WINDOW_BELL))
@@ -341,8 +343,19 @@ server_handle_window(struct window *w)
 			session_addbell(s, w);
 	}
 
-	server_write_window(w, MSG_DATA, "\007", 1);
-	server_status_window(w);
+	switch (bell_action) {
+	case BELL_ANY:
+		server_write_window_all(w, MSG_DATA, "\007", 1);
+		break;
+	case BELL_CURRENT:
+		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+			s = ARRAY_ITEM(&sessions, i);
+			if (s != NULL && s->window == w)
+				server_write_session(s, MSG_DATA, "\007", 1);
+		}
+		break;
+	}
+	server_status_window_all(w);
 
 	w->flags &= ~WINDOW_BELL;
 }

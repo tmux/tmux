@@ -1,5 +1,9 @@
 19 October 2007
 
+* (nicm) bell-style option with three choices: "none" completely ignore bell;
+  "any" pass through a bell in any window to current; "current" ignore bells
+  except in current window. This applies only to the bell terminal signal,
+  the status bar always reflects any bells.
 * (nicm) Refresh session command.
 
 12 October 2007
@@ -131,5 +135,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.42 2007-10-19 09:21:24 nicm Exp $
+$Id: CHANGES,v 1.43 2007-10-19 10:21:24 nicm Exp $
 

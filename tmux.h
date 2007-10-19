@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.59 2007-10-19 09:21:26 nicm Exp $ */
+/* $Id: tmux.h,v 1.60 2007-10-19 10:21:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -495,11 +495,15 @@ ARRAY_DECL(bindings, struct binding *);
 /* tmux.c */
 extern volatile sig_atomic_t sigwinch;
 extern volatile sig_atomic_t sigterm;
-extern int	prefix_key;
-extern int	debug_level;
-extern u_int	status_lines;
-extern u_char	status_colour;
-extern char    *default_command;
+#define BELL_NONE 0
+#define BELL_ANY 1
+#define BELL_CURRENT 2
+extern int	 bell_action;
+extern int	 prefix_key;
+extern int	 debug_level;
+extern u_int	 status_lines;
+extern u_char	 status_colour;
+extern char     *default_command;
 void		 usage(char **, const char *, ...);
 void		 logfile(const char *);
 void		 siginit(void);
@@ -571,16 +575,21 @@ void	 server_write_client(
              struct client *, enum hdrtype, const void *, size_t);
 void	 server_write_session(
              struct session *, enum hdrtype, const void *, size_t);
-void	 server_write_window(
+void	 server_write_window_cur(
+             struct window *, enum hdrtype, const void *, size_t);
+void	 server_write_window_all(
              struct window *, enum hdrtype, const void *, size_t);
 void	 server_status_client(struct client *);
 void	 server_clear_client(struct client *);
 void	 server_redraw_client(struct client *);
 void	 server_status_session(struct session *);
 void	 server_redraw_session(struct session *);
-void	 server_status_window(struct window *);
-void	 server_clear_window(struct window *);
-void	 server_redraw_window(struct window *);
+void	 server_status_window_cur(struct window *);
+void	 server_status_window_all(struct window *);
+void	 server_clear_window_cur(struct window *);
+void	 server_clear_window_all(struct window *);
+void	 server_redraw_window_cur(struct window *);
+void	 server_redraw_window_all(struct window *);
 void	 server_write_message(struct client *, const char *, ...);
 
 /* status.c */

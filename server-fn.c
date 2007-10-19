@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.20 2007-10-12 11:24:15 nicm Exp $ */
+/* $Id: server-fn.c,v 1.21 2007-10-19 10:21:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -105,7 +105,7 @@ server_write_session(
 }
 
 void
-server_write_window(
+server_write_window_cur(
     struct window *w, enum hdrtype type, const void *buf, size_t len)
 {
 	struct client	*c;
@@ -115,6 +115,25 @@ server_write_window(
 		c = ARRAY_ITEM(&clients, i);
 		if (c != NULL &&
 		    c->session != NULL && c->session->window == w) {
+			if (c->flags & CLIENT_HOLD) /* XXX OUTPUT only */
+				continue;
+			server_write_client(c, type, buf, len);
+		}
+	}
+}
+
+void
+server_write_window_all(
+    struct window *w, enum hdrtype type, const void *buf, size_t len)
+{
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (session_has(c->session, w)) {
 			if (c->flags & CLIENT_HOLD) /* XXX OUTPUT only */
 				continue;
 			server_write_client(c, type, buf, len);
@@ -222,7 +241,7 @@ server_status_session(struct session *s)
 }
 
 void
-server_clear_window(struct window *w)
+server_clear_window_cur(struct window *w)
 {
 	struct client	*c;
 	u_int		 i;
@@ -235,7 +254,22 @@ server_clear_window(struct window *w)
 }
 
 void
-server_redraw_window(struct window *w)
+server_clear_window_all(struct window *w)
+{
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (session_has(c->session, w))
+			server_redraw_client(c);
+	}
+}
+
+void
+server_redraw_window_cur(struct window *w)
 {
 	struct client	*c;
 	u_int		 i;
@@ -248,7 +282,35 @@ server_redraw_window(struct window *w)
 }
 
 void
-server_status_window(struct window *w)
+server_redraw_window_all(struct window *w)
+{
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (session_has(c->session, w))
+			server_redraw_client(c);
+	}
+}
+
+void
+server_status_window_cur(struct window *w)
+{
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL && c->session != NULL && c->session->window == w)
+			server_status_client(c);
+	}
+}
+
+void
+server_status_window_all(struct window *w)
 {
 	struct client	*c;
 	u_int		 i;

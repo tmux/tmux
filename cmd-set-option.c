@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.8 2007-10-19 09:21:26 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.9 2007-10-19 10:21:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -170,6 +170,21 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 				if (c != NULL && c->session != NULL)
 					server_redraw_client(c);
 			}
+		}
+	} else if (strcmp(data->option, "bell-action") == 0) { 
+		if (data->value == NULL) {
+			ctx->error(ctx, "invalid value");
+			return;			
+		}
+		if (strcmp(data->value, "any") == 0)
+			bell_action = BELL_ANY;
+		else if (strcmp(data->value, "none") == 0)
+			bell_action = BELL_NONE;
+		else if (strcmp(data->value, "current") == 0)
+			bell_action = BELL_CURRENT;
+		else {
+			ctx->error(ctx, "unknown bell-action: %s", data->value);
+			return;
 		}
 	} else {
 		ctx->error(ctx, "unknown option: %s", data->option);

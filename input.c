@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.23 2007-10-12 11:44:30 nicm Exp $ */
+/* $Id: input.c,v 1.24 2007-10-19 10:21:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -390,7 +390,7 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 		break;
 	case '\007':	/* BELL */
 		ictx->flags |= INPUT_BELL;
-		break;
+		return;
 	case '\010': 	/* BS */
 		if (ictx->s->cx > 0)
 			ictx->s->cx--;

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.32 2007-10-12 17:52:41 nicm Exp $ */
+/* $Id: tmux.c,v 1.33 2007-10-19 10:21:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,6 +42,7 @@ int		 prefix_key = META;
 u_int		 status_lines;
 u_char		 status_colour;
 char		*default_command;
+int		 bell_action;
 
 void		 sighandler(int);
 
@@ -198,6 +199,8 @@ main(int argc, char **argv)
 
 	status_lines = 1;
 	status_colour = 0x02;
+
+	bell_action = BELL_ANY;
 
 	shell = getenv("SHELL");
 	if (shell == NULL || *shell == '\0')

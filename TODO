@@ -46,7 +46,6 @@
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
-- sort out bell: passing through should be optional
 - commands:
 	rename sessions
 	swap windows

@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.3 2007-10-05 18:25:05 nicm Exp $ */
+/* $Id: resize.c,v 1.4 2007-10-19 10:21:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -113,8 +113,8 @@ recalculate_sizes(void)
 		log_debug("window size %u,%u (was %u,%u)", 
 		    ssx, ssy, w->screen.sx, w->screen.sy);
 
-		server_clear_window(w);
+		server_clear_window_cur(w);
 		window_resize(w, ssx, ssy);
-		server_redraw_window(w);
+		server_redraw_window_cur(w);
 	}
 }
