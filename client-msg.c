@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.9 2007-10-12 11:24:15 nicm Exp $ */
+/* $Id: client-msg.c,v 1.10 2007-10-19 20:50:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
