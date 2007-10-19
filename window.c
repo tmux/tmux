@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.19 2007-10-04 20:33:16 nicm Exp $ */
+/* $Id: window.c,v 1.20 2007-10-19 20:47:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,12 @@
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
+
+#ifdef USE_LIBUTIL_H
+#include <libutil.h>
+#else
 #include <util.h>
+#endif
 
 #include "tmux.h"
 

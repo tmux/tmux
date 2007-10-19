@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.28 2007-10-19 10:21:35 nicm Exp $ */
+/* $Id: server.c,v 1.29 2007-10-19 20:47:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,6 @@
 #include <syslog.h>
 #include <termios.h>
 #include <unistd.h>
-#include <util.h>
 
 #include "tmux.h"
 

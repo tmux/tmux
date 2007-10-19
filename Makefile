@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.28 2007-10-19 11:10:34 nicm Exp $
+# $Id: Makefile,v 1.29 2007-10-19 20:47:09 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean
@@ -54,6 +54,11 @@ LDFLAGS+= -L/usr/local/lib
 LDFLAGS+= -pg
 .endif
 LIBS+= -lutil -lncurses
+
+# FreeBSD
+.if ${OS} == "FreeBSD"
+CFLAGS+= -DUSE_LIBUTIL_H
+.endif
 
 OBJS= ${SRCS:S/.c/.o/:S/.y/.o/}
 
