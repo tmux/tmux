@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.24 2007-10-19 10:21:33 nicm Exp $ */
+/* $Id: input.c,v 1.25 2007-10-19 23:25:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -246,7 +246,7 @@ void *
 input_state_title_next(u_char ch, struct input_ctx *ictx)
 {
 	if (ch == '\007') {
-		ictx->title_buf[ictx->title_len] = '\0';
+		ictx->title_buf[ictx->title_len++] = '\0';
 		switch (ictx->title_type) {
 		case 0:
 			strlcpy(ictx->s->title, 
