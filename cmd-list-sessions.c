@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.4 2007-10-04 22:04:01 nicm Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.5 2007-10-19 22:32:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,6 +20,7 @@
 
 #include <getopt.h>
 #include <string.h>
+#include <time.h>
 
 #include "tmux.h"
 
