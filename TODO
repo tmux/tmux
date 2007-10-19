@@ -55,3 +55,7 @@
 	kill session (no not bind by default)
 	set shell
 - check for some reqd terminfo caps on startup
+
+-- For 0.2 --------------------------------------------------------------------
+- copy and paste
+- window splitting

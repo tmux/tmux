@@ -70,7 +70,7 @@ Sessions are destroyed when no windows remain attached to them.
 
 Welcome to tmux!
 
-tmux is a "terminal multiplexer," it enables a number of terminals (or windows)
+tmux is a "terminal multiplexer", it enables a number of terminals (or windows)
 to be accessed and controlled from a single terminal. tmux is intended to be a
 simple, modern, BSD-licensed alternative to programs such as GNU screen.
 
@@ -95,12 +95,14 @@ The following is a summary of major features implemented in this version:
 - Handling of client terminal resize.
 - Terminal emulation sufficient to handle most curses applications. Without
   known issues are: emacs, irssi, mutt, ncmpc (resize problems are present in
-  both tmux and screen), vim and various tools and games in OpenBSD base.
+  both tmux and screen), vim and various tools and games in the OpenBSD base
+  system.
 - A optional status line (enabled by default).
 
 And major missing features:
 
-- Support for VT100 line drawing characters (they will appear as jklmx, etc).
+- Support for VT100 line drawing characters (they will appear as jklmx, etc). 
+  This is most noticable in ncmpc and in elinks if configured with VT100 frames.
 - Status line customisation, beyond presence and colour.
 - Copy and paste.
 - Scrollback.
@@ -110,12 +112,12 @@ A more extensive, but rough, todo list is included in the TODO file.
 
 tmux also depends on several features of the client terminal (TERM), if these
 are missing it may not behave correctly. It is possible to emulate some of
-these but tmux this is not done at present. Known working are TERM=screen (tmux
+these but tmux does not do this at present. Known working are TERM=screen (tmux
 in screen), xterm, xterm-color and rxvt.
 
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory. In particular, client log files will contain
-messages such as "cursor_down not supported," if your TERM type is missing
+messages such as "cursor_down not supported", if your TERM type is missing
 features expected by tmux. If these are present, please send a note of your TERM
 and the log file to the email address below - it will help to prioritise
 features that should be avoided or emulated, if possible.
@@ -130,4 +132,4 @@ freenode or efnet IRC. I sometimes ignore private msgs from people I don't
 know, so please mention tmux initially (rather than just saying "hi" ;-).
 
 -- Nicholas Marriott <nicm@users.sf.net>
-$Id: NOTES,v 1.20 2007-10-12 18:00:16 nicm Exp $
+$Id: NOTES,v 1.21 2007-10-19 20:43:55 nicm Exp $
