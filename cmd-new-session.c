@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.11 2007-10-12 14:46:48 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.12 2007-10-19 09:21:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,11 +26,11 @@
  * Create a new session and attach to the current terminal unless -d is given.
  */
 
-int		 cmd_new_session_parse(void **, int, char **, char **);
-void		 cmd_new_session_exec(void *, struct cmd_ctx *);
-void		 cmd_new_session_send(void *, struct buffer *);
-void		 cmd_new_session_recv(void **, struct buffer *);
-void		 cmd_new_session_free(void *);
+int	cmd_new_session_parse(void **, int, char **, char **);
+void	cmd_new_session_exec(void *, struct cmd_ctx *);
+void	cmd_new_session_send(void *, struct buffer *);
+void	cmd_new_session_recv(void **, struct buffer *);
+void	cmd_new_session_free(void *);
 
 struct cmd_new_session_data {
 	char	*name;

@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.4 2007-10-04 22:04:01 nicm Exp $ */
+/* $Id: cmd-unbind-key.c,v 1.5 2007-10-19 09:21:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,12 +26,11 @@
  * Unbind key from command.
  */
 
-int		 cmd_unbind_key_parse(void **, int, char **, char **);
-const char	*cmd_unbind_key_usage(void);
-void		 cmd_unbind_key_exec(void *, struct cmd_ctx *);
-void		 cmd_unbind_key_send(void *, struct buffer *);
-void		 cmd_unbind_key_recv(void **, struct buffer *);
-void		 cmd_unbind_key_free(void *);
+int	cmd_unbind_key_parse(void **, int, char **, char **);
+void	cmd_unbind_key_exec(void *, struct cmd_ctx *);
+void	cmd_unbind_key_send(void *, struct buffer *);
+void	cmd_unbind_key_recv(void **, struct buffer *);
+void	cmd_unbind_key_free(void *);
 
 struct cmd_unbind_key_data {
 	int		 key;

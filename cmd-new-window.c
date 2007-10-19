@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.8 2007-10-12 11:24:15 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.9 2007-10-19 09:21:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,11 +26,11 @@
  * Create a new window.
  */
 
-int		 cmd_new_window_parse(void **, int, char **, char **);
-void		 cmd_new_window_exec(void *, struct cmd_ctx *);
-void		 cmd_new_window_send(void *, struct buffer *);
-void		 cmd_new_window_recv(void **, struct buffer *);
-void		 cmd_new_window_free(void *);
+int	cmd_new_window_parse(void **, int, char **, char **);
+void	cmd_new_window_exec(void *, struct cmd_ctx *);
+void	cmd_new_window_send(void *, struct buffer *);
+void	cmd_new_window_recv(void **, struct buffer *);
+void	cmd_new_window_free(void *);
 
 struct cmd_new_window_data {
 	char	*name;

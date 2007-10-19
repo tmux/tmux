@@ -1,4 +1,4 @@
-/* $Id: cmd-detach-session.c,v 1.6 2007-10-19 09:21:25 nicm Exp $ */
+/* $Id: cmd-refresh-session.c,v 1.1 2007-10-19 09:21:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,34 +23,34 @@
 #include "tmux.h"
 
 /*
- * Detach session. If called with -a detach all clients attached to specified
- * session, otherwise detach current session on key press only.
+ * Refresh session. If called with -a refresh all clients attached to specified
+ * session, otherwise refresh current session on key press only.
  */
 
-int	cmd_detach_session_parse(void **, int, char **, char **);
-void	cmd_detach_session_exec(void *, struct cmd_ctx *);
-void	cmd_detach_session_send(void *, struct buffer *);
-void	cmd_detach_session_recv(void **, struct buffer *);
-void	cmd_detach_session_free(void *);
+int	cmd_refresh_session_parse(void **, int, char **, char **);
+void	cmd_refresh_session_exec(void *, struct cmd_ctx *);
+void	cmd_refresh_session_send(void *, struct buffer *);
+void	cmd_refresh_session_recv(void **, struct buffer *);
+void	cmd_refresh_session_free(void *);
 
-struct cmd_detach_session_data {
+struct cmd_refresh_session_data {
 	int	 flag_all;
 };
 
-const struct cmd_entry cmd_detach_session_entry = {
-	"detach-session", "detach", "[-a]",
+const struct cmd_entry cmd_refresh_session_entry = {
+	"refresh-session", "refresh", "[-a]",
 	0,
-	cmd_detach_session_parse,
-	cmd_detach_session_exec,
-	cmd_detach_session_send,
-	cmd_detach_session_recv,
-	cmd_detach_session_free
+	cmd_refresh_session_parse,
+	cmd_refresh_session_exec,
+	cmd_refresh_session_send,
+	cmd_refresh_session_recv,
+	cmd_refresh_session_free
 };
 
 int
-cmd_detach_session_parse(void **ptr, int argc, char **argv, char **cause)
+cmd_refresh_session_parse(void **ptr, int argc, char **argv, char **cause)
 {
-	struct cmd_detach_session_data	*data;
+	struct cmd_refresh_session_data	*data;
 	int				 opt;
 
 	*ptr = data = xmalloc(sizeof *data);
@@ -74,16 +74,16 @@ cmd_detach_session_parse(void **ptr, int argc, char **argv, char **cause)
 
 usage:
 	usage(cause, "%s %s",
-	    cmd_detach_session_entry.name, cmd_detach_session_entry.usage);
+	    cmd_refresh_session_entry.name, cmd_refresh_session_entry.usage);
 
-	cmd_detach_session_free(data);
+	cmd_refresh_session_free(data);
 	return (-1);
 }
 
 void
-cmd_detach_session_exec(void *ptr, struct cmd_ctx *ctx)
+cmd_refresh_session_exec(void *ptr, struct cmd_ctx *ctx)
 {
-	struct cmd_detach_session_data	*data = ptr, std = { 0 };
+	struct cmd_refresh_session_data	*data = ptr, std = { 0 };
 	struct client			*c = ctx->client, *cp;
 	struct session			*s = ctx->session;
 	u_int				 i;
@@ -96,36 +96,36 @@ cmd_detach_session_exec(void *ptr, struct cmd_ctx *ctx)
 			cp = ARRAY_ITEM(&clients, i);
 			if (cp == NULL || cp->session != s)
 				continue;
-			server_write_client(cp, MSG_DETACH, NULL, 0);
+			server_redraw_client(cp);
 		}
 	} else if (ctx->flags & CMD_KEY)
-		server_write_client(c, MSG_DETACH, NULL, 0);
+		server_redraw_client(c);
 
 	if (!(ctx->flags & CMD_KEY))
 		server_write_client(c, MSG_EXIT, NULL, 0);
 }
 
 void
-cmd_detach_session_send(void *ptr, struct buffer *b)
+cmd_refresh_session_send(void *ptr, struct buffer *b)
 {
-	struct cmd_detach_session_data	*data = ptr;
+	struct cmd_refresh_session_data	*data = ptr;
 
 	buffer_write(b, data, sizeof *data);
 }
 
 void
-cmd_detach_session_recv(void **ptr, struct buffer *b)
+cmd_refresh_session_recv(void **ptr, struct buffer *b)
 {
-	struct cmd_detach_session_data	*data;
+	struct cmd_refresh_session_data	*data;
 
 	*ptr = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
 }
 
 void
-cmd_detach_session_free(void *ptr)
+cmd_refresh_session_free(void *ptr)
 {
-	struct cmd_detach_session_data	*data = ptr;
+	struct cmd_refresh_session_data	*data = ptr;
 
 	xfree(data);
 }

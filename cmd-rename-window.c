@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-window.c,v 1.5 2007-10-12 11:24:15 nicm Exp $ */
+/* $Id: cmd-rename-window.c,v 1.6 2007-10-19 09:21:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,11 +27,11 @@
  * Rename window by index.
  */
 
-int		 cmd_rename_window_parse(void **, int, char **, char **);
-void		 cmd_rename_window_exec(void *, struct cmd_ctx *);
-void		 cmd_rename_window_send(void *, struct buffer *);
-void		 cmd_rename_window_recv(void **, struct buffer *);
-void		 cmd_rename_window_free(void *);
+int	cmd_rename_window_parse(void **, int, char **, char **);
+void	cmd_rename_window_exec(void *, struct cmd_ctx *);
+void	cmd_rename_window_send(void *, struct buffer *);
+void	cmd_rename_window_recv(void **, struct buffer *);
+void	cmd_rename_window_free(void *);
 
 struct cmd_rename_window_data {
 	int	 idx;

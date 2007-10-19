@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.26 2007-10-12 13:03:58 nicm Exp $
+# $Id: Makefile,v 1.27 2007-10-19 09:21:25 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean
@@ -22,7 +22,8 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       cmd-list-sessions.c cmd-new-window.c cmd-next-window.c cmd-bind-key.c \
       cmd-unbind-key.c cmd-previous-window.c cmd-last-window.c cmd-list-keys.c \
       cmd-set-option.c cmd-rename-window.c cmd-select-window.c \
-      cmd-list-windows.c cmd-attach-session.c cmd-send-prefix.c
+      cmd-list-windows.c cmd-attach-session.c cmd-send-prefix.c \
+      cmd-refresh-session.c
 
 YACC= yacc -d
 

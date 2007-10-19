@@ -1,4 +1,4 @@
-/* $Id: cmd-select-window.c,v 1.3 2007-10-04 22:04:01 nicm Exp $ */
+/* $Id: cmd-select-window.c,v 1.4 2007-10-19 09:21:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,11 +27,11 @@
  * Select window by index.
  */
 
-int		 cmd_select_window_parse(void **, int, char **, char **);
-void		 cmd_select_window_exec(void *, struct cmd_ctx *);
-void		 cmd_select_window_send(void *, struct buffer *);
-void		 cmd_select_window_recv(void **, struct buffer *);
-void		 cmd_select_window_free(void *);
+int	cmd_select_window_parse(void **, int, char **, char **);
+void	cmd_select_window_exec(void *, struct cmd_ctx *);
+void	cmd_select_window_send(void *, struct buffer *);
+void	cmd_select_window_recv(void **, struct buffer *);
+void	cmd_select_window_free(void *);
 
 struct cmd_select_window_data {
 	u_int	idx;

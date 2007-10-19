@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.6 2007-10-12 14:46:48 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.7 2007-10-19 09:21:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,11 +26,11 @@
  * Attach existing session to the current terminal.
  */
 
-int		 cmd_attach_session_parse(void **, int, char **, char **);
-void		 cmd_attach_session_exec(void *, struct cmd_ctx *);
-void		 cmd_attach_session_send(void *, struct buffer *);
-void		 cmd_attach_session_recv(void **, struct buffer *);
-void		 cmd_attach_session_free(void *);
+int	cmd_attach_session_parse(void **, int, char **, char **);
+void	cmd_attach_session_exec(void *, struct cmd_ctx *);
+void	cmd_attach_session_send(void *, struct buffer *);
+void	cmd_attach_session_recv(void **, struct buffer *);
+void	cmd_attach_session_free(void *);
 
 struct cmd_attach_session_data {
 	int	 flag_detach;

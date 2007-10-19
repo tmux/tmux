@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.4 2007-10-04 22:04:01 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.5 2007-10-19 09:21:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,11 +26,11 @@
  * Bind a key to a command, this recurses through cmd_*.
  */
 
-int		 cmd_bind_key_parse(void **, int, char **, char **);
-void		 cmd_bind_key_exec(void *, struct cmd_ctx *);
-void		 cmd_bind_key_send(void *, struct buffer *);
-void		 cmd_bind_key_recv(void **, struct buffer *);
-void		 cmd_bind_key_free(void *);
+int	cmd_bind_key_parse(void **, int, char **, char **);
+void	cmd_bind_key_exec(void *, struct cmd_ctx *);
+void	cmd_bind_key_send(void *, struct buffer *);
+void	cmd_bind_key_recv(void **, struct buffer *);
+void	cmd_bind_key_free(void *);
 
 struct cmd_bind_key_data {
 	int		 key;

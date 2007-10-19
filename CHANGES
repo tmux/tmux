@@ -1,3 +1,7 @@
+19 October 2007
+
+* (nicm) Refresh session command.
+
 12 October 2007
 
 * (nicm) Add a warning if $TMUX exists on new/attach.
@@ -127,5 +131,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.41 2007-10-12 14:46:48 nicm Exp $
+$Id: CHANGES,v 1.42 2007-10-19 09:21:24 nicm Exp $
 

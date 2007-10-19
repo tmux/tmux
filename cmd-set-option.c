@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.7 2007-10-12 13:51:44 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.8 2007-10-19 09:21:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,12 +28,11 @@
  * Set an option.
  */
 
-int		 cmd_set_option_parse(void **, int, char **, char **);
-const char	*cmd_set_option_usage(void);
-void		 cmd_set_option_exec(void *, struct cmd_ctx *);
-void		 cmd_set_option_send(void *, struct buffer *);
-void		 cmd_set_option_recv(void **, struct buffer *);
-void		 cmd_set_option_free(void *);
+int	cmd_set_option_parse(void **, int, char **, char **);
+void	cmd_set_option_exec(void *, struct cmd_ctx *);
+void	cmd_set_option_send(void *, struct buffer *);
+void	cmd_set_option_recv(void **, struct buffer *);
+void	cmd_set_option_free(void *);
 
 struct cmd_set_option_data {
 	char	*option;
