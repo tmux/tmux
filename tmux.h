@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.61 2007-10-19 11:10:35 nicm Exp $ */
+/* $Id: tmux.h,v 1.62 2007-10-19 20:36:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,6 +32,13 @@
 
 extern cc_t	ttydefchars[];
 extern char    *__progname;
+
+#ifndef __dead
+#define __dead __attribute__ ((__noreturn__))
+#endif
+#ifndef __packed
+#define __packed __attribute__ ((__packed__))
+#endif
 
 #define MAXNAMELEN	32
 #define MAXTITLELEN	192
