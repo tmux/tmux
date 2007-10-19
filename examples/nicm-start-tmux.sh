@@ -18,6 +18,9 @@ if ! $TMUX -s $SESSION attach 2>/dev/null; then
     $TMUX -s $SESSION neww -d					# 9
 
     $TMUX set prefix ^A
+    $TMUX unbind ^B
+    $TMUX bind ^A send-prefix
+
     $TMUX set bell-action none
 
     $TMUX -s $SESSION attach
