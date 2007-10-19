@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.14 2007-10-03 10:18:32 nicm Exp $ */
+/* $Id: local.c,v 1.15 2007-10-19 11:10:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,7 +51,6 @@ struct local_key local_keys[] = {
 	{ "ka1",   NULL, 0, KEYC_A1 },
 	{ "ka3",   NULL, 0, KEYC_A3 },
 	{ "kb2",   NULL, 0, KEYC_B2 },
-/*	{ "kbs",   NULL, 0, KEYC_BACKSPACE }, */
 	{ "kbeg",  NULL, 0, KEYC_BEG },
 	{ "kcbt",  NULL, 0, KEYC_BTAB },
 	{ "kc1",   NULL, 0, KEYC_C1 },

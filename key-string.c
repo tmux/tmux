@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.2 2007-10-04 00:18:59 nicm Exp $ */
+/* $Id: key-string.c,v 1.3 2007-10-19 11:10:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,6 @@ struct {
 	{ "A1",		KEYC_A1 },
 	{ "A3",		KEYC_A3 },
 	{ "B2",		KEYC_B2 },
-	{ "BACKSPACE",	KEYC_BACKSPACE },
 	{ "BEG",	KEYC_BEG },
 	{ "BTAB",	KEYC_BTAB },
 	{ "C1",		KEYC_C1 },

@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.1 2007-09-28 22:47:21 nicm Exp $ */
+/* $Id: input-keys.c,v 1.2 2007-10-19 11:10:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,7 +28,6 @@ struct {
 	int		 key;
 	const char	*data;
 } input_keys[] = {
-/*	{ KEYC_BACKSPACE, "\010" }, */
 	{ KEYC_DC,     "\e[3~" },
 	{ KEYC_DOWN,   "\eOB" },
 	{ KEYC_F1,     "\eOP" },

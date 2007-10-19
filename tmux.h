@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.60 2007-10-19 10:21:36 nicm Exp $ */
+/* $Id: tmux.h,v 1.61 2007-10-19 11:10:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -80,7 +80,7 @@ struct buffer {
 #define KEYC_A1 -1
 #define KEYC_A3 -2
 #define KEYC_B2 -3
-#define KEYC_BACKSPACE -4
+/* XXX #define KEYC_BACKSPACE -4 */
 #define KEYC_BEG -5
 #define KEYC_BTAB -6
 #define KEYC_C1 -7
@@ -520,6 +520,7 @@ char		*cmd_recv_string(struct buffer *);
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_detach_session_entry;
+extern const struct cmd_entry cmd_kill_window_entry;
 extern const struct cmd_entry cmd_last_window_entry;
 extern const struct cmd_entry cmd_list_keys_entry;
 extern const struct cmd_entry cmd_list_sessions_entry;

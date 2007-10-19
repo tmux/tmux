@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.9 2007-10-19 09:21:26 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.10 2007-10-19 11:10:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -105,6 +105,7 @@ key_bindings_init(void)
 		{ '9', &cmd_select_window_entry, cmd_select_window_default },
 		{ 'R', &cmd_refresh_session_entry, NULL },
 		{ 'r', &cmd_refresh_session_entry, NULL },
+		{ '&', &cmd_kill_window_entry, NULL },
 		{ META, &cmd_send_prefix_entry, NULL },
 /*
 		{ 'I', &cmd_windo_info_entry },

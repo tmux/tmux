@@ -51,7 +51,6 @@
 	swap windows
 	link/copy windows
 	unlink window (error if window only linked to one session)
-	kill window (C-b backsp)
 	kill session (no not bind by default)
 	set shell
 - check for some reqd terminfo caps on startup
