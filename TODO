@@ -53,7 +53,7 @@
 	link/copy windows
 	unlink window (error if window only linked to one session)
 	kill session (no not bind by default)
-	set shell
+	set shell -- default-command (don't forget to rm -l)
 - check for some reqd terminfo caps on startup
 
 -- For 0.2 --------------------------------------------------------------------
