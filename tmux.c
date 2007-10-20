@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.34 2007-10-19 21:58:17 nicm Exp $ */
+/* $Id: tmux.c,v 1.35 2007-10-20 09:57:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,6 +23,7 @@
 #include <errno.h>
 #include <paths.h>
 #include <poll.h>
+#include <pwd.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string.h>
@@ -168,6 +169,7 @@ main(int argc, char **argv)
 	struct pollfd	 	 pfd;
 	struct hdr	 	 hdr;
 	const char		*shell;
+	struct passwd		*pw;
 	char			*path, *cause, name[MAXNAMELEN];
 	int	 		 n, opt;
 
@@ -203,9 +205,15 @@ main(int argc, char **argv)
 	bell_action = BELL_ANY;
 
 	shell = getenv("SHELL");
-	if (shell == NULL || *shell == '\0')
-		shell = "/bin/ksh";
-	xasprintf(&default_command, "exec %s -l", shell);
+	if (shell == NULL || *shell == '\0') {
+		pw = getpwuid(getuid());
+		if (pw != NULL)
+			shell = pw->pw_shell;
+		endpwent();
+		if (shell == NULL || *shell == '\0')
+			shell = _PATH_BSHELL;
+	}
+	xasprintf(&default_command, "exec %s", shell);
 
 	if ((cmd = cmd_parse(argc, argv, &cause)) == NULL) {
 		if (cause == NULL)

@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.9 2007-10-19 10:21:33 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.10 2007-10-20 09:57:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -186,6 +186,13 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 			ctx->error(ctx, "unknown bell-action: %s", data->value);
 			return;
 		}
+	} else if (strcmp(data->option, "default-command") == 0) { 
+		if (data->value == NULL) {
+			ctx->error(ctx, "invalid value");
+			return;			
+		}
+		xfree(default_command);
+		default_command = xstrdup(data->value);
 	} else {
 		ctx->error(ctx, "unknown option: %s", data->option);
 		return;

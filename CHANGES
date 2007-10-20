@@ -1,3 +1,8 @@
+20 October 2007
+
+* (nicm) Add default-command option and change default to be $SHELL rather than
+  $SHELL -l. Also try to read shell from passwd db if $SHELL isn't present.
+
 19 October 2007
 
 * (nicm) -n on new-session is now -s, and -n is now the initial window name.
@@ -139,5 +144,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.45 2007-10-19 17:15:28 nicm Exp $
+$Id: CHANGES,v 1.46 2007-10-20 09:57:08 nicm Exp $
 
