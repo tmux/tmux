@@ -48,6 +48,7 @@
 -- For 0.1 --------------------------------------------------------------------
 - man page
 - commands:
+	list clients (session, window, tty?)
 	rename sessions
 	swap windows
 	link/copy windows

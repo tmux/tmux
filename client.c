@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.14 2007-10-05 14:23:28 nicm Exp $ */
+/* $Id: client.c,v 1.15 2007-10-22 13:16:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -208,7 +208,7 @@ server_dead:
 	local_done();
 
 	printf("[lost server]\n");
-	return (1);
+	return (0);
 
 local_dead:
 	/* Can't do much here. Log and die. */
