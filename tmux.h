@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.63 2007-10-23 09:36:19 nicm Exp $ */
+/* $Id: tmux.h,v 1.64 2007-10-23 10:21:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,6 +38,10 @@ extern char    *__progname;
 #endif
 #ifndef __packed
 #define __packed __attribute__ ((__packed__))
+#endif
+
+#ifndef TTY_NAME_MAX
+#define TTY_NAME_MAX 32
 #endif
 
 #define MAXNAMELEN	32
