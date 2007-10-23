@@ -1,4 +1,6 @@
-#!/bin/sh
+#!/bin/sh -x
+
+[ ! -z "$TMUX" ] && exit
 
 SOCKET=/tmp/tmux-1000-main
 SESSION=natasha-main
@@ -7,8 +9,11 @@ TMUX="tmux -S $SOCKET"
 
 if ! $TMUX -s $SESSION attach 2>/dev/null; then
     $TMUX new -d -s $SESSION -nyelena 'exec ssh yelena'		# 0
+
+    $TMUX set default-command "$SHELL -l"
+
     $TMUX -s $SESSION neww -d -ntodo 'exec emacs ~/TODO'	# 1
-    $TMUX -s $SESSION neww -d -nncmpc 'exec ncmpc -f ~/.ncmpc.conf' # 2
+    $TMUX -s $SESSION neww -d -nncmpc				# 2
     $TMUX -s $SESSION neww -d					# 3
     $TMUX -s $SESSION neww -d					# 4
     $TMUX -s $SESSION neww -d					# 5
