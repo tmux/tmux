@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.65 2007-10-23 10:48:23 nicm Exp $ */
+/* $Id: tmux.h,v 1.66 2007-10-23 11:25:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,11 +26,9 @@
 #include <poll.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <termios.h>
 
 #include "array.h"
 
-extern cc_t	ttydefchars[];
 extern char    *__progname;
 
 #ifndef __dead
