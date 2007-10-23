@@ -49,7 +49,6 @@
 - man page
 - get rid of MAXNAMELEN limits (sessid)
 - commands:
-	list clients (session, window, tty?)
 	rename sessions
 	swap windows
 	link/copy windows

@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.10 2007-10-19 11:10:35 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.11 2007-10-23 10:25:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -64,6 +64,8 @@ key_bindings_remove(int key)
 	}
 	if (i == ARRAY_LENGTH(&key_bindings))
 		return;
+
+	ARRAY_REMOVE(&key_bindings, i);
 
 	cmd_free(bd->cmd);
 	xfree(bd);
