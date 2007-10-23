@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.30 2007-10-23 09:36:19 nicm Exp $ */
+/* $Id: server.c,v 1.31 2007-10-23 10:25:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,7 +58,7 @@ int
 server_start(char *path)
 {
 	struct sockaddr_un	sa;
-	size_t			sz;
+	size_t			size;
 	pid_t			pid;
 	mode_t			mask;
 	int		   	n, fd, mode;
@@ -83,8 +83,8 @@ server_start(char *path)
 
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
-	sz = strlcpy(sa.sun_path, path, sizeof sa.sun_path);
-	if (sz >= sizeof sa.sun_path) {
+	size = strlcpy(sa.sun_path, path, sizeof sa.sun_path);
+	if (size >= sizeof sa.sun_path) {
 		errno = ENAMETOOLONG;
 		fatal("socket failed");
 	}
