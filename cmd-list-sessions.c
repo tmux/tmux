@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.5 2007-10-19 22:32:54 nicm Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.6 2007-10-23 09:36:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,7 +61,8 @@ cmd_list_sessions_exec(unused void *ptr, struct cmd_ctx *ctx)
 		tim = ctime(&s->tim);
 		*strchr(tim, '\n') = '\0';
 
-		ctx->print(ctx, "%s: %u windows (created %s)", s->name, n, tim);
+		ctx->print(ctx, "%s: %u windows (created %s) [%ux%u]", s->name,
+		    n, tim, s->sx, s->sy);
 	}
 
 	if (!(ctx->flags & CMD_KEY))

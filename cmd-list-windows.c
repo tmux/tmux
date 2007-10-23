@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.2 2007-10-04 22:04:01 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.3 2007-10-23 09:36:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,8 +52,9 @@ cmd_list_windows_exec(unused void *ptr, struct cmd_ctx *ctx)
 		if (w == NULL)
 			continue;
 		
-		ctx->print(ctx, "%u: %s \"%s\" (%s)",
-		    i, w->name, w->screen.title, ttyname(w->fd));
+		ctx->print(ctx,
+		    "%u: %s \"%s\" (%s) [%ux%u]", i, w->name, w->screen.title,
+		    ttyname(w->fd), w->screen.sx, w->screen.sy);
 	}
 
 	if (!(ctx->flags & CMD_KEY))
