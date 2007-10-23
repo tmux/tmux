@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.64 2007-10-23 10:21:59 nicm Exp $ */
+/* $Id: tmux.h,v 1.65 2007-10-23 10:48:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,6 @@ extern char    *__progname;
 #define TTY_NAME_MAX 32
 #endif
 
-#define MAXNAMELEN	32
 #define MAXTITLELEN	192
 
 /* Fatal errors. */
@@ -283,13 +282,6 @@ enum hdrtype {
 	MSG_PAUSE,
 };
 
-/* Session identification. */
-struct sessid {
-	long long	pid;			/* pid from $TMUX or -1 */
-	u_int		idx;			/* index from $TMUX */
-	char		name[MAXNAMELEN];	/* empty for current */
-};
-
 /* Message header structure. */
 struct hdr {
 	enum hdrtype	type;
@@ -297,7 +289,10 @@ struct hdr {
 };
 
 struct msg_command_data {
-	struct sessid   sid;
+	long long	pid;			/* pid from $TMUX or -1 */
+	u_int		idx;			/* index from $TMUX */
+
+	size_t		namelen;
 };
 
 struct msg_identify_data {
@@ -565,7 +560,7 @@ int	 client_msg_dispatch(struct client_ctx *, char **);
 void	 client_write_server(struct client_ctx *, enum hdrtype, void *, size_t);
 void	 client_write_server2(
     	     struct client_ctx *, enum hdrtype, void *, size_t, void *, size_t);
-void	 client_fill_sessid(struct sessid *, char [MAXNAMELEN]);
+void	 client_fill_session(struct msg_command_data *);
 
 /* key-bindings.c */
 extern struct bindings key_bindings;
@@ -587,7 +582,8 @@ int	 server_start(char *);
 int	 server_msg_dispatch(struct client *);
 
 /* server-fn.c */
-struct session *server_find_sessid(struct sessid *, char **);
+struct session *server_extract_session(
+    	     struct msg_command_data *, char *, char **);
 void	 server_write_client(
              struct client *, enum hdrtype, const void *, size_t);
 void	 server_write_session(

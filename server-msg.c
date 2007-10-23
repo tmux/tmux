@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.28 2007-10-23 09:36:19 nicm Exp $ */
+/* $Id: server-msg.c,v 1.29 2007-10-23 10:48:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,11 +108,12 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	struct msg_command_data	data;
 	struct cmd_ctx	 	ctx;
 	struct cmd	       *cmd;
-	char	       	       *cause;
+	char	       	       *name, *cause;
 
 	if (hdr->size < sizeof data)
 		fatalx("bad MSG_COMMAND size");
 	buffer_read(c->in, &data, sizeof data);
+	name = cmd_recv_string(c->in);	
 
 	cmd = cmd_recv(c->in);
 	log_debug("got command %s from client %d", cmd->entry->name, c->fd);
@@ -123,26 +124,29 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	ctx.client = c;
 	ctx.flags = 0;
 
-	if (data.sid.pid != -1 && (cmd->entry->flags & CMD_CANTNEST)) {
+	if (data.pid != -1 && (cmd->entry->flags & CMD_CANTNEST)) {
 		server_msg_fn_command_error(&ctx, "sessions should be nested "
 		    "with care. unset $TMUX to force");
-		return (0);
+		goto out;
 	}
 
 	if (cmd->entry->flags & CMD_NOSESSION)
 		ctx.session = NULL;
 	else {
-		ctx.session = server_find_sessid(&data.sid, &cause);
+		ctx.session = server_extract_session(&data, name, &cause);
 		if (ctx.session == NULL) {
 			server_msg_fn_command_error(&ctx, "%s", cause);
 			xfree(cause);
-			return (0);
+			goto out;
 		}
 	}		
 
 	cmd_exec(cmd, &ctx);
 	cmd_free(cmd);
 
+out:
+	if (name != NULL)
+		xfree(name);
 	return (0);
 }
 

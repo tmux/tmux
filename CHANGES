@@ -1,5 +1,6 @@
 23 October 2007
 
+* (nicm) Lift limit on session name passed with -s.
 * (nicm) Show size in session/window lists.
 * (nicm) Pass tty up to server when client identifies and add a list-clients
   command to list connected clients.
@@ -150,5 +151,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.47 2007-10-23 09:36:19 nicm Exp $
+$Id: CHANGES,v 1.48 2007-10-23 10:48:22 nicm Exp $
 

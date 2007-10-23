@@ -47,7 +47,6 @@
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
-- get rid of MAXNAMELEN limits (sessid)
 - commands:
 	rename sessions
 	swap windows

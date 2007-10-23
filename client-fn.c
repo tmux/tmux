@@ -1,4 +1,4 @@
-/* $Id: client-fn.c,v 1.2 2007-10-03 12:34:16 nicm Exp $ */
+/* $Id: client-fn.c,v 1.3 2007-10-23 10:48:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,15 +24,13 @@
 #include "tmux.h"
 
 void
-client_fill_sessid(struct sessid *sid, char name[MAXNAMELEN])
+client_fill_session(struct msg_command_data *data)
 {
 	char		*env, *ptr, buf[256];
 	const char	*errstr;
 	long long	 ll;
 
-	strlcpy(sid->name, name, sizeof sid->name);
-
-	sid->pid = -1;
+	data->pid = -1;
 	if ((env = getenv("TMUX")) == NULL)
 		return;
 	if ((ptr = strchr(env, ',')) == NULL)
@@ -45,12 +43,12 @@ client_fill_sessid(struct sessid *sid, char name[MAXNAMELEN])
 	ll = strtonum(ptr + 1, 0, UINT_MAX, &errstr);
 	if (errstr != NULL)
 		return;
-	sid->idx = ll;
+	data->idx = ll;
 
 	ll = strtonum(buf, 0, LLONG_MAX, &errstr);
 	if (errstr != NULL)
 		return;
-	sid->pid = ll;
+	data->pid = ll;
 }
 
 void

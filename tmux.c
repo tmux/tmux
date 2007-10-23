@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.35 2007-10-20 09:57:08 nicm Exp $ */
+/* $Id: tmux.c,v 1.36 2007-10-23 10:48:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -170,19 +170,17 @@ main(int argc, char **argv)
 	struct hdr	 	 hdr;
 	const char		*shell;
 	struct passwd		*pw;
-	char			*path, *cause, name[MAXNAMELEN];
+	char			*path, *cause, *name;
 	int	 		 n, opt;
 
-	*name = '\0';
-	path = NULL;
+	path = name = NULL;
         while ((opt = getopt(argc, argv, "S:s:v")) != EOF) {
                 switch (opt) {
 		case 'S':
 			path = xstrdup(optarg);
 			break;
 		case 's':
-			if (strlcpy(name, optarg, sizeof name) >= sizeof name)
-				errx(1, "session name too long: %s", optarg);
+			name = xstrdup(optarg);
 			break;
 		case 'v':
 			debug_level++;
@@ -225,10 +223,11 @@ main(int argc, char **argv)
 	memset(&cctx, 0, sizeof cctx);
 	if (!(cmd->entry->flags & CMD_NOSESSION) ||
 	    (cmd->entry->flags & CMD_CANTNEST))
-		client_fill_sessid(&data.sid, name);
+		client_fill_session(&data);
 	if (client_init(path, &cctx, cmd->entry->flags & CMD_STARTSERVER) != 0)
 		exit(1);
 	b = buffer_create(BUFSIZ);
+	cmd_send_string(b, name);
 	cmd_send(cmd, b);
 	cmd_free(cmd);
 
