@@ -34,7 +34,6 @@
 - CLIENT_HOLD sucks
 - session with CMD_NOSESSION should be an error
 - each command should have a print op as well for list keys
-- get rid of MAXNAMELEN limits (sessid)
 - List available commands on ambigous command
 - Implicitly add exec to the commands for new windows (switch to disable it)
 - nested sessions, ie session as window - moving to it moves into session
@@ -44,9 +43,11 @@
   kill-window to limit accidental presses
 - status-fg/status-bg should be to set attributes: bold, etc
 - show-options command
+- fix resize(1)
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
+- get rid of MAXNAMELEN limits (sessid)
 - commands:
 	list clients (session, window, tty?)
 	rename sessions
@@ -54,7 +55,6 @@
 	link/copy windows
 	unlink window (error if window only linked to one session)
 	kill session (no not bind by default)
-	set shell -- default-command (don't forget to rm -l)
 - check for some reqd terminfo caps on startup
 
 -- For 0.2 --------------------------------------------------------------------

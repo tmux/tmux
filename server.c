@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.29 2007-10-19 20:47:09 nicm Exp $ */
+/* $Id: server.c,v 1.30 2007-10-23 09:36:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -309,6 +309,8 @@ server_lost_client(struct client *c)
 			ARRAY_SET(&clients, i, NULL);
 	}
 	
+	if (c->tty != NULL)
+		xfree(c->tty);
 	close(c->fd);
 	buffer_destroy(c->in);
 	buffer_destroy(c->out);

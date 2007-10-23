@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.27 2007-10-12 17:50:33 nicm Exp $ */
+/* $Id: server-msg.c,v 1.28 2007-10-23 09:36:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -159,6 +159,9 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 
 	c->sx = data.sx;
 	c->sy = data.sy;
+
+	data.tty[(sizeof data.tty) - 1] = '\0';
+	c->tty = xstrdup(data.tty);
 
 	c->flags |= CLIENT_TERMINAL;
 

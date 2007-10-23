@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.62 2007-10-19 20:36:08 nicm Exp $ */
+/* $Id: tmux.h,v 1.63 2007-10-23 09:36:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -297,6 +297,8 @@ struct msg_command_data {
 };
 
 struct msg_identify_data {
+	char		tty[TTY_NAME_MAX];
+
 	u_int		sx;
 	u_int		sy;
 };
@@ -426,6 +428,8 @@ ARRAY_DECL(sessions, struct session *);
 
 /* Client connection. */
 struct client {
+	char		*tty;
+
 	int		 fd;
 	struct buffer	*in;
 	struct buffer	*out;
@@ -529,6 +533,7 @@ extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_detach_session_entry;
 extern const struct cmd_entry cmd_kill_window_entry;
 extern const struct cmd_entry cmd_last_window_entry;
+extern const struct cmd_entry cmd_list_clients_entry;
 extern const struct cmd_entry cmd_list_keys_entry;
 extern const struct cmd_entry cmd_list_sessions_entry;
 extern const struct cmd_entry cmd_list_windows_entry;
