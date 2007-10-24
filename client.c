@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.17 2007-10-23 10:25:03 nicm Exp $ */
+/* $Id: client.c,v 1.18 2007-10-24 11:42:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,24 +49,25 @@ client_init(char *path, struct client_ctx *cctx, int start_server)
 	if (path == NULL) {
 		xasprintf(&path,
 		    "%s/%s-%lu", _PATH_TMP, __progname, (u_long) getuid());
-	}
+	} else
+		path = xstrdup(path);
 
 	retries = 0;
 retry:
 	if (stat(path, &sb) != 0) {
 		if (start_server && errno == ENOENT && retries < 10) {
 			if (server_start(path) != 0)
-				return (-1);
+				goto error;
 			usleep(10000);
 			retries++;
 			goto retry;
 		}
 		log_warn("%s: stat", path);
-		return (-1);
+		goto error;
 	}
 	if (!S_ISSOCK(sb.st_mode)) {
 		log_warnx("%s: %s", path, strerror(ENOTSOCK));
-		return (-1);
+		goto error;
 	}
 
 	memset(&sa, 0, sizeof sa);
@@ -74,35 +75,35 @@ retry:
 	size = strlcpy(sa.sun_path, path, sizeof sa.sun_path);
 	if (size >= sizeof sa.sun_path) {
 		log_warnx("%s: %s", path, strerror(ENAMETOOLONG));
-		return (-1);
+		goto error;
 	}
 
 	if ((cctx->srv_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
 		log_warn("%s: socket", path);
-		return (-1);
+		goto error;
 	}
 	if (connect(
 	    cctx->srv_fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
 		if (start_server && errno == ECONNREFUSED && retries < 10) {
 			if (unlink(path) != 0) {
 				log_warn("%s: unlink", path);
-				return (-1);
+				goto error;
 			}
 			usleep(10000);
 			retries++;
 			goto retry;
 		}
 		log_warn("%s: connect", path);
-		return (-1);
+		goto error;
 	}
 
 	if ((mode = fcntl(cctx->srv_fd, F_GETFL)) == -1) {
 		log_warn("%s: fcntl", path);
-		return (-1);
+		goto error;
 	}
 	if (fcntl(cctx->srv_fd, F_SETFL, mode|O_NONBLOCK) == -1) {
 		log_warn("%s: fcntl", path);
-		return (-1);
+		goto error;
 	}
 	cctx->srv_in = buffer_create(BUFSIZ);
 	cctx->srv_out = buffer_create(BUFSIZ);
@@ -110,7 +111,7 @@ retry:
 	if (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) {
 		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1) {
 			log_warn("ioctl(TIOCGWINSZ)");
-			return (-1);
+			goto error;
 		}
 
 		data.sx = ws.ws_col;
@@ -120,7 +121,12 @@ retry:
 		client_write_server(cctx, MSG_IDENTIFY, &data, sizeof data);
 	}
 
+	xfree(path);
 	return (0);
+
+error:
+	xfree(path);
+	return (-1);
 }
 
 int
