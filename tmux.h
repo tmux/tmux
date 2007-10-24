@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.66 2007-10-23 11:25:32 nicm Exp $ */
+/* $Id: tmux.h,v 1.67 2007-10-24 15:01:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -319,6 +319,7 @@ struct msg_resize_data {
 #define MODE_INSERT 0x2
 #define MODE_KCURSOR 0x4
 #define MODE_KKEYPAD 0x8
+#define MODE_SAVED 0x10
 
 /*
  * Virtual screen. This is stored as three blocks of 8-bit values, one for
@@ -334,18 +335,23 @@ struct screen {
 	u_char	       **grid_attr;
 	u_char	       **grid_colr;
 
-	u_int		 sx;		/* size x */
+ 	u_int		 sx;		/* size x */
 	u_int		 sy;		/* size y */
 
 	u_int		 cx;		/* cursor x */
 	u_int		 cy;		/* cursor y */
-
 	u_int		 ry_upper;	/* scroll region top */
 	u_int		 ry_lower;	/* scroll region bottom */
-
 	u_char		 attr;
 	u_char		 colr;		/* fg:bg */
 
+	u_int		 saved_cx;
+	u_int		 saved_cy;
+	u_int		 saved_ry_upper;
+	u_int		 saved_ry_lower;
+	u_int		 saved_attr;
+	u_int		 saved_colr;
+	
 	int		 mode;
 };
 

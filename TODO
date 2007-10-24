@@ -44,15 +44,27 @@
 - status-fg/status-bg should be to set attributes: bold, etc
 - show-options command
 - fix resize(1)
+- detach client and other client commands. note that there can only be a
+  "current client" on key presses - these should act like detach-session -
+  -a will do all clients, otherwise do nothing unless key in which case do
+  current client
+- check handling of out-of-bound values in input.c, most should be limited
+  rather than ignored
+- save/restore (DECSC/DECRC) are ugly. maybe a struct screen_attr and memcpy
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
 - commands:
 	rename sessions
 	swap windows
+		same as link but swap windows if tgt exists else error
 	link/copy windows
+		tmux -s <tgt sess> link-window -i<tgt idx> <src sess> <src idx>
+			link src win to tgt win (at tgt idx if given and
+			empty else new)
 	unlink window (error if window only linked to one session)
-	kill session (no not bind by default)
+		tmux -s <sess> unlink-window -i<tgt idx>
+	kill session (not bound by default)
 - check for some reqd terminfo caps on startup
 
 -- For 0.2 --------------------------------------------------------------------

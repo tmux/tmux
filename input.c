@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.25 2007-10-19 23:25:33 nicm Exp $ */
+/* $Id: input.c,v 1.26 2007-10-24 15:01:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -430,6 +430,31 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 	case '>':	/* DECKPNM*/
 		input_store_zero(ictx->b, CODE_KKEYPADOFF);
 		break;
+	case '7':	/* DECSC */
+		ictx->s->saved_cx = ictx->s->cx;
+		ictx->s->saved_cy = ictx->s->cy;
+		ictx->s->saved_ry_upper = ictx->s->ry_upper;
+		ictx->s->saved_ry_lower = ictx->s->ry_lower;
+		ictx->s->saved_attr = ictx->s->attr;
+		ictx->s->saved_colr = ictx->s->colr;
+		ictx->s->mode |= MODE_SAVED;
+		break;
+	case '8':	/* DECRC */
+		if (!(ictx->s->mode & MODE_SAVED))
+			break;
+		ictx->s->cx = ictx->s->saved_cx;
+		ictx->s->cy = ictx->s->saved_cy;
+		ictx->s->ry_upper = ictx->s->saved_ry_upper;
+		ictx->s->ry_lower = ictx->s->saved_ry_lower;
+		ictx->s->attr = ictx->s->saved_attr;
+		ictx->s->colr = ictx->s->saved_colr;
+		input_store_two(
+		    ictx->b, CODE_ATTRIBUTES, ictx->s->attr, ictx->s->colr);
+		input_store_two(ictx->b, CODE_SCROLLREGION,
+		    ictx->s->ry_upper + 1, ictx->s->ry_lower + 1);
+		input_store_two(
+		    ictx->b, CODE_CURSORMOVE, ictx->s->cy + 1, ictx->s->cx + 1);
+		break;
 	default:
 		log_debug("unknown p2: %hhu", ch);
 		break;
@@ -733,10 +758,14 @@ input_handle_sequence_cup(struct input_ctx *ictx)
 	if (input_get_argument(ictx, 1, &m, 1) != 0)
 		return;
 
-	if (n == 0 || n > ictx->s->sy || m == 0 || m > ictx->s->sx) {
-		log_debug3("cup: out of range: %hu", n);
-		return;
-	}
+	if (n == 0)
+		n = 1;
+	if (n > ictx->s->sy)
+		n = ictx->s->sy;
+	if (m == 0)
+		m = 1;
+	if (m > ictx->s->sx)
+		m = ictx->s->sx;
 
 	ictx->s->cx = m - 1;
 	ictx->s->cy = n - 1;
@@ -910,19 +939,35 @@ input_handle_sequence_decstbm(struct input_ctx *ictx)
 
 	if (ARRAY_LENGTH(&ictx->args) > 2)
 		return;
-	if (input_get_argument(ictx, 0, &n, 1) != 0)
+	if (input_get_argument(ictx, 0, &n, 0) != 0)
 		return;
-	if (input_get_argument(ictx, 1, &m, 1) != 0)
+	if (input_get_argument(ictx, 1, &m, 0) != 0)
 		return;
 
-	if (n == 0 || n > ictx->s->sy || m == 0 || m > ictx->s->sy) {
-		log_debug3("decstbm: out of range: %hu,%hu", n, m);
-		return;
+	/* Special case: both zero restores to entire screen. */
+	/* XXX this will catch [0;0r and [;r etc too, is this right? */
+	if (n == 0 && m == 0) {
+		n = 1;
+		m = ictx->s->sy;
 	}
+
+	if (n == 0)
+		n = 1;
+	if (n > ictx->s->sy)
+		n = ictx->s->sy;
+	if (m == 0)
+		m = 1;
+	if (m > ictx->s->sx)
+		m = ictx->s->sx;
+
 	if (n > m) {
 		log_debug3("decstbm: out of range: %hu,%hu", n, m);
 		return;
 	}
+
+	/* Cursor moves to top-left. */
+	ictx->s->cx = 0;
+	ictx->s->cy = n - 1;
 
 	ictx->s->ry_upper = n - 1;
 	ictx->s->ry_lower = m - 1;

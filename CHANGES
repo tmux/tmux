@@ -1,3 +1,10 @@
+24 October 2007
+
+* (nicm) Support for \e7, \e8 save/restore cursor and attribute sequences.
+  Currently don't save mode (probably should). Also change some cases where
+  out-of-bound values are ignored to limit them to within range (there are
+  others than need to be checked too).
+
 23 October 2007
 
 * (nicm) Lift limit on session name passed with -s.
@@ -151,5 +158,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.48 2007-10-23 10:48:22 nicm Exp $
+$Id: CHANGES,v 1.49 2007-10-24 15:01:23 nicm Exp $
 
