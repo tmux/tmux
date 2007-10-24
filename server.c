@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.31 2007-10-23 10:25:03 nicm Exp $ */
+/* $Id: server.c,v 1.32 2007-10-24 11:05:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -123,6 +123,7 @@ server_main(char *srv_path, int srv_fd)
 {
 	struct pollfd	*pfds, *pfd;
 	int		 nfds;
+	u_int		 i;
 
 	siginit();
 
@@ -173,6 +174,18 @@ server_main(char *srv_path, int srv_fd)
 		server_handle_windows(&pfd);
 		server_handle_clients(&pfd);
 	}
+
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		if (ARRAY_ITEM(&sessions, i) != NULL)
+			session_destroy(ARRAY_ITEM(&sessions, i));
+	}
+	ARRAY_FREE(&sessions);
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		if (ARRAY_ITEM(&clients, i) != NULL)
+			server_lost_client(ARRAY_ITEM(&clients, i));
+	}
+	ARRAY_FREE(&clients);
 
 	key_bindings_free();
 

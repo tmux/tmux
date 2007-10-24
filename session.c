@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.23 2007-10-19 22:16:53 nicm Exp $ */
+/* $Id: session.c,v 1.24 2007-10-24 11:05:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -124,8 +124,11 @@ session_destroy(struct session *s)
 	while (!ARRAY_EMPTY(&sessions) && ARRAY_LAST(&sessions) == NULL)
 		ARRAY_TRUNC(&sessions, 1);
 	
-	while (!ARRAY_EMPTY(&s->windows))
-		window_remove(&s->windows, ARRAY_FIRST(&s->windows));
+	for (i = 0; i < ARRAY_LENGTH(&s->windows); i++) {
+		if (ARRAY_ITEM(&s->windows, i) != NULL)
+			window_remove(&s->windows, ARRAY_ITEM(&s->windows, i));
+	}
+	ARRAY_FREE(&s->windows);
 
 	xfree(s->name);
 	xfree(s);
