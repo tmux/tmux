@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.15 2007-10-19 11:10:35 nicm Exp $ */
+/* $Id: local.c,v 1.16 2007-10-24 11:45:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -290,8 +290,8 @@ local_done(void)
 {
 	struct winsize	ws;
 
-	xfree(local_in);
-	xfree(local_out);
+	buffer_destroy(local_in);
+	buffer_destroy(local_out);
 
 	if (tcsetattr(local_fd, TCSANOW, &local_tio) != 0)
 		fatal("tcsetattr failed");
