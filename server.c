@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.33 2007-10-24 11:21:29 nicm Exp $ */
+/* $Id: server.c,v 1.34 2007-10-24 11:30:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -105,6 +105,8 @@ server_start(char *path)
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
+	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
+		fatal("fcntl failed");		
 
 	if (daemon(1, 1) != 0)
 		fatal("daemon failed");

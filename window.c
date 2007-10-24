@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.21 2007-10-23 11:25:32 nicm Exp $ */
+/* $Id: window.c,v 1.22 2007-10-24 11:30:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -89,6 +89,8 @@ window_create(
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
+	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
+		fatal("fcntl failed");		
 
 	mode = 1;
 	if (ioctl(fd, TIOCPKT, &mode) == -1)
