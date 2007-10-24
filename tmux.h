@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.68 2007-10-24 15:29:28 nicm Exp $ */
+/* $Id: tmux.h,v 1.69 2007-10-24 15:40:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -370,13 +370,10 @@ struct input_arg {
 struct input_ctx {
 	struct window	*w;
 	struct buffer	*b;
-	struct screen	*s;
 
 	u_char		*buf;
 	size_t		 len;
 	size_t		 off;
-
-	struct buffer	*replyb;	/* replies to information requests */
 
 	u_char		 title_buf[MAXTITLELEN];
 	size_t		 title_len;
