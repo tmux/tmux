@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.67 2007-10-24 15:01:25 nicm Exp $ */
+/* $Id: tmux.h,v 1.68 2007-10-24 15:29:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -368,15 +368,15 @@ struct input_arg {
 
 /* Input parser context. */
 struct input_ctx {
+	struct window	*w;
+	struct buffer	*b;
+	struct screen	*s;
+
 	u_char		*buf;
 	size_t		 len;
 	size_t		 off;
 
-	int		 flags;
-#define INPUT_BELL 0x1
-
-	struct buffer	*b;
-	struct screen	*s;
+	struct buffer	*replyb;	/* replies to information requests */
 
 	u_char		 title_buf[MAXTITLELEN];
 	size_t		 title_len;
@@ -616,9 +616,9 @@ void	 status_write(struct client *c);
 void	 recalculate_sizes(void);
 
 /* input.c */
-void	 input_init(struct input_ctx *, struct screen *);
-void	 input_free(struct input_ctx *);
-void	 input_parse(struct input_ctx *, u_char *, size_t, struct buffer *);
+void	 input_init(struct window *);
+void	 input_free(struct window *);
+void	 input_parse(struct window *, struct buffer *);
 uint8_t  input_extract8(struct buffer *);
 uint16_t input_extract16(struct buffer *);
 void	 input_store8(struct buffer *, uint8_t);

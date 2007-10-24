@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.26 2007-10-24 15:01:25 nicm Exp $ */
+/* $Id: input.c,v 1.27 2007-10-24 15:29:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -73,6 +73,7 @@ void	 input_handle_sequence_sm(struct input_ctx *);
 void	 input_handle_sequence_rm(struct input_ctx *);
 void	 input_handle_sequence_decstbm(struct input_ctx *);
 void	 input_handle_sequence_sgr(struct input_ctx *);
+void	 input_handle_sequence_dsr(struct input_ctx *);
 
 int
 input_new_argument(struct input_ctx *ictx)
@@ -124,32 +125,35 @@ input_get_argument(struct input_ctx *ictx, u_int i, uint16_t *n, uint16_t d)
 }
 
 void
-input_init(struct input_ctx *ictx, struct screen *s)
+input_init(struct window *w)
 {
-	ictx->s = s;
+	ARRAY_INIT(&w->ictx.args);
 
-	ARRAY_INIT(&ictx->args);
-
-	ictx->state = input_state_first;
+	w->ictx.state = input_state_first;
 }
 
 void
-input_free(struct input_ctx *ictx)
+input_free(struct window *w)
 {
-	ARRAY_FREE(&ictx->args);
+	ARRAY_FREE(&w->ictx.args);
 }
 
 void
-input_parse(struct input_ctx *ictx, u_char *buf, size_t len, struct buffer *b)
+input_parse(struct window *w, struct buffer *b)
 {
-	u_char	ch;
+	struct input_ctx	*ictx = &w->ictx;
+	u_char			 ch;
 
-	ictx->buf = buf;
-	ictx->len = len;
+	if (BUFFER_USED(w->in) == 0)
+		return;
+
+	ictx->buf = BUFFER_OUT(w->in);
+	ictx->len = BUFFER_USED(w->in);
 	ictx->off = 0;
 
+	ictx->w = w;
+	ictx->s = &w->screen;
 	ictx->b = b;
-	ictx->flags = 0;
 
 	log_debug2("entry; buffer=%zu", ictx->len);
 
@@ -157,6 +161,8 @@ input_parse(struct input_ctx *ictx, u_char *buf, size_t len, struct buffer *b)
 		ch = ictx->buf[ictx->off++];
 		ictx->state = ictx->state(ch, ictx);
 	}
+
+	buffer_remove(w->in, ictx->len);
 }
 
 void *
@@ -389,7 +395,7 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 		ictx->s->cx = 0;
 		break;
 	case '\007':	/* BELL */
-		ictx->flags |= INPUT_BELL;
+		ictx->w->flags |= WINDOW_BELL;
 		return;
 	case '\010': 	/* BS */
 		if (ictx->s->cx > 0)
@@ -493,6 +499,7 @@ input_handle_sequence(u_char ch, struct input_ctx *ictx)
 		{ 'h', input_handle_sequence_sm },
 		{ 'l', input_handle_sequence_rm },
 		{ 'm', input_handle_sequence_sgr },
+		{ 'n', input_handle_sequence_dsr },
 		{ 'r', input_handle_sequence_decstbm },
 	};
 	u_int	i;
@@ -927,6 +934,30 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 			break;
 		}
 	}
+}
+
+void
+input_handle_sequence_dsr(struct input_ctx *ictx)
+{
+	uint16_t	n;
+	char		reply[32];
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 0) != 0)
+		return;
+
+	if (ictx->private == '\0') {
+		switch (n) {
+		case 6:	/* cursor position */
+			xsnprintf(reply, sizeof reply,
+			    "\033[%u;%uR", ictx->s->cy + 1, ictx->s->cx + 1);
+			log_debug("cursor request, reply: %s", reply);
+			buffer_write(ictx->w->out, reply, strlen(reply));
+			break;
+		}
+	}
+
 }
 
 void

@@ -1,5 +1,6 @@
 24 October 2007
 
+* (nicm) Support for \e6n to request cursor position. resize(1) now works.
 * (nicm) Support for \e7, \e8 save/restore cursor and attribute sequences.
   Currently don't save mode (probably should). Also change some cases where
   out-of-bound values are ignored to limit them to within range (there are
@@ -158,5 +159,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.49 2007-10-24 15:01:23 nicm Exp $
+$Id: CHANGES,v 1.50 2007-10-24 15:29:27 nicm Exp $
 
