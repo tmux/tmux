@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.36 2007-10-23 10:48:23 nicm Exp $ */
+/* $Id: tmux.c,v 1.37 2007-10-24 11:21:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -85,6 +85,9 @@ logfile(const char *name)
 void
 sighandler(int sig)
 {
+	int	saved_errno;
+
+	saved_errno = errno;
 	switch (sig) {
 	case SIGWINCH:
 		sigwinch = 1;
@@ -96,6 +99,7 @@ sighandler(int sig)
 		waitpid(WAIT_ANY, NULL, WNOHANG);
 		break;
 	}
+	errno = saved_errno;
 }
 
 void

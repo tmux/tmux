@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.32 2007-10-24 11:05:59 nicm Exp $ */
+/* $Id: server.c,v 1.33 2007-10-24 11:21:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -174,6 +174,8 @@ server_main(char *srv_path, int srv_fd)
 		server_handle_windows(&pfd);
 		server_handle_clients(&pfd);
 	}
+	if (pfds != NULL)
+		xfree(pfds);
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		if (ARRAY_ITEM(&sessions, i) != NULL)
