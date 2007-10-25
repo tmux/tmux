@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.69 2007-10-24 15:40:59 nicm Exp $ */
+/* $Id: tmux.h,v 1.70 2007-10-25 17:44:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -531,6 +531,7 @@ char		*cmd_recv_string(struct buffer *);
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_detach_session_entry;
+extern const struct cmd_entry cmd_has_session_entry;
 extern const struct cmd_entry cmd_kill_window_entry;
 extern const struct cmd_entry cmd_last_window_entry;
 extern const struct cmd_entry cmd_list_clients_entry;

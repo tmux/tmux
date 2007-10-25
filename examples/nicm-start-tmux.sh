@@ -7,7 +7,7 @@ SESSION=natasha-main
 
 TMUX="tmux -S $SOCKET"
 
-if ! $TMUX -s $SESSION attach 2>/dev/null; then
+if ! $TMUX -s $SESSION has 2>/dev/null; then
     $TMUX new -d -s $SESSION -nyelena 'exec ssh yelena'		# 0
 
     $TMUX set default-command "$SHELL -l"
@@ -27,6 +27,6 @@ if ! $TMUX -s $SESSION attach 2>/dev/null; then
     $TMUX bind ^A send-prefix
 
     $TMUX set bell-action none
-
-    $TMUX -s $SESSION attach
 fi
+
+$TMUX -s $SESSION attach

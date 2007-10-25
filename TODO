@@ -43,7 +43,6 @@
   kill-window to limit accidental presses
 - status-fg/status-bg should be to set attributes: bold, etc
 - show-options command
-- fix resize(1)
 - detach client and other client commands. note that there can only be a
   "current client" on key presses - these should act like detach-session -
   -a will do all clients, otherwise do nothing unless key in which case do
@@ -51,6 +50,7 @@
 - check handling of out-of-bound values in input.c, most should be limited
   rather than ignored
 - save/restore (DECSC/DECRC) are ugly. maybe a struct screen_attr and memcpy
+- force maximum terminal size (centred?)
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
