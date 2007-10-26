@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.25 2007-10-26 12:29:07 nicm Exp $ */
+/* $Id: session.c,v 1.26 2007-10-26 13:35:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -115,7 +115,7 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 		session_destroy(s);
 		return (NULL);
 	}
-	session_select(s, i);
+	session_select(s, 0);
 
 	return (s);
 }

@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.1 2007-10-26 13:03:59 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.2 2007-10-26 13:35:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -140,7 +140,8 @@ cmd_link_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (!data->flag_detached) {
 		session_select(dst, wl->idx);
 		server_redraw_session(dst);
-	}
+	} else
+		server_status_session(dst);
 
 	if (!(ctx->flags & CMD_KEY))
 		server_write_client(c, MSG_EXIT, NULL, 0);

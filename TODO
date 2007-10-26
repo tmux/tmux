@@ -58,6 +58,7 @@
 	unlink window (error if window only linked to one session)
 		tmux -s <sess> unlink-window -i<tgt idx>
 	kill session (not bound by default)
+- fix most(1) problems after scrolling
 - check for some reqd terminfo caps on startup
 
 -- For 0.2 --------------------------------------------------------------------
