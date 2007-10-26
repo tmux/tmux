@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.29 2007-10-23 10:48:23 nicm Exp $ */
+/* $Id: server-msg.c,v 1.30 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -223,7 +223,7 @@ server_msg_fn_keys(struct hdr *hdr, struct client *c)
 		if (key == prefix_key)
 			c->flags |= CLIENT_PREFIX;
 		else
-			window_key(c->session->window, key);
+			input_translate_key(c->session->curw->window->out, key);
 	}
 
 	return (0);

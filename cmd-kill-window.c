@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-window.c,v 1.1 2007-10-19 11:10:35 nicm Exp $ */
+/* $Id: cmd-kill-window.c,v 1.2 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -92,7 +92,7 @@ cmd_kill_window_exec(void *ptr, struct cmd_ctx *ctx)
 	struct cmd_kill_window_data	*data = ptr, std = { -1 };
 	struct client			*c = ctx->client;
 	struct session			*s = ctx->session;
-	struct window			*w;
+	struct winlink			*wl;
 	u_int		 		 i;
 	int		 		 destroyed;
 
@@ -100,13 +100,13 @@ cmd_kill_window_exec(void *ptr, struct cmd_ctx *ctx)
 		data = &std;
 
 	if (data->idx == -1)
-		w = s->window;
-	else if ((w = window_at(&s->windows, data->idx)) == NULL) {
+		wl = s->curw;
+	else if ((wl = winlink_find_by_index(&s->windows, data->idx)) == NULL) {
 		ctx->error(ctx, "no window %u", data->idx);
 		return;
 	}
 
-	destroyed = session_detach(s, w);
+	destroyed = session_detach(s, wl);
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (c == NULL || c->session != s)

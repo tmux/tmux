@@ -1,4 +1,4 @@
-/* $Id: cmd-send-prefix.c,v 1.2 2007-10-19 23:33:20 nicm Exp $ */
+/* $Id: cmd-send-prefix.c,v 1.3 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,5 +49,5 @@ cmd_send_prefix_exec(unused void *ptr, struct cmd_ctx *ctx)
 		return;
 	}
 
-	window_key(c->session->window, prefix_key);
+	input_translate_key(c->session->curw->window->out, prefix_key);
 }

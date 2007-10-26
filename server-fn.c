@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.22 2007-10-23 10:48:23 nicm Exp $ */
+/* $Id: server-fn.c,v 1.23 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -114,7 +114,7 @@ server_write_window_cur(
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (c != NULL &&
-		    c->session != NULL && c->session->window == w) {
+		    c->session != NULL && c->session->curw->window == w) {
 			if (c->flags & CLIENT_HOLD) /* XXX OUTPUT only */
 				continue;
 			server_write_client(c, type, buf, len);
@@ -165,7 +165,7 @@ server_status_client(struct client *c)
 void
 server_clear_client(struct client *c)
 {
-	struct screen	*s = &c->session->window->screen;
+	struct screen	*s = &c->session->curw->window->screen;
 	struct hdr	 hdr;
 	size_t		 size;
 	u_int		 i;
@@ -192,7 +192,7 @@ server_clear_client(struct client *c)
 void
 server_redraw_client(struct client *c)
 {
-	struct screen	*s = &c->session->window->screen;
+	struct screen	*s = &c->session->curw->window->screen;
 	struct hdr	 hdr;
 	size_t		 size;
 
@@ -248,7 +248,8 @@ server_clear_window_cur(struct window *w)
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session != NULL && c->session->window == w)
+		if (c != NULL &&
+		    c->session != NULL && c->session->curw->window == w)
 			server_clear_client(c);
 	}
 }
@@ -276,7 +277,8 @@ server_redraw_window_cur(struct window *w)
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session != NULL && c->session->window == w)
+		if (c != NULL &&
+		    c->session != NULL && c->session->curw->window == w)
 			server_redraw_client(c);
 	}
 }
@@ -304,7 +306,8 @@ server_status_window_cur(struct window *w)
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session != NULL && c->session->window == w)
+		if (c != NULL &&
+		    c->session != NULL && c->session->curw->window == w)
 			server_status_client(c);
 	}
 }
@@ -327,6 +330,7 @@ server_status_window_all(struct window *w)
 void
 server_write_message(struct client *c, const char *fmt, ...)
 {
+	struct screen	*s = &c->session->curw->window->screen;
 	struct hdr	 hdr;
 	va_list		 ap;
 	char		*msg;
@@ -364,8 +368,7 @@ server_write_message(struct client *c, const char *fmt, ...)
 	size = BUFFER_USED(c->out);
 
 	if (status_lines == 0) {
-		screen_draw(
-		    &c->session->window->screen, c->out, c->sy - 1, c->sy - 1);
+		screen_draw(s, c->out, c->sy - 1, c->sy - 1);
 	} else
 		status_write(c);
 

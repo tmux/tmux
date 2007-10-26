@@ -1,4 +1,4 @@
-/* $Id: cmd-select-window.c,v 1.4 2007-10-19 09:21:26 nicm Exp $ */
+/* $Id: cmd-select-window.c,v 1.5 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,10 +108,16 @@ cmd_select_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (data == NULL)
 		return;
 
-	if (session_select(s, data->idx) == 0)
+	switch (session_select(s, data->idx)) {
+	case 0:
 		server_redraw_session(s);
-	else
+		break;
+	case 1:
+		break;
+	default:
 		ctx->error(ctx, "no window %u", data->idx);
+		break;
+	}
 	
 	if (!(ctx->flags & CMD_KEY))
 		server_write_client(c, MSG_EXIT, NULL, 0);

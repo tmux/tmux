@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.23 2007-10-24 15:29:29 nicm Exp $ */
+/* $Id: window.c,v 1.24 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,6 +22,7 @@
 #include <fcntl.h>
 #include <paths.h>
 #include <signal.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
@@ -47,15 +48,109 @@
  * Each window also has a "virtual" screen (screen.c) which contains the
  * current state and is redisplayed when the window is reattached to a client.
  *
- * A global list of windows is maintained, and a window may also be a member
- * of any number of sessions. A reference count is maintained and a window
- * removed from the global list and destroyed when it reaches zero.
+ * Windows are stored directly on a global array and wrapped in any number of
+ * winlink structs to be linked onto local session RB trees A reference count
+ * is maintained and a window removed from the global list and destroyed when
+ * it reaches zero
  */
 
 /* Global window list. */
-struct windows	windows;
+struct windows windows;
 
-/* Create a new window. */
+RB_GENERATE(winlinks, winlink, entry, winlink_cmp);
+
+int
+winlink_cmp(struct winlink *wl1, struct winlink *wl2)
+{
+	return (wl1->idx - wl2->idx);
+}
+
+struct winlink *
+winlink_find_by_index(struct winlinks *wwl, int idx)
+{
+	struct winlink	wl;
+
+	if (idx < 0)
+		fatalx("bad index");
+
+	wl.idx = idx;
+	return (RB_FIND(winlinks, wwl, &wl));
+}
+
+int
+winlink_next_index(struct winlinks *wwl)
+{
+	u_int	i;
+
+	for (i = 0; i < INT_MAX; i++) {
+		if (winlink_find_by_index(wwl, i) == NULL)
+			return (i);
+	}
+	
+	fatalx("no free indexes");
+}
+
+struct winlink *
+winlink_add(struct winlinks *wwl, struct window *w, int idx)
+{
+	struct winlink	*wl;
+
+	if (idx == -1)
+		idx = winlink_next_index(wwl);
+	else if (winlink_find_by_index(wwl, idx) != NULL)
+		return (NULL);
+
+	if (idx < 0)
+		fatalx("bad index");
+
+	wl = xcalloc(1, sizeof *wl);
+	wl->idx = idx;
+	wl->window = w;
+	RB_INSERT(winlinks, wwl, wl);
+
+	w->references++;
+
+	return (wl);
+}
+
+void
+winlink_remove(struct winlinks *wwl, struct winlink *wl)
+{
+	struct window	*w = wl->window;
+
+	RB_REMOVE(winlinks, wwl, wl);
+	xfree(wl);
+
+	if (w->references == 0)
+		fatal("bad reference count");
+	w->references--;
+	if (w->references == 0)
+		window_destroy(w);
+}
+
+struct winlink *
+winlink_next(unused struct winlinks *wwl, struct winlink *wl)
+{
+	return (RB_NEXT(winlinks, wwl, wl));
+} 
+
+struct winlink *
+winlink_previous(struct winlinks *wwl, struct winlink *wl)
+{
+	struct winlink	*wk;
+	int		 idx = wl->idx;
+
+	wk = NULL;
+	wl = RB_MIN(winlinks, wwl);
+	while (wl != NULL && wl->idx < idx) {
+		wk = wl;
+		wl = RB_NEXT(winlinks, wwl, wl);
+	}
+	if (wl == NULL)
+		return (NULL);
+	return (wk);
+} 
+
 struct window *
 window_create(
     const char *name, const char *cmd, const char **environ, u_int sx, u_int sy)
@@ -92,10 +187,6 @@ window_create(
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");		
 
-	mode = 1;
-	if (ioctl(fd, TIOCPKT, &mode) == -1)
-		fatal("ioctl failed");
-
 	w = xmalloc(sizeof *w);
 	w->fd = fd;
 	w->in = buffer_create(BUFSIZ);
@@ -126,60 +217,23 @@ window_create(
 	} else
 		w->name = xstrdup(name);
 
-	window_add(&windows, w);
-	w->references = 1;
+	ARRAY_ADD(&windows, w);
+	w->references = 0;
 
 	return (w);
 }
 
-/* Find window index in list. */
-int
-window_index(struct windows *ww, struct window *w, u_int *i)
-{
-	for (*i = 0; *i < ARRAY_LENGTH(ww); (*i)++) {
-		if (w == ARRAY_ITEM(ww, *i))
-			return (0);
-	}
-	return (-1);
-}
-	
-/* Add a window to a list. */
-void
-window_add(struct windows *ww, struct window *w)
-{
-	u_int	i;
-
-	if (window_index(ww, NULL, &i) != 0)
-		ARRAY_ADD(ww, w);
-	else
-		ARRAY_SET(ww, i, w);
-
-	w->references++;
-}
-
-/* Remove a window from a list. */
-void
-window_remove(struct windows *ww, struct window *w)
-{
-	u_int	i;
-
-	if (window_index(ww, w, &i) != 0)
-		fatalx("window not found");
-	ARRAY_SET(ww, i, NULL);
-	while (!ARRAY_EMPTY(ww) && ARRAY_LAST(ww) == NULL)
-		ARRAY_TRUNC(ww, 1);
-
-	w->references--;
-	if (w->references == 0)
-		window_destroy(w);
-	if (w->references == 1)
-		window_remove(&windows, w);
-}
-
-/* Destroy a window. */
 void
 window_destroy(struct window *w)
 {
+	u_int	i;
+
+	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+		if (ARRAY_ITEM(&windows, i) == w)
+			break;
+	}
+	ARRAY_REMOVE(&windows, i);
+	
 	close(w->fd);
 
 	input_free(w);
@@ -193,55 +247,6 @@ window_destroy(struct window *w)
 	xfree(w);
 }
 
-/* Locate next window in list. */
-struct window *
-window_next(struct windows *ww, struct window *w)
-{
-	u_int	i;
-
-	if (window_index(ww, w, &i) != 0)
-		fatalx("window not found");
-
-	if (i == ARRAY_LENGTH(ww) - 1)
-		return (NULL);
-	do {
-		i++;
-		w = window_at(ww, i);
-		if (w != NULL)
-			return (w);
-	} while (i != ARRAY_LENGTH(ww) - 1);
-	return (NULL);
-} 
-
-/* Locate previous window in list. */
-struct window *
-window_previous(struct windows *ww, struct window *w)
-{
-	u_int	i;
-
-	if (window_index(ww, w, &i) != 0)
-		fatalx("window not found");
-	if (i == 0)
-		return (NULL);
-	do {
-		i--;
-		w = window_at(ww, i);
-		if (w != NULL)
-			return (w);
-	} while (i != 0);
-	return (NULL);
-}
-
-/* Locate window at specific position in list. */
-struct window *
-window_at(struct windows *ww, u_int i)
-{
-	if (i >= ARRAY_LENGTH(ww))
-		return (NULL);
-	return (ARRAY_ITEM(ww, i));
-} 
-
-/* Resize a window. */
 int
 window_resize(struct window *w, u_int sx, u_int sy)
 {
@@ -261,51 +266,3 @@ window_resize(struct window *w, u_int sx, u_int sy)
 	return (0);
 }
 
-/* Handle window poll results. This is special because of TIOCPKT. */
-int
-window_poll(struct window *w, struct pollfd *pfd)
-{
-	struct termios	 tio;
-	size_t	 	 size;
-	u_char		*ptr;
-
-	size = BUFFER_USED(w->in);
-	if (buffer_poll(pfd, w->in, w->out) != 0)
-		return (-1);
-
-	if (BUFFER_USED(w->in) == size)
-		return (0);
-	ptr = BUFFER_IN(w->in) - (BUFFER_USED(w->in) - size);
-
-	log_debug("window packet: %hhu", *ptr);
-	switch (*ptr) {
-	case TIOCPKT_DATA:
-	case TIOCPKT_FLUSHREAD:
-	case TIOCPKT_FLUSHWRITE:
-	case TIOCPKT_STOP:
-	case TIOCPKT_START:
-	case TIOCPKT_DOSTOP:
-	case TIOCPKT_NOSTOP:
-		buffer_delete_range(w->in, size, 1);
-		break;
-	case TIOCPKT_IOCTL:
-		buffer_delete_range(w->in, size, 1 + sizeof tio);
-		break;
-	}
-
-	return (0);
-}
-
-/* Process window key. */
-void
-window_key(struct window *w, int key)
-{
-	input_translate_key(w->out, key);
-}
-
-/* Process output data from child process. */
-void
-window_data(struct window *w, struct buffer *b)
-{
-	input_parse(w, b);
-}

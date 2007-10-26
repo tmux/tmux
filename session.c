@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.24 2007-10-24 11:05:59 nicm Exp $ */
+/* $Id: session.c,v 1.25 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,33 +29,41 @@
 struct sessions	sessions;	
 
 void
-session_cancelbell(struct session *s, struct window *w)
+session_cancelbell(struct session *s, struct winlink *wl)
 {
 	u_int	i;
 
-	if (window_index(&s->bells, w, &i) == 0)
-		window_remove(&s->bells, w);
+	for (i = 0; i < ARRAY_LENGTH(&s->bells); i++) {
+		if (ARRAY_ITEM(&s->bells, i) == wl) {
+			ARRAY_REMOVE(&s->bells, i);
+			break;
+		}
+	}
 }
 
 void
 session_addbell(struct session *s, struct window *w)
 {
-	u_int	i;
+	struct winlink	*wl;
 
-	/* Never bell in the current window. */
-	if (w == s->window || !session_has(s, w))
-		return;
-
-	if (window_index(&s->bells, w, &i) != 0)
-		window_add(&s->bells, w);
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if (wl == s->curw)
+			continue;
+		if (wl->window == w && !session_hasbell(s, wl))
+			ARRAY_ADD(&s->bells, wl);
+	}
 }
 
 int
-session_hasbell(struct session *s, struct window *w)
+session_hasbell(struct session *s, struct winlink *wl)
 {
 	u_int	i;
 
-	return (window_index(&s->bells, w, &i) == 0);
+	for (i = 0; i < ARRAY_LENGTH(&s->bells); i++) {
+		if (ARRAY_ITEM(&s->bells, i) == wl)
+			return (1);
+	}
+	return (0);
 }
 
 /* Find session by name. */
@@ -83,8 +91,8 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 
 	s = xmalloc(sizeof *s);
 	s->tim = time(NULL);
-	s->window = s->last = NULL;
-	ARRAY_INIT(&s->windows);
+	s->curw = s->lastw = NULL;
+	RB_INIT(&s->windows);
 	ARRAY_INIT(&s->bells);
 
 	s->sx = sx;
@@ -103,7 +111,7 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 		s->name = xstrdup(name);
 	else
 		xasprintf(&s->name, "%u", i);
-	if (session_new(s, NULL, cmd, &i) != 0) {
+	if (session_new(s, NULL, cmd, -1) == NULL) {
 		session_destroy(s);
 		return (NULL);
 	}
@@ -116,7 +124,8 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 void
 session_destroy(struct session *s)
 {
-	u_int	i;
+	struct winlink	*wl;
+	u_int		 i;
 
 	if (session_index(s, &i) != 0)
 		fatalx("session not found");
@@ -124,11 +133,11 @@ session_destroy(struct session *s)
 	while (!ARRAY_EMPTY(&sessions) && ARRAY_LAST(&sessions) == NULL)
 		ARRAY_TRUNC(&sessions, 1);
 	
-	for (i = 0; i < ARRAY_LENGTH(&s->windows); i++) {
-		if (ARRAY_ITEM(&s->windows, i) != NULL)
-			window_remove(&s->windows, ARRAY_ITEM(&s->windows, i));
+	while (!RB_EMPTY(&s->windows)) {
+		wl = RB_ROOT(&s->windows);
+		RB_REMOVE(winlinks, &s->windows, wl);
+		winlink_remove(&s->windows, wl);
 	}
-	ARRAY_FREE(&s->windows);
 
 	xfree(s->name);
 	xfree(s);
@@ -146,44 +155,43 @@ session_index(struct session *s, u_int *i)
 }
 
 /* Create a new window on a session. */
-int
-session_new(struct session *s, const char *name, const char *cmd, u_int *i)
+struct winlink *
+session_new(struct session *s, const char *name, const char *cmd, int idx)
 {
 	struct window	*w;
 	const char	*environ[] = { NULL, "TERM=screen", NULL };
 	char		 buf[256];
+	u_int		 i;
 
-	if (session_index(s, i) != 0)
+	if (session_index(s, &i) != 0)
 		fatalx("session not found");
-	xsnprintf(buf, sizeof buf, "TMUX=%ld,%u", (long) getpid(), *i);
+	xsnprintf(buf, sizeof buf, "TMUX=%ld,%u", (long) getpid(), i);
 	environ[0] = buf;
 	
 	if ((w = window_create(name, cmd, environ, s->sx, s->sy)) == NULL)
-		return (-1);
-	session_attach(s, w);
-	
-	window_index(&s->windows, w, i);
-	return (0);
+		return (NULL);
+	return (session_attach(s, w, idx));
 }
 
 /* Attach a window to a session. */
-void
-session_attach(struct session *s, struct window *w)
+struct winlink *
+session_attach(struct session *s, struct window *w, int idx)
 {
-	window_add(&s->windows, w);
+	return (winlink_add(&s->windows, w, idx));
 }
 
 /* Detach a window from a session. */
 int
-session_detach(struct session *s, struct window *w)
+session_detach(struct session *s, struct winlink *wl)
 {
-	if (s->window == w && session_last(s) != 0 && session_previous(s) != 0)
+	if (s->curw == wl && session_last(s) != 0 && session_previous(s) != 0)
 		session_next(s);
-	if (s->last == w)
-		s->last = NULL;
+	if (s->lastw == wl)
+		s->lastw = NULL;
 
-	window_remove(&s->windows, w);
-	if (ARRAY_EMPTY(&s->windows)) {
+	session_cancelbell(s, wl);
+	winlink_remove(&s->windows, wl);
+	if (RB_EMPTY(&s->windows)) {
 		session_destroy(s);
 		return (1);
 	}
@@ -194,34 +202,32 @@ session_detach(struct session *s, struct window *w)
 int
 session_has(struct session *s, struct window *w)
 {
-	u_int	i;
+	struct winlink	*wl;
 
-	return (window_index(&s->windows, w, &i) == 0);
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if (wl->window == w)
+			return (1);
+	}
+	return (0);
 }
 
 /* Move session to next window. */
 int
 session_next(struct session *s)
 {
-	struct window	*w;
-	u_int            n;
+	struct winlink	*wl;
 
-	if (s->window == NULL)
+	if (s->curw == NULL)
 		return (-1);
 
-	w = window_next(&s->windows, s->window);
-	if (w == NULL) {
-		n = 0;
-		while ((w = ARRAY_ITEM(&s->windows, n)) == NULL)
-			n++;
-		if (w == s->window)
-			return (1);
-	}
-	if (w == s->window)
-		return (0);
-	s->last = s->window;
-	s->window = w;
-	session_cancelbell(s, w);
+	wl = winlink_next(&s->windows, s->curw);
+	if (wl == NULL)
+		wl = RB_MIN(winlinks, &s->windows);
+	if (wl == s->curw)
+		return (1);
+	s->lastw = s->curw;
+	s->curw = wl;
+	session_cancelbell(s, wl);
 	return (0);
 }
 
@@ -229,22 +235,19 @@ session_next(struct session *s)
 int
 session_previous(struct session *s)
 {
-	struct window	*w;
+	struct winlink	*wl;
 
-	if (s->window == NULL)
+	if (s->curw == NULL)
 		return (-1);
 
-	w = window_previous(&s->windows, s->window);
-	if (w == NULL) {
-		w = ARRAY_LAST(&s->windows);
-		if (w == s->window)
-			return (1);
-	}
-	if (w == s->window)
-		return (0);
-	s->last = s->window;
-	s->window = w;
-	session_cancelbell(s, w);
+	wl = winlink_previous(&s->windows, s->curw);
+	if (wl == NULL)
+		wl = RB_MAX(winlinks, &s->windows);
+	if (wl == s->curw)
+		return (1);
+	s->lastw = s->curw;
+	s->curw = wl;
+	session_cancelbell(s, wl);
 	return (0);
 }
 
@@ -252,16 +255,16 @@ session_previous(struct session *s)
 int
 session_select(struct session *s, u_int i)
 {
-	struct window	*w;
+	struct winlink	*wl;
 
-	w = window_at(&s->windows, i);
-	if (w == NULL)
+	wl = winlink_find_by_index(&s->windows, i);
+	if (wl == NULL)
 		return (-1);
-	if (w == s->window)
-		return (0);
-	s->last = s->window;
-	s->window = w;
-	session_cancelbell(s, w);
+	if (wl == s->curw)
+		return (1);
+	s->lastw = s->curw;
+	s->curw = wl;
+	session_cancelbell(s, wl);
 	return (0);
 }
 
@@ -269,16 +272,16 @@ session_select(struct session *s, u_int i)
 int
 session_last(struct session *s)
 {
-	struct window	*w;
+	struct winlink	*wl;
 
-	w = s->last;
-	if (w == NULL)
+	wl = s->lastw;
+	if (wl == NULL)
 		return (-1);
-	if (w == s->window) 
+	if (wl == s->curw) 
 		return (1);
 
-	s->last = s->window;
-	s->window = w;
-	session_cancelbell(s, w);
+	s->lastw = s->curw;
+	s->curw = wl;
+	session_cancelbell(s, wl);
 	return (0);
 }

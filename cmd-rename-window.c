@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-window.c,v 1.7 2007-10-19 17:15:29 nicm Exp $ */
+/* $Id: cmd-rename-window.c,v 1.8 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -96,19 +96,19 @@ cmd_rename_window_exec(void *ptr, struct cmd_ctx *ctx)
 	struct cmd_rename_window_data	*data = ptr;
 	struct client			*c = ctx->client;
 	struct session			*s = ctx->session;
-	struct window			*w;
+	struct winlink			*wl;
 
 	if (data == NULL)
 		return;
 
 	if (data->idx == -1)
-		w = s->window;
-	else if ((w = window_at(&s->windows, data->idx)) == NULL) {
+		wl = s->curw;
+	else if ((wl = winlink_find_by_index(&s->windows, data->idx)) == NULL) {
 		ctx->error(ctx, "no window %u", data->idx);
 		return;
 	}
-	xfree(w->name);
-	w->name = xstrdup(data->newname);
+	xfree(wl->window->name);
+	wl->window->name = xstrdup(data->newname);
 
 	server_status_session(s);
 	

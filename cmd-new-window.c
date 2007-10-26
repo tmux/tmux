@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.9 2007-10-19 09:21:25 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.10 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <getopt.h>
+#include <stdlib.h>
 
 #include "tmux.h"
 
@@ -35,11 +36,12 @@ void	cmd_new_window_free(void *);
 struct cmd_new_window_data {
 	char	*name;
 	char	*cmd;
+	int	 idx;
 	int	 flag_detached;
 };
 
 const struct cmd_entry cmd_new_window_entry = {
-	"new-window", "neww", "[-d] [-n name] [command]",
+	"new-window", "neww", "[-d] [-i index] [-n name] [command]",
 	0,
 	cmd_new_window_parse,
 	cmd_new_window_exec, 
@@ -52,15 +54,24 @@ int
 cmd_new_window_parse(void **ptr, int argc, char **argv, char **cause)
 {
 	struct cmd_new_window_data	*data;
+	const char			*errstr;
 	int				 opt;
 
 	*ptr = data = xmalloc(sizeof *data);
+	data->idx = -1;
 	data->flag_detached = 0;
 	data->name = NULL;
 	data->cmd = NULL;
 
-	while ((opt = getopt(argc, argv, "dn:")) != EOF) {
+	while ((opt = getopt(argc, argv, "di:n:")) != EOF) {
 		switch (opt) {
+		case 'i':
+			data->idx = strtonum(optarg, 0, UINT_MAX, &errstr);
+			if (errstr != NULL) {
+				xasprintf(cause, "index %s", errstr);
+				goto error;
+			}
+			break;
 		case 'n':
 			data->name = xstrdup(optarg);
 			break;
@@ -85,6 +96,7 @@ usage:
 	usage(cause, "%s %s",
 	    cmd_new_window_entry.name, cmd_new_window_entry.usage);
 
+error:
 	cmd_new_window_free(data);
 	return (-1);
 }
@@ -92,11 +104,12 @@ usage:
 void
 cmd_new_window_exec(void *ptr, struct cmd_ctx *ctx)
 {
-	struct cmd_new_window_data	*data = ptr, std = { NULL, NULL, 0 };
+	struct cmd_new_window_data	*data = ptr;
+	struct cmd_new_window_data	 std = { NULL, NULL, -1, 0 };
 	struct client			*c = ctx->client;
 	struct session			*s = ctx->session;
+	struct winlink			*wl;
 	char				*cmd;
-	u_int				 i;
 
 	if (data == NULL)
 		data = &std;
@@ -105,12 +118,14 @@ cmd_new_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (cmd == NULL)
 		cmd = default_command;
 
-	if (session_new(s, data->name, cmd, &i) != 0) {
+	if (data->idx < 0)
+		data->idx = -1;
+	if ((wl = session_new(s, data->name, cmd, data->idx)) == NULL) {
 		ctx->error(ctx, "command failed: %s", cmd);
 		return;
 	}
 	if (!data->flag_detached) {
-		session_select(s, i);
+		session_select(s, wl->idx);
 		server_redraw_session(s);
 	} else
 		server_status_session(s);

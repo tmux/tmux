@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.3 2007-10-23 09:36:07 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.4 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,17 +44,14 @@ cmd_list_windows_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
 	struct client	*c = ctx->client;
 	struct session	*s = ctx->session;
+	struct winlink	*wl;
 	struct window	*w;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&s->windows); i++) {
-		w = ARRAY_ITEM(&s->windows, i);
-		if (w == NULL)
-			continue;
-		
-		ctx->print(ctx,
-		    "%u: %s \"%s\" (%s) [%ux%u]", i, w->name, w->screen.title,
-		    ttyname(w->fd), w->screen.sx, w->screen.sy);
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		w = wl->window;
+		ctx->print(ctx, "%u: %s \"%s\" (%s) [%ux%u]", wl->idx,
+		    w->name, w->screen.title, ttyname(w->fd),
+		    w->screen.sx, w->screen.sy);
 	}
 
 	if (!(ctx->flags & CMD_KEY))

@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.6 2007-10-12 12:37:48 nicm Exp $ */
+/* $Id: status.c,v 1.7 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,11 +27,10 @@ void	status_print(struct buffer *, size_t *, const char *, ...);
 void
 status_write(struct client *c)
 {
-	struct screen	*s = &c->session->window->screen;
+	struct screen	*s = &c->session->curw->window->screen;
 	struct buffer	*b = c->out;
-	struct window	*w;
+	struct winlink	*wl;
 	size_t		 size;
-	u_int		 i;
 	char		 flag;
 
 	input_store_zero(b, CODE_CURSOROFF);
@@ -39,19 +38,16 @@ status_write(struct client *c)
 	input_store_two(b, CODE_ATTRIBUTES, 0, status_colour);
 
 	size = c->sx;
-	for (i = 0; i < ARRAY_LENGTH(&c->session->windows); i++) {
-		w = ARRAY_ITEM(&c->session->windows, i);
-		if (w == NULL)
-			continue;
-
+	RB_FOREACH(wl, winlinks, &c->session->windows) {
 		flag = ' ';
-		if (w == c->session->last)
+		if (wl == c->session->lastw)
 			flag = '-';
-		if (w == c->session->window)
+		if (wl == c->session->curw)
 			flag = '*';
-		if (session_hasbell(c->session, w))
+		if (session_hasbell(c->session, wl))
 			flag = '!';
-		status_print(b, &size, "%u:%s%c ", i, w->name, flag);
+		status_print(
+		    b, &size, "%u:%s%c ", wl->idx, wl->window->name, flag);
 
 		if (size == 0)
 			break;

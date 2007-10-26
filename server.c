@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.34 2007-10-24 11:30:02 nicm Exp $ */
+/* $Id: server.c,v 1.35 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -228,7 +228,7 @@ server_handle_windows(struct pollfd **pfd)
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		if ((w = ARRAY_ITEM(&windows, i)) != NULL) {
-			if (window_poll(w, *pfd) != 0)
+			if (buffer_poll(*pfd, w->in, w->out) != 0)
 				server_lost_window(w);
 			else 
 				server_handle_window(w);
@@ -259,14 +259,14 @@ server_fill_clients(struct pollfd **pfd)
 
 /* Handle client pollfds. */
 void
-server_handle_clients(struct pollfd *(*pfd))
+server_handle_clients(struct pollfd **pfd)
 {
 	struct client	*c;
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		if ((c = ARRAY_ITEM(&clients, i)) != NULL) {
-			if (buffer_poll((*pfd), c->in, c->out) != 0)
+			if (buffer_poll(*pfd, c->in, c->out) != 0)
 				server_lost_client(c);
 			else
 				server_msg_dispatch(c);
@@ -345,7 +345,7 @@ server_handle_window(struct window *w)
 	u_int		 i;
 
 	b = buffer_create(BUFSIZ);
-	window_data(w, b);
+	input_parse(w, b);
 	if (BUFFER_USED(b) != 0) {
 		server_write_window_cur(
 		    w, MSG_DATA, BUFFER_OUT(b), BUFFER_USED(b));
@@ -368,7 +368,7 @@ server_handle_window(struct window *w)
 	case BELL_CURRENT:
 		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 			s = ARRAY_ITEM(&sessions, i);
-			if (s != NULL && s->window == w)
+			if (s != NULL && s->curw->window == w)
 				server_write_session(s, MSG_DATA, "\007", 1);
 		}
 		break;
@@ -384,6 +384,7 @@ server_lost_window(struct window *w)
 {
 	struct client	*c;
 	struct session	*s;
+	struct winlink	*wl;
 	u_int		 i, j;
 	int		 destroyed;
 
@@ -397,16 +398,23 @@ server_lost_window(struct window *w)
 			continue;
 
 		/* Detach window and either redraw or kill clients. */
-		destroyed = session_detach(s, w);
-		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
-			c = ARRAY_ITEM(&clients, j);
-			if (c == NULL || c->session != s)
+	restart:
+		RB_FOREACH(wl, winlinks, &s->windows) {
+			if (wl->window != w)
 				continue;
-			if (destroyed) {
+			destroyed = session_detach(s, wl);
+			for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
+				c = ARRAY_ITEM(&clients, j);
+				if (c == NULL || c->session != s)
+					continue;
+				if (!destroyed) {
+					server_redraw_client(c);
+					continue;
+				}
 				c->session = NULL;
 				server_write_client(c, MSG_EXIT, NULL, 0);
-			} else
-				server_redraw_client(c);
+			}
+			goto restart;
 		}
 	}
 

@@ -1,4 +1,3 @@
-- decide if TIOCPKT is necessary and either handle it or remove the code
 - it would be nice if there wasn't so much copying buffers about, audit uses
 - useful env vars like WINDOW
 - sort out who controls the buffers in local.c a bit
@@ -20,8 +19,6 @@
 - profile/optimise, particularly (i suspect) input.c
 - tidy up input.c a bit
 - decide about customised status line
-- rethink data structures. window->index is O(n), could have a w->idx member
-	or use queues/trees and avoid NULLs?
 - client could pass term/tty fd up to server and then do nothing. what problems 
   would this cause? -- need access to all terminfo data at once... signals?
 - cleanup/redesign IPC

@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.13 2007-10-19 17:15:29 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.14 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -133,8 +133,8 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 	if (c->session == NULL)
 		fatalx("session_create failed");
 	if (data->winname != NULL) {
-		xfree(c->session->window->name);
-		c->session->window->name = xstrdup(data->winname);
+		xfree(c->session->curw->window->name);
+		c->session->curw->window->name = xstrdup(data->winname);
 	}
 
 	if (data->flag_detached)

@@ -1,3 +1,10 @@
+26 October 2007
+
+* (nicm) Redo window data structures. The global array remains, but each per-
+  session list is now a RB tree of winlink structures. This disassociates the
+  window index from the array size (allowing arbitrary indexes) which still
+  allowing windows to have multiple indexes.
+
 25 October 2007
 
 * (nicm) has-session command: checks if session exists.
@@ -163,5 +170,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.51 2007-10-25 17:44:24 nicm Exp $
+$Id: CHANGES,v 1.52 2007-10-26 12:29:07 nicm Exp $
 

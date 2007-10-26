@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.11 2007-10-23 10:25:57 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.12 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -177,7 +177,7 @@ key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 
 	if (!(c->flags & CLIENT_HOLD)) {
 		input_store_zero(c->out, CODE_CURSOROFF);
-		for (i = 0; i < c->session->window->screen.sy; i++) {
+		for (i = 0; i < c->session->curw->window->screen.sy; i++) {
 			input_store_two(c->out, CODE_CURSORMOVE, i + 1, 1);
 			input_store_zero(c->out, CODE_CLEARLINE);
 		}			

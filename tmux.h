@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.70 2007-10-25 17:44:24 nicm Exp $ */
+/* $Id: tmux.h,v 1.71 2007-10-26 12:29:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,6 +18,9 @@
 
 #ifndef TMUX_H
 #define TMUX_H
+
+/* Shut up gcc warnings about empty if bodies. */
+#define RB_AUGMENT(x) do {} while (0)
 
 #include <sys/param.h>
 #include <sys/tree.h>
@@ -385,9 +388,6 @@ struct input_ctx {
 	ARRAY_DECL(, struct input_arg) args;
 };
 
-/* Input context macros. */
-#define INPUT_FLAGS(ictx) ((ictx)->flags)
-
 /* Window structure. */
 struct window {
 	char		*name;
@@ -396,16 +396,25 @@ struct window {
 	struct buffer	*in;
 	struct buffer	*out;
 
-	u_int		 references;
-
 	struct input_ctx ictx;
 
 	int		 flags;
 #define WINDOW_BELL 0x1
 
 	struct screen	 screen;
+
+	u_int		 references;
 };
 ARRAY_DECL(windows, struct window *);
+
+/* Entry on local window list. */
+struct winlink {
+	int		 idx;
+	struct window	*window;
+
+	RB_ENTRY(winlink) entry;
+};
+RB_HEAD(winlinks, winlink);
 
 /* Client session. */
 struct session {
@@ -415,11 +424,11 @@ struct session {
 	u_int		 sx;
 	u_int		 sy;
 
-	struct window	*window;
-	struct window	*last;
-	struct windows	 windows;
+	struct winlink *curw;
+	struct winlink *lastw;
+	struct winlinks windows;
 
-	struct windows	 bells;	/* windows with bells */
+	ARRAY_DECL(, struct winlink *) bells;	/* windows with bells */
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
 	int		 flags;
@@ -665,33 +674,34 @@ void	 local_output(struct buffer *, size_t);
 
 /* window.c */
 extern struct windows windows;
+int		 window_cmp(struct window *, struct window *);
+int		 winlink_cmp(struct winlink *, struct winlink *);
+RB_PROTOTYPE(windows, window, entry, window_cmp);
+RB_PROTOTYPE(winlinks, winlink, entry, winlink_cmp);
+struct winlink	*winlink_find_by_index(struct winlinks *, int);
+struct winlink 	*winlink_find_by_window(struct winlinks *, struct window *);
+int		 winlink_next_index(struct winlinks *);
+struct winlink	*winlink_add(struct winlinks *, struct window *, int);
+void		 winlink_remove(struct winlinks *, struct winlink *);
+struct winlink	*winlink_next(struct winlinks *, struct winlink *);
+struct winlink	*winlink_previous(struct winlinks *, struct winlink *);
 struct window	*window_create(
     		     const char *, const char *, const char **, u_int, u_int);
-int		 window_index(struct windows *, struct window *, u_int *);
-void		 window_add(struct windows *, struct window *);
-void		 window_remove(struct windows *, struct window *);
 void		 window_destroy(struct window *);
-struct window	*window_next(struct windows *, struct window *); 
-struct window	*window_previous(struct windows *, struct window *); 
-struct window	*window_at(struct windows *, u_int); 
 int		 window_resize(struct window *, u_int, u_int);
-int		 window_poll(struct window *, struct pollfd *);
-void		 window_key(struct window *, int);
-void		 window_data(struct window *, struct buffer *);
 
 /* session.c */
 extern struct sessions sessions;
-void		 session_cancelbell(struct session *, struct window *);
+void		 session_cancelbell(struct session *, struct winlink *);
 void		 session_addbell(struct session *, struct window *);
-int		 session_hasbell(struct session *, struct window *);
+int		 session_hasbell(struct session *, struct winlink *);
 struct session	*session_find(const char *);
 struct session	*session_create(const char *, const char *, u_int, u_int);
 void		 session_destroy(struct session *);
 int		 session_index(struct session *, u_int *);
-int		 session_new(
-		     struct session *, const char *, const char *, u_int *);
-void		 session_attach(struct session *, struct window *);
-int		 session_detach(struct session *, struct window *);
+struct winlink	*session_new(struct session *, const char *, const char *, int);
+struct winlink	*session_attach(struct session *, struct window *, int);
+int		 session_detach(struct session *, struct winlink *);
 int		 session_has(struct session *, struct window *);
 int		 session_next(struct session *);
 int		 session_previous(struct session *);
