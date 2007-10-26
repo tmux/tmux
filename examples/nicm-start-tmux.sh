@@ -29,4 +29,4 @@ if ! $TMUX -s $SESSION has 2>/dev/null; then
     $TMUX set bell-action none
 fi
 
-$TMUX -s $SESSION attach
+$TMUX -s $SESSION attach -d
