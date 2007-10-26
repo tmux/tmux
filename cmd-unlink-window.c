@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-window.c,v 1.3 2007-10-26 16:57:32 nicm Exp $ */
+/* $Id: cmd-unlink-window.c,v 1.1 2007-10-26 16:57:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,33 +24,33 @@
 #include "tmux.h"
 
 /*
- * Destroy window.
+ * Unlink a window, unless it would be destroyed by doing so (only one link).
  */
 
-int	cmd_kill_window_parse(void **, int, char **, char **);
-void	cmd_kill_window_exec(void *, struct cmd_ctx *);
-void	cmd_kill_window_send(void *, struct buffer *);
-void	cmd_kill_window_recv(void **, struct buffer *);
-void	cmd_kill_window_free(void *);
+int	cmd_unlink_window_parse(void **, int, char **, char **);
+void	cmd_unlink_window_exec(void *, struct cmd_ctx *);
+void	cmd_unlink_window_send(void *, struct buffer *);
+void	cmd_unlink_window_recv(void **, struct buffer *);
+void	cmd_unlink_window_free(void *);
 
-struct cmd_kill_window_data {
-	int	 idx;
+struct cmd_unlink_window_data {
+	int	idx;
 };
 
-const struct cmd_entry cmd_kill_window_entry = {
-	"kill-window", "killw", "[-i index]",
+const struct cmd_entry cmd_unlink_window_entry = {
+	"unlink-window", "unlinkw", "[-i index",
 	0,
-	cmd_kill_window_parse,
-	cmd_kill_window_exec, 
-	cmd_kill_window_send,
-	cmd_kill_window_recv,
-	cmd_kill_window_free
+	cmd_unlink_window_parse,
+	cmd_unlink_window_exec, 
+	cmd_unlink_window_send,
+	cmd_unlink_window_recv,
+	cmd_unlink_window_free
 };
 
 int
-cmd_kill_window_parse(void **ptr, int argc, char **argv, char **cause)
+cmd_unlink_window_parse(void **ptr, int argc, char **argv, char **cause)
 {
-	struct cmd_kill_window_data	*data;
+	struct cmd_unlink_window_data	*data;
 	const char			*errstr;
 	int				 opt;
 
@@ -79,17 +79,17 @@ cmd_kill_window_parse(void **ptr, int argc, char **argv, char **cause)
 
 usage:
 	usage(cause, "%s %s",
-	    cmd_kill_window_entry.name, cmd_kill_window_entry.usage);
+	    cmd_unlink_window_entry.name, cmd_unlink_window_entry.usage);
 
 error:
-	cmd_kill_window_free(data);
+	cmd_unlink_window_free(data);
 	return (-1);
 }
 
 void
-cmd_kill_window_exec(void *ptr, struct cmd_ctx *ctx)
+cmd_unlink_window_exec(void *ptr, struct cmd_ctx *ctx)
 {
-	struct cmd_kill_window_data	*data = ptr, std = { -1 };
+	struct cmd_unlink_window_data	*data = ptr;
 	struct client			*c = ctx->client;
 	struct session			*s = ctx->session;
 	struct winlink			*wl;
@@ -97,12 +97,22 @@ cmd_kill_window_exec(void *ptr, struct cmd_ctx *ctx)
 	int		 		 destroyed;
 
 	if (data == NULL)
-		data = &std;
-
+		return;
+	
+	if (data->idx < 0)
+		data->idx = -1;
 	if (data->idx == -1)
 		wl = s->curw;
-	else if ((wl = winlink_find_by_index(&s->windows, data->idx)) == NULL) {
-		ctx->error(ctx, "no window %u", data->idx);
+	else {
+		wl = winlink_find_by_index(&s->windows, data->idx);
+		if (wl == NULL) {
+			ctx->error(ctx, "no window %u", data->idx);
+			return;
+		}
+	}
+
+	if (wl->window->references == 1) {
+		ctx->error(ctx, "window is only linked to one session");
 		return;
 	}
 
@@ -117,32 +127,32 @@ cmd_kill_window_exec(void *ptr, struct cmd_ctx *ctx)
 		} else
 			server_redraw_client(c);
 	}
-	
+
 	if (!(ctx->flags & CMD_KEY))
 		server_write_client(c, MSG_EXIT, NULL, 0);
 }
 
 void
-cmd_kill_window_send(void *ptr, struct buffer *b)
+cmd_unlink_window_send(void *ptr, struct buffer *b)
 {
-	struct cmd_kill_window_data	*data = ptr;
+	struct cmd_unlink_window_data	*data = ptr;
 
 	buffer_write(b, data, sizeof *data);
 }
 
 void
-cmd_kill_window_recv(void **ptr, struct buffer *b)
+cmd_unlink_window_recv(void **ptr, struct buffer *b)
 {
-	struct cmd_kill_window_data	*data;
+	struct cmd_unlink_window_data	*data;
 
 	*ptr = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
 }
 
 void
-cmd_kill_window_free(void *ptr)
+cmd_unlink_window_free(void *ptr)
 {
-	struct cmd_kill_window_data	*data = ptr;
+	struct cmd_unlink_window_data	*data = ptr;
 
 	xfree(data);
 }

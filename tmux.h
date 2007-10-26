@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.72 2007-10-26 13:03:59 nicm Exp $ */
+/* $Id: tmux.h,v 1.73 2007-10-26 16:57:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -558,6 +558,7 @@ extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
 extern const struct cmd_entry cmd_set_option_entry;
 extern const struct cmd_entry cmd_unbind_key_entry;
+extern const struct cmd_entry cmd_unlink_window_entry;
 void	cmd_select_window_default(void **, int);
 
 /* client.c */
@@ -706,7 +707,7 @@ int		 session_detach(struct session *, struct winlink *);
 int		 session_has(struct session *, struct window *);
 int		 session_next(struct session *);
 int		 session_previous(struct session *);
-int		 session_select(struct session *, u_int);
+int		 session_select(struct session *, int);
 int		 session_last(struct session *);
 
 /* buffer.c */

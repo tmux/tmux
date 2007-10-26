@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.10 2007-10-26 12:29:07 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.11 2007-10-26 16:57:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -66,7 +66,7 @@ cmd_new_window_parse(void **ptr, int argc, char **argv, char **cause)
 	while ((opt = getopt(argc, argv, "di:n:")) != EOF) {
 		switch (opt) {
 		case 'i':
-			data->idx = strtonum(optarg, 0, UINT_MAX, &errstr);
+			data->idx = strtonum(optarg, 0, INT_MAX, &errstr);
 			if (errstr != NULL) {
 				xasprintf(cause, "index %s", errstr);
 				goto error;

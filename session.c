@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.26 2007-10-26 13:35:39 nicm Exp $ */
+/* $Id: session.c,v 1.27 2007-10-26 16:57:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -253,11 +253,11 @@ session_previous(struct session *s)
 
 /* Move session to specific window. */ 
 int
-session_select(struct session *s, u_int i)
+session_select(struct session *s, int idx)
 {
 	struct winlink	*wl;
 
-	wl = winlink_find_by_index(&s->windows, i);
+	wl = winlink_find_by_index(&s->windows, idx);
 	if (wl == NULL)
 		return (-1);
 	if (wl == s->curw)

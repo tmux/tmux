@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.2 2007-10-26 13:35:39 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.3 2007-10-26 16:57:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -66,7 +66,7 @@ cmd_link_window_parse(void **ptr, int argc, char **argv, char **cause)
 	while ((opt = getopt(argc, argv, "di:")) != EOF) {
 		switch (opt) {
 		case 'i':
-			data->dstidx = strtonum(optarg, 0, UINT_MAX, &errstr);
+			data->dstidx = strtonum(optarg, 0, INT_MAX, &errstr);
 			if (errstr != NULL) {
 				xasprintf(cause, "index %s", errstr);
 				goto error;
@@ -85,7 +85,7 @@ cmd_link_window_parse(void **ptr, int argc, char **argv, char **cause)
 		goto usage;
 
 	data->srcname = xstrdup(argv[0]);
-	data->srcidx = strtonum(argv[1], 0, UINT_MAX, &errstr);
+	data->srcidx = strtonum(argv[1], 0, INT_MAX, &errstr);
 	if (errstr != NULL) {
 		xasprintf(cause, "index %s", errstr);
 		goto error;
