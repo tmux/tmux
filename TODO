@@ -55,10 +55,6 @@
 	rename sessions
 	swap windows
 		same as link but swap windows if tgt exists else error
-	link/copy windows
-		tmux -s <tgt sess> link-window -i<tgt idx> <src sess> <src idx>
-			link src win to tgt win (at tgt idx if given and
-			empty else new)
 	unlink window (error if window only linked to one session)
 		tmux -s <sess> unlink-window -i<tgt idx>
 	kill session (not bound by default)
