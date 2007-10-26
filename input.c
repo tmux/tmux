@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.28 2007-10-24 15:40:59 nicm Exp $ */
+/* $Id: input.c,v 1.29 2007-10-26 17:15:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -447,8 +447,6 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 	case '7':	/* DECSC */
 		s->saved_cx = s->cx;
 		s->saved_cy = s->cy;
-		s->saved_ry_upper = s->ry_upper;
-		s->saved_ry_lower = s->ry_lower;
 		s->saved_attr = s->attr;
 		s->saved_colr = s->colr;
 		s->mode |= MODE_SAVED;
@@ -458,8 +456,6 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 			break;
 		s->cx = s->saved_cx;
 		s->cy = s->saved_cy;
-		s->ry_upper = s->saved_ry_upper;
-		s->ry_lower = s->saved_ry_lower;
 		s->attr = s->saved_attr;
 		s->colr = s->saved_colr;
 		input_store_two(
@@ -1012,8 +1008,8 @@ input_handle_sequence_decstbm(struct input_ctx *ictx)
 		n = s->sy;
 	if (m == 0)
 		m = 1;
-	if (m > s->sx)
-		m = s->sx;
+	if (m > s->sy)
+		m = s->sy;
 
 	if (n > m) {
 		log_debug3("decstbm: out of range: %hu,%hu", n, m);

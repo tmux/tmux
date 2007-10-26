@@ -1,5 +1,7 @@
 26 October 2007
 
+* (nicm) Saving scroll region on \e7 causes problems with ncmpc so I guess
+  it is not required.
 * (nicm) unlink-window command.
 * (nicm) link-window command to link an existing window into another session
   (or another index in the same session). Syntax:
@@ -176,5 +178,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.54 2007-10-26 16:57:32 nicm Exp $
+$Id: CHANGES,v 1.55 2007-10-26 17:15:50 nicm Exp $
 
