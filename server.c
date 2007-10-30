@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.35 2007-10-26 12:29:07 nicm Exp $ */
+/* $Id: server.c,v 1.36 2007-10-30 10:59:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -59,11 +59,10 @@ server_start(char *path)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
-	pid_t			pid;
 	mode_t			mask;
 	int		   	n, fd, mode;
 
-	switch (pid = fork()) {
+	switch (fork()) {
 	case -1:
 		log_warn("fork");
 		return (-1);

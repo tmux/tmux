@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.4 2007-10-26 12:29:07 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.5 2007-10-30 10:59:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,7 +49,7 @@ cmd_list_windows_exec(unused void *ptr, struct cmd_ctx *ctx)
 
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		w = wl->window;
-		ctx->print(ctx, "%u: %s \"%s\" (%s) [%ux%u]", wl->idx,
+		ctx->print(ctx, "%d: %s \"%s\" (%s) [%ux%u]", wl->idx,
 		    w->name, w->screen.title, ttyname(w->fd),
 		    w->screen.sx, w->screen.sy);
 	}

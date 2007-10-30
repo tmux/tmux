@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.23 2007-10-26 12:29:07 nicm Exp $ */
+/* $Id: server-fn.c,v 1.24 2007-10-30 10:59:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ server_extract_session(struct msg_command_data *data, char *name, char **cause)
 			return (NULL);
 		}
 		if (data->idx > ARRAY_LENGTH(&sessions)) {
-			xasprintf(cause, "index out of range: %u", data->idx);
+			xasprintf(cause, "index out of range: %d", data->idx);
 			return (NULL);
 		}
 		if ((s = ARRAY_ITEM(&sessions, data->idx)) == NULL) {

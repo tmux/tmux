@@ -1,4 +1,4 @@
-/* $Id: cmd-unlink-window.c,v 1.1 2007-10-26 16:57:32 nicm Exp $ */
+/* $Id: cmd-unlink-window.c,v 1.2 2007-10-30 10:59:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -106,7 +106,7 @@ cmd_unlink_window_exec(void *ptr, struct cmd_ctx *ctx)
 	else {
 		wl = winlink_find_by_index(&s->windows, data->idx);
 		if (wl == NULL) {
-			ctx->error(ctx, "no window %u", data->idx);
+			ctx->error(ctx, "no window %d", data->idx);
 			return;
 		}
 	}

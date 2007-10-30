@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.3 2007-10-26 16:57:32 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.4 2007-10-30 10:59:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -125,7 +125,7 @@ cmd_link_window_exec(void *ptr, struct cmd_ctx *ctx)
 	else {
 		wl = winlink_find_by_index(&src->windows, data->srcidx);
 		if (wl == NULL) {
-			ctx->error(ctx, "no window %u", data->srcidx);
+			ctx->error(ctx, "no window %d", data->srcidx);
 			return;
 		}
 	}

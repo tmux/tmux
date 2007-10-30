@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.22 2007-10-26 16:57:32 nicm Exp $ */
+/* $Id: cmd.c,v 1.23 2007-10-30 10:59:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -113,7 +113,7 @@ usage:
 void
 cmd_exec(struct cmd *cmd, struct cmd_ctx *ctx)
 {
-	return (cmd->entry->exec(cmd->data, ctx));
+	cmd->entry->exec(cmd->data, ctx);
 }
 
 void

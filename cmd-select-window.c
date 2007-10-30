@@ -1,4 +1,4 @@
-/* $Id: cmd-select-window.c,v 1.6 2007-10-26 16:57:32 nicm Exp $ */
+/* $Id: cmd-select-window.c,v 1.7 2007-10-30 10:59:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -115,7 +115,7 @@ cmd_select_window_exec(void *ptr, struct cmd_ctx *ctx)
 	case 1:
 		break;
 	default:
-		ctx->error(ctx, "no window %u", data->idx);
+		ctx->error(ctx, "no window %d", data->idx);
 		break;
 	}
 	

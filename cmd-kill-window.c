@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-window.c,v 1.3 2007-10-26 16:57:32 nicm Exp $ */
+/* $Id: cmd-kill-window.c,v 1.4 2007-10-30 10:59:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -102,7 +102,7 @@ cmd_kill_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (data->idx == -1)
 		wl = s->curw;
 	else if ((wl = winlink_find_by_index(&s->windows, data->idx)) == NULL) {
-		ctx->error(ctx, "no window %u", data->idx);
+		ctx->error(ctx, "no window %d", data->idx);
 		return;
 	}
 

@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.33 2007-10-26 16:57:32 nicm Exp $
+# $Id: Makefile,v 1.34 2007-10-30 10:59:42 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean
@@ -79,6 +79,9 @@ ${PROG}:	${OBJS}
 
 depend:
 		mkdep ${CFLAGS} ${INCDIRS} ${SRCS:M*.c}
+
+lint:
+		lint -cehvx ${CFLAGS:M-D*} ${SRCS:M*.c}
 
 clean:
 		rm -f ${CLEANFILES}

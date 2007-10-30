@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.7 2007-10-26 12:29:07 nicm Exp $ */
+/* $Id: status.c,v 1.8 2007-10-30 10:59:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,7 @@ status_write(struct client *c)
 		if (session_hasbell(c->session, wl))
 			flag = '!';
 		status_print(
-		    b, &size, "%u:%s%c ", wl->idx, wl->window->name, flag);
+		    b, &size, "%d:%s%c ", wl->idx, wl->window->name, flag);
 
 		if (size == 0)
 			break;
