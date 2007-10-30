@@ -53,8 +53,6 @@
 - man page
 - commands:
 	rename sessions
-	swap windows
-		same as link but swap windows if tgt exists else error
 	kill session (not bound by default)
 - fix most(1) problems after scrolling
 - check for some reqd terminfo caps on startup

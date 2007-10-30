@@ -1,3 +1,7 @@
+30 October 2007
+
+* (nicm) swap-window command. Same as link-window but swaps windows.
+
 26 October 2007
 
 * (nicm) Saving scroll region on \e7 causes problems with ncmpc so I guess
@@ -178,5 +182,5 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.55 2007-10-26 17:15:50 nicm Exp $
+$Id: CHANGES,v 1.56 2007-10-30 11:10:33 nicm Exp $
 
