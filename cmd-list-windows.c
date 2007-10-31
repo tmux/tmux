@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.5 2007-10-30 10:59:43 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.6 2007-10-31 14:26:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,8 +30,8 @@
 void	cmd_list_windows_exec(void *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_windows_entry = {
-	"list-windows", "lsw", 0,
-	NULL,
+	"list-windows", "lsw", NULL,
+	0,
 	NULL,
 	cmd_list_windows_exec,
 	NULL,

@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.24 2007-10-26 12:29:07 nicm Exp $ */
+/* $Id: window.c,v 1.25 2007-10-31 14:26:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,11 @@
 #ifdef USE_LIBUTIL_H
 #include <libutil.h>
 #else
+#ifdef USE_PTY_H
+#include <pty.h>
+#else
 #include <util.h>
+#endif
 #endif
 
 #include "tmux.h"
@@ -153,7 +157,7 @@ winlink_previous(struct winlinks *wwl, struct winlink *wl)
 
 struct window *
 window_create(
-    const char *name, const char *cmd, const char **environ, u_int sx, u_int sy)
+    const char *name, const char *cmd, const char **env, u_int sx, u_int sy)
 {
 	struct window	*w;
 	struct winsize	 ws;
@@ -169,7 +173,7 @@ window_create(
 	case -1:
 		return (NULL);
 	case 0:
-		for (entry = environ; *entry != NULL; entry++) {
+		for (entry = env; *entry != NULL; entry++) {
 			if (putenv(*entry) != 0)
 				fatal("putenv failed");
 		}

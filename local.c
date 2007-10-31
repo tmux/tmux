@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.16 2007-10-24 11:45:25 nicm Exp $ */
+/* $Id: local.c,v 1.17 2007-10-31 14:26:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,9 +24,10 @@
 #include <stdlib.h>
 #include <string.h>
 #define TTYDEFCHARS
+/* glibc requires unistd.h before termios.h for TTYDEFCHARS. */
+#include <unistd.h>	
 #include <termios.h>
 #include <term.h>
-#include <unistd.h>
 
 #include "tmux.h"
 

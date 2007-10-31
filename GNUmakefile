@@ -1,19 +1,15 @@
-# $Id: Makefile,v 1.36 2007-10-31 14:26:26 nicm Exp $
+# $Id: GNUmakefile,v 1.1 2007-10-31 14:26:26 nicm Exp $
 
-.SUFFIXES: .c .o .y .h
 .PHONY: clean
 
 PROG= tmux
-VERSION= 0.1
+VERSION= 1.5
 
-OS!= uname
-REL!= uname -r
-DATE!= date +%Y%m%d-%H%M
+DATE= $(shell date +%Y%m%d-%H%M)
 
-# This must be empty as OpenBSD includes it in default CFLAGS.
-DEBUG=
+DEBUG= 1
 
-META?= \002 # C-b
+META?= \002
 
 SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       xmalloc.c xmalloc-debug.c input.c input-keys.c screen.c window.c \
@@ -26,63 +22,58 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       cmd-refresh-session.c cmd-kill-window.c cmd-list-clients.c \
       cmd-has-session.c cmd-link-window.c cmd-unlink-window.c cmd-swap-window.c
 
-CC?= cc
-INCDIRS+= -I. -I- -I/usr/local/include
+CC?= gcc
+INCDIRS+= -I. -I-
 CFLAGS+= -DBUILD="\"$(VERSION) ($(DATE))\"" -DMETA="'${META}'"
-.ifdef PROFILE
-# Don't use ccache
-CC= /usr/bin/gcc
-CFLAGS+= -pg -DPROFILE -O0
-.endif
-.ifdef DEBUG
+ifdef DEBUG
 CFLAGS+= -g -ggdb -DDEBUG
 LDFLAGS+= -Wl,-E
-.endif
-#CFLAGS+= -pedantic -std=c99
+endif
 CFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wcast-qual -Wsign-compare
 CFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
 
+LDFLAGS+= 
+LIBS+= -lncurses
+
 PREFIX?= /usr/local
 INSTALLBIN= install -g bin -o root -m 555
 INSTALLMAN= install -g bin -o root -m 444
 
-LDFLAGS+= -L/usr/local/lib
-.ifdef PROFILE
-LDFLAGS+= -pg
-.endif
-LIBS+= -lutil -lncurses
+ifeq ($(shell uname),Darwin)
+INCDIRS+= -I/usr/local/include/openssl -Icompat
+SRCS+= compat/strtonum.c
+CFLAGS+= -DNO_STRTONUM -DNO_SETRESUID -DNO_SETRESGID -DNO_SETPROCTITLE
+endif
 
-# FreeBSD
-.if ${OS} == "FreeBSD"
-CFLAGS+= -DUSE_LIBUTIL_H
-.endif
+ifeq ($(shell uname),Linux)
+INCDIRS+= -I/usr/include/openssl -Icompat
+SRCS+= compat/strlcpy.c compat/strlcat.c compat/strtonum.c
+CFLAGS+= $(shell getconf LFS_CFLAGS) -D_GNU_SOURCE \
+         -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM -DNO_SETPROCTITLE \
+         -DNO_QUEUE_H -DNO_TREE_H -DUSE_PTY_H
+LDFLAGS+= -lresolv -lutil
+# Required for LLONG_MAX and friends
+CFLAGS+= -std=c99
+endif
 
-OBJS= ${SRCS:S/.c/.o/:S/.y/.o/}
+OBJS= $(patsubst %.c,%.o,$(SRCS))
 
-CLEANFILES= ${PROG} *.o .depend *~ ${PROG}.core *.log
+CLEANFILES= $(PROG) y.tab.c y.tab.h $(OBJS) .depend
 
-.c.o:
-		${CC} ${CFLAGS} ${INCDIRS} -c ${.IMPSRC} -o ${.TARGET}
+CPPFLAGS+= $(INCDIRS)
 
-.y.o:
-		${YACC} ${.IMPSRC}
-		${CC} ${CFLAGS} ${INCDIRS} -c y.tab.c -o ${.TARGET}
+all: $(PROG)
 
-all:		${PROG}
+$(PROG): $(OBJS)
+	$(CC) $(LDFLAGS) $(LIBS) -o $@ $+
 
-${PROG}:	${OBJS}
-		${CC} ${LDFLAGS} -o ${PROG} ${LIBS} ${OBJS}
+depend: $(SRCS)
+	$(CC) $(CFLAGS) $(INCDIRS) -MM $(SRCS) > .depend
 
-depend:
-		mkdep ${CFLAGS} ${INCDIRS} ${SRCS:M*.c}
-
-lint:
-		lint -cehvx ${CFLAGS:M-D*} ${SRCS:M*.c}
+install:
+	$(INSTALLBIN) $(PROG) $(DESTDIR)$(PREFIX)/bin/$(PROG)
 
 clean:
-		rm -f ${CLEANFILES}
-
-install:	all
-		${INSTALLBIN} ${PROG} ${DESTDIR}${PREFIX}/bin/${PROG}
+	rm -f $(CLEANFILES)

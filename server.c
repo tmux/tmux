@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.36 2007-10-30 10:59:43 nicm Exp $ */
+/* $Id: server.c,v 1.37 2007-10-31 14:26:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -77,7 +77,9 @@ server_start(char *path)
 #endif
 
 	logfile("server");
+#ifndef NO_SETPROCTITLE
 	setproctitle("server (%s)", path);
+#endif
 	log_debug("server started, pid %ld", (long) getpid());
 
 	memset(&sa, 0, sizeof sa);
