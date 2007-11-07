@@ -186,5 +186,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.57 2007-10-31 14:26:26 nicm Exp $
-
+$Id: CHANGES,v 1.58 2007-11-07 19:41:17 nicm Exp $

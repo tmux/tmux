@@ -1,4 +1,4 @@
-/* $Id: buffer-poll.c,v 1.1.1.1 2007-07-09 19:04:12 nicm Exp $ */
+/* $Id: buffer-poll.c,v 1.2 2007-11-07 19:41:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -40,18 +40,16 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 		if (n == -1) {
 			if (errno != EINTR && errno != EAGAIN)
 				return (-1);
-			return (0);
-		}
-		buffer_add(in, n);
+		} else
+			buffer_add(in, n);
 	}
 	if (BUFFER_USED(out) > 0 && pfd->revents & POLLOUT) {
 		n = write(pfd->fd, BUFFER_OUT(out), BUFFER_USED(out));
 		if (n == -1) {
 			if (errno != EINTR && errno != EAGAIN)
 				return (-1);
-			return (0);
-		}
-		buffer_remove(out, n);
+		} else
+			buffer_remove(out, n);
 	}
 	return (0);
 }
