@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.19 2007-10-31 14:26:26 nicm Exp $ */
+/* $Id: client.c,v 1.20 2007-11-08 10:39:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -136,14 +136,14 @@ client_main(struct client_ctx *cctx)
 	char		*error;
 	int		 timeout;
 
+	siginit();
+	if ((cctx->loc_fd = local_init(&cctx->loc_in, &cctx->loc_out)) == -1)
+		return (1);
+
 	logfile("client");
 #ifndef NO_SETPROCTITLE
 	setproctitle("client");
 #endif
-
-	siginit();
-	if ((cctx->loc_fd = local_init(&cctx->loc_in, &cctx->loc_out)) == -1)
-		return (1);
 
 	error = NULL;
 	timeout = INFTIM;

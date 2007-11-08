@@ -1,3 +1,7 @@
+08 November 2007
+
+* (nicm) Check for required terminal capabilities on start.
+
 31 October 2007
 
 * (nicm) Linux port.
@@ -186,4 +190,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.58 2007-11-07 19:41:17 nicm Exp $
+$Id: CHANGES,v 1.59 2007-11-08 10:39:52 nicm Exp $

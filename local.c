@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.17 2007-10-31 14:26:26 nicm Exp $ */
+/* $Id: local.c,v 1.18 2007-11-08 10:39:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -213,10 +213,32 @@ u_char		 local_colr;
 int
 local_init(struct buffer **in, struct buffer **out)
 {
-	char		 *tty;
-	int		  mode;
-	struct termios	  tio;
-	struct local_key *lk;
+	char		       *tty;
+	int		  	mode, error;
+	struct termios	  	tio;
+	struct local_key       *lk;
+	u_int			i, j;
+	static const char *const reqd[] = {
+		"carriage_return",
+		"change_scroll_region",
+		"clear_screen",
+		"clr_bol",
+		"clr_eol",
+		"cursor_address",
+		"cursor_down",
+		"enter_ca_mode",
+		"exit_ca_mode",
+		"parm_dch",
+		"parm_delete_line",
+		"parm_down_cursor",
+		"parm_ich",
+		"parm_insert_line",
+		"parm_left_cursor",
+		"parm_right_cursor",
+		"parm_up_cursor",
+		"scroll_reverse",
+		NULL
+	};
 
 	if ((tty = ttyname(STDOUT_FILENO)) == NULL)
 		fatal("ttyname failed");
@@ -227,10 +249,56 @@ local_init(struct buffer **in, struct buffer **out)
 	if (fcntl(local_fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
 
+	if (setupterm(NULL, STDOUT_FILENO, &error) != OK) {
+		switch (error) {
+		case 1:
+			log_warnx("hardcopy terminal cannot be used");
+			return (-1);
+		case 0:
+			log_warnx("terminal type not found or unsuitable");
+			return (-1);
+		case -1:
+			log_warnx("couldn't find terminfo database");
+			return (-1);
+		}
+	}
+	for (i = 0; reqd[i] != NULL; i++) {
+		error = 0;
+
+		for (j = 0; strfnames[j] != NULL; j++) {
+			if (strcmp(strfnames[j], reqd[i]) == 0) {
+				if (strcodes[j] == NULL)
+					error = -1;
+				break;
+			}
+		}
+		if (error != -1) {
+			for (j = 0; numfnames[j] != NULL; j++) {
+				if (strcmp(numfnames[j], reqd[i]) == 0) {
+					if (numcodes[j] == NULL)
+						error = -1;
+					break;
+				}
+			}
+		}
+		if (error != -1) {
+			for (j = 0; boolfnames[j] != NULL; j++) {
+				if (strcmp(boolfnames[j], reqd[i]) == 0) {
+					if (boolcodes[j] == NULL)
+						error = -1;
+					break;
+				}
+			}
+		}
+
+		if (error == -1) {
+			log_warnx("required capability missing: %s", reqd[i]);
+			return (-1);
+		}
+	}
+	
 	*in = local_in = buffer_create(BUFSIZ);
 	*out = local_out = buffer_create(BUFSIZ);
-
-	setupterm(NULL, STDOUT_FILENO, NULL);
 
 	if (tcgetattr(local_fd, &local_tio) != 0)
 		fatal("tcgetattr failed");
