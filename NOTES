@@ -75,8 +75,9 @@ tmux is a "terminal multiplexer", it enables a number of terminals (or windows)
 to be accessed and controlled from a single terminal. tmux is intended to be a
 simple, modern, BSD-licensed alternative to programs such as GNU screen.
 
-This 0.1 release should be considered a beta release. It runs only on OpenBSD,
-has many missing features and is expected to have a good number of bugs.
+This 0.1 release should be considered a beta release. It runs on OpenBSD,
+FreeBSD and Linux, but has many missing features and is expected to have a good
+number of bugs.
 
 tmux consists of a server part and multiple clients. The server is created
 when required and runs continuously unless killed by the user. Clients access
@@ -112,16 +113,12 @@ And major missing features:
 A more extensive, but rough, todo list is included in the TODO file.
 
 tmux also depends on several features of the client terminal (TERM), if these
-are missing it may not behave correctly. It is possible to emulate some of
-these but tmux does not do this at present. Known working are TERM=screen (tmux
-in screen), xterm, xterm-color and rxvt.
+are missing it may refuse to run, or not behave correctly. It is possible to
+emulate some of these but tmux does not do this at present. Known working are
+TERM=screen (tmux in screen), xterm, xterm-color and rxvt.
 
 For debugging, running tmux with -v or -vv will generate server and client log
-files in the current directory. In particular, client log files will contain
-messages such as "cursor_down not supported", if your TERM type is missing
-features expected by tmux. If these are present, please send a note of your TERM
-and the log file to the email address below - it will help to prioritise
-features that should be avoided or emulated, if possible.
+files in the current directory.
 
 Bug reports, feature suggestions and especially code contributions (or offers
 to work on code) are most welcome. Please email:
@@ -133,4 +130,4 @@ freenode or efnet IRC. I sometimes ignore private msgs from people I don't
 know, so please mention tmux initially (rather than just saying "hi" ;-).
 
 -- Nicholas Marriott <nicm@users.sf.net>
-$Id: NOTES,v 1.22 2007-11-09 15:23:28 nicm Exp $
+$Id: NOTES,v 1.23 2007-11-09 16:22:03 nicm Exp $
