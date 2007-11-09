@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.3 2007-11-09 16:04:29 nicm Exp $
+.\" $Id: tmux.1,v 1.4 2007-11-09 16:08:08 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -90,97 +90,97 @@ supports the following commands:
 .It Xo Ic attach-session
 .Op Fl d
 .Xc
-.D1 (Alias: Ic attach )
+.D1 (alias: Ic attach )
 .It Xo Ic bind-key
 .Ar key Ar command Op Ar arguments
 .Xc
-.D1 (Alias: Ic bind )
+.D1 (alias: Ic bind )
 .It Xo Ic detach-session
 .Op Fl a
 .Xc
-.D1 (Alias: Ic detach )
+.D1 (alias: Ic detach )
 .It Xo Ic has-session 
 .Xc
-.D1 (Alias: Ic has )
+.D1 (alias: Ic has )
 .It Xo Ic kill-window 
 .Op Fl i Ar index
 .Xc
-.D1 (Alias: Ic killw )
+.D1 (alias: Ic killw )
 .It Xo Ic last-window 
 .Xc
-.D1 (Alias: Ic last )
+.D1 (alias: Ic last )
 .It Xo Ic link-window 
 .Op Fl i Ar index
 .Ar name Ar index
 .Xc
-.D1 (Alias: Ic linkw )
+.D1 (alias: Ic linkw )
 .It Xo Ic list-clients 
 .Xc
-.D1 (Alias: Ic lsc )
+.D1 (alias: Ic lsc )
 .It Xo Ic list-keys 
 .Xc
-.D1 (Alias: Ic lsk )
+.D1 (alias: Ic lsk )
 .It Xo Ic list-sessions 
 .Xc
-.D1 (Alias: Ic ls )
+.D1 (alias: Ic ls )
 .It Xo Ic list-windows
 .Xc
-.D1 (Alias: Ic lsw )
+.D1 (alias: Ic lsw )
 .It Xo Ic new-session
 .Op Fl d
 .Op Fl s Ar session-name
 .Op Fl n Ar window-name
 .Op Ar command
 .Xc
-.D1 (Alias: Ic new )
+.D1 (alias: Ic new )
 .It Xo Ic new-window 
 .Op Fl d
 .Op Fl i Ar index
 .Op Fl n Ar name
 .Op Ar command
 .Xc
-.D1 (Alias: Ic neww )
+.D1 (alias: Ic neww )
 .It Xo Ic next-window 
 .Xc
-.D1 (Alias: Ic next )
+.D1 (alias: Ic next )
 .It Xo Ic previous-window 
 .Xc
-.D1 (Alias: Ic prev )
+.D1 (alias: Ic prev )
 .It Xo Ic refresh-session 
 .Op Fl a
 .Xc
-.D1 (Alias: Ic refresh )
+.D1 (alias: Ic refresh )
 .It Xo Ic rename-session new-name
 .Xc
-.D1 (Alias: Ic rename )
+.D1 (alias: Ic rename )
 .It Xo Ic rename-window
 .Op Fl i Ar index
 .Ar new-name
 .Xc
-.D1 (Alias: Ic renamew )
+.D1 (alias: Ic renamew )
 .It Xo Ic select-window 
 .Ar index
 .Xc
-.D1 (Alias: Ic selectw )
+.D1 (alias: Ic selectw )
 .It Xo Ic send-prefix
 .Xc
 .It Xo Ic set-option  )
 .Ar option Ar value
 .Xc
-.D1 (Alias: Ic set )
+.D1 (alias: Ic set )
 .It Xo Ic swap-window 
 .Op Fl i Ar index
 .Ar name Ar index
 .Xc
-.D1 (Alias: Ic swapw )
+.D1 (alias: Ic swapw )
 .It Xo Ic unbind-key
 .Ar key
 .Xc
-.D1 (Alias: Ic unbind )
+.D1 (alias: Ic unbind )
 .It Xo Ic unlink-window 
 .Op Fl i Ar index
 .Xc
-.D1 (Alias: Ic unlinkw )
+.D1 (alias: Ic unlinkw )
 .El
 .Sh SEE ALSO
 .Xr pty 4
