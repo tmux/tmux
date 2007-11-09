@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.4 2007-11-09 16:08:08 nicm Exp $
+.\" $Id: tmux.1,v 1.5 2007-11-09 16:18:08 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -80,9 +80,42 @@ is the pid of the server or client process.
 .It Ar command Op Ar arguments
 This specifies one of a set of commands used to control
 .Nm ,
-and described in the following section.
+and described in the following sections.
 .Pp
 .El
+.Sh KEY BINDINGS
+.Nm
+may be controlled from an attached client by using a key combination of a
+prefix, 
+.Ql ^A
+(ctrl-A) by default, and a command key.
+.Pp
+Some of the default key bindings include:
+.Pp
+.Bl -tag -width Ds -compact
+.It Ql d
+Detach current client.
+.It Ql c
+Create new window.
+.It Ql n
+Change to next window in the current session.
+.It Ql p
+Change to previous window in the current session.
+.It Ql l
+Move to last (previously selected) window in the current session.
+.It Ql \&?
+List current key bindings.
+.El
+.Pp
+A complete list may be obtained with the
+.Ic list-keys
+command (bound to
+.Ql \&? 
+by default). Key bindings may be changed with the
+.Ic bind-key
+and
+.Ic unbind-key
+commands.
 .Sh COMMANDS
 .Nm
 supports the following commands:
