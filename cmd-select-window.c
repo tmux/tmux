@@ -1,4 +1,4 @@
-/* $Id: cmd-select-window.c,v 1.7 2007-10-30 10:59:43 nicm Exp $ */
+/* $Id: cmd-select-window.c,v 1.8 2007-11-09 16:04:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,7 +38,7 @@ struct cmd_select_window_data {
 };
 
 const struct cmd_entry cmd_select_window_entry = {
-	"select-window", "selectw", "[command]",
+	"select-window", "selectw", "index",
 	0,
 	cmd_select_window_parse,
 	cmd_select_window_exec, 
