@@ -1,3 +1,7 @@
+09 November 2007
+
+* (nicm) rename-session command.
+
 08 November 2007
 
 * (nicm) Check for required terminal capabilities on start.
@@ -190,4 +194,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.59 2007-11-08 10:39:52 nicm Exp $
+$Id: CHANGES,v 1.60 2007-11-09 11:02:01 nicm Exp $
