@@ -1,5 +1,6 @@
 09 November 2007
 
+* (nicm) Support tab (\011).
 * (nicm) Initial man page outline.
 * (nicm) -V to show version.
 * (nicm) rename-session command.
@@ -196,4 +197,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.62 2007-11-09 15:23:28 nicm Exp $
+$Id: CHANGES,v 1.63 2007-11-09 17:06:01 nicm Exp $

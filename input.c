@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.29 2007-10-26 17:15:50 nicm Exp $ */
+/* $Id: input.c,v 1.30 2007-11-09 17:06:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -405,6 +405,15 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 		if (s->cx > 0)
 			s->cx--;
 		break;
+	case '\011': 	/* TAB */
+		s->cx = ((s->cx / 8) * 8) + 8;
+		if (s->cx > s->sx) {
+			s->cx = 0;
+			screen_cursor_down_scroll(s);
+		}
+		input_store_two(
+		    ictx->b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);	
+		return;
 	default:
 		log_debug("unknown c0: %hhu", ch);
 		return;
