@@ -1,5 +1,6 @@
 09 November 2007
 
+* (nicm) -V to show version.
 * (nicm) rename-session command.
 
 08 November 2007
@@ -194,4 +195,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.60 2007-11-09 11:02:01 nicm Exp $
+$Id: CHANGES,v 1.61 2007-11-09 11:03:34 nicm Exp $
