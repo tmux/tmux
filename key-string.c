@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.3 2007-10-19 11:10:35 nicm Exp $ */
+/* $Id: key-string.c,v 1.4 2007-11-09 17:09:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -174,7 +174,7 @@ struct {
 	{ "SUSPEND",	KEYC_SUSPEND },
 	{ "UNDO",	KEYC_UNDO },
 	{ "UP",		KEYC_UP },
-	{ "^@",		0 },
+	{ "^ ",		0 },
 	{ "^A", 	1 },
 	{ "^B",		2 },
 	{ "^C",		3 },

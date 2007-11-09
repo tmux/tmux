@@ -1,5 +1,6 @@
 09 November 2007
 
+* (nicm) C-space is now "^ " not "^@".
 * (nicm) Support tab (\011).
 * (nicm) Initial man page outline.
 * (nicm) -V to show version.
@@ -197,4 +198,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.63 2007-11-09 17:06:01 nicm Exp $
+$Id: CHANGES,v 1.64 2007-11-09 17:09:34 nicm Exp $
