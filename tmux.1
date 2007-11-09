@@ -1,0 +1,91 @@
+.\" $Id: tmux.1,v 1.1 2007-11-09 15:23:28 nicm Exp $
+.\"
+.\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
+.\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+.\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd November 9, 2007
+.Dt TMUX 1
+.Os
+.Sh NAME
+.Nm tmux
+.Nd "terminal multiplexer"
+.Sh SYNOPSIS
+.Nm tmux
+.Bk -words
+.Op Fl vV
+.Op Fl S Ar socket-path
+.Op Fl s Ar session-name
+.Ar command
+.Op Ar arguments
+.Ek
+.Sh DESCRIPTION
+.Nm
+is a terminal multiplexer; it enables a number of terminals (or windows) to be
+accessed and controlled from a single terminal.
+.Pp
+.Nm
+is a server-client system. A server is created automatically when necessary
+and holds a number of
+.Em sessions ,
+each of which may have a number of
+.Em windows
+connected to it.
+A server is controlled by issuing commands with the
+.Nm
+binary which communicates using a socket in
+.Pa /tmp .
+.Pp
+The options are as follows:
+.Bl -tag -width "XXXXXXXXXXXX"
+.It Fl S Ar socket-path
+This specifies an alternative path to the server socket.
+The default is
+.Pa /tmp/tmux-UID ,
+where
+.Em UID
+is the uid of the user who invoked
+.Nm .
+.It Fl s Ar session-name
+Apply command to the session named
+.Ar session-name .
+This option does not apply to all commands.
+If it is omitted and
+.Nm
+is invoked from a running
+.Nm
+client, the session the containing client is connected to will be used;
+otherwise, if only one session exists, it is chosen, or if multiple sessions
+exist, an error is generated.
+.It Fl v
+Request verbose logging.
+This option may be specified multiple times for increasing verbosity.
+Log messages will be saved into
+.Pa tmux-client-PID.log
+and
+.Pa tmux-server-PID.log
+files in the current directory, where
+.Em PID
+is the pid of the server or client process.
+.It Ar command Op Ar arguments
+This specifies one of a set of commands used to control
+.Nm ,
+and described in the following section.
+.Pp
+.El
+.Sh COMMANDS
+TBC
+.Sh SEE ALSO
+.Xr pty 4
+.Sh AUTHORS
+.An Nicholas Marriott Aq nicm@users.sourceforge.net

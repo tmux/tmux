@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.37 2007-11-09 11:02:01 nicm Exp $
+# $Id: Makefile,v 1.38 2007-11-09 15:23:28 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean
@@ -87,3 +87,4 @@ clean:
 
 install:	all
 		${INSTALLBIN} ${PROG} ${DESTDIR}${PREFIX}/bin/${PROG}
+		${INSTALLMAN} ${PROG}.1 ${DESTDIR}${PREFIX}/man/man1/

@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.2 2007-11-09 11:02:01 nicm Exp $
+# $Id: GNUmakefile,v 1.3 2007-11-09 15:23:28 nicm Exp $
 
 .PHONY: clean
 
@@ -75,6 +75,7 @@ depend: $(SRCS)
 
 install:
 	$(INSTALLBIN) $(PROG) $(DESTDIR)$(PREFIX)/bin/$(PROG)
+	$(INSTALLMAN) $(PROG).1 $(DESTDIR)$(PREFIX)/man/man1/
 
 clean:
 	rm -f $(CLEANFILES)
