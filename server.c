@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.37 2007-10-31 14:26:26 nicm Exp $ */
+/* $Id: server.c,v 1.38 2007-11-12 15:12:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,7 +43,7 @@
 /* Client list. */
 struct clients	 clients;
 
-int		 server_main(char *, int);
+int		 server_main(const char *, int);
 void		 server_fill_windows(struct pollfd **);
 void		 server_handle_windows(struct pollfd **);
 void		 server_fill_clients(struct pollfd **);
@@ -55,7 +55,7 @@ void	 	 server_lost_window(struct window *);
 
 /* Fork new server. */
 int
-server_start(char *path)
+server_start(const char *path)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
@@ -122,7 +122,7 @@ server_start(char *path)
 
 /* Main server loop. */
 int
-server_main(char *srv_path, int srv_fd)
+server_main(const char *srv_path, int srv_fd)
 {
 	struct pollfd	*pfds, *pfd;
 	int		 nfds;

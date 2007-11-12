@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.39 2007-11-09 11:03:35 nicm Exp $ */
+/* $Id: tmux.c,v 1.40 2007-11-12 15:12:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,6 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include <err.h>
 #include <errno.h>
 #include <paths.h>
 #include <poll.h>
@@ -174,7 +173,7 @@ main(int argc, char **argv)
 	struct hdr	 	 hdr;
 	const char		*shell;
 	struct passwd		*pw;
-	char			*path, *cause, *name;
+	char			*path, rpath[MAXPATHLEN], *cause, *name;
 	int	 		 n, opt;
 
 	path = name = NULL;
@@ -209,6 +208,16 @@ main(int argc, char **argv)
 
 	bell_action = BELL_ANY;
 
+	if (path == NULL) {
+		xasprintf(&path,
+		    "%s/%s-%lu", _PATH_TMP, __progname, (u_long) getuid());
+	}
+	if (realpath(path, rpath) == NULL) {
+		log_warn("%s", path);
+		exit(1);
+	}
+	xfree(path);
+
 	shell = getenv("SHELL");
 	if (shell == NULL || *shell == '\0') {
 		pw = getpwuid(getuid());
@@ -231,7 +240,7 @@ main(int argc, char **argv)
 	if (!(cmd->entry->flags & CMD_NOSESSION) ||
 	    (cmd->entry->flags & CMD_CANTNEST))
 		client_fill_session(&data);
-	if (client_init(path, &cctx, cmd->entry->flags & CMD_STARTSERVER) != 0)
+	if (client_init(rpath, &cctx, cmd->entry->flags & CMD_STARTSERVER) != 0)
 		exit(1);
 	b = buffer_create(BUFSIZ);
 	cmd_send_string(b, name);
@@ -242,8 +251,6 @@ main(int argc, char **argv)
 	    MSG_COMMAND, &data, sizeof data, BUFFER_OUT(b), BUFFER_USED(b));
 	buffer_destroy(b);
 
-	if (path != NULL)
-		xfree(path);
 	if (name != NULL)
 		xfree(name);
 
