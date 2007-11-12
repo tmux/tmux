@@ -1,5 +1,6 @@
 12 November 2007
 
+* (nicm) Fill in the rest of the man page.
 * (nicm) kill-session command.
 
 09 November 2007
@@ -202,4 +203,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.65 2007-11-12 14:21:40 nicm Exp $
+$Id: CHANGES,v 1.66 2007-11-12 16:09:08 nicm Exp $

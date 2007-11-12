@@ -48,11 +48,12 @@
   rather than ignored
 - save/restore (DECSC/DECRC) are ugly. maybe a struct screen_attr and memcpy
 - force maximum terminal size (centred?)
+- per-session toolbar state, other options
+- commands:
+	kill server
 
 -- For 0.1 --------------------------------------------------------------------
 - man page
-- commands:
-	kill session (not bound by default)
 - fix most(1) problems after scrolling
 - fix mutt problems with redraw (mutt's) status line when reading mail
 

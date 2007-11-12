@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.7 2007-11-12 14:21:40 nicm Exp $
+.\" $Id: tmux.1,v 1.8 2007-11-12 16:09:08 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -40,7 +40,7 @@ necessary and holds a number of
 .Em sessions ,
 each of which may have a number of
 .Em windows
-connected to it. Any number of
+linked to it. Any number of
 .Em clients
 may connect to a session, or the server
 may be controlled by issuing commands with
@@ -126,43 +126,77 @@ supports the following commands:
 .Op Fl d
 .Xc
 .D1 (alias: Ic attach )
+Create a new client in the current terminal and attach it to a session.
+If
+.Fl d
+is specified, any other clients attached to the session are detached.
 .It Xo Ic bind-key
 .Ar key Ar command Op Ar arguments
 .Xc
 .D1 (alias: Ic bind )
+Bind key
+.Ar key
+to
+.Ar command .
 .It Xo Ic detach-session
 .Op Fl a
 .Xc
 .D1 (alias: Ic detach )
+Detach the current client if bound to a key; otherwise, if
+.Fl a
+is given, detach all clietns attached to the session.
 .It Xo Ic has-session 
 .Xc
 .D1 (alias: Ic has )
+Report an error and exit with 1 if the specified session does not exist. If it
+does exist, exit with 0.
 .It Xo Ic kill-session
 .Xc
+Destroy the given session, closing any windows linked to it and no other
+sessions, and detaching all clients attached to it.
 .It Xo Ic kill-window 
 .Op Fl i Ar index
 .Xc
 .D1 (alias: Ic killw )
+Kill the current window or the window at
+.Ar index ,
+removing it from any sessions to which it is linked.
 .It Xo Ic last-window 
 .Xc
 .D1 (alias: Ic last )
+Select the last (previously selected) window.
 .It Xo Ic link-window 
-.Op Fl i Ar index
-.Ar name Ar index
+.Op Fl i Ar destination-index
+.Ar source-name Ar source-index
 .Xc
 .D1 (alias: Ic linkw )
+Link the window at
+.Ar source-index
+in session
+.Ar source-name
+into the specified session. If
+.Ar destination-index
+is specified and no window exists with that index, the window is linked at
+that index.
+If a window already exists at
+.Ar destination-index ,
+an error is generated.
 .It Xo Ic list-clients 
 .Xc
 .D1 (alias: Ic lsc )
+List all clients attached to the server.
 .It Xo Ic list-keys 
 .Xc
 .D1 (alias: Ic lsk )
+List all key bindings.
 .It Xo Ic list-sessions 
 .Xc
 .D1 (alias: Ic ls )
+List all sessions managed by the server.
 .It Xo Ic list-windows
 .Xc
 .D1 (alias: Ic lsw )
+List all windows.
 .It Xo Ic new-session
 .Op Fl d
 .Op Fl s Ar session-name
@@ -170,6 +204,15 @@ supports the following commands:
 .Op Ar command
 .Xc
 .D1 (alias: Ic new )
+Create a new session with name
+.Ar session-name .
+The new session is attached to the current terminal unless
+.Fl d
+is given.
+.Ar window-name
+and
+.Ar command
+are the name of and command to execute in the initial window.
 .It Xo Ic new-window 
 .Op Fl d
 .Op Fl i Ar index
@@ -177,49 +220,131 @@ supports the following commands:
 .Op Ar command
 .Xc
 .D1 (alias: Ic neww )
-.It Xo Ic next-window 
+Create a new window. If
+.Fl d
+is given, the session does not make the new window the current window.
+.Ar index
+and
+.Ar name
+are the index of the new window in the session and the name of the new window.
+.Ar command
+is the command to execute.
+If
+.Ar index
+is not specified, the first free index is used.
+If
+.Ar command
+is not specified, the default command is used.
+.It Xo Ic next-window
 .Xc
 .D1 (alias: Ic next )
+Move to the next window in the session.
 .It Xo Ic previous-window 
 .Xc
 .D1 (alias: Ic prev )
+Move to the previous window in the session.
 .It Xo Ic refresh-session 
 .Op Fl a
 .Xc
 .D1 (alias: Ic refresh )
+Refresh the display of clients attached to a session.
+If bound to a key, only the current client is refreshed; otherwise if
+.Fl a
+is given, all clients attached to the session is refreshed.
 .It Xo Ic rename-session
 .Ar new-name
 .Xc
 .D1 (alias: Ic rename )
+Rename the session to
+.Ar new-name .
 .It Xo Ic rename-window
 .Op Fl i Ar index
 .Ar new-name
 .Xc
 .D1 (alias: Ic renamew )
+Rename the current window, or the window at
+.Ar index
+if specifed, to
+.Ar new-name .
 .It Xo Ic select-window 
 .Ar index
 .Xc
 .D1 (alias: Ic selectw )
+Select the window at
+.Ar index .
 .It Xo Ic send-prefix
 .Xc
+Send the prefix key to a window as if it was pressed.
+This is ignored unless bound to a key.
 .It Xo Ic set-option  )
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic set )
-prefix,status,status-fg,status-bg,bell-action,default-command
+Set an option. Possible options are:
+.Bl -tag -width Ds
+.It Ic prefix Ar key
+Set the current prefix key.
+.It Xo Ic status 
+.Op Ar on | Ar off
+.Xc
+Show or hide the status line.
+.It Ic status-fg Ar colour
+Set status line foreground colour, where
+.Ar colour
+is one of:
+.Ar black ,
+.Ar red ,
+.Ar green ,
+.Ar yellow ,
+.Ar blue ,
+.Ar magenta ,
+.Ar cyan ,
+.Ar white or
+.Ar default .
+.It Ic status-bg Ar colour
+Set status line backgroun colour.
+.It Xo Ic bell-action
+.Op Ar any | Ar none | Ar current
+.Xc
+Set action on window bell.
+.Ar any
+means a bell in any window linked to a session causes a bell in the current
+window of that session,
+.Ar none
+means all bells are ignored and
+.Ar current
+means only bell in windows other than the current window are ignored.
+.It Ic default-command Ar command
+Sets the command used for new windows (if not specified when the window is
+created) to
+.Ar command .
+The default is
+.Dq exec $SHELL .
+.El
 .It Xo Ic swap-window 
-.Op Fl i Ar index
-.Ar name Ar index
+.Op Fl i Ar destination-index
+.Ar source-name Ar source-index
 .Xc
 .D1 (alias: Ic swapw )
+This is similar to
+.Ic link-window ,
+except the source and destination windows are swapped.
+It is an error if no window exists at
+.Ar destination-index .
 .It Xo Ic unbind-key
 .Ar key
 .Xc
 .D1 (alias: Ic unbind )
+Unbind the key bound to
+.Ar key .
 .It Xo Ic unlink-window 
 .Op Fl i Ar index
 .Xc
 .D1 (alias: Ic unlinkw )
+Unlink the window at
+.Ar index .
+A window may be unlinked only if it is linked to multiple sessions - windows may
+not be linked to no sessions.
 .El
 .Sh SEE ALSO
 .Xr pty 4
