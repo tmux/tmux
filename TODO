@@ -53,7 +53,6 @@
 	kill server
 
 -- For 0.1 --------------------------------------------------------------------
-- man page
 - fix most(1) problems after scrolling
 - fix mutt problems with redraw (mutt's) status line when reading mail
 
