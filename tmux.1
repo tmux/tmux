@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.11 2007-11-12 19:15:29 nicm Exp $
+.\" $Id: tmux.1,v 1.12 2007-11-12 20:42:53 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -235,6 +235,18 @@ is not specified, the first free index is used.
 If
 .Ar command
 is not specified, the default command is used.
+.Pp
+The
+.Ev TERM
+environment variable must be set to
+.Dq screen
+for all program running
+.Em inside
+.Nm .
+New windows will automatically have
+.Dq TERM=screen
+added to their environment, but care must be taken not to reset this in shell
+start-up files.
 .It Xo Ic next-window
 .Xc
 .D1 (alias: Ic next )
