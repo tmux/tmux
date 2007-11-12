@@ -51,6 +51,8 @@
 - per-session toolbar state, other options
 - commands:
 	kill server
+- force-default option: assume terminal supports default colours even if AX
+  is missing (like, eg, xterm-color in an aterm)
 
 -- For 0.1 --------------------------------------------------------------------
 - fix most(1) problems after scrolling

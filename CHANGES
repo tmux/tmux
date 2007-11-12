@@ -1,5 +1,8 @@
 12 November 2007
 
+* (nicm) If the terminal supports default colours (AX present), force black 
+  background and white foreground to default. This is useful on transparent
+  *terms for programs which don't do it themselves (like most(1)).
 * (nicm) Fill in the rest of the man page.
 * (nicm) kill-session command.
 
@@ -203,4 +206,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.66 2007-11-12 16:09:08 nicm Exp $
+$Id: CHANGES,v 1.67 2007-11-12 20:29:43 nicm Exp $

@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.18 2007-11-08 10:39:52 nicm Exp $ */
+/* $Id: local.c,v 1.19 2007-11-12 20:29:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -766,23 +766,33 @@ local_attributes(u_char attr, u_char colr)
 
 	fg = (colr >> 4) & 0xf;
 	if (fg != ((local_colr >> 4) & 0xf)) {
-		if (fg == 8) {
-			if (tigetflag("AX") == TRUE)
-				local_putp("\e[39m");
-			else if (set_a_foreground != NULL)
-				local_putp(tparm(set_a_foreground, 7));
-		} else if (set_a_foreground != NULL)
+		if (tigetflag("AX") == TRUE) {
+			if (fg == 7)
+				fg = 8;
+		} else {
+			if (fg == 8)
+				fg = 7;
+		}
+		
+		if (fg == 8)
+			local_putp("\e[39m");
+		else if (set_a_foreground != NULL)
 			local_putp(tparm(set_a_foreground, fg));
 	}
 	
 	bg = colr & 0xf;
 	if (bg != (local_colr & 0xf)) {
-		if (bg == 8) {
-			if (tigetflag("AX") == TRUE)
-				local_putp("\e[49m");
-			else if (set_a_background != NULL)
-				local_putp(tparm(set_a_background, 0));
-		} else if (set_a_background != NULL)
+		if (tigetflag("AX") == TRUE) {
+			if (bg == 0)
+				bg = 8;
+		} else {
+			if (bg == 8)
+				bg = 0;
+		}
+
+		if (bg == 8)
+			local_putp("\e[49m");
+		else if (set_a_background != NULL)
 			local_putp(tparm(set_a_background, bg));
 	}
 
