@@ -38,6 +38,7 @@ And major missing features:
 - Copy and paste.
 - Scrollback.
 - Mouse support.
+- No support for programs changing termios(4) settings or other tty(4) ioctls.
 
 A more extensive, but rough, todo list is included in the TODO file.
 
@@ -59,4 +60,4 @@ freenode or efnet IRC. I sometimes ignore private msgs from people I don't
 know, so please mention tmux initially (rather than just saying "hi" ;-).
 
 -- Nicholas Marriott <nicm@users.sf.net>
-$Id: NOTES,v 1.25 2007-11-12 16:13:49 nicm Exp $
+$Id: NOTES,v 1.26 2007-11-12 20:59:33 nicm Exp $
