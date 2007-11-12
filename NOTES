@@ -49,8 +49,8 @@ TERM=screen (tmux in screen), xterm, xterm-color and rxvt.
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
 
-Bug reports, feature suggestions and especially code contributions (or offers
-to work on code) are most welcome. Please email:
+Bug reports, feature suggestions and especially code contributions are most
+welcome. Please email:
 
 	nicm@users.sf.net
 
@@ -59,4 +59,4 @@ freenode or efnet IRC. I sometimes ignore private msgs from people I don't
 know, so please mention tmux initially (rather than just saying "hi" ;-).
 
 -- Nicholas Marriott <nicm@users.sf.net>
-$Id: NOTES,v 1.24 2007-11-12 16:09:08 nicm Exp $
+$Id: NOTES,v 1.25 2007-11-12 16:13:49 nicm Exp $
