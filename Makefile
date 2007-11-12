@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.38 2007-11-09 15:23:28 nicm Exp $
+# $Id: Makefile,v 1.39 2007-11-12 14:21:40 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean
@@ -25,7 +25,7 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       cmd-list-windows.c cmd-attach-session.c cmd-send-prefix.c \
       cmd-refresh-session.c cmd-kill-window.c cmd-list-clients.c \
       cmd-has-session.c cmd-link-window.c cmd-unlink-window.c \
-      cmd-swap-window.c cmd-rename-session.c
+      cmd-swap-window.c cmd-rename-session.c cmd-kill-session.c
 
 CC?= cc
 INCDIRS+= -I. -I- -I/usr/local/include

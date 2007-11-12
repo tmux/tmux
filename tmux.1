@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.6 2007-11-09 17:05:42 nicm Exp $
+.\" $Id: tmux.1,v 1.7 2007-11-12 14:21:40 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -40,10 +40,12 @@ necessary and holds a number of
 .Em sessions ,
 each of which may have a number of
 .Em windows
-connected to it. Any number of clients may connect to a session, or the server
-may be controlled by issuing commands using the
-.Nm
-binary. Communication takes place through a socket, by default placed in
+connected to it. Any number of
+.Em clients
+may connect to a session, or the server
+may be controlled by issuing commands with
+.Nm .
+Communication takes place through a socket, by default placed in
 .Pa /tmp .
 .Pp
 The options are as follows:
@@ -135,6 +137,8 @@ supports the following commands:
 .It Xo Ic has-session 
 .Xc
 .D1 (alias: Ic has )
+.It Xo Ic kill-session
+.Xc
 .It Xo Ic kill-window 
 .Op Fl i Ar index
 .Xc
