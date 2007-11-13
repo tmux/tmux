@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.11 2007-10-30 10:59:43 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.12 2007-11-13 09:53:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -88,7 +88,7 @@ void
 cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 {
 	struct cmd_set_option_data	*data = ptr;
-	struct client			*c = ctx->client;
+	struct client			*c;
 	const char			*errstr;
 	u_int				 i;
 	int				 number, bool, key;
@@ -199,7 +199,7 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 	}
 
 	if (!(ctx->flags & CMD_KEY))
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
 }
 
 void

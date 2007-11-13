@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.5 2007-10-19 09:21:26 nicm Exp $ */
+/* $Id: cmd-unbind-key.c,v 1.6 2007-11-13 09:53:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -85,7 +85,6 @@ void
 cmd_unbind_key_exec(void *ptr, unused struct cmd_ctx *ctx)
 {
 	struct cmd_unbind_key_data	*data = ptr;
-	struct client			*c = ctx->client;
 
 	if (data == NULL)
 		return;
@@ -93,7 +92,7 @@ cmd_unbind_key_exec(void *ptr, unused struct cmd_ctx *ctx)
 	key_bindings_remove(data->key);
 
 	if (!(ctx->flags & CMD_KEY))
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
 }
 
 void

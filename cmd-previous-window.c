@@ -1,4 +1,4 @@
-/* $Id: cmd-previous-window.c,v 1.3 2007-10-04 22:04:01 nicm Exp $ */
+/* $Id: cmd-previous-window.c,v 1.4 2007-11-13 09:53:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,14 +42,11 @@ const struct cmd_entry cmd_previous_window_entry = {
 void
 cmd_previous_window_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
-	struct client	*c = ctx->client;
-	struct session	*s = ctx->session;
-
-	if (session_previous(s) == 0)
-		server_redraw_session(s);
+	if (session_previous(ctx->session) == 0)
+		server_redraw_session(ctx->session);
 	else
 		ctx->error(ctx, "no previous window"); 
 	
 	if (!(ctx->flags & CMD_KEY))
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
 }

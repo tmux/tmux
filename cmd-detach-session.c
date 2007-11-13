@@ -1,4 +1,4 @@
-/* $Id: cmd-detach-session.c,v 1.6 2007-10-19 09:21:25 nicm Exp $ */
+/* $Id: cmd-detach-session.c,v 1.7 2007-11-13 09:53:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -84,8 +84,7 @@ void
 cmd_detach_session_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_detach_session_data	*data = ptr, std = { 0 };
-	struct client			*c = ctx->client, *cp;
-	struct session			*s = ctx->session;
+	struct client			*c;
 	u_int				 i;
 
 	if (data == NULL)
@@ -93,16 +92,16 @@ cmd_detach_session_exec(void *ptr, struct cmd_ctx *ctx)
 
 	if (data->flag_all) {
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			cp = ARRAY_ITEM(&clients, i);
-			if (cp == NULL || cp->session != s)
+			c = ARRAY_ITEM(&clients, i);
+			if (c == NULL || c->session != ctx->session)
 				continue;
-			server_write_client(cp, MSG_DETACH, NULL, 0);
+			server_write_client(c, MSG_DETACH, NULL, 0);
 		}
 	} else if (ctx->flags & CMD_KEY)
-		server_write_client(c, MSG_DETACH, NULL, 0);
+		server_write_client(ctx->client, MSG_DETACH, NULL, 0);
 
 	if (!(ctx->flags & CMD_KEY))
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
 }
 
 void

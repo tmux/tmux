@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-session.c,v 1.1 2007-11-09 11:02:01 nicm Exp $ */
+/* $Id: cmd-rename-session.c,v 1.2 2007-11-13 09:53:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -83,17 +83,15 @@ void
 cmd_rename_session_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_rename_session_data	*data = ptr;
-	struct client			*c = ctx->client;
-	struct session			*s = ctx->session;
 
 	if (data == NULL)
 		return;
 
-	xfree(s->name);
-	s->name = xstrdup(data->newname);
+	xfree(ctx->session->name);
+	ctx->session->name = xstrdup(data->newname);
 	
 	if (!(ctx->flags & CMD_KEY))
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
 }
 
 void

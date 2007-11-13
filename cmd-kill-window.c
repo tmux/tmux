@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-window.c,v 1.4 2007-10-30 10:59:43 nicm Exp $ */
+/* $Id: cmd-kill-window.c,v 1.5 2007-11-13 09:53:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -90,8 +90,8 @@ void
 cmd_kill_window_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_kill_window_data	*data = ptr, std = { -1 };
-	struct client			*c = ctx->client;
-	struct session			*s = ctx->session;
+	struct client			*c;
+	struct winlinks			*wwl = &ctx->session->windows;
 	struct winlink			*wl;
 	u_int		 		 i;
 	int		 		 destroyed;
@@ -100,16 +100,16 @@ cmd_kill_window_exec(void *ptr, struct cmd_ctx *ctx)
 		data = &std;
 
 	if (data->idx == -1)
-		wl = s->curw;
-	else if ((wl = winlink_find_by_index(&s->windows, data->idx)) == NULL) {
+		wl = ctx->session->curw;
+	else if ((wl = winlink_find_by_index(wwl, data->idx)) == NULL) {
 		ctx->error(ctx, "no window %d", data->idx);
 		return;
 	}
 
- 	destroyed = session_detach(s, wl);
+ 	destroyed = session_detach(ctx->session, wl);
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session != s)
+		if (c == NULL || c->session != ctx->session)
 			continue;
 		if (destroyed) {
 			c->session = NULL;
@@ -119,7 +119,7 @@ cmd_kill_window_exec(void *ptr, struct cmd_ctx *ctx)
 	}
 	
 	if (!(ctx->flags & CMD_KEY))
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
 }
 
 void

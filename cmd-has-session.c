@@ -1,4 +1,4 @@
-/* $Id: cmd-has-session.c,v 1.1 2007-10-25 17:44:24 nicm Exp $ */
+/* $Id: cmd-has-session.c,v 1.2 2007-11-13 09:53:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,8 +44,6 @@ const struct cmd_entry cmd_has_session_entry = {
 void
 cmd_has_session_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
-	struct client	*c = ctx->client;
-	
 	if (!(ctx->flags & CMD_KEY))
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
 }

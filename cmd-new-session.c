@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.15 2007-11-09 16:04:29 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.16 2007-11-13 09:53:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -100,7 +100,7 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_new_session_data	*data = ptr;
 	struct cmd_new_session_data	 std = { NULL, NULL, NULL, 0 };
-	struct client			*c = ctx->client;
+	struct client			*c;
 	char				*cmd;
 	u_int				 sy;
 	
@@ -110,6 +110,7 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 	if (ctx->flags & CMD_KEY)
 		return;
 
+	c = ctx->client;
 	if (!data->flag_detached && !(c->flags & CLIENT_TERMINAL)) {
 		ctx->error(ctx, "not a terminal");
 		return;
@@ -128,7 +129,7 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 	cmd = data->cmd;
 	if (cmd == NULL)
 		cmd = default_command;
-	
+
 	c->session = session_create(data->name, cmd, c->sx, sy);
 	if (c->session == NULL)
 		fatalx("session_create failed");

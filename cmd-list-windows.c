@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.6 2007-10-31 14:26:26 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.7 2007-11-13 09:53:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,18 +42,16 @@ const struct cmd_entry cmd_list_windows_entry = {
 void
 cmd_list_windows_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
-	struct client	*c = ctx->client;
-	struct session	*s = ctx->session;
 	struct winlink	*wl;
 	struct window	*w;
 
-	RB_FOREACH(wl, winlinks, &s->windows) {
+	RB_FOREACH(wl, winlinks, &ctx->session->windows) {
 		w = wl->window;
-		ctx->print(ctx, "%d: %s \"%s\" (%s) [%ux%u]", wl->idx,
-		    w->name, w->screen.title, ttyname(w->fd),
+		ctx->print(ctx, "%d: %s \"%s\" (%s) [%ux%u]",
+		    wl->idx, w->name, w->screen.title, ttyname(w->fd),
 		    w->screen.sx, w->screen.sy);
 	}
 
 	if (!(ctx->flags & CMD_KEY))
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
 }

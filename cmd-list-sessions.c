@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.7 2007-10-26 12:29:07 nicm Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.8 2007-11-13 09:53:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,8 +43,7 @@ const struct cmd_entry cmd_list_sessions_entry = {
 void
 cmd_list_sessions_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
-	struct client	*c = ctx->client;
-	struct session	*s = ctx->session;
+	struct session	*s;
 	struct winlink	*wl;
 	char		*tim;
 	u_int		 i, n;
@@ -60,10 +59,10 @@ cmd_list_sessions_exec(unused void *ptr, struct cmd_ctx *ctx)
 		tim = ctime(&s->tim);
 		*strchr(tim, '\n') = '\0';
 
-		ctx->print(ctx, "%s: %u windows (created %s) [%ux%u]", s->name,
-		    n, tim, s->sx, s->sy);
+		ctx->print(ctx, "%s: %u windows"
+		    " (created %s) [%ux%u]", s->name, n, tim, s->sx, s->sy);
 	}
 
 	if (!(ctx->flags & CMD_KEY))
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
 }

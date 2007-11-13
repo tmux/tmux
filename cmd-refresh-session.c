@@ -1,4 +1,4 @@
-/* $Id: cmd-refresh-session.c,v 1.1 2007-10-19 09:21:25 nicm Exp $ */
+/* $Id: cmd-refresh-session.c,v 1.2 2007-11-13 09:53:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -84,8 +84,7 @@ void
 cmd_refresh_session_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_refresh_session_data	*data = ptr, std = { 0 };
-	struct client			*c = ctx->client, *cp;
-	struct session			*s = ctx->session;
+	struct client			*c;
 	u_int				 i;
 
 	if (data == NULL)
@@ -93,16 +92,16 @@ cmd_refresh_session_exec(void *ptr, struct cmd_ctx *ctx)
 
 	if (data->flag_all) {
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			cp = ARRAY_ITEM(&clients, i);
-			if (cp == NULL || cp->session != s)
+			c = ARRAY_ITEM(&clients, i);
+			if (c == NULL || c->session != ctx->session)
 				continue;
-			server_redraw_client(cp);
+			server_redraw_client(c);
 		}
 	} else if (ctx->flags & CMD_KEY)
-		server_redraw_client(c);
+		server_redraw_client(ctx->client);
 
 	if (!(ctx->flags & CMD_KEY))
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
 }
 
 void

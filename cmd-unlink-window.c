@@ -1,4 +1,4 @@
-/* $Id: cmd-unlink-window.c,v 1.2 2007-10-30 10:59:43 nicm Exp $ */
+/* $Id: cmd-unlink-window.c,v 1.3 2007-11-13 09:53:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -90,8 +90,8 @@ void
 cmd_unlink_window_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_unlink_window_data	*data = ptr;
-	struct client			*c = ctx->client;
-	struct session			*s = ctx->session;
+	struct client			*c;
+	struct winlinks			*wwl = &ctx->session->windows;
 	struct winlink			*wl;
 	u_int		 		 i;
 	int		 		 destroyed;
@@ -102,9 +102,9 @@ cmd_unlink_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (data->idx < 0)
 		data->idx = -1;
 	if (data->idx == -1)
-		wl = s->curw;
+		wl = ctx->session->curw;
 	else {
-		wl = winlink_find_by_index(&s->windows, data->idx);
+		wl = winlink_find_by_index(wwl, data->idx);
 		if (wl == NULL) {
 			ctx->error(ctx, "no window %d", data->idx);
 			return;
@@ -116,10 +116,10 @@ cmd_unlink_window_exec(void *ptr, struct cmd_ctx *ctx)
 		return;
 	}
 
- 	destroyed = session_detach(s, wl);
+ 	destroyed = session_detach(ctx->session, wl);
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session != s)
+		if (c == NULL || c->session != ctx->session)
 			continue;
 		if (destroyed) {
 			c->session = NULL;
@@ -129,7 +129,7 @@ cmd_unlink_window_exec(void *ptr, struct cmd_ctx *ctx)
 	}
 
 	if (!(ctx->flags & CMD_KEY))
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
 }
 
 void

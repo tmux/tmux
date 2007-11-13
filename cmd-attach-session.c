@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.7 2007-10-19 09:21:25 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.8 2007-11-13 09:53:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -83,24 +83,22 @@ void
 cmd_attach_session_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_attach_session_data	*data = ptr;
-	struct client			*c = ctx->client;
-	struct session			*s = ctx->session;
 
 	if (ctx->flags & CMD_KEY)
 		return;
 
-	if (!(c->flags & CLIENT_TERMINAL)) {
+	if (!(ctx->client->flags & CLIENT_TERMINAL)) {
 		ctx->error(ctx, "not a terminal");
 		return;
 	}
 
 	if (data->flag_detach)
-		server_write_session(s, MSG_DETACH, NULL, 0);
-	c->session = s;
+		server_write_session(ctx->session, MSG_DETACH, NULL, 0);
+	ctx->client->session = ctx->session;
 
-	server_write_client(c, MSG_READY, NULL, 0);
+	server_write_client(ctx->client, MSG_READY, NULL, 0);
 	recalculate_sizes();
-	server_redraw_client(c);
+	server_redraw_client(ctx->client);
 }
 
 void

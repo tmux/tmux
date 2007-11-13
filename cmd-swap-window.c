@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-window.c,v 1.1 2007-10-30 11:10:33 nicm Exp $ */
+/* $Id: cmd-swap-window.c,v 1.2 2007-11-13 09:53:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -106,7 +106,6 @@ void
 cmd_swap_window_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_swap_window_data	*data = ptr;
-	struct client			*c = ctx->client;
 	struct session			*dst = ctx->session, *src;
 	struct winlink			*srcwl, *dstwl;
 	struct window			*w;
@@ -157,7 +156,7 @@ cmd_swap_window_exec(void *ptr, struct cmd_ctx *ctx)
 		server_redraw_session(dst);
 
 	if (!(ctx->flags & CMD_KEY))
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
 }
 
 void
