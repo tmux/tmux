@@ -56,6 +56,12 @@
 	kill server
 - force-default option: assume terminal supports default colours even if AX
   is missing (like, eg, xterm-color in an aterm)
+- refer to windows by name etc (duplicates?)
+- command to run something without a window at all
+- command to insert a key into a window
+- function groups:
+	bind-key ^W { select-window 0; send-key ^W }
+	etc
 
 -- For 0.1 --------------------------------------------------------------------
 - fix most(1) problems after scrolling
