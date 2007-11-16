@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.13 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.14 2007-11-16 21:43:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -159,7 +159,7 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 void
 key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	struct client	*c = ctx->cmdclient;
+	struct client	*c = ctx->client;
 	struct hdr	 hdr;
 	va_list		 ap;
 	char		*msg;

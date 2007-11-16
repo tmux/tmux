@@ -6,7 +6,7 @@
 	$ tmux bind q switch 0
 	$ tmux bind w switch 1
 
-  To switch between sessions 0 and 1 with a key :-). 
+  Then you can switch between sessions 0 and 1 with a key :-). 
 * (nicm) Accept "-c client-tty" on command line to allow client manipulation
   commands, and change detach-/refresh-session to detach-/refresh-client (this
   loses the -a behaviour, but at some point -session versions may return, and
@@ -221,4 +221,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.70 2007-11-16 21:31:03 nicm Exp $
+$Id: CHANGES,v 1.71 2007-11-16 21:43:43 nicm Exp $
