@@ -63,6 +63,9 @@
 - function groups, bind-key ^W { select-window 0; send-key ^W } etc
 - more(1) style handling for in-client output
 - allow fnmatch for -c, so that you can, eg, detach all clients
+- session specification is all over the place. some things use -s before cmd,
+  some -s after, some no -s, there are various uses of -n. the differences are
+  sort of logical, but confusing. needs rethought
 
 -- For 0.1 --------------------------------------------------------------------
 - 

@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.4 2007-11-16 21:12:31 nicm Exp $
+# $Id: GNUmakefile,v 1.5 2007-11-16 21:31:03 nicm Exp $
 
 .PHONY: clean
 
@@ -21,7 +21,8 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       cmd-list-windows.c cmd-attach-session.c cmd-send-prefix.c \
       cmd-refresh-client.c cmd-kill-window.c cmd-list-clients.c \
       cmd-has-session.c cmd-link-window.c cmd-unlink-window.c \
-      cmd-swap-window.c cmd-rename-session.c
+      cmd-swap-window.c cmd-rename-session.c cmd-kill-session.c \
+      cmd-switch-client.c
 
 CC?= gcc
 INCDIRS+= -I. -I-

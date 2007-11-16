@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.31 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: server-msg.c,v 1.32 2007-11-16 21:31:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -111,6 +111,8 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	char	       	       *name, *client, *cause;
 	u_int			i;
 
+	/* XXX I hate this function. Split it? */
+
 	if (hdr->size < sizeof data)
 		fatalx("bad MSG_COMMAND size");
 	buffer_read(c->in, &data, sizeof data);
@@ -141,8 +143,8 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 		}
 	} else {
 		if (client == NULL) {
-			server_msg_fn_command_error(&ctx, "%s: must "
-			    "specify a client: %s", cmd->entry->name, client);
+			server_msg_fn_command_error(&ctx, 
+			    "%s: must specify a client: %s", cmd->entry->name);
 			goto out;
 		}
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
@@ -158,15 +160,15 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 		}
 	}
 
-	ctx.session = server_extract_session(&data, name, &cause);
+	ctx.session = NULL;
 	if (cmd->entry->flags & CMD_NOSESSION) {
-		if (ctx.session != NULL) {
+		if (name != NULL) {
 			server_msg_fn_command_error(&ctx, 
 			    "%s: cannot specify a session", cmd->entry->name);
 			goto out;
-		} else
-			xfree(cause);
+		}
 	} else {
+		ctx.session = server_extract_session(&data, name, &cause);
 		if (ctx.session == NULL) {
 			server_msg_fn_command_error(
 			    &ctx, "%s: %s", cmd->entry->name, cause);
