@@ -1,3 +1,7 @@
+16 November 2007
+
+* (nicm) List available commands on ambiguous command.
+
 12 November 2007
 
 * (nicm) If the terminal supports default colours (AX present), force black 
@@ -206,4 +210,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.67 2007-11-12 20:29:43 nicm Exp $
+$Id: CHANGES,v 1.68 2007-11-16 13:23:59 nicm Exp $

@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.26 2007-11-12 14:21:40 nicm Exp $ */
+/* $Id: cmd.c,v 1.27 2007-11-16 13:23:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -57,6 +57,7 @@ cmd_parse(int argc, char **argv, char **cause)
 {
 	const struct cmd_entry **entryp, *entry;
 	struct cmd	        *cmd;
+	char			 s[BUFSIZ];
 	int			 opt;
 
 	*cause = NULL;
@@ -73,10 +74,8 @@ cmd_parse(int argc, char **argv, char **cause)
 
 		if (strncmp((*entryp)->name, argv[0], strlen(argv[0])) != 0)
 			continue;
-		if (entry != NULL) {
-			xasprintf(cause, "ambiguous command: %s", argv[0]);
-			return (NULL);
-		}
+		if (entry != NULL)
+			goto ambiguous;
 		entry = *entryp;
 	}
 	if (entry == NULL) {
@@ -107,6 +106,20 @@ cmd_parse(int argc, char **argv, char **cause)
 		}
 	}
 	return (cmd);
+
+ambiguous:
+	*s = '\0';
+	for (entryp = cmd_table; *entryp != NULL; entryp++) {
+		if (strncmp((*entryp)->name, argv[0], strlen(argv[0])) != 0)
+			continue;
+		if (strlcat(s, (*entryp)->name, sizeof s) >= sizeof s)
+			break;
+		if (strlcat(s, ", ", sizeof s) >= sizeof s)
+			break;
+	}
+	s[strlen(s) - 2] = '\0';
+	xasprintf(cause, "ambiguous command: %s, could be: %s", argv[0], s);
+	return (NULL);
 
 usage:
 	usage(cause, "%s %s", entry->name, entry->usage);

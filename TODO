@@ -1,5 +1,5 @@
 - it would be nice if there wasn't so much copying buffers about, audit uses
-- useful env vars like WINDOW
+- useful env vars like WINDOW?
 - sort out who controls the buffers in local.c a bit
 - better checking/emulation for missing term requirements
 - alt charset, borders etc (terminfo(5)/Line Graphics)
@@ -25,7 +25,7 @@
 - client could pass term/tty fd up to server and then do nothing. what problems 
   would this cause? -- need access to all terminfo data at once... signals?
 - cleanup/redesign IPC
-	IPC is slightly arse-about-face: too much overhead. 8-byte header for
+	IPC is slightly arse-about-face: overhead? 8-byte header for
 	each packet... hrm. already scanning output for \e, could add an extra
 	byte to it for message
 - could use bsearch all over the place or get rid of smaller tables (clientmsg)
@@ -34,7 +34,6 @@
 - CLIENT_HOLD sucks
 - session with CMD_NOSESSION should be an error
 - each command should have a print op as well for list keys
-- List available commands on ambigous command
 - Implicitly add exec to the commands for new windows (switch to disable it)
 - nested sessions, ie session as window - moving to it moves into session
   (remembering parent)
@@ -44,27 +43,25 @@
 - status-fg/status-bg should be to set attributes: bold, etc
 - show-options command
 - detach client and other client commands. note that there can only be a
-  "current client" on key presses - these should act like detach-session -
-  -a will do all clients, otherwise do nothing unless key in which case do
-  current client
+  "current client" on key presses - these should probably act like
+  detach-session: -a will do all clients, otherwise use current client if
+  key, else do nothing
 - check handling of out-of-bound values in input.c, most should be limited
   rather than ignored
 - save/restore (DECSC/DECRC) are ugly. maybe a struct screen_attr and memcpy
 - force maximum terminal size (centred?)
 - per-session toolbar state, other options
-- commands:
-	kill server
 - force-default option: assume terminal supports default colours even if AX
   is missing (like, eg, xterm-color in an aterm)
 - refer to windows by name etc (duplicates?)
-- command to run something without a window at all
-- command to insert a key into a window
-- function groups:
-	bind-key ^W { select-window 0; send-key ^W }
-	etc
+- commands:
+	kill server
+	command to run something without a window at all?
+	command to insert a key into a window (send-key)
+- function groups, bind-key ^W { select-window 0; send-key ^W } etc
+- more(1) style handling for in-client output
 
 -- For 0.1 --------------------------------------------------------------------
-- fix most(1) problems after scrolling
 - fix mutt problems with redraw (mutt's) status line when reading mail
 
 -- For 0.2 --------------------------------------------------------------------
