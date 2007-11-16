@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.30 2007-11-09 17:06:01 nicm Exp $ */
+/* $Id: input.c,v 1.31 2007-11-16 16:28:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -673,7 +673,7 @@ input_handle_sequence_dl(struct input_ctx *ictx)
 		return;
 	}
 
-	if (n < s->ry_upper || n > s->ry_lower)
+	if (s->cy < s->ry_upper || s->cy > s->ry_lower)
 		screen_delete_lines(s, s->cy, n);
 	else
 		screen_delete_lines_region(s, s->cy, n);
@@ -721,7 +721,7 @@ input_handle_sequence_il(struct input_ctx *ictx)
 		log_debug3("il: out of range: %hu", n);
 		return;
 	}
-	if (n < s->ry_upper || n > s->ry_lower)
+	if (s->cy < s->ry_upper || s->cy > s->ry_lower)
 		screen_insert_lines(s, s->cy, n);
 	else
 		screen_insert_lines_region(s, s->cy, n);

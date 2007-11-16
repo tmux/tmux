@@ -40,7 +40,7 @@
 - Nested sessions over the network, plug-in another tmux as a window/subsession
 - it would be nice to have multichar commands so you could have C-b K K for
   kill-window to limit accidental presses
-- status-fg/status-bg should be to set attributes: bold, etc
+- status-fg/status-bg should be able to set attributes: bold, etc
 - show-options command
 - detach client and other client commands. note that there can only be a
   "current client" on key presses - these should probably act like
@@ -66,4 +66,4 @@
 
 -- For 0.2 --------------------------------------------------------------------
 - copy and paste
-- window splitting
+- window splitting?
