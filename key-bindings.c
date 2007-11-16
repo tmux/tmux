@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.14 2007-11-16 21:43:43 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.15 2007-11-16 22:06:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -159,7 +159,9 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 void
 key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
+	static u_int	 line;
 	struct client	*c = ctx->client;
+	struct screen	*s = &c->session->curw->window->screen;
 	struct hdr	 hdr;
 	va_list		 ap;
 	char		*msg;
@@ -170,25 +172,35 @@ key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 	buffer_add(c->out, sizeof hdr);
 	size = BUFFER_USED(c->out);
 
-	if (!(c->flags & CLIENT_HOLD)) {
+	if (line == 2 * s->sy || !(c->flags & CLIENT_HOLD)) {
 		input_store_zero(c->out, CODE_CURSOROFF);
-		for (i = 0; i < c->session->curw->window->screen.sy; i++) {
+		for (i = 0; i < s->sy; i++) {
 			input_store_two(c->out, CODE_CURSORMOVE, i + 1, 1);
 			input_store_zero(c->out, CODE_CLEARLINE);
 		}			
 		input_store_two(c->out, CODE_CURSORMOVE, 1, 1);
 		input_store_two(c->out, CODE_ATTRIBUTES, 0, 0x88);
 		
+		line = 0;
 		c->flags |= CLIENT_HOLD;
 	}
+	if (line >= s->sy) {
+		input_store_two(
+		    c->out, CODE_CURSORMOVE, line - s->sy + 1, s->sx / 2);
+	}
+	line++;
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
 	va_end(ap);
+	if (strlen(msg) > s->sx / 2)
+		msg[s->sx / 2] = '\0';
 
 	buffer_write(c->out, msg, strlen(msg));
-	input_store8(c->out, '\r');
-	input_store8(c->out, '\n');
+	if (line != s->sy && line != 2 * s->sy) {
+		input_store8(c->out, '\r');
+		input_store8(c->out, '\n');
+	}
 	xfree(msg);
 
 	size = BUFFER_USED(c->out) - size;

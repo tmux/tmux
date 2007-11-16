@@ -1,5 +1,7 @@
 16 November 2007
 
+* (nicm) Split in-client display into two columns. This is a hack but not a lot
+  more so than that bit is already and it helps with lots of keys.
 * (nicm) switch-client command to switch client between different sessions. This
   is pretty cool:
 
@@ -221,4 +223,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.71 2007-11-16 21:43:43 nicm Exp $
+$Id: CHANGES,v 1.72 2007-11-16 22:06:45 nicm Exp $
