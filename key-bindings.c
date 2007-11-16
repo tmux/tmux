@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.12 2007-10-26 12:29:07 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.13 2007-11-16 21:12:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -79,8 +79,8 @@ key_bindings_init(void)
 		const struct cmd_entry	*entry;
 		void 			 (*fn)(void **, int);
 	} table[] = {
-		{ 'D', &cmd_detach_session_entry, NULL },
-		{ 'd', &cmd_detach_session_entry, NULL },
+		{ 'D', &cmd_detach_client_entry, NULL },
+		{ 'd', &cmd_detach_client_entry, NULL },
 		{ 'S', &cmd_list_sessions_entry, NULL },
 		{ 's', &cmd_list_sessions_entry, NULL },
 		{ 'W', &cmd_list_windows_entry, NULL },
@@ -105,15 +105,10 @@ key_bindings_init(void)
 		{ '7', &cmd_select_window_entry, cmd_select_window_default },
 		{ '8', &cmd_select_window_entry, cmd_select_window_default },
 		{ '9', &cmd_select_window_entry, cmd_select_window_default },
-		{ 'R', &cmd_refresh_session_entry, NULL },
-		{ 'r', &cmd_refresh_session_entry, NULL },
+		{ 'R', &cmd_refresh_client_entry, NULL },
+		{ 'r', &cmd_refresh_client_entry, NULL },
 		{ '&', &cmd_kill_window_entry, NULL },
 		{ META, &cmd_send_prefix_entry, NULL },
-/*
-		{ 'I', &cmd_windo_info_entry },
-		{ 'i', &cmd_window_info_entry },
-		{ META, &cmd_meta_entry_entry },
-*/
 	};
 	u_int		 i;
 	struct cmd	*cmd;
@@ -164,7 +159,7 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 void
 key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	struct client	*c = ctx->client;
+	struct client	*c = ctx->cmdclient;
 	struct hdr	 hdr;
 	va_list		 ap;
 	char		*msg;
@@ -219,11 +214,12 @@ key_bindings_dispatch(int key, struct client *c)
 		return;
 
 	ctx.session = c->session;
+	ctx.client = c;
 
 	ctx.error = key_bindings_error;
 	ctx.print = key_bindings_print;
 
-	ctx.client = c;
+	ctx.cmdclient = NULL;
 	ctx.flags = CMD_KEY;
 
 	cmd_exec(bd->cmd, &ctx);

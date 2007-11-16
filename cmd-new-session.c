@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.16 2007-11-13 09:53:47 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.17 2007-11-16 21:12:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,7 +42,7 @@ struct cmd_new_session_data {
 const struct cmd_entry cmd_new_session_entry = {
 	"new-session", "new",
 	"[-d] [-s session-name] [-n window-name] [command]",
-	CMD_STARTSERVER|CMD_NOSESSION|CMD_CANTNEST,
+	CMD_STARTSERVER|CMD_NOCLIENT|CMD_NOSESSION|CMD_CANTNEST,
 	cmd_new_session_parse,
 	cmd_new_session_exec, 
 	cmd_new_session_send,
@@ -110,7 +110,7 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 	if (ctx->flags & CMD_KEY)
 		return;
 
-	c = ctx->client;
+	c = ctx->cmdclient;
 	if (!data->flag_detached && !(c->flags & CLIENT_TERMINAL)) {
 		ctx->error(ctx, "not a terminal");
 		return;

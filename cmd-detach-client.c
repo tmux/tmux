@@ -1,4 +1,4 @@
-/* $Id: cmd-list-clients.c,v 1.2 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-detach-client.c,v 1.1 2007-11-16 21:12:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,41 +19,29 @@
 #include <sys/types.h>
 
 #include <getopt.h>
-#include <string.h>
-#include <time.h>
 
 #include "tmux.h"
 
 /*
- * List all clients.
+ * Detach a client.
  */
 
-void	cmd_list_clients_exec(void *, struct cmd_ctx *);
+void	cmd_detach_client_exec(void *, struct cmd_ctx *);
 
-const struct cmd_entry cmd_list_clients_entry = {
-	"list-clients", "lsc", "",
-	CMD_NOCLIENT|CMD_NOSESSION,
+const struct cmd_entry cmd_detach_client_entry = {
+	"detach-client", "detach", "",
+	CMD_NOSESSION,
 	NULL,
-	cmd_list_clients_exec,
+	cmd_detach_client_exec,
 	NULL,
 	NULL,
 	NULL
 };
 
 void
-cmd_list_clients_exec(unused void *ptr, struct cmd_ctx *ctx)
+cmd_detach_client_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
-	struct client	*c;
-	u_int		 i;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-
-		ctx->print(ctx,
-		    "%s: %s [%ux%u]", c->tty, c->session->name, c->sx, c->sy);
-	}
+	server_write_client(ctx->client, MSG_DETACH, NULL, 0);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

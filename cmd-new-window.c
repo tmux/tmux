@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.12 2007-11-13 09:53:47 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.13 2007-11-16 21:12:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,7 +42,7 @@ struct cmd_new_window_data {
 
 const struct cmd_entry cmd_new_window_entry = {
 	"new-window", "neww", "[-d] [-i index] [-n name] [command]",
-	0,
+	CMD_NOCLIENT,
 	cmd_new_window_parse,
 	cmd_new_window_exec, 
 	cmd_new_window_send,
@@ -129,8 +129,8 @@ cmd_new_window_exec(void *ptr, struct cmd_ctx *ctx)
 	} else
 		server_status_session(ctx->session);
 	
-	if (!(ctx->flags & CMD_KEY))
-		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
+	if (ctx->cmdclient != NULL)
+		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }
 
 void

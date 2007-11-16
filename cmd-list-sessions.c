@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.8 2007-11-13 09:53:47 nicm Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.9 2007-11-16 21:12:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,7 @@ void	cmd_list_sessions_exec(void *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_sessions_entry = {
 	"list-sessions", "ls", "",
-	CMD_NOSESSION,
+	CMD_NOCLIENT|CMD_NOSESSION,
 	NULL,
 	cmd_list_sessions_exec,
 	NULL,
@@ -63,6 +63,6 @@ cmd_list_sessions_exec(unused void *ptr, struct cmd_ctx *ctx)
 		    " (created %s) [%ux%u]", s->name, n, tim, s->sx, s->sy);
 	}
 
-	if (!(ctx->flags & CMD_KEY))
-		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
+	if (ctx->cmdclient != NULL)
+		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

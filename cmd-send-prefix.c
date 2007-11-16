@@ -1,4 +1,4 @@
-/* $Id: cmd-send-prefix.c,v 1.4 2007-11-13 09:53:47 nicm Exp $ */
+/* $Id: cmd-send-prefix.c,v 1.5 2007-11-16 21:12:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,11 +42,9 @@ const struct cmd_entry cmd_send_prefix_entry = {
 void
 cmd_send_prefix_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
-	struct window	*w = ctx->client->session->curw->window;
+	input_translate_key(
+	    ctx->client->session->curw->window->out, prefix_key);
 
-	if (ctx->flags & CMD_KEY)
-		input_translate_key(w->out, prefix_key);
-
-	if (!(ctx->flags & CMD_KEY))	
-		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
+	if (ctx->cmdclient != NULL)	
+		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.13 2007-11-12 20:46:46 nicm Exp $
+.\" $Id: tmux.1,v 1.14 2007-11-16 21:12:31 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -24,6 +24,7 @@
 .Nm tmux
 .Bk -words
 .Op Fl vV
+.Op Fl c Ar client-tty
 .Op Fl S Ar socket-path
 .Op Fl s Ar session-name
 .Ar command
@@ -50,8 +51,14 @@ Communication takes place through a socket, by default placed in
 .Pp
 The options are as follows:
 .Bl -tag -width "XXXXXXXXXXXX"
+.It Fl c Ar client-tty
+Apply command to the client on the given tty.
+Clients may be listed with the
+.Ic list-clients
+command (see below).
+This option does not apply to all commands.
 .It Fl S Ar socket-path
-This specifies an alternative path to the server socket.
+Specify an alternative path to the server socket.
 The default is
 .Pa /tmp/tmux-UID ,
 where
@@ -138,13 +145,11 @@ Bind key
 .Ar key
 to
 .Ar command .
-.It Xo Ic detach-session
-.Op Fl a
+.It Xo Ic detach-client
 .Xc
 .D1 (alias: Ic detach )
-Detach the current client if bound to a key; otherwise, if
-.Fl a
-is given, detach all clients attached to the session.
+Detach the current client if bound to a key, or the specified client with
+.Fl c .
 .It Xo Ic has-session 
 .Xc
 .D1 (alias: Ic has )
@@ -255,14 +260,12 @@ Move to the next window in the session.
 .Xc
 .D1 (alias: Ic prev )
 Move to the previous window in the session.
-.It Xo Ic refresh-session 
-.Op Fl a
+.It Xo Ic refresh-client
 .Xc
 .D1 (alias: Ic refresh )
-Refresh the display of clients attached to a session.
-If bound to a key, only the current client is refreshed; otherwise if
-.Fl a
-is given, all clients attached to the session is refreshed.
+Refresh the current client if bound to a key, or a single client if one given
+with
+.Fl c .
 .It Xo Ic rename-session
 .Ar new-name
 .Xc

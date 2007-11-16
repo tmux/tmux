@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.30 2007-10-26 12:29:07 nicm Exp $ */
+/* $Id: server-msg.c,v 1.31 2007-11-16 21:12:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -84,7 +84,7 @@ server_msg_fn_command_error(struct cmd_ctx *ctx, const char *fmt, ...)
 	xvasprintf(&msg, fmt, ap);
 	va_end(ap);
 
-	server_write_client(ctx->client, MSG_ERROR, msg, strlen(msg));
+	server_write_client(ctx->cmdclient, MSG_ERROR, msg, strlen(msg));
 	xfree(msg);
 }
 
@@ -98,7 +98,7 @@ server_msg_fn_command_print(struct cmd_ctx *ctx, const char *fmt, ...)
 	xvasprintf(&msg, fmt, ap);
 	va_end(ap);
 
-	server_write_client(ctx->client, MSG_PRINT, msg, strlen(msg));
+	server_write_client(ctx->cmdclient, MSG_PRINT, msg, strlen(msg));
 	xfree(msg);
 }
 
@@ -108,12 +108,14 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	struct msg_command_data	data;
 	struct cmd_ctx	 	ctx;
 	struct cmd	       *cmd;
-	char	       	       *name, *cause;
+	char	       	       *name, *client, *cause;
+	u_int			i;
 
 	if (hdr->size < sizeof data)
 		fatalx("bad MSG_COMMAND size");
 	buffer_read(c->in, &data, sizeof data);
 	name = cmd_recv_string(c->in);	
+	client = cmd_recv_string(c->in);
 
 	cmd = cmd_recv(c->in);
 	log_debug("got command %s from client %d", cmd->entry->name, c->fd);
@@ -121,21 +123,53 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	ctx.error = server_msg_fn_command_error;
 	ctx.print = server_msg_fn_command_print;
 
-	ctx.client = c;
+	ctx.cmdclient = c;
 	ctx.flags = 0;
 
 	if (data.pid != -1 && (cmd->entry->flags & CMD_CANTNEST)) {
-		server_msg_fn_command_error(&ctx, "sessions should be nested "
-		    "with care. unset $TMUX to force");
+		server_msg_fn_command_error(&ctx, "sessions "
+		    "should be nested with care. unset $TMUX to force");
 		goto out;
 	}
 
-	if (cmd->entry->flags & CMD_NOSESSION)
-		ctx.session = NULL;
-	else {
-		ctx.session = server_extract_session(&data, name, &cause);
+	ctx.client = NULL;
+	if (cmd->entry->flags & CMD_NOCLIENT) {
+		if (client != NULL) {
+			server_msg_fn_command_error(&ctx,
+			    "%s: cannot specify a client", cmd->entry->name);
+			goto out;
+		}
+	} else {
+		if (client == NULL) {
+			server_msg_fn_command_error(&ctx, "%s: must "
+			    "specify a client: %s", cmd->entry->name, client);
+			goto out;
+		}
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			/* XXX fnmatch, multi clients etc */
+			c = ARRAY_ITEM(&clients, i);
+			if (strcmp(client, c->tty) == 0)
+				ctx.client = c;
+		}
+		if (ctx.client == NULL) {
+			server_msg_fn_command_error(&ctx, "%s: "
+			    "client not found: %s", cmd->entry->name, client);
+			goto out;
+		}
+	}
+
+	ctx.session = server_extract_session(&data, name, &cause);
+	if (cmd->entry->flags & CMD_NOSESSION) {
+		if (ctx.session != NULL) {
+			server_msg_fn_command_error(&ctx, 
+			    "%s: cannot specify a session", cmd->entry->name);
+			goto out;
+		} else
+			xfree(cause);
+	} else {
 		if (ctx.session == NULL) {
-			server_msg_fn_command_error(&ctx, "%s", cause);
+			server_msg_fn_command_error(
+			    &ctx, "%s: %s", cmd->entry->name, cause);
 			xfree(cause);
 			goto out;
 		}

@@ -53,16 +53,19 @@
 - per-session toolbar state, other options
 - force-default option: assume terminal supports default colours even if AX
   is missing (like, eg, xterm-color in an aterm)
-- refer to windows by name etc (duplicates?)
+- refer to windows by name etc (duplicates? fnmatch?)
 - commands:
 	kill server
 	command to run something without a window at all?
 	command to insert a key into a window (send-key)
+ 	extend list-clients to list clients attached to a session (-a for all?)
+	bring back detach-session to detach all clients on a session?
 - function groups, bind-key ^W { select-window 0; send-key ^W } etc
 - more(1) style handling for in-client output
+- allow fnmatch for -c, so that you can, eg, detach all clients
 
 -- For 0.1 --------------------------------------------------------------------
-- fix mutt problems with redraw (mutt's) status line when reading mail
+- 
 
 -- For 0.2 --------------------------------------------------------------------
 - copy and paste

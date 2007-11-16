@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-window.c,v 1.2 2007-11-13 09:53:47 nicm Exp $ */
+/* $Id: cmd-swap-window.c,v 1.3 2007-11-16 21:12:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,7 +42,7 @@ struct cmd_swap_window_data {
 
 const struct cmd_entry cmd_swap_window_entry = {
 	"swap-window", "swapw", "[-i index] name index",
-	0,
+	CMD_NOCLIENT,
 	cmd_swap_window_parse,
 	cmd_swap_window_exec, 
 	cmd_swap_window_send,
@@ -155,8 +155,8 @@ cmd_swap_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (src != dst)
 		server_redraw_session(dst);
 
-	if (!(ctx->flags & CMD_KEY))
-		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
+	if (ctx->cmdclient != NULL)
+		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }
 
 void

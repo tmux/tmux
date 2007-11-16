@@ -1,4 +1,4 @@
-/* $Id: cmd-select-window.c,v 1.9 2007-11-13 09:53:47 nicm Exp $ */
+/* $Id: cmd-select-window.c,v 1.10 2007-11-16 21:12:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,7 +39,7 @@ struct cmd_select_window_data {
 
 const struct cmd_entry cmd_select_window_entry = {
 	"select-window", "selectw", "index",
-	0,
+	CMD_NOCLIENT,
 	cmd_select_window_parse,
 	cmd_select_window_exec, 
 	cmd_select_window_send,
@@ -117,8 +117,8 @@ cmd_select_window_exec(void *ptr, struct cmd_ctx *ctx)
 		break;
 	}
 	
-	if (!(ctx->flags & CMD_KEY))
-		server_write_client(ctx->client, MSG_EXIT, NULL, 0);
+	if (ctx->cmdclient != NULL)
+		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }
 
 void

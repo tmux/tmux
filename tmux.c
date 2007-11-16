@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.40 2007-11-12 15:12:08 nicm Exp $ */
+/* $Id: tmux.c,v 1.41 2007-11-16 21:12:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,17 +52,19 @@ usage(char **ptr, const char *fmt, ...)
 	char	*msg;
 	va_list	 ap;
 
+#define USAGE \
+	"usage: %s [-v] [-S socket-path] [-s session-name] [-c client-tty]"
 	if (fmt == NULL) {
-		xasprintf(ptr,
-		    "usage: %s [-v] [-S path] command [flags]", __progname);
+		xasprintf(ptr, USAGE " command [flags]", __progname);
 	} else {
 		va_start(ap, fmt);
 		xvasprintf(&msg, fmt, ap);
 		va_end(ap);
 
-		xasprintf(ptr, "usage: %s [-v] [-S path] %s", __progname, msg);
+		xasprintf(ptr, USAGE " %s", __progname, msg);
 		xfree(msg);
 	}
+#undef USAGE
 }
 
 void
@@ -173,12 +175,16 @@ main(int argc, char **argv)
 	struct hdr	 	 hdr;
 	const char		*shell;
 	struct passwd		*pw;
-	char			*path, rpath[MAXPATHLEN], *cause, *name;
+	char			*client, *path, *name, *cause;
+	char			 rpath[MAXPATHLEN];
 	int	 		 n, opt;
 
-	path = name = NULL;
-        while ((opt = getopt(argc, argv, "S:s:vV")) != EOF) {
+	client = path = name = NULL;
+        while ((opt = getopt(argc, argv, "c:S:s:vV")) != EOF) {
                 switch (opt) {
+		case 'c':
+			client = xstrdup(optarg);
+			break;
 		case 'S':
 			path = xstrdup(optarg);
 			break;
@@ -244,6 +250,7 @@ main(int argc, char **argv)
 		exit(1);
 	b = buffer_create(BUFSIZ);
 	cmd_send_string(b, name);
+	cmd_send_string(b, client);
 	cmd_send(cmd, b);
 	cmd_free(cmd);
 

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.79 2007-11-12 15:12:08 nicm Exp $ */
+/* $Id: tmux.h,v 1.80 2007-11-16 21:12:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -488,6 +488,8 @@ struct client_ctx {
 
 /* Key/command line command. */
 struct cmd_ctx {
+	struct client  *cmdclient;
+
 	struct client  *client;
 	struct session *session;
 
@@ -505,7 +507,8 @@ struct cmd_entry {
 
 #define CMD_STARTSERVER 0x1
 #define CMD_NOSESSION 0x2
-#define CMD_CANTNEST 0x4
+#define CMD_NOCLIENT 0x4
+#define CMD_CANTNEST 0x8
 	int		 flags;
 
 	int		 (*parse)(void **, int, char **, char **);
@@ -569,7 +572,7 @@ void		 cmd_send_string(struct buffer *, const char *);
 char		*cmd_recv_string(struct buffer *);
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
-extern const struct cmd_entry cmd_detach_session_entry;
+extern const struct cmd_entry cmd_detach_client_entry;
 extern const struct cmd_entry cmd_has_session_entry;
 extern const struct cmd_entry cmd_kill_session_entry;
 extern const struct cmd_entry cmd_kill_window_entry;
@@ -583,7 +586,7 @@ extern const struct cmd_entry cmd_new_session_entry;
 extern const struct cmd_entry cmd_new_window_entry;
 extern const struct cmd_entry cmd_next_window_entry;
 extern const struct cmd_entry cmd_previous_window_entry;
-extern const struct cmd_entry cmd_refresh_session_entry;
+extern const struct cmd_entry cmd_refresh_client_entry;
 extern const struct cmd_entry cmd_rename_session_entry;
 extern const struct cmd_entry cmd_rename_window_entry;
 extern const struct cmd_entry cmd_select_window_entry;
