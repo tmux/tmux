@@ -6,7 +6,7 @@ SOCKET=/tmp/tmux-1000-main
 
 TMUX="tmux -S $SOCKET"
 
-if ! $TMUX -s $SESSION has 2>/dev/null; then
+if ! $TMUX -s0 has 2>/dev/null; then
     # Session 0
     $TMUX new -d -s0 -nyelena 'exec ssh yelena'		# 0
 
