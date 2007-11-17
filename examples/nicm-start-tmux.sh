@@ -23,11 +23,15 @@ if ! $TMUX -s $SESSION has 2>/dev/null; then
     $TMUX -s0 neww -d					# 8
     $TMUX -s0 neww -d					# 9
 
-    # Session 1
-    $TMUX new -d -s1					# 0
+    # Other sessions
+    for i in 1 2; do
+	# Window 0 is linked from session 0
+	$TMUX new -d -s$i
+	$TMUX -s$i linkw -dki0 0 0
 
-    # Session 2
-    $TMUX new -d -s2					# 0
+	$TMUX -s$i neww -d
+	$TMUX -s$i neww -d
+    done
 
     # Rebind prefix key
     $TMUX set prefix ^A
