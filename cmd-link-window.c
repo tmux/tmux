@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.6 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.7 2007-11-17 08:21:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,14 +34,15 @@ void	cmd_link_window_recv(void **, struct buffer *);
 void	cmd_link_window_free(void *);
 
 struct cmd_link_window_data {
+	int	 flag_detached;
+	int	 flag_kill;
 	int	 dstidx;
 	int	 srcidx;
 	char	*srcname;
-	int	 flag_detached;
 };
 
 const struct cmd_entry cmd_link_window_entry = {
-	"link-window", "linkw", "[-i index] name index",
+	"link-window", "linkw", "[-dk] [-i index] name index",
 	CMD_NOCLIENT,
 	cmd_link_window_parse,
 	cmd_link_window_exec, 
@@ -59,11 +60,12 @@ cmd_link_window_parse(void **ptr, int argc, char **argv, char **cause)
 
 	*ptr = data = xmalloc(sizeof *data);
 	data->flag_detached = 0;
+	data->flag_kill = 0;
 	data->dstidx = -1;
 	data->srcidx = -1;
 	data->srcname = NULL;
 
-	while ((opt = getopt(argc, argv, "di:")) != EOF) {
+	while ((opt = getopt(argc, argv, "dki:")) != EOF) {
 		switch (opt) {
 		case 'i':
 			data->dstidx = strtonum(optarg, 0, INT_MAX, &errstr);
@@ -74,6 +76,9 @@ cmd_link_window_parse(void **ptr, int argc, char **argv, char **cause)
 			break;
 		case 'd':
 			data->flag_detached = 1;
+			break;
+		case 'k':
+			data->flag_kill = 1;
 			break;
 		default:
 			goto usage;
@@ -107,7 +112,7 @@ cmd_link_window_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_link_window_data	*data = ptr;
 	struct session			*dst = ctx->session, *src;
-	struct winlink			*wl;
+	struct winlink			*wl, *wl2;
 
 	if (data == NULL)
 		return;
@@ -131,7 +136,30 @@ cmd_link_window_exec(void *ptr, struct cmd_ctx *ctx)
 
 	if (data->dstidx < 0)
 		data->dstidx = -1;
-	if ((wl = session_attach(dst, wl->window, data->dstidx)) == NULL) {
+	if (data->flag_kill && data->dstidx != -1) {
+		wl2 = winlink_find_by_index(&dst->windows, data->dstidx);
+
+		/*
+		 * Can't use session_detach as it will destroy session if this
+		 * makes it empty.
+		 */
+		session_cancelbell(dst, wl2);
+		winlink_remove(&dst->windows, wl2);
+
+		/* Force select/redraw if current. */
+		if (wl2 == dst->curw)
+			data->flag_detached = 0;
+		if (wl2 == dst->lastw)
+			dst->lastw = NULL;
+
+		/*
+		 * Can't error out after this or there could be an empty 
+		 * session!
+		 */
+	}
+
+	wl = session_attach(dst, wl->window, data->dstidx);
+	if (wl == NULL) {
 		ctx->error(ctx, "index in use: %d", data->dstidx);
 		return;
 	}

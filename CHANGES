@@ -1,3 +1,7 @@
+17 November 2007
+
+* (nicm) Add -k option to link-window to kill target window if it exists.
+
 16 November 2007
 
 * (nicm) Split in-client display into two columns. This is a hack but not a lot
@@ -223,4 +227,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.72 2007-11-16 22:06:45 nicm Exp $
+$Id: CHANGES,v 1.73 2007-11-17 08:21:54 nicm Exp $

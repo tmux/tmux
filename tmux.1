@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.14 2007-11-16 21:12:31 nicm Exp $
+.\" $Id: tmux.1,v 1.15 2007-11-17 08:21:54 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -171,6 +171,7 @@ removing it from any sessions to which it is linked.
 .D1 (alias: Ic last )
 Select the last (previously selected) window.
 .It Xo Ic link-window 
+.Op Fl dk
 .Op Fl i Ar destination-index
 .Ar source-name Ar source-index
 .Xc
@@ -183,9 +184,14 @@ into the specified session. If
 .Ar destination-index
 is specified and no window exists with that index, the window is linked at
 that index.
-If a window already exists at
+If 
+.Fl k
+is given and a window exists at
 .Ar destination-index ,
-an error is generated.
+it is killed, otherwise an error is generated.
+If
+.Fl d
+is given, the newly linked window is not selected.
 .It Xo Ic list-clients 
 .Xc
 .D1 (alias: Ic lsc )
