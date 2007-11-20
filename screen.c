@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.24 2007-11-20 18:46:32 nicm Exp $ */
+/* $Id: screen.c,v 1.25 2007-11-20 21:42:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,21 +27,6 @@
  *
  * XXX Much of this file sucks.
  */
-
-void	 screen_free_lines(struct screen *, u_int, u_int);
-void	 screen_make_lines(struct screen *, u_int, u_int);
-void	 screen_move_lines(struct screen *, u_int, u_int, u_int);
-void	 screen_fill_lines(
-	     struct screen *, u_int, u_int, u_char, u_char, u_char);
-
-#define screen_last_y(s) ((s)->sy - 1)
-#define screen_last_x(s) ((s)->sx - 1)
-
-#define screen_range_y(lx, rx) (((rx) - (lx)) + 1)
-#define screen_range_x(ux, lx) (((lx) - (ux)) + 1)
-
-#define screen_offset_y(py, ny) ((py) + (ny) - 1)
-#define screen_offset_x(px, nx) ((px) + (nx) - 1)
 
 /* Colour to string. */
 const char *
@@ -97,15 +82,18 @@ screen_stringcolour(const char *s)
 
 /* Create a new screen. */
 void
-screen_create(struct screen *s, u_int sx, u_int sy)
+screen_create(struct screen *s, u_int dx, u_int dy)
 {
-	s->sx = sx;
-	s->sy = sy;
+	s->dx = dx;
+	s->dy = dy;
 	s->cx = 0;
 	s->cy = 0;
 
 	s->rupper = 0;
-	s->rlower = screen_last_y(s);
+	s->rlower = s->dy - 1;
+
+	s->ysize = dy;
+	s->ylimit = SHRT_MAX;
 
 	s->attr = SCREEN_DEFATTR;
 	s->colr = SCREEN_DEFCOLR;
@@ -113,11 +101,10 @@ screen_create(struct screen *s, u_int sx, u_int sy)
 	s->mode = MODE_CURSOR;
 	*s->title = '\0';
 
-	s->grid_data = xmalloc(sy * (sizeof *s->grid_data));
-	s->grid_attr = xmalloc(sy * (sizeof *s->grid_attr));
-	s->grid_colr = xmalloc(sy * (sizeof *s->grid_colr));
-	screen_make_lines(s, 0, sy);
-	screen_fill_screen(s, SCREEN_DEFDATA, 0, SCREEN_DEFCOLR);
+	s->grid_data = xmalloc(dy * (sizeof *s->grid_data));
+	s->grid_attr = xmalloc(dy * (sizeof *s->grid_attr));
+	s->grid_colr = xmalloc(dy * (sizeof *s->grid_colr));
+	screen_make_lines(s, 0, dy);
 }
 
 /* Resize screen. */
@@ -126,7 +113,7 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 {
 	u_int	i, ox, oy, ny;
 
-	if (sx == s->sx && sy == s->sy)
+	if (sx == s->dx && sy == s->dy)
 		return;
 
 	if (sx < 1)
@@ -134,16 +121,16 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 	if (sy < 1)
 		sy = 1;
 
-	ox = s->sx;
-	oy = s->sy;
+	ox = s->dx;
+	oy = s->dy;
 
 	log_debug("resizing screen (%u, %u) -> (%u, %u)", ox, oy, sx, sy);
 
-	s->sx = sx;
-	s->sy = sy;
+	s->dx = sx;
+	s->dy = sy;
 
 	s->rupper = 0;
-	s->rlower = screen_last_y(s);
+	s->rlower = s->dy - 1;
 
 	if (sy < oy) {
 		ny = oy - sy;
@@ -190,7 +177,7 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 			s->grid_data[i] = xmalloc(sx);
 			s->grid_attr[i] = xmalloc(sx);
 			s->grid_colr[i] = xmalloc(sx);
-			screen_fill_line(s, i,
+			screen_display_fill_line(s, i,
 			    SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 		}
 		sy = oy;
@@ -203,7 +190,7 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 			s->grid_attr[i] = xrealloc(s->grid_attr[i], sx, 1);
 			s->grid_colr[i] = xrealloc(s->grid_colr[i], sx, 1);
 			if (sx > ox) {
-				screen_fill_end_of_line(s, ox, i,
+				screen_display_fill_cells(s, ox, i, s->dx - ox,
 				    SCREEN_DEFDATA, SCREEN_DEFATTR,
 				    SCREEN_DEFCOLR);
 			}
@@ -217,7 +204,7 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 void
 screen_destroy(struct screen *s)
 {
-	screen_free_lines(s, 0, s->sy);
+	screen_free_lines(s, 0, s->dy);
 	xfree(s->grid_data);
 	xfree(s->grid_attr);
 	xfree(s->grid_colr);
@@ -230,7 +217,7 @@ screen_draw(struct screen *s, struct buffer *b, u_int uy, u_int ly)
 	u_char		 attr, colr;
 	u_int		 i, j;
 
-	if (uy > screen_last_y(s) || ly > screen_last_y(s) || ly < uy)
+	if (uy > s->dy - 1 || ly > s->dy - 1 || ly < uy)
 		fatalx("bad range");
 
 	/* XXX. This is naive and rough right now. */
@@ -263,34 +250,27 @@ screen_draw(struct screen *s, struct buffer *b, u_int uy, u_int ly)
 		input_store_zero(b, CODE_CURSORON);
 }
 
-/* Make a range of lines. */
+/* Create a range of lines. */
 void
 screen_make_lines(struct screen *s, u_int py, u_int ny)
 {
 	u_int	i;
 
-	log_debug("making lines %u,%u", py, ny);
-
-	if (py > screen_last_y(s) || py + ny - 1 > screen_last_y(s))
-		fatalx("bad range");
-	
 	for (i = py; i < py + ny; i++) {
-		s->grid_data[i] = xmalloc(s->sx);
-		s->grid_attr[i] = xmalloc(s->sx);
-		s->grid_colr[i] = xmalloc(s->sx);
+		s->grid_data[i] = xmalloc(s->dx);
+		s->grid_attr[i] = xmalloc(s->dx);
+		s->grid_colr[i] = xmalloc(s->dx);
 	}
+	screen_fill_lines(
+	    s, py, ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 }
 
-/* Free a range of lines. */
+
+/* Free a range of ny lines at py. */
 void
 screen_free_lines(struct screen *s, u_int py, u_int ny)
 {
 	u_int	i;
-
-	log_debug("freeing lines %u,%u", py, ny);
-
-	if (py > screen_last_y(s) || py + ny - 1 > screen_last_y(s))
-		fatalx("bad range");
 
 	for (i = py; i < py + ny; i++) {
 		xfree(s->grid_data[i]);
@@ -303,15 +283,6 @@ screen_free_lines(struct screen *s, u_int py, u_int ny)
 void
 screen_move_lines(struct screen *s, u_int dy, u_int py, u_int ny)
 {
-	log_debug("moving lines %u,%u to %u", py, ny, dy);
-
-	if (py > screen_last_y(s) || py + ny - 1 > screen_last_y(s))
-		fatalx("bad range");
-	if (dy > screen_last_y(s) || dy == py)
-		fatalx("bad destination");
-	if (dy + ny - 1 > screen_last_y(s))
-		fatalx("bad size");
-
 	memmove(
 	    &s->grid_data[dy], &s->grid_data[py], ny * (sizeof *s->grid_data));
 	memmove(
@@ -327,383 +298,16 @@ screen_fill_lines(
 {
 	u_int	i;
 
-	log_debug("filling lines %u,%u", py, ny);
-
-	if (py > screen_last_y(s) || py + ny - 1 > screen_last_y(s))
-		fatalx("bad range");
-
 	for (i = py; i < py + ny; i++)
-		screen_fill_line(s, i, data, attr, colr);
+		screen_fill_cells(s, 0, i, s->dx, data, attr, colr);
 }
 
-/* Write a single character to the screen at the cursor. */
+/* Fill a range of cells. */
 void
-screen_write_character(struct screen *s, u_char ch)
+screen_fill_cells(struct screen *s,
+    u_int px, u_int py, u_int nx, u_char data, u_char attr, u_char colr)
 {
-	s->grid_data[s->cy][s->cx] = ch;
-	s->grid_attr[s->cy][s->cx] = s->attr;
-	s->grid_colr[s->cy][s->cx] = s->colr;
-}
-
-/* Move cursor up and scroll if necessary. */
-void
-screen_cursor_up_scroll(struct screen *s)
-{
-	if (s->cy == s->rupper)
-		screen_scroll_region_down(s);
-	else if (s->cy > 0)
-		s->cy--;
-}
-
-/* Move cursor down and scroll if necessary. */
-void
-screen_cursor_down_scroll(struct screen *s)
-{
-	if (s->cy == s->rlower)
-		screen_scroll_region_up(s);
-	else if (s->cy < screen_last_y(s))
-		s->cy++;
-}
-
-/* Scroll region up. */
-void
-screen_scroll_region_up(struct screen *s)
-{
-	log_debug("scrolling region up: %u:%u", s->rupper, s->rlower);
-
-	/* 
-	 * Scroll scrolling region up:
-	 * 	- delete rupper
-	 *	- move rupper + 1 to rlower to rupper
-	 *	- make new line at rlower
-	 *
-	 * Example: region is 12 to 24.
-	 *	rlower = 24, rupper = 12
-	 *	screen_free_lines(s, 12, 1);
-	 *	screen_move_lines(s, 12, 13, 12);
-	 *	screen_make_lines(s, 24, 1);
-	 */
-
-	screen_free_lines(s, s->rupper, 1);
-
-	if (s->rupper != s->rlower) {
-		screen_move_lines(s, 
-		    s->rupper, s->rupper + 1, s->rlower - s->rupper);
-	}
-
-	screen_make_lines(s, s->rlower, 1);
-	screen_fill_lines(
-	    s, s->rlower, 1, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-}
-
-/* Scroll region down. */
-void
-screen_scroll_region_down(struct screen *s)
-{
-	log_debug("scrolling region down: %u:%u", s->rupper, s->rlower);
-
-	/* 
-	 * Scroll scrolling region down:
-	 * 	- delete rlower
-	 *	- move rupper to rlower - 1 to rupper + 1
-	 *	- make new line at rupper
-	 *
-	 * Example: region is 12 to 24.
-	 *	rlower = 24, rupper = 12
-	 *	screen_free_lines(s, 24, 1);
-	 *	screen_move_lines(s, 13, 12, 12);
-	 *	screen_make_lines(s, 12, 1);
-	 */
-
-	screen_free_lines(s, s->rlower, 1);
-
-	if (s->rupper != s->rlower) {
-		screen_move_lines(s,
-		    s->rupper + 1, s->rupper, s->rlower - s->rupper);
-	}
-
-	screen_make_lines(s, s->rupper, 1);
-	screen_fill_lines(
-	    s, s->rupper, 1, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-}
-
-/* Scroll screen up. */
-void
-screen_scroll_up(struct screen *s, u_int ny)
-{
-	screen_delete_lines(s, 0, ny);
-}
-
-/* Scroll screen down. */
-void
-screen_scroll_down(struct screen *s, u_int ny)
-{
-	screen_insert_lines(s, 0, ny);
-}
-
-/* Fill entire screen. */
-void
-screen_fill_screen(struct screen *s, u_char data, u_char attr, u_char colr)
-{
-	screen_fill_end_of_screen(s, 0, 0, data, attr, colr);
-}
-
-/* Fill single line. */
-void
-screen_fill_line(
-    struct screen *s, u_int py, u_char data, u_char attr, u_char colr)
-{
-	screen_fill_end_of_line(s, 0, py, data, attr, colr);
-}
-
-/* Fill to end of screen. */
-void
-screen_fill_end_of_screen(
-    struct screen *s, u_int px, u_int py, u_char data, u_char attr, u_char colr)
-{
-	if (py > screen_last_y(s))
-		return;
-
-	if (px != 0) {
-		screen_fill_end_of_line(s, px, py, data, attr, colr);
-		if (py++ > screen_last_y(s))
-			return;
-	}
-
-	while (py <= screen_last_y(s)) {
-		screen_fill_line(s, py, data, attr, colr);
-		py++;
-	}
-}
-
-/* Fill to end of line. */
-void
-screen_fill_end_of_line(
-    struct screen *s, u_int px, u_int py, u_char data, u_char attr, u_char colr)
-{
-	if (px > screen_last_x(s))
-		return;
-	if (py > screen_last_y(s))
-		return;
-
-	memset(&s->grid_data[py][px], data, s->sx - px);
-	memset(&s->grid_attr[py][px], attr, s->sx - px);
-	memset(&s->grid_colr[py][px], colr, s->sx - px);
-}
-
-/* Fill to start of line. */
-void
-screen_fill_start_of_line(
-    struct screen *s, u_int px, u_int py, u_char data, u_char attr, u_char colr)
-{
-	if (px > screen_last_x(s))
-		return;
-	if (py > screen_last_y(s))
-		return;
-
-	memset(s->grid_data[py], data, px);
-	memset(s->grid_attr[py], attr, px);
-	memset(s->grid_colr[py], colr, px);
-}
-
-/* Insert lines. */
-void
-screen_insert_lines(struct screen *s, u_int py, u_int ny)
-{
-	if (py > screen_last_y(s))
-		return;
-
-	if (py + ny > screen_last_y(s))
-		ny = screen_last_y(s) - py;
-	log_debug("inserting lines: %u,%u", py, ny);
-
-	/*
-	 * Insert range of ny lines at py:
-	 *	- Free ny lines from end of screen.
-	 *	- Move from py to end of screen - ny to py + ny.
-	 *	- Create ny lines at py.
-	 *
-	 * Example: insert 2 lines at 4.
-	 *	sy = 10, py = 4, ny = 2
-	 *	screen_free_lines(s, 8, 2);	- delete lines 8,9
-	 *	screen_move_lines(s, 6, 4, 4);	- move 4,5,6,7 to 6,7,8,9
-	 *	screen_make_lines(s, 4, 2);	- make lines 4,5
-	 */
-
-	screen_free_lines(s, s->sy - ny, ny);
-
-	if (py != screen_last_y(s))
-		screen_move_lines(s, py + ny, py, s->sy - py - ny);
-
-	screen_make_lines(s, py, ny);
-	screen_fill_lines(
-	    s, py, ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-}
-
-/* Insert lines in region. */
-void
-screen_insert_lines_region(struct screen *s, u_int py, u_int ny)
-{
-	if (py < s->rupper || py > s->rlower)
-		return;
-	if (py + ny > s->rlower)
-		ny = s->rlower - py;
-	log_debug("inserting lines in region: %u,%u (%u,%u)", py, ny,
-	    s->rupper, s->rlower);
-
-	/*
-	 * Insert range of ny lines at py:
-	 *	- Free ny lines from end of screen.
-	 *	- Move from py to end of screen - ny to py + ny.
-	 *	- Create ny lines at py.
-	 *
-	 * Example: insert 2 lines at 4.
-	 *	ryu = 11, ryl = 16, py = 13, ny = 2
-	 *	screen_free_lines(s, 15, 2);	- delete lines 15,16
-	 *	screen_move_lines(s, 13, 15, 2);- move 13,14 to 15,16
-	 *	screen_make_lines(s, 13, 2);	- make lines 13,14
-	 */
-
-	screen_free_lines(s, (s->rlower + 1) - ny, ny);
-
-	if (py != s->rlower)
-		screen_move_lines(s, py + ny, py, (s->rlower + 1) - py - ny);
-
-	screen_make_lines(s, py, ny);
-	screen_fill_lines(
-	    s, py, ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-}
-
-/* Delete lines. */
-void
-screen_delete_lines(struct screen *s, u_int py, u_int ny)
-{
-	if (py > screen_last_y(s))
-		return;
-
-	if (py + ny > screen_last_y(s))
-		ny = screen_last_y(s) - py;
-	log_debug("deleting lines: %u,%u", py, ny);
-
-	/*
-	 * Delete range of ny lines at py:
-	 * 	- Free ny lines at py.
-	 *	- Move from py + ny to end of screen to py.
-	 *	- Free and recreate last ny lines.
-	 *
-	 * Example: delete lines 3,4.
-	 *	sy = 10, py = 3, ny = 2
-	 *	screen_free_lines(s, 3, 2);	- delete lines 3,4
-	 *	screen_move_lines(s, 3, 5, 5);	- move 5,6,7,8,9 to 3
-	 *	screen_make_lines(s, 8, 2);	- make lines 8,9
-	 */
-
-	screen_free_lines(s, py, ny);
-
-	if (py != screen_last_y(s))
-		screen_move_lines(s, py, py + ny, s->sy - py - ny);
-
-	screen_make_lines(s, s->sy - ny, ny);
-	screen_fill_lines(
-	    s, s->sy - ny, ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-}
-
-/* Delete lines inside scroll region. */
-void
-screen_delete_lines_region(struct screen *s, u_int py, u_int ny)
-{
-	if (py < s->rupper || py > s->rlower)
-		return;
-	if (py + ny > s->rlower)
-		ny = s->rlower - py;
-	log_debug("deleting lines in region: %u,%u (%u,%u)", py, ny,
-	    s->rupper, s->rlower);
-
-	/*
-	 * Delete range of ny lines at py:
-	 * 	- Free ny lines at py.
-	 *	- Move from py + ny to end of region to py.
-	 *	- Free and recreate last ny lines.
-	 *
-	 * Example: delete lines 13,14.
-	 *	ryu = 11, ryl = 16, py = 13, ny = 2
-	 *	screen_free_lines(s, 13, 2);	- delete lines 13,14
-	 *	screen_move_lines(s, 15, 16, 2);- move 15,16 to 13
-	 *	screen_make_lines(s, 15, 16);	- make lines 15,16
-	 */
-
-	screen_free_lines(s, py, ny);
-
-	if (py != s->rlower)
-		screen_move_lines(s, py, py + ny, (s->rlower + 1) - py - ny);
-
-	screen_make_lines(s, (s->rlower + 1) - ny, ny);
-	screen_fill_lines(s, (s->rlower + 1) - ny,
-	    ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-}
-
-/* Insert characters. */
-void
-screen_insert_characters(struct screen *s, u_int px, u_int py, u_int nx)
-{
-	u_int	lx, rx;
-
-	if (px > screen_last_x(s) || py > screen_last_y(s))
-		return;
-
-	lx = px;
-	rx = screen_offset_x(px, nx);
-	if (rx > screen_last_x(s))
-		rx = screen_last_x(s);
-
-	/*
-	 * Inserting a range from lx to rx, inclusive.
-	 *
-	 * - If rx is not the last x, move from lx to rx + 1.
-	 * - Clear the range from lx to rx.
-	 */
-	if (rx != screen_last_x(s)) {
-		nx = screen_range_x(rx + 1, screen_last_x(s));
-		memmove(&s->grid_data[py][rx + 1], &s->grid_data[py][lx], nx);
-		memmove(&s->grid_attr[py][rx + 1], &s->grid_attr[py][lx], nx);
-		memmove(&s->grid_colr[py][rx + 1], &s->grid_colr[py][lx], nx);
-	}
-	memset(&s->grid_data[py][lx], SCREEN_DEFDATA, screen_range_x(lx, rx));
-	memset(&s->grid_attr[py][lx], SCREEN_DEFATTR, screen_range_x(lx, rx));
-	memset(&s->grid_colr[py][lx], SCREEN_DEFCOLR, screen_range_x(lx, rx));
-}
-
-/* Delete characters. */
-void
-screen_delete_characters(struct screen *s, u_int px, u_int py, u_int nx)
-{
-	u_int	lx, rx;
-
-	if (px > screen_last_x(s) || py > screen_last_y(s))
-		return;
-
-	lx = px;
-	rx = screen_offset_x(px, nx);
-	if (rx > screen_last_x(s))
-		rx = screen_last_x(s);
-
-	/*
-	 * Deleting the range from lx to rx, inclusive.
-	 *
-	 * - If rx is not the last x, move the range from rx + 1 to lx.
-	 * - Clear the range from the last x - (rx - lx)  to the last x.
-	 */
-
-	if (rx != screen_last_x(s)) {
-		nx = screen_range_x(rx + 1, screen_last_x(s));
-		memmove(&s->grid_data[py][lx], &s->grid_data[py][rx + 1], nx);
-		memmove(&s->grid_attr[py][lx], &s->grid_attr[py][rx + 1], nx);
-		memmove(&s->grid_colr[py][lx], &s->grid_colr[py][rx + 1], nx);
-	}
-
-	/* If lx == rx, then nx = 1. */ 
-	nx = screen_range_x(lx, rx);
-	memset(&s->grid_data[py][s->sx - nx], SCREEN_DEFDATA, nx);
-	memset(&s->grid_attr[py][s->sx - nx], SCREEN_DEFATTR, nx);
-	memset(&s->grid_colr[py][s->sx - nx], SCREEN_DEFCOLR, nx);
+	memset(&s->grid_data[py][px], data, nx);
+	memset(&s->grid_attr[py][px], attr, nx);
+	memset(&s->grid_colr[py][px], colr, nx);
 }

@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.25 2007-11-20 18:11:37 nicm Exp $ */
+/* $Id: server-fn.c,v 1.26 2007-11-20 21:42:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -175,7 +175,7 @@ server_clear_client(struct client *c)
 	size = BUFFER_USED(c->out);
 	
 	input_store_zero(c->out, CODE_CURSOROFF);
-	for (i = 0; i < s->sy; i++) {
+	for (i = 0; i < screen_size_y(s); i++) {
 		input_store_two(c->out, CODE_CURSORMOVE, i + 1, 1);
 		input_store_zero(c->out, CODE_CLEARLINE);
 	}
@@ -200,7 +200,7 @@ server_redraw_client(struct client *c)
 	buffer_add(c->out, sizeof hdr);
 	size = BUFFER_USED(c->out);
 
-	screen_draw(s, c->out, 0, s->sy - 1);
+	screen_draw(s, c->out, 0, screen_last_y(s));
 
 	size = BUFFER_USED(c->out) - size;
 	log_debug("redrawing screen, %zu bytes", size);

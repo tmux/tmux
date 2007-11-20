@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.26 2007-11-07 19:41:17 nicm Exp $ */
+/* $Id: window.c,v 1.27 2007-11-20 21:42:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -256,7 +256,7 @@ window_resize(struct window *w, u_int sx, u_int sy)
 {
 	struct winsize	ws;
 
-	if (sx == w->screen.sx && sy == w->screen.sy)
+	if (sx == screen_size_x(&w->screen) && sy == screen_size_y(&w->screen))
 		return (-1);
 		
 	memset(&ws, 0, sizeof ws);

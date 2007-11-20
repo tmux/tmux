@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.8 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.9 2007-11-20 21:42:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,7 +49,7 @@ cmd_list_windows_exec(unused void *ptr, struct cmd_ctx *ctx)
 		w = wl->window;
 		ctx->print(ctx, "%d: %s \"%s\" (%s) [%ux%u]",
 		    wl->idx, w->name, w->screen.title, ttyname(w->fd),
-		    w->screen.sx, w->screen.sy);
+		    screen_size_x(&w->screen), screen_size_y(&w->screen));
 	}
 
 	if (ctx->cmdclient != NULL)

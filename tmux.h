@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.83 2007-11-20 18:46:32 nicm Exp $ */
+/* $Id: tmux.h,v 1.84 2007-11-20 21:42:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -354,8 +354,11 @@ struct screen {
 	u_char	       **grid_attr;
 	u_char	       **grid_colr;
 
- 	u_int		 sx;		/* size x */
-	u_int		 sy;		/* size y */
+ 	u_int		 dx;		/* display x size */
+	u_int		 dy;		/* display y size */
+
+	u_int		 ysize;		/* actual y size */
+	u_int		 ylimit;	/* maximum y size */
 
 	u_int		 rupper;	/* scroll region top */
 	u_int		 rlower;	/* scroll region bottom */
@@ -372,6 +375,21 @@ struct screen {
 	
 	int		 mode;
 };
+
+/* Screen display access macros. */
+#define screen_x(s, x) (x)
+#define screen_y(s, y) ((s)->ysize - (s)->dy + y)
+
+#define screen_last_x(s) ((s)->dx - 1)
+#define screen_last_y(s) ((s)->dy - 1)
+
+#define screen_size_x(s) ((s)->dx)
+#define screen_size_y(s) ((s)->dy)
+
+#define screen_in_x(s, x) ((x) < screen_size_x(s))
+#define screen_in_y(s, y) ((y) < screen_size_y(s))
+
+#define screen_in_region(s, y) ((y) >= (s)->rupper && (y) <= (s)->rlower)
 
 /* Screen default contents. */
 #define SCREEN_DEFDATA ' '
@@ -676,6 +694,37 @@ void	 input_store_two(struct buffer *, u_char, uint16_t, uint16_t);
 /* input-key.c */
 void	 input_translate_key(struct buffer *, int);
 
+/* screen-display.c */
+void	 screen_display_make_lines(struct screen *, u_int, u_int);
+void	 screen_display_free_lines(struct screen *, u_int, u_int);
+void	 screen_display_move_lines(struct screen *, u_int, u_int, u_int);
+void	 screen_display_fill_lines(
+	     struct screen *, u_int, u_int, u_char, u_char, u_char);
+void	 screen_display_fill_cells(
+    	     struct screen *, u_int, u_int, u_int, u_char, u_char, u_char);
+void	 screen_display_fill_screen(struct screen *, u_char, u_char, u_char);
+void	 screen_display_fill_cursor_eos(
+	     struct screen *, u_char, u_char, u_char);
+void	 screen_display_fill_cursor_bos(
+	     struct screen *, u_char, u_char, u_char);
+void	 screen_display_fill_line(
+	     struct screen *, u_int, u_char, u_char, u_char);
+void	 screen_display_fill_cursor_bol(
+	     struct screen *, u_char, u_char, u_char);
+void	 screen_display_fill_cursor_eol(
+    	     struct screen *, u_char, u_char, u_char);
+void	 screen_display_cursor_set(struct screen *, u_char);
+void	 screen_display_cursor_up(struct screen *);
+void	 screen_display_cursor_down(struct screen *);
+void	 screen_display_scroll_region_up(struct screen *);
+void	 screen_display_scroll_region_down(struct screen *);
+void	 screen_display_insert_lines(struct screen *, u_int, u_int);
+void	 screen_display_insert_lines_region(struct screen *, u_int, u_int);
+void	 screen_display_delete_lines(struct screen *, u_int, u_int);
+void	 screen_display_delete_lines_region(struct screen *, u_int, u_int);
+void	 screen_display_insert_characters(struct screen *, u_int, u_int, u_int);
+void	 screen_display_delete_characters(struct screen *, u_int, u_int, u_int);
+
 /* screen.c */
 const char *screen_colourstring(u_char);
 u_char	 screen_stringcolour(const char *);
@@ -683,27 +732,13 @@ void	 screen_create(struct screen *, u_int, u_int);
 void	 screen_destroy(struct screen *);
 void	 screen_resize(struct screen *, u_int, u_int);
 void	 screen_draw(struct screen *, struct buffer *, u_int, u_int);
-void	 screen_write_character(struct screen *, u_char);
-void	 screen_insert_lines(struct screen *, u_int, u_int);
-void	 screen_insert_lines_region(struct screen *, u_int, u_int);
-void	 screen_delete_lines(struct screen *, u_int, u_int);
-void	 screen_delete_lines_region(struct screen *, u_int, u_int);
-void	 screen_insert_characters(struct screen *, u_int, u_int, u_int);
-void	 screen_delete_characters(struct screen *, u_int, u_int, u_int);
-void	 screen_cursor_up_scroll(struct screen *);
-void	 screen_cursor_down_scroll(struct screen *);
-void	 screen_scroll_region_up(struct screen *);
-void	 screen_scroll_region_down(struct screen *);
-void	 screen_scroll_up(struct screen *, u_int);
-void	 screen_scroll_down(struct screen *, u_int);
-void	 screen_fill_screen(struct screen *, u_char, u_char, u_char);
-void	 screen_fill_line(struct screen *, u_int, u_char, u_char, u_char);
-void	 screen_fill_end_of_screen(
-    	     struct screen *, u_int, u_int, u_char, u_char, u_char);
-void	 screen_fill_end_of_line(
-    	     struct screen *, u_int, u_int, u_char, u_char, u_char);
-void	 screen_fill_start_of_line(
-    	     struct screen *, u_int, u_int, u_char, u_char, u_char);
+void	 screen_make_lines(struct screen *, u_int, u_int);
+void	 screen_free_lines(struct screen *, u_int, u_int);
+void	 screen_move_lines(struct screen *, u_int, u_int, u_int);
+void	 screen_fill_lines(
+	     struct screen *, u_int, u_int, u_char, u_char, u_char);
+void	 screen_fill_cells(
+    	     struct screen *, u_int, u_int, u_int, u_char, u_char, u_char);
 
 /* local.c */
 int	 local_init(struct buffer **, struct buffer **);

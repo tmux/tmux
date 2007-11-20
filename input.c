@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.32 2007-11-20 18:46:32 nicm Exp $ */
+/* $Id: input.c,v 1.33 2007-11-20 21:42:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,6 +74,13 @@ void	 input_handle_sequence_rm(struct input_ctx *);
 void	 input_handle_sequence_decstbm(struct input_ctx *);
 void	 input_handle_sequence_sgr(struct input_ctx *);
 void	 input_handle_sequence_dsr(struct input_ctx *);
+
+#define input_limit(v, lower, upper) do {	\
+	if (v < lower)				\
+		v = lower;			\
+	if (v > upper)				\
+		v = upper;			\
+} while (0)
 
 int
 input_new_argument(struct input_ctx *ictx)
@@ -365,18 +372,16 @@ input_handle_character(u_char ch, struct input_ctx *ictx)
 
 	log_debug2("-- ch %zu: %hhu (%c)", ictx->off, ch, ch);
 	
-	if (s->cx > s->sx || s->cy > s->sy - 1)
-		return;
-
-	if (s->cx == s->sx) {
+	if (s->cx == screen_size_x(s)) {
 		input_store8(ictx->b, '\r');
 		input_store8(ictx->b, '\n');
 
 		s->cx = 0;
-		screen_cursor_down_scroll(s);
-	}
+		screen_display_cursor_down(s);
+	} else if (!screen_in_x(s, s->cx) || !screen_in_y(s, s->cy))
+		return;
 
-	screen_write_character(s, ch);
+	screen_display_cursor_set(s, ch);
 	input_store8(ictx->b, ch);
 
 	s->cx++;
@@ -393,7 +398,7 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 	case '\0':	/* NUL */
 		break;
 	case '\n':	/* LF */
- 		screen_cursor_down_scroll(s);
+ 		screen_display_cursor_down(s);
 		break;
 	case '\r':	/* CR */
 		s->cx = 0;
@@ -407,9 +412,9 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 		break;
 	case '\011': 	/* TAB */
 		s->cx = ((s->cx / 8) * 8) + 8;
-		if (s->cx > s->sx) {
+		if (s->cx > screen_last_x(s)) {
 			s->cx = 0;
-			screen_cursor_down_scroll(s);
+			screen_display_cursor_down(s);
 		}
 		input_store_two(
 		    ictx->b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);	
@@ -430,7 +435,7 @@ input_handle_c1_control(u_char ch, struct input_ctx *ictx)
 
 	switch (ch) {
 	case 'M':	/* RI */
-		screen_cursor_up_scroll(s);
+		screen_display_cursor_up(s);
 		input_store_zero(ictx->b, CODE_REVERSEINDEX);
 		break;
 	default:
@@ -521,7 +526,7 @@ input_handle_sequence(u_char ch, struct input_ctx *ictx)
 	
 	log_debug2("-- sq %zu: %hhu (%c): %u [sx=%u, sy=%u, cx=%u, cy=%u]",
 	    ictx->off, ch, ch, ARRAY_LENGTH(&ictx->args),
-	    s->sx, s->sy, s->cx, s->cy);
+	    screen_size_x(s), screen_size_y(s), s->cx, s->cy);
 	for (i = 0; i < ARRAY_LENGTH(&ictx->args); i++) {
 		iarg = &ARRAY_ITEM(&ictx->args, i);
 		if (*iarg->data != '\0')
@@ -576,10 +581,9 @@ input_handle_sequence_cud(struct input_ctx *ictx)
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
 
-	if (n == 0 || n > s->sy - s->cy - 1) {
-		log_debug3("cud: out of range: %hu", n);
+	if (n == 0)
 		return;
-	}
+	input_limit(n, 1, screen_last_y(s) - s->cy);
 
 	s->cy += n;
 	input_store_one(ictx->b, CODE_CURSORDOWN, n);
@@ -599,10 +603,9 @@ input_handle_sequence_cuf(struct input_ctx *ictx)
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
 
-	if (n == 0 || n > s->sx - s->cx - 1) {
-		log_debug3("cuf: out of range: %hu", n);
+	if (n == 0)
 		return;
-	}
+	input_limit(n, 1, screen_last_x(s) - s->cx);
 
 	s->cx += n;
 	input_store_one(ictx->b, CODE_CURSORRIGHT, n);
@@ -645,12 +648,11 @@ input_handle_sequence_dch(struct input_ctx *ictx)
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
 
-	if (n == 0 || n > s->sx - s->cx - 1) {
-		log_debug3("dch: out of range: %hu", n);
+	if (n == 0)
 		return;
-	}
+	input_limit(n, 1, screen_last_x(s) - s->cx);
 
-	screen_delete_characters(s, s->cx, s->cy, n);
+	screen_display_delete_characters(s, s->cx, s->cy, n);
 	input_store_one(ictx->b, CODE_DELETECHARACTER, n);
 }
 
@@ -668,15 +670,14 @@ input_handle_sequence_dl(struct input_ctx *ictx)
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
 
-	if (n == 0 || n > s->sy - s->cy - 1) {
-		log_debug3("dl: out of range: %hu", n);
+	if (n == 0)
 		return;
-	}
+	input_limit(n, 1, screen_last_y(s) - s->cy);
 
 	if (s->cy < s->rupper || s->cy > s->rlower)
-		screen_delete_lines(s, s->cy, n);
+		screen_display_delete_lines(s, s->cy, n);
 	else
-		screen_delete_lines_region(s, s->cy, n);
+		screen_display_delete_lines_region(s, s->cy, n);
 	input_store_one(ictx->b, CODE_DELETELINE, n);
 }
 
@@ -694,12 +695,11 @@ input_handle_sequence_ich(struct input_ctx *ictx)
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
 
-	if (n == 0 || n > s->sx - s->cx - 1) {
-		log_debug3("ich: out of range: %hu", n);
+	if (n == 0)
 		return;
-	}
+	input_limit(n, 1, screen_last_x(s) - s->cx);
 
-	screen_insert_characters(s, s->cx, s->cy, n);
+	screen_display_insert_characters(s, s->cx, s->cy, n);
 	input_store_one(ictx->b, CODE_INSERTCHARACTER, n);
 }
 
@@ -717,14 +717,14 @@ input_handle_sequence_il(struct input_ctx *ictx)
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
 
-	if (n == 0 || n > s->sy - s->cy - 1) {
-		log_debug3("il: out of range: %hu", n);
+	if (n == 0)
 		return;
-	}
+	input_limit(n, 1, screen_last_y(s) - s->cy);
+
 	if (s->cy < s->rupper || s->cy > s->rlower)
-		screen_insert_lines(s, s->cy, n);
+		screen_display_insert_lines(s, s->cy, n);
 	else
-		screen_insert_lines_region(s, s->cy, n);
+		screen_display_insert_lines_region(s, s->cy, n);
 	input_store_one(ictx->b, CODE_INSERTLINE, n);
 }
 
@@ -742,10 +742,9 @@ input_handle_sequence_vpa(struct input_ctx *ictx)
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
 
-	if (n == 0 || n > s->sy) {
-		log_debug3("vpa: out of range: %hu", n);
+	if (n == 0)
 		return;
-	}
+	input_limit(n, 1, screen_size_y(s));
 
 	s->cy = n - 1;
 	input_store_two(ictx->b, CODE_CURSORMOVE, n, s->cx + 1);
@@ -765,10 +764,9 @@ input_handle_sequence_hpa(struct input_ctx *ictx)
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
 
-	if (n == 0 || n > s->sx) {
-		log_debug3("hpa: out of range: %hu", n);
+	if (n == 0)
 		return;
-	}
+	input_limit(n, 1, screen_size_x(s));
 
 	s->cx = n - 1;
 	input_store_two(ictx->b, CODE_CURSORMOVE, s->cy + 1, n);
@@ -790,14 +788,8 @@ input_handle_sequence_cup(struct input_ctx *ictx)
 	if (input_get_argument(ictx, 1, &m, 1) != 0)
 		return;
 
-	if (n == 0)
-		n = 1;
-	if (n > s->sy)
-		n = s->sy;
-	if (m == 0)
-		m = 1;
-	if (m > s->sx)
-		m = s->sx;
+	input_limit(n, 1, screen_size_y(s));
+	input_limit(m, 1, screen_size_x(s));
 
 	s->cx = m - 1;
 	s->cy = n - 1;
@@ -824,10 +816,11 @@ input_handle_sequence_ed(struct input_ctx *ictx)
 
 	switch (n) {
 	case 0:
-		screen_fill_end_of_screen(
-		    s, 0, s->cy, SCREEN_DEFDATA, s->attr, s->colr);
+		screen_display_fill_cursor_eos(
+		    s, SCREEN_DEFDATA, s->attr, s->colr);
+
 		input_store_zero(ictx->b, CODE_CLEARLINE);
-		for (i = s->cy + 1; i < s->sy; i++) {
+		for (i = s->cy + 1; i < screen_size_y(s); i++) {
 			input_store_two(ictx->b, CODE_CURSORMOVE, i + 1, 1);
 			input_store_zero(ictx->b, CODE_CLEARLINE);
 		}
@@ -835,8 +828,10 @@ input_handle_sequence_ed(struct input_ctx *ictx)
 		    ictx->b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
 		break;
 	case 2:
-		screen_fill_screen(s, SCREEN_DEFDATA, s->attr, s->colr);
-		for (i = 0; i < s->sy; i++) {
+		screen_display_fill_lines(
+		    s, 0, screen_size_y(s), SCREEN_DEFDATA, s->attr, s->colr);
+		
+		for (i = 0; i < screen_size_y(s); i++) {
 			input_store_two(ictx->b, CODE_CURSORMOVE, i + 1, 1);
 			input_store_zero(ictx->b, CODE_CLEARLINE);
 		}
@@ -865,17 +860,18 @@ input_handle_sequence_el(struct input_ctx *ictx)
 
 	switch (n) {
 	case 0:
-		screen_fill_end_of_line(
-		    s, s->cx, s->cy, SCREEN_DEFDATA, s->attr, s->colr);
+		screen_display_fill_cursor_eol(
+		    s, SCREEN_DEFDATA, s->attr, s->colr);
 		input_store_zero(ictx->b, CODE_CLEARENDOFLINE);
 		break;
 	case 1:
-		screen_fill_start_of_line(
-		    s, s->cx, s->cy, SCREEN_DEFDATA, s->attr, s->colr);
+		screen_display_fill_cursor_bol(
+		    s, SCREEN_DEFDATA, s->attr, s->colr);
 		input_store_zero(ictx->b, CODE_CLEARSTARTOFLINE);
 		break;
 	case 2:
-		screen_fill_line(s, s->cy, SCREEN_DEFDATA, s->attr, s->colr);
+		screen_display_fill_line(
+		    s, s->cy, SCREEN_DEFDATA, s->attr, s->colr);
 		input_store_zero(ictx->b, CODE_CLEARLINE);
 		break;
 	}
@@ -1008,17 +1004,11 @@ input_handle_sequence_decstbm(struct input_ctx *ictx)
 	/* XXX this will catch [0;0r and [;r etc too, is this right? */
 	if (n == 0 && m == 0) {
 		n = 1;
-		m = s->sy;
+		m = screen_size_y(s);
 	}
 
-	if (n == 0)
-		n = 1;
-	if (n > s->sy)
-		n = s->sy;
-	if (m == 0)
-		m = 1;
-	if (m > s->sy)
-		m = s->sy;
+	input_limit(n, 1, screen_size_y(s));
+	input_limit(m, 1, screen_size_y(s));
 
 	if (n > m) {
 		log_debug3("decstbm: out of range: %hu,%hu", n, m);

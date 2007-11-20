@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.4 2007-10-19 10:21:35 nicm Exp $ */
+/* $Id: resize.c,v 1.5 2007-11-20 21:42:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -107,11 +107,12 @@ recalculate_sizes(void)
 		if (ssx == UINT_MAX || ssy == UINT_MAX)
 			continue;
 
-		if (w->screen.sx == ssx && w->screen.sy == ssy)
+		if (screen_size_x(&w->screen) == ssx &&
+		    screen_size_y(&w->screen) == ssy)
 			continue;
 
-		log_debug("window size %u,%u (was %u,%u)", 
-		    ssx, ssy, w->screen.sx, w->screen.sy);
+		log_debug("window size %u,%u (was %u,%u)", ssx, ssy,
+		    screen_size_x(&w->screen), screen_size_y(&w->screen));
 
 		server_clear_window_cur(w);
 		window_resize(w, ssx, ssy);
