@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.23 2007-10-12 13:51:44 nicm Exp $ */
+/* $Id: screen.c,v 1.24 2007-11-20 18:46:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -104,8 +104,8 @@ screen_create(struct screen *s, u_int sx, u_int sy)
 	s->cx = 0;
 	s->cy = 0;
 
-	s->ry_upper = 0;
-	s->ry_lower = screen_last_y(s);
+	s->rupper = 0;
+	s->rlower = screen_last_y(s);
 
 	s->attr = SCREEN_DEFATTR;
 	s->colr = SCREEN_DEFCOLR;
@@ -142,8 +142,8 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 	s->sx = sx;
 	s->sy = sy;
 
-	s->ry_upper = 0;
-	s->ry_lower = screen_last_y(s);
+	s->rupper = 0;
+	s->rlower = screen_last_y(s);
 
 	if (sy < oy) {
 		ny = oy - sy;
@@ -237,7 +237,7 @@ screen_draw(struct screen *s, struct buffer *b, u_int uy, u_int ly)
 	attr = 0;
 	colr = SCREEN_DEFCOLR;
 
-	input_store_two(b, CODE_SCROLLREGION, s->ry_upper + 1, s->ry_lower + 1);
+	input_store_two(b, CODE_SCROLLREGION, s->rupper + 1, s->rlower + 1);
 
 	input_store_zero(b, CODE_CURSOROFF);
 	input_store_two(b, CODE_ATTRIBUTES, attr, colr);
@@ -349,7 +349,7 @@ screen_write_character(struct screen *s, u_char ch)
 void
 screen_cursor_up_scroll(struct screen *s)
 {
-	if (s->cy == s->ry_upper)
+	if (s->cy == s->rupper)
 		screen_scroll_region_down(s);
 	else if (s->cy > 0)
 		s->cy--;
@@ -359,7 +359,7 @@ screen_cursor_up_scroll(struct screen *s)
 void
 screen_cursor_down_scroll(struct screen *s)
 {
-	if (s->cy == s->ry_lower)
+	if (s->cy == s->rlower)
 		screen_scroll_region_up(s);
 	else if (s->cy < screen_last_y(s))
 		s->cy++;
@@ -369,62 +369,62 @@ screen_cursor_down_scroll(struct screen *s)
 void
 screen_scroll_region_up(struct screen *s)
 {
-	log_debug("scrolling region up: %u:%u", s->ry_upper, s->ry_lower);
+	log_debug("scrolling region up: %u:%u", s->rupper, s->rlower);
 
 	/* 
 	 * Scroll scrolling region up:
-	 * 	- delete ry_upper
-	 *	- move ry_upper + 1 to ry_lower to ry_upper
-	 *	- make new line at ry_lower
+	 * 	- delete rupper
+	 *	- move rupper + 1 to rlower to rupper
+	 *	- make new line at rlower
 	 *
 	 * Example: region is 12 to 24.
-	 *	ry_lower = 24, ry_upper = 12
+	 *	rlower = 24, rupper = 12
 	 *	screen_free_lines(s, 12, 1);
 	 *	screen_move_lines(s, 12, 13, 12);
 	 *	screen_make_lines(s, 24, 1);
 	 */
 
-	screen_free_lines(s, s->ry_upper, 1);
+	screen_free_lines(s, s->rupper, 1);
 
-	if (s->ry_upper != s->ry_lower) {
+	if (s->rupper != s->rlower) {
 		screen_move_lines(s, 
-		    s->ry_upper, s->ry_upper + 1, s->ry_lower - s->ry_upper);
+		    s->rupper, s->rupper + 1, s->rlower - s->rupper);
 	}
 
-	screen_make_lines(s, s->ry_lower, 1);
+	screen_make_lines(s, s->rlower, 1);
 	screen_fill_lines(
-	    s, s->ry_lower, 1, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
+	    s, s->rlower, 1, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 }
 
 /* Scroll region down. */
 void
 screen_scroll_region_down(struct screen *s)
 {
-	log_debug("scrolling region down: %u:%u", s->ry_upper, s->ry_lower);
+	log_debug("scrolling region down: %u:%u", s->rupper, s->rlower);
 
 	/* 
 	 * Scroll scrolling region down:
-	 * 	- delete ry_lower
-	 *	- move ry_upper to ry_lower - 1 to ry_upper + 1
-	 *	- make new line at ry_upper
+	 * 	- delete rlower
+	 *	- move rupper to rlower - 1 to rupper + 1
+	 *	- make new line at rupper
 	 *
 	 * Example: region is 12 to 24.
-	 *	ry_lower = 24, ry_upper = 12
+	 *	rlower = 24, rupper = 12
 	 *	screen_free_lines(s, 24, 1);
 	 *	screen_move_lines(s, 13, 12, 12);
 	 *	screen_make_lines(s, 12, 1);
 	 */
 
-	screen_free_lines(s, s->ry_lower, 1);
+	screen_free_lines(s, s->rlower, 1);
 
-	if (s->ry_upper != s->ry_lower) {
+	if (s->rupper != s->rlower) {
 		screen_move_lines(s,
-		    s->ry_upper + 1, s->ry_upper, s->ry_lower - s->ry_upper);
+		    s->rupper + 1, s->rupper, s->rlower - s->rupper);
 	}
 
-	screen_make_lines(s, s->ry_upper, 1);
+	screen_make_lines(s, s->rupper, 1);
 	screen_fill_lines(
-	    s, s->ry_upper, 1, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
+	    s, s->rupper, 1, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 }
 
 /* Scroll screen up. */
@@ -544,12 +544,12 @@ screen_insert_lines(struct screen *s, u_int py, u_int ny)
 void
 screen_insert_lines_region(struct screen *s, u_int py, u_int ny)
 {
-	if (py < s->ry_upper || py > s->ry_lower)
+	if (py < s->rupper || py > s->rlower)
 		return;
-	if (py + ny > s->ry_lower)
-		ny = s->ry_lower - py;
+	if (py + ny > s->rlower)
+		ny = s->rlower - py;
 	log_debug("inserting lines in region: %u,%u (%u,%u)", py, ny,
-	    s->ry_upper, s->ry_lower);
+	    s->rupper, s->rlower);
 
 	/*
 	 * Insert range of ny lines at py:
@@ -564,10 +564,10 @@ screen_insert_lines_region(struct screen *s, u_int py, u_int ny)
 	 *	screen_make_lines(s, 13, 2);	- make lines 13,14
 	 */
 
-	screen_free_lines(s, (s->ry_lower + 1) - ny, ny);
+	screen_free_lines(s, (s->rlower + 1) - ny, ny);
 
-	if (py != s->ry_lower)
-		screen_move_lines(s, py + ny, py, (s->ry_lower + 1) - py - ny);
+	if (py != s->rlower)
+		screen_move_lines(s, py + ny, py, (s->rlower + 1) - py - ny);
 
 	screen_make_lines(s, py, ny);
 	screen_fill_lines(
@@ -612,12 +612,12 @@ screen_delete_lines(struct screen *s, u_int py, u_int ny)
 void
 screen_delete_lines_region(struct screen *s, u_int py, u_int ny)
 {
-	if (py < s->ry_upper || py > s->ry_lower)
+	if (py < s->rupper || py > s->rlower)
 		return;
-	if (py + ny > s->ry_lower)
-		ny = s->ry_lower - py;
+	if (py + ny > s->rlower)
+		ny = s->rlower - py;
 	log_debug("deleting lines in region: %u,%u (%u,%u)", py, ny,
-	    s->ry_upper, s->ry_lower);
+	    s->rupper, s->rlower);
 
 	/*
 	 * Delete range of ny lines at py:
@@ -634,11 +634,11 @@ screen_delete_lines_region(struct screen *s, u_int py, u_int ny)
 
 	screen_free_lines(s, py, ny);
 
-	if (py != s->ry_lower)
-		screen_move_lines(s, py, py + ny, (s->ry_lower + 1) - py - ny);
+	if (py != s->rlower)
+		screen_move_lines(s, py, py + ny, (s->rlower + 1) - py - ny);
 
-	screen_make_lines(s, (s->ry_lower + 1) - ny, ny);
-	screen_fill_lines(s, (s->ry_lower + 1) - ny,
+	screen_make_lines(s, (s->rlower + 1) - ny, ny);
+	screen_fill_lines(s, (s->rlower + 1) - ny,
 	    ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 }
 

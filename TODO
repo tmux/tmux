@@ -5,9 +5,7 @@
 - alt charset, borders etc (terminfo(5)/Line Graphics)
 - new window command prompt
 - mouse handling and some other bits elinks needs
-- scrollback
 - server doesn't handle SIGTERM anymore...
-- copy/paste
 - the whole input/screen/local thing sucks a bit, reorganise/redesign it
 - line mode/char-at-a-time mode a la telnet?
 - some of the uses of buffers really sucks. buffer_reverse_add/remove,
@@ -67,7 +65,13 @@
 - session specification is all over the place. some things use -s before cmd,
   some -s after, some no -s, there are various uses of -n. the differences are
   sort of logical, but confusing. needs rethought
+- bind non prefix keys (useful for shift-pageup for scrollback, when we
+  have scrollback)
+- stuff like rename would be nice to be able to do in-client like screen, if
+  it could be implemented in a non-icky way
 
 -- For 0.2 --------------------------------------------------------------------
 - copy and paste
+- scrollback
+	phys screen vs virt screen? or seperate scrollback buffer?
 - window splitting?

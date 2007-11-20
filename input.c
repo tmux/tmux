@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.31 2007-11-16 16:28:14 nicm Exp $ */
+/* $Id: input.c,v 1.32 2007-11-20 18:46:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -470,7 +470,7 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 		input_store_two(
 		    ictx->b, CODE_ATTRIBUTES, s->attr, s->colr);
 		input_store_two(ictx->b, CODE_SCROLLREGION,
-		    s->ry_upper + 1, s->ry_lower + 1);
+		    s->rupper + 1, s->rlower + 1);
 		input_store_two(
 		    ictx->b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
 		break;
@@ -673,7 +673,7 @@ input_handle_sequence_dl(struct input_ctx *ictx)
 		return;
 	}
 
-	if (s->cy < s->ry_upper || s->cy > s->ry_lower)
+	if (s->cy < s->rupper || s->cy > s->rlower)
 		screen_delete_lines(s, s->cy, n);
 	else
 		screen_delete_lines_region(s, s->cy, n);
@@ -721,7 +721,7 @@ input_handle_sequence_il(struct input_ctx *ictx)
 		log_debug3("il: out of range: %hu", n);
 		return;
 	}
-	if (s->cy < s->ry_upper || s->cy > s->ry_lower)
+	if (s->cy < s->rupper || s->cy > s->rlower)
 		screen_insert_lines(s, s->cy, n);
 	else
 		screen_insert_lines_region(s, s->cy, n);
@@ -1029,8 +1029,8 @@ input_handle_sequence_decstbm(struct input_ctx *ictx)
 	s->cx = 0;
 	s->cy = n - 1;
 
-	s->ry_upper = n - 1;
-	s->ry_lower = m - 1;
+	s->rupper = n - 1;
+	s->rlower = m - 1;
 	input_store_two(ictx->b, CODE_SCROLLREGION, n, m);
 }
 

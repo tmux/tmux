@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.82 2007-11-20 18:11:37 nicm Exp $ */
+/* $Id: tmux.h,v 1.83 2007-11-20 18:46:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -357,8 +357,8 @@ struct screen {
  	u_int		 sx;		/* size x */
 	u_int		 sy;		/* size y */
 
-	u_int		 ry_upper;	/* scroll region top */
-	u_int		 ry_lower;	/* scroll region bottom */
+	u_int		 rupper;	/* scroll region top */
+	u_int		 rlower;	/* scroll region bottom */
 
 	u_int		 cx;		/* cursor x */
 	u_int		 cy;		/* cursor y */
