@@ -1,5 +1,7 @@
 20 November 2007
 
+* Fix format string error with "must specify a client" message. Also
+  sprinkle some printflike tags.
 * tmux 0.1 released.
 
 17 November 2007
@@ -231,4 +233,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.74 2007-11-20 17:01:38 nicm Exp $
+$Id: CHANGES,v 1.75 2007-11-20 18:11:37 nicm Exp $

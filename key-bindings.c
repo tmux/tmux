@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.15 2007-11-16 22:06:45 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.16 2007-11-20 18:11:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,8 +26,8 @@
 
 struct bindings	key_bindings;
 
-void	key_bindings_error(struct cmd_ctx *, const char *, ...);
-void	key_bindings_print(struct cmd_ctx *, const char *, ...);
+void printflike2 key_bindings_error(struct cmd_ctx *, const char *, ...);
+void printflike2 key_bindings_print(struct cmd_ctx *, const char *, ...);
 
 void
 key_bindings_add(int key, struct cmd *cmd)
@@ -141,7 +141,7 @@ key_bindings_free(void)
 	ARRAY_FREE(&key_bindings);
 }
 
-void
+void printflike2
 key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 {
 	va_list	ap;
@@ -152,11 +152,11 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 
 	*msg = toupper((u_char) *msg);
-	server_write_message(ctx->client, msg);
+	server_write_message(ctx->client, "%s", msg);
 	xfree(msg);
 }
 
-void
+void printflike2
 key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
 	static u_int	 line;

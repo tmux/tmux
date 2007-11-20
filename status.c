@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.8 2007-10-30 10:59:43 nicm Exp $ */
+/* $Id: status.c,v 1.9 2007-11-20 18:11:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,7 +22,7 @@
 
 #include "tmux.h"
 
-void	status_print(struct buffer *, size_t *, const char *, ...);
+void printflike3 status_print(struct buffer *, size_t *, const char *, ...);
 
 void
 status_write(struct client *c)
@@ -61,7 +61,7 @@ status_write(struct client *c)
 		input_store_zero(b, CODE_CURSORON);
 }
 
-void
+void printflike3
 status_print(struct buffer *b, size_t *size, const char *fmt, ...)
 {
 	va_list	ap;

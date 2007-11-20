@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.24 2007-10-30 10:59:43 nicm Exp $ */
+/* $Id: server-fn.c,v 1.25 2007-11-20 18:11:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -327,7 +327,7 @@ server_status_window_all(struct window *w)
 	}
 }
 
-void
+void printflike2
 server_write_message(struct client *c, const char *fmt, ...)
 {
 	struct screen	*s = &c->session->curw->window->screen;

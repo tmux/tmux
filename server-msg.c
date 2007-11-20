@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.32 2007-11-16 21:31:03 nicm Exp $ */
+/* $Id: server-msg.c,v 1.33 2007-11-20 18:11:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,8 +29,10 @@ int	server_msg_fn_identify(struct hdr *, struct client *);
 int	server_msg_fn_keys(struct hdr *, struct client *);
 int	server_msg_fn_resize(struct hdr *, struct client *);
 
-void	server_msg_fn_command_error(struct cmd_ctx *, const char *, ...);
-void	server_msg_fn_command_print(struct cmd_ctx *, const char *, ...);
+void printflike2 server_msg_fn_command_error(
+    	    struct cmd_ctx *, const char *, ...);
+void printflike2 server_msg_fn_command_print(
+    	    struct cmd_ctx *, const char *, ...);
 
 struct server_msg {
 	enum hdrtype	type;
@@ -74,7 +76,7 @@ server_msg_dispatch(struct client *c)
 	}
 }
 
-void
+void printflike2
 server_msg_fn_command_error(struct cmd_ctx *ctx, const char *fmt, ...)
 {
 	va_list	ap;
@@ -88,7 +90,7 @@ server_msg_fn_command_error(struct cmd_ctx *ctx, const char *fmt, ...)
 	xfree(msg);
 }
 
-void
+void printflike2
 server_msg_fn_command_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
 	va_list	ap;
@@ -144,7 +146,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	} else {
 		if (client == NULL) {
 			server_msg_fn_command_error(&ctx, 
-			    "%s: must specify a client: %s", cmd->entry->name);
+			    "%s: must specify a client", cmd->entry->name);
 			goto out;
 		}
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
