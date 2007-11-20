@@ -55,6 +55,7 @@
   is missing (like, eg, xterm-color in an aterm)
 - refer to windows by name etc (duplicates? fnmatch?)
 - commands:
+	start server
 	kill server
 	command to run something without a window at all?
 	command to insert a key into a window (send-key)
@@ -66,9 +67,6 @@
 - session specification is all over the place. some things use -s before cmd,
   some -s after, some no -s, there are various uses of -n. the differences are
   sort of logical, but confusing. needs rethought
-
--- For 0.1 --------------------------------------------------------------------
-- 
 
 -- For 0.2 --------------------------------------------------------------------
 - copy and paste

@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.41 2007-11-16 21:31:03 nicm Exp $
+# $Id: Makefile,v 1.42 2007-11-20 12:00:16 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean
@@ -63,6 +63,10 @@ CFLAGS+= -DUSE_LIBUTIL_H
 
 OBJS= ${SRCS:S/.c/.o/:S/.y/.o/}
 
+DISTDIR= ${PROG}-${VERSION}
+DISTFILES= *.[chyl] Makefile GNUmakefile *.[1-9] NOTES TODO \
+	   `find examples compat -type f -and ! -path '*CVS*'`
+
 CLEANFILES= ${PROG} *.o .depend *~ ${PROG}.core *.log
 
 .c.o:
@@ -79,6 +83,15 @@ ${PROG}:	${OBJS}
 
 depend:
 		mkdep ${CFLAGS} ${INCDIRS} ${SRCS:M*.c}
+
+dist:		clean
+		grep '^#DEBUG=' Makefile
+		grep '^#DEBUG=' GNUmakefile
+		[ "`(grep '^VERSION' Makefile; grep '^VERSION' GNUmakefile)| \
+			uniq -u`" = "" ]
+		tar -zc \
+			-s '/.*/${DISTDIR}\/\0/' \
+			-f ${DISTDIR}.tar.gz ${DISTFILES}
 
 lint:
 		lint -cehvx ${CFLAGS:M-D*} ${SRCS:M*.c}
