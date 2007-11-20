@@ -1,10 +1,10 @@
-# $Id: Makefile,v 1.42 2007-11-20 12:00:16 nicm Exp $
+# $Id: Makefile,v 1.43 2007-11-20 17:01:38 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
-.PHONY: clean
+.PHONY: clean update-index.html upload-index.html
 
 PROG= tmux
-VERSION= 0.1
+VERSION= 0.2
 
 OS!= uname
 REL!= uname -r
@@ -67,7 +67,7 @@ DISTDIR= ${PROG}-${VERSION}
 DISTFILES= *.[chyl] Makefile GNUmakefile *.[1-9] NOTES TODO \
 	   `find examples compat -type f -and ! -path '*CVS*'`
 
-CLEANFILES= ${PROG} *.o .depend *~ ${PROG}.core *.log
+CLEANFILES= ${PROG} *.o .depend *~ ${PROG}.core *.log index.html
 
 .c.o:
 		${CC} ${CFLAGS} ${INCDIRS} -c ${.IMPSRC} -o ${.TARGET}
@@ -98,6 +98,13 @@ lint:
 
 clean:
 		rm -f ${CLEANFILES}
+
+upload-index.html:
+		scp index.html nicm@shell.sf.net:index.html
+		ssh nicm@shell.sf.net sh update-index-tmux.sh
+
+update-index.html:
+		sed "s/%%VERSION%%/${VERSION}/g" index.html.in >index.html
 
 install:	all
 		${INSTALLBIN} ${PROG} ${DESTDIR}${PREFIX}/bin/${PROG}

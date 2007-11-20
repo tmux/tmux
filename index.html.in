@@ -1,0 +1,11 @@
+<!-- $Id: index.html.in,v 1.1 2007-11-20 17:01:38 nicm Exp $ -->
+<html>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+<title>tmux</title>
+</head>
+<body>
+<p>The project page is <a href="http://sf.net/projects/tmux">here.</a></p>
+<p>Download tmux %%VERSION%% with <a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">this link.</a></p>
+</body>
+</html>

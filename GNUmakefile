@@ -1,9 +1,9 @@
-# $Id: GNUmakefile,v 1.5 2007-11-16 21:31:03 nicm Exp $
+# $Id: GNUmakefile,v 1.6 2007-11-20 17:01:38 nicm Exp $
 
 .PHONY: clean
 
 PROG= tmux
-VERSION= 1.5
+VERSION= 0.2
 
 DATE= $(shell date +%Y%m%d-%H%M)
 
