@@ -45,7 +45,11 @@ A more extensive, but rough, todo list is included in the TODO file.
 tmux also depends on several features of the client terminal (TERM), if these
 are missing it may refuse to run, or not behave correctly. It is possible to
 emulate some of these but tmux does not do this at present. Known working are
-TERM=screen (tmux in screen), xterm, xterm-color and rxvt.
+TERM=screen (tmux in screen), xterm, xterm-color and rxvt. Note that tmux
+(and screen) relies on an AX term capability to detect if the terminal
+supports "default" (transparent) foreground and background colours. On OpenBSD,
+TERM=xterm and TERM=xterm-color lack this; TERM=rxvt does have it and works fine
+at least with the aterm and (naturally) rxvt terminal emulators.
 
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
@@ -60,4 +64,4 @@ freenode or efnet IRC. I sometimes ignore private msgs from people I don't
 know, so please mention tmux initially (rather than just saying "hi" ;-).
 
 -- Nicholas Marriott <nicm@users.sf.net>
-$Id: NOTES,v 1.26 2007-11-12 20:59:33 nicm Exp $
+$Id: NOTES,v 1.27 2007-11-20 12:09:13 nicm Exp $
