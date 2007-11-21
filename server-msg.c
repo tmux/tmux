@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.35 2007-11-21 20:04:37 nicm Exp $ */
+/* $Id: server-msg.c,v 1.36 2007-11-21 22:40:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -152,7 +152,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 			/* XXX fnmatch, multi clients etc */
 			c = ARRAY_ITEM(&clients, i);
-			if (strcmp(client, c->tty) == 0)
+			if (c != NULL && strcmp(client, c->tty) == 0)
 				ctx.client = c;
 		}
 		if (ctx.client == NULL) {
