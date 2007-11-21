@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.5 2007-11-21 15:35:53 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.6 2007-11-21 15:55:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,12 +18,17 @@
 
 #include <sys/types.h>
 
+#include <string.h>
+
 #include "tmux.h"
 
 void	window_scroll_init(struct window *);
 void	window_scroll_resize(struct window *, u_int, u_int);
 void	window_scroll_draw(struct window *, struct buffer *, u_int, u_int);
 void	window_scroll_key(struct window *, int);
+
+void	window_scroll_up_1(struct window *);
+void	window_scroll_down_1(struct window *);
 
 const struct window_mode window_scroll_mode = {
 	window_scroll_init,
@@ -117,9 +122,8 @@ window_scroll_key(struct window *w, int key)
 	case 'k':
 	case 'K':
 	case KEYC_UP:
-		if (data->oy < data->size)
-			data->oy++;
-		break;
+		window_scroll_up_1(w);
+		return;
 	case 'j':
 	case 'J':
 	case KEYC_DOWN:
@@ -143,4 +147,80 @@ window_scroll_key(struct window *w, int key)
 	}
 	if (ox != data->ox || oy != data->oy)
 		server_redraw_window_all(w);
+}
+
+void
+window_scroll_up_1(struct window *w)
+{
+	struct window_scroll_mode_data	*data = w->modedata;
+	struct screen			*s = &w->screen;
+	struct client			*c;
+	u_int		 		 i;
+	struct hdr			 hdr;
+	size_t				 size;
+
+	if (data->oy >= data->size)
+		return;
+	data->oy++;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (!session_has(c->session, w))
+			continue;
+
+		buffer_ensure(c->out, sizeof hdr);
+		buffer_add(c->out, sizeof hdr);
+		size = BUFFER_USED(c->out);
+		
+		input_store_two(c->out, CODE_CURSORMOVE, 1, screen_size_y(s));
+		input_store_one(c->out, CODE_INSERTLINE, 1);
+
+		/* Redraw the top two lines to nuke the position display too. */
+		window_scroll_draw(w, c->out, 0, 2);
+		
+		size = BUFFER_USED(c->out) - size;
+		hdr.type = MSG_DATA;
+		hdr.size = size;
+		memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
+	}	
+}
+
+void
+window_scroll_down_1(struct window *w)
+{
+	struct window_scroll_mode_data	*data = w->modedata;
+	struct screen			*s = &w->screen;
+	struct client			*c;
+	u_int		 		 i;
+	struct hdr			 hdr;
+	size_t				 size;
+
+	if (data->oy == 0)
+		return;
+	data->oy--;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (!session_has(c->session, w))
+			continue;
+
+		buffer_ensure(c->out, sizeof hdr);
+		buffer_add(c->out, sizeof hdr);
+		size = BUFFER_USED(c->out);
+		
+ 		input_store_two(c->out, CODE_CURSORMOVE, 1, 1);
+		input_store_one(c->out, CODE_DELETELINE, 1);
+
+ 		input_store_two(c->out, CODE_CURSORMOVE, 1, screen_size_y(s));
+		window_scroll_draw(w, c->out, screen_last_y(s), 1);
+		
+		size = BUFFER_USED(c->out) - size;
+		hdr.type = MSG_DATA;
+		hdr.size = size;
+		memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
+	}	
 }
