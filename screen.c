@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.31 2007-11-21 15:35:53 nicm Exp $ */
+/* $Id: screen.c,v 1.32 2007-11-21 18:24:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -212,58 +212,157 @@ screen_destroy(struct screen *s)
 	xfree(s->grid_size);
 }
 
-/* Draw a set of lines on the screen. */
+/* Initialise drawing. */
 void
-screen_draw(
-    struct screen *s, struct buffer *b, u_int py, u_int ny, u_int ox, u_int oy)
+screen_draw_start(struct screen_draw_ctx *ctx,
+    struct screen *s, struct buffer *b, u_int ox, u_int oy)
 {
-	u_char	 attr, colr;
-	u_int	 i, j, nx, base;
+	ctx->s = s;
+	ctx->b = b;
 
-	/* XXX. This is naive and rough right now. */
-	attr = 0;
-	colr = SCREEN_DEFCOLR;
+	ctx->ox = ox;
+	ctx->oy = oy;
+
+	ctx->cx = s->cx;
+	ctx->cy = s->cy;
+
+	ctx->attr = s->attr;
+	ctx->colr = s->colr;
+
+	input_store_two(b, CODE_SCROLLREGION, 1, screen_size_y(s));
+
+	if (s->mode & MODE_CURSOR)
+		input_store_zero(b, CODE_CURSOROFF);
+}
+
+/* Finalise drawing. */
+void
+screen_draw_stop(struct screen_draw_ctx *ctx)
+{
+	struct screen	*s = ctx->s;
+	struct buffer	*b = ctx->b;
 
 	input_store_two(b, CODE_SCROLLREGION, s->rupper + 1, s->rlower + 1);
 
-	input_store_zero(b, CODE_CURSOROFF);
-	input_store_two(b, CODE_ATTRIBUTES, attr, colr);
+	if (ctx->cx != s->cx || ctx->cy != s->cy)
+		input_store_two(b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
 
-	base = screen_y(s, 0);
-	if (oy > base)
-		base = 0;
-	else
-		base -= oy;
-
-	for (j = py; j < py + ny; j++) {
-		input_store_two(b, CODE_CURSORMOVE, j + 1, 1);
-
-		nx = s->grid_size[base + j] - ox;
-		if (nx > screen_size_x(s))
-			nx = screen_size_x(s);
-		for (i = 0; i < nx; i++) {
-			if (s->grid_attr[base + j][ox + i] != attr ||
-			    s->grid_colr[base + j][ox + i] != colr) {
-				input_store_two(b, CODE_ATTRIBUTES,
-				    s->grid_attr[base + j][ox + i],
-				    s->grid_colr[base + j][ox + i]);
-				attr = s->grid_attr[base + j][ox + i];
-				colr = s->grid_colr[base + j][ox + i];
-			}
-			input_store8(b, s->grid_data[base + j][ox + i]);
-		}
-		if (nx != screen_size_x(s)) {
-			input_store_two(
-			    b, CODE_ATTRIBUTES, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-			for (i = nx; i < screen_size_x(s); i++)
-				input_store8(b, SCREEN_DEFDATA);
-		}
- 	}
-	input_store_two(b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
-
-	input_store_two(b, CODE_ATTRIBUTES, s->attr, s->colr);
+	if (ctx->attr != s->attr || ctx->colr != s->colr)
+		input_store_two(b, CODE_ATTRIBUTES, s->attr, s->colr);
+	
 	if (s->mode & MODE_CURSOR)
 		input_store_zero(b, CODE_CURSORON);
+}
+
+/* Get cell data. */
+void
+screen_draw_get_cell(struct screen_draw_ctx *ctx,
+    u_int px, u_int py, u_char *data, u_char *attr, u_char *colr)
+{
+	struct screen	*s = ctx->s;
+	u_int		 cx, cy;
+	
+	cx = ctx->ox + px;
+	cy = screen_y(s, py) - ctx->oy;
+
+	if (cx >= s->grid_size[cy]) {
+		*data = SCREEN_DEFDATA;
+		*attr = SCREEN_DEFATTR;
+		*colr = SCREEN_DEFCOLR;
+	} else {
+		*data = s->grid_data[cy][cx];
+		*attr = s->grid_attr[cy][cx];
+		*colr = s->grid_colr[cy][cx];
+	}
+}
+
+/* Move cursor. */
+void
+screen_draw_move(struct screen_draw_ctx *ctx, u_int px, u_int py)
+{
+	if (px == ctx->cx && py == ctx->cy)
+		return;
+
+	input_store_two(ctx->b, CODE_CURSORMOVE, py + 1, px + 1);
+
+	ctx->cx = px;
+	ctx->cy = py;
+}
+
+/* Set attributes. */
+void
+screen_draw_set_attributes(
+    struct screen_draw_ctx *ctx, u_char attr, u_char colr)
+{
+	if (attr != ctx->attr || colr != ctx->colr) {
+		input_store_two(ctx->b, CODE_ATTRIBUTES, attr, colr);
+		ctx->attr = attr;
+		ctx->colr = colr;
+	}
+}
+
+/* Draw single cell. */
+void
+screen_draw_cell(struct screen_draw_ctx *ctx, u_int px, u_int py)
+{
+	struct buffer	*b = ctx->b;
+	u_char		 data, attr, colr;
+
+	screen_draw_move(ctx, px, py);
+
+	screen_draw_get_cell(ctx, px, py, &data, &attr, &colr);
+	screen_draw_set_attributes(ctx, attr, colr);
+	input_store8(b, data);
+
+	/*
+	 * Don't try to wrap as it will cause problems when screen is smaller
+	 * than client.
+	 */
+	ctx->cx++;
+}
+
+/* Draw range of cells. */
+void
+screen_draw_cells(struct screen_draw_ctx *ctx, u_int px, u_int py, u_int nx)
+{
+	u_int	i;
+
+	for (i = px; i < px + nx; i++)
+		screen_draw_cell(ctx, i, py);
+}
+
+/* Draw single column. */
+void
+screen_draw_column(struct screen_draw_ctx *ctx, u_int px)
+{
+	u_int	i;
+
+	for (i = 0; i < screen_size_y(ctx->s); i++)
+		screen_draw_cell(ctx, px, i);
+}
+
+/* Draw single line. */
+void
+screen_draw_line(struct screen_draw_ctx *ctx, u_int py)
+{
+	screen_draw_cells(ctx, 0, py, screen_size_x(ctx->s));
+}
+
+/* Draw set of lines. */
+void
+screen_draw_lines(struct screen_draw_ctx *ctx, u_int py, u_int ny)
+{
+	u_int		 i;
+
+	for (i = py; i < py + ny; i++)
+		screen_draw_line(ctx, i);
+}
+
+/* Draw entire screen. */
+void
+screen_draw_screen(struct screen_draw_ctx *ctx)
+{
+	screen_draw_lines(ctx, 0, screen_size_y(ctx->s));
 }
 
 /* Create a range of lines. */

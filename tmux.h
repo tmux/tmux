@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.87 2007-11-21 15:35:53 nicm Exp $ */
+/* $Id: tmux.h,v 1.88 2007-11-21 18:24:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -378,6 +378,21 @@ struct screen {
 	int		 mode;
 };
 
+/* Screen redraw context. */
+struct screen_draw_ctx {
+	struct screen	*s;
+	struct buffer	*b;
+
+	u_int		 cx;
+	u_int		 cy;
+
+	u_int		 ox;
+	u_int		 oy;
+
+	u_int		 attr;
+	u_int		 colr;
+};
+
 /* Screen display access macros. */
 #define screen_x(s, x) (x)
 #define screen_y(s, y) ((s)->hsize + y)
@@ -749,8 +764,19 @@ u_char	 screen_stringcolour(const char *);
 void	 screen_create(struct screen *, u_int, u_int);
 void	 screen_destroy(struct screen *);
 void	 screen_resize(struct screen *, u_int, u_int);
-void	 screen_draw(
-    	     struct screen *, struct buffer *, u_int, u_int, u_int, u_int);
+void	 screen_draw_start(struct screen_draw_ctx *,
+    	     struct screen *, struct buffer *, u_int, u_int);
+void	 screen_draw_stop(struct screen_draw_ctx *);
+void	 screen_draw_get_cell(struct screen_draw_ctx *,
+    	     u_int, u_int, u_char *, u_char *, u_char *);
+void	 screen_draw_move(struct screen_draw_ctx *, u_int, u_int);
+void	 screen_draw_set_attributes(struct screen_draw_ctx *, u_char, u_char);
+void	 screen_draw_cell(struct screen_draw_ctx *, u_int, u_int);
+void	 screen_draw_cells(struct screen_draw_ctx *, u_int, u_int, u_int);
+void	 screen_draw_column(struct screen_draw_ctx *, u_int);
+void	 screen_draw_line(struct screen_draw_ctx *, u_int);
+void	 screen_draw_lines(struct screen_draw_ctx *, u_int, u_int);
+void	 screen_draw_screen(struct screen_draw_ctx *);
 void	 screen_make_lines(struct screen *, u_int, u_int);
 void	 screen_free_lines(struct screen *, u_int, u_int);
 void	 screen_move_lines(struct screen *, u_int, u_int, u_int);

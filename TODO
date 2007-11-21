@@ -72,8 +72,6 @@
 - there is to much redrawing. use flags? (there was a problem with this idea...
   CLIENT_HOLD?)
 - use modes for help etc
-- scrollback should only draw scrolled line on up/down
-- horizontal scrolling
 
 -- For 0.2 --------------------------------------------------------------------
 - copy and paste

@@ -1,5 +1,9 @@
 21 November 2007
 
+* Redo screen redrawing so it is a) readable b) split into utility functions
+  that can be used outside screen.c. Use these to make scroll mode only
+  redraw what it has to which gets rid of irritating flickering status box and
+  makes it much faster.
 * Full line width memory and horizontal scrolling in history.
 * Initial support for scroll history. = to enter scrolling mode, and then
   vi keys or up/down/pgup/pgdown to navigate. Q to exit. No horizontal history
@@ -241,4 +245,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.77 2007-11-21 15:35:53 nicm Exp $
+$Id: CHANGES,v 1.78 2007-11-21 18:24:49 nicm Exp $
