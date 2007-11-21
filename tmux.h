@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.85 2007-11-21 13:11:41 nicm Exp $ */
+/* $Id: tmux.h,v 1.86 2007-11-21 14:01:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -448,7 +448,9 @@ struct window {
 #define WINDOW_BELL 0x1
 
 	struct screen	 screen;
+
 	const struct window_mode *mode;
+	void		*modedata;
 
 	u_int		 references;
 };

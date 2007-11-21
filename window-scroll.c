@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.1 2007-11-21 13:11:41 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.2 2007-11-21 14:01:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,14 +32,19 @@ const struct window_mode window_scroll_mode = {
 	window_scroll_key
 };
 
-u_int	window_scroll_offset;
-u_int	window_scroll_size;
+struct window_scroll_mode_data {
+	u_int	off;
+	u_int	size;
+};
 
 void
 window_scroll_init(struct window *w)
 {
-	window_scroll_offset = 0;
-	window_scroll_size = w->screen.hsize;
+	struct window_scroll_mode_data	*data;
+
+	w->modedata = data = xmalloc(sizeof *data);
+	data->off = 0;
+	data->size = w->screen.hsize;
 }
 
 void
@@ -50,16 +55,17 @@ window_scroll_resize(struct window *w, u_int sx, u_int sy)
 void
 window_scroll_draw(struct window *w, struct buffer *b, u_int py, u_int ny)
 {
-	struct screen	*s = &w->screen;
-	char    	 buf[32];
-	size_t		 len;
+	struct window_scroll_mode_data	*data = w->modedata;
+	struct screen			*s = &w->screen;
+	char    			 buf[32];
+	size_t		 		 len;
 
-	if (s->hsize != window_scroll_size) {
-		window_scroll_offset += s->hsize - window_scroll_size;
-		window_scroll_size = s->hsize;
+	if (s->hsize != data->size) {
+		data->off += s->hsize - data->size;
+		data->size = s->hsize;
 	}
 
-	screen_draw(s, b, py, ny, window_scroll_offset);
+	screen_draw(s, b, py, ny, data->off);
 	input_store_zero(b, CODE_CURSOROFF);
 
 	if (py == 0 && ny > 0) {
@@ -67,7 +73,7 @@ window_scroll_draw(struct window *w, struct buffer *b, u_int py, u_int ny)
 		if (len > (sizeof buf) - 1)
 			len = (sizeof buf) - 1;
 		len = xsnprintf(buf, len + 1, "{%u/%u}",
-		    window_scroll_offset, s->hsize);
+		    data->off, s->hsize);
 
 		input_store_two(
 		    b, CODE_CURSORMOVE, 0, screen_size_x(s) - len + 1);
@@ -79,43 +85,46 @@ window_scroll_draw(struct window *w, struct buffer *b, u_int py, u_int ny)
 void
 window_scroll_key(struct window *w, int key)
 {
-	u_int	sy = screen_size_y(&w->screen);
+	struct window_scroll_mode_data	*data = w->modedata;
+	u_int				 sy = screen_size_y(&w->screen);
 
 	switch (key) {
 	case 'Q':
 	case 'q':
 		w->mode = NULL;
+		xfree(w->modedata);
+
 		recalculate_sizes();
 		server_redraw_window_all(w);
 		break;
 	case 'k':
 	case 'K':
 	case KEYC_UP:
-		if (window_scroll_offset <  window_scroll_size)
-			window_scroll_offset++;
+		if (data->off <  data->size)
+			data->off++;
 		server_redraw_window_all(w);
 		break;
 	case 'j':
 	case 'J':
 	case KEYC_DOWN:
-		if (window_scroll_offset > 0)
-			window_scroll_offset--;
+		if (data->off > 0)
+			data->off--;
 		server_redraw_window_all(w);
 		break;
 	case '\025':
 	case KEYC_PPAGE:
-		if (window_scroll_offset + sy > window_scroll_size)
-			window_scroll_offset = window_scroll_size;
+		if (data->off + sy > data->size)
+			data->off = data->size;
 		else
-			window_scroll_offset += sy;
+			data->off += sy;
 		server_redraw_window_all(w);
 		break;
 	case '\006':
 	case KEYC_NPAGE:
-		if (window_scroll_offset < sy)
-			window_scroll_offset = 0;
+		if (data->off < sy)
+			data->off = 0;
 		else
-			window_scroll_offset -= sy;
+			data->off -= sy;
 		server_redraw_window_all(w);
 		break;
 	}
