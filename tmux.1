@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.15 2007-11-17 08:21:54 nicm Exp $
+.\" $Id: tmux.1,v 1.16 2007-11-21 20:26:51 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -287,6 +287,13 @@ Rename the current window, or the window at
 .Ar index
 if specifed, to
 .Ar new-name .
+.It Xo Ic scroll-mode
+.Xc
+Enter scroll mode which allows a window's history buffer to be examined.
+The up, down, page-up and page-down keys or
+.Xr vi 1
+style h, j, k, l keys may be used to navigate.
+This command works only if bound to a key.
 .It Xo Ic select-window 
 .Ar index
 .Xc
