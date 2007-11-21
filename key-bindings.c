@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.17 2007-11-20 21:42:29 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.18 2007-11-21 13:11:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,6 +108,7 @@ key_bindings_init(void)
 		{ 'R', &cmd_refresh_client_entry, NULL },
 		{ 'r', &cmd_refresh_client_entry, NULL },
 		{ '&', &cmd_kill_window_entry, NULL },
+		{ '=', &cmd_scroll_mode_entry, NULL },
 		{ META, &cmd_send_prefix_entry, NULL },
 	};
 	u_int		 i;
@@ -176,7 +177,7 @@ key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 	size = BUFFER_USED(c->out);
 
 	if (line == 2 * sy || !(c->flags & CLIENT_HOLD)) {
-		input_store_zero(c->out, CODE_CURSOROFF);
+   		input_store_zero(c->out, CODE_CURSOROFF);
 		for (i = 0; i < sy; i++) {
 			input_store_two(c->out, CODE_CURSORMOVE, i + 1, 1);
 			input_store_zero(c->out, CODE_CLEARLINE);

@@ -1,4 +1,4 @@
-/* $Id: screen-display.c,v 1.1 2007-11-20 21:42:29 nicm Exp $ */
+/* $Id: screen-display.c,v 1.2 2007-11-21 13:11:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -168,6 +168,36 @@ screen_display_cursor_down(struct screen *s)
 void
 screen_display_scroll_region_up(struct screen *s)
 {
+	u_int	sy;
+	
+	/*
+	 * If the region is the entire screen, this is easy-peasy. Allocate
+	 * a new line and adjust the history size.
+	 * XXX1 should this be done somewhere else?
+	 */
+	if (s->rupper == 0 && s->rlower == screen_last_y(s)) {
+		sy = screen_size_y(s) + s->hsize;
+
+		if (s->hsize == s->hlimit) {
+			/*
+			 * If the limit is hit, shift the whole thing up.
+			 * XXX this is inefficient, is there a better way?
+			 */
+			screen_move_lines(s, 0, 1, sy - 1);
+		} else {
+			s->hsize++;
+
+			s->grid_data = xrealloc(
+			    s->grid_data, sy + 1, sizeof *s->grid_data);
+			s->grid_attr = xrealloc(
+			    s->grid_attr, sy + 1, sizeof *s->grid_attr);
+			s->grid_colr = xrealloc(
+			    s->grid_colr, sy + 1, sizeof *s->grid_colr);
+		}
+		screen_display_make_lines(s, screen_last_y(s), 1);
+		return;
+	}
+
 	/* 
 	 * Scroll scrolling region up:
 	 * 	- delete rupper
@@ -189,8 +219,6 @@ screen_display_scroll_region_up(struct screen *s)
 	}
 
 	screen_display_make_lines(s, s->rlower, 1);
-	screen_display_fill_lines(
-	    s, s->rlower, 1, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 }
 
 /* Scroll region down. */
@@ -218,8 +246,6 @@ screen_display_scroll_region_down(struct screen *s)
 	}
 
 	screen_display_make_lines(s, s->rupper, 1);
-	screen_display_fill_lines(
-	    s, s->rupper, 1, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 }
 
 /* Insert lines. */
@@ -368,14 +394,13 @@ screen_display_insert_characters(struct screen *s, u_int px, u_int py, u_int nx)
 {
 	u_int	mx;
 
-	px = screen_x(s, px);
-	py = screen_y(s, py);
-
 	if (!screen_in_x(s, px) || !screen_in_y(s, py))
 		fatalx("bad value");
 
 	if (px + nx > screen_last_x(s))
 		nx = screen_last_x(s) - px;
+
+	py = screen_y(s, py);
 
 	/*
 	 * Inserting a range of nx at px.
@@ -401,14 +426,13 @@ screen_display_delete_characters(struct screen *s, u_int px, u_int py, u_int nx)
 {
 	u_int	mx;
 
-	px = screen_x(s, px);
-	py = screen_y(s, py);
-
 	if (!screen_in_x(s, px) || !screen_in_y(s, py))
 		fatalx("bad value");
 
 	if (px + nx > screen_last_x(s))
 		nx = screen_last_x(s) - px;
+
+	py = screen_y(s, py);
 
 	/*
 	 * Deleting the range from px to px + nx.

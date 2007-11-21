@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.84 2007-11-20 21:42:29 nicm Exp $ */
+/* $Id: tmux.h,v 1.85 2007-11-21 13:11:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -334,11 +334,12 @@ struct msg_resize_data {
 #define ATTR_ITALICS 0x40
 
 /* Modes. */
-#define MODE_CURSOR 0x1
-#define MODE_INSERT 0x2
-#define MODE_KCURSOR 0x4
-#define MODE_KKEYPAD 0x8
-#define MODE_SAVED 0x10
+#define MODE_CURSOR  0x01
+#define MODE_INSERT  0x02
+#define MODE_KCURSOR 0x04
+#define MODE_KKEYPAD 0x08
+#define MODE_SAVED   0x10
+#define MODE_HIDDEN  0x20
 
 /*
  * Virtual screen. This is stored as three blocks of 8-bit values, one for
@@ -357,8 +358,8 @@ struct screen {
  	u_int		 dx;		/* display x size */
 	u_int		 dy;		/* display y size */
 
-	u_int		 ysize;		/* actual y size */
-	u_int		 ylimit;	/* maximum y size */
+	u_int		 hsize;		/* history y size */
+	u_int		 hlimit;	/* history y limit */
 
 	u_int		 rupper;	/* scroll region top */
 	u_int		 rlower;	/* scroll region bottom */
@@ -378,7 +379,7 @@ struct screen {
 
 /* Screen display access macros. */
 #define screen_x(s, x) (x)
-#define screen_y(s, y) ((s)->ysize - (s)->dy + y)
+#define screen_y(s, y) ((s)->hsize + y)
 
 #define screen_last_x(s) ((s)->dx - 1)
 #define screen_last_y(s) ((s)->dy - 1)
@@ -388,8 +389,9 @@ struct screen {
 
 #define screen_in_x(s, x) ((x) < screen_size_x(s))
 #define screen_in_y(s, y) ((y) < screen_size_y(s))
-
 #define screen_in_region(s, y) ((y) >= (s)->rupper && (y) <= (s)->rlower)
+
+#define screen_hidden(s) ((s)->mode & MODE_HIDDEN)
 
 /* Screen default contents. */
 #define SCREEN_DEFDATA ' '
@@ -421,6 +423,17 @@ struct input_ctx {
 	ARRAY_DECL(, struct input_arg) args;
 };
 
+/*
+ * Window mode. Windows can be in several modes and this is used to call the
+ * right function to handle input and output.
+ */
+struct window_mode {
+	void	(*init)(struct window *);
+	void	(*resize)(struct window *, u_int, u_int);
+	void	(*draw)(struct window *, struct buffer *, u_int, u_int);
+	void	(*key)(struct window *, int);
+};
+
 /* Window structure. */
 struct window {
 	char		*name;
@@ -435,6 +448,7 @@ struct window {
 #define WINDOW_BELL 0x1
 
 	struct screen	 screen;
+	const struct window_mode *mode;
 
 	u_int		 references;
 };
@@ -607,6 +621,7 @@ extern const struct cmd_entry cmd_previous_window_entry;
 extern const struct cmd_entry cmd_refresh_client_entry;
 extern const struct cmd_entry cmd_rename_session_entry;
 extern const struct cmd_entry cmd_rename_window_entry;
+extern const struct cmd_entry cmd_scroll_mode_entry;
 extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
 extern const struct cmd_entry cmd_set_option_entry;
@@ -692,7 +707,7 @@ void	 input_store_one(struct buffer *, u_char, uint16_t);
 void	 input_store_two(struct buffer *, u_char, uint16_t, uint16_t);
 
 /* input-key.c */
-void	 input_translate_key(struct buffer *, int);
+void	 input_key(struct buffer *, int);
 
 /* screen-display.c */
 void	 screen_display_make_lines(struct screen *, u_int, u_int);
@@ -731,7 +746,7 @@ u_char	 screen_stringcolour(const char *);
 void	 screen_create(struct screen *, u_int, u_int);
 void	 screen_destroy(struct screen *);
 void	 screen_resize(struct screen *, u_int, u_int);
-void	 screen_draw(struct screen *, struct buffer *, u_int, u_int);
+void	 screen_draw(struct screen *, struct buffer *, u_int, u_int, u_int);
 void	 screen_make_lines(struct screen *, u_int, u_int);
 void	 screen_free_lines(struct screen *, u_int, u_int);
 void	 screen_move_lines(struct screen *, u_int, u_int, u_int);
@@ -763,6 +778,12 @@ struct window	*window_create(
     		     const char *, const char *, const char **, u_int, u_int);
 void		 window_destroy(struct window *);
 int		 window_resize(struct window *, u_int, u_int);
+void		 window_parse(struct window *, struct buffer *);
+void		 window_draw(struct window *, struct buffer *, u_int, u_int);
+void		 window_key(struct window *, int);
+
+/* window-scroll.c */
+extern const struct window_mode window_scroll_mode;
 
 /* session.c */
 extern struct sessions sessions;

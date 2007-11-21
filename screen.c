@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.27 2007-11-20 21:45:53 nicm Exp $ */
+/* $Id: screen.c,v 1.28 2007-11-21 13:11:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,9 +23,7 @@
 #include "tmux.h"
 
 /*
- * Virtual screen and basic terminal emulator.
- *
- * XXX Much of this file sucks.
+ * Virtual screen.
  */
 
 /* Colour to string. */
@@ -92,8 +90,8 @@ screen_create(struct screen *s, u_int dx, u_int dy)
 	s->rupper = 0;
 	s->rlower = s->dy - 1;
 
-	s->ysize = dy;
-	s->ylimit = SHRT_MAX;
+	s->hsize = 0;
+	s->hlimit = SHRT_MAX;
 
 	s->attr = SCREEN_DEFATTR;
 	s->colr = SCREEN_DEFCOLR;
@@ -111,10 +109,7 @@ screen_create(struct screen *s, u_int dx, u_int dy)
 void
 screen_resize(struct screen *s, u_int sx, u_int sy)
 {
-	u_int	i, ox, oy, ny;
-
-	if (sx == s->dx && sy == s->dy)
-		return;
+	u_int	i, ox, oy, ny, my;
 
 	if (sx < 1)
 		sx = 1;
@@ -123,83 +118,79 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 
 	ox = s->dx;
 	oy = s->dy;
+	if (sx == ox && sy == oy)
+		return;
 
-	log_debug("resizing screen (%u, %u) -> (%u, %u)", ox, oy, sx, sy);
-
-	s->dx = sx;
-	s->dy = sy;
-       
-	s->rupper = 0;
-	s->rlower = s->dy - 1;
-
-	s->ysize = sy;
-
-	if (sy < oy) {
-		ny = oy - sy;
-		if (ny > s->cy)
-			ny = s->cy;
-
-		if (ny != 0) {
-			log_debug("removing %u lines from top", ny);
-			for (i = 0; i < ny; i++) {
-				log_debug("freeing line %u", i);
-				xfree(s->grid_data[i]);
-				xfree(s->grid_attr[i]);
-				xfree(s->grid_colr[i]);
-			}
-			memmove(s->grid_data, s->grid_data + ny,
-			    (oy - ny) * (sizeof *s->grid_data));
-			memmove(s->grid_attr, s->grid_attr + ny,
-			    (oy - ny) * (sizeof *s->grid_attr));
-			memmove(s->grid_colr, s->grid_colr + ny,
-			    (oy - ny) * (sizeof *s->grid_colr));
-			s->cy -= ny;
-		}
-		if (ny < oy - sy) {
-			log_debug(
-			    "removing %u lines from bottom", oy - sy - ny);
-			for (i = sy; i < oy - ny; i++) {
-				log_debug("freeing line %u", i);
-				  xfree(s->grid_data[i]);
-				  xfree(s->grid_attr[i]);
-				  xfree(s->grid_colr[i]);
-			}
-			if (s->cy >= sy)
-				s->cy = sy - 1;
-		}
-	}
-	if (sy != oy) {
-		s->grid_data = xrealloc(s->grid_data, sy, sizeof *s->grid_data);
-		s->grid_attr = xrealloc(s->grid_attr, sy, sizeof *s->grid_attr);
-		s->grid_colr = xrealloc(s->grid_colr, sy, sizeof *s->grid_colr);
-	}
-	if (sy > oy) {
-		for (i = oy; i < sy; i++) {
-			log_debug("allocating line %u", i);
-			s->grid_data[i] = xmalloc(sx);
-			s->grid_attr[i] = xmalloc(sx);
-			s->grid_colr[i] = xmalloc(sx);
-			screen_display_fill_line(s, i,
-			    SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-		}
-		sy = oy;
-	}
-
+	/* 
+	 * X dimension.
+	 */
 	if (sx != ox) {
-		for (i = 0; i < sy; i++) {
-			log_debug("adjusting line %u to %u", i, sx);
+		/* Resize all lines including history. */
+		/* XXX need per-line sizes! */
+		for (i = 0; i < s->hsize + oy; i++) {
 			s->grid_data[i] = xrealloc(s->grid_data[i], sx, 1);
 			s->grid_attr[i] = xrealloc(s->grid_attr[i], sx, 1);
 			s->grid_colr[i] = xrealloc(s->grid_colr[i], sx, 1);
 			if (sx > ox) {
-				screen_display_fill_cells(s, ox, i, s->dx - ox,
+				screen_fill_cells(s, ox, i, sx - ox,
 				    SCREEN_DEFDATA, SCREEN_DEFATTR,
 				    SCREEN_DEFCOLR);
 			}
 		}
 		if (s->cx >= sx)
 			s->cx = sx - 1;
+		s->dx = sx;
 	}
+
+	/*
+	 * Y dimension.
+	 */
+	if (sy == oy)
+		return;
+
+	/* Size decreasing. */
+	if (sy < oy) {
+ 		ny = oy - sy;
+		if (s->cy != 0) {
+			/*
+			 * The cursor is not at the start. Try to remove as
+			 * many lines as possible from the top.
+			 */
+			my = s->cy;
+			if (my > ny)
+				my = ny;
+
+			screen_display_free_lines(s, 0, my);
+			screen_display_move_lines(s, 0, my, oy - my);
+
+			s->cy -= my;
+			oy -= my;
+		} 
+
+ 		ny = oy - sy;
+		if (ny > 0) {
+			/*
+			 * Remove any remaining lines from the bottom.
+			 */
+			screen_display_free_lines(s, oy, ny);
+			if (s->cy >= sy)
+				s->cy = sy - 1;
+		}
+	}
+	
+	/* Resize line arrays. */
+	ny = s->hsize + sy;
+	s->grid_data = xrealloc(s->grid_data, ny, sizeof *s->grid_data);
+	s->grid_attr = xrealloc(s->grid_attr, ny, sizeof *s->grid_attr);
+	s->grid_colr = xrealloc(s->grid_colr, ny, sizeof *s->grid_colr);
+	s->dy = sy;
+
+	/* Size increasing. */
+	if (sy > oy)
+		screen_display_make_lines(s, oy, sy - oy);
+
+	s->rupper = 0;
+	s->rlower = s->dy - 1;
 }
 
 /* Destroy a screen. */
@@ -214,13 +205,10 @@ screen_destroy(struct screen *s)
 
 /* Draw a set of lines on the screen. */
 void
-screen_draw(struct screen *s, struct buffer *b, u_int uy, u_int ly)
+screen_draw(struct screen *s, struct buffer *b, u_int py, u_int ny, u_int off)
 {
-	u_char		 attr, colr;
-	u_int		 i, j;
-
-	if (uy > s->dy - 1 || ly > s->dy - 1 || ly < uy)
-		fatalx("bad range");
+	u_char	 attr, colr;
+	u_int	 i, j, base;
 
 	/* XXX. This is naive and rough right now. */
 	attr = 0;
@@ -231,20 +219,27 @@ screen_draw(struct screen *s, struct buffer *b, u_int uy, u_int ly)
 	input_store_zero(b, CODE_CURSOROFF);
 	input_store_two(b, CODE_ATTRIBUTES, attr, colr);
 
-	for (j = uy; j <= ly; j++) {
+	base = screen_y(s, 0);
+	if (off > base)
+		base = 0;
+	else
+		base -= off;
+
+	for (j = py; j < py + ny; j++) {
 		input_store_two(b, CODE_CURSORMOVE, j + 1, 1);
 
 		for (i = 0; i <= screen_last_x(s); i++) {
-			if (s->grid_attr[j][i] != attr ||
-			    s->grid_colr[j][i] != colr) {
+			if (s->grid_attr[base + j][i] != attr ||
+			    s->grid_colr[base + j][i] != colr) {
 				input_store_two(b, CODE_ATTRIBUTES,
-				    s->grid_attr[j][i], s->grid_colr[j][i]);
-				attr = s->grid_attr[j][i];
-				colr = s->grid_colr[j][i];
+				    s->grid_attr[base + j][i],
+				    s->grid_colr[base + j][i]);
+				attr = s->grid_attr[base + j][i];
+				colr = s->grid_colr[base + j][i];
 			}
-			input_store8(b, s->grid_data[j][i]);
+			input_store8(b, s->grid_data[base + j][i]);
 		}
-	}
+ 	}
 	input_store_two(b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
 
 	input_store_two(b, CODE_ATTRIBUTES, s->attr, s->colr);

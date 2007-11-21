@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.27 2007-11-20 21:42:29 nicm Exp $ */
+/* $Id: window.c,v 1.28 2007-11-21 13:11:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -195,6 +195,7 @@ window_create(
 	w->fd = fd;
 	w->in = buffer_create(BUFSIZ);
 	w->out = buffer_create(BUFSIZ);
+	w->mode = NULL;
 	screen_create(&w->screen, sx, sy);
 	input_init(w);
 
@@ -263,6 +264,8 @@ window_resize(struct window *w, u_int sx, u_int sy)
 	ws.ws_col = sx;
 	ws.ws_row = sy;
 
+	if (w->mode != NULL)
+		w->mode->resize(w, sx, sy);
 	screen_resize(&w->screen, sx, sy);
 
 	if (ioctl(w->fd, TIOCSWINSZ, &ws) == -1)
@@ -270,3 +273,28 @@ window_resize(struct window *w, u_int sx, u_int sy)
 	return (0);
 }
 
+void
+window_parse(struct window *w, struct buffer *b)
+{
+	if (w->mode != NULL)
+		w->screen.mode |= MODE_HIDDEN;
+	input_parse(w, b);
+}
+
+void
+window_draw(struct window *w, struct buffer *b, u_int py, u_int ny)
+{
+	if (w->mode != NULL)
+		w->mode->draw(w, b, py, ny);
+	else
+		screen_draw(&w->screen, b, py, ny, 0);
+}
+
+void
+window_key(struct window *w, int key)
+{
+	if (w->mode != NULL)
+		w->mode->key(w, key);
+	else
+		input_key(w->out, key);	
+}

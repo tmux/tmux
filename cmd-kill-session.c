@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-session.c,v 1.3 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-kill-session.c,v 1.4 2007-11-21 13:11:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,6 +58,6 @@ cmd_kill_session_exec(unused void *ptr, struct cmd_ctx *ctx)
 
 	session_destroy(ctx->session);
 	
-	if (!(ctx->flags & CMD_KEY))
+	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

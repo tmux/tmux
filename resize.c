@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.5 2007-11-20 21:42:29 nicm Exp $ */
+/* $Id: resize.c,v 1.6 2007-11-21 13:11:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -104,8 +104,11 @@ recalculate_sizes(void)
 					ssy = s->sy;
 			}
 		}
-		if (ssx == UINT_MAX || ssy == UINT_MAX)
+		if (ssx == UINT_MAX || ssy == UINT_MAX) {
+			w->screen.mode |= MODE_HIDDEN;
 			continue;
+		}
+		w->screen.mode &= ~MODE_HIDDEN;
 
 		if (screen_size_x(&w->screen) == ssx &&
 		    screen_size_y(&w->screen) == ssy)

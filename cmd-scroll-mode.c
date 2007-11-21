@@ -1,4 +1,4 @@
-/* $Id: cmd-send-prefix.c,v 1.6 2007-11-21 13:11:41 nicm Exp $ */
+/* $Id: cmd-scroll-mode.c,v 1.1 2007-11-21 13:11:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,31 +19,37 @@
 #include <sys/types.h>
 
 #include <getopt.h>
-#include <unistd.h>
+#include <stdlib.h>
 
 #include "tmux.h"
 
 /*
- * Send prefix key as a key.
+ * Enter scroll mode. Only valid when bound to a key.
  */
 
-void	cmd_send_prefix_exec(void *, struct cmd_ctx *);
+void	cmd_scroll_mode_exec(void *, struct cmd_ctx *);
 
-const struct cmd_entry cmd_send_prefix_entry = {
-	"send-prefix", NULL, NULL,
-	0,
+const struct cmd_entry cmd_scroll_mode_entry = {
+	"scroll-mode", "scroll", "",
+	CMD_NOCLIENT,
 	NULL,
-	cmd_send_prefix_exec,
+	cmd_scroll_mode_exec, 
 	NULL,
 	NULL,
 	NULL
 };
 
 void
-cmd_send_prefix_exec(unused void *ptr, struct cmd_ctx *ctx)
+cmd_scroll_mode_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
-	window_key(ctx->client->session->curw->window, prefix_key);
+	struct window	*w = ctx->session->curw->window;
 
-	if (ctx->cmdclient != NULL)	
+	if (ctx->flags & CMD_KEY) {
+		w->mode = &window_scroll_mode;
+		w->mode->init(w);
+		server_redraw_window_all(w);
+	}
+
+	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

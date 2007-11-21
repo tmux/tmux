@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.33 2007-11-20 18:11:37 nicm Exp $ */
+/* $Id: server-msg.c,v 1.34 2007-11-21 13:11:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -236,8 +236,9 @@ server_msg_fn_resize(struct hdr *hdr, struct client *c)
 int
 server_msg_fn_keys(struct hdr *hdr, struct client *c)
 {
-	int	key;
-	size_t	size;
+	struct window	*w = c->session->curw->window;
+	int		 key;
+	size_t		 size;
 
 	if (hdr->size & 0x1)
 		fatalx("bad MSG_KEYS size");
@@ -258,10 +259,11 @@ server_msg_fn_keys(struct hdr *hdr, struct client *c)
 			continue;
 		}
 
-		if (key == prefix_key)
+		if (key == prefix_key) {
 			c->flags |= CLIENT_PREFIX;
-		else
-			input_translate_key(c->session->curw->window->out, key);
+			continue;
+		}
+		window_key(w, key);
 	}
 
 	return (0);

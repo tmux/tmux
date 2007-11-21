@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.26 2007-11-20 21:42:29 nicm Exp $ */
+/* $Id: server-fn.c,v 1.27 2007-11-21 13:11:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -192,7 +192,7 @@ server_clear_client(struct client *c)
 void
 server_redraw_client(struct client *c)
 {
-	struct screen	*s = &c->session->curw->window->screen;
+	struct window	*w = c->session->curw->window;
 	struct hdr	 hdr;
 	size_t		 size;
 
@@ -200,10 +200,10 @@ server_redraw_client(struct client *c)
 	buffer_add(c->out, sizeof hdr);
 	size = BUFFER_USED(c->out);
 
-	screen_draw(s, c->out, 0, screen_last_y(s));
+	window_draw(w, c->out, 0, screen_size_y(&w->screen));
 
 	size = BUFFER_USED(c->out) - size;
-	log_debug("redrawing screen, %zu bytes", size);
+	log_debug("redrawing window, %zu bytes", size);
 	if (size != 0) {
 		hdr.type = MSG_DATA;
 		hdr.size = size;
@@ -330,7 +330,7 @@ server_status_window_all(struct window *w)
 void printflike2
 server_write_message(struct client *c, const char *fmt, ...)
 {
-	struct screen	*s = &c->session->curw->window->screen;
+	struct window	*w = c->session->curw->window;
 	struct hdr	 hdr;
 	va_list		 ap;
 	char		*msg;
@@ -355,7 +355,7 @@ server_write_message(struct client *c, const char *fmt, ...)
 	xfree(msg);
 
 	size = BUFFER_USED(c->out) - size;
-	hdr.type = MSG_DATA;
+  	hdr.type = MSG_DATA;
 	hdr.size = size;
 	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
 
@@ -368,7 +368,7 @@ server_write_message(struct client *c, const char *fmt, ...)
 	size = BUFFER_USED(c->out);
 
 	if (status_lines == 0) {
-		screen_draw(s, c->out, c->sy - 1, c->sy - 1);
+		window_draw(w, c->out, screen_last_y(&w->screen), 1);
 	} else
 		status_write(c);
 

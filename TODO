@@ -65,10 +65,14 @@
 - session specification is all over the place. some things use -s before cmd,
   some -s after, some no -s, there are various uses of -n. the differences are
   sort of logical, but confusing. needs rethought
+- XXX should -i for win idx be before cmd too??
 - bind non prefix keys (useful for shift-pageup for scrollback, when we
   have scrollback)
+- for scrollback (?) or copy/paste, modal key/display handling (key/draw
+  through function pointers in screen). also move ? etc to that too
 - stuff like rename would be nice to be able to do in-client like screen, if
   it could be implemented in a non-icky way
+- there is to much redrawing. use flags? (there was a problem with this idea..?)
 
 -- For 0.2 --------------------------------------------------------------------
 - copy and paste

@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.9 2007-11-20 21:42:29 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.10 2007-11-21 13:11:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,9 +47,10 @@ cmd_list_windows_exec(unused void *ptr, struct cmd_ctx *ctx)
 
 	RB_FOREACH(wl, winlinks, &ctx->session->windows) {
 		w = wl->window;
-		ctx->print(ctx, "%d: %s \"%s\" (%s) [%ux%u]",
+		ctx->print(ctx, "%d: %s \"%s\" (%s) [%ux%u] [history %u]",
 		    wl->idx, w->name, w->screen.title, ttyname(w->fd),
-		    screen_size_x(&w->screen), screen_size_y(&w->screen));
+		    screen_size_x(&w->screen), screen_size_y(&w->screen),
+		    w->screen.hsize);
 	}
 
 	if (ctx->cmdclient != NULL)

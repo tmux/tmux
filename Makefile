@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.44 2007-11-20 21:42:28 nicm Exp $
+# $Id: Makefile,v 1.45 2007-11-21 13:11:41 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -26,7 +26,8 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       cmd-refresh-client.c cmd-kill-window.c cmd-list-clients.c \
       cmd-link-window.c cmd-unlink-window.c cmd-next-window.c \
       cmd-swap-window.c cmd-rename-session.c cmd-kill-session.c \
-      cmd-switch-client.c cmd-has-session.c 
+      cmd-switch-client.c cmd-has-session.c cmd-scroll-mode.c \
+      window-scroll.c
 
 CC?= cc
 INCDIRS+= -I. -I- -I/usr/local/include

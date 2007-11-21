@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.2 2007-10-19 11:10:35 nicm Exp $ */
+/* $Id: input-keys.c,v 1.3 2007-11-21 13:11:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,7 +55,7 @@ struct {
 
 /* Translate a key code from client into an output key sequence. */
 void
-input_translate_key(struct buffer *b, int key)
+input_key(struct buffer *b, int key)
 {
 	u_int	i;
 

@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.38 2007-11-12 15:12:08 nicm Exp $ */
+/* $Id: server.c,v 1.39 2007-11-21 13:11:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -346,7 +346,7 @@ server_handle_window(struct window *w)
 	u_int		 i;
 
 	b = buffer_create(BUFSIZ);
-	input_parse(w, b);
+	window_parse(w, b);
 	if (BUFFER_USED(b) != 0) {
 		server_write_window_cur(
 		    w, MSG_DATA, BUFFER_OUT(b), BUFFER_USED(b));
