@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.30 2007-11-21 18:24:49 nicm Exp $ */
+/* $Id: window.c,v 1.31 2007-11-21 19:53:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -276,8 +276,6 @@ window_resize(struct window *w, u_int sx, u_int sy)
 void
 window_parse(struct window *w, struct buffer *b)
 {
-	if (w->mode != NULL)
-		w->screen.mode |= MODE_HIDDEN;
 	input_parse(w, b);
 }
 

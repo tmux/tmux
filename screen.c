@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.32 2007-11-21 18:24:49 nicm Exp $ */
+/* $Id: screen.c,v 1.33 2007-11-21 19:53:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -250,7 +250,7 @@ screen_draw_stop(struct screen_draw_ctx *ctx)
 	if (ctx->attr != s->attr || ctx->colr != s->colr)
 		input_store_two(b, CODE_ATTRIBUTES, s->attr, s->colr);
 	
-	if (s->mode & MODE_CURSOR)
+	if (!(s->mode & MODE_BACKGROUND) && s->mode & MODE_CURSOR)
 		input_store_zero(b, CODE_CURSORON);
 }
 

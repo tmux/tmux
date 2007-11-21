@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.1 2007-11-21 19:44:05 nicm Exp $ */
+/* $Id: window-more.c,v 1.2 2007-11-21 19:53:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -73,6 +73,8 @@ window_more_init(struct window *w)
 	w->modedata = data = xmalloc(sizeof *data);
 	ARRAY_INIT(&data->list);
 	data->top = 0;
+
+	w->screen.mode |= MODE_BACKGROUND;
 }
 
 void
@@ -167,7 +169,7 @@ void
 window_more_key(struct window *w, int key)
 {
 	struct window_more_mode_data	*data = w->modedata;
-	u_int				 top, sy;
+	u_int				 top, sy, i;
 	
 	sy = screen_size_y(&w->screen);
 
@@ -176,8 +178,14 @@ window_more_key(struct window *w, int key)
 	switch (key) {
 	case 'Q':
 	case 'q':
+		for (i = 0; i < ARRAY_LENGTH(&data->list); i++)
+			xfree(ARRAY_ITEM(&data->list, i));
+		ARRAY_FREE(&data->list);
+
 		w->mode = NULL;
 		xfree(w->modedata);
+
+		w->screen.mode &= ~MODE_BACKGROUND;
 
 		recalculate_sizes();
 		server_redraw_window_all(w);
@@ -243,7 +251,6 @@ window_more_up_1(struct window *w)
 		window_more_draw_position(w, &ctx);
 		window_more_draw_line(w, &ctx, 1);
 		screen_draw_stop(&ctx);
-		input_store_zero(c->out, CODE_CURSOROFF);
 
 		size = BUFFER_USED(c->out) - size;
 		hdr.type = MSG_DATA;
@@ -284,7 +291,6 @@ window_more_down_1(struct window *w)
 		window_more_draw_line(w, &ctx, screen_last_y(s));
 		window_more_draw_position(w, &ctx);
 		screen_draw_stop(&ctx);
-		input_store_zero(c->out, CODE_CURSOROFF);
 		
 		size = BUFFER_USED(c->out) - size;
 		hdr.type = MSG_DATA;

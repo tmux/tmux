@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.89 2007-11-21 19:44:05 nicm Exp $ */
+/* $Id: tmux.h,v 1.90 2007-11-21 19:53:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -340,6 +340,7 @@ struct msg_resize_data {
 #define MODE_KKEYPAD 0x08
 #define MODE_SAVED   0x10
 #define MODE_HIDDEN  0x20
+#define MODE_BACKGROUND 0x40
 
 /*
  * Virtual screen. This is stored as three blocks of 8-bit values, one for
@@ -407,7 +408,7 @@ struct screen_draw_ctx {
 #define screen_in_y(s, y) ((y) < screen_size_y(s))
 #define screen_in_region(s, y) ((y) >= (s)->rupper && (y) <= (s)->rlower)
 
-#define screen_hidden(s) ((s)->mode & MODE_HIDDEN)
+#define screen_hidden(s) ((s)->mode & (MODE_HIDDEN|MODE_BACKGROUND))
 
 /* Screen default contents. */
 #define SCREEN_DEFDATA ' '

@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.27 2007-11-21 13:11:41 nicm Exp $ */
+/* $Id: server-fn.c,v 1.28 2007-11-21 19:53:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -180,7 +180,7 @@ server_clear_client(struct client *c)
 		input_store_zero(c->out, CODE_CLEARLINE);
 	}
 	input_store_two(c->out, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
-	if (s->mode & MODE_CURSOR)
+	if (!(s->mode & MODE_BACKGROUND) && s->mode & MODE_CURSOR)
 		input_store_zero(c->out, CODE_CURSORON);
 	
 	size = BUFFER_USED(c->out) - size;

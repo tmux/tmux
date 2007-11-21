@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.8 2007-11-21 19:44:05 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.9 2007-11-21 19:53:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,6 +55,8 @@ window_scroll_init(struct window *w)
 	w->modedata = data = xmalloc(sizeof *data);
 	data->ox = data->oy = 0;
 	data->size = w->screen.hsize;
+
+	w->screen.mode |= MODE_BACKGROUND;
 }
 
 void
@@ -128,6 +130,8 @@ window_scroll_key(struct window *w, int key)
 		w->mode = NULL;
 		xfree(w->modedata);
 
+		w->screen.mode &= ~MODE_BACKGROUND;
+
 		recalculate_sizes();
 		server_redraw_window_all(w);
 		return;
@@ -200,7 +204,6 @@ window_scroll_up_1(struct window *w)
 		window_scroll_draw_position(w, &ctx);
 		screen_draw_line(&ctx, 1);	/* nuke old position display */
 		screen_draw_stop(&ctx);
-		input_store_zero(c->out, CODE_CURSOROFF);
 
 		size = BUFFER_USED(c->out) - size;
 		hdr.type = MSG_DATA;
@@ -241,7 +244,6 @@ window_scroll_down_1(struct window *w)
 		screen_draw_line(&ctx, screen_last_y(s));
 		window_scroll_draw_position(w, &ctx);
 		screen_draw_stop(&ctx);
-		input_store_zero(c->out, CODE_CURSOROFF);
 		
 		size = BUFFER_USED(c->out) - size;
 		hdr.type = MSG_DATA;
