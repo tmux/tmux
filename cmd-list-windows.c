@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.11 2007-11-21 22:20:44 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.12 2007-11-21 22:24:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,9 +51,9 @@ cmd_list_windows_exec(unused void *ptr, struct cmd_ctx *ctx)
 		w = wl->window;
 
 		sy = w->screen.hsize + w->screen.dy;
-		size = sizeof *w;
+		size = 0;
 		for (i = 0; i < sy; i++)
-			size += 4 + w->screen.grid_size[i] * 3;
+			size += w->screen.grid_size[i] * 3;
 		size += sy * (sizeof *w->screen.grid_data);
 		size += sy * (sizeof *w->screen.grid_attr);
 		size += sy * (sizeof *w->screen.grid_colr);
