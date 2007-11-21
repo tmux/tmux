@@ -29,7 +29,6 @@
 - could use bsearch all over the place or get rid of smaller tables (clientmsg)
 - better errors when creating new windows/sessions (how?)
 - commands should have to care less about CMD_KEY
-- CLIENT_HOLD sucks
 - session with CMD_NOSESSION should be an error
 - each command should have a print op as well for list keys
 - Implicitly add exec to the commands for new windows (switch to disable it)
@@ -69,8 +68,7 @@
 - bind non prefix keys
 - stuff like rename would be nice to be able to do in-client like screen, if
   it could be implemented in a non-icky way
-- there is to much redrawing. use flags? (there was a problem with this idea...
-  CLIENT_HOLD?)
+- there is to much redrawing. use flags?
 - use modes for help etc
 
 -- For 0.2 --------------------------------------------------------------------
