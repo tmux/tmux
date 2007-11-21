@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.7 2007-11-21 18:24:49 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.8 2007-11-21 19:44:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -149,14 +149,14 @@ window_scroll_key(struct window *w, int key)
 	case KEYC_DOWN:
 		window_scroll_down_1(w);
 		return;
-	case '\025':
+	case '\025':	/* C-u */
 	case KEYC_PPAGE:
 		if (data->oy + sy > data->size)
 			data->oy = data->size;
 		else
 			data->oy += sy;
 		break;
-	case '\006':
+	case '\006':	/* C-f */
 	case KEYC_NPAGE:
 		if (data->oy < sy)
 			data->oy = 0;
@@ -198,7 +198,7 @@ window_scroll_up_1(struct window *w)
 		screen_draw_move(&ctx, 0, 0);
 		input_store_one(c->out, CODE_INSERTLINE, 1);
 		window_scroll_draw_position(w, &ctx);
-		screen_draw_line(&ctx, 1);	/* nuke old position */
+		screen_draw_line(&ctx, 1);	/* nuke old position display */
 		screen_draw_stop(&ctx);
 		input_store_zero(c->out, CODE_CURSOROFF);
 

@@ -1,5 +1,7 @@
 21 November 2007
 
+* Make command output (eg list-keys) go to a scrollable window similar to
+  scroll mode.
 * Redo screen redrawing so it is a) readable b) split into utility functions
   that can be used outside screen.c. Use these to make scroll mode only
   redraw what it has to which gets rid of irritating flickering status box and
@@ -245,4 +247,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.78 2007-11-21 18:24:49 nicm Exp $
+$Id: CHANGES,v 1.79 2007-11-21 19:44:04 nicm Exp $

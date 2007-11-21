@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.88 2007-11-21 18:24:49 nicm Exp $ */
+/* $Id: tmux.h,v 1.89 2007-11-21 19:44:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -814,6 +814,11 @@ void		 window_key(struct window *, int);
 
 /* window-scroll.c */
 extern const struct window_mode window_scroll_mode;
+
+/* window-more.c */
+extern const struct window_mode window_more_mode;
+void 		 window_more_vadd(struct window *, const char *, va_list);
+void printflike2 window_more_add(struct window *, const char *, ...);
 
 /* session.c */
 extern struct sessions sessions;

@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.18 2007-11-21 13:11:41 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.19 2007-11-21 19:44:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -160,56 +160,18 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 void printflike2
 key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	static u_int	 line;
-	struct client	*c = ctx->client;
-	struct screen	*s = &c->session->curw->window->screen;
-	struct hdr	 hdr;
+	struct window	*w = ctx->session->curw->window;
 	va_list		 ap;
-	char		*msg;
-	size_t		 size;
-	u_int		 i, sx, sy;
 
-	sx = screen_size_x(s);
-	sy = screen_size_y(s);
-
-	buffer_ensure(c->out, sizeof hdr);
-	buffer_add(c->out, sizeof hdr);
-	size = BUFFER_USED(c->out);
-
-	if (line == 2 * sy || !(c->flags & CLIENT_HOLD)) {
-   		input_store_zero(c->out, CODE_CURSOROFF);
-		for (i = 0; i < sy; i++) {
-			input_store_two(c->out, CODE_CURSORMOVE, i + 1, 1);
-			input_store_zero(c->out, CODE_CLEARLINE);
-		}			
-		input_store_two(c->out, CODE_CURSORMOVE, 1, 1);
-		input_store_two(c->out, CODE_ATTRIBUTES, 0, 0x88);
-		
-		line = 0;
-		c->flags |= CLIENT_HOLD;
-	}
-	if (line >= sy) {
-		input_store_two(c->out, CODE_CURSORMOVE, line - sy + 1, sx / 2);
-	}
-	line++;
+	if (w->mode == NULL) {
+		w->mode = &window_more_mode;
+		w->mode->init(w);
+	} else if (w->mode != &window_more_mode)
+		return;
 
 	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
+	window_more_vadd(w, fmt, ap);
 	va_end(ap);
-	if (strlen(msg) > sx / 2)
-		msg[sx / 2] = '\0';
-
-	buffer_write(c->out, msg, strlen(msg));
-	if (line != sy && line != 2 * sy) {
-		input_store8(c->out, '\r');
-		input_store8(c->out, '\n');
-	}
-	xfree(msg);
-
-	size = BUFFER_USED(c->out) - size;
-	hdr.type = MSG_DATA;
-	hdr.size = size;
-	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
 }
 
 void
@@ -238,4 +200,7 @@ key_bindings_dispatch(int key, struct client *c)
 	ctx.flags = CMD_KEY;
 
 	cmd_exec(bd->cmd, &ctx);
+	
+	if (c->session->curw->window->mode == &window_more_mode)
+		server_redraw_window_all(c->session->curw->window);
 }
