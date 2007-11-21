@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.91 2007-11-21 20:04:37 nicm Exp $ */
+/* $Id: tmux.h,v 1.92 2007-11-21 22:20:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,7 +61,7 @@ extern char    *__progname;
 #define TTY_NAME_MAX 32
 #endif
 
-#define MAXTITLELEN	192
+#define MAXTITLELEN	128
 
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
@@ -764,6 +764,10 @@ u_char	 screen_stringcolour(const char *);
 void	 screen_create(struct screen *, u_int, u_int);
 void	 screen_destroy(struct screen *);
 void	 screen_resize(struct screen *, u_int, u_int);
+void	 screen_expand_line(struct screen *, u_int, u_int);
+void	 screen_get_cell(
+    	     struct screen *, u_int, u_int, u_char *, u_char *, u_char *);
+void	 screen_set_cell(struct screen *, u_int, u_int, u_char, u_char, u_char);
 void	 screen_draw_start(struct screen_draw_ctx *,
     	     struct screen *, struct buffer *, u_int, u_int);
 void	 screen_draw_stop(struct screen_draw_ctx *);

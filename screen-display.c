@@ -1,4 +1,4 @@
-/* $Id: screen-display.c,v 1.4 2007-11-21 21:28:58 nicm Exp $ */
+/* $Id: screen-display.c,v 1.5 2007-11-21 22:20:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -139,9 +139,7 @@ screen_display_cursor_set(struct screen *s, u_char ch)
 	px = screen_x(s, s->cx);
 	py = screen_y(s, s->cy);
 
-	s->grid_data[py][px] = ch;
-	s->grid_attr[py][px] = s->attr;
-	s->grid_colr[py][px] = s->colr;
+	screen_set_cell(s, px, py, ch, s->attr, s->colr);
 }
 
 /* Move cursor up and scroll if necessary. */
@@ -405,11 +403,15 @@ screen_display_insert_characters(struct screen *s, u_int px, u_int py, u_int nx)
 
 	py = screen_y(s, py);
 
+	/* XXX Cheat and make the line a full line. */
+	if (s->grid_size[py] < screen_size_x(s))
+		screen_expand_line(s, py, screen_size_x(s));
+
 	/*
 	 * Inserting a range of nx at px.
 	 *
 	 * - Move sx - (px + nx) from px to px + nx.
-	 * - Clear the range at px.
+	 * - Clear the range at px to px + nx.
 	 */
 
 	if (px + nx != screen_last_x(s)) {
@@ -418,6 +420,7 @@ screen_display_insert_characters(struct screen *s, u_int px, u_int py, u_int nx)
 		memmove(&s->grid_attr[py][px + nx], &s->grid_attr[py][px], mx);
 		memmove(&s->grid_colr[py][px + nx], &s->grid_colr[py][px], mx);
 	}
+
 	memset(&s->grid_data[py][px], SCREEN_DEFDATA, nx);
 	memset(&s->grid_attr[py][px], SCREEN_DEFATTR, nx);
 	memset(&s->grid_colr[py][px], SCREEN_DEFCOLR, nx);
@@ -437,11 +440,15 @@ screen_display_delete_characters(struct screen *s, u_int px, u_int py, u_int nx)
 
 	py = screen_y(s, py);
 
+	/* XXX Cheat and make the line a full line. */
+	if (s->grid_size[py] < screen_size_x(s))
+		screen_expand_line(s, py, screen_size_x(s));
+
 	/*
 	 * Deleting the range from px to px + nx.
 	 *
 	 * - Move sx - (px + nx) from px + nx to px.
-	 * - Clear the range from the last x - (rx - lx)  to the last x.
+	 * - Clear the range from sx - nx to sx.
 	 */
 
 	if (px + nx != screen_last_x(s)) {

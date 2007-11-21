@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.10 2007-11-21 13:11:41 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.11 2007-11-21 22:20:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,15 +42,28 @@ const struct cmd_entry cmd_list_windows_entry = {
 void
 cmd_list_windows_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
-	struct winlink	*wl;
-	struct window	*w;
+	struct winlink		*wl;
+	struct window		*w;
+	u_int			 i, sy;
+	unsigned long long	 size;
 
 	RB_FOREACH(wl, winlinks, &ctx->session->windows) {
 		w = wl->window;
-		ctx->print(ctx, "%d: %s \"%s\" (%s) [%ux%u] [history %u]",
+
+		sy = w->screen.hsize + w->screen.dy;
+		size = sizeof *w;
+		for (i = 0; i < sy; i++)
+			size += 4 + w->screen.grid_size[i] * 3;
+		size += sy * (sizeof *w->screen.grid_data);
+		size += sy * (sizeof *w->screen.grid_attr);
+		size += sy * (sizeof *w->screen.grid_colr);
+		size += sy * (sizeof *w->screen.grid_size);
+
+		ctx->print(ctx,
+		    "%d: %s \"%s\" (%s) [%ux%u] [history %u] [%llu bytes]",
 		    wl->idx, w->name, w->screen.title, ttyname(w->fd),
 		    screen_size_x(&w->screen), screen_size_y(&w->screen),
-		    w->screen.hsize);
+		    w->screen.hsize, size);
 	}
 
 	if (ctx->cmdclient != NULL)

@@ -1,5 +1,7 @@
 21 November 2007
 
+* Create every line as zero length and only expand it as data is written,
+  rather than creating at full size immediately.
 * Make command output (eg list-keys) go to a scrollable window similar to
   scroll mode.
 * Redo screen redrawing so it is a) readable b) split into utility functions
@@ -247,4 +249,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.79 2007-11-21 19:44:04 nicm Exp $
+$Id: CHANGES,v 1.80 2007-11-21 22:20:44 nicm Exp $

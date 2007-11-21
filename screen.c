@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.34 2007-11-21 21:28:58 nicm Exp $ */
+/* $Id: screen.c,v 1.35 2007-11-21 22:20:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -110,7 +110,7 @@ screen_create(struct screen *s, u_int dx, u_int dy)
 void
 screen_resize(struct screen *s, u_int sx, u_int sy)
 {
-	u_int	i, ox, oy, ny, my;
+	u_int	ox, oy, ny, my;
 
 	if (sx < 1)
 		sx = 1;
@@ -126,23 +126,6 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 	 * X dimension.
 	 */
 	if (sx != ox) {
-		/* Resize on-screen lines. */
-		for (i = s->hsize; i < s->hsize + oy; i++) {
-			if (sx > s->grid_size[i]) {
-				s->grid_data[i] = 
-				    xrealloc(s->grid_data[i], sx, 1);
-				s->grid_attr[i] =
-				    xrealloc(s->grid_attr[i], sx, 1);
-				s->grid_colr[i] =
-				    xrealloc(s->grid_colr[i], sx, 1);
-				s->grid_size[i] = sx;
-			}
-			if (sx > ox) {
-				screen_fill_cells(s, ox, i, sx - ox,
-				    SCREEN_DEFDATA, SCREEN_DEFATTR,
-				    SCREEN_DEFCOLR);
-			}
-		}
 		if (s->cx >= sx)
 			s->cx = sx - 1;
 		s->dx = sx;
@@ -201,6 +184,56 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 	s->rlower = s->dy - 1;
 }
 
+/* Expand line. */
+void
+screen_expand_line(struct screen *s, u_int py, u_int nx)
+{
+	u_int	ox;
+
+	ox = s->grid_size[py];
+	s->grid_size[py] = nx;
+
+	s->grid_data[py] = xrealloc(s->grid_data[py], 1, nx);
+	memset(&s->grid_data[py][ox], SCREEN_DEFDATA, nx - ox);
+	s->grid_attr[py] = xrealloc(s->grid_attr[py], 1, nx);
+	memset(&s->grid_attr[py][ox], SCREEN_DEFATTR, nx - ox);
+	s->grid_colr[py] = xrealloc(s->grid_colr[py], 1, nx);
+	memset(&s->grid_colr[py][ox], SCREEN_DEFCOLR, nx - ox);
+}
+
+/* Get cell. */
+void
+screen_get_cell(struct screen *s,
+    u_int cx, u_int cy, u_char *data, u_char *attr, u_char *colr)
+{
+	if (cx >= s->grid_size[cy]) {
+		*data = SCREEN_DEFDATA;
+		*attr = SCREEN_DEFATTR;
+		*colr = SCREEN_DEFCOLR;
+	} else {
+		*data = s->grid_data[cy][cx];
+		*attr = s->grid_attr[cy][cx];
+		*colr = s->grid_colr[cy][cx];
+	}
+}
+
+/* Set a cell. */
+void
+screen_set_cell(struct screen *s,
+    u_int cx, u_int cy, u_char data, u_char attr, u_char colr)
+{
+	if (cx >= s->grid_size[cy]) {
+		if (data == SCREEN_DEFDATA &&
+		    attr == SCREEN_DEFATTR && colr == SCREEN_DEFCOLR)
+			return;
+		screen_expand_line(s, cy, cx + 1);
+	}
+
+	s->grid_data[cy][cx] = data;
+	s->grid_attr[cy][cx] = attr;
+	s->grid_colr[cy][cx] = colr;
+}
+
 /* Destroy a screen. */
 void
 screen_destroy(struct screen *s)
@@ -235,6 +268,20 @@ screen_draw_start(struct screen_draw_ctx *ctx,
 		input_store_zero(b, CODE_CURSOROFF);
 }
 
+/* Get cell data during drawing. */
+void
+screen_draw_get_cell(struct screen_draw_ctx *ctx,
+    u_int px, u_int py, u_char *data, u_char *attr, u_char *colr)
+{
+	struct screen	*s = ctx->s;
+	u_int		 cx, cy;
+	
+	cx = ctx->ox + px;
+	cy = screen_y(s, py) - ctx->oy;
+
+	screen_get_cell(s, cx, cy, data, attr, colr);
+}
+
 /* Finalise drawing. */
 void
 screen_draw_stop(struct screen_draw_ctx *ctx)
@@ -252,28 +299,6 @@ screen_draw_stop(struct screen_draw_ctx *ctx)
 	
 	if (!(s->mode & MODE_BACKGROUND) && s->mode & MODE_CURSOR)
 		input_store_zero(b, CODE_CURSORON);
-}
-
-/* Get cell data. */
-void
-screen_draw_get_cell(struct screen_draw_ctx *ctx,
-    u_int px, u_int py, u_char *data, u_char *attr, u_char *colr)
-{
-	struct screen	*s = ctx->s;
-	u_int		 cx, cy;
-	
-	cx = ctx->ox + px;
-	cy = screen_y(s, py) - ctx->oy;
-
-	if (cx >= s->grid_size[cy]) {
-		*data = SCREEN_DEFDATA;
-		*attr = SCREEN_DEFATTR;
-		*colr = SCREEN_DEFCOLR;
-	} else {
-		*data = s->grid_data[cy][cx];
-		*attr = s->grid_attr[cy][cx];
-		*colr = s->grid_colr[cy][cx];
-	}
 }
 
 /* Move cursor. */
@@ -372,15 +397,12 @@ screen_make_lines(struct screen *s, u_int py, u_int ny)
 	u_int	i;
 
 	for (i = py; i < py + ny; i++) {
-		s->grid_data[i] = xmalloc(s->dx);
-		s->grid_attr[i] = xmalloc(s->dx);
-		s->grid_colr[i] = xmalloc(s->dx);
-		s->grid_size[i] = s->dx;
+		s->grid_data[i] = NULL;
+		s->grid_attr[i] = NULL;
+		s->grid_colr[i] = NULL;
+		s->grid_size[i] = 0;
 	}
-	screen_fill_lines(
-	    s, py, ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 }
-
 
 /* Free a range of ny lines at py. */
 void
@@ -389,9 +411,15 @@ screen_free_lines(struct screen *s, u_int py, u_int ny)
 	u_int	i;
 
 	for (i = py; i < py + ny; i++) {
-		xfree(s->grid_data[i]);
-		xfree(s->grid_attr[i]);
-		xfree(s->grid_colr[i]);
+		if (s->grid_data[i] != NULL)
+			xfree(s->grid_data[i]);
+		s->grid_data[i] = NULL;
+		if (s->grid_attr[i] != NULL)
+			xfree(s->grid_attr[i]);
+		s->grid_attr[i] = NULL;
+		if (s->grid_colr[i] != NULL)
+			xfree(s->grid_colr[i]);
+		s->grid_colr[i] = NULL;
 		s->grid_size[i] = 0;
 	}
 }
@@ -426,7 +454,8 @@ void
 screen_fill_cells(struct screen *s,
     u_int px, u_int py, u_int nx, u_char data, u_char attr, u_char colr)
 {
-	memset(&s->grid_data[py][px], data, nx);
-	memset(&s->grid_attr[py][px], attr, nx);
-	memset(&s->grid_colr[py][px], colr, nx);
+	u_int	i;
+
+	for (i = px; i < px + nx; i++)
+		screen_set_cell(s, i, py, data, attr, colr);
 }
