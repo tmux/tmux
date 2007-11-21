@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.34 2007-11-21 13:11:41 nicm Exp $ */
+/* $Id: input.c,v 1.35 2007-11-21 14:50:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -841,7 +841,7 @@ input_handle_sequence_ed(struct input_ctx *ictx)
 		screen_display_fill_cursor_eos(
 		    s, SCREEN_DEFDATA, s->attr, s->colr);
 
-		if (!screen_hidden(s))
+		if (screen_hidden(s))
 			break;
 		input_store_zero(ictx->b, CODE_CLEARLINE);
 		for (i = s->cy + 1; i < screen_size_y(s); i++) {
@@ -855,7 +855,7 @@ input_handle_sequence_ed(struct input_ctx *ictx)
 		screen_display_fill_lines(
 		    s, 0, screen_size_y(s), SCREEN_DEFDATA, s->attr, s->colr);
 
-		if (!screen_hidden(s))
+		if (screen_hidden(s))
 			break;
 		for (i = 0; i < screen_size_y(s); i++) {
 			input_store_two(ictx->b, CODE_CURSORMOVE, i + 1, 1);
