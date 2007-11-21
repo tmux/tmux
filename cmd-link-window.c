@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.7 2007-11-17 08:21:54 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.8 2007-11-21 15:05:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -147,8 +147,10 @@ cmd_link_window_exec(void *ptr, struct cmd_ctx *ctx)
 		winlink_remove(&dst->windows, wl2);
 
 		/* Force select/redraw if current. */
-		if (wl2 == dst->curw)
+		if (wl2 == dst->curw) {
 			data->flag_detached = 0;
+			dst->curw = NULL;
+		}
 		if (wl2 == dst->lastw)
 			dst->lastw = NULL;
 
