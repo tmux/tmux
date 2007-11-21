@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.33 2007-11-21 19:53:56 nicm Exp $ */
+/* $Id: screen.c,v 1.34 2007-11-21 21:28:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -205,7 +205,7 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 void
 screen_destroy(struct screen *s)
 {
-	screen_free_lines(s, 0, s->dy);
+	screen_free_lines(s, 0, s->dy + s->hsize);
 	xfree(s->grid_data);
 	xfree(s->grid_attr);
 	xfree(s->grid_colr);

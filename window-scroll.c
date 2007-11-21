@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.9 2007-11-21 19:53:57 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.10 2007-11-21 21:28:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -95,7 +95,7 @@ window_scroll_draw(struct window *w, struct buffer *b, u_int py, u_int ny)
 	struct screen_draw_ctx		 ctx;
 
 	if (s->hsize != data->size) {
-		data->ox += s->hsize - data->size;
+		data->oy += s->hsize - data->size;
 		data->size = s->hsize;
 	}
 
