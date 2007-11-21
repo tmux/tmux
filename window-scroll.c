@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.2 2007-11-21 14:01:53 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.3 2007-11-21 14:39:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,7 @@ window_scroll_init(struct window *w)
 }
 
 void
-window_scroll_resize(struct window *w, u_int sx, u_int sy)
+window_scroll_resize(unused struct window *w, unused u_int sx, unused u_int sy)
 {
 }
 
@@ -86,8 +86,9 @@ void
 window_scroll_key(struct window *w, int key)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
-	u_int				 sy = screen_size_y(&w->screen);
+	u_int				 off, sy = screen_size_y(&w->screen);
 
+	off = data->off;
 	switch (key) {
 	case 'Q':
 	case 'q':
@@ -102,14 +103,12 @@ window_scroll_key(struct window *w, int key)
 	case KEYC_UP:
 		if (data->off <  data->size)
 			data->off++;
-		server_redraw_window_all(w);
 		break;
 	case 'j':
 	case 'J':
 	case KEYC_DOWN:
 		if (data->off > 0)
 			data->off--;
-		server_redraw_window_all(w);
 		break;
 	case '\025':
 	case KEYC_PPAGE:
@@ -117,7 +116,6 @@ window_scroll_key(struct window *w, int key)
 			data->off = data->size;
 		else
 			data->off += sy;
-		server_redraw_window_all(w);
 		break;
 	case '\006':
 	case KEYC_NPAGE:
@@ -125,7 +123,8 @@ window_scroll_key(struct window *w, int key)
 			data->off = 0;
 		else
 			data->off -= sy;
-		server_redraw_window_all(w);
 		break;
 	}
+	if (off != data->off)
+		server_redraw_window_all(w);
 }
