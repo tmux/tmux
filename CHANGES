@@ -1,5 +1,6 @@
 21 November 2007
 
+* Full line width memory and horizontal scrolling in history.
 * Initial support for scroll history. = to enter scrolling mode, and then
   vi keys or up/down/pgup/pgdown to navigate. Q to exit. No horizontal history
   yet (need per-line sizes) and a few kinks to be worked out (resizing while in
@@ -240,4 +241,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.76 2007-11-21 13:11:41 nicm Exp $
+$Id: CHANGES,v 1.77 2007-11-21 15:35:53 nicm Exp $

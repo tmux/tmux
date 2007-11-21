@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.30 2007-11-21 14:55:31 nicm Exp $ */
+/* $Id: screen.c,v 1.31 2007-11-21 15:35:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -102,6 +102,7 @@ screen_create(struct screen *s, u_int dx, u_int dy)
 	s->grid_data = xmalloc(dy * (sizeof *s->grid_data));
 	s->grid_attr = xmalloc(dy * (sizeof *s->grid_attr));
 	s->grid_colr = xmalloc(dy * (sizeof *s->grid_colr));
+	s->grid_size = xmalloc(dy * (sizeof *s->grid_size));
 	screen_make_lines(s, 0, dy);
 }
 
@@ -125,12 +126,17 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 	 * X dimension.
 	 */
 	if (sx != ox) {
-		/* Resize all lines including history. */
-		/* XXX need per-line sizes! */
-		for (i = 0; i < s->hsize + oy; i++) {
-			s->grid_data[i] = xrealloc(s->grid_data[i], sx, 1);
-			s->grid_attr[i] = xrealloc(s->grid_attr[i], sx, 1);
-			s->grid_colr[i] = xrealloc(s->grid_colr[i], sx, 1);
+		/* Resize on-screen lines. */
+		for (i = s->hsize; i < s->hsize + oy; i++) {
+			if (sx > s->grid_size[i]) {
+				s->grid_data[i] = 
+				    xrealloc(s->grid_data[i], sx, 1);
+				s->grid_attr[i] =
+				    xrealloc(s->grid_attr[i], sx, 1);
+				s->grid_colr[i] =
+				    xrealloc(s->grid_colr[i], sx, 1);
+				s->grid_size[i] = sx;
+			}
 			if (sx > ox) {
 				screen_fill_cells(s, ox, i, sx - ox,
 				    SCREEN_DEFDATA, SCREEN_DEFATTR,
@@ -184,6 +190,7 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 	s->grid_data = xrealloc(s->grid_data, ny, sizeof *s->grid_data);
 	s->grid_attr = xrealloc(s->grid_attr, ny, sizeof *s->grid_attr);
 	s->grid_colr = xrealloc(s->grid_colr, ny, sizeof *s->grid_colr);
+	s->grid_size = xrealloc(s->grid_size, ny, sizeof *s->grid_size);
 	s->dy = sy;
 
 	/* Size increasing. */
@@ -202,14 +209,16 @@ screen_destroy(struct screen *s)
 	xfree(s->grid_data);
 	xfree(s->grid_attr);
 	xfree(s->grid_colr);
+	xfree(s->grid_size);
 }
 
 /* Draw a set of lines on the screen. */
 void
-screen_draw(struct screen *s, struct buffer *b, u_int py, u_int ny, u_int off)
+screen_draw(
+    struct screen *s, struct buffer *b, u_int py, u_int ny, u_int ox, u_int oy)
 {
 	u_char	 attr, colr;
-	u_int	 i, j, base;
+	u_int	 i, j, nx, base;
 
 	/* XXX. This is naive and rough right now. */
 	attr = 0;
@@ -221,24 +230,33 @@ screen_draw(struct screen *s, struct buffer *b, u_int py, u_int ny, u_int off)
 	input_store_two(b, CODE_ATTRIBUTES, attr, colr);
 
 	base = screen_y(s, 0);
-	if (off > base)
+	if (oy > base)
 		base = 0;
 	else
-		base -= off;
+		base -= oy;
 
 	for (j = py; j < py + ny; j++) {
 		input_store_two(b, CODE_CURSORMOVE, j + 1, 1);
 
-		for (i = 0; i <= screen_last_x(s); i++) {
-			if (s->grid_attr[base + j][i] != attr ||
-			    s->grid_colr[base + j][i] != colr) {
+		nx = s->grid_size[base + j] - ox;
+		if (nx > screen_size_x(s))
+			nx = screen_size_x(s);
+		for (i = 0; i < nx; i++) {
+			if (s->grid_attr[base + j][ox + i] != attr ||
+			    s->grid_colr[base + j][ox + i] != colr) {
 				input_store_two(b, CODE_ATTRIBUTES,
-				    s->grid_attr[base + j][i],
-				    s->grid_colr[base + j][i]);
-				attr = s->grid_attr[base + j][i];
-				colr = s->grid_colr[base + j][i];
+				    s->grid_attr[base + j][ox + i],
+				    s->grid_colr[base + j][ox + i]);
+				attr = s->grid_attr[base + j][ox + i];
+				colr = s->grid_colr[base + j][ox + i];
 			}
-			input_store8(b, s->grid_data[base + j][i]);
+			input_store8(b, s->grid_data[base + j][ox + i]);
+		}
+		if (nx != screen_size_x(s)) {
+			input_store_two(
+			    b, CODE_ATTRIBUTES, SCREEN_DEFATTR, SCREEN_DEFCOLR);
+			for (i = nx; i < screen_size_x(s); i++)
+				input_store8(b, SCREEN_DEFDATA);
 		}
  	}
 	input_store_two(b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
@@ -258,6 +276,7 @@ screen_make_lines(struct screen *s, u_int py, u_int ny)
 		s->grid_data[i] = xmalloc(s->dx);
 		s->grid_attr[i] = xmalloc(s->dx);
 		s->grid_colr[i] = xmalloc(s->dx);
+		s->grid_size[i] = s->dx;
 	}
 	screen_fill_lines(
 	    s, py, ny, SCREEN_DEFDATA, SCREEN_DEFATTR, SCREEN_DEFCOLR);
@@ -274,6 +293,7 @@ screen_free_lines(struct screen *s, u_int py, u_int ny)
 		xfree(s->grid_data[i]);
 		xfree(s->grid_attr[i]);
 		xfree(s->grid_colr[i]);
+		s->grid_size[i] = 0;
 	}
 }
 
@@ -287,6 +307,8 @@ screen_move_lines(struct screen *s, u_int dy, u_int py, u_int ny)
 	    &s->grid_attr[dy], &s->grid_attr[py], ny * (sizeof *s->grid_attr));
 	memmove(
 	    &s->grid_colr[dy], &s->grid_colr[py], ny * (sizeof *s->grid_colr));
+	memmove(
+	    &s->grid_size[dy], &s->grid_size[py], ny * (sizeof *s->grid_size));
 }
 
 /* Fill a range of lines. */

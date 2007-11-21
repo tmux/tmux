@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.4 2007-11-21 14:57:08 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.5 2007-11-21 15:35:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,8 @@ const struct window_mode window_scroll_mode = {
 };
 
 struct window_scroll_mode_data {
-	u_int	off;
+	u_int	ox;
+	u_int	oy;
 	u_int	size;
 };
 
@@ -43,7 +44,7 @@ window_scroll_init(struct window *w)
 	struct window_scroll_mode_data	*data;
 
 	w->modedata = data = xmalloc(sizeof *data);
-	data->off = 0;
+	data->ox = data->oy = 0;
 	data->size = w->screen.hsize;
 }
 
@@ -61,19 +62,19 @@ window_scroll_draw(struct window *w, struct buffer *b, u_int py, u_int ny)
 	size_t		 		 len;
 
 	if (s->hsize != data->size) {
-		data->off += s->hsize - data->size;
+		data->ox += s->hsize - data->size;
 		data->size = s->hsize;
 	}
 
-	screen_draw(s, b, py, ny, data->off);
+	screen_draw(s, b, py, ny, data->ox, data->oy);
 	input_store_zero(b, CODE_CURSOROFF);
 
 	if (py == 0 && ny > 0) {
 		len = screen_size_x(s);
 		if (len > (sizeof buf) - 1)
 			len = (sizeof buf) - 1;
-		len = xsnprintf(buf, len + 1, "{%u/%u}",
-		    data->off, s->hsize);
+		len = xsnprintf(
+		    buf, len + 1, "[%u,%u/%u]", data->ox, data->oy, s->hsize);
 
 		input_store_two(
 		    b, CODE_CURSORMOVE, 0, screen_size_x(s) - len + 1);
@@ -86,9 +87,14 @@ void
 window_scroll_key(struct window *w, int key)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
-	u_int				 off, sy = screen_size_y(&w->screen);
+	u_int				 ox, oy, sx, sy;
+	
+	sx = screen_size_x(&w->screen);
+	sy = screen_size_y(&w->screen);
 
-	off = data->off;
+	ox = data->ox;
+	oy = data->oy;
+
 	switch (key) {
 	case 'Q':
 	case 'q':
@@ -98,33 +104,43 @@ window_scroll_key(struct window *w, int key)
 		recalculate_sizes();
 		server_redraw_window_all(w);
 		return;
+	case 'h':
+	case KEYC_LEFT:
+		if (data->ox > 0)
+			data->ox--;
+		break;
+	case 'l':
+	case KEYC_RIGHT:
+		if (data->ox < SHRT_MAX)
+			data->ox++;
+		break;
 	case 'k':
 	case 'K':
 	case KEYC_UP:
-		if (data->off < data->size)
-			data->off++;
+		if (data->oy < data->size)
+			data->oy++;
 		break;
 	case 'j':
 	case 'J':
 	case KEYC_DOWN:
-		if (data->off > 0)
-			data->off--;
+		if (data->oy > 0)
+			data->oy--;
 		break;
 	case '\025':
 	case KEYC_PPAGE:
-		if (data->off + sy > data->size)
-			data->off = data->size;
+		if (data->oy + sy > data->size)
+			data->oy = data->size;
 		else
-			data->off += sy;
+			data->oy += sy;
 		break;
 	case '\006':
 	case KEYC_NPAGE:
-		if (data->off < sy)
-			data->off = 0;
+		if (data->oy < sy)
+			data->oy = 0;
 		else
-			data->off -= sy;
+			data->oy -= sy;
 		break;
 	}
-	if (off != data->off)
+	if (ox != data->ox || oy != data->oy)
 		server_redraw_window_all(w);
 }

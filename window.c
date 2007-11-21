@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.28 2007-11-21 13:11:41 nicm Exp $ */
+/* $Id: window.c,v 1.29 2007-11-21 15:35:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -287,7 +287,7 @@ window_draw(struct window *w, struct buffer *b, u_int py, u_int ny)
 	if (w->mode != NULL)
 		w->mode->draw(w, b, py, ny);
 	else
-		screen_draw(&w->screen, b, py, ny, 0);
+		screen_draw(&w->screen, b, py, ny, 0, 0);
 }
 
 void
