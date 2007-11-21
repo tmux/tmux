@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.3 2007-11-21 14:39:46 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.4 2007-11-21 14:57:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -97,11 +97,11 @@ window_scroll_key(struct window *w, int key)
 
 		recalculate_sizes();
 		server_redraw_window_all(w);
-		break;
+		return;
 	case 'k':
 	case 'K':
 	case KEYC_UP:
-		if (data->off <  data->size)
+		if (data->off < data->size)
 			data->off++;
 		break;
 	case 'j':
