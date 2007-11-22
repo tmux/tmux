@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.93 2007-11-22 09:11:20 nicm Exp $ */
+/* $Id: tmux.h,v 1.94 2007-11-22 18:09:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -334,14 +334,14 @@ struct msg_resize_data {
 #define ATTR_ITALICS 0x40
 
 /* Modes. */
-#define MODE_CURSOR  0x01
-#define MODE_INSERT  0x02
-#define MODE_KCURSOR 0x04
-#define MODE_KKEYPAD 0x08
-#define MODE_SAVED   0x10
-#define MODE_HIDDEN  0x20
-#define MODE_BACKGROUND 0x40
-#define MODE_NOCURSOR 0x80
+#define MODE_CURSOR  0x001
+#define MODE_INSERT  0x002
+#define MODE_KCURSOR 0x004
+#define MODE_KKEYPAD 0x008
+#define MODE_SAVED   0x010
+#define MODE_HIDDEN  0x020
+#define MODE_BACKGROUND 0x040
+#define MODE_BGCURSOR 0x080
 
 /*
  * Virtual screen. This is stored as three blocks of 8-bit values, one for
@@ -623,6 +623,7 @@ void		 cmd_send_string(struct buffer *, const char *);
 char		*cmd_recv_string(struct buffer *);
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
+extern const struct cmd_entry cmd_copy_mode_entry;
 extern const struct cmd_entry cmd_detach_client_entry;
 extern const struct cmd_entry cmd_has_session_entry;
 extern const struct cmd_entry cmd_kill_session_entry;
@@ -766,6 +767,7 @@ void	 screen_create(struct screen *, u_int, u_int);
 void	 screen_destroy(struct screen *);
 void	 screen_resize(struct screen *, u_int, u_int);
 void	 screen_expand_line(struct screen *, u_int, u_int);
+void	 screen_reduce_line(struct screen *, u_int, u_int);
 void	 screen_get_cell(
     	     struct screen *, u_int, u_int, u_char *, u_char *, u_char *);
 void	 screen_set_cell(struct screen *, u_int, u_int, u_char, u_char, u_char);
@@ -816,6 +818,9 @@ int		 window_resize(struct window *, u_int, u_int);
 void		 window_parse(struct window *, struct buffer *);
 void		 window_draw(struct window *, struct buffer *, u_int, u_int);
 void		 window_key(struct window *, int);
+
+/* window-copy.c */
+extern const struct window_mode window_copy_mode;
 
 /* window-scroll.c */
 extern const struct window_mode window_scroll_mode;

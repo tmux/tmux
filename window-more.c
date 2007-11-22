@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.3 2007-11-22 09:11:20 nicm Exp $ */
+/* $Id: window-more.c,v 1.4 2007-11-22 18:09:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,7 +74,8 @@ window_more_init(struct window *w)
 	ARRAY_INIT(&data->list);
 	data->top = 0;
 
-	w->screen.mode |= (MODE_BACKGROUND|MODE_NOCURSOR);
+	w->screen.mode |= MODE_BACKGROUND;
+	w->screen.mode &= ~MODE_BGCURSOR;
 }
 
 void
@@ -163,7 +164,6 @@ window_more_draw(struct window *w, struct buffer *b, u_int py, u_int ny)
 		window_more_draw_position(w, &ctx);
 
 	screen_draw_stop(&ctx);
-	input_store_zero(b, CODE_CURSOROFF);
 }
 
 void
@@ -186,7 +186,7 @@ window_more_key(struct window *w, int key)
 		w->mode = NULL;
 		xfree(w->modedata);
 
-		w->screen.mode &= ~(MODE_BACKGROUND|MODE_NOCURSOR);
+		w->screen.mode &= ~MODE_BACKGROUND;
 
 		recalculate_sizes();
 		server_redraw_window_all(w);

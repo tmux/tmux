@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.30 2007-11-21 13:11:41 nicm Exp $ */
+/* $Id: cmd.c,v 1.31 2007-11-22 18:09:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,6 +26,7 @@
 const struct cmd_entry *cmd_table[] = {
 	&cmd_attach_session_entry,
 	&cmd_bind_key_entry,
+	&cmd_copy_mode_entry,
 	&cmd_detach_client_entry,
 	&cmd_has_session_entry,
 	&cmd_kill_session_entry,

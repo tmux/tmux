@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.11 2007-11-22 09:11:20 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.12 2007-11-22 18:09:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,7 +56,8 @@ window_scroll_init(struct window *w)
 	data->ox = data->oy = 0;
 	data->size = w->screen.hsize;
 
-	w->screen.mode |= (MODE_BACKGROUND|MODE_NOCURSOR);
+	w->screen.mode |= MODE_BACKGROUND;
+	w->screen.mode &= ~MODE_BGCURSOR;
 }
 
 void
@@ -72,7 +73,7 @@ window_scroll_draw_position(struct window *w, struct screen_draw_ctx *ctx)
 	size_t	 			 len;
 
 	len = xsnprintf(
-	    buf, sizeof buf, "[%u,%u/%u]", data->ox, data->oy, ctx->s->hsize);
+	    buf, sizeof buf, "[%u,%u/%u]", data->ox, data->oy, data->size);
 	if (len <= screen_size_x(ctx->s))
 		ptr = buf;
 	else {
@@ -109,7 +110,6 @@ window_scroll_draw(struct window *w, struct buffer *b, u_int py, u_int ny)
 		window_scroll_draw_position(w, &ctx);
 
 	screen_draw_stop(&ctx);
-	input_store_zero(b, CODE_CURSOROFF);
 }
 
 void
@@ -130,7 +130,7 @@ window_scroll_key(struct window *w, int key)
 		w->mode = NULL;
 		xfree(w->modedata);
 
-		w->screen.mode &= ~(MODE_BACKGROUND|MODE_NOCURSOR);
+		w->screen.mode &= ~MODE_BACKGROUND;
 
 		recalculate_sizes();
 		server_redraw_window_all(w);
@@ -286,7 +286,6 @@ window_scroll_right_1(struct window *w)
 		screen_draw_column(&ctx, screen_last_x(s));
 		window_scroll_draw_position(w, &ctx);
 		screen_draw_stop(&ctx);
-		input_store_zero(c->out, CODE_CURSOROFF);
 		
 		size = BUFFER_USED(c->out) - size;
 		hdr.type = MSG_DATA;
@@ -329,7 +328,6 @@ window_scroll_left_1(struct window *w)
 		screen_draw_column(&ctx, 0);
 		window_scroll_draw_position(w, &ctx);
 		screen_draw_stop(&ctx);
-		input_store_zero(c->out, CODE_CURSOROFF);
 		
 		size = BUFFER_USED(c->out) - size;
 		hdr.type = MSG_DATA;
