@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.16 2007-11-21 20:26:51 nicm Exp $
+.\" $Id: tmux.1,v 1.17 2007-11-22 10:31:02 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -290,9 +290,23 @@ if specifed, to
 .It Xo Ic scroll-mode
 .Xc
 Enter scroll mode which allows a window's history buffer to be examined.
-The up, down, page-up and page-down keys or
+The
+.Ql up ,
+.Ql down ,
+.Ql page-up
+and 
+.Ql page-down
+keys or
 .Xr vi 1
-style h, j, k, l keys may be used to navigate.
+style
+.Ql h ,
+.Ql j ,
+.Ql k ,
+.Ql l
+keys may be used to navigate.
+The
+.Ql q
+key will quit scroll mode.
 This command works only if bound to a key.
 .It Xo Ic select-window 
 .Ar index
