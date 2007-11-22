@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.38 2007-11-22 19:17:01 nicm Exp $ */
+/* $Id: screen.c,v 1.39 2007-11-22 19:26:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -126,7 +126,10 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 	 * X dimension.
 	 */
 	if (sx != ox) {
-		/* If getting smaller, nuke any data in lines over the new size. */
+		/* 
+		 * If getting smaller, nuke any data in lines over the new
+		 * size.
+		 */
 		if (sx < ox) {
 			for (i = s->hsize; i < s->hsize + oy; i++) {
 				if (s->grid_size[i] > sx)
@@ -305,11 +308,23 @@ screen_check_selection(struct screen_draw_ctx *ctx, u_int px, u_int py)
 		sel->ex = xx;
 		sel->ey = yy;
 	}
+	if (sel->sy == sel->ey && sel->ex < sel->sx) {
+		xx = sel->sx;
+		sel->sx = sel->ex;
+		sel->ex = xx;
+	}
 
 	if (py < sel->sy || py > sel->ey)
 		return (0);
-	if ((py == sel->sy && px < sel->sx) || (py == sel->ey && px > sel->ex))
-		return (0);
+	if (py == sel->sy && py == sel->ey) {
+		if (px < sel->sx || px > sel->ex)
+			return (0);
+	} else {
+		if (py == sel->sy && px < sel->sx)
+			return (0);
+		if (py == sel->ey && px > sel->ex)
+			return (0);
+	}
 	return (1);
 }
 

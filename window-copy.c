@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.2 2007-11-22 19:17:01 nicm Exp $ */
+/* $Id: window-copy.c,v 1.3 2007-11-22 19:26:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -184,7 +184,7 @@ window_copy_key(struct window *w, int key)
 			data->oy -= sy;
 		break;
 	case '\000':	/* C-space */
-		data->sel.flag = 1;
+		data->sel.flag = !data->sel.flag;
 		data->sel.sx = data->cx + data->ox;
 		data->sel.sy = data->size + data->cy - data->oy;
 		oy = -1;	/* XXX */
