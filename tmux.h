@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.94 2007-11-22 18:09:43 nicm Exp $ */
+/* $Id: tmux.h,v 1.95 2007-11-22 19:17:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -380,6 +380,17 @@ struct screen {
 	int		 mode;
 };
 
+/* Screen redraw selection. */
+struct screen_draw_sel {
+	int		 flag;
+
+	u_int		 sx;
+	u_int		 sy;
+
+	u_int		 ex;
+	u_int		 ey;
+};
+
 /* Screen redraw context. */
 struct screen_draw_ctx {
 	struct screen	*s;
@@ -393,6 +404,8 @@ struct screen_draw_ctx {
 
 	u_int		 attr;
 	u_int		 colr;
+
+	struct screen_draw_sel sel;
 };
 
 /* Screen display access macros. */
@@ -774,6 +787,7 @@ void	 screen_set_cell(struct screen *, u_int, u_int, u_char, u_char, u_char);
 void	 screen_draw_start(struct screen_draw_ctx *,
     	     struct screen *, struct buffer *, u_int, u_int);
 void	 screen_draw_stop(struct screen_draw_ctx *);
+int	 screen_check_selection(struct screen_draw_ctx *, u_int, u_int);
 void	 screen_draw_get_cell(struct screen_draw_ctx *,
     	     u_int, u_int, u_char *, u_char *, u_char *);
 void	 screen_draw_move(struct screen_draw_ctx *, u_int, u_int);

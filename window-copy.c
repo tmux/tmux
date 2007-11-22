@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.1 2007-11-22 18:09:43 nicm Exp $ */
+/* $Id: window-copy.c,v 1.2 2007-11-22 19:17:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,6 +35,7 @@ void	window_copy_cursor_left(struct window *);
 void	window_copy_cursor_right(struct window *);
 void	window_copy_cursor_up(struct window *);
 void	window_copy_cursor_down(struct window *);
+void	window_copy_draw_lines(struct window *, u_int, u_int);
 void	window_copy_scroll_left(struct window *, u_int);
 void	window_copy_scroll_right(struct window *, u_int);
 void	window_copy_scroll_up(struct window *, u_int);
@@ -53,6 +54,8 @@ struct window_copy_mode_data {
 	u_int	cx;
 	u_int	cy;
 	u_int	size;
+
+	struct screen_draw_sel sel;
 };
 
 void
@@ -65,6 +68,8 @@ window_copy_init(struct window *w)
 	data->cx = w->screen.cx;
 	data->cy = w->screen.cy;
 	data->size = w->screen.hsize;
+
+	memset(&data->sel, 0, sizeof data->sel);
 
 	w->screen.mode |= (MODE_BACKGROUND|MODE_BGCURSOR);
 }
@@ -110,6 +115,9 @@ window_copy_draw(struct window *w, struct buffer *b, u_int py, u_int ny)
 	}
 
 	screen_draw_start(&ctx, s, b, data->ox, data->oy);
+	memcpy(&ctx.sel, &data->sel, sizeof ctx.sel);
+	ctx.sel.ex = data->cx + data->ox;
+	ctx.sel.ey = data->size + data->cy - data->oy;
 	if (py != 0)
 		screen_draw_lines(&ctx, py, ny);
 	else if (ny > 1)
@@ -175,6 +183,12 @@ window_copy_key(struct window *w, int key)
 		else
 			data->oy -= sy;
 		break;
+	case '\000':	/* C-space */
+		data->sel.flag = 1;
+		data->sel.sx = data->cx + data->ox;
+		data->sel.sy = data->size + data->cy - data->oy;
+		oy = -1;	/* XXX */
+		break;
 	/* XXX start/end of line, next word, prev word */
 	}
 	if (data->oy != oy) {
@@ -222,9 +236,12 @@ window_copy_cursor_left(struct window *w)
 		return;
 
 	if (data->cx == 0)
-		window_copy_scroll_right(w, 1);
-	else
+		window_copy_scroll_right(w, 1); 
+	else {
 		data->cx--;
+		if (data->sel.flag)
+			window_copy_draw_lines(w, data->cy, 1);
+	}
 	window_copy_move_cursor(w);
 }
 
@@ -239,8 +256,11 @@ window_copy_cursor_right(struct window *w)
 	
 	if (data->cx == screen_last_x(s))
 		window_copy_scroll_left(w, 1);
-	else
+	else {
 		data->cx++;
+		if (data->sel.flag)
+			window_copy_draw_lines(w, data->cy, 1);
+	}
 	window_copy_move_cursor(w);
 }
 
@@ -254,8 +274,11 @@ window_copy_cursor_up(struct window *w)
 
 	if (data->cy == 0)
 		window_copy_scroll_down(w, 1);
-	else
+	else {
 		data->cy--;
+		if (data->sel.flag)	
+			window_copy_draw_lines(w, data->cy, 2);
+	}
 	window_copy_move_cursor(w);
 }
 
@@ -270,9 +293,42 @@ window_copy_cursor_down(struct window *w)
 
 	if (data->cy == screen_last_y(s))
 		window_copy_scroll_up(w, 1);
-	else
+	else {
 		data->cy++;
+		if (data->sel.flag)	
+			window_copy_draw_lines(w, data->cy - 1, 2);
+	}
 	window_copy_move_cursor(w);
+}
+
+void
+window_copy_draw_lines(struct window *w, u_int py, u_int ny)
+{
+	struct client		*c;
+	struct buffer		*b;
+	u_int		 	 i;
+	struct hdr		 hdr;
+	size_t			 size;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (!session_has(c->session, w))
+			continue;
+		b = c->out;
+
+		buffer_ensure(b, sizeof hdr);
+		buffer_add(b, sizeof hdr);
+		size = BUFFER_USED(b);
+		
+		window_copy_draw(w, b, py, ny);
+
+		size = BUFFER_USED(b) - size;
+		hdr.type = MSG_DATA;
+		hdr.size = size;
+		memcpy(BUFFER_IN(b) - size - sizeof hdr, &hdr, sizeof hdr);
+	}	
 }
 
 void
@@ -306,6 +362,9 @@ window_copy_scroll_left(struct window *w, u_int nx)
 		size = BUFFER_USED(b);
 		
 		screen_draw_start(&ctx, s, b, data->ox, data->oy);
+		memcpy(&ctx.sel, &data->sel, sizeof ctx.sel);
+		ctx.sel.ex = data->cx + data->ox;
+		ctx.sel.ey = data->size + data->cy - data->oy;
 		for (j = 1; j < screen_size_y(s); j++) {
 			screen_draw_move(&ctx, 0, j);
 			input_store_one(b, CODE_DELETECHARACTER, nx);
@@ -353,6 +412,9 @@ window_copy_scroll_right(struct window *w, u_int nx)
 		size = BUFFER_USED(b);
 		
 		screen_draw_start(&ctx, s, b, data->ox, data->oy);
+		memcpy(&ctx.sel, &data->sel, sizeof ctx.sel);
+		ctx.sel.ex = data->cx + data->ox;
+		ctx.sel.ey = data->size + data->cy - data->oy;
 		for (j = 1; j < screen_size_y(s); j++) {
 			screen_draw_move(&ctx, 0, j);
 			input_store_one(b, CODE_INSERTCHARACTER, nx);
@@ -398,10 +460,15 @@ window_copy_scroll_up(struct window *w, u_int ny)
 		size = BUFFER_USED(c->out);
 		
 		screen_draw_start(&ctx, s, c->out, data->ox, data->oy);
+		memcpy(&ctx.sel, &data->sel, sizeof ctx.sel);
+		ctx.sel.ex = data->cx + data->ox;
+		ctx.sel.ey = data->size + data->cy - data->oy;
 		screen_draw_move(&ctx, 0, 0);
 		input_store_one(c->out, CODE_DELETELINE, ny);
 		for (i = 0; i < ny; i++)
 			screen_draw_line(&ctx, screen_last_y(s) - i);
+		if (data->sel.flag)
+			screen_draw_line(&ctx, screen_last_y(s) - ny);
 		window_copy_draw_position(w, &ctx);
 		screen_draw_stop(&ctx);
 		
@@ -441,6 +508,9 @@ window_copy_scroll_down(struct window *w, u_int ny)
 		size = BUFFER_USED(c->out);
 
 		screen_draw_start(&ctx, s, c->out, data->ox, data->oy);
+		memcpy(&ctx.sel, &data->sel, sizeof ctx.sel);
+		ctx.sel.ex = data->cx + data->ox;
+		ctx.sel.ey = data->size + data->cy - data->oy;
 		screen_draw_move(&ctx, 0, 0);
 		input_store_one(c->out, CODE_INSERTLINE, ny);
 		for (i = 1; i < ny + 1; i++)

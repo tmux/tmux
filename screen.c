@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.37 2007-11-22 18:09:43 nicm Exp $ */
+/* $Id: screen.c,v 1.38 2007-11-22 19:17:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -278,11 +278,39 @@ screen_draw_start(struct screen_draw_ctx *ctx,
 	ctx->cx = s->cx;
 	ctx->cy = s->cy;
 
+	memset(&ctx->sel, 0, sizeof ctx->sel);
+
 	ctx->attr = s->attr;
 	ctx->colr = s->colr;
 
 	input_store_two(b, CODE_SCROLLREGION, 1, screen_size_y(s));
 	input_store_zero(b, CODE_CURSOROFF);
+}
+
+/* Check if cell in selection. */
+int
+screen_check_selection(struct screen_draw_ctx *ctx, u_int px, u_int py)
+{
+	struct screen_draw_sel	*sel = &ctx->sel;
+	u_int			 xx, yy;
+	
+	if (!sel->flag)
+		return (0);
+
+	if (sel->ey < sel->sy) {
+		xx = sel->sx;
+		yy = sel->sy;
+		sel->sx = sel->ex;
+		sel->sy = sel->ey;
+		sel->ex = xx;
+		sel->ey = yy;
+	}
+
+	if (py < sel->sy || py > sel->ey)
+		return (0);
+	if ((py == sel->sy && px < sel->sx) || (py == sel->ey && px > sel->ex))
+		return (0);
+	return (1);
 }
 
 /* Get cell data during drawing. */
@@ -297,6 +325,9 @@ screen_draw_get_cell(struct screen_draw_ctx *ctx,
 	cy = screen_y(s, py) - ctx->oy;
 
 	screen_get_cell(s, cx, cy, data, attr, colr);
+
+	if (screen_check_selection(ctx, cx, cy))
+		*attr |= ATTR_REVERSE;
 }
 
 /* Finalise drawing. */
