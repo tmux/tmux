@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.11 2007-11-21 19:53:56 nicm Exp $ */
+/* $Id: status.c,v 1.12 2007-11-22 09:29:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -57,7 +57,7 @@ status_write(struct client *c)
 
 	input_store_two(b, CODE_ATTRIBUTES, s->attr, s->colr);
 	input_store_two(b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
-	if (!(s->mode & MODE_BACKGROUND) && s->mode & MODE_CURSOR)
+	if (!(s->mode & MODE_NOCURSOR) && s->mode & MODE_CURSOR)
 		input_store_zero(b, CODE_CURSORON);
 }
 
