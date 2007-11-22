@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.92 2007-11-21 22:20:44 nicm Exp $ */
+/* $Id: tmux.h,v 1.93 2007-11-22 09:11:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -341,6 +341,7 @@ struct msg_resize_data {
 #define MODE_SAVED   0x10
 #define MODE_HIDDEN  0x20
 #define MODE_BACKGROUND 0x40
+#define MODE_NOCURSOR 0x80
 
 /*
  * Virtual screen. This is stored as three blocks of 8-bit values, one for

@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.10 2007-11-21 21:28:58 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.11 2007-11-22 09:11:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,7 +56,7 @@ window_scroll_init(struct window *w)
 	data->ox = data->oy = 0;
 	data->size = w->screen.hsize;
 
-	w->screen.mode |= MODE_BACKGROUND;
+	w->screen.mode |= (MODE_BACKGROUND|MODE_NOCURSOR);
 }
 
 void
@@ -130,7 +130,7 @@ window_scroll_key(struct window *w, int key)
 		w->mode = NULL;
 		xfree(w->modedata);
 
-		w->screen.mode &= ~MODE_BACKGROUND;
+		w->screen.mode &= ~(MODE_BACKGROUND|MODE_NOCURSOR);
 
 		recalculate_sizes();
 		server_redraw_window_all(w);

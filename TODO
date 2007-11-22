@@ -70,7 +70,8 @@
 - stuff like rename would be nice to be able to do in-client like screen, if
   it could be implemented in a non-icky way
 - there is to much redrawing. use flags?
-- use modes for help etc
+- command mode (! + type tmux command)
+- copy mode
 
 -- For 0.2 --------------------------------------------------------------------
 - copy and paste
