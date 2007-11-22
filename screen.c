@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.39 2007-11-22 19:26:20 nicm Exp $ */
+/* $Id: screen.c,v 1.40 2007-11-22 19:40:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -290,41 +290,43 @@ screen_draw_start(struct screen_draw_ctx *ctx,
 	input_store_zero(b, CODE_CURSOROFF);
 }
 
-/* Check if cell in selection. */
-int
-screen_check_selection(struct screen_draw_ctx *ctx, u_int px, u_int py)
+/* Set selection. */
+void
+screen_draw_set_selection(struct screen_draw_ctx *ctx, 
+    int flag, u_int sx, u_int sy, u_int ex, u_int ey)
 {
 	struct screen_draw_sel	*sel = &ctx->sel;
-	u_int			 xx, yy;
-	
-	if (!sel->flag)
-		return (0);
 
-	if (sel->ey < sel->sy) {
-		xx = sel->sx;
-		yy = sel->sy;
-		sel->sx = sel->ex;
-		sel->sy = sel->ey;
-		sel->ex = xx;
-		sel->ey = yy;
+	sel->flag = flag;
+	if (!flag)
+		return;
+
+	if (ey < sy || (sy == ey && ex < sx)) {
+		sel->sx = ex; sel->sy = ey;
+		sel->ex = sx; sel->ey = sy;
+	} else {
+		sel->sx = sx; sel->sy = sy;
+		sel->ex = ex; sel->ey = ey;
 	}
-	if (sel->sy == sel->ey && sel->ex < sel->sx) {
-		xx = sel->sx;
-		sel->sx = sel->ex;
-		sel->ex = xx;
-	}
+}
+
+/* Check if cell in selection. */
+int
+screen_draw_check_selection(struct screen_draw_ctx *ctx, u_int px, u_int py)
+{
+	struct screen_draw_sel	*sel = &ctx->sel;
 
 	if (py < sel->sy || py > sel->ey)
 		return (0);
+
 	if (py == sel->sy && py == sel->ey) {
 		if (px < sel->sx || px > sel->ex)
 			return (0);
-	} else {
-		if (py == sel->sy && px < sel->sx)
-			return (0);
-		if (py == sel->ey && px > sel->ex)
-			return (0);
+		return (1);
 	}
+
+	if ((py == sel->sy && px < sel->sx) || (py == sel->ey && px > sel->ex))
+		return (0);
 	return (1);
 }
 
@@ -341,7 +343,7 @@ screen_draw_get_cell(struct screen_draw_ctx *ctx,
 
 	screen_get_cell(s, cx, cy, data, attr, colr);
 
-	if (screen_check_selection(ctx, cx, cy))
+	if (screen_draw_check_selection(ctx, cx, cy))
 		*attr |= ATTR_REVERSE;
 }
 
