@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.5 2007-11-23 16:43:04 nicm Exp $ */
+/* $Id: window-copy.c,v 1.6 2007-11-23 17:52:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,10 @@ void	window_copy_key(struct window *, int);
 
 void	window_copy_draw_position(struct window *, struct screen_draw_ctx *);
 
-u_int	window_copy_line_length(struct window *);
+void	window_copy_copy_selection(struct window *);
+void	window_copy_copy_line(
+	     struct window *, char **, size_t *, size_t *, u_int, u_int, u_int);
+u_int	window_copy_find_length(struct window *, u_int);
 void	window_copy_move_cursor(struct window *);
 void	window_copy_cursor_left(struct window *);
 void	window_copy_cursor_right(struct window *);
@@ -143,14 +146,7 @@ window_copy_key(struct window *w, int key)
 	switch (key) {
 	case 'Q':
 	case 'q':
-		w->mode = NULL;
-		xfree(w->modedata);
-
-		w->screen.mode &= ~MODE_BACKGROUND;
-
-		recalculate_sizes();
-		server_redraw_window_all(w);
-		return;
+		goto done;
 	case 'h':
 	case KEYC_LEFT:
 		window_copy_cursor_left(w);
@@ -184,17 +180,131 @@ window_copy_key(struct window *w, int key)
 			data->oy -= sy;
 		break;
 	case '\000':	/* C-space */
+	case ' ':
 		data->selflag = !data->selflag;
 		data->selx = data->cx + data->ox;
 		data->sely = data->size + data->cy - data->oy;
 		oy = -1;	/* XXX */
 		break;
-	/* XXX start/end of line, next word, prev word */
+	case '\027':	/* C-w */
+	case '\r':	/* enter */
+		if (data->selflag)
+			window_copy_copy_selection(w);
+		goto done;
+	/* XXX start/end of line, next word, prev word, cancel sel */
 	}
 	if (data->oy != oy) {
 		server_redraw_window_all(w);
 		window_copy_move_cursor(w);
 	}
+	return;
+
+done:
+	w->mode = NULL;
+	xfree(w->modedata);
+	
+	w->screen.mode &= ~MODE_BACKGROUND;
+	
+	recalculate_sizes();
+	server_redraw_window_all(w);
+}
+
+void
+window_copy_copy_selection(struct window *w)
+{
+	struct window_copy_mode_data	*data = w->modedata;
+	char				*buf;
+	size_t	 			 len, off;
+	u_int	 			 i, xx, yy, sx, sy, ex, ey;
+
+	len = BUFSIZ;
+	buf = xmalloc(len);
+	off = 0;
+
+	*buf = '\0';
+
+	/* Find start and end. */
+	xx = data->cx + data->ox;
+	yy = data->size + data->cy - data->oy;
+	if (xx < data->selx || (yy == data->sely && xx < data->selx)) {
+		sx = xx; sy = yy;
+		ex = data->selx; ey = data->sely;
+	} else {
+		sx = data->selx; sy = data->sely;
+		ex = xx; ey = yy;
+	}
+
+	/* Trim ex to end of line. */
+	xx = window_copy_find_length(w, ey);
+	if (ex > xx)
+		ex = xx;
+
+	log_debug("copying from %u,%u to %u,%u", sx, sy, ex, ey);
+
+	/* Copy the lines. */
+	if (sy == ey)
+		window_copy_copy_line(w, &buf, &off, &len, sy, sx, ex);
+	else {
+		xx = window_copy_find_length(w, sy);
+		window_copy_copy_line(w, &buf, &off, &len, sy, sx, xx);
+		if (ey - sy > 1) {
+			for (i = sy + 1; i < ey - 1; i++) {
+				xx = window_copy_find_length(w, i);
+				window_copy_copy_line(
+				    w, &buf, &off, &len, i, 0, xx);
+			}
+		}
+		window_copy_copy_line(w, &buf, &off, &len, ey, 0, ex);
+	}
+
+	/* Terminate buffer, overwriting final \n. */
+	if (off != 0)
+		buf[off - 1] = '\0';
+
+	if (paste_buffer != NULL)
+		xfree(paste_buffer);
+	paste_buffer = buf;
+}
+
+void
+window_copy_copy_line(struct window *w,
+    char **buf, size_t *off, size_t *len, u_int sy, u_int sx, u_int ex)
+{
+	struct screen	*s = &w->screen;
+	u_char		 i, xx;
+
+	if (sx > ex)
+		return;
+
+	xx = window_copy_find_length(w, sy);
+	if (ex > xx)
+		ex = xx;
+	if (sx > xx)
+		sx = xx;
+
+	if (sx < ex) {
+		for (i = sx; i < ex; i++) {
+			*buf = ensure_size(*buf, len, 1, *off + 1);
+			(*buf)[*off] = s->grid_data[sy][i];
+			(*off)++;
+		}
+	}
+		
+	*buf = ensure_size(*buf, len, 1, *off + 1);
+	(*buf)[*off] = '\n';
+	(*off)++;
+}
+
+u_int
+window_copy_find_length(struct window *w, u_int py)
+{
+	struct screen	*s = &w->screen;
+	u_int		 px;
+
+	px = s->grid_size[py];
+	while (px > 0 && s->grid_data[py][px] == SCREEN_DEFDATA)
+		px--;
+	return (px);
 }
 
 void

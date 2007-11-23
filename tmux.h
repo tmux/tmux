@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.97 2007-11-23 12:48:20 nicm Exp $ */
+/* $Id: tmux.h,v 1.98 2007-11-23 17:52:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -615,13 +615,14 @@ extern volatile sig_atomic_t sigterm;
 #define BELL_NONE 0
 #define BELL_ANY 1
 #define BELL_CURRENT 2
+extern char	*default_command;
+extern char	*paste_buffer;
 extern int	 bell_action;
-extern int	 prefix_key;
 extern int	 debug_level;
-extern u_int	 status_lines;
+extern int	 prefix_key;
 extern u_char	 status_colour;
 extern u_int	 history_limit;
-extern char     *default_command;
+extern u_int	 status_lines;
 void		 usage(char **, const char *, ...);
 void		 logfile(const char *);
 void		 siginit(void);
@@ -651,6 +652,7 @@ extern const struct cmd_entry cmd_list_windows_entry;
 extern const struct cmd_entry cmd_new_session_entry;
 extern const struct cmd_entry cmd_new_window_entry;
 extern const struct cmd_entry cmd_next_window_entry;
+extern const struct cmd_entry cmd_paste_buffer_entry;
 extern const struct cmd_entry cmd_previous_window_entry;
 extern const struct cmd_entry cmd_refresh_client_entry;
 extern const struct cmd_entry cmd_rename_session_entry;
