@@ -1,9 +1,9 @@
-23 November 2007
+3 November 2007
 
 * Mostly complete copy & paste. Copy mode entered with C-b [ (copy-mode
   command). In copy mode, arrow keys/page up/page down/hjkl/C-u/C-f navigate,
   space or C-space starts selection, and enter or C-w copies and (important!)
-  exits copy mode. C-b ] (paste-buffer) pastes into current terminal. No
+  exits copy mode. C-b ] (paste-buffer) pastes into current window. No
   extra utility keys (bol/eol/clear selection/etc), only one single buffer,
   and no buffer manipulation commands (clear/view/etc) yet. The code is also
   fugly :-(.
@@ -263,4 +263,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.82 2007-11-23 17:52:54 nicm Exp $
+$Id: CHANGES,v 1.83 2007-11-23 22:51:13 nicm Exp $
