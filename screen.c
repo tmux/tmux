@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.41 2007-11-23 12:48:20 nicm Exp $ */
+/* $Id: screen.c,v 1.42 2007-11-23 13:02:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -281,7 +281,7 @@ screen_draw_start(struct screen_draw_ctx *ctx,
 	ctx->cx = s->cx;
 	ctx->cy = s->cy;
 
-	memset(&ctx->sel, 0, sizeof ctx->sel);
+	ctx->sel.flag = 0;
 
 	ctx->attr = s->attr;
 	ctx->colr = s->colr;
@@ -298,7 +298,7 @@ screen_draw_set_selection(struct screen_draw_ctx *ctx,
 	struct screen_draw_sel	*sel = &ctx->sel;
 
 	sel->flag = flag;
-	if (!flag)
+	if (!sel->flag)
 		return;
 
 	if (ey < sy || (sy == ey && ex < sx)) {
@@ -315,6 +315,9 @@ int
 screen_draw_check_selection(struct screen_draw_ctx *ctx, u_int px, u_int py)
 {
 	struct screen_draw_sel	*sel = &ctx->sel;
+
+	if (!sel->flag)
+		return (0);
 
 	if (py < sel->sy || py > sel->ey)
 		return (0);

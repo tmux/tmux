@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.12 2007-11-21 22:24:07 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.13 2007-11-23 13:02:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,17 +50,16 @@ cmd_list_windows_exec(unused void *ptr, struct cmd_ctx *ctx)
 	RB_FOREACH(wl, winlinks, &ctx->session->windows) {
 		w = wl->window;
 
-		sy = w->screen.hsize + w->screen.dy;
 		size = 0;
-		for (i = 0; i < sy; i++)
+		for (i = 0; i < w->screen.hsize; i++)
 			size += w->screen.grid_size[i] * 3;
-		size += sy * (sizeof *w->screen.grid_data);
-		size += sy * (sizeof *w->screen.grid_attr);
-		size += sy * (sizeof *w->screen.grid_colr);
-		size += sy * (sizeof *w->screen.grid_size);
+		size += w->screen.hsize * (sizeof *w->screen.grid_data);
+		size += w->screen.hsize * (sizeof *w->screen.grid_attr);
+		size += w->screen.hsize * (sizeof *w->screen.grid_colr);
+		size += w->screen.hsize * (sizeof *w->screen.grid_size);
 
 		ctx->print(ctx,
-		    "%d: %s \"%s\" (%s) [%ux%u] [history %u] [%llu bytes]",
+		    "%d: %s \"%s\" (%s) [%ux%u] [history %u, %llu bytes]",
 		    wl->idx, w->name, w->screen.title, ttyname(w->fd),
 		    screen_size_x(&w->screen), screen_size_y(&w->screen),
 		    w->screen.hsize, size);
