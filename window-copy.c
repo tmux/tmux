@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.4 2007-11-22 19:40:17 nicm Exp $ */
+/* $Id: window-copy.c,v 1.5 2007-11-23 16:43:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -232,9 +232,6 @@ window_copy_cursor_left(struct window *w)
 {
 	struct window_copy_mode_data	*data = w->modedata;
 
-	if (data->ox + data->cx == 0)
-		return;
-
 	if (data->cx == 0)
 		window_copy_scroll_right(w, 1); 
 	else {
@@ -251,9 +248,6 @@ window_copy_cursor_right(struct window *w)
 	struct window_copy_mode_data	*data = w->modedata;
 	struct screen			*s = &w->screen;
 
-	if (data->ox + data->cx == SHRT_MAX)
-		return;
-	
 	if (data->cx == screen_last_x(s))
 		window_copy_scroll_left(w, 1);
 	else {
@@ -268,9 +262,6 @@ void
 window_copy_cursor_up(struct window *w)
 {
 	struct window_copy_mode_data	*data = w->modedata;
-
-	if (data->cy == 0 && data->oy == data->size)
-		return;
 
 	if (data->cy == 0)
 		window_copy_scroll_down(w, 1);
@@ -287,9 +278,6 @@ window_copy_cursor_down(struct window *w)
 {
 	struct window_copy_mode_data	*data = w->modedata;
 	struct screen			*s = &w->screen;
-
-	if (data->cy == screen_last_y(s) && data->oy == 0)
-		return;
 
 	if (data->cy == screen_last_y(s))
 		window_copy_scroll_up(w, 1);
@@ -343,7 +331,7 @@ window_copy_scroll_left(struct window *w, u_int nx)
 	struct hdr			 hdr;
 	size_t				 size;
 
-	if (data->ox >= SHRT_MAX - nx)
+	if (data->ox > SHRT_MAX - nx)
 		nx = SHRT_MAX - data->ox;
 	if (nx == 0)
 		return;
@@ -490,7 +478,10 @@ window_copy_scroll_down(struct window *w, u_int ny)
 	struct hdr			 hdr;
 	size_t				 size;
 
-	if (data->oy >= data->size - ny)
+	if (ny > data->size)
+		return;
+
+	if (data->oy > data->size - ny)
 		ny = data->size - data->oy;
 	if (ny == 0)
 		return;
