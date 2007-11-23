@@ -10,18 +10,19 @@ if ! $TMUX -s0 has 2>/dev/null; then
     # Session 0
     $TMUX new -d -s0 -nyelena 'exec ssh yelena'		# 0
 
-    # This needs to be set before starting shells...
+    # These needs to be set before starting shells...
     $TMUX set default-command "exec $SHELL -l"
+    $TMUX set history-limit 10000
 
     $TMUX -s0 neww -d -ntodo 'exec emacs ~/TODO'	# 1
     $TMUX -s0 neww -d -nncmpc				# 2
-    $TMUX -s0 neww -d					# 3
-    $TMUX -s0 neww -d					# 4
-    $TMUX -s0 neww -d					# 5
-    $TMUX -s0 neww -d					# 6
-    $TMUX -s0 neww -d					# 7
-    $TMUX -s0 neww -d					# 8
-    $TMUX -s0 neww -d					# 9
+    $TMUX -s0 neww -d &					# 3
+    $TMUX -s0 neww -d &					# 4
+    $TMUX -s0 neww -d &					# 5
+    $TMUX -s0 neww -d &					# 6
+    $TMUX -s0 neww -d &					# 7
+    $TMUX -s0 neww -d &					# 8
+    $TMUX -s0 neww -d &					# 9
 
     # Other sessions
     for i in 1 2; do
@@ -29,25 +30,28 @@ if ! $TMUX -s0 has 2>/dev/null; then
 	$TMUX new -d -s$i
 	$TMUX -s$i linkw -dki0 0 0
 
-	$TMUX -s$i neww -d
-	$TMUX -s$i neww -d
+	$TMUX -s$i neww -d &
+	$TMUX -s$i neww -d &
     done
 
     # Rebind prefix key
-    $TMUX set prefix ^A
-    $TMUX unbind ^B
-    $TMUX bind ^A send-prefix
+    $TMUX set prefix ^A &
+    $TMUX unbind ^B &
+    $TMUX bind ^A send-prefix &
 
     # Bind q,w,e to session 0,1,2. We need per-session toolbar colours!
-    $TMUX bind q switch 0
-    $TMUX bind Q switch 0
-    $TMUX bind w switch 1
-    $TMUX bind W switch 1
-    $TMUX bind e switch 2
-    $TMUX bind E switch 2
+    $TMUX bind q switch 0 &
+    $TMUX bind Q switch 0 &
+    $TMUX bind w switch 1 &
+    $TMUX bind W switch 1 &
+    $TMUX bind e switch 2 &
+    $TMUX bind E switch 2 &
+
+    $TMUX bind I list-windows &
+    $TMUX bind i list-windows &
 
     # No bells, thanks
-    $TMUX set bell-action none
+    $TMUX set bell-action none &
 fi
 
 $TMUX -s0 attach -d
