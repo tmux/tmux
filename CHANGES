@@ -1,3 +1,10 @@
+23 November 2007
+
+* history-limit option to set maximum history. Does not apply retroactively to
+  existing windows! Lines take up a variable amount of space, but a reasonable
+  guess for an 80-column terminal is 250 KB per 1000 lines (of history used,
+  an empty history takes no space).
+
 21 November 2007
 
 * Create every line as zero length and only expand it as data is written,
@@ -249,4 +256,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.80 2007-11-21 22:20:44 nicm Exp $
+$Id: CHANGES,v 1.81 2007-11-23 12:48:20 nicm Exp $

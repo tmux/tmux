@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.96 2007-11-22 19:40:16 nicm Exp $ */
+/* $Id: tmux.h,v 1.97 2007-11-23 12:48:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -620,6 +620,7 @@ extern int	 prefix_key;
 extern int	 debug_level;
 extern u_int	 status_lines;
 extern u_char	 status_colour;
+extern u_int	 history_limit;
 extern char     *default_command;
 void		 usage(char **, const char *, ...);
 void		 logfile(const char *);

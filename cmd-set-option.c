@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.13 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.14 2007-11-23 12:48:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -193,6 +193,16 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 		}
 		xfree(default_command);
 		default_command = xstrdup(data->value);
+	} else if (strcmp(data->option, "history-limit") == 0) {
+		if (data->value == NULL) {
+			ctx->error(ctx, "invalid value");
+			return;
+		}
+		if (number > SHRT_MAX) {
+			ctx->error(ctx, "history-limit too big: %u", number);
+			return;
+		}
+		history_limit = number;
 	} else {
 		ctx->error(ctx, "unknown option: %s", data->option);
 		return;

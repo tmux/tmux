@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.42 2007-11-20 12:59:27 nicm Exp $ */
+/* $Id: tmux.c,v 1.43 2007-11-23 12:48:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,6 +43,7 @@ u_int		 status_lines;
 u_char		 status_colour;
 char		*default_command;
 int		 bell_action;
+u_int		 history_limit;
 
 void		 sighandler(int);
 
@@ -213,6 +214,8 @@ main(int argc, char **argv)
 	status_colour = 0x02;
 
 	bell_action = BELL_ANY;
+
+	history_limit = 2000;
 
 	if (path == NULL) {
 		xasprintf(&path,

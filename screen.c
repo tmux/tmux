@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.40 2007-11-22 19:40:16 nicm Exp $ */
+/* $Id: screen.c,v 1.41 2007-11-23 12:48:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -91,7 +91,7 @@ screen_create(struct screen *s, u_int dx, u_int dy)
 	s->rlower = s->dy - 1;
 
 	s->hsize = 0;
-	s->hlimit = SHRT_MAX;
+	s->hlimit = history_limit;
 
 	s->attr = SCREEN_DEFATTR;
 	s->colr = SCREEN_DEFCOLR;
