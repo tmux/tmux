@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.13 2007-11-23 13:02:45 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.14 2007-11-23 13:11:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ cmd_list_windows_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
 	struct winlink		*wl;
 	struct window		*w;
-	u_int			 i, sy;
+	u_int			 i;
 	unsigned long long	 size;
 
 	RB_FOREACH(wl, winlinks, &ctx->session->windows) {
@@ -59,10 +59,10 @@ cmd_list_windows_exec(unused void *ptr, struct cmd_ctx *ctx)
 		size += w->screen.hsize * (sizeof *w->screen.grid_size);
 
 		ctx->print(ctx,
-		    "%d: %s \"%s\" (%s) [%ux%u] [history %u, %llu bytes]",
+		    "%d: %s \"%s\" (%s) [%ux%u] [history %u/%u, %llu bytes]",
 		    wl->idx, w->name, w->screen.title, ttyname(w->fd),
 		    screen_size_x(&w->screen), screen_size_y(&w->screen),
-		    w->screen.hsize, size);
+		    w->screen.hsize, w->screen.hlimit, size);
 	}
 
 	if (ctx->cmdclient != NULL)
