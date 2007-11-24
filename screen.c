@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.42 2007-11-23 13:02:45 nicm Exp $ */
+/* $Id: screen.c,v 1.43 2007-11-24 17:58:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -450,7 +450,7 @@ screen_draw_line(struct screen_draw_ctx *ctx, u_int py)
 void
 screen_draw_lines(struct screen_draw_ctx *ctx, u_int py, u_int ny)
 {
-	u_int		 i;
+	u_int	i;
 
 	for (i = py; i < py + ny; i++)
 		screen_draw_line(ctx, i);

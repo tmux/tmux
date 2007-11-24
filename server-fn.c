@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.31 2007-11-22 18:09:43 nicm Exp $ */
+/* $Id: server-fn.c,v 1.32 2007-11-24 17:58:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -330,20 +330,21 @@ server_status_window_all(struct window *w)
 void printflike2
 server_write_message(struct client *c, const char *fmt, ...)
 {
-	struct window	*w = c->session->curw->window;
-	struct hdr	 hdr;
-	va_list		 ap;
-	char		*msg;
-	size_t		 size;
-	u_int		 i;
+	struct window	       *w = c->session->curw->window;
+	struct screen_draw_ctx	ctx;
+	struct hdr		hdr;
+	va_list			ap;
+	char		       *msg;
+	size_t			size;
+	u_int			i;
 
 	buffer_ensure(c->out, sizeof hdr);
 	buffer_add(c->out, sizeof hdr);
 	size = BUFFER_USED(c->out);
 
-	input_store_zero(c->out, CODE_CURSOROFF);
-	input_store_two(c->out, CODE_CURSORMOVE, c->sy, 1);
-	input_store_two(c->out, CODE_ATTRIBUTES, ATTR_REVERSE, 0x88);
+	screen_draw_start(&ctx, &w->screen, c->out, 0, 0);
+	screen_draw_move(&ctx, 0, c->sy);
+	screen_draw_set_attributes(&ctx, ATTR_REVERSE, 0x88);
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
 	va_end(ap);
@@ -353,6 +354,7 @@ server_write_message(struct client *c, const char *fmt, ...)
 	for (i = strlen(msg); i < c->sx; i++)
 		input_store8(c->out, ' ');
 	xfree(msg);
+	screen_draw_stop(&ctx);
 
 	size = BUFFER_USED(c->out) - size;
   	hdr.type = MSG_DATA;
@@ -367,9 +369,9 @@ server_write_message(struct client *c, const char *fmt, ...)
 	buffer_add(c->out, sizeof hdr);
 	size = BUFFER_USED(c->out);
 
-	if (status_lines == 0) {
+	if (status_lines == 0)
 		window_draw(w, c->out, screen_last_y(&w->screen), 1);
-	} else
+	else
 		status_write(c);
 
 	size = BUFFER_USED(c->out) - size;
