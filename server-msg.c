@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.36 2007-11-21 22:40:55 nicm Exp $ */
+/* $Id: server-msg.c,v 1.37 2007-11-24 20:08:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -229,6 +229,9 @@ server_msg_fn_resize(struct hdr *hdr, struct client *c)
 		c->sy = 25;
 
 	recalculate_sizes();
+
+	/* Always redraw this client. */
+	server_redraw_client(c);
 
 	return (0);
 }
