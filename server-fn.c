@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.33 2007-11-24 18:09:59 nicm Exp $ */
+/* $Id: server-fn.c,v 1.34 2007-11-24 18:32:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -343,7 +343,7 @@ server_write_message(struct client *c, const char *fmt, ...)
 	size = BUFFER_USED(c->out);
 
 	screen_draw_start(&ctx, &w->screen, c->out, 0, 0);
-	screen_draw_move(&ctx, 0, c->sy);
+	screen_draw_move(&ctx, 0, c->sy - 1);
 	screen_draw_set_attributes(&ctx, ATTR_REVERSE, 0x88);
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
@@ -368,11 +368,11 @@ server_write_message(struct client *c, const char *fmt, ...)
 	buffer_add(c->out, sizeof hdr);
 	size = BUFFER_USED(c->out);
 
+	screen_draw_stop(&ctx);
 	if (status_lines == 0)
-		window_draw(w, c->out, screen_last_y(&w->screen), 1);
+		window_draw(w, c->out, c->sy - 1, 1);
 	else
 		status_write(c);
-	screen_draw_stop(&ctx);
 	
 	size = BUFFER_USED(c->out) - size;
 	hdr.type = MSG_DATA;
