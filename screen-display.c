@@ -1,4 +1,4 @@
-/* $Id: screen-display.c,v 1.5 2007-11-21 22:20:44 nicm Exp $ */
+/* $Id: screen-display.c,v 1.6 2007-11-24 12:33:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -260,6 +260,8 @@ screen_display_insert_lines(struct screen *s, u_int py, u_int ny)
 
 	if (py + ny > screen_last_y(s))
 		ny = screen_last_y(s) - py;
+	if (ny == 0)
+		return;	
 
 	/*
 	 * Insert range of ny lines at py:
@@ -295,6 +297,8 @@ screen_display_insert_lines_region(struct screen *s, u_int py, u_int ny)
 
 	if (py + ny > s->rlower)
 		ny = s->rlower - py;
+	if (ny == 0)
+		return;
 
 	/*
 	 * Insert range of ny lines at py:
@@ -330,6 +334,8 @@ screen_display_delete_lines(struct screen *s, u_int py, u_int ny)
 
 	if (py + ny > screen_last_y(s))
 		ny = screen_last_y(s) - py;
+	if (ny == 0)
+		return;
 
 	/*
 	 * Delete range of ny lines at py:
@@ -365,6 +371,8 @@ screen_display_delete_lines_region(struct screen *s, u_int py, u_int ny)
 
 	if (py + ny > s->rlower)
 		ny = s->rlower - py;
+	if (ny == 0)
+		return;
 
 	/*
 	 * Delete range of ny lines at py:
