@@ -1,4 +1,8 @@
-3 November 2007
+24 November 2007
+
+* Support for alt charset mode (VT100 graphics characters).
+
+23 November 2007
 
 * Mostly complete copy & paste. Copy mode entered with C-b [ (copy-mode
   command). In copy mode, arrow keys/page up/page down/hjkl/C-u/C-f navigate,
@@ -263,4 +267,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.83 2007-11-23 22:51:13 nicm Exp $
+$Id: CHANGES,v 1.84 2007-11-24 23:29:49 nicm Exp $

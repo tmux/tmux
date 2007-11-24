@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.19 2007-11-12 20:29:43 nicm Exp $ */
+/* $Id: local.c,v 1.20 2007-11-24 23:29:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -40,6 +40,7 @@ int	local_cmp(const void *, const void *);
 int	local_putc(int);
 void	local_putp(const char *);
 void	local_attributes(u_char, u_char);
+u_char	local_translate_acs(u_char);
 
 /* Local key types and key codes. */
 struct local_key {
@@ -213,7 +214,7 @@ u_char		 local_colr;
 int
 local_init(struct buffer **in, struct buffer **out)
 {
-	char		       *tty;
+	char		       *tty, *name;
 	int		  	mode, error;
 	struct termios	  	tio;
 	struct local_key       *lk;
@@ -225,9 +226,8 @@ local_init(struct buffer **in, struct buffer **out)
 		"clr_bol",
 		"clr_eol",
 		"cursor_address",
+		"cursor_left",
 		"cursor_down",
-		"enter_ca_mode",
-		"exit_ca_mode",
 		"parm_dch",
 		"parm_delete_line",
 		"parm_down_cursor",
@@ -249,18 +249,11 @@ local_init(struct buffer **in, struct buffer **out)
 	if (fcntl(local_fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
 
-	if (setupterm(NULL, STDOUT_FILENO, &error) != OK) {
-		switch (error) {
-		case 1:
-			log_warnx("hardcopy terminal cannot be used");
-			return (-1);
-		case 0:
-			log_warnx("terminal type not found or unsuitable");
-			return (-1);
-		case -1:
-			log_warnx("couldn't find terminfo database");
-			return (-1);
-		}
+	if ((name = getenv("TERM")) == NULL || *name == '\0')
+		name = "unknown";
+	if (newterm(name, stdout, stdin) == NULL) {
+		log_warnx("error opening terminal: %s", name);
+		return (-1);
 	}
 	for (i = 0; reqd[i] != NULL; i++) {
 		error = 0;
@@ -317,6 +310,8 @@ local_init(struct buffer **in, struct buffer **out)
 		local_putp(enter_ca_mode);
 	if (keypad_xmit != NULL)
 		local_putp(keypad_xmit);
+	if (ena_acs != NULL)
+		local_putp(ena_acs);
 	local_putp(clear_screen);
 
 	for (lk = local_keys; lk->name != NULL; lk++) {
@@ -372,6 +367,7 @@ local_done(void)
 		putp(tparm(change_scroll_region, 0, ws.ws_row - 1));
 	}
 
+	endwin();
 	if (keypad_local != NULL)
 		putp(keypad_local);	/* not local_putp */
 	if (exit_ca_mode != NULL)
@@ -387,19 +383,16 @@ local_done(void)
 int
 local_putc(int c)
 {
-	/* XXX FILE	*f;*/
 	u_char	ch = c;
 
 	if (c < 0 || c > (int) UCHAR_MAX)
 		fatalx("invalid character");
 
-/* XXX
-	if (debug_level > 2) {
-		f = fopen("tmux-out.log", "a+");
-		fprintf(f, "%c", ch);
-		fclose(f);
+	if (acs_chars != NULL && local_attr & ATTR_DRAWING) {
+		ch = local_translate_acs(ch);
+		if (ch == '\0')
+			ch = '?';
 	}
-*/
 
 	buffer_write(local_out, &ch, 1);
 	return (c);
@@ -461,32 +454,17 @@ local_output(struct buffer *b, size_t size)
 		if (ch != '\e') {
 			switch (ch) {
 			case '\n':	/* LF */
-				if (cursor_down != NULL) {
-					local_putp(cursor_down);
-					break;
-				}
-				log_warnx("cursor_down not supported");
+				local_putp(cursor_down);
 				break;
 			case '\r':	/* CR */
-				if (carriage_return != NULL) {
-					local_putp(carriage_return);
-					break;
-				}
-				log_warnx("carriage_return not supported");
+				local_putp(carriage_return);
 				break;
 			case '\007':	/* BEL */
-				if (bell != NULL) {
+				if (bell != NULL)
 					local_putp(bell);
-					break;
-				}
-				log_warnx("bell not supported");
 				break;
 			case '\010':	/* BS */
-				if (cursor_left != NULL) {
-					local_putp(cursor_left);
-					break;
-				}
-				log_warnx("cursor_left not supported");
+				local_putp(cursor_left);
 				break;
 			default:
 				local_putc(ch);
@@ -507,10 +485,6 @@ local_output(struct buffer *b, size_t size)
 				fatalx("CODE_CURSORUP underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (parm_up_cursor == NULL) {
-				log_warnx("parm_up_cursor not supported");
-				break;
-			}
 			local_putp(tparm(parm_up_cursor, ua));
 			break;
 		case CODE_CURSORDOWN:
@@ -518,10 +492,6 @@ local_output(struct buffer *b, size_t size)
 				fatalx("CODE_CURSORDOWN underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (parm_down_cursor == NULL) {
-				log_warnx("parm_down_cursor not supported");
-				break;
-			}
 			local_putp(tparm(parm_down_cursor, ua));
 			break;
 		case CODE_CURSORRIGHT:
@@ -529,10 +499,6 @@ local_output(struct buffer *b, size_t size)
 				fatalx("CODE_CURSORRIGHT underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (parm_right_cursor == NULL) {
-				log_warnx("parm_right_cursor not supported");
-				break;
-			}
 			local_putp(tparm(parm_right_cursor, ua));
 			break;
 		case CODE_CURSORLEFT:
@@ -540,10 +506,6 @@ local_output(struct buffer *b, size_t size)
 				fatalx("CODE_CURSORLEFT underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (parm_left_cursor == NULL) {
-				log_warnx("parm_left_cursor not supported");
-				break;
-			}
 			local_putp(tparm(parm_left_cursor, ua));
 			break;
 		case CODE_CURSORMOVE:
@@ -552,31 +514,15 @@ local_output(struct buffer *b, size_t size)
 			size -= 4;
 			ua = input_extract16(b);
 			ub = input_extract16(b);
-			if (cursor_address == NULL) {
-				log_warnx("cursor_address not supported");
-				break;
-			}
 			local_putp(tparm(cursor_address, ua - 1, ub - 1));
 			break;
 		case CODE_CLEARENDOFLINE:
-			if (clr_eol == NULL) {
-				log_warnx("clr_eol not supported");
-				break;
-			}
 			local_putp(clr_eol);
 			break;
 		case CODE_CLEARSTARTOFLINE:
-			if (clr_bol == NULL) {
-				log_warnx("clr_bol not supported");
-				break;
-			}
 			local_putp(clr_bol);
 			break;
 		case CODE_CLEARLINE:
-			if (clr_eol == NULL) {
-				log_warnx("clr_eol not suppported");
-				break;
-			}
 			local_putp(clr_eol);	/* XXX */
 			break;
 		case CODE_INSERTLINE:
@@ -584,10 +530,6 @@ local_output(struct buffer *b, size_t size)
 				fatalx("CODE_INSERTLINE underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (parm_insert_line == NULL) {
-				log_warnx("parm_insert_line not supported");
-				break;
-			}
 			local_putp(tparm(parm_insert_line, ua));
 			break;
 		case CODE_DELETELINE:
@@ -595,10 +537,6 @@ local_output(struct buffer *b, size_t size)
 				fatalx("CODE_DELETELINE underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (parm_delete_line == NULL) {
-				log_warnx("parm_delete not supported");
-				break;
-			}
 			local_putp(tparm(parm_delete_line, ua));
 			break;
 		case CODE_INSERTCHARACTER:
@@ -606,10 +544,6 @@ local_output(struct buffer *b, size_t size)
 				fatalx("CODE_INSERTCHARACTER underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (parm_ich == NULL) {
-				log_warnx("parm_ich not supported");
-				break;
-			}
 			local_putp(tparm(parm_ich, ua));
 			break;
 		case CODE_DELETECHARACTER:
@@ -617,31 +551,17 @@ local_output(struct buffer *b, size_t size)
 				fatalx("CODE_DELETECHARACTER underflow");
 			size -= 2;
 			ua = input_extract16(b);
-			if (parm_dch == NULL) {
-				log_warnx("parm_dch not supported");
-				break;
-			}
 			local_putp(tparm(parm_dch, ua));
 			break;
 		case CODE_CURSORON:
-			if (cursor_normal == NULL) {
-				log_warnx("cursor_normal not supported");
-				break;
-			}
- 			local_putp(cursor_normal);
+			if (cursor_normal != NULL)
+				local_putp(cursor_normal);
 			break;
 		case CODE_CURSOROFF:
-			if (cursor_invisible == NULL) {
-				log_warnx("cursor_invisible not supported");
-				break;
-			}
-			local_putp(cursor_invisible);
+			if (cursor_invisible != NULL)
+				local_putp(cursor_invisible);
 			break;
 		case CODE_REVERSEINDEX:
-			if (scroll_reverse == NULL) {
-				log_warnx("scroll_reverse not supported");
-				break;
-			}
 			local_putp(scroll_reverse);
 			break;
 		case CODE_SCROLLREGION:
@@ -650,25 +570,15 @@ local_output(struct buffer *b, size_t size)
 			size -= 4;
 			ua = input_extract16(b);
 			ub = input_extract16(b);
-			if (change_scroll_region == NULL) {
-				log_warnx("change_scroll_region not supported");
-				break;
-			}
 			local_putp(tparm(change_scroll_region, ua - 1, ub - 1));
 			break;
 		case CODE_INSERTON:
-			if (enter_insert_mode == NULL) {
-				log_warnx("enter_insert_mode not supported");
-				break;
-			}
-			local_putp(enter_insert_mode);
+			if (enter_insert_mode != NULL)
+				local_putp(enter_insert_mode);
 			break;
 		case CODE_INSERTOFF:
-			if (exit_insert_mode == NULL) {
-				log_warnx("exit_insert_mode not supported");
-				break;
-			}
-			local_putp(exit_insert_mode);
+			if (exit_insert_mode != NULL)
+				local_putp(exit_insert_mode);
 			break;
 		case CODE_KCURSOROFF:
 			/*
@@ -686,20 +596,14 @@ local_output(struct buffer *b, size_t size)
 			break;
 		case CODE_KKEYPADOFF:
 			/*
-			if (keypad_local == NULL) {
-				log_warnx("keypad_local not supported");
-				break;
-			}
-			local_putp(keypad_local);
+			  if (keypad_local != NULL)
+			  local_putp(keypad_local);
 			*/
 			break;
 		case CODE_KKEYPADON:
 			/*
-			if (keypad_xmit == NULL) {
-				log_warnx("keypad_xmit not supported");
-				break;
-			}
-			local_putp(keypad_xmit);
+			  if (keypad_xmit != NULL)
+			  local_putp(keypad_xmit);
 			*/
 			break;
 		case CODE_TITLE:
@@ -733,13 +637,11 @@ local_attributes(u_char attr, u_char colr)
 
 	if (attr == local_attr && colr == local_colr)
 		return;
-	if (exit_attribute_mode == NULL) {
-		log_warnx("exit_attribute_mode not supported");
-		return;
-	}
 
 	/* If any bits are being cleared, reset everything. */
 	if (local_attr & ~attr) {
+		if (exit_alt_charset_mode != NULL)
+			local_putp(exit_alt_charset_mode);
 		local_putp(exit_attribute_mode);
 		local_colr = 0x88;
 		local_attr = 0;
@@ -763,6 +665,8 @@ local_attributes(u_char attr, u_char colr)
 		local_putp(enter_reverse_mode);
 	if ((attr & ATTR_HIDDEN) && enter_secure_mode != NULL)
 		local_putp(enter_secure_mode);
+	if ((attr & ATTR_DRAWING) && enter_alt_charset_mode != NULL)
+		local_putp(enter_alt_charset_mode);
 
 	fg = (colr >> 4) & 0xf;
 	if (fg != ((local_colr >> 4) & 0xf)) {
@@ -797,4 +701,76 @@ local_attributes(u_char attr, u_char colr)
 	}
 
 	local_colr = colr;
+}
+
+u_char
+local_translate_acs(u_char ch)
+{
+	switch (ch) {
+	case '~':
+		return (ACS_BULLET);
+	case '}':
+		return (ACS_STERLING);
+	case '|':
+		return (ACS_NEQUAL);
+	case '{':
+		return (ACS_PI);
+	case 'z':
+		return (ACS_GEQUAL);
+	case 'y':
+		return (ACS_LEQUAL);
+	case 'x':
+		return (ACS_VLINE);
+	case 'w':
+		return (ACS_TTEE);
+	case 'v':
+		return (ACS_BTEE);
+	case 'u':
+		return (ACS_RTEE);
+	case 't':
+		return (ACS_LTEE);
+	case 's':
+		return (ACS_S9);
+	case 'r':
+		return (ACS_S7);
+	case 'q':
+		return (ACS_HLINE);
+	case 'p':
+		return (ACS_S3);
+	case 'o':
+		return (ACS_S1);
+	case 'n':
+		return (ACS_PLUS);
+	case 'm':
+		return (ACS_LLCORNER);
+	case 'l':
+		return (ACS_ULCORNER);
+	case 'k':
+		return (ACS_URCORNER);
+	case 'j':
+		return (ACS_LRCORNER);
+	case 'i':
+		return (ACS_LANTERN);
+	case 'h':
+		return (ACS_BOARD);
+	case 'g':
+		return (ACS_PLMINUS);
+	case 'f':
+		return (ACS_DEGREE);
+	case 'a':
+		return (ACS_CKBOARD);
+	case '`':
+		return (ACS_DIAMOND);
+	case '0':
+		return (ACS_BLOCK);
+	case '.':
+		return (ACS_DARROW);
+	case '-':
+		return (ACS_UARROW);
+	case ',':
+		return (ACS_LARROW);
+	case '+':
+		return (ACS_RARROW);
+	}
+	return (ch);
 }

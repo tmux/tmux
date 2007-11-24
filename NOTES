@@ -30,11 +30,10 @@ The following is a summary of major features implemented in this version:
   system.
 - A optional status line (enabled by default).
 - Window history and copy and paste.
+- Support for VT100 line drawing characters.
 
 And major missing features:
 
-- Support for VT100 line drawing characters (they will appear as jklmx, etc). 
-  This is most noticable in ncmpc and in elinks if configured with VT100 frames.
 - Status line customisation, beyond presence and colour.
 - Mouse support.
 - No support for programs changing termios(4) settings or other tty(4) ioctls.
@@ -63,4 +62,4 @@ freenode or efnet IRC. I sometimes ignore private msgs from people I don't
 know, so please mention tmux initially (rather than just saying "hi" ;-).
 
 -- Nicholas Marriott <nicm@users.sf.net>
-$Id: NOTES,v 1.29 2007-11-24 14:21:43 nicm Exp $
+$Id: NOTES,v 1.30 2007-11-24 23:29:49 nicm Exp $

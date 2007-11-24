@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.37 2007-11-24 19:29:55 nicm Exp $ */
+/* $Id: input.c,v 1.38 2007-11-24 23:29:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -419,10 +419,21 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 			s->cx = 0;
 			screen_display_cursor_down(s);
 		}
-		if (!screen_hidden(s)) {
-			input_store_two(
-			    ictx->b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
-		}
+		if (screen_hidden(s))
+			return;
+		input_store_two(ictx->b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
+		return;
+	case '\016':	/* SO */
+		s->attr |= ATTR_DRAWING;
+		if (screen_hidden(s))
+			return;
+		input_store_two(ictx->b, CODE_ATTRIBUTES, s->attr, s->colr);
+		return;
+	case '\017':	/* SI */
+		s->attr &= ~ATTR_DRAWING;
+		if (screen_hidden(s))
+			return;
+		input_store_two(ictx->b, CODE_ATTRIBUTES, s->attr, s->colr);
 		return;
 	default:
 		log_debug("unknown c0: %hhu", ch);
@@ -481,12 +492,10 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 		s->cy = s->saved_cy;
 		s->attr = s->saved_attr;
 		s->colr = s->saved_colr;
-		if (!screen_hidden(s)) {
-			input_store_two(
-			    ictx->b, CODE_ATTRIBUTES, s->attr, s->colr);
-			input_store_two(
-			    ictx->b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
-		}
+		if (screen_hidden(s))
+			break;
+		input_store_two(ictx->b, CODE_ATTRIBUTES, s->attr, s->colr);
+		input_store_two(ictx->b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
 		break;
 	default:
 		log_debug("unknown p2: %hhu", ch);

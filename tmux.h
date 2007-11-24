@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.99 2007-11-24 18:32:52 nicm Exp $ */
+/* $Id: tmux.h,v 1.100 2007-11-24 23:29:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -266,8 +266,8 @@ struct buffer {
 #define CODE_DELETELINE 7
 #define CODE_CLEARLINE 8
 /* 9 unused */
-#define CODE_CLEARENDOFLINE 10
-/* 11 unused */
+/* 10 unused */
+#define CODE_CLEARENDOFLINE 11
 #define CODE_CLEARSTARTOFLINE 12
 #define CODE_CURSORMOVE 13
 #define CODE_ATTRIBUTES 14
@@ -332,14 +332,15 @@ struct msg_resize_data {
 #define ATTR_REVERSE 0x10
 #define ATTR_HIDDEN 0x20
 #define ATTR_ITALICS 0x40
+#define ATTR_DRAWING 0x80	/* line drawing character set */
 
 /* Modes. */
-#define MODE_CURSOR  0x001
-#define MODE_INSERT  0x002
+#define MODE_CURSOR 0x001
+#define MODE_INSERT 0x002
 #define MODE_KCURSOR 0x004
 #define MODE_KKEYPAD 0x008
-#define MODE_SAVED   0x010
-#define MODE_HIDDEN  0x020
+#define MODE_SAVED 0x010
+#define MODE_HIDDEN 0x020
 #define MODE_BACKGROUND 0x040
 #define MODE_BGCURSOR 0x080
 
@@ -504,9 +505,9 @@ struct session {
 	u_int		 sx;
 	u_int		 sy;
 
-	struct winlink *curw;
-	struct winlink *lastw;
-	struct winlinks windows;
+	struct winlink	*curw;
+	struct winlink	*lastw;
+	struct winlinks	 windows;
 
 	ARRAY_DECL(, struct winlink *) bells;	/* windows with bells */
 
