@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.43 2007-11-24 17:58:45 nicm Exp $ */
+/* $Id: screen.c,v 1.44 2007-11-24 19:29:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -278,8 +278,9 @@ screen_draw_start(struct screen_draw_ctx *ctx,
 	ctx->ox = ox;
 	ctx->oy = oy;
 
-	ctx->cx = s->cx;
-	ctx->cy = s->cy;
+	/* Resetting the scroll region homes the cursor so start at 0,0. */
+	ctx->cx = 0;
+	ctx->cy = 0;
 
 	ctx->sel.flag = 0;
 

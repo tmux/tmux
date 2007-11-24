@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.36 2007-11-23 22:51:13 nicm Exp $ */
+/* $Id: input.c,v 1.37 2007-11-24 19:29:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -484,8 +484,6 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 		if (!screen_hidden(s)) {
 			input_store_two(
 			    ictx->b, CODE_ATTRIBUTES, s->attr, s->colr);
-			input_store_two(ictx->b, CODE_SCROLLREGION,
-			    s->rupper + 1, s->rlower + 1);
 			input_store_two(
 			    ictx->b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
 		}
