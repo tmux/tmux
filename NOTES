@@ -4,7 +4,7 @@ tmux is a "terminal multiplexer", it enables a number of terminals (or windows)
 to be accessed and controlled from a single terminal. tmux is intended to be a
 simple, modern, BSD-licensed alternative to programs such as GNU screen.
 
-This 0.1 release should be considered a beta release. It runs on OpenBSD,
+This 0.2 release should be considered a beta release. It runs on OpenBSD,
 FreeBSD and Linux, but has many missing features and is expected to have a good
 number of bugs.
 
@@ -29,14 +29,13 @@ The following is a summary of major features implemented in this version:
   both tmux and screen), vim and various tools and games in the OpenBSD base
   system.
 - A optional status line (enabled by default).
+- Window history and copy and paste.
 
 And major missing features:
 
 - Support for VT100 line drawing characters (they will appear as jklmx, etc). 
   This is most noticable in ncmpc and in elinks if configured with VT100 frames.
 - Status line customisation, beyond presence and colour.
-- Copy and paste.
-- Scrollback.
 - Mouse support.
 - No support for programs changing termios(4) settings or other tty(4) ioctls.
 
@@ -64,4 +63,4 @@ freenode or efnet IRC. I sometimes ignore private msgs from people I don't
 know, so please mention tmux initially (rather than just saying "hi" ;-).
 
 -- Nicholas Marriott <nicm@users.sf.net>
-$Id: NOTES,v 1.28 2007-11-23 14:28:47 nicm Exp $
+$Id: NOTES,v 1.29 2007-11-24 14:21:43 nicm Exp $

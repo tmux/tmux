@@ -73,12 +73,10 @@
   it could be implemented in a non-icky way
 - there is to much redrawing. use flags?
 - command mode (! + type tmux command)
-- copy mode
 - garbage collect window history (100 lines at a time?) if it hasn't been used
   in $x time (need window creation/use times)
 - lift SHRT_MAX limits for history
 - audit copy/scroll and other modes for problems with very small windows
 
 -- For 0.2 --------------------------------------------------------------------
-- copy and paste
 - window splitting?

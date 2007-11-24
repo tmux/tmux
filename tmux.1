@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.17 2007-11-22 10:31:02 nicm Exp $
+.\" $Id: tmux.1,v 1.18 2007-11-24 14:21:43 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -125,6 +125,67 @@ by default). Key bindings may be changed with the
 and
 .Ic unbind-key
 commands.
+.Sh HISTORY
+.Nm
+maintains a configurable history buffer for each window.
+By default, up to 2000 lines are kept, this can be altered with the
+.Ic history-limit
+option (see the
+.Ic set-option
+command below).
+.Sh MODES
+A
+.Nm
+window may be in one of several modes.
+The default permits direct access to the terminal attached to the window.
+The others are:
+.Bl -tag -width Ds
+.It Em output mode
+This is entered when a command which produces output, such as
+.Ic list-keys ,
+is executed from a key binding.
+The
+.Ql up ,
+.Ql down ,
+.Ql page-up
+and 
+.Ql page-down
+keys or
+.Xr vi 1
+style
+.Ql j ,
+.Ql k ,
+keys may be used to scroll the output up and down.
+The
+.Ql q
+key will exit output mode.
+.It Em scroll mode
+This is entered with the
+.Ic scroll-mode
+command (bound to
+.Ql =
+by default) and permits the window history buffer to be inspected.
+In addition to the commands supported by output mode, the left and right arrow
+keys, or
+.Ql h
+and
+.Ql l ,
+will scroll left and right.
+.It Em copy mode
+This is permits a section of a window or its history to be copied to the
+.Em paste buffer
+for later insertion into another window.
+The navigation keys move the cursor around the window, scrolling as necessary.
+The space key begins a selection; the enter key or 
+.Ql ^W
+copies the selection to the paste buffer and exits copy mode.
+.Pp
+This mode is entered with the
+.Ic copy-mode
+command, bound to
+.Ql [ 
+as standard.
+.El
 .Sh COMMANDS
 .Nm
 supports the following commands:
@@ -145,6 +206,10 @@ Bind key
 .Ar key
 to
 .Ar command .
+.It Xo Ic copy-mode
+.Xc
+Enter copy mode.
+This command does nothing unless bound to a key.
 .It Xo Ic detach-client
 .Xc
 .D1 (alias: Ic detach )
@@ -262,6 +327,11 @@ start-up files.
 .Xc
 .D1 (alias: Ic next )
 Move to the next window in the session.
+.It Xo Ic paste-buffer
+.Xc
+.D1 (alias: Ic paste )
+Insert the contents of the paste buffer into the current window.
+Ignored unless executed via a key binding.
 .It Xo Ic previous-window 
 .Xc
 .D1 (alias: Ic prev )
@@ -289,24 +359,7 @@ if specifed, to
 .Ar new-name .
 .It Xo Ic scroll-mode
 .Xc
-Enter scroll mode which allows a window's history buffer to be examined.
-The
-.Ql up ,
-.Ql down ,
-.Ql page-up
-and 
-.Ql page-down
-keys or
-.Xr vi 1
-style
-.Ql h ,
-.Ql j ,
-.Ql k ,
-.Ql l
-keys may be used to navigate.
-The
-.Ql q
-key will quit scroll mode.
+Enter scroll mode.
 This command works only if bound to a key.
 .It Xo Ic select-window 
 .Ar index
@@ -326,6 +379,10 @@ Set an option. Possible options are:
 .Bl -tag -width Ds
 .It Ic prefix Ar key
 Set the current prefix key.
+.It Ic history-limit Ar lines
+Set the maximum number of lines held in window history.
+This setting applies only to new windows - existing window histories are not
+resized and retain the limit at the point they were created.
 .It Xo Ic status 
 .Op Ic on | Ic off
 .Xc
