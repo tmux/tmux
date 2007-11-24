@@ -38,13 +38,6 @@
 - it would be nice to have multichar commands so you could have C-b K K for
   kill-window to limit accidental presses
 - status-fg/status-bg should be able to set attributes: bold, etc
-- show-options command
-- detach client and other client commands. note that there can only be a
-  "current client" on key presses - these should probably act like
-  detach-session: -a will do all clients, otherwise use current client if
-  key, else do nothing
-- check handling of out-of-bound values in input.c, most should be limited
-  rather than ignored
 - save/restore (DECSC/DECRC) are ugly. maybe a struct screen_attr and memcpy
 - force maximum terminal size (centred?)
 - per-session toolbar state, other options
@@ -54,15 +47,16 @@
 - commands:
 	start server
 	kill server
+	show-options command
 	command to run something without a window at all?
-	command to insert a key into a window (send-key)
+	command to insert a key (or other data...) into a window (send-key)
+		should paste-buffer become send-buffer.....
 	command to purge window history
  	extend list-clients to list clients attached to a session (-a for all?)
 	bring back detach-session to detach all clients on a session?
 	paste buffer etc shouldn't be limited to keys
 	buffer manip: clear, view etc
 - function groups, bind-key ^W { select-window 0; send-key ^W } etc
-- more(1) style handling for in-client output
 - allow fnmatch for -c, so that you can, eg, detach all clients
 - session specification is all over the place. some things use -s before cmd,
   some -s after, some no -s, there are various uses of -n. the differences are
