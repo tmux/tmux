@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.32 2007-11-24 17:58:45 nicm Exp $ */
+/* $Id: server-fn.c,v 1.33 2007-11-24 18:09:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -354,7 +354,6 @@ server_write_message(struct client *c, const char *fmt, ...)
 	for (i = strlen(msg); i < c->sx; i++)
 		input_store8(c->out, ' ');
 	xfree(msg);
-	screen_draw_stop(&ctx);
 
 	size = BUFFER_USED(c->out) - size;
   	hdr.type = MSG_DATA;
@@ -373,7 +372,8 @@ server_write_message(struct client *c, const char *fmt, ...)
 		window_draw(w, c->out, screen_last_y(&w->screen), 1);
 	else
 		status_write(c);
-
+	screen_draw_stop(&ctx);
+	
 	size = BUFFER_USED(c->out) - size;
 	hdr.type = MSG_DATA;
 	hdr.size = size;
