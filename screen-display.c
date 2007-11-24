@@ -1,4 +1,4 @@
-/* $Id: screen-display.c,v 1.6 2007-11-24 12:33:56 nicm Exp $ */
+/* $Id: screen-display.c,v 1.7 2007-11-24 13:26:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -259,7 +259,7 @@ screen_display_insert_lines(struct screen *s, u_int py, u_int ny)
 		fatalx("bad value");
 
 	if (py + ny > screen_last_y(s))
-		ny = screen_last_y(s) - py;
+		ny = screen_size_y(s) - py;
 	if (ny == 0)
 		return;	
 
@@ -278,7 +278,7 @@ screen_display_insert_lines(struct screen *s, u_int py, u_int ny)
 
 	screen_display_free_lines(s, screen_size_y(s) - ny, ny);
 
-	if (py != screen_last_y(s)) {
+	if (py + ny != screen_size_y(s)) {
 		screen_display_move_lines(
 		    s, py + ny, py, screen_size_y(s) - py - ny);
 	}
@@ -296,7 +296,7 @@ screen_display_insert_lines_region(struct screen *s, u_int py, u_int ny)
 		fatalx("bad value");
 
 	if (py + ny > s->rlower)
-		ny = s->rlower - py;
+		ny = (s->rlower + 1) - py;
 	if (ny == 0)
 		return;
 
@@ -315,7 +315,7 @@ screen_display_insert_lines_region(struct screen *s, u_int py, u_int ny)
 
 	screen_display_free_lines(s, (s->rlower + 1) - ny, ny);
 
-	if (py != s->rlower) {
+	if (py + ny != s->rlower + 1) {
 		screen_display_move_lines(
 		    s, py + ny, py, (s->rlower + 1) - py - ny);
 	}
@@ -333,7 +333,7 @@ screen_display_delete_lines(struct screen *s, u_int py, u_int ny)
 		fatalx("bad value");
 
 	if (py + ny > screen_last_y(s))
-		ny = screen_last_y(s) - py;
+		ny = screen_size_y(s) - py;
 	if (ny == 0)
 		return;
 
@@ -352,7 +352,7 @@ screen_display_delete_lines(struct screen *s, u_int py, u_int ny)
 
 	screen_display_free_lines(s, py, ny);
 
-	if (py != screen_last_y(s)) {
+	if (py + ny != screen_size_y(s)) {
 		screen_display_move_lines(
 		    s, py, py + ny, screen_size_y(s) - py - ny);
 	}
@@ -370,7 +370,7 @@ screen_display_delete_lines_region(struct screen *s, u_int py, u_int ny)
 		fatalx("bad value");
 
 	if (py + ny > s->rlower)
-		ny = s->rlower - py;
+		ny = (s->rlower + 1) - py;
 	if (ny == 0)
 		return;
 
@@ -389,7 +389,7 @@ screen_display_delete_lines_region(struct screen *s, u_int py, u_int ny)
 
 	screen_display_free_lines(s, py, ny);
 
-	if (py != s->rlower) {
+	if (py + ny != s->rlower + 1) {
 		screen_display_move_lines(
 		    s, py, py + ny, (s->rlower + 1) - py - ny);
 	}
