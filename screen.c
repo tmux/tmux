@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.46 2007-11-25 11:13:46 nicm Exp $ */
+/* $Id: screen.c,v 1.47 2007-11-25 13:03:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -382,6 +382,8 @@ screen_draw_move(struct screen_draw_ctx *ctx, u_int px, u_int py)
 	if (px == ctx->cx && py == ctx->cy)
 		return;
 
+	/* XXX disabled while things outside can move the cursor (eg
+	   window-more.c writes characters)
 	if (px == 0 && py == ctx->cy)
 		input_store8(ctx->b, '\r');
 	else if (px == ctx->cx && py == ctx->cy + 1)
@@ -389,8 +391,9 @@ screen_draw_move(struct screen_draw_ctx *ctx, u_int px, u_int py)
 	else if (px == 0 && py == ctx->cy + 1) {
 		input_store8(ctx->b, '\r');
 		input_store8(ctx->b, '\n');
-	} else 
-		input_store_two(ctx->b, CODE_CURSORMOVE, py + 1, px + 1);
+	} else
+	*/
+	input_store_two(ctx->b, CODE_CURSORMOVE, py + 1, px + 1);
 
 	ctx->cx = px;
 	ctx->cy = py;
