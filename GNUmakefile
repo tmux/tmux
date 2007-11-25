@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.7 2007-11-25 22:03:13 nicm Exp $
+# $Id: GNUmakefile,v 1.8 2007-11-25 22:08:13 nicm Exp $
 
 .PHONY: clean
 
@@ -30,7 +30,7 @@ INCDIRS+= -I. -I-
 CFLAGS+= -DBUILD="\"$(VERSION) ($(DATE))\"" -DMETA="'${META}'"
 ifdef DEBUG
 CFLAGS+= -g -ggdb -DDEBUG
-LDFLAGS+= -Wl,-E
+LDFLAGS+= -rdynamic
 endif
 CFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
@@ -45,13 +45,14 @@ INSTALLBIN= install -g bin -o root -m 555
 INSTALLMAN= install -g bin -o root -m 444
 
 ifeq ($(shell uname),Darwin)
-INCDIRS+= -I/usr/local/include/openssl -Icompat
+INCDIRS+= -Icompat
 SRCS+= compat/strtonum.c
-CFLAGS+= -DNO_STRTONUM -DNO_SETRESUID -DNO_SETRESGID -DNO_SETPROCTITLE
+CFLAGS+= -DNO_STRTONUM -DNO_SETRESUID -DNO_SETRESGID -DNO_SETPROCTITLE \
+         -DNO_TREE_H
 endif
 
 ifeq ($(shell uname),Linux)
-INCDIRS+= -I/usr/include/openssl -Icompat
+INCDIRS+= -Icompat
 SRCS+= compat/strlcpy.c compat/strlcat.c compat/strtonum.c
 CFLAGS+= $(shell getconf LFS_CFLAGS) -D_GNU_SOURCE \
          -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM -DNO_SETPROCTITLE \
