@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.44 2007-11-24 19:29:56 nicm Exp $ */
+/* $Id: screen.c,v 1.45 2007-11-25 10:56:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -382,7 +382,15 @@ screen_draw_move(struct screen_draw_ctx *ctx, u_int px, u_int py)
 	if (px == ctx->cx && py == ctx->cy)
 		return;
 
-	input_store_two(ctx->b, CODE_CURSORMOVE, py + 1, px + 1);
+	if (px == 0 && py == ctx->cy)
+		input_store8(ctx->b, '\r');
+	else if (px == ctx->cx && py == ctx->cy + 1)
+		input_store8(ctx->b, '\n');
+	else if (px == 0 && py == ctx->cy + 1) {
+		input_store8(ctx->b, '\r');
+		input_store8(ctx->b, '\n');
+	} else 
+		input_store_two(ctx->b, CODE_CURSORMOVE, py + 1, px + 1);
 
 	ctx->cx = px;
 	ctx->cy = py;
@@ -444,7 +452,18 @@ screen_draw_column(struct screen_draw_ctx *ctx, u_int px)
 void
 screen_draw_line(struct screen_draw_ctx *ctx, u_int py)
 {
-	screen_draw_cells(ctx, 0, py, screen_size_x(ctx->s));
+	u_int	cx, cy;
+
+	cy = screen_y(ctx->s, py) - ctx->oy;
+	cx = ctx->s->grid_size[cy];
+
+	if (screen_size_x(ctx->s) < 3 || cx >= screen_size_x(ctx->s) - 3)
+		screen_draw_cells(ctx, 0, py, screen_size_x(ctx->s));
+	else {
+		screen_draw_cells(ctx, 0, py, cx);
+		screen_draw_move(ctx, cx, cy);
+		input_store_zero(ctx->b, CODE_CLEARENDOFLINE);
+	}
 }
 
 /* Draw set of lines. */

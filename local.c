@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.20 2007-11-24 23:29:49 nicm Exp $ */
+/* $Id: local.c,v 1.21 2007-11-25 10:56:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 
 #include <curses.h>
 #include <fcntl.h>
@@ -204,6 +205,7 @@ struct local_key local_keys[] = {
 
 /* tty file descriptor and local terminal buffers. */
 int		 local_fd;
+int		 local_log;
 struct buffer	*local_in;
 struct buffer	*local_out;
 struct termios	 local_tio;
@@ -214,7 +216,8 @@ u_char		 local_colr;
 int
 local_init(struct buffer **in, struct buffer **out)
 {
-	char		       *tty, *name;
+	char		       *tty, *path;
+	const char	       *name;
 	int		  	mode, error;
 	struct termios	  	tio;
 	struct local_key       *lk;
@@ -330,6 +333,14 @@ local_init(struct buffer **in, struct buffer **out)
 	local_attr = 0;
 	local_colr = 0x88;
 
+	if (debug_level > 2) {
+		xasprintf(
+		    &path, "%s-output-%ld.log", __progname,(long) getpid());
+		local_log = open(
+		    path, O_RDWR|O_APPEND|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR);
+		xfree(path);
+	}
+
 	return (local_fd);
 }
 
@@ -360,6 +371,9 @@ local_done(void)
 	if (tcsetattr(local_fd, TCSANOW, &local_tio) != 0)
 		fatal("tcsetattr failed");
 	close(local_fd);
+
+	if (local_log != -1)
+		close(local_log);
 	
 	if (change_scroll_region != NULL) {
 		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
@@ -388,6 +402,8 @@ local_putc(int c)
 	if (c < 0 || c > (int) UCHAR_MAX)
 		fatalx("invalid character");
 
+	if (local_log != -1)
+		write(local_log, &ch, 1);
 	if (acs_chars != NULL && local_attr & ATTR_DRAWING) {
 		ch = local_translate_acs(ch);
 		if (ch == '\0')
@@ -640,7 +656,8 @@ local_attributes(u_char attr, u_char colr)
 
 	/* If any bits are being cleared, reset everything. */
 	if (local_attr & ~attr) {
-		if (exit_alt_charset_mode != NULL)
+		if ((local_attr & ATTR_DRAWING) &&
+		    exit_alt_charset_mode != NULL)
 			local_putp(exit_alt_charset_mode);
 		local_putp(exit_attribute_mode);
 		local_colr = 0x88;
