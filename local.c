@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.21 2007-11-25 10:56:22 nicm Exp $ */
+/* $Id: local.c,v 1.22 2007-11-25 10:59:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -204,8 +204,8 @@ struct local_key local_keys[] = {
 };
 
 /* tty file descriptor and local terminal buffers. */
-int		 local_fd;
-int		 local_log;
+int		 local_fd = -1;
+int		 local_log = -1;
 struct buffer	*local_in;
 struct buffer	*local_out;
 struct termios	 local_tio;
