@@ -1,4 +1,4 @@
-/* $Id: screen-display.c,v 1.7 2007-11-24 13:26:42 nicm Exp $ */
+/* $Id: screen-display.c,v 1.8 2007-11-26 22:18:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -166,35 +166,36 @@ screen_display_cursor_down(struct screen *s)
 void
 screen_display_scroll_region_up(struct screen *s)
 {
-	u_int	sy;
+	u_int	ny, sy;
 	
 	/*
 	 * If the region is the entire screen, this is easy-peasy. Allocate
 	 * a new line and adjust the history size.
-	 * XXX1 should this be done somewhere else?
+	 * XXX should this be done somewhere else?
 	 */
-	if (s->rupper == 0 && s->rlower == screen_last_y(s)) {
+	if (s->rupper == 0 && s->rlower == screen_last_y(s)) {	
 		sy = screen_size_y(s) + s->hsize;
-
 		if (s->hsize == s->hlimit) {
-			/*
-			 * If the limit is hit, free the first and shift
-			 * the whole thing up.
-			 */
-			screen_free_lines(s, 0, 1);
-			screen_move_lines(s, 0, 1, sy - 1);
-		} else {
-			s->hsize++;
+			/* If the limit is hit, free 10% and shift up. */
+			ny = s->hlimit / 10;
+			if (ny < 1)
+				ny = 1;
+			screen_free_lines(s, 0, ny);
+			screen_move_lines(s, 0, ny, sy - ny);
 
-			s->grid_data = xrealloc(
-			    s->grid_data, sy + 1, sizeof *s->grid_data);
-			s->grid_attr = xrealloc(
-			    s->grid_attr, sy + 1, sizeof *s->grid_attr);
-			s->grid_colr = xrealloc(
-			    s->grid_colr, sy + 1, sizeof *s->grid_colr);
-			s->grid_size = xrealloc(
-			    s->grid_size, sy + 1, sizeof *s->grid_size);
+			s->hsize -= ny;
+			sy -= ny;
 		}
+		s->hsize++;
+
+		s->grid_data = xrealloc(
+		    s->grid_data, sy + 1, sizeof *s->grid_data);
+		s->grid_attr = xrealloc(
+		    s->grid_attr, sy + 1, sizeof *s->grid_attr);
+		s->grid_colr = xrealloc(
+		    s->grid_colr, sy + 1, sizeof *s->grid_colr);
+		s->grid_size = xrealloc(
+		    s->grid_size, sy + 1, sizeof *s->grid_size);
 		screen_display_make_lines(s, screen_last_y(s), 1);
 		return;
 	}

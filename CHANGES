@@ -1,5 +1,7 @@
 26 November 2007
 
+* Rather than shifting up one line at a time once the history is full,
+  shift by 10% of the history each time. This is faster.
 * Add ^A and ^E to copy mode to move to start-of-line/end-of-line.
 
 24 November 2007
@@ -271,4 +273,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.85 2007-11-26 20:36:30 nicm Exp $
+$Id: CHANGES,v 1.86 2007-11-26 22:18:57 nicm Exp $
