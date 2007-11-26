@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.6 2007-11-23 17:52:54 nicm Exp $ */
+/* $Id: window-copy.c,v 1.7 2007-11-26 20:36:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,6 +34,8 @@ void	window_copy_copy_line(
 	     struct window *, char **, size_t *, size_t *, u_int, u_int, u_int);
 u_int	window_copy_find_length(struct window *, u_int);
 void	window_copy_move_cursor(struct window *);
+void	window_copy_cursor_bol(struct window *);
+void	window_copy_cursor_eol(struct window *);
 void	window_copy_cursor_left(struct window *);
 void	window_copy_cursor_right(struct window *);
 void	window_copy_cursor_up(struct window *);
@@ -186,12 +188,21 @@ window_copy_key(struct window *w, int key)
 		data->sely = data->size + data->cy - data->oy;
 		oy = -1;	/* XXX */
 		break;
+	case '\033':
+		data->selflag = 0;
+		oy = -1;	/* XXX */
+		break;		
 	case '\027':	/* C-w */
 	case '\r':	/* enter */
 		if (data->selflag)
 			window_copy_copy_selection(w);
 		goto done;
-	/* XXX start/end of line, next word, prev word, cancel sel */
+	case '\001':	/* C-a */
+		window_copy_cursor_bol(w);
+		return;
+	case '\005':	/* C-e */
+		window_copy_cursor_eol(w);
+		return;
 	}
 	if (data->oy != oy) {
 		server_redraw_window_all(w);
@@ -335,6 +346,55 @@ window_copy_move_cursor(struct window *w)
 		hdr.size = size;
 		memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
 	}
+}
+
+void
+window_copy_cursor_bol(struct window *w)
+{
+	struct window_copy_mode_data	*data = w->modedata;
+
+	if (data->ox != 0)
+		window_copy_scroll_right(w, data->ox);
+	data->cx = 0;
+	window_copy_move_cursor(w);
+}
+
+void
+window_copy_cursor_eol(struct window *w)
+{
+	struct window_copy_mode_data	*data = w->modedata;
+	struct screen			*s = &w->screen;
+	u_int				 xx;
+
+	xx = window_copy_find_length(w, data->size + data->cy - data->oy);
+
+	/* On screen. */
+	if (xx > data->ox && xx < data->ox + screen_last_x(s))
+		data->cx = xx - data->ox;
+
+	/* Off right of screen. */
+	if (xx > data->ox + screen_last_x(s)) {
+		/* Move cursor to last and scroll screen. */
+		window_copy_scroll_left(w,
+		    xx - data->ox - screen_last_x(s));
+		data->cx = screen_last_x(s);
+	}
+
+	/* Off left of screen. */
+	if (xx <= data->ox) {
+		if (xx < screen_last_x(s)) {
+			/* Short enough to fit on screen. */
+			window_copy_scroll_right(w, data->ox);
+			data->cx = xx;
+		} else {
+			/* Too long to fit on screen. */
+			window_copy_scroll_right(
+			    w, data->ox - (xx - screen_last_x(s)));
+			data->cx = screen_last_x(s);
+		}
+	}
+
+	window_copy_move_cursor(w);
 }
 
 void

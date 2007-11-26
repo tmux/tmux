@@ -1,4 +1,4 @@
-/* $Id: local.c,v 1.22 2007-11-25 10:59:44 nicm Exp $ */
+/* $Id: local.c,v 1.23 2007-11-26 20:36:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -243,7 +243,7 @@ local_init(struct buffer **in, struct buffer **out)
 		NULL
 	};
 
-	if ((tty = ttyname(STDOUT_FILENO)) == NULL)
+	if ((tty = ttyname(STDIN_FILENO)) == NULL)
 		fatal("ttyname failed");
 	if ((local_fd = open(tty, O_RDWR)) == -1)
 		fatal("open failed");

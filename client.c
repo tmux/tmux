@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.21 2007-11-12 15:12:08 nicm Exp $ */
+/* $Id: client.c,v 1.22 2007-11-26 20:36:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -102,7 +102,7 @@ retry:
 	cctx->srv_in = buffer_create(BUFSIZ);
 	cctx->srv_out = buffer_create(BUFSIZ);
 
-	if (isatty(STDIN_FILENO) && isatty(STDOUT_FILENO)) {
+	if (isatty(STDIN_FILENO)) {
 		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1) {
 			log_warn("ioctl(TIOCGWINSZ)");
 			return (-1);

@@ -1,3 +1,7 @@
+26 November 2007
+
+* Add ^A and ^E to copy mode to move to start-of-line/end-of-line.
+
 24 November 2007
 
 * Support for alt charset mode (VT100 graphics characters).
@@ -267,4 +271,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.84 2007-11-24 23:29:49 nicm Exp $
+$Id: CHANGES,v 1.85 2007-11-26 20:36:30 nicm Exp $
