@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.8 2007-11-26 20:45:13 nicm Exp $ */
+/* $Id: window-copy.c,v 1.9 2007-11-26 20:57:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -313,7 +313,7 @@ window_copy_find_length(struct window *w, u_int py)
 	u_int		 px;
 
 	px = s->grid_size[py];
-	while (px > 0 && s->grid_data[py][px] == SCREEN_DEFDATA)
+	while (px > 0 && s->grid_data[py][px - 1] == SCREEN_DEFDATA)
 		px--;
 	return (px);
 }
