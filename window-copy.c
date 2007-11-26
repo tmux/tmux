@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.7 2007-11-26 20:36:30 nicm Exp $ */
+/* $Id: window-copy.c,v 1.8 2007-11-26 20:45:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -356,6 +356,9 @@ window_copy_cursor_bol(struct window *w)
 	if (data->ox != 0)
 		window_copy_scroll_right(w, data->ox);
 	data->cx = 0;
+
+	if (data->selflag)
+		window_copy_draw_lines(w, data->cy, 1);
 	window_copy_move_cursor(w);
 }
 
@@ -394,6 +397,8 @@ window_copy_cursor_eol(struct window *w)
 		}
 	}
 
+	if (data->selflag)
+		window_copy_draw_lines(w, data->cy, 1);
 	window_copy_move_cursor(w);
 }
 

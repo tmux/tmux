@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.47 2007-11-25 13:03:01 nicm Exp $ */
+/* $Id: screen.c,v 1.48 2007-11-26 20:45:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -455,18 +455,7 @@ screen_draw_column(struct screen_draw_ctx *ctx, u_int px)
 void
 screen_draw_line(struct screen_draw_ctx *ctx, u_int py)
 {
-	u_int	cx, cy;
-
-	cy = screen_y(ctx->s, py) - ctx->oy;
-	cx = ctx->s->grid_size[cy];
-
-	if (screen_size_x(ctx->s) < 3 || cx >= screen_size_x(ctx->s) - 3)
-		screen_draw_cells(ctx, 0, py, screen_size_x(ctx->s));
-	else {
-		screen_draw_cells(ctx, 0, py, cx);
-		screen_draw_move(ctx, cx, py);
-		input_store_zero(ctx->b, CODE_CLEARENDOFLINE);
-	}
+	screen_draw_cells(ctx, 0, py, screen_size_x(ctx->s));
 }
 
 /* Draw set of lines. */
