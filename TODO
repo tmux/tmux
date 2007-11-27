@@ -57,6 +57,7 @@
 - lift SHRT_MAX limits for history
 - audit copy/scroll and other modes for problems with very small windows
 - screen_draw_* moved out/renamed (accept TTY_*?)
+- get rid of stderr/stdout hacks in log.c
 
 -- For 0.2 --------------------------------------------------------------------
 - window splitting?
