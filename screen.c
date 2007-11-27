@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.50 2007-11-27 19:23:34 nicm Exp $ */
+/* $Id: screen.c,v 1.51 2007-11-27 19:32:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -321,6 +321,14 @@ screen_draw_start(struct screen_draw_ctx *ctx, struct screen *s,
 
 	ctx->write(ctx->data, TTY_SCROLLREGION, 0, screen_last_y(s));
 	ctx->write(ctx->data, TTY_CURSOROFF);
+}
+
+/* Set offset. */
+void
+screen_draw_set_offset(struct screen_draw_ctx *ctx, u_int ox, u_int oy)
+{
+	ctx->ox = ox;
+	ctx->oy = oy;
 }
 
 /* Set selection. */

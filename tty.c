@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.1 2007-11-27 19:23:34 nicm Exp $ */
+/* $Id: tty.c,v 1.2 2007-11-27 19:32:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,6 +74,7 @@ tty_open(struct tty *tty, char **cause)
 			break;
 		default:
 			xasprintf(cause, "unknown error");
+			break;
 		}
 		return (-1);
 	}

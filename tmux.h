@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.101 2007-11-27 19:23:34 nicm Exp $ */
+/* $Id: tmux.h,v 1.102 2007-11-27 19:32:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -833,6 +833,7 @@ void	 screen_draw_start_session(
 void	 screen_draw_start(struct screen_draw_ctx *, struct screen *s,
 	     void (*)(void *, int, ...), void *, u_int, u_int);
 void	 screen_draw_stop(struct screen_draw_ctx *);
+void	 screen_draw_set_offset(struct screen_draw_ctx *, u_int, u_int);
 void	 screen_draw_set_selection(
     	     struct screen_draw_ctx *, int, u_int, u_int, u_int, u_int);
 int	 screen_draw_check_selection(struct screen_draw_ctx *, u_int, u_int);

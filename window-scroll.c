@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.13 2007-11-27 19:23:34 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.14 2007-11-27 19:32:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -86,6 +86,7 @@ window_scroll_draw_position(struct window *w, struct screen_draw_ctx *ctx)
 	
 	screen_draw_move_cursor(ctx, screen_size_x(ctx->s) - len, 0);
 	screen_draw_set_attributes(ctx, 0, status_colour);
+	screen_draw_write_string(ctx, "%s", ptr);
 }
 
 void
@@ -99,6 +100,7 @@ window_scroll_draw(
 		data->oy += s->hsize - data->size;
 		data->size = s->hsize;
 	}
+	screen_draw_set_offset(ctx, data->ox, data->oy);
 
 	if (py != 0)
 		screen_draw_lines(ctx, py, ny);
