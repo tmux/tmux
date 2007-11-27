@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.11 2007-11-27 19:32:15 nicm Exp $ */
+/* $Id: window-copy.c,v 1.12 2007-11-27 19:43:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -121,6 +121,9 @@ window_copy_draw(
 		data->size = s->hsize;
 	}
 	screen_draw_set_offset(ctx, data->ox, data->oy);
+	screen_draw_set_selection(ctx,
+	    data->selflag, data->selx, data->sely,
+	    data->cx + data->ox, data->size + data->cy - data->oy);
 
 	if (py != 0)
 		screen_draw_lines(ctx, py, ny);

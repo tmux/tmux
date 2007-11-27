@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.2 2007-11-27 19:32:15 nicm Exp $ */
+/* $Id: tty.c,v 1.3 2007-11-27 19:43:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -121,7 +121,11 @@ tty_close(struct tty *tty)
 
 	if (ioctl(tty->fd, TIOCGWINSZ, &ws) == -1)
 		fatal("ioctl(TIOCGWINSZ)");
+	if (tcsetattr(tty->fd, TCSANOW, &tty->tio) != 0)
+		fatal("tcsetattr failed");
 
+	if (change_scroll_region != NULL)
+		tty_raw(tty, tparm(change_scroll_region, 0, ws.ws_row - 1));
 	if (keypad_local != NULL)
 		tty_raw(tty, keypad_local);
 	if (exit_ca_mode != NULL)
@@ -131,13 +135,8 @@ tty_close(struct tty *tty)
 		tty_raw(tty, cursor_normal);
 	if (exit_attribute_mode != NULL)
 		tty_raw(tty, exit_attribute_mode);
-	if (change_scroll_region != NULL)
-		tty_raw(tty, tparm(change_scroll_region, 0, ws.ws_row - 1));
 
-	if (tcsetattr(tty->fd, TCSANOW, &tty->tio) != 0)
-		fatal("tcsetattr failed");
 	del_curterm(tty->termp);
-
 	tty_keys_free(tty);
 
 	close(tty->fd);
