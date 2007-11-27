@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.51 2007-11-27 19:32:15 nicm Exp $ */
+/* $Id: screen.c,v 1.52 2007-11-27 21:07:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -458,6 +458,7 @@ screen_draw_clear_screen(struct screen_draw_ctx *ctx)
 {
 	u_int	i;
 
+	screen_draw_set_attributes(ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 	for (i = 0; i < screen_size_y(ctx->s); i++) {
 		screen_draw_move_cursor(ctx, 0, i);
 		screen_draw_clear_line_to(ctx, screen_size_x(ctx->s));
@@ -568,11 +569,12 @@ screen_draw_line(struct screen_draw_ctx *ctx, u_int py)
        cx = ctx->s->grid_size[cy];
 
        if (ctx->sel.flag ||
-	   screen_size_x(ctx->s) < 3 || cx >= screen_size_x(ctx->s) - 3)
+	   screen_size_x(ctx->s) < 5 || cx >= screen_size_x(ctx->s) - 5)
                screen_draw_cells(ctx, 0, py, screen_size_x(ctx->s));
        else {
                screen_draw_cells(ctx, 0, py, cx);
                screen_draw_move_cursor(ctx, cx, py);
+	       screen_draw_set_attributes(ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
                ctx->write(ctx->data, TTY_CLEARENDOFLINE);
        }
 }
