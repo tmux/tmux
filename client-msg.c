@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.10 2007-10-19 20:50:01 nicm Exp $ */
+/* $Id: client-msg.c,v 1.11 2007-11-27 19:23:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,7 +25,6 @@
 
 #include "tmux.h"
 
-int	client_msg_fn_data(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_detach(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_error(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_exit(struct hdr *, struct client_ctx *, char **);
@@ -38,11 +37,9 @@ struct client_msg {
 	int	       (*fn)(struct hdr *, struct client_ctx *, char **);
 };
 struct client_msg client_msg_table[] = {
-	{ MSG_DATA, client_msg_fn_data },
 	{ MSG_DETACH, client_msg_fn_detach },
 	{ MSG_ERROR, client_msg_fn_error },
 	{ MSG_EXIT, client_msg_fn_exit },
-	{ MSG_PAUSE, client_msg_fn_pause },
 };
 #define NCLIENTMSG (sizeof client_msg_table / sizeof client_msg_table[0])
 
@@ -69,26 +66,6 @@ client_msg_dispatch(struct client_ctx *cctx, char **error)
 		}
 	}
 	fatalx("unexpected message");
-}
-
-int
-client_msg_fn_data(
-    struct hdr *hdr, struct client_ctx *cctx, unused char **error)
-{
-	local_output(cctx->srv_in, hdr->size);
-	return (0);
-}
-
-int
-client_msg_fn_pause(
-    struct hdr *hdr, unused struct client_ctx *cctx, unused char **error)
-{
-	if (hdr->size != 0)
-		fatalx("bad MSG_PAUSE size");
-
-	cctx->flags |= CCTX_PAUSE;
-
-	return (0);
 }
 
 int

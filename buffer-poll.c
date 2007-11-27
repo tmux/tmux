@@ -1,4 +1,4 @@
-/* $Id: buffer-poll.c,v 1.2 2007-11-07 19:41:17 nicm Exp $ */
+/* $Id: buffer-poll.c,v 1.3 2007-11-27 19:23:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,4 +52,25 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 			buffer_remove(out, n);
 	}
 	return (0);
+}
+
+/* Flush buffer output to socket. */
+void
+buffer_flush(int fd, struct buffer *in, struct buffer *out)
+{
+	struct pollfd	pfd;
+
+	while (BUFFER_USED(out) > 0) {
+		pfd.fd = fd;
+		pfd.events = POLLIN|POLLOUT;
+
+		if (poll(&pfd, 1, INFTIM) == -1) {
+			if (errno == EAGAIN || errno == EINTR)
+				continue;
+			fatal("poll failed");
+		}
+
+		if (buffer_poll(&pfd, in, out) != 0)
+			break;
+	}
 }

@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.22 2007-11-26 20:36:30 nicm Exp $ */
+/* $Id: client.c,v 1.23 2007-11-27 19:23:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,6 @@
 #include "tmux.h"
 
 void	client_handle_winch(struct client_ctx *);
-int	client_process_local(struct client_ctx *, char **);
 
 int
 client_init(const char *path, struct client_ctx *cctx, int start_server)
@@ -113,6 +112,7 @@ retry:
 		if (ttyname_r(STDIN_FILENO, data.tty, sizeof data.tty) != 0)
 			fatal("ttyname_r failed");
 		client_write_server(cctx, MSG_IDENTIFY, &data, sizeof data);
+		cmd_send_string(cctx->srv_out, getenv("TERM"));
 	}
 
 	return (0);
@@ -121,13 +121,11 @@ retry:
 int
 client_main(struct client_ctx *cctx)
 {
-	struct pollfd	 pfds[2];
+	struct pollfd	 pfd;
 	char		*error;
 	int		 timeout;
 
 	siginit();
-	if ((cctx->loc_fd = local_init(&cctx->loc_in, &cctx->loc_out)) == -1)
-		return (1);
 
 	logfile("client");
 #ifndef NO_SETPROCTITLE
@@ -140,34 +138,20 @@ client_main(struct client_ctx *cctx)
 		if (sigwinch)
 			client_handle_winch(cctx);
 
-		pfds[0].fd = cctx->srv_fd;
-		pfds[0].events = POLLIN;
+		pfd.fd = cctx->srv_fd;
+		pfd.events = POLLIN;
 		if (BUFFER_USED(cctx->srv_out) > 0)
-			pfds[0].events |= POLLOUT;
-		pfds[1].fd = cctx->loc_fd;
-		pfds[1].events = POLLIN;
-		if (BUFFER_USED(cctx->loc_out) > 0)
-			pfds[1].events |= POLLOUT;
+			pfd.events |= POLLOUT;
 	
-		if (poll(pfds, 2, timeout) == -1) {
+		if (poll(&pfd, 1, timeout) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			fatal("poll failed");
 		}
 
-		if (buffer_poll(&pfds[0], cctx->srv_in, cctx->srv_out) != 0)
+		if (buffer_poll(&pfd, cctx->srv_in, cctx->srv_out) != 0)
 			goto server_dead;
-		if (buffer_poll(&pfds[1], cctx->loc_in, cctx->loc_out) != 0)
-			goto local_dead;
 
-		if (cctx->flags & CCTX_PAUSE) {
-			usleep(750000);	
-			cctx->flags = 0;
-		}
-
-		if (client_process_local(cctx, &error) == -1)
-			goto out;
-		
 		switch (client_msg_dispatch(cctx, &error)) {
 		case -1:
 			goto out;
@@ -183,8 +167,6 @@ client_main(struct client_ctx *cctx)
 	}
  
 out:
- 	local_done();
- 
  	if (sigterm) {
  		printf("[terminated]\n");
  		return (1);
@@ -204,14 +186,8 @@ out:
 	return (1);
 
 server_dead:
-	local_done();
-
 	printf("[lost server]\n");
 	return (0);
-
-local_dead:
-	/* Can't do much here. Log and die. */
-	fatalx("local socket dead");
 }
 
 void
@@ -229,24 +205,3 @@ client_handle_winch(struct client_ctx *cctx)
 	
 	sigwinch = 0;
 }
-
-int
-client_process_local(struct client_ctx *cctx, unused char **error)
-{
-	struct buffer	*b;
-	int		 key;
-
-	b = buffer_create(BUFSIZ);
-	while ((key = local_key()) != KEYC_NONE)
-		input_store16(b, (uint16_t) key);
-
-	log_debug("transmitting %zu bytes of input", BUFFER_USED(b));
-	if (BUFFER_USED(b) != 0) {
-		client_write_server(
-		    cctx, MSG_KEYS, BUFFER_OUT(b), BUFFER_USED(b));
-	}
-
-	buffer_destroy(b);
-	return (0);
-}
-

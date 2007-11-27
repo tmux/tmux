@@ -1,4 +1,4 @@
-/* $Id: buffer.c,v 1.2 2007-07-25 23:13:18 nicm Exp $ */
+/* $Id: buffer.c,v 1.3 2007-11-27 19:23:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -178,4 +178,45 @@ buffer_read(struct buffer *b, void *data, size_t size)
 
 	memcpy(data, BUFFER_OUT(b), size);
 	buffer_remove(b, size);
+}
+
+/* Store an 8-bit value. */
+void
+buffer_write8(struct buffer *b, uint8_t n)
+{
+	buffer_ensure(b, 1);
+	BUFFER_IN(b)[0] = n;
+	buffer_add(b, 1);
+}
+
+/* Store a 16-bit value. */
+void
+buffer_write16(struct buffer *b, uint16_t n)
+{
+	buffer_ensure(b, 2);
+	BUFFER_IN(b)[0] = n & 0xff;
+	BUFFER_IN(b)[1] = n >> 8;
+	buffer_add(b, 2);
+}
+
+/* Extract an 8-bit value. */
+uint8_t
+buffer_read8(struct buffer *b)
+{
+	uint8_t	n;
+
+	n = BUFFER_OUT(b)[0];
+	buffer_remove(b, 1);
+	return (n);
+}
+
+/* Extract a 16-bit value. */
+uint16_t
+buffer_read16(struct buffer *b)
+{
+	uint16_t	n;
+	
+	n = BUFFER_OUT(b)[0] | (BUFFER_OUT(b)[1] << 8);
+	buffer_remove(b, 2);
+	return (n);
 }

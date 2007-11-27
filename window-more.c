@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.4 2007-11-22 18:09:43 nicm Exp $ */
+/* $Id: window-more.c,v 1.5 2007-11-27 19:23:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,8 @@
 
 void	window_more_init(struct window *);
 void	window_more_resize(struct window *, u_int, u_int);
-void	window_more_draw(struct window *, struct buffer *, u_int, u_int);
+void	window_more_draw(
+    	    struct window *, struct screen_draw_ctx *, u_int, u_int);
 void	window_more_key(struct window *, int);
 
 void	window_more_draw_position(struct window *, struct screen_draw_ctx *);
@@ -90,8 +91,6 @@ window_more_draw_position(struct window *w, struct screen_draw_ctx *ctx)
 	char				*ptr, buf[32];
 	size_t	 			 len;
 	char				*line;
-	size_t				 n;
-
 
 	len = xsnprintf(
 	    buf, sizeof buf, "[%u/%u]", data->top, ARRAY_LENGTH(&data->list));
@@ -102,68 +101,50 @@ window_more_draw_position(struct window *w, struct screen_draw_ctx *ctx)
 		len -= len - screen_size_x(ctx->s);
 	}
 
-	screen_draw_move(ctx, 0, 0);
+	screen_draw_move_cursor(ctx, 0, 0);
 
 	if (data->top < ARRAY_LENGTH(&data->list)) {
-		line = ARRAY_ITEM(&data->list, data->top);
-		n = strlen(line);
-		if (n > screen_size_x(ctx->s) - len)
-			n = screen_size_x(ctx->s) - len;
-		buffer_write(ctx->b, line, n);
-	} else
-		n = 0;
-	for (; n < screen_size_x(ctx->s) - len; n++)
-		input_store8(ctx->b, SCREEN_DEFDATA);
+		line = xstrdup(ARRAY_ITEM(&data->list, data->top));
+		if (strlen(line) > screen_size_x(ctx->s) - len)
+			line[screen_size_x(ctx->s) - len] = '\0';
+		screen_draw_write_string(ctx, "%s", line);
+		xfree(line);
+	}
+	screen_draw_clear_line_to(ctx, screen_size_x(ctx->s) - len - 1);
 
-	screen_draw_move(ctx, screen_size_x(ctx->s) - len, 0);
+	screen_draw_move_cursor(ctx, screen_size_x(ctx->s) - len, 0);
 	screen_draw_set_attributes(ctx, 0, status_colour);
-	buffer_write(ctx->b, buf, len);
+	screen_draw_write_string(ctx, "%s", ptr);
 }
 
 void
 window_more_draw_line(struct window *w, struct screen_draw_ctx *ctx, u_int py)
 {
 	struct window_more_mode_data	*data = w->modedata;
-	char				*line;
-	size_t				 n;
 	u_int				 p;
 
-	screen_draw_move(ctx, 0, py);
+	screen_draw_move_cursor(ctx, 0, py);
 	screen_draw_set_attributes(ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
 	
 	p = data->top + py;
-	if (p >= ARRAY_LENGTH(&data->list)) {
-		input_store_zero(ctx->b, CODE_CLEARLINE);
-		return;
-	}
+	if (p < ARRAY_LENGTH(&data->list))
+		screen_draw_write_string(ctx, "%s", ARRAY_ITEM(&data->list, p));
 
-	line = ARRAY_ITEM(&data->list, p);
-	n = strlen(line);
-	if (n > screen_size_x(ctx->s))
-		n = screen_size_x(ctx->s);
-	buffer_write(ctx->b, line, n);
-	for (; n < screen_size_x(ctx->s); n++)
-		input_store8(ctx->b, SCREEN_DEFDATA);
+	screen_draw_clear_line_to(ctx, screen_last_x(ctx->s));
 }
 
 void
-window_more_draw(struct window *w, struct buffer *b, u_int py, u_int ny)
+window_more_draw(
+    struct window *w, struct screen_draw_ctx *ctx, u_int py, u_int ny)
 {
-	struct screen			*s = &w->screen;
-	struct screen_draw_ctx		 ctx;
-	u_int				 i;
-
-	screen_draw_start(&ctx, s, b, 0, 0);
+	u_int	i;
 
 	for (i = py; i < py + ny; i++) {
 		if (i == 0)
-			continue;
-		window_more_draw_line(w, &ctx, i);
+			window_more_draw_position(w, ctx);
+		else
+			window_more_draw_line(w, ctx, i);
 	}
-	if (py == 0)
-		window_more_draw_position(w, &ctx);
-
-	screen_draw_stop(&ctx);
 }
 
 void
@@ -189,7 +170,7 @@ window_more_key(struct window *w, int key)
 		w->screen.mode &= ~MODE_BACKGROUND;
 
 		recalculate_sizes();
-		server_redraw_window_all(w);
+		server_redraw_window(w);
 		return;
 	case 'k':
 	case 'K':
@@ -217,47 +198,25 @@ window_more_key(struct window *w, int key)
 		break;
 	}
 	if (top != data->top)
-		server_redraw_window_all(w);
+		server_redraw_window(w);
 }
 
 void
 window_more_up_1(struct window *w)
 {
 	struct window_more_mode_data	*data = w->modedata;
-	struct screen			*s = &w->screen;
 	struct screen_draw_ctx		 ctx;
-	struct client			*c;
-	u_int		 		 i;
-	struct hdr			 hdr;
-	size_t				 size;
 
 	if (data->top == 0)
 		return;
 	data->top--;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (!session_has(c->session, w))
-			continue;
-
-		buffer_ensure(c->out, sizeof hdr);
-		buffer_add(c->out, sizeof hdr);
-		size = BUFFER_USED(c->out);
-
-		screen_draw_start(&ctx, s, c->out, 0, 0);
-		screen_draw_move(&ctx, 0, 0);
-		input_store_one(c->out, CODE_INSERTLINE, 1);
-		window_more_draw_position(w, &ctx);
-		window_more_draw_line(w, &ctx, 1);
-		screen_draw_stop(&ctx);
-
-		size = BUFFER_USED(c->out) - size;
-		hdr.type = MSG_DATA;
-		hdr.size = size;
-		memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
-	}	
+	screen_draw_start_window(&ctx, w, 0, 0);
+	screen_draw_move_cursor(&ctx, 0, 0);
+	screen_draw_insert_lines(&ctx, 1);
+	window_more_draw_position(w, &ctx);
+	window_more_draw_line(w, &ctx, 1);
+	screen_draw_stop(&ctx);
 }
 
 void
@@ -266,36 +225,15 @@ window_more_down_1(struct window *w)
 	struct window_more_mode_data	*data = w->modedata;
 	struct screen			*s = &w->screen;
 	struct screen_draw_ctx		 ctx;
-	struct client			*c;
-	u_int		 		 i;
-	struct hdr			 hdr;
-	size_t				 size;
 
 	if (data->top >= ARRAY_LENGTH(&data->list))
 		return;
 	data->top++;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (!session_has(c->session, w))
-			continue;
-
-		buffer_ensure(c->out, sizeof hdr);
-		buffer_add(c->out, sizeof hdr);
-		size = BUFFER_USED(c->out);
-		
-		screen_draw_start(&ctx, s, c->out, 0, 0);
-		screen_draw_move(&ctx, 0, 0);
-		input_store_one(c->out, CODE_DELETELINE, 1);
-		window_more_draw_line(w, &ctx, screen_last_y(s));
-		window_more_draw_position(w, &ctx);
-		screen_draw_stop(&ctx);
-		
-		size = BUFFER_USED(c->out) - size;
-		hdr.type = MSG_DATA;
-		hdr.size = size;
-		memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
-	}	
+	screen_draw_start_window(&ctx, w, 0, 0);
+	screen_draw_move_cursor(&ctx, 0, 0);
+	screen_draw_delete_lines(&ctx, 1);
+	window_more_draw_line(w, &ctx, screen_last_y(s));
+	window_more_draw_position(w, &ctx);
+	screen_draw_stop(&ctx);
 }

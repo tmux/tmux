@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.3 2007-11-21 13:11:41 nicm Exp $ */
+/* $Id: input-keys.c,v 1.4 2007-11-27 19:23:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,13 +55,13 @@ struct {
 
 /* Translate a key code from client into an output key sequence. */
 void
-input_key(struct buffer *b, int key)
+input_key(struct window *w, int key)
 {
 	u_int	i;
 
 	log_debug2("writing key %d", key);
 	if (key != KEYC_NONE && key >= 0) {
-		input_store8(b, key);
+		buffer_write8(w->out, (uint8_t) key);
 		return;
 	}
 
@@ -69,8 +69,8 @@ input_key(struct buffer *b, int key)
 		if (input_keys[i].key == key) {
 			log_debug2(
 			    "found key %d: \"%s\"", key, input_keys[i].data);
-			buffer_write(
-			    b, input_keys[i].data, strlen(input_keys[i].data));
+			buffer_write(w->out,
+			    input_keys[i].data, strlen(input_keys[i].data));
 			return;
 		}
 	}

@@ -1,4 +1,4 @@
-/* $Id: cmd-list-clients.c,v 1.2 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-list-clients.c,v 1.3 2007-11-27 19:23:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,8 +51,8 @@ cmd_list_clients_exec(unused void *ptr, struct cmd_ctx *ctx)
 		if (c == NULL || c->session == NULL)
 			continue;
 
-		ctx->print(ctx,
-		    "%s: %s [%ux%u]", c->tty, c->session->name, c->sx, c->sy);
+		ctx->print(ctx, "%s: %s [%ux%u]",
+		    c->tty.path, c->session->name, c->sx, c->sy);
 	}
 
 	if (ctx->cmdclient != NULL)

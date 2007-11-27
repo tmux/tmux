@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.9 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.10 2007-11-27 19:23:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -83,12 +83,19 @@ void
 cmd_attach_session_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_attach_session_data	*data = ptr;
+	char				*cause;
 
 	if (ctx->flags & CMD_KEY)
 		return;
 
 	if (!(ctx->cmdclient->flags & CLIENT_TERMINAL)) {
 		ctx->error(ctx, "not a terminal");
+		return;
+	}
+
+	if (tty_open(&ctx->cmdclient->tty, &cause) != 0) {
+		ctx->error(ctx, "%s", cause);
+		xfree(cause);
 		return;
 	}
 

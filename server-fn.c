@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.34 2007-11-24 18:32:52 nicm Exp $ */
+/* $Id: server-fn.c,v 1.35 2007-11-27 19:23:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -105,7 +105,7 @@ server_write_session(
 }
 
 void
-server_write_window_cur(
+server_write_window(
     struct window *w, enum hdrtype type, const void *buf, size_t len)
 {
 	struct client	*c;
@@ -121,261 +121,143 @@ server_write_window_cur(
 }
 
 void
-server_write_window_all(
-    struct window *w, enum hdrtype type, const void *buf, size_t len)
-{
-	struct client	*c;
-	u_int		 i;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (session_has(c->session, w))
-			server_write_client(c, type, buf, len);
-	}
-}
-
-void
-server_status_client(struct client *c)
-{
-	struct hdr	hdr;
-	size_t		size;
-
-	if (status_lines == 0 || c->sy <= status_lines)
-		return;
-
-	buffer_ensure(c->out, sizeof hdr);
-	buffer_add(c->out, sizeof hdr);
-	size = BUFFER_USED(c->out);
-
-	status_write(c);
-
-	size = BUFFER_USED(c->out) - size;
-	hdr.type = MSG_DATA;
-	hdr.size = size;
-	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
-}
-
-void
 server_clear_client(struct client *c)
 {
-	struct screen	*s = &c->session->curw->window->screen;
-	struct hdr	 hdr;
-	size_t		 size;
-	u_int		 i;
+	struct screen_draw_ctx	ctx;
 
-	buffer_ensure(c->out, sizeof hdr);
-	buffer_add(c->out, sizeof hdr);
-	size = BUFFER_USED(c->out);
-	
-	input_store_zero(c->out, CODE_CURSOROFF);
-	for (i = 0; i < screen_size_y(s); i++) {
-		input_store_two(c->out, CODE_CURSORMOVE, i + 1, 1);
-		input_store_zero(c->out, CODE_CLEARLINE);
-	}
-	input_store_two(c->out, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
-	if (s->mode & MODE_BACKGROUND) {
-		if (s->mode & MODE_BGCURSOR)
-			input_store_zero(c->out, CODE_CURSORON);
-	} else {
-		if (s->mode & MODE_CURSOR)
-			input_store_zero(c->out, CODE_CURSORON);
-	}
-	
-	size = BUFFER_USED(c->out) - size;
-	hdr.type = MSG_DATA;
-	hdr.size = size;
-	memcpy(BUFFER_IN(c->out) - size - sizeof hdr,  &hdr, sizeof hdr);
+	screen_draw_start_client(&ctx, c, 0, 0);
+	screen_draw_clear_screen(&ctx);
+	screen_draw_stop(&ctx);
+
+	status_write_client(c);
 }
 
 void
 server_redraw_client(struct client *c)
 {
-	struct window	*w = c->session->curw->window;
-	struct hdr	 hdr;
-	size_t		 size;
+	struct screen_draw_ctx	ctx;
+	struct window	       *w = c->session->curw->window;
 
-	buffer_ensure(c->out, sizeof hdr);
-	buffer_add(c->out, sizeof hdr);
-	size = BUFFER_USED(c->out);
+	screen_draw_start_client(&ctx, c, 0, 0);
+	window_draw(w, &ctx, 0, screen_size_y(&w->screen));
+	screen_draw_stop(&ctx);
 
-	window_draw(w, c->out, 0, screen_size_y(&w->screen));
+	status_write_client(c);
+}
 
-	size = BUFFER_USED(c->out) - size;
-	log_debug("redrawing window, %zu bytes", size);
-	if (size != 0) {
-		hdr.type = MSG_DATA;
-		hdr.size = size;
-		memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
-	} else
-		buffer_reverse_add(c->out, sizeof hdr);
+void
+server_status_client(struct client *c)
+{
+	status_write_client(c);
+}
 
-	server_status_client(c);
+void
+server_clear_session(struct session *s)
+{
+	struct screen_draw_ctx	ctx;
+
+	screen_draw_start_session(&ctx, s, 0, 0);
+	screen_draw_clear_screen(&ctx);
+	screen_draw_stop(&ctx);
+
+	status_write_session(s);
 }
 
 void
 server_redraw_session(struct session *s)
 {
-	struct client	*c;
-	u_int		 i;
+	struct screen_draw_ctx	ctx;
+	struct window	       *w = s->curw->window;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session == s)
-			server_redraw_client(c);
-	}
+	screen_draw_start_session(&ctx, s, 0, 0);
+	window_draw(w, &ctx, 0, screen_size_y(&w->screen));
+	screen_draw_stop(&ctx);
+
+	status_write_session(s);
 }
 
 void
 server_status_session(struct session *s)
 {
-	struct client	*c;
-	u_int		 i;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session == s)
-			server_status_client(c);
-	}
+	status_write_session(s);
 }
 
 void
-server_clear_window_cur(struct window *w)
+server_clear_window(struct window *w)
 {
-	struct client	*c;
-	u_int		 i;
+	struct screen_draw_ctx	ctx;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL &&
-		    c->session != NULL && c->session->curw->window == w)
-			server_clear_client(c);
-	}
+	screen_draw_start_window(&ctx, w, 0, 0);
+	screen_draw_clear_screen(&ctx);
+	screen_draw_stop(&ctx);
+
+	status_write_window(w);
 }
 
 void
-server_clear_window_all(struct window *w)
+server_redraw_window(struct window *w)
 {
-	struct client	*c;
-	u_int		 i;
+	struct screen_draw_ctx	ctx;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (session_has(c->session, w))
-			server_redraw_client(c);
-	}
+	screen_draw_start_window(&ctx, w, 0, 0);
+	window_draw(w, &ctx, 0, screen_size_y(&w->screen));
+	screen_draw_stop(&ctx);
+
+	status_write_window(w);
 }
 
 void
-server_redraw_window_cur(struct window *w)
+server_status_window(struct window *w)
 {
-	struct client	*c;
+	struct session	*s;
 	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL &&
-		    c->session != NULL && c->session->curw->window == w)
-			server_redraw_client(c);
-	}
-}
+	/*
+	 * This is slightly different. We want to redraw the status line of any
+	 * clients containing this window rather than any where it is the
+	 * current window.
+	 */
 
-void
-server_redraw_window_all(struct window *w)
-{
-	struct client	*c;
-	u_int		 i;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (session_has(c->session, w))
-			server_redraw_client(c);
-	}
-}
-
-void
-server_status_window_cur(struct window *w)
-{
-	struct client	*c;
-	u_int		 i;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL &&
-		    c->session != NULL && c->session->curw->window == w)
-			server_status_client(c);
-	}
-}
-
-void
-server_status_window_all(struct window *w)
-{
-	struct client	*c;
-	u_int		 i;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (session_has(c->session, w))
-			server_status_client(c);
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		s = ARRAY_ITEM(&sessions, i);
+		if (s != NULL && session_has(s, w))
+			server_status_session(s);
 	}
 }
 
 void printflike2
 server_write_message(struct client *c, const char *fmt, ...)
 {
-	struct window	       *w = c->session->curw->window;
 	struct screen_draw_ctx	ctx;
-	struct hdr		hdr;
 	va_list			ap;
 	char		       *msg;
 	size_t			size;
-	u_int			i;
 
-	buffer_ensure(c->out, sizeof hdr);
-	buffer_add(c->out, sizeof hdr);
-	size = BUFFER_USED(c->out);
-
-	screen_draw_start(&ctx, &w->screen, c->out, 0, 0);
-	screen_draw_move(&ctx, 0, c->sy - 1);
+	screen_draw_start_client(&ctx, c, 0, 0);
+	screen_draw_move_cursor(&ctx, 0, c->sy - 1);
 	screen_draw_set_attributes(&ctx, ATTR_REVERSE, 0x88);
+
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
 	va_end(ap);
-	if (strlen(msg) > c->sx - 1)
+	
+	size = strlen(msg);
+	if (size < c->sx - 1) {
+		msg = xrealloc(msg, 1, c->sx);
 		msg[c->sx - 1] = '\0';
-	buffer_write(c->out, msg, strlen(msg));
-	for (i = strlen(msg); i < c->sx; i++)
-		input_store8(c->out, ' ');
+		memset(msg + size, SCREEN_DEFDATA, (c->sx - 1) - size);
+	}
+	screen_draw_write_string(&ctx, "%s", msg);
 	xfree(msg);
 
-	size = BUFFER_USED(c->out) - size;
-  	hdr.type = MSG_DATA;
-	hdr.size = size;
-	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
+	buffer_flush(c->tty.fd, c->tty.in, c->tty.out);
+	usleep(750000);	
 
-	hdr.type = MSG_PAUSE;
-	hdr.size = 0;
-	buffer_write(c->out, &hdr, sizeof hdr);
-
-	buffer_ensure(c->out, sizeof hdr);
-	buffer_add(c->out, sizeof hdr);
-	size = BUFFER_USED(c->out);
-
-	screen_draw_stop(&ctx);
-	if (status_lines == 0)
-		window_draw(w, c->out, c->sy - 1, 1);
-	else
-		status_write(c);
-	
-	size = BUFFER_USED(c->out) - size;
-	hdr.type = MSG_DATA;
-	hdr.size = size;
-	memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
+	if (status_lines == 0) {
+		window_draw(c->session->curw->window, &ctx, c->sy - 1, 1);
+		screen_draw_stop(&ctx);
+	} else {
+		screen_draw_stop(&ctx);
+		status_write_client(c);
+	}
 }

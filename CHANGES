@@ -1,3 +1,13 @@
+27 November 2007
+
+* Big internal reorganisation. Rather than leaving control of the tty solely in
+  the client and piping all data through a socket to it, change so that the
+  server opens the tty again and reads and writes to it directly. This avoids
+  a lot of buffering and copying.Also reorganise the redrawing stuff so that
+  everything goes through screen_draw_* - this makes the code simpler, but
+  still needs broken up more, and all the ways of writing to screens should be
+  more consistent.
+
 26 November 2007
 
 * Rather than shifting up one line at a time once the history is full,
@@ -273,4 +283,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.86 2007-11-26 22:18:57 nicm Exp $
+$Id: CHANGES,v 1.87 2007-11-27 19:23:32 nicm Exp $

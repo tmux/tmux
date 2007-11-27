@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.14 2007-11-27 19:23:34 nicm Exp $ */
+/* $Id: tty-write.c,v 1.1 2007-11-27 19:23:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,49 +18,44 @@
 
 #include <sys/types.h>
 
-#include <stdarg.h>
-
 #include "tmux.h"
 
-void printflike3 status_print(struct buffer *, size_t *, const char *, ...);
-
 void
-status_write_client(struct client *c)
+tty_write_client(void *ptr, int cmd, ...)
 {
-	struct screen_draw_ctx	ctx;
-	struct winlink	       *wl;
-	char			flag;
+	struct client	*c = ptr;
 
-	if (status_lines == 0 || c->sy <= status_lines)
-		return;
+	va_list	ap;
 
-	screen_draw_start_client(&ctx, c, 0, 0);
-	screen_draw_move_cursor(&ctx, 0, c->sy - status_lines);
-	screen_draw_set_attributes(&ctx, 0, status_colour);
-
-	RB_FOREACH(wl, winlinks, &c->session->windows) {
-		flag = ' ';
-		if (wl == c->session->lastw)
-			flag = '-';
-		if (wl == c->session->curw)
-			flag = '*';
-		if (session_hasbell(c->session, wl))
-			flag = '!';
-		screen_draw_write_string(
-		    &ctx, "%d:%s%c ", wl->idx, wl->window->name, flag);
-
-		if (ctx.cx >= screen_last_x(ctx.s))
-			break;
-	}
-	screen_draw_clear_line_to(&ctx, screen_last_x(ctx.s));
-
-	screen_draw_stop(&ctx);
+	va_start(ap, cmd);
+	tty_vwrite_client(c, cmd, ap);
+	va_end(ap);
 }
 
 void
-status_write_window(struct window *w)
+tty_vwrite_client(void *ptr, int cmd, va_list ap)
 {
+	struct client	*c = ptr;
+
+	tty_vwrite(&c->tty, cmd, ap);
+}
+
+void
+tty_write_window(void *ptr, int cmd, ...)
+{
+	va_list	ap;
+
+	va_start(ap, cmd);
+	tty_vwrite_window(ptr, cmd, ap);
+	va_end(ap);
+}
+
+void
+tty_vwrite_window(void *ptr, int cmd, va_list ap)
+{
+	struct window	*w = ptr;
 	struct client	*c;
+	va_list		 aq;
 	u_int		 i;
 
 	if (w->screen.mode & MODE_HIDDEN)
@@ -73,14 +68,28 @@ status_write_window(struct window *w)
 		if (c->session->curw->window != w)
 			continue;
 
-		status_write_client(c);
+		va_copy(aq, ap);	
+		tty_vwrite(&c->tty, cmd, aq);
+		va_end(aq);
 	}
 }
 
 void
-status_write_session(struct session *s)
+tty_write_session(void *ptr, int cmd, ...)
 {
+	va_list	ap;
+
+	va_start(ap, cmd);
+	tty_vwrite_session(ptr, cmd, ap);
+	va_end(ap);
+}
+
+void
+tty_vwrite_session(void *ptr, int cmd, va_list ap)
+{
+	struct session	*s = ptr;
 	struct client	*c;
+	va_list		 aq;
 	u_int		 i;
 
 	if (s->flags & SESSION_UNATTACHED)
@@ -90,6 +99,9 @@ status_write_session(struct session *s)
 		c = ARRAY_ITEM(&clients, i);
 		if (c == NULL || c->session != s)
 			continue;
-		status_write_client(c);
+
+		va_copy(aq, ap);
+		tty_vwrite(&c->tty, cmd, aq);
+		va_end(aq);
 	}
 }

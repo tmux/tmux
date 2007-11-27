@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.100 2007-11-24 23:29:49 nicm Exp $ */
+/* $Id: tmux.h,v 1.101 2007-11-27 19:23:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,6 +41,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <term.h>
 
 #include "array.h"
 
@@ -255,34 +256,32 @@ struct buffer {
 #define KEYC_UP -149
 #define KEYC_MOUSE -150
 
-/* Translated escape codes. */
-#define CODE_CURSORUP 0
-#define CODE_CURSORDOWN 1
-#define CODE_CURSORRIGHT 2
-#define CODE_CURSORLEFT 3
-#define CODE_INSERTCHARACTER 4
-#define CODE_DELETECHARACTER 5
-#define CODE_INSERTLINE 6
-#define CODE_DELETELINE 7
-#define CODE_CLEARLINE 8
-/* 9 unused */
-/* 10 unused */
-#define CODE_CLEARENDOFLINE 11
-#define CODE_CLEARSTARTOFLINE 12
-#define CODE_CURSORMOVE 13
-#define CODE_ATTRIBUTES 14
-#define CODE_CURSOROFF 15
-#define CODE_CURSORON 16
-#define CODE_REVERSEINDEX 17
-/* 18 unused */
-#define CODE_SCROLLREGION 19
-#define CODE_INSERTON 20
-#define CODE_INSERTOFF 21
-#define CODE_KCURSOROFF 22
-#define CODE_KCURSORON 23
-#define CODE_KKEYPADOFF 24
-#define CODE_KKEYPADON 25
-#define CODE_TITLE 26
+/* Output codes. */
+#define TTY_CHARACTER 0
+#define TTY_CURSORUP 1
+#define TTY_CURSORDOWN 2
+#define TTY_CURSORRIGHT 3
+#define TTY_CURSORLEFT 4
+#define TTY_INSERTCHARACTER 5
+#define TTY_DELETECHARACTER 6
+#define TTY_INSERTLINE 7
+#define TTY_DELETELINE 8
+#define TTY_CLEARLINE 9
+#define TTY_CLEARENDOFLINE 10
+#define TTY_CLEARSTARTOFLINE 11
+#define TTY_CURSORMOVE 12
+#define TTY_ATTRIBUTES 13
+#define TTY_CURSOROFF 14
+#define TTY_CURSORON 15
+#define TTY_REVERSEINDEX 16
+#define TTY_SCROLLREGION 17
+#define TTY_INSERTON 18
+#define TTY_INSERTOFF 19
+#define TTY_KCURSOROFF 20
+#define TTY_KCURSORON 21
+#define TTY_KKEYPADOFF 22
+#define TTY_KKEYPADON 23
+#define TTY_TITLE 24
 
 /* Message codes. */
 enum hdrtype {
@@ -294,9 +293,6 @@ enum hdrtype {
 	MSG_READY,
 	MSG_DETACH,
 	MSG_RESIZE,
-	MSG_DATA,
-	MSG_KEYS,
-	MSG_PAUSE,
 };
 
 /* Message header structure. */
@@ -317,6 +313,8 @@ struct msg_identify_data {
 
 	u_int		sx;
 	u_int		sy;
+
+	size_t		termlen;
 };
 
 struct msg_resize_data {
@@ -394,8 +392,10 @@ struct screen_draw_sel {
 
 /* Screen redraw context. */
 struct screen_draw_ctx {
+	void		*data;
+	void		 (*write)(void *, int, ...);
+
 	struct screen	*s;
-	struct buffer	*b;
 
 	u_int		 cx;
 	u_int		 cy;
@@ -423,8 +423,6 @@ struct screen_draw_ctx {
 #define screen_in_y(s, y) ((y) < screen_size_y(s))
 #define screen_in_region(s, y) ((y) >= (s)->rupper && (y) <= (s)->rlower)
 
-#define screen_hidden(s) ((s)->mode & (MODE_HIDDEN|MODE_BACKGROUND))
-
 /* Screen default contents. */
 #define SCREEN_DEFDATA ' '
 #define SCREEN_DEFATTR 0
@@ -439,7 +437,6 @@ struct input_arg {
 /* Input parser context. */
 struct input_ctx {
 	struct window	*w;
-	struct buffer	*b;
 
 	u_char		*buf;
 	size_t		 len;
@@ -462,7 +459,8 @@ struct input_ctx {
 struct window_mode {
 	void	(*init)(struct window *);
 	void	(*resize)(struct window *, u_int, u_int);
-	void	(*draw)(struct window *, struct buffer *, u_int, u_int);
+	void	(*draw)(
+	    	    struct window *, struct screen_draw_ctx *, u_int, u_int);
 	void	(*key)(struct window *, int);
 };
 
@@ -516,19 +514,49 @@ struct session {
 };
 ARRAY_DECL(sessions, struct session *);
 
-/* Client connection. */
-struct client {
-	char		*tty;
+/* TTY information. */
+struct tty_key {
+	int	 	 code;
+	char		*string;
+
+	RB_ENTRY(tty_key) entry;
+};
+
+struct tty {
+	char		*path;
+
+	char		*term;
+	TERMINAL        *termp;
 
 	int		 fd;
 	struct buffer	*in;
 	struct buffer	*out;
+
+	struct termios   tio;
+
+	u_int		 attr;
+	u_int		 colr;
+
+	u_char		 acs[UCHAR_MAX + 1];
+
+	size_t		 ksize;	/* maximum key size */
+	RB_HEAD(tty_keys, tty_key) ktree;
+};
+
+/* Client connection. */
+struct client {
+	int		 fd;
+	struct buffer	*in;
+	struct buffer	*out;
+
+	struct tty 	 tty;
 
 	u_int		 sx;
 	u_int		 sy;
 
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_PREFIX 0x2
+#define CLIENT_ATTACHED 0x4
 	int		 flags;
 
 	struct session	*session;
@@ -541,13 +569,8 @@ struct client_ctx {
 	struct buffer	*srv_in;
 	struct buffer	*srv_out;
 
-	int		 loc_fd;
-	struct buffer	*loc_in;
-	struct buffer	*loc_out;
-
-#define CCTX_PAUSE 0x1
-#define CCTX_DETACH 0x2
-#define CCTX_EXIT 0x4
+#define CCTX_DETACH 0x1
+#define CCTX_EXIT 0x2
 	int 		 flags;
 };
 
@@ -629,6 +652,28 @@ void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);
 
+/* tty.c */
+void		 tty_init(struct tty *, char *, char *);
+int		 tty_open(struct tty *, char **);
+void		 tty_close(struct tty *);
+void		 tty_free(struct tty *);
+void		 tty_vwrite(struct tty *, int, va_list);
+
+/* tty-keys.c */
+int		 tty_keys_cmp(struct tty_key *, struct tty_key *);
+RB_PROTOTYPE(tty_keys, tty_key, entry, tty_keys_cmp);
+void		 tty_keys_init(struct tty *);
+void		 tty_keys_free(struct tty *);
+int		 tty_keys_next(struct tty *, int *);
+
+/* tty-write.c */
+void		 tty_write_client(void *, int, ...);
+void		 tty_vwrite_client(void *, int, va_list);
+void		 tty_write_window(void *, int, ...);
+void		 tty_vwrite_window(void *, int, va_list);
+void		 tty_write_session(void *, int, ...);
+void		 tty_vwrite_session(void *, int, va_list);
+
 /* cmd.c */
 struct cmd	*cmd_parse(int, char **, char **);
 void		 cmd_exec(struct cmd *, struct cmd_ctx *);
@@ -708,25 +753,23 @@ void	 server_write_client(
              struct client *, enum hdrtype, const void *, size_t);
 void	 server_write_session(
              struct session *, enum hdrtype, const void *, size_t);
-void	 server_write_window_cur(
+void	 server_write_window(
              struct window *, enum hdrtype, const void *, size_t);
-void	 server_write_window_all(
-             struct window *, enum hdrtype, const void *, size_t);
-void	 server_status_client(struct client *);
 void	 server_clear_client(struct client *);
 void	 server_redraw_client(struct client *);
-void	 server_status_session(struct session *);
+void	 server_status_client(struct client *);
+void	 server_clear_session(struct session *);
 void	 server_redraw_session(struct session *);
-void	 server_status_window_cur(struct window *);
-void	 server_status_window_all(struct window *);
-void	 server_clear_window_cur(struct window *);
-void	 server_clear_window_all(struct window *);
-void	 server_redraw_window_cur(struct window *);
-void	 server_redraw_window_all(struct window *);
+void	 server_status_session(struct session *);
+void	 server_clear_window(struct window *);
+void	 server_redraw_window(struct window *);
+void	 server_status_window(struct window *);
 void printflike2 server_write_message(struct client *, const char *, ...);
 
 /* status.c */
-void	 status_write(struct client *c);
+void	 status_write_client(struct client *);
+void	 status_write_session(struct session *);
+void	 status_write_window(struct window *);
 
 /* resize.c */
 void	 recalculate_sizes(void);
@@ -734,17 +777,10 @@ void	 recalculate_sizes(void);
 /* input.c */
 void	 input_init(struct window *);
 void	 input_free(struct window *);
-void	 input_parse(struct window *, struct buffer *);
-uint8_t  input_extract8(struct buffer *);
-uint16_t input_extract16(struct buffer *);
-void	 input_store8(struct buffer *, uint8_t);
-void	 input_store16(struct buffer *, uint16_t);
-void	 input_store_zero(struct buffer *, u_char);
-void	 input_store_one(struct buffer *, u_char, uint16_t);
-void	 input_store_two(struct buffer *, u_char, uint16_t, uint16_t);
+void	 input_parse(struct window *);
 
 /* input-key.c */
-void	 input_key(struct buffer *, int);
+void	 input_key(struct window *, int);
 
 /* screen-display.c */
 void	 screen_display_make_lines(struct screen *, u_int, u_int);
@@ -788,15 +824,29 @@ void	 screen_reduce_line(struct screen *, u_int, u_int);
 void	 screen_get_cell(
     	     struct screen *, u_int, u_int, u_char *, u_char *, u_char *);
 void	 screen_set_cell(struct screen *, u_int, u_int, u_char, u_char, u_char);
-void	 screen_draw_start(struct screen_draw_ctx *,
-    	     struct screen *, struct buffer *, u_int, u_int);
+void	 screen_draw_start_window(
+    	     struct screen_draw_ctx *, struct window *, u_int, u_int);
+void	 screen_draw_start_client(
+    	     struct screen_draw_ctx *, struct client *, u_int, u_int);
+void	 screen_draw_start_session(
+    	     struct screen_draw_ctx *, struct session *, u_int, u_int);
+void	 screen_draw_start(struct screen_draw_ctx *, struct screen *s,
+	     void (*)(void *, int, ...), void *, u_int, u_int);
 void	 screen_draw_stop(struct screen_draw_ctx *);
 void	 screen_draw_set_selection(
     	     struct screen_draw_ctx *, int, u_int, u_int, u_int, u_int);
 int	 screen_draw_check_selection(struct screen_draw_ctx *, u_int, u_int);
 void	 screen_draw_get_cell(struct screen_draw_ctx *,
     	     u_int, u_int, u_char *, u_char *, u_char *);
-void	 screen_draw_move(struct screen_draw_ctx *, u_int, u_int);
+void	 screen_draw_insert_characters(struct screen_draw_ctx *, u_int);
+void	 screen_draw_delete_characters(struct screen_draw_ctx *, u_int);
+void	 screen_draw_insert_lines(struct screen_draw_ctx *, u_int);
+void	 screen_draw_delete_lines(struct screen_draw_ctx *, u_int);
+void	 screen_draw_clear_line_to(struct screen_draw_ctx *, u_int);
+void	 screen_draw_clear_screen(struct screen_draw_ctx *);
+void printflike2 screen_draw_write_string(
+	     struct screen_draw_ctx *, const char *, ...);
+void	 screen_draw_move_cursor(struct screen_draw_ctx *, u_int, u_int);
 void	 screen_draw_set_attributes(struct screen_draw_ctx *, u_char, u_char);
 void	 screen_draw_cell(struct screen_draw_ctx *, u_int, u_int);
 void	 screen_draw_cells(struct screen_draw_ctx *, u_int, u_int, u_int);
@@ -811,12 +861,6 @@ void	 screen_fill_lines(
 	     struct screen *, u_int, u_int, u_char, u_char, u_char);
 void	 screen_fill_cells(
     	     struct screen *, u_int, u_int, u_int, u_char, u_char, u_char);
-
-/* local.c */
-int	 local_init(struct buffer **, struct buffer **);
-void	 local_done(void);
-int	 local_key(void);
-void	 local_output(struct buffer *, size_t);
 
 /* window.c */
 extern struct windows windows;
@@ -835,8 +879,9 @@ struct window	*window_create(
     		     const char *, const char *, const char **, u_int, u_int);
 void		 window_destroy(struct window *);
 int		 window_resize(struct window *, u_int, u_int);
-void		 window_parse(struct window *, struct buffer *);
-void		 window_draw(struct window *, struct buffer *, u_int, u_int);
+void		 window_parse(struct window *);
+void		 window_draw(
+    		     struct window *, struct screen_draw_ctx *, u_int, u_int);
 void		 window_key(struct window *, int);
 
 /* window-copy.c */
@@ -881,9 +926,14 @@ void		 buffer_insert_range(struct buffer *, size_t, size_t);
 void		 buffer_delete_range(struct buffer *, size_t, size_t);
 void		 buffer_write(struct buffer *, const void *, size_t);
 void		 buffer_read(struct buffer *, void *, size_t);
+void	 	 buffer_write8(struct buffer *, uint8_t);
+void	 	 buffer_write16(struct buffer *, uint16_t);
+uint8_t		 buffer_read8(struct buffer *);
+uint16_t 	 buffer_read16(struct buffer *);
 
 /* buffer-poll.c */
 int		 buffer_poll(struct pollfd *, struct buffer *, struct buffer *);
+void		 buffer_flush(int, struct buffer *n, struct buffer *);
 
 /* log.c */
 void		 log_open(FILE *, int, int);

@@ -1,4 +1,5 @@
-/* $Id: server-msg.c,v 1.37 2007-11-24 20:08:49 nicm Exp $ */
+
+/* $Id: server-msg.c,v 1.38 2007-11-27 19:23:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,6 +19,7 @@
 
 #include <sys/types.h>
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -26,7 +28,6 @@
 
 int	server_msg_fn_command(struct hdr *, struct client *);
 int	server_msg_fn_identify(struct hdr *, struct client *);
-int	server_msg_fn_keys(struct hdr *, struct client *);
 int	server_msg_fn_resize(struct hdr *, struct client *);
 
 void printflike2 server_msg_fn_command_error(
@@ -43,7 +44,6 @@ const struct server_msg server_msg_table[] = {
 	{ MSG_IDENTIFY, server_msg_fn_identify },
 	{ MSG_COMMAND, server_msg_fn_command },
 	{ MSG_RESIZE, server_msg_fn_resize },
-	{ MSG_KEYS, server_msg_fn_keys },
 };
 #define NSERVERMSG (sizeof server_msg_table / sizeof server_msg_table[0])
 
@@ -152,7 +152,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 			/* XXX fnmatch, multi clients etc */
 			c = ARRAY_ITEM(&clients, i);
-			if (c != NULL && strcmp(client, c->tty) == 0)
+			if (c != NULL && strcmp(client, c->tty.path) == 0)
 				ctx.client = c;
 		}
 		if (ctx.client == NULL) {
@@ -192,10 +192,12 @@ int
 server_msg_fn_identify(struct hdr *hdr, struct client *c)
 {
 	struct msg_identify_data	data;
+        char			       *term;
 
 	if (hdr->size < sizeof data)
 		fatalx("bad MSG_IDENTIFY size");
 	buffer_read(c->in, &data, sizeof data);
+	term = cmd_recv_string(c->in);
 
 	log_debug("identify msg from client: %u,%u", data.sx, data.sy);
 
@@ -203,7 +205,8 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 	c->sy = data.sy;
 
 	data.tty[(sizeof data.tty) - 1] = '\0';
-	c->tty = xstrdup(data.tty);
+	tty_init(&c->tty, data.tty, xstrdup(term));
+	xfree(term);
 
 	c->flags |= CLIENT_TERMINAL;
 
@@ -232,37 +235,6 @@ server_msg_fn_resize(struct hdr *hdr, struct client *c)
 
 	/* Always redraw this client. */
 	server_redraw_client(c);
-
-	return (0);
-}
-
-int
-server_msg_fn_keys(struct hdr *hdr, struct client *c)
-{
-	struct window	*w = c->session->curw->window;
-	int		 key;
-	size_t		 size;
-
-	if (hdr->size & 0x1)
-		fatalx("bad MSG_KEYS size");
-
-	size = hdr->size;
-	while (size != 0) {
-		key = (int16_t) input_extract16(c->in);
-		size -= 2;
-
-		if (c->flags & CLIENT_PREFIX) {
-			key_bindings_dispatch(key, c);
-			c->flags &= ~CLIENT_PREFIX;
-			continue;
-		}
-
-		if (key == prefix_key) {
-			c->flags |= CLIENT_PREFIX;
-			continue;
-		}
-		window_key(w, key);
-	}
 
 	return (0);
 }

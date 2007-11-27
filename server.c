@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.39 2007-11-21 13:11:41 nicm Exp $ */
+/* $Id: server.c,v 1.40 2007-11-27 19:23:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,6 +49,7 @@ void		 server_handle_windows(struct pollfd **);
 void		 server_fill_clients(struct pollfd **);
 void		 server_handle_clients(struct pollfd **);
 struct client	*server_accept_client(int);
+void		 server_handle_client(struct client *);
 void		 server_handle_window(struct window *);
 void		 server_lost_client(struct client *);
 void	 	 server_lost_window(struct window *);
@@ -139,7 +140,7 @@ server_main(const char *srv_path, int srv_fd)
 	pfds = NULL;
 	while (!sigterm) {
 		/* Initialise pollfd array. */
-		nfds = 1 + ARRAY_LENGTH(&windows) + ARRAY_LENGTH(&clients);
+		nfds = 1 + ARRAY_LENGTH(&windows) + ARRAY_LENGTH(&clients) * 2;
 		pfds = xrealloc(pfds, nfds, sizeof *pfds);
 		pfd = pfds;
 
@@ -246,12 +247,24 @@ server_fill_clients(struct pollfd **pfd)
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		if ((c = ARRAY_ITEM(&clients, i)) == NULL)
+		c = ARRAY_ITEM(&clients, i);
+
+		if (c == NULL)
 			(*pfd)->fd = -1;
 		else {
 			(*pfd)->fd = c->fd;
 			(*pfd)->events = POLLIN;
 			if (BUFFER_USED(c->out) > 0)
+				(*pfd)->events |= POLLOUT;
+		}
+		(*pfd)++;
+
+		if (c == NULL || c->tty.fd == -1)
+			(*pfd)->fd = -1;
+		else {
+			(*pfd)->fd = c->tty.fd;
+			(*pfd)->events = POLLIN;
+			if (BUFFER_USED(c->tty.out) > 0)
 				(*pfd)->events |= POLLOUT;
 		}
 		(*pfd)++;
@@ -266,11 +279,23 @@ server_handle_clients(struct pollfd **pfd)
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		if ((c = ARRAY_ITEM(&clients, i)) != NULL) {
-			if (buffer_poll(*pfd, c->in, c->out) != 0)
+		c = ARRAY_ITEM(&clients, i);
+
+		if (c != NULL) {
+			if (buffer_poll(*pfd, c->in, c->out) != 0) {
+				server_lost_client(c);
+				(*pfd) += 2;
+				continue;
+			} else
+				server_msg_dispatch(c);
+		}
+		(*pfd)++;
+
+		if (c != NULL && c->tty.fd != -1) {
+			if (buffer_poll(*pfd, c->tty.in, c->tty.out) != 0)
 				server_lost_client(c);
 			else
-				server_msg_dispatch(c);
+				server_handle_client(c);
 		}
 		(*pfd)++;
 	}
@@ -302,6 +327,8 @@ server_accept_client(int srv_fd)
 	c->in = buffer_create(BUFSIZ);
 	c->out = buffer_create(BUFSIZ);
 
+	c->tty.fd = -1;
+
 	c->session = NULL;
 	c->sx = 80;
 	c->sy = 25;
@@ -316,6 +343,25 @@ server_accept_client(int srv_fd)
 	return (c);
 }
 
+/* Input data from client. */
+void
+server_handle_client(struct client *c)
+{
+	struct window	*w = c->session->curw->window;
+	int		 key;
+
+	while (tty_keys_next(&c->tty, &key) == 0) {
+		if (c->flags & CLIENT_PREFIX) {
+			key_bindings_dispatch(key, c);
+			c->flags &= ~CLIENT_PREFIX;
+			continue;
+		} else if (key == prefix_key)
+			c->flags |= CLIENT_PREFIX;
+		else
+			window_key(w, key);
+	}
+}
+
 /* Lost a client. */
 void
 server_lost_client(struct client *c)
@@ -327,8 +373,8 @@ server_lost_client(struct client *c)
 			ARRAY_SET(&clients, i, NULL);
 	}
 	
-	if (c->tty != NULL)
-		xfree(c->tty);
+	tty_free(&c->tty);
+
 	close(c->fd);
 	buffer_destroy(c->in);
 	buffer_destroy(c->out);
@@ -341,17 +387,10 @@ server_lost_client(struct client *c)
 void
 server_handle_window(struct window *w)
 {
-	struct buffer	*b;
 	struct session	*s;
 	u_int		 i;
 
-	b = buffer_create(BUFSIZ);
-	window_parse(w, b);
-	if (BUFFER_USED(b) != 0) {
-		server_write_window_cur(
-		    w, MSG_DATA, BUFFER_OUT(b), BUFFER_USED(b));
-	}
-	buffer_destroy(b);
+	window_parse(w);
 
 	if (!(w->flags & WINDOW_BELL))
 		return;
@@ -364,17 +403,17 @@ server_handle_window(struct window *w)
 
 	switch (bell_action) {
 	case BELL_ANY:
-		server_write_window_all(w, MSG_DATA, "\007", 1);
+		tty_write_window(w, TTY_CHARACTER, '\007');
 		break;
 	case BELL_CURRENT:
 		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 			s = ARRAY_ITEM(&sessions, i);
 			if (s != NULL && s->curw->window == w)
-				server_write_session(s, MSG_DATA, "\007", 1);
+				tty_write_session(s, TTY_CHARACTER, '\007');
 		}
 		break;
 	}
-	server_status_window_all(w);
+	server_status_window(w);
 
 	w->flags &= ~WINDOW_BELL;
 }

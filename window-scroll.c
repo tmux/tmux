@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.12 2007-11-22 18:09:43 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.13 2007-11-27 19:23:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,8 @@
 
 void	window_scroll_init(struct window *);
 void	window_scroll_resize(struct window *, u_int, u_int);
-void	window_scroll_draw(struct window *, struct buffer *, u_int, u_int);
+void	window_scroll_draw(
+    	    struct window *, struct screen_draw_ctx *, u_int, u_int);
 void	window_scroll_key(struct window *, int);
 
 void	window_scroll_draw_position(struct window *, struct screen_draw_ctx *);
@@ -83,33 +84,29 @@ window_scroll_draw_position(struct window *w, struct screen_draw_ctx *ctx)
 	
 	screen_draw_cells(ctx, 0, 0, screen_size_x(ctx->s) - len);
 	
-	screen_draw_move(ctx, screen_size_x(ctx->s) - len, 0);
+	screen_draw_move_cursor(ctx, screen_size_x(ctx->s) - len, 0);
 	screen_draw_set_attributes(ctx, 0, status_colour);
-	buffer_write(ctx->b, ptr, len);
 }
 
 void
-window_scroll_draw(struct window *w, struct buffer *b, u_int py, u_int ny)
+window_scroll_draw(
+    struct window *w, struct screen_draw_ctx *ctx, u_int py, u_int ny)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
 	struct screen			*s = &w->screen;
-	struct screen_draw_ctx		 ctx;
 
 	if (s->hsize != data->size) {
 		data->oy += s->hsize - data->size;
 		data->size = s->hsize;
 	}
 
-	screen_draw_start(&ctx, s, b, data->ox, data->oy);
 	if (py != 0)
-		screen_draw_lines(&ctx, py, ny);
-	else if (ny > 1)
-		screen_draw_lines(&ctx, py + 1, ny - 1);
-
-	if (py == 0)
-		window_scroll_draw_position(w, &ctx);
-
-	screen_draw_stop(&ctx);
+		screen_draw_lines(ctx, py, ny);
+	else {
+		if (ny > 1)
+			screen_draw_lines(ctx, py + 1, ny - 1);
+		window_scroll_draw_position(w, ctx);
+	}
 }
 
 void
@@ -133,7 +130,7 @@ window_scroll_key(struct window *w, int key)
 		w->screen.mode &= ~MODE_BACKGROUND;
 
 		recalculate_sizes();
-		server_redraw_window_all(w);
+		server_redraw_window(w);
 		return;
 	case 'h':
 	case KEYC_LEFT:
@@ -169,169 +166,84 @@ window_scroll_key(struct window *w, int key)
 		break;
 	}
 	if (ox != data->ox || oy != data->oy)
-		server_redraw_window_all(w);
+		server_redraw_window(w);
 }
 
 void
 window_scroll_up_1(struct window *w)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
-	struct screen			*s = &w->screen;
 	struct screen_draw_ctx		 ctx;
-	struct client			*c;
-	u_int		 		 i;
-	struct hdr			 hdr;
-	size_t				 size;
 
 	if (data->oy >= data->size)
 		return;
 	data->oy++;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (!session_has(c->session, w))
-			continue;
-
-		buffer_ensure(c->out, sizeof hdr);
-		buffer_add(c->out, sizeof hdr);
-		size = BUFFER_USED(c->out);
-
-		screen_draw_start(&ctx, s, c->out, data->ox, data->oy);
-		screen_draw_move(&ctx, 0, 0);
-		input_store_one(c->out, CODE_INSERTLINE, 1);
-		window_scroll_draw_position(w, &ctx);
-		screen_draw_line(&ctx, 1);	/* nuke old position display */
-		screen_draw_stop(&ctx);
-
-		size = BUFFER_USED(c->out) - size;
-		hdr.type = MSG_DATA;
-		hdr.size = size;
-		memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
-	}	
+	screen_draw_start_window(&ctx, w, data->ox, data->oy);
+	screen_draw_move_cursor(&ctx, 0, 0);
+	screen_draw_insert_lines(&ctx, 1);
+	window_scroll_draw_position(w, &ctx);
+	screen_draw_line(&ctx, 1);
+	screen_draw_stop(&ctx);
 }
 
 void
 window_scroll_down_1(struct window *w)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
-	struct screen			*s = &w->screen;
 	struct screen_draw_ctx		 ctx;
-	struct client			*c;
-	u_int		 		 i;
-	struct hdr			 hdr;
-	size_t				 size;
 
 	if (data->oy == 0)
 		return;
 	data->oy--;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (!session_has(c->session, w))
-			continue;
-
-		buffer_ensure(c->out, sizeof hdr);
-		buffer_add(c->out, sizeof hdr);
-		size = BUFFER_USED(c->out);
-		
-		screen_draw_start(&ctx, s, c->out, data->ox, data->oy);
-		screen_draw_move(&ctx, 0, 0);
-		input_store_one(c->out, CODE_DELETELINE, 1);
-		screen_draw_line(&ctx, screen_last_y(s));
-		window_scroll_draw_position(w, &ctx);
-		screen_draw_stop(&ctx);
-		
-		size = BUFFER_USED(c->out) - size;
-		hdr.type = MSG_DATA;
-		hdr.size = size;
-		memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
-	}	
+	screen_draw_start_window(&ctx, w, data->ox, data->oy);
+	screen_draw_move_cursor(&ctx, 0, 0);
+	screen_draw_delete_lines(&ctx, 1);
+	screen_draw_line(&ctx, screen_last_y(&w->screen));
+	window_scroll_draw_position(w, &ctx);
+	screen_draw_stop(&ctx);
 }
 
 void
 window_scroll_right_1(struct window *w)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
-	struct screen			*s = &w->screen;
 	struct screen_draw_ctx		 ctx;
-	struct client			*c;
-	u_int		 		 i, j;
-	struct hdr			 hdr;
-	size_t				 size;
+	u_int		 		 i;
 
 	if (data->ox >= SHRT_MAX)
 		return;
 	data->ox++;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (!session_has(c->session, w))
-			continue;
-
-		buffer_ensure(c->out, sizeof hdr);
-		buffer_add(c->out, sizeof hdr);
-		size = BUFFER_USED(c->out);
-		
-		screen_draw_start(&ctx, s, c->out, data->ox, data->oy);
-		for (j = 1; j < screen_size_y(s); j++) {
-			screen_draw_move(&ctx, 0, j);
-			input_store_one(c->out, CODE_DELETECHARACTER, 1);
-		}
-		screen_draw_column(&ctx, screen_last_x(s));
-		window_scroll_draw_position(w, &ctx);
-		screen_draw_stop(&ctx);
-		
-		size = BUFFER_USED(c->out) - size;
-		hdr.type = MSG_DATA;
-		hdr.size = size;
-		memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
-	}	
+	screen_draw_start_window(&ctx, w, data->ox, data->oy);
+	for (i = 1; i < screen_size_y(&w->screen); i++) {
+		screen_draw_move_cursor(&ctx, 0, i);
+		screen_draw_delete_characters(&ctx, 1);
+	}
+	screen_draw_column(&ctx, screen_last_x(&w->screen));
+	window_scroll_draw_position(w, &ctx);
+	screen_draw_stop(&ctx);
 }
 
 void
 window_scroll_left_1(struct window *w)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
-	struct screen			*s = &w->screen;
 	struct screen_draw_ctx		 ctx;
-	struct client			*c;
-	u_int		 		 i, j;
-	struct hdr			 hdr;
-	size_t				 size;
+	u_int		 		 i;
 
 	if (data->ox == 0)
 		return;
 	data->ox--;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (!session_has(c->session, w))
-			continue;
 
-		buffer_ensure(c->out, sizeof hdr);
-		buffer_add(c->out, sizeof hdr);
-		size = BUFFER_USED(c->out);
-		
-		screen_draw_start(&ctx, s, c->out, data->ox, data->oy);
-		for (j = 1; j < screen_size_y(s); j++) {
-			screen_draw_move(&ctx, 0, j);
-			input_store_one(c->out, CODE_INSERTCHARACTER, 1);
-		}
-		screen_draw_column(&ctx, 0);
-		window_scroll_draw_position(w, &ctx);
-		screen_draw_stop(&ctx);
-		
-		size = BUFFER_USED(c->out) - size;
-		hdr.type = MSG_DATA;
-		hdr.size = size;
-		memcpy(BUFFER_IN(c->out) - size - sizeof hdr, &hdr, sizeof hdr);
-	}	
+	screen_draw_start_window(&ctx, w, data->ox, data->oy);
+	for (i = 1; i < screen_size_y(&w->screen); i++) {
+		screen_draw_move_cursor(&ctx, 0, i);
+		screen_draw_insert_characters(&ctx, 1);
+	}
+	screen_draw_column(&ctx, 0);
+	window_scroll_draw_position(w, &ctx);
+	screen_draw_stop(&ctx);
 }

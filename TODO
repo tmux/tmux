@@ -1,31 +1,16 @@
-- it would be nice if there wasn't so much copying buffers about, audit uses
 - useful env vars like WINDOW?
-- sort out who controls the buffers in local.c a bit
 - better checking/emulation for missing term requirements
 - alt charset, borders etc (terminfo(5)/Line Graphics)
 - new window command prompt
 - mouse handling and some other bits elinks needs
-- server doesn't handle SIGTERM anymore...
-- the whole input/screen/local thing sucks a bit, reorganise/redesign it
 - line mode/char-at-a-time mode a la telnet?
-- some of the uses of buffers really sucks. buffer_reverse_add/remove,
-  and buffer_insert_range/delete_range are abominations. this should be
-  rethought
 - handle ioctl/termios stuff on window sockets
 - figure out once and for all what is going on with backspace and del
       backspace should be translated per the termios setting.
       del passed through?
 - window creation/idle time
-- attributes could be 8 not 16 bits
 - profile/optimise, particularly (i suspect) input.c
-- tidy up input.c a bit
 - decide about customised status line
-- client could pass term/tty fd up to server and then do nothing. what problems 
-  would this cause? -- need access to all terminfo data at once... signals?
-- cleanup/redesign IPC
-	IPC is slightly arse-about-face: overhead? 8-byte header for
-	each packet... hrm. already scanning output for \e, could add an extra
-	byte to it for message
 - could use bsearch all over the place or get rid of smaller tables (clientmsg)
 - better errors when creating new windows/sessions (how?)
 - commands should have to care less about CMD_KEY
@@ -71,6 +56,8 @@
   in $x time (need window creation/use times)
 - lift SHRT_MAX limits for history
 - audit copy/scroll and other modes for problems with very small windows
+- screen_draw_* moved out/renamed (accept TTY_*?)
+- SIGWINCH can probably be handled in server
 
 -- For 0.2 --------------------------------------------------------------------
 - window splitting?

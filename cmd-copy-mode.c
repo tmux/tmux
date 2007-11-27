@@ -1,4 +1,4 @@
-/* $Id: cmd-copy-mode.c,v 1.1 2007-11-23 14:28:47 nicm Exp $ */
+/* $Id: cmd-copy-mode.c,v 1.2 2007-11-27 19:23:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,7 @@ cmd_copy_mode_exec(unused void *ptr, struct cmd_ctx *ctx)
 	if (w->mode == NULL && ctx->flags & CMD_KEY) {
 		w->mode = &window_copy_mode;
 		w->mode->init(w);
-		server_redraw_window_all(w);
+		server_redraw_window(w);
 	}
 
 	if (ctx->cmdclient != NULL)

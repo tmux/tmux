@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.38 2007-11-24 23:29:49 nicm Exp $ */
+/* $Id: input.c,v 1.39 2007-11-27 19:23:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,7 +36,9 @@
 
 int	 input_get_argument(struct input_ctx *, u_int, uint16_t *, uint16_t);
 int	 input_new_argument(struct input_ctx *);
-int	 input_add_argument(struct input_ctx *, u_char ch);
+int	 input_add_argument(struct input_ctx *, u_char);
+
+void	 input_write(struct input_ctx *, int, ...);
 
 void	*input_state_first(u_char, struct input_ctx *);
 void	*input_state_escape(u_char, struct input_ctx *);
@@ -132,6 +134,19 @@ input_get_argument(struct input_ctx *ictx, u_int i, uint16_t *n, uint16_t d)
 }
 
 void
+input_write(struct input_ctx *ictx, int cmd, ...)
+{
+	va_list	ap;
+
+	if (ictx->w->screen.mode & (MODE_HIDDEN|MODE_BACKGROUND))
+		return;
+
+	va_start(ap, cmd);
+	tty_vwrite_window(ictx->w, cmd, ap);
+	va_end(ap);
+}
+
+void
 input_init(struct window *w)
 {
 	ARRAY_INIT(&w->ictx.args);
@@ -146,7 +161,7 @@ input_free(struct window *w)
 }
 
 void
-input_parse(struct window *w, struct buffer *b)
+input_parse(struct window *w)
 {
 	struct input_ctx	*ictx = &w->ictx;
 	u_char			 ch;
@@ -159,7 +174,6 @@ input_parse(struct window *w, struct buffer *b)
 	ictx->off = 0;
 
 	ictx->w = w;
-	ictx->b = b;
 
 	log_debug2("entry; buffer=%zu", ictx->len);
 
@@ -264,8 +278,7 @@ input_state_title_next(u_char ch, struct input_ctx *ictx)
 		switch (ictx->title_type) {
 		case 0:
 			strlcpy(s->title, ictx->title_buf, sizeof s->title);
-			input_store_one(ictx->b, CODE_TITLE, ictx->title_len);
-			buffer_write(ictx->b, ictx->title_buf, ictx->title_len);
+			input_write(ictx, TTY_TITLE, s->title);
 			break;
 		}
 		return (input_state_first);
@@ -373,10 +386,8 @@ input_handle_character(u_char ch, struct input_ctx *ictx)
 	log_debug2("-- ch %zu: %hhu (%c)", ictx->off, ch, ch);
 	
 	if (s->cx == screen_size_x(s)) {
-		if (!screen_hidden(s)) {
-			input_store8(ictx->b, '\r');
-			input_store8(ictx->b, '\n');
-		}
+		input_write(ictx, TTY_CHARACTER, '\r');
+		input_write(ictx, TTY_CHARACTER, '\n');
 
 		s->cx = 0;
 		screen_display_cursor_down(s);
@@ -384,8 +395,7 @@ input_handle_character(u_char ch, struct input_ctx *ictx)
 		return;
 
 	screen_display_cursor_set(s, ch);
-	if (!screen_hidden(s))
-		input_store8(ictx->b, ch);
+	input_write(ictx, TTY_CHARACTER, ch);
 
 	s->cx++;
 }
@@ -399,7 +409,7 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 
 	switch (ch) {
 	case '\0':	/* NUL */
-		break;
+		return;
 	case '\n':	/* LF */
  		screen_display_cursor_down(s);
 		break;
@@ -419,28 +429,21 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 			s->cx = 0;
 			screen_display_cursor_down(s);
 		}
-		if (screen_hidden(s))
-			return;
-		input_store_two(ictx->b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
+		input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
 		return;
 	case '\016':	/* SO */
 		s->attr |= ATTR_DRAWING;
-		if (screen_hidden(s))
-			return;
-		input_store_two(ictx->b, CODE_ATTRIBUTES, s->attr, s->colr);
+		input_write(ictx, TTY_ATTRIBUTES, s->attr, s->colr);
 		return;
 	case '\017':	/* SI */
 		s->attr &= ~ATTR_DRAWING;
-		if (screen_hidden(s))
-			return;
-		input_store_two(ictx->b, CODE_ATTRIBUTES, s->attr, s->colr);
+		input_write(ictx, TTY_ATTRIBUTES, s->attr, s->colr);
 		return;
 	default:
 		log_debug("unknown c0: %hhu", ch);
 		return;
 	}
-	if (!screen_hidden(s))
-		input_store8(ictx->b, ch);
+	input_write(ictx, TTY_CHARACTER, ch);
 }
 
 void
@@ -453,8 +456,7 @@ input_handle_c1_control(u_char ch, struct input_ctx *ictx)
 	switch (ch) {
 	case 'M':	/* RI */
 		screen_display_cursor_up(s);
-		if (!screen_hidden(s))
-			input_store_zero(ictx->b, CODE_REVERSEINDEX);
+		input_write(ictx, TTY_REVERSEINDEX);
 		break;
 	default:
 		log_debug("unknown c1: %hhu", ch);
@@ -471,12 +473,10 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 
 	switch (ch) {
 	case '=':	/* DECKPAM */
-		if (!screen_hidden(s))
-			input_store_zero(ictx->b, CODE_KKEYPADON);
+		input_write(ictx, TTY_KKEYPADON);
 		break;
 	case '>':	/* DECKPNM*/
-		if (!screen_hidden(s))
-			input_store_zero(ictx->b, CODE_KKEYPADOFF);
+		input_write(ictx, TTY_KKEYPADOFF);
 		break;
 	case '7':	/* DECSC */
 		s->saved_cx = s->cx;
@@ -492,10 +492,8 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 		s->cy = s->saved_cy;
 		s->attr = s->saved_attr;
 		s->colr = s->saved_colr;
-		if (screen_hidden(s))
-			break;
-		input_store_two(ictx->b, CODE_ATTRIBUTES, s->attr, s->colr);
-		input_store_two(ictx->b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
+		input_write(ictx, TTY_ATTRIBUTES, s->attr, s->colr);
+		input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
 		break;
 	default:
 		log_debug("unknown p2: %hhu", ch);
@@ -583,8 +581,7 @@ input_handle_sequence_cuu(struct input_ctx *ictx)
 	}
 
 	s->cy -= n;
-	if (!screen_hidden(s))
-		input_store_one(ictx->b, CODE_CURSORUP, n);
+	input_write(ictx, TTY_CURSORUP, n);
 }
 
 void
@@ -606,8 +603,7 @@ input_handle_sequence_cud(struct input_ctx *ictx)
 	input_limit(n, 1, screen_last_y(s) - s->cy);
 
 	s->cy += n;
-	if (!screen_hidden(s))
-		input_store_one(ictx->b, CODE_CURSORDOWN, n);
+	input_write(ictx, TTY_CURSORDOWN, n);
 }
 
 void
@@ -629,8 +625,7 @@ input_handle_sequence_cuf(struct input_ctx *ictx)
 	input_limit(n, 1, screen_last_x(s) - s->cx);
 
 	s->cx += n;
-	if (!screen_hidden(s))
-		input_store_one(ictx->b, CODE_CURSORRIGHT, n);
+	input_write(ictx, TTY_CURSORRIGHT, n);
 }
 
 void
@@ -653,8 +648,7 @@ input_handle_sequence_cub(struct input_ctx *ictx)
 	}
 
 	s->cx -= n;
-	if (!screen_hidden(s))
-		input_store_one(ictx->b, CODE_CURSORLEFT, n);
+	input_write(ictx, TTY_CURSORLEFT, n);
 }
 
 void
@@ -676,8 +670,7 @@ input_handle_sequence_dch(struct input_ctx *ictx)
 	input_limit(n, 1, screen_last_x(s) - s->cx);
 
 	screen_display_delete_characters(s, s->cx, s->cy, n);
-	if (!screen_hidden(s))
-		input_store_one(ictx->b, CODE_DELETECHARACTER, n);
+	input_write(ictx, TTY_DELETECHARACTER, n);
 }
 
 void
@@ -702,8 +695,7 @@ input_handle_sequence_dl(struct input_ctx *ictx)
 		screen_display_delete_lines(s, s->cy, n);
 	else
 		screen_display_delete_lines_region(s, s->cy, n);
-	if (!screen_hidden(s)) 
-		input_store_one(ictx->b, CODE_DELETELINE, n);
+	input_write(ictx, TTY_DELETELINE, n);
 }
 
 void
@@ -725,8 +717,7 @@ input_handle_sequence_ich(struct input_ctx *ictx)
 	input_limit(n, 1, screen_last_x(s) - s->cx);
 
 	screen_display_insert_characters(s, s->cx, s->cy, n);
-	if (!screen_hidden(s))
-		input_store_one(ictx->b, CODE_INSERTCHARACTER, n);
+	input_write(ictx, TTY_INSERTCHARACTER, n);
 }
 
 void
@@ -751,8 +742,7 @@ input_handle_sequence_il(struct input_ctx *ictx)
 		screen_display_insert_lines(s, s->cy, n);
 	else
 		screen_display_insert_lines_region(s, s->cy, n);
-	if (!screen_hidden(s))
-		input_store_one(ictx->b, CODE_INSERTLINE, n);
+	input_write(ictx, TTY_INSERTLINE, n);
 }
 
 void
@@ -774,8 +764,7 @@ input_handle_sequence_vpa(struct input_ctx *ictx)
 	input_limit(n, 1, screen_size_y(s));
 
 	s->cy = n - 1;
-	if (!screen_hidden(s))
-		input_store_two(ictx->b, CODE_CURSORMOVE, n, s->cx + 1);
+	input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
 }
 
 void
@@ -797,8 +786,7 @@ input_handle_sequence_hpa(struct input_ctx *ictx)
 	input_limit(n, 1, screen_size_x(s));
 
 	s->cx = n - 1;
-	if (!screen_hidden(s))
-		input_store_two(ictx->b, CODE_CURSORMOVE, s->cy + 1, n);
+	input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
 }
 
 void
@@ -822,8 +810,7 @@ input_handle_sequence_cup(struct input_ctx *ictx)
 
 	s->cx = m - 1;
 	s->cy = n - 1;
-	if (!screen_hidden(s))
-		input_store_two(ictx->b, CODE_CURSORMOVE, n, m);
+	input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
 }
 
 void
@@ -849,28 +836,21 @@ input_handle_sequence_ed(struct input_ctx *ictx)
 		screen_display_fill_cursor_eos(
 		    s, SCREEN_DEFDATA, s->attr, s->colr);
 
-		if (screen_hidden(s))
-			break;
-		input_store_zero(ictx->b, CODE_CLEARLINE);
-		for (i = s->cy + 1; i < screen_size_y(s); i++) {
-			input_store_two(ictx->b, CODE_CURSORMOVE, i + 1, 1);
-			input_store_zero(ictx->b, CODE_CLEARLINE);
+		for (i = s->cy; i < screen_size_y(s); i++) {
+			input_write(ictx, TTY_CURSORMOVE, i, 0);
+			input_write(ictx, TTY_CLEARENDOFLINE);
 		}
-		input_store_two(
-		    ictx->b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
+		input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
 		break;
 	case 2:
 		screen_display_fill_lines(
 		    s, 0, screen_size_y(s), SCREEN_DEFDATA, s->attr, s->colr);
 
-		if (screen_hidden(s))
-			break;
 		for (i = 0; i < screen_size_y(s); i++) {
-			input_store_two(ictx->b, CODE_CURSORMOVE, i + 1, 1);
-			input_store_zero(ictx->b, CODE_CLEARLINE);
+			input_write(ictx, TTY_CURSORMOVE, i, 0);
+			input_write(ictx, TTY_CLEARENDOFLINE);
 		}
-		input_store_two(
-		    ictx->b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
+		input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
 		break;
 	}
 }
@@ -896,23 +876,17 @@ input_handle_sequence_el(struct input_ctx *ictx)
 	case 0:
 		screen_display_fill_cursor_eol(
 		    s, SCREEN_DEFDATA, s->attr, s->colr);
-
-		if (!screen_hidden(s))
-			input_store_zero(ictx->b, CODE_CLEARENDOFLINE);
+		input_write(ictx, TTY_CLEARENDOFLINE);
 		break;
 	case 1:
 		screen_display_fill_cursor_bol(
 		    s, SCREEN_DEFDATA, s->attr, s->colr);
-
-		if (!screen_hidden(s))
-			input_store_zero(ictx->b, CODE_CLEARSTARTOFLINE);
+		input_write(ictx, TTY_CLEARSTARTOFLINE);
 		break;
 	case 2:
 		screen_display_fill_line(
 		    s, s->cy, SCREEN_DEFDATA, s->attr, s->colr);
-
-		if (!screen_hidden(s))
-			input_store_zero(ictx->b, CODE_CLEARLINE);
+		input_write(ictx, TTY_CLEARLINE);
 		break;
 	}
 }
@@ -932,13 +906,11 @@ input_handle_sequence_sm(struct input_ctx *ictx)
 		switch (n) {
 		case 1:		/* GATM */
 			s->mode |= MODE_KCURSOR;
-			if (!screen_hidden(s))
-				input_store_zero(ictx->b, CODE_KCURSORON);
+			input_write(ictx, TTY_KCURSORON);
 			break;
 		case 25:	/* TCEM */
 			s->mode |= MODE_CURSOR;
-			if (!screen_hidden(s))
-				input_store_zero(ictx->b, CODE_CURSORON);
+			input_write(ictx, TTY_CURSORON);
 			break;
 		default:
 			log_debug("unknown SM [%hhu]: %u", ictx->private, n);
@@ -948,8 +920,7 @@ input_handle_sequence_sm(struct input_ctx *ictx)
 		switch (n) {
 		case 4:		/* IRM */
 			s->mode |= MODE_INSERT;
-			if (!screen_hidden(s))
-				input_store_zero(ictx->b, CODE_INSERTON);
+			input_write(ictx, TTY_INSERTON);
 			break;
 		case 34:
 			/* Cursor high visibility not supported. */
@@ -976,13 +947,11 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 		switch (n) {
 		case 1:		/* GATM */
 			s->mode &= ~MODE_KCURSOR;
-			if (!screen_hidden(s))
-				input_store_zero(ictx->b, CODE_KCURSOROFF);
+			input_write(ictx, TTY_KCURSOROFF);
 			break;
 		case 25:	/* TCEM */
 			s->mode &= ~MODE_CURSOR;
-			if (!screen_hidden(s))
-				input_store_zero(ictx->b, CODE_CURSOROFF);
+			input_write(ictx, TTY_CURSOROFF);
 			break;
 		default:
 			log_debug("unknown RM [%hhu]: %u", ictx->private, n);
@@ -992,8 +961,7 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 		switch (n) {
 		case 4:		/* IRM */
 			s->mode &= ~MODE_INSERT;
-			if (!screen_hidden(s))
-				input_store_zero(ictx->b, CODE_INSERTOFF);
+			input_write(ictx, TTY_INSERTOFF);
 			break;
 		case 34:
 			/* Cursor high visibility not supported. */
@@ -1067,8 +1035,7 @@ input_handle_sequence_decstbm(struct input_ctx *ictx)
 
 	s->rupper = n - 1;
 	s->rlower = m - 1;
-	if (!screen_hidden(s))
-		input_store_two(ictx->b, CODE_SCROLLREGION, n, m);
+	input_write(ictx, TTY_SCROLLREGION, s->rupper, s->rlower);
 }
 
 void
@@ -1152,67 +1119,5 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 			}
 		}
 	}
-	if (!screen_hidden(s))
-		input_store_two(ictx->b, CODE_ATTRIBUTES, s->attr, s->colr);
-}
-
-void
-input_store_zero(struct buffer *b, u_char code)
-{
-	input_store8(b, '\e');
-	input_store8(b, code);
-}
-
-void
-input_store_one(struct buffer *b, u_char code, uint16_t ua)
-{
-	input_store8(b, '\e');
-	input_store8(b, code);
-	input_store16(b, ua);
-}
-
-void
-input_store_two(struct buffer *b, u_char code, uint16_t ua, uint16_t ub)
-{
-	input_store8(b, '\e');
-	input_store8(b, code);
-	input_store16(b, ua);
-	input_store16(b, ub);
-}
-
-void
-input_store8(struct buffer *b, uint8_t n)
-{
-	buffer_ensure(b, 1);
-	BUFFER_IN(b)[0] = n;
-	buffer_add(b, 1);
-}
-
-void
-input_store16(struct buffer *b, uint16_t n)
-{
-	buffer_ensure(b, 2);
-	BUFFER_IN(b)[0] = n & 0xff;
-	BUFFER_IN(b)[1] = n >> 8;
-	buffer_add(b, 2);
-}
-
-uint8_t
-input_extract8(struct buffer *b)
-{
-	uint8_t	n;
-
-	n = BUFFER_OUT(b)[0];
-	buffer_remove(b, 1);
-	return (n);
-}
-
-uint16_t
-input_extract16(struct buffer *b)
-{
-	uint16_t	n;
-
-	n = BUFFER_OUT(b)[0] | (BUFFER_OUT(b)[1] << 8);
-	buffer_remove(b, 2);
-	return (n);
+	input_write(ictx, TTY_ATTRIBUTES, s->attr, s->colr);
 }

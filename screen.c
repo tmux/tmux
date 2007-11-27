@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.49 2007-11-26 22:06:11 nicm Exp $ */
+/* $Id: screen.c,v 1.50 2007-11-27 19:23:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -267,13 +267,45 @@ screen_destroy(struct screen *s)
 	xfree(s->grid_size);
 }
 
+/* Initialise redrawing a window. */
+void
+screen_draw_start_window(
+    struct screen_draw_ctx *ctx, struct window *w, u_int ox, u_int oy)
+{
+	struct screen	*t = &w->screen;
+
+	screen_draw_start(ctx, t, tty_write_window, w, ox, oy);
+}
+
+/* Initialise redrawing a client. */
+void
+screen_draw_start_client(
+    struct screen_draw_ctx *ctx, struct client *c, u_int ox, u_int oy)
+{
+	struct screen	*t = &c->session->curw->window->screen;
+
+	screen_draw_start(ctx, t, tty_write_client, c, ox, oy);
+}
+
+/* Initialise redrawing a session. */
+void
+screen_draw_start_session(
+    struct screen_draw_ctx *ctx, struct session *s, u_int ox, u_int oy)
+{
+	struct screen	*t = &s->curw->window->screen;
+
+	screen_draw_start(ctx, t, tty_write_session, s, ox, oy);
+}
+
 /* Initialise drawing. */
 void
-screen_draw_start(struct screen_draw_ctx *ctx,
-    struct screen *s, struct buffer *b, u_int ox, u_int oy)
+screen_draw_start(struct screen_draw_ctx *ctx, struct screen *s,
+    void (*write)(void *, int, ...), void *data, u_int ox, u_int oy)
 {
+	ctx->write = write;
+	ctx->data = data;
+
 	ctx->s = s;
-	ctx->b = b;
 
 	ctx->ox = ox;
 	ctx->oy = oy;
@@ -287,8 +319,8 @@ screen_draw_start(struct screen_draw_ctx *ctx,
 	ctx->attr = s->attr;
 	ctx->colr = s->colr;
 
-	input_store_two(b, CODE_SCROLLREGION, 1, screen_size_y(s));
-	input_store_zero(b, CODE_CURSOROFF);
+	ctx->write(ctx->data, TTY_SCROLLREGION, 0, screen_last_y(s));
+	ctx->write(ctx->data, TTY_CURSOROFF);
 }
 
 /* Set selection. */
@@ -356,44 +388,112 @@ void
 screen_draw_stop(struct screen_draw_ctx *ctx)
 {
 	struct screen	*s = ctx->s;
-	struct buffer	*b = ctx->b;
 
-	input_store_two(b, CODE_SCROLLREGION, s->rupper + 1, s->rlower + 1);
+	ctx->write(ctx->data, TTY_SCROLLREGION, s->rupper, s->rlower);
 
 	if (ctx->cx != s->cx || ctx->cy != s->cy)
-		input_store_two(b, CODE_CURSORMOVE, s->cy + 1, s->cx + 1);
+		ctx->write(ctx->data, TTY_CURSORMOVE, s->cy, s->cx);
 
 	if (ctx->attr != s->attr || ctx->colr != s->colr)
-		input_store_two(b, CODE_ATTRIBUTES, s->attr, s->colr);
+		ctx->write(ctx->data, TTY_ATTRIBUTES, s->attr, s->colr);
 
 	if (s->mode & MODE_BACKGROUND) {
 		if (s->mode & MODE_BGCURSOR)
-			input_store_zero(b, CODE_CURSORON);
+			ctx->write(ctx->data, TTY_CURSORON);
 	} else {
 		if (s->mode & MODE_CURSOR)
-			input_store_zero(b, CODE_CURSORON);
+			ctx->write(ctx->data, TTY_CURSORON);
 	}
+}
+
+/* Insert lines. */
+void
+screen_draw_insert_lines(struct screen_draw_ctx *ctx, u_int ny)
+{
+	ctx->write(ctx->data, TTY_INSERTLINE, ny);
+}
+
+/* Delete lines. */
+void
+screen_draw_delete_lines(struct screen_draw_ctx *ctx, u_int ny)
+{
+	ctx->write(ctx->data, TTY_DELETELINE, ny);
+}
+
+/* Insert characters. */
+void
+screen_draw_insert_characters(struct screen_draw_ctx *ctx, u_int nx)
+{
+	ctx->write(ctx->data, TTY_INSERTCHARACTER, nx);
+}
+
+/* Delete characters. */
+void
+screen_draw_delete_characters(struct screen_draw_ctx *ctx, u_int nx)
+{
+	ctx->write(ctx->data, TTY_DELETECHARACTER, nx);
+}
+
+/* Clear end of line. */
+void
+screen_draw_clear_line_to(struct screen_draw_ctx *ctx, u_int px)
+{
+	while (ctx->cx <= px) {
+		ctx->write(ctx->data, TTY_CHARACTER, SCREEN_DEFDATA);
+		ctx->cx++;
+	}
+}
+
+/* Clear screen. */
+void
+screen_draw_clear_screen(struct screen_draw_ctx *ctx)
+{
+	u_int	i;
+
+	for (i = 0; i < screen_size_y(ctx->s); i++) {
+		screen_draw_move_cursor(ctx, 0, i);
+		screen_draw_clear_line_to(ctx, screen_size_x(ctx->s));
+	}
+}
+
+/* Write string. */
+void printflike2
+screen_draw_write_string(struct screen_draw_ctx *ctx, const char *fmt, ...)
+{
+	struct screen	*s = ctx->s;
+	va_list		 ap;
+	char   		*msg, *ptr;
+
+	va_start(ap, fmt);
+	xvasprintf(&msg, fmt, ap);
+	va_end(ap);
+
+	for (ptr = msg; *ptr != '\0'; ptr++) {
+		if (ctx->cx > screen_last_x(s))
+			break;
+		ctx->write(ctx->data, TTY_CHARACTER, *ptr);
+		ctx->cx++;
+	}
+
+	xfree(msg);
 }
 
 /* Move cursor. */
 void
-screen_draw_move(struct screen_draw_ctx *ctx, u_int px, u_int py)
+screen_draw_move_cursor(struct screen_draw_ctx *ctx, u_int px, u_int py)
 {
 	if (px == ctx->cx && py == ctx->cy)
 		return;
 
-	/* XXX disabled while things outside can move the cursor (eg
-	   window-more.c writes characters)
 	if (px == 0 && py == ctx->cy)
-		input_store8(ctx->b, '\r');
+		ctx->write(ctx->data, TTY_CHARACTER, '\r');
 	else if (px == ctx->cx && py == ctx->cy + 1)
-		input_store8(ctx->b, '\n');
+		ctx->write(ctx->data, TTY_CHARACTER, '\n');
 	else if (px == 0 && py == ctx->cy + 1) {
-		input_store8(ctx->b, '\r');
-		input_store8(ctx->b, '\n');
+		ctx->write(ctx->data, TTY_CHARACTER, '\r');
+		ctx->write(ctx->data, TTY_CHARACTER, '\n');
 	} else
-	*/
-	input_store_two(ctx->b, CODE_CURSORMOVE, py + 1, px + 1);
+		ctx->write(ctx->data, TTY_CURSORMOVE, py, px);
 
 	ctx->cx = px;
 	ctx->cy = py;
@@ -405,7 +505,7 @@ screen_draw_set_attributes(
     struct screen_draw_ctx *ctx, u_char attr, u_char colr)
 {
 	if (attr != ctx->attr || colr != ctx->colr) {
-		input_store_two(ctx->b, CODE_ATTRIBUTES, attr, colr);
+		ctx->write(ctx->data, TTY_ATTRIBUTES, attr, colr);
 		ctx->attr = attr;
 		ctx->colr = colr;
 	}
@@ -415,14 +515,13 @@ screen_draw_set_attributes(
 void
 screen_draw_cell(struct screen_draw_ctx *ctx, u_int px, u_int py)
 {
-	struct buffer	*b = ctx->b;
-	u_char		 data, attr, colr;
+	u_char	 data, attr, colr;
 
-	screen_draw_move(ctx, px, py);
+	screen_draw_move_cursor(ctx, px, py);
 
 	screen_draw_get_cell(ctx, px, py, &data, &attr, &colr);
 	screen_draw_set_attributes(ctx, attr, colr);
-	input_store8(b, data);
+	ctx->write(ctx->data, TTY_CHARACTER, data);
 
 	/*
 	 * Don't try to wrap as it will cause problems when screen is smaller
@@ -465,8 +564,8 @@ screen_draw_line(struct screen_draw_ctx *ctx, u_int py)
                screen_draw_cells(ctx, 0, py, screen_size_x(ctx->s));
        else {
                screen_draw_cells(ctx, 0, py, cx);
-               screen_draw_move(ctx, cx, py);
-               input_store_zero(ctx->b, CODE_CLEARENDOFLINE);
+               screen_draw_move_cursor(ctx, cx, py);
+               ctx->write(ctx->data, TTY_CLEARENDOFLINE);
        }
 }
 

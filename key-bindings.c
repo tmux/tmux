@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.21 2007-11-23 17:52:54 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.22 2007-11-27 19:23:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -204,5 +204,5 @@ key_bindings_dispatch(int key, struct client *c)
 	cmd_exec(bd->cmd, &ctx);
 	
 	if (c->session->curw->window->mode == &window_more_mode)
-		server_redraw_window_all(c->session->curw->window);
+		server_redraw_window(c->session->curw->window);
 }
