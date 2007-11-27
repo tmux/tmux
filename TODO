@@ -63,3 +63,4 @@
 - restore term cap checks
 - anything which uses cmd_{send,recv}_string will break if the string is
   split. string length should be part of the command size
+- echo \\033[35\;46m\\033[2J last line quirk (with C-b r)

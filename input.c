@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.39 2007-11-27 19:23:33 nicm Exp $ */
+/* $Id: input.c,v 1.40 2007-11-27 22:12:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -836,7 +836,8 @@ input_handle_sequence_ed(struct input_ctx *ictx)
 		screen_display_fill_cursor_eos(
 		    s, SCREEN_DEFDATA, s->attr, s->colr);
 
-		for (i = s->cy; i < screen_size_y(s); i++) {
+		input_write(ictx, TTY_CLEARENDOFLINE);
+		for (i = s->cy + 1; i < screen_size_y(s); i++) {
 			input_write(ictx, TTY_CURSORMOVE, i, 0);
 			input_write(ictx, TTY_CLEARENDOFLINE);
 		}
