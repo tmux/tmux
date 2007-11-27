@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.102 2007-11-27 19:32:15 nicm Exp $ */
+/* $Id: tmux.h,v 1.103 2007-11-27 20:01:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -289,6 +289,8 @@ enum hdrtype {
 	MSG_ERROR,
 	MSG_PRINT,
 	MSG_EXIT,
+	MSG_EXITING,
+	MSG_EXITED,
 	MSG_IDENTIFY,
 	MSG_READY,
 	MSG_DETACH,

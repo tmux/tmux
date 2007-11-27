@@ -1,5 +1,5 @@
 
-/* $Id: server-msg.c,v 1.38 2007-11-27 19:23:34 nicm Exp $ */
+/* $Id: server-msg.c,v 1.39 2007-11-27 20:01:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,6 +29,7 @@
 int	server_msg_fn_command(struct hdr *, struct client *);
 int	server_msg_fn_identify(struct hdr *, struct client *);
 int	server_msg_fn_resize(struct hdr *, struct client *);
+int	server_msg_fn_exiting(struct hdr *, struct client *);
 
 void printflike2 server_msg_fn_command_error(
     	    struct cmd_ctx *, const char *, ...);
@@ -44,6 +45,7 @@ const struct server_msg server_msg_table[] = {
 	{ MSG_IDENTIFY, server_msg_fn_identify },
 	{ MSG_COMMAND, server_msg_fn_command },
 	{ MSG_RESIZE, server_msg_fn_resize },
+	{ MSG_EXITING, server_msg_fn_exiting }
 };
 #define NSERVERMSG (sizeof server_msg_table / sizeof server_msg_table[0])
 
@@ -235,6 +237,26 @@ server_msg_fn_resize(struct hdr *hdr, struct client *c)
 
 	/* Always redraw this client. */
 	server_redraw_client(c);
+
+	return (0);
+}
+
+int
+server_msg_fn_exiting(struct hdr *hdr, struct client *c)
+{
+	if (hdr->size != 0)
+		fatalx("bad MSG_EXITING size");
+
+	log_debug("exiting msg from client");
+
+	c->session = NULL;
+
+	if (c->tty.fd != -1)
+		tty_free(&c->tty);
+
+	recalculate_sizes();
+
+	server_write_client(c, MSG_EXITED, NULL, 0);
 
 	return (0);
 }

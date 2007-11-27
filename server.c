@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.40 2007-11-27 19:23:34 nicm Exp $ */
+/* $Id: server.c,v 1.41 2007-11-27 20:01:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -291,7 +291,7 @@ server_handle_clients(struct pollfd **pfd)
 		}
 		(*pfd)++;
 
-		if (c != NULL && c->tty.fd != -1) {
+		if (c != NULL && c->tty.fd != -1 && c->session != NULL) {
 			if (buffer_poll(*pfd, c->tty.in, c->tty.out) != 0)
 				server_lost_client(c);
 			else

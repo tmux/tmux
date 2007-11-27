@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.3 2007-11-27 19:43:50 nicm Exp $ */
+/* $Id: tty.c,v 1.4 2007-11-27 20:01:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -140,6 +140,8 @@ tty_close(struct tty *tty)
 	tty_keys_free(tty);
 
 	close(tty->fd);
+	tty->fd = -1;
+
 	buffer_destroy(tty->in);
 	buffer_destroy(tty->out);
 }
@@ -150,10 +152,14 @@ tty_free(struct tty *tty)
 	if (tty->fd != -1)
 		tty_close(tty);
 
-	if (tty->path != NULL)
+	if (tty->path != NULL) {
 		xfree(tty->path);
-	if (tty->term != NULL)
+		tty->path = NULL;
+	}
+	if (tty->term != NULL) {
 		xfree(tty->term);
+		tty->term = NULL;
+	}
 }
 
 void

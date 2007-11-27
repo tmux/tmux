@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.11 2007-11-27 19:23:33 nicm Exp $ */
+/* $Id: client-msg.c,v 1.12 2007-11-27 20:01:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,6 +28,7 @@
 int	client_msg_fn_detach(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_error(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_exit(struct hdr *, struct client_ctx *, char **);
+int	client_msg_fn_exited(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_okay(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_pause(struct hdr *, struct client_ctx *, char **);
 
@@ -40,6 +41,7 @@ struct client_msg client_msg_table[] = {
 	{ MSG_DETACH, client_msg_fn_detach },
 	{ MSG_ERROR, client_msg_fn_error },
 	{ MSG_EXIT, client_msg_fn_exit },
+	{ MSG_EXITED, client_msg_fn_exited }
 };
 #define NCLIENTMSG (sizeof client_msg_table / sizeof client_msg_table[0])
 
@@ -87,6 +89,18 @@ client_msg_fn_exit(
 {
 	if (hdr->size != 0)
 		fatalx("bad MSG_EXIT size");
+
+	client_write_server(cctx, MSG_EXITING, NULL, 0);
+
+	return (0);
+}
+
+int
+client_msg_fn_exited(
+    struct hdr *hdr, unused struct client_ctx *cctx, unused char **error)
+{
+	if (hdr->size != 0)
+		fatalx("bad MSG_EXITED size");
 
 	cctx->flags |= CCTX_EXIT;
 
