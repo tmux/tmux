@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.6 2007-11-27 23:01:27 nicm Exp $ */
+/* $Id: tty.c,v 1.7 2007-11-27 23:28:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -324,7 +324,15 @@ tty_vwrite(struct tty *tty, int cmd, va_list ap)
 	case TTY_KKEYPADON:
 		if (keypad_xmit != NULL)
 			tty_puts(tty, keypad_xmit);
+		break;
 #endif
+	case TTY_MOUSEOFF:
+		if (key_mouse != NULL)
+			tty_puts(tty, "\e[?1000l");
+		break;
+	case TTY_MOUSEON:
+		if (key_mouse != NULL)
+			tty_puts(tty, "\e[?1000h");
 		break;
 	case TTY_TITLE:
 		break;

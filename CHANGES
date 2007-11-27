@@ -1,5 +1,7 @@
 27 November 2007
 
+* Enable/disable mouse when asked, if terminal claims to support it. Mouse
+  sequences are just passed through unaltered for the moment.
 * Big internal reorganisation. Rather than leaving control of the tty solely in
   the client and piping all data through a socket to it, change so that the
   server opens the tty again and reads and writes to it directly. This avoids
@@ -283,4 +285,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.87 2007-11-27 19:23:32 nicm Exp $
+$Id: CHANGES,v 1.88 2007-11-27 23:28:51 nicm Exp $

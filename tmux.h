@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.105 2007-11-27 23:01:27 nicm Exp $ */
+/* $Id: tmux.h,v 1.106 2007-11-27 23:28:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -282,6 +282,8 @@ struct buffer {
 #define TTY_KKEYPADOFF 22
 #define TTY_KKEYPADON 23
 #define TTY_TITLE 24
+#define TTY_MOUSEON 25
+#define TTY_MOUSEOFF 26 /* XXX merge allon/off into 1 arg? */ 
 
 /* Message codes. */
 enum hdrtype {
@@ -343,6 +345,7 @@ struct msg_resize_data {
 #define MODE_HIDDEN 0x020
 #define MODE_BACKGROUND 0x040
 #define MODE_BGCURSOR 0x080
+#define MODE_MOUSE 0x100
 
 /*
  * Virtual screen. This is stored as three blocks of 8-bit values, one for
@@ -558,7 +561,7 @@ struct client {
 
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_PREFIX 0x2
-#define CLIENT_ATTACHED 0x4
+#define CLIENT_MOUSE 0x4
 	int		 flags;
 
 	struct session	*session;
