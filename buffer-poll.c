@@ -1,4 +1,4 @@
-/* $Id: buffer-poll.c,v 1.3 2007-11-27 19:23:33 nicm Exp $ */
+/* $Id: buffer-poll.c,v 1.4 2007-11-30 11:08:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,6 +23,17 @@
 #include <unistd.h>
 
 #include "tmux.h"
+
+/* Set up pollfd for buffers. */
+void
+buffer_set(
+    struct pollfd *pfd, int fd, unused struct buffer *in, struct buffer *out)
+{
+	pfd->fd = fd;
+	pfd->events = POLLIN;
+	if (BUFFER_USED(out) > 0)
+		pfd->events |= POLLOUT;
+}
 
 /* Fill buffers from socket based on poll results. */
 int
@@ -61,8 +72,7 @@ buffer_flush(int fd, struct buffer *in, struct buffer *out)
 	struct pollfd	pfd;
 
 	while (BUFFER_USED(out) > 0) {
-		pfd.fd = fd;
-		pfd.events = POLLIN|POLLOUT;
+		buffer_set(&pfd, fd, in, out);
 
 		if (poll(&pfd, 1, INFTIM) == -1) {
 			if (errno == EAGAIN || errno == EINTR)

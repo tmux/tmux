@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.42 2007-11-27 23:28:51 nicm Exp $ */
+/* $Id: input.c,v 1.43 2007-11-30 11:08:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,17 +38,25 @@ int	 input_get_argument(struct input_ctx *, u_int, uint16_t *, uint16_t);
 int	 input_new_argument(struct input_ctx *);
 int	 input_add_argument(struct input_ctx *, u_char);
 
-void	 input_write(struct input_ctx *, int, ...);
+void	 input_start_string(struct input_ctx *, int);
+void	 input_abort_string(struct input_ctx *);
+int	 input_add_string(struct input_ctx *, u_char);
+char	*input_get_string(struct input_ctx *);
 
-void	*input_state_first(u_char, struct input_ctx *);
-void	*input_state_escape(u_char, struct input_ctx *);
-void	*input_state_intermediate(u_char, struct input_ctx *);
-void	*input_state_title_first(u_char, struct input_ctx *);
-void	*input_state_title_second(u_char, struct input_ctx *);
-void	*input_state_title_next(u_char, struct input_ctx *);
-void	*input_state_sequence_first(u_char, struct input_ctx *);
-void	*input_state_sequence_next(u_char, struct input_ctx *);
-void	*input_state_sequence_intermediate(u_char, struct input_ctx *);
+void	 input_write(struct input_ctx *, int, ...);
+void	 input_state(struct input_ctx *, void *);
+
+void	 input_state_first(u_char, struct input_ctx *);
+void	 input_state_escape(u_char, struct input_ctx *);
+void	 input_state_intermediate(u_char, struct input_ctx *);
+void	 input_state_title_first(u_char, struct input_ctx *);
+void	 input_state_title_second(u_char, struct input_ctx *);
+void	 input_state_title_next(u_char, struct input_ctx *);
+void	 input_state_sequence_first(u_char, struct input_ctx *);
+void	 input_state_sequence_next(u_char, struct input_ctx *);
+void	 input_state_sequence_intermediate(u_char, struct input_ctx *);
+void	 input_state_string_next(u_char, struct input_ctx *);
+void	 input_state_string_escape(u_char, struct input_ctx *);
 
 void	 input_handle_character(u_char, struct input_ctx *);
 void	 input_handle_c0_control(u_char, struct input_ctx *);
@@ -134,6 +142,48 @@ input_get_argument(struct input_ctx *ictx, u_int i, uint16_t *n, uint16_t d)
 }
 
 void
+input_start_string(struct input_ctx *ictx, int type)
+{
+	ictx->string_type = type;
+	ictx->string_len = 0;
+}
+
+void
+input_abort_string(struct input_ctx *ictx)
+{
+	xfree(ictx->string_buf);
+	ictx->string_buf = NULL;
+}
+
+int
+input_add_string(struct input_ctx *ictx, u_char ch)
+{
+	ictx->string_buf = xrealloc(ictx->string_buf, 1, ictx->string_len + 1);
+	ictx->string_buf[ictx->string_len++] = ch;
+
+	if (ictx->string_len >= MAXSTRINGLEN) {
+		input_abort_string(ictx);
+		return (1);
+	}
+
+	return (0);
+}
+
+char *
+input_get_string(struct input_ctx *ictx)
+{
+	char	*s;
+
+	if (ictx->string_buf == NULL)
+		return (xstrdup(""));
+
+	input_add_string(ictx, '\0');
+	s = ictx->string_buf;
+	ictx->string_buf = NULL;
+	return (s);
+}
+
+void
 input_write(struct input_ctx *ictx, int cmd, ...)
 {
 	va_list	ap;
@@ -147,16 +197,28 @@ input_write(struct input_ctx *ictx, int cmd, ...)
 }
 
 void
+input_state(struct input_ctx *ictx, void *state)
+{
+	ictx->state = state;
+}
+
+void
 input_init(struct window *w)
 {
 	ARRAY_INIT(&w->ictx.args);
 
-	w->ictx.state = input_state_first;
+	w->ictx.string_len = 0;
+	w->ictx.string_buf = NULL;
+
+	input_state(&w->ictx, input_state_first);
 }
 
 void
 input_free(struct window *w)
 {
+	if (w->ictx.string_buf != NULL)
+		xfree(w->ictx.string_buf);
+
 	ARRAY_FREE(&w->ictx.args);
 }
 
@@ -179,37 +241,38 @@ input_parse(struct window *w)
 
 	while (ictx->off < ictx->len) {
 		ch = ictx->buf[ictx->off++];
-		ictx->state = ictx->state(ch, ictx);
+		ictx->state(ch, ictx);
 	}
 
 	buffer_remove(w->in, ictx->len);
 }
 
-void *
+void
 input_state_first(u_char ch, struct input_ctx *ictx)
 {
 	if (INPUT_C0CONTROL(ch)) {
 		if (ch == 0x1b)
-			return (input_state_escape);
-		input_handle_c0_control(ch, ictx);
-		return (input_state_first);
+			input_state(ictx, input_state_escape);
+		else 
+			input_handle_c0_control(ch, ictx);
+		return;
 	}
 
-	if (INPUT_C1CONTROL(ch)) {
+  	if (INPUT_C1CONTROL(ch)) {
 		ch -= 0x40;
 		if (ch == '[')
-			return (input_state_sequence_first);
-		if (ch == ']')
-			return (input_state_title_first);
-		input_handle_c1_control(ch, ictx);
-		return (input_state_first);
+			input_state(ictx, input_state_sequence_first);
+		else if (ch == ']')
+			input_state(ictx, input_state_title_first);
+		else
+			input_handle_c1_control(ch, ictx);
+		return;
 	}
-
+	
 	input_handle_character(ch, ictx);
-	return (input_state_first);
 }
 	    
-void *
+void
 input_state_escape(u_char ch, struct input_ctx *ictx)
 {
 	/* Treat C1 control and G1 displayable as 7-bit equivalent. */
@@ -218,164 +281,216 @@ input_state_escape(u_char ch, struct input_ctx *ictx)
 
 	if (INPUT_C0CONTROL(ch)) {
 		input_handle_c0_control(ch, ictx);
-		return (input_state_escape);
+		return;
 	}
 
-	if (INPUT_INTERMEDIATE(ch))
-		return (input_state_intermediate);
+	if (INPUT_INTERMEDIATE(ch)) {
+		input_state(ictx, input_state_intermediate);
+		return;
+	}
 
 	if (INPUT_PARAMETER(ch)) {
+		input_state(ictx, input_state_first);
 		input_handle_private_two(ch, ictx);
-		return (input_state_first);
+		return;
 	}
 
 	if (INPUT_UPPERCASE(ch)) {
 		if (ch == '[')
-			return (input_state_sequence_first);
-		if (ch == ']')
-			return (input_state_title_first);
-		input_handle_c1_control(ch, ictx);
-		return (input_state_first);
+			input_state(ictx, input_state_sequence_first);
+		else if (ch == ']')
+			input_state(ictx, input_state_title_first);
+		else {
+			input_state(ictx, input_state_first);
+			input_handle_c1_control(ch, ictx);
+		}
+		return;
 	}
 
 	if (INPUT_LOWERCASE(ch)) {
+		input_state(ictx, input_state_first);
 		input_handle_standard_two(ch, ictx);
-		return (input_state_first);
+		return;
 	}
 
-	return (input_state_first);
+	input_state(ictx, input_state_first);
 }
 
-void *
+void
 input_state_title_first(u_char ch, struct input_ctx *ictx)
 {
 	if (ch >= '0' && ch <= '9') {
-		ictx->title_type = ch - '0';
-		return (input_state_title_second);
-	}
+		if (ch == '0')
+			input_start_string(ictx, STRING_TITLE);
+		else
+			input_start_string(ictx, STRING_IGNORE);
+		input_state(ictx, input_state_title_second);
+		return;
+	} 
 
-	return (input_state_first);
+	input_state(ictx, input_state_first);
 }
 
-void *
+void
 input_state_title_second(u_char ch, struct input_ctx *ictx)
 {
 	if (ch == ';') {
-		ictx->title_len = 0;
-		return (input_state_title_next);
+		input_state(ictx, input_state_title_next);
+		return;
 	}
 
-	return (input_state_first);
+	input_state(ictx, input_state_first);
 }
 
-void *
+void
 input_state_title_next(u_char ch, struct input_ctx *ictx)
 {
 	struct screen	*s = &ictx->w->screen;
 
 	if (ch == '\007') {
-		ictx->title_buf[ictx->title_len++] = '\0';
-		switch (ictx->title_type) {
-		case 0:
-			strlcpy(s->title, ictx->title_buf, sizeof s->title);
+		if (ictx->string_type == STRING_TITLE) {
+			xfree(s->title);
+			s->title = input_get_string(ictx);
 			input_write(ictx, TTY_TITLE, s->title);
-			break;
-		}
-		return (input_state_first);
+		} else
+			input_abort_string(ictx);
+		input_state(ictx, input_state_first);
+		return;
 	}
 
-	if (ch >= 0x20) {
-		if (ictx->title_len < (sizeof ictx->title_buf) - 1) {
-			ictx->title_buf[ictx->title_len++] = ch;
-			return (input_state_title_next);
-		}
-		return (input_state_first);
+	if (ch >= 0x20 && ch != 0x7f) {
+		if (input_add_string(ictx, ch) != 0)
+			input_state(ictx, input_state_first);
+		return;
 	}
 
- 	return (input_state_first);
+	input_state(ictx, input_state_first);
 }
 
-void *
+void
 input_state_intermediate(u_char ch, struct input_ctx *ictx)
 {
 	if (INPUT_INTERMEDIATE(ch))
-		return (input_state_intermediate);
+		return;
 
 	if (INPUT_PARAMETER(ch)) {
+		input_state(ictx, input_state_first);
 		input_handle_private_two(ch, ictx);
-		return (input_state_first);
+		return;
 	}
 
 	if (INPUT_UPPERCASE(ch) || INPUT_LOWERCASE(ch)) {
+		input_state(ictx, input_state_first);
 		input_handle_standard_two(ch, ictx);
-		return (input_state_first);
+		return;
 	}
 
-	return (input_state_first);
+	input_state(ictx, input_state_first);
 }
 
-void *
+void
 input_state_sequence_first(u_char ch, struct input_ctx *ictx)
 {
 	ictx->private = '\0';
 	ARRAY_CLEAR(&ictx->args);
 
+	input_state(ictx, input_state_sequence_next);
+
 	if (INPUT_PARAMETER(ch)) {
-		input_new_argument(ictx);	/* XXX extraneous arg if priv */
+		input_new_argument(ictx);
 		if (ch >= 0x3c && ch <= 0x3f) {
 			/* Private control sequence. */
 			ictx->private = ch;
-			return (input_state_sequence_next);
+			return;
 		}
-	}		
+	}
 
 	/* Pass character on directly. */
-	return (input_state_sequence_next(ch, ictx));
+	input_state_sequence_next(ch, ictx);
 }
 
-void *
+void
 input_state_sequence_next(u_char ch, struct input_ctx *ictx)
 {
 	if (INPUT_INTERMEDIATE(ch)) {
 		if (input_add_argument(ictx, '\0') != 0)
-			return (input_state_first);
-		return (input_state_sequence_intermediate);
+			input_state(ictx, input_state_first);
+		else
+			input_state(ictx, input_state_sequence_intermediate);
+		return;
 	}
 
 	if (INPUT_PARAMETER(ch)) {
 		if (ch == ';') {
 			if (input_add_argument(ictx, '\0') != 0)
-				return (input_state_first);
-			input_new_argument(ictx);
-			return (input_state_sequence_next);
-		}
-		if (input_add_argument(ictx, ch) != 0)
-			return (input_state_first);
-		return (input_state_sequence_next);
+				input_state(ictx, input_state_first);
+			else
+				input_new_argument(ictx);
+		} else if (input_add_argument(ictx, ch) != 0)
+			input_state(ictx, input_state_first);
+		return;
 	}
 
 	if (INPUT_UPPERCASE(ch) || INPUT_LOWERCASE(ch)) {
 		if (input_add_argument(ictx, '\0') != 0)
-			return (input_state_first);
-		input_handle_sequence(ch, ictx);
-		return (input_state_first);
+			input_state(ictx, input_state_first);
+		else {
+			input_state(ictx, input_state_first);
+			input_handle_sequence(ch, ictx);
+		}
+		return;
 	}
-
-	return (input_state_first);
+	
+	input_state(ictx, input_state_first);
 }
 
-void *
+void
 input_state_sequence_intermediate(u_char ch, struct input_ctx *ictx)
 {
 	if (INPUT_INTERMEDIATE(ch))
-		return (input_state_sequence_intermediate);
-
+		return;
+	
 	if (INPUT_UPPERCASE(ch) || INPUT_LOWERCASE(ch)) {
+		input_state(ictx, input_state_first);
 		input_handle_sequence(ch, ictx);
-		return (input_state_first);
+		return;
+	}
+	
+	input_state(ictx, input_state_first);
+}
+
+void
+input_state_string_next(u_char ch, struct input_ctx *ictx)
+{
+	if (ch == 0x1b) {
+		input_state(ictx, input_state_string_escape);
+		return;
 	}
 
-	return (input_state_first);
+	if (ch >= 0x20 && ch != 0x7f) {
+		if (input_add_string(ictx, ch) != 0)
+			input_state(ictx, input_state_first);
+		return;
+	}
+}
+
+void
+input_state_string_escape(u_char ch, struct input_ctx *ictx)
+{
+	if (ch == '\\') {
+		input_state(ictx, input_state_first);
+		switch (ictx->string_type) {
+		case STRING_NAME:
+			xfree(ictx->w->name);
+			ictx->w->name = input_get_string(ictx);
+			server_status_window(ictx->w);
+			break;
+		}
+		return;
+	}
+
+	input_state(ictx, input_state_string_next);
+	input_state_string_next(ch, ictx);
 }
 
 void
@@ -506,7 +621,15 @@ input_handle_standard_two(u_char ch, struct input_ctx *ictx)
 {
 	log_debug2("-- s2 %zu: %hhu (%c)", ictx->off, ch, ch);
 
-	log_debug("unknown s2: %hhu", ch);
+	switch (ch) {
+	case 'k':
+		input_start_string(ictx, STRING_NAME);
+		input_state(ictx, input_state_string_next);
+		break;
+	default:
+		log_debug("unknown s2: %hhu", ch);
+		break;
+	}
 }
 
 void

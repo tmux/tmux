@@ -1,3 +1,7 @@
+30 November 2007
+
+* Support \ek...\e\ to set window name.
+
 27 November 2007
 
 * Enable/disable mouse when asked, if terminal claims to support it. Mouse
@@ -285,4 +289,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.88 2007-11-27 23:28:51 nicm Exp $
+$Id: CHANGES,v 1.89 2007-11-30 11:08:34 nicm Exp $
