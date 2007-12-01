@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.4 2007-11-27 19:23:33 nicm Exp $ */
+/* $Id: input-keys.c,v 1.5 2007-12-01 11:24:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,10 +42,10 @@ struct {
 	{ KEYC_F7,     "\e[18~" },
 	{ KEYC_F8,     "\e[19~" },
 	{ KEYC_F9,     "\e[20~" },
-	{ KEYC_HOME,   "\e[1~" },
+	{ KEYC_FIND,   "\e[1~" },
 	{ KEYC_IC,     "\e[2~" },
 	{ KEYC_LEFT,   "\eOD" },
-	{ KEYC_LL,     "\e[4~" },
+	{ KEYC_SELECT, "\e[4~" },
 	{ KEYC_NPAGE,  "\e[6~" },
 	{ KEYC_PPAGE,  "\e[5~" },
 	{ KEYC_RIGHT,  "\eOC" },
