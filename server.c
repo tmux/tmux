@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.41 2007-11-27 20:01:30 nicm Exp $ */
+/* $Id: server.c,v 1.42 2007-12-01 11:10:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,8 +65,7 @@ server_start(const char *path)
 
 	switch (fork()) {
 	case -1:
-		log_warn("fork");
-		return (-1);
+		fatal("fork");
 	case 0:
 		break;
 	default:

@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.23 2007-11-27 19:23:33 nicm Exp $ */
+/* $Id: client.c,v 1.24 2007-12-01 11:10:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,58 +55,46 @@ retry:
 			retries++;
 			goto retry;
 		}
-		log_warn("%s: stat", path);
-		return (-1);
+		goto fail;
 	}
 	if (!S_ISSOCK(sb.st_mode)) {
-		log_warnx("%s: %s", path, strerror(ENOTSOCK));
-		return (-1);
+		errno = ENOTSOCK;
+		goto fail;
 	}
 
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
 	size = strlcpy(sa.sun_path, path, sizeof sa.sun_path);
 	if (size >= sizeof sa.sun_path) {
-		log_warnx("%s: %s", path, strerror(ENAMETOOLONG));
-		return (-1);
+		errno = ENAMETOOLONG;
+		goto fail;
 	}
 
-	if ((cctx->srv_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-		log_warn("%s: socket", path);
-		return (-1);
-	}
+	if ((cctx->srv_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
+		fatal("socket");
+
 	if (connect(
 	    cctx->srv_fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
 		if (start_server && errno == ECONNREFUSED && retries < 10) {
-			if (unlink(path) != 0) {
-				log_warn("%s: unlink", path);
-				return (-1);
-			}
+			if (unlink(path) != 0)
+				goto fail;
 			usleep(10000);
 			retries++;
 			goto retry;
 		}
-		log_warn("%s: connect", path);
-		return (-1);
+		goto fail;
 	}
 
-	if ((mode = fcntl(cctx->srv_fd, F_GETFL)) == -1) {
-		log_warn("%s: fcntl", path);
-		return (-1);
-	}
-	if (fcntl(cctx->srv_fd, F_SETFL, mode|O_NONBLOCK) == -1) {
-		log_warn("%s: fcntl", path);
-		return (-1);
-	}
+	if ((mode = fcntl(cctx->srv_fd, F_GETFL)) == -1)
+		fatal("fcntl");
+	if (fcntl(cctx->srv_fd, F_SETFL, mode|O_NONBLOCK) == -1)
+		fatal("fcntl");
 	cctx->srv_in = buffer_create(BUFSIZ);
 	cctx->srv_out = buffer_create(BUFSIZ);
 
 	if (isatty(STDIN_FILENO)) {
-		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1) {
-			log_warn("ioctl(TIOCGWINSZ)");
-			return (-1);
-		}
-
+		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
+			fatal("ioctl(TIOCGWINSZ)");
 		data.sx = ws.ws_col;
 		data.sy = ws.ws_row;
 		if (ttyname_r(STDIN_FILENO, data.tty, sizeof data.tty) != 0)
@@ -116,6 +104,10 @@ retry:
 	}
 
 	return (0);
+
+fail:
+	log_warn("server not found");
+	return (-1);
 }
 
 int
