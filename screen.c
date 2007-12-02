@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.54 2007-11-30 11:08:35 nicm Exp $ */
+/* $Id: screen.c,v 1.55 2007-12-02 18:23:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -317,9 +317,7 @@ screen_draw_start(struct screen_draw_ctx *ctx, struct screen *s,
 
 	ctx->sel.flag = 0;
 
-	ctx->attr = s->attr;
-	ctx->colr = s->colr;
-
+	ctx->write(ctx->data, TTY_ATTRIBUTES, s->attr, s->colr);
 	ctx->write(ctx->data, TTY_SCROLLREGION, 0, screen_last_y(s));
 	ctx->write(ctx->data, TTY_CURSOROFF);
 	ctx->write(ctx->data, TTY_MOUSEOFF);
@@ -404,8 +402,7 @@ screen_draw_stop(struct screen_draw_ctx *ctx)
 	if (ctx->cx != s->cx || ctx->cy != s->cy)
 		ctx->write(ctx->data, TTY_CURSORMOVE, s->cy, s->cx);
 
-	if (ctx->attr != s->attr || ctx->colr != s->colr)
-		ctx->write(ctx->data, TTY_ATTRIBUTES, s->attr, s->colr);
+	ctx->write(ctx->data, TTY_ATTRIBUTES, s->attr, s->colr);
 
 	if (s->mode & MODE_BACKGROUND) {
 		if (s->mode & MODE_BGCURSOR)
@@ -517,11 +514,7 @@ void
 screen_draw_set_attributes(
     struct screen_draw_ctx *ctx, u_char attr, u_char colr)
 {
-	if (attr != ctx->attr || colr != ctx->colr) {
-		ctx->write(ctx->data, TTY_ATTRIBUTES, attr, colr);
-		ctx->attr = attr;
-		ctx->colr = colr;
-	}
+	ctx->write(ctx->data, TTY_ATTRIBUTES, attr, colr);
 }
 
 /* Draw single cell. */

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.107 2007-11-30 11:08:35 nicm Exp $ */
+/* $Id: tmux.h,v 1.108 2007-12-02 18:23:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -405,9 +405,6 @@ struct screen_draw_ctx {
 
 	u_int		 ox;
 	u_int		 oy;
-
-	u_char		 attr;
-	u_char		 colr;
 
 	struct screen_draw_sel sel;
 };
