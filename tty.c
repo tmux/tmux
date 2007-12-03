@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.7 2007-11-27 23:28:51 nicm Exp $ */
+/* $Id: tty.c,v 1.8 2007-12-03 10:47:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -268,19 +268,44 @@ tty_vwrite(struct tty *tty, int cmd, va_list ap)
 		break;
 	case TTY_INSERTLINE:
 		ua = va_arg(ap, u_int);
-		tty_puts(tty, tparm(parm_insert_line, ua));
+		if (parm_insert_line != NULL)
+			tty_puts(tty, tparm(parm_insert_line, ua));
+		else {
+			while (ua-- > 0)
+				tty_puts(tty, insert_line);
+		}
 		break;
 	case TTY_DELETELINE:
 		ua = va_arg(ap, u_int);
-		tty_puts(tty, tparm(parm_delete_line, ua));
+		if (parm_delete_line != NULL)
+			tty_puts(tty, tparm(parm_delete_line, ua));
+		else {
+			while (ua-- > 0)
+				tty_puts(tty, delete_line);
+		}
 		break;
 	case TTY_INSERTCHARACTER:
 		ua = va_arg(ap, u_int);
-		tty_puts(tty, tparm(parm_ich, ua));
+		if (parm_ich != NULL)
+			tty_puts(tty, tparm(parm_ich, ua));
+		else if (insert_character != NULL) {
+			while (ua-- > 0)
+				tty_puts(tty, insert_character);
+		} else if (enter_insert_mode != NULL) {
+			tty_puts(tty, enter_insert_mode);
+			while (ua-- > 0)
+				tty_putc(tty, ' ');
+			tty_puts(tty, exit_insert_mode);
+		}
 		break;
 	case TTY_DELETECHARACTER:
 		ua = va_arg(ap, u_int);
-		tty_puts(tty, tparm(parm_dch, ua));
+		if (parm_dch != NULL)
+			tty_puts(tty, tparm(parm_dch, ua));
+		else {
+			while (ua-- > 0)
+				tty_puts(tty, delete_character);
+		}
 		break;
 	case TTY_CURSORON:
 		if (cursor_normal != NULL)
