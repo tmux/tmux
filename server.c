@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.42 2007-12-01 11:10:33 nicm Exp $ */
+/* $Id: server.c,v 1.43 2007-12-04 20:25:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -436,8 +436,8 @@ server_lost_window(struct window *w)
 		if (!session_has(s, w))
 			continue;
 
-		/* Detach window and either redraw or kill clients. */
 	restart:
+		/* Detach window and either redraw or kill clients. */
 		RB_FOREACH(wl, winlinks, &s->windows) {
 			if (wl->window != w)
 				continue;
@@ -453,6 +453,9 @@ server_lost_window(struct window *w)
 				c->session = NULL;
 				server_write_client(c, MSG_EXIT, NULL, 0);
 			}
+			/* If the session was destroyed, bail now. */
+			if (destroyed)
+				break;
 			goto restart;
 		}
 	}
