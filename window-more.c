@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.7 2007-12-06 10:04:43 nicm Exp $ */
+/* $Id: window-more.c,v 1.8 2007-12-06 21:42:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -60,10 +60,7 @@ window_more_vadd(struct window *w, const char *fmt, va_list ap)
 	xvasprintf(&msg, fmt, ap);
 	ARRAY_ADD(&data->list, msg);
 
-	size = ARRAY_LENGTH(&data->list);
-	if (size == 0)
-		return;
-	size--;
+	size = ARRAY_LENGTH(&data->list) - 1;
 	if (size >= data->top && size <= data->top + screen_last_y(s)) {
 		screen_write_start_window(&ctx, w);
 		window_more_write_line(w, &ctx, size - data->top);
