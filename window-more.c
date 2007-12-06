@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.6 2007-12-06 09:46:23 nicm Exp $ */
+/* $Id: window-more.c,v 1.7 2007-12-06 10:04:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,7 +22,7 @@
 
 #include "tmux.h"
 
-void	window_more_init(struct window *);
+struct screen *window_more_init(struct window *);
 void	window_more_free(struct window *);
 void	window_more_resize(struct window *, u_int, u_int);
 void	window_more_key(struct window *, int);
@@ -83,7 +83,7 @@ window_more_add(struct window *w, const char *fmt, ...)
 	va_end(ap);
 }
 
-void
+struct screen *
 window_more_init(struct window *w)
 {
 	struct window_more_mode_data	*data;
@@ -96,7 +96,8 @@ window_more_init(struct window *w)
 	s = &data->screen;
 	screen_create(s, screen_size_x(&w->base), screen_size_y(&w->base));
 	s->mode = 0;
-	w->screen = s;
+	
+	return (s);
 }
 
 void
@@ -105,15 +106,12 @@ window_more_free(struct window *w)
 	struct window_more_mode_data	*data = w->modedata;
 	u_int				 i;
 
-	w->screen = &w->base;
-	screen_destroy(&data->screen);
-
 	for (i = 0; i < ARRAY_LENGTH(&data->list); i++)
 		xfree(ARRAY_ITEM(&data->list, i));
 	ARRAY_FREE(&data->list);
 
-	w->mode = NULL;
-	xfree(w->modedata);
+	screen_destroy(&data->screen);
+	xfree(data);
 }
 
 void
@@ -135,8 +133,7 @@ window_more_key(struct window *w, int key)
 	switch (key) {
 	case 'Q':
 	case 'q':
-		window_more_free(w);
-		server_redraw_window(w);
+		window_reset_mode(w);
 		break;
 	case 'k':
 	case 'K':

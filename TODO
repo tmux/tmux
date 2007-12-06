@@ -61,8 +61,7 @@
 - chmod +x socket when any client is attached
 - split clients into three RB trees by fd: attached/unattached/dead?
   or tailqs? what would be fastest per-char?
-- everything should write via a screen and modes should be done by switching
-  screen out
+- multiple paste buffers
 
 -- For 0.2 --------------------------------------------------------------------
 - window splitting?

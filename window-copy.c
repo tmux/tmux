@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.13 2007-12-06 09:46:23 nicm Exp $ */
+/* $Id: window-copy.c,v 1.14 2007-12-06 10:04:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,7 +22,7 @@
 
 #include "tmux.h"
 
-void	window_copy_init(struct window *);
+struct screen *window_copy_init(struct window *);
 void	window_copy_free(struct window *);
 void	window_copy_resize(struct window *, u_int, u_int);
 void	window_copy_key(struct window *, int);
@@ -76,7 +76,7 @@ struct window_copy_mode_data {
 	u_int	cy;
 };
 
-void
+struct screen *
 window_copy_init(struct window *w)
 {
 	struct window_copy_mode_data	*data;
@@ -94,13 +94,14 @@ window_copy_init(struct window *w)
 	screen_create(s, screen_size_x(&w->base), screen_size_y(&w->base));
 	s->cx = data->cx;
 	s->cy = data->cy;
-	w->screen = s;
 
 	screen_write_start(&ctx, s, NULL, NULL);
 	for (i = 0; i < screen_size_y(s); i++)
 		window_copy_write_line(w, &ctx, i);
 	screen_write_move_cursor(&ctx, data->cx, data->cy);
 	screen_write_stop(&ctx);
+
+	return (s);
 }
 
 void
@@ -108,11 +109,8 @@ window_copy_free(struct window *w)
 {
 	struct window_copy_mode_data	*data = w->modedata;
 
-	w->screen = &w->base;
 	screen_destroy(&data->screen);
-
-	w->mode = NULL;
-	xfree(w->modedata);
+	xfree(data);
 }
 
 void
@@ -136,8 +134,7 @@ window_copy_key(struct window *w, int key)
 	switch (key) {
 	case 'Q':
 	case 'q':
-		window_copy_free(w);
-		server_redraw_window(w);
+		window_reset_mode(w);
 		break;
 	case 'h':
 	case KEYC_LEFT:
@@ -185,8 +182,7 @@ window_copy_key(struct window *w, int key)
 	case '\027':	/* C-w */
 	case '\r':	/* enter */
 		window_copy_copy_selection(w);
-		window_copy_free(w);
-		server_redraw_window(w);
+		window_reset_mode(w);
 		break;
 	case '\001':	/* C-a */
 		window_copy_cursor_start_of_line(w);

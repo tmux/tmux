@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.23 2007-12-06 09:46:22 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.24 2007-12-06 10:04:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -165,11 +165,7 @@ key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 	struct window	*w = ctx->session->curw->window;
 	va_list		 ap;
 
-	if (w->mode == NULL) {
-		w->mode = &window_more_mode;
-		w->mode->init(w);
-		server_redraw_window(w);
-	} else if (w->mode != &window_more_mode)
+	if (window_set_mode(w, &window_more_mode) != 0)
 		return;
 
 	va_start(ap, fmt);

@@ -1,4 +1,4 @@
-/* $Id: cmd-scroll-mode.c,v 1.5 2007-12-06 09:46:22 nicm Exp $ */
+/* $Id: cmd-scroll-mode.c,v 1.6 2007-12-06 10:04:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,11 +44,8 @@ cmd_scroll_mode_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
 	struct window	*w = ctx->session->curw->window;
 
-	if (w->mode == NULL && ctx->flags & CMD_KEY) {
-		w->mode = &window_scroll_mode;
-		w->mode->init(w);
-		server_redraw_window(w);
-	}
+	if (ctx->flags & CMD_KEY)
+		window_set_mode(w, &window_scroll_mode);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
