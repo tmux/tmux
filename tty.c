@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.11 2007-12-06 11:11:15 nicm Exp $ */
+/* $Id: tty.c,v 1.12 2007-12-06 18:28:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,6 +30,9 @@
 
 #include "tmux.h"
 
+struct tty_term *tty_find_term(char *, int,char **);
+void 	tty_free_term(struct tty_term *);
+
 void	tty_fill_acs(struct tty *);
 u_char	tty_get_acs(struct tty *, u_char);
 
@@ -40,18 +43,20 @@ void	tty_putc(struct tty *, char);
 void	tty_attributes(struct tty *, u_char, u_char);
 char	tty_translate(char);
 
+TAILQ_HEAD(, tty_term) tty_terms = TAILQ_HEAD_INITIALIZER(tty_terms);
+
 void
 tty_init(struct tty *tty, char *path, char *term)
 {
 	tty->path = xstrdup(path);
-	tty->term = xstrdup(term);
+	tty->termname = xstrdup(term);
 }
 
 int
 tty_open(struct tty *tty, char **cause)
 {
 	struct termios	 tio;
-	int		 error, what;
+	int		 what;
 
 	tty->fd = open(tty->path, O_RDWR|O_NONBLOCK);
 	if (tty->fd == -1) {
@@ -59,10 +64,117 @@ tty_open(struct tty *tty, char **cause)
 		return (-1);
 	}
 
-	tty->termp = NULL;
-	if (tty->term == NULL)
-		tty->term = xstrdup("unknown");
-	if (setupterm(tty->term, tty->fd, &error) != OK) {
+	if (tty->termname == NULL)
+		tty->termname = xstrdup("unknown");
+	if ((tty->term = tty_find_term(tty->termname, tty->fd, cause)) == NULL)
+		goto error;
+
+	tty->in = buffer_create(BUFSIZ);
+	tty->out = buffer_create(BUFSIZ);
+
+	tty->attr = SCREEN_DEFATTR;
+	tty->colr = SCREEN_DEFCOLR;
+
+	tty_keys_init(tty);
+
+	tty_fill_acs(tty);
+
+	if (tcgetattr(tty->fd, &tty->tio) != 0)
+		fatal("tcgetattr failed");
+	memset(&tio, 0, sizeof tio);
+	tio.c_iflag = TTYDEF_IFLAG & ~(IXON|IXOFF|ICRNL|INLCR);
+	tio.c_oflag = TTYDEF_OFLAG & ~(OPOST|ONLCR|OCRNL|ONLRET);
+	tio.c_lflag =
+	    TTYDEF_LFLAG & ~(IEXTEN|ICANON|ECHO|ECHOE|ECHOKE|ECHOCTL|ISIG);
+	tio.c_cflag = TTYDEF_CFLAG;
+	memcpy(&tio.c_cc, ttydefchars, sizeof tio.c_cc);
+	cfsetspeed(&tio, TTYDEF_SPEED);
+	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
+		fatal("tcsetattr failed");
+
+	what = 0;
+	if (ioctl(tty->fd, TIOCFLUSH, &what) != 0)
+		fatal("ioctl(TIOCFLUSH)");
+
+	if (enter_ca_mode != NULL)
+		tty_puts(tty, enter_ca_mode);
+	if (keypad_xmit != NULL)
+		tty_puts(tty, keypad_xmit);
+	if (ena_acs != NULL)
+		tty_puts(tty, ena_acs);
+	tty_puts(tty, clear_screen);
+
+	return (0);
+
+error:
+	close(tty->fd);
+	tty->fd = -1;
+
+	return (-1);
+}
+
+void
+tty_close(struct tty *tty)
+{
+	struct winsize	ws;
+
+	if (ioctl(tty->fd, TIOCGWINSZ, &ws) == -1)
+		fatal("ioctl(TIOCGWINSZ)");
+	if (tcsetattr(tty->fd, TCSANOW, &tty->tio) != 0)
+		fatal("tcsetattr failed");
+
+	if (change_scroll_region != NULL)
+		tty_raw(tty, tparm(change_scroll_region, 0, ws.ws_row - 1));
+	if (keypad_local != NULL)
+		tty_raw(tty, keypad_local);
+	if (exit_ca_mode != NULL)
+		tty_raw(tty, exit_ca_mode);
+	tty_raw(tty, clear_screen);
+	if (cursor_normal != NULL)
+		tty_raw(tty, cursor_normal);
+	if (exit_attribute_mode != NULL)
+		tty_raw(tty, exit_attribute_mode);
+
+	tty_free_term(tty->term);
+	tty_keys_free(tty);
+
+	close(tty->fd);
+	tty->fd = -1;
+
+	buffer_destroy(tty->in);
+	buffer_destroy(tty->out);
+}
+
+void
+tty_free(struct tty *tty)
+{
+	if (tty->fd != -1)
+		tty_close(tty);
+
+	if (tty->path != NULL)
+		xfree(tty->path);
+	if (tty->termname != NULL)
+		xfree(tty->termname);
+}
+
+struct tty_term *
+tty_find_term(char *name, int fd, char **cause)
+{
+	struct tty_term	*term;
+	int		 error;
+	
+	TAILQ_FOREACH(term, &tty_terms, entry) {
+		if (strcmp(term->name, name) == 0)
+			return (term);
+	}
+
+	term = xmalloc(sizeof *term);
+	term->name = xstrdup(name);
+	term->term = NULL;
+	term->references = 1;
+	TAILQ_INSERT_HEAD(&tty_terms, term, entry);
+
+	if (setupterm(name, fd, &error) != OK) {
 		switch (error) {
 		case 0:
 			xasprintf(cause, "can't use hardcopy terminal");
@@ -79,9 +191,8 @@ tty_open(struct tty *tty, char **cause)
 		}
 		goto error;
 	}
-	tty->termp = cur_term;
+	term->term = cur_term;
 
-	/* Check for required capabilities. */
 	if (clear_screen == NULL) {
 		xasprintf(cause, "clear_screen missing");
 		goto error;
@@ -144,100 +255,26 @@ tty_open(struct tty *tty, char **cause)
 		goto error;
 	}
 
-	tty->in = buffer_create(BUFSIZ);
-	tty->out = buffer_create(BUFSIZ);
-
-	tty->attr = SCREEN_DEFATTR;
-	tty->colr = SCREEN_DEFCOLR;
-
-	tty_keys_init(tty);
-
-	tty_fill_acs(tty);
-
-	if (tcgetattr(tty->fd, &tty->tio) != 0)
-		fatal("tcgetattr failed");
-	memset(&tio, 0, sizeof tio);
-	tio.c_iflag = TTYDEF_IFLAG & ~(IXON|IXOFF|ICRNL|INLCR);
-	tio.c_oflag = TTYDEF_OFLAG & ~(OPOST|ONLCR|OCRNL|ONLRET);
-	tio.c_lflag =
-	    TTYDEF_LFLAG & ~(IEXTEN|ICANON|ECHO|ECHOE|ECHOKE|ECHOCTL|ISIG);
-	tio.c_cflag = TTYDEF_CFLAG;
-	memcpy(&tio.c_cc, ttydefchars, sizeof tio.c_cc);
-	cfsetspeed(&tio, TTYDEF_SPEED);
-	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
-		fatal("tcsetattr failed");
-
-	what = 0;
-	if (ioctl(tty->fd, TIOCFLUSH, &what) != 0)
-		fatal("ioctl(TIOCFLUSH)");
-
-	if (enter_ca_mode != NULL)
-		tty_puts(tty, enter_ca_mode);
-	if (keypad_xmit != NULL)
-		tty_puts(tty, keypad_xmit);
-	if (ena_acs != NULL)
-		tty_puts(tty, ena_acs);
-	tty_puts(tty, clear_screen);
-
-	return (0);
+	return (term);
 
 error:
-	close(tty->fd);
-	tty->fd = -1;
-
-	if (tty->termp != NULL)
-		del_curterm(tty->termp);
-
-	return (-1);
+	tty_free_term(term);
+	return (NULL);
 }
 
 void
-tty_close(struct tty *tty)
+tty_free_term(struct tty_term *term)
 {
-	struct winsize	ws;
+	if (--term->references != 0)
+		return;
 
-	if (ioctl(tty->fd, TIOCGWINSZ, &ws) == -1)
-		fatal("ioctl(TIOCGWINSZ)");
-	if (tcsetattr(tty->fd, TCSANOW, &tty->tio) != 0)
-		fatal("tcsetattr failed");
+	TAILQ_REMOVE(&tty_terms, term, entry);
 
-	if (change_scroll_region != NULL)
-		tty_raw(tty, tparm(change_scroll_region, 0, ws.ws_row - 1));
-	if (keypad_local != NULL)
-		tty_raw(tty, keypad_local);
-	if (exit_ca_mode != NULL)
-		tty_raw(tty, exit_ca_mode);
-	tty_raw(tty, clear_screen);
-	if (cursor_normal != NULL)
-		tty_raw(tty, cursor_normal);
-	if (exit_attribute_mode != NULL)
-		tty_raw(tty, exit_attribute_mode);
+	if (term->term != NULL)
+		del_curterm(term->term);
 
-	if (tty->termp != NULL)
-		del_curterm(tty->termp);
-	tty_keys_free(tty);
-
-	close(tty->fd);
-	tty->fd = -1;
-
-	buffer_destroy(tty->in);
-	buffer_destroy(tty->out);
-}
-
-void
-tty_free(struct tty *tty)
-{
-	if (tty->fd != -1)
-		tty_close(tty);
-
-	if (tty->path != NULL) {
-		xfree(tty->path);
-		tty->path = NULL;
-	}
-	if (tty->term != NULL) {
-		xfree(tty->term);
-		tty->term = NULL;
-	}
+	xfree(term->name);
+	xfree(term);
 }
 
 void
@@ -286,7 +323,7 @@ tty_vwrite(struct tty *tty, unused struct screen *s, int cmd, va_list ap)
 	char	ch;
 	u_int	i, ua, ub;
 
-	set_curterm(tty->termp);
+	set_curterm(tty->term->term);
 
 	switch (cmd) {
 	case TTY_CHARACTER:

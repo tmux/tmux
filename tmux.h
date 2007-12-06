@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.111 2007-12-06 10:36:01 nicm Exp $ */
+/* $Id: tmux.h,v 1.112 2007-12-06 18:28:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -556,11 +556,19 @@ struct tty_key {
 	RB_ENTRY(tty_key) entry;
 };
 
+struct tty_term {
+	char		*name;
+	TERMINAL	*term;
+	u_int		 references;
+
+	TAILQ_ENTRY(tty_term) entry;
+};
+
 struct tty {
 	char		*path;
 
-	char		*term;
-	TERMINAL        *termp;
+	char		*termname;
+	struct tty_term	*term;
 
 	int		 fd;
 	struct buffer	*in;

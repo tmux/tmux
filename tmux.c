@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.45 2007-12-06 09:46:23 nicm Exp $ */
+/* $Id: tmux.c,v 1.46 2007-12-06 18:28:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,12 @@
 #include "tmux.h"
 
 #ifdef DEBUG
+#ifdef __OpenBSD__
 const char	*malloc_options = "AFGJPX";
+#endif
+#ifdef __FreeBSD__
+const char	*_malloc_options = "AJX";
+#endif
 #endif
 
 volatile sig_atomic_t sigwinch;
