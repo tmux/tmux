@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.3 2007-12-06 10:36:01 nicm Exp $ */
+/* $Id: screen-write.c,v 1.4 2007-12-06 10:44:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -385,8 +385,8 @@ screen_write_fill_end_of_screen(struct screen_write_ctx *ctx)
 
 	screen_fill_area(s, s->cx, s->cy,
 	    screen_right_x(s, s->cx), 1, SCREEN_DEFDATA, s->attr, s->colr);
-	screen_fill_area(s, 0, s->cy + 1,
-	    screen_below_y(s, s->cy + 1), 1, SCREEN_DEFDATA, s->attr, s->colr);
+	screen_fill_area(s, 0, s->cy + 1, screen_size_x(s),
+	    screen_below_y(s, s->cy + 1), SCREEN_DEFDATA, s->attr, s->colr);
 
 	if (ctx->write != NULL) {
 		ctx->write(ctx->data, TTY_CLEARENDOFLINE);
