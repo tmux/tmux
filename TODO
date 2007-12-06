@@ -62,48 +62,10 @@
 - split clients into three RB trees by fd: attached/unattached/dead?
   or tailqs? what would be fastest per-char?
 - multiple paste buffers
+- window splitting?
 
 -- For 0.2 --------------------------------------------------------------------
-- window splitting?
 - anything which uses cmd_{send,recv}_string will break if the string is
   split. string length should be part of the command size
-- echo \\033[35\;46m\\033[2J last line quirk (with C-b r)
 - quick intro section (tmux new/attach/detach) etc
 - is ACS the right way round??
-
---------
-
-screen redraw.
-
-ops:
-- redraw screen or section of screen to tty without altering it
-	(screen-redraw.c, screen_redraw_ctx)
-	(switching screen etc)
-- draw to screen and optionally tty
-	(window output)
-	(screen-write.c, screen_write_ctx)
-- copy line/column from one screen (inc history) at offset??
-	(scroll/copy mode)
-
---------
-kmous -- \E[M
-
-mouse init:     putp("\033[?1000h");
-mouse deinit:   putp("\033[?1000l");
-
-\e[M CbCxCy
-         * On button press or release, xterm sends ESC [ M CbCxCy.
-         * The low two bits of Cb encode button information: 0=MB1
-         * pressed, 1=MB2 pressed, 2=MB3 pressed, 3=release.  The
-         * upper bits encode what modifiers were down when the
-         * button was pressed and are added together.  4=Shift,
-         * 8=Meta, 16=Control.  Cx and Cy are the x and y coordinates
-         * of the mouse event.  The upper left corner is (1,1).
-
-
-       get_mouse                 getm     Gm   Curses should get
-                                               button events
-       key_mouse                 kmous    Km   Mouse event has
-                                               occurred
-       mouse_info                minfo    Mi   Mouse status
-                                               information

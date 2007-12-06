@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.112 2007-12-06 18:28:55 nicm Exp $ */
+/* $Id: tmux.h,v 1.113 2007-12-06 21:57:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -454,7 +454,7 @@ struct screen_write_ctx {
 /* Screen default contents. */
 #define SCREEN_DEFDATA ' '
 #define SCREEN_DEFATTR 0
-#define SCREEN_DEFCOLR 0x88
+#define SCREEN_DEFCOLR 0x70	/* white on black */
 
 /* Input parser sequence argument. */
 struct input_arg {
