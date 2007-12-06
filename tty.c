@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.13 2007-12-06 20:53:48 nicm Exp $ */
+/* $Id: tty.c,v 1.14 2007-12-06 21:26:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -273,8 +273,14 @@ tty_free_term(struct tty_term *term)
 
 	TAILQ_REMOVE(&tty_terms, term, entry);
 
+#ifdef __FreeBSD___
+/*
+ * XXX XXX XXX FIXME FIXME
+ * FreeBSD 6.2 crashes with a double-free somewhere under here.
+ */
 	if (term->term != NULL)
 		del_curterm(term->term);
+#endif
 
 	xfree(term->name);
 	xfree(term);
