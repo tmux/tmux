@@ -1,4 +1,4 @@
-/* $Id: cmd-unlink-window.c,v 1.4 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-unlink-window.c,v 1.5 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_unlink_window_entry = {
 	"unlink-window", "unlinkw", "[-i index]",
 	CMD_NOCLIENT,
 	cmd_unlink_window_parse,
-	cmd_unlink_window_exec, 
+	cmd_unlink_window_exec,
 	cmd_unlink_window_send,
 	cmd_unlink_window_recv,
 	cmd_unlink_window_free
@@ -69,7 +69,7 @@ cmd_unlink_window_parse(void **ptr, int argc, char **argv, char **cause)
 		default:
 			goto usage;
 		}
-	}	
+	}
 	argc -= optind;
 	argv += optind;
 	if (argc != 0)
@@ -98,7 +98,7 @@ cmd_unlink_window_exec(void *ptr, struct cmd_ctx *ctx)
 
 	if (data == NULL)
 		return;
-	
+
 	if (data->idx < 0)
 		data->idx = -1;
 	if (data->idx == -1)

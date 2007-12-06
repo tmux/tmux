@@ -1,4 +1,4 @@
-/* $Id: screen-display.c,v 1.9 2007-11-26 22:22:18 nicm Exp $ */
+/* $Id: screen-display.c,v 1.10 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,17 +22,20 @@
 
 #include "tmux.h"
 
-/*
- * Screen display modification functions. These alter the displayed portion
- * of the screen.
- */
+/* Set a cell. */
+void
+screen_display_set_cell(
+    struct screen *s, u_int px, u_int py, u_char data, u_char attr, u_char colr)
+{
+	screen_set_cell(s, screen_x(s, px), screen_y(s, py), data, attr, colr);
+}
 
 /* Create a region of lines. */
 void
 screen_display_make_lines(struct screen *s, u_int py, u_int ny)
 {
 	if (ny == 0 || !screen_in_y(s, py) || !screen_in_y(s, py + ny - 1))
-		fatalx("bad value");
+		return;
 	screen_make_lines(s, screen_y(s, py), ny);
 }
 
@@ -41,7 +44,7 @@ void
 screen_display_free_lines(struct screen *s, u_int py, u_int ny)
 {
 	if (ny == 0 || !screen_in_y(s, py) || !screen_in_y(s, py + ny - 1))
-		fatalx("bad value");
+		return;
 	screen_free_lines(s, screen_y(s, py), ny);
 }
 
@@ -50,116 +53,25 @@ void
 screen_display_move_lines(struct screen *s, u_int dy, u_int py, u_int ny)
 {
 	if (ny == 0 || !screen_in_y(s, py) || !screen_in_y(s, py + ny - 1))
-		fatalx("bad value");
+		return;
 	if (!screen_in_y(s, dy) || !screen_in_y(s, dy + ny - 1) || dy == py)
-		fatalx("bad value");
+		return;
 	screen_move_lines(s, screen_y(s, dy), screen_y(s, py), ny);
 }
 
-/* Fill a set of lines. */
+/* Fill a set of cells. */
 void
-screen_display_fill_lines(
-    struct screen *s, u_int py, u_int ny, u_char data, u_char attr, u_char colr)
+screen_display_fill_area(struct screen *s, u_int px, u_int py,
+    u_int nx, u_int ny, u_char data, u_char attr, u_char colr)
 {
-	if (ny == 0 || !screen_in_y(s, py) || !screen_in_y(s, py + ny - 1))
-		fatalx("bad value");
-	screen_fill_lines(s, screen_y(s, py), ny, data, attr, colr);
-}
-
-/* Fill a set of cellss. */
-void
-screen_display_fill_cells(struct screen *s,
-    u_int px, u_int py, u_int nx, u_char data, u_char attr, u_char colr)
-{
-	if (nx == 0 || !screen_in_x(s, px) || !screen_in_y(s, py))
-		fatalx("bad value");
-	screen_fill_cells(
-	    s, screen_x(s, px), screen_y(s, py), nx, data, attr, colr);
-}
-
-/* Fill entire screen. */
-void
-screen_display_fill_screen(
-    struct screen *s, u_char data, u_char attr, u_char colr)
-{
-	screen_display_fill_lines(s, 0, screen_size_y(s), data, attr, colr);
-}
-
-/* Fill end of screen from cursor. */
-void
-screen_display_fill_cursor_eos(
-    struct screen *s, u_char data, u_char attr, u_char colr)
-{
-	screen_display_fill_cursor_eol(s, data, attr, colr);
-	if (s->cy != screen_last_y(s)) {
-		screen_display_fill_lines(
-		    s, s->cy, screen_size_y(s) - s->cy, data, attr, colr);
-	}
-}
-
-/* Fill beginning of screen from cursor. */
-void
-screen_display_fill_cursor_bos(
-    struct screen *s, u_char data, u_char attr, u_char colr)
-{
-	screen_display_fill_lines(s, 0, s->cy, data, attr, colr);
-}
-
-/* Fill a single line. */
-void
-screen_display_fill_line(
-    struct screen *s, u_int py, u_char data, u_char attr, u_char colr)
-{
-	screen_display_fill_lines(s, py, 1, data, attr, colr);
-}
-
-/* Fill cursor to beginning of line. */
-void
-screen_display_fill_cursor_bol(
-    struct screen *s, u_char data, u_char attr, u_char colr)
-{
-	screen_display_fill_cells(s, 0, s->cy, s->cx, data, attr, colr);
-}
-
-/* Fill cursor to end of line. */
-void
-screen_display_fill_cursor_eol(
-    struct screen *s, u_char data, u_char attr, u_char colr)
-{
-	screen_display_fill_cells(
-	    s, s->cx, s->cy, screen_size_x(s) - s->cx, data, attr, colr);
-}
-
-/* Set character at cursor. */
-void
-screen_display_cursor_set(struct screen *s, u_char ch)
-{
-	u_int	px, py;
-
-	px = screen_x(s, s->cx);
-	py = screen_y(s, s->cy);
-
-	screen_set_cell(s, px, py, ch, s->attr, s->colr);
-}
-
-/* Move cursor up and scroll if necessary. */
-void
-screen_display_cursor_up(struct screen *s)
-{
-	if (s->cy == s->rupper)
-		screen_display_scroll_region_down(s);
-	else if (s->cy > 0)
-		s->cy--;
-}
-
-/* Move cursor down and scroll if necessary. */
-void
-screen_display_cursor_down(struct screen *s)
-{
-	if (s->cy == s->rlower)
-		screen_display_scroll_region_up(s);
-	else if (s->cy < screen_last_y(s))
-		s->cy++;
+	if (nx == 0 || ny == 0)
+		return;
+	if (!screen_in_x(s, px) || !screen_in_y(s, py))
+		return;
+	if (!screen_in_x(s, px + nx - 1) || !screen_in_y(s, py - ny - 1))
+		return;
+	screen_fill_area(
+	    s, screen_x(s, px), screen_y(s, py), nx, ny, data, attr, colr);
 }
 
 /* Scroll region up. */
@@ -167,13 +79,13 @@ void
 screen_display_scroll_region_up(struct screen *s)
 {
 	u_int	ny, sy;
-	
+
 	/*
 	 * If the region is the entire screen, this is easy-peasy. Allocate
 	 * a new line and adjust the history size.
 	 * XXX should this be done somewhere else?
 	 */
-	if (s->rupper == 0 && s->rlower == screen_last_y(s)) {	
+	if (s->rupper == 0 && s->rlower == screen_last_y(s)) {
 		if (s->hsize == s->hlimit) {
 			/* If the limit is hit, free 10% and shift up. */
 			ny = s->hlimit / 10;
@@ -197,7 +109,7 @@ screen_display_scroll_region_up(struct screen *s)
 		return;
 	}
 
-	/* 
+	/*
 	 * Scroll scrolling region up:
 	 * 	- delete rupper
 	 *	- move rupper + 1 to rlower to rupper
@@ -213,7 +125,7 @@ screen_display_scroll_region_up(struct screen *s)
 	screen_display_free_lines(s, s->rupper, 1);
 
 	if (s->rupper != s->rlower) {
-		screen_display_move_lines(s, 
+		screen_display_move_lines(s,
 		    s->rupper, s->rupper + 1, s->rlower - s->rupper);
 	}
 
@@ -224,7 +136,7 @@ screen_display_scroll_region_up(struct screen *s)
 void
 screen_display_scroll_region_down(struct screen *s)
 {
-	/* 
+	/*
 	 * Scroll scrolling region down:
 	 * 	- delete rlower
 	 *	- move rupper to rlower - 1 to rupper + 1
@@ -252,14 +164,14 @@ void
 screen_display_insert_lines(struct screen *s, u_int py, u_int ny)
 {
 	if (!screen_in_y(s, py))
-		fatalx("bad value");
+		return;
 	if (ny == 0)
-		fatalx("bad value");
+		return;
 
 	if (py + ny > screen_last_y(s))
 		ny = screen_size_y(s) - py;
 	if (ny == 0)
-		return;	
+		return;
 
 	/*
 	 * Insert range of ny lines at py:
@@ -289,9 +201,9 @@ void
 screen_display_insert_lines_region(struct screen *s, u_int py, u_int ny)
 {
 	if (!screen_in_region(s, py))
-		fatalx("bad value");
+		return;
 	if (ny == 0)
-		fatalx("bad value");
+		return;
 
 	if (py + ny > s->rlower)
 		ny = (s->rlower + 1) - py;
@@ -326,9 +238,9 @@ void
 screen_display_delete_lines(struct screen *s, u_int py, u_int ny)
 {
 	if (!screen_in_y(s, py))
-		fatalx("bad value");
+		return;
 	if (ny == 0)
-		fatalx("bad value");
+		return;
 
 	if (py + ny > screen_last_y(s))
 		ny = screen_size_y(s) - py;
@@ -363,9 +275,9 @@ void
 screen_display_delete_lines_region(struct screen *s, u_int py, u_int ny)
 {
 	if (!screen_in_region(s, py))
-		fatalx("bad value");
+		return;
 	if (ny == 0)
-		fatalx("bad value");
+		return;
 
 	if (py + ny > s->rlower)
 		ny = (s->rlower + 1) - py;
@@ -402,7 +314,7 @@ screen_display_insert_characters(struct screen *s, u_int px, u_int py, u_int nx)
 	u_int	mx;
 
 	if (!screen_in_x(s, px) || !screen_in_y(s, py))
-		fatalx("bad value");
+		return;
 
 	if (px + nx > screen_last_x(s))
 		nx = screen_last_x(s) - px;
@@ -439,7 +351,7 @@ screen_display_delete_characters(struct screen *s, u_int px, u_int py, u_int nx)
 	u_int	mx;
 
 	if (!screen_in_x(s, px) || !screen_in_y(s, py))
-		fatalx("bad value");
+		return;
 
 	if (px + nx > screen_last_x(s))
 		nx = screen_last_x(s) - px;
@@ -467,4 +379,29 @@ screen_display_delete_characters(struct screen *s, u_int px, u_int py, u_int nx)
 	memset(&s->grid_data[py][screen_size_x(s) - nx], SCREEN_DEFDATA, nx);
 	memset(&s->grid_attr[py][screen_size_x(s) - nx], SCREEN_DEFATTR, nx);
 	memset(&s->grid_colr[py][screen_size_x(s) - nx], SCREEN_DEFCOLR, nx);
+}
+
+/* Fill cells from another screen, with an offset. */
+void
+screen_display_copy_area(struct screen *dst, struct screen *src,
+    u_int px, u_int py, u_int nx, u_int ny, u_int ox, u_int oy)
+{
+	u_int	i, j;
+	u_char	data, attr, colr;
+
+	if (nx == 0 || ny == 0)
+		return;
+	if (!screen_in_x(dst, px) || !screen_in_y(dst, py))
+		return;
+	if (!screen_in_x(dst, px + nx - 1) || !screen_in_y(dst, py + ny - 1))
+		return;
+
+	for (i = py; i < py + ny; i++) {
+		for (j = px; j < px + nx; j++) {
+			screen_get_cell(src,
+			    screen_x(src, j) + ox, screen_y(src, i) - oy,
+			    &data, &attr, &colr);
+			screen_display_set_cell(dst, j, i, data, attr, colr);
+		}
+	}
 }

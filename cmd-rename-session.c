@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-session.c,v 1.3 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-rename-session.c,v 1.4 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_rename_session_entry = {
 	"rename-session", "rename", "new-name",
 	CMD_NOCLIENT,
 	cmd_rename_session_parse,
-	cmd_rename_session_exec, 
+	cmd_rename_session_exec,
 	cmd_rename_session_send,
 	cmd_rename_session_recv,
 	cmd_rename_session_free
@@ -61,7 +61,7 @@ cmd_rename_session_parse(void **ptr, int argc, char **argv, char **cause)
 		default:
 			goto usage;
 		}
-	}	
+	}
 	argc -= optind;
 	argv += optind;
 	if (argc != 1)
@@ -89,7 +89,7 @@ cmd_rename_session_exec(void *ptr, struct cmd_ctx *ctx)
 
 	xfree(ctx->session->name);
 	ctx->session->name = xstrdup(data->newname);
-	
+
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

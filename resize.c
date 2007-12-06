@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.8 2007-12-02 23:00:22 nicm Exp $ */
+/* $Id: resize.c,v 1.9 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,7 @@
  * smallest client it is attached to, and resize it to that size. Then for
  * every window, find the smallest session it is attached to, resize it to that
  * size and clear and redraw every client with it as the current window.
- * 
+ *
  * This is quite inefficient - better/additional data structures are needed
  * to make it better.
  *
@@ -50,7 +50,7 @@ recalculate_sizes(void)
 	struct client	*c;
 	struct window	*w;
 	u_int		 i, j, ssx, ssy;
-	
+
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
 		if (s == NULL)
@@ -105,17 +105,17 @@ recalculate_sizes(void)
 			}
 		}
 		if (ssx == UINT_MAX || ssy == UINT_MAX) {
-			w->screen.mode |= MODE_HIDDEN;
+			w->flags |= WINDOW_HIDDEN;
 			continue;
 		}
-		w->screen.mode &= ~MODE_HIDDEN;
+		w->flags &= ~WINDOW_HIDDEN;
 
-		if (screen_size_x(&w->screen) == ssx &&
-		    screen_size_y(&w->screen) == ssy)
+		if (screen_size_x(&w->base) == ssx &&
+		    screen_size_y(&w->base) == ssy)
 			continue;
 
 		log_debug("window size %u,%u (was %u,%u)", ssx, ssy,
-		    screen_size_x(&w->screen), screen_size_y(&w->screen));
+		    screen_size_x(&w->base), screen_size_y(&w->base));
 
 		server_clear_window(w);
 		window_resize(w, ssx, ssy);

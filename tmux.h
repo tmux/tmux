@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.108 2007-12-02 18:23:10 nicm Exp $ */
+/* $Id: tmux.h,v 1.109 2007-12-06 09:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -281,7 +281,7 @@ struct buffer {
 #define TTY_KKEYPADON 23
 #define TTY_TITLE 24
 #define TTY_MOUSEON 25
-#define TTY_MOUSEOFF 26 /* XXX merge allon/off into 1 arg? */ 
+#define TTY_MOUSEOFF 26 /* XXX merge allon/off into 1 arg? */
 
 /* Message codes. */
 enum hdrtype {
@@ -335,23 +335,25 @@ struct msg_resize_data {
 #define ATTR_CHARSET 0x80	/* alternative character set */
 
 /* Modes. */
-#define MODE_CURSOR 0x001
-#define MODE_INSERT 0x002
-#define MODE_KCURSOR 0x004
-#define MODE_KKEYPAD 0x008
-#define MODE_SAVED 0x010
-#define MODE_HIDDEN 0x020
-#define MODE_BACKGROUND 0x040
-#define MODE_BGCURSOR 0x080
-#define MODE_MOUSE 0x100
+#define MODE_CURSOR 0x01
+#define MODE_INSERT 0x02
+#define MODE_KCURSOR 0x04
+#define MODE_KKEYPAD 0x08
+#define MODE_SAVED 0x10
+#define MODE_MOUSE 0x20
 
-/*
- * Virtual screen. This is stored as three blocks of 8-bit values, one for
- * the actual characters, one for attributes and one for colours. Three
- * seperate blocks means memset and friends can be used.
- *
- * Each block is y by x in size, row then column order. Sizes are 0-based.
- */
+/* Screen selection. */
+struct screen_sel {
+	int		 flag;
+
+	u_int		 sx;
+	u_int		 sy;
+
+	u_int		 ex;
+	u_int		 ey;
+};
+
+/* Virtual screen. */
 struct screen {
 	char		*title;
 
@@ -378,35 +380,29 @@ struct screen {
 	u_int		 saved_cy;
 	u_char		 saved_attr;
 	u_char		 saved_colr;
-	
+
 	int		 mode;
-};
 
-/* Screen redraw selection. */
-struct screen_draw_sel {
-	int		 flag;
-
-	u_int		 sx;
-	u_int		 sy;
-
-	u_int		 ex;
-	u_int		 ey;
+	struct screen_sel sel;
 };
 
 /* Screen redraw context. */
-struct screen_draw_ctx {
+struct screen_redraw_ctx {
+	void		*data;
+	void		 (*write)(void *, int, ...);
+
+	u_int		 saved_cx;
+	u_int		 saved_cy;
+
+	struct screen	*s;
+};
+
+/* Screen write context. */
+struct screen_write_ctx {
 	void		*data;
 	void		 (*write)(void *, int, ...);
 
 	struct screen	*s;
-
-	u_int		 cx;
-	u_int		 cy;
-
-	u_int		 ox;
-	u_int		 oy;
-
-	struct screen_draw_sel sel;
 };
 
 /* Screen display access macros. */
@@ -423,11 +419,20 @@ struct screen_draw_ctx {
 #define screen_in_y(s, y) ((y) < screen_size_y(s))
 #define screen_in_region(s, y) ((y) >= (s)->rupper && (y) <= (s)->rlower)
 
+/* These are inclusive... */
+#define screen_left_x(s, x) ((x) + 1)
+#define screen_right_x(s, x) \
+	((x) < screen_size_x(s) ? screen_size_x(s) - (x) : 0)
+
+#define screen_above_y(s, y) ((y) + 1)
+#define screen_below_y(s, y) \
+	((y) < screen_size_y(s) ? screen_size_y(s) - (y) : 0)
+
 /* Screen default contents. */
 #define SCREEN_DEFDATA ' '
 #define SCREEN_DEFATTR 0
 #define SCREEN_DEFCOLR 0x88
- 
+
 /* Input parser sequence argument. */
 struct input_arg {
 	u_char		 data[64];
@@ -437,6 +442,7 @@ struct input_arg {
 /* Input parser context. */
 struct input_ctx {
 	struct window	*w;
+	struct screen_write_ctx ctx;
 
 	u_char		*buf;
 	size_t		 len;
@@ -462,9 +468,8 @@ struct input_ctx {
  */
 struct window_mode {
 	void	(*init)(struct window *);
+	void	(*free)(struct window *);
 	void	(*resize)(struct window *, u_int, u_int);
-	void	(*draw)(
-	    	    struct window *, struct screen_draw_ctx *, u_int, u_int);
 	void	(*key)(struct window *, int);
 };
 
@@ -480,8 +485,10 @@ struct window {
 
 	int		 flags;
 #define WINDOW_BELL 0x1
+#define WINDOW_HIDDEN 0x2
 
-	struct screen	 screen;
+	struct screen	*screen;
+	struct screen	 base;
 
 	const struct window_mode *mode;
 	void		*modedata;
@@ -661,7 +668,7 @@ void		 tty_init(struct tty *, char *, char *);
 int		 tty_open(struct tty *, char **);
 void		 tty_close(struct tty *);
 void		 tty_free(struct tty *);
-void		 tty_vwrite(struct tty *, int, va_list);
+void		 tty_vwrite(struct tty *, struct screen *s, int, va_list);
 
 /* tty-keys.c */
 int		 tty_keys_cmp(struct tty_key *, struct tty_key *);
@@ -787,27 +794,13 @@ void	 input_parse(struct window *);
 void	 input_key(struct window *, int);
 
 /* screen-display.c */
+void	 screen_display_set_cell(
+    	     struct screen *, u_int, u_int, u_char, u_char, u_char);
 void	 screen_display_make_lines(struct screen *, u_int, u_int);
 void	 screen_display_free_lines(struct screen *, u_int, u_int);
 void	 screen_display_move_lines(struct screen *, u_int, u_int, u_int);
-void	 screen_display_fill_lines(
-	     struct screen *, u_int, u_int, u_char, u_char, u_char);
-void	 screen_display_fill_cells(
-    	     struct screen *, u_int, u_int, u_int, u_char, u_char, u_char);
-void	 screen_display_fill_screen(struct screen *, u_char, u_char, u_char);
-void	 screen_display_fill_cursor_eos(
-	     struct screen *, u_char, u_char, u_char);
-void	 screen_display_fill_cursor_bos(
-	     struct screen *, u_char, u_char, u_char);
-void	 screen_display_fill_line(
-	     struct screen *, u_int, u_char, u_char, u_char);
-void	 screen_display_fill_cursor_bol(
-	     struct screen *, u_char, u_char, u_char);
-void	 screen_display_fill_cursor_eol(
-    	     struct screen *, u_char, u_char, u_char);
-void	 screen_display_cursor_set(struct screen *, u_char);
-void	 screen_display_cursor_up(struct screen *);
-void	 screen_display_cursor_down(struct screen *);
+void	 screen_display_fill_area(struct screen *,
+    	     u_int, u_int, u_int, u_int, u_char, u_char, u_char);
 void	 screen_display_scroll_region_up(struct screen *);
 void	 screen_display_scroll_region_down(struct screen *);
 void	 screen_display_insert_lines(struct screen *, u_int, u_int);
@@ -816,6 +809,64 @@ void	 screen_display_delete_lines(struct screen *, u_int, u_int);
 void	 screen_display_delete_lines_region(struct screen *, u_int, u_int);
 void	 screen_display_insert_characters(struct screen *, u_int, u_int, u_int);
 void	 screen_display_delete_characters(struct screen *, u_int, u_int, u_int);
+void	 screen_display_copy_area(struct screen *, struct screen *,
+    	     u_int, u_int, u_int, u_int, u_int, u_int);
+
+/* screen-write.c */
+void	 screen_write_start_window(struct screen_write_ctx *, struct window *);
+void	 screen_write_start_client(struct screen_write_ctx *, struct client *);
+void	 screen_write_start_session(
+    	    struct screen_write_ctx *, struct session *);
+void	 screen_write_start(struct screen_write_ctx *,
+    	    struct screen *, void (*)(void *, int, ...), void *);
+void	 screen_write_stop(struct screen_write_ctx *);
+void	 screen_write_set_title(struct screen_write_ctx *, char *);
+void	 screen_write_put_character(struct screen_write_ctx *, u_char);
+size_t printflike2 screen_write_put_string_rjust(
+	     struct screen_write_ctx *, const char *, ...);
+void printflike2 screen_write_put_string(
+	     struct screen_write_ctx *, const char *, ...);
+void	 screen_write_set_attributes(struct screen_write_ctx *, u_char, u_char);
+void	 screen_write_set_region(struct screen_write_ctx *, u_int, u_int);
+void	 screen_write_cursor_up_scroll(struct screen_write_ctx *);
+void	 screen_write_cursor_down_scroll(struct screen_write_ctx *);
+void	 screen_write_cursor_up(struct screen_write_ctx *, u_int);
+void	 screen_write_cursor_down(struct screen_write_ctx *, u_int);
+void	 screen_write_cursor_left(struct screen_write_ctx *, u_int);
+void	 screen_write_cursor_right(struct screen_write_ctx *, u_int);
+void	 screen_write_delete_lines(struct screen_write_ctx *, u_int);
+void	 screen_write_delete_characters(struct screen_write_ctx *, u_int);
+void	 screen_write_insert_lines(struct screen_write_ctx *, u_int);
+void	 screen_write_insert_characters(struct screen_write_ctx *, u_int);
+void	 screen_write_move_cursor(struct screen_write_ctx *, u_int, u_int);
+void	 screen_write_fill_end_of_screen(struct screen_write_ctx *);
+void	 screen_write_fill_screen(struct screen_write_ctx *);
+void	 screen_write_fill_end_of_line(struct screen_write_ctx *);
+void	 screen_write_fill_start_of_line(struct screen_write_ctx *);
+void	 screen_write_fill_line(struct screen_write_ctx *);
+void	 screen_write_set_mode(struct screen_write_ctx *, int);
+void	 screen_write_clear_mode(struct screen_write_ctx *, int);
+void	 screen_write_copy_area(struct screen_write_ctx *,
+    	     struct screen *, u_int, u_int, u_int, u_int);
+
+/* screen-redraw.c */
+void	screen_redraw_start_window(struct screen_redraw_ctx *, struct window *);
+void	screen_redraw_start_client(struct screen_redraw_ctx *, struct client *);
+void	screen_redraw_start_session(
+    	    struct screen_redraw_ctx *, struct session *);
+void	screen_redraw_start(struct screen_redraw_ctx *,
+    	    struct screen *, void (*)(void *, int, ...), void *);
+void	screen_redraw_stop(struct screen_redraw_ctx *);
+void	screen_redraw_move_cursor(struct screen_redraw_ctx *, u_int, u_int);
+void	screen_redraw_set_attributes(struct screen_redraw_ctx *, u_int, u_int);
+void printflike2 screen_redraw_write_string(
+    	     struct screen_redraw_ctx *, const char *, ...);
+void	screen_redraw_clear_end_of_line(struct screen_redraw_ctx *);
+void	screen_redraw_clear_screen(struct screen_redraw_ctx *);
+void	screen_redraw_cell(struct screen_redraw_ctx *, u_int, u_int);
+void	screen_redraw_area(
+    	    struct screen_redraw_ctx *, u_int, u_int, u_int, u_int);
+void	screen_redraw_lines(struct screen_redraw_ctx *, u_int, u_int);
 
 /* screen.c */
 const char *screen_colourstring(u_char);
@@ -828,44 +879,14 @@ void	 screen_reduce_line(struct screen *, u_int, u_int);
 void	 screen_get_cell(
     	     struct screen *, u_int, u_int, u_char *, u_char *, u_char *);
 void	 screen_set_cell(struct screen *, u_int, u_int, u_char, u_char, u_char);
-void	 screen_draw_start_window(
-    	     struct screen_draw_ctx *, struct window *, u_int, u_int);
-void	 screen_draw_start_client(
-    	     struct screen_draw_ctx *, struct client *, u_int, u_int);
-void	 screen_draw_start_session(
-    	     struct screen_draw_ctx *, struct session *, u_int, u_int);
-void	 screen_draw_start(struct screen_draw_ctx *, struct screen *s,
-	     void (*)(void *, int, ...), void *, u_int, u_int);
-void	 screen_draw_stop(struct screen_draw_ctx *);
-void	 screen_draw_set_offset(struct screen_draw_ctx *, u_int, u_int);
-void	 screen_draw_set_selection(
-    	     struct screen_draw_ctx *, int, u_int, u_int, u_int, u_int);
-int	 screen_draw_check_selection(struct screen_draw_ctx *, u_int, u_int);
-void	 screen_draw_get_cell(struct screen_draw_ctx *,
-    	     u_int, u_int, u_char *, u_char *, u_char *);
-void	 screen_draw_insert_characters(struct screen_draw_ctx *, u_int);
-void	 screen_draw_delete_characters(struct screen_draw_ctx *, u_int);
-void	 screen_draw_insert_lines(struct screen_draw_ctx *, u_int);
-void	 screen_draw_delete_lines(struct screen_draw_ctx *, u_int);
-void	 screen_draw_clear_line_to(struct screen_draw_ctx *, u_int);
-void	 screen_draw_clear_screen(struct screen_draw_ctx *);
-void printflike2 screen_draw_write_string(
-	     struct screen_draw_ctx *, const char *, ...);
-void	 screen_draw_move_cursor(struct screen_draw_ctx *, u_int, u_int);
-void	 screen_draw_set_attributes(struct screen_draw_ctx *, u_char, u_char);
-void	 screen_draw_cell(struct screen_draw_ctx *, u_int, u_int);
-void	 screen_draw_cells(struct screen_draw_ctx *, u_int, u_int, u_int);
-void	 screen_draw_column(struct screen_draw_ctx *, u_int);
-void	 screen_draw_line(struct screen_draw_ctx *, u_int);
-void	 screen_draw_lines(struct screen_draw_ctx *, u_int, u_int);
-void	 screen_draw_screen(struct screen_draw_ctx *);
 void	 screen_make_lines(struct screen *, u_int, u_int);
 void	 screen_free_lines(struct screen *, u_int, u_int);
 void	 screen_move_lines(struct screen *, u_int, u_int, u_int);
-void	 screen_fill_lines(
-	     struct screen *, u_int, u_int, u_char, u_char, u_char);
-void	 screen_fill_cells(
-    	     struct screen *, u_int, u_int, u_int, u_char, u_char, u_char);
+void	 screen_fill_area(struct screen *,
+    	     u_int, u_int, u_int, u_int, u_char, u_char, u_char);
+void	 screen_set_selection(struct screen *, u_int, u_int, u_int, u_int);
+void	 screen_clear_selection(struct screen *);
+int	 screen_check_selection(struct screen *, u_int, u_int);
 
 /* window.c */
 extern struct windows windows;
@@ -885,8 +906,6 @@ struct window	*window_create(
 void		 window_destroy(struct window *);
 int		 window_resize(struct window *, u_int, u_int);
 void		 window_parse(struct window *);
-void		 window_draw(
-    		     struct window *, struct screen_draw_ctx *, u_int, u_int);
 void		 window_key(struct window *, int);
 
 /* window-copy.c */

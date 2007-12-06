@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.43 2007-11-30 11:08:35 nicm Exp $ */
+/* $Id: input.c,v 1.44 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,7 +43,6 @@ void	 input_abort_string(struct input_ctx *);
 int	 input_add_string(struct input_ctx *, u_char);
 char	*input_get_string(struct input_ctx *);
 
-void	 input_write(struct input_ctx *, int, ...);
 void	 input_state(struct input_ctx *, void *);
 
 void	 input_state_first(u_char, struct input_ctx *);
@@ -84,13 +83,6 @@ void	 input_handle_sequence_rm(struct input_ctx *);
 void	 input_handle_sequence_decstbm(struct input_ctx *);
 void	 input_handle_sequence_sgr(struct input_ctx *);
 void	 input_handle_sequence_dsr(struct input_ctx *);
-
-#define input_limit(v, lower, upper) do {	\
-	if (v < lower)				\
-		v = lower;			\
-	if (v > upper)				\
-		v = upper;			\
-} while (0)
 
 int
 input_new_argument(struct input_ctx *ictx)
@@ -184,19 +176,6 @@ input_get_string(struct input_ctx *ictx)
 }
 
 void
-input_write(struct input_ctx *ictx, int cmd, ...)
-{
-	va_list	ap;
-
-	if (ictx->w->screen.mode & (MODE_HIDDEN|MODE_BACKGROUND))
-		return;
-
-	va_start(ap, cmd);
-	tty_vwrite_window(ictx->w, cmd, ap);
-	va_end(ap);
-}
-
-void
 input_state(struct input_ctx *ictx, void *state)
 {
 	ictx->state = state;
@@ -239,10 +218,17 @@ input_parse(struct window *w)
 
 	log_debug2("entry; buffer=%zu", ictx->len);
 
+	if (w->mode == NULL)
+		screen_write_start(&ictx->ctx, &w->base, tty_write_window, w);
+	else
+		screen_write_start(&ictx->ctx, &w->base, NULL, NULL);
+
 	while (ictx->off < ictx->len) {
 		ch = ictx->buf[ictx->off++];
 		ictx->state(ch, ictx);
 	}
+
+	screen_write_stop(&ictx->ctx);
 
 	buffer_remove(w->in, ictx->len);
 }
@@ -253,7 +239,7 @@ input_state_first(u_char ch, struct input_ctx *ictx)
 	if (INPUT_C0CONTROL(ch)) {
 		if (ch == 0x1b)
 			input_state(ictx, input_state_escape);
-		else 
+		else
 			input_handle_c0_control(ch, ictx);
 		return;
 	}
@@ -268,10 +254,10 @@ input_state_first(u_char ch, struct input_ctx *ictx)
 			input_handle_c1_control(ch, ictx);
 		return;
 	}
-	
+
 	input_handle_character(ch, ictx);
 }
-	    
+
 void
 input_state_escape(u_char ch, struct input_ctx *ictx)
 {
@@ -326,7 +312,7 @@ input_state_title_first(u_char ch, struct input_ctx *ictx)
 			input_start_string(ictx, STRING_IGNORE);
 		input_state(ictx, input_state_title_second);
 		return;
-	} 
+	}
 
 	input_state(ictx, input_state_first);
 }
@@ -345,13 +331,10 @@ input_state_title_second(u_char ch, struct input_ctx *ictx)
 void
 input_state_title_next(u_char ch, struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-
 	if (ch == '\007') {
 		if (ictx->string_type == STRING_TITLE) {
-			xfree(s->title);
-			s->title = input_get_string(ictx);
-			input_write(ictx, TTY_TITLE, s->title);
+			screen_write_set_title(
+			    &ictx->ctx, input_get_string(ictx));
 		} else
 			input_abort_string(ictx);
 		input_state(ictx, input_state_first);
@@ -440,7 +423,7 @@ input_state_sequence_next(u_char ch, struct input_ctx *ictx)
 		}
 		return;
 	}
-	
+
 	input_state(ictx, input_state_first);
 }
 
@@ -449,13 +432,13 @@ input_state_sequence_intermediate(u_char ch, struct input_ctx *ictx)
 {
 	if (INPUT_INTERMEDIATE(ch))
 		return;
-	
+
 	if (INPUT_UPPERCASE(ch) || INPUT_LOWERCASE(ch)) {
 		input_state(ictx, input_state_first);
 		input_handle_sequence(ch, ictx);
 		return;
 	}
-	
+
 	input_state(ictx, input_state_first);
 }
 
@@ -496,82 +479,63 @@ input_state_string_escape(u_char ch, struct input_ctx *ictx)
 void
 input_handle_character(u_char ch, struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-
 	log_debug2("-- ch %zu: %hhu (%c)", ictx->off, ch, ch);
-	
-	if (s->cx == screen_size_x(s)) {
-		input_write(ictx, TTY_CHARACTER, '\r');
-		input_write(ictx, TTY_CHARACTER, '\n');
 
-		s->cx = 0;
-		screen_display_cursor_down(s);
-	} else if (!screen_in_x(s, s->cx) || !screen_in_y(s, s->cy))
-		return;
-
-	screen_display_cursor_set(s, ch);
-	input_write(ictx, TTY_CHARACTER, ch);
-
-	s->cx++;
+	screen_write_put_character(&ictx->ctx, ch);
 }
 
 void
 input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
+	struct screen	*s = ictx->ctx.s;
 
 	log_debug2("-- c0 %zu: %hhu", ictx->off, ch);
 
 	switch (ch) {
 	case '\0':	/* NUL */
-		return;
+		break;
 	case '\n':	/* LF */
- 		screen_display_cursor_down(s);
+		screen_write_cursor_down_scroll(&ictx->ctx);
 		break;
 	case '\r':	/* CR */
-		s->cx = 0;
+		screen_write_move_cursor(&ictx->ctx, 0, s->cy);
 		break;
 	case '\007':	/* BELL */
 		ictx->w->flags |= WINDOW_BELL;
-		return;
+		break;
 	case '\010': 	/* BS */
-		if (s->cx > 0)
-			s->cx--;
+		screen_write_cursor_left(&ictx->ctx, 1);
 		break;
 	case '\011': 	/* TAB */
 		s->cx = ((s->cx / 8) * 8) + 8;
 		if (s->cx > screen_last_x(s)) {
 			s->cx = 0;
-			screen_display_cursor_down(s);
+			screen_write_cursor_down(&ictx->ctx, 1);
 		}
-		input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
-		return;
+		screen_write_move_cursor(&ictx->ctx, s->cx, s->cy);
+		break;
 	case '\016':	/* SO */
 		s->attr |= ATTR_CHARSET;
-		input_write(ictx, TTY_ATTRIBUTES, s->attr, s->colr);
-		return;
+		screen_write_set_attributes(&ictx->ctx, s->attr, s->colr);
+		break;
 	case '\017':	/* SI */
 		s->attr &= ~ATTR_CHARSET;
-		input_write(ictx, TTY_ATTRIBUTES, s->attr, s->colr);
-		return;
+		screen_write_set_attributes(&ictx->ctx, s->attr, s->colr);
+		break;
 	default:
 		log_debug("unknown c0: %hhu", ch);
-		return;
+		break;
 	}
-	input_write(ictx, TTY_CHARACTER, ch);
 }
 
 void
 input_handle_c1_control(u_char ch, struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-
 	log_debug2("-- c1 %zu: %hhu (%c)", ictx->off, ch, ch);
 
 	switch (ch) {
 	case 'M':	/* RI */
-		screen_display_cursor_up(s);
-		input_write(ictx, TTY_REVERSEINDEX);
+		screen_write_cursor_up_scroll(&ictx->ctx);
 		break;
 	default:
 		log_debug("unknown c1: %hhu", ch);
@@ -582,16 +546,16 @@ input_handle_c1_control(u_char ch, struct input_ctx *ictx)
 void
 input_handle_private_two(u_char ch, struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
+	struct screen	*s = ictx->ctx.s;
 
 	log_debug2("-- p2 %zu: %hhu (%c)", ictx->off, ch, ch);
 
 	switch (ch) {
 	case '=':	/* DECKPAM */
-		input_write(ictx, TTY_KKEYPADON);
+		screen_write_set_mode(&ictx->ctx, MODE_KKEYPAD);
 		break;
 	case '>':	/* DECKPNM*/
-		input_write(ictx, TTY_KKEYPADOFF);
+		screen_write_clear_mode(&ictx->ctx, MODE_KKEYPAD);
 		break;
 	case '7':	/* DECSC */
 		s->saved_cx = s->cx;
@@ -607,8 +571,8 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 		s->cy = s->saved_cy;
 		s->attr = s->saved_attr;
 		s->colr = s->saved_colr;
-		input_write(ictx, TTY_ATTRIBUTES, s->attr, s->colr);
-		input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
+		screen_write_set_attributes(&ictx->ctx, s->attr, s->colr);
+		screen_write_move_cursor(&ictx->ctx, s->cx, s->cy);
 		break;
 	default:
 		log_debug("unknown p2: %hhu", ch);
@@ -659,10 +623,10 @@ input_handle_sequence(u_char ch, struct input_ctx *ictx)
 		{ 'n', input_handle_sequence_dsr },
 		{ 'r', input_handle_sequence_decstbm },
 	};
-	struct screen	 *s = &ictx->w->screen;
+	struct screen	 *s = ictx->ctx.s;
 	u_int		  i;
 	struct input_arg *iarg;
-	
+
 	log_debug2("-- sq %zu: %hhu (%c): %u [sx=%u, sy=%u, cx=%u, cy=%u, "
 	    "ru=%u, rl=%u]", ictx->off, ch, ch, ARRAY_LENGTH(&ictx->args),
 	    screen_size_x(s), screen_size_y(s), s->cx, s->cy, s->rupper,
@@ -687,8 +651,7 @@ input_handle_sequence(u_char ch, struct input_ctx *ictx)
 void
 input_handle_sequence_cuu(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
+	uint16_t	n;
 
 	if (ictx->private != '\0')
 		return;
@@ -697,21 +660,16 @@ input_handle_sequence_cuu(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
+	if (n == 0)
+		n = 1;
 
-	if (n == 0 || n > s->cy) {
-		log_debug3("cuu: out of range: %hu", n);
-		return;
-	}
-
-	s->cy -= n;
-	input_write(ictx, TTY_CURSORUP, n);
+	screen_write_cursor_up(&ictx->ctx, n);
 }
 
 void
 input_handle_sequence_cud(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
+	uint16_t	n;
 
 	if (ictx->private != '\0')
 		return;
@@ -720,20 +678,16 @@ input_handle_sequence_cud(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
-
 	if (n == 0)
-		return;
-	input_limit(n, 1, screen_last_y(s) - s->cy);
+		n = 1;
 
-	s->cy += n;
-	input_write(ictx, TTY_CURSORDOWN, n);
+	screen_write_cursor_down(&ictx->ctx, n);
 }
 
 void
 input_handle_sequence_cuf(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
+	uint16_t n;
 
 	if (ictx->private != '\0')
 		return;
@@ -742,20 +696,16 @@ input_handle_sequence_cuf(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
-
 	if (n == 0)
-		return;
-	input_limit(n, 1, screen_last_x(s) - s->cx);
+		n = 1;
 
-	s->cx += n;
-	input_write(ictx, TTY_CURSORRIGHT, n);
+	screen_write_cursor_right(&ictx->ctx, n);
 }
 
 void
 input_handle_sequence_cub(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
+	uint16_t	n;
 
 	if (ictx->private != '\0')
 		return;
@@ -764,21 +714,16 @@ input_handle_sequence_cub(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
+	if (n == 0)
+		n = 1;
 
-	if (n == 0 || n > s->cx) {
-		log_debug3("cub: out of range: %hu", n);
-		return;
-	}
-
-	s->cx -= n;
-	input_write(ictx, TTY_CURSORLEFT, n);
+	screen_write_cursor_left(&ictx->ctx, n);
 }
 
 void
 input_handle_sequence_dch(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
+	uint16_t	n;
 
 	if (ictx->private != '\0')
 		return;
@@ -787,20 +732,16 @@ input_handle_sequence_dch(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
-
 	if (n == 0)
-		return;
-	input_limit(n, 1, screen_last_x(s) - s->cx);
+		n = 1;
 
-	screen_display_delete_characters(s, s->cx, s->cy, n);
-	input_write(ictx, TTY_DELETECHARACTER, n);
+	screen_write_delete_characters(&ictx->ctx, n);
 }
 
 void
 input_handle_sequence_dl(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
+	uint16_t	n;
 
 	if (ictx->private != '\0')
 		return;
@@ -809,23 +750,16 @@ input_handle_sequence_dl(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
-
 	if (n == 0)
-		return;
-	input_limit(n, 1, screen_last_y(s) - s->cy);
+		n = 1;
 
-	if (s->cy < s->rupper || s->cy > s->rlower)
-		screen_display_delete_lines(s, s->cy, n);
-	else
-		screen_display_delete_lines_region(s, s->cy, n);
-	input_write(ictx, TTY_DELETELINE, n);
+	screen_write_delete_lines(&ictx->ctx, n);
 }
 
 void
 input_handle_sequence_ich(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
+	uint16_t	n;
 
 	if (ictx->private != '\0')
 		return;
@@ -834,20 +768,16 @@ input_handle_sequence_ich(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
-
 	if (n == 0)
-		return;
-	input_limit(n, 1, screen_last_x(s) - s->cx);
+		n = 1;
 
-	screen_display_insert_characters(s, s->cx, s->cy, n);
-	input_write(ictx, TTY_INSERTCHARACTER, n);
+	screen_write_insert_characters(&ictx->ctx, n);
 }
 
 void
 input_handle_sequence_il(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
+	uint16_t	n;
 
 	if (ictx->private != '\0')
 		return;
@@ -856,23 +786,17 @@ input_handle_sequence_il(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
-
 	if (n == 0)
-		return;
-	input_limit(n, 1, screen_last_y(s) - s->cy);
+		n = 1;
 
-	if (s->cy < s->rupper || s->cy > s->rlower)
-		screen_display_insert_lines(s, s->cy, n);
-	else
-		screen_display_insert_lines_region(s, s->cy, n);
-	input_write(ictx, TTY_INSERTLINE, n);
+	screen_write_insert_lines(&ictx->ctx, n);
 }
 
 void
 input_handle_sequence_vpa(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
+	struct screen  *s = ictx->ctx.s;
+	uint16_t	n;
 
 	if (ictx->private != '\0')
 		return;
@@ -881,20 +805,17 @@ input_handle_sequence_vpa(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
-
 	if (n == 0)
-		return;
-	input_limit(n, 1, screen_size_y(s));
+		n = 1;
 
-	s->cy = n - 1;
-	input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
+	screen_write_move_cursor(&ictx->ctx, s->cx, n - 1);
 }
 
 void
 input_handle_sequence_hpa(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
+	struct screen  *s = ictx->ctx.s;
+	uint16_t	n;
 
 	if (ictx->private != '\0')
 		return;
@@ -903,20 +824,16 @@ input_handle_sequence_hpa(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 0, &n, 1) != 0)
 		return;
-
 	if (n == 0)
-		return;
-	input_limit(n, 1, screen_size_x(s));
+		n = 1;
 
-	s->cx = n - 1;
-	input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
+	screen_write_move_cursor(&ictx->ctx, n - 1, s->cy);
 }
 
 void
 input_handle_sequence_cup(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n, m;
+	uint16_t	n, m;
 
 	if (ictx->private != '\0')
 		return;
@@ -927,21 +844,18 @@ input_handle_sequence_cup(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 1, &m, 1) != 0)
 		return;
+	if (n == 0)
+		n = 1;
+	if (m == 0)
+		m = 1;
 
-	input_limit(n, 1, screen_size_y(s));
-	input_limit(m, 1, screen_size_x(s));
-
-	s->cx = m - 1;
-	s->cy = n - 1;
-	input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
+	screen_write_move_cursor(&ictx->ctx, m - 1, n - 1);
 }
 
 void
 input_handle_sequence_ed(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
-	u_int		 i;
+	uint16_t	n;
 
 	if (ictx->private != '\0')
 		return;
@@ -950,31 +864,15 @@ input_handle_sequence_ed(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 0, &n, 0) != 0)
 		return;
-
 	if (n > 2)
 		return;
 
 	switch (n) {
 	case 0:
-		screen_display_fill_cursor_eos(
-		    s, SCREEN_DEFDATA, s->attr, s->colr);
-
-		input_write(ictx, TTY_CLEARENDOFLINE);
-		for (i = s->cy + 1; i < screen_size_y(s); i++) {
-			input_write(ictx, TTY_CURSORMOVE, i, 0);
-			input_write(ictx, TTY_CLEARENDOFLINE);
-		}
-		input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
+		screen_write_fill_end_of_screen(&ictx->ctx);
 		break;
 	case 2:
-		screen_display_fill_lines(
-		    s, 0, screen_size_y(s), SCREEN_DEFDATA, s->attr, s->colr);
-
-		for (i = 0; i < screen_size_y(s); i++) {
-			input_write(ictx, TTY_CURSORMOVE, i, 0);
-			input_write(ictx, TTY_CLEARENDOFLINE);
-		}
-		input_write(ictx, TTY_CURSORMOVE, s->cy, s->cx);
+		screen_write_fill_screen(&ictx->ctx);
 		break;
 	}
 }
@@ -982,8 +880,7 @@ input_handle_sequence_ed(struct input_ctx *ictx)
 void
 input_handle_sequence_el(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
+	uint16_t	n;
 
 	if (ictx->private != '\0')
 		return;
@@ -992,25 +889,18 @@ input_handle_sequence_el(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 0, &n, 0) != 0)
 		return;
-
 	if (n > 2)
 		return;
 
 	switch (n) {
 	case 0:
-		screen_display_fill_cursor_eol(
-		    s, SCREEN_DEFDATA, s->attr, s->colr);
-		input_write(ictx, TTY_CLEARENDOFLINE);
+		screen_write_fill_end_of_line(&ictx->ctx);
 		break;
 	case 1:
-		screen_display_fill_cursor_bol(
-		    s, SCREEN_DEFDATA, s->attr, s->colr);
-		input_write(ictx, TTY_CLEARSTARTOFLINE);
+		screen_write_fill_start_of_line(&ictx->ctx);
 		break;
 	case 2:
-		screen_display_fill_line(
-		    s, s->cy, SCREEN_DEFDATA, s->attr, s->colr);
-		input_write(ictx, TTY_CLEARLINE);
+		screen_write_fill_line(&ictx->ctx);
 		break;
 	}
 }
@@ -1018,8 +908,7 @@ input_handle_sequence_el(struct input_ctx *ictx)
 void
 input_handle_sequence_sm(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
+	uint16_t	n;
 
 	if (ARRAY_LENGTH(&ictx->args) > 1)
 		return;
@@ -1029,16 +918,13 @@ input_handle_sequence_sm(struct input_ctx *ictx)
 	if (ictx->private == '?') {
 		switch (n) {
 		case 1:		/* GATM */
-			s->mode |= MODE_KCURSOR;
-			input_write(ictx, TTY_KCURSORON);
+			screen_write_set_mode(&ictx->ctx, MODE_KCURSOR);
 			break;
 		case 25:	/* TCEM */
-			s->mode |= MODE_CURSOR;
-			input_write(ictx, TTY_CURSORON);
+			screen_write_set_mode(&ictx->ctx, MODE_CURSOR);
 			break;
 		case 1000:
-			s->mode |= MODE_MOUSE;
-			input_write(ictx, TTY_MOUSEON);
+			screen_write_set_mode(&ictx->ctx, MODE_MOUSE);
 			break;
 		default:
 			log_debug("unknown SM [%hhu]: %u", ictx->private, n);
@@ -1047,8 +933,7 @@ input_handle_sequence_sm(struct input_ctx *ictx)
 	} else {
 		switch (n) {
 		case 4:		/* IRM */
-			s->mode |= MODE_INSERT;
-			input_write(ictx, TTY_INSERTON);
+			screen_write_set_mode(&ictx->ctx, MODE_INSERT);
 			break;
 		case 34:
 			/* Cursor high visibility not supported. */
@@ -1063,7 +948,6 @@ input_handle_sequence_sm(struct input_ctx *ictx)
 void
 input_handle_sequence_rm(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
 	uint16_t	 n;
 
 	if (ARRAY_LENGTH(&ictx->args) > 1)
@@ -1074,16 +958,13 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 	if (ictx->private == '?') {
 		switch (n) {
 		case 1:		/* GATM */
-			s->mode &= ~MODE_KCURSOR;
-			input_write(ictx, TTY_KCURSOROFF);
+			screen_write_clear_mode(&ictx->ctx, MODE_KCURSOR);
 			break;
 		case 25:	/* TCEM */
-			s->mode &= ~MODE_CURSOR;
-			input_write(ictx, TTY_CURSOROFF);
+			screen_write_clear_mode(&ictx->ctx, MODE_CURSOR);
 			break;
 		case 1000:
-			s->mode &= ~MODE_MOUSE;
-			input_write(ictx, TTY_MOUSEOFF);
+			screen_write_clear_mode(&ictx->ctx, MODE_MOUSE);
 			break;
 		default:
 			log_debug("unknown RM [%hhu]: %u", ictx->private, n);
@@ -1092,8 +973,7 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 	} else if (ictx->private == '\0') {
 		switch (n) {
 		case 4:		/* IRM */
-			s->mode &= ~MODE_INSERT;
-			input_write(ictx, TTY_INSERTOFF);
+			screen_write_clear_mode(&ictx->ctx, MODE_INSERT);
 			break;
 		case 34:
 			/* Cursor high visibility not supported. */
@@ -1108,9 +988,9 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 void
 input_handle_sequence_dsr(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n;
-	char		 reply[32];
+	struct screen  *s = ictx->ctx.s;
+	uint16_t	n;
+	char		reply[32];
 
 	if (ARRAY_LENGTH(&ictx->args) > 1)
 		return;
@@ -1133,8 +1013,8 @@ input_handle_sequence_dsr(struct input_ctx *ictx)
 void
 input_handle_sequence_decstbm(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	uint16_t	 n, m;
+	struct screen  *s = ictx->ctx.s;
+	uint16_t	n, m;
 
 	if (ictx->private != '\0')
 		return;
@@ -1145,78 +1025,64 @@ input_handle_sequence_decstbm(struct input_ctx *ictx)
 		return;
 	if (input_get_argument(ictx, 1, &m, 0) != 0)
 		return;
-
-	/* Special case: both zero restores to entire screen. */
-	/* XXX this will catch [0;0r and [;r etc too, is this right? */
-	if (n == 0 && m == 0) {
+	if (n == 0)
 		n = 1;
+	if (m == 0)
 		m = screen_size_y(s);
-	}
 
-	input_limit(n, 1, screen_size_y(s));
-	input_limit(m, 1, screen_size_y(s));
-
-	if (n > m) {
-		log_debug3("decstbm: out of range: %hu,%hu", n, m);
-		return;
-	}
-
-	/* Cursor moves to top-left. */
-	s->cx = 0;
-	s->cy = n - 1;
-
-	s->rupper = n - 1;
-	s->rlower = m - 1;
-	input_write(ictx, TTY_SCROLLREGION, s->rupper, s->rlower);
+	screen_write_set_region(&ictx->ctx, n - 1, m - 1);
 }
 
 void
 input_handle_sequence_sgr(struct input_ctx *ictx)
 {
-	struct screen	*s = &ictx->w->screen;
-	u_int		 i, n;
-	uint16_t	 m;
+	struct screen  *s = ictx->ctx.s;
+	u_int		i, n;
+	uint16_t	m;
+	u_char		attr, colr;
 
 	n = ARRAY_LENGTH(&ictx->args);
 	if (n == 0) {
-		s->attr = 0;
-		s->colr = SCREEN_DEFCOLR;
+		attr = 0;
+		colr = SCREEN_DEFCOLR;
 	} else {
+		attr = s->attr;
+		colr = s->colr;
 		for (i = 0; i < n; i++) {
 			if (input_get_argument(ictx, i, &m, 0) != 0)
 				return;
 			switch (m) {
 			case 0:
 			case 10:
-				s->attr &= ATTR_CHARSET;
-				s->colr = SCREEN_DEFCOLR;
+				attr &= ATTR_CHARSET;
+				colr = SCREEN_DEFCOLR;
 				break;
 			case 1:
-				s->attr |= ATTR_BRIGHT;
+				attr |= ATTR_BRIGHT;
 				break;
 			case 2:
-				s->attr |= ATTR_DIM;
+				attr |= ATTR_DIM;
 				break;
 			case 3:
-				s->attr |= ATTR_ITALICS;
+				attr |= ATTR_ITALICS;
 				break;
 			case 4:
-				s->attr |= ATTR_UNDERSCORE;
+				attr |= ATTR_UNDERSCORE;
 				break;
 			case 5:
-				s->attr |= ATTR_BLINK;
+				attr |= ATTR_BLINK;
 				break;
 			case 7:
-				s->attr |= ATTR_REVERSE;
+				attr |= ATTR_REVERSE;
 				break;
 			case 8:
-				s->attr |= ATTR_HIDDEN;
+				attr |= ATTR_HIDDEN;
 				break;
 			case 23:
-				s->attr &= ~ATTR_ITALICS;
+				attr &= ~ATTR_ITALICS;
 				break;
 			case 24:
-				s->attr &= ~ATTR_UNDERSCORE;
+				attr &= ~ATTR_UNDERSCORE;
 				break;
 			case 30:
 			case 31:
@@ -1226,12 +1092,12 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 			case 35:
 			case 36:
 			case 37:
-				s->colr &= 0x0f;
-				s->colr |= (m - 30) << 4;
+				colr &= 0x0f;
+				colr |= (m - 30) << 4;
 				break;
 			case 39:
-				s->colr &= 0x0f;
-				s->colr |= 0x80;
+				colr &= 0x0f;
+				colr |= 0x80;
 				break;
 			case 40:
 			case 41:
@@ -1241,15 +1107,15 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 			case 45:
 			case 46:
 			case 47:
-				s->colr &= 0xf0;
-				s->colr |= m - 40;
+				colr &= 0xf0;
+				colr |= m - 40;
 				break;
 			case 49:
-				s->colr &= 0xf0;
-				s->colr |= 0x08;
+				colr &= 0xf0;
+				colr |= 0x08;
 				break;
 			}
 		}
 	}
-	input_write(ictx, TTY_ATTRIBUTES, s->attr, s->colr);
+	screen_write_set_attributes(&ictx->ctx, attr, colr);
 }

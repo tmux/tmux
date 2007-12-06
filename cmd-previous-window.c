@@ -1,4 +1,4 @@
-/* $Id: cmd-previous-window.c,v 1.5 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-previous-window.c,v 1.6 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,8 +45,8 @@ cmd_previous_window_exec(unused void *ptr, struct cmd_ctx *ctx)
 	if (session_previous(ctx->session) == 0)
 		server_redraw_session(ctx->session);
 	else
-		ctx->error(ctx, "no previous window"); 
-	
+		ctx->error(ctx, "no previous window");
+
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

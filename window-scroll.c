@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.14 2007-11-27 19:32:15 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.15 2007-12-06 09:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,229 +23,253 @@
 #include "tmux.h"
 
 void	window_scroll_init(struct window *);
+void	window_scroll_free(struct window *);
 void	window_scroll_resize(struct window *, u_int, u_int);
-void	window_scroll_draw(
-    	    struct window *, struct screen_draw_ctx *, u_int, u_int);
 void	window_scroll_key(struct window *, int);
 
-void	window_scroll_draw_position(struct window *, struct screen_draw_ctx *);
+void	window_scroll_redraw_screen(struct window *);
+void	window_scroll_write_line(
+    	    struct window *, struct screen_write_ctx *, u_int);
+void	window_scroll_write_column(
+    	    struct window *, struct screen_write_ctx *, u_int);
 
-void	window_scroll_up_1(struct window *);
-void	window_scroll_down_1(struct window *);
-void	window_scroll_left_1(struct window *);
-void	window_scroll_right_1(struct window *);
+void	window_scroll_scroll_up(struct window *);
+void	window_scroll_scroll_down(struct window *);
+void	window_scroll_scroll_left(struct window *);
+void	window_scroll_scroll_right(struct window *);
 
 const struct window_mode window_scroll_mode = {
 	window_scroll_init,
+	window_scroll_free,
 	window_scroll_resize,
-	window_scroll_draw,
 	window_scroll_key
 };
 
 struct window_scroll_mode_data {
-	u_int	ox;
-	u_int	oy;
-	u_int	size;
+	struct screen	screen;
+
+	u_int		ox;
+	u_int		oy;
 };
 
 void
 window_scroll_init(struct window *w)
 {
 	struct window_scroll_mode_data	*data;
+	struct screen			*s;
+	struct screen_write_ctx	 	 ctx;
+	u_int				 i;
 
 	w->modedata = data = xmalloc(sizeof *data);
-	data->ox = data->oy = 0;
-	data->size = w->screen.hsize;
+	data->ox = 0;
+	data->oy = 0;
 
-	w->screen.mode |= MODE_BACKGROUND;
-	w->screen.mode &= ~MODE_BGCURSOR;
+	s = &data->screen;
+	screen_create(s, screen_size_x(&w->base), screen_size_y(&w->base));
+	s->mode = 0;
+	w->screen = s;
+
+	screen_write_start(&ctx, s, NULL, NULL);
+	for (i = 0; i < screen_size_y(s); i++)
+		window_scroll_write_line(w, &ctx, i);
+	screen_write_stop(&ctx);
 }
 
 void
-window_scroll_resize(unused struct window *w, unused u_int sx, unused u_int sy)
-{
-}
-
-void
-window_scroll_draw_position(struct window *w, struct screen_draw_ctx *ctx)
-{
-	struct window_scroll_mode_data	*data = w->modedata;
-	char				*ptr, buf[32];
-	size_t	 			 len;
-
-	len = xsnprintf(
-	    buf, sizeof buf, "[%u,%u/%u]", data->ox, data->oy, data->size);
-	if (len <= screen_size_x(ctx->s))
-		ptr = buf;
-	else {
-		ptr = buf + len - screen_size_x(ctx->s);
-		len -= len - screen_size_x(ctx->s);
-	}
-	
-	screen_draw_cells(ctx, 0, 0, screen_size_x(ctx->s) - len);
-	
-	screen_draw_move_cursor(ctx, screen_size_x(ctx->s) - len, 0);
-	screen_draw_set_attributes(ctx, 0, status_colour);
-	screen_draw_write_string(ctx, "%s", ptr);
-}
-
-void
-window_scroll_draw(
-    struct window *w, struct screen_draw_ctx *ctx, u_int py, u_int ny)
+window_scroll_free(struct window *w)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
-	struct screen			*s = &w->screen;
 
-	if (s->hsize != data->size) {
-		data->oy += s->hsize - data->size;
-		data->size = s->hsize;
-	}
-	screen_draw_set_offset(ctx, data->ox, data->oy);
+	w->screen = &w->base;
+	screen_destroy(&data->screen);
 
-	if (py != 0)
-		screen_draw_lines(ctx, py, ny);
-	else {
-		if (ny > 1)
-			screen_draw_lines(ctx, py + 1, ny - 1);
-		window_scroll_draw_position(w, ctx);
-	}
+	w->mode = NULL;
+	xfree(w->modedata);
+}
+
+void
+window_scroll_resize(struct window *w, u_int sx, u_int sy)
+{
+	struct window_scroll_mode_data	*data = w->modedata;
+	struct screen			*s = &data->screen;
+
+	screen_resize(s, sx, sy);
+	screen_display_copy_area(&data->screen, &w->base,
+	    0, 0, screen_size_x(s), screen_size_y(s), data->ox, data->oy);
 }
 
 void
 window_scroll_key(struct window *w, int key)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
-	u_int				 ox, oy, sx, sy;
-	
-	sx = screen_size_x(&w->screen);
-	sy = screen_size_y(&w->screen);
-
-	ox = data->ox;
-	oy = data->oy;
+	struct screen			*s = &data->screen;
 
 	switch (key) {
 	case 'Q':
 	case 'q':
-		w->mode = NULL;
-		xfree(w->modedata);
-
-		w->screen.mode &= ~MODE_BACKGROUND;
-
-		recalculate_sizes();
+		window_scroll_free(w);
 		server_redraw_window(w);
-		return;
+		break;
 	case 'h':
 	case KEYC_LEFT:
-		window_scroll_left_1(w);
-		return;
+		window_scroll_scroll_left(w);
+		break;
 	case 'l':
 	case KEYC_RIGHT:
-		window_scroll_right_1(w);
-		return;
+		window_scroll_scroll_right(w);
+		break;
 	case 'k':
 	case 'K':
 	case KEYC_UP:
-		window_scroll_up_1(w);
-		return;
+		window_scroll_scroll_up(w);
+		break;
 	case 'j':
 	case 'J':
 	case KEYC_DOWN:
-		window_scroll_down_1(w);
-		return;
+		window_scroll_scroll_down(w);
+		break;
 	case '\025':	/* C-u */
 	case KEYC_PPAGE:
-		if (data->oy + sy > data->size)
-			data->oy = data->size;
+		if (data->oy + screen_size_y(s) > w->base.hsize)
+			data->oy = w->base.hsize;
 		else
-			data->oy += sy;
+			data->oy += screen_size_y(s);
+		window_scroll_redraw_screen(w);
 		break;
 	case '\006':	/* C-f */
 	case KEYC_NPAGE:
-		if (data->oy < sy)
+		if (data->oy < screen_size_y(s))
 			data->oy = 0;
 		else
-			data->oy -= sy;
+			data->oy -= screen_size_y(s);
+		window_scroll_redraw_screen(w);
 		break;
 	}
-	if (ox != data->ox || oy != data->oy)
-		server_redraw_window(w);
 }
 
 void
-window_scroll_up_1(struct window *w)
+window_scroll_write_line(
+    struct window *w, struct screen_write_ctx *ctx, u_int py)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
-	struct screen_draw_ctx		 ctx;
+	struct screen			*s = &data->screen;
+	size_t	 			 size;
 
-	if (data->oy >= data->size)
+	if (py == 0) {
+		screen_write_set_attributes(ctx, 0, status_colour);
+		screen_write_move_cursor(ctx, 0, 0);
+		size = screen_write_put_string_rjust(
+		    ctx, "[%u,%u/%u]", data->ox, data->oy, w->base.hsize);
+	} else
+		size = 0;
+	screen_write_move_cursor(ctx, 0, py);
+	screen_write_copy_area(
+	    ctx, &w->base, screen_size_x(s) - size, 1, data->ox, data->oy);
+}
+
+void
+window_scroll_write_column(
+    struct window *w, struct screen_write_ctx *ctx, u_int px)
+{
+	struct window_scroll_mode_data	*data = w->modedata;
+	struct screen			*s = &data->screen;
+
+	screen_write_move_cursor(ctx, px, 0);
+	screen_write_copy_area(
+	    ctx, &w->base, 1, screen_size_y(s), data->ox, data->oy);
+}
+
+void
+window_scroll_redraw_screen(struct window *w)
+{
+	struct window_scroll_mode_data	*data = w->modedata;
+	struct screen			*s = &data->screen;
+	struct screen_write_ctx	 	 ctx;
+	u_int				 i;
+
+	screen_write_start_window(&ctx, w);
+	for (i = 0; i < screen_size_y(s); i++)
+		window_scroll_write_line(w, &ctx, i);
+	screen_write_stop(&ctx);
+}
+
+void
+window_scroll_scroll_up(struct window *w)
+{
+	struct window_scroll_mode_data	*data = w->modedata;
+	struct screen_write_ctx		 ctx;
+
+	if (data->oy >= w->base.hsize)
 		return;
 	data->oy++;
 
-	screen_draw_start_window(&ctx, w, data->ox, data->oy);
-	screen_draw_move_cursor(&ctx, 0, 0);
-	screen_draw_insert_lines(&ctx, 1);
-	window_scroll_draw_position(w, &ctx);
-	screen_draw_line(&ctx, 1);
-	screen_draw_stop(&ctx);
+	screen_write_start_window(&ctx, w);
+	screen_write_move_cursor(&ctx, 0, 0);
+	screen_write_insert_lines(&ctx, 1);
+	window_scroll_write_line(w, &ctx, 0);
+	window_scroll_write_line(w, &ctx, 1);
+	screen_write_stop(&ctx);
 }
 
 void
-window_scroll_down_1(struct window *w)
+window_scroll_scroll_down(struct window *w)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
-	struct screen_draw_ctx		 ctx;
+	struct screen			*s = &data->screen;
+	struct screen_write_ctx		 ctx;
 
 	if (data->oy == 0)
 		return;
 	data->oy--;
 
-	screen_draw_start_window(&ctx, w, data->ox, data->oy);
-	screen_draw_move_cursor(&ctx, 0, 0);
-	screen_draw_delete_lines(&ctx, 1);
-	screen_draw_line(&ctx, screen_last_y(&w->screen));
-	window_scroll_draw_position(w, &ctx);
-	screen_draw_stop(&ctx);
+	screen_write_start_window(&ctx, w);
+	screen_write_move_cursor(&ctx, 0, 0);
+	screen_write_delete_lines(&ctx, 1);
+	window_scroll_write_line(w, &ctx, screen_last_y(s));
+	window_scroll_write_line(w, &ctx, 0);
+	screen_write_stop(&ctx);
 }
 
 void
-window_scroll_right_1(struct window *w)
+window_scroll_scroll_right(struct window *w)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
-	struct screen_draw_ctx		 ctx;
+	struct screen			*s = &data->screen;
+	struct screen_write_ctx		 ctx;
 	u_int		 		 i;
 
 	if (data->ox >= SHRT_MAX)
 		return;
 	data->ox++;
 
-	screen_draw_start_window(&ctx, w, data->ox, data->oy);
-	for (i = 1; i < screen_size_y(&w->screen); i++) {
-		screen_draw_move_cursor(&ctx, 0, i);
-		screen_draw_delete_characters(&ctx, 1);
+	screen_write_start_window(&ctx, w);
+	for (i = 1; i < screen_size_y(s); i++) {
+		screen_write_move_cursor(&ctx, 0, i);
+		screen_write_delete_characters(&ctx, 1);
 	}
-	screen_draw_column(&ctx, screen_last_x(&w->screen));
-	window_scroll_draw_position(w, &ctx);
-	screen_draw_stop(&ctx);
+	window_scroll_write_column(w, &ctx, screen_last_x(s));
+	window_scroll_write_line(w, &ctx, 0);
+	screen_write_stop(&ctx);
 }
 
 void
-window_scroll_left_1(struct window *w)
+window_scroll_scroll_left(struct window *w)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
-	struct screen_draw_ctx		 ctx;
+	struct screen			*s = &data->screen;
+	struct screen_write_ctx		 ctx;
 	u_int		 		 i;
 
 	if (data->ox == 0)
 		return;
 	data->ox--;
 
-
-	screen_draw_start_window(&ctx, w, data->ox, data->oy);
-	for (i = 1; i < screen_size_y(&w->screen); i++) {
-		screen_draw_move_cursor(&ctx, 0, i);
-		screen_draw_insert_characters(&ctx, 1);
+	screen_write_start_window(&ctx, w);
+	for (i = 1; i < screen_size_y(s); i++) {
+		screen_write_move_cursor(&ctx, 0, i);
+		screen_write_insert_characters(&ctx, 1);
 	}
-	screen_draw_column(&ctx, 0);
-	window_scroll_draw_position(w, &ctx);
-	screen_draw_stop(&ctx);
+	window_scroll_write_column(w, &ctx, 0);
+	window_scroll_write_line(w, &ctx, 0);
+	screen_write_stop(&ctx);
 }

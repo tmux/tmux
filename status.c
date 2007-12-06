@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.14 2007-11-27 19:23:34 nicm Exp $ */
+/* $Id: status.c,v 1.15 2007-12-06 09:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,16 +27,16 @@ void printflike3 status_print(struct buffer *, size_t *, const char *, ...);
 void
 status_write_client(struct client *c)
 {
-	struct screen_draw_ctx	ctx;
-	struct winlink	       *wl;
-	char			flag;
+	struct screen_redraw_ctx	ctx;
+	struct winlink	       	       *wl;
+	char				flag;
 
 	if (status_lines == 0 || c->sy <= status_lines)
 		return;
 
-	screen_draw_start_client(&ctx, c, 0, 0);
-	screen_draw_move_cursor(&ctx, 0, c->sy - status_lines);
-	screen_draw_set_attributes(&ctx, 0, status_colour);
+	screen_redraw_start_client(&ctx, c);
+	screen_redraw_move_cursor(&ctx, 0, c->sy - status_lines);
+	screen_redraw_set_attributes(&ctx, 0, status_colour);
 
 	RB_FOREACH(wl, winlinks, &c->session->windows) {
 		flag = ' ';
@@ -46,15 +46,15 @@ status_write_client(struct client *c)
 			flag = '*';
 		if (session_hasbell(c->session, wl))
 			flag = '!';
-		screen_draw_write_string(
+		screen_redraw_write_string(
 		    &ctx, "%d:%s%c ", wl->idx, wl->window->name, flag);
 
-		if (ctx.cx >= screen_last_x(ctx.s))
+		if (ctx.s->cx >= screen_last_x(ctx.s))
 			break;
 	}
-	screen_draw_clear_line_to(&ctx, screen_last_x(ctx.s));
+	screen_redraw_clear_end_of_line(&ctx);
 
-	screen_draw_stop(&ctx);
+	screen_redraw_stop(&ctx);
 }
 
 void
@@ -63,7 +63,7 @@ status_write_window(struct window *w)
 	struct client	*c;
 	u_int		 i;
 
-	if (w->screen.mode & MODE_HIDDEN)
+	if (w->flags & WINDOW_HIDDEN)
 		return;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {

@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-window.c,v 1.13 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-rename-window.c,v 1.14 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,7 +42,7 @@ const struct cmd_entry cmd_rename_window_entry = {
 	"rename-window", "renamew", "[-i index] new-name",
 	CMD_NOCLIENT,
 	cmd_rename_window_parse,
-	cmd_rename_window_exec, 
+	cmd_rename_window_exec,
 	cmd_rename_window_send,
 	cmd_rename_window_recv,
 	cmd_rename_window_free
@@ -71,7 +71,7 @@ cmd_rename_window_parse(void **ptr, int argc, char **argv, char **cause)
 		default:
 			goto usage;
 		}
-	}	
+	}
 	argc -= optind;
 	argv += optind;
 	if (argc != 1)
@@ -110,7 +110,7 @@ cmd_rename_window_exec(void *ptr, struct cmd_ctx *ctx)
 	wl->window->name = xstrdup(data->newname);
 
 	server_status_session(ctx->session);
-	
+
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.44 2007-11-23 17:52:54 nicm Exp $ */
+/* $Id: tmux.c,v 1.45 2007-12-06 09:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -141,10 +141,10 @@ void
 sigreset(void)
 {
 	struct sigaction act;
-	
+
 	memset(&act, 0, sizeof act);
 	sigemptyset(&act.sa_mask);
-	
+
 	act.sa_handler = SIG_DFL;
 	if (sigaction(SIGPIPE, &act, NULL) != 0)
 		fatal("sigaction failed");
@@ -283,7 +283,7 @@ main(int argc, char **argv)
 		pfd.events = POLLIN;
 		if (BUFFER_USED(cctx.srv_out) > 0)
 			pfd.events |= POLLOUT;
-	
+
 		if (poll(&pfd, 1, INFTIM) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
@@ -316,7 +316,7 @@ main(int argc, char **argv)
 			if (hdr.size > INT_MAX - 1)
 				fatalx("bad MSG_ERROR size");
 			log_warnx("%.*s",
-			    (int) hdr.size, BUFFER_OUT(cctx.srv_in));	
+			    (int) hdr.size, BUFFER_OUT(cctx.srv_in));
 			buffer_remove(cctx.srv_in, hdr.size);
 			n = 1;
 			goto out;

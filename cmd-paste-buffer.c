@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.1 2007-11-23 17:52:54 nicm Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.2 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,7 +34,7 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", NULL, "paste",
 	CMD_NOCLIENT,
 	NULL,
-	cmd_paste_buffer_exec, 
+	cmd_paste_buffer_exec,
 	NULL,
 	NULL,
 	NULL

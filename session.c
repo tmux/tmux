@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.29 2007-11-12 16:39:30 nicm Exp $ */
+/* $Id: session.c,v 1.30 2007-12-06 09:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
 #include "tmux.h"
 
 /* Global session list. */
-struct sessions	sessions;	
+struct sessions	sessions;
 
 void
 session_cancelbell(struct session *s, struct winlink *wl)
@@ -78,7 +78,7 @@ session_find(const char *name)
 		if (s != NULL && strcmp(s->name, name) == 0)
 			return (s);
 	}
-	
+
 	return (NULL);
 }
 
@@ -131,7 +131,7 @@ session_destroy(struct session *s)
 	ARRAY_SET(&sessions, i, NULL);
 	while (!ARRAY_EMPTY(&sessions) && ARRAY_LAST(&sessions) == NULL)
 		ARRAY_TRUNC(&sessions, 1);
-	
+
 	while (!RB_EMPTY(&s->windows))
 		winlink_remove(&s->windows, RB_ROOT(&s->windows));
 
@@ -163,7 +163,7 @@ session_new(struct session *s, const char *name, const char *cmd, int idx)
 		fatalx("session not found");
 	xsnprintf(buf, sizeof buf, "TMUX=%ld,%u", (long) getpid(), i);
 	env[0] = buf;
-	
+
 	if ((w = window_create(name, cmd, env, s->sx, s->sy)) == NULL)
 		return (NULL);
 	return (session_attach(s, w, idx));
@@ -227,7 +227,7 @@ session_next(struct session *s)
 	return (0);
 }
 
-/* Move session to previous window. */ 
+/* Move session to previous window. */
 int
 session_previous(struct session *s)
 {
@@ -247,7 +247,7 @@ session_previous(struct session *s)
 	return (0);
 }
 
-/* Move session to specific window. */ 
+/* Move session to specific window. */
 int
 session_select(struct session *s, int idx)
 {
@@ -264,7 +264,7 @@ session_select(struct session *s, int idx)
 	return (0);
 }
 
-/* Move session to last used window. */ 
+/* Move session to last used window. */
 int
 session_last(struct session *s)
 {
@@ -273,7 +273,7 @@ session_last(struct session *s)
 	wl = s->lastw;
 	if (wl == NULL)
 		return (-1);
-	if (wl == s->curw) 
+	if (wl == s->curw)
 		return (1);
 
 	s->lastw = s->curw;

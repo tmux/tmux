@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.14 2007-11-23 13:11:43 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.15 2007-12-06 09:46:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,18 +51,18 @@ cmd_list_windows_exec(unused void *ptr, struct cmd_ctx *ctx)
 		w = wl->window;
 
 		size = 0;
-		for (i = 0; i < w->screen.hsize; i++)
-			size += w->screen.grid_size[i] * 3;
-		size += w->screen.hsize * (sizeof *w->screen.grid_data);
-		size += w->screen.hsize * (sizeof *w->screen.grid_attr);
-		size += w->screen.hsize * (sizeof *w->screen.grid_colr);
-		size += w->screen.hsize * (sizeof *w->screen.grid_size);
+		for (i = 0; i < w->base.hsize; i++)
+			size += w->base.grid_size[i] * 3;
+		size += w->base.hsize * (sizeof *w->base.grid_data);
+		size += w->base.hsize * (sizeof *w->base.grid_attr);
+		size += w->base.hsize * (sizeof *w->base.grid_colr);
+		size += w->base.hsize * (sizeof *w->base.grid_size);
 
 		ctx->print(ctx,
 		    "%d: %s \"%s\" (%s) [%ux%u] [history %u/%u, %llu bytes]",
-		    wl->idx, w->name, w->screen.title, ttyname(w->fd),
-		    screen_size_x(&w->screen), screen_size_y(&w->screen),
-		    w->screen.hsize, w->screen.hlimit, size);
+		    wl->idx, w->name, w->base.title, ttyname(w->fd),
+		    screen_size_x(&w->base), screen_size_y(&w->base),
+		    w->base.hsize, w->base.hlimit, size);
 	}
 
 	if (ctx->cmdclient != NULL)

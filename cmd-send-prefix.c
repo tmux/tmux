@@ -1,4 +1,4 @@
-/* $Id: cmd-send-prefix.c,v 1.6 2007-11-21 13:11:41 nicm Exp $ */
+/* $Id: cmd-send-prefix.c,v 1.7 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,6 +44,6 @@ cmd_send_prefix_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
 	window_key(ctx->client->session->curw->window, prefix_key);
 
-	if (ctx->cmdclient != NULL)	
+	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

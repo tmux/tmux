@@ -1,4 +1,4 @@
-/* $Id: tty-write.c,v 1.1 2007-11-27 19:23:34 nicm Exp $ */
+/* $Id: tty-write.c,v 1.2 2007-12-06 09:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,8 +24,7 @@ void
 tty_write_client(void *ptr, int cmd, ...)
 {
 	struct client	*c = ptr;
-
-	va_list	ap;
+	va_list		 ap;
 
 	va_start(ap, cmd);
 	tty_vwrite_client(c, cmd, ap);
@@ -36,8 +35,9 @@ void
 tty_vwrite_client(void *ptr, int cmd, va_list ap)
 {
 	struct client	*c = ptr;
+	struct screen	*s = c->session->curw->window->screen;
 
-	tty_vwrite(&c->tty, cmd, ap);
+	tty_vwrite(&c->tty, s, cmd, ap);
 }
 
 void
@@ -58,7 +58,7 @@ tty_vwrite_window(void *ptr, int cmd, va_list ap)
 	va_list		 aq;
 	u_int		 i;
 
-	if (w->screen.mode & MODE_HIDDEN)
+	if (w->flags & WINDOW_HIDDEN)
 		return;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
@@ -68,8 +68,8 @@ tty_vwrite_window(void *ptr, int cmd, va_list ap)
 		if (c->session->curw->window != w)
 			continue;
 
-		va_copy(aq, ap);	
-		tty_vwrite(&c->tty, cmd, aq);
+		va_copy(aq, ap);
+		tty_vwrite_client(c, cmd, aq);
 		va_end(aq);
 	}
 }
@@ -101,7 +101,7 @@ tty_vwrite_session(void *ptr, int cmd, va_list ap)
 			continue;
 
 		va_copy(aq, ap);
-		tty_vwrite(&c->tty, cmd, aq);
+		tty_vwrite_client(c, cmd, aq);
 		va_end(aq);
 	}
 }

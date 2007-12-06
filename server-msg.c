@@ -1,5 +1,5 @@
 
-/* $Id: server-msg.c,v 1.39 2007-11-27 20:01:30 nicm Exp $ */
+/* $Id: server-msg.c,v 1.40 2007-12-06 09:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,7 +38,7 @@ void printflike2 server_msg_fn_command_print(
 
 struct server_msg {
 	enum hdrtype	type;
-	
+
 	int	        (*fn)(struct hdr *, struct client *);
 };
 const struct server_msg server_msg_table[] = {
@@ -64,7 +64,7 @@ server_msg_dispatch(struct client *c)
 		if (BUFFER_USED(c->in) < (sizeof hdr) + hdr.size)
 			return (0);
 		buffer_remove(c->in, sizeof hdr);
-		
+
 		for (i = 0; i < NSERVERMSG; i++) {
 			msg = server_msg_table + i;
 			if (msg->type == hdr.type) {
@@ -72,7 +72,7 @@ server_msg_dispatch(struct client *c)
 					return (n);
 				break;
 			}
-		}	
+		}
 		if (i == NSERVERMSG)
 			fatalx("unexpected message");
 	}
@@ -120,7 +120,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	if (hdr->size < sizeof data)
 		fatalx("bad MSG_COMMAND size");
 	buffer_read(c->in, &data, sizeof data);
-	name = cmd_recv_string(c->in);	
+	name = cmd_recv_string(c->in);
 	client = cmd_recv_string(c->in);
 
 	cmd = cmd_recv(c->in);
@@ -147,7 +147,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 		}
 	} else {
 		if (client == NULL) {
-			server_msg_fn_command_error(&ctx, 
+			server_msg_fn_command_error(&ctx,
 			    "%s: must specify a client", cmd->entry->name);
 			goto out;
 		}
@@ -167,7 +167,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	ctx.session = NULL;
 	if (cmd->entry->flags & CMD_NOSESSION) {
 		if (name != NULL) {
-			server_msg_fn_command_error(&ctx, 
+			server_msg_fn_command_error(&ctx,
 			    "%s: cannot specify a session", cmd->entry->name);
 			goto out;
 		}
@@ -179,7 +179,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 			xfree(cause);
 			goto out;
 		}
-	}		
+	}
 
 	cmd_exec(cmd, &ctx);
 	cmd_free(cmd);

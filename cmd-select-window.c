@@ -1,4 +1,4 @@
-/* $Id: cmd-select-window.c,v 1.10 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-select-window.c,v 1.11 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_select_window_entry = {
 	"select-window", "selectw", "index",
 	CMD_NOCLIENT,
 	cmd_select_window_parse,
-	cmd_select_window_exec, 
+	cmd_select_window_exec,
 	cmd_select_window_send,
 	cmd_select_window_recv,
 	cmd_select_window_free
@@ -75,7 +75,7 @@ cmd_select_window_parse(void **ptr, int argc, char **argv, char **cause)
 		default:
 			goto usage;
 		}
-	}	
+	}
 	argc -= optind;
 	argv += optind;
 	if (argc != 1)
@@ -86,7 +86,7 @@ cmd_select_window_parse(void **ptr, int argc, char **argv, char **cause)
 		xasprintf(cause, "index %s", errstr);
 		goto error;
 	}
-	
+
 	return (0);
 
 usage:
@@ -116,7 +116,7 @@ cmd_select_window_exec(void *ptr, struct cmd_ctx *ctx)
 		ctx->error(ctx, "no window %d", data->idx);
 		break;
 	}
-	
+
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

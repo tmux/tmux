@@ -1,4 +1,4 @@
-/* $Id: cmd-scroll-mode.c,v 1.4 2007-11-27 19:23:33 nicm Exp $ */
+/* $Id: cmd-scroll-mode.c,v 1.5 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,7 @@ const struct cmd_entry cmd_scroll_mode_entry = {
 	"scroll-mode", NULL, "",
 	CMD_NOCLIENT,
 	NULL,
-	cmd_scroll_mode_exec, 
+	cmd_scroll_mode_exec,
 	NULL,
 	NULL,
 	NULL

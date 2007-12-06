@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.1 2007-11-27 19:23:34 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.2 2007-12-06 09:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -259,7 +259,7 @@ tty_keys_next(struct tty *tty, int *code)
 	}
 	xfree(s);
 	if (tk == NULL) {
-		/* 
+		/*
 		 * XXX Pass through unchanged.
 		 */
 		*code = '\e';

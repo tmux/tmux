@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.8 2007-12-03 10:47:27 nicm Exp $ */
+/* $Id: tty.c,v 1.9 2007-12-06 09:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,7 +25,7 @@
 #include <string.h>
 #define TTYDEFCHARS
 /* glibc requires unistd.h before termios.h for TTYDEFCHARS. */
-#include <unistd.h>	
+#include <unistd.h>
 #include <termios.h>
 
 #include "tmux.h"
@@ -87,7 +87,7 @@ tty_open(struct tty *tty, char **cause)
 	tty->colr = SCREEN_DEFCOLR;
 
 	tty_keys_init(tty);
-	
+
 	tty_fill_acs(tty);
 
 	if (tcgetattr(tty->fd, &tty->tio) != 0)
@@ -95,7 +95,7 @@ tty_open(struct tty *tty, char **cause)
 	memset(&tio, 0, sizeof tio);
 	tio.c_iflag = TTYDEF_IFLAG & ~(IXON|IXOFF|ICRNL|INLCR);
 	tio.c_oflag = TTYDEF_OFLAG & ~(OPOST|ONLCR|OCRNL|ONLRET);
-	tio.c_lflag = 
+	tio.c_lflag =
 	    TTYDEF_LFLAG & ~(IEXTEN|ICANON|ECHO|ECHOE|ECHOKE|ECHOCTL|ISIG);
 	tio.c_cflag = TTYDEF_CFLAG;
 	memcpy(&tio.c_cc, ttydefchars, sizeof tio.c_cc);
@@ -207,10 +207,10 @@ tty_putc(struct tty *tty, char ch)
 }
 
 void
-tty_vwrite(struct tty *tty, int cmd, va_list ap)
+tty_vwrite(struct tty *tty, unused struct screen *s, int cmd, va_list ap)
 {
 	char	ch;
-	u_int	ua, ub;
+	u_int	i, ua, ub;
 
 	set_curterm(tty->termp);
 
@@ -258,13 +258,36 @@ tty_vwrite(struct tty *tty, int cmd, va_list ap)
 		tty_puts(tty, tparm(cursor_address, ua, ub));
 		break;
 	case TTY_CLEARENDOFLINE:
-		tty_puts(tty, clr_eol);
+		if (clr_eol != NULL)
+			tty_puts(tty, clr_eol);
+		else {
+			tty_puts(tty, tparm(cursor_address, s->cy, s->cx));
+			for (i = s->cx; i < screen_size_x(s); i++)
+				tty_putc(tty, ' ');
+			tty_puts(tty, tparm(cursor_address, s->cy, s->cx));
+		}
 		break;
 	case TTY_CLEARSTARTOFLINE:
-		tty_puts(tty, clr_bol);
+		if (clr_bol != NULL)
+			tty_puts(tty, clr_bol);
+		else {
+			tty_puts(tty, tparm(cursor_address, s->cy, 0));
+			for (i = 0; i < s->cx + 1; i++)
+				tty_putc(tty, ' ');
+			tty_puts(tty, tparm(cursor_address, s->cy, s->cx));
+		}
 		break;
 	case TTY_CLEARLINE:
-		tty_puts(tty, clr_eol);	/* XXX */
+		if (clr_eol != NULL) {
+			tty_puts(tty, tparm(cursor_address, s->cy, 0));
+			tty_puts(tty, clr_eol);
+			tty_puts(tty, tparm(cursor_address, s->cy, s->cx));
+		} else {
+			tty_puts(tty, tparm(cursor_address, s->cy, 0));
+			for (i = 0; i < screen_size_x(s); i++)
+				tty_putc(tty, ' ');
+			tty_puts(tty, tparm(cursor_address, s->cy, s->cx));
+		}
 		break;
 	case TTY_INSERTLINE:
 		ua = va_arg(ap, u_int);
@@ -323,6 +346,7 @@ tty_vwrite(struct tty *tty, int cmd, va_list ap)
 		ub = va_arg(ap, u_int);
 		tty_puts(tty, tparm(change_scroll_region, ua, ub));
 		break;
+#if 0
 	case TTY_INSERTON:
 		if (enter_insert_mode != NULL)
 			tty_puts(tty, enter_insert_mode);
@@ -331,7 +355,6 @@ tty_vwrite(struct tty *tty, int cmd, va_list ap)
 		if (exit_insert_mode != NULL)
 			tty_puts(tty, exit_insert_mode);
 		break;
-#if 0
 	case TTY_KCURSOROFF:
 		t = tigetstr("CE");
 		if (t != (char *) 0 && t != (char *) -1)
@@ -417,13 +440,13 @@ tty_attributes(struct tty *tty, u_char attr, u_char colr)
 			if (fg == 8)
 				fg = 7;
 		}
-		
+
 		if (fg == 8)
 			tty_puts(tty, "\e[39m");
 		else if (set_a_foreground != NULL)
 			tty_puts(tty, tparm(set_a_foreground, fg));
 	}
-	
+
 	bg = colr & 0xf;
 	if (bg != (tty->colr & 0xf)) {
 		if (tigetflag("AX") == TRUE) {

@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.55 2007-12-02 18:23:10 nicm Exp $ */
+/* $Id: screen.c,v 1.56 2007-12-06 09:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,6 +24,54 @@
 
 /*
  * Virtual screen.
+ *
+ * A screen is stored as three arrays of lines of 8-bit values, one for the
+ * actual characters (data), one for attributes and one for colours. Three
+ * seperate blocks means memset and friends can be used. Each array is y by x
+ * in size, row then column order. Sizes are 0-based. There is an additional
+ * array of u_ints with the size of each line.
+ *
+ * Each screen has a history starting at the beginning of the arrays and
+ * extending for hsize lines. Beyond that is the screen display of size
+ * dy:
+ *
+ * ----------- array base
+ * |         |
+ * | history |
+ * ----------- array base + hsize
+ * |         |
+ * | display |
+ * |         |
+ * ----------- array base + hsize + dy
+ *
+ * The screen_x/screen_y macros are used to convert a cell on the displayed
+ * area to an absolute position in the arrays. 
+ *
+ * Screen handling code is split into four files:
+ *
+ *	screen.c: Creation/deletion, utility functions, and basic functions to
+ *		  manipulate the screen based on offsets from the base.
+ *	screen-display.c: Basic functions for manipulating the displayed
+ *			  part of the screen. x,y coordinates passed to these
+ *			  are relative to the display. These are largely
+ *			  utility functions for screen-write.c. 
+ *	screen-redraw.c: Functions for redrawing all or part of a screen to
+ *			 one or more ttys. A context is filled via one of the
+ *			 screen_redraw_start* variants which sets up (removes
+ *			 cursor etc) and figures out which tty_write_* function
+ *			 to use to write to the terminals, then the other
+ *			 screen_redraw_* functions are used to draw the screen,
+ *			 and screen_redraw_stop used to reset the cursor and
+ *			 clean up. These are used when changing window and a
+ *			 few other bits (status line).
+ * 	screen-write.c: Functions for modifying (writing into) the screen and
+ *			optionally simultaneously updating one or more ttys.
+ *			These are used in much the same way as the redraw
+ *			functions. These are used to update when parsing
+ *			input from the window (input.c) and for the various
+ *			other modes which maintain private screens.
+ *
+ * If you're thinking this all seems too complicated, that's because it is :-/.
  */
 
 /* Colour to string. */
@@ -104,6 +152,8 @@ screen_create(struct screen *s, u_int dx, u_int dy)
 	s->grid_colr = xmalloc(dy * (sizeof *s->grid_colr));
 	s->grid_size = xmalloc(dy * (sizeof *s->grid_size));
 	screen_make_lines(s, 0, dy);
+
+	screen_clear_selection(s);
 }
 
 /* Resize screen. */
@@ -122,11 +172,11 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 	if (sx == ox && sy == oy)
 		return;
 
-	/* 
+	/*
 	 * X dimension.
 	 */
 	if (sx != ox) {
-		/* 
+		/*
 		 * If getting smaller, nuke any data in lines over the new
 		 * size.
 		 */
@@ -163,10 +213,10 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 
 			screen_free_lines(s, s->hsize, my);
 			screen_move_lines(s, s->hsize, s->hsize + my, oy - my);
-				
+
 			s->cy -= my;
 			oy -= my;
-		} 
+		}
 
  		ny = oy - sy;
 		if (ny > 0) {
@@ -178,7 +228,7 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 				s->cy = sy - 1;
 		}
 	}
-	
+
 	/* Resize line arrays. */
 	ny = s->hsize + sy;
 	s->grid_data = xrealloc(s->grid_data, ny, sizeof *s->grid_data);
@@ -237,6 +287,9 @@ screen_get_cell(struct screen *s,
 		*attr = s->grid_attr[cy][cx];
 		*colr = s->grid_colr[cy][cx];
 	}
+
+	if (screen_check_selection(s, cx, cy))
+		*attr |= ATTR_REVERSE;
 }
 
 /* Set a cell. */
@@ -266,331 +319,6 @@ screen_destroy(struct screen *s)
 	xfree(s->grid_attr);
 	xfree(s->grid_colr);
 	xfree(s->grid_size);
-}
-
-/* Initialise redrawing a window. */
-void
-screen_draw_start_window(
-    struct screen_draw_ctx *ctx, struct window *w, u_int ox, u_int oy)
-{
-	struct screen	*t = &w->screen;
-
-	screen_draw_start(ctx, t, tty_write_window, w, ox, oy);
-}
-
-/* Initialise redrawing a client. */
-void
-screen_draw_start_client(
-    struct screen_draw_ctx *ctx, struct client *c, u_int ox, u_int oy)
-{
-	struct screen	*t = &c->session->curw->window->screen;
-
-	screen_draw_start(ctx, t, tty_write_client, c, ox, oy);
-}
-
-/* Initialise redrawing a session. */
-void
-screen_draw_start_session(
-    struct screen_draw_ctx *ctx, struct session *s, u_int ox, u_int oy)
-{
-	struct screen	*t = &s->curw->window->screen;
-
-	screen_draw_start(ctx, t, tty_write_session, s, ox, oy);
-}
-
-/* Initialise drawing. */
-void
-screen_draw_start(struct screen_draw_ctx *ctx, struct screen *s,
-    void (*write)(void *, int, ...), void *data, u_int ox, u_int oy)
-{
-	ctx->write = write;
-	ctx->data = data;
-
-	ctx->s = s;
-
-	ctx->ox = ox;
-	ctx->oy = oy;
-
-	/* Resetting the scroll region homes the cursor so start at 0,0. */
-	ctx->cx = 0;
-	ctx->cy = 0;
-
-	ctx->sel.flag = 0;
-
-	ctx->write(ctx->data, TTY_ATTRIBUTES, s->attr, s->colr);
-	ctx->write(ctx->data, TTY_SCROLLREGION, 0, screen_last_y(s));
-	ctx->write(ctx->data, TTY_CURSOROFF);
-	ctx->write(ctx->data, TTY_MOUSEOFF);
-}
-
-/* Set offset. */
-void
-screen_draw_set_offset(struct screen_draw_ctx *ctx, u_int ox, u_int oy)
-{
-	ctx->ox = ox;
-	ctx->oy = oy;
-}
-
-/* Set selection. */
-void
-screen_draw_set_selection(struct screen_draw_ctx *ctx, 
-    int flag, u_int sx, u_int sy, u_int ex, u_int ey)
-{
-	struct screen_draw_sel	*sel = &ctx->sel;
-
-	sel->flag = flag;
-	if (!sel->flag)
-		return;
-
-	if (ey < sy || (sy == ey && ex < sx)) {
-		sel->sx = ex; sel->sy = ey;
-		sel->ex = sx; sel->ey = sy;
-	} else {
-		sel->sx = sx; sel->sy = sy;
-		sel->ex = ex; sel->ey = ey;
-	}
-}
-
-/* Check if cell in selection. */
-int
-screen_draw_check_selection(struct screen_draw_ctx *ctx, u_int px, u_int py)
-{
-	struct screen_draw_sel	*sel = &ctx->sel;
-
-	if (!sel->flag)
-		return (0);
-
-	if (py < sel->sy || py > sel->ey)
-		return (0);
-
-	if (py == sel->sy && py == sel->ey) {
-		if (px < sel->sx || px > sel->ex)
-			return (0);
-		return (1);
-	}
-
-	if ((py == sel->sy && px < sel->sx) || (py == sel->ey && px > sel->ex))
-		return (0);
-	return (1);
-}
-
-/* Get cell data during drawing. */
-void
-screen_draw_get_cell(struct screen_draw_ctx *ctx,
-    u_int px, u_int py, u_char *data, u_char *attr, u_char *colr)
-{
-	struct screen	*s = ctx->s;
-	u_int		 cx, cy;
-	
-	cx = ctx->ox + px;
-	cy = screen_y(s, py) - ctx->oy;
-
-	screen_get_cell(s, cx, cy, data, attr, colr);
-
-	if (screen_draw_check_selection(ctx, cx, cy))
-		*attr |= ATTR_REVERSE;
-}
-
-/* Finalise drawing. */
-void
-screen_draw_stop(struct screen_draw_ctx *ctx)
-{
-	struct screen	*s = ctx->s;
-
-	ctx->write(ctx->data, TTY_SCROLLREGION, s->rupper, s->rlower);
-
-	if (ctx->cx != s->cx || ctx->cy != s->cy)
-		ctx->write(ctx->data, TTY_CURSORMOVE, s->cy, s->cx);
-
-	ctx->write(ctx->data, TTY_ATTRIBUTES, s->attr, s->colr);
-
-	if (s->mode & MODE_BACKGROUND) {
-		if (s->mode & MODE_BGCURSOR)
-			ctx->write(ctx->data, TTY_CURSORON);
-	} else {
-		if (s->mode & MODE_CURSOR)
-			ctx->write(ctx->data, TTY_CURSORON);
-	}
-	if (s->mode & MODE_MOUSE)
-		ctx->write(ctx->data, TTY_MOUSEON);
-}
-
-/* Insert lines. */
-void
-screen_draw_insert_lines(struct screen_draw_ctx *ctx, u_int ny)
-{
-	ctx->write(ctx->data, TTY_INSERTLINE, ny);
-}
-
-/* Delete lines. */
-void
-screen_draw_delete_lines(struct screen_draw_ctx *ctx, u_int ny)
-{
-	ctx->write(ctx->data, TTY_DELETELINE, ny);
-}
-
-/* Insert characters. */
-void
-screen_draw_insert_characters(struct screen_draw_ctx *ctx, u_int nx)
-{
-	ctx->write(ctx->data, TTY_INSERTCHARACTER, nx);
-}
-
-/* Delete characters. */
-void
-screen_draw_delete_characters(struct screen_draw_ctx *ctx, u_int nx)
-{
-	ctx->write(ctx->data, TTY_DELETECHARACTER, nx);
-}
-
-/* Clear end of line. */
-void
-screen_draw_clear_line_to(struct screen_draw_ctx *ctx, u_int px)
-{
-	while (ctx->cx <= px) {
-		ctx->write(ctx->data, TTY_CHARACTER, SCREEN_DEFDATA);
-		ctx->cx++;
-	}
-}
-
-/* Clear screen. */
-void
-screen_draw_clear_screen(struct screen_draw_ctx *ctx)
-{
-	u_int	i;
-
-	screen_draw_set_attributes(ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-	for (i = 0; i < screen_size_y(ctx->s); i++) {
-		screen_draw_move_cursor(ctx, 0, i);
-		screen_draw_clear_line_to(ctx, screen_size_x(ctx->s));
-	}
-}
-
-/* Write string. */
-void printflike2
-screen_draw_write_string(struct screen_draw_ctx *ctx, const char *fmt, ...)
-{
-	struct screen	*s = ctx->s;
-	va_list		 ap;
-	char   		*msg, *ptr;
-
-	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
-	va_end(ap);
-
-	for (ptr = msg; *ptr != '\0'; ptr++) {
-		if (ctx->cx > screen_last_x(s))
-			break;
-		ctx->write(ctx->data, TTY_CHARACTER, *ptr);
-		ctx->cx++;
-	}
-
-	xfree(msg);
-}
-
-/* Move cursor. */
-void
-screen_draw_move_cursor(struct screen_draw_ctx *ctx, u_int px, u_int py)
-{
-	if (px == ctx->cx && py == ctx->cy)
-		return;
-
-	if (px == 0 && py == ctx->cy)
-		ctx->write(ctx->data, TTY_CHARACTER, '\r');
-	else if (px == ctx->cx && py == ctx->cy + 1)
-		ctx->write(ctx->data, TTY_CHARACTER, '\n');
-	else if (px == 0 && py == ctx->cy + 1) {
-		ctx->write(ctx->data, TTY_CHARACTER, '\r');
-		ctx->write(ctx->data, TTY_CHARACTER, '\n');
-	} else
-		ctx->write(ctx->data, TTY_CURSORMOVE, py, px);
-
-	ctx->cx = px;
-	ctx->cy = py;
-}
-
-/* Set attributes. */
-void
-screen_draw_set_attributes(
-    struct screen_draw_ctx *ctx, u_char attr, u_char colr)
-{
-	ctx->write(ctx->data, TTY_ATTRIBUTES, attr, colr);
-}
-
-/* Draw single cell. */
-void
-screen_draw_cell(struct screen_draw_ctx *ctx, u_int px, u_int py)
-{
-	u_char	 data, attr, colr;
-
-	screen_draw_move_cursor(ctx, px, py);
-
-	screen_draw_get_cell(ctx, px, py, &data, &attr, &colr);
-	screen_draw_set_attributes(ctx, attr, colr);
-	ctx->write(ctx->data, TTY_CHARACTER, data);
-
-	/*
-	 * Don't try to wrap as it will cause problems when screen is smaller
-	 * than client.
-	 */
-	ctx->cx++;
-}
-
-/* Draw range of cells. */
-void
-screen_draw_cells(struct screen_draw_ctx *ctx, u_int px, u_int py, u_int nx)
-{
-	u_int	i;
-
-	for (i = px; i < px + nx; i++)
-		screen_draw_cell(ctx, i, py);
-}
-
-/* Draw single column. */
-void
-screen_draw_column(struct screen_draw_ctx *ctx, u_int px)
-{
-	u_int	i;
-
-	for (i = 0; i < screen_size_y(ctx->s); i++)
-		screen_draw_cell(ctx, px, i);
-}
-
-/* Draw single line. */
-void
-screen_draw_line(struct screen_draw_ctx *ctx, u_int py)
-{
-       u_int   cx, cy;
-
-       cy = screen_y(ctx->s, py) - ctx->oy;
-       cx = ctx->s->grid_size[cy];
-
-       if (ctx->sel.flag ||
-	   screen_size_x(ctx->s) < 5 || cx >= screen_size_x(ctx->s) - 5)
-               screen_draw_cells(ctx, 0, py, screen_size_x(ctx->s));
-       else {
-               screen_draw_cells(ctx, 0, py, cx);
-               screen_draw_move_cursor(ctx, cx, py);
-	       screen_draw_set_attributes(ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-               ctx->write(ctx->data, TTY_CLEARENDOFLINE);
-       }
-}
-
-/* Draw set of lines. */
-void
-screen_draw_lines(struct screen_draw_ctx *ctx, u_int py, u_int ny)
-{
-	u_int	i;
-
-	for (i = py; i < py + ny; i++)
-		screen_draw_line(ctx, i);
-}
-
-/* Draw entire screen. */
-void
-screen_draw_screen(struct screen_draw_ctx *ctx)
-{
-	screen_draw_lines(ctx, 0, screen_size_y(ctx->s));
 }
 
 /* Create a range of lines. */
@@ -641,24 +369,60 @@ screen_move_lines(struct screen *s, u_int dy, u_int py, u_int ny)
 	    &s->grid_size[dy], &s->grid_size[py], ny * (sizeof *s->grid_size));
 }
 
-/* Fill a range of lines. */
+/* Fill an area. */
 void
-screen_fill_lines(
-    struct screen *s, u_int py, u_int ny, u_char data, u_char attr, u_char colr)
+screen_fill_area(struct screen *s, u_int px, u_int py,
+    u_int nx, u_int ny, u_char data, u_char attr, u_char colr)
 {
-	u_int	i;
+	u_int	i, j;
 
-	for (i = py; i < py + ny; i++)
-		screen_fill_cells(s, 0, i, s->dx, data, attr, colr);
+	for (i = py; i < py + ny; i++) {
+		for (j = px; j < px + nx; j++)
+			screen_set_cell(s, j, i, data, attr, colr);
+	}
 }
 
-/* Fill a range of cells. */
+/* Set selection. */
 void
-screen_fill_cells(struct screen *s,
-    u_int px, u_int py, u_int nx, u_char data, u_char attr, u_char colr)
+screen_set_selection(struct screen *s, u_int sx, u_int sy, u_int ex, u_int ey)
 {
-	u_int	i;
+	struct screen_sel	*sel = &s->sel;
 
-	for (i = px; i < px + nx; i++)
-		screen_set_cell(s, i, py, data, attr, colr);
+	sel->flag = 1;
+	if (ey < sy || (sy == ey && ex < sx)) {
+		sel->sx = ex; sel->sy = ey;
+		sel->ex = sx; sel->ey = sy;
+	} else {
+		sel->sx = sx; sel->sy = sy;
+		sel->ex = ex; sel->ey = ey;
+	}
+}
+
+/* Clear selection. */
+void
+screen_clear_selection(struct screen *s)
+{
+	struct screen_sel	*sel = &s->sel;
+
+	sel->flag = 0;
+}
+
+/* Check if cell in selection. */
+int
+screen_check_selection(struct screen *s, u_int px, u_int py)
+{
+	struct screen_sel	*sel = &s->sel;
+
+	if (!sel->flag || py < sel->sy || py > sel->ey)
+		return (0);
+
+	if (py == sel->sy && py == sel->ey) {
+		if (px < sel->sx || px > sel->ex)
+			return (0);
+		return (1);
+	}
+
+	if ((py == sel->sy && px < sel->sx) || (py == sel->ey && px > sel->ex))
+		return (0);
+	return (1);
 }

@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-window.c,v 1.3 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-swap-window.c,v 1.4 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ const struct cmd_entry cmd_swap_window_entry = {
 	"swap-window", "swapw", "[-i index] name index",
 	CMD_NOCLIENT,
 	cmd_swap_window_parse,
-	cmd_swap_window_exec, 
+	cmd_swap_window_exec,
 	cmd_swap_window_send,
 	cmd_swap_window_recv,
 	cmd_swap_window_free
@@ -78,7 +78,7 @@ cmd_swap_window_parse(void **ptr, int argc, char **argv, char **cause)
 		default:
 			goto usage;
 		}
-	}	
+	}
 	argc -= optind;
 	argv += optind;
 	if (argc != 2)
@@ -112,7 +112,7 @@ cmd_swap_window_exec(void *ptr, struct cmd_ctx *ctx)
 
 	if (data == NULL)
 		return;
-	
+
 	if ((src = session_find(data->srcname)) == NULL) {
 		ctx->error(ctx, "session not found: %s", data->srcname);
 		return;

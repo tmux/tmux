@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.14 2007-11-23 12:48:20 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.15 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,7 +43,7 @@ const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set", "option value",
 	CMD_NOCLIENT|CMD_NOSESSION,
 	cmd_set_option_parse,
-	cmd_set_option_exec, 
+	cmd_set_option_exec,
 	cmd_set_option_send,
 	cmd_set_option_recv,
 	cmd_set_option_free
@@ -64,7 +64,7 @@ cmd_set_option_parse(void **ptr, int argc, char **argv, char **cause)
 		default:
 			goto usage;
 		}
-	}	
+	}
 	argc -= optind;
 	argv += optind;
 	if (argc != 1 && argc != 2)
@@ -104,7 +104,7 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 	number = -1;
 	if (data->value != NULL) {
 		number = strtonum(data->value, 0, INT_MAX, &errstr);
-		
+
 		bool = -1;
 		if (number == 1 || strcasecmp(data->value, "on") == 0 ||
 		    strcasecmp(data->value, "yes") == 0)
@@ -171,10 +171,10 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 					server_redraw_client(c);
 			}
 		}
-	} else if (strcmp(data->option, "bell-action") == 0) { 
+	} else if (strcmp(data->option, "bell-action") == 0) {
 		if (data->value == NULL) {
 			ctx->error(ctx, "invalid value");
-			return;			
+			return;
 		}
 		if (strcmp(data->value, "any") == 0)
 			bell_action = BELL_ANY;
@@ -186,10 +186,10 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 			ctx->error(ctx, "unknown bell-action: %s", data->value);
 			return;
 		}
-	} else if (strcmp(data->option, "default-command") == 0) { 
+	} else if (strcmp(data->option, "default-command") == 0) {
 		if (data->value == NULL) {
 			ctx->error(ctx, "invalid value");
-			return;			
+			return;
 		}
 		xfree(default_command);
 		default_command = xstrdup(data->value);

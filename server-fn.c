@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.35 2007-11-27 19:23:34 nicm Exp $ */
+/* $Id: server-fn.c,v 1.36 2007-12-06 09:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -71,7 +71,7 @@ server_extract_session(struct msg_command_data *data, char *name, char **cause)
 		xasprintf(cause, "multiple sessions and session not specified");
 		return (NULL);
 	}
-	return (s);		
+	return (s);
 }
 
 void
@@ -123,11 +123,12 @@ server_write_window(
 void
 server_clear_client(struct client *c)
 {
-	struct screen_draw_ctx	ctx;
+	struct screen_redraw_ctx	ctx;
 
-	screen_draw_start_client(&ctx, c, 0, 0);
-	screen_draw_clear_screen(&ctx);
-	screen_draw_stop(&ctx);
+	screen_redraw_start_client(&ctx, c);
+	screen_redraw_set_attributes(&ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
+	screen_redraw_clear_screen(&ctx);
+	screen_redraw_stop(&ctx);
 
 	status_write_client(c);
 }
@@ -135,12 +136,11 @@ server_clear_client(struct client *c)
 void
 server_redraw_client(struct client *c)
 {
-	struct screen_draw_ctx	ctx;
-	struct window	       *w = c->session->curw->window;
+	struct screen_redraw_ctx	ctx;
 
-	screen_draw_start_client(&ctx, c, 0, 0);
-	window_draw(w, &ctx, 0, screen_size_y(&w->screen));
-	screen_draw_stop(&ctx);
+	screen_redraw_start_client(&ctx, c);
+	screen_redraw_lines(&ctx, 0, screen_size_y(ctx.s));
+	screen_redraw_stop(&ctx);
 
 	status_write_client(c);
 }
@@ -154,11 +154,12 @@ server_status_client(struct client *c)
 void
 server_clear_session(struct session *s)
 {
-	struct screen_draw_ctx	ctx;
+	struct screen_redraw_ctx	ctx;
 
-	screen_draw_start_session(&ctx, s, 0, 0);
-	screen_draw_clear_screen(&ctx);
-	screen_draw_stop(&ctx);
+	screen_redraw_start_session(&ctx, s);
+	screen_redraw_set_attributes(&ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
+	screen_redraw_clear_screen(&ctx);
+	screen_redraw_stop(&ctx);
 
 	status_write_session(s);
 }
@@ -166,12 +167,11 @@ server_clear_session(struct session *s)
 void
 server_redraw_session(struct session *s)
 {
-	struct screen_draw_ctx	ctx;
-	struct window	       *w = s->curw->window;
+	struct screen_redraw_ctx	ctx;
 
-	screen_draw_start_session(&ctx, s, 0, 0);
-	window_draw(w, &ctx, 0, screen_size_y(&w->screen));
-	screen_draw_stop(&ctx);
+	screen_redraw_start_session(&ctx, s);
+	screen_redraw_lines(&ctx, 0, screen_size_y(ctx.s));
+	screen_redraw_stop(&ctx);
 
 	status_write_session(s);
 }
@@ -185,11 +185,12 @@ server_status_session(struct session *s)
 void
 server_clear_window(struct window *w)
 {
-	struct screen_draw_ctx	ctx;
+	struct screen_redraw_ctx	ctx;
 
-	screen_draw_start_window(&ctx, w, 0, 0);
-	screen_draw_clear_screen(&ctx);
-	screen_draw_stop(&ctx);
+	screen_redraw_start_window(&ctx, w);
+	screen_redraw_set_attributes(&ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
+	screen_redraw_clear_screen(&ctx);
+	screen_redraw_stop(&ctx);
 
 	status_write_window(w);
 }
@@ -197,11 +198,11 @@ server_clear_window(struct window *w)
 void
 server_redraw_window(struct window *w)
 {
-	struct screen_draw_ctx	ctx;
+	struct screen_redraw_ctx	ctx;
 
-	screen_draw_start_window(&ctx, w, 0, 0);
-	window_draw(w, &ctx, 0, screen_size_y(&w->screen));
-	screen_draw_stop(&ctx);
+	screen_redraw_start_window(&ctx, w);
+	screen_redraw_lines(&ctx, 0, screen_size_y(ctx.s));
+	screen_redraw_stop(&ctx);
 
 	status_write_window(w);
 }
@@ -228,36 +229,36 @@ server_status_window(struct window *w)
 void printflike2
 server_write_message(struct client *c, const char *fmt, ...)
 {
-	struct screen_draw_ctx	ctx;
-	va_list			ap;
-	char		       *msg;
-	size_t			size;
+	struct screen_redraw_ctx	ctx;
+	va_list				ap;
+	char			       *msg;
+	size_t				size;
 
-	screen_draw_start_client(&ctx, c, 0, 0);
-	screen_draw_move_cursor(&ctx, 0, c->sy - 1);
-	screen_draw_set_attributes(&ctx, ATTR_REVERSE, 0x88);
+	screen_redraw_start_client(&ctx, c);
+	screen_redraw_move_cursor(&ctx, 0, c->sy - 1);
+	screen_redraw_set_attributes(&ctx, ATTR_REVERSE, 0x88);
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
 	va_end(ap);
-	
+
 	size = strlen(msg);
 	if (size < c->sx - 1) {
 		msg = xrealloc(msg, 1, c->sx);
 		msg[c->sx - 1] = '\0';
 		memset(msg + size, SCREEN_DEFDATA, (c->sx - 1) - size);
 	}
-	screen_draw_write_string(&ctx, "%s", msg);
+	screen_redraw_write_string(&ctx, "%s", msg);
 	xfree(msg);
 
 	buffer_flush(c->tty.fd, c->tty.in, c->tty.out);
-	usleep(750000);	
+	usleep(750000);
 
 	if (status_lines == 0) {
-		window_draw(c->session->curw->window, &ctx, c->sy - 1, 1);
-		screen_draw_stop(&ctx);
+		screen_redraw_lines(&ctx, c->sy - 1, 1);
+		screen_redraw_stop(&ctx);
 	} else {
-		screen_draw_stop(&ctx);
+		screen_redraw_stop(&ctx);
 		status_write_client(c);
 	}
 }

@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.8 2007-11-25 22:08:13 nicm Exp $
+# $Id: GNUmakefile,v 1.9 2007-12-06 09:46:21 nicm Exp $
 
 .PHONY: clean
 
@@ -37,7 +37,7 @@ CFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wcast-qual -Wsign-compare
 CFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
 
-LDFLAGS+= 
+LDFLAGS+=
 LIBS+= -lncurses
 
 PREFIX?= /usr/local

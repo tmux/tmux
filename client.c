@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.24 2007-12-01 11:10:33 nicm Exp $ */
+/* $Id: client.c,v 1.25 2007-12-06 09:46:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -134,7 +134,7 @@ client_main(struct client_ctx *cctx)
 		pfd.events = POLLIN;
 		if (BUFFER_USED(cctx->srv_out) > 0)
 			pfd.events |= POLLOUT;
-	
+
 		if (poll(&pfd, 1, timeout) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
@@ -157,18 +157,18 @@ client_main(struct client_ctx *cctx)
 			break;
 		}
 	}
- 
+
 out:
  	if (sigterm) {
  		printf("[terminated]\n");
  		return (1);
  	}
- 
+
 	if (cctx->flags & CCTX_EXIT) {
 		printf("[exited]\n");
 		return (0);
 	}
-	
+
 	if (cctx->flags & CCTX_DETACH) {
 		printf("[detached]\n");
 		return (0);
@@ -187,13 +187,13 @@ client_handle_winch(struct client_ctx *cctx)
 {
 	struct msg_resize_data	data;
 	struct winsize		ws;
-	
+
 	if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
 		fatal("ioctl failed");
 
 	data.sx = ws.ws_col;
 	data.sy = ws.ws_row;
 	client_write_server(cctx, MSG_RESIZE, &data, sizeof data);
-	
+
 	sigwinch = 0;
 }

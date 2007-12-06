@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.22 2007-11-27 19:23:33 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.23 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -84,7 +84,7 @@ key_bindings_init(void)
 		{ 'S', &cmd_list_sessions_entry, NULL },
 		{ 's', &cmd_list_sessions_entry, NULL },
 		{ 'W', &cmd_list_windows_entry, NULL },
-		{ 'w', &cmd_list_windows_entry, NULL },	
+		{ 'w', &cmd_list_windows_entry, NULL },
 		{ '?', &cmd_list_keys_entry, NULL },
 		{ '/', &cmd_list_keys_entry, NULL },
 		{ 'C', &cmd_new_window_entry, NULL },
@@ -140,7 +140,7 @@ key_bindings_free(void)
 		cmd_free(bd->cmd);
 		xfree(bd);
 	}
-	
+
 	ARRAY_FREE(&key_bindings);
 }
 
@@ -168,6 +168,7 @@ key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 	if (w->mode == NULL) {
 		w->mode = &window_more_mode;
 		w->mode->init(w);
+		server_redraw_window(w);
 	} else if (w->mode != &window_more_mode)
 		return;
 
@@ -202,7 +203,4 @@ key_bindings_dispatch(int key, struct client *c)
 	ctx.flags = CMD_KEY;
 
 	cmd_exec(bd->cmd, &ctx);
-	
-	if (c->session->curw->window->mode == &window_more_mode)
-		server_redraw_window(c->session->curw->window);
 }

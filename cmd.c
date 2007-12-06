@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.32 2007-11-23 17:52:54 nicm Exp $ */
+/* $Id: cmd.c,v 1.33 2007-12-06 09:46:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_scroll_mode_entry,
 	&cmd_select_window_entry,
 	&cmd_send_prefix_entry,
-	&cmd_set_option_entry,	
+	&cmd_set_option_entry,
 	&cmd_swap_window_entry,
 	&cmd_switch_client_entry,
 	&cmd_unbind_key_entry,
@@ -70,7 +70,7 @@ cmd_parse(int argc, char **argv, char **cause)
 
 	entry = NULL;
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
-		if ((*entryp)->alias != NULL && 
+		if ((*entryp)->alias != NULL &&
 		    strcmp((*entryp)->alias, argv[0]) == 0) {
 			entry = *entryp;
 			break;
@@ -165,7 +165,7 @@ cmd_recv(struct buffer *b)
 	u_int			 m, n;
 
 	buffer_read(b, &m, sizeof m);
-	
+
 	n = 0;
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
 		if (n == m)
@@ -195,7 +195,7 @@ void
 cmd_send_string(struct buffer *b, const char *s)
 {
 	size_t	n;
-	
+
 	if (s == NULL) {
 		n = 0;
 		buffer_write(b, &n, sizeof n);
@@ -218,7 +218,7 @@ cmd_recv_string(struct buffer *b)
 
 	if (n == 0)
 		return (NULL);
-	
+
 	s = xmalloc(n);
 	buffer_read(b, s, n);
 	s[n - 1] = '\0';

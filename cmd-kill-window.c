@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-window.c,v 1.6 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-kill-window.c,v 1.7 2007-12-06 09:46:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_kill_window_entry = {
 	"kill-window", "killw", "[-i index]",
 	CMD_NOCLIENT,
 	cmd_kill_window_parse,
-	cmd_kill_window_exec, 
+	cmd_kill_window_exec,
 	cmd_kill_window_send,
 	cmd_kill_window_recv,
 	cmd_kill_window_free
@@ -69,7 +69,7 @@ cmd_kill_window_parse(void **ptr, int argc, char **argv, char **cause)
 		default:
 			goto usage;
 		}
-	}	
+	}
 	argc -= optind;
 	argv += optind;
 	if (argc != 0)
@@ -117,7 +117,7 @@ cmd_kill_window_exec(void *ptr, struct cmd_ctx *ctx)
 		} else
 			server_redraw_client(c);
 	}
-	
+
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

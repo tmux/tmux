@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.32 2007-11-27 19:23:34 nicm Exp $ */
+/* $Id: window.c,v 1.33 2007-12-06 09:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -90,7 +90,7 @@ winlink_next_index(struct winlinks *wwl)
 		if (winlink_find_by_index(wwl, i) == NULL)
 			return (i);
 	}
-	
+
 	fatalx("no free indexes");
 }
 
@@ -136,7 +136,7 @@ struct winlink *
 winlink_next(unused struct winlinks *wwl, struct winlink *wl)
 {
 	return (RB_NEXT(winlinks, wwl, wl));
-} 
+}
 
 struct winlink *
 winlink_previous(struct winlinks *wwl, struct winlink *wl)
@@ -153,7 +153,7 @@ winlink_previous(struct winlinks *wwl, struct winlink *wl)
 	if (wl == NULL)
 		return (NULL);
 	return (wk);
-} 
+}
 
 struct window *
 window_create(
@@ -189,14 +189,15 @@ window_create(
 	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
-		fatal("fcntl failed");		
+		fatal("fcntl failed");
 
 	w = xmalloc(sizeof *w);
 	w->fd = fd;
 	w->in = buffer_create(BUFSIZ);
 	w->out = buffer_create(BUFSIZ);
 	w->mode = NULL;
-	screen_create(&w->screen, sx, sy);
+	screen_create(&w->base, sx, sy);
+	w->screen = &w->base;
 	input_init(w);
 
 	if (name == NULL) {
@@ -238,12 +239,14 @@ window_destroy(struct window *w)
 			break;
 	}
 	ARRAY_REMOVE(&windows, i);
-	
+
 	close(w->fd);
 
 	input_free(w);
 
-	screen_destroy(&w->screen);
+	screen_destroy(&w->base);
+	if (w->mode != NULL)
+		w->mode->free(w);
 
 	buffer_destroy(w->in);
 	buffer_destroy(w->out);
@@ -257,16 +260,16 @@ window_resize(struct window *w, u_int sx, u_int sy)
 {
 	struct winsize	ws;
 
-	if (sx == screen_size_x(&w->screen) && sy == screen_size_y(&w->screen))
+	if (sx == screen_size_x(&w->base) && sy == screen_size_y(&w->base))
 		return (-1);
-		
+
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = sx;
 	ws.ws_row = sy;
 
+	screen_resize(&w->base, sx, sy);
 	if (w->mode != NULL)
 		w->mode->resize(w, sx, sy);
-	screen_resize(&w->screen, sx, sy);
 
 	if (ioctl(w->fd, TIOCSWINSZ, &ws) == -1)
 		fatal("ioctl failed");
@@ -280,19 +283,10 @@ window_parse(struct window *w)
 }
 
 void
-window_draw(struct window *w, struct screen_draw_ctx *ctx, u_int py, u_int ny)
-{
-	if (w->mode != NULL)
-		w->mode->draw(w, ctx, py, ny);
-	else
-		screen_draw_lines(ctx, py, ny);
-}
-
-void
 window_key(struct window *w, int key)
 {
 	if (w->mode != NULL)
 		w->mode->key(w, key);
 	else
-		input_key(w, key);	
+		input_key(w, key);
 }

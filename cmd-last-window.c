@@ -1,4 +1,4 @@
-/* $Id: cmd-last-window.c,v 1.5 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-last-window.c,v 1.6 2007-12-06 09:46:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,8 +45,8 @@ cmd_last_window_exec(unused void *ptr, struct cmd_ctx *ctx)
 	if (session_last(ctx->session) == 0)
 		server_redraw_session(ctx->session);
 	else
-		ctx->error(ctx, "no last window"); 
-	
+		ctx->error(ctx, "no last window");
+
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.10 2007-11-27 19:23:33 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.11 2007-12-06 09:46:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -40,7 +40,7 @@ const struct cmd_entry cmd_attach_session_entry = {
 	"attach-session", "attach", "[-d]",
 	CMD_CANTNEST|CMD_NOCLIENT,
 	cmd_attach_session_parse,
-	cmd_attach_session_exec, 
+	cmd_attach_session_exec,
 	cmd_attach_session_send,
 	cmd_attach_session_recv,
 	cmd_attach_session_free
@@ -63,7 +63,7 @@ cmd_attach_session_parse(void **ptr, int argc, char **argv, char **cause)
 		default:
 			goto usage;
 		}
-	}	
+	}
 	argc -= optind;
 	argv += optind;
 	if (argc != 0)

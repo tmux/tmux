@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.18 2007-11-27 19:23:33 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.19 2007-12-06 09:46:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ const struct cmd_entry cmd_new_session_entry = {
 	"[-d] [-s session-name] [-n window-name] [command]",
 	CMD_STARTSERVER|CMD_NOCLIENT|CMD_NOSESSION|CMD_CANTNEST,
 	cmd_new_session_parse,
-	cmd_new_session_exec, 
+	cmd_new_session_exec,
 	cmd_new_session_send,
 	cmd_new_session_recv,
 	cmd_new_session_free
@@ -76,7 +76,7 @@ cmd_new_session_parse(void **ptr, int argc, char **argv, char **cause)
 		default:
 			goto usage;
 		}
-	}	
+	}
 	argc -= optind;
 	argv += optind;
 	if (argc != 0 && argc != 1)
@@ -90,7 +90,7 @@ cmd_new_session_parse(void **ptr, int argc, char **argv, char **cause)
 usage:
 	usage(cause, "%s %s",
 	    cmd_new_session_entry.name, cmd_new_session_entry.usage);
-	
+
 	cmd_new_session_free(data);
 	return (-1);
 }
@@ -103,7 +103,7 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 	struct client			*c = ctx->cmdclient;
 	char				*cmd, *cause;
 	u_int				 sy;
-	
+
 	if (data == NULL)
 		data = &std;
 
