@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.10 2007-12-06 11:05:04 nicm Exp $ */
+/* $Id: tty.c,v 1.11 2007-12-06 11:11:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -59,6 +59,7 @@ tty_open(struct tty *tty, char **cause)
 		return (-1);
 	}
 
+	tty->termp = NULL;
 	if (tty->term == NULL)
 		tty->term = xstrdup("unknown");
 	if (setupterm(tty->term, tty->fd, &error) != OK) {
@@ -76,71 +77,71 @@ tty_open(struct tty *tty, char **cause)
 			xasprintf(cause, "unknown error");
 			break;
 		}
-		return (-1);
+		goto error;
 	}
 	tty->termp = cur_term;
 
 	/* Check for required capabilities. */
 	if (clear_screen == NULL) {
 		xasprintf(cause, "clear_screen missing");
-		return (-1);
+		goto error;
 	}
 	if (cursor_down == NULL) {
 		xasprintf(cause, "cursor_down missing");
-		return (-1);
+		goto error;
 	}
 	if (carriage_return == NULL) {
 		xasprintf(cause, "carriage_return missing");
-		return (-1);
+		goto error;
 	}
 	if (cursor_left == NULL) {
 		xasprintf(cause, "cursor_left missing");
-		return (-1);
+		goto error;
 	}
 	if (parm_up_cursor == NULL && cursor_up == NULL) {
 		xasprintf(cause, "parm_up_cursor missing");
-		return (-1);
+		goto error;
 	}
 	if (parm_down_cursor == NULL && cursor_down == NULL) {
 		xasprintf(cause, "parm_down_cursor missing");
-		return (-1);
+		goto error;
 	}
 	if (parm_right_cursor == NULL && cursor_right == NULL) {
 		xasprintf(cause, "parm_right_cursor missing");
-		return (-1);
+		goto error;
 	}
 	if (parm_left_cursor == NULL && cursor_left == NULL) {
 		xasprintf(cause, "parm_left_cursor missing");
-		return (-1);
+		goto error;
 	}
 	if (cursor_address == NULL) {
 		xasprintf(cause, "cursor_address missing");
-		return (-1);
+		goto error;
 	}
 	if (parm_insert_line == NULL && insert_line == NULL) {
 		xasprintf(cause, "parm_insert_line missing");
-		return (-1);
+		goto error;
 	}
 	if (parm_delete_line == NULL && delete_line == NULL) {
 		xasprintf(cause, "parm_delete_line missing");
-		return (-1);
+		goto error;
 	}
 	if (parm_ich == NULL && insert_character == NULL &&
 	    (enter_insert_mode == NULL || exit_insert_mode == NULL)) {
 		xasprintf(cause, "parm_ich missing");
-		return (-1);
+		goto error;
 	}
 	if (parm_dch == NULL && delete_character == NULL) {
 		xasprintf(cause, "parm_dch missing");
-		return (-1);
+		goto error;
 	}
 	if (scroll_reverse == NULL) {
 		xasprintf(cause, "scroll_reverse missing");
-		return (-1);
+		goto error;
 	}
 	if (change_scroll_region == NULL) {
 		xasprintf(cause, "change_scroll_region missing");
-		return (-1);
+		goto error;
 	}
 
 	tty->in = buffer_create(BUFSIZ);
@@ -179,6 +180,15 @@ tty_open(struct tty *tty, char **cause)
 	tty_puts(tty, clear_screen);
 
 	return (0);
+
+error:
+	close(tty->fd);
+	tty->fd = -1;
+
+	if (tty->termp != NULL)
+		del_curterm(tty->termp);
+
+	return (-1);
 }
 
 void
@@ -203,7 +213,8 @@ tty_close(struct tty *tty)
 	if (exit_attribute_mode != NULL)
 		tty_raw(tty, exit_attribute_mode);
 
-	del_curterm(tty->termp);
+	if (tty->termp != NULL)
+		del_curterm(tty->termp);
 	tty_keys_free(tty);
 
 	close(tty->fd);
