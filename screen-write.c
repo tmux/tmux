@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.1 2007-12-06 09:46:23 nicm Exp $ */
+/* $Id: screen-write.c,v 1.2 2007-12-06 10:16:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -101,6 +101,8 @@ screen_write_put_character(struct screen_write_ctx *ctx, u_char ch)
 
 	if (s->cx == screen_size_x(s)) {
 		s->cx = 0;
+		if (ctx->write != NULL)
+			ctx->write(ctx->data, TTY_CHARACTER, '\r');
 		screen_write_cursor_down_scroll(ctx);
 	} else if (!screen_in_x(s, s->cx) || !screen_in_y(s, s->cy))
 		return;
