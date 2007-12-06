@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.110 2007-12-06 10:04:42 nicm Exp $ */
+/* $Id: tmux.h,v 1.111 2007-12-06 10:36:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -427,6 +427,29 @@ struct screen_write_ctx {
 #define screen_above_y(s, y) ((y) + 1)
 #define screen_below_y(s, y) \
 	((y) < screen_size_y(s) ? screen_size_y(s) - (y) : 0)
+
+#define SCREEN_DEBUG(s) do {						\
+	log_warnx("%s: cx=%u,cy=%u sx=%u,sy=%u", __func__,		\
+	    s->cx, s->cy, screen_size_x(s), screen_size_y(s));		\
+} while (0)
+#define SCREEN_DEBUG1(s, n) do {					\
+	log_warnx("%s: cx=%u,cy=%u sx=%u,sy=%u n=%u m=%u", __func__,	\
+	    s->cx, s->cy, screen_size_x(s), screen_size_y(s), n);	\
+} while (0)
+#define SCREEN_DEBUG2(s, n, m) do {					\
+	log_warnx("%s: cx=%u,cy=%u sx=%u,sy=%u n=%u m=%u", __func__,	\
+	    s->cx, s->cy, screen_size_x(s), screen_size_y(s), n, m);	\
+} while (0)
+#define SCREEN_DEBUG3(s, n, m, o) do {					\
+	log_warnx("%s: cx=%u,cy=%u sx=%u,sy=%u n=%u m=%u o=%u",		\
+	    __func__, s->cx, s->cy, screen_size_x(s), screen_size_y(s), \
+	    n, m, o);							\
+} while (0)
+#define SCREEN_DEBUG4(s, n, m, o, p) do {				\
+	log_warnx("%s: cx=%u,cy=%u sx=%u,sy=%u n=%u m=%u o=%u p=%u",	\
+	    __func__, s->cx, s->cy, screen_size_x(s), screen_size_y(s), \
+	    n, m, o, p);					       	\
+} while (0)
 
 /* Screen default contents. */
 #define SCREEN_DEFDATA ' '

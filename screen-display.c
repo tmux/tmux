@@ -1,4 +1,4 @@
-/* $Id: screen-display.c,v 1.11 2007-12-06 10:16:36 nicm Exp $ */
+/* $Id: screen-display.c,v 1.12 2007-12-06 10:36:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,8 +34,10 @@ screen_display_set_cell(
 void
 screen_display_make_lines(struct screen *s, u_int py, u_int ny)
 {
-	if (ny == 0 || !screen_in_y(s, py) || !screen_in_y(s, py + ny - 1))
+	if (ny == 0 || !screen_in_y(s, py) || !screen_in_y(s, py + ny - 1)) {
+		SCREEN_DEBUG2(s, py, ny);
 		return;
+	}
 	screen_make_lines(s, screen_y(s, py), ny);
 }
 
@@ -43,8 +45,10 @@ screen_display_make_lines(struct screen *s, u_int py, u_int ny)
 void
 screen_display_free_lines(struct screen *s, u_int py, u_int ny)
 {
-	if (ny == 0 || !screen_in_y(s, py) || !screen_in_y(s, py + ny - 1))
+	if (ny == 0 || !screen_in_y(s, py) || !screen_in_y(s, py + ny - 1)) {
+		SCREEN_DEBUG2(s, py, ny);
 		return;
+	}
 	screen_free_lines(s, screen_y(s, py), ny);
 }
 
@@ -52,10 +56,14 @@ screen_display_free_lines(struct screen *s, u_int py, u_int ny)
 void
 screen_display_move_lines(struct screen *s, u_int dy, u_int py, u_int ny)
 {
-	if (ny == 0 || !screen_in_y(s, py) || !screen_in_y(s, py + ny - 1))
+	if (ny == 0 || !screen_in_y(s, py) || !screen_in_y(s, py + ny - 1)) {
+		SCREEN_DEBUG3(s, dy, py, ny);
 		return;
-	if (!screen_in_y(s, dy) || !screen_in_y(s, dy + ny - 1) || dy == py)
+	}
+	if (!screen_in_y(s, dy) || !screen_in_y(s, dy + ny - 1) || dy == py) {
+		SCREEN_DEBUG3(s, dy, py, ny);
 		return;
+	}
 	screen_move_lines(s, screen_y(s, dy), screen_y(s, py), ny);
 }
 
@@ -64,12 +72,18 @@ void
 screen_display_fill_area(struct screen *s, u_int px, u_int py,
     u_int nx, u_int ny, u_char data, u_char attr, u_char colr)
 {
-	if (nx == 0 || ny == 0)
+	if (nx == 0 || ny == 0) {
+		SCREEN_DEBUG4(s, px, py, nx, ny);
 		return;
-	if (!screen_in_x(s, px) || !screen_in_y(s, py))
+	}
+	if (!screen_in_x(s, px) || !screen_in_y(s, py)) {
+		SCREEN_DEBUG4(s, px, py, nx, ny);
 		return;
-	if (!screen_in_x(s, px + nx - 1) || !screen_in_y(s, py + ny - 1))
+	}
+	if (!screen_in_x(s, px + nx - 1) || !screen_in_y(s, py + ny - 1)) {
+		SCREEN_DEBUG4(s, px, py, nx, ny);
 		return;
+	}
 	screen_fill_area(
 	    s, screen_x(s, px), screen_y(s, py), nx, ny, data, attr, colr);
 }
@@ -163,15 +177,21 @@ screen_display_scroll_region_down(struct screen *s)
 void
 screen_display_insert_lines(struct screen *s, u_int py, u_int ny)
 {
-	if (!screen_in_y(s, py))
+	if (!screen_in_y(s, py)) {
+		SCREEN_DEBUG2(s, py, ny);
 		return;
-	if (ny == 0)
+	}
+	if (ny == 0) {
+		SCREEN_DEBUG2(s, py, ny);
 		return;
+	}
 
 	if (py + ny > screen_last_y(s))
 		ny = screen_size_y(s) - py;
-	if (ny == 0)
+	if (ny == 0) {
+		SCREEN_DEBUG2(s, py, ny);
 		return;
+	}
 
 	/*
 	 * Insert range of ny lines at py:
@@ -200,15 +220,21 @@ screen_display_insert_lines(struct screen *s, u_int py, u_int ny)
 void
 screen_display_insert_lines_region(struct screen *s, u_int py, u_int ny)
 {
-	if (!screen_in_region(s, py))
+	if (!screen_in_region(s, py)) {
+		SCREEN_DEBUG2(s, py, ny);
 		return;
-	if (ny == 0)
+	}
+	if (ny == 0) {
+		SCREEN_DEBUG2(s, py, ny);
 		return;
+	}
 
 	if (py + ny > s->rlower)
 		ny = (s->rlower + 1) - py;
-	if (ny == 0)
+	if (ny == 0) {
+		SCREEN_DEBUG2(s, py, ny);
 		return;
+	}
 
 	/*
 	 * Insert range of ny lines at py:
@@ -237,15 +263,21 @@ screen_display_insert_lines_region(struct screen *s, u_int py, u_int ny)
 void
 screen_display_delete_lines(struct screen *s, u_int py, u_int ny)
 {
-	if (!screen_in_y(s, py))
+	if (!screen_in_y(s, py)) {
+		SCREEN_DEBUG2(s, py, ny);
 		return;
-	if (ny == 0)
+	}
+	if (ny == 0) {
+		SCREEN_DEBUG2(s, py, ny);
 		return;
+	}
 
 	if (py + ny > screen_last_y(s))
 		ny = screen_size_y(s) - py;
-	if (ny == 0)
+	if (ny == 0) {
+		SCREEN_DEBUG2(s, py, ny);
 		return;
+	}
 
 	/*
 	 * Delete range of ny lines at py:
@@ -274,10 +306,14 @@ screen_display_delete_lines(struct screen *s, u_int py, u_int ny)
 void
 screen_display_delete_lines_region(struct screen *s, u_int py, u_int ny)
 {
-	if (!screen_in_region(s, py))
+	if (!screen_in_region(s, py)) {
+		SCREEN_DEBUG2(s, py, ny);
 		return;
-	if (ny == 0)
+	}
+	if (ny == 0) {
+		SCREEN_DEBUG2(s, py, ny);
 		return;
+	}
 
 	if (py + ny > s->rlower)
 		ny = (s->rlower + 1) - py;
@@ -313,8 +349,10 @@ screen_display_insert_characters(struct screen *s, u_int px, u_int py, u_int nx)
 {
 	u_int	mx;
 
-	if (!screen_in_x(s, px) || !screen_in_y(s, py))
+	if (!screen_in_x(s, px) || !screen_in_y(s, py)) {
+		SCREEN_DEBUG3(s, px, py, nx);
 		return;
+	}
 
 	if (px + nx > screen_last_x(s))
 		nx = screen_last_x(s) - px;
@@ -350,8 +388,10 @@ screen_display_delete_characters(struct screen *s, u_int px, u_int py, u_int nx)
 {
 	u_int	mx;
 
-	if (!screen_in_x(s, px) || !screen_in_y(s, py))
+	if (!screen_in_x(s, px) || !screen_in_y(s, py)) {
+		SCREEN_DEBUG3(s, px, py, nx);
 		return;
+	}
 
 	if (px + nx > screen_last_x(s))
 		nx = screen_last_x(s) - px;
@@ -389,12 +429,18 @@ screen_display_copy_area(struct screen *dst, struct screen *src,
 	u_int	i, j;
 	u_char	data, attr, colr;
 
-	if (nx == 0 || ny == 0)
+	if (nx == 0 || ny == 0) {
+		SCREEN_DEBUG4(dst, px, py, nx, ny);
 		return;
-	if (!screen_in_x(dst, px) || !screen_in_y(dst, py))
+	}
+	if (!screen_in_x(dst, px) || !screen_in_y(dst, py)) {
+		SCREEN_DEBUG4(dst, px, py, nx, ny);
+		return; 
+	}
+	if (!screen_in_x(dst, px + nx - 1) || !screen_in_y(dst, py + ny - 1)) {
+		SCREEN_DEBUG4(dst, px, py, nx, ny);
 		return;
-	if (!screen_in_x(dst, px + nx - 1) || !screen_in_y(dst, py + ny - 1))
-		return;
+	}
 
 	for (i = py; i < py + ny; i++) {
 		for (j = px; j < px + nx; j++) {

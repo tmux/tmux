@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.2 2007-12-06 10:16:36 nicm Exp $ */
+/* $Id: screen-write.c,v 1.3 2007-12-06 10:36:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,11 +22,15 @@
 
 #include "tmux.h"
 
-#define screen_write_limit(v, lower, upper) do {	\
-	if (v < lower)					\
-		v = lower;				\
-	if (v > upper)					\
-		v = upper;				\
+#define screen_write_limit(s, v, lower, upper) do {			\
+	if (v < lower) {						\
+		v = lower;						\
+		SCREEN_DEBUG3(s, v, lower, upper);			\
+	}								\
+	if (v > upper) {						\
+		v = upper;						\
+		SCREEN_DEBUG3(s, v, lower, upper);			\
+	}								\
 } while (0)
 
 /* Initialise writing with a window. */
@@ -104,8 +108,10 @@ screen_write_put_character(struct screen_write_ctx *ctx, u_char ch)
 		if (ctx->write != NULL)
 			ctx->write(ctx->data, TTY_CHARACTER, '\r');
 		screen_write_cursor_down_scroll(ctx);
-	} else if (!screen_in_x(s, s->cx) || !screen_in_y(s, s->cy))
+	} else if (!screen_in_x(s, s->cx) || !screen_in_y(s, s->cy)) {
+		SCREEN_DEBUG(s);
 		return;
+	}
 
 	screen_display_set_cell(s, s->cx, s->cy, ch, s->attr, s->colr);
 	s->cx++;
@@ -188,10 +194,12 @@ screen_write_set_region(struct screen_write_ctx *ctx, u_int upper, u_int lower)
 {
 	struct screen	*s = ctx->s;
 
-	screen_write_limit(upper, 0, screen_last_y(s));
-	screen_write_limit(lower, 0, screen_last_y(s));
-	if (upper > lower)
+	screen_write_limit(s, upper, 0, screen_last_y(s));
+	screen_write_limit(s, lower, 0, screen_last_y(s));
+	if (upper > lower) {
+		SCREEN_DEBUG2(s,  upper, lower);
 		return;
+	}
 
 	/* Cursor moves to top-left. */
 	s->cx = 0;
@@ -240,7 +248,7 @@ screen_write_cursor_up(struct screen_write_ctx *ctx, u_int n)
 {
 	struct screen	*s = ctx->s;
 
-	screen_write_limit(n, 1, screen_above_y(s, s->cy) - 1);
+	screen_write_limit(s, n, 1, screen_above_y(s, s->cy) - 1);
 
 	s->cy -= n;
 
@@ -254,7 +262,7 @@ screen_write_cursor_down(struct screen_write_ctx *ctx, u_int n)
 {
 	struct screen	*s = ctx->s;
 
-	screen_write_limit(n, 1, screen_below_y(s, s->cy) - 1);
+	screen_write_limit(s, n, 1, screen_below_y(s, s->cy) - 1);
 
 	s->cy += n;
 
@@ -268,7 +276,7 @@ screen_write_cursor_left(struct screen_write_ctx *ctx, u_int n)
 {
 	struct screen	*s = ctx->s;
 
-	screen_write_limit(n, 1, screen_left_x(s, s->cx) - 1);
+	screen_write_limit(s, n, 1, screen_left_x(s, s->cx) - 1);
 
 	s->cx -= n;
 
@@ -282,7 +290,7 @@ screen_write_cursor_right(struct screen_write_ctx *ctx, u_int n)
 {
 	struct screen	*s = ctx->s;
 
-	screen_write_limit(n, 1, screen_right_x(s, s->cx) - 1);
+	screen_write_limit(s, n, 1, screen_right_x(s, s->cx) - 1);
 
 	s->cx += n;
 
@@ -296,7 +304,7 @@ screen_write_delete_lines(struct screen_write_ctx *ctx, u_int n)
 {
 	struct screen	*s = ctx->s;
 
-	screen_write_limit(n, 1, screen_below_y(s, s->cy));
+	screen_write_limit(s, n, 1, screen_below_y(s, s->cy));
 
 	if (s->cy < s->rupper || s->cy > s->rlower)
 		screen_display_delete_lines(s, s->cy, n);
@@ -313,7 +321,7 @@ screen_write_delete_characters(struct screen_write_ctx *ctx, u_int n)
 {
 	struct screen	*s = ctx->s;
 
-	screen_write_limit(n, 1, screen_right_x(s, s->cx));
+	screen_write_limit(s, n, 1, screen_right_x(s, s->cx));
 
 	screen_display_delete_characters(s, s->cx, s->cy, n);
 
@@ -327,7 +335,7 @@ screen_write_insert_lines(struct screen_write_ctx *ctx, u_int n)
 {
 	struct screen	*s = ctx->s;
 
-	screen_write_limit(n, 1, screen_below_y(s, s->cy));
+	screen_write_limit(s, n, 1, screen_below_y(s, s->cy));
 
 	if (s->cy < s->rupper || s->cy > s->rlower)
 		screen_display_insert_lines(s, s->cy, n);
@@ -344,7 +352,7 @@ screen_write_insert_characters(struct screen_write_ctx *ctx, u_int n)
 {
  	struct screen	*s = ctx->s;
 
-	screen_write_limit(n, 1, screen_right_x(s, s->cx));
+	screen_write_limit(s, n, 1, screen_right_x(s, s->cx));
 
 	screen_display_insert_characters(s, s->cx, s->cy, n);
 
@@ -358,8 +366,8 @@ screen_write_move_cursor(struct screen_write_ctx *ctx, u_int n, u_int m)
 {
  	struct screen	*s = ctx->s;
 
-	screen_write_limit(n, 0, screen_last_x(s));
-	screen_write_limit(m, 0, screen_last_y(s));
+	screen_write_limit(s, n, 0, screen_last_x(s));
+	screen_write_limit(s, m, 0, screen_last_y(s));
 
 	s->cx = n;
 	s->cy = m;
@@ -499,8 +507,8 @@ screen_write_copy_area(struct screen_write_ctx *ctx,
 	struct screen_redraw_ctx	rctx;
 	int				saved_mode;
 
-	screen_write_limit(nx, 1, screen_right_x(s, s->cx));
-	screen_write_limit(ny, 1, screen_below_y(s, s->cy));
+	screen_write_limit(s, nx, 1, screen_right_x(s, s->cx));
+	screen_write_limit(s, ny, 1, screen_below_y(s, s->cy));
 
 	screen_display_copy_area(ctx->s, src, s->cx, s->cy, nx, ny, ox, oy);
 
