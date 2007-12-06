@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.12 2007-12-06 18:28:55 nicm Exp $ */
+/* $Id: tty.c,v 1.13 2007-12-06 20:53:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,7 +49,10 @@ void
 tty_init(struct tty *tty, char *path, char *term)
 {
 	tty->path = xstrdup(path);
-	tty->termname = xstrdup(term);
+	if (term == NULL)
+		tty->termname = xstrdup("unknown");
+	else
+		tty->termname = xstrdup(term);
 }
 
 int
@@ -64,8 +67,6 @@ tty_open(struct tty *tty, char **cause)
 		return (-1);
 	}
 
-	if (tty->termname == NULL)
-		tty->termname = xstrdup("unknown");
 	if ((tty->term = tty_find_term(tty->termname, tty->fd, cause)) == NULL)
 		goto error;
 
@@ -118,6 +119,9 @@ tty_close(struct tty *tty)
 {
 	struct winsize	ws;
 
+	if (tty->fd == -1)
+		return;
+
 	if (ioctl(tty->fd, TIOCGWINSZ, &ws) == -1)
 		fatal("ioctl(TIOCGWINSZ)");
 	if (tcsetattr(tty->fd, TCSANOW, &tty->tio) != 0)
@@ -148,8 +152,7 @@ tty_close(struct tty *tty)
 void
 tty_free(struct tty *tty)
 {
-	if (tty->fd != -1)
-		tty_close(tty);
+	tty_close(tty);
 
 	if (tty->path != NULL)
 		xfree(tty->path);
