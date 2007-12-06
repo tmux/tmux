@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.9 2007-12-06 09:46:23 nicm Exp $ */
+/* $Id: tty.c,v 1.10 2007-12-06 11:05:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -79,6 +79,69 @@ tty_open(struct tty *tty, char **cause)
 		return (-1);
 	}
 	tty->termp = cur_term;
+
+	/* Check for required capabilities. */
+	if (clear_screen == NULL) {
+		xasprintf(cause, "clear_screen missing");
+		return (-1);
+	}
+	if (cursor_down == NULL) {
+		xasprintf(cause, "cursor_down missing");
+		return (-1);
+	}
+	if (carriage_return == NULL) {
+		xasprintf(cause, "carriage_return missing");
+		return (-1);
+	}
+	if (cursor_left == NULL) {
+		xasprintf(cause, "cursor_left missing");
+		return (-1);
+	}
+	if (parm_up_cursor == NULL && cursor_up == NULL) {
+		xasprintf(cause, "parm_up_cursor missing");
+		return (-1);
+	}
+	if (parm_down_cursor == NULL && cursor_down == NULL) {
+		xasprintf(cause, "parm_down_cursor missing");
+		return (-1);
+	}
+	if (parm_right_cursor == NULL && cursor_right == NULL) {
+		xasprintf(cause, "parm_right_cursor missing");
+		return (-1);
+	}
+	if (parm_left_cursor == NULL && cursor_left == NULL) {
+		xasprintf(cause, "parm_left_cursor missing");
+		return (-1);
+	}
+	if (cursor_address == NULL) {
+		xasprintf(cause, "cursor_address missing");
+		return (-1);
+	}
+	if (parm_insert_line == NULL && insert_line == NULL) {
+		xasprintf(cause, "parm_insert_line missing");
+		return (-1);
+	}
+	if (parm_delete_line == NULL && delete_line == NULL) {
+		xasprintf(cause, "parm_delete_line missing");
+		return (-1);
+	}
+	if (parm_ich == NULL && insert_character == NULL &&
+	    (enter_insert_mode == NULL || exit_insert_mode == NULL)) {
+		xasprintf(cause, "parm_ich missing");
+		return (-1);
+	}
+	if (parm_dch == NULL && delete_character == NULL) {
+		xasprintf(cause, "parm_dch missing");
+		return (-1);
+	}
+	if (scroll_reverse == NULL) {
+		xasprintf(cause, "scroll_reverse missing");
+		return (-1);
+	}
+	if (change_scroll_region == NULL) {
+		xasprintf(cause, "change_scroll_region missing");
+		return (-1);
+	}
 
 	tty->in = buffer_create(BUFSIZ);
 	tty->out = buffer_create(BUFSIZ);
@@ -238,19 +301,39 @@ tty_vwrite(struct tty *tty, unused struct screen *s, int cmd, va_list ap)
 		break;
 	case TTY_CURSORUP:
 		ua = va_arg(ap, u_int);
-		tty_puts(tty, tparm(parm_up_cursor, ua));
+		if (parm_up_cursor != NULL)
+			tty_puts(tty, tparm(parm_up_cursor, ua));
+		else {
+			while (ua-- > 0)
+				tty_puts(tty, cursor_up);
+		}
 		break;
 	case TTY_CURSORDOWN:
 		ua = va_arg(ap, u_int);
-		tty_puts(tty, tparm(parm_down_cursor, ua));
+		if (parm_down_cursor != NULL)
+			tty_puts(tty, tparm(parm_down_cursor, ua));
+		else {
+			while (ua-- > 0)
+				tty_puts(tty, cursor_down);
+		}
 		break;
 	case TTY_CURSORRIGHT:
 		ua = va_arg(ap, u_int);
-		tty_puts(tty, tparm(parm_right_cursor, ua));
+		if (parm_right_cursor != NULL)
+			tty_puts(tty, tparm(parm_right_cursor, ua));
+		else {
+			while (ua-- > 0)
+				tty_puts(tty, cursor_right);
+		}
 		break;
 	case TTY_CURSORLEFT:
 		ua = va_arg(ap, u_int);
-		tty_puts(tty, tparm(parm_left_cursor, ua));
+		if (parm_left_cursor != NULL)
+			tty_puts(tty, tparm(parm_left_cursor, ua));
+		else {
+			while (ua-- > 0)
+				tty_puts(tty, cursor_left);
+		}
 		break;
 	case TTY_CURSORMOVE:
 		ua = va_arg(ap, u_int);

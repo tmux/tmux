@@ -1,5 +1,7 @@
 06 December 2007
 
+* Restore checks for required termcap entries and add a few more obvious
+  emulations.
 * Another major reorganisation, this time of screen handling. A new set of
   functions, screen_write_*, are now used to write to a screen and a tty
   simultaneously. These are used by the input parser to update the base
@@ -297,4 +299,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.90 2007-12-06 09:46:21 nicm Exp $
+$Id: CHANGES,v 1.91 2007-12-06 11:05:04 nicm Exp $
