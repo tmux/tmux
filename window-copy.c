@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.14 2007-12-06 10:04:43 nicm Exp $ */
+/* $Id: window-copy.c,v 1.15 2007-12-07 09:49:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -354,9 +354,13 @@ void
 window_copy_copy_selection(struct window *w)
 {
 	struct window_copy_mode_data	*data = w->modedata;
+	struct screen			*s = &data->screen;
 	char				*buf;
 	size_t	 			 len, off;
 	u_int	 			 i, xx, yy, sx, sy, ex, ey;
+
+	if (!s->sel.flag)
+		return;
 
 	len = BUFSIZ;
 	buf = xmalloc(len);
@@ -384,8 +388,6 @@ window_copy_copy_selection(struct window *w)
 	xx = window_copy_find_length(w, ey);
 	if (ex > xx)
 		ex = xx;
-
-	log_debug("copying from %u,%u to %u,%u", sx, sy, ex, ey);
 
 	/* Copy the lines. */
 	if (sy == ey)
@@ -477,7 +479,7 @@ window_copy_cursor_end_of_line(struct window *w)
 	px = window_copy_find_length(w, py);
 
 	/* On screen. */
-	if (px > data->ox && px < data->ox + screen_last_x(s))
+	if (px > data->ox && px <= data->ox + screen_last_x(s))
 		data->cx = px - data->ox;
 
 	/* Off right of screen. */
@@ -572,7 +574,7 @@ window_copy_cursor_up(struct window *w)
 	py = screen_y(&w->base, data->cy) - data->oy;
 	px = window_copy_find_length(w, py);
 
-	if (data->cx > px || data->cx == ox)
+	if (data->cx + data->ox >= px || data->cx + data->ox >= ox)
 		window_copy_cursor_end_of_line(w);
 }
 
@@ -599,7 +601,7 @@ window_copy_cursor_down(struct window *w)
 	py = screen_y(&w->base, data->cy) - data->oy;
 	px = window_copy_find_length(w, py);
 
-	if (data->cx > px || data->cx == ox)
+	if (data->cx + data->ox >= px || data->cx + data->ox >= ox)
 		window_copy_cursor_end_of_line(w);
 }
 

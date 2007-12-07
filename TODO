@@ -34,13 +34,14 @@
 	kill server
 	show-options command
 	command to run something without a window at all?
-	command to insert a key (or other data...) into a window (send-key)
+	command to insert a key into a window (send-key)
 		should paste-buffer become send-buffer.....
+	command to insert any data (a string) into a window (paste-data?)
 	command to purge window history
  	extend list-clients to list clients attached to a session (-a for all?)
 	bring back detach-session to detach all clients on a session?
 	paste buffer etc shouldn't be limited to keys
-	buffer manip: clear, view etc
+	buffer manip: clear, view etc (clear-buffer, show-buffer)
 - function groups, bind-key ^W { select-window 0; send-key ^W } etc
 - allow fnmatch for -c, so that you can, eg, detach all clients
 - session specification is all over the place. some things use -s before cmd,
