@@ -59,7 +59,6 @@
 - audit copy/scroll and other modes for problems with very small windows
 - screen_draw_* moved out/renamed (accept TTY_*?)
 - get rid of stderr/stdout hacks in log.c
-- chmod +x socket when any client is attached
 - split clients into three RB trees by fd: attached/unattached/dead?
   or tailqs? what would be fastest per-char?
 - multiple paste buffers
@@ -69,3 +68,5 @@
 - anything which uses cmd_{send,recv}_string will break if the string is
   split. string length should be part of the command size
 - quick intro section (tmux new/attach/detach) etc
+- chmod +x socket when any client is attached (upd in lost/accept)
+

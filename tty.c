@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.15 2007-12-06 21:57:57 nicm Exp $ */
+/* $Id: tty.c,v 1.16 2007-12-10 07:58:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -167,8 +167,10 @@ tty_find_term(char *name, int fd, char **cause)
 	int		 error;
 	
 	TAILQ_FOREACH(term, &tty_terms, entry) {
-		if (strcmp(term->name, name) == 0)
+		if (strcmp(term->name, name) == 0) {
+			term->references++;
 			return (term);
+		}
 	}
 
 	term = xmalloc(sizeof *term);
