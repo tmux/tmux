@@ -1,5 +1,5 @@
 
-/* $Id: server-msg.c,v 1.41 2007-12-06 20:53:48 nicm Exp $ */
+/* $Id: server-msg.c,v 1.42 2007-12-12 19:44:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -252,8 +252,6 @@ server_msg_fn_exiting(struct hdr *hdr, struct client *c)
 	c->session = NULL;
 	
 	tty_close(&c->tty);
-
-	recalculate_sizes();
 
 	server_write_client(c, MSG_EXITED, NULL, 0);
 
