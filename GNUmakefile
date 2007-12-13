@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.9 2007-12-06 09:46:21 nicm Exp $
+# $Id: GNUmakefile,v 1.10 2007-12-13 18:59:42 nicm Exp $
 
 .PHONY: clean
 
@@ -13,7 +13,7 @@ META?= \002
 
 SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       xmalloc.c xmalloc-debug.c input.c input-keys.c screen.c screen-display.c \
-      window.c session.c local.c log.c client.c client-msg.c client-fn.c \
+      window.c session.c log.c client.c client-msg.c client-fn.c \
       key-string.c key-bindings.c resize.c cmd.c cmd-new-session.c \
       cmd-detach-client.c cmd-list-sessions.c cmd-new-window.c cmd-bind-key.c \
       cmd-unbind-key.c cmd-previous-window.c cmd-last-window.c cmd-list-keys.c \
@@ -23,7 +23,8 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       cmd-link-window.c cmd-unlink-window.c cmd-next-window.c \
       cmd-swap-window.c cmd-rename-session.c cmd-kill-session.c \
       cmd-switch-client.c cmd-has-session.c cmd-scroll-mode.c cmd-copy-mode.c \
-      cmd-paste-buffer.c window-scroll.c window-more.c window-copy.c
+      cmd-paste-buffer.c window-scroll.c window-more.c window-copy.c \
+      tty.c tty-keys.c tty-write.c screen-write.c screen-redraw.c
 
 CC?= gcc
 INCDIRS+= -I. -I-

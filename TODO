@@ -63,6 +63,7 @@
   or tailqs? what would be fastest per-char?
 - multiple paste buffers
 - window splitting?
+- if only one arg to switch-window, assume source-index
 
 -- For 0.2 --------------------------------------------------------------------
 - anything which uses cmd_{send,recv}_string will break if the string is

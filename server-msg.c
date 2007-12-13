@@ -1,5 +1,4 @@
-
-/* $Id: server-msg.c,v 1.42 2007-12-12 19:44:59 nicm Exp $ */
+/* $Id: server-msg.c,v 1.43 2007-12-13 18:59:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
