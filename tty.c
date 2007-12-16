@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.16 2007-12-10 07:58:00 nicm Exp $ */
+/* $Id: tty.c,v 1.17 2007-12-16 17:18:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -93,9 +93,11 @@ tty_open(struct tty *tty, char **cause)
 	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
 		fatal("tcsetattr failed");
 
+#ifdef TIOCFLUSH
 	what = 0;
 	if (ioctl(tty->fd, TIOCFLUSH, &what) != 0)
 		fatal("ioctl(TIOCFLUSH)");
+#endif
 
 	if (enter_ca_mode != NULL)
 		tty_puts(tty, enter_ca_mode);

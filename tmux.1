@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.20 2007-11-26 20:36:30 nicm Exp $
+.\" $Id: tmux.1,v 1.21 2007-12-16 17:18:43 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -92,6 +92,55 @@ This specifies one of a set of commands used to control
 and described in the following sections.
 .Pp
 .El
+.Sh QUICK START
+To create a new tmux session running
+.Xr vi :
+.Pp
+.Dl $ tmux new-session vi
+.Pp
+Most commands have a shorter form, known as an alias.
+For new-session, this is 
+.Ic new :
+.Pp
+.Dl $ tmux new vi
+.Pp
+Alternatively, the shortest unambiguous form of a command is accepted.
+If there are several options, they are listed:
+.Bd -literal -offset indent
+$ tmux n
+ambiguous command: n, could be: new-session, new-window, next-window
+$
+.Ed
+.Pp
+Within an active session, a new window may be created by typing
+.Ql ^B
+(ctrl-B, known as the prefix key)
+followed by the
+.Ql c
+key.
+.Pp
+Windows may be navigated with: 
+.Ql ^B 0
+(to select window 0),
+.Ql ^B 1
+(to select window 1), and so on;
+.Ql ^B n
+to select the next window; and
+.Ql ^B p
+to select the previous window.
+.Pp
+A session may be detached using
+.Ql ^B d
+and reattached with:
+.Pp
+.Dl $ tmux attach-session
+.Pp
+Typing 
+.Ql ^B \&?
+lists the current key bindings in the current window; up and down may be used
+to navigate the list or
+.Ql Q
+to exit from it.
 .Sh KEY BINDINGS
 .Nm
 may be controlled from an attached client by using a key combination of a

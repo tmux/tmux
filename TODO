@@ -68,5 +68,4 @@
 -- For 0.2 --------------------------------------------------------------------
 - anything which uses cmd_{send,recv}_string will break if the string is
   split. string length should be part of the command size
-- quick intro section (tmux new/attach/detach) etc
 - chmod +x socket when any client is attached (upd in lost/accept)
