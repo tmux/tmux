@@ -1,3 +1,7 @@
+02 January 2008
+
+* Don't attempt to reset the tty on exit if it has been closed externally.
+
 06 December 2007
 
 * Restore checks for required termcap entries and add a few more obvious
@@ -299,4 +303,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.91 2007-12-06 11:05:04 nicm Exp $
+$Id: CHANGES,v 1.92 2008-01-02 19:22:21 nicm Exp $

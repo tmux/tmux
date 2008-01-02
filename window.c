@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.34 2007-12-06 10:04:43 nicm Exp $ */
+/* $Id: window.c,v 1.35 2008-01-02 19:22:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,7 @@
  * server poll loop. Output data is received from pty's in screen format,
  * translated and returned as a series of escape sequences and strings via
  * input_parse (in input.c). Input data is received as key codes and written
- * directly via input_translate_key.
+ * directly via input_key.
  *
  * Each window also has a "virtual" screen (screen.c) which contains the
  * current state and is redisplayed when the window is reattached to a client.
