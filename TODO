@@ -65,8 +65,9 @@
 - window splitting?
 - if only one arg to switch-window, assume source-index
 - test on wsvt25, vt100, vt220
-- clear EOL etc CANNOT rely on it using the current colour/attr and should
-  not emulate it doing so - it should always fill with black
+- clear EOL etc CANNOT rely on term using the current colour/attr and probably
+  should not emulate it doing so
+- why do up/down work in angband with screen but not tmux??
 
 -- For 0.2 --------------------------------------------------------------------
 - anything which uses cmd_{send,recv}_string will break if the string is
