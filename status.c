@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.16 2008-01-03 19:18:14 nicm Exp $ */
+/* $Id: status.c,v 1.17 2008-01-03 20:01:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,7 +49,7 @@ status_write_client(struct client *c)
 		screen_redraw_write_string(
 		    &ctx, "%d:%s%c ", wl->idx, wl->window->name, flag);
 
-		if (ctx.s->cx > screen_size_x(ctx.s))
+		if (ctx.s->cx > screen_last_x(ctx.s))
 			break;
 	}
 	screen_redraw_clear_end_of_line(&ctx);

@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.2 2008-01-03 19:18:14 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.3 2008-01-03 20:01:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -138,7 +138,7 @@ screen_redraw_write_string(struct screen_redraw_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 
 	for (ptr = msg; *ptr != '\0'; ptr++) {
-		if (ctx->s->cx > screen_size_x(s))
+		if (ctx->s->cx > screen_last_x(s))
 			break;
 		if (*ptr < 0x20)
 			continue;
