@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.45 2007-12-06 13:54:33 nicm Exp $ */
+/* $Id: input.c,v 1.46 2008-01-03 21:32:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -554,9 +554,11 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 	switch (ch) {
 	case '=':	/* DECKPAM */
 		screen_write_set_mode(&ictx->ctx, MODE_KKEYPAD);
+		log_debug("kkeypad on");
 		break;
 	case '>':	/* DECKPNM*/
 		screen_write_clear_mode(&ictx->ctx, MODE_KKEYPAD);
+		log_debug("kkeypad off");
 		break;
 	case '7':	/* DECSC */
 		s->saved_cx = s->cx;
@@ -917,12 +919,15 @@ input_handle_sequence_sm(struct input_ctx *ictx)
 		switch (n) {
 		case 1:		/* GATM */
 			screen_write_set_mode(&ictx->ctx, MODE_KCURSOR);
+			log_debug("kcursor on");
 			break;
 		case 25:	/* TCEM */
 			screen_write_set_mode(&ictx->ctx, MODE_CURSOR);
+			log_debug("cursor on");
 			break;
 		case 1000:
 			screen_write_set_mode(&ictx->ctx, MODE_MOUSE);
+			log_debug("mouse on");
 			break;
 		default:
 			log_debug("unknown SM [%hhu]: %u", ictx->private, n);
@@ -932,6 +937,7 @@ input_handle_sequence_sm(struct input_ctx *ictx)
 		switch (n) {
 		case 4:		/* IRM */
 			screen_write_set_mode(&ictx->ctx, MODE_INSERT);
+			log_debug("insert on");
 			break;
 		case 34:
 			/* Cursor high visibility not supported. */
@@ -957,12 +963,15 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 		switch (n) {
 		case 1:		/* GATM */
 			screen_write_clear_mode(&ictx->ctx, MODE_KCURSOR);
+			log_debug("kcursor off");
 			break;
 		case 25:	/* TCEM */
 			screen_write_clear_mode(&ictx->ctx, MODE_CURSOR);
+			log_debug("cursor off");
 			break;
 		case 1000:
 			screen_write_clear_mode(&ictx->ctx, MODE_MOUSE);
+			log_debug("mouse off");
 			break;
 		default:
 			log_debug("unknown RM [%hhu]: %u", ictx->private, n);
@@ -972,6 +981,7 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 		switch (n) {
 		case 4:		/* IRM */
 			screen_write_clear_mode(&ictx->ctx, MODE_INSERT);
+			log_debug("insert off");
 			break;
 		case 34:
 			/* Cursor high visibility not supported. */

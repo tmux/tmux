@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.17 2008-01-03 20:01:47 nicm Exp $ */
+/* $Id: status.c,v 1.18 2008-01-03 21:32:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,7 +52,10 @@ status_write_client(struct client *c)
 		if (ctx.s->cx > screen_last_x(ctx.s))
 			break;
 	}
-	screen_redraw_clear_end_of_line(&ctx);
+	while (ctx.s->cx < screen_size_x(ctx.s)) {
+		ctx.write(ctx.data, TTY_CHARACTER, ' ');
+		ctx.s->cx++;
+	}
 
 	screen_redraw_stop(&ctx);
 }

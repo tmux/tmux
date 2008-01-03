@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.5 2007-12-01 11:24:17 nicm Exp $ */
+/* $Id: input-keys.c,v 1.6 2008-01-03 21:32:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,6 @@ struct {
 	const char	*data;
 } input_keys[] = {
 	{ KEYC_DC,     "\e[3~" },
-	{ KEYC_DOWN,   "\eOB" },
 	{ KEYC_F1,     "\eOP" },
 	{ KEYC_F10,    "\e[21~" },
 	{ KEYC_F11,    "\e[23~" },
@@ -44,12 +43,20 @@ struct {
 	{ KEYC_F9,     "\e[20~" },
 	{ KEYC_FIND,   "\e[1~" },
 	{ KEYC_IC,     "\e[2~" },
-	{ KEYC_LEFT,   "\eOD" },
-	{ KEYC_SELECT, "\e[4~" },
 	{ KEYC_NPAGE,  "\e[6~" },
 	{ KEYC_PPAGE,  "\e[5~" },
+	{ KEYC_SELECT, "\e[4~" },
+
+	{ KEYC_UP,     "\eOA" },
+	{ KEYC_DOWN,   "\eOB" },
+	{ KEYC_LEFT,   "\eOD" },
 	{ KEYC_RIGHT,  "\eOC" },
-	{ KEYC_UP,     "\eOA" }
+
+	{ KEYC_A1,     "\eOw" },
+	{ KEYC_A3,     "\eOy" },
+	{ KEYC_B2,     "\eOu" },
+	{ KEYC_C1,     "\eOq" },
+	{ KEYC_C3,     "\eOs" }
 };
 #define NINPUTKEYS (sizeof input_keys / sizeof input_keys[0])
 
@@ -65,6 +72,41 @@ input_key(struct window *w, int key)
 		return;
 	}
 
+#ifdef notyetifever
+/* XXX can't we just pass the keypad changes through to tty? */
+	if (!(w->screen->mode & MODE_KKEYPAD)) {
+		switch (key) {
+		case KEYC_A1:
+			buffer_write8(w->out, '9');
+			return;
+		case KEYC_UP:
+			buffer_write8(w->out, '8');
+			return;
+		case KEYC_A3:
+			buffer_write8(w->out, '7');
+			return;
+		case KEYC_LEFT:
+			buffer_write8(w->out, '6');
+			return;
+		case KEYC_B2:
+			buffer_write8(w->out, '5');
+			return;
+		case KEYC_RIGHT:
+			buffer_write8(w->out, '4');
+			return;
+		case KEYC_C1:
+			buffer_write8(w->out, '3');
+			return;
+		case KEYC_DOWN:
+			buffer_write8(w->out, '2');
+			return;
+		case KEYC_C3:
+			buffer_write8(w->out, '1');
+			return;
+		}
+	}
+#endif
+	
 	for (i = 0; i < NINPUTKEYS; i++) {
 		if (input_keys[i].key == key) {
 			log_debug2(

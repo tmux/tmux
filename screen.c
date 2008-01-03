@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.58 2007-12-06 22:13:14 nicm Exp $ */
+/* $Id: screen.c,v 1.59 2008-01-03 21:32:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -144,7 +144,7 @@ screen_create(struct screen *s, u_int dx, u_int dy)
 	s->attr = SCREEN_DEFATTR;
 	s->colr = SCREEN_DEFCOLR;
 
-	s->mode = MODE_CURSOR;
+	s->mode = MODE_CURSOR|MODE_KCURSOR|MODE_KKEYPAD;
 	s->title = xstrdup("");
 
 	s->grid_data = xmalloc(dy * (sizeof *s->grid_data));

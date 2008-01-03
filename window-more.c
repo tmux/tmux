@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.9 2007-12-07 09:26:56 nicm Exp $ */
+/* $Id: window-more.c,v 1.10 2008-01-03 21:32:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -93,7 +93,7 @@ window_more_init(struct window *w)
 
 	s = &data->screen;
 	screen_create(s, screen_size_x(&w->base), screen_size_y(&w->base));
-	s->mode = 0;
+	s->mode &= ~MODE_CURSOR;
 	
 	return (s);
 }

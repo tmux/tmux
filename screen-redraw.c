@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.3 2008-01-03 20:01:47 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.4 2008-01-03 21:32:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -159,14 +159,6 @@ screen_redraw_clear_screen(struct screen_redraw_ctx *ctx)
 		screen_redraw_move_cursor(ctx, 0, i);
 		ctx->write(ctx->data, TTY_CLEARLINE);
 	}
-}
-
-/* Clear to end of line. */
-void
-screen_redraw_clear_end_of_line(struct screen_redraw_ctx *ctx)
-{
-	if (ctx->s->cx < screen_last_x(ctx->s))
-		ctx->write(ctx->data, TTY_CLEARENDOFLINE);
 }
 
 /* Redraw single cell. */
