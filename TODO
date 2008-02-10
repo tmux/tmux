@@ -68,6 +68,8 @@
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably
   should not emulate it doing so
 - why do up/down work in angband with screen but not tmux??
+	-- it's not kkeypad/kcursor
+- fix kkeypad/kcursor
 
 -- For 0.2 --------------------------------------------------------------------
 - anything which uses cmd_{send,recv}_string will break if the string is
