@@ -70,6 +70,7 @@
 - why do up/down work in angband with screen but not tmux??
 	-- it's not kkeypad/kcursor
 - fix kkeypad/kcursor
+- c/p is still borken in some ways
 
 -- For 0.2 --------------------------------------------------------------------
 - anything which uses cmd_{send,recv}_string will break if the string is
