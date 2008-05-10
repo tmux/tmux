@@ -23,7 +23,7 @@
 * Big internal reorganisation. Rather than leaving control of the tty solely in
   the client and piping all data through a socket to it, change so that the
   server opens the tty again and reads and writes to it directly. This avoids
-  a lot of buffering and copying.Also reorganise the redrawing stuff so that
+  a lot of buffering and copying. Also reorganise the redrawing stuff so that
   everything goes through screen_draw_* - this makes the code simpler, but
   still needs broken up more, and all the ways of writing to screens should be
   more consistent.
@@ -303,4 +303,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.92 2008-01-02 19:22:21 nicm Exp $
+$Id: CHANGES,v 1.93 2008-05-10 12:50:25 nicm Exp $
