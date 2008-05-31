@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.114 2008-01-03 21:32:11 nicm Exp $ */
+/* $Id: tmux.h,v 1.115 2008-05-31 18:04:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,6 +36,7 @@
 #include "compat/tree.h"
 #endif
 
+#include <limits.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdarg.h>
