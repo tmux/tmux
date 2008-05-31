@@ -1,4 +1,4 @@
-/* $Id: buffer-poll.c,v 1.4 2007-11-30 11:08:34 nicm Exp $ */
+/* $Id: buffer-poll.c,v 1.5 2008-05-31 20:04:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,11 +41,15 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 {
 	ssize_t	n;
 
+	log_debug("buffer_poll (%d): fd=%d, revents=%d; out=%zu in=%zu",
+	    getpid(), pfd->fd, pfd->revents, BUFFER_USED(out), BUFFER_USED(in));
+
 	if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP))
 		return (-1);
 	if (pfd->revents & POLLIN) {
 		buffer_ensure(in, BUFSIZ);
 		n = read(pfd->fd, BUFFER_IN(in), BUFFER_FREE(in));
+		log_debug("buffer_poll: fd=%d, read=%zd", pfd->fd, n);
 		if (n == 0)
 			return (-1);
 		if (n == -1) {
@@ -55,7 +59,8 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 			buffer_add(in, n);
 	}
 	if (BUFFER_USED(out) > 0 && pfd->revents & POLLOUT) {
-		n = write(pfd->fd, BUFFER_OUT(out), BUFFER_USED(out));
+		n = write(pfd->fd, BUFFER_OUT(out), BUFFER_USED(out));	
+		log_debug("buffer_poll: fd=%d, write=%zd", pfd->fd, n);
 		if (n == -1) {
 			if (errno != EINTR && errno != EAGAIN)
 				return (-1);

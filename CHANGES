@@ -1,3 +1,10 @@
+31 May 2008
+
+* Fix so tmux doesn't hang if the initial window fails for some reason. This
+  was highlighted by problems on Darwin, thanks to Elias Pipping for the report
+  and access to a test account. (tmux still won't work on Darwin since its
+  poll(2) is broken.)
+
 02 January 2008
 
 * Don't attempt to reset the tty on exit if it has been closed externally.
@@ -303,4 +310,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.93 2008-05-10 12:50:25 nicm Exp $
+$Id: CHANGES,v 1.94 2008-05-31 20:04:15 nicm Exp $

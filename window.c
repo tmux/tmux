@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.35 2008-01-02 19:22:21 nicm Exp $ */
+/* $Id: window.c,v 1.36 2008-05-31 20:04:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -169,7 +169,7 @@ window_create(
 	ws.ws_col = sx;
 	ws.ws_row = sy;
 
-	switch (forkpty(&fd, NULL, NULL, &ws)) {
+ 	switch (forkpty(&fd, NULL, NULL, &ws)) {
 	case -1:
 		return (NULL);
 	case 0:
@@ -178,8 +178,9 @@ window_create(
 				fatal("putenv failed");
 		}
 		sigreset();
+		log_debug("started child: cmd=%s; pid=%d", cmd, getpid());
 		log_close();
-
+		
 		execl(_PATH_BSHELL, "sh", "-c", cmd, (char *) NULL);
 		fatal("execl failed");
 	}
