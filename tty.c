@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.19 2008-05-10 12:50:25 nicm Exp $ */
+/* $Id: tty.c,v 1.20 2008-05-31 09:34:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -478,7 +478,7 @@ tty_vwrite(struct tty *tty, unused struct screen *s, int cmd, va_list ap)
 				tty_puts(tty, delete_character);
 		} else {
 			while (ua-- > 0)
-				tty_putc(tty, '\008');
+				tty_putc(tty, '\010');
 		}
 		break;
 	case TTY_CURSORON:
