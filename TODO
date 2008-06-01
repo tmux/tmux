@@ -62,16 +62,17 @@
 - window splitting?
 - if only one arg to switch-window, assume source-index
 - test on wsvt25, vt100, vt220
-- clear EOL etc CANNOT rely on term using the current colour/attr and probably
-  should not emulate it doing so
 - why do up/down work in angband with screen but not tmux??
 	-- it's not kkeypad/kcursor
 - fix kkeypad/kcursor
 - c/p is still borken in some ways
 - tobiasu says it is borken on Linux with aterm + TERM=rxvt
 - poll(2) is broken on OS X/Darwin, a workaround for this would be nice
+- different screen model? layers perhaps? hmm
 
 -- For 0.3 --------------------------------------------------------------------
 - anything which uses cmd_{send,recv}_string will break if the string is
   split. string length should be part of the command size
 - chmod +x socket when any client is attached (upd in lost/accept)
+- clear EOL etc CANNOT rely on term using the current colour/attr and probably
+  should not emulate it doing so
