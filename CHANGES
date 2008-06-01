@@ -1,5 +1,7 @@
 01 June 2008
 
+* Bug fix: don't die if -k passed to link-window and the destination doesn't
+  exist.
 * New command, send-keys, will send a set of keys to a window.
 
 31 May 2008
@@ -314,4 +316,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.95 2008-06-01 20:20:25 nicm Exp $
+$Id: CHANGES,v 1.96 2008-06-01 20:32:41 nicm Exp $

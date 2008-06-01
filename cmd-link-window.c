@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.9 2007-12-06 09:46:21 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.10 2008-06-01 20:32:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -138,6 +138,10 @@ cmd_link_window_exec(void *ptr, struct cmd_ctx *ctx)
 		data->dstidx = -1;
 	if (data->flag_kill && data->dstidx != -1) {
 		wl2 = winlink_find_by_index(&dst->windows, data->dstidx);
+		if (wl2 == NULL) {
+			ctx->error(ctx, "no window %d", data->dstidx);
+			return;
+		}
 
 		/*
 		 * Can't use session_detach as it will destroy session if this

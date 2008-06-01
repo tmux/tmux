@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.9 2007-12-06 09:46:22 nicm Exp $ */
+/* $Id: resize.c,v 1.10 2008-06-01 20:32:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,8 +39,7 @@
  *
  * As a side effect, this function updates the SESSION_UNATTACHED flag. This
  * flag is necessary to make sure unattached sessions do not limit the size of
- * windows that are attached both to them and to other sessions which are
- * attached.
+ * windows that are attached both to them and to other (attached) sessions.
  */
 
 void
