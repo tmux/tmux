@@ -71,8 +71,6 @@
 - different screen model? layers perhaps? hmm
 
 -- For 0.3 --------------------------------------------------------------------
-- anything which uses cmd_{send,recv}_string will break if the string is
-  split. string length should be part of the command size
 - chmod +x socket when any client is attached (upd in lost/accept)
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably
   should not emulate it doing so
