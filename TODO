@@ -72,6 +72,7 @@
 - fix kkeypad/kcursor
 - c/p is still borken in some ways
 - tobiasu says it is borken on Linux with aterm + TERM=rxvt
+- poll(2) is broken on OS X/Darwin, a workaround for this would be nice
 
 -- For 0.3 --------------------------------------------------------------------
 - anything which uses cmd_{send,recv}_string will break if the string is
