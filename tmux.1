@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.23 2008-05-31 23:08:48 nicm Exp $
+.\" $Id: tmux.1,v 1.24 2008-06-01 20:20:25 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -421,6 +421,18 @@ This command works only if bound to a key.
 .D1 (alias: Ic selectw )
 Select the window at
 .Ar index .
+.It Xo Ic send-keys Ar key Ar ...
+.Xc
+Send a key or keys to a window.
+Each argument
+.Ar key
+is the name of the key (such as
+.Ql ^A
+or
+.Ql npage
+) to send; if the string is not recognised as a key, it is sent as a series of
+characters.
+All the arguments are sent sequentially from first to last.
 .It Xo Ic send-prefix
 .Xc
 Send the prefix key to a window as if it was pressed.

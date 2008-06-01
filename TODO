@@ -34,15 +34,12 @@
 	kill server
 	show-options command
 	command to run something without a window at all?
-	command to insert a key into a window (send-key)
-		should paste-buffer become send-buffer.....
-	command to insert any data (a string) into a window (paste-data?)
 	command to purge window history
  	extend list-clients to list clients attached to a session (-a for all?)
 	bring back detach-session to detach all clients on a session?
 	paste buffer etc shouldn't be limited to keys
 	buffer manip: clear, view etc (clear-buffer, show-buffer)
-- function groups, bind-key ^W { select-window 0; send-key ^W } etc
+- function groups, bind-key ^W { select-window 0; send-key ^W } etc ***
 - allow fnmatch for -c, so that you can, eg, detach all clients
 - session specification is all over the place. some things use -s before cmd,
   some -s after, some no -s, there are various uses of -n. the differences are
@@ -51,7 +48,7 @@
 - bind non prefix keys
 - stuff like rename would be nice to be able to do in-client like screen, if
   it could be implemented in a non-icky way
-- there is to much redrawing. use flags?
+- there is too much redrawing. use flags?
 - command mode (! + type tmux command)
 - garbage collect window history (100 lines at a time?) if it hasn't been used
   in $x time (need window creation/use times)
@@ -78,4 +75,3 @@
 - anything which uses cmd_{send,recv}_string will break if the string is
   split. string length should be part of the command size
 - chmod +x socket when any client is attached (upd in lost/accept)
-
