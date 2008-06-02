@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.2 2008-06-02 18:23:37 nicm Exp $ */
+/* $Id: cfg.c,v 1.3 2008-06-02 18:55:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,42 +33,39 @@ char	 *cfg_string(FILE *, char, int);
 void printflike2 cfg_print(struct cmd_ctx *, const char *, ...);
 void printflike2 cfg_error(struct cmd_ctx *, const char *, ...);
 
+char	 *cfg_cause;
+
 void printflike2
 cfg_print(unused struct cmd_ctx *ctx, unused const char *fmt, ...)
 {
 }
 
 void printflike2
-cfg_error(struct cmd_ctx *ctx, const char *fmt, ...)
+cfg_error(unused struct cmd_ctx *ctx, const char *fmt, ...)
 {
 	va_list	ap;
-	char   *msg;
 
 	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
+	xvasprintf(&cfg_cause, fmt, ap);
 	va_end(ap);
-
-	*msg = toupper((u_char) *msg);
-	// XXX
-	log_warnx("%s", msg);
-	xfree(msg);
 }
 
 int
-load_cfg(const char *path, char **cause)
+load_cfg(const char *path, char **causep)
 {
 	FILE   	       *f;
 	int		ch, argc;
 	u_int		line;
-	char	      **argv, *buf, *s;
+	char	      **argv, *buf, *s, *cause;
 	size_t		len;
 	struct cmd     *cmd;
 	struct cmd_ctx	ctx;
 
 	if ((f = fopen(path, "rb")) == NULL) {
-		xasprintf(cause, "%s: %s", path, strerror(errno));
+		xasprintf(causep, "%s: %s", path, strerror(errno));
 		return (1);
 	}
+	cause = NULL;
 
 	argv = NULL;
 	argc = 0;
@@ -115,11 +112,8 @@ load_cfg(const char *path, char **cause)
 				break;
 			line++;
 			
-			if ((cmd = cmd_parse(argc, argv, cause)) == NULL) {
-				if (*cause != NULL)
-					xfree(*cause); /* XXX */
+			if ((cmd = cmd_parse(argc, argv, &cause)) == NULL)
 				goto error;
-			}
 
 			ctx.msgdata = NULL;
 			ctx.cursession = NULL;
@@ -131,9 +125,13 @@ load_cfg(const char *path, char **cause)
 			ctx.cmdclient = NULL;
 			ctx.flags = CMD_KEY;
 			
+			cfg_cause = NULL;
 			cmd_exec(cmd, &ctx);			
-
 			cmd_free(cmd);
+			if (cfg_cause != NULL) {
+				cause = cfg_cause;
+				goto error;
+			}
 
 			while (--argc >= 0)
 				xfree(argv[argc]);
@@ -160,8 +158,11 @@ error:
 
 	if (buf != NULL)
 		xfree(buf);
-	
-	xasprintf(cause, "%s: error at line %u", path, line);
+
+	if (cause == NULL)
+		xasprintf(causep, "%s: error at line %u", path, line);
+	else 
+		xasprintf(causep, "%s: %s at line %u", path, cause, line);
 	return (1);
 }
 
