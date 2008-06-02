@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.44 2008-06-02 18:08:17 nicm Exp $ */
+/* $Id: server-msg.c,v 1.45 2008-06-02 18:23:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -122,9 +122,9 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	ctx.error = server_msg_fn_command_error;
 	ctx.print = server_msg_fn_command_print;
 
+	ctx.msgdata = &data;
 	ctx.curclient = NULL;
 	ctx.cursession = NULL;
-	ctx.msgdata = &data;
 
 	ctx.cmdclient = c;
 	ctx.flags = 0;

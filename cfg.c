@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.1 2008-06-02 18:08:16 nicm Exp $ */
+/* $Id: cfg.c,v 1.2 2008-06-02 18:23:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -121,6 +121,7 @@ load_cfg(const char *path, char **cause)
 				goto error;
 			}
 
+			ctx.msgdata = NULL;
 			ctx.cursession = NULL;
 			ctx.curclient = NULL;
 			

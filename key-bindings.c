@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.26 2008-06-02 18:08:16 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.27 2008-06-02 18:23:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -188,6 +188,7 @@ key_bindings_dispatch(int key, struct client *c)
 	if (i == ARRAY_LENGTH(&key_bindings))
 		return;
 
+	ctx.msgdata = NULL;
 	ctx.cursession = c->session;
 	ctx.curclient = c;
 
