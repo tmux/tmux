@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.47 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: server.c,v 1.48 2008-06-02 21:16:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -78,6 +78,13 @@ server_start(const char *path)
 	xmalloc_clear();
 #endif
 
+	/* 
+	 * Must daemonise before loading configuration as the PID changes so
+	 * $TMUX would be wrong for sessions created in the config file.
+	 */
+	if (daemon(1, 1) != 0)
+		fatal("daemon failed");
+
 	ARRAY_INIT(&windows);
 	ARRAY_INIT(&clients);
 	ARRAY_INIT(&sessions);
@@ -120,10 +127,6 @@ server_start(const char *path)
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
-
-	if (daemon(1, 1) != 0)
-		fatal("daemon failed");
-	log_debug("server daemonised, pid now %ld", (long) getpid());
 	
 	n = server_main(path, fd);
 #ifdef DEBUG
