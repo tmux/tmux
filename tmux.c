@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.47 2008-06-02 18:08:17 nicm Exp $ */
+/* $Id: tmux.c,v 1.48 2008-06-02 21:08:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,25 +53,15 @@ u_int		 history_limit;
 u_int		 status_lines;
 
 void		 sighandler(int);
+__dead void	 usage(void);
 
-void
-usage(char **ptr, const char *fmt, ...)
+__dead void
+usage(void)
 {
-	char	*msg;
-	va_list	 ap;
-
-#define USAGE "usage: %s [-v] [-f file] [-S socket-path]"
-	if (fmt == NULL) {
-		xasprintf(ptr, USAGE " command [flags]", __progname);
-	} else {
-		va_start(ap, fmt);
-		xvasprintf(&msg, fmt, ap);
-		va_end(ap);
-
-		xasprintf(ptr, USAGE " %s", __progname, msg);
-		xfree(msg);
-	}
-#undef USAGE
+	fprintf(stderr, 
+	    "usage: %s [-v] [-f file] [-S socket-path] command [flags]",
+	    __progname);
+	exit(1);
 }
 
 void
@@ -202,13 +192,13 @@ main(int argc, char **argv)
 			printf("%s " BUILD "\n", __progname);
 			exit(0);
                 default:
-			goto usage;
+			usage();
                 }
         }
 	argc -= optind;
 	argv += optind;
 	if (argc == 0)
-		goto usage;
+		usage();
 
 	log_open(stderr, LOG_USER, debug_level);
 	siginit();
@@ -275,8 +265,6 @@ main(int argc, char **argv)
 	xasprintf(&default_command, "exec %s", shell);
 
 	if ((cmd = cmd_parse(argc, argv, &cause)) == NULL) {
-		if (cause == NULL)
-			goto usage;
 		log_warnx("%s", cause);
 		exit(1);
 	}
@@ -354,9 +342,4 @@ out:
 	xmalloc_report(getpid(), "client");
 #endif
 	return (n);
-
-usage:
-	usage(&cause, NULL);
-	fprintf(stderr, "%s\n", cause);
-	exit(1);
 }

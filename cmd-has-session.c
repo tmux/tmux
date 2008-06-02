@@ -1,4 +1,4 @@
-/* $Id: cmd-has-session.c,v 1.4 2008-06-02 18:08:16 nicm Exp $ */
+/* $Id: cmd-has-session.c,v 1.5 2008-06-02 21:08:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,27 +24,30 @@
 #include "tmux.h"
 
 /*
- * Cause client to exit with 0 if session exists, or 1 if it doesn't. This
- * is handled in the caller since this doesn't have flag CMD_NOSESSION, so
- * all that is necessary is to exit.
+ * Cause client to report an error and exit with 1 if session doesn't exist.
  */
 
 void	cmd_has_session_exec(void *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_has_session_entry = {
 	"has-session", "has",
-	"",
+	CMD_SESSIONONLY_USAGE,
 	0,
-	NULL,
+	cmd_sessiononly_parse,
 	cmd_has_session_exec,
-	NULL,
-	NULL,
-	NULL
+	cmd_sessiononly_send,
+	cmd_sessiononly_recv,
+	cmd_sessiononly_free
 };
 
 void
-cmd_has_session_exec(unused void *ptr, struct cmd_ctx *ctx)
+cmd_has_session_exec(void *ptr, struct cmd_ctx *ctx)
 {
+	struct session	*s;
+
+	if ((s = cmd_sessiononly_get(ptr, ctx)) == NULL)
+		return;
+
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

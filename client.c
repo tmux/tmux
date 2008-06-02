@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.27 2008-06-01 21:24:33 nicm Exp $ */
+/* $Id: client.c,v 1.28 2008-06-02 21:08:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,13 +45,15 @@ client_init(const char *path, struct client_ctx *cctx, int start_server)
 	int				mode;
 	u_int				retries;
 	struct buffer		       *b;
+	pid_t				pid;
 
+	pid = 0;
 	retries = 0;
 retry:
 	if (stat(path, &sb) != 0) {
 		if (start_server && errno == ENOENT && retries < 10) {
-			if (server_start(path) != 0)
-				return (-1);
+			if (pid == 0)
+				pid = server_start(path);
 			usleep(10000);
 			retries++;
 			goto retry;
@@ -112,7 +114,7 @@ retry:
 
 fail:
 	log_warn("server not found");
-	return (-1);
+	return (1);
 }
 
 int

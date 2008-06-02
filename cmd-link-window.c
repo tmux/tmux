@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.11 2008-06-02 18:08:16 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.12 2008-06-02 21:08:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -106,7 +106,7 @@ cmd_link_window_parse(
 	return (0);
 
 usage:
-	usage(cause, "%s %s", self->entry->name, self->entry->usage);
+	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
 error:
 	cmd_link_window_free(data);

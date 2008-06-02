@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.9 2008-06-02 18:08:16 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.10 2008-06-02 21:08:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -82,7 +82,7 @@ cmd_bind_key_parse(
 	return (0);
 
 usage:
-	usage(cause, "%s %s", self->entry->name, self->entry->usage);
+	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
 error:
 	cmd_bind_key_free(data);

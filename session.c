@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.30 2007-12-06 09:46:23 nicm Exp $ */
+/* $Id: session.c,v 1.31 2008-06-02 21:08:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -117,6 +117,8 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	}
 	session_select(s, 0);
 
+	log_debug("session %s created", s->name);
+
 	return (s);
 }
 
@@ -125,6 +127,8 @@ void
 session_destroy(struct session *s)
 {
 	u_int	i;
+
+	log_debug("session %s destroyed", s->name);
 
 	if (session_index(s, &i) != 0)
 		fatalx("session not found");

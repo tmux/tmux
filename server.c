@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.46 2008-06-02 18:08:17 nicm Exp $ */
+/* $Id: server.c,v 1.47 2008-06-02 21:08:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,27 +55,38 @@ void		 server_lost_client(struct client *);
 void	 	 server_lost_window(struct window *);
 
 /* Fork new server. */
-int
+pid_t
 server_start(const char *path)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
 	mode_t			mask;
 	int		   	n, fd, mode;
+	pid_t			pid;
 	char		       *cause;
 
-	switch (fork()) {
+	switch (pid = fork()) {
 	case -1:
 		fatal("fork");
 	case 0:
 		break;
 	default:
-		return (0);
+		return (pid);
 	}
 
 #ifdef DEBUG
 	xmalloc_clear();
 #endif
+
+	ARRAY_INIT(&windows);
+	ARRAY_INIT(&clients);
+	ARRAY_INIT(&sessions);
+	key_bindings_init();
+
+	if (cfg_file != NULL && load_cfg(cfg_file, &cause) != 0) {
+		log_warnx("%s", cause);
+		exit(1);
+	}
 
 	logfile("server");
 #ifndef NO_SETPROCTITLE
@@ -110,17 +121,10 @@ server_start(const char *path)
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
 
- 	/* Load configuration. */
-	if (cfg_file != NULL && load_cfg(cfg_file, &cause) != 0) {
-		log_warnx("%s", cause);
-		xfree(cause);
-		exit(1);
-	}
-
 	if (daemon(1, 1) != 0)
 		fatal("daemon failed");
 	log_debug("server daemonised, pid now %ld", (long) getpid());
-
+	
 	n = server_main(path, fd);
 #ifdef DEBUG
 	xmalloc_report(getpid(), "server");
@@ -137,12 +141,6 @@ server_main(const char *srv_path, int srv_fd)
 	u_int		 i;
 
 	siginit();
-
-	ARRAY_INIT(&windows);
-	ARRAY_INIT(&clients);
-	ARRAY_INIT(&sessions);
-
-	key_bindings_init();
  
 	pfds = NULL;
 	while (!sigterm) {

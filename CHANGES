@@ -1,5 +1,43 @@
 02 June 2008
 
+* New command, start-server (alias "start"), to start the tmux server and do
+  nothing else. This is good if you have a configuration file which creates
+  windows or sessions (like me): in that case, starting the server the first
+  time tmux new is run is bad since it creates a new session and window (as
+  it is supposed to - starting the server is a side-effect).
+
+  Instead, I have a little script which does the equivalent of:
+
+  	tmux has -s0 2>/dev/null || tmux start
+  	tmux attach -d -s0
+
+  And I use it to start the server if necessary and attach to my primary
+  session.
+* Basic configuration file in ~/.tmux.conf or specified with -f. This is file
+  contains a set of tmux commands that are run the first time the server is
+  started. The configuration commands are executed before any others, so
+  if you have a configuration file that contains:
+
+	new -d
+	neww -s0
+
+  And you do the following without an existing server running:
+
+	tmux new
+
+  You will end up with two sessions, session 0 with two windows (created by
+  the configuration file) and your client attached to session 1 with one
+  window (created by the command-line command). I'm not completely happy with
+  this, it seems a little non-obvious, but I haven't yet decided what to do
+  about it.
+
+  There is no environment variable handling or other special stuff yet.
+
+  In the future, it might be nice to be able to have per-session configuration
+  settings, probably by having conditionals in the file (so you could, for
+  example, have commands to define a particular window layout that would only
+  be invoked if you called tmux new -smysession and mysession did not already
+  exist).
 * BIG CHANGE: -s and -c to specify session name and client name are now passed
   after the command rather than before it. So, for example:
 
@@ -330,4 +368,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.97 2008-06-02 18:08:16 nicm Exp $
+$Id: CHANGES,v 1.98 2008-06-02 21:08:36 nicm Exp $

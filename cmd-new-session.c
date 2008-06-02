@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.20 2008-06-02 18:08:16 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.21 2008-06-02 21:08:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -89,7 +89,7 @@ cmd_new_session_parse(
 	return (0);
 
 usage:
-	usage(cause, "%s %s", self->entry->name, self->entry->usage);
+	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
 	cmd_new_session_free(data);
 	return (-1);
@@ -101,8 +101,9 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 	struct cmd_new_session_data	*data = ptr;
 	struct cmd_new_session_data	 std = { NULL, NULL, NULL, 0 };
 	struct client			*c = ctx->cmdclient;
+	struct session			*s;
 	char				*cmd, *cause;
-	u_int				 sy;
+	u_int				 sx, sy;
 
 	if (data == NULL)
 		data = &std;
@@ -110,9 +111,15 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 	if (ctx->flags & CMD_KEY)
 		return;
 
-	if (!data->flag_detached && !(c->flags & CLIENT_TERMINAL)) {
-		ctx->error(ctx, "not a terminal");
-		return;
+	if (!data->flag_detached) {
+		if (c == NULL) {
+			ctx->error(ctx, "no client to attach to");
+			return;
+		}
+		if (!(c->flags & CLIENT_TERMINAL)) {
+			ctx->error(ctx, "not a terminal");
+			return;
+		}
 	}
 
 	if (data->name != NULL && session_find(data->name) != NULL) {
@@ -120,7 +127,16 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 		return;
 	}
 
-	sy = c->sy;
+	cmd = data->cmd;
+	if (cmd == NULL)
+		cmd = default_command;
+
+	sx = 80;
+	sy = 25;
+	if (!data->flag_detached) {
+		sx = c->sx;
+		sy = c->sy;
+	}
 	if (sy < status_lines)
 		sy = status_lines + 1;
 	sy -= status_lines;
@@ -131,21 +147,19 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 		return;
 	}
 
-	cmd = data->cmd;
-	if (cmd == NULL)
-		cmd = default_command;
 
-	c->session = session_create(data->name, cmd, c->sx, sy);
-	if (c->session == NULL)
+	if ((s = session_create(data->name, cmd, sx, sy)) == NULL)
 		fatalx("session_create failed");
 	if (data->winname != NULL) {
-		xfree(c->session->curw->window->name);
-		c->session->curw->window->name = xstrdup(data->winname);
+		xfree(s->curw->window->name);
+		s->curw->window->name = xstrdup(data->winname);
 	}
 
-	if (data->flag_detached)
-		server_write_client(c, MSG_EXIT, NULL, 0);
-	else {
+	if (data->flag_detached) {
+		if (c != NULL)
+			server_write_client(c, MSG_EXIT, NULL, 0);
+	} else {
+		c->session = s;
 		server_write_client(c, MSG_READY, NULL, 0);
 		server_redraw_client(c);
 	}

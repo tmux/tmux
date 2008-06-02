@@ -69,6 +69,7 @@
 - tobiasu says it is borken on Linux with aterm + TERM=rxvt
 - poll(2) is broken on OS X/Darwin, a workaround for this would be nice
 - different screen model? layers perhaps? hmm
+- cfg file improvements: * comments to EOL
 
 ---
 [18:20] *priteau* i found something in tmux that could be tweaked to be better

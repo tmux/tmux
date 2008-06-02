@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.117 2008-06-02 18:08:17 nicm Exp $ */
+/* $Id: tmux.h,v 1.118 2008-06-02 21:08:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -693,7 +693,6 @@ extern int	 prefix_key;
 extern u_char	 status_colour;
 extern u_int	 history_limit;
 extern u_int	 status_lines;
-void		 usage(char **, const char *, ...);
 void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);
@@ -759,6 +758,7 @@ extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_keys_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
 extern const struct cmd_entry cmd_set_option_entry;
+extern const struct cmd_entry cmd_start_server_entry;
 extern const struct cmd_entry cmd_swap_window_entry;
 extern const struct cmd_entry cmd_switch_client_entry;
 extern const struct cmd_entry cmd_unbind_key_entry;
@@ -809,7 +809,7 @@ const char *key_string_lookup_key(int);
 
 /* server.c */
 extern struct clients clients;
-int	 server_start(const char *);
+pid_t	 server_start(const char *);
 
 /* server-msg.c */
 int	 server_msg_dispatch(struct client *);
