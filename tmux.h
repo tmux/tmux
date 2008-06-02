@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.119 2008-06-02 21:36:51 nicm Exp $ */
+/* $Id: tmux.h,v 1.120 2008-06-02 22:09:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -780,6 +780,13 @@ void	cmd_sessiononly_send(void *, struct buffer *);
 void	cmd_sessiononly_recv(void **, struct buffer *);
 void	cmd_sessiononly_free(void *);
 struct session *cmd_sessiononly_get(void *, struct cmd_ctx *);
+#define CMD_WINDOWONLY_USAGE "[-i index] [-s session-name]"
+int	cmd_windowonly_parse(struct cmd *, void **, int, char **, char **);
+void	cmd_windowonly_exec(void *, struct cmd_ctx *);
+void	cmd_windowonly_send(void *, struct buffer *);
+void	cmd_windowonly_recv(void **, struct buffer *);
+void	cmd_windowonly_free(void *);
+struct winlink *cmd_windowonly_get(void *, struct cmd_ctx *, struct session **);
 
 /* client.c */
 int	 client_init(const char *, struct client_ctx *, int);

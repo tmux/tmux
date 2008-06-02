@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.2 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.3 2008-06-02 22:09:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <getopt.h>
+#include <stdlib.h>
 
 #include "tmux.h"
 
@@ -28,6 +29,11 @@ struct cmd_clientonly_data {
 
 struct cmd_sessiononly_data {
 	char	*sname;
+};
+
+struct cmd_windowonly_data {
+	char	*sname;
+	int	 idx;
 };
 
 int
@@ -172,4 +178,106 @@ cmd_sessiononly_get(void *ptr, struct cmd_ctx *ctx)
   	if (data != NULL)
 		return (cmd_find_session(ctx, data->sname));
 	return (cmd_find_session(ctx, NULL));
+}
+
+int
+cmd_windowonly_parse(
+    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
+{
+	struct cmd_windowonly_data	*data;
+	int				 opt;
+	const char			*errstr;
+
+	*ptr = data = xmalloc(sizeof *data);
+	data->sname = NULL;
+	data->idx = -1;
+
+	while ((opt = getopt(argc, argv, "i:s:")) != EOF) {
+		switch (opt) {
+		case 'i':
+			data->idx = strtonum(optarg, 0, INT_MAX, &errstr);
+			if (errstr != NULL) {
+				xasprintf(cause, "index %s", errstr);
+				goto error;
+			}
+			break;
+		case 's':
+			data->sname = xstrdup(optarg);
+			break;
+		default:
+			goto usage;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+	if (argc != 0)
+		goto usage;
+
+	return (0);
+
+usage:
+	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
+
+error:
+	self->entry->free(data);
+	return (-1);
+}
+
+void
+cmd_windowonly_send(void *ptr, struct buffer *b)
+{
+	struct cmd_windowonly_data	*data = ptr;
+
+	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->sname);
+}
+
+void
+cmd_windowonly_recv(void **ptr, struct buffer *b)
+{
+	struct cmd_windowonly_data	*data;
+
+	*ptr = data = xmalloc(sizeof *data);
+	buffer_read(b, data, sizeof *data);
+	data->sname = cmd_recv_string(b);
+}
+
+void
+cmd_windowonly_free(void *ptr)
+{
+	struct cmd_windowonly_data	*data = ptr;
+
+	if (data->sname != NULL)
+		xfree(data->sname);
+	xfree(data);
+}
+
+struct winlink *
+cmd_windowonly_get(void *ptr, struct cmd_ctx *ctx, struct session **sp)
+{
+	struct cmd_windowonly_data	*data = ptr;
+	struct session			*s;
+	struct winlink			*wl;
+	int				 idx;
+
+  	if (data != NULL) {
+		s = cmd_find_session(ctx, data->sname);
+		idx = data->idx;
+	} else {
+		s = cmd_find_session(ctx, NULL);
+		idx = -1;
+	}
+	if (s == NULL)
+		return (NULL);
+
+	if (sp != NULL)
+		*sp = s;
+
+	if (idx == -1)
+		return (s->curw);
+	if ((wl = winlink_find_by_index(&s->windows, idx)) == NULL) {
+		ctx->error(ctx, "no window %d", idx);
+		return (NULL);
+	}
+	return (wl);
 }

@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.10 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.11 2008-06-02 22:09:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -90,7 +90,7 @@ error:
 }
 
 void
-cmd_bind_key_exec(void *ptr, unused struct cmd_ctx *ctx)
+cmd_bind_key_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_bind_key_data	*data = ptr;
 

@@ -1,4 +1,4 @@
-/* $Id: cmd-send-prefix.c,v 1.8 2008-06-02 18:08:16 nicm Exp $ */
+/* $Id: cmd-send-prefix.c,v 1.9 2008-06-02 22:09:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,9 +17,6 @@
  */
 
 #include <sys/types.h>
-
-#include <getopt.h>
-#include <unistd.h>
 
 #include "tmux.h"
 

@@ -1,4 +1,4 @@
-/* $Id: cmd-scroll-mode.c,v 1.8 2008-06-02 21:36:51 nicm Exp $ */
+/* $Id: cmd-scroll-mode.c,v 1.9 2008-06-02 22:09:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,9 +18,6 @@
 
 #include <sys/types.h>
 
-#include <getopt.h>
-#include <stdlib.h>
-
 #include "tmux.h"
 
 /*
@@ -31,24 +28,24 @@ void	cmd_scroll_mode_exec(void *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_scroll_mode_entry = {
 	"scroll-mode", NULL,
-	CMD_SESSIONONLY_USAGE,
+	CMD_WINDOWONLY_USAGE,
 	0,
-	cmd_sessiononly_parse,
+	cmd_windowonly_parse,
 	cmd_scroll_mode_exec,
-	cmd_sessiononly_send,
-	cmd_sessiononly_recv,
-	cmd_sessiononly_free
+	cmd_windowonly_send,
+	cmd_windowonly_recv,
+	cmd_windowonly_free
 };
 
 void
 cmd_scroll_mode_exec(void *ptr, struct cmd_ctx *ctx)
 {
-	struct session	*s;
+	struct winlink	*wl;
 
-	if ((s = cmd_sessiononly_get(ptr, ctx)) == NULL)
+	if ((wl = cmd_windowonly_get(ptr, ctx, NULL)) == NULL)
 		return;
 
-	window_set_mode(s->curw->window, &window_scroll_mode);
+	window_set_mode(wl->window, &window_scroll_mode);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

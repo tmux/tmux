@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.4 2008-06-02 21:36:51 nicm Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.5 2008-06-02 22:09:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,8 +18,6 @@
 
 #include <sys/types.h>
 
-#include <getopt.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -32,27 +30,27 @@ void	cmd_paste_buffer_exec(void *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", "paste",
-	CMD_SESSIONONLY_USAGE,
+	CMD_WINDOWONLY_USAGE,
 	0,
-	cmd_sessiononly_parse,
+	cmd_windowonly_parse,
 	cmd_paste_buffer_exec,
-	cmd_sessiononly_send,
-	cmd_sessiononly_recv,
-	cmd_sessiononly_free
+	cmd_windowonly_send,
+	cmd_windowonly_recv,
+	cmd_windowonly_free
 };
 
 void
-cmd_paste_buffer_exec(unused void *ptr, struct cmd_ctx *ctx)
+cmd_paste_buffer_exec(void *ptr, struct cmd_ctx *ctx)
 {
-	struct session	*s;
-	struct window	*w;
+	struct winlink	*wl;
 
-	if ((s = cmd_sessiononly_get(ptr, ctx)) == NULL)
+	if ((wl = cmd_windowonly_get(ptr, ctx, NULL)) == NULL)
 		return;
-	w = s->curw->window;
 
-	if (paste_buffer != NULL && *paste_buffer != '\0')
-		buffer_write(w->out, paste_buffer, strlen(paste_buffer));
+	if (paste_buffer != NULL && *paste_buffer != '\0') {
+		buffer_write(
+		    wl->window->out, paste_buffer, strlen(paste_buffer));
+	}
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

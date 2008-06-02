@@ -69,8 +69,7 @@
 - poll(2) is broken on OS X/Darwin, a workaround for this would be nice
 - different screen model? layers perhaps? hmm
 - cfg file improvements: * comments to EOL
-- index on *-mode and other stuff that targets a window but is currently
-  sessiononly
+- select-window can become windowonly... 
 
 ---
 [18:20] *priteau* i found something in tmux that could be tweaked to be better
