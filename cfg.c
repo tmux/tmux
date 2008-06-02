@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.5 2008-06-02 21:36:51 nicm Exp $ */
+/* $Id: cfg.c,v 1.6 2008-06-02 22:16:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -76,12 +76,6 @@ load_cfg(const char *path, char **causep)
 	line = 0;
 	while ((ch = getc(f)) != EOF) {
 		switch (ch) {
-		case '#':
-			/* Comment: discard until EOL. */
-			while ((ch = getc(f)) != '\n' && ch != EOF)
-				;
-			line++;
-			break;
 		case '\'':
 			if ((s = cfg_string(f, '\'', 0)) == NULL)
 				goto error;
@@ -94,6 +88,11 @@ load_cfg(const char *path, char **causep)
 			argv = xrealloc(argv, argc + 1, sizeof (char *));
 			argv[argc++] = s;
 			break;
+		case '#':
+			/* Comment: discard until EOL. */
+			while ((ch = getc(f)) != '\n' && ch != EOF)
+				;
+			/* FALLTHROUGH */
 		case '\n':
 		case EOF:
 		case ' ':
@@ -109,9 +108,11 @@ load_cfg(const char *path, char **causep)
 				len = 0;
 			}				
 
-			if ((ch != '\n' && ch != EOF) || argc == 0)
+			if (ch != '\n' && ch != EOF)
 				break;
 			line++;
+			if (argc == 0)
+				break;
 			
 			if ((cmd = cmd_parse(argc, argv, &cause)) == NULL)
 				goto error;
