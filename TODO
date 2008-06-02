@@ -13,7 +13,6 @@
 - decide about customised status line
 - could use bsearch all over the place or get rid of smaller tables (clientmsg)
 - better errors when creating new windows/sessions (how?)
-- commands should have to care less about CMD_KEY
 - session with CMD_NOSESSION should be an error
 - each command should have a print op as well for list keys
 - Implicitly add exec to the commands for new windows (switch to disable it)
@@ -70,6 +69,8 @@
 - poll(2) is broken on OS X/Darwin, a workaround for this would be nice
 - different screen model? layers perhaps? hmm
 - cfg file improvements: * comments to EOL
+- index on *-mode and other stuff that targets a window but is currently
+  sessiononly
 
 ---
 [18:20] *priteau* i found something in tmux that could be tweaked to be better

@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.4 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: cfg.c,v 1.5 2008-06-02 21:36:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -153,7 +153,7 @@ load_cfg(const char *path, char **causep)
 	return (0);
 
 error:
-	while (--argc > 0)
+	while (--argc >= 0)
 		xfree(argv[argc]);
 	xfree(argv);
 

@@ -1,4 +1,4 @@
-/* $Id: cmd-scroll-mode.c,v 1.7 2008-06-02 18:08:16 nicm Exp $ */
+/* $Id: cmd-scroll-mode.c,v 1.8 2008-06-02 21:36:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,8 +48,7 @@ cmd_scroll_mode_exec(void *ptr, struct cmd_ctx *ctx)
 	if ((s = cmd_sessiononly_get(ptr, ctx)) == NULL)
 		return;
 
-	if (ctx->flags & CMD_KEY)
-		window_set_mode(s->curw->window, &window_scroll_mode);
+	window_set_mode(s->curw->window, &window_scroll_mode);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

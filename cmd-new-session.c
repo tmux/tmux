@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.21 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.22 2008-06-02 21:36:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,7 +41,7 @@ struct cmd_new_session_data {
 
 const struct cmd_entry cmd_new_session_entry = {
 	"new-session", "new",
-	"[-d] [-s session-name] [-n window-name] [command]",
+	"[-d] [-n window-name] [-s session-name] [command]",
 	CMD_STARTSERVER|CMD_CANTNEST,
 	cmd_new_session_parse,
 	cmd_new_session_exec,

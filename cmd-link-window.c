@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.12 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.13 2008-06-02 21:36:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ struct cmd_link_window_data {
 
 const struct cmd_entry cmd_link_window_entry = {
 	"link-window", "linkw",
-	"[-dk] [-s session-name] [-i index] session-name index",
+	"[-dk] [-i index] [-s session-name] session-name index",
 	0,
 	cmd_link_window_parse,
 	cmd_link_window_exec,

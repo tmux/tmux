@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.24 2008-06-01 20:20:25 nicm Exp $
+.\" $Id: tmux.1,v 1.25 2008-06-02 21:36:51 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -24,9 +24,7 @@
 .Nm tmux
 .Bk -words
 .Op Fl vV
-.Op Fl c Ar client-tty
 .Op Fl S Ar socket-path
-.Op Fl s Ar session-name
 .Ar command
 .Op Ar arguments
 .Ek
@@ -51,12 +49,6 @@ Communication takes place through a socket, by default placed in
 .Pp
 The options are as follows:
 .Bl -tag -width "XXXXXXXXXXXX"
-.It Fl c Ar client-tty
-Apply command to the client on the given tty.
-Clients may be listed with the
-.Ic list-clients
-command (see below).
-This option does not apply to all commands.
 .It Fl S Ar socket-path
 Specify an alternative path to the server socket.
 The default is
@@ -65,17 +57,6 @@ where
 .Em UID
 is the uid of the user who invoked
 .Nm .
-.It Fl s Ar session-name
-Apply command to the session named
-.Ar session-name .
-This option does not apply to all commands.
-If it is omitted and
-.Nm
-is invoked from a running
-.Nm
-client, the session the containing client is connected to will be used;
-otherwise, if only one session exists, it is chosen, or if multiple sessions
-exist, an error is generated.
 .It Fl v
 Request verbose logging.
 This option may be specified multiple times for increasing verbosity.
@@ -241,11 +222,32 @@ command, bound to
 by default.
 .El
 .Sh COMMANDS
+This section contains a list of the commands supported by
+.Nm .
+There are some flags shared by several commands; these are:
+.Bl -tag -width "XXXXXXXXXXXX"
+.It Fl c Ar client-tty
+Apply command to the client on the given tty.
+Clients may be listed with the
+.Ic list-clients
+command.
+.It Fl s Ar session-name
+Apply command to the session named
+.Ar session-name .
+If it is omitted and
 .Nm
-supports the following commands:
+is invoked from a running
+.Nm
+client, the session the containing client is connected to will be used;
+otherwise, if only one session exists, it is chosen, or if multiple sessions
+exist, an error is generated.
+.El
+.Pp
+The following commands are available:
 .Bl -tag -width Ds
 .It Xo Ic attach-session
 .Op Fl d
+.Op Fl s Ar session-name
 .Xc
 .D1 (alias: Ic attach )
 Create a new client in the current terminal and attach it to a session.
@@ -261,37 +263,43 @@ Bind key
 to
 .Ar command .
 .It Xo Ic copy-mode
+.Op Fl s Ar session-name
 .Xc
 Enter copy mode.
-This command does nothing unless bound to a key.
 .It Xo Ic detach-client
+.Op Fl c Ar client-tty
 .Xc
 .D1 (alias: Ic detach )
 Detach the current client if bound to a key, or the specified client with
 .Fl c .
 .It Xo Ic has-session 
+.Op Fl s Ar session-name
 .Xc
 .D1 (alias: Ic has )
 Report an error and exit with 1 if the specified session does not exist. If it
 does exist, exit with 0.
 .It Xo Ic kill-session
+.Op Fl s Ar session-name
 .Xc
 Destroy the given session, closing any windows linked to it and no other
 sessions, and detaching all clients attached to it.
 .It Xo Ic kill-window 
 .Op Fl i Ar index
+.Op Fl s Ar session-name
 .Xc
 .D1 (alias: Ic killw )
 Kill the current window or the window at
 .Ar index ,
 removing it from any sessions to which it is linked.
 .It Xo Ic last-window 
+.Op Fl s Ar session-name
 .Xc
 .D1 (alias: Ic last )
 Select the last (previously selected) window.
 .It Xo Ic link-window 
 .Op Fl dk
-.Op Fl i Ar destination-index
+.Op Fl i Ar index
+.Op Fl s Ar session-name
 .Ar source-name Ar source-index
 .Xc
 .D1 (alias: Ic linkw )
@@ -300,13 +308,13 @@ Link the window at
 in session
 .Ar source-name
 into the specified session. If
-.Ar destination-index
+.Ar index
 is specified and no window exists with that index, the window is linked at
 that index.
 If 
 .Fl k
 is given and a window exists at
-.Ar destination-index ,
+.Ar index ,
 it is killed, otherwise an error is generated.
 If
 .Fl d
@@ -324,13 +332,14 @@ List all key bindings.
 .D1 (alias: Ic ls )
 List all sessions managed by the server.
 .It Xo Ic list-windows
+.Op Fl s Ar session-name
 .Xc
 .D1 (alias: Ic lsw )
 List all windows.
 .It Xo Ic new-session
 .Op Fl d
-.Op Fl s Ar session-name
 .Op Fl n Ar window-name
+.Op Fl s Ar session-name
 .Op Ar command
 .Xc
 .D1 (alias: Ic new )
@@ -347,6 +356,7 @@ are the name of and command to execute in the initial window.
 .Op Fl d
 .Op Fl i Ar index
 .Op Fl n Ar name
+.Op Fl s Ar session-name
 .Op Ar command
 .Xc
 .D1 (alias: Ic neww )
@@ -378,25 +388,30 @@ New windows will automatically have
 added to their environment, but care must be taken not to reset this in shell
 start-up files.
 .It Xo Ic next-window
+.Op Fl s Ar session-name
 .Xc
 .D1 (alias: Ic next )
 Move to the next window in the session.
 .It Xo Ic paste-buffer
+.Op Fl s Ar session-name
 .Xc
 .D1 (alias: Ic paste )
 Insert the contents of the paste buffer into the current window.
 Ignored unless executed via a key binding.
 .It Xo Ic previous-window 
+.Op Fl s Ar session-name
 .Xc
 .D1 (alias: Ic prev )
 Move to the previous window in the session.
 .It Xo Ic refresh-client
+.Op Fl c Ar client-tty
 .Xc
 .D1 (alias: Ic refresh )
 Refresh the current client if bound to a key, or a single client if one given
 with
 .Fl c .
 .It Xo Ic rename-session
+.Op Fl s Ar session-name
 .Ar new-name
 .Xc
 .D1 (alias: Ic rename )
@@ -404,6 +419,7 @@ Rename the session to
 .Ar new-name .
 .It Xo Ic rename-window
 .Op Fl i Ar index
+.Op Fl s Ar session-name
 .Ar new-name
 .Xc
 .D1 (alias: Ic renamew )
@@ -412,16 +428,19 @@ Rename the current window, or the window at
 if specifed, to
 .Ar new-name .
 .It Xo Ic scroll-mode
+.Op Fl s Ar session-name
 .Xc
 Enter scroll mode.
-This command works only if bound to a key.
 .It Xo Ic select-window 
+.Op Fl s Ar session-name
 .Ar index
 .Xc
 .D1 (alias: Ic selectw )
 Select the window at
 .Ar index .
-.It Xo Ic send-keys Ar key Ar ...
+.It Xo Ic send-keys 
+.Op Fl c Ar client-tty
+.Ar key Ar ...
 .Xc
 Send a key or keys to a window.
 Each argument
@@ -434,9 +453,9 @@ or
 characters.
 All the arguments are sent sequentially from first to last.
 .It Xo Ic send-prefix
+.Op Fl c Ar client-tty
 .Xc
 Send the prefix key to a window as if it was pressed.
-This is ignored unless bound to a key.
 .It Xo Ic set-option
 .Ar option Ar value
 .Xc
@@ -488,7 +507,8 @@ The default is
 .Dq exec $SHELL .
 .El
 .It Xo Ic swap-window 
-.Op Fl i Ar destination-index
+.Op Fl i Ar index
+.Op Fl s Ar session-name
 .Ar source-name Ar source-index
 .Xc
 .D1 (alias: Ic swapw )
@@ -496,15 +516,16 @@ This is similar to
 .Ic link-window ,
 except the source and destination windows are swapped.
 It is an error if no window exists at
-.Ar destination-index .
+.Ar index .
 .It Xo Ic unbind-key
 .Ar key
 .Xc
 .D1 (alias: Ic unbind )
 Unbind the key bound to
 .Ar key .
-.It Xo Ic unlink-window 
+.It Xo Ic unlink-window
 .Op Fl i Ar index
+.Op Fl s Ar session-name
 .Xc
 .D1 (alias: Ic unlinkw )
 Unlink the window at

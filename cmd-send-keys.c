@@ -1,4 +1,4 @@
-/* $Id: cmd-send-keys.c,v 1.3 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: cmd-send-keys.c,v 1.4 2008-06-02 21:36:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -40,7 +40,7 @@ struct cmd_send_keys_data {
 };
 
 const struct cmd_entry cmd_send_keys_entry = {
-	"send-keys", "send", "[-c client-name] key ...",
+	"send-keys", "send", "[-c client-tty] key ...",
 	0,
 	cmd_send_keys_parse,
 	cmd_send_keys_exec,
