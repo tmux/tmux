@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.25 2007-12-06 21:42:00 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.26 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -155,14 +155,14 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 
 	*msg = toupper((u_char) *msg);
-	server_write_message(ctx->client, "%s", msg);
+	server_write_message(ctx->curclient, "%s", msg);
 	xfree(msg);
 }
 
 void printflike2
 key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	struct window	*w = ctx->session->curw->window;
+	struct window	*w = ctx->cursession->curw->window;
 	va_list		 ap;
 
 	window_set_mode(w, &window_more_mode);
@@ -188,8 +188,8 @@ key_bindings_dispatch(int key, struct client *c)
 	if (i == ARRAY_LENGTH(&key_bindings))
 		return;
 
-	ctx.session = c->session;
-	ctx.client = c;
+	ctx.cursession = c->session;
+	ctx.curclient = c;
 
 	ctx.error = key_bindings_error;
 	ctx.print = key_bindings_print;

@@ -1,4 +1,4 @@
-/* $Id: cmd-unlink-window.c,v 1.5 2007-12-06 09:46:22 nicm Exp $ */
+/* $Id: cmd-unlink-window.c,v 1.6 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,19 +27,21 @@
  * Unlink a window, unless it would be destroyed by doing so (only one link).
  */
 
-int	cmd_unlink_window_parse(void **, int, char **, char **);
+int	cmd_unlink_window_parse(struct cmd *, void **, int, char **, char **);
 void	cmd_unlink_window_exec(void *, struct cmd_ctx *);
 void	cmd_unlink_window_send(void *, struct buffer *);
 void	cmd_unlink_window_recv(void **, struct buffer *);
 void	cmd_unlink_window_free(void *);
 
 struct cmd_unlink_window_data {
-	int	idx;
+	char	*sname;
+	int	 idx;
 };
 
 const struct cmd_entry cmd_unlink_window_entry = {
-	"unlink-window", "unlinkw", "[-i index]",
-	CMD_NOCLIENT,
+	"unlink-window", "unlinkw",
+	"[-i index] [-s session-name]",
+	0,
 	cmd_unlink_window_parse,
 	cmd_unlink_window_exec,
 	cmd_unlink_window_send,
@@ -48,16 +50,18 @@ const struct cmd_entry cmd_unlink_window_entry = {
 };
 
 int
-cmd_unlink_window_parse(void **ptr, int argc, char **argv, char **cause)
+cmd_unlink_window_parse(
+    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
 {
 	struct cmd_unlink_window_data	*data;
 	const char			*errstr;
 	int				 opt;
 
 	*ptr = data = xmalloc(sizeof *data);
+	data->sname = NULL;
 	data->idx = -1;
 
-	while ((opt = getopt(argc, argv, "i:")) != EOF) {
+	while ((opt = getopt(argc, argv, "i:s:")) != EOF) {
 		switch (opt) {
 		case 'i':
 			data->idx = strtonum(optarg, 0, INT_MAX, &errstr);
@@ -65,6 +69,9 @@ cmd_unlink_window_parse(void **ptr, int argc, char **argv, char **cause)
 				xasprintf(cause, "index %s", errstr);
 				goto error;
 			}
+			break;
+		case 's':
+			data->sname = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -78,8 +85,7 @@ cmd_unlink_window_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s %s",
-	    cmd_unlink_window_entry.name, cmd_unlink_window_entry.usage);
+	usage(cause, "%s %s", self->entry->name, self->entry->usage);
 
 error:
 	cmd_unlink_window_free(data);
@@ -90,8 +96,8 @@ void
 cmd_unlink_window_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_unlink_window_data	*data = ptr;
+	struct session			*s;
 	struct client			*c;
-	struct winlinks			*wwl = &ctx->session->windows;
 	struct winlink			*wl;
 	u_int		 		 i;
 	int		 		 destroyed;
@@ -99,12 +105,15 @@ cmd_unlink_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (data == NULL)
 		return;
 
+	if ((s = cmd_find_session(ctx, data->sname)) == NULL)
+		return;
+
 	if (data->idx < 0)
 		data->idx = -1;
 	if (data->idx == -1)
-		wl = ctx->session->curw;
+		wl = s->curw;
 	else {
-		wl = winlink_find_by_index(wwl, data->idx);
+		wl = winlink_find_by_index(&s->windows, data->idx);
 		if (wl == NULL) {
 			ctx->error(ctx, "no window %d", data->idx);
 			return;
@@ -116,10 +125,10 @@ cmd_unlink_window_exec(void *ptr, struct cmd_ctx *ctx)
 		return;
 	}
 
- 	destroyed = session_detach(ctx->session, wl);
+ 	destroyed = session_detach(s, wl);
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session != ctx->session)
+		if (c == NULL || c->session != s)
 			continue;
 		if (destroyed) {
 			c->session = NULL;
@@ -138,6 +147,7 @@ cmd_unlink_window_send(void *ptr, struct buffer *b)
 	struct cmd_unlink_window_data	*data = ptr;
 
 	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->sname);
 }
 
 void
@@ -154,5 +164,7 @@ cmd_unlink_window_free(void *ptr)
 {
 	struct cmd_unlink_window_data	*data = ptr;
 
+	if (data->sname != NULL)
+		xfree(data->sname);
 	xfree(data);
 }

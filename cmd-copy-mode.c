@@ -1,4 +1,4 @@
-/* $Id: cmd-copy-mode.c,v 1.4 2007-12-06 10:04:42 nicm Exp $ */
+/* $Id: cmd-copy-mode.c,v 1.5 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,22 +30,26 @@
 void	cmd_copy_mode_exec(void *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_copy_mode_entry = {
-	"copy-mode", NULL, "",
-	CMD_NOCLIENT,
-	NULL,
+	"copy-mode", NULL, 
+	CMD_SESSIONONLY_USAGE,
+	0,
+	cmd_sessiononly_parse,
 	cmd_copy_mode_exec,
-	NULL,
-	NULL,
-	NULL
+	cmd_sessiononly_send,
+	cmd_sessiononly_recv,
+	cmd_sessiononly_free
 };
 
 void
 cmd_copy_mode_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
-	struct window	*w = ctx->session->curw->window;
+	struct session	*s;
+
+	if ((s = cmd_sessiononly_get(ptr, ctx)) == NULL)
+		return;
 
 	if (ctx->flags & CMD_KEY)
-		window_set_mode(w, &window_copy_mode);
+		window_set_mode(s->curw->window, &window_copy_mode);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

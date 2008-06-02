@@ -1,4 +1,4 @@
-/* $Id: cmd-send-keys.c,v 1.1 2008-06-01 20:20:25 nicm Exp $ */
+/* $Id: cmd-send-keys.c,v 1.2 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,19 +27,20 @@
  * Change session name.
  */
 
-int	cmd_send_keys_parse(void **, int, char **, char **);
+int	cmd_send_keys_parse(struct cmd *, void **, int, char **, char **);
 void	cmd_send_keys_exec(void *, struct cmd_ctx *);
 void	cmd_send_keys_send(void *, struct buffer *);
 void	cmd_send_keys_recv(void **, struct buffer *);
 void	cmd_send_keys_free(void *);
 
 struct cmd_send_keys_data {
+	char	*cname;
   	u_int	 nkeys;
 	int	*keys;
 };
 
 const struct cmd_entry cmd_send_keys_entry = {
-	"send-keys", "send", "key ...",
+	"send-keys", "send", "[-c client-name] key ...",
 	0,
 	cmd_send_keys_parse,
 	cmd_send_keys_exec,
@@ -49,18 +50,23 @@ const struct cmd_entry cmd_send_keys_entry = {
 };
 
 int
-cmd_send_keys_parse(void **ptr, int argc, char **argv, char **cause)
+cmd_send_keys_parse(
+    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
 {
 	struct cmd_send_keys_data	*data;
 	int				 opt, key;
 	char				*s;
 
 	*ptr = data = xmalloc(sizeof *data);
+	data->cname = NULL;
 	data->nkeys = 0;
 	data->keys = NULL;
 
-	while ((opt = getopt(argc, argv, "")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:")) != EOF) {
 		switch (opt) {
+		case 'c':
+			data->cname = xstrdup(optarg);
+			break;
 		default:
 			goto usage;
 		}
@@ -89,8 +95,7 @@ cmd_send_keys_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s %s",
-	    cmd_send_keys_entry.name, cmd_send_keys_entry.usage);
+	usage(cause, "%s %s", self->entry->name, self->entry->usage);
 
 	cmd_send_keys_free(data);
 	return (-1);
@@ -100,13 +105,17 @@ void
 cmd_send_keys_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_send_keys_data	*data = ptr;
+	struct client			*c;
 	u_int				 i;
 
 	if (data == NULL)
 		return;
 
+	if ((c = cmd_find_client(ctx, data->cname)) == NULL)
+		return;
+
 	for (i = 0; i < data->nkeys; i++)
-		window_key(ctx->client->session->curw->window, data->keys[i]);
+		window_key(c->session->curw->window, data->keys[i]);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
@@ -118,6 +127,7 @@ cmd_send_keys_send(void *ptr, struct buffer *b)
 	struct cmd_send_keys_data	*data = ptr;
 
 	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->cname);
 	buffer_write(b, data->keys, data->nkeys * sizeof *data->keys);
 }
 
@@ -128,6 +138,7 @@ cmd_send_keys_recv(void **ptr, struct buffer *b)
 
 	*ptr = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
+	data->cname = cmd_recv_string(b);
 	data->keys = xcalloc(data->nkeys, sizeof *data->keys);
 	buffer_read(b, data->keys, data->nkeys * sizeof *data->keys);
 }
@@ -137,6 +148,8 @@ cmd_send_keys_free(void *ptr)
 {
 	struct cmd_send_keys_data	*data = ptr;
 
+	if (data->cname != NULL)
+		xfree(data->cname);
 	if (data->keys != NULL)
 		xfree(data->keys);
 	xfree(data);

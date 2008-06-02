@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.34 2008-06-01 20:20:25 nicm Exp $ */
+/* $Id: cmd.c,v 1.35 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,6 +20,7 @@
 
 #include <getopt.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -105,7 +106,7 @@ cmd_parse(int argc, char **argv, char **cause)
 	cmd = xmalloc(sizeof *cmd);
 	cmd->entry = entry;
 	if (entry->parse != NULL) {
-		if (entry->parse(&cmd->data, argc, argv, cause) != 0) {
+		if (entry->parse(cmd, &cmd->data, argc, argv, cause) != 0) {
 			xfree(cmd);
 			return (NULL);
 		}
@@ -225,4 +226,90 @@ cmd_recv_string(struct buffer *b)
 	s[n - 1] = '\0';
 
 	return (s);
+}
+
+/*
+ * Attempt to establish session. This looks first at the command-line argument
+ * if any, then sees if there is a session in the context, then finally tries
+ * the session data passed up from the client $TMUX variable.
+ */
+struct session *
+cmd_find_session(struct cmd_ctx *ctx, const char *arg)
+{
+	struct session		*s;
+	struct msg_command_data	*data = ctx->msgdata;
+	u_int			 i, n;
+
+	if (arg != NULL) {
+		if ((s = session_find(arg)) == NULL) {
+			ctx->error(ctx, "session not found: %s", arg);
+			return (NULL);
+		}
+		return (s);
+	}
+
+	if (ctx->cursession != NULL)
+		return (ctx->cursession);
+
+	if (data != NULL && data->pid != -1) {
+		if (data->pid != getpid()) {
+			ctx->error(ctx, "wrong server: %lld", data->pid);
+			return (NULL);
+		}
+		if (data->idx > ARRAY_LENGTH(&sessions)) {
+			ctx->error(ctx, "index out of range: %d", data->idx);
+			return (NULL);
+		}
+		if ((s = ARRAY_ITEM(&sessions, data->idx)) == NULL) {
+			ctx->error(ctx, "session doesn't exist: %u", data->idx);
+			return (NULL);
+		}
+		return (s);
+	}
+
+	s = NULL;
+	n = 0;
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		if (ARRAY_ITEM(&sessions, i) != NULL) {
+			s = ARRAY_ITEM(&sessions, i);
+			n++;
+		}
+	}
+	if (s == NULL) {
+		ctx->error(ctx, "no sessions found");
+		return (NULL);
+	}
+	if (n != 1) {
+		ctx->error(ctx, "multiple sessions and session not specified");
+		return (NULL);
+	}
+	return (s);
+}
+
+/* 
+ * Figure out the client. Try the current client (if any) first, then try to
+ * figure it out from the argument.
+ */
+struct client *
+cmd_find_client(unused struct cmd_ctx *ctx, const char *arg)
+{
+	struct client	*c;
+	u_int		 i;
+
+	if (ctx->curclient != NULL)
+		return (ctx->curclient);
+
+	if (arg == NULL) {
+		ctx->error(ctx, "must specify a client");
+		return (NULL);
+	}
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL && strcmp(arg, c->tty.path) == 0)
+			return (c);
+	}
+	
+	ctx->error(ctx, "client not found: %s", arg);
+	return (NULL);
 }

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.116 2008-06-01 20:20:25 nicm Exp $ */
+/* $Id: tmux.h,v 1.117 2008-06-02 18:08:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,6 +62,9 @@ extern char    *__progname;
 #ifndef TTY_NAME_MAX
 #define TTY_NAME_MAX 32
 #endif
+
+/* Default configuration file. */
+#define DEFAULT_CFG ".tmux.conf"
 
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
@@ -621,8 +624,9 @@ struct client_ctx {
 struct cmd_ctx {
 	struct client  *cmdclient;
 
-	struct client  *client;
-	struct session *session;
+	struct client  *curclient;
+	struct session *cursession;
+	struct msg_command_data	*msgdata;
 
 	void		(*print)(struct cmd_ctx *, const char *, ...);
 	void		(*error)(struct cmd_ctx *, const char *, ...);
@@ -631,27 +635,25 @@ struct cmd_ctx {
 	int		flags;
 };
 
+struct cmd {
+	const struct cmd_entry *entry;
+	void	       	*data;
+};
+
 struct cmd_entry {
 	const char	*name;
 	const char	*alias;
 	const char	*usage;
 
 #define CMD_STARTSERVER 0x1
-#define CMD_NOSESSION 0x2
-#define CMD_NOCLIENT 0x4
-#define CMD_CANTNEST 0x8
+#define CMD_CANTNEST 0x2
 	int		 flags;
 
-	int		 (*parse)(void **, int, char **, char **);
+	int		 (*parse)(struct cmd *, void **, int, char **, char **);
 	void		 (*exec)(void *, struct cmd_ctx *);
 	void		 (*send)(void *, struct buffer *);
 	void	         (*recv)(void **, struct buffer *);
 	void		 (*free)(void *);
-};
-
-struct cmd {
-	const struct cmd_entry *entry;
-	void	       	*data;
 };
 
 /* Key binding. */
@@ -683,6 +685,7 @@ extern volatile sig_atomic_t sigterm;
 #define BELL_ANY 1
 #define BELL_CURRENT 2
 extern char	*default_command;
+extern char	*cfg_file;
 extern char	*paste_buffer;
 extern int	 bell_action;
 extern int	 debug_level;
@@ -694,6 +697,9 @@ void		 usage(char **, const char *, ...);
 void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);
+
+/* cfg.c */
+int		 load_cfg(const char *, char **x);
 
 /* tty.c */
 void		 tty_init(struct tty *, char *, char *);
@@ -725,6 +731,8 @@ struct cmd	*cmd_recv(struct buffer *);
 void		 cmd_free(struct cmd *);
 void		 cmd_send_string(struct buffer *, const char *);
 char		*cmd_recv_string(struct buffer *);
+struct session	*cmd_find_session(struct cmd_ctx *, const char *);
+struct client	*cmd_find_client(struct cmd_ctx *, const char *);
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_copy_mode_entry;
@@ -756,6 +764,22 @@ extern const struct cmd_entry cmd_switch_client_entry;
 extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
 void	cmd_select_window_default(void **, int);
+
+/* cmd-generic.c */
+#define CMD_CLIENTONLY_USAGE "[-c client-name]"
+int	cmd_clientonly_parse(struct cmd *, void **, int, char **, char **);
+void	cmd_clientonly_exec(void *, struct cmd_ctx *);
+void	cmd_clientonly_send(void *, struct buffer *);
+void	cmd_clientonly_recv(void **, struct buffer *);
+void	cmd_clientonly_free(void *);
+struct client *cmd_clientonly_get(void *, struct cmd_ctx *);
+#define CMD_SESSIONONLY_USAGE "[-s session-name]"
+int	cmd_sessiononly_parse(struct cmd *, void **, int, char **, char **);
+void	cmd_sessiononly_exec(void *, struct cmd_ctx *);
+void	cmd_sessiononly_send(void *, struct buffer *);
+void	cmd_sessiononly_recv(void **, struct buffer *);
+void	cmd_sessiononly_free(void *);
+struct session *cmd_sessiononly_get(void *, struct cmd_ctx *);
 
 /* client.c */
 int	 client_init(const char *, struct client_ctx *, int);

@@ -1,4 +1,4 @@
-/* $Id: cmd-list-keys.c,v 1.5 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-list-keys.c,v 1.6 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,8 +30,9 @@
 void	cmd_list_keys_exec(void *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_keys_entry = {
-	"list-keys", "lsk", "",
-	CMD_NOCLIENT|CMD_NOSESSION,
+	"list-keys", "lsk",
+	"",
+	0,
 	NULL,
 	cmd_list_keys_exec,
 	NULL,

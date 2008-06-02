@@ -1,4 +1,4 @@
-/* $Id: cmd-refresh-client.c,v 1.1 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-refresh-client.c,v 1.2 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,19 +29,25 @@
 void	cmd_refresh_client_exec(void *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_refresh_client_entry = {
-	"refresh-client", "refresh", "",
+	"refresh-client", "refresh",
+	CMD_CLIENTONLY_USAGE,
 	0,
-	NULL,
+	cmd_clientonly_parse,
 	cmd_refresh_client_exec,
-	NULL,
-	NULL,
-	NULL
+	cmd_clientonly_send,
+	cmd_clientonly_recv,
+	cmd_clientonly_free
 };
 
 void
-cmd_refresh_client_exec(unused void *ptr, struct cmd_ctx *ctx)
+cmd_refresh_client_exec(void *ptr, struct cmd_ctx *ctx)
 {
-	server_redraw_client(ctx->client);
+	struct client	*c;
+
+	if ((c = cmd_clientonly_get(ptr, ctx)) == NULL)
+		return;
+
+	server_redraw_client(c);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

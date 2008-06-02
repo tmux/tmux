@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-window.c,v 1.14 2007-12-06 09:46:22 nicm Exp $ */
+/* $Id: cmd-rename-window.c,v 1.15 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,20 +27,22 @@
  * Rename window by index.
  */
 
-int	cmd_rename_window_parse(void **, int, char **, char **);
+int	cmd_rename_window_parse(struct cmd *, void **, int, char **, char **);
 void	cmd_rename_window_exec(void *, struct cmd_ctx *);
 void	cmd_rename_window_send(void *, struct buffer *);
 void	cmd_rename_window_recv(void **, struct buffer *);
 void	cmd_rename_window_free(void *);
 
 struct cmd_rename_window_data {
+	char	*sname;
 	int	 idx;
 	char	*newname;
 };
 
 const struct cmd_entry cmd_rename_window_entry = {
-	"rename-window", "renamew", "[-i index] new-name",
-	CMD_NOCLIENT,
+	"rename-window", "renamew",
+	"[-i index] [-s session-name] new-name",
+	0,
 	cmd_rename_window_parse,
 	cmd_rename_window_exec,
 	cmd_rename_window_send,
@@ -49,17 +51,19 @@ const struct cmd_entry cmd_rename_window_entry = {
 };
 
 int
-cmd_rename_window_parse(void **ptr, int argc, char **argv, char **cause)
+cmd_rename_window_parse(
+    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
 {
 	struct cmd_rename_window_data	*data;
 	const char			*errstr;
 	int				 opt;
 
 	*ptr = data = xmalloc(sizeof *data);
+	data->sname = NULL;
 	data->idx = -1;
 	data->newname = NULL;
 
-	while ((opt = getopt(argc, argv, "i:")) != EOF) {
+	while ((opt = getopt(argc, argv, "i:s:")) != EOF) {
 		switch (opt) {
 		case 'i':
 			data->idx = strtonum(optarg, 0, INT_MAX, &errstr);
@@ -67,6 +71,9 @@ cmd_rename_window_parse(void **ptr, int argc, char **argv, char **cause)
 				xasprintf(cause, "index %s", errstr);
 				goto error;
 			}
+			break;
+		case 's':
+			data->sname = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -82,8 +89,7 @@ cmd_rename_window_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s %s",
-	    cmd_rename_window_entry.name, cmd_rename_window_entry.usage);
+	usage(cause, "%s %s", self->entry->name, self->entry->usage);
 
 error:
 	cmd_rename_window_free(data);
@@ -94,22 +100,25 @@ void
 cmd_rename_window_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_rename_window_data	*data = ptr;
-	struct winlinks			*wwl = &ctx->session->windows;
+	struct session			*s;
 	struct winlink			*wl;
 
 	if (data == NULL)
 		return;
 
+	if ((s = cmd_find_session(ctx, data->sname)) == NULL)
+		return;
+
 	if (data->idx == -1)
-		wl = ctx->session->curw;
-	else if ((wl = winlink_find_by_index(wwl, data->idx)) == NULL) {
+		wl = s->curw;
+	else if ((wl = winlink_find_by_index(&s->windows, data->idx)) == NULL) {
 		ctx->error(ctx, "no window %d", data->idx);
 		return;
 	}
 	xfree(wl->window->name);
 	wl->window->name = xstrdup(data->newname);
 
-	server_status_session(ctx->session);
+	server_status_session(s);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
@@ -121,6 +130,7 @@ cmd_rename_window_send(void *ptr, struct buffer *b)
 	struct cmd_rename_window_data	*data = ptr;
 
 	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->sname);
 	cmd_send_string(b, data->newname);
 }
 
@@ -131,6 +141,7 @@ cmd_rename_window_recv(void **ptr, struct buffer *b)
 
 	*ptr = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
+	data->sname = cmd_recv_string(b);
 	data->newname = cmd_recv_string(b);
 }
 
@@ -139,6 +150,8 @@ cmd_rename_window_free(void *ptr)
 {
 	struct cmd_rename_window_data	*data = ptr;
 
+	if (data->sname != NULL)
+		xfree(data->sname);
 	if (data->newname != NULL)
 		xfree(data->newname);
 	xfree(data);

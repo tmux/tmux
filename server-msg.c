@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.43 2007-12-13 18:59:42 nicm Exp $ */
+/* $Id: server-msg.c,v 1.44 2008-06-02 18:08:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -111,16 +111,10 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	struct msg_command_data	data;
 	struct cmd_ctx	 	ctx;
 	struct cmd	       *cmd;
-	char	       	       *name, *client, *cause;
-	u_int			i;
-
-	/* XXX I hate this function. Split it? */
 
 	if (hdr->size < sizeof data)
 		fatalx("bad MSG_COMMAND size");
 	buffer_read(c->in, &data, sizeof data);
-	name = cmd_recv_string(c->in);
-	client = cmd_recv_string(c->in);
 
 	cmd = cmd_recv(c->in);
 	log_debug("got command %s from client %d", cmd->entry->name, c->fd);
@@ -128,64 +122,23 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	ctx.error = server_msg_fn_command_error;
 	ctx.print = server_msg_fn_command_print;
 
+	ctx.curclient = NULL;
+	ctx.cursession = NULL;
+	ctx.msgdata = &data;
+
 	ctx.cmdclient = c;
 	ctx.flags = 0;
 
+	/* XXX */
 	if (data.pid != -1 && (cmd->entry->flags & CMD_CANTNEST)) {
 		server_msg_fn_command_error(&ctx, "sessions "
 		    "should be nested with care. unset $TMUX to force");
-		goto out;
-	}
-
-	ctx.client = NULL;
-	if (cmd->entry->flags & CMD_NOCLIENT) {
-		if (client != NULL) {
-			server_msg_fn_command_error(&ctx,
-			    "%s: cannot specify a client", cmd->entry->name);
-			goto out;
-		}
-	} else {
-		if (client == NULL) {
-			server_msg_fn_command_error(&ctx,
-			    "%s: must specify a client", cmd->entry->name);
-			goto out;
-		}
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			/* XXX fnmatch, multi clients etc */
-			c = ARRAY_ITEM(&clients, i);
-			if (c != NULL && strcmp(client, c->tty.path) == 0)
-				ctx.client = c;
-		}
-		if (ctx.client == NULL) {
-			server_msg_fn_command_error(&ctx, "%s: "
-			    "client not found: %s", cmd->entry->name, client);
-			goto out;
-		}
-	}
-
-	ctx.session = NULL;
-	if (cmd->entry->flags & CMD_NOSESSION) {
-		if (name != NULL) {
-			server_msg_fn_command_error(&ctx,
-			    "%s: cannot specify a session", cmd->entry->name);
-			goto out;
-		}
-	} else {
-		ctx.session = server_extract_session(&data, name, &cause);
-		if (ctx.session == NULL) {
-			server_msg_fn_command_error(
-			    &ctx, "%s: %s", cmd->entry->name, cause);
-			xfree(cause);
-			goto out;
-		}
+		cmd_free(cmd);
+		return (0);
 	}
 
 	cmd_exec(cmd, &ctx);
 	cmd_free(cmd);
-
-out:
-	if (name != NULL)
-		xfree(name);
 	return (0);
 }
 

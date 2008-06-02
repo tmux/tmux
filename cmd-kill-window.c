@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-window.c,v 1.7 2007-12-06 09:46:21 nicm Exp $ */
+/* $Id: cmd-kill-window.c,v 1.8 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,19 +27,21 @@
  * Destroy window.
  */
 
-int	cmd_kill_window_parse(void **, int, char **, char **);
+int	cmd_kill_window_parse(struct cmd *, void **, int, char **, char **);
 void	cmd_kill_window_exec(void *, struct cmd_ctx *);
 void	cmd_kill_window_send(void *, struct buffer *);
 void	cmd_kill_window_recv(void **, struct buffer *);
 void	cmd_kill_window_free(void *);
 
 struct cmd_kill_window_data {
+	char	*sname;
 	int	 idx;
 };
 
 const struct cmd_entry cmd_kill_window_entry = {
-	"kill-window", "killw", "[-i index]",
-	CMD_NOCLIENT,
+	"kill-window", "killw",
+	"[-i index] [-s session-name]",
+	0,
 	cmd_kill_window_parse,
 	cmd_kill_window_exec,
 	cmd_kill_window_send,
@@ -48,16 +50,18 @@ const struct cmd_entry cmd_kill_window_entry = {
 };
 
 int
-cmd_kill_window_parse(void **ptr, int argc, char **argv, char **cause)
+cmd_kill_window_parse(
+    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
 {
 	struct cmd_kill_window_data	*data;
 	const char			*errstr;
 	int				 opt;
 
 	*ptr = data = xmalloc(sizeof *data);
+	data->sname = NULL;
 	data->idx = -1;
 
-	while ((opt = getopt(argc, argv, "i:")) != EOF) {
+	while ((opt = getopt(argc, argv, "i:s:")) != EOF) {
 		switch (opt) {
 		case 'i':
 			data->idx = strtonum(optarg, 0, INT_MAX, &errstr);
@@ -65,6 +69,9 @@ cmd_kill_window_parse(void **ptr, int argc, char **argv, char **cause)
 				xasprintf(cause, "index %s", errstr);
 				goto error;
 			}
+			break;
+		case 's':
+			data->sname = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -78,8 +85,7 @@ cmd_kill_window_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s %s",
-	    cmd_kill_window_entry.name, cmd_kill_window_entry.usage);
+	usage(cause, "%s %s", self->entry->name, self->entry->usage);
 
 error:
 	cmd_kill_window_free(data);
@@ -89,9 +95,9 @@ error:
 void
 cmd_kill_window_exec(void *ptr, struct cmd_ctx *ctx)
 {
-	struct cmd_kill_window_data	*data = ptr, std = { -1 };
+	struct cmd_kill_window_data	*data = ptr, std = { NULL, -1 };
+	struct session			*s;
 	struct client			*c;
-	struct winlinks			*wwl = &ctx->session->windows;
 	struct winlink			*wl;
 	u_int		 		 i;
 	int		 		 destroyed;
@@ -99,17 +105,20 @@ cmd_kill_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (data == NULL)
 		data = &std;
 
+	if ((s = cmd_find_session(ctx, data->sname)) == NULL)
+		return;
+
 	if (data->idx == -1)
-		wl = ctx->session->curw;
-	else if ((wl = winlink_find_by_index(wwl, data->idx)) == NULL) {
+		wl = s->curw;
+	else if ((wl = winlink_find_by_index(&s->windows, data->idx)) == NULL) {
 		ctx->error(ctx, "no window %d", data->idx);
 		return;
 	}
 
- 	destroyed = session_detach(ctx->session, wl);
+ 	destroyed = session_detach(s, wl);
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session != ctx->session)
+		if (c == NULL || c->session != s)
 			continue;
 		if (destroyed) {
 			c->session = NULL;
@@ -128,6 +137,7 @@ cmd_kill_window_send(void *ptr, struct buffer *b)
 	struct cmd_kill_window_data	*data = ptr;
 
 	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->sname);
 }
 
 void
@@ -144,5 +154,7 @@ cmd_kill_window_free(void *ptr)
 {
 	struct cmd_kill_window_data	*data = ptr;
 
+	if (data->sname != NULL)
+		xfree(data->sname);
 	xfree(data);
 }

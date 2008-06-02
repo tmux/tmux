@@ -1,4 +1,4 @@
-/* $Id: cmd-detach-client.c,v 1.1 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-detach-client.c,v 1.2 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,19 +29,25 @@
 void	cmd_detach_client_exec(void *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_detach_client_entry = {
-	"detach-client", "detach", "",
-	CMD_NOSESSION,
-	NULL,
+	"detach-client", "detach",
+	CMD_CLIENTONLY_USAGE,
+	0,
+	cmd_clientonly_parse,
 	cmd_detach_client_exec,
-	NULL,
-	NULL,
-	NULL
+	cmd_clientonly_send,
+	cmd_clientonly_recv,
+	cmd_clientonly_free
 };
 
 void
-cmd_detach_client_exec(unused void *ptr, struct cmd_ctx *ctx)
+cmd_detach_client_exec(void *ptr, struct cmd_ctx *ctx)
 {
-	server_write_client(ctx->client, MSG_DETACH, NULL, 0);
+	struct client	*c;
+
+	if ((c = cmd_clientonly_get(ptr, ctx)) == NULL)
+		return;
+
+	server_write_client(c, MSG_DETACH, NULL, 0);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

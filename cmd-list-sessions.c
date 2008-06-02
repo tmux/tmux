@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.9 2007-11-16 21:12:31 nicm Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.10 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,7 @@ void	cmd_list_sessions_exec(void *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_sessions_entry = {
 	"list-sessions", "ls", "",
-	CMD_NOCLIENT|CMD_NOSESSION,
+	0,
 	NULL,
 	cmd_list_sessions_exec,
 	NULL,

@@ -70,6 +70,13 @@
 - poll(2) is broken on OS X/Darwin, a workaround for this would be nice
 - different screen model? layers perhaps? hmm
 
+---
+[18:20] *priteau* i found something in tmux that could be tweaked to be better
+[18:21] *priteau* in screen, when you type ^A-D, you can actually keep ctrl down
+        when typing the D
+[18:21] *priteau* in tmux, you have to release ctrl for the command to work
+---
+
 -- For 0.3 --------------------------------------------------------------------
 - chmod +x socket when any client is attached (upd in lost/accept)
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably

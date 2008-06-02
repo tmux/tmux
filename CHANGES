@@ -1,3 +1,17 @@
+02 June 2008
+
+* BIG CHANGE: -s and -c to specify session name and client name are now passed
+  after the command rather than before it. So, for example:
+
+	tmux -s0 neww
+
+  Becomes:
+
+	tmux neww -s0
+
+  This is to allow them to be used in the (forthcoming) configuration file
+  THIS WILL BREAK ANY CURRENT SCRIPTS OR ALIASES USING -s OR -c.
+
 01 June 2008
 
 * Bug fix: don't die if -k passed to link-window and the destination doesn't
@@ -316,4 +330,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.96 2008-06-01 20:32:41 nicm Exp $
+$Id: CHANGES,v 1.97 2008-06-02 18:08:16 nicm Exp $

@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.19 2007-12-06 09:46:21 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.20 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
  * Create a new session and attach to the current terminal unless -d is given.
  */
 
-int	cmd_new_session_parse(void **, int, char **, char **);
+int	cmd_new_session_parse(struct cmd *, void **, int, char **, char **);
 void	cmd_new_session_exec(void *, struct cmd_ctx *);
 void	cmd_new_session_send(void *, struct buffer *);
 void	cmd_new_session_recv(void **, struct buffer *);
@@ -42,7 +42,7 @@ struct cmd_new_session_data {
 const struct cmd_entry cmd_new_session_entry = {
 	"new-session", "new",
 	"[-d] [-s session-name] [-n window-name] [command]",
-	CMD_STARTSERVER|CMD_NOCLIENT|CMD_NOSESSION|CMD_CANTNEST,
+	CMD_STARTSERVER|CMD_CANTNEST,
 	cmd_new_session_parse,
 	cmd_new_session_exec,
 	cmd_new_session_send,
@@ -51,7 +51,8 @@ const struct cmd_entry cmd_new_session_entry = {
 };
 
 int
-cmd_new_session_parse(void **ptr, int argc, char **argv, char **cause)
+cmd_new_session_parse(
+    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
 {
 	struct cmd_new_session_data	*data;
 	int				 opt;
@@ -88,8 +89,7 @@ cmd_new_session_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s %s",
-	    cmd_new_session_entry.name, cmd_new_session_entry.usage);
+	usage(cause, "%s %s", self->entry->name, self->entry->usage);
 
 	cmd_new_session_free(data);
 	return (-1);

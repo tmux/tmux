@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.8 2007-12-06 09:46:22 nicm Exp $ */
+/* $Id: cmd-unbind-key.c,v 1.9 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
  * Unbind key from command.
  */
 
-int	cmd_unbind_key_parse(void **, int, char **, char **);
+int	cmd_unbind_key_parse(struct cmd *, void **, int, char **, char **);
 void	cmd_unbind_key_exec(void *, struct cmd_ctx *);
 void	cmd_unbind_key_send(void *, struct buffer *);
 void	cmd_unbind_key_recv(void **, struct buffer *);
@@ -37,8 +37,9 @@ struct cmd_unbind_key_data {
 };
 
 const struct cmd_entry cmd_unbind_key_entry = {
-	"unbind-key", "unbind", "key",
-	CMD_NOCLIENT|CMD_NOSESSION,
+	"unbind-key", "unbind",
+	"key",
+	0,
 	cmd_unbind_key_parse,
 	cmd_unbind_key_exec,
 	cmd_unbind_key_send,
@@ -47,7 +48,8 @@ const struct cmd_entry cmd_unbind_key_entry = {
 };
 
 int
-cmd_unbind_key_parse(void **ptr, int argc, char **argv, char **cause)
+cmd_unbind_key_parse(
+    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
 {
 	struct cmd_unbind_key_data	*data;
 	int				 opt;
@@ -73,8 +75,7 @@ cmd_unbind_key_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s %s",
-	    cmd_unbind_key_entry.name, cmd_unbind_key_entry.usage);
+	usage(cause, "%s %s", self->entry->name, self->entry->usage);
 
 error:
 	xfree(data);

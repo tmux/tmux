@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.46 2007-12-06 18:28:55 nicm Exp $ */
+/* $Id: tmux.c,v 1.47 2008-06-02 18:08:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,6 +42,7 @@ const char	*_malloc_options = "AJX";
 
 volatile sig_atomic_t sigwinch;
 volatile sig_atomic_t sigterm;
+char		*cfg_file;
 char		*default_command;
 char		*paste_buffer;
 int		 bell_action;
@@ -59,8 +60,7 @@ usage(char **ptr, const char *fmt, ...)
 	char	*msg;
 	va_list	 ap;
 
-#define USAGE \
-	"usage: %s [-v] [-S socket-path] [-s session-name] [-c client-tty]"
+#define USAGE "usage: %s [-v] [-f file] [-S socket-path]"
 	if (fmt == NULL) {
 		xasprintf(ptr, USAGE " command [flags]", __progname);
 	} else {
@@ -182,21 +182,18 @@ main(int argc, char **argv)
 	struct hdr	 	 hdr;
 	const char		*shell;
 	struct passwd		*pw;
-	char			*client, *path, *name, *cause;
+	char			*client, *path, *name, *cause, *home;
 	char			 rpath[MAXPATHLEN];
 	int	 		 n, opt;
 
 	client = path = name = NULL;
-        while ((opt = getopt(argc, argv, "c:S:s:vV")) != EOF) {
+        while ((opt = getopt(argc, argv, "c:f:S:s:vV")) != EOF) {
                 switch (opt) {
-		case 'c':
-			client = xstrdup(optarg);
+		case 'f':
+			cfg_file = xstrdup(optarg);
 			break;
 		case 'S':
 			path = xstrdup(optarg);
-			break;
-		case 's':
-			name = xstrdup(optarg);
 			break;
 		case 'v':
 			debug_level++;
@@ -224,6 +221,26 @@ main(int argc, char **argv)
 	history_limit = 2000;
 
 	paste_buffer = NULL;
+
+	if (cfg_file == NULL) {
+		home = getenv("HOME");
+		if (home == NULL || *home == '\0') {
+			pw = getpwuid(getuid());
+			if (pw != NULL)
+				home = pw->pw_dir;
+			endpwent();
+		}
+		xasprintf(&cfg_file, "%s/%s", home, DEFAULT_CFG);
+		if (access(cfg_file, R_OK) != 0) {
+			xfree(cfg_file);
+			cfg_file = NULL;
+		}
+	} else {
+		if (access(cfg_file, R_OK) != 0) {
+			log_warn("%s", cfg_file);
+			exit(1);
+		}		
+	}
 
 	if (path == NULL) {
 		xasprintf(&path,
@@ -265,23 +282,16 @@ main(int argc, char **argv)
 	}
 
 	memset(&cctx, 0, sizeof cctx);
-	if (!(cmd->entry->flags & CMD_NOSESSION) ||
-	    (cmd->entry->flags & CMD_CANTNEST))
-		client_fill_session(&data);
+	client_fill_session(&data);
 	if (client_init(rpath, &cctx, cmd->entry->flags & CMD_STARTSERVER) != 0)
 		exit(1);
 	b = buffer_create(BUFSIZ);
-	cmd_send_string(b, name);
-	cmd_send_string(b, client);
 	cmd_send(cmd, b);
 	cmd_free(cmd);
 
 	client_write_server2(&cctx,
 	    MSG_COMMAND, &data, sizeof data, BUFFER_OUT(b), BUFFER_USED(b));
 	buffer_destroy(b);
-
-	if (name != NULL)
-		xfree(name);
 
 	for (;;) {
 		pfd.fd = cctx.srv_fd;

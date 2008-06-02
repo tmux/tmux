@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.14 2007-12-06 09:46:22 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.15 2008-06-02 18:08:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,13 +27,14 @@
  * Create a new window.
  */
 
-int	cmd_new_window_parse(void **, int, char **, char **);
+int	cmd_new_window_parse(struct cmd *, void **, int, char **, char **);
 void	cmd_new_window_exec(void *, struct cmd_ctx *);
 void	cmd_new_window_send(void *, struct buffer *);
 void	cmd_new_window_recv(void **, struct buffer *);
 void	cmd_new_window_free(void *);
 
 struct cmd_new_window_data {
+	char	*sname;
 	char	*name;
 	char	*cmd;
 	int	 idx;
@@ -41,8 +42,9 @@ struct cmd_new_window_data {
 };
 
 const struct cmd_entry cmd_new_window_entry = {
-	"new-window", "neww", "[-d] [-i index] [-n name] [command]",
-	CMD_NOCLIENT,
+	"new-window", "neww",
+	"[-d] [-s session-name] [-i index] [-n name] [command]",
+	0,
 	cmd_new_window_parse,
 	cmd_new_window_exec,
 	cmd_new_window_send,
@@ -51,19 +53,21 @@ const struct cmd_entry cmd_new_window_entry = {
 };
 
 int
-cmd_new_window_parse(void **ptr, int argc, char **argv, char **cause)
+cmd_new_window_parse(
+    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
 {
 	struct cmd_new_window_data	*data;
 	const char			*errstr;
 	int				 opt;
 
 	*ptr = data = xmalloc(sizeof *data);
+	data->sname = NULL;
 	data->idx = -1;
 	data->flag_detached = 0;
 	data->name = NULL;
 	data->cmd = NULL;
 
-	while ((opt = getopt(argc, argv, "di:n:")) != EOF) {
+	while ((opt = getopt(argc, argv, "di:n:s:")) != EOF) {
 		switch (opt) {
 		case 'i':
 			data->idx = strtonum(optarg, 0, INT_MAX, &errstr);
@@ -77,6 +81,9 @@ cmd_new_window_parse(void **ptr, int argc, char **argv, char **cause)
 			break;
 		case 'd':
 			data->flag_detached = 1;
+			break;
+		case 's':
+			data->sname = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -93,8 +100,7 @@ cmd_new_window_parse(void **ptr, int argc, char **argv, char **cause)
 	return (0);
 
 usage:
-	usage(cause, "%s %s",
-	    cmd_new_window_entry.name, cmd_new_window_entry.usage);
+	usage(cause, "%s %s", self->entry->name, self->entry->usage);
 
 error:
 	cmd_new_window_free(data);
@@ -105,7 +111,8 @@ void
 cmd_new_window_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_new_window_data	*data = ptr;
-	struct cmd_new_window_data	 std = { NULL, NULL, -1, 0 };
+	struct cmd_new_window_data	 std = { NULL, NULL, NULL, -1, 0 };
+	struct session			*s;
 	struct winlink			*wl;
 	char				*cmd;
 
@@ -116,18 +123,21 @@ cmd_new_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (cmd == NULL)
 		cmd = default_command;
 
+	if ((s = cmd_find_session(ctx, data->sname)) == NULL)
+		return;
+
 	if (data->idx < 0)
 		data->idx = -1;
-	wl = session_new(ctx->session, data->name, cmd, data->idx);
+	wl = session_new(s, data->name, cmd, data->idx);
 	if (wl == NULL) {
 		ctx->error(ctx, "command failed: %s", cmd);
 		return;
 	}
 	if (!data->flag_detached) {
-		session_select(ctx->session, wl->idx);
-		server_redraw_session(ctx->session);
+		session_select(s, wl->idx);
+		server_redraw_session(s);
 	} else
-		server_status_session(ctx->session);
+		server_status_session(s);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
@@ -139,6 +149,7 @@ cmd_new_window_send(void *ptr, struct buffer *b)
 	struct cmd_new_window_data	*data = ptr;
 
 	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->sname);
 	cmd_send_string(b, data->name);
 	cmd_send_string(b, data->cmd);
 }
@@ -150,6 +161,7 @@ cmd_new_window_recv(void **ptr, struct buffer *b)
 
 	*ptr = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
+	data->sname = cmd_recv_string(b);
 	data->name = cmd_recv_string(b);
 	data->cmd = cmd_recv_string(b);
 }
@@ -159,6 +171,8 @@ cmd_new_window_free(void *ptr)
 {
 	struct cmd_new_window_data	*data = ptr;
 
+	if (data->sname != NULL)
+		xfree(data->sname);
 	if (data->name != NULL)
 		xfree(data->name);
 	if (data->cmd != NULL)
