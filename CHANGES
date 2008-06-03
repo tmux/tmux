@@ -1,3 +1,7 @@
+03 June 2008
+
+* kill-server command.
+
 02 June 2008
 
 * New command, start-server (alias "start"), to start the tmux server and do
@@ -368,4 +372,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.98 2008-06-02 21:08:36 nicm Exp $
+$Id: CHANGES,v 1.99 2008-06-03 05:10:38 nicm Exp $

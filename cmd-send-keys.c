@@ -1,4 +1,4 @@
-/* $Id: cmd-send-keys.c,v 1.4 2008-06-02 21:36:51 nicm Exp $ */
+/* $Id: cmd-send-keys.c,v 1.5 2008-06-03 05:10:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
 #include "tmux.h"
 
 /*
- * Change session name.
+ * Send keys to client.
  */
 
 int	cmd_send_keys_parse(struct cmd *, void **, int, char **, char **);

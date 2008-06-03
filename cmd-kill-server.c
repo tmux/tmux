@@ -1,4 +1,4 @@
-/* $Id: cmd-list-keys.c,v 1.7 2008-06-03 05:10:38 nicm Exp $ */
+/* $Id: cmd-kill-server.c,v 1.1 2008-06-03 05:10:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,38 +18,32 @@
 
 #include <sys/types.h>
 
+#include <signal.h>
+#include <unistd.h>
+
 #include "tmux.h"
 
 /*
- * List key bindings.
+ * Kill the server and do nothing else.
  */
 
-void	cmd_list_keys_exec(void *, struct cmd_ctx *);
+void	cmd_kill_server_exec(void *, struct cmd_ctx *);
 
-const struct cmd_entry cmd_list_keys_entry = {
-	"list-keys", "lsk",
+const struct cmd_entry cmd_kill_server_entry = {
+	"kill-server", NULL,
 	"",
 	0,
 	NULL,
-	cmd_list_keys_exec,
+	cmd_kill_server_exec,
 	NULL,
 	NULL,
 	NULL
 };
 
 void
-cmd_list_keys_exec(unused void *ptr, struct cmd_ctx *ctx)
+cmd_kill_server_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
-	struct binding	*bd;
-	const char	*key;
-	u_int		 i;
-
-	for (i = 0; i < ARRAY_LENGTH(&key_bindings); i++) {
-		bd = ARRAY_ITEM(&key_bindings, i);
-		if ((key = key_string_lookup_key(bd->key)) == NULL)
-			continue;
-		ctx->print(ctx, "%11s: %s", key, bd->cmd->entry->name);
-	}
+	kill(getpid(), SIGTERM);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

@@ -1,4 +1,4 @@
-/* $Id: cmd-list-clients.c,v 1.4 2008-06-02 18:08:16 nicm Exp $ */
+/* $Id: cmd-list-clients.c,v 1.5 2008-06-03 05:10:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <getopt.h>
 #include <string.h>
 #include <time.h>
 

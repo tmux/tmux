@@ -29,7 +29,6 @@
   is missing (like, eg, xterm-color in an aterm)
 - refer to windows by name etc (duplicates? fnmatch?)
 - commands:
-	start server
 	kill server
 	show-options command
 	command to run something without a window at all?

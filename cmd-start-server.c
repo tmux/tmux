@@ -1,4 +1,4 @@
-/* $Id: cmd-start-server.c,v 1.1 2008-06-02 21:08:53 nicm Exp $ */
+/* $Id: cmd-start-server.c,v 1.2 2008-06-03 05:10:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,9 +17,6 @@
  */
 
 #include <sys/types.h>
-
-#include <getopt.h>
-#include <string.h>
 
 #include "tmux.h"
 
