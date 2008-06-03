@@ -1,5 +1,4 @@
-/* $Id: tree.h,v 1.1 2007-10-31 14:26:26 nicm Exp $ */
-/*	$OpenBSD: tree.h,v 1.9 2004/11/24 18:10:42 tdeval Exp $	*/
+/*	$OpenBSD: tree.h,v 1.11 2008/05/11 22:19:09 millert Exp $	*/
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -374,21 +373,31 @@ struct {								\
 } while (0)
 
 /* Generates prototypes and inline functions */
-#define RB_PROTOTYPE(name, type, field, cmp)				\
-void name##_RB_INSERT_COLOR(struct name *, struct type *);	\
-void name##_RB_REMOVE_COLOR(struct name *, struct type *, struct type *);\
-struct type *name##_RB_REMOVE(struct name *, struct type *);		\
-struct type *name##_RB_INSERT(struct name *, struct type *);		\
-struct type *name##_RB_FIND(struct name *, struct type *);		\
-struct type *name##_RB_NEXT(struct type *);				\
-struct type *name##_RB_MINMAX(struct name *, int);			\
+#define	RB_PROTOTYPE(name, type, field, cmp)				\
+	RB_PROTOTYPE_INTERNAL(name, type, field, cmp,)
+#define	RB_PROTOTYPE_STATIC(name, type, field, cmp)			\
+	RB_PROTOTYPE_INTERNAL(name, type, field, cmp, __attribute__((__unused__)) static)
+#define RB_PROTOTYPE_INTERNAL(name, type, field, cmp, attr)		\
+attr void name##_RB_INSERT_COLOR(struct name *, struct type *);		\
+attr void name##_RB_REMOVE_COLOR(struct name *, struct type *, struct type *);\
+attr struct type *name##_RB_REMOVE(struct name *, struct type *);	\
+attr struct type *name##_RB_INSERT(struct name *, struct type *);	\
+attr struct type *name##_RB_FIND(struct name *, struct type *);		\
+attr struct type *name##_RB_NFIND(struct name *, struct type *);	\
+attr struct type *name##_RB_NEXT(struct type *);			\
+attr struct type *name##_RB_PREV(struct type *);			\
+attr struct type *name##_RB_MINMAX(struct name *, int);			\
 									\
 
 /* Main rb operation.
  * Moves node close to the key of elm to top
  */
-#define RB_GENERATE(name, type, field, cmp)				\
-void									\
+#define	RB_GENERATE(name, type, field, cmp)				\
+	RB_GENERATE_INTERNAL(name, type, field, cmp,)
+#define	RB_GENERATE_STATIC(name, type, field, cmp)			\
+	RB_GENERATE_INTERNAL(name, type, field, cmp, __attribute__((__unused__)) static)
+#define RB_GENERATE_INTERNAL(name, type, field, cmp, attr)		\
+attr void								\
 name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 {									\
 	struct type *parent, *gparent, *tmp;				\
@@ -432,7 +441,7 @@ name##_RB_INSERT_COLOR(struct name *head, struct type *elm)		\
 	RB_COLOR(head->rbh_root, field) = RB_BLACK;			\
 }									\
 									\
-void									\
+attr void								\
 name##_RB_REMOVE_COLOR(struct name *head, struct type *parent, struct type *elm) \
 {									\
 	struct type *tmp;						\
@@ -508,7 +517,7 @@ name##_RB_REMOVE_COLOR(struct name *head, struct type *parent, struct type *elm)
 		RB_COLOR(elm, field) = RB_BLACK;			\
 }									\
 									\
-struct type *								\
+attr struct type *							\
 name##_RB_REMOVE(struct name *head, struct type *elm)			\
 {									\
 	struct type *child, *parent, *old = elm;			\
@@ -576,7 +585,7 @@ color:									\
 }									\
 									\
 /* Inserts a node into the RB tree */					\
-struct type *								\
+attr struct type *							\
 name##_RB_INSERT(struct name *head, struct type *elm)			\
 {									\
 	struct type *tmp;						\
@@ -607,7 +616,7 @@ name##_RB_INSERT(struct name *head, struct type *elm)			\
 }									\
 									\
 /* Finds the node with the same key as elm */				\
-struct type *								\
+attr struct type *							\
 name##_RB_FIND(struct name *head, struct type *elm)			\
 {									\
 	struct type *tmp = RB_ROOT(head);				\
@@ -624,7 +633,29 @@ name##_RB_FIND(struct name *head, struct type *elm)			\
 	return (NULL);							\
 }									\
 									\
-struct type *								\
+/* Finds the first node greater than or equal to the search key */	\
+attr struct type *							\
+name##_RB_NFIND(struct name *head, struct type *elm)			\
+{									\
+	struct type *tmp = RB_ROOT(head);				\
+	struct type *res = NULL;					\
+	int comp;							\
+	while (tmp) {							\
+		comp = cmp(elm, tmp);					\
+		if (comp < 0) {						\
+			res = tmp;					\
+			tmp = RB_LEFT(tmp, field);			\
+		}							\
+		else if (comp > 0)					\
+			tmp = RB_RIGHT(tmp, field);			\
+		else							\
+			return (tmp);					\
+	}								\
+	return (res);							\
+}									\
+									\
+/* ARGSUSED */								\
+attr struct type *							\
 name##_RB_NEXT(struct type *elm)					\
 {									\
 	if (RB_RIGHT(elm, field)) {					\
@@ -645,7 +676,29 @@ name##_RB_NEXT(struct type *elm)					\
 	return (elm);							\
 }									\
 									\
-struct type *								\
+/* ARGSUSED */								\
+attr struct type *							\
+name##_RB_PREV(struct type *elm)					\
+{									\
+	if (RB_LEFT(elm, field)) {					\
+		elm = RB_LEFT(elm, field);				\
+		while (RB_RIGHT(elm, field))				\
+			elm = RB_RIGHT(elm, field);			\
+	} else {							\
+		if (RB_PARENT(elm, field) &&				\
+		    (elm == RB_RIGHT(RB_PARENT(elm, field), field)))	\
+			elm = RB_PARENT(elm, field);			\
+		else {							\
+			while (RB_PARENT(elm, field) &&			\
+			    (elm == RB_LEFT(RB_PARENT(elm, field), field)))\
+				elm = RB_PARENT(elm, field);		\
+			elm = RB_PARENT(elm, field);			\
+		}							\
+	}								\
+	return (elm);							\
+}									\
+									\
+attr struct type *							\
 name##_RB_MINMAX(struct name *head, int val)				\
 {									\
 	struct type *tmp = RB_ROOT(head);				\
@@ -666,7 +719,9 @@ name##_RB_MINMAX(struct name *head, int val)				\
 #define RB_INSERT(name, x, y)	name##_RB_INSERT(x, y)
 #define RB_REMOVE(name, x, y)	name##_RB_REMOVE(x, y)
 #define RB_FIND(name, x, y)	name##_RB_FIND(x, y)
+#define RB_NFIND(name, x, y)	name##_RB_NFIND(x, y)
 #define RB_NEXT(name, x, y)	name##_RB_NEXT(y)
+#define RB_PREV(name, x, y)	name##_RB_PREV(y)
 #define RB_MIN(name, x)		name##_RB_MINMAX(x, RB_NEGINF)
 #define RB_MAX(name, x)		name##_RB_MINMAX(x, RB_INF)
 
@@ -674,5 +729,10 @@ name##_RB_MINMAX(struct name *head, int val)				\
 	for ((x) = RB_MIN(name, head);					\
 	     (x) != NULL;						\
 	     (x) = name##_RB_NEXT(x))
+
+#define RB_FOREACH_REVERSE(x, name, head)				\
+	for ((x) = RB_MAX(name, head);					\
+	     (x) != NULL;						\
+	     (x) = name##_RB_PREV(x))
 
 #endif	/* _SYS_TREE_H_ */
