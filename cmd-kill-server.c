@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-server.c,v 1.2 2008-06-03 05:35:50 nicm Exp $ */
+/* $Id: cmd-kill-server.c,v 1.3 2008-06-03 18:13:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ const struct cmd_entry cmd_kill_server_entry = {
 void
 cmd_kill_server_exec(unused void *ptr, struct cmd_ctx *ctx)
 {
-	kill(getpid(), SIGTERM);
+	sigterm = 1;
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

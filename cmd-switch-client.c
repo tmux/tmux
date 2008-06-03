@@ -1,4 +1,4 @@
-/* $Id: cmd-switch-client.c,v 1.5 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-switch-client.c,v 1.6 2008-06-03 18:13:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,7 +41,7 @@ struct cmd_switch_client_data {
 
 const struct cmd_entry cmd_switch_client_entry = {
 	"switch-client", "switchc",
-	"session-name",
+	"[-c client-tty] session-name",
 	0,
 	cmd_switch_client_parse,
 	cmd_switch_client_exec,

@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.12 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.13 2008-06-03 18:13:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,7 +56,7 @@ cmd_list_sessions_exec(unused void *ptr, struct cmd_ctx *ctx)
 		n = 0;
 		RB_FOREACH(wl, winlinks, &s->windows)
 		    	n++;
-		tim = ctime(&s->tim);
+		tim = ctime(&s->ts.tv_sec);
 		*strchr(tim, '\n') = '\0';
 
 		ctx->print(ctx, "%s: %u windows"

@@ -39,10 +39,6 @@
 	buffer manip: clear, view etc (clear-buffer, show-buffer)
 - function groups, bind-key ^W { select-window 0; send-key ^W } etc ***
 - allow fnmatch for -c, so that you can, eg, detach all clients
-- session specification is all over the place. some things use -s before cmd,
-  some -s after, some no -s, there are various uses of -n. the differences are
-  sort of logical, but confusing. needs rethought
-- XXX should -i for win idx be before cmd too??
 - bind non prefix keys
 - stuff like rename would be nice to be able to do in-client like screen, if
   it could be implemented in a non-icky way
@@ -67,8 +63,8 @@
 - tobiasu says it is borken on Linux with aterm + TERM=rxvt
 - poll(2) is broken on OS X/Darwin, a workaround for this would be nice
 - different screen model? layers perhaps? hmm
-- cfg file improvements: * comments to EOL
-- select-window can become windowonly... 
+- cfg file improvements
+- select-window can become windowonly (what about default?)
 
 ---
 [18:20] *priteau* i found something in tmux that could be tweaked to be better

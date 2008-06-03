@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.123 2008-06-03 16:55:09 nicm Exp $ */
+/* $Id: tmux.h,v 1.124 2008-06-03 18:13:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -536,7 +536,7 @@ RB_HEAD(winlinks, winlink);
 /* Client session. */
 struct session {
 	char		*name;
-	time_t		 tim;
+	struct timespec	 ts;
 
 	u_int		 sx;
 	u_int		 sy;
