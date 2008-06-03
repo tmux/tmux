@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.13 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.14 2008-06-03 05:35:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,7 +45,8 @@ const struct cmd_entry cmd_attach_session_entry = {
 	cmd_attach_session_exec,
 	cmd_attach_session_send,
 	cmd_attach_session_recv,
-	cmd_attach_session_free
+	cmd_attach_session_free,
+	NULL
 };
 
 int

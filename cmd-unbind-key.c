@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.10 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: cmd-unbind-key.c,v 1.11 2008-06-03 05:35:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,8 @@ const struct cmd_entry cmd_unbind_key_entry = {
 	cmd_unbind_key_exec,
 	cmd_unbind_key_send,
 	cmd_unbind_key_recv,
-	cmd_unbind_key_free
+	cmd_unbind_key_free,
+	NULL
 };
 
 int

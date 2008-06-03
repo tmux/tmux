@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.48 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: tmux.c,v 1.49 2008-06-03 05:35:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -59,7 +59,7 @@ __dead void
 usage(void)
 {
 	fprintf(stderr, 
-	    "usage: %s [-v] [-f file] [-S socket-path] command [flags]",
+	    "usage: %s [-v] [-f file] [-S socket-path] [command [flags]]",
 	    __progname);
 	exit(1);
 }
@@ -197,8 +197,6 @@ main(int argc, char **argv)
         }
 	argc -= optind;
 	argv += optind;
-	if (argc == 0)
-		usage();
 
 	log_open(stderr, LOG_USER, debug_level);
 	siginit();
@@ -264,7 +262,11 @@ main(int argc, char **argv)
 	}
 	xasprintf(&default_command, "exec %s", shell);
 
-	if ((cmd = cmd_parse(argc, argv, &cause)) == NULL) {
+	if (argc == 0) {
+		cmd = xmalloc(sizeof *cmd);
+		cmd->entry = &cmd_new_session_entry;
+		cmd->entry->init(&cmd->data, 0);
+	} else if ((cmd = cmd_parse(argc, argv, &cause)) == NULL) {
 		log_warnx("%s", cause);
 		exit(1);
 	}

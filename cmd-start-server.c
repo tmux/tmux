@@ -1,4 +1,4 @@
-/* $Id: cmd-start-server.c,v 1.2 2008-06-03 05:10:38 nicm Exp $ */
+/* $Id: cmd-start-server.c,v 1.3 2008-06-03 05:35:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,6 +32,7 @@ const struct cmd_entry cmd_start_server_entry = {
 	CMD_STARTSERVER,
 	NULL,
 	cmd_start_server_exec,
+	NULL,
 	NULL,
 	NULL,
 	NULL

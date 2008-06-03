@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.22 2008-06-02 21:36:51 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.23 2008-06-03 05:35:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,6 +31,7 @@ void	cmd_new_session_exec(void *, struct cmd_ctx *);
 void	cmd_new_session_send(void *, struct buffer *);
 void	cmd_new_session_recv(void **, struct buffer *);
 void	cmd_new_session_free(void *);
+void	cmd_new_session_init(void **, int);
 
 struct cmd_new_session_data {
 	char	*name;
@@ -47,8 +48,21 @@ const struct cmd_entry cmd_new_session_entry = {
 	cmd_new_session_exec,
 	cmd_new_session_send,
 	cmd_new_session_recv,
-	cmd_new_session_free
+	cmd_new_session_free,
+	cmd_new_session_init
 };
+
+void
+cmd_new_session_init(void **ptr, unused int arg)
+{
+	struct cmd_new_session_data	 *data;
+
+	*ptr = data = xmalloc(sizeof *data);
+	data->flag_detached = 0;
+	data->name = NULL;
+	data->winname = NULL;
+	data->cmd = NULL;
+}
 
 int
 cmd_new_session_parse(
@@ -57,11 +71,8 @@ cmd_new_session_parse(
 	struct cmd_new_session_data	*data;
 	int				 opt;
 
-	*ptr = data = xmalloc(sizeof *data);
-	data->flag_detached = 0;
-	data->name = NULL;
-	data->winname = NULL;
-	data->cmd = NULL;
+	self->entry->init(ptr, 0);
+	data = *ptr;
 
 	while ((opt = getopt(argc, argv, "ds:n:")) != EOF) {
 		switch (opt) {
@@ -99,14 +110,10 @@ void
 cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_new_session_data	*data = ptr;
-	struct cmd_new_session_data	 std = { NULL, NULL, NULL, 0 };
 	struct client			*c = ctx->cmdclient;
 	struct session			*s;
 	char				*cmd, *cause;
 	u_int				 sx, sy;
-
-	if (data == NULL)
-		data = &std;
 
 	if (ctx->flags & CMD_KEY)
 		return;

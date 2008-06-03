@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-window.c,v 1.16 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: cmd-rename-window.c,v 1.17 2008-06-03 05:35:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,8 @@ const struct cmd_entry cmd_rename_window_entry = {
 	cmd_rename_window_exec,
 	cmd_rename_window_send,
 	cmd_rename_window_recv,
-	cmd_rename_window_free
+	cmd_rename_window_free,
+	NULL
 };
 
 int

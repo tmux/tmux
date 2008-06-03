@@ -1,4 +1,4 @@
-/* $Id: cmd-has-session.c,v 1.6 2008-06-02 22:09:49 nicm Exp $ */
+/* $Id: cmd-has-session.c,v 1.7 2008-06-03 05:35:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,7 +34,8 @@ const struct cmd_entry cmd_has_session_entry = {
 	cmd_has_session_exec,
 	cmd_sessiononly_send,
 	cmd_sessiononly_recv,
-	cmd_sessiononly_free
+	cmd_sessiononly_free,
+	NULL
 };
 
 void

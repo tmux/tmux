@@ -1,5 +1,7 @@
 03 June 2008
 
+* If no command is specified, assume new-session. As a byproduct, clean up 
+  command default values into seperate init functions.
 * kill-server command.
 
 02 June 2008
@@ -372,4 +374,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.99 2008-06-03 05:10:38 nicm Exp $
+$Id: CHANGES,v 1.100 2008-06-03 05:35:50 nicm Exp $

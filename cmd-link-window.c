@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.13 2008-06-02 21:36:51 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.14 2008-06-03 05:35:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,7 +50,8 @@ const struct cmd_entry cmd_link_window_entry = {
 	cmd_link_window_exec,
 	cmd_link_window_send,
 	cmd_link_window_recv,
-	cmd_link_window_free
+	cmd_link_window_free,
+	NULL
 };
 
 int

@@ -1,4 +1,4 @@
-/* $Id: cmd-detach-client.c,v 1.3 2008-06-02 22:09:49 nicm Exp $ */
+/* $Id: cmd-detach-client.c,v 1.4 2008-06-03 05:35:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,7 +34,8 @@ const struct cmd_entry cmd_detach_client_entry = {
 	cmd_detach_client_exec,
 	cmd_clientonly_send,
 	cmd_clientonly_recv,
-	cmd_clientonly_free
+	cmd_clientonly_free,
+	NULL
 };
 
 void

@@ -1,4 +1,4 @@
-/* $Id: cmd-switch-client.c,v 1.4 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: cmd-switch-client.c,v 1.5 2008-06-03 05:35:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,8 @@ const struct cmd_entry cmd_switch_client_entry = {
 	cmd_switch_client_exec,
 	cmd_switch_client_send,
 	cmd_switch_client_recv,
-	cmd_switch_client_free
+	cmd_switch_client_free,
+	NULL
 };
 
 int

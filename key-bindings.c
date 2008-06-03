@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.27 2008-06-02 18:23:37 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.28 2008-06-03 05:35:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -77,41 +77,40 @@ key_bindings_init(void)
 	struct {
 		int			 key;
 		const struct cmd_entry	*entry;
-		void 			 (*fn)(void **, int);
 	} table[] = {
-		{ 'D', &cmd_detach_client_entry, NULL },
-		{ 'd', &cmd_detach_client_entry, NULL },
-		{ 'S', &cmd_list_sessions_entry, NULL },
-		{ 's', &cmd_list_sessions_entry, NULL },
-		{ 'W', &cmd_list_windows_entry, NULL },
-		{ 'w', &cmd_list_windows_entry, NULL },
-		{ '?', &cmd_list_keys_entry, NULL },
-		{ '/', &cmd_list_keys_entry, NULL },
-		{ 'C', &cmd_new_window_entry, NULL },
-		{ 'c', &cmd_new_window_entry, NULL },
-		{ 'N', &cmd_next_window_entry, NULL },
-		{ 'n', &cmd_next_window_entry, NULL },
-		{ 'P', &cmd_previous_window_entry, NULL },
-		{ 'p', &cmd_previous_window_entry, NULL },
-		{ 'L', &cmd_last_window_entry, NULL },
-		{ 'l', &cmd_last_window_entry, NULL },
-		{ '0', &cmd_select_window_entry, cmd_select_window_default },
-		{ '1', &cmd_select_window_entry, cmd_select_window_default },
-		{ '2', &cmd_select_window_entry, cmd_select_window_default },
-		{ '3', &cmd_select_window_entry, cmd_select_window_default },
-		{ '4', &cmd_select_window_entry, cmd_select_window_default },
-		{ '5', &cmd_select_window_entry, cmd_select_window_default },
-		{ '6', &cmd_select_window_entry, cmd_select_window_default },
-		{ '7', &cmd_select_window_entry, cmd_select_window_default },
-		{ '8', &cmd_select_window_entry, cmd_select_window_default },
-		{ '9', &cmd_select_window_entry, cmd_select_window_default },
-		{ 'R', &cmd_refresh_client_entry, NULL },
-		{ 'r', &cmd_refresh_client_entry, NULL },
-		{ '&', &cmd_kill_window_entry, NULL },
-		{ '=', &cmd_scroll_mode_entry, NULL },
-		{ '[', &cmd_copy_mode_entry, NULL },
-		{ ']', &cmd_paste_buffer_entry, NULL },
-		{ META, &cmd_send_prefix_entry, NULL },
+		{ 'D', &cmd_detach_client_entry },
+		{ 'd', &cmd_detach_client_entry },
+		{ 'S', &cmd_list_sessions_entry },
+		{ 's', &cmd_list_sessions_entry },
+		{ 'W', &cmd_list_windows_entry },
+		{ 'w', &cmd_list_windows_entry },
+		{ '?', &cmd_list_keys_entry },
+		{ '/', &cmd_list_keys_entry },
+		{ 'C', &cmd_new_window_entry },
+		{ 'c', &cmd_new_window_entry },
+		{ 'N', &cmd_next_window_entry },
+		{ 'n', &cmd_next_window_entry },
+		{ 'P', &cmd_previous_window_entry },
+		{ 'p', &cmd_previous_window_entry },
+		{ 'L', &cmd_last_window_entry },
+		{ 'l', &cmd_last_window_entry },
+		{ '0', &cmd_select_window_entry },
+		{ '1', &cmd_select_window_entry },
+		{ '2', &cmd_select_window_entry },
+		{ '3', &cmd_select_window_entry },
+		{ '4', &cmd_select_window_entry },
+		{ '5', &cmd_select_window_entry },
+		{ '6', &cmd_select_window_entry },
+		{ '7', &cmd_select_window_entry },
+		{ '8', &cmd_select_window_entry },
+		{ '9', &cmd_select_window_entry },
+		{ 'R', &cmd_refresh_client_entry },
+		{ 'r', &cmd_refresh_client_entry },
+		{ '&', &cmd_kill_window_entry },
+		{ '=', &cmd_scroll_mode_entry },
+		{ '[', &cmd_copy_mode_entry },
+		{ ']', &cmd_paste_buffer_entry },
+		{ META, &cmd_send_prefix_entry },
 	};
 	u_int		 i;
 	struct cmd	*cmd;
@@ -122,8 +121,8 @@ key_bindings_init(void)
 		cmd = xmalloc(sizeof *cmd);
 		cmd->entry = table[i].entry;
 		cmd->data = NULL;
-		if (table[i].fn != NULL)
-			table[i].fn(&cmd->data, table[i].key);
+		if (cmd->entry->init != NULL)
+			cmd->entry->init(&cmd->data, table[i].key);
 		key_bindings_add(table[i].key, cmd);
 	}
 }

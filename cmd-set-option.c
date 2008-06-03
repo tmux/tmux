@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.17 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.18 2008-06-03 05:35:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,8 @@ const struct cmd_entry cmd_set_option_entry = {
 	cmd_set_option_exec,
 	cmd_set_option_send,
 	cmd_set_option_recv,
-	cmd_set_option_free
+	cmd_set_option_free,
+	NULL
 };
 
 int

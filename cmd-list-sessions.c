@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.11 2008-06-03 05:10:38 nicm Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.12 2008-06-03 05:35:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <string.h>
 #include <time.h>
 
 #include "tmux.h"
@@ -33,6 +34,7 @@ const struct cmd_entry cmd_list_sessions_entry = {
 	0,
 	NULL,
 	cmd_list_sessions_exec,
+	NULL,
 	NULL,
 	NULL,
 	NULL

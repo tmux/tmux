@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.25 2008-06-02 21:36:51 nicm Exp $
+.\" $Id: tmux.1,v 1.26 2008-06-03 05:35:51 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -25,8 +25,7 @@
 .Bk -words
 .Op Fl vV
 .Op Fl S Ar socket-path
-.Ar command
-.Op Ar arguments
+.Op Ar command Op Ar arguments
 .Ek
 .Sh DESCRIPTION
 .Nm
@@ -71,6 +70,9 @@ is the pid of the server or client process.
 This specifies one of a set of commands used to control
 .Nm ,
 and described in the following sections.
+If no command and arguments is specified, the
+.Ic new-session
+command is assumed.
 .Pp
 .El
 .Sh QUICK START
@@ -278,6 +280,11 @@ Detach the current client if bound to a key, or the specified client with
 .D1 (alias: Ic has )
 Report an error and exit with 1 if the specified session does not exist. If it
 does exist, exit with 0.
+.It Xo Ic kill-server
+.Xc
+Kill the
+.Nm
+server and clients and destroy all sessions.
 .It Xo Ic kill-session
 .Op Fl s Ar session-name
 .Xc
@@ -506,6 +513,11 @@ created) to
 The default is
 .Dq exec $SHELL .
 .El
+.It Xo Ic start-server
+.Xc
+Start the
+.Nm
+server, if not already running, without creating any sessions.
 .It Xo Ic swap-window 
 .Op Fl i Ar index
 .Op Fl s Ar session-name

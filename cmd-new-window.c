@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.17 2008-06-02 21:36:51 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.18 2008-06-03 05:35:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,6 +32,7 @@ void	cmd_new_window_exec(void *, struct cmd_ctx *);
 void	cmd_new_window_send(void *, struct buffer *);
 void	cmd_new_window_recv(void **, struct buffer *);
 void	cmd_new_window_free(void *);
+void	cmd_new_window_init(void **, int);
 
 struct cmd_new_window_data {
 	char	*sname;
@@ -49,8 +50,22 @@ const struct cmd_entry cmd_new_window_entry = {
 	cmd_new_window_exec,
 	cmd_new_window_send,
 	cmd_new_window_recv,
-	cmd_new_window_free
+	cmd_new_window_free,
+	cmd_new_window_init
 };
+
+void
+cmd_new_window_init(void **ptr, unused int arg)
+{
+	struct cmd_new_window_data	 *data;
+
+	*ptr = data = xmalloc(sizeof *data);
+	data->sname = NULL;
+	data->idx = -1;
+	data->flag_detached = 0;
+	data->name = NULL;
+	data->cmd = NULL;
+}
 
 int
 cmd_new_window_parse(
@@ -60,12 +75,8 @@ cmd_new_window_parse(
 	const char			*errstr;
 	int				 opt;
 
-	*ptr = data = xmalloc(sizeof *data);
-	data->sname = NULL;
-	data->idx = -1;
-	data->flag_detached = 0;
-	data->name = NULL;
-	data->cmd = NULL;
+	self->entry->init(ptr, 0);
+	data = *ptr;
 
 	while ((opt = getopt(argc, argv, "di:n:s:")) != EOF) {
 		switch (opt) {
@@ -111,13 +122,9 @@ void
 cmd_new_window_exec(void *ptr, struct cmd_ctx *ctx)
 {
 	struct cmd_new_window_data	*data = ptr;
-	struct cmd_new_window_data	 std = { NULL, NULL, NULL, -1, 0 };
 	struct session			*s;
 	struct winlink			*wl;
 	char				*cmd;
-
-	if (data == NULL)
-		data = &std;
 
 	cmd = data->cmd;
 	if (cmd == NULL)

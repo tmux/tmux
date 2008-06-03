@@ -1,4 +1,4 @@
-/* $Id: cmd-select-window.c,v 1.13 2008-06-02 21:08:36 nicm Exp $ */
+/* $Id: cmd-select-window.c,v 1.14 2008-06-03 05:35:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,6 +32,7 @@ void	cmd_select_window_exec(void *, struct cmd_ctx *);
 void	cmd_select_window_send(void *, struct buffer *);
 void	cmd_select_window_recv(void **, struct buffer *);
 void	cmd_select_window_free(void *);
+void	cmd_select_window_init(void **, int);
 
 struct cmd_select_window_data {
 	char	*sname;
@@ -46,22 +47,18 @@ const struct cmd_entry cmd_select_window_entry = {
 	cmd_select_window_exec,
 	cmd_select_window_send,
 	cmd_select_window_recv,
-	cmd_select_window_free
+	cmd_select_window_free,
+	cmd_select_window_init
 };
 
-/*
- * select-window requires different defaults depending on the key, so this
- * fills in the right data. XXX should this be extended to them all and get
- * rid of std/NULL rubbish?
- */
 void
-cmd_select_window_default(void **ptr, int key)
+cmd_select_window_init(void **ptr, int arg)
 {
 	struct cmd_select_window_data	*data;
 
 	*ptr = data = xmalloc(sizeof *data);
 	data->sname = NULL;
-	data->idx = key - '0';
+	data->idx = arg - '0';
 }
 
 int
