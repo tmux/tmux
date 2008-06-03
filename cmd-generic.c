@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.3 2008-06-02 22:09:49 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.4 2008-06-03 16:55:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,10 +28,12 @@ struct cmd_clientonly_data {
 };
 
 struct cmd_sessiononly_data {
+	char	*cname;
 	char	*sname;
 };
 
 struct cmd_windowonly_data {
+	char	*cname;
 	char	*sname;
 	int	 idx;
 };
@@ -49,7 +51,8 @@ cmd_clientonly_parse(
 	while ((opt = getopt(argc, argv, "c:")) != EOF) {
 		switch (opt) {
 		case 'c':
-			data->cname = xstrdup(optarg);
+			if (data->cname == NULL)
+				data->cname = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -116,12 +119,22 @@ cmd_sessiononly_parse(
 	int				 opt;
 
 	*ptr = data = xmalloc(sizeof *data);
+	data->cname = NULL;
 	data->sname = NULL;
 
-	while ((opt = getopt(argc, argv, "s:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:s:")) != EOF) {
 		switch (opt) {
+		case 'c':
+			if (data->sname != NULL)
+				goto usage;
+			if (data->cname == NULL)
+				data->cname = xstrdup(optarg);
+			break;
 		case 's':
-			data->sname = xstrdup(optarg);
+			if (data->cname != NULL)
+				goto usage;
+			if (data->sname == NULL)
+ 				data->sname = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -147,6 +160,7 @@ cmd_sessiononly_send(void *ptr, struct buffer *b)
 	struct cmd_sessiononly_data	*data = ptr;
 
 	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->cname);
 	cmd_send_string(b, data->sname);
 }
 
@@ -157,6 +171,7 @@ cmd_sessiononly_recv(void **ptr, struct buffer *b)
 
 	*ptr = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
+	data->cname = cmd_recv_string(b);
 	data->sname = cmd_recv_string(b);
 }
 
@@ -165,6 +180,8 @@ cmd_sessiononly_free(void *ptr)
 {
 	struct cmd_sessiononly_data	*data = ptr;
 
+	if (data->cname != NULL)
+		xfree(data->cname);
 	if (data->sname != NULL)
 		xfree(data->sname);
 	xfree(data);
@@ -176,8 +193,8 @@ cmd_sessiononly_get(void *ptr, struct cmd_ctx *ctx)
 	struct cmd_sessiononly_data	*data = ptr;
 
   	if (data != NULL)
-		return (cmd_find_session(ctx, data->sname));
-	return (cmd_find_session(ctx, NULL));
+		return (cmd_find_session(ctx, data->cname, data->sname));
+	return (cmd_find_session(ctx, NULL, NULL));
 }
 
 int
@@ -189,11 +206,18 @@ cmd_windowonly_parse(
 	const char			*errstr;
 
 	*ptr = data = xmalloc(sizeof *data);
+	data->cname = NULL;
 	data->sname = NULL;
 	data->idx = -1;
 
-	while ((opt = getopt(argc, argv, "i:s:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:i:s:")) != EOF) {
 		switch (opt) {
+		case 'c':
+			if (data->sname != NULL)
+				goto usage;
+			if (data->cname == NULL)
+				data->cname = xstrdup(optarg);
+			break;
 		case 'i':
 			data->idx = strtonum(optarg, 0, INT_MAX, &errstr);
 			if (errstr != NULL) {
@@ -202,7 +226,10 @@ cmd_windowonly_parse(
 			}
 			break;
 		case 's':
-			data->sname = xstrdup(optarg);
+			if (data->cname != NULL)
+				goto usage;
+			if (data->sname == NULL)
+				data->sname = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -229,6 +256,7 @@ cmd_windowonly_send(void *ptr, struct buffer *b)
 	struct cmd_windowonly_data	*data = ptr;
 
 	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->cname);
 	cmd_send_string(b, data->sname);
 }
 
@@ -239,6 +267,7 @@ cmd_windowonly_recv(void **ptr, struct buffer *b)
 
 	*ptr = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
+	data->cname = cmd_recv_string(b);
 	data->sname = cmd_recv_string(b);
 }
 
@@ -247,6 +276,8 @@ cmd_windowonly_free(void *ptr)
 {
 	struct cmd_windowonly_data	*data = ptr;
 
+	if (data->cname != NULL)
+		xfree(data->cname);
 	if (data->sname != NULL)
 		xfree(data->sname);
 	xfree(data);
@@ -256,28 +287,12 @@ struct winlink *
 cmd_windowonly_get(void *ptr, struct cmd_ctx *ctx, struct session **sp)
 {
 	struct cmd_windowonly_data	*data = ptr;
-	struct session			*s;
 	struct winlink			*wl;
-	int				 idx;
 
-  	if (data != NULL) {
-		s = cmd_find_session(ctx, data->sname);
-		idx = data->idx;
-	} else {
-		s = cmd_find_session(ctx, NULL);
-		idx = -1;
+  	if (data == NULL) {
+		wl = cmd_find_window(ctx, NULL, NULL, -1, sp);
+		return (wl);
 	}
-	if (s == NULL)
-		return (NULL);
-
-	if (sp != NULL)
-		*sp = s;
-
-	if (idx == -1)
-		return (s->curw);
-	if ((wl = winlink_find_by_index(&s->windows, idx)) == NULL) {
-		ctx->error(ctx, "no window %d", idx);
-		return (NULL);
-	}
-	return (wl);
+		
+	return (cmd_find_window(ctx, data->cname, data->sname, data->idx, sp));
 }

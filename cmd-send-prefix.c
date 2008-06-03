@@ -1,4 +1,4 @@
-/* $Id: cmd-send-prefix.c,v 1.10 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-send-prefix.c,v 1.11 2008-06-03 16:55:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,25 +28,25 @@ void	cmd_send_prefix_exec(void *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_send_prefix_entry = {
 	"send-prefix", NULL,
-	CMD_CLIENTONLY_USAGE,
+	CMD_WINDOWONLY_USAGE,
 	0,
-	cmd_clientonly_parse,
+	cmd_windowonly_parse,
 	cmd_send_prefix_exec,
-	cmd_clientonly_send,
-	cmd_clientonly_recv,
-	cmd_clientonly_free,
+	cmd_windowonly_send,
+	cmd_windowonly_recv,
+	cmd_windowonly_free,
 	NULL
 };
 
 void
 cmd_send_prefix_exec(void *ptr, struct cmd_ctx *ctx)
 {
-	struct client	*c;
+	struct winlink	*wl;
 
-	if ((c = cmd_clientonly_get(ptr, ctx)) == NULL)
+	if ((wl = cmd_windowonly_get(ptr, ctx, NULL)) == NULL)
 		return;
 
-	window_key(c->session->curw->window, prefix_key);
+	window_key(wl->window, prefix_key);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

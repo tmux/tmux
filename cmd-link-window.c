@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.14 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.15 2008-06-03 16:55:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,6 +34,7 @@ void	cmd_link_window_recv(void **, struct buffer *);
 void	cmd_link_window_free(void *);
 
 struct cmd_link_window_data {
+	char	*cname;
 	char	*sname;
 	int	 flag_detached;
 	int	 flag_kill;
@@ -44,7 +45,7 @@ struct cmd_link_window_data {
 
 const struct cmd_entry cmd_link_window_entry = {
 	"link-window", "linkw",
-	"[-dk] [-i index] [-s session-name] session-name index",
+	"[-dk] [-c client-tty|-s session-name] [-i index] session-name index",
 	0,
 	cmd_link_window_parse,
 	cmd_link_window_exec,
@@ -63,6 +64,7 @@ cmd_link_window_parse(
 	int				 opt;
 
 	*ptr = data = xmalloc(sizeof *data);
+	data->cname = NULL;
 	data->sname = NULL;
 	data->flag_detached = 0;
 	data->flag_kill = 0;
@@ -70,8 +72,14 @@ cmd_link_window_parse(
 	data->srcidx = -1;
 	data->srcname = NULL;
 
-	while ((opt = getopt(argc, argv, "di:ks:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:di:ks:")) != EOF) {
 		switch (opt) {
+		case 'c':
+			if (data->sname != NULL)
+				goto usage;
+			if (data->cname == NULL)
+				data->cname = xstrdup(optarg);
+			break;
 		case 'd':
 			data->flag_detached = 1;
 			break;
@@ -86,7 +94,10 @@ cmd_link_window_parse(
 			data->flag_kill = 1;
 			break;
 		case 's':
-			data->sname = xstrdup(optarg);
+			if (data->cname != NULL)
+				goto usage;
+			if (data->sname == NULL)
+				data->sname = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -124,7 +135,7 @@ cmd_link_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (data == NULL)
 		return;
 
-	if ((s = cmd_find_session(ctx, data->sname)) == NULL)
+	if ((s = cmd_find_session(ctx, data->cname, data->sname)) == NULL)
 		return;
 
 	if ((src = session_find(data->srcname)) == NULL) {
@@ -196,6 +207,7 @@ cmd_link_window_send(void *ptr, struct buffer *b)
 	struct cmd_link_window_data	*data = ptr;
 
 	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->cname);
 	cmd_send_string(b, data->sname);
 	cmd_send_string(b, data->srcname);
 }
@@ -207,6 +219,7 @@ cmd_link_window_recv(void **ptr, struct buffer *b)
 
 	*ptr = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
+	data->cname = cmd_recv_string(b);
 	data->sname = cmd_recv_string(b);
 	data->srcname = cmd_recv_string(b);
 }
@@ -216,6 +229,8 @@ cmd_link_window_free(void *ptr)
 {
 	struct cmd_link_window_data	*data = ptr;
 
+	if (data->cname != NULL)
+		xfree(data->cname);
 	if (data->sname != NULL)
 		xfree(data->sname);
 	if (data->srcname != NULL)

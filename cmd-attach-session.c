@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.14 2008-06-03 05:35:50 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.15 2008-06-03 16:55:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,13 +33,14 @@ void	cmd_attach_session_recv(void **, struct buffer *);
 void	cmd_attach_session_free(void *);
 
 struct cmd_attach_session_data {
+	char	*cname;
 	char	*sname;
 	int	 flag_detach;
 };
 
 const struct cmd_entry cmd_attach_session_entry = {
 	"attach-session", "attach",
-	"[-d] [-s session-name]",
+	"[-d] [-c client-tty|-s session-name]",
 	CMD_CANTNEST,
 	cmd_attach_session_parse,
 	cmd_attach_session_exec,
@@ -57,16 +58,26 @@ cmd_attach_session_parse(
 	int				 opt;
 
 	*ptr = data = xmalloc(sizeof *data);
+	data->cname = NULL;
 	data->sname = NULL;
 	data->flag_detach = 0;
 
-	while ((opt = getopt(argc, argv, "ds:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:ds:")) != EOF) {
 		switch (opt) {
+		case 'c':
+			if (data->sname != NULL)
+				goto usage;
+			if (data->cname == NULL)
+				data->cname = xstrdup(optarg);
+			break;
 		case 'd':
 			data->flag_detach = 1;
 			break;
 		case 's':
-			data->sname = xstrdup(optarg);
+			if (data->cname != NULL)
+				goto usage;
+			if (data->sname == NULL)
+				data->sname = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -96,7 +107,7 @@ cmd_attach_session_exec(void *ptr, struct cmd_ctx *ctx)
 	if (ctx->flags & CMD_KEY)
 		return;
 
-	if ((s = cmd_find_session(ctx, data->sname)) == NULL)
+	if ((s = cmd_find_session(ctx, data->cname, data->sname)) == NULL)
 		return;
 
 	if (!(ctx->cmdclient->flags & CLIENT_TERMINAL)) {
@@ -125,6 +136,7 @@ cmd_attach_session_send(void *ptr, struct buffer *b)
 	struct cmd_attach_session_data	*data = ptr;
 
 	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->cname);
 	cmd_send_string(b, data->sname);
 }
 
@@ -135,6 +147,7 @@ cmd_attach_session_recv(void **ptr, struct buffer *b)
 
 	*ptr = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
+	data->cname = cmd_recv_string(b);
 	data->sname = cmd_recv_string(b);
 }
 
@@ -143,6 +156,8 @@ cmd_attach_session_free(void *ptr)
 {
 	struct cmd_attach_session_data	*data = ptr;
 
+	if (data->cname != NULL)
+		xfree(data->cname);
 	if (data->sname != NULL)
 		xfree(data->sname);
 	xfree(data);

@@ -1,5 +1,8 @@
 03 June 2008
 
+* Because a client has a session attached, any command needing a session can
+  take a client and use its session. So, anything that used to accept -s now
+  accepts -c as well.
 * -s to specify session name now supports fnmatch(3) wildcards; if multiple
   sessions are found, or if no -s is specified, the most newly created is used.
 * If no command is specified, assume new-session. As a byproduct, clean up 
@@ -376,4 +379,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.101 2008-06-03 05:47:09 nicm Exp $
+$Id: CHANGES,v 1.102 2008-06-03 16:55:09 nicm Exp $

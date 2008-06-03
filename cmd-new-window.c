@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.18 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.19 2008-06-03 16:55:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,6 +35,7 @@ void	cmd_new_window_free(void *);
 void	cmd_new_window_init(void **, int);
 
 struct cmd_new_window_data {
+	char	*cname;
 	char	*sname;
 	char	*name;
 	char	*cmd;
@@ -44,7 +45,7 @@ struct cmd_new_window_data {
 
 const struct cmd_entry cmd_new_window_entry = {
 	"new-window", "neww",
-	"[-d] [-i index] [-n name] [-s session-name] [command]",
+	"[-d] [-c client-tty|-s session-name] [-i index] [-n name] [command]",
 	0,
 	cmd_new_window_parse,
 	cmd_new_window_exec,
@@ -60,6 +61,7 @@ cmd_new_window_init(void **ptr, unused int arg)
 	struct cmd_new_window_data	 *data;
 
 	*ptr = data = xmalloc(sizeof *data);
+	data->cname = NULL;
 	data->sname = NULL;
 	data->idx = -1;
 	data->flag_detached = 0;
@@ -78,8 +80,17 @@ cmd_new_window_parse(
 	self->entry->init(ptr, 0);
 	data = *ptr;
 
-	while ((opt = getopt(argc, argv, "di:n:s:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:di:n:s:")) != EOF) {
 		switch (opt) {
+		case 'c':
+			if (data->sname != NULL)
+				goto usage;
+			if (data->cname == NULL)
+				data->cname = xstrdup(optarg);
+			break;
+		case 'd':
+			data->flag_detached = 1;
+			break;
 		case 'i':
 			data->idx = strtonum(optarg, 0, INT_MAX, &errstr);
 			if (errstr != NULL) {
@@ -88,13 +99,14 @@ cmd_new_window_parse(
 			}
 			break;
 		case 'n':
-			data->name = xstrdup(optarg);
-			break;
-		case 'd':
-			data->flag_detached = 1;
+			if (data->name == NULL)
+				data->name = xstrdup(optarg);
 			break;
 		case 's':
-			data->sname = xstrdup(optarg);
+			if (data->cname != NULL)
+				goto usage;
+			if (data->sname == NULL)
+				data->sname = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -130,7 +142,7 @@ cmd_new_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (cmd == NULL)
 		cmd = default_command;
 
-	if ((s = cmd_find_session(ctx, data->sname)) == NULL)
+	if ((s = cmd_find_session(ctx, data->cname, data->sname)) == NULL)
 		return;
 
 	if (data->idx < 0)
@@ -156,6 +168,7 @@ cmd_new_window_send(void *ptr, struct buffer *b)
 	struct cmd_new_window_data	*data = ptr;
 
 	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->cname);
 	cmd_send_string(b, data->sname);
 	cmd_send_string(b, data->name);
 	cmd_send_string(b, data->cmd);
@@ -168,6 +181,7 @@ cmd_new_window_recv(void **ptr, struct buffer *b)
 
 	*ptr = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
+	data->cname = cmd_recv_string(b);
 	data->sname = cmd_recv_string(b);
 	data->name = cmd_recv_string(b);
 	data->cmd = cmd_recv_string(b);
@@ -178,6 +192,8 @@ cmd_new_window_free(void *ptr)
 {
 	struct cmd_new_window_data	*data = ptr;
 
+	if (data->cname != NULL)
+		xfree(data->cname);
 	if (data->sname != NULL)
 		xfree(data->sname);
 	if (data->name != NULL)

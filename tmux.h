@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.122 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: tmux.h,v 1.123 2008-06-03 16:55:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -731,8 +731,10 @@ struct cmd	*cmd_recv(struct buffer *);
 void		 cmd_free(struct cmd *);
 void		 cmd_send_string(struct buffer *, const char *);
 char		*cmd_recv_string(struct buffer *);
-struct session	*cmd_find_session(struct cmd_ctx *, const char *);
 struct client	*cmd_find_client(struct cmd_ctx *, const char *);
+struct session	*cmd_find_session(struct cmd_ctx *, const char *, const char *);
+struct winlink	*cmd_find_window(struct cmd_ctx *,
+    		     const char *, const char *, int, struct session **);
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_copy_mode_entry;
@@ -774,14 +776,14 @@ void	cmd_clientonly_send(void *, struct buffer *);
 void	cmd_clientonly_recv(void **, struct buffer *);
 void	cmd_clientonly_free(void *);
 struct client *cmd_clientonly_get(void *, struct cmd_ctx *);
-#define CMD_SESSIONONLY_USAGE "[-s session-name]"
+#define CMD_SESSIONONLY_USAGE "[-c client-tty|-s session-name]"
 int	cmd_sessiononly_parse(struct cmd *, void **, int, char **, char **);
 void	cmd_sessiononly_exec(void *, struct cmd_ctx *);
 void	cmd_sessiononly_send(void *, struct buffer *);
 void	cmd_sessiononly_recv(void **, struct buffer *);
 void	cmd_sessiononly_free(void *);
 struct session *cmd_sessiononly_get(void *, struct cmd_ctx *);
-#define CMD_WINDOWONLY_USAGE "[-i index] [-s session-name]"
+#define CMD_WINDOWONLY_USAGE "[-c client-tty|-s session-name] [-i index]"
 int	cmd_windowonly_parse(struct cmd *, void **, int, char **, char **);
 void	cmd_windowonly_exec(void *, struct cmd_ctx *);
 void	cmd_windowonly_send(void *, struct buffer *);

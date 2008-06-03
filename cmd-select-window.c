@@ -1,4 +1,4 @@
-/* $Id: cmd-select-window.c,v 1.14 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-select-window.c,v 1.15 2008-06-03 16:55:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,13 +35,14 @@ void	cmd_select_window_free(void *);
 void	cmd_select_window_init(void **, int);
 
 struct cmd_select_window_data {
+	char	*cname;
 	char	*sname;
 	int	idx;
 };
 
 const struct cmd_entry cmd_select_window_entry = {
 	"select-window", "selectw",
-	"[-s session-name] index",
+	"[-c client-tty|-s session-name] index",
 	0,
 	cmd_select_window_parse,
 	cmd_select_window_exec,
@@ -57,6 +58,7 @@ cmd_select_window_init(void **ptr, int arg)
 	struct cmd_select_window_data	*data;
 
 	*ptr = data = xmalloc(sizeof *data);
+	data->cname = NULL;
 	data->sname = NULL;
 	data->idx = arg - '0';
 }
@@ -72,10 +74,19 @@ cmd_select_window_parse(
 	*ptr = data = xmalloc(sizeof *data);
 	data->sname = NULL;
 
-	while ((opt = getopt(argc, argv, "s:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:s:")) != EOF) {
 		switch (opt) {
+		case 'c':
+			if (data->sname != NULL)
+				goto usage;
+			if (data->cname == NULL)
+				data->cname = xstrdup(optarg);
+			break;
 		case 's':
-			data->sname = xstrdup(optarg);
+			if (data->cname != NULL)
+				goto usage;
+			if (data->sname == NULL)
+				data->sname = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -111,7 +122,7 @@ cmd_select_window_exec(void *ptr, struct cmd_ctx *ctx)
 	if (data == NULL)
 		return;
 
-	if ((s = cmd_find_session(ctx, data->sname)) == NULL)
+	if ((s = cmd_find_session(ctx, data->cname, data->sname)) == NULL)
 		return;
 
 	switch (session_select(s, data->idx)) {
@@ -135,6 +146,7 @@ cmd_select_window_send(void *ptr, struct buffer *b)
 	struct cmd_select_window_data	*data = ptr;
 
 	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->cname);
 	cmd_send_string(b, data->sname);
 }
 
@@ -145,6 +157,7 @@ cmd_select_window_recv(void **ptr, struct buffer *b)
 
 	*ptr = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
+	data->cname = cmd_recv_string(b);
 	data->sname = cmd_recv_string(b);
 }
 
@@ -153,6 +166,8 @@ cmd_select_window_free(void *ptr)
 {
 	struct cmd_select_window_data	*data = ptr;
 
+	if (data->cname != NULL)
+		xfree(data->cname);
 	if (data->sname != NULL)
 		xfree(data->sname);
 	xfree(data);

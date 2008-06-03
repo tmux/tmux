@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.38 2008-06-03 05:47:09 nicm Exp $ */
+/* $Id: cmd.c,v 1.39 2008-06-03 16:55:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -60,6 +60,9 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_unlink_window_entry,
 	NULL
 };
+
+struct client	*cmd_lookup_client(const char *);
+struct session	*cmd_lookup_session(const char *);
 
 struct cmd *
 cmd_parse(int argc, char **argv, char **cause)
@@ -231,34 +234,92 @@ cmd_recv_string(struct buffer *b)
 	return (s);
 }
 
+struct client *
+cmd_lookup_client(const char *cname)
+{
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL && strcmp(cname, c->tty.path) == 0)
+			return (c);
+	}
+
+	return (NULL);
+}
+
+struct session *
+cmd_lookup_session(const char *sname)
+{
+	struct session	*s, *newest = NULL;
+	time_t		 tim;
+	u_int		 i;
+
+	tim = 0;
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		s = ARRAY_ITEM(&sessions, i); 
+		if (s == NULL || fnmatch(sname, s->name, 0) != 0)
+			continue;
+
+		if (s->tim > tim) {
+			newest = s;
+			tim = s->tim;
+		}
+	}
+
+	return (newest);
+}
+
+/* 
+ * Figure out the client. Try the given client name first, then the current
+ * client.
+ */
+struct client *
+cmd_find_client(unused struct cmd_ctx *ctx, const char *cname)
+{
+	struct client	*c;
+
+	if (cname != NULL) {
+		if ((c = cmd_lookup_client(cname)) == NULL)
+			ctx->error(ctx, "client not found: %s", cname);
+		return (c);
+	}
+
+	if (ctx->curclient != NULL)
+		return (ctx->curclient);
+
+	ctx->error(ctx, "must specify a client");
+	return (NULL);
+}
+
 /*
- * Attempt to establish session. This looks first at the command-line argument
+ * Attempt to establish session. This looks first at the given arguments,
  * if any, then sees if there is a session in the context, then finally tries
  * the session data passed up from the client $TMUX variable.
  */
 struct session *
-cmd_find_session(struct cmd_ctx *ctx, const char *arg)
+cmd_find_session(struct cmd_ctx *ctx, const char *cname, const char *sname)
 {
-	struct session		*s, *sp;
+	struct session		*s, *newest = NULL;
+	struct client		*c;
 	struct msg_command_data	*data = ctx->msgdata;
 	u_int			 i;
 	time_t			 tim;
 
-	if (arg != NULL) {
-		s = NULL;
-		tim = 0;
-		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-			sp = ARRAY_ITEM(&sessions, i); 
-			if (sp != NULL && 
-			    fnmatch(arg, sp->name, 0) == 0 && sp->tim > tim) {
-				s = sp;
-				tim = s->tim;
-			}
-		}
-		if (s == NULL) {
-			ctx->error(ctx, "no sessions matching: %s", arg);
+	if (cname != NULL) {
+		if ((c = cmd_lookup_client(cname)) == NULL) {
+			ctx->error(ctx, "client not found: %s", cname);
 			return (NULL);
 		}
+		if (c->session == NULL)
+			ctx->error(ctx, "client has no session: %s", cname);
+		return (c->session);
+	}
+
+	if (sname != NULL) {
+		if ((s = cmd_lookup_session(sname)) == NULL)
+			ctx->error(ctx, "session not found: %s", sname);
 		return (s);
 	}
 
@@ -281,46 +342,34 @@ cmd_find_session(struct cmd_ctx *ctx, const char *arg)
 		return (s);
 	}
 
-	s = NULL;
 	tim = 0;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		sp = ARRAY_ITEM(&sessions, i); 
-		if (sp != NULL && sp->tim > tim) {
-			s = ARRAY_ITEM(&sessions, i);
+		s = ARRAY_ITEM(&sessions, i); 
+		if (s != NULL && s->tim > tim) {
+			newest = ARRAY_ITEM(&sessions, i);
 			tim = s->tim;
 		}
 	}
-	if (s == NULL) {
+	if (newest == NULL)
 		ctx->error(ctx, "no sessions found");
-		return (NULL);
-	}
-	return (s);
+	return (newest);
 }
 
-/* 
- * Figure out the client. Try the current client (if any) first, then try to
- * figure it out from the argument.
- */
-struct client *
-cmd_find_client(unused struct cmd_ctx *ctx, const char *arg)
+struct winlink *
+cmd_find_window(struct cmd_ctx *ctx, 
+    const char *cname, const char *sname, int idx, struct session **sp)
 {
-	struct client	*c;
-	u_int		 i;
+	struct session			*s;
+	struct winlink			*wl;
 
-	if (ctx->curclient != NULL)
-		return (ctx->curclient);
-
-	if (arg == NULL) {
-		ctx->error(ctx, "must specify a client");
+	if ((s = cmd_find_session(ctx, cname, sname)) == NULL)
 		return (NULL);
-	}
+	if (sp != NULL)
+		*sp = s;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && strcmp(arg, c->tty.path) == 0)
-			return (c);
-	}
-	
-	ctx->error(ctx, "client not found: %s", arg);
-	return (NULL);
+	if (idx == -1)
+		return (s->curw);
+	if ((wl = winlink_find_by_index(&s->windows, idx)) == NULL)
+		ctx->error(ctx, "no window %d", idx);
+	return (wl);
 }
