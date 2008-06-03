@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.37 2008-06-03 05:10:38 nicm Exp $ */
+/* $Id: cmd.c,v 1.38 2008-06-03 05:47:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <fnmatch.h>
 #include <getopt.h>
 #include <string.h>
 #include <unistd.h>
@@ -238,13 +239,24 @@ cmd_recv_string(struct buffer *b)
 struct session *
 cmd_find_session(struct cmd_ctx *ctx, const char *arg)
 {
-	struct session		*s;
+	struct session		*s, *sp;
 	struct msg_command_data	*data = ctx->msgdata;
-	u_int			 i, n;
+	u_int			 i;
+	time_t			 tim;
 
 	if (arg != NULL) {
-		if ((s = session_find(arg)) == NULL) {
-			ctx->error(ctx, "session not found: %s", arg);
+		s = NULL;
+		tim = 0;
+		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+			sp = ARRAY_ITEM(&sessions, i); 
+			if (sp != NULL && 
+			    fnmatch(arg, sp->name, 0) == 0 && sp->tim > tim) {
+				s = sp;
+				tim = s->tim;
+			}
+		}
+		if (s == NULL) {
+			ctx->error(ctx, "no sessions matching: %s", arg);
 			return (NULL);
 		}
 		return (s);
@@ -270,19 +282,16 @@ cmd_find_session(struct cmd_ctx *ctx, const char *arg)
 	}
 
 	s = NULL;
-	n = 0;
+	tim = 0;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		if (ARRAY_ITEM(&sessions, i) != NULL) {
+		sp = ARRAY_ITEM(&sessions, i); 
+		if (sp != NULL && sp->tim > tim) {
 			s = ARRAY_ITEM(&sessions, i);
-			n++;
+			tim = s->tim;
 		}
 	}
 	if (s == NULL) {
 		ctx->error(ctx, "no sessions found");
-		return (NULL);
-	}
-	if (n != 1) {
-		ctx->error(ctx, "multiple sessions and session not specified");
 		return (NULL);
 	}
 	return (s);
