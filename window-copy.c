@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.15 2007-12-07 09:49:18 nicm Exp $ */
+/* $Id: window-copy.c,v 1.16 2008-06-03 21:42:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -91,7 +91,7 @@ window_copy_init(struct window *w)
 	data->cy = w->base.cy;
 
 	s = &data->screen;
-	screen_create(s, screen_size_x(&w->base), screen_size_y(&w->base));
+	screen_create(s, screen_size_x(&w->base), screen_size_y(&w->base), 0);
 	s->cx = data->cx;
 	s->cy = data->cy;
 
@@ -202,7 +202,8 @@ window_copy_write_line(
 	size_t	 			 size;
 
 	if (py == 0) {
-		screen_write_set_attributes(ctx, 0, status_colour);
+		screen_write_set_attributes(
+		    ctx, ATTR_BRIGHT|ATTR_REVERSE, 0x70);
 		screen_write_move_cursor(ctx, 0, 0);
 		size = screen_write_put_string_rjust(
 		    ctx, "[%u,%u/%u]", data->ox, data->oy, w->base.hsize);

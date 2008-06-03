@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.23 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.24 2008-06-03 21:42:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -113,7 +113,7 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 	struct client			*c = ctx->cmdclient;
 	struct session			*s;
 	char				*cmd, *cause;
-	u_int				 sx, sy;
+	u_int				 sx, sy, slines;
 
 	if (ctx->flags & CMD_KEY)
 		return;
@@ -136,7 +136,7 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 
 	cmd = data->cmd;
 	if (cmd == NULL)
-		cmd = default_command;
+		cmd = options_get_string(&global_options, "default-command");
 
 	sx = 80;
 	sy = 25;
@@ -144,9 +144,11 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 		sx = c->sx;
 		sy = c->sy;
 	}
-	if (sy < status_lines)
-		sy = status_lines + 1;
-	sy -= status_lines;
+
+	slines = options_get_number(&global_options, "status-lines");
+	if (sy < slines)
+		sy = slines + 1;
+	sy -= slines;
 
 	if (!data->flag_detached && tty_open(&c->tty, &cause) != 0) {
 		ctx->error(ctx, "%s", cause);

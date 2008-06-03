@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.48 2008-06-02 21:16:21 nicm Exp $ */
+/* $Id: server.c,v 1.49 2008-06-03 21:42:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -364,14 +364,15 @@ void
 server_handle_client(struct client *c)
 {
 	struct window	*w = c->session->curw->window;
-	int		 key;
+	int		 key, prefix;
 
+	prefix = options_get_number(&c->session->options, "prefix-key");
 	while (tty_keys_next(&c->tty, &key) == 0) {
 		if (c->flags & CLIENT_PREFIX) {
 			key_bindings_dispatch(key, c);
 			c->flags &= ~CLIENT_PREFIX;
 			continue;
-		} else if (key == prefix_key)
+		} else if (key == prefix)
 			c->flags |= CLIENT_PREFIX;
 		else
 			window_key(w, key);
@@ -413,21 +414,19 @@ server_handle_window(struct window *w)
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
-		if (s != NULL)
-			session_addbell(s, w);
-	}
+		if (s == NULL || !session_has(s, w))
+			continue;
+		session_addbell(s, w);
 
-	switch (bell_action) {
-	case BELL_ANY:
-		tty_write_window(w, TTY_CHARACTER, '\007');
-		break;
-	case BELL_CURRENT:
-		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-			s = ARRAY_ITEM(&sessions, i);
-			if (s != NULL && s->curw->window == w)
+		switch (options_get_number(&s->options, "bell-action")) {
+		case BELL_ANY:
+			tty_write_session(s, TTY_CHARACTER, '\007');
+			break;
+		case BELL_CURRENT:
+			if (s->curw->window == w)
 				tty_write_session(s, TTY_CHARACTER, '\007');
+			break;
 		}
-		break;
 	}
 	server_status_window(w);
 

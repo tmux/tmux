@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.17 2008-01-03 21:32:11 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.18 2008-06-03 21:42:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,7 +65,7 @@ window_scroll_init(struct window *w)
 	data->oy = 0;
 
 	s = &data->screen;
-	screen_create(s, screen_size_x(&w->base), screen_size_y(&w->base));
+	screen_create(s, screen_size_x(&w->base), screen_size_y(&w->base), 0);
 	s->mode &= ~MODE_CURSOR;
 
 	screen_write_start(&ctx, s, NULL, NULL);
@@ -153,7 +153,8 @@ window_scroll_write_line(
 	size_t	 			 size;
 
 	if (py == 0) {
-		screen_write_set_attributes(ctx, 0, status_colour);
+		screen_write_set_attributes(
+		    ctx, ATTR_BRIGHT|ATTR_REVERSE, 0x70);
 		screen_write_move_cursor(ctx, 0, 0);
 		size = screen_write_put_string_rjust(
 		    ctx, "[%u,%u/%u]", data->ox, data->oy, w->base.hsize);

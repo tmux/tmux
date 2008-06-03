@@ -65,6 +65,11 @@
 - different screen model? layers perhaps? hmm
 - cfg file improvements
 - select-window can become windowonly (what about default?)
+- monitor for activity in windows as well as bell
+- status bar customisation variables, date/time, show-activity, show-last-window
+		string-left, string-right - pass through strptime and print...
+- per-window options (per-session list of window ranges?)
+- show-options
 
 ---
 [18:20] *priteau* i found something in tmux that could be tweaked to be better

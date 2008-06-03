@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.50 2008-06-03 18:13:54 nicm Exp $ */
+/* $Id: tmux.c,v 1.51 2008-06-03 21:42:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,15 +42,12 @@ const char	*_malloc_options = "AJX";
 
 volatile sig_atomic_t sigwinch;
 volatile sig_atomic_t sigterm;
+
 char		*cfg_file;
-char		*default_command;
+struct options	 global_options;
 char		*paste_buffer;
-int		 bell_action;
+
 int		 debug_level;
-int		 prefix_key = META;
-u_char		 status_colour;
-u_int		 history_limit;
-u_int		 status_lines;
 
 void		 sighandler(int);
 __dead void	 usage(void);
@@ -201,12 +198,12 @@ main(int argc, char **argv)
 	log_open(stderr, LOG_USER, debug_level);
 	siginit();
 
-	status_lines = 1;
-	status_colour = 0x02;
-
-	bell_action = BELL_ANY;
-
-	history_limit = 2000;
+	options_init(&global_options, NULL);
+	options_set_number(&global_options, "status-lines", 1);
+	options_set_number(&global_options, "status-colour", 0x02);
+	options_set_number(&global_options, "bell-action", BELL_ANY);
+	options_set_number(&global_options, "history-limit", 2000);
+	options_set_number(&global_options, "prefix-key", META);
 
 	paste_buffer = NULL;
 
@@ -260,7 +257,8 @@ main(int argc, char **argv)
 		if (shell == NULL || *shell == '\0')
 			shell = _PATH_BSHELL;
 	}
-	xasprintf(&default_command, "exec %s", shell);
+	options_set_string(
+	    &global_options, "default-command", "exec %s", shell);
 
 	if (argc == 0) {
 		cmd = xmalloc(sizeof *cmd);
@@ -334,7 +332,7 @@ main(int argc, char **argv)
 	}
 
 out:
-	xfree(default_command);
+	options_free(&global_options);
 
 	close(cctx.srv_fd);
 	buffer_destroy(cctx.srv_in);

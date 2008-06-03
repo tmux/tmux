@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.18 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.19 2008-06-03 21:42:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,13 +35,16 @@ void	cmd_set_option_recv(void **, struct buffer *);
 void	cmd_set_option_free(void *);
 
 struct cmd_set_option_data {
+	char	*cname;
+	char	*sname;
+	int	 flag_global;
 	char	*option;
 	char	*value;
 };
 
 const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set",
-	"option value",
+	"[-c client-tty|-s session-name] option value",
 	0,
 	cmd_set_option_parse,
 	cmd_set_option_exec,
@@ -59,11 +62,28 @@ cmd_set_option_parse(
 	int				 opt;
 
 	*ptr = data = xmalloc(sizeof *data);
+	data->cname = NULL;
+	data->sname = NULL;
+	data->flag_global = 1;
 	data->option = NULL;
 	data->value = NULL;
 
-	while ((opt = getopt(argc, argv, "")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:s:")) != EOF) {
 		switch (opt) {
+		case 'c':
+			if (data->sname != NULL)
+				goto usage;
+			if (data->cname == NULL)
+				data->cname = xstrdup(optarg);
+			data->flag_global = 0;
+			break;
+		case 's':
+			if (data->cname != NULL)
+				goto usage;
+			if (data->sname == NULL)
+				data->sname = xstrdup(optarg);
+			data->flag_global = 0;
+			break;
 		default:
 			goto usage;
 		}
@@ -91,12 +111,21 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 {
 	struct cmd_set_option_data	*data = ptr;
 	struct client			*c;
+	struct session			*s;
+	struct options			*oo;
 	const char			*errstr;
 	u_int				 i;
 	int				 number, bool, key;
+	u_char				 colour;
 
 	if (data == NULL)
 		return;
+
+	if (data->flag_global ||
+	    ((s = cmd_find_session(ctx, data->cname, data->sname))) == NULL)
+		oo = &global_options;
+	else
+		oo = &s->options;
 
 	if (*data->option == '\0') {
 		ctx->error(ctx, "invalid option");
@@ -127,13 +156,13 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 			ctx->error(ctx, "unknown key: %s", data->value);
 			return;
 		}
-		prefix_key = key;
+		options_set_number(oo, "prefix-key", key);
 	} else if (strcmp(data->option, "status") == 0) {
 		if (bool == -1) {
 			ctx->error(ctx, "bad value: %s", data->value);
 			return;
 		}
-		status_lines = bool;
+		options_set_number(oo, "status-lines", bool);
 		recalculate_sizes();
 	} else if (strcmp(data->option, "status-fg") == 0) {
 		if (data->value == NULL) {
@@ -145,9 +174,13 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 			ctx->error(ctx, "bad colour: %s", data->value);
 			return;
 		}
-		status_colour &= 0x0f;
-		status_colour |= number << 4;
-		if (status_lines > 0) {
+
+		colour = options_get_number(oo, "status-colour");
+		colour &= 0x0f;
+		colour |= number << 4;
+		options_set_number(oo, "status-colour", colour);
+
+		if (options_get_number(oo, "status-lines") > 0) {
 			for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 				c = ARRAY_ITEM(&clients, i);
 				if (c != NULL && c->session != NULL)
@@ -164,9 +197,13 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 			ctx->error(ctx, "bad colour: %s", data->value);
 			return;
 		}
-		status_colour &= 0xf0;
-		status_colour |= number;
-		if (status_lines > 0) {
+
+		colour = options_get_number(oo, "status-colour");
+		colour &= 0xf0;
+		colour |= number;
+		options_set_number(oo, "status-colour", colour);
+
+		if (options_get_number(oo, "status-lines") > 0) {
 			for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 				c = ARRAY_ITEM(&clients, i);
 				if (c != NULL && c->session != NULL)
@@ -179,22 +216,22 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 			return;
 		}
 		if (strcmp(data->value, "any") == 0)
-			bell_action = BELL_ANY;
+			number = BELL_ANY;
 		else if (strcmp(data->value, "none") == 0)
-			bell_action = BELL_NONE;
+			number = BELL_NONE;
 		else if (strcmp(data->value, "current") == 0)
-			bell_action = BELL_CURRENT;
+			number = BELL_CURRENT;
 		else {
 			ctx->error(ctx, "unknown bell-action: %s", data->value);
 			return;
 		}
+		options_set_number(oo, "bell-action", number);
 	} else if (strcmp(data->option, "default-command") == 0) {
 		if (data->value == NULL) {
 			ctx->error(ctx, "invalid value");
 			return;
 		}
-		xfree(default_command);
-		default_command = xstrdup(data->value);
+		options_set_string(oo, "default-command", "%s", data->value);
 	} else if (strcmp(data->option, "history-limit") == 0) {
 		if (data->value == NULL) {
 			ctx->error(ctx, "invalid value");
@@ -204,7 +241,7 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 			ctx->error(ctx, "history-limit too big: %u", number);
 			return;
 		}
-		history_limit = number;
+		options_set_number(oo, "history-limit", number);
 	} else {
 		ctx->error(ctx, "unknown option: %s", data->option);
 		return;
@@ -219,6 +256,9 @@ cmd_set_option_send(void *ptr, struct buffer *b)
 {
 	struct cmd_set_option_data	*data = ptr;
 
+	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->cname);
+	cmd_send_string(b, data->sname);
 	cmd_send_string(b, data->option);
 	cmd_send_string(b, data->value);
 }
@@ -229,6 +269,9 @@ cmd_set_option_recv(void **ptr, struct buffer *b)
 	struct cmd_set_option_data	*data;
 
 	*ptr = data = xmalloc(sizeof *data);
+	buffer_read(b, data, sizeof *data);
+	data->cname = cmd_recv_string(b);
+	data->sname = cmd_recv_string(b);
 	data->option = cmd_recv_string(b);
 	data->value = cmd_recv_string(b);
 }
@@ -238,6 +281,10 @@ cmd_set_option_free(void *ptr)
 {
 	struct cmd_set_option_data	*data = ptr;
 
+	if (data->cname != NULL)
+		xfree(data->cname);
+	if (data->sname != NULL)
+		xfree(data->sname);
 	if (data->option != NULL)
 		xfree(data->option);
 	if (data->value != NULL)

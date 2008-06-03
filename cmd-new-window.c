@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.19 2008-06-03 16:55:09 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.20 2008-06-03 21:42:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -138,12 +138,12 @@ cmd_new_window_exec(void *ptr, struct cmd_ctx *ctx)
 	struct winlink			*wl;
 	char				*cmd;
 
-	cmd = data->cmd;
-	if (cmd == NULL)
-		cmd = default_command;
-
 	if ((s = cmd_find_session(ctx, data->cname, data->sname)) == NULL)
 		return;
+
+	cmd = data->cmd;
+	if (cmd == NULL)
+		cmd = options_get_string(&s->options, "default-command");
 
 	if (data->idx < 0)
 		data->idx = -1;

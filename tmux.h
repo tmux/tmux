@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.124 2008-06-03 18:13:54 nicm Exp $ */
+/* $Id: tmux.h,v 1.125 2008-06-03 21:42:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -533,6 +533,27 @@ struct winlink {
 };
 RB_HEAD(winlinks, winlink);
 
+/* Option data structures. */
+struct options_entry {
+	char		*name;
+
+	enum {
+		OPTIONS_STRING,
+		OPTIONS_NUMBER
+	} type;
+	union {
+		char	*string;
+		long long number;
+	} value;
+
+	SPLAY_ENTRY(options_entry) entry;
+};
+
+struct options {
+	SPLAY_HEAD(options_tree, options_entry) tree;
+	struct options	*parent;
+};
+
 /* Client session. */
 struct session {
 	char		*name;
@@ -544,6 +565,8 @@ struct session {
 	struct winlink	*curw;
 	struct winlink	*lastw;
 	struct winlinks	 windows;
+
+	struct options	 options;
 
 	ARRAY_DECL(, struct winlink *) bells;	/* windows with bells */
 
@@ -685,21 +708,30 @@ extern volatile sig_atomic_t sigterm;
 #define BELL_NONE 0
 #define BELL_ANY 1
 #define BELL_CURRENT 2
+extern struct options global_options;
 extern char	*default_command;
 extern char	*cfg_file;
 extern char	*paste_buffer;
 extern int	 bell_action;
 extern int	 debug_level;
-extern int	 prefix_key;
-extern u_char	 status_colour;
 extern u_int	 history_limit;
-extern u_int	 status_lines;
 void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);
 
 /* cfg.c */
 int		 load_cfg(const char *, char **x);
+
+/* options.c */
+int	options_cmp(struct options_entry *, struct options_entry *);
+SPLAY_PROTOTYPE(options_tree, options_entry, entry, options_cmp);
+void	options_init(struct options *, struct options *);
+void	options_free(struct options *);
+void printflike3 options_set_string(
+    	    struct options *, const char *, const char *, ...);
+char   *options_get_string(struct options *, const char *);
+void	options_set_number(struct options *, const char *, long long);
+int	options_get_number(struct options *, const char *);
 
 /* tty.c */
 void		 tty_init(struct tty *, char *, char *);
@@ -937,7 +969,7 @@ void	screen_redraw_lines(struct screen_redraw_ctx *, u_int, u_int);
 /* screen.c */
 const char *screen_colourstring(u_char);
 u_char	 screen_stringcolour(const char *);
-void	 screen_create(struct screen *, u_int, u_int);
+void	 screen_create(struct screen *, u_int, u_int, u_int);
 void	 screen_destroy(struct screen *);
 void	 screen_resize(struct screen *, u_int, u_int);
 void	 screen_expand_line(struct screen *, u_int, u_int);
@@ -967,8 +999,8 @@ struct winlink	*winlink_add(struct winlinks *, struct window *, int);
 void		 winlink_remove(struct winlinks *, struct winlink *);
 struct winlink	*winlink_next(struct winlinks *, struct winlink *);
 struct winlink	*winlink_previous(struct winlinks *, struct winlink *);
-struct window	*window_create(
-    		     const char *, const char *, const char **, u_int, u_int);
+struct window	*window_create(const char *,
+		     const char *, const char **, u_int, u_int, u_int);
 void		 window_destroy(struct window *);
 int		 window_resize(struct window *, u_int, u_int);
 int		 window_set_mode(struct window *, const struct window_mode *);

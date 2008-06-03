@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.37 2008-06-03 18:38:51 nicm Exp $ */
+/* $Id: window.c,v 1.38 2008-06-03 21:42:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -145,8 +145,8 @@ winlink_previous(unused struct winlinks *wwl, struct winlink *wl)
 }
 
 struct window *
-window_create(
-    const char *name, const char *cmd, const char **env, u_int sx, u_int sy)
+window_create(const char *name, 
+    const char *cmd, const char **env, u_int sx, u_int sy, u_int hlimit)
 {
 	struct window	*w;
 	struct winsize	 ws;
@@ -186,7 +186,7 @@ window_create(
 	w->in = buffer_create(BUFSIZ);
 	w->out = buffer_create(BUFSIZ);
 	w->mode = NULL;
-	screen_create(&w->base, sx, sy);
+	screen_create(&w->base, sx, sy, hlimit);
 	w->screen = &w->base;
 	input_init(w);
 

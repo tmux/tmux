@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.10 2008-06-01 20:32:41 nicm Exp $ */
+/* $Id: resize.c,v 1.11 2008-06-03 21:42:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,7 @@ recalculate_sizes(void)
 	struct session	*s;
 	struct client	*c;
 	struct window	*w;
-	u_int		 i, j, ssx, ssy;
+	u_int		 i, j, ssx, ssy, slines;
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
@@ -73,9 +73,10 @@ recalculate_sizes(void)
 		}
 		s->flags &= ~SESSION_UNATTACHED;
 
-		if (ssy < status_lines)
-			ssy = status_lines + 1;
-		ssy -= status_lines;
+		slines = options_get_number(&s->options, "status-lines");
+		if (ssy < slines)
+			ssy = slines + 1;
+		ssy -= slines;
 		if (s->sx == ssx && s->sy == ssy)
 			continue;
 

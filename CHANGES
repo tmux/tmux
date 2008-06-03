@@ -1,5 +1,8 @@
 03 June 2008
 
+* Per session options. Setting options without specifying a session sets the
+  global options as normal (global options are inherited by all sessions);
+  passing -c or -s will set the option only for that session.
 * Because a client has a session attached, any command needing a session can
   take a client and use its session. So, anything that used to accept -s now
   accepts -c as well.
@@ -379,4 +382,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.102 2008-06-03 16:55:09 nicm Exp $
+$Id: CHANGES,v 1.103 2008-06-03 21:42:36 nicm Exp $

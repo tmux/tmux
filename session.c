@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.32 2008-06-03 18:13:54 nicm Exp $ */
+/* $Id: session.c,v 1.33 2008-06-03 21:42:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -95,7 +95,8 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	s->curw = s->lastw = NULL;
 	RB_INIT(&s->windows);
 	ARRAY_INIT(&s->bells);
-
+	options_init(&s->options, &global_options);
+	
 	s->sx = sx;
 	s->sy = sy;
 
@@ -137,6 +138,8 @@ session_destroy(struct session *s)
 	while (!ARRAY_EMPTY(&sessions) && ARRAY_LAST(&sessions) == NULL)
 		ARRAY_TRUNC(&sessions, 1);
 
+	options_free(&s->options);
+
 	while (!RB_EMPTY(&s->windows))
 		winlink_remove(&s->windows, RB_ROOT(&s->windows));
 
@@ -162,14 +165,15 @@ session_new(struct session *s, const char *name, const char *cmd, int idx)
 	struct window	*w;
 	const char	*env[] = { NULL, "TERM=screen", NULL };
 	char		 buf[256];
-	u_int		 i;
+	u_int		 i, hlimit;
 
 	if (session_index(s, &i) != 0)
 		fatalx("session not found");
 	xsnprintf(buf, sizeof buf, "TMUX=%ld,%u", (long) getpid(), i);
 	env[0] = buf;
 
-	if ((w = window_create(name, cmd, env, s->sx, s->sy)) == NULL)
+	hlimit = options_get_number(&s->options, "history-limit");
+	if ((w = window_create(name, cmd, env, s->sx, s->sy, hlimit)) == NULL)
 		return (NULL);
 	return (session_attach(s, w, idx));
 }

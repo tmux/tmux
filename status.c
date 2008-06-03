@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.18 2008-01-03 21:32:11 nicm Exp $ */
+/* $Id: status.c,v 1.19 2008-06-03 21:42:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,13 +30,17 @@ status_write_client(struct client *c)
 	struct screen_redraw_ctx	ctx;
 	struct winlink	       	       *wl;
 	char				flag;
+	u_char				scolour;
+	u_int				slines;
 
-	if (status_lines == 0 || c->sy <= status_lines)
+	scolour = options_get_number(&c->session->options, "status-colour");
+	slines = options_get_number(&c->session->options, "status-lines");
+	if (slines == 0 || c->sy <= slines)
 		return;
 
 	screen_redraw_start_client(&ctx, c);
-	screen_redraw_move_cursor(&ctx, 0, c->sy - status_lines);
-	screen_redraw_set_attributes(&ctx, 0, status_colour);
+	screen_redraw_move_cursor(&ctx, 0, c->sy - slines);
+	screen_redraw_set_attributes(&ctx, 0, scolour);
 
 	RB_FOREACH(wl, winlinks, &c->session->windows) {
 		flag = ' ';

@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.37 2008-06-02 18:08:17 nicm Exp $ */
+/* $Id: server-fn.c,v 1.38 2008-06-03 21:42:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -182,6 +182,9 @@ server_write_message(struct client *c, const char *fmt, ...)
 	va_list				ap;
 	char			       *msg;
 	size_t				size;
+	u_int				slines;
+
+	slines = options_get_number(&c->session->options, "status-lines");
 
 	screen_redraw_start_client(&ctx, c);
 	screen_redraw_move_cursor(&ctx, 0, c->sy - 1);
@@ -203,7 +206,7 @@ server_write_message(struct client *c, const char *fmt, ...)
 	buffer_flush(c->tty.fd, c->tty.in, c->tty.out);
 	usleep(750000);
 
-	if (status_lines == 0) {
+	if (slines == 0) {
 		screen_redraw_lines(&ctx, c->sy - 1, 1);
 		screen_redraw_stop(&ctx);
 	} else {
