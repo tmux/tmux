@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.4 2008-06-03 16:55:09 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.5 2008-06-04 16:11:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,21 +22,6 @@
 #include <stdlib.h>
 
 #include "tmux.h"
-
-struct cmd_clientonly_data {
-	char	*cname;
-};
-
-struct cmd_sessiononly_data {
-	char	*cname;
-	char	*sname;
-};
-
-struct cmd_windowonly_data {
-	char	*cname;
-	char	*sname;
-	int	 idx;
-};
 
 int
 cmd_clientonly_parse(

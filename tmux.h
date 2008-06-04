@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.126 2008-06-04 05:40:35 nicm Exp $ */
+/* $Id: tmux.h,v 1.127 2008-06-04 16:11:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -679,6 +679,22 @@ struct cmd_entry {
 	void	         (*recv)(void **, struct buffer *);
 	void		 (*free)(void *);
 	void		 (*init)(void **, int);
+};
+
+/* Generic command data. */
+struct cmd_clientonly_data {
+	char	*cname;
+};
+
+struct cmd_sessiononly_data {
+	char	*cname;
+	char	*sname;
+};
+
+struct cmd_windowonly_data {
+	char	*cname;
+	char	*sname;
+	int	 idx;
 };
 
 /* Key binding. */

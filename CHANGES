@@ -1,5 +1,7 @@
 04 June 2008
 
+* Brought select-window command into line with everything else; it now uses
+  -i for the window index.
 * Strings to display on the left and right of the status bar may now be set
   with the status-left and status-right options. These are passed through
   strftime(3) before being displayed. The status bar is automatically updated
@@ -391,4 +393,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.104 2008-06-04 05:40:35 nicm Exp $
+$Id: CHANGES,v 1.105 2008-06-04 16:11:52 nicm Exp $
