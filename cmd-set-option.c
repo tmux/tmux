@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.20 2008-06-04 05:40:35 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.21 2008-06-04 05:47:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -180,12 +180,10 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 		colour |= number << 4;
 		options_set_number(oo, "status-colour", colour);
 
-		if (options_get_number(oo, "status-lines") > 0) {
-			for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-				c = ARRAY_ITEM(&clients, i);
-				if (c != NULL && c->session != NULL)
-					server_redraw_client(c);
-			}
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			c = ARRAY_ITEM(&clients, i);
+			if (c != NULL && c->session != NULL)
+				server_redraw_client(c);
 		}
 	} else if (strcmp(data->option, "status-bg") == 0) {
 		if (data->value == NULL) {
@@ -203,12 +201,10 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 		colour |= number;
 		options_set_number(oo, "status-colour", colour);
 
-		if (options_get_number(oo, "status-lines") > 0) {
-			for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-				c = ARRAY_ITEM(&clients, i);
-				if (c != NULL && c->session != NULL)
-					server_redraw_client(c);
-			}
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			c = ARRAY_ITEM(&clients, i);
+			if (c != NULL && c->session != NULL)
+				server_redraw_client(c);
 		}
 	} else if (strcmp(data->option, "bell-action") == 0) {
 		if (data->value == NULL) {
@@ -247,13 +243,27 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 			ctx->error(ctx, "invalid value");
 			return;
 		}
+
 		options_set_string(oo, "status-left", "%s", data->value);
+
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			c = ARRAY_ITEM(&clients, i);
+			if (c != NULL && c->session != NULL)
+				server_redraw_client(c);
+		}
 	} else if (strcmp(data->option, "status-right") == 0) {
 		if (data->value == NULL) {
 			ctx->error(ctx, "invalid value");
 			return;
 		}
+
 		options_set_string(oo, "status-right", "%s", data->value);
+
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			c = ARRAY_ITEM(&clients, i);
+			if (c != NULL && c->session != NULL)
+				server_redraw_client(c);
+		}
 	} else {
 		ctx->error(ctx, "unknown option: %s", data->option);
 		return;
