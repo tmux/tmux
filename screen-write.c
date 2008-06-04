@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.6 2008-06-04 18:50:34 nicm Exp $ */
+/* $Id: screen-write.c,v 1.7 2008-06-04 19:20:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -98,12 +98,10 @@ screen_write_set_title(struct screen_write_ctx *ctx, char *title)
 }
 
 /* Put a character. */
-int
+void
 screen_write_put_character(struct screen_write_ctx *ctx, u_char ch)
 {
 	struct screen	*s = ctx->s;
-	u_char		 data, attr, colr;
-	int		 n;
 
 	if (s->cx == screen_size_x(s)) {
 		s->cx = 0;
@@ -112,20 +110,14 @@ screen_write_put_character(struct screen_write_ctx *ctx, u_char ch)
 		screen_write_cursor_down_scroll(ctx);
 	} else if (!screen_in_x(s, s->cx) || !screen_in_y(s, s->cy)) {
 		SCREEN_DEBUG(s);
-		return (0);
+		return;
 	}
 
-	screen_display_get_cell(s, s->cx, s->cy, &data, &attr, &colr);
-	if (ch != data || s->attr != attr || colr != s->colr) {
-		screen_display_set_cell(s, s->cx, s->cy, ch, s->attr, s->colr);
-		n = 1;
-	} else
-		n = 0;
+	screen_display_set_cell(s, s->cx, s->cy, ch, s->attr, s->colr);
 	s->cx++;
 
 	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_CHARACTER, ch);
-	return (n);
 }
 
 /* Put a string right-justified. */

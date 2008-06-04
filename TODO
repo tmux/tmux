@@ -64,6 +64,7 @@
 - different screen model? layers perhaps? hmm
 - cfg file improvements
 - proper per-window options (per-session list of window ranges?)
+- better work on modes: search, back word, forward word, etc
 
 ---
 [18:20] *priteau* i found something in tmux that could be tweaked to be better
@@ -76,9 +77,9 @@
 - chmod +x socket when any client is attached (upd in lost/accept)
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably
   should not emulate it doing so
-- status bar customisation variables, date/time, show-activity, show-last-window
-		string-left, string-right - pass through strptime and print...
+- status bar customisation variables, show-activity, show-last-window
 - show-options
 - let server die when last session does
 - each command should have a print op as well for list keys
 - fix occasion start server problems
+- test and fix wsvt25
