@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.15 2008-06-03 16:55:09 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.16 2008-06-04 16:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -168,7 +168,7 @@ cmd_link_window_exec(void *ptr, struct cmd_ctx *ctx)
 		 * Can't use session_detach as it will destroy session if this
 		 * makes it empty.
 		 */
-		session_cancelbell(s, wl2);
+		session_alert_cancel(s, wl2);
 		winlink_remove(&s->windows, wl2);
 
 		/* Force select/redraw if current. */

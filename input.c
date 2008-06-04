@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.46 2008-01-03 21:32:11 nicm Exp $ */
+/* $Id: input.c,v 1.47 2008-06-04 16:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -223,6 +223,8 @@ input_parse(struct window *w)
 	else
 		screen_write_start(&ictx->ctx, &w->base, NULL, NULL);
 
+	if (ictx->off != ictx->len)
+		w->flags |= WINDOW_ACTIVITY;
 	while (ictx->off < ictx->len) {
 		ch = ictx->buf[ictx->off++];
 		ictx->state(ch, ictx);

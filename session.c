@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.33 2008-06-03 21:42:37 nicm Exp $ */
+/* $Id: session.c,v 1.34 2008-06-04 16:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,40 +29,51 @@
 struct sessions	sessions;
 
 void
-session_cancelbell(struct session *s, struct winlink *wl)
+session_alert_cancel(struct session *s, struct winlink *wl)
 {
-	u_int	i;
+	struct session_alert	*sa, *sb;
 
-	for (i = 0; i < ARRAY_LENGTH(&s->bells); i++) {
-		if (ARRAY_ITEM(&s->bells, i) == wl) {
-			ARRAY_REMOVE(&s->bells, i);
-			break;
+	sa = TAILQ_FIRST(&s->alerts);
+	while (sa != NULL) {
+		sb = sa;
+		sa = TAILQ_NEXT(sa, entry);
+
+		if (wl == NULL || sb->wl == wl) {
+			TAILQ_REMOVE(&s->alerts, sb, entry);
+			xfree(sb);
 		}
 	}
 }
 
 void
-session_addbell(struct session *s, struct window *w)
+session_alert_add(struct session *s, struct window *w, int type)
 {
-	struct winlink	*wl;
+	struct session_alert	*sa;
+	struct winlink		*wl;
 
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		if (wl == s->curw)
 			continue;
-		if (wl->window == w && !session_hasbell(s, wl))
-			ARRAY_ADD(&s->bells, wl);
+
+		if (wl->window == w && !session_alert_has(s, wl, type)) {
+			sa = xmalloc(sizeof *sa);
+			sa->wl = wl;
+			sa->type = type;
+			TAILQ_INSERT_HEAD(&s->alerts, sa, entry);
+		}
 	}
 }
 
 int
-session_hasbell(struct session *s, struct winlink *wl)
+session_alert_has(struct session *s, struct winlink *wl, int type)
 {
-	u_int	i;
+	struct session_alert	*sa;
 
-	for (i = 0; i < ARRAY_LENGTH(&s->bells); i++) {
-		if (ARRAY_ITEM(&s->bells, i) == wl)
+	TAILQ_FOREACH(sa, &s->alerts, entry) {
+		if (sa->wl == wl && sa->type == type)
 			return (1);
 	}
+
 	return (0);
 }
 
@@ -94,7 +105,7 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 		fatal("clock_gettime");
 	s->curw = s->lastw = NULL;
 	RB_INIT(&s->windows);
-	ARRAY_INIT(&s->bells);
+	TAILQ_INIT(&s->alerts);
 	options_init(&s->options, &global_options);
 	
 	s->sx = sx;
@@ -138,6 +149,7 @@ session_destroy(struct session *s)
 	while (!ARRAY_EMPTY(&sessions) && ARRAY_LAST(&sessions) == NULL)
 		ARRAY_TRUNC(&sessions, 1);
 
+	session_alert_cancel(s, NULL);
 	options_free(&s->options);
 
 	while (!RB_EMPTY(&s->windows))
@@ -194,7 +206,7 @@ session_detach(struct session *s, struct winlink *wl)
 	if (s->lastw == wl)
 		s->lastw = NULL;
 
-	session_cancelbell(s, wl);
+	session_alert_cancel(s, wl);
 	winlink_remove(&s->windows, wl);
 	if (RB_EMPTY(&s->windows)) {
 		session_destroy(s);
@@ -232,7 +244,7 @@ session_next(struct session *s)
 		return (1);
 	s->lastw = s->curw;
 	s->curw = wl;
-	session_cancelbell(s, wl);
+	session_alert_cancel(s, wl);
 	return (0);
 }
 
@@ -252,7 +264,7 @@ session_previous(struct session *s)
 		return (1);
 	s->lastw = s->curw;
 	s->curw = wl;
-	session_cancelbell(s, wl);
+	session_alert_cancel(s, wl);
 	return (0);
 }
 
@@ -269,7 +281,7 @@ session_select(struct session *s, int idx)
 		return (1);
 	s->lastw = s->curw;
 	s->curw = wl;
-	session_cancelbell(s, wl);
+	session_alert_cancel(s, wl);
 	return (0);
 }
 
@@ -287,6 +299,6 @@ session_last(struct session *s)
 
 	s->lastw = s->curw;
 	s->curw = wl;
-	session_cancelbell(s, wl);
+	session_alert_cancel(s, wl);
 	return (0);
 }

@@ -1,5 +1,8 @@
 04 June 2008
 
+* Change so active/bell windows are inverted in status line.
+* Activity monitoring - window with activity are marked in status line. No
+  way to disable this/filter windows yet.
 * Brought select-window command into line with everything else; it now uses
   -i for the window index.
 * Strings to display on the left and right of the status bar may now be set
@@ -393,4 +396,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.105 2008-06-04 16:11:52 nicm Exp $
+$Id: CHANGES,v 1.106 2008-06-04 16:46:23 nicm Exp $

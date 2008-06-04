@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.127 2008-06-04 16:11:53 nicm Exp $ */
+/* $Id: tmux.h,v 1.128 2008-06-04 16:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -104,6 +104,11 @@ struct buffer {
 	size_t	 size;		/* size of data in buffer */
 	size_t	 off;		/* offset of data in buffer */
 };
+
+/* Bell option values. */
+#define BELL_NONE 0
+#define BELL_ANY 1
+#define BELL_CURRENT 2
 
 /* Key codes. ncurses defines KEY_*. Grrr. */
 #define KEYC_NONE 256
@@ -513,6 +518,7 @@ struct window {
 	int		 flags;
 #define WINDOW_BELL 0x1
 #define WINDOW_HIDDEN 0x2
+#define WINDOW_ACTIVITY 0x4
 
 	struct screen	*screen;
 	struct screen	 base;
@@ -555,6 +561,13 @@ struct options {
 };
 
 /* Client session. */
+struct session_alert {
+	struct winlink	*wl;
+	int		 type;
+
+	TAILQ_ENTRY(session_alert) entry;
+};
+
 struct session {
 	char		*name;
 	struct timespec	 ts;
@@ -568,7 +581,7 @@ struct session {
 
 	struct options	 options;
 
-	ARRAY_DECL(, struct winlink *) bells;	/* windows with bells */
+	TAILQ_HEAD(, session_alert) alerts;
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
 	int		 flags;
@@ -722,16 +735,10 @@ size_t	 	 strlcat(char *, const char *, size_t);
 /* tmux.c */
 extern volatile sig_atomic_t sigwinch;
 extern volatile sig_atomic_t sigterm;
-#define BELL_NONE 0
-#define BELL_ANY 1
-#define BELL_CURRENT 2
 extern struct options global_options;
-extern char	*default_command;
 extern char	*cfg_file;
 extern char	*paste_buffer;
-extern int	 bell_action;
 extern int	 debug_level;
-extern u_int	 history_limit;
 void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);
@@ -1038,9 +1045,9 @@ void printflike2 window_more_add(struct window *, const char *, ...);
 
 /* session.c */
 extern struct sessions sessions;
-void		 session_cancelbell(struct session *, struct winlink *);
-void		 session_addbell(struct session *, struct window *);
-int		 session_hasbell(struct session *, struct winlink *);
+void		 session_alert_add(struct session *, struct window *, int);
+void		 session_alert_cancel(struct session *, struct winlink *);
+int		 session_alert_has(struct session *, struct winlink *, int);
 struct session	*session_find(const char *);
 struct session	*session_create(const char *, const char *, u_int, u_int);
 void		 session_destroy(struct session *);

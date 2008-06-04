@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.51 2008-06-04 05:47:46 nicm Exp $ */
+/* $Id: server.c,v 1.52 2008-06-04 16:46:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -415,31 +415,40 @@ server_handle_window(struct window *w)
 {
 	struct session	*s;
 	u_int		 i;
+	int		 action;
 
 	window_parse(w);
 
-	if (!(w->flags & WINDOW_BELL))
+	if (!(w->flags & (WINDOW_BELL|WINDOW_ACTIVITY)))
 		return;
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
 		if (s == NULL || !session_has(s, w))
 			continue;
-		session_addbell(s, w);
 
-		switch (options_get_number(&s->options, "bell-action")) {
-		case BELL_ANY:
-			tty_write_session(s, TTY_CHARACTER, '\007');
-			break;
-		case BELL_CURRENT:
-			if (s->curw->window == w)
+		if (w->flags & WINDOW_BELL) {
+			session_alert_add(s, w, WINDOW_BELL);
+
+			action = options_get_number(&s->options, "bell-action");
+			switch (action) {
+			case BELL_ANY:
 				tty_write_session(s, TTY_CHARACTER, '\007');
-			break;
+				break;
+			case BELL_CURRENT:
+				if (s->curw->window != w)
+					break;
+				tty_write_session(s, TTY_CHARACTER, '\007');
+				break;
+			}
 		}
+
+		if (w->flags & WINDOW_ACTIVITY)
+			session_alert_add(s, w, WINDOW_ACTIVITY);
 	}
 	server_status_window(w);
 
-	w->flags &= ~WINDOW_BELL;
+	w->flags &= ~(WINDOW_BELL|WINDOW_ACTIVITY);
 }
 
 /* Lost window: move clients on to next window. */
