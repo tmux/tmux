@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.4 2007-11-09 17:09:34 nicm Exp $ */
+/* $Id: key-string.c,v 1.5 2008-06-04 20:01:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -201,6 +201,11 @@ struct {
 	{ "^X",		24 },
 	{ "^Y",		25 },
 	{ "^Z",		26 },
+	{ "^[",		27 },
+	{ "^\\",	28 },
+	{ "^]",		29 },
+	{ "^^",		30 },
+	{ "^_",		31 }
 };
 #define NKEYSTRINGS (sizeof key_string_table / sizeof key_string_table[0])
 
