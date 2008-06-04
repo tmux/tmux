@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.125 2008-06-03 21:42:37 nicm Exp $ */
+/* $Id: tmux.h,v 1.126 2008-06-04 05:40:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -619,6 +619,7 @@ struct client {
 	struct buffer	*out;
 
 	struct tty 	 tty;
+	struct timespec	 status_ts;
 
 	u_int		 sx;
 	u_int		 sy;

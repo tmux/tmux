@@ -1,3 +1,12 @@
+04 June 2008
+
+* Strings to display on the left and right of the status bar may now be set
+  with the status-left and status-right options. These are passed through
+  strftime(3) before being displayed. The status bar is automatically updated
+  at an interval set by the status-interval option. The default is to display
+  nothing on the left and the date and time on the left; the default update
+  interval is 15 seconds.
+
 03 June 2008
 
 * Per session options. Setting options without specifying a session sets the
@@ -382,4 +391,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.103 2008-06-03 21:42:36 nicm Exp $
+$Id: CHANGES,v 1.104 2008-06-04 05:40:35 nicm Exp $

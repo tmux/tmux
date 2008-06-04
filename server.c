@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.49 2008-06-03 21:42:37 nicm Exp $ */
+/* $Id: server.c,v 1.50 2008-06-04 05:40:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -163,7 +163,7 @@ server_main(const char *srv_path, int srv_fd)
 
 		/* Do the poll. */
 		log_debug("polling %d fds", nfds);
-		if ((nfds = poll(pfds, nfds, INFTIM)) == -1) {
+		if ((nfds = poll(pfds, nfds, 500)) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			fatal("poll failed");
@@ -290,10 +290,20 @@ void
 server_handle_clients(struct pollfd **pfd)
 {
 	struct client	*c;
+	struct timespec	 now;
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
+
+		/* XXX REDRAW FLAGS */
+		if (c->session != NULL && options_get_number(
+		    &c->session->options, "status-lines") != 0) {
+			if (clock_gettime(CLOCK_REALTIME, &now) != 0)
+				fatal("clock_gettime");
+			if (timespeccmp(&now, &c->status_ts, >))
+				server_status_client(c);
+		}
 
 		if (c != NULL) {
 			log_debug("testing client %d (%d)", (*pfd)->fd, c->fd);
