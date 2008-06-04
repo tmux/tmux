@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.16 2008-06-03 21:42:37 nicm Exp $ */
+/* $Id: window-copy.c,v 1.17 2008-06-04 18:50:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -184,9 +184,11 @@ window_copy_key(struct window *w, int key)
 		window_copy_copy_selection(w);
 		window_reset_mode(w);
 		break;
+	case '0':
 	case '\001':	/* C-a */
 		window_copy_cursor_start_of_line(w);
 		break;
+	case '$':
 	case '\005':	/* C-e */
 		window_copy_cursor_end_of_line(w);
 		break;

@@ -81,3 +81,4 @@
 - show-options
 - let server die when last session does
 - each command should have a print op as well for list keys
+- fix occasion start server problems
