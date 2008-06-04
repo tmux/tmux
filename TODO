@@ -14,7 +14,6 @@
 - could use bsearch all over the place or get rid of smaller tables (clientmsg)
 - better errors when creating new windows/sessions (how?)
 - session with CMD_NOSESSION should be an error
-- each command should have a print op as well for list keys
 - Implicitly add exec to the commands for new windows (switch to disable it)
 - nested sessions, ie session as window - moving to it moves into session
   (remembering parent)
@@ -64,12 +63,7 @@
 - poll(2) is broken on OS X/Darwin, a workaround for this would be nice
 - different screen model? layers perhaps? hmm
 - cfg file improvements
-- select-window can become windowonly (what about default?)
-- monitor for activity in windows as well as bell
-- status bar customisation variables, date/time, show-activity, show-last-window
-		string-left, string-right - pass through strptime and print...
-- per-window options (per-session list of window ranges?)
-- show-options
+- proper per-window options (per-session list of window ranges?)
 
 ---
 [18:20] *priteau* i found something in tmux that could be tweaked to be better
@@ -82,3 +76,8 @@
 - chmod +x socket when any client is attached (upd in lost/accept)
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably
   should not emulate it doing so
+- status bar customisation variables, date/time, show-activity, show-last-window
+		string-left, string-right - pass through strptime and print...
+- show-options
+- let server die when last session does
+- each command should have a print op as well for list keys
