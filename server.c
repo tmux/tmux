@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.52 2008-06-04 16:46:23 nicm Exp $ */
+/* $Id: server.c,v 1.53 2008-06-04 17:54:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -419,7 +419,7 @@ server_handle_window(struct window *w)
 
 	window_parse(w);
 
-	if (!(w->flags & (WINDOW_BELL|WINDOW_ACTIVITY)))
+	if (!(w->flags & WINDOW_BELL) && !(w->flags & WINDOW_ACTIVITY))
 		return;
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
@@ -443,7 +443,7 @@ server_handle_window(struct window *w)
 			}
 		}
 
-		if (w->flags & WINDOW_ACTIVITY)
+		if ((w->flags & WINDOW_MONITOR) && (w->flags & WINDOW_ACTIVITY))
 			session_alert_add(s, w, WINDOW_ACTIVITY);
 	}
 	server_status_window(w);

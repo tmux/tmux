@@ -1,5 +1,8 @@
 04 June 2008
 
+* New command set-window-option (alias setw) to set the single current window
+  option: monitor-activity to determine whether window activity is shown in
+  the status bar for that window (default off).
 * Change so active/bell windows are inverted in status line.
 * Activity monitoring - window with activity are marked in status line. No
   way to disable this/filter windows yet.
@@ -396,4 +399,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.106 2008-06-04 16:46:23 nicm Exp $
+$Id: CHANGES,v 1.107 2008-06-04 17:54:26 nicm Exp $

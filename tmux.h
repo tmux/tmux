@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.128 2008-06-04 16:46:23 nicm Exp $ */
+/* $Id: tmux.h,v 1.129 2008-06-04 17:54:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -519,6 +519,7 @@ struct window {
 #define WINDOW_BELL 0x1
 #define WINDOW_HIDDEN 0x2
 #define WINDOW_ACTIVITY 0x4
+#define WINDOW_MONITOR 0x8
 
 	struct screen	*screen;
 	struct screen	 base;
@@ -818,6 +819,7 @@ extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_keys_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
 extern const struct cmd_entry cmd_set_option_entry;
+extern const struct cmd_entry cmd_set_window_option_entry;
 extern const struct cmd_entry cmd_start_server_entry;
 extern const struct cmd_entry cmd_swap_window_entry;
 extern const struct cmd_entry cmd_switch_client_entry;
