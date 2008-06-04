@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.21 2008-06-04 05:47:46 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.22 2008-06-04 18:34:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -144,7 +144,7 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 		    strcasecmp(data->value, "no") == 0)
 			bool = 0;
 	} else
-		bool = 1;
+		bool = -2;
 
 	if (strcmp(data->option, "prefix") == 0) {
 		if (data->value == NULL) {
@@ -162,6 +162,8 @@ cmd_set_option_exec(void *ptr, unused struct cmd_ctx *ctx)
 			ctx->error(ctx, "bad value: %s", data->value);
 			return;
 		}
+		if (bool == -2)
+			bool = !options_get_number(oo, "status-lines");
 		options_set_number(oo, "status-lines", bool);
 		recalculate_sizes();
 	} else if (strcmp(data->option, "status-fg") == 0) {
