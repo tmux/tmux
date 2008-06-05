@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.17 2008-06-05 16:35:31 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.18 2008-06-05 17:12:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,13 +32,14 @@ void	cmd_link_window_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_link_window_send(struct cmd *, struct buffer *);
 void	cmd_link_window_recv(struct cmd *, struct buffer *);
 void	cmd_link_window_free(struct cmd *);
+void	cmd_link_window_print(struct cmd *, char *, size_t);
 
 struct cmd_link_window_data {
 	char	*cname;
 	char	*sname;
+	int	 idx;
 	int	 flag_detached;
 	int	 flag_kill;
-	int	 dstidx;
 	int	 srcidx;
 	char	*srcname;
 };
@@ -53,7 +54,7 @@ const struct cmd_entry cmd_link_window_entry = {
 	cmd_link_window_recv,
 	cmd_link_window_free,
 	NULL,
-	NULL
+	cmd_link_window_print
 };
 
 int
@@ -68,7 +69,7 @@ cmd_link_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 	data->sname = NULL;
 	data->flag_detached = 0;
 	data->flag_kill = 0;
-	data->dstidx = -1;
+	data->idx = -1;
 	data->srcidx = -1;
 	data->srcname = NULL;
 
@@ -84,7 +85,7 @@ cmd_link_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 			data->flag_detached = 1;
 			break;
 		case 'i':
-			data->dstidx = strtonum(optarg, 0, INT_MAX, &errstr);
+			data->idx = strtonum(optarg, 0, INT_MAX, &errstr);
 			if (errstr != NULL) {
 				xasprintf(cause, "index %s", errstr);
 				goto error;
@@ -155,12 +156,12 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (data->dstidx < 0)
-		data->dstidx = -1;
-	if (data->flag_kill && data->dstidx != -1) {
-		wl2 = winlink_find_by_index(&s->windows, data->dstidx);
+	if (data->idx < 0)
+		data->idx = -1;
+	if (data->flag_kill && data->idx != -1) {
+		wl2 = winlink_find_by_index(&s->windows, data->idx);
 		if (wl2 == NULL) {
-			ctx->error(ctx, "no window %d", data->dstidx);
+			ctx->error(ctx, "no window %d", data->idx);
 			return;
 		}
 
@@ -185,9 +186,9 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		 */
 	}
 
-	wl = session_attach(s, wl->window, data->dstidx);
+	wl = session_attach(s, wl->window, data->idx);
 	if (wl == NULL) {
-		ctx->error(ctx, "index in use: %d", data->dstidx);
+		ctx->error(ctx, "index in use: %d", data->idx);
 		return;
 	}
 
@@ -236,4 +237,29 @@ cmd_link_window_free(struct cmd *self)
 	if (data->srcname != NULL)
 		xfree(data->srcname);
 	xfree(data);
+}
+
+void
+cmd_link_window_print(struct cmd *self, char *buf, size_t len)
+{
+	struct cmd_link_window_data	*data = self->data;
+	size_t				 off = 0;
+
+	off += xsnprintf(buf, len, "%s", self->entry->name);
+	if (data == NULL)
+		return;
+	if (off < len && data->flag_detached)
+		off += xsnprintf(buf + off, len - off, " -d");
+	if (off < len && data->flag_kill)
+		off += xsnprintf(buf + off, len - off, " -k");
+	if (off < len && data->cname != NULL)
+		off += xsnprintf(buf + off, len - off, " -c %s", data->cname);
+	if (off < len && data->sname != NULL)
+		off += xsnprintf(buf + off, len - off, " -s %s", data->sname);
+	if (off < len && data->idx != -1)
+		off += xsnprintf(buf + off, len - off, " -i %d", data->idx);
+	if (off < len && data->srcname != NULL)
+		off += xsnprintf(buf + off, len - off, " %s", data->srcname);
+	if (off < len && data->srcidx != -1)
+		off += xsnprintf(buf + off, len - off, " %d", data->srcidx);
 }

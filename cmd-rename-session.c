@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-session.c,v 1.9 2008-06-05 16:35:32 nicm Exp $ */
+/* $Id: cmd-rename-session.c,v 1.10 2008-06-05 17:12:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,6 +32,7 @@ void	cmd_rename_session_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_rename_session_send(struct cmd *, struct buffer *);
 void	cmd_rename_session_recv(struct cmd *, struct buffer *);
 void	cmd_rename_session_free(struct cmd *);
+void	cmd_rename_session_print(struct cmd *, char *, size_t);
 
 struct cmd_rename_session_data {
 	char	*cname;
@@ -42,14 +43,14 @@ struct cmd_rename_session_data {
 const struct cmd_entry cmd_rename_session_entry = {
 	"rename-session", "rename",
 	"[-c client-tty|-s session-name] new-name",
-	0,
+	0,	
 	cmd_rename_session_parse,
 	cmd_rename_session_exec,
 	cmd_rename_session_send,
 	cmd_rename_session_recv,
 	cmd_rename_session_free,
 	NULL,
-	NULL
+	cmd_rename_session_print
 };
 
 int
@@ -151,4 +152,9 @@ cmd_rename_session_free(struct cmd *self)
 	if (data->newname != NULL)
 		xfree(data->newname);
 	xfree(data);
+}
+
+void
+cmd_rename_session_print(struct cmd *cmd, char *buf, size_t len)
+{
 }

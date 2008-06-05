@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.25 2008-06-05 16:35:31 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.26 2008-06-05 17:12:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,6 +32,7 @@ void	cmd_new_session_send(struct cmd *, struct buffer *);
 void	cmd_new_session_recv(struct cmd *, struct buffer *);
 void	cmd_new_session_free(struct cmd *);
 void	cmd_new_session_init(struct cmd *, int);
+void	cmd_new_session_print(struct cmd *, char *, size_t);
 
 struct cmd_new_session_data {
 	char	*name;
@@ -50,7 +51,7 @@ const struct cmd_entry cmd_new_session_entry = {
 	cmd_new_session_recv,
 	cmd_new_session_free,
 	cmd_new_session_init,
-	NULL
+	cmd_new_session_print
 };
 
 void
@@ -209,4 +210,9 @@ cmd_new_session_free(struct cmd *self)
 	if (data->cmd != NULL)
 		xfree(data->cmd);
 	xfree(data);
+}
+
+void
+cmd_new_session_print(struct cmd *cmd, char *buf, size_t len)
+{
 }

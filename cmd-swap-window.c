@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-window.c,v 1.9 2008-06-05 16:35:32 nicm Exp $ */
+/* $Id: cmd-swap-window.c,v 1.10 2008-06-05 17:12:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,11 +32,12 @@ void	cmd_swap_window_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_swap_window_send(struct cmd *, struct buffer *);
 void	cmd_swap_window_recv(struct cmd *, struct buffer *);
 void	cmd_swap_window_free(struct cmd *);
+void	cmd_swap_window_print(struct cmd *, char *, size_t);
 
 struct cmd_swap_window_data {
 	char	*cname;
 	char	*sname;
-	int	 dstidx;
+	int	 idx;
 	int	 srcidx;
 	char	*srcname;
 	int	 flag_detached;
@@ -44,7 +45,7 @@ struct cmd_swap_window_data {
 
 const struct cmd_entry cmd_swap_window_entry = {
 	"swap-window", "swapw",
-	"[-c client-tty|-s session-name] [-i index] session-name index",
+	"[-d] [-c client-tty|-s session-name] [-i index] session-name index",
 	0,
 	cmd_swap_window_parse,
 	cmd_swap_window_exec,
@@ -52,7 +53,7 @@ const struct cmd_entry cmd_swap_window_entry = {
 	cmd_swap_window_recv,
 	cmd_swap_window_free,
 	NULL,
-	NULL
+	cmd_swap_window_print
 };
 
 int
@@ -66,7 +67,7 @@ cmd_swap_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 	data->cname = NULL;
 	data->sname = NULL;
 	data->flag_detached = 0;
-	data->dstidx = -1;
+	data->idx = -1;
 	data->srcidx = -1;
 	data->srcname = NULL;
 
@@ -82,7 +83,7 @@ cmd_swap_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 			data->flag_detached = 1;
 			break;
 		case 'i':
-			data->dstidx = strtonum(optarg, 0, INT_MAX, &errstr);
+			data->idx = strtonum(optarg, 0, INT_MAX, &errstr);
 			if (errstr != NULL) {
 				xasprintf(cause, "index %s", errstr);
 				goto error;
@@ -151,14 +152,14 @@ cmd_swap_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (data->dstidx < 0)
-		data->dstidx = -1;
-	if (data->dstidx == -1)
+	if (data->idx < 0)
+		data->idx = -1;
+	if (data->idx == -1)
 		dstwl = s->curw;
 	else {
-		dstwl = winlink_find_by_index(&s->windows, data->dstidx);
+		dstwl = winlink_find_by_index(&s->windows, data->idx);
 		if (dstwl == NULL) {
-			ctx->error(ctx, "no window %d", data->dstidx);
+			ctx->error(ctx, "no window %d", data->idx);
 			return;
 		}
 	}
@@ -215,4 +216,27 @@ cmd_swap_window_free(struct cmd *self)
 	if (data->srcname != NULL)
 		xfree(data->srcname);
 	xfree(data);
+}
+
+void
+cmd_swap_window_print(struct cmd *self, char *buf, size_t len)
+{
+	struct cmd_swap_window_data	*data = self->data;
+	size_t				 off = 0;
+
+	off += xsnprintf(buf, len, "%s", self->entry->name);
+	if (data == NULL)
+		return;
+	if (off < len && data->flag_detached)
+		off += xsnprintf(buf + off, len - off, " -d");
+	if (off < len && data->cname != NULL)
+		off += xsnprintf(buf + off, len - off, " -c %s", data->cname);
+	if (off < len && data->sname != NULL)
+		off += xsnprintf(buf + off, len - off, " -s %s", data->sname);
+	if (off < len && data->idx != -1)
+		off += xsnprintf(buf + off, len - off, " -i %d", data->idx);
+	if (off < len && data->srcname != NULL)
+		off += xsnprintf(buf + off, len - off, " %s", data->srcname);
+	if (off < len && data->srcidx != -1)
+		off += xsnprintf(buf + off, len - off, " %d", data->srcidx);
 }

@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.16 2008-06-05 16:35:31 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.17 2008-06-05 17:12:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,6 +31,7 @@ void	cmd_attach_session_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_attach_session_send(struct cmd *, struct buffer *);
 void	cmd_attach_session_recv(struct cmd *, struct buffer *);
 void	cmd_attach_session_free(struct cmd *);
+void	cmd_attach_session_print(struct cmd *, char *, size_t);
 
 struct cmd_attach_session_data {
 	char	*cname;
@@ -48,7 +49,7 @@ const struct cmd_entry cmd_attach_session_entry = {
 	cmd_attach_session_recv,
 	cmd_attach_session_free,
 	NULL,
-	NULL
+	cmd_attach_session_print
 };
 
 int
@@ -161,4 +162,21 @@ cmd_attach_session_free(struct cmd *self)
 	if (data->sname != NULL)
 		xfree(data->sname);
 	xfree(data);
+}
+
+void
+cmd_attach_session_print(struct cmd *self, char *buf, size_t len)
+{
+	struct cmd_attach_session_data	*data = self->data;
+	size_t				 off = 0;
+
+	off += xsnprintf(buf, len, "%s", self->entry->name);
+	if (data == NULL)
+		return;
+	if (off < len && data->flag_detach)
+		off += xsnprintf(buf + off, len - off, " -d");
+	if (off < len && data->cname != NULL)
+		off += xsnprintf(buf + off, len - off, " -c %s", data->cname);
+	if (off < len && data->sname != NULL)
+		off += xsnprintf(buf + off, len - off, " -s %s", data->sname);
 }

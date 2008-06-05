@@ -1,4 +1,4 @@
-/* $Id: cmd-send-keys.c,v 1.8 2008-06-05 16:35:32 nicm Exp $ */
+/* $Id: cmd-send-keys.c,v 1.9 2008-06-05 17:12:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,6 +32,7 @@ void	cmd_send_keys_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_send_keys_send(struct cmd *, struct buffer *);
 void	cmd_send_keys_recv(struct cmd *, struct buffer *);
 void	cmd_send_keys_free(struct cmd *);
+void	cmd_send_keys_print(struct cmd *, char *, size_t);
 
 struct cmd_send_keys_data {
 	char	*cname;
@@ -51,7 +52,7 @@ const struct cmd_entry cmd_send_keys_entry = {
 	cmd_send_keys_recv,
 	cmd_send_keys_free,
 	NULL,
-	NULL
+	cmd_send_keys_print
 };
 
 int
@@ -180,4 +181,28 @@ cmd_send_keys_free(struct cmd *self)
 	if (data->sname != NULL)
 		xfree(data->sname);
 	xfree(data);
+}
+
+void
+cmd_send_keys_print(struct cmd *self, char *buf, size_t len)
+{
+	struct cmd_send_keys_data	*data = self->data;
+	size_t				 off = 0;
+	u_int				 i;
+
+	off += xsnprintf(buf, len, "%s", self->entry->name);
+	if (data == NULL)
+		return;
+		off += xsnprintf(buf + off, len - off, " -c %s", data->cname);
+	if (off < len && data->sname != NULL)
+		off += xsnprintf(buf + off, len - off, " -s %s", data->sname);
+	if (off < len && data->idx != -1)
+		off += xsnprintf(buf + off, len - off, " -i %d", data->idx);
+
+	for (i = 0; i < data->nkeys; i++) {
+		if (off >= len)
+			break;
+		off += xsnprintf(buf + off,
+		    len - off, " %s", key_string_lookup_key(data->keys[i]));
+	}
 }

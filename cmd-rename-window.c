@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-window.c,v 1.20 2008-06-05 16:35:32 nicm Exp $ */
+/* $Id: cmd-rename-window.c,v 1.21 2008-06-05 17:12:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,6 +32,7 @@ void	cmd_rename_window_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_rename_window_send(struct cmd *, struct buffer *);
 void	cmd_rename_window_recv(struct cmd *, struct buffer *);
 void	cmd_rename_window_free(struct cmd *);
+void	cmd_rename_window_print(struct cmd *, char *, size_t);
 
 struct cmd_rename_window_data {
 	char	*cname;
@@ -50,7 +51,7 @@ const struct cmd_entry cmd_rename_window_entry = {
 	cmd_rename_window_recv,
 	cmd_rename_window_free,
 	NULL,
-	NULL
+	cmd_rename_window_print
 };
 
 int
@@ -166,4 +167,23 @@ cmd_rename_window_free(struct cmd *self)
 	if (data->newname != NULL)
 		xfree(data->newname);
 	xfree(data);
+}
+
+void
+cmd_rename_window_print(struct cmd *self, char *buf, size_t len)
+{
+	struct cmd_rename_window_data	*data = self->data;
+	size_t				 off = 0;
+
+	off += xsnprintf(buf, len, "%s", self->entry->name);
+	if (data == NULL)
+		return;
+	if (off < len && data->cname != NULL)
+		off += xsnprintf(buf + off, len - off, " -c %s", data->cname);
+	if (off < len && data->sname != NULL)
+		off += xsnprintf(buf + off, len - off, " -s %s", data->sname);
+	if (off < len && data->idx != -1)
+		off += xsnprintf(buf + off, len - off, " -i %d", data->idx);
+	if (off < len && data->newname != NULL)
+		off += xsnprintf(buf + off, len - off, " %s", data->newname);
 }
