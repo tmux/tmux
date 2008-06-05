@@ -1,5 +1,26 @@
 05 June 2008
 
+* Completely reorganise command parsing. Much more common code in cmd-generic.c
+  and a new way of specifying windows, clients or sessions. Now, most commands
+  take a -t argument, which specifies a client, a session, or a window target. 
+  Clients and sessions are given alone (sessions are fnmatch(3)d and 
+  clients currently not), windows are give by (client|session):index. For
+  example, if a user is in session "1" window 0 on /dev/ttypi, these should all
+  be equivalent:
+
+	tmux renamew newname			(current session and window)
+	tmux renamew -t: newname		(current session and window)
+	tmux renamew -t:0 newname		(current session, window 0)
+	tmux renamew -t0 newname		(current session, window 0)
+	tmux renamew -t1:0 newname		(session 1, window 0)
+	tmux renamew -t1: newname		(session 1, current window)
+	tmux renamew -t/dev/ttypi newname	(client /dev/ttypi's current
+						 session and window)
+	tmux renamew -t/dev/ttypi: newname	(client /dev/ttypi's current
+						 session and window)
+	tmux renamew -t/dev/ttypi:0 newname	(client /dev/ttypi's current
+						 session, window 0)
+
 * Infrastructure for printing arguments in list-keys output. Easy ones only for
   now.
 
@@ -408,4 +429,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.110 2008-06-05 16:35:31 nicm Exp $
+$Id: CHANGES,v 1.111 2008-06-05 21:24:59 nicm Exp $

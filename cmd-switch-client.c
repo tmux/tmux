@@ -1,4 +1,4 @@
-/* $Id: cmd-switch-client.c,v 1.8 2008-06-05 17:12:11 nicm Exp $ */
+/* $Id: cmd-switch-client.c,v 1.9 2008-06-05 21:25:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,20 +36,20 @@ void	cmd_switch_client_free(struct cmd *);
 void	cmd_switch_client_print(struct cmd *, char *, size_t);
 
 struct cmd_switch_client_data {
-	char	*cname;
 	char	*name;
+	char	*target;
 };
 
 const struct cmd_entry cmd_switch_client_entry = {
 	"switch-client", "switchc",
-	"[-c client-tty] session-name",
+	"[-c client-tty] [-t target-session]",
 	0,
+	NULL,
 	cmd_switch_client_parse,
 	cmd_switch_client_exec,
 	cmd_switch_client_send,
 	cmd_switch_client_recv,
 	cmd_switch_client_free,
-	NULL,
 	cmd_switch_client_print
 };
 
@@ -60,13 +60,16 @@ cmd_switch_client_parse(struct cmd *self, int argc, char **argv, char **cause)
 	int				 opt;
 
 	self->data = data = xmalloc(sizeof *data);
-	data->cname = NULL;
 	data->name = NULL;
+	data->target = NULL;
 
-	while ((opt = getopt(argc, argv, "c:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:t:")) != EOF) {
 		switch (opt) {
 		case 'c':
-			data->cname = xstrdup(optarg);
+			data->name = xstrdup(optarg);
+			break;
+		case 't':
+			data->target = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -74,10 +77,8 @@ cmd_switch_client_parse(struct cmd *self, int argc, char **argv, char **cause)
 	}
 	argc -= optind;
 	argv += optind;
-	if (argc != 1)
+	if (argc != 0)
 		goto usage;
-
-	data->name = xstrdup(argv[0]);
 
 	return (0);
 
@@ -98,13 +99,11 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (data == NULL)
 		return;
 
-	if ((c = cmd_find_client(ctx, data->cname)) == NULL)
+	if ((c = cmd_find_client(ctx, data->name)) == NULL)
 		return;
-
-	if ((s = session_find(data->name)) == NULL) {
-		ctx->error(ctx, "session not found: %s", data->name);
+	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return;
-	}
+	
 	c->session = s;
 
 	recalculate_sizes();
@@ -120,8 +119,8 @@ cmd_switch_client_send(struct cmd *self, struct buffer *b)
 	struct cmd_switch_client_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->cname);
 	cmd_send_string(b, data->name);
+	cmd_send_string(b, data->target);
 }
 
 void
@@ -131,8 +130,8 @@ cmd_switch_client_recv(struct cmd *self, struct buffer *b)
 
 	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
-	data->cname = cmd_recv_string(b);
 	data->name = cmd_recv_string(b);
+	data->target = cmd_recv_string(b);
 }
 
 void
@@ -140,10 +139,10 @@ cmd_switch_client_free(struct cmd *self)
 {
 	struct cmd_switch_client_data	*data = self->data;
 
-	if (data->cname != NULL)
-		xfree(data->cname);
 	if (data->name != NULL)
 		xfree(data->name);
+	if (data->target != NULL)
+		xfree(data->target);
 	xfree(data);
 }
 
@@ -156,8 +155,8 @@ cmd_switch_client_print(struct cmd *self, char *buf, size_t len)
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
 		return;
-	if (off < len && data->cname != NULL)
-		off += xsnprintf(buf + off, len - off, " -c %s", data->cname);
 	if (off < len && data->name != NULL)
-		off += xsnprintf(buf + off, len - off, " %s", data->name);
+		off += xsnprintf(buf + off, len - off, " -c %s", data->name);
+	if (off < len && data->target != NULL)
+		off += xsnprintf(buf + off, len - off, " -t %s", data->target);
 }

@@ -1,4 +1,4 @@
-/* $Id: cmd-last-window.c,v 1.10 2008-06-05 16:35:31 nicm Exp $ */
+/* $Id: cmd-last-window.c,v 1.11 2008-06-05 21:25:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,23 +28,24 @@ void	cmd_last_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_last_window_entry = {
 	"last-window", "last", 
-	CMD_SESSIONONLY_USAGE,
+	CMD_TARGET_SESSION_USAGE,
 	0,
-	cmd_sessiononly_parse,
+	cmd_target_init,
+	cmd_target_parse,
 	cmd_last_window_exec,
-	cmd_sessiononly_send,
-	cmd_sessiononly_recv,
-	cmd_sessiononly_free,
-	NULL,
-	cmd_sessiononly_print
+	cmd_target_send,
+	cmd_target_recv,
+	cmd_target_free,
+	cmd_target_print
 };
 
 void
 cmd_last_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct session	*s;
-
-	if ((s = cmd_sessiononly_get(self, ctx)) == NULL)
+	struct cmd_target_data	*data = self->data;
+	struct session		*s;
+	
+	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return;
 
 	if (session_last(s) == 0)

@@ -1,4 +1,4 @@
-/* $Id: cmd-select-window.c,v 1.17 2008-06-05 16:35:32 nicm Exp $ */
+/* $Id: cmd-select-window.c,v 1.18 2008-06-05 21:25:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,35 +32,36 @@ void	cmd_select_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_select_window_entry = {
 	"select-window", "selectw",
-	CMD_WINDOWONLY_USAGE,
+	CMD_TARGET_WINDOW_USAGE,
 	0,
-	cmd_windowonly_parse,
-	cmd_select_window_exec,
-	cmd_windowonly_send,
-	cmd_windowonly_recv,
-	cmd_windowonly_free,
 	cmd_select_window_init,
-	cmd_windowonly_print
+	cmd_target_parse,
+	cmd_select_window_exec,
+	cmd_target_send,
+	cmd_target_recv,
+	cmd_target_free,
+	cmd_target_print
 };
 
 void
-cmd_select_window_init(struct cmd *self, int arg)
+cmd_select_window_init(struct cmd *self, int key)
 {
-	struct cmd_windowonly_data	*data;
+	struct cmd_target_data	*data;
 
-	self->data = data = xmalloc(sizeof *data);
-	data->cname = NULL;
-	data->sname = NULL;
-	data->idx = arg - '0';
+	cmd_target_init(self, key);
+	data = self->data;
+
+	xasprintf(&data->target, ":%d", key - '0');
 }
 
 void
 cmd_select_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct winlink	*wl;
-	struct session	*s;
+	struct cmd_target_data	*data = self->data;
+	struct winlink		*wl;
+	struct session		*s;
 
-	if ((wl = cmd_windowonly_get(self, ctx, &s)) == NULL)
+	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return;
 
 	if (session_select(s, wl->idx) == 0)

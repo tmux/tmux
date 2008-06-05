@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.4 2008-06-05 17:12:11 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.5 2008-06-05 21:25:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,23 +36,21 @@ void	cmd_set_window_option_free(struct cmd *);
 void	cmd_set_window_option_print(struct cmd *, char *, size_t);
 
 struct cmd_set_window_option_data {
-	char	*cname;
-	char	*sname;
-	int	 idx;
+	char	*target;
 	char	*option;
 	char	*value;
 };
 
 const struct cmd_entry cmd_set_window_option_entry = {
 	"set-window-option", "setw",
-	"[-c client-tty|-s session-name] [-i index] option value",
+	"[-t target-window] option value",
 	0,
+	NULL,
 	cmd_set_window_option_parse,
 	cmd_set_window_option_exec,
 	cmd_set_window_option_send,
 	cmd_set_window_option_recv,
 	cmd_set_window_option_free,
-	NULL,
 	cmd_set_window_option_print
 };
 
@@ -62,35 +60,17 @@ cmd_set_window_option_parse(
 {
 	struct cmd_set_window_option_data	*data;
 	int				 	 opt;
-	const char   				*errstr;
 
 	self->data = data = xmalloc(sizeof *data);
-	data->cname = NULL;
-	data->sname = NULL;
-	data->idx = -1;
+	data->target = NULL;
 	data->option = NULL;
 	data->value = NULL;
 
-	while ((opt = getopt(argc, argv, "c:i:s:")) != EOF) {
+	while ((opt = getopt(argc, argv, "t:")) != EOF) {
 		switch (opt) {
-		case 'c':
-			if (data->sname != NULL)
-				goto usage;
-			if (data->cname == NULL)
-				data->cname = xstrdup(optarg);
-			break;
-		case 'i':
-			data->idx = strtonum(optarg, 0, INT_MAX, &errstr);
-			if (errstr != NULL) {
-				xasprintf(cause, "index %s", errstr);
-				goto error;
-			}
-			break;
-		case 's':
-			if (data->cname != NULL)
-				goto usage;
-			if (data->sname == NULL)
-				data->sname = xstrdup(optarg);
+		case 't':
+			if (data->target == NULL)
+				data->target = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -110,13 +90,12 @@ cmd_set_window_option_parse(
 usage:
 	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
-error:
 	self->entry->free(self);
 	return (-1);
 }
 
 void
-cmd_set_window_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
+cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_set_window_option_data	*data = self->data;
 	struct winlink				*wl;
@@ -128,10 +107,7 @@ cmd_set_window_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 	if (data == NULL)
 		return;
 
-	if (data == NULL)
-		return;
-
-	wl = cmd_find_window(ctx, data->cname, data->sname, data->idx, &s);
+	wl = cmd_find_window(ctx, data->target, &s);
 	if (wl == NULL)
 		return;
 
@@ -189,8 +165,7 @@ cmd_set_window_option_send(struct cmd *self, struct buffer *b)
 	struct cmd_set_window_option_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->cname);
-	cmd_send_string(b, data->sname);
+	cmd_send_string(b, data->target);
 	cmd_send_string(b, data->option);
 	cmd_send_string(b, data->value);
 }
@@ -202,8 +177,7 @@ cmd_set_window_option_recv(struct cmd *self, struct buffer *b)
 
 	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
-	data->cname = cmd_recv_string(b);
-	data->sname = cmd_recv_string(b);
+	data->target = cmd_recv_string(b);
 	data->option = cmd_recv_string(b);
 	data->value = cmd_recv_string(b);
 }
@@ -213,10 +187,8 @@ cmd_set_window_option_free(struct cmd *self)
 {
 	struct cmd_set_window_option_data	*data = self->data;
 
-	if (data->cname != NULL)
-		xfree(data->cname);
-	if (data->sname != NULL)
-		xfree(data->sname);
+	if (data->target != NULL)
+		xfree(data->target);
 	if (data->option != NULL)
 		xfree(data->option);
 	if (data->value != NULL)
@@ -233,6 +205,8 @@ cmd_set_window_option_print(struct cmd *self, char *buf, size_t len)
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
 		return;
+	if (off < len && data->target != NULL)
+		off += xsnprintf(buf + off, len - off, " -t %s", data->target);
 	if (off < len && data->option != NULL)
 		off += xsnprintf(buf + off, len - off, " %s", data->option);
 	if (off < len && data->value != NULL)

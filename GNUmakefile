@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.15 2008-06-05 05:04:47 nicm Exp $
+# $Id: GNUmakefile,v 1.16 2008-06-05 21:25:00 nicm Exp $
 
 .PHONY: clean
 
@@ -14,7 +14,7 @@ META?= \002
 SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       xmalloc.c xmalloc-debug.c input.c input-keys.c screen.c screen-display.c \
       window.c session.c log.c client.c client-msg.c client-fn.c cfg.c \
-      key-string.c key-bindings.c resize.c cmd.c cmd-generic.c \
+      key-string.c key-bindings.c resize.c arg.c cmd.c cmd-generic.c \
       cmd-detach-client.c cmd-list-sessions.c cmd-new-window.c cmd-bind-key.c \
       cmd-unbind-key.c cmd-previous-window.c cmd-last-window.c cmd-list-keys.c \
       cmd-set-option.c cmd-rename-window.c cmd-select-window.c \

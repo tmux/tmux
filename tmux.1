@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.28 2008-06-05 15:55:59 nicm Exp $
+.\" $Id: tmux.1,v 1.29 2008-06-05 21:25:00 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -185,8 +185,9 @@ and
 keys or
 .Xr vi 1
 style
-.Ql j ,
-.Ql k ,
+.Ql j
+and
+.Ql k
 keys may be used to scroll the output up and down.
 The
 .Ql q
@@ -212,8 +213,14 @@ In addition,
 .Ql ^A
 and
 .Ql ^E
-move to the start and end of the line; the space key begins a selection; and the
-enter key or
+(or the 
+.Xr vi 1
+style 
+.Ql 0
+and
+.Ql $
+keys) move to the start and end of the line; the space key begins a selection; 
+and the enter key or
 .Ql ^W
 copies the selection to the paste buffer and exits copy mode.
 .Pp
@@ -387,7 +394,7 @@ The
 .Ev TERM
 environment variable must be set to
 .Dq screen
-for all program running
+for all programs running
 .Em inside
 .Nm .
 New windows will automatically have

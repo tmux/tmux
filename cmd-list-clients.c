@@ -1,4 +1,4 @@
-/* $Id: cmd-list-clients.c,v 1.7 2008-06-05 16:35:31 nicm Exp $ */
+/* $Id: cmd-list-clients.c,v 1.8 2008-06-05 21:25:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,8 +34,8 @@ const struct cmd_entry cmd_list_clients_entry = {
 	"",
 	0,
 	NULL,
-	cmd_list_clients_exec,
 	NULL,
+	cmd_list_clients_exec,
 	NULL,
 	NULL,
 	NULL,

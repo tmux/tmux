@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.12 2008-06-05 16:35:32 nicm Exp $ */
+/* $Id: cmd-unbind-key.c,v 1.13 2008-06-05 21:25:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,19 +33,19 @@ void	cmd_unbind_key_recv(struct cmd *, struct buffer *);
 void	cmd_unbind_key_free(struct cmd *);
 
 struct cmd_unbind_key_data {
-	int		 key;
+	int	key;
 };
 
 const struct cmd_entry cmd_unbind_key_entry = {
 	"unbind-key", "unbind",
 	"key",
 	0,
+	NULL,
 	cmd_unbind_key_parse,
 	cmd_unbind_key_exec,
 	cmd_unbind_key_send,
 	cmd_unbind_key_recv,
 	cmd_unbind_key_free,
-	NULL,
 	NULL
 };
 

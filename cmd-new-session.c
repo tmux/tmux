@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.26 2008-06-05 17:12:10 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.27 2008-06-05 21:25:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,7 +35,7 @@ void	cmd_new_session_init(struct cmd *, int);
 void	cmd_new_session_print(struct cmd *, char *, size_t);
 
 struct cmd_new_session_data {
-	char	*name;
+	char	*newname;
 	char	*winname;
 	char	*cmd;
 	int	 flag_detached;
@@ -43,14 +43,14 @@ struct cmd_new_session_data {
 
 const struct cmd_entry cmd_new_session_entry = {
 	"new-session", "new",
-	"[-d] [-n window-name] [-s session-name] [command]",
+	"[-d] [-s session-name] [-n window-name] [command]",
 	CMD_STARTSERVER|CMD_CANTNEST,
+	cmd_new_session_init,
 	cmd_new_session_parse,
 	cmd_new_session_exec,
 	cmd_new_session_send,
 	cmd_new_session_recv,
 	cmd_new_session_free,
-	cmd_new_session_init,
 	cmd_new_session_print
 };
 
@@ -61,7 +61,7 @@ cmd_new_session_init(struct cmd *self, unused int arg)
 
 	self->data = data = xmalloc(sizeof *data);
 	data->flag_detached = 0;
-	data->name = NULL;
+	data->newname = NULL;
 	data->winname = NULL;
 	data->cmd = NULL;
 }
@@ -81,10 +81,12 @@ cmd_new_session_parse(struct cmd *self, int argc, char **argv, char **cause)
 			data->flag_detached = 1;
 			break;
 		case 's':
-			data->name = xstrdup(optarg);
+			if (data->newname == NULL)
+				data->newname = xstrdup(optarg);
 			break;
 		case 'n':
-			data->winname = xstrdup(optarg);
+			if (data->winname == NULL)
+				data->winname = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -130,8 +132,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (data->name != NULL && session_find(data->name) != NULL) {
-		ctx->error(ctx, "duplicate session: %s", data->name);
+	if (data->newname != NULL && session_find(data->newname) != NULL) {
+		ctx->error(ctx, "duplicate session: %s", data->newname);
 		return;
 	}
 
@@ -158,7 +160,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 
-	if ((s = session_create(data->name, cmd, sx, sy)) == NULL)
+	if ((s = session_create(data->newname, cmd, sx, sy)) == NULL)
 		fatalx("session_create failed");
 	if (data->winname != NULL) {
 		xfree(s->curw->window->name);
@@ -181,7 +183,7 @@ cmd_new_session_send(struct cmd *self, struct buffer *b)
 	struct cmd_new_session_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->name);
+	cmd_send_string(b, data->newname);
 	cmd_send_string(b, data->winname);
 	cmd_send_string(b, data->cmd);
 }
@@ -193,7 +195,7 @@ cmd_new_session_recv(struct cmd *self, struct buffer *b)
 
 	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
-	data->name = cmd_recv_string(b);
+	data->newname = cmd_recv_string(b);
 	data->winname = cmd_recv_string(b);
 	data->cmd = cmd_recv_string(b);
 }
@@ -203,8 +205,8 @@ cmd_new_session_free(struct cmd *self)
 {
 	struct cmd_new_session_data	*data = self->data;
 
-	if (data->name != NULL)
-		xfree(data->name);
+	if (data->newname != NULL)
+		xfree(data->newname);
 	if (data->winname != NULL)
 		xfree(data->winname);
 	if (data->cmd != NULL)
@@ -213,6 +215,20 @@ cmd_new_session_free(struct cmd *self)
 }
 
 void
-cmd_new_session_print(struct cmd *cmd, char *buf, size_t len)
+cmd_new_session_print(struct cmd *self, char *buf, size_t len)
 {
+	struct cmd_new_session_data	*data = self->data;
+	size_t				 off = 0;
+
+	off += xsnprintf(buf, len, "%s", self->entry->name);
+	if (data == NULL)
+		return;
+	if (off < len && data->flag_detached)
+		off += xsnprintf(buf + off, len - off, " -d");
+	if (off < len && data->newname != NULL)
+		off += xsnprintf(buf + off, len - off, " -s %s", data->newname);
+	if (off < len && data->winname != NULL)
+		off += xsnprintf(buf + off, len - off, " -n %s", data->winname);
+	if (off < len && data->cmd != NULL)
+		off += xsnprintf(buf + off, len - off, " %s", data->cmd);
 }

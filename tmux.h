@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.132 2008-06-05 16:35:32 nicm Exp $ */
+/* $Id: tmux.h,v 1.133 2008-06-05 21:25:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -685,31 +685,32 @@ struct cmd_entry {
 
 #define CMD_STARTSERVER 0x1
 #define CMD_CANTNEST 0x2
+#define CMD_KFLAG 0x4
+#define CMD_DFLAG 0x8
+#define CMD_ONEARG 0x10
 	int		 flags;
 
+	void		 (*init)(struct cmd *, int);
 	int		 (*parse)(struct cmd *, int, char **, char **);
 	void		 (*exec)(struct cmd *, struct cmd_ctx *);
 	void		 (*send)(struct cmd *, struct buffer *);
 	void	         (*recv)(struct cmd *, struct buffer *);
 	void		 (*free)(struct cmd *);
-	void		 (*init)(struct cmd *, int);
 	void 		 (*print)(struct cmd *, char *, size_t);
 };
 
 /* Generic command data. */
-struct cmd_clientonly_data {
-	char	*cname;
+struct cmd_target_data {
+	int	 flags;
+	char	*target;
+	char	*arg;
 };
 
-struct cmd_sessiononly_data {
-	char	*cname;
-	char	*sname;
-};
-
-struct cmd_windowonly_data {
-	char	*cname;
-	char	*sname;
-	int	 idx;
+struct cmd_srcdst_data {
+	int	 flags;
+	char	*src;
+	char	*dst;
+	char	*arg;
 };
 
 /* Key binding. */
@@ -781,6 +782,11 @@ void		 tty_vwrite_window(void *, int, va_list);
 void		 tty_write_session(void *, int, ...);
 void		 tty_vwrite_session(void *, int, va_list);
 
+/* arg.c */
+struct client 	*arg_parse_client(const char *);
+struct session 	*arg_parse_session(const char *);
+int		 arg_parse_window(const char *, struct session **, int *);
+
 /* cmd.c */
 struct cmd	*cmd_parse(int, char **, char **);
 void		 cmd_exec(struct cmd *, struct cmd_ctx *);
@@ -789,10 +795,11 @@ struct cmd	*cmd_recv(struct buffer *);
 void		 cmd_free(struct cmd *);
 void		 cmd_send_string(struct buffer *, const char *);
 char		*cmd_recv_string(struct buffer *);
+struct session	*cmd_current_session(struct cmd_ctx *);
 struct client	*cmd_find_client(struct cmd_ctx *, const char *);
-struct session	*cmd_find_session(struct cmd_ctx *, const char *, const char *);
-struct winlink	*cmd_find_window(struct cmd_ctx *,
-    		     const char *, const char *, int, struct session **);
+struct session	*cmd_find_session(struct cmd_ctx *, const char *);
+struct winlink	*cmd_find_window(
+    		     struct cmd_ctx *, const char *, struct session **);
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_copy_mode_entry;
@@ -828,31 +835,26 @@ extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
 
 /* cmd-generic.c */
-#define CMD_CLIENTONLY_USAGE "[-c client-tty]"
-int	cmd_clientonly_parse(struct cmd *, int, char **, char **);
-void	cmd_clientonly_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_clientonly_send(struct cmd *, struct buffer *);
-void	cmd_clientonly_recv(struct cmd *, struct buffer *);
-void	cmd_clientonly_free(struct cmd *);
-struct client *cmd_clientonly_get(struct cmd *, struct cmd_ctx *);
-void	cmd_clientonly_print(struct cmd *, char *, size_t);
-#define CMD_SESSIONONLY_USAGE "[-c client-tty|-s session-name]"
-int	cmd_sessiononly_parse(struct cmd *, int, char **, char **);
-void	cmd_sessiononly_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_sessiononly_send(struct cmd *, struct buffer *);
-void	cmd_sessiononly_recv(struct cmd *, struct buffer *);
-void	cmd_sessiononly_free(struct cmd *);
-struct session *cmd_sessiononly_get(struct cmd *, struct cmd_ctx *);
-void	cmd_sessiononly_print(struct cmd *, char *, size_t);
-#define CMD_WINDOWONLY_USAGE "[-c client-tty|-s session-name] [-i index]"
-int	cmd_windowonly_parse(struct cmd *, int, char **, char **);
-void	cmd_windowonly_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_windowonly_send(struct cmd *, struct buffer *);
-void	cmd_windowonly_recv(struct cmd *, struct buffer *);
-void	cmd_windowonly_free(struct cmd *);
-struct winlink *cmd_windowonly_get(
-    	    struct cmd *, struct cmd_ctx *, struct session **);
-void	cmd_windowonly_print(struct cmd *, char *, size_t);
+#define CMD_TARGET_WINDOW_USAGE "[-t target-window]"
+#define CMD_TARGET_SESSION_USAGE "[-t target-session]"
+#define CMD_TARGET_CLIENT_USAGE "[-t target-client]"
+void	cmd_target_init(struct cmd *, int);
+int	cmd_target_parse(struct cmd *, int, char **, char **);
+void	cmd_target_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_target_send(struct cmd *, struct buffer *);
+void	cmd_target_recv(struct cmd *, struct buffer *);
+void	cmd_target_free(struct cmd *);
+void	cmd_target_print(struct cmd *, char *, size_t);
+#define CMD_SRCDST_WINDOW_USAGE "[-s src-window] [-t dst-window]"
+#define CMD_SRCDST_SESSION_USAGE "[-s src-session] [-t dst-session]"
+#define CMD_SRCDST_CLIENT_USAGE "[-s src-client] [-t dst-client]"
+void	cmd_srcdst_init(struct cmd *, int);
+int	cmd_srcdst_parse(struct cmd *, int, char **, char **);
+void	cmd_srcdst_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_srcdst_send(struct cmd *, struct buffer *);
+void	cmd_srcdst_recv(struct cmd *, struct buffer *);
+void	cmd_srcdst_free(struct cmd *);
+void	cmd_srcdst_print(struct cmd *, char *, size_t);
 
 /* client.c */
 int	 client_init(const char *, struct client_ctx *, int);

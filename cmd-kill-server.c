@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-server.c,v 1.4 2008-06-05 16:35:31 nicm Exp $ */
+/* $Id: cmd-kill-server.c,v 1.5 2008-06-05 21:25:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,8 +34,8 @@ const struct cmd_entry cmd_kill_server_entry = {
 	"",
 	0,
 	NULL,
-	cmd_kill_server_exec,
 	NULL,
+	cmd_kill_server_exec,
 	NULL,
 	NULL,
 	NULL,

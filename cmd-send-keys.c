@@ -1,4 +1,4 @@
-/* $Id: cmd-send-keys.c,v 1.9 2008-06-05 17:12:10 nicm Exp $ */
+/* $Id: cmd-send-keys.c,v 1.10 2008-06-05 21:25:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,8 +35,7 @@ void	cmd_send_keys_free(struct cmd *);
 void	cmd_send_keys_print(struct cmd *, char *, size_t);
 
 struct cmd_send_keys_data {
-	char	*cname;
-	char	*sname;
+	char	*target;
 	int	 idx;
   	u_int	 nkeys;
 	int	*keys;
@@ -46,12 +45,12 @@ const struct cmd_entry cmd_send_keys_entry = {
 	"send-keys", "send",
 	"[-c client-tty|-s session-name] [-i index] key ...",
 	0,
+	NULL,
 	cmd_send_keys_parse,
 	cmd_send_keys_exec,
 	cmd_send_keys_send,
 	cmd_send_keys_recv,
 	cmd_send_keys_free,
-	NULL,
 	cmd_send_keys_print
 };
 
@@ -60,36 +59,19 @@ cmd_send_keys_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_send_keys_data	*data;
 	int				 opt, key;
-	const char			*errstr;
 	char				*s;
 
 	self->data = data = xmalloc(sizeof *data);
-	data->cname = NULL;
-	data->sname = NULL;
+	data->target = NULL;
 	data->idx = -1;
 	data->nkeys = 0;
 	data->keys = NULL;
 
-	while ((opt = getopt(argc, argv, "c:i:s:")) != EOF) {
+	while ((opt = getopt(argc, argv, "t:")) != EOF) {
 		switch (opt) {
-		case 'c':
-			if (data->sname != NULL)
-				goto usage;
-			if (data->cname == NULL)
-				data->cname = xstrdup(optarg);
-			break;
-		case 'i':
-			data->idx = strtonum(optarg, 0, INT_MAX, &errstr);
-			if (errstr != NULL) {
-				xasprintf(cause, "index %s", errstr);
-				goto error;
-			}
-			break;
-		case 's':
-			if (data->cname != NULL)
-				goto usage;
-			if (data->sname == NULL)
-				data->sname = xstrdup(optarg);
+		case 't':
+			if (data->target == NULL)
+				data->target = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -121,7 +103,6 @@ cmd_send_keys_parse(struct cmd *self, int argc, char **argv, char **cause)
 usage:
 	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
-error:
 	self->entry->free(self);
 	return (-1);
 }
@@ -136,8 +117,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (data == NULL)
 		return;
 
-	wl = cmd_find_window(ctx, data->cname, data->sname, data->idx, NULL);
-	if (wl == NULL)
+	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return;
 
 	for (i = 0; i < data->nkeys; i++)
@@ -153,8 +133,7 @@ cmd_send_keys_send(struct cmd *self, struct buffer *b)
 	struct cmd_send_keys_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->cname);
-	cmd_send_string(b, data->sname);
+	cmd_send_string(b, data->target);
 	buffer_write(b, data->keys, data->nkeys * sizeof *data->keys);
 }
 
@@ -165,8 +144,7 @@ cmd_send_keys_recv(struct cmd *self, struct buffer *b)
 
 	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
-	data->cname = cmd_recv_string(b);
-	data->sname = cmd_recv_string(b);
+	data->target = cmd_recv_string(b);
 	data->keys = xcalloc(data->nkeys, sizeof *data->keys);
 	buffer_read(b, data->keys, data->nkeys * sizeof *data->keys);
 }
@@ -176,10 +154,8 @@ cmd_send_keys_free(struct cmd *self)
 {
 	struct cmd_send_keys_data	*data = self->data;
 
-	if (data->cname != NULL)
-		xfree(data->cname);
-	if (data->sname != NULL)
-		xfree(data->sname);
+	if (data->target != NULL)
+		xfree(data->target);
 	xfree(data);
 }
 
@@ -193,9 +169,7 @@ cmd_send_keys_print(struct cmd *self, char *buf, size_t len)
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
 		return;
-		off += xsnprintf(buf + off, len - off, " -c %s", data->cname);
-	if (off < len && data->sname != NULL)
-		off += xsnprintf(buf + off, len - off, " -s %s", data->sname);
+		off += xsnprintf(buf + off, len - off, " -t %s", data->target);
 	if (off < len && data->idx != -1)
 		off += xsnprintf(buf + off, len - off, " -i %d", data->idx);
 

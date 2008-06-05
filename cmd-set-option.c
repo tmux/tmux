@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.24 2008-06-05 17:12:11 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.25 2008-06-05 21:25:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,8 +36,7 @@ void	cmd_set_option_free(struct cmd *);
 void	cmd_set_option_print(struct cmd *, char *, size_t);
 
 struct cmd_set_option_data {
-	char	*cname;
-	char	*sname;
+	char	*target;
 	int	 flag_global;
 	char	*option;
 	char	*value;
@@ -45,14 +44,14 @@ struct cmd_set_option_data {
 
 const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set",
-	"[-c client-tty|-s session-name] option value",
+	"[-t target-window] option value",
 	0,
+	NULL,
 	cmd_set_option_parse,
 	cmd_set_option_exec,
 	cmd_set_option_send,
 	cmd_set_option_recv,
 	cmd_set_option_free,
-	NULL,
 	cmd_set_option_print
 };
 
@@ -63,26 +62,16 @@ cmd_set_option_parse(struct cmd *self, int argc, char **argv, char **cause)
 	int				 opt;
 
 	self->data = data = xmalloc(sizeof *data);
-	data->cname = NULL;
-	data->sname = NULL;
+	data->target = NULL;
 	data->flag_global = 1;
 	data->option = NULL;
 	data->value = NULL;
 
-	while ((opt = getopt(argc, argv, "c:s:")) != EOF) {
+	while ((opt = getopt(argc, argv, "t:s:")) != EOF) {
 		switch (opt) {
-		case 'c':
-			if (data->sname != NULL)
-				goto usage;
-			if (data->cname == NULL)
-				data->cname = xstrdup(optarg);
-			data->flag_global = 0;
-			break;
-		case 's':
-			if (data->cname != NULL)
-				goto usage;
-			if (data->sname == NULL)
-				data->sname = xstrdup(optarg);
+		case 't':
+			if (data->target == NULL)
+				data->target = xstrdup(optarg);
 			data->flag_global = 0;
 			break;
 		default:
@@ -123,7 +112,7 @@ cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 		return;
 
 	if (data->flag_global ||
-	    ((s = cmd_find_session(ctx, data->cname, data->sname))) == NULL)
+	    ((s = cmd_find_session(ctx, data->target))) == NULL)
 		oo = &global_options;
 	else
 		oo = &s->options;
@@ -282,8 +271,7 @@ cmd_set_option_send(struct cmd *self, struct buffer *b)
 	struct cmd_set_option_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->cname);
-	cmd_send_string(b, data->sname);
+	cmd_send_string(b, data->target);
 	cmd_send_string(b, data->option);
 	cmd_send_string(b, data->value);
 }
@@ -295,8 +283,7 @@ cmd_set_option_recv(struct cmd *self, struct buffer *b)
 
 	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
-	data->cname = cmd_recv_string(b);
-	data->sname = cmd_recv_string(b);
+	data->target = cmd_recv_string(b);
 	data->option = cmd_recv_string(b);
 	data->value = cmd_recv_string(b);
 }
@@ -306,10 +293,8 @@ cmd_set_option_free(struct cmd *self)
 {
 	struct cmd_set_option_data	*data = self->data;
 
-	if (data->cname != NULL)
-		xfree(data->cname);
-	if (data->sname != NULL)
-		xfree(data->sname);
+	if (data->target != NULL)
+		xfree(data->target);
 	if (data->option != NULL)
 		xfree(data->option);
 	if (data->value != NULL)
