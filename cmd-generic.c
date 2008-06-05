@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.8 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.9 2008-06-05 23:17:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -40,7 +40,8 @@ cmd_target_parse(struct cmd *self, int argc, char **argv, char **cause)
 	struct cmd_target_data	*data;
 	int			 opt;
 
-	self->entry->init(self, 0);
+	/* Don't use the entry version since it may be dependent on key. */
+	cmd_target_init(self, 0);
 	data = self->data;
 	
 	while ((opt = getopt(argc, argv, "dkt:")) != EOF) {
@@ -155,7 +156,7 @@ cmd_srcdst_parse(struct cmd *self, int argc, char **argv, char **cause)
 	struct cmd_srcdst_data	*data;
 	int			 opt;
 	
-	self->entry->init(self, 0);
+	cmd_srcdst_init(self, 0);
 	data = self->data;
 
 	while ((opt = getopt(argc, argv, "dks:t:")) != EOF) {

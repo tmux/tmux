@@ -13,7 +13,7 @@
 	tmux renamew -t:0 newname		(current session, window 0)
 	tmux renamew -t0 newname		(current session, window 0)
 	tmux renamew -t1:0 newname		(session 1, window 0)
-	tmux renamew -t1: newname		(session 1, current window)
+	tmux renamew -t1: newname		(session 1's current window)
 	tmux renamew -t/dev/ttypi newname	(client /dev/ttypi's current
 						 session and window)
 	tmux renamew -t/dev/ttypi: newname	(client /dev/ttypi's current
@@ -440,4 +440,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.112 2008-06-05 22:59:38 nicm Exp $
+$Id: CHANGES,v 1.113 2008-06-05 23:17:03 nicm Exp $
