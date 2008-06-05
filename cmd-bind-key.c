@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.14 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.15 2008-06-05 21:54:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,6 +31,7 @@ void	cmd_bind_key_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_bind_key_send(struct cmd *, struct buffer *);
 void	cmd_bind_key_recv(struct cmd *, struct buffer *);
 void	cmd_bind_key_free(struct cmd *);
+void	cmd_bind_key_print(struct cmd *, char *, size_t);
 
 struct cmd_bind_key_data {
 	int		 key;
@@ -47,7 +48,7 @@ const struct cmd_entry cmd_bind_key_entry = {
 	cmd_bind_key_send,
 	cmd_bind_key_recv,
 	cmd_bind_key_free,
-	NULL /* XXX */
+	cmd_bind_key_print
 };
 
 int
@@ -132,4 +133,23 @@ cmd_bind_key_free(struct cmd *self)
 	if (data->cmd != NULL)
 		cmd_free(data->cmd);
 	xfree(data);
+}
+
+void
+cmd_bind_key_print(struct cmd *self, char *buf, size_t len)
+{
+	struct cmd_bind_key_data	*data = self->data;
+	size_t				 off = 0;
+
+	off += xsnprintf(buf, len, "%s", self->entry->name);
+	if (data == NULL)
+		return;
+	if (off < len) {
+		off += xsnprintf(buf + off,
+		    len - off, " %s", key_string_lookup_key(data->key));
+	}
+	if (off < len && data->cmd != NULL) {
+		off += xsnprintf(buf + off, len - off, " ");
+		data->cmd->entry->print(data->cmd, buf + off, len - off);
+	}
 }
