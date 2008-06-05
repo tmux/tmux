@@ -1,4 +1,4 @@
-/* $Id: cmd-list-clients.c,v 1.6 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-list-clients.c,v 1.7 2008-06-05 16:35:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,7 @@
  * List all clients.
  */
 
-void	cmd_list_clients_exec(void *, struct cmd_ctx *);
+void	cmd_list_clients_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_clients_entry = {
 	"list-clients", "lsc",
@@ -38,11 +38,12 @@ const struct cmd_entry cmd_list_clients_entry = {
 	NULL,
 	NULL,
 	NULL,
+	NULL,
 	NULL
 };
 
 void
-cmd_list_clients_exec(unused void *ptr, struct cmd_ctx *ctx)
+cmd_list_clients_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct client	*c;
 	u_int		 i;

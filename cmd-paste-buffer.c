@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.6 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.7 2008-06-05 16:35:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
  * Paste paste buffer if present.
  */
 
-void	cmd_paste_buffer_exec(void *, struct cmd_ctx *);
+void	cmd_paste_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", "paste",
@@ -37,15 +37,16 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 	cmd_windowonly_send,
 	cmd_windowonly_recv,
 	cmd_windowonly_free,
+	NULL,
 	NULL
 };
 
 void
-cmd_paste_buffer_exec(void *ptr, struct cmd_ctx *ctx)
+cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct winlink	*wl;
 
-	if ((wl = cmd_windowonly_get(ptr, ctx, NULL)) == NULL)
+	if ((wl = cmd_windowonly_get(self, ctx, NULL)) == NULL)
 		return;
 
 	if (paste_buffer != NULL && *paste_buffer != '\0') {

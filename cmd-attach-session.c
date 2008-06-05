@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.15 2008-06-03 16:55:09 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.16 2008-06-05 16:35:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,11 +26,11 @@
  * Attach existing session to the current terminal.
  */
 
-int	cmd_attach_session_parse(struct cmd *, void **, int, char **, char **);
-void	cmd_attach_session_exec(void *, struct cmd_ctx *);
-void	cmd_attach_session_send(void *, struct buffer *);
-void	cmd_attach_session_recv(void **, struct buffer *);
-void	cmd_attach_session_free(void *);
+int	cmd_attach_session_parse(struct cmd *, int, char **, char **);
+void	cmd_attach_session_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_attach_session_send(struct cmd *, struct buffer *);
+void	cmd_attach_session_recv(struct cmd *, struct buffer *);
+void	cmd_attach_session_free(struct cmd *);
 
 struct cmd_attach_session_data {
 	char	*cname;
@@ -47,17 +47,17 @@ const struct cmd_entry cmd_attach_session_entry = {
 	cmd_attach_session_send,
 	cmd_attach_session_recv,
 	cmd_attach_session_free,
+	NULL,
 	NULL
 };
 
 int
-cmd_attach_session_parse(
-    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
+cmd_attach_session_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_attach_session_data	*data;
 	int				 opt;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	data->cname = NULL;
 	data->sname = NULL;
 	data->flag_detach = 0;
@@ -93,14 +93,14 @@ cmd_attach_session_parse(
 usage:
 	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
-	cmd_attach_session_free(data);
+	self->entry->free(self);
 	return (-1);
 }
 
 void
-cmd_attach_session_exec(void *ptr, struct cmd_ctx *ctx)
+cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_attach_session_data	*data = ptr;
+	struct cmd_attach_session_data	*data = self->data;
 	struct session			*s;
 	char				*cause;
 
@@ -131,9 +131,9 @@ cmd_attach_session_exec(void *ptr, struct cmd_ctx *ctx)
 }
 
 void
-cmd_attach_session_send(void *ptr, struct buffer *b)
+cmd_attach_session_send(struct cmd *self, struct buffer *b)
 {
-	struct cmd_attach_session_data	*data = ptr;
+	struct cmd_attach_session_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
 	cmd_send_string(b, data->cname);
@@ -141,20 +141,20 @@ cmd_attach_session_send(void *ptr, struct buffer *b)
 }
 
 void
-cmd_attach_session_recv(void **ptr, struct buffer *b)
+cmd_attach_session_recv(struct cmd *self, struct buffer *b)
 {
 	struct cmd_attach_session_data	*data;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
 	data->cname = cmd_recv_string(b);
 	data->sname = cmd_recv_string(b);
 }
 
 void
-cmd_attach_session_free(void *ptr)
+cmd_attach_session_free(struct cmd *self)
 {
-	struct cmd_attach_session_data	*data = ptr;
+	struct cmd_attach_session_data	*data = self->data;
 
 	if (data->cname != NULL)
 		xfree(data->cname);

@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.11 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-unbind-key.c,v 1.12 2008-06-05 16:35:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,11 +26,11 @@
  * Unbind key from command.
  */
 
-int	cmd_unbind_key_parse(struct cmd *, void **, int, char **, char **);
-void	cmd_unbind_key_exec(void *, struct cmd_ctx *);
-void	cmd_unbind_key_send(void *, struct buffer *);
-void	cmd_unbind_key_recv(void **, struct buffer *);
-void	cmd_unbind_key_free(void *);
+int	cmd_unbind_key_parse(struct cmd *, int, char **, char **);
+void	cmd_unbind_key_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_unbind_key_send(struct cmd *, struct buffer *);
+void	cmd_unbind_key_recv(struct cmd *, struct buffer *);
+void	cmd_unbind_key_free(struct cmd *);
 
 struct cmd_unbind_key_data {
 	int		 key;
@@ -45,17 +45,17 @@ const struct cmd_entry cmd_unbind_key_entry = {
 	cmd_unbind_key_send,
 	cmd_unbind_key_recv,
 	cmd_unbind_key_free,
+	NULL,
 	NULL
 };
 
 int
-cmd_unbind_key_parse(
-    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
+cmd_unbind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_unbind_key_data	*data;
 	int				 opt;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 
 	while ((opt = getopt(argc, argv, "")) != EOF) {
 		switch (opt) {
@@ -84,9 +84,9 @@ error:
 }
 
 void
-cmd_unbind_key_exec(void *ptr, unused struct cmd_ctx *ctx)
+cmd_unbind_key_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 {
-	struct cmd_unbind_key_data	*data = ptr;
+	struct cmd_unbind_key_data	*data = self->data;
 
 	if (data == NULL)
 		return;
@@ -98,26 +98,26 @@ cmd_unbind_key_exec(void *ptr, unused struct cmd_ctx *ctx)
 }
 
 void
-cmd_unbind_key_send(void *ptr, struct buffer *b)
+cmd_unbind_key_send(struct cmd *self, struct buffer *b)
 {
-	struct cmd_unbind_key_data	*data = ptr;
+	struct cmd_unbind_key_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
 }
 
 void
-cmd_unbind_key_recv(void **ptr, struct buffer *b)
+cmd_unbind_key_recv(struct cmd *self, struct buffer *b)
 {
 	struct cmd_unbind_key_data	*data;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
 }
 
 void
-cmd_unbind_key_free(void *ptr)
+cmd_unbind_key_free(struct cmd *self)
 {
-	struct cmd_unbind_key_data	*data = ptr;
+	struct cmd_unbind_key_data	*data = self->data;
 
 	xfree(data);
 }

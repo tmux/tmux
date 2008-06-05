@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.18 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.19 2008-06-05 16:35:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
  * List windows on given session.
  */
 
-void	cmd_list_windows_exec(void *, struct cmd_ctx *);
+void	cmd_list_windows_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_windows_entry = {
 	"list-windows", "lsw",
@@ -37,11 +37,12 @@ const struct cmd_entry cmd_list_windows_entry = {
 	cmd_sessiononly_send,
 	cmd_sessiononly_recv,
 	cmd_sessiononly_free,
-	NULL
+	NULL,
+	cmd_sessiononly_print
 };
 
 void
-cmd_list_windows_exec(void *ptr, struct cmd_ctx *ctx)
+cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct session		*s;
 	struct winlink		*wl;
@@ -49,7 +50,7 @@ cmd_list_windows_exec(void *ptr, struct cmd_ctx *ctx)
 	u_int			 i;
 	unsigned long long	 size;
 
-	if ((s = cmd_sessiononly_get(ptr, ctx)) == NULL)
+	if ((s = cmd_sessiononly_get(self, ctx)) == NULL)
 		return;
 
 	RB_FOREACH(wl, winlinks, &s->windows) {

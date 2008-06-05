@@ -1,4 +1,4 @@
-/* $Id: cmd-list-keys.c,v 1.8 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-list-keys.c,v 1.9 2008-06-05 16:35:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
  * List key bindings.
  */
 
-void	cmd_list_keys_exec(void *, struct cmd_ctx *);
+void	cmd_list_keys_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_keys_entry = {
 	"list-keys", "lsk",
@@ -35,21 +35,28 @@ const struct cmd_entry cmd_list_keys_entry = {
 	NULL,
 	NULL,
 	NULL,
-	NULL
+	NULL,
+	NULL,
 };
 
 void
-cmd_list_keys_exec(unused void *ptr, struct cmd_ctx *ctx)
+cmd_list_keys_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct binding	*bd;
 	const char	*key;
+	char		 s[BUFSIZ];
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&key_bindings); i++) {
 		bd = ARRAY_ITEM(&key_bindings, i);
 		if ((key = key_string_lookup_key(bd->key)) == NULL)
 			continue;
-		ctx->print(ctx, "%11s: %s", key, bd->cmd->entry->name);
+		if (bd->cmd->entry->print == NULL) {
+			ctx->print(ctx, "%11s: %s", key, bd->cmd->entry->name);
+			continue;
+		}
+		bd->cmd->entry->print(bd->cmd, s, sizeof s);
+		ctx->print(ctx, "%11s: %s", key, s);
 	}
 
 	if (ctx->cmdclient != NULL)

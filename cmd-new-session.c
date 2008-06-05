@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.24 2008-06-03 21:42:37 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.25 2008-06-05 16:35:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,12 +26,12 @@
  * Create a new session and attach to the current terminal unless -d is given.
  */
 
-int	cmd_new_session_parse(struct cmd *, void **, int, char **, char **);
-void	cmd_new_session_exec(void *, struct cmd_ctx *);
-void	cmd_new_session_send(void *, struct buffer *);
-void	cmd_new_session_recv(void **, struct buffer *);
-void	cmd_new_session_free(void *);
-void	cmd_new_session_init(void **, int);
+int	cmd_new_session_parse(struct cmd *, int, char **, char **);
+void	cmd_new_session_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_new_session_send(struct cmd *, struct buffer *);
+void	cmd_new_session_recv(struct cmd *, struct buffer *);
+void	cmd_new_session_free(struct cmd *);
+void	cmd_new_session_init(struct cmd *, int);
 
 struct cmd_new_session_data {
 	char	*name;
@@ -49,15 +49,16 @@ const struct cmd_entry cmd_new_session_entry = {
 	cmd_new_session_send,
 	cmd_new_session_recv,
 	cmd_new_session_free,
-	cmd_new_session_init
+	cmd_new_session_init,
+	NULL
 };
 
 void
-cmd_new_session_init(void **ptr, unused int arg)
+cmd_new_session_init(struct cmd *self, unused int arg)
 {
 	struct cmd_new_session_data	 *data;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	data->flag_detached = 0;
 	data->name = NULL;
 	data->winname = NULL;
@@ -65,14 +66,13 @@ cmd_new_session_init(void **ptr, unused int arg)
 }
 
 int
-cmd_new_session_parse(
-    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
+cmd_new_session_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_new_session_data	*data;
 	int				 opt;
 
-	self->entry->init(ptr, 0);
-	data = *ptr;
+	self->entry->init(self, 0);
+	data = self->data;
 
 	while ((opt = getopt(argc, argv, "ds:n:")) != EOF) {
 		switch (opt) {
@@ -102,14 +102,14 @@ cmd_new_session_parse(
 usage:
 	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
-	cmd_new_session_free(data);
+	self->entry->free(self);
 	return (-1);
 }
 
 void
-cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
+cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_new_session_data	*data = ptr;
+	struct cmd_new_session_data	*data = self->data;
 	struct client			*c = ctx->cmdclient;
 	struct session			*s;
 	char				*cmd, *cause;
@@ -175,9 +175,9 @@ cmd_new_session_exec(void *ptr, struct cmd_ctx *ctx)
 }
 
 void
-cmd_new_session_send(void *ptr, struct buffer *b)
+cmd_new_session_send(struct cmd *self, struct buffer *b)
 {
-	struct cmd_new_session_data	*data = ptr;
+	struct cmd_new_session_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
 	cmd_send_string(b, data->name);
@@ -186,11 +186,11 @@ cmd_new_session_send(void *ptr, struct buffer *b)
 }
 
 void
-cmd_new_session_recv(void **ptr, struct buffer *b)
+cmd_new_session_recv(struct cmd *self, struct buffer *b)
 {
 	struct cmd_new_session_data	*data;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
 	data->name = cmd_recv_string(b);
 	data->winname = cmd_recv_string(b);
@@ -198,9 +198,9 @@ cmd_new_session_recv(void **ptr, struct buffer *b)
 }
 
 void
-cmd_new_session_free(void *ptr)
+cmd_new_session_free(struct cmd *self)
 {
-	struct cmd_new_session_data	*data = ptr;
+	struct cmd_new_session_data	*data = self->data;
 
 	if (data->name != NULL)
 		xfree(data->name);

@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.12 2008-06-03 05:35:50 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.13 2008-06-05 16:35:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,11 +26,11 @@
  * Bind a key to a command, this recurses through cmd_*.
  */
 
-int	cmd_bind_key_parse(struct cmd *, void **, int, char **, char **);
-void	cmd_bind_key_exec(void *, struct cmd_ctx *);
-void	cmd_bind_key_send(void *, struct buffer *);
-void	cmd_bind_key_recv(void **, struct buffer *);
-void	cmd_bind_key_free(void *);
+int	cmd_bind_key_parse(struct cmd *, int, char **, char **);
+void	cmd_bind_key_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_bind_key_send(struct cmd *, struct buffer *);
+void	cmd_bind_key_recv(struct cmd *, struct buffer *);
+void	cmd_bind_key_free(struct cmd *);
 
 struct cmd_bind_key_data {
 	int		 key;
@@ -46,17 +46,17 @@ const struct cmd_entry cmd_bind_key_entry = {
 	cmd_bind_key_send,
 	cmd_bind_key_recv,
 	cmd_bind_key_free,
+	NULL,
 	NULL
 };
 
 int
-cmd_bind_key_parse(
-    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
+cmd_bind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_bind_key_data	*data;
 	int				 opt;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	data->cmd = NULL;
 
 	while ((opt = getopt(argc, argv, "")) != EOF) {
@@ -86,14 +86,14 @@ usage:
 	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
 error:
-	cmd_bind_key_free(data);
+	self->entry->free(self);
 	return (-1);
 }
 
 void
-cmd_bind_key_exec(void *ptr, struct cmd_ctx *ctx)
+cmd_bind_key_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_bind_key_data	*data = ptr;
+	struct cmd_bind_key_data	*data = self->data;
 
 	if (data == NULL)
 		return;
@@ -106,28 +106,28 @@ cmd_bind_key_exec(void *ptr, struct cmd_ctx *ctx)
 }
 
 void
-cmd_bind_key_send(void *ptr, struct buffer *b)
+cmd_bind_key_send(struct cmd *self, struct buffer *b)
 {
-	struct cmd_bind_key_data	*data = ptr;
+	struct cmd_bind_key_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
 	cmd_send(data->cmd, b);
 }
 
 void
-cmd_bind_key_recv(void **ptr, struct buffer *b)
+cmd_bind_key_recv(struct cmd *self, struct buffer *b)
 {
 	struct cmd_bind_key_data	*data;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
 	data->cmd = cmd_recv(b);
 }
 
 void
-cmd_bind_key_free(void *ptr)
+cmd_bind_key_free(struct cmd *self)
 {
-	struct cmd_bind_key_data	*data = ptr;
+	struct cmd_bind_key_data	*data = self->data;
 
 	if (data->cmd != NULL)
 		cmd_free(data->cmd);

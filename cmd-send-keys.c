@@ -1,4 +1,4 @@
-/* $Id: cmd-send-keys.c,v 1.7 2008-06-03 16:55:09 nicm Exp $ */
+/* $Id: cmd-send-keys.c,v 1.8 2008-06-05 16:35:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,11 +27,11 @@
  * Send keys to client.
  */
 
-int	cmd_send_keys_parse(struct cmd *, void **, int, char **, char **);
-void	cmd_send_keys_exec(void *, struct cmd_ctx *);
-void	cmd_send_keys_send(void *, struct buffer *);
-void	cmd_send_keys_recv(void **, struct buffer *);
-void	cmd_send_keys_free(void *);
+int	cmd_send_keys_parse(struct cmd *, int, char **, char **);
+void	cmd_send_keys_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_send_keys_send(struct cmd *, struct buffer *);
+void	cmd_send_keys_recv(struct cmd *, struct buffer *);
+void	cmd_send_keys_free(struct cmd *);
 
 struct cmd_send_keys_data {
 	char	*cname;
@@ -50,19 +50,19 @@ const struct cmd_entry cmd_send_keys_entry = {
 	cmd_send_keys_send,
 	cmd_send_keys_recv,
 	cmd_send_keys_free,
+	NULL,
 	NULL
 };
 
 int
-cmd_send_keys_parse(
-    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
+cmd_send_keys_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_send_keys_data	*data;
 	int				 opt, key;
 	const char			*errstr;
 	char				*s;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	data->cname = NULL;
 	data->sname = NULL;
 	data->idx = -1;
@@ -121,14 +121,14 @@ usage:
 	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
 error:
-	cmd_send_keys_free(data);
+	self->entry->free(self);
 	return (-1);
 }
 
 void
-cmd_send_keys_exec(void *ptr, struct cmd_ctx *ctx)
+cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_send_keys_data	*data = ptr;
+	struct cmd_send_keys_data	*data = self->data;
 	struct winlink			*wl;
 	u_int				 i;
 
@@ -147,9 +147,9 @@ cmd_send_keys_exec(void *ptr, struct cmd_ctx *ctx)
 }
 
 void
-cmd_send_keys_send(void *ptr, struct buffer *b)
+cmd_send_keys_send(struct cmd *self, struct buffer *b)
 {
-	struct cmd_send_keys_data	*data = ptr;
+	struct cmd_send_keys_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
 	cmd_send_string(b, data->cname);
@@ -158,11 +158,11 @@ cmd_send_keys_send(void *ptr, struct buffer *b)
 }
 
 void
-cmd_send_keys_recv(void **ptr, struct buffer *b)
+cmd_send_keys_recv(struct cmd *self, struct buffer *b)
 {
 	struct cmd_send_keys_data	*data;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
 	data->cname = cmd_recv_string(b);
 	data->sname = cmd_recv_string(b);
@@ -171,9 +171,9 @@ cmd_send_keys_recv(void **ptr, struct buffer *b)
 }
 
 void
-cmd_send_keys_free(void *ptr)
+cmd_send_keys_free(struct cmd *self)
 {
-	struct cmd_send_keys_data	*data = ptr;
+	struct cmd_send_keys_data	*data = self->data;
 
 	if (data->cname != NULL)
 		xfree(data->cname);

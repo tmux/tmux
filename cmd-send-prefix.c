@@ -1,4 +1,4 @@
-/* $Id: cmd-send-prefix.c,v 1.12 2008-06-03 21:42:37 nicm Exp $ */
+/* $Id: cmd-send-prefix.c,v 1.13 2008-06-05 16:35:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
  * Send prefix key as a key.
  */
 
-void	cmd_send_prefix_exec(void *, struct cmd_ctx *);
+void	cmd_send_prefix_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_send_prefix_entry = {
 	"send-prefix", NULL,
@@ -35,16 +35,17 @@ const struct cmd_entry cmd_send_prefix_entry = {
 	cmd_windowonly_send,
 	cmd_windowonly_recv,
 	cmd_windowonly_free,
+	NULL,
 	NULL
 };
 
 void
-cmd_send_prefix_exec(void *ptr, struct cmd_ctx *ctx)
+cmd_send_prefix_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct session	*s;
 	struct winlink	*wl;
 
-	if ((wl = cmd_windowonly_get(ptr, ctx, &s)) == NULL)
+	if ((wl = cmd_windowonly_get(self, ctx, &s)) == NULL)
 		return;
 
 	window_key(wl->window, options_get_number(&s->options, "prefix-key"));

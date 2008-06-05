@@ -1,4 +1,4 @@
-/* $Id: cmd-switch-client.c,v 1.6 2008-06-03 18:13:54 nicm Exp $ */
+/* $Id: cmd-switch-client.c,v 1.7 2008-06-05 16:35:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,11 +28,11 @@
  * Switch client to a different session.
  */
 
-int	cmd_switch_client_parse(struct cmd *, void **, int, char **, char **);
-void	cmd_switch_client_exec(void *, struct cmd_ctx *);
-void	cmd_switch_client_send(void *, struct buffer *);
-void	cmd_switch_client_recv(void **, struct buffer *);
-void	cmd_switch_client_free(void *);
+int	cmd_switch_client_parse(struct cmd *, int, char **, char **);
+void	cmd_switch_client_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_switch_client_send(struct cmd *, struct buffer *);
+void	cmd_switch_client_recv(struct cmd *, struct buffer *);
+void	cmd_switch_client_free(struct cmd *);
 
 struct cmd_switch_client_data {
 	char	*cname;
@@ -48,17 +48,17 @@ const struct cmd_entry cmd_switch_client_entry = {
 	cmd_switch_client_send,
 	cmd_switch_client_recv,
 	cmd_switch_client_free,
+	NULL,
 	NULL
 };
 
 int
-cmd_switch_client_parse(
-    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
+cmd_switch_client_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_switch_client_data	*data;
 	int				 opt;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	data->cname = NULL;
 	data->name = NULL;
 
@@ -83,14 +83,14 @@ cmd_switch_client_parse(
 usage:
 	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
-	cmd_switch_client_free(data);
+	self->entry->free(self);
 	return (-1);
 }
 
 void
-cmd_switch_client_exec(void *ptr, struct cmd_ctx *ctx)
+cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_switch_client_data	*data = ptr;
+	struct cmd_switch_client_data	*data = self->data;
 	struct client			*c;
 	struct session			*s;
 
@@ -114,9 +114,9 @@ cmd_switch_client_exec(void *ptr, struct cmd_ctx *ctx)
 }
 
 void
-cmd_switch_client_send(void *ptr, struct buffer *b)
+cmd_switch_client_send(struct cmd *self, struct buffer *b)
 {
-	struct cmd_switch_client_data	*data = ptr;
+	struct cmd_switch_client_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
 	cmd_send_string(b, data->cname);
@@ -124,20 +124,20 @@ cmd_switch_client_send(void *ptr, struct buffer *b)
 }
 
 void
-cmd_switch_client_recv(void **ptr, struct buffer *b)
+cmd_switch_client_recv(struct cmd *self, struct buffer *b)
 {
 	struct cmd_switch_client_data	*data;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
 	data->cname = cmd_recv_string(b);
 	data->name = cmd_recv_string(b);
 }
 
 void
-cmd_switch_client_free(void *ptr)
+cmd_switch_client_free(struct cmd *self)
 {
-	struct cmd_switch_client_data	*data = ptr;
+	struct cmd_switch_client_data	*data = self->data;
 
 	if (data->cname != NULL)
 		xfree(data->cname);

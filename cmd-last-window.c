@@ -1,4 +1,4 @@
-/* $Id: cmd-last-window.c,v 1.9 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-last-window.c,v 1.10 2008-06-05 16:35:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
  * Move to last window.
  */
 
-void	cmd_last_window_exec(void *, struct cmd_ctx *);
+void	cmd_last_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_last_window_entry = {
 	"last-window", "last", 
@@ -35,15 +35,16 @@ const struct cmd_entry cmd_last_window_entry = {
 	cmd_sessiononly_send,
 	cmd_sessiononly_recv,
 	cmd_sessiononly_free,
-	NULL
+	NULL,
+	cmd_sessiononly_print
 };
 
 void
-cmd_last_window_exec(void *ptr, struct cmd_ctx *ctx)
+cmd_last_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct session	*s;
 
-	if ((s = cmd_sessiononly_get(ptr, ctx)) == NULL)
+	if ((s = cmd_sessiononly_get(self, ctx)) == NULL)
 		return;
 
 	if (session_last(s) == 0)

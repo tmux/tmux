@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.5 2008-06-04 16:11:52 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.6 2008-06-05 16:35:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,13 +24,12 @@
 #include "tmux.h"
 
 int
-cmd_clientonly_parse(
-    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
+cmd_clientonly_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_clientonly_data	*data;
 	int				 opt;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	data->cname = NULL;
 
 	while ((opt = getopt(argc, argv, "c:")) != EOF) {
@@ -53,33 +52,33 @@ cmd_clientonly_parse(
 usage:
 	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
-	self->entry->free(data);
+	self->entry->free(self);
 	return (-1);
 }
 
 void
-cmd_clientonly_send(void *ptr, struct buffer *b)
+cmd_clientonly_send(struct cmd *self, struct buffer *b)
 {
-	struct cmd_clientonly_data	*data = ptr;
+	struct cmd_clientonly_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
 	cmd_send_string(b, data->cname);
 }
 
 void
-cmd_clientonly_recv(void **ptr, struct buffer *b)
+cmd_clientonly_recv(struct cmd *self, struct buffer *b)
 {
 	struct cmd_clientonly_data	*data;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
 	data->cname = cmd_recv_string(b);
 }
 
 void
-cmd_clientonly_free(void *ptr)
+cmd_clientonly_free(struct cmd *self)
 {
-	struct cmd_clientonly_data	*data = ptr;
+	struct cmd_clientonly_data	*data = self->data;
 
 	if (data->cname != NULL)
 		xfree(data->cname);
@@ -87,23 +86,35 @@ cmd_clientonly_free(void *ptr)
 }
 
 struct client *
-cmd_clientonly_get(void *ptr, struct cmd_ctx *ctx)
+cmd_clientonly_get(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_clientonly_data	*data = ptr;
+	struct cmd_clientonly_data	*data = self->data;
 
   	if (data != NULL)
 		return (cmd_find_client(ctx, data->cname));
 	return (cmd_find_client(ctx, NULL));
 }
 
+void
+cmd_clientonly_print(struct cmd *self, char *buf, size_t len)
+{
+	struct cmd_clientonly_data	*data = self->data;
+	size_t				 off = 0;
+	
+	off += xsnprintf(buf, len, "%s ", self->entry->name);
+	if (data == NULL)
+		return;
+	if (off < len && data->cname != NULL)
+		off += xsnprintf(buf + off, len - off, "-c %s ", data->cname);
+}
+
 int
-cmd_sessiononly_parse(
-    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
+cmd_sessiononly_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_sessiononly_data	*data;
 	int				 opt;
-
-	*ptr = data = xmalloc(sizeof *data);
+	
+	self->data = data = xmalloc(sizeof *data);
 	data->cname = NULL;
 	data->sname = NULL;
 
@@ -135,14 +146,14 @@ cmd_sessiononly_parse(
 usage:
 	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
-	self->entry->free(data);
+	self->entry->free(self);
 	return (-1);
 }
 
 void
-cmd_sessiononly_send(void *ptr, struct buffer *b)
+cmd_sessiononly_send(struct cmd *self, struct buffer *b)
 {
-	struct cmd_sessiononly_data	*data = ptr;
+	struct cmd_sessiononly_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
 	cmd_send_string(b, data->cname);
@@ -150,20 +161,20 @@ cmd_sessiononly_send(void *ptr, struct buffer *b)
 }
 
 void
-cmd_sessiononly_recv(void **ptr, struct buffer *b)
+cmd_sessiononly_recv(struct cmd *self, struct buffer *b)
 {
 	struct cmd_sessiononly_data	*data;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
 	data->cname = cmd_recv_string(b);
 	data->sname = cmd_recv_string(b);
 }
 
 void
-cmd_sessiononly_free(void *ptr)
+cmd_sessiononly_free(struct cmd *self)
 {
-	struct cmd_sessiononly_data	*data = ptr;
+	struct cmd_sessiononly_data	*data = self->data;
 
 	if (data->cname != NULL)
 		xfree(data->cname);
@@ -173,24 +184,38 @@ cmd_sessiononly_free(void *ptr)
 }
 
 struct session *
-cmd_sessiononly_get(void *ptr, struct cmd_ctx *ctx)
+cmd_sessiononly_get(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_sessiononly_data	*data = ptr;
+	struct cmd_sessiononly_data	*data = self->data;
 
   	if (data != NULL)
 		return (cmd_find_session(ctx, data->cname, data->sname));
 	return (cmd_find_session(ctx, NULL, NULL));
 }
 
+void
+cmd_sessiononly_print(struct cmd *self, char *buf, size_t len)
+{
+	struct cmd_sessiononly_data	*data = self->data;
+	size_t				 off = 0;
+	
+	off += xsnprintf(buf, len, "%s ", self->entry->name);
+	if (data == NULL)
+		return;
+	if (off < len && data->cname != NULL)
+		off += xsnprintf(buf + off, len - off, "-c %s ", data->cname);
+	if (off < len && data->sname != NULL)
+		off += xsnprintf(buf + off, len - off, "-s %s ", data->sname);
+}
+
 int
-cmd_windowonly_parse(
-    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
+cmd_windowonly_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_windowonly_data	*data;
 	int				 opt;
 	const char			*errstr;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	data->cname = NULL;
 	data->sname = NULL;
 	data->idx = -1;
@@ -231,14 +256,14 @@ usage:
 	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
 error:
-	self->entry->free(data);
+	self->entry->free(self);
 	return (-1);
 }
 
 void
-cmd_windowonly_send(void *ptr, struct buffer *b)
+cmd_windowonly_send(struct cmd *self, struct buffer *b)
 {
-	struct cmd_windowonly_data	*data = ptr;
+	struct cmd_windowonly_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
 	cmd_send_string(b, data->cname);
@@ -246,20 +271,20 @@ cmd_windowonly_send(void *ptr, struct buffer *b)
 }
 
 void
-cmd_windowonly_recv(void **ptr, struct buffer *b)
+cmd_windowonly_recv(struct cmd *self, struct buffer *b)
 {
 	struct cmd_windowonly_data	*data;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
 	data->cname = cmd_recv_string(b);
 	data->sname = cmd_recv_string(b);
 }
 
 void
-cmd_windowonly_free(void *ptr)
+cmd_windowonly_free(struct cmd *self)
 {
-	struct cmd_windowonly_data	*data = ptr;
+	struct cmd_windowonly_data	*data = self->data;
 
 	if (data->cname != NULL)
 		xfree(data->cname);
@@ -269,15 +294,32 @@ cmd_windowonly_free(void *ptr)
 }
 
 struct winlink *
-cmd_windowonly_get(void *ptr, struct cmd_ctx *ctx, struct session **sp)
+cmd_windowonly_get(struct cmd *self, struct cmd_ctx *ctx, struct session **sp)
 {
-	struct cmd_windowonly_data	*data = ptr;
+	struct cmd_windowonly_data	*data = self->data;
 	struct winlink			*wl;
 
   	if (data == NULL) {
 		wl = cmd_find_window(ctx, NULL, NULL, -1, sp);
 		return (wl);
 	}
-		
+	
 	return (cmd_find_window(ctx, data->cname, data->sname, data->idx, sp));
+}
+
+void
+cmd_windowonly_print(struct cmd *self, char *buf, size_t len)
+{
+	struct cmd_windowonly_data	*data = self->data;
+	size_t				 off = 0;
+	
+	off += xsnprintf(buf, len, "%s ", self->entry->name);
+	if (data == NULL)
+		return;
+	if (off < len && data->cname != NULL)
+		off += xsnprintf(buf + off, len - off, "-c %s ", data->cname);
+	if (off < len && data->sname != NULL)
+		off += xsnprintf(buf + off, len - off, "-s %s ", data->sname);
+	if (off < len && data->idx != -1)
+		off += xsnprintf(buf + off, len - off, "-i %d ", data->idx);
 }

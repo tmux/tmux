@@ -1,4 +1,4 @@
-/* $Id: cmd-unlink-window.c,v 1.9 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: cmd-unlink-window.c,v 1.10 2008-06-05 16:35:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
  * Unlink a window, unless it would be destroyed by doing so (only one link).
  */
 
-void	cmd_unlink_window_exec(void *, struct cmd_ctx *);
+void	cmd_unlink_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_unlink_window_entry = {
 	"unlink-window", "unlinkw",
@@ -35,11 +35,12 @@ const struct cmd_entry cmd_unlink_window_entry = {
 	cmd_windowonly_send,
 	cmd_windowonly_recv,
 	cmd_windowonly_free,
+	NULL,
 	NULL
 };
 
 void
-cmd_unlink_window_exec(void *ptr, struct cmd_ctx *ctx)
+cmd_unlink_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct winlink	*wl;
 	struct session	*s;
@@ -47,7 +48,7 @@ cmd_unlink_window_exec(void *ptr, struct cmd_ctx *ctx)
 	u_int		 i;
 	int		 destroyed;
 
-	if ((wl = cmd_windowonly_get(ptr, ctx, &s)) == NULL)
+	if ((wl = cmd_windowonly_get(self, ctx, &s)) == NULL)
 		return;
 
 	if (wl->window->references == 1) {

@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.28 2008-06-03 05:35:51 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.29 2008-06-05 16:35:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -122,7 +122,7 @@ key_bindings_init(void)
 		cmd->entry = table[i].entry;
 		cmd->data = NULL;
 		if (cmd->entry->init != NULL)
-			cmd->entry->init(&cmd->data, table[i].key);
+			cmd->entry->init(cmd, table[i].key);
 		key_bindings_add(table[i].key, cmd);
 	}
 }

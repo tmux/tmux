@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.20 2008-06-03 21:42:37 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.21 2008-06-05 16:35:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,12 +27,12 @@
  * Create a new window.
  */
 
-int	cmd_new_window_parse(struct cmd *, void **, int, char **, char **);
-void	cmd_new_window_exec(void *, struct cmd_ctx *);
-void	cmd_new_window_send(void *, struct buffer *);
-void	cmd_new_window_recv(void **, struct buffer *);
-void	cmd_new_window_free(void *);
-void	cmd_new_window_init(void **, int);
+int	cmd_new_window_parse(struct cmd *, int, char **, char **);
+void	cmd_new_window_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_new_window_send(struct cmd *, struct buffer *);
+void	cmd_new_window_recv(struct cmd *, struct buffer *);
+void	cmd_new_window_free(struct cmd *);
+void	cmd_new_window_init(struct cmd *, int);
 
 struct cmd_new_window_data {
 	char	*cname;
@@ -52,15 +52,16 @@ const struct cmd_entry cmd_new_window_entry = {
 	cmd_new_window_send,
 	cmd_new_window_recv,
 	cmd_new_window_free,
-	cmd_new_window_init
+	cmd_new_window_init,
+	NULL
 };
 
 void
-cmd_new_window_init(void **ptr, unused int arg)
+cmd_new_window_init(struct cmd *self, unused int arg)
 {
 	struct cmd_new_window_data	 *data;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	data->cname = NULL;
 	data->sname = NULL;
 	data->idx = -1;
@@ -70,15 +71,14 @@ cmd_new_window_init(void **ptr, unused int arg)
 }
 
 int
-cmd_new_window_parse(
-    struct cmd *self, void **ptr, int argc, char **argv, char **cause)
+cmd_new_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_new_window_data	*data;
 	const char			*errstr;
 	int				 opt;
 
-	self->entry->init(ptr, 0);
-	data = *ptr;
+	self->entry->init(self, 0);
+	data = self->data;
 
 	while ((opt = getopt(argc, argv, "c:di:n:s:")) != EOF) {
 		switch (opt) {
@@ -126,14 +126,14 @@ usage:
 	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
 error:
-	cmd_new_window_free(data);
+	self->entry->free(self);
 	return (-1);
 }
 
 void
-cmd_new_window_exec(void *ptr, struct cmd_ctx *ctx)
+cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_new_window_data	*data = ptr;
+	struct cmd_new_window_data	*data = self->data;
 	struct session			*s;
 	struct winlink			*wl;
 	char				*cmd;
@@ -163,9 +163,9 @@ cmd_new_window_exec(void *ptr, struct cmd_ctx *ctx)
 }
 
 void
-cmd_new_window_send(void *ptr, struct buffer *b)
+cmd_new_window_send(struct cmd *self, struct buffer *b)
 {
-	struct cmd_new_window_data	*data = ptr;
+	struct cmd_new_window_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
 	cmd_send_string(b, data->cname);
@@ -175,11 +175,11 @@ cmd_new_window_send(void *ptr, struct buffer *b)
 }
 
 void
-cmd_new_window_recv(void **ptr, struct buffer *b)
+cmd_new_window_recv(struct cmd *self, struct buffer *b)
 {
 	struct cmd_new_window_data	*data;
 
-	*ptr = data = xmalloc(sizeof *data);
+	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
 	data->cname = cmd_recv_string(b);
 	data->sname = cmd_recv_string(b);
@@ -188,9 +188,9 @@ cmd_new_window_recv(void **ptr, struct buffer *b)
 }
 
 void
-cmd_new_window_free(void *ptr)
+cmd_new_window_free(struct cmd *self)
 {
-	struct cmd_new_window_data	*data = ptr;
+	struct cmd_new_window_data	*data = self->data;
 
 	if (data->cname != NULL)
 		xfree(data->cname);
