@@ -21,6 +21,17 @@
 	tmux renamew -t/dev/ttypi:0 newname	(client /dev/ttypi's current
 						 session, window 0)
 
+  This does have some downsides, for example, having to use -t on selectw,
+
+	tmux selectw -t7
+
+  is annoying. But then using non-flagged arguments would mean renaming the
+  current window would need to be something like:
+	
+	tmux renamew : newname
+
+  It might be better not to try and be so consistent; comments to the usual
+  address ;-).
 * Infrastructure for printing arguments in list-keys output. Easy ones only for
   now.
 
@@ -429,4 +440,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.111 2008-06-05 21:24:59 nicm Exp $
+$Id: CHANGES,v 1.112 2008-06-05 22:59:38 nicm Exp $
