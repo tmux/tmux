@@ -1,3 +1,8 @@
+06 June 2008
+
+* The server now exits when no sessions remain.
+* Fix bug with inserting characters with TERM=xterm-color.
+
 05 June 2008
 
 * Completely reorganise command parsing. Much more common code in cmd-generic.c
@@ -440,4 +445,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.113 2008-06-05 23:17:03 nicm Exp $
+$Id: CHANGES,v 1.114 2008-06-06 17:55:27 nicm Exp $

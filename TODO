@@ -79,6 +79,6 @@
 - status bar customisation variables, show-activity, show-last-window
 - show-options
 - let server die when last session does
-- each command should have a print op as well for list keys
 - fix occasion start server problems
+- key binding bug: random changes?
 - test and fix wsvt25

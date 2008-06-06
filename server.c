@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.54 2008-06-06 17:20:29 nicm Exp $ */
+/* $Id: server.c,v 1.55 2008-06-06 17:55:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -142,7 +142,7 @@ server_main(const char *srv_path, int srv_fd)
 {
 	struct pollfd	*pfds, *pfd;
 	int		 nfds;
-	u_int		 i;
+	u_int		 i, n;
 
 	siginit();
  
@@ -188,6 +188,22 @@ server_main(const char *srv_path, int srv_fd)
 		 */
 		server_handle_windows(&pfd);
 		server_handle_clients(&pfd);
+
+		/*
+		 * If we have no sessions and clients left, let's get out
+		 * of here...
+		 */
+		n = 0;
+		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+			if (ARRAY_ITEM(&sessions, i) != NULL)
+				n++;
+		}
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			if (ARRAY_ITEM(&clients, i) != NULL)
+				n++;
+		}
+		if (n == 0)
+			break;
 	}
 	if (pfds != NULL)
 		xfree(pfds);
@@ -430,7 +446,7 @@ server_handle_window(struct window *w)
 			continue;
 
 		if (w->flags & WINDOW_BELL &&
-		    !session_alert_has(s, w, WINDOW_BELL)) {
+		    !session_alert_has_window(s, w, WINDOW_BELL)) {
 			session_alert_add(s, w, WINDOW_BELL);
 
 			action = options_get_number(&s->options, "bell-action");
@@ -449,7 +465,7 @@ server_handle_window(struct window *w)
 
 		if ((w->flags & WINDOW_MONITOR) &&
 		    (w->flags & WINDOW_ACTIVITY) &&
-		    !session_alert_has(s, w, WINDOW_ACTIVITY)) {
+		    !session_alert_has_window(s, w, WINDOW_ACTIVITY)) {
 			session_alert_add(s, w, WINDOW_ACTIVITY);
 			update = 1;
 		}

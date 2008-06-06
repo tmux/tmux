@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.134 2008-06-06 17:20:30 nicm Exp $ */
+/* $Id: tmux.h,v 1.135 2008-06-06 17:55:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1061,13 +1061,14 @@ void printflike2 window_more_add(struct window *, const char *, ...);
 
 /* session.c */
 extern struct sessions sessions;
-void		 session_alert_add(struct session *, struct window *, int);
-void		 session_alert_cancel(struct session *, struct winlink *);
-int		 session_alert_has(struct session *, struct winlink *, int);
+void	 session_alert_add(struct session *, struct window *, int);
+void	 session_alert_cancel(struct session *, struct winlink *);
+int	 session_alert_has(struct session *, struct winlink *, int);
+int	 session_alert_has_window(struct session *, struct window *, int);
 struct session	*session_find(const char *);
 struct session	*session_create(const char *, const char *, u_int, u_int);
-void		 session_destroy(struct session *);
-int		 session_index(struct session *, u_int *);
+void	 	 session_destroy(struct session *);
+int	 	 session_index(struct session *, u_int *);
 struct winlink	*session_new(struct session *, const char *, const char *, int);
 struct winlink	*session_attach(struct session *, struct window *, int);
 int		 session_detach(struct session *, struct winlink *);
