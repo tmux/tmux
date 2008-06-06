@@ -82,3 +82,4 @@
 - fix occasion start server problems
 - key binding bug: random changes?
 - test and fix wsvt25
+- activity/bell should be per-window not per-link

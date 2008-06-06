@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.30 2008-06-06 15:23:44 nicm Exp $
+.\" $Id: tmux.1,v 1.31 2008-06-06 20:07:56 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -34,12 +34,13 @@ is a terminal multiplexer; it enables a number of terminals (or windows) to be
 accessed and controlled from a single terminal.
 .Pp
 .Nm
-runs as a server-client system. A server is created automatically when
-necessary and holds a number of
+runs as a server-client system.
+A server is created automatically when necessary and holds a number of
 .Em sessions ,
 each of which may have a number of
 .Em windows
-linked to it. Any number of
+linked to it.
+Any number of
 .Em clients
 may connect to a session, or the server
 may be controlled by issuing commands with
@@ -62,7 +63,8 @@ is the pid of the server or client process.
 .It Fl V
 Print program version.
 .It Fl f Ar file
-Specify an alternative configuration file. By default,
+Specify an alternative configuration file.
+By default,
 .Nm
 will look for a config file at ~/.tmux.conf.
 .It Fl S Ar socket-path
@@ -89,7 +91,7 @@ To create a new tmux session running
 .Dl $ tmux new-session vi
 .Pp
 Most commands have a shorter form, known as an alias.
-For new-session, this is 
+For new-session, this is
 .Ic new :
 .Pp
 .Dl $ tmux new vi
@@ -109,7 +111,7 @@ followed by the
 .Ql c
 key.
 .Pp
-Windows may be navigated with: 
+Windows may be navigated with:
 .Ql ^B 0
 (to select window 0),
 .Ql ^B 1
@@ -125,7 +127,7 @@ and reattached with:
 .Pp
 .Dl $ tmux attach-session
 .Pp
-Typing 
+Typing
 .Ql ^B \&?
 lists the current key bindings in the current window; up and down may be used
 to navigate the list or
@@ -134,7 +136,7 @@ to exit from it.
 .Sh KEY BINDINGS
 .Nm
 may be controlled from an attached client by using a key combination of a
-prefix, 
+prefix,
 .Ql ^B
 (ctrl-B) by default, followed by a command key.
 .Pp
@@ -158,8 +160,9 @@ List current key bindings.
 A complete list may be obtained with the
 .Ic list-keys
 command (bound to
-.Ql \&? 
-by default). Key bindings may be changed with the
+.Ql \&?
+by default).
+Key bindings may be changed with the
 .Ic bind-key
 and
 .Ic unbind-key
@@ -187,7 +190,7 @@ The
 .Ql up ,
 .Ql down ,
 .Ql page-up
-and 
+and
 .Ql page-down
 keys or
 .Xr vi 1
@@ -220,13 +223,13 @@ In addition,
 .Ql ^A
 and
 .Ql ^E
-(or the 
+(or the
 .Xr vi 1
-style 
+style
 .Ql 0
 and
 .Ql $
-keys) move to the start and end of the line; the space key begins a selection; 
+keys) move to the start and end of the line; the space key begins a selection;
 and the enter key or
 .Ql ^W
 copies the selection to the paste buffer and exits copy mode.
@@ -234,7 +237,7 @@ copies the selection to the paste buffer and exits copy mode.
 This mode is entered with the
 .Ic copy-mode
 command, bound to
-.Ql [ 
+.Ql [
 by default.
 .El
 .Sh COMMANDS
@@ -263,7 +266,7 @@ The following commands are available:
 .Bl -tag -width Ds
 .It Xo Ic attach-session
 .Op Fl d
-.Op Fl s Ar session-name
+.Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic attach )
 Create a new client in the current terminal and attach it to a session.
@@ -279,76 +282,78 @@ Bind key
 to
 .Ar command .
 .It Xo Ic copy-mode
-.Op Fl s Ar session-name
+.Op Fl t Ar target-window
 .Xc
 Enter copy mode.
 .It Xo Ic detach-client
-.Op Fl c Ar client-tty
+.Op Fl t Ar target-client
 .Xc
 .D1 (alias: Ic detach )
 Detach the current client if bound to a key, or the specified client with
-.Fl c .
-.It Xo Ic has-session 
-.Op Fl s Ar session-name
+.Fl t .
+.It Xo Ic has-session
+.Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic has )
-Report an error and exit with 1 if the specified session does not exist. If it
-does exist, exit with 0.
+Report an error and exit with 1 if the specified session does not exist.
+If it does exist, exit with 0.
 .It Xo Ic kill-server
 .Xc
 Kill the
 .Nm
 server and clients and destroy all sessions.
 .It Xo Ic kill-session
-.Op Fl s Ar session-name
+.Op Fl t Ar target-session
 .Xc
 Destroy the given session, closing any windows linked to it and no other
 sessions, and detaching all clients attached to it.
-.It Xo Ic kill-window 
-.Op Fl i Ar index
-.Op Fl s Ar session-name
+.It Xo Ic kill-window
+.Op Fl t Ar target-window
 .Xc
 .D1 (alias: Ic killw )
 Kill the current window or the window at
-.Ar index ,
+.Ar target-window ,
 removing it from any sessions to which it is linked.
-.It Xo Ic last-window 
-.Op Fl s Ar session-name
+.It Xo Ic last-window
+.Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic last )
 Select the last (previously selected) window.
-.It Xo Ic link-window 
+If no
+.Ar target-session
+is specified, select to the last window of the current session.
+.It Xo Ic link-window
 .Op Fl dk
-.Op Fl i Ar index
-.Op Fl s Ar session-name
-.Ar source-name Ar source-index
+.Op Fl s Ar src-window
+.Op Fl t Ar dst-window
 .Xc
 .D1 (alias: Ic linkw )
 Link the window at
-.Ar source-index
-in session
-.Ar source-name
-into the specified session. If
-.Ar index
-is specified and no window exists with that index, the window is linked at
-that index.
-If 
+.Ar src-window
+to the specified
+.Ar dst-window .
+If
+.Ar dst-window
+is specified and no such window exists, the
+.Ar src-window
+is linked there.
+If
 .Fl k
-is given and a window exists at
-.Ar index ,
-it is killed, otherwise an error is generated.
+is given and
+.Ar dst-window
+exists, it is killed, otherwise an error is generated.
 If
 .Fl d
 is given, the newly linked window is not selected.
-.It Xo Ic list-clients 
+.It Xo Ic list-clients
 .Xc
 .D1 (alias: Ic lsc )
 List all clients attached to the server.
-.It Xo Ic list-keys 
+.It Xo Ic list-keys
 .Xc
 .D1 (alias: Ic lsk )
 List all key bindings.
-.It Xo Ic list-sessions 
+.It Xo Ic list-sessions
 .Xc
 .D1 (alias: Ic ls )
 List all sessions managed by the server.
@@ -373,7 +378,7 @@ is given.
 and
 .Ar command
 are the name of and command to execute in the initial window.
-.It Xo Ic new-window 
+.It Xo Ic new-window
 .Op Fl d
 .Op Fl i Ar index
 .Op Fl n Ar name
@@ -381,7 +386,8 @@ are the name of and command to execute in the initial window.
 .Op Ar command
 .Xc
 .D1 (alias: Ic neww )
-Create a new window. If
+Create a new window.
+If
 .Fl d
 is given, the session does not make the new window the current window.
 .Ar index
@@ -419,7 +425,7 @@ Move to the next window in the session.
 .D1 (alias: Ic paste )
 Insert the contents of the paste buffer into the current window.
 Ignored unless executed via a key binding.
-.It Xo Ic previous-window 
+.It Xo Ic previous-window
 .Op Fl s Ar session-name
 .Xc
 .D1 (alias: Ic prev )
@@ -452,14 +458,14 @@ if specifed, to
 .Op Fl s Ar session-name
 .Xc
 Enter scroll mode.
-.It Xo Ic select-window 
+.It Xo Ic select-window
 .Op Fl s Ar session-name
 .Op Fl i Ar index
 .Xc
 .D1 (alias: Ic selectw )
 Select the window at
 .Ar index .
-.It Xo Ic send-keys 
+.It Xo Ic send-keys
 .Op Fl c Ar client-tty
 .Ar key Ar ...
 .Xc
@@ -481,7 +487,8 @@ Send the prefix key to a window as if it was pressed.
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic set )
-Set an option. Possible options are:
+Set an option.
+Possible options are:
 .Bl -tag -width Ds
 .It Ic prefix Ar key
 Set the current prefix key.
@@ -489,7 +496,7 @@ Set the current prefix key.
 Set the maximum number of lines held in window history.
 This setting applies only to new windows - existing window histories are not
 resized and retain the limit at the point they were created.
-.It Xo Ic status 
+.It Xo Ic status
 .Op Ic on | Ic off
 .Xc
 Show or hide the status line.
@@ -532,7 +539,7 @@ The default is
 Start the
 .Nm
 server, if not already running, without creating any sessions.
-.It Xo Ic swap-window 
+.It Xo Ic swap-window
 .Op Fl i Ar index
 .Op Fl s Ar session-name
 .Ar source-name Ar source-index
