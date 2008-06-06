@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.53 2008-06-04 17:54:26 nicm Exp $ */
+/* $Id: server.c,v 1.54 2008-06-06 17:20:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,6 +32,7 @@
 #include <string.h>
 #include <syslog.h>
 #include <termios.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -415,19 +416,21 @@ server_handle_window(struct window *w)
 {
 	struct session	*s;
 	u_int		 i;
-	int		 action;
+	int		 action, update;
 
 	window_parse(w);
 
 	if (!(w->flags & WINDOW_BELL) && !(w->flags & WINDOW_ACTIVITY))
 		return;
 
+	update = 0;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
 		if (s == NULL || !session_has(s, w))
 			continue;
 
-		if (w->flags & WINDOW_BELL) {
+		if (w->flags & WINDOW_BELL &&
+		    !session_alert_has(s, w, WINDOW_BELL)) {
 			session_alert_add(s, w, WINDOW_BELL);
 
 			action = options_get_number(&s->options, "bell-action");
@@ -441,12 +444,18 @@ server_handle_window(struct window *w)
 				tty_write_session(s, TTY_CHARACTER, '\007');
 				break;
 			}
+			update = 1;
 		}
 
-		if ((w->flags & WINDOW_MONITOR) && (w->flags & WINDOW_ACTIVITY))
+		if ((w->flags & WINDOW_MONITOR) &&
+		    (w->flags & WINDOW_ACTIVITY) &&
+		    !session_alert_has(s, w, WINDOW_ACTIVITY)) {
 			session_alert_add(s, w, WINDOW_ACTIVITY);
+			update = 1;
+		}
 	}
-	server_status_window(w);
+	if (update)
+		server_status_window(w);
 
 	w->flags &= ~(WINDOW_BELL|WINDOW_ACTIVITY);
 }

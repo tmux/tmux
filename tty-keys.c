@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.2 2007-12-06 09:46:23 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.3 2008-06-06 17:20:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,6 +26,7 @@ struct {
 	const char	*name;
 	int	 	 code;
 } tty_keys[] = {
+/*	{ "kb",	   KEYC_BACKSPACE }, */
 	{ "kBEG",  KEYC_SBEG },
 	{ "kCAN",  KEYC_SCANCEL },
 	{ "kCMD",  KEYC_SCOMMAND },
@@ -259,6 +260,11 @@ tty_keys_next(struct tty *tty, int *code)
 	}
 	xfree(s);
 	if (tk == NULL) {
+		size = tty->ksize;
+		if (size > BUFFER_USED(tty->in))
+			size = BUFFER_USED(tty->in);
+		log_debug(
+		    "unmatched key: %.*s", (int) size, BUFFER_OUT(tty->in));
 		/*
 		 * XXX Pass through unchanged.
 		 */

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.133 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: tmux.h,v 1.134 2008-06-06 17:20:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -59,6 +59,13 @@ extern char    *__progname;
 #define __packed __attribute__ ((__packed__))
 #endif
 
+#ifndef timespeccmp
+#define timespeccmp(tsp, usp, cmp)                                      \
+        (((tsp)->tv_sec == (usp)->tv_sec) ?                             \
+            ((tsp)->tv_nsec cmp (usp)->tv_nsec) :                       \
+            ((tsp)->tv_sec cmp (usp)->tv_sec))
+#endif
+
 #ifndef TTY_NAME_MAX
 #define TTY_NAME_MAX 32
 #endif
@@ -115,7 +122,7 @@ struct buffer {
 #define KEYC_A1 -1
 #define KEYC_A3 -2
 #define KEYC_B2 -3
-/* XXX #define KEYC_BACKSPACE -4 */
+/* #define KEYC_BACKSPACE -4 */
 #define KEYC_BEG -5
 #define KEYC_BTAB -6
 #define KEYC_C1 -7

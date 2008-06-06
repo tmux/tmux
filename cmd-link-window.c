@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.20 2008-06-05 22:59:38 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.21 2008-06-06 17:20:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -66,6 +66,7 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return;
 	}
 
+	wl_dst = NULL;
 	if (idx != -1)
 		wl_dst = winlink_find_by_index(&s->windows, idx);
 	if (wl_dst != NULL) {
