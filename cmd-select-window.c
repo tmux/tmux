@@ -1,4 +1,4 @@
-/* $Id: cmd-select-window.c,v 1.18 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-select-window.c,v 1.19 2008-06-06 20:02:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -66,6 +66,7 @@ cmd_select_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (session_select(s, wl->idx) == 0)
 		server_redraw_session(s);
+	recalculate_sizes();
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

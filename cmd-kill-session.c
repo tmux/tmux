@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-session.c,v 1.10 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-kill-session.c,v 1.11 2008-06-06 20:02:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -60,6 +60,7 @@ cmd_kill_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 			server_write_client(c, MSG_EXIT, NULL, 0);
 		}
 	}
+	recalculate_sizes();
 
 	session_destroy(s);
 

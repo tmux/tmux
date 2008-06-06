@@ -1,5 +1,12 @@
 06 June 2008
 
+* New window option: aggressive-resize. Normally, windows are resized to the
+  size of the smallest attached session to which they are linked. This means a
+  window only changes size when sessions are detached or attached, or they are
+  linked or unlinked from a session. This flag changes a window to be the size
+  of the smallest attached session for which it is the current window - it is
+  resized every time a session changes to it or away from it. This is nice for
+  things that handle SIGWINCH well (like irssi) and bad for things like shells.
 * The server now exits when no sessions remain.
 * Fix bug with inserting characters with TERM=xterm-color.
 
@@ -445,4 +452,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.114 2008-06-06 17:55:27 nicm Exp $
+$Id: CHANGES,v 1.115 2008-06-06 20:02:27 nicm Exp $

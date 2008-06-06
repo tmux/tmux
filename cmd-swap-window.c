@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-window.c,v 1.12 2008-06-05 22:59:38 nicm Exp $ */
+/* $Id: cmd-swap-window.c,v 1.13 2008-06-06 20:02:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,6 +70,7 @@ cmd_swap_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	server_redraw_session(src);
 	if (src != dst)
 		server_redraw_session(dst);
+	recalculate_sizes();
 
 out:
 	if (ctx->cmdclient != NULL)

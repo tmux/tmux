@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.21 2008-06-06 17:20:15 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.22 2008-06-06 20:02:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,6 +108,7 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		session_select(s, wl_dst->idx);
 		server_redraw_session(s);
 	}
+	recalculate_sizes();
 
 out:
 	if (ctx->cmdclient != NULL)

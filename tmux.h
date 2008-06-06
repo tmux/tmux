@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.135 2008-06-06 17:55:27 nicm Exp $ */
+/* $Id: tmux.h,v 1.136 2008-06-06 20:02:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -527,6 +527,7 @@ struct window {
 #define WINDOW_HIDDEN 0x2
 #define WINDOW_ACTIVITY 0x4
 #define WINDOW_MONITOR 0x8
+#define WINDOW_AGGRESSIVE 0x10
 
 	struct screen	*screen;
 	struct screen	 base;

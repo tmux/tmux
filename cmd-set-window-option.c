@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.5 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.6 2008-06-06 20:02:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -150,6 +150,22 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			if (s != NULL)
 				session_alert_cancel(s, wl);
 		}
+	} else if (strcmp(data->option, "aggressive-resize") == 0) {
+		if (bool == -1) {
+			ctx->error(ctx, "bad value: %s", data->value);
+			return;
+		}
+
+		if (bool == -2)
+			wl->window->flags ^= WINDOW_AGGRESSIVE;
+		else {
+			if (bool)
+				wl->window->flags |= WINDOW_AGGRESSIVE;
+			else 
+				wl->window->flags &= ~WINDOW_AGGRESSIVE;
+		}
+
+		recalculate_sizes();
 	} else {
 		ctx->error(ctx, "unknown option: %s", data->option);
 		return;
