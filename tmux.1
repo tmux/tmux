@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.29 2008-06-05 21:25:00 nicm Exp $
+.\" $Id: tmux.1,v 1.30 2008-06-06 15:23:44 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -24,8 +24,9 @@
 .Nm tmux
 .Bk -words
 .Op Fl vV
+.Op Fl f Ar file
 .Op Fl S Ar socket-path
-.Op Ar command Op Ar arguments
+.Op Ar command Op Ar flags
 .Ek
 .Sh DESCRIPTION
 .Nm
@@ -48,14 +49,6 @@ Communication takes place through a socket, by default placed in
 .Pp
 The options are as follows:
 .Bl -tag -width "XXXXXXXXXXXX"
-.It Fl S Ar socket-path
-Specify an alternative path to the server socket.
-The default is
-.Pa /tmp/tmux-UID ,
-where
-.Em UID
-is the uid of the user who invoked
-.Nm .
 .It Fl v
 Request verbose logging.
 This option may be specified multiple times for increasing verbosity.
@@ -66,11 +59,25 @@ and
 files in the current directory, where
 .Em PID
 is the pid of the server or client process.
-.It Ar command Op Ar arguments
+.It Fl V
+Print program version.
+.It Fl f Ar file
+Specify an alternative configuration file. By default,
+.Nm
+will look for a config file at ~/.tmux.conf.
+.It Fl S Ar socket-path
+Specify an alternative path to the server socket.
+The default is
+.Pa /tmp/tmux-UID ,
+where
+.Em UID
+is the uid of the user who invoked
+.Nm .
+.It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
 and described in the following sections.
-If no command and arguments is specified, the
+If no command and flags is specified, the
 .Ic new-session
 command is assumed.
 .Pp
