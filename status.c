@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.22 2008-06-06 17:20:30 nicm Exp $ */
+/* $Id: status.c,v 1.23 2008-06-07 06:13:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,9 +51,6 @@ status_write_client(struct client *c)
 	right = options_get_string(&c->session->options, "status-right");
 	strftime(rbuf, sizeof rbuf, right, localtime(&(c->status_ts.tv_sec)));
 	rlen = strlen(rbuf) + 1;
-
-	c->status_ts.tv_sec += 
-	    options_get_number(&c->session->options, "status-interval");
 
 	screen_redraw_start_client(&ctx, c);
 	screen_redraw_move_cursor(&ctx, llen, c->sy - slines);

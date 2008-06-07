@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.55 2008-06-06 17:55:27 nicm Exp $ */
+/* $Id: server.c,v 1.56 2008-06-07 06:13:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,6 +54,7 @@ void		 server_handle_client(struct client *);
 void		 server_handle_window(struct window *);
 void		 server_lost_client(struct client *);
 void	 	 server_lost_window(struct window *);
+void		 server_check_status(struct client *);
 
 /* Fork new server. */
 pid_t
@@ -268,6 +269,28 @@ server_handle_windows(struct pollfd **pfd)
 	}
 }
 
+/* Check for status line redraw on client. */
+void
+server_check_status(struct client *c)
+{
+	struct timespec	 ts;
+	u_int		 nlines, interval;
+
+	if (c->session == NULL)
+		return;
+	nlines = options_get_number(&c->session->options, "status-lines");
+	interval = options_get_number(&c->session->options, "status-interval");
+	if (nlines == 0 || interval == 0)
+		return;
+	
+	if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
+		fatal("clock_gettime");
+	ts.tv_sec -= interval;
+	
+	if (timespeccmp(&c->status_ts, &ts, <))
+		server_status_client(c);
+}
+
 /* Fill client pollfds. */
 void
 server_fill_clients(struct pollfd **pfd)
@@ -307,20 +330,13 @@ void
 server_handle_clients(struct pollfd **pfd)
 {
 	struct client	*c;
-	struct timespec	 now;
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 
 		if (c != NULL) {
-			if (c->session != NULL && options_get_number(
-			    &c->session->options, "status-lines") != 0) {
-				if (clock_gettime(CLOCK_REALTIME, &now) != 0)
-					fatal("clock_gettime");
-				if (timespeccmp(&now, &c->status_ts, >))
-					server_status_client(c);
-			}
+			server_check_status(c);
 			
 			log_debug("testing client %d (%d)", (*pfd)->fd, c->fd);
 			if (buffer_poll(*pfd, c->in, c->out) != 0) {

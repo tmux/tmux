@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.25 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.26 2008-06-07 06:13:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -125,6 +125,8 @@ cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 	number = -1;
 	if (data->value != NULL) {
 		number = strtonum(data->value, 0, INT_MAX, &errstr);
+		if (errstr != NULL)
+			number = 0;
 
 		bool = -1;
 		if (number == 1 || strcasecmp(data->value, "on") == 0 ||
@@ -221,8 +223,12 @@ cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 		}
 		options_set_string(oo, "default-command", "%s", data->value);
 	} else if (strcmp(data->option, "history-limit") == 0) {
-		if (data->value == NULL) {
+		if (data->value == NULL || number == -1) {
 			ctx->error(ctx, "invalid value");
+			return;
+		}
+		if (errstr != NULL) {
+			ctx->error(ctx, "history-limit %s", errstr);
 			return;
 		}
 		if (number > SHRT_MAX) {
@@ -256,6 +262,16 @@ cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 			if (c != NULL && c->session != NULL)
 				server_redraw_client(c);
 		}
+	} else if (strcmp(data->option, "status-interval") == 0) {
+		if (data->value == NULL || number == -1) {
+			ctx->error(ctx, "invalid value");
+			return;
+		}
+		if (errstr != NULL) {
+			ctx->error(ctx, "status-interval %s", errstr);
+			return;
+		}
+		options_set_number(oo, "status-interval", number);
 	} else {
 		ctx->error(ctx, "unknown option: %s", data->option);
 		return;

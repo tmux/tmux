@@ -1,3 +1,7 @@
+07 June 2008
+
+* Make status-interval actually changable.
+
 06 June 2008
 
 * New window option: aggressive-resize. Normally, windows are resized to the
@@ -452,4 +456,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.115 2008-06-06 20:02:27 nicm Exp $
+$Id: CHANGES,v 1.116 2008-06-07 06:13:21 nicm Exp $
