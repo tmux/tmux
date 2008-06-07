@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.39 2008-06-07 06:47:38 nicm Exp $ */
+/* $Id: server-fn.c,v 1.40 2008-06-07 07:13:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -72,19 +72,6 @@ server_write_window(
 }
 
 void
-server_clear_client(struct client *c)
-{
-	struct screen_redraw_ctx	ctx;
-
-	screen_redraw_start_client(&ctx, c);
-	screen_redraw_set_attributes(&ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-	screen_redraw_clear_screen(&ctx);
-	screen_redraw_stop(&ctx);
-
-	status_write_client(c);
-}
-
-void
 server_redraw_client(struct client *c)
 {
 	c->flags |= CLIENT_REDRAW;
@@ -94,19 +81,6 @@ void
 server_status_client(struct client *c)
 {
 	c->flags |= CLIENT_STATUS;
-}
-
-void
-server_clear_session(struct session *s)
-{
-	struct screen_redraw_ctx	ctx;
-
-	screen_redraw_start_session(&ctx, s);
-	screen_redraw_set_attributes(&ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-	screen_redraw_clear_screen(&ctx);
-	screen_redraw_stop(&ctx);
-
-	status_write_session(s);
 }
 
 void
@@ -137,19 +111,6 @@ server_status_session(struct session *s)
 		if (c->session == s)
 			server_status_client(c);
 	}
-}
-
-void
-server_clear_window(struct window *w)
-{
-	struct screen_redraw_ctx	ctx;
-
-	screen_redraw_start_window(&ctx, w);
-	screen_redraw_set_attributes(&ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-	screen_redraw_clear_screen(&ctx);
-	screen_redraw_stop(&ctx);
-
-	status_write_window(w);
 }
 
 void

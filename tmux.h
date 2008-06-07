@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.137 2008-06-07 06:47:38 nicm Exp $ */
+/* $Id: tmux.h,v 1.138 2008-06-07 07:13:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -651,6 +651,7 @@ struct client {
 #define CLIENT_MOUSE 0x4
 #define CLIENT_REDRAW 0x8
 #define CLIENT_STATUS 0x10
+#define CLIENT_CLEAR 0x20
 	int		 flags;
 
 	struct session	*session;
@@ -908,13 +909,10 @@ void	 server_write_session(
              struct session *, enum hdrtype, const void *, size_t);
 void	 server_write_window(
              struct window *, enum hdrtype, const void *, size_t);
-void	 server_clear_client(struct client *);
 void	 server_redraw_client(struct client *);
 void	 server_status_client(struct client *);
-void	 server_clear_session(struct session *);
 void	 server_redraw_session(struct session *);
 void	 server_status_session(struct session *);
-void	 server_clear_window(struct window *);
 void	 server_redraw_window(struct window *);
 void	 server_status_window(struct window *);
 void printflike2 server_write_message(struct client *, const char *, ...);
