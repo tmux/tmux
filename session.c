@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.36 2008-06-06 17:55:27 nicm Exp $ */
+/* $Id: session.c,v 1.37 2008-06-07 07:27:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -116,7 +116,7 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 
 	s = xmalloc(sizeof *s);
 	if (clock_gettime(CLOCK_REALTIME, &s->ts) != 0)
-		fatal("clock_gettime");
+		fatal("clock_gettime failed");
 	s->curw = s->lastw = NULL;
 	RB_INIT(&s->windows);
 	TAILQ_INIT(&s->alerts);

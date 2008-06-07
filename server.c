@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.58 2008-06-07 07:13:08 nicm Exp $ */
+/* $Id: server.c,v 1.59 2008-06-07 07:27:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,24 +58,37 @@ void		 server_check_redraw(struct client *);
 void		 server_check_status(struct client *);
 
 /* Fork new server. */
-pid_t
+int
 server_start(const char *path)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
 	mode_t			mask;
-	int		   	n, fd, mode;
-	pid_t			pid;
+	int		   	n, fd, pair[2], mode;
 	char		       *cause;
+	u_char			ch;
 
-	switch (pid = fork()) {
+	/* Make a little socketpair to wait for the server to be ready. */
+	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
+		fatal("socketpair failed");
+
+	switch (fork()) {
 	case -1:
-		fatal("fork");
+		fatal("fork failed");
 	case 0:
 		break;
 	default:
-		return (pid);
+		close(pair[1]);
+
+		ch = 0;
+		if (read(pair[0], &ch, 1) == 1 && ch == 0xff) {
+			close(pair[0]);
+			return (0);
+		}
+		close(pair[0]);
+		return (1);
 	}
+	close(pair[0]);
 
 #ifdef DEBUG
 	xmalloc_clear();
@@ -130,6 +143,11 @@ server_start(const char *path)
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
+
+	ch = 0xff;
+	if (write(pair[1], &ch, 1) != 1)
+		fatal("write failed");
+	/* Don't close the socketpair fd on success. */
 	
 	n = server_main(path, fd);
 #ifdef DEBUG

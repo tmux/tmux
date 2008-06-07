@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.23 2008-06-07 06:13:21 nicm Exp $ */
+/* $Id: status.c,v 1.24 2008-06-07 07:27:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,7 +43,7 @@ status_write_client(struct client *c)
 		return;
 
 	if (clock_gettime(CLOCK_REALTIME, &c->status_ts) != 0)
-		fatal("clock_gettime");
+		fatal("clock_gettime failed");
 
 	left = options_get_string(&c->session->options, "status-left");
 	strftime(lbuf, sizeof lbuf, left, localtime(&(c->status_ts.tv_sec)));

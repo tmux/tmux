@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.138 2008-06-07 07:13:08 nicm Exp $ */
+/* $Id: tmux.h,v 1.139 2008-06-07 07:27:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -895,7 +895,7 @@ const char *key_string_lookup_key(int);
 
 /* server.c */
 extern struct clients clients;
-pid_t	 server_start(const char *);
+int	 server_start(const char *);
 
 /* server-msg.c */
 int	 server_msg_dispatch(struct client *);
