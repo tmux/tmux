@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.59 2008-06-07 07:27:28 nicm Exp $ */
+/* $Id: server.c,v 1.60 2008-06-07 07:33:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -80,11 +80,14 @@ server_start(const char *path)
 	default:
 		close(pair[1]);
 
-		ch = 0;
+		ch = 0x00;
 		if (read(pair[0], &ch, 1) == 1 && ch == 0xff) {
 			close(pair[0]);
 			return (0);
 		}
+		ch = 0x00;
+		if (write(pair[1], &ch, 1) != 1)
+			fatal("write failed");
 		close(pair[0]);
 		return (1);
 	}
@@ -147,8 +150,9 @@ server_start(const char *path)
 	ch = 0xff;
 	if (write(pair[1], &ch, 1) != 1)
 		fatal("write failed");
-	/* Don't close the socketpair fd on success. */
-	
+	read(pair[1], &ch, 1); /* Ignore errors; just to wait before closing. */
+	close(pair[1]);
+
 	n = server_main(path, fd);
 #ifdef DEBUG
 	xmalloc_report(getpid(), "server");

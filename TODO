@@ -78,8 +78,7 @@
   should not emulate it doing so
 - status bar customisation variables, show-activity, show-last-window
 - show-options
-- let server die when last session does
-- fix occasion start server problems
 - key binding bug: random changes?
 - test and fix wsvt25
-- activity/bell should be per-window not per-link
+- activity/bell should be per-window not per-link?? what if it is cur win in
+  session not being watched?
