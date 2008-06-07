@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.136 2008-06-06 20:02:27 nicm Exp $ */
+/* $Id: tmux.h,v 1.137 2008-06-07 06:47:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -649,6 +649,8 @@ struct client {
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_PREFIX 0x2
 #define CLIENT_MOUSE 0x4
+#define CLIENT_REDRAW 0x8
+#define CLIENT_STATUS 0x10
 	int		 flags;
 
 	struct session	*session;

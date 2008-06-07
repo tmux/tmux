@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.38 2008-06-03 21:42:37 nicm Exp $ */
+/* $Id: server-fn.c,v 1.39 2008-06-07 06:47:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,9 @@ server_write_session(
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session == s)
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (c->session == s)
 			server_write_client(c, type, buf, len);
 	}
 }
@@ -85,19 +87,13 @@ server_clear_client(struct client *c)
 void
 server_redraw_client(struct client *c)
 {
-	struct screen_redraw_ctx	ctx;
-
-	screen_redraw_start_client(&ctx, c);
-	screen_redraw_lines(&ctx, 0, screen_size_y(ctx.s));
-	screen_redraw_stop(&ctx);
-
-	status_write_client(c);
+	c->flags |= CLIENT_REDRAW;
 }
 
 void
 server_status_client(struct client *c)
 {
-	status_write_client(c);
+	c->flags |= CLIENT_STATUS;
 }
 
 void
@@ -116,19 +112,31 @@ server_clear_session(struct session *s)
 void
 server_redraw_session(struct session *s)
 {
-	struct screen_redraw_ctx	ctx;
+	struct client	*c;
+	u_int		 i;
 
-	screen_redraw_start_session(&ctx, s);
-	screen_redraw_lines(&ctx, 0, screen_size_y(ctx.s));
-	screen_redraw_stop(&ctx);
-
-	status_write_session(s);
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (c->session == s)
+			server_redraw_client(c);
+	}
 }
 
 void
 server_status_session(struct session *s)
 {
-	status_write_session(s);
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (c->session == s)
+			server_status_client(c);
+	}
 }
 
 void
@@ -147,13 +155,16 @@ server_clear_window(struct window *w)
 void
 server_redraw_window(struct window *w)
 {
-	struct screen_redraw_ctx	ctx;
+	struct client	*c;
+	u_int		 i;
 
-	screen_redraw_start_window(&ctx, w);
-	screen_redraw_lines(&ctx, 0, screen_size_y(ctx.s));
-	screen_redraw_stop(&ctx);
-
-	status_write_window(w);
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (c->session->curw->window == w)
+			server_redraw_client(c);
+	}
 }
 
 void

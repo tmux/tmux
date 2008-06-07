@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.56 2008-06-07 06:13:21 nicm Exp $ */
+/* $Id: server.c,v 1.57 2008-06-07 06:47:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,6 +54,7 @@ void		 server_handle_client(struct client *);
 void		 server_handle_window(struct window *);
 void		 server_lost_client(struct client *);
 void	 	 server_lost_window(struct window *);
+void		 server_check_redraw(struct client *);
 void		 server_check_status(struct client *);
 
 /* Fork new server. */
@@ -269,6 +270,26 @@ server_handle_windows(struct pollfd **pfd)
 	}
 }
 
+/* Check for general redraw on client. */
+void
+server_check_redraw(struct client *c)
+{
+	struct screen_redraw_ctx	ctx;
+
+	if (c == NULL || c->session == NULL)
+		return;
+	
+	if (c->flags & CLIENT_REDRAW) {
+		screen_redraw_start_client(&ctx, c);
+		screen_redraw_lines(&ctx, 0, screen_size_y(ctx.s));
+		screen_redraw_stop(&ctx);
+		status_write_client(c);	
+	} else if (c->flags & CLIENT_STATUS)
+		status_write_client(c);	
+
+	c->flags &= ~(CLIENT_REDRAW|CLIENT_STATUS);
+}
+
 /* Check for status line redraw on client. */
 void
 server_check_status(struct client *c)
@@ -276,8 +297,9 @@ server_check_status(struct client *c)
 	struct timespec	 ts;
 	u_int		 nlines, interval;
 
-	if (c->session == NULL)
+	if (c == NULL || c->session == NULL)
 		return;
+
 	nlines = options_get_number(&c->session->options, "status-lines");
 	interval = options_get_number(&c->session->options, "status-interval");
 	if (nlines == 0 || interval == 0)
@@ -288,7 +310,7 @@ server_check_status(struct client *c)
 	ts.tv_sec -= interval;
 	
 	if (timespeccmp(&c->status_ts, &ts, <))
-		server_status_client(c);
+		c->flags |= CLIENT_STATUS;
 }
 
 /* Fill client pollfds. */
@@ -300,6 +322,9 @@ server_fill_clients(struct pollfd **pfd)
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
+
+		server_check_redraw(c);
+		server_check_status(c);
 
 		if (c == NULL)
 			(*pfd)->fd = -1;
@@ -335,9 +360,7 @@ server_handle_clients(struct pollfd **pfd)
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 
-		if (c != NULL) {
-			server_check_status(c);
-			
+		if (c != NULL) {		
 			log_debug("testing client %d (%d)", (*pfd)->fd, c->fd);
 			if (buffer_poll(*pfd, c->in, c->out) != 0) {
 				server_lost_client(c);
