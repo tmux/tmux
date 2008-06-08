@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.60 2008-06-07 07:33:03 nicm Exp $ */
+/* $Id: server.c,v 1.61 2008-06-08 19:49:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,6 +56,7 @@ void		 server_lost_client(struct client *);
 void	 	 server_lost_window(struct window *);
 void		 server_check_redraw(struct client *);
 void		 server_check_status(struct client *);
+void		 server_update_socket(const char *);
 
 /* Fork new server. */
 int
@@ -212,6 +213,9 @@ server_main(const char *srv_path, int srv_fd)
 		 */
 		server_handle_windows(&pfd);
 		server_handle_clients(&pfd);
+
+		/* Update socket permissions. */
+		server_update_socket(srv_path);
 
 		/*
 		 * If we have no sessions and clients left, let's get out
@@ -592,3 +596,28 @@ server_lost_window(struct window *w)
 	recalculate_sizes();
 }
 
+void
+server_update_socket(const char *path)
+{
+	struct session	*s;
+	u_int		 i;
+	static int	 last = -1;
+	int		 n;
+
+	n = 0;
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		s = ARRAY_ITEM(&sessions, i);
+		if (!(s->flags & SESSION_UNATTACHED)) {
+			n++;
+			break;
+		}
+	}
+
+	if (n != last) {
+		last = n;
+		if (n != 0)
+			chmod(path, S_IRWXU);
+		else
+			chmod(path, S_IRUSR|S_IWUSR);
+	}
+}
