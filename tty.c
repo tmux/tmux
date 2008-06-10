@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.22 2008-06-07 06:43:50 nicm Exp $ */
+/* $Id: tty.c,v 1.23 2008-06-10 18:51:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -82,6 +82,11 @@ tty_open(struct tty *tty, char **cause)
 
 	if (tcgetattr(tty->fd, &tty->tio) != 0)
 		fatal("tcgetattr failed");
+#if 0
+	/*
+	 * This fails on some Linuxes with EINVAL. Which is weird since
+	 * all we do is take stuff out of the defaults...
+	 */
 	memset(&tio, 0, sizeof tio);
 	tio.c_iflag = TTYDEF_IFLAG & ~(IXON|IXOFF|ICRNL|INLCR);
 	tio.c_oflag = TTYDEF_OFLAG & ~(OPOST|ONLCR|OCRNL|ONLRET);
@@ -90,6 +95,11 @@ tty_open(struct tty *tty, char **cause)
 	tio.c_cflag = TTYDEF_CFLAG;
 	memcpy(&tio.c_cc, ttydefchars, sizeof tio.c_cc);
 	cfsetspeed(&tio, TTYDEF_SPEED);
+#endif
+	memcpy(&tio, &tty->tio, sizeof tio);
+	tio.c_iflag &= ~(IXON|IXOFF|ICRNL|INLCR);
+	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET);
+	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHOKE|ECHOCTL|ISIG);
 	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
 		fatal("tcsetattr failed");
 
