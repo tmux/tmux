@@ -63,7 +63,8 @@
 - different screen model? layers perhaps? hmm
 - cfg file improvements
 - proper per-window options (per-session list of window ranges?)
-- better work on modes: search, back word, forward word, etc
+- better mode features: search, back word, forward word, etc
+- status bar customisation variables, show-activity, show-last-window
 
 ---
 [18:20] *priteau* i found something in tmux that could be tweaked to be better
@@ -73,12 +74,10 @@
 ---
 
 -- For 0.3 --------------------------------------------------------------------
-- chmod +x socket when any client is attached (upd in lost/accept)
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably
   should not emulate it doing so
-- status bar customisation variables, show-activity, show-last-window
 - show-options
 - key binding bug: random changes?
 - test and fix wsvt25
-- activity/bell should be per-window not per-link?? what if it is cur win in
+- activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
