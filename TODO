@@ -65,13 +65,7 @@
 - proper per-window options (per-session list of window ranges?)
 - better mode features: search, back word, forward word, etc
 - status bar customisation variables, show-activity, show-last-window
-
----
-[18:20] *priteau* i found something in tmux that could be tweaked to be better
-[18:21] *priteau* in screen, when you type ^A-D, you can actually keep ctrl down
-        when typing the D
-[18:21] *priteau* in tmux, you have to release ctrl for the command to work
----
+- figure out Linux tcsetattr problem, remove header bodge if unnecessary
 
 -- For 0.3 --------------------------------------------------------------------
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably

@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.31 2008-06-06 20:07:56 nicm Exp $
+.\" $Id: tmux.1,v 1.32 2008-06-11 06:19:56 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -358,14 +358,15 @@ List all key bindings.
 .D1 (alias: Ic ls )
 List all sessions managed by the server.
 .It Xo Ic list-windows
-.Op Fl s Ar session-name
+.Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic lsw )
-List all windows.
+List windows in the current session or in
+.Ar target-session .
 .It Xo Ic new-session
 .Op Fl d
-.Op Fl n Ar window-name
 .Op Fl s Ar session-name
+.Op Fl n Ar window-name
 .Op Ar command
 .Xc
 .D1 (alias: Ic new )
@@ -380,9 +381,8 @@ and
 are the name of and command to execute in the initial window.
 .It Xo Ic new-window
 .Op Fl d
-.Op Fl i Ar index
-.Op Fl n Ar name
-.Op Fl s Ar session-name
+.Op Fl t Ar target-window
+.Op Fl n Ar window-name
 .Op Ar command
 .Xc
 .D1 (alias: Ic neww )
@@ -390,15 +390,10 @@ Create a new window.
 If
 .Fl d
 is given, the session does not make the new window the current window.
-.Ar index
-and
-.Ar name
-are the index of the new window in the session and the name of the new window.
+.Ar target-window
+represents the window to be created.
 .Ar command
 is the command to execute.
-If
-.Ar index
-is not specified, the first free index is used.
 If
 .Ar command
 is not specified, the default command is used.
@@ -415,58 +410,56 @@ New windows will automatically have
 added to their environment, but care must be taken not to reset this in shell
 start-up files.
 .It Xo Ic next-window
-.Op Fl s Ar session-name
+.Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic next )
 Move to the next window in the session.
 .It Xo Ic paste-buffer
-.Op Fl s Ar session-name
+.Op Fl t Ar target-window
 .Xc
 .D1 (alias: Ic paste )
 Insert the contents of the paste buffer into the current window.
 Ignored unless executed via a key binding.
 .It Xo Ic previous-window
-.Op Fl s Ar session-name
+.Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic prev )
 Move to the previous window in the session.
 .It Xo Ic refresh-client
-.Op Fl c Ar client-tty
+.Op Fl t Ar target-client
 .Xc
 .D1 (alias: Ic refresh )
-Refresh the current client if bound to a key, or a single client if one given
+Refresh the current client if bound to a key, or a single client if one is given
 with
-.Fl c .
+.Fl t .
 .It Xo Ic rename-session
-.Op Fl s Ar session-name
+.Op Fl t Ar target-session
 .Ar new-name
 .Xc
 .D1 (alias: Ic rename )
 Rename the session to
 .Ar new-name .
 .It Xo Ic rename-window
-.Op Fl i Ar index
-.Op Fl s Ar session-name
+.Op Fl t Ar target-window
 .Ar new-name
 .Xc
 .D1 (alias: Ic renamew )
 Rename the current window, or the window at
-.Ar index
+.Ar target-window
 if specifed, to
 .Ar new-name .
 .It Xo Ic scroll-mode
-.Op Fl s Ar session-name
+.Op Fl t Ar target-window
 .Xc
 Enter scroll mode.
 .It Xo Ic select-window
-.Op Fl s Ar session-name
-.Op Fl i Ar index
+.Op Fl t Ar target-window
 .Xc
 .D1 (alias: Ic selectw )
 Select the window at
-.Ar index .
+.Ar target-window .
 .It Xo Ic send-keys
-.Op Fl c Ar client-tty
+.Op Fl t Ar target-window
 .Ar key Ar ...
 .Xc
 Send a key or keys to a window.
@@ -480,42 +473,17 @@ or
 characters.
 All arguments are sent sequentially from first to last.
 .It Xo Ic send-prefix
-.Op Fl c Ar client-tty
+.Op Fl t Ar target-window
 .Xc
 Send the prefix key to a window as if it was pressed.
 .It Xo Ic set-option
+.Op Fl t Ar target-window
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic set )
 Set an option.
 Possible options are:
 .Bl -tag -width Ds
-.It Ic prefix Ar key
-Set the current prefix key.
-.It Ic history-limit Ar lines
-Set the maximum number of lines held in window history.
-This setting applies only to new windows - existing window histories are not
-resized and retain the limit at the point they were created.
-.It Xo Ic status
-.Op Ic on | Ic off
-.Xc
-Show or hide the status line.
-.It Ic status-fg Ar colour
-Set status line foreground colour, where
-.Ar colour
-is one of:
-.Ic black ,
-.Ic red ,
-.Ic green ,
-.Ic yellow ,
-.Ic blue ,
-.Ic magenta ,
-.Ic cyan ,
-.Ic white
-or
-.Ic default .
-.It Ic status-bg Ar colour
-Set status line background colour.
 .It Xo Ic bell-action
 .Op Ic any | Ic none | Ic current
 .Xc
@@ -533,6 +501,32 @@ created) to
 .Ar command .
 The default is
 .Dq exec $SHELL .
+.It Ic history-limit Ar lines
+Set the maximum number of lines held in window history.
+This setting applies only to new windows - existing window histories are not
+resized and retain the limit at the point they were created.
+.It Ic prefix Ar key
+Set the current prefix key.
+.It Xo Ic status
+.Op Ic on | Ic off
+.Xc
+Show or hide the status line.
+.It Ic status-bg Ar colour
+Set status line background colour, where
+.Ar colour
+is one of:
+.Ic black ,
+.Ic red ,
+.Ic green ,
+.Ic yellow ,
+.Ic blue ,
+.Ic magenta ,
+.Ic cyan ,
+.Ic white
+or
+.Ic default .
+.It Ic status-fg Ar colour
+Set status line foreground colour.
 .El
 .It Xo Ic start-server
 .Xc
@@ -540,16 +534,16 @@ Start the
 .Nm
 server, if not already running, without creating any sessions.
 .It Xo Ic swap-window
-.Op Fl i Ar index
-.Op Fl s Ar session-name
-.Ar source-name Ar source-index
+.Op Fl d
+.Op Fl s Ar src-window
+.Op Fl t Ar dst-window
 .Xc
 .D1 (alias: Ic swapw )
 This is similar to
 .Ic link-window ,
 except the source and destination windows are swapped.
 It is an error if no window exists at
-.Ar index .
+.Ar src-window .
 .It Xo Ic unbind-key
 .Ar key
 .Xc
@@ -557,12 +551,11 @@ It is an error if no window exists at
 Unbind the key bound to
 .Ar key .
 .It Xo Ic unlink-window
-.Op Fl i Ar index
-.Op Fl s Ar session-name
+.Op Fl t Ar target-window
 .Xc
 .D1 (alias: Ic unlinkw )
-Unlink the window at
-.Ar index .
+Unlink 
+.Ar target-window .
 A window may be unlinked only if it is linked to multiple sessions - windows may
 not be linked to no sessions.
 .El
