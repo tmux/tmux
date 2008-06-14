@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.62 2008-06-14 12:05:06 nicm Exp $ */
+/* $Id: server.c,v 1.63 2008-06-14 16:47:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -312,31 +312,34 @@ server_check_redraw(struct client *c)
 	if (c->flags & CLIENT_REDRAW) {
 		sx = screen_size_x(c->session->curw->window->screen);
 		sy = screen_size_y(c->session->curw->window->screen);
-		if (sy < yy) {
+		if (sx < xx || sy < yy) {
 			/*
-			 * Fake up a blank(ish) screen and use it. NOTE: because
-			 * this uses tty_write_client but doesn't write the
-			 * client's screen, this can't use anything which
-			 * relies on cursor position. This is icky and might
-			 * break if we try to optimise redrawing later :-/.
+			 * Fake up a blank(ish) screen and use it to draw the 
+			 * empty regions. NOTE: because this uses
+			 * tty_write_client but doesn't write the client's
+			 * screen, this can't use anything which relies on
+			 * cursor position.
 			 */
 			screen_create(&screen, xx, yy, 0);
-			screen_fill_area(&screen, 0, 0, xx, yy, ' ', 0, 0x70);
-			screen_fill_area(&screen, 0, sy, sx, 1, '-', 0, 0x70);
-
 			screen_redraw_start(&ctx, &screen, tty_write_client, c);
-			screen_redraw_lines(&ctx, sy, yy - sy);
+			if (sx < xx)
+				screen_redraw_columns(&ctx, sx, xx - sx);
+			if (sy < yy)  {
+				screen_fill_area(&screen, 
+				    0, sy, xx, 1, '-', 0, 0x70);
+				screen_redraw_lines(&ctx, sy, yy - sy);
+			}
 			screen_redraw_stop(&ctx);
-
 			screen_destroy(&screen);
 		}
 
 		screen_redraw_start_client(&ctx, c);
 		screen_redraw_lines(&ctx, 0, screen_size_y(ctx.s));
 		screen_redraw_stop(&ctx);
-		status_write_client(c);	
+
+		status_redraw(c);
 	} else if (c->flags & CLIENT_STATUS)
-		status_write_client(c);	
+		status_redraw(c);
 
 	c->flags &= ~(CLIENT_CLEAR|CLIENT_REDRAW|CLIENT_STATUS);
 }

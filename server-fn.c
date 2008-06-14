@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.40 2008-06-07 07:13:08 nicm Exp $ */
+/* $Id: server-fn.c,v 1.41 2008-06-14 16:47:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -183,6 +183,6 @@ server_write_message(struct client *c, const char *fmt, ...)
 		screen_redraw_stop(&ctx);
 	} else {
 		screen_redraw_stop(&ctx);
-		status_write_client(c);
+		server_status_client(c);
 	}
 }

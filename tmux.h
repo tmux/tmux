@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.140 2008-06-14 12:05:06 nicm Exp $ */
+/* $Id: tmux.h,v 1.141 2008-06-14 16:47:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -529,6 +529,9 @@ struct window {
 #define WINDOW_MONITOR 0x8
 #define WINDOW_AGGRESSIVE 0x10
 
+	u_int		 limitx;
+	u_int		 limity;
+
 	struct screen	*screen;
 	struct screen	 base;
 
@@ -918,9 +921,7 @@ void	 server_status_window(struct window *);
 void printflike2 server_write_message(struct client *, const char *, ...);
 
 /* status.c */
-void	 status_write_client(struct client *);
-void	 status_write_session(struct session *);
-void	 status_write_window(struct window *);
+void	 status_redraw(struct client *c);
 
 /* resize.c */
 void	 recalculate_sizes(void);
@@ -1005,6 +1006,7 @@ void	screen_redraw_cell(struct screen_redraw_ctx *, u_int, u_int);
 void	screen_redraw_area(
     	    struct screen_redraw_ctx *, u_int, u_int, u_int, u_int);
 void	screen_redraw_lines(struct screen_redraw_ctx *, u_int, u_int);
+void	screen_redraw_columns(struct screen_redraw_ctx *, u_int, u_int);
 
 /* screen.c */
 const char *screen_colourstring(u_char);

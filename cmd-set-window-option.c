@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.6 2008-06-06 20:02:27 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.7 2008-06-14 16:47:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -165,6 +165,34 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 				wl->window->flags &= ~WINDOW_AGGRESSIVE;
 		}
 
+		recalculate_sizes();
+	} else if (strcmp(data->option, "force-width") == 0) {
+		if (data->value == NULL || number == -1) {
+			ctx->error(ctx, "invalid value");
+			return;
+		}
+		if (errstr != NULL) {
+			ctx->error(ctx, "force-width %s", errstr);
+			return;
+		}
+		if (number == 0)
+			wl->window->limitx = UINT_MAX;
+		else
+			wl->window->limitx = number;
+		recalculate_sizes();
+	} else if (strcmp(data->option, "force-height") == 0) {
+		if (data->value == NULL || number == -1) {
+			ctx->error(ctx, "invalid value");
+			return;
+		}
+		if (errstr != NULL) {
+			ctx->error(ctx, "force-height %s", errstr);
+			return;
+		}
+		if (number == 0)
+			wl->window->limity = UINT_MAX;
+		else
+			wl->window->limity = number;
 		recalculate_sizes();
 	} else {
 		ctx->error(ctx, "unknown option: %s", data->option);

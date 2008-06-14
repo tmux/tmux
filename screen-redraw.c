@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.5 2008-06-14 12:05:06 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.6 2008-06-14 16:47:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -181,19 +181,12 @@ screen_redraw_area(
 void
 screen_redraw_lines(struct screen_redraw_ctx *ctx, u_int py, u_int ny)
 {
-	u_int	i, cx, sx;
+	screen_redraw_area(ctx, 0, py, screen_size_x(ctx->s), py + ny);
+}
 
-	sx = screen_size_x(ctx->s);
-	for (i = py; i < py + ny; i++) {
-		cx = ctx->s->grid_size[screen_y(ctx->s, i)];
-		if (ctx->s->sel.flag || sx < 5 || cx >= sx - 5) {
-			screen_redraw_area(ctx, 0, i, screen_size_x(ctx->s), 1);
-			continue;
-		}
-		screen_redraw_area(ctx, 0, i, cx, 1);
-		screen_redraw_move_cursor(ctx, cx, i);
-		screen_redraw_set_attributes(
-		    ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
-		ctx->write(ctx->data, TTY_CLEARENDOFLINE);
-	}
+/* Draw set of columns. */
+void
+screen_redraw_columns(struct screen_redraw_ctx *ctx, u_int px, u_int nx)
+{
+	screen_redraw_area(ctx, px, 0, px + nx, screen_size_y(ctx->s));
 }

@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.14 2008-06-14 12:05:06 nicm Exp $ */
+/* $Id: resize.c,v 1.15 2008-06-14 16:47:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -113,6 +113,11 @@ recalculate_sizes(void)
 			continue;
 		}
 		w->flags &= ~WINDOW_HIDDEN;
+
+		if (ssx > w->limitx)
+			ssx = w->limitx;
+		if (ssy > w->limity)
+			ssy = w->limity;
 
 		if (screen_size_x(&w->base) == ssx &&
 		    screen_size_y(&w->base) == ssy)

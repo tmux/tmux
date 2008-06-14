@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.24 2008-06-07 07:27:28 nicm Exp $ */
+/* $Id: status.c,v 1.25 2008-06-14 16:47:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,18 +24,17 @@
 
 #include "tmux.h"
 
-void printflike3 status_print(struct buffer *, size_t *, const char *, ...);
-
+/* Draw status for client on the last lines of given context. */
 void
-status_write_client(struct client *c)
+status_redraw(struct client *c)
 {
 	struct screen_redraw_ctx	ctx;
-	struct winlink	       	       *wl;
-	char				flag, *left, *right;
-	char			        lbuf[BUFSIZ], rbuf[BUFSIZ];
+	struct winlink		       *wl;
+	char		 		flag, *left, *right;
+	char				lbuf[BUFSIZ], rbuf[BUFSIZ];
 	size_t				llen, rlen;
-	u_char				scolour;
-	u_int				slines;
+	u_char		 		scolour;
+	u_int		 		slines;
 
 	scolour = options_get_number(&c->session->options, "status-colour");
 	slines = options_get_number(&c->session->options, "status-lines");
@@ -78,10 +77,10 @@ status_write_client(struct client *c)
 			screen_redraw_set_attributes(&ctx, 0, scolour);
 		screen_redraw_write_string(&ctx, " ");
 		
-		if (ctx.s->cx > screen_size_x(ctx.s) - rlen)
+		if (ctx.s->cx > c->sx - rlen)
 			break;
 	}
-	while (ctx.s->cx < screen_size_x(ctx.s) - rlen) {
+	while (ctx.s->cx < c->sx - rlen) {
 		ctx.write(ctx.data, TTY_CHARACTER, ' ');
 		ctx.s->cx++;
 	}
@@ -89,46 +88,8 @@ status_write_client(struct client *c)
 	screen_redraw_move_cursor(&ctx, 0, c->sy - slines);
 	screen_redraw_write_string(&ctx, "%s ", lbuf);
 
-	screen_redraw_move_cursor(
-	    &ctx, screen_size_x(ctx.s) - rlen, c->sy - slines);
+	screen_redraw_move_cursor(&ctx, c->sx - rlen, c->sy - slines);
 	screen_redraw_write_string(&ctx, " %s", rbuf);
 
 	screen_redraw_stop(&ctx);
-}
-
-void
-status_write_window(struct window *w)
-{
-	struct client	*c;
-	u_int		 i;
-
-	if (w->flags & WINDOW_HIDDEN)
-		return;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (c->session->curw->window != w)
-			continue;
-
-		status_write_client(c);
-	}
-}
-
-void
-status_write_session(struct session *s)
-{
-	struct client	*c;
-	u_int		 i;
-
-	if (s->flags & SESSION_UNATTACHED)
-		return;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session != s)
-			continue;
-		status_write_client(c);
-	}
 }

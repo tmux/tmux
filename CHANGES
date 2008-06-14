@@ -1,5 +1,13 @@
 14 June 2008
 
+* New window options: force-width and force-height. This will force a window
+  to an arbitrary width and height (0 for the default unlimited). This is
+  neat for emacs which doesn't have a sensible way to force hard wrapping at 80
+  columns. Also, don't try to be clever and use clr_eol when redrawing the
+  whole screen, it causes trouble since the redraw functions are used to draw
+  the blank areas too.
+* Clear the blank area below windows properly when they are smaller than client,
+  also add an indicator line to show the vertical limit.
 * Don't die on empty strings in config file, reported by Will Maier.
 
 08 June 2008
@@ -464,4 +472,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.118 2008-06-14 08:11:16 nicm Exp $
+$Id: CHANGES,v 1.119 2008-06-14 16:47:20 nicm Exp $

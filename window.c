@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.40 2008-06-04 20:17:25 nicm Exp $ */
+/* $Id: window.c,v 1.41 2008-06-14 16:47:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -202,6 +202,7 @@ window_create(const char *name,
 	w->out = buffer_create(BUFSIZ);
 	w->mode = NULL;
 	w->flags = 0;
+	w->limitx = w->limity = UINT_MAX;
 	screen_create(&w->base, sx, sy, hlimit);
 	w->screen = &w->base;
 	input_init(w);

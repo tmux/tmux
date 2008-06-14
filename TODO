@@ -75,4 +75,7 @@
 - test and fix wsvt25
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
-- empty strings in config causes crash (lt_kije)
+- man page:
+      set-window-option
+      explanation of -t format
+      config file
