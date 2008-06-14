@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.60 2008-06-03 21:42:37 nicm Exp $ */
+/* $Id: screen.c,v 1.61 2008-06-14 12:05:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -297,13 +297,8 @@ void
 screen_set_cell(struct screen *s,
     u_int cx, u_int cy, u_char data, u_char attr, u_char colr)
 {
-	if (cx >= s->grid_size[cy]) {
-		if (data == SCREEN_DEFDATA &&
-		    attr == SCREEN_DEFATTR &&
-		    colr == SCREEN_DEFCOLR)
-			return;
+	if (cx >= s->grid_size[cy])
 		screen_expand_line(s, cy, cx + 1);
-	}
 
 	s->grid_data[cy][cx] = data;
 	s->grid_attr[cy][cx] = attr;

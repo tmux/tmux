@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.139 2008-06-07 07:27:28 nicm Exp $ */
+/* $Id: tmux.h,v 1.140 2008-06-14 12:05:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1001,7 +1001,6 @@ void	screen_redraw_move_cursor(struct screen_redraw_ctx *, u_int, u_int);
 void	screen_redraw_set_attributes(struct screen_redraw_ctx *, u_int, u_int);
 void printflike2 screen_redraw_write_string(
     	     struct screen_redraw_ctx *, const char *, ...);
-void	screen_redraw_clear_screen(struct screen_redraw_ctx *);
 void	screen_redraw_cell(struct screen_redraw_ctx *, u_int, u_int);
 void	screen_redraw_area(
     	    struct screen_redraw_ctx *, u_int, u_int, u_int, u_int);

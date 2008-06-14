@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.13 2008-06-07 07:13:08 nicm Exp $ */
+/* $Id: resize.c,v 1.14 2008-06-14 12:05:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -122,13 +122,6 @@ recalculate_sizes(void)
 		    screen_size_x(&w->base), screen_size_y(&w->base));
 
 		window_resize(w, ssx, ssy);
-
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c == NULL || c->session == NULL)
-				continue;
-			if (c->session->curw->window == w)
-				c->flags |= (CLIENT_CLEAR|CLIENT_REDRAW);
-		}
+		server_redraw_window(w);
 	}
 }

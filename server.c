@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.61 2008-06-08 19:49:04 nicm Exp $ */
+/* $Id: server.c,v 1.62 2008-06-14 12:05:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -302,19 +302,35 @@ server_check_redraw(struct client *c)
 {
 	struct screen_redraw_ctx	ctx;
 	struct screen			screen;
+	u_int				xx, yy, sx, sy;
 
 	if (c == NULL || c->session == NULL)
 		return;
 
-	if (c->flags & CLIENT_CLEAR) {
-		screen_create(&screen, c->sx, c->sy - 1, 0);
-		screen_redraw_start(&ctx, &screen, tty_write_client, c);
-		screen_redraw_clear_screen(&ctx);
-		screen_redraw_stop(&ctx);
-		screen_destroy(&screen);
-	}
-	
+	xx = c->sx;
+	yy = c->sy - options_get_number(&global_options, "status-lines");
 	if (c->flags & CLIENT_REDRAW) {
+		sx = screen_size_x(c->session->curw->window->screen);
+		sy = screen_size_y(c->session->curw->window->screen);
+		if (sy < yy) {
+			/*
+			 * Fake up a blank(ish) screen and use it. NOTE: because
+			 * this uses tty_write_client but doesn't write the
+			 * client's screen, this can't use anything which
+			 * relies on cursor position. This is icky and might
+			 * break if we try to optimise redrawing later :-/.
+			 */
+			screen_create(&screen, xx, yy, 0);
+			screen_fill_area(&screen, 0, 0, xx, yy, ' ', 0, 0x70);
+			screen_fill_area(&screen, 0, sy, sx, 1, '-', 0, 0x70);
+
+			screen_redraw_start(&ctx, &screen, tty_write_client, c);
+			screen_redraw_lines(&ctx, sy, yy - sy);
+			screen_redraw_stop(&ctx);
+
+			screen_destroy(&screen);
+		}
+
 		screen_redraw_start_client(&ctx, c);
 		screen_redraw_lines(&ctx, 0, screen_size_y(ctx.s));
 		screen_redraw_stop(&ctx);
