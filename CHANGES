@@ -1,3 +1,7 @@
+14 June 2008
+
+* Don't die on empty strings in config file, reported by Will Maier.
+
 08 June 2008
 
 * Set socket mode +x if any sessions are attached and -x if not.
@@ -460,4 +464,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.117 2008-06-08 19:49:04 nicm Exp $
+$Id: CHANGES,v 1.118 2008-06-14 08:11:16 nicm Exp $

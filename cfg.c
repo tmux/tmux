@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.6 2008-06-02 22:16:27 nicm Exp $ */
+/* $Id: cfg.c,v 1.7 2008-06-14 08:11:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -99,36 +99,36 @@ load_cfg(const char *path, char **causep)
 		case '\t':
 			if (len != 0) {
 				buf[len] = '\0';
-			
+
 				argv = xrealloc(
 				    argv, argc + 1, sizeof (char *));
 				argv[argc++] = buf;
-				
+
 				buf = NULL;
 				len = 0;
-			}				
+			}
 
 			if (ch != '\n' && ch != EOF)
 				break;
 			line++;
 			if (argc == 0)
 				break;
-			
+
 			if ((cmd = cmd_parse(argc, argv, &cause)) == NULL)
 				goto error;
 
 			ctx.msgdata = NULL;
 			ctx.cursession = NULL;
 			ctx.curclient = NULL;
-			
+
 			ctx.error = cfg_error;
 			ctx.print = cfg_print;
-			
+
 			ctx.cmdclient = NULL;
 			ctx.flags = 0;
-			
+
 			cfg_cause = NULL;
-			cmd_exec(cmd, &ctx);			
+			cmd_exec(cmd, &ctx);
 			cmd_free(cmd);
 			if (cfg_cause != NULL) {
 				cause = cfg_cause;
@@ -142,7 +142,7 @@ load_cfg(const char *path, char **causep)
 		default:
 			if (len >= SIZE_MAX - 2)
 				goto error;
-				
+
 			buf = xrealloc(buf, 1, len + 1);
 			buf[len++] = ch;
 			break;
@@ -163,7 +163,7 @@ error:
 
 	if (cause == NULL)
 		xasprintf(causep, "%s: error at line %u", path, line);
-	else 
+	else
 		xasprintf(causep, "%s: %s at line %u", path, cause, line);
 	return (1);
 }
@@ -175,7 +175,7 @@ cfg_string(FILE *f, char endch, int esc)
 	char   *buf;
 	size_t	len;
 
-        buf = NULL;
+        buf = xmalloc(1);
 	len = 0;
 
         while ((ch = getc(f)) != endch) {
@@ -211,6 +211,6 @@ cfg_string(FILE *f, char endch, int esc)
                 buf[len++] = ch;
         }
 
-        buf[len] = '\0';
+	buf[len] = '\0';
 	return (buf);
 }
