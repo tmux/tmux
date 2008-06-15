@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.17 2008-06-06 17:20:15 nicm Exp $
+# $Id: GNUmakefile,v 1.18 2008-06-15 08:01:54 nicm Exp $
 
 .PHONY: clean
 
@@ -24,7 +24,7 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       cmd-swap-window.c cmd-rename-session.c cmd-kill-session.c \
       cmd-switch-client.c cmd-has-session.c cmd-scroll-mode.c cmd-copy-mode.c \
       cmd-paste-buffer.c cmd-new-session.c cmd-start-server.c \
-      cmd-kill-server.c cmd-set-window-option.c \
+      cmd-kill-server.c cmd-set-window-option.c cmd-show-options.c \
       window-scroll.c window-more.c window-copy.c options.c \
       tty.c tty-keys.c tty-write.c screen-write.c screen-redraw.c
 

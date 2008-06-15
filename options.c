@@ -1,4 +1,4 @@
-/* $Id: options.c,v 1.1 2008-06-03 21:42:37 nicm Exp $ */
+/* $Id: options.c,v 1.2 2008-06-15 08:01:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,6 +30,9 @@
 
 SPLAY_GENERATE(options_tree, options_entry, entry, options_cmp);
 
+struct options_entry *options_find1(struct options *, const char *);
+struct options_entry *options_find(struct options *, const char *);
+
 int
 options_cmp(struct options_entry *o1, struct options_entry *o2)
 {
@@ -58,15 +61,38 @@ options_free(struct options *oo)
 	}
 }
 
-void printflike3
-options_set_string(struct options *oo, const char *name, const char *fmt, ...)
+struct options_entry *
+options_find1(struct options *oo, const char *name)
+{
+	struct options_entry	p;
+
+	p.name = name;
+	return (SPLAY_FIND(options_tree, &oo->tree, &p));
+}
+
+struct options_entry *
+options_find(struct options *oo, const char *name)
 {
 	struct options_entry	*o, p;
-	va_list			 ap;
 
 	p.name = name;
 	o = SPLAY_FIND(options_tree, &oo->tree, &p);
-	if (o == NULL) {
+	while (o == NULL) {
+		oo = oo->parent;
+		if (oo == NULL)
+			break;
+		o = SPLAY_FIND(options_tree, &oo->tree, &p);
+	}
+	return (o);
+}
+
+void printflike3
+options_set_string(struct options *oo, const char *name, const char *fmt, ...)
+{
+	struct options_entry	*o;
+	va_list			 ap;
+
+	if ((o = options_find1(oo, name)) == NULL) {
 		o = xmalloc(sizeof *o);
 		o->name = xstrdup(name);
 		SPLAY_INSERT(options_tree, &oo->tree, o);
@@ -82,17 +108,9 @@ options_set_string(struct options *oo, const char *name, const char *fmt, ...)
 char *
 options_get_string(struct options *oo, const char *name)
 {
-	struct options_entry	*o, p;
+	struct options_entry	*o;
 
-	p.name = name;
-	o = SPLAY_FIND(options_tree, &oo->tree, &p);
-	while (o == NULL) {
-		oo = oo->parent;
-		o = SPLAY_FIND(options_tree, &oo->tree, &p);
-		if (o != NULL)
-			break;
-	}
-	if (o == NULL)
+	if ((o = options_find(oo, name)) == NULL)
 		fatalx("missing option");
 	if (o->type != OPTIONS_STRING)
 		fatalx("option not a string");
@@ -102,11 +120,9 @@ options_get_string(struct options *oo, const char *name)
 void
 options_set_number(struct options *oo, const char *name, long long value)
 {
-	struct options_entry	*o, p;
+	struct options_entry	*o;
 
-	p.name = name;
-	o = SPLAY_FIND(options_tree, &oo->tree, &p);
-	if (o == NULL) {
+	if ((o = options_find1(oo, name)) == NULL) {
 		o = xmalloc(sizeof *o);
 		o->name = xstrdup(name);
 		SPLAY_INSERT(options_tree, &oo->tree, o);
@@ -118,22 +134,72 @@ options_set_number(struct options *oo, const char *name, long long value)
 
 }
 
-int
+long long
 options_get_number(struct options *oo, const char *name)
 {
-	struct options_entry	*o, p;
+	struct options_entry	*o;
 
-	p.name = name;
-	o = SPLAY_FIND(options_tree, &oo->tree, &p);
-	while (o == NULL) {
-		oo = oo->parent;
-		o = SPLAY_FIND(options_tree, &oo->tree, &p);
-		if (o != NULL)
-			break;
-	}
-	if (o == NULL)
+	if ((o = options_find(oo, name)) == NULL)
 		fatalx("missing option");
 	if (o->type != OPTIONS_NUMBER)
 		fatalx("option not a number");
 	return (o->value.number);
+}
+
+void
+options_set_key(struct options *oo, const char *name, int value)
+{
+	struct options_entry	*o;
+
+	if ((o = options_find1(oo, name)) == NULL) {
+		o = xmalloc(sizeof *o);
+		o->name = xstrdup(name);
+		SPLAY_INSERT(options_tree, &oo->tree, o);
+	} else if (o->type == OPTIONS_STRING)
+		xfree(o->value.string);
+
+	o->type = OPTIONS_KEY;
+	o->value.key = value;
+
+}
+
+int
+options_get_key(struct options *oo, const char *name)
+{
+	struct options_entry	*o;
+
+	if ((o = options_find(oo, name)) == NULL)
+		fatalx("missing option");
+	if (o->type != OPTIONS_KEY)
+		fatalx("option not a key");
+	return (o->value.key);
+}
+
+void
+options_set_colours(struct options *oo, const char *name, u_char value)
+{
+	struct options_entry	*o;
+
+	if ((o = options_find1(oo, name)) == NULL) {
+		o = xmalloc(sizeof *o);
+		o->name = xstrdup(name);
+		SPLAY_INSERT(options_tree, &oo->tree, o);
+	} else if (o->type == OPTIONS_STRING)
+		xfree(o->value.string);
+
+	o->type = OPTIONS_COLOURS;
+	o->value.colours = value;
+
+}
+
+u_char
+options_get_colours(struct options *oo, const char *name)
+{
+	struct options_entry	*o;
+
+	if ((o = options_find(oo, name)) == NULL)
+		fatalx("missing option");
+	if (o->type != OPTIONS_COLOURS)
+		fatalx("option not a colours");
+	return (o->value.colours);
 }

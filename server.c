@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.63 2008-06-14 16:47:20 nicm Exp $ */
+/* $Id: server.c,v 1.64 2008-06-15 08:01:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -485,7 +485,7 @@ server_handle_client(struct client *c)
 	struct window	*w = c->session->curw->window;
 	int		 key, prefix;
 
-	prefix = options_get_number(&c->session->options, "prefix-key");
+	prefix = options_get_key(&c->session->options, "prefix-key");
 	while (tty_keys_next(&c->tty, &key) == 0) {
 		if (c->flags & CLIENT_PREFIX) {
 			key_bindings_dispatch(key, c);

@@ -1,3 +1,7 @@
+15 June 2008
+
+* show-options command to show one or all options.
+
 14 June 2008
 
 * New window options: force-width and force-height. This will force a window
@@ -472,4 +476,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.119 2008-06-14 16:47:20 nicm Exp $
+$Id: CHANGES,v 1.120 2008-06-15 08:01:54 nicm Exp $

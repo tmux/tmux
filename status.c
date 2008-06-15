@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.25 2008-06-14 16:47:20 nicm Exp $ */
+/* $Id: status.c,v 1.26 2008-06-15 08:01:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,7 +36,7 @@ status_redraw(struct client *c)
 	u_char		 		scolour;
 	u_int		 		slines;
 
-	scolour = options_get_number(&c->session->options, "status-colour");
+	scolour = options_get_colours(&c->session->options, "status-colour");
 	slines = options_get_number(&c->session->options, "status-lines");
 	if (slines == 0 || c->sy <= slines)
 		return;

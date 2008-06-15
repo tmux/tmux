@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.26 2008-06-07 06:13:21 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.27 2008-06-15 08:01:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -148,7 +148,7 @@ cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 			ctx->error(ctx, "unknown key: %s", data->value);
 			return;
 		}
-		options_set_number(oo, "prefix-key", key);
+		options_set_key(oo, "prefix-key", key);
 	} else if (strcmp(data->option, "status") == 0) {
 		if (bool == -1) {
 			ctx->error(ctx, "bad value: %s", data->value);
@@ -169,10 +169,10 @@ cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 			return;
 		}
 
-		colour = options_get_number(oo, "status-colour");
+		colour = options_get_colours(oo, "status-colour");
 		colour &= 0x0f;
 		colour |= number << 4;
-		options_set_number(oo, "status-colour", colour);
+		options_set_colours(oo, "status-colour", colour);
 
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 			c = ARRAY_ITEM(&clients, i);
@@ -190,10 +190,10 @@ cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 			return;
 		}
 
-		colour = options_get_number(oo, "status-colour");
+		colour = options_get_colours(oo, "status-colour");
 		colour &= 0xf0;
 		colour |= number;
-		options_set_number(oo, "status-colour", colour);
+		options_set_colours(oo, "status-colour", colour);
 
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 			c = ARRAY_ITEM(&clients, i);

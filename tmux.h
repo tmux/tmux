@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.141 2008-06-14 16:47:20 nicm Exp $ */
+/* $Id: tmux.h,v 1.142 2008-06-15 08:01:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -557,11 +557,15 @@ struct options_entry {
 
 	enum {
 		OPTIONS_STRING,
-		OPTIONS_NUMBER
+		OPTIONS_NUMBER,
+		OPTIONS_KEY,
+		OPTIONS_COLOURS
 	} type;
 	union {
 		char	*string;
 		long long number;
+		int	 key;
+		u_char	 colours;
 	} value;
 
 	SPLAY_ENTRY(options_entry) entry;
@@ -772,7 +776,11 @@ void printflike3 options_set_string(
     	    struct options *, const char *, const char *, ...);
 char   *options_get_string(struct options *, const char *);
 void	options_set_number(struct options *, const char *, long long);
-int	options_get_number(struct options *, const char *);
+long long options_get_number(struct options *, const char *);
+void	options_set_key(struct options *, const char *, int);
+int	options_get_key(struct options *, const char *);
+void	options_set_colours(struct options *, const char *, u_char);
+u_char	options_get_colours(struct options *, const char *);
 
 /* tty.c */
 void		 tty_init(struct tty *, char *, char *);
@@ -842,6 +850,7 @@ extern const struct cmd_entry cmd_send_keys_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
 extern const struct cmd_entry cmd_set_option_entry;
 extern const struct cmd_entry cmd_set_window_option_entry;
+extern const struct cmd_entry cmd_show_options_entry;
 extern const struct cmd_entry cmd_start_server_entry;
 extern const struct cmd_entry cmd_swap_window_entry;
 extern const struct cmd_entry cmd_switch_client_entry;

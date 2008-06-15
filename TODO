@@ -70,12 +70,13 @@
 -- For 0.3 --------------------------------------------------------------------
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably
   should not emulate it doing so
-- show-options
 - key binding bug: random changes?
 - test and fix wsvt25
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
+- show-window-options
 - man page:
+      show-options
       set-window-option
       explanation of -t format
       config file
