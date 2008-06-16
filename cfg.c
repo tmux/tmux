@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.8 2008-06-16 17:35:40 nicm Exp $ */
+/* $Id: cfg.c,v 1.9 2008-06-16 20:25:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -79,13 +79,13 @@ load_cfg(const char *path, char **causep)
 		case '\'':
 			if ((s = cfg_string(f, '\'', 0)) == NULL)
 				goto error;
-			argv = xrealloc(argv, argc + 1, sizeof (char *));
+			argv = xrealloc(argv, argc + 1, sizeof *argv);
 			argv[argc++] = s;
 			break;
 		case '"':
 			if ((s = cfg_string(f, '"', 1)) == NULL)
 				goto error;
-			argv = xrealloc(argv, argc + 1, sizeof (char *));
+			argv = xrealloc(argv, argc + 1, sizeof *argv);
 			argv[argc++] = s;
 			break;
 		case '#':
@@ -97,11 +97,11 @@ load_cfg(const char *path, char **causep)
 		case EOF:
 		case ' ':
 		case '\t':
-			if (len != 0) {
+ 			if (len != 0) {
+				buf = xrealloc(buf, 1, len + 1);
 				buf[len] = '\0';
 
-				argv = xrealloc(
-				    argv, argc + 1, sizeof (char *));
+				argv = xrealloc(argv, argc + 1, sizeof *argv);
 				argv[argc++] = buf;
 
 				buf = NULL;
@@ -115,7 +115,7 @@ load_cfg(const char *path, char **causep)
 				break;
 
 			if ((cmd = cmd_parse(argc, argv, &cause)) == NULL)
-				goto error;
+ 				goto error;
 
 			ctx.msgdata = NULL;
 			ctx.cursession = NULL;
@@ -176,21 +176,19 @@ cfg_string(FILE *f, char endch, int esc)
 	char   *buf;
 	size_t	len;
 
-        buf = xmalloc(1);
+        buf = NULL;
 	len = 0;
 
         while ((ch = getc(f)) != endch) {
                 switch (ch) {
 		case EOF:
-			xfree(buf);
-			return (NULL);
+			goto error;
                 case '\\':
 			if (!esc)
 				break;
                         switch (ch = getc(f)) {
 			case EOF:
-				xfree(buf);
-				return (NULL);
+				goto error;
                         case 'r':
                                 ch = '\r';
                                 break;
@@ -204,14 +202,18 @@ cfg_string(FILE *f, char endch, int esc)
                         break;
                 }
 
-		if (len >= SIZE_MAX - 2) {
-			xfree(buf);
-			return (NULL);
-		}
+		if (len >= SIZE_MAX - 2)
+			goto error;
 		buf = xrealloc(buf, 1, len + 1);
                 buf[len++] = ch;
         }
 
+	buf = xrealloc(buf, 1, len + 1);
 	buf[len] = '\0';
 	return (buf);
+
+error:
+	if (buf != NULL)
+		xfree(buf);
+	return (NULL);
 }
