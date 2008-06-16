@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.29 2008-06-05 16:35:32 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.30 2008-06-16 07:01:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,8 @@ key_bindings_add(int key, struct cmd *cmd)
 	if (i == ARRAY_LENGTH(&key_bindings)) {
 		bd = xmalloc(sizeof *bd);
 		ARRAY_ADD(&key_bindings, bd);
-	}
+	} else
+		cmd_free(bd->cmd);
 
 	bd->key = key;
 	bd->cmd = cmd;

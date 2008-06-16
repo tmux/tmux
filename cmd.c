@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.46 2008-06-16 06:10:02 nicm Exp $ */
+/* $Id: cmd.c,v 1.47 2008-06-16 07:01:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -112,6 +112,7 @@ cmd_parse(int argc, char **argv, char **cause)
 
 	cmd = xmalloc(sizeof *cmd);
 	cmd->entry = entry;
+	cmd->data = NULL;
 	if (entry->parse != NULL) {
 		if (entry->parse(cmd, argc, argv, cause) != 0) {
 			xfree(cmd);

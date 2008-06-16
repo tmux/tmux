@@ -1,4 +1,4 @@
-/* $Id: array.h,v 1.2 2007-08-27 08:08:19 nicm Exp $ */
+/* $Id: array.h,v 1.3 2008-06-16 07:01:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2006 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -59,9 +59,9 @@
 #define ARRAY_REMOVE(a, i) do {						\
 	if (((u_int) (i)) >= (a)->num)					\
 		abort();						\
-	if (i < (a)->num - 1) {						\
+	if ((i) < (a)->num - 1) {					\
 		memmove((a)->list + (i), (a)->list + (i) + 1, 		\
-		    ARRAY_ITEMSIZE(a) * ((a)->num - (i) - 1)); 		\
+		    ARRAY_ITEMSIZE(a) * ((a)->num - (i) - 1));		\
 	}								\
 	(a)->num--;							\
         if ((a)->num == 0)						\
