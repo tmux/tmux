@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.35 2008-06-16 17:35:40 nicm Exp $
+.\" $Id: tmux.1,v 1.36 2008-06-16 22:03:27 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -250,24 +250,68 @@ by default.
 .Sh COMMANDS
 This section contains a list of the commands supported by
 .Nm .
-There are some flags shared by several commands; these are:
-.Bl -tag -width "XXXXXXXXXXXX"
-.It Fl c Ar client-tty
-Apply command to the client on the given tty.
+Most commands accept the optional
+.Fl t
+argument with one of 
+.Ar target-client ,
+.Ar target-session
+or
+.Ar target-window .
+These specify the client, session or window which a command should affect.
+.Ar target-client
+is the name of the
+.Xr pty 4
+file to which the client is connected, for example
+.Pa /dev/ttyp1 .
 Clients may be listed with the
 .Ic list-clients
 command.
-.It Fl s Ar session-name
-Apply command to the session named
-.Ar session-name .
-If it is omitted and
+.Pp
+.Ar target-session
+is either the name of a session (as listed by the
+.Ic list-sessions
+command); or the name of a client as for
+.Ar target-client ,
+in this case, the session attached to the client is used. 
+An
+.Xr fnmatch 3
+pattern may be used to match the session name.
+If a session is omitted when required,
+.Nm tmux
+attempts to use the current session; if no current session is available, the
+most recently created is chosen.
+If no client is specified, the current client is chosen, if possible, or an
+error is reported.
+.Pp
+.Ar target-window
+specifies a window in the form
+.Em session Ns \&: Ns Em index ,
+for example mysession:1.
+The session is in the same form as for
+.Ar target-session .
+.Em session ,
+.Em index
+or both may be omitted. If
+.Em session
+is omitted, the same rules as for
+.Ar target-session
+are followed; if
+.Em index
+is not present, the current window for the given session is used.
+When the argument does not contain a colon (:),
 .Nm
-is invoked from a running
-.Nm
-client, the session containing the client is connected to will be used;
-otherwise, if only one session exists, it is chosen, or if multiple sessions
-exist, an error is generated.
-.El
+first attempts to parse it as window index; if that fails, an attempt is made
+to match a session or client name.
+.Pp
+Examples include:
+.Pp
+.Bd -literal -offset indent
+refresh-client -t/dev/ttyp2
+
+rename-session -tfirst newname
+
+set-window-option -t:0 monitor-activity on
+.Ed
 .Pp
 The following commands are available:
 .Bl -tag -width Ds

@@ -72,8 +72,6 @@
 - man page:
       set-window-option
       show-window-options
-      explanation of -t format
-      config file
 
 -- For 0.4 --------------------------------------------------------------------
 - test and fix wsvt25
