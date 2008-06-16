@@ -69,14 +69,15 @@
 - get rid of DEFDATA etc
 
 -- For 0.3 --------------------------------------------------------------------
-- clear EOL etc CANNOT rely on term using the current colour/attr and probably
-  should not emulate it doing so
-- key binding bug: random changes?
-- test and fix wsvt25
-- activity/bell should be per-window not per-link? what if it is cur win in
-  session not being watched?
 - man page:
       set-window-option
       show-window-options
       explanation of -t format
       config file
+
+-- For 0.4 --------------------------------------------------------------------
+- test and fix wsvt25
+- clear EOL etc CANNOT rely on term using the current colour/attr and probably
+  should not emulate it doing so
+- activity/bell should be per-window not per-link? what if it is cur win in
+  session not being watched?
