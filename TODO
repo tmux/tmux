@@ -75,7 +75,6 @@
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
 - man page:
-      show-options
       set-window-option
       show-window-options
       explanation of -t format

@@ -1,4 +1,4 @@
-/* $Id: cmd-show-options.c,v 1.1 2008-06-15 08:01:54 nicm Exp $ */
+/* $Id: cmd-show-options.c,v 1.2 2008-06-16 06:33:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,7 +46,7 @@ struct cmd_show_options_data {
  */
 const struct cmd_entry cmd_show_options_entry = {
 	"show-options", "show",
-	"[-t target-window]",
+	"[-t target-session]",
 	0,
 	NULL,
 	cmd_show_options_parse,

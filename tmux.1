@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.33 2008-06-15 08:01:54 nicm Exp $
+.\" $Id: tmux.1,v 1.34 2008-06-16 06:33:50 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -477,11 +477,16 @@ All arguments are sent sequentially from first to last.
 .Xc
 Send the prefix key to a window as if it was pressed.
 .It Xo Ic set-option
-.Op Fl t Ar target-window
+.Op Fl t Ar target-session
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic set )
 Set an option.
+If
+.Ar target-session
+is specified, the option is set for that session; otherwise, the global option
+is set.
+A global option is used by all sessions which lack an option overriding it.
 Possible options are:
 .Bl -tag -width Ds
 .It Xo Ic bell-action
@@ -528,6 +533,16 @@ or
 .It Ic status-fg Ar colour
 Set status line foreground colour.
 .El
+.It Xo Ic show-options
+.Op Fl t Ar target-session
+.Ar option Ar value
+.Xc
+.D1 (alias: Ic show )
+Show the currently set options.
+If a
+.Ar target-session
+is specified, the options for that session are shown; otherwise, the global
+options are listed.
 .It Xo Ic start-server
 .Xc
 Start the

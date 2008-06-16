@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.27 2008-06-15 08:01:54 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.28 2008-06-16 06:33:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ struct cmd_set_option_data {
 
 const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set",
-	"[-t target-window] option value",
+	"[-t target-session] option value",
 	0,
 	NULL,
 	cmd_set_option_parse,
