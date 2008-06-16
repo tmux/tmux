@@ -66,6 +66,7 @@
 - status bar customisation variables, show-activity, show-last-window
 - figure out Linux tcsetattr problem, remove header bodge if unnecessary
 - flags to centre screen in window
+- get rid of DEFDATA etc
 
 -- For 0.3 --------------------------------------------------------------------
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably

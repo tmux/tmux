@@ -1,5 +1,7 @@
 16 June 2008
 
+* Add some information messages when window options are changed, suggested by
+  Mike Erdely. Also add a -q command-line option to suppress them.
 * show-window-options (showw) command.
 
 15 June 2008
@@ -480,4 +482,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.121 2008-06-16 06:10:02 nicm Exp $
+$Id: CHANGES,v 1.122 2008-06-16 17:35:40 nicm Exp $

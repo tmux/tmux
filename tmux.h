@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.143 2008-06-16 06:10:02 nicm Exp $ */
+/* $Id: tmux.h,v 1.144 2008-06-16 17:35:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -685,6 +685,7 @@ struct cmd_ctx {
 	struct msg_command_data	*msgdata;
 
 	void		(*print)(struct cmd_ctx *, const char *, ...);
+	void		(*info)(struct cmd_ctx *, const char *, ...);
 	void		(*error)(struct cmd_ctx *, const char *, ...);
 
 #define CMD_KEY 0x1
@@ -760,6 +761,7 @@ extern struct options global_options;
 extern char	*cfg_file;
 extern char	*paste_buffer;
 extern int	 debug_level;
+extern int	 be_quiet;
 void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);

@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.30 2008-06-16 07:01:41 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.31 2008-06-16 17:35:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,6 +28,7 @@ struct bindings	key_bindings;
 
 void printflike2 key_bindings_error(struct cmd_ctx *, const char *, ...);
 void printflike2 key_bindings_print(struct cmd_ctx *, const char *, ...);
+void printflike2 key_bindings_info(struct cmd_ctx *, const char *, ...);
 
 void
 key_bindings_add(int key, struct cmd *cmd)
@@ -172,6 +173,24 @@ key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 }
 
+void printflike2
+key_bindings_info(struct cmd_ctx *ctx, const char *fmt, ...)
+{
+	va_list	ap;
+	char   *msg;
+
+	if (be_quiet)
+		return;
+
+	va_start(ap, fmt);
+	xvasprintf(&msg, fmt, ap);
+	va_end(ap);
+
+	*msg = toupper((u_char) *msg);
+	server_write_message(ctx->curclient, "%s", msg);
+	xfree(msg);
+}
+
 void
 key_bindings_dispatch(int key, struct client *c)
 {
@@ -194,6 +213,7 @@ key_bindings_dispatch(int key, struct client *c)
 
 	ctx.error = key_bindings_error;
 	ctx.print = key_bindings_print;
+	ctx.info = key_bindings_info;
 
 	ctx.cmdclient = NULL;
 	ctx.flags = CMD_KEY;

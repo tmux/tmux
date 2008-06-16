@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.7 2008-06-14 16:47:20 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.8 2008-06-16 17:35:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -145,6 +145,14 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 				wl->window->flags &= ~WINDOW_MONITOR;
 		}
 
+		if (wl->window->flags & WINDOW_MONITOR) {
+			ctx->info(ctx, "window %s:%d: set %s",
+			    s->name, wl->idx, data->option);
+		} else {
+			ctx->info(ctx, "window %s:%d: cleared %s",
+			    s->name, wl->idx, data->option);
+		}
+
 		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 			s = ARRAY_ITEM(&sessions, i); 
 			if (s != NULL)
@@ -165,6 +173,14 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 				wl->window->flags &= ~WINDOW_AGGRESSIVE;
 		}
 
+		if (wl->window->flags & WINDOW_AGGRESSIVE) {
+			ctx->info(ctx, "window %s:%d: set %s",
+			    s->name, wl->idx, data->option);
+		} else {
+			ctx->info(ctx, "window %s:%d: cleared %s",
+			    s->name, wl->idx, data->option);
+		}
+
 		recalculate_sizes();
 	} else if (strcmp(data->option, "force-width") == 0) {
 		if (data->value == NULL || number == -1) {
@@ -179,6 +195,10 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			wl->window->limitx = UINT_MAX;
 		else
 			wl->window->limitx = number;
+
+		ctx->info(ctx, "window %s:%d: set force-width %u",
+		    s->name, wl->idx, number);
+
 		recalculate_sizes();
 	} else if (strcmp(data->option, "force-height") == 0) {
 		if (data->value == NULL || number == -1) {
@@ -193,6 +213,10 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			wl->window->limity = UINT_MAX;
 		else
 			wl->window->limity = number;
+
+		ctx->info(ctx, "window %s:%d: set force-height %u",
+		    s->name, wl->idx, number);
+
 		recalculate_sizes();
 	} else {
 		ctx->error(ctx, "unknown option: %s", data->option);

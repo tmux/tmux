@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.34 2008-06-16 06:33:50 nicm Exp $
+.\" $Id: tmux.1,v 1.35 2008-06-16 17:35:40 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl vV
+.Op Fl vVq
 .Op Fl f Ar file
 .Op Fl S Ar socket-path
 .Op Ar command Op Ar flags
@@ -50,6 +50,26 @@ Communication takes place through a socket, by default placed in
 .Pp
 The options are as follows:
 .Bl -tag -width "XXXXXXXXXXXX"
+.It Fl f Ar file
+Specify an alternative configuration file.
+By default,
+.Nm
+will look for a config file at
+.Pa ~/.tmux.conf .
+The configuration file is a set of
+.Nm
+commands which are executed in sequence when the server is first started.
+.It Fl q
+Suppress various information messages, for example when window flags are
+altered.
+.It Fl S Ar socket-path
+Specify an alternative path to the server socket.
+The default is
+.Pa /tmp/tmux-UID ,
+where
+.Em UID
+is the uid of the user who invoked
+.Nm .
 .It Fl v
 Request verbose logging.
 This option may be specified multiple times for increasing verbosity.
@@ -62,19 +82,6 @@ files in the current directory, where
 is the pid of the server or client process.
 .It Fl V
 Print program version.
-.It Fl f Ar file
-Specify an alternative configuration file.
-By default,
-.Nm
-will look for a config file at ~/.tmux.conf.
-.It Fl S Ar socket-path
-Specify an alternative path to the server socket.
-The default is
-.Pa /tmp/tmux-UID ,
-where
-.Em UID
-is the uid of the user who invoked
-.Nm .
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
@@ -573,6 +580,13 @@ Unlink
 .Ar target-window .
 A window may be unlinked only if it is linked to multiple sessions - windows may
 not be linked to no sessions.
+.El
+.Sh FILES
+.Bl -tag -width Ds -compact
+.It Pa ~/.tmux.conf
+default
+.Nm
+configuration file
 .El
 .Sh SEE ALSO
 .Xr pty 4

@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.41 2008-06-14 16:47:20 nicm Exp $ */
+/* $Id: server-fn.c,v 1.42 2008-06-16 17:35:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -159,24 +159,32 @@ server_write_message(struct client *c, const char *fmt, ...)
 	slines = options_get_number(&c->session->options, "status-lines");
 
 	screen_redraw_start_client(&ctx, c);
-	screen_redraw_move_cursor(&ctx, 0, c->sy - 1);
-	screen_redraw_set_attributes(&ctx, ATTR_REVERSE, 0x88);
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
 	va_end(ap);
 
+	msg = xrealloc(msg, 1, c->sx + 1);
+	msg[c->sx] = '\0';
+
 	size = strlen(msg);
-	if (size < c->sx - 1) {
-		msg = xrealloc(msg, 1, c->sx);
-		msg[c->sx - 1] = '\0';
-		memset(msg + size, SCREEN_DEFDATA, (c->sx - 1) - size);
-	}
+	if (size < c->sx)
+		memset(msg + size, ' ', c->sx - size);
+
+	screen_redraw_move_cursor(&ctx, 0, c->sy - 1);
+	screen_redraw_set_attributes(&ctx, ATTR_REVERSE, 0x88);
 	screen_redraw_write_string(&ctx, "%s", msg);
-	xfree(msg);
 
 	buffer_flush(c->tty.fd, c->tty.in, c->tty.out);
 	usleep(750000);
+
+	memset(msg, ' ', c->sx);
+
+	screen_redraw_move_cursor(&ctx, 0, c->sy - 1);
+	screen_redraw_set_attributes(&ctx, 0, 0x88);
+	screen_redraw_write_string(&ctx, "%s", msg);
+
+	xfree(msg);
 
 	if (slines == 0) {
 		screen_redraw_lines(&ctx, c->sy - 1, 1);

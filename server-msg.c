@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.45 2008-06-02 18:23:37 nicm Exp $ */
+/* $Id: server-msg.c,v 1.46 2008-06-16 17:35:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,6 +33,8 @@ int	server_msg_fn_exiting(struct hdr *, struct client *);
 void printflike2 server_msg_fn_command_error(
     	    struct cmd_ctx *, const char *, ...);
 void printflike2 server_msg_fn_command_print(
+    	    struct cmd_ctx *, const char *, ...);
+void printflike2 server_msg_fn_command_info(
     	    struct cmd_ctx *, const char *, ...);
 
 struct server_msg {
@@ -105,6 +107,23 @@ server_msg_fn_command_print(struct cmd_ctx *ctx, const char *fmt, ...)
 	xfree(msg);
 }
 
+void printflike2
+server_msg_fn_command_info(struct cmd_ctx *ctx, const char *fmt, ...)
+{
+	va_list	ap;
+	char   *msg;
+
+	if (be_quiet)
+		return;
+
+	va_start(ap, fmt);
+	xvasprintf(&msg, fmt, ap);
+	va_end(ap);
+
+	server_write_client(ctx->cmdclient, MSG_PRINT, msg, strlen(msg));
+	xfree(msg);
+}
+
 int
 server_msg_fn_command(struct hdr *hdr, struct client *c)
 {
@@ -121,6 +140,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 
 	ctx.error = server_msg_fn_command_error;
 	ctx.print = server_msg_fn_command_print;
+	ctx.info = server_msg_fn_command_info;
 
 	ctx.msgdata = &data;
 	ctx.curclient = NULL;
