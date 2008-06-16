@@ -31,11 +31,11 @@ The following is a summary of major features implemented in this version:
 - A optional status line (enabled by default).
 - Window history and copy and paste.
 - Support for VT100 line drawing characters.
+- A basic configuration file.
 
 And major missing features:
 
-- Status line customisation, beyond presence and colour.
-- Mouse support.
+- Proper mouse support.
 - No support for programs changing termios(4) settings or other tty(4) ioctls.
 
 A more extensive, but rough, todo list is included in the TODO file.
@@ -49,6 +49,18 @@ supports "default" (transparent) foreground and background colours. On OpenBSD,
 TERM=xterm and TERM=xterm-color lack this; TERM=rxvt does have it and works fine
 at least with the aterm and rxvt terminal emulators.
 
+Note that TERM=xterm does not support colour on OpenBSD. screen ignores this,
+tmux does not: use xterm-color or rxvt for colour.
+
+There are the following known issues:
+
+- tmux on the console on OpenBSD (usually TERM=wsvt25) is broken beyond use.
+- cons25 on the FreeBSD console lies about its support for scroll regions,
+  reports are that using TERM=screen pretty much works okay.
+- Darwin/OS X's poll(2) is broken and doesn't support polling pty(4)s; as tmux
+  makes heavy use of this and there are no suitable alternatives on the
+  platform, Darwin and OS X are unfortunately not supported for the present.
+
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
 
@@ -59,4 +71,4 @@ welcome. Please email:
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.32 2008-05-31 20:04:15 nicm Exp $
+$Id: NOTES,v 1.33 2008-06-16 16:42:33 nicm Exp $
