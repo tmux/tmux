@@ -1,6 +1,10 @@
+16 June 2008
+
+* show-window-options (showw) command.
+
 15 June 2008
 
-* show-options command to show one or all options.
+* show-options (show) command to show one or all options.
 
 14 June 2008
 
@@ -476,4 +480,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.120 2008-06-15 08:01:54 nicm Exp $
+$Id: CHANGES,v 1.121 2008-06-16 06:10:02 nicm Exp $

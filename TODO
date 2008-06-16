@@ -22,7 +22,6 @@
   kill-window to limit accidental presses
 - status-fg/status-bg should be able to set attributes: bold, etc
 - save/restore (DECSC/DECRC) are ugly. maybe a struct screen_attr and memcpy
-- force maximum terminal size (centred?)
 - per-session toolbar state, other options
 - force-default option: assume terminal supports default colours even if AX
   is missing (like, eg, xterm-color in an aterm)
@@ -66,6 +65,7 @@
 - better mode features: search, back word, forward word, etc
 - status bar customisation variables, show-activity, show-last-window
 - figure out Linux tcsetattr problem, remove header bodge if unnecessary
+- flags to centre screen in window
 
 -- For 0.3 --------------------------------------------------------------------
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably
@@ -74,9 +74,9 @@
 - test and fix wsvt25
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
-- show-window-options
 - man page:
       show-options
       set-window-option
+      show-window-options
       explanation of -t format
       config file
