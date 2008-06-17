@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.36 2008-06-16 22:03:27 nicm Exp $
+.\" $Id: tmux.1,v 1.37 2008-06-17 06:18:44 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -272,7 +272,7 @@ is either the name of a session (as listed by the
 .Ic list-sessions
 command); or the name of a client as for
 .Ar target-client ,
-in this case, the session attached to the client is used. 
+in this case, the session attached to the client is used.
 An
 .Xr fnmatch 3
 pattern may be used to match the session name.
@@ -291,7 +291,8 @@ The session is in the same form as for
 .Ar target-session .
 .Em session ,
 .Em index
-or both may be omitted. If
+or both may be omitted.
+If
 .Em session
 is omitted, the same rules as for
 .Ar target-session
@@ -583,6 +584,40 @@ or
 .Ic default .
 .It Ic status-fg Ar colour
 Set status line foreground colour.
+.El
+.It Xo Ic set-window-option
+.Op Fl t Ar target-window
+.Ar option Ar value
+.Xc
+.D1 (alias: Ic setw )
+Set a window-specific option.
+Supported options are:
+.Bl -tag -width Ds
+.It Xo Ic aggressive-resize
+.Op Ic on | Ic off
+.Xc 
+Aggressively resize the chosen window.
+This means that
+.Nm
+will resize the window to the size of the smallest session for which it is the
+current window, rather than the smallest session to which it is attached.
+The window may resize when the current window is changed on another sessions;
+this option is good for full-screen programs which support SIGWINCH and poor for
+interactive programs such as shells.
+.It Xo Ic monitor-activity
+.Op Ic on | Ic off
+.Xc
+Monitor for activity in the window.
+Windows with activity are highlighted in the status line.
+.It Ic force-width Ar width
+.It Ic force-height Ar height
+Prevent
+.Nm
+from resizing a window to greater than
+.Ar width
+or
+.Ar height .
+A value of zero restores the default unlimited setting.
 .El
 .It Xo Ic show-options
 .Op Fl t Ar target-session

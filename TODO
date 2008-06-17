@@ -69,9 +69,6 @@
 - get rid of DEFDATA etc
 
 -- For 0.3 --------------------------------------------------------------------
-- man page:
-      set-window-option
-      show-window-options
 
 -- For 0.4 --------------------------------------------------------------------
 - test and fix wsvt25
