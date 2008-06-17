@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.37 2008-06-17 06:18:44 nicm Exp $
+.\" $Id: tmux.1,v 1.38 2008-06-17 06:22:15 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -60,8 +60,8 @@ The configuration file is a set of
 .Nm
 commands which are executed in sequence when the server is first started.
 .It Fl q
-Suppress various information messages, for example when window flags are
-altered.
+Prevent the server sending various information messages, for example when
+window flags are altered.
 .It Fl S Ar socket-path
 Specify an alternative path to the server socket.
 The default is
@@ -373,7 +373,7 @@ removing it from any sessions to which it is linked.
 Select the last (previously selected) window.
 If no
 .Ar target-session
-is specified, select to the last window of the current session.
+is specified, select the last window of the current session.
 .It Xo Ic link-window
 .Op Fl dk
 .Op Fl s Ar src-window
@@ -629,6 +629,12 @@ If a
 .Ar target-session
 is specified, the options for that session are shown; otherwise, the global
 options are listed.
+.It Xo Ic show-window-options
+.Op Fl t Ar target-window
+.Ar option Ar value
+.Xc
+.D1 (alias: Ic showw )
+List the current options for the given window.
 .It Xo Ic start-server
 .Xc
 Start the
