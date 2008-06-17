@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.64 2008-06-15 08:01:54 nicm Exp $ */
+/* $Id: server.c,v 1.65 2008-06-17 19:26:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -626,7 +626,7 @@ server_update_socket(const char *path)
 	n = 0;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
-		if (!(s->flags & SESSION_UNATTACHED)) {
+		if (s != NULL && !(s->flags & SESSION_UNATTACHED)) {
 			n++;
 			break;
 		}
