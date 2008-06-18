@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.38 2008-06-17 06:22:15 nicm Exp $
+.\" $Id: tmux.1,v 1.39 2008-06-18 16:39:15 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl vVq
+.Op Fl qVv
 .Op Fl f Ar file
 .Op Fl S Ar socket-path
 .Op Ar command Op Ar flags
@@ -70,6 +70,8 @@ where
 .Em UID
 is the uid of the user who invoked
 .Nm .
+.It Fl V
+Print program version.
 .It Fl v
 Request verbose logging.
 This option may be specified multiple times for increasing verbosity.
@@ -80,8 +82,6 @@ and
 files in the current directory, where
 .Em PID
 is the pid of the server or client process.
-.It Fl V
-Print program version.
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
@@ -417,8 +417,8 @@ List windows in the current session or in
 .Ar target-session .
 .It Xo Ic new-session
 .Op Fl d
-.Op Fl s Ar session-name
 .Op Fl n Ar window-name
+.Op Fl s Ar session-name
 .Op Ar command
 .Xc
 .D1 (alias: Ic new )
@@ -433,8 +433,8 @@ and
 are the name of and command to execute in the initial window.
 .It Xo Ic new-window
 .Op Fl d
-.Op Fl t Ar target-window
 .Op Fl n Ar window-name
+.Op Fl t Ar target-window
 .Op Ar command
 .Xc
 .D1 (alias: Ic neww )

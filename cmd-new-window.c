@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.23 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.24 2008-06-18 16:39:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ struct cmd_new_window_data {
 
 const struct cmd_entry cmd_new_window_entry = {
 	"new-window", "neww",
-	"[-d] [-t target-window] [-n window-name] [command]",
+	"[-d] [-n window-name] [-t target-window] [command]",
 	0,
 	cmd_new_window_init,
 	cmd_new_window_parse,

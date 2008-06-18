@@ -67,10 +67,22 @@
 - figure out Linux tcsetattr problem, remove header bodge if unnecessary
 - flags to centre screen in window
 - get rid of DEFDATA etc
+- scroll status line to show current window. mark beginning end with "<-"/"->"
+  and highlight this if any off-screen are active
 
--- For 0.3 --------------------------------------------------------------------
+---
+support window title commands properly:
+
+\033]0;string\007
+\033]1;string\007
+\033]2;string\007
+\033_string\033\\
+
+accept them all, save to window title
+option to pass through to xterm window when switching window
 
 -- For 0.4 --------------------------------------------------------------------
+- document status-left/status-right/status-interval
 - test and fix wsvt25
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably
   should not emulate it doing so

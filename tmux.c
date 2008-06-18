@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.56 2008-06-16 17:35:40 nicm Exp $ */
+/* $Id: tmux.c,v 1.57 2008-06-18 16:39:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -175,7 +175,7 @@ main(int argc, char **argv)
 	int	 		 n, opt;
 
 	client = path = name = NULL;
-        while ((opt = getopt(argc, argv, "f:S:qvV")) != EOF) {
+        while ((opt = getopt(argc, argv, "f:qS:Vv")) != EOF) {
                 switch (opt) {
 		case 'f':
 			cfg_file = xstrdup(optarg);
