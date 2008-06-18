@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.149 2008-06-18 20:11:25 nicm Exp $ */
+/* $Id: tmux.h,v 1.150 2008-06-18 20:12:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -778,6 +778,12 @@ int	 	 daemon(int, int);
 #ifdef NO_FORKPTY
 /* forkpty.c */
 pid_t		 forkpty(int *, char *, struct termios *, struct winsize *);
+#endif
+
+#ifdef NO_ASPRINTF
+/* asprintf.c */
+int	asprintf(char **, const char *, ...);
+int	vasprintf(char **, const char *, va_list);
 #endif
 
 /* tmux.c */

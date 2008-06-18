@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.24 2008-06-18 20:11:25 nicm Exp $
+# $Id: GNUmakefile,v 1.25 2008-06-18 20:12:19 nicm Exp $
 
 .PHONY: clean
 
@@ -55,7 +55,7 @@ ifeq ($(shell uname),SunOS)
 INCDIRS+= -Icompat
 SRCS+= compat/strtonum.c compat/daemon.c compat/forkpty-sunos.c
 CFLAGS+= -DNO_STRTONUM -DNO_TREE_H -DNO_PATHS_H -DNO_SETPROCTITLE \
-	-DNO_DAEMON -DNO_FORKPTY -DNO_PROGNAME
+	-DNO_DAEMON -DNO_FORKPTY -DNO_PROGNAME -DNO_ASPRINTF
 LDFLAGS+= -L/opt/csw/lib
 LIBS+= -lsocket -lnsl
 endif 
