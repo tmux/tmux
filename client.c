@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.29 2008-06-07 07:27:28 nicm Exp $ */
+/* $Id: client.c,v 1.30 2008-06-18 19:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <paths.h>
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>

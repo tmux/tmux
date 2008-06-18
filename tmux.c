@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.58 2008-06-18 18:52:44 nicm Exp $ */
+/* $Id: tmux.c,v 1.59 2008-06-18 19:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,7 +20,6 @@
 #include <sys/wait.h>
 
 #include <errno.h>
-#include <paths.h>
 #include <poll.h>
 #include <pwd.h>
 #include <signal.h>
@@ -28,6 +27,10 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
+
+#ifndef NO_PATHS_H
+#include <paths.h>
+#endif
 
 #include "tmux.h"
 

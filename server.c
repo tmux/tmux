@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.66 2008-06-18 18:52:44 nicm Exp $ */
+/* $Id: server.c,v 1.67 2008-06-18 19:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <paths.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdio.h>
