@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.25 2008-06-18 20:58:03 nicm Exp $ */
+/* $Id: tty.c,v 1.26 2008-06-18 22:08:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,10 +23,8 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
-#define TTYDEFCHARS
-/* glibc requires unistd.h before termios.h for TTYDEFCHARS. */
-#include <unistd.h>
 #include <termios.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -59,13 +57,18 @@ int
 tty_open(struct tty *tty, char **cause)
 {
 	struct termios	 tio;
-	int		 what;
+	int		 what, mode;
 
 	tty->fd = open(tty->path, O_RDWR|O_NONBLOCK);
 	if (tty->fd == -1) {
 		xasprintf(cause, "%s: %s", tty->path, strerror(errno));
 		return (-1);
 	}
+
+	if ((mode = fcntl(tty->fd, F_GETFL)) == -1)
+		fatal("fcntl");
+	if (fcntl(tty->fd, F_SETFL, mode|O_NONBLOCK) == -1)
+		fatal("fcntl");
 
 	if ((tty->term = tty_find_term(tty->termname, tty->fd, cause)) == NULL)
 		goto error;
@@ -82,24 +85,13 @@ tty_open(struct tty *tty, char **cause)
 
 	if (tcgetattr(tty->fd, &tty->tio) != 0)
 		fatal("tcgetattr failed");
-#if 0
-	/*
-	 * This fails on some Linuxes with EINVAL. Which is weird since
-	 * all we do is take stuff out of the defaults...
-	 */
-	memset(&tio, 0, sizeof tio);
-	tio.c_iflag = TTYDEF_IFLAG & ~(IXON|IXOFF|ICRNL|INLCR);
-	tio.c_oflag = TTYDEF_OFLAG & ~(OPOST|ONLCR|OCRNL|ONLRET);
-	tio.c_lflag =
-	    TTYDEF_LFLAG & ~(IEXTEN|ICANON|ECHO|ECHOE|ECHOKE|ECHOCTL|ISIG);
-	tio.c_cflag = TTYDEF_CFLAG;
-	memcpy(&tio.c_cc, ttydefchars, sizeof tio.c_cc);
-	cfsetspeed(&tio, TTYDEF_SPEED);
-#endif
 	memcpy(&tio, &tty->tio, sizeof tio);
-	tio.c_iflag &= ~(IXON|IXOFF|ICRNL|INLCR);
-	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET);
-	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHOKE|ECHOCTL|ISIG);
+	tio.c_iflag &= ~(IXON|IXOFF|ICRNL|INLCR|IGNCR|IMAXBEL|IUCLC|ISTRIP);
+	tio.c_iflag |= IGNBRK;
+	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET|OLCUC|OFILL);
+	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHONL|ECHOCTL|ECHOPRT|ECHOKE|ECHOCTL|ISIG);
+	tio.c_cc[VMIN] = 1; 
+        tio.c_cc[VTIME] = 0;
 	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
 		fatal("tcsetattr failed");
 
