@@ -63,12 +63,9 @@
 - cfg file improvements
 - proper per-window options (per-session list of window ranges?)
 - better mode features: search, back word, forward word, etc
-- status bar customisation variables, show-activity, show-last-window
 - figure out Linux tcsetattr problem, remove header bodge if unnecessary
 - flags to centre screen in window
 - get rid of DEFDATA etc
-- scroll status line to show current window. mark beginning end with "<-"/"->"
-  and highlight this if any off-screen are active
 
 ---
 support window title commands properly:
@@ -87,6 +84,5 @@ option to pass through to xterm window when switching window
   should not emulate it doing so
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
-- document status-left/status-right/status-interval
+- document status-left/status-right/status-interval/set-titles
 - enhance paste buffers. per-session buffers, lots of command love
-

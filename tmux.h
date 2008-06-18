@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.144 2008-06-16 17:35:40 nicm Exp $ */
+/* $Id: tmux.h,v 1.145 2008-06-18 18:52:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -295,9 +295,8 @@ struct buffer {
 #define TTY_KCURSORON 21
 #define TTY_KKEYPADOFF 22
 #define TTY_KKEYPADON 23
-#define TTY_TITLE 24
-#define TTY_MOUSEON 25
-#define TTY_MOUSEOFF 26 /* XXX merge allon/off into 1 arg? */
+#define TTY_MOUSEON 24
+#define TTY_MOUSEOFF 25 /* XXX merge allon/off into 1 arg? */
 
 /* Message codes. */
 enum hdrtype {
@@ -647,6 +646,8 @@ struct client {
 	struct buffer	*in;
 	struct buffer	*out;
 
+	char		*title;
+
 	struct tty 	 tty;
 	struct timespec	 status_ts;
 
@@ -786,6 +787,7 @@ u_char	options_get_colours(struct options *, const char *);
 
 /* tty.c */
 void		 tty_init(struct tty *, char *, char *);
+void		 tty_set_title(struct tty *, const char *);
 int		 tty_open(struct tty *, char **);
 void		 tty_close(struct tty *);
 void		 tty_free(struct tty *);

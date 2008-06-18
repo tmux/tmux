@@ -1,5 +1,14 @@
 18 June 2008
 
+* New option, set-titles. On by default, this attempts to set the window title
+  using the \e]2;...\007 xterm code. 
+  
+  Note that elinks requires the STY environment variable (used by screen) to be
+  set before it will set the window title. So, if you want window titles set by 
+  elinks, set STY before running it (any value will do). I can't do this for all
+  windows since setting it to an invalid value breaks screen. Why they couldn't
+  just look for TERM=screen (or send it regardless if the user turned it on) is
+  beyond me.
 * Show arrows at either end of status line when scrolled if more windows
   exist. Highlight the arrow if a hidden window has activity or bell.
 * Scroll the status line to show the current window if necessary. Also handle
@@ -494,4 +503,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.124 2008-06-18 17:14:02 nicm Exp $
+$Id: CHANGES,v 1.125 2008-06-18 18:52:44 nicm Exp $

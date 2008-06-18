@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.65 2008-06-17 19:26:19 nicm Exp $ */
+/* $Id: server.c,v 1.66 2008-06-18 18:52:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -300,18 +300,33 @@ server_handle_windows(struct pollfd **pfd)
 void
 server_check_redraw(struct client *c)
 {
+	struct session		       *s;
 	struct screen_redraw_ctx	ctx;
 	struct screen			screen;
 	u_int				xx, yy, sx, sy;
+	char			        title[BUFSIZ];
 
 	if (c == NULL || c->session == NULL)
 		return;
+	s = c->session;
+	
+	if (options_get_number(&s->options, "set-titles")) {
+		xsnprintf(title, sizeof title, 
+		    "%s:%u:%s - \"%s\"", s->name, s->curw->idx, 
+		    s->curw->window->name, s->curw->window->base.title);
+		if (c->title == NULL || strcmp(title, c->title) != 0) {
+			if (c->title != NULL)
+				xfree(c->title);
+			c->title = xstrdup(title);
+			tty_set_title(&c->tty, c->title);
+		}
+	}
 
 	xx = c->sx;
-	yy = c->sy - options_get_number(&global_options, "status-lines");
+	yy = c->sy - options_get_number(&s->options, "status-lines");
 	if (c->flags & CLIENT_REDRAW) {
-		sx = screen_size_x(c->session->curw->window->screen);
-		sy = screen_size_y(c->session->curw->window->screen);
+		sx = screen_size_x(s->curw->window->screen);
+		sy = screen_size_y(s->curw->window->screen);
 		if (sx < xx || sy < yy) {
 			/*
 			 * Fake up a blank(ish) screen and use it to draw the 
@@ -463,6 +478,7 @@ server_accept_client(int srv_fd)
 	c->out = buffer_create(BUFSIZ);
 
 	c->tty.fd = -1;
+	c->title = NULL;
 
 	c->session = NULL;
 	c->sx = 80;

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.57 2008-06-18 16:39:15 nicm Exp $ */
+/* $Id: tmux.c,v 1.58 2008-06-18 18:52:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -212,6 +212,7 @@ main(int argc, char **argv)
 	options_set_string(
 	    &global_options, "status-right", "%%H:%%M %%d-%%b-%%y");
 	options_set_number(&global_options, "status-interval", 15);
+	options_set_number(&global_options, "set-titles", 1);
 
 	paste_buffer = NULL;
 

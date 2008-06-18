@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.7 2008-06-04 19:20:09 nicm Exp $ */
+/* $Id: screen-write.c,v 1.8 2008-06-18 18:52:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -92,9 +92,6 @@ screen_write_set_title(struct screen_write_ctx *ctx, char *title)
 
 	xfree(s->title);
 	s->title = title;
-
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_TITLE, s->title);
 }
 
 /* Put a character. */
