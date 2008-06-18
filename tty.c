@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.26 2008-06-18 22:08:56 nicm Exp $ */
+/* $Id: tty.c,v 1.27 2008-06-18 22:18:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -88,7 +88,7 @@ tty_open(struct tty *tty, char **cause)
 	memcpy(&tio, &tty->tio, sizeof tio);
 	tio.c_iflag &= ~(IXON|IXOFF|ICRNL|INLCR|IGNCR|IMAXBEL|IUCLC|ISTRIP);
 	tio.c_iflag |= IGNBRK;
-	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET|OLCUC|OFILL);
+	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET|OLCUC);
 	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHONL|ECHOCTL|ECHOPRT|ECHOKE|ECHOCTL|ISIG);
 	tio.c_cc[VMIN] = 1; 
         tio.c_cc[VTIME] = 0;
