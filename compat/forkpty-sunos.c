@@ -1,4 +1,4 @@
-/* $Id: forkpty-sunos.c,v 1.3 2008-06-18 21:14:42 nicm Exp $ */
+/* $Id: forkpty-sunos.c,v 1.4 2008-06-18 22:00:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,7 @@ forkpty(int *master,
 	char   *path;
 	pid_t	pid;
 
-	if ((*master = open("/dev/ptmx", O_RDWR)) == -1)
+	if ((*master = open("/dev/ptmx", O_RDWR|O_NOCTTY)) == -1)
 		return (-1);
 	if (grantpt(*master) != 0)
 		goto out;
@@ -42,7 +42,7 @@ forkpty(int *master,
 	
 	if ((path = ptsname(*master)) == NULL)
 		goto out;
-	if ((slave = open(path, O_RDWR)) == -1)
+	if ((slave = open(path, O_RDWR|O_NOCTTY)) == -1)
 		goto out;
 	
 	switch (pid = fork()) {
