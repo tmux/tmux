@@ -1,4 +1,4 @@
-/* $Id: forkpty-sunos.c,v 1.2 2008-06-18 20:11:25 nicm Exp $ */
+/* $Id: forkpty-sunos.c,v 1.3 2008-06-18 21:14:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,19 +45,29 @@ forkpty(int *master,
 	if ((slave = open(path, O_RDWR)) == -1)
 		goto out;
 	
-	if (ioctl(slave, I_PUSH, "ptem") == -1)
-		fatal("ioctl failed");
-	if (ioctl(slave, I_PUSH, "ldterm") == -1)
-		fatal("ioctl failed");
-	
-        if (ioctl(slave, TIOCSWINSZ, ws) == -1)
-		fatal("ioctl failed");
-
 	switch (pid = fork()) {
 	case -1:
 		goto out;
 	case 0:
 		close(*master);
+
+		setsid();
+		if (ioctl(slave, TIOCSCTTY, NULL) == -1)
+			fatal("ioctl failed");
+
+		if (ioctl(slave, I_PUSH, "ptem") == -1)
+			fatal("ioctl failed");
+		if (ioctl(slave, I_PUSH, "ldterm") == -1)
+			fatal("ioctl failed");
+		
+		if (ioctl(slave, TIOCSWINSZ, ws) == -1)
+			fatal("ioctl failed");
+		
+		dup2(slave, 0);
+		dup2(slave, 1);
+		dup2(slave, 2);
+		if (slave > 2)
+			close(slave);
 		return (0);
 	}
 
