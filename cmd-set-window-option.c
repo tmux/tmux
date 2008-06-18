@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.8 2008-06-16 17:35:40 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.9 2008-06-18 20:11:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -101,7 +101,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink				*wl;
 	struct session				*s;
 	const char				*errstr;
-	int				 	 number, bool;
+	int				 	 number, flag;
 	u_int					 i;
 
 	if (data == NULL)
@@ -120,26 +120,26 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (data->value != NULL) {
 		number = strtonum(data->value, 0, INT_MAX, &errstr);
 
-		bool = -1;
+		flag = -1;
 		if (number == 1 || strcasecmp(data->value, "on") == 0 ||
 		    strcasecmp(data->value, "yes") == 0)
-			bool = 1;
+			flag = 1;
 		else if (number == 0 || strcasecmp(data->value, "off") == 0 ||
 		    strcasecmp(data->value, "no") == 0)
-			bool = 0;
+			flag = 0;
 	} else
-		bool = -2;
+		flag = -2;
 
 	if (strcmp(data->option, "monitor-activity") == 0) {
-		if (bool == -1) {
+		if (flag == -1) {
 			ctx->error(ctx, "bad value: %s", data->value);
 			return;
 		}
 
-		if (bool == -2)
+		if (flag == -2)
 			wl->window->flags ^= WINDOW_MONITOR;
 		else {
-			if (bool)
+			if (flag)
 				wl->window->flags |= WINDOW_MONITOR;
 			else 
 				wl->window->flags &= ~WINDOW_MONITOR;
@@ -159,15 +159,15 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 				session_alert_cancel(s, wl);
 		}
 	} else if (strcmp(data->option, "aggressive-resize") == 0) {
-		if (bool == -1) {
+		if (flag == -1) {
 			ctx->error(ctx, "bad value: %s", data->value);
 			return;
 		}
 
-		if (bool == -2)
+		if (flag == -2)
 			wl->window->flags ^= WINDOW_AGGRESSIVE;
 		else {
-			if (bool)
+			if (flag)
 				wl->window->flags |= WINDOW_AGGRESSIVE;
 			else 
 				wl->window->flags &= ~WINDOW_AGGRESSIVE;

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.59 2008-06-18 19:34:50 nicm Exp $ */
+/* $Id: tmux.c,v 1.60 2008-06-18 20:11:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,6 +55,10 @@ int		 be_quiet;
 
 void		 sighandler(int);
 __dead void	 usage(void);
+
+#ifdef NO_PROGNAME
+const char      *__progname = "tmux";
+#endif     
 
 __dead void
 usage(void)

@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.23 2008-06-18 19:52:29 nicm Exp $
+# $Id: GNUmakefile,v 1.24 2008-06-18 20:11:25 nicm Exp $
 
 .PHONY: clean
 
@@ -7,7 +7,7 @@ VERSION= 0.4
 
 DATE= $(shell date +%Y%m%d-%H%M)
 
-DEBUG= 1
+#DEBUG= 1
 
 META?= \002
 
@@ -55,7 +55,9 @@ ifeq ($(shell uname),SunOS)
 INCDIRS+= -Icompat
 SRCS+= compat/strtonum.c compat/daemon.c compat/forkpty-sunos.c
 CFLAGS+= -DNO_STRTONUM -DNO_TREE_H -DNO_PATHS_H -DNO_SETPROCTITLE \
-	-DNO_DAEMON -DNO_FORKPTY
+	-DNO_DAEMON -DNO_FORKPTY -DNO_PROGNAME
+LDFLAGS+= -L/opt/csw/lib
+LIBS+= -lsocket -lnsl
 endif 
 
 ifeq ($(shell uname),Darwin)
@@ -71,7 +73,7 @@ SRCS+= compat/strlcpy.c compat/strlcat.c compat/strtonum.c
 CFLAGS+= $(shell getconf LFS_CFLAGS) -D_GNU_SOURCE \
          -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM -DNO_SETPROCTITLE \
          -DNO_QUEUE_H -DNO_TREE_H -DUSE_PTY_H
-LDFLAGS+= -lrt -lutil
+LIBS+= -lrt -lutil
 # Required for LLONG_MAX and friends
 CFLAGS+= -std=c99
 endif

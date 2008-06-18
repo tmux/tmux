@@ -29,9 +29,12 @@
  */
 
 #include <fcntl.h>
-#include <paths.h>
 #include <unistd.h>
 #include <stdlib.h>
+
+#ifndef NO_PATHS_H
+#include <paths.h>
+#endif
 
 #include "tmux.h"
 

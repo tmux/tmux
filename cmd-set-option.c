@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.29 2008-06-18 18:52:44 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.30 2008-06-18 20:11:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -105,7 +105,7 @@ cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 	struct options			*oo;
 	const char			*errstr;
 	u_int				 i;
-	int				 number, bool, key;
+	int				 number, flag, key;
 	u_char				 colour;
 
 	if (data == NULL)
@@ -128,15 +128,15 @@ cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 		if (errstr != NULL)
 			number = 0;
 
-		bool = -1;
+		flag = -1;
 		if (number == 1 || strcasecmp(data->value, "on") == 0 ||
 		    strcasecmp(data->value, "yes") == 0)
-			bool = 1;
+			flag = 1;
 		else if (number == 0 || strcasecmp(data->value, "off") == 0 ||
 		    strcasecmp(data->value, "no") == 0)
-			bool = 0;
+			flag = 0;
 	} else
-		bool = -2;
+		flag = -2;
 
 	if (strcmp(data->option, "prefix") == 0) {
 		if (data->value == NULL) {
@@ -150,13 +150,13 @@ cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 		}
 		options_set_key(oo, "prefix-key", key);
 	} else if (strcmp(data->option, "status") == 0) {
-		if (bool == -1) {
+		if (flag == -1) {
 			ctx->error(ctx, "bad value: %s", data->value);
 			return;
 		}
-		if (bool == -2)
-			bool = !options_get_number(oo, "status-lines");
-		options_set_number(oo, "status-lines", bool);
+		if (flag == -2)
+			flag = !options_get_number(oo, "status-lines");
+		options_set_number(oo, "status-lines", flag);
 		recalculate_sizes();
 	} else if (strcmp(data->option, "status-fg") == 0) {
 		if (data->value == NULL) {
@@ -273,13 +273,13 @@ cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 		}
 		options_set_number(oo, "status-interval", number);
 	} else if (strcmp(data->option, "set-titles") == 0) {
-		if (bool == -1) {
+		if (flag == -1) {
 			ctx->error(ctx, "bad value: %s", data->value);
 			return;
 		}
-		if (bool == -2)
-			bool = !options_get_number(oo, "set-titles");
-		options_set_number(oo, "set-titles", bool);
+		if (flag == -2)
+			flag = !options_get_number(oo, "set-titles");
+		options_set_number(oo, "set-titles", flag);
 	} else {
 		ctx->error(ctx, "unknown option: %s", data->option);
 		return;

@@ -1,4 +1,4 @@
-/* $Id: buffer-poll.c,v 1.5 2008-05-31 20:04:15 nicm Exp $ */
+/* $Id: buffer-poll.c,v 1.6 2008-06-18 20:11:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,7 +42,8 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 	ssize_t	n;
 
 	log_debug("buffer_poll (%d): fd=%d, revents=%d; out=%zu in=%zu",
-	    getpid(), pfd->fd, pfd->revents, BUFFER_USED(out), BUFFER_USED(in));
+	    (int) getpid(),
+	    pfd->fd, pfd->revents, BUFFER_USED(out), BUFFER_USED(in));
 
 	if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP))
 		return (-1);

@@ -1,4 +1,4 @@
-/* $Id: forkpty-sunos.c,v 1.1 2008-06-18 19:52:29 nicm Exp $ */
+/* $Id: forkpty-sunos.c,v 1.2 2008-06-18 20:11:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,15 +18,20 @@
 
 #include <sys/types.h>
 
+#include <fcntl.h>
 #include <stdlib.h>
+#include <stropts.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
 pid_t
-forkpty(int *master, int *slave,
-    char *name, struct termios *tio, struct winsize *ws)
+forkpty(int *master,
+    unused char *name, unused struct termios *tio, struct winsize *ws)
 {
+	int	slave;
 	char   *path;
+	pid_t	pid;
 
 	if ((*master = open("/dev/ptmx", O_RDWR)) == -1)
 		return (-1);
@@ -37,13 +42,16 @@ forkpty(int *master, int *slave,
 	
 	if ((path = ptsname(*master)) == NULL)
 		goto out;
-	if ((*slave = open(path, O_RDWR)) == -1)
+	if ((slave = open(path, O_RDWR)) == -1)
 		goto out;
 	
-	if (ioctl(*slave, I_PUSH, "ptem") == -1)
-		goto out;
-	if (ioctl(*slave, I_PUSH, "ldterm") == -1)
-		goto out;
+	if (ioctl(slave, I_PUSH, "ptem") == -1)
+		fatal("ioctl failed");
+	if (ioctl(slave, I_PUSH, "ldterm") == -1)
+		fatal("ioctl failed");
+	
+        if (ioctl(slave, TIOCSWINSZ, ws) == -1)
+		fatal("ioctl failed");
 
 	switch (pid = fork()) {
 	case -1:
@@ -53,13 +61,13 @@ forkpty(int *master, int *slave,
 		return (0);
 	}
 
-	close(*slave);
+	close(slave);
 	return (pid);
 
 out:
 	if (*master != -1)
 		close(*master);
-	if (*slave != -1)
-		close(*slave);
+	if (slave != -1)
+		close(slave);
 	return (-1);
 }

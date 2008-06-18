@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.148 2008-06-18 19:52:29 nicm Exp $ */
+/* $Id: tmux.h,v 1.149 2008-06-18 20:11:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,20 +36,29 @@
 #include "compat/tree.h"
 #endif
 
+#include <curses.h>
 #include <limits.h>
 #include <poll.h>
 #include <signal.h>
 #include <stdarg.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <term.h>
 
 #include "array.h"
 
-extern char    *__progname;
+extern const char    *__progname;
 
 #ifndef INFTIM
 #define INFTIM -1
+#endif
+
+#ifndef WAIT_ANY
+#define WAIT_ANY -1
+#endif
+
+#ifndef SUN_LEN
+#define SUN_LEN(sun) (sizeof (sun)->sun_path)
 #endif
 
 #ifndef __dead
@@ -73,6 +82,7 @@ extern char    *__progname;
 #ifdef NO_PATHS_H
 #define	_PATH_BSHELL	"/bin/sh"
 #define	_PATH_TMP	"/tmp/"
+#define _PATH_DEVNULL	"/dev/null"
 #endif
 
 /* Default configuration file. */
@@ -762,13 +772,12 @@ size_t	 	 strlcat(char *, const char *, size_t);
 
 #ifdef NO_DAEMON
 /* daemon.c */
-size_t	 	 daemon(int, int);
+int	 	 daemon(int, int);
 #endif
 
 #ifdef NO_FORKPTY
 /* forkpty.c */
-pid_t		 forkpty(
-    		     int *, int *, char *, struct termios *, struct winsize *);
+pid_t		 forkpty(int *, char *, struct termios *, struct winsize *);
 #endif
 
 /* tmux.c */
