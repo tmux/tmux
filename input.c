@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.49 2008-06-04 19:20:09 nicm Exp $ */
+/* $Id: input.c,v 1.50 2008-06-18 19:06:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -143,7 +143,8 @@ input_start_string(struct input_ctx *ictx, int type)
 void
 input_abort_string(struct input_ctx *ictx)
 {
-	xfree(ictx->string_buf);
+	if (ictx->string_buf != NULL)
+		xfree(ictx->string_buf);
 	ictx->string_buf = NULL;
 }
 
