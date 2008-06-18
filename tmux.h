@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.147 2008-06-18 19:36:27 nicm Exp $ */
+/* $Id: tmux.h,v 1.148 2008-06-18 19:52:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -763,6 +763,12 @@ size_t	 	 strlcat(char *, const char *, size_t);
 #ifdef NO_DAEMON
 /* daemon.c */
 size_t	 	 daemon(int, int);
+#endif
+
+#ifdef NO_FORKPTY
+/* forkpty.c */
+pid_t		 forkpty(
+    		     int *, int *, char *, struct termios *, struct winsize *);
 #endif
 
 /* tmux.c */
