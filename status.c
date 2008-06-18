@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.28 2008-06-18 17:14:02 nicm Exp $ */
+/* $Id: status.c,v 1.29 2008-06-18 17:28:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -99,8 +99,10 @@ status_redraw(struct client *c)
 	 * start and just leave off the end.
 	 */
 	if (offset + size < xx) {
-		rarrow = 1;
-		xx--;
+		if (xx > 0) {
+			rarrow = 1;
+			xx--;
+		}
 
 		width = xx;
 		goto draw;
@@ -111,11 +113,13 @@ status_redraw(struct client *c)
 	 * are xx characters to fill, and offset + size must be the last. So,
 	 * the start character is offset + size - xx.
 	 */
-	larrow = 1;
-	xx--;
+	if (xx > 0) {
+		larrow = 1;
+		xx--;
+	}
 
 	start = offset + size - xx;
- 	if (width > start + xx + 1) { /* + 1, eh? */
+ 	if (xx > 0 && width > start + xx + 1) { /* + 1, eh? */
  		rarrow = 1;
  		start++;
  		xx--;
@@ -123,6 +127,10 @@ status_redraw(struct client *c)
  	width = xx;
 	
 draw:
+	/* Bail here if anything is too small too. XXX. */
+	if (width == 0 || xx == 0)
+		goto blank;
+
  	/* Begin drawing and move to the starting position. */
 	screen_redraw_start_client(&ctx, c);
 	screen_redraw_set_attributes(&ctx, 0, colr);
@@ -192,7 +200,10 @@ draw:
 			screen_redraw_set_attributes(&ctx, ATTR_REVERSE, colr);
 		else
 			screen_redraw_set_attributes(&ctx, 0, colr);
-		screen_redraw_move_cursor(&ctx, 0, yy);
+		if (llen != 0)
+			screen_redraw_move_cursor(&ctx, llen + 1, yy);
+		else
+			screen_redraw_move_cursor(&ctx, 0, yy);
  		ctx.write(ctx.data, TTY_CHARACTER, '<');
 	}		
 	if (rarrow != 0) {
@@ -200,7 +211,10 @@ draw:
 			screen_redraw_set_attributes(&ctx, ATTR_REVERSE, colr);
 		else
 			screen_redraw_set_attributes(&ctx, 0, colr);
-		screen_redraw_move_cursor(&ctx, c->sx - rlen - 2, yy);
+		if (rlen != 0)
+			screen_redraw_move_cursor(&ctx, c->sx - rlen - 2, yy);
+		else
+			screen_redraw_move_cursor(&ctx, c->sx - 1, yy);
  		ctx.write(ctx.data, TTY_CHARACTER, '>');
 	}
 
