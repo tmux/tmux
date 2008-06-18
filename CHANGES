@@ -1,5 +1,7 @@
 18 June 2008
 
+* Show arrows at either end of status line when scrolled if more windows
+  exist. Highlight the arrow if a hidden window has activity or bell.
 * Scroll the status line to show the current window if necessary. Also handle
   windows smaller than needed better (show a blank status line instead of
   hanging or crashing).
@@ -492,4 +494,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.123 2008-06-18 16:34:48 nicm Exp $
+$Id: CHANGES,v 1.124 2008-06-18 17:14:02 nicm Exp $

@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.27 2008-06-18 16:34:07 nicm Exp $ */
+/* $Id: status.c,v 1.28 2008-06-18 17:14:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,10 +39,12 @@ status_redraw(struct client *c)
 	size_t				llen, rlen, offset, xx, yy;
 	size_t				size, start, width;
 	u_char		 		attr, colr;
+	int				larrow, rarrow;
 
 	yy = options_get_number(&s->options, "status-lines");
 	if (c->sy == 0 || yy == 0)
 		return;
+	larrow = rarrow = 0;
 
 	if (clock_gettime(CLOCK_REALTIME, &c->status_ts) != 0)
 		fatal("clock_gettime failed");	
@@ -97,7 +99,10 @@ status_redraw(struct client *c)
 	 * start and just leave off the end.
 	 */
 	if (offset + size < xx) {
-		width = xx - 1;
+		rarrow = 1;
+		xx--;
+
+		width = xx;
 		goto draw;
 	}
 
@@ -106,9 +111,17 @@ status_redraw(struct client *c)
 	 * are xx characters to fill, and offset + size must be the last. So,
 	 * the start character is offset + size - xx.
 	 */
-	start = offset + size - xx;
-	width = xx - 1;
+	larrow = 1;
+	xx--;
 
+	start = offset + size - xx;
+ 	if (width > start + xx + 1) { /* + 1, eh? */
+ 		rarrow = 1;
+ 		start++;
+ 		xx--;
+ 	}
+ 	width = xx;
+	
 draw:
  	/* Begin drawing and move to the starting position. */
 	screen_redraw_start_client(&ctx, c);
@@ -116,24 +129,42 @@ draw:
 	if (llen != 0) {
  		screen_redraw_move_cursor(&ctx, 0, yy);
 		screen_redraw_write_string(&ctx, "%s ", lbuf);
-	} else
-		screen_redraw_move_cursor(&ctx, 0, yy);
+		if (larrow)
+			ctx.write(ctx.data, TTY_CHARACTER, ' ');
+	} else {
+		if (larrow)
+			screen_redraw_move_cursor(&ctx, 1, yy);
+		else
+			screen_redraw_move_cursor(&ctx, 0, yy);
+	}
 
 	/* Draw each character in succession. */
 	offset = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		text = status_print(s, wl, &attr);
-
 		screen_redraw_set_attributes(&ctx, attr, colr);
-		for (ptr = text; *ptr != '\0'; ptr++) { 
-			if (offset >= start && offset <= start + width)
+
+		if (larrow == 1 && offset < start) {
+			if (session_alert_has(s, wl, WINDOW_ACTIVITY))
+				larrow = -1;
+			if (session_alert_has(s, wl, WINDOW_BELL))
+				larrow = -1;
+		}
+
+ 		for (ptr = text; *ptr != '\0'; ptr++) { 
+			if (offset >= start && offset < start + width)
 				ctx.write(ctx.data, TTY_CHARACTER, *ptr);
 			offset++;
 		}
 
-		xfree(text);
+		if (rarrow == 1 && offset > start + width) {
+			if (session_alert_has(s, wl, WINDOW_ACTIVITY))
+				rarrow = -1;
+			if (session_alert_has(s, wl, WINDOW_BELL))
+				rarrow = -1;
+		}
 
-		if (offset <= start + width) {
+		if (offset < start + width) {
 			if (offset >= start) {
 				screen_redraw_set_attributes(&ctx, 0, colr);
 				ctx.write(ctx.data, TTY_CHARACTER, ' ');
@@ -141,16 +172,37 @@ draw:
 			offset++;
 		}
 
-		if (offset >= start + width)
-			break;
+		xfree(text);
 	}
 
 	/* Fill the remaining space if any. */
 	screen_redraw_set_attributes(&ctx, 0, colr);
  	while (offset++ < xx)
 		ctx.write(ctx.data, TTY_CHARACTER, ' ');
-	if (rlen > 0)
+
+	/* Draw the last item. */
+	if (rlen != 0) {
+		screen_redraw_move_cursor(&ctx, c->sx - rlen - 1, yy);
 		screen_redraw_write_string(&ctx, " %s", rbuf);
+	}
+
+	/* Draw the arrows. */
+	if (larrow != 0) {
+		if (larrow == -1)
+			screen_redraw_set_attributes(&ctx, ATTR_REVERSE, colr);
+		else
+			screen_redraw_set_attributes(&ctx, 0, colr);
+		screen_redraw_move_cursor(&ctx, 0, yy);
+ 		ctx.write(ctx.data, TTY_CHARACTER, '<');
+	}		
+	if (rarrow != 0) {
+		if (rarrow == -1)
+			screen_redraw_set_attributes(&ctx, ATTR_REVERSE, colr);
+		else
+			screen_redraw_set_attributes(&ctx, 0, colr);
+		screen_redraw_move_cursor(&ctx, c->sx - rlen - 2, yy);
+ 		ctx.write(ctx.data, TTY_CHARACTER, '>');
+	}
 
 	screen_redraw_stop(&ctx);	
 	return;
