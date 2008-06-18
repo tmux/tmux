@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.18 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.19 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,7 +50,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (ctx->flags & CMD_KEY)
 		return;
-	
+
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return;
 

@@ -1,4 +1,4 @@
-/* $Id: arg.c,v 1.2 2008-06-05 21:54:47 nicm Exp $ */
+/* $Id: arg.c,v 1.3 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,7 +51,7 @@ arg_lookup_session(const char *name)
 
 	ts = NULL;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		s = ARRAY_ITEM(&sessions, i); 
+		s = ARRAY_ITEM(&sessions, i);
 		if (s == NULL || fnmatch(name, s->name, 0) != 0)
 			continue;
 
@@ -133,7 +133,7 @@ arg_parse_window(const char *arg, struct session **s, int *idx)
 		*s = arg_parse_session(NULL);
 		return (0);
 	}
-	
+
 	/* Find the separator if any. */
 	arg2 = xstrdup(arg);
 	ptr = strrchr(arg2, ':');
@@ -147,7 +147,7 @@ arg_parse_window(const char *arg, struct session **s, int *idx)
 		if (errstr != NULL) {
 			xfree(arg2);
 			return (1);
-		}		
+		}
 
 		xfree(arg2);
 		*s = arg_parse_session(NULL);
@@ -162,25 +162,25 @@ arg_parse_window(const char *arg, struct session **s, int *idx)
 			xfree(arg2);
 			*s = arg_parse_session(NULL);
 			return (0);
-		}			
+		}
 
 		*idx = -1;
 		goto lookup;
-	} 
+	}
 
 	/* If last, strip it and look up as a session. */
 	if (ptr[1] == '\0') {
 		*ptr = '\0';
 		goto lookup;
 	}
-		
+
 	/* Present but not first and not last. Break and convert both. */
 	*ptr = '\0';
 	*idx = strtonum(ptr + 1, 0, INT_MAX, &errstr);
 	if (errstr != NULL) {
 		xfree(arg2);
 		return (1);
-	}		
+	}
 
 lookup:
 	/* Look up as session. */

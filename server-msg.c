@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.46 2008-06-16 17:35:40 nicm Exp $ */
+/* $Id: server-msg.c,v 1.47 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -222,7 +222,7 @@ server_msg_fn_exiting(struct hdr *hdr, struct client *c)
 	log_debug("exiting msg from client");
 
 	c->session = NULL;
-	
+
 	tty_close(&c->tty);
 
 	server_write_client(c, MSG_EXITED, NULL, 0);

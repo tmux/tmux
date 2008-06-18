@@ -1,4 +1,4 @@
-/* $Id: screen-display.c,v 1.16 2008-06-04 19:20:09 nicm Exp $ */
+/* $Id: screen-display.c,v 1.17 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -439,7 +439,7 @@ screen_display_copy_area(struct screen *dst, struct screen *src,
 	}
 	if (!screen_in_x(dst, px) || !screen_in_y(dst, py)) {
 		SCREEN_DEBUG4(dst, px, py, nx, ny);
-		return; 
+		return;
 	}
 	if (!screen_in_x(dst, px + nx - 1) || !screen_in_y(dst, py + ny - 1)) {
 		SCREEN_DEBUG4(dst, px, py, nx, ny);

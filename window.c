@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.43 2008-06-18 20:11:25 nicm Exp $ */
+/* $Id: window.c,v 1.44 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -165,7 +165,7 @@ winlink_previous(unused struct winlinks *wwl, struct winlink *wl)
 }
 
 struct window *
-window_create(const char *name, 
+window_create(const char *name,
     const char *cmd, const char **env, u_int sx, u_int sy, u_int hlimit)
 {
 	struct window	*w;
@@ -189,7 +189,7 @@ window_create(const char *name,
 		sigreset();
 		log_debug("started child: cmd=%s; pid=%d", cmd, (int) getpid());
 		log_close();
-		
+
 		execl(_PATH_BSHELL, "sh", "-c", cmd, (char *) NULL);
 		fatal("execl failed");
 	}

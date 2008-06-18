@@ -1,4 +1,4 @@
-/* $Id: cmd-switch-client.c,v 1.9 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-switch-client.c,v 1.10 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -103,7 +103,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return;
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return;
-	
+
 	c->session = s;
 
 	recalculate_sizes();

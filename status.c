@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.29 2008-06-18 17:28:17 nicm Exp $ */
+/* $Id: status.c,v 1.30 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,7 @@ status_redraw(struct client *c)
 	larrow = rarrow = 0;
 
 	if (clock_gettime(CLOCK_REALTIME, &c->status_ts) != 0)
-		fatal("clock_gettime failed");	
+		fatal("clock_gettime failed");
 	colr = options_get_colours(&s->options, "status-colour");
 
 	yy = c->sy - yy;
@@ -74,7 +74,7 @@ status_redraw(struct client *c)
 		goto blank;
 	xx = c->sx - xx;
 
-	/* 
+	/*
 	 * Right. We have xx characters to fill. Find out how much is to go in
 	 * them and the offset of the current window (it must be on screen).
 	 */
@@ -125,7 +125,7 @@ status_redraw(struct client *c)
  		xx--;
  	}
  	width = xx;
-	
+
 draw:
 	/* Bail here if anything is too small too. XXX. */
 	if (width == 0 || xx == 0)
@@ -159,7 +159,7 @@ draw:
 				larrow = -1;
 		}
 
- 		for (ptr = text; *ptr != '\0'; ptr++) { 
+ 		for (ptr = text; *ptr != '\0'; ptr++) {
 			if (offset >= start && offset < start + width)
 				ctx.write(ctx.data, TTY_CHARACTER, *ptr);
 			offset++;
@@ -205,7 +205,7 @@ draw:
 		else
 			screen_redraw_move_cursor(&ctx, 0, yy);
  		ctx.write(ctx.data, TTY_CHARACTER, '<');
-	}		
+	}
 	if (rarrow != 0) {
 		if (rarrow == -1)
 			screen_redraw_set_attributes(&ctx, ATTR_REVERSE, colr);
@@ -218,7 +218,7 @@ draw:
  		ctx.write(ctx.data, TTY_CHARACTER, '>');
 	}
 
-	screen_redraw_stop(&ctx);	
+	screen_redraw_stop(&ctx);
 	return;
 
 blank:
@@ -226,9 +226,9 @@ blank:
 	screen_redraw_start_client(&ctx, c);
 	screen_redraw_set_attributes(&ctx, 0, colr);
 	screen_redraw_move_cursor(&ctx, 0, yy);
-	for (offset = 0; offset < c->sx; offset++) 
+	for (offset = 0; offset < c->sx; offset++)
 		ctx.write(ctx.data, TTY_CHARACTER, ' ');
-	screen_redraw_stop(&ctx);	
+	screen_redraw_stop(&ctx);
 }
 
 size_t

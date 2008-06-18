@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.7 2008-06-06 17:20:29 nicm Exp $ */
+/* $Id: input-keys.c,v 1.8 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,7 +108,7 @@ input_key(struct window *w, int key)
 		}
 	}
 #endif
-	
+
 	for (i = 0; i < NINPUTKEYS; i++) {
 		if (input_keys[i].key == key)
 			break;

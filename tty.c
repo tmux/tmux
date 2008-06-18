@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.27 2008-06-18 22:18:08 nicm Exp $ */
+/* $Id: tty.c,v 1.28 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -90,7 +90,7 @@ tty_open(struct tty *tty, char **cause)
 	tio.c_iflag |= IGNBRK;
 	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET|OLCUC);
 	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHONL|ECHOCTL|ECHOPRT|ECHOKE|ECHOCTL|ISIG);
-	tio.c_cc[VMIN] = 1; 
+	tio.c_cc[VMIN] = 1;
         tio.c_cc[VTIME] = 0;
 	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
 		fatal("tcsetattr failed");
@@ -136,7 +136,7 @@ tty_close(struct tty *tty)
 	} else {
 		 if (tcsetattr(tty->fd, TCSANOW, &tty->tio) != 0)
 			 fatal("tcsetattr failed");
-		 
+
 		 tty_raw(tty, tparm(change_scroll_region, 0, ws.ws_row - 1));
 		 if (keypad_local != NULL)
 			 tty_raw(tty, keypad_local);
@@ -175,7 +175,7 @@ tty_find_term(char *name, int fd, char **cause)
 {
 	struct tty_term	*term;
 	int		 error;
-	
+
 	TAILQ_FOREACH(term, &tty_terms, entry) {
 		if (strcmp(term->name, name) == 0) {
 			term->references++;

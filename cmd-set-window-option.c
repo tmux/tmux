@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.9 2008-06-18 20:11:25 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.10 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -141,7 +141,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		else {
 			if (flag)
 				wl->window->flags |= WINDOW_MONITOR;
-			else 
+			else
 				wl->window->flags &= ~WINDOW_MONITOR;
 		}
 
@@ -154,7 +154,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 
 		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-			s = ARRAY_ITEM(&sessions, i); 
+			s = ARRAY_ITEM(&sessions, i);
 			if (s != NULL)
 				session_alert_cancel(s, wl);
 		}
@@ -169,7 +169,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		else {
 			if (flag)
 				wl->window->flags |= WINDOW_AGGRESSIVE;
-			else 
+			else
 				wl->window->flags &= ~WINDOW_AGGRESSIVE;
 		}
 
@@ -278,5 +278,5 @@ cmd_set_window_option_print(struct cmd *self, char *buf, size_t len)
 	if (off < len && data->option != NULL)
 		off += xsnprintf(buf + off, len - off, " %s", data->option);
 	if (off < len && data->value != NULL)
-		off += xsnprintf(buf + off, len - off, " %s", data->value);	
+		off += xsnprintf(buf + off, len - off, " %s", data->value);
 }

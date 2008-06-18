@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.37 2008-06-07 07:27:28 nicm Exp $ */
+/* $Id: session.c,v 1.38 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -121,7 +121,7 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	RB_INIT(&s->windows);
 	TAILQ_INIT(&s->alerts);
 	options_init(&s->options, &global_options);
-	
+
 	s->sx = sx;
 	s->sy = sy;
 

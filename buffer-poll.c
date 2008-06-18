@@ -1,4 +1,4 @@
-/* $Id: buffer-poll.c,v 1.6 2008-06-18 20:11:25 nicm Exp $ */
+/* $Id: buffer-poll.c,v 1.7 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -60,7 +60,7 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 			buffer_add(in, n);
 	}
 	if (BUFFER_USED(out) > 0 && pfd->revents & POLLOUT) {
-		n = write(pfd->fd, BUFFER_OUT(out), BUFFER_USED(out));	
+		n = write(pfd->fd, BUFFER_OUT(out), BUFFER_USED(out));
 		log_debug("buffer_poll: fd=%d, write=%zd", pfd->fd, n);
 		if (n == -1) {
 			if (errno != EINTR && errno != EAGAIN)

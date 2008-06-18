@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.17 2008-06-04 18:50:35 nicm Exp $ */
+/* $Id: window-copy.c,v 1.18 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -71,7 +71,7 @@ struct window_copy_mode_data {
 
 	u_int	selx;
 	u_int	sely;
-	
+
 	u_int	cx;
 	u_int	cy;
 };

@@ -1,4 +1,4 @@
-/* $Id: cmd-refresh-client.c,v 1.6 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-refresh-client.c,v 1.7 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,7 @@ cmd_refresh_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if ((c = cmd_find_client(ctx, data->target)) == NULL)
 		return;
-	
+
 	server_redraw_client(c);
 
 	if (ctx->cmdclient != NULL)

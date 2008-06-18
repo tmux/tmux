@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.67 2008-06-18 19:34:50 nicm Exp $ */
+/* $Id: server.c,v 1.68 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -97,7 +97,7 @@ server_start(const char *path)
 	xmalloc_clear();
 #endif
 
-	/* 
+	/*
 	 * Must daemonise before loading configuration as the PID changes so
 	 * $TMUX would be wrong for sessions created in the config file.
 	 */
@@ -169,7 +169,7 @@ server_main(const char *srv_path, int srv_fd)
 	u_int		 i, n;
 
 	siginit();
- 
+
 	pfds = NULL;
 	while (!sigterm) {
 		/* Initialise pollfd array. */
@@ -308,10 +308,10 @@ server_check_redraw(struct client *c)
 	if (c == NULL || c->session == NULL)
 		return;
 	s = c->session;
-	
+
 	if (options_get_number(&s->options, "set-titles")) {
-		xsnprintf(title, sizeof title, 
-		    "%s:%u:%s - \"%s\"", s->name, s->curw->idx, 
+		xsnprintf(title, sizeof title,
+		    "%s:%u:%s - \"%s\"", s->name, s->curw->idx,
 		    s->curw->window->name, s->curw->window->base.title);
 		if (c->title == NULL || strcmp(title, c->title) != 0) {
 			if (c->title != NULL)
@@ -328,7 +328,7 @@ server_check_redraw(struct client *c)
 		sy = screen_size_y(s->curw->window->screen);
 		if (sx < xx || sy < yy) {
 			/*
-			 * Fake up a blank(ish) screen and use it to draw the 
+			 * Fake up a blank(ish) screen and use it to draw the
 			 * empty regions. NOTE: because this uses
 			 * tty_write_client but doesn't write the client's
 			 * screen, this can't use anything which relies on
@@ -339,7 +339,7 @@ server_check_redraw(struct client *c)
 			if (sx < xx)
 				screen_redraw_columns(&ctx, sx, xx - sx);
 			if (sy < yy)  {
-				screen_fill_area(&screen, 
+				screen_fill_area(&screen,
 				    0, sy, xx, 1, '-', 0, 0x70);
 				screen_redraw_lines(&ctx, sy, yy - sy);
 			}
@@ -372,11 +372,11 @@ server_check_status(struct client *c)
 	interval = options_get_number(&c->session->options, "status-interval");
 	if (nlines == 0 || interval == 0)
 		return;
-	
+
 	if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
 		fatal("clock_gettime");
 	ts.tv_sec -= interval;
-	
+
 	if (timespeccmp(&c->status_ts, &ts, <))
 		c->flags |= CLIENT_STATUS;
 }
@@ -428,7 +428,7 @@ server_handle_clients(struct pollfd **pfd)
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 
-		if (c != NULL) {		
+		if (c != NULL) {
 			log_debug("testing client %d (%d)", (*pfd)->fd, c->fd);
 			if (buffer_poll(*pfd, c->in, c->out) != 0) {
 				server_lost_client(c);

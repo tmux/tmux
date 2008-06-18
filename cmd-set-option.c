@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.30 2008-06-18 20:11:25 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.31 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -338,5 +338,5 @@ cmd_set_option_print(struct cmd *self, char *buf, size_t len)
 	if (off < len && data->option != NULL)
 		off += xsnprintf(buf + off, len - off, " %s", data->option);
 	if (off < len && data->value != NULL)
-		off += xsnprintf(buf + off, len - off, " %s", data->value);	
+		off += xsnprintf(buf + off, len - off, " %s", data->value);
 }

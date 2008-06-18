@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.22 2008-06-06 20:02:27 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.23 2008-06-18 22:21:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -80,7 +80,7 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			 */
 			session_alert_cancel(s, wl_dst);
 			winlink_remove(&s->windows, wl_dst);
-			
+
 			/* Force select/redraw if current. */
 			if (wl_dst == s->curw) {
 				data->flags &= ~CMD_DFLAG;
@@ -88,7 +88,7 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			}
 			if (wl_dst == s->lastw)
 				s->lastw = NULL;
-			
+
 			/*
 			 * Can't error out after this or there could be an
 			 * empty session!
