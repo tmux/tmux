@@ -1,3 +1,13 @@
+18 June 2008
+
+* Scroll the status line to show the current window if necessary. Also handle
+  windows smaller than needed better (show a blank status line instead of
+  hanging or crashing).
+
+17 June 2008
+
+* tmux 0.3 released.
+
 16 June 2008
 
 * Add some information messages when window options are changed, suggested by
@@ -482,4 +492,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.122 2008-06-16 17:35:40 nicm Exp $
+$Id: CHANGES,v 1.123 2008-06-18 16:34:48 nicm Exp $

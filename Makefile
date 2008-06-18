@@ -1,10 +1,10 @@
-# $Id: Makefile,v 1.61 2008-06-16 06:10:02 nicm Exp $
+# $Id: Makefile,v 1.62 2008-06-18 16:34:48 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
 
 PROG= tmux
-VERSION= 0.2
+VERSION= 0.4
 
 OS!= uname
 REL!= uname -r
@@ -35,7 +35,7 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
 
 CC?= cc
 INCDIRS+= -I. -I- -I/usr/local/include
-CFLAGS+= -DBUILD="\"$(VERSION) ($(DATE))\"" -DMETA="'${META}'"
+CFLAGS+= -DMETA="'${META}'"
 .ifdef PROFILE
 # Don't use ccache
 CC= /usr/bin/gcc
@@ -44,6 +44,9 @@ CFLAGS+= -pg -DPROFILE -O0
 .ifdef DEBUG
 CFLAGS+= -g -ggdb -DDEBUG
 LDFLAGS+= -Wl,-E
+CFLAGS+= -DBUILD="\"$(VERSION) ($(DATE))\""
+.else
+CFLAGS+= -DBUILD="\"$(VERSION)\""
 .endif
 #CFLAGS+= -pedantic -std=c99
 CFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
