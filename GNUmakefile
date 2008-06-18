@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.21 2008-06-18 19:34:50 nicm Exp $
+# $Id: GNUmakefile,v 1.22 2008-06-18 19:36:27 nicm Exp $
 
 .PHONY: clean
 
@@ -53,7 +53,7 @@ INSTALLMAN= install -g bin -o root -m 444
 
 ifeq ($(shell uname),SunOS)
 INCDIRS+= -Icompat
-SRCS+= compat/strtonum.c
+SRCS+= compat/strtonum.c compat/daemon.c
 CFLAGS+= -DNO_STRTONUM -DNO_TREE_H -DNO_PATHS_H -DNO_SETPROCTITLE \
 	-DNO_DAEMON
 endif 
