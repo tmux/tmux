@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.30 2008-06-18 19:34:50 nicm Exp $ */
+/* $Id: client.c,v 1.31 2008-06-18 20:58:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,6 +45,7 @@ client_init(const char *path, struct client_ctx *cctx, int start_server)
 	u_int				retries;
 	struct buffer		       *b;
 	pid_t				pid;
+	char			       *name;
 
 	pid = 0;
 	retries = 0;
@@ -96,8 +97,12 @@ retry:
 			fatal("ioctl(TIOCGWINSZ)");
 		data.sx = ws.ws_col;
 		data.sy = ws.ws_row;
-		if (ttyname_r(STDIN_FILENO, data.tty, sizeof data.tty) != 0)
-			fatal("ttyname_r failed");
+		*data.tty = '\0';
+
+		if ((name = ttyname(STDIN_FILENO)) == NULL)
+			fatal("ttyname failed");
+		if (strlcpy(data.tty, name, sizeof data.tty) >= sizeof data.tty)
+			fatalx("ttyname failed");
 
 		b = buffer_create(BUFSIZ);
 		cmd_send_string(b, getenv("TERM"));

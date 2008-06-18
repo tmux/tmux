@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.24 2008-06-18 18:52:44 nicm Exp $ */
+/* $Id: tty.c,v 1.25 2008-06-18 20:58:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
-#include <curses.h>
+#include <ncurses.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
