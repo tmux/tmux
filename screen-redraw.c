@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.8 2008-06-16 17:35:40 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.9 2008-06-18 16:35:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -129,9 +129,8 @@ screen_redraw_set_attributes(
 void printflike2
 screen_redraw_write_string(struct screen_redraw_ctx *ctx, const char *fmt, ...)
 {
-	struct screen	*s = ctx->s;
-	va_list		 ap;
-	char   		*msg, *ptr;
+	va_list	 ap;
+	char   	*msg, *ptr;
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
