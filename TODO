@@ -82,9 +82,7 @@ option to pass through to xterm window when switching window
   should not emulate it doing so
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
-- document status-left/status-right/status-interval/set-titles
+- document status-left/status-right/status-interval/set-titles/command-prompt
 - enhance paste buffers. per-session buffers, lots of command love
-- stuff like rename would be nice to be able to do in-client like screen, if
-  it could be implemented in a non-icky way (we have control over the tty fd
-  now in the server so should be easier...)
+- command history for command-prompt
 - tidy up window modes
