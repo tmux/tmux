@@ -75,3 +75,6 @@
 - configurable error/info display time
 - tidy up window modes
 - support \033_string\033\\ for window title too
+- fix bell-action in show-window
+- replace status-lines with status internally too
+- list-keys should be sorted

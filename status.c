@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.34 2008-06-19 20:53:04 nicm Exp $ */
+/* $Id: status.c,v 1.35 2008-06-19 22:04:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,8 +42,7 @@ status_redraw(struct client *c)
 	struct tm		       *tm;
 	int				larrow, rarrow;
 
-	yy = options_get_number(&s->options, "status-lines");
-	if (c->sy == 0 || yy == 0)
+	if (c->sy == 0 || !options_get_number(&s->options, "status"))
 		goto off;
 	larrow = rarrow = 0;
 
@@ -51,7 +50,7 @@ status_redraw(struct client *c)
 		fatal("clock_gettime failed");
 	colr = options_get_colours(&s->options, "status-colour");
 
-	yy = c->sy - yy;
+	yy = c->sy - 1;
 	if (yy == 0)
 		goto blank;
 

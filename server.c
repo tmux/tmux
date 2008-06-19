@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.70 2008-06-19 19:40:34 nicm Exp $ */
+/* $Id: server.c,v 1.71 2008-06-19 22:04:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -322,7 +322,7 @@ server_check_redraw(struct client *c)
 	}
 
 	xx = c->sx;
-	yy = c->sy - 1; //options_get_number(&s->options, "status-lines");
+	yy = c->sy - 1;
 	if (c->flags & CLIENT_REDRAW) {
 		sx = screen_size_x(s->curw->window->screen);
 		sy = screen_size_y(s->curw->window->screen);
@@ -372,7 +372,7 @@ server_check_timers(struct client *c)
 {
 	struct session	*s;
 	struct timespec	 ts, ts2;
-	u_int		 nlines, interval;
+	u_int		 interval;
 
 	if (c == NULL || c->session == NULL)
 		return;
@@ -384,8 +384,7 @@ server_check_timers(struct client *c)
 	if (c->message_string != NULL && timespeccmp(&ts, &c->message_timer, >))
 		server_clear_client_message(c);
 
-	nlines = options_get_number(&s->options, "status-lines");
-	if (nlines == 0)
+	if (!options_get_number(&s->options, "status"))
 		return;
 	interval = options_get_number(&s->options, "status-interval");
 	if (interval == 0)
@@ -522,7 +521,7 @@ server_handle_client(struct client *c)
 	struct window	*w = c->session->curw->window;
 	int		 key, prefix;
 
-	prefix = options_get_key(&c->session->options, "prefix-key");
+	prefix = options_get_key(&c->session->options, "prefix");
 	while (tty_keys_next(&c->tty, &key) == 0) {
 		server_clear_client_message(c);
 		if (c->prompt_string != NULL) {

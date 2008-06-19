@@ -1,5 +1,7 @@
 19 June 2008
 
+* Use "status" consistently for status line option, and prefix for "prefix" key
+  option.
 * Allow commands to be entered at a prompt. This is triggered with the
   command-prompt command, bound to : by default.
 * Show status messages properly, without blocking the server.
@@ -509,4 +511,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.127 2008-06-19 20:45:15 nicm Exp $
+$Id: CHANGES,v 1.128 2008-06-19 22:04:01 nicm Exp $
