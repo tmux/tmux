@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.28 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: tty.c,v 1.29 2008-06-19 23:07:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -78,6 +78,8 @@ tty_open(struct tty *tty, char **cause)
 
 	tty->attr = 0;
 	tty->colr = 0x70;
+
+	tty->flags = 0;
 
 	tty_keys_init(tty);
 
@@ -493,7 +495,7 @@ tty_vwrite(struct tty *tty, struct screen *s, int cmd, va_list ap)
 		}
 		break;
 	case TTY_CURSORON:
-		if (cursor_normal != NULL)
+		if (!(tty->flags & TTY_NOCURSOR) && cursor_normal != NULL)
 			tty_puts(tty, cursor_normal);
 		break;
 	case TTY_CURSOROFF:

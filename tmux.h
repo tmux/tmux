@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.154 2008-06-19 20:45:21 nicm Exp $ */
+/* $Id: tmux.h,v 1.155 2008-06-19 23:07:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -650,6 +650,9 @@ struct tty {
 	u_int		 colr;
 
 	u_char		 acs[UCHAR_MAX + 1];
+
+#define TTY_NOCURSOR 0x1
+	int		 flags;
 
 	size_t		 ksize;	/* maximum key size */
 	RB_HEAD(tty_keys, tty_key) ktree;
