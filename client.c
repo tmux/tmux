@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.31 2008-06-18 20:58:03 nicm Exp $ */
+/* $Id: client.c,v 1.32 2008-06-19 19:36:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -127,7 +127,7 @@ client_main(struct client_ctx *cctx)
 {
 	struct pollfd	 pfd;
 	char		*error;
-	int		 timeout;
+	int		 xtimeout; /* Yay for ncurses namespace! */
 
 	siginit();
 
@@ -137,7 +137,7 @@ client_main(struct client_ctx *cctx)
 #endif
 
 	error = NULL;
-	timeout = INFTIM;
+	xtimeout = INFTIM;
 	while (!sigterm) {
 		if (sigwinch)
 			client_handle_winch(cctx);
@@ -147,11 +147,11 @@ client_main(struct client_ctx *cctx)
 			goto out;
 		case 0:
 			/* May be more in buffer, don't let poll block. */
-			timeout = 0;
+			xtimeout = 0;
 			break;
 		default:
 			/* Out of data, poll may block. */
-			timeout = INFTIM;
+			xtimeout = INFTIM;
 			break;
 		}
 
@@ -160,7 +160,7 @@ client_main(struct client_ctx *cctx)
 		if (BUFFER_USED(cctx->srv_out) > 0)
 			pfd.events |= POLLOUT;
 
-		if (poll(&pfd, 1, timeout) == -1) {
+		if (poll(&pfd, 1, xtimeout) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			fatal("poll failed");
