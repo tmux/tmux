@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.39 2008-06-18 16:39:15 nicm Exp $
+.\" $Id: tmux.1,v 1.40 2008-06-19 21:45:46 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -333,6 +333,13 @@ Bind key
 .Ar key
 to
 .Ar command .
+.It Xo Ic command-prompt
+.Op Fl t Ar target-client
+.Xc
+Open the command prompt in a client.
+This may be used from inside
+.Nm
+to execute commands interactively.
 .It Xo Ic copy-mode
 .Op Fl t Ar target-window
 .Xc

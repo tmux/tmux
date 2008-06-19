@@ -47,7 +47,6 @@
 - get rid of stderr/stdout hacks in log.c
 - split clients into three RB trees by fd: attached/unattached/dead?
   or tailqs? what would be fastest per-char?
-- multiple paste buffers
 - window splitting?
 - if only one arg to switch-window, assume source-index
 - test on wsvt25, vt100, vt220
@@ -61,20 +60,8 @@
 - cfg file improvements
 - proper per-window options (per-session list of window ranges?)
 - better mode features: search, back word, forward word, etc
-- figure out Linux tcsetattr problem, remove header bodge if unnecessary
 - flags to centre screen in window
 - get rid of DEFDATA etc
-
----
-support window title commands properly:
-
-\033]0;string\007
-\033]1;string\007
-\033]2;string\007
-\033_string\033\\
-
-accept them all, save to window title
-option to pass through to xterm window when switching window
 
 -- For 0.4 --------------------------------------------------------------------
 - test and fix wsvt25
@@ -82,8 +69,9 @@ option to pass through to xterm window when switching window
   should not emulate it doing so
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
-- document status-left/status-right/status-interval/set-titles/command-prompt
-- enhance paste buffers. per-session buffers, lots of command love
+- document status-left/status-right/status-interval/set-titles
+- enhance paste buffers. multiple buffers, per-session buffers, lots of command love
 - command history for command-prompt. tab completion
 - configurable error/info display time
 - tidy up window modes
+- support \033_string\033\\ for window title too
