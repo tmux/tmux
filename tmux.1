@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.41 2008-06-19 22:04:02 nicm Exp $
+.\" $Id: tmux.1,v 1.42 2008-06-19 22:14:12 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -571,6 +571,15 @@ This setting applies only to new windows - existing window histories are not
 resized and retain the limit at the point they were created.
 .It Ic prefix Ar key
 Set the current prefix key.
+.It Xo Ic set-titles
+.Op Ic on | Ic off
+.Xc
+Attempt to set the window title using the \ee]2;...\e007 xterm code.
+This option is enabled by default.
+Note that 
+.Xr elinks 1 
+will only attempt to set the window title if the STY environment
+variable is set.
 .It Xo Ic status
 .Op Ic on | Ic off
 .Xc
@@ -591,6 +600,30 @@ or
 .Ic default .
 .It Ic status-fg Ar colour
 Set status line foreground colour.
+.It Ic status-interval Ar interval
+Update the status bar every
+.Ar interval
+seconds.
+By default, updates will occur every 15 seconds.
+.It Ic status-left Ar string
+Display
+.Ar string
+to the left of the status bar.
+.Ar string
+will be passed through
+.Xr strftime 3
+before being displayed.
+By default, this setting is empty.
+.It Ic status-right Ar string
+Display
+.Ar string
+to the right of the status bar.
+By default, the date and time will be shown.
+As with
+.Ic status-left ,
+.Ar string
+will be passed to
+.Xr strftime 3 .
 .El
 .It Xo Ic set-window-option
 .Op Fl t Ar target-window
