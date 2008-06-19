@@ -2,6 +2,7 @@
 
 * New option, display-time, sets the time status line messages stay on screen
   (unless a key is pressed). Set in milliseconds, default is 750 (0.75 seconds).
+  The timer is only checked every 100 ms or so.
 
 19 June 2008
 
@@ -516,4 +517,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.129 2008-06-19 23:20:45 nicm Exp $
+$Id: CHANGES,v 1.130 2008-06-19 23:24:40 nicm Exp $

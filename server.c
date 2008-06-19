@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.71 2008-06-19 22:04:02 nicm Exp $ */
+/* $Id: server.c,v 1.72 2008-06-19 23:24:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -188,7 +188,7 @@ server_main(const char *srv_path, int srv_fd)
 
 		/* Do the poll. */
 		log_debug("polling %d fds", nfds);
-		if ((nfds = poll(pfds, nfds, 500)) == -1) {
+		if ((nfds = poll(pfds, nfds, 100)) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			fatal("poll failed");
