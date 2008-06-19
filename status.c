@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.35 2008-06-19 22:04:02 nicm Exp $ */
+/* $Id: status.c,v 1.36 2008-06-19 22:51:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -307,7 +307,6 @@ status_message_redraw(struct client *c)
 		ctx.write(ctx.data, TTY_CHARACTER, ' ');
 	screen_redraw_stop(&ctx);
 
-	/* Force cursor off. */
 	tty_write_client(c, TTY_CURSOROFF);
 }
 
@@ -317,6 +316,7 @@ status_prompt_redraw(struct client *c)
 {
 	struct screen_redraw_ctx	ctx;
 	size_t			        i, xx, yy, left, size, offset;
+	char				ch;
 
 	if (c->sx == 0 || c->sy == 0)
 		return;
@@ -346,15 +346,26 @@ status_prompt_redraw(struct client *c)
 		screen_redraw_write_string(
 		    &ctx, "%.*s", (int) left, c->prompt_buffer + offset);
 
-		for (i = xx + size; i < c->sx; i++)
+		for (i = xx + size; i < c->sx; i++) {
 			ctx.write(ctx.data, TTY_CHARACTER, ' ');
+			ctx.s->cx++;
+		}
 	}
+
+	/* Draw a fake cursor. */
+	screen_redraw_set_attributes(&ctx, 0, 0x88);
+	screen_redraw_move_cursor(&ctx, xx + c->prompt_index - offset, yy);
+	if (c->prompt_index == strlen(c->prompt_buffer))
+		ch = ' ';
+	else
+		ch = c->prompt_buffer[c->prompt_index];
+	if (ch == '\0')
+		ch = ' ';
+	tty_write_client(c, TTY_CHARACTER, ch);
 
 	screen_redraw_stop(&ctx);
 
-	/* Force cursor on. */
-	tty_write_client(c, TTY_CURSORMOVE, yy, xx + c->prompt_index - offset);
-	tty_write_client(c, TTY_CURSORON);
+	tty_write_client(c, TTY_CURSOROFF);
 }
 
 /* Handle keys in prompt. */
