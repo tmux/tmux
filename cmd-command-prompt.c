@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.1 2008-06-19 20:45:20 nicm Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.2 2008-06-19 21:20:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -73,6 +73,8 @@ cmd_command_prompt_callback(void *data, char *s)
 		return;
 
 	if ((cmd = cmd_string_parse(s, &cause)) == NULL) {
+		if (cause == NULL)
+			return;
 		*cause = toupper((u_char) *cause);
 		server_set_client_message(c, cause);
 		xfree(cause);

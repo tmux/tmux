@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.2 2008-06-19 21:13:56 nicm Exp $ */
+/* $Id: cmd-string.c,v 1.3 2008-06-19 21:20:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,6 +39,10 @@ cmd_string_getc(const char *s, size_t *p)
 	return (s[(*p)++]);
 }
 
+/* 
+ * Parse command string. Return command or NULL on error. If returning NULL,
+ * cause is error string, or NULL for empty command.
+ */ 
 struct cmd *
 cmd_string_parse(const char *s, char **cause)
 {
@@ -56,6 +60,8 @@ cmd_string_parse(const char *s, char **cause)
 
 	cmd = NULL;
 
+	*cause = NULL;
+	
 	p = 0;
 	for (;;) {
 		ch = cmd_string_getc(s, &p);
@@ -94,7 +100,7 @@ cmd_string_parse(const char *s, char **cause)
 			if (ch != EOF)
 				break;
 			if (argc == 0)
-				goto error;
+				goto out;
 				
 			cmd = cmd_parse(argc, argv, cause);
 			goto out;
