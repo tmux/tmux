@@ -72,9 +72,8 @@
 - document status-left/status-right/status-interval/set-titles
 - enhance paste buffers. multiple buffers, per-session buffers, lots of command love
 - command history for command-prompt. tab completion
-- configurable error/info display time
 - tidy up window modes
 - support \033_string\033\\ for window title too
 - fix bell-action in show-window
-- replace status-lines with status internally too
 - list-keys should be sorted
+- command prompt doesn't work properly if status line is turned off. fix it
