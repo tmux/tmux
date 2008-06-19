@@ -84,5 +84,6 @@ option to pass through to xterm window when switching window
   session not being watched?
 - document status-left/status-right/status-interval/set-titles/command-prompt
 - enhance paste buffers. per-session buffers, lots of command love
-- command history for command-prompt
+- command history for command-prompt. tab completion
+- configurable error/info display time
 - tidy up window modes
