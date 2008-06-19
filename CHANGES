@@ -1,3 +1,7 @@
+19 June 2008
+
+* Show status messages properly, without blocking the server.
+
 18 June 2008
 
 * New option, set-titles. On by default, this attempts to set the window title
@@ -503,4 +507,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.125 2008-06-18 18:52:44 nicm Exp $
+$Id: CHANGES,v 1.126 2008-06-19 19:37:39 nicm Exp $
