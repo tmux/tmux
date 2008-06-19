@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.44 2008-06-19 19:40:34 nicm Exp $ */
+/* $Id: server-fn.c,v 1.45 2008-06-19 20:45:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -199,19 +199,4 @@ server_status_window(struct window *w)
 		if (s != NULL && session_has(s, w))
 			server_status_session(s);
 	}
-}
-
-void printflike2
-server_write_message(struct client *c, const char *fmt, ...)
-{
-	va_list	ap;
-	char   *msg;
-
-	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
-	va_end(ap);
-
-	server_set_client_message(c, msg);
-
-	xfree(msg);
 }

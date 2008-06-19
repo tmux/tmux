@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.153 2008-06-19 19:40:35 nicm Exp $ */
+/* $Id: tmux.h,v 1.154 2008-06-19 20:45:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -867,6 +867,7 @@ struct winlink	*cmd_find_window(
     		     struct cmd_ctx *, const char *, struct session **);
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
+extern const struct cmd_entry cmd_command_prompt_entry;
 extern const struct cmd_entry cmd_copy_mode_entry;
 extern const struct cmd_entry cmd_detach_client_entry;
 extern const struct cmd_entry cmd_has_session_entry;
@@ -900,6 +901,9 @@ extern const struct cmd_entry cmd_swap_window_entry;
 extern const struct cmd_entry cmd_switch_client_entry;
 extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
+
+/* cmd-string.c */
+struct cmd *cmd_string_parse(const char *, char **);
 
 /* cmd-generic.c */
 #define CMD_TARGET_WINDOW_USAGE "[-t target-window]"
@@ -944,6 +948,9 @@ void	 key_bindings_remove(int);
 void	 key_bindings_init(void);
 void	 key_bindings_free(void);
 void	 key_bindings_dispatch(int, struct client *);
+void printflike2 key_bindings_error(struct cmd_ctx *, const char *, ...);
+void printflike2 key_bindings_print(struct cmd_ctx *, const char *, ...);
+void printflike2 key_bindings_info(struct cmd_ctx *, const char *, ...);
 
 /* key-string.c */
 int	 key_string_lookup_string(const char *);
@@ -976,7 +983,6 @@ void	 server_redraw_session(struct session *);
 void	 server_status_session(struct session *);
 void	 server_redraw_window(struct window *);
 void	 server_status_window(struct window *);
-void printflike2 server_write_message(struct client *, const char *, ...);
 
 /* status.c */
 void	 status_redraw(struct client *);

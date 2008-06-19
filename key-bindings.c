@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.31 2008-06-16 17:35:40 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.32 2008-06-19 20:45:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,10 +25,6 @@
 #include "tmux.h"
 
 struct bindings	key_bindings;
-
-void printflike2 key_bindings_error(struct cmd_ctx *, const char *, ...);
-void printflike2 key_bindings_print(struct cmd_ctx *, const char *, ...);
-void printflike2 key_bindings_info(struct cmd_ctx *, const char *, ...);
 
 void
 key_bindings_add(int key, struct cmd *cmd)
@@ -112,6 +108,7 @@ key_bindings_init(void)
 		{ '=', &cmd_scroll_mode_entry },
 		{ '[', &cmd_copy_mode_entry },
 		{ ']', &cmd_paste_buffer_entry },
+		{ ':', &cmd_command_prompt_entry },
 		{ META, &cmd_send_prefix_entry },
 	};
 	u_int		 i;
@@ -156,7 +153,7 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 
 	*msg = toupper((u_char) *msg);
-	server_write_message(ctx->curclient, "%s", msg);
+ 	server_set_client_message(ctx->curclient, msg);
 	xfree(msg);
 }
 
@@ -187,7 +184,7 @@ key_bindings_info(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 
 	*msg = toupper((u_char) *msg);
-	server_write_message(ctx->curclient, "%s", msg);
+ 	server_set_client_message(ctx->curclient, msg);
 	xfree(msg);
 }
 
