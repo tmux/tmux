@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.1 2008-06-19 20:45:20 nicm Exp $ */
+/* $Id: cmd-string.c,v 1.2 2008-06-19 21:13:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -93,7 +93,9 @@ cmd_string_parse(const char *s, char **cause)
 
 			if (ch != EOF)
 				break;
-
+			if (argc == 0)
+				goto error;
+				
 			cmd = cmd_parse(argc, argv, cause);
 			goto out;
 		default:

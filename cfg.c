@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.9 2008-06-16 20:25:54 nicm Exp $ */
+/* $Id: cfg.c,v 1.10 2008-06-19 21:13:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,169 +51,73 @@ cfg_error(unused struct cmd_ctx *ctx, const char *fmt, ...)
 }
 
 int
-load_cfg(const char *path, char **causep)
+load_cfg(const char *path, char **cause)
 {
 	FILE   	       *f;
-	int		ch, argc;
-	u_int		line;
-	char	      **argv, *buf, *s, *cause;
+	u_int		n;
+	char	       *buf, *line, *ptr;
 	size_t		len;
 	struct cmd     *cmd;
 	struct cmd_ctx	ctx;
 
 	if ((f = fopen(path, "rb")) == NULL) {
-		xasprintf(causep, "%s: %s", path, strerror(errno));
+		xasprintf(cause, "%s: %s", path, strerror(errno));
 		return (1);
 	}
-	cause = NULL;
+	n = 0;
 
-	argv = NULL;
-	argc = 0;
+	line = NULL;
+	while ((buf = fgetln(f, &len))) {
+		if (buf[len - 1] == '\n')
+			buf[len - 1] = '\0';
+		else {
+			line = xrealloc(line, 1, len + 1);
+			memcpy(line, buf, len);
+			line[len] = '\0';
+			buf = line;
+		}
+		n++;
 
-	buf = NULL;
-	len = 0;
+		/* Trim spaces from start and end. */
+		while (*buf != '\0' && (*buf == ' ' || *buf == '\t'))
+			*buf++ = '\0';
+		len = strlen(buf);
+		while (len > 0 && (buf[len - 1] == ' ' || buf[len - 1] == '\t'))
+			buf[--len] = '\0';
+		if (*buf == '\0')
+			continue;
 
-	line = 0;
-	while ((ch = getc(f)) != EOF) {
-		switch (ch) {
-		case '\'':
-			if ((s = cfg_string(f, '\'', 0)) == NULL)
-				goto error;
-			argv = xrealloc(argv, argc + 1, sizeof *argv);
-			argv[argc++] = s;
-			break;
-		case '"':
-			if ((s = cfg_string(f, '"', 1)) == NULL)
-				goto error;
-			argv = xrealloc(argv, argc + 1, sizeof *argv);
-			argv[argc++] = s;
-			break;
-		case '#':
-			/* Comment: discard until EOL. */
-			while ((ch = getc(f)) != '\n' && ch != EOF)
-				;
-			/* FALLTHROUGH */
-		case '\n':
-		case EOF:
-		case ' ':
-		case '\t':
- 			if (len != 0) {
-				buf = xrealloc(buf, 1, len + 1);
-				buf[len] = '\0';
+		if ((cmd = cmd_string_parse(buf, cause)) == NULL)
+			goto error;
+		cfg_cause = NULL;
 
-				argv = xrealloc(argv, argc + 1, sizeof *argv);
-				argv[argc++] = buf;
+		ctx.msgdata = NULL;
+		ctx.cursession = NULL;
+		ctx.curclient = NULL;
 
-				buf = NULL;
-				len = 0;
-			}
+		ctx.error = cfg_error;
+		ctx.print = cfg_print;
+		ctx.info = cfg_print;
 
-			if (ch != '\n' && ch != EOF)
-				break;
-			line++;
-			if (argc == 0)
-				break;
+		ctx.cmdclient = NULL;
+		ctx.flags = 0;
 
-			if ((cmd = cmd_parse(argc, argv, &cause)) == NULL)
- 				goto error;
-
-			ctx.msgdata = NULL;
-			ctx.cursession = NULL;
-			ctx.curclient = NULL;
-
-			ctx.error = cfg_error;
-			ctx.print = cfg_print;
-			ctx.info = cfg_print;
-
-			ctx.cmdclient = NULL;
-			ctx.flags = 0;
-
-			cfg_cause = NULL;
-			cmd_exec(cmd, &ctx);
-			cmd_free(cmd);
-			if (cfg_cause != NULL) {
-				cause = cfg_cause;
-				goto error;
-			}
-
-			while (--argc >= 0)
-				xfree(argv[argc]);
-			argc = 0;
-			break;
-		default:
-			if (len >= SIZE_MAX - 2)
-				goto error;
-
-			buf = xrealloc(buf, 1, len + 1);
-			buf[len++] = ch;
-			break;
+		cfg_cause = NULL;
+		cmd_exec(cmd, &ctx);
+		cmd_free(cmd);
+		if (cfg_cause != NULL) {
+			*cause = cfg_cause;
+			goto error;
 		}
 	}
-
-	fclose(f);
+	if (line != NULL)
+		xfree(line);
 
 	return (0);
 
 error:
-	while (--argc >= 0)
-		xfree(argv[argc]);
-	xfree(argv);
-
-	if (buf != NULL)
-		xfree(buf);
-
-	if (cause == NULL)
-		xasprintf(causep, "%s: error at line %u", path, line);
-	else
-		xasprintf(causep, "%s: %s at line %u", path, cause, line);
+	xasprintf(&ptr, "%s: %s at line %u", path, *cause, n);
+	xfree(*cause);
+	*cause = ptr;
 	return (1);
-}
-
-char *
-cfg_string(FILE *f, char endch, int esc)
-{
-	int	ch;
-	char   *buf;
-	size_t	len;
-
-        buf = NULL;
-	len = 0;
-
-        while ((ch = getc(f)) != endch) {
-                switch (ch) {
-		case EOF:
-			goto error;
-                case '\\':
-			if (!esc)
-				break;
-                        switch (ch = getc(f)) {
-			case EOF:
-				goto error;
-                        case 'r':
-                                ch = '\r';
-                                break;
-                        case 'n':
-                                ch = '\n';
-                                break;
-                        case 't':
-                                ch = '\t';
-                                break;
-                        }
-                        break;
-                }
-
-		if (len >= SIZE_MAX - 2)
-			goto error;
-		buf = xrealloc(buf, 1, len + 1);
-                buf[len++] = ch;
-        }
-
-	buf = xrealloc(buf, 1, len + 1);
-	buf[len] = '\0';
-	return (buf);
-
-error:
-	if (buf != NULL)
-		xfree(buf);
-	return (NULL);
 }
