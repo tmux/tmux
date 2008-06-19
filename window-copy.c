@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.18 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: window-copy.c,v 1.19 2008-06-19 19:40:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -180,7 +180,7 @@ window_copy_key(struct window *w, int key)
 		screen_clear_selection(&data->screen);
 		break;
 	case '\027':	/* C-w */
-	case '\r':	/* enter */
+ 	case '\r':	/* enter */
 		window_copy_copy_selection(w);
 		window_reset_mode(w);
 		break;

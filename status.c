@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.31 2008-06-19 18:27:55 nicm Exp $ */
+/* $Id: status.c,v 1.32 2008-06-19 19:40:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -310,4 +310,132 @@ status_message_redraw(struct client *c)
 
 	/* Force cursor off. */
 	tty_write_client(c, TTY_CURSOROFF);
+}
+
+/* Draw client prompt on status line of present else on last line. */
+void
+status_prompt_redraw(struct client *c)
+{
+	struct screen_redraw_ctx	ctx;
+	size_t			        i, xx, yy, left, size, offset;
+
+	if (c->sx == 0 || c->sy == 0)
+		return;
+	offset = 0;
+
+	xx = strlen(c->prompt_string) + 1;
+	if (xx > c->sx)
+		xx = c->sx;
+	yy = c->sy - 1;		
+
+	screen_redraw_start_client(&ctx, c);
+	screen_redraw_set_attributes(&ctx, ATTR_REVERSE, 0x88);
+
+	screen_redraw_move_cursor(&ctx, 0, yy);
+	screen_redraw_write_string(&ctx, "%.*s ", (int) xx, c->prompt_string);
+
+	left = c->sx - xx;
+	if (left != 0) {
+		if (c->prompt_index < left)
+			size = strlen(c->prompt_buffer);
+		else {
+			offset = c->prompt_index - left;
+			if (c->prompt_index == strlen(c->prompt_buffer))
+				left--;
+			size = left;
+		}
+		screen_redraw_write_string(
+		    &ctx, "%.*s", (int) left, c->prompt_buffer + offset);
+
+		for (i = xx + size; i < c->sx; i++)
+			ctx.write(ctx.data, TTY_CHARACTER, ' ');
+	}
+
+	screen_redraw_stop(&ctx);
+
+	/* Force cursor on. */
+	tty_write_client(c, TTY_CURSORMOVE, yy, xx + c->prompt_index - offset);
+	tty_write_client(c, TTY_CURSORON);
+}
+
+/* Handle keys in prompt. */
+void
+status_prompt_key(struct client *c, int key)
+{
+	size_t	size;
+
+	size = strlen(c->prompt_buffer);
+	switch (key) {
+	case KEYC_LEFT:
+		if (c->prompt_index > 0) {
+			c->prompt_index--;
+			c->flags |= CLIENT_STATUS;
+		}
+		break;
+	case KEYC_RIGHT:
+		if (c->prompt_index < size) {
+			c->prompt_index++;
+			c->flags |= CLIENT_STATUS;
+		}
+		break;
+	case '\001':	/* C-a */
+		if (c->prompt_index != 0) {
+			c->prompt_index = 0;
+			c->flags |= CLIENT_STATUS;
+		}
+		break;
+	case '\005':	/* C-e */
+		if (c->prompt_index != size) {
+			c->prompt_index = size;
+			c->flags |= CLIENT_STATUS;
+		}
+		break;
+	case '\010':
+	case '\177':
+		if (c->prompt_index != 0) {
+			if (c->prompt_index == size)
+				c->prompt_buffer[--c->prompt_index] = '\0';
+			else {
+				memmove(c->prompt_buffer + c->prompt_index - 1, 
+				    c->prompt_buffer + c->prompt_index,
+				    size + 1 - c->prompt_index);
+				c->prompt_index--;
+			}
+			c->flags |= CLIENT_STATUS;
+		}
+		break;
+	case KEYC_DC:
+		if (c->prompt_index != size) {
+			memmove(c->prompt_buffer + c->prompt_index, 
+			    c->prompt_buffer + c->prompt_index + 1,
+			    size + 1 - c->prompt_index);
+			c->flags |= CLIENT_STATUS;
+		}
+		break;
+ 	case '\r':	/* enter */
+		c->prompt_callback(c->prompt_data, c->prompt_buffer);
+		server_clear_client_prompt(c);
+		break;
+	case '\e':	/* escape */
+		c->prompt_callback(c->prompt_data, NULL);
+		server_clear_client_prompt(c);
+		break;
+	default:
+		if (key < 32)
+			break;
+		c->prompt_buffer = xrealloc(c->prompt_buffer, 1, size + 2);
+
+		if (c->prompt_index == size) {
+			c->prompt_buffer[c->prompt_index++] = key;
+			c->prompt_buffer[c->prompt_index] = '\0';
+		} else {
+			memmove(c->prompt_buffer + c->prompt_index + 1, 
+			    c->prompt_buffer + c->prompt_index,
+			    size + 1 - c->prompt_index);
+			c->prompt_buffer[c->prompt_index++] = key;
+		}
+
+		c->flags |= CLIENT_STATUS;
+		break;
+	}
 }

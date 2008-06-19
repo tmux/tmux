@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.69 2008-06-19 18:27:55 nicm Exp $ */
+/* $Id: server.c,v 1.70 2008-06-19 19:40:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -357,6 +357,8 @@ server_check_redraw(struct client *c)
 	if (c->flags & CLIENT_STATUS) {
 		if (c->message_string != NULL)
 			status_message_redraw(c);
+		else if (c->prompt_string != NULL)
+			status_prompt_redraw(c);
 		else
 			status_redraw(c);
 	}
@@ -501,7 +503,7 @@ server_accept_client(int srv_fd)
 
 	c->prompt_string = NULL;
 	c->prompt_buffer = NULL;
-	c->prompt_size = 0;
+	c->prompt_index = 0;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		if (ARRAY_ITEM(&clients, i) == NULL) {
@@ -523,6 +525,11 @@ server_handle_client(struct client *c)
 	prefix = options_get_key(&c->session->options, "prefix-key");
 	while (tty_keys_next(&c->tty, &key) == 0) {
 		server_clear_client_message(c);
+		if (c->prompt_string != NULL) {
+			status_prompt_key(c, key);
+			continue;
+		}
+
 		if (c->flags & CLIENT_PREFIX) {
 			key_bindings_dispatch(key, c);
 			c->flags &= ~CLIENT_PREFIX;

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.61 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: tmux.c,v 1.62 2008-06-19 19:40:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -215,7 +215,7 @@ main(int argc, char **argv)
 	options_set_number(&global_options, "bell-action", BELL_ANY);
 	options_set_number(&global_options, "history-limit", 2000);
 	options_set_key(&global_options, "prefix-key", META);
-	options_set_string(&global_options, "status-left", "");
+	options_set_string(&global_options, "status-left", "%s", ""); /* ugh */
 	options_set_string(
 	    &global_options, "status-right", "%%H:%%M %%d-%%b-%%y");
 	options_set_number(&global_options, "status-interval", 15);

@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.43 2008-06-19 18:27:55 nicm Exp $ */
+/* $Id: server-fn.c,v 1.44 2008-06-19 19:40:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,6 +44,35 @@ server_clear_client_message(struct client *c)
 
 	xfree(c->message_string);
 	c->message_string = NULL;
+
+	c->flags |= CLIENT_STATUS;
+}
+
+void
+server_set_client_prompt(
+    struct client *c, const char *msg, void (*fn)(void *, char *), void *data)
+{
+	c->prompt_string = xstrdup(msg);
+
+	c->prompt_buffer = xstrdup("");
+	c->prompt_index = 0;
+
+	c->prompt_callback = fn;
+	c->prompt_data = data;
+
+	c->flags |= CLIENT_STATUS;
+}
+
+void
+server_clear_client_prompt(struct client *c)
+{
+	if (c->prompt_string == NULL)
+		return;
+
+	xfree(c->prompt_string);
+	c->prompt_string = NULL;
+
+	xfree(c->prompt_buffer);
 
 	c->flags |= CLIENT_STATUS;
 }
