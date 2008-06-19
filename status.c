@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.30 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: status.c,v 1.31 2008-06-19 18:27:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,14 +39,15 @@ status_redraw(struct client *c)
 	size_t				llen, rlen, offset, xx, yy;
 	size_t				size, start, width;
 	u_char		 		attr, colr;
+	struct tm		       *tm;
 	int				larrow, rarrow;
 
 	yy = options_get_number(&s->options, "status-lines");
 	if (c->sy == 0 || yy == 0)
-		return;
+		goto off;
 	larrow = rarrow = 0;
 
-	if (clock_gettime(CLOCK_REALTIME, &c->status_ts) != 0)
+	if (clock_gettime(CLOCK_REALTIME, &c->status_timer) != 0)
 		fatal("clock_gettime failed");
 	colr = options_get_colours(&s->options, "status-colour");
 
@@ -54,11 +55,12 @@ status_redraw(struct client *c)
 	if (yy == 0)
 		goto blank;
 
+	tm = localtime(&(c->status_timer.tv_sec));
 	left = options_get_string(&s->options, "status-left");
-	strftime(lbuf, sizeof lbuf, left, localtime(&(c->status_ts.tv_sec)));
+	strftime(lbuf, sizeof lbuf, left, tm);
 	llen = strlen(lbuf);
 	right = options_get_string(&s->options, "status-right");
-	strftime(rbuf, sizeof rbuf, right, localtime(&(c->status_ts.tv_sec)));
+	strftime(rbuf, sizeof rbuf, right, tm);
 	rlen = strlen(rbuf);
 
 	/*
@@ -229,6 +231,26 @@ blank:
 	for (offset = 0; offset < c->sx; offset++)
 		ctx.write(ctx.data, TTY_CHARACTER, ' ');
 	screen_redraw_stop(&ctx);
+
+	return;
+
+off:
+	/*
+	 * Draw the real window last line. Necessary to wipe over message if
+	 * status is off. Not sure this is the right place for this.
+	 */
+	screen_redraw_start_client(&ctx, c);
+	/* If the screen is too small, use blank. */
+	if (screen_size_y(c->session->curw->window->screen) < c->sy) {
+		screen_redraw_move_cursor(&ctx, 0, c->sy - 1);
+		screen_redraw_set_attributes(&ctx, 0, 0x88);
+		for (offset = 0; offset < c->sx; offset++)
+			ctx.write(ctx.data, TTY_CHARACTER, ' ');
+	} else
+		screen_redraw_lines(&ctx, c->sy - 1, 1);
+	screen_redraw_stop(&ctx);
+
+	return;
 }
 
 size_t
@@ -260,4 +282,32 @@ status_print(struct session *s, struct winlink *wl, u_char *attr)
 
 	xasprintf(&text, "%d:%s%c", wl->idx, wl->window->name, flag);
 	return (text);
+}
+
+/* Draw client message on status line of present else on last line. */
+void
+status_message_redraw(struct client *c)
+{
+	struct screen_redraw_ctx	ctx;
+	size_t			        xx, yy;
+
+	if (c->sx == 0 || c->sy == 0)
+		return;
+
+	xx = strlen(c->message_string);
+	if (xx > c->sx)
+		xx = c->sx;
+	yy = c->sy - 1;		
+
+	screen_redraw_start_client(&ctx, c);
+	screen_redraw_set_attributes(&ctx, ATTR_REVERSE, 0x88);
+
+	screen_redraw_move_cursor(&ctx, 0, yy);
+	screen_redraw_write_string(&ctx, "%.*s", (int) xx, c->message_string);
+	for (; xx < c->sx; xx++)
+		ctx.write(ctx.data, TTY_CHARACTER, ' ');
+	screen_redraw_stop(&ctx);
+
+	/* Force cursor off. */
+	tty_write_client(c, TTY_CURSOROFF);
 }

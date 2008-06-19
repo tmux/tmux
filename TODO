@@ -37,8 +37,6 @@
 - function groups, bind-key ^W { select-window 0; send-key ^W } etc ***
 - allow fnmatch for -c, so that you can, eg, detach all clients
 - bind non prefix keys
-- stuff like rename would be nice to be able to do in-client like screen, if
-  it could be implemented in a non-icky way
 - there is too much redrawing. use flags?
 - command mode (! + type tmux command)
 - garbage collect window history (100 lines at a time?) if it hasn't been used
@@ -86,3 +84,7 @@ option to pass through to xterm window when switching window
   session not being watched?
 - document status-left/status-right/status-interval/set-titles
 - enhance paste buffers. per-session buffers, lots of command love
+- stuff like rename would be nice to be able to do in-client like screen, if
+  it could be implemented in a non-icky way (we have control over the tty fd
+  now in the server so should be easier...)
+- tidy up window modes

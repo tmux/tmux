@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.68 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: server.c,v 1.69 2008-06-19 18:27:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,7 +54,7 @@ void		 server_handle_window(struct window *);
 void		 server_lost_client(struct client *);
 void	 	 server_lost_window(struct window *);
 void		 server_check_redraw(struct client *);
-void		 server_check_status(struct client *);
+void		 server_check_timers(struct client *);
 void		 server_update_socket(const char *);
 
 /* Fork new server. */
@@ -322,7 +322,7 @@ server_check_redraw(struct client *c)
 	}
 
 	xx = c->sx;
-	yy = c->sy - options_get_number(&s->options, "status-lines");
+	yy = c->sy - 1; //options_get_number(&s->options, "status-lines");
 	if (c->flags & CLIENT_REDRAW) {
 		sx = screen_size_x(s->curw->window->screen);
 		sy = screen_size_y(s->curw->window->screen);
@@ -351,33 +351,47 @@ server_check_redraw(struct client *c)
 		screen_redraw_lines(&ctx, 0, screen_size_y(ctx.s));
 		screen_redraw_stop(&ctx);
 
-		status_redraw(c);
-	} else if (c->flags & CLIENT_STATUS)
-		status_redraw(c);
+		c->flags |= CLIENT_STATUS;
+	}
 
-	c->flags &= ~(CLIENT_CLEAR|CLIENT_REDRAW|CLIENT_STATUS);
+	if (c->flags & CLIENT_STATUS) {
+		if (c->message_string != NULL)
+			status_message_redraw(c);
+		else
+			status_redraw(c);
+	}
+
+	c->flags &= ~(CLIENT_REDRAW|CLIENT_STATUS);
 }
 
-/* Check for status line redraw on client. */
+/* Check for timers on client. */
 void
-server_check_status(struct client *c)
+server_check_timers(struct client *c)
 {
-	struct timespec	 ts;
+	struct session	*s;
+	struct timespec	 ts, ts2;
 	u_int		 nlines, interval;
 
 	if (c == NULL || c->session == NULL)
 		return;
-
-	nlines = options_get_number(&c->session->options, "status-lines");
-	interval = options_get_number(&c->session->options, "status-interval");
-	if (nlines == 0 || interval == 0)
-		return;
+	s = c->session;
 
 	if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
 		fatal("clock_gettime");
-	ts.tv_sec -= interval;
+	
+	if (c->message_string != NULL && timespeccmp(&ts, &c->message_timer, >))
+		server_clear_client_message(c);
 
-	if (timespeccmp(&c->status_ts, &ts, <))
+	nlines = options_get_number(&s->options, "status-lines");
+	if (nlines == 0)
+		return;
+	interval = options_get_number(&s->options, "status-interval");
+	if (interval == 0)
+		return;
+
+	memcpy(&ts2, &ts, sizeof ts2);
+	ts2.tv_sec -= interval;
+	if (timespeccmp(&c->status_timer, &ts2, <))
 		c->flags |= CLIENT_STATUS;
 }
 
@@ -391,8 +405,8 @@ server_fill_clients(struct pollfd **pfd)
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 
+		server_check_timers(c);
 		server_check_redraw(c);
-		server_check_status(c);
 
 		if (c == NULL)
 			(*pfd)->fd = -1;
@@ -483,6 +497,12 @@ server_accept_client(int srv_fd)
 	c->sx = 80;
 	c->sy = 25;
 
+	c->message_string = NULL;
+
+	c->prompt_string = NULL;
+	c->prompt_buffer = NULL;
+	c->prompt_size = 0;
+
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		if (ARRAY_ITEM(&clients, i) == NULL) {
 			ARRAY_SET(&clients, i, c);
@@ -502,6 +522,7 @@ server_handle_client(struct client *c)
 
 	prefix = options_get_key(&c->session->options, "prefix-key");
 	while (tty_keys_next(&c->tty, &key) == 0) {
+		server_clear_client_message(c);
 		if (c->flags & CLIENT_PREFIX) {
 			key_bindings_dispatch(key, c);
 			c->flags &= ~CLIENT_PREFIX;

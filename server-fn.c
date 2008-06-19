@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.42 2008-06-16 17:35:40 nicm Exp $ */
+/* $Id: server-fn.c,v 1.43 2008-06-19 18:27:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,6 +22,31 @@
 #include <unistd.h>
 
 #include "tmux.h"
+
+void
+server_set_client_message(struct client *c, const char *msg)
+{
+	struct timespec	ts = { 0, 750000000L };
+
+	c->message_string = xstrdup(msg);
+	if (clock_gettime(CLOCK_REALTIME, &c->message_timer) != 0)
+		fatal("clock_gettime");
+	timespecadd(&c->message_timer, &ts, &c->message_timer);
+
+	c->flags |= CLIENT_STATUS;
+}
+
+void
+server_clear_client_message(struct client *c)
+{
+	if (c->message_string == NULL)
+		return;
+
+	xfree(c->message_string);
+	c->message_string = NULL;
+
+	c->flags |= CLIENT_STATUS;
+}
 
 void
 server_write_client(
@@ -150,47 +175,14 @@ server_status_window(struct window *w)
 void printflike2
 server_write_message(struct client *c, const char *fmt, ...)
 {
-	struct screen_redraw_ctx	ctx;
-	va_list				ap;
-	char			       *msg;
-	size_t				size;
-	u_int				slines;
-
-	slines = options_get_number(&c->session->options, "status-lines");
-
-	screen_redraw_start_client(&ctx, c);
+	va_list	ap;
+	char   *msg;
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
 	va_end(ap);
 
-	msg = xrealloc(msg, 1, c->sx + 1);
-	msg[c->sx] = '\0';
-
-	size = strlen(msg);
-	if (size < c->sx)
-		memset(msg + size, ' ', c->sx - size);
-
-	screen_redraw_move_cursor(&ctx, 0, c->sy - 1);
-	screen_redraw_set_attributes(&ctx, ATTR_REVERSE, 0x88);
-	screen_redraw_write_string(&ctx, "%s", msg);
-
-	buffer_flush(c->tty.fd, c->tty.in, c->tty.out);
-	usleep(750000);
-
-	memset(msg, ' ', c->sx);
-
-	screen_redraw_move_cursor(&ctx, 0, c->sy - 1);
-	screen_redraw_set_attributes(&ctx, 0, 0x88);
-	screen_redraw_write_string(&ctx, "%s", msg);
+	server_set_client_message(c, msg);
 
 	xfree(msg);
-
-	if (slines == 0) {
-		screen_redraw_lines(&ctx, c->sy - 1, 1);
-		screen_redraw_stop(&ctx);
-	} else {
-		screen_redraw_stop(&ctx);
-		server_status_client(c);
-	}
 }

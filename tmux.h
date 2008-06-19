@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.151 2008-06-18 20:58:03 nicm Exp $ */
+/* $Id: tmux.h,v 1.152 2008-06-19 18:27:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -664,7 +664,7 @@ struct client {
 	char		*title;
 
 	struct tty 	 tty;
-	struct timespec	 status_ts;
+	struct timespec	 status_timer;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -674,8 +674,14 @@ struct client {
 #define CLIENT_MOUSE 0x4
 #define CLIENT_REDRAW 0x8
 #define CLIENT_STATUS 0x10
-#define CLIENT_CLEAR 0x20
 	int		 flags;
+
+	char		*message_string;
+	struct timespec	 message_timer;
+
+	char		*prompt_string;
+	char		*prompt_buffer;
+	size_t		 prompt_size;
 
 	struct session	*session;
 };
@@ -949,6 +955,8 @@ int	 server_start(const char *);
 int	 server_msg_dispatch(struct client *);
 
 /* server-fn.c */
+void	 server_set_client_message(struct client *, const char *);
+void	 server_clear_client_message(struct client *);
 struct session *server_extract_session(
     	     struct msg_command_data *, char *, char **);
 void	 server_write_client(
@@ -967,6 +975,7 @@ void printflike2 server_write_message(struct client *, const char *, ...);
 
 /* status.c */
 void	 status_redraw(struct client *c);
+void	 status_message_redraw(struct client *c);
 
 /* resize.c */
 void	 recalculate_sizes(void);
