@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.10 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.11 2008-06-20 08:36:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -259,6 +259,136 @@ cmd_srcdst_print(struct cmd *self, char *buf, size_t len)
 		off += xsnprintf(buf + off, len - off, " -s %s", data->src);
 	if (off < len && data->dst != NULL)
 		off += xsnprintf(buf + off, len - off, " -t %s", data->dst);
+ 	if (off < len && data->arg != NULL)
+		off += xsnprintf(buf + off, len - off, " %s", data->arg);
+}
+
+void
+cmd_buffer_init(struct cmd *self, unused int key)
+{
+	struct cmd_buffer_data	*data;
+
+	self->data = data = xmalloc(sizeof *data);
+	data->flags = 0;
+	data->target = NULL;
+	data->buffer = -1;
+	data->arg = NULL;
+}
+
+int
+cmd_buffer_parse(struct cmd *self, int argc, char **argv, char **cause)
+{
+	struct cmd_buffer_data	*data;
+	int			 opt, n;
+	const char		*errstr;
+
+	cmd_buffer_init(self, 0);
+	data = self->data;
+
+	while ((opt = getopt(argc, argv, "b:dkt:")) != EOF) {
+		switch (opt) {
+		case 'b':
+			if (data->buffer == -1) {
+				n = strtonum(optarg, 0, INT_MAX, &errstr);
+				if (errstr != NULL) {
+					xasprintf(
+					    cause, "buffer index %s", errstr);
+					goto error;
+				}
+				data->buffer = n;
+			}
+			break;
+		case 'd':
+			if (self->entry->flags & CMD_DFLAG) {
+				data->flags |= CMD_DFLAG;
+				break;
+			}
+			goto usage;
+		case 'k':
+			if (self->entry->flags & CMD_KFLAG) {
+				data->flags |= CMD_KFLAG;
+				break;
+			}
+			goto usage;
+		case 't':
+			if (data->target == NULL)
+				data->target = xstrdup(optarg);
+			break;
+		default:
+			goto usage;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (self->entry->flags & CMD_ONEARG) {
+		if (argc != 1)
+			goto usage;
+		data->arg = xstrdup(argv[0]);
+	} else {
+		if (argc != 0)
+			goto usage;
+	}
+	return (0);
+
+usage:
+	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
+
+error:
+	self->entry->free(self);
+	return (-1);
+}
+
+void
+cmd_buffer_send(struct cmd *self, struct buffer *b)
+{
+	struct cmd_buffer_data	*data = self->data;
+
+	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->target);
+	cmd_send_string(b, data->arg);
+}
+
+void
+cmd_buffer_recv(struct cmd *self, struct buffer *b)
+{
+	struct cmd_buffer_data	*data;
+
+	self->data = data = xmalloc(sizeof *data);
+	buffer_read(b, data, sizeof *data);
+	data->target = cmd_recv_string(b);
+	data->arg = cmd_recv_string(b);
+}
+
+void
+cmd_buffer_free(struct cmd *self)
+{
+	struct cmd_buffer_data	*data = self->data;
+
+	if (data->target != NULL)
+		xfree(data->target);
+	if (data->arg != NULL)
+		xfree(data->arg);
+	xfree(data);
+}
+
+void
+cmd_buffer_print(struct cmd *self, char *buf, size_t len)
+{
+	struct cmd_buffer_data	*data = self->data;
+	size_t			 off = 0;
+
+	off += xsnprintf(buf, len, "%s", self->entry->name);
+	if (data == NULL)
+		return;
+	if (off < len && data->flags & CMD_DFLAG)
+		off += xsnprintf(buf + off, len - off, " -d");
+	if (off < len && data->flags & CMD_KFLAG)
+		off += xsnprintf(buf + off, len - off, " -k");
+	if (off < len && data->buffer != -1)
+		off += xsnprintf(buf + off, len - off, " -b %d", data->buffer);
+	if (off < len && data->target != NULL)
+		off += xsnprintf(buf + off, len - off, " -t %s", data->target);
  	if (off < len && data->arg != NULL)
 		off += xsnprintf(buf + off, len - off, " %s", data->arg);
 }

@@ -1,4 +1,4 @@
-/* $Id: array.h,v 1.4 2008-06-18 16:35:26 nicm Exp $ */
+/* $Id: array.h,v 1.5 2008-06-20 08:36:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2006 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,6 +52,15 @@
 #define ARRAY_ADD(a, s) do {						\
 	ENSURE_SIZE2((a)->list, (a)->space, (a)->num + 1, ARRAY_ITEMSIZE(a)); \
 	(a)->list[(a)->num] = s;					\
+	(a)->num++;							\
+} while (0)
+#define ARRAY_INSERT(a, i, s) do {					\
+	ENSURE_SIZE2((a)->list, (a)->space, (a)->num + 1, ARRAY_ITEMSIZE(a)); \
+	if ((i) < (a)->num) {						\
+		memmove((a)->list + (i) + 1, (a)->list + (i), 		\
+		    ARRAY_ITEMSIZE(a) * ((a)->num - (i)));		\
+	}								\
+	(a)->list[i] = s;						\
 	(a)->num++;							\
 } while (0)
 #define ARRAY_REMOVE(a, i) do {						\

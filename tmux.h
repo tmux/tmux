@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.156 2008-06-20 06:36:01 nicm Exp $ */
+/* $Id: tmux.h,v 1.157 2008-06-20 08:36:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -590,6 +590,13 @@ struct options {
 	struct options	*parent;
 };
 
+/* Paste buffer. */
+struct paste_buffer {
+     	char		*data;
+	struct timespec	 created;
+};
+ARRAY_DECL(paste_stack, struct paste_buffer *);
+
 /* Client session. */
 struct session_alert {
 	struct winlink	*wl;
@@ -610,6 +617,8 @@ struct session {
 	struct winlinks	 windows;
 
 	struct options	 options;
+
+	struct paste_stack buffers;
 
 	TAILQ_HEAD(, session_alert) alerts;
 
@@ -760,6 +769,13 @@ struct cmd_srcdst_data {
 	char	*arg;
 };
 
+struct cmd_buffer_data {
+	int	 flags;
+	char	*target;
+	int	 buffer;
+	char	*arg;
+};
+
 /* Key binding. */
 struct binding {
 	int		 key;
@@ -851,6 +867,17 @@ void		 tty_vwrite_window(void *, int, va_list);
 void		 tty_write_session(void *, int, ...);
 void		 tty_vwrite_session(void *, int, va_list);
 
+/* paste.c */
+void		 paste_init_stack(struct paste_stack *);
+void		 paste_free_stack(struct paste_stack *);
+struct paste_buffer *paste_walk_stack(struct paste_stack *, uint *);
+struct paste_buffer *paste_get_top(struct paste_stack *);
+struct paste_buffer *paste_get_index(struct paste_stack *, u_int);
+int	     	 paste_free_top(struct paste_stack *);
+int		 paste_free_index(struct paste_stack *, u_int);
+void		 paste_add(struct paste_stack *, const char *);
+int		 paste_replace(struct paste_stack *, u_int, const char *);
+
 /* arg.c */
 struct client 	*arg_parse_client(const char *);
 struct session 	*arg_parse_session(const char *);
@@ -896,8 +923,10 @@ extern const struct cmd_entry cmd_scroll_mode_entry;
 extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_keys_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
+extern const struct cmd_entry cmd_set_buffer_entry;
 extern const struct cmd_entry cmd_set_option_entry;
 extern const struct cmd_entry cmd_set_window_option_entry;
+extern const struct cmd_entry cmd_show_buffer_entry;
 extern const struct cmd_entry cmd_show_options_entry;
 extern const struct cmd_entry cmd_show_window_options_entry;
 extern const struct cmd_entry cmd_start_server_entry;
@@ -930,6 +959,16 @@ void	cmd_srcdst_send(struct cmd *, struct buffer *);
 void	cmd_srcdst_recv(struct cmd *, struct buffer *);
 void	cmd_srcdst_free(struct cmd *);
 void	cmd_srcdst_print(struct cmd *, char *, size_t);
+#define CMD_BUFFER_WINDOW_USAGE "[-b index] [-t target-window]"
+#define CMD_BUFFER_SESSION_USAGE "[-b index] [-t target-session]"
+#define CMD_BUFFER_CLIENT_USAGE "[-b index] [-t target-client]"
+void	cmd_buffer_init(struct cmd *, int);
+int	cmd_buffer_parse(struct cmd *, int, char **, char **);
+void	cmd_buffer_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_buffer_send(struct cmd *, struct buffer *);
+void	cmd_buffer_recv(struct cmd *, struct buffer *);
+void	cmd_buffer_free(struct cmd *);
+void	cmd_buffer_print(struct cmd *, char *, size_t);
 
 /* client.c */
 int	 client_init(const char *, struct client_ctx *, int);

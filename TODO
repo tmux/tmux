@@ -75,3 +75,15 @@
 - support \033_string\033\\ for window title too
 - fix bell-action in show-options
 - list-keys should be sorted
+---
+buffer stack. buffer numbered 0 is top and ascending
+
+where -b number == top if missing:
+paste-buffer -b number 
+delete-buffer -b number
+set-buffer -b number string
+save-buffer -b number filename
+load-buffer -b number filename
+copy-buffer (from other session)
+show-buffers
+---
