@@ -69,18 +69,14 @@
   should not emulate it doing so
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
-- enhance paste buffers. multiple buffers, per-session buffers, lots of command love
 - command history for command-prompt. tab completion
 - tidy up window modes
 - support \033_string\033\\ for window title too
 - fix bell-action in show-options
 - list-keys should be sorted
----
-buffer stack. buffer numbered 0 is top and ascending
-where -b number == top if missing:
+- document buffer stuff
+- copy-mode enhancements: next word etc etc
 ---
 save-buffer -b number filename
 load-buffer -b number filename
 copy-buffer (from other session)
-max buffer count (drop old ones off the bottom)
----
