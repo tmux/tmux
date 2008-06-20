@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.158 2008-06-20 17:31:48 nicm Exp $ */
+/* $Id: tmux.h,v 1.159 2008-06-20 18:45:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -875,7 +875,7 @@ struct paste_buffer *paste_get_top(struct paste_stack *);
 struct paste_buffer *paste_get_index(struct paste_stack *, u_int);
 int	     	 paste_free_top(struct paste_stack *);
 int		 paste_free_index(struct paste_stack *, u_int);
-void		 paste_add(struct paste_stack *, const char *);
+void		 paste_add(struct paste_stack *, const char *, u_int);
 int		 paste_replace(struct paste_stack *, u_int, const char *);
 
 /* arg.c */

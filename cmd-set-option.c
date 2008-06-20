@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.33 2008-06-19 23:20:45 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.34 2008-06-20 18:45:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -250,6 +250,24 @@ cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 			return;
 		}
 		options_set_number(oo, "display-time", number);
+	} else if (strcmp(data->option, "buffer-limit") == 0) {
+		if (data->value == NULL || number == -1) {
+			ctx->error(ctx, "invalid value");
+			return;
+		}
+		if (errstr != NULL) {
+			ctx->error(ctx, "buffer-limit %s", errstr);
+			return;
+		}
+		if (number == 0) {
+			ctx->error(ctx, "zero buffer-limit");
+			return;
+		}
+		if (number > INT_MAX) {
+			ctx->error(ctx, "buffer-limit too big: %u", number);
+			return;
+		}
+		options_set_number(oo, "buffer-limit", number);
 	} else if (strcmp(data->option, "status-left") == 0) {
 		if (data->value == NULL) {
 			ctx->error(ctx, "invalid value");

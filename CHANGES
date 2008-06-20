@@ -1,5 +1,6 @@
 20 June 2008
 
+* buffer-limit option to set maximum size of buffer stack. Default is 9.
 * Initial buffer improvements. Each session has a stack of buffers and each
   buffer command takes a -b option to manipulate items on the stack. If -b
   is omitted, the top entry is used. The following commands are currently 
@@ -528,4 +529,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.131 2008-06-20 17:31:48 nicm Exp $
+$Id: CHANGES,v 1.132 2008-06-20 18:45:35 nicm Exp $

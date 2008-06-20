@@ -1,4 +1,4 @@
-/* $Id: cmd-set-buffer.c,v 1.1 2008-06-20 08:36:20 nicm Exp $ */
+/* $Id: cmd-set-buffer.c,v 1.2 2008-06-20 18:45:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,12 +47,14 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
 	struct session		*s;
+	u_int			 limit;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return;
 
+	limit = options_get_number(&s->options, "buffer-limit");
 	if (data->buffer == -1)
-		paste_add(&s->buffers, data->arg);
+		paste_add(&s->buffers, data->arg, limit);
 	else {
 		if (paste_replace(&s->buffers, data->buffer, data->arg) != 0)
 			ctx->error(ctx, "no buffer %d", data->buffer);

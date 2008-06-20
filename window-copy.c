@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.20 2008-06-20 17:31:48 nicm Exp $ */
+/* $Id: window-copy.c,v 1.21 2008-06-20 18:45:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -362,7 +362,7 @@ window_copy_copy_selection(struct window *w, struct client *c)
 	struct screen			*s = &data->screen;
 	char				*buf;
 	size_t	 			 len, off;
-	u_int	 			 i, xx, yy, sx, sy, ex, ey;
+	u_int	 			 i, xx, yy, sx, sy, ex, ey, limit;
 
 	if (!s->sel.flag)
 		return;
@@ -415,7 +415,8 @@ window_copy_copy_selection(struct window *w, struct client *c)
 		buf[off - 1] = '\0';
 
 	/* Add the buffer to the stack. */
-	paste_add(&c->session->buffers, buf);
+	limit = options_get_number(&c->session->options, "buffer-limit");
+	paste_add(&c->session->buffers, buf, limit);
 	xfree(buf);
 }
 
