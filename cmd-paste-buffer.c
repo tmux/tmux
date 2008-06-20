@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.10 2008-06-20 17:39:11 nicm Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.11 2008-06-20 18:58:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink		*wl;
 	struct session		*s;
 	struct paste_buffer	*pb;
-	
+
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return;
 
@@ -58,7 +58,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if ((pb = paste_get_top(&s->buffers)) == NULL)
 			ctx->error(ctx, "no buffer %d", data->buffer);
 	}
-	
+
 	if (pb != NULL)
 		buffer_write(wl->window->out, pb->data, strlen(pb->data));
 
