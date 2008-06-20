@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.157 2008-06-20 08:36:20 nicm Exp $ */
+/* $Id: tmux.h,v 1.158 2008-06-20 17:31:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -519,11 +519,12 @@ struct input_ctx {
  * Window mode. Windows can be in several modes and this is used to call the
  * right function to handle input and output.
  */
+struct client;
 struct window_mode {
 	struct screen *(*init)(struct window *);
 	void	(*free)(struct window *);
 	void	(*resize)(struct window *, u_int, u_int);
-	void	(*key)(struct window *, int);
+	void	(*key)(struct window *, struct client *, int);
 };
 
 /* Window structure. */
@@ -593,7 +594,7 @@ struct options {
 /* Paste buffer. */
 struct paste_buffer {
      	char		*data;
-	struct timespec	 created;
+	struct timespec	 ts;
 };
 ARRAY_DECL(paste_stack, struct paste_buffer *);
 
@@ -819,7 +820,6 @@ extern volatile sig_atomic_t sigwinch;
 extern volatile sig_atomic_t sigterm;
 extern struct options global_options;
 extern char	*cfg_file;
-extern char	*paste_buffer;
 extern int	 debug_level;
 extern int	 be_quiet;
 void		 logfile(const char *);
@@ -900,6 +900,7 @@ extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_command_prompt_entry;
 extern const struct cmd_entry cmd_copy_mode_entry;
+extern const struct cmd_entry cmd_delete_buffer_entry;
 extern const struct cmd_entry cmd_detach_client_entry;
 extern const struct cmd_entry cmd_has_session_entry;
 extern const struct cmd_entry cmd_kill_server_entry;
@@ -907,6 +908,7 @@ extern const struct cmd_entry cmd_kill_session_entry;
 extern const struct cmd_entry cmd_kill_window_entry;
 extern const struct cmd_entry cmd_last_window_entry;
 extern const struct cmd_entry cmd_link_window_entry;
+extern const struct cmd_entry cmd_list_buffers_entry;
 extern const struct cmd_entry cmd_list_clients_entry;
 extern const struct cmd_entry cmd_list_keys_entry;
 extern const struct cmd_entry cmd_list_sessions_entry;
@@ -1158,7 +1160,7 @@ int		 window_resize(struct window *, u_int, u_int);
 int		 window_set_mode(struct window *, const struct window_mode *);
 void		 window_reset_mode(struct window *);
 void		 window_parse(struct window *);
-void		 window_key(struct window *, int);
+void		 window_key(struct window *, struct client *, int);
 
 /* window-copy.c */
 extern const struct window_mode window_copy_mode;

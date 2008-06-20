@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.73 2008-06-20 06:36:01 nicm Exp $ */
+/* $Id: server.c,v 1.74 2008-06-20 17:31:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -542,7 +542,7 @@ server_handle_client(struct client *c)
 		} else if (key == prefix)
 			c->flags |= CLIENT_PREFIX;
 		else
-			window_key(w, key);
+			window_key(w, c, key);
 	}
 }
 

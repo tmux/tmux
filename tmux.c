@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.64 2008-06-19 23:20:45 nicm Exp $ */
+/* $Id: tmux.c,v 1.65 2008-06-20 17:31:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,6 @@ volatile sig_atomic_t sigterm;
 
 char		*cfg_file;
 struct options	 global_options;
-char		*paste_buffer;
 
 int		 debug_level;
 int		 be_quiet;
@@ -221,8 +220,6 @@ main(int argc, char **argv)
 	    &global_options, "status-right", "%%H:%%M %%d-%%b-%%y");
 	options_set_number(&global_options, "status-interval", 15);
 	options_set_number(&global_options, "set-titles", 1);
-
-	paste_buffer = NULL;
 
 	if (cfg_file == NULL) {
 		home = getenv("HOME");

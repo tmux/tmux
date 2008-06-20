@@ -1,4 +1,4 @@
-/* $Id: cmd-send-prefix.c,v 1.17 2008-06-20 17:31:48 nicm Exp $ */
+/* $Id: cmd-list-buffers.c,v 1.1 2008-06-20 17:31:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,21 +18,23 @@
 
 #include <sys/types.h>
 
+#include <string.h>
+
 #include "tmux.h"
 
 /*
- * Send prefix key as a key.
+ * List paste buffers.
  */
 
-void	cmd_send_prefix_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_list_buffers_exec(struct cmd *, struct cmd_ctx *);
 
-const struct cmd_entry cmd_send_prefix_entry = {
-	"send-prefix", NULL,
-	CMD_TARGET_WINDOW_USAGE,
+const struct cmd_entry cmd_list_buffers_entry = {
+	"list-buffers", "lsb",
+	CMD_TARGET_SESSION_USAGE,
 	0,
 	cmd_target_init,
 	cmd_target_parse,
-	cmd_send_prefix_exec,
+	cmd_list_buffers_exec,
 	cmd_target_send,
 	cmd_target_recv,
 	cmd_target_free,
@@ -40,17 +42,38 @@ const struct cmd_entry cmd_send_prefix_entry = {
 };
 
 void
-cmd_send_prefix_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_list_buffers_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
 	struct session		*s;
-	struct winlink		*wl;
+	struct paste_buffer	*pb;
+	u_int			 idx;
+	char			 tmp[16], *tim;
+	size_t			 in, out;
 
-	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
+	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return;
 
-	window_key(
-	    wl->window, ctx->curclient, options_get_key(&s->options, "prefix"));
+	idx = 0;
+	while ((pb = paste_walk_stack(&s->buffers, &idx)) != NULL) {
+		in = out = 0;
+		while (out < (sizeof tmp) - 1 && pb->data[in] != '\0') {
+			if (pb->data[in] > 31 && pb->data[in] != 127)
+				tmp[out++] = pb->data[in];
+			in++;
+		}
+		tmp[out] = '\0';
+		if (out == (sizeof tmp) - 1) {
+			tmp[out - 1] = '.';
+			tmp[out - 2] = '.';
+		}
+
+		tim = ctime(&pb->ts.tv_sec);
+		*strchr(tim, '\n') = '\0';
+
+		ctx->print(ctx, "%d: %zu bytes "
+		    "(created %s): \"%s\"", idx, strlen(pb->data), tim, tmp);
+	}
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

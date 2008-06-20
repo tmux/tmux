@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.44 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: window.c,v 1.45 2008-06-20 17:31:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -323,10 +323,10 @@ window_parse(struct window *w)
 }
 
 void
-window_key(struct window *w, int key)
+window_key(struct window *w, struct client *c, int key)
 {
 	if (w->mode != NULL)
-		w->mode->key(w, key);
+		w->mode->key(w, c, key);
 	else
 		input_key(w, key);
 }

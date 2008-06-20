@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.9 2008-06-20 17:31:48 nicm Exp $ */
+/* $Id: cmd-delete-buffer.c,v 1.1 2008-06-20 17:31:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,23 +18,24 @@
 
 #include <sys/types.h>
 
-#include <string.h>
+#include <getopt.h>
+#include <stdlib.h>
 
 #include "tmux.h"
 
 /*
- * Paste paste buffer if present.
+ * Delete a paste buffer.
  */
 
-void	cmd_paste_buffer_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_delete_buffer_exec(struct cmd *, struct cmd_ctx *);
 
-const struct cmd_entry cmd_paste_buffer_entry = {
-	"paste-buffer", "pasteb",
-	CMD_BUFFER_WINDOW_USAGE,
-	CMD_DFLAG,
+const struct cmd_entry cmd_delete_buffer_entry = {
+	"delete-buffer", "deleteb",
+	CMD_BUFFER_SESSION_USAGE,
+	0,
 	cmd_buffer_init,
 	cmd_buffer_parse,
-	cmd_paste_buffer_exec,
+	cmd_delete_buffer_exec,
 	cmd_buffer_send,
 	cmd_buffer_recv,
 	cmd_buffer_free,
@@ -42,34 +43,21 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 };
 
 void
-cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_delete_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
-	struct winlink		*wl;
 	struct session		*s;
-	struct paste_buffer	*pb;
-	
-	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
+
+	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return;
 
 	if (data->buffer == -1)
-		pb = paste_get_top(&s->buffers);
+		paste_free_top(&s->buffers);
 	else {
-		if ((pb = paste_get_top(&s->buffers)) == NULL)
+		if (paste_free_index(&s->buffers, data->buffer) != 0)
 			ctx->error(ctx, "no buffer %d", data->buffer);
 	}
 	
-	if (pb != NULL)
-		buffer_write(wl->window->out, pb->data, strlen(pb->data));
-
-	/* Delete the buffer if -d. */
-	if (ctx->flags & CMD_DFLAG) {
-		if (data->buffer == -1)
-			paste_free_top(&s->buffers);
-		else
-			paste_free_index(&s->buffers, data->buffer);
-	}
-
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

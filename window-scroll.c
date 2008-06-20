@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.18 2008-06-03 21:42:37 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.19 2008-06-20 17:31:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,7 +25,7 @@
 struct screen *window_scroll_init(struct window *);
 void	window_scroll_free(struct window *);
 void	window_scroll_resize(struct window *, u_int, u_int);
-void	window_scroll_key(struct window *, int);
+void	window_scroll_key(struct window *, struct client *, int);
 
 void	window_scroll_redraw_screen(struct window *);
 void	window_scroll_write_line(
@@ -97,7 +97,7 @@ window_scroll_resize(struct window *w, u_int sx, u_int sy)
 }
 
 void
-window_scroll_key(struct window *w, int key)
+window_scroll_key(struct window *w, unused struct client *c, int key)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
 	struct screen			*s = &data->screen;

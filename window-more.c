@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.12 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: window-more.c,v 1.13 2008-06-20 17:31:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,7 +25,7 @@
 struct screen *window_more_init(struct window *);
 void	window_more_free(struct window *);
 void	window_more_resize(struct window *, u_int, u_int);
-void	window_more_key(struct window *, int);
+void	window_more_key(struct window *, struct client *, int);
 
 void	window_more_redraw_screen(struct window *);
 void	window_more_write_line(
@@ -123,7 +123,7 @@ window_more_resize(struct window *w, u_int sx, u_int sy)
 }
 
 void
-window_more_key(struct window *w, int key)
+window_more_key(struct window *w, unused struct client *c, int key)
 {
 	struct window_more_mode_data	*data = w->modedata;
 	struct screen			*s = &data->screen;

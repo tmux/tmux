@@ -1,5 +1,16 @@
 20 June 2008
 
+* Initial buffer improvements. Each session has a stack of buffers and each
+  buffer command takes a -b option to manipulate items on the stack. If -b
+  is omitted, the top entry is used. The following commands are currently 
+  available:
+
+	set-buffer [-b index] [-t target-session] string
+	paste-buffer [-d] [-b index] [-t target-window]
+	delete-buffer [-b index] [-t target-session]
+	show-buffers [-t target-session]
+
+  -d to paste-buffer deletes the buffer after pasting it.
 * New option, display-time, sets the time status line messages stay on screen
   (unless a key is pressed). Set in milliseconds, default is 750 (0.75 seconds).
   The timer is only checked every 100 ms or so.
@@ -517,4 +528,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.130 2008-06-19 23:24:40 nicm Exp $
+$Id: CHANGES,v 1.131 2008-06-20 17:31:48 nicm Exp $

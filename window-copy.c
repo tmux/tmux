@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.19 2008-06-19 19:40:35 nicm Exp $ */
+/* $Id: window-copy.c,v 1.20 2008-06-20 17:31:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,7 +25,7 @@
 struct screen *window_copy_init(struct window *);
 void	window_copy_free(struct window *);
 void	window_copy_resize(struct window *, u_int, u_int);
-void	window_copy_key(struct window *, int);
+void	window_copy_key(struct window *, struct client *, int);
 
 void	window_copy_redraw_lines(struct window *, u_int, u_int);
 void	window_copy_redraw_screen(struct window *);
@@ -41,7 +41,7 @@ void	window_copy_write_columns(
 void	window_copy_update_cursor(struct window *);
 void	window_copy_start_selection(struct window *);
 int	window_copy_update_selection(struct window *);
-void	window_copy_copy_selection(struct window *);
+void	window_copy_copy_selection(struct window *, struct client *);
 void	window_copy_copy_line(
 	    struct window *, char **, size_t *, size_t *, u_int, u_int, u_int);
 u_int	window_copy_find_length(struct window *, u_int);
@@ -126,7 +126,7 @@ window_copy_resize(struct window *w, u_int sx, u_int sy)
 }
 
 void
-window_copy_key(struct window *w, int key)
+window_copy_key(struct window *w, struct client *c, int key)
 {
 	struct window_copy_mode_data	*data = w->modedata;
 	struct screen			*s = &data->screen;
@@ -181,8 +181,10 @@ window_copy_key(struct window *w, int key)
 		break;
 	case '\027':	/* C-w */
  	case '\r':	/* enter */
-		window_copy_copy_selection(w);
-		window_reset_mode(w);
+		if (c != NULL && c->session != NULL) {
+			window_copy_copy_selection(w, c);
+			window_reset_mode(w);
+		}
 		break;
 	case '0':
 	case '\001':	/* C-a */
@@ -354,7 +356,7 @@ window_copy_update_selection(struct window *w)
 }
 
 void
-window_copy_copy_selection(struct window *w)
+window_copy_copy_selection(struct window *w, struct client *c)
 {
 	struct window_copy_mode_data	*data = w->modedata;
 	struct screen			*s = &data->screen;
@@ -412,9 +414,9 @@ window_copy_copy_selection(struct window *w)
 	if (off != 0)
 		buf[off - 1] = '\0';
 
-	if (paste_buffer != NULL)
-		xfree(paste_buffer);
-	paste_buffer = buf;
+	/* Add the buffer to the stack. */
+	paste_add(&c->session->buffers, buf);
+	xfree(buf);
 }
 
 void
