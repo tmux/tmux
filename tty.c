@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.29 2008-06-19 23:07:11 nicm Exp $ */
+/* $Id: tty.c,v 1.30 2008-06-20 06:36:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -350,6 +350,9 @@ tty_vwrite(struct tty *tty, struct screen *s, int cmd, va_list ap)
 	char	ch;
 	u_int	i, ua, ub;
 
+	if (tty->flags & TTY_FREEZE)
+		return;
+	
 	if (tty->term == NULL) /* XXX XXX */
 		return;
 	set_curterm(tty->term->term);

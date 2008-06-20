@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.155 2008-06-19 23:07:11 nicm Exp $ */
+/* $Id: tmux.h,v 1.156 2008-06-20 06:36:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -652,6 +652,7 @@ struct tty {
 	u_char		 acs[UCHAR_MAX + 1];
 
 #define TTY_NOCURSOR 0x1
+#define TTY_FREEZE 0x2
 	int		 flags;
 
 	size_t		 ksize;	/* maximum key size */

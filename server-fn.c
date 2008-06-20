@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.47 2008-06-19 23:20:45 nicm Exp $ */
+/* $Id: server-fn.c,v 1.48 2008-06-20 06:36:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,7 +38,7 @@ server_set_client_message(struct client *c, const char *msg)
 		fatal("clock_gettime");
 	timespecadd(&c->message_timer, &ts, &c->message_timer);
 
-	c->tty.flags |= TTY_NOCURSOR;
+	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_STATUS;
 }
 
@@ -51,8 +51,8 @@ server_clear_client_message(struct client *c)
 	xfree(c->message_string);
 	c->message_string = NULL;
 
-	c->tty.flags &= ~TTY_NOCURSOR;
-	c->flags |= CLIENT_STATUS;
+	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
+	c->flags |= CLIENT_REDRAW;
 }
 
 void
@@ -67,7 +67,7 @@ server_set_client_prompt(
 	c->prompt_callback = fn;
 	c->prompt_data = data;
 
-	c->tty.flags |= TTY_NOCURSOR;
+	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_STATUS;
 }
 
@@ -82,8 +82,8 @@ server_clear_client_prompt(struct client *c)
 
 	xfree(c->prompt_buffer);
 
-	c->tty.flags &= ~TTY_NOCURSOR;
-	c->flags |= CLIENT_STATUS;
+	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
+	c->flags |= CLIENT_REDRAW;
 }
 
 void
