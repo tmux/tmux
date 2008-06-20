@@ -82,10 +82,5 @@ where -b number == top if missing:
 save-buffer -b number filename
 load-buffer -b number filename
 copy-buffer (from other session)
----
-set-buffer -b number string
-show-buffer -n number
-paste-buffer -b number 
-delete-buffer -b number
-show-buffers
+max buffer count (drop old ones off the bottom)
 ---

@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.9 2008-06-20 17:31:48 nicm Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.10 2008-06-20 17:39:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,7 +30,7 @@ void	cmd_paste_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", "pasteb",
-	CMD_BUFFER_WINDOW_USAGE,
+	"[-d] " CMD_BUFFER_WINDOW_USAGE,
 	CMD_DFLAG,
 	cmd_buffer_init,
 	cmd_buffer_parse,
@@ -63,7 +63,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		buffer_write(wl->window->out, pb->data, strlen(pb->data));
 
 	/* Delete the buffer if -d. */
-	if (ctx->flags & CMD_DFLAG) {
+	if (data->flags & CMD_DFLAG) {
 		if (data->buffer == -1)
 			paste_free_top(&s->buffers);
 		else
