@@ -1,4 +1,4 @@
-/* $Id: cmd-list-buffers.c,v 1.1 2008-06-20 17:31:48 nicm Exp $ */
+/* $Id: cmd-list-buffers.c,v 1.2 2008-06-20 19:01:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,32 +48,43 @@ cmd_list_buffers_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session		*s;
 	struct paste_buffer	*pb;
 	u_int			 idx;
-	char			 tmp[16], *tim;
-	size_t			 in, out;
+	char			*tmp;
+	size_t			 size, in, out;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return;
 
+	if (s->sx > 35) {
+		size = s->sx - 35;
+		tmp = xmalloc(size + 1);
+	} else {
+		size = 0;
+		tmp = NULL;
+	}
+	
 	idx = 0;
 	while ((pb = paste_walk_stack(&s->buffers, &idx)) != NULL) {
-		in = out = 0;
-		while (out < (sizeof tmp) - 1 && pb->data[in] != '\0') {
-			if (pb->data[in] > 31 && pb->data[in] != 127)
-				tmp[out++] = pb->data[in];
-			in++;
-		}
-		tmp[out] = '\0';
-		if (out == (sizeof tmp) - 1) {
-			tmp[out - 1] = '.';
-			tmp[out - 2] = '.';
-		}
+		if (tmp != NULL) {
+			in = out = 0;
+			while (out < size && pb->data[in] != '\0') {
+				if (pb->data[in] > 31 && pb->data[in] != 127)
+					tmp[out++] = pb->data[in];
+				in++;
+			}
+			tmp[out] = '\0';
+			if (out == size) {
+				tmp[out - 1] = '.';
+				tmp[out - 2] = '.';
+			}
 
-		tim = ctime(&pb->ts.tv_sec);
-		*strchr(tim, '\n') = '\0';
-
-		ctx->print(ctx, "%d: %zu bytes "
-		    "(created %s): \"%s\"", idx, strlen(pb->data), tim, tmp);
+			ctx->print(ctx, "%d: "
+			    "%zu bytes: \"%s\"", idx, strlen(pb->data), tmp);
+		} else
+			ctx->print(ctx, "%d: %zu bytes", idx, strlen(pb->data));
 	}
+
+	if (tmp != NULL)
+		xfree(tmp);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
