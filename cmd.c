@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.53 2008-06-21 14:11:39 nicm Exp $ */
+/* $Id: cmd.c,v 1.54 2008-06-21 14:16:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -96,6 +96,13 @@ cmd_complete(const char *s)
 		return (xstrdup(s));
 	}
 	
+	/* If an exact match, return it, with a trailing space. */
+	if (ARRAY_LENGTH(&list) == 1) {
+		xasprintf(&s, "%s ", ARRAY_FIRST(&list));
+		ARRAY_FREE(&list);
+		return (s);
+	}
+
 	/* Now loop through the list and find the longest common prefix. */
 	prefix = xstrdup(ARRAY_FIRST(&list));
 	for (i = 1; i < ARRAY_LENGTH(&list); i++) {
