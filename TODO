@@ -77,6 +77,8 @@
 - document buffer stuff
 - copy-mode enhancements: next word etc etc
 - problems with force-width when wrapping line in emacs?
+- options parsing could be much more generic, opening the way for abbreviation
+  and tab completion of option names
 ---
 save-buffer -b number filename
 load-buffer -b number filename

@@ -1,5 +1,8 @@
 21 June 2008
 
+* Naive tab completion in the command prompt. This only completes command
+  names if a) they are at the start of the text b) the cursor is at
+  the end of the text c) the text contains no spaces.
 * Only attempt to set the title where TERM looks like an xterm (contains
   "xterm", "rxvt" or is "screen"). I hate this but I don't see a better way:
   setting the title actually kills some other terminals pretty much dead.
@@ -19,6 +22,7 @@
 	paste-buffer [-d] [-b index] [-t target-window]
 	delete-buffer [-b index] [-t target-session]
 	show-buffers [-t target-session]
+	show-buffer [-b index] [-t target-session]
 
   -d to paste-buffer deletes the buffer after pasting it.
 * New option, display-time, sets the time status line messages stay on screen
@@ -538,4 +542,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.134 2008-06-21 13:11:28 nicm Exp $
+$Id: CHANGES,v 1.135 2008-06-21 14:11:39 nicm Exp $
