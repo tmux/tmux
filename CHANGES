@@ -1,3 +1,9 @@
+21 June 2008
+
+* Strip padding out of terminfo(5) strings. Currently the padding is just
+  ignored, this may need to be altered if there are any software terminals
+  out there that actually need it.
+
 20 June 2008
 
 * buffer-limit option to set maximum size of buffer stack. Default is 9.
@@ -529,4 +535,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.132 2008-06-20 18:45:35 nicm Exp $
+$Id: CHANGES,v 1.133 2008-06-21 12:41:04 nicm Exp $

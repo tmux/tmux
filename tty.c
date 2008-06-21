@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.30 2008-06-20 06:36:01 nicm Exp $ */
+/* $Id: tty.c,v 1.31 2008-06-21 12:41:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,6 +34,7 @@ void 	tty_free_term(struct tty_term *);
 void	tty_fill_acs(struct tty *);
 u_char	tty_get_acs(struct tty *, u_char);
 
+const char *tty_strip(const char *);
 void	tty_raw(struct tty *, const char *);
 void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, char);
@@ -64,7 +65,7 @@ tty_open(struct tty *tty, char **cause)
 		xasprintf(cause, "%s: %s", tty->path, strerror(errno));
 		return (-1);
 	}
-
+	
 	if ((mode = fcntl(tty->fd, F_GETFL)) == -1)
 		fatal("fcntl");
 	if (fcntl(tty->fd, F_SETFL, mode|O_NONBLOCK) == -1)
@@ -80,10 +81,6 @@ tty_open(struct tty *tty, char **cause)
 	tty->colr = 0x70;
 
 	tty->flags = 0;
-
-	tty_keys_init(tty);
-
-	tty_fill_acs(tty);
 
 	if (tcgetattr(tty->fd, &tty->tio) != 0)
 		fatal("tcgetattr failed");
@@ -103,13 +100,26 @@ tty_open(struct tty *tty, char **cause)
 		fatal("ioctl(TIOCFLUSH)");
 #endif
 
+	if (init_1string != NULL)
+		tty_raw(tty, init_1string);
+	if (init_2string != NULL)
+		tty_raw(tty, init_2string);
+	if (init_3string != NULL)
+		tty_raw(tty, init_3string);
+
 	if (enter_ca_mode != NULL)
-		tty_puts(tty, enter_ca_mode);
+		tty_raw(tty, enter_ca_mode);
 	if (keypad_xmit != NULL)
-		tty_puts(tty, keypad_xmit);
+		tty_raw(tty, keypad_xmit);
 	if (ena_acs != NULL)
-		tty_puts(tty, ena_acs);
-	tty_puts(tty, clear_screen);
+		tty_raw(tty, ena_acs);
+	tty_raw(tty, clear_screen);
+
+	abort();
+
+	tty_keys_init(tty);
+
+	tty_fill_acs(tty);
 
 	return (0);
 
@@ -316,16 +326,51 @@ tty_get_acs(struct tty *tty, u_char ch)
 	return (ch);
 }
 
+const char *
+tty_strip(const char *s)
+{
+	const char     *ptr;
+	static char	buf[BUFSIZ];
+	size_t		len;
+
+	/* Ignore strings with no padding. */
+	if (strchr(s, '$') == NULL)
+		return (s);
+
+	len = 0;
+	for (ptr = s; *ptr != '\0'; ptr++) {
+		if (*ptr == '$' && *(ptr + 1) == '<') {
+			while (*ptr != '\0' && *ptr != '>')
+				ptr++;
+			if (*ptr == '>')
+				ptr++;
+		}
+		
+		buf[len++] = *ptr;
+		if (len == (sizeof buf) - 1)
+			break;
+	}
+	buf[len] = '\0';
+	
+	return (buf);
+}
+
 void
 tty_raw(struct tty *tty, const char *s)
 {
-	write(tty->fd, s, strlen(s));
+	const char	*t;
+
+	t = tty_strip(s);
+	write(tty->fd, t, strlen(t));
 }
 
 void
 tty_puts(struct tty *tty, const char *s)
 {
-	buffer_write(tty->out, s, strlen(s));
+	const char	*t;
+
+	t = tty_strip(s);
+	buffer_write(tty->out, t, strlen(t));
 }
 
 void
