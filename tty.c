@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.31 2008-06-21 12:41:05 nicm Exp $ */
+/* $Id: tty.c,v 1.32 2008-06-21 12:41:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -114,8 +114,6 @@ tty_open(struct tty *tty, char **cause)
 	if (ena_acs != NULL)
 		tty_raw(tty, ena_acs);
 	tty_raw(tty, clear_screen);
-
-	abort();
 
 	tty_keys_init(tty);
 
