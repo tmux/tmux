@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.2 2008-06-19 21:20:25 nicm Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.3 2008-06-21 10:19:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -90,7 +90,6 @@ cmd_command_prompt_callback(void *data, char *s)
 	ctx.info = key_bindings_info;
 
 	ctx.cmdclient = NULL;
-	ctx.flags = CMD_KEY;
 
 	cmd_exec(cmd, &ctx);
 }

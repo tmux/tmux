@@ -76,8 +76,9 @@
 - list-keys should be sorted
 - document buffer stuff
 - copy-mode enhancements: next word etc etc
+- problems with force-width when wrapping line in emacs?
 ---
 save-buffer -b number filename
 load-buffer -b number filename
 copy-buffer -s src-session -t dst-session -a src-index -b dst-index
-	    (from other session)
+	       (from other session)

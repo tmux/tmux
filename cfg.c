@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.11 2008-06-19 21:20:24 nicm Exp $ */
+/* $Id: cfg.c,v 1.12 2008-06-21 10:19:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -94,7 +94,6 @@ load_cfg(const char *path, char **cause)
 		ctx.info = cfg_print;
 
 		ctx.cmdclient = NULL;
-		ctx.flags = 0;
 
 		cfg_cause = NULL;
 		cmd_exec(cmd, &ctx);

@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.34 2008-06-20 17:31:48 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.35 2008-06-21 10:19:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -215,7 +215,6 @@ key_bindings_dispatch(int key, struct client *c)
 	ctx.info = key_bindings_info;
 
 	ctx.cmdclient = NULL;
-	ctx.flags = CMD_KEY;
 
 	cmd_exec(bd->cmd, &ctx);
 }

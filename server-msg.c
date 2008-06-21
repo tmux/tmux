@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.47 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: server-msg.c,v 1.48 2008-06-21 10:19:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -147,7 +147,6 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	ctx.cursession = NULL;
 
 	ctx.cmdclient = c;
-	ctx.flags = 0;
 
 	/* XXX */
 	if (data.pid != -1 && (cmd->entry->flags & CMD_CANTNEST)) {

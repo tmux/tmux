@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.159 2008-06-20 18:45:35 nicm Exp $ */
+/* $Id: tmux.h,v 1.160 2008-06-21 10:19:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -725,9 +725,6 @@ struct cmd_ctx {
 	void		(*print)(struct cmd_ctx *, const char *, ...);
 	void		(*info)(struct cmd_ctx *, const char *, ...);
 	void		(*error)(struct cmd_ctx *, const char *, ...);
-
-#define CMD_KEY 0x1
-	int		flags;
 };
 
 struct cmd {

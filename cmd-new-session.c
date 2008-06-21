@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.29 2008-06-19 22:04:02 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.30 2008-06-21 10:19:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -118,7 +118,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char				*cmd, *cause;
 	u_int				 sx, sy;
 
-	if (ctx->flags & CMD_KEY)
+	if (ctx->curclient != NULL)
 		return;
 
 	if (!data->flag_detached) {
