@@ -1,5 +1,8 @@
 21 June 2008
 
+* Only attempt to set the title where TERM looks like an xterm (contains
+  "xterm", "rxvt" or is "screen"). I hate this but I don't see a better way:
+  setting the title actually kills some other terminals pretty much dead.
 * Strip padding out of terminfo(5) strings. Currently the padding is just
   ignored, this may need to be altered if there are any software terminals
   out there that actually need it.
@@ -535,4 +538,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.133 2008-06-21 12:41:04 nicm Exp $
+$Id: CHANGES,v 1.134 2008-06-21 13:11:28 nicm Exp $

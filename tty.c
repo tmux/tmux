@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.32 2008-06-21 12:41:26 nicm Exp $ */
+/* $Id: tty.c,v 1.33 2008-06-21 13:11:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -101,19 +101,19 @@ tty_open(struct tty *tty, char **cause)
 #endif
 
 	if (init_1string != NULL)
-		tty_raw(tty, init_1string);
+		tty_puts(tty, init_1string);
 	if (init_2string != NULL)
-		tty_raw(tty, init_2string);
+		tty_puts(tty, init_2string);
 	if (init_3string != NULL)
-		tty_raw(tty, init_3string);
+		tty_puts(tty, init_3string);
 
 	if (enter_ca_mode != NULL)
-		tty_raw(tty, enter_ca_mode);
+		tty_puts(tty, enter_ca_mode);
 	if (keypad_xmit != NULL)
-		tty_raw(tty, keypad_xmit);
+		tty_puts(tty, keypad_xmit);
 	if (ena_acs != NULL)
-		tty_raw(tty, ena_acs);
-	tty_raw(tty, clear_screen);
+		tty_puts(tty, ena_acs);
+	tty_puts(tty, clear_screen);
 
 	tty_keys_init(tty);
 
@@ -382,6 +382,11 @@ tty_putc(struct tty *tty, char ch)
 void
 tty_set_title(struct tty *tty, const char *title)
 {
+	if (strstr(tty->termname, "xterm") == NULL &&
+	    strstr(tty->termname, "rxvt") == NULL &&
+	    strcmp(tty->termname, "screen") != 0)
+		return;
+
 	tty_puts(tty, "\e]0;");
 	tty_puts(tty, title);
 	tty_putc(tty, '\007');
@@ -405,7 +410,7 @@ tty_vwrite(struct tty *tty, struct screen *s, int cmd, va_list ap)
 		ch = va_arg(ap, int);
 		switch (ch) {
 		case '\n':	/* LF */
-			tty_puts(tty, cursor_down);
+			tty_putc(tty, '\n');
 			break;
 		case '\r':	/* CR */
 			tty_puts(tty, carriage_return);
