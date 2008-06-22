@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.162 2008-06-22 16:54:08 nicm Exp $ */
+/* $Id: tmux.h,v 1.163 2008-06-22 21:52:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -810,6 +810,11 @@ pid_t		 forkpty(int *, char *, struct termios *, struct winsize *);
 /* asprintf.c */
 int	asprintf(char **, const char *, ...);
 int	vasprintf(char **, const char *, va_list);
+#endif
+
+#ifdef NO_FGETLN
+/* fgetln.c */
+char   *fgetln(FILE *, size_t *);
 #endif
 
 /* tmux.c */
