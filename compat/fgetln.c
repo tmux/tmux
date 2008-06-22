@@ -32,6 +32,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <sys/types.h>
+
+#include <errno.h>
+#include <stdio.h>
+
 #include "tmux.h"
 
 char *

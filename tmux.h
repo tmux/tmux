@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.163 2008-06-22 21:52:41 nicm Exp $ */
+/* $Id: tmux.h,v 1.164 2008-06-22 22:20:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -73,6 +73,18 @@ extern const char    *__progname;
         (((tsp)->tv_sec == (usp)->tv_sec) ?                             \
             ((tsp)->tv_nsec cmp (usp)->tv_nsec) :                       \
             ((tsp)->tv_sec cmp (usp)->tv_sec))
+#endif
+
+#ifndef timespecadd
+#define	timespecadd(tsp, usp, vsp)					\
+	do {								\
+		(vsp)->tv_sec = (tsp)->tv_sec + (usp)->tv_sec;		\
+		(vsp)->tv_nsec = (tsp)->tv_nsec + (usp)->tv_nsec;	\
+		if ((vsp)->tv_nsec >= 1000000000L) {			\
+			(vsp)->tv_sec++;				\
+			(vsp)->tv_nsec -= 1000000000L;			\
+		}							\
+	} while (0)
 #endif
 
 #ifndef TTY_NAME_MAX
