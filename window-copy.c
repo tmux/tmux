@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.21 2008-06-20 18:45:35 nicm Exp $ */
+/* $Id: window-copy.c,v 1.22 2008-06-22 16:56:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -207,7 +207,7 @@ window_copy_write_line(
 
 	if (py == 0) {
 		screen_write_set_attributes(
-		    ctx, ATTR_BRIGHT|ATTR_REVERSE, 0x70);
+		    ctx, ATTR_BRIGHT|ATTR_REVERSE, 0x88);
 		screen_write_move_cursor(ctx, 0, 0);
 		size = screen_write_put_string_rjust(
 		    ctx, "[%u,%u/%u]", data->ox, data->oy, w->base.hsize);
