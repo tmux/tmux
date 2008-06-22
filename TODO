@@ -64,12 +64,10 @@
 - get rid of DEFDATA etc
 
 -- For 0.4 --------------------------------------------------------------------
-- test and fix wsvt25
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably
   should not emulate it doing so
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
-- command history for command-prompt. tab completion
 - tidy up window modes
 - support \033_string\033\\ for window title too
 - fix bell-action in show-options
@@ -77,6 +75,7 @@
 - document buffer stuff
 - copy-mode enhancements: next word etc etc
 - problems with force-width when wrapping line in emacs?
+- command history for command-prompt. better tab completion
 - options parsing could be much more generic, opening the way for abbreviation
   and tab completion of option names
 ---

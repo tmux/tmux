@@ -1,3 +1,11 @@
+22 June 2008
+
+* Do not translate black and white into default if the terminal supports
+  default colours. This was nice to force programs which didn't use default
+  colours to be properly transparent in rxvt/aterm windows with a background
+  image, but it causes trouble if someone redefines the default foreground and
+  background (to have black on white or something).
+
 21 June 2008
 
 * Naive tab completion in the command prompt. This only completes command
@@ -542,4 +550,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.135 2008-06-21 14:11:39 nicm Exp $
+$Id: CHANGES,v 1.136 2008-06-22 16:54:08 nicm Exp $
