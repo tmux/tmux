@@ -71,13 +71,14 @@
 - tidy up window modes
 - support \033_string\033\\ for window title too
 - list-keys should be sorted
-- document buffer stuff
 - copy-mode enhancements: next word etc etc
 - problems with force-width when wrapping line in emacs?
 - command history for command-prompt. better tab completion
 - options parsing could be much more generic, opening the way for abbreviation
   and tab completion of option names
-- document list-commands
+---
+- document list-commands. document switch-client
+- document buffer stuff
 ---
 save-buffer -b number filename
 load-buffer -b number filename
