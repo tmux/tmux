@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.67 2008-06-23 07:41:21 nicm Exp $ */
+/* $Id: tmux.c,v 1.68 2008-06-23 16:58:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -176,11 +176,11 @@ main(int argc, char **argv)
 	struct hdr	 	 hdr;
 	const char		*shell;
 	struct passwd		*pw;
-	char			*client, *path, *name, *cause, *home;
+	char			*path, *cause, *home;
 	char			 rpath[MAXPATHLEN];
 	int	 		 n, opt;
 
-	client = path = name = NULL;
+	path = NULL;
         while ((opt = getopt(argc, argv, "f:qS:Vv")) != EOF) {
                 switch (opt) {
 		case 'f':

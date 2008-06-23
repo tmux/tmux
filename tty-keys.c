@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.3 2008-06-06 17:20:30 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.4 2008-06-23 16:58:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -201,7 +201,7 @@ tty_keys_init(struct tty *tty)
 		s = tigetstr(tty_keys[i].name);
 		if (s == (char *) -1 || s == (char *) 0)
 			continue;
-		if (s[0] != '\e' || s[1] == '\0')
+		if (s[0] != '\033' || s[1] == '\0')
 			continue;
 
 		tk = xmalloc(sizeof *tk);
@@ -240,7 +240,7 @@ tty_keys_next(struct tty *tty, int *code)
 		return (1);
 	log_debug("keys have %zu bytes", BUFFER_USED(tty->in));
 
-	if (*BUFFER_OUT(tty->in) != '\e') {
+	if (*BUFFER_OUT(tty->in) != '\033') {
 		*code = buffer_read8(tty->in);
 		return (0);
 	}
@@ -268,7 +268,7 @@ tty_keys_next(struct tty *tty, int *code)
 		/*
 		 * XXX Pass through unchanged.
 		 */
-		*code = '\e';
+		*code = '\033';
 		buffer_remove(tty->in, 1);
 		return (0);
 	}

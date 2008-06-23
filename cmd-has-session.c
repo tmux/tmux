@@ -1,4 +1,4 @@
-/* $Id: cmd-has-session.c,v 1.9 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-has-session.c,v 1.10 2008-06-23 16:58:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,7 +45,7 @@ cmd_has_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_target_data	*data = self->data;
 	struct session		*s;
 
-	if ((s = cmd_find_session(ctx, data->target)) == NULL)
+	if (cmd_find_session(ctx, data->target) == NULL)
 		return;
 
 	if (ctx->cmdclient != NULL)

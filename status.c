@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.38 2008-06-23 07:41:21 nicm Exp $ */
+/* $Id: status.c,v 1.39 2008-06-23 16:58:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -444,7 +444,7 @@ status_prompt_key(struct client *c, int key)
 			break;
 		}
 		/* FALLTHROUGH */
-	case '\e':	/* escape */
+	case '\033':	/* escape */
 		c->prompt_callback(c->prompt_data, NULL);
 		server_clear_client_prompt(c);
 		break;

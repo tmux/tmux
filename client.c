@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.32 2008-06-19 19:36:55 nicm Exp $ */
+/* $Id: client.c,v 1.33 2008-06-23 16:58:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,10 +44,8 @@ client_init(const char *path, struct client_ctx *cctx, int start_server)
 	int				mode;
 	u_int				retries;
 	struct buffer		       *b;
-	pid_t				pid;
 	char			       *name;
 
-	pid = 0;
 	retries = 0;
 retry:
 	if (stat(path, &sb) != 0) {

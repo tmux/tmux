@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.34 2008-06-22 16:54:08 nicm Exp $ */
+/* $Id: tty.c,v 1.35 2008-06-23 16:58:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -387,7 +387,7 @@ tty_set_title(struct tty *tty, const char *title)
 	    strcmp(tty->termname, "screen") != 0)
 		return;
 
-	tty_puts(tty, "\e]0;");
+	tty_puts(tty, "\033]0;");
 	tty_puts(tty, title);
 	tty_putc(tty, '\007');
 }
@@ -591,11 +591,11 @@ tty_vwrite(struct tty *tty, struct screen *s, int cmd, va_list ap)
 #endif
 	case TTY_MOUSEOFF:
 		if (key_mouse != NULL)
-			tty_puts(tty, "\e[?1000l");
+			tty_puts(tty, "\033[?1000l");
 		break;
 	case TTY_MOUSEON:
 		if (key_mouse != NULL)
-			tty_puts(tty, "\e[?1000h");
+			tty_puts(tty, "\033[?1000h");
 		break;
 	case TTY_ATTRIBUTES:
 		ua = va_arg(ap, u_int);
@@ -650,7 +650,7 @@ tty_attributes(struct tty *tty, u_char attr, u_char colr)
 			fg = 7;
 		
 		if (fg == 8)
-			tty_puts(tty, "\e[39m");
+			tty_puts(tty, "\033[39m");
 		else if (set_a_foreground != NULL)
 			tty_puts(tty, tparm(set_a_foreground, fg));
 	}
@@ -661,7 +661,7 @@ tty_attributes(struct tty *tty, u_char attr, u_char colr)
 			bg = 0;
 
 		if (bg == 8)
-			tty_puts(tty, "\e[49m");
+			tty_puts(tty, "\033[49m");
 		else if (set_a_background != NULL)
 			tty_puts(tty, tparm(set_a_background, bg));
 	}

@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.8 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: input-keys.c,v 1.9 2008-06-23 16:58:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,35 +30,35 @@ struct {
 } input_keys[] = {
 /*	{ KEYC_BACKSPACE, "\010" }, */
 
-	{ KEYC_DC,     "\e[3~" },
-	{ KEYC_F1,     "\eOP" },
-	{ KEYC_F10,    "\e[21~" },
-	{ KEYC_F11,    "\e[23~" },
-	{ KEYC_F12,    "\e[24~" },
-	{ KEYC_F2,     "\eOQ" },
-	{ KEYC_F3,     "\eOR" },
-	{ KEYC_F4,     "\eOS" },
-	{ KEYC_F5,     "\e[15~" },
-	{ KEYC_F6,     "\e[17~" },
-	{ KEYC_F7,     "\e[18~" },
-	{ KEYC_F8,     "\e[19~" },
-	{ KEYC_F9,     "\e[20~" },
-	{ KEYC_FIND,   "\e[1~" },
-	{ KEYC_IC,     "\e[2~" },
-	{ KEYC_NPAGE,  "\e[6~" },
-	{ KEYC_PPAGE,  "\e[5~" },
-	{ KEYC_SELECT, "\e[4~" },
+	{ KEYC_DC,     "\033[3~" },
+	{ KEYC_F1,     "\033OP" },
+	{ KEYC_F10,    "\033[21~" },
+	{ KEYC_F11,    "\033[23~" },
+	{ KEYC_F12,    "\033[24~" },
+	{ KEYC_F2,     "\033OQ" },
+	{ KEYC_F3,     "\033OR" },
+	{ KEYC_F4,     "\033OS" },
+	{ KEYC_F5,     "\033[15~" },
+	{ KEYC_F6,     "\033[17~" },
+	{ KEYC_F7,     "\033[18~" },
+	{ KEYC_F8,     "\033[19~" },
+	{ KEYC_F9,     "\033[20~" },
+	{ KEYC_FIND,   "\033[1~" },
+	{ KEYC_IC,     "\033[2~" },
+	{ KEYC_NPAGE,  "\033[6~" },
+	{ KEYC_PPAGE,  "\033[5~" },
+	{ KEYC_SELECT, "\033[4~" },
 
-	{ KEYC_UP,     "\eOA" },
-	{ KEYC_DOWN,   "\eOB" },
-	{ KEYC_LEFT,   "\eOD" },
-	{ KEYC_RIGHT,  "\eOC" },
+	{ KEYC_UP,     "\033OA" },
+	{ KEYC_DOWN,   "\033OB" },
+	{ KEYC_LEFT,   "\033OD" },
+	{ KEYC_RIGHT,  "\033OC" },
 
-	{ KEYC_A1,     "\eOw" },
-	{ KEYC_A3,     "\eOy" },
-	{ KEYC_B2,     "\eOu" },
-	{ KEYC_C1,     "\eOq" },
-	{ KEYC_C3,     "\eOs" }
+	{ KEYC_A1,     "\033Ow" },
+	{ KEYC_A3,     "\033Oy" },
+	{ KEYC_B2,     "\033Ou" },
+	{ KEYC_C1,     "\033Oq" },
+	{ KEYC_C3,     "\033Os" }
 };
 #define NINPUTKEYS (sizeof input_keys / sizeof input_keys[0])
 

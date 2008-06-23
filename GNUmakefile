@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.30 2008-06-22 21:52:41 nicm Exp $
+# $Id: GNUmakefile,v 1.31 2008-06-23 16:58:49 nicm Exp $
 
 .PHONY: clean
 
@@ -53,6 +53,17 @@ INSTALLDIR= install -d
 INSTALLBIN= install -g bin -o root -m 555
 INSTALLMAN= install -g bin -o root -m 444
 
+ifeq ($(shell uname),IRIX64)
+INCDIRS+= -Icompat -I/usr/local/include/ncurses
+SRCS+= compat/strlcpy.c compat/strtonum.c compat/daemon.c \
+	compat/asprintf.c compat/fgetln.c
+CFLAGS+= -DNO_STRLCPY -DNO_STRTONUM -DNO_TREE_H -DNO_SETPROCTITLE \
+	-DNO_DAEMON -DNO_FORKPTY -DNO_PROGNAME -DNO_ASPRINTF -DNO_FGETLN \
+	-D_SGI_SOURCE -std=c99
+LDFLAGS+= -L/usr/local/lib
+LIBS+= -lgen
+endif 
+
 ifeq ($(shell uname),SunOS)
 INCDIRS+= -Icompat -I/usr/local/include/ncurses
 SRCS+= compat/strtonum.c compat/daemon.c compat/forkpty-sunos.c \
@@ -75,10 +86,8 @@ INCDIRS+= -Icompat
 SRCS+= compat/strlcpy.c compat/strlcat.c compat/strtonum.c
 CFLAGS+= $(shell getconf LFS_CFLAGS) -D_GNU_SOURCE \
          -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM -DNO_SETPROCTITLE \
-         -DNO_QUEUE_H -DNO_TREE_H -DUSE_PTY_H
+         -DNO_QUEUE_H -DNO_TREE_H -DUSE_PTY_H -std=c99
 LIBS+= -lrt -lutil
-# Required for LLONG_MAX and friends
-CFLAGS+= -std=c99
 endif
 
 OBJS= $(patsubst %.c,%.o,$(SRCS))
