@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.35 2008-06-23 07:41:21 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.36 2008-06-23 22:12:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,35 +58,33 @@ const struct cmd_entry cmd_set_option_entry = {
 const char *set_option_bell_action_choices[] = { "none", "any", "current" };
 const struct set_option_entry set_option_table[NSETOPTION] = {
 	{ "bell-action",
-	  SET_OPTION_CHOICE, NULL, 0, 0, set_option_bell_action_choices },
-	{ "buffer-limit", SET_OPTION_NUMBER, NULL, 1, INT_MAX, NULL },
-	{ "default-command", SET_OPTION_STRING, NULL, 0, 0, NULL },
-	{ "display-time", SET_OPTION_NUMBER, NULL, 1, INT_MAX, NULL },
-	{ "history-limit", SET_OPTION_NUMBER, NULL, 0, SHRT_MAX, NULL },
-	{ "prefix", SET_OPTION_KEY, NULL, 0, 0, NULL },
-	{ "set-titles", SET_OPTION_FLAG, NULL, 0, 0, NULL },
-	{ "status", SET_OPTION_FLAG, NULL, 0, 0, NULL },
-	{ "status-bg", SET_OPTION_BG,"status-colour", 0, 0, NULL },
-	{ "status-fg", SET_OPTION_FG,"status-colour", 0, 0, NULL },
-	{ "status-interval", SET_OPTION_NUMBER, NULL, 0, INT_MAX, NULL },
-	{ "status-left", SET_OPTION_STRING, NULL, 0, 0, NULL },
-	{ "status-right", SET_OPTION_STRING, NULL, 0, 0, NULL },
+	  SET_OPTION_CHOICE, 0, 0, set_option_bell_action_choices },
+	{ "buffer-limit", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
+	{ "default-command", SET_OPTION_STRING, 0, 0, NULL },
+	{ "display-time", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
+	{ "history-limit", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
+	{ "prefix", SET_OPTION_KEY, 0, 0, NULL },
+	{ "set-titles", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "status", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "status-bg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "status-fg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "status-interval", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
+	{ "status-left", SET_OPTION_STRING, 0, 0, NULL },
+	{ "status-right", SET_OPTION_STRING, 0, 0, NULL },
 };
 
-void	set_option_string(struct cmd_ctx *, struct options *,
-    	    const struct set_option_entry *, const char *, char *);
-void	set_option_number(struct cmd_ctx *, struct options *,
-    	    const struct set_option_entry *, const char *, char *);
-void	set_option_key(struct cmd_ctx *, struct options *,
-    	    const struct set_option_entry *, const char *, char *);
-void	set_option_fg(struct cmd_ctx *, struct options *,
-    	    const struct set_option_entry *, const char *, char *);
-void	set_option_bg(struct cmd_ctx *, struct options *,
-    	    const struct set_option_entry *, const char *, char *);
-void	set_option_flag(struct cmd_ctx *, struct options *,
-    	    const struct set_option_entry *, const char *, char *);
-void	set_option_choice(struct cmd_ctx *, struct options *,
-    	    const struct set_option_entry *, const char *, char *);
+void	set_option_string(struct cmd_ctx *, 
+	    struct options *, const struct set_option_entry *, char *);
+void	set_option_number(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	set_option_key(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	set_option_colour(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	set_option_flag(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	set_option_choice(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
 
 int
 cmd_set_option_parse(struct cmd *self, int argc, char **argv, char **cause)
@@ -137,7 +135,6 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct client			*c;
 	struct options			*oo;
 	const struct set_option_entry   *entry;
-	const char			*option;
 	u_int				 i;
 
 	if (data == NULL)
@@ -171,31 +168,24 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return;
 	}
 
-	option = entry->name;
-	if (entry->option != NULL)
-		option = entry->option;
-
 	switch (entry->type) {
 	case SET_OPTION_STRING:
-		set_option_string(ctx, oo, entry, option, data->value);
+		set_option_string(ctx, oo, entry, data->value);
 		break;
 	case SET_OPTION_NUMBER:
-		set_option_number(ctx, oo, entry, option, data->value);
+		set_option_number(ctx, oo, entry, data->value);
 		break;
 	case SET_OPTION_KEY:
-		set_option_key(ctx, oo, entry, option, data->value);
+		set_option_key(ctx, oo, entry, data->value);
 		break;
-	case SET_OPTION_FG:
-		set_option_fg(ctx, oo, entry, option, data->value);
-		break;
-	case SET_OPTION_BG:
-		set_option_bg(ctx, oo, entry, option, data->value);
+	case SET_OPTION_COLOUR:
+		set_option_colour(ctx, oo, entry, data->value);
 		break;
 	case SET_OPTION_FLAG:
-		set_option_flag(ctx, oo, entry, option, data->value);
+		set_option_flag(ctx, oo, entry, data->value);
 		break;
 	case SET_OPTION_CHOICE:
-		set_option_choice(ctx, oo, entry, option, data->value);
+		set_option_choice(ctx, oo, entry, data->value);
 		break;
 	}
 
@@ -212,20 +202,19 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 void
 set_option_string(struct cmd_ctx *ctx, struct options *oo,
-    unused const struct set_option_entry *entry,
-    const char *option, char *value)
+    const struct set_option_entry *entry, char *value)
 {
 	if (value == NULL) {
 		ctx->error(ctx, "empty value");
 		return;
 	}
 
-	options_set_string(oo, option, "%s", value);
+	options_set_string(oo, entry->name, "%s", value);
 }
 
 void
 set_option_number(struct cmd_ctx *ctx, struct options *oo,
-    const struct set_option_entry *entry, const char *option, char *value)
+    const struct set_option_entry *entry, char *value)
 {
 	long long	number;
 	const char     *errstr;
@@ -240,13 +229,12 @@ set_option_number(struct cmd_ctx *ctx, struct options *oo,
 		ctx->error(ctx, "value is %s: %s", errstr, value);
 		return;
 	}
-	options_set_number(oo, option, number);
+	options_set_number(oo, entry->name, number);
 }
 	
 void
 set_option_key(struct cmd_ctx *ctx, struct options *oo,
-    unused const struct set_option_entry *entry,
-    const char *option, char *value)
+    const struct set_option_entry *entry, char *value)
 {
 	int	key;
 
@@ -259,65 +247,37 @@ set_option_key(struct cmd_ctx *ctx, struct options *oo,
 		ctx->error(ctx, "unknown key: %s", value);
 		return;
 	}
-	options_set_number(oo, option, key);
+	options_set_number(oo, entry->name, key);
 	
 }
 	
 void
-set_option_fg(struct cmd_ctx *ctx, struct options *oo,
-    unused const struct set_option_entry *entry,
-    const char *option, char *value)
+set_option_colour(struct cmd_ctx *ctx, struct options *oo,
+    const struct set_option_entry *entry, char *value)
 {
-	u_char	number, colour;
+	u_char	colour;
 
 	if (value == NULL) {
 		ctx->error(ctx, "empty value");
 		return;
 	}
 	
-	if ((number = screen_stringcolour(value)) > 8) {
+	if ((colour = screen_stringcolour(value)) > 8) {
 		ctx->error(ctx, "bad colour: %s", value);
 		return;
 	}
 	
-	colour = options_get_number(oo, option);
-	colour &= 0x0f;
-	colour |= number << 4;
-	options_set_number(oo, option, colour);	
-}
-	
-void
-set_option_bg(struct cmd_ctx *ctx, struct options *oo,
-    unused const struct set_option_entry *entry,
-    const char *option, char *value)
-{
-	u_char	number, colour;
-
-	if (value == NULL) {
-		ctx->error(ctx, "empty value");
-		return;
-	}
-	
-	if ((number = screen_stringcolour(value)) > 8) {
-		ctx->error(ctx, "bad colour: %s", value);
-		return;
-	}
-	
-	colour = options_get_number(oo, option);
-	colour &= 0xf0;
-	colour |= number;
-	options_set_number(oo, option, colour);	
+	options_set_number(oo, entry->name, colour);	
 }
 	
 void
 set_option_flag(struct cmd_ctx *ctx, struct options *oo,
-    unused const struct set_option_entry *entry,
-    const char *option, char *value)
+    const struct set_option_entry *entry, char *value)
 {
 	int	flag;
 	
 	if (value == NULL || *value == '\0')
-		flag = !options_get_number(oo, option);
+		flag = !options_get_number(oo, entry->name);
 	else {
 		if ((value[0] == '1' && value[1] == '\0') ||
 		    strcasecmp(value, "on") == 0 ||
@@ -333,12 +293,12 @@ set_option_flag(struct cmd_ctx *ctx, struct options *oo,
 		}
 	}
 
-	options_set_number(oo, option, flag);
+	options_set_number(oo, entry->name, flag);
 }
 	
 void
 set_option_choice(struct cmd_ctx *ctx, struct options *oo,
-    const struct set_option_entry *entry, const char *option, char *value)
+    const struct set_option_entry *entry, char *value)
 {
 	const char     **choicep;
 	int		 n, choice = -1;
@@ -365,7 +325,7 @@ set_option_choice(struct cmd_ctx *ctx, struct options *oo,
 		return;
 	}
 
-	options_set_number(oo, option, choice);
+	options_set_number(oo, entry->name, choice);
 }
 
 void

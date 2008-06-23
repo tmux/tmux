@@ -1,4 +1,4 @@
-/* $Id: cmd-show-options.c,v 1.4 2008-06-23 07:41:21 nicm Exp $ */
+/* $Id: cmd-show-options.c,v 1.5 2008-06-23 22:12:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -99,7 +99,6 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session			*s;
 	struct options			*oo;
 	const struct set_option_entry   *entry;
-	const char			*option;
 	u_int				 i;
 	char				*vs;
 	long long			 vn;
@@ -116,46 +115,37 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 	for (i = 0; i < NSETOPTION; i++) {
 		entry = &set_option_table[i];
 
-		option = entry->name;
-		if (entry->option != NULL)
-			option = entry->option;
-
-		if (options_find1(oo, option) == NULL)
+		if (options_find1(oo, entry->name) == NULL)
 			continue;
 
 		switch (entry->type) {
 		case SET_OPTION_STRING:
-			vs = options_get_string(oo, option);
+			vs = options_get_string(oo, entry->name);
 			ctx->print(ctx, "%s \"%s\"", entry->name, vs);
 			break;
 		case SET_OPTION_NUMBER:
-			vn = options_get_number(oo, option);
+			vn = options_get_number(oo, entry->name);
 			ctx->print(ctx, "%s %lld", entry->name, vn);
 			break;
 		case SET_OPTION_KEY:
-			vn = options_get_number(oo, option);
+			vn = options_get_number(oo, entry->name);
  			ctx->print(ctx, "%s %s",
 			    entry->name, key_string_lookup_key(vn));
 			break;
-		case SET_OPTION_FG:
-			vn = options_get_number(oo, option);
+		case SET_OPTION_COLOUR:
+			vn = options_get_number(oo, entry->name);
  			ctx->print(ctx, "%s %s",
-			    entry->name, screen_colourstring(vn >> 4));
-			break;
-		case SET_OPTION_BG:
-			vn = options_get_number(oo, option);
- 			ctx->print(ctx, "%s %s",
-			    entry->name, screen_colourstring(vn & 0x0f));
+			    entry->name, screen_colourstring(vn));
 			break;
 		case SET_OPTION_FLAG:
-			vn = options_get_number(oo, option);
+			vn = options_get_number(oo, entry->name);
 			if (vn)
-				ctx->print(ctx, "%s on", option);
+				ctx->print(ctx, "%s on", entry->name);
 			else
-				ctx->print(ctx, "%s off", option);
+				ctx->print(ctx, "%s off", entry->name);
 			break;
 		case SET_OPTION_CHOICE:
-			vn = options_get_number(oo, option);
+			vn = options_get_number(oo, entry->name);
 			ctx->print(ctx, "%s %s",
 			    entry->name, entry->choices[vn]);
 			break;
