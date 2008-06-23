@@ -1,4 +1,4 @@
-/* $Id: asprintf.c,v 1.2 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: asprintf.c,v 1.3 2008-06-23 21:54:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2006 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -16,7 +16,9 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <stdarg.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -34,6 +36,7 @@ asprintf(char **ret, const char *format, ...)
 	return (n);
 }
 
+#ifndef BROKEN_VSNPRINTF
 int
 vasprintf(char **ret, const char *format, va_list ap)
 {
@@ -54,3 +57,33 @@ error:
 	*ret = NULL;
 	return (-1);
 }
+#else
+int 
+vasprintf(char **ret, const char *fmt, va_list ap) 
+{ 
+	va_list       aq; 
+	size_t        len; 
+	char         *buf; 
+	int           n; 
+ 
+	len = 64; 
+	buf = xmalloc(len); 
+ 
+	for (;;) { 
+		va_copy(aq, ap); 
+		n = vsnprintf(buf, len, fmt, aq); 
+		va_end(aq); 
+ 
+		if (n != -1) { 
+			*ret = buf; 
+			return (n); 
+		} 
+ 
+		if (len > SIZE_MAX / 2) { 
+			xfree(buf); 
+			return (-1); 
+		} 
+		len *= 2; 
+	} 
+} 
+#endif

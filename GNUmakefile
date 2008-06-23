@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.31 2008-06-23 16:58:49 nicm Exp $
+# $Id: GNUmakefile,v 1.32 2008-06-23 21:54:48 nicm Exp $
 
 .PHONY: clean
 
@@ -56,10 +56,10 @@ INSTALLMAN= install -g bin -o root -m 444
 ifeq ($(shell uname),IRIX64)
 INCDIRS+= -Icompat -I/usr/local/include/ncurses
 SRCS+= compat/strlcpy.c compat/strtonum.c compat/daemon.c \
-	compat/asprintf.c compat/fgetln.c
+	compat/asprintf.c compat/fgetln.c compat/forkpty-irix.c
 CFLAGS+= -DNO_STRLCPY -DNO_STRTONUM -DNO_TREE_H -DNO_SETPROCTITLE \
 	-DNO_DAEMON -DNO_FORKPTY -DNO_PROGNAME -DNO_ASPRINTF -DNO_FGETLN \
-	-D_SGI_SOURCE -std=c99
+	-DBROKEN_VSNPRINTF -D_SGI_SOURCE -std=c99
 LDFLAGS+= -L/usr/local/lib
 LIBS+= -lgen
 endif 
@@ -99,7 +99,7 @@ CPPFLAGS+= $(INCDIRS)
 all: $(PROG)
 
 $(PROG): $(OBJS)
-	$(CC) $(LDFLAGS) $(LIBS) -o $@ $+
+	$(CC) $(LDFLAGS) -o $@ $+ $(LIBS)
 
 depend: $(SRCS)
 	$(CC) $(CFLAGS) $(INCDIRS) -MM $(SRCS) > .depend

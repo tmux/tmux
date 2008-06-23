@@ -1,4 +1,4 @@
-/* $Id: forkpty-sunos.c,v 1.6 2008-06-23 21:54:48 nicm Exp $ */
+/* $Id: forkpty-irix.c,v 1.1 2008-06-23 21:54:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,10 +18,11 @@
 
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <sys/stat.h>
 
 #include <fcntl.h>
+#include <signal.h>
 #include <stdlib.h>
-#include <stropts.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -30,19 +31,15 @@ pid_t
 forkpty(int *master,
     unused char *name, unused struct termios *tio, struct winsize *ws)
 {
-	int	slave;
+	int	slave, fd;
 	char   *path;
 	pid_t	pid;
+	void   *old;
 
-	if ((*master = open("/dev/ptmx", O_RDWR|O_NOCTTY)) == -1)
-		return (-1);
-	if (grantpt(*master) != 0)
-		goto out;
-	if (unlockpt(*master) != 0)
+	path = _getpty(master, O_RDWR, 0622, 0);
+	if (path == NULL)
 		goto out;
 
-	if ((path = ptsname(*master)) == NULL)
-		goto out;
 	if ((slave = open(path, O_RDWR|O_NOCTTY)) == -1)
 		goto out;
 
@@ -53,15 +50,15 @@ forkpty(int *master,
 		close(*master);
 
 		setsid();
-#ifdef TIOCSCTTY
-		if (ioctl(slave, TIOCSCTTY, NULL) == -1)
-			fatal("ioctl failed");
-#endif
+		
+		old = signal(SIGHUP, SIG_IGN);
+		vhangup();
+		signal(SIGHUP, old);
 
-		if (ioctl(slave, I_PUSH, "ptem") == -1)
-			fatal("ioctl failed");
-		if (ioctl(slave, I_PUSH, "ldterm") == -1)
-			fatal("ioctl failed");
+		if ((fd = open(path, O_RDWR)) == -1)
+			fatal("open failed");
+		close(slave);
+		slave = fd;
 
 		if (ioctl(slave, TIOCSWINSZ, ws) == -1)
 			fatal("ioctl failed");

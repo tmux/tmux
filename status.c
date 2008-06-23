@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.39 2008-06-23 16:58:49 nicm Exp $ */
+/* $Id: status.c,v 1.40 2008-06-23 21:54:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -255,7 +255,18 @@ off:
 size_t
 status_width(struct winlink *wl)
 {
+#ifndef BROKEN_VSNPRINTF
 	return (xsnprintf(NULL, 0, "%d:%s ", wl->idx, wl->window->name));
+#else
+	char	*s; 
+	size_t	n; 
+	
+	xasprintf(&s, "%d:%s ", wl->idx, wl->window->name); 
+	n = strlen(s); 
+	xfree(s); 
+
+	return (n); 
+#endif
 }
 
 char *
