@@ -1,3 +1,10 @@
+23 June 2008
+
+* Split information about options into a table and use it to parse options
+  on input (allowing abbreviations) and to print them with show-options
+  (meaning that bell-action gets a proper string). This turned out a bit ugly
+  though :-/.
+
 22 June 2008
 
 * Do not translate black and white into default if the terminal supports
@@ -550,4 +557,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.136 2008-06-22 16:54:08 nicm Exp $
+$Id: CHANGES,v 1.137 2008-06-23 07:41:20 nicm Exp $

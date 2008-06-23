@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.34 2008-06-20 18:45:35 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.35 2008-06-23 07:41:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,6 +55,39 @@ const struct cmd_entry cmd_set_option_entry = {
 	cmd_set_option_print
 };
 
+const char *set_option_bell_action_choices[] = { "none", "any", "current" };
+const struct set_option_entry set_option_table[NSETOPTION] = {
+	{ "bell-action",
+	  SET_OPTION_CHOICE, NULL, 0, 0, set_option_bell_action_choices },
+	{ "buffer-limit", SET_OPTION_NUMBER, NULL, 1, INT_MAX, NULL },
+	{ "default-command", SET_OPTION_STRING, NULL, 0, 0, NULL },
+	{ "display-time", SET_OPTION_NUMBER, NULL, 1, INT_MAX, NULL },
+	{ "history-limit", SET_OPTION_NUMBER, NULL, 0, SHRT_MAX, NULL },
+	{ "prefix", SET_OPTION_KEY, NULL, 0, 0, NULL },
+	{ "set-titles", SET_OPTION_FLAG, NULL, 0, 0, NULL },
+	{ "status", SET_OPTION_FLAG, NULL, 0, 0, NULL },
+	{ "status-bg", SET_OPTION_BG,"status-colour", 0, 0, NULL },
+	{ "status-fg", SET_OPTION_FG,"status-colour", 0, 0, NULL },
+	{ "status-interval", SET_OPTION_NUMBER, NULL, 0, INT_MAX, NULL },
+	{ "status-left", SET_OPTION_STRING, NULL, 0, 0, NULL },
+	{ "status-right", SET_OPTION_STRING, NULL, 0, 0, NULL },
+};
+
+void	set_option_string(struct cmd_ctx *, struct options *,
+    	    const struct set_option_entry *, const char *, char *);
+void	set_option_number(struct cmd_ctx *, struct options *,
+    	    const struct set_option_entry *, const char *, char *);
+void	set_option_key(struct cmd_ctx *, struct options *,
+    	    const struct set_option_entry *, const char *, char *);
+void	set_option_fg(struct cmd_ctx *, struct options *,
+    	    const struct set_option_entry *, const char *, char *);
+void	set_option_bg(struct cmd_ctx *, struct options *,
+    	    const struct set_option_entry *, const char *, char *);
+void	set_option_flag(struct cmd_ctx *, struct options *,
+    	    const struct set_option_entry *, const char *, char *);
+void	set_option_choice(struct cmd_ctx *, struct options *,
+    	    const struct set_option_entry *, const char *, char *);
+
 int
 cmd_set_option_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
@@ -97,16 +130,15 @@ usage:
 }
 
 void
-cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
+cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_set_option_data	*data = self->data;
-	struct client			*c;
 	struct session			*s;
+	struct client			*c;
 	struct options			*oo;
-	const char			*errstr;
+	const struct set_option_entry   *entry;
+	const char			*option;
 	u_int				 i;
-	int				 number, flag, key;
-	u_char				 colour;
 
 	if (data == NULL)
 		return;
@@ -122,203 +154,218 @@ cmd_set_option_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 		return;
 	}
 
-	number = -1;
-	if (data->value != NULL) {
-		number = strtonum(data->value, 0, INT_MAX, &errstr);
-		if (errstr != NULL)
-			number = 0;
+	entry = NULL;
+	for (i = 0; i < NSETOPTION; i++) {
+		if (strncmp(set_option_table[i].name,
+		    data->option, strlen(data->option)) != 0)
+			continue;
+		if (entry != NULL) {
+			ctx->error(ctx, "ambiguous option: %s", data->option);
+			return;
+		}
+		entry = &set_option_table[i];
 
-		flag = -1;
-		if (number == 1 || strcasecmp(data->value, "on") == 0 ||
-		    strcasecmp(data->value, "yes") == 0)
-			flag = 1;
-		else if (number == 0 || strcasecmp(data->value, "off") == 0 ||
-		    strcasecmp(data->value, "no") == 0)
-			flag = 0;
-	} else
-		flag = -2;
-
-	if (strcmp(data->option, "prefix") == 0) {
-		if (data->value == NULL) {
-			ctx->error(ctx, "invalid value");
-			return;
-		}
-		key = key_string_lookup_string(data->value);
-		if (key == KEYC_NONE) {
-			ctx->error(ctx, "unknown key: %s", data->value);
-			return;
-		}
-		options_set_key(oo, "prefix", key);
-	} else if (strcmp(data->option, "status") == 0) {
-		if (flag == -1) {
-			ctx->error(ctx, "bad value: %s", data->value);
-			return;
-		}
-		if (flag == -2)
-			flag = !options_get_number(oo, "status");
-		options_set_number(oo, "status", flag);
-		recalculate_sizes();
-	} else if (strcmp(data->option, "status-fg") == 0) {
-		if (data->value == NULL) {
-			ctx->error(ctx, "invalid value");
-			return;
-		}
-		number = screen_stringcolour(data->value);
-		if (number > 8) {
-			ctx->error(ctx, "bad colour: %s", data->value);
-			return;
-		}
-
-		colour = options_get_colours(oo, "status-colour");
-		colour &= 0x0f;
-		colour |= number << 4;
-		options_set_colours(oo, "status-colour", colour);
-
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c != NULL && c->session != NULL)
-				server_redraw_client(c);
-		}
-	} else if (strcmp(data->option, "status-bg") == 0) {
-		if (data->value == NULL) {
-			ctx->error(ctx, "invalid value");
-			return;
-		}
-		number = screen_stringcolour(data->value);
-		if (number > 8) {
-			ctx->error(ctx, "bad colour: %s", data->value);
-			return;
-		}
-
-		colour = options_get_colours(oo, "status-colour");
-		colour &= 0xf0;
-		colour |= number;
-		options_set_colours(oo, "status-colour", colour);
-
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c != NULL && c->session != NULL)
-				server_redraw_client(c);
-		}
-	} else if (strcmp(data->option, "bell-action") == 0) {
-		if (data->value == NULL) {
-			ctx->error(ctx, "invalid value");
-			return;
-		}
-		if (strcmp(data->value, "any") == 0)
-			number = BELL_ANY;
-		else if (strcmp(data->value, "none") == 0)
-			number = BELL_NONE;
-		else if (strcmp(data->value, "current") == 0)
-			number = BELL_CURRENT;
-		else {
-			ctx->error(ctx, "unknown bell-action: %s", data->value);
-			return;
-		}
-		options_set_number(oo, "bell-action", number);
-	} else if (strcmp(data->option, "default-command") == 0) {
-		if (data->value == NULL) {
-			ctx->error(ctx, "invalid value");
-			return;
-		}
-		options_set_string(oo, "default-command", "%s", data->value);
-	} else if (strcmp(data->option, "history-limit") == 0) {
-		if (data->value == NULL || number == -1) {
-			ctx->error(ctx, "invalid value");
-			return;
-		}
-		if (errstr != NULL) {
-			ctx->error(ctx, "history-limit %s", errstr);
-			return;
-		}
-		if (number > SHRT_MAX) {
-			ctx->error(ctx, "history-limit too big: %u", number);
-			return;
-		}
-		options_set_number(oo, "history-limit", number);
-	} else if (strcmp(data->option, "display-time") == 0) {
-		if (data->value == NULL || number == -1) {
-			ctx->error(ctx, "invalid value");
-			return;
-		}
-		if (errstr != NULL) {
-			ctx->error(ctx, "display-time %s", errstr);
-			return;
-		}
-		if (number > INT_MAX) {
-			ctx->error(ctx, "display-time too big: %u", number);
-			return;
-		}
-		options_set_number(oo, "display-time", number);
-	} else if (strcmp(data->option, "buffer-limit") == 0) {
-		if (data->value == NULL || number == -1) {
-			ctx->error(ctx, "invalid value");
-			return;
-		}
-		if (errstr != NULL) {
-			ctx->error(ctx, "buffer-limit %s", errstr);
-			return;
-		}
-		if (number == 0) {
-			ctx->error(ctx, "zero buffer-limit");
-			return;
-		}
-		if (number > INT_MAX) {
-			ctx->error(ctx, "buffer-limit too big: %u", number);
-			return;
-		}
-		options_set_number(oo, "buffer-limit", number);
-	} else if (strcmp(data->option, "status-left") == 0) {
-		if (data->value == NULL) {
-			ctx->error(ctx, "invalid value");
-			return;
-		}
-
-		options_set_string(oo, "status-left", "%s", data->value);
-
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c != NULL && c->session != NULL)
-				server_redraw_client(c);
-		}
-	} else if (strcmp(data->option, "status-right") == 0) {
-		if (data->value == NULL) {
-			ctx->error(ctx, "invalid value");
-			return;
-		}
-
-		options_set_string(oo, "status-right", "%s", data->value);
-
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c != NULL && c->session != NULL)
-				server_redraw_client(c);
-		}
-	} else if (strcmp(data->option, "status-interval") == 0) {
-		if (data->value == NULL || number == -1) {
-			ctx->error(ctx, "invalid value");
-			return;
-		}
-		if (errstr != NULL) {
-			ctx->error(ctx, "status-interval %s", errstr);
-			return;
-		}
-		options_set_number(oo, "status-interval", number);
-	} else if (strcmp(data->option, "set-titles") == 0) {
-		if (flag == -1) {
-			ctx->error(ctx, "bad value: %s", data->value);
-			return;
-		}
-		if (flag == -2)
-			flag = !options_get_number(oo, "set-titles");
-		options_set_number(oo, "set-titles", flag);
-	} else {
+	}
+	if (entry == NULL) {
 		ctx->error(ctx, "unknown option: %s", data->option);
 		return;
 	}
 
+	option = entry->name;
+	if (entry->option != NULL)
+		option = entry->option;
+
+	switch (entry->type) {
+	case SET_OPTION_STRING:
+		set_option_string(ctx, oo, entry, option, data->value);
+		break;
+	case SET_OPTION_NUMBER:
+		set_option_number(ctx, oo, entry, option, data->value);
+		break;
+	case SET_OPTION_KEY:
+		set_option_key(ctx, oo, entry, option, data->value);
+		break;
+	case SET_OPTION_FG:
+		set_option_fg(ctx, oo, entry, option, data->value);
+		break;
+	case SET_OPTION_BG:
+		set_option_bg(ctx, oo, entry, option, data->value);
+		break;
+	case SET_OPTION_FLAG:
+		set_option_flag(ctx, oo, entry, option, data->value);
+		break;
+	case SET_OPTION_CHOICE:
+		set_option_choice(ctx, oo, entry, option, data->value);
+		break;
+	}
+
+	recalculate_sizes();
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL && c->session != NULL)
+			server_redraw_client(c);
+	}
+
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+}
+
+void
+set_option_string(struct cmd_ctx *ctx, struct options *oo,
+    unused const struct set_option_entry *entry,
+    const char *option, char *value)
+{
+	if (value == NULL) {
+		ctx->error(ctx, "empty value");
+		return;
+	}
+
+	options_set_string(oo, option, "%s", value);
+}
+
+void
+set_option_number(struct cmd_ctx *ctx, struct options *oo,
+    const struct set_option_entry *entry, const char *option, char *value)
+{
+	long long	number;
+	const char     *errstr;
+
+	if (value == NULL) {
+		ctx->error(ctx, "empty value");
+		return;
+	}
+
+	number = strtonum(value, entry->minimum, entry->maximum, &errstr);
+	if (errstr != NULL) {
+		ctx->error(ctx, "value is %s: %s", errstr, value);
+		return;
+	}
+	options_set_number(oo, option, number);
+}
+	
+void
+set_option_key(struct cmd_ctx *ctx, struct options *oo,
+    unused const struct set_option_entry *entry,
+    const char *option, char *value)
+{
+	int	key;
+
+	if (value == NULL) {
+		ctx->error(ctx, "empty value");
+		return;
+	}
+
+	if ((key = key_string_lookup_string(value)) == KEYC_NONE) {
+		ctx->error(ctx, "unknown key: %s", value);
+		return;
+	}
+	options_set_number(oo, option, key);
+	
+}
+	
+void
+set_option_fg(struct cmd_ctx *ctx, struct options *oo,
+    unused const struct set_option_entry *entry,
+    const char *option, char *value)
+{
+	u_char	number, colour;
+
+	if (value == NULL) {
+		ctx->error(ctx, "empty value");
+		return;
+	}
+	
+	if ((number = screen_stringcolour(value)) > 8) {
+		ctx->error(ctx, "bad colour: %s", value);
+		return;
+	}
+	
+	colour = options_get_number(oo, option);
+	colour &= 0x0f;
+	colour |= number << 4;
+	options_set_number(oo, option, colour);	
+}
+	
+void
+set_option_bg(struct cmd_ctx *ctx, struct options *oo,
+    unused const struct set_option_entry *entry,
+    const char *option, char *value)
+{
+	u_char	number, colour;
+
+	if (value == NULL) {
+		ctx->error(ctx, "empty value");
+		return;
+	}
+	
+	if ((number = screen_stringcolour(value)) > 8) {
+		ctx->error(ctx, "bad colour: %s", value);
+		return;
+	}
+	
+	colour = options_get_number(oo, option);
+	colour &= 0xf0;
+	colour |= number;
+	options_set_number(oo, option, colour);	
+}
+	
+void
+set_option_flag(struct cmd_ctx *ctx, struct options *oo,
+    unused const struct set_option_entry *entry,
+    const char *option, char *value)
+{
+	int	flag;
+	
+	if (value == NULL || *value == '\0')
+		flag = !options_get_number(oo, option);
+	else {
+		if ((value[0] == '1' && value[1] == '\0') ||
+		    strcasecmp(value, "on") == 0 ||
+		    strcasecmp(value, "yes") == 0)
+			flag = 1;
+		else if ((value[0] == '0' && value[1] == '\0') ||
+		    strcasecmp(value, "off") == 0 ||
+		    strcasecmp(value, "no") == 0)
+			flag = 0;
+		else {
+			ctx->error(ctx, "bad value: %s", value);
+			return;
+		}
+	}
+
+	options_set_number(oo, option, flag);
+}
+	
+void
+set_option_choice(struct cmd_ctx *ctx, struct options *oo,
+    const struct set_option_entry *entry, const char *option, char *value)
+{
+	const char     **choicep;
+	int		 n, choice = -1;
+
+	if (value == NULL) {
+		ctx->error(ctx, "empty value");
+		return;
+	}
+
+	n = 0;
+	for (choicep = entry->choices; *choicep != NULL; choicep++) {
+		n++;
+		if (strncmp(*choicep, value, strlen(value)) != 0)
+			continue;
+
+		if (choice != -1) {
+			ctx->error(ctx, "ambiguous option: %s", value);
+			return;
+		}
+		choice = n - 1;
+	}
+	if (choice == -1) {
+		ctx->error(ctx, "unknown option: %s", value);
+		return;
+	}
+
+	options_set_number(oo, option, choice);
 }
 
 void

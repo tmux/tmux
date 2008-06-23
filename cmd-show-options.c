@@ -1,4 +1,4 @@
-/* $Id: cmd-show-options.c,v 1.3 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: cmd-show-options.c,v 1.4 2008-06-23 07:41:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -98,7 +98,11 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_show_options_data	*data = self->data;
 	struct session			*s;
 	struct options			*oo;
-	struct options_entry		*o;
+	const struct set_option_entry   *entry;
+	const char			*option;
+	u_int				 i;
+	char				*vs;
+	long long			 vn;
 
 	if (data == NULL)
 		return;
@@ -109,23 +113,51 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		oo = &s->options;
 
-	SPLAY_FOREACH(o, options_tree, &oo->tree) {
-		switch (o->type) {
-		case OPTIONS_STRING:
-			ctx->print(
-			    ctx, "%s \"%s\"", o->name, o->value.string);
+	for (i = 0; i < NSETOPTION; i++) {
+		entry = &set_option_table[i];
+
+		option = entry->name;
+		if (entry->option != NULL)
+			option = entry->option;
+
+		if (options_find1(oo, option) == NULL)
+			continue;
+
+		switch (entry->type) {
+		case SET_OPTION_STRING:
+			vs = options_get_string(oo, option);
+			ctx->print(ctx, "%s \"%s\"", entry->name, vs);
 			break;
-		case OPTIONS_NUMBER:
-			ctx->print(ctx, "%s %lld", o->name, o->value.number);
+		case SET_OPTION_NUMBER:
+			vn = options_get_number(oo, option);
+			ctx->print(ctx, "%s %lld", entry->name, vn);
 			break;
-		case OPTIONS_KEY:
-			ctx->print(ctx, "%s %s", o->name,
-			    key_string_lookup_key(o->value.key));
+		case SET_OPTION_KEY:
+			vn = options_get_number(oo, option);
+ 			ctx->print(ctx, "%s %s",
+			    entry->name, key_string_lookup_key(vn));
 			break;
-		case OPTIONS_COLOURS:
-			ctx->print(ctx, "%s fg=%s, bg=%s", o->name,
-			    screen_colourstring(o->value.colours >> 4),
-			    screen_colourstring(o->value.colours & 0x0f));
+		case SET_OPTION_FG:
+			vn = options_get_number(oo, option);
+ 			ctx->print(ctx, "%s %s",
+			    entry->name, screen_colourstring(vn >> 4));
+			break;
+		case SET_OPTION_BG:
+			vn = options_get_number(oo, option);
+ 			ctx->print(ctx, "%s %s",
+			    entry->name, screen_colourstring(vn & 0x0f));
+			break;
+		case SET_OPTION_FLAG:
+			vn = options_get_number(oo, option);
+			if (vn)
+				ctx->print(ctx, "%s on", option);
+			else
+				ctx->print(ctx, "%s off", option);
+			break;
+		case SET_OPTION_CHOICE:
+			vn = options_get_number(oo, option);
+			ctx->print(ctx, "%s %s",
+			    entry->name, entry->choices[vn]);
 			break;
 		}
 	}

@@ -1,4 +1,4 @@
-/* $Id: cmd-send-prefix.c,v 1.17 2008-06-20 17:31:48 nicm Exp $ */
+/* $Id: cmd-send-prefix.c,v 1.18 2008-06-23 07:41:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,12 +45,13 @@ cmd_send_prefix_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_target_data	*data = self->data;
 	struct session		*s;
 	struct winlink		*wl;
+	int			 key;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return;
-
-	window_key(
-	    wl->window, ctx->curclient, options_get_key(&s->options, "prefix"));
+	
+	key = options_get_number(&s->options, "prefix");
+	window_key(wl->window, ctx->curclient, key);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

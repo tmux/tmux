@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.164 2008-06-22 22:20:07 nicm Exp $ */
+/* $Id: tmux.h,v 1.165 2008-06-23 07:41:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -793,6 +793,28 @@ struct binding {
 };
 ARRAY_DECL(bindings, struct binding *);
 
+/* Set/display option data. */
+struct set_option_entry {
+	const char	*name;
+	enum {
+		SET_OPTION_STRING,
+		SET_OPTION_NUMBER,
+		SET_OPTION_KEY,		
+		SET_OPTION_FG,
+		SET_OPTION_BG,
+		SET_OPTION_FLAG,
+		SET_OPTION_CHOICE
+	} type;
+	const char	*option;
+	
+	u_int		 minimum;
+	u_int		 maximum;
+	
+	const char     **choices;
+};
+extern const struct set_option_entry set_option_table[];
+#define NSETOPTION 13
+
 #ifdef NO_STRTONUM
 /* strtonum.c */
 long long	 strtonum(const char *, long long, long long, const char **);
@@ -848,15 +870,13 @@ int	options_cmp(struct options_entry *, struct options_entry *);
 SPLAY_PROTOTYPE(options_tree, options_entry, entry, options_cmp);
 void	options_init(struct options *, struct options *);
 void	options_free(struct options *);
+struct options_entry *options_find1(struct options *, const char *);
+struct options_entry *options_find(struct options *, const char *);
 void printflike3 options_set_string(
     	    struct options *, const char *, const char *, ...);
 char   *options_get_string(struct options *, const char *);
 void	options_set_number(struct options *, const char *, long long);
 long long options_get_number(struct options *, const char *);
-void	options_set_key(struct options *, const char *, int);
-int	options_get_key(struct options *, const char *);
-void	options_set_colours(struct options *, const char *, u_char);
-u_char	options_get_colours(struct options *, const char *);
 
 /* tty.c */
 void		 tty_init(struct tty *, char *, char *);

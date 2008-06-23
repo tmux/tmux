@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.37 2008-06-21 14:11:39 nicm Exp $ */
+/* $Id: status.c,v 1.38 2008-06-23 07:41:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,7 @@ status_redraw(struct client *c)
 
 	if (clock_gettime(CLOCK_REALTIME, &c->status_timer) != 0)
 		fatal("clock_gettime failed");
-	colr = options_get_colours(&s->options, "status-colour");
+	colr = options_get_number(&s->options, "status-colour");
 
 	yy = c->sy - 1;
 	if (yy == 0)

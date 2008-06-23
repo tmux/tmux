@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.75 2008-06-22 16:56:47 nicm Exp $ */
+/* $Id: server.c,v 1.76 2008-06-23 07:41:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -527,7 +527,7 @@ server_handle_client(struct client *c)
 	struct window	*w = c->session->curw->window;
 	int		 key, prefix;
 
-	prefix = options_get_key(&c->session->options, "prefix");
+	prefix = options_get_number(&c->session->options, "prefix");
 	while (tty_keys_next(&c->tty, &key) == 0) {
 		server_clear_client_message(c);
 		if (c->prompt_string != NULL) {
