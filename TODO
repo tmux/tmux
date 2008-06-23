@@ -1,7 +1,3 @@
-- useful env vars like WINDOW?
-- better checking/emulation for missing term requirements
-- alt charset, borders etc (terminfo(5)/Line Graphics)
-- new window command prompt
 - mouse handling and some other bits elinks needs
 - line mode/char-at-a-time mode a la telnet?
 - handle ioctl/termios stuff on window sockets
@@ -10,35 +6,26 @@
       del passed through?
 - window creation/idle time
 - profile/optimise, particularly (i suspect) input.c
-- decide about customised status line
 - could use bsearch all over the place or get rid of smaller tables (clientmsg)
 - better errors when creating new windows/sessions (how?)
-- session with CMD_NOSESSION should be an error
 - Implicitly add exec to the commands for new windows (switch to disable it)
 - nested sessions, ie session as window - moving to it moves into session
   (remembering parent)
-- Nested sessions over the network, plug-in another tmux as a window/subsession
 - it would be nice to have multichar commands so you could have C-b K K for
   kill-window to limit accidental presses
 - status-fg/status-bg should be able to set attributes: bold, etc
 - save/restore (DECSC/DECRC) are ugly. maybe a struct screen_attr and memcpy
-- per-session toolbar state, other options
 - force-default option: assume terminal supports default colours even if AX
   is missing (like, eg, xterm-color in an aterm)
 - refer to windows by name etc (duplicates? fnmatch?)
 - commands:
-	kill server
-	show-options command
 	command to run something without a window at all?
 	command to purge window history
  	extend list-clients to list clients attached to a session (-a for all?)
 	bring back detach-session to detach all clients on a session?
-	buffer manip: clear, view etc (clear-buffer, show-buffer)
 - function groups, bind-key ^W { select-window 0; send-key ^W } etc ***
 - allow fnmatch for -c, so that you can, eg, detach all clients
 - bind non prefix keys
-- there is too much redrawing. use flags?
-- command mode (! + type tmux command)
 - garbage collect window history (100 lines at a time?) if it hasn't been used
   in $x time (need window creation/use times)
 - lift SHRT_MAX limits for history
@@ -48,17 +35,13 @@
 - split clients into three RB trees by fd: attached/unattached/dead?
   or tailqs? what would be fastest per-char?
 - window splitting?
-- if only one arg to switch-window, assume source-index
-- test on wsvt25, vt100, vt220
 - why do up/down work in angband with screen but not tmux??
 	-- it's not kkeypad/kcursor
 - fix kkeypad/kcursor
 - c/p is still borken in some ways
-- tobiasu says it is borken on Linux with aterm + TERM=rxvt
 - poll(2) is broken on OS X/Darwin, a workaround for this would be nice
 - different screen model? layers perhaps? hmm
-- cfg file improvements
-- proper per-window options (per-session list of window ranges?)
+- cfg file improvements (env vars particularly)
 - better mode features: search, back word, forward word, etc
 - flags to centre screen in window
 - get rid of DEFDATA etc
