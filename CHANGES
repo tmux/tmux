@@ -1,5 +1,6 @@
 23 June 2008
 
+* list-commands command (alias lscm).
 * Split information about options into a table and use it to parse options
   on input (allowing abbreviations) and to print them with show-options
   (meaning that bell-action gets a proper string). This turned out a bit ugly
@@ -557,4 +558,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.137 2008-06-23 07:41:20 nicm Exp $
+$Id: CHANGES,v 1.138 2008-06-23 22:24:16 nicm Exp $

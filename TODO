@@ -77,6 +77,7 @@
 - command history for command-prompt. better tab completion
 - options parsing could be much more generic, opening the way for abbreviation
   and tab completion of option names
+- document list-commands
 ---
 save-buffer -b number filename
 load-buffer -b number filename
