@@ -23,6 +23,7 @@
 	command to purge window history
  	extend list-clients to list clients attached to a session (-a for all?)
 	bring back detach-session to detach all clients on a session?
+	clone-session command to link all windows to a new session
 - function groups, bind-key ^W { select-window 0; send-key ^W } etc ***
 - allow fnmatch for -c, so that you can, eg, detach all clients
 - bind non prefix keys
@@ -56,9 +57,8 @@
 - list-keys should be sorted
 - copy-mode enhancements: next word etc etc
 - problems with force-width when wrapping line in emacs?
-- command history for command-prompt. better tab completion
-- options parsing could be much more generic, opening the way for abbreviation
-  and tab completion of option names
+- command history for command-prompt. better tab completion (use options too)
+- window options should be done similarly to standard options
 ---
 - document list-commands. document switch-client
 - document buffer stuff
