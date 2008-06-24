@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.22 2008-06-22 16:56:47 nicm Exp $ */
+/* $Id: window-copy.c,v 1.23 2008-06-24 07:00:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,10 +51,16 @@ void	window_copy_cursor_left(struct window *);
 void	window_copy_cursor_right(struct window *);
 void	window_copy_cursor_up(struct window *);
 void	window_copy_cursor_down(struct window *);
+void	window_copy_cursor_next_word(struct window *);
+void	window_copy_cursor_previous_word(struct window *);
 void	window_copy_scroll_left(struct window *, u_int);
 void	window_copy_scroll_right(struct window *, u_int);
 void	window_copy_scroll_up(struct window *, u_int);
 void	window_copy_scroll_down(struct window *, u_int);
+
+const char *space_characters = " -_@";
+#define window_copy_is_space(w, x, y) \
+	(strchr(space_characters, (w)->base.grid_data[y][x]) != NULL)
 
 const struct window_mode window_copy_mode = {
 	window_copy_init,
@@ -193,6 +199,14 @@ window_copy_key(struct window *w, struct client *c, int key)
 	case '$':
 	case '\005':	/* C-e */
 		window_copy_cursor_end_of_line(w);
+		break;
+	case 'w':
+	case '\016':	/* C-n */
+		window_copy_cursor_next_word(w);
+		break;
+	case 'b':
+	case '\002':	/* C-b */
+		window_copy_cursor_previous_word(w);
 		break;
 	}
 }
@@ -508,7 +522,7 @@ window_copy_cursor_end_of_line(struct window *w)
 			    w, data->ox - (px - screen_last_x(s)));
 			data->cx = screen_last_x(s);
 		}
-	}
+ 	}
 
 	if (window_copy_update_selection(w))
 		window_copy_redraw_lines(w, data->cy, 1);
@@ -609,6 +623,169 @@ window_copy_cursor_down(struct window *w)
 
 	if (data->cx + data->ox >= px || data->cx + data->ox >= ox)
 		window_copy_cursor_end_of_line(w);
+}
+
+void
+window_copy_cursor_next_word(struct window *w)
+{
+	struct window_copy_mode_data	*data = w->modedata;
+	struct screen			*s = &data->screen;
+	u_int				 px, py, xx, skip;
+
+	px = data->ox + data->cx;
+	py = screen_y(&w->base, data->cy) - data->oy;
+	xx = window_copy_find_length(w, py);
+
+	skip = 1;
+	if (px < xx) {
+		/* If currently on a space, skip space. */
+		if (window_copy_is_space(w, px, py))
+			skip = 0;
+	} else
+		skip = 0;
+	for (;;) {
+		if (px >= xx) {
+			if (skip) {
+				px = xx;
+				break;
+			}
+
+			while (px >= xx) {
+				if (data->cy == screen_last_y(s)) {
+					if (data->oy == 0)
+						goto out;
+				}
+				
+				px = 0;
+				window_copy_cursor_down(w);
+				
+				py = screen_y(&w->base, data->cy) - data->oy;
+				xx = window_copy_find_length(w, py);
+			}
+		}
+		
+		if (skip) {
+			/* Currently skipping non-space (until space). */
+			if (window_copy_is_space(w, px, py))
+				break;
+		} else {
+			/* Currently skipping space (until non-space). */
+			if (!window_copy_is_space(w, px, py))
+				skip = 1;
+		}
+
+		px++;
+	}
+out:
+
+	/* On screen. */
+	if (px > data->ox && px <= data->ox + screen_last_x(s))
+		data->cx = px - data->ox;
+
+	/* Off right of screen. */
+	if (px > data->ox + screen_last_x(s)) {
+		/* Move cursor to last and scroll screen. */
+		window_copy_scroll_left(w,
+		    px - data->ox - screen_last_x(s));
+		data->cx = screen_last_x(s);
+	}
+
+	/* Off left of screen. */
+	if (px <= data->ox) {
+		if (px < screen_last_x(s)) {
+			/* Short enough to fit on screen. */
+			window_copy_scroll_right(w, data->ox);
+			data->cx = px;
+		} else {
+			/* Too long to fit on screen. */
+			window_copy_scroll_right(
+			    w, data->ox - (px - screen_last_x(s)));
+			data->cx = screen_last_x(s);
+		}
+ 	}
+ 
+	if (window_copy_update_selection(w))
+		window_copy_redraw_lines(w, data->cy, 1);
+	else
+		window_copy_update_cursor(w);
+}
+
+void
+window_copy_cursor_previous_word(struct window *w)
+{
+	struct window_copy_mode_data	*data = w->modedata;
+	struct screen			*s = &data->screen;
+	u_int				 px, py, skip;
+
+	px = data->ox + data->cx;
+	py = screen_y(&w->base, data->cy) - data->oy;
+
+	skip = 1;
+	if (px != 0) {
+		/* If currently on a space, skip space. */
+		if (window_copy_is_space(w, px - 1, py))
+			skip = 0;
+	}
+	for (;;) {
+		while (px == 0) {
+			if (data->cy == 0) {
+				if (w->base.hsize == 0 ||
+				    data->oy >= w->base.hsize - 1)
+					goto out;
+			}
+
+			window_copy_cursor_up(w);
+			
+			py = screen_y(&w->base, data->cy) - data->oy;
+			px = window_copy_find_length(w, py);
+			if (px != 0)
+				goto out;
+		}
+		
+		if (skip) {
+			/* Currently skipping non-space (until space). */
+			if (window_copy_is_space(w, px - 1, py))
+				skip = 0;
+		} else {
+			/* Currently skipping space (until non-space). */
+			if (!window_copy_is_space(w, px - 1, py))
+				break;
+		}
+		
+		px--;
+	}
+out:
+
+	/* On screen. */
+	if (px > data->ox && px <= data->ox + screen_last_x(s))
+		data->cx = px - data->ox;
+
+	/* Off right of screen. */
+	if (px > data->ox + screen_last_x(s)) {
+		/* Move cursor to last and scroll screen. */
+		window_copy_scroll_left(w,
+		    px - data->ox - screen_last_x(s));
+		data->cx = screen_last_x(s);
+	}
+
+	/* Off left of screen. */
+	if (px <= data->ox) {
+		if (px < screen_last_x(s)) {
+			/* Short enough to fit on screen. */
+			window_copy_scroll_right(w, data->ox);
+			data->cx = px;
+		} else {
+			/* Too long to fit on screen. */
+			window_copy_scroll_right(
+			    w, data->ox - (px - screen_last_x(s)));
+			data->cx = screen_last_x(s);
+		}
+ 	}
+ 
+	if (window_copy_update_selection(w))
+		window_copy_redraw_lines(w, data->cy, 1);
+	else
+		window_copy_update_cursor(w);
 }
 
 void

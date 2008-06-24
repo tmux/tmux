@@ -1,3 +1,7 @@
+24 June 2008
+
+* Next word (C-n/w) and previous word (C-b/b) in copy mode.
+
 23 June 2008
 
 * list-commands command (alias lscm).
@@ -558,4 +562,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.138 2008-06-23 22:24:16 nicm Exp $
+$Id: CHANGES,v 1.139 2008-06-24 07:00:38 nicm Exp $
