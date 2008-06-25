@@ -1,5 +1,8 @@
 25 June 2008
 
+* move-window command.
+* Support binding alt keys (prefixed with M-). Change default to use
+  C- for ctrl keys (^ is still accepted as an alternative).
 * Slim down default key bindings: support lowercase only.
 * Handle escaped keys properly (parse eg \033b into a single key code) and
   use this to change copy mode next/previous work to M-f and M-b to match
@@ -567,4 +570,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.142 2008-06-25 19:18:20 nicm Exp $
+$Id: CHANGES,v 1.143 2008-06-25 20:33:20 nicm Exp $

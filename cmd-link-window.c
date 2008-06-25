@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.23 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.24 2008-06-25 20:33:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,29 +46,29 @@ void
 cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_srcdst_data	*data = self->data;
-	struct session		*s;
+	struct session		*dst;
 	struct winlink		*wl_src, *wl_dst;
 	int			 idx;
 
 	if ((wl_src = cmd_find_window(ctx, data->src, NULL)) == NULL)
 		return;
 
-	if (arg_parse_window(data->dst, &s, &idx) != 0) {
+	if (arg_parse_window(data->dst, &dst, &idx) != 0) {
 		ctx->error(ctx, "bad window: %s", data->dst);
 		return;
 	}
-	if (s == NULL)
-		s = ctx->cursession;
-	if (s == NULL)
-		s = cmd_current_session(ctx);
-	if (s == NULL) {
+	if (dst == NULL)
+		dst = ctx->cursession;
+	if (dst == NULL)
+		dst = cmd_current_session(ctx);
+	if (dst == NULL) {
 		ctx->error(ctx, "session not found: %s", data->dst);
 		return;
 	}
 
 	wl_dst = NULL;
 	if (idx != -1)
-		wl_dst = winlink_find_by_index(&s->windows, idx);
+		wl_dst = winlink_find_by_index(&dst->windows, idx);
 	if (wl_dst != NULL) {
 		if (wl_dst->window == wl_src->window)
 			goto out;
@@ -78,35 +78,30 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			 * Can't use session_detach as it will destroy session
 			 * if this makes it empty.
 			 */
-			session_alert_cancel(s, wl_dst);
-			winlink_remove(&s->windows, wl_dst);
+			session_alert_cancel(dst, wl_dst);
+			winlink_remove(&dst->windows, wl_dst);
 
 			/* Force select/redraw if current. */
-			if (wl_dst == s->curw) {
+			if (wl_dst == dst->curw) {
 				data->flags &= ~CMD_DFLAG;
-				s->curw = NULL;
+				dst->curw = NULL;
 			}
-			if (wl_dst == s->lastw)
-				s->lastw = NULL;
-
-			/*
-			 * Can't error out after this or there could be an
-			 * empty session!
-			 */
+			if (wl_dst == dst->lastw)
+				dst->lastw = NULL;
 		}
 	}
 
-	wl_dst = session_attach(s, wl_src->window, idx);
+	wl_dst = session_attach(dst, wl_src->window, idx);
 	if (wl_dst == NULL) {
 		ctx->error(ctx, "index in use: %d", idx);
 		return;
 	}
 
 	if (data->flags & CMD_DFLAG)
-		server_status_session(s);
+		server_status_session(dst);
 	else {
-		session_select(s, wl_dst->idx);
-		server_redraw_session(s);
+		session_select(dst, wl_dst->idx);
+		server_redraw_session(dst);
 	}
 	recalculate_sizes();
 

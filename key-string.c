@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.5 2008-06-04 20:01:36 nicm Exp $ */
+/* $Id: key-string.c,v 1.6 2008-06-25 20:33:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -173,39 +173,7 @@ struct {
 	{ "SUNDO",	KEYC_SUNDO },
 	{ "SUSPEND",	KEYC_SUSPEND },
 	{ "UNDO",	KEYC_UNDO },
-	{ "UP",		KEYC_UP },
-	{ "^ ",		0 },
-	{ "^A", 	1 },
-	{ "^B",		2 },
-	{ "^C",		3 },
-	{ "^D",		4 },
-	{ "^E",		5 },
-	{ "^F",		6 },
-	{ "^G",		7 },
-	{ "^H",		8 },
-	{ "^I",		9 },
-	{ "^J",		10 },
-	{ "^K",		11 },
-	{ "^L",		12 },
-	{ "^M",		13 },
-	{ "^N",		14 },
-	{ "^O",		15 },
-	{ "^P",		16 },
-	{ "^Q",		17 },
-	{ "^R",		18 },
-	{ "^S",		19 },
-	{ "^T",		20 },
-	{ "^U",		21 },
-	{ "^V",		22 },
-	{ "^W",		23 },
-	{ "^X",		24 },
-	{ "^Y",		25 },
-	{ "^Z",		26 },
-	{ "^[",		27 },
-	{ "^\\",	28 },
-	{ "^]",		29 },
-	{ "^^",		30 },
-	{ "^_",		31 }
+	{ "UP",		KEYC_UP }
 };
 #define NKEYSTRINGS (sizeof key_string_table / sizeof key_string_table[0])
 
@@ -213,11 +181,38 @@ int
 key_string_lookup_string(const char *string)
 {
 	u_int	i;
+	int	key;
 
 	if (string[0] == '\0')
 		return (KEYC_NONE);
 	if (string[1] == '\0')
 		return (string[0]);
+
+	if (string[0] == 'C' && string[1] == '-') {
+		if (string[2] == '\0' || string[3] != '\0')
+			return (KEYC_NONE);
+		if (string[2] >= 64 && string[2] <= 95)
+			return (string[2] - 64);
+		if (string[2] >= 97 && string[2] <= 122)
+			return (string[2] - 96);
+		return (KEYC_NONE);
+	}
+
+	if (string[0] == '^') {
+		if (string[1] == '\0' || string[2] != '\0')
+			return (KEYC_NONE);
+		if (string[1] >= 64 && string[1] <= 95)
+			return (string[1] - 64);
+		if (string[1] >= 97 && string[1] <= 122)
+			return (string[1] - 96);
+		return (KEYC_NONE);
+	}
+
+	if (string[0] == 'M' && string[1] == '-') {
+		if ((key = key_string_lookup_string(string + 2)) == KEYC_NONE)
+			return (KEYC_NONE);
+		return (KEYC_ADDESCAPE(key));
+	}
 
 	for (i = 0; i < NKEYSTRINGS; i++) {
 		if (strcasecmp(string, key_string_table[i].string) == 0)
@@ -229,12 +224,31 @@ key_string_lookup_string(const char *string)
 const char *
 key_string_lookup_key(int key)
 {
-	static char tmp[2];
+	static char tmp[24], tmp2[24];
+	const char *s;
 	u_int	    i;
 
-	if (key > 31 && key < 256) {
+	if (key == 127)
+		return (NULL);
+
+	if (KEYC_ISESCAPE(key)) {
+		if ((s = key_string_lookup_key(KEYC_REMOVEESCAPE(key))) == NULL)
+			return (NULL);
+		xsnprintf(tmp2, sizeof tmp2, "M-%s", s);
+		return (tmp2);
+	}
+
+	if (key >= 32 && key <= 255) {
 		tmp[0] = key;
 		tmp[1] = '\0';
+		return (tmp);
+	}
+
+	if (key >= 0 && key <= 32) {
+		if (key == 0 || key > 26)
+			xsnprintf(tmp, sizeof tmp, "C-%c", 64 + key);
+		else
+			xsnprintf(tmp, sizeof tmp, "C-%c", 96 + key);
 		return (tmp);
 	}
 

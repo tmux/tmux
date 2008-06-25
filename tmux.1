@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.42 2008-06-19 22:14:12 nicm Exp $
+.\" $Id: tmux.1,v 1.43 2008-06-25 20:33:20 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -112,30 +112,30 @@ $
 .Ed
 .Pp
 Within an active session, a new window may be created by typing
-.Ql ^B
-(ctrl-B, known as the prefix key)
+.Ql C-b
+(ctrl-b, known as the prefix key)
 followed by the
 .Ql c
 key.
 .Pp
 Windows may be navigated with:
-.Ql ^B 0
+.Ql C-b 0
 (to select window 0),
-.Ql ^B 1
+.Ql C-b 1
 (to select window 1), and so on;
-.Ql ^B n
+.Ql C-b n
 to select the next window; and
-.Ql ^B p
+.Ql C-b p
 to select the previous window.
 .Pp
 A session may be detached using
-.Ql ^B d
+.Ql C-b d
 and reattached with:
 .Pp
 .Dl $ tmux attach-session
 .Pp
 Typing
-.Ql ^B \&?
+.Ql C-b \&?
 lists the current key bindings in the current window; up and down may be used
 to navigate the list or
 .Ql Q
@@ -144,8 +144,8 @@ to exit from it.
 .Nm
 may be controlled from an attached client by using a key combination of a
 prefix key,
-.Ql ^B
-(ctrl-B) by default, followed by a command key.
+.Ql C-b
+(ctrl-b) by default, followed by a command key.
 .Pp
 Some of the default key bindings include:
 .Pp
@@ -227,9 +227,9 @@ This permits a section of a window or its history to be copied to the
 for later insertion into another window.
 The navigation keys move the cursor around the window, scrolling as necessary.
 In addition,
-.Ql ^A
+.Ql C-a
 and
-.Ql ^E
+.Ql C-e
 (or the
 .Xr vi 1
 style
@@ -238,7 +238,7 @@ and
 .Ql $
 keys) move to the start and end of the line; the space key begins a selection;
 and the enter key or
-.Ql ^W
+.Ql C-w
 copies the selection to the paste buffer and exits copy mode.
 .Pp
 This mode is entered with the
@@ -333,6 +333,13 @@ Bind key
 .Ar key
 to
 .Ar command .
+Keys may be specified prefixed with
+.Ql C-
+or
+.Ql ^
+for ctrl keys, or
+.Ql M-
+for alt (meta) keys.
 .It Xo Ic command-prompt
 .Op Fl t Ar target-client
 .Xc
@@ -525,7 +532,7 @@ Send a key or keys to a window.
 Each argument
 .Ar key
 is the name of the key (such as
-.Ql ^A
+.Ql C-a
 or
 .Ql npage
 ) to send; if the string is not recognised as a key, it is sent as a series of
