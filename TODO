@@ -48,6 +48,18 @@
 - get rid of DEFDATA etc
 
 -- For 0.4 --------------------------------------------------------------------
+
+- document list-commands. document switch-client
+- document buffer stuff
+- document next/prev word
+- commands:
+		save-buffer -b number filename
+		load-buffer -b number filename
+  	      	copy-buffer -s src-session -t dst-session -a src-index -b dst-index
+	       		    (from other session)
+
+-- For 0.5 --------------------------------------------------------------------
+
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably
   should not emulate it doing so
 - activity/bell should be per-window not per-link? what if it is cur win in
@@ -55,17 +67,7 @@
 - tidy up window modes
 - support \033_string\033\\ for window title too
 - list-keys should be sorted
-- copy-mode enhancements: next word etc etc
 - problems with force-width when wrapping line in emacs?
 - command history for command-prompt. better tab completion (use options too)
 - window options should be done similarly to standard options
 - next prev word etc in command prompt
----
-- document list-commands. document switch-client
-- document buffer stuff
-- document next/prev word
----
-save-buffer -b number filename
-load-buffer -b number filename
-copy-buffer -s src-session -t dst-session -a src-index -b dst-index
-	       (from other session)

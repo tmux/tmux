@@ -71,9 +71,7 @@
   Note that elinks requires the STY environment variable (used by screen) to be
   set before it will set the window title. So, if you want window titles set by 
   elinks, set STY before running it (any value will do). I can't do this for all
-  windows since setting it to an invalid value breaks screen. Why they couldn't
-  just look for TERM=screen (or send it regardless if the user turned it on) is
-  beyond me.
+  windows since setting it to an invalid value breaks screen.
 * Show arrows at either end of status line when scrolled if more windows
   exist. Highlight the arrow if a hidden window has activity or bell.
 * Scroll the status line to show the current window if necessary. Also handle
@@ -568,4 +566,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.140 2008-06-25 07:30:08 nicm Exp $
+$Id: CHANGES,v 1.141 2008-06-25 19:12:30 nicm Exp $

@@ -54,8 +54,11 @@ tmux does not: use xterm-color or rxvt for colour.
 
 There are the following known issues:
 
-- cons25 on the FreeBSD console lies about its support for scroll regions,
-  reports are that using TERM=screen pretty much works okay.
+- cons25 on the FreeBSD console doesn't support scroll region (cs) (or lies about
+  support, I'm not totally clear which). This is a pity but emulating cs is non-
+  trivial and as most modern vt220-based software terminals support it currently
+  I have better things to work one. Diffs or ideas how to cleanly emulate cs
+  are welcome.
 - Darwin/OS X's poll(2) is broken and doesn't support polling pty(4)s; as tmux
   makes heavy use of this and there are no suitable alternatives on the
   platform, Darwin and OS X are unfortunately not supported for the present.
@@ -70,4 +73,4 @@ welcome. Please email:
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.34 2008-06-21 14:11:39 nicm Exp $
+$Id: NOTES,v 1.35 2008-06-25 19:12:30 nicm Exp $
