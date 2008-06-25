@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.35 2008-06-21 10:19:36 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.36 2008-06-25 19:18:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -76,22 +76,10 @@ key_bindings_init(void)
 		int			 key;
 		const struct cmd_entry	*entry;
 	} table[] = {
-		{ 'D', &cmd_detach_client_entry },
-		{ 'd', &cmd_detach_client_entry },
-		{ 'S', &cmd_list_sessions_entry },
-		{ 's', &cmd_list_sessions_entry },
-		{ 'W', &cmd_list_windows_entry },
-		{ 'w', &cmd_list_windows_entry },
-		{ '?', &cmd_list_keys_entry },
+		{ '#', &cmd_list_buffers_entry },
+		{ '&', &cmd_kill_window_entry },
+		{ '-', &cmd_delete_buffer_entry },
 		{ '/', &cmd_list_keys_entry },
-		{ 'C', &cmd_new_window_entry },
-		{ 'c', &cmd_new_window_entry },
-		{ 'N', &cmd_next_window_entry },
-		{ 'n', &cmd_next_window_entry },
-		{ 'P', &cmd_previous_window_entry },
-		{ 'p', &cmd_previous_window_entry },
-		{ 'L', &cmd_last_window_entry },
-		{ 'l', &cmd_last_window_entry },
 		{ '0', &cmd_select_window_entry },
 		{ '1', &cmd_select_window_entry },
 		{ '2', &cmd_select_window_entry },
@@ -102,15 +90,19 @@ key_bindings_init(void)
 		{ '7', &cmd_select_window_entry },
 		{ '8', &cmd_select_window_entry },
 		{ '9', &cmd_select_window_entry },
-		{ 'R', &cmd_refresh_client_entry },
-		{ 'r', &cmd_refresh_client_entry },
-		{ '&', &cmd_kill_window_entry },
+		{ ':', &cmd_command_prompt_entry },
 		{ '=', &cmd_scroll_mode_entry },
+		{ '?', &cmd_list_keys_entry },
 		{ '[', &cmd_copy_mode_entry },
 		{ ']', &cmd_paste_buffer_entry },
-		{ '#', &cmd_list_buffers_entry },
-		{ '-', &cmd_delete_buffer_entry },
-		{ ':', &cmd_command_prompt_entry },
+		{ 'c', &cmd_new_window_entry },
+		{ 'd', &cmd_detach_client_entry },
+		{ 'l', &cmd_last_window_entry },
+		{ 'n', &cmd_next_window_entry },
+		{ 'p', &cmd_previous_window_entry },
+		{ 'r', &cmd_refresh_client_entry },
+		{ 's', &cmd_list_sessions_entry },
+		{ 'w', &cmd_list_windows_entry },
 		{ META, &cmd_send_prefix_entry },
 	};
 	u_int		 i;
