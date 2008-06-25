@@ -1,4 +1,4 @@
-/* $Id: cmd-select-prompt.c,v 1.1 2008-06-25 20:43:13 nicm Exp $ */
+/* $Id: cmd-select-prompt.c,v 1.2 2008-06-25 20:44:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,7 +55,7 @@ cmd_select_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (c->prompt_string != NULL)
 		return;
 
-	server_set_client_prompt(c, "'", cmd_select_prompt_callback, c);
+	server_set_client_prompt(c, "index ", cmd_select_prompt_callback, c);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
