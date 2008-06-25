@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.169 2008-06-25 20:33:20 nicm Exp $ */
+/* $Id: tmux.h,v 1.170 2008-06-25 20:43:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -971,6 +971,7 @@ extern const struct cmd_entry cmd_scroll_mode_entry;
 extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_keys_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
+extern const struct cmd_entry cmd_select_prompt_entry;
 extern const struct cmd_entry cmd_set_buffer_entry;
 extern const struct cmd_entry cmd_set_option_entry;
 extern const struct cmd_entry cmd_set_window_option_entry;

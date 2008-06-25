@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.4 2008-06-25 20:43:13 nicm Exp $ */
+/* $Id: cmd-select-prompt.c,v 1.1 2008-06-25 20:43:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,25 +18,25 @@
 
 #include <sys/types.h>
 
-#include <ctype.h>
+#include <stdlib.h>
 
 #include "tmux.h"
 
 /*
- * Prompt for command in client.
+ * Prompt for window index and select it.
  */
 
-void	cmd_command_prompt_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_select_prompt_exec(struct cmd *, struct cmd_ctx *);
 
-void	cmd_command_prompt_callback(void *, char *);
+void	cmd_select_prompt_callback(void *, char *);
 
-const struct cmd_entry cmd_command_prompt_entry = {
-	"command-prompt", NULL,
+const struct cmd_entry cmd_select_prompt_entry = {
+	"select-prompt", NULL,
 	CMD_TARGET_CLIENT_USAGE,
 	0,
 	cmd_target_init,
 	cmd_target_parse,
-	cmd_command_prompt_exec,
+	cmd_select_prompt_exec,
 	cmd_target_send,
 	cmd_target_recv,
 	cmd_target_free,
@@ -44,7 +44,7 @@ const struct cmd_entry cmd_command_prompt_entry = {
 };
 
 void
-cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_select_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
 	struct client		*c;
@@ -55,41 +55,36 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (c->prompt_string != NULL)
 		return;
 
-	server_set_client_prompt(c, ":", cmd_command_prompt_callback, c);
+	server_set_client_prompt(c, "'", cmd_select_prompt_callback, c);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }
 
 void
-cmd_command_prompt_callback(void *data, char *s)
+cmd_select_prompt_callback(void *data, char *s)
 {
 	struct client	*c = data;
-	struct cmd	*cmd;
-	struct cmd_ctx	 ctx;
-	char		*cause;
+	struct winlink	*wl;
+	const char	*errstr;
+	char		 msg[128];
+	u_int		 idx;
 
-	if (s == NULL)
-		return;
-
-	if ((cmd = cmd_string_parse(s, &cause)) == NULL) {
-		if (cause == NULL)
-			return;
-		*cause = toupper((u_char) *cause);
-		server_set_client_message(c, cause);
-		xfree(cause);
+	idx = strtonum(s, 0, UINT_MAX, &errstr);
+	if (errstr != NULL) {
+		xsnprintf(msg, sizeof msg, "Index %s: %s", errstr, s);
+		server_set_client_message(c, msg);
 		return;
 	}
-	
-	ctx.msgdata = NULL;
-	ctx.cursession = c->session;
-	ctx.curclient = c;
 
-	ctx.error = key_bindings_error;
-	ctx.print = key_bindings_print;
-	ctx.info = key_bindings_info;
+	if ((wl = winlink_find_by_index(&c->session->windows, idx)) == NULL) {
+		xsnprintf(msg, sizeof msg,
+		    "Window not found: %s:%d", c->session->name, idx);
+		server_set_client_message(c, msg);
+		return;
+	}
 
-	ctx.cmdclient = NULL;
-
-	cmd_exec(cmd, &ctx);
+	if (session_select(c->session, idx) == 0)
+		server_redraw_session(c->session);
+	recalculate_sizes();
 }

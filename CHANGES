@@ -1,6 +1,9 @@
 25 June 2008
 
-* move-window command.
+* select-prompt command to allow a window to be selected at a prompt. Only
+  windows in the current session may be selected. Bound to ' by default.
+  Suggested by merdely.
+* move-window command. Requested by merdely.
 * Support binding alt keys (prefixed with M-). Change default to use
   C- for ctrl keys (^ is still accepted as an alternative).
 * Slim down default key bindings: support lowercase only.
@@ -570,4 +573,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.143 2008-06-25 20:33:20 nicm Exp $
+$Id: CHANGES,v 1.144 2008-06-25 20:43:13 nicm Exp $
