@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.4 2008-06-23 16:58:49 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.5 2008-06-25 07:30:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <string.h>
+#include <time.h>
 
 #include "tmux.h"
 
@@ -181,6 +182,8 @@ struct {
 
 RB_GENERATE(tty_keys, tty_key, entry, tty_keys_cmp);
 
+struct tty_key *tty_keys_find(struct tty *, char *, size_t, size_t *);
+
 int
 tty_keys_cmp(struct tty_key *k1, struct tty_key *k2)
 {
@@ -212,7 +215,8 @@ tty_keys_init(struct tty *tty)
 			tty->ksize = strlen(tk->string);
 		RB_INSERT(tty_keys, &tty->ktree, tk);
 
-		log_debug("found key %d: size now %zu", tk->code, tty->ksize);
+		log_debug("found key %x: size now %zu (%s)",
+		    tk->code, tty->ksize, tk->string);
 	}
 }
 
@@ -229,51 +233,107 @@ tty_keys_free(struct tty *tty)
 	}
 }
 
+struct tty_key *
+tty_keys_find(struct tty *tty, char *buf, size_t len, size_t *size)
+{
+	struct tty_key	*tk, tl;
+	char		*s;
+
+	if (len == 0)
+		return (NULL);
+
+	s = xmalloc(tty->ksize + 1);
+	for (*size = tty->ksize; (*size) > 0; (*size)--) {
+		if ((*size) > len)
+			continue;
+		memcpy(s, buf, *size);
+		s[*size] = '\0';
+
+		log_debug2("looking for key: %s", s);
+
+		tl.string = s;
+		tk = RB_FIND(tty_keys, &tty->ktree, &tl);
+		if (tk != NULL)
+			return (tk);
+	}
+	xfree(s);
+
+	return (NULL);
+}
+
 int
 tty_keys_next(struct tty *tty, int *code)
 {
-	struct tty_key	*tk, tl;
+	struct tty_key	*tk;
 	size_t		 size;
-	char		*s;
+	struct timespec	 ts;
 
-	if (BUFFER_USED(tty->in) == 0)
+	size = BUFFER_USED(tty->in);
+	if (size == 0)
 		return (1);
-	log_debug("keys have %zu bytes", BUFFER_USED(tty->in));
+	log_debug("keys are %zu (%.*s)", size, (int) size, BUFFER_OUT(tty->in));
 
+	/* If a normal key, return it. */
 	if (*BUFFER_OUT(tty->in) != '\033') {
 		*code = buffer_read8(tty->in);
 		return (0);
 	}
 
-	tk = NULL;
-	s = xmalloc(tty->ksize + 1);
-	for (size = tty->ksize; size > 0; size--) {
-		if (size >= BUFFER_USED(tty->in))
-			continue;
-		memcpy(s, BUFFER_OUT(tty->in) + 1, size);
-		s[size] = '\0';
+	/* Look for matching key string and return if found. */
+	tk = tty_keys_find(tty, BUFFER_OUT(tty->in) + 1, size - 1, &size);
+	if (tk != NULL) {
+		*code = tk->code;
+		buffer_remove(tty->in, size + 1);
 
-		tl.string = s;
-		tk = RB_FIND(tty_keys, &tty->ktree, &tl);
-		if (tk != NULL)
-			break;
-	}
-	xfree(s);
-	if (tk == NULL) {
-		size = tty->ksize;
-		if (size > BUFFER_USED(tty->in))
-			size = BUFFER_USED(tty->in);
-		log_debug(
-		    "unmatched key: %.*s", (int) size, BUFFER_OUT(tty->in));
-		/*
-		 * XXX Pass through unchanged.
-		 */
-		*code = '\033';
-		buffer_remove(tty->in, 1);
+		tty->flags &= ~TTY_ESCAPE;
 		return (0);
 	}
-	buffer_remove(tty->in, size + 1);
 
-	*code = tk->code;
+	/* Escape but no key string. If the timer isn't started, start it. */ 
+	if (!(tty->flags & TTY_ESCAPE)) {
+		ts.tv_sec = 0;
+		ts.tv_nsec = 500 * 1000000L;
+		if (clock_gettime(CLOCK_REALTIME, &tty->key_timer) != 0)
+			fatal("clock_gettime");
+		timespecadd(&tty->key_timer, &ts, &tty->key_timer);
+
+		tty->flags |= TTY_ESCAPE;
+		return (1);
+	}
+
+	/* Otherwise, if the timer hasn't expired, wait. */
+	if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
+		fatal("clock_gettime");
+	if (!timespeccmp(&tty->key_timer, &ts, >))
+		return (1);
+	tty->flags &= ~TTY_ESCAPE;
+
+	/* Remove the leading escape. */
+	buffer_remove(tty->in, 1);
+	size = BUFFER_USED(tty->in);
+
+	/* If we have no following data, return escape. */
+	if (size == 0) {
+		*code = '\033';
+		return (0);
+	}
+
+	/* If a normal key follows, return it. */
+	if (*BUFFER_OUT(tty->in) != '\033') {
+		*code = KEYC_ADDESCAPE(buffer_read8(tty->in));
+		return (0);
+	}
+
+	/* Try to look up the key. */
+	tk = tty_keys_find(tty, BUFFER_OUT(tty->in) + 1, size - 1, &size);
+	if (tk != NULL) {
+		*code = KEYC_ADDESCAPE(tk->code);
+ 		buffer_remove(tty->in, size + 1);
+		return (0);
+	}
+
+	/* If not found, return escape-escape. */
+	*code = KEYC_ADDESCAPE('\033');
+	buffer_remove(tty->in, 1);
 	return (0);
 }

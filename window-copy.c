@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.23 2008-06-24 07:00:39 nicm Exp $ */
+/* $Id: window-copy.c,v 1.24 2008-06-25 07:30:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -201,11 +201,13 @@ window_copy_key(struct window *w, struct client *c, int key)
 		window_copy_cursor_end_of_line(w);
 		break;
 	case 'w':
-	case '\016':	/* C-n */
+	case KEYC_ADDESCAPE('F'):	/* M-F */
+	case KEYC_ADDESCAPE('f'):	/* M-f */
 		window_copy_cursor_next_word(w);
 		break;
 	case 'b':
-	case '\002':	/* C-b */
+	case KEYC_ADDESCAPE('B'):	/* M-B */
+	case KEYC_ADDESCAPE('b'):	/* M-b */
 		window_copy_cursor_previous_word(w);
 		break;
 	}

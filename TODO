@@ -59,9 +59,11 @@
 - problems with force-width when wrapping line in emacs?
 - command history for command-prompt. better tab completion (use options too)
 - window options should be done similarly to standard options
+- next prev word etc in command prompt
 ---
 - document list-commands. document switch-client
 - document buffer stuff
+- document next/prev word
 ---
 save-buffer -b number filename
 load-buffer -b number filename

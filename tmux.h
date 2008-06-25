@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.167 2008-06-23 22:24:16 nicm Exp $ */
+/* $Id: tmux.h,v 1.168 2008-06-25 07:30:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -145,157 +145,164 @@ struct buffer {
 #define BELL_CURRENT 2
 
 /* Key codes. ncurses defines KEY_*. Grrr. */
-#define KEYC_NONE 256
-#define KEYC_A1 -1
-#define KEYC_A3 -2
-#define KEYC_B2 -3
-/* #define KEYC_BACKSPACE -4 */
-#define KEYC_BEG -5
-#define KEYC_BTAB -6
-#define KEYC_C1 -7
-#define KEYC_C3 -8
-#define KEYC_CANCEL -9
-#define KEYC_CATAB -10
-#define KEYC_CLEAR -11
-#define KEYC_CLOSE -12
-#define KEYC_COMMAND -13
-#define KEYC_COPY -14
-#define KEYC_CREATE -15
-#define KEYC_CTAB -16
-#define KEYC_DC -17
-#define KEYC_DL -18
-#define KEYC_DOWN -19
-#define KEYC_EIC -20
-#define KEYC_END -21
-#define KEYC_ENTER -22
-#define KEYC_EOL -23
-#define KEYC_EOS -24
-#define KEYC_EXIT -25
-#define KEYC_F0 -26
-#define KEYC_F1 -27
-#define KEYC_F10 -28
-#define KEYC_F11 -29
-#define KEYC_F12 -30
-#define KEYC_F13 -31
-#define KEYC_F14 -32
-#define KEYC_F15 -33
-#define KEYC_F16 -34
-#define KEYC_F17 -35
-#define KEYC_F18 -36
-#define KEYC_F19 -37
-#define KEYC_F2 -38
-#define KEYC_F20 -39
-#define KEYC_F21 -40
-#define KEYC_F22 -41
-#define KEYC_F23 -42
-#define KEYC_F24 -43
-#define KEYC_F25 -44
-#define KEYC_F26 -45
-#define KEYC_F27 -46
-#define KEYC_F28 -47
-#define KEYC_F29 -48
-#define KEYC_F3 -49
-#define KEYC_F30 -50
-#define KEYC_F31 -51
-#define KEYC_F32 -52
-#define KEYC_F33 -53
-#define KEYC_F34 -54
-#define KEYC_F35 -55
-#define KEYC_F36 -56
-#define KEYC_F37 -57
-#define KEYC_F38 -58
-#define KEYC_F39 -59
-#define KEYC_F4 -60
-#define KEYC_F40 -61
-#define KEYC_F41 -62
-#define KEYC_F42 -63
-#define KEYC_F43 -64
-#define KEYC_F44 -65
-#define KEYC_F45 -66
-#define KEYC_F46 -67
-#define KEYC_F47 -68
-#define KEYC_F48 -69
-#define KEYC_F49 -70
-#define KEYC_F5 -71
-#define KEYC_F50 -72
-#define KEYC_F51 -73
-#define KEYC_F52 -74
-#define KEYC_F53 -75
-#define KEYC_F54 -76
-#define KEYC_F55 -77
-#define KEYC_F56 -78
-#define KEYC_F57 -79
-#define KEYC_F58 -80
-#define KEYC_F59 -81
-#define KEYC_F6 -82
-#define KEYC_F60 -83
-#define KEYC_F61 -84
-#define KEYC_F62 -85
-#define KEYC_F63 -86
-#define KEYC_F7 -87
-#define KEYC_F8 -88
-#define KEYC_F9 -89
-#define KEYC_FIND -90
-#define KEYC_HELP -91
-#define KEYC_HOME -92
-#define KEYC_IC -93
-#define KEYC_IL -94
-#define KEYC_LEFT -95
-#define KEYC_LL -96
-#define KEYC_MARK -97
-#define KEYC_MESSAGE -98
-#define KEYC_MOVE -99
-#define KEYC_NEXT -100
-#define KEYC_NPAGE -101
-#define KEYC_OPEN -102
-#define KEYC_OPTIONS -103
-#define KEYC_PPAGE -104
-#define KEYC_PREVIOUS -105
-#define KEYC_PRINT -106
-#define KEYC_REDO -107
-#define KEYC_REFERENCE -108
-#define KEYC_REFRESH -109
-#define KEYC_REPLACE -110
-#define KEYC_RESTART -111
-#define KEYC_RESUME -112
-#define KEYC_RIGHT -113
-#define KEYC_SAVE -114
-#define KEYC_SBEG -115
-#define KEYC_SCANCEL -116
-#define KEYC_SCOMMAND -117
-#define KEYC_SCOPY -118
-#define KEYC_SCREATE -119
-#define KEYC_SDC -120
-#define KEYC_SDL -121
-#define KEYC_SELECT -122
-#define KEYC_SEND -123
-#define KEYC_SEOL -124
-#define KEYC_SEXIT -125
-#define KEYC_SF -126
-#define KEYC_SFIND -127
-#define KEYC_SHELP -128
-#define KEYC_SHOME -129
-#define KEYC_SIC -130
-#define KEYC_SLEFT -131
-#define KEYC_SMESSAGE -132
-#define KEYC_SMOVE -133
-#define KEYC_SNEXT -134
-#define KEYC_SOPTIONS -135
-#define KEYC_SPREVIOUS -136
-#define KEYC_SPRINT -137
-#define KEYC_SR -138
-#define KEYC_SREDO -139
-#define KEYC_SREPLACE -140
-#define KEYC_SRIGHT -141
-#define KEYC_SRSUME -142
-#define KEYC_SSAVE -143
-#define KEYC_SSUSPEND -144
-#define KEYC_STAB -145
-#define KEYC_SUNDO -146
-#define KEYC_SUSPEND -147
-#define KEYC_UNDO -148
-#define KEYC_UP -149
-#define KEYC_MOUSE -150
+#define KEYC_NONE   0x0ffff
+#define KEYC_OFFSET 0x10000
+#define KEYC_ESCAPE 0x20000
+
+#define KEYC_ADDESCAPE(k) ((k) | KEYC_ESCAPE)
+#define KEYC_REMOVEESCAPE(k) ((k) & ~KEYC_ESCAPE)
+#define KEYC_ISESCAPE(k) ((k) != KEYC_NONE && ((k) & KEYC_ESCAPE))
+
+#define KEYC_A1 (KEYC_OFFSET + 0x1)
+#define KEYC_A3 (KEYC_OFFSET + 0x2)
+#define KEYC_B2 (KEYC_OFFSET + 0x3)
+/* #define KEYC_BACKSPACE (KEYC_OFFSET + 0x4) */
+#define KEYC_BEG (KEYC_OFFSET + 0x5)
+#define KEYC_BTAB (KEYC_OFFSET + 0x6)
+#define KEYC_C1 (KEYC_OFFSET + 0x7)
+#define KEYC_C3 (KEYC_OFFSET + 0x8)
+#define KEYC_CANCEL (KEYC_OFFSET + 0x9)
+#define KEYC_CATAB (KEYC_OFFSET + 0xa)
+#define KEYC_CLEAR (KEYC_OFFSET + 0xb)
+#define KEYC_CLOSE (KEYC_OFFSET + 0xc)
+#define KEYC_COMMAND (KEYC_OFFSET + 0xd)
+#define KEYC_COPY (KEYC_OFFSET + 0xe)
+#define KEYC_CREATE (KEYC_OFFSET + 0xf)
+#define KEYC_CTAB (KEYC_OFFSET + 0x10)
+#define KEYC_DC (KEYC_OFFSET + 0x11)
+#define KEYC_DL (KEYC_OFFSET + 0x12)
+#define KEYC_DOWN (KEYC_OFFSET + 0x13)
+#define KEYC_EIC (KEYC_OFFSET + 0x14)
+#define KEYC_END (KEYC_OFFSET + 0x15)
+#define KEYC_ENTER (KEYC_OFFSET + 0x16)
+#define KEYC_EOL (KEYC_OFFSET + 0x17)
+#define KEYC_EOS (KEYC_OFFSET + 0x18)
+#define KEYC_EXIT (KEYC_OFFSET + 0x19)
+#define KEYC_F0 (KEYC_OFFSET + 0x1a)
+#define KEYC_F1 (KEYC_OFFSET + 0x1b)
+#define KEYC_F10 (KEYC_OFFSET + 0x1c)
+#define KEYC_F11 (KEYC_OFFSET + 0x1d)
+#define KEYC_F12 (KEYC_OFFSET + 0x1e)
+#define KEYC_F13 (KEYC_OFFSET + 0x1f)
+#define KEYC_F14 (KEYC_OFFSET + 0x20)
+#define KEYC_F15 (KEYC_OFFSET + 0x21)
+#define KEYC_F16 (KEYC_OFFSET + 0x22)
+#define KEYC_F17 (KEYC_OFFSET + 0x23)
+#define KEYC_F18 (KEYC_OFFSET + 0x24)
+#define KEYC_F19 (KEYC_OFFSET + 0x25)
+#define KEYC_F2 (KEYC_OFFSET + 0x26)
+#define KEYC_F20 (KEYC_OFFSET + 0x27)
+#define KEYC_F21 (KEYC_OFFSET + 0x28)
+#define KEYC_F22 (KEYC_OFFSET + 0x29)
+#define KEYC_F23 (KEYC_OFFSET + 0x2a)
+#define KEYC_F24 (KEYC_OFFSET + 0x2b)
+#define KEYC_F25 (KEYC_OFFSET + 0x2c)
+#define KEYC_F26 (KEYC_OFFSET + 0x2d)
+#define KEYC_F27 (KEYC_OFFSET + 0x2e)
+#define KEYC_F28 (KEYC_OFFSET + 0x2f)
+#define KEYC_F29 (KEYC_OFFSET + 0x30)
+#define KEYC_F3 (KEYC_OFFSET + 0x31)
+#define KEYC_F30 (KEYC_OFFSET + 0x32)
+#define KEYC_F31 (KEYC_OFFSET + 0x33)
+#define KEYC_F32 (KEYC_OFFSET + 0x34)
+#define KEYC_F33 (KEYC_OFFSET + 0x35)
+#define KEYC_F34 (KEYC_OFFSET + 0x36)
+#define KEYC_F35 (KEYC_OFFSET + 0x37)
+#define KEYC_F36 (KEYC_OFFSET + 0x38)
+#define KEYC_F37 (KEYC_OFFSET + 0x39)
+#define KEYC_F38 (KEYC_OFFSET + 0x3a)
+#define KEYC_F39 (KEYC_OFFSET + 0x3b)
+#define KEYC_F4 (KEYC_OFFSET + 0x3c)
+#define KEYC_F40 (KEYC_OFFSET + 0x3d)
+#define KEYC_F41 (KEYC_OFFSET + 0x3e)
+#define KEYC_F42 (KEYC_OFFSET + 0x3f)
+#define KEYC_F43 (KEYC_OFFSET + 0x40)
+#define KEYC_F44 (KEYC_OFFSET + 0x41)
+#define KEYC_F45 (KEYC_OFFSET + 0x42)
+#define KEYC_F46 (KEYC_OFFSET + 0x43)
+#define KEYC_F47 (KEYC_OFFSET + 0x44)
+#define KEYC_F48 (KEYC_OFFSET + 0x45)
+#define KEYC_F49 (KEYC_OFFSET + 0x46)
+#define KEYC_F5 (KEYC_OFFSET + 0x47)
+#define KEYC_F50 (KEYC_OFFSET + 0x48)
+#define KEYC_F51 (KEYC_OFFSET + 0x49)
+#define KEYC_F52 (KEYC_OFFSET + 0x4a)
+#define KEYC_F53 (KEYC_OFFSET + 0x4b)
+#define KEYC_F54 (KEYC_OFFSET + 0x4c)
+#define KEYC_F55 (KEYC_OFFSET + 0x4d)
+#define KEYC_F56 (KEYC_OFFSET + 0x4e)
+#define KEYC_F57 (KEYC_OFFSET + 0x4f)
+#define KEYC_F58 (KEYC_OFFSET + 0x50)
+#define KEYC_F59 (KEYC_OFFSET + 0x51)
+#define KEYC_F6 (KEYC_OFFSET + 0x52)
+#define KEYC_F60 (KEYC_OFFSET + 0x53)
+#define KEYC_F61 (KEYC_OFFSET + 0x54)
+#define KEYC_F62 (KEYC_OFFSET + 0x55)
+#define KEYC_F63 (KEYC_OFFSET + 0x56)
+#define KEYC_F7 (KEYC_OFFSET + 0x57)
+#define KEYC_F8 (KEYC_OFFSET + 0x58)
+#define KEYC_F9 (KEYC_OFFSET + 0x59)
+#define KEYC_FIND (KEYC_OFFSET + 0x5a)
+#define KEYC_HELP (KEYC_OFFSET + 0x5b)
+#define KEYC_HOME (KEYC_OFFSET + 0x5c)
+#define KEYC_IC (KEYC_OFFSET + 0x5d)
+#define KEYC_IL (KEYC_OFFSET + 0x5e)
+#define KEYC_LEFT (KEYC_OFFSET + 0x5f)
+#define KEYC_LL (KEYC_OFFSET + 0x60)
+#define KEYC_MARK (KEYC_OFFSET + 0x61)
+#define KEYC_MESSAGE (KEYC_OFFSET + 0x62)
+#define KEYC_MOVE (KEYC_OFFSET + 0x63)
+#define KEYC_NEXT (KEYC_OFFSET + 0x64)
+#define KEYC_NPAGE (KEYC_OFFSET + 0x65)
+#define KEYC_OPEN (KEYC_OFFSET + 0x66)
+#define KEYC_OPTIONS (KEYC_OFFSET + 0x67)
+#define KEYC_PPAGE (KEYC_OFFSET + 0x68)
+#define KEYC_PREVIOUS (KEYC_OFFSET + 0x69)
+#define KEYC_PRINT (KEYC_OFFSET + 0x6a)
+#define KEYC_REDO (KEYC_OFFSET + 0x6b)
+#define KEYC_REFERENCE (KEYC_OFFSET + 0x6c)
+#define KEYC_REFRESH (KEYC_OFFSET + 0x6d)
+#define KEYC_REPLACE (KEYC_OFFSET + 0x6e)
+#define KEYC_RESTART (KEYC_OFFSET + 0x6f)
+#define KEYC_RESUME (KEYC_OFFSET + 0x70)
+#define KEYC_RIGHT (KEYC_OFFSET + 0x71)
+#define KEYC_SAVE (KEYC_OFFSET + 0x72)
+#define KEYC_SBEG (KEYC_OFFSET + 0x73)
+#define KEYC_SCANCEL (KEYC_OFFSET + 0x74)
+#define KEYC_SCOMMAND (KEYC_OFFSET + 0x75)
+#define KEYC_SCOPY (KEYC_OFFSET + 0x76)
+#define KEYC_SCREATE (KEYC_OFFSET + 0x77)
+#define KEYC_SDC (KEYC_OFFSET + 0x78)
+#define KEYC_SDL (KEYC_OFFSET + 0x79)
+#define KEYC_SELECT (KEYC_OFFSET + 0x7a)
+#define KEYC_SEND (KEYC_OFFSET + 0x7b)
+#define KEYC_SEOL (KEYC_OFFSET + 0x7c)
+#define KEYC_SEXIT (KEYC_OFFSET + 0x7d)
+#define KEYC_SF (KEYC_OFFSET + 0x7e)
+#define KEYC_SFIND (KEYC_OFFSET + 0x7f)
+#define KEYC_SHELP (KEYC_OFFSET + 0x80)
+#define KEYC_SHOME (KEYC_OFFSET + 0x81)
+#define KEYC_SIC (KEYC_OFFSET + 0x82)
+#define KEYC_SLEFT (KEYC_OFFSET + 0x83)
+#define KEYC_SMESSAGE (KEYC_OFFSET + 0x84)
+#define KEYC_SMOVE (KEYC_OFFSET + 0x85)
+#define KEYC_SNEXT (KEYC_OFFSET + 0x86)
+#define KEYC_SOPTIONS (KEYC_OFFSET + 0x87)
+#define KEYC_SPREVIOUS (KEYC_OFFSET + 0x88)
+#define KEYC_SPRINT (KEYC_OFFSET + 0x89)
+#define KEYC_SR (KEYC_OFFSET + 0x8a)
+#define KEYC_SREDO (KEYC_OFFSET + 0x8b)
+#define KEYC_SREPLACE (KEYC_OFFSET + 0x8c)
+#define KEYC_SRIGHT (KEYC_OFFSET + 0x8d)
+#define KEYC_SRSUME (KEYC_OFFSET + 0x8e)
+#define KEYC_SSAVE (KEYC_OFFSET + 0x8f)
+#define KEYC_SSUSPEND (KEYC_OFFSET + 0x90)
+#define KEYC_STAB (KEYC_OFFSET + 0x91)
+#define KEYC_SUNDO (KEYC_OFFSET + 0x92)
+#define KEYC_SUSPEND (KEYC_OFFSET + 0x93)
+#define KEYC_UNDO (KEYC_OFFSET + 0x94)
+#define KEYC_UP (KEYC_OFFSET + 0x95)
+#define KEYC_MOUSE (KEYC_OFFSET + 0x96)
 
 /* Output codes. */
 #define TTY_CHARACTER 0
@@ -675,7 +682,10 @@ struct tty {
 
 #define TTY_NOCURSOR 0x1
 #define TTY_FREEZE 0x2
+#define TTY_ESCAPE 0x4
 	int		 flags;
+
+	struct timespec	 key_timer;
 
 	size_t		 ksize;	/* maximum key size */
 	RB_HEAD(tty_keys, tty_key) ktree;
