@@ -52,6 +52,7 @@
 - document list-commands. document switch-client. document move-window
 - document buffer stuff
 - document next/prev word
+- fix prompt scrolling when line exceeds space **** 
 - commands:
 		save-buffer -b number filename
 		load-buffer -b number filename
@@ -71,3 +72,6 @@
 - command history for command-prompt. better tab completion (use options too)
 - window options should be done similarly to standard options
 - next prev word etc in command prompt
+- split keys in command prompt/scroll mode/copy mode into vi and emacs and
+  have a "edit-mode" option select which keymap
+
