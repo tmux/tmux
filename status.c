@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.41 2008-06-23 22:12:29 nicm Exp $ */
+/* $Id: status.c,v 1.42 2008-06-27 17:32:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -350,7 +350,7 @@ status_prompt_redraw(struct client *c)
 		if (c->prompt_index < left)
 			size = strlen(c->prompt_buffer);
 		else {
-			offset = c->prompt_index - left;
+			offset = c->prompt_index - left - 1;
 			if (c->prompt_index == strlen(c->prompt_buffer))
 				left--;
 			size = left;
