@@ -49,7 +49,6 @@
 
 -- For 0.4 --------------------------------------------------------------------
 
-- document list-commands. document switch-client. document move-window
 - document buffer stuff
 - document next/prev word
 - fix prompt scrolling when line exceeds space **** 

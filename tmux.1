@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.44 2008-06-26 19:02:18 nicm Exp $
+.\" $Id: tmux.1,v 1.45 2008-06-27 17:24:16 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -419,6 +419,11 @@ is given, the newly linked window is not selected.
 .Xc
 .D1 (alias: Ic lsc )
 List all clients attached to the server.
+.It Xo Ic list-commands
+.Xc
+.D1 (alias: Ic lscm )
+List the syntax of all commands supported by
+.Nm .
 .It Xo Ic list-keys
 .Xc
 .D1 (alias: Ic lsk )
@@ -433,6 +438,18 @@ List all sessions managed by the server.
 .D1 (alias: Ic lsw )
 List windows in the current session or in
 .Ar target-session .
+.It Xo Ic move-window
+.Op Fl d
+.Op Fl s Ar src-window
+.Op Fl t Ar dst-window
+.Xc
+.D1 (alias: Ic movew )
+This is similar to
+.Ic link-window ,
+except the window at
+.Ar src-window
+is moved to
+.Ar dst-window .
 .It Xo Ic new-session
 .Op Fl d
 .Op Fl n Ar window-name
@@ -522,6 +539,12 @@ if specifed, to
 .Op Fl t Ar target-window
 .Xc
 Enter scroll mode.
+.It Xo Ic select-prompt
+.Op Fl t Ar target-client
+.Xc
+Open a prompt inside
+.Ar target-client
+allowing a window index to be entered interactively.
 .It Xo Ic select-window
 .Op Fl t Ar target-window
 .Xc
@@ -702,6 +725,14 @@ This is similar to
 except the source and destination windows are swapped.
 It is an error if no window exists at
 .Ar src-window .
+.It Xo Ic switch-client
+.Op Fl c Ar target-client Fl t Ar target-session
+.Xc
+.D1 (alias: Ic switchc )
+Switch the current session for client
+.Ar target-client
+to
+.Ar target-session .
 .It Xo Ic unbind-key
 .Ar key
 .Xc
