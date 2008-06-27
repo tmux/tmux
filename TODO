@@ -53,8 +53,7 @@
 - document buffer stuff
 - document next/prev word
 - fix prompt scrolling when line exceeds space **** 
-- commands:
-		save-buffer -b number filename
+- commands:	save-buffer -b number filename
 		load-buffer -b number filename
   	      	copy-buffer -s src-session -t dst-session -a src-index -b dst-index
 	       		    (from other session)
@@ -74,4 +73,5 @@
 - next prev word etc in command prompt
 - split keys in command prompt/scroll mode/copy mode into vi and emacs and
   have a "edit-mode" option select which keymap
-
+- zombie windows: don't disappear when the command dies. new command
+  	 respawn-window [command] to restart; ommitting commands uses previous

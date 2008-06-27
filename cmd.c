@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.58 2008-06-25 20:43:14 nicm Exp $ */
+/* $Id: cmd.c,v 1.59 2008-06-27 17:10:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -338,13 +338,15 @@ cmd_find_client(struct cmd_ctx *ctx, const char *arg)
 {
 	struct client	*c;
 
-	if ((c = arg_parse_client(arg)) == NULL)
+	if (arg == NULL)
 		c = ctx->curclient;
-	if (c == NULL) {
-		if (arg != NULL)
-			ctx->error(ctx, "client not found: %s", arg);
-		else
-			ctx->error(ctx, "no client found");
+	else {
+		if ((c = arg_parse_client(arg)) == NULL) {
+			if (arg != NULL)
+				ctx->error(ctx, "client not found: %s", arg);
+			else
+				ctx->error(ctx, "no client found");
+		}
 	}
 	return (c);
 }
@@ -354,15 +356,15 @@ cmd_find_session(struct cmd_ctx *ctx, const char *arg)
 {
 	struct session	*s;
 
-	if ((s = arg_parse_session(arg)) == NULL)
-		s = ctx->cursession;
-	if (s == NULL)
+	if (arg == NULL)
 		s = cmd_current_session(ctx);
-	if (s == NULL) {
-		if (arg != NULL)
-			ctx->error(ctx, "session not found: %s", arg);
-		else
-			ctx->error(ctx, "no session found");
+	else {
+		if ((s = arg_parse_session(arg)) == NULL) {
+			if (arg != NULL)
+				ctx->error(ctx, "session not found: %s", arg);
+			else
+				ctx->error(ctx, "no session found");
+		}
 	}
 	return (s);
 }

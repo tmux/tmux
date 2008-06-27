@@ -1,3 +1,7 @@
+27 June 2008
+
+* Handle nonexistent session or client to -t properly.
+
 25 June 2008
 
 * select-prompt command to allow a window to be selected at a prompt. Only
@@ -573,4 +577,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.144 2008-06-25 20:43:13 nicm Exp $
+$Id: CHANGES,v 1.145 2008-06-27 17:10:01 nicm Exp $
