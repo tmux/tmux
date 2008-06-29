@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.45 2008-06-27 17:24:16 nicm Exp $
+.\" $Id: tmux.1,v 1.46 2008-06-29 07:22:00 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -240,8 +240,16 @@ style
 .Ql 0
 and
 .Ql $
-keys) move to the start and end of the line; the space key begins a selection;
-and the enter key or
+keys) move to the start and end of the line;
+.Ql M-f
+or
+.Ql w
+moves the cursor forward one word;
+.Ql M-b
+or
+.Ql b
+moves the cursor backward one word; the space key begins a selection; and the
+enter key or
 .Ql C-w
 copies the selection to the paste buffer and exits copy mode.
 .Pp
