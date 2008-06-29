@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.39 2008-06-20 08:36:20 nicm Exp $ */
+/* $Id: session.c,v 1.40 2008-06-29 07:04:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -203,6 +203,10 @@ session_new(struct session *s, const char *name, const char *cmd, int idx)
 	hlimit = options_get_number(&s->options, "history-limit");
 	if ((w = window_create(name, cmd, env, s->sx, s->sy, hlimit)) == NULL)
 		return (NULL);
+
+	if (options_get_number(&s->options, "remain-by-default"))
+		w->flags |= WINDOW_ZOMBIFY;
+	
 	return (session_attach(s, w, idx));
 }
 

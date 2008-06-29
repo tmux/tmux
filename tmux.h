@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.170 2008-06-25 20:43:14 nicm Exp $ */
+/* $Id: tmux.h,v 1.171 2008-06-29 07:04:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -549,6 +549,7 @@ struct window_mode {
 /* Window structure. */
 struct window {
 	char		*name;
+	char		*cmd;
 
 	int		 fd;
 	struct buffer	*in;
@@ -562,6 +563,7 @@ struct window {
 #define WINDOW_ACTIVITY 0x4
 #define WINDOW_MONITOR 0x8
 #define WINDOW_AGGRESSIVE 0x10
+#define WINDOW_ZOMBIFY 0x20
 
 	u_int		 limitx;
 	u_int		 limity;
@@ -764,6 +766,7 @@ struct cmd_entry {
 #define CMD_KFLAG 0x4
 #define CMD_DFLAG 0x8
 #define CMD_ONEARG 0x10
+#define CMD_ZEROONEARG 0x20
 	int		 flags;
 
 	void		 (*init)(struct cmd *, int);
@@ -821,7 +824,7 @@ struct set_option_entry {
 	const char     **choices;
 };
 extern const struct set_option_entry set_option_table[];
-#define NSETOPTION 13
+#define NSETOPTION 14
 
 #ifdef NO_STRTONUM
 /* strtonum.c */
@@ -967,6 +970,7 @@ extern const struct cmd_entry cmd_previous_window_entry;
 extern const struct cmd_entry cmd_refresh_client_entry;
 extern const struct cmd_entry cmd_rename_session_entry;
 extern const struct cmd_entry cmd_rename_window_entry;
+extern const struct cmd_entry cmd_respawn_window_entry;
 extern const struct cmd_entry cmd_scroll_mode_entry;
 extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_keys_entry;
@@ -1171,6 +1175,7 @@ void	screen_redraw_columns(struct screen_redraw_ctx *, u_int, u_int);
 const char *screen_colourstring(u_char);
 u_char	 screen_stringcolour(const char *);
 void	 screen_create(struct screen *, u_int, u_int, u_int);
+void	 screen_reset(struct screen *);
 void	 screen_destroy(struct screen *);
 void	 screen_resize(struct screen *, u_int, u_int);
 void	 screen_expand_line(struct screen *, u_int, u_int);
@@ -1201,7 +1206,8 @@ void		 winlink_remove(struct winlinks *, struct winlink *);
 struct winlink	*winlink_next(struct winlinks *, struct winlink *);
 struct winlink	*winlink_previous(struct winlinks *, struct winlink *);
 struct window	*window_create(const char *,
-		     const char *, const char **, u_int, u_int, u_int);
+    const char *, const char **, u_int, u_int, u_int);
+int		 window_spawn(struct window *, const char *, const char **);
 void		 window_destroy(struct window *);
 int		 window_resize(struct window *, u_int, u_int);
 int		 window_set_mode(struct window *, const struct window_mode *);

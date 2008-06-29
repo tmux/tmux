@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.62 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: screen.c,v 1.63 2008-06-29 07:04:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -154,6 +154,27 @@ screen_create(struct screen *s, u_int dx, u_int dy, u_int hlimit)
 	screen_make_lines(s, 0, dy);
 
 	screen_clear_selection(s);
+}
+
+/* Reinitialise screen. */
+void
+screen_reset(struct screen *s)
+{
+	s->cx = 0;
+	s->cy = 0;
+
+	s->rupper = 0;
+	s->rlower = s->dy - 1;
+
+	s->attr = SCREEN_DEFATTR;
+	s->colr = SCREEN_DEFCOLR;
+
+	s->mode = MODE_CURSOR|MODE_KCURSOR|MODE_KKEYPAD;
+
+	screen_display_fill_area(s, 0, 0, 
+	    screen_size_x(s), screen_size_y(s), ' ', 0, 0x88);
+	
+	screen_clear_selection(s);	
 }
 
 /* Resize screen. */

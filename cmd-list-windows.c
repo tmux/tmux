@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.20 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.21 2008-06-29 07:04:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,6 +50,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window		*w;
 	u_int			 i;
 	unsigned long long	 size;
+	const char		*name;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return;
@@ -65,9 +66,13 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 		size += w->base.hsize * (sizeof *w->base.grid_colr);
 		size += w->base.hsize * (sizeof *w->base.grid_size);
 
+		if (w->fd != -1)
+			name = ttyname(w->fd);
+		else
+			name = "";
 		ctx->print(ctx,
 		    "%d: %s \"%s\" (%s) [%ux%u] [history %u/%u, %llu bytes]",
-		    wl->idx, w->name, w->base.title, ttyname(w->fd),
+		    wl->idx, w->name, w->base.title, name,
 		    screen_size_x(&w->base), screen_size_y(&w->base),
 		    w->base.hsize, w->base.hlimit, size);
 	}

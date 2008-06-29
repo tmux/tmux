@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.76 2008-06-23 07:41:21 nicm Exp $ */
+/* $Id: server.c,v 1.77 2008-06-29 07:04:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -263,7 +263,7 @@ server_fill_windows(struct pollfd **pfd)
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		if ((w = ARRAY_ITEM(&windows, i)) == NULL)
+		if ((w = ARRAY_ITEM(&windows, i)) == NULL || w->fd == -1)
 			(*pfd)->fd = -1;
 		else {
 			(*pfd)->fd = w->fd;
@@ -284,7 +284,7 @@ server_handle_windows(struct pollfd **pfd)
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		if ((w = ARRAY_ITEM(&windows, i)) != NULL) {
+		if ((w = ARRAY_ITEM(&windows, i)) != NULL && w->fd != -1) {
 			log_debug("testing window %d (%d)", (*pfd)->fd, w->fd);
 			if (buffer_poll(*pfd, w->in, w->out) != 0)
 				server_lost_window(w);
@@ -628,6 +628,11 @@ server_lost_window(struct window *w)
 	int		 destroyed;
 
 	log_debug("lost window %d", w->fd);
+
+	if (w->flags & WINDOW_ZOMBIFY) {
+		w->fd = -1;
+		return;
+	}
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);

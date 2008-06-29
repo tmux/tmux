@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.11 2008-06-20 08:36:20 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.12 2008-06-29 07:04:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -73,6 +73,13 @@ cmd_target_parse(struct cmd *self, int argc, char **argv, char **cause)
 		if (argc != 1)
 			goto usage;
 		data->arg = xstrdup(argv[0]);
+	} else if (self->entry->flags & CMD_ZEROONEARG) {
+		if (argc == 0)
+			data->arg = NULL;
+		else if (argc == 1)
+			data->arg = xstrdup(argv[0]);
+		else
+			goto usage;
 	} else {
 		if (argc != 0)
 			goto usage;
@@ -192,6 +199,13 @@ cmd_srcdst_parse(struct cmd *self, int argc, char **argv, char **cause)
 		if (argc != 1)
 			goto usage;
 		data->arg = xstrdup(argv[0]);
+	} else if (self->entry->flags & CMD_ZEROONEARG) {
+		if (argc == 0)
+			data->arg = NULL;
+		else if (argc == 1)
+			data->arg = xstrdup(argv[0]);
+		else
+			goto usage;
 	} else {
 		if (argc != 0)
 			goto usage;
@@ -325,6 +339,13 @@ cmd_buffer_parse(struct cmd *self, int argc, char **argv, char **cause)
 		if (argc != 1)
 			goto usage;
 		data->arg = xstrdup(argv[0]);
+	} else if (self->entry->flags & CMD_ZEROONEARG) {
+		if (argc == 0)
+			data->arg = NULL;
+		else if (argc == 1)
+			data->arg = xstrdup(argv[0]);
+		else
+			goto usage;
 	} else {
 		if (argc != 0)
 			goto usage;

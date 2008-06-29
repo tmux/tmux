@@ -1,7 +1,7 @@
-/* $Id: cmd-show-window-options.c,v 1.2 2008-06-29 07:04:30 nicm Exp $ */
+/* $Id: cmd-respawn-window.c,v 1.1 2008-06-29 07:04:30 nicm Exp $ */
 
 /*
- * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
+ * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,24 +18,21 @@
 
 #include <sys/types.h>
 
-#include <getopt.h>
-#include <stdlib.h>
-
 #include "tmux.h"
 
 /*
- * Show window options.
+ * Respawn a window (restart the command). Kill existing if -k given.
  */
 
-void	cmd_show_window_options_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_respawn_window_exec(struct cmd *, struct cmd_ctx *);
 
-const struct cmd_entry cmd_show_window_options_entry = {
-	"show-window-options", "showw",
-	CMD_TARGET_WINDOW_USAGE,
-	0,
+const struct cmd_entry cmd_respawn_window_entry = {
+	"respawn-window", "respawnw",
+	"[-k] " CMD_TARGET_WINDOW_USAGE " [command]",
+	CMD_ZEROONEARG|CMD_KFLAG,
 	cmd_target_init,
 	cmd_target_parse,
-	cmd_show_window_options_exec,
+	cmd_respawn_window_exec,
 	cmd_target_send,
 	cmd_target_recv,
 	cmd_target_free,
@@ -43,25 +40,34 @@ const struct cmd_entry cmd_show_window_options_entry = {
 };
 
 void
-cmd_show_window_options_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
 	struct winlink		*wl;
 	struct session		*s;
+	const char		*env[] = { NULL, "TERM=screen", NULL };
+	char			*cmd;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return;
 
-	if (wl->window->flags & WINDOW_AGGRESSIVE)
-		ctx->print(ctx, "aggressive-resize");
-	if (wl->window->limitx != UINT_MAX)
-		ctx->print(ctx, "force-width %u", wl->window->limitx);
-	if (wl->window->limity != UINT_MAX)
-		ctx->print(ctx, "force-height %u", wl->window->limity);
-	if (wl->window->flags & WINDOW_MONITOR)
-		ctx->print(ctx, "monitor-activity");
-	if (wl->window->flags & WINDOW_ZOMBIFY)
-		ctx->print(ctx, "remain-on-exit");
+	if (wl->window->fd != -1 && !(data->flags & CMD_KFLAG)) {
+		ctx->error(ctx, "window still active: %s:%d", s->name, wl->idx);
+		return;
+	}
+
+	cmd = data->arg;
+	if (cmd == NULL)
+		cmd = options_get_string(&s->options, "default-command");
+	
+	if (window_spawn(wl->window, cmd, env) != 0) {
+		ctx->error(ctx, "respawn failed: %s:%d", s->name, wl->idx);
+		return;
+	}
+	screen_reset(&wl->window->base);
+
+	recalculate_sizes();
+	server_redraw_window(wl->window);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

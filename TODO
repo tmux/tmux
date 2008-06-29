@@ -49,12 +49,13 @@
 
 -- For 0.4 --------------------------------------------------------------------
 
+- document zombie windows
 - document buffer stuff
 - document next/prev word
 - commands:	save-buffer -b number filename
 		load-buffer -b number filename
   	      	copy-buffer -s src-session -t dst-session -a src-index -b dst-index
-	       		    (from other session)
+		      		    (from other session)
 
 -- For 0.5 --------------------------------------------------------------------
 
@@ -73,3 +74,4 @@
   have a "edit-mode" option select which keymap
 - zombie windows: don't disappear when the command dies. new command
   	 respawn-window [command] to restart; ommitting commands uses previous
+- many more info displays for various things

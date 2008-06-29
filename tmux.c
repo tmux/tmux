@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.69 2008-06-23 22:12:29 nicm Exp $ */
+/* $Id: tmux.c,v 1.70 2008-06-29 07:04:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -222,6 +222,7 @@ main(int argc, char **argv)
 	options_set_number(&global_options, "status-interval", 15);
 	options_set_number(&global_options, "set-titles", 1);
 	options_set_number(&global_options, "buffer-limit", 9);
+	options_set_number(&global_options, "remain-by-default", 0);
 
 	if (cfg_file == NULL) {
 		home = getenv("HOME");

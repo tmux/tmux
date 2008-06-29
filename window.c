@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.45 2008-06-20 17:31:48 nicm Exp $ */
+/* $Id: window.c,v 1.46 2008-06-29 07:04:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -166,50 +166,25 @@ winlink_previous(unused struct winlinks *wwl, struct winlink *wl)
 
 struct window *
 window_create(const char *name,
-    const char *cmd, const char **env, u_int sx, u_int sy, u_int hlimit)
+    const char *cmd, const char **envp, u_int sx, u_int sy, u_int hlimit)
 {
 	struct window	*w;
-	struct winsize	 ws;
-	int		 fd, mode;
 	char		*ptr, *copy;
-	const char     **entry;
-
-	memset(&ws, 0, sizeof ws);
-	ws.ws_col = sx;
-	ws.ws_row = sy;
-
- 	switch (forkpty(&fd, NULL, NULL, &ws)) {
-	case -1:
-		return (NULL);
-	case 0:
-		for (entry = env; *entry != NULL; entry++) {
-			if (putenv(*entry) != 0)
-				fatal("putenv failed");
-		}
-		sigreset();
-		log_debug("started child: cmd=%s; pid=%d", cmd, (int) getpid());
-		log_close();
-
-		execl(_PATH_BSHELL, "sh", "-c", cmd, (char *) NULL);
-		fatal("execl failed");
-	}
-
-	if ((mode = fcntl(fd, F_GETFL)) == -1)
-		fatal("fcntl failed");
-	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failed");
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
-		fatal("fcntl failed");
 
 	w = xmalloc(sizeof *w);
-	w->fd = fd;
+	w->cmd = NULL;
+
+	w->fd = -1;
 	w->in = buffer_create(BUFSIZ);
 	w->out = buffer_create(BUFSIZ);
+
 	w->mode = NULL;
 	w->flags = 0;
+
 	w->limitx = w->limity = UINT_MAX;
 	screen_create(&w->base, sx, sy, hlimit);
 	w->screen = &w->base;
+
 	input_init(w);
 
 	if (name == NULL) {
@@ -238,7 +213,56 @@ window_create(const char *name,
 	ARRAY_ADD(&windows, w);
 	w->references = 0;
 
+	if (window_spawn(w, cmd, envp) != 0) {
+		window_destroy(w);
+		return (NULL);
+	}
 	return (w);
+}
+
+int
+window_spawn(struct window *w, const char *cmd, const char **envp)
+{
+	struct winsize	 ws;
+	int		 mode;
+	const char     **envq;
+
+	if (w->fd != -1)
+		close(w->fd);
+	if (cmd != NULL) {
+		if (w->cmd != NULL)
+			xfree(w->cmd);
+		w->cmd = xstrdup(cmd);
+	}
+
+	memset(&ws, 0, sizeof ws);
+	ws.ws_col = screen_size_x(&w->base);
+	ws.ws_row = screen_size_y(&w->base);
+
+ 	switch (forkpty(&w->fd, NULL, NULL, &ws)) {
+	case -1:
+		return (1);
+	case 0:
+		for (envq = envp; *envq != NULL; envq++) {
+			if (putenv(*envq) != 0)
+				fatal("putenv failed");
+		}
+		sigreset();
+		log_debug("new child: cmd=%s; pid=%d", w->cmd, (int) getpid());
+		log_close();
+
+		execl(_PATH_BSHELL, "sh", "-c", w->cmd, (char *) NULL);
+		fatal("execl failed");
+	}
+
+	if ((mode = fcntl(w->fd, F_GETFL)) == -1)
+		fatal("fcntl failed");
+	if (fcntl(w->fd, F_SETFL, mode|O_NONBLOCK) == -1)
+		fatal("fcntl failed");
+	if (fcntl(w->fd, F_SETFD, FD_CLOEXEC) == -1)
+		fatal("fcntl failed");
+	
+	return (0);
 }
 
 void
@@ -252,7 +276,8 @@ window_destroy(struct window *w)
 	}
 	ARRAY_REMOVE(&windows, i);
 
-	close(w->fd);
+	if (w->fd != -1)
+		close(w->fd);
 
 	input_free(w);
 
@@ -282,7 +307,7 @@ window_resize(struct window *w, u_int sx, u_int sy)
 	if (w->mode != NULL)
 		w->mode->resize(w, sx, sy);
 
-	if (ioctl(w->fd, TIOCSWINSZ, &ws) == -1)
+	if (w->fd != -1 && ioctl(w->fd, TIOCSWINSZ, &ws) == -1)
 		fatal("ioctl failed");
 	return (0);
 }
