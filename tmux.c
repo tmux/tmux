@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.70 2008-06-29 07:04:30 nicm Exp $ */
+/* $Id: tmux.c,v 1.71 2008-06-29 21:03:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,7 +63,7 @@ __dead void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-v] [-f file] [-S socket-path] [command [flags]]\n",
+	    "usage: %s [-qVv] [-f file] [-S socket-path] [command [flags]]\n",
 	    __progname);
 	exit(1);
 }
