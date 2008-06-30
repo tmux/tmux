@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.47 2008-06-30 05:34:06 nicm Exp $
+.\" $Id: tmux.1,v 1.48 2008-06-30 18:27:14 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -573,6 +573,21 @@ Rename the current window, or the window at
 .Ar target-window
 if specifed, to
 .Ar new-name .
+.It Xo Ic respawn window
+.Op Fl k
+.Op Fl t Ar target-window
+.Op command
+.Xc
+.D1 (alias: Ic respawnw )
+Reactive a window in which the command has exited (see the
+.Ic remain-in-exit
+windowoption).
+If
+.Ar command
+is not given, the command used when the window was created is executed.
+The window must be already inactive, unless
+.Fl k
+is given, in which case any existing command is killed.
 .It Xo Ic scroll-mode
 .Op Fl t Ar target-window
 .Xc
@@ -655,6 +670,12 @@ This setting applies only to new windows - existing window histories are not
 resized and retain the limit at the point they were created.
 .It Ic prefix Ar key
 Set the current prefix key.
+.It Xo Ic remain-by-default
+.Op Ic on | Ic off
+.Xc
+If this option is on, newly created windows have their
+.Ic remain-on-exit
+flag set.
 .It Xo Ic set-titles
 .Op Ic on | Ic off
 .Xc
@@ -743,6 +764,14 @@ from resizing a window to greater than
 or
 .Ar height .
 A value of zero restores the default unlimited setting.
+.It Xo Ic remain-on-exit
+.Op Ic on | Ic off
+.Xc
+A window with this flag set is not destroyed when the program running in it
+exits.
+The window may be reactivated with the
+.Ic respawn-window
+command.
 .El
 .It Xo Ic show-buffer
 .Op Fl b Ar buffer-index
