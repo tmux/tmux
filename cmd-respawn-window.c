@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-window.c,v 1.1 2008-06-29 07:04:30 nicm Exp $ */
+/* $Id: cmd-respawn-window.c,v 1.2 2008-06-30 18:45:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,7 +46,6 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink		*wl;
 	struct session		*s;
 	const char		*env[] = { NULL, "TERM=screen", NULL };
-	char			*cmd;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return;
@@ -56,11 +55,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return;
 	}
 
-	cmd = data->arg;
-	if (cmd == NULL)
-		cmd = options_get_string(&s->options, "default-command");
-	
-	if (window_spawn(wl->window, cmd, env) != 0) {
+	if (window_spawn(wl->window, data->arg, env) != 0) {
 		ctx->error(ctx, "respawn failed: %s:%d", s->name, wl->idx);
 		return;
 	}
