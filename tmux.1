@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.46 2008-06-29 07:22:00 nicm Exp $
+.\" $Id: tmux.1,v 1.47 2008-06-30 05:34:06 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd November 9, 2007
+.Dd June 30, 2008
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -226,7 +226,7 @@ and
 .Ql C-f
 may be used to scroll up and down by one screen.
 .It Em copy mode
-This permits a section of a window or its history to be copied to the
+This permits a section of a window or its history to be copied to a
 .Em paste buffer
 for later insertion into another window.
 The navigation keys move the cursor around the window, scrolling as necessary.
@@ -251,7 +251,7 @@ or
 moves the cursor backward one word; the space key begins a selection; and the
 enter key or
 .Ql C-w
-copies the selection to the paste buffer and exits copy mode.
+creates a new paste buffer from the selection and exits copy mode.
 .Pp
 This mode is entered with the
 .Ic copy-mode
@@ -259,6 +259,22 @@ command, bound to
 .Ql [
 by default.
 .El
+.Sh BUFFERS
+.Nm
+maintains a stack of
+.Em paste buffers
+for each session.
+Up to the value of the
+.Ic buffer-limit
+option are kept; when a new buffer is added, the buffer at the bottom of the
+stack is removed.
+Buffers may be added using
+.Ic copy-mode
+or the
+.Ic set-buffer
+command, and pasted into a window using the
+.Ic paste-buffer
+command.
 .Sh COMMANDS
 This section contains a list of the commands supported by
 .Nm .
@@ -363,6 +379,14 @@ to execute commands interactively.
 .Op Fl t Ar target-window
 .Xc
 Enter copy mode.
+.It Xo Ic delete-buffer
+.Op Fl b Ar buffer-index
+.Op Fl t Ar target-session
+.Xc
+.D1 (alias: Ic deleteb )
+Delete the buffer at
+.Ar buffer-index ,
+or the top buffer if not specified.
 .It Xo Ic detach-client
 .Op Fl t Ar target-client
 .Xc
@@ -423,6 +447,11 @@ exists, it is killed, otherwise an error is generated.
 If
 .Fl d
 is given, the newly linked window is not selected.
+.It Xo Ic list-buffers
+.Op Fl t Ar target-session
+.Xc
+.D1 (alias: Ic lsb )
+List the buffers in the given session.
 .It Xo Ic list-clients
 .Xc
 .D1 (alias: Ic lsc )
@@ -510,11 +539,12 @@ start-up files.
 .D1 (alias: Ic next )
 Move to the next window in the session.
 .It Xo Ic paste-buffer
+.Op Fl d
+.Op Fl b Ar buffer-index
 .Op Fl t Ar target-window
 .Xc
-.D1 (alias: Ic paste )
-Insert the contents of the paste buffer into the current window.
-Ignored unless executed via a key binding.
+.D1 (alias: Ic pasteb )
+Insert the contents of a paste buffer into the current window.
 .It Xo Ic previous-window
 .Op Fl t Ar target-session
 .Xc
@@ -577,6 +607,14 @@ All arguments are sent sequentially from first to last.
 .Op Fl t Ar target-window
 .Xc
 Send the prefix key to a window as if it was pressed.
+.It Xo Ic set-buffer
+.Op Fl b Ar buffer-index
+.Op Fl t Ar target-session
+.Ar data
+.Xc
+.D1 (alias: Ic setb )
+Set the contents of the specified buffer to
+.Ar data .
 .It Xo Ic set-option
 .Op Fl t Ar target-session
 .Ar option Ar value
@@ -607,6 +645,10 @@ created) to
 .Ar command .
 The default is
 .Dq exec $SHELL .
+.It Ic buffer-limit Ar number
+Set the number of buffers kept for each session; as new buffers are added to
+the top of the stack, old ones are removed from the bottom if necessary to
+maintain this maximum length.
 .It Ic history-limit Ar lines
 Set the maximum number of lines held in window history.
 This setting applies only to new windows - existing window histories are not
@@ -616,7 +658,8 @@ Set the current prefix key.
 .It Xo Ic set-titles
 .Op Ic on | Ic off
 .Xc
-Attempt to set the window title using the \ee]2;...\e007 xterm code.
+Attempt to set the window title using the \ee]2;...\e007 xterm code and
+the terminal appears to be an xterm.
 This option is enabled by default.
 Note that 
 .Xr elinks 1 
@@ -701,6 +744,12 @@ or
 .Ar height .
 A value of zero restores the default unlimited setting.
 .El
+.It Xo Ic show-buffer
+.Op Fl b Ar buffer-index
+.Op Fl t Ar target-session
+.Xc
+.D1 (alias: Ic showb )
+Display the contents of the specified buffer.
 .It Xo Ic show-options
 .Op Fl t Ar target-session
 .Ar option Ar value

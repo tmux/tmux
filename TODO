@@ -51,13 +51,13 @@
 
 - document zombie windows
 - document buffer stuff
+
+-- For 0.5 --------------------------------------------------------------------
+
 - commands:	save-buffer -b number filename
 		load-buffer -b number filename
   	      	copy-buffer -s src-session -t dst-session -a src-index -b dst-index
 		      		    (from other session)
-
--- For 0.5 --------------------------------------------------------------------
-
 - clear EOL etc CANNOT rely on term using the current colour/attr and probably
   should not emulate it doing so
 - activity/bell should be per-window not per-link? what if it is cur win in

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.171 2008-06-29 07:04:31 nicm Exp $ */
+/* $Id: tmux.h,v 1.172 2008-06-30 05:34:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1012,9 +1012,9 @@ void	cmd_srcdst_send(struct cmd *, struct buffer *);
 void	cmd_srcdst_recv(struct cmd *, struct buffer *);
 void	cmd_srcdst_free(struct cmd *);
 void	cmd_srcdst_print(struct cmd *, char *, size_t);
-#define CMD_BUFFER_WINDOW_USAGE "[-b index] [-t target-window]"
-#define CMD_BUFFER_SESSION_USAGE "[-b index] [-t target-session]"
-#define CMD_BUFFER_CLIENT_USAGE "[-b index] [-t target-client]"
+#define CMD_BUFFER_WINDOW_USAGE "[-b buffer-index] [-t target-window]"
+#define CMD_BUFFER_SESSION_USAGE "[-b buffer-index] [-t target-session]"
+#define CMD_BUFFER_CLIENT_USAGE "[-b buffer-index] [-t target-client]"
 void	cmd_buffer_init(struct cmd *, int);
 int	cmd_buffer_parse(struct cmd *, int, char **, char **);
 void	cmd_buffer_exec(struct cmd *, struct cmd_ctx *);
