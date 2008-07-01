@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.37 2008-06-29 07:04:30 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.38 2008-07-01 19:00:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,7 +55,7 @@ const struct cmd_entry cmd_set_option_entry = {
 	cmd_set_option_print
 };
 
-const char *set_option_bell_action_choices[] = { "none", "any", "current" };
+const char *set_option_bell_action_choices[] = { "none", "any", "current", NULL };
 const struct set_option_entry set_option_table[NSETOPTION] = {
 	{ "bell-action",
 	  SET_OPTION_CHOICE, 0, 0, set_option_bell_action_choices },
