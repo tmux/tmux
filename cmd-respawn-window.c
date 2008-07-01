@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-window.c,v 1.3 2008-06-30 19:11:33 nicm Exp $ */
+/* $Id: cmd-respawn-window.c,v 1.4 2008-07-01 05:06:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,6 +17,8 @@
  */
 
 #include <sys/types.h>
+
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -45,7 +47,9 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_target_data	*data = self->data;
 	struct winlink		*wl;
 	struct session		*s;
-	const char		*env[] = { "TERM=screen", NULL };
+	const char		*env[] = { NULL /* TMUX= */, "TERM=screen", NULL };
+	char		 	 buf[256];
+	u_int			 i;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return;
@@ -54,6 +58,11 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "window still active: %s:%d", s->name, wl->idx);
 		return;
 	}
+
+	if (session_index(s, &i) != 0)
+		fatalx("session not found");
+	xsnprintf(buf, sizeof buf, "TMUX=%ld,%u", (long) getpid(), i);
+	env[0] = buf;
 
 	if (window_spawn(wl->window, data->arg, env) != 0) {
 		ctx->error(ctx, "respawn failed: %s:%d", s->name, wl->idx);
