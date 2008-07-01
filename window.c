@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.47 2008-06-30 18:27:14 nicm Exp $ */
+/* $Id: window.c,v 1.48 2008-07-01 20:35:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -248,7 +248,7 @@ window_spawn(struct window *w, const char *cmd, const char **envp)
 				fatal("putenv failed");
 		}
 		sigreset();
-		log_debug("new child: cmd=%s; pid=%d", w->cmd, (int) getpid());
+		log_debug("new child: cmd=%s; pid=%ld", w->cmd, (long) getpid());
 		log_close();
 
 		execl(_PATH_BSHELL, "sh", "-c", w->cmd, (char *) NULL);

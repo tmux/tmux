@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.60 2008-06-29 07:04:30 nicm Exp $ */
+/* $Id: cmd.c,v 1.61 2008-07-01 20:35:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -309,7 +309,7 @@ cmd_current_session(struct cmd_ctx *ctx)
 
 	if (data != NULL && data->pid != -1) {
 		if (data->pid != getpid()) {
-			ctx->error(ctx, "wrong server: %lld", data->pid);
+			ctx->error(ctx, "wrong server: %ld", (long) data->pid);
 			return (NULL);
 		}
 		if (data->idx > ARRAY_LENGTH(&sessions)) {

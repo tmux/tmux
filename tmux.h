@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.173 2008-07-01 19:47:02 nicm Exp $ */
+/* $Id: tmux.h,v 1.174 2008-07-01 20:35:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -355,7 +355,7 @@ struct hdr {
 };
 
 struct msg_command_data {
-	long long	pid;			/* pid from $TMUX or -1 */
+	pid_t		pid;			/* pid from $TMUX or -1 */
 	u_int		idx;			/* index from $TMUX */
 
 	size_t		namelen;

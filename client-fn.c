@@ -1,4 +1,4 @@
-/* $Id: client-fn.c,v 1.3 2007-10-23 10:48:22 nicm Exp $ */
+/* $Id: client-fn.c,v 1.4 2008-07-01 20:35:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,7 +45,7 @@ client_fill_session(struct msg_command_data *data)
 		return;
 	data->idx = ll;
 
-	ll = strtonum(buf, 0, LLONG_MAX, &errstr);
+	ll = strtonum(buf, 0, LONG_MAX, &errstr);
 	if (errstr != NULL)
 		return;
 	data->pid = ll;
