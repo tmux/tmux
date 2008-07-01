@@ -1,5 +1,7 @@
 01 July 2008
 
+* Protocol versioning. Clients which identify as a different version from the
+  server will be rejected.
 * tmux 0.4 released.
 
 29 June 2008
@@ -596,4 +598,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.147 2008-07-01 05:43:00 nicm Exp $
+$Id: CHANGES,v 1.148 2008-07-01 19:47:02 nicm Exp $

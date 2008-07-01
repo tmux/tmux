@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.172 2008-06-30 05:34:06 nicm Exp $ */
+/* $Id: tmux.h,v 1.173 2008-07-01 19:47:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,6 +18,8 @@
 
 #ifndef TMUX_H
 #define TMUX_H
+
+#define PROTOCOL_VERSION -1
 
 /* Shut up gcc warnings about empty if bodies. */
 #define RB_AUGMENT(x) do {} while (0)
@@ -330,7 +332,7 @@ struct buffer {
 #define TTY_KKEYPADOFF 22
 #define TTY_KKEYPADON 23
 #define TTY_MOUSEON 24
-#define TTY_MOUSEOFF 25 /* XXX merge allon/off into 1 arg? */
+#define TTY_MOUSEOFF 25 /* XXX merge all on/off into 1 arg? */
 
 /* Message codes. */
 enum hdrtype {
@@ -361,6 +363,7 @@ struct msg_command_data {
 
 struct msg_identify_data {
 	char		tty[TTY_NAME_MAX];
+	int	        version;
 
 	u_int		sx;
 	u_int		sy;

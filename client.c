@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.33 2008-06-23 16:58:49 nicm Exp $ */
+/* $Id: client.c,v 1.34 2008-07-01 19:47:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -93,6 +93,7 @@ retry:
 	if (isatty(STDIN_FILENO)) {
 		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
 			fatal("ioctl(TIOCGWINSZ)");
+		data.version = PROTOCOL_VERSION;
 		data.sx = ws.ws_col;
 		data.sy = ws.ws_row;
 		*data.tty = '\0';

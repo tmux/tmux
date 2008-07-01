@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.48 2008-06-21 10:19:36 nicm Exp $ */
+/* $Id: server-msg.c,v 1.49 2008-07-01 19:47:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -172,7 +172,15 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 	buffer_read(c->in, &data, sizeof data);
 	term = cmd_recv_string(c->in);
 
-	log_debug("identify msg from client: %u,%u", data.sx, data.sy);
+	log_debug("identify msg from client: %u,%u (%d)", 
+	    data.sx, data.sy, data.version);
+
+	if (data.version != PROTOCOL_VERSION) {
+#define MSG "protocol version mismatch"
+		server_write_client(c, MSG_ERROR, MSG, (sizeof MSG) - 1);
+#undef MSG
+		return (0);
+	}
 
 	c->sx = data.sx;
 	c->sy = data.sy;
