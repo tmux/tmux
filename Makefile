@@ -1,10 +1,10 @@
-# $Id: Makefile,v 1.69 2008-06-29 07:04:29 nicm Exp $
+# $Id: Makefile,v 1.70 2008-07-01 05:43:00 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
 
 PROG= tmux
-VERSION= 0.4
+VERSION= 0.5
 
 OS!= uname
 REL!= uname -r

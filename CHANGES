@@ -1,3 +1,7 @@
+01 July 2008
+
+* tmux 0.4 released.
+
 29 June 2008
 
 * Zombie windows. These are not closed when the child process dies. May be
@@ -592,4 +596,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.146 2008-06-29 07:04:28 nicm Exp $
+$Id: CHANGES,v 1.147 2008-07-01 05:43:00 nicm Exp $
