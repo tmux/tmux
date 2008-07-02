@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.174 2008-07-01 20:35:16 nicm Exp $ */
+/* $Id: tmux.h,v 1.175 2008-07-02 21:22:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -827,7 +827,28 @@ struct set_option_entry {
 	const char     **choices;
 };
 extern const struct set_option_entry set_option_table[];
-#define NSETOPTION 14
+#define NSETOPTION 15
+
+/* Edit keys. */
+enum mode_key {
+	MODEKEY_BOL,
+	MODEKEY_CLEARSEL,
+	MODEKEY_COPYSEL,
+	MODEKEY_DOWN,
+	MODEKEY_EOL,
+	MODEKEY_LEFT,
+	MODEKEY_NONE,
+	MODEKEY_NPAGE,
+	MODEKEY_NWORD,
+	MODEKEY_PPAGE,
+	MODEKEY_PWORD,
+	MODEKEY_QUIT,
+	MODEKEY_RIGHT,
+	MODEKEY_STARTSEL,
+	MODEKEY_UP,
+};
+#define MODEKEY_EMACS 0
+#define MODEKEY_VI 1
 
 #ifdef NO_STRTONUM
 /* strtonum.c */
@@ -878,6 +899,9 @@ void		 sigreset(void);
 
 /* cfg.c */
 int		 load_cfg(const char *, char **x);
+
+/* mode-key.c */
+enum mode_key	 mode_key_lookup(int, int);
 
 /* options.c */
 int	options_cmp(struct options_entry *, struct options_entry *);

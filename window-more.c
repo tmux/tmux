@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.14 2008-06-22 16:56:47 nicm Exp $ */
+/* $Id: window-more.c,v 1.15 2008-07-02 21:22:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -123,41 +123,38 @@ window_more_resize(struct window *w, u_int sx, u_int sy)
 }
 
 void
-window_more_key(struct window *w, unused struct client *c, int key)
+window_more_key(struct window *w, struct client *c, int key)
 {
 	struct window_more_mode_data	*data = w->modedata;
 	struct screen			*s = &data->screen;
+	int				 table;
 
-	switch (key) {
-	case 'Q':
-	case 'q':
+	table = options_get_number(&c->session->options, "mode-keys");
+	switch (mode_key_lookup(table, key)) {
+	case MODEKEY_QUIT:
 		window_reset_mode(w);
 		break;
-	case 'k':
-	case 'K':
-	case KEYC_UP:
+	case MODEKEY_UP:
 		window_more_scroll_up(w);
 		break;
-	case 'j':
-	case 'J':
-	case KEYC_DOWN:
+	case MODEKEY_DOWN:
 		window_more_scroll_down(w);
 		break;
-	case '\025':	/* C-u */
-	case KEYC_PPAGE:
+	case MODEKEY_PPAGE:
 		if (data->top < screen_size_y(s))
 			data->top = 0;
 		else
 			data->top -= screen_size_y(s);
 		window_more_redraw_screen(w);
 		break;
-	case '\006':	/* C-f */
-	case KEYC_NPAGE:
+	case MODEKEY_NPAGE:
 		if (data->top + screen_size_y(s) > ARRAY_LENGTH(&data->list))
 			data->top = ARRAY_LENGTH(&data->list);
 		else
 			data->top += screen_size_y(s);
 		window_more_redraw_screen(w);
+		break;
+	default:
 		break;
 	}
 }

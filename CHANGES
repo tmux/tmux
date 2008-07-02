@@ -1,3 +1,15 @@
+02 July 2008
+
+* Split vi and emacs mode keys into two tables and add an option (mode-keys)
+  to select between them. Default is emacs, use,
+
+     tmux set mode-keys vi
+
+  to change to vi.
+
+  vi mode uses space to start selection, enter to copy selection and escape
+  to clear selection.
+
 01 July 2008
 
 * Protocol versioning. Clients which identify as a different version from the
@@ -598,4 +610,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.148 2008-07-01 19:47:02 nicm Exp $
+$Id: CHANGES,v 1.149 2008-07-02 21:22:57 nicm Exp $

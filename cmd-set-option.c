@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.38 2008-07-01 19:00:50 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.39 2008-07-02 21:22:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,14 +55,19 @@ const struct cmd_entry cmd_set_option_entry = {
 	cmd_set_option_print
 };
 
-const char *set_option_bell_action_choices[] = { "none", "any", "current", NULL };
+const char *set_option_bell_action_list[] = {
+	"none", "any", "current", NULL
+};
+const char *set_option_mode_keys_list[] = {
+	"emacs", "vi", NULL 
+};
 const struct set_option_entry set_option_table[NSETOPTION] = {
-	{ "bell-action",
-	  SET_OPTION_CHOICE, 0, 0, set_option_bell_action_choices },
+	{ "bell-action", SET_OPTION_CHOICE, 0, 0, set_option_bell_action_list },
 	{ "buffer-limit", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "default-command", SET_OPTION_STRING, 0, 0, NULL },
 	{ "display-time", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "history-limit", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
+	{ "mode-keys", SET_OPTION_CHOICE, 0, 0, set_option_mode_keys_list },
 	{ "prefix", SET_OPTION_KEY, 0, 0, NULL },
 	{ "remain-by-default", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "set-titles", SET_OPTION_FLAG, 0, 0, NULL },

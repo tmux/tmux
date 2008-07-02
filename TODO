@@ -67,6 +67,5 @@
 - next prev word etc in command prompt
 - split keys in command prompt/scroll mode/copy mode into vi and emacs and
   have a "edit-mode" option select which keymap
-- zombie windows: don't disappear when the command dies. new command
-  	 respawn-window [command] to restart; ommitting commands uses previous
 - many more info displays for various things
+- document mode-keys

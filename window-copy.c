@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.25 2008-06-27 17:41:48 nicm Exp $ */
+/* $Id: window-copy.c,v 1.26 2008-07-02 21:22:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -136,32 +136,26 @@ window_copy_key(struct window *w, struct client *c, int key)
 {
 	struct window_copy_mode_data	*data = w->modedata;
 	struct screen			*s = &data->screen;
+	int				 table;
 
-	switch (key) {
-	case 'Q':
-	case 'q':
+	table = options_get_number(&c->session->options, "mode-keys");
+	switch (mode_key_lookup(table, key)) {
+	case MODEKEY_QUIT:
 		window_reset_mode(w);
 		break;
-	case 'h':
-	case KEYC_LEFT:
+	case MODEKEY_LEFT:
 		window_copy_cursor_left(w);
 		return;
-	case 'l':
-	case KEYC_RIGHT:
+	case MODEKEY_RIGHT:
 		window_copy_cursor_right(w);
  		return;
-	case 'k':
-	case 'K':
-	case KEYC_UP:
+	case MODEKEY_UP:
 		window_copy_cursor_up(w);
 		return;
-	case 'j':
-	case 'J':
-	case KEYC_DOWN:
+	case MODEKEY_DOWN:
 		window_copy_cursor_down(w);
 		return;
-	case '\025':	/* C-u */
-	case KEYC_PPAGE:
+	case MODEKEY_PPAGE:
 		if (data->oy + screen_size_y(s) > w->base.hsize)
 			data->oy = w->base.hsize;
 		else
@@ -169,8 +163,7 @@ window_copy_key(struct window *w, struct client *c, int key)
 		window_copy_update_selection(w);
 		window_copy_redraw_screen(w);
 		break;
-	case '\006':	/* C-f */
-	case KEYC_NPAGE:
+	case MODEKEY_NPAGE:
 		if (data->oy < screen_size_y(s))
 			data->oy = 0;
 		else
@@ -178,37 +171,32 @@ window_copy_key(struct window *w, struct client *c, int key)
 		window_copy_update_selection(w);
 		window_copy_redraw_screen(w);
 		break;
-	case '\000':	/* C-space */
-	case ' ':
+	case MODEKEY_STARTSEL:
 		window_copy_start_selection(w);
 		break;
-	case '\033':
+	case MODEKEY_CLEARSEL:
 		screen_clear_selection(&data->screen);
+		window_copy_redraw_screen(w);
 		break;
-	case '\027':	/* C-w */
- 	case '\r':	/* enter */
+	case MODEKEY_COPYSEL:
 		if (c != NULL && c->session != NULL) {
 			window_copy_copy_selection(w, c);
 			window_reset_mode(w);
 		}
 		break;
-	case '0':
-	case '\001':	/* C-a */
+	case MODEKEY_BOL:
 		window_copy_cursor_start_of_line(w);
 		break;
-	case '$':
-	case '\005':	/* C-e */
+	case MODEKEY_EOL:
 		window_copy_cursor_end_of_line(w);
 		break;
-	case 'w':
-	case KEYC_ADDESCAPE('F'):	/* M-F */
-	case KEYC_ADDESCAPE('f'):	/* M-f */
+	case MODEKEY_NWORD:
 		window_copy_cursor_next_word(w);
 		break;
-	case 'b':
-	case KEYC_ADDESCAPE('B'):	/* M-B */
-	case KEYC_ADDESCAPE('b'):	/* M-b */
+	case MODEKEY_PWORD:
 		window_copy_cursor_previous_word(w);
+		break;
+	default:
 		break;
 	}
 }
