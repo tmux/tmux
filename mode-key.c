@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.1 2008-07-02 21:22:57 nicm Exp $ */
+/* $Id: mode-key.c,v 1.2 2008-07-02 21:25:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,6 +27,7 @@ struct mode_key_entry {
 
 const struct mode_key_entry mode_key_table_vi[] = {
 	{ MODEKEY_BOL, '0' },
+	{ MODEKEY_BOL, '^' },
 	{ MODEKEY_CLEARSEL, '\033' },
 	{ MODEKEY_COPYSEL, '\r' },
 	{ MODEKEY_DOWN, 'j' },
