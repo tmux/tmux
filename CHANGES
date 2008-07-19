@@ -1,3 +1,7 @@
+19 July 2008
+
+* Unbreak "set status" - tmux thought it was ambiguous, reported by rivo nurges.
+
 02 July 2008
 
 * Split vi and emacs mode keys into two tables and add an option (mode-keys)
@@ -610,4 +614,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.149 2008-07-02 21:22:57 nicm Exp $
+$Id: CHANGES,v 1.150 2008-07-19 10:07:50 nicm Exp $

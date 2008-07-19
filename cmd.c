@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.61 2008-07-01 20:35:16 nicm Exp $ */
+/* $Id: cmd.c,v 1.62 2008-07-19 10:07:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -150,6 +150,10 @@ cmd_parse(int argc, char **argv, char **cause)
 		if (entry != NULL)
 			goto ambiguous;
 		entry = *entryp;
+
+		/* Bail now if an exact match. */
+		if (strcmp(entry->name, argv[0]) == 0)
+			break;
 	}
 	if (entry == NULL) {
 		xasprintf(cause, "unknown command: %s", argv[0]);

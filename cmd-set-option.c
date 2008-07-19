@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.39 2008-07-02 21:22:57 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.40 2008-07-19 10:07:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -168,6 +168,9 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 		entry = &set_option_table[i];
 
+		/* Bail now if an exact match. */
+		if (strcmp(entry->name, data->option) == 0)
+			break;
 	}
 	if (entry == NULL) {
 		ctx->error(ctx, "unknown option: %s", data->option);
