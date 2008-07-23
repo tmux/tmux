@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.6 2008-07-23 22:18:06 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.7 2008-07-23 23:44:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,8 +27,13 @@ struct {
 	const char	*name;
 	int	 	 code;
 } tty_keys[] = {
+/*	{ "ka1",   KEYC_A1 }, */
+/*	{ "ka3",   KEYC_A3 }, */
+/*	{ "kb2",   KEYC_B2 }, */
 /*	{ "kb",	   KEYC_BACKSPACE }, */
 	{ "kBEG",  KEYC_SBEG },
+/*	{ "kc1",   KEYC_C1 }, */
+/*	{ "kc3",   KEYC_C3 }, */
 	{ "kCAN",  KEYC_SCANCEL },
 	{ "kCMD",  KEYC_SCOMMAND },
 	{ "kCPY",  KEYC_SCOPY },
@@ -56,12 +61,7 @@ struct {
 	{ "kSAV",  KEYC_SSAVE },
 	{ "kSPD",  KEYC_SSUSPEND },
 	{ "kUND",  KEYC_SUNDO },
-	{ "ka1",   KEYC_A1 },
-	{ "ka3",   KEYC_A3 },
-	{ "kb2",   KEYC_B2 },
 	{ "kbeg",  KEYC_BEG },
-	{ "kc1",   KEYC_C1 },
-	{ "kc3",   KEYC_C3 },
 	{ "kcan",  KEYC_CANCEL },
 	{ "kcbt",  KEYC_BTAB },
 	{ "kclo",  KEYC_CLOSE },
@@ -79,7 +79,7 @@ struct {
 	{ "ked",   KEYC_EOS },
 	{ "kel",   KEYC_EOL },
 	{ "kend",  KEYC_END },
-	{ "kent",  KEYC_ENTER },
+/*	{ "kent",  KEYC_ENTER }, */
 	{ "kext",  KEYC_EXIT },
 	{ "kf0",   KEYC_F0 },
 	{ "kf1",   KEYC_F1 },
@@ -177,6 +177,29 @@ struct {
 	{ "ktbc",  KEYC_CATAB },
 	{ "kund",  KEYC_UNDO },
 	{ "pmous", KEYC_MOUSE },
+
+	/*
+	 * Number keypad.
+	 *
+	 * This is totally confusing and I still don't quite understand how it
+	 * all fits together in relation to termcap...
+	 */
+	{ "-\033Oo", KEYC_KP0_1 },
+	{ "-\033Oj", KEYC_KP0_2 },
+	{ "-\033Om", KEYC_KP0_3 },
+	{ "-\033Ow", KEYC_KP1_0 },
+	{ "-\033Ox", KEYC_KP1_1 },
+	{ "-\033Oy", KEYC_KP1_2 },
+	{ "-\033Ok", KEYC_KP1_3 },
+	{ "-\033Ot", KEYC_KP2_0 },
+	{ "-\033Ou", KEYC_KP2_1 },
+	{ "-\033Ov", KEYC_KP2_2 },
+	{ "-\033Oq", KEYC_KP3_0 },
+	{ "-\033Or", KEYC_KP3_1 },
+	{ "-\033Os", KEYC_KP3_2 },
+	{ "-\033OM", KEYC_KP3_3 },
+	{ "-\033Op", KEYC_KP4_0 },
+	{ "-\033On", KEYC_KP4_2 },	
 };
 #define NTTYKEYS (sizeof tty_keys / sizeof tty_keys[0])
 
@@ -195,15 +218,19 @@ tty_keys_init(struct tty *tty)
 {
 	struct tty_key	*tk;
 	u_int		 i;
-	char		*s;
+	const char	*s;
 
 	RB_INIT(&tty->ktree);
 
 	tty->ksize = 0;
 	for (i = 0; i < NTTYKEYS; i++) {
-		s = tigetstr(tty_keys[i].name);
-		if (s == (char *) -1 || s == (char *) 0)
-			continue;
+		if (*tty_keys[i].name == '-')
+			s = tty_keys[i].name + 1;
+		else {
+			s = tigetstr(tty_keys[i].name);
+			if (s == (char *) -1 || s == (char *) 0)
+				continue;
+		}
 		if (s[0] != '\033' || s[1] == '\0')
 			continue;
 

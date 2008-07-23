@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.8 2008-06-18 18:52:44 nicm Exp $ */
+/* $Id: screen-write.c,v 1.9 2008-07-23 23:44:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -466,10 +466,6 @@ screen_write_set_mode(struct screen_write_ctx *ctx, int mode)
 
 	if (mode & MODE_INSERT)
 		ctx->write(ctx->data, TTY_INSERTON);
-	if (mode & MODE_KCURSOR)
-		ctx->write(ctx->data, TTY_KCURSORON);
-	if (mode & MODE_KKEYPAD)
-		ctx->write(ctx->data, TTY_KKEYPADON);
 	if (mode & MODE_MOUSE)
 		ctx->write(ctx->data, TTY_MOUSEON);
 }
@@ -487,10 +483,6 @@ screen_write_clear_mode(struct screen_write_ctx *ctx, int mode)
 
 	if (mode & MODE_INSERT)
 		ctx->write(ctx->data, TTY_INSERTOFF);
-	if (mode & MODE_KCURSOR)
-		ctx->write(ctx->data, TTY_KCURSOROFF);
-	if (mode & MODE_KKEYPAD)
-		ctx->write(ctx->data, TTY_KKEYPADOFF);
 	if (mode & MODE_MOUSE)
 		ctx->write(ctx->data, TTY_MOUSEOFF);
 }

@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.6 2008-06-25 20:33:20 nicm Exp $ */
+/* $Id: key-string.c,v 1.7 2008-07-23 23:44:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,13 +26,13 @@ struct {
 	const char *string;
 	int	 key;
 } key_string_table[] = {
-	{ "A1",		KEYC_A1 },
-	{ "A3",		KEYC_A3 },
-	{ "B2",		KEYC_B2 },
+/*	{ "A1",		KEYC_A1 }, */
+/*	{ "A3",		KEYC_A3 }, */
+/*	{ "B2",		KEYC_B2 }, */
 	{ "BEG",	KEYC_BEG },
 	{ "BTAB",	KEYC_BTAB },
-	{ "C1",		KEYC_C1 },
-	{ "C3",		KEYC_C3 },
+/*	{ "C1",		KEYC_C1 }, */
+/*	{ "C3",		KEYC_C3 }, */
 	{ "CANCEL",	KEYC_CANCEL },
 	{ "CATAB",	KEYC_CATAB },
 	{ "CLEAR",	KEYC_CLEAR },
@@ -46,7 +46,7 @@ struct {
 	{ "DOWN",	KEYC_DOWN},
 	{ "EIC",	KEYC_EIC },
 	{ "END",	KEYC_END },
-	{ "ENTER",	KEYC_ENTER },
+/*	{ "ENTER",	KEYC_ENTER }, */
 	{ "EOL",	KEYC_EOL },
 	{ "EOS",	KEYC_EOS },
 	{ "EXIT",	KEYC_EXIT },
@@ -173,7 +173,25 @@ struct {
 	{ "SUNDO",	KEYC_SUNDO },
 	{ "SUSPEND",	KEYC_SUSPEND },
 	{ "UNDO",	KEYC_UNDO },
-	{ "UP",		KEYC_UP }
+	{ "UP",		KEYC_UP },
+
+	/* Numeric keypad. */
+	{ "KP/", 	KEYC_KP0_1 },
+	{ "KP*",	KEYC_KP0_2 },
+	{ "KP-",	KEYC_KP0_3 },
+	{ "KP7",	KEYC_KP1_0 },
+	{ "KP8",	KEYC_KP1_1 },
+	{ "KP9",	KEYC_KP1_2 },
+	{ "KP+",	KEYC_KP1_3 },
+	{ "KP4",	KEYC_KP2_0 },
+	{ "KP5",	KEYC_KP2_1 },
+	{ "KP6",	KEYC_KP2_2 },
+	{ "KP1",	KEYC_KP3_0 },
+	{ "KP2",	KEYC_KP3_1 },
+	{ "KP3",	KEYC_KP3_2 },
+	{ "KPENTER",	KEYC_KP3_3 },
+	{ "KP0",	KEYC_KP4_0 },
+	{ "KP.",	KEYC_KP4_2 },
 };
 #define NKEYSTRINGS (sizeof key_string_table / sizeof key_string_table[0])
 

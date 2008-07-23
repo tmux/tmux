@@ -36,9 +36,6 @@
 - split clients into three RB trees by fd: attached/unattached/dead?
   or tailqs? what would be fastest per-char?
 - window splitting?
-- why do up/down work in angband with screen but not tmux??
-	-- it's not kkeypad/kcursor
-- fix kkeypad/kcursor
 - c/p is still borken in some ways
 - poll(2) is broken on OS X/Darwin, a workaround for this would be nice
 - different screen model? layers perhaps? hmm
@@ -46,6 +43,8 @@
 - better mode features: search, back word, forward word, etc
 - flags to centre screen in window
 - get rid of DEFDATA etc
+- better terminal emulation (identify, insert mode, some other bits)
+- should we support kkeypad? looks like screen doesn't. what is kcursor?
 
 -- For 0.5 --------------------------------------------------------------------
 

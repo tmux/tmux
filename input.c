@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.50 2008-06-18 19:06:51 nicm Exp $ */
+/* $Id: input.c,v 1.51 2008-07-23 23:44:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -557,11 +557,11 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 	switch (ch) {
 	case '=':	/* DECKPAM */
 		screen_write_set_mode(&ictx->ctx, MODE_KKEYPAD);
-		log_debug("kkeypad on");
+		log_debug("kkeypad on (application mode)");
 		break;
-	case '>':	/* DECKPNM*/
+	case '>':	/* DECKPNM */
 		screen_write_clear_mode(&ictx->ctx, MODE_KKEYPAD);
-		log_debug("kkeypad off");
+		log_debug("kkeypad off (number mode)");
 		break;
 	case '7':	/* DECSC */
 		s->saved_cx = s->cx;

@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.10 2008-06-25 07:30:08 nicm Exp $ */
+/* $Id: input-keys.c,v 1.11 2008-07-23 23:44:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,13 +28,7 @@ struct {
 	int		 key;
 	const char	*data;
 } input_keys[] = {
-/*	{ KEYC_BACKSPACE, "\010" }, */
-
-	{ KEYC_DC,     "\033[3~" },
 	{ KEYC_F1,     "\033OP" },
-	{ KEYC_F10,    "\033[21~" },
-	{ KEYC_F11,    "\033[23~" },
-	{ KEYC_F12,    "\033[24~" },
 	{ KEYC_F2,     "\033OQ" },
 	{ KEYC_F3,     "\033OR" },
 	{ KEYC_F4,     "\033OS" },
@@ -43,22 +37,37 @@ struct {
 	{ KEYC_F7,     "\033[18~" },
 	{ KEYC_F8,     "\033[19~" },
 	{ KEYC_F9,     "\033[20~" },
+	{ KEYC_F10,    "\033[21~" },
+	{ KEYC_F11,    "\033[23~" },
+	{ KEYC_F12,    "\033[24~" },
 	{ KEYC_FIND,   "\033[1~" },
+	{ KEYC_DC,     "\033[3~" },
 	{ KEYC_IC,     "\033[2~" },
 	{ KEYC_NPAGE,  "\033[6~" },
 	{ KEYC_PPAGE,  "\033[5~" },
 	{ KEYC_SELECT, "\033[4~" },
 
-	{ KEYC_UP,     "\033OA" },
-	{ KEYC_DOWN,   "\033OB" },
-	{ KEYC_LEFT,   "\033OD" },
-	{ KEYC_RIGHT,  "\033OC" },
+	{ KEYC_UP,     "\033[A" },
+	{ KEYC_DOWN,   "\033[B" },
+	{ KEYC_LEFT,   "\033[D" },
+	{ KEYC_RIGHT,  "\033[C" },
 
-	{ KEYC_A1,     "\033Ow" },
-	{ KEYC_A3,     "\033Oy" },
-	{ KEYC_B2,     "\033Ou" },
-	{ KEYC_C1,     "\033Oq" },
-	{ KEYC_C3,     "\033Os" }
+	{ KEYC_KP0_1,  "\033Oo" },
+	{ KEYC_KP0_2,  "\033Oj" },
+	{ KEYC_KP0_3,  "\033Om" },
+	{ KEYC_KP1_0,  "\033Ow" },
+	{ KEYC_KP1_1,  "\033Ox" },
+	{ KEYC_KP1_2,  "\033Oy" },
+	{ KEYC_KP1_3,  "\033Ok" },
+	{ KEYC_KP2_0,  "\033Ot" },
+	{ KEYC_KP2_1,  "\033Ou" },
+	{ KEYC_KP2_2,  "\033Ov" },
+	{ KEYC_KP3_0,  "\033Oq" },
+	{ KEYC_KP3_1,  "\033Or" },
+	{ KEYC_KP3_2,  "\033Os" },
+	{ KEYC_KP3_3,  "\033OM" },
+	{ KEYC_KP4_0,  "\033Op" },
+	{ KEYC_KP4_2,  "\033On" },
 };
 #define NINPUTKEYS (sizeof input_keys / sizeof input_keys[0])
 
@@ -79,41 +88,6 @@ input_key(struct window *w, int key)
 		buffer_write8(w->out, (uint8_t) key);
 		return;
 	}
-
-#ifdef notyetifever
-/* XXX can't we just pass the keypad changes through to tty? */
-	if (!(w->screen->mode & MODE_KKEYPAD)) {
-		switch (key) {
-		case KEYC_A1:
-			buffer_write8(w->out, '9');
-			return;
-		case KEYC_UP:
-			buffer_write8(w->out, '8');
-			return;
-		case KEYC_A3:
-			buffer_write8(w->out, '7');
-			return;
-		case KEYC_LEFT:
-			buffer_write8(w->out, '6');
-			return;
-		case KEYC_B2:
-			buffer_write8(w->out, '5');
-			return;
-		case KEYC_RIGHT:
-			buffer_write8(w->out, '4');
-			return;
-		case KEYC_C1:
-			buffer_write8(w->out, '3');
-			return;
-		case KEYC_DOWN:
-			buffer_write8(w->out, '2');
-			return;
-		case KEYC_C3:
-			buffer_write8(w->out, '1');
-			return;
-		}
-	}
-#endif
 
 	for (i = 0; i < NINPUTKEYS; i++) {
 		if (input_keys[i].key == key)

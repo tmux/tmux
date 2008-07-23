@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.175 2008-07-02 21:22:57 nicm Exp $ */
+/* $Id: tmux.h,v 1.176 2008-07-23 23:44:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -155,14 +155,14 @@ struct buffer {
 #define KEYC_REMOVEESCAPE(k) ((k) & ~KEYC_ESCAPE)
 #define KEYC_ISESCAPE(k) ((k) != KEYC_NONE && ((k) & KEYC_ESCAPE))
 
-#define KEYC_A1 (KEYC_OFFSET + 0x1)
-#define KEYC_A3 (KEYC_OFFSET + 0x2)
-#define KEYC_B2 (KEYC_OFFSET + 0x3)
+/* #define KEYC_A1 (KEYC_OFFSET + 0x1) */
+/* #define KEYC_A3 (KEYC_OFFSET + 0x2) */
+/* #define KEYC_B2 (KEYC_OFFSET + 0x3) */
 /* #define KEYC_BACKSPACE (KEYC_OFFSET + 0x4) */
 #define KEYC_BEG (KEYC_OFFSET + 0x5)
 #define KEYC_BTAB (KEYC_OFFSET + 0x6)
-#define KEYC_C1 (KEYC_OFFSET + 0x7)
-#define KEYC_C3 (KEYC_OFFSET + 0x8)
+/* #define KEYC_C1 (KEYC_OFFSET + 0x7) */
+/* #define KEYC_C3 (KEYC_OFFSET + 0x8) */
 #define KEYC_CANCEL (KEYC_OFFSET + 0x9)
 #define KEYC_CATAB (KEYC_OFFSET + 0xa)
 #define KEYC_CLEAR (KEYC_OFFSET + 0xb)
@@ -176,7 +176,7 @@ struct buffer {
 #define KEYC_DOWN (KEYC_OFFSET + 0x13)
 #define KEYC_EIC (KEYC_OFFSET + 0x14)
 #define KEYC_END (KEYC_OFFSET + 0x15)
-#define KEYC_ENTER (KEYC_OFFSET + 0x16)
+/* #define KEYC_ENTER (KEYC_OFFSET + 0x16) */
 #define KEYC_EOL (KEYC_OFFSET + 0x17)
 #define KEYC_EOS (KEYC_OFFSET + 0x18)
 #define KEYC_EXIT (KEYC_OFFSET + 0x19)
@@ -306,6 +306,24 @@ struct buffer {
 #define KEYC_UP (KEYC_OFFSET + 0x95)
 #define KEYC_MOUSE (KEYC_OFFSET + 0x96)
 
+/* Numeric keypad. Numbered from top-left, KPY_X. */
+#define KEYC_KP0_1 (KEYC_OFFSET + 0x100)
+#define KEYC_KP0_2 (KEYC_OFFSET + 0x101)
+#define KEYC_KP0_3 (KEYC_OFFSET + 0x102)
+#define KEYC_KP1_0 (KEYC_OFFSET + 0x103)
+#define KEYC_KP1_1 (KEYC_OFFSET + 0x104)
+#define KEYC_KP1_2 (KEYC_OFFSET + 0x105)
+#define KEYC_KP1_3 (KEYC_OFFSET + 0x106)
+#define KEYC_KP2_0 (KEYC_OFFSET + 0x107)
+#define KEYC_KP2_1 (KEYC_OFFSET + 0x108)
+#define KEYC_KP2_2 (KEYC_OFFSET + 0x109)
+#define KEYC_KP3_0 (KEYC_OFFSET + 0x10a)
+#define KEYC_KP3_1 (KEYC_OFFSET + 0x10b)
+#define KEYC_KP3_2 (KEYC_OFFSET + 0x10c)
+#define KEYC_KP3_3 (KEYC_OFFSET + 0x10d)
+#define KEYC_KP4_0 (KEYC_OFFSET + 0x10e)
+#define KEYC_KP4_2 (KEYC_OFFSET + 0x10f)
+
 /* Output codes. */
 #define TTY_CHARACTER 0
 #define TTY_CURSORUP 1
@@ -327,12 +345,8 @@ struct buffer {
 #define TTY_SCROLLREGION 17
 #define TTY_INSERTON 18
 #define TTY_INSERTOFF 19
-#define TTY_KCURSOROFF 20
-#define TTY_KCURSORON 21
-#define TTY_KKEYPADOFF 22
-#define TTY_KKEYPADON 23
-#define TTY_MOUSEON 24
-#define TTY_MOUSEOFF 25 /* XXX merge all on/off into 1 arg? */
+#define TTY_MOUSEON 20
+#define TTY_MOUSEOFF 21 /* XXX merge all on/off into 1 arg? */
 
 /* Message codes. */
 enum hdrtype {
