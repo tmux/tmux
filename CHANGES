@@ -3,8 +3,6 @@
 * Support the numeric keypad. This is really confusing: parts of it have termcap
   entries and parts do not. I'm not sure I've got it right but this seems to
   work.
-* Change arrow keys from \033OA to \033[A to match screen's behaviour rather
-  than its termcap.
 
 19 July 2008
 
@@ -622,4 +620,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.151 2008-07-23 23:44:50 nicm Exp $
+$Id: CHANGES,v 1.152 2008-07-23 23:46:51 nicm Exp $

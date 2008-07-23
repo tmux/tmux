@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.11 2008-07-23 23:44:50 nicm Exp $ */
+/* $Id: input-keys.c,v 1.12 2008-07-23 23:46:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,10 +47,10 @@ struct {
 	{ KEYC_PPAGE,  "\033[5~" },
 	{ KEYC_SELECT, "\033[4~" },
 
-	{ KEYC_UP,     "\033[A" },
-	{ KEYC_DOWN,   "\033[B" },
-	{ KEYC_LEFT,   "\033[D" },
-	{ KEYC_RIGHT,  "\033[C" },
+	{ KEYC_UP,     "\033OA" },
+	{ KEYC_DOWN,   "\033OB" },
+	{ KEYC_LEFT,   "\033OD" },
+	{ KEYC_RIGHT,  "\033OC" },
 
 	{ KEYC_KP0_1,  "\033Oo" },
 	{ KEYC_KP0_2,  "\033Oj" },
