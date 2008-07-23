@@ -1,4 +1,4 @@
-/* $Id: arg.c,v 1.3 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: arg.c,v 1.4 2008-07-23 22:18:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -115,6 +115,8 @@ arg_parse_session(const char *arg)
 			xfree(arg2);
 			return (c->session);
 		}
+
+		xfree(arg2);
 	}
 
 	return (NULL);

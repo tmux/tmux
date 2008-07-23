@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.5 2008-06-25 07:30:08 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.6 2008-07-23 22:18:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -253,8 +253,10 @@ tty_keys_find(struct tty *tty, char *buf, size_t len, size_t *size)
 
 		tl.string = s;
 		tk = RB_FIND(tty_keys, &tty->ktree, &tl);
-		if (tk != NULL)
+		if (tk != NULL) {
+			xfree(s);
 			return (tk);
+		}
 	}
 	xfree(s);
 
