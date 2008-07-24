@@ -42,9 +42,7 @@
 - cfg file improvements (env vars particularly)
 - better mode features: search, back word, forward word, etc
 - flags to centre screen in window
-- get rid of DEFDATA etc
 - better terminal emulation (identify, insert mode, some other bits)
-- should we support kkeypad? looks like screen doesn't. what is kcursor?
 
 -- For 0.5 --------------------------------------------------------------------
 

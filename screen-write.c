@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.9 2008-07-23 23:44:50 nicm Exp $ */
+/* $Id: screen-write.c,v 1.10 2008-07-24 21:42:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -381,9 +381,9 @@ screen_write_fill_end_of_screen(struct screen_write_ctx *ctx)
 	u_int		 i;
 
 	screen_display_fill_area(s, s->cx, s->cy,
-	    screen_right_x(s, s->cx), 1, SCREEN_DEFDATA, s->attr, s->colr);
+	    screen_right_x(s, s->cx), 1, ' ', s->attr, s->colr);
 	screen_display_fill_area(s, 0, s->cy + 1, screen_size_x(s),
-	    screen_below_y(s, s->cy + 1), SCREEN_DEFDATA, s->attr, s->colr);
+	    screen_below_y(s, s->cy + 1), ' ', s->attr, s->colr);
 
 	if (ctx->write != NULL) {
 		ctx->write(ctx->data, TTY_CLEARENDOFLINE);
@@ -402,8 +402,8 @@ screen_write_fill_screen(struct screen_write_ctx *ctx)
  	struct screen	*s = ctx->s;
 	u_int		 i;
 
-	screen_display_fill_area(s, 0, 0, screen_size_x(s), screen_size_y(s),
-	    SCREEN_DEFDATA, s->attr, s->colr);
+	screen_display_fill_area(s, 0, 0,
+	    screen_size_x(s), screen_size_y(s), ' ', s->attr, s->colr);
 
 	if (ctx->write != NULL) {
 		for (i = 0; i < screen_size_y(s); i++) {
@@ -421,7 +421,7 @@ screen_write_fill_end_of_line(struct screen_write_ctx *ctx)
  	struct screen	*s = ctx->s;
 
 	screen_display_fill_area(s, s->cx, s->cy,
-	    screen_right_x(s, s->cx), 1, SCREEN_DEFDATA, s->attr, s->colr);
+	    screen_right_x(s, s->cx), 1, ' ', s->attr, s->colr);
 
 	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_CLEARENDOFLINE);
@@ -434,7 +434,7 @@ screen_write_fill_start_of_line(struct screen_write_ctx *ctx)
  	struct screen	*s = ctx->s;
 
 	screen_display_fill_area(s, 0, s->cy,
-	    screen_left_x(s, s->cx), 1, SCREEN_DEFDATA, s->attr, s->colr);
+	    screen_left_x(s, s->cx), 1, ' ', s->attr, s->colr);
 
 	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_CLEARSTARTOFLINE);
@@ -447,7 +447,7 @@ screen_write_fill_line(struct screen_write_ctx *ctx)
  	struct screen	*s = ctx->s;
 
 	screen_display_fill_area(s, 0, s->cy,
-	    screen_size_x(s), s->cy, SCREEN_DEFDATA, s->attr, s->colr);
+	    screen_size_x(s), s->cy, ' ', s->attr, s->colr);
 
 	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_CLEARLINE);

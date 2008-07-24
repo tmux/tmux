@@ -1,4 +1,4 @@
-/* $Id: screen-display.c,v 1.17 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: screen-display.c,v 1.18 2008-07-24 21:42:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,9 +39,9 @@ screen_display_make_lines(struct screen *s, u_int py, u_int ny)
 		return;
 	}
 	screen_make_lines(s, screen_y(s, py), ny);
-	if (s->attr != SCREEN_DEFATTR || s->colr != SCREEN_DEFCOLR) {
+	if (s->attr != 0 || s->colr != 0x88) {
 		screen_display_fill_area(s, 0, py,
-		    screen_size_x(s), ny, SCREEN_DEFDATA, s->attr, s->colr);
+		    screen_size_x(s), ny, ' ', s->attr, s->colr);
 	}
 }
 
@@ -381,7 +381,7 @@ screen_display_insert_characters(struct screen *s, u_int px, u_int py, u_int nx)
 		memmove(&s->grid_colr[py][px + nx], &s->grid_colr[py][px], mx);
 	}
 
-	memset(&s->grid_data[py][px], SCREEN_DEFDATA, nx);
+	memset(&s->grid_data[py][px], ' ', nx);
 	memset(&s->grid_attr[py][px], s->attr, nx);
 	memset(&s->grid_colr[py][px], s->colr, nx);
 }
@@ -420,7 +420,7 @@ screen_display_delete_characters(struct screen *s, u_int px, u_int py, u_int nx)
 		memmove(&s->grid_colr[py][px], &s->grid_colr[py][px + nx], mx);
 	}
 
-	memset(&s->grid_data[py][screen_size_x(s) - nx], SCREEN_DEFDATA, nx);
+	memset(&s->grid_data[py][screen_size_x(s) - nx], ' ', nx);
 	memset(&s->grid_attr[py][screen_size_x(s) - nx], s->attr, nx);
 	memset(&s->grid_colr[py][screen_size_x(s) - nx], s->colr, nx);
 }

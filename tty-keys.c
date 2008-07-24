@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.8 2008-07-24 00:03:15 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.9 2008-07-24 21:42:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -179,10 +179,14 @@ struct {
 	{ "pmous", KEYC_MOUSE },
 
 	/*
-	 * Numeric keypad.
-	 *
-	 * This is totally confusing and I still don't quite understand how it
-	 * all fits together in relation to termcap...
+	 * Numeric keypad. termcap and terminfo are totally confusing for this.
+	 * There are definitions for some keypad keys and for function keys,
+	 * but these seem to now be used for the real function keys rather than
+	 * for the keypad keys in application mode (which is different from
+	 * what it says in the termcap file). So, we just hardcode the vt100
+	 * escape sequences here and always put the terminal into keypad_xmit
+	 * mode.  Translation of numbers mode/applications mode is done in
+	 * input-keys.c.
 	 */
 	{ "-\033Oo", KEYC_KP0_1 },
 	{ "-\033Oj", KEYC_KP0_2 },

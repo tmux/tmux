@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.65 2008-07-24 07:01:57 nicm Exp $ */
+/* $Id: screen.c,v 1.66 2008-07-24 21:42:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -141,8 +141,8 @@ screen_create(struct screen *s, u_int dx, u_int dy, u_int hlimit)
 	s->hsize = 0;
 	s->hlimit = hlimit;
 
-	s->attr = SCREEN_DEFATTR;
-	s->colr = SCREEN_DEFCOLR;
+	s->attr = 0;
+	s->colr = 0x88;
 
 	s->mode = MODE_CURSOR;
 	s->title = xstrdup("");
@@ -166,8 +166,8 @@ screen_reset(struct screen *s)
 	s->rupper = 0;
 	s->rlower = s->dy - 1;
 
-	s->attr = SCREEN_DEFATTR;
-	s->colr = SCREEN_DEFCOLR;
+	s->attr = 0;
+	s->colr = 0x88;
 
 	s->mode = MODE_CURSOR;
 
@@ -276,11 +276,11 @@ screen_expand_line(struct screen *s, u_int py, u_int nx)
 	s->grid_size[py] = nx;
 
 	s->grid_data[py] = xrealloc(s->grid_data[py], 1, nx);
-	memset(&s->grid_data[py][ox], SCREEN_DEFDATA, nx - ox);
+	memset(&s->grid_data[py][ox], ' ', nx - ox);
 	s->grid_attr[py] = xrealloc(s->grid_attr[py], 1, nx);
-	memset(&s->grid_attr[py][ox], SCREEN_DEFATTR, nx - ox);
+	memset(&s->grid_attr[py][ox], 0, nx - ox);
 	s->grid_colr[py] = xrealloc(s->grid_colr[py], 1, nx);
-	memset(&s->grid_colr[py][ox], SCREEN_DEFCOLR, nx - ox);
+	memset(&s->grid_colr[py][ox], 0x88, nx - ox);
 }
 
 /* Reduce line. */
@@ -300,9 +300,9 @@ screen_get_cell(struct screen *s,
     u_int cx, u_int cy, u_char *data, u_char *attr, u_char *colr)
 {
 	if (cx >= s->grid_size[cy]) {
-		*data = SCREEN_DEFDATA;
-		*attr = SCREEN_DEFATTR;
-		*colr = SCREEN_DEFCOLR;
+		*data = ' ';
+		*attr = 0;
+		*colr = 0x88;
 	} else {
 		*data = s->grid_data[cy][cx];
 		*attr = s->grid_attr[cy][cx];

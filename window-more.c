@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.15 2008-07-02 21:22:57 nicm Exp $ */
+/* $Id: window-more.c,v 1.16 2008-07-24 21:42:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -176,7 +176,7 @@ window_more_write_line(struct window *w, struct screen_write_ctx *ctx, u_int py)
 	} else
 		size = 0;
 
-	screen_write_set_attributes(ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
+	screen_write_set_attributes(ctx, 0, 0x88);
 	screen_write_move_cursor(ctx, 0, py);
 	if (data->top + py  < ARRAY_LENGTH(&data->list)) {
 		msg = ARRAY_ITEM(&data->list, data->top + py);
@@ -184,7 +184,7 @@ window_more_write_line(struct window *w, struct screen_write_ctx *ctx, u_int py)
 		    ctx, "%.*s", (int) (screen_size_x(s) - size), msg);
 	}
 	while (s->cx < screen_size_x(s) - size)
-		screen_write_put_character(ctx, SCREEN_DEFDATA);
+		screen_write_put_character(ctx, ' ');
 }
 
 void

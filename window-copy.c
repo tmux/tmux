@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.26 2008-07-02 21:22:57 nicm Exp $ */
+/* $Id: window-copy.c,v 1.27 2008-07-24 21:42:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -215,8 +215,7 @@ window_copy_write_line(
 		screen_write_move_cursor(ctx, 0, 0);
 		size = screen_write_put_string_rjust(
 		    ctx, "[%u,%u/%u]", data->ox, data->oy, w->base.hsize);
-		screen_write_set_attributes(
-		    ctx, SCREEN_DEFATTR, SCREEN_DEFCOLR);
+		screen_write_set_attributes(ctx, 0, 0x88);
 	} else
 		size = 0;
 	screen_write_move_cursor(ctx, 0, py);
@@ -458,7 +457,7 @@ window_copy_find_length(struct window *w, u_int py)
 	u_int	px;
 
 	px = w->base.grid_size[py];
-	while (px > 0 && w->base.grid_data[py][px - 1] == SCREEN_DEFDATA)
+	while (px > 0 && w->base.grid_data[py][px - 1] == ' ')
 		px--;
 	return (px);
 }

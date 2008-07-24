@@ -1,11 +1,9 @@
 24 July 2008
 
-* If keypad mode and cursor mode are on, switch the arrow keys from \033[A to
-  \033OA. Not sure what else keypad mode is meant to do. Something with the
-  keypad keys I think, but screen doesn't seem to do anything...
-* Support the numeric keypad. This is really confusing: parts of it have termcap
-  entries and parts do not. I'm not sure I've got it right but this seems to
-  work.
+* Finally lose inconsistently-used SCREEN_DEF* defines.
+* If cursor mode is on, switch the arrow keys from \033[A to \033OA.
+* Support the numeric keypad in both application and numbers mode. This is
+  different from screen which always keeps it in application mode.
 
 19 July 2008
 
@@ -623,4 +621,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.153 2008-07-24 00:03:15 nicm Exp $
+$Id: CHANGES,v 1.154 2008-07-24 21:42:40 nicm Exp $

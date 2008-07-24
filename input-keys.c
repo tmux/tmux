@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.13 2008-07-24 00:03:15 nicm Exp $ */
+/* $Id: input-keys.c,v 1.14 2008-07-24 21:42:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,17 +50,33 @@ struct {
 	{ KEYC_PPAGE,  "\033[5~", 0 },
 	{ KEYC_SELECT, "\033[4~", 0 },
 
-	/* Keypad + cursor versions must come first. */
-	{ KEYC_UP,     "\033OA", INPUTKEY_KEYPAD|INPUTKEY_CURSOR },
-	{ KEYC_DOWN,   "\033OB", INPUTKEY_KEYPAD|INPUTKEY_CURSOR },
-	{ KEYC_LEFT,   "\033OD", INPUTKEY_KEYPAD|INPUTKEY_CURSOR },
-	{ KEYC_RIGHT,  "\033OC", INPUTKEY_KEYPAD|INPUTKEY_CURSOR },
-
+	/* Arrow keys. Cursor versions must come first. */
+	{ KEYC_UP,     "\033OA", INPUTKEY_CURSOR },
+	{ KEYC_DOWN,   "\033OB", INPUTKEY_CURSOR },
+	{ KEYC_LEFT,   "\033OD", INPUTKEY_CURSOR },
+	{ KEYC_RIGHT,  "\033OC", INPUTKEY_CURSOR },
 	{ KEYC_UP,     "\033[A", 0 },
 	{ KEYC_DOWN,   "\033[B", 0 },
 	{ KEYC_LEFT,   "\033[D", 0 },
 	{ KEYC_RIGHT,  "\033[C", 0 },
 
+	/* Keypad keys. Keypad versions must come first. */
+	{ KEYC_KP0_1,  "/", INPUTKEY_KEYPAD },
+	{ KEYC_KP0_2,  "*", INPUTKEY_KEYPAD },
+	{ KEYC_KP0_3,  "-", INPUTKEY_KEYPAD },
+	{ KEYC_KP1_0,  "7", INPUTKEY_KEYPAD },
+	{ KEYC_KP1_1,  "8", INPUTKEY_KEYPAD },
+	{ KEYC_KP1_2,  "9", INPUTKEY_KEYPAD },
+	{ KEYC_KP1_3,  "+", INPUTKEY_KEYPAD },
+	{ KEYC_KP2_0,  "4", INPUTKEY_KEYPAD },
+	{ KEYC_KP2_1,  "5", INPUTKEY_KEYPAD },
+	{ KEYC_KP2_2,  "6", INPUTKEY_KEYPAD },
+	{ KEYC_KP3_0,  "1", INPUTKEY_KEYPAD },
+	{ KEYC_KP3_1,  "2", INPUTKEY_KEYPAD },
+	{ KEYC_KP3_2,  "3", INPUTKEY_KEYPAD },
+	{ KEYC_KP3_3,  "\n", INPUTKEY_KEYPAD }, /* this can be CRLF too? */
+	{ KEYC_KP4_0,  "0", INPUTKEY_KEYPAD },
+	{ KEYC_KP4_2,  ".", INPUTKEY_KEYPAD },
 	{ KEYC_KP0_1,  "\033Oo", 0 },
 	{ KEYC_KP0_2,  "\033Oj", 0 },
 	{ KEYC_KP0_3,  "\033Om", 0 },
@@ -86,7 +102,7 @@ input_key(struct window *w, int key)
 {
 	u_int	i;
 
-	log_debug2("writing key %x", key);
+	log_debug2("writing key 0x%x", key);
 
 	if (KEYC_ISESCAPE(key)) {
 		buffer_write8(w->out, '\033');
@@ -109,10 +125,10 @@ input_key(struct window *w, int key)
 			break;
 	}
 	if (i == NINPUTKEYS) {
-		log_debug2("key %d missing", key);
+		log_debug2("key 0x%x missing", key);
 		return;
 	}
 
-	log_debug2("found key %d: \"%s\"", key, input_keys[i].data);
+	log_debug2("found key 0x%x: \"%s\"", key, input_keys[i].data);
 	buffer_write(w->out, input_keys[i].data, strlen(input_keys[i].data));
 }
