@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.7 2008-07-23 23:44:50 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.8 2008-07-24 00:03:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -179,7 +179,7 @@ struct {
 	{ "pmous", KEYC_MOUSE },
 
 	/*
-	 * Number keypad.
+	 * Numeric keypad.
 	 *
 	 * This is totally confusing and I still don't quite understand how it
 	 * all fits together in relation to termcap...
