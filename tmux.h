@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.177 2008-07-24 21:42:40 nicm Exp $ */
+/* $Id: tmux.h,v 1.178 2008-07-24 22:21:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1242,7 +1242,7 @@ void		 winlink_remove(struct winlinks *, struct winlink *);
 struct winlink	*winlink_next(struct winlinks *, struct winlink *);
 struct winlink	*winlink_previous(struct winlinks *, struct winlink *);
 struct window	*window_create(const char *,
-    const char *, const char **, u_int, u_int, u_int);
+		     const char *, const char **, u_int, u_int, u_int);
 int		 window_spawn(struct window *, const char *, const char **);
 void		 window_destroy(struct window *);
 int		 window_resize(struct window *, u_int, u_int);
