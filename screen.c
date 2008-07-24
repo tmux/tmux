@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.64 2008-07-24 00:03:15 nicm Exp $ */
+/* $Id: screen.c,v 1.65 2008-07-24 07:01:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -144,7 +144,7 @@ screen_create(struct screen *s, u_int dx, u_int dy, u_int hlimit)
 	s->attr = SCREEN_DEFATTR;
 	s->colr = SCREEN_DEFCOLR;
 
-	s->mode = MODE_CURSOR|MODE_KCURSOR;
+	s->mode = MODE_CURSOR;
 	s->title = xstrdup("");
 
 	s->grid_data = xmalloc(dy * (sizeof *s->grid_data));
@@ -169,7 +169,7 @@ screen_reset(struct screen *s)
 	s->attr = SCREEN_DEFATTR;
 	s->colr = SCREEN_DEFCOLR;
 
-	s->mode = MODE_CURSOR|MODE_KCURSOR;
+	s->mode = MODE_CURSOR;
 
 	screen_display_fill_area(s, 0, 0, 
 	    screen_size_x(s), screen_size_y(s), ' ', 0, 0x88);
