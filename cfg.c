@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.12 2008-06-21 10:19:36 nicm Exp $ */
+/* $Id: cfg.c,v 1.13 2008-07-25 17:20:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -78,11 +78,13 @@ load_cfg(const char *path, char **cause)
 		}
 		n++;
 
-		if ((cmd = cmd_string_parse(buf, cause)) == NULL) {
+		if (cmd_string_parse(buf, &cmd, cause) != 0) {
 			if (*cause == NULL)
 				continue;
 			goto error;
 		}
+		if (cmd == NULL)
+			continue;
 		cfg_cause = NULL;
 
 		ctx.msgdata = NULL;

@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.4 2008-06-25 20:43:13 nicm Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.5 2008-07-25 17:20:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -72,7 +72,7 @@ cmd_command_prompt_callback(void *data, char *s)
 	if (s == NULL)
 		return;
 
-	if ((cmd = cmd_string_parse(s, &cause)) == NULL) {
+	if (cmd_string_parse(s, &cmd, &cause) != 0) {
 		if (cause == NULL)
 			return;
 		*cause = toupper((u_char) *cause);
@@ -80,6 +80,8 @@ cmd_command_prompt_callback(void *data, char *s)
 		xfree(cause);
 		return;
 	}
+	if (cmd == NULL)
+		return;
 	
 	ctx.msgdata = NULL;
 	ctx.cursession = c->session;

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.178 2008-07-24 22:21:28 nicm Exp $ */
+/* $Id: tmux.h,v 1.179 2008-07-25 17:20:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1025,7 +1025,7 @@ extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
 
 /* cmd-string.c */
-struct cmd *cmd_string_parse(const char *, char **);
+int	cmd_string_parse(const char *, struct cmd **, char **);
 
 /* cmd-generic.c */
 #define CMD_TARGET_WINDOW_USAGE "[-t target-window]"

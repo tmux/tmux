@@ -1,3 +1,18 @@
+25 July 2008
+
+* Shell variables may now be defined and used in configuration file. Define
+  variables with:
+
+	VAR=1
+
+  And use with:
+
+        renamew ${VAR}
+	renamew "x${VAR}x"
+
+ Also some other fixes to make, for example, "abc""abc" work similarly to
+ the shell.
+
 24 July 2008
 
 * Finally lose inconsistently-used SCREEN_DEF* defines.
@@ -621,4 +636,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.154 2008-07-24 21:42:40 nicm Exp $
+$Id: CHANGES,v 1.155 2008-07-25 17:20:40 nicm Exp $
