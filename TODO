@@ -9,8 +9,6 @@
 - could use bsearch all over the place or get rid of smaller tables (clientmsg)
 - better errors when creating new windows/sessions (how?)
 - Implicitly add exec to the commands for new windows (switch to disable it)
-- nested sessions, ie session as window - moving to it moves into session
-  (remembering parent)
 - it would be nice to have multichar commands so you could have C-b K K for
   kill-window to limit accidental presses
 - status-fg/status-bg should be able to set attributes: bold, etc
