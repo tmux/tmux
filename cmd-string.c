@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.5 2008-07-25 17:29:40 nicm Exp $ */
+/* $Id: cmd-string.c,v 1.6 2008-08-01 20:25:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,7 +49,7 @@ cmd_string_ungetc(unused const char *s, size_t *p)
 }
 
 /* 
- * Parse command string. Return -1 on error. If returning 1, cause is error
+ * Parse command string. Returns -1 on error. If returning -1, cause is error
  * string, or NULL for empty command.
  */ 
 int
