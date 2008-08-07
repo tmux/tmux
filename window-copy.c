@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.27 2008-07-24 21:42:40 nicm Exp $ */
+/* $Id: window-copy.c,v 1.28 2008-08-07 20:20:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,7 +43,7 @@ void	window_copy_start_selection(struct window *);
 int	window_copy_update_selection(struct window *);
 void	window_copy_copy_selection(struct window *, struct client *);
 void	window_copy_copy_line(
-	    struct window *, char **, size_t *, size_t *, u_int, u_int, u_int);
+	    struct window *, char **, size_t *, u_int, u_int, u_int);
 u_int	window_copy_find_length(struct window *, u_int);
 void	window_copy_cursor_start_of_line(struct window *);
 void	window_copy_cursor_end_of_line(struct window *);
@@ -364,14 +364,13 @@ window_copy_copy_selection(struct window *w, struct client *c)
 	struct window_copy_mode_data	*data = w->modedata;
 	struct screen			*s = &data->screen;
 	char				*buf;
-	size_t	 			 len, off;
+	size_t	 			 off;
 	u_int	 			 i, xx, yy, sx, sy, ex, ey, limit;
 
 	if (!s->sel.flag)
 		return;
 
-	len = BUFSIZ;
-	buf = xmalloc(len);
+	buf = xmalloc(1);
 	off = 0;
 
 	*buf = '\0';
@@ -399,18 +398,17 @@ window_copy_copy_selection(struct window *w, struct client *c)
 
 	/* Copy the lines. */
 	if (sy == ey)
-		window_copy_copy_line(w, &buf, &off, &len, sy, sx, ex);
+		window_copy_copy_line(w, &buf, &off, sy, sx, ex);
 	else {
 		xx = window_copy_find_length(w, sy);
-		window_copy_copy_line(w, &buf, &off, &len, sy, sx, xx);
+		window_copy_copy_line(w, &buf, &off, sy, sx, xx);
 		if (ey - sy > 1) {
 			for (i = sy + 1; i < ey - 1; i++) {
 				xx = window_copy_find_length(w, i);
-				window_copy_copy_line(
-				    w, &buf, &off, &len, i, 0, xx);
+				window_copy_copy_line(w, &buf, &off, i, 0, xx);
 			}
 		}
-		window_copy_copy_line(w, &buf, &off, &len, ey, 0, ex);
+		window_copy_copy_line(w, &buf, &off, ey, 0, ex);
 	}
 
 	/* Terminate buffer, overwriting final \n. */
@@ -424,8 +422,8 @@ window_copy_copy_selection(struct window *w, struct client *c)
 }
 
 void
-window_copy_copy_line(struct window *w,
-    char **buf, size_t *off, size_t *len, u_int sy, u_int sx, u_int ex)
+window_copy_copy_line(
+    struct window *w, char **buf, size_t *off, u_int sy, u_int sx, u_int ex)
 {
 	u_char	i, xx;
 
@@ -440,13 +438,13 @@ window_copy_copy_line(struct window *w,
 
 	if (sx < ex) {
 		for (i = sx; i < ex; i++) {
-			*buf = ensure_size(*buf, len, 1, *off + 1);
+			*buf = xrealloc(*buf, 1, (*off) + 1);
 			(*buf)[*off] = w->base.grid_data[sy][i];
 			(*off)++;
 		}
 	}
 
-	*buf = ensure_size(*buf, len, 1, *off + 1);
+	*buf = xrealloc(*buf, 1, (*off) + 1);
 	(*buf)[*off] = '\n';
 	(*off)++;
 }

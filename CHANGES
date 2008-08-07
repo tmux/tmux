@@ -1,3 +1,7 @@
+07 August 2008
+
+* Lose some unused/useless wrapper functions.
+
 25 July 2008
 
 * Shell variables may now be defined and used in configuration file. Define
@@ -636,4 +640,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.155 2008-07-25 17:20:40 nicm Exp $
+$Id: CHANGES,v 1.156 2008-08-07 20:20:49 nicm Exp $

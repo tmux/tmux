@@ -1,4 +1,4 @@
-/* $Id: array.h,v 1.5 2008-06-20 08:36:20 nicm Exp $ */
+/* $Id: array.h,v 1.6 2008-08-07 20:20:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2006 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,6 +28,22 @@
 
 #define ARRAY_ITEM(a, i) ((a)->list[i])
 #define ARRAY_ITEMSIZE(a) (sizeof *(a)->list)
+#define ARRAY_INITIALSPACE(a) (10 * ARRAY_ITEMSIZE(a))
+
+#define ARRAY_ENSURE(a, n) do {						\
+	if (SIZE_MAX - (n) < (a)->num)					\
+		fatalx("number too big");				\
+	if (SIZE_MAX / ((a)->num + (n)) < ARRAY_ITEMSIZE(a))		\
+		fatalx("size too big");					\
+	if ((a)->space == 0) {						\
+	       	(a)->space = ARRAY_INITIALSPACE(a);			\
+		(a)->list = xrealloc((a)->list, 1, (a)->space);		\
+	}								\
+	while ((a)->space <= ((a)->num + (n)) * ARRAY_ITEMSIZE(a)) {	\
+		(a)->list = xrealloc((a)->list, 2, (a)->space);		\
+		(a)->space *= 2;					\
+	}								\
+} while (0)
 
 #define ARRAY_EMPTY(a) ((a) == NULL || (a)->num == 0)
 #define ARRAY_LENGTH(a) ((a)->num)
@@ -50,12 +66,12 @@
 } while (0)
 
 #define ARRAY_ADD(a, s) do {						\
-	ENSURE_SIZE2((a)->list, (a)->space, (a)->num + 1, ARRAY_ITEMSIZE(a)); \
+	ARRAY_ENSURE(a, 1);						\
 	(a)->list[(a)->num] = s;					\
 	(a)->num++;							\
 } while (0)
 #define ARRAY_INSERT(a, i, s) do {					\
-	ENSURE_SIZE2((a)->list, (a)->space, (a)->num + 1, ARRAY_ITEMSIZE(a)); \
+	ARRAY_ENSURE(a, 1);						\
 	if ((i) < (a)->num) {						\
 		memmove((a)->list + (i) + 1, (a)->list + (i), 		\
 		    ARRAY_ITEMSIZE(a) * ((a)->num - (i)));		\
@@ -74,7 +90,7 @@
 } while (0)
 
 #define ARRAY_EXPAND(a, n) do {						\
-	ENSURE_SIZE2((a)->list, (a)->space, (a)->num + n, ARRAY_ITEMSIZE(a)); \
+	ARRAY_ENSURE(a, n);						\
 	(a)->num += n;							\
 } while (0)
 #define ARRAY_TRUNC(a, n) do {						\
@@ -85,8 +101,7 @@
 } while (0)
 
 #define ARRAY_CONCAT(a, b) do {						\
-	ENSURE_SIZE2((a)->list, (a)->space, (a)->num + (b)->num, 	\
-	    ARRAY_ITEMSIZE(a)); 					\
+	ARRAY_ENSURE(a, (b)->num);					\
 	memcpy((a)->list + (a)->num, (b)->list, (b)->num * ARRAY_ITEMSIZE(a)) \
 	(a)->num += (b)->num;						\
 } while (0)
