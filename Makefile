@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.71 2008-07-02 21:22:57 nicm Exp $
+# $Id: Makefile,v 1.72 2008-08-07 05:15:21 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -92,7 +92,7 @@ CLEANFILES= ${PROG} *.o .depend *~ ${PROG}.core *.log index.html
 all:		${PROG}
 
 ${PROG}:	${OBJS}
-		${CC} ${LDFLAGS} -o ${PROG} ${LIBS} ${OBJS}
+		${CC} ${LDFLAGS} -o ${PROG} ${OBJS} ${LIBS}
 
 depend:
 		mkdep ${CFLAGS} ${INCDIRS} ${SRCS:M*.c}
