@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.180 2008-08-07 20:20:52 nicm Exp $ */
+/* $Id: tmux.h,v 1.181 2008-08-08 17:35:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1295,10 +1295,13 @@ int		 buffer_poll(struct pollfd *, struct buffer *, struct buffer *);
 void		 buffer_flush(int, struct buffer *n, struct buffer *);
 
 /* log.c */
-void		 log_open(FILE *, int, int);
+#define LOG_FACILITY LOG_DAEMON
+void		 log_open_syslog(int);
+void		 log_open_tty(int);
+void		 log_open_file(int, const char *);
 void		 log_close(void);
-void		 log_vwrite(FILE *, int, const char *, va_list);
-void		 log_write(FILE *, int, const char *, ...);
+void		 log_vwrite(int, const char *, va_list);
+void		 log_write(int, const char *, ...);
 void printflike1 log_warn(const char *, ...);
 void printflike1 log_warnx(const char *, ...);
 void printflike1 log_info(const char *, ...);

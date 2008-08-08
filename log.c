@@ -1,4 +1,4 @@
-/* $Id: log.c,v 1.4 2007-10-19 22:17:29 nicm Exp $ */
+/* $Id: log.c,v 1.5 2008-08-08 17:35:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,79 +23,110 @@
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
-#include <time.h>
 
 #include "tmux.h"
 
-/* Logging enabled. */
-int	 log_enabled;
+/* Logging type. */
+#define LOG_TYPE_OFF 0
+#define LOG_TYPE_SYSLOG 1
+#define LOG_TYPE_TTY 2
+#define LOG_TYPE_FILE 3
+int	log_type = LOG_TYPE_OFF;
 
-/* Log stream or NULL to use syslog. */
-FILE	*log_stream;
+/* Log file, if needed. */
+FILE   *log_file;
 
 /* Debug level. */
-int	 log_level;
+int	log_level;
 
-/* Open logging. */
+/* Open logging to syslog. */
 void
-log_open(FILE *f, int facility, int level)
+log_open_syslog(int level)
 {
-	log_stream = f;
-	if (f != NULL)
-		setlinebuf(f);
-
+	log_type = LOG_TYPE_SYSLOG;
 	log_level = level;
 
-	if (f == NULL)
-		openlog(__progname, LOG_PID|LOG_NDELAY, facility);
-	tzset();
+	openlog(__progname, LOG_PID|LOG_NDELAY, LOG_FACILITY);
 
-	log_enabled = 1;
+	tzset();
+}
+
+/* Open logging to tty. */
+void
+log_open_tty(int level)
+{
+	log_type = LOG_TYPE_TTY;
+	log_level = level;
+
+	setlinebuf(stderr);
+	setlinebuf(stdout);
+
+	tzset();
+}
+
+/* Open logging to tty. */
+void
+log_open_file(int level, const char *path)
+{
+	log_file = fopen(path, "w");
+	if (log_file == NULL)
+		return;
+	
+	log_type = LOG_TYPE_FILE;
+	log_level = level;
+
+	setlinebuf(log_file);
+
+	tzset();
 }
 
 /* Close logging. */
 void
 log_close(void)
 {
-	if (log_stream != NULL && log_stream != stderr) /* XXX */
-		fclose(log_stream);
+	if (log_type == LOG_TYPE_FILE)
+		fclose(log_file);
 
-	log_enabled = 0;
+	log_type = LOG_TYPE_OFF;
 }
 
 /* Write a log message. */
 void
-log_write(FILE *f, int priority, const char *msg, ...)
+log_write(int pri, const char *msg, ...)
 {
 	va_list	ap;
 
 	va_start(ap, msg);
-	log_vwrite(f, priority, msg, ap);
+	log_vwrite(pri, msg, ap);
 	va_end(ap);
 }
 
 /* Write a log message. */
 void
-log_vwrite(FILE *f, int priority, const char *msg, va_list ap)
+log_vwrite(int pri, const char *msg, va_list ap)
 {
 	char	*fmt;
+	FILE	*f = log_file;
 
-	if (!log_enabled)
-		return;
-
-	if (f == NULL)
-		f = log_stream;
-	if (f == NULL) {
-		vsyslog(priority, msg, ap);
-		return;
+	switch (log_type) {
+	case LOG_TYPE_SYSLOG:
+		vsyslog(pri, msg, ap);
+		break;
+	case LOG_TYPE_TTY:
+		if (pri == LOG_INFO)
+			f = stdout;
+		else
+			f = stderr;
+		/* FALLTHROUGH */
+	case LOG_TYPE_FILE:
+		if (asprintf(&fmt, "%s\n", msg) == -1)
+			exit(1);
+		if (vfprintf(f, fmt, ap) == -1)
+			exit(1);
+		fflush(f);
+		free(fmt);
+		break;
 	}
-
-	if (asprintf(&fmt, "%s\n", msg) == -1)
-		exit(1);
-	if (vfprintf(f, fmt, ap) == -1)
-		exit(1);
-	fflush(f);
-	free(fmt);
 }
 
 /* Log a warning with error string. */
@@ -105,13 +136,10 @@ log_warn(const char *msg, ...)
 	va_list	 ap;
 	char	*fmt;
 
-	if (!log_enabled)
-		return;
-
 	va_start(ap, msg);
 	if (asprintf(&fmt, "%s: %s", msg, strerror(errno)) == -1)
 		exit(1);
-	log_vwrite(NULL, LOG_CRIT, fmt, ap);
+	log_vwrite(LOG_CRIT, fmt, ap);
 	free(fmt);
 	va_end(ap);
 }
@@ -123,7 +151,7 @@ log_warnx(const char *msg, ...)
 	va_list	ap;
 
 	va_start(ap, msg);
-	log_vwrite(NULL, LOG_CRIT, msg, ap);
+	log_vwrite(LOG_CRIT, msg, ap);
 	va_end(ap);
 }
 
@@ -135,10 +163,7 @@ log_info(const char *msg, ...)
 
 	if (log_level > -1) {
 		va_start(ap, msg);
-		if (log_stream == stderr) /* XXX */
-			log_vwrite(stdout, LOG_INFO, msg, ap);
-		else
-			log_vwrite(NULL, LOG_INFO, msg, ap);
+		log_vwrite(LOG_INFO, msg, ap);
 		va_end(ap);
 	}
 }
@@ -151,7 +176,7 @@ log_debug(const char *msg, ...)
 
 	if (log_level > 0) {
 		va_start(ap, msg);
-		log_vwrite(NULL, LOG_DEBUG, msg, ap);
+		log_vwrite(LOG_DEBUG, msg, ap);
 		va_end(ap);
 	}
 }
@@ -164,7 +189,7 @@ log_debug2(const char *msg, ...)
 
 	if (log_level > 1) {
 		va_start(ap, msg);
-		log_vwrite(NULL, LOG_DEBUG, msg, ap);
+		log_vwrite(LOG_DEBUG, msg, ap);
 		va_end(ap);
 	}
 }
@@ -177,7 +202,7 @@ log_debug3(const char *msg, ...)
 
 	if (log_level > 2) {
 		va_start(ap, msg);
-		log_vwrite(NULL, LOG_DEBUG, msg, ap);
+		log_vwrite(LOG_DEBUG, msg, ap);
 		va_end(ap);
 	}
 }
@@ -188,17 +213,14 @@ log_vfatal(const char *msg, va_list ap)
 {
 	char	*fmt;
 
-	if (!log_enabled)
-		exit(1);
-
 	if (errno != 0) {
 		if (asprintf(&fmt, "fatal: %s: %s", msg, strerror(errno)) == -1)
 			exit(1);
-		log_vwrite(NULL, LOG_CRIT, fmt, ap);
+		log_vwrite(LOG_CRIT, fmt, ap);
 	} else {
 		if (asprintf(&fmt, "fatal: %s", msg) == -1)
-			exit(1);
-		log_vwrite(NULL, LOG_CRIT, fmt, ap);
+       			exit(1);
+		log_vwrite(LOG_CRIT, fmt, ap);
 	}
 	free(fmt);
 
@@ -206,7 +228,7 @@ log_vfatal(const char *msg, va_list ap)
 }
 
 /* Log a critical error, with error string, and die. */
-__dead void
+__dead void printflike1
 log_fatal(const char *msg, ...)
 {
 	va_list	ap;
@@ -216,7 +238,7 @@ log_fatal(const char *msg, ...)
 }
 
 /* Log a critical error and die. */
-__dead void
+__dead void printflike1
 log_fatalx(const char *msg, ...)
 {
 	va_list	ap;
