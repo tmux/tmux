@@ -30,7 +30,6 @@
 - lift SHRT_MAX limits for history
 - audit copy/scroll and other modes for problems with very small windows
 - screen_draw_* moved out/renamed (accept TTY_*?)
-- get rid of stderr/stdout hacks in log.c
 - split clients into three RB trees by fd: attached/unattached/dead?
   or tailqs? what would be fastest per-char?
 - window splitting?
