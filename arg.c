@@ -1,4 +1,4 @@
-/* $Id: arg.c,v 1.4 2008-07-23 22:18:06 nicm Exp $ */
+/* $Id: arg.c,v 1.5 2008-08-28 17:45:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,18 +46,18 @@ struct session *
 arg_lookup_session(const char *name)
 {
 	struct session	*s, *newest = NULL;
-	struct timespec	*ts;
+	struct timeval	*tv;
 	u_int		 i;
 
-	ts = NULL;
+	tv = NULL;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
 		if (s == NULL || fnmatch(name, s->name, 0) != 0)
 			continue;
 
-		if (ts == NULL || timespeccmp(&s->ts, ts, >)) {
+		if (tv == NULL || timercmp(&s->tv, tv, >)) {
 			newest = s;
-			ts = &s->ts;
+			tv = &s->tv;
 		}
 	}
 

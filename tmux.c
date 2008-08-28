@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.73 2008-08-08 17:35:42 nicm Exp $ */
+/* $Id: tmux.c,v 1.74 2008-08-28 17:45:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,7 +20,6 @@
 #include <sys/wait.h>
 
 #include <errno.h>
-#include <poll.h>
 #include <pwd.h>
 #include <signal.h>
 #include <stdlib.h>

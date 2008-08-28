@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.49 2008-06-22 22:28:33 nicm Exp $ */
+/* $Id: server-fn.c,v 1.50 2008-08-28 17:45:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,9 +17,9 @@
  */
 
 #include <sys/types.h>
+#include <sys/time.h>
 
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -27,17 +27,17 @@
 void
 server_set_client_message(struct client *c, const char *msg)
 {
-	struct timespec	ts;
+	struct timeval	tv;
 	int		delay;
 
 	delay = options_get_number(&c->session->options, "display-time");
-	ts.tv_sec = delay / 1000;
-	ts.tv_nsec = (delay % 1000) * 1000000L;
+	tv.tv_sec = delay / 1000;
+	tv.tv_usec = (delay % 1000) * 1000L;
 
 	c->message_string = xstrdup(msg);
-	if (clock_gettime(CLOCK_REALTIME, &c->message_timer) != 0)
-		fatal("clock_gettime");
-	timespecadd(&c->message_timer, &ts, &c->message_timer);
+	if (gettimeofday(&c->message_timer, NULL) != 0)
+		fatal("gettimeofday");
+	timeradd(&c->message_timer, &tv, &c->message_timer);
 
 	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_STATUS;

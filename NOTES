@@ -59,9 +59,6 @@ There are the following known issues:
   trivial and as most modern vt220-based software terminals support it currently
   I have better things to work one. Diffs or ideas how to cleanly emulate cs
   are welcome.
-- Darwin/OS X's poll(2) is broken and doesn't support polling pty(4)s; as tmux
-  makes heavy use of this and there are no suitable alternatives on the
-  platform, Darwin and OS X are unfortunately not supported for the present.
 
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
@@ -73,4 +70,4 @@ welcome. Please email:
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.35 2008-06-25 19:12:30 nicm Exp $
+$Id: NOTES,v 1.36 2008-08-28 17:45:24 nicm Exp $

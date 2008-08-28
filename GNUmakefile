@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.37 2008-07-01 05:43:00 nicm Exp $
+# $Id: GNUmakefile,v 1.38 2008-08-28 17:45:24 nicm Exp $
 
 .PHONY: clean
 
@@ -14,7 +14,7 @@ META?= \002
 SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       xmalloc.c xmalloc-debug.c input.c input-keys.c screen.c screen-display.c \
       window.c session.c log.c client.c client-msg.c client-fn.c cfg.c \
-      key-string.c key-bindings.c resize.c arg.c \
+      key-string.c key-bindings.c resize.c arg.c mode-key.c \
       cmd.c cmd-generic.c cmd-string.c \
       cmd-detach-client.c cmd-list-sessions.c cmd-new-window.c cmd-bind-key.c \
       cmd-unbind-key.c cmd-previous-window.c cmd-last-window.c cmd-list-keys.c \
@@ -78,9 +78,9 @@ endif
 
 ifeq ($(shell uname),Darwin)
 INCDIRS+= -Icompat
-SRCS+= compat/strtonum.c
+SRCS+= compat/strtonum.c compat/bsd-poll.c
 CFLAGS+= -DNO_STRTONUM -DNO_SETRESUID -DNO_SETRESGID -DNO_SETPROCTITLE \
-         -DNO_TREE_H
+         -DNO_TREE_H -DBROKEN_POLL
 endif
 
 ifeq ($(shell uname),Linux)

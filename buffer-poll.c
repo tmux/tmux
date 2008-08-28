@@ -1,4 +1,4 @@
-/* $Id: buffer-poll.c,v 1.8 2008-07-01 20:35:16 nicm Exp $ */
+/* $Id: buffer-poll.c,v 1.9 2008-08-28 17:45:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,6 @@
 #include <sys/types.h>
 
 #include <errno.h>
-#include <poll.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -45,8 +44,10 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 	    (long) getpid(),
 	    pfd->fd, pfd->revents, BUFFER_USED(out), BUFFER_USED(in));
 
+#ifndef BROKEN_POLL
 	if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP))
 		return (-1);
+#endif
 	if (pfd->revents & POLLIN) {
 		buffer_ensure(in, BUFSIZ);
 		n = read(pfd->fd, BUFFER_IN(in), BUFFER_FREE(in));

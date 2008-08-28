@@ -1,3 +1,9 @@
+28 August 2008
+
+* Support OS X/Darwin thanks to bsd-poll.c from OpenSSH. Also convert
+  from clock_gettime(2) to gettimeofday(2) as OS X doesn't support the
+  former; microsecond accuracy will have to be sufficient ;-).
+
 07 August 2008
 
 * Lose some unused/useless wrapper functions.
@@ -640,4 +646,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.156 2008-08-07 20:20:49 nicm Exp $
+$Id: CHANGES,v 1.157 2008-08-28 17:45:23 nicm Exp $

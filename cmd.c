@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.62 2008-07-19 10:07:50 nicm Exp $ */
+/* $Id: cmd.c,v 1.63 2008-08-28 17:45:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -304,7 +304,7 @@ struct session *
 cmd_current_session(struct cmd_ctx *ctx)
 {
 	struct msg_command_data	*data = ctx->msgdata;
-	struct timespec		*ts;
+	struct timeval		*tv;
 	struct session		*s, *newest = NULL;
 	u_int			 i;
 
@@ -327,12 +327,12 @@ cmd_current_session(struct cmd_ctx *ctx)
 		return (s);
 	}
 
-	ts = NULL;
+	tv = NULL;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
-		if (s != NULL && (ts == NULL || timespeccmp(&s->ts, ts, >))) {
+		if (s != NULL && (tv == NULL || timercmp(&s->tv, tv, >))) {
 			newest = ARRAY_ITEM(&sessions, i);
-			ts = &s->ts;
+			tv = &s->tv;
 		}
 	}
 	return (newest);

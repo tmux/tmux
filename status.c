@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.42 2008-06-27 17:32:24 nicm Exp $ */
+/* $Id: status.c,v 1.43 2008-08-28 17:45:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,10 +17,10 @@
  */
 
 #include <sys/types.h>
+#include <sys/time.h>
 
 #include <stdarg.h>
 #include <string.h>
-#include <time.h>
 
 #include "tmux.h"
 
@@ -40,14 +40,15 @@ status_redraw(struct client *c)
 	size_t				size, start, width;
 	u_char		 		attr, colr;
 	struct tm		       *tm;
+	time_t				t;
 	int				larrow, rarrow;
 
 	if (c->sy == 0 || !options_get_number(&s->options, "status"))
 		goto off;
 	larrow = rarrow = 0;
 
-	if (clock_gettime(CLOCK_REALTIME, &c->status_timer) != 0)
-		fatal("clock_gettime failed");
+	if (gettimeofday(&c->status_timer, NULL) != 0)
+		fatal("gettimeofday");
 	colr = options_get_number(&s->options, "status-bg") + 
 	    (options_get_number(&s->options, "status-fg") << 4);
 
@@ -55,7 +56,8 @@ status_redraw(struct client *c)
 	if (yy == 0)
 		goto blank;
 
-	tm = localtime(&(c->status_timer.tv_sec));
+	t = c->status_timer.tv_sec;
+	tm = localtime(&t);
 	left = options_get_string(&s->options, "status-left");
 	strftime(lbuf, sizeof lbuf, left, tm);
 	llen = strlen(lbuf);

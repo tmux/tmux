@@ -1,4 +1,4 @@
-/* $Id: paste.c,v 1.3 2008-06-20 18:45:35 nicm Exp $ */
+/* $Id: paste.c,v 1.4 2008-08-28 17:45:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,9 +17,9 @@
  */
 
 #include <sys/types.h>
+#include <sys/time.h>
 
 #include <string.h>
-#include <time.h>
 
 #include "tmux.h"
 
@@ -108,8 +108,8 @@ paste_add(struct paste_stack *ps, const char *data, u_int limit)
 	ARRAY_INSERT(ps, 0, pb);
 
 	pb->data = xstrdup(data);
-	if (clock_gettime(CLOCK_REALTIME, &pb->ts) != 0)
-		fatal("clock_gettime");
+	if (gettimeofday(&pb->tv, NULL) != 0)
+		fatal("gettimeofday");
 }
 
 int
@@ -124,8 +124,8 @@ paste_replace(struct paste_stack *ps, u_int idx, const char *data)
 	xfree(pb->data);
 
 	pb->data = xstrdup(data);
-	if (clock_gettime(CLOCK_REALTIME, &pb->ts) != 0)
-		fatal("clock_gettime");
+	if (gettimeofday(&pb->tv, NULL) != 0)
+		fatal("gettimeofday");
 
 	return (0);
 }

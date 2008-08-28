@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.181 2008-08-08 17:35:42 nicm Exp $ */
+/* $Id: tmux.h,v 1.182 2008-08-28 17:45:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,6 +25,7 @@
 #define RB_AUGMENT(x) do {} while (0)
 
 #include <sys/param.h>
+#include <sys/time.h>
 
 #ifndef NO_QUEUE_H
 #include <sys/queue.h>
@@ -38,9 +39,15 @@
 #include "compat/tree.h"
 #endif
 
+#ifndef BROKEN_POLL
+#include <poll.h>
+#else
+#undef HAVE_POLL
+#include "compat/bsd-poll.h"
+#endif
+
 #include <ncurses.h>
 #include <limits.h>
-#include <poll.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -70,21 +77,21 @@ extern const char    *__progname;
 #define __packed __attribute__ ((__packed__))
 #endif
 
-#ifndef timespeccmp
-#define timespeccmp(tsp, usp, cmp)                                      \
-        (((tsp)->tv_sec == (usp)->tv_sec) ?                             \
-            ((tsp)->tv_nsec cmp (usp)->tv_nsec) :                       \
-            ((tsp)->tv_sec cmp (usp)->tv_sec))
+#ifndef timercmp
+#define	timercmp(tvp, uvp, cmp)						\
+	(((tvp)->tv_sec == (uvp)->tv_sec) ?				\
+	    ((tvp)->tv_usec cmp (uvp)->tv_usec) :			\
+	    ((tvp)->tv_sec cmp (uvp)->tv_sec))
 #endif
 
-#ifndef timespecadd
-#define	timespecadd(tsp, usp, vsp)					\
+#ifndef timeradd
+#define	timeradd(tvp, uvp, vvp)						\
 	do {								\
-		(vsp)->tv_sec = (tsp)->tv_sec + (usp)->tv_sec;		\
-		(vsp)->tv_nsec = (tsp)->tv_nsec + (usp)->tv_nsec;	\
-		if ((vsp)->tv_nsec >= 1000000000L) {			\
-			(vsp)->tv_sec++;				\
-			(vsp)->tv_nsec -= 1000000000L;			\
+		(vvp)->tv_sec = (tvp)->tv_sec + (uvp)->tv_sec;		\
+		(vvp)->tv_usec = (tvp)->tv_usec + (uvp)->tv_usec;	\
+		if ((vvp)->tv_usec >= 1000000) {			\
+			(vvp)->tv_sec++;				\
+			(vvp)->tv_usec -= 1000000;			\
 		}							\
 	} while (0)
 #endif
@@ -616,7 +623,7 @@ struct options {
 /* Paste buffer. */
 struct paste_buffer {
      	char		*data;
-	struct timespec	 ts;
+	struct timeval	 tv;
 };
 ARRAY_DECL(paste_stack, struct paste_buffer *);
 
@@ -630,7 +637,7 @@ struct session_alert {
 
 struct session {
 	char		*name;
-	struct timespec	 ts;
+	struct timeval	 tv;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -688,7 +695,7 @@ struct tty {
 #define TTY_ESCAPE 0x4
 	int		 flags;
 
-	struct timespec	 key_timer;
+	struct timeval	 key_timer;
 
 	size_t		 ksize;	/* maximum key size */
 	RB_HEAD(tty_keys, tty_key) ktree;
@@ -703,7 +710,7 @@ struct client {
 	char		*title;
 
 	struct tty 	 tty;
-	struct timespec	 status_timer;
+	struct timeval	 status_timer;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -716,7 +723,7 @@ struct client {
 	int		 flags;
 
 	char		*message_string;
-	struct timespec	 message_timer;
+	struct timeval	 message_timer;
 
 	char		*prompt_string;
 	char		*prompt_buffer;

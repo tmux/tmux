@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.15 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.16 2008-08-28 17:45:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,6 +48,7 @@ cmd_list_sessions_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink	*wl;
 	char		*tim;
 	u_int		 i, n;
+	time_t		 t;
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
@@ -57,7 +58,8 @@ cmd_list_sessions_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		n = 0;
 		RB_FOREACH(wl, winlinks, &s->windows)
 		    	n++;
-		tim = ctime(&s->ts.tv_sec);
+		t = s->tv.tv_sec;
+		tim = ctime(&t);
 		*strchr(tim, '\n') = '\0';
 
 		ctx->print(ctx, "%s: %u windows"

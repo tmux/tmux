@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.41 2008-06-30 19:11:33 nicm Exp $ */
+/* $Id: session.c,v 1.42 2008-08-28 17:45:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,10 +17,10 @@
  */
 
 #include <sys/types.h>
+#include <sys/time.h>
 
 #include <string.h>
 #include <stdlib.h>
-#include <time.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -115,8 +115,8 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	u_int		 i;
 
 	s = xmalloc(sizeof *s);
-	if (clock_gettime(CLOCK_REALTIME, &s->ts) != 0)
-		fatal("clock_gettime failed");
+	if (gettimeofday(&s->tv, NULL) != 0)
+		fatal("gettimeofday");
 	s->curw = s->lastw = NULL;
 	RB_INIT(&s->windows);
 	TAILQ_INIT(&s->alerts);

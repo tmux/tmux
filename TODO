@@ -34,11 +34,11 @@
   or tailqs? what would be fastest per-char?
 - window splitting?
 - c/p is still borken in some ways
-- poll(2) is broken on OS X/Darwin, a workaround for this would be nice
 - different screen model? layers perhaps? hmm
 - better mode features: search, back word, forward word, etc
 - flags to centre screen in window
 - better terminal emulation (identify, insert mode, some other bits)
+- 256 colour terminal support
 
 -- For 0.5 --------------------------------------------------------------------
 

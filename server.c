@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.77 2008-06-29 07:04:30 nicm Exp $ */
+/* $Id: server.c,v 1.78 2008-08-28 17:45:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <poll.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -197,8 +196,10 @@ server_main(const char *srv_path, int srv_fd)
 		log_debug("poll returned %d", nfds);
 
 		/* Handle server socket. */
+#ifndef BROKEN_POLL
 		if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP))
 			fatalx("lost server socket");
+#endif
 		if (pfd->revents & POLLIN) {
 			server_accept_client(srv_fd);
 			continue;
@@ -377,17 +378,17 @@ void
 server_check_timers(struct client *c)
 {
 	struct session	*s;
-	struct timespec	 ts, ts2;
+	struct timeval	 tv, tv2;
 	u_int		 interval;
 
 	if (c == NULL || c->session == NULL)
 		return;
 	s = c->session;
 
-	if (clock_gettime(CLOCK_REALTIME, &ts) != 0)
-		fatal("clock_gettime");
+	if (gettimeofday(&tv, NULL) != 0)
+		fatal("gettimeofday");
 	
-	if (c->message_string != NULL && timespeccmp(&ts, &c->message_timer, >))
+	if (c->message_string != NULL && timercmp(&tv, &c->message_timer, >))
 		server_clear_client_message(c);
 
 	if (!options_get_number(&s->options, "status"))
@@ -396,9 +397,9 @@ server_check_timers(struct client *c)
 	if (interval == 0)
 		return;
 
-	memcpy(&ts2, &ts, sizeof ts2);
-	ts2.tv_sec -= interval;
-	if (timespeccmp(&c->status_timer, &ts2, <))
+	memcpy(&tv2, &tv, sizeof tv2);
+	tv2.tv_sec -= interval;
+	if (timercmp(&c->status_timer, &tv2, <))
 		c->flags |= CLIENT_STATUS;
 }
 
