@@ -1,4 +1,4 @@
-/* $Id: screen-display.c,v 1.18 2008-07-24 21:42:40 nicm Exp $ */
+/* $Id: screen-display.c,v 1.19 2008-09-08 17:40:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,10 +24,11 @@
 
 /* Set a cell. */
 void
-screen_display_set_cell(
-    struct screen *s, u_int px, u_int py, u_char data, u_char attr, u_char colr)
+screen_display_set_cell(struct screen *s,
+    u_int px, u_int py, u_char data, u_char attr, u_char fg, u_char bg)
 {
-	screen_set_cell(s, screen_x(s, px), screen_y(s, py), data, attr, colr);
+	screen_set_cell(
+	    s, screen_x(s, px), screen_y(s, py), data, attr, fg, bg);
 }
 
 /* Create a region of lines. */
@@ -39,9 +40,9 @@ screen_display_make_lines(struct screen *s, u_int py, u_int ny)
 		return;
 	}
 	screen_make_lines(s, screen_y(s, py), ny);
-	if (s->attr != 0 || s->colr != 0x88) {
-		screen_display_fill_area(s, 0, py,
-		    screen_size_x(s), ny, ' ', s->attr, s->colr);
+	if (s->attr != 0 || s->fg != 8 || s->bg != 8) {
+		screen_display_fill_area(
+		    s, 0, py, screen_size_x(s), ny, ' ', s->attr, s->fg, s->bg);
 	}
 }
 
@@ -74,7 +75,7 @@ screen_display_move_lines(struct screen *s, u_int dy, u_int py, u_int ny)
 /* Fill a set of cells. */
 void
 screen_display_fill_area(struct screen *s, u_int px, u_int py,
-    u_int nx, u_int ny, u_char data, u_char attr, u_char colr)
+    u_int nx, u_int ny, u_char data, u_char attr, u_char fg, u_char bg)
 {
 	if (nx == 0 || ny == 0) {
 		SCREEN_DEBUG4(s, px, py, nx, ny);
@@ -89,7 +90,7 @@ screen_display_fill_area(struct screen *s, u_int px, u_int py,
 		return;
 	}
 	screen_fill_area(
-	    s, screen_x(s, px), screen_y(s, py), nx, ny, data, attr, colr);
+	    s, screen_x(s, px), screen_y(s, py), nx, ny, data, attr, fg, bg);
 }
 
 /* Scroll region up. */
@@ -121,7 +122,8 @@ screen_display_scroll_region_up(struct screen *s)
 		sy = screen_size_y(s) + s->hsize;
 		s->grid_data = xrealloc(s->grid_data, sy, sizeof *s->grid_data);
 		s->grid_attr = xrealloc(s->grid_attr, sy, sizeof *s->grid_attr);
-		s->grid_colr = xrealloc(s->grid_colr, sy, sizeof *s->grid_colr);
+		s->grid_fg = xrealloc(s->grid_fg, sy, sizeof *s->grid_fg);
+		s->grid_bg = xrealloc(s->grid_bg, sy, sizeof *s->grid_fg);
 		s->grid_size = xrealloc(s->grid_size, sy, sizeof *s->grid_size);
 		screen_display_make_lines(s, screen_last_y(s), 1);
 		return;
@@ -378,12 +380,14 @@ screen_display_insert_characters(struct screen *s, u_int px, u_int py, u_int nx)
 		mx = screen_last_x(s) - (px + nx);
 		memmove(&s->grid_data[py][px + nx], &s->grid_data[py][px], mx);
 		memmove(&s->grid_attr[py][px + nx], &s->grid_attr[py][px], mx);
-		memmove(&s->grid_colr[py][px + nx], &s->grid_colr[py][px], mx);
+		memmove(&s->grid_fg[py][px + nx], &s->grid_fg[py][px], mx);
+		memmove(&s->grid_bg[py][px + nx], &s->grid_bg[py][px], mx);
 	}
 
 	memset(&s->grid_data[py][px], ' ', nx);
 	memset(&s->grid_attr[py][px], s->attr, nx);
-	memset(&s->grid_colr[py][px], s->colr, nx);
+	memset(&s->grid_fg[py][px], s->fg, nx);
+	memset(&s->grid_bg[py][px], s->bg, nx);
 }
 
 /* Delete characters. */
@@ -417,12 +421,14 @@ screen_display_delete_characters(struct screen *s, u_int px, u_int py, u_int nx)
 		mx = screen_last_x(s) - (px + nx);
 		memmove(&s->grid_data[py][px], &s->grid_data[py][px + nx], mx);
 		memmove(&s->grid_attr[py][px], &s->grid_attr[py][px + nx], mx);
-		memmove(&s->grid_colr[py][px], &s->grid_colr[py][px + nx], mx);
+		memmove(&s->grid_fg[py][px], &s->grid_fg[py][px + nx], mx);
+		memmove(&s->grid_bg[py][px], &s->grid_bg[py][px + nx], mx);
 	}
 
 	memset(&s->grid_data[py][screen_size_x(s) - nx], ' ', nx);
 	memset(&s->grid_attr[py][screen_size_x(s) - nx], s->attr, nx);
-	memset(&s->grid_colr[py][screen_size_x(s) - nx], s->colr, nx);
+	memset(&s->grid_fg[py][screen_size_x(s) - nx], s->fg, nx);
+	memset(&s->grid_bg[py][screen_size_x(s) - nx], s->bg, nx);
 }
 
 /* Fill cells from another screen, with an offset. */
@@ -431,7 +437,7 @@ screen_display_copy_area(struct screen *dst, struct screen *src,
     u_int px, u_int py, u_int nx, u_int ny, u_int ox, u_int oy)
 {
 	u_int	i, j;
-	u_char	data, attr, colr;
+	u_char	data, attr, fg, bg;
 
 	if (nx == 0 || ny == 0) {
 		SCREEN_DEBUG4(dst, px, py, nx, ny);
@@ -450,8 +456,8 @@ screen_display_copy_area(struct screen *dst, struct screen *src,
 		for (j = px; j < px + nx; j++) {
 			screen_get_cell(src,
 			    screen_x(src, j) + ox, screen_y(src, i) - oy,
-			    &data, &attr, &colr);
-			screen_display_set_cell(dst, j, i, data, attr, colr);
+			    &data, &attr, &fg, &bg);
+			screen_display_set_cell(dst, j, i, data, attr, fg, bg);
 		}
 	}
 }

@@ -1,3 +1,12 @@
+08 September 2008
+
+* 256 colour support. tmux attempts to autodetect the terminal by looking
+  both at what ncurses reports (usually wrong for xterm) and checking if
+  the TERM contains "256col". For xterm TERM=xterm-256color is needed (as
+  well as a build that support 256 colours); this seems to work for rxvt
+  as well. On non-256 colour terminals, high colours are translated to white
+  foreground and black background.
+
 28 August 2008
 
 * Support OS X/Darwin thanks to bsd-poll.c from OpenSSH. Also convert
@@ -646,4 +655,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.157 2008-08-28 17:45:23 nicm Exp $
+$Id: CHANGES,v 1.158 2008-09-08 17:40:50 nicm Exp $

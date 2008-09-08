@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.182 2008-08-28 17:45:27 nicm Exp $ */
+/* $Id: tmux.h,v 1.183 2008-09-08 17:40:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -421,7 +421,8 @@ struct screen {
 
 	u_char	       **grid_data;
 	u_char	       **grid_attr;
-	u_char	       **grid_colr;
+	u_char	       **grid_fg;
+	u_char	       **grid_bg;
 	u_int		*grid_size;
 
  	u_int		 dx;		/* display x size */
@@ -436,12 +437,14 @@ struct screen {
 	u_int		 cx;		/* cursor x */
 	u_int		 cy;		/* cursor y */
 	u_char		 attr;
-	u_char		 colr;		/* fg:bg */
+	u_char		 fg;
+	u_char		 bg;
 
 	u_int		 saved_cx;
 	u_int		 saved_cy;
 	u_char		 saved_attr;
-	u_char		 saved_colr;
+	u_char		 saved_fg;
+	u_char		 saved_bg;
 
 	int		 mode;
 
@@ -670,6 +673,10 @@ struct tty_term {
 	TERMINAL	*term;
 	u_int		 references;
 
+#define TERM_HASDEFAULTS 0x01
+#define TERM_256COLOURS 0x02
+	int		 flags;
+
 	TAILQ_ENTRY(tty_term) entry;
 };
 
@@ -685,8 +692,9 @@ struct tty {
 
 	struct termios   tio;
 
-	u_int		 attr;
-	u_int		 colr;
+	u_char		 attr;
+	u_char		 fg;
+	u_char		 bg;
 
 	u_char		 acs[UCHAR_MAX + 1];
 
@@ -1131,12 +1139,12 @@ void	 input_key(struct window *, int);
 
 /* screen-display.c */
 void	 screen_display_set_cell(
-    	     struct screen *, u_int, u_int, u_char, u_char, u_char);
+	     struct screen *, u_int, u_int, u_char, u_char, u_char, u_char);
 void	 screen_display_make_lines(struct screen *, u_int, u_int);
 void	 screen_display_free_lines(struct screen *, u_int, u_int);
 void	 screen_display_move_lines(struct screen *, u_int, u_int, u_int);
 void	 screen_display_fill_area(struct screen *,
-    	     u_int, u_int, u_int, u_int, u_char, u_char, u_char);
+	     u_int, u_int, u_int, u_int, u_char, u_char, u_char, u_char);
 void	 screen_display_scroll_region_up(struct screen *);
 void	 screen_display_scroll_region_down(struct screen *);
 void	 screen_display_insert_lines(struct screen *, u_int, u_int);
@@ -1162,7 +1170,8 @@ size_t printflike2 screen_write_put_string_rjust(
 	     struct screen_write_ctx *, const char *, ...);
 void printflike2 screen_write_put_string(
 	     struct screen_write_ctx *, const char *, ...);
-void	 screen_write_set_attributes(struct screen_write_ctx *, u_char, u_char);
+void	 screen_write_set_attributes(
+    	     struct screen_write_ctx *, u_char, u_char, u_char);
 void	 screen_write_set_region(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_cursor_up_scroll(struct screen_write_ctx *);
 void	 screen_write_cursor_down_scroll(struct screen_write_ctx *);
@@ -1194,9 +1203,10 @@ void	screen_redraw_start(struct screen_redraw_ctx *,
     	    struct screen *, void (*)(void *, int, ...), void *);
 void	screen_redraw_stop(struct screen_redraw_ctx *);
 void	screen_redraw_move_cursor(struct screen_redraw_ctx *, u_int, u_int);
-void	screen_redraw_set_attributes(struct screen_redraw_ctx *, u_int, u_int);
+void	screen_redraw_set_attributes(
+    	    struct screen_redraw_ctx *, u_char, u_char, u_char);
 void printflike2 screen_redraw_write_string(
-    	     struct screen_redraw_ctx *, const char *, ...);
+    	    struct screen_redraw_ctx *, const char *, ...);
 void	screen_redraw_cell(struct screen_redraw_ctx *, u_int, u_int);
 void	screen_redraw_area(
     	    struct screen_redraw_ctx *, u_int, u_int, u_int, u_int);
@@ -1212,14 +1222,15 @@ void	 screen_destroy(struct screen *);
 void	 screen_resize(struct screen *, u_int, u_int);
 void	 screen_expand_line(struct screen *, u_int, u_int);
 void	 screen_reduce_line(struct screen *, u_int, u_int);
-void	 screen_get_cell(
-    	     struct screen *, u_int, u_int, u_char *, u_char *, u_char *);
-void	 screen_set_cell(struct screen *, u_int, u_int, u_char, u_char, u_char);
+void	 screen_get_cell(struct screen *,
+	     u_int, u_int, u_char *, u_char *, u_char *, u_char *);
+void	 screen_set_cell(
+    	     struct screen *, u_int, u_int, u_char, u_char, u_char, u_char);
 void	 screen_make_lines(struct screen *, u_int, u_int);
 void	 screen_free_lines(struct screen *, u_int, u_int);
 void	 screen_move_lines(struct screen *, u_int, u_int, u_int);
 void	 screen_fill_area(struct screen *,
-    	     u_int, u_int, u_int, u_int, u_char, u_char, u_char);
+	     u_int, u_int, u_int, u_int, u_char, u_char, u_char, u_char);
 void	 screen_set_selection(struct screen *, u_int, u_int, u_int, u_int);
 void	 screen_clear_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);

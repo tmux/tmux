@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.78 2008-08-28 17:45:27 nicm Exp $ */
+/* $Id: server.c,v 1.79 2008-09-08 17:40:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -344,8 +344,8 @@ server_check_redraw(struct client *c)
 			if (sx < xx)
 				screen_redraw_columns(&ctx, sx, xx - sx);
 			if (sy < yy)  {
-				screen_fill_area(&screen,
-				    0, sy, xx, 1, '-', 0, 0x88);
+				screen_fill_area(
+				    &screen, 0, sy, xx, 1, '-', 0, 8, 8);
 				screen_redraw_lines(&ctx, sy, yy - sy);
 			}
 			screen_redraw_stop(&ctx);

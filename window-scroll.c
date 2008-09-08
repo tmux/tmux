@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.21 2008-07-02 21:22:57 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.22 2008-09-08 17:40:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -149,7 +149,7 @@ window_scroll_write_line(
 
 	if (py == 0) {
 		screen_write_set_attributes(
-		    ctx, ATTR_BRIGHT|ATTR_REVERSE, 0x88);
+		    ctx, ATTR_BRIGHT|ATTR_REVERSE, 8, 8);
 		screen_write_move_cursor(ctx, 0, 0);
 		size = screen_write_put_string_rjust(
 		    ctx, "[%u,%u/%u]", data->ox, data->oy, w->base.hsize);

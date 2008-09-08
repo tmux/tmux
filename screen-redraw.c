@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.9 2008-06-18 16:35:06 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.10 2008-09-08 17:40:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,7 +23,7 @@
 #include "tmux.h"
 
 void	screen_redraw_get_cell(struct screen_redraw_ctx *,
-    	    u_int, u_int, u_char *, u_char *, u_char *);
+	    u_int, u_int, u_char *, u_char *, u_char *, u_char *);
 
 /* Initialise redrawing with a window. */
 void
@@ -71,7 +71,7 @@ screen_redraw_start(struct screen_redraw_ctx *ctx,
 	ctx->saved_cx = s->cx;
 	ctx->saved_cy = s->cy;
 
-	ctx->write(ctx->data, TTY_ATTRIBUTES, s->attr, s->colr);
+	ctx->write(ctx->data, TTY_ATTRIBUTES, s->attr, s->fg, s->bg);
 	ctx->write(ctx->data, TTY_SCROLLREGION, 0, screen_last_y(s));
 	ctx->write(ctx->data, TTY_CURSORMOVE, s->cy, s->cx);
 	ctx->write(ctx->data, TTY_CURSOROFF);
@@ -87,7 +87,7 @@ screen_redraw_stop(struct screen_redraw_ctx *ctx)
 	s->cx = ctx->saved_cx;
 	s->cy = ctx->saved_cy;
 
-	ctx->write(ctx->data, TTY_ATTRIBUTES, s->attr, s->colr);
+	ctx->write(ctx->data, TTY_ATTRIBUTES, s->attr, s->fg, s->bg);
 	ctx->write(ctx->data, TTY_SCROLLREGION, s->rupper, s->rlower);
 	ctx->write(ctx->data, TTY_CURSORMOVE, s->cy, s->cx);
 	if (s->mode & MODE_CURSOR)
@@ -99,11 +99,12 @@ screen_redraw_stop(struct screen_redraw_ctx *ctx)
 /* Get cell data. */
 void
 screen_redraw_get_cell(struct screen_redraw_ctx *ctx,
-    u_int px, u_int py, u_char *data, u_char *attr, u_char *colr)
+    u_int px, u_int py, u_char *data, u_char *attr, u_char *fg, u_char *bg)
 {
 	struct screen	*s = ctx->s;
 
-	screen_get_cell(s, screen_x(s, px), screen_y(s, py), data, attr, colr);
+	screen_get_cell(
+	    s, screen_x(s, px), screen_y(s, py), data, attr, fg, bg);
 }
 
 /* Move cursor. */
@@ -120,9 +121,9 @@ screen_redraw_move_cursor(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 /* Set attributes. */
 void
 screen_redraw_set_attributes(
-    struct screen_redraw_ctx *ctx, u_int attr, u_int colr)
+    struct screen_redraw_ctx *ctx, u_char attr, u_char fg, u_char bg)
 {
-	ctx->write(ctx->data, TTY_ATTRIBUTES, attr, colr);
+	ctx->write(ctx->data, TTY_ATTRIBUTES, attr, fg, bg);
 }
 
 /* Write string. */
@@ -150,12 +151,12 @@ screen_redraw_write_string(struct screen_redraw_ctx *ctx, const char *fmt, ...)
 void
 screen_redraw_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 {
-	u_char	 data, attr, colr;
+	u_char	 data, attr, fg, bg;
 
 	screen_redraw_move_cursor(ctx, px, py);
-	screen_redraw_get_cell(ctx, px, py, &data, &attr, &colr);
+	screen_redraw_get_cell(ctx, px, py, &data, &attr, &fg, &bg);
 
-	ctx->write(ctx->data, TTY_ATTRIBUTES, attr, colr);
+	ctx->write(ctx->data, TTY_ATTRIBUTES, attr, fg, bg);
 	ctx->write(ctx->data, TTY_CHARACTER, data);
 
 	ctx->s->cx++;

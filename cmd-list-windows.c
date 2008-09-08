@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.21 2008-06-29 07:04:30 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.22 2008-09-08 17:40:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,7 +63,8 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 			size += w->base.grid_size[i] * 3;
 		size += w->base.hsize * (sizeof *w->base.grid_data);
 		size += w->base.hsize * (sizeof *w->base.grid_attr);
-		size += w->base.hsize * (sizeof *w->base.grid_colr);
+		size += w->base.hsize * (sizeof *w->base.grid_fg);
+		size += w->base.hsize * (sizeof *w->base.grid_bg);
 		size += w->base.hsize * (sizeof *w->base.grid_size);
 
 		if (w->fd != -1)

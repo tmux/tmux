@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.43 2008-08-28 17:45:27 nicm Exp $ */
+/* $Id: status.c,v 1.44 2008-09-08 17:40:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,7 +38,7 @@ status_redraw(struct client *c)
 	char				lbuf[BUFSIZ], rbuf[BUFSIZ];
 	size_t				llen, rlen, offset, xx, yy;
 	size_t				size, start, width;
-	u_char		 		attr, colr;
+	u_char		 		attr, fg, bg;
 	struct tm		       *tm;
 	time_t				t;
 	int				larrow, rarrow;
@@ -49,8 +49,8 @@ status_redraw(struct client *c)
 
 	if (gettimeofday(&c->status_timer, NULL) != 0)
 		fatal("gettimeofday");
-	colr = options_get_number(&s->options, "status-bg") + 
-	    (options_get_number(&s->options, "status-fg") << 4);
+	fg = options_get_number(&s->options, "status-fg");
+	bg = options_get_number(&s->options, "status-bg");
 
 	yy = c->sy - 1;
 	if (yy == 0)
@@ -137,7 +137,7 @@ draw:
 
  	/* Begin drawing and move to the starting position. */
 	screen_redraw_start_client(&ctx, c);
-	screen_redraw_set_attributes(&ctx, 0, colr);
+	screen_redraw_set_attributes(&ctx, 0, fg, bg);
 	if (llen != 0) {
  		screen_redraw_move_cursor(&ctx, 0, yy);
 		screen_redraw_write_string(&ctx, "%s ", lbuf);
@@ -154,7 +154,7 @@ draw:
 	offset = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		text = status_print(s, wl, &attr);
-		screen_redraw_set_attributes(&ctx, attr, colr);
+		screen_redraw_set_attributes(&ctx, attr, fg, bg);
 
 		if (larrow == 1 && offset < start) {
 			if (session_alert_has(s, wl, WINDOW_ACTIVITY))
@@ -178,7 +178,7 @@ draw:
 
 		if (offset < start + width) {
 			if (offset >= start) {
-				screen_redraw_set_attributes(&ctx, 0, colr);
+				screen_redraw_set_attributes(&ctx, 0, fg, bg);
 				ctx.write(ctx.data, TTY_CHARACTER, ' ');
 			}
 			offset++;
@@ -188,7 +188,7 @@ draw:
 	}
 
 	/* Fill the remaining space if any. */
-	screen_redraw_set_attributes(&ctx, 0, colr);
+	screen_redraw_set_attributes(&ctx, 0, fg, bg);
  	while (offset++ < xx)
 		ctx.write(ctx.data, TTY_CHARACTER, ' ');
 
@@ -200,10 +200,11 @@ draw:
 
 	/* Draw the arrows. */
 	if (larrow != 0) {
-		if (larrow == -1)
-			screen_redraw_set_attributes(&ctx, ATTR_REVERSE, colr);
-		else
-			screen_redraw_set_attributes(&ctx, 0, colr);
+		if (larrow == -1) {
+			screen_redraw_set_attributes(
+			    &ctx, ATTR_REVERSE, fg, bg);
+		} else
+			screen_redraw_set_attributes(&ctx, 0, fg, bg);
 		if (llen != 0)
 			screen_redraw_move_cursor(&ctx, llen + 1, yy);
 		else
@@ -211,10 +212,11 @@ draw:
  		ctx.write(ctx.data, TTY_CHARACTER, '<');
 	}
 	if (rarrow != 0) {
-		if (rarrow == -1)
-			screen_redraw_set_attributes(&ctx, ATTR_REVERSE, colr);
-		else
-			screen_redraw_set_attributes(&ctx, 0, colr);
+		if (rarrow == -1) {
+			screen_redraw_set_attributes(
+			    &ctx, ATTR_REVERSE, fg, bg);
+		} else
+			screen_redraw_set_attributes(&ctx, 0, fg, bg);
 		if (rlen != 0)
 			screen_redraw_move_cursor(&ctx, c->sx - rlen - 2, yy);
 		else
@@ -228,7 +230,7 @@ draw:
 blank:
  	/* Just draw the whole line as blank. */
 	screen_redraw_start_client(&ctx, c);
-	screen_redraw_set_attributes(&ctx, 0, colr);
+	screen_redraw_set_attributes(&ctx, 0, fg, bg);
 	screen_redraw_move_cursor(&ctx, 0, yy);
 	for (offset = 0; offset < c->sx; offset++)
 		ctx.write(ctx.data, TTY_CHARACTER, ' ');
@@ -245,7 +247,7 @@ off:
 	/* If the screen is too small, use blank. */
 	if (screen_size_y(c->session->curw->window->screen) < c->sy) {
 		screen_redraw_move_cursor(&ctx, 0, c->sy - 1);
-		screen_redraw_set_attributes(&ctx, 0, 0x88);
+		screen_redraw_set_attributes(&ctx, 0, 8, 8);
 		for (offset = 0; offset < c->sx; offset++)
 			ctx.write(ctx.data, TTY_CHARACTER, ' ');
 	} else
@@ -313,7 +315,7 @@ status_message_redraw(struct client *c)
 	yy = c->sy - 1;		
 
 	screen_redraw_start_client(&ctx, c);
-	screen_redraw_set_attributes(&ctx, ATTR_REVERSE, 0x88);
+	screen_redraw_set_attributes(&ctx, ATTR_REVERSE, 8, 8);
 
 	screen_redraw_move_cursor(&ctx, 0, yy);
 	screen_redraw_write_string(&ctx, "%.*s", (int) xx, c->message_string);
@@ -342,7 +344,7 @@ status_prompt_redraw(struct client *c)
 	yy = c->sy - 1;		
 
 	screen_redraw_start_client(&ctx, c);
-	screen_redraw_set_attributes(&ctx, ATTR_REVERSE, 0x88);
+	screen_redraw_set_attributes(&ctx, ATTR_REVERSE, 8, 8);
 
 	screen_redraw_move_cursor(&ctx, 0, yy);
 	screen_redraw_write_string(&ctx, "%.*s", (int) xx, c->prompt_string);
@@ -367,7 +369,7 @@ status_prompt_redraw(struct client *c)
 	}
 
 	/* Draw a fake cursor. */
-	screen_redraw_set_attributes(&ctx, 0, 0x88);
+	screen_redraw_set_attributes(&ctx, 0, 8, 8);
 	screen_redraw_move_cursor(&ctx, xx + c->prompt_index - offset, yy);
 	if (c->prompt_index == strlen(c->prompt_buffer))
 		ch = ' ';

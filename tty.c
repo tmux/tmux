@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.37 2008-07-23 23:44:50 nicm Exp $ */
+/* $Id: tty.c,v 1.38 2008-09-08 17:40:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,7 +39,7 @@ void	tty_raw(struct tty *, const char *);
 void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, char);
 
-void	tty_attributes(struct tty *, u_char, u_char);
+void	tty_attributes(struct tty *, u_char, u_char, u_char);
 char	tty_translate(char);
 
 TAILQ_HEAD(, tty_term) tty_terms = TAILQ_HEAD_INITIALIZER(tty_terms);
@@ -78,7 +78,8 @@ tty_open(struct tty *tty, char **cause)
 	tty->out = buffer_create(BUFSIZ);
 
 	tty->attr = 0;
-	tty->colr = 0x88;
+	tty->fg = 8;
+	tty->bg = 8;
 
 	tty->flags = 0;
 
@@ -88,7 +89,8 @@ tty_open(struct tty *tty, char **cause)
 	tio.c_iflag &= ~(IXON|IXOFF|ICRNL|INLCR|IGNCR|IMAXBEL|ISTRIP);
 	tio.c_iflag |= IGNBRK;
 	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET);
-	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHONL|ECHOCTL|ECHOPRT|ECHOKE|ECHOCTL|ISIG);
+	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHONL|ECHOCTL|
+	    ECHOPRT|ECHOKE|ECHOCTL|ISIG);
 	tio.c_cc[VMIN] = 1;
         tio.c_cc[VTIME] = 0;
 	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
@@ -276,6 +278,17 @@ tty_find_term(char *name, int fd, char **cause)
 		goto error;
 	}
 
+	if (tigetflag("AX") == TRUE)
+		term->flags |= TERM_HASDEFAULTS;
+
+	/*
+	 * Try to figure out if we have 256 colours. The standard xterm
+	 * definitions are broken (well, or the way they are parsed is: in
+	 * any case they end up returning 8). So also do a hack.
+	 */
+	if (max_colors == 256 || strstr(name, "256col") != NULL) /* XXX HACK */
+		term->flags |= TERM_256COLOURS;
+	
 	return (term);
 
 error:
@@ -396,7 +409,7 @@ void
 tty_vwrite(struct tty *tty, struct screen *s, int cmd, va_list ap)
 {
 	char	ch;
-	u_int	i, ua, ub;
+	u_int	i, ua, ub, uc;
 
 	if (tty->flags & TTY_FREEZE)
 		return;
@@ -582,17 +595,18 @@ tty_vwrite(struct tty *tty, struct screen *s, int cmd, va_list ap)
 	case TTY_ATTRIBUTES:
 		ua = va_arg(ap, u_int);
 		ub = va_arg(ap, u_int);
-		tty_attributes(tty, ua, ub);
+		uc = va_arg(ap, u_int);
+		tty_attributes(tty, ua, ub, uc);
 		break;
 	}
 }
 
 void
-tty_attributes(struct tty *tty, u_char attr, u_char colr)
+tty_attributes(struct tty *tty, u_char attr, u_char fg, u_char bg)
 {
-	u_char	fg, bg;
+	char	s[32];
 
-	if (attr == tty->attr && colr == tty->colr)
+	if (attr == tty->attr && fg == tty->fg && bg == tty->bg)
 		return;
 
 	/* If any bits are being cleared, reset everything. */
@@ -601,7 +615,8 @@ tty_attributes(struct tty *tty, u_char attr, u_char colr)
 		    exit_alt_charset_mode != NULL)
 			tty_puts(tty, exit_alt_charset_mode);
 		tty_puts(tty, exit_attribute_mode);
-		tty->colr = 0x88;
+		tty->fg = 8;
+		tty->bg = 8;
 		tty->attr = 0;
 	}
 
@@ -626,27 +641,38 @@ tty_attributes(struct tty *tty, u_char attr, u_char colr)
 	if ((attr & ATTR_CHARSET) && enter_alt_charset_mode != NULL)
 		tty_puts(tty, enter_alt_charset_mode);
 
-	fg = (colr >> 4) & 0xf;
-	if (fg != ((tty->colr >> 4) & 0xf)) {
-		if (tigetflag("AX") != TRUE && fg == 8)
-			fg = 7;
-		
-		if (fg == 8)
-			tty_puts(tty, "\033[39m");
-		else if (set_a_foreground != NULL)
-			tty_puts(tty, tparm(set_a_foreground, fg));
+	if (fg != tty->fg) {
+		if (fg > 15 && tty->term->flags & TERM_256COLOURS) {
+			xsnprintf(s, sizeof s, "\033[38;5;%hhum", fg);
+			tty_puts(tty, s);
+		} else {
+			if (fg > 7)
+				fg = 8;
+			if (fg == 8 && tty->term->flags & TERM_HASDEFAULTS)
+				fg = 7;
+			if (fg == 8)
+				tty_puts(tty, "\033[39m");
+			else if (set_a_foreground != NULL)
+				tty_puts(tty, tparm(set_a_foreground, fg));
+		}
 	}
 
-	bg = colr & 0xf;
-	if (bg != (tty->colr & 0xf)) {
-		if (tigetflag("AX") != TRUE && bg == 8)
-			bg = 0;
-
-		if (bg == 8)
-			tty_puts(tty, "\033[49m");
-		else if (set_a_background != NULL)
-			tty_puts(tty, tparm(set_a_background, bg));
+	if (bg != tty->bg) {
+		if (bg > 15 && tty->term->flags & TERM_256COLOURS) {
+			xsnprintf(s, sizeof s, "\033[48;5;%hhum", bg);
+			tty_puts(tty, s);
+		} else {
+			if (bg > 7)
+				bg = 8;
+			if (bg == 8 && tty->term->flags & TERM_HASDEFAULTS)
+				bg = 0;
+			if (bg == 8)
+				tty_puts(tty, "\033[49m");
+			else if (set_a_background != NULL)
+				tty_puts(tty, tparm(set_a_background, bg));
+		}
 	}
 
-	tty->colr = colr;
+	tty->fg = fg;
+	tty->bg = bg;
 }

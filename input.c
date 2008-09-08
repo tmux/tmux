@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.52 2008-07-24 21:42:40 nicm Exp $ */
+/* $Id: input.c,v 1.53 2008-09-08 17:40:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -520,11 +520,11 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 		break;
 	case '\016':	/* SO */
 		attr = s->attr | ATTR_CHARSET;
-		screen_write_set_attributes(&ictx->ctx, attr, s->colr);
+		screen_write_set_attributes(&ictx->ctx, attr, s->fg, s->bg);
 		break;
 	case '\017':	/* SI */
 		attr = s->attr & ~ATTR_CHARSET;
-		screen_write_set_attributes(&ictx->ctx, attr, s->colr);
+		screen_write_set_attributes(&ictx->ctx, attr, s->fg, s->bg);
 		break;
 	default:
 		log_debug("unknown c0: %hhu", ch);
@@ -567,14 +567,15 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 		s->saved_cx = s->cx;
 		s->saved_cy = s->cy;
 		s->saved_attr = s->attr;
-		s->saved_colr = s->colr;
+		s->saved_fg = s->fg;
+		s->saved_bg = s->bg;
 		s->mode |= MODE_SAVED;
 		break;
 	case '8':	/* DECRC */
 		if (!(s->mode & MODE_SAVED))
 			break;
 		screen_write_set_attributes(
-		    &ictx->ctx, s->saved_attr, s->saved_colr);
+		    &ictx->ctx, s->saved_attr, s->saved_fg, s->saved_bg);
 		screen_write_move_cursor(&ictx->ctx, s->saved_cx, s->saved_cy);
 		break;
 	default:
@@ -1049,16 +1050,45 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 {
 	struct screen  *s = ictx->ctx.s;
 	u_int		i, n;
-	uint16_t	m;
-	u_char		attr, colr;
+	uint16_t	m, o;
+	u_char		attr, fg, bg;
+
+	attr = s->attr;
+	fg = s->fg;
+	bg = s->bg;
 
 	n = ARRAY_LENGTH(&ictx->args);
-	if (n == 0) {
+	switch (n) {
+	case 0:
 		attr = 0;
-		colr = 0x88;
-	} else {
-		attr = s->attr;
-		colr = s->colr;
+		fg = 8;
+		bg = 8;
+		break;
+	case 3:
+		if (input_get_argument(ictx, 1, &m, 0) != 0)
+			return;
+		if (m == 5) {
+			if (input_get_argument(ictx, 0, &o, 0) != 0)
+				return;
+			if (input_get_argument(ictx, 2, &m, 0) != 0)
+				return;
+			if (o == 38) {
+				if (m > 7 && m < 16) {
+					attr |= ATTR_BRIGHT;
+					m -= 7;
+				}
+				fg = m;
+				break;
+			} else if (o == 48) {
+				if (m > 7 && m < 16) {
+					attr |= ATTR_BRIGHT;
+					m -= 7;
+				}
+				bg = m;
+				break;
+			}
+		}
+	default:
 		for (i = 0; i < n; i++) {
 			if (input_get_argument(ictx, i, &m, 0) != 0)
 				return;
@@ -1066,7 +1096,8 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 			case 0:
 			case 10:
 				attr &= ATTR_CHARSET;
-				colr = 0x88;
+				fg = 8;
+				bg = 8;
 				break;
 			case 1:
 				attr |= ATTR_BRIGHT;
@@ -1103,12 +1134,10 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 			case 35:
 			case 36:
 			case 37:
-				colr &= 0x0f;
-				colr |= (m - 30) << 4;
+				fg = m - 30;
 				break;
 			case 39:
-				colr &= 0x0f;
-				colr |= 0x80;
+				fg = 8;
 				break;
 			case 40:
 			case 41:
@@ -1118,15 +1147,13 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 			case 45:
 			case 46:
 			case 47:
-				colr &= 0xf0;
-				colr |= m - 40;
+				bg = m - 40;
 				break;
 			case 49:
-				colr &= 0xf0;
-				colr |= 0x08;
+				bg = 8;
 				break;
 			}
 		}
 	}
-	screen_write_set_attributes(&ictx->ctx, attr, colr);
+	screen_write_set_attributes(&ictx->ctx, attr, fg, bg);
 }

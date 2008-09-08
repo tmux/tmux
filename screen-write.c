@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.10 2008-07-24 21:42:40 nicm Exp $ */
+/* $Id: screen-write.c,v 1.11 2008-09-08 17:40:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -110,7 +110,7 @@ screen_write_put_character(struct screen_write_ctx *ctx, u_char ch)
 		return;
 	}
 
-	screen_display_set_cell(s, s->cx, s->cy, ch, s->attr, s->colr);
+	screen_display_set_cell(s, s->cx, s->cy, ch, s->attr, s->fg, s->bg);
 	s->cx++;
 
 	if (ctx->write != NULL)
@@ -172,16 +172,17 @@ screen_write_put_string(struct screen_write_ctx *ctx, const char *fmt, ...)
 /* Set screen attributes. */
 void
 screen_write_set_attributes(
-    struct screen_write_ctx *ctx, u_char attr, u_char colr)
+    struct screen_write_ctx *ctx, u_char attr, u_char fg, u_char bg)
 {
 	struct screen	*s = ctx->s;
 
-	if (s->attr != attr || s->colr != colr) {
+	if (s->attr != attr || s->fg != fg || s->bg != bg) {
 		s->attr = attr;
-		s->colr = colr;
+		s->fg = fg;
+		s->bg = bg;
 
 		if (ctx->write != NULL)
-			ctx->write(ctx->data, TTY_ATTRIBUTES, attr, colr);
+			ctx->write(ctx->data, TTY_ATTRIBUTES, attr, fg, bg);
 	}
 }
 
@@ -381,9 +382,9 @@ screen_write_fill_end_of_screen(struct screen_write_ctx *ctx)
 	u_int		 i;
 
 	screen_display_fill_area(s, s->cx, s->cy,
-	    screen_right_x(s, s->cx), 1, ' ', s->attr, s->colr);
+	    screen_right_x(s, s->cx), 1, ' ', s->attr, s->fg, s->bg);
 	screen_display_fill_area(s, 0, s->cy + 1, screen_size_x(s),
-	    screen_below_y(s, s->cy + 1), ' ', s->attr, s->colr);
+	    screen_below_y(s, s->cy + 1), ' ', s->attr, s->fg, s->bg);
 
 	if (ctx->write != NULL) {
 		ctx->write(ctx->data, TTY_CLEARENDOFLINE);
@@ -403,7 +404,7 @@ screen_write_fill_screen(struct screen_write_ctx *ctx)
 	u_int		 i;
 
 	screen_display_fill_area(s, 0, 0,
-	    screen_size_x(s), screen_size_y(s), ' ', s->attr, s->colr);
+	    screen_size_x(s), screen_size_y(s), ' ', s->attr, s->fg, s->bg);
 
 	if (ctx->write != NULL) {
 		for (i = 0; i < screen_size_y(s); i++) {
@@ -421,7 +422,7 @@ screen_write_fill_end_of_line(struct screen_write_ctx *ctx)
  	struct screen	*s = ctx->s;
 
 	screen_display_fill_area(s, s->cx, s->cy,
-	    screen_right_x(s, s->cx), 1, ' ', s->attr, s->colr);
+	    screen_right_x(s, s->cx), 1, ' ', s->attr, s->fg, s->bg);
 
 	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_CLEARENDOFLINE);
@@ -434,7 +435,7 @@ screen_write_fill_start_of_line(struct screen_write_ctx *ctx)
  	struct screen	*s = ctx->s;
 
 	screen_display_fill_area(s, 0, s->cy,
-	    screen_left_x(s, s->cx), 1, ' ', s->attr, s->colr);
+	    screen_left_x(s, s->cx), 1, ' ', s->attr, s->fg, s->bg);
 
 	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_CLEARSTARTOFLINE);
@@ -446,8 +447,8 @@ screen_write_fill_line(struct screen_write_ctx *ctx)
 {
  	struct screen	*s = ctx->s;
 
-	screen_display_fill_area(s, 0, s->cy,
-	    screen_size_x(s), s->cy, ' ', s->attr, s->colr);
+	screen_display_fill_area(
+	    s, 0, s->cy, screen_size_x(s), s->cy, ' ', s->attr, s->fg, s->bg);
 
 	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_CLEARLINE);

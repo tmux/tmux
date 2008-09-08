@@ -14,7 +14,7 @@
 - status-fg/status-bg should be able to set attributes: bold, etc
 - save/restore (DECSC/DECRC) are ugly. maybe a struct screen_attr and memcpy
 - force-default option: assume terminal supports default colours even if AX
-  is missing (like, eg, xterm-color in an aterm)
+  is missing (like, eg, xterm-color in an aterm). DITTO for 256 colours
 - refer to windows by name etc (duplicates? fnmatch?)
 - commands:
 	command to run something without a window at all?
@@ -38,10 +38,10 @@
 - better mode features: search, back word, forward word, etc
 - flags to centre screen in window
 - better terminal emulation (identify, insert mode, some other bits)
-- 256 colour terminal support
 
 -- For 0.5 --------------------------------------------------------------------
 
+21:09 < merdely> NicM: if I run 'tmux attach -t main' and there is no tmux session named main, start a new one.
 - commands:	save-buffer -b number filename
 		load-buffer -b number filename
   	      	copy-buffer -s src-session -t dst-session
@@ -61,3 +61,4 @@
 - many more info() displays for various things
 - document mode-keys
 - vi half page scroll
+- bugs with 256 colour test perl script...
