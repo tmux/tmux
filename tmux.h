@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.184 2008-09-08 22:03:54 nicm Exp $ */
+/* $Id: tmux.h,v 1.185 2008-09-08 22:18:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -399,10 +399,10 @@ struct msg_resize_data {
 #define ATTR_BG256 0x200
 
 /* Modes. */
-#define MODE_CURSOR 0x01
-#define MODE_INSERT 0x02
-#define MODE_KCURSOR 0x04
-#define MODE_KKEYPAD 0x08
+#define MODE_CURSOR 0x1
+#define MODE_INSERT 0x2
+#define MODE_KCURSOR 0x4
+#define MODE_KKEYPAD 0x8
 #define MODE_SAVED 0x10
 #define MODE_MOUSE 0x20
 
@@ -675,8 +675,8 @@ struct tty_term {
 	TERMINAL	*term;
 	u_int		 references;
 
-#define TERM_HASDEFAULTS 0x01
-#define TERM_256COLOURS 0x02
+#define TERM_HASDEFAULTS 0x1
+#define TERM_256COLOURS 0x2
 	int		 flags;
 
 	TAILQ_ENTRY(tty_term) entry;
