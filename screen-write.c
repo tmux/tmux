@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.11 2008-09-08 17:40:51 nicm Exp $ */
+/* $Id: screen-write.c,v 1.12 2008-09-08 22:03:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -172,7 +172,7 @@ screen_write_put_string(struct screen_write_ctx *ctx, const char *fmt, ...)
 /* Set screen attributes. */
 void
 screen_write_set_attributes(
-    struct screen_write_ctx *ctx, u_char attr, u_char fg, u_char bg)
+    struct screen_write_ctx *ctx, u_short attr, u_char fg, u_char bg)
 {
 	struct screen	*s = ctx->s;
 

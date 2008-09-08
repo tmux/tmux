@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.10 2008-09-08 17:40:51 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.11 2008-09-08 22:03:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,7 +23,7 @@
 #include "tmux.h"
 
 void	screen_redraw_get_cell(struct screen_redraw_ctx *,
-	    u_int, u_int, u_char *, u_char *, u_char *, u_char *);
+	    u_int, u_int, u_char *, u_short *, u_char *, u_char *);
 
 /* Initialise redrawing with a window. */
 void
@@ -99,7 +99,7 @@ screen_redraw_stop(struct screen_redraw_ctx *ctx)
 /* Get cell data. */
 void
 screen_redraw_get_cell(struct screen_redraw_ctx *ctx,
-    u_int px, u_int py, u_char *data, u_char *attr, u_char *fg, u_char *bg)
+    u_int px, u_int py, u_char *data, u_short *attr, u_char *fg, u_char *bg)
 {
 	struct screen	*s = ctx->s;
 
@@ -121,7 +121,7 @@ screen_redraw_move_cursor(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 /* Set attributes. */
 void
 screen_redraw_set_attributes(
-    struct screen_redraw_ctx *ctx, u_char attr, u_char fg, u_char bg)
+    struct screen_redraw_ctx *ctx, u_short attr, u_char fg, u_char bg)
 {
 	ctx->write(ctx->data, TTY_ATTRIBUTES, attr, fg, bg);
 }
@@ -151,7 +151,8 @@ screen_redraw_write_string(struct screen_redraw_ctx *ctx, const char *fmt, ...)
 void
 screen_redraw_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 {
-	u_char	 data, attr, fg, bg;
+	u_short	 attr;
+	u_char	 data, fg, bg;
 
 	screen_redraw_move_cursor(ctx, px, py);
 	screen_redraw_get_cell(ctx, px, py, &data, &attr, &fg, &bg);

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.183 2008-09-08 17:40:51 nicm Exp $ */
+/* $Id: tmux.h,v 1.184 2008-09-08 22:03:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -395,6 +395,8 @@ struct msg_resize_data {
 #define ATTR_HIDDEN 0x20
 #define ATTR_ITALICS 0x40
 #define ATTR_CHARSET 0x80	/* alternative character set */
+#define ATTR_FG256 0x100
+#define ATTR_BG256 0x200
 
 /* Modes. */
 #define MODE_CURSOR 0x01
@@ -420,7 +422,7 @@ struct screen {
 	char		*title;
 
 	u_char	       **grid_data;
-	u_char	       **grid_attr;
+	u_short	       **grid_attr;
 	u_char	       **grid_fg;
 	u_char	       **grid_bg;
 	u_int		*grid_size;
@@ -436,13 +438,13 @@ struct screen {
 
 	u_int		 cx;		/* cursor x */
 	u_int		 cy;		/* cursor y */
-	u_char		 attr;
+	u_short		 attr;
 	u_char		 fg;
 	u_char		 bg;
 
 	u_int		 saved_cx;
 	u_int		 saved_cy;
-	u_char		 saved_attr;
+	u_short		 saved_attr;
 	u_char		 saved_fg;
 	u_char		 saved_bg;
 
@@ -692,7 +694,7 @@ struct tty {
 
 	struct termios   tio;
 
-	u_char		 attr;
+	u_short		 attr;
 	u_char		 fg;
 	u_char		 bg;
 
@@ -1139,12 +1141,12 @@ void	 input_key(struct window *, int);
 
 /* screen-display.c */
 void	 screen_display_set_cell(
-	     struct screen *, u_int, u_int, u_char, u_char, u_char, u_char);
+	     struct screen *, u_int, u_int, u_char, u_short, u_char, u_char);
 void	 screen_display_make_lines(struct screen *, u_int, u_int);
 void	 screen_display_free_lines(struct screen *, u_int, u_int);
 void	 screen_display_move_lines(struct screen *, u_int, u_int, u_int);
 void	 screen_display_fill_area(struct screen *,
-	     u_int, u_int, u_int, u_int, u_char, u_char, u_char, u_char);
+	     u_int, u_int, u_int, u_int, u_char, u_short, u_char, u_char);
 void	 screen_display_scroll_region_up(struct screen *);
 void	 screen_display_scroll_region_down(struct screen *);
 void	 screen_display_insert_lines(struct screen *, u_int, u_int);
@@ -1171,7 +1173,7 @@ size_t printflike2 screen_write_put_string_rjust(
 void printflike2 screen_write_put_string(
 	     struct screen_write_ctx *, const char *, ...);
 void	 screen_write_set_attributes(
-    	     struct screen_write_ctx *, u_char, u_char, u_char);
+	     struct screen_write_ctx *, u_short, u_char, u_char);
 void	 screen_write_set_region(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_cursor_up_scroll(struct screen_write_ctx *);
 void	 screen_write_cursor_down_scroll(struct screen_write_ctx *);
@@ -1204,7 +1206,7 @@ void	screen_redraw_start(struct screen_redraw_ctx *,
 void	screen_redraw_stop(struct screen_redraw_ctx *);
 void	screen_redraw_move_cursor(struct screen_redraw_ctx *, u_int, u_int);
 void	screen_redraw_set_attributes(
-    	    struct screen_redraw_ctx *, u_char, u_char, u_char);
+	    struct screen_redraw_ctx *, u_short, u_char, u_char);
 void printflike2 screen_redraw_write_string(
     	    struct screen_redraw_ctx *, const char *, ...);
 void	screen_redraw_cell(struct screen_redraw_ctx *, u_int, u_int);
@@ -1223,14 +1225,14 @@ void	 screen_resize(struct screen *, u_int, u_int);
 void	 screen_expand_line(struct screen *, u_int, u_int);
 void	 screen_reduce_line(struct screen *, u_int, u_int);
 void	 screen_get_cell(struct screen *,
-	     u_int, u_int, u_char *, u_char *, u_char *, u_char *);
+	     u_int, u_int, u_char *, u_short *, u_char *, u_char *);
 void	 screen_set_cell(
-    	     struct screen *, u_int, u_int, u_char, u_char, u_char, u_char);
+    	     struct screen *, u_int, u_int, u_char, u_short, u_char, u_char);
 void	 screen_make_lines(struct screen *, u_int, u_int);
 void	 screen_free_lines(struct screen *, u_int, u_int);
 void	 screen_move_lines(struct screen *, u_int, u_int, u_int);
 void	 screen_fill_area(struct screen *,
-	     u_int, u_int, u_int, u_int, u_char, u_char, u_char, u_char);
+	     u_int, u_int, u_int, u_int, u_char, u_short, u_char, u_char);
 void	 screen_set_selection(struct screen *, u_int, u_int, u_int, u_int);
 void	 screen_clear_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);

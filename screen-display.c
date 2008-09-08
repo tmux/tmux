@@ -1,4 +1,4 @@
-/* $Id: screen-display.c,v 1.19 2008-09-08 17:40:50 nicm Exp $ */
+/* $Id: screen-display.c,v 1.20 2008-09-08 22:03:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,7 +25,7 @@
 /* Set a cell. */
 void
 screen_display_set_cell(struct screen *s,
-    u_int px, u_int py, u_char data, u_char attr, u_char fg, u_char bg)
+    u_int px, u_int py, u_char data, u_short attr, u_char fg, u_char bg)
 {
 	screen_set_cell(
 	    s, screen_x(s, px), screen_y(s, py), data, attr, fg, bg);
@@ -75,7 +75,7 @@ screen_display_move_lines(struct screen *s, u_int dy, u_int py, u_int ny)
 /* Fill a set of cells. */
 void
 screen_display_fill_area(struct screen *s, u_int px, u_int py,
-    u_int nx, u_int ny, u_char data, u_char attr, u_char fg, u_char bg)
+    u_int nx, u_int ny, u_char data, u_short attr, u_char fg, u_char bg)
 {
 	if (nx == 0 || ny == 0) {
 		SCREEN_DEBUG4(s, px, py, nx, ny);
@@ -378,10 +378,14 @@ screen_display_insert_characters(struct screen *s, u_int px, u_int py, u_int nx)
 
 	if (px + nx != screen_last_x(s)) {
 		mx = screen_last_x(s) - (px + nx);
-		memmove(&s->grid_data[py][px + nx], &s->grid_data[py][px], mx);
-		memmove(&s->grid_attr[py][px + nx], &s->grid_attr[py][px], mx);
-		memmove(&s->grid_fg[py][px + nx], &s->grid_fg[py][px], mx);
-		memmove(&s->grid_bg[py][px + nx], &s->grid_bg[py][px], mx);
+		memmove(&s->grid_data[py][px + nx],
+		    &s->grid_data[py][px], mx * sizeof **s->grid_data);
+		memmove(&s->grid_attr[py][px + nx],
+		    &s->grid_attr[py][px], mx * sizeof **s->grid_attr);
+		memmove(&s->grid_fg[py][px + nx],
+		    &s->grid_fg[py][px], mx * sizeof **s->grid_fg);
+		memmove(&s->grid_bg[py][px + nx],
+		    &s->grid_bg[py][px], mx * sizeof **s->grid_bg);
 	}
 
 	memset(&s->grid_data[py][px], ' ', nx);
@@ -437,7 +441,8 @@ screen_display_copy_area(struct screen *dst, struct screen *src,
     u_int px, u_int py, u_int nx, u_int ny, u_int ox, u_int oy)
 {
 	u_int	i, j;
-	u_char	data, attr, fg, bg;
+	u_short	attr;
+	u_char	data, fg, bg;
 
 	if (nx == 0 || ny == 0) {
 		SCREEN_DEBUG4(dst, px, py, nx, ny);

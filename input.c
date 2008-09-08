@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.55 2008-09-08 21:05:41 nicm Exp $ */
+/* $Id: input.c,v 1.56 2008-09-08 22:03:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -493,7 +493,7 @@ void
 input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 {
 	struct screen	*s = ictx->ctx.s;
-	u_char		 attr;
+	u_short		 attr;
 
 	log_debug2("-- c0 %zu: %hhu", ictx->off, ch);
 
@@ -1053,7 +1053,8 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 	struct screen  *s = ictx->ctx.s;
 	u_int		i, n;
 	uint16_t	m, o;
-	u_char		attr, fg, bg;
+	u_short		attr;
+	u_char		fg, bg;
 
 	attr = s->attr;
 	fg = s->fg;
@@ -1075,19 +1076,11 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 			if (input_get_argument(ictx, 2, &m, 0) != 0)
 				return;
 			if (o == 38) {
-				if (m > 7 && m < 16) {
-					/* XXX this is not right; colours 8-15 are not the same as bold */
-					attr |= ATTR_BRIGHT;
-					m -= 8;
-				}
+				attr |= ATTR_FG256;
 				fg = m;
 				break;
 			} else if (o == 48) {
-				if (m > 7 && m < 16) {
-					/* XXX this is not right; colours 8-15 are not the same as bold */
-					attr |= ATTR_BRIGHT;
-					m -= 8;
-				}
+				attr |= ATTR_BG256;
 				bg = m;
 				break;
 			}
@@ -1139,9 +1132,11 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 			case 35:
 			case 36:
 			case 37:
+				attr &= ~ATTR_FG256;
 				fg = m - 30;
 				break;
 			case 39:
+				attr &= ~ATTR_FG256;
 				fg = 8;
 				break;
 			case 40:
@@ -1151,10 +1146,12 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 			case 44:
 			case 45:
 			case 46:
-			case 47:
+			case 47:	
+				attr &= ~ATTR_BG256;
 				bg = m - 40;
 				break;
 			case 49:
+				attr &= ~ATTR_BG256;
 				bg = 8;
 				break;
 			}

@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.39 2008-09-08 21:04:59 nicm Exp $ */
+/* $Id: tty.c,v 1.40 2008-09-08 22:03:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,7 +39,9 @@ void	tty_raw(struct tty *, const char *);
 void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, char);
 
-void	tty_attributes(struct tty *, u_char, u_char, u_char);
+void	tty_attributes(struct tty *, u_short, u_char, u_char);
+u_char	tty_attributes_fg(struct tty *, u_char);
+u_char	tty_attributes_bg(struct tty *, u_char);
 char	tty_translate(char);
 
 TAILQ_HEAD(, tty_term) tty_terms = TAILQ_HEAD_INITIALIZER(tty_terms);
@@ -602,17 +604,14 @@ tty_vwrite(struct tty *tty, struct screen *s, int cmd, va_list ap)
 }
 
 void
-tty_attributes(struct tty *tty, u_char attr, u_char fg, u_char bg)
+tty_attributes(struct tty *tty, u_short attr, u_char fg, u_char bg)
 {
-	char	s[32];
-
 	if (attr == tty->attr && fg == tty->fg && bg == tty->bg)
 		return;
 
 	/* If any bits are being cleared, reset everything. */
 	if (tty->attr & ~attr) {
-		if ((tty->attr & ATTR_CHARSET) &&
-		    exit_alt_charset_mode != NULL)
+		if ((tty->attr & ATTR_CHARSET) && exit_alt_charset_mode != NULL)
 			tty_puts(tty, exit_alt_charset_mode);
 		tty_puts(tty, exit_attribute_mode);
 		tty->fg = 8;
@@ -620,10 +619,11 @@ tty_attributes(struct tty *tty, u_char attr, u_char fg, u_char bg)
 		tty->attr = 0;
 	}
 
-	/* Filter out bits already set. */
+	/* Filter out attribute bits already set. */
 	attr &= ~tty->attr;
 	tty->attr |= attr;
 
+	/* Set the attributes. */
 	if ((attr & ATTR_BRIGHT) && enter_bold_mode != NULL)
 		tty_puts(tty, enter_bold_mode);
 	if ((attr & ATTR_DIM) && enter_dim_mode != NULL)
@@ -641,38 +641,65 @@ tty_attributes(struct tty *tty, u_char attr, u_char fg, u_char bg)
 	if ((attr & ATTR_CHARSET) && enter_alt_charset_mode != NULL)
 		tty_puts(tty, enter_alt_charset_mode);
 
-	if (fg != tty->fg) {
-		if (fg > 15 && tty->term->flags & TERM_256COLOURS) {
+	/* Set foreground colour. */
+	if (fg != tty->fg || attr & ATTR_FG256)
+		tty->fg = tty_attributes_fg(tty, fg);
+
+	/* Set background colour. */
+	if (bg != tty->bg || attr & ATTR_BG256)
+		tty->bg = tty_attributes_bg(tty, bg);
+}
+
+u_char
+tty_attributes_fg(struct tty *tty, u_char fg)
+{
+	char	s[32];
+
+	if (tty->attr & ATTR_FG256) {
+		if (tty->term->flags & TERM_256COLOURS) {
 			xsnprintf(s, sizeof s, "\033[38;5;%hhum", fg);
 			tty_puts(tty, s);
-		} else {
-			if (fg > 7)
-				fg = 8;
-			if (fg == 8 && !(tty->term->flags & TERM_HASDEFAULTS))
-				fg = 7;
-			if (fg == 8)
-				tty_puts(tty, "\033[39m");
-			else if (set_a_foreground != NULL)
-				tty_puts(tty, tparm(set_a_foreground, fg));
+			return (fg);
 		}
-	}
 
-	if (bg != tty->bg) {
-		if (bg > 15 && tty->term->flags & TERM_256COLOURS) {
+		if (fg > 15)
+			fg = 8;
+		else if (fg > 7)
+			fg -= 8;
+	}
+		
+	if (fg == 8 && !(tty->term->flags & TERM_HASDEFAULTS))
+		fg = 7;
+	if (fg == 8)
+		tty_puts(tty, "\033[39m");
+	else if (set_a_foreground != NULL)
+		tty_puts(tty, tparm(set_a_foreground, fg));
+	return (fg);
+}
+
+u_char
+tty_attributes_bg(struct tty *tty, u_char bg)
+{
+	char	s[32];
+
+	if (tty->attr & ATTR_BG256) {
+		if (tty->term->flags & TERM_256COLOURS) {
 			xsnprintf(s, sizeof s, "\033[48;5;%hhum", bg);
 			tty_puts(tty, s);
-		} else {
-			if (bg > 7)
-				bg = 8;
-			if (bg == 8 && !(tty->term->flags & TERM_HASDEFAULTS))
-				bg = 0;
-			if (bg == 8)
-				tty_puts(tty, "\033[49m");
-			else if (set_a_background != NULL)
-				tty_puts(tty, tparm(set_a_background, bg));
+			return (bg);
 		}
-	}
 
-	tty->fg = fg;
-	tty->bg = bg;
+		if (bg > 15)
+			bg = 8;
+		else if (bg > 7)
+			bg -= 8;
+	}
+		
+	if (bg == 8 && !(tty->term->flags & TERM_HASDEFAULTS))
+		bg = 0;
+	if (bg == 8)
+		tty_puts(tty, "\033[49m");
+	else if (set_a_background != NULL)
+		tty_puts(tty, tparm(set_a_background, bg));
+	return (bg);
 }
