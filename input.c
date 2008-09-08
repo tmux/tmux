@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.53 2008-09-08 17:40:50 nicm Exp $ */
+/* $Id: input.c,v 1.54 2008-09-08 20:51:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -433,8 +433,10 @@ input_state_sequence_next(u_char ch, struct input_ctx *ictx)
 void
 input_state_sequence_intermediate(u_char ch, struct input_ctx *ictx)
 {
-	if (INPUT_INTERMEDIATE(ch))
+	if (INPUT_INTERMEDIATE(ch)) {
+		log_debug2(":: in %zu: %hhu (%c)", ictx->off, ch, ch);
 		return;
+	}
 
 	if (INPUT_UPPERCASE(ch) || INPUT_LOWERCASE(ch)) {
 		input_state(ictx, input_state_first);
@@ -1075,14 +1077,14 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 			if (o == 38) {
 				if (m > 7 && m < 16) {
 					attr |= ATTR_BRIGHT;
-					m -= 7;
+					m -= 8;
 				}
 				fg = m;
 				break;
 			} else if (o == 48) {
 				if (m > 7 && m < 16) {
 					attr |= ATTR_BRIGHT;
-					m -= 7;
+					m -= 8;
 				}
 				bg = m;
 				break;
