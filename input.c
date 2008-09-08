@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.54 2008-09-08 20:51:19 nicm Exp $ */
+/* $Id: input.c,v 1.55 2008-09-08 21:05:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1076,6 +1076,7 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 				return;
 			if (o == 38) {
 				if (m > 7 && m < 16) {
+					/* XXX this is not right; colours 8-15 are not the same as bold */
 					attr |= ATTR_BRIGHT;
 					m -= 8;
 				}
@@ -1083,6 +1084,7 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 				break;
 			} else if (o == 48) {
 				if (m > 7 && m < 16) {
+					/* XXX this is not right; colours 8-15 are not the same as bold */
 					attr |= ATTR_BRIGHT;
 					m -= 8;
 				}
@@ -1090,6 +1092,7 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 				break;
 			}
 		}
+		/* FALLTHROUGH */
 	default:
 		for (i = 0; i < n; i++) {
 			if (input_get_argument(ictx, i, &m, 0) != 0)
