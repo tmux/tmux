@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.56 2008-09-08 22:03:54 nicm Exp $ */
+/* $Id: input.c,v 1.57 2008-09-09 17:35:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1061,35 +1061,35 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 	bg = s->bg;
 
 	n = ARRAY_LENGTH(&ictx->args);
-	switch (n) {
-	case 0:
+	if (n == 0) {
 		attr = 0;
 		fg = 8;
 		bg = 8;
-		break;
-	case 3:
-		if (input_get_argument(ictx, 1, &m, 0) != 0)
-			return;
-		if (m == 5) {
-			if (input_get_argument(ictx, 0, &o, 0) != 0)
-				return;
-			if (input_get_argument(ictx, 2, &m, 0) != 0)
-				return;
-			if (o == 38) {
-				attr |= ATTR_FG256;
-				fg = m;
-				break;
-			} else if (o == 48) {
-				attr |= ATTR_BG256;
-				bg = m;
-				break;
-			}
-		}
-		/* FALLTHROUGH */
-	default:
+	} else {
 		for (i = 0; i < n; i++) {
 			if (input_get_argument(ictx, i, &m, 0) != 0)
 				return;
+
+			if (m == 38 || m == 48) {
+				i++;
+				if (input_get_argument(ictx, i, &o, 0) != 0)
+					return;
+				if (o != 5)
+					continue;
+				
+				i++;
+				if (input_get_argument(ictx, i, &o, 0) != 0)
+					return;
+				if (m == 38) {
+					attr |= ATTR_FG256;
+					fg = o;
+				} else if (m == 48) {
+					attr |= ATTR_BG256;
+					bg = o;
+				}
+				continue;
+			}
+			
 			switch (m) {
 			case 0:
 			case 10:
