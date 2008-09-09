@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.40 2008-09-08 22:03:56 nicm Exp $ */
+/* $Id: tty.c,v 1.41 2008-09-09 22:16:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,6 +54,7 @@ tty_init(struct tty *tty, char *path, char *term)
 		tty->termname = xstrdup("unknown");
 	else
 		tty->termname = xstrdup(term);
+	tty->flags = 0;
 }
 
 int
@@ -73,17 +74,22 @@ tty_open(struct tty *tty, char **cause)
 	if (fcntl(tty->fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl");
 
+	if (debug_level > 3) {
+		tty->log_fd = open("tmux.out", O_WRONLY|O_CREAT|O_TRUNC, 0644);
+	} else
+		tty->log_fd = -1;
+
 	if ((tty->term = tty_find_term(tty->termname, tty->fd, cause)) == NULL)
 		goto error;
 
 	tty->in = buffer_create(BUFSIZ);
 	tty->out = buffer_create(BUFSIZ);
 
+	tty->flags &= TTY_UTF8;
+
 	tty->attr = 0;
 	tty->fg = 8;
 	tty->bg = 8;
-
-	tty->flags = 0;
 
 	if (tcgetattr(tty->fd, &tty->tio) != 0)
 		fatal("tcgetattr failed");
@@ -139,6 +145,11 @@ tty_close(struct tty *tty)
 
 	if (tty->fd == -1)
 		return;
+
+	if (tty->log_fd != -1) {
+		close(tty->log_fd);
+		tty->log_fd = -1;
+	}
 
 	/*
 	 * Skip any writing if the fd is invalid. Things like ssh -t can
@@ -384,6 +395,9 @@ tty_puts(struct tty *tty, const char *s)
 
 	t = tty_strip(s);
 	buffer_write(tty->out, t, strlen(t));
+
+	if (tty->log_fd != -1)
+		write(tty->log_fd, t, strlen(t));
 }
 
 void
@@ -392,6 +406,9 @@ tty_putc(struct tty *tty, char ch)
 	if (tty->attr & ATTR_CHARSET)
 		ch = tty_get_acs(tty, ch);
 	buffer_write8(tty->out, ch);
+
+	if (tty->log_fd != -1)
+		write(tty->log_fd, &ch, 1);
 }
 
 void
@@ -410,8 +427,9 @@ tty_set_title(struct tty *tty, const char *title)
 void
 tty_vwrite(struct tty *tty, struct screen *s, int cmd, va_list ap)
 {
-	char	ch;
-	u_int	i, ua, ub, uc;
+	struct utf8_data	*udat;
+	char			 ch;
+	u_int			 i, ua, ub, uc;
 
 	if (tty->flags & TTY_FREEZE)
 		return;
@@ -423,6 +441,33 @@ tty_vwrite(struct tty *tty, struct screen *s, int cmd, va_list ap)
 	switch (cmd) {
 	case TTY_CHARACTER:
 		ch = va_arg(ap, int);
+		
+		if (tty->attr & ATTR_PAD)
+			break;
+
+		if ((tty->attr & ATTR_UTF8) && (tty->flags & TTY_UTF8)) {
+			udat = utf8_lookup(
+			    &s->utf8_table, utf8_unpack(ch, tty->attr));
+			if (udat == NULL)
+				ch = '_';
+			else {
+				if (udat->data[0] == 0xff)
+					break;
+				tty_putc(tty, udat->data[0]);
+				if (udat->data[1] == 0xff)
+					break;
+				tty_putc(tty, udat->data[1]);
+				if (udat->data[2] == 0xff)
+					break;
+				tty_putc(tty, udat->data[2]);	
+				if (udat->data[3] == 0xff)
+					break;
+				tty_putc(tty, udat->data[3]);
+				break;
+			}
+		} else if (tty->attr & ATTR_UTF8)
+			ch = '_';
+
 		switch (ch) {
 		case '\n':	/* LF */
 			tty_putc(tty, '\n');

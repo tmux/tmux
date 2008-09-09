@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.74 2008-08-28 17:45:27 nicm Exp $ */
+/* $Id: tmux.c,v 1.75 2008-09-09 22:16:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -175,10 +175,11 @@ main(int argc, char **argv)
 	struct passwd		*pw;
 	char			*path, *cause, *home;
 	char			 rpath[MAXPATHLEN];
-	int	 		 n, opt;
+	int	 		 n, opt, flags;
 
+	flags = 0;
 	path = NULL;
-        while ((opt = getopt(argc, argv, "f:qS:Vv")) != EOF) {
+        while ((opt = getopt(argc, argv, "f:qS:uVv")) != EOF) {
                 switch (opt) {
 		case 'f':
 			cfg_file = xstrdup(optarg);
@@ -188,6 +189,9 @@ main(int argc, char **argv)
 			break;
 		case 'q':
 			be_quiet = 1;
+			break;
+		case 'u':
+			flags |= IDENTIFY_UTF8;
 			break;
 		case 'v':
 			debug_level++;
@@ -286,7 +290,8 @@ main(int argc, char **argv)
 
 	memset(&cctx, 0, sizeof cctx);
 	client_fill_session(&data);
-	if (client_init(rpath, &cctx, cmd->entry->flags & CMD_STARTSERVER) != 0)
+	if (client_init(
+	    rpath, &cctx, cmd->entry->flags & CMD_STARTSERVER, flags) != 0)
 		exit(1);
 	b = buffer_create(BUFSIZ);
 	cmd_send(cmd, b);

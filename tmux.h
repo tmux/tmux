@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.185 2008-09-08 22:18:03 nicm Exp $ */
+/* $Id: tmux.h,v 1.186 2008-09-09 22:16:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION -1
+#define PROTOCOL_VERSION -2
 
 /* Shut up gcc warnings about empty if bodies. */
 #define RB_AUGMENT(x) do {} while (0)
@@ -375,6 +375,9 @@ struct msg_identify_data {
 	char		tty[TTY_NAME_MAX];
 	int	        version;
 
+#define IDENTIFY_UTF8 0x1
+	int		flags;
+
 	u_int		sx;
 	u_int		sy;
 
@@ -386,6 +389,17 @@ struct msg_resize_data {
 	u_int		sy;
 };
 
+/* UTF8 data. */
+struct utf8_data {
+	u_char		data[4];
+};
+
+struct utf8_table {
+	u_int		limit;
+	ARRAY_DECL(, struct utf8_data) array;
+};
+#define UTF8_LIMIT ((1<<11) - 1)
+
 /* Attributes. */
 #define ATTR_BRIGHT 0x1
 #define ATTR_DIM 0x2
@@ -395,8 +409,17 @@ struct msg_resize_data {
 #define ATTR_HIDDEN 0x20
 #define ATTR_ITALICS 0x40
 #define ATTR_CHARSET 0x80	/* alternative character set */
+
 #define ATTR_FG256 0x100
 #define ATTR_BG256 0x200
+
+#define ATTR_UTF8 0x400
+#define ATTR_PAD 0x800
+
+#define ATTR_UTF8b8 0x8000
+#define ATTR_UTF8b9 0x4000
+#define ATTR_UTF8b10 0x2000
+#define ATTR_UTF8b11 0x1000
 
 /* Modes. */
 #define MODE_CURSOR 0x1
@@ -441,6 +464,8 @@ struct screen {
 	u_short		 attr;
 	u_char		 fg;
 	u_char		 bg;
+
+	struct utf8_table utf8_table;
 
 	u_int		 saved_cx;
 	u_int		 saved_cy;
@@ -540,6 +565,10 @@ struct input_ctx {
 #define STRING_TITLE 0
 #define STRING_NAME 1
 #define STRING_IGNORE 2
+
+	struct utf8_data utf8_buf;
+	u_int		 utf8_len;
+	u_int		 utf8_off;
 
 	void 		*(*state)(u_char, struct input_ctx *);
 
@@ -692,6 +721,8 @@ struct tty {
 	struct buffer	*in;
 	struct buffer	*out;
 
+	int		 log_fd;
+
 	struct termios   tio;
 
 	u_short		 attr;
@@ -703,6 +734,7 @@ struct tty {
 #define TTY_NOCURSOR 0x1
 #define TTY_FREEZE 0x2
 #define TTY_ESCAPE 0x4
+#define TTY_UTF8 0x8
 	int		 flags;
 
 	struct timeval	 key_timer;
@@ -1066,7 +1098,7 @@ void	cmd_buffer_free(struct cmd *);
 void	cmd_buffer_print(struct cmd *, char *, size_t);
 
 /* client.c */
-int	 client_init(const char *, struct client_ctx *, int);
+int	 client_init(const char *, struct client_ctx *, int, int);
 int	 client_flush(struct client_ctx *);
 int	 client_main(struct client_ctx *);
 
@@ -1140,6 +1172,8 @@ void	 input_parse(struct window *);
 void	 input_key(struct window *, int);
 
 /* screen-display.c */
+void	 screen_display_get_cell(struct screen *,
+    	     u_int, u_int, u_char *, u_short *, u_char *, u_char *);
 void	 screen_display_set_cell(
 	     struct screen *, u_int, u_int, u_char, u_short, u_char, u_char);
 void	 screen_display_make_lines(struct screen *, u_int, u_int);
@@ -1168,6 +1202,7 @@ void	 screen_write_start(struct screen_write_ctx *,
 void	 screen_write_stop(struct screen_write_ctx *);
 void	 screen_write_set_title(struct screen_write_ctx *, char *);
 void	 screen_write_put_character(struct screen_write_ctx *, u_char);
+void	 screen_write_put_utf8(struct screen_write_ctx *, struct utf8_data *);
 size_t printflike2 screen_write_put_string_rjust(
 	     struct screen_write_ctx *, const char *, ...);
 void printflike2 screen_write_put_string(
@@ -1289,6 +1324,15 @@ int		 session_next(struct session *);
 int		 session_previous(struct session *);
 int		 session_select(struct session *, int);
 int		 session_last(struct session *);
+
+/* utf8.c */
+void	utf8_pack(int, u_char *, u_short *);
+int	utf8_unpack(u_char, u_short);
+void	utf8_init(struct utf8_table *, int);
+void	utf8_free(struct utf8_table *);
+struct utf8_data *utf8_lookup(struct utf8_table *, int);
+int	utf8_search(struct utf8_table *, struct utf8_data *);
+int	utf8_add(struct utf8_table *, struct utf8_data *);
 
 /* buffer.c */
 struct buffer 	*buffer_create(size_t);

@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.57 2008-09-09 17:35:04 nicm Exp $ */
+/* $Id: input.c,v 1.58 2008-09-09 22:16:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,6 +56,7 @@ void	 input_state_sequence_next(u_char, struct input_ctx *);
 void	 input_state_sequence_intermediate(u_char, struct input_ctx *);
 void	 input_state_string_next(u_char, struct input_ctx *);
 void	 input_state_string_escape(u_char, struct input_ctx *);
+void	 input_state_utf8(u_char, struct input_ctx *);
 
 void	 input_handle_character(u_char, struct input_ctx *);
 void	 input_handle_c0_control(u_char, struct input_ctx *);
@@ -247,6 +248,7 @@ input_state_first(u_char ch, struct input_ctx *ictx)
 		return;
 	}
 
+#if 0
   	if (INPUT_C1CONTROL(ch)) {
 		ch -= 0x40;
 		if (ch == '[')
@@ -257,6 +259,10 @@ input_state_first(u_char ch, struct input_ctx *ictx)
 			input_handle_c1_control(ch, ictx);
 		return;
 	}
+#endif
+
+	if (INPUT_DELETE(ch))
+		return;
 
 	input_handle_character(ch, ictx);
 }
@@ -482,9 +488,52 @@ input_state_string_escape(u_char ch, struct input_ctx *ictx)
 }
 
 void
+input_state_utf8(u_char ch, struct input_ctx *ictx)
+{
+	log_debug2("-- un %zu: %hhu (%c)", ictx->off, ch, ch);
+
+	ictx->utf8_buf.data[ictx->utf8_off++] = ch;
+	if (--ictx->utf8_len != 0)
+		return;
+	input_state(ictx, input_state_first);
+
+	screen_write_put_utf8(&ictx->ctx, &ictx->utf8_buf);
+}
+
+void
 input_handle_character(u_char ch, struct input_ctx *ictx)
 {
 	log_debug2("-- ch %zu: %hhu (%c)", ictx->off, ch, ch);
+
+	if (ch > 0x7f) {
+		/* 
+		 * UTF8 sequence.
+		 *
+		 * 11000010-11011111 C2-DF start of 2-byte sequence
+		 * 11100000-11101111 E0-EF start of 3-byte sequence
+		 * 11110000-11110100 F0-F4 start of 4-byte sequence
+		 */
+		memset(&ictx->utf8_buf.data, 0xff, sizeof &ictx->utf8_buf.data);
+		ictx->utf8_buf.data[0] = ch;
+		ictx->utf8_off = 1;
+			    
+		if (ch >= 0xc2 && ch <= 0xdf) {
+			log_debug2(":: u2");
+			input_state(ictx, input_state_utf8);
+			ictx->utf8_len = 1;
+		}
+		if (ch >= 0xe0 && ch <= 0xef) {
+			log_debug2(":: u3");
+			input_state(ictx, input_state_utf8);
+			ictx->utf8_len = 2;
+		}
+		if (ch >= 0xf0 && ch <= 0xf4) {	
+			log_debug2(":: u4");
+			input_state(ictx, input_state_utf8);
+			ictx->utf8_len = 3;
+		}
+		return;
+	}
 
 	screen_write_put_character(&ictx->ctx, ch);
 }

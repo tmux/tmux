@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.68 2008-09-08 22:03:54 nicm Exp $ */
+/* $Id: screen.c,v 1.69 2008-09-09 22:16:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -154,6 +154,8 @@ screen_create(struct screen *s, u_int dx, u_int dy, u_int hlimit)
 	s->grid_bg = xmalloc(dy * (sizeof *s->grid_bg));
 	s->grid_size = xmalloc(dy * (sizeof *s->grid_size));
 	screen_make_lines(s, 0, dy);
+
+	utf8_init(&s->utf8_table, UTF8_LIMIT);
 
 	screen_clear_selection(s);
 }
@@ -348,6 +350,7 @@ screen_set_cell(struct screen *s,
 void
 screen_destroy(struct screen *s)
 {
+	utf8_free(&s->utf8_table);
 	xfree(s->title);
 	screen_free_lines(s, 0, s->dy + s->hsize);
 	xfree(s->grid_data);

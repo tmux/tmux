@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.12 2008-09-08 22:03:54 nicm Exp $ */
+/* $Id: screen-write.c,v 1.13 2008-09-09 22:16:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -99,6 +99,7 @@ void
 screen_write_put_character(struct screen_write_ctx *ctx, u_char ch)
 {
 	struct screen	*s = ctx->s;
+	u_short		 attr;
 
 	if (s->cx == screen_size_x(s)) {
 		s->cx = 0;
@@ -109,12 +110,85 @@ screen_write_put_character(struct screen_write_ctx *ctx, u_char ch)
 		SCREEN_DEBUG(s);
 		return;
 	}
+	attr = s->attr & ~(ATTR_UTF8|ATTR_PAD);
 
-	screen_display_set_cell(s, s->cx, s->cy, ch, s->attr, s->fg, s->bg);
+	screen_display_set_cell(s, s->cx, s->cy, ch, attr, s->fg, s->bg);
 	s->cx++;
 
 	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_CHARACTER, ch);
+}
+
+/* Put a UTF8 character. */
+void
+screen_write_put_utf8(struct screen_write_ctx *ctx, struct utf8_data *udat)
+{
+	struct screen	*s = ctx->s;
+	u_char		 ch, ch2, fg, bg;
+	u_short		 attr, attr2;
+	int		 idx, wide;
+	u_int		 n;
+
+	wide = 0;
+	if (udat->data[2] == 0xff)
+		n = ((udat->data[0] & 0x1f)<<6) + (udat->data[1] & 0x3f);
+	else if (udat->data[3] == 0xff) {
+		n = ((udat->data[0] & 0x0f)<<12) +
+		    ((udat->data[1] & 0x3f)<<6) + (udat->data[2] & 0x3f);
+	} else
+		n = 0;
+	if ((n >= 0x1100 && n <= 0x115f) || n == 0x2329 || n == 0x232a ||
+	    (n >= 0x2e80 && n <= 0xa4cf && n != 0x303f) ||
+	    (n >= 0xac00 && n <= 0xd7a3) || (n >= 0xf900 && n <= 0xfaff) ||
+	    (n >= 0xfe10 && n <= 0xfe19) || (n >= 0xfe30 && n <= 0xfe6f) ||
+	    (n >= 0xff00 && n <= 0xff60) || (n >= 0xffe0 && n <= 0xffe6) ||
+	    (n >= 0x20000 && n <= 0x2fffd) || (n >= 0x30000 && n <= 0x3fffd))
+		wide = 1;
+
+	if (s->cx >= screen_size_x(s) - wide) {
+		s->cx = 0;
+		if (ctx->write != NULL)
+			ctx->write(ctx->data, TTY_CHARACTER, '\r');
+		screen_write_cursor_down_scroll(ctx);
+	} else if (!screen_in_x(s, s->cx) || !screen_in_y(s, s->cy)) {
+		SCREEN_DEBUG(s);
+		return;
+	}
+	attr = s->attr & ~(ATTR_UTF8|ATTR_PAD);
+
+	if ((idx = utf8_add(&s->utf8_table, udat)) == -1)
+		ch = '_';
+	else {
+		utf8_pack(idx, &ch, &attr);
+		attr |= ATTR_UTF8;
+	}
+
+	/* Remove padding before and after, if any. */
+	screen_display_get_cell(s, s->cx, s->cy, &ch2, &attr2, &fg, &bg);
+	if (s->cx > 0 && (attr2 & ATTR_PAD))
+		screen_display_set_cell(s, s->cx - 1, s->cy, ' ', 0, 8, 8);
+	if (s->cx < screen_last_x(s) && (attr2 & ATTR_UTF8)) {
+		screen_display_get_cell(
+		    s, s->cx + 1, s->cy, &ch2, &attr2, &fg, &bg);
+		if (s->cx > 0 && (attr2 & ATTR_PAD)) {
+			screen_display_set_cell(
+			    s, s->cx + 1, s->cy, ' ', 0, 8, 8);
+		}
+	}
+
+	screen_display_set_cell(s, s->cx, s->cy, ch, attr, s->fg, s->bg);
+	s->cx++;
+
+	if (wide) {
+		screen_display_set_cell(s, s->cx, s->cy, ' ', ATTR_PAD, 8, 8);
+		s->cx++;
+	}
+
+	if (ctx->write != NULL) {
+		ctx->write(ctx->data, TTY_ATTRIBUTES, attr, s->fg, s->bg);
+		ctx->write(ctx->data, TTY_CHARACTER, ch);
+		ctx->write(ctx->data, TTY_ATTRIBUTES, s->attr, s->fg, s->bg);
+	}
 }
 
 /* Put a string right-justified. */

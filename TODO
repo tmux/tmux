@@ -41,6 +41,46 @@
 
 -- For 0.5 --------------------------------------------------------------------
 
+- FINISH UTF8: fix copy and paste
+- SPLIT u_short attr into attr,flags?
+- maybe rethink backend data structure?
+  	- utf8 can be 1-4 bytes
+	- most common is 1 bytes
+	- there can be double-width characters which take n bytes but 2 columns on screen
+	- they are not only drawn as two characters, they also require two backspaces to remove
+- three operations:
+  	- simultaneously update screen and ttys
+	- redraw screen or section of screen to ttys
+	- write to ttys without updating screen
+
+---
+split off grid manip:
+      16-bit characters
+      8-bit flags
+      8-bit attributes
+      8-bit fg colour
+      8-bit bg colour
+
+struct grid_data {
+	struct grid_cell **cells;
+	u_int	sx;
+	u_int	sy;
+};
+struct grid_cell {
+       u_short	data;
+       u_char	attr;
+       u_char	flags;
+       u_char	fg;
+       u_char	bg;
+}
+---
+
+Would it be better to just expand char to 16-bits and use it as an index only
+for >2-byte characters? or - better - don't support entire UTF range? only the BMP?
+this would get rid of UTF table and limits, but still leave double-width character annoyances
+also would double memory usage
+----
+
 21:09 < merdely> NicM: if I run 'tmux attach -t main' and there is no tmux session named main, start a new one.
 - commands:	save-buffer -b number filename
 		load-buffer -b number filename

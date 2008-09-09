@@ -1,3 +1,8 @@
+09 September 2008
+
+* Initial UTF-8 support. A bit ugly and with a limit of 4096 UTF-8
+  characters per window.
+
 08 September 2008
 
 * 256 colour support. tmux attempts to autodetect the terminal by looking
@@ -655,4 +660,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.158 2008-09-08 17:40:50 nicm Exp $
+$Id: CHANGES,v 1.159 2008-09-09 22:16:36 nicm Exp $

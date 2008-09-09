@@ -1,4 +1,4 @@
-/* $Id: buffer-poll.c,v 1.9 2008-08-28 17:45:25 nicm Exp $ */
+/* $Id: buffer-poll.c,v 1.10 2008-09-09 22:16:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -40,9 +40,11 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 {
 	ssize_t	n;
 
+#if 0
 	log_debug("buffer_poll (%ld): fd=%d, revents=%d; out=%zu in=%zu",
 	    (long) getpid(),
 	    pfd->fd, pfd->revents, BUFFER_USED(out), BUFFER_USED(in));
+#endif
 
 #ifndef BROKEN_POLL
 	if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP))
@@ -51,7 +53,9 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 	if (pfd->revents & POLLIN) {
 		buffer_ensure(in, BUFSIZ);
 		n = read(pfd->fd, BUFFER_IN(in), BUFFER_FREE(in));
+#if 0
 		log_debug("buffer_poll: fd=%d, read=%zd", pfd->fd, n);
+#endif
 		if (n == 0)
 			return (-1);
 		if (n == -1) {
@@ -62,7 +66,9 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 	}
 	if (BUFFER_USED(out) > 0 && pfd->revents & POLLOUT) {
 		n = write(pfd->fd, BUFFER_OUT(out), BUFFER_USED(out));
+#if 0
 		log_debug("buffer_poll: fd=%d, write=%zd", pfd->fd, n);
+#endif
 		if (n == -1) {
 			if (errno != EINTR && errno != EAGAIN)
 				return (-1);

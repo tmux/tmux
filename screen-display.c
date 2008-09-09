@@ -1,4 +1,4 @@
-/* $Id: screen-display.c,v 1.20 2008-09-08 22:03:54 nicm Exp $ */
+/* $Id: screen-display.c,v 1.21 2008-09-09 22:16:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,6 +21,15 @@
 #include <string.h>
 
 #include "tmux.h"
+
+/* Get a cell. */
+void
+screen_display_get_cell(struct screen *s,
+    u_int px, u_int py, u_char *data, u_short *attr, u_char *fg, u_char *bg)
+{
+	screen_get_cell(
+	    s, screen_x(s, px), screen_y(s, py), data, attr, fg, bg);
+}
 
 /* Set a cell. */
 void
