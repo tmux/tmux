@@ -1,4 +1,4 @@
-/* $Id: cmd-show-options.c,v 1.5 2008-06-23 22:12:29 nicm Exp $ */
+/* $Id: cmd-show-options.c,v 1.6 2008-09-10 18:59:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -135,7 +135,7 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 		case SET_OPTION_COLOUR:
 			vn = options_get_number(oo, entry->name);
  			ctx->print(ctx, "%s %s",
-			    entry->name, screen_colourstring(vn));
+			    entry->name, colour_tostring(vn));
 			break;
 		case SET_OPTION_FLAG:
 			vn = options_get_number(oo, entry->name);

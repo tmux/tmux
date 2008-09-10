@@ -41,6 +41,18 @@
 
 -- For 0.5 --------------------------------------------------------------------
 
+XXX
+screen contains grid
+
+screen_write   <-- write to TTY and to screen using close-to-ANSI functions
+screen_redraw  <-- write areas of screen to TTY
+grid_view      <-- write to viewable area of grid
+grid	       <-- manipulate grid and history
+
+XXX
+grid_view has ox,oy
+XXX
+
 - FINISH UTF8: fix copy and paste
 - SPLIT u_short attr into attr,flags?
 - maybe rethink backend data structure?
@@ -54,6 +66,16 @@
 	- write to ttys without updating screen
 
 ---
+NEED to be able to:
+     resize screen
+     apply ops to both screen and tty simultaneously
+     	   both when parsing input and when eg scrolling history
+     draw on the top of the screen without modifying it
+     display arbitrary parts of the history
+     redraw arbitrary parts of the visible screen
+---
+NEVER need to draw into the history
+
 split off grid manip:
       16-bit characters
       8-bit flags
@@ -62,9 +84,14 @@ split off grid manip:
       8-bit bg colour
 
 struct grid_data {
-	struct grid_cell **cells;
-	u_int	sx;
-	u_int	sy;
+	struct grid_cell **data;
+	int	*sizes;
+
+	int	sx;
+	int	sy;
+
+	int	hsize;
+	int	hlimit;
 };
 struct grid_cell {
        u_short	data;
@@ -72,7 +99,63 @@ struct grid_cell {
        u_char	flags;
        u_char	fg;
        u_char	bg;
-}
+};
+const struct grid_default_cell = { 0x20, 0, 0, 8, 8 };
+
+; grid logically split from
+;    -hlimit to 0 and 0 to sy
+
+; ALWAYS fill with default
+
+const struct grid_cell *grid_get(int x, int y);
+void		  grid_set(int x, int y, const struct grid_cell *cell);
+
+void		  grid_resize()
+void		  grid_shift() /* shift lines into history */
+
+struct grid_view {
+       int	ox;
+       int	oy;
+
+       int	sx;
+       int	sy;
+
+       struct grid_data	*gdata;
+       struct grid_view	*parent;
+};
+
+struct grid_cell *grid_view_get_cell(int x, int y)
+void		  grid_view_set_cell(int x, int y, const struct grid_cell *cell);
+
+int		  grid_view_absolute_x(int x);
+int		  grid_view_absolute_y(int y);
+
+int		  grid_view_relative_x(int x);
+int		  grid_view_relative_y(int y);
+
+void		  grid_view_delete_lines(int y, int ny)
+void		  grid_view_insert_lines(int y, int ny)
+void		  grid_view_clear_lines(int y, int ny)
+void		  grid_view_fill_lines(int y, int ny, const struct grid_cell *cell)
+
+void		  grid_view_delete_cells(int x, int y, int nx)
+void		  grid_view_insert_cells(int x, int y, int nx)
+void		  grid_view_clear_cells(int x, int y, int nx)
+void		  grid_view_fill_cells(int x, int nx, const struct grid_cell *cell)
+
+void		  grid_view_clear_area(int x, int y, int nx, int ny)
+void		  grid_view_fill_area(int x, int y, int nx, int ny, const struct grid_cell *cell)
+
+---
+
+screen has two (both grid_view):
+       base and overlay
+
+---
+screen_write writes into overlay if it exists and then base, also optionally to tty
+screen_draw  draws overlay + base to display
+---
+
 ---
 
 Would it be better to just expand char to 16-bits and use it as an index only

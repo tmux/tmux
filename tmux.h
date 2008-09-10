@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.186 2008-09-09 22:16:37 nicm Exp $ */
+/* $Id: tmux.h,v 1.187 2008-09-10 18:59:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1171,6 +1171,10 @@ void	 input_parse(struct window *);
 /* input-key.c */
 void	 input_key(struct window *, int);
 
+/* colour.c */
+const char *colour_tostring(u_char);
+u_char	 colour_fromstring(const char *);
+
 /* screen-display.c */
 void	 screen_display_get_cell(struct screen *,
     	     u_int, u_int, u_char *, u_short *, u_char *, u_char *);
@@ -1251,8 +1255,6 @@ void	screen_redraw_lines(struct screen_redraw_ctx *, u_int, u_int);
 void	screen_redraw_columns(struct screen_redraw_ctx *, u_int, u_int);
 
 /* screen.c */
-const char *screen_colourstring(u_char);
-u_char	 screen_stringcolour(const char *);
 void	 screen_create(struct screen *, u_int, u_int, u_int);
 void	 screen_reset(struct screen *);
 void	 screen_destroy(struct screen *);

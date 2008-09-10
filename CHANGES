@@ -1,3 +1,7 @@
+10 September 2008
+
+* Split off colour conversion code from screen code.
+
 09 September 2008
 
 * Initial UTF-8 support. A bit ugly and with a limit of 4096 UTF-8
@@ -660,4 +664,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.159 2008-09-09 22:16:36 nicm Exp $
+$Id: CHANGES,v 1.160 2008-09-10 18:59:29 nicm Exp $

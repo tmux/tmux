@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.40 2008-07-19 10:07:50 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.41 2008-09-10 18:59:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -271,7 +271,7 @@ set_option_colour(struct cmd_ctx *ctx, struct options *oo,
 		return;
 	}
 	
-	if ((colour = screen_stringcolour(value)) > 8) {
+	if ((colour = colour_fromstring(value)) > 8) {
 		ctx->error(ctx, "bad colour: %s", value);
 		return;
 	}
