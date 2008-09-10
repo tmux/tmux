@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.79 2008-09-08 17:40:51 nicm Exp $ */
+/* $Id: server.c,v 1.80 2008-09-10 19:15:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -339,7 +339,7 @@ server_check_redraw(struct client *c)
 			 * screen, this can't use anything which relies on
 			 * cursor position.
 			 */
-			screen_create(&screen, xx, yy, 0);
+			screen_init(&screen, xx, yy, 0);
 			screen_redraw_start(&ctx, &screen, tty_write_client, c);
 			if (sx < xx)
 				screen_redraw_columns(&ctx, sx, xx - sx);
@@ -349,7 +349,7 @@ server_check_redraw(struct client *c)
 				screen_redraw_lines(&ctx, sy, yy - sy);
 			}
 			screen_redraw_stop(&ctx);
-			screen_destroy(&screen);
+			screen_free(&screen);
 		}
 
 		screen_redraw_start_client(&ctx, c);

@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.22 2008-09-08 17:40:51 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.23 2008-09-10 19:15:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,7 +65,7 @@ window_scroll_init(struct window *w)
 	data->oy = 0;
 
 	s = &data->screen;
-	screen_create(s, screen_size_x(&w->base), screen_size_y(&w->base), 0);
+	screen_init(s, screen_size_x(&w->base), screen_size_y(&w->base), 0);
 	s->mode &= ~MODE_CURSOR;
 
 	screen_write_start(&ctx, s, NULL, NULL);
@@ -81,7 +81,7 @@ window_scroll_free(struct window *w)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
 
-	screen_destroy(&data->screen);
+	screen_free(&data->screen);
 	xfree(data);
 }
 

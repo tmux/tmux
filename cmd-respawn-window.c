@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-window.c,v 1.4 2008-07-01 05:06:11 nicm Exp $ */
+/* $Id: cmd-respawn-window.c,v 1.5 2008-09-10 19:15:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -68,7 +68,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "respawn failed: %s:%d", s->name, wl->idx);
 		return;
 	}
-	screen_reset(&wl->window->base);
+	screen_reinit(&wl->window->base);
 
 	recalculate_sizes();
 	server_redraw_window(wl->window);

@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.70 2008-09-10 18:59:29 nicm Exp $ */
+/* $Id: screen.c,v 1.71 2008-09-10 19:15:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -76,7 +76,7 @@
 
 /* Create a new screen. */
 void
-screen_create(struct screen *s, u_int dx, u_int dy, u_int hlimit)
+screen_init(struct screen *s, u_int dx, u_int dy, u_int hlimit)
 {
 	s->dx = dx;
 	s->dy = dy;
@@ -110,7 +110,7 @@ screen_create(struct screen *s, u_int dx, u_int dy, u_int hlimit)
 
 /* Reinitialise screen. */
 void
-screen_reset(struct screen *s)
+screen_reinit(struct screen *s)
 {
 	s->cx = 0;
 	s->cy = 0;
@@ -128,6 +128,20 @@ screen_reset(struct screen *s)
 	    screen_size_x(s), screen_size_y(s), ' ', 0, 8, 8);
 	
 	screen_clear_selection(s);	
+}
+
+/* Destroy a screen. */
+void
+screen_free(struct screen *s)
+{
+	utf8_free(&s->utf8_table);
+	xfree(s->title);
+	screen_free_lines(s, 0, s->dy + s->hsize);
+	xfree(s->grid_data);
+	xfree(s->grid_attr);
+	xfree(s->grid_fg);
+	xfree(s->grid_bg);
+	xfree(s->grid_size);
 }
 
 /* Resize screen. */
@@ -292,20 +306,6 @@ screen_set_cell(struct screen *s,
 	s->grid_attr[cy][cx] = attr;
 	s->grid_fg[cy][cx] = fg;
 	s->grid_bg[cy][cx] = bg;
-}
-
-/* Destroy a screen. */
-void
-screen_destroy(struct screen *s)
-{
-	utf8_free(&s->utf8_table);
-	xfree(s->title);
-	screen_free_lines(s, 0, s->dy + s->hsize);
-	xfree(s->grid_data);
-	xfree(s->grid_attr);
-	xfree(s->grid_fg);
-	xfree(s->grid_bg);
-	xfree(s->grid_size);
 }
 
 /* Create a range of lines. */
