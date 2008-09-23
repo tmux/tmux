@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.41 2008-09-09 22:16:37 nicm Exp $ */
+/* $Id: tty.c,v 1.42 2008-09-23 17:54:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -394,6 +394,8 @@ tty_puts(struct tty *tty, const char *s)
 	const char	*t;
 
 	t = tty_strip(s);
+	if (*t == '\0')
+		return;
 	buffer_write(tty->out, t, strlen(t));
 
 	if (tty->log_fd != -1)
