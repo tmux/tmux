@@ -1,4 +1,4 @@
-/* $Id: log.c,v 1.6 2008-09-25 20:08:52 nicm Exp $ */
+/* $Id: log.c,v 1.7 2008-09-25 20:31:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
+#include <time.h>
 
 #include "tmux.h"
 

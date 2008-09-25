@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.46 2008-09-25 20:08:54 nicm Exp $ */
+/* $Id: status.c,v 1.47 2008-09-25 20:33:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,6 +21,7 @@
 
 #include <stdarg.h>
 #include <string.h>
+#include <time.h>
 
 #include "tmux.h"
 
