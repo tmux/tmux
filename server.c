@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.80 2008-09-10 19:15:04 nicm Exp $ */
+/* $Id: server.c,v 1.81 2008-09-25 20:08:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -186,14 +186,14 @@ server_main(const char *srv_path, int srv_fd)
 		server_fill_clients(&pfd);
 
 		/* Do the poll. */
-		log_debug("polling %d fds", nfds);
+		/* log_debug("polling %d fds", nfds); */
 		if ((nfds = poll(pfds, nfds, 100)) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			fatal("poll failed");
 		}
 		pfd = pfds;
-		log_debug("poll returned %d", nfds);
+		/* log_debug("poll returned %d", nfds); */
 
 		/* Handle server socket. */
 #ifndef BROKEN_POLL
@@ -271,7 +271,7 @@ server_fill_windows(struct pollfd **pfd)
 			(*pfd)->events = POLLIN;
 			if (BUFFER_USED(w->out) > 0)
 				(*pfd)->events |= POLLOUT;
-			log_debug("adding window %d (%d)", (*pfd)->fd, w->fd);
+			/* log_debug("adding window %d (%d)", (*pfd)->fd, w->fd); */
 		}
 		(*pfd)++;
 	}
@@ -286,7 +286,7 @@ server_handle_windows(struct pollfd **pfd)
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		if ((w = ARRAY_ITEM(&windows, i)) != NULL && w->fd != -1) {
-			log_debug("testing window %d (%d)", (*pfd)->fd, w->fd);
+			/* log_debug("testing window %d (%d)", (*pfd)->fd, w->fd); */
 			if (buffer_poll(*pfd, w->in, w->out) != 0)
 				server_lost_window(w);
 			else
@@ -303,6 +303,7 @@ server_check_redraw(struct client *c)
 	struct session		       *s;
 	struct screen_redraw_ctx	ctx;
 	struct screen			screen;
+	struct grid_cell		gc;
 	u_int				xx, yy, sx, sy;
 	char			        title[BUFSIZ];
 	int				flags;
@@ -344,8 +345,9 @@ server_check_redraw(struct client *c)
 			if (sx < xx)
 				screen_redraw_columns(&ctx, sx, xx - sx);
 			if (sy < yy)  {
-				screen_fill_area(
-				    &screen, 0, sy, xx, 1, '-', 0, 8, 8);
+				memcpy(&gc, &grid_default_cell, sizeof gc);
+				gc.data = '-';
+				grid_view_fill(screen.grid, &gc, 0, sy, xx, 1);
 				screen_redraw_lines(&ctx, sy, yy - sy);
 			}
 			screen_redraw_stop(&ctx);
@@ -423,7 +425,7 @@ server_fill_clients(struct pollfd **pfd)
 			(*pfd)->events = POLLIN;
 			if (BUFFER_USED(c->out) > 0)
 				(*pfd)->events |= POLLOUT;
-			log_debug("adding client %d (%d)", (*pfd)->fd, c->fd);
+			/* log_debug("adding client %d (%d)", (*pfd)->fd, c->fd); */
 		}
 		(*pfd)++;
 
@@ -434,7 +436,7 @@ server_fill_clients(struct pollfd **pfd)
 			(*pfd)->events = POLLIN;
 			if (BUFFER_USED(c->tty.out) > 0)
 				(*pfd)->events |= POLLOUT;
-			log_debug("adding tty %d (%d)", (*pfd)->fd, c->tty.fd);
+			/* log_debug("adding tty %d (%d)", (*pfd)->fd, c->tty.fd); */
 		}
 		(*pfd)++;
 	}
@@ -451,7 +453,7 @@ server_handle_clients(struct pollfd **pfd)
 		c = ARRAY_ITEM(&clients, i);
 
 		if (c != NULL) {
-			log_debug("testing client %d (%d)", (*pfd)->fd, c->fd);
+			/* log_debug("testing client %d (%d)", (*pfd)->fd, c->fd); */
 			if (buffer_poll(*pfd, c->in, c->out) != 0) {
 				server_lost_client(c);
 				(*pfd) += 2;
@@ -462,7 +464,7 @@ server_handle_clients(struct pollfd **pfd)
 		(*pfd)++;
 
 		if (c != NULL && c->tty.fd != -1 && c->session != NULL) {
-			log_debug("testing tty %d (%d)", (*pfd)->fd, c->tty.fd);
+			/* log_debug("testing tty %d (%d)", (*pfd)->fd, c->tty.fd); */
 			if (buffer_poll(*pfd, c->tty.in, c->tty.out) != 0)
 				server_lost_client(c);
 			else
@@ -594,12 +596,12 @@ server_handle_window(struct window *w)
 			action = options_get_number(&s->options, "bell-action");
 			switch (action) {
 			case BELL_ANY:
-				tty_write_session(s, TTY_CHARACTER, '\007');
+				tty_write_session(s, TTY_BELL);
 				break;
 			case BELL_CURRENT:
 				if (s->curw->window != w)
 					break;
-				tty_write_session(s, TTY_CHARACTER, '\007');
+				tty_write_session(s, TTY_BELL);
 				break;
 			}
 			update = 1;

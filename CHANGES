@@ -1,3 +1,13 @@
+25 September 2008
+
+* Large internal rewrite to better support 256 colours and UTF-8. Screen data
+  is now stored as single two-way array of structures rather than as multiple
+  separate arrays. Also simplified a lot of code.
+
+  Only external changes are three new flags, -2, -d and -u, which force tmux to
+  assume the terminal supports 256 colours, default colours (useful for
+  xterm-256color which lacks the AX flag), or UTF-8 respectively.
+
 10 September 2008
 
 * Split off colour conversion code from screen code.
@@ -664,4 +674,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.160 2008-09-10 18:59:29 nicm Exp $
+$Id: CHANGES,v 1.161 2008-09-25 20:08:51 nicm Exp $

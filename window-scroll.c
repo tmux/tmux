@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.23 2008-09-10 19:15:05 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.24 2008-09-25 20:08:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -90,10 +90,14 @@ window_scroll_resize(struct window *w, u_int sx, u_int sy)
 {
 	struct window_scroll_mode_data	*data = w->modedata;
 	struct screen			*s = &data->screen;
+	struct screen_write_ctx	 	 ctx;
+	u_int				 i;
 
 	screen_resize(s, sx, sy);
-	screen_display_copy_area(&data->screen, &w->base,
-	    0, 0, screen_size_x(s), screen_size_y(s), data->ox, data->oy);
+	screen_write_start(&ctx, s, NULL, NULL);
+	for (i = 0; i < screen_size_y(s); i++)
+		window_scroll_write_line(w, &ctx, i);
+	screen_write_stop(&ctx);
 }
 
 void
@@ -121,8 +125,8 @@ window_scroll_key(struct window *w, struct client *c, int key)
 		window_scroll_scroll_down(w);
 		break;
 	case MODEKEY_PPAGE:
-		if (data->oy + screen_size_y(s) > w->base.hsize)
-			data->oy = w->base.hsize;
+		if (data->oy + screen_size_y(s) > screen_hsize(&w->base))
+			data->oy = screen_hsize(&w->base);
 		else
 			data->oy += screen_size_y(s);
 		window_scroll_redraw_screen(w);
@@ -145,19 +149,24 @@ window_scroll_write_line(
 {
 	struct window_scroll_mode_data	*data = w->modedata;
 	struct screen			*s = &data->screen;
+	struct grid_cell		 gc;
+	char				 hdr[32];
 	size_t	 			 size;
 
 	if (py == 0) {
-		screen_write_set_attributes(
-		    ctx, ATTR_BRIGHT|ATTR_REVERSE, 8, 8);
-		screen_write_move_cursor(ctx, 0, 0);
-		size = screen_write_put_string_rjust(
-		    ctx, "[%u,%u/%u]", data->ox, data->oy, w->base.hsize);
+		memcpy(&gc, &grid_default_cell, sizeof gc);
+		size = xsnprintf(hdr, sizeof hdr,
+		    "[%u,%u/%u]", data->ox, data->oy, screen_hsize(&w->base));
+		gc.attr |= GRID_ATTR_BRIGHT|GRID_ATTR_REVERSE;
+		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
+		screen_write_puts(ctx, &gc, "%s", hdr);
+		gc.attr &= ~(GRID_ATTR_BRIGHT|GRID_ATTR_REVERSE);
 	} else
 		size = 0;
-	screen_write_move_cursor(ctx, 0, py);
-	screen_write_copy_area(
-	    ctx, &w->base, screen_size_x(s) - size, 1, data->ox, data->oy);
+
+	screen_write_cursormove(ctx, 0, py);
+	screen_write_copy(ctx, &w->base, data->ox, (screen_hsize(&w->base) -
+	    data->oy) + py, screen_size_x(s) - size, 1);
 }
 
 void
@@ -167,9 +176,9 @@ window_scroll_write_column(
 	struct window_scroll_mode_data	*data = w->modedata;
 	struct screen			*s = &data->screen;
 
-	screen_write_move_cursor(ctx, px, 0);
-	screen_write_copy_area(
-	    ctx, &w->base, 1, screen_size_y(s), data->ox, data->oy);
+	screen_write_cursormove(ctx, px, 0);
+	screen_write_copy(ctx, &w->base, data->ox + px,
+	    screen_hsize(&w->base) - data->oy, 1, screen_size_y(s));
 }
 
 void
@@ -192,13 +201,13 @@ window_scroll_scroll_up(struct window *w)
 	struct window_scroll_mode_data	*data = w->modedata;
 	struct screen_write_ctx		 ctx;
 
-	if (data->oy >= w->base.hsize)
+	if (data->oy >= screen_hsize(&w->base))
 		return;
 	data->oy++;
 
 	screen_write_start_window(&ctx, w);
-	screen_write_move_cursor(&ctx, 0, 0);
-	screen_write_insert_lines(&ctx, 1);
+	screen_write_cursormove(&ctx, 0, 0);
+	screen_write_insertline(&ctx, 1);
 	window_scroll_write_line(w, &ctx, 0);
 	window_scroll_write_line(w, &ctx, 1);
 	screen_write_stop(&ctx);
@@ -216,9 +225,9 @@ window_scroll_scroll_down(struct window *w)
 	data->oy--;
 
 	screen_write_start_window(&ctx, w);
-	screen_write_move_cursor(&ctx, 0, 0);
-	screen_write_delete_lines(&ctx, 1);
-	window_scroll_write_line(w, &ctx, screen_last_y(s));
+	screen_write_cursormove(&ctx, 0, 0);
+	screen_write_deleteline(&ctx, 1);
+	window_scroll_write_line(w, &ctx, screen_size_y(s) - 1);
 	window_scroll_write_line(w, &ctx, 0);
 	screen_write_stop(&ctx);
 }
@@ -237,10 +246,10 @@ window_scroll_scroll_right(struct window *w)
 
 	screen_write_start_window(&ctx, w);
 	for (i = 1; i < screen_size_y(s); i++) {
-		screen_write_move_cursor(&ctx, 0, i);
-		screen_write_delete_characters(&ctx, 1);
+		screen_write_cursormove(&ctx, 0, i);
+		screen_write_deletecharacter(&ctx, 1);
 	}
-	window_scroll_write_column(w, &ctx, screen_last_x(s));
+	window_scroll_write_column(w, &ctx, screen_size_x(s) - 1);
 	window_scroll_write_line(w, &ctx, 0);
 	screen_write_stop(&ctx);
 }
@@ -259,8 +268,8 @@ window_scroll_scroll_left(struct window *w)
 
 	screen_write_start_window(&ctx, w);
 	for (i = 1; i < screen_size_y(s); i++) {
-		screen_write_move_cursor(&ctx, 0, i);
-		screen_write_insert_characters(&ctx, 1);
+		screen_write_cursormove(&ctx, 0, i);
+		screen_write_insertcharacter(&ctx, 1);
 	}
 	window_scroll_write_column(w, &ctx, 0);
 	window_scroll_write_line(w, &ctx, 0);

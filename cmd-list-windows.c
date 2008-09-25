@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.23 2008-09-09 22:16:36 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.24 2008-09-25 20:08:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,6 +48,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session		*s;
 	struct winlink		*wl;
 	struct window		*w;
+	struct grid_data	*gd;
 	u_int			 i;
 	unsigned long long	 size;
 	const char		*name;
@@ -57,27 +58,23 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		w = wl->window;
+		gd = w->base.grid;
 
 		size = 0;
-		for (i = 0; i < w->base.hsize; i++)
-			size += w->base.grid_size[i] * 3;
-		size += w->base.hsize * (sizeof *w->base.grid_data);
-		size += w->base.hsize * (sizeof *w->base.grid_attr);
-		size += w->base.hsize * (sizeof *w->base.grid_fg);
-		size += w->base.hsize * (sizeof *w->base.grid_bg);
-		size += w->base.hsize * (sizeof *w->base.grid_size);
-
+		for (i = 0; i < gd->hsize; i++)
+			size += gd->size[i] * sizeof **gd->data;
+		size += gd->hsize * (sizeof *gd->data);
+		size += gd->hsize * (sizeof *gd->size);
+		
 		if (w->fd != -1)
 			name = ttyname(w->fd);
 		else
 			name = "";
 		ctx->print(ctx,
-		    "%d: %s \"%s\" (%s) [%ux%u] [history %u/%u, %llu bytes] "
-		    "[UTF8 table %u/%u]",
+		    "%d: %s \"%s\" (%s) [%ux%u] [history %u/%u, %llu bytes]",
 		    wl->idx, w->name, w->base.title, name,
 		    screen_size_x(&w->base), screen_size_y(&w->base),
-		    w->base.hsize, w->base.hlimit, size,
-		    ARRAY_LENGTH(&w->base.utf8_table.array), UTF8_LIMIT);
+		    gd->hsize, gd->hlimit, size);
 	}
 
 	if (ctx->cmdclient != NULL)

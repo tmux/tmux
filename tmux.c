@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.75 2008-09-09 22:16:37 nicm Exp $ */
+/* $Id: tmux.c,v 1.76 2008-09-25 20:08:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,7 +62,7 @@ __dead void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-qVv] [-f file] [-S socket-path] [command [flags]]\n",
+	    "usage: %s [-2dquVv] [-f file] [-S socket-path] [command [flags]]\n",
 	    __progname);
 	exit(1);
 }
@@ -179,8 +179,11 @@ main(int argc, char **argv)
 
 	flags = 0;
 	path = NULL;
-        while ((opt = getopt(argc, argv, "f:qS:uVv")) != EOF) {
+        while ((opt = getopt(argc, argv, "2df:qS:uVv")) != EOF) {
                 switch (opt) {
+		case '2':
+			flags |= IDENTIFY_256COLOURS;
+			break;
 		case 'f':
 			cfg_file = xstrdup(optarg);
 			break;
@@ -192,6 +195,9 @@ main(int argc, char **argv)
 			break;
 		case 'u':
 			flags |= IDENTIFY_UTF8;
+			break;
+		case 'd':
+			flags |= IDENTIFY_HASDEFAULTS;
 			break;
 		case 'v':
 			debug_level++;

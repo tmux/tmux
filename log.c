@@ -1,4 +1,4 @@
-/* $Id: log.c,v 1.5 2008-08-08 17:35:42 nicm Exp $ */
+/* $Id: log.c,v 1.6 2008-09-25 20:08:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -224,6 +224,9 @@ log_vfatal(const char *msg, va_list ap)
 	}
 	free(fmt);
 
+#ifdef DEBUG
+	abort();
+#endif
 	exit(1);
 }
 

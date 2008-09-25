@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.11 2008-09-08 22:03:54 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.12 2008-09-25 20:08:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,9 +21,6 @@
 #include <string.h>
 
 #include "tmux.h"
-
-void	screen_redraw_get_cell(struct screen_redraw_ctx *,
-	    u_int, u_int, u_char *, u_short *, u_char *, u_char *);
 
 /* Initialise redrawing with a window. */
 void
@@ -66,16 +63,15 @@ screen_redraw_start(struct screen_redraw_ctx *ctx,
 	 * Save screen cursor position. Emulation of some TTY_* commands
 	 * requires this to be correct in the screen, so rather than having
 	 * a local copy and just manipulating it, save the screen's values,
-	 * modify them during redraw, and restore them when finished.
+	 * modify them during redraw, and restore them when finished. XXX.
 	 */
 	ctx->saved_cx = s->cx;
 	ctx->saved_cy = s->cy;
 
-	ctx->write(ctx->data, TTY_ATTRIBUTES, s->attr, s->fg, s->bg);
-	ctx->write(ctx->data, TTY_SCROLLREGION, 0, screen_last_y(s));
-	ctx->write(ctx->data, TTY_CURSORMOVE, s->cy, s->cx);
-	ctx->write(ctx->data, TTY_CURSOROFF);
-	ctx->write(ctx->data, TTY_MOUSEOFF);
+	ctx->write(ctx->data, TTY_SCROLLREGION, 0, screen_size_y(s) - 1);
+	ctx->write(ctx->data, TTY_CURSORMOVE, s->cx, s->cy);
+	ctx->write(ctx->data, TTY_CURSORMODE, 0);
+	ctx->write(ctx->data, TTY_MOUSEMODE, 0);
 }
 
 /* Finish redrawing. */
@@ -87,62 +83,38 @@ screen_redraw_stop(struct screen_redraw_ctx *ctx)
 	s->cx = ctx->saved_cx;
 	s->cy = ctx->saved_cy;
 
-	ctx->write(ctx->data, TTY_ATTRIBUTES, s->attr, s->fg, s->bg);
 	ctx->write(ctx->data, TTY_SCROLLREGION, s->rupper, s->rlower);
-	ctx->write(ctx->data, TTY_CURSORMOVE, s->cy, s->cx);
+	ctx->write(ctx->data, TTY_CURSORMOVE, s->cx, s->cy);
 	if (s->mode & MODE_CURSOR)
-		ctx->write(ctx->data, TTY_CURSORON);
+		ctx->write(ctx->data, TTY_CURSORMODE, 1);
 	if (s->mode & MODE_MOUSE)
-		ctx->write(ctx->data, TTY_MOUSEON);
+		ctx->write(ctx->data, TTY_MOUSEMODE, 1);
 }
 
-/* Get cell data. */
+/* Write character. */
 void
-screen_redraw_get_cell(struct screen_redraw_ctx *ctx,
-    u_int px, u_int py, u_char *data, u_short *attr, u_char *fg, u_char *bg)
+screen_redraw_putc(
+    struct screen_redraw_ctx *ctx, struct grid_cell *gc, u_char ch)
 {
-	struct screen	*s = ctx->s;
-
-	screen_get_cell(
-	    s, screen_x(s, px), screen_y(s, py), data, attr, fg, bg);
-}
-
-/* Move cursor. */
-void
-screen_redraw_move_cursor(struct screen_redraw_ctx *ctx, u_int px, u_int py)
-{
-	if (px != ctx->s->cx || py != ctx->s->cy) {
-		ctx->s->cx = px;
-		ctx->s->cy = py;
-		ctx->write(ctx->data, TTY_CURSORMOVE, ctx->s->cy, ctx->s->cx);
-	}
-}
-
-/* Set attributes. */
-void
-screen_redraw_set_attributes(
-    struct screen_redraw_ctx *ctx, u_short attr, u_char fg, u_char bg)
-{
-	ctx->write(ctx->data, TTY_ATTRIBUTES, attr, fg, bg);
+	gc->data = ch;
+	ctx->write(ctx->data, TTY_CELL, gc);
+	ctx->s->cx++;
 }
 
 /* Write string. */
-void printflike2
-screen_redraw_write_string(struct screen_redraw_ctx *ctx, const char *fmt, ...)
+void printflike3
+screen_redraw_puts(
+    struct screen_redraw_ctx *ctx, struct grid_cell *gc, const char *fmt, ...)
 {
-	va_list	 ap;
-	char   	*msg, *ptr;
+	va_list	ap;
+	char   *msg, *ptr;
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
 	va_end(ap);
 
-	for (ptr = msg; *ptr != '\0'; ptr++) {
-		if (*ptr < 0x20)
-			continue;
-		ctx->write(ctx->data, TTY_CHARACTER, *ptr);
-		ctx->s->cx++;
-	}
+	for (ptr = msg; *ptr != '\0'; ptr++)
+		screen_redraw_putc(ctx, gc, (u_char) *ptr);
 
 	xfree(msg);
 }
@@ -151,41 +123,45 @@ screen_redraw_write_string(struct screen_redraw_ctx *ctx, const char *fmt, ...)
 void
 screen_redraw_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 {
-	u_short	 attr;
-	u_char	 data, fg, bg;
+	const struct grid_cell	*gc;
+	struct grid_cell	 hc;
 
-	screen_redraw_move_cursor(ctx, px, py);
-	screen_redraw_get_cell(ctx, px, py, &data, &attr, &fg, &bg);
-
-	ctx->write(ctx->data, TTY_ATTRIBUTES, attr, fg, bg);
-	ctx->write(ctx->data, TTY_CHARACTER, data);
-
-	ctx->s->cx++;
-}
-
-/* Redraw area of cells. */
-void
-screen_redraw_area(
-    struct screen_redraw_ctx *ctx, u_int px, u_int py, u_int nx, u_int ny)
-{
-	u_int	i, j;
-
-	for (i = py; i < py + ny; i++) {
-		for (j = px; j < px + nx; j++)
-			screen_redraw_cell(ctx, j, i);
+	if (px != ctx->s->cx || py != ctx->s->cy) {
+		ctx->s->cx = px;
+		ctx->s->cy = py;
+		ctx->write(ctx->data, TTY_CURSORMOVE, ctx->s->cx, ctx->s->cy);
 	}
+
+	gc = grid_view_peek_cell(ctx->s->grid, px, py); 
+        if (screen_check_selection(ctx->s, px, py)) {
+		memcpy(&hc, gc, sizeof hc);
+		hc.attr |= GRID_ATTR_REVERSE;
+		ctx->write(ctx->data, TTY_CELL, &hc);
+	} else
+		ctx->write(ctx->data, TTY_CELL, gc);
+	ctx->s->cx++;
 }
 
 /* Draw set of lines. */
 void
 screen_redraw_lines(struct screen_redraw_ctx *ctx, u_int py, u_int ny)
 {
-	screen_redraw_area(ctx, 0, py, screen_size_x(ctx->s), ny);
+	u_int	i, j;
+
+	for (j = py; j < py + ny; j++) {
+		for (i = 0; i < screen_size_x(ctx->s); i++)
+			screen_redraw_cell(ctx, i, j);
+	}
 }
 
 /* Draw set of columns. */
 void
 screen_redraw_columns(struct screen_redraw_ctx *ctx, u_int px, u_int nx)
 {
-	screen_redraw_area(ctx, px, 0, nx, screen_size_y(ctx->s));
+	u_int	i, j;
+
+	for (j = 0; j < screen_size_y(ctx->s); j++) {
+		for (i = px; i < px + nx; i++)
+			screen_redraw_cell(ctx, i, j);
+	}
 }

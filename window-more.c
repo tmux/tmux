@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.18 2008-09-10 19:15:04 nicm Exp $ */
+/* $Id: window-more.c,v 1.19 2008-09-25 20:08:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,7 +62,7 @@ window_more_vadd(struct window *w, const char *fmt, va_list ap)
 
 	screen_write_start_window(&ctx, w);
 	size = ARRAY_LENGTH(&data->list) - 1;
-	if (size >= data->top && size <= data->top + screen_last_y(s)) {
+	if (size >= data->top && size <= data->top + screen_size_y(s) - 1) {
 		window_more_write_line(w, &ctx, size - data->top);
 		if (size != data->top)
 			window_more_write_line(w, &ctx, 0);
@@ -164,27 +164,30 @@ window_more_write_line(struct window *w, struct screen_write_ctx *ctx, u_int py)
 {
 	struct window_more_mode_data	*data = w->modedata;
 	struct screen			*s = &data->screen;
-	char   				*msg;
+	struct grid_cell		 gc;
+	char   				*msg, hdr[32];
 	size_t	 			 size;
 
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+
 	if (py == 0) {
-		screen_write_set_attributes(
-		    ctx, ATTR_BRIGHT|ATTR_REVERSE, 8, 8);
-		screen_write_move_cursor(ctx, 0, 0);
-		size = screen_write_put_string_rjust(
-		    ctx, "[%u/%u]", data->top, ARRAY_LENGTH(&data->list));
+		size = xsnprintf(hdr, sizeof hdr,
+		    "[%u/%u]", data->top, ARRAY_LENGTH(&data->list)); 
+		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
+		gc.attr |= GRID_ATTR_BRIGHT|GRID_ATTR_REVERSE;
+		screen_write_puts(ctx, &gc, "%s", hdr);
+		gc.attr &= ~(GRID_ATTR_BRIGHT|GRID_ATTR_REVERSE);
 	} else
 		size = 0;
 
-	screen_write_set_attributes(ctx, 0, 8, 8);
-	screen_write_move_cursor(ctx, 0, py);
+	screen_write_cursormove(ctx, 0, py);
 	if (data->top + py  < ARRAY_LENGTH(&data->list)) {
 		msg = ARRAY_ITEM(&data->list, data->top + py);
-		screen_write_put_string(
-		    ctx, "%.*s", (int) (screen_size_x(s) - size), msg);
+		screen_write_puts(
+		    ctx, &gc, "%.*s", (int) (screen_size_x(s) - size), msg);
 	}
 	while (s->cx < screen_size_x(s) - size)
-		screen_write_put_character(ctx, ' ');
+		screen_write_putc(ctx, &gc, ' ');
 }
 
 void
@@ -212,8 +215,8 @@ window_more_scroll_up(struct window *w)
 	data->top--;
 
 	screen_write_start_window(&ctx, w);
-	screen_write_move_cursor(&ctx, 0, 0);
-	screen_write_insert_lines(&ctx, 1);
+	screen_write_cursormove(&ctx, 0, 0);
+	screen_write_insertline(&ctx, 1);
 	window_more_write_line(w, &ctx, 0);
 	window_more_write_line(w, &ctx, 1);
 	screen_write_stop(&ctx);
@@ -231,9 +234,9 @@ window_more_scroll_down(struct window *w)
 	data->top++;
 
 	screen_write_start_window(&ctx, w);
-	screen_write_move_cursor(&ctx, 0, 0);
-	screen_write_delete_lines(&ctx, 1);
-	window_more_write_line(w, &ctx, screen_last_y(s));
+	screen_write_cursormove(&ctx, 0, 0);
+	screen_write_deleteline(&ctx, 1);
+	window_more_write_line(w, &ctx, screen_size_y(s) - 1);
 	window_more_write_line(w, &ctx, 0);
 	screen_write_stop(&ctx);
 }

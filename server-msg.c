@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.50 2008-09-09 22:16:37 nicm Exp $ */
+/* $Id: server-msg.c,v 1.51 2008-09-25 20:08:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -189,6 +189,10 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 	tty_init(&c->tty, data.tty, xstrdup(term));
 	if (data.flags & IDENTIFY_UTF8)
 		c->tty.flags |= TTY_UTF8;
+	if (data.flags & IDENTIFY_256COLOURS)
+		c->tty.term_flags |= TERM_256COLOURS;
+	if (data.flags & IDENTIFY_HASDEFAULTS)
+		c->tty.term_flags |= TERM_HASDEFAULTS;
 	xfree(term);
 
 	c->flags |= CLIENT_TERMINAL;

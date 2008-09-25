@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.74 2008-09-10 18:59:29 nicm Exp $
+# $Id: Makefile,v 1.75 2008-09-25 20:08:51 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -17,7 +17,8 @@ META?= \002 # C-b
 
 SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       xmalloc.c xmalloc-debug.c input.c input-keys.c \
-      screen.c screen-display.c screen-write.c screen-redraw.c \
+      screen.c screen-write.c screen-redraw.c \
+      grid.c grid-view.c \
       window.c session.c log.c client.c client-msg.c client-fn.c cfg.c \
       key-string.c key-bindings.c resize.c arg.c mode-key.c \
       cmd.c cmd-generic.c cmd-string.c \

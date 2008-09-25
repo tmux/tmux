@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.71 2008-09-10 19:15:04 nicm Exp $ */
+/* $Id: screen.c,v 1.72 2008-09-25 20:08:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,90 +22,18 @@
 
 #include "tmux.h"
 
-/*
- * Virtual screen.
- *
- * A screen is stored as three arrays of lines of 8-bit values, one for the
- * actual characters (data), one for attributes and one for colours. Three
- * seperate blocks means memset and friends can be used. Each array is y by x
- * in size, row then column order. Sizes are 0-based. There is an additional
- * array of u_ints with the size of each line.
- *
- * Each screen has a history starting at the beginning of the arrays and
- * extending for hsize lines. Beyond that is the screen display of size
- * dy:
- *
- * ----------- array base
- * |         |
- * | history |
- * ----------- array base + hsize
- * |         |
- * | display |
- * |         |
- * ----------- array base + hsize + dy
- *
- * The screen_x/screen_y macros are used to convert a cell on the displayed
- * area to an absolute position in the arrays.
- *
- * Screen handling code is split into four files:
- *
- *	screen.c: Creation/deletion, utility functions, and basic functions to
- *		  manipulate the screen based on offsets from the base.
- *	screen-display.c: Basic functions for manipulating the displayed
- *			  part of the screen. x,y coordinates passed to these
- *			  are relative to the display. These are largely
- *			  utility functions for screen-write.c.
- *	screen-redraw.c: Functions for redrawing all or part of a screen to
- *			 one or more ttys. A context is filled via one of the
- *			 screen_redraw_start* variants which sets up (removes
- *			 cursor etc) and figures out which tty_write_* function
- *			 to use to write to the terminals, then the other
- *			 screen_redraw_* functions are used to draw the screen,
- *			 and screen_redraw_stop used to reset the cursor and
- *			 clean up. These are used when changing window and a
- *			 few other bits (status line).
- * 	screen-write.c: Functions for modifying (writing into) the screen and
- *			optionally simultaneously updating one or more ttys.
- *			These are used in much the same way as the redraw
- *			functions. These are used to update when parsing
- *			input from the window (input.c) and for the various
- *			other modes which maintain private screens.
- *
- * If you're thinking this all seems too complicated, that's because it is :-/.
- */
+void	screen_resize_x(struct screen *, u_int);
+void	screen_resize_y(struct screen *, u_int);
 
 /* Create a new screen. */
 void
-screen_init(struct screen *s, u_int dx, u_int dy, u_int hlimit)
+screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 {
-	s->dx = dx;
-	s->dy = dy;
-	s->cx = 0;
-	s->cy = 0;
+	s->grid = grid_create(sx, sy, hlimit);
 
-	s->rupper = 0;
-	s->rlower = s->dy - 1;
-
-	s->hsize = 0;
-	s->hlimit = hlimit;
-
-	s->attr = 0;
-	s->fg = 8;
-	s->bg = 8;
-
-	s->mode = MODE_CURSOR;
 	s->title = xstrdup("");
 
-	s->grid_data = xmalloc(dy * (sizeof *s->grid_data));
-	s->grid_attr = xmalloc(dy * (sizeof *s->grid_attr));
-	s->grid_fg = xmalloc(dy * (sizeof *s->grid_fg));
-	s->grid_bg = xmalloc(dy * (sizeof *s->grid_bg));
-	s->grid_size = xmalloc(dy * (sizeof *s->grid_size));
-	screen_make_lines(s, 0, dy);
-
-	utf8_init(&s->utf8_table, UTF8_LIMIT);
-
-	screen_clear_selection(s);
+	screen_reinit(s);
 }
 
 /* Reinitialise screen. */
@@ -116,16 +44,13 @@ screen_reinit(struct screen *s)
 	s->cy = 0;
 
 	s->rupper = 0;
-	s->rlower = s->dy - 1;
-
-	s->attr = 0;
-	s->fg = 8;
-	s->bg = 8;
+	s->rlower = screen_size_y(s) - 1;
 
 	s->mode = MODE_CURSOR;
 
-	screen_display_fill_area(s, 0, 0, 
-	    screen_size_x(s), screen_size_y(s), ' ', 0, 8, 8);
+	/* XXX */
+	grid_clear_lines(
+	    s->grid, s->grid->hsize, s->grid->hsize + s->grid->sy - 1);
 	
 	screen_clear_selection(s);	
 }
@@ -134,245 +59,121 @@ screen_reinit(struct screen *s)
 void
 screen_free(struct screen *s)
 {
-	utf8_free(&s->utf8_table);
 	xfree(s->title);
-	screen_free_lines(s, 0, s->dy + s->hsize);
-	xfree(s->grid_data);
-	xfree(s->grid_attr);
-	xfree(s->grid_fg);
-	xfree(s->grid_bg);
-	xfree(s->grid_size);
+	grid_destroy(s->grid);
+}
+
+/* Set screen title. */
+void
+screen_set_title(struct screen *s, const char *title)
+{
+	xfree(s->title);
+	s->title = xstrdup(title);
 }
 
 /* Resize screen. */
 void
 screen_resize(struct screen *s, u_int sx, u_int sy)
 {
-	u_int	i, ox, oy, ny, my;
-
 	if (sx < 1)
 		sx = 1;
 	if (sy < 1)
 		sy = 1;
 
-	ox = s->dx;
-	oy = s->dy;
-	if (sx == ox && sy == oy)
+	if (sx != screen_size_x(s))
+		screen_resize_x(s, sx);
+	if (sy != screen_size_y(s))
+		screen_resize_y(s, sy);
+}
+
+void
+screen_resize_x(struct screen *s, u_int sx)
+{
+	struct grid_data	*gd = s->grid;
+	const struct grid_cell	*gc;
+	u_int			 xx, yy;
+
+	/* If getting larger, not much to do. */
+	if (sx > screen_size_x(s)) {
+		gd->sx = sx;
 		return;
-
-	/*
-	 * X dimension.
-	 */
-	if (sx != ox) {
-		/*
-		 * If getting smaller, nuke any data in lines over the new
-		 * size.
-		 */
-		if (sx < ox) {
-			for (i = s->hsize; i < s->hsize + oy; i++) {
-				if (s->grid_size[i] > sx)
-					screen_reduce_line(s, i, sx);
-			}
-		}
-
-		if (s->cx >= sx)
-			s->cx = sx - 1;
-		s->dx = sx;
 	}
 
-	/*
-	 * Y dimension.
-	 */
-	if (sy == oy)
-		return;
+	/* If getting smaller, nuke any data in lines over the new size. */
+	for (yy = gd->hsize; yy < gd->hsize + screen_size_y(s); yy++) {
+		/*
+		 * If the character after the last is wide or padding, remove
+		 * it and any leading padding.
+		 */
+		for (xx = sx; xx > 0; xx--) {
+			gc = grid_peek_cell(gd, xx - 1, yy);
+			if (!(gc->flags & GRID_FLAG_PADDING))
+				break;
+			grid_set_cell(gd, xx - 1, yy, &grid_default_cell);
+		}
+		if (xx > 0 && xx != sx && utf8_width(gc->data) != 1)
+			grid_set_cell(gd, xx - 1, yy, &grid_default_cell);
+
+		/* Reduce the line size. */
+		grid_reduce_line(gd, yy, sx);
+	}
+
+	if (s->cx >= sx)
+		s->cx = sx - 1;
+	gd->sx = sx;
+}
+
+void
+screen_resize_y(struct screen *s, u_int sy)
+{
+	struct grid_data	*gd = s->grid;
+	u_int			 oy, yy, ny;
 
 	/* Size decreasing. */
-	if (sy < oy) {
- 		ny = oy - sy;
+	if (sy < screen_size_y(s)) {
+		oy = screen_size_y(s);
+
 		if (s->cy != 0) {
 			/*
 			 * The cursor is not at the start. Try to remove as
 			 * many lines as possible from the top. (Up to the
 			 * cursor line.)
 			 */
-			my = s->cy;
-			if (my > ny)
-				my = ny;
+			ny = s->cy;
+			if (ny > oy - sy)
+				ny = oy - sy;
 
-			screen_free_lines(s, s->hsize, my);
-			screen_move_lines(s, s->hsize, s->hsize + my, oy - my);
+			grid_view_delete_lines(gd, 0, ny);
 
-			s->cy -= my;
-			oy -= my;
+ 			s->cy -= ny;
+			oy -= ny;
 		}
 
- 		ny = oy - sy;
-		if (ny > 0) {
-			/*
-			 * Remove any remaining lines from the bottom.
-			 */
-			screen_free_lines(s, s->hsize + oy - ny, ny);
+		if (sy < oy) {
+			/* Remove any remaining lines from the bottom. */	
+			grid_view_delete_lines(gd, sy, oy - sy);
 			if (s->cy >= sy)
 				s->cy = sy - 1;
 		}
 	}
 
 	/* Resize line arrays. */
-	ny = s->hsize + sy;
-	s->grid_data = xrealloc(s->grid_data, ny, sizeof *s->grid_data);
-	s->grid_attr = xrealloc(s->grid_attr, ny, sizeof *s->grid_attr);
-	s->grid_fg = xrealloc(s->grid_fg, ny, sizeof *s->grid_fg);
-	s->grid_bg = xrealloc(s->grid_bg, ny, sizeof *s->grid_bg);
-	s->grid_size = xrealloc(s->grid_size, ny, sizeof *s->grid_size);
-	s->dy = sy;
+	gd->size = xrealloc(gd->size, gd->hsize + sy, sizeof *gd->size);
+	gd->data = xrealloc(gd->data, gd->hsize + sy, sizeof *gd->data);
 
 	/* Size increasing. */
-	if (sy > oy)
-		screen_make_lines(s, s->hsize + oy, sy - oy);
+	if (sy > screen_size_y(s)) {
+		oy = screen_size_y(s);
+		for (yy = gd->hsize + oy; yy < gd->hsize + sy; yy++) {
+			gd->size[yy] = 0;
+			gd->data[yy] = NULL;
+		}
+	}
 
+	gd->sy = sy;
+		
 	s->rupper = 0;
-	s->rlower = s->dy - 1;
-}
-
-/* Expand line. */
-void
-screen_expand_line(struct screen *s, u_int py, u_int nx)
-{
-	u_int	ox;
-
-	ox = s->grid_size[py];
-	s->grid_size[py] = nx;
-
-	s->grid_data[py] = xrealloc(
-	    s->grid_data[py], sizeof **s->grid_data, nx);
-	memset(&s->grid_data[py][ox], ' ', (nx - ox) * sizeof **s->grid_data);
-	s->grid_attr[py] = xrealloc(
-	    s->grid_attr[py], sizeof **s->grid_attr, nx);
-	memset(&s->grid_attr[py][ox], 0, (nx - ox) * sizeof **s->grid_attr);
-	s->grid_fg[py] = xrealloc(
-	    s->grid_fg[py], sizeof **s->grid_fg, nx);
-	memset(&s->grid_fg[py][ox], 8, (nx - ox) * sizeof **s->grid_fg);
-	s->grid_bg[py] = xrealloc(
-	    s->grid_bg[py], sizeof **s->grid_bg, nx);
-	memset(&s->grid_bg[py][ox], 8, (nx - ox) * sizeof **s->grid_bg);
-}
-
-/* Reduce line. */
-void
-screen_reduce_line(struct screen *s, u_int py, u_int nx)
-{
-	s->grid_size[py] = nx;
-
-	s->grid_data[py] = xrealloc(
-	    s->grid_data[py], sizeof **s->grid_data, nx);
-	s->grid_attr[py] = xrealloc(
-	    s->grid_attr[py], sizeof **s->grid_attr, nx);
-	s->grid_fg[py] = xrealloc(
-	    s->grid_fg[py], sizeof **s->grid_fg, nx);
-	s->grid_bg[py] = xrealloc(
-	    s->grid_bg[py], sizeof **s->grid_bg, nx);
-}
-
-/* Get cell. */
-void
-screen_get_cell(struct screen *s,
-    u_int cx, u_int cy, u_char *data, u_short *attr, u_char *fg, u_char *bg)
-{
-	if (cx >= s->grid_size[cy]) {
-		*data = ' ';
-		*attr = 0;
-		*fg = 8;
-		*bg = 8;
-	} else {
-		*data = s->grid_data[cy][cx];
-		*attr = s->grid_attr[cy][cx];
-		*fg = s->grid_fg[cy][cx];
-		*bg = s->grid_bg[cy][cx];
-	}
-
-	if (screen_check_selection(s, cx, cy))
-		*attr |= ATTR_REVERSE;
-}
-
-/* Set a cell. */
-void
-screen_set_cell(struct screen *s,
-    u_int cx, u_int cy, u_char data, u_short attr, u_char fg, u_char bg)
-{
-	if (cx >= s->grid_size[cy])
-		screen_expand_line(s, cy, cx + 1);
-
-	s->grid_data[cy][cx] = data;
-	s->grid_attr[cy][cx] = attr;
-	s->grid_fg[cy][cx] = fg;
-	s->grid_bg[cy][cx] = bg;
-}
-
-/* Create a range of lines. */
-void
-screen_make_lines(struct screen *s, u_int py, u_int ny)
-{
-	u_int	i;
-
-	for (i = py; i < py + ny; i++) {
-		s->grid_data[i] = NULL;
-		s->grid_attr[i] = NULL;
-		s->grid_fg[i] = NULL;
-		s->grid_bg[i] = NULL;
-		s->grid_size[i] = 0;
-	}
-}
-
-/* Free a range of ny lines at py. */
-void
-screen_free_lines(struct screen *s, u_int py, u_int ny)
-{
-	u_int	i;
-
-	for (i = py; i < py + ny; i++) {
-		if (s->grid_data[i] != NULL)
-			xfree(s->grid_data[i]);
-		s->grid_data[i] = NULL;
-		if (s->grid_attr[i] != NULL)
-			xfree(s->grid_attr[i]);
-		s->grid_attr[i] = NULL;
-		if (s->grid_fg[i] != NULL)
-			xfree(s->grid_fg[i]);
-		s->grid_fg[i] = NULL;
-		if (s->grid_bg[i] != NULL)
-			xfree(s->grid_bg[i]);
-		s->grid_bg[i] = NULL;
-		s->grid_size[i] = 0;
-	}
-}
-
-/* Move a range of lines. */
-void
-screen_move_lines(struct screen *s, u_int dy, u_int py, u_int ny)
-{
-	memmove(
-	    &s->grid_data[dy], &s->grid_data[py], ny * (sizeof *s->grid_data));
-	memmove(
-	    &s->grid_attr[dy], &s->grid_attr[py], ny * (sizeof *s->grid_attr));
-	memmove(
-	    &s->grid_fg[dy], &s->grid_fg[py], ny * (sizeof *s->grid_fg));
-	memmove(
-	    &s->grid_bg[dy], &s->grid_bg[py], ny * (sizeof *s->grid_bg));
-	memmove(
-	    &s->grid_size[dy], &s->grid_size[py], ny * (sizeof *s->grid_size));
-}
-
-/* Fill an area. */
-void
-screen_fill_area(struct screen *s, u_int px, u_int py,
-    u_int nx, u_int ny, u_char data, u_short attr, u_char fg, u_char bg)
-{
-	u_int	i, j;
-
-	for (i = py; i < py + ny; i++) {
-		for (j = px; j < px + nx; j++)
-			screen_set_cell(s, j, i, data, attr, fg, bg);
-	}
+	s->rlower = screen_size_y(s) - 1;
 }
 
 /* Set selection. */
