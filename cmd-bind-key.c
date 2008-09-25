@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.15 2008-06-05 21:54:47 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.16 2008-09-25 23:28:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -60,7 +60,7 @@ cmd_bind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 	self->data = data = xmalloc(sizeof *data);
 	data->cmd = NULL;
 
-	while ((opt = getopt(argc, argv, "")) != EOF) {
+	while ((opt = getopt(argc, argv, GETOPT_PREFIX "")) != EOF) {
 		switch (opt) {
 		default:
 			goto usage;

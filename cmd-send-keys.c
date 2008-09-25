@@ -1,4 +1,4 @@
-/* $Id: cmd-send-keys.c,v 1.13 2008-06-20 17:31:48 nicm Exp $ */
+/* $Id: cmd-send-keys.c,v 1.14 2008-09-25 23:28:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -67,7 +67,7 @@ cmd_send_keys_parse(struct cmd *self, int argc, char **argv, char **cause)
 	data->nkeys = 0;
 	data->keys = NULL;
 
-	while ((opt = getopt(argc, argv, "t:")) != EOF) {
+	while ((opt = getopt(argc, argv, GETOPT_PREFIX "t:")) != EOF) {
 		switch (opt) {
 		case 't':
 			if (data->target == NULL)

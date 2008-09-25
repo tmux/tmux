@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.11 2008-06-29 07:04:30 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.12 2008-09-25 23:28:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -66,7 +66,7 @@ cmd_set_window_option_parse(
 	data->option = NULL;
 	data->value = NULL;
 
-	while ((opt = getopt(argc, argv, "t:")) != EOF) {
+	while ((opt = getopt(argc, argv, GETOPT_PREFIX "t:")) != EOF) {
 		switch (opt) {
 		case 't':
 			if (data->target == NULL)

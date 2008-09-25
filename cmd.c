@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.63 2008-08-28 17:45:25 nicm Exp $ */
+/* $Id: cmd.c,v 1.64 2008-09-25 23:28:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -162,7 +162,7 @@ cmd_parse(int argc, char **argv, char **cause)
 
 	optind = 1;
 	if (entry->parse == NULL) {
-		while ((opt = getopt(argc, argv, "")) != EOF) {
+		while ((opt = getopt(argc, argv, GETOPT_PREFIX "")) != EOF) {
 			switch (opt) {
 			default:
 				goto usage;

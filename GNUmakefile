@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.40 2008-09-25 20:08:51 nicm Exp $
+# $Id: GNUmakefile,v 1.41 2008-09-25 23:28:12 nicm Exp $
 
 .PHONY: clean
 
@@ -91,6 +91,11 @@ SRCS+= compat/strlcpy.c compat/strlcat.c compat/strtonum.c compat/fgetln.c
 CFLAGS+= $(shell getconf LFS_CFLAGS) -D_GNU_SOURCE \
          -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM -DNO_SETPROCTITLE \
          -DNO_QUEUE_H -DNO_TREE_H -DUSE_PTY_H -DNO_FGETLN -std=c99
+
+# GNU, as usual, decided on the insance default. So their stupid extensions
+# are default and POSIX-compliance is optional (!).
+CFLAGS+= -DGETOPT_PREFIX="\"+\""
+
 LIBS+= -lrt -lutil
 endif
 

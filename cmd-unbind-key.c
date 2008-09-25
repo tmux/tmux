@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.13 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-unbind-key.c,v 1.14 2008-09-25 23:28:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -57,7 +57,7 @@ cmd_unbind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 
 	self->data = data = xmalloc(sizeof *data);
 
-	while ((opt = getopt(argc, argv, "")) != EOF) {
+	while ((opt = getopt(argc, argv, GETOPT_PREFIX "")) != EOF) {
 		switch (opt) {
 		default:
 			goto usage;

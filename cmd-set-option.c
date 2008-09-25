@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.41 2008-09-10 18:59:29 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.42 2008-09-25 23:28:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -104,7 +104,7 @@ cmd_set_option_parse(struct cmd *self, int argc, char **argv, char **cause)
 	data->option = NULL;
 	data->value = NULL;
 
-	while ((opt = getopt(argc, argv, "t:s:")) != EOF) {
+	while ((opt = getopt(argc, argv, GETOPT_PREFIX "t:s:")) != EOF) {
 		switch (opt) {
 		case 't':
 			if (data->target == NULL)

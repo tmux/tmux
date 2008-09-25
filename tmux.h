@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.189 2008-09-25 20:08:56 nicm Exp $ */
+/* $Id: tmux.h,v 1.190 2008-09-25 23:28:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -57,6 +57,10 @@
 #include "array.h"
 
 extern const char    *__progname;
+
+#ifndef GETOPT_PREFIX
+#define GETOPT_PREFIX ""
+#endif
 
 #ifndef INFTIM
 #define INFTIM -1

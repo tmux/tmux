@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.24 2008-06-18 16:39:15 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.25 2008-09-25 23:28:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -76,7 +76,7 @@ cmd_new_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 	self->entry->init(self, 0);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, "dt:n:")) != EOF) {
+	while ((opt = getopt(argc, argv, GETOPT_PREFIX "dt:n:")) != EOF) {
 		switch (opt) {
 		case 'd':
 			data->flag_detached = 1;
