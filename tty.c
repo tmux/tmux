@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.44 2008-09-26 06:45:28 nicm Exp $ */
+/* $Id: tty.c,v 1.45 2008-09-26 07:23:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -801,7 +801,8 @@ tty_cmd_clearendofscreen(struct tty *tty, struct screen *s, unused va_list ap)
 	if (clr_eol != NULL) {
 		for (i = s->cy; i < screen_size_y(s); i++) {
 			tty_puts(tty, clr_eol);
-			tty_puts(tty, cursor_down);
+			if (i != screen_size_y(s) - 1)
+				tty_puts(tty, cursor_down);
 		}
 	} else {
 		for (i = s->cx; i < screen_size_y(s); i++)
@@ -848,7 +849,8 @@ tty_cmd_clearscreen(struct tty *tty, struct screen *s, unused va_list ap)
 		tty_puts(tty, tparm(cursor_address, 0, 0));
 		for (i = 0; i < screen_size_y(s); i++) {
 			tty_puts(tty, clr_eol);
-			tty_puts(tty, cursor_down);
+			if (i != screen_size_y(s) - 1)
+				tty_puts(tty, cursor_down);
 		}
 	} else {
  		tty_puts(tty, tparm(cursor_address, 0, 0));
