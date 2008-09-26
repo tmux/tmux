@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.43 2008-09-25 20:08:56 nicm Exp $ */
+/* $Id: tty.c,v 1.44 2008-09-26 06:45:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -123,7 +123,7 @@ tty_open(struct tty *tty, char **cause)
 		xasprintf(cause, "%s: %s", tty->path, strerror(errno));
 		return (-1);
 	}
-	
+
 	if ((mode = fcntl(tty->fd, F_GETFL)) == -1)
 		fatal("fcntl");
 	if (fcntl(tty->fd, F_SETFL, mode|O_NONBLOCK) == -1)
@@ -355,7 +355,7 @@ tty_find_term(char *name, int fd, char **cause)
 	 */
 	if (max_colors == 256 || strstr(name, "256col") != NULL) /* XXX HACK */
 		term->flags |= TERM_256COLOURS;
-	
+
 	return (term);
 
 error:
@@ -423,13 +423,13 @@ tty_strip(const char *s)
 			if (*ptr == '>')
 				ptr++;
 		}
-		
+
 		buf[len++] = *ptr;
 		if (len == (sizeof buf) - 1)
 			break;
 	}
 	buf[len] = '\0';
-	
+
 	return (buf);
 }
 
@@ -485,7 +485,7 @@ tty_vwrite(struct tty *tty, struct screen *s, int cmd, va_list ap)
 {
 	if (tty->flags & TTY_FREEZE)
 		return;
-	
+
 	if (tty->term == NULL) /* XXX XXX */
 		return;
 	set_curterm(tty->term->term);
@@ -654,7 +654,7 @@ void
 tty_cmd_clearendofline(struct tty *tty, struct screen *s, unused va_list ap)
 {
 	u_int	i;
-	
+
 	tty_reset(tty);
 
 	if (clr_eol != NULL)
@@ -704,7 +704,7 @@ tty_cmd_cursormode(struct tty *tty, unused struct screen *s, va_list ap)
 		return;
 
 	ua = va_arg(ap, int);
-	
+
 	if (ua && !(tty->flags & TTY_NOCURSOR))
 		tty_puts(tty, cursor_normal);
 	else
@@ -830,7 +830,7 @@ tty_cmd_clearstartofscreen(struct tty *tty, struct screen *s, unused va_list ap)
 		for (j = 0; j < s->cy; j++) {
 			for (i = 0; i < screen_size_x(s); i++)
 				tty_putc(tty, ' ');
-		}		
+		}
 	}
 	for (i = 0; i < s->cx; i++)
 		tty_putc(tty, ' ');
@@ -911,7 +911,7 @@ tty_reset(struct tty *tty)
 	tc->data = grid_default_cell.data;
 	if (memcmp(tc, &grid_default_cell, sizeof *tc) == 0)
 		return;
-	
+
 	if (exit_alt_charset_mode != NULL && tc->attr & GRID_ATTR_CHARSET)
 		tty_puts(tty, exit_alt_charset_mode);
 	tty_puts(tty, exit_attribute_mode);
@@ -956,9 +956,9 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 		tty_attributes_fg(tty, gc);
 		tc->fg = gc->fg;
 	}
-	
+
 	/* Set background colour. */
-	if (gc->bg != tc->bg || 
+	if (gc->bg != tc->bg ||
 	    (gc->flags & GRID_FLAG_BG256) != (tc->flags & GRID_FLAG_BG256)) {
 		tty_attributes_bg(tty, gc);
 		tc->bg = gc->bg;
@@ -984,7 +984,7 @@ tty_attributes_fg(struct tty *tty, const struct grid_cell *gc)
 		else if (fg > 7)
 			fg -= 8;
 	}
-		
+
 	if (fg == 8 &&
 	    !(tty->term->flags & TERM_HASDEFAULTS) &&
 	    !(tty->term_flags & TERM_HASDEFAULTS))
@@ -1014,7 +1014,7 @@ tty_attributes_bg(struct tty *tty, const struct grid_cell *gc)
 		else if (bg > 7)
 			bg -= 8;
 	}
-		
+
 	if (bg == 8 &&
 	    !(tty->term->flags & TERM_HASDEFAULTS) &&
 	    !(tty->term_flags & TERM_HASDEFAULTS))

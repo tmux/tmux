@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.51 2008-09-25 20:08:54 nicm Exp $ */
+/* $Id: server-msg.c,v 1.52 2008-09-26 06:45:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -172,7 +172,7 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 	buffer_read(c->in, &data, sizeof data);
 	term = cmd_recv_string(c->in);
 
-	log_debug("identify msg from client: %u,%u (%d)", 
+	log_debug("identify msg from client: %u,%u (%d)",
 	    data.sx, data.sy, data.version);
 
 	if (data.version != PROTOCOL_VERSION) {

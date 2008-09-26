@@ -90,7 +90,7 @@
   A window may be restarted with the respawn-window command:
 
   	respawn-window [-k] [command]
-	
+
   If -k is given, any existing process running in the window is killed;
   if command is omitted, the same command as when the window was first
   created is used.
@@ -149,7 +149,7 @@
 * buffer-limit option to set maximum size of buffer stack. Default is 9.
 * Initial buffer improvements. Each session has a stack of buffers and each
   buffer command takes a -b option to manipulate items on the stack. If -b
-  is omitted, the top entry is used. The following commands are currently 
+  is omitted, the top entry is used. The following commands are currently
   available:
 
 	set-buffer [-b index] [-t target-session] string
@@ -174,10 +174,10 @@
 18 June 2008
 
 * New option, set-titles. On by default, this attempts to set the window title
-  using the \e]2;...\007 xterm code. 
-  
+  using the \e]2;...\007 xterm code.
+
   Note that elinks requires the STY environment variable (used by screen) to be
-  set before it will set the window title. So, if you want window titles set by 
+  set before it will set the window title. So, if you want window titles set by
   elinks, set STY before running it (any value will do). I can't do this for all
   windows since setting it to an invalid value breaks screen.
 * Show arrows at either end of status line when scrolled if more windows
@@ -236,8 +236,8 @@
 
 * Completely reorganise command parsing. Much more common code in cmd-generic.c
   and a new way of specifying windows, clients or sessions. Now, most commands
-  take a -t argument, which specifies a client, a session, or a window target. 
-  Clients and sessions are given alone (sessions are fnmatch(3)d and 
+  take a -t argument, which specifies a client, a session, or a window target.
+  Clients and sessions are given alone (sessions are fnmatch(3)d and
   clients currently not), windows are give by (client|session):index. For
   example, if a user is in session "1" window 0 on /dev/ttypi, these should all
   be equivalent:
@@ -261,7 +261,7 @@
 
   is annoying. But then using non-flagged arguments would mean renaming the
   current window would need to be something like:
-	
+
 	tmux renamew : newname
 
   It might be better not to try and be so consistent; comments to the usual
@@ -300,7 +300,7 @@
   accepts -c as well.
 * -s to specify session name now supports fnmatch(3) wildcards; if multiple
   sessions are found, or if no -s is specified, the most newly created is used.
-* If no command is specified, assume new-session. As a byproduct, clean up 
+* If no command is specified, assume new-session. As a byproduct, clean up
   command default values into seperate init functions.
 * kill-server command.
 
@@ -459,7 +459,7 @@
 	$ tmux bind q switch 0
 	$ tmux bind w switch 1
 
-  Then you can switch between sessions 0 and 1 with a key :-). 
+  Then you can switch between sessions 0 and 1 with a key :-).
 * (nicm) Accept "-c client-tty" on command line to allow client manipulation
   commands, and change detach-/refresh-session to detach-/refresh-client (this
   loses the -a behaviour, but at some point -session versions may return, and
@@ -468,7 +468,7 @@
 
 12 November 2007
 
-* (nicm) If the terminal supports default colours (AX present), force black 
+* (nicm) If the terminal supports default colours (AX present), force black
   background and white foreground to default. This is useful on transparent
   *terms for programs which don't do it themselves (like most(1)).
 * (nicm) Fill in the rest of the man page.
@@ -600,7 +600,7 @@
 
 * (nicm) Deleting/inserting lines should follow scrolling region. Fix.
 * (nicm) Allow creation of detached sessions: "tmux new-session -d".
-* (nicm) Permit error messages to be passed back for transient clients like 
+* (nicm) Permit error messages to be passed back for transient clients like
   rename. Also make rename -i work.
 * (nicm) Pass through bell in any window to current.
 
@@ -612,11 +612,11 @@
 	- Split key parsing off into a separate file.
   This is step one towards hopefully allowing a status line. It requires
   that we output data as if the terminal had one line less than it really does -
-  a serious problem when it comes to things like scrolling. This change 
+  a serious problem when it comes to things like scrolling. This change
   consolidates all the range checking and limiting together which should make
   it easier.
 * (mxey) Added window remaming, like "tmux rename [-s session] [-i index] name"
-    
+
 27 September 2007
 
 * Split "tmux list" into "tmux list-sessions" (ls) and "list-windows" (lsw).
@@ -636,7 +636,7 @@
 	tmux -s/socket -nabc new
 
   Becomes:
-	
+
 	tmux -S/socket new -sabc
 
 * Major tidy and split of client/server code.
@@ -666,7 +666,7 @@
 
 09 July 2007
 
-* Initial import to CVS. Basic functions are working, albeit with a couple of 
+* Initial import to CVS. Basic functions are working, albeit with a couple of
   showstopper memory bugs and many missing features. Detaching, reattaching,
   creating new sessions, listing sessions work acceptably for using with shells.
   Simple curses programs (top, systat, tetris) and more complicated ones (mutt,
@@ -674,4 +674,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.161 2008-09-25 20:08:51 nicm Exp $
+$Id: CHANGES,v 1.162 2008-09-26 06:45:25 nicm Exp $

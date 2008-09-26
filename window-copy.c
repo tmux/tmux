@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.31 2008-09-25 20:08:57 nicm Exp $ */
+/* $Id: window-copy.c,v 1.32 2008-09-26 06:45:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -243,7 +243,7 @@ window_copy_write_column(
 	struct screen			*s = &data->screen;
 
 	screen_write_cursormove(ctx, px, 0);
-	screen_write_copy(ctx, &w->base, 
+	screen_write_copy(ctx, &w->base,
 	    data->ox, screen_hsize(&w->base) - data->oy, 1, screen_size_y(s));
 }
 
@@ -657,16 +657,16 @@ window_copy_cursor_next_word(struct window *w)
 					if (data->oy == 0)
 						goto out;
 				}
-				
+
 				px = 0;
 				window_copy_cursor_down(w);
-				
+
 				py =screen_hsize(
 				    &w->base) + data->cy - data->oy;
 				xx = window_copy_find_length(w, py);
 			}
 		}
-		
+
 		if (skip) {
 			/* Currently skipping non-space (until space). */
 			if (window_copy_is_space(w, px, py))
@@ -706,7 +706,7 @@ out:
 			data->cx = screen_size_x(s) - 1;
 		}
  	}
- 
+
 	if (window_copy_update_selection(w))
 		window_copy_redraw_lines(w, data->cy, 1);
 	else
@@ -735,20 +735,20 @@ window_copy_cursor_previous_word(struct window *w)
 				break;
 
 			while (px == 0) {
-				if (data->cy == 0 && 
+				if (data->cy == 0 &&
 				    (screen_hsize(&w->base) == 0 ||
 				    data->oy >= screen_hsize(&w->base) - 1))
 					goto out;
-				
+
 				window_copy_cursor_up(w);
-				
+
 				py = screen_hsize(
 				    &w->base) + data->cy - data->oy;
 				px = window_copy_find_length(w, py);
 			}
 			goto out;
 		}
-		
+
 		if (skip) {
 			/* Currently skipping non-space (until space). */
 			if (window_copy_is_space(w, px - 1, py))
@@ -758,7 +758,7 @@ window_copy_cursor_previous_word(struct window *w)
 			if (!window_copy_is_space(w, px - 1, py))
 				break;
 		}
-		
+
 		px--;
 	}
 out:
@@ -788,7 +788,7 @@ out:
 			data->cx = screen_size_x(s) - 1;
 		}
  	}
- 
+
 	if (window_copy_update_selection(w))
 		window_copy_redraw_lines(w, data->cy, 1);
 	else

@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.81 2008-09-25 20:08:54 nicm Exp $ */
+/* $Id: server.c,v 1.82 2008-09-26 06:45:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -389,7 +389,7 @@ server_check_timers(struct client *c)
 
 	if (gettimeofday(&tv, NULL) != 0)
 		fatal("gettimeofday");
-	
+
 	if (c->message_string != NULL && timercmp(&tv, &c->message_timer, >))
 		server_clear_client_message(c);
 

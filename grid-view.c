@@ -1,4 +1,4 @@
-/* $Id: grid-view.c,v 1.1 2008-09-25 20:08:52 nicm Exp $ */
+/* $Id: grid-view.c,v 1.2 2008-09-26 06:45:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -133,7 +133,7 @@ grid_view_insert_lines_region(
 	rlower = grid_view_y(gd, rlower);
 
 	py = grid_view_y(gd, py);
- 
+
 	grid_move_lines(gd, py + ny, py, (rlower + 1) - py - ny);
 }
 
@@ -178,7 +178,7 @@ grid_view_insert_cells(struct grid_data *gd, u_int px, u_int py, u_int nx)
 
 	px = grid_view_x(gd, px);
 
-	sx = grid_view_x(gd, gd->sx);	
+	sx = grid_view_x(gd, gd->sx);
 
 	grid_move_cells(gd, px + nx, px, py, (sx - 1) - (px + nx));
 }
@@ -193,7 +193,7 @@ grid_view_delete_cells(struct grid_data *gd, u_int px, u_int py, u_int nx)
 
 	px = grid_view_x(gd, px);
 
-	sx = grid_view_x(gd, gd->sx);	
+	sx = grid_view_x(gd, gd->sx);
 
 	grid_move_cells(gd, px, px + nx, py, (sx - 1) - (px + nx));
 }

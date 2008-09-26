@@ -1,4 +1,4 @@
-/* $Id: cmd-delete-buffer.c,v 1.1 2008-06-20 17:31:48 nicm Exp $ */
+/* $Id: cmd-delete-buffer.c,v 1.2 2008-09-26 06:45:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -57,7 +57,7 @@ cmd_delete_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (paste_free_index(&s->buffers, data->buffer) != 0)
 			ctx->error(ctx, "no buffer %d", data->buffer);
 	}
-	
+
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

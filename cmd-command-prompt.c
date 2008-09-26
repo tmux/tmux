@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.5 2008-07-25 17:20:40 nicm Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.6 2008-09-26 06:45:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -82,7 +82,7 @@ cmd_command_prompt_callback(void *data, char *s)
 	}
 	if (cmd == NULL)
 		return;
-	
+
 	ctx.msgdata = NULL;
 	ctx.cursession = c->session;
 	ctx.curclient = c;

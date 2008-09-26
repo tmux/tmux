@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.24 2008-09-25 20:08:52 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.25 2008-09-26 06:45:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,7 +65,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 			size += gd->size[i] * sizeof **gd->data;
 		size += gd->hsize * (sizeof *gd->data);
 		size += gd->hsize * (sizeof *gd->size);
-		
+
 		if (w->fd != -1)
 			name = ttyname(w->fd);
 		else

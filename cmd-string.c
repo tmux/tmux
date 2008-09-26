@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.6 2008-08-01 20:25:13 nicm Exp $ */
+/* $Id: cmd-string.c,v 1.7 2008-09-26 06:45:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,10 +48,10 @@ cmd_string_ungetc(unused const char *s, size_t *p)
 	(*p)--;
 }
 
-/* 
+/*
  * Parse command string. Returns -1 on error. If returning -1, cause is error
  * string, or NULL for empty command.
- */ 
+ */
 int
 cmd_string_parse(const char *s, struct cmd **cmd, char **cause)
 {
@@ -81,7 +81,7 @@ cmd_string_parse(const char *s, struct cmd **cmd, char **cause)
 
 	*cmd = NULL;
 	rval = -1;
-	
+
 	p = 0;
 	for (;;) {
 		ch = cmd_string_getc(s, &p);
@@ -130,7 +130,7 @@ cmd_string_parse(const char *s, struct cmd **cmd, char **cause)
 				break;
 			if (argc == 0)
 				goto out;
-				
+
 			*cmd = cmd_parse(argc, argv, cause);
 			rval = 0;
 			goto out;
@@ -143,10 +143,10 @@ cmd_string_parse(const char *s, struct cmd **cmd, char **cause)
 			break;
 		}
 	}
-	
+
 error:
 	xasprintf(cause, "bad command: %s", s);
-	
+
 out:
 	if (buf != NULL)
 		xfree(buf);
@@ -252,7 +252,7 @@ cmd_string_variable(const char *s, size_t *p)
 
 		buf = xrealloc(buf, 1, len + 1);
 		buf[len++] = ch;
-		
+
 		for(;;) {
 			ch = cmd_string_getc(s, p);
 			if (ch == EOF || !cmd_string_other(ch))
@@ -284,5 +284,5 @@ cmd_string_variable(const char *s, size_t *p)
 error:
 	if (buf != NULL)
 		xfree(buf);
-	return (NULL);	
+	return (NULL);
 }

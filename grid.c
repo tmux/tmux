@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.1 2008-09-25 20:08:52 nicm Exp $ */
+/* $Id: grid.c,v 1.2 2008-09-26 06:45:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -214,14 +214,14 @@ grid_clear(struct grid_data *gd, u_int px, u_int py, u_int nx, u_int ny)
 void
 grid_fill(struct grid_data *gd,
     const struct grid_cell *gc, u_int px, u_int py, u_int nx, u_int ny)
-{	
+{
 	u_int	xx, yy;
 
  	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u, ny=%u", px, py, nx, ny);
 
 	if (nx == 0 || ny == 0)
 		return;
-	
+
 	grid_check_x(gd, px);
 	grid_check_x(gd, px + nx - 1);
 	grid_check_y(gd, py);

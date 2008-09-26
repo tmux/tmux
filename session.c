@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.42 2008-08-28 17:45:27 nicm Exp $ */
+/* $Id: session.c,v 1.43 2008-09-26 06:45:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -206,7 +206,7 @@ session_new(struct session *s, const char *name, const char *cmd, int idx)
 
 	if (options_get_number(&s->options, "remain-by-default"))
 		w->flags |= WINDOW_ZOMBIFY;
-	
+
 	return (session_attach(s, w, idx));
 }
 

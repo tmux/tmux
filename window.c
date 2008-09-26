@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.49 2008-09-10 19:15:06 nicm Exp $ */
+/* $Id: window.c,v 1.50 2008-09-26 06:45:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -261,7 +261,7 @@ window_spawn(struct window *w, const char *cmd, const char **envp)
 		fatal("fcntl failed");
 	if (fcntl(w->fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
-	
+
 	return (0);
 }
 

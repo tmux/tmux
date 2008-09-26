@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.59 2008-09-25 20:08:52 nicm Exp $ */
+/* $Id: input.c,v 1.60 2008-09-26 06:45:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -518,7 +518,7 @@ void
 input_handle_character(u_char ch, struct input_ctx *ictx)
 {
 	if (ch > 0x7f) {
-		/* 
+		/*
 		 * UTF-8 sequence.
 		 *
 		 * 11000010-11011111 C2-DF start of 2-byte sequence
@@ -528,7 +528,7 @@ input_handle_character(u_char ch, struct input_ctx *ictx)
 		memset(ictx->utf8_buf, 0xff, sizeof ictx->utf8_buf);
 		ictx->utf8_buf[0] = ch;
 		ictx->utf8_off = 1;
-			    
+
 		if (ch >= 0xc2 && ch <= 0xdf) {
 			log_debug2("-- u2 %zu: %hhu (%c)", ictx->off, ch, ch);
 			input_state(ictx, input_state_utf8);
@@ -541,7 +541,7 @@ input_handle_character(u_char ch, struct input_ctx *ictx)
 			ictx->utf8_len = 2;
 			return;
 		}
-		if (ch >= 0xf0 && ch <= 0xf4) {	
+		if (ch >= 0xf0 && ch <= 0xf4) {
 			log_debug2("-- u4 %zu: %hhu (%c)", ictx->off, ch, ch);
 			input_state(ictx, input_state_utf8);
 			ictx->utf8_len = 3;
@@ -663,7 +663,7 @@ input_handle_standard_two(u_char ch, struct input_ctx *ictx)
 		screen_write_mousemode(&ictx->ctx, 0);
 
 		screen_write_clearscreen(&ictx->ctx);
-		screen_write_cursormove(&ictx->ctx, 0, 0);		
+		screen_write_cursormove(&ictx->ctx, 0, 0);
 		break;
 	case 'k':
 		input_start_string(ictx, STRING_NAME);
@@ -1145,7 +1145,7 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 				return;
 			if (o != 5)
 				continue;
-				
+
 			i++;
 			if (input_get_argument(ictx, i, &o, 0) != 0)
 				return;
@@ -1158,7 +1158,7 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 			}
 			continue;
 		}
-			
+
 		switch (m) {
 		case 0:
 		case 10:
@@ -1213,7 +1213,7 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 		case 44:
 		case 45:
 		case 46:
-		case 47:	
+		case 47:
 			gc->flags &= ~GRID_FLAG_BG256;
 			gc->bg = m - 40;
 			break;

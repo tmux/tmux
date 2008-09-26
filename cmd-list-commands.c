@@ -1,4 +1,4 @@
-/* $Id: cmd-list-commands.c,v 1.1 2008-06-23 22:24:16 nicm Exp $ */
+/* $Id: cmd-list-commands.c,v 1.2 2008-09-26 06:45:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,9 +43,9 @@ void
 cmd_list_commands_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
 	const struct cmd_entry 	      **entryp;
-	
+
 	for (entryp = cmd_table; *entryp != NULL; entryp++)
-		ctx->print(ctx, "%s %s", (*entryp)->name, (*entryp)->usage); 
+		ctx->print(ctx, "%s %s", (*entryp)->name, (*entryp)->usage);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

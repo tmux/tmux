@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.19 2008-09-25 20:08:57 nicm Exp $ */
+/* $Id: window-more.c,v 1.20 2008-09-26 06:45:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -172,7 +172,7 @@ window_more_write_line(struct window *w, struct screen_write_ctx *ctx, u_int py)
 
 	if (py == 0) {
 		size = xsnprintf(hdr, sizeof hdr,
-		    "[%u/%u]", data->top, ARRAY_LENGTH(&data->list)); 
+		    "[%u/%u]", data->top, ARRAY_LENGTH(&data->list));
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
 		gc.attr |= GRID_ATTR_BRIGHT|GRID_ATTR_REVERSE;
 		screen_write_puts(ctx, &gc, "%s", hdr);

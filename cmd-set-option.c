@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.42 2008-09-25 23:28:12 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.43 2008-09-26 06:45:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -59,7 +59,7 @@ const char *set_option_bell_action_list[] = {
 	"none", "any", "current", NULL
 };
 const char *set_option_mode_keys_list[] = {
-	"emacs", "vi", NULL 
+	"emacs", "vi", NULL
 };
 const struct set_option_entry set_option_table[NSETOPTION] = {
 	{ "bell-action", SET_OPTION_CHOICE, 0, 0, set_option_bell_action_list },
@@ -79,7 +79,7 @@ const struct set_option_entry set_option_table[NSETOPTION] = {
 	{ "status-right", SET_OPTION_STRING, 0, 0, NULL },
 };
 
-void	set_option_string(struct cmd_ctx *, 
+void	set_option_string(struct cmd_ctx *,
 	    struct options *, const struct set_option_entry *, char *);
 void	set_option_number(struct cmd_ctx *,
     	    struct options *, const struct set_option_entry *, char *);
@@ -240,7 +240,7 @@ set_option_number(struct cmd_ctx *ctx, struct options *oo,
 	}
 	options_set_number(oo, entry->name, number);
 }
-	
+
 void
 set_option_key(struct cmd_ctx *ctx, struct options *oo,
     const struct set_option_entry *entry, char *value)
@@ -257,9 +257,9 @@ set_option_key(struct cmd_ctx *ctx, struct options *oo,
 		return;
 	}
 	options_set_number(oo, entry->name, key);
-	
+
 }
-	
+
 void
 set_option_colour(struct cmd_ctx *ctx, struct options *oo,
     const struct set_option_entry *entry, char *value)
@@ -270,21 +270,21 @@ set_option_colour(struct cmd_ctx *ctx, struct options *oo,
 		ctx->error(ctx, "empty value");
 		return;
 	}
-	
+
 	if ((colour = colour_fromstring(value)) > 8) {
 		ctx->error(ctx, "bad colour: %s", value);
 		return;
 	}
-	
-	options_set_number(oo, entry->name, colour);	
+
+	options_set_number(oo, entry->name, colour);
 }
-	
+
 void
 set_option_flag(struct cmd_ctx *ctx, struct options *oo,
     const struct set_option_entry *entry, char *value)
 {
 	int	flag;
-	
+
 	if (value == NULL || *value == '\0')
 		flag = !options_get_number(oo, entry->name);
 	else {
@@ -304,7 +304,7 @@ set_option_flag(struct cmd_ctx *ctx, struct options *oo,
 
 	options_set_number(oo, entry->name, flag);
 }
-	
+
 void
 set_option_choice(struct cmd_ctx *ctx, struct options *oo,
     const struct set_option_entry *entry, char *value)

@@ -1,4 +1,4 @@
-/* $Id: cmd-show-buffer.c,v 1.1 2008-06-20 08:36:20 nicm Exp $ */
+/* $Id: cmd-show-buffer.c,v 1.2 2008-09-26 06:45:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -68,7 +68,7 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		buf = xmalloc(size + 1);
 		len = 0;
-		
+
 		ptr = pb->data;
 		do {
 			buf[len++] = *ptr++;
@@ -83,7 +83,7 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		buf[len] = '\0';
 		ctx->print(ctx, buf);
 	}
-	
+
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

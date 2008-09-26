@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.10 2008-08-28 17:45:28 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.11 2008-09-26 06:45:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -203,7 +203,7 @@ struct {
 	{ "-\033Os", KEYC_KP3_2 },
 	{ "-\033OM", KEYC_KP3_3 },
 	{ "-\033Op", KEYC_KP4_0 },
-	{ "-\033On", KEYC_KP4_2 },	
+	{ "-\033On", KEYC_KP4_2 },
 };
 #define NTTYKEYS (sizeof tty_keys / sizeof tty_keys[0])
 
@@ -322,7 +322,7 @@ tty_keys_next(struct tty *tty, int *code)
 		return (0);
 	}
 
-	/* Escape but no key string. If the timer isn't started, start it. */ 
+	/* Escape but no key string. If the timer isn't started, start it. */
 	if (!(tty->flags & TTY_ESCAPE)) {
 		tv.tv_sec = 0;
 		tv.tv_usec = 500 * 1000L;

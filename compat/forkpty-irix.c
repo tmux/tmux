@@ -1,4 +1,4 @@
-/* $Id: forkpty-irix.c,v 1.1 2008-06-23 21:54:48 nicm Exp $ */
+/* $Id: forkpty-irix.c,v 1.2 2008-09-26 06:45:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,7 +50,7 @@ forkpty(int *master,
 		close(*master);
 
 		setsid();
-		
+
 		old = signal(SIGHUP, SIG_IGN);
 		vhangup();
 		signal(SIGHUP, old);

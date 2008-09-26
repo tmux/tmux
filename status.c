@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.47 2008-09-25 20:33:53 nicm Exp $ */
+/* $Id: status.c,v 1.48 2008-09-26 06:45:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -221,7 +221,7 @@ draw:
 		screen_redraw_putc(&ctx, &gc, '>');
 		gc.attr &= ~GRID_ATTR_REVERSE;
 	}
-	
+
 	screen_redraw_stop(&ctx);
 	return;
 
@@ -259,14 +259,14 @@ status_width(struct winlink *wl)
 #ifndef BROKEN_VSNPRINTF
 	return (xsnprintf(NULL, 0, "%d:%s ", wl->idx, wl->window->name));
 #else
-	char	*s; 
-	size_t	n; 
-	
-	xasprintf(&s, "%d:%s ", wl->idx, wl->window->name); 
-	n = strlen(s); 
-	xfree(s); 
+	char	*s;
+	size_t	n;
 
-	return (n); 
+	xasprintf(&s, "%d:%s ", wl->idx, wl->window->name);
+	n = strlen(s);
+	xfree(s);
+
+	return (n);
 #endif
 }
 
@@ -309,7 +309,7 @@ status_message_redraw(struct client *c)
 	xx = strlen(c->message_string);
 	if (xx > c->sx)
 		xx = c->sx;
-	yy = c->sy - 1;		
+	yy = c->sy - 1;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.attr |= GRID_ATTR_REVERSE;
@@ -342,7 +342,7 @@ status_prompt_redraw(struct client *c)
 	xx = strlen(c->prompt_string);
 	if (xx > c->sx)
 		xx = c->sx;
-	yy = c->sy - 1;		
+	yy = c->sy - 1;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.attr |= GRID_ATTR_REVERSE;
@@ -425,7 +425,7 @@ status_prompt_key(struct client *c, int key)
 			break;
 		if (c->prompt_index != strlen(c->prompt_buffer))
 			break;
-		
+
 		s = cmd_complete(c->prompt_buffer);
 		xfree(c->prompt_buffer);
 
@@ -440,7 +440,7 @@ status_prompt_key(struct client *c, int key)
 			if (c->prompt_index == size)
 				c->prompt_buffer[--c->prompt_index] = '\0';
 			else {
-				memmove(c->prompt_buffer + c->prompt_index - 1, 
+				memmove(c->prompt_buffer + c->prompt_index - 1,
 				    c->prompt_buffer + c->prompt_index,
 				    size + 1 - c->prompt_index);
 				c->prompt_index--;
@@ -450,7 +450,7 @@ status_prompt_key(struct client *c, int key)
 		break;
 	case KEYC_DC:
 		if (c->prompt_index != size) {
-			memmove(c->prompt_buffer + c->prompt_index, 
+			memmove(c->prompt_buffer + c->prompt_index,
 			    c->prompt_buffer + c->prompt_index + 1,
 			    size + 1 - c->prompt_index);
 			c->flags |= CLIENT_STATUS;
@@ -476,7 +476,7 @@ status_prompt_key(struct client *c, int key)
 			c->prompt_buffer[c->prompt_index++] = key;
 			c->prompt_buffer[c->prompt_index] = '\0';
 		} else {
-			memmove(c->prompt_buffer + c->prompt_index + 1, 
+			memmove(c->prompt_buffer + c->prompt_index + 1,
 			    c->prompt_buffer + c->prompt_index,
 			    size + 1 - c->prompt_index);
 			c->prompt_buffer[c->prompt_index++] = key;

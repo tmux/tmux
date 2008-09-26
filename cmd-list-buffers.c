@@ -1,4 +1,4 @@
-/* $Id: cmd-list-buffers.c,v 1.3 2008-06-20 19:03:45 nicm Exp $ */
+/* $Id: cmd-list-buffers.c,v 1.4 2008-09-26 06:45:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,7 +61,7 @@ cmd_list_buffers_exec(struct cmd *self, struct cmd_ctx *ctx)
 		size = 0;
 		tmp = NULL;
 	}
-	
+
 	idx = 0;
 	while ((pb = paste_walk_stack(&s->buffers, &idx)) != NULL) {
 		if (tmp != NULL) {

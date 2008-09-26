@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.64 2008-09-25 23:28:15 nicm Exp $ */
+/* $Id: cmd.c,v 1.65 2008-09-26 06:45:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -93,13 +93,13 @@ cmd_complete(const char *s)
 			continue;
 		ARRAY_ADD(&list, (*entryp)->name);
 	}
-	
+
 	/* If none, bail now with the original string. */
 	if (ARRAY_LENGTH(&list) == 0) {
 		ARRAY_FREE(&list);
 		return (xstrdup(s));
 	}
-	
+
 	/* If an exact match, return it, with a trailing space. */
 	if (ARRAY_LENGTH(&list) == 1) {
 		xasprintf(&s2, "%s ", ARRAY_FIRST(&list));
