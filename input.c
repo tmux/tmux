@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.61 2008-09-26 07:34:12 nicm Exp $ */
+/* $Id: input.c,v 1.62 2008-09-26 07:41:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1132,9 +1132,12 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 	struct grid_cell       *gc = &ictx->cell;
 	u_int			i;
 	uint16_t		m, o;
+	u_char			attr;
 
 	if (ARRAY_LENGTH(&ictx->args) == 0) {
+		attr = gc->attr;
 		memcpy(gc, &grid_default_cell, sizeof *gc);
+ 		gc->attr |= (attr & GRID_ATTR_CHARSET);
 		return;
 	}
 
@@ -1165,7 +1168,9 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 		switch (m) {
 		case 0:
 		case 10:
+			attr = gc->attr;
 			memcpy(gc, &grid_default_cell, sizeof *gc);
+			gc->attr |= (attr & GRID_ATTR_CHARSET);
 			break;
 		case 1:
 			gc->attr |= GRID_ATTR_BRIGHT;
