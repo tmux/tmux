@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.60 2008-09-26 06:45:26 nicm Exp $ */
+/* $Id: input.c,v 1.61 2008-09-26 07:34:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -656,6 +656,9 @@ input_handle_standard_two(u_char ch, struct input_ctx *ictx)
 		memcpy(&ictx->saved_cell, &ictx->cell, sizeof ictx->saved_cell);
 		ictx->saved_cx = 0;
 		ictx->saved_cy = 0;
+
+		screen_write_scrollregion(
+		    &ictx->ctx, 0, screen_size_y(ictx->ctx.s) - 1);
 
 		screen_write_insertmode(&ictx->ctx, 0);
 		screen_write_kcursormode(&ictx->ctx, 0);
