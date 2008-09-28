@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.2 2008-09-26 06:45:26 nicm Exp $ */
+/* $Id: grid.c,v 1.3 2008-09-28 20:34:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -335,10 +335,11 @@ grid_move_cells(struct grid_data *gd, u_int dx, u_int px, u_int py, u_int nx)
 		return;
 
 	grid_check_x(gd, px);
-	grid_check_x(gd, px + nx - 1);
+	grid_check_x(gd, px + nx - 1);	
+	grid_check_x(gd, dx + nx - 1);
 	grid_check_y(gd, py);
 
-	grid_expand_line(gd, py ,px + nx);
+	grid_expand_line(gd, py, px + nx);
 	grid_expand_line(gd, py, dx + nx);
 	memmove(&gd->data[py][dx], &gd->data[py][px], nx * (sizeof **gd->data));
 

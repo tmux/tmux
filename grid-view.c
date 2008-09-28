@@ -1,4 +1,4 @@
-/* $Id: grid-view.c,v 1.2 2008-09-26 06:45:26 nicm Exp $ */
+/* $Id: grid-view.c,v 1.3 2008-09-28 20:34:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -177,6 +177,7 @@ grid_view_insert_cells(struct grid_data *gd, u_int px, u_int py, u_int nx)
 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u", px, py, nx);
 
 	px = grid_view_x(gd, px);
+	py = grid_view_y(gd, py);
 
 	sx = grid_view_x(gd, gd->sx);
 
@@ -192,6 +193,7 @@ grid_view_delete_cells(struct grid_data *gd, u_int px, u_int py, u_int nx)
 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u", px, py, nx);
 
 	px = grid_view_x(gd, px);
+	py = grid_view_y(gd, py);
 
 	sx = grid_view_x(gd, gd->sx);
 

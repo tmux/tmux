@@ -36,7 +36,6 @@
 -- For 0.5 --------------------------------------------------------------------
 
 - audit for leftover/unused code
-21:09 < merdely> NicM: if I run 'tmux attach -t main' and there is no tmux session named main, start a new one.
 - commands:	save-buffer -b number filename
 		load-buffer -b number filename
   	      	copy-buffer -s src-session -t dst-session
