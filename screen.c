@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.74 2008-09-29 16:58:02 nicm Exp $ */
+/* $Id: screen.c,v 1.75 2008-09-29 16:59:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,6 +108,7 @@ screen_resize_x(struct screen *s, u_int sx)
 		 * If the character after the last is wide or padding, remove
 		 * it and any leading padding.
 		 */
+		gc = &grid_default_cell;
 		for (xx = sx; xx > 0; xx--) {
 			gc = grid_peek_cell(gd, xx - 1, yy);
 			if (!(gc->flags & GRID_FLAG_PADDING))
