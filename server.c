@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.82 2008-09-26 06:45:27 nicm Exp $ */
+/* $Id: server.c,v 1.83 2008-09-29 16:03:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -380,7 +380,7 @@ void
 server_check_timers(struct client *c)
 {
 	struct session	*s;
-	struct timeval	 tv, tv2;
+	struct timeval	 tv;
 	u_int		 interval;
 
 	if (c == NULL || c->session == NULL)
@@ -399,9 +399,8 @@ server_check_timers(struct client *c)
 	if (interval == 0)
 		return;
 
-	memcpy(&tv2, &tv, sizeof tv2);
-	tv2.tv_sec -= interval;
-	if (timercmp(&c->status_timer, &tv2, <))
+	tv.tv_sec -= interval;
+	if (timercmp(&c->status_timer, &tv, <))
 		c->flags |= CLIENT_STATUS;
 }
 

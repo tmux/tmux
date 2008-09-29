@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.78 2008-09-26 06:45:28 nicm Exp $ */
+/* $Id: tmux.c,v 1.79 2008-09-29 16:03:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -287,7 +287,7 @@ main(int argc, char **argv)
 
 	if (argc == 0) {
 		cmd = xmalloc(sizeof *cmd);
-		cmd->entry = &cmd_new_session_entry;
+  		cmd->entry = &cmd_new_session_entry;
 		cmd->entry->init(cmd, 0);
 	} else if ((cmd = cmd_parse(argc, argv, &cause)) == NULL) {
 		log_warnx("%s", cause);
