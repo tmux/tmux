@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.48 2008-09-26 06:45:27 nicm Exp $ */
+/* $Id: status.c,v 1.49 2008-09-29 17:47:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,6 +50,7 @@ status_redraw(struct client *c)
 
 	if (gettimeofday(&c->status_timer, NULL) != 0)
 		fatal("gettimeofday");
+	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.fg = options_get_number(&s->options, "status-fg");
 	gc.bg = options_get_number(&s->options, "status-bg");
 
