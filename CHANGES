@@ -1,5 +1,6 @@
 09 October 2008
 
+* Translate 256 colours into 16 if 256 is not available, same as screen does.
 * Better support for OSC command (only to set window title now), and also
   support using APC for the same purpose (some Linux default shell profiles do
   this).
@@ -680,4 +681,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.163 2008-10-09 21:22:16 nicm Exp $
+$Id: CHANGES,v 1.164 2008-10-09 22:00:33 nicm Exp $
