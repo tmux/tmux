@@ -1,3 +1,9 @@
+09 October 2008
+
+* Better support for OSC command (only to set window title now), and also
+  support using APC for the same purpose (some Linux default shell profiles do
+  this).
+
 25 September 2008
 
 * Large internal rewrite to better support 256 colours and UTF-8. Screen data
@@ -674,4 +680,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.162 2008-09-26 06:45:25 nicm Exp $
+$Id: CHANGES,v 1.163 2008-10-09 21:22:16 nicm Exp $

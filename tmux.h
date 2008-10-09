@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.191 2008-09-26 06:45:28 nicm Exp $ */
+/* $Id: tmux.h,v 1.192 2008-10-09 21:22:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -524,9 +524,9 @@ struct input_ctx {
 	u_char		*string_buf;
 	size_t		 string_len;
 	int		 string_type;
-#define STRING_TITLE 0
-#define STRING_NAME 1
-#define STRING_IGNORE 2
+#define STRING_SYSTEM 0
+#define STRING_APPLICATION 1
+#define STRING_NAME 2
 
 	u_char		 utf8_buf[4];
 	u_int		 utf8_len;

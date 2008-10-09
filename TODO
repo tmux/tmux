@@ -46,7 +46,6 @@
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
 - tidy up window modes
-- support \033_string\033\\ for window title too
 - list-keys should be sorted
 - problems with force-width when wrapping line in emacs?
 - command history for command-prompt. better tab completion (use options too)

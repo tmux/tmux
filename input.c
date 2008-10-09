@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.62 2008-09-26 07:41:01 nicm Exp $ */
+/* $Id: input.c,v 1.63 2008-10-09 21:22:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,9 +48,6 @@ void	 input_state(struct input_ctx *, void *);
 void	 input_state_first(u_char, struct input_ctx *);
 void	 input_state_escape(u_char, struct input_ctx *);
 void	 input_state_intermediate(u_char, struct input_ctx *);
-void	 input_state_title_first(u_char, struct input_ctx *);
-void	 input_state_title_second(u_char, struct input_ctx *);
-void	 input_state_title_next(u_char, struct input_ctx *);
 void	 input_state_sequence_first(u_char, struct input_ctx *);
 void	 input_state_sequence_next(u_char, struct input_ctx *);
 void	 input_state_sequence_intermediate(u_char, struct input_ctx *);
@@ -261,9 +258,13 @@ input_state_first(u_char ch, struct input_ctx *ictx)
 		ch -= 0x40;
 		if (ch == '[')
 			input_state(ictx, input_state_sequence_first);
-		else if (ch == ']')
-			input_state(ictx, input_state_title_first);
-		else
+		else if (ch == ']') {
+			input_start_string(ictx, STRING_SYSTEM);
+			input_state(ictx, input_state_string_next);
+		} else if (ch == '_') {
+			input_start_string(ictx, STRING_APPLICATION);
+			input_state(ictx, input_state_string_next);
+		} else
 			input_handle_c1_control(ch, ictx);
 		return;
 	}
@@ -301,9 +302,13 @@ input_state_escape(u_char ch, struct input_ctx *ictx)
 	if (INPUT_UPPERCASE(ch)) {
 		if (ch == '[')
 			input_state(ictx, input_state_sequence_first);
-		else if (ch == ']')
-			input_state(ictx, input_state_title_first);
-		else {
+		else if (ch == ']') {
+			input_start_string(ictx, STRING_SYSTEM);
+			input_state(ictx, input_state_string_next);
+		} else if (ch == '_') {
+			input_start_string(ictx, STRING_APPLICATION);
+			input_state(ictx, input_state_string_next);
+		} else {
 			input_state(ictx, input_state_first);
 			input_handle_c1_control(ch, ictx);
 		}
@@ -313,53 +318,6 @@ input_state_escape(u_char ch, struct input_ctx *ictx)
 	if (INPUT_LOWERCASE(ch)) {
 		input_state(ictx, input_state_first);
 		input_handle_standard_two(ch, ictx);
-		return;
-	}
-
-	input_state(ictx, input_state_first);
-}
-
-void
-input_state_title_first(u_char ch, struct input_ctx *ictx)
-{
-	if (ch >= '0' && ch <= '9') {
-		if (ch == '0')
-			input_start_string(ictx, STRING_TITLE);
-		else
-			input_start_string(ictx, STRING_IGNORE);
-		input_state(ictx, input_state_title_second);
-		return;
-	}
-
-	input_state(ictx, input_state_first);
-}
-
-void
-input_state_title_second(u_char ch, struct input_ctx *ictx)
-{
-	if (ch == ';') {
-		input_state(ictx, input_state_title_next);
-		return;
-	}
-
-	input_state(ictx, input_state_first);
-}
-
-void
-input_state_title_next(u_char ch, struct input_ctx *ictx)
-{
-	if (ch == '\007') {
-		if (ictx->string_type == STRING_TITLE)
-			screen_set_title(ictx->ctx.s, input_get_string(ictx));
-		else
-			input_abort_string(ictx);
-		input_state(ictx, input_state_first);
-		return;
-	}
-
-	if (ch >= 0x20 && ch != 0x7f) {
-		if (input_add_string(ictx, ch) != 0)
-			input_state(ictx, input_state_first);
 		return;
 	}
 
@@ -467,6 +425,10 @@ input_state_string_next(u_char ch, struct input_ctx *ictx)
 		input_state(ictx, input_state_string_escape);
 		return;
 	}
+	if (ch == 0x07) {
+		input_state_string_escape(ch, ictx);
+		return;
+	}
 
 	if (ch >= 0x20 && ch != 0x7f) {
 		if (input_add_string(ictx, ch) != 0)
@@ -478,10 +440,32 @@ input_state_string_next(u_char ch, struct input_ctx *ictx)
 void
 input_state_string_escape(u_char ch, struct input_ctx *ictx)
 {
-	if (ch == '\\') {
+	char	*s;
+
+	if (ch == '\007' || ch == '\\') {
 		input_state(ictx, input_state_first);
 		switch (ictx->string_type) {
+		case STRING_SYSTEM:
+			if (ch != '\007')
+				return;
+			s = input_get_string(ictx);
+			if ((s[0] != '0' && s[0] != '2') || s[1] != ';') {
+				xfree(s);
+				return;
+			}
+			screen_set_title(ictx->ctx.s, s + 2);
+			xfree(s);
+			break;
+		case STRING_APPLICATION:
+			if (ch != '\\')
+				return;
+			s = input_get_string(ictx);
+			screen_set_title(ictx->ctx.s, s);
+			xfree(s);
+			break;
 		case STRING_NAME:
+			if (ch != '\\')
+				return;
 			xfree(ictx->w->name);
 			ictx->w->name = input_get_string(ictx);
 			server_status_window(ictx->w);
