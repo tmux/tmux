@@ -1,4 +1,4 @@
-/* $Id: log.c,v 1.8 2008-09-26 06:45:26 nicm Exp $ */
+/* $Id: log.c,v 1.9 2008-10-09 05:31:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,7 +65,7 @@ log_open_tty(int level)
 	tzset();
 }
 
-/* Open logging to tty. */
+/* Open logging to file. */
 void
 log_open_file(int level, const char *path)
 {
