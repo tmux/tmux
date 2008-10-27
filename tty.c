@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.47 2008-10-09 22:03:36 nicm Exp $ */
+/* $Id: tty.c,v 1.48 2008-10-27 20:13:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -204,30 +204,31 @@ tty_close(struct tty *tty)
 	}
 
 	/*
-	 * Skip any writing if the fd is invalid. Things like ssh -t can
-	 * easily leave us with a dead tty.
+	 * Be flexible about error handling and try not kill the server just
+	 * because the fd is invalid. Things like ssh -t can easily leave us
+	 * with a dead tty.
 	 */
 	if (ioctl(tty->fd, TIOCGWINSZ, &ws) == -1) {
-		if (errno != EBADF && errno != ENXIO)
+		if (errno != EBADF && errno != ENXIO && errno != ENOTTY)
 			fatal("ioctl(TIOCGWINSZ)");
+	} else if (tcsetattr(tty->fd, TCSANOW, &tty->tio) == -1) {
+		if (errno != EBADF && errno != ENXIO && errno != ENOTTY)
+			fatal("tcsetattr failed");
 	} else {
-		 if (tcsetattr(tty->fd, TCSANOW, &tty->tio) != 0)
-			 fatal("tcsetattr failed");
-
-		 tty_raw(tty, tparm(change_scroll_region, 0, ws.ws_row - 1));
-		 if (exit_alt_charset_mode != NULL)
-			 tty_puts(tty, exit_alt_charset_mode);
-		 if (exit_attribute_mode != NULL)
-			 tty_raw(tty, exit_attribute_mode);
-		 tty_raw(tty, clear_screen);
-		 if (keypad_local != NULL)
-			 tty_raw(tty, keypad_local);
-		 if (exit_ca_mode != NULL)
-			 tty_raw(tty, exit_ca_mode);
-		 if (cursor_normal != NULL)
-			 tty_raw(tty, cursor_normal);
+		tty_raw(tty, tparm(change_scroll_region, 0, ws.ws_row - 1));
+		if (exit_alt_charset_mode != NULL)
+			tty_puts(tty, exit_alt_charset_mode);
+		if (exit_attribute_mode != NULL)
+			tty_raw(tty, exit_attribute_mode);
+		tty_raw(tty, clear_screen);
+		if (keypad_local != NULL)
+			tty_raw(tty, keypad_local);
+		if (exit_ca_mode != NULL)
+			tty_raw(tty, exit_ca_mode);
+		if (cursor_normal != NULL)
+			tty_raw(tty, cursor_normal);
 	}
-
+	
 	tty_free_term(tty->term);
 	tty_keys_free(tty);
 
