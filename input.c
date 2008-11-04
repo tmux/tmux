@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.63 2008-10-09 21:22:16 nicm Exp $ */
+/* $Id: input.c,v 1.64 2008-11-04 19:28:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -604,6 +604,9 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 	log_debug2("-- p2 %zu: %hhu (%c)", ictx->off, ch, ch);
 
 	switch (ch) {
+	case '0':	/* Don't know? */
+		ictx->cell.attr |= GRID_ATTR_CHARSET;
+		break;
 	case '=':	/* DECKPAM */
 		screen_write_kkeypadmode(&ictx->ctx, 1);
 		log_debug("kkeypad on (application mode)");
@@ -634,6 +637,9 @@ input_handle_standard_two(u_char ch, struct input_ctx *ictx)
 	log_debug2("-- s2 %zu: %hhu (%c)", ictx->off, ch, ch);
 
 	switch (ch) {
+	case 'B':	/* Don't know? */
+		ictx->cell.attr &= ~GRID_ATTR_CHARSET;
+		break;
 	case 'c':	/* RIS */
 		memcpy(&ictx->cell, &grid_default_cell, sizeof ictx->cell);
 
