@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.193 2008-10-09 22:00:33 nicm Exp $ */
+/* $Id: tmux.h,v 1.194 2008-11-04 20:41:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -532,6 +532,7 @@ struct input_ctx {
 	u_int		 utf8_len;
 	u_int		 utf8_off;
 
+	u_char		 intermediate;
 	void 		*(*state)(u_char, struct input_ctx *);
 
 	u_char		 private;

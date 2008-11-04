@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.65 2008-11-04 20:06:48 nicm Exp $ */
+/* $Id: input.c,v 1.66 2008-11-04 20:41:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -245,6 +245,8 @@ input_parse(struct window *w)
 void
 input_state_first(u_char ch, struct input_ctx *ictx)
 {
+	ictx->intermediate = '\0';
+
 	if (INPUT_C0CONTROL(ch)) {
 		if (ch == 0x1b)
 			input_state(ictx, input_state_escape);
@@ -289,6 +291,8 @@ input_state_escape(u_char ch, struct input_ctx *ictx)
 	}
 
 	if (INPUT_INTERMEDIATE(ch)) {
+		log_debug2(":: in1 %zu: %hhu (%c)", ictx->off, ch, ch);
+		ictx->intermediate = ch;
 		input_state(ictx, input_state_intermediate);
 		return;
 	}
@@ -327,8 +331,11 @@ input_state_escape(u_char ch, struct input_ctx *ictx)
 void
 input_state_intermediate(u_char ch, struct input_ctx *ictx)
 {
-	if (INPUT_INTERMEDIATE(ch))
+	if (INPUT_INTERMEDIATE(ch)) {
+		/* Multiple intermediates currently ignored. */
+		log_debug2(":: in2 %zu: %hhu (%c)", ictx->off, ch, ch);
 		return;
+	}
 
 	if (INPUT_PARAMETER(ch)) {
 		input_state(ictx, input_state_first);
@@ -372,8 +379,10 @@ input_state_sequence_next(u_char ch, struct input_ctx *ictx)
 	if (INPUT_INTERMEDIATE(ch)) {
 		if (input_add_argument(ictx, '\0') != 0)
 			input_state(ictx, input_state_first);
-		else
+		else {
+			log_debug2(":: si1 %zu: %hhu (%c)", ictx->off, ch, ch);
 			input_state(ictx, input_state_sequence_intermediate);
+		}
 		return;
 	}
 
@@ -405,7 +414,7 @@ void
 input_state_sequence_intermediate(u_char ch, struct input_ctx *ictx)
 {
 	if (INPUT_INTERMEDIATE(ch)) {
-		log_debug2(":: in %zu: %hhu (%c)", ictx->off, ch, ch);
+		log_debug2(":: si2 %zu: %hhu (%c)", ictx->off, ch, ch);
 		return;
 	}
 
@@ -601,14 +610,22 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 {
 	struct screen	*s = ictx->ctx.s;
 
-	log_debug2("-- p2 %zu: %hhu (%c)", ictx->off, ch, ch);
+	log_debug2(
+	    "-- p2 %zu: %hhu (%c) %hhu", ictx->off, ch, ch, ictx->intermediate);
 
 	switch (ch) {
-#if 0
-	case '0':	/* Don't know? */
-		ictx->cell.attr |= GRID_ATTR_CHARSET;
+	case '0':	/* Dscs (graphics) */
+		/* 
+		 * Not really supported, but fake it up enough for those that
+		 * use it to switch character sets (by redefining G0 to
+		 * graphics set, rather than switching to G1).
+		 */
+		switch (ictx->intermediate) {
+		case '(':	/* G0 */
+			ictx->cell.attr |= GRID_ATTR_CHARSET;
+			break;
+		}
 		break;
-#endif
 	case '=':	/* DECKPAM */
 		screen_write_kkeypadmode(&ictx->ctx, 1);
 		log_debug("kkeypad on (application mode)");
@@ -636,14 +653,22 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 void
 input_handle_standard_two(u_char ch, struct input_ctx *ictx)
 {
-	log_debug2("-- s2 %zu: %hhu (%c)", ictx->off, ch, ch);
+	log_debug2(
+	    "-- s2 %zu: %hhu (%c) %hhu", ictx->off, ch, ch, ictx->intermediate);
 
 	switch (ch) {
-#if 0
-	case 'B':	/* Don't know? */
-		ictx->cell.attr &= ~GRID_ATTR_CHARSET;
+	case 'B':	/* Dscs (ASCII) */
+		/* 
+		 * Not really supported, but fake it up enough for those that
+		 * use it to switch character sets (by redefining G0 to
+		 * graphics set, rather than switching to G1).
+		 */
+		switch (ictx->intermediate) {
+		case '(':	/* G0 */
+			ictx->cell.attr &= ~GRID_ATTR_CHARSET;
+			break;
+		}
 		break;
-#endif
 	case 'c':	/* RIS */
 		memcpy(&ictx->cell, &grid_default_cell, sizeof ictx->cell);
 
@@ -1187,11 +1212,20 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 		case 8:
 			gc->attr |= GRID_ATTR_HIDDEN;
 			break;
+		case 22:
+			gc->attr &= ~(GRID_ATTR_BRIGHT|GRID_ATTR_DIM);
+			break;
 		case 23:
 			gc->attr &= ~GRID_ATTR_ITALICS;
 			break;
 		case 24:
 			gc->attr &= ~GRID_ATTR_UNDERSCORE;
+			break;
+		case 25:
+			gc->attr &= ~GRID_ATTR_BLINK;
+			break;
+		case 27:
+			gc->attr &= ~GRID_ATTR_REVERSE;
 			break;
 		case 30:
 		case 31:
