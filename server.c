@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.83 2008-09-29 16:03:27 nicm Exp $ */
+/* $Id: server.c,v 1.84 2008-11-04 20:55:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -393,8 +393,16 @@ server_check_timers(struct client *c)
 	if (c->message_string != NULL && timercmp(&tv, &c->message_timer, >))
 		server_clear_client_message(c);
 
+	if (c->message_string != NULL || c->prompt_string != NULL) {
+		/* 
+		 * Don't need timed redraw for messages/prompts so bail now.
+		 * The status timer isn't reset when they are redrawn anyway.
+		 */
+		return;
+	}
 	if (!options_get_number(&s->options, "status"))
 		return;
+
 	interval = options_get_number(&s->options, "status-interval");
 	if (interval == 0)
 		return;

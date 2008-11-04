@@ -1,3 +1,9 @@
+04 November 2008
+
+* Don't try to redraw status line when showing a prompt or message; if it does,
+  the status timer is never reset so it redraws on every loop. Spotted by
+  joshe.
+
 09 October 2008
 
 * Translate 256 colours into 16 if 256 is not available, same as screen does.
@@ -681,4 +687,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.164 2008-10-09 22:00:33 nicm Exp $
+$Id: CHANGES,v 1.165 2008-11-04 20:55:58 nicm Exp $
