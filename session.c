@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.43 2008-09-26 06:45:27 nicm Exp $ */
+/* $Id: session.c,v 1.44 2008-11-05 01:19:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,13 +33,13 @@ session_alert_cancel(struct session *s, struct winlink *wl)
 {
 	struct session_alert	*sa, *sb;
 
-	sa = TAILQ_FIRST(&s->alerts);
+	sa = SLIST_FIRST(&s->alerts);
 	while (sa != NULL) {
 		sb = sa;
-		sa = TAILQ_NEXT(sa, entry);
+		sa = SLIST_NEXT(sa, entry);
 
 		if (wl == NULL || sb->wl == wl) {
-			TAILQ_REMOVE(&s->alerts, sb, entry);
+			SLIST_REMOVE(&s->alerts, sb, session_alert, entry);
 			xfree(sb);
 		}
 	}
@@ -60,7 +60,7 @@ session_alert_add(struct session *s, struct window *w, int type)
 			sa = xmalloc(sizeof *sa);
 			sa->wl = wl;
 			sa->type = type;
-			TAILQ_INSERT_HEAD(&s->alerts, sa, entry);
+			SLIST_INSERT_HEAD(&s->alerts, sa, entry);
 		}
 	}
 }
@@ -70,7 +70,7 @@ session_alert_has(struct session *s, struct winlink *wl, int type)
 {
 	struct session_alert	*sa;
 
-	TAILQ_FOREACH(sa, &s->alerts, entry) {
+	SLIST_FOREACH(sa, &s->alerts, entry) {
 		if (sa->wl == wl && sa->type == type)
 			return (1);
 	}
@@ -83,7 +83,7 @@ session_alert_has_window(struct session *s, struct window *w, int type)
 {
 	struct session_alert	*sa;
 
-	TAILQ_FOREACH(sa, &s->alerts, entry) {
+	SLIST_FOREACH(sa, &s->alerts, entry) {
 		if (sa->wl->window == w && sa->type == type)
 			return (1);
 	}
@@ -119,7 +119,7 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 		fatal("gettimeofday");
 	s->curw = s->lastw = NULL;
 	RB_INIT(&s->windows);
-	TAILQ_INIT(&s->alerts);
+	SLIST_INIT(&s->alerts);
 	paste_init_stack(&s->buffers);
 	options_init(&s->options, &global_options);
 

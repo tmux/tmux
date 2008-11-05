@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.48 2008-10-27 20:13:37 nicm Exp $ */
+/* $Id: tty.c,v 1.49 2008-11-05 01:19:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -98,7 +98,7 @@ void (*tty_cmds[])(struct tty *, struct screen *, va_list) = {
 	tty_cmd_cell,
 };
 
-TAILQ_HEAD(, tty_term) tty_terms = TAILQ_HEAD_INITIALIZER(tty_terms);
+SLIST_HEAD(, tty_term) tty_terms = SLIST_HEAD_INITIALIZER(tty_terms);
 
 void
 tty_init(struct tty *tty, char *path, char *term)
@@ -256,7 +256,7 @@ tty_find_term(char *name, int fd, char **cause)
 	struct tty_term	*term;
 	int		 error;
 
-	TAILQ_FOREACH(term, &tty_terms, entry) {
+	SLIST_FOREACH(term, &tty_terms, entry) {
 		if (strcmp(term->name, name) == 0) {
 			term->references++;
 			return (term);
@@ -267,7 +267,7 @@ tty_find_term(char *name, int fd, char **cause)
 	term->name = xstrdup(name);
 	term->term = NULL;
 	term->references = 1;
-	TAILQ_INSERT_HEAD(&tty_terms, term, entry);
+	SLIST_INSERT_HEAD(&tty_terms, term, entry);
 
 	if (setupterm(name, fd, &error) != OK) {
 		switch (error) {
@@ -370,7 +370,7 @@ tty_free_term(struct tty_term *term)
 	if (--term->references != 0)
 		return;
 
-	TAILQ_REMOVE(&tty_terms, term, entry);
+	SLIST_REMOVE(&tty_terms, term, tty_term, entry);
 
 #ifdef __FreeBSD___
 /*

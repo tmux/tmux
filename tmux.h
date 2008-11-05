@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.194 2008-11-04 20:41:10 nicm Exp $ */
+/* $Id: tmux.h,v 1.195 2008-11-05 01:19:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -629,7 +629,7 @@ struct session_alert {
 	struct winlink	*wl;
 	int		 type;
 
-	TAILQ_ENTRY(session_alert) entry;
+	SLIST_ENTRY(session_alert) entry;
 };
 
 struct session {
@@ -647,7 +647,7 @@ struct session {
 
 	struct paste_stack buffers;
 
-	TAILQ_HEAD(, session_alert) alerts;
+	SLIST_HEAD(, session_alert) alerts;
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
 	int		 flags;
@@ -671,7 +671,7 @@ struct tty_term {
 #define TERM_256COLOURS 0x2
 	int		 flags;
 
-	TAILQ_ENTRY(tty_term) entry;
+	SLIST_ENTRY(tty_term) entry;
 };
 
 struct tty {
