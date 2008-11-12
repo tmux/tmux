@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.15 2008-09-26 06:45:26 nicm Exp $ */
+/* $Id: screen-write.c,v 1.16 2008-11-12 23:38:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -138,7 +138,7 @@ screen_write_cursorup(struct screen_write_ctx *ctx, u_int ny)
 
 	s->cy -= ny;
 
-	if (ctx != NULL)
+	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_CURSORUP, ny);
 }
 
