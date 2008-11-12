@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.32 2008-09-26 06:45:28 nicm Exp $ */
+/* $Id: window-copy.c,v 1.33 2008-11-12 23:39:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -276,7 +276,7 @@ window_copy_redraw_screen(struct window *w)
 {
 	struct window_copy_mode_data	*data = w->modedata;
 
-	window_copy_redraw_lines(w, 0, screen_size_x(&data->screen));
+	window_copy_redraw_lines(w, 0, screen_size_y(&data->screen));
 }
 
 void
