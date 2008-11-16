@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.49 2008-11-05 01:19:24 nicm Exp $ */
+/* $Id: tty.c,v 1.50 2008-11-16 10:10:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -255,6 +255,7 @@ tty_find_term(char *name, int fd, char **cause)
 {
 	struct tty_term	*term;
 	int		 error;
+	char		*s;
 
 	SLIST_FOREACH(term, &tty_terms, entry) {
 		if (strcmp(term->name, name) == 0) {
@@ -347,6 +348,9 @@ tty_find_term(char *name, int fd, char **cause)
 	}
 
 	if (tigetflag("AX") == TRUE)
+		term->flags |= TERM_HASDEFAULTS;
+	s = tigetstr("orig_pair");
+	if (s != NULL && s != (char *) -1 && strcmp(s, "\033[39;49m") == 0)
 		term->flags |= TERM_HASDEFAULTS;
 
 	/*

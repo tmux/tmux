@@ -33,7 +33,7 @@
 - flags to centre screen in window
 - better terminal emulation (identify, insert mode, some other bits)
 - save stack for last window
-- paste stack should be an SLIST. also key bindings? others?
+- when resizing, use history
 
 -- For 0.5 --------------------------------------------------------------------
 
@@ -54,3 +54,4 @@
 - many more info() displays for various things
 - document mode-keys
 - vi half page scroll
+- document new flags

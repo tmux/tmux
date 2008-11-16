@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.50 2008-09-26 06:45:28 nicm Exp $ */
+/* $Id: window.c,v 1.51 2008-11-16 10:10:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -162,6 +162,32 @@ winlink_previous(unused struct winlinks *wwl, struct winlink *wl)
 		return (NULL);
 	return (wk);
 #endif
+}
+
+void
+winlink_stack_push(struct winlink_stack *stack, struct winlink *wl)
+{
+	if (wl == NULL)
+		return;
+
+	winlink_stack_remove(stack, wl);
+	SLIST_INSERT_HEAD(stack, wl, sentry);
+}
+
+void
+winlink_stack_remove(struct winlink_stack *stack, struct winlink *wl)
+{
+	struct winlink	*wl2;
+
+	if (wl == NULL)
+		return;
+
+	SLIST_FOREACH(wl2, stack, sentry) {
+		if (wl2 == wl) {
+			SLIST_REMOVE(stack, wl, winlink, sentry);
+			return;
+		}
+	}
 }
 
 struct window *

@@ -1,3 +1,13 @@
+16 November 2008
+
+* Enable default colours if op contains \033[39;49m, based on a report from
+  fulvio ciriaco.
+
+12 November 2008
+
+* Keep stack of last windows rather than just most recent; based on a diff from
+  joshe.
+
 04 November 2008
 
 * Don't try to redraw status line when showing a prompt or message; if it does,
@@ -687,4 +697,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.165 2008-11-04 20:55:58 nicm Exp $
+$Id: CHANGES,v 1.166 2008-11-16 10:10:26 nicm Exp $

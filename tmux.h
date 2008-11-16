@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.195 2008-11-05 01:19:24 nicm Exp $ */
+/* $Id: tmux.h,v 1.196 2008-11-16 10:10:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -589,8 +589,10 @@ struct winlink {
 	struct window	*window;
 
 	RB_ENTRY(winlink) entry;
+	SLIST_ENTRY(winlink) sentry;
 };
 RB_HEAD(winlinks, winlink);
+SLIST_HEAD(winlink_stack, winlink);
 
 /* Option data structures. */
 struct options_entry {
@@ -640,7 +642,7 @@ struct session {
 	u_int		 sy;
 
 	struct winlink	*curw;
-	struct winlink	*lastw;
+	struct winlink_stack lastw;
 	struct winlinks	 windows;
 
 	struct options	 options;
@@ -1260,6 +1262,8 @@ struct winlink	*winlink_add(struct winlinks *, struct window *, int);
 void		 winlink_remove(struct winlinks *, struct winlink *);
 struct winlink	*winlink_next(struct winlinks *, struct winlink *);
 struct winlink	*winlink_previous(struct winlinks *, struct winlink *);
+void		 winlink_stack_push(struct winlink_stack *, struct winlink *);
+void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 struct window	*window_create(const char *,
 		     const char *, const char **, u_int, u_int, u_int);
 int		 window_spawn(struct window *, const char *, const char **);

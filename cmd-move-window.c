@@ -1,4 +1,4 @@
-/* $Id: cmd-move-window.c,v 1.1 2008-06-25 20:43:13 nicm Exp $ */
+/* $Id: cmd-move-window.c,v 1.2 2008-11-16 10:10:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -81,6 +81,7 @@ cmd_move_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			 * if this makes it empty.
 			 */
 			session_alert_cancel(dst, wl_dst);
+			winlink_stack_remove(&dst->lastw, wl_dst);
 			winlink_remove(&dst->windows, wl_dst);
 
 			/* Force select/redraw if current. */
@@ -88,8 +89,6 @@ cmd_move_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 				data->flags &= ~CMD_DFLAG;
 				dst->curw = NULL;
 			}
-			if (wl_dst == dst->lastw)
-				dst->lastw = NULL;
 		}
 	}
 

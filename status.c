@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.49 2008-09-29 17:47:12 nicm Exp $ */
+/* $Id: status.c,v 1.50 2008-11-16 10:10:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -277,7 +277,7 @@ status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 	char   *text, flag;
 
 	flag = ' ';
- 	if (wl == s->lastw)
+ 	if (wl == SLIST_FIRST(&s->lastw))
 		flag = '-';
 	if (wl == s->curw)
 		flag = '*';

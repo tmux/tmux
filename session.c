@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.44 2008-11-05 01:19:24 nicm Exp $ */
+/* $Id: session.c,v 1.45 2008-11-16 10:10:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -117,7 +117,8 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	s = xmalloc(sizeof *s);
 	if (gettimeofday(&s->tv, NULL) != 0)
 		fatal("gettimeofday");
-	s->curw = s->lastw = NULL;
+	s->curw = NULL;
+	SLIST_INIT(&s->lastw);
 	RB_INIT(&s->windows);
 	SLIST_INIT(&s->alerts);
 	paste_init_stack(&s->buffers);
@@ -168,6 +169,8 @@ session_destroy(struct session *s)
 	options_free(&s->options);
 	paste_free_stack(&s->buffers);
 
+	while (!SLIST_EMPTY(&s->lastw))
+		winlink_stack_remove(&s->lastw, SLIST_FIRST(&s->lastw));
 	while (!RB_EMPTY(&s->windows))
 		winlink_remove(&s->windows, RB_ROOT(&s->windows));
 
@@ -223,10 +226,9 @@ session_detach(struct session *s, struct winlink *wl)
 {
 	if (s->curw == wl && session_last(s) != 0 && session_previous(s) != 0)
 		session_next(s);
-	if (s->lastw == wl)
-		s->lastw = NULL;
 
 	session_alert_cancel(s, wl);
+	winlink_stack_remove(&s->lastw, wl);
 	winlink_remove(&s->windows, wl);
 	if (RB_EMPTY(&s->windows)) {
 		session_destroy(s);
@@ -262,7 +264,8 @@ session_next(struct session *s)
 		wl = RB_MIN(winlinks, &s->windows);
 	if (wl == s->curw)
 		return (1);
-	s->lastw = s->curw;
+	winlink_stack_remove(&s->lastw, wl);
+	winlink_stack_push(&s->lastw, s->curw);
 	s->curw = wl;
 	session_alert_cancel(s, wl);
 	return (0);
@@ -282,7 +285,8 @@ session_previous(struct session *s)
 		wl = RB_MAX(winlinks, &s->windows);
 	if (wl == s->curw)
 		return (1);
-	s->lastw = s->curw;
+	winlink_stack_remove(&s->lastw, wl);
+	winlink_stack_push(&s->lastw, s->curw);
 	s->curw = wl;
 	session_alert_cancel(s, wl);
 	return (0);
@@ -299,7 +303,8 @@ session_select(struct session *s, int idx)
 		return (-1);
 	if (wl == s->curw)
 		return (1);
-	s->lastw = s->curw;
+	winlink_stack_remove(&s->lastw, wl);
+	winlink_stack_push(&s->lastw, s->curw);
 	s->curw = wl;
 	session_alert_cancel(s, wl);
 	return (0);
@@ -311,13 +316,14 @@ session_last(struct session *s)
 {
 	struct winlink	*wl;
 
-	wl = s->lastw;
+	wl = SLIST_FIRST(&s->lastw);
 	if (wl == NULL)
 		return (-1);
 	if (wl == s->curw)
 		return (1);
 
-	s->lastw = s->curw;
+	winlink_stack_remove(&s->lastw, wl);
+	winlink_stack_push(&s->lastw, s->curw);
 	s->curw = wl;
 	session_alert_cancel(s, wl);
 	return (0);
