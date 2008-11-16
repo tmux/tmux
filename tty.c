@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.50 2008-11-16 10:10:26 nicm Exp $ */
+/* $Id: tty.c,v 1.51 2008-11-16 13:28:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -888,7 +888,7 @@ tty_cmd_cell(struct tty *tty, unused struct screen *s, va_list ap)
 	tty_attributes(tty, gc);
 
 	/* If not UTF8 multibyte, write directly. */
-	if (gc->data < 0xff) {
+	if (gc->data <= 0xff) {
 		tty_putc(tty, gc->data);
 		return;
 	}

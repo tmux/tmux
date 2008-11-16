@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.196 2008-11-16 10:10:26 nicm Exp $ */
+/* $Id: tmux.h,v 1.197 2008-11-16 13:28:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -569,6 +569,7 @@ struct window {
 #define WINDOW_MONITOR 0x8
 #define WINDOW_AGGRESSIVE 0x10
 #define WINDOW_ZOMBIFY 0x20
+#define WINDOW_UTF8 0x40
 
 	u_int		 limitx;
 	u_int		 limity;

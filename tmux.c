@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.79 2008-09-29 16:03:27 nicm Exp $ */
+/* $Id: tmux.c,v 1.80 2008-11-16 13:28:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -231,6 +231,7 @@ main(int argc, char **argv)
 	options_set_number(&global_options, "buffer-limit", 9);
 	options_set_number(&global_options, "remain-by-default", 0);
 	options_set_number(&global_options, "mode-keys", MODEKEY_EMACS);
+	options_set_number(&global_options, "utf8-default", 0);
 
 	if (cfg_file == NULL) {
 		home = getenv("HOME");

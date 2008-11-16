@@ -1,5 +1,15 @@
 16 November 2008
 
+* New window option: "utf8"; this must be on (it is off by default) for UTF-8
+  to be parsed. The global/session option "utf8-default" controls the setting
+  for new windows.
+
+  This means that by default tmux does not handle UTF-8. To use UTF-8 by
+  default it is necessary to a) "set utf8-default on" in .tmux.conf b) start
+  tmux with -u on any terminal which support UTF-8.
+
+  It seems a bit unnecessary for this to be a per-window option but that is
+  the easiest way to do it, and it can't do any harm...
 * Enable default colours if op contains \033[39;49m, based on a report from
   fulvio ciriaco.
 
@@ -697,4 +707,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.166 2008-11-16 10:10:26 nicm Exp $
+$Id: CHANGES,v 1.167 2008-11-16 13:28:59 nicm Exp $

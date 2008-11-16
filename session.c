@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.45 2008-11-16 10:10:26 nicm Exp $ */
+/* $Id: session.c,v 1.46 2008-11-16 13:28:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -209,6 +209,8 @@ session_new(struct session *s, const char *name, const char *cmd, int idx)
 
 	if (options_get_number(&s->options, "remain-by-default"))
 		w->flags |= WINDOW_ZOMBIFY;
+	if (options_get_number(&s->options, "utf8-default"))
+		w->flags |= WINDOW_UTF8;
 
 	return (session_attach(s, w, idx));
 }

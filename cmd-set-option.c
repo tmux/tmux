@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.43 2008-09-26 06:45:25 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.44 2008-11-16 13:28:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -77,6 +77,7 @@ const struct set_option_entry set_option_table[NSETOPTION] = {
 	{ "status-interval", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "status-left", SET_OPTION_STRING, 0, 0, NULL },
 	{ "status-right", SET_OPTION_STRING, 0, 0, NULL },
+	{ "utf8", SET_OPTION_FLAG, 0, 0, NULL },
 };
 
 void	set_option_string(struct cmd_ctx *,

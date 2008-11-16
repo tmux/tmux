@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.49 2008-09-25 20:08:56 nicm Exp $
+.\" $Id: tmux.1,v 1.50 2008-11-16 13:28:59 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl qVv
+.Op Fl 2dquVv
 .Op Fl f Ar file
 .Op Fl S Ar socket-path
 .Op Ar command Op Ar flags
@@ -50,6 +50,14 @@ Communication takes place through a socket, by default placed in
 .Pp
 The options are as follows:
 .Bl -tag -width "XXXXXXXXXXXX"
+.It Fl 2
+Force
+.Nm
+to assume the terminal supports 256 colours.
+.It Fl d
+Force
+.Nm
+to assume the terminal support default colours.
 .It Fl f Ar file
 Specify an alternative configuration file.
 By default,
@@ -70,6 +78,10 @@ where
 .Em UID
 is the uid of the user who invoked
 .Nm .
+.If Fl u
+Intruct
+.Nm
+that the terminal support UTF-8.
 .It Fl V
 Print program version.
 .It Fl v

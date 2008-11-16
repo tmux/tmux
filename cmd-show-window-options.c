@@ -1,4 +1,4 @@
-/* $Id: cmd-show-window-options.c,v 1.2 2008-06-29 07:04:30 nicm Exp $ */
+/* $Id: cmd-show-window-options.c,v 1.3 2008-11-16 13:28:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,6 +62,8 @@ cmd_show_window_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->print(ctx, "monitor-activity");
 	if (wl->window->flags & WINDOW_ZOMBIFY)
 		ctx->print(ctx, "remain-on-exit");
+	if (wl->window->flags & WINDOW_UTF8)
+		ctx->print(ctx, "utf8");
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
