@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.197 2008-11-16 13:28:59 nicm Exp $ */
+/* $Id: tmux.h,v 1.198 2008-11-17 18:56:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -840,7 +840,7 @@ struct set_option_entry {
 	const char     **choices;
 };
 extern const struct set_option_entry set_option_table[];
-#define NSETOPTION 15
+#define NSETOPTION 16
 
 /* Edit keys. */
 enum mode_key {
