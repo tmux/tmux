@@ -4,19 +4,18 @@ tmux is a "terminal multiplexer", it enables a number of terminals (or windows)
 to be accessed and controlled from a single terminal. tmux is intended to be a
 simple, modern, BSD-licensed alternative to programs such as GNU screen.
 
-This 0.2 release should be considered a beta release. It runs on OpenBSD,
-FreeBSD and Linux, but has many missing features and is expected to have a good
-number of bugs.
+This 0.5 runs on OpenBSD, FreeBSD, Linux and OS X and is usable, although there
+remain a number of missing features and some remaining bugs are expected.
 
-tmux consists of a server part and multiple clients. The server is created
-when required and runs continuously unless killed by the user. Clients access
-the server through a socket in /tmp. Multiple sessions may be created on a
-single server and attached to a number of clients. Each session may then
-have a number of windows and windows may be linked to a number of sessions.
-Commands are available to create, rename and destroy windows and sessions; to
-attach and detach sessions from client terminals; to set configuration options;
-and to bind and unbind command keys (invoked preceded by a prefix key, by
-default ctrl-b). Please see the tmux(1) man page for further information.
+tmux consists of a server part and multiple clients. The server is created when
+required and runs continuously unless killed by the user. Clients access the
+server through a socket in /tmp. Multiple sessions may be created on a single
+server and attached to a number of clients. Each session may then have a number
+of windows and windows may be linked to a number of sessions.  Commands are
+available to create, rename and destroy windows and sessions; to attach and
+detach sessions from client terminals; to set configuration options; and to
+bind and unbind command keys (invoked preceded by a prefix key, by default
+ctrl-b). Please see the tmux(1) man page for further information.
 
 The following is a summary of major features implemented in this version:
 
@@ -41,24 +40,23 @@ And major missing features:
 A more extensive, but rough, todo list is included in the TODO file.
 
 tmux also depends on several features of the client terminal (TERM), if these
-are missing it may refuse to run, or not behave correctly. It is possible to
-emulate some of these but tmux does not do this at present. Known working are
-TERM=screen (tmux in screen), xterm, xterm-color and rxvt. Note that tmux
-(and screen) relies on an AX term capability to detect if the terminal
-supports "default" (transparent) foreground and background colours. On OpenBSD,
-TERM=xterm and TERM=xterm-color lack this; TERM=rxvt does have it and works fine
-at least with the aterm and rxvt terminal emulators.
+are missing it may refuse to run, or not behave correctly. Known working are
+TERM=screen (tmux in screen), xterm, xterm-color and rxvt. Note that TERM=xterm
+does not support colour on OpenBSD. screen ignores this, tmux does not: use
+xterm-color or rxvt for colour.
 
-Note that TERM=xterm does not support colour on OpenBSD. screen ignores this,
-tmux does not: use xterm-color or rxvt for colour.
+tmux supports UTF-8. To use it, the utf8 option must be set on each window; this
+may be turned on by default by setting the utf8-default option. In addition, when
+starting tmux or attaching to an existing session from a UTF-8-capable terminal,
+the -u flag must be specified.
 
 There are the following known issues:
 
-- cons25 on the FreeBSD console doesn't support scroll region (cs) (or lies about
-  support, I'm not totally clear which). This is a pity but emulating cs is non-
-  trivial and as most modern vt220-based software terminals support it currently
-  I have better things to work one. Diffs or ideas how to cleanly emulate cs
-  are welcome.
+- cons25 on the FreeBSD console doesn't support scroll region (cs) (or lies
+  about support, I'm not totally clear which). This is a pity but emulating cs
+  is non- trivial and as most modern vt220-based software terminals support it,
+  currently there are better things to work one. Diffs or ideas how to cleanly
+  emulate cs are welcome.
 
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
@@ -70,4 +68,4 @@ welcome. Please email:
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.36 2008-08-28 17:45:24 nicm Exp $
+$Id: NOTES,v 1.37 2008-11-17 18:35:27 nicm Exp $
