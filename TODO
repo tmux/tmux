@@ -34,9 +34,6 @@
 - better terminal emulation (identify, insert mode, some other bits)
 - save stack for last window
 - when resizing, use history
-
--- For 0.5 --------------------------------------------------------------------
-
 - audit for leftover/unused code
 - commands:	save-buffer -b number filename
 		load-buffer -b number filename
@@ -54,4 +51,3 @@
 - many more info() displays for various things
 - document mode-keys
 - vi half page scroll
-- document new flags

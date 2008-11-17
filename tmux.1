@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.50 2008-11-16 13:28:59 nicm Exp $
+.\" $Id: tmux.1,v 1.51 2008-11-17 17:41:35 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -78,7 +78,7 @@ where
 .Em UID
 is the uid of the user who invoked
 .Nm .
-.If Fl u
+.It Fl u
 Intruct
 .Nm
 that the terminal support UTF-8.
@@ -205,72 +205,48 @@ The others are:
 This is entered when a command which produces output, such as
 .Ic list-keys ,
 is executed from a key binding.
-The
-.Ql up ,
-.Ql down ,
-.Ql page-up
-and
-.Ql page-down
-keys or
-.Xr vi 1
-style
-.Ql j
-and
-.Ql k
-keys may be used to scroll the output up and down.
-The
-.Ql q
-key will exit output mode.
 .It Em scroll mode
 This is entered with the
 .Ic scroll-mode
 command (bound to
 .Ql =
 by default) and permits the window history buffer to be inspected.
-In addition to the commands supported by output mode, the left and right arrow
-keys, or
-.Ql h
-and
-.Ql l ,
-will scroll left and right.
-.Ql C-u
-and
-.Ql C-f
-may be used to scroll up and down by one screen.
 .It Em copy mode
 This permits a section of a window or its history to be copied to a
 .Em paste buffer
 for later insertion into another window.
-The navigation keys move the cursor around the window, scrolling as necessary.
-In addition,
-.Ql C-a
-and
-.Ql C-e
-(or the
-.Xr vi 1
-style
-.Ql 0
-and
-.Ql $
-keys) move to the start and end of the line;
-.Ql M-f
-or
-.Ql w
-moves the cursor forward one word;
-.Ql M-b
-or
-.Ql b
-moves the cursor backward one word; the space key begins a selection; and the
-enter key or
-.Ql C-w
-creates a new paste buffer from the selection and exits copy mode.
-.Pp
 This mode is entered with the
 .Ic copy-mode
 command, bound to
 .Ql [
 by default.
 .El
+The keys available depend on whether
+.Xr emacs 1
+or
+.Xr vi 1
+mode is selected (see the
+.Ic mode-keys
+option).
+The following keys are supported as appropriate for the mode:
+.Bl -column "FunctionXXXXXXXXXXXX" "viXXXXXX" "emacs" -offset indent
+.It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
+.It Li "Start of line" Ta "0 or ^" Ta "C-a"
+.It Li "Clear selection" Ta "Escape" Ta "C-g"
+.It Li "Copy selection" Ta "Enter" Ta "M-w"
+.It Li "Cursor down" Ta "j" Ta "Down"
+.It Li "End of line" Ta "$" Ta "C-e"
+.It Li "Cursor left" Ta "h" Ta "Left"
+.It Li "Next page" Ta "C-f" Ta "Page down"
+.It Li "Next word" Ta "w" Ta "M-f"
+.It Li "Previous page" Ta "C-u" Ta "Page up"
+.It Li "Previous word" Ta "b" Ta "M-b"
+.It Li "Quit mode" Ta "q" Ta "Escape"
+.It Li "Cursor right" Ta "l" Ta "Right"
+.It Li "Start selection" Ta "Space" Ta "C-Space"
+.It Li "Cursor up" Ta "k" Ta "Up"
+.El
+.Pp
 .Sh BUFFERS
 .Nm
 maintains a stack of
@@ -292,7 +268,7 @@ This section contains a list of the commands supported by
 .Nm .
 Most commands accept the optional
 .Fl t
-argument with one of 
+argument with one of
 .Ar target-client ,
 .Ar target-session
 or
@@ -683,7 +659,7 @@ resized and retain the limit at the point they were created.
 .It Xo Ic mode-keys
 .Op Ic vi | Ic emacs
 .Xc
-Use 
+Use
 .Xr vi 1 -
 or
 .Xr emacs 1 -
@@ -697,14 +673,20 @@ Set the current prefix key.
 If this option is on, newly created windows have their
 .Ic remain-on-exit
 flag set.
+.It Xo Ic utf8-default
+.Op Ic on | Ic off
+.Xc
+If this option is on, newly created windows have their
+.Ic utf8
+flag set.
 .It Xo Ic set-titles
 .Op Ic on | Ic off
 .Xc
 Attempt to set the window title using the \ee]2;...\e007 xterm code and
 the terminal appears to be an xterm.
 This option is enabled by default.
-Note that 
-.Xr elinks 1 
+Note that
+.Xr elinks 1
 will only attempt to set the window title if the STY environment
 variable is set.
 .It Xo Ic status
@@ -762,7 +744,7 @@ Supported options are:
 .Bl -tag -width Ds
 .It Xo Ic aggressive-resize
 .Op Ic on | Ic off
-.Xc 
+.Xc
 Aggressively resize the chosen window.
 This means that
 .Nm
@@ -793,6 +775,12 @@ exits.
 The window may be reactivated with the
 .Ic respawn-window
 command.
+.It Xo Ic utf8
+.Op Ic on | Ic off
+.Xc
+Instructs
+.Nm
+to expect UTF-8 sequences to appear in this window.
 .El
 .It Xo Ic show-buffer
 .Op Fl b Ar buffer-index
@@ -850,7 +838,7 @@ Unbind the key bound to
 .Op Fl t Ar target-window
 .Xc
 .D1 (alias: Ic unlinkw )
-Unlink 
+Unlink
 .Ar target-window .
 A window may be unlinked only if it is linked to multiple sessions - windows may
 not be linked to no sessions.
