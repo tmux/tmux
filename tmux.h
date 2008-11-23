@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.198 2008-11-17 18:56:36 nicm Exp $ */
+/* $Id: tmux.h,v 1.199 2008-11-23 19:38:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -407,8 +407,12 @@ struct msg_resize_data {
 #define MODE_MOUSE 0x10
 
 /* Grid output. */
+#ifdef DEBUG
 #define GRID_DEBUG(gd, fmt, ...) log_debug3("%s: (sx=%u, sy=%u, hsize=%u) " \
     fmt, __func__, (gd)->sx, (gd)->sy, (gd)->hsize, ## __VA_ARGS__)
+#else
+#define GRID_DEBUG(...)
+#endif
 
 /* Grid attributes. */
 #define GRID_ATTR_BRIGHT 0x1
