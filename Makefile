@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.76 2008-11-23 19:38:12 nicm Exp $
+# $Id: Makefile,v 1.77 2008-11-27 18:55:47 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -71,8 +71,8 @@ LDFLAGS+= -pg
 .endif
 LIBS+= -lutil -lncurses
 
-# FreeBSD
-.if ${OS} == "FreeBSD"
+# FreeBSD and DragonFly
+.if ${OS} == "FreeBSD" || ${OS} == "DragonFly"
 CFLAGS+= -DUSE_LIBUTIL_H
 .endif
 

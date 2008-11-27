@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.80 2008-11-16 13:28:59 nicm Exp $ */
+/* $Id: tmux.c,v 1.81 2008-11-27 18:55:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,7 +34,8 @@
 #include "tmux.h"
 
 #ifdef DEBUG
-#ifdef __OpenBSD__
+/* DragonFly uses an OpenBSD-like malloc() since 1.6 */
+#if defined(__OpenBSD__) || defined(__DragonFly__)
 const char	*malloc_options = "AFGJPX";
 #endif
 #ifdef __FreeBSD__

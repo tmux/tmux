@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.51 2008-11-16 13:28:59 nicm Exp $ */
+/* $Id: tty.c,v 1.52 2008-11-27 18:55:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -299,10 +299,6 @@ tty_find_term(char *name, int fd, char **cause)
 	}
 	if (carriage_return == NULL) {
 		xasprintf(cause, "carriage_return missing");
-		goto error;
-	}
-	if (cursor_left == NULL) {
-		xasprintf(cause, "cursor_left missing");
 		goto error;
 	}
 	if (parm_up_cursor == NULL && cursor_up == NULL) {

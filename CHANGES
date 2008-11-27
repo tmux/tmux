@@ -1,3 +1,11 @@
+27 November 2008
+
+* Tweaks to support Dragonfly.
+
+17 November 2008
+
+* tmux 0.5 released.
+
 16 November 2008
 
 * New window option: "utf8"; this must be on (it is off by default) for UTF-8
@@ -707,4 +715,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.167 2008-11-16 13:28:59 nicm Exp $
+$Id: CHANGES,v 1.168 2008-11-27 18:55:47 nicm Exp $
