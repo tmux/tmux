@@ -49,5 +49,6 @@
 - window options should be done similarly to standard options
 - next prev word etc in command prompt
 - many more info() displays for various things
-- document mode-keys
 - vi half page scroll
+- why do home/end work in emacs outside tmux but not inside?
+- option to show window titles on status line (shorten window list and put it after)
