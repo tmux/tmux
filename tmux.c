@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.81 2008-11-27 18:55:47 nicm Exp $ */
+/* $Id: tmux.c,v 1.82 2008-12-05 20:04:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -226,7 +226,9 @@ main(int argc, char **argv)
 	options_set_number(&global_options, "prefix", META);
 	options_set_string(&global_options, "status-left", "%s", ""); /* ugh */
 	options_set_string(
-	    &global_options, "status-right", "%%H:%%M %%d-%%b-%%y");
+	    &global_options, "status-right", "\"#24T\" %%H:%%M %%d-%%b-%%y");
+	options_set_number(&global_options, "status-left-length", 10);
+	options_set_number(&global_options, "status-right-length", 40);
 	options_set_number(&global_options, "status-interval", 15);
 	options_set_number(&global_options, "set-titles", 1);
 	options_set_number(&global_options, "buffer-limit", 9);

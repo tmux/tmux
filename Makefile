@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.77 2008-11-27 18:55:47 nicm Exp $
+# $Id: Makefile,v 1.78 2008-12-05 20:04:06 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -11,7 +11,7 @@ REL!= uname -r
 DATE!= date +%Y%m%d-%H%M
 
 # This must be empty as OpenBSD includes it in default CFLAGS.
-#DEBUG=
+DEBUG=
 
 META?= \002 # C-b
 

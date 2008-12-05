@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.50 2008-11-16 10:10:26 nicm Exp $ */
+/* $Id: status.c,v 1.51 2008-12-05 20:04:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,12 +19,16 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+#include <errno.h>
+#include <limits.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
 #include "tmux.h"
 
+char   *status_replace(struct session *, char *, time_t);
 size_t	status_width(struct winlink *);
 char   *status_print(struct session *, struct winlink *, struct grid_cell *);
 
@@ -35,14 +39,13 @@ status_redraw(struct client *c)
 	struct screen_redraw_ctx	ctx;
 	struct session		       *s = c->session;
 	struct winlink		       *wl;
-	char		 		*left, *right, *text, *ptr;
-	char				lbuf[BUFSIZ], rbuf[BUFSIZ];
+	char		 	       *left, *right, *text, *ptr;
 	size_t				llen, rlen, offset, xx, yy;
 	size_t				size, start, width;
 	struct grid_cell	        gc;
-	struct tm		       *tm;
-	time_t				t;
 	int				larrow, rarrow;
+
+	left = right = NULL;
 
 	if (c->sy == 0 || !options_get_number(&s->options, "status"))
 		goto off;
@@ -58,14 +61,19 @@ status_redraw(struct client *c)
 	if (yy == 0)
 		goto blank;
 
-	t = c->status_timer.tv_sec;
-	tm = localtime(&t);
-	left = options_get_string(&s->options, "status-left");
-	strftime(lbuf, sizeof lbuf, left, tm);
-	llen = strlen(lbuf);
-	right = options_get_string(&s->options, "status-right");
-	strftime(rbuf, sizeof rbuf, right, tm);
-	rlen = strlen(rbuf);
+	left = status_replace(s, options_get_string(
+	    &s->options, "status-left"), c->status_timer.tv_sec);
+	llen = options_get_number(&s->options, "status-left-length");
+	if (strlen(left) < llen)
+		llen = strlen(left);
+	left[llen] = '\0';
+
+	right = status_replace(s, options_get_string(
+	    &s->options, "status-right"), c->status_timer.tv_sec);
+	rlen = options_get_number(&s->options, "status-right-length");
+	if (strlen(right) < rlen)
+		rlen = strlen(right);
+	right[rlen] = '\0';
 
 	/*
 	 * Figure out how much space we have for the window list. If there isn't
@@ -141,7 +149,7 @@ draw:
 	screen_redraw_start_client(&ctx, c);
 	if (llen != 0) {
  		ctx.write(ctx.data, TTY_CURSORMOVE, 0, yy);
-		screen_redraw_puts(&ctx, &gc, "%s ", lbuf);
+		screen_redraw_puts(&ctx, &gc, "%s ", left);
 		if (larrow)
 			screen_redraw_putc(&ctx, &gc, ' ');
 	} else {
@@ -194,7 +202,7 @@ draw:
 	/* Draw the last item. */
 	if (rlen != 0) {
 		ctx.write(ctx.data, TTY_CURSORMOVE, c->sx - rlen - 1, yy);
-		screen_redraw_puts(&ctx, &gc, " %s", rbuf);
+		screen_redraw_puts(&ctx, &gc, " %s", right);
 	}
 
 	/* Draw the arrows. */
@@ -223,8 +231,7 @@ draw:
 		gc.attr &= ~GRID_ATTR_REVERSE;
 	}
 
-	screen_redraw_stop(&ctx);
-	return;
+	goto out;
 
 blank:
  	/* Just draw the whole line as blank. */
@@ -232,9 +239,8 @@ blank:
 	ctx.write(ctx.data, TTY_CURSORMOVE, 0, yy);
 	for (offset = 0; offset < c->sx; offset++)
 		screen_redraw_putc(&ctx, &gc, ' ');
-	screen_redraw_stop(&ctx);
 
-	return;
+	goto out;
 
 off:
 	/*
@@ -249,9 +255,71 @@ off:
 			screen_redraw_putc(&ctx, &gc, ' ');
 	} else
 		screen_redraw_lines(&ctx, c->sy - 1, 1);
+
+out:
 	screen_redraw_stop(&ctx);
 
-	return;
+	if (left != NULL)
+		xfree(left);
+	if (right != NULL)
+		xfree(right);
+}
+
+char *
+status_replace(struct session *s, char *fmt, time_t t)
+{
+	static char	out[BUFSIZ];
+	char		in[BUFSIZ], ch, *iptr, *optr, *ptr, *endptr;
+	size_t		len;
+	long		n;
+	
+	strftime(in, sizeof in, fmt, localtime(&t));
+	in[(sizeof in) - 1] = '\0';
+
+	iptr = in;
+	optr = out;
+
+	while (*iptr != '\0') {
+		if (optr >= out + (sizeof out) - 1)
+			break;
+		switch (ch = *iptr++) {
+		case '#':
+			errno = 0;
+			n = strtol(iptr, &endptr, 10);
+			if ((n == 0 && errno != EINVAL) ||
+			    (n == LONG_MIN && errno != ERANGE) ||
+			    (n == LONG_MAX && errno != ERANGE) ||
+			    n != 0)
+				iptr = endptr;
+			if (n <= 0)
+				n = LONG_MAX;
+
+			switch (*iptr++) {
+			case 'T':
+				ptr = s->curw->window->base.title;
+				len = strlen(ptr);
+				if ((size_t) n < len)
+					len = n;
+				if (optr + len >= out + (sizeof out) - 1)
+					break;
+				while (len > 0 && *ptr != '\0') {
+					*optr++ = *ptr++;
+					len--;
+				}
+				break;
+			case '#':
+				*optr++ = '#';
+				break;
+			}
+			break;
+		default:
+			*optr++ = ch;
+			break;
+		}
+	}
+	*optr = '\0';
+
+	return (xstrdup(out));
 }
 
 size_t

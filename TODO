@@ -51,4 +51,4 @@
 - many more info() displays for various things
 - vi half page scroll
 - why do home/end work in emacs outside tmux but not inside?
-- option to show window titles on status line (shorten window list and put it after)
+- document status line options, title bits

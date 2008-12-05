@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.67 2008-11-16 13:28:59 nicm Exp $ */
+/* $Id: input.c,v 1.68 2008-12-05 20:04:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -462,7 +462,8 @@ input_state_string_escape(u_char ch, struct input_ctx *ictx)
 				xfree(s);
 				return;
 			}
-			screen_set_title(ictx->ctx.s, s + 2);
+			screen_set_title(ictx->ctx.s, s + 2);	
+			server_status_window(ictx->w);
 			xfree(s);
 			break;
 		case STRING_APPLICATION:
@@ -470,6 +471,7 @@ input_state_string_escape(u_char ch, struct input_ctx *ictx)
 				return;
 			s = input_get_string(ictx);
 			screen_set_title(ictx->ctx.s, s);
+			server_status_window(ictx->w);
 			xfree(s);
 			break;
 		case STRING_NAME:

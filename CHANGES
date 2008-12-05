@@ -1,3 +1,16 @@
+02 December 2008
+
+* Add support for including the window title in status-left or status-right
+  strings by including the character pair "#T". This may be prefixed with
+  a number to specify a maximum length, for example "#24T" to use at most
+  24 characters of the title.
+* Introduce two new options, status-left-length and status-right-length,
+  control the maximum length of left and right components of the status bar.
+* elinks (and possibly others) bypass the terminal and talk directly to X to
+  restore the window title when exiting. tmux can't know about this particular
+  bit of stupidity so the title ends up strange - the prefix isn't terribly
+  important and elinks is quite useful so just get rid of it.
+
 27 November 2008
 
 * Tweaks to support Dragonfly.
@@ -715,4 +728,4 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.168 2008-11-27 18:55:47 nicm Exp $
+$Id: CHANGES,v 1.169 2008-12-05 20:04:06 nicm Exp $

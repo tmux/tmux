@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.84 2008-11-04 20:55:58 nicm Exp $ */
+/* $Id: server.c,v 1.85 2008-12-05 20:04:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -305,7 +305,7 @@ server_check_redraw(struct client *c)
 	struct screen			screen;
 	struct grid_cell		gc;
 	u_int				xx, yy, sx, sy;
-	char			        title[BUFSIZ];
+	char			       *title;
 	int				flags;
 
 	if (c == NULL || c->session == NULL)
@@ -316,9 +316,7 @@ server_check_redraw(struct client *c)
 	c->tty.flags &= ~TTY_FREEZE;
 
 	if (options_get_number(&s->options, "set-titles")) {
-		xsnprintf(title, sizeof title,
-		    "%s:%u:%s - \"%s\"", s->name, s->curw->idx,
-		    s->curw->window->name, s->curw->window->base.title);
+		title = s->curw->window->base.title;
 		if (c->title == NULL || strcmp(title, c->title) != 0) {
 			if (c->title != NULL)
 				xfree(c->title);
