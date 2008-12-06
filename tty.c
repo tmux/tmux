@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.52 2008-11-27 18:55:47 nicm Exp $ */
+/* $Id: tty.c,v 1.53 2008-12-06 09:30:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -116,7 +116,10 @@ int
 tty_open(struct tty *tty, char **cause)
 {
 	struct termios	 tio;
-	int		 what, mode;
+#ifdef TIOCFLUSH
+	int		 what;
+#endif
+	int		 mode;
 
 	tty->fd = open(tty->path, O_RDWR|O_NONBLOCK);
 	if (tty->fd == -1) {
