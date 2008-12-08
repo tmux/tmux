@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.82 2008-12-05 20:04:06 nicm Exp $ */
+/* $Id: tmux.c,v 1.83 2008-12-08 16:19:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,6 +48,7 @@ volatile sig_atomic_t sigterm;
 
 char		*cfg_file;
 struct options	 global_options;
+struct options	 global_window_options;
 
 int		 debug_level;
 int		 be_quiet;
@@ -232,9 +233,18 @@ main(int argc, char **argv)
 	options_set_number(&global_options, "status-interval", 15);
 	options_set_number(&global_options, "set-titles", 1);
 	options_set_number(&global_options, "buffer-limit", 9);
-	options_set_number(&global_options, "remain-by-default", 0);
-	options_set_number(&global_options, "mode-keys", MODEKEY_EMACS);
-	options_set_number(&global_options, "utf8-default", 0);
+	options_set_number(&global_options, "message-fg", 0);
+	options_set_number(&global_options, "message-bg", 3);
+	options_init(&global_window_options, NULL);
+	options_set_number(&global_window_options, "monitor-activity", 0);
+	options_set_number(&global_window_options, "aggressive-resize", 0);
+ 	options_set_number(&global_window_options, "remain-on-exit", 0);
+	options_set_number(&global_window_options, "utf8", 0);
+	options_set_number(&global_window_options, "mode-fg", 0);
+	options_set_number(&global_window_options, "mode-bg", 3);
+	options_set_number(&global_window_options, "mode-keys", MODEKEY_EMACS);
+	options_set_number(&global_window_options, "force-width", 0);
+	options_set_number(&global_window_options, "force-height", 0);
 
 	if (cfg_file == NULL) {
 		home = getenv("HOME");
@@ -363,6 +373,7 @@ main(int argc, char **argv)
 
 out:
 	options_free(&global_options);
+	options_free(&global_window_options);
 
 	close(cctx.srv_fd);
 	buffer_destroy(cctx.srv_in);

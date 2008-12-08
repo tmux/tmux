@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.7 2008-09-26 06:45:26 nicm Exp $ */
+/* $Id: cmd-string.c,v 1.8 2008-12-08 16:19:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -131,7 +131,8 @@ cmd_string_parse(const char *s, struct cmd **cmd, char **cause)
 			if (argc == 0)
 				goto out;
 
-			*cmd = cmd_parse(argc, argv, cause);
+			if ((*cmd = cmd_parse(argc, argv, cause)) == NULL)
+				goto error;
 			rval = 0;
 			goto out;
 		default:
@@ -145,7 +146,7 @@ cmd_string_parse(const char *s, struct cmd **cmd, char **cause)
 	}
 
 error:
-	xasprintf(cause, "bad command: %s", s);
+	xasprintf(cause, "invalid or unknown command: %s", s);
 
 out:
 	if (buf != NULL)

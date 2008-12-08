@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.33 2008-11-12 23:39:25 nicm Exp $ */
+/* $Id: window-copy.c,v 1.34 2008-12-08 16:19:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -137,7 +137,7 @@ window_copy_key(struct window *w, struct client *c, int key)
 	struct screen			*s = &data->screen;
 	int				 table;
 
-	table = options_get_number(&c->session->options, "mode-keys");
+	table = options_get_number(&w->options, "mode-keys");
 	switch (mode_key_lookup(table, key)) {
 	case MODEKEY_QUIT:
 		window_reset_mode(w);
@@ -213,10 +213,11 @@ window_copy_write_line(struct window *w, struct screen_write_ctx *ctx, u_int py)
 		memcpy(&gc, &grid_default_cell, sizeof gc);
 		size = xsnprintf(hdr, sizeof hdr,
 		    "[%u,%u/%u]", data->ox, data->oy, screen_hsize(&w->base));
-		gc.attr |= GRID_ATTR_BRIGHT|GRID_ATTR_REVERSE;
+		gc.fg = options_get_number(&w->options, "mode-fg");
+		gc.bg = options_get_number(&w->options, "mode-bg");
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
 		screen_write_puts(ctx, &gc, "%s", hdr);
-		gc.attr &= ~(GRID_ATTR_BRIGHT|GRID_ATTR_REVERSE);
+		screen_write_puts(ctx, &gc, "%s", hdr);
 	} else
 		size = 0;
 
@@ -308,10 +309,16 @@ window_copy_update_selection(struct window *w)
 {
 	struct window_copy_mode_data	*data = w->modedata;
 	struct screen			*s = &data->screen;
+	struct grid_cell		 gc;
 	u_int				 sx, sy, tx, ty;
 
 	if (!s->sel.flag)
 		return (0);
+
+	/* Set colours. */
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.fg = options_get_number(&w->options, "mode-fg");
+	gc.bg = options_get_number(&w->options, "mode-bg");	
 
 	/* Find top-left of screen. */
 	tx = data->ox;
@@ -343,7 +350,8 @@ window_copy_update_selection(struct window *w)
 	}
 	sy = screen_hsize(s) + sy;
 
-	screen_set_selection(s, sx, sy, data->cx, screen_hsize(s) + data->cy);
+	screen_set_selection(
+	    s, sx, sy, data->cx, screen_hsize(s) + data->cy, &gc);
 	return (1);
 }
 

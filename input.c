@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.68 2008-12-05 20:04:06 nicm Exp $ */
+/* $Id: input.c,v 1.69 2008-12-08 16:19:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -512,7 +512,7 @@ input_state_utf8(u_char ch, struct input_ctx *ictx)
 void
 input_handle_character(u_char ch, struct input_ctx *ictx)
 {
-	if (ictx->w->flags & WINDOW_UTF8 && ch > 0x7f) {
+	if (ch > 0x7f && options_get_number(&ictx->w->options, "utf8")) {
 		/*
 		 * UTF-8 sequence.
 		 *

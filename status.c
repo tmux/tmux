@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.51 2008-12-05 20:04:06 nicm Exp $ */
+/* $Id: status.c,v 1.52 2008-12-08 16:19:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -369,6 +369,7 @@ void
 status_message_redraw(struct client *c)
 {
 	struct screen_redraw_ctx	ctx;
+	struct session		       *s = c->session;
 	size_t			        xx, yy;
 	struct grid_cell		gc;
 
@@ -381,7 +382,8 @@ status_message_redraw(struct client *c)
 	yy = c->sy - 1;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.attr |= GRID_ATTR_REVERSE;
+	gc.fg = options_get_number(&s->options, "message-fg");
+	gc.bg = options_get_number(&s->options, "message-bg");
 
 	screen_redraw_start_client(&ctx, c);
 
@@ -400,6 +402,7 @@ void
 status_prompt_redraw(struct client *c)
 {
 	struct screen_redraw_ctx	ctx;
+	struct session		       *s = c->session;
 	size_t			        i, xx, yy, left, size, offset;
 	char				ch;
 	struct grid_cell		gc;
@@ -414,7 +417,8 @@ status_prompt_redraw(struct client *c)
 	yy = c->sy - 1;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.attr |= GRID_ATTR_REVERSE;
+	gc.fg = options_get_number(&s->options, "message-fg");
+	gc.bg = options_get_number(&s->options, "message-bg");
 
 	screen_redraw_start_client(&ctx, c);
 
@@ -448,7 +452,8 @@ status_prompt_redraw(struct client *c)
 		ch = c->prompt_buffer[c->prompt_index];
 	if (ch == '\0')
 		ch = ' ';
-	gc.attr &= ~GRID_ATTR_REVERSE;
+	gc.bg = gc.fg;
+	gc.fg = options_get_number(&s->options, "message-bg");
 	screen_redraw_putc(&ctx, &gc, ch);
 
 	screen_redraw_stop(&ctx);

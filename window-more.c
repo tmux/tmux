@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.20 2008-09-26 06:45:28 nicm Exp $ */
+/* $Id: window-more.c,v 1.21 2008-12-08 16:19:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -123,13 +123,13 @@ window_more_resize(struct window *w, u_int sx, u_int sy)
 }
 
 void
-window_more_key(struct window *w, struct client *c, int key)
+window_more_key(struct window *w, unused struct client *c, int key)
 {
 	struct window_more_mode_data	*data = w->modedata;
 	struct screen			*s = &data->screen;
 	int				 table;
 
-	table = options_get_number(&c->session->options, "mode-keys");
+	table = options_get_number(&w->options, "mode-keys");
 	switch (mode_key_lookup(table, key)) {
 	case MODEKEY_QUIT:
 		window_reset_mode(w);
@@ -174,9 +174,10 @@ window_more_write_line(struct window *w, struct screen_write_ctx *ctx, u_int py)
 		size = xsnprintf(hdr, sizeof hdr,
 		    "[%u/%u]", data->top, ARRAY_LENGTH(&data->list));
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
-		gc.attr |= GRID_ATTR_BRIGHT|GRID_ATTR_REVERSE;
+		gc.fg = options_get_number(&w->options, "mode-fg");
+		gc.bg = options_get_number(&w->options, "mode-bg");
 		screen_write_puts(ctx, &gc, "%s", hdr);
-		gc.attr &= ~(GRID_ATTR_BRIGHT|GRID_ATTR_REVERSE);
+		memcpy(&gc, &grid_default_cell, sizeof gc);
 	} else
 		size = 0;
 

@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.51 2008-11-16 10:10:26 nicm Exp $ */
+/* $Id: window.c,v 1.52 2008-12-08 16:19:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -207,11 +207,11 @@ window_create(const char *name,
 	w->mode = NULL;
 	w->flags = 0;
 
-	w->limitx = w->limity = UINT_MAX;
 	screen_init(&w->base, sx, sy, hlimit);
 	w->screen = &w->base;
 
 	input_init(w);
+	options_init(&w->options, &global_window_options);
 
 	if (name == NULL) {
 		/* XXX */
@@ -308,6 +308,7 @@ window_destroy(struct window *w)
 	input_free(w);
 
 	window_reset_mode(w);
+	options_free(&w->options);
 	screen_free(&w->base);
 
 	buffer_destroy(w->in);

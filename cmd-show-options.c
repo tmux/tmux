@@ -1,4 +1,4 @@
-/* $Id: cmd-show-options.c,v 1.7 2008-09-25 23:28:15 nicm Exp $ */
+/* $Id: cmd-show-options.c,v 1.8 2008-12-08 16:19:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,74 +28,25 @@
  * Show options.
  */
 
-int	cmd_show_options_parse(struct cmd *, int, char **, char **);
 void	cmd_show_options_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_show_options_send(struct cmd *, struct buffer *);
-void	cmd_show_options_recv(struct cmd *, struct buffer *);
-void	cmd_show_options_free(struct cmd *);
-void	cmd_show_options_print(struct cmd *, char *, size_t);
 
-struct cmd_show_options_data {
-	char	*target;
-	int	 flag_global;
-};
-
-/*
- * XXX Can't use cmd_target because we want -t not to use current if missing
- * (this could be a flag??).
- */
 const struct cmd_entry cmd_show_options_entry = {
 	"show-options", "show",
-	"[-t target-session]",
-	0,
-	NULL,
-	cmd_show_options_parse,
+	"[-g] " CMD_TARGET_SESSION_USAGE,
+	CMD_GFLAG,
+	cmd_target_init,
+	cmd_target_parse,
 	cmd_show_options_exec,
-	cmd_show_options_send,
-	cmd_show_options_recv,
-	cmd_show_options_free,
-	cmd_show_options_print
+	cmd_target_send,
+	cmd_target_recv,
+	cmd_target_free,
+	cmd_target_print
 };
-
-int
-cmd_show_options_parse(struct cmd *self, int argc, char **argv, char **cause)
-{
-	struct cmd_show_options_data	*data;
-	int				 opt;
-
-	self->data = data = xmalloc(sizeof *data);
-	data->target = NULL;
-	data->flag_global = 1;
-
-	while ((opt = getopt(argc, argv, GETOPT_PREFIX "t:s:")) != EOF) {
-		switch (opt) {
-		case 't':
-			if (data->target == NULL)
-				data->target = xstrdup(optarg);
-			data->flag_global = 0;
-			break;
-		default:
-			goto usage;
-		}
-	}
-	argc -= optind;
-	argv += optind;
-	if (argc != 0)
-		goto usage;
-
-	return (0);
-
-usage:
-	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
-
-	self->entry->free(self);
-	return (-1);
-}
 
 void
 cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_show_options_data	*data = self->data;
+	struct cmd_target_data		*data = self->data;
 	struct session			*s;
 	struct options			*oo;
 	const struct set_option_entry   *entry;
@@ -103,14 +54,13 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char				*vs;
 	long long			 vn;
 
-	if (data == NULL)
-		return;
-
-	if (data->flag_global ||
-	    ((s = cmd_find_session(ctx, data->target))) == NULL)
+	if (data->flags & CMD_GFLAG)
 		oo = &global_options;
-	else
+	else {
+		if ((s = cmd_find_session(ctx, data->target)) == NULL)
+			return;
 		oo = &s->options;
+	}
 
 	for (i = 0; i < NSETOPTION; i++) {
 		entry = &set_option_table[i];
@@ -154,39 +104,4 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
-}
-
-void
-cmd_show_options_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_show_options_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->target);
-}
-
-void
-cmd_show_options_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_show_options_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->target = cmd_recv_string(b);
-}
-
-void
-cmd_show_options_free(struct cmd *self)
-{
-	struct cmd_show_options_data	*data = self->data;
-
-	if (data->target != NULL)
-		xfree(data->target);
-	xfree(data);
-}
-
-void
-cmd_show_options_print(struct cmd *self, char *buf, size_t len)
-{
-	xsnprintf(buf, len, "%s", self->entry->name);
 }

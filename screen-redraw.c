@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.13 2008-09-26 06:45:26 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.14 2008-12-08 16:19:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -124,7 +124,7 @@ void
 screen_redraw_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 {
 	const struct grid_cell	*gc;
-	struct grid_cell	 hc;
+	struct grid_cell	 tc;
 
 	if (px != ctx->s->cx || py != ctx->s->cy) {
 		ctx->s->cx = px;
@@ -134,9 +134,9 @@ screen_redraw_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py)
 
 	gc = grid_view_peek_cell(ctx->s->grid, px, py);
         if (screen_check_selection(ctx->s, px, py)) {
-		memcpy(&hc, gc, sizeof hc);
-		hc.attr |= GRID_ATTR_REVERSE;
-		ctx->write(ctx->data, TTY_CELL, &hc);
+		memcpy(&tc, &ctx->s->sel.cell, sizeof tc);
+		tc.data = gc->data;
+		ctx->write(ctx->data, TTY_CELL, &tc);
 	} else
 		ctx->write(ctx->data, TTY_CELL, gc);
 	ctx->s->cx++;

@@ -1,7 +1,7 @@
-/* $Id: cmd-show-window-options.c,v 1.3 2008-11-16 13:28:59 nicm Exp $ */
+/* $Id: cmd-show-window-options.c,v 1.4 2008-12-08 16:19:51 nicm Exp $ */
 
 /*
- * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
+ * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,6 +20,7 @@
 
 #include <getopt.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -31,8 +32,8 @@ void	cmd_show_window_options_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_window_options_entry = {
 	"show-window-options", "showw",
-	CMD_TARGET_WINDOW_USAGE,
-	0,
+	"[-g] " CMD_TARGET_WINDOW_USAGE,
+	CMD_GFLAG,
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_show_window_options_exec,
@@ -45,25 +46,61 @@ const struct cmd_entry cmd_show_window_options_entry = {
 void
 cmd_show_window_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct winlink		*wl;
-	struct session		*s;
+	struct cmd_target_data		*data = self->data;
+	struct winlink			*wl;
+	struct options			*oo;
+	const struct set_option_entry	*entry;
+	u_int				 i;
+	char				*vs;
+	long long			 vn;
 
-	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
-		return;
+	if (data->flags & CMD_GFLAG)
+		oo = &global_window_options;
+	else {
+		if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
+			return;
+		oo = &wl->window->options;
+	}
 
-	if (wl->window->flags & WINDOW_AGGRESSIVE)
-		ctx->print(ctx, "aggressive-resize");
-	if (wl->window->limitx != UINT_MAX)
-		ctx->print(ctx, "force-width %u", wl->window->limitx);
-	if (wl->window->limity != UINT_MAX)
-		ctx->print(ctx, "force-height %u", wl->window->limity);
-	if (wl->window->flags & WINDOW_MONITOR)
-		ctx->print(ctx, "monitor-activity");
-	if (wl->window->flags & WINDOW_ZOMBIFY)
-		ctx->print(ctx, "remain-on-exit");
-	if (wl->window->flags & WINDOW_UTF8)
-		ctx->print(ctx, "utf8");
+	for (i = 0; i < NSETWINDOWOPTION; i++) {
+		entry = &set_window_option_table[i];
+
+		if (options_find1(oo, entry->name) == NULL)
+			continue;
+
+		switch (entry->type) {
+		case SET_OPTION_STRING:
+			vs = options_get_string(oo, entry->name);
+			ctx->print(ctx, "%s \"%s\"", entry->name, vs);
+			break;
+		case SET_OPTION_NUMBER:
+			vn = options_get_number(oo, entry->name);
+			ctx->print(ctx, "%s %lld", entry->name, vn);
+			break;
+		case SET_OPTION_KEY:
+			vn = options_get_number(oo, entry->name);
+ 			ctx->print(ctx, "%s %s",
+			    entry->name, key_string_lookup_key(vn));
+			break;
+		case SET_OPTION_COLOUR:
+			vn = options_get_number(oo, entry->name);
+ 			ctx->print(ctx, "%s %s",
+			    entry->name, colour_tostring(vn));
+			break;
+		case SET_OPTION_FLAG:
+			vn = options_get_number(oo, entry->name);
+			if (vn)
+				ctx->print(ctx, "%s on", entry->name);
+			else
+				ctx->print(ctx, "%s off", entry->name);
+			break;
+		case SET_OPTION_CHOICE:
+			vn = options_get_number(oo, entry->name);
+			ctx->print(ctx, "%s %s",
+			    entry->name, entry->choices[vn]);
+			break;
+		}
+	}
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

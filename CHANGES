@@ -1,3 +1,37 @@
+06 December 2008
+
+* Bring set/setw/show/showw into line with other commands. This means that by
+  default they now affect the current window (if any); the new -g flag must be
+  passed to set the global options. This changes the behaviour of set/show and
+  WILL BREAK CURRENT CONFIGURATIONS.
+
+  In summary, whether in the configuration file, the command prompt, or a key
+  binding, use -g to set a global option, use -t to specify a particular window
+  or session, or omit both to try and use the current window or session.
+
+  This makes set/show a bit of a pain but is the correct behaviour for
+  setw/showw and is the same as every other command, so we can put up with a
+  bit of pain for consistency.
+* Redo window options. They now work in the same way to session options with a
+  global options set. showw/setw commands now have similar syntax to show/set
+  (including the ability to use abbreviations).
+
+  PLEASE NOTE this includes the following configuration-breaking changes:
+  
+  - remain-by-default is now GONE, use "setw -g remain-on-exit" to apply the
+    global window option instead;
+  - mode-keys is now a window option rather than session - use "setw [-g]
+    mode-keys" instead of set.
+  
+  There are also some additions:
+
+  - message-fg and message-bg session options to control status line message
+    colours;
+  - mode-fg and mode-bg window options to set colours in window modes such as
+    copy mode.
+
+  The options code still a mess and now there is twice as much of it :-(.
+
 02 December 2008
 
 * Add support for including the window title in status-left or status-right
@@ -272,7 +306,7 @@
 
 07 June 2008
 
-* Make status-interval actually changable.
+* Make status-interval actually changeable.
 
 06 June 2008
 
@@ -355,7 +389,7 @@
 * -s to specify session name now supports fnmatch(3) wildcards; if multiple
   sessions are found, or if no -s is specified, the most newly created is used.
 * If no command is specified, assume new-session. As a byproduct, clean up
-  command default values into seperate init functions.
+  command default values into separate init functions.
 * kill-server command.
 
 02 June 2008
@@ -669,7 +703,7 @@
   a serious problem when it comes to things like scrolling. This change
   consolidates all the range checking and limiting together which should make
   it easier.
-* (mxey) Added window remaming, like "tmux rename [-s session] [-i index] name"
+* (mxey) Added window renaming, like "tmux rename [-s session] [-i index] name"
 
 27 September 2007
 
@@ -728,4 +762,8 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.169 2008-12-05 20:04:06 nicm Exp $
+$Id: CHANGES,v 1.170 2008-12-08 16:19:51 nicm Exp $
+
+ LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
+ LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB
+ LocalWords:  dstidx srcname srcidx winlink lsw nabc sabc Exp

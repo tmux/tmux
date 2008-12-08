@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.76 2008-10-09 05:31:04 nicm Exp $ */
+/* $Id: screen.c,v 1.77 2008-12-08 16:19:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -183,9 +183,12 @@ screen_resize_y(struct screen *s, u_int sy)
 
 /* Set selection. */
 void
-screen_set_selection(struct screen *s, u_int sx, u_int sy, u_int ex, u_int ey)
+screen_set_selection(struct screen *s, 
+    u_int sx, u_int sy, u_int ex, u_int ey, struct grid_cell *gc)
 {
 	struct screen_sel	*sel = &s->sel;
+
+	memcpy(&sel->cell, gc, sizeof sel->cell);
 
 	sel->flag = 1;
 	if (ey < sy || (sy == ey && ex < sx)) {

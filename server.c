@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.85 2008-12-05 20:04:06 nicm Exp $ */
+/* $Id: server.c,v 1.86 2008-12-08 16:19:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -612,7 +612,7 @@ server_handle_window(struct window *w)
 			update = 1;
 		}
 
-		if ((w->flags & WINDOW_MONITOR) &&
+		if (options_get_number(&w->options, "monitor-activity") &&
 		    (w->flags & WINDOW_ACTIVITY) &&
 		    !session_alert_has_window(s, w, WINDOW_ACTIVITY)) {
 			session_alert_add(s, w, WINDOW_ACTIVITY);
@@ -637,7 +637,7 @@ server_lost_window(struct window *w)
 
 	log_debug("lost window %d", w->fd);
 
-	if (w->flags & WINDOW_ZOMBIFY) {
+	if (options_get_number(&w->options, "remain-on-exit")) {
 		w->fd = -1;
 		return;
 	}

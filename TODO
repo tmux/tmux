@@ -52,3 +52,5 @@
 - vi half page scroll
 - why do home/end work in emacs outside tmux but not inside?
 - document status line options, title bits
+- document mode-fg/mode-bg/message-fg/message-bg
+- document window options changes

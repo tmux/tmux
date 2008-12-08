@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.200 2008-12-05 20:04:06 nicm Exp $ */
+/* $Id: tmux.h,v 1.201 2008-12-08 16:19:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -450,6 +450,31 @@ struct grid_data {
 	struct grid_cell **data;
 };
 
+/* Option data structures. */
+struct options_entry {
+	char		*name;
+
+	enum {
+		OPTIONS_STRING,
+		OPTIONS_NUMBER,
+		OPTIONS_KEY,
+		OPTIONS_COLOURS
+	} type;
+	union {
+		char	*string;
+		long long number;
+		int	 key;
+		u_char	 colours;
+	} value;
+
+	SPLAY_ENTRY(options_entry) entry;
+};
+
+struct options {
+	SPLAY_HEAD(options_tree, options_entry) tree;
+	struct options	*parent;
+};
+
 /* Screen selection. */
 struct screen_sel {
 	int		 flag;
@@ -459,6 +484,8 @@ struct screen_sel {
 
 	u_int		 ex;
 	u_int		 ey;
+
+	struct grid_cell cell;
 };
 
 /* Virtual screen. */
@@ -566,17 +593,12 @@ struct window {
 
 	struct input_ctx ictx;
 
+	struct options	 options;
+
 	int		 flags;
 #define WINDOW_BELL 0x1
 #define WINDOW_HIDDEN 0x2
 #define WINDOW_ACTIVITY 0x4
-#define WINDOW_MONITOR 0x8
-#define WINDOW_AGGRESSIVE 0x10
-#define WINDOW_ZOMBIFY 0x20
-#define WINDOW_UTF8 0x40
-
-	u_int		 limitx;
-	u_int		 limity;
 
 	struct screen	*screen;
 	struct screen	 base;
@@ -598,31 +620,6 @@ struct winlink {
 };
 RB_HEAD(winlinks, winlink);
 SLIST_HEAD(winlink_stack, winlink);
-
-/* Option data structures. */
-struct options_entry {
-	char		*name;
-
-	enum {
-		OPTIONS_STRING,
-		OPTIONS_NUMBER,
-		OPTIONS_KEY,
-		OPTIONS_COLOURS
-	} type;
-	union {
-		char	*string;
-		long long number;
-		int	 key;
-		u_char	 colours;
-	} value;
-
-	SPLAY_ENTRY(options_entry) entry;
-};
-
-struct options {
-	SPLAY_HEAD(options_tree, options_entry) tree;
-	struct options	*parent;
-};
 
 /* Paste buffer. */
 struct paste_buffer {
@@ -787,6 +784,7 @@ struct cmd_entry {
 #define CMD_DFLAG 0x8
 #define CMD_ONEARG 0x10
 #define CMD_ZEROONEARG 0x20
+#define CMD_GFLAG 0x40
 	int		 flags;
 
 	void		 (*init)(struct cmd *, int);
@@ -819,6 +817,13 @@ struct cmd_buffer_data {
 	char	*arg;
 };
 
+struct cmd_option_data {
+	int	 flags;
+	char	*target;
+	char	*option;
+	char	*value;
+};
+
 /* Key binding. */
 struct binding {
 	int		 key;
@@ -844,7 +849,9 @@ struct set_option_entry {
 	const char     **choices;
 };
 extern const struct set_option_entry set_option_table[];
-#define NSETOPTION 18
+extern const struct set_option_entry set_window_option_table[];
+#define NSETOPTION 17
+#define NSETWINDOWOPTION 9
 
 /* Edit keys. */
 enum mode_key {
@@ -907,6 +914,7 @@ char   *fgetln(FILE *, size_t *);
 extern volatile sig_atomic_t sigwinch;
 extern volatile sig_atomic_t sigterm;
 extern struct options global_options;
+extern struct options global_window_options;
 extern char	*cfg_file;
 extern int	 debug_level;
 extern int	 be_quiet;
@@ -955,6 +963,20 @@ void		 tty_write_window(void *, int, ...);
 void		 tty_vwrite_window(void *, int, va_list);
 void		 tty_write_session(void *, int, ...);
 void		 tty_vwrite_session(void *, int, va_list);
+
+/* options-cmd.c */
+void	set_option_string(struct cmd_ctx *,
+	    struct options *, const struct set_option_entry *, char *);
+void	set_option_number(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	set_option_key(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	set_option_colour(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	set_option_flag(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	set_option_choice(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
 
 /* paste.c */
 void		 paste_init_stack(struct paste_stack *);
@@ -1066,6 +1088,16 @@ void	cmd_buffer_send(struct cmd *, struct buffer *);
 void	cmd_buffer_recv(struct cmd *, struct buffer *);
 void	cmd_buffer_free(struct cmd *);
 void	cmd_buffer_print(struct cmd *, char *, size_t);
+#define CMD_OPTION_WINDOW_USAGE "[-t target-window] option value"
+#define CMD_OPTION_SESSION_USAGE "[-t target-session] option value"
+#define CMD_OPTION_CLIENT_USAGE "[-t target-client] option value"
+void	cmd_option_init(struct cmd *, int);
+int	cmd_option_parse(struct cmd *, int, char **, char **);
+void	cmd_option_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_option_send(struct cmd *, struct buffer *);
+void	cmd_option_recv(struct cmd *, struct buffer *);
+void	cmd_option_free(struct cmd *);
+void	cmd_option_print(struct cmd *, char *, size_t);
 
 /* client.c */
 int	 client_init(const char *, struct client_ctx *, int, int);
@@ -1248,7 +1280,8 @@ void	 screen_reinit(struct screen *);
 void	 screen_free(struct screen *);
 void	 screen_set_title(struct screen *, const char *);
 void	 screen_resize(struct screen *, u_int, u_int);
-void	 screen_set_selection(struct screen *, u_int, u_int, u_int, u_int);
+void	 screen_set_selection(
+	     struct screen *, u_int, u_int, u_int, u_int, struct grid_cell *);
 void	 screen_clear_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
 void	 screen_display_copy_area(struct screen *, struct screen *,
