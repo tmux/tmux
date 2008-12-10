@@ -1,12 +1,12 @@
 10 December 2008
 
-* glibc's getopt(3) is useless: it is not POSIX compliant without jumping through
-  non-portable hoops, and the method of resetting it is unclear (the man page
-  on my system says set optind to 1, but other sources say 0). So, import
-  OpenBSD's getopt_long.c into compat/ for use on Linux and use the clearly
-  documented optreset = optind = 1 method. This fixes some strange issues
-  with command parsing (getting the syntax would prevent any further commands
-  being parsed).
+* glibc's getopt(3) is useless: it is not POSIX compliant without jumping
+  through non-portable hoops, and the method of resetting it is unclear (the
+  man page on my system says set optind to 1, but other sources say 0). So,
+  import OpenBSD's getopt_long.c into compat/ for use on Linux and use the
+  clearly documented optreset = optind = 1 method. This fixes some strange
+  issues with command parsing (getting the syntax wrong would prevent any
+  further commands being parsed).
 
 06 December 2008
 
@@ -772,7 +772,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.171 2008-12-10 20:25:41 nicm Exp $
+$Id: CHANGES,v 1.172 2008-12-10 20:26:41 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB
