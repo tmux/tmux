@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.43 2008-12-08 16:19:51 nicm Exp $
+# $Id: GNUmakefile,v 1.44 2008-12-10 20:25:41 nicm Exp $
 
 .PHONY: clean
 
@@ -87,15 +87,12 @@ endif
 
 ifeq ($(shell uname),Linux)
 INCDIRS+= -Icompat
-SRCS+= compat/strlcpy.c compat/strlcat.c compat/strtonum.c compat/fgetln.c
+SRCS+= compat/strlcpy.c compat/strlcat.c compat/strtonum.c \
+       compat/fgetln.c compat/getopt_long.c
 CFLAGS+= $(shell getconf LFS_CFLAGS) -D_GNU_SOURCE \
          -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM -DNO_SETPROCTITLE \
-         -DNO_QUEUE_H -DNO_TREE_H -DUSE_PTY_H -DNO_FGETLN -std=c99
-
-# GNU, as usual, decided on the insance default. So their stupid extensions
-# are default and POSIX-compliance is optional (!).
-CFLAGS+= -DGETOPT_PREFIX="\"+\""
-
+         -DNO_QUEUE_H -DNO_TREE_H -DUSE_PTY_H -DNO_FGETLN \
+	 -DBROKEN_GETOPT -std=c99
 LIBS+= -lrt -lutil
 endif
 

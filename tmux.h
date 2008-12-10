@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.201 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: tmux.h,v 1.202 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,6 +44,12 @@
 #else
 #undef HAVE_POLL
 #include "compat/bsd-poll.h"
+#endif
+
+#ifndef BROKEN_GETOPT
+#include <getopt.h>
+#else
+#include "compat/getopt.h"
 #endif
 
 #include <ncurses.h>

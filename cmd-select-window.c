@@ -1,4 +1,4 @@
-/* $Id: cmd-select-window.c,v 1.19 2008-06-06 20:02:27 nicm Exp $ */
+/* $Id: cmd-select-window.c,v 1.20 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <getopt.h>
 #include <stdlib.h>
 
 #include "tmux.h"

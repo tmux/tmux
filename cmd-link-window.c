@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.25 2008-11-16 10:10:26 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.26 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <getopt.h>
 #include <stdlib.h>
 
 #include "tmux.h"

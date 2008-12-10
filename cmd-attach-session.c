@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.20 2008-06-21 10:19:36 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.21 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,8 +17,6 @@
  */
 
 #include <sys/types.h>
-
-#include <getopt.h>
 
 #include "tmux.h"
 

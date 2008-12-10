@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.16 2008-09-25 23:28:12 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.17 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,8 +17,6 @@
  */
 
 #include <sys/types.h>
-
-#include <getopt.h>
 
 #include "tmux.h"
 
@@ -60,7 +58,7 @@ cmd_bind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 	self->data = data = xmalloc(sizeof *data);
 	data->cmd = NULL;
 
-	while ((opt = getopt(argc, argv, GETOPT_PREFIX "")) != EOF) {
+	while ((opt = getopt(argc, argv, "")) != -1) {
 		switch (opt) {
 		default:
 			goto usage;

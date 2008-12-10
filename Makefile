@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.79 2008-12-08 16:19:51 nicm Exp $
+# $Id: Makefile,v 1.80 2008-12-10 20:25:41 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -79,7 +79,7 @@ CFLAGS+= -DUSE_LIBUTIL_H
 OBJS= ${SRCS:S/.c/.o/:S/.y/.o/}
 
 DISTDIR= ${PROG}-${VERSION}
-DISTFILES= *.[chyl] Makefile GNUmakefile *.[1-9] NOTES TODO \
+DISTFILES= *.[chyl] Makefile GNUmakefile *.[1-9] NOTES TODO CHANGES \
 	   `find examples compat -type f -and ! -path '*CVS*'`
 
 CLEANFILES= ${PROG} *.o .depend *~ ${PROG}.core *.log index.html

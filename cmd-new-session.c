@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.31 2008-09-25 23:28:12 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.32 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,8 +17,6 @@
  */
 
 #include <sys/types.h>
-
-#include <getopt.h>
 
 #include "tmux.h"
 
@@ -75,7 +73,7 @@ cmd_new_session_parse(struct cmd *self, int argc, char **argv, char **cause)
 	self->entry->init(self, 0);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, GETOPT_PREFIX "ds:n:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ds:n:")) != -1) {
 		switch (opt) {
 		case 'd':
 			data->flag_detached = 1;

@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.25 2008-09-25 23:28:12 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.26 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <getopt.h>
 #include <stdlib.h>
 
 #include "tmux.h"
@@ -76,7 +75,7 @@ cmd_new_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 	self->entry->init(self, 0);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, GETOPT_PREFIX "dt:n:")) != EOF) {
+	while ((opt = getopt(argc, argv, "dt:n:")) != -1) {
 		switch (opt) {
 		case 'd':
 			data->flag_detached = 1;

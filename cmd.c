@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.65 2008-09-26 06:45:26 nicm Exp $ */
+/* $Id: cmd.c,v 1.66 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,6 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
-#include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -159,10 +158,11 @@ cmd_parse(int argc, char **argv, char **cause)
 		xasprintf(cause, "unknown command: %s", argv[0]);
 		return (NULL);
 	}
-
+	
+	optreset = 1;
 	optind = 1;
 	if (entry->parse == NULL) {
-		while ((opt = getopt(argc, argv, GETOPT_PREFIX "")) != EOF) {
+		while ((opt = getopt(argc, argv, "")) != -1) {
 			switch (opt) {
 			default:
 				goto usage;

@@ -1,4 +1,4 @@
-/* $Id: cmd-send-keys.c,v 1.14 2008-09-25 23:28:12 nicm Exp $ */
+/* $Id: cmd-send-keys.c,v 1.15 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <getopt.h>
 #include <stdlib.h>
 
 #include "tmux.h"
@@ -67,7 +66,7 @@ cmd_send_keys_parse(struct cmd *self, int argc, char **argv, char **cause)
 	data->nkeys = 0;
 	data->keys = NULL;
 
-	while ((opt = getopt(argc, argv, GETOPT_PREFIX "t:")) != EOF) {
+	while ((opt = getopt(argc, argv, "t:")) != -1) {
 		switch (opt) {
 		case 't':
 			if (data->target == NULL)

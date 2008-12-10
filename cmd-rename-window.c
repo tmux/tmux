@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-window.c,v 1.22 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-rename-window.c,v 1.23 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <getopt.h>
 #include <stdlib.h>
 
 #include "tmux.h"

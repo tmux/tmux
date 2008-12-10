@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.46 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.47 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
 

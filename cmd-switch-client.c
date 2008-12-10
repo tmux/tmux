@@ -1,4 +1,4 @@
-/* $Id: cmd-switch-client.c,v 1.12 2008-09-25 23:28:15 nicm Exp $ */
+/* $Id: cmd-switch-client.c,v 1.13 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -63,7 +62,7 @@ cmd_switch_client_parse(struct cmd *self, int argc, char **argv, char **cause)
 	data->name = NULL;
 	data->target = NULL;
 
-	while ((opt = getopt(argc, argv, GETOPT_PREFIX "c:t:")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:t:")) != -1) {
 		switch (opt) {
 		case 'c':
 			data->name = xstrdup(optarg);

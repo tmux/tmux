@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.14 2008-09-25 23:28:15 nicm Exp $ */
+/* $Id: cmd-unbind-key.c,v 1.15 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,8 +17,6 @@
  */
 
 #include <sys/types.h>
-
-#include <getopt.h>
 
 #include "tmux.h"
 
@@ -57,7 +55,7 @@ cmd_unbind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 
 	self->data = data = xmalloc(sizeof *data);
 
-	while ((opt = getopt(argc, argv, GETOPT_PREFIX "")) != EOF) {
+	while ((opt = getopt(argc, argv, "")) != -1) {
 		switch (opt) {
 		default:
 			goto usage;

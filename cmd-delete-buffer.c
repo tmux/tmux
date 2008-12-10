@@ -1,4 +1,4 @@
-/* $Id: cmd-delete-buffer.c,v 1.2 2008-09-26 06:45:25 nicm Exp $ */
+/* $Id: cmd-delete-buffer.c,v 1.3 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <getopt.h>
 #include <stdlib.h>
 
 #include "tmux.h"

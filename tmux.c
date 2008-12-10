@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.83 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: tmux.c,v 1.84 2008-12-10 20:25:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -181,7 +181,7 @@ main(int argc, char **argv)
 
 	flags = 0;
 	path = NULL;
-        while ((opt = getopt(argc, argv, GETOPT_PREFIX "2df:qS:uVv")) != EOF) {
+        while ((opt = getopt(argc, argv, "2df:qS:uVv")) != -1) {
                 switch (opt) {
 		case '2':
 			flags |= IDENTIFY_256COLOURS;
