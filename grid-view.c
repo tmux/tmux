@@ -1,4 +1,4 @@
-/* $Id: grid-view.c,v 1.3 2008-09-28 20:34:22 nicm Exp $ */
+/* $Id: grid-view.c,v 1.4 2008-12-11 17:06:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -180,8 +180,11 @@ grid_view_insert_cells(struct grid_data *gd, u_int px, u_int py, u_int nx)
 	py = grid_view_y(gd, py);
 
 	sx = grid_view_x(gd, gd->sx);
-
-	grid_move_cells(gd, px + nx, px, py, (sx - 1) - (px + nx));
+	
+	if (px == sx - 1)
+		grid_clear(gd, px, py, 1, 1);
+	else
+		grid_move_cells(gd, px + nx, px, py, (sx - 1) - (px + nx));
 }
 
 /* Delete characters. */
