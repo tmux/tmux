@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.34 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: window-copy.c,v 1.35 2008-12-11 21:10:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -880,6 +880,7 @@ window_copy_scroll_up(struct window *w, u_int ny)
 	screen_write_deleteline(&ctx, ny);
 	window_copy_write_lines(w, &ctx, screen_size_y(s) - ny, ny);
 	window_copy_write_line(w, &ctx, 0);
+	window_copy_write_line(w, &ctx, 1);
 	if (s->sel.flag && screen_size_y(s) > ny)
 		window_copy_write_line(w, &ctx, screen_size_y(s) - ny - 1);
 	screen_write_cursormove(&ctx, data->cx, data->cy);
