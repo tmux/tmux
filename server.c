@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.86 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: server.c,v 1.87 2008-12-13 18:06:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,7 +54,7 @@ void		 server_lost_client(struct client *);
 void	 	 server_lost_window(struct window *);
 void		 server_check_redraw(struct client *);
 void		 server_check_timers(struct client *);
-void		 server_update_socket(const char *);
+int		 server_update_socket(const char *);
 
 /* Fork new server. */
 int
@@ -164,7 +164,7 @@ int
 server_main(const char *srv_path, int srv_fd)
 {
 	struct pollfd	*pfds, *pfd;
-	int		 nfds;
+	int		 nfds, xtimeout;
 	u_int		 i, n;
 
 	siginit();
@@ -185,9 +185,14 @@ server_main(const char *srv_path, int srv_fd)
 		server_fill_windows(&pfd);
 		server_fill_clients(&pfd);
 
+		/* Update socket permissions. */
+		xtimeout = INFTIM;
+		if (server_update_socket(srv_path) != 0)
+			xtimeout = 100;
+
 		/* Do the poll. */
 		/* log_debug("polling %d fds", nfds); */
-		if ((nfds = poll(pfds, nfds, 100)) == -1) {
+		if ((nfds = poll(pfds, nfds, xtimeout)) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			fatal("poll failed");
@@ -213,9 +218,6 @@ server_main(const char *srv_path, int srv_fd)
 		 */
 		server_handle_windows(&pfd);
 		server_handle_clients(&pfd);
-
-		/* Update socket permissions. */
-		server_update_socket(srv_path);
 
 		/*
 		 * If we have no sessions and clients left, let's get out
@@ -676,7 +678,7 @@ server_lost_window(struct window *w)
 	recalculate_sizes();
 }
 
-void
+int
 server_update_socket(const char *path)
 {
 	struct session	*s;
@@ -700,4 +702,6 @@ server_update_socket(const char *path)
 		else
 			chmod(path, S_IRUSR|S_IWUSR);
 	}
+
+	return (n);
 }
