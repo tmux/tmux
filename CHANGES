@@ -1,3 +1,10 @@
+13 December 2008
+
+* Work around lack of dch. On Linux, the rxvt termcap doesn't have it (it is
+  lying, but we can't really start disbelieving termcaps...). This is a bit
+  horrible - I can see no way to do it without pretty much redrawing the whole
+  line, but it works...
+
 10 December 2008
 
 * glibc's getopt(3) is useless: it is not POSIX compliant without jumping
@@ -772,7 +779,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.172 2008-12-10 20:26:41 nicm Exp $
+$Id: CHANGES,v 1.173 2008-12-13 17:41:49 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB

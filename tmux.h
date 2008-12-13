@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.202 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: tmux.h,v 1.203 2008-12-13 17:41:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -953,6 +953,7 @@ void		 tty_set_title(struct tty *, const char *);
 int		 tty_open(struct tty *, char **);
 void		 tty_close(struct tty *);
 void		 tty_free(struct tty *);
+void		 tty_write(struct tty *, struct screen *, int, ...);
 void		 tty_vwrite(struct tty *, struct screen *s, int, va_list);
 
 /* tty-keys.c */

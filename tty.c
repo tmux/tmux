@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.53 2008-12-06 09:30:25 nicm Exp $ */
+/* $Id: tty.c,v 1.54 2008-12-13 17:41:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,6 +33,8 @@ void 	tty_free_term(struct tty_term *);
 
 void	tty_fill_acs(struct tty *);
 u_char	tty_get_acs(struct tty *, u_char);
+
+void	tty_put_line(struct tty *, struct screen *, u_int, u_int, u_int);
 
 const char *tty_strip(const char *);
 void	tty_raw(struct tty *, const char *);
@@ -485,6 +487,16 @@ tty_set_title(struct tty *tty, const char *title)
 }
 
 void
+tty_write(struct tty *tty, struct screen *s, int cmd, ...)
+{
+	va_list	ap;
+
+	va_start(ap, cmd);
+	tty_vwrite(tty, s, cmd, ap);
+	va_end(ap);
+}
+
+void
 tty_vwrite(struct tty *tty, struct screen *s, int cmd, va_list ap)
 {
 	if (tty->flags & TTY_FREEZE)
@@ -496,6 +508,24 @@ tty_vwrite(struct tty *tty, struct screen *s, int cmd, va_list ap)
 
 	if (tty_cmds[cmd] != NULL)
 		tty_cmds[cmd](tty, s, ap);
+}
+
+void
+tty_put_line(struct tty *tty, struct screen *s, u_int px, u_int py, u_int nx)
+{	
+	const struct grid_cell	*gc;
+	struct grid_cell	 tc;
+	u_int			 xx;
+	
+	for (xx = px; xx < px + nx; xx++) {
+		gc = grid_view_peek_cell(s->grid, xx, py);
+		if (screen_check_selection(s, xx, py)) {
+			memcpy(&tc, &s->sel.cell, sizeof tc);
+			tc.data = gc->data;
+			tty_write(tty, s, TTY_CELL, &tc);
+		} else
+			tty_write(tty, s, TTY_CELL, gc);
+	}
 }
 
 void
@@ -596,8 +626,15 @@ tty_cmd_deletecharacter(struct tty *tty, unused struct screen *s, va_list ap)
 		while (ua-- > 0)
 			tty_puts(tty, delete_character);
 	} else {
-		while (ua-- > 0)
-			tty_putc(tty, '\010');
+		/*
+		 * XXX assumes screen already updated! I hate this... stupid
+		 * terms without dch...
+		 */
+		if (s->cx != screen_size_x(s) - 1) {
+			tty_put_line(tty, s, 
+			    s->cx, s->cy, screen_size_x(s) - s->cx);
+		}
+		tty_puts(tty, tparm(cursor_address, s->cy, s->cx));
 	}
 }
 
