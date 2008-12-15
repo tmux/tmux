@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.51 2008-11-17 17:41:35 nicm Exp $
+.\" $Id: tmux.1,v 1.52 2008-12-15 21:21:56 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -804,6 +804,12 @@ options are listed.
 .Xc
 .D1 (alias: Ic showw )
 List the current options for the given window.
+.It Xo Ic source-file
+.Ar path
+.Xc
+.D1 (alias: Ic source )
+Execute commands from
+.Ar path .
 .It Xo Ic start-server
 .Xc
 Start the
