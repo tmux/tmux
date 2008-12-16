@@ -1,4 +1,4 @@
-/* $Id: cmd-source-file.c,v 1.1 2008-12-15 21:21:56 nicm Exp $ */
+/* $Id: cmd-source-file.c,v 1.2 2008-12-16 08:25:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Tiago Cunha <me@tiagocunha.org>
@@ -39,7 +39,7 @@ struct cmd_source_file_data {
 const struct cmd_entry cmd_source_file_entry = {
 	"source-file", "source",
 	"path",
-	CMD_ONEARG,
+	0,
 	cmd_source_file_init,
 	cmd_source_file_parse,
 	cmd_source_file_exec,
@@ -62,7 +62,7 @@ int
 cmd_source_file_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_source_file_data	*data;
-	int				opt;
+	int				 opt;
 
 	self->entry->init(self, 0);
 	data = self->data;
@@ -91,8 +91,8 @@ usage:
 void
 cmd_source_file_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	char				*cause;
 	struct cmd_source_file_data	*data = self->data;
+	char				*cause;
 
 	if (load_cfg(data->path, &cause) != 0) {
 		ctx->error(ctx, "%s", cause);
