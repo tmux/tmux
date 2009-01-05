@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.17 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: screen-write.c,v 1.18 2009-01-05 11:04:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -489,10 +489,9 @@ void
 screen_write_clearstartofscreen(struct screen_write_ctx *ctx)
 {
 	struct screen	*s = ctx->s;
-	u_int		 sx, sy;
+	u_int		 sx;
 
 	sx = screen_size_x(s);
-	sy = screen_size_y(s);
 
 	if (s->cy > 0)
 		grid_view_clear(s->grid, 0, 0, sx, s->cy - 1);

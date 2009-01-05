@@ -1,4 +1,4 @@
-/* $Id: grid-view.c,v 1.4 2008-12-11 17:06:28 nicm Exp $ */
+/* $Id: grid-view.c,v 1.5 2009-01-05 11:04:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -129,7 +129,6 @@ grid_view_insert_lines_region(
 	GRID_DEBUG(
 	    gd, "rupper=%u, rlower=%u, py=%u, ny=%u", rupper, rlower, py, ny);
 
-	rupper = grid_view_y(gd, rupper);
 	rlower = grid_view_y(gd, rlower);
 
 	py = grid_view_y(gd, py);
@@ -160,7 +159,6 @@ grid_view_delete_lines_region(
 	GRID_DEBUG(
 	    gd, "rupper=%u, rlower=%u, py=%u, ny=%u", rupper, rlower, py, ny);
 
-	rupper = grid_view_y(gd, rupper);
 	rlower = grid_view_y(gd, rlower);
 
 	py = grid_view_y(gd, py);

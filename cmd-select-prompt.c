@@ -1,4 +1,4 @@
-/* $Id: cmd-select-prompt.c,v 1.3 2008-09-29 16:36:56 nicm Exp $ */
+/* $Id: cmd-select-prompt.c,v 1.4 2009-01-05 11:04:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,7 +65,6 @@ void
 cmd_select_prompt_callback(void *data, char *s)
 {
 	struct client	*c = data;
-	struct winlink	*wl;
 	const char	*errstr;
 	char		 msg[128];
 	u_int		 idx;
@@ -80,7 +79,7 @@ cmd_select_prompt_callback(void *data, char *s)
 		return;
 	}
 
-	if ((wl = winlink_find_by_index(&c->session->windows, idx)) == NULL) {
+	if (winlink_find_by_index(&c->session->windows, idx) == NULL) {
 		xsnprintf(msg, sizeof msg,
 		    "Window not found: %s:%d", c->session->name, idx);
 		server_set_client_message(c, msg);
