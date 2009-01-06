@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.54 2009-01-06 17:04:56 nicm Exp $ */
+/* $Id: status.c,v 1.55 2009-01-06 18:33:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -528,8 +528,6 @@ status_prompt_key(struct client *c, int key)
 		/* And try to complete it. */
 		if ((s = status_prompt_complete(word)) == NULL)
 			break;
-
-		log_debug("XXX '%s' '%s' '%s'", c->prompt_buffer, first, last);
 
 		/* Trim out word. */
 		n = size - (last - c->prompt_buffer) + 1; /* with \0 */
