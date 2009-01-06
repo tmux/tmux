@@ -43,14 +43,12 @@
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
 - tidy up window modes
-- list-keys should be sorted
 - problems with force-width when wrapping line in emacs?
 - command history for command-prompt. better tab completion (use options too)
 - window options should be done similarly to standard options
 - next prev word etc in command prompt
 - many more info() displays for various things
 - vi half page scroll
-- why do home/end work in emacs outside tmux but not inside?
 - document status line options, title bits
 - document mode-fg/mode-bg/message-fg/message-bg
 - document window options changes

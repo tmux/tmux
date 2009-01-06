@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.204 2008-12-15 21:21:56 nicm Exp $ */
+/* $Id: tmux.h,v 1.205 2009-01-06 14:10:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -831,11 +831,13 @@ struct cmd_option_data {
 };
 
 /* Key binding. */
-struct binding {
+struct key_binding {
 	int		 key;
 	struct cmd	*cmd;
+
+	SPLAY_ENTRY(key_binding) entry;	
 };
-ARRAY_DECL(bindings, struct binding *);
+SPLAY_HEAD(key_bindings, key_binding);
 
 /* Set/display option data. */
 struct set_option_entry {
@@ -1122,7 +1124,10 @@ void	 client_write_server2(
 void	 client_fill_session(struct msg_command_data *);
 
 /* key-bindings.c */
-extern struct bindings key_bindings;
+extern struct key_bindings key_bindings;
+int	 key_bindings_cmp(struct key_binding *, struct key_binding *);
+SPLAY_PROTOTYPE(key_bindings, key_binding, entry, key_bindings_cmp);
+struct key_binding *key_bindings_lookup(int);
 void	 key_bindings_add(int, struct cmd *);
 void	 key_bindings_remove(int);
 void	 key_bindings_init(void);

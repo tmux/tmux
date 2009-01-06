@@ -1,4 +1,4 @@
-/* $Id: cmd-list-keys.c,v 1.10 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-list-keys.c,v 1.11 2009-01-06 14:10:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,13 +42,11 @@ const struct cmd_entry cmd_list_keys_entry = {
 void
 cmd_list_keys_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct binding	*bd;
-	const char	*key;
-	char		 s[BUFSIZ];
-	u_int		 i;
+	struct key_binding	*bd;
+	const char		*key;
+	char			 s[BUFSIZ];
 
-	for (i = 0; i < ARRAY_LENGTH(&key_bindings); i++) {
-		bd = ARRAY_ITEM(&key_bindings, i);
+	SPLAY_FOREACH(bd, key_bindings, &key_bindings) {
 		if ((key = key_string_lookup_key(bd->key)) == NULL)
 			continue;
 		if (bd->cmd->entry->print == NULL) {

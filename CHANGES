@@ -1,3 +1,7 @@
+06 January 2009
+
+* Use a splay tree for key bindings.
+
 22 December 2008
 
 * Use the right keys for home and end.
@@ -792,7 +796,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.176 2008-12-22 17:26:51 nicm Exp $
+$Id: CHANGES,v 1.177 2009-01-06 14:10:32 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB

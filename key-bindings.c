@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.38 2008-12-17 08:08:09 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.39 2009-01-06 14:10:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,23 +24,33 @@
 
 #include "tmux.h"
 
-struct bindings	key_bindings;
+SPLAY_GENERATE(key_bindings, key_binding, entry, key_bindings_cmp);
+
+struct key_bindings	key_bindings;
+
+int
+key_bindings_cmp(struct key_binding *bd1, struct key_binding *bd2)
+{
+	return (bd1->key - bd2->key);
+}
+
+struct key_binding *
+key_bindings_lookup(int key)
+{
+	struct key_binding	bd;
+
+	bd.key = key;
+	return (SPLAY_FIND(key_bindings, &key_bindings, &bd));
+}
 
 void
 key_bindings_add(int key, struct cmd *cmd)
 {
-	struct binding	*bd;
-	u_int		 i;
+	struct key_binding	*bd;
 
-	bd = NULL;
-	for (i = 0; i < ARRAY_LENGTH(&key_bindings); i++) {
-		bd = ARRAY_ITEM(&key_bindings, i);
-		if (bd->key == key)
-			break;
-	}
-	if (i == ARRAY_LENGTH(&key_bindings)) {
+	if ((bd = key_bindings_lookup(key)) == NULL) {
 		bd = xmalloc(sizeof *bd);
-		ARRAY_ADD(&key_bindings, bd);
+		SPLAY_INSERT(key_bindings, &key_bindings, bd);
 	} else
 		cmd_free(bd->cmd);
 
@@ -51,19 +61,11 @@ key_bindings_add(int key, struct cmd *cmd)
 void
 key_bindings_remove(int key)
 {
-	struct binding	*bd;
-	u_int		 i;
+	struct key_binding	*bd;
 
-	bd = NULL;
-	for (i = 0; i < ARRAY_LENGTH(&key_bindings); i++) {
-		bd = ARRAY_ITEM(&key_bindings, i);
-		if (bd->key == key)
-			break;
-	}
-	if (i == ARRAY_LENGTH(&key_bindings))
+	if ((bd = key_bindings_lookup(key)) == NULL)
 		return;
-
-	ARRAY_REMOVE(&key_bindings, i);
+	SPLAY_REMOVE(key_bindings, &key_bindings, bd);
 
 	cmd_free(bd->cmd);
 	xfree(bd);
@@ -108,7 +110,7 @@ key_bindings_init(void)
 	u_int		 i;
 	struct cmd	*cmd;
 
-	ARRAY_INIT(&key_bindings);
+	SPLAY_INIT(&key_bindings);
 
 	for (i = 0; i < (sizeof table / sizeof table[0]); i++) {
 		cmd = xmalloc(sizeof *cmd);
@@ -123,17 +125,13 @@ key_bindings_init(void)
 void
 key_bindings_free(void)
 {
-	struct binding	*bd;
-	u_int		 i;
+	struct key_binding	*bd;
 
-	for (i = 0; i < ARRAY_LENGTH(&key_bindings); i++) {
-		bd = ARRAY_ITEM(&key_bindings, i);
-
+	while (!SPLAY_EMPTY(&key_bindings)) {
+		bd = SPLAY_ROOT(&key_bindings);
 		cmd_free(bd->cmd);
 		xfree(bd);
 	}
-
-	ARRAY_FREE(&key_bindings);
 }
 
 void printflike2
@@ -185,17 +183,10 @@ key_bindings_info(struct cmd_ctx *ctx, const char *fmt, ...)
 void
 key_bindings_dispatch(int key, struct client *c)
 {
-	struct cmd_ctx	 ctx;
-	struct binding	*bd;
-	u_int		 i;
+	struct cmd_ctx	 	 ctx;
+	struct key_binding	*bd;
 
-	bd = NULL;
-	for (i = 0; i < ARRAY_LENGTH(&key_bindings); i++) {
-		bd = ARRAY_ITEM(&key_bindings, i);
-		if (bd->key == key)
-			break;
-	}
-	if (i == ARRAY_LENGTH(&key_bindings))
+	if ((bd = key_bindings_lookup(key)) == NULL)
 		return;
 
 	ctx.msgdata = NULL;
