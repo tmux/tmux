@@ -1,6 +1,8 @@
 06 January 2009
 
-* Use a splay tree for key bindings.
+* Per-client prompt history of up to 100 items.
+* Use a splay tree for key bindings instead of an array. As a side-effect this
+  sorts them when listed.
 
 22 December 2008
 
@@ -796,7 +798,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.177 2009-01-06 14:10:32 nicm Exp $
+$Id: CHANGES,v 1.178 2009-01-06 15:37:15 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB

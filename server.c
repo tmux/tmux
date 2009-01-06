@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.87 2008-12-13 18:06:08 nicm Exp $ */
+/* $Id: server.c,v 1.88 2009-01-06 15:37:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -507,6 +507,8 @@ server_accept_client(int srv_fd)
 	c->in = buffer_create(BUFSIZ);
 	c->out = buffer_create(BUFSIZ);
 
+	ARRAY_INIT(&c->prompt_hdata);
+
 	c->tty.fd = -1;
 	c->title = NULL;
 
@@ -568,6 +570,20 @@ server_lost_client(struct client *c)
 	}
 
 	tty_free(&c->tty);
+
+	if (c->title != NULL)
+		xfree(c->title);
+
+	if (c->message_string != NULL)
+		xfree(c->message_string);
+
+	if (c->prompt_string != NULL)
+		xfree(c->prompt_string);
+	if (c->prompt_buffer != NULL)
+		xfree(c->prompt_buffer);
+	for (i = 0; i < ARRAY_LENGTH(&c->prompt_hdata); i++)
+		xfree(ARRAY_ITEM(&c->prompt_hdata, i));
+	ARRAY_FREE(&c->prompt_hdata);
 
 	close(c->fd);
 	buffer_destroy(c->in);

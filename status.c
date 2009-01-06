@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.52 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: status.c,v 1.53 2009-01-06 15:37:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,6 +31,8 @@
 char   *status_replace(struct session *, char *, time_t);
 size_t	status_width(struct winlink *);
 char   *status_print(struct session *, struct winlink *, struct grid_cell *);
+
+void	status_prompt_add_history(struct client *);
 
 /* Draw status for client on the last lines of given context. */
 void
@@ -530,8 +532,37 @@ status_prompt_key(struct client *c, int key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
+	case KEYC_UP:
+		if (ARRAY_LENGTH(&c->prompt_hdata) == 0)
+			break;
+	       	xfree(c->prompt_buffer);
+
+		c->prompt_buffer = xstrdup(ARRAY_ITEM(&c->prompt_hdata,
+		    ARRAY_LENGTH(&c->prompt_hdata) - 1 - c->prompt_hindex));
+		if (c->prompt_hindex != ARRAY_LENGTH(&c->prompt_hdata) - 1)
+			c->prompt_hindex++;
+
+		c->prompt_index = strlen(c->prompt_buffer);
+		c->flags |= CLIENT_STATUS;
+		break;
+	case KEYC_DOWN:
+		xfree(c->prompt_buffer);
+
+		if (c->prompt_hindex != 0) {
+			c->prompt_hindex--;
+			c->prompt_buffer = xstrdup(ARRAY_ITEM(
+			    &c->prompt_hdata, ARRAY_LENGTH(
+			    &c->prompt_hdata) - 1 - c->prompt_hindex));
+		} else
+			c->prompt_buffer = xstrdup("");
+
+		c->prompt_index = strlen(c->prompt_buffer);
+		c->flags |= CLIENT_STATUS;
+		break;
  	case '\r':	/* enter */
 		if (*c->prompt_buffer != '\0') {
+			status_prompt_add_history(c);
+
 			c->prompt_callback(c->prompt_data, c->prompt_buffer);
 			server_clear_client_prompt(c);
 			break;
@@ -559,4 +590,20 @@ status_prompt_key(struct client *c, int key)
 		c->flags |= CLIENT_STATUS;
 		break;
 	}
+}
+
+/* Add line to the history. */
+void
+status_prompt_add_history(struct client *c)
+{
+	if (ARRAY_LENGTH(&c->prompt_hdata) > 0 &&
+	    strcmp(ARRAY_LAST(&c->prompt_hdata), c->prompt_buffer) == 0)
+		return;
+			
+	if (ARRAY_LENGTH(&c->prompt_hdata) == PROMPT_HISTORY) {
+		xfree(ARRAY_FIRST(&c->prompt_hdata));
+		ARRAY_REMOVE(&c->prompt_hdata, 0);
+	}
+
+	ARRAY_ADD(&c->prompt_hdata, xstrdup(c->prompt_buffer));
 }

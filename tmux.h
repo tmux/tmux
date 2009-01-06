@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.205 2009-01-06 14:10:32 nicm Exp $ */
+/* $Id: tmux.h,v 1.206 2009-01-06 15:37:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -118,6 +118,9 @@ extern const char    *__progname;
 
 /* Default configuration file. */
 #define DEFAULT_CFG ".tmux.conf"
+
+/* Default prompt history length. */
+#define PROMPT_HISTORY 100
 
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
@@ -745,6 +748,8 @@ struct client {
 	size_t		 prompt_index;
 	void		 (*prompt_callback)(void *, char *);
 	void		*prompt_data;
+	u_int		 prompt_hindex;
+	ARRAY_DECL(, char *) prompt_hdata;
 
 	struct session	*session;
 };
