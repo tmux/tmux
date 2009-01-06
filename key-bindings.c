@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.39 2009-01-06 14:10:32 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.40 2009-01-06 14:47:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,11 +50,10 @@ key_bindings_add(int key, struct cmd *cmd)
 
 	if ((bd = key_bindings_lookup(key)) == NULL) {
 		bd = xmalloc(sizeof *bd);
+		bd->key = key;
 		SPLAY_INSERT(key_bindings, &key_bindings, bd);
 	} else
 		cmd_free(bd->cmd);
-
-	bd->key = key;
 	bd->cmd = cmd;
 }
 
