@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.18 2009-01-05 11:04:06 nicm Exp $ */
+/* $Id: screen-write.c,v 1.19 2009-01-06 18:07:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -131,10 +131,13 @@ screen_write_cursorup(struct screen_write_ctx *ctx, u_int ny)
 {
 	struct screen	*s = ctx->s;
 
+	if (ny == 0)
+		ny = 1;
+
 	if (ny > s->cy)
 		ny = s->cy;
 	if (ny == 0)
-		ny = 1;
+		return;
 
 	s->cy -= ny;
 
@@ -148,10 +151,13 @@ screen_write_cursordown(struct screen_write_ctx *ctx, u_int ny)
 {
 	struct screen	*s = ctx->s;
 
+	if (ny == 0)
+		ny = 1;
+
 	if (ny > screen_size_y(s) - 1 - s->cy)
 		ny = screen_size_y(s) - 1 - s->cy;
 	if (ny == 0)
-		ny = 1;
+		return;
 
 	s->cy += ny;
 
@@ -165,10 +171,13 @@ screen_write_cursorright(struct screen_write_ctx *ctx, u_int nx)
 {
 	struct screen	*s = ctx->s;
 
+	if (nx == 0)
+		nx = 1;
+
 	if (nx > screen_size_x(s) - 1 - s->cx)
 		nx = screen_size_x(s) - 1 - s->cx;
 	if (nx == 0)
-		nx = 1;
+		return;
 
 	s->cx += nx;
 
@@ -182,10 +191,13 @@ screen_write_cursorleft(struct screen_write_ctx *ctx, u_int nx)
 {
 	struct screen	*s = ctx->s;
 
+	if (nx == 0)
+		nx = 1;
+
 	if (nx > s->cx)
 		nx = s->cx;
 	if (nx == 0)
-		nx = 1;
+		return;
 
 	s->cx -= nx;
 
@@ -198,11 +210,14 @@ void
 screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx)
 {
 	struct screen	*s = ctx->s;
+	
+	if (nx == 0)
+		nx = 1;
 
 	if (nx > screen_size_x(s) - 1 - s->cx)
 		nx = screen_size_x(s) - 1 - s->cx;
 	if (nx == 0)
-		nx = 1;
+		return;
 
 	grid_view_insert_cells(s->grid, s->cx, s->cy, nx);
 
@@ -216,10 +231,13 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx)
 {
 	struct screen	*s = ctx->s;
 
+	if (nx == 0)
+		nx = 1;
+
 	if (nx > screen_size_x(s) - 1 - s->cx)
 		nx = screen_size_x(s) - 1 - s->cx;
 	if (nx == 0)
-		nx = 1;
+		return;
 
 	grid_view_delete_cells(s->grid, s->cx, s->cy, nx);
 
@@ -233,10 +251,13 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny)
 {
 	struct screen	*s = ctx->s;
 
+	if (ny == 0)
+		ny = 1;
+
 	if (ny > screen_size_y(s) - 1 - s->cy)
 		ny = screen_size_y(s) - 1 - s->cy;
 	if (ny == 0)
-		ny = 1;
+		return;
 
 	if (s->cy < s->rupper || s->cy > s->rlower)
 		grid_view_insert_lines(s->grid, s->cy, ny);
@@ -255,10 +276,13 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny)
 {
 	struct screen	*s = ctx->s;
 
+	if (ny == 0)
+		ny = 1;
+
 	if (ny > screen_size_y(s) - 1 - s->cy)
 		ny = screen_size_y(s) - 1 - s->cy;
 	if (ny == 0)
-		ny = 1;
+		return;
 
 	if (s->cy < s->rupper || s->cy > s->rlower)
 		grid_view_delete_lines(s->grid, s->cy, ny);
