@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.53 2009-01-06 15:37:15 nicm Exp $ */
+/* $Id: status.c,v 1.54 2009-01-06 17:04:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,6 +33,7 @@ size_t	status_width(struct winlink *);
 char   *status_print(struct session *, struct winlink *, struct grid_cell *);
 
 void	status_prompt_add_history(struct client *);
+char   *status_prompt_complete(const char *);
 
 /* Draw status for client on the last lines of given context. */
 void
@@ -225,9 +226,10 @@ draw:
 			gc.attr |= GRID_ATTR_REVERSE;
 		else
 			gc.attr &= ~GRID_ATTR_REVERSE;
-		if (rlen != 0)
-			ctx.write(ctx.data, TTY_CURSORMOVE, c->sx - rlen - 2, yy);
-		else
+		if (rlen != 0) {
+			ctx.write(
+			    ctx.data, TTY_CURSORMOVE, c->sx - rlen - 2, yy);
+		} else
 			ctx.write(ctx.data, TTY_CURSORMOVE, c->sx - 1, yy);
 		screen_redraw_putc(&ctx, &gc, '>');
 		gc.attr &= ~GRID_ATTR_REVERSE;
@@ -467,8 +469,9 @@ status_prompt_redraw(struct client *c)
 void
 status_prompt_key(struct client *c, int key)
 {
-	char   *s;
-	size_t	size;
+	char   *s, *first, *last;
+	size_t	size, n, off, idx;
+	char	word[64];
 
 	size = strlen(c->prompt_buffer);
 	switch (key) {
@@ -497,16 +500,51 @@ status_prompt_key(struct client *c, int key)
 		}
 		break;
 	case '\011':
-		if (strchr(c->prompt_buffer, ' ') != NULL)
+		if (*c->prompt_buffer == '\0')
 			break;
-		if (c->prompt_index != strlen(c->prompt_buffer))
+		
+		idx = c->prompt_index;
+		if (idx != 0)
+			idx--;
+
+		/* Find the word we are in. */
+		first = c->prompt_buffer + idx;
+		while (first > c->prompt_buffer && *first != ' ')
+			first--;
+		while (*first == ' ')
+			first++;
+		last = c->prompt_buffer + idx;
+		while (*last != '\0' && *last != ' ')
+			last++;
+		while (*last == ' ')
+			last--;
+		if (*last != '\0')
+			last++;
+		if (last <= first || last - first > (sizeof word) - 1)
+			break;
+		memcpy(word, first, last - first);
+		word[last - first] = '\0';
+
+		/* And try to complete it. */
+		if ((s = status_prompt_complete(word)) == NULL)
 			break;
 
-		s = cmd_complete(c->prompt_buffer);
-		xfree(c->prompt_buffer);
+		log_debug("XXX '%s' '%s' '%s'", c->prompt_buffer, first, last);
 
-		c->prompt_buffer = s;
-		c->prompt_index = strlen(c->prompt_buffer);
+		/* Trim out word. */
+		n = size - (last - c->prompt_buffer) + 1; /* with \0 */
+		memmove(first, last, n);
+		size -= last - first;
+
+		/* Insert the new word. */
+ 		size += strlen(s);
+		off = first - c->prompt_buffer;
+ 		c->prompt_buffer = xrealloc(c->prompt_buffer, 1, size + 1);
+		first = c->prompt_buffer + off;
+ 		memmove(first + strlen(s), first, n);
+ 		memcpy(first, s, strlen(s));
+
+		c->prompt_index = (first - c->prompt_buffer) + strlen(s);
 
 		c->flags |= CLIENT_STATUS;
 		break;
@@ -606,4 +644,66 @@ status_prompt_add_history(struct client *c)
 	}
 
 	ARRAY_ADD(&c->prompt_hdata, xstrdup(c->prompt_buffer));
+}
+
+/* Complete word. */
+char *
+status_prompt_complete(const char *s)
+{
+	const struct cmd_entry 	      **cmdent;
+	const struct set_option_entry  *optent;
+	ARRAY_DECL(, const char *)	list;
+	char			       *prefix, *s2;
+	u_int			 	i;
+	size_t			 	j;
+
+	if (*s == '\0')
+		return (NULL);
+
+	/* First, build a list of all the possible matches. */
+	ARRAY_INIT(&list);
+	for (cmdent = cmd_table; *cmdent != NULL; cmdent++) {
+		if (strncmp((*cmdent)->name, s, strlen(s)) == 0)
+			ARRAY_ADD(&list, (*cmdent)->name);
+	}
+	for (i = 0; i < NSETOPTION; i++) {
+		optent = &set_option_table[i];
+		if (strncmp(optent->name, s, strlen(s)) == 0)
+			ARRAY_ADD(&list, optent->name);
+	}
+	for (i = 0; i < NSETWINDOWOPTION; i++) {
+		optent = &set_window_option_table[i];
+		if (strncmp(optent->name, s, strlen(s)) == 0)
+			ARRAY_ADD(&list, optent->name);
+	}
+	
+	/* If none, bail now. */
+	if (ARRAY_LENGTH(&list) == 0) {
+		ARRAY_FREE(&list);
+		return (NULL);
+	}
+	
+	/* If an exact match, return it, with a trailing space. */
+	if (ARRAY_LENGTH(&list) == 1) {
+		xasprintf(&s2, "%s ", ARRAY_FIRST(&list));
+		ARRAY_FREE(&list);
+		return (s2);
+	}
+
+	/* Now loop through the list and find the longest common prefix. */
+	prefix = xstrdup(ARRAY_FIRST(&list));
+	for (i = 1; i < ARRAY_LENGTH(&list); i++) {
+		s = ARRAY_ITEM(&list, i);
+
+		j = strlen(s);
+		if (j > strlen(prefix))
+			j = strlen(prefix);
+		for (; j > 0; j--) {
+			if (prefix[j - 1] != s[j - 1])
+				prefix[j - 1] = '\0';
+		}
+	}
+
+	ARRAY_FREE(&list);
+	return (prefix);
 }

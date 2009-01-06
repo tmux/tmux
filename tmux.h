@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.206 2009-01-06 15:37:15 nicm Exp $ */
+/* $Id: tmux.h,v 1.207 2009-01-06 17:04:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1009,7 +1009,6 @@ struct session 	*arg_parse_session(const char *);
 int		 arg_parse_window(const char *, struct session **, int *);
 
 /* cmd.c */
-char		*cmd_complete(const char *);
 struct cmd	*cmd_parse(int, char **, char **);
 void		 cmd_exec(struct cmd *, struct cmd_ctx *);
 void		 cmd_send(struct cmd *, struct buffer *);

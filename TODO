@@ -44,9 +44,7 @@
   session not being watched?
 - tidy up window modes
 - problems with force-width when wrapping line in emacs?
-- command history for command-prompt. better tab completion (use options too)
-- window options should be done similarly to standard options
-- next prev word etc in command prompt
+- next prev word etc in command prompt; also ^K
 - many more info() displays for various things
 - vi half page scroll
 - document status line options, title bits
