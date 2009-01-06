@@ -47,6 +47,7 @@
 - next prev word etc in command prompt; also ^K
 - many more info() displays for various things
 - vi half page scroll
+- backspace should perhaps wrap backwards over newlines which were not moved down by a newline: screen and the OS X terminal does this but xterm and most others do not. this might be hard: a flag for each grid line (top bit of size maybe)? a single flag is insufficient as can't then tell when to /stop/ unwrapping
 - document status line options, title bits
 - document mode-fg/mode-bg/message-fg/message-bg
 - document window options changes
