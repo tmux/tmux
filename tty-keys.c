@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.11 2008-09-26 06:45:28 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.12 2009-01-07 22:52:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -205,7 +205,6 @@ struct {
 	{ "-\033Op", KEYC_KP4_0 },
 	{ "-\033On", KEYC_KP4_2 },
 };
-#define NTTYKEYS (sizeof tty_keys / sizeof tty_keys[0])
 
 RB_GENERATE(tty_keys, tty_key, entry, tty_keys_cmp);
 
@@ -227,7 +226,7 @@ tty_keys_init(struct tty *tty)
 	RB_INIT(&tty->ktree);
 
 	tty->ksize = 0;
-	for (i = 0; i < NTTYKEYS; i++) {
+	for (i = 0; i < nitems(tty_keys); i++) {
 		if (*tty_keys[i].name == '-')
 			s = tty_keys[i].name + 1;
 		else {

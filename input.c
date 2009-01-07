@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.69 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: input.c,v 1.70 2009-01-07 22:52:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -81,6 +81,43 @@ void	 input_handle_sequence_rm(struct input_ctx *);
 void	 input_handle_sequence_decstbm(struct input_ctx *);
 void	 input_handle_sequence_sgr(struct input_ctx *);
 void	 input_handle_sequence_dsr(struct input_ctx *);
+
+int	 input_sequence_cmp(const void *, const void *);
+
+struct input_sequence_entry {
+	u_char	ch;
+	void	(*fn)(struct input_ctx *);
+};
+const struct input_sequence_entry input_sequence_table[] = {
+	{ '@', input_handle_sequence_ich },
+	{ 'A', input_handle_sequence_cuu },
+	{ 'B', input_handle_sequence_cud },
+	{ 'C', input_handle_sequence_cuf },
+	{ 'D', input_handle_sequence_cub },
+	{ 'G', input_handle_sequence_hpa },
+	{ 'H', input_handle_sequence_cup },
+	{ 'J', input_handle_sequence_ed },
+	{ 'K', input_handle_sequence_el },
+	{ 'L', input_handle_sequence_il },
+	{ 'M', input_handle_sequence_dl },
+	{ 'P', input_handle_sequence_dch },
+	{ 'd', input_handle_sequence_vpa },
+	{ 'f', input_handle_sequence_cup },
+	{ 'h', input_handle_sequence_sm },
+	{ 'l', input_handle_sequence_rm },
+	{ 'm', input_handle_sequence_sgr },
+	{ 'n', input_handle_sequence_dsr },
+	{ 'r', input_handle_sequence_decstbm },
+};
+
+int
+input_sequence_cmp(const void *a, const void *b)
+{
+	int	ai = ((const struct input_sequence_entry *) a)->ch;
+	int	bi = ((const struct input_sequence_entry *) b)->ch;
+
+	return (ai - bi);
+}
 
 int
 input_new_argument(struct input_ctx *ictx)
@@ -572,7 +609,6 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 		screen_write_cursorleft(&ictx->ctx, 1);
 		break;
 	case '\011': 	/* TAB */
-		/* XXX right? */
 		s->cx = ((s->cx / 8) * 8) + 8;
 		if (s->cx > screen_size_x(s) - 1) {
 			s->cx = 0;
@@ -702,33 +738,10 @@ input_handle_standard_two(u_char ch, struct input_ctx *ictx)
 void
 input_handle_sequence(u_char ch, struct input_ctx *ictx)
 {
-	static const struct {
-		u_char	ch;
-		void	(*fn)(struct input_ctx *);
-	} table[] = {
-		{ '@', input_handle_sequence_ich },
-		{ 'A', input_handle_sequence_cuu },
-		{ 'B', input_handle_sequence_cud },
-		{ 'C', input_handle_sequence_cuf },
-		{ 'D', input_handle_sequence_cub },
-		{ 'G', input_handle_sequence_hpa },
-		{ 'H', input_handle_sequence_cup },
-		{ 'J', input_handle_sequence_ed },
-		{ 'K', input_handle_sequence_el },
-		{ 'L', input_handle_sequence_il },
-		{ 'M', input_handle_sequence_dl },
-		{ 'P', input_handle_sequence_dch },
-		{ 'd', input_handle_sequence_vpa },
-		{ 'f', input_handle_sequence_cup },
-		{ 'h', input_handle_sequence_sm },
-		{ 'l', input_handle_sequence_rm },
-		{ 'm', input_handle_sequence_sgr },
-		{ 'n', input_handle_sequence_dsr },
-		{ 'r', input_handle_sequence_decstbm },
-	};
-	struct screen	 *s = ictx->ctx.s;
-	u_int		  i;
-	struct input_arg *iarg;
+	struct input_sequence_entry	*entry, find;
+	struct screen	 		*s = ictx->ctx.s;
+	u_int			         i;
+	struct input_arg 		*iarg;
 
 	log_debug2("-- sq %zu: %hhu (%c): %u [sx=%u, sy=%u, cx=%u, cy=%u, "
 	    "ru=%u, rl=%u]", ictx->off, ch, ch, ARRAY_LENGTH(&ictx->args),
@@ -739,16 +752,15 @@ input_handle_sequence(u_char ch, struct input_ctx *ictx)
 		if (*iarg->data != '\0')
 			log_debug2("      ++ %u: %s", i, iarg->data);
 	}
-
-	/* XXX bsearch? */
-	for (i = 0; i < (sizeof table / sizeof table[0]); i++) {
-		if (table[i].ch == ch) {
-			table[i].fn(ictx);
-			return;
-		}
-	}
-
-	log_debug("unknown sq: %c (%hhu %hhu)", ch, ch, ictx->private);
+	
+	find.ch = ch;
+	entry = bsearch(&find, 
+	    input_sequence_table, nitems(input_sequence_table),
+	    sizeof input_sequence_table[0], input_sequence_cmp);
+	if (entry != NULL)
+		entry->fn(ictx);
+	else
+		log_debug("unknown sq: %c (%hhu %hhu)", ch, ch, ictx->private);
 }
 
 void

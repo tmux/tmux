@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.15 2008-12-22 17:26:51 nicm Exp $ */
+/* $Id: input-keys.c,v 1.16 2009-01-07 22:52:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -94,7 +94,6 @@ struct {
 	{ KEYC_KP4_0,  "\033Op", 0 },
 	{ KEYC_KP4_2,  "\033On", 0 },
 };
-#define NINPUTKEYS (sizeof input_keys / sizeof input_keys[0])
 
 /* Translate a key code from client into an output key sequence. */
 void
@@ -114,7 +113,7 @@ input_key(struct window *w, int key)
 		return;
 	}
 
-	for (i = 0; i < NINPUTKEYS; i++) {
+	for (i = 0; i < nitems(input_keys); i++) {
 		if ((input_keys[i].flags & INPUTKEY_KEYPAD) &&
 		    !(w->screen->mode & MODE_KKEYPAD))
 			continue;
@@ -124,7 +123,7 @@ input_key(struct window *w, int key)
 		if (input_keys[i].key == key)
 			break;
 	}
-	if (i == NINPUTKEYS) {
+	if (i == nitems(input_keys)) {
 		log_debug2("key 0x%x missing", key);
 		return;
 	}

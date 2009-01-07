@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.8 2008-12-16 08:25:48 nicm Exp $ */
+/* $Id: key-string.c,v 1.9 2009-01-07 22:52:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -193,7 +193,6 @@ struct {
 	{ "KP0",	KEYC_KP4_0 },
 	{ "KP.",	KEYC_KP4_2 },
 };
-#define NKEYSTRINGS (sizeof key_string_table / sizeof key_string_table[0])
 
 int
 key_string_lookup_string(const char *string)
@@ -236,7 +235,7 @@ key_string_lookup_string(const char *string)
 		return (KEYC_ADDESCAPE(key));
 	}
 
-	for (i = 0; i < NKEYSTRINGS; i++) {
+	for (i = 0; i < nitems(key_string_table); i++) {
 		if (strcasecmp(string, key_string_table[i].string) == 0)
 			return (key_string_table[i].key);
 	}
@@ -274,7 +273,7 @@ key_string_lookup_key(int key)
 		return (tmp);
 	}
 
-	for (i = 0; i < NKEYSTRINGS; i++) {
+	for (i = 0; i < nitems(key_string_table); i++) {
 		if (key == key_string_table[i].key)
 			return (key_string_table[i].string);
 	}

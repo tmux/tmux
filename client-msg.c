@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.14 2007-12-06 09:46:21 nicm Exp $ */
+/* $Id: client-msg.c,v 1.15 2009-01-07 22:52:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,7 +43,6 @@ struct client_msg client_msg_table[] = {
 	{ MSG_EXIT, client_msg_fn_exit },
 	{ MSG_EXITED, client_msg_fn_exited }
 };
-#define NCLIENTMSG (sizeof client_msg_table / sizeof client_msg_table[0])
 
 int
 client_msg_dispatch(struct client_ctx *cctx, char **error)
@@ -59,7 +58,7 @@ client_msg_dispatch(struct client_ctx *cctx, char **error)
 		return (1);
 	buffer_remove(cctx->srv_in, sizeof hdr);
 
-	for (i = 0; i < NCLIENTMSG; i++) {
+	for (i = 0; i < nitems(client_msg_table); i++) {
 		msg = client_msg_table + i;
 		if (msg->type == hdr.type) {
 			if (msg->fn(&hdr, cctx, error) != 0)

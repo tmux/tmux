@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.40 2009-01-06 14:47:56 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.41 2009-01-07 22:52:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -111,7 +111,7 @@ key_bindings_init(void)
 
 	SPLAY_INIT(&key_bindings);
 
-	for (i = 0; i < (sizeof table / sizeof table[0]); i++) {
+	for (i = 0; i < nitems(table); i++) {
 		cmd = xmalloc(sizeof *cmd);
 		cmd->entry = table[i].entry;
 		cmd->data = NULL;

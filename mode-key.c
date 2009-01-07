@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.3 2008-07-03 15:26:32 nicm Exp $ */
+/* $Id: mode-key.c,v 1.4 2009-01-07 22:52:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,6 @@ const struct mode_key_entry mode_key_table_vi[] = {
 	{ MODEKEY_UP, 'k' },
 	{ MODEKEY_UP, KEYC_UP },
 };
-#define NKEYVI (sizeof mode_key_table_vi / sizeof mode_key_table_vi[0])
 
 const struct mode_key_entry mode_key_table_emacs[] = {
 	{ MODEKEY_BOL, '\001' },
@@ -70,7 +69,6 @@ const struct mode_key_entry mode_key_table_emacs[] = {
 	{ MODEKEY_STARTSEL, '\000' },
 	{ MODEKEY_UP, KEYC_UP },
 };
-#define NKEYEMACS (sizeof mode_key_table_emacs / sizeof mode_key_table_emacs[0])
 
 enum mode_key
 mode_key_lookup(int table, int key)
@@ -80,10 +78,10 @@ mode_key_lookup(int table, int key)
 
 	if (table == MODEKEY_EMACS) {
 		ptr = mode_key_table_emacs;
-		n = NKEYEMACS;
+		n = nitems(mode_key_table_emacs);
 	} else if (table == MODEKEY_VI) {
 		ptr = mode_key_table_vi;
-		n = NKEYVI;
+		n = nitems(mode_key_table_vi);
 	} else
 		return (MODEKEY_NONE);
 

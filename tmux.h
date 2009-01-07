@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.208 2009-01-07 19:53:17 nicm Exp $ */
+/* $Id: tmux.h,v 1.209 2009-01-07 22:52:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -134,6 +134,9 @@ extern const char    *__progname;
 #define printflike2 __attribute__ ((format (printf, 2, 3)))
 #define printflike3 __attribute__ ((format (printf, 3, 4)))
 #define printflike4 __attribute__ ((format (printf, 4, 5)))
+
+/* Number of items in array. */
+#define nitems(_a)  (sizeof((_a)) / sizeof((_a)[0]))
 
 /* Buffer macros. */
 #define BUFFER_USED(b) ((b)->size)
