@@ -52,3 +52,4 @@
 - update set/setw in man page with -g and -u flags
 - document status line options, title bits
 - document window options changes
+- more # commands in status-left,right eg #H for hostname. others?
