@@ -53,3 +53,4 @@
 - document status line options, title bits
 - document window options changes
 - more # commands in status-left,right eg #H for hostname. others?
+- input.c is too complicated. simplify?

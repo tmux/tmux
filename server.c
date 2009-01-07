@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.88 2009-01-06 15:37:15 nicm Exp $ */
+/* $Id: server.c,v 1.89 2009-01-07 22:57:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -191,14 +191,12 @@ server_main(const char *srv_path, int srv_fd)
 			xtimeout = 100;
 
 		/* Do the poll. */
-		/* log_debug("polling %d fds", nfds); */
 		if ((nfds = poll(pfds, nfds, xtimeout)) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			fatal("poll failed");
 		}
 		pfd = pfds;
-		/* log_debug("poll returned %d", nfds); */
 
 		/* Handle server socket. */
 #ifndef BROKEN_POLL
@@ -273,7 +271,6 @@ server_fill_windows(struct pollfd **pfd)
 			(*pfd)->events = POLLIN;
 			if (BUFFER_USED(w->out) > 0)
 				(*pfd)->events |= POLLOUT;
-			/* log_debug("adding window %d (%d)", (*pfd)->fd, w->fd); */
 		}
 		(*pfd)++;
 	}
@@ -288,7 +285,6 @@ server_handle_windows(struct pollfd **pfd)
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		if ((w = ARRAY_ITEM(&windows, i)) != NULL && w->fd != -1) {
-			/* log_debug("testing window %d (%d)", (*pfd)->fd, w->fd); */
 			if (buffer_poll(*pfd, w->in, w->out) != 0)
 				server_lost_window(w);
 			else
@@ -432,7 +428,6 @@ server_fill_clients(struct pollfd **pfd)
 			(*pfd)->events = POLLIN;
 			if (BUFFER_USED(c->out) > 0)
 				(*pfd)->events |= POLLOUT;
-			/* log_debug("adding client %d (%d)", (*pfd)->fd, c->fd); */
 		}
 		(*pfd)++;
 
@@ -443,7 +438,6 @@ server_fill_clients(struct pollfd **pfd)
 			(*pfd)->events = POLLIN;
 			if (BUFFER_USED(c->tty.out) > 0)
 				(*pfd)->events |= POLLOUT;
-			/* log_debug("adding tty %d (%d)", (*pfd)->fd, c->tty.fd); */
 		}
 		(*pfd)++;
 	}
@@ -460,7 +454,6 @@ server_handle_clients(struct pollfd **pfd)
 		c = ARRAY_ITEM(&clients, i);
 
 		if (c != NULL) {
-			/* log_debug("testing client %d (%d)", (*pfd)->fd, c->fd); */
 			if (buffer_poll(*pfd, c->in, c->out) != 0) {
 				server_lost_client(c);
 				(*pfd) += 2;
@@ -471,7 +464,6 @@ server_handle_clients(struct pollfd **pfd)
 		(*pfd)++;
 
 		if (c != NULL && c->tty.fd != -1 && c->session != NULL) {
-			/* log_debug("testing tty %d (%d)", (*pfd)->fd, c->tty.fd); */
 			if (buffer_poll(*pfd, c->tty.in, c->tty.out) != 0)
 				server_lost_client(c);
 			else

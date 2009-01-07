@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.53 2009-01-07 22:52:33 nicm Exp $ */
+/* $Id: server-msg.c,v 1.54 2009-01-07 22:57:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,7 +39,6 @@ void printflike2 server_msg_fn_command_info(
 
 struct server_msg {
 	enum hdrtype	type;
-
 	int	        (*fn)(struct hdr *, struct client *);
 };
 const struct server_msg server_msg_table[] = {
