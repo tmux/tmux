@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.53 2009-01-07 18:54:18 nicm Exp $
+.\" $Id: tmux.1,v 1.54 2009-01-07 23:07:42 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -705,8 +705,23 @@ to the left of the status bar.
 .Ar string
 will be passed through
 .Xr strftime 3
-before being displayed.
-By default, this setting is empty.
+before being used.
+By default, nothing is displayed. 
+.Ar string
+may contain any of the following special character pairs:
+.Bl -column "Character pair" "Replaced with" -offset indent
+.It Sy "Character pair" Ta Sy "Replaced with"
+.It Li "#T" Ta "Current window title"
+.It Li "##" Ta "A literal" Ql #
+.El
+.Pp
+These may be prefixed with a number to specify the maximum length, for example
+.Ql #24T .
+.It Ic status-left-length Ar length
+Set the maximum
+.Ar length
+of the left component of the status bar.
+The default is 10.
 .It Ic status-right Ar string
 Display
 .Ar string
@@ -716,7 +731,13 @@ As with
 .Ic status-left ,
 .Ar string
 will be passed to
-.Xr strftime 3 .
+.Xr strftime 3 
+and character pairs are replaced.
+.It Ic status-right-length Ar length
+Set the maximum
+.Ar length
+of the right component of the status bar.
+The default is 40.
 .El
 .It Xo Ic set-window-option
 .Op Fl t Ar target-window
