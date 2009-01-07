@@ -1,4 +1,4 @@
-/* $Id: cmd-source-file.c,v 1.2 2008-12-16 08:25:48 nicm Exp $ */
+/* $Id: cmd-source-file.c,v 1.3 2009-01-07 08:10:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Tiago Cunha <me@tiagocunha.org>
@@ -96,6 +96,7 @@ cmd_source_file_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (load_cfg(data->path, &cause) != 0) {
 		ctx->error(ctx, "%s", cause);
+		xfree(cause);
 		return;
 	}
 
