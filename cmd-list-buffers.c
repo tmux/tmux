@@ -1,4 +1,4 @@
-/* $Id: cmd-list-buffers.c,v 1.4 2008-09-26 06:45:25 nicm Exp $ */
+/* $Id: cmd-list-buffers.c,v 1.5 2009-01-07 19:52:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -79,7 +79,7 @@ cmd_list_buffers_exec(struct cmd *self, struct cmd_ctx *ctx)
 			}
 
 			ctx->print(ctx, "%d: "
-			    "%zu bytes: \"%s\"", idx, strlen(pb->data), tmp);
+			    "%zu bytes: \"%s\"", idx - 1, strlen(pb->data), tmp);
 		} else
 			ctx->print(ctx, "%d: %zu bytes", idx, strlen(pb->data));
 	}

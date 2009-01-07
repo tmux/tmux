@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.11 2008-06-20 18:58:13 nicm Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.12 2009-01-07 19:52:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,7 +55,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (data->buffer == -1)
 		pb = paste_get_top(&s->buffers);
 	else {
-		if ((pb = paste_get_top(&s->buffers)) == NULL)
+		if ((pb = paste_get_index(&s->buffers, data->buffer)) == NULL)
 			ctx->error(ctx, "no buffer %d", data->buffer);
 	}
 
