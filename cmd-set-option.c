@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.47 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.48 2009-01-07 19:53:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,8 +31,8 @@ void	cmd_set_option_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set",
-	"[-t target-session] option value",
-	CMD_GFLAG,
+	CMD_OPTION_SESSION_USAGE,
+	CMD_GFLAG|CMD_UFLAG,
 	NULL,
 	cmd_option_parse,
 	cmd_set_option_exec,
@@ -108,27 +108,47 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return;
 	}
 
-	switch (entry->type) {
-	case SET_OPTION_STRING:
-		set_option_string(ctx, oo, entry, data->value);
-		break;
-	case SET_OPTION_NUMBER:
-		set_option_number(ctx, oo, entry, data->value);
-		break;
-	case SET_OPTION_KEY:
-		set_option_key(ctx, oo, entry, data->value);
-		break;
-	case SET_OPTION_COLOUR:
-		set_option_colour(ctx, oo, entry, data->value);
-		break;
-	case SET_OPTION_FLAG:
-		set_option_flag(ctx, oo, entry, data->value);
-		break;
-	case SET_OPTION_CHOICE:
-		set_option_choice(ctx, oo, entry, data->value);
-		break;
-	}
+	if (data->flags & CMD_UFLAG) {
+		if (data->flags & CMD_GFLAG) {
+			ctx->error(ctx, 
+			    "can't unset global option: %s", entry->name);
+			return;
+		}
+		if (data->value != NULL) {
+			ctx->error(ctx,
+			    "value passed to unset option: %s", entry->name);
+			return;
+		}
 
+		if (options_remove(oo, entry->name) != 0) {
+			ctx->error(ctx,
+			    "can't unset option, not set: %s", entry->name);
+			return;
+		}
+		ctx->info(ctx, "unset option: %s", entry->name);
+	} else {
+		switch (entry->type) {
+		case SET_OPTION_STRING:
+			set_option_string(ctx, oo, entry, data->value);
+			break;
+		case SET_OPTION_NUMBER:
+			set_option_number(ctx, oo, entry, data->value);
+			break;
+		case SET_OPTION_KEY:
+			set_option_key(ctx, oo, entry, data->value);
+			break;
+		case SET_OPTION_COLOUR:
+			set_option_colour(ctx, oo, entry, data->value);
+			break;
+		case SET_OPTION_FLAG:
+			set_option_flag(ctx, oo, entry, data->value);
+			break;
+		case SET_OPTION_CHOICE:
+			set_option_choice(ctx, oo, entry, data->value);
+			break;
+		}
+	}
+		
 	recalculate_sizes();
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);

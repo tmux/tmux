@@ -1,4 +1,4 @@
-/* $Id: options-cmd.c,v 1.1 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: options-cmd.c,v 1.2 2009-01-07 19:53:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,6 +33,7 @@ set_option_string(struct cmd_ctx *ctx, struct options *oo,
 	}
 
 	options_set_string(oo, entry->name, "%s", value);
+	ctx->info(ctx, "set option: %s -> %s", entry->name, value);
 }
 
 void
@@ -53,6 +54,7 @@ set_option_number(struct cmd_ctx *ctx, struct options *oo,
 		return;
 	}
 	options_set_number(oo, entry->name, number);
+	ctx->info(ctx, "set option: %s -> %lld", entry->name, number);
 }
 
 void
@@ -71,7 +73,8 @@ set_option_key(struct cmd_ctx *ctx, struct options *oo,
 		return;
 	}
 	options_set_number(oo, entry->name, key);
-
+	ctx->info(ctx,
+	    "set option: %s -> %s", entry->name, key_string_lookup_key(key));
 }
 
 void
@@ -91,6 +94,8 @@ set_option_colour(struct cmd_ctx *ctx, struct options *oo,
 	}
 
 	options_set_number(oo, entry->name, colour);
+	ctx->info(ctx,
+	    "set option: %s -> %s", entry->name, colour_tostring(colour));
 }
 
 void
@@ -117,6 +122,8 @@ set_option_flag(struct cmd_ctx *ctx, struct options *oo,
 	}
 
 	options_set_number(oo, entry->name, flag);
+	ctx->info(ctx, 
+	    "set option: %s -> %s", entry->name, flag ? "on" : "off");
 }
 
 void
@@ -149,4 +156,6 @@ set_option_choice(struct cmd_ctx *ctx, struct options *oo,
 	}
 
 	options_set_number(oo, entry->name, choice);
+	ctx->info(ctx,
+	    "set option: %s -> %s", entry->name, entry->choices[choice]);
 }

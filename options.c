@@ -1,4 +1,4 @@
-/* $Id: options.c,v 1.3 2008-06-23 07:41:21 nicm Exp $ */
+/* $Id: options.c,v 1.4 2009-01-07 19:53:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -81,6 +81,22 @@ options_find(struct options *oo, const char *name)
 		o = SPLAY_FIND(options_tree, &oo->tree, &p);
 	}
 	return (o);
+}
+
+int
+options_remove(struct options *oo, const char *name)
+{
+	struct options_entry	*o;
+
+	if ((o = options_find1(oo, name)) == NULL)
+		return (-1);
+
+	SPLAY_REMOVE(options_tree, &oo->tree, o);
+	xfree(o->name);
+	if (o->type == OPTIONS_STRING)
+		xfree(o->value.string);
+	xfree(o);
+	return (0);
 }
 
 void printflike3

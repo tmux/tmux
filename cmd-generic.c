@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.15 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.16 2009-01-07 19:53:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,6 +22,86 @@
 
 #include "tmux.h"
 
+#define CMD_FLAGS "dgku"
+
+int	cmd_do_flags(int, int, int *);
+size_t	cmd_print_flags(char *, size_t, size_t, int);
+int	cmd_fill_argument(int, char **, int, char **);
+
+int
+cmd_do_flags(int opt, int iflags, int *oflags)
+{
+	switch (opt) {
+	case 'd':
+		if (iflags & CMD_DFLAG) {
+			(*oflags) |= CMD_DFLAG;
+			return (0);
+		}
+		return (-1);
+	case 'g':
+		if (iflags & CMD_GFLAG) {
+			(*oflags) |= CMD_GFLAG;
+			return (0);
+		}
+		return (-1);
+	case 'k':
+		if (iflags & CMD_KFLAG) {
+			(*oflags) |= CMD_KFLAG;
+			return (0);
+		}
+		return (-1);
+	case 'u':
+		if (iflags & CMD_UFLAG) {
+			(*oflags) |= CMD_UFLAG;
+			return (0);
+		}
+		return (-1);
+	}
+	return (1);
+}
+
+size_t
+cmd_print_flags(char *buf, size_t len, size_t off, int flags)
+{
+	if ((flags & (CMD_DFLAG|CMD_GFLAG|CMD_KFLAG|CMD_UFLAG)) == 0)
+		return (0);
+	off += xsnprintf(buf + off, len - off, " -");	
+	if (off < len && flags & CMD_DFLAG)
+		off += xsnprintf(buf + off, len - off, "d");
+	if (off < len && flags & CMD_GFLAG)
+		off += xsnprintf(buf + off, len - off, "g");
+	if (off < len && flags & CMD_KFLAG)
+		off += xsnprintf(buf + off, len - off, "k");
+	if (off < len && flags & CMD_UFLAG)
+		off += xsnprintf(buf + off, len - off, "u");
+	return (off);
+}
+
+int
+cmd_fill_argument(int flags, char **arg, int argc, char **argv)
+{
+	*arg = NULL;
+
+	if (flags & CMD_ONEARG) {
+		if (argc != 1)
+			return (-1);
+		*arg = xstrdup(argv[0]);
+		return (0);
+	}
+
+	if (flags & CMD_ZEROONEARG) {
+		if (argc != 0 && argc != 1)
+			return (-1);
+		if (argc == 1)
+			*arg = xstrdup(argv[0]);
+		return (0);
+	}
+	
+	if (argc != 0)
+		return (-1);
+	return (0);
+}
+
 void
 cmd_target_init(struct cmd *self, unused int key)
 {
@@ -43,26 +123,14 @@ cmd_target_parse(struct cmd *self, int argc, char **argv, char **cause)
 	cmd_target_init(self, 0);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, "dgkt:")) != -1) {
+	while ((opt = getopt(argc, argv, CMD_FLAGS "t:")) != -1) {
+		switch (cmd_do_flags(opt, self->entry->flags, &data->flags)) {
+		case -1:
+			goto usage;
+		case 0:
+			continue;
+		}
 		switch (opt) {
-		case 'd':
-			if (self->entry->flags & CMD_DFLAG) {
-				data->flags |= CMD_DFLAG;
-				break;
-			}
-			goto usage;
-		case 'g':
-			if (self->entry->flags & CMD_GFLAG) {
-				data->flags |= CMD_GFLAG;
-				break;
-			}
-			goto usage;
-		case 'k':
-			if (self->entry->flags & CMD_KFLAG) {
-				data->flags |= CMD_KFLAG;
-				break;
-			}
-			goto usage;
 		case 't':
 			if (data->target == NULL)
 				data->target = xstrdup(optarg);
@@ -74,21 +142,8 @@ cmd_target_parse(struct cmd *self, int argc, char **argv, char **cause)
 	argc -= optind;
 	argv += optind;
 
-	if (self->entry->flags & CMD_ONEARG) {
-		if (argc != 1)
-			goto usage;
-		data->arg = xstrdup(argv[0]);
-	} else if (self->entry->flags & CMD_ZEROONEARG) {
-		if (argc == 0)
-			data->arg = NULL;
-		else if (argc == 1)
-			data->arg = xstrdup(argv[0]);
-		else
-			goto usage;
-	} else {
-		if (argc != 0)
-			goto usage;
-	}
+	if (cmd_fill_argument(self->entry->flags, &data->arg, argc, argv) != 0)
+		goto usage;
 	return (0);
 
 usage:
@@ -140,12 +195,7 @@ cmd_target_print(struct cmd *self, char *buf, size_t len)
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
 		return;
-	if (off < len && data->flags & CMD_DFLAG)
-		off += xsnprintf(buf + off, len - off, " -d");
-	if (off < len && data->flags & CMD_GFLAG)
-		off += xsnprintf(buf + off, len - off, " -g");
-	if (off < len && data->flags & CMD_KFLAG)
-		off += xsnprintf(buf + off, len - off, " -k");
+	off += cmd_print_flags(buf, len, off, data->flags);
 	if (off < len && data->target != NULL)
 		off += xsnprintf(buf + off, len - off, " -t %s", data->target);
  	if (off < len && data->arg != NULL)
@@ -173,26 +223,14 @@ cmd_srcdst_parse(struct cmd *self, int argc, char **argv, char **cause)
 	cmd_srcdst_init(self, 0);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, "dgks:t:")) != -1) {
+	while ((opt = getopt(argc, argv, CMD_FLAGS "s:t:")) != -1) {
+		switch (cmd_do_flags(opt, self->entry->flags, &data->flags)) {
+		case -1:
+			goto usage;
+		case 0:
+			continue;
+		}
 		switch (opt) {
-		case 'd':
-			if (self->entry->flags & CMD_DFLAG) {
-				data->flags |= CMD_DFLAG;
-				break;
-			}
-			goto usage;
-		case 'g':
-			if (self->entry->flags & CMD_GFLAG) {
-				data->flags |= CMD_GFLAG;
-				break;
-			}
-			goto usage;
-		case 'k':
-			if (self->entry->flags & CMD_KFLAG) {
-				data->flags |= CMD_KFLAG;
-				break;
-			}
-			goto usage;
 		case 's':
 			if (data->src == NULL)
 				data->src = xstrdup(optarg);
@@ -208,21 +246,8 @@ cmd_srcdst_parse(struct cmd *self, int argc, char **argv, char **cause)
 	argc -= optind;
 	argv += optind;
 
-	if (self->entry->flags & CMD_ONEARG) {
-		if (argc != 1)
-			goto usage;
-		data->arg = xstrdup(argv[0]);
-	} else if (self->entry->flags & CMD_ZEROONEARG) {
-		if (argc == 0)
-			data->arg = NULL;
-		else if (argc == 1)
-			data->arg = xstrdup(argv[0]);
-		else
-			goto usage;
-	} else {
-		if (argc != 0)
-			goto usage;
-	}
+	if (cmd_fill_argument(self->entry->flags, &data->arg, argc, argv) != 0)
+		goto usage;
 	return (0);
 
 usage:
@@ -278,12 +303,7 @@ cmd_srcdst_print(struct cmd *self, char *buf, size_t len)
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
 		return;
-	if (off < len && data->flags & CMD_DFLAG)
-		off += xsnprintf(buf + off, len - off, " -d");
-	if (off < len && data->flags & CMD_GFLAG)
-		off += xsnprintf(buf + off, len - off, " -g");
-	if (off < len && data->flags & CMD_KFLAG)
-		off += xsnprintf(buf + off, len - off, " -k");
+	off += cmd_print_flags(buf, len, off, data->flags);
 	if (off < len && data->src != NULL)
 		off += xsnprintf(buf + off, len - off, " -s %s", data->src);
 	if (off < len && data->dst != NULL)
@@ -314,37 +334,24 @@ cmd_buffer_parse(struct cmd *self, int argc, char **argv, char **cause)
 	cmd_buffer_init(self, 0);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, "b:dgkt:")) != -1) {
+	while ((opt = getopt(argc, argv, CMD_FLAGS "b:t:")) != -1) {
+		switch (cmd_do_flags(opt, self->entry->flags, &data->flags)) {
+		case -1:
+			goto usage;
+		case 0:
+			continue;
+		}
 		switch (opt) {
 		case 'b':
 			if (data->buffer == -1) {
 				n = strtonum(optarg, 0, INT_MAX, &errstr);
 				if (errstr != NULL) {
-					xasprintf(
-					    cause, "buffer index %s", errstr);
+					xasprintf(cause, "buffer %s", errstr);
 					goto error;
 				}
 				data->buffer = n;
 			}
 			break;
-		case 'd':
-			if (self->entry->flags & CMD_DFLAG) {
-				data->flags |= CMD_DFLAG;
-				break;
-			}
-			goto usage;
-		case 'g':
-			if (self->entry->flags & CMD_GFLAG) {
-				data->flags |= CMD_GFLAG;
-				break;
-			}
-			goto usage;
-		case 'k':
-			if (self->entry->flags & CMD_KFLAG) {
-				data->flags |= CMD_KFLAG;
-				break;
-			}
-			goto usage;
 		case 't':
 			if (data->target == NULL)
 				data->target = xstrdup(optarg);
@@ -356,21 +363,8 @@ cmd_buffer_parse(struct cmd *self, int argc, char **argv, char **cause)
 	argc -= optind;
 	argv += optind;
 
-	if (self->entry->flags & CMD_ONEARG) {
-		if (argc != 1)
-			goto usage;
-		data->arg = xstrdup(argv[0]);
-	} else if (self->entry->flags & CMD_ZEROONEARG) {
-		if (argc == 0)
-			data->arg = NULL;
-		else if (argc == 1)
-			data->arg = xstrdup(argv[0]);
-		else
-			goto usage;
-	} else {
-		if (argc != 0)
-			goto usage;
-	}
+	if (cmd_fill_argument(self->entry->flags, &data->arg, argc, argv) != 0)
+		goto usage;
 	return (0);
 
 usage:
@@ -423,12 +417,7 @@ cmd_buffer_print(struct cmd *self, char *buf, size_t len)
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
 		return;
-	if (off < len && data->flags & CMD_DFLAG)
-		off += xsnprintf(buf + off, len - off, " -d");
-	if (off < len && data->flags & CMD_GFLAG)
-		off += xsnprintf(buf + off, len - off, " -g");
-	if (off < len && data->flags & CMD_KFLAG)
-		off += xsnprintf(buf + off, len - off, " -k");
+	off += cmd_print_flags(buf, len, off, data->flags);
 	if (off < len && data->buffer != -1)
 		off += xsnprintf(buf + off, len - off, " -b %d", data->buffer);
 	if (off < len && data->target != NULL)
@@ -459,26 +448,14 @@ cmd_option_parse(struct cmd *self, int argc, char **argv, char **cause)
 	cmd_option_init(self, 0);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, "dgkt:")) != -1) {
+	while ((opt = getopt(argc, argv, CMD_FLAGS "t:")) != -1) {
+		switch (cmd_do_flags(opt, self->entry->flags, &data->flags)) {
+		case -1:
+			goto usage;
+		case 0:
+			continue;
+		}
 		switch (opt) {
-		case 'd':
-			if (self->entry->flags & CMD_DFLAG) {
-				data->flags |= CMD_DFLAG;
-				break;
-			}
-			goto usage;
-		case 'g':
-			if (self->entry->flags & CMD_GFLAG) {
-				data->flags |= CMD_GFLAG;
-				break;
-			}
-			goto usage;
-		case 'k':
-			if (self->entry->flags & CMD_KFLAG) {
-				data->flags |= CMD_KFLAG;
-				break;
-			}
-			goto usage;
 		case 't':
 			if (data->target == NULL)
 				data->target = xstrdup(optarg);
@@ -552,12 +529,7 @@ cmd_option_print(struct cmd *self, char *buf, size_t len)
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
 		return;
-	if (off < len && data->flags & CMD_DFLAG)
-		off += xsnprintf(buf + off, len - off, " -d");
-	if (off < len && data->flags & CMD_GFLAG)
-		off += xsnprintf(buf + off, len - off, " -g");
-	if (off < len && data->flags & CMD_KFLAG)
-		off += xsnprintf(buf + off, len - off, " -k");
+	off += cmd_print_flags(buf, len, off, data->flags);
 	if (off < len && data->target != NULL)
 		off += xsnprintf(buf + off, len - off, " -t %s", data->target);
  	if (off < len && data->option != NULL)

@@ -93,6 +93,13 @@
 
 * tmux 0.5 released.
 
+07 January 2009
+
+* New flag to set and setw, -u, to unset a option (allowing it to inherit from)
+  the global options again.
+* Added more info messages for options changes.
+* A bit of tidying and reorganisation of options code.
+
 16 November 2008
 
 * New window option: "utf8"; this must be on (it is off by default) for UTF-8
@@ -802,7 +809,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.180 2009-01-06 18:24:37 nicm Exp $
+$Id: CHANGES,v 1.181 2009-01-07 19:53:17 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB

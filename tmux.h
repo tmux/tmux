@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.207 2009-01-06 17:04:56 nicm Exp $ */
+/* $Id: tmux.h,v 1.208 2009-01-07 19:53:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -796,6 +796,7 @@ struct cmd_entry {
 #define CMD_ONEARG 0x10
 #define CMD_ZEROONEARG 0x20
 #define CMD_GFLAG 0x40
+#define CMD_UFLAG 0x80
 	int		 flags;
 
 	void		 (*init)(struct cmd *, int);
@@ -948,6 +949,7 @@ void	options_init(struct options *, struct options *);
 void	options_free(struct options *);
 struct options_entry *options_find1(struct options *, const char *);
 struct options_entry *options_find(struct options *, const char *);
+int	options_remove(struct options *, const char *);
 void printflike3 options_set_string(
     	    struct options *, const char *, const char *, ...);
 char   *options_get_string(struct options *, const char *);
@@ -1102,9 +1104,9 @@ void	cmd_buffer_send(struct cmd *, struct buffer *);
 void	cmd_buffer_recv(struct cmd *, struct buffer *);
 void	cmd_buffer_free(struct cmd *);
 void	cmd_buffer_print(struct cmd *, char *, size_t);
-#define CMD_OPTION_WINDOW_USAGE "[-t target-window] option value"
-#define CMD_OPTION_SESSION_USAGE "[-t target-session] option value"
-#define CMD_OPTION_CLIENT_USAGE "[-t target-client] option value"
+#define CMD_OPTION_WINDOW_USAGE "[-gu] [-t target-window] option [value]"
+#define CMD_OPTION_SESSION_USAGE "[-gu] [-t target-session] option [value]"
+#define CMD_OPTION_CLIENT_USAGE "[-gu] [-t target-client] option [value]"
 void	cmd_option_init(struct cmd *, int);
 int	cmd_option_parse(struct cmd *, int, char **, char **);
 void	cmd_option_exec(struct cmd *, struct cmd_ctx *);
