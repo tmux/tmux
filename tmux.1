@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.52 2008-12-15 21:21:56 nicm Exp $
+.\" $Id: tmux.1,v 1.53 2009-01-07 18:54:18 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -596,6 +596,7 @@ Select the window at
 .Op Fl t Ar target-window
 .Ar key Ar ...
 .Xc
+.D1 (alias: Ic send )
 Send a key or keys to a window.
 Each argument
 .Ar key
@@ -642,43 +643,38 @@ window of that session,
 means all bells are ignored and
 .Ic current
 means only bell in windows other than the current window are ignored.
+.It Ic buffer-limit Ar number
+Set the number of buffers kept for each session; as new buffers are added to
+the top of the stack, old ones are removed from the bottom if necessary to
+maintain this maximum length.
 .It Ic default-command Ar command
 Sets the command used for new windows (if not specified when the window is
 created) to
 .Ar command .
 The default is
 .Dq exec $SHELL .
-.It Ic buffer-limit Ar number
-Set the number of buffers kept for each session; as new buffers are added to
-the top of the stack, old ones are removed from the bottom if necessary to
-maintain this maximum length.
 .It Ic history-limit Ar lines
 Set the maximum number of lines held in window history.
 This setting applies only to new windows - existing window histories are not
 resized and retain the limit at the point they were created.
-.It Xo Ic mode-keys
-.Op Ic vi | Ic emacs
-.Xc
-Use
-.Xr vi 1 -
+.It Ic message-bg Ar colour
+Set status line message background colour, where
+.Ar colour
+is one of:
+.Ic black ,
+.Ic red ,
+.Ic green ,
+.Ic yellow ,
+.Ic blue ,
+.Ic magenta ,
+.Ic cyan ,
+.Ic white
 or
-.Xr emacs 1 -
-style key bindings in scroll and copy modes.
-Key bindings default to emacs.
+.Ic default .
+.It Ic message-fg Ar colour
+Set status line message foreground colour.
 .It Ic prefix Ar key
 Set the current prefix key.
-.It Xo Ic remain-by-default
-.Op Ic on | Ic off
-.Xc
-If this option is on, newly created windows have their
-.Ic remain-on-exit
-flag set.
-.It Xo Ic utf8-default
-.Op Ic on | Ic off
-.Xc
-If this option is on, newly created windows have their
-.Ic utf8
-flag set.
 .It Xo Ic set-titles
 .Op Ic on | Ic off
 .Xc
@@ -694,19 +690,7 @@ variable is set.
 .Xc
 Show or hide the status line.
 .It Ic status-bg Ar colour
-Set status line background colour, where
-.Ar colour
-is one of:
-.Ic black ,
-.Ic red ,
-.Ic green ,
-.Ic yellow ,
-.Ic blue ,
-.Ic magenta ,
-.Ic cyan ,
-.Ic white
-or
-.Ic default .
+Set status line background colour.
 .It Ic status-fg Ar colour
 Set status line foreground colour.
 .It Ic status-interval Ar interval
@@ -753,13 +737,8 @@ current window, rather than the smallest session to which it is attached.
 The window may resize when the current window is changed on another sessions;
 this option is good for full-screen programs which support SIGWINCH and poor for
 interactive programs such as shells.
-.It Xo Ic monitor-activity
-.Op Ic on | Ic off
-.Xc
-Monitor for activity in the window.
-Windows with activity are highlighted in the status line.
-.It Ic force-width Ar width
 .It Ic force-height Ar height
+.It Ic force-width Ar width
 Prevent
 .Nm
 from resizing a window to greater than
@@ -767,6 +746,24 @@ from resizing a window to greater than
 or
 .Ar height .
 A value of zero restores the default unlimited setting.
+.It Ic mode-bg Ar colour
+Set window modes background colour.
+.It Ic mode-fg Ar colour
+Set window modes foreground colour.
+.It Xo Ic mode-keys
+.Op Ic vi | Ic emacs
+.Xc
+Use
+.Xr vi 1 -
+or
+.Xr emacs 1 -
+style key bindings in scroll and copy modes.
+Key bindings default to emacs.
+.It Xo Ic monitor-activity
+.Op Ic on | Ic off
+.Xc
+Monitor for activity in the window.
+Windows with activity are highlighted in the status line.
 .It Xo Ic remain-on-exit
 .Op Ic on | Ic off
 .Xc
@@ -812,6 +809,7 @@ Execute commands from
 .Ar path .
 .It Xo Ic start-server
 .Xc
+.D1 (alias: Ic start ) 
 Start the
 .Nm
 server, if not already running, without creating any sessions.
