@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.55 2009-01-06 18:33:32 nicm Exp $ */
+/* $Id: status.c,v 1.56 2009-01-07 22:29:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -472,6 +472,8 @@ status_prompt_key(struct client *c, int key)
 	char   *s, *first, *last;
 	size_t	size, n, off, idx;
 	char	word[64];
+
+	/* XXX This function needs some tidying... */
 
 	size = strlen(c->prompt_buffer);
 	switch (key) {
