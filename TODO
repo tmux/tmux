@@ -32,7 +32,6 @@
 - better mode features: search, back word, forward word, etc
 - flags to centre screen in window
 - better terminal emulation (identify, insert mode, some other bits)
-- save stack for last window
 - when resizing, use history
 - audit for leftover/unused code
 - commands:	save-buffer -b number filename
