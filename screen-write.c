@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.19 2009-01-06 18:07:57 nicm Exp $ */
+/* $Id: screen-write.c,v 1.20 2009-01-08 21:22:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -139,6 +139,7 @@ screen_write_cursorup(struct screen_write_ctx *ctx, u_int ny)
 	if (ny == 0)
 		return;
 
+	log_debug("cursor up: %u + %u", s->cy, ny);
 	s->cy -= ny;
 
 	if (ctx->write != NULL)
@@ -159,6 +160,7 @@ screen_write_cursordown(struct screen_write_ctx *ctx, u_int ny)
 	if (ny == 0)
 		return;
 
+	log_debug("cursor down: %u + %u", s->cy, ny);
 	s->cy += ny;
 
 	if (ctx->write != NULL)
@@ -179,6 +181,7 @@ screen_write_cursorright(struct screen_write_ctx *ctx, u_int nx)
 	if (nx == 0)
 		return;
 
+	log_debug("cursor right: %u + %u", s->cx, nx);
 	s->cx += nx;
 
 	if (ctx->write != NULL)
@@ -199,6 +202,7 @@ screen_write_cursorleft(struct screen_write_ctx *ctx, u_int nx)
 	if (nx == 0)
 		return;
 
+	log_debug("cursor left: %u + %u", s->cx, nx);
 	s->cx -= nx;
 
 	if (ctx->write != NULL)

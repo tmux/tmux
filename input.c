@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.70 2009-01-07 22:52:33 nicm Exp $ */
+/* $Id: input.c,v 1.71 2009-01-08 21:22:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -202,10 +202,9 @@ input_get_string(struct input_ctx *ictx)
 {
 	char	*s;
 
-	if (ictx->string_buf == NULL)
+	if (ictx->string_buf == NULL || input_add_string(ictx, '\0') != 0)
 		return (xstrdup(""));
 
-	input_add_string(ictx, '\0');
 	s = ictx->string_buf;
 	ictx->string_buf = NULL;
 	return (s);
