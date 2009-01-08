@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.3 2008-09-28 20:34:22 nicm Exp $ */
+/* $Id: grid.c,v 1.4 2009-01-08 21:52:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -37,15 +37,30 @@
 /* Default grid cell data. */
 const struct grid_cell grid_default_cell = { ' ', 0, 0, 8, 8 };
 
+
+#ifdef DEBUG
 #define grid_check_x(gd, px) do {				\
 	if ((px) >= (gd)->sx)					\
 		log_fatalx("x out of range: %u", px);		\
 } while (0)
-
 #define grid_check_y(gd, py) do {				\
 	if ((py) >= (gd)->hsize + (gd)->sy)			\
 		log_fatalx("y out of range: %u", py);		\
 } while (0)
+#else
+#define grid_check_x(gd, px) do {				\
+	if ((px) >= (gd)->sx) {					\
+		log_debug("x out of range: %u", px);		\
+		return;						\
+	}							\
+} while (0)
+#define grid_check_y(gd, py) do {				\
+	if ((py) >= (gd)->hsize + (gd)->sy) {			\
+		log_debug("y out of range: %u", py);		\
+		return;						\
+	}							\
+} while (0)
+#endif
 
 #define grid_put_cell(gd, px, py, gc) do {			\
 	memcpy(&gd->data[py][px], gc, sizeof gd->data[py][px]);	\
