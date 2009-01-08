@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.16 2009-01-07 22:52:33 nicm Exp $ */
+/* $Id: input-keys.c,v 1.17 2009-01-08 22:28:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,6 +31,7 @@ struct {
 	const char	*data;
 	int		 flags;
 } input_keys[] = {
+	/* Function keys. */
 	{ KEYC_F1,     "\033OP", 0 },
 	{ KEYC_F2,     "\033OQ", 0 },
 	{ KEYC_F3,     "\033OR", 0 },
@@ -43,12 +44,12 @@ struct {
 	{ KEYC_F10,    "\033[21~", 0 },
 	{ KEYC_F11,    "\033[23~", 0 },
 	{ KEYC_F12,    "\033[24~", 0 },
-	{ KEYC_DC,     "\033[3~", 0 },
 	{ KEYC_IC,     "\033[2~", 0 },
-	{ KEYC_NPAGE,  "\033[6~", 0 },
-	{ KEYC_PPAGE,  "\033[5~", 0 },
+	{ KEYC_DC,     "\033[3~", 0 },
 	{ KEYC_HOME,   "\033[1~", 0 },
 	{ KEYC_END,    "\033[4~", 0 },
+	{ KEYC_NPAGE,  "\033[6~", 0 },
+	{ KEYC_PPAGE,  "\033[5~", 0 },
 
 	/* Arrow keys. Cursor versions must come first. */
 	{ KEYC_UP,     "\033OA", INPUTKEY_CURSOR },

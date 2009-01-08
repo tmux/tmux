@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.56 2009-01-07 22:29:33 nicm Exp $ */
+/* $Id: status.c,v 1.57 2009-01-08 22:28:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -522,7 +522,8 @@ status_prompt_key(struct client *c, int key)
 			last--;
 		if (*last != '\0')
 			last++;
-		if (last <= first || last - first > (sizeof word) - 1)
+		if (last <= first ||
+		    ((size_t) (last - first)) > (sizeof word) - 1)
 			break;
 		memcpy(word, first, last - first);
 		word[last - first] = '\0';
