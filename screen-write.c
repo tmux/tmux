@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.20 2009-01-08 21:22:01 nicm Exp $ */
+/* $Id: screen-write.c,v 1.21 2009-01-08 21:55:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -139,7 +139,6 @@ screen_write_cursorup(struct screen_write_ctx *ctx, u_int ny)
 	if (ny == 0)
 		return;
 
-	log_debug("cursor up: %u + %u", s->cy, ny);
 	s->cy -= ny;
 
 	if (ctx->write != NULL)
@@ -160,7 +159,6 @@ screen_write_cursordown(struct screen_write_ctx *ctx, u_int ny)
 	if (ny == 0)
 		return;
 
-	log_debug("cursor down: %u + %u", s->cy, ny);
 	s->cy += ny;
 
 	if (ctx->write != NULL)
@@ -181,7 +179,6 @@ screen_write_cursorright(struct screen_write_ctx *ctx, u_int nx)
 	if (nx == 0)
 		return;
 
-	log_debug("cursor right: %u + %u", s->cx, nx);
 	s->cx += nx;
 
 	if (ctx->write != NULL)
@@ -202,7 +199,6 @@ screen_write_cursorleft(struct screen_write_ctx *ctx, u_int nx)
 	if (nx == 0)
 		return;
 
-	log_debug("cursor left: %u + %u", s->cx, nx);
 	s->cx -= nx;
 
 	if (ctx->write != NULL)
@@ -223,7 +219,8 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx)
 	if (nx == 0)
 		return;
 
-	grid_view_insert_cells(s->grid, s->cx, s->cy, nx);
+	if (s->cx <= screen_size_x(s) - 1)
+		grid_view_insert_cells(s->grid, s->cx, s->cy, nx);
 
 	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_INSERTCHARACTER, nx);
@@ -243,7 +240,8 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx)
 	if (nx == 0)
 		return;
 
-	grid_view_delete_cells(s->grid, s->cx, s->cy, nx);
+	if (s->cx <= screen_size_x(s) - 1)
+		grid_view_delete_cells(s->grid, s->cx, s->cy, nx);
 
 	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_DELETECHARACTER, nx);
@@ -316,9 +314,13 @@ void
 screen_write_clearendofline(struct screen_write_ctx *ctx)
 {
 	struct screen	*s = ctx->s;
+	u_int		 sx;
 
-	grid_view_clear(s->grid, s->cx, s->cy, screen_size_x(s) - s->cx, 1);
+	sx = screen_size_x(s);
 
+	if (s->cx <= sx - 1)
+		grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1);
+	
 	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_CLEARENDOFLINE);
 }
@@ -328,8 +330,14 @@ void
 screen_write_clearstartofline(struct screen_write_ctx *ctx)
 {
 	struct screen	*s = ctx->s;
+	u_int		 sx;
 
-	grid_view_clear(s->grid, 0, s->cy, s->cx + 1, 1);
+	sx = screen_size_x(s);
+
+	if (s->cx > sx - 1)
+		grid_view_clear(s->grid, 0, s->cy, sx, 1);
+	else
+		grid_view_clear(s->grid, 0, s->cy, s->cx + 1, 1);
 
 	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_CLEARSTARTOFLINE);
@@ -505,7 +513,8 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx)
 	sx = screen_size_x(s);
 	sy = screen_size_y(s);
 
-	grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1);
+	if (s->cx <= sx - 1)
+		grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1);
 	grid_view_clear(s->grid, 0, s->cy + 1, sx, sy - (s->cy + 1));
 
 	if (ctx->write != NULL)
@@ -523,7 +532,10 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx)
 
 	if (s->cy > 0)
 		grid_view_clear(s->grid, 0, 0, sx, s->cy - 1);
-	grid_view_clear(s->grid, 0, s->cy, s->cx, 1);
+	if (s->cx > sx - 1)
+		grid_view_clear(s->grid, 0, s->cy, sx, 1);
+	else
+		grid_view_clear(s->grid, 0, s->cy, s->cx, 1);
 
 	if (ctx->write != NULL)
 		ctx->write(ctx->data, TTY_CLEARSTARTOFSCREEN);
@@ -563,7 +575,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	}
 
 	/* Check this will fit on the current line; scroll if not. */
-	if (s->cx >= screen_size_x(s) + 1 - width) {
+	if (s->cx > screen_size_x(s) - width) {
 		screen_write_carriagereturn(ctx);
 		screen_write_linefeed(ctx);
 	}
