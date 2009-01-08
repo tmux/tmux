@@ -1,3 +1,14 @@
+08 January 2009
+
+* If built without DEBUG (the release versions), don't cause a fatal error if
+  the grid functions notice an input error, just log and ignore the
+  request. This might mean me getting shouted at less often when bugs kill
+  long-running sessions, at least in release versions.
+* Hopefully fix cursor out-of-bounds checking when writing to grid. When I
+  wrote the code I must have forgotten that the cursor can be one cell off the
+  right of the screen (yes, I know), so there were number of out-of-bounds/
+  overflow problems.
+
 07 January 2009
 
 * New flag to set and setw, -u, to unset a option (allowing it to inherit from)
@@ -809,7 +820,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.182 2009-01-07 20:15:20 nicm Exp $
+$Id: CHANGES,v 1.183 2009-01-08 21:59:24 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB
