@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.14 2009-01-09 16:45:58 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.15 2009-01-09 16:47:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,6 +58,14 @@ struct tty_key_ent tty_keys[] = {
 	{ "kcud1", KEYC_DOWN, TTYKEY_MODIFIER },
 	{ "kcub1", KEYC_LEFT, TTYKEY_MODIFIER },
 	{ "kcuf1", KEYC_RIGHT, TTYKEY_MODIFIER },
+	{ "\033OA",KEYC_UP, TTYKEY_RAW|TTYKEY_MODIFIER },
+	{ "\033OB",KEYC_DOWN, TTYKEY_RAW|TTYKEY_MODIFIER },
+	{ "\033OD",KEYC_LEFT, TTYKEY_RAW|TTYKEY_MODIFIER },
+	{ "\033OC",KEYC_RIGHT, TTYKEY_RAW|TTYKEY_MODIFIER },
+	{ "\033[A",KEYC_UP, TTYKEY_RAW|TTYKEY_MODIFIER },
+	{ "\033[B",KEYC_DOWN, TTYKEY_RAW|TTYKEY_MODIFIER },
+	{ "\033[D",KEYC_LEFT, TTYKEY_RAW|TTYKEY_MODIFIER },
+	{ "\033[C",KEYC_RIGHT, TTYKEY_RAW|TTYKEY_MODIFIER },
 
 	/*
 	 * Numeric keypad. termcap and terminfo are totally confusing for this.
