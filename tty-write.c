@@ -1,4 +1,4 @@
-/* $Id: tty-write.c,v 1.2 2007-12-06 09:46:23 nicm Exp $ */
+/* $Id: tty-write.c,v 1.3 2009-01-09 23:57:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,7 +21,7 @@
 #include "tmux.h"
 
 void
-tty_write_client(void *ptr, int cmd, ...)
+tty_write_client(void *ptr, enum tty_cmd cmd, ...)
 {
 	struct client	*c = ptr;
 	va_list		 ap;
@@ -32,7 +32,7 @@ tty_write_client(void *ptr, int cmd, ...)
 }
 
 void
-tty_vwrite_client(void *ptr, int cmd, va_list ap)
+tty_vwrite_client(void *ptr, enum tty_cmd cmd, va_list ap)
 {
 	struct client	*c = ptr;
 	struct screen	*s = c->session->curw->window->screen;
@@ -41,7 +41,7 @@ tty_vwrite_client(void *ptr, int cmd, va_list ap)
 }
 
 void
-tty_write_window(void *ptr, int cmd, ...)
+tty_write_window(void *ptr, enum tty_cmd cmd, ...)
 {
 	va_list	ap;
 
@@ -51,7 +51,7 @@ tty_write_window(void *ptr, int cmd, ...)
 }
 
 void
-tty_vwrite_window(void *ptr, int cmd, va_list ap)
+tty_vwrite_window(void *ptr, enum tty_cmd cmd, va_list ap)
 {
 	struct window	*w = ptr;
 	struct client	*c;
@@ -75,7 +75,7 @@ tty_vwrite_window(void *ptr, int cmd, va_list ap)
 }
 
 void
-tty_write_session(void *ptr, int cmd, ...)
+tty_write_session(void *ptr, enum tty_cmd cmd, ...)
 {
 	va_list	ap;
 
@@ -85,7 +85,7 @@ tty_write_session(void *ptr, int cmd, ...)
 }
 
 void
-tty_vwrite_session(void *ptr, int cmd, va_list ap)
+tty_vwrite_session(void *ptr, enum tty_cmd cmd, va_list ap)
 {
 	struct session	*s = ptr;
 	struct client	*c;

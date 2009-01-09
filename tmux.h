@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.211 2009-01-09 16:45:58 nicm Exp $ */
+/* $Id: tmux.h,v 1.212 2009-01-09 23:57:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION -3
+#define PROTOCOL_VERSION -4
 
 /* Shut up gcc warnings about empty if bodies. */
 #define RB_AUGMENT(x) do {} while (0)
@@ -52,13 +52,12 @@
 #include "compat/getopt.h"
 #endif
 
-#include <ncurses.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <term.h>
+#include <termios.h>
 
 #include "array.h"
 
@@ -221,33 +220,133 @@ struct buffer {
 #define KEYC_KP4_0 (KEYC_OFFSET + 0x10e)
 #define KEYC_KP4_2 (KEYC_OFFSET + 0x10f)
 
-/* Output codes. */
-#define TTY_CURSORUP 0
-#define TTY_CURSORDOWN 1
-#define TTY_CURSORRIGHT 2
-#define TTY_CURSORLEFT 3
-#define TTY_INSERTCHARACTER 4
-#define TTY_DELETECHARACTER 5
-#define TTY_INSERTLINE 6
-#define TTY_DELETELINE 7
-#define TTY_CLEARLINE 8
-#define TTY_CLEARENDOFLINE 9
-#define TTY_CLEARSTARTOFLINE 10
-#define TTY_CURSORMOVE 11
-#define TTY_CURSORMODE 12
-#define TTY_REVERSEINDEX 13
-#define TTY_SCROLLREGION 14
-#define TTY_INSERTMODE 15
-#define TTY_MOUSEMODE 16
-#define TTY_LINEFEED 17
-#define TTY_CARRIAGERETURN 18
-#define TTY_BELL 19
-#define TTY_KCURSORMODE 20
-#define TTY_KKEYPADMODE 21
-#define TTY_CLEARENDOFSCREEN 22
-#define TTY_CLEARSTARTOFSCREEN 23
-#define TTY_CLEARSCREEN 24
-#define TTY_CELL 25
+/* Termcap codes. */
+enum tty_code_code {
+	TTYC_AX = 0,
+	TTYC_ACSC,	/* acs_chars, ac */
+	TTYC_BEL,	/* bell, bl */
+	TTYC_BLINK,	/* enter_blink_mode, mb */
+	TTYC_BOLD,	/* enter_bold_mode, md */
+	TTYC_CIVIS,	/* cursor_invisible, vi */
+	TTYC_CLEAR,	/* clear_screen, cl */
+	TTYC_CNORM,	/* cursor_normal, ve */
+	TTYC_COLORS,	/* max_colors, Co */
+	TTYC_CR,	/* carriage_return, cr */
+	TTYC_CSR,	/* change_scroll_region, cs */
+	TTYC_CUB,	/* parm_left_cursor, LE */
+	TTYC_CUB1,	/* cursor_left, le */
+	TTYC_CUD,	/* parm_down_cursor, DO */
+	TTYC_CUD1,	/* cursor_down, do */
+	TTYC_CUF,	/* parm_right_cursor, RI */
+	TTYC_CUF1,	/* cursor_right, nd */
+	TTYC_CUP,	/* cursor_address, cm */
+	TTYC_CUU,	/* parm_up_cursor, UP */
+	TTYC_CUU1,	/* cursor_up, up */
+	TTYC_DCH,	/* parm_dch, DC */
+	TTYC_DCH1,	/* delete_character, dc */
+	TTYC_DIM,	/* enter_dim_mode, mh */
+	TTYC_DL,	/* parm_delete_line, DL */
+	TTYC_DL1,	/* delete_line, dl */
+	TTYC_ED,	/* clr_eos, cd */
+	TTYC_EL,	/* clr_eol, ce */
+	TTYC_EL1,	/* clr_bol, cb */
+	TTYC_ENACS,	/* ena_acs, eA */
+	TTYC_ICH,	/* parm_ich, IC */
+	TTYC_ICH1,	/* insert_character, ic */
+	TTYC_IL,	/* parm_insert_line, IL */
+	TTYC_IL1,	/* insert_line, il */
+	TTYC_INVIS,	/* enter_secure_mode, mk */
+	TTYC_IS1,	/* init_1string, i1 */
+	TTYC_IS2,	/* init_2string, i2 */
+	TTYC_IS3,	/* init_3string, i3 */
+	TTYC_KCUB1,	/* key_left, kl */
+	TTYC_KCUD1,	/* key_down, kd */
+	TTYC_KCUF1,	/* key_right, kr */
+	TTYC_KCUU1,	/* key_up, ku */
+	TTYC_KDCH1,	/* key_dc, kD */
+	TTYC_KEND,	/* key_end, ke */
+	TTYC_KF1,	/* key_f1, k1 */
+	TTYC_KF10,	/* key_f10, k; */
+	TTYC_KF11,	/* key_f11, F1 */
+	TTYC_KF12,	/* key_f12, 21 */
+	TTYC_KF2,	/* key_f2, k2 */
+	TTYC_KF3,	/* key_f3, k3 */
+	TTYC_KF4,	/* key_f4, k4 */
+	TTYC_KF5,	/* key_f5, k5 */
+	TTYC_KF6,	/* key_f6, k6 */
+	TTYC_KF7,	/* key_f7, k7 */
+	TTYC_KF8,	/* key_f8, k8 */
+	TTYC_KF9,	/* key_f9, k9 */
+	TTYC_KHOME,	/* key_home, kh */
+	TTYC_KICH1,	/* key_ic, kI */
+	TTYC_KMOUS,	/* key_mouse, Km */
+	TTYC_KNP,	/* key_npage, kN */
+	TTYC_KPP,	/* key_ppage, kP */
+	TTYC_OP,	/* orig_pair, op */
+	TTYC_REV,	/* enter_reverse_mode, mr */
+	TTYC_RI,	/* scroll_reverse, sr */
+	TTYC_RMACS,	/* exit_alt_charset_mode */
+	TTYC_RMCUP,	/* exit_ca_mode, te */
+	TTYC_RMKX,	/* keypad_local, ke */
+	TTYC_SETAB,	/* set_a_background, AB */
+	TTYC_SETAF,	/* set_a_foreground, AF */
+	TTYC_SGR0,	/* exit_attribute_mode, me */
+	TTYC_SMACS,	/* enter_alt_charset_mode, as */
+	TTYC_SMCUP,	/* enter_ca_mode, ti */
+	TTYC_SMKX,	/* keypad_xmit, ks */
+	TTYC_SMSO,	/* enter_standout_mode, so */
+	TTYC_SMUL,	/* enter_underline_mode, us */
+
+	NTTYCODE
+};
+
+/* Termcap types. */
+enum tty_code_type {
+	TTYCODE_NONE = 0,
+	TTYCODE_STRING,
+	TTYCODE_NUMBER,
+	TTYCODE_FLAG,
+};
+
+/* Termcap code. */
+struct tty_code {
+	enum tty_code_type	type;
+	union {
+		char 	       *string;
+		int	 	number;
+		int	 	flag;
+	} value;
+};
+	
+/* Output commands. */
+enum tty_cmd {
+	TTY_BELL,
+	TTY_CARRIAGERETURN,
+	TTY_CELL,
+	TTY_CLEARENDOFLINE,
+	TTY_CLEARENDOFSCREEN,
+	TTY_CLEARLINE,
+	TTY_CLEARSCREEN,
+	TTY_CLEARSTARTOFLINE,
+	TTY_CLEARSTARTOFSCREEN,
+	TTY_CURSORDOWN,
+	TTY_CURSORLEFT,
+	TTY_CURSORMODE,
+	TTY_CURSORMOVE,
+	TTY_CURSORRIGHT,
+	TTY_CURSORUP,
+	TTY_DELETECHARACTER,
+	TTY_DELETELINE,
+	TTY_INSERTCHARACTER,
+	TTY_INSERTLINE,
+	TTY_INSERTMODE,
+	TTY_KCURSORMODE,
+	TTY_KKEYPADMODE,
+	TTY_LINEFEED,
+	TTY_MOUSEMODE,
+	TTY_REVERSEINDEX,
+	TTY_SCROLLREGION,
+};
 
 /* Message codes. */
 enum hdrtype {
@@ -405,7 +504,7 @@ struct screen {
 /* Screen redraw context. */
 struct screen_redraw_ctx {
 	void		*data;
-	void		 (*write)(void *, int, ...);
+	void		 (*write)(void *, enum tty_cmd, ...);
 
 	u_int		 saved_cx;
 	u_int		 saved_cy;
@@ -416,7 +515,7 @@ struct screen_redraw_ctx {
 /* Screen write context. */
 struct screen_write_ctx {
 	void		*data;
-	void		 (*write)(void *, int, ...);
+	void		 (*write)(void *, enum tty_cmd, ...);
 
 	struct screen	*s;
 };
@@ -557,7 +656,7 @@ ARRAY_DECL(sessions, struct session *);
 
 /* TTY information. */
 struct tty_key {
-	int	 	 code;
+	int	 	 key;
 	char		*string;
 
 	int		 flags;
@@ -569,8 +668,9 @@ struct tty_key {
 
 struct tty_term {
 	char		*name;
-	TERMINAL	*term;
 	u_int		 references;
+
+	struct tty_code	 codes[NTTYCODE];
 
 #define TERM_HASDEFAULTS 0x1
 #define TERM_256COLOURS 0x2
@@ -824,6 +924,7 @@ extern struct options global_window_options;
 extern char	*cfg_file;
 extern int	 debug_level;
 extern int	 be_quiet;
+extern time_t	 start_time;
 void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);
@@ -854,8 +955,20 @@ void		 tty_set_title(struct tty *, const char *);
 int		 tty_open(struct tty *, char **);
 void		 tty_close(struct tty *);
 void		 tty_free(struct tty *);
-void		 tty_write(struct tty *, struct screen *, int, ...);
-void		 tty_vwrite(struct tty *, struct screen *s, int, va_list);
+void		 tty_write(struct tty *, struct screen *, enum tty_cmd, ...);
+void		 tty_vwrite(
+    		      struct tty *, struct screen *s, enum tty_cmd, va_list);
+
+/* tty-term.c */
+struct tty_term *tty_term_find(char *, int,char **);
+void 		 tty_term_free(struct tty_term *);
+int		 tty_term_has(struct tty_term *, enum tty_code_code);
+const char	*tty_term_string(struct tty_term *, enum tty_code_code);
+const char	*tty_term_string1(struct tty_term *, enum tty_code_code, int);
+const char	*tty_term_string2(
+    		     struct tty_term *, enum tty_code_code, int, int);
+int		 tty_term_number(struct tty_term *, enum tty_code_code);
+int		 tty_term_flag(struct tty_term *, enum tty_code_code);
 
 /* tty-keys.c */
 int		 tty_keys_cmp(struct tty_key *, struct tty_key *);
@@ -865,12 +978,12 @@ void		 tty_keys_free(struct tty *);
 int		 tty_keys_next(struct tty *, int *);
 
 /* tty-write.c */
-void		 tty_write_client(void *, int, ...);
-void		 tty_vwrite_client(void *, int, va_list);
-void		 tty_write_window(void *, int, ...);
-void		 tty_vwrite_window(void *, int, va_list);
-void		 tty_write_session(void *, int, ...);
-void		 tty_vwrite_session(void *, int, va_list);
+void		 tty_write_client(void *, enum tty_cmd, ...);
+void		 tty_vwrite_client(void *, enum tty_cmd, va_list);
+void		 tty_write_window(void *, enum tty_cmd, ...);
+void		 tty_vwrite_window(void *, enum tty_cmd, va_list);
+void		 tty_write_session(void *, enum tty_cmd, ...);
+void		 tty_vwrite_session(void *, enum tty_cmd, va_list);
 
 /* options-cmd.c */
 void	set_option_string(struct cmd_ctx *,
@@ -1135,7 +1248,7 @@ void	 screen_write_start_client(struct screen_write_ctx *, struct client *);
 void	 screen_write_start_session(
     	     struct screen_write_ctx *, struct session *);
 void	 screen_write_start(struct screen_write_ctx *,
-	     struct screen *, void (*)(void *, int, ...), void *);
+	     struct screen *, void (*)(void *, enum tty_cmd, ...), void *);
 void	 screen_write_stop(struct screen_write_ctx *);
 void printflike3 screen_write_puts(
 	     struct screen_write_ctx *, struct grid_cell *, const char *, ...);
@@ -1175,7 +1288,7 @@ void	screen_redraw_start_client(struct screen_redraw_ctx *, struct client *);
 void	screen_redraw_start_session(
     	    struct screen_redraw_ctx *, struct session *);
 void	screen_redraw_start(struct screen_redraw_ctx *,
-    	    struct screen *, void (*)(void *, int, ...), void *);
+    	    struct screen *, void (*)(void *, enum tty_cmd, ...), void *);
 void	screen_redraw_stop(struct screen_redraw_ctx *);
 void printflike3 screen_redraw_puts(
      	    struct screen_redraw_ctx *, struct grid_cell *, const char *, ...);

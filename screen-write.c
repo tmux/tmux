@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.21 2009-01-08 21:55:12 nicm Exp $ */
+/* $Id: screen-write.c,v 1.22 2009-01-09 23:57:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,7 +52,7 @@ screen_write_start_session(struct screen_write_ctx *ctx, struct session *s)
 /* Initialise writing. */
 void
 screen_write_start(struct screen_write_ctx *ctx,
-    struct screen *s, void (*write)(void *, int, ...), void *data)
+    struct screen *s, void (*write)(void *, enum tty_cmd, ...), void *data)
 {
 	ctx->write = write;
 	ctx->data = data;

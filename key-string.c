@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.11 2009-01-09 16:45:58 nicm Exp $ */
+/* $Id: key-string.c,v 1.12 2009-01-09 23:57:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -88,7 +88,6 @@ key_string_search_table(const char *string)
 int
 key_string_lookup_string(const char *string)
 {
-	u_int	i;
 	int	key;
 
 	if (string[0] == '\0')

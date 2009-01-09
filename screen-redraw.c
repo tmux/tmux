@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.14 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.15 2009-01-09 23:57:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,7 +52,7 @@ screen_redraw_start_session(struct screen_redraw_ctx *ctx, struct session *s)
 /* Initialise for redrawing. */
 void
 screen_redraw_start(struct screen_redraw_ctx *ctx,
-    struct screen *s, void (*write)(void *, int, ...), void *data)
+    struct screen *s, void (*write)(void *, enum tty_cmd, ...), void *data)
 {
 	ctx->write = write;
 	ctx->data = data;
