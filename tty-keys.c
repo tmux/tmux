@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.13 2009-01-08 22:28:02 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.14 2009-01-09 16:45:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,35 +23,41 @@
 
 #include "tmux.h"
 
-struct {
+void	tty_keys_add(struct tty *, const char *, int, int);
+
+struct tty_key_ent {
 	const char	*name;
 	int	 	 code;
-} tty_keys[] = {
+
+	int		 flags;
+};
+
+struct tty_key_ent tty_keys[] = {
 	/* Function keys. */
-	{ "kf1",   KEYC_F1 },
-	{ "kf2",   KEYC_F2 },
-	{ "kf3",   KEYC_F3 },
-	{ "kf4",   KEYC_F4 },
-	{ "kf5",   KEYC_F5 },
-	{ "kf6",   KEYC_F6 },
-	{ "kf7",   KEYC_F7 },
-	{ "kf8",   KEYC_F8 },
-	{ "kf9",   KEYC_F9 },
-	{ "kf10",  KEYC_F10 },
-	{ "kf11",  KEYC_F11 },
-	{ "kf12",  KEYC_F12 },
-	{ "kich1", KEYC_IC },
-	{ "kdch1", KEYC_DC },
-	{ "khome", KEYC_HOME },
-	{ "kend",  KEYC_END },
-	{ "knp",   KEYC_NPAGE },
-	{ "kpp",   KEYC_PPAGE },
+	{ "kf1",   KEYC_F1, TTYKEY_MODIFIER },
+	{ "kf2",   KEYC_F2, TTYKEY_MODIFIER },
+	{ "kf3",   KEYC_F3, TTYKEY_MODIFIER },
+	{ "kf4",   KEYC_F4, TTYKEY_MODIFIER },
+	{ "kf5",   KEYC_F5, TTYKEY_MODIFIER },
+	{ "kf6",   KEYC_F6, TTYKEY_MODIFIER },
+	{ "kf7",   KEYC_F7, TTYKEY_MODIFIER },
+	{ "kf8",   KEYC_F8, TTYKEY_MODIFIER },
+	{ "kf9",   KEYC_F9, TTYKEY_MODIFIER },
+	{ "kf10",  KEYC_F10, TTYKEY_MODIFIER },
+	{ "kf11",  KEYC_F11, TTYKEY_MODIFIER },
+	{ "kf12",  KEYC_F12, TTYKEY_MODIFIER },
+	{ "kich1", KEYC_IC, TTYKEY_MODIFIER },
+	{ "kdch1", KEYC_DC, TTYKEY_MODIFIER },
+	{ "khome", KEYC_HOME, TTYKEY_MODIFIER },
+	{ "kend",  KEYC_END, TTYKEY_MODIFIER },
+	{ "knp",   KEYC_NPAGE, TTYKEY_MODIFIER },
+	{ "kpp",   KEYC_PPAGE, TTYKEY_MODIFIER },
 
 	/* Arrow keys. */
-	{ "kcuu1", KEYC_UP },
-	{ "kcud1", KEYC_DOWN },
-	{ "kcub1", KEYC_LEFT },
-	{ "kcuf1", KEYC_RIGHT },
+	{ "kcuu1", KEYC_UP, TTYKEY_MODIFIER },
+	{ "kcud1", KEYC_DOWN, TTYKEY_MODIFIER },
+	{ "kcub1", KEYC_LEFT, TTYKEY_MODIFIER },
+	{ "kcuf1", KEYC_RIGHT, TTYKEY_MODIFIER },
 
 	/*
 	 * Numeric keypad. termcap and terminfo are totally confusing for this.
@@ -63,22 +69,22 @@ struct {
 	 * mode. Translation of numbers mode/applications mode is done in
 	 * input-keys.c.
 	 */
-	{ "-\033Oo", KEYC_KP0_1 },
-	{ "-\033Oj", KEYC_KP0_2 },
-	{ "-\033Om", KEYC_KP0_3 },
-	{ "-\033Ow", KEYC_KP1_0 },
-	{ "-\033Ox", KEYC_KP1_1 },
-	{ "-\033Oy", KEYC_KP1_2 },
-	{ "-\033Ok", KEYC_KP1_3 },
-	{ "-\033Ot", KEYC_KP2_0 },
-	{ "-\033Ou", KEYC_KP2_1 },
-	{ "-\033Ov", KEYC_KP2_2 },
-	{ "-\033Oq", KEYC_KP3_0 },
-	{ "-\033Or", KEYC_KP3_1 },
-	{ "-\033Os", KEYC_KP3_2 },
-	{ "-\033OM", KEYC_KP3_3 },
-	{ "-\033Op", KEYC_KP4_0 },
-	{ "-\033On", KEYC_KP4_2 },
+	{ "\033Oo", KEYC_KP0_1, TTYKEY_RAW },
+	{ "\033Oj", KEYC_KP0_2, TTYKEY_RAW },
+	{ "\033Om", KEYC_KP0_3, TTYKEY_RAW },
+	{ "\033Ow", KEYC_KP1_0, TTYKEY_RAW },
+	{ "\033Ox", KEYC_KP1_1, TTYKEY_RAW },
+	{ "\033Oy", KEYC_KP1_2, TTYKEY_RAW },
+	{ "\033Ok", KEYC_KP1_3, TTYKEY_RAW },
+	{ "\033Ot", KEYC_KP2_0, TTYKEY_RAW },
+	{ "\033Ou", KEYC_KP2_1, TTYKEY_RAW },
+	{ "\033Ov", KEYC_KP2_2, TTYKEY_RAW },
+	{ "\033Oq", KEYC_KP3_0, TTYKEY_RAW },
+	{ "\033Or", KEYC_KP3_1, TTYKEY_RAW },
+	{ "\033Os", KEYC_KP3_2, TTYKEY_RAW },
+	{ "\033OM", KEYC_KP3_3, TTYKEY_RAW },
+	{ "\033Op", KEYC_KP4_0, TTYKEY_RAW },
+	{ "\033On", KEYC_KP4_2, TTYKEY_RAW },
 };
 
 RB_GENERATE(tty_keys, tty_key, entry, tty_keys_cmp);
@@ -92,36 +98,54 @@ tty_keys_cmp(struct tty_key *k1, struct tty_key *k2)
 }
 
 void
-tty_keys_init(struct tty *tty)
+tty_keys_add(struct tty *tty, const char *s, int code, int flags)
 {
 	struct tty_key	*tk;
-	u_int		 i;
-	const char	*s;
+
+	tk = xmalloc(sizeof *tk);
+	tk->string = xstrdup(s);
+	tk->code = code;
+	tk->flags = flags;
+	
+	if (strlen(tk->string) > tty->ksize)
+		tty->ksize = strlen(tk->string);
+	RB_INSERT(tty_keys, &tty->ktree, tk);
+
+	log_debug(
+	    "new key %x: size now %zu (%s)", code, tty->ksize, tk->string);
+}
+
+void
+tty_keys_init(struct tty *tty)
+{
+	struct tty_key_ent	*tke;
+	u_int		 	 i;
+	const char		*s;
+	char			 tmp[64];
 
 	RB_INIT(&tty->ktree);
 
 	tty->ksize = 0;
 	for (i = 0; i < nitems(tty_keys); i++) {
-		if (*tty_keys[i].name == '-')
-			s = tty_keys[i].name + 1;
+		tke = &tty_keys[i];
+
+		if (tke->flags & TTYKEY_RAW)
+			s = tke->name;
 		else {
-			s = tigetstr(tty_keys[i].name);
+			s = tigetstr(tke->name);
 			if (s == (char *) -1 || s == (char *) 0)
 				continue;
+			if (s[0] != '\033' || s[1] == '\0')
+				continue;
 		}
-		if (s[0] != '\033' || s[1] == '\0')
-			continue;
 
-		tk = xmalloc(sizeof *tk);
-		tk->string = xstrdup(s + 1);
-		tk->code = tty_keys[i].code;
-
-		if (strlen(tk->string) > tty->ksize)
-			tty->ksize = strlen(tk->string);
-		RB_INSERT(tty_keys, &tty->ktree, tk);
-
-		log_debug("found key %x: size now %zu (%s)",
-		    tk->code, tty->ksize, tk->string);
+		tty_keys_add(tty, s + 1, tke->code, tke->flags);
+		if (tke->flags & TTYKEY_MODIFIER) {
+			if (strlcpy(tmp, s, sizeof tmp) >= sizeof tmp)
+				continue;
+			tmp[strlen(tmp) - 1] ^= 0x20;
+			tty_keys_add(tty, tmp + 1, KEYC_ADDCTL(tke->code), 0);
+		}
 	}
 }
 
@@ -172,28 +196,76 @@ int
 tty_keys_next(struct tty *tty, int *code)
 {
 	struct tty_key	*tk;
-	size_t		 size;
 	struct timeval	 tv;
+	char		 arg, *buf, tmp[32];
+	size_t		 len, size;
 
-	size = BUFFER_USED(tty->in);
-	if (size == 0)
+	buf = BUFFER_OUT(tty->in);
+	len = BUFFER_USED(tty->in);
+	if (len == 0)
 		return (1);
-	log_debug("keys are %zu (%.*s)", size, (int) size, BUFFER_OUT(tty->in));
+	log_debug("keys are %zu (%.*s)", len, (int) len, buf);
 
 	/* If a normal key, return it. */
-	if (*BUFFER_OUT(tty->in) != '\033') {
+	if (*buf != '\033') {
 		*code = buffer_read8(tty->in);
 		return (0);
 	}
 
 	/* Look for matching key string and return if found. */
-	tk = tty_keys_find(tty, BUFFER_OUT(tty->in) + 1, size - 1, &size);
+	tk = tty_keys_find(tty, buf + 1, len - 1, &size);
 	if (tk != NULL) {
 		*code = tk->code;
 		buffer_remove(tty->in, size + 1);
 
 		tty->flags &= ~TTY_ESCAPE;
 		return (0);
+	}
+
+	/* Not found. Look for an xterm argument and try again. */
+	if (len < sizeof tmp && len > 4 && buf[len - 3] == ';') {
+		memcpy(tmp, buf, len);
+		arg = tmp[len - 2];
+		tmp[len - 3] = tmp[len - 1];	/* restore last */
+		log_debug("argument is: %c", arg);
+
+		tk = tty_keys_find(tty, tmp + 1, len - 3, &size);
+		if (tk != NULL) {
+			*code = tk->code;
+			buffer_remove(tty->in, size + 3);
+			
+			switch (arg) {
+			case '8':
+				*code = KEYC_ADDSFT(*code);
+				*code = KEYC_ADDESC(*code);
+				*code = KEYC_ADDCTL(*code);
+				break;
+			case '7':
+				*code = KEYC_ADDESC(*code);
+				*code = KEYC_ADDCTL(*code);
+				break;
+			case '6':
+				*code = KEYC_ADDSFT(*code);
+				*code = KEYC_ADDCTL(*code);
+				break;
+			case '5':
+				*code = KEYC_ADDCTL(*code);
+				break;
+			case '4':
+				*code = KEYC_ADDSFT(*code);
+				*code = KEYC_ADDESC(*code);
+				break;
+			case '3':
+				*code = KEYC_ADDESC(*code);
+				break;
+			case '2':
+				*code = KEYC_ADDSFT(*code);
+				break;
+			}
+
+			tty->flags &= ~TTY_ESCAPE;
+			return (0);
+		}
 	}
 
 	/* Escape but no key string. If the timer isn't started, start it. */
@@ -217,30 +289,31 @@ tty_keys_next(struct tty *tty, int *code)
 
 	/* Remove the leading escape. */
 	buffer_remove(tty->in, 1);
-	size = BUFFER_USED(tty->in);
+	buf = BUFFER_OUT(tty->in);
+	len = BUFFER_USED(tty->in);
 
 	/* If we have no following data, return escape. */
-	if (size == 0) {
+	if (len == 0) {
 		*code = '\033';
 		return (0);
 	}
 
 	/* If a normal key follows, return it. */
-	if (*BUFFER_OUT(tty->in) != '\033') {
-		*code = KEYC_ADDESCAPE(buffer_read8(tty->in));
+	if (*buf != '\033') {
+		*code = KEYC_ADDESC(buffer_read8(tty->in));
 		return (0);
 	}
 
 	/* Try to look up the key. */
-	tk = tty_keys_find(tty, BUFFER_OUT(tty->in) + 1, size - 1, &size);
+	tk = tty_keys_find(tty, buf + 1, len - 1, &size);
 	if (tk != NULL) {
-		*code = KEYC_ADDESCAPE(tk->code);
+		*code = KEYC_ADDESC(tk->code);
  		buffer_remove(tty->in, size + 1);
 		return (0);
 	}
 
 	/* If not found, return escape-escape. */
-	*code = KEYC_ADDESCAPE('\033');
+	*code = KEYC_ADDESC('\033');
 	buffer_remove(tty->in, 1);
 	return (0);
 }

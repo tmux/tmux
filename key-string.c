@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.10 2009-01-08 22:28:02 nicm Exp $ */
+/* $Id: key-string.c,v 1.11 2009-01-09 16:45:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,6 +21,8 @@
 #include <string.h>
 
 #include "tmux.h"
+
+int	key_string_search_table(const char *);
 
 struct {
 	const char *string;
@@ -72,6 +74,18 @@ struct {
 };
 
 int
+key_string_search_table(const char *string)
+{
+	u_int	i;
+
+	for (i = 0; i < nitems(key_string_table); i++) {
+		if (strcasecmp(string, key_string_table[i].string) == 0)
+			return (key_string_table[i].key);
+	}
+	return (KEYC_NONE);
+}
+
+int
 key_string_lookup_string(const char *string)
 {
 	u_int	i;
@@ -91,6 +105,9 @@ key_string_lookup_string(const char *string)
 			return (string[2] - 64);
 		if (string[2] >= 97 && string[2] <= 122)
 			return (string[2] - 96);
+		key = key_string_search_table(string + 2);
+		if (key != KEYC_NONE)
+			return (KEYC_ADDCTL(key));
 		return (KEYC_NONE);
 	}
 
@@ -103,20 +120,19 @@ key_string_lookup_string(const char *string)
 			return (string[1] - 64);
 		if (string[1] >= 97 && string[1] <= 122)
 			return (string[1] - 96);
+		key = key_string_search_table(string + 1);
+		if (key != KEYC_NONE)
+			return (KEYC_ADDCTL(key));
 		return (KEYC_NONE);
 	}
 
 	if (string[0] == 'M' && string[1] == '-') {
 		if ((key = key_string_lookup_string(string + 2)) == KEYC_NONE)
 			return (KEYC_NONE);
-		return (KEYC_ADDESCAPE(key));
+		return (KEYC_ADDESC(key));
 	}
 
-	for (i = 0; i < nitems(key_string_table); i++) {
-		if (strcasecmp(string, key_string_table[i].string) == 0)
-			return (key_string_table[i].key);
-	}
-	return (KEYC_NONE);
+	return (key_string_search_table(string));
 }
 
 const char *
@@ -129,12 +145,19 @@ key_string_lookup_key(int key)
 	if (key == 127)
 		return (NULL);
 
-	if (KEYC_ISESCAPE(key)) {
-		if ((s = key_string_lookup_key(KEYC_REMOVEESCAPE(key))) == NULL)
+	if (KEYC_ISESC(key)) {
+		if ((s = key_string_lookup_key(KEYC_REMOVEESC(key))) == NULL)
 			return (NULL);
 		xsnprintf(tmp2, sizeof tmp2, "M-%s", s);
 		return (tmp2);
 	}
+	if (KEYC_ISCTL(key)) {
+		if ((s = key_string_lookup_key(KEYC_REMOVECTL(key))) == NULL)
+			return (NULL);
+		xsnprintf(tmp2, sizeof tmp2, "C-%s", s);
+		return (tmp2);
+	}
+
 
 	if (key >= 32 && key <= 255) {
 		tmp[0] = key;

@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.16 2009-01-07 19:53:17 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.17 2009-01-09 16:45:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -60,6 +60,7 @@ const struct set_option_entry set_window_option_table[NSETWINDOWOPTION] = {
 	{ "monitor-activity", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "remain-on-exit", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "utf8", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "xterm-keys", SET_OPTION_FLAG, 0, 0, NULL },
 };
 
 void

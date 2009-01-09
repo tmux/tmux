@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.4 2009-01-07 22:52:33 nicm Exp $ */
+/* $Id: mode-key.c,v 1.5 2009-01-09 16:45:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,15 +53,15 @@ const struct mode_key_entry mode_key_table_emacs[] = {
 	{ MODEKEY_BOL, '\001' },
 	{ MODEKEY_CLEARSEL, '\007' },
 	{ MODEKEY_COPYSEL, '\027' },
-	{ MODEKEY_COPYSEL, KEYC_ADDESCAPE('w') },
+	{ MODEKEY_COPYSEL, KEYC_ADDESC('w') },
 	{ MODEKEY_DOWN, KEYC_DOWN },
 	{ MODEKEY_EOL, '\005' },
 	{ MODEKEY_LEFT, '\002' },
 	{ MODEKEY_LEFT, KEYC_LEFT },
 	{ MODEKEY_NPAGE, KEYC_NPAGE },
-	{ MODEKEY_NWORD, KEYC_ADDESCAPE('f') },
+	{ MODEKEY_NWORD, KEYC_ADDESC('f') },
 	{ MODEKEY_PPAGE, KEYC_PPAGE },
-	{ MODEKEY_PWORD, KEYC_ADDESCAPE('b') },
+	{ MODEKEY_PWORD, KEYC_ADDESC('b') },
 	{ MODEKEY_QUIT, '\033' },
 	{ MODEKEY_QUIT, 'q' },
 	{ MODEKEY_RIGHT, '\006' },

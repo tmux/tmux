@@ -1,4 +1,4 @@
-/* $Id: cmd-list-clients.c,v 1.9 2009-01-07 20:11:51 nicm Exp $ */
+/* $Id: cmd-list-clients.c,v 1.10 2009-01-09 16:45:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,6 @@ cmd_list_clients_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct client	*c;
 	u_int		 i;
-	char		 options[256];
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);

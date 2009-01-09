@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.210 2009-01-08 22:28:02 nicm Exp $ */
+/* $Id: tmux.h,v 1.211 2009-01-09 16:45:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -159,13 +159,23 @@ struct buffer {
 #define BELL_CURRENT 2
 
 /* Key codes. ncurses defines KEY_*. Grrr. */
-#define KEYC_NONE   0x0ffff
-#define KEYC_OFFSET 0x10000
-#define KEYC_ESCAPE 0x20000
+#define KEYC_NONE    0x00ffff
+#define KEYC_OFFSET  0x010000
+#define KEYC_ESCAPE  0x020000
+#define KEYC_CONTROL 0x080000
+#define KEYC_SHIFT   0x100000
 
-#define KEYC_ADDESCAPE(k) ((k) | KEYC_ESCAPE)
-#define KEYC_REMOVEESCAPE(k) ((k) & ~KEYC_ESCAPE)
-#define KEYC_ISESCAPE(k) ((k) != KEYC_NONE && ((k) & KEYC_ESCAPE))
+#define KEYC_ADDESC(k) ((k) | KEYC_ESCAPE)
+#define KEYC_REMOVEESC(k) ((k) & ~KEYC_ESCAPE)
+#define KEYC_ISESC(k) ((k) != KEYC_NONE && ((k) & KEYC_ESCAPE))
+
+#define KEYC_ADDCTL(k) ((k) | KEYC_CONTROL)
+#define KEYC_REMOVECTL(k) ((k) & ~KEYC_CONTROL)
+#define KEYC_ISCTL(k) ((k) != KEYC_NONE && ((k) & KEYC_CONTROL))
+
+#define KEYC_ADDSFT(k) ((k) | KEYC_SHIFT)
+#define KEYC_REMOVESFT(k) ((k) & ~KEYC_SHIFT)
+#define KEYC_ISSFT(k) ((k) != KEYC_NONE && ((k) & KEYC_SHIFT))
 
 /* Function keys. */
 #define KEYC_F1 (KEYC_OFFSET + 0x01)
@@ -550,6 +560,10 @@ struct tty_key {
 	int	 	 code;
 	char		*string;
 
+	int		 flags;
+#define TTYKEY_MODIFIER 0x1
+#define TTYKEY_RAW 0x2
+
 	RB_ENTRY(tty_key) entry;
 };
 
@@ -743,7 +757,7 @@ struct set_option_entry {
 extern const struct set_option_entry set_option_table[];
 extern const struct set_option_entry set_window_option_table[];
 #define NSETOPTION 17
-#define NSETWINDOWOPTION 9
+#define NSETWINDOWOPTION 10
 
 /* Edit keys. */
 enum mode_key {

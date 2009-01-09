@@ -1,3 +1,9 @@
+09 January 2009
+
+* Update key handling code. Simplify, support ctrl properly and add a new
+  window option (xterm-keys) to output xterm key codes including ctrl and,
+  if available, alt and shift.
+
 08 January 2009
 
 * If built without DEBUG (the release versions), don't cause a fatal error if
@@ -820,7 +826,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.183 2009-01-08 21:59:24 nicm Exp $
+$Id: CHANGES,v 1.184 2009-01-09 16:45:58 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB

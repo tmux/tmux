@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.84 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: tmux.c,v 1.85 2009-01-09 16:45:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -236,7 +236,8 @@ main(int argc, char **argv)
 	options_set_number(&global_options, "message-fg", 0);
 	options_set_number(&global_options, "message-bg", 3);
 	options_init(&global_window_options, NULL);
-	options_set_number(&global_window_options, "monitor-activity", 0);
+	options_set_number(&global_window_options, "xterm-keys", 0);
+	options_set_number(&global_window_options, "monitor-activity", 0);	
 	options_set_number(&global_window_options, "aggressive-resize", 0);
  	options_set_number(&global_window_options, "remain-on-exit", 0);
 	options_set_number(&global_window_options, "utf8", 0);
