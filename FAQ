@@ -12,7 +12,7 @@ tmux offers several advantages over screen:
   whether used interactively, as a key binding, or from the shell;
 - easily scriptable from the shell;
 - multiple paste buffers;
-- emacs key layouts;
+- choice of vim or emacs key layouts;
 - options to limit window size;
 - a cleaner, modern, easily extended, BSD-licensed codebase.
 
