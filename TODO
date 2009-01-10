@@ -62,4 +62,5 @@
 - document xterm-keys
 - document server-info
 - document window options changes
-
+- a window mode to show a clock
+- a key binding to display the status line when it is turned off

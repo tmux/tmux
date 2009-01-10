@@ -1,8 +1,28 @@
 tmux frequently asked questions
 
-* What is tmux? How is it different from GNU screen?
+* How is tmux different from GNU screen? What else does it offer?
 
-XXX TODO
+tmux offers several advantages over screen:
+
+- a clearly-defined client-server model: windows are independent entities which
+  may be attached simultaneously to multiple sessions and viewed from multiple
+  clients (terminals), as well as moved freely between sessions within the same
+  tmux server; 
+- a consistent, well-documented command interface, with the same syntax
+  whether used interactively, as a key binding, or from the shell;
+- easily scriptable from the shell;
+- multiple paste buffers;
+- emacs key layouts;
+- options to limit window size;
+- a cleaner, modern, easily extended, BSD-licensed codebase.
+
+There are still a few features screen includes that tmux omits:
+
+- builtin serial and telnet support; this is bloat and is unlikely to be added
+  to tmux;
+- a more customisable status line, albeit with an awful syntax;
+- wider platform support, for example IRIX and AIX;
+- split windows; this is planned and should appear eventually.
 
 * I found a bug! What do I do?
 
