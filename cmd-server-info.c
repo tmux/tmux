@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.1 2009-01-10 01:30:38 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.2 2009-01-10 01:41:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -85,7 +85,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 			code = &term->codes[ent->code];
 			switch (code->type) {
 			case TTYCODE_NONE:
-				ctx->print(ctx, "  %d,%s: [missing]",
+				ctx->print(ctx, "  %2d,%s: [missing]",
 				    ent->code, ent->name);
 				break;
 			case TTYCODE_STRING:
@@ -93,15 +93,15 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 				    s, code->value.string, sizeof s, VIS_OCTAL);
 				s[(sizeof s) - 1] = '\0';
 
-				ctx->print(ctx, "  %d,%s: (string) %s",
+				ctx->print(ctx, "  %2d,%s: (string) %s",
 				    ent->code, ent->name, s);
 				break;
 			case TTYCODE_NUMBER:
-				ctx->print(ctx, "  %d,%s: (number) %d",
+				ctx->print(ctx, "  %2d,%s: (number) %d",
 				    ent->code, ent->name, code->value.number);
 				break;
 			case TTYCODE_FLAG:
-				ctx->print(ctx, "  %d,%s: (flag) %s",
+				ctx->print(ctx, "  %2d,%s: (flag) %s",
 				    ent->code, ent->name, 
 				    code->value.flag ? "true" : "false");
 				break;
