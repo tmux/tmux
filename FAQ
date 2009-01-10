@@ -47,6 +47,12 @@ Please send feature requests by email to nicm@users.sourceforge.net.
 It is already widely available. It is planned to change to something else
 such as xterm-color at some point, if possible.
 
+* I don't see any colour in my terminal! Help!
+
+On some platforms, common termcaps such as xterm do not include colour. screen
+ignores this, tmux does not. If the terminal emulator in use supports colour,
+use a termcap which correctly lists this, such as xterm-color.
+
 * tmux freezes my terminal when I attach to a session. I even have to kill -9
   the shell it was started from to recover!
 
