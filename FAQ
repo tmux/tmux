@@ -51,8 +51,8 @@ default) to the new key. For example:
 * How do I use UTF-8?
 
 When running tmux in a UTF-8 capable terminal, two things must be done to
-enable support. UTF-8 may be turned on separately for each tmux window or
-globally by setting the "utf8" flag:
+enable support. UTF-8 must be turned on in tmux; this may be done separately
+for each tmux window or globally by setting the "utf8" flag:
 
 	setw -g utf8 on
 
