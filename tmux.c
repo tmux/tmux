@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.89 2009-01-10 14:43:43 nicm Exp $ */
+/* $Id: tmux.c,v 1.90 2009-01-10 19:35:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -248,6 +248,8 @@ main(int argc, char **argv)
 	options_set_number(&global_window_options, "mode-keys", MODEKEY_EMACS);
 	options_set_number(&global_window_options, "force-width", 0);
 	options_set_number(&global_window_options, "force-height", 0);
+	options_set_number(&global_window_options, "clock-mode-colour", 4);
+	options_set_number(&global_window_options, "clock-mode-style", 1);
 
 	if (cfg_file == NULL) {
 		home = getenv("HOME");
@@ -301,6 +303,7 @@ main(int argc, char **argv)
 	}
 	options_set_string(
 	    &global_options, "default-command", "exec %s", shell);
+	
 
 	if (argc == 0) {
 		cmd = xmalloc(sizeof *cmd);

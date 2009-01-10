@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.18 2009-01-10 01:51:21 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.19 2009-01-10 19:35:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,8 +50,14 @@ const struct cmd_entry cmd_set_window_option_entry = {
 const char *set_option_mode_keys_list[] = {
 	"emacs", "vi", NULL
 };
+const char *set_option_clock_mode_style_list[] = {
+	"12", "24", NULL
+};
 const struct set_option_entry set_window_option_table[NSETWINDOWOPTION] = {
 	{ "aggressive-resize", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "clock-mode-colour", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "clock-mode-style",
+	  SET_OPTION_CHOICE, 0, 0, set_option_clock_mode_style_list },
 	{ "force-height", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "force-width", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "mode-bg", SET_OPTION_COLOUR, 0, 0, NULL },

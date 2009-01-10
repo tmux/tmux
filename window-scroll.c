@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.25 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.26 2009-01-10 19:35:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,7 +42,8 @@ const struct window_mode window_scroll_mode = {
 	window_scroll_init,
 	window_scroll_free,
 	window_scroll_resize,
-	window_scroll_key
+	window_scroll_key,
+	NULL
 };
 
 struct window_scroll_mode_data {

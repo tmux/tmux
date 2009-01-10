@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.217 2009-01-10 18:37:08 nicm Exp $ */
+/* $Id: tmux.h,v 1.218 2009-01-10 19:35:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -260,7 +260,7 @@ enum tty_code_code {
 	TTYC_IS1,	/* init_1string, i1 */
 	TTYC_IS2,	/* init_2string, i2 */
 	TTYC_IS3,	/* init_3string, i3 */
-        TTYC_KCBT,      /* key_btab, kB */
+	TTYC_KCBT,	/* key_btab, kB */
 	TTYC_KCUB1,	/* key_left, kl */
 	TTYC_KCUD1,	/* key_down, kd */
 	TTYC_KCUF1,	/* key_right, kr */
@@ -584,6 +584,7 @@ struct window_mode {
 	void	(*free)(struct window *);
 	void	(*resize)(struct window *, u_int, u_int);
 	void	(*key)(struct window *, struct client *, int);
+	void	(*timer)(struct window *);
 };
 
 /* Window structure. */
@@ -866,7 +867,7 @@ struct set_option_entry {
 extern const struct set_option_entry set_option_table[];
 extern const struct set_option_entry set_window_option_table[];
 #define NSETOPTION 17
-#define NSETWINDOWOPTION 10
+#define NSETWINDOWOPTION 12
 
 /* Edit keys. */
 enum mode_key {
@@ -1043,6 +1044,7 @@ struct winlink	*cmd_find_window(
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
+extern const struct cmd_entry cmd_clock_mode_entry;
 extern const struct cmd_entry cmd_command_prompt_entry;
 extern const struct cmd_entry cmd_copy_mode_entry;
 extern const struct cmd_entry cmd_delete_buffer_entry;
@@ -1349,6 +1351,9 @@ int		 window_set_mode(struct window *, const struct window_mode *);
 void		 window_reset_mode(struct window *);
 void		 window_parse(struct window *);
 void		 window_key(struct window *, struct client *, int);
+
+/* window-clock.c */
+extern const struct window_mode window_clock_mode;
 
 /* window-copy.c */
 extern const struct window_mode window_copy_mode;

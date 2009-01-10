@@ -1,5 +1,8 @@
 10 January 2009
 
+* New mode to display a large clock. Entered with clock-mode command (bound to
+  C-b t by default); two window options: clock-mode-colour and clock-mode-style
+  (12 or 24). This will probably be used as the basis for window locking.
 * New command, server-info, to show some server information and terminal
   details.
 
@@ -838,7 +841,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.187 2009-01-10 01:51:21 nicm Exp $
+$Id: CHANGES,v 1.188 2009-01-10 19:35:39 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB

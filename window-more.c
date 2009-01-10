@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.22 2009-01-10 01:41:32 nicm Exp $ */
+/* $Id: window-more.c,v 1.23 2009-01-10 19:35:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,7 +38,8 @@ const struct window_mode window_more_mode = {
 	window_more_init,
 	window_more_free,
 	window_more_resize,
-	window_more_key
+	window_more_key,
+	NULL
 };
 
 struct window_more_mode_data {

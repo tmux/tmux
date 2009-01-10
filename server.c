@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.91 2009-01-10 01:51:22 nicm Exp $ */
+/* $Id: server.c,v 1.92 2009-01-10 19:35:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,6 +54,7 @@ void		 server_lost_client(struct client *);
 void	 	 server_lost_window(struct window *);
 void		 server_check_redraw(struct client *);
 void		 server_check_timers(struct client *);
+void		 server_second_timers(void);
 int		 server_update_socket(const char *);
 
 /* Fork new server. */
@@ -168,8 +169,11 @@ server_main(const char *srv_path, int srv_fd)
 	struct pollfd	*pfds, *pfd;
 	int		 nfds, xtimeout;
 	u_int		 i, n;
+	time_t		 now, last;
 
 	siginit();
+
+	last = time(NULL);
 
 	pfds = NULL;
 	while (!sigterm) {
@@ -210,6 +214,13 @@ server_main(const char *srv_path, int srv_fd)
 			continue;
 		}
 		pfd++;
+
+		/* Call seconds-based timers. */
+		now = time(NULL);
+		if (now != last) {
+			last = now;
+			server_second_timers();
+		}
 
 		/*
 		 * Handle window and client sockets. Clients can create
@@ -688,6 +699,21 @@ server_lost_window(struct window *w)
 	recalculate_sizes();
 }
 
+/* Call any once-per-second timers. */
+void
+server_second_timers(void)
+{
+	struct window	*w;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+		w = ARRAY_ITEM(&windows, i);
+		if (w->mode != NULL && w->mode->timer != NULL)
+			w->mode->timer(w);
+	}
+}
+
+/* Update socket execute permissions based on whether sessions are attached. */
 int
 server_update_socket(const char *path)
 {
