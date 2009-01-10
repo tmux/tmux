@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.4 2009-01-10 01:51:21 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.5 2009-01-10 12:52:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
+#include <time.h>
 #include <unistd.h>
 #include <vis.h>
 
