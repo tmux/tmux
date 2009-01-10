@@ -2,7 +2,7 @@ tmux frequently asked questions
 
 * What is tmux? How is it different from GNU screen?
 
-...
+XXX TODO
 
 * I found a bug! What do I do?
 
@@ -94,7 +94,7 @@ a 256-colour terminal inside tmux:
   but it may be done in a shell startup script by checking if TERM is screen
   and exporting TERM=screen-256color instead.
 - Creating a custom terminfo file that includes Co#256 in ~/.terminfo and using
-  it instead. These may be compiled with with tic(1).
+  it instead. These may be compiled with tic(1).
 
 * How do I make Ctrl-PgUp and Ctrl-PgDn work in vim?
 
@@ -115,12 +115,13 @@ sequences can be overridden in .vimrc using the following:
 
 And similarly for any other keys for which modifiers are desired.
 
-Please note that the "xterm-keys" setting may affect other programs; for
-example most shells do not expect to receive xterm(1)-style key sequences so
-this setting may prevent keys such as ctrl-left and ctrl-right working
-correctly. tmux also passes through the ctrl (bit 5 set, for example ^[[5~ to
-^[[5^) modifier in non-xterm(1) mode; it may be possible to configure vim to
-accept these, an example of how to do so would be welcome.
+Please note that the "xterm-keys" setting may affect other programs, in the
+same way as running them in a standard xterm; for example most shells do not
+expect to receive xterm(1)-style key sequences so this setting may prevent keys
+such as ctrl-left and ctrl-right working correctly. tmux also passes through
+the ctrl (bit 5 set, for example ^[[5~ to ^[[5^) modifier in non-xterm(1) mode;
+it may be possible to configure vim to accept these, an example of how to do so
+would be welcome.
 
 * Why doesn't elinks set the window title inside tmux?
 
