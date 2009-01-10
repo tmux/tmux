@@ -61,9 +61,9 @@ If this doesn't fix it, send a bug report.
 * Why is C-b the prefix key? How do I change it?
 
 The default key is C-b because the prototype of tmux was originally developed
-inside screen and C-b was chosen not to interfere with the screen meta key. It
+inside screen and C-b was chosen not to clash with the screen meta key. It
 also has the advantage of not interfering with the use of C-a for start-of-line
-in emacs and the shell.
+in emacs and the shell (although it does interfere with previous-character).
 
 Changing is simple: change the "prefix-key" option, and - if required - move
 the binding of the "send-prefix" command from C-b (C-b C-b sends C-b by
