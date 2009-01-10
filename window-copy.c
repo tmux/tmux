@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.35 2008-12-11 21:10:04 nicm Exp $ */
+/* $Id: window-copy.c,v 1.36 2009-01-10 01:51:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -318,7 +318,7 @@ window_copy_update_selection(struct window *w)
 	/* Set colours. */
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.fg = options_get_number(&w->options, "mode-fg");
-	gc.bg = options_get_number(&w->options, "mode-bg");	
+	gc.bg = options_get_number(&w->options, "mode-bg");
 
 	/* Find top-left of screen. */
 	tx = data->ox;

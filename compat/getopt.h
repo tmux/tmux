@@ -74,5 +74,5 @@ extern   int optreset;
 extern   char *suboptarg;               /* getsubopt(3) external variable */
 #endif
 __END_DECLS
- 
+
 #endif /* !_GETOPT_H_ */

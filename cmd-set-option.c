@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.48 2009-01-07 19:53:17 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.49 2009-01-10 01:51:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -110,7 +110,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (data->flags & CMD_UFLAG) {
 		if (data->flags & CMD_GFLAG) {
-			ctx->error(ctx, 
+			ctx->error(ctx,
 			    "can't unset global option: %s", entry->name);
 			return;
 		}
@@ -148,7 +148,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			break;
 		}
 	}
-		
+
 	recalculate_sizes();
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);

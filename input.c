@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.71 2009-01-08 21:22:01 nicm Exp $ */
+/* $Id: input.c,v 1.72 2009-01-10 01:51:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -498,7 +498,7 @@ input_state_string_escape(u_char ch, struct input_ctx *ictx)
 				xfree(s);
 				return;
 			}
-			screen_set_title(ictx->ctx.s, s + 2);	
+			screen_set_title(ictx->ctx.s, s + 2);
 			server_status_window(ictx->w);
 			xfree(s);
 			break;
@@ -652,7 +652,7 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 
 	switch (ch) {
 	case '0':	/* Dscs (graphics) */
-		/* 
+		/*
 		 * Not really supported, but fake it up enough for those that
 		 * use it to switch character sets (by redefining G0 to
 		 * graphics set, rather than switching to G1).
@@ -695,7 +695,7 @@ input_handle_standard_two(u_char ch, struct input_ctx *ictx)
 
 	switch (ch) {
 	case 'B':	/* Dscs (ASCII) */
-		/* 
+		/*
 		 * Not really supported, but fake it up enough for those that
 		 * use it to switch character sets (by redefining G0 to
 		 * graphics set, rather than switching to G1).
@@ -751,9 +751,9 @@ input_handle_sequence(u_char ch, struct input_ctx *ictx)
 		if (*iarg->data != '\0')
 			log_debug2("      ++ %u: %s", i, iarg->data);
 	}
-	
+
 	find.ch = ch;
-	entry = bsearch(&find, 
+	entry = bsearch(&find,
 	    input_sequence_table, nitems(input_sequence_table),
 	    sizeof input_sequence_table[0], input_sequence_cmp);
 	if (entry != NULL)

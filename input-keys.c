@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.18 2009-01-09 16:45:58 nicm Exp $ */
+/* $Id: input-keys.c,v 1.19 2009-01-10 01:51:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -128,7 +128,7 @@ input_key(struct window *w, int key)
 		if ((ike->flags & INPUTKEY_CURSOR) &&
 		    !(w->screen->mode & MODE_KCURSOR))
 			continue;
-		
+
 		if (ike->flags & INPUTKEY_MODIFIER) {
 			if (KEYC_ISCTL(key) && KEYC_ADDCTL(ike->key) == key)
 				break;
@@ -148,7 +148,7 @@ input_key(struct window *w, int key)
 
 	log_debug2("found key 0x%x: \"%s\"", key, ike->data);
 
-	if (ike->flags & INPUTKEY_XTERM && 
+	if (ike->flags & INPUTKEY_XTERM &&
 	    options_get_number(&w->options, "xterm-keys")) {
 		/* In xterm keys mode, append modifier argument. */
 		ch = '\0';
@@ -177,9 +177,9 @@ input_key(struct window *w, int key)
 		return;
 	}
 	if (ike->flags & INPUTKEY_MODIFIER) {
-		/* 
+		/*
 		 * If not in xterm keys or not an xterm key handle escape and
-		 * control (shift not supported). 
+		 * control (shift not supported).
 		 */
 		if (KEYC_ISESC(key))
 			buffer_write8(w->out, '\033');

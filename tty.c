@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.55 2009-01-09 23:57:42 nicm Exp $ */
+/* $Id: tty.c,v 1.56 2009-01-10 01:51:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -237,7 +237,7 @@ tty_close(struct tty *tty)
 		if (errno != EBADF && errno != ENXIO && errno != ENOTTY)
 			fatal("tcsetattr failed");
 	} else {
-		tty_raw(tty, 
+		tty_raw(tty,
 		    tty_term_string2(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
 		tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
 		tty_raw(tty, tty_term_string(tty->term, TTYC_SGR0));
@@ -246,7 +246,7 @@ tty_close(struct tty *tty)
 		tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
 		tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
 	}
-	
+
 	tty_term_free(tty->term);
 	tty_keys_free(tty);
 
@@ -368,7 +368,7 @@ tty_cmd_cursorup(struct tty *tty, unused struct screen *s, va_list ap)
 	u_int ua;
 
 	ua = va_arg(ap, u_int);
-	
+
 	tty_emulate_repeat(tty, TTYC_CUU, TTYC_CUU1, ua);
 }
 
@@ -478,7 +478,7 @@ tty_cmd_clearendofline(struct tty *tty, struct screen *s, unused va_list ap)
 
 	if (tty_term_has(tty->term, TTYC_EL))
 		tty_putcode(tty, TTYC_EL);
-	else {	
+	else {
 		tty_putcode2(tty, TTYC_CUP, s->cy, s->cx);
 		for (i = s->cx; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
@@ -495,7 +495,7 @@ tty_cmd_clearstartofline(struct tty *tty, struct screen *s, unused va_list ap)
 
 	if (tty_term_has(tty->term, TTYC_EL1))
 		tty_putcode(tty, TTYC_EL1);
-	else {	
+	else {
 		tty_putcode2(tty, TTYC_CUP, s->cy, 0);
 		for (i = 0; i < s->cx + 1; i++)
 			tty_putc(tty, ' ');
@@ -848,8 +848,8 @@ tty_attributes_bg(struct tty *tty, const struct grid_cell *gc)
 #if 0
 			xsnprintf(s, sizeof s, "\033[%hhum", 92 + bg);
 			tty_puts(tty, s);
-			return;			
-#endif 		       
+			return;
+#endif
 			bg &= 7;
 		}
 	}
@@ -860,6 +860,6 @@ tty_attributes_bg(struct tty *tty, const struct grid_cell *gc)
 		bg = 0;
 	if (bg == 8)
 		tty_puts(tty, "\033[49m");
-	else 
+	else
 		tty_putcode1(tty, TTYC_SETAB, bg);
 }

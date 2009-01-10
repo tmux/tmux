@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.57 2009-01-08 22:28:02 nicm Exp $ */
+/* $Id: status.c,v 1.58 2009-01-10 01:51:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -276,7 +276,7 @@ status_replace(struct session *s, char *fmt, time_t t)
 	char		in[BUFSIZ], ch, *iptr, *optr, *ptr, *endptr;
 	size_t		len;
 	long		n;
-	
+
 	strftime(in, sizeof in, fmt, localtime(&t));
 	in[(sizeof in) - 1] = '\0';
 
@@ -504,7 +504,7 @@ status_prompt_key(struct client *c, int key)
 	case '\011':
 		if (*c->prompt_buffer == '\0')
 			break;
-		
+
 		idx = c->prompt_index;
 		if (idx != 0)
 			idx--;
@@ -638,7 +638,7 @@ status_prompt_add_history(struct client *c)
 	if (ARRAY_LENGTH(&c->prompt_hdata) > 0 &&
 	    strcmp(ARRAY_LAST(&c->prompt_hdata), c->prompt_buffer) == 0)
 		return;
-			
+
 	if (ARRAY_LENGTH(&c->prompt_hdata) == PROMPT_HISTORY) {
 		xfree(ARRAY_FIRST(&c->prompt_hdata));
 		ARRAY_REMOVE(&c->prompt_hdata, 0);
@@ -677,13 +677,13 @@ status_prompt_complete(const char *s)
 		if (strncmp(optent->name, s, strlen(s)) == 0)
 			ARRAY_ADD(&list, optent->name);
 	}
-	
+
 	/* If none, bail now. */
 	if (ARRAY_LENGTH(&list) == 0) {
 		ARRAY_FREE(&list);
 		return (NULL);
 	}
-	
+
 	/* If an exact match, return it, with a trailing space. */
 	if (ARRAY_LENGTH(&list) == 1) {
 		xasprintf(&s2, "%s ", ARRAY_FIRST(&list));

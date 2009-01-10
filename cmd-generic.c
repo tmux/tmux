@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.16 2009-01-07 19:53:17 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.17 2009-01-10 01:51:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,7 +65,7 @@ cmd_print_flags(char *buf, size_t len, size_t off, int flags)
 {
 	if ((flags & (CMD_DFLAG|CMD_GFLAG|CMD_KFLAG|CMD_UFLAG)) == 0)
 		return (0);
-	off += xsnprintf(buf + off, len - off, " -");	
+	off += xsnprintf(buf + off, len - off, " -");
 	if (off < len && flags & CMD_DFLAG)
 		off += xsnprintf(buf + off, len - off, "d");
 	if (off < len && flags & CMD_GFLAG)
@@ -96,7 +96,7 @@ cmd_fill_argument(int flags, char **arg, int argc, char **argv)
 			*arg = xstrdup(argv[0]);
 		return (0);
 	}
-	
+
 	if (argc != 0)
 		return (-1);
 	return (0);

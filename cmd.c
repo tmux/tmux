@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.69 2009-01-10 01:30:38 nicm Exp $ */
+/* $Id: cmd.c,v 1.70 2009-01-10 01:51:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -109,7 +109,7 @@ cmd_parse(int argc, char **argv, char **cause)
 		xasprintf(cause, "unknown command: %s", argv[0]);
 		return (NULL);
 	}
-	
+
 	optreset = 1;
 	optind = 1;
 	if (entry->parse == NULL) {

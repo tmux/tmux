@@ -1,4 +1,4 @@
-/* $Id: grid-view.c,v 1.5 2009-01-05 11:04:06 nicm Exp $ */
+/* $Id: grid-view.c,v 1.6 2009-01-10 01:51:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -178,7 +178,7 @@ grid_view_insert_cells(struct grid_data *gd, u_int px, u_int py, u_int nx)
 	py = grid_view_y(gd, py);
 
 	sx = grid_view_x(gd, gd->sx);
-	
+
 	if (px == sx - 1)
 		grid_clear(gd, px, py, 1, 1);
 	else

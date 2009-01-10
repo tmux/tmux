@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.213 2009-01-10 01:30:38 nicm Exp $ */
+/* $Id: tmux.h,v 1.214 2009-01-10 01:51:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -840,7 +840,7 @@ struct key_binding {
 	int		 key;
 	struct cmd	*cmd;
 
-	SPLAY_ENTRY(key_binding) entry;	
+	SPLAY_ENTRY(key_binding) entry;
 };
 SPLAY_HEAD(key_bindings, key_binding);
 

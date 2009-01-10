@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.17 2009-01-09 16:45:58 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.18 2009-01-10 01:51:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,7 +108,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (data->flags & CMD_UFLAG) {
 		if (data->flags & CMD_GFLAG) {
-			ctx->error(ctx, 
+			ctx->error(ctx,
 			    "can't unset global option: %s", entry->name);
 			return;
 		}
@@ -146,7 +146,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			break;
 		}
 	}
-		
+
 	recalculate_sizes();
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);

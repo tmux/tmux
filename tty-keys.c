@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.16 2009-01-09 23:57:42 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.17 2009-01-10 01:51:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,7 +54,7 @@ struct tty_key_ent tty_keys[] = {
 	{ TTYC_KNP,   NULL,     KEYC_NPAGE, TTYKEY_MODIFIER },
 	{ TTYC_KPP,   NULL,     KEYC_PPAGE, TTYKEY_MODIFIER },
 
-	/* Arrow keys. */ 
+	/* Arrow keys. */
 	{ TTYC_KCUU1, NULL,     KEYC_UP,    TTYKEY_MODIFIER },
 	{ TTYC_KCUD1, NULL,     KEYC_DOWN,  TTYKEY_MODIFIER },
 	{ TTYC_KCUB1, NULL,     KEYC_LEFT,  TTYKEY_MODIFIER },
@@ -115,7 +115,7 @@ tty_keys_add(struct tty *tty, const char *s, int key, int flags)
 	tk->string = xstrdup(s);
 	tk->key = key;
 	tk->flags = flags;
-	
+
 	if (strlen(tk->string) > tty->ksize)
 		tty->ksize = strlen(tk->string);
 	RB_INSERT(tty_keys, &tty->ktree, tk);
@@ -241,7 +241,7 @@ tty_keys_next(struct tty *tty, int *key)
 		if (tk != NULL) {
 			*key = tk->key;
 			buffer_remove(tty->in, size + 3);
-			
+
 			switch (arg) {
 			case '8':
 				*key = KEYC_ADDSFT(*key);

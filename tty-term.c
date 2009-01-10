@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.2 2009-01-10 01:30:38 nicm Exp $ */
+/* $Id: tty-term.c,v 1.3 2009-01-10 01:51:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -152,7 +152,7 @@ tty_term_quirks(struct tty_term *term)
 			term->codes[TTYC_ICH1].type = TTYCODE_STRING;
 			term->codes[TTYC_ICH1].value.string = xstrdup("\033[@");
 		}
-	}			
+	}
 }
 
 struct tty_term *
@@ -202,7 +202,7 @@ tty_term_find(char *name, int fd, char **cause)
 	memset(&term->codes, 0, sizeof term->codes);
 	for (i = 0; i < NTTYCODE; i++) {
 		ent = &tty_term_codes[i];
-		
+
 		code = &term->codes[ent->code];
 		code->type = TTYCODE_NONE;
 		switch (ent->type) {
@@ -321,7 +321,7 @@ tty_term_find(char *name, int fd, char **cause)
 	if (tty_term_number(term, TTYC_COLORS) == 256)
 		term->flags |= TERM_256COLOURS;
 	if (strstr(name, "256col") != NULL) /* XXX HACK */
-		term->flags |= TERM_256COLOURS;		
+		term->flags |= TERM_256COLOURS;
 
 	return (term);
 

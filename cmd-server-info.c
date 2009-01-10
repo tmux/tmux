@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.3 2009-01-10 01:44:35 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.4 2009-01-10 01:51:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,7 +53,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	u_int		 		 i;
 	char				 s[BUFSIZ];
 
-	ctx->print(ctx, "tmux " BUILD 
+	ctx->print(ctx, "tmux " BUILD
 	    ", pid %ld, started %s", (long) getpid(), ctime(&start_time));
 	ctx->print(ctx, "socket path %s, debug level %d%s",
 	    socket_path, debug_level, be_quiet ? ", quiet" : "");
@@ -61,7 +61,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		ctx->print(ctx, "configuration file %s", cfg_file);
 	else
 		ctx->print(ctx, "configuration file not specified");
-	ctx->print(ctx, "%u clients, %u sessions", 
+	ctx->print(ctx, "%u clients, %u sessions",
 	    ARRAY_LENGTH(&clients), ARRAY_LENGTH(&sessions));
 	ctx->print(ctx, "");
 
@@ -78,7 +78,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 
   	ctx->print(ctx, "Terminals:");
 	SLIST_FOREACH(term, &tty_terms, entry) {
-		ctx->print(ctx, "%s [references=%u, flags=0x%x]:", 
+		ctx->print(ctx, "%s [references=%u, flags=0x%x]:",
 		    term->name, term->references, term->flags);
 		for (i = 0; i < NTTYCODE; i++) {
 			ent = &tty_term_codes[i];
@@ -102,14 +102,14 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 				break;
 			case TTYCODE_FLAG:
 				ctx->print(ctx, "  %2d,%s: (flag) %s",
-				    ent->code, ent->name, 
+				    ent->code, ent->name,
 				    code->value.flag ? "true" : "false");
 				break;
 			}
 		}
 	}
-	ctx->print(ctx, "");	
-	
+	ctx->print(ctx, "");
+
 	if (cmdclient != NULL)
 		server_write_client(cmdclient, MSG_EXIT, NULL, 0);
 }

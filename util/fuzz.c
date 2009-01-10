@@ -10,7 +10,7 @@ main(void)
 {
 	time_t	t;
 	int	i;
-	
+
 	setvbuf(stdout, NULL, _IONBF, 0);
 
 	t = time(NULL);

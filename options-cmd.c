@@ -1,4 +1,4 @@
-/* $Id: options-cmd.c,v 1.2 2009-01-07 19:53:17 nicm Exp $ */
+/* $Id: options-cmd.c,v 1.3 2009-01-10 01:51:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -122,7 +122,7 @@ set_option_flag(struct cmd_ctx *ctx, struct options *oo,
 	}
 
 	options_set_number(oo, entry->name, flag);
-	ctx->info(ctx, 
+	ctx->info(ctx,
 	    "set option: %s -> %s", entry->name, flag ? "on" : "off");
 }
 
