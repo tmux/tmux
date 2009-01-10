@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.4 2009-01-10 18:28:09 nicm Exp $ */
+/* $Id: tty-term.c,v 1.5 2009-01-10 22:24:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -96,6 +96,7 @@ struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_RI, TTYCODE_STRING, "ri" },
 	{ TTYC_RMACS, TTYCODE_STRING, "rmacs" },
 	{ TTYC_RMCUP, TTYCODE_STRING, "rmcup" },
+	{ TTYC_RMIR, TTYCODE_STRING, "rmir" },
 	{ TTYC_RMKX, TTYCODE_STRING, "rmkx" },
 	{ TTYC_SETAB, TTYCODE_STRING, "setab" },
 	{ TTYC_SETAF, TTYCODE_STRING, "setaf" },
@@ -246,10 +247,6 @@ tty_term_find(char *name, int fd, char **cause)
 	/* These are always required. */
 	if (!tty_term_has(term, TTYC_CLEAR)) {
 		xasprintf(cause, "terminal does not support clear");
-		goto error;
-	}
-	if (!tty_term_has(term, TTYC_CUD)) {
-		xasprintf(cause, "terminal does not support cud");
 		goto error;
 	}
 	if (!tty_term_has(term, TTYC_CR)) {
