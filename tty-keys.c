@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.17 2009-01-10 01:51:22 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.18 2009-01-10 18:28:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,6 +53,7 @@ struct tty_key_ent tty_keys[] = {
 	{ TTYC_KEND,  NULL,     KEYC_END,   TTYKEY_MODIFIER },
 	{ TTYC_KNP,   NULL,     KEYC_NPAGE, TTYKEY_MODIFIER },
 	{ TTYC_KPP,   NULL,     KEYC_PPAGE, TTYKEY_MODIFIER },
+	{ TTYC_KCBT,  NULL,	KEYC_BTAB,  TTYKEY_MODIFIER },
 
 	/* Arrow keys. */
 	{ TTYC_KCUU1, NULL,     KEYC_UP,    TTYKEY_MODIFIER },

@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.19 2009-01-10 01:51:21 nicm Exp $ */
+/* $Id: input-keys.c,v 1.20 2009-01-10 18:28:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,6 +55,7 @@ struct input_key_ent input_keys[] = {
 	{ KEYC_END,    "\033[4~", INPUTKEY_MODIFIER|INPUTKEY_XTERM },
 	{ KEYC_NPAGE,  "\033[6~", INPUTKEY_MODIFIER|INPUTKEY_XTERM },
 	{ KEYC_PPAGE,  "\033[5~", INPUTKEY_MODIFIER|INPUTKEY_XTERM },
+	{ KEYC_BTAB,   "\033[Z",  INPUTKEY_MODIFIER },
 
 	/* Arrow keys. Cursor versions must come first. */
 	{ KEYC_UP,     "\033OA", INPUTKEY_MODIFIER|INPUTKEY_CURSOR },

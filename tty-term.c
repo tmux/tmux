@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.3 2009-01-10 01:51:22 nicm Exp $ */
+/* $Id: tty-term.c,v 1.4 2009-01-10 18:28:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -67,6 +67,7 @@ struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_IS1, TTYCODE_STRING, "is1" },
 	{ TTYC_IS2, TTYCODE_STRING, "is2" },
 	{ TTYC_IS3, TTYCODE_STRING, "is3" },
+	{ TTYC_KCBT, TTYCODE_STRING, "kcbt" },
 	{ TTYC_KCUB1, TTYCODE_STRING, "kcub1" },
 	{ TTYC_KCUD1, TTYCODE_STRING, "kcud1" },
 	{ TTYC_KCUF1, TTYCODE_STRING, "kcuf1" },
