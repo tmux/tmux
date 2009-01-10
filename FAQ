@@ -22,6 +22,11 @@ include as much of the following information as possible:
 
 Please send feature requests by email to nicm@users.sourceforge.net.
 
+* Why do you use the screen termcap inside tmux? It sucks.
+
+It is already widely available. It is planned to change to something else
+such as xterm-color at some point, if possible.
+
 * tmux freezes my terminal when I attach to a session. I even have to kill -9
   the shell it was started from to recover!
 
@@ -65,10 +70,10 @@ attaching a client to a tmux session:
 * How do I use a 256 colour terminal?
 
 tmux will attempt to detect a 256 colour terminal both by looking at the Co
-termcap entry and, as this is broken on some platforms for some terminals such
-as xterm-256color, by looking for the string "256col" in the termcap name.
+termcap entry and, as this is broken for some terminals such as xterm-256color,
+by looking for the string "256col" in the termcap name.
 
-If both these methods failed, the -2 flag may be passed to tmux when attaching
+If both these methods fail, the -2 flag may be passed to tmux when attaching
 to a session to indicate the terminal supports 256 colours.
 
 * vim or $otherprogram doesn't display 256 colours. What's up?
