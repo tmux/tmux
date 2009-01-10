@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.53 2009-01-10 14:43:43 nicm Exp $ */
+/* $Id: window.c,v 1.54 2009-01-10 19:37:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -204,14 +204,15 @@ winlink_stack_remove(struct winlink_stack *stack, struct winlink *wl)
 }
 
 struct window *
-window_create(const char *name,
-    const char *cmd, const char **envp, u_int sx, u_int sy, u_int hlimit)
+window_create(const char *name, const char *cmd,
+    const char *cwd, const char **envp, u_int sx, u_int sy, u_int hlimit)
 {
 	struct window	*w;
 	char		*ptr, *copy;
 
 	w = xmalloc(sizeof *w);
 	w->cmd = NULL;
+	w->cwd = NULL;
 
 	w->fd = -1;
 	w->in = buffer_create(BUFSIZ);
@@ -252,7 +253,7 @@ window_create(const char *name,
 	ARRAY_ADD(&windows, w);
 	w->references = 0;
 
-	if (window_spawn(w, cmd, envp) != 0) {
+	if (window_spawn(w, cmd, cwd, envp) != 0) {
 		window_destroy(w);
 		return (NULL);
 	}
@@ -260,7 +261,8 @@ window_create(const char *name,
 }
 
 int
-window_spawn(struct window *w, const char *cmd, const char **envp)
+window_spawn(
+    struct window *w, const char *cmd, const char *cwd, const char **envp)
 {
 	struct winsize	 ws;
 	int		 mode;
@@ -268,11 +270,10 @@ window_spawn(struct window *w, const char *cmd, const char **envp)
 
 	if (w->fd != -1)
 		close(w->fd);
-	if (cmd != NULL) {
-		if (w->cmd != NULL)
-			xfree(w->cmd);
-		w->cmd = xstrdup(cmd);
-	}
+	if (w->cmd != NULL)
+		xfree(w->cmd);
+	w->cmd = xstrdup(cmd);
+	w->cwd = xstrdup(cwd);
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = screen_size_x(&w->base);
@@ -282,12 +283,14 @@ window_spawn(struct window *w, const char *cmd, const char **envp)
 	case -1:
 		return (1);
 	case 0:
+		if (chdir(cwd) != 0)
+			chdir("/");
 		for (envq = envp; *envq != NULL; envq++) {
 			if (putenv(*envq) != 0)
 				fatal("putenv failed");
 		}
 		sigreset();
-		log_debug("new child: cmd=%s; pid=%ld", w->cmd, (long) getpid());
+		log_debug("new child: cmd=%s pid=%ld", w->cmd, (long) getpid());
 		log_close();
 
 		execl(_PATH_BSHELL, "sh", "-c", w->cmd, (char *) NULL);
@@ -327,6 +330,8 @@ window_destroy(struct window *w)
 	buffer_destroy(w->in);
 	buffer_destroy(w->out);
 
+	if (w->cwd != NULL)
+		xfree(w->cwd);
 	if (w->cmd != NULL)
 		xfree(w->cmd);
 	xfree(w->name);

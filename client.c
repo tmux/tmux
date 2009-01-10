@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.35 2008-09-09 22:16:36 nicm Exp $ */
+/* $Id: client.c,v 1.36 2009-01-10 19:37:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -99,6 +99,8 @@ retry:
 		data.sx = ws.ws_col;
 		data.sy = ws.ws_row;
 		*data.tty = '\0';
+		if (getcwd(data.cwd, sizeof data.cwd) == NULL)
+			*data.cwd = '\0';
 
 		if ((name = ttyname(STDIN_FILENO)) == NULL)
 			fatal("ttyname failed");

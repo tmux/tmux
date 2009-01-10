@@ -59,6 +59,7 @@
   data). maybe too slow though?
 - use a better termcap internally instead of screen, perhaps xterm
 - tty.c is a bit ugly
+- document default-path
 - document xterm-keys
 - document server-info
 - document window options changes

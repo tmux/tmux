@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.92 2009-01-10 19:35:40 nicm Exp $ */
+/* $Id: server.c,v 1.93 2009-01-10 19:37:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -101,7 +101,7 @@ server_start(const char *path)
 	 * Must daemonise before loading configuration as the PID changes so
 	 * $TMUX would be wrong for sessions created in the config file.
 	 */
-	if (daemon(1, 1) != 0)
+	if (daemon(0, 1) != 0)
 		fatal("daemon failed");
 
 	ARRAY_INIT(&windows);
@@ -589,6 +589,9 @@ server_lost_client(struct client *c)
 	for (i = 0; i < ARRAY_LENGTH(&c->prompt_hdata); i++)
 		xfree(ARRAY_ITEM(&c->prompt_hdata, i));
 	ARRAY_FREE(&c->prompt_hdata);
+
+	if (c->cwd != NULL)
+		xfree(c->cwd);
 
 	close(c->fd);
 	buffer_destroy(c->in);

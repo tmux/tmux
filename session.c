@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.48 2009-01-10 14:43:43 nicm Exp $ */
+/* $Id: session.c,v 1.49 2009-01-10 19:37:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -109,7 +109,8 @@ session_find(const char *name)
 
 /* Create a new session. */
 struct session *
-session_create(const char *name, const char *cmd, u_int sx, u_int sy)
+session_create(
+    const char *name, const char *cmd, const char *cwd, u_int sx, u_int sy)
 {
 	struct session	*s;
 	u_int		 i;
@@ -141,7 +142,7 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 		s->name = xstrdup(name);
 	else
 		xasprintf(&s->name, "%u", i);
-	if (session_new(s, NULL, cmd, -1) == NULL) {
+	if (session_new(s, NULL, cmd, cwd, -1) == NULL) {
 		session_destroy(s);
 		return (NULL);
 	}
@@ -192,7 +193,8 @@ session_index(struct session *s, u_int *i)
 
 /* Create a new window on a session. */
 struct winlink *
-session_new(struct session *s, const char *name, const char *cmd, int idx)
+session_new(struct session *s,
+    const char *name, const char *cmd, const char *cwd, int idx)
 {
 	struct window	*w;
 	const char	*env[] = { NULL /* TMUX= */, "TERM=screen", NULL };
@@ -205,7 +207,8 @@ session_new(struct session *s, const char *name, const char *cmd, int idx)
 	env[0] = buf;
 
 	hlimit = options_get_number(&s->options, "history-limit");
-	if ((w = window_create(name, cmd, env, s->sx, s->sy, hlimit)) == NULL)
+	w = window_create(name, cmd, cwd, env, s->sx, s->sy, hlimit);
+	if (w == NULL)
 		return (NULL);
 
 	return (session_attach(s, w, idx));

@@ -1,5 +1,9 @@
 10 January 2009
 
+* If a window is created from the command line, tmux will now use the same
+  current working directory for the new process. A new default-path option to
+  sets the working directory for processes created from keys or interactively
+  from the prompt.
 * New mode to display a large clock. Entered with clock-mode command (bound to
   C-b t by default); two window options: clock-mode-colour and clock-mode-style
   (12 or 24). This will probably be used as the basis for window locking.
@@ -841,7 +845,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.188 2009-01-10 19:35:39 nicm Exp $
+$Id: CHANGES,v 1.189 2009-01-10 19:37:35 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB

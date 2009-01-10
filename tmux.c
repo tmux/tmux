@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.90 2009-01-10 19:35:40 nicm Exp $ */
+/* $Id: tmux.c,v 1.91 2009-01-10 19:37:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -178,7 +178,7 @@ main(int argc, char **argv)
 	const char		*shell;
 	struct passwd		*pw;
 	char			*path, *cause, *home;
-	char			 rpath[MAXPATHLEN];
+	char			 rpath[MAXPATHLEN], cwd[MAXPATHLEN];
 	int	 		 n, opt, flags;
 
 	flags = 0;
@@ -304,6 +304,12 @@ main(int argc, char **argv)
 	options_set_string(
 	    &global_options, "default-command", "exec %s", shell);
 	
+
+	if (getcwd(cwd, sizeof cwd) == NULL) {
+		log_warn("getcwd");
+		exit(1);
+	}
+	options_set_string(&global_options, "default-path", "%s", cwd);
 
 	if (argc == 0) {
 		cmd = xmalloc(sizeof *cmd);

@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.49 2009-01-10 01:51:21 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.50 2009-01-10 19:37:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,6 +49,7 @@ const struct set_option_entry set_option_table[NSETOPTION] = {
 	{ "bell-action", SET_OPTION_CHOICE, 0, 0, set_option_bell_action_list },
 	{ "buffer-limit", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "default-command", SET_OPTION_STRING, 0, 0, NULL },
+	{ "default-path", SET_OPTION_STRING, 0, 0, NULL },
 	{ "display-time", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "history-limit", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
 	{ "message-bg", SET_OPTION_COLOUR, 0, 0, NULL },

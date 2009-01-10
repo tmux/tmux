@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.54 2009-01-07 22:57:03 nicm Exp $ */
+/* $Id: server-msg.c,v 1.55 2009-01-10 19:37:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -182,6 +182,10 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 
 	c->sx = data.sx;
 	c->sy = data.sy;
+
+	c->cwd = NULL;
+	if (*data.cwd != '\0')
+		c->cwd = xstrdup(data.cwd);
 
 	data.tty[(sizeof data.tty) - 1] = '\0';
 	tty_init(&c->tty, data.tty, xstrdup(term));
