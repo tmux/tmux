@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.89 2009-01-07 22:57:03 nicm Exp $ */
+/* $Id: server.c,v 1.90 2009-01-10 01:30:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -118,6 +118,8 @@ server_start(const char *path)
 	setproctitle("server (%s)", path);
 #endif
 	log_debug("server started, pid %ld", (long) getpid());
+	start_time = time(NULL);
+	socket_path = path;
 
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;

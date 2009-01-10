@@ -53,11 +53,13 @@
   unwrapping
 - OPTIONS section in man page with description of new option handling
 - update set/setw in man page with -g and -u flags
-- document status line options, title bits
-- document window options changes
 - more # commands in status-left,right eg #H for hostname. others?
 - input.c is too complicated. simplify?
 - try change from pass-though model to redraw model (use updated screen
   data). maybe too slow though?
 - use a better termcap internally instead of screen, perhaps xterm
 - tty.c is a bit ugly
+- document xterm-keys
+- document server-info
+- document status line options, title bits
+- document window options changes

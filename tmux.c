@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.86 2009-01-09 23:57:42 nicm Exp $ */
+/* $Id: tmux.c,v 1.87 2009-01-10 01:30:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,6 +53,7 @@ struct options	 global_window_options;
 int		 debug_level;
 int		 be_quiet;
 time_t		 start_time;
+const char	*socket_path;
 
 void		 sighandler(int);
 __dead void	 usage(void);

@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.1 2009-01-09 23:57:42 nicm Exp $ */
+/* $Id: tty-term.c,v 1.2 2009-01-10 01:30:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,15 +27,9 @@
 void	 tty_term_quirks(struct tty_term *);
 char	*tty_term_strip(const char *);
 
-SLIST_HEAD(, tty_term) tty_terms = SLIST_HEAD_INITIALIZER(tty_terms);
+struct tty_terms tty_terms = SLIST_HEAD_INITIALIZER(tty_terms);
 
-struct tty_term_code_entry {
-	enum tty_code_code	code;
-	enum tty_code_type	type;
-	const char	       *name;
-};
-
-struct tty_term_code_entry tty_term_codes[] = {
+struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_AX, TTYCODE_FLAG, "AX" },
 	{ TTYC_ACSC, TTYCODE_STRING, "acsc" },
 	{ TTYC_BEL, TTYCODE_STRING, "bel" },
@@ -57,6 +51,7 @@ struct tty_term_code_entry tty_term_codes[] = {
 	{ TTYC_CUU, TTYCODE_STRING, "cuu" },
 	{ TTYC_CUU1, TTYCODE_STRING, "cuu1" },
 	{ TTYC_DCH, TTYCODE_STRING, "dch" },
+	{ TTYC_DCH1, TTYCODE_STRING, "dch1" },
 	{ TTYC_DIM, TTYCODE_STRING, "dim" },
 	{ TTYC_DL, TTYCODE_STRING, "dl" },
 	{ TTYC_DL1, TTYCODE_STRING, "dl1" },
@@ -150,6 +145,14 @@ tty_term_quirks(struct tty_term *term)
 			term->codes[TTYC_DCH1].value.string = xstrdup("\033[P");
 		}
 	}
+
+	if (strncmp(term->name, "xterm", 5) == 0) {
+		/* xterm supports ich1 but some termcaps omit it. */
+		if (!tty_term_has(term, TTYC_ICH1)) {
+			term->codes[TTYC_ICH1].type = TTYCODE_STRING;
+			term->codes[TTYC_ICH1].value.string = xstrdup("\033[@");
+		}
+	}			
 }
 
 struct tty_term *
@@ -173,6 +176,7 @@ tty_term_find(char *name, int fd, char **cause)
 	term = xmalloc(sizeof *term);
 	term->name = xstrdup(name);
 	term->references = 1;
+	term->flags = 0;
 	SLIST_INSERT_HEAD(&tty_terms, term, entry);
 
 	/* Set up ncurses terminal. */
@@ -196,7 +200,7 @@ tty_term_find(char *name, int fd, char **cause)
 
 	/* Fill in codes. */
 	memset(&term->codes, 0, sizeof term->codes);
-	for (i = 0; i < nitems(tty_term_codes); i++) {
+	for (i = 0; i < NTTYCODE; i++) {
 		ent = &tty_term_codes[i];
 		
 		code = &term->codes[ent->code];

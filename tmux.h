@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.212 2009-01-09 23:57:42 nicm Exp $ */
+/* $Id: tmux.h,v 1.213 2009-01-10 01:30:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -296,9 +296,8 @@ enum tty_code_code {
 	TTYC_SMKX,	/* keypad_xmit, ks */
 	TTYC_SMSO,	/* enter_standout_mode, so */
 	TTYC_SMUL,	/* enter_underline_mode, us */
-
-	NTTYCODE
 };
+#define NTTYCODE (TTYC_SMUL + 1)
 
 /* Termcap types. */
 enum tty_code_type {
@@ -317,7 +316,14 @@ struct tty_code {
 		int	 	flag;
 	} value;
 };
-	
+
+/* Entry in terminal code table. */
+struct tty_term_code_entry {
+	enum tty_code_code	code;
+	enum tty_code_type	type;
+	const char	       *name;
+};
+
 /* Output commands. */
 enum tty_cmd {
 	TTY_BELL,
@@ -678,6 +684,7 @@ struct tty_term {
 
 	SLIST_ENTRY(tty_term) entry;
 };
+SLIST_HEAD(tty_terms, tty_term);
 
 struct tty {
 	char		*path;
@@ -925,6 +932,7 @@ extern char	*cfg_file;
 extern int	 debug_level;
 extern int	 be_quiet;
 extern time_t	 start_time;
+extern const char *socket_path;
 void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);
@@ -960,7 +968,9 @@ void		 tty_vwrite(
     		      struct tty *, struct screen *s, enum tty_cmd, va_list);
 
 /* tty-term.c */
-struct tty_term *tty_term_find(char *, int,char **);
+extern struct tty_terms tty_terms;
+extern struct tty_term_code_entry tty_term_codes[NTTYCODE];
+struct tty_term *tty_term_find(char *, int, char **);
 void 		 tty_term_free(struct tty_term *);
 int		 tty_term_has(struct tty_term *, enum tty_code_code);
 const char	*tty_term_string(struct tty_term *, enum tty_code_code);
@@ -1061,6 +1071,7 @@ extern const struct cmd_entry cmd_scroll_mode_entry;
 extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_keys_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
+extern const struct cmd_entry cmd_server_info_entry;
 extern const struct cmd_entry cmd_select_prompt_entry;
 extern const struct cmd_entry cmd_set_buffer_entry;
 extern const struct cmd_entry cmd_set_option_entry;
