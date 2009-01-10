@@ -61,7 +61,5 @@
 - tty.c is a bit ugly
 - document xterm-keys
 - document server-info
-- document status line options, title bits
 - document window options changes
-- FAQ: why; vim 256 colours; vim ctrl-pgup/dn; bug reports
 
