@@ -26,7 +26,8 @@ Please send feature requests by email to nicm@users.sourceforge.net.
   the shell it was started from to recover!
 
 Some consoles really really don't like attempts to set the window title. Tell
-tmux not to do this by turning off the "set-titles" option:
+tmux not to do this by turning off the "set-titles" option (you can do this
+in .tmux.conf):
 
      set -g set-titles off
 
