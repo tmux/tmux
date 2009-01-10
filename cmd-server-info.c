@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.6 2009-01-10 14:43:43 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.7 2009-01-10 14:46:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -84,7 +84,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		if (c == NULL || c->session == NULL)
 			continue;
 
-		ctx->print(ctx, "  %2d: %s (%d, %d): %s [%ux%u %s] "
+		ctx->print(ctx, "%4d: %s (%d, %d): %s [%ux%u %s] "
 		    "[flags=0x%x]", i, c->tty.path, c->fd, c->tty.fd, 
 		    c->session->name, c->sx, c->sy, c->tty.termname, c->flags);
 	}
@@ -100,7 +100,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		tim = ctime(&t);
 		*strchr(tim, '\n') = '\0';
 
-		ctx->print(ctx, "  %2d: %s: %u windows (created %s) [%ux%u] "
+		ctx->print(ctx, "%4d: %s: %u windows (created %s) [%ux%u] "
 		    "[flags=0x%x]", i, s->name, winlink_count(&s->windows),
 		    tim, s->sx, s->sy, s->flags);
 	}
@@ -115,7 +115,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 			code = &term->codes[ent->code];
 			switch (code->type) {
 			case TTYCODE_NONE:
-				ctx->print(ctx, "  %2d: %s: [missing]",
+				ctx->print(ctx, "%4d: %s: [missing]",
 				    ent->code, ent->name);
 				break;
 			case TTYCODE_STRING:
@@ -123,15 +123,15 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 				    sizeof out, VIS_OCTAL|VIS_WHITE);
 				out[(sizeof out) - 1] = '\0';
 
-				ctx->print(ctx, "  %2d: %s: (string) %s",
+				ctx->print(ctx, "%4d: %s: (string) %s",
 				    ent->code, ent->name, out);
 				break;
 			case TTYCODE_NUMBER:
-				ctx->print(ctx, "  %2d: %s: (number) %d",
+				ctx->print(ctx, "%4d: %s: (number) %d",
 				    ent->code, ent->name, code->value.number);
 				break;
 			case TTYCODE_FLAG:
-				ctx->print(ctx, "  %2d: %s: (flag) %s",
+				ctx->print(ctx, "%4d: %s: (flag) %s",
 				    ent->code, ent->name,
 				    code->value.flag ? "true" : "false");
 				break;
