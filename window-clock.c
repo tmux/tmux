@@ -1,4 +1,4 @@
-/* $Id: window-clock.c,v 1.1 2009-01-10 19:35:40 nicm Exp $ */
+/* $Id: window-clock.c,v 1.2 2009-01-10 19:40:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <string.h>
+#include <time.h>
 
 #include "tmux.h"
 
