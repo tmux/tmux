@@ -1,4 +1,4 @@
-/* $Id: cmd-scroll-mode.c,v 1.12 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-scroll-mode.c,v 1.13 2009-01-10 18:08:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,7 +21,7 @@
 #include "tmux.h"
 
 /*
- * Enter scroll mode. Only valid when bound to a key.
+ * Enter scroll mode.
  */
 
 void	cmd_scroll_mode_exec(struct cmd *, struct cmd_ctx *);

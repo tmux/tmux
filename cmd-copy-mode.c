@@ -1,4 +1,4 @@
-/* $Id: cmd-copy-mode.c,v 1.11 2008-06-18 22:21:51 nicm Exp $ */
+/* $Id: cmd-copy-mode.c,v 1.12 2009-01-10 18:08:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,7 +21,7 @@
 #include "tmux.h"
 
 /*
- * Enter copy mode. Only valid when bound to a key.
+ * Enter copy mode.
  */
 
 void	cmd_copy_mode_exec(struct cmd *, struct cmd_ctx *);
