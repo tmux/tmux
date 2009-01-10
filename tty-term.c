@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.6 2009-01-10 22:26:08 nicm Exp $ */
+/* $Id: tty-term.c,v 1.7 2009-01-10 22:28:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -96,12 +96,14 @@ struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_RI, TTYCODE_STRING, "ri" },
 	{ TTYC_RMACS, TTYCODE_STRING, "rmacs" },
 	{ TTYC_RMCUP, TTYCODE_STRING, "rmcup" },
+	{ TTYC_RMIR, TTYCODE_STRING, "rmir" },
 	{ TTYC_RMKX, TTYCODE_STRING, "rmkx" },
 	{ TTYC_SETAB, TTYCODE_STRING, "setab" },
 	{ TTYC_SETAF, TTYCODE_STRING, "setaf" },
 	{ TTYC_SGR0, TTYCODE_STRING, "sgr0" },
 	{ TTYC_SMACS, TTYCODE_STRING, "smacs" },
 	{ TTYC_SMCUP, TTYCODE_STRING, "smcup" },
+	{ TTYC_SMIR, TTYCODE_STRING, "smir" },
 	{ TTYC_SMKX, TTYCODE_STRING, "smkx" },
 	{ TTYC_SMSO, TTYCODE_STRING, "smso" },
 	{ TTYC_SMUL, TTYCODE_STRING, "smul" },
@@ -290,8 +292,11 @@ tty_term_find(char *name, int fd, char **cause)
 		xasprintf(cause, "terminal does not support dl1 or dl");
 		goto error;
 	}
-	if (!tty_term_has(term, TTYC_ICH1) && !tty_term_has(term, TTYC_ICH)) {
-		xasprintf(cause, "terminal does not support ich1 or ich");
+	if (!tty_term_has(term, TTYC_ICH1) && 
+	    !tty_term_has(term, TTYC_ICH) && (!tty_term_has(term, TTYC_SMIR) ||
+	    !tty_term_has(term, TTYC_RMIR))) {
+		xasprintf(cause, 
+		    "terminal does not support ich1 or ich or smir and rmir");
 		goto error;
 	}
 	if (!tty_term_has(term, TTYC_DCH1) && !tty_term_has(term, TTYC_DCH)) {
