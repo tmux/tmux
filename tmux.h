@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.216 2009-01-10 18:28:09 nicm Exp $ */
+/* $Id: tmux.h,v 1.217 2009-01-10 18:37:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -260,6 +260,7 @@ enum tty_code_code {
 	TTYC_IS1,	/* init_1string, i1 */
 	TTYC_IS2,	/* init_2string, i2 */
 	TTYC_IS3,	/* init_3string, i3 */
+        TTYC_KCBT,      /* key_btab, kB */
 	TTYC_KCUB1,	/* key_left, kl */
 	TTYC_KCUD1,	/* key_down, kd */
 	TTYC_KCUF1,	/* key_right, kr */
