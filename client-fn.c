@@ -1,4 +1,4 @@
-/* $Id: client-fn.c,v 1.4 2008-07-01 20:35:16 nicm Exp $ */
+/* $Id: client-fn.c,v 1.5 2009-01-10 14:43:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,7 +61,7 @@ client_write_server(
 	hdr.size = len;
 	buffer_write(cctx->srv_out, &hdr, sizeof hdr);
 
-	if (buf != NULL)
+	if (buf != NULL && len > 0)
 		buffer_write(cctx->srv_out, buf, len);
 }
 
@@ -75,8 +75,8 @@ client_write_server2(struct client_ctx *cctx,
 	hdr.size = len1 + len2;
 	buffer_write(cctx->srv_out, &hdr, sizeof hdr);
 
-	if (buf1 != NULL)
+	if (buf1 != NULL && len1 > 0)
 		buffer_write(cctx->srv_out, buf1, len1);
-	if (buf2 != NULL)
+	if (buf2 != NULL && len2 > 0)
 		buffer_write(cctx->srv_out, buf2, len2);
 }

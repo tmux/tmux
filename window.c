@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.52 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: window.c,v 1.53 2009-01-10 14:43:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -97,6 +97,19 @@ winlink_next_index(struct winlinks *wwl)
 	}
 
 	fatalx("no free indexes");
+}
+
+u_int
+winlink_count(struct winlinks *wwl)
+{
+	struct winlink	*wl;
+	u_int		 n;
+
+	n = 0;
+	RB_FOREACH(wl, winlinks, wwl)
+		n++;
+
+	return (n);
 }
 
 struct winlink *

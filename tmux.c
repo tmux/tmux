@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.88 2009-01-10 01:51:22 nicm Exp $ */
+/* $Id: tmux.c,v 1.89 2009-01-10 14:43:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -356,14 +356,16 @@ main(int argc, char **argv)
 				fatalx("bad MSG_PRINT size");
 			log_info("%.*s",
 			    (int) hdr.size, BUFFER_OUT(cctx.srv_in));
-			buffer_remove(cctx.srv_in, hdr.size);
+			if (hdr.size != 0)
+				buffer_remove(cctx.srv_in, hdr.size);
 			goto restart;
 		case MSG_ERROR:
 			if (hdr.size > INT_MAX - 1)
 				fatalx("bad MSG_ERROR size");
 			log_warnx("%.*s",
 			    (int) hdr.size, BUFFER_OUT(cctx.srv_in));
-			buffer_remove(cctx.srv_in, hdr.size);
+			if (hdr.size != 0)
+				buffer_remove(cctx.srv_in, hdr.size);
 			n = 1;
 			goto out;
 		case MSG_READY:

@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.47 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: session.c,v 1.48 2009-01-10 14:43:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -115,6 +115,7 @@ session_create(const char *name, const char *cmd, u_int sx, u_int sy)
 	u_int		 i;
 
 	s = xmalloc(sizeof *s);
+	s->flags = 0;
 	if (gettimeofday(&s->tv, NULL) != 0)
 		fatal("gettimeofday");
 	s->curw = NULL;

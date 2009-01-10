@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.51 2009-01-06 15:37:15 nicm Exp $ */
+/* $Id: server-fn.c,v 1.52 2009-01-10 14:43:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -102,7 +102,7 @@ server_write_client(
 	hdr.size = len;
 
 	buffer_write(c->out, &hdr, sizeof hdr);
-	if (buf != NULL)
+	if (buf != NULL && len > 0)
 		buffer_write(c->out, buf, len);
 }
 
