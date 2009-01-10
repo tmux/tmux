@@ -1,0 +1,133 @@
+tmux frequently asked questions
+
+* What is tmux? How is it different from GNU screen?
+
+...
+
+* I found a bug! What do I do?
+
+Please send bug reports by email to nicm@users.sourceforge.net. Please
+include as much of the following information as possible:
+
+- the version of tmux you are running;
+- the operating system you are using and its version;
+- the terminal emulator you are using and the TERM setting when tmux was 
+  started;
+- a description of the problem;
+- if the problem is repeatable, the steps to repeat the problem;
+- for screen corruption issues, a screenshot and the output of "infocmp $TERM"
+  from outside tmux are often very useful.
+
+* Why doesn't tmux do $x?
+
+Please send feature requests by email to nicm@users.sourceforge.net.
+
+* tmux freezes my terminal when I attach to a session. I even have to kill -9
+  the shell it was started from to recover!
+
+Some consoles really really don't like attempts to set the window title. Tell
+tmux not to do this by turning off the "set-titles" option:
+
+     set -g set-titles off
+
+If this doesn't fix it, send a bug report.
+
+* Why is C-b the prefix key? How do I change it?
+
+The default key is C-b because the prototype of tmux was originally developed
+inside screen and C-b was chosen not to interfere with the screen meta key. It
+also has the advantage of not interfering with the use of C-a for start-of-line
+in emacs and the shell.
+
+Changing is simple: change the "prefix-key" option, and - if required - move
+the binding of the "send-prefix" command from C-b (C-b C-b sends C-b by
+default) to the new key. For example:
+
+	set -g prefix C-a
+	unbind C-b
+	bind C-a send-prefix
+
+* How do I use UTF-8?
+
+When running tmux in a UTF-8 capable terminal, two things must be done to
+enable support. UTF-8 may be turned on separately for each tmux window or
+globally by setting the "utf8" flag:
+
+	setw -g utf8 on
+
+And, as it is not possible to automatically detect that a terminal is UTF-8
+capable, tmux must be told by passing the -u flag when creating or
+attaching a client to a tmux session:
+
+	  $ tmux -u new
+
+* How do I use a 256 colour terminal?
+
+tmux will attempt to detect a 256 colour terminal both by looking at the Co
+termcap entry and, as this is broken on some platforms for some terminals such
+as xterm-256color, by looking for the string "256col" in the termcap name.
+
+If both these methods failed, the -2 flag may be passed to tmux when attaching
+to a session to indicate the terminal supports 256 colours.
+
+* vim or $otherprogram doesn't display 256 colours. What's up?
+
+Some programs attempt to detect the number of colours a terminal is capable of
+by checking the Co termcap entry. However, this is not reliable, and in any
+case is missing from the "screen" termcap used inside tmux.
+
+There are three options to allow programs to recognise they are running on
+a 256-colour terminal inside tmux:
+
+- Manually force the application to use 256 colours always or if TERM is set to
+  screen. For vim, you can do this by overriding the t_Co option, see
+  http://vim.wikia.com/wiki/256_colors_in_vim.
+- If the platform includes it, using the "screen-256color" termcap (set
+  TERM=screen-256color). "infocmp screen-256color" can be used to check if this
+  is supported. It is not currently possible to set this globally inside tmux
+  but it may be done in a shell startup script by checking if TERM is screen
+  and exporting TERM=screen-256color instead.
+- Creating a custom terminfo file that includes Co#256 in ~/.terminfo and using
+  it instead. These may be compiled with with tic(1).
+
+* How do I make Ctrl-PgUp and Ctrl-PgDn work in vim?
+
+tmux supports passing through ctrl (and where supported by the client terminal,
+alt and shift) modifiers to function keys using xterm(1)-style key sequences.
+This may be enabled per window, or globally with the tmux command:
+
+	setw -g xterm-keys on
+
+Because the TERM variable inside tmux must be set to "screen", vim will not
+automatically detect these keys are available; however, the appropriate key
+sequences can be overridden in .vimrc using the following:
+
+	if &term == "screen"
+	set t_kN=^[[6;*~
+	set t_kP=^[[5;*~
+	endif
+
+And similarly for any other keys for which modifiers are desired.
+
+Please note that the "xterm-keys" setting may affect other programs; for
+example most shells do not expect to receive xterm(1)-style key sequences so
+this setting may prevent keys such as ctrl-left and ctrl-right working
+correctly. tmux also passes through the ctrl (bit 5 set, for example ^[[5~ to
+^[[5^) modifier in non-xterm(1) mode; it may be possible to configure vim to
+accept these, an example of how to do so would be welcome.
+
+* Why doesn't elinks set the window title inside tmux?
+
+There isn't a way to detect if a terminal supports setting the window title, so
+elinks attempts to guess by looking at the environment. Rather than looking for
+TERM=screen, it uses the STY variable to detect if it is running in screen;
+tmux does not use this so the check fails. A workaround is to set STY before
+running elinks.
+
+The following shell function does this, and also clears the window title on
+exit (elinks, for some strange reason, sets it to the value of TERM):
+
+	elinks() {
+        	STY= `which elinks` "$*"
+	        echo -ne \\033]0\;\\007;
+	}
