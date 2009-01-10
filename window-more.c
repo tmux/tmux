@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.21 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: window-more.c,v 1.22 2009-01-10 01:41:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -147,6 +147,10 @@ window_more_key(struct window *w, unused struct client *c, int key)
 			data->top -= screen_size_y(s);
 		window_more_redraw_screen(w);
 		break;
+	case MODEKEY_NONE:
+		if (key != ' ')
+			break;
+		/* FALLTHROUGH */
 	case MODEKEY_NPAGE:
 		if (data->top + screen_size_y(s) > ARRAY_LENGTH(&data->list))
 			data->top = ARRAY_LENGTH(&data->list);
