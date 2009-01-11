@@ -66,7 +66,24 @@
 - document clock-mode
 - document password/locking commands
 - document lock-after-time
-- automatic lock/screensaver after $time inactivity
-- a key binding to display the status line briefly when it is turned off
-- FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw
+- a command to display the status line briefly when it is turned off
+- FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw, more??
+  17:06 < NicM> tmux new then eg tmux linkw -s0:0
+  17:06 < simmel> NicM link-window?
+  17:06 < NicM> yes
+  17:06 < NicM> create a new session with tmux new
+  17:07 < NicM> then link your compilation or irc window into it with tmux linkw
+  17:07 < NicM> i have a set of secondary sessions set up by default with irc linked into them already
+  17:07 < NicM> so if want to view it in a separate window
+  17:07 < NicM> i just attach one of them
+  17:07 < NicM> and keep working in my original session
+  17:07 < NicM> but you can do it manually as well
+  17:08 < simmel> How do I unlink then?
+  17:08 < NicM> tmux unlinkw
+  17:08 < NicM> or tmux killw
+  17:08 < simmel> Doesnt that kill the original one too?
+  17:08 < NicM> no
+  17:08 < NicM> it unlinks it from the session
+  17:09 < NicM> or kills it if it is only linked to one
+  17:09 < NicM> unlinkw only unlinks it
 - clone session command
