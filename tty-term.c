@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.7 2009-01-10 22:28:40 nicm Exp $ */
+/* $Id: tty-term.c,v 1.8 2009-01-11 23:41:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,21 +41,14 @@ struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_COLORS, TTYCODE_NUMBER, "colors" },
 	{ TTYC_CR, TTYCODE_STRING, "cr" },
 	{ TTYC_CSR, TTYCODE_STRING, "csr" },
-	{ TTYC_CUB, TTYCODE_STRING, "cub" },
-	{ TTYC_CUB1, TTYCODE_STRING, "cub1" },
 	{ TTYC_CUD, TTYCODE_STRING, "cud" },
 	{ TTYC_CUD1, TTYCODE_STRING, "cud1" },
-	{ TTYC_CUF, TTYCODE_STRING, "cuf" },
-	{ TTYC_CUF1, TTYCODE_STRING, "cuf1" },
 	{ TTYC_CUP, TTYCODE_STRING, "cup" },
-	{ TTYC_CUU, TTYCODE_STRING, "cuu" },
-	{ TTYC_CUU1, TTYCODE_STRING, "cuu1" },
 	{ TTYC_DCH, TTYCODE_STRING, "dch" },
 	{ TTYC_DCH1, TTYCODE_STRING, "dch1" },
 	{ TTYC_DIM, TTYCODE_STRING, "dim" },
 	{ TTYC_DL, TTYCODE_STRING, "dl" },
 	{ TTYC_DL1, TTYCODE_STRING, "dl1" },
-	{ TTYC_ED, TTYCODE_STRING, "ed" },
 	{ TTYC_EL, TTYCODE_STRING, "el" },
 	{ TTYC_EL1, TTYCODE_STRING, "el1" },
 	{ TTYC_ENACS, TTYCODE_STRING, "enacs" },
@@ -268,20 +261,8 @@ tty_term_find(char *name, int fd, char **cause)
 	}
 
 	/* These can be emulated so one of the two is required. */
-	if (!tty_term_has(term, TTYC_CUU1) && !tty_term_has(term, TTYC_CUU)) {
-		xasprintf(cause, "terminal does not support cuu1 or cuu");
-		goto error;
-	}
 	if (!tty_term_has(term, TTYC_CUD1) && !tty_term_has(term, TTYC_CUD)) {
 		xasprintf(cause, "terminal does not support cud1 or cud");
-		goto error;
-	}
-	if (!tty_term_has(term, TTYC_CUF1) && !tty_term_has(term, TTYC_CUF)) {
-		xasprintf(cause, "terminal does not support cuf1 or cuf");
-		goto error;
-	}
-	if (!tty_term_has(term, TTYC_CUB1) && !tty_term_has(term, TTYC_CUB)) {
-		xasprintf(cause, "terminal does not support cub1 or cub");
 		goto error;
 	}
 	if (!tty_term_has(term, TTYC_IL1) && !tty_term_has(term, TTYC_IL)) {

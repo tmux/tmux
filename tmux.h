@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.223 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: tmux.h,v 1.224 2009-01-11 23:41:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -234,21 +234,14 @@ enum tty_code_code {
 	TTYC_COLORS,	/* max_colors, Co */
 	TTYC_CR,	/* carriage_return, cr */
 	TTYC_CSR,	/* change_scroll_region, cs */
-	TTYC_CUB,	/* parm_left_cursor, LE */
-	TTYC_CUB1,	/* cursor_left, le */
 	TTYC_CUD,	/* parm_down_cursor, DO */
 	TTYC_CUD1,	/* cursor_down, do */
-	TTYC_CUF,	/* parm_right_cursor, RI */
-	TTYC_CUF1,	/* cursor_right, nd */
 	TTYC_CUP,	/* cursor_address, cm */
-	TTYC_CUU,	/* parm_up_cursor, UP */
-	TTYC_CUU1,	/* cursor_up, up */
 	TTYC_DCH,	/* parm_dch, DC */
 	TTYC_DCH1,	/* delete_character, dc */
 	TTYC_DIM,	/* enter_dim_mode, mh */
 	TTYC_DL,	/* parm_delete_line, DL */
 	TTYC_DL1,	/* delete_line, dl */
-	TTYC_ED,	/* clr_eos, cd */
 	TTYC_EL,	/* clr_eol, ce */
 	TTYC_EL1,	/* clr_bol, cb */
 	TTYC_ENACS,	/* ena_acs, eA */
