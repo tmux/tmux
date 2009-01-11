@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.5 2009-01-10 01:51:21 nicm Exp $ */
+/* $Id: grid.c,v 1.6 2009-01-11 02:23:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,17 +26,16 @@
  * Grid data. This is the basic data structure that represents what is shown on
  * screen.
  *
- * A grid is a grid of cells (struct grid_cell). It is sparse, in that cells
- * are not allocated until they are written to. The grid is logically split
- * into history and viewable data with the history starting at row (line) 0 and
- * extending to (hsize - 1); from hsize to hsize + (sy - 1) is the viewable
- * data. All functions in this file work on absolute coordinates, grid-view.c
- * has functions which work on the screen data.
+ * A grid is a grid of cells (struct grid_cell). Lines are not allocated until
+ * cells in that line are written to. The grid is split into history and
+ * viewable data with the history starting at row (line) 0 and extending to
+ * (hsize - 1); from hsize to hsize + (sy - 1) is the viewable data. All
+ * functions in this file work on absolute coordinates, grid-view.c has
+ * functions which work on the screen data.
  */
 
 /* Default grid cell data. */
 const struct grid_cell grid_default_cell = { ' ', 0, 0, 8, 8 };
-
 
 #ifdef DEBUG
 #define grid_check_x(gd, px) do {				\
