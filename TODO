@@ -43,7 +43,8 @@
   session not being watched?
 - tidy up window modes
 - problems with force-width when wrapping line in emacs?
-- next prev word etc in command prompt; also ^K
+- next prev word etc in command prompt; also ^K; also make is support modes
+  to support vi. is there something could use for this? editline(3)/readline?
 - many more info() displays for various things
 - vi half page scroll
 - backspace should perhaps wrap backwards over newlines which were not moved

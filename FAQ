@@ -13,7 +13,7 @@ tmux offers several advantages over screen:
 - easily scriptable from the shell;
 - multiple paste buffers;
 - choice of vim or emacs key layouts;
-- options to limit window size;
+- an option to limit the window size;
 - a cleaner, modern, easily extended, BSD-licensed codebase.
 
 There are still a few features screen includes that tmux omits:
@@ -22,7 +22,7 @@ There are still a few features screen includes that tmux omits:
   to tmux;
 - a more customisable status line, albeit with an awful syntax;
 - wider platform support, for example IRIX and AIX, and for odd terminals;
-- split windows; this is planned and should appear eventually.
+- split windows; this is planned for tmux and should appear eventually.
 
 * I found a bug! What do I do?
 
