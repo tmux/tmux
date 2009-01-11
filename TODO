@@ -34,8 +34,7 @@
 - better terminal emulation (identify, insert mode, some other bits)
 - when resizing, use history
 - audit for leftover/unused code
-- commands:	save-buffer -b number filename
-		load-buffer -b number filename
+- commands:	load-buffer -b number filename
   	      	copy-buffer -s src-session -t dst-session
 			-a src-index -b dst-index
 		      	(copy from other session)

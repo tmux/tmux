@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.56 2009-01-10 01:51:22 nicm Exp $
+.\" $Id: tmux.1,v 1.57 2009-01-11 23:14:57 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -576,6 +576,18 @@ is not given, the command used when the window was created is executed.
 The window must be already inactive, unless
 .Fl k
 is given, in which case any existing command is killed.
+.It Xo Ic save-buffer
+.Op Fl a
+.Op Fl b Ar buffer-index
+.Op Fl t Ar target-session
+.Ar path
+.Xc
+.D1 (alias: Ic saveb )
+Save the contents of the specified paste buffer to
+.Ar path .
+The
+.Fl a
+option appends to rather than overwriting the file.
 .It Xo Ic scroll-mode
 .Op Fl t Ar target-window
 .Xc

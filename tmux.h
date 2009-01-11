@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.221 2009-01-11 00:48:42 nicm Exp $ */
+/* $Id: tmux.h,v 1.222 2009-01-11 23:14:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -807,6 +807,7 @@ struct cmd_entry {
 #define CMD_ZEROONEARG 0x20
 #define CMD_GFLAG 0x40
 #define CMD_UFLAG 0x80
+#define CMD_AFLAG 0x100
 	int		 flags;
 
 	void		 (*init)(struct cmd *, int);
@@ -1086,6 +1087,7 @@ extern const struct cmd_entry cmd_refresh_client_entry;
 extern const struct cmd_entry cmd_rename_session_entry;
 extern const struct cmd_entry cmd_rename_window_entry;
 extern const struct cmd_entry cmd_respawn_window_entry;
+extern const struct cmd_entry cmd_save_buffer_entry;
 extern const struct cmd_entry cmd_scroll_mode_entry;
 extern const struct cmd_entry cmd_select_prompt_entry;
 extern const struct cmd_entry cmd_select_window_entry;

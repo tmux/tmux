@@ -1,3 +1,7 @@
+11 January 2009
+
+* save-buffer command, from Tiago Cunha.
+
 10 January 2009
 
 * New option, lock-after-time. If there is no activity in the period specified
@@ -855,7 +859,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.191 2009-01-11 01:01:05 nicm Exp $
+$Id: CHANGES,v 1.192 2009-01-11 23:14:57 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB
