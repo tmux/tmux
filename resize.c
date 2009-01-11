@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.17 2008-12-08 16:19:51 nicm Exp $ */
+/* $Id: resize.c,v 1.18 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -125,12 +125,11 @@ recalculate_sizes(void)
 		if (limit != 0 && ssy > limit)
 			ssy = limit;
 
-		if (screen_size_x(&w->base) == ssx &&
-		    screen_size_y(&w->base) == ssy)
+		if (w->sx == ssx && w->sy == ssy)
 			continue;
 
-		log_debug("window size %u,%u (was %u,%u)", ssx, ssy,
-		    screen_size_x(&w->base), screen_size_y(&w->base));
+		log_debug(
+		    "window size %u,%u (was %u,%u)", ssx, ssy, w->sx, w->sy);
 
 		window_resize(w, ssx, ssy);
 		server_redraw_window(w);

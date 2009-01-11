@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.94 2009-01-11 00:48:42 nicm Exp $ */
+/* $Id: server.c,v 1.95 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,12 +49,11 @@ void		 server_fill_clients(struct pollfd **);
 void		 server_handle_clients(struct pollfd **);
 struct client	*server_accept_client(int);
 void		 server_handle_client(struct client *);
-void		 server_handle_window(struct window *);
+void		 server_handle_window(struct window *, int);
 void		 server_lost_client(struct client *);
-void	 	 server_lost_window(struct window *);
+int	 	 server_lost_window(struct window *, int);
 void		 server_check_redraw(struct client *);
-void		 server_do_redraw_client(struct client *);
-void		 server_do_redraw_locked(struct client *);
+void		 server_redraw_locked(struct client *);
 void		 server_check_timers(struct client *);
 void		 server_second_timers(void);
 int		 server_update_socket(const char *);
@@ -184,7 +183,9 @@ server_main(const char *srv_path, int srv_fd)
 	pfds = NULL;
 	while (!sigterm) {
 		/* Initialise pollfd array. */
-		nfds = 1 + ARRAY_LENGTH(&windows) + ARRAY_LENGTH(&clients) * 2;
+		nfds = 1;
+		nfds += ARRAY_LENGTH(&windows) * 2;
+		nfds += ARRAY_LENGTH(&clients) * 2;
 		pfds = xrealloc(pfds, nfds, sizeof *pfds);
 		pfd = pfds;
 
@@ -279,19 +280,25 @@ server_main(const char *srv_path, int srv_fd)
 void
 server_fill_windows(struct pollfd **pfd)
 {
-	struct window	*w;
-	u_int		 i;
+	struct window		*w;
+	struct window_pane	*wp;
+	u_int		 	 i, j;
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		if ((w = ARRAY_ITEM(&windows, i)) == NULL || w->fd == -1)
-			(*pfd)->fd = -1;
-		else {
-			(*pfd)->fd = w->fd;
-			(*pfd)->events = POLLIN;
-			if (BUFFER_USED(w->out) > 0)
-				(*pfd)->events |= POLLOUT;
+		w = ARRAY_ITEM(&windows, i);
+		for (j = 0; j < 2; j++) {
+			if (w != NULL)
+				wp = w->panes[j];
+			if (w == NULL || wp == NULL || wp->fd == -1) {
+				(*pfd)->fd = -1;
+			} else {
+				(*pfd)->fd = wp->fd;
+				(*pfd)->events = POLLIN;
+				if (BUFFER_USED(wp->out) > 0)
+					(*pfd)->events |= POLLOUT;
+			}
+			(*pfd)++;
 		}
-		(*pfd)++;
 	}
 }
 
@@ -299,17 +306,24 @@ server_fill_windows(struct pollfd **pfd)
 void
 server_handle_windows(struct pollfd **pfd)
 {
-	struct window	*w;
-	u_int		 i;
+	struct window		*w;
+	struct window_pane	*wp;
+	u_int		 	 i, j;
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		if ((w = ARRAY_ITEM(&windows, i)) != NULL && w->fd != -1) {
-			if (buffer_poll(*pfd, w->in, w->out) != 0)
-				server_lost_window(w);
-			else
-				server_handle_window(w);
+		w = ARRAY_ITEM(&windows, i);
+		for (j = 0; j < 2; j++) {
+			if (w != NULL)
+				wp = w->panes[j];
+			if (w != NULL && wp != NULL && wp->fd != -1) {
+				if (buffer_poll(*pfd, wp->in, wp->out) != 0) {
+					if (server_lost_window(w, j) != 0)
+						break;
+				} else
+					server_handle_window(w, j);
+			}
+			(*pfd)++;
 		}
-		(*pfd)++;
 	}
 }
 
@@ -329,7 +343,7 @@ server_check_redraw(struct client *c)
 	c->tty.flags &= ~TTY_FREEZE;
 
 	if (options_get_number(&s->options, "set-titles")) {
-		title = s->curw->window->base.title;
+		title = s->curw->window->active->screen->title;
 		if (c->title == NULL || strcmp(title, c->title) != 0) {
 			if (c->title != NULL)
 				xfree(c->title);
@@ -338,16 +352,7 @@ server_check_redraw(struct client *c)
 		}
 	}
 
-	if (c->flags & CLIENT_REDRAW) {
-		if (server_locked)
-			server_do_redraw_locked(c);
-		else
-			server_do_redraw_client(c);
-
-		c->flags |= CLIENT_STATUS;
-	}
-
-	if (c->flags & CLIENT_STATUS) {
+	if (c->flags & (CLIENT_REDRAW|CLIENT_STATUS)) {
 		if (c->message_string != NULL)
 			status_message_redraw(c);
 		else if (c->prompt_string != NULL)
@@ -356,77 +361,46 @@ server_check_redraw(struct client *c)
 			status_redraw(c);
 	}
 
+	if (c->flags & CLIENT_REDRAW) {
+		if (server_locked)
+			server_redraw_locked(c);
+		else
+ 			screen_redraw_screen(c, NULL);
+	}
+
+	if (c->flags & CLIENT_STATUS)
+		screen_redraw_status(c);
+
 	c->tty.flags |= flags;
 
 	c->flags &= ~(CLIENT_REDRAW|CLIENT_STATUS);
 }
 
-/* Redraw client normally. */
-void
-server_do_redraw_client(struct client *c)
-{
-	struct session		       *s = c->session;
-	struct screen_redraw_ctx	ctx;
-	struct screen			screen;
-	struct grid_cell		gc;
-	u_int				xx, yy, sx, sy;
-
-	xx = c->sx;
-	yy = c->sy - 1;
-
-	sx = screen_size_x(s->curw->window->screen);
-	sy = screen_size_y(s->curw->window->screen);
-	
-	if (sx < xx || sy < yy) {
-		/*
-		 * Fake up a blank(ish) screen and use it to draw the empty
-		 * regions. NOTE: because this uses tty_write_client but
-		 * doesn't write the client's screen, this can't use anything
-		 * which relies on cursor position.
-		 */
-		
-		screen_init(&screen, xx, yy, 0);
-		screen_redraw_start(&ctx, &screen, tty_write_client, c);
-		if (sx < xx)
-			screen_redraw_columns(&ctx, sx, xx - sx);
-		if (sy < yy)  {
-			memcpy(&gc, &grid_default_cell, sizeof gc);
-			gc.data = '-';
-			grid_view_fill(screen.grid, &gc, 0, sy, xx, 1);
-			screen_redraw_lines(&ctx, sy, yy - sy);
-		}
-		screen_redraw_stop(&ctx);
-		screen_free(&screen);
-	}
-	
-	screen_redraw_start_client(&ctx, c);
-	screen_redraw_lines(&ctx, 0, screen_size_y(ctx.s));
-	screen_redraw_stop(&ctx);
-}
-
 /* Redraw client when locked. */
 void
-server_do_redraw_locked(struct client *c)
+server_redraw_locked(struct client *c)
 {
-	struct session		       *s = c->session;
-	struct window		       *w = s->curw->window;
-	struct screen_write_ctx		ctx;
-	struct screen			screen;
-	u_int				colour, xx, yy;
-	int    				style;
+	struct screen_write_ctx	ctx;
+	struct screen		screen;
+	u_int			colour, xx, yy;
+	int    			style;
 
 	xx = c->sx;
 	yy = c->sy - 1;
 	if (xx == 0 || yy == 0)
 		return;
-	colour = options_get_number(&w->options, "clock-mode-colour");
-	style = options_get_number(&w->options, "clock-mode-style");
+	colour = options_get_number(
+	    &global_window_options, "clock-mode-colour");
+	style = options_get_number(
+	    &global_window_options, "clock-mode-style");
 	
 	screen_init(&screen, xx, yy, 0);
 
-	screen_write_start(&ctx, &screen, tty_write_client, c);
+	screen_write_start(&ctx, NULL, &screen);
 	clock_draw(&ctx, colour, style);
 	screen_write_stop(&ctx);
+
+	screen_redraw_screen(c, &screen);
 
 	screen_free(&screen);
 }
@@ -567,6 +541,7 @@ server_accept_client(int srv_fd)
 	c->session = NULL;
 	c->sx = 80;
 	c->sy = 25;
+	screen_init(&c->status, c->sx, 1, 0);
 
 	c->message_string = NULL;
 
@@ -588,9 +563,12 @@ server_accept_client(int srv_fd)
 void
 server_handle_client(struct client *c)
 {
-	struct window	*w = c->session->curw->window;
-	int		 key, prefix;
+	struct winlink		*wl = c->session->curw;
+	struct window_pane	*wp = wl->window->active;
+	int		 	 key, prefix;
+	u_int		 	 oy;
 
+	/* Process keys. */
 	prefix = options_get_number(&c->session->options, "prefix");
 	while (tty_keys_next(&c->tty, &key) == 0) {
 		server_activity = time(NULL);
@@ -610,8 +588,20 @@ server_handle_client(struct client *c)
 		} else if (key == prefix)
 			c->flags |= CLIENT_PREFIX;
 		else
-			window_key(w, c, key);
+			window_pane_key(wp, c, key);
 	}
+
+	/* Ensure the cursor is in the right place and correctly on or off. */
+	if (c->prompt_string == NULL && c->message_string == NULL &&
+	    !server_locked && wp->screen->mode & MODE_CURSOR) {
+		oy = 0;
+		if (wp == wl->window->panes[1])
+			oy = wp->window->sy / 2;
+
+		tty_write(&c->tty, wp->screen, 0, TTY_CURSORMODE, 1);
+		tty_cursor(&c->tty, wp->screen->cx, wp->screen->cy, oy);
+	} else
+		tty_write(&c->tty, wp->screen, 0, TTY_CURSORMODE, 0);
 }
 
 /* Lost a client. */
@@ -654,13 +644,14 @@ server_lost_client(struct client *c)
 
 /* Handle window data. */
 void
-server_handle_window(struct window *w)
+server_handle_window(struct window *w, int pane)
 {
 	struct session	*s;
+	struct client	*c;
 	u_int		 i;
 	int		 action, update;
 
-	window_parse(w);
+	window_pane_parse(w->panes[pane]);
 
 	if (!(w->flags & WINDOW_BELL) && !(w->flags & WINDOW_ACTIVITY))
 		return;
@@ -678,12 +669,22 @@ server_handle_window(struct window *w)
 			action = options_get_number(&s->options, "bell-action");
 			switch (action) {
 			case BELL_ANY:
-				tty_write_session(s, TTY_BELL);
+				if (s->flags & SESSION_UNATTACHED)
+					break;
+				for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+					c = ARRAY_ITEM(&clients, i);
+					if (c != NULL && c->session == s)
+						tty_putcode(&c->tty, TTYC_BEL);
+				}
 				break;
 			case BELL_CURRENT:
-				if (s->curw->window != w)
+				if (w->active != w->panes[pane])
 					break;
-				tty_write_session(s, TTY_BELL);
+				for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+					c = ARRAY_ITEM(&clients, i);
+					if (c != NULL && c->session == s)
+						tty_putcode(&c->tty, TTYC_BEL);
+				}
 				break;
 			}
 			update = 1;
@@ -703,20 +704,27 @@ server_handle_window(struct window *w)
 }
 
 /* Lost window: move clients on to next window. */
-void
-server_lost_window(struct window *w)
+int
+server_lost_window(struct window *w, int pane)
 {
-	struct client	*c;
-	struct session	*s;
-	struct winlink	*wl;
-	u_int		 i, j;
-	int		 destroyed;
+	struct client		*c;
+	struct session		*s;
+	struct winlink		*wl;
+	struct window_pane	*wp;
+	u_int		 	 i, j;
+	int		 	 destroyed;
 
-	log_debug("lost window %d", w->fd);
+	wp = w->panes[pane];
+	log_debug("lost window %d (%s pane %d)", wp->fd, w->name, pane);
+
+	if (window_remove_pane(w, pane) == 0) {
+		server_redraw_window(w);
+		return (0);
+	}
 
 	if (options_get_number(&w->options, "remain-on-exit")) {
-		w->fd = -1;
-		return;
+		wp->fd = -1;
+		return (0);
 	}
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
@@ -751,18 +759,20 @@ server_lost_window(struct window *w)
 	}
 
 	recalculate_sizes();
+	return (1);
 }
 
 /* Call any once-per-second timers. */
 void
 server_second_timers(void)
 {
-	struct window	*w;
-	u_int		 i;
-	int		 xtimeout;
-	struct tm	 now, then;
-	static time_t	 last_t = 0;
-	time_t		 t;
+	struct window		*w;
+	struct window_pane	*wp;
+	u_int		 	 i, j;
+	int			 xtimeout;
+	struct tm	 	 now, then;
+	static time_t	 	 last_t = 0;
+	time_t		 	 t;
 
 	t = time(NULL);
 	xtimeout = options_get_number(&global_options, "lock-after-time");
@@ -771,8 +781,15 @@ server_second_timers(void)
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);
-		if (w->mode != NULL && w->mode->timer != NULL)
-			w->mode->timer(w);
+		if (w == NULL)
+			continue;
+		for (j = 0; j < 2; j++) {
+			wp = w->panes[j];
+			if (wp == NULL)
+				continue;
+			if (wp->mode != NULL && wp->mode->timer != NULL)
+				wp->mode->timer(wp);
+		}
 	}
 
 	gmtime_r(&t, &now);

@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.20 2009-01-10 18:28:09 nicm Exp $ */
+/* $Id: input-keys.c,v 1.21 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -104,7 +104,7 @@ struct input_key_ent input_keys[] = {
 
 /* Translate a key code from client into an output key sequence. */
 void
-input_key(struct window *w, int key)
+input_key(struct window_pane *wp, int key)
 {
 	struct input_key_ent   *ike;
 	u_int			i;
@@ -115,8 +115,8 @@ input_key(struct window *w, int key)
 
 	if (key != KEYC_NONE && KEYC_REMOVEESC(key) < KEYC_OFFSET) {
 		if (KEYC_ISESC(key))
-			buffer_write8(w->out, '\033');
-		buffer_write8(w->out, (uint8_t) KEYC_REMOVEESC(key));
+			buffer_write8(wp->out, '\033');
+		buffer_write8(wp->out, (uint8_t) KEYC_REMOVEESC(key));
 		return;
 	}
 
@@ -124,10 +124,10 @@ input_key(struct window *w, int key)
 		ike = &input_keys[i];
 
 		if ((ike->flags & INPUTKEY_KEYPAD) &&
-		    !(w->screen->mode & MODE_KKEYPAD))
+		    !(wp->screen->mode & MODE_KKEYPAD))
 			continue;
 		if ((ike->flags & INPUTKEY_CURSOR) &&
-		    !(w->screen->mode & MODE_KCURSOR))
+		    !(wp->screen->mode & MODE_KCURSOR))
 			continue;
 
 		if (ike->flags & INPUTKEY_MODIFIER) {
@@ -150,7 +150,7 @@ input_key(struct window *w, int key)
 	log_debug2("found key 0x%x: \"%s\"", key, ike->data);
 
 	if (ike->flags & INPUTKEY_XTERM &&
-	    options_get_number(&w->options, "xterm-keys")) {
+	    options_get_number(&wp->window->options, "xterm-keys")) {
 		/* In xterm keys mode, append modifier argument. */
 		ch = '\0';
 		if (KEYC_ISSFT(key) && KEYC_ISESC(key) && KEYC_ISCTL(key))
@@ -169,12 +169,12 @@ input_key(struct window *w, int key)
 			ch = '2';
 		if (ch != '\0') {
 			log_debug("output argument is: %c", ch);
-			buffer_write(w->out, ike->data, dlen - 1);
-			buffer_write8(w->out, ';');
-			buffer_write8(w->out, ch);
-			buffer_write8(w->out, ike->data[dlen - 1]);
+			buffer_write(wp->out, ike->data, dlen - 1);
+			buffer_write8(wp->out, ';');
+			buffer_write8(wp->out, ch);
+			buffer_write8(wp->out, ike->data[dlen - 1]);
 		} else
-			buffer_write(w->out, ike->data, dlen);
+			buffer_write(wp->out, ike->data, dlen);
 		return;
 	}
 	if (ike->flags & INPUTKEY_MODIFIER) {
@@ -183,15 +183,15 @@ input_key(struct window *w, int key)
 		 * control (shift not supported).
 		 */
 		if (KEYC_ISESC(key))
-			buffer_write8(w->out, '\033');
+			buffer_write8(wp->out, '\033');
 		if (!KEYC_ISCTL(key)) {
-			buffer_write(w->out, ike->data, dlen);
+			buffer_write(wp->out, ike->data, dlen);
 			return;
 		}
-		buffer_write(w->out, ike->data, dlen - 1);
-		buffer_write8(w->out, ike->data[dlen - 1] ^ 0x20);
+		buffer_write(wp->out, ike->data, dlen - 1);
+		buffer_write8(wp->out, ike->data[dlen - 1] ^ 0x20);
 		return;
 	}
 
-	buffer_write(w->out, ike->data, dlen);
+	buffer_write(wp->out, ike->data, dlen);
 }

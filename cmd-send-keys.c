@@ -1,4 +1,4 @@
-/* $Id: cmd-send-keys.c,v 1.15 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: cmd-send-keys.c,v 1.16 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -119,8 +119,10 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return;
 
-	for (i = 0; i < data->nkeys; i++)
-		window_key(wl->window, ctx->curclient, data->keys[i]);
+	for (i = 0; i < data->nkeys; i++) {
+		window_pane_key(
+		    wl->window->active, ctx->curclient, data->keys[i]);
+	}
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

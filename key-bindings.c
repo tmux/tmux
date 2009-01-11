@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.42 2009-01-10 19:35:39 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.43 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -77,6 +77,7 @@ key_bindings_init(void)
 		int			 key;
 		const struct cmd_entry	*entry;
 	} table[] = {
+		{ '"', &cmd_split_window_entry },
 		{ '#', &cmd_list_buffers_entry },
 		{ '&', &cmd_kill_window_entry },
 		{ '-', &cmd_delete_buffer_entry },
@@ -94,17 +95,18 @@ key_bindings_init(void)
 		{ '=', &cmd_scroll_mode_entry },
 		{ '?', &cmd_list_keys_entry },
 		{ '[', &cmd_copy_mode_entry },
+		{ '\'', &cmd_select_prompt_entry },
 		{ ']', &cmd_paste_buffer_entry },
 		{ 'c', &cmd_new_window_entry },
 		{ 'd', &cmd_detach_client_entry },
 		{ 'l', &cmd_last_window_entry },
 		{ 'n', &cmd_next_window_entry },
+		{ 'o', &cmd_switch_pane_entry },
 		{ 'p', &cmd_previous_window_entry },
 		{ 'r', &cmd_refresh_client_entry },
 		{ 's', &cmd_list_sessions_entry },
 		{ 't', &cmd_clock_mode_entry },
 		{ 'w', &cmd_list_windows_entry },
-		{ '\'', &cmd_select_prompt_entry },
 		{ META, &cmd_send_prefix_entry },
 	};
 	u_int		 i;
@@ -152,13 +154,13 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 void printflike2
 key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	struct window	*w = ctx->cursession->curw->window;
+	struct winlink	*wl = ctx->cursession->curw; 
 	va_list		 ap;
 
-	window_set_mode(w, &window_more_mode);
+	window_pane_set_mode(wl->window->active, &window_more_mode);
 
 	va_start(ap, fmt);
-	window_more_vadd(w, fmt, ap);
+	window_more_vadd(wl->window->active, fmt, ap);
 	va_end(ap);
 }
 

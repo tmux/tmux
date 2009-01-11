@@ -1,5 +1,20 @@
 11 January 2009
 
+* Vertical window splitting. Currently can only split a window into two panes.
+  New split-window command splits (bound to ") and switch-pane command (bound to
+  o) switches between panes. 
+
+  close-pane, swap-pane commands are to follow. Also to come are pane resizing,
+  >2 panes, the ability to break a pane out to a full window and vice versa and
+  possibly horizontal splitting.
+
+  Panes are subelements of windows rather than being windows in their own
+  right. I tried to make them windows (so the splitting was at the session or
+  client level) but this rapidly became very complex and invasive. So in the
+  interests of having something working, I just made it so each window can have
+  two child processes instead of one (and it still took me 12 hours straight
+  coding). Now the concept is proven and much of the support code is there,
+  this may change in future if more flexibility is needed.
 * save-buffer command, from Tiago Cunha.
 
 10 January 2009
@@ -859,7 +874,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.192 2009-01-11 23:14:57 nicm Exp $
+$Id: CHANGES,v 1.193 2009-01-11 23:31:46 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB

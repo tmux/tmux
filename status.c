@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.59 2009-01-11 00:48:42 nicm Exp $ */
+/* $Id: status.c,v 1.60 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,11 +39,12 @@ char   *status_prompt_complete(const char *);
 void
 status_redraw(struct client *c)
 {
-	struct screen_redraw_ctx	ctx;
+	struct screen_write_ctx		ctx;
 	struct session		       *s = c->session;
 	struct winlink		       *wl;
+	struct window_pane	       *wp;
 	char		 	       *left, *right, *text, *ptr;
-	size_t				llen, rlen, offset, xx, yy;
+	size_t				llen, rlen, offset, xx, yy, sy;
 	size_t				size, start, width;
 	struct grid_cell	        gc;
 	int				larrow, rarrow;
@@ -144,22 +145,28 @@ status_redraw(struct client *c)
  	width = xx;
 
 draw:
+	/* Resize the target screen. */
+	if (screen_size_x(&c->status) != c->sx) {
+		screen_free(&c->status);
+		screen_init(&c->status, c->sx, 1, 0);
+	}
+
 	/* Bail here if anything is too small too. XXX. */
 	if (width == 0 || xx == 0)
 		goto blank;
 
  	/* Begin drawing and move to the starting position. */
-	screen_redraw_start_client(&ctx, c);
+	screen_write_start(&ctx, NULL, &c->status);
 	if (llen != 0) {
- 		ctx.write(ctx.data, TTY_CURSORMOVE, 0, yy);
-		screen_redraw_puts(&ctx, &gc, "%s ", left);
+ 		screen_write_cursormove(&ctx, 0, yy);
+		screen_write_puts(&ctx, &gc, "%s ", left);
 		if (larrow)
-			screen_redraw_putc(&ctx, &gc, ' ');
+			screen_write_putc(&ctx, &gc, ' ');
 	} else {
 		if (larrow)
-			ctx.write(ctx.data, TTY_CURSORMOVE, 1, yy);
+			screen_write_cursormove(&ctx, 1, yy);
 		else
-			ctx.write(ctx.data, TTY_CURSORMOVE, 0, yy);
+			screen_write_cursormove(&ctx, 0, yy);
 	}
 
 	/* Draw each character in succession. */
@@ -176,7 +183,7 @@ draw:
 
  		for (ptr = text; *ptr != '\0'; ptr++) {
 			if (offset >= start && offset < start + width)
-				screen_redraw_putc(&ctx, &gc, *ptr);
+				screen_write_putc(&ctx, &gc, *ptr);
 			offset++;
 		}
 
@@ -190,7 +197,7 @@ draw:
 		gc.attr &= ~GRID_ATTR_REVERSE;
 		if (offset < start + width) {
 			if (offset >= start) {
-				screen_redraw_putc(&ctx, &gc, ' ');
+				screen_write_putc(&ctx, &gc, ' ');
 			}
 			offset++;
 		}
@@ -200,12 +207,12 @@ draw:
 
 	/* Fill the remaining space if any. */
  	while (offset++ < xx)
-		screen_redraw_putc(&ctx, &gc, ' ');
+		screen_write_putc(&ctx, &gc, ' ');
 
 	/* Draw the last item. */
 	if (rlen != 0) {
-		ctx.write(ctx.data, TTY_CURSORMOVE, c->sx - rlen - 1, yy);
-		screen_redraw_puts(&ctx, &gc, " %s", right);
+		screen_write_cursormove(&ctx, c->sx - rlen - 1, yy);
+		screen_write_puts(&ctx, &gc, " %s", right);
 	}
 
 	/* Draw the arrows. */
@@ -215,10 +222,10 @@ draw:
 		else
 			gc.attr &= ~GRID_ATTR_REVERSE;
 		if (llen != 0)
-			ctx.write(ctx.data, TTY_CURSORMOVE, llen + 1, yy);
+			screen_write_cursormove(&ctx, llen + 1, yy);
 		else
-			ctx.write(ctx.data, TTY_CURSORMOVE, 0, yy);
-		screen_redraw_putc(&ctx, &gc, '<');
+			screen_write_cursormove(&ctx, 0, yy);
+		screen_write_putc(&ctx, &gc, '<');
 		gc.attr &= ~GRID_ATTR_REVERSE;
 	}
 	if (rarrow != 0) {
@@ -226,12 +233,11 @@ draw:
 			gc.attr |= GRID_ATTR_REVERSE;
 		else
 			gc.attr &= ~GRID_ATTR_REVERSE;
-		if (rlen != 0) {
-			ctx.write(
-			    ctx.data, TTY_CURSORMOVE, c->sx - rlen - 2, yy);
-		} else
-			ctx.write(ctx.data, TTY_CURSORMOVE, c->sx - 1, yy);
-		screen_redraw_putc(&ctx, &gc, '>');
+		if (rlen != 0)
+			screen_write_cursormove(&ctx, c->sx - rlen - 2, yy);
+		else
+			screen_write_cursormove(&ctx, c->sx - 1, yy);
+		screen_write_putc(&ctx, &gc, '>');
 		gc.attr &= ~GRID_ATTR_REVERSE;
 	}
 
@@ -239,10 +245,10 @@ draw:
 
 blank:
  	/* Just draw the whole line as blank. */
-	screen_redraw_start_client(&ctx, c);
-	ctx.write(ctx.data, TTY_CURSORMOVE, 0, yy);
+	screen_write_start(&ctx, NULL, &c->status);
+	screen_write_cursormove(&ctx, 0, yy);
 	for (offset = 0; offset < c->sx; offset++)
-		screen_redraw_putc(&ctx, &gc, ' ');
+		screen_write_putc(&ctx, &gc, ' ');
 
 	goto out;
 
@@ -251,17 +257,26 @@ off:
 	 * Draw the real window last line. Necessary to wipe over message if
 	 * status is off. Not sure this is the right place for this.
 	 */
-	screen_redraw_start_client(&ctx, c);
-	/* If the screen is too small, use blank. */
-	if (screen_size_y(c->session->curw->window->screen) < c->sy) {
-		ctx.write(ctx.data, TTY_CURSORMOVE, 0, c->sy - 1);
+	screen_write_start(&ctx, NULL, &c->status);
+	wp = s->curw->window->panes[1];
+	sy = c->sy - (c->sy / 2);
+	if (wp == NULL) {
+		wp = s->curw->window->panes[0];
+		sy = c->sy;
+	}
+	screen_write_cursormove(&ctx, 0, 0);
+	if (screen_size_y(wp->screen) < sy) {
+		/* If the screen is too small, use blank. */
 		for (offset = 0; offset < c->sx; offset++)
-			screen_redraw_putc(&ctx, &gc, ' ');
-	} else
-		screen_redraw_lines(&ctx, c->sy - 1, 1);
+			screen_write_putc(&ctx, &gc, ' ');
+		abort();
+	} else {
+		screen_write_copy(&ctx, wp->screen, 0, wp->screen->grid->hsize +
+		    screen_size_y(wp->screen) - 1, c->sx, 1);
+	}
 
 out:
-	screen_redraw_stop(&ctx);
+	screen_write_stop(&ctx);
 
 	if (left != NULL)
 		xfree(left);
@@ -272,6 +287,7 @@ out:
 char *
 status_replace(struct session *s, char *fmt, time_t t)
 {
+	struct winlink *wl = s->curw;
 	static char	out[BUFSIZ];
 	char		in[BUFSIZ], ch, *iptr, *optr, *ptr, *endptr;
 	size_t		len;
@@ -300,7 +316,7 @@ status_replace(struct session *s, char *fmt, time_t t)
 
 			switch (*iptr++) {
 			case 'T':
-				ptr = s->curw->window->base.title;
+				ptr = wl->window->active->base.title;
 				len = strlen(ptr);
 				if ((size_t) n < len)
 					len = n;
@@ -333,7 +349,7 @@ status_width(struct winlink *wl)
 	return (xsnprintf(NULL, 0, "%d:%s ", wl->idx, wl->window->name));
 #else
 	char	*s;
-	size_t	n;
+	size_t n;
 
 	xasprintf(&s, "%d:%s ", wl->idx, wl->window->name);
 	n = strlen(s);
@@ -372,64 +388,68 @@ status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 void
 status_message_redraw(struct client *c)
 {
-	struct screen_redraw_ctx	ctx;
+	struct screen_write_ctx		ctx;
 	struct session		       *s = c->session;
-	size_t			        xx, yy;
+	size_t			        len;
 	struct grid_cell		gc;
 
 	if (c->sx == 0 || c->sy == 0)
 		return;
+	if (screen_size_x(&c->status) != c->sx) {
+		screen_free(&c->status);
+		screen_init(&c->status, c->sx, 1, 0);
+	}
 
-	xx = strlen(c->message_string);
-	if (xx > c->sx)
-		xx = c->sx;
-	yy = c->sy - 1;
+	len = strlen(c->message_string);
+	if (len > c->sx)
+		len = c->sx;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.fg = options_get_number(&s->options, "message-fg");
 	gc.bg = options_get_number(&s->options, "message-bg");
 
-	screen_redraw_start_client(&ctx, c);
+	screen_write_start(&ctx, NULL, &c->status);
 
-	ctx.write(ctx.data, TTY_CURSORMOVE, 0, yy);
-	screen_redraw_puts(&ctx, &gc, "%.*s", (int) xx, c->message_string);
-	for (; xx < c->sx; xx++)
-		screen_redraw_putc(&ctx, &gc, ' ');
+	screen_write_cursormove(&ctx, 0, 0);
+	screen_write_puts(&ctx, &gc, "%.*s", (int) len, c->message_string);
+	for (; len < c->sx; len++)
+		screen_write_putc(&ctx, &gc, ' ');
 
-	screen_redraw_stop(&ctx);
-
-	tty_write_client(c, TTY_CURSORMODE, 0);
+	screen_write_stop(&ctx);
 }
 
 /* Draw client prompt on status line of present else on last line. */
 void
 status_prompt_redraw(struct client *c)
 {
-	struct screen_redraw_ctx	ctx;
+	struct screen_write_ctx	ctx;
 	struct session		       *s = c->session;
-	size_t			        i, xx, yy, left, size, offset, n;
+	size_t			        i, size, left, len, offset, n;
 	char				ch;
 	struct grid_cell		gc;
 
 	if (c->sx == 0 || c->sy == 0)
 		return;
+	if (screen_size_x(&c->status) != c->sx) {
+		screen_free(&c->status);
+		screen_init(&c->status, c->sx, 1, 0);
+	}
 	offset = 0;
 
-	xx = strlen(c->prompt_string);
-	if (xx > c->sx)
-		xx = c->sx;
-	yy = c->sy - 1;
+	len = strlen(c->prompt_string);
+	if (len > c->sx)
+		len = c->sx;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.fg = options_get_number(&s->options, "message-fg");
 	gc.bg = options_get_number(&s->options, "message-bg");
 
-	screen_redraw_start_client(&ctx, c);
+	screen_write_start(&ctx, NULL, &c->status);
 
-	ctx.write(ctx.data, TTY_CURSORMOVE, 0, yy);
-	screen_redraw_puts(&ctx, &gc, "%.*s", (int) xx, c->prompt_string);
+	screen_write_cursormove(&ctx, 0, 0);
+	screen_write_puts(&ctx, &gc, "%.*s", (int) len, c->prompt_string);
 
-	left = c->sx - xx;
+	left = c->sx - len;
 	if (left != 0) {
 		if (c->prompt_index < left)
 			size = strlen(c->prompt_buffer);
@@ -444,20 +464,18 @@ status_prompt_redraw(struct client *c)
 			if (n > left)
 				n = left;
 			for (i = 0; i < n; i++)
-				screen_redraw_putc(&ctx, &gc, '*');
+				screen_write_putc(&ctx, &gc, '*');
 		} else {
-			screen_redraw_puts(&ctx, &gc,
+			screen_write_puts(&ctx, &gc,
 			    "%.*s", (int) left, c->prompt_buffer + offset);
 		}
 
-		for (i = xx + size; i < c->sx; i++) {
-			screen_redraw_putc(&ctx, &gc, ' ');
-			ctx.s->cx++;
-		}
+		for (i = len + size; i < c->sx; i++)
+			screen_write_putc(&ctx, &gc, ' ');
 	}
 
 	/* Draw a fake cursor. */
-	ctx.write(ctx.data, TTY_CURSORMOVE, xx + c->prompt_index - offset, yy);
+	screen_write_cursormove(&ctx, len + c->prompt_index - offset, 0);
 	if (c->prompt_index == strlen(c->prompt_buffer))
 		ch = ' ';
 	else
@@ -466,11 +484,9 @@ status_prompt_redraw(struct client *c)
 		ch = ' ';
 	gc.bg = gc.fg;
 	gc.fg = options_get_number(&s->options, "message-bg");
-	screen_redraw_putc(&ctx, &gc, ch);
+	screen_write_putc(&ctx, &gc, ch);
 
-	screen_redraw_stop(&ctx);
-
-	tty_write_client(c, TTY_CURSORMODE, 0);
+	screen_write_stop(&ctx);
 }
 
 /* Handle keys in prompt. */

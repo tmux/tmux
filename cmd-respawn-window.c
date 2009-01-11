@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-window.c,v 1.6 2009-01-10 19:37:35 nicm Exp $ */
+/* $Id: cmd-respawn-window.c,v 1.7 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,6 +46,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
 	struct winlink		*wl;
+	struct window		*w;
 	struct session		*s;
 	const char		*env[] = { 
 		NULL /* TMUX= */, "TERM=screen", NULL 
@@ -55,8 +56,10 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return;
+	w = wl->window;
 
-	if (wl->window->fd != -1 && !(data->flags & CMD_KFLAG)) {
+	if ((w->panes[0]->fd != -1 || (w->panes[1] != NULL &&
+	    w->panes[1]->fd != -1)) && !(data->flags & CMD_KFLAG)) {
 		ctx->error(ctx, "window still active: %s:%d", s->name, wl->idx);
 		return;
 	}
@@ -66,14 +69,17 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	xsnprintf(buf, sizeof buf, "TMUX=%ld,%u", (long) getpid(), i);
 	env[0] = buf;
 
-	if (window_spawn(wl->window, data->arg, wl->window->cwd, env) != 0) {
+	if (w->panes[1] != NULL)
+		window_remove_pane(w, 1);
+
+	if (window_pane_spawn(w->panes[0], data->arg, NULL, env) != 0) {
 		ctx->error(ctx, "respawn failed: %s:%d", s->name, wl->idx);
 		return;
 	}
-	screen_reinit(&wl->window->base);
+	screen_reinit(&w->panes[0]->base);
 
 	recalculate_sizes();
-	server_redraw_window(wl->window);
+	server_redraw_window(w);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

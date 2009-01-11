@@ -13,7 +13,7 @@
 - status-fg/status-bg should be able to set attributes: bold, etc
 - refer to windows by name etc (duplicates? fnmatch?)
 - commands:
-	command to run something without a window at all?
+	command to run something without a window at all - output to window-more
 	command to purge window history
  	extend list-clients to list clients attached to a session (-a for all?)
 	bring back detach-session to detach all clients on a session?
@@ -42,7 +42,7 @@
   session not being watched?
 - tidy up window modes
 - problems with force-width when wrapping line in emacs?
-- next prev word etc in command prompt; also ^K; also make is support modes
+- next prev word etc in command prompt; also ^K; also make it support modes
   to support vi. is there something could use for this? editline(3)/readline?
 - many more info() displays for various things
 - vi half page scroll
@@ -51,8 +51,8 @@
   others do not. this might be hard: a flag for each grid line (top bit of size
   maybe)? a single flag is insufficient as can't then tell when to /stop/
   unwrapping
-- OPTIONS section in man page with description of new option handling
-- update set/setw in man page with -g and -u flags
+- document OPTIONS section in man page with description of new option handling
+- document update set/setw in man page with -g and -u flags
 - more # commands in status-left,right eg #H for hostname. others?
 - input.c is too complicated. simplify?
 - try change from pass-though model to redraw model (use updated screen
@@ -66,7 +66,9 @@
 - document clock-mode
 - document password/locking commands
 - document lock-after-time
+- document panes and window splitting: split-window and switch-pane
 - a command to display the status line briefly when it is turned off
+- neww should support -k
 - FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw, more??
   17:06 < NicM> tmux new then eg tmux linkw -s0:0
   17:06 < simmel> NicM link-window?
@@ -87,3 +89,14 @@
   17:09 < NicM> or kills it if it is only linked to one
   17:09 < NicM> unlinkw only unlinks it
 - clone session command
+- panes:
+	swap-panes
+	close-pane
+	move-pane (to window)
+	pane resizing
+	>2 panes per window
+- would be nice if tmux could be the shell
+- some sort of extension to command prompt so can do eg
+       bind m command-prompt 'split "man %%"'
+       bind r command-prompt 'renamew "%%"'
+  which then asks for a string, substitutes %% in command and executes it

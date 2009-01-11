@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.13 2009-01-11 00:48:42 nicm Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.14 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,11 +46,13 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
 	struct winlink		*wl;
+	struct window		*w;
 	struct session		*s;
 	struct paste_buffer	*pb;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return;
+	w = wl->window;
 
 	if (data->buffer == -1)
 		pb = paste_get_top(&s->buffers);
@@ -60,7 +62,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	if (pb != NULL)
-		buffer_write(wl->window->out, pb->data, strlen(pb->data));
+		buffer_write(w->active->out, pb->data, strlen(pb->data));
 
 	/* Delete the buffer if -d. */
 	if (data->flags & CMD_DFLAG) {

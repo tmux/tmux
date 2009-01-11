@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.23 2009-01-10 19:35:40 nicm Exp $ */
+/* $Id: window-more.c,v 1.24 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,17 +22,17 @@
 
 #include "tmux.h"
 
-struct screen *window_more_init(struct window *);
-void	window_more_free(struct window *);
-void	window_more_resize(struct window *, u_int, u_int);
-void	window_more_key(struct window *, struct client *, int);
+struct screen *window_more_init(struct window_pane *);
+void	window_more_free(struct window_pane *);
+void	window_more_resize(struct window_pane *, u_int, u_int);
+void	window_more_key(struct window_pane *, struct client *, int);
 
-void	window_more_redraw_screen(struct window *);
+void	window_more_redraw_screen(struct window_pane *);
 void	window_more_write_line(
-    	    struct window *, struct screen_write_ctx *, u_int);
+    	    struct window_pane *, struct screen_write_ctx *, u_int);
 
-void	window_more_scroll_up(struct window *);
-void	window_more_scroll_down(struct window *);
+void	window_more_scroll_up(struct window_pane *);
+void	window_more_scroll_down(struct window_pane *);
 
 const struct window_mode window_more_mode = {
 	window_more_init,
@@ -50,9 +50,9 @@ struct window_more_mode_data {
 };
 
 void
-window_more_vadd(struct window *w, const char *fmt, va_list ap)
+window_more_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 {
-	struct window_more_mode_data	*data = w->modedata;
+	struct window_more_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx	 	 ctx;
 	char   				*msg;
@@ -61,48 +61,48 @@ window_more_vadd(struct window *w, const char *fmt, va_list ap)
 	xvasprintf(&msg, fmt, ap);
 	ARRAY_ADD(&data->list, msg);
 
-	screen_write_start_window(&ctx, w);
+	screen_write_start(&ctx, wp, NULL);
 	size = ARRAY_LENGTH(&data->list) - 1;
 	if (size >= data->top && size <= data->top + screen_size_y(s) - 1) {
-		window_more_write_line(w, &ctx, size - data->top);
+		window_more_write_line(wp, &ctx, size - data->top);
 		if (size != data->top)
-			window_more_write_line(w, &ctx, 0);
+			window_more_write_line(wp, &ctx, 0);
 	} else
-		window_more_write_line(w, &ctx, 0);
+		window_more_write_line(wp, &ctx, 0);
 	screen_write_stop(&ctx);
 }
 
 void
-window_more_add(struct window *w, const char *fmt, ...)
+window_more_add(struct window_pane *wp, const char *fmt, ...)
 {
 	va_list	ap;
 
 	va_start(ap, fmt);
-	window_more_vadd(w, fmt, ap);
+	window_more_vadd(wp, fmt, ap);
 	va_end(ap);
 }
 
 struct screen *
-window_more_init(struct window *w)
+window_more_init(struct window_pane *wp)
 {
 	struct window_more_mode_data	*data;
 	struct screen			*s;
 
-	w->modedata = data = xmalloc(sizeof *data);
+	wp->modedata = data = xmalloc(sizeof *data);
 	ARRAY_INIT(&data->list);
 	data->top = 0;
 
 	s = &data->screen;
-	screen_init(s, screen_size_x(&w->base), screen_size_y(&w->base), 0);
+	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	s->mode &= ~MODE_CURSOR;
 
 	return (s);
 }
 
 void
-window_more_free(struct window *w)
+window_more_free(struct window_pane *wp)
 {
-	struct window_more_mode_data	*data = w->modedata;
+	struct window_more_mode_data	*data = wp->modedata;
 	u_int				 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&data->list); i++)
@@ -114,39 +114,39 @@ window_more_free(struct window *w)
 }
 
 void
-window_more_resize(struct window *w, u_int sx, u_int sy)
+window_more_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
-	struct window_more_mode_data	*data = w->modedata;
+	struct window_more_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 
 	screen_resize(s, sx, sy);
-	window_more_redraw_screen(w);
+	window_more_redraw_screen(wp);
 }
 
 void
-window_more_key(struct window *w, unused struct client *c, int key)
+window_more_key(struct window_pane *wp, unused struct client *c, int key)
 {
-	struct window_more_mode_data	*data = w->modedata;
+	struct window_more_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	int				 table;
 
-	table = options_get_number(&w->options, "mode-keys");
+	table = options_get_number(&wp->window->options, "mode-keys");
 	switch (mode_key_lookup(table, key)) {
 	case MODEKEY_QUIT:
-		window_reset_mode(w);
+		window_pane_reset_mode(wp);
 		break;
 	case MODEKEY_UP:
-		window_more_scroll_up(w);
+		window_more_scroll_up(wp);
 		break;
 	case MODEKEY_DOWN:
-		window_more_scroll_down(w);
+		window_more_scroll_down(wp);
 		break;
 	case MODEKEY_PPAGE:
 		if (data->top < screen_size_y(s))
 			data->top = 0;
 		else
 			data->top -= screen_size_y(s);
-		window_more_redraw_screen(w);
+		window_more_redraw_screen(wp);
 		break;
 	case MODEKEY_NONE:
 		if (key != ' ')
@@ -157,7 +157,7 @@ window_more_key(struct window *w, unused struct client *c, int key)
 			data->top = ARRAY_LENGTH(&data->list);
 		else
 			data->top += screen_size_y(s);
-		window_more_redraw_screen(w);
+		window_more_redraw_screen(wp);
 		break;
 	default:
 		break;
@@ -165,9 +165,9 @@ window_more_key(struct window *w, unused struct client *c, int key)
 }
 
 void
-window_more_write_line(struct window *w, struct screen_write_ctx *ctx, u_int py)
+window_more_write_line(struct window_pane *wp, struct screen_write_ctx *ctx, u_int py)
 {
-	struct window_more_mode_data	*data = w->modedata;
+	struct window_more_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	struct grid_cell		 gc;
 	char   				*msg, hdr[32];
@@ -179,8 +179,8 @@ window_more_write_line(struct window *w, struct screen_write_ctx *ctx, u_int py)
 		size = xsnprintf(hdr, sizeof hdr,
 		    "[%u/%u]", data->top, ARRAY_LENGTH(&data->list));
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
-		gc.fg = options_get_number(&w->options, "mode-fg");
-		gc.bg = options_get_number(&w->options, "mode-bg");
+		gc.fg = options_get_number(&wp->window->options, "mode-fg");
+		gc.bg = options_get_number(&wp->window->options, "mode-bg");
 		screen_write_puts(ctx, &gc, "%s", hdr);
 		memcpy(&gc, &grid_default_cell, sizeof gc);
 	} else
@@ -197,41 +197,41 @@ window_more_write_line(struct window *w, struct screen_write_ctx *ctx, u_int py)
 }
 
 void
-window_more_redraw_screen(struct window *w)
+window_more_redraw_screen(struct window_pane *wp)
 {
-	struct window_more_mode_data	*data = w->modedata;
+	struct window_more_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx	 	 ctx;
 	u_int				 i;
 
-	screen_write_start_window(&ctx, w);
+	screen_write_start(&ctx, wp, NULL);
 	for (i = 0; i < screen_size_y(s); i++)
-		window_more_write_line(w, &ctx, i);
+		window_more_write_line(wp, &ctx, i);
 	screen_write_stop(&ctx);
 }
 
 void
-window_more_scroll_up(struct window *w)
+window_more_scroll_up(struct window_pane *wp)
 {
-	struct window_more_mode_data	*data = w->modedata;
+	struct window_more_mode_data	*data = wp->modedata;
 	struct screen_write_ctx		 ctx;
 
 	if (data->top == 0)
 		return;
 	data->top--;
 
-	screen_write_start_window(&ctx, w);
+	screen_write_start(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0);
 	screen_write_insertline(&ctx, 1);
-	window_more_write_line(w, &ctx, 0);
-	window_more_write_line(w, &ctx, 1);
+	window_more_write_line(wp, &ctx, 0);
+	window_more_write_line(wp, &ctx, 1);
 	screen_write_stop(&ctx);
 }
 
 void
-window_more_scroll_down(struct window *w)
+window_more_scroll_down(struct window_pane *wp)
 {
-	struct window_more_mode_data	*data = w->modedata;
+	struct window_more_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx		 ctx;
 
@@ -239,10 +239,10 @@ window_more_scroll_down(struct window *w)
 		return;
 	data->top++;
 
-	screen_write_start_window(&ctx, w);
+	screen_write_start(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0);
 	screen_write_deleteline(&ctx, 1);
-	window_more_write_line(w, &ctx, screen_size_y(s) - 1);
-	window_more_write_line(w, &ctx, 0);
+	window_more_write_line(wp, &ctx, screen_size_y(s) - 1);
+	window_more_write_line(wp, &ctx, 0);
 	screen_write_stop(&ctx);
 }

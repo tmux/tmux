@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.25 2008-09-26 06:45:25 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.26 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,8 +48,9 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session		*s;
 	struct winlink		*wl;
 	struct window		*w;
+	struct window_pane	*wp;	
 	struct grid_data	*gd;
-	u_int			 i;
+	u_int			 i, j;
 	unsigned long long	 size;
 	const char		*name;
 
@@ -58,23 +59,31 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		w = wl->window;
-		gd = w->base.grid;
 
-		size = 0;
-		for (i = 0; i < gd->hsize; i++)
-			size += gd->size[i] * sizeof **gd->data;
-		size += gd->hsize * (sizeof *gd->data);
-		size += gd->hsize * (sizeof *gd->size);
-
-		if (w->fd != -1)
-			name = ttyname(w->fd);
-		else
-			name = "";
 		ctx->print(ctx,
-		    "%d: %s \"%s\" (%s) [%ux%u] [history %u/%u, %llu bytes]",
-		    wl->idx, w->name, w->base.title, name,
-		    screen_size_x(&w->base), screen_size_y(&w->base),
-		    gd->hsize, gd->hlimit, size);
+		    "%d: %s [%ux%u]", wl->idx, w->name, w->sx, w->sy);
+		for (i = 0; i < 2; i++) {
+			wp = w->panes[i];
+			if (wp == NULL)
+				continue;	
+			gd = wp->base.grid;
+			
+			size = 0;
+			for (j = 0; j < gd->hsize; j++)
+				size += gd->size[j] * sizeof **gd->data;
+			size += gd->hsize * (sizeof *gd->data);
+			size += gd->hsize * (sizeof *gd->size);
+
+			if (wp->fd != -1)
+				name = ttyname(wp->fd);
+			else
+				name = "";
+		
+			ctx->print(ctx, "   pane %d:"
+			    " %s [%ux%u] [history %u/%u, %llu bytes]", i, name,
+			    screen_size_x(&wp->base), screen_size_y(&wp->base),
+			    gd->hsize, gd->hlimit, size);
+		}
 	}
 
 	if (ctx->cmdclient != NULL)

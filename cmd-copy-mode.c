@@ -1,4 +1,4 @@
-/* $Id: cmd-copy-mode.c,v 1.12 2009-01-10 18:08:55 nicm Exp $ */
+/* $Id: cmd-copy-mode.c,v 1.13 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return;
 
-	window_set_mode(wl->window, &window_copy_mode);
+	window_pane_set_mode(wl->window->active, &window_copy_mode);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

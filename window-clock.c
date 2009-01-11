@@ -1,4 +1,4 @@
-/* $Id: window-clock.c,v 1.3 2009-01-11 00:48:42 nicm Exp $ */
+/* $Id: window-clock.c,v 1.4 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,13 +23,13 @@
 
 #include "tmux.h"
 
-struct screen *window_clock_init(struct window *);
-void	window_clock_free(struct window *);
-void	window_clock_resize(struct window *, u_int, u_int);
-void	window_clock_key(struct window *, struct client *, int);
-void	window_clock_timer(struct window *);
+struct screen *window_clock_init(struct window_pane *);
+void	window_clock_free(struct window_pane *);
+void	window_clock_resize(struct window_pane *, u_int, u_int);
+void	window_clock_key(struct window_pane *, struct client *, int);
+void	window_clock_timer(struct window_pane *);
 
-void	window_clock_draw_screen(struct window *);
+void	window_clock_draw_screen(struct window_pane *);
 
 const struct window_mode window_clock_mode = {
 	window_clock_init,
@@ -45,52 +45,53 @@ struct window_clock_mode_data {
 };
 
 struct screen *
-window_clock_init(struct window *w)
+window_clock_init(struct window_pane *wp)
 {
 	struct window_clock_mode_data	*data;
 	struct screen			*s;
 
-	w->modedata = data = xmalloc(sizeof *data);
+	wp->modedata = data = xmalloc(sizeof *data);
 	data->tim = time(NULL);
 
 	s = &data->screen;
-	screen_init(s, screen_size_x(&w->base), screen_size_y(&w->base), 0);
+	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	s->mode &= ~MODE_CURSOR;
 
-	window_clock_draw_screen(w);
+	window_clock_draw_screen(wp);
 
 	return (s);
 }
 
 void
-window_clock_free(struct window *w)
+window_clock_free(struct window_pane *wp)
 {
-	struct window_clock_mode_data	*data = w->modedata;
+	struct window_clock_mode_data	*data = wp->modedata;
 
 	screen_free(&data->screen);
 	xfree(data);
 }
 
 void
-window_clock_resize(struct window *w, u_int sx, u_int sy)
+window_clock_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
-	struct window_clock_mode_data	*data = w->modedata;
+	struct window_clock_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 
  	screen_resize(s, sx, sy);
-	window_clock_draw_screen(w);
+	window_clock_draw_screen(wp);
 }
 
 void
-window_clock_key(struct window *w, unused struct client *c, unused int key)
+window_clock_key(
+    struct window_pane *wp, unused struct client *c, unused int key)
 {
-	window_reset_mode(w);
+	window_pane_reset_mode(wp);
 }
 
 void
-window_clock_timer(struct window *w)
+window_clock_timer(struct window_pane *wp)
 {
-	struct window_clock_mode_data	*data = w->modedata;
+	struct window_clock_mode_data	*data = wp->modedata;
 	struct tm			*now, *then;
 	time_t				 t;
 
@@ -101,22 +102,22 @@ window_clock_timer(struct window *w)
 		return;
 	data->tim = t;
 
-	window_clock_draw_screen(w);
-	server_redraw_window(w);
+	window_clock_draw_screen(wp);
+	server_redraw_window(wp->window);
 }
 
 void
-window_clock_draw_screen(struct window *w)
+window_clock_draw_screen(struct window_pane *wp)
 {
-	struct window_clock_mode_data	*data = w->modedata;
+	struct window_clock_mode_data	*data = wp->modedata;
 	struct screen_write_ctx	 	 ctx;
 	u_int				 colour;
 	int				 style;
 
-	colour = options_get_number(&w->options, "clock-mode-colour");
-	style = options_get_number(&w->options, "clock-mode-style");
+	colour = options_get_number(&wp->window->options, "clock-mode-colour");
+	style = options_get_number(&wp->window->options, "clock-mode-style");
 
-	screen_write_start(&ctx, &data->screen, NULL, NULL);
+	screen_write_start(&ctx, NULL, &data->screen);
 	clock_draw(&ctx, colour, style);
 	screen_write_stop(&ctx);
 }

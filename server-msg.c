@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.56 2009-01-11 00:48:42 nicm Exp $ */
+/* $Id: server-msg.c,v 1.57 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "tmux.h"

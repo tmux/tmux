@@ -1,7 +1,7 @@
-/* $Id: cmd-send-prefix.c,v 1.20 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: cmd-switch-pane.c,v 1.1 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
- * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
+ * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -21,37 +21,40 @@
 #include "tmux.h"
 
 /*
- * Send prefix key as a key.
+ * Enter clock mode.
  */
 
-void	cmd_send_prefix_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_switch_pane_exec(struct cmd *, struct cmd_ctx *);
 
-const struct cmd_entry cmd_send_prefix_entry = {
-	"send-prefix", NULL,
+const struct cmd_entry cmd_switch_pane_entry = {
+	"switch-pane", "switchp",
 	CMD_TARGET_WINDOW_USAGE,
 	0,
 	cmd_target_init,
 	cmd_target_parse,
-	cmd_send_prefix_exec,
-	cmd_target_send,
+	cmd_switch_pane_exec,
+       	cmd_target_send,
 	cmd_target_recv,
 	cmd_target_free,
 	cmd_target_print
 };
 
 void
-cmd_send_prefix_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_switch_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
-	struct session		*s;
 	struct winlink		*wl;
-	int			 key;
 
-	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
+	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return;
 
-	key = options_get_number(&s->options, "prefix");
-	window_pane_key(wl->window->active, ctx->curclient, key);
+	if (wl->window->panes[1] != NULL) {
+		if (wl->window->active == wl->window->panes[0])
+			wl->window->active = wl->window->panes[1];
+		else
+			wl->window->active = wl->window->panes[0];
+		server_redraw_window(wl->window);
+	}
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

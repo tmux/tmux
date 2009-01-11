@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.72 2009-01-10 01:51:22 nicm Exp $ */
+/* $Id: input.c,v 1.73 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -217,9 +217,9 @@ input_state(struct input_ctx *ictx, void *state)
 }
 
 void
-input_init(struct window *w)
+input_init(struct window_pane *wp)
 {
-	struct input_ctx	*ictx = &w->ictx;
+	struct input_ctx	*ictx = &wp->ictx;
 
 	ARRAY_INIT(&ictx->args);
 
@@ -236,38 +236,38 @@ input_init(struct window *w)
 }
 
 void
-input_free(struct window *w)
+input_free(struct window_pane *wp)
 {
-	if (w->ictx.string_buf != NULL)
-		xfree(w->ictx.string_buf);
+	if (wp->ictx.string_buf != NULL)
+		xfree(wp->ictx.string_buf);
 
-	ARRAY_FREE(&w->ictx.args);
+	ARRAY_FREE(&wp->ictx.args);
 }
 
 void
-input_parse(struct window *w)
+input_parse(struct window_pane *wp)
 {
-	struct input_ctx	*ictx = &w->ictx;
+	struct input_ctx	*ictx = &wp->ictx;
 	u_char			 ch;
 
-	if (BUFFER_USED(w->in) == 0)
+	if (BUFFER_USED(wp->in) == 0)
 		return;
 
-	ictx->buf = BUFFER_OUT(w->in);
-	ictx->len = BUFFER_USED(w->in);
+	ictx->buf = BUFFER_OUT(wp->in);
+	ictx->len = BUFFER_USED(wp->in);
 	ictx->off = 0;
 
-	ictx->w = w;
+	ictx->wp = wp;
 
 	log_debug2("entry; buffer=%zu", ictx->len);
 
-	if (w->mode == NULL)
-		screen_write_start(&ictx->ctx, &w->base, tty_write_window, w);
+	if (wp->mode == NULL)
+		screen_write_start(&ictx->ctx, wp, &wp->base);
 	else
-		screen_write_start(&ictx->ctx, &w->base, NULL, NULL);
+		screen_write_start(&ictx->ctx, NULL, &wp->base);
 
 	if (ictx->off != ictx->len)
-		w->flags |= WINDOW_ACTIVITY;
+		wp->window->flags |= WINDOW_ACTIVITY;
 	while (ictx->off < ictx->len) {
 		ch = ictx->buf[ictx->off++];
 		ictx->state(ch, ictx);
@@ -275,7 +275,7 @@ input_parse(struct window *w)
 
 	screen_write_stop(&ictx->ctx);
 
-	buffer_remove(w->in, ictx->len);
+	buffer_remove(wp->in, ictx->len);
 }
 
 void
@@ -499,7 +499,7 @@ input_state_string_escape(u_char ch, struct input_ctx *ictx)
 				return;
 			}
 			screen_set_title(ictx->ctx.s, s + 2);
-			server_status_window(ictx->w);
+			server_status_window(ictx->wp->window);
 			xfree(s);
 			break;
 		case STRING_APPLICATION:
@@ -507,15 +507,15 @@ input_state_string_escape(u_char ch, struct input_ctx *ictx)
 				return;
 			s = input_get_string(ictx);
 			screen_set_title(ictx->ctx.s, s);
-			server_status_window(ictx->w);
+			server_status_window(ictx->wp->window);
 			xfree(s);
 			break;
 		case STRING_NAME:
 			if (ch != '\\')
 				return;
-			xfree(ictx->w->name);
-			ictx->w->name = input_get_string(ictx);
-			server_status_window(ictx->w);
+			xfree(ictx->wp->window->name);
+			ictx->wp->window->name = input_get_string(ictx);
+			server_status_window(ictx->wp->window);
 			break;
 		}
 		return;
@@ -548,7 +548,9 @@ input_state_utf8(u_char ch, struct input_ctx *ictx)
 void
 input_handle_character(u_char ch, struct input_ctx *ictx)
 {
-	if (ch > 0x7f && options_get_number(&ictx->w->options, "utf8")) {
+	struct window_pane	*wp = ictx->wp;
+	
+	if (ch > 0x7f && options_get_number(&wp->window->options, "utf8")) {
 		/*
 		 * UTF-8 sequence.
 		 *
@@ -602,7 +604,7 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 		screen_write_carriagereturn(&ictx->ctx);
 		break;
 	case '\007':	/* BELL */
-		ictx->w->flags |= WINDOW_BELL;
+		ictx->wp->window->flags |= WINDOW_BELL;
 		break;
 	case '\010': 	/* BS */
 		screen_write_cursorleft(&ictx->ctx, 1);
@@ -1128,7 +1130,7 @@ input_handle_sequence_dsr(struct input_ctx *ictx)
 			xsnprintf(reply, sizeof reply,
 			    "\033[%u;%uR", s->cy + 1, s->cx + 1);
 			log_debug("cursor request, reply: %s", reply);
-			buffer_write(ictx->w->out, reply, strlen(reply));
+			buffer_write(ictx->wp->out, reply, strlen(reply));
 			break;
 		}
 	}

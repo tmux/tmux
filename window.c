@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.54 2009-01-10 19:37:35 nicm Exp $ */
+/* $Id: window.c,v 1.55 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,16 +46,17 @@
 #include "tmux.h"
 
 /*
- * Each window is attached to a pty. This file contains code to handle them.
+ * Each window is attached to one or two panes, each of which is a pty. This
+ * file contains code to handle them.
  *
- * A window has two buffers attached, these are filled and emptied by the main
+ * A pane has two buffers attached, these are filled and emptied by the main
  * server poll loop. Output data is received from pty's in screen format,
  * translated and returned as a series of escape sequences and strings via
  * input_parse (in input.c). Input data is received as key codes and written
  * directly via input_key.
  *
- * Each window also has a "virtual" screen (screen.c) which contains the
- * current state and is redisplayed when the window is reattached to a client.
+ * Each pane also has a "virtual" screen (screen.c) which contains the current
+ * state and is redisplayed when the window is reattached to a client.
  *
  * Windows are stored directly on a global array and wrapped in any number of
  * winlink structs to be linked onto local session RB trees. A reference count
@@ -211,20 +212,15 @@ window_create(const char *name, const char *cmd,
 	char		*ptr, *copy;
 
 	w = xmalloc(sizeof *w);
-	w->cmd = NULL;
-	w->cwd = NULL;
-
-	w->fd = -1;
-	w->in = buffer_create(BUFSIZ);
-	w->out = buffer_create(BUFSIZ);
-
-	w->mode = NULL;
 	w->flags = 0;
+	w->panes[0] = window_pane_create(w, sx, sy, hlimit);
+	w->panes[1] = NULL;
 
-	screen_init(&w->base, sx, sy, hlimit);
-	w->screen = &w->base;
+	w->sx = sx;
+	w->sy = sy;
 
-	input_init(w);
+	w->active = w->panes[0];
+
 	options_init(&w->options, &global_window_options);
 
 	if (name == NULL) {
@@ -253,58 +249,11 @@ window_create(const char *name, const char *cmd,
 	ARRAY_ADD(&windows, w);
 	w->references = 0;
 
-	if (window_spawn(w, cmd, cwd, envp) != 0) {
+	if (window_pane_spawn(w->active, cmd, cwd, envp) != 0) {
 		window_destroy(w);
 		return (NULL);
 	}
 	return (w);
-}
-
-int
-window_spawn(
-    struct window *w, const char *cmd, const char *cwd, const char **envp)
-{
-	struct winsize	 ws;
-	int		 mode;
-	const char     **envq;
-
-	if (w->fd != -1)
-		close(w->fd);
-	if (w->cmd != NULL)
-		xfree(w->cmd);
-	w->cmd = xstrdup(cmd);
-	w->cwd = xstrdup(cwd);
-
-	memset(&ws, 0, sizeof ws);
-	ws.ws_col = screen_size_x(&w->base);
-	ws.ws_row = screen_size_y(&w->base);
-
- 	switch (forkpty(&w->fd, NULL, NULL, &ws)) {
-	case -1:
-		return (1);
-	case 0:
-		if (chdir(cwd) != 0)
-			chdir("/");
-		for (envq = envp; *envq != NULL; envq++) {
-			if (putenv(*envq) != 0)
-				fatal("putenv failed");
-		}
-		sigreset();
-		log_debug("new child: cmd=%s pid=%ld", w->cmd, (long) getpid());
-		log_close();
-
-		execl(_PATH_BSHELL, "sh", "-c", w->cmd, (char *) NULL);
-		fatal("execl failed");
-	}
-
-	if ((mode = fcntl(w->fd, F_GETFL)) == -1)
-		fatal("fcntl failed");
-	if (fcntl(w->fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failed");
-	if (fcntl(w->fd, F_SETFD, FD_CLOEXEC) == -1)
-		fatal("fcntl failed");
-
-	return (0);
 }
 
 void
@@ -318,22 +267,12 @@ window_destroy(struct window *w)
 	}
 	ARRAY_REMOVE(&windows, i);
 
-	if (w->fd != -1)
-		close(w->fd);
-
-	input_free(w);
-
-	window_reset_mode(w);
 	options_free(&w->options);
-	screen_free(&w->base);
 
-	buffer_destroy(w->in);
-	buffer_destroy(w->out);
-
-	if (w->cwd != NULL)
-		xfree(w->cwd);
-	if (w->cmd != NULL)
-		xfree(w->cmd);
+	window_pane_destroy(w->panes[0]);
+	if (w->panes[1] != NULL)
+		window_pane_destroy(w->panes[1]);
+	
 	xfree(w->name);
 	xfree(w);
 }
@@ -341,64 +280,194 @@ window_destroy(struct window *w)
 int
 window_resize(struct window *w, u_int sx, u_int sy)
 {
+	if (w->panes[1] != NULL) {
+		window_pane_resize(w->panes[0], sx, sy / 2 - 1);
+		window_pane_resize(w->panes[1], sx, sy - (sy / 2));
+	} else
+		window_pane_resize(w->panes[0], sx, sy);
+
+	w->sx = sx;
+	w->sy = sy;
+
+	return (0);
+}
+
+int
+window_remove_pane(struct window *w, int pane)
+{
+	if (w->panes[1] != NULL) {
+		window_pane_destroy(w->panes[pane]);
+		w->panes[pane] = NULL;
+		if (pane == 0) {
+			w->panes[0] = w->panes[1];
+			w->panes[1] = NULL;
+		}
+		window_resize(w, w->sx, w->sy);
+		w->active = w->panes[0];
+		return (0);
+	}
+	return (1);
+}
+
+struct window_pane *
+window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
+{
+	struct window_pane	*wp;
+
+	wp = xmalloc(sizeof *wp);
+	wp->window = w;
+
+	wp->cmd = NULL;
+	wp->cwd = NULL;
+
+	wp->fd = -1;
+	wp->in = buffer_create(BUFSIZ);
+	wp->out = buffer_create(BUFSIZ);
+
+	wp->mode = NULL;
+
+	screen_init(&wp->base, sx, sy, hlimit);
+	wp->screen = &wp->base;
+
+	input_init(wp);
+	
+	return (wp);
+}
+
+void
+window_pane_destroy(struct window_pane *wp)
+{
+	if (wp->fd != -1)
+		close(wp->fd);
+
+	input_free(wp);
+
+	window_pane_reset_mode(wp);
+	screen_free(&wp->base);
+
+	buffer_destroy(wp->in);
+	buffer_destroy(wp->out);
+
+	if (wp->cwd != NULL)
+		xfree(wp->cwd);
+	if (wp->cmd != NULL)
+		xfree(wp->cmd);
+	xfree(wp);
+}
+
+int
+window_pane_spawn(struct window_pane *wp,
+    const char *cmd, const char *cwd, const char **envp)
+{
+	struct winsize	 ws;
+	int		 mode;
+	const char     **envq;
+
+	if (wp->fd != -1)
+		close(wp->fd);
+	if (cmd != NULL) {
+		if (wp->cmd != NULL)
+			xfree(wp->cmd);
+		wp->cmd = xstrdup(cmd);
+	}
+	if (cwd != NULL) {
+		if (wp->cwd != NULL)
+			xfree(wp->cwd);
+		wp->cwd = xstrdup(cwd);
+	}
+
+	memset(&ws, 0, sizeof ws);
+	ws.ws_col = screen_size_x(&wp->base);
+	ws.ws_row = screen_size_y(&wp->base);
+
+ 	switch (forkpty(&wp->fd, NULL, NULL, &ws)) {
+	case -1:
+		return (1);
+	case 0:
+		if (chdir(wp->cwd) != 0)
+			chdir("/");
+		for (envq = envp; *envq != NULL; envq++) {
+			if (putenv(*envq) != 0)
+				fatal("putenv failed");
+		}
+		sigreset();
+		log_close();
+
+		execl(_PATH_BSHELL, "sh", "-c", wp->cmd, (char *) NULL);
+		fatal("execl failed");
+	}
+
+	if ((mode = fcntl(wp->fd, F_GETFL)) == -1)
+		fatal("fcntl failed");
+	if (fcntl(wp->fd, F_SETFL, mode|O_NONBLOCK) == -1)
+		fatal("fcntl failed");
+	if (fcntl(wp->fd, F_SETFD, FD_CLOEXEC) == -1)
+		fatal("fcntl failed");
+
+	return (0);
+}
+
+int
+window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
+{
 	struct winsize	ws;
 
-	if (sx == screen_size_x(&w->base) && sy == screen_size_y(&w->base))
+	if (sx == screen_size_x(&wp->base) && sy == screen_size_y(&wp->base))
 		return (-1);
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = sx;
 	ws.ws_row = sy;
 
-	screen_resize(&w->base, sx, sy);
-	if (w->mode != NULL)
-		w->mode->resize(w, sx, sy);
+	screen_resize(&wp->base, sx, sy);
+	if (wp->mode != NULL)
+		wp->mode->resize(wp, sx, sy);
 
-	if (w->fd != -1 && ioctl(w->fd, TIOCSWINSZ, &ws) == -1)
+	if (wp->fd != -1 && ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
 		fatal("ioctl failed");
 	return (0);
 }
 
 int
-window_set_mode(struct window *w, const struct window_mode *mode)
+window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode)
 {
 	struct screen	*s;
 
-	if (w->mode != NULL || w->mode == mode)
+	if (wp->mode != NULL || wp->mode == mode)
 		return (1);
 
-	w->mode = mode;
+	wp->mode = mode;
 
-	if ((s = w->mode->init(w)) != NULL)
-		w->screen = s;
-	server_redraw_window(w);
+	if ((s = wp->mode->init(wp)) != NULL)
+		wp->screen = s;
+	server_redraw_window(wp->window);
 	return (0);
 }
 
 void
-window_reset_mode(struct window *w)
+window_pane_reset_mode(struct window_pane *wp)
 {
-	if (w->mode == NULL)
+	if (wp->mode == NULL)
 		return;
 
-	w->mode->free(w);
-	w->mode = NULL;
+	wp->mode->free(wp);
+	wp->mode = NULL;
 
-	w->screen = &w->base;
-	server_redraw_window(w);
+	wp->screen = &wp->base;
+	server_redraw_window(wp->window);
 }
 
 void
-window_parse(struct window *w)
+window_pane_parse(struct window_pane *wp)
 {
-	input_parse(w);
+	input_parse(wp);
 }
 
 void
-window_key(struct window *w, struct client *c, int key)
+window_pane_key(struct window_pane *wp, struct client *c, int key)
 {
-	if (w->mode != NULL)
-		w->mode->key(w, c, key);
+	if (wp->mode != NULL)
+		wp->mode->key(wp, c, key);
 	else
-		input_key(w, key);
+		input_key(wp, key);
 }

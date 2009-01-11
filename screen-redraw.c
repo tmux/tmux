@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.15 2009-01-09 23:57:42 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.16 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,146 +22,143 @@
 
 #include "tmux.h"
 
-/* Initialise redrawing with a window. */
+void	screen_redraw_blankx(struct client *, u_int, u_int);
+void	screen_redraw_blanky(struct client *, u_int, u_int);
+void	screen_redraw_line(struct client *, struct screen *, u_int, u_int);
+
+/* Redraw entire screen.. */
 void
-screen_redraw_start_window(struct screen_redraw_ctx *ctx, struct window *w)
+screen_redraw_screen(struct client *c, struct screen *s)
 {
-	struct screen	*t = w->screen;
+	struct winlink	*wl = c->session->curw;
+	u_int		 i, cx, cy, sy;
+	int		 status;
 
-	screen_redraw_start(ctx, t, tty_write_window, w);
-}
+	status = options_get_number(&c->session->options, "status");
 
-/* Initialise redrawing with a client. */
-void
-screen_redraw_start_client(struct screen_redraw_ctx *ctx, struct client *c)
-{
-	struct screen	*t = c->session->curw->window->screen;
+	/* Override the normal screen if one is given. */
+	if (s != NULL) {
+		for (i = 0; i < screen_size_y(s); i++)
+			screen_redraw_line(c, s, 0, i);
+		return;
+	}
 
-	screen_redraw_start(ctx, t, tty_write_client, c);
-}
-
-/* Initialise redrawing with a session. */
-void
-screen_redraw_start_session(struct screen_redraw_ctx *ctx, struct session *s)
-{
-	struct screen	*t = s->curw->window->screen;
-
-	screen_redraw_start(ctx, t, tty_write_session, s);
-}
-
-/* Initialise for redrawing. */
-void
-screen_redraw_start(struct screen_redraw_ctx *ctx,
-    struct screen *s, void (*write)(void *, enum tty_cmd, ...), void *data)
-{
-	ctx->write = write;
-	ctx->data = data;
-
-	ctx->s = s;
-
-	/*
-	 * Save screen cursor position. Emulation of some TTY_* commands
-	 * requires this to be correct in the screen, so rather than having
-	 * a local copy and just manipulating it, save the screen's values,
-	 * modify them during redraw, and restore them when finished. XXX.
+	/* 
+	 * A normal client screen is made up of three parts: a top window, a
+	 * bottom window and a status line. The bottom window may be turned
+	 * off; the status line is always drawn.
 	 */
-	ctx->saved_cx = s->cx;
-	ctx->saved_cy = s->cy;
 
-	ctx->write(ctx->data, TTY_SCROLLREGION, 0, screen_size_y(s) - 1);
-	ctx->write(ctx->data, TTY_CURSORMOVE, s->cx, s->cy);
-	ctx->write(ctx->data, TTY_CURSORMODE, 0);
-	ctx->write(ctx->data, TTY_MOUSEMODE, 0);
+	/* Draw the top window. */
+	s = wl->window->panes[0]->screen;
+	sy = screen_size_y(s);
+	if (screen_size_y(s) == c->sy && wl->window->panes[1] == NULL)
+		sy--;
+	cx = s->cx;
+	cy = s->cy;
+	for (i = 0; i < sy; i++)
+		screen_redraw_line(c, s, 0, i);
+	s->cx = cx;
+	s->cy = cy;
+
+	/* Draw the bottom window. */
+	if (wl->window->panes[1] != NULL) {
+		s = wl->window->panes[1]->screen;
+		sy = screen_size_y(s);
+		if (!status && screen_size_y(s) == c->sy - (c->sy / 2) - 1)
+			sy--;
+		cx = s->cx;
+		cy = s->cy;
+		for (i = 0; i < sy; i++)
+			screen_redraw_line(c, s, wl->window->sy / 2, i);
+		s->cx = cx;
+		s->cy = cy;
+	}
+
+	/* Fill in empty space. */
+	if (wl->window->sx < c->sx) {
+		screen_redraw_blankx(
+		    c, wl->window->sx, c->sx - wl->window->sx);
+	}
+	if (wl->window->sy < c->sy - status) {
+		screen_redraw_blanky(
+		    c, wl->window->sy, c->sy - wl->window->sy);
+	}
+
+	/* Draw separator line. */
+	s = wl->window->panes[0]->screen;
+	if (screen_size_y(s) != wl->window->sy)
+		screen_redraw_blanky(c, screen_size_y(s), 1);
+
+	/* Draw the status line. */
+	screen_redraw_status(c);
 }
 
-/* Finish redrawing. */
+/* Draw the status line. */
 void
-screen_redraw_stop(struct screen_redraw_ctx *ctx)
+screen_redraw_status(struct client *c)
 {
-	struct screen	*s = ctx->s;
-
-	s->cx = ctx->saved_cx;
-	s->cy = ctx->saved_cy;
-
-	ctx->write(ctx->data, TTY_SCROLLREGION, s->rupper, s->rlower);
-	ctx->write(ctx->data, TTY_CURSORMOVE, s->cx, s->cy);
-	if (s->mode & MODE_CURSOR)
-		ctx->write(ctx->data, TTY_CURSORMODE, 1);
-	if (s->mode & MODE_MOUSE)
-		ctx->write(ctx->data, TTY_MOUSEMODE, 1);
+	screen_redraw_line(c, &c->status, c->sy - 1, 0);
 }
 
-/* Write character. */
+/* Draw blank columns. */
 void
-screen_redraw_putc(
-    struct screen_redraw_ctx *ctx, struct grid_cell *gc, u_char ch)
+screen_redraw_blankx(struct client *c, u_int ox, u_int nx)
 {
-	gc->data = ch;
-	ctx->write(ctx->data, TTY_CELL, gc);
-	ctx->s->cx++;
+	u_int	i, j;
+
+	tty_putcode(&c->tty, TTYC_SGR0);
+	for (j = 0; j < c->sy; j++) {
+		tty_putcode2(&c->tty, TTYC_CUP, j, ox);
+		for (i = 0; i < nx; i++)
+			tty_putc(&c->tty, ' ');
+	}
+
+	c->tty.cx = UINT_MAX;
+	c->tty.cy = UINT_MAX;
+	memcpy(&c->tty.cell, &grid_default_cell, sizeof c->tty.cell);
 }
 
-/* Write string. */
-void printflike3
-screen_redraw_puts(
-    struct screen_redraw_ctx *ctx, struct grid_cell *gc, const char *fmt, ...)
-{
-	va_list	ap;
-	char   *msg, *ptr;
-
-	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
-	va_end(ap);
-
-	for (ptr = msg; *ptr != '\0'; ptr++)
-		screen_redraw_putc(ctx, gc, (u_char) *ptr);
-
-	xfree(msg);
-}
-
-/* Redraw single cell. */
+/* Draw blank lines. */
 void
-screen_redraw_cell(struct screen_redraw_ctx *ctx, u_int px, u_int py)
+screen_redraw_blanky(struct client *c, u_int oy, u_int ny)
+{
+	u_int	i, j;
+
+	tty_putcode(&c->tty, TTYC_SGR0);
+	for (j = 0; j < ny; j++) {
+		tty_putcode2(&c->tty, TTYC_CUP, oy + j, 0);
+		for (i = 0; i < c->sx; i++) {
+			if (j == 0)
+				tty_putc(&c->tty, '-');
+			else
+				tty_putc(&c->tty, ' ');
+		}
+	}
+
+	c->tty.cx = UINT_MAX;
+	c->tty.cy = UINT_MAX;
+	memcpy(&c->tty.cell, &grid_default_cell, sizeof c->tty.cell);
+}
+
+/* Draw a line. */
+void
+screen_redraw_line(struct client *c, struct screen *s, u_int oy, u_int py)
 {
 	const struct grid_cell	*gc;
 	struct grid_cell	 tc;
+	u_int			 i;
 
-	if (px != ctx->s->cx || py != ctx->s->cy) {
-		ctx->s->cx = px;
-		ctx->s->cy = py;
-		ctx->write(ctx->data, TTY_CURSORMOVE, ctx->s->cx, ctx->s->cy);
-	}
+	for (i = 0; i < screen_size_x(s); i++) {
+		s->cx = i;
+		s->cy = py;
 
-	gc = grid_view_peek_cell(ctx->s->grid, px, py);
-        if (screen_check_selection(ctx->s, px, py)) {
-		memcpy(&tc, &ctx->s->sel.cell, sizeof tc);
-		tc.data = gc->data;
-		ctx->write(ctx->data, TTY_CELL, &tc);
-	} else
-		ctx->write(ctx->data, TTY_CELL, gc);
-	ctx->s->cx++;
-}
-
-/* Draw set of lines. */
-void
-screen_redraw_lines(struct screen_redraw_ctx *ctx, u_int py, u_int ny)
-{
-	u_int	i, j;
-
-	for (j = py; j < py + ny; j++) {
-		for (i = 0; i < screen_size_x(ctx->s); i++)
-			screen_redraw_cell(ctx, i, j);
-	}
-}
-
-/* Draw set of columns. */
-void
-screen_redraw_columns(struct screen_redraw_ctx *ctx, u_int px, u_int nx)
-{
-	u_int	i, j;
-
-	for (j = 0; j < screen_size_y(ctx->s); j++) {
-		for (i = px; i < px + nx; i++)
-			screen_redraw_cell(ctx, i, j);
+		gc = grid_view_peek_cell(s->grid, i, py);
+		if (screen_check_selection(s, i, py)) {
+			memcpy(&tc, &s->sel.cell, sizeof tc);
+			tc.data = gc->data;
+			tty_write(&c->tty, s, oy, TTY_CELL, &tc);
+		} else
+			tty_write(&c->tty, s, oy, TTY_CELL, gc);
 	}
 }

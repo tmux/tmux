@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.222 2009-01-11 23:14:57 nicm Exp $ */
+/* $Id: tmux.h,v 1.223 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -330,8 +330,6 @@ struct tty_term_code_entry {
 
 /* Output commands. */
 enum tty_cmd {
-	TTY_BELL,
-	TTY_CARRIAGERETURN,
 	TTY_CELL,
 	TTY_CLEARENDOFLINE,
 	TTY_CLEARENDOFSCREEN,
@@ -339,12 +337,7 @@ enum tty_cmd {
 	TTY_CLEARSCREEN,
 	TTY_CLEARSTARTOFLINE,
 	TTY_CLEARSTARTOFSCREEN,
-	TTY_CURSORDOWN,
-	TTY_CURSORLEFT,
 	TTY_CURSORMODE,
-	TTY_CURSORMOVE,
-	TTY_CURSORRIGHT,
-	TTY_CURSORUP,
 	TTY_DELETECHARACTER,
 	TTY_DELETELINE,
 	TTY_INSERTCHARACTER,
@@ -355,7 +348,6 @@ enum tty_cmd {
 	TTY_LINEFEED,
 	TTY_MOUSEMODE,
 	TTY_REVERSEINDEX,
-	TTY_SCROLLREGION,
 };
 
 /* Message codes. */
@@ -514,17 +506,6 @@ struct screen {
 	struct screen_sel sel;
 };
 
-/* Screen redraw context. */
-struct screen_redraw_ctx {
-	void		*data;
-	void		 (*write)(void *, enum tty_cmd, ...);
-
-	u_int		 saved_cx;
-	u_int		 saved_cy;
-
-	struct screen	*s;
-};
-
 /* Screen write context. */
 struct screen_write_ctx {
 	void		*data;
@@ -547,7 +528,7 @@ struct input_arg {
 
 /* Input parser context. */
 struct input_ctx {
-	struct window	*w;
+	struct window_pane *wp;
 	struct screen_write_ctx ctx;
 
 	u_char		*buf;
@@ -584,17 +565,19 @@ struct input_ctx {
  * right function to handle input and output.
  */
 struct client;
+struct window;
 struct window_mode {
-	struct screen *(*init)(struct window *);
-	void	(*free)(struct window *);
-	void	(*resize)(struct window *, u_int, u_int);
-	void	(*key)(struct window *, struct client *, int);
-	void	(*timer)(struct window *);
+	struct screen *(*init)(struct window_pane *);
+	void	(*free)(struct window_pane *);
+	void	(*resize)(struct window_pane *, u_int, u_int);
+	void	(*key)(struct window_pane *, struct client *, int);
+	void	(*timer)(struct window_pane *);
 };
 
-/* Window structure. */
-struct window {
-	char		*name;
+/* Child window structure. */
+struct window_pane {
+	struct window	*window;
+	
 	char		*cmd;
 	char		*cwd;
 
@@ -604,18 +587,29 @@ struct window {
 
 	struct input_ctx ictx;
 
-	struct options	 options;
+	struct screen	*screen;
+	struct screen	 base;
+
+	const struct window_mode *mode;
+	void		*modedata;
+};
+
+/* Window structure. */
+struct window {
+	char		*name;
+
+	struct window_pane *active;
+	struct window_pane *panes[2];
+
+	u_int		 sx;
+	u_int		 sy;
 
 	int		 flags;
 #define WINDOW_BELL 0x1
 #define WINDOW_HIDDEN 0x2
 #define WINDOW_ACTIVITY 0x4
 
-	struct screen	*screen;
-	struct screen	 base;
-
-	const struct window_mode *mode;
-	void		*modedata;
+	struct options	 options;
 
 	u_int		 references;
 };
@@ -698,6 +692,14 @@ SLIST_HEAD(tty_terms, tty_term);
 struct tty {
 	char		*path;
 
+	u_int		 cx;
+	u_int		 cy;
+
+	int		 cursor;
+
+	u_int		 rlower;
+	u_int		 rupper;
+
 	char		*termname;
 	struct tty_term	*term;
 
@@ -741,6 +743,8 @@ struct client {
 
 	u_int		 sx;
 	u_int		 sy;
+
+	struct screen	 status;
 
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_PREFIX 0x2
@@ -973,14 +977,21 @@ void	options_set_number(struct options *, const char *, long long);
 long long options_get_number(struct options *, const char *);
 
 /* tty.c */
+void		 tty_cursor(struct tty *, u_int, u_int, u_int);
+void		 tty_putcode(struct tty *, enum tty_code_code);
+void		 tty_putcode1(struct tty *, enum tty_code_code, int);
+void		 tty_putcode2(struct tty *, enum tty_code_code, int, int);
+void		 tty_puts(struct tty *, const char *);
+void		 tty_putc(struct tty *, char);
 void		 tty_init(struct tty *, char *, char *);
 void		 tty_set_title(struct tty *, const char *);
 int		 tty_open(struct tty *, char **);
 void		 tty_close(struct tty *);
 void		 tty_free(struct tty *);
-void		 tty_write(struct tty *, struct screen *, enum tty_cmd, ...);
-void		 tty_vwrite(
-    		      struct tty *, struct screen *s, enum tty_cmd, va_list);
+void		 tty_write(struct tty *,
+		     struct screen *, u_int, enum tty_cmd, ...);
+void		 tty_vwrite(struct tty *,
+		     struct screen *s, u_int, enum tty_cmd, va_list);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;
@@ -1003,12 +1014,8 @@ void		 tty_keys_free(struct tty *);
 int		 tty_keys_next(struct tty *, int *);
 
 /* tty-write.c */
-void		 tty_write_client(void *, enum tty_cmd, ...);
-void		 tty_vwrite_client(void *, enum tty_cmd, va_list);
 void		 tty_write_window(void *, enum tty_cmd, ...);
 void		 tty_vwrite_window(void *, enum tty_cmd, va_list);
-void		 tty_write_session(void *, enum tty_cmd, ...);
-void		 tty_vwrite_session(void *, enum tty_cmd, va_list);
 
 /* options-cmd.c */
 void	set_option_string(struct cmd_ctx *,
@@ -1102,9 +1109,11 @@ extern const struct cmd_entry cmd_show_buffer_entry;
 extern const struct cmd_entry cmd_show_options_entry;
 extern const struct cmd_entry cmd_show_window_options_entry;
 extern const struct cmd_entry cmd_source_file_entry;
+extern const struct cmd_entry cmd_split_window_entry;
 extern const struct cmd_entry cmd_start_server_entry;
 extern const struct cmd_entry cmd_swap_window_entry;
 extern const struct cmd_entry cmd_switch_client_entry;
+extern const struct cmd_entry cmd_switch_pane_entry;
 extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
 
@@ -1200,12 +1209,13 @@ void	 server_set_client_prompt(struct client *,
 void	 server_clear_client_prompt(struct client *);
 struct session *server_extract_session(
     	     struct msg_command_data *, char *, char **);
+void	 server_write(struct client *, enum hdrtype, const void *, size_t);
 void	 server_write_client(
              struct client *, enum hdrtype, const void *, size_t);
 void	 server_write_session(
              struct session *, enum hdrtype, const void *, size_t);
 void	 server_write_window(
-             struct window *, enum hdrtype, const void *, size_t);
+	     struct window *, enum hdrtype, const void *, size_t);
 void	 server_redraw_client(struct client *);
 void	 server_status_client(struct client *);
 void	 server_redraw_session(struct session *);
@@ -1225,12 +1235,12 @@ void	 status_prompt_key(struct client *, int);
 void	 recalculate_sizes(void);
 
 /* input.c */
-void	 input_init(struct window *);
-void	 input_free(struct window *);
-void	 input_parse(struct window *);
+void	 input_init(struct window_pane *);
+void	 input_free(struct window_pane *);
+void	 input_parse(struct window_pane *);
 
 /* input-key.c */
-void	 input_key(struct window *, int);
+void	 input_key(struct window_pane *, int);
 
 /* colour.c */
 const char *colour_tostring(u_char);
@@ -1278,12 +1288,8 @@ void	 grid_view_insert_cells(struct grid_data *, u_int, u_int, u_int);
 void	 grid_view_delete_cells(struct grid_data *, u_int, u_int, u_int);
 
 /* screen-write.c */
-void	 screen_write_start_window(struct screen_write_ctx *, struct window *);
-void	 screen_write_start_client(struct screen_write_ctx *, struct client *);
-void	 screen_write_start_session(
-    	     struct screen_write_ctx *, struct session *);
-void	 screen_write_start(struct screen_write_ctx *,
-	     struct screen *, void (*)(void *, enum tty_cmd, ...), void *);
+void	 screen_write_start(
+    	     struct screen_write_ctx *, struct window_pane *, struct screen *);
 void	 screen_write_stop(struct screen_write_ctx *);
 void printflike3 screen_write_puts(
 	     struct screen_write_ctx *, struct grid_cell *, const char *, ...);
@@ -1318,20 +1324,8 @@ void	 screen_write_clearscreen(struct screen_write_ctx *);
 void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
 
 /* screen-redraw.c */
-void	screen_redraw_start_window(struct screen_redraw_ctx *, struct window *);
-void	screen_redraw_start_client(struct screen_redraw_ctx *, struct client *);
-void	screen_redraw_start_session(
-    	    struct screen_redraw_ctx *, struct session *);
-void	screen_redraw_start(struct screen_redraw_ctx *,
-    	    struct screen *, void (*)(void *, enum tty_cmd, ...), void *);
-void	screen_redraw_stop(struct screen_redraw_ctx *);
-void printflike3 screen_redraw_puts(
-     	    struct screen_redraw_ctx *, struct grid_cell *, const char *, ...);
-void	screen_redraw_putc(
-    	    struct screen_redraw_ctx *, struct grid_cell *, u_char);
-void	screen_redraw_cell(struct screen_redraw_ctx *, u_int, u_int);
-void	screen_redraw_lines(struct screen_redraw_ctx *, u_int, u_int);
-void	screen_redraw_columns(struct screen_redraw_ctx *, u_int, u_int);
+void	 screen_redraw_screen(struct client *, struct screen *);
+void	 screen_redraw_status(struct client *);
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);
@@ -1364,14 +1358,19 @@ void		 winlink_stack_push(struct winlink_stack *, struct winlink *);
 void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 struct window	*window_create(const char *, const char *,
 		     const char *, const char **, u_int, u_int, u_int);
-int		 window_spawn(struct window *,
-		     const char *, const char *, const char **);
 void		 window_destroy(struct window *);
 int		 window_resize(struct window *, u_int, u_int);
-int		 window_set_mode(struct window *, const struct window_mode *);
-void		 window_reset_mode(struct window *);
-void		 window_parse(struct window *);
-void		 window_key(struct window *, struct client *, int);
+int		 window_remove_pane(struct window *, int);
+struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
+void		 window_pane_destroy(struct window_pane *);
+int		 window_pane_spawn(struct window_pane *,
+		     const char *, const char *, const char **);
+int		 window_pane_resize(struct window_pane *, u_int, u_int);
+int		 window_pane_set_mode(
+		     struct window_pane *, const struct window_mode *);
+void		 window_pane_reset_mode(struct window_pane *);
+void		 window_pane_parse(struct window_pane *);
+void		 window_pane_key(struct window_pane *, struct client *, int);
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;
@@ -1384,8 +1383,8 @@ extern const struct window_mode window_scroll_mode;
 
 /* window-more.c */
 extern const struct window_mode window_more_mode;
-void 		 window_more_vadd(struct window *, const char *, va_list);
-void printflike2 window_more_add(struct window *, const char *, ...);
+void 		 window_more_vadd(struct window_pane *, const char *, va_list);
+void printflike2 window_more_add(struct window_pane *, const char *, ...);
 
 /* session.c */
 extern struct sessions sessions;
@@ -1399,7 +1398,7 @@ struct session	*session_create(
 void	 	 session_destroy(struct session *);
 int	 	 session_index(struct session *, u_int *);
 struct winlink	*session_new(struct session *, 
-    		     const char *, const char *, const char *, int);
+		     const char *, const char *, const char *, int);
 struct winlink	*session_attach(struct session *, struct window *, int);
 int		 session_detach(struct session *, struct winlink *);
 int		 session_has(struct session *, struct window *);

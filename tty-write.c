@@ -1,4 +1,4 @@
-/* $Id: tty-write.c,v 1.3 2009-01-09 23:57:42 nicm Exp $ */
+/* $Id: tty-write.c,v 1.4 2009-01-11 23:31:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,26 +21,6 @@
 #include "tmux.h"
 
 void
-tty_write_client(void *ptr, enum tty_cmd cmd, ...)
-{
-	struct client	*c = ptr;
-	va_list		 ap;
-
-	va_start(ap, cmd);
-	tty_vwrite_client(c, cmd, ap);
-	va_end(ap);
-}
-
-void
-tty_vwrite_client(void *ptr, enum tty_cmd cmd, va_list ap)
-{
-	struct client	*c = ptr;
-	struct screen	*s = c->session->curw->window->screen;
-
-	tty_vwrite(&c->tty, s, cmd, ap);
-}
-
-void
 tty_write_window(void *ptr, enum tty_cmd cmd, ...)
 {
 	va_list	ap;
@@ -53,55 +33,28 @@ tty_write_window(void *ptr, enum tty_cmd cmd, ...)
 void
 tty_vwrite_window(void *ptr, enum tty_cmd cmd, va_list ap)
 {
-	struct window	*w = ptr;
-	struct client	*c;
-	va_list		 aq;
-	u_int		 i;
+	struct window_pane	*wp = ptr;
+	struct client		*c;
+	va_list		 	 aq;
+	u_int		 	 i, oy;
 
-	if (w->flags & WINDOW_HIDDEN)
+	if (wp->window->flags & WINDOW_HIDDEN)
 		return;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (c == NULL || c->session == NULL)
 			continue;
-		if (c->session->curw->window != w)
-			continue;
 
-		va_copy(aq, ap);
-		tty_vwrite_client(c, cmd, aq);
-		va_end(aq);
-	}
-}
+		if (c->session->curw->window == wp->window) {
+			if (wp == wp->window->panes[0])
+				oy = 0;
+			else
+				oy = wp->window->sy / 2;
 
-void
-tty_write_session(void *ptr, enum tty_cmd cmd, ...)
-{
-	va_list	ap;
-
-	va_start(ap, cmd);
-	tty_vwrite_session(ptr, cmd, ap);
-	va_end(ap);
-}
-
-void
-tty_vwrite_session(void *ptr, enum tty_cmd cmd, va_list ap)
-{
-	struct session	*s = ptr;
-	struct client	*c;
-	va_list		 aq;
-	u_int		 i;
-
-	if (s->flags & SESSION_UNATTACHED)
-		return;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session != s)
-			continue;
-
-		va_copy(aq, ap);
-		tty_vwrite_client(c, cmd, aq);
-		va_end(aq);
+			va_copy(aq, ap);
+			tty_vwrite(&c->tty, wp->screen, oy, cmd, aq);
+			va_end(aq);
+		}
 	}
 }
