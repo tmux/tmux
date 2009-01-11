@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.91 2009-01-10 19:37:35 nicm Exp $ */
+/* $Id: tmux.c,v 1.92 2009-01-11 00:48:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,6 +49,10 @@ volatile sig_atomic_t sigterm;
 char		*cfg_file;
 struct options	 global_options;
 struct options	 global_window_options;
+
+int		 server_locked;
+char		*server_password;
+time_t		 server_activity;
 
 int		 debug_level;
 int		 be_quiet;
@@ -170,20 +174,20 @@ int
 main(int argc, char **argv)
 {
 	struct client_ctx	 cctx;
-	struct msg_command_data	 data;
+	struct msg_command_data	 cmddata;
 	struct buffer		*b;
 	struct cmd		*cmd;
 	struct pollfd	 	 pfd;
 	struct hdr	 	 hdr;
 	const char		*shell;
 	struct passwd		*pw;
-	char			*path, *cause, *home;
+	char			*path, *cause, *home, *pass = NULL;
 	char			 rpath[MAXPATHLEN], cwd[MAXPATHLEN];
-	int	 		 n, opt, flags;
+	int	 		 n, opt, flags, unlock, start_server;
 
-	flags = 0;
+	unlock = flags = 0;
 	path = NULL;
-        while ((opt = getopt(argc, argv, "2df:qS:uVv")) != -1) {
+        while ((opt = getopt(argc, argv, "2df:qS:uUVv")) != -1) {
                 switch (opt) {
 		case '2':
 			flags |= IDENTIFY_256COLOURS;
@@ -199,6 +203,9 @@ main(int argc, char **argv)
 			break;
 		case 'u':
 			flags |= IDENTIFY_UTF8;
+			break;
+		case 'U':
+			unlock = 1;
 			break;
 		case 'd':
 			flags |= IDENTIFY_HASDEFAULTS;
@@ -220,36 +227,37 @@ main(int argc, char **argv)
 	siginit();
 
 	options_init(&global_options, NULL);
-	options_set_number(&global_options, "status", 1);
-	options_set_number(&global_options, "status-fg", 0);
-	options_set_number(&global_options, "status-bg", 2);
 	options_set_number(&global_options, "bell-action", BELL_ANY);
-	options_set_number(&global_options, "history-limit", 2000);
+	options_set_number(&global_options, "buffer-limit", 9);
 	options_set_number(&global_options, "display-time", 750);
+	options_set_number(&global_options, "history-limit", 2000);
+	options_set_number(&global_options, "message-bg", 3);
+	options_set_number(&global_options, "message-fg", 0);
 	options_set_number(&global_options, "prefix", META);
+	options_set_number(&global_options, "set-titles", 1);
+	options_set_number(&global_options, "lock-after-time", 1800);
+	options_set_number(&global_options, "status", 1);
+	options_set_number(&global_options, "status-bg", 2);
+	options_set_number(&global_options, "status-fg", 0);
+	options_set_number(&global_options, "status-interval", 15);
+	options_set_number(&global_options, "status-left-length", 10);
+	options_set_number(&global_options, "status-right-length", 40);
 	options_set_string(&global_options, "status-left", "%s", ""); /* ugh */
 	options_set_string(
 	    &global_options, "status-right", "\"#24T\" %%H:%%M %%d-%%b-%%y");
-	options_set_number(&global_options, "status-left-length", 10);
-	options_set_number(&global_options, "status-right-length", 40);
-	options_set_number(&global_options, "status-interval", 15);
-	options_set_number(&global_options, "set-titles", 1);
-	options_set_number(&global_options, "buffer-limit", 9);
-	options_set_number(&global_options, "message-fg", 0);
-	options_set_number(&global_options, "message-bg", 3);
 	options_init(&global_window_options, NULL);
-	options_set_number(&global_window_options, "xterm-keys", 0);
-	options_set_number(&global_window_options, "monitor-activity", 0);
 	options_set_number(&global_window_options, "aggressive-resize", 0);
- 	options_set_number(&global_window_options, "remain-on-exit", 0);
-	options_set_number(&global_window_options, "utf8", 0);
-	options_set_number(&global_window_options, "mode-fg", 0);
-	options_set_number(&global_window_options, "mode-bg", 3);
-	options_set_number(&global_window_options, "mode-keys", MODEKEY_EMACS);
-	options_set_number(&global_window_options, "force-width", 0);
-	options_set_number(&global_window_options, "force-height", 0);
 	options_set_number(&global_window_options, "clock-mode-colour", 4);
 	options_set_number(&global_window_options, "clock-mode-style", 1);
+	options_set_number(&global_window_options, "force-height", 0);
+	options_set_number(&global_window_options, "force-width", 0);
+	options_set_number(&global_window_options, "mode-bg", 3);
+	options_set_number(&global_window_options, "mode-fg", 0);
+	options_set_number(&global_window_options, "mode-keys", MODEKEY_EMACS);
+	options_set_number(&global_window_options, "monitor-activity", 0);
+	options_set_number(&global_window_options, "utf8", 0);
+	options_set_number(&global_window_options, "xterm-keys", 0);
+ 	options_set_number(&global_window_options, "remain-on-exit", 0);
 
 	if (cfg_file == NULL) {
 		home = getenv("HOME");
@@ -311,26 +319,43 @@ main(int argc, char **argv)
 	}
 	options_set_string(&global_options, "default-path", "%s", cwd);
 
-	if (argc == 0) {
-		cmd = xmalloc(sizeof *cmd);
-  		cmd->entry = &cmd_new_session_entry;
-		cmd->entry->init(cmd, 0);
-	} else if ((cmd = cmd_parse(argc, argv, &cause)) == NULL) {
-		log_warnx("%s", cause);
-		exit(1);
+	if (unlock) {
+		if (argc != 0) {
+			log_warnx("can't specify a command when unlocking");
+			exit(1);
+		}
+		cmd = NULL;
+		if ((pass = getpass("Password: ")) == NULL)
+			exit(1);
+		start_server = 0;
+	} else {
+		if (argc == 0) {
+			cmd = xmalloc(sizeof *cmd);
+			cmd->entry = &cmd_new_session_entry;
+			cmd->entry->init(cmd, 0);
+		} else if ((cmd = cmd_parse(argc, argv, &cause)) == NULL) {
+			log_warnx("%s", cause);
+			exit(1);
+		}
+		start_server = cmd->entry->flags & CMD_STARTSERVER;
 	}
-
-	memset(&cctx, 0, sizeof cctx);
-	client_fill_session(&data);
-	if (client_init(
-	    rpath, &cctx, cmd->entry->flags & CMD_STARTSERVER, flags) != 0)
+	
+ 	memset(&cctx, 0, sizeof cctx);
+	if (client_init(rpath, &cctx, start_server, flags) != 0)
 		exit(1);
-	b = buffer_create(BUFSIZ);
-	cmd_send(cmd, b);
-	cmd_free(cmd);
 
-	client_write_server2(&cctx,
-	    MSG_COMMAND, &data, sizeof data, BUFFER_OUT(b), BUFFER_USED(b));
+	b = buffer_create(BUFSIZ);
+	if (unlock) {
+		cmd_send_string(b, pass);
+		client_write_server(
+		    &cctx, MSG_UNLOCK, BUFFER_OUT(b), BUFFER_USED(b));
+	} else {
+		cmd_send(cmd, b);
+		cmd_free(cmd);
+		client_fill_session(&cmddata);
+		client_write_server2(&cctx, MSG_COMMAND,
+		    &cmddata, sizeof cmddata, BUFFER_OUT(b), BUFFER_USED(b));
+	}
 	buffer_destroy(b);
 
 	for (;;) {

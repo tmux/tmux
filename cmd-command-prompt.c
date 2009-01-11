@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.6 2008-09-26 06:45:25 nicm Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.7 2009-01-11 00:48:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,7 +28,7 @@
 
 void	cmd_command_prompt_exec(struct cmd *, struct cmd_ctx *);
 
-void	cmd_command_prompt_callback(void *, char *);
+int	cmd_command_prompt_callback(void *, const char *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
 	"command-prompt", NULL,
@@ -55,14 +55,14 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (c->prompt_string != NULL)
 		return;
 
-	server_set_client_prompt(c, ":", cmd_command_prompt_callback, c);
+	server_set_client_prompt(c, ":", cmd_command_prompt_callback, c, 0);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }
 
-void
-cmd_command_prompt_callback(void *data, char *s)
+int
+cmd_command_prompt_callback(void *data, const char *s)
 {
 	struct client	*c = data;
 	struct cmd	*cmd;
@@ -70,18 +70,18 @@ cmd_command_prompt_callback(void *data, char *s)
 	char		*cause;
 
 	if (s == NULL)
-		return;
+		return (0);
 
 	if (cmd_string_parse(s, &cmd, &cause) != 0) {
 		if (cause == NULL)
-			return;
+			return (0);
 		*cause = toupper((u_char) *cause);
 		server_set_client_message(c, cause);
 		xfree(cause);
-		return;
+		return (0);
 	}
 	if (cmd == NULL)
-		return;
+		return (0);
 
 	ctx.msgdata = NULL;
 	ctx.cursession = c->session;
@@ -94,4 +94,8 @@ cmd_command_prompt_callback(void *data, char *s)
 	ctx.cmdclient = NULL;
 
 	cmd_exec(cmd, &ctx);
+
+	if (c->prompt_callback != (void *) &cmd_command_prompt_callback)
+		return (1);
+	return (0);
 }

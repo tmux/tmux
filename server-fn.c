@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.52 2009-01-10 14:43:43 nicm Exp $ */
+/* $Id: server-fn.c,v 1.53 2009-01-11 00:48:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,6 +23,8 @@
 #include <unistd.h>
 
 #include "tmux.h"
+
+int	server_lock_callback(void *, const char *);
 
 void
 server_set_client_message(struct client *c, const char *msg)
@@ -57,8 +59,8 @@ server_clear_client_message(struct client *c)
 }
 
 void
-server_set_client_prompt(
-    struct client *c, const char *msg, void (*fn)(void *, char *), void *data)
+server_set_client_prompt(struct client *c,
+    const char *msg, int (*fn)(void *, const char *), void *data, int hide)
 {
 	c->prompt_string = xstrdup(msg);
 
@@ -69,6 +71,8 @@ server_set_client_prompt(
 	c->prompt_data = data;
 
 	c->prompt_hindex = 0;
+
+	c->prompt_hidden = hide;
 
 	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_STATUS;
@@ -212,4 +216,63 @@ server_status_window(struct window *w)
 		if (s != NULL && session_has(s, w))
 			server_status_session(s);
 	}
+}
+
+void
+server_lock(void)
+{
+	struct client	*c;
+	u_int		 i;
+
+	if (server_locked)
+		return;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL)
+			continue;
+
+		server_clear_client_prompt(c);
+		server_set_client_prompt(
+		    c, "Password: ", server_lock_callback, c, 1);
+  		server_redraw_client(c);
+	}
+	server_locked = 1;
+}
+
+int
+server_lock_callback(unused void *data, const char *s)
+{
+	return (server_unlock(s));
+}
+
+int
+server_unlock(const char *s)
+{
+	struct client	*c;
+	u_int		 i;
+	char		*out;
+
+	if (!server_locked)
+		return (0);
+
+	if (server_password != NULL) {
+		if (s == NULL)
+			return (-1);
+		out = crypt(s, server_password);
+		if (strcmp(out, server_password) != 0)
+			return (-1);
+	}
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL)
+			continue;
+
+		server_clear_client_prompt(c);
+  		server_redraw_client(c);
+	}
+	server_locked = 0;
+
+	return (0);
 }

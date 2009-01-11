@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.12 2009-01-07 19:52:36 nicm Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.13 2009-01-11 00:48:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,6 +70,6 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 			paste_free_index(&s->buffers, data->buffer);
 	}
 
-	if (ctx->cmdclient != NULL)
+ 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

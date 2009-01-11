@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.71 2009-01-10 19:35:39 nicm Exp $ */
+/* $Id: cmd.c,v 1.72 2009-01-11 00:48:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,6 +45,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_list_keys_entry,
 	&cmd_list_sessions_entry,
 	&cmd_list_windows_entry,
+	&cmd_lock_server_entry,
 	&cmd_move_window_entry,
 	&cmd_new_session_entry,
 	&cmd_new_window_entry,
@@ -63,6 +64,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_server_info_entry,
 	&cmd_set_buffer_entry,
 	&cmd_set_option_entry,
+	&cmd_set_password_entry,
 	&cmd_set_window_option_entry,
 	&cmd_show_buffer_entry,
 	&cmd_show_options_entry,
@@ -159,6 +161,10 @@ usage:
 void
 cmd_exec(struct cmd *cmd, struct cmd_ctx *ctx)
 {
+	if (server_locked) {
+		ctx->error(ctx, "server is locked");
+		return;
+	}
 	cmd->entry->exec(cmd, ctx);
 }
 

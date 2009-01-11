@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.220 2009-01-10 22:28:40 nicm Exp $ */
+/* $Id: tmux.h,v 1.221 2009-01-11 00:48:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION -4
+#define PROTOCOL_VERSION -6
 
 /* Shut up gcc warnings about empty if bodies. */
 #define RB_AUGMENT(x) do {} while (0)
@@ -361,15 +361,16 @@ enum tty_cmd {
 /* Message codes. */
 enum hdrtype {
 	MSG_COMMAND,
-	MSG_ERROR,
-	MSG_PRINT,
-	MSG_EXIT,
-	MSG_EXITING,
-	MSG_EXITED,
 	MSG_DETACH,
+	MSG_ERROR,
+	MSG_EXIT,
+	MSG_EXITED,
+	MSG_EXITING,
 	MSG_IDENTIFY,
+	MSG_PRINT,
 	MSG_READY,
 	MSG_RESIZE,
+	MSG_UNLOCK,
 };
 
 /* Message header structure. */
@@ -754,8 +755,9 @@ struct client {
 	char		*prompt_string;
 	char		*prompt_buffer;
 	size_t		 prompt_index;
-	void		 (*prompt_callback)(void *, char *);
+	int		 (*prompt_callback)(void *, const char *);
 	void		*prompt_data;
+	int		 prompt_hidden;
 	u_int		 prompt_hindex;
 	ARRAY_DECL(, char *) prompt_hdata;
 
@@ -872,7 +874,7 @@ struct set_option_entry {
 };
 extern const struct set_option_entry set_option_table[];
 extern const struct set_option_entry set_window_option_table[];
-#define NSETOPTION 18
+#define NSETOPTION 19
 #define NSETWINDOWOPTION 12
 
 /* Edit keys. */
@@ -938,6 +940,9 @@ extern volatile sig_atomic_t sigterm;
 extern struct options global_options;
 extern struct options global_window_options;
 extern char	*cfg_file;
+extern int	 server_locked;
+extern char	*server_password;
+extern time_t	 server_activity;
 extern int	 debug_level;
 extern int	 be_quiet;
 extern time_t	 start_time;
@@ -1029,6 +1034,9 @@ int		 paste_free_index(struct paste_stack *, u_int);
 void		 paste_add(struct paste_stack *, const char *, u_int);
 int		 paste_replace(struct paste_stack *, u_int, const char *);
 
+/* clock.c */
+void		 clock_draw(struct screen_write_ctx *, u_int, int);
+
 /* arg.c */
 struct client 	*arg_parse_client(const char *);
 struct session 	*arg_parse_session(const char *);
@@ -1067,6 +1075,7 @@ extern const struct cmd_entry cmd_list_commands_entry;
 extern const struct cmd_entry cmd_list_keys_entry;
 extern const struct cmd_entry cmd_list_sessions_entry;
 extern const struct cmd_entry cmd_list_windows_entry;
+extern const struct cmd_entry cmd_lock_server_entry;
 extern const struct cmd_entry cmd_move_window_entry;
 extern const struct cmd_entry cmd_new_session_entry;
 extern const struct cmd_entry cmd_new_window_entry;
@@ -1078,13 +1087,14 @@ extern const struct cmd_entry cmd_rename_session_entry;
 extern const struct cmd_entry cmd_rename_window_entry;
 extern const struct cmd_entry cmd_respawn_window_entry;
 extern const struct cmd_entry cmd_scroll_mode_entry;
+extern const struct cmd_entry cmd_select_prompt_entry;
 extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_keys_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
 extern const struct cmd_entry cmd_server_info_entry;
-extern const struct cmd_entry cmd_select_prompt_entry;
 extern const struct cmd_entry cmd_set_buffer_entry;
 extern const struct cmd_entry cmd_set_option_entry;
+extern const struct cmd_entry cmd_set_password_entry;
 extern const struct cmd_entry cmd_set_window_option_entry;
 extern const struct cmd_entry cmd_show_buffer_entry;
 extern const struct cmd_entry cmd_show_options_entry;
@@ -1183,8 +1193,8 @@ int	 server_msg_dispatch(struct client *);
 /* server-fn.c */
 void	 server_set_client_message(struct client *, const char *);
 void	 server_clear_client_message(struct client *);
-void	 server_set_client_prompt(
-	     struct client *, const char *, void (*)(void *, char *), void *);
+void	 server_set_client_prompt(struct client *,
+	     const char *, int (*)(void *, const char *), void *, int);
 void	 server_clear_client_prompt(struct client *);
 struct session *server_extract_session(
     	     struct msg_command_data *, char *, char **);
@@ -1200,6 +1210,8 @@ void	 server_redraw_session(struct session *);
 void	 server_status_session(struct session *);
 void	 server_redraw_window(struct window *);
 void	 server_status_window(struct window *);
+void	 server_lock(void);
+int	 server_unlock(const char *);
 
 /* status.c */
 void	 status_redraw(struct client *);

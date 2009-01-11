@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.50 2009-01-10 19:37:35 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.51 2009-01-11 00:48:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,6 +52,7 @@ const struct set_option_entry set_option_table[NSETOPTION] = {
 	{ "default-path", SET_OPTION_STRING, 0, 0, NULL },
 	{ "display-time", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "history-limit", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
+	{ "lock-after", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "message-bg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "message-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "prefix", SET_OPTION_KEY, 0, 0, NULL },

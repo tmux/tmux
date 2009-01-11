@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.48 2009-01-10 19:40:01 nicm Exp $
+# $Id: GNUmakefile,v 1.49 2009-01-11 00:48:42 nicm Exp $
 
 .PHONY: clean
 
@@ -32,9 +32,9 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       cmd-show-buffer.c cmd-list-buffers.c cmd-delete-buffer.c \
       cmd-list-commands.c cmd-move-window.c cmd-select-prompt.c \
       cmd-respawn-window.c cmd-source-file.c cmd-server-info.c \
-      cmd-clock-mode.c \
+      cmd-clock-mode.c cmd-lock-server.c cmd-set-password.c \
       window-clock.c window-scroll.c window-more.c window-copy.c \
-      options.c options-cmd.c paste.c colour.c utf8.c \
+      options.c options-cmd.c paste.c colour.c utf8.c clock.c \
       tty.c tty-term.c tty-keys.c tty-write.c
 
 CC?= gcc
@@ -73,7 +73,7 @@ endif
 ifeq ($(shell uname),SunOS)
 INCDIRS+= -Icompat -I/usr/local/include/ncurses
 SRCS+= compat/strtonum.c compat/daemon.c compat/forkpty-sunos.c \
-	compat/asprintf.c compat/fgetln.c
+	compat/asprintf.c compat/fgetln.c compat/vis.c
 CFLAGS+= -DNO_STRTONUM -DNO_TREE_H -DNO_PATHS_H -DNO_SETPROCTITLE \
 	-DNO_DAEMON -DNO_FORKPTY -DNO_PROGNAME -DNO_ASPRINTF -DNO_FGETLN
 LDFLAGS+= -L/usr/local/lib
@@ -95,7 +95,7 @@ CFLAGS+= $(shell getconf LFS_CFLAGS) -D_GNU_SOURCE \
          -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM -DNO_SETPROCTITLE \
          -DNO_QUEUE_H -DNO_TREE_H -DUSE_PTY_H -DNO_FGETLN \
 	 -DBROKEN_GETOPT -std=c99
-LIBS+= -lrt -lutil
+LIBS+= -lcrypt -lutil
 endif
 
 OBJS= $(patsubst %.c,%.o,$(SRCS))

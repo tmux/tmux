@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.58 2009-01-10 01:51:22 nicm Exp $ */
+/* $Id: status.c,v 1.59 2009-01-11 00:48:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -407,7 +407,7 @@ status_prompt_redraw(struct client *c)
 {
 	struct screen_redraw_ctx	ctx;
 	struct session		       *s = c->session;
-	size_t			        i, xx, yy, left, size, offset;
+	size_t			        i, xx, yy, left, size, offset, n;
 	char				ch;
 	struct grid_cell		gc;
 
@@ -439,8 +439,16 @@ status_prompt_redraw(struct client *c)
 				left--;
 			size = left;
 		}
-		screen_redraw_puts(
-		    &ctx, &gc, "%.*s", (int) left, c->prompt_buffer + offset);
+		if (c->prompt_hidden) {
+			n = strlen(c->prompt_buffer);
+			if (n > left)
+				n = left;
+			for (i = 0; i < n; i++)
+				screen_redraw_putc(&ctx, &gc, '*');
+		} else {
+			screen_redraw_puts(&ctx, &gc,
+			    "%.*s", (int) left, c->prompt_buffer + offset);
+		}
 
 		for (i = xx + size; i < c->sx; i++) {
 			screen_redraw_putc(&ctx, &gc, ' ');
@@ -601,15 +609,15 @@ status_prompt_key(struct client *c, int key)
  	case '\r':	/* enter */
 		if (*c->prompt_buffer != '\0') {
 			status_prompt_add_history(c);
-
-			c->prompt_callback(c->prompt_data, c->prompt_buffer);
-			server_clear_client_prompt(c);
+			if (c->prompt_callback(
+			    c->prompt_data, c->prompt_buffer) == 0)
+				server_clear_client_prompt(c);
 			break;
 		}
 		/* FALLTHROUGH */
 	case '\033':	/* escape */
-		c->prompt_callback(c->prompt_data, NULL);
-		server_clear_client_prompt(c);
+		if (c->prompt_callback(c->prompt_data, NULL) == 0)
+			server_clear_client_prompt(c);
 		break;
 	default:
 		if (key < 32)

@@ -64,8 +64,9 @@
 - document server-info
 - document window options changes
 - document clock-mode
-- automatic lock/screensaver after $time inactivity (switch all windows into
-  clock mode/blank)
-- a key binding to display the status line when it is turned off
+- document password/locking commands
+- document lock-after-time
+- automatic lock/screensaver after $time inactivity
+- a key binding to display the status line briefly when it is turned off
 - FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw
 - clone session command

@@ -1,4 +1,4 @@
-/* $Id: cmd-select-prompt.c,v 1.4 2009-01-05 11:04:06 nicm Exp $ */
+/* $Id: cmd-select-prompt.c,v 1.5 2009-01-11 00:48:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,7 +28,7 @@
 
 void	cmd_select_prompt_exec(struct cmd *, struct cmd_ctx *);
 
-void	cmd_select_prompt_callback(void *, char *);
+int	cmd_select_prompt_callback(void *, const char *);
 
 const struct cmd_entry cmd_select_prompt_entry = {
 	"select-prompt", NULL,
@@ -55,14 +55,14 @@ cmd_select_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (c->prompt_string != NULL)
 		return;
 
-	server_set_client_prompt(c, "index ", cmd_select_prompt_callback, c);
+	server_set_client_prompt(c, "index ", cmd_select_prompt_callback, c, 0);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }
 
-void
-cmd_select_prompt_callback(void *data, char *s)
+int
+cmd_select_prompt_callback(void *data, const char *s)
 {
 	struct client	*c = data;
 	const char	*errstr;
@@ -70,23 +70,25 @@ cmd_select_prompt_callback(void *data, char *s)
 	u_int		 idx;
 
 	if (s == NULL)
-		return;
+		return (0);
 
 	idx = strtonum(s, 0, UINT_MAX, &errstr);
 	if (errstr != NULL) {
 		xsnprintf(msg, sizeof msg, "Index %s: %s", errstr, s);
 		server_set_client_message(c, msg);
-		return;
+		return (0);
 	}
 
 	if (winlink_find_by_index(&c->session->windows, idx) == NULL) {
 		xsnprintf(msg, sizeof msg,
 		    "Window not found: %s:%d", c->session->name, idx);
 		server_set_client_message(c, msg);
-		return;
+		return (0);
 	}
 
 	if (session_select(c->session, idx) == 0)
 		server_redraw_session(c->session);
 	recalculate_sizes();
+
+	return (0);
 }

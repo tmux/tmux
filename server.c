@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.93 2009-01-10 19:37:35 nicm Exp $ */
+/* $Id: server.c,v 1.94 2009-01-11 00:48:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,6 +53,8 @@ void		 server_handle_window(struct window *);
 void		 server_lost_client(struct client *);
 void	 	 server_lost_window(struct window *);
 void		 server_check_redraw(struct client *);
+void		 server_do_redraw_client(struct client *);
+void		 server_do_redraw_locked(struct client *);
 void		 server_check_timers(struct client *);
 void		 server_second_timers(void);
 int		 server_update_socket(const char *);
@@ -101,13 +103,17 @@ server_start(const char *path)
 	 * Must daemonise before loading configuration as the PID changes so
 	 * $TMUX would be wrong for sessions created in the config file.
 	 */
-	if (daemon(0, 1) != 0)
+	if (daemon(1, 1) != 0)
 		fatal("daemon failed");
 
 	ARRAY_INIT(&windows);
 	ARRAY_INIT(&clients);
 	ARRAY_INIT(&sessions);
 	key_bindings_init();
+
+	server_locked = 0;
+	server_password = NULL;
+	server_activity = time(NULL);
 
 	if (cfg_file != NULL && load_cfg(cfg_file, &cause) != 0) {
 		log_warnx("%s", cause);
@@ -121,7 +127,7 @@ server_start(const char *path)
 	log_debug("server started, pid %ld", (long) getpid());
 	start_time = time(NULL);
 	socket_path = path;
-
+	
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
 	size = strlcpy(sa.sun_path, path, sizeof sa.sun_path);
@@ -215,7 +221,7 @@ server_main(const char *srv_path, int srv_fd)
 		}
 		pfd++;
 
-		/* Call seconds-based timers. */
+		/* Call second-based timers. */
 		now = time(NULL);
 		if (now != last) {
 			last = now;
@@ -311,13 +317,9 @@ server_handle_windows(struct pollfd **pfd)
 void
 server_check_redraw(struct client *c)
 {
-	struct session		       *s;
-	struct screen_redraw_ctx	ctx;
-	struct screen			screen;
-	struct grid_cell		gc;
-	u_int				xx, yy, sx, sy;
-	char			       *title;
-	int				flags;
+	struct session	*s;
+	char		*title;
+	int		 flags;
 
 	if (c == NULL || c->session == NULL)
 		return;
@@ -336,36 +338,11 @@ server_check_redraw(struct client *c)
 		}
 	}
 
-	xx = c->sx;
-	yy = c->sy - 1;
 	if (c->flags & CLIENT_REDRAW) {
-		sx = screen_size_x(s->curw->window->screen);
-		sy = screen_size_y(s->curw->window->screen);
-		if (sx < xx || sy < yy) {
-			/*
-			 * Fake up a blank(ish) screen and use it to draw the
-			 * empty regions. NOTE: because this uses
-			 * tty_write_client but doesn't write the client's
-			 * screen, this can't use anything which relies on
-			 * cursor position.
-			 */
-			screen_init(&screen, xx, yy, 0);
-			screen_redraw_start(&ctx, &screen, tty_write_client, c);
-			if (sx < xx)
-				screen_redraw_columns(&ctx, sx, xx - sx);
-			if (sy < yy)  {
-				memcpy(&gc, &grid_default_cell, sizeof gc);
-				gc.data = '-';
-				grid_view_fill(screen.grid, &gc, 0, sy, xx, 1);
-				screen_redraw_lines(&ctx, sy, yy - sy);
-			}
-			screen_redraw_stop(&ctx);
-			screen_free(&screen);
-		}
-
-		screen_redraw_start_client(&ctx, c);
-		screen_redraw_lines(&ctx, 0, screen_size_y(ctx.s));
-		screen_redraw_stop(&ctx);
+		if (server_locked)
+			server_do_redraw_locked(c);
+		else
+			server_do_redraw_client(c);
 
 		c->flags |= CLIENT_STATUS;
 	}
@@ -382,6 +359,76 @@ server_check_redraw(struct client *c)
 	c->tty.flags |= flags;
 
 	c->flags &= ~(CLIENT_REDRAW|CLIENT_STATUS);
+}
+
+/* Redraw client normally. */
+void
+server_do_redraw_client(struct client *c)
+{
+	struct session		       *s = c->session;
+	struct screen_redraw_ctx	ctx;
+	struct screen			screen;
+	struct grid_cell		gc;
+	u_int				xx, yy, sx, sy;
+
+	xx = c->sx;
+	yy = c->sy - 1;
+
+	sx = screen_size_x(s->curw->window->screen);
+	sy = screen_size_y(s->curw->window->screen);
+	
+	if (sx < xx || sy < yy) {
+		/*
+		 * Fake up a blank(ish) screen and use it to draw the empty
+		 * regions. NOTE: because this uses tty_write_client but
+		 * doesn't write the client's screen, this can't use anything
+		 * which relies on cursor position.
+		 */
+		
+		screen_init(&screen, xx, yy, 0);
+		screen_redraw_start(&ctx, &screen, tty_write_client, c);
+		if (sx < xx)
+			screen_redraw_columns(&ctx, sx, xx - sx);
+		if (sy < yy)  {
+			memcpy(&gc, &grid_default_cell, sizeof gc);
+			gc.data = '-';
+			grid_view_fill(screen.grid, &gc, 0, sy, xx, 1);
+			screen_redraw_lines(&ctx, sy, yy - sy);
+		}
+		screen_redraw_stop(&ctx);
+		screen_free(&screen);
+	}
+	
+	screen_redraw_start_client(&ctx, c);
+	screen_redraw_lines(&ctx, 0, screen_size_y(ctx.s));
+	screen_redraw_stop(&ctx);
+}
+
+/* Redraw client when locked. */
+void
+server_do_redraw_locked(struct client *c)
+{
+	struct session		       *s = c->session;
+	struct window		       *w = s->curw->window;
+	struct screen_write_ctx		ctx;
+	struct screen			screen;
+	u_int				colour, xx, yy;
+	int    				style;
+
+	xx = c->sx;
+	yy = c->sy - 1;
+	if (xx == 0 || yy == 0)
+		return;
+	colour = options_get_number(&w->options, "clock-mode-colour");
+	style = options_get_number(&w->options, "clock-mode-style");
+	
+	screen_init(&screen, xx, yy, 0);
+
+	screen_write_start(&ctx, &screen, tty_write_client, c);
+	clock_draw(&ctx, colour, style);
+	screen_write_stop(&ctx);
+
+	screen_free(&screen);
 }
 
 /* Check for timers on client. */
@@ -546,11 +593,15 @@ server_handle_client(struct client *c)
 
 	prefix = options_get_number(&c->session->options, "prefix");
 	while (tty_keys_next(&c->tty, &key) == 0) {
+		server_activity = time(NULL);
+
 		server_clear_client_message(c);
 		if (c->prompt_string != NULL) {
 			status_prompt_key(c, key);
 			continue;
 		}
+		if (server_locked)
+			continue;
 
 		if (c->flags & CLIENT_PREFIX) {
 			key_bindings_dispatch(key, c);
@@ -708,12 +759,35 @@ server_second_timers(void)
 {
 	struct window	*w;
 	u_int		 i;
+	int		 xtimeout;
+	struct tm	 now, then;
+	static time_t	 last_t = 0;
+	time_t		 t;
+
+	t = time(NULL);
+	xtimeout = options_get_number(&global_options, "lock-after-time");
+	if (xtimeout > 0 && t > server_activity + xtimeout)
+		server_lock();
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);
 		if (w->mode != NULL && w->mode->timer != NULL)
 			w->mode->timer(w);
 	}
+
+	gmtime_r(&t, &now);
+	gmtime_r(&last_t, &then);
+	if (now.tm_min == then.tm_min)
+		return;
+	last_t = t;
+
+	/* If locked, redraw all clients. */
+	if (server_locked) {
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			if (ARRAY_ITEM(&clients, i) != NULL)
+				server_redraw_client(ARRAY_ITEM(&clients, i));
+		}
+	}	
 }
 
 /* Update socket execute permissions based on whether sessions are attached. */

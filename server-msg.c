@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.55 2009-01-10 19:37:35 nicm Exp $ */
+/* $Id: server-msg.c,v 1.56 2009-01-11 00:48:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,6 +29,7 @@ int	server_msg_fn_command(struct hdr *, struct client *);
 int	server_msg_fn_identify(struct hdr *, struct client *);
 int	server_msg_fn_resize(struct hdr *, struct client *);
 int	server_msg_fn_exiting(struct hdr *, struct client *);
+int	server_msg_fn_unlock(struct hdr *, struct client *);
 
 void printflike2 server_msg_fn_command_error(
     	    struct cmd_ctx *, const char *, ...);
@@ -45,7 +46,8 @@ const struct server_msg server_msg_table[] = {
 	{ MSG_IDENTIFY, server_msg_fn_identify },
 	{ MSG_COMMAND, server_msg_fn_command },
 	{ MSG_RESIZE, server_msg_fn_resize },
-	{ MSG_EXITING, server_msg_fn_exiting }
+	{ MSG_EXITING, server_msg_fn_exiting },
+	{ MSG_UNLOCK, server_msg_fn_unlock }
 };
 
 int
@@ -135,6 +137,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 
 	cmd = cmd_recv(c->in);
 	log_debug("got command %s from client %d", cmd->entry->name, c->fd);
+	server_activity = time(NULL);
 
 	ctx.error = server_msg_fn_command_error;
 	ctx.print = server_msg_fn_command_print;
@@ -241,6 +244,29 @@ server_msg_fn_exiting(struct hdr *hdr, struct client *c)
 	tty_close(&c->tty);
 
 	server_write_client(c, MSG_EXITED, NULL, 0);
+
+	return (0);
+}
+
+int
+server_msg_fn_unlock(struct hdr *hdr, struct client *c)
+{
+        char	*pass;
+
+	if (hdr->size == 0)
+		fatalx("bad MSG_UNLOCK size");
+	pass = cmd_recv_string(c->in);
+
+	log_debug("unlock msg from client");
+
+	if (server_unlock(pass) != 0) {
+#define MSG "bad password"
+		server_write_client(c, MSG_ERROR, MSG, (sizeof MSG) - 1);
+		return (0);
+#undef MSG
+	}
+
+	server_write_client(c, MSG_EXIT, NULL, 0);
 
 	return (0);
 }
