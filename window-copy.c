@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.38 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: window-copy.c,v 1.39 2009-01-12 00:52:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -401,6 +401,11 @@ window_copy_copy_selection(struct window_pane *wp, struct client *c)
 		xx = window_copy_find_length(wp, sy);
 		window_copy_copy_line(wp, &buf, &off, sy, sx, xx);
 		if (ey - sy > 1) {
+			/*
+			 * XXX gcc -O2 completely screws this up and either
+			 * causes a segfault or exits the loop after one
+			 * iteration.
+			 */
 			for (i = sy + 1; i < ey - 1; i++) {
 				xx = window_copy_find_length(wp, i);
 				window_copy_copy_line(wp, &buf, &off, i, 0, xx);

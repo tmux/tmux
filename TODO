@@ -100,3 +100,4 @@
        bind m command-prompt 'split "man %%"'
        bind r command-prompt 'renamew "%%"'
   which then asks for a string, substitutes %% in command and executes it
+- fix rxvt cursor fg issue (text under cursor has non-white fg)

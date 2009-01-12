@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.88 2009-01-11 23:31:46 nicm Exp $
+# $Id: Makefile,v 1.89 2009-01-12 00:52:37 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -44,7 +44,7 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
 
 CC?= cc
 INCDIRS+= -I. -I- -I/usr/local/include
-CFLAGS+= -DMETA="'${META}'"
+CFLAGS+= -O0 -DMETA="'${META}'"
 .ifdef PROFILE
 # Don't use ccache
 CC= /usr/bin/gcc
