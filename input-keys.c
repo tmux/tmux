@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.23 2009-01-12 22:48:00 nicm Exp $ */
+/* $Id: input-keys.c,v 1.24 2009-01-12 22:53:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,16 +58,6 @@ struct input_key_ent input_keys[] = {
 	{ KEYC_BTAB,   "\033[Z",   INPUTKEY_CTRL },
 
 	/* Arrow keys. Cursor versions must come first. */
-	{ KEYC_UP,     "\033OA",   INPUTKEY_CURSOR },
-	{ KEYC_DOWN,   "\033OB",   INPUTKEY_CURSOR },
-	{ KEYC_RIGHT,  "\033OC",   INPUTKEY_CURSOR },
-	{ KEYC_LEFT,   "\033OD",   INPUTKEY_CURSOR },
-
-	{ KEYC_UP,     "\033[A",   0 },
-	{ KEYC_DOWN,   "\033[B",   0 },
-	{ KEYC_RIGHT,  "\033[C",   0 },
-	{ KEYC_LEFT,   "\033[D",   0 },
-
 	{ KEYC_ADDCTL(KEYC_UP),    "\033Oa", 0 },
 	{ KEYC_ADDCTL(KEYC_DOWN),  "\033Ob", 0 },
 	{ KEYC_ADDCTL(KEYC_RIGHT), "\033Oc", 0 },
@@ -77,6 +67,16 @@ struct input_key_ent input_keys[] = {
 	{ KEYC_ADDSFT(KEYC_DOWN),  "\033[b", 0 },
 	{ KEYC_ADDSFT(KEYC_RIGHT), "\033[c", 0 },
 	{ KEYC_ADDSFT(KEYC_LEFT),  "\033[d", 0 },
+
+	{ KEYC_UP,     "\033OA",   INPUTKEY_CURSOR },
+	{ KEYC_DOWN,   "\033OB",   INPUTKEY_CURSOR },
+	{ KEYC_RIGHT,  "\033OC",   INPUTKEY_CURSOR },
+	{ KEYC_LEFT,   "\033OD",   INPUTKEY_CURSOR },
+
+	{ KEYC_UP,     "\033[A",   0 },
+	{ KEYC_DOWN,   "\033[B",   0 },
+	{ KEYC_RIGHT,  "\033[C",   0 },
+	{ KEYC_LEFT,   "\033[D",   0 },
 	    
 	/* Keypad keys. Keypad versions must come first. */
 	{ KEYC_KP0_1,  "/", INPUTKEY_KEYPAD },
