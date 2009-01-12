@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.225 2009-01-12 18:22:47 nicm Exp $ */
+/* $Id: tmux.h,v 1.226 2009-01-12 19:23:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -852,6 +852,13 @@ struct cmd_option_data {
 	char	*value;
 };
 
+struct cmd_pane_data {
+	int	 flags;
+	char	*target;
+	char	*arg;
+	int	 pane;
+};
+
 /* Key binding. */
 struct key_binding {
 	int		 key;
@@ -1094,6 +1101,8 @@ extern const struct cmd_entry cmd_previous_window_entry;
 extern const struct cmd_entry cmd_refresh_client_entry;
 extern const struct cmd_entry cmd_rename_session_entry;
 extern const struct cmd_entry cmd_rename_window_entry;
+extern const struct cmd_entry cmd_resize_pane_down_entry;
+extern const struct cmd_entry cmd_resize_pane_up_entry;
 extern const struct cmd_entry cmd_respawn_window_entry;
 extern const struct cmd_entry cmd_save_buffer_entry;
 extern const struct cmd_entry cmd_scroll_mode_entry;
@@ -1162,6 +1171,16 @@ void	cmd_option_send(struct cmd *, struct buffer *);
 void	cmd_option_recv(struct cmd *, struct buffer *);
 void	cmd_option_free(struct cmd *);
 void	cmd_option_print(struct cmd *, char *, size_t);
+#define CMD_PANE_WINDOW_USAGE "[-t target-window] [-p pane-index]"
+#define CMD_PANE_SESSION_USAGE "[-t target-session] [-p pane-index]"
+#define CMD_PANE_CLIENT_USAGE "[-t target-client] [-p pane-index]"
+void	cmd_pane_init(struct cmd *, int);
+int	cmd_pane_parse(struct cmd *, int, char **, char **);
+void	cmd_pane_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_pane_send(struct cmd *, struct buffer *);
+void	cmd_pane_recv(struct cmd *, struct buffer *);
+void	cmd_pane_free(struct cmd *);
+void	cmd_pane_print(struct cmd *, char *, size_t);
 
 /* client.c */
 int	 client_init(const char *, struct client_ctx *, int, int);

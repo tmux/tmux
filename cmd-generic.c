@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.19 2009-01-11 23:14:57 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.20 2009-01-12 19:23:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -544,4 +544,117 @@ cmd_option_print(struct cmd *self, char *buf, size_t len)
 		off += xsnprintf(buf + off, len - off, " %s", data->option);
  	if (off < len && data->value != NULL)
 		off += xsnprintf(buf + off, len - off, " %s", data->value);
+}
+
+void
+cmd_pane_init(struct cmd *self, unused int key)
+{
+	struct cmd_pane_data	*data;
+
+	self->data = data = xmalloc(sizeof *data);
+	data->flags = 0;
+	data->target = NULL;
+	data->arg = NULL;
+	data->pane = -1;
+}
+
+int
+cmd_pane_parse(struct cmd *self, int argc, char **argv, char **cause)
+{
+	struct cmd_pane_data	*data;
+	int			 opt, n;
+	const char		*errstr;
+
+	/* Don't use the entry version since it may be dependent on key. */
+	cmd_pane_init(self, 0);
+	data = self->data;
+
+	while ((opt = getopt(argc, argv, CMD_FLAGS "p:t:")) != -1) {
+		switch (cmd_do_flags(opt, self->entry->flags, &data->flags)) {
+		case -1:
+			goto usage;
+		case 0:
+			continue;
+		}
+		switch (opt) {
+		case 'p':
+			if (data->pane == -1) {
+				n = strtonum(optarg, 0, INT_MAX, &errstr);
+				if (errstr != NULL) {
+					xasprintf(cause, "pane %s", errstr);
+					goto error;
+				}
+				data->pane = n;
+			}			
+			break;
+		case 't':
+			if (data->target == NULL)
+				data->target = xstrdup(optarg);
+			break;
+		default:
+			goto usage;
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (cmd_fill_argument(self->entry->flags, &data->arg, argc, argv) != 0)
+		goto usage;
+	return (0);
+
+usage:
+	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
+
+error:
+	self->entry->free(self);
+	return (-1);
+}
+
+void
+cmd_pane_send(struct cmd *self, struct buffer *b)
+{
+	struct cmd_pane_data	*data = self->data;
+
+	buffer_write(b, data, sizeof *data);
+	cmd_send_string(b, data->target);
+	cmd_send_string(b, data->arg);
+}
+
+void
+cmd_pane_recv(struct cmd *self, struct buffer *b)
+{
+	struct cmd_pane_data	*data;
+
+	self->data = data = xmalloc(sizeof *data);
+	buffer_read(b, data, sizeof *data);
+	data->target = cmd_recv_string(b);
+	data->arg = cmd_recv_string(b);
+}
+
+void
+cmd_pane_free(struct cmd *self)
+{
+	struct cmd_pane_data	*data = self->data;
+
+	if (data->target != NULL)
+		xfree(data->target);
+	if (data->arg != NULL)
+		xfree(data->arg);
+	xfree(data);
+}
+
+void
+cmd_pane_print(struct cmd *self, char *buf, size_t len)
+{
+	struct cmd_pane_data	*data = self->data;
+	size_t			 off = 0;
+
+	off += xsnprintf(buf, len, "%s", self->entry->name);
+	if (data == NULL)
+		return;
+	off += cmd_print_flags(buf, len, off, data->flags);
+	if (off < len && data->target != NULL)
+		off += xsnprintf(buf + off, len - off, " -t %s", data->target);
+ 	if (off < len && data->arg != NULL)
+		off += xsnprintf(buf + off, len - off, " %s", data->arg);
 }

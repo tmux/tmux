@@ -101,3 +101,6 @@
        bind r command-prompt 'renamew "%%"'
   which then asks for a string, substitutes %% in command and executes it
 - fix rxvt cursor fg issue (text under cursor has non-white fg)
+- should have a repeat-command delay - if you execute a key binding then
+  press another key within the delay time it is treated as if it was anoth
+  key binding (ie the ^A prefix is implied)
