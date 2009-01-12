@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.57 2009-01-11 23:14:57 nicm Exp $
+.\" $Id: tmux.1,v 1.58 2009-01-12 21:23:58 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 2dquVv
+.Op Fl 2dqUuVv
 .Op Fl f Ar file
 .Op Fl S Ar socket-path
 .Op Ar command Op Ar flags
@@ -78,6 +78,8 @@ where
 .Em UID
 is the uid of the user who invoked
 .Nm .
+.It Fl U
+Unlock the server.
 .It Fl u
 Intruct
 .Nm
@@ -172,6 +174,8 @@ Change to next window in the current session.
 Change to previous window in the current session.
 .It Ql l
 Move to last (previously selected) window in the current session.
+.It Ql t
+Display a large clock.
 .It Ql \&?
 List current key bindings.
 .El
@@ -356,6 +360,10 @@ or
 for ctrl keys, or
 .Ql M-
 for alt (meta) keys.
+.It Xo Ic clock-mode
+.Op Fl t Ar target-window
+.Xc
+Display a large clock.
 .It Xo Ic command-prompt
 .Op Fl t Ar target-client
 .Xc
@@ -463,6 +471,10 @@ List all sessions managed by the server.
 .D1 (alias: Ic lsw )
 List windows in the current session or in
 .Ar target-session .
+.It Xo Ic lock-server
+.Xc
+.D1 (alias: Ic lock )
+Lock the server until a password is entered.
 .It Xo Ic move-window
 .Op Fl d
 .Op Fl s Ar src-window
@@ -561,7 +573,7 @@ Rename the current window, or the window at
 .Ar target-window
 if specifed, to
 .Ar new-name .
-.It Xo Ic respawn window
+.It Xo Ic respawn-window
 .Op Fl k
 .Op Fl t Ar target-window
 .Op command
@@ -623,6 +635,10 @@ All arguments are sent sequentially from first to last.
 .Op Fl t Ar target-window
 .Xc
 Send the prefix key to a window as if it was pressed.
+.It Xo Ic server-info
+.Xc
+.D1 (alias: Ic info )
+Show server information and terminal details.
 .It Xo Ic set-buffer
 .Op Fl b Ar buffer-index
 .Op Fl t Ar target-session
@@ -669,6 +685,11 @@ The default is
 Set the maximum number of lines held in window history.
 This setting applies only to new windows - existing window histories are not
 resized and retain the limit at the point they were created.
+.It Ic lock-after-time Ar number
+Lock the server after
+.Ar number
+seconds of inactivity.
+The default is 1800 seconds (30 minutes). 
 .It Ic message-bg Ar colour
 Set status line message background colour, where
 .Ar colour
@@ -752,6 +773,20 @@ Set the maximum
 of the right component of the status bar.
 The default is 40.
 .El
+.It Xo Ic set-password
+.Op Fl c
+.Ar password
+.Xc
+.D1 (alias: Ic pass )
+Set the server password. If the
+.Fl c
+option is given, a pre-encrypted password may be specified.
+By default, the password is blank, thus any entered password will be accepted
+when unlocking the server (see the
+.Ic lock-server
+command).
+To prevent variable expansion when an encrypted password is read from a
+configuration file, enclose it in single quotes (').
 .It Xo Ic set-window-option
 .Op Fl t Ar target-window
 .Ar option Ar value
@@ -771,6 +806,12 @@ current window, rather than the smallest session to which it is attached.
 The window may resize when the current window is changed on another sessions;
 this option is good for full-screen programs which support SIGWINCH and poor for
 interactive programs such as shells.
+.It Ic clock-mode-colour Ar colour
+Set clock colour.
+.It Xo Ic clock-mode-style
+.Op Ic 12 | Ic 24
+.Xc
+Set clock hour format.
 .It Ic force-height Ar height
 .It Ic force-width Ar width
 Prevent
