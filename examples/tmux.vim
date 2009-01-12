@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: tmux(1) configuration file
 " Maintainer: Tiago Cunha <me@tiagocunha.org>
-" Last Change: $Date: 2008-12-20 09:09:57 $
+" Last Change: $Date: 2009-01-12 21:53:18 $
 
 if version < 600
 	syntax clear
@@ -15,29 +15,32 @@ syntax case match
 syn keyword tmuxAction	any current none
 syn keyword tmuxBoolean	off on
 
-syn keyword tmuxCmds attach[-session] bind[-key] command-prompt copy-mode
-syn keyword tmuxCmds delete-buffer deleteb detach[-client] has[-session]
-syn keyword tmuxCmds kill-server kill-session kill-window killw last[-window]
-syn keyword tmuxCmds link-window linkw list-buffers lsb list-commands lscm
-syn keyword tmuxCmds list-keys lsk list-sessions ls list-windows lsw
-syn keyword tmuxCmds move-window movew new[-session] new-window neww
-syn keyword tmuxCmds next[-window] paste-buffer pasteb prev[ious-window]
-syn keyword tmuxCmds refresh[-client] rename[-session] rename-window renamew
-syn keyword tmuxCmds respawn-window respawnw scroll-mode select-prompt
-syn keyword tmuxCmds select-window selectw send-keys send-prefix set-buffer
-syn keyword tmuxCmds setb set[-option] set-window-option setw show-buffer showb
-syn keyword tmuxCmds show[-options] show-window-options showw source[-file]
-syn keyword tmuxCmds start-server swap-window swapw switch-client switchc
-syn keyword tmuxCmds unbind[-key] unlink-window unlinkw
+syn keyword tmuxCmds detach[-client] ls list-sessions neww new-window
+syn keyword tmuxCmds bind[-key] unbind[-key] prev[ious-window] last
+syn keyword tmuxCmds last[-window] lsk list-keys set[-option] renamew
+syn keyword tmuxCmds rename-window selectw select-window lsw list-windows
+syn keyword tmuxCmds attach[-session] send-prefix refresh[-client] killw
+syn keyword tmuxCmds kill-window lsc list-clients linkw link-window unlinkw
+syn keyword tmuxCmds unlink-window next[-window] send[-keys] swapw swap-window
+syn keyword tmuxCmds rename[-session] kill-session switchc switch-client
+syn keyword tmuxCmds has[-session] scroll-mode copy-mode pasteb paste-buffer
+syn keyword tmuxCmds new[-session] start[-server] kill-server setw
+syn keyword tmuxCmds set-window-option show[-options] showw show-window-options
+syn keyword tmuxCmds command-prompt setb set-buffer showb show-buffer lsb
+syn keyword tmuxCmds list-buffers deleteb delete-buffer lscm list-commands
+syn keyword tmuxCmds movew move-window select-prompt respawnw respawn-window
+syn keyword tmuxCmds source[-file] info server-info clock-mode lock[-server]
+syn keyword tmuxCmds pass set-password saveb save-buffer
 
-syn keyword tmuxCmdsSet bell-action buffer-limit default-command display-time
-syn keyword tmuxCmdsSet history-limit message-bg message-fg prefix
-syn keyword tmuxCmdsSet remain-by-default set-titles status status-bg status-fg
-syn keyword tmuxCmdsSet status-interval status-left status-left-length
-syn keyword tmuxCmdsSet status-right status-right-length utf8-default
+syn keyword tmuxOptsSet prefix status status-fg status-bg bell-action
+syn keyword tmuxOptsSet default-command history-limit status-left status-right
+syn keyword tmuxOptsSet status-interval set-titles display-time buffer-limit
+syn keyword tmuxOptsSet status-left-length status-right-length message-fg
+syn keyword tmuxOptsSet message-bg lock-after-time
 
-syn keyword tmuxCmdsSetw aggressive-resize force-height force-width mode-bg
-syn keyword tmuxCmdsSetw mode-fg mode-keys monitor-activity remain-on-exit utf8
+syn keyword tmuxOptsSetw monitor-activity aggressive-resize force-width
+syn keyword tmuxOptsSetw force-height remain-on-exit uft8 mode-fg mode-bg
+syn keyword tmuxOptsSetw mode-keys clock-mode-colour clock-mode-style
 
 syn keyword tmuxTodo FIXME NOTE TODO XXX contained
 
@@ -54,12 +57,12 @@ syn region tmuxString	start=/'/ end=/'/ display oneline
 hi def link tmuxAction			Boolean
 hi def link tmuxBoolean			Boolean
 hi def link tmuxCmds			Keyword
-hi def link tmuxCmdsSet			Function
-hi def link tmuxCmdsSetw		Function
 hi def link tmuxComment			Comment
 hi def link tmuxKey			Special
 hi def link tmuxNumber			Number
 hi def link tmuxOptions			Identifier
+hi def link tmuxOptsSet			Function
+hi def link tmuxOptsSetw		Function
 hi def link tmuxString			String
 hi def link tmuxTodo			Todo
 hi def link tmuxVariable		Constant
