@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.19 2009-01-12 21:47:03 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.20 2009-01-12 22:48:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,6 +24,7 @@
 #include "tmux.h"
 
 void	tty_keys_add(struct tty *, const char *, int, int);
+int	tty_keys_parse_xterm(struct tty *, char *, size_t, size_t *);
 
 struct tty_key_ent {
 	enum tty_code_code	code;
@@ -35,25 +36,25 @@ struct tty_key_ent {
 
 struct tty_key_ent tty_keys[] = {
 	/* Function keys. */
-	{ TTYC_KF1,   NULL,     KEYC_F1,    TTYKEY_MODIFIER },
-	{ TTYC_KF2,   NULL,     KEYC_F2,    TTYKEY_MODIFIER },
-	{ TTYC_KF3,   NULL,     KEYC_F3,    TTYKEY_MODIFIER },
-	{ TTYC_KF4,   NULL,     KEYC_F4,    TTYKEY_MODIFIER },
-	{ TTYC_KF5,   NULL,     KEYC_F5,    TTYKEY_MODIFIER },
-	{ TTYC_KF6,   NULL,     KEYC_F6,    TTYKEY_MODIFIER },
-	{ TTYC_KF7,   NULL,     KEYC_F7,    TTYKEY_MODIFIER },
-	{ TTYC_KF8,   NULL,     KEYC_F8,    TTYKEY_MODIFIER },
-	{ TTYC_KF9,   NULL,     KEYC_F9,    TTYKEY_MODIFIER },
-	{ TTYC_KF10,  NULL,     KEYC_F10,   TTYKEY_MODIFIER },
-	{ TTYC_KF11,  NULL,     KEYC_F11,   TTYKEY_MODIFIER },
-	{ TTYC_KF12,  NULL,     KEYC_F12,   TTYKEY_MODIFIER },
-	{ TTYC_KICH1, NULL,     KEYC_IC,    TTYKEY_MODIFIER },
-	{ TTYC_KDCH1, NULL,     KEYC_DC,    TTYKEY_MODIFIER },
-	{ TTYC_KHOME, NULL,     KEYC_HOME,  TTYKEY_MODIFIER },
-	{ TTYC_KEND,  NULL,     KEYC_END,   TTYKEY_MODIFIER },
-	{ TTYC_KNP,   NULL,     KEYC_NPAGE, TTYKEY_MODIFIER },
-	{ TTYC_KPP,   NULL,     KEYC_PPAGE, TTYKEY_MODIFIER },
-	{ TTYC_KCBT,  NULL,	KEYC_BTAB,  TTYKEY_MODIFIER },
+	{ TTYC_KF1,   NULL,     KEYC_F1,    TTYKEY_CTRL },
+	{ TTYC_KF2,   NULL,     KEYC_F2,    TTYKEY_CTRL },
+	{ TTYC_KF3,   NULL,     KEYC_F3,    TTYKEY_CTRL },
+	{ TTYC_KF4,   NULL,     KEYC_F4,    TTYKEY_CTRL },
+	{ TTYC_KF5,   NULL,     KEYC_F5,    TTYKEY_CTRL },
+	{ TTYC_KF6,   NULL,     KEYC_F6,    TTYKEY_CTRL },
+	{ TTYC_KF7,   NULL,     KEYC_F7,    TTYKEY_CTRL },
+	{ TTYC_KF8,   NULL,     KEYC_F8,    TTYKEY_CTRL },
+	{ TTYC_KF9,   NULL,     KEYC_F9,    TTYKEY_CTRL },
+	{ TTYC_KF10,  NULL,     KEYC_F10,   TTYKEY_CTRL },
+	{ TTYC_KF11,  NULL,     KEYC_F11,   TTYKEY_CTRL },
+	{ TTYC_KF12,  NULL,     KEYC_F12,   TTYKEY_CTRL },
+	{ TTYC_KICH1, NULL,     KEYC_IC,    TTYKEY_CTRL },
+	{ TTYC_KDCH1, NULL,     KEYC_DC,    TTYKEY_CTRL },
+	{ TTYC_KHOME, NULL,     KEYC_HOME,  TTYKEY_CTRL },
+	{ TTYC_KEND,  NULL,     KEYC_END,   TTYKEY_CTRL },
+	{ TTYC_KNP,   NULL,     KEYC_NPAGE, TTYKEY_CTRL },
+	{ TTYC_KPP,   NULL,     KEYC_PPAGE, TTYKEY_CTRL },
+	{ TTYC_KCBT,  NULL,	KEYC_BTAB,  TTYKEY_CTRL },
 
 	/* Arrow keys. */
 	{ 0,          "\033OA", KEYC_UP,    TTYKEY_RAW },
@@ -70,16 +71,15 @@ struct tty_key_ent tty_keys[] = {
 	{ 0,          "\033Ob", KEYC_ADDCTL(KEYC_DOWN),  TTYKEY_RAW },
 	{ 0,          "\033Oc", KEYC_ADDCTL(KEYC_RIGHT), TTYKEY_RAW },
 	{ 0,          "\033Od", KEYC_ADDCTL(KEYC_LEFT),  TTYKEY_RAW },
-
 	{ 0,          "\033[a", KEYC_ADDSFT(KEYC_UP),    TTYKEY_RAW },
 	{ 0,          "\033[b", KEYC_ADDSFT(KEYC_DOWN),  TTYKEY_RAW },
 	{ 0,          "\033[c", KEYC_ADDSFT(KEYC_RIGHT), TTYKEY_RAW },
 	{ 0,          "\033[d", KEYC_ADDSFT(KEYC_LEFT),  TTYKEY_RAW },
 
-	{ TTYC_KCUU1, NULL,     KEYC_UP,    TTYKEY_MODIFIER },
-	{ TTYC_KCUD1, NULL,     KEYC_DOWN,  TTYKEY_MODIFIER },
-	{ TTYC_KCUB1, NULL,     KEYC_LEFT,  TTYKEY_MODIFIER },
-	{ TTYC_KCUF1, NULL,     KEYC_RIGHT, TTYKEY_MODIFIER },
+	{ TTYC_KCUU1, NULL,     KEYC_UP,    TTYKEY_CTRL },
+	{ TTYC_KCUD1, NULL,     KEYC_DOWN,  TTYKEY_CTRL },
+	{ TTYC_KCUB1, NULL,     KEYC_LEFT,  TTYKEY_CTRL },
+	{ TTYC_KCUF1, NULL,     KEYC_RIGHT, TTYKEY_CTRL },
 
 	/*
 	 * Numeric keypad. termcap and terminfo are totally confusing for this.
@@ -161,7 +161,7 @@ tty_keys_init(struct tty *tty)
 		}
 
 		tty_keys_add(tty, s + 1, tke->key, tke->flags);
-		if (tke->flags & TTYKEY_MODIFIER) {
+		if (tke->flags & TTYKEY_CTRL) {
 			if (strlcpy(tmp, s, sizeof tmp) >= sizeof tmp)
 				continue;
 			tmp[strlen(tmp) - 1] ^= 0x20;
@@ -204,6 +204,7 @@ tty_keys_find(struct tty *tty, char *buf, size_t len, size_t *size)
 		tl.string = s;
 		tk = RB_FIND(tty_keys, &tty->ktree, &tl);
 		if (tk != NULL) {
+			log_debug2("got key: 0x%x", tk->key);
 			xfree(s);
 			return (tk);
 		}
@@ -218,7 +219,7 @@ tty_keys_next(struct tty *tty, int *key)
 {
 	struct tty_key	*tk;
 	struct timeval	 tv;
-	char		 arg, *buf, tmp[32];
+	char		*buf;
 	size_t		 len, size;
 
 	buf = BUFFER_OUT(tty->in);
@@ -243,55 +244,13 @@ tty_keys_next(struct tty *tty, int *key)
 		return (0);
 	}
 
-	/* Not found. Look xterm-style function keys with an argument. */
-	if (len < sizeof tmp && len > 4 && buf[len - 3] == ';') {
-		memcpy(tmp, buf, len);
-		log_debug("xterm key in: %s", tmp);
-		arg = tmp[len - 2];
-		tmp[3] = tmp[len - 1];	/* move last */
-		tmp[4] = '\0';
-		log_debug("xterm key out: %s", tmp);
-		log_debug("argument is: %c", arg);
-
-		tk = tty_keys_find(tty, tmp + 1, len - 3, &size);
-		if (tk != NULL) {
-			*key = tk->key;
-			buffer_remove(tty->in, size + 3);
-
-			switch (arg) {
-			case '8':
-				*key = KEYC_ADDSFT(*key);
-				*key = KEYC_ADDESC(*key);
-				*key = KEYC_ADDCTL(*key);
-				break;
-			case '7':
-				*key = KEYC_ADDESC(*key);
-				*key = KEYC_ADDCTL(*key);
-				break;
-			case '6':
-				*key = KEYC_ADDSFT(*key);
-				*key = KEYC_ADDCTL(*key);
-				break;
-			case '5':
-				*key = KEYC_ADDCTL(*key);
-				break;
-			case '4':
-				*key = KEYC_ADDSFT(*key);
-				*key = KEYC_ADDESC(*key);
-				break;
-			case '3':
-				*key = KEYC_ADDESC(*key);
-				break;
-			case '2':
-				*key = KEYC_ADDSFT(*key);
-				break;
-			}
-
-			tty->flags &= ~TTY_ESCAPE;
-			return (0);
-		}
+	/* Not found. Try to parse xterm-type arguments. */
+	if ((*key = tty_keys_parse_xterm(tty, buf, len, &size)) != KEYC_NONE) {
+		buffer_remove(tty->in, size);
+		tty->flags &= ~TTY_ESCAPE;
+		return (0);
 	}
-
+	
 	/* Escape but no key string. If the timer isn't started, start it. */
 	if (!(tty->flags & TTY_ESCAPE)) {
 		tv.tv_sec = 0;
@@ -340,4 +299,74 @@ tty_keys_next(struct tty *tty, int *key)
 	*key = KEYC_ADDESC('\033');
 	buffer_remove(tty->in, 1);
 	return (0);
+}
+
+int
+tty_keys_parse_xterm(struct tty *tty, char *buf, size_t len, size_t *size)
+{
+	struct tty_key	*tk;
+	char		 tmp[5];
+	size_t		 tmplen;
+	int		 key;
+
+	/*
+	 * xterm sequences with modifier keys are of the form:
+	 *
+	 * ^[[1;xD becomes ^[[D
+	 * ^[[5;x~ becomes ^[[5~
+	 *
+	 * This function is a bit of a hack. Need to figure out what exact
+	 * format and meaning xterm outputs and fix it. XXX
+	 */
+
+	log_debug("xterm input is: %.*s", (int) len, buf);
+	if (len != 6 || memcmp(buf, "\033[1;", 4) != 0)
+		return (KEYC_NONE);
+	*size = 6;
+
+	tmplen = 0;
+	tmp[tmplen++] = '[';
+	if (buf[5] == '~') {
+		tmp[tmplen++] = buf[2];
+		tmp[tmplen++] = '~';
+	} else
+		tmp[tmplen++] = buf[5];
+	log_debug("xterm output is: %.*s", (int) tmplen, tmp);
+
+	tk = tty_keys_find(tty, tmp, tmplen, size);
+	if (tk == NULL)
+		return (KEYC_NONE);
+	key = tk->key;
+
+	switch (buf[4]) {
+	case '8':
+		key = KEYC_ADDSFT(key);
+		key = KEYC_ADDESC(key);
+		key = KEYC_ADDCTL(key);
+		break;
+	case '7':
+		key = KEYC_ADDESC(key);
+		key = KEYC_ADDCTL(key);
+		break;
+	case '6':
+		key = KEYC_ADDSFT(key);
+		key = KEYC_ADDCTL(key);
+		break;
+	case '5':
+		key = KEYC_ADDCTL(key);
+		break;
+	case '4':
+		key = KEYC_ADDSFT(key);
+		key = KEYC_ADDESC(key);
+		break;
+	case '3':
+		key = KEYC_ADDESC(key);
+		break;
+	case '2':
+	key = KEYC_ADDSFT(key);
+		break;
+	}
+
+	*size = 6;
+	return (key);
 }

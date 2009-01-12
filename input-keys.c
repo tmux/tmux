@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.22 2009-01-12 21:47:03 nicm Exp $ */
+/* $Id: input-keys.c,v 1.23 2009-01-12 22:48:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,31 +31,31 @@ struct input_key_ent {
 	int		 flags;
 #define INPUTKEY_KEYPAD 0x1	/* keypad key */
 #define INPUTKEY_CURSOR 0x2	/* cursor key */
-#define INPUTKEY_MODIFIER 0x4	/* may be adjusted by modifiers */
+#define INPUTKEY_CTRL 0x4	/* may be modified with ctrl */
 #define INPUTKEY_XTERM 0x4	/* may have xterm argument appended */
 };
 
 struct input_key_ent input_keys[] = {
 	/* Function keys. */
-	{ KEYC_F1,     "\033OP",   INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_F2,     "\033OQ",   INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_F3,     "\033OR",   INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_F4,     "\033OS",   INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_F5,     "\033[15~", INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_F6,     "\033[17~", INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_F7,     "\033[18~", INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_F8,     "\033[19~", INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_F9,     "\033[20~", INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_F10,    "\033[21~", INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_F11,    "\033[23~", INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_F12,    "\033[24~", INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_IC,     "\033[2~",  INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_DC,     "\033[3~",  INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_HOME,   "\033[1~",  INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_END,    "\033[4~",  INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_NPAGE,  "\033[6~",  INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_PPAGE,  "\033[5~",  INPUTKEY_MODIFIER|INPUTKEY_XTERM },
-	{ KEYC_BTAB,   "\033[Z",   INPUTKEY_MODIFIER },
+	{ KEYC_F1,     "\033OP",   INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_F2,     "\033OQ",   INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_F3,     "\033OR",   INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_F4,     "\033OS",   INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_F5,     "\033[15~", INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_F6,     "\033[17~", INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_F7,     "\033[18~", INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_F8,     "\033[19~", INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_F9,     "\033[20~", INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_F10,    "\033[21~", INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_F11,    "\033[23~", INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_F12,    "\033[24~", INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_IC,     "\033[2~",  INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_DC,     "\033[3~",  INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_HOME,   "\033[1~",  INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_END,    "\033[4~",  INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_NPAGE,  "\033[6~",  INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_PPAGE,  "\033[5~",  INPUTKEY_CTRL|INPUTKEY_XTERM },
+	{ KEYC_BTAB,   "\033[Z",   INPUTKEY_CTRL },
 
 	/* Arrow keys. Cursor versions must come first. */
 	{ KEYC_UP,     "\033OA",   INPUTKEY_CURSOR },
@@ -121,6 +121,7 @@ input_key(struct window_pane *wp, int key)
 	u_int			i;
 	char			ch;
 	size_t			dlen;
+	int			xterm_keys;
 
 	log_debug2("writing key 0x%x", key);
 
@@ -141,12 +142,12 @@ input_key(struct window_pane *wp, int key)
 		    !(wp->screen->mode & MODE_KCURSOR))
 			continue;
 
-		if (ike->flags & INPUTKEY_MODIFIER) {
-			if (KEYC_ISCTL(key) && KEYC_ADDCTL(ike->key) == key)
-				break;
-			if (KEYC_ISESC(key) && KEYC_ADDESC(ike->key) == key)
-				break;
-			if (KEYC_ISSFT(key) && KEYC_ADDSFT(ike->key) == key)
+		if (KEYC_ISESC(key) && KEYC_ADDESC(ike->key) == key)
+			break;
+		if (KEYC_ISSFT(key) && KEYC_ADDSFT(ike->key) == key)
+			break;
+		if (KEYC_ISCTL(key) && KEYC_ADDCTL(ike->key) == key) {
+			if (ike->flags & INPUTKEY_CTRL)
 				break;
 		}
 		if (ike->key == key)
@@ -160,9 +161,12 @@ input_key(struct window_pane *wp, int key)
 
 	log_debug2("found key 0x%x: \"%s\"", key, ike->data);
 
-	if (ike->flags & INPUTKEY_XTERM &&
-	    options_get_number(&wp->window->options, "xterm-keys")) {
-		/* In xterm keys mode, append modifier argument. */
+	/*
+	 * If in xterm keys mode, work out and append the modifier as an
+	 * argument.
+	 */
+	xterm_keys = options_get_number(&wp->window->options, "xterm-keys");
+	if (xterm_keys && ike->flags & INPUTKEY_XTERM) {
 		ch = '\0';
 		if (KEYC_ISSFT(key) && KEYC_ISESC(key) && KEYC_ISCTL(key))
 			ch = '8';
@@ -179,7 +183,6 @@ input_key(struct window_pane *wp, int key)
 		else if (KEYC_ISSFT(key))
 			ch = '2';
 		if (ch != '\0') {
-			log_debug("output argument is: %c", ch);
 			buffer_write(wp->out, ike->data, dlen - 1);
 			buffer_write8(wp->out, ';');
 			buffer_write8(wp->out, ch);
@@ -188,21 +191,17 @@ input_key(struct window_pane *wp, int key)
 			buffer_write(wp->out, ike->data, dlen);
 		return;
 	}
-	if (ike->flags & INPUTKEY_MODIFIER) {
-		/*
-		 * If not in xterm keys or not an xterm key handle escape and
-		 * control (shift not supported).
-		 */
-		if (KEYC_ISESC(key))
-			buffer_write8(wp->out, '\033');
-		if (!KEYC_ISCTL(key)) {
-			buffer_write(wp->out, ike->data, dlen);
-			return;
-		}
+
+	/*
+	 * Not in xterm mode. Prefix a \033 for escape, and set bit 5 of the
+	 * last byte for ctrl.
+	 */
+	if (KEYC_ISESC(key))
+		buffer_write8(wp->out, '\033');
+	if (KEYC_ISCTL(key) && ike->flags & INPUTKEY_CTRL) {
 		buffer_write(wp->out, ike->data, dlen - 1);
 		buffer_write8(wp->out, ike->data[dlen - 1] ^ 0x20);
 		return;
 	}
-
 	buffer_write(wp->out, ike->data, dlen);
 }

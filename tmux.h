@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.226 2009-01-12 19:23:14 nicm Exp $ */
+/* $Id: tmux.h,v 1.227 2009-01-12 22:48:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -670,7 +670,7 @@ struct tty_key {
 	char		*string;
 
 	int		 flags;
-#define TTYKEY_MODIFIER 0x1
+#define TTYKEY_CTRL 0x1
 #define TTYKEY_RAW 0x2
 
 	RB_ENTRY(tty_key) entry;
