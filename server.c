@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.97 2009-01-12 19:36:53 nicm Exp $ */
+/* $Id: server.c,v 1.98 2009-01-12 23:37:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -567,7 +567,16 @@ server_handle_client(struct client *c)
 {
 	struct winlink		*wl = c->session->curw;
 	struct window_pane	*wp = wl->window->active;
-	int		 	 key, prefix, status;
+	struct timeval	 	 tv;
+	int		 	 key, prefix, status, xtimeout;
+
+	xtimeout = options_get_number(&c->session->options, "prefix-time");
+	if (xtimeout != 0) {
+		if (gettimeofday(&tv, NULL) != 0)
+			fatal("gettimeofday");
+		if (timercmp(&tv, &c->command_timer, >))
+			c->flags &= ~CLIENT_PREFIX;
+	}
 
 	/* Process keys. */
 	prefix = options_get_number(&c->session->options, "prefix");
@@ -582,13 +591,19 @@ server_handle_client(struct client *c)
 		if (server_locked)
 			continue;
 
-		if (c->flags & CLIENT_PREFIX) {
-			key_bindings_dispatch(key, c);
-			c->flags &= ~CLIENT_PREFIX;
-			continue;
-		} else if (key == prefix)
-			c->flags |= CLIENT_PREFIX;
-		else
+		if (key == prefix || c->flags & CLIENT_PREFIX) {
+			memcpy(&c->command_timer, &tv, sizeof c->command_timer);
+			tv.tv_sec = 0;
+			tv.tv_usec = xtimeout * 1000L;
+			timeradd(&c->command_timer, &tv, &c->command_timer);
+			
+			if (c->flags & CLIENT_PREFIX) {
+				key_bindings_dispatch(key, c);
+				if (xtimeout == 0)
+					c->flags &= ~CLIENT_PREFIX;
+			} else if (key == prefix)
+				c->flags |= CLIENT_PREFIX;
+		} else
 			window_pane_key(wp, c, key);
 	}
 

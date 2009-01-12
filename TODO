@@ -61,12 +61,10 @@
 - tty.c is a bit ugly
 - document default-path
 - document xterm-keys
-- document server-info
 - document window options changes
-- document clock-mode
 - document password/locking commands
-- document lock-after-time
 - document panes and window splitting: split-window and switch-pane
+- document prefix-time
 - a command to display the status line briefly when it is turned off
 - neww should support -k
 - FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw, more??
@@ -93,7 +91,6 @@
 	swap-panes
 	close-pane
 	move-pane (to window)
-	pane resizing
 	>2 panes per window
 - would be nice if tmux could be the shell
 - some sort of extension to command prompt so can do eg
@@ -101,7 +98,4 @@
        bind r command-prompt 'renamew "%%"'
   which then asks for a string, substitutes %% in command and executes it
 - fix rxvt cursor fg issue (text under cursor has non-white fg)
-- should have a repeat-command delay - if you execute a key binding then
-  press another key within the delay time it is treated as if it was anoth
-  key binding (ie the ^A prefix is implied)
 - key handling sucks a bit and needs to be reworked
