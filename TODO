@@ -104,3 +104,4 @@
 - should have a repeat-command delay - if you execute a key binding then
   press another key within the delay time it is treated as if it was anoth
   key binding (ie the ^A prefix is implied)
+- key handling sucks a bit and needs to be reworked

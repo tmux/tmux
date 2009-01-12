@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.18 2009-01-10 18:28:09 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.19 2009-01-12 21:47:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,18 +56,30 @@ struct tty_key_ent tty_keys[] = {
 	{ TTYC_KCBT,  NULL,	KEYC_BTAB,  TTYKEY_MODIFIER },
 
 	/* Arrow keys. */
+	{ 0,          "\033OA", KEYC_UP,    TTYKEY_RAW },
+	{ 0,          "\033OB", KEYC_DOWN,  TTYKEY_RAW },
+	{ 0,          "\033OC", KEYC_RIGHT, TTYKEY_RAW },
+	{ 0,          "\033OD", KEYC_LEFT,  TTYKEY_RAW },
+
+	{ 0,          "\033[A", KEYC_UP,    TTYKEY_RAW },
+	{ 0,          "\033[B", KEYC_DOWN,  TTYKEY_RAW },
+	{ 0,          "\033[C", KEYC_RIGHT, TTYKEY_RAW },
+	{ 0,          "\033[D", KEYC_LEFT,  TTYKEY_RAW },
+
+	{ 0,          "\033Oa", KEYC_ADDCTL(KEYC_UP),    TTYKEY_RAW },
+	{ 0,          "\033Ob", KEYC_ADDCTL(KEYC_DOWN),  TTYKEY_RAW },
+	{ 0,          "\033Oc", KEYC_ADDCTL(KEYC_RIGHT), TTYKEY_RAW },
+	{ 0,          "\033Od", KEYC_ADDCTL(KEYC_LEFT),  TTYKEY_RAW },
+
+	{ 0,          "\033[a", KEYC_ADDSFT(KEYC_UP),    TTYKEY_RAW },
+	{ 0,          "\033[b", KEYC_ADDSFT(KEYC_DOWN),  TTYKEY_RAW },
+	{ 0,          "\033[c", KEYC_ADDSFT(KEYC_RIGHT), TTYKEY_RAW },
+	{ 0,          "\033[d", KEYC_ADDSFT(KEYC_LEFT),  TTYKEY_RAW },
+
 	{ TTYC_KCUU1, NULL,     KEYC_UP,    TTYKEY_MODIFIER },
 	{ TTYC_KCUD1, NULL,     KEYC_DOWN,  TTYKEY_MODIFIER },
 	{ TTYC_KCUB1, NULL,     KEYC_LEFT,  TTYKEY_MODIFIER },
 	{ TTYC_KCUF1, NULL,     KEYC_RIGHT, TTYKEY_MODIFIER },
-	{ 0,          "\033OA", KEYC_UP,    TTYKEY_RAW|TTYKEY_MODIFIER },
-	{ 0,          "\033OB", KEYC_DOWN,  TTYKEY_RAW|TTYKEY_MODIFIER },
-	{ 0,          "\033OD", KEYC_LEFT,  TTYKEY_RAW|TTYKEY_MODIFIER },
-	{ 0,          "\033OC", KEYC_RIGHT, TTYKEY_RAW|TTYKEY_MODIFIER },
-	{ 0,          "\033[A", KEYC_UP,    TTYKEY_RAW|TTYKEY_MODIFIER },
-	{ 0,          "\033[B", KEYC_DOWN,  TTYKEY_RAW|TTYKEY_MODIFIER },
-	{ 0,          "\033[D", KEYC_LEFT,  TTYKEY_RAW|TTYKEY_MODIFIER },
-	{ 0,          "\033[C", KEYC_RIGHT, TTYKEY_RAW|TTYKEY_MODIFIER },
 
 	/*
 	 * Numeric keypad. termcap and terminfo are totally confusing for this.
@@ -231,11 +243,14 @@ tty_keys_next(struct tty *tty, int *key)
 		return (0);
 	}
 
-	/* Not found. Look for an xterm argument and try again. */
+	/* Not found. Look xterm-style function keys with an argument. */
 	if (len < sizeof tmp && len > 4 && buf[len - 3] == ';') {
 		memcpy(tmp, buf, len);
+		log_debug("xterm key in: %s", tmp);
 		arg = tmp[len - 2];
-		tmp[len - 3] = tmp[len - 1];	/* restore last */
+		tmp[3] = tmp[len - 1];	/* move last */
+		tmp[4] = '\0';
+		log_debug("xterm key out: %s", tmp);
 		log_debug("argument is: %c", arg);
 
 		tk = tty_keys_find(tty, tmp + 1, len - 3, &size);
