@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.12 2009-01-09 23:57:42 nicm Exp $ */
+/* $Id: key-string.c,v 1.13 2009-01-12 20:13:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -88,38 +88,32 @@ key_string_search_table(const char *string)
 int
 key_string_lookup_string(const char *string)
 {
-	int	key;
+	int	      	 key;
+	const char	*ptr;
 
 	if (string[0] == '\0')
 		return (KEYC_NONE);
 	if (string[1] == '\0')
 		return (string[0]);
 
-	if (string[0] == 'C' && string[1] == '-') {
-		if (string[2] == '\0' || string[3] != '\0')
+	ptr = NULL;
+	if (string[0] == 'C' && string[1] == '-')
+		ptr = string + 2;
+	else if (string[0] == '^')
+		ptr = string + 1;
+	if (ptr != NULL) {
+		if (ptr[0] == '\0')
 			return (KEYC_NONE);
-		if (string[1] == 32)
-			return (0);
-		if (string[2] >= 64 && string[2] <= 95)
-			return (string[2] - 64);
-		if (string[2] >= 97 && string[2] <= 122)
-			return (string[2] - 96);
-		key = key_string_search_table(string + 2);
-		if (key != KEYC_NONE)
-			return (KEYC_ADDCTL(key));
-		return (KEYC_NONE);
-	}
-
-	if (string[0] == '^') {
-		if (string[1] == '\0' || string[2] != '\0')
+		if (ptr[1] == '\0') {
+			if (ptr[0] == 32)
+				return (0);
+			if (ptr[0] >= 64 && ptr[0] <= 95)
+				return (ptr[0] - 64);
+			if (ptr[0] >= 97 && ptr[0] <= 122)
+				return (ptr[0] - 96);
 			return (KEYC_NONE);
-		if (string[1] == 32)
-			return (0);
-		if (string[1] >= 64 && string[1] <= 95)
-			return (string[1] - 64);
-		if (string[1] >= 97 && string[1] <= 122)
-			return (string[1] - 96);
-		key = key_string_search_table(string + 1);
+		}
+		key = key_string_search_table(ptr);
 		if (key != KEYC_NONE)
 			return (KEYC_ADDCTL(key));
 		return (KEYC_NONE);
@@ -156,7 +150,12 @@ key_string_lookup_key(int key)
 		xsnprintf(tmp2, sizeof tmp2, "C-%s", s);
 		return (tmp2);
 	}
-
+	if (KEYC_ISSFT(key)) {
+		if ((s = key_string_lookup_key(KEYC_REMOVESFT(key))) == NULL)
+			return (NULL);
+		xsnprintf(tmp2, sizeof tmp2, "S-%s", s);
+		return (tmp2);
+	}
 
 	if (key >= 32 && key <= 255) {
 		tmp[0] = key;
