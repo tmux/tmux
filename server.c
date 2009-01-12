@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.95 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: server.c,v 1.96 2009-01-12 18:22:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -565,8 +565,7 @@ server_handle_client(struct client *c)
 {
 	struct winlink		*wl = c->session->curw;
 	struct window_pane	*wp = wl->window->active;
-	int		 	 key, prefix;
-	u_int		 	 oy;
+	int		 	 key, prefix, status;
 
 	/* Process keys. */
 	prefix = options_get_number(&c->session->options, "prefix");
@@ -592,14 +591,12 @@ server_handle_client(struct client *c)
 	}
 
 	/* Ensure the cursor is in the right place and correctly on or off. */
+	status = options_get_number(&c->session->options, "status");
 	if (c->prompt_string == NULL && c->message_string == NULL &&
-	    !server_locked && wp->screen->mode & MODE_CURSOR) {
-		oy = 0;
-		if (wp == wl->window->panes[1])
-			oy = wp->window->sy / 2;
-
+	    !server_locked && wp->screen->mode & MODE_CURSOR &&
+	    wp->yoff + wp->screen->cy < c->sy - status) {
 		tty_write(&c->tty, wp->screen, 0, TTY_CURSORMODE, 1);
-		tty_cursor(&c->tty, wp->screen->cx, wp->screen->cy, oy);
+		tty_cursor(&c->tty, wp->screen->cx, wp->screen->cy, wp->yoff);
 	} else
 		tty_write(&c->tty, wp->screen, 0, TTY_CURSORMODE, 0);
 }

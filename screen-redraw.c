@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.16 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.17 2009-01-12 18:22:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,11 +30,10 @@ void	screen_redraw_line(struct client *, struct screen *, u_int, u_int);
 void
 screen_redraw_screen(struct client *c, struct screen *s)
 {
-	struct winlink	*wl = c->session->curw;
-	u_int		 i, cx, cy, sy;
-	int		 status;
-
-	status = options_get_number(&c->session->options, "status");
+	struct window		*w = c->session->curw->window;
+	struct window_pane	*wp;
+	u_int		 	 i, cx, cy, sy;
+	int		 	 status;
 
 	/* Override the normal screen if one is given. */
 	if (s != NULL) {
@@ -50,44 +49,44 @@ screen_redraw_screen(struct client *c, struct screen *s)
 	 */
 
 	/* Draw the top window. */
-	s = wl->window->panes[0]->screen;
+	wp = w->panes[0];
+	s = wp->screen;
+
 	sy = screen_size_y(s);
-	if (screen_size_y(s) == c->sy && wl->window->panes[1] == NULL)
+	if (screen_size_y(s) == c->sy && w->panes[1] == NULL)
 		sy--;
 	cx = s->cx;
 	cy = s->cy;
 	for (i = 0; i < sy; i++)
-		screen_redraw_line(c, s, 0, i);
+		screen_redraw_line(c, s, wp->yoff, i);
 	s->cx = cx;
 	s->cy = cy;
 
 	/* Draw the bottom window. */
-	if (wl->window->panes[1] != NULL) {
-		s = wl->window->panes[1]->screen;
+	if (c->sy > 2 && w->panes[1] != NULL) {
+		wp = w->panes[1];
+		s = wp->screen;
+
 		sy = screen_size_y(s);
-		if (!status && screen_size_y(s) == c->sy - (c->sy / 2) - 1)
+		if (wp->yoff + screen_size_y(s) == s->cy)
 			sy--;
 		cx = s->cx;
 		cy = s->cy;
 		for (i = 0; i < sy; i++)
-			screen_redraw_line(c, s, wl->window->sy / 2, i);
+			screen_redraw_line(c, s, wp->yoff, i);
 		s->cx = cx;
 		s->cy = cy;
 	}
 
 	/* Fill in empty space. */
-	if (wl->window->sx < c->sx) {
-		screen_redraw_blankx(
-		    c, wl->window->sx, c->sx - wl->window->sx);
-	}
-	if (wl->window->sy < c->sy - status) {
-		screen_redraw_blanky(
-		    c, wl->window->sy, c->sy - wl->window->sy);
-	}
+	if (w->sx < c->sx)
+		screen_redraw_blankx(c, w->sx, c->sx - w->sx);
+	if (w->sy < c->sy - status)
+		screen_redraw_blanky(c, w->sy, c->sy - w->sy);
 
 	/* Draw separator line. */
-	s = wl->window->panes[0]->screen;
-	if (screen_size_y(s) != wl->window->sy)
+	s = w->panes[0]->screen;
+	if (c->sy > 1 && screen_size_y(s) != w->sy)
 		screen_redraw_blanky(c, screen_size_y(s), 1);
 
 	/* Draw the status line. */
@@ -147,9 +146,12 @@ screen_redraw_line(struct client *c, struct screen *s, u_int oy, u_int py)
 {
 	const struct grid_cell	*gc;
 	struct grid_cell	 tc;
-	u_int			 i;
+	u_int			 i, sx;
 
-	for (i = 0; i < screen_size_x(s); i++) {
+	sx = screen_size_x(s);
+	if (sx > c->sx)
+		sx = c->sx;
+	for (i = 0; i < sx; i++) {
 		s->cx = i;
 		s->cy = py;
 

@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.55 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: window.c,v 1.56 2009-01-12 18:22:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -213,13 +213,11 @@ window_create(const char *name, const char *cmd,
 
 	w = xmalloc(sizeof *w);
 	w->flags = 0;
-	w->panes[0] = window_pane_create(w, sx, sy, hlimit);
+	w->panes[0] = NULL;
 	w->panes[1] = NULL;
 
 	w->sx = sx;
 	w->sy = sy;
-
-	w->active = w->panes[0];
 
 	options_init(&w->options, &global_window_options);
 
@@ -249,10 +247,11 @@ window_create(const char *name, const char *cmd,
 	ARRAY_ADD(&windows, w);
 	w->references = 0;
 
-	if (window_pane_spawn(w->active, cmd, cwd, envp) != 0) {
+	if (window_add_pane(w, w->sy, cmd, cwd, envp, hlimit) < 0) {
 		window_destroy(w);
 		return (NULL);
 	}
+	w->active = w->panes[0];
 	return (w);
 }
 
@@ -280,15 +279,88 @@ window_destroy(struct window *w)
 int
 window_resize(struct window *w, u_int sx, u_int sy)
 {
-	if (w->panes[1] != NULL) {
-		window_pane_resize(w->panes[0], sx, sy / 2 - 1);
-		window_pane_resize(w->panes[1], sx, sy - (sy / 2));
-	} else
+	int	change;
+	u_int	y0, y1;
+
+	if (w->panes[1] == NULL)
 		window_pane_resize(w->panes[0], sx, sy);
+	else {
+		if (sy <= 3) {
+			y0 = 1;
+			y1 = 1;
+		} else {
+			y0 = w->panes[0]->sy;
+			y1 = w->panes[1]->sy;
+			
+			change = sy - w->sy;
+			if (change > 0) {
+				while (change > 0) {
+					if (y1 < y0)
+						y1++;
+					else
+						y0++;
+					change--;
+				}
+			} else if (change < 0) {
+				while (change < 0) {
+					if (y1 > y0)
+						y1--;
+					else
+						y0--;
+					change++;
+				}
+			}
+		}
+		window_pane_resize(w->panes[0], sx, y0);
+		window_pane_resize(w->panes[1], sx, y1);
+		w->panes[1]->yoff = y0 + 1;
+	}
 
 	w->sx = sx;
 	w->sy = sy;
+	return (0);
+}
 
+int
+window_add_pane(struct window *w, u_int y1,
+    const char *cmd, const char *cwd, const char **envp, u_int hlimit)
+{
+	struct window_pane	*wp;
+	u_int			 y0;
+
+	if (w->panes[1] != NULL)
+		return (-1);
+
+	if (w->panes[0] == NULL) {
+		/* No existing panes. */
+		wp = w->panes[0] = window_pane_create(w, w->sx, w->sy, hlimit);
+		wp->yoff = 0;
+	} else {
+		/* One existing pane. */
+		if (y1 > w->sy)
+			y1 = w->sy;
+		y0 = w->sy - y1;
+		if (y0 == 0) {
+			y0 = 1;
+			y1--;
+		}
+		if (y0 > 1)
+			y0--;
+		else if (y1 > 1)
+			y1--;
+		window_pane_resize(w->panes[0], w->sx, y0);
+
+		wp = w->panes[1] = window_pane_create(w, w->sx, y1, hlimit);
+		wp->yoff = y0 + 1;
+	}
+
+	if (window_pane_spawn(wp, cmd, cwd, envp) != 0) {
+		if (wp == w->panes[0])
+			window_remove_pane(w, 0);
+		else
+			window_remove_pane(w, 1);
+		return (-1);
+	}
 	return (0);
 }
 
@@ -302,8 +374,10 @@ window_remove_pane(struct window *w, int pane)
 			w->panes[0] = w->panes[1];
 			w->panes[1] = NULL;
 		}
-		window_resize(w, w->sx, w->sy);
 		w->active = w->panes[0];
+
+		window_pane_resize(w->active, w->sx, w->sy);
+		w->active->yoff = 0;
 		return (0);
 	}
 	return (1);
@@ -326,11 +400,16 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	wp->mode = NULL;
 
+	wp->sx = sx;
+	wp->sy = sy;
+
+ 	wp->yoff = 0;
+
 	screen_init(&wp->base, sx, sy, hlimit);
 	wp->screen = &wp->base;
 
 	input_init(wp);
-	
+
 	return (wp);
 }
 
@@ -412,8 +491,10 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct winsize	ws;
 
-	if (sx == screen_size_x(&wp->base) && sy == screen_size_y(&wp->base))
+	if (sx == wp->sx && sy == wp->sy)
 		return (-1);
+	wp->sx = sx;
+	wp->sy = sy;
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = sx;

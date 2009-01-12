@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.49 2009-01-10 19:37:35 nicm Exp $ */
+/* $Id: session.c,v 1.50 2009-01-12 18:22:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -197,7 +197,7 @@ session_new(struct session *s,
     const char *name, const char *cmd, const char *cwd, int idx)
 {
 	struct window	*w;
-	const char	*env[] = { NULL /* TMUX= */, "TERM=screen", NULL };
+	const char	*env[] = CHILD_ENVIRON;
 	char		 buf[256];
 	u_int		 i, hlimit;
 

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.224 2009-01-11 23:41:29 nicm Exp $ */
+/* $Id: tmux.h,v 1.225 2009-01-12 18:22:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION -6
+#define PROTOCOL_VERSION -7
 
 /* Shut up gcc warnings about empty if bodies. */
 #define RB_AUGMENT(x) do {} while (0)
@@ -120,6 +120,9 @@ extern const char    *__progname;
 
 /* Default prompt history length. */
 #define PROMPT_HISTORY 100
+
+/* Default environment. */
+#define CHILD_ENVIRON { NULL /* TMUX= */, "TERM=screen", NULL }
 
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
@@ -570,6 +573,11 @@ struct window_mode {
 /* Child window structure. */
 struct window_pane {
 	struct window	*window;
+
+	u_int		 sx;
+	u_int		 sy;
+
+	u_int		 yoff;
 	
 	char		*cmd;
 	char		*cwd;
@@ -1353,12 +1361,15 @@ struct window	*window_create(const char *, const char *,
 		     const char *, const char **, u_int, u_int, u_int);
 void		 window_destroy(struct window *);
 int		 window_resize(struct window *, u_int, u_int);
+int		 window_add_pane(struct window *,
+		     u_int, const char *, const char *, const char **, u_int);
 int		 window_remove_pane(struct window *, int);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *,
 		     const char *, const char *, const char **);
 int		 window_pane_resize(struct window_pane *, u_int, u_int);
+void		 window_calculate_sizes(struct window *);
 int		 window_pane_set_mode(
 		     struct window_pane *, const struct window_mode *);
 void		 window_pane_reset_mode(struct window_pane *);

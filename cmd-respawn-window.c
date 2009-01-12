@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-window.c,v 1.7 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: cmd-respawn-window.c,v 1.8 2009-01-12 18:22:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,9 +48,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink		*wl;
 	struct window		*w;
 	struct session		*s;
-	const char		*env[] = { 
-		NULL /* TMUX= */, "TERM=screen", NULL 
-	};
+	const char		*env[] = CHILD_ENVIRON;
 	char		 	 buf[256];
 	u_int			 i;
 

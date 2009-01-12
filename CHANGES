@@ -1,3 +1,9 @@
+12 January 2009
+
+* Make the window pane code handle panes of different sizes, and add a -l
+  and -p arguments to split-window to specify the new window size in lines
+  or as a percentage.
+
 11 January 2009
 
 * GCC screws up copying (window-copy.c) so build with -O0 until I have time to
@@ -876,7 +882,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.194 2009-01-12 00:52:37 nicm Exp $
+$Id: CHANGES,v 1.195 2009-01-12 18:22:47 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB
