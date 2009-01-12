@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.96 2009-01-12 18:22:47 nicm Exp $ */
+/* $Id: server.c,v 1.97 2009-01-12 19:36:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -317,8 +317,10 @@ server_handle_windows(struct pollfd **pfd)
 				wp = w->panes[j];
 			if (w != NULL && wp != NULL && wp->fd != -1) {
 				if (buffer_poll(*pfd, wp->in, wp->out) != 0) {
-					if (server_lost_window(w, j) != 0)
+					if (server_lost_window(w, j) != 0) {
+						(*pfd) += 1 - j;
 						break;
+					}
 				} else
 					server_handle_window(w, j);
 			}
