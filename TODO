@@ -96,3 +96,5 @@
 - command-prompt should accept an argument to specify the prompt
 - fix rxvt cursor fg issue (text under cursor has non-white fg)
 - key handling sucks a bit and needs to be reworked
+- prefix-time should only apply to a few commands otherwise it is too annoying
+
