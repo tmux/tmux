@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.7 2009-01-11 00:48:42 nicm Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.8 2009-01-13 01:08:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <ctype.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -26,15 +27,16 @@
  * Prompt for command in client.
  */
 
+void	cmd_command_prompt_init(struct cmd *, int);
 void	cmd_command_prompt_exec(struct cmd *, struct cmd_ctx *);
 
 int	cmd_command_prompt_callback(void *, const char *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
 	"command-prompt", NULL,
-	CMD_TARGET_CLIENT_USAGE,
-	0,
-	cmd_target_init,
+	CMD_TARGET_CLIENT_USAGE " [template]",
+	CMD_ZEROONEARG,
+	cmd_command_prompt_init,
 	cmd_target_parse,
 	cmd_command_prompt_exec,
 	cmd_target_send,
@@ -43,11 +45,33 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	cmd_target_print
 };
 
+struct cmd_command_prompt_data {
+	struct client	*c;
+	char		*template;
+};
+
+void
+cmd_command_prompt_init(struct cmd *self, int key)
+{
+	struct cmd_target_data	*data;
+
+	cmd_target_init(self, key);
+	data = self->data;
+
+	switch (key) {
+	case ',':
+		data->arg = xstrdup("rename-window \"%%\"");
+		break;
+	}
+}
+
 void
 cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct client		*c;
+	struct cmd_target_data		*data = self->data;
+	struct cmd_command_prompt_data	*cdata;
+	struct client			*c;
+	char				*hdr, *ptr;
 
 	if ((c = cmd_find_client(ctx, data->target)) == NULL)
 		return;
@@ -55,7 +79,19 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (c->prompt_string != NULL)
 		return;
 
-	server_set_client_prompt(c, ":", cmd_command_prompt_callback, c, 0);
+	cdata = xmalloc(sizeof *cdata);
+	cdata->c = c;
+	if (data->arg != NULL) {
+		cdata->template = xstrdup(data->arg);
+		if ((ptr = strchr(data->arg, ' ')) == NULL)
+			ptr = strchr(data->arg, '\0');
+		xasprintf(&hdr, "(%.*s) ", (int) (ptr - data->arg), data->arg);
+	} else {
+		cdata->template = NULL;
+		hdr = xstrdup(":");
+	}
+	server_set_client_prompt(c, hdr, cmd_command_prompt_callback, cdata, 0);
+	xfree(hdr);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
@@ -64,13 +100,44 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 int
 cmd_command_prompt_callback(void *data, const char *s)
 {
-	struct client	*c = data;
-	struct cmd	*cmd;
-	struct cmd_ctx	 ctx;
-	char		*cause;
+	struct cmd_command_prompt_data	*cdata = data;
+	struct client			*c = cdata->c;
+	struct cmd			*cmd;
+	struct cmd_ctx	 		 ctx;
+	char				*cause, *ptr, *buf, ch;
+	size_t				 len, slen;
 
 	if (s == NULL)
 		return (0);
+	slen = strlen(s);
+
+	len = 0;
+	buf = NULL;
+	if (cdata->template != NULL) {
+		ptr = cdata->template;
+		while (*ptr != '\0') {
+			switch (ch = *ptr++) {
+			case '%':
+				if (*ptr != '%')
+					break;
+				ptr++;
+
+				buf = xrealloc(buf, 1, len + slen + 1);
+				memcpy(buf + len, s, slen);
+				len += slen;
+				break;
+			default:
+				buf = xrealloc(buf, 1, len + 2);
+				buf[len++] = ch;
+				break;
+			}
+		}
+		xfree(cdata->template);
+
+		buf[len] = '\0';
+		s = buf;
+	}
+	xfree(cdata);
 
 	if (cmd_string_parse(s, &cmd, &cause) != 0) {
 		if (cause == NULL)
@@ -78,8 +145,10 @@ cmd_command_prompt_callback(void *data, const char *s)
 		*cause = toupper((u_char) *cause);
 		server_set_client_message(c, cause);
 		xfree(cause);
-		return (0);
+		cmd = NULL;
 	}
+	if (buf != NULL)
+		xfree(buf);
 	if (cmd == NULL)
 		return (0);
 

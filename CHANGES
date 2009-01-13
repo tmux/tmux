@@ -1,5 +1,16 @@
 12 January 2009
 
+* command-prompt now accepts a single argument, a template string. Any
+  occurrences of %% in this string are replaced by whatever is entered at the
+  prompt and the result is executed as a command. This allows things like (now
+  bound by default):
+
+  	 bind , command-prompt "rename-window %%"
+
+  or my favourite:
+
+         bind x command-prompt "split-window 'man %%'"
+
 * Option to set prefix time, allowing multiple commands to be entered without
   pressing the prefix key again, so long as they each typed within this time of
   each other.
@@ -887,7 +898,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.199 2009-01-12 23:37:02 nicm Exp $
+$Id: CHANGES,v 1.200 2009-01-13 01:08:40 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB

@@ -93,9 +93,6 @@
 	move-pane (to window)
 	>2 panes per window
 - would be nice if tmux could be the shell
-- some sort of extension to command prompt so can do eg
-       bind m command-prompt 'split "man %%"'
-       bind r command-prompt 'renamew "%%"'
-  which then asks for a string, substitutes %% in command and executes it
+- command-prompt should accept an argument to specify the prompt
 - fix rxvt cursor fg issue (text under cursor has non-white fg)
 - key handling sucks a bit and needs to be reworked
