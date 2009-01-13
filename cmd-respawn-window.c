@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-window.c,v 1.8 2009-01-12 18:22:47 nicm Exp $ */
+/* $Id: cmd-respawn-window.c,v 1.9 2009-01-13 06:50:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -68,7 +68,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	env[0] = buf;
 
 	if (w->panes[1] != NULL)
-		window_remove_pane(w, 1);
+		window_remove_pane(w, w->panes[1]);
 
 	if (window_pane_spawn(w->panes[0], data->arg, NULL, env) != 0) {
 		ctx->error(ctx, "respawn failed: %s:%d", s->name, wl->idx);

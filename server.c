@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.98 2009-01-12 23:37:02 nicm Exp $ */
+/* $Id: server.c,v 1.99 2009-01-13 06:50:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -566,7 +566,7 @@ void
 server_handle_client(struct client *c)
 {
 	struct winlink		*wl = c->session->curw;
-	struct window_pane	*wp = wl->window->active;
+	struct window_pane	*wp;
 	struct timeval	 	 tv;
 	int		 	 key, prefix, status, xtimeout;
 
@@ -590,6 +590,7 @@ server_handle_client(struct client *c)
 		}
 		if (server_locked)
 			continue;
+		wp = wl->window->active;	/* could die - do each loop */
 
 		if (key == prefix || c->flags & CLIENT_PREFIX) {
 			memcpy(&c->command_timer, &tv, sizeof c->command_timer);
@@ -606,6 +607,7 @@ server_handle_client(struct client *c)
 		} else
 			window_pane_key(wp, c, key);
 	}
+	wp = wl->window->active;	/* could die - reset again */
 
 	/* Ensure the cursor is in the right place and correctly on or off. */
 	status = options_get_number(&c->session->options, "status");
@@ -731,7 +733,7 @@ server_lost_window(struct window *w, int pane)
 	wp = w->panes[pane];
 	log_debug("lost window %d (%s pane %d)", wp->fd, w->name, pane);
 
-	if (window_remove_pane(w, pane) == 0) {
+	if (window_remove_pane(w, wp) == 0) {
 		server_redraw_window(w);
 		return (0);
 	}

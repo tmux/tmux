@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.56 2009-01-12 18:22:47 nicm Exp $ */
+/* $Id: window.c,v 1.57 2009-01-13 06:50:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -355,18 +355,21 @@ window_add_pane(struct window *w, u_int y1,
 	}
 
 	if (window_pane_spawn(wp, cmd, cwd, envp) != 0) {
-		if (wp == w->panes[0])
-			window_remove_pane(w, 0);
-		else
-			window_remove_pane(w, 1);
+		window_remove_pane(w, wp);
 		return (-1);
 	}
 	return (0);
 }
 
 int
-window_remove_pane(struct window *w, int pane)
+window_remove_pane(struct window *w, struct window_pane *wp)
 {
+	int	pane;
+
+	pane = 0;
+	if (wp == w->panes[1])
+		pane = 1;
+
 	if (w->panes[1] != NULL) {
 		window_pane_destroy(w->panes[pane]);
 		w->panes[pane] = NULL;
