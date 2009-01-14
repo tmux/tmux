@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.230 2009-01-14 19:29:32 nicm Exp $ */
+/* $Id: tmux.h,v 1.231 2009-01-14 19:41:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1089,6 +1089,7 @@ extern const struct cmd_entry cmd_command_prompt_entry;
 extern const struct cmd_entry cmd_copy_mode_entry;
 extern const struct cmd_entry cmd_delete_buffer_entry;
 extern const struct cmd_entry cmd_detach_client_entry;
+extern const struct cmd_entry cmd_down_pane_entry;
 extern const struct cmd_entry cmd_has_session_entry;
 extern const struct cmd_entry cmd_kill_pane_entry;
 extern const struct cmd_entry cmd_kill_server_entry;
@@ -1137,6 +1138,7 @@ extern const struct cmd_entry cmd_switch_client_entry;
 extern const struct cmd_entry cmd_switch_pane_entry;
 extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
+extern const struct cmd_entry cmd_up_pane_entry;
 
 /* cmd-string.c */
 int	cmd_string_parse(const char *, struct cmd **, char **);
