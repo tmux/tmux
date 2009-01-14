@@ -77,4 +77,4 @@ for 0.6:
 - document password/locking commands
 - document update set/setw in man page with -g and -u flags
 - document xterm-keys
-- remove/fix & document prefix-time (only apply to some commands?)
+- document repeat-time

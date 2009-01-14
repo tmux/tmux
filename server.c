@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.100 2009-01-14 19:29:32 nicm Exp $ */
+/* $Id: server.c,v 1.101 2009-01-14 22:13:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -573,14 +573,15 @@ server_handle_client(struct client *c)
 	struct winlink		*wl = c->session->curw;
 	struct window_pane	*wp;
 	struct timeval	 	 tv;
-	int		 	 key, prefix, status, xtimeout;
+	struct key_binding	*bd;
+	int		 	 key, prefix, status, flags, xtimeout;
 
-	xtimeout = options_get_number(&c->session->options, "prefix-time");
-	if (xtimeout != 0) {
+	xtimeout = options_get_number(&c->session->options, "repeat-time");
+	if (xtimeout != 0 && c->flags & CLIENT_REPEAT) {
 		if (gettimeofday(&tv, NULL) != 0)
 			fatal("gettimeofday");
-		if (timercmp(&tv, &c->command_timer, >))
-			c->flags &= ~CLIENT_PREFIX;
+		if (timercmp(&tv, &c->repeat_timer, >))
+			c->flags &= ~(CLIENT_PREFIX|CLIENT_REPEAT);
 	}
 
 	/* Process keys. */
@@ -596,24 +597,54 @@ server_handle_client(struct client *c)
 		if (server_locked)
 			continue;
 		wp = wl->window->active;	/* could die - do each loop */
+		
+		/* Prefix key pressed. */
+		if (key == prefix) {
+			c->flags |= CLIENT_PREFIX;
+			continue;
+		}
 
-		if (key == prefix || c->flags & CLIENT_PREFIX) {
-			memcpy(&c->command_timer, &tv, sizeof c->command_timer);
-			tv.tv_sec = 0;
-			tv.tv_usec = xtimeout * 1000L;
-			timeradd(&c->command_timer, &tv, &c->command_timer);
-			
-			if (c->flags & CLIENT_PREFIX) {
-				key_bindings_dispatch(key, c);
-				if (xtimeout == 0)
-					c->flags &= ~CLIENT_PREFIX;
-			} else if (key == prefix)
-				c->flags |= CLIENT_PREFIX;
-		} else
+		/* Other key and no previous prefix key. */
+		if (!(c->flags & CLIENT_PREFIX)) {
 			window_pane_key(wp, c, key);
-	}
-	wp = wl->window->active;	/* could die - reset again */
+			continue;
+		}
 
+		/* Prefix key already pressed. Reset prefix and lookup key. */
+		c->flags &= ~CLIENT_PREFIX;
+		if ((bd = key_bindings_lookup(key)) == NULL) {
+			/* If repeating, treat this as a key, else ignore. */
+			if (c->flags & CLIENT_REPEAT) {
+				c->flags &= ~CLIENT_REPEAT;
+				window_pane_key(wp, c, key);
+			}
+			continue;
+		}
+		flags = bd->cmd->entry->flags;
+
+		/* If already repeating, but this key can't repeat, skip it. */
+		if (c->flags & CLIENT_REPEAT && !(flags & CMD_CANREPEAT)) {
+			c->flags &= ~CLIENT_REPEAT;
+			window_pane_key(wp, c, key);
+			continue;
+		}
+		
+		/* If this key can repeat, reset the repeat flags and timer. */
+		if (xtimeout != 0 && flags & CMD_CANREPEAT) {
+			c->flags |= CLIENT_PREFIX|CLIENT_REPEAT;
+
+			tv.tv_sec = xtimeout / 1000;
+			tv.tv_usec = (xtimeout % 1000) * 1000L;
+			if (gettimeofday(&c->repeat_timer, NULL) != 0)
+				fatal("gettimeofday");
+			timeradd(&c->repeat_timer, &tv, &c->repeat_timer);
+		}
+
+		/* Dispatch the command. */
+		key_bindings_dispatch(bd, c);
+		}
+	wp = wl->window->active;	/* could die - reset again */
+	
 	/* Ensure the cursor is in the right place and correctly on or off. */
 	status = options_get_number(&c->session->options, "status");
 	if (c->prompt_string == NULL && c->message_string == NULL &&

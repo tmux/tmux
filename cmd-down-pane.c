@@ -1,4 +1,4 @@
-/* $Id: cmd-down-pane.c,v 1.1 2009-01-14 19:41:15 nicm Exp $ */
+/* $Id: cmd-down-pane.c,v 1.2 2009-01-14 22:13:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ void	cmd_down_pane_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_down_pane_entry = {
 	"down-pane", "downp",
 	CMD_TARGET_WINDOW_USAGE,
-	0,
+	CMD_CANREPEAT,
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_down_pane_exec,

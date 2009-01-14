@@ -1,4 +1,4 @@
-/* $Id: cmd-next-window.c,v 1.12 2008-06-06 20:02:27 nicm Exp $ */
+/* $Id: cmd-next-window.c,v 1.13 2009-01-14 22:13:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ void	cmd_next_window_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_next_window_entry = {
 	"next-window", "next",
 	CMD_TARGET_SESSION_USAGE,
-	0,
+	CMD_CANREPEAT,
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_next_window_exec,
