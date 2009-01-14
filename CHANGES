@@ -1,7 +1,7 @@
 14 January 2009
 
-* Rework the prefix-time stuff. The option is now call repeat-time and defaults
-  to 500 ms. However, it only applies to a small subset of commands, currently:
+* Rework the prefix-time stuff. The option is now called repeat-time and
+  defaults to 500 ms. It only applies to a small subset of commands, currently:
   up-pane, down-pane, next-window, previous-window, resize-pane-up,
   resize-pane-down. These are the commands for which it is obviously useful,
   having it for everything else was just bloody annoying.
@@ -13,7 +13,7 @@
   (unhelpful) error will be shown if attempting to split a window with less
   that eight lines. If the window is resized, as many panes are shown as can
   fit without reducing them below four lines. There is (currently!) not a way
-  to show a hidden a pane without making the window larger.
+  to show a hidden pane without making the window larger.
 
   Note the -p and -l options to split-window are now gone, these may reappear
   once I think them through again.
@@ -923,8 +923,9 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.209 2009-01-14 22:40:17 nicm Exp $
+$Id: CHANGES,v 1.210 2009-01-14 23:00:18 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
- LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB
- LocalWords:  dstidx srcname srcidx winlink lsw nabc sabc Exp
+ LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
+ LocalWords:  dstidx srcname srcidx winlink lsw nabc sabc Exp Tiago Cunha dch
+ LocalWords:  setw Chisnall renamew merdely eg Maier newname selectw neww Gass
