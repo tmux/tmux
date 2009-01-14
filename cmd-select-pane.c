@@ -1,4 +1,4 @@
-/* $Id: cmd-switch-pane.c,v 1.2 2009-01-14 19:29:32 nicm Exp $ */
+/* $Id: cmd-select-pane.c,v 1.1 2009-01-14 19:56:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,40 +21,48 @@
 #include "tmux.h"
 
 /*
- * Enter clock mode.
+ * Select pane.
  */
 
-void	cmd_switch_pane_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_select_pane_exec(struct cmd *, struct cmd_ctx *);
 
-const struct cmd_entry cmd_switch_pane_entry = {
-	"switch-pane", "switchp",
-	CMD_TARGET_WINDOW_USAGE,
+const struct cmd_entry cmd_select_pane_entry = {
+	"select-pane", "selectp",
+	CMD_PANE_WINDOW_USAGE,
 	0,
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_switch_pane_exec,
-       	cmd_target_send,
-	cmd_target_recv,
-	cmd_target_free,
-	cmd_target_print
+	cmd_pane_init,
+	cmd_pane_parse,
+	cmd_select_pane_exec,
+       	cmd_pane_send,
+	cmd_pane_recv,
+	cmd_pane_free,
+	cmd_pane_print
 };
 
 void
-cmd_switch_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
+	struct cmd_pane_data	*data = self->data;
 	struct winlink		*wl;
 	struct window_pane	*wp;
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return;
-	
-	wp = TAILQ_NEXT(wl->window->active, entry);
-	if (wp == NULL)
-		wp = TAILQ_FIRST(&wl->window->panes);
-	window_set_active_pane(wl->window, wp);
+	if (data->pane == -1)
+		wp = wl->window->active;
+	else {
+		wp = window_pane_at_index(wl->window, data->pane);
+		if (wp == NULL) {
+			ctx->error(ctx, "no pane: %d", data->pane);
+			return;
+		}
+	}
 
-	server_redraw_window(wl->window);
+	if (wp->flags & PANE_HIDDEN) {
+		ctx->error(ctx, "pane %d is hidden", data->pane);
+		return;
+	}
+	window_set_active_pane(wl->window, wp);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);

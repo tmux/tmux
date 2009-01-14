@@ -91,16 +91,10 @@
 	swap-panes
 	close-pane
 	move-pane (to window)
-	>2 panes per window
+     should be able to move to a hidden pane and it would be moved into view
+- document pane stuff: up-/down-/select-/kill-pane, split-window
 - would be nice if tmux could be the shell
 - command-prompt should accept an argument to specify the prompt
 - fix rxvt cursor fg issue (text under cursor has non-white fg)
 - key handling sucks a bit and needs to be reworked
 - prefix-time should only apply to a few commands otherwise it is too annoying
-
------
-SPLITTING
-emacs-style:
-	- when resizing, always expand and reduce from top to bottom
-	- minimum size 4 + separator
-	- if not enough room hide windows from top to bottom

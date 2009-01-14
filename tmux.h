@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.231 2009-01-14 19:41:15 nicm Exp $ */
+/* $Id: tmux.h,v 1.232 2009-01-14 19:56:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1118,6 +1118,7 @@ extern const struct cmd_entry cmd_resize_pane_up_entry;
 extern const struct cmd_entry cmd_respawn_window_entry;
 extern const struct cmd_entry cmd_save_buffer_entry;
 extern const struct cmd_entry cmd_scroll_mode_entry;
+extern const struct cmd_entry cmd_select_pane_entry;
 extern const struct cmd_entry cmd_select_prompt_entry;
 extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_keys_entry;
@@ -1135,7 +1136,6 @@ extern const struct cmd_entry cmd_split_window_entry;
 extern const struct cmd_entry cmd_start_server_entry;
 extern const struct cmd_entry cmd_swap_window_entry;
 extern const struct cmd_entry cmd_switch_client_entry;
-extern const struct cmd_entry cmd_switch_pane_entry;
 extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
 extern const struct cmd_entry cmd_up_pane_entry;

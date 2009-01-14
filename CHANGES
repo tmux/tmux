@@ -1,5 +1,7 @@
 14 January 2009
 
+* switch-pane is now select-pane and requires -p to select a pane. The
+  "o" key binding is changed to down-pane.
 * up-pane and down-pane commands, bound to arrow up and down by default.
 * Multiple vertical window splitting. Minimum pane size is four lines, an
   (unhelpful) error will be shown if attempting to split a window with less
@@ -915,7 +917,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.204 2009-01-14 19:41:15 nicm Exp $
+$Id: CHANGES,v 1.205 2009-01-14 19:56:55 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB
