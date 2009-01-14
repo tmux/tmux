@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.28 2009-01-14 19:29:32 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.29 2009-01-14 23:39:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,7 +50,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window		*w;
 	struct window_pane	*wp;	
 	struct grid_data	*gd;
-	u_int			 i, j;
+	u_int			 i;
 	unsigned long long	 size;
 	const char		*name;
 
@@ -59,25 +59,24 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		w = wl->window;
-
 		ctx->print(ctx,
-		    "%d: %s [%ux%u]", wl->idx, w->name, w->sx, w->sy);
+		    "%3d: %s [%ux%u]", wl->idx, w->name, w->sx, w->sy);
+
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			gd = wp->base.grid;
 			
 			size = 0;
-			for (j = 0; j < gd->hsize; j++)
-				size += gd->size[j] * sizeof **gd->data;
+			for (i = 0; i < gd->hsize; i++)
+				size += gd->size[i] * sizeof **gd->data;
 			size += gd->hsize * (sizeof *gd->data);
 			size += gd->hsize * (sizeof *gd->size);
 
 			if (wp->fd != -1)
 				name = ttyname(wp->fd);
 			else
-				name = "";
-		
+				name = "unknown";		
 			ctx->print(ctx, 
-			    "    %s [%ux%u] [history %u/%u, %llu bytes]", i, 
+			    "     %s [%ux%u] [history %u/%u, %llu bytes]", 
 			    name, wp->sx, wp->sy, gd->hsize, gd->hlimit, size);
 		}
 	}
