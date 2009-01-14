@@ -51,7 +51,7 @@
   others do not. this might be hard: a flag for each grid line (top bit of size
   maybe)? a single flag is insufficient as can't then tell when to /stop/
   unwrapping
-- more # commands in status-left,right eg #H for hostname. others?
+- more # commands in status-left,right eg #H for hostname, #S for session name
 - input.c is too complicated. simplify?
 - try change from pass-though model to redraw model (use updated screen
   data). maybe too slow though?
