@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.50 2009-01-14 22:13:30 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.51 2009-01-14 22:14:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -194,7 +194,6 @@ void
 key_bindings_dispatch(struct key_binding *bd, struct client *c)
 {
 	struct cmd_ctx	 	 ctx;
-	struct key_binding	*bd;
 
 	ctx.msgdata = NULL;
 	ctx.cursession = c->session;
