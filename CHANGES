@@ -1,3 +1,7 @@
+14 January 2009
+
+* Server locking on inactivity (lock-after-time) is now disabled by default.
+
 13 January 2009
 
 * kill-pane command.
@@ -902,7 +906,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.201 2009-01-13 06:50:10 nicm Exp $
+$Id: CHANGES,v 1.202 2009-01-14 18:41:55 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB
