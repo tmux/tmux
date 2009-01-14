@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.18 2009-01-14 19:29:32 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.19 2009-01-14 21:00:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,6 +44,10 @@ screen_redraw_screen(struct client *c, struct screen *s)
 
 	status = options_get_number(&c->session->options, "status");
 
+	/* Fill in empty space on the right. */
+	if (w->sx < c->sx)
+		screen_redraw_blankx(c, w->sx, c->sx - w->sx);
+
 	/* Draw the panes. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		s = wp->screen;
@@ -64,9 +68,7 @@ screen_redraw_screen(struct client *c, struct screen *s)
 		s->cy = cy;
 	}
 
-	/* Fill in empty space. */
-	if (w->sx < c->sx)
-		screen_redraw_blankx(c, w->sx, c->sx - w->sx);
+	/* Fill in empty space below. */
 	if (w->sy < c->sy - status)
 		screen_redraw_blanky(c, w->sy, c->sy - w->sy, '=');
 

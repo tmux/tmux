@@ -51,50 +51,30 @@
   others do not. this might be hard: a flag for each grid line (top bit of size
   maybe)? a single flag is insufficient as can't then tell when to /stop/
   unwrapping
-- document OPTIONS section in man page with description of new option handling
-- document update set/setw in man page with -g and -u flags
 - more # commands in status-left,right eg #H for hostname. others?
 - input.c is too complicated. simplify?
 - try change from pass-though model to redraw model (use updated screen
   data). maybe too slow though?
 - use a better termcap internally instead of screen, perhaps xterm
 - tty.c is a bit ugly
-- document default-path
-- document xterm-keys
-- document window options changes
-- document password/locking commands
-- document panes and window splitting: split-window and switch-pane
-- document prefix-time
 - a command to display the status line briefly when it is turned off
 - neww should support -k
 - FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw, more??
-  17:06 < NicM> tmux new then eg tmux linkw -s0:0
-  17:06 < simmel> NicM link-window?
-  17:06 < NicM> yes
-  17:06 < NicM> create a new session with tmux new
-  17:07 < NicM> then link your compilation or irc window into it with tmux linkw
-  17:07 < NicM> i have a set of secondary sessions set up by default with irc linked into them already
-  17:07 < NicM> so if want to view it in a separate window
-  17:07 < NicM> i just attach one of them
-  17:07 < NicM> and keep working in my original session
-  17:07 < NicM> but you can do it manually as well
-  17:08 < simmel> How do I unlink then?
-  17:08 < NicM> tmux unlinkw
-  17:08 < NicM> or tmux killw
-  17:08 < simmel> Doesnt that kill the original one too?
-  17:08 < NicM> no
-  17:08 < NicM> it unlinks it from the session
-  17:09 < NicM> or kills it if it is only linked to one
-  17:09 < NicM> unlinkw only unlinks it
 - clone session command
 - panes:
 	swap-panes
 	close-pane
 	move-pane (to window)
      should be able to move to a hidden pane and it would be moved into view
-- document pane stuff: up-/down-/select-/kill-pane, split-window
 - would be nice if tmux could be the shell
-- command-prompt should accept an argument to specify the prompt
 - fix rxvt cursor fg issue (text under cursor has non-white fg)
 - key handling sucks a bit and needs to be reworked
-- prefix-time should only apply to a few commands otherwise it is too annoying
+
+for 0.6:
+- document OPTIONS section in man page with description of new option handling
+- document default-path
+- document pane stuff: up-/down-/select-/kill-pane, split-window
+- document password/locking commands
+- document update set/setw in man page with -g and -u flags
+- document xterm-keys
+- remove/fix & document prefix-time (only apply to some commands?)
