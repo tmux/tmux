@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.3 2009-01-12 18:22:47 nicm Exp $ */
+/* $Id: cmd-split-window.c,v 1.4 2009-01-14 19:29:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,14 +39,11 @@ struct cmd_split_window_data {
 	char	*target;
 	char	*cmd;
 	int	 flag_detached;
-	
-	int	 lines;
-	int	 percentage;
 };
 
 const struct cmd_entry cmd_split_window_entry = {
 	"split-window", "splitw",
-	"[-d] [-t target-window] [-l lines|-p percentage] [command]",
+	"[-d] [-t target-window] [command]",
 	0,
 	cmd_split_window_init,
 	cmd_split_window_parse,
@@ -66,16 +63,13 @@ cmd_split_window_init(struct cmd *self, unused int arg)
 	data->target = NULL;
 	data->cmd = NULL;
 	data->flag_detached = 0;
-	data->lines = -1;
-	data->percentage = -1;
 }
 
 int
 cmd_split_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_split_window_data	*data;
-	int				 opt, n;
-	const char		        *errstr;
+	int				 opt;
 
 	self->entry->init(self, 0);
 	data = self->data;
@@ -84,30 +78,6 @@ cmd_split_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 		switch (opt) {
 		case 'd':
 			data->flag_detached = 1;
-			break;
-		case 'l':
-			if (data->percentage != -1)
-				goto usage;
-			if (data->lines == -1) {
-				n = strtonum(optarg, 0, INT_MAX, &errstr);
-				if (errstr != NULL) {
-					xasprintf(cause, "number %s", errstr);
-					goto error;
-				}
-				data->lines = n;
-			}
-			break;
-		case 'p':
-			if (data->lines != -1)
-				goto usage;
-			if (data->percentage == -1) {
-				n = strtonum(optarg, 0, INT_MAX, &errstr);
-				if (errstr != NULL) {
-					xasprintf(cause, "number %s", errstr);
-					goto error;
-				}
-				data->percentage = n;
-			}
 			break;
 		case 't':
 			if (data->target == NULL)
@@ -130,7 +100,6 @@ cmd_split_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 usage:
 	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
-error:
 	self->entry->free(self);
 	return (-1);
 }
@@ -142,19 +111,15 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session			*s;
 	struct winlink			*wl;
 	struct window			*w;
+	struct window_pane		*wp;
 	const char			*env[] = CHILD_ENVIRON;
 	char		 		 buf[256];
 	char				*cmd, *cwd;
-	u_int				 i, hlimit, size;
+	u_int				 i, hlimit;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return;
 	w = wl->window;
-
-	if (w->panes[1] != NULL) {
-		ctx->error(ctx, "window is already split");
-		return;
-	}
 
 	if (session_index(s, &i) != 0)
 		fatalx("session not found");
@@ -169,26 +134,15 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		cwd = ctx->cmdclient->cwd;
 
-	size = w->sy / 2;
-	if (data->lines != -1)
-		size = data->lines;
-	if (data->percentage != -1) {
-		if (data->percentage > 100)
-			data->percentage = 100;
-		size = (w->sy * data->percentage) / 100;
-	}
-	if (size > w->sy)
-		size = w->sy;	/* let window_add_pane sort it out */
-
 	hlimit = options_get_number(&s->options, "history-limit");
-	if (window_add_pane(w, size, cmd, cwd, env, hlimit) < 0) {
+	if ((wp = window_add_pane(w, cmd, cwd, env, hlimit)) == NULL) {
 		ctx->error(ctx, "command failed: %s", cmd);
 		return;
 	}
 	server_redraw_window(w);
 	
 	if (!data->flag_detached) {
-		w->active = w->panes[1];
+		window_set_active_pane(w, wp);
 		session_select(s, wl->idx);
 		server_redraw_session(s);
 	} else

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.229 2009-01-13 06:50:10 nicm Exp $ */
+/* $Id: tmux.h,v 1.230 2009-01-14 19:29:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -123,6 +123,9 @@ extern const char    *__progname;
 
 /* Default environment. */
 #define CHILD_ENVIRON { NULL /* TMUX= */, "TERM=screen", NULL }
+
+/* Minimum pane size. */
+#define PANE_MINIMUM 4	/* includes separator line */
 
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
@@ -578,6 +581,9 @@ struct window_pane {
 	u_int		 sy;
 
 	u_int		 yoff;
+
+	int		 flags;
+#define PANE_HIDDEN 0x1
 	
 	char		*cmd;
 	char		*cwd;
@@ -593,14 +599,17 @@ struct window_pane {
 
 	const struct window_mode *mode;
 	void		*modedata;
+
+	TAILQ_ENTRY(window_pane) entry;
 };
+TAILQ_HEAD(window_panes, window_pane);
 
 /* Window structure. */
 struct window {
 	char		*name;
 
-	struct window_pane *active;
-	struct window_pane *panes[2];
+	struct window_pane *active;	
+	struct window_panes panes;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1378,13 +1387,21 @@ struct winlink	*winlink_next(struct winlinks *, struct winlink *);
 struct winlink	*winlink_previous(struct winlinks *, struct winlink *);
 void		 winlink_stack_push(struct winlink_stack *, struct winlink *);
 void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
+int	 	 window_index(struct window *, u_int *);
 struct window	*window_create(const char *, const char *,
 		     const char *, const char **, u_int, u_int, u_int);
 void		 window_destroy(struct window *);
 int		 window_resize(struct window *, u_int, u_int);
-int		 window_add_pane(struct window *,
-		     u_int, const char *, const char *, const char **, u_int);
-int		 window_remove_pane(struct window *, struct window_pane *);
+void		 window_set_active_pane(struct window *, struct window_pane *);
+struct window_pane *window_add_pane(struct window *,
+    		     const char *, const char *, const char **, u_int);
+void		 window_remove_pane(struct window *, struct window_pane *);
+u_int		 window_index_of_pane(struct window *, struct window_pane *);
+struct window_pane *window_pane_at_index(struct window *, u_int);
+void  		 window_fit_panes(struct window *);
+void		 window_update_panes(struct window *);
+u_int		 window_count_panes(struct window *);
+void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *,

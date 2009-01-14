@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.57 2009-01-13 06:50:10 nicm Exp $ */
+/* $Id: window.c,v 1.58 2009-01-14 19:29:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -204,17 +204,29 @@ winlink_stack_remove(struct winlink_stack *stack, struct winlink *wl)
 	}
 }
 
+int
+window_index(struct window *s, u_int *i)
+{
+	for (*i = 0; *i < ARRAY_LENGTH(&windows); (*i)++) {
+		if (s == ARRAY_ITEM(&windows, *i))
+			return (0);
+	}
+	return (-1);
+}
+
 struct window *
 window_create(const char *name, const char *cmd,
     const char *cwd, const char **envp, u_int sx, u_int sy, u_int hlimit)
 {
 	struct window	*w;
+	u_int		 i;
 	char		*ptr, *copy;
 
 	w = xmalloc(sizeof *w);
 	w->flags = 0;
-	w->panes[0] = NULL;
-	w->panes[1] = NULL;
+
+	TAILQ_INIT(&w->panes);
+	w->active = NULL;
 
 	w->sx = sx;
 	w->sy = sy;
@@ -244,14 +256,21 @@ window_create(const char *name, const char *cmd,
 	} else
 		w->name = xstrdup(name);
 
-	ARRAY_ADD(&windows, w);
+	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+		if (ARRAY_ITEM(&windows, i) == NULL) {
+			ARRAY_SET(&windows, i, w);
+			break;
+		}
+	}
+	if (i == ARRAY_LENGTH(&windows))
+		ARRAY_ADD(&windows, w);
 	w->references = 0;
 
-	if (window_add_pane(w, w->sy, cmd, cwd, envp, hlimit) < 0) {
+	if (window_add_pane(w, cmd, cwd, envp, hlimit) == NULL) {
 		window_destroy(w);
 		return (NULL);
 	}
-	w->active = w->panes[0];
+	w->active = TAILQ_FIRST(&w->panes);
 	return (w);
 }
 
@@ -260,17 +279,15 @@ window_destroy(struct window *w)
 {
 	u_int	i;
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		if (ARRAY_ITEM(&windows, i) == w)
-			break;
-	}
-	ARRAY_REMOVE(&windows, i);
+	if (window_index(w, &i) != 0)
+		fatalx("index not found");
+	ARRAY_SET(&windows, i, NULL);
+	while (!ARRAY_EMPTY(&windows) && ARRAY_LAST(&windows) == NULL)
+		ARRAY_TRUNC(&windows, 1);
 
 	options_free(&w->options);
 
-	window_pane_destroy(w->panes[0]);
-	if (w->panes[1] != NULL)
-		window_pane_destroy(w->panes[1]);
+	window_destroy_panes(w);
 	
 	xfree(w->name);
 	xfree(w);
@@ -279,111 +296,213 @@ window_destroy(struct window *w)
 int
 window_resize(struct window *w, u_int sx, u_int sy)
 {
-	int	change;
-	u_int	y0, y1;
+	w->sx = sx;
+	w->sy = sy;
 
-	if (w->panes[1] == NULL)
-		window_pane_resize(w->panes[0], sx, sy);
-	else {
-		if (sy <= 3) {
-			y0 = 1;
-			y1 = 1;
+	window_fit_panes(w);
+	return (0);
+}
+
+void
+window_fit_panes(struct window *w)
+{
+	struct window_pane	*wp;
+	u_int			 npanes, canfit, total;
+	int			 left;
+	
+	if (TAILQ_EMPTY(&w->panes))
+		return;
+
+	/* Clear hidden flags. */
+	TAILQ_FOREACH(wp, &w->panes, entry)
+	    	wp->flags &= ~PANE_HIDDEN;
+
+	/* Check the new size. */
+	npanes = window_count_panes(w);
+	if (w->sy <= PANE_MINIMUM * npanes) {
+		/* How many can we fit? */
+		canfit = w->sy / PANE_MINIMUM;
+		if (canfit == 0) {
+			/* None. Just use this size for the first. */
+			TAILQ_FOREACH(wp, &w->panes, entry) {
+				if (wp == TAILQ_FIRST(&w->panes))
+					wp->sy = w->sy;
+				else
+					wp->flags |= PANE_HIDDEN;
+			}
 		} else {
-			y0 = w->panes[0]->sy;
-			y1 = w->panes[1]->sy;
-			
-			change = sy - w->sy;
-			if (change > 0) {
-				while (change > 0) {
-					if (y1 < y0)
-						y1++;
-					else
-						y0++;
-					change--;
+			/* >=1, set minimum for them all. */
+			TAILQ_FOREACH(wp, &w->panes, entry) {
+				if (canfit-- > 0)
+					wp->sy = PANE_MINIMUM - 1;
+				else
+					wp->flags |= PANE_HIDDEN;
+			}
+			/* And increase the first by the rest. */
+			TAILQ_FIRST(&w->panes)->sy += 1 + w->sy % PANE_MINIMUM;
+		}
+	} else {
+		/* In theory they will all fit. Find the current total. */
+		total = 0;
+		TAILQ_FOREACH(wp, &w->panes, entry)
+			total += wp->sy;
+		total += npanes - 1;
+
+		/* Growing or shrinking? */
+		left = w->sy - total;
+		if (left > 0) {
+			/* Growing. Expand evenly. */
+			while (left > 0) {
+				TAILQ_FOREACH(wp, &w->panes, entry) {
+					wp->sy++;
+					if (--left == 0)
+						break;
 				}
-			} else if (change < 0) {
-				while (change < 0) {
-					if (y1 > y0)
-						y1--;
-					else
-						y0--;
-					change++;
+			}
+		} else {
+			/* Shrinking. Reduce evenly down to minimum. */
+			while (left < 0) {
+				TAILQ_FOREACH(wp, &w->panes, entry) {
+					if (wp->sy <= PANE_MINIMUM - 1)
+						continue;
+					wp->sy--;
+					if (++left == 0)
+						break;
 				}
 			}
 		}
-		window_pane_resize(w->panes[0], sx, y0);
-		window_pane_resize(w->panes[1], sx, y1);
-		w->panes[1]->yoff = y0 + 1;
+	}
+			
+	/* Now do the resize. */
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		wp->sy--;
+	    	window_pane_resize(wp, w->sx, wp->sy + 1);
 	}
 
-	w->sx = sx;
-	w->sy = sy;
-	return (0);
+	/* Fill in the offsets. */
+	window_update_panes(w);
+
+	/* Switch the active window if necessary. */
+	window_set_active_pane(w, w->active);
 }
 
-int
-window_add_pane(struct window *w, u_int y1,
+void
+window_update_panes(struct window *w)
+{
+	struct window_pane     *wp;
+	u_int			yoff;
+
+	yoff = 0;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->flags & PANE_HIDDEN)
+			continue;
+		wp->yoff = yoff;
+		yoff += wp->sy + 1;
+	}
+}
+
+void
+window_set_active_pane(struct window *w, struct window_pane *wp)
+{
+	w->active = wp;
+	while (w->active->flags & PANE_HIDDEN)
+		w->active = TAILQ_PREV(w->active, window_panes, entry);
+}
+
+struct window_pane *
+window_add_pane(struct window *w, 
     const char *cmd, const char *cwd, const char **envp, u_int hlimit)
 {
 	struct window_pane	*wp;
-	u_int			 y0;
+	u_int			 wanty;
 
-	if (w->panes[1] != NULL)
-		return (-1);
-
-	if (w->panes[0] == NULL) {
-		/* No existing panes. */
-		wp = w->panes[0] = window_pane_create(w, w->sx, w->sy, hlimit);
-		wp->yoff = 0;
-	} else {
-		/* One existing pane. */
-		if (y1 > w->sy)
-			y1 = w->sy;
-		y0 = w->sy - y1;
-		if (y0 == 0) {
-			y0 = 1;
-			y1--;
-		}
-		if (y0 > 1)
-			y0--;
-		else if (y1 > 1)
-			y1--;
-		window_pane_resize(w->panes[0], w->sx, y0);
-
-		wp = w->panes[1] = window_pane_create(w, w->sx, y1, hlimit);
-		wp->yoff = y0 + 1;
+	if (TAILQ_EMPTY(&w->panes))
+		wanty = w->sy;
+	else {
+		if (w->active->sy < PANE_MINIMUM * 2)
+			return (NULL);
+		wanty = (w->active->sy / 2 + w->active->sy % 2) - 1;
+		window_pane_resize(w->active, w->sx, w->active->sy / 2);
 	}
 
+	wp = window_pane_create(w, w->sx, wanty, hlimit);
+	if (TAILQ_EMPTY(&w->panes))
+		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
+	else
+		TAILQ_INSERT_AFTER(&w->panes, w->active, wp, entry);
+	window_update_panes(w);
 	if (window_pane_spawn(wp, cmd, cwd, envp) != 0) {
 		window_remove_pane(w, wp);
-		return (-1);
+		return (NULL);
 	}
-	return (0);
+	return (wp);
 }
 
-int
+void
 window_remove_pane(struct window *w, struct window_pane *wp)
 {
-	int	pane;
+	w->active = TAILQ_PREV(wp, window_panes, entry);
+	if (w->active == NULL)
+		w->active = TAILQ_NEXT(wp, entry);
 
-	pane = 0;
-	if (wp == w->panes[1])
-		pane = 1;
+	TAILQ_REMOVE(&w->panes, wp, entry);
+	window_pane_destroy(wp);
 
-	if (w->panes[1] != NULL) {
-		window_pane_destroy(w->panes[pane]);
-		w->panes[pane] = NULL;
-		if (pane == 0) {
-			w->panes[0] = w->panes[1];
-			w->panes[1] = NULL;
-		}
-		w->active = w->panes[0];
+	window_fit_panes(w);
+}
 
-		window_pane_resize(w->active, w->sx, w->sy);
-		w->active->yoff = 0;
-		return (0);
+u_int
+window_index_of_pane(struct window *w, struct window_pane *find)
+{
+	struct window_pane	*wp;
+	u_int			 n;
+
+	n = 0;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp == find)
+			return (n);
+		n++;
 	}
-	return (1);
+	fatalx("unknown pane");
+}
+
+struct window_pane *
+window_pane_at_index(struct window *w, u_int idx)
+{
+	struct window_pane	*wp;
+	u_int			 n;
+
+	n = 0;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (n == idx)
+			return (wp);
+		n++;
+	}
+	return (NULL);
+}
+
+u_int
+window_count_panes(struct window *w)
+{
+	struct window_pane	*wp;
+	u_int			 n;
+
+	n = 0;
+	TAILQ_FOREACH(wp, &w->panes, entry)
+		n++;
+	return (n);
+}
+
+void
+window_destroy_panes(struct window *w)
+{
+	struct window_pane	*wp;
+
+	while (!TAILQ_EMPTY(&w->panes)) {
+		wp = TAILQ_FIRST(&w->panes);
+		TAILQ_REMOVE(&w->panes, wp, entry);
+		window_pane_destroy(wp);
+	}
 }
 
 struct window_pane *
@@ -391,7 +510,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 {
 	struct window_pane	*wp;
 
-	wp = xmalloc(sizeof *wp);
+	wp = xcalloc(1, sizeof *wp);
 	wp->window = w;
 
 	wp->cmd = NULL;

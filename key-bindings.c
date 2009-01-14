@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.45 2009-01-13 01:08:40 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.46 2009-01-14 19:29:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,6 +108,7 @@ key_bindings_init(void)
 		{ 's', &cmd_list_sessions_entry },
 		{ 't', &cmd_clock_mode_entry },
 		{ 'w', &cmd_list_windows_entry },
+		{ 'x', &cmd_kill_pane_entry, },
 		{ KEYC_ADDCTL(KEYC_UP), &cmd_resize_pane_up_entry },
 		{ KEYC_ADDCTL(KEYC_DOWN), &cmd_resize_pane_down_entry },
 		{ META, &cmd_send_prefix_entry },

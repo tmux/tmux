@@ -1,4 +1,4 @@
-/* $Id: tty-write.c,v 1.5 2009-01-12 18:22:47 nicm Exp $ */
+/* $Id: tty-write.c,v 1.6 2009-01-14 19:29:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,7 +38,7 @@ tty_vwrite_window(void *ptr, enum tty_cmd cmd, va_list ap)
 	va_list		 	 aq;
 	u_int		 	 i;
 
-	if (wp->window->flags & WINDOW_HIDDEN)
+	if (wp->window->flags & WINDOW_HIDDEN || wp->flags & PANE_HIDDEN)
 		return;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {

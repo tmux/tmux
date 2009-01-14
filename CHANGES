@@ -1,5 +1,16 @@
 14 January 2009
 
+* Multiple vertical window splitting. Minimum pane size is four lines, an
+  (unhelpful) error will be shown if attempting to split a window with less
+  that eight lines. If the window is resized, as many panes are shown as can
+  fit without reducing them below four lines. There is (currently!) not a way
+  to show a hidden a pane without making the window larger.
+
+  Note the -p and -l options to split-window are now gone, these may reappear
+  once I think them through again.
+
+  To come: up-pane, down-pane; switch-pane will support -p and become
+  select-pane.
 * Server locking on inactivity (lock-after-time) is now disabled by default.
 
 13 January 2009
@@ -906,7 +917,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.202 2009-01-14 18:41:55 nicm Exp $
+$Id: CHANGES,v 1.203 2009-01-14 19:29:32 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB

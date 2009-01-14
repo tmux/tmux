@@ -1,4 +1,4 @@
-/* $Id: cmd-resize-pane-up.c,v 1.1 2009-01-12 19:23:14 nicm Exp $ */
+/* $Id: cmd-resize-pane-up.c,v 1.2 2009-01-14 19:29:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,62 +30,69 @@ void	cmd_resize_pane_up_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_resize_pane_up_entry = {
 	"resize-pane-up", "resizep-up",
-	CMD_TARGET_WINDOW_USAGE " [adjustment]",
+	CMD_PANE_WINDOW_USAGE " [adjustment]",
 	CMD_ZEROONEARG,
-	cmd_target_init,
-	cmd_target_parse,
+	cmd_pane_init,
+	cmd_pane_parse,
 	cmd_resize_pane_up_exec,
-       	cmd_target_send,
-	cmd_target_recv,
-	cmd_target_free,
-	cmd_target_print
+       	cmd_pane_send,
+	cmd_pane_recv,
+	cmd_pane_free,
+	cmd_pane_print
 };
 
 void
 cmd_resize_pane_up_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
+	struct cmd_pane_data	*data = self->data;
 	struct winlink		*wl;
-	int			 adjust;
 	const char	       	*errstr;
-	u_int			 y0, y1;
+	struct window_pane	*wp, *wq;
+	u_int			 adjust;
 	
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return;
-#ifdef notyet
 	if (data->pane == -1)
 		wp = wl->window->active;
 	else {
-		if (data->pane > 1 || wl->window->panes[data->pane] == NULL) {
+		wp = window_pane_at_index(wl->window, data->pane);
+		if (wp == NULL) {
 			ctx->error(ctx, "no pane: %d", data->pane);
 			return;
 		}
-		wp = wl->window->panes[data->pane];
 	}
-#endif
 
 	if (data->arg == NULL)
 		adjust = 1;
 	else {
-		adjust = strtonum(data->arg, 0, INT_MAX, &errstr);
+		adjust = strtonum(data->arg, 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
 			ctx->error(ctx, "adjustment %s: %s", errstr, data->arg);
 			return;
 		}
 	}
 
-	if (wl->window->panes[1] == NULL)
-		goto out;
-
-	y0 = wl->window->panes[0]->sy;
-	y1 = wl->window->panes[1]->sy;
-	if (adjust >= y0)
-		adjust = y0 - 1;
-	y0 -= adjust;
-	y1 += adjust;		
-	window_pane_resize(wl->window->panes[0], wl->window->sx, y0);
-	window_pane_resize(wl->window->panes[1], wl->window->sx, y1);
-	wl->window->panes[1]->yoff = y0 + 1;		
+	/*
+	 * If this is not the last window, keep trying to reduce size and add
+	 * to the following window. If it is the last, do so on the previous
+	 * window.
+	 */
+	wq = TAILQ_NEXT(wp, entry);
+	if (wq == NULL) {
+		if (wp == TAILQ_FIRST(&wl->window->panes)) {
+			/* Only one pane. */
+			goto out;
+		}
+		wq = wp;
+		wp = TAILQ_PREV(wq, window_panes, entry);
+	}
+	while (adjust-- > 0) {
+		if (wp->sy <= PANE_MINIMUM)
+			break;
+		window_pane_resize(wq, wq->sx, wq->sy + 1);
+		window_pane_resize(wp, wp->sx, wp->sy - 1);
+	}
+	window_update_panes(wl->window);
 
 	server_redraw_window(wl->window);
 

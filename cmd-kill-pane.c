@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-pane.c,v 1.1 2009-01-13 06:50:10 nicm Exp $ */
+/* $Id: cmd-kill-pane.c,v 1.2 2009-01-14 19:29:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,17 +53,18 @@ cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (data->pane == -1)
 		wp = wl->window->active;
 	else {
-		if (data->pane > 1 || wl->window->panes[data->pane] == NULL) {
+		wp = window_pane_at_index(wl->window, data->pane);
+		if (wp == NULL) {
 			ctx->error(ctx, "no pane: %d", data->pane);
 			return;
 		}
-		wp = wl->window->panes[data->pane];
 	}
 
-	if (window_remove_pane(wl->window, wp) != 0) {
+	if (window_count_panes(wl->window) == 1) {
 		ctx->error(ctx, "can't kill pane: %d", data->pane);
 		return;
 	}
+	window_remove_pane(wl->window, wp);
 	server_redraw_window(wl->window);
 
 	if (ctx->cmdclient != NULL)

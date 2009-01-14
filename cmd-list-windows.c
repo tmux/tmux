@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.27 2009-01-12 18:22:47 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.28 2009-01-14 19:29:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,10 +62,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		ctx->print(ctx,
 		    "%d: %s [%ux%u]", wl->idx, w->name, w->sx, w->sy);
-		for (i = 0; i < 2; i++) {
-			wp = w->panes[i];
-			if (wp == NULL)
-				continue;	
+		TAILQ_FOREACH(wp, &w->panes, entry) {
 			gd = wp->base.grid;
 			
 			size = 0;
@@ -79,9 +76,9 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 			else
 				name = "";
 		
-			ctx->print(ctx, "   pane %d:"
-			    " %s [%ux%u] [history %u/%u, %llu bytes]", i, name,
-			    wp->sx, wp->sy, gd->hsize, gd->hlimit, size);
+			ctx->print(ctx, 
+			    "    %s [%ux%u] [history %u/%u, %llu bytes]", i, 
+			    name, wp->sx, wp->sy, gd->hsize, gd->hlimit, size);
 		}
 	}
 

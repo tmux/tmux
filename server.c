@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.99 2009-01-13 06:50:10 nicm Exp $ */
+/* $Id: server.c,v 1.100 2009-01-14 19:29:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,9 +49,9 @@ void		 server_fill_clients(struct pollfd **);
 void		 server_handle_clients(struct pollfd **);
 struct client	*server_accept_client(int);
 void		 server_handle_client(struct client *);
-void		 server_handle_window(struct window *, int);
+void		 server_handle_window(struct window *, struct window_pane *wp);
 void		 server_lost_client(struct client *);
-int	 	 server_lost_window(struct window *, int);
+void	 	 server_check_window(struct window *);
 void		 server_check_redraw(struct client *);
 void		 server_redraw_locked(struct client *);
 void		 server_check_timers(struct client *);
@@ -171,6 +171,7 @@ server_start(const char *path)
 int
 server_main(const char *srv_path, int srv_fd)
 {
+	struct window	*w;
 	struct pollfd	*pfds, *pfd;
 	int		 nfds, xtimeout;
 	u_int		 i, n;
@@ -184,7 +185,11 @@ server_main(const char *srv_path, int srv_fd)
 	while (!sigterm) {
 		/* Initialise pollfd array. */
 		nfds = 1;
-		nfds += ARRAY_LENGTH(&windows) * 2;
+		for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+			w = ARRAY_ITEM(&windows, i);
+			if (w != NULL)
+				nfds += window_count_panes(w);
+		}
 		nfds += ARRAY_LENGTH(&clients) * 2;
 		pfds = xrealloc(pfds, nfds, sizeof *pfds);
 		pfd = pfds;
@@ -282,17 +287,16 @@ server_fill_windows(struct pollfd **pfd)
 {
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int		 	 i, j;
+	u_int		 	 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);
-		for (j = 0; j < 2; j++) {
-			if (w != NULL)
-				wp = w->panes[j];
-			if (w == NULL || wp == NULL || wp->fd == -1) {
-				(*pfd)->fd = -1;
-			} else {
-				(*pfd)->fd = wp->fd;
+		if (w == NULL)
+			continue;
+
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			(*pfd)->fd = wp->fd;
+			if (wp->fd != -1) {
 				(*pfd)->events = POLLIN;
 				if (BUFFER_USED(wp->out) > 0)
 					(*pfd)->events |= POLLOUT;
@@ -308,24 +312,25 @@ server_handle_windows(struct pollfd **pfd)
 {
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int		 	 i, j;
+	u_int		 	 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);
-		for (j = 0; j < 2; j++) {
-			if (w != NULL)
-				wp = w->panes[j];
-			if (w != NULL && wp != NULL && wp->fd != -1) {
+		if (w == NULL)
+			continue;
+
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (wp->fd != -1) {
 				if (buffer_poll(*pfd, wp->in, wp->out) != 0) {
-					if (server_lost_window(w, j) != 0) {
-						(*pfd) += 1 - j;
-						break;
-					}
+					close(wp->fd);
+					wp->fd = -1;
 				} else
-					server_handle_window(w, j);
+					server_handle_window(w, wp);
 			}
 			(*pfd)++;
 		}
+
+		server_check_window(w);
 	}
 }
 
@@ -660,14 +665,14 @@ server_lost_client(struct client *c)
 
 /* Handle window data. */
 void
-server_handle_window(struct window *w, int pane)
+server_handle_window(struct window *w, struct window_pane *wp)
 {
 	struct session	*s;
 	struct client	*c;
 	u_int		 i;
 	int		 action, update;
 
-	window_pane_parse(w->panes[pane]);
+	window_pane_parse(wp);
 
 	if (!(w->flags & WINDOW_BELL) && !(w->flags & WINDOW_ACTIVITY))
 		return;
@@ -694,7 +699,7 @@ server_handle_window(struct window *w, int pane)
 				}
 				break;
 			case BELL_CURRENT:
-				if (w->active != w->panes[pane])
+				if (w->active != wp)
 					break;
 				for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 					c = ARRAY_ITEM(&clients, i);
@@ -719,29 +724,35 @@ server_handle_window(struct window *w, int pane)
 	w->flags &= ~(WINDOW_BELL|WINDOW_ACTIVITY);
 }
 
-/* Lost window: move clients on to next window. */
-int
-server_lost_window(struct window *w, int pane)
+/* Check if window still exists.. */
+void
+server_check_window(struct window *w)
 {
+	struct window_pane	*wp, *wq;
 	struct client		*c;
 	struct session		*s;
 	struct winlink		*wl;
-	struct window_pane	*wp;
 	u_int		 	 i, j;
-	int		 	 destroyed;
+	int		 	 destroyed, flag;
 
-	wp = w->panes[pane];
-	log_debug("lost window %d (%s pane %d)", wp->fd, w->name, pane);
+	flag = options_get_number(&w->options, "remain-on-exit");
 
-	if (window_remove_pane(w, wp) == 0) {
-		server_redraw_window(w);
-		return (0);
-	}
+	destroyed = 1;
 
-	if (options_get_number(&w->options, "remain-on-exit")) {
-		wp->fd = -1;
-		return (0);
-	}
+	wp = TAILQ_FIRST(&w->panes);
+	while (wp != NULL) {
+		wq = TAILQ_NEXT(wp, entry);
+		if (wp->fd != -1)
+			destroyed = 0;
+		else if (!flag) {
+			window_remove_pane(w, wp);
+			server_redraw_window(w);
+		}
+		wp = wq;
+	} 
+
+	if (!destroyed)
+		return;
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
@@ -775,7 +786,6 @@ server_lost_window(struct window *w, int pane)
 	}
 
 	recalculate_sizes();
-	return (1);
 }
 
 /* Call any once-per-second timers. */
@@ -784,7 +794,7 @@ server_second_timers(void)
 {
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int		 	 i, j;
+	u_int		 	 i;
 	int			 xtimeout;
 	struct tm	 	 now, then;
 	static time_t	 	 last_t = 0;
@@ -799,10 +809,8 @@ server_second_timers(void)
 		w = ARRAY_ITEM(&windows, i);
 		if (w == NULL)
 			continue;
-		for (j = 0; j < 2; j++) {
-			wp = w->panes[j];
-			if (wp == NULL)
-				continue;
+
+		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->mode != NULL && wp->mode->timer != NULL)
 				wp->mode->timer(wp);
 		}

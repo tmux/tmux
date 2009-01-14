@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-window.c,v 1.9 2009-01-13 06:50:10 nicm Exp $ */
+/* $Id: cmd-respawn-window.c,v 1.10 2009-01-14 19:29:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,6 +47,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_target_data	*data = self->data;
 	struct winlink		*wl;
 	struct window		*w;
+	struct window_pane	*wp;
 	struct session		*s;
 	const char		*env[] = CHILD_ENVIRON;
 	char		 	 buf[256];
@@ -56,10 +57,14 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return;
 	w = wl->window;
 
-	if ((w->panes[0]->fd != -1 || (w->panes[1] != NULL &&
-	    w->panes[1]->fd != -1)) && !(data->flags & CMD_KFLAG)) {
-		ctx->error(ctx, "window still active: %s:%d", s->name, wl->idx);
-		return;
+	if (!(data->flags & CMD_KFLAG)) {
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (wp->fd == -1)
+				continue;
+			ctx->error(ctx,
+			    "window still active: %s:%d", s->name, wl->idx);
+			return;
+		}
 	}
 
 	if (session_index(s, &i) != 0)
@@ -67,14 +72,16 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	xsnprintf(buf, sizeof buf, "TMUX=%ld,%u", (long) getpid(), i);
 	env[0] = buf;
 
-	if (w->panes[1] != NULL)
-		window_remove_pane(w, w->panes[1]);
-
-	if (window_pane_spawn(w->panes[0], data->arg, NULL, env) != 0) {
+	wp = TAILQ_FIRST(&w->panes);
+	TAILQ_REMOVE(&w->panes, wp, entry);
+ 	window_destroy_panes(w);
+	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
+	window_pane_resize(wp, w->sx, w->sy);
+	if (window_pane_spawn(wp, data->arg, NULL, env) != 0) {
 		ctx->error(ctx, "respawn failed: %s:%d", s->name, wl->idx);
 		return;
 	}
-	screen_reinit(&w->panes[0]->base);
+	screen_reinit(&wp->base);
 
 	recalculate_sizes();
 	server_redraw_window(w);

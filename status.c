@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.61 2009-01-12 18:22:47 nicm Exp $ */
+/* $Id: status.c,v 1.62 2009-01-14 19:29:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,6 +43,7 @@ status_redraw(struct client *c)
 	struct session		       *s = c->session;
 	struct winlink		       *wl;
 	struct window_pane	       *wp;
+	struct screen		       *sc;
 	char		 	       *left, *right, *text, *ptr;
 	size_t				llen, rlen, offset, xx, yy, sy;
 	size_t				size, start, width;
@@ -258,20 +259,22 @@ off:
 	 * status is off. Not sure this is the right place for this.
 	 */
 	screen_write_start(&ctx, NULL, &c->status);
-	wp = s->curw->window->panes[0];
- 	sy = wp->sy;
-	if (s->curw->window->panes[1] != NULL) {
-		wp = s->curw->window->panes[1];
-		sy += wp->sy + 1;
+
+	sy = 0;
+	TAILQ_FOREACH(wp, &s->curw->window->panes, entry) {
+		sy += wp->sy;
+		sc = wp->screen;
 	}
+	sy++;
+
 	screen_write_cursormove(&ctx, 0, 0);
 	if (sy < c->sy - 1) {
 		/* If the screen is too small, use blank. */
 		for (offset = 0; offset < c->sx; offset++)
 			screen_write_putc(&ctx, &gc, ' ');
 	} else {
-		screen_write_copy(&ctx, wp->screen, 0, wp->screen->grid->hsize +
-		    screen_size_y(wp->screen) - 1, c->sx, 1);
+		screen_write_copy(&ctx,
+		    sc, 0, sc->grid->hsize + screen_size_y(sc) - 1, c->sx, 1);
 	}
 
 out:

@@ -98,3 +98,9 @@
 - key handling sucks a bit and needs to be reworked
 - prefix-time should only apply to a few commands otherwise it is too annoying
 
+-----
+SPLITTING
+emacs-style:
+	- when resizing, always expand and reduce from top to bottom
+	- minimum size 4 + separator
+	- if not enough room hide windows from top to bottom

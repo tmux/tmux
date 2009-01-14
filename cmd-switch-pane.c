@@ -1,4 +1,4 @@
-/* $Id: cmd-switch-pane.c,v 1.1 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: cmd-switch-pane.c,v 1.2 2009-01-14 19:29:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,17 +44,17 @@ cmd_switch_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
 	struct winlink		*wl;
+	struct window_pane	*wp;
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return;
+	
+	wp = TAILQ_NEXT(wl->window->active, entry);
+	if (wp == NULL)
+		wp = TAILQ_FIRST(&wl->window->panes);
+	window_set_active_pane(wl->window, wp);
 
-	if (wl->window->panes[1] != NULL) {
-		if (wl->window->active == wl->window->panes[0])
-			wl->window->active = wl->window->panes[1];
-		else
-			wl->window->active = wl->window->panes[0];
-		server_redraw_window(wl->window);
-	}
+	server_redraw_window(wl->window);
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
