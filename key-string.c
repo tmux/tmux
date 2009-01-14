@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.14 2009-01-12 20:24:12 nicm Exp $ */
+/* $Id: key-string.c,v 1.15 2009-01-14 22:41:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,16 +43,16 @@ struct {
 	{ "F12",	KEYC_F12 },
 	{ "IC",		KEYC_IC },
 	{ "DC",		KEYC_DC },
-	{ "HOME",	KEYC_HOME },
-	{ "END",	KEYC_END },
-	{ "NPAGE",	KEYC_NPAGE },
-	{ "PPAGE",	KEYC_PPAGE },
+	{ "Home",	KEYC_HOME },
+	{ "End",	KEYC_END },
+	{ "NPage",	KEYC_NPAGE },
+	{ "PPage",	KEYC_PPAGE },
 
 	/* Arrow keys. */
-	{ "UP",		KEYC_UP },
-	{ "DOWN",	KEYC_DOWN },
-	{ "LEFT",	KEYC_LEFT },
-	{ "RIGHT",	KEYC_RIGHT },
+	{ "Up",		KEYC_UP },
+	{ "Down",	KEYC_DOWN },
+	{ "Left",	KEYC_LEFT },
+	{ "Right",	KEYC_RIGHT },
 
 	/* Numeric keypad. */
 	{ "KP/", 	KEYC_KP0_1 },
@@ -68,7 +68,7 @@ struct {
 	{ "KP1",	KEYC_KP3_0 },
 	{ "KP2",	KEYC_KP3_1 },
 	{ "KP3",	KEYC_KP3_2 },
-	{ "KPENTER",	KEYC_KP3_3 },
+	{ "KPEnter",	KEYC_KP3_3 },
 	{ "KP0",	KEYC_KP4_0 },
 	{ "KP.",	KEYC_KP4_2 },
 };
