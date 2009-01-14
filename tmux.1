@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.59 2009-01-14 18:41:55 nicm Exp $
+.\" $Id: tmux.1,v 1.60 2009-01-14 18:47:19 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -648,16 +648,16 @@ Show server information and terminal details.
 Set the contents of the specified buffer to
 .Ar data .
 .It Xo Ic set-option
+.Op Fl g
 .Op Fl t Ar target-session
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic set )
 Set an option.
 If
-.Ar target-session
-is specified, the option is set for that session; otherwise, the global option
-is set.
-A global option is used by all sessions which lack an option overriding it.
+.Fl g
+is specified, the option is set globally (it becomes the default inherited by
+all sessions unless overridden) is set; otherwise it is set on the session
 Possible options are:
 .Bl -tag -width Ds
 .It Xo Ic bell-action
@@ -689,7 +689,9 @@ resized and retain the limit at the point they were created.
 Lock the server after
 .Ar number
 seconds of inactivity.
-The default is off (set to 0). 
+The default is off (set to 0).
+This has no effect as a session option; it must be set as a global option using
+.Fl g .
 .It Ic message-bg Ar colour
 Set status line message background colour, where
 .Ar colour
@@ -788,11 +790,17 @@ command).
 To prevent variable expansion when an encrypted password is read from a
 configuration file, enclose it in single quotes (').
 .It Xo Ic set-window-option
+.Op Fl g
 .Op Fl t Ar target-window
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic setw )
 Set a window-specific option.
+If
+.Fl g
+is specified the option is set globally (see
+.Ic set-option ) .
+.Pp
 Supported options are:
 .Bl -tag -width Ds
 .It Xo Ic aggressive-resize
