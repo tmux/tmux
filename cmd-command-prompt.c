@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.8 2009-01-13 01:08:40 nicm Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.9 2009-01-14 22:16:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,7 +35,7 @@ int	cmd_command_prompt_callback(void *, const char *);
 const struct cmd_entry cmd_command_prompt_entry = {
 	"command-prompt", NULL,
 	CMD_TARGET_CLIENT_USAGE " [template]",
-	CMD_ZEROONEARG,
+	CMD_ARG01,
 	cmd_command_prompt_init,
 	cmd_target_parse,
 	cmd_command_prompt_exec,
