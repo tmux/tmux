@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.62 2009-01-14 19:29:32 nicm Exp $ */
+/* $Id: status.c,v 1.63 2009-01-15 23:42:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -291,7 +292,7 @@ status_replace(struct session *s, char *fmt, time_t t)
 {
 	struct winlink *wl = s->curw;
 	static char	out[BUFSIZ];
-	char		in[BUFSIZ], ch, *iptr, *optr, *ptr, *endptr;
+	char		in[BUFSIZ], tmp[256], ch, *iptr, *optr, *ptr, *endptr;
 	size_t		len;
 	long		n;
 
@@ -316,9 +317,22 @@ status_replace(struct session *s, char *fmt, time_t t)
 			if (n <= 0)
 				n = LONG_MAX;
 
+			ptr = NULL;
 			switch (*iptr++) {
+			case 'H':
+				if (ptr == NULL) {
+					if (gethostname(tmp, sizeof tmp) != 0)
+						fatal("gethostname");
+					ptr = tmp;
+				}
+				/* FALLTHROUGH */
+			case 'S':
+				if (ptr == NULL)
+					ptr = s->name;
+				/* FALLTHROUGH */
 			case 'T':
-				ptr = wl->window->active->base.title;
+				if (ptr == NULL)
+					ptr = wl->window->active->base.title;
 				len = strlen(ptr);
 				if ((size_t) n < len)
 					len = n;

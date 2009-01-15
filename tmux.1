@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.61 2009-01-15 21:24:03 tcunha Exp $
+.\" $Id: tmux.1,v 1.62 2009-01-15 23:42:21 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -759,6 +759,8 @@ By default, nothing is displayed.
 may contain any of the following special character pairs:
 .Bl -column "Character pair" "Replaced with" -offset indent
 .It Sy "Character pair" Ta Sy "Replaced with"
+.It Li "#H" Ta "Hostname of local host"
+.It Li "#S" Ta "Session name"
 .It Li "#T" Ta "Current window title"
 .It Li "##" Ta "A literal" Ql #
 .El

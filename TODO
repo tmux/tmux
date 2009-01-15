@@ -62,7 +62,6 @@ soon:
 - swap-panes
 - move-pane (to window)
 - should be able to move to a hidden pane and it would be moved into view
-- more # commands in status-left,right eg #H for hostname, #S for session name
 - command to run something without a window at all - output to window-more
 - command to purge window history
 - command: load-buffer -b number filename
