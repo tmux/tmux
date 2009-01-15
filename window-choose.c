@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.1 2009-01-15 19:27:31 nicm Exp $ */
+/* $Id: window-choose.c,v 1.2 2009-01-15 19:28:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -225,6 +225,8 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 		else
 			data->top += screen_size_y(s);
 		window_choose_redraw_screen(wp);
+		break;
+	default:
 		break;
 	}
 }
