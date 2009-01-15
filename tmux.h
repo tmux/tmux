@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.234 2009-01-14 22:16:57 nicm Exp $ */
+/* $Id: tmux.h,v 1.235 2009-01-15 19:27:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION -7
+#define PROTOCOL_VERSION -8
 
 /* Shut up gcc warnings about empty if bodies. */
 #define RB_AUGMENT(x) do {} while (0)
@@ -904,6 +904,7 @@ enum mode_key {
 	MODEKEY_CLEARSEL,
 	MODEKEY_COPYSEL,
 	MODEKEY_DOWN,
+	MODEKEY_ENTER,
 	MODEKEY_EOL,
 	MODEKEY_LEFT,
 	MODEKEY_NONE,
@@ -1082,6 +1083,8 @@ struct winlink	*cmd_find_window(
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
+extern const struct cmd_entry cmd_choose_session_entry;
+extern const struct cmd_entry cmd_choose_window_entry;
 extern const struct cmd_entry cmd_clock_mode_entry;
 extern const struct cmd_entry cmd_command_prompt_entry;
 extern const struct cmd_entry cmd_copy_mode_entry;
@@ -1227,6 +1230,7 @@ const char *key_string_lookup_key(int);
 
 /* server.c */
 extern struct clients clients;
+int	 server_client_index(struct client *);
 int	 server_start(const char *);
 
 /* server-msg.c */
@@ -1427,6 +1431,15 @@ extern const struct window_mode window_scroll_mode;
 extern const struct window_mode window_more_mode;
 void 		 window_more_vadd(struct window_pane *, const char *, va_list);
 void printflike2 window_more_add(struct window_pane *, const char *, ...);
+
+/* window-choose.c */
+extern const struct window_mode window_choose_mode;
+void 		 window_choose_vadd(
+    		     struct window_pane *, int, const char *, va_list);
+void printflike3 window_choose_add(
+    		     struct window_pane *, int, const char *, ...);
+void		 window_choose_ready(struct window_pane *,
+		     u_int, void (*)(void *, int), void *);
 
 /* session.c */
 extern struct sessions sessions;

@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.5 2009-01-09 16:45:58 nicm Exp $ */
+/* $Id: mode-key.c,v 1.6 2009-01-15 19:27:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,6 +32,7 @@ const struct mode_key_entry mode_key_table_vi[] = {
 	{ MODEKEY_COPYSEL, '\r' },
 	{ MODEKEY_DOWN, 'j' },
 	{ MODEKEY_DOWN, KEYC_DOWN },
+	{ MODEKEY_ENTER, '\r' },
 	{ MODEKEY_EOL, '$' },
 	{ MODEKEY_LEFT, 'h' },
 	{ MODEKEY_LEFT, KEYC_LEFT },
@@ -55,6 +56,7 @@ const struct mode_key_entry mode_key_table_emacs[] = {
 	{ MODEKEY_COPYSEL, '\027' },
 	{ MODEKEY_COPYSEL, KEYC_ADDESC('w') },
 	{ MODEKEY_DOWN, KEYC_DOWN },
+	{ MODEKEY_ENTER, '\r' },
 	{ MODEKEY_EOL, '\005' },
 	{ MODEKEY_LEFT, '\002' },
 	{ MODEKEY_LEFT, KEYC_LEFT },

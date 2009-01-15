@@ -71,6 +71,9 @@
 - fix rxvt cursor fg issue (text under cursor has non-white fg)
 - key handling sucks a bit and needs to be reworked
 - window selection mode a la C-a " in screen
+  	 generic choice code, then: choose-window and choose-session options
+	 which build a list of options (name, idx), pass them choice code,
+	 then convert the return idx back into pointer and select the item
 
 for 0.6:
 - document OPTIONS section in man page with description of new option handling

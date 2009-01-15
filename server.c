@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.102 2009-01-14 22:29:28 nicm Exp $ */
+/* $Id: server.c,v 1.103 2009-01-15 19:27:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -57,6 +57,18 @@ void		 server_redraw_locked(struct client *);
 void		 server_check_timers(struct client *);
 void		 server_second_timers(void);
 int		 server_update_socket(const char *);
+
+int
+server_client_index(struct client *c)
+{
+	u_int	i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		if (c == ARRAY_ITEM(&clients, i))
+			return (i);
+	}
+	return (-1);
+}
 
 /* Fork new server. */
 int
@@ -645,7 +657,7 @@ server_handle_client(struct client *c)
 
 		/* Dispatch the command. */
 		key_bindings_dispatch(bd, c);
-		}
+	}
 	wp = wl->window->active;	/* could die - reset again */
 	
 	/* Ensure the cursor is in the right place and correctly on or off. */
