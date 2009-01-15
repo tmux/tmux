@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.60 2009-01-14 18:47:19 nicm Exp $
+.\" $Id: tmux.1,v 1.61 2009-01-15 21:24:03 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -648,7 +648,7 @@ Show server information and terminal details.
 Set the contents of the specified buffer to
 .Ar data .
 .It Xo Ic set-option
-.Op Fl g
+.Op Fl gu
 .Op Fl t Ar target-session
 .Ar option Ar value
 .Xc
@@ -656,8 +656,17 @@ Set the contents of the specified buffer to
 Set an option.
 If
 .Fl g
-is specified, the option is set globally (it becomes the default inherited by
-all sessions unless overridden) is set; otherwise it is set on the session
+is specified, the option is set as a global option. Global options apply to all
+sessions which don't have the option explicitly set.
+If
+.Fl g
+is not used, the option applies only to
+.Ar target-session .
+The
+.Fl u
+flag unsets an option, so a session inherits the option from the global
+options - it is not possible to unset a global option.
+.Pp
 Possible options are:
 .Bl -tag -width Ds
 .It Xo Ic bell-action
@@ -676,11 +685,15 @@ Set the number of buffers kept for each session; as new buffers are added to
 the top of the stack, old ones are removed from the bottom if necessary to
 maintain this maximum length.
 .It Ic default-command Ar command
-Sets the command used for new windows (if not specified when the window is
+Set the command used for new windows (if not specified when the window is
 created) to
 .Ar command .
 The default is
 .Dq exec $SHELL .
+.It Ic default-path Ar path
+Set the default working directory for processes created from keys, or
+interactively from the prompt.
+The default is the current working directory when the server is started.
 .It Ic history-limit Ar lines
 Set the maximum number of lines held in window history.
 This setting applies only to new windows - existing window histories are not
@@ -790,16 +803,14 @@ command).
 To prevent variable expansion when an encrypted password is read from a
 configuration file, enclose it in single quotes (').
 .It Xo Ic set-window-option
-.Op Fl g
+.Op Fl gu
 .Op Fl t Ar target-window
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic setw )
-Set a window-specific option.
-If
-.Fl g
-is specified the option is set globally (see
-.Ic set-option ) .
+Set a window-specific option. The -g and -u flags work similarly to the
+.Ic set-option
+command.
 .Pp
 Supported options are:
 .Bl -tag -width Ds

@@ -76,10 +76,6 @@
 	 then convert the return idx back into pointer and select the item
 
 for 0.6:
-- document OPTIONS section in man page with description of new option handling
-- document default-path
 - document pane stuff: up-/down-/select-/kill-pane, split-window
-- document password/locking commands
-- document update set/setw in man page with -g and -u flags
 - document xterm-keys
 - document repeat-time
