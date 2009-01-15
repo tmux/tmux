@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.37 2009-01-11 00:48:42 nicm Exp $ */
+/* $Id: client.c,v 1.38 2009-01-15 00:21:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -82,7 +82,7 @@ retry:
 			if (server_start(path) != 0)
 				goto no_start;
 		}
-		goto fail;
+		goto retry;
 	}
 
 	if ((mode = fcntl(cctx->srv_fd, F_GETFL)) == -1)

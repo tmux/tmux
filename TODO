@@ -65,10 +65,12 @@
 	swap-panes
 	close-pane
 	move-pane (to window)
+	kill all but current
      should be able to move to a hidden pane and it would be moved into view
 - would be nice if tmux could be the shell
 - fix rxvt cursor fg issue (text under cursor has non-white fg)
 - key handling sucks a bit and needs to be reworked
+- window selection mode a la C-a " in screen
 
 for 0.6:
 - document OPTIONS section in man page with description of new option handling
