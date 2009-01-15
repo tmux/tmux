@@ -13,12 +13,9 @@
 - status-fg/status-bg should be able to set attributes: bold, etc
 - refer to windows by name etc (duplicates? fnmatch?)
 - commands:
-	command to run something without a window at all - output to window-more
-	command to purge window history
  	extend list-clients to list clients attached to a session (-a for all?)
 	bring back detach-session to detach all clients on a session?
 	clone-session command to link all windows to a new session
-- function groups, bind-key ^W { select-window 0; send-key ^W } etc ***
 - allow fnmatch for -c, so that you can, eg, detach all clients
 - bind non prefix keys
 - garbage collect window history (100 lines at a time?) if it hasn't been used
@@ -27,17 +24,12 @@
 - audit copy/scroll and other modes for problems with very small windows
 - split clients into three RB trees by fd: attached/unattached/dead?
   or tailqs? what would be fastest per-char?
-- window splitting?
 - c/p is still borken in some ways
 - better mode features: search, back word, forward word, etc
 - flags to centre screen in window
 - better terminal emulation (identify, insert mode, some other bits)
 - when resizing, use history
 - audit for leftover/unused code
-- commands:	load-buffer -b number filename
-  	      	copy-buffer -s src-session -t dst-session
-			-a src-index -b dst-index
-		      	(copy from other session)
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
 - tidy up window modes
@@ -51,29 +43,32 @@
   others do not. this might be hard: a flag for each grid line (top bit of size
   maybe)? a single flag is insufficient as can't then tell when to /stop/
   unwrapping
-- more # commands in status-left,right eg #H for hostname, #S for session name
 - input.c is too complicated. simplify?
 - try change from pass-though model to redraw model (use updated screen
   data). maybe too slow though?
 - use a better termcap internally instead of screen, perhaps xterm
 - tty.c is a bit ugly
 - a command to display the status line briefly when it is turned off
-- neww should support -k
 - FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw, more??
 - clone session command
-- panes:
-	swap-panes
-	close-pane
-	move-pane (to window)
-	kill all but current
-     should be able to move to a hidden pane and it would be moved into view
-- would be nice if tmux could be the shell
+- kill all but current pane
 - fix rxvt cursor fg issue (text under cursor has non-white fg)
 - key handling sucks a bit and needs to be reworked
-- window selection mode a la C-a " in screen
-  	 generic choice code, then: choose-window and choose-session options
-	 which build a list of options (name, idx), pass them choice code,
-	 then convert the return idx back into pointer and select the item
+- would be nice if tmux could be the shell
+- key to switch to copy mode from scroll mode
+- flag to scroll-mode/copy-mode to automatically scroll up a page
+
+soon:
+- swap-panes
+- move-pane (to window)
+- should be able to move to a hidden pane and it would be moved into view
+- more # commands in status-left,right eg #H for hostname, #S for session name
+- command to run something without a window at all - output to window-more
+- command to purge window history
+- command: load-buffer -b number filename
+- command: copy-buffer -s src-session -t dst-session -a src-index -b dst-index (copy from other session)
+- function groups, bind-key ^W { select-window 0; send-key ^W } etc ***
+- neww should support -k
 
 for 0.6:
 - document pane stuff: up-/down-/select-/kill-pane, split-window
