@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-window.c,v 1.2 2009-01-15 19:38:36 nicm Exp $ */
+/* $Id: cmd-choose-window.c,v 1.3 2009-01-15 19:41:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -96,8 +96,9 @@ cmd_choose_window_callback(void *data, int idx)
 
 	if (idx != -1 && cdata->session <= ARRAY_LENGTH(&sessions) - 1) {
 		s = ARRAY_ITEM(&sessions, cdata->session);
-		if (s != NULL && session_select(s, idx) != -1)
+		if (s != NULL && session_select(s, idx) == 0)
 			server_redraw_session(s);
+		recalculate_sizes();
 	}
 	xfree(cdata);
 }
