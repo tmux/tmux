@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.15 2009-01-14 22:41:40 nicm Exp $ */
+/* $Id: key-string.c,v 1.16 2009-01-16 19:32:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,6 +47,8 @@ struct {
 	{ "End",	KEYC_END },
 	{ "NPage",	KEYC_NPAGE },
 	{ "PPage",	KEYC_PPAGE },
+	{ "Tab",	'\011' },
+	{ "BTab",	KEYC_BTAB },
 
 	/* Arrow keys. */
 	{ "Up",		KEYC_UP },

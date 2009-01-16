@@ -57,6 +57,8 @@
 - would be nice if tmux could be the shell
 - key to switch to copy mode from scroll mode
 - flag to scroll-mode/copy-mode to automatically scroll up a page
+- some people find first window being 0 rather than 1 is awkward on the keyboard. what about a new-window-index option that sets the base at which tmux starts numbering new windows, then they can do: set -g new-window-index 1; bind 0 selectw -t:10
+- suspend-client command bound to ^Z
 
 soon:
 - swap-pane-up, swap-pane-down
