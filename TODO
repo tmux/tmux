@@ -59,11 +59,11 @@
 - flag to scroll-mode/copy-mode to automatically scroll up a page
 
 soon:
-- swap-panes
+- swap-pane-up, swap-pane-down
 - move-pane (to window)
 - should be able to move to a hidden pane and it would be moved into view
-- command to run something without a window at all - output to window-more
-- command to purge window history
+- command to run something without a window at all - output to window-more. what for? isnt this the same as doing it w/ splitw/neww now?
+- command to purge window history? or apply history-limit changes?
 - command: load-buffer -b number filename
 - command: copy-buffer -s src-session -t dst-session -a src-index -b dst-index (copy from other session)
 - function groups, bind-key ^W { select-window 0; send-key ^W } etc ***
