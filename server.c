@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.103 2009-01-15 19:27:31 nicm Exp $ */
+/* $Id: server.c,v 1.104 2009-01-16 00:12:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -582,7 +582,6 @@ server_accept_client(int srv_fd)
 void
 server_handle_client(struct client *c)
 {
-	struct winlink		*wl = c->session->curw;
 	struct window_pane	*wp;
 	struct timeval	 	 tv;
 	struct key_binding	*bd;
@@ -608,7 +607,7 @@ server_handle_client(struct client *c)
 		}
 		if (server_locked)
 			continue;
-		wp = wl->window->active;	/* could die - do each loop */
+		wp = c->session->curw->window->active;	/* could die - do each loop */
 		
 		/* No previous prefix key. */
 		if (!(c->flags & CLIENT_PREFIX)) {
@@ -658,7 +657,7 @@ server_handle_client(struct client *c)
 		/* Dispatch the command. */
 		key_bindings_dispatch(bd, c);
 	}
-	wp = wl->window->active;	/* could die - reset again */
+	wp = c->session->curw->window->active;	/* could die - do each loop */
 	
 	/* Ensure the cursor is in the right place and correctly on or off. */
 	status = options_get_number(&c->session->options, "status");
