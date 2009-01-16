@@ -74,3 +74,4 @@ soon:
 for 0.6:
 - document xterm-keys
 - document repeat-time
+- document choose-window choose-session
