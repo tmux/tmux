@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.63 2009-01-16 17:28:49 tcunha Exp $
+.\" $Id: tmux.1,v 1.64 2009-01-16 20:18:10 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -360,6 +360,20 @@ or
 for ctrl keys, or
 .Ql M-
 for alt (meta) keys.
+.It Xo Ic choose-session
+.Op Fl t Ar target-window
+.Xc
+Put a window into into session choice mode, where the session for the current
+client may be selected interactively from a list.
+This command works only from inside
+.Nm .
+.It Xo Ic choose-window
+.Op Fl t Ar target-window
+.Xc
+Put a window into into window choice mode, where the window for the session
+attached to the current client may be selected interactively from a list.
+This command works only from inside
+.Nm .
 .It Xo Ic clock-mode
 .Op Fl t Ar target-window
 .Xc
