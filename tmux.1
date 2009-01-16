@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.62 2009-01-15 23:42:21 nicm Exp $
+.\" $Id: tmux.1,v 1.63 2009-01-16 17:28:49 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -366,11 +366,16 @@ for alt (meta) keys.
 Display a large clock.
 .It Xo Ic command-prompt
 .Op Fl t Ar target-client
+.Op Ar template
 .Xc
 Open the command prompt in a client.
 This may be used from inside
 .Nm
 to execute commands interactively.
+If
+.Ar template
+is specified, it is used as the command; any %% in the template will be
+replaced by what is entered at the prompt.
 .It Xo Ic copy-mode
 .Op Fl t Ar target-window
 .Xc
@@ -389,12 +394,24 @@ or the top buffer if not specified.
 .D1 (alias: Ic detach )
 Detach the current client if bound to a key, or the specified client with
 .Fl t .
+.It Xo Ic down-pane
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic downp )
+Move down a pane.
 .It Xo Ic has-session
 .Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic has )
 Report an error and exit with 1 if the specified session does not exist.
 If it does exist, exit with 0.
+.It Xo Ic kill-pane
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic killp )
+Destroy the given pane.
 .It Xo Ic kill-server
 .Xc
 Kill the
@@ -573,6 +590,21 @@ Rename the current window, or the window at
 .Ar target-window
 if specifed, to
 .Ar new-name .
+.It Xo Ic resize-pane-down
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Op Ar adjustment
+.Xc
+.D1 (alias: Ic resizep-down )
+.It Xo Ic resize-pane-up
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Op Ar adjustment
+.Xc
+.D1 (alias: Ic resizep-up)
+Resize a pane. The
+.Ar adjustment
+is given in lines (the default is 1).
 .It Xo Ic respawn-window
 .Op Fl k
 .Op Fl t Ar target-window
@@ -604,6 +636,15 @@ option appends to rather than overwriting the file.
 .Op Fl t Ar target-window
 .Xc
 Enter scroll mode.
+.It Xo Ic select-pane
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic selectp )
+Make pane
+.Ar pane-index
+the active pane in window
+.Ar target-window .
 .It Xo Ic select-prompt
 .Op Fl t Ar target-client
 .Xc
@@ -810,7 +851,11 @@ configuration file, enclose it in single quotes (').
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic setw )
-Set a window-specific option. The -g and -u flags work similarly to the
+Set a window-specific option. The
+.Fl g
+and
+.Fl u
+flags work similarly to the
 .Ic set-option
 command.
 .Pp
@@ -903,6 +948,30 @@ List the current options for the given window.
 .D1 (alias: Ic source )
 Execute commands from
 .Ar path .
+.It Xo Ic split-window
+.Op Fl d
+.Op Fl t Ar target-window
+.Op Ar command
+.Xc
+.D1 (alias: splitw )
+Creates a new window by splitting it vertically. All options have the same
+meaning as in the
+.Ic new-window
+command.
+.Pp
+A few notes with regard to panes:
+.Bl -enum -compact
+.It
+If attempting to split a window with less than eight lines, an error will be
+shown.
+.It
+If the window is resized, as many panes are shown as can fit without reducing
+them below four lines.
+.It
+The minimum pane size is four lines (including the separator line).
+.It
+The panes are indexed from top (0) to bottom, with no numbers skipped.
+.El
 .It Xo Ic start-server
 .Xc
 .D1 (alias: Ic start )
@@ -942,6 +1011,12 @@ Unlink
 .Ar target-window .
 A window may be unlinked only if it is linked to multiple sessions - windows may
 not be linked to no sessions.
+.It Xo Ic up-pane
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic upp )
+Move up a pane.
 .El
 .Sh FILES
 .Bl -tag -width Ds -compact

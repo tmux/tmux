@@ -70,6 +70,5 @@ soon:
 - neww should support -k
 
 for 0.6:
-- document pane stuff: up-/down-/select-/kill-pane, split-window
 - document xterm-keys
 - document repeat-time
