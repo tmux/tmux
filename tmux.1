@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.64 2009-01-16 20:18:10 nicm Exp $
+.\" $Id: tmux.1,v 1.65 2009-01-16 22:52:31 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -363,14 +363,14 @@ for alt (meta) keys.
 .It Xo Ic choose-session
 .Op Fl t Ar target-window
 .Xc
-Put a window into into session choice mode, where the session for the current
+Put a window into session choice mode, where the session for the current
 client may be selected interactively from a list.
 This command works only from inside
 .Nm .
 .It Xo Ic choose-window
 .Op Fl t Ar target-window
 .Xc
-Put a window into into window choice mode, where the window for the session
+Put a window into window choice mode, where the window for the session
 attached to the current client may be selected interactively from a list.
 This command works only from inside
 .Nm .
@@ -778,6 +778,18 @@ or
 Set status line message foreground colour.
 .It Ic prefix Ar key
 Set the current prefix key.
+.It Ic repeat-time Ar number
+Allow multiple commands to be entered without pressing the prefix-key again
+in the specified
+.Ar number
+miliseconds (the default is 500). It only applies to
+.Ic up-pane ,
+.Ic down-pane ,
+.Ic next-window ,
+.Ic previous-window ,
+.Ic resize-pane-up ,
+and
+.Ic resize-pane-down .
 .It Xo Ic set-titles
 .Op Ic on | Ic off
 .Xc
