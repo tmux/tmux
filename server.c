@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.104 2009-01-16 00:12:58 nicm Exp $ */
+/* $Id: server.c,v 1.105 2009-01-17 17:36:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -192,6 +192,8 @@ server_main(const char *srv_path, int srv_fd)
 	siginit();
 
 	last = time(NULL);
+
+	sigterm=1;/*XXX*/
 
 	pfds = NULL;
 	while (!sigterm) {
@@ -597,8 +599,12 @@ server_handle_client(struct client *c)
 
 	/* Process keys. */
 	prefix = options_get_number(&c->session->options, "prefix");
-	while (tty_keys_next(&c->tty, &key) == 0) {
+	while (tty_keys_next(&c->tty, &key) == 0) {	
 		server_activity = time(NULL);
+
+		if (c->session == NULL)
+			return;
+		wp = c->session->curw->window->active;	/* could die - do each loop */
 
 		server_clear_client_message(c);
 		if (c->prompt_string != NULL) {
@@ -607,7 +613,6 @@ server_handle_client(struct client *c)
 		}
 		if (server_locked)
 			continue;
-		wp = c->session->curw->window->active;	/* could die - do each loop */
 		
 		/* No previous prefix key. */
 		if (!(c->flags & CLIENT_PREFIX)) {
@@ -657,6 +662,8 @@ server_handle_client(struct client *c)
 		/* Dispatch the command. */
 		key_bindings_dispatch(bd, c);
 	}
+	if (c->session == NULL)
+		return;
 	wp = c->session->curw->window->active;	/* could die - do each loop */
 	
 	/* Ensure the cursor is in the right place and correctly on or off. */
