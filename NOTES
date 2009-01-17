@@ -8,6 +8,11 @@ This 0.6 release runs on OpenBSD, FreeBSD, Linux and OS X and may still run on
 Solaris (although it hasn't been tested in a while). It is usable, although
 there remain a number of missing features and some remaining bugs are expected.
 
+If upgrading from 0.5, PLEASE NOTE the following configuration file changes: it
+is now required to pass the -g flag to set-option or set-window-option to set
+global options; remain-by-default and utf8-default are now gone, use global
+window options (set-window-option -g) instead.
+
 tmux consists of a server part and multiple clients. The server is created when
 required and runs continuously unless killed by the user. Clients access the
 server through a socket in /tmp. Multiple sessions may be created on a single
@@ -81,4 +86,4 @@ welcome. Please email:
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.39 2009-01-14 22:51:24 nicm Exp $
+$Id: NOTES,v 1.40 2009-01-17 17:51:54 nicm Exp $
