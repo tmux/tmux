@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.52 2009-01-15 19:27:31 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.53 2009-01-17 18:34:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -139,6 +139,7 @@ key_bindings_free(void)
 
 	while (!SPLAY_EMPTY(&key_bindings)) {
 		bd = SPLAY_ROOT(&key_bindings);
+		SPLAY_REMOVE(key_bindings, &key_bindings, bd);
 		cmd_free(bd->cmd);
 		xfree(bd);
 	}
