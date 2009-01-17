@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.105 2009-01-17 17:36:55 nicm Exp $ */
+/* $Id: server.c,v 1.106 2009-01-17 17:42:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -192,8 +192,6 @@ server_main(const char *srv_path, int srv_fd)
 	siginit();
 
 	last = time(NULL);
-
-	sigterm=1;/*XXX*/
 
 	pfds = NULL;
 	while (!sigterm) {
