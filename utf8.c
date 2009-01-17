@@ -1,4 +1,4 @@
-/* $Id: utf8.c,v 1.2 2008-09-25 20:08:56 nicm Exp $ */
+/* $Id: utf8.c,v 1.3 2009-01-17 18:38:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,7 +23,7 @@
 #include "tmux.h"
 
 u_int
-utf8_combine(const u_char data[4])
+utf8_combine(const u_char *data)
 {
 	u_int	uv;
 
@@ -46,9 +46,9 @@ utf8_combine(const u_char data[4])
 }
 
 void
-utf8_split(u_int uv, u_char data[4])
+utf8_split(u_int uv, u_char *data)
 {
-	memset(data, 0xff, sizeof data);
+	memset(data, 0xff, 4);
 
 	if (uv <= 0x7f)
 		data[0] = uv;
