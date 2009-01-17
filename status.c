@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.63 2009-01-15 23:42:21 nicm Exp $ */
+/* $Id: status.c,v 1.64 2009-01-17 18:47:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ status_redraw(struct client *c)
 	struct session		       *s = c->session;
 	struct winlink		       *wl;
 	struct window_pane	       *wp;
-	struct screen		       *sc;
+	struct screen		       *sc = NULL;
 	char		 	       *left, *right, *text, *ptr;
 	size_t				llen, rlen, offset, xx, yy, sy;
 	size_t				size, start, width;

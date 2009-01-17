@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.6 2009-01-11 02:23:52 nicm Exp $ */
+/* $Id: grid.c,v 1.7 2009-01-17 18:47:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -37,33 +37,50 @@
 /* Default grid cell data. */
 const struct grid_cell grid_default_cell = { ' ', 0, 0, 8, 8 };
 
-#ifdef DEBUG
-#define grid_check_x(gd, px) do {				\
-	if ((px) >= (gd)->sx)					\
-		log_fatalx("x out of range: %u", px);		\
-} while (0)
-#define grid_check_y(gd, py) do {				\
-	if ((py) >= (gd)->hsize + (gd)->sy)			\
-		log_fatalx("y out of range: %u", py);		\
-} while (0)
-#else
-#define grid_check_x(gd, px) do {				\
-	if ((px) >= (gd)->sx) {					\
-		log_debug("x out of range: %u", px);		\
-		return;						\
-	}							\
-} while (0)
-#define grid_check_y(gd, py) do {				\
-	if ((py) >= (gd)->hsize + (gd)->sy) {			\
-		log_debug("y out of range: %u", py);		\
-		return;						\
-	}							\
-} while (0)
-#endif
-
 #define grid_put_cell(gd, px, py, gc) do {			\
 	memcpy(&gd->data[py][px], gc, sizeof gd->data[py][px]);	\
 } while (0)
+
+int	grid_check_x(struct grid_data *, u_int);
+int	grid_check_y(struct grid_data *, u_int);
+
+#ifdef DEBUG
+int
+grid_check_x(struct grid_data *gd, u_int px)
+{
+	if ((px) >= (gd)->sx)
+		log_fatalx("x out of range: %u", px);
+	return (0);
+}
+
+int
+grid_check_y(struct grid_data *gd, u_int py)
+{
+	if ((py) >= (gd)->hsize + (gd)->sy)
+		log_fatalx("y out of range: %u", py);
+	return (0);
+}
+#else
+int
+grid_check_x(struct grid_data *gd, u_int px)
+{
+	if ((px) >= (gd)->sx) {
+		log_debug("x out of range: %u", px);
+		return (-1);
+	}
+	return (0);
+}
+
+int
+grid_check_y(struct grid_data *gd, u_int py)
+{
+	if ((py) >= (gd)->hsize + (gd)->sy) {
+		log_debug("y out of range: %u", py);
+		return (-1);
+	}
+	return (0);
+}
+#endif
 
 /* Create a new grid. */
 struct grid_data *
@@ -160,8 +177,10 @@ grid_expand_line(struct grid_data *gd, u_int py, u_int sx)
 const struct grid_cell *
 grid_peek_cell(struct grid_data *gd, u_int px, u_int py)
 {
-	grid_check_x(gd, px);
-	grid_check_y(gd, py);
+	if (grid_check_x(gd, px) != 0)
+		return (&grid_default_cell);
+	if (grid_check_y(gd, py) != 0)
+		return (&grid_default_cell);
 
 	if (px >= gd->size[py])
 		return (&grid_default_cell);
@@ -172,8 +191,10 @@ grid_peek_cell(struct grid_data *gd, u_int px, u_int py)
 struct grid_cell *
 grid_get_cell(struct grid_data *gd, u_int px, u_int py)
 {
-	grid_check_x(gd, px);
-	grid_check_y(gd, py);
+	if (grid_check_x(gd, px) != 0)
+		return (NULL);
+	if (grid_check_y(gd, py) != 0)
+		return (NULL);
 
 	grid_expand_line(gd, py, px + 1);
 	return (&gd->data[py][px]);
@@ -184,8 +205,10 @@ void
 grid_set_cell(
     struct grid_data *gd, u_int px, u_int py, const struct grid_cell *gc)
 {
-	grid_check_x(gd, px);
-	grid_check_y(gd, py);
+	if (grid_check_x(gd, px) != 0)
+		return;
+	if (grid_check_y(gd, py) != 0)
+		return;
 
 	grid_expand_line(gd, py, px + 1);
 	grid_put_cell(gd, px, py, gc);
@@ -210,10 +233,14 @@ grid_clear(struct grid_data *gd, u_int px, u_int py, u_int nx, u_int ny)
 		return;
 	}
 
-	grid_check_x(gd, px);
-	grid_check_x(gd, px + nx - 1);
-	grid_check_y(gd, py);
-	grid_check_y(gd, py + ny - 1);
+	if (grid_check_x(gd, px) != 0)
+		return;
+	if (grid_check_x(gd, px + nx - 1) != 0)
+		return;
+	if (grid_check_y(gd, py) != 0)
+		return;
+	if (grid_check_y(gd, py + ny - 1) != 0)
+		return;
 
 	for (yy = py; yy < py + ny; yy++) {
 		for (xx = px; xx < px + nx; xx++) {
@@ -236,10 +263,14 @@ grid_fill(struct grid_data *gd,
 	if (nx == 0 || ny == 0)
 		return;
 
-	grid_check_x(gd, px);
-	grid_check_x(gd, px + nx - 1);
-	grid_check_y(gd, py);
-	grid_check_y(gd, py + ny - 1);
+	if (grid_check_x(gd, px) != 0)
+		return;
+	if (grid_check_x(gd, px + nx - 1) != 0)
+		return;
+	if (grid_check_y(gd, py) != 0)
+		return;
+	if (grid_check_y(gd, py + ny - 1) != 0)
+		return;
 
 	for (yy = py; yy < py + ny; yy++) {
 		for (xx = px; xx < px + nx; xx++) {
@@ -260,8 +291,10 @@ grid_clear_lines(struct grid_data *gd, u_int py, u_int ny)
 	if (ny == 0)
 		return;
 
-	grid_check_y(gd, py);
-	grid_check_y(gd, py + ny - 1);
+	if (grid_check_y(gd, py) != 0)
+		return;
+	if (grid_check_y(gd, py + ny - 1) != 0)
+		return;
 
 	for (yy = py; yy < py + ny; yy++) {
 		if (gd->data[yy] != NULL) {
@@ -291,10 +324,14 @@ grid_move_lines(struct grid_data *gd, u_int dy, u_int py, u_int ny)
 	if (ny == 0 || py == dy)
 		return;
 
-	grid_check_y(gd, py);
-	grid_check_y(gd, py + ny - 1);
-	grid_check_y(gd, dy);
-	grid_check_y(gd, dy + ny - 1);
+	if (grid_check_y(gd, py) != 0)
+		return;
+	if (grid_check_y(gd, py + ny - 1) != 0)
+		return;
+	if (grid_check_y(gd, dy) != 0)
+		return;
+	if (grid_check_y(gd, dy + ny - 1) != 0)
+		return;
 
 	/* Free any lines which are being replaced. */
 	for (yy = dy; yy < dy + ny; yy++) {
@@ -326,9 +363,12 @@ grid_clear_cells(struct grid_data *gd, u_int px, u_int py, u_int nx)
 	if (nx == 0)
 		return;
 
-	grid_check_x(gd, px);
-	grid_check_x(gd, px + nx - 1);
-	grid_check_y(gd, py);
+	if (grid_check_x(gd, px) != 0)
+		return;
+	if (grid_check_x(gd, px + nx - 1) != 0)
+		return;
+	if (grid_check_y(gd, py) != 0)
+		return;
 
 	for (xx = px; xx < px + nx; xx++) {
 		if (xx >= gd->size[py])
@@ -348,10 +388,14 @@ grid_move_cells(struct grid_data *gd, u_int dx, u_int px, u_int py, u_int nx)
 	if (nx == 0 || px == dx)
 		return;
 
-	grid_check_x(gd, px);
-	grid_check_x(gd, px + nx - 1);
-	grid_check_x(gd, dx + nx - 1);
-	grid_check_y(gd, py);
+	if (grid_check_x(gd, px) != 0)
+		return;
+	if (grid_check_x(gd, px + nx - 1) != 0)
+		return;
+	if (grid_check_x(gd, dx + nx - 1) != 0)
+		return;
+	if (grid_check_y(gd, py) != 0)
+		return;
 
 	grid_expand_line(gd, py, px + nx);
 	grid_expand_line(gd, py, dx + nx);
