@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.65 2009-01-16 22:52:31 tcunha Exp $
+.\" $Id: tmux.1,v 1.66 2009-01-17 17:16:31 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -945,6 +945,15 @@ command.
 Instructs
 .Nm
 to expect UTF-8 sequences to appear in this window.
+.It Xo xterm-keys
+.Op Ic on | Ic off
+.Xc
+If this option is set,
+.Nm
+will generate
+.Xr xterm 1 -style
+function key sequences; these have a number included to indicate modifiers such
+as shift, meta or ctrl.
 .El
 .It Xo Ic show-buffer
 .Op Fl b Ar buffer-index
