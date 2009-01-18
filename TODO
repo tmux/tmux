@@ -72,7 +72,7 @@
   (copy from other session)
 - function groups, bind-key ^W { select-window 0; send-key ^W } etc ***
 - neww should support -k
-- suspend-client command bound to ^Z
+- document suspend-client
 - flag to scroll-mode/copy-mode to automatically scroll up a page
 - would be nice if tmux could be the shell
 - key to switch to copy mode from scroll mode

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.97 2009-01-15 23:42:21 nicm Exp $ */
+/* $Id: tmux.c,v 1.98 2009-01-18 12:09:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,6 +45,7 @@ const char	*_malloc_options = "AJX";
 
 volatile sig_atomic_t sigwinch;
 volatile sig_atomic_t sigterm;
+volatile sig_atomic_t sigcont;
 
 char		*cfg_file;
 struct options	 global_options;
@@ -59,7 +60,6 @@ int		 be_quiet;
 time_t		 start_time;
 const char	*socket_path;
 
-void		 sighandler(int);
 __dead void	 usage(void);
 
 #ifdef NO_PROGNAME
@@ -104,6 +104,9 @@ sighandler(int sig)
 		break;
 	case SIGCHLD:
 		waitpid(WAIT_ANY, NULL, WNOHANG);
+		break;
+	case SIGCONT:
+		sigcont = 1;
 		break;
 	}
 	errno = saved_errno;

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.236 2009-01-17 18:38:12 nicm Exp $ */
+/* $Id: tmux.h,v 1.237 2009-01-18 12:09:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -358,6 +358,8 @@ enum hdrtype {
 	MSG_READY,
 	MSG_RESIZE,
 	MSG_UNLOCK,
+	MSG_SUSPEND,
+	MSG_WAKEUP,
 };
 
 /* Message header structure. */
@@ -759,6 +761,7 @@ struct client {
 #define CLIENT_REDRAW 0x8
 #define CLIENT_STATUS 0x10
 #define CLIENT_REPEAT 0x20	/* allow command to repeat within repeat time */
+#define CLIENT_SUSPENDED 0x40
 	int		 flags;
 
 	char		*message_string;
@@ -959,6 +962,7 @@ char   *fgetln(FILE *, size_t *);
 /* tmux.c */
 extern volatile sig_atomic_t sigwinch;
 extern volatile sig_atomic_t sigterm;
+extern volatile sig_atomic_t sigcont;
 extern struct options global_options;
 extern struct options global_window_options;
 extern char	*cfg_file;
@@ -972,6 +976,7 @@ extern const char *socket_path;
 void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);
+void		 sighandler(int);
 
 /* cfg.c */
 int		 load_cfg(const char *, char **x);
@@ -1001,10 +1006,12 @@ void		 tty_putcode2(struct tty *, enum tty_code_code, int, int);
 void		 tty_puts(struct tty *, const char *);
 void		 tty_putc(struct tty *, char);
 void		 tty_init(struct tty *, char *, char *);
+void		 tty_start_tty(struct tty *);
+void		 tty_stop_tty(struct tty *);
 void		 tty_set_title(struct tty *, const char *);
 int		 tty_open(struct tty *, char **);
-void		 tty_close(struct tty *);
-void		 tty_free(struct tty *);
+void		 tty_close(struct tty *, int);
+void		 tty_free(struct tty *, int);
 void		 tty_write(struct tty *,
 		     struct screen *, u_int, enum tty_cmd, ...);
 void		 tty_vwrite(struct tty *,
@@ -1135,6 +1142,7 @@ extern const struct cmd_entry cmd_show_window_options_entry;
 extern const struct cmd_entry cmd_source_file_entry;
 extern const struct cmd_entry cmd_split_window_entry;
 extern const struct cmd_entry cmd_start_server_entry;
+extern const struct cmd_entry cmd_suspend_client_entry;
 extern const struct cmd_entry cmd_swap_window_entry;
 extern const struct cmd_entry cmd_switch_client_entry;
 extern const struct cmd_entry cmd_unbind_key_entry;

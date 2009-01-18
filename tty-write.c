@@ -1,4 +1,4 @@
-/* $Id: tty-write.c,v 1.6 2009-01-14 19:29:32 nicm Exp $ */
+/* $Id: tty-write.c,v 1.7 2009-01-18 12:09:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,6 +44,8 @@ tty_vwrite_window(void *ptr, enum tty_cmd cmd, va_list ap)
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (c == NULL || c->session == NULL)
+			continue;
+		if (c->flags & CLIENT_SUSPENDED)
 			continue;
 
 		if (c->session->curw->window == wp->window) {

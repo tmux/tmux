@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.57 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: server-msg.c,v 1.58 2009-01-18 12:09:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,6 +31,7 @@ int	server_msg_fn_identify(struct hdr *, struct client *);
 int	server_msg_fn_resize(struct hdr *, struct client *);
 int	server_msg_fn_exiting(struct hdr *, struct client *);
 int	server_msg_fn_unlock(struct hdr *, struct client *);
+int	server_msg_fn_wakeup(struct hdr *, struct client *);
 
 void printflike2 server_msg_fn_command_error(
     	    struct cmd_ctx *, const char *, ...);
@@ -48,7 +49,8 @@ const struct server_msg server_msg_table[] = {
 	{ MSG_COMMAND, server_msg_fn_command },
 	{ MSG_RESIZE, server_msg_fn_resize },
 	{ MSG_EXITING, server_msg_fn_exiting },
-	{ MSG_UNLOCK, server_msg_fn_unlock }
+	{ MSG_UNLOCK, server_msg_fn_unlock },
+	{ MSG_WAKEUP, server_msg_fn_wakeup },
 };
 
 int
@@ -242,7 +244,7 @@ server_msg_fn_exiting(struct hdr *hdr, struct client *c)
 
 	c->session = NULL;
 
-	tty_close(&c->tty);
+	tty_close(&c->tty, c->flags & CLIENT_SUSPENDED);
 
 	server_write_client(c, MSG_EXITED, NULL, 0);
 
@@ -268,6 +270,21 @@ server_msg_fn_unlock(struct hdr *hdr, struct client *c)
 	}
 
 	server_write_client(c, MSG_EXIT, NULL, 0);
+
+	return (0);
+}
+
+int
+server_msg_fn_wakeup(struct hdr *hdr, struct client *c)
+{
+	if (hdr->size != 0)
+		fatalx("bad MSG_WAKEUP size");
+
+	log_debug("wakeup msg from client");
+
+	c->flags &= ~CLIENT_SUSPENDED;
+	tty_start_tty(&c->tty);
+	server_redraw_client(c);
 
 	return (0);
 }

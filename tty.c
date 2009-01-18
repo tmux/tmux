@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.58 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: tty.c,v 1.59 2009-01-18 12:09:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -98,10 +98,6 @@ tty_init(struct tty *tty, char *path, char *term)
 int
 tty_open(struct tty *tty, char **cause)
 {
-	struct termios	 tio;
-#ifdef TIOCFLUSH
-	int		 what;
-#endif
 	int		 mode;
 
 	tty->fd = open(tty->path, O_RDWR|O_NONBLOCK);
@@ -120,9 +116,6 @@ tty_open(struct tty *tty, char **cause)
 	else
 		tty->log_fd = -1;
 
-	tty->cx = UINT_MAX;
-	tty->cy = UINT_MAX;
-
 	if ((tty->term = tty_term_find(tty->termname, tty->fd, cause)) == NULL)
 		goto error;
 
@@ -130,7 +123,29 @@ tty_open(struct tty *tty, char **cause)
 	tty->out = buffer_create(BUFSIZ);
 
 	tty->flags &= TTY_UTF8;
-	memcpy(&tty->cell, &grid_default_cell, sizeof tty->cell);
+
+	tty_start_tty(tty);
+
+	tty_keys_init(tty);
+
+	tty_fill_acs(tty);
+
+	return (0);
+
+error:
+	close(tty->fd);
+	tty->fd = -1;
+
+	return (-1);
+}
+
+void
+tty_start_tty(struct tty *tty)
+{
+	struct termios	 tio;
+#ifdef TIOCFLUSH
+	int		 what;
+#endif
 
 	if (tcgetattr(tty->fd, &tty->tio) != 0)
 		fatal("tcgetattr failed");
@@ -160,17 +175,41 @@ tty_open(struct tty *tty, char **cause)
 	tty_putcode(tty, TTYC_ENACS);
 	tty_putcode(tty, TTYC_CLEAR);
 
-	tty_keys_init(tty);
+	memcpy(&tty->cell, &grid_default_cell, sizeof tty->cell);
 
-	tty_fill_acs(tty);
+	tty->cx = UINT_MAX;
+	tty->cy = UINT_MAX;
 
-	return (0);
+	tty->rlower = UINT_MAX;
+	tty->rupper = UINT_MAX;
+}
 
-error:
-	close(tty->fd);
-	tty->fd = -1;
+void
+tty_stop_tty(struct tty *tty)
+{
+	struct winsize	ws;
 
-	return (-1);
+	/*
+	 * Be flexible about error handling and try not kill the server just
+	 * because the fd is invalid. Things like ssh -t can easily leave us
+	 * with a dead tty.
+	 */
+	if (ioctl(tty->fd, TIOCGWINSZ, &ws) == -1) {
+		if (errno != EBADF && errno != ENXIO && errno != ENOTTY)
+			fatal("ioctl(TIOCGWINSZ)");
+	} else if (tcsetattr(tty->fd, TCSANOW, &tty->tio) == -1) {
+		if (errno != EBADF && errno != ENXIO && errno != ENOTTY)
+			fatal("tcsetattr failed");
+	} else {
+		tty_raw(tty,
+		    tty_term_string2(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
+		tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
+		tty_raw(tty, tty_term_string(tty->term, TTYC_SGR0));
+		tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
+		tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
+		tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
+		tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
+	}
 }
 
 void
@@ -198,10 +237,8 @@ tty_get_acs(struct tty *tty, u_char ch)
 }
 
 void
-tty_close(struct tty *tty)
+tty_close(struct tty *tty, int no_stop)
 {
-	struct winsize	ws;
-
 	if (tty->fd == -1)
 		return;
 
@@ -210,27 +247,8 @@ tty_close(struct tty *tty)
 		tty->log_fd = -1;
 	}
 
-	/*
-	 * Be flexible about error handling and try not kill the server just
-	 * because the fd is invalid. Things like ssh -t can easily leave us
-	 * with a dead tty.
-	 */
-	if (ioctl(tty->fd, TIOCGWINSZ, &ws) == -1) {
-		if (errno != EBADF && errno != ENXIO && errno != ENOTTY)
-			fatal("ioctl(TIOCGWINSZ)");
-	} else if (tcsetattr(tty->fd, TCSANOW, &tty->tio) == -1) {
-		if (errno != EBADF && errno != ENXIO && errno != ENOTTY)
-			fatal("tcsetattr failed");
-	} else {
-		tty_raw(tty,
-		    tty_term_string2(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
-		tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
-		tty_raw(tty, tty_term_string(tty->term, TTYC_SGR0));
-		tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
-		tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
-		tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
-		tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
-	}
+	if (!no_stop)
+		tty_stop_tty(tty);
 
 	tty_term_free(tty->term);
 	tty_keys_free(tty);
@@ -243,9 +261,9 @@ tty_close(struct tty *tty)
 }
 
 void
-tty_free(struct tty *tty)
+tty_free(struct tty *tty, int no_stop)
 {
-	tty_close(tty);
+	tty_close(tty, no_stop);
 
 	if (tty->path != NULL)
 		xfree(tty->path);

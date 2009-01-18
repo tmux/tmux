@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.16 2009-01-07 22:57:03 nicm Exp $ */
+/* $Id: client-msg.c,v 1.17 2009-01-18 12:09:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,8 +29,7 @@ int	client_msg_fn_detach(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_error(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_exit(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_exited(struct hdr *, struct client_ctx *, char **);
-int	client_msg_fn_okay(struct hdr *, struct client_ctx *, char **);
-int	client_msg_fn_pause(struct hdr *, struct client_ctx *, char **);
+int	client_msg_fn_suspend(struct hdr *, struct client_ctx *, char **);
 
 struct client_msg {
 	enum hdrtype   type;
@@ -40,7 +39,8 @@ struct client_msg client_msg_table[] = {
 	{ MSG_DETACH, client_msg_fn_detach },
 	{ MSG_ERROR, client_msg_fn_error },
 	{ MSG_EXIT, client_msg_fn_exit },
-	{ MSG_EXITED, client_msg_fn_exited }
+	{ MSG_EXITED, client_msg_fn_exited },
+	{ MSG_SUSPEND, client_msg_fn_suspend },
 };
 
 int
@@ -115,4 +115,30 @@ client_msg_fn_exited(
 		fatalx("bad MSG_EXITED size");
 
 	return (-1);
+}
+
+int
+client_msg_fn_suspend(
+    struct hdr *hdr, unused struct client_ctx *cctx, unused char **error)
+{
+	struct sigaction	 act;
+
+	if (hdr->size != 0)
+		fatalx("bad MSG_SUSPEND size");
+
+	memset(&act, 0, sizeof act);
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = SA_RESTART;
+
+	act.sa_handler = SIG_DFL;
+	if (sigaction(SIGTSTP, &act, NULL) != 0)
+		fatal("sigaction failed");
+
+	act.sa_handler = sighandler;
+	if (sigaction(SIGCONT, &act, NULL) != 0)
+		fatal("sigaction failed");
+
+	kill(getpid(), SIGTSTP);
+
+	return (0);
 }

@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.106 2009-01-17 17:42:10 nicm Exp $ */
+/* $Id: server.c,v 1.107 2009-01-18 12:09:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -484,7 +484,8 @@ server_fill_clients(struct pollfd **pfd)
 		}
 		(*pfd)++;
 
-		if (c == NULL || c->tty.fd == -1 || c->session == NULL)
+		if (c == NULL || c->flags & CLIENT_SUSPENDED ||
+		    c->tty.fd == -1 || c->session == NULL)
 			(*pfd)->fd = -1;
 		else {
 			(*pfd)->fd = c->tty.fd;
@@ -516,7 +517,8 @@ server_handle_clients(struct pollfd **pfd)
 		}
 		(*pfd)++;
 
-		if (c != NULL && c->tty.fd != -1 && c->session != NULL) {
+		if (c != NULL && !(c->flags & CLIENT_SUSPENDED) &&
+		    c->tty.fd != -1 && c->session != NULL) {
 			if (buffer_poll(*pfd, c->tty.in, c->tty.out) != 0)
 				server_lost_client(c);
 			else
@@ -602,7 +604,7 @@ server_handle_client(struct client *c)
 
 		if (c->session == NULL)
 			return;
-		wp = c->session->curw->window->active;	/* could die - do each loop */
+		wp = c->session->curw->window->active;	/* could die */
 
 		server_clear_client_message(c);
 		if (c->prompt_string != NULL) {
@@ -686,7 +688,7 @@ server_lost_client(struct client *c)
 			ARRAY_SET(&clients, i, NULL);
 	}
 
-	tty_free(&c->tty);
+	tty_free(&c->tty, c->flags & CLIENT_SUSPENDED);
 
 	if (c->title != NULL)
 		xfree(c->title);
