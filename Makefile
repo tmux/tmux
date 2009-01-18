@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.99 2009-01-18 14:40:48 nicm Exp $
+# $Id: Makefile,v 1.100 2009-01-18 15:18:33 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -80,7 +80,10 @@ LIBS+= -lutil -lncurses
 
 # FreeBSD and DragonFly
 .if ${OS} == "FreeBSD" || ${OS} == "DragonFly"
+INCDIRS+= -Icompat
+SRCS+= compat/vis.c
 CFLAGS+= -DUSE_LIBUTIL_H
+LIBS+= -lcrypt
 .endif
 
 OBJS= ${SRCS:S/.c/.o/:S/.y/.o/}
