@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.7 2009-01-10 14:46:17 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.8 2009-01-18 18:06:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -85,8 +85,9 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 			continue;
 
 		ctx->print(ctx, "%4d: %s (%d, %d): %s [%ux%u %s] "
-		    "[flags=0x%x]", i, c->tty.path, c->fd, c->tty.fd, 
-		    c->session->name, c->sx, c->sy, c->tty.termname, c->flags);
+		    "[flags=0x%x/0x%x]", i, c->tty.path, c->fd, c->tty.fd, 
+		    c->session->name, c->sx, c->sy, c->tty.termname, c->flags,
+		    c->tty.flags);
 	}
 	ctx->print(ctx, "");
 
