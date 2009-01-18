@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.59 2009-01-18 12:09:42 nicm Exp $ */
+/* $Id: tty.c,v 1.60 2009-01-18 21:35:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -317,7 +317,8 @@ tty_putc(struct tty *tty, char ch)
 		ch = tty_get_acs(tty, ch);
 	buffer_write8(tty->out, ch);
 
-	tty->cx++;	/* This is right most of the time. */
+	if (ch >= 0x20)
+		tty->cx++;	/* This is right most of the time. */
 
 	if (tty->log_fd != -1)
 		write(tty->log_fd, &ch, 1);
@@ -521,7 +522,6 @@ tty_cmd_reverseindex(
 	tty_cursor(tty, s->cx, s->cy, oy);
 
 	tty_putcode(tty, TTYC_RI);
-	
 }
 
 void
@@ -740,7 +740,10 @@ tty_region(struct tty *tty, struct screen *s, u_int oy)
 void
 tty_cursor(struct tty *tty, u_int cx, u_int cy, u_int oy)
 {
-	if (tty->cx != cx || tty->cy != oy + cy) {
+	if (cx == 0 && tty->cx != 0 && tty->cy == oy + cy) {
+		tty->cx = 0;
+		tty_putc(tty, '\r');
+	} else if (tty->cx != cx || tty->cy != oy + cy) {
 		tty->cx = cx;
 		tty->cy = oy + cy;
 		tty_putcode2(tty, TTYC_CUP, tty->cy, tty->cx);
