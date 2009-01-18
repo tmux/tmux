@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-session.c,v 1.4 2009-01-18 17:20:52 nicm Exp $ */
+/* $Id: cmd-choose-session.c,v 1.5 2009-01-18 19:10:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,8 +54,10 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session			*s;
 	u_int			 	 i, idx, cur;
 
-	if (ctx->curclient == NULL)
+	if (ctx->curclient == NULL) {
+		ctx->error(ctx, "must be run interactively");
 		return;
+	}
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return;

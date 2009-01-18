@@ -1,4 +1,4 @@
-/* $Id: cmd-find-window.c,v 1.1 2009-01-18 17:20:52 nicm Exp $ */
+/* $Id: cmd-find-window.c,v 1.2 2009-01-18 19:10:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,8 +32,8 @@ void	cmd_find_window_callback(void *, int);
 char   *cmd_find_window_search(struct window_pane *, const char *);
 
 const struct cmd_entry cmd_find_window_entry = {
-	"find-window", NULL,
-	CMD_TARGET_WINDOW_USAGE,
+	"find-window", "findw",
+	CMD_TARGET_WINDOW_USAGE " match-string",
 	CMD_ARG1,
 	cmd_target_init,
 	cmd_target_parse,
@@ -53,7 +53,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data		*data = self->data;
 	struct cmd_find_window_data	*cdata;
-	struct session			*s = ctx->curclient->session;
+	struct session			*s;
 	struct winlink			*wl, *wm;
 	struct window			*w;
 	struct window_pane		*wp;
@@ -62,8 +62,11 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char				*sres, *sctx;
 	u_int				 i;
 
-	if (ctx->curclient == NULL)
+	if (ctx->curclient == NULL) {
+		ctx->error(ctx, "must be run interactively");
 		return;
+	}
+	s = ctx->curclient->session;
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return;
