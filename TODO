@@ -49,27 +49,31 @@
 - use a better termcap internally instead of screen, perhaps xterm
 - tty.c is a bit ugly
 - a command to display the status line briefly when it is turned off
-- FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw, more??
-- clone session command
+- FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw,
+  more??
 - kill all but current pane
-- fix rxvt cursor fg issue (text under cursor has non-white fg)
+- fix rxvt cursor fg issue (text under cursor can have non-white fg)
 - key handling sucks a bit and needs to be reworked
-- would be nice if tmux could be the shell
-- key to switch to copy mode from scroll mode
-- flag to scroll-mode/copy-mode to automatically scroll up a page
-- some people find first window being 0 rather than 1 is awkward on the keyboard. what about a new-window-index option that sets the base at which tmux starts numbering new windows, then they can do: set -g new-window-index 1; bind 0 selectw -t:10
-- suspend-client command bound to ^Z
+- some people find first window being 0 rather than 1 is awkward on the
+  keyboard. what about a new-window-index option that sets the base at which
+  tmux starts numbering new windows, then they can do: set -g new-window-index
+  1; bind 0 selectw -t:10
 
-soon:
-- swap-pane-up, swap-pane-down
-- move-pane (to window)
-- should be able to move to a hidden pane and it would be moved into view
-- command to run something without a window at all - output to window-more. what for? isnt this the same as doing it w/ splitw/neww now?
+(hopefully) for 0.7, in no particular order:
+- swap-pane-up, swap-pane-down (maybe move-pane-*)
+- move-pane (to window) (maybe break-pane?)
+- should be able to move to a hidden pane and it would be moved into view. pane
+  number in status line/top-right would be cool for this
+- command to run something without a window at all - output to
+  window-more. what for? isnt this the same as doing it w/ splitw/neww now?
 - command to purge window history? or apply history-limit changes?
 - command: load-buffer -b number filename
-- command: copy-buffer -s src-session -t dst-session -a src-index -b dst-index (copy from other session)
+- command: copy-buffer -s src-session -t dst-session -a src-index -b dst-index
+  (copy from other session)
 - function groups, bind-key ^W { select-window 0; send-key ^W } etc ***
 - neww should support -k
-
-for 0.6:
-- release it!
+- suspend-client command bound to ^Z
+- flag to scroll-mode/copy-mode to automatically scroll up a page
+- would be nice if tmux could be the shell
+- key to switch to copy mode from scroll mode
+- clone session command

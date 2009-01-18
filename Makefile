@@ -1,17 +1,17 @@
-# $Id: Makefile,v 1.96 2009-01-17 18:47:36 nicm Exp $
+# $Id: Makefile,v 1.97 2009-01-18 00:08:43 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
 
 PROG= tmux
-VERSION= 0.6
+VERSION= 0.7
 
 OS!= uname
 REL!= uname -r
 DATE!= date +%Y%m%d-%H%M
 
 # This must be empty as OpenBSD includes it in default CFLAGS.
-#DEBUG=
+DEBUG=
 
 META?= \002 # C-b
 
