@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.59 2009-01-18 12:09:42 nicm Exp $
+# $Id: GNUmakefile,v 1.60 2009-01-18 14:40:48 nicm Exp $
 
 .PHONY: clean
 
@@ -17,7 +17,7 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       grid.c grid-view.c \
       window.c session.c log.c client.c client-msg.c client-fn.c cfg.c \
       key-string.c key-bindings.c resize.c arg.c mode-key.c \
-      cmd.c cmd-generic.c cmd-string.c \
+      cmd.c cmd-generic.c cmd-string.c cmd-list.c \
       cmd-detach-client.c cmd-list-sessions.c cmd-new-window.c cmd-bind-key.c \
       cmd-unbind-key.c cmd-previous-window.c cmd-last-window.c cmd-list-keys.c \
       cmd-set-option.c cmd-rename-window.c cmd-select-window.c \

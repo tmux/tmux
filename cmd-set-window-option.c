@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.19 2009-01-10 19:35:39 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.20 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,7 @@ void	cmd_set_window_option_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_set_window_option_send(struct cmd *, struct buffer *);
 void	cmd_set_window_option_recv(struct cmd *, struct buffer *);
 void	cmd_set_window_option_free(struct cmd *);
-void	cmd_set_window_option_print(struct cmd *, char *, size_t);
+size_t	cmd_set_window_option_print(struct cmd *, char *, size_t);
 
 const struct cmd_entry cmd_set_window_option_entry = {
 	"set-window-option", "setw",

@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.34 2009-01-11 00:48:42 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.35 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,7 +30,7 @@ void	cmd_new_session_send(struct cmd *, struct buffer *);
 void	cmd_new_session_recv(struct cmd *, struct buffer *);
 void	cmd_new_session_free(struct cmd *);
 void	cmd_new_session_init(struct cmd *, int);
-void	cmd_new_session_print(struct cmd *, char *, size_t);
+size_t	cmd_new_session_print(struct cmd *, char *, size_t);
 
 struct cmd_new_session_data {
 	char	*newname;
@@ -218,7 +218,7 @@ cmd_new_session_free(struct cmd *self)
 	xfree(data);
 }
 
-void
+size_t
 cmd_new_session_print(struct cmd *self, char *buf, size_t len)
 {
 	struct cmd_new_session_data	*data = self->data;
@@ -226,13 +226,14 @@ cmd_new_session_print(struct cmd *self, char *buf, size_t len)
 
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
-		return;
+		return (off);
 	if (off < len && data->flag_detached)
 		off += xsnprintf(buf + off, len - off, " -d");
 	if (off < len && data->newname != NULL)
-		off += xsnprintf(buf + off, len - off, " -s %s", data->newname);
+		off += cmd_prarg(buf + off, len - off, " -s ", data->newname);
 	if (off < len && data->winname != NULL)
-		off += xsnprintf(buf + off, len - off, " -n %s", data->winname);
+		off += cmd_prarg(buf + off, len - off, " -n ", data->winname);
 	if (off < len && data->cmd != NULL)
-		off += xsnprintf(buf + off, len - off, " %s", data->cmd);
+		off += cmd_prarg(buf + off, len - off, " ", data->cmd);
+	return (off);
 }

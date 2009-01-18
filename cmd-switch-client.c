@@ -1,4 +1,4 @@
-/* $Id: cmd-switch-client.c,v 1.13 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: cmd-switch-client.c,v 1.14 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,7 @@ void	cmd_switch_client_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_switch_client_send(struct cmd *, struct buffer *);
 void	cmd_switch_client_recv(struct cmd *, struct buffer *);
 void	cmd_switch_client_free(struct cmd *);
-void	cmd_switch_client_print(struct cmd *, char *, size_t);
+size_t	cmd_switch_client_print(struct cmd *, char *, size_t);
 
 struct cmd_switch_client_data {
 	char	*name;
@@ -145,7 +145,7 @@ cmd_switch_client_free(struct cmd *self)
 	xfree(data);
 }
 
-void
+size_t
 cmd_switch_client_print(struct cmd *self, char *buf, size_t len)
 {
 	struct cmd_switch_client_data	*data = self->data;
@@ -153,9 +153,10 @@ cmd_switch_client_print(struct cmd *self, char *buf, size_t len)
 
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
-		return;
+		return (off);
 	if (off < len && data->name != NULL)
-		off += xsnprintf(buf + off, len - off, " -c %s", data->name);
+		off += cmd_prarg(buf + off, len - off, " -c ", data->name);
 	if (off < len && data->target != NULL)
-		off += xsnprintf(buf + off, len - off, " -t %s", data->target);
+		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
+	return (off);
 }

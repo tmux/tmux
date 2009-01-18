@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.10 2009-01-10 01:51:21 nicm Exp $ */
+/* $Id: cmd-string.c,v 1.11 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,7 +53,7 @@ cmd_string_ungetc(unused const char *s, size_t *p)
  * string, or NULL for empty command.
  */
 int
-cmd_string_parse(const char *s, struct cmd **cmd, char **cause)
+cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 {
 	size_t		p;
 	int		ch, argc, rval;
@@ -67,7 +67,7 @@ cmd_string_parse(const char *s, struct cmd **cmd, char **cause)
 			xasprintf(cause, "assignment failed: %s", s);
 			return (-1);
 		}
-		*cmd = NULL;
+		*cmdlist = NULL;
 		return (0);
 	}
 
@@ -79,7 +79,7 @@ cmd_string_parse(const char *s, struct cmd **cmd, char **cause)
 
 	*cause = NULL;
 
-	*cmd = NULL;
+	*cmdlist = NULL;
 	rval = -1;
 
 	p = 0;
@@ -131,7 +131,8 @@ cmd_string_parse(const char *s, struct cmd **cmd, char **cause)
 			if (argc == 0)
 				goto out;
 
-			if ((*cmd = cmd_parse(argc, argv, cause)) == NULL)
+			*cmdlist = cmd_list_parse(argc, argv, cause);
+			if (*cmdlist == NULL)
 				goto out;
 
 			rval = 0;

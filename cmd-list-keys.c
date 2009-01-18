@@ -1,4 +1,4 @@
-/* $Id: cmd-list-keys.c,v 1.11 2009-01-06 14:10:32 nicm Exp $ */
+/* $Id: cmd-list-keys.c,v 1.12 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,17 +44,15 @@ cmd_list_keys_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct key_binding	*bd;
 	const char		*key;
-	char			 s[BUFSIZ];
+	char			 tmp[BUFSIZ];
 
 	SPLAY_FOREACH(bd, key_bindings, &key_bindings) {
 		if ((key = key_string_lookup_key(bd->key)) == NULL)
 			continue;
-		if (bd->cmd->entry->print == NULL) {
-			ctx->print(ctx, "%11s: %s", key, bd->cmd->entry->name);
-			continue;
-		}
-		bd->cmd->entry->print(bd->cmd, s, sizeof s);
-		ctx->print(ctx, "%11s: %s", key, s);
+		
+		*tmp = '\0';
+		cmd_list_print(bd->cmdlist, tmp, sizeof tmp);
+		ctx->print(ctx, "%11s: %s", key, tmp);
 	}
 
 	if (ctx->cmdclient != NULL)

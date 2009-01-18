@@ -70,10 +70,12 @@
 - command: load-buffer -b number filename
 - command: copy-buffer -s src-session -t dst-session -a src-index -b dst-index
   (copy from other session)
-- function groups, bind-key ^W { select-window 0; send-key ^W } etc ***
 - neww should support -k
-- document suspend-client
 - flag to scroll-mode/copy-mode to automatically scroll up a page
 - would be nice if tmux could be the shell
 - key to switch to copy mode from scroll mode
 - clone session command
+- document suspend-client
+- document command sequences
+- make command sequences more usable: don't require space around ;, handle
+  errors better

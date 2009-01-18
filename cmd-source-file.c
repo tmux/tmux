@@ -1,4 +1,4 @@
-/* $Id: cmd-source-file.c,v 1.3 2009-01-07 08:10:02 nicm Exp $ */
+/* $Id: cmd-source-file.c,v 1.4 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Tiago Cunha <me@tiagocunha.org>
@@ -30,7 +30,7 @@ void	cmd_source_file_send(struct cmd *, struct buffer *);
 void	cmd_source_file_recv(struct cmd *, struct buffer *);
 void	cmd_source_file_free(struct cmd *);
 void	cmd_source_file_init(struct cmd *, int);
-void	cmd_source_file_print(struct cmd *, char *, size_t);
+size_t	cmd_source_file_print(struct cmd *, char *, size_t);
 
 struct cmd_source_file_data {
 	char *path;
@@ -133,7 +133,7 @@ cmd_source_file_free(struct cmd *self)
 	xfree(data);
 }
 
-void
+size_t
 cmd_source_file_print(struct cmd *self, char *buf, size_t len)
 {
 	struct cmd_source_file_data	*data = self->data;
@@ -141,7 +141,8 @@ cmd_source_file_print(struct cmd *self, char *buf, size_t len)
 
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
-		return;
+		return (off);
 	if (off < len && data->path != NULL)
-		off += xsnprintf(buf + off, len - off, " %s", data->path);
+		off += cmd_prarg(buf + off, len - off, " ", data->path);
+	return (off);
 }

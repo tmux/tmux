@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.17 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.18 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,11 +29,11 @@ void	cmd_bind_key_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_bind_key_send(struct cmd *, struct buffer *);
 void	cmd_bind_key_recv(struct cmd *, struct buffer *);
 void	cmd_bind_key_free(struct cmd *);
-void	cmd_bind_key_print(struct cmd *, char *, size_t);
+size_t	cmd_bind_key_print(struct cmd *, char *, size_t);
 
 struct cmd_bind_key_data {
 	int		 key;
-	struct cmd	*cmd;
+	struct cmd_list	*cmdlist;
 };
 
 const struct cmd_entry cmd_bind_key_entry = {
@@ -56,7 +56,7 @@ cmd_bind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 	int				 opt;
 
 	self->data = data = xmalloc(sizeof *data);
-	data->cmd = NULL;
+	data->cmdlist = NULL;
 
 	while ((opt = getopt(argc, argv, "")) != -1) {
 		switch (opt) {
@@ -76,7 +76,7 @@ cmd_bind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 
 	argc--;
 	argv++;
-	if ((data->cmd = cmd_parse(argc, argv, cause)) == NULL)
+	if ((data->cmdlist = cmd_list_parse(argc, argv, cause)) == NULL)
 		goto error;
 
 	return (0);
@@ -97,8 +97,8 @@ cmd_bind_key_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (data == NULL)
 		return;
 
-	key_bindings_add(data->key, data->cmd);
-	data->cmd = NULL;	/* avoid free */
+	key_bindings_add(data->key, data->cmdlist);
+	data->cmdlist = NULL;	/* avoid free */
 
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
@@ -110,7 +110,7 @@ cmd_bind_key_send(struct cmd *self, struct buffer *b)
 	struct cmd_bind_key_data	*data = self->data;
 
 	buffer_write(b, data, sizeof *data);
-	cmd_send(data->cmd, b);
+	cmd_list_send(data->cmdlist, b);
 }
 
 void
@@ -120,7 +120,7 @@ cmd_bind_key_recv(struct cmd *self, struct buffer *b)
 
 	self->data = data = xmalloc(sizeof *data);
 	buffer_read(b, data, sizeof *data);
-	data->cmd = cmd_recv(b);
+	data->cmdlist = cmd_list_recv(b);
 }
 
 void
@@ -128,26 +128,26 @@ cmd_bind_key_free(struct cmd *self)
 {
 	struct cmd_bind_key_data	*data = self->data;
 
-	if (data->cmd != NULL)
-		cmd_free(data->cmd);
+	if (data->cmdlist != NULL)
+		cmd_list_free(data->cmdlist);
 	xfree(data);
 }
 
-void
+size_t
 cmd_bind_key_print(struct cmd *self, char *buf, size_t len)
 {
 	struct cmd_bind_key_data	*data = self->data;
 	size_t				 off = 0;
+	const char			*skey;
 
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
-		return;
+		return (off);
 	if (off < len) {
-		off += xsnprintf(buf + off,
-		    len - off, " %s", key_string_lookup_key(data->key));
+		skey = key_string_lookup_key(data->key);
+		off += xsnprintf(buf + off, len - off, " %s ", skey);
 	}
-	if (off < len && data->cmd != NULL) {
-		off += xsnprintf(buf + off, len - off, " ");
-		data->cmd->entry->print(data->cmd, buf + off, len - off);
-	}
+	if (off < len)
+		off += cmd_list_print(data->cmdlist, buf + off, len - off);
+	return (off);
 }

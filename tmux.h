@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.237 2009-01-18 12:09:42 nicm Exp $ */
+/* $Id: tmux.h,v 1.238 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION -8
+#define PROTOCOL_VERSION -9
 
 /* Shut up gcc warnings about empty if bodies. */
 #define RB_AUGMENT(x) do {} while (0)
@@ -807,7 +807,10 @@ struct cmd_ctx {
 struct cmd {
 	const struct cmd_entry *entry;
 	void	       	*data;
+
+	TAILQ_ENTRY(cmd) qentry;
 };
+TAILQ_HEAD(cmd_list, cmd);
 
 struct cmd_entry {
 	const char	*name;
@@ -832,7 +835,7 @@ struct cmd_entry {
 	void		 (*send)(struct cmd *, struct buffer *);
 	void	         (*recv)(struct cmd *, struct buffer *);
 	void		 (*free)(struct cmd *);
-	void 		 (*print)(struct cmd *, char *, size_t);
+	size_t 		 (*print)(struct cmd *, char *, size_t);
 };
 
 /* Generic command data. */
@@ -873,7 +876,7 @@ struct cmd_pane_data {
 /* Key binding. */
 struct key_binding {
 	int		 key;
-	struct cmd	*cmd;
+	struct cmd_list	*cmdlist;
 
 	SPLAY_ENTRY(key_binding) entry;
 };
@@ -1080,6 +1083,7 @@ void		 cmd_exec(struct cmd *, struct cmd_ctx *);
 void		 cmd_send(struct cmd *, struct buffer *);
 struct cmd	*cmd_recv(struct buffer *);
 void		 cmd_free(struct cmd *);
+size_t		 cmd_print(struct cmd *, char *, size_t);
 void		 cmd_send_string(struct buffer *, const char *);
 char		*cmd_recv_string(struct buffer *);
 struct session	*cmd_current_session(struct cmd_ctx *);
@@ -1149,10 +1153,19 @@ extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
 extern const struct cmd_entry cmd_up_pane_entry;
 
+/* cmd-list.c */
+struct cmd_list	*cmd_list_parse(int, char **, char **);
+void		 cmd_list_exec(struct cmd_list *, struct cmd_ctx *);
+void		 cmd_list_send(struct cmd_list *, struct buffer *);
+struct cmd_list	*cmd_list_recv(struct buffer *);
+void		 cmd_list_free(struct cmd_list *);
+size_t		 cmd_list_print(struct cmd_list *, char *, size_t);
+
 /* cmd-string.c */
-int	cmd_string_parse(const char *, struct cmd **, char **);
+int	cmd_string_parse(const char *, struct cmd_list **, char **);
 
 /* cmd-generic.c */
+size_t  cmd_prarg(char *, size_t, const char *, char *);
 #define CMD_TARGET_WINDOW_USAGE "[-t target-window]"
 #define CMD_TARGET_SESSION_USAGE "[-t target-session]"
 #define CMD_TARGET_CLIENT_USAGE "[-t target-client]"
@@ -1162,7 +1175,7 @@ void	cmd_target_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_target_send(struct cmd *, struct buffer *);
 void	cmd_target_recv(struct cmd *, struct buffer *);
 void	cmd_target_free(struct cmd *);
-void	cmd_target_print(struct cmd *, char *, size_t);
+size_t	cmd_target_print(struct cmd *, char *, size_t);
 #define CMD_SRCDST_WINDOW_USAGE "[-s src-window] [-t dst-window]"
 #define CMD_SRCDST_SESSION_USAGE "[-s src-session] [-t dst-session]"
 #define CMD_SRCDST_CLIENT_USAGE "[-s src-client] [-t dst-client]"
@@ -1172,7 +1185,7 @@ void	cmd_srcdst_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_srcdst_send(struct cmd *, struct buffer *);
 void	cmd_srcdst_recv(struct cmd *, struct buffer *);
 void	cmd_srcdst_free(struct cmd *);
-void	cmd_srcdst_print(struct cmd *, char *, size_t);
+size_t	cmd_srcdst_print(struct cmd *, char *, size_t);
 #define CMD_BUFFER_WINDOW_USAGE "[-b buffer-index] [-t target-window]"
 #define CMD_BUFFER_SESSION_USAGE "[-b buffer-index] [-t target-session]"
 #define CMD_BUFFER_CLIENT_USAGE "[-b buffer-index] [-t target-client]"
@@ -1182,7 +1195,7 @@ void	cmd_buffer_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_buffer_send(struct cmd *, struct buffer *);
 void	cmd_buffer_recv(struct cmd *, struct buffer *);
 void	cmd_buffer_free(struct cmd *);
-void	cmd_buffer_print(struct cmd *, char *, size_t);
+size_t	cmd_buffer_print(struct cmd *, char *, size_t);
 #define CMD_OPTION_WINDOW_USAGE "[-gu] [-t target-window] option [value]"
 #define CMD_OPTION_SESSION_USAGE "[-gu] [-t target-session] option [value]"
 #define CMD_OPTION_CLIENT_USAGE "[-gu] [-t target-client] option [value]"
@@ -1192,7 +1205,7 @@ void	cmd_option_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_option_send(struct cmd *, struct buffer *);
 void	cmd_option_recv(struct cmd *, struct buffer *);
 void	cmd_option_free(struct cmd *);
-void	cmd_option_print(struct cmd *, char *, size_t);
+size_t	cmd_option_print(struct cmd *, char *, size_t);
 #define CMD_PANE_WINDOW_USAGE "[-t target-window] [-p pane-index]"
 #define CMD_PANE_SESSION_USAGE "[-t target-session] [-p pane-index]"
 #define CMD_PANE_CLIENT_USAGE "[-t target-client] [-p pane-index]"
@@ -1202,7 +1215,7 @@ void	cmd_pane_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_pane_send(struct cmd *, struct buffer *);
 void	cmd_pane_recv(struct cmd *, struct buffer *);
 void	cmd_pane_free(struct cmd *);
-void	cmd_pane_print(struct cmd *, char *, size_t);
+size_t	cmd_pane_print(struct cmd *, char *, size_t);
 
 /* client.c */
 int	 client_init(const char *, struct client_ctx *, int, int);
@@ -1223,7 +1236,7 @@ extern struct key_bindings key_bindings;
 int	 key_bindings_cmp(struct key_binding *, struct key_binding *);
 SPLAY_PROTOTYPE(key_bindings, key_binding, entry, key_bindings_cmp);
 struct key_binding *key_bindings_lookup(int);
-void	 key_bindings_add(int, struct cmd *);
+void	 key_bindings_add(int, struct cmd_list *);
 void	 key_bindings_remove(int);
 void	 key_bindings_init(void);
 void	 key_bindings_free(void);

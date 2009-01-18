@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.27 2009-01-10 19:37:35 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.28 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,7 @@ void	cmd_new_window_send(struct cmd *, struct buffer *);
 void	cmd_new_window_recv(struct cmd *, struct buffer *);
 void	cmd_new_window_free(struct cmd *);
 void	cmd_new_window_init(struct cmd *, int);
-void	cmd_new_window_print(struct cmd *, char *, size_t);
+size_t	cmd_new_window_print(struct cmd *, char *, size_t);
 
 struct cmd_new_window_data {
 	char	*target;
@@ -194,7 +194,7 @@ cmd_new_window_free(struct cmd *self)
 	xfree(data);
 }
 
-void
+size_t
 cmd_new_window_print(struct cmd *self, char *buf, size_t len)
 {
 	struct cmd_new_window_data	*data = self->data;
@@ -202,13 +202,14 @@ cmd_new_window_print(struct cmd *self, char *buf, size_t len)
 
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
-		return;
+		return (off);
 	if (off < len && data->flag_detached)
 		off += xsnprintf(buf + off, len - off, " -d");
 	if (off < len && data->target != NULL)
-		off += xsnprintf(buf + off, len - off, " -t %s", data->target);
+		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
 	if (off < len && data->name != NULL)
-		off += xsnprintf(buf + off, len - off, " -n %s", data->name);
+		off += cmd_prarg(buf + off, len - off, " -n ", data->name);
 	if (off < len && data->cmd != NULL)
-		off += xsnprintf(buf + off, len - off, " %s", data->cmd);
+		off += cmd_prarg(buf + off, len - off, " ", data->cmd);
+	return (off);
 }

@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.9 2009-01-14 22:16:56 nicm Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.10 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -60,7 +60,7 @@ cmd_command_prompt_init(struct cmd *self, int key)
 
 	switch (key) {
 	case ',':
-		data->arg = xstrdup("rename-window \"%%\"");
+		data->arg = xstrdup("rename-window '%%'");
 		break;
 	}
 }
@@ -102,7 +102,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 {
 	struct cmd_command_prompt_data	*cdata = data;
 	struct client			*c = cdata->c;
-	struct cmd			*cmd;
+	struct cmd_list			*cmdlist;
 	struct cmd_ctx	 		 ctx;
 	char				*cause, *ptr, *buf, ch;
 	size_t				 len, slen;
@@ -139,17 +139,17 @@ cmd_command_prompt_callback(void *data, const char *s)
 	}
 	xfree(cdata);
 
-	if (cmd_string_parse(s, &cmd, &cause) != 0) {
+	if (cmd_string_parse(s, &cmdlist, &cause) != 0) {
 		if (cause == NULL)
 			return (0);
 		*cause = toupper((u_char) *cause);
 		server_set_client_message(c, cause);
 		xfree(cause);
-		cmd = NULL;
+		cmdlist = NULL;
 	}
 	if (buf != NULL)
 		xfree(buf);
-	if (cmd == NULL)
+	if (cmdlist == NULL)
 		return (0);
 
 	ctx.msgdata = NULL;
@@ -162,7 +162,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 
 	ctx.cmdclient = NULL;
 
-	cmd_exec(cmd, &ctx);
+	cmd_list_exec(cmdlist, &ctx);
 
 	if (c->prompt_callback != (void *) &cmd_command_prompt_callback)
 		return (1);

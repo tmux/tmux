@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.54 2009-01-18 12:09:42 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.55 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ key_bindings_lookup(int key)
 }
 
 void
-key_bindings_add(int key, struct cmd *cmd)
+key_bindings_add(int key, struct cmd_list *cmdlist)
 {
 	struct key_binding	*bd;
 
@@ -53,8 +53,8 @@ key_bindings_add(int key, struct cmd *cmd)
 		bd->key = key;
 		SPLAY_INSERT(key_bindings, &key_bindings, bd);
 	} else
-		cmd_free(bd->cmd);
-	bd->cmd = cmd;
+		cmd_list_free(bd->cmdlist);
+	bd->cmdlist = cmdlist;
 }
 
 void
@@ -66,7 +66,7 @@ key_bindings_remove(int key)
 		return;
 	SPLAY_REMOVE(key_bindings, &key_bindings, bd);
 
-	cmd_free(bd->cmd);
+	cmd_list_free(bd->cmdlist);
 	xfree(bd);
 }
 
@@ -120,16 +120,22 @@ key_bindings_init(void)
 	};
 	u_int		 i;
 	struct cmd	*cmd;
+	struct cmd_list	*cmdlist;
 
 	SPLAY_INIT(&key_bindings);
 
 	for (i = 0; i < nitems(table); i++) {
+		cmdlist = xmalloc(sizeof *cmdlist);
+		TAILQ_INIT(cmdlist);
+
 		cmd = xmalloc(sizeof *cmd);
 		cmd->entry = table[i].entry;
 		cmd->data = NULL;
 		if (cmd->entry->init != NULL)
 			cmd->entry->init(cmd, table[i].key);
-		key_bindings_add(table[i].key, cmd);
+		TAILQ_INSERT_HEAD(cmdlist, cmd, qentry);
+
+		key_bindings_add(table[i].key, cmdlist);
 	}
 }
 
@@ -141,7 +147,7 @@ key_bindings_free(void)
 	while (!SPLAY_EMPTY(&key_bindings)) {
 		bd = SPLAY_ROOT(&key_bindings);
 		SPLAY_REMOVE(key_bindings, &key_bindings, bd);
-		cmd_free(bd->cmd);
+		cmd_list_free(bd->cmdlist);
 		xfree(bd);
 	}
 }
@@ -207,5 +213,5 @@ key_bindings_dispatch(struct key_binding *bd, struct client *c)
 
 	ctx.cmdclient = NULL;
 
-	cmd_exec(bd->cmd, &ctx);
+	cmd_list_exec(bd->cmdlist, &ctx);
 }

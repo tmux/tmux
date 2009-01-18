@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.21 2009-01-14 22:16:56 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.22 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -27,6 +28,14 @@
 int	cmd_do_flags(int, int, int *);
 size_t	cmd_print_flags(char *, size_t, size_t, int);
 int	cmd_fill_argument(int, char **, int, char **);
+
+size_t
+cmd_prarg(char *buf, size_t len, const char *prefix, char *arg)
+{
+	if (strchr(arg, ' ' ) != NULL)
+		return (xsnprintf(buf, len, "%s\"%s\"", prefix, arg));
+	return (xsnprintf(buf, len, "%s%s", prefix, arg));
+}
 
 int
 cmd_do_flags(int opt, int iflags, int *oflags)
@@ -194,7 +203,7 @@ cmd_target_free(struct cmd *self)
 	xfree(data);
 }
 
-void
+size_t
 cmd_target_print(struct cmd *self, char *buf, size_t len)
 {
 	struct cmd_target_data	*data = self->data;
@@ -202,12 +211,13 @@ cmd_target_print(struct cmd *self, char *buf, size_t len)
 
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
-		return;
+		return (off);
 	off += cmd_print_flags(buf, len, off, data->flags);
 	if (off < len && data->target != NULL)
-		off += xsnprintf(buf + off, len - off, " -t %s", data->target);
+		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
  	if (off < len && data->arg != NULL)
-		off += xsnprintf(buf + off, len - off, " %s", data->arg);
+		off += cmd_prarg(buf + off, len - off, " ", data->arg);
+	return (off);
 }
 
 void
@@ -302,7 +312,7 @@ cmd_srcdst_free(struct cmd *self)
 	xfree(data);
 }
 
-void
+size_t
 cmd_srcdst_print(struct cmd *self, char *buf, size_t len)
 {
 	struct cmd_srcdst_data	*data = self->data;
@@ -310,14 +320,15 @@ cmd_srcdst_print(struct cmd *self, char *buf, size_t len)
 
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
-		return;
+		return (off);
 	off += cmd_print_flags(buf, len, off, data->flags);
 	if (off < len && data->src != NULL)
 		off += xsnprintf(buf + off, len - off, " -s %s", data->src);
 	if (off < len && data->dst != NULL)
 		off += xsnprintf(buf + off, len - off, " -t %s", data->dst);
  	if (off < len && data->arg != NULL)
-		off += xsnprintf(buf + off, len - off, " %s", data->arg);
+		off += cmd_prarg(buf + off, len - off, " ", data->arg);
+	return (off);
 }
 
 void
@@ -416,7 +427,7 @@ cmd_buffer_free(struct cmd *self)
 	xfree(data);
 }
 
-void
+size_t
 cmd_buffer_print(struct cmd *self, char *buf, size_t len)
 {
 	struct cmd_buffer_data	*data = self->data;
@@ -424,14 +435,15 @@ cmd_buffer_print(struct cmd *self, char *buf, size_t len)
 
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
-		return;
+		return (off);
 	off += cmd_print_flags(buf, len, off, data->flags);
 	if (off < len && data->buffer != -1)
 		off += xsnprintf(buf + off, len - off, " -b %d", data->buffer);
 	if (off < len && data->target != NULL)
-		off += xsnprintf(buf + off, len - off, " -t %s", data->target);
+		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
  	if (off < len && data->arg != NULL)
-		off += xsnprintf(buf + off, len - off, " %s", data->arg);
+		off += cmd_prarg(buf + off, len - off, " ", data->arg);
+	return (off);
 }
 
 void
@@ -528,7 +540,7 @@ cmd_option_free(struct cmd *self)
 	xfree(data);
 }
 
-void
+size_t
 cmd_option_print(struct cmd *self, char *buf, size_t len)
 {
 	struct cmd_option_data	*data = self->data;
@@ -536,14 +548,15 @@ cmd_option_print(struct cmd *self, char *buf, size_t len)
 
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
-		return;
+		return (off);
 	off += cmd_print_flags(buf, len, off, data->flags);
 	if (off < len && data->target != NULL)
-		off += xsnprintf(buf + off, len - off, " -t %s", data->target);
+		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
  	if (off < len && data->option != NULL)
 		off += xsnprintf(buf + off, len - off, " %s", data->option);
  	if (off < len && data->value != NULL)
 		off += xsnprintf(buf + off, len - off, " %s", data->value);
+	return (off);
 }
 
 void
@@ -643,7 +656,7 @@ cmd_pane_free(struct cmd *self)
 	xfree(data);
 }
 
-void
+size_t
 cmd_pane_print(struct cmd *self, char *buf, size_t len)
 {
 	struct cmd_pane_data	*data = self->data;
@@ -651,10 +664,11 @@ cmd_pane_print(struct cmd *self, char *buf, size_t len)
 
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
-		return;
+		return (off);
 	off += cmd_print_flags(buf, len, off, data->flags);
 	if (off < len && data->target != NULL)
-		off += xsnprintf(buf + off, len - off, " -t %s", data->target);
+		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
  	if (off < len && data->arg != NULL)
-		off += xsnprintf(buf + off, len - off, " %s", data->arg);
+		off += cmd_prarg(buf + off, len - off, " ", data->arg);
+	return (off);
 }

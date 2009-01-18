@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.80 2009-01-18 12:09:42 nicm Exp $ */
+/* $Id: cmd.c,v 1.81 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -232,6 +232,15 @@ cmd_free(struct cmd *cmd)
 	if (cmd->data != NULL && cmd->entry->free != NULL)
 		cmd->entry->free(cmd);
 	xfree(cmd);
+}
+
+size_t
+cmd_print(struct cmd *cmd, char *buf, size_t len)
+{
+	if (cmd->entry->print == NULL) {
+		return (xsnprintf(buf, len, "%s", cmd->entry->name));
+	}
+	return (cmd->entry->print(cmd, buf, len));
 }
 
 void

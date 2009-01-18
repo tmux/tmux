@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.107 2009-01-18 12:09:42 nicm Exp $ */
+/* $Id: server.c,v 1.108 2009-01-18 14:40:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -587,7 +587,8 @@ server_handle_client(struct client *c)
 	struct window_pane	*wp;
 	struct timeval	 	 tv;
 	struct key_binding	*bd;
-	int		 	 key, prefix, status, flags, xtimeout;
+	struct cmd		*cmd;
+	int		 	 key, prefix, status, xtimeout, can_repeat;
 
 	xtimeout = options_get_number(&c->session->options, "repeat-time");
 	if (xtimeout != 0 && c->flags & CLIENT_REPEAT) {
@@ -636,10 +637,16 @@ server_handle_client(struct client *c)
 			}
 			continue;
 		}
-		flags = bd->cmd->entry->flags;
+
+		/* Check repeat flag. */
+		can_repeat = 1;
+		TAILQ_FOREACH(cmd, bd->cmdlist, qentry) {
+			if (!(cmd->entry->flags & CMD_CANREPEAT))
+				can_repeat = 0;
+		}
 
 		/* If already repeating, but this key can't repeat, skip it. */
-		if (c->flags & CLIENT_REPEAT && !(flags & CMD_CANREPEAT)) {
+		if (c->flags & CLIENT_REPEAT && !can_repeat) {
 			c->flags &= ~CLIENT_REPEAT;
 			if (key == prefix)
 				c->flags |= CLIENT_PREFIX;
@@ -649,7 +656,7 @@ server_handle_client(struct client *c)
 		}
 		
 		/* If this key can repeat, reset the repeat flags and timer. */
-		if (xtimeout != 0 && flags & CMD_CANREPEAT) {
+		if (xtimeout != 0 && can_repeat) {
 			c->flags |= CLIENT_PREFIX|CLIENT_REPEAT;
 
 			tv.tv_sec = xtimeout / 1000;
