@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-window.c,v 1.4 2009-01-17 18:47:36 nicm Exp $ */
+/* $Id: cmd-choose-window.c,v 1.5 2009-01-18 17:20:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,7 +21,7 @@
 #include "tmux.h"
 
 /*
- * Enter choice mode to chosoe a window.
+ * Enter choice mode to choose a window.
  */
 
 void	cmd_choose_window_exec(struct cmd *, struct cmd_ctx *);
@@ -62,7 +62,7 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return;
 		
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
-		return;
+		goto out;
 
 	cur = idx = 0;
 	RB_FOREACH(wm, winlinks, &s->windows) {
@@ -73,8 +73,8 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		idx++;
 
 		window_choose_add(wl->window->active,
-		    wm->idx, "%3d: %s [%ux%u] (%u panes)", wm->idx, w->name, w->sx, w->sy,
-		    window_count_panes(w));
+		    wm->idx, "%3d: %s [%ux%u] (%u panes)", wm->idx, w->name,
+		    w->sx, w->sy, window_count_panes(w));
 	}
 
 	cdata = xmalloc(sizeof *cdata);
@@ -84,6 +84,7 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	window_choose_ready(
 	    wl->window->active, cur, cmd_choose_window_callback, cdata);
 
+out:
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

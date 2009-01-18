@@ -1,5 +1,9 @@
 18 January 2009
 
+* find-window command to search window names, titles and visible content (but
+  not history) for a string. If only one is found, the window is selected
+  otherwise a choice list is shown. This (as with the other choice commands)
+  only works from a key. Bound to "f" by default.
 * Cleaned up command printing code, also enclose arguments with spaces in "s.
 * Added command sequences. These are entered by separating each argument by a ;
   argument (spaces on both sides), for example:
@@ -951,7 +955,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.217 2009-01-18 14:40:48 nicm Exp $
+$Id: CHANGES,v 1.218 2009-01-18 17:20:52 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

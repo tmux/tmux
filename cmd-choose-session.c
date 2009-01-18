@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-session.c,v 1.3 2009-01-18 12:13:21 nicm Exp $ */
+/* $Id: cmd-choose-session.c,v 1.4 2009-01-18 17:20:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,7 +61,7 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return;
 		
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
-		return;
+		goto out;
 
 	cur = idx = 0;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
@@ -84,6 +84,7 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	window_choose_ready(
 	    wl->window->active, cur, cmd_choose_session_callback, cdata);
 
+out:
 	if (ctx->cmdclient != NULL)
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 }

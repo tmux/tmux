@@ -79,3 +79,7 @@
 - document command sequences
 - make command sequences more usable: don't require space around ;, handle
   errors better
+- -a and -b flags to next/previous window to jump to next window with activity 
+  or bell
+- document find-window
+

@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.10 2009-01-18 14:40:48 nicm Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.11 2009-01-18 17:20:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,6 +61,9 @@ cmd_command_prompt_init(struct cmd *self, int key)
 	switch (key) {
 	case ',':
 		data->arg = xstrdup("rename-window '%%'");
+		break;
+	case 'f':
+		data->arg = xstrdup("find-window '%%'");
 		break;
 	}
 }

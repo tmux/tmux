@@ -87,7 +87,7 @@ The CVS HEAD version of tmux often has additional features from the release
 versions; if interested, testing it is encouraged. It can be obtained by
 anonymous CVS from SourceForge:
 
-	  $ cvs -d:pserver:anoncvs@tmux.cvs.sf.net:/cvsroot/tmux co tmux
+	$ cvs -d:pserver:anoncvs@tmux.cvs.sf.net:/cvsroot/tmux co tmux
 
 If running CVS HEAD, please note it is development code and there may be bugs
 and undocumented features; please read the CHANGES file for information.
@@ -99,4 +99,4 @@ welcome. Please email:
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.41 2009-01-18 15:55:33 tcunha Exp $
+$Id: NOTES,v 1.42 2009-01-18 17:20:52 nicm Exp $
