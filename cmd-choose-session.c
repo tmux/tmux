@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-session.c,v 1.2 2009-01-17 18:47:36 nicm Exp $ */
+/* $Id: cmd-choose-session.c,v 1.3 2009-01-18 12:13:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -73,8 +73,9 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		idx++;
 
 		window_choose_add(wl->window->active, i,
-		    "%s: %u windows [%ux%u]", s->name,
-		    winlink_count(&s->windows), s->sx, s->sy);
+		    "%s: %u windows [%ux%u]%s", s->name,
+		    winlink_count(&s->windows), s->sx, s->sy,
+		    s->flags & SESSION_UNATTACHED ? "" : " (attached)");
 	}
 
 	cdata = xmalloc(sizeof *cdata);

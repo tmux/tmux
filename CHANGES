@@ -1,7 +1,11 @@
-17 January 2009
+18 January 2009
 
 * suspend-client command to suspend a client. Don't try to background it
   though...
+* Mark attached sessions in sessions lists. Suggested by Simon Kuhnle.
+
+17 January 2009
+
 * tmux 0.6 released.
 
 15 January 2009
@@ -934,7 +938,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.215 2009-01-18 12:09:42 nicm Exp $
+$Id: CHANGES,v 1.216 2009-01-18 12:13:21 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

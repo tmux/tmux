@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.17 2009-01-10 14:43:43 nicm Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.18 2009-01-18 12:13:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,8 +58,9 @@ cmd_list_sessions_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		tim = ctime(&t);
 		*strchr(tim, '\n') = '\0';
 
-		ctx->print(ctx, "%s: %u windows (created %s) [%ux%u]",
-		    s->name, winlink_count(&s->windows), tim, s->sx, s->sy);
+		ctx->print(ctx, "%s: %u windows (created %s) [%ux%u]%s",
+		    s->name, winlink_count(&s->windows), tim, s->sx, s->sy,
+		    s->flags & SESSION_UNATTACHED ? "" : " (attached)");
 	}
 
 	if (ctx->cmdclient != NULL)
