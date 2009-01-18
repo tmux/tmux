@@ -1,5 +1,6 @@
 18 January 2009
 
+* Unbreak UTF-8.
 * -a flag to next-window and previous-window to select the next or previous 
   window with activity or bell. Bound to M-n and M-p.
 * find-window command to search window names, titles and visible content (but
@@ -957,7 +958,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.219 2009-01-18 18:31:45 nicm Exp $
+$Id: CHANGES,v 1.220 2009-01-18 21:46:30 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

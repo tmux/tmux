@@ -81,4 +81,6 @@
   errors better
 - document find-window
 - bring back -l/-p on splitw so i can do "splitw -p 75 elinks"
+- UTF-8 combining characters don't work (probably should be width 1 but are
+  listed as 2)
 

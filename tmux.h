@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.240 2009-01-18 18:31:45 nicm Exp $ */
+/* $Id: tmux.h,v 1.241 2009-01-18 21:46:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -426,6 +426,7 @@ struct msg_resize_data {
 #define GRID_FLAG_FG256 0x1
 #define GRID_FLAG_BG256 0x2
 #define GRID_FLAG_PADDING 0x4
+#define GRID_FLAG_UTF8 0x8
 
 /* Grid cell. */
 struct grid_cell {

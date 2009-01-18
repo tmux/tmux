@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.73 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: input.c,v 1.74 2009-01-18 21:46:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -542,7 +542,9 @@ input_state_utf8(u_char ch, struct input_ctx *ictx)
 		value = '_';
 
 	ictx->cell.data = value;
+ 	ictx->cell.flags |= GRID_FLAG_UTF8;
 	screen_write_cell(&ictx->ctx, &ictx->cell);
+ 	ictx->cell.flags &= ~GRID_FLAG_UTF8;
 }
 
 void

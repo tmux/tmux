@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.60 2009-01-18 21:35:09 nicm Exp $ */
+/* $Id: tty.c,v 1.61 2009-01-18 21:46:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -680,20 +680,18 @@ tty_cmd_cell(struct tty *tty, struct screen *s, u_int oy, va_list ap)
 	if (gc->flags & GRID_FLAG_PADDING)
 		return;
 
-	/* Handle special characters. Should never come into this function.*/
-	if (gc->data < 0x20 || gc->data == 0x7f)
-		return;
-
 	/* Set the attributes. */
 	tty_attributes(tty, gc);
 
-	/* If not UTF8 multibyte, write directly. */
-	if (gc->data <= 0xff) {
+	/* If not UTF-8, write directly. */
+	if (!(gc->flags & GRID_FLAG_UTF8)) {
+		if (gc->data > 0xff || gc->data < 0x20 || gc->data == 0x7f)
+			return;
 		tty_putc(tty, gc->data);
 		return;
 	}
 
-	/* If the terminal doesn't support UTF8, write _s. */
+	/* If the terminal doesn't support UTF-8, write underscores. */
 	if (!(tty->flags & TTY_UTF8)) {
 		width = utf8_width(gc->data);
 		while (width-- > 0)
@@ -701,7 +699,7 @@ tty_cmd_cell(struct tty *tty, struct screen *s, u_int oy, va_list ap)
 		return;
 	}
 
-	/* Unpack UTF-8 and write it. */
+	/* Otherwise, unpack UTF-8 and write it. */
 	utf8_split(gc->data, out);
 	for (i = 0; i < 4; i++) {
 		if (out[i] == 0xff)
