@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.60 2009-01-18 14:40:48 nicm Exp $
+# $Id: GNUmakefile,v 1.61 2009-01-18 15:57:28 tcunha Exp $
 
 .PHONY: clean
 
@@ -105,7 +105,7 @@ endif
 
 OBJS= $(patsubst %.c,%.o,$(SRCS))
 
-CLEANFILES= ${PROG} *.o .depend *~ ${PROG}.core *.log index.html
+CLEANFILES= ${PROG} *.o .depend *~ ${PROG}.core *.log compat/*.o index.html
 
 CPPFLAGS+= $(INCDIRS)
 
