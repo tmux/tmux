@@ -80,4 +80,5 @@
 - make command sequences more usable: don't require space around ;, handle
   errors better
 - document find-window
+- bring back -l/-p on splitw so i can do "splitw -p 75 elinks"
 
