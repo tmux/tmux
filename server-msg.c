@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.58 2009-01-18 12:09:42 nicm Exp $ */
+/* $Id: server-msg.c,v 1.59 2009-01-18 21:26:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -225,7 +225,12 @@ server_msg_fn_resize(struct hdr *hdr, struct client *c)
 	c->sy = data.sy;
 	if (c->sy == 0)
 		c->sy = 25;
-
+	
+	c->tty.cx = UINT_MAX;
+	c->tty.cy = UINT_MAX;
+	c->tty.rupper = UINT_MAX;
+	c->tty.rlower = UINT_MAX;
+	
 	recalculate_sizes();
 
 	/* Always redraw this client. */
