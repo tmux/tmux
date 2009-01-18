@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.58 2009-01-14 19:29:32 nicm Exp $ */
+/* $Id: window.c,v 1.59 2009-01-18 18:31:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -160,22 +160,7 @@ winlink_next(unused struct winlinks *wwl, struct winlink *wl)
 struct winlink *
 winlink_previous(unused struct winlinks *wwl, struct winlink *wl)
 {
-#ifdef RB_PREV
 	return (RB_PREV(winlinks, wwl, wl));
-#else
-	struct winlink	*wk;
-	int		 idx = wl->idx;
-
-	wk = NULL;
-	wl = RB_MIN(winlinks, wwl);
-	while (wl != NULL && wl->idx < idx) {
-		wk = wl;
-		wl = RB_NEXT(winlinks, wwl, wl);
-	}
-	if (wl == NULL)
-		return (NULL);
-	return (wk);
-#endif
 }
 
 void

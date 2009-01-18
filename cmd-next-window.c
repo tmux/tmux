@@ -1,4 +1,4 @@
-/* $Id: cmd-next-window.c,v 1.13 2009-01-14 22:13:30 nicm Exp $ */
+/* $Id: cmd-next-window.c,v 1.14 2009-01-18 18:31:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,13 +24,14 @@
  * Move to next window.
  */
 
+void	cmd_next_window_init(struct cmd *, int);
 void	cmd_next_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_next_window_entry = {
 	"next-window", "next",
 	CMD_TARGET_SESSION_USAGE,
-	CMD_CANREPEAT,
-	cmd_target_init,
+	CMD_CANREPEAT|CMD_AFLAG,
+	cmd_next_window_init,
 	cmd_target_parse,
 	cmd_next_window_exec,
 	cmd_target_send,
@@ -40,15 +41,32 @@ const struct cmd_entry cmd_next_window_entry = {
 };
 
 void
+cmd_next_window_init(struct cmd *self, int key)
+{
+	struct cmd_target_data	*data;
+
+	cmd_target_init(self, key);
+	data = self->data;
+
+	if (key == KEYC_ADDESC('n'))
+		data->flags |= CMD_AFLAG;
+}
+
+void
 cmd_next_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
 	struct session		*s;
+	int			 activity;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return;
 
-	if (session_next(s) == 0)
+	activity = 0;
+	if (data->flags & CMD_AFLAG)
+		activity = 1;
+
+	if (session_next(s, activity) == 0)
 		server_redraw_session(s);
 	else
 		ctx->error(ctx, "no next window");

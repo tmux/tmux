@@ -1,5 +1,7 @@
 18 January 2009
 
+* -a flag to next-window and previous-window to select the next or previous 
+  window with activity or bell. Bound to M-n and M-p.
 * find-window command to search window names, titles and visible content (but
   not history) for a string. If only one is found, the window is selected
   otherwise a choice list is shown. This (as with the other choice commands)
@@ -955,7 +957,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.218 2009-01-18 17:20:52 nicm Exp $
+$Id: CHANGES,v 1.219 2009-01-18 18:31:45 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

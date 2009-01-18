@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.50 2009-01-12 18:22:47 nicm Exp $ */
+/* $Id: session.c,v 1.51 2009-01-18 18:31:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,6 +27,9 @@
 
 /* Global session list. */
 struct sessions	sessions;
+
+struct winlink *session_next_activity(struct session *, struct winlink *);
+struct winlink *session_previous_activity(struct session *, struct winlink *);
 
 void
 session_alert_cancel(struct session *s, struct winlink *wl)
@@ -225,8 +228,9 @@ session_attach(struct session *s, struct window *w, int idx)
 int
 session_detach(struct session *s, struct winlink *wl)
 {
-	if (s->curw == wl && session_last(s) != 0 && session_previous(s) != 0)
-		session_next(s);
+	if (s->curw == wl &&
+	    session_last(s) != 0 && session_previous(s, 0) != 0)
+		session_next(s, 0);
 
 	session_alert_cancel(s, wl);
 	winlink_stack_remove(&s->lastw, wl);
@@ -251,9 +255,22 @@ session_has(struct session *s, struct window *w)
 	return (0);
 }
 
+struct winlink *
+session_next_activity(struct session *s, struct winlink *wl)
+{
+	while (wl != NULL) {
+		if (session_alert_has(s, wl, WINDOW_BELL))
+			break;
+		if (session_alert_has(s, wl, WINDOW_ACTIVITY))
+			break;
+		wl = winlink_next(&s->windows, wl);
+	}
+	return (wl);
+}
+
 /* Move session to next window. */
 int
-session_next(struct session *s)
+session_next(struct session *s, int activity)
 {
 	struct winlink	*wl;
 
@@ -261,8 +278,13 @@ session_next(struct session *s)
 		return (-1);
 
 	wl = winlink_next(&s->windows, s->curw);
-	if (wl == NULL)
+	if (activity)
+		wl = session_next_activity(s, wl);
+	if (wl == NULL) {
 		wl = RB_MIN(winlinks, &s->windows);
+		if (activity && ((wl = session_next_activity(s, wl)) == NULL))
+			return (-1);
+	}
 	if (wl == s->curw)
 		return (1);
 	winlink_stack_remove(&s->lastw, wl);
@@ -272,9 +294,22 @@ session_next(struct session *s)
 	return (0);
 }
 
+struct winlink *
+session_previous_activity(struct session *s, struct winlink *wl)
+{
+	while (wl != NULL) {
+		if (session_alert_has(s, wl, WINDOW_BELL))
+			break;
+		if (session_alert_has(s, wl, WINDOW_ACTIVITY))
+			break;
+		wl = winlink_previous(&s->windows, wl);
+	}
+	return (wl);
+}
+
 /* Move session to previous window. */
 int
-session_previous(struct session *s)
+session_previous(struct session *s, int activity)
 {
 	struct winlink	*wl;
 
@@ -282,8 +317,13 @@ session_previous(struct session *s)
 		return (-1);
 
 	wl = winlink_previous(&s->windows, s->curw);
-	if (wl == NULL)
+	if (activity)
+		wl = session_previous_activity(s, wl);
+	if (wl == NULL) {
 		wl = RB_MAX(winlinks, &s->windows);
+		if (activity && (wl = session_previous_activity(s, wl)) == NULL)
+			return (-1);
+	}
 	if (wl == s->curw)
 		return (1);
 	winlink_stack_remove(&s->lastw, wl);
