@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.25 2009-01-17 18:47:36 nicm Exp $ */
+/* $Id: screen-write.c,v 1.26 2009-01-18 21:21:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -411,7 +411,7 @@ screen_write_linefeed(struct screen_write_ctx *ctx)
 
 	if (s->cy == s->rlower)
 		grid_view_scroll_region_up(s->grid, s->rupper, s->rlower);
-	else if (s->cy < screen_size_x(s) - 1)
+	else if (s->cy < screen_size_y(s) - 1)
 		s->cy++;
 }
 
