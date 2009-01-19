@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-window.c,v 1.11 2009-01-14 22:16:57 nicm Exp $ */
+/* $Id: cmd-respawn-window.c,v 1.12 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
  * Respawn a window (restart the command). Kill existing if -k given.
  */
 
-void	cmd_respawn_window_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_respawn_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_respawn_window_entry = {
 	"respawn-window", "respawnw",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_respawn_window_entry = {
 	cmd_target_print
 };
 
-void
+int
 cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
@@ -54,7 +54,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int			 i;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
-		return;
+		return (-1);
 	w = wl->window;
 
 	if (!(data->flags & CMD_KFLAG)) {
@@ -63,7 +63,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 				continue;
 			ctx->error(ctx,
 			    "window still active: %s:%d", s->name, wl->idx);
-			return;
+			return (-1);
 		}
 	}
 
@@ -79,13 +79,12 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	window_pane_resize(wp, w->sx, w->sy);
 	if (window_pane_spawn(wp, data->arg, NULL, env) != 0) {
 		ctx->error(ctx, "respawn failed: %s:%d", s->name, wl->idx);
-		return;
+		return (-1);
 	}
 	screen_reinit(&wp->base);
 
 	recalculate_sizes();
 	server_redraw_window(w);
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

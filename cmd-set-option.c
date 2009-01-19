@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.54 2009-01-14 22:13:30 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.55 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,7 @@
  * Set an option.
  */
 
-void	cmd_set_option_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_set_option_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set",
@@ -68,7 +68,7 @@ const struct set_option_entry set_option_table[NSETOPTION] = {
 	{ "status-right-length", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
 };
 
-void
+int
 cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_option_data		*data = self->data;
@@ -82,13 +82,13 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		oo = &global_options;
 	else {
 		if ((s = cmd_find_session(ctx, data->target)) == NULL)
-			return;
+			return (-1);
 		oo = &s->options;
 	}
 
 	if (*data->option == '\0') {
 		ctx->error(ctx, "invalid option");
-		return;
+		return (-1);
 	}
 
 	entry = NULL;
@@ -98,7 +98,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			continue;
 		if (entry != NULL) {
 			ctx->error(ctx, "ambiguous option: %s", data->option);
-			return;
+			return (-1);
 		}
 		entry = &set_option_table[i];
 
@@ -108,25 +108,25 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	if (entry == NULL) {
 		ctx->error(ctx, "unknown option: %s", data->option);
-		return;
+		return (-1);
 	}
 
 	if (data->flags & CMD_UFLAG) {
 		if (data->flags & CMD_GFLAG) {
 			ctx->error(ctx,
 			    "can't unset global option: %s", entry->name);
-			return;
+			return (-1);
 		}
 		if (data->value != NULL) {
 			ctx->error(ctx,
 			    "value passed to unset option: %s", entry->name);
-			return;
+			return (-1);
 		}
 
 		if (options_remove(oo, entry->name) != 0) {
 			ctx->error(ctx,
 			    "can't unset option, not set: %s", entry->name);
-			return;
+			return (-1);
 		}
 		ctx->info(ctx, "unset option: %s", entry->name);
 	} else {
@@ -159,6 +159,5 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			server_redraw_client(c);
 	}
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

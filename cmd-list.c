@@ -1,4 +1,4 @@
-/* $Id: cmd-list.c,v 1.1 2009-01-18 14:40:48 nicm Exp $ */
+/* $Id: cmd-list.c,v 1.2 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -60,13 +60,17 @@ bad:
 	return (NULL);
 }
 
-void
+int
 cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 {
 	struct cmd	*cmd;
+	int		 n;
 
-	TAILQ_FOREACH(cmd, cmdlist, qentry)
-		cmd_exec(cmd, ctx);
+	TAILQ_FOREACH(cmd, cmdlist, qentry) {
+		if ((n = cmd_exec(cmd, ctx)) != 0)
+			return (n);
+	}
+	return (0);
 }
 
 void

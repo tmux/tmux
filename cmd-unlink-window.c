@@ -1,4 +1,4 @@
-/* $Id: cmd-unlink-window.c,v 1.12 2008-06-06 20:02:27 nicm Exp $ */
+/* $Id: cmd-unlink-window.c,v 1.13 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
  * Unlink a window, unless it would be destroyed by doing so (only one link).
  */
 
-void	cmd_unlink_window_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_unlink_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_unlink_window_entry = {
 	"unlink-window", "unlinkw",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_unlink_window_entry = {
 	cmd_target_print
 };
 
-void
+int
 cmd_unlink_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
@@ -50,11 +50,11 @@ cmd_unlink_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	int			 destroyed;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
-		return;
+		return (-1);
 
 	if (wl->window->references == 1) {
 		ctx->error(ctx, "window is only linked to one session");
-		return;
+		return (-1);
 	}
 
  	destroyed = session_detach(s, wl);
@@ -70,6 +70,5 @@ cmd_unlink_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	recalculate_sizes();
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

@@ -1,4 +1,4 @@
-/* $Id: cmd-previous-window.c,v 1.14 2009-01-18 18:31:45 nicm Exp $ */
+/* $Id: cmd-previous-window.c,v 1.15 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,7 +25,7 @@
  */
 
 void	cmd_previous_window_init(struct cmd *, int);
-void	cmd_previous_window_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_previous_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_previous_window_entry = {
 	"previous-window", "prev",
@@ -52,7 +52,7 @@ cmd_previous_window_init(struct cmd *self, int key)
 		data->flags |= CMD_AFLAG;
 }
 
-void
+int
 cmd_previous_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
@@ -60,7 +60,7 @@ cmd_previous_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	int			 activity;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
-		return;
+		return (-1);
 
 	activity = 0;
 	if (data->flags & CMD_AFLAG)
@@ -68,10 +68,11 @@ cmd_previous_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (session_previous(s, activity) == 0)
 		server_redraw_session(s);
-	else
+	else {
 		ctx->error(ctx, "no previous window");
+		return (-1);
+	}
 	recalculate_sizes();
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

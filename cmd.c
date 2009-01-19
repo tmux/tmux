@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.82 2009-01-18 17:20:52 nicm Exp $ */
+/* $Id: cmd.c,v 1.83 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -170,14 +170,14 @@ usage:
 	return (NULL);
 }
 
-void
+int
 cmd_exec(struct cmd *cmd, struct cmd_ctx *ctx)
 {
 	if (server_locked) {
 		ctx->error(ctx, "server is locked");
-		return;
+		return (-1);
 	}
-	cmd->entry->exec(cmd, ctx);
+	return (cmd->entry->exec(cmd, ctx));
 }
 
 void

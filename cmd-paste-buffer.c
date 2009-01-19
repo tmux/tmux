@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.14 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.15 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
  * Paste paste buffer if present.
  */
 
-void	cmd_paste_buffer_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_paste_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", "pasteb",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 	cmd_buffer_print
 };
 
-void
+int
 cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
@@ -51,14 +51,16 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct paste_buffer	*pb;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
-		return;
+		return (-1);
 	w = wl->window;
 
 	if (data->buffer == -1)
 		pb = paste_get_top(&s->buffers);
 	else {
-		if ((pb = paste_get_index(&s->buffers, data->buffer)) == NULL)
+		if ((pb = paste_get_index(&s->buffers, data->buffer)) == NULL) {
 			ctx->error(ctx, "no buffer %d", data->buffer);
+			return (-1);
+		}
 	}
 
 	if (pb != NULL)
@@ -72,6 +74,5 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 			paste_free_index(&s->buffers, data->buffer);
 	}
 
- 	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+ 	return (0);
 }

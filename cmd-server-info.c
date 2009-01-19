@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.8 2009-01-18 18:06:37 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.9 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@
  * Show various information about server.
  */
 
-void	cmd_server_info_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_server_info_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_server_info_entry = {
 	"server-info", "info",
@@ -46,7 +46,7 @@ const struct cmd_entry cmd_server_info_entry = {
 	NULL
 };
 
-void
+int
 cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct tty_term			*term;
@@ -141,6 +141,5 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	}
 	ctx->print(ctx, "");
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

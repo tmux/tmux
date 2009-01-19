@@ -1,4 +1,4 @@
-/* $Id: cmd-send-keys.c,v 1.17 2009-01-18 14:40:48 nicm Exp $ */
+/* $Id: cmd-send-keys.c,v 1.18 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,7 @@
  */
 
 int	cmd_send_keys_parse(struct cmd *, int, char **, char **);
-void	cmd_send_keys_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_send_keys_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_send_keys_send(struct cmd *, struct buffer *);
 void	cmd_send_keys_recv(struct cmd *, struct buffer *);
 void	cmd_send_keys_free(struct cmd *);
@@ -106,7 +106,7 @@ usage:
 	return (-1);
 }
 
-void
+int
 cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_send_keys_data	*data = self->data;
@@ -114,18 +114,17 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int				 i;
 
 	if (data == NULL)
-		return;
+		return (-1);
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
-		return;
+		return (-1);
 
 	for (i = 0; i < data->nkeys; i++) {
 		window_pane_key(
 		    wl->window->active, ctx->curclient, data->keys[i]);
 	}
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }
 
 void

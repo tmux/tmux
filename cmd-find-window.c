@@ -1,4 +1,4 @@
-/* $Id: cmd-find-window.c,v 1.2 2009-01-18 19:10:08 nicm Exp $ */
+/* $Id: cmd-find-window.c,v 1.3 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
  * Find window containing text.
  */
 
-void	cmd_find_window_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_find_window_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_find_window_callback(void *, int);
 char   *cmd_find_window_search(struct window_pane *, const char *);
@@ -48,7 +48,7 @@ struct cmd_find_window_data {
 	u_int	session;
 };
 
-void
+int
 cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data		*data = self->data;
@@ -64,12 +64,12 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
-		return;
+		return (-1);
 	}
 	s = ctx->curclient->session;
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
-		return;
+		return (-1);
 	
 	ARRAY_INIT(&list_idx);
 	ARRAY_INIT(&list_ctx);
@@ -106,7 +106,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "no windows matching: %s", data->arg);
 		ARRAY_FREE(&list_idx);
 		ARRAY_FREE(&list_ctx);
-		return;
+		return (-1);
 	}
 
 	if (ARRAY_LENGTH(&list_idx) == 1) {
@@ -142,8 +142,7 @@ out:
 	ARRAY_FREE(&list_idx);
 	ARRAY_FREE(&list_ctx);
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }
 
 void

@@ -1,4 +1,4 @@
-/* $Id: cmd-show-buffer.c,v 1.3 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: cmd-show-buffer.c,v 1.4 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
  * Show a session paste buffer.
  */
 
-void	cmd_show_buffer_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_show_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_buffer_entry = {
 	"show-buffer", "showb",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_show_buffer_entry = {
 	cmd_buffer_print
 };
 
-void
+int
 cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
@@ -52,14 +52,16 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	size_t			 len;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
-		return;
+		return (-1);
 
 	if (data->buffer == -1) {
-		if ((pb = paste_get_top(&s->buffers)) == NULL)
+		if ((pb = paste_get_top(&s->buffers)) == NULL) {
 			ctx->error(ctx, "no buffers");
-	} else {
-		if ((pb = paste_get_index(&s->buffers, data->buffer)) == NULL)
-			ctx->error(ctx, "no buffer %d", data->buffer);
+			return (-1);
+		}
+	} else if ((pb = paste_get_index(&s->buffers, data->buffer)) == NULL) {
+		ctx->error(ctx, "no buffer %d", data->buffer);
+		return (-1);
 	}
 
 	if (pb != NULL) {
@@ -83,6 +85,5 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->print(ctx, buf);
 	}
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

@@ -1,4 +1,4 @@
-/* $Id: cmd-switch-client.c,v 1.14 2009-01-18 14:40:48 nicm Exp $ */
+/* $Id: cmd-switch-client.c,v 1.15 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,7 +28,7 @@
  */
 
 int	cmd_switch_client_parse(struct cmd *, int, char **, char **);
-void	cmd_switch_client_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_switch_client_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_switch_client_send(struct cmd *, struct buffer *);
 void	cmd_switch_client_recv(struct cmd *, struct buffer *);
 void	cmd_switch_client_free(struct cmd *);
@@ -88,7 +88,7 @@ usage:
 	return (-1);
 }
 
-void
+int
 cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_switch_client_data	*data = self->data;
@@ -96,20 +96,19 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session			*s;
 
 	if (data == NULL)
-		return;
+		return (0);
 
 	if ((c = cmd_find_client(ctx, data->name)) == NULL)
-		return;
+		return (-1);
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
-		return;
+		return (-1);
 
 	c->session = s;
 
 	recalculate_sizes();
 	server_redraw_client(c);
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }
 
 void

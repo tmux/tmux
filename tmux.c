@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.98 2009-01-18 12:09:42 nicm Exp $ */
+/* $Id: tmux.c,v 1.99 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -179,7 +179,8 @@ main(int argc, char **argv)
 	struct client_ctx	 cctx;
 	struct msg_command_data	 cmddata;
 	struct buffer		*b;
-	struct cmd		*cmd;
+	struct cmd_list		*cmdlist;
+ 	struct cmd		*cmd;
 	struct pollfd	 	 pfd;
 	struct hdr	 	 hdr;
 	const char		*shell;
@@ -328,7 +329,7 @@ main(int argc, char **argv)
 			log_warnx("can't specify a command when unlocking");
 			exit(1);
 		}
-		cmd = NULL;
+		cmdlist = NULL;
 		if ((pass = getpass("Password: ")) == NULL)
 			exit(1);
 		start_server = 0;
@@ -337,11 +338,24 @@ main(int argc, char **argv)
 			cmd = xmalloc(sizeof *cmd);
 			cmd->entry = &cmd_new_session_entry;
 			cmd->entry->init(cmd, 0);
-		} else if ((cmd = cmd_parse(argc, argv, &cause)) == NULL) {
-			log_warnx("%s", cause);
-			exit(1);
+
+			cmdlist = xmalloc(sizeof *cmdlist);
+			TAILQ_INIT(cmdlist);
+			TAILQ_INSERT_HEAD(cmdlist, cmd, qentry);
+		} else {
+			cmdlist = cmd_list_parse(argc, argv, &cause);
+			if (cmdlist == NULL) {
+				log_warnx("%s", cause);
+				exit(1);
+			}
 		}
-		start_server = cmd->entry->flags & CMD_STARTSERVER;
+		start_server = 0;
+		TAILQ_FOREACH(cmd, cmdlist, qentry) {
+			if (cmd->entry->flags & CMD_STARTSERVER) {
+				start_server = 1;
+				break;
+			}
+		}
 	}
 	
  	memset(&cctx, 0, sizeof cctx);
@@ -354,8 +368,8 @@ main(int argc, char **argv)
 		client_write_server(
 		    &cctx, MSG_UNLOCK, BUFFER_OUT(b), BUFFER_USED(b));
 	} else {
-		cmd_send(cmd, b);
-		cmd_free(cmd);
+		cmd_list_send(cmdlist, b);
+		cmd_list_free(cmdlist);
 		client_fill_session(&cmddata);
 		client_write_server2(&cctx, MSG_COMMAND,
 		    &cmddata, sizeof cmddata, BUFFER_OUT(b), BUFFER_USED(b));
@@ -389,6 +403,7 @@ main(int argc, char **argv)
 		case MSG_EXIT:
 			n = 0;
 			goto out;
+		case MSG_ERROR:
 		case MSG_PRINT:
 			if (hdr.size > INT_MAX - 1)
 				fatalx("bad MSG_PRINT size");
@@ -397,15 +412,6 @@ main(int argc, char **argv)
 			if (hdr.size != 0)
 				buffer_remove(cctx.srv_in, hdr.size);
 			goto restart;
-		case MSG_ERROR:
-			if (hdr.size > INT_MAX - 1)
-				fatalx("bad MSG_ERROR size");
-			log_warnx("%.*s",
-			    (int) hdr.size, BUFFER_OUT(cctx.srv_in));
-			if (hdr.size != 0)
-				buffer_remove(cctx.srv_in, hdr.size);
-			n = 1;
-			goto out;
 		case MSG_READY:
 			n = client_main(&cctx);
 			goto out;

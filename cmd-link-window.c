@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.26 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.27 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
  * Link a window into another session.
  */
 
-void	cmd_link_window_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_link_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_link_window_entry = {
 	"link-window", "linkw",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_link_window_entry = {
 	cmd_srcdst_print
 };
 
-void
+int
 cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_srcdst_data	*data = self->data;
@@ -50,11 +50,11 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	int			 idx;
 
 	if ((wl_src = cmd_find_window(ctx, data->src, NULL)) == NULL)
-		return;
+		return (-1);
 
 	if (arg_parse_window(data->dst, &dst, &idx) != 0) {
 		ctx->error(ctx, "bad window: %s", data->dst);
-		return;
+		return (-1);
 	}
 	if (dst == NULL)
 		dst = ctx->cursession;
@@ -62,7 +62,7 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		dst = cmd_current_session(ctx);
 	if (dst == NULL) {
 		ctx->error(ctx, "session not found: %s", data->dst);
-		return;
+		return (-1);
 	}
 
 	wl_dst = NULL;
@@ -70,7 +70,7 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		wl_dst = winlink_find_by_index(&dst->windows, idx);
 	if (wl_dst != NULL) {
 		if (wl_dst->window == wl_src->window)
-			goto out;
+			return (0);
 
 		if (data->flags & CMD_KFLAG) {
 			/*
@@ -92,7 +92,7 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	wl_dst = session_attach(dst, wl_src->window, idx);
 	if (wl_dst == NULL) {
 		ctx->error(ctx, "index in use: %d", idx);
-		return;
+		return (-1);
 	}
 
 	if (data->flags & CMD_DFLAG)
@@ -103,7 +103,5 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	recalculate_sizes();
 
-out:
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

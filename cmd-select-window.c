@@ -1,4 +1,4 @@
-/* $Id: cmd-select-window.c,v 1.20 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: cmd-select-window.c,v 1.21 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,7 @@
  */
 
 void	cmd_select_window_init(struct cmd *, int);
-void	cmd_select_window_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_select_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_select_window_entry = {
 	"select-window", "selectw",
@@ -53,7 +53,7 @@ cmd_select_window_init(struct cmd *self, int key)
 	xasprintf(&data->target, ":%d", key - '0');
 }
 
-void
+int
 cmd_select_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
@@ -61,12 +61,11 @@ cmd_select_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session		*s;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
-		return;
+		return (-1);
 
 	if (session_select(s, wl->idx) == 0)
 		server_redraw_session(s);
 	recalculate_sizes();
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

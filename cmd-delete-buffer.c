@@ -1,4 +1,4 @@
-/* $Id: cmd-delete-buffer.c,v 1.3 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: cmd-delete-buffer.c,v 1.4 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
  * Delete a paste buffer.
  */
 
-void	cmd_delete_buffer_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_delete_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_delete_buffer_entry = {
 	"delete-buffer", "deleteb",
@@ -41,22 +41,21 @@ const struct cmd_entry cmd_delete_buffer_entry = {
 	cmd_buffer_print
 };
 
-void
+int
 cmd_delete_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
 	struct session		*s;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
-		return;
+		return (-1);
 
 	if (data->buffer == -1)
 		paste_free_top(&s->buffers);
-	else {
-		if (paste_free_index(&s->buffers, data->buffer) != 0)
-			ctx->error(ctx, "no buffer %d", data->buffer);
+	else if (paste_free_index(&s->buffers, data->buffer) != 0) {
+		ctx->error(ctx, "no buffer %d", data->buffer);
+		return (-1);
 	}
-
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	
+	return (0);
 }

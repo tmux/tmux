@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-window.c,v 1.14 2008-06-06 20:02:27 nicm Exp $ */
+/* $Id: cmd-kill-window.c,v 1.15 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
  * Destroy window.
  */
 
-void	cmd_kill_window_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_kill_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_kill_window_entry = {
 	"kill-window", "killw",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_kill_window_entry = {
 	cmd_target_print
 };
 
-void
+int
 cmd_kill_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
@@ -50,7 +50,7 @@ cmd_kill_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	int		 	 destroyed;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
-		return;
+		return (-1);
 
  	destroyed = session_detach(s, wl);
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
@@ -65,6 +65,5 @@ cmd_kill_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	recalculate_sizes();
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

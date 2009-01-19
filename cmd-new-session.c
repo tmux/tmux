@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.35 2009-01-18 14:40:48 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.36 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,7 +25,7 @@
  */
 
 int	cmd_new_session_parse(struct cmd *, int, char **, char **);
-void	cmd_new_session_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_new_session_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_new_session_send(struct cmd *, struct buffer *);
 void	cmd_new_session_recv(struct cmd *, struct buffer *);
 void	cmd_new_session_free(struct cmd *);
@@ -107,7 +107,7 @@ usage:
 	return (-1);
 }
 
-void
+int
 cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_new_session_data	*data = self->data;
@@ -117,22 +117,22 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int				 sx, sy;
 
 	if (ctx->curclient != NULL)
-		return;
+		return (0);
 	
 	if (!data->flag_detached) {
 		if (c == NULL) {
 			ctx->error(ctx, "no client to attach to");
-			return;
+			return (-1);
 		}
 		if (!(c->flags & CLIENT_TERMINAL)) {
 			ctx->error(ctx, "not a terminal");
-			return;
+			return (-1);
 		}
 	}
 
 	if (data->newname != NULL && session_find(data->newname) != NULL) {
 		ctx->error(ctx, "duplicate session: %s", data->newname);
-		return;
+		return (-1);
 	}
 
 	cmd = data->cmd;
@@ -160,7 +160,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (!data->flag_detached && tty_open(&c->tty, &cause) != 0) {
 		ctx->error(ctx, "%s", cause);
 		xfree(cause);
-		return;
+		return (-1);
 	}
 
 
@@ -179,6 +179,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		server_write_client(c, MSG_READY, NULL, 0);
 		server_redraw_client(c);
 	}
+
+	return (1);
 }
 
 void

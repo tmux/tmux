@@ -1,4 +1,4 @@
-/* $Id: cmd-lock-server.c,v 1.1 2009-01-11 00:48:42 nicm Exp $ */
+/* $Id: cmd-lock-server.c,v 1.2 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,7 +28,7 @@
  * Lock server.
  */
 
-void	cmd_lock_server_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_lock_server_exec(struct cmd *, struct cmd_ctx *);
 
 int	cmd_lock_server_callback(void *, const char *);
 
@@ -45,11 +45,10 @@ const struct cmd_entry cmd_lock_server_entry = {
 	NULL,
 };
 
-void
-cmd_lock_server_exec(unused struct cmd *self, struct cmd_ctx *ctx)
+int
+cmd_lock_server_exec(unused struct cmd *self, unused struct cmd_ctx *ctx)
 {
 	server_lock();
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

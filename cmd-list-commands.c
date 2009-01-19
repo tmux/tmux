@@ -1,4 +1,4 @@
-/* $Id: cmd-list-commands.c,v 1.2 2008-09-26 06:45:25 nicm Exp $ */
+/* $Id: cmd-list-commands.c,v 1.3 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
  * List all commands with usages.
  */
 
-void	cmd_list_commands_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_list_commands_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_commands_entry = {
 	"list-commands", "lscm",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_list_commands_entry = {
 	NULL
 };
 
-void
+int
 cmd_list_commands_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
 	const struct cmd_entry 	      **entryp;
@@ -47,6 +47,5 @@ cmd_list_commands_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	for (entryp = cmd_table; *entryp != NULL; entryp++)
 		ctx->print(ctx, "%s %s", (*entryp)->name, (*entryp)->usage);
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

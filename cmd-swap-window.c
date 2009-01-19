@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-window.c,v 1.14 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: cmd-swap-window.c,v 1.15 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
  * Swap one window with another.
  */
 
-void	cmd_swap_window_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_swap_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_swap_window_entry = {
 	"swap-window", "swapw",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_swap_window_entry = {
 	cmd_srcdst_print
 };
 
-void
+int
 cmd_swap_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_srcdst_data	*data = self->data;
@@ -50,12 +50,12 @@ cmd_swap_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window		*w;
 
 	if ((wl_src = cmd_find_window(ctx, data->src, &src)) == NULL)
-		return;
+		return (-1);
 	if ((wl_dst = cmd_find_window(ctx, data->dst, &dst)) == NULL)
-		return;
+		return (-1);
 
 	if (wl_dst->window == wl_src->window)
-		goto out;
+		return (0);
 
 	w = wl_dst->window;
 	wl_dst->window = wl_src->window;
@@ -71,7 +71,5 @@ cmd_swap_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		server_redraw_session(dst);
 	recalculate_sizes();
 
-out:
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

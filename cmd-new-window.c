@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.28 2009-01-18 14:40:48 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.29 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,7 @@
  */
 
 int	cmd_new_window_parse(struct cmd *, int, char **, char **);
-void	cmd_new_window_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_new_window_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_new_window_send(struct cmd *, struct buffer *);
 void	cmd_new_window_recv(struct cmd *, struct buffer *);
 void	cmd_new_window_free(struct cmd *);
@@ -109,7 +109,7 @@ usage:
 	return (-1);
 }
 
-void
+int
 cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_new_window_data	*data = self->data;
@@ -119,11 +119,11 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	int				 idx;
 
 	if (data == NULL)
-		return;
+		return (0);
 
 	if (arg_parse_window(data->target, &s, &idx) != 0) {
 		ctx->error(ctx, "bad window: %s", data->target);
-		return;
+		return (-1);
 	}
 	if (s == NULL)
 		s = ctx->cursession;
@@ -131,7 +131,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		s = cmd_current_session(ctx);
 	if (s == NULL) {
 		ctx->error(ctx, "session not found: %s", data->target);
-		return;
+		return (-1);
 	}
 
 	cmd = data->cmd;
@@ -145,7 +145,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	wl = session_new(s, data->name, cmd, cwd, idx);
 	if (wl == NULL) {
 		ctx->error(ctx, "command failed: %s", cmd);
-		return;
+		return (-1);
 	}
 	if (!data->flag_detached) {
 		session_select(s, wl->idx);
@@ -153,8 +153,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	} else
 		server_status_session(s);
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }
 
 void

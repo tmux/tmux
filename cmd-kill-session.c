@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-session.c,v 1.11 2008-06-06 20:02:27 nicm Exp $ */
+/* $Id: cmd-kill-session.c,v 1.12 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,7 @@
  * Note this deliberately has no alias to make it hard to hit by accident.
  */
 
-void	cmd_kill_session_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_kill_session_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_kill_session_entry = {
 	"kill-session", NULL,
@@ -42,7 +42,7 @@ const struct cmd_entry cmd_kill_session_entry = {
 	cmd_target_print
 };
 
-void
+int
 cmd_kill_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
@@ -51,7 +51,7 @@ cmd_kill_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int			 i;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
-		return;
+		return (-1);
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
@@ -64,6 +64,5 @@ cmd_kill_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	session_destroy(s);
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

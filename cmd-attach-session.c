@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.22 2009-01-19 17:16:09 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.23 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
  * Attach existing session to the current terminal.
  */
 
-void	cmd_attach_session_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_attach_session_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_attach_session_entry = {
 	"attach-session", "attach",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_attach_session_entry = {
 	cmd_target_print
 };
 
-void
+int
 cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
@@ -47,24 +47,24 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*cause;
 	
 	if (ctx->curclient != NULL)
-		return;
+		return (0);
 
 	if (ARRAY_LENGTH(&sessions) == 0) {
 		ctx->error(ctx, "no sessions");
-		return;
+		return (-1);
 	}
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
-		return;
+		return (-1);
 
 	if (!(ctx->cmdclient->flags & CLIENT_TERMINAL)) {
 		ctx->error(ctx, "not a terminal");
-		return;
+		return (-1);
 	}
 
 	if (tty_open(&ctx->cmdclient->tty, &cause) != 0) {
 		ctx->error(ctx, "%s", cause);
 		xfree(cause);
-		return;
+		return (-1);
 	}
 
 	if (data->flags & CMD_DFLAG)
@@ -74,5 +74,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	server_write_client(ctx->cmdclient, MSG_READY, NULL, 0);
 	recalculate_sizes();
 	server_redraw_client(ctx->cmdclient);
+
+	return (1);
 }
 

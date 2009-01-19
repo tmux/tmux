@@ -1,4 +1,4 @@
-/* $Id: cmd-up-pane.c,v 1.2 2009-01-14 22:13:30 nicm Exp $ */
+/* $Id: cmd-up-pane.c,v 1.3 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
  * Move up a pane.
  */
 
-void	cmd_up_pane_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_up_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_up_pane_entry = {
 	"up-pane", "upp",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_up_pane_entry = {
 	cmd_target_print
 };
 
-void
+int
 cmd_up_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
@@ -47,7 +47,7 @@ cmd_up_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window		*w;
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
-		return;
+		return (-1);
 	w = wl->window;
 
 	do {
@@ -56,6 +56,5 @@ cmd_up_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 			w->active = TAILQ_LAST(&w->panes, window_panes);
 	} while (w->active->flags & PANE_HIDDEN);
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

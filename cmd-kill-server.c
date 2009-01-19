@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-server.c,v 1.5 2008-06-05 21:25:00 nicm Exp $ */
+/* $Id: cmd-kill-server.c,v 1.6 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,7 @@
  * Kill the server and do nothing else.
  */
 
-void	cmd_kill_server_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_kill_server_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_kill_server_entry = {
 	"kill-server", NULL,
@@ -42,11 +42,10 @@ const struct cmd_entry cmd_kill_server_entry = {
 	NULL
 };
 
-void
-cmd_kill_server_exec(unused struct cmd *self, struct cmd_ctx *ctx)
+int
+cmd_kill_server_exec(unused struct cmd *self, unused struct cmd_ctx *ctx)
 {
 	sigterm = 1;
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

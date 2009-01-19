@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-pane.c,v 1.2 2009-01-14 19:29:32 nicm Exp $ */
+/* $Id: cmd-kill-pane.c,v 1.3 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
  * Kill pane.
  */
 
-void	cmd_kill_pane_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_kill_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_kill_pane_entry = {
 	"kill-pane", "killp",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_kill_pane_entry = {
 	cmd_pane_print
 };
 
-void
+int
 cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_pane_data	*data = self->data;
@@ -49,24 +49,23 @@ cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_pane	*wp;
 	
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
-		return;
+		return (-1);
 	if (data->pane == -1)
 		wp = wl->window->active;
 	else {
 		wp = window_pane_at_index(wl->window, data->pane);
 		if (wp == NULL) {
 			ctx->error(ctx, "no pane: %d", data->pane);
-			return;
+			return (-1);
 		}
 	}
 
 	if (window_count_panes(wl->window) == 1) {
 		ctx->error(ctx, "can't kill pane: %d", data->pane);
-		return;
+		return (-1);
 	}
 	window_remove_pane(wl->window, wp);
 	server_redraw_window(wl->window);
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

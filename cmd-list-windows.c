@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.29 2009-01-14 23:39:14 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.30 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
  * List windows on given session.
  */
 
-void	cmd_list_windows_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_list_windows_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_windows_entry = {
 	"list-windows", "lsw",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_list_windows_entry = {
 	cmd_target_print
 };
 
-void
+int
 cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
@@ -55,7 +55,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const char		*name;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
-		return;
+		return (-1);
 
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		w = wl->window;
@@ -81,6 +81,5 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

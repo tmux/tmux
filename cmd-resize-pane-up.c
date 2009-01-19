@@ -1,4 +1,4 @@
-/* $Id: cmd-resize-pane-up.c,v 1.5 2009-01-14 22:16:57 nicm Exp $ */
+/* $Id: cmd-resize-pane-up.c,v 1.6 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,7 @@
  */
 
 void	cmd_resize_pane_up_init(struct cmd *, int);
-void	cmd_resize_pane_up_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_resize_pane_up_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_resize_pane_up_entry = {
 	"resize-pane-up", "resizep-up",
@@ -54,7 +54,7 @@ cmd_resize_pane_up_init(struct cmd *self, int key)
 		data->arg = xstrdup("5");
 }
 
-void
+int
 cmd_resize_pane_up_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_pane_data	*data = self->data;
@@ -64,14 +64,14 @@ cmd_resize_pane_up_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int			 adjust;
 	
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
-		return;
+		return (-1);
 	if (data->pane == -1)
 		wp = wl->window->active;
 	else {
 		wp = window_pane_at_index(wl->window, data->pane);
 		if (wp == NULL) {
 			ctx->error(ctx, "no pane: %d", data->pane);
-			return;
+			return (-1);
 		}
 	}
 
@@ -81,7 +81,7 @@ cmd_resize_pane_up_exec(struct cmd *self, struct cmd_ctx *ctx)
 		adjust = strtonum(data->arg, 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
 			ctx->error(ctx, "adjustment %s: %s", errstr, data->arg);
-			return;
+			return (-1);
 		}
 	}
 
@@ -94,7 +94,7 @@ cmd_resize_pane_up_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (wq == NULL) {
 		if (wp == TAILQ_FIRST(&wl->window->panes)) {
 			/* Only one pane. */
-			goto out;
+			return (0);
 		}
 		wq = wp;
 		wp = TAILQ_PREV(wq, window_panes, entry);
@@ -109,7 +109,5 @@ cmd_resize_pane_up_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	server_redraw_window(wl->window);
 
-out:
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

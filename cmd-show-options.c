@@ -1,4 +1,4 @@
-/* $Id: cmd-show-options.c,v 1.9 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: cmd-show-options.c,v 1.10 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,7 @@
  * Show options.
  */
 
-void	cmd_show_options_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_show_options_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_options_entry = {
 	"show-options", "show",
@@ -42,7 +42,7 @@ const struct cmd_entry cmd_show_options_entry = {
 	cmd_target_print
 };
 
-void
+int
 cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data		*data = self->data;
@@ -57,7 +57,7 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 		oo = &global_options;
 	else {
 		if ((s = cmd_find_session(ctx, data->target)) == NULL)
-			return;
+			return (-1);
 		oo = &s->options;
 	}
 
@@ -101,6 +101,5 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

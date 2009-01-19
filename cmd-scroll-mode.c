@@ -1,4 +1,4 @@
-/* $Id: cmd-scroll-mode.c,v 1.14 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: cmd-scroll-mode.c,v 1.15 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
  * Enter scroll mode.
  */
 
-void	cmd_scroll_mode_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_scroll_mode_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_scroll_mode_entry = {
 	"scroll-mode", NULL,
@@ -39,17 +39,16 @@ const struct cmd_entry cmd_scroll_mode_entry = {
 	cmd_target_print
 };
 
-void
+int
 cmd_scroll_mode_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
 	struct winlink		*wl;
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
-		return;
+		return (-1);
 
 	window_pane_set_mode(wl->window->active, &window_scroll_mode);
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

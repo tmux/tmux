@@ -1,5 +1,8 @@
 19 January 2009
 
+* An error in a command sequence now stops execution of that sequence.
+  Internally, each command code now passes a return code back rather than
+  talking to the calling client (if any) directly.
 * attach-session now tries to start the server if it isn't already started - if
   no sessions are created in .tmux.conf this will cause an error.
 * Clean up starting server by making initial client get a special socketpair.
@@ -23,9 +26,9 @@
 
 	bind x lsk \; lsc
 
-  Commands are executed from left to right and, importantly, an error does NOT
-  stop execution. Also note that command sequences do not support repeat-time
-  repetition unless all commands making up the sequence support it.
+  Commands are executed from left to right. Also note that command sequences do
+  not support repeat-time repetition unless all commands making up the sequence
+  support it.
 * suspend-client command to suspend a client. Don't try to background it
   though...
 * Mark attached sessions in sessions lists. Suggested by Simon Kuhnle.
@@ -964,7 +967,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.221 2009-01-19 17:16:09 nicm Exp $
+$Id: CHANGES,v 1.222 2009-01-19 18:23:40 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

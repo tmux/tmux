@@ -1,4 +1,4 @@
-/* $Id: cmd-save-buffer.c,v 1.2 2009-01-14 22:16:57 nicm Exp $ */
+/* $Id: cmd-save-buffer.c,v 1.3 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -28,7 +28,7 @@
  * Saves a session paste buffer to a file.
  */
 
-void	cmd_save_buffer_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_save_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_save_buffer_entry = {
 	"save-buffer", "saveb",
@@ -43,7 +43,7 @@ const struct cmd_entry cmd_save_buffer_entry = {
 	cmd_buffer_print
 };
 
-void
+int
 cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
@@ -53,18 +53,22 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	FILE			*f;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
-		return;
+		return (-1);
 
 	if (data->buffer == -1) {
-		if ((pb = paste_get_top(&s->buffers)) == NULL)
+		if ((pb = paste_get_top(&s->buffers)) == NULL) {
 			ctx->error(ctx, "no buffers");
+			return (-1);
+		}
 	} else {
-		if ((pb = paste_get_index(&s->buffers, data->buffer)) == NULL)
+		if ((pb = paste_get_index(&s->buffers, data->buffer)) == NULL) {
 			ctx->error(ctx, "no buffer %d", data->buffer);
+			return (-1);
+		}
 	}
 
 	if (pb == NULL)
-		return;
+		return (0);
 
 	mask = umask(S_IRWXG | S_IRWXO);
 	if (data->flags & CMD_AFLAG)
@@ -73,18 +77,17 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		f = fopen(data->arg, "w");
 	if (f == NULL) {
 		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
-		return;
+		return (-1);
 	}
 
 	if (fwrite(pb->data, 1, strlen(pb->data), f) != strlen(pb->data)) {
 	    	ctx->error(ctx, "%s: fwrite error", data->arg);
 	    	fclose(f);
-	    	return;
+	    	return (-1);
 	}
 
 	fclose(f);
 	umask(mask);
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

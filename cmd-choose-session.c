@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-session.c,v 1.5 2009-01-18 19:10:08 nicm Exp $ */
+/* $Id: cmd-choose-session.c,v 1.6 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
  * Enter choice mode to choose a session.
  */
 
-void	cmd_choose_session_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_choose_session_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_choose_session_callback(void *, int);
 
@@ -45,7 +45,7 @@ struct cmd_choose_session_data {
 	u_int	client;
 };
 
-void
+int
 cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data		*data = self->data;
@@ -56,14 +56,14 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
-		return;
+		return (-1);
 	}
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
-		return;
+		return (-1);
 		
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
-		goto out;
+		return (0);
 
 	cur = idx = 0;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
@@ -86,9 +86,7 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	window_choose_ready(
 	    wl->window->active, cur, cmd_choose_session_callback, cdata);
 
-out:
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }
 
 void

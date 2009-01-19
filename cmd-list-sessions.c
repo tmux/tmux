@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.18 2009-01-18 12:13:21 nicm Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.19 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,7 @@
  * List all sessions.
  */
 
-void	cmd_list_sessions_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_list_sessions_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_sessions_entry = {
 	"list-sessions", "ls", "",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_list_sessions_entry = {
 	NULL
 };
 
-void
+int
 cmd_list_sessions_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct session	*s;
@@ -63,6 +63,5 @@ cmd_list_sessions_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		    s->flags & SESSION_UNATTACHED ? "" : " (attached)");
 	}
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }

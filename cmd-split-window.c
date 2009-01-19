@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.5 2009-01-18 14:40:48 nicm Exp $ */
+/* $Id: cmd-split-window.c,v 1.6 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,7 +28,7 @@
  */
 
 int	cmd_split_window_parse(struct cmd *, int, char **, char **);
-void	cmd_split_window_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_split_window_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_split_window_send(struct cmd *, struct buffer *);
 void	cmd_split_window_recv(struct cmd *, struct buffer *);
 void	cmd_split_window_free(struct cmd *);
@@ -104,7 +104,7 @@ usage:
 	return (-1);
 }
 
-void
+int
 cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_split_window_data	*data = self->data;
@@ -118,7 +118,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int				 i, hlimit;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
-		return;
+		return (-1);
 	w = wl->window;
 
 	if (session_index(s, &i) != 0)
@@ -137,7 +137,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	hlimit = options_get_number(&s->options, "history-limit");
 	if ((wp = window_add_pane(w, cmd, cwd, env, hlimit)) == NULL) {
 		ctx->error(ctx, "command failed: %s", cmd);
-		return;
+		return (-1);
 	}
 	server_redraw_window(w);
 	
@@ -148,8 +148,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	} else
 		server_status_session(s);
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }
 
 void

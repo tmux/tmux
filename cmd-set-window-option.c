@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.20 2009-01-18 14:40:48 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.21 2009-01-19 18:23:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,7 +28,7 @@
  */
 
 int	cmd_set_window_option_parse(struct cmd *, int, char **, char **);
-void	cmd_set_window_option_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_set_window_option_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_set_window_option_send(struct cmd *, struct buffer *);
 void	cmd_set_window_option_recv(struct cmd *, struct buffer *);
 void	cmd_set_window_option_free(struct cmd *);
@@ -69,7 +69,7 @@ const struct set_option_entry set_window_option_table[NSETWINDOWOPTION] = {
 	{ "xterm-keys", SET_OPTION_FLAG, 0, 0, NULL },
 };
 
-void
+int
 cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_option_data		*data = self->data;
@@ -83,13 +83,13 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		oo = &global_window_options;
 	else {
 		if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
-			return;
+			return (-1);
 		oo = &wl->window->options;
 	}
 
 	if (*data->option == '\0') {
 		ctx->error(ctx, "invalid option");
-		return;
+		return (-1);
 	}
 
 	entry = NULL;
@@ -99,7 +99,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			continue;
 		if (entry != NULL) {
 			ctx->error(ctx, "ambiguous option: %s", data->option);
-			return;
+			return (-1);
 		}
 		entry = &set_window_option_table[i];
 
@@ -109,25 +109,25 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	if (entry == NULL) {
 		ctx->error(ctx, "unknown option: %s", data->option);
-		return;
+		return (-1);
 	}
 
 	if (data->flags & CMD_UFLAG) {
 		if (data->flags & CMD_GFLAG) {
 			ctx->error(ctx,
 			    "can't unset global option: %s", entry->name);
-			return;
+			return (-1);
 		}
 		if (data->value != NULL) {
 			ctx->error(ctx,
 			    "value passed to unset option: %s", entry->name);
-			return;
+			return (-1);
 		}
 
 		if (options_remove(oo, entry->name) != 0) {
 			ctx->error(ctx,
 			    "can't unset option, not set: %s", entry->name);
-			return;
+			return (-1);
 		}
 		ctx->info(ctx, "unset option: %s", entry->name);
 	} else {
@@ -160,6 +160,5 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			server_redraw_client(c);
 	}
 
-	if (ctx->cmdclient != NULL)
-		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	return (0);
 }
