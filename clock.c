@@ -1,4 +1,4 @@
-/* $Id: clock.c,v 1.1 2009-01-11 00:48:42 nicm Exp $ */
+/* $Id: clock.c,v 1.2 2009-01-19 19:01:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -113,6 +113,7 @@ clock_draw(struct screen_write_ctx *ctx, u_int colour, int style)
 
 	screen_write_clearscreen(ctx);
 	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.fg = colour;
 
 	if (screen_size_x(s) < 6 * strlen(tim) || screen_size_y(s) < 6) {
 		if (screen_size_x(s) >= strlen(tim) && screen_size_y(s) != 0) {
@@ -149,9 +150,9 @@ clock_draw(struct screen_write_ctx *ctx, u_int colour, int style)
 			screen_write_cursormove(ctx, x, y + j);
 			for (i = 0; i < 5; i++) {
 				if (clock_table[idx][j][i])
-					gc.bg = colour;
+					gc.attr |= GRID_ATTR_REVERSE;
 				else
-					gc.bg = 0;
+					gc.attr &= ~GRID_ATTR_REVERSE;
 				screen_write_putc(ctx, &gc, ' ');
 			}
 		}

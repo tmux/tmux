@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.64 2009-01-17 18:47:37 nicm Exp $ */
+/* $Id: status.c,v 1.65 2009-01-19 19:01:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -498,8 +498,8 @@ status_prompt_redraw(struct client *c)
 		ch = c->prompt_buffer[c->prompt_index];
 	if (ch == '\0')
 		ch = ' ';
-	gc.bg = gc.fg;
-	gc.fg = options_get_number(&s->options, "message-bg");
+	gc.bg = options_get_number(&s->options, "message-bg");
+	gc.attr |= GRID_ATTR_REVERSE;
 	screen_write_putc(&ctx, &gc, ch);
 
 	screen_write_stop(&ctx);

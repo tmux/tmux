@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.61 2009-01-18 21:46:30 nicm Exp $ */
+/* $Id: tty.c,v 1.62 2009-01-19 19:01:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -753,6 +753,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
 	u_char			 changed;
+	u_int			 fg, bg;
 
 	/* If any bits are being cleared, reset everything. */
 	if (tc->attr & ~gc->attr)
@@ -763,6 +764,8 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 	tc->attr = gc->attr;
 
 	/* Set the attributes. */
+	fg = gc->fg;
+	bg = gc->bg;
 	if (changed & GRID_ATTR_BRIGHT)
 		tty_putcode(tty, TTYC_BOLD);
 	if (changed & GRID_ATTR_DIM)
@@ -773,25 +776,29 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 		tty_putcode(tty, TTYC_SMUL);
 	if (changed & GRID_ATTR_BLINK)
 		tty_putcode(tty, TTYC_BLINK);
-	if (changed & GRID_ATTR_REVERSE)
-		tty_putcode(tty, TTYC_REV);
+	if (changed & GRID_ATTR_REVERSE) {
+		if (tty_term_has(tty->term, TTYC_REV))
+			tty_putcode(tty, TTYC_REV);
+		else if (tty_term_has(tty->term, TTYC_SMSO))
+			tty_putcode(tty, TTYC_SMSO);    
+	}
 	if (changed & GRID_ATTR_HIDDEN)
 		tty_putcode(tty, TTYC_INVIS);
 	if (changed & GRID_ATTR_CHARSET)
 		tty_putcode(tty, TTYC_SMACS);
 
 	/* Set foreground colour. */
-	if (gc->fg != tc->fg ||
+	if (fg != tc->fg ||
 	    (gc->flags & GRID_FLAG_FG256) != (tc->flags & GRID_FLAG_FG256)) {
 		tty_attributes_fg(tty, gc);
-		tc->fg = gc->fg;
+		tc->fg = fg;
 	}
 
 	/* Set background colour. */
-	if (gc->bg != tc->bg ||
+	if (bg != tc->bg ||
 	    (gc->flags & GRID_FLAG_BG256) != (tc->flags & GRID_FLAG_BG256)) {
 		tty_attributes_bg(tty, gc);
-		tc->bg = gc->bg;
+		tc->bg = bg;
 	}
 }
 
