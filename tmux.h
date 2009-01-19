@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.243 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: tmux.h,v 1.244 2009-01-19 18:26:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION -9
+#define PROTOCOL_VERSION -10
 
 /* Shut up gcc warnings about empty if bodies. */
 #define RB_AUGMENT(x) do {} while (0)
