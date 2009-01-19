@@ -83,3 +83,7 @@
 - bring back -l/-p on splitw so i can do "splitw -p 75 elinks"
 - UTF-8 combining characters don't work (probably should be width 1 but are
   listed as 2)
+- client sx/sy should be in tty, then can let the terminal wrap at edge
+  to allow xterm to pick up it should be one line for its c/p
+- with no status line and when window sy<cy, use blank line
+- doesn't redraw last line properly when status is off

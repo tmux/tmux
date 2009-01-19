@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.65 2009-01-19 19:01:11 nicm Exp $ */
+/* $Id: status.c,v 1.66 2009-01-19 20:14:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,6 +53,13 @@ status_redraw(struct client *c)
 
 	left = right = NULL;
 
+	/* Resize the target screen. */
+	if (screen_size_x(&c->status) != c->sx) {
+		screen_free(&c->status);
+		screen_init(&c->status, c->sx, 1, 0);
+	}
+
+	/* No status line? */
 	if (c->sy == 0 || !options_get_number(&s->options, "status"))
 		goto off;
 	larrow = rarrow = 0;
@@ -67,6 +74,7 @@ status_redraw(struct client *c)
 	if (yy == 0)
 		goto blank;
 
+	/* Work out the left and right strings. */
 	left = status_replace(s, options_get_string(
 	    &s->options, "status-left"), c->status_timer.tv_sec);
 	llen = options_get_number(&s->options, "status-left-length");
@@ -147,12 +155,6 @@ status_redraw(struct client *c)
  	width = xx;
 
 draw:
-	/* Resize the target screen. */
-	if (screen_size_x(&c->status) != c->sx) {
-		screen_free(&c->status);
-		screen_init(&c->status, c->sx, 1, 0);
-	}
-
 	/* Bail here if anything is too small too. XXX. */
 	if (width == 0 || xx == 0)
 		goto blank;
@@ -259,20 +261,20 @@ off:
 	 * Draw the real window last line. Necessary to wipe over message if
 	 * status is off. Not sure this is the right place for this.
 	 */
+	memcpy(&gc, &grid_default_cell, sizeof gc);
 	screen_write_start(&ctx, NULL, &c->status);
 
 	sy = 0;
 	TAILQ_FOREACH(wp, &s->curw->window->panes, entry) {
-		sy += wp->sy;
+		sy += wp->sy + 1;
 		sc = wp->screen;
 	}
-	sy++;
 
 	screen_write_cursormove(&ctx, 0, 0);
-	if (sy < c->sy - 1) {
+	if (sy < c->sy) {
 		/* If the screen is too small, use blank. */
-		for (offset = 0; offset < c->sx; offset++)
-			screen_write_putc(&ctx, &gc, ' ');
+ 		for (offset = 0; offset < c->sx; offset++)
+ 			screen_write_putc(&ctx, &gc, ' ');
 	} else {
 		screen_write_copy(&ctx,
 		    sc, 0, sc->grid->hsize + screen_size_y(sc) - 1, c->sx, 1);

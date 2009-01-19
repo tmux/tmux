@@ -1,5 +1,6 @@
 19 January 2009
 
+* Fix various stupid issues when the status line is turned off. Grr.
 * Use reverse attributes for clock and cursor, otherwise they do not
   appear on black and white terminals.
 * An error in a command sequence now stops execution of that sequence.
@@ -969,7 +970,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.223 2009-01-19 19:01:11 nicm Exp $
+$Id: CHANGES,v 1.224 2009-01-19 20:14:55 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
