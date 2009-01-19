@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.27 2009-01-18 21:46:30 nicm Exp $ */
+/* $Id: screen-write.c,v 1.28 2009-01-19 17:15:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -597,7 +597,6 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 			ic->flags |= GRID_FLAG_PADDING;
 	}
 
-not_utf8:
 	/* Write the actual cell. */
 	grid_view_set_cell(gd, s->cx, s->cy, gc);
 
