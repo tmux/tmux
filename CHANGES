@@ -1,3 +1,9 @@
+19 January 2009
+
+* attach-session now tries to start the server if it isn't already started - if
+  no sessions are created in .tmux.conf this will cause an error.
+* Clean up starting server by making initial client get a special socketpair.
+
 18 January 2009
 
 * Unbreak UTF-8.
@@ -958,7 +964,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.220 2009-01-18 21:46:30 nicm Exp $
+$Id: CHANGES,v 1.221 2009-01-19 17:16:09 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

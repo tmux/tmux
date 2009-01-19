@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.40 2009-01-18 12:09:42 nicm Exp $ */
+/* $Id: client.c,v 1.41 2009-01-19 17:16:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,23 +44,20 @@ client_init(
 	struct winsize			ws;
 	size_t				size;
 	int				mode;
-	u_int				retries;
 	struct buffer		       *b;
 	char			       *name;
 
-	retries = 0;
-retry:
 	if (stat(path, &sb) != 0) {
 		if (start_server && errno == ENOENT) {
-			if (server_start(path) != 0)
-				goto no_start;
-			goto retry;
+			if ((cctx->srv_fd = server_start(path)) == -1)
+				goto start_failed;
+			goto server_started;
 		}
-		goto fail;
+		goto not_found;
 	}
 	if (!S_ISSOCK(sb.st_mode)) {
 		errno = ENOTSOCK;
-		goto fail;
+		goto not_found;
 	}
 
 	memset(&sa, 0, sizeof sa);
@@ -68,7 +65,7 @@ retry:
 	size = strlcpy(sa.sun_path, path, sizeof sa.sun_path);
 	if (size >= sizeof sa.sun_path) {
 		errno = ENAMETOOLONG;
-		goto fail;
+		goto not_found;
 	}
 
 	if ((cctx->srv_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
@@ -76,16 +73,17 @@ retry:
 
 	if (connect(
 	    cctx->srv_fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
-		if (start_server && errno == ECONNREFUSED && retries < 10) {
-			if (unlink(path) != 0)
-				goto fail;
-			if (server_start(path) != 0)
-				goto no_start;
+		if (errno == ECONNREFUSED) {
+			if (unlink(path) != 0 || !start_server)
+				goto not_found;
+			if ((cctx->srv_fd = server_start(path)) == -1)
+				goto start_failed;
+			goto server_started;
 		}
-		retries++;
-		goto retry;
+		goto not_found;
 	}
 
+server_started:
 	if ((mode = fcntl(cctx->srv_fd, F_GETFL)) == -1)
 		fatal("fcntl");
 	if (fcntl(cctx->srv_fd, F_SETFL, mode|O_NONBLOCK) == -1)
@@ -118,11 +116,11 @@ retry:
 
 	return (0);
 
-no_start:
+start_failed:
 	log_warnx("server failed to start");
 	return (1);
 
-fail:
+not_found:
 	log_warn("server not found");
 	return (1);
 }

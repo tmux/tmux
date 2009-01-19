@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.21 2008-12-10 20:25:41 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.22 2009-01-19 17:16:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ void	cmd_attach_session_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_attach_session_entry = {
 	"attach-session", "attach",
 	"[-d] " CMD_TARGET_SESSION_USAGE,
-	CMD_DFLAG|CMD_CANTNEST,
+       	CMD_DFLAG|CMD_CANTNEST|CMD_STARTSERVER,
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_attach_session_exec,
@@ -45,10 +45,14 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_target_data	*data = self->data;
 	struct session		*s;
 	char			*cause;
-
+	
 	if (ctx->curclient != NULL)
 		return;
 
+	if (ARRAY_LENGTH(&sessions) == 0) {
+		ctx->error(ctx, "no sessions");
+		return;
+	}
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return;
 

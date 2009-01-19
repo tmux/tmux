@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.108 2009-01-18 14:40:48 nicm Exp $ */
+/* $Id: server.c,v 1.109 2009-01-19 17:16:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,6 +58,51 @@ void		 server_check_timers(struct client *);
 void		 server_second_timers(void);
 int		 server_update_socket(const char *);
 
+/* Create a new client. */
+struct client *
+server_create_client(int fd)
+{
+	struct client	*c;
+	int		 mode;
+	u_int		 i;
+
+	if ((mode = fcntl(fd, F_GETFL)) == -1)
+		fatal("fcntl failed");
+	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
+		fatal("fcntl failed");
+
+	c = xcalloc(1, sizeof *c);
+	c->fd = fd;
+	c->in = buffer_create(BUFSIZ);
+	c->out = buffer_create(BUFSIZ);
+
+	ARRAY_INIT(&c->prompt_hdata);
+
+	c->tty.fd = -1;
+	c->title = NULL;
+
+	c->session = NULL;
+	c->sx = 80;
+	c->sy = 25;
+	screen_init(&c->status, c->sx, 1, 0);
+
+	c->message_string = NULL;
+
+	c->prompt_string = NULL;
+	c->prompt_buffer = NULL;
+	c->prompt_index = 0;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		if (ARRAY_ITEM(&clients, i) == NULL) {
+			ARRAY_SET(&clients, i, c);
+			return (c);
+		}
+	}
+	ARRAY_ADD(&clients, c);
+	return (c);
+}
+
+/* Find client index. */
 int
 server_client_index(struct client *c)
 {
@@ -79,9 +124,8 @@ server_start(const char *path)
 	mode_t			mask;
 	int		   	n, fd, pair[2], mode;
 	char		       *cause;
-	u_char			ch;
 
-	/* Make a little socketpair to wait for the server to be ready. */
+	/* The first client is special and gets a socketpair; create it. */
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
 		fatal("socketpair failed");
 
@@ -92,17 +136,7 @@ server_start(const char *path)
 		break;
 	default:
 		close(pair[1]);
-
-		ch = 0x00;
-		if (read(pair[0], &ch, 1) == 1 && ch == 0xff) {
-			close(pair[0]);
-			return (0);
-		}
-		ch = 0x00;
-		if (write(pair[1], &ch, 1) != 1)
-			fatal("write failed");
-		close(pair[0]);
-		return (1);
+		return (pair[0]);
 	}
 	close(pair[0]);
 
@@ -166,11 +200,7 @@ server_start(const char *path)
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
 
-	ch = 0xff;
-	if (write(pair[1], &ch, 1) != 1)
-		fatal("write failed");
-	read(pair[1], &ch, 1); /* Ignore errors; just to wait before closing. */
-	close(pair[1]);
+	server_create_client(pair[1]);
 
 	n = server_main(path, fd);
 #ifdef DEBUG
@@ -532,52 +562,17 @@ server_handle_clients(struct pollfd **pfd)
 struct client *
 server_accept_client(int srv_fd)
 {
-	struct client	       *c;
 	struct sockaddr_storage	sa;
 	socklen_t		slen = sizeof sa;
-	int		 	client_fd, mode;
-	u_int			i;
+	int			fd;
 
-	client_fd = accept(srv_fd, (struct sockaddr *) &sa, &slen);
-	if (client_fd == -1) {
+	fd = accept(srv_fd, (struct sockaddr *) &sa, &slen);
+	if (fd == -1) {
 		if (errno == EAGAIN || errno == EINTR || errno == ECONNABORTED)
 			return (NULL);
 		fatal("accept failed");
 	}
-	if ((mode = fcntl(client_fd, F_GETFL)) == -1)
-		fatal("fcntl failed");
-	if (fcntl(client_fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failed");
-
-	c = xcalloc(1, sizeof *c);
-	c->fd = client_fd;
-	c->in = buffer_create(BUFSIZ);
-	c->out = buffer_create(BUFSIZ);
-
-	ARRAY_INIT(&c->prompt_hdata);
-
-	c->tty.fd = -1;
-	c->title = NULL;
-
-	c->session = NULL;
-	c->sx = 80;
-	c->sy = 25;
-	screen_init(&c->status, c->sx, 1, 0);
-
-	c->message_string = NULL;
-
-	c->prompt_string = NULL;
-	c->prompt_buffer = NULL;
-	c->prompt_index = 0;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		if (ARRAY_ITEM(&clients, i) == NULL) {
-			ARRAY_SET(&clients, i, c);
-			return (c);
-		}
-	}
-	ARRAY_ADD(&clients, c);
-	return (c);
+	return (server_create_client(fd));
 }
 
 /* Input data from client. */
