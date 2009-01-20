@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.109 2009-01-19 17:16:09 nicm Exp $ */
+/* $Id: server.c,v 1.110 2009-01-20 19:35:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -275,6 +275,9 @@ server_main(const char *srv_path, int srv_fd)
 			last = now;
 			server_second_timers();
 		}
+
+		/* Set window names. */
+		set_window_names();
 
 		/*
 		 * Handle window and client sockets. Clients can create

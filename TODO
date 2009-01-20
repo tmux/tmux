@@ -58,32 +58,32 @@
   keyboard. what about a new-window-index option that sets the base at which
   tmux starts numbering new windows, then they can do: set -g new-window-index
   1; bind 0 selectw -t:10
-
-(hopefully) for 0.7, in no particular order:
-- swap-pane-up, swap-pane-down (maybe move-pane-*)
-- move-pane (to window) (maybe break-pane?)
+- some way to change status line colours based on something? command?
+- client sx/sy should be in tty, then can let the terminal wrap at edge
+  to allow xterm to pick up it should be one line for its c/p
 - should be able to move to a hidden pane and it would be moved into view. pane
   number in status line/top-right would be cool for this
 - command to run something without a window at all - output to
   window-more. what for? isnt this the same as doing it w/ splitw/neww now?
 - command to purge window history? or apply history-limit changes?
+- clone session command
+- make command sequences more usable: don't require space around ;, handle
+  errors better
+
+(hopefully) for 0.7, in no particular order:
+- swap-pane-up, swap-pane-down (maybe move-pane-*)
+- move-pane (to window) (maybe break-pane?)
 - command: load-buffer -b number filename
 - command: copy-buffer -s src-session -t dst-session -a src-index -b dst-index
   (copy from other session)
 - neww should support -k
 - flag to scroll-mode/copy-mode to automatically scroll up a page
-- would be nice if tmux could be the shell
+- would be nice if tmux could be the shell (tmux attach, but hard link to tmux
+  binary as "tmuxsh" or wrapper script?)
 - key to switch to copy mode from scroll mode
-- clone session command
 - document suspend-client
 - document command sequences
-- make command sequences more usable: don't require space around ;, handle
-  errors better
 - document find-window
 - bring back -l/-p on splitw so i can do "splitw -p 75 elinks"
 - UTF-8 combining characters don't work (probably should be width 1 but are
   listed as 2)
-- client sx/sy should be in tty, then can let the terminal wrap at edge
-  to allow xterm to pick up it should be one line for its c/p
-- with no status line and when window sy<cy, use blank line
-- doesn't redraw last line properly when status is off

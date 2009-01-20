@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.36 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.37 2009-01-20 19:35:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -169,6 +169,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (data->winname != NULL) {
 		xfree(s->curw->window->name);
 		s->curw->window->name = xstrdup(data->winname);
+		options_set_number(
+		    &s->curw->window->options, "automatic-rename", 0);
 	}
 
 	if (data->flag_detached) {

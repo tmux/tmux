@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.59 2009-01-18 18:31:45 nicm Exp $ */
+/* $Id: window.c,v 1.60 2009-01-20 19:35:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -205,41 +205,18 @@ window_create(const char *name, const char *cmd,
 {
 	struct window	*w;
 	u_int		 i;
-	char		*ptr, *copy;
 
 	w = xmalloc(sizeof *w);
 	w->flags = 0;
 
 	TAILQ_INIT(&w->panes);
 	w->active = NULL;
+	w->pgrp = -1;
 
 	w->sx = sx;
 	w->sy = sy;
 
 	options_init(&w->options, &global_window_options);
-
-	if (name == NULL) {
-		/* XXX */
-		if (strncmp(cmd, "exec ", (sizeof "exec ") - 1) == 0)
-			copy = xstrdup(cmd + (sizeof "exec ") - 1);
-		else
-			copy = xstrdup(cmd);
-		if ((ptr = strchr(copy, ' ')) != NULL) {
-			if (ptr != copy && ptr[-1] != '\\')
-				*ptr = '\0';
-			else {
-				while ((ptr = strchr(ptr + 1, ' ')) != NULL) {
-					if (ptr[-1] != '\\') {
-						*ptr = '\0';
-						break;
-					}
-				}
-			}
-		}
-		w->name = xstrdup(xbasename(copy));
-		xfree(copy);
-	} else
-		w->name = xstrdup(name);
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		if (ARRAY_ITEM(&windows, i) == NULL) {
@@ -256,6 +233,12 @@ window_create(const char *name, const char *cmd,
 		return (NULL);
 	}
 	w->active = TAILQ_FIRST(&w->panes);
+
+	if (name != NULL) {
+		w->name = xstrdup(name);
+		options_set_number(&w->options, "automatic-rename", 0);
+	} else
+		w->name = default_window_name(w);
 	return (w);
 }
 
@@ -548,6 +531,7 @@ window_pane_spawn(struct window_pane *wp,
 	struct winsize	 ws;
 	int		 mode;
 	const char     **envq;
+	struct timeval	 tv;
 
 	if (wp->fd != -1)
 		close(wp->fd);
@@ -565,6 +549,13 @@ window_pane_spawn(struct window_pane *wp,
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = screen_size_x(&wp->base);
 	ws.ws_row = screen_size_y(&wp->base);
+
+	wp->window->pgrp = -1;
+	if (gettimeofday(&wp->window->name_timer, NULL) != 0)
+		fatal("gettimeofday");
+	tv.tv_sec = 0;
+	tv.tv_usec = NAME_INTERVAL * 1000L;
+	timeradd(&wp->window->name_timer, &tv, &wp->window->name_timer);	
 
  	switch (forkpty(&wp->fd, NULL, NULL, &ws)) {
 	case -1:

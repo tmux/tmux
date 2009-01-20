@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.99 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: tmux.c,v 1.100 2009-01-20 19:35:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -256,6 +256,7 @@ main(int argc, char **argv)
 	options_set_number(&global_window_options, "clock-mode-style", 1);
 	options_set_number(&global_window_options, "force-height", 0);
 	options_set_number(&global_window_options, "force-width", 0);
+	options_set_number(&global_window_options, "automatic-rename", 1);
 	options_set_number(&global_window_options, "mode-bg", 3);
 	options_set_number(&global_window_options, "mode-fg", 0);
 	options_set_number(&global_window_options, "mode-keys", MODEKEY_EMACS);

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.244 2009-01-19 18:26:50 nicm Exp $ */
+/* $Id: tmux.h,v 1.245 2009-01-20 19:35:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -122,6 +122,9 @@ extern const char    *__progname;
 
 /* Minimum pane size. */
 #define PANE_MINIMUM 4	/* includes separator line */
+
+/* Automatic name refresh interval, in milliseconds. */
+#define NAME_INTERVAL 100
 
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
@@ -606,6 +609,8 @@ TAILQ_HEAD(window_panes, window_pane);
 /* Window structure. */
 struct window {
 	char		*name;
+	struct timeval	 name_timer;
+	pid_t		 pgrp;
 
 	struct window_pane *active;	
 	struct window_panes panes;
@@ -903,7 +908,7 @@ struct set_option_entry {
 extern const struct set_option_entry set_option_table[];
 extern const struct set_option_entry set_window_option_table[];
 #define NSETOPTION 20
-#define NSETWINDOWOPTION 12
+#define NSETWINDOWOPTION 13
 
 /* Edit keys. */
 enum mode_key {
@@ -1460,6 +1465,10 @@ void printflike3 window_choose_add(
 void		 window_choose_ready(struct window_pane *,
 		     u_int, void (*)(void *, int), void *);
 
+/* names.c */
+void		 set_window_names(void);
+char 		*default_window_name(struct window *);
+
 /* session.c */
 extern struct sessions sessions;
 void	 session_alert_add(struct session *, struct window *, int);
@@ -1488,6 +1497,9 @@ int	utf8_width(u_int);
 
 /* util.c */
 char   *section_string(char *, size_t, size_t, size_t);
+
+/* osdep-*.c */
+char   *get_argv0(pid_t);
 
 /* buffer.c */
 struct buffer 	*buffer_create(size_t);

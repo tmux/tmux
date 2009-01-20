@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-window.c,v 1.25 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-rename-window.c,v 1.26 2009-01-20 19:35:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,6 +53,7 @@ cmd_rename_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	xfree(wl->window->name);
 	wl->window->name = xstrdup(data->arg);
+	options_set_number(&wl->window->options, "automatic-rename", 0);	
 
 	server_status_session(s);
 

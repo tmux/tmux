@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.21 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.22 2009-01-20 19:35:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,6 +55,7 @@ const char *set_option_clock_mode_style_list[] = {
 };
 const struct set_option_entry set_window_option_table[NSETWINDOWOPTION] = {
 	{ "aggressive-resize", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "automatic-rename", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "clock-mode-colour", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "clock-mode-style",
 	  SET_OPTION_CHOICE, 0, 0, set_option_clock_mode_style_list },

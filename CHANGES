@@ -1,3 +1,16 @@
+20 January 2009
+
+* Try to change the window title to match the command running it in. This is
+  done by reading argv[0] from the process group leader of the group that owns
+  the tty (tcgetpgrp()). This can't be done portably so some OS-dependent code
+  is introduced (ugh); OpenBSD, FreeBSD and Linux are supported at the moment.
+
+  A new window flag, automatic-rename, is available: if this is set to off, the
+  window name is not changed. Specifying a name with the new-window,
+  new-session or rename-window commands will automatically set this flag to off
+  for the window in question. To disable it entirely set the option to off
+  globally (setw -g automatic-rename off).
+
 19 January 2009
 
 * Fix various stupid issues when the status line is turned off. Grr.
@@ -970,7 +983,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.224 2009-01-19 20:14:55 nicm Exp $
+$Id: CHANGES,v 1.225 2009-01-20 19:35:03 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
