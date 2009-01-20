@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.60 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: server-msg.c,v 1.61 2009-01-20 18:48:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -159,6 +159,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 				    "sessions should be nested with care. "
 				    "unset $TMUX to force");
 				cmd_list_free(cmdlist);
+				server_write_client(c, MSG_EXIT, NULL, 0);
 				return (0);
 			}
 		}
