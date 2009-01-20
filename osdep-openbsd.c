@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.1 2009-01-20 19:35:03 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.2 2009-01-20 22:17:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ get_argv0(pid_t pgrp)
 	size = 128;
 	while (size < SIZE_MAX / 2) {
 		size *= 2;
-		if ((args2 = realloc(args, 2 * size)) == NULL)
+		if ((args2 = realloc(args, size)) == NULL)
 			break;
 		args = args2;
 		if (sysctl(mib, 4, args, &size, NULL, 0) == -1) {

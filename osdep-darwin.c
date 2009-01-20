@@ -1,7 +1,7 @@
-/* $Id: osdep-freebsd.c,v 1.2 2009-01-20 22:17:53 nicm Exp $ */
+/* $Id: osdep-darwin.c,v 1.1 2009-01-20 22:17:53 nicm Exp $ */
 
 /*
- * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
+ * Copyright (c) 2009 Joshua Elsasser <josh@elsasser.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -16,49 +16,35 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifdef __FreeBSD__
+#ifdef __APPLE__
 
-#include <sys/param.h>
+#include <sys/types.h>
 #include <sys/sysctl.h>
 
-#include <err.h>
-#include <errno.h>
-#include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 
 char	*get_argv0(pid_t);
+
+/*
+ * XXX This actually returns the executable path, not the process's argv[0].
+ * Anyone who wishes to complain about this is welcome to grab a copy of
+ * Apple's 'ps' source and start digging.
+ */
 
 char *
 get_argv0(pid_t pgrp)
 {
-	int	mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_ARGS, 0 };
+	int	mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, 0 };
         size_t	size;
-	char   *args, *args2, *procname;
-
-	procname = NULL;
-
+	struct kinfo_proc kp;
+	
 	mib[3] = pgrp;
+	size = sizeof kp;
+	if (sysctl(mib, 4, &kp, &size, NULL, 0) == -1 ||
+	    kp.kp_proc.p_comm[0] == '\0')
+		return (NULL);
 
-	args = NULL;
-	size = 128;
-	while (size < SIZE_MAX / 2) {
-		size *= 2;
-		if ((args2 = realloc(args, size)) == NULL)
-			break;
-		args = args2;
-		if (sysctl(mib, 4, args, &size, NULL, 0) == -1) {
-			if (errno == ENOMEM)
-				continue;
-			break;
-		}
-		procname = strdup(args);
-		break;
-	}
-	free(args);
-
-	return (procname);
+	return (strdup(kp.kp_proc.p_comm));
 }
 
 #endif

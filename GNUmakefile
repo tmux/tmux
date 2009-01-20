@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.64 2009-01-20 20:00:39 nicm Exp $
+# $Id: GNUmakefile,v 1.65 2009-01-20 22:17:53 nicm Exp $
 
 .PHONY: clean
 
@@ -41,7 +41,8 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       window-choose.c \
       options.c options-cmd.c paste.c colour.c utf8.c clock.c \
       tty.c tty-term.c tty-keys.c tty-write.c util.c names.c \
-      osdep-unknown.c osdep-openbsd.c osdep-freebsd.c osdep-linux.c
+      osdep-unknown.c osdep-openbsd.c osdep-freebsd.c osdep-linux.c \
+      osdep-darwin.c
 
 CC?= gcc
 INCDIRS+= -I. -I-

@@ -1,5 +1,8 @@
 20 January 2009
 
+* Darwin support for automatic-rename from joshe; Darwin doesn't seem to have
+  a sane method of getting argv[0] and searching for the precise insane way
+  is too frustrating, so this just uses the executable name.
 * Try to change the window title to match the command running it in. This is
   done by reading argv[0] from the process group leader of the group that owns
   the tty (tcgetpgrp()). This can't be done portably so some OS-dependent code
@@ -983,7 +986,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.225 2009-01-20 19:35:03 nicm Exp $
+$Id: CHANGES,v 1.226 2009-01-20 22:17:53 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
