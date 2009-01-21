@@ -1,3 +1,9 @@
+21 January 2009
+
+* Make window and session choice modes allow you to choose items in vi keys
+  mode (doh!). As a side-effect, this makes enter copy selection (as well
+  as C-w/M-w) when using emacs keys in copy mode. Reported by merdely.
+
 20 January 2009
 
 * Darwin support for automatic-rename from joshe; Darwin doesn't seem to have
@@ -986,7 +992,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.226 2009-01-20 22:17:53 nicm Exp $
+$Id: CHANGES,v 1.227 2009-01-21 18:19:32 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

@@ -69,6 +69,8 @@
 - clone session command
 - make command sequences more usable: don't require space around ;, handle
   errors better
+- would be nice if tmux could be the shell (tmux attach, but hard link to tmux
+  binary as "tmuxsh" or wrapper script?) -- problems with tty dev permissions
 
 (hopefully) for 0.7, in no particular order:
 - swap-pane-up, swap-pane-down (maybe move-pane-*)
@@ -78,8 +80,6 @@
   (copy from other session)
 - neww should support -k
 - flag to scroll-mode/copy-mode to automatically scroll up a page
-- would be nice if tmux could be the shell (tmux attach, but hard link to tmux
-  binary as "tmuxsh" or wrapper script?)
 - key to switch to copy mode from scroll mode
 - document suspend-client
 - document command sequences
