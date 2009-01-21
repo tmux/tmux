@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.60 2009-01-20 19:35:03 nicm Exp $ */
+/* $Id: window.c,v 1.61 2009-01-21 19:38:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -228,7 +228,7 @@ window_create(const char *name, const char *cmd,
 		ARRAY_ADD(&windows, w);
 	w->references = 0;
 
-	if (window_add_pane(w, cmd, cwd, envp, hlimit) == NULL) {
+	if (window_add_pane(w, -1, cmd, cwd, envp, hlimit) == NULL) {
 		window_destroy(w);
 		return (NULL);
 	}
@@ -378,19 +378,28 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 }
 
 struct window_pane *
-window_add_pane(struct window *w, 
+window_add_pane(struct window *w, int wanty,
     const char *cmd, const char *cwd, const char **envp, u_int hlimit)
 {
 	struct window_pane	*wp;
-	u_int			 wanty;
+	u_int			 sizey;
 
 	if (TAILQ_EMPTY(&w->panes))
 		wanty = w->sy;
 	else {
-		if (w->active->sy < PANE_MINIMUM * 2)
+		sizey = w->active->sy - 1; /* for separator */
+		if (sizey < PANE_MINIMUM * 2)
 			return (NULL);
-		wanty = (w->active->sy / 2 + w->active->sy % 2) - 1;
-		window_pane_resize(w->active, w->sx, w->active->sy / 2);
+
+  		if (wanty == -1)
+			wanty = sizey / 2;
+
+		if (wanty < PANE_MINIMUM)
+			wanty = PANE_MINIMUM;
+		if ((u_int) wanty > sizey - PANE_MINIMUM)
+			wanty = sizey - PANE_MINIMUM;
+
+		window_pane_resize(w->active, w->sx, sizey - wanty);
 	}
 
 	wp = window_pane_create(w, w->sx, wanty, hlimit);

@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.6 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-split-window.c,v 1.7 2009-01-21 19:38:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,11 +39,13 @@ struct cmd_split_window_data {
 	char	*target;
 	char	*cmd;
 	int	 flag_detached;
+	int	 percentage;
+	int	 lines;
 };
 
 const struct cmd_entry cmd_split_window_entry = {
 	"split-window", "splitw",
-	"[-d] [-t target-window] [command]",
+	"[-d] [-p percentage|-l lines] [-t target-window] [command]",
 	0,
 	cmd_split_window_init,
 	cmd_split_window_parse,
@@ -63,13 +65,16 @@ cmd_split_window_init(struct cmd *self, unused int arg)
 	data->target = NULL;
 	data->cmd = NULL;
 	data->flag_detached = 0;
+	data->percentage = -1;
+	data->lines = -1;
 }
 
 int
 cmd_split_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_split_window_data	*data;
-	int				 opt;
+	int				 opt, n;
+	const char			*errstr;
 
 	self->entry->init(self, 0);
 	data = self->data;
@@ -82,6 +87,27 @@ cmd_split_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 		case 't':
 			if (data->target == NULL)
 				data->target = xstrdup(optarg);
+			break;
+		case 'l':
+			if (data->percentage == -1 && data->lines == -1) {
+				n = strtonum(optarg, 1, INT_MAX, &errstr);
+				if (errstr != NULL) {
+					xasprintf(cause, "lines %s", errstr);
+					goto error;
+				}
+				data->lines = n;
+			}
+			break;
+		case 'p':
+			if (data->lines == -1 && data->percentage == -1) {
+				n = strtonum(optarg, 1, 100, &errstr);
+				if (errstr != NULL) {
+					xasprintf(
+					    cause, "percentage %s", errstr);
+					goto error;
+				}
+				data->percentage = n;
+			}
 			break;
 		default:
 			goto usage;
@@ -100,6 +126,7 @@ cmd_split_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 usage:
 	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
 
+error:
 	self->entry->free(self);
 	return (-1);
 }
@@ -115,7 +142,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const char			*env[] = CHILD_ENVIRON;
 	char		 		 buf[256];
 	char				*cmd, *cwd;
-	u_int				 i, hlimit;
+	u_int				 i, hlimit, lines;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return (-1);
@@ -134,8 +161,14 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		cwd = ctx->cmdclient->cwd;
 
+	lines = -1;
+	if (data->lines != -1)
+		lines = data->lines;
+	else if (data->percentage != -1)
+		lines = (w->active->sy * data->percentage) / 100;
+
 	hlimit = options_get_number(&s->options, "history-limit");
-	if ((wp = window_add_pane(w, cmd, cwd, env, hlimit)) == NULL) {
+	if ((wp = window_add_pane(w, lines, cmd, cwd, env, hlimit)) == NULL) {
 		ctx->error(ctx, "command failed: %s", cmd);
 		return (-1);
 	}
