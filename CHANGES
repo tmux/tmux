@@ -1,5 +1,6 @@
 21 January 2009
 
+* new-window now supports -k to kill target window if it exists.
 * Bring back split-window -p and -l options to specify the height a percentage
   or as a number of lines.
 * Make window and session choice modes allow you to choose items in vi keys
@@ -994,7 +995,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.228 2009-01-21 19:38:51 nicm Exp $
+$Id: CHANGES,v 1.229 2009-01-21 22:21:49 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

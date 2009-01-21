@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.29 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.30 2009-01-21 22:21:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,11 +39,12 @@ struct cmd_new_window_data {
 	char	*name;
 	char	*cmd;
 	int	 flag_detached;
+	int	 flag_kill;
 };
 
 const struct cmd_entry cmd_new_window_entry = {
 	"new-window", "neww",
-	"[-d] [-n window-name] [-t target-window] [command]",
+	"[-dk] [-n window-name] [-t target-window] [command]",
 	0,
 	cmd_new_window_init,
 	cmd_new_window_parse,
@@ -64,6 +65,7 @@ cmd_new_window_init(struct cmd *self, unused int arg)
 	data->name = NULL;
 	data->cmd = NULL;
 	data->flag_detached = 0;
+	data->flag_kill = 0;
 }
 
 int
@@ -75,10 +77,13 @@ cmd_new_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 	self->entry->init(self, 0);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, "dt:n:")) != -1) {
+	while ((opt = getopt(argc, argv, "dkt:n:")) != -1) {
 		switch (opt) {
 		case 'd':
 			data->flag_detached = 1;
+			break;
+		case 'k':
+			data->flag_kill = 1;
 			break;
 		case 't':
 			if (data->target == NULL)
@@ -132,6 +137,27 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (s == NULL) {
 		ctx->error(ctx, "session not found: %s", data->target);
 		return (-1);
+	}
+
+	wl = NULL;
+	if (idx != -1)
+		wl = winlink_find_by_index(&s->windows, idx);
+	if (wl != NULL) {
+		if (data->flag_kill) {
+			/*
+			 * Can't use session_detach as it will destroy session
+			 * if this makes it empty.
+			 */
+			session_alert_cancel(s, wl);
+			winlink_stack_remove(&s->lastw, wl);
+			winlink_remove(&s->windows, wl);
+
+			/* Force select/redraw if current. */
+			if (wl == s->curw) {
+				data->flag_detached = 0;
+				s->curw = NULL;
+			}
+		}
 	}
 
 	cmd = data->cmd;

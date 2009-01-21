@@ -78,7 +78,6 @@
 - command: load-buffer -b number filename
 - command: copy-buffer -s src-session -t dst-session -a src-index -b dst-index
   (copy from other session)
-- neww should support -k
 - flag to scroll-mode/copy-mode to automatically scroll up a page
 - key to switch to copy mode from scroll mode
 - document suspend-client
@@ -87,3 +86,5 @@
 - document split-window -p and -l
 - UTF-8 combining characters don't work (probably should be width 1 but are
   listed as 2)
+- better error reporting from session_new etc
+
