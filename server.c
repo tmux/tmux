@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.110 2009-01-20 19:35:03 nicm Exp $ */
+/* $Id: server.c,v 1.111 2009-01-21 22:47:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,6 +43,7 @@
 struct clients	 clients;
 
 int		 server_main(const char *, int);
+void		 server_shutdown(void);
 void		 server_fill_windows(struct pollfd **);
 void		 server_handle_windows(struct pollfd **);
 void		 server_fill_clients(struct pollfd **);
@@ -224,7 +225,11 @@ server_main(const char *srv_path, int srv_fd)
 	last = time(NULL);
 
 	pfds = NULL;
-	while (!sigterm) {
+	for (;;) {
+		/* If sigterm, kill all windows and clients. */
+		if (sigterm)
+			server_shutdown();
+
 		/* Initialise pollfd array. */
 		nfds = 1;
 		for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
@@ -247,7 +252,7 @@ server_main(const char *srv_path, int srv_fd)
 
 		/* Update socket permissions. */
 		xtimeout = INFTIM;
-		if (server_update_socket(srv_path) != 0)
+		if (sigterm || server_update_socket(srv_path) != 0)
 			xtimeout = 100;
 
 		/* Do the poll. */
@@ -326,6 +331,34 @@ server_main(const char *srv_path, int srv_fd)
 	return (0);
 }
 
+/* Kill all clients. */
+void
+server_shutdown(void)
+{
+	struct session	*s;
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		s = ARRAY_ITEM(&sessions, i);
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			c = ARRAY_ITEM(&clients, i);
+			if (c != NULL && c->session == s) {
+				s = NULL;
+				break;
+			}
+		}
+		if (s != NULL)
+			session_destroy(s);
+	}
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL)
+			server_write_client(c, MSG_SHUTDOWN, NULL, 0);
+	}
+}
+	
 /* Fill window pollfds. */
 void
 server_fill_windows(struct pollfd **pfd)
@@ -574,6 +607,10 @@ server_accept_client(int srv_fd)
 		if (errno == EAGAIN || errno == EINTR || errno == ECONNABORTED)
 			return (NULL);
 		fatal("accept failed");
+	}
+	if (sigterm) {
+		close(fd);
+		return (NULL);
 	}
 	return (server_create_client(fd));
 }

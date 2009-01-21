@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.17 2009-01-18 12:09:42 nicm Exp $ */
+/* $Id: client-msg.c,v 1.18 2009-01-21 22:47:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,6 +27,7 @@
 
 int	client_msg_fn_detach(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_error(struct hdr *, struct client_ctx *, char **);
+int	client_msg_fn_shutdown(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_exit(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_exited(struct hdr *, struct client_ctx *, char **);
 int	client_msg_fn_suspend(struct hdr *, struct client_ctx *, char **);
@@ -40,6 +41,7 @@ struct client_msg client_msg_table[] = {
 	{ MSG_ERROR, client_msg_fn_error },
 	{ MSG_EXIT, client_msg_fn_exit },
 	{ MSG_EXITED, client_msg_fn_exited },
+	{ MSG_SHUTDOWN, client_msg_fn_shutdown },
 	{ MSG_SUSPEND, client_msg_fn_suspend },
 };
 
@@ -90,6 +92,19 @@ client_msg_fn_detach(
 
 	client_write_server(cctx, MSG_EXITING, NULL, 0);
 	cctx->flags |= CCTX_DETACH;
+
+	return (0);
+}
+
+int
+client_msg_fn_shutdown(
+    struct hdr *hdr, unused struct client_ctx *cctx, unused char **error)
+{
+	if (hdr->size != 0)
+		fatalx("bad MSG_SHUTDOWN size");
+
+	client_write_server(cctx, MSG_EXITING, NULL, 0);
+	cctx->flags |= CCTX_SHUTDOWN;
 
 	return (0);
 }

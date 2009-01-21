@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.41 2009-01-19 17:16:09 nicm Exp $ */
+/* $Id: client.c,v 1.42 2009-01-21 22:47:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -183,6 +183,11 @@ out:
  		printf("[terminated]\n");
  		return (1);
  	}
+
+	if (cctx->flags & CCTX_SHUTDOWN) {
+		printf("[server exited]\n");
+		return (0);
+	}
 
 	if (cctx->flags & CCTX_EXIT) {
 		printf("[exited]\n");

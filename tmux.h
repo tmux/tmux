@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.246 2009-01-21 19:38:51 nicm Exp $ */
+/* $Id: tmux.h,v 1.247 2009-01-21 22:47:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION -10
+#define PROTOCOL_VERSION -11
 
 /* Shut up gcc warnings about empty if bodies. */
 #define RB_AUGMENT(x) do {} while (0)
@@ -360,8 +360,9 @@ enum hdrtype {
 	MSG_PRINT,
 	MSG_READY,
 	MSG_RESIZE,
-	MSG_UNLOCK,
+	MSG_SHUTDOWN,
 	MSG_SUSPEND,
+	MSG_UNLOCK,
 	MSG_WAKEUP,
 };
 
@@ -794,6 +795,7 @@ struct client_ctx {
 
 #define CCTX_DETACH 0x1
 #define CCTX_EXIT 0x2
+#define CCTX_SHUTDOWN 0x4
 	int 		 flags;
 };
 

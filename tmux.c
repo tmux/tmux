@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.100 2009-01-20 19:35:03 nicm Exp $ */
+/* $Id: tmux.c,v 1.101 2009-01-21 22:47:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -402,6 +402,7 @@ main(int argc, char **argv)
 
 		switch (hdr.type) {
 		case MSG_EXIT:
+		case MSG_SHUTDOWN:
 			n = 0;
 			goto out;
 		case MSG_ERROR:
