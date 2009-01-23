@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.43 2009-01-23 20:49:01 nicm Exp $ */
+/* $Id: window-copy.c,v 1.44 2009-01-23 20:50:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -320,8 +320,9 @@ window_copy_update_selection(struct window_pane *wp)
 
 	/* Set colours. */
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.fg = options_get_number(&wp->window->options, "mode-fg");
-	gc.bg = options_get_number(&wp->window->options, "mode-bg");
+	gc.bg = options_get_number(&wp->window->options, "mode-fg");
+	gc.fg = options_get_number(&wp->window->options, "mode-bg");
+	gc.attr |= GRID_ATTR_REVERSE;
 
 	/* Find top-left of screen. */
 	tx = data->ox;
