@@ -1,5 +1,7 @@
 23 January 2009
 
+* Use reverse colours rather than swapping fg and bg for message, mode and
+  status line. This makes these usable on black and white terminals.
 * Better error messages when creating a session or window fails.
 * Oops. Return non-zero on error. Reported by Will Maier.
 
@@ -1002,7 +1004,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.232 2009-01-23 16:59:14 nicm Exp $
+$Id: CHANGES,v 1.233 2009-01-23 20:53:18 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
