@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.101 2009-01-21 22:47:31 nicm Exp $ */
+/* $Id: tmux.c,v 1.102 2009-01-23 16:19:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -187,7 +187,7 @@ main(int argc, char **argv)
 	struct passwd		*pw;
 	char			*path, *cause, *home, *pass = NULL;
 	char			 rpath[MAXPATHLEN], cwd[MAXPATHLEN];
-	int	 		 n, opt, flags, unlock, start_server;
+	int	 		 retcode, opt, flags, unlock, start_server;
 
 	unlock = flags = 0;
 	path = NULL;
@@ -377,6 +377,7 @@ main(int argc, char **argv)
 	}
 	buffer_destroy(b);
 
+	retcode = 0;
 	for (;;) {
 		pfd.fd = cctx.srv_fd;
 		pfd.events = POLLIN;
@@ -403,9 +404,10 @@ main(int argc, char **argv)
 		switch (hdr.type) {
 		case MSG_EXIT:
 		case MSG_SHUTDOWN:
-			n = 0;
 			goto out;
 		case MSG_ERROR:
+			retcode = 1;
+			/* FALLTHROUGH */
 		case MSG_PRINT:
 			if (hdr.size > INT_MAX - 1)
 				fatalx("bad MSG_PRINT size");
@@ -415,7 +417,7 @@ main(int argc, char **argv)
 				buffer_remove(cctx.srv_in, hdr.size);
 			goto restart;
 		case MSG_READY:
-			n = client_main(&cctx);
+			retcode = client_main(&cctx);
 			goto out;
 		default:
 			fatalx("unexpected command");
@@ -433,5 +435,5 @@ out:
 #ifdef DEBUG
 	xmalloc_report(getpid(), "client");
 #endif
-	return (n);
+	return (retcode);
 }
