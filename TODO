@@ -87,4 +87,4 @@
 - UTF-8 combining characters don't work (probably should be width 1 but are
   listed as 2)
 - better error reporting from session_new etc
-
+- attach should have a flag to create session if it doesn't exist
