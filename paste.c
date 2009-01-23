@@ -1,4 +1,4 @@
-/* $Id: paste.c,v 1.4 2008-08-28 17:45:26 nicm Exp $ */
+/* $Id: paste.c,v 1.5 2009-01-23 16:19:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -68,7 +68,7 @@ paste_free_top(struct paste_stack *ps)
 	struct paste_buffer	*pb;
 
 	if (ARRAY_LENGTH(ps) == 0)
-		return (1);
+		return (-1);
 
 	pb = ARRAY_FIRST(ps);
 	ARRAY_REMOVE(ps, 0);
@@ -85,7 +85,7 @@ paste_free_index(struct paste_stack *ps, u_int idx)
 	struct paste_buffer	*pb;
 
 	if (idx >= ARRAY_LENGTH(ps))
-		return (1);
+		return (-1);
 
 	pb = ARRAY_ITEM(ps, idx);
 	ARRAY_REMOVE(ps, idx);
@@ -118,7 +118,7 @@ paste_replace(struct paste_stack *ps, u_int idx, const char *data)
 	struct paste_buffer	*pb;
 
 	if (idx >= ARRAY_LENGTH(ps))
-		return (1);
+		return (-1);
 
 	pb = ARRAY_ITEM(ps, idx);
 	xfree(pb->data);
