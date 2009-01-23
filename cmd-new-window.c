@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.30 2009-01-21 22:21:49 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.31 2009-01-23 16:59:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -120,7 +120,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_new_window_data	*data = self->data;
 	struct session			*s;
 	struct winlink			*wl;
-	char				*cmd, *cwd;
+	char				*cmd, *cwd, *cause;
 	int				 idx;
 
 	if (data == NULL)
@@ -168,9 +168,10 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		cwd = ctx->cmdclient->cwd;
 
-	wl = session_new(s, data->name, cmd, cwd, idx);
+	wl = session_new(s, data->name, cmd, cwd, idx, &cause);
 	if (wl == NULL) {
-		ctx->error(ctx, "command failed: %s", cmd);
+		ctx->error(ctx, "create window failed: %s", cause);
+		xfree(cause);
 		return (-1);
 	}
 	if (!data->flag_detached) {

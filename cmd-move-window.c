@@ -1,4 +1,4 @@
-/* $Id: cmd-move-window.c,v 1.4 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-move-window.c,v 1.5 2009-01-23 16:59:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,6 +50,7 @@ cmd_move_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct client		*c;
 	u_int		 	 i;
 	int		 	 destroyed, idx;
+	char			*cause;
 
 	if ((wl_src = cmd_find_window(ctx, data->src, &src)) == NULL)
 		return (-1);
@@ -91,9 +92,10 @@ cmd_move_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	wl_dst = session_attach(dst, wl_src->window, idx);
+	wl_dst = session_attach(dst, wl_src->window, idx, &cause);
 	if (wl_dst == NULL) {
-		ctx->error(ctx, "index in use: %d", idx);
+		ctx->error(ctx, "attach window failed: %s", cause);
+		xfree(cause);
 		return (-1);
 	}
 

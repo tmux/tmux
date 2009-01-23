@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.23 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.24 2009-01-23 16:59:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,7 +62,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	if (tty_open(&ctx->cmdclient->tty, &cause) != 0) {
-		ctx->error(ctx, "%s", cause);
+		ctx->error(ctx, "terminal open failed: %s", cause);
 		xfree(cause);
 		return (-1);
 	}

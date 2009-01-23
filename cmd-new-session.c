@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.37 2009-01-20 19:35:03 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.38 2009-01-23 16:59:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -158,14 +158,18 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	if (!data->flag_detached && tty_open(&c->tty, &cause) != 0) {
-		ctx->error(ctx, "%s", cause);
+		ctx->error(ctx, "open terminal failed: %s", cause);
 		xfree(cause);
 		return (-1);
 	}
 
 
-	if ((s = session_create(data->newname, cmd, cwd, sx, sy)) == NULL)
-	       	fatalx("session_create failed");
+	s = session_create(data->newname, cmd, cwd, sx, sy, &cause);
+	if (s == NULL) {
+		ctx->error(ctx, "create session failed: %s", cause);
+		xfree(cause);
+		return (-1);
+	}
 	if (data->winname != NULL) {
 		xfree(s->curw->window->name);
 		s->curw->window->name = xstrdup(data->winname);

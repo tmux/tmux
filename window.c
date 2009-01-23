@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.61 2009-01-21 19:38:51 nicm Exp $ */
+/* $Id: window.c,v 1.62 2009-01-23 16:59:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
+#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdint.h>
@@ -200,13 +201,14 @@ window_index(struct window *s, u_int *i)
 }
 
 struct window *
-window_create(const char *name, const char *cmd,
-    const char *cwd, const char **envp, u_int sx, u_int sy, u_int hlimit)
+window_create(const char *name, const char *cmd, const char *cwd,
+    const char **envp, u_int sx, u_int sy, u_int hlimit, char **cause)
 {
 	struct window	*w;
 	u_int		 i;
 
 	w = xmalloc(sizeof *w);
+	w->name = NULL;
 	w->flags = 0;
 
 	TAILQ_INIT(&w->panes);
@@ -228,7 +230,7 @@ window_create(const char *name, const char *cmd,
 		ARRAY_ADD(&windows, w);
 	w->references = 0;
 
-	if (window_add_pane(w, -1, cmd, cwd, envp, hlimit) == NULL) {
+	if (window_add_pane(w, -1, cmd, cwd, envp, hlimit, cause) == NULL) {
 		window_destroy(w);
 		return (NULL);
 	}
@@ -256,8 +258,9 @@ window_destroy(struct window *w)
 	options_free(&w->options);
 
 	window_destroy_panes(w);
-	
-	xfree(w->name);
+
+	if (w->name != NULL)
+		xfree(w->name);
 	xfree(w);
 }
 
@@ -378,8 +381,8 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 }
 
 struct window_pane *
-window_add_pane(struct window *w, int wanty,
-    const char *cmd, const char *cwd, const char **envp, u_int hlimit)
+window_add_pane(struct window *w, int wanty, const char *cmd,
+    const char *cwd, const char **envp, u_int hlimit, char **cause)
 {
 	struct window_pane	*wp;
 	u_int			 sizey;
@@ -408,7 +411,7 @@ window_add_pane(struct window *w, int wanty,
 	else
 		TAILQ_INSERT_AFTER(&w->panes, w->active, wp, entry);
 	window_update_panes(w);
-	if (window_pane_spawn(wp, cmd, cwd, envp) != 0) {
+	if (window_pane_spawn(wp, cmd, cwd, envp, cause) != 0) {
 		window_remove_pane(w, wp);
 		return (NULL);
 	}
@@ -535,7 +538,7 @@ window_pane_destroy(struct window_pane *wp)
 
 int
 window_pane_spawn(struct window_pane *wp,
-    const char *cmd, const char *cwd, const char **envp)
+    const char *cmd, const char *cwd, const char **envp, char **cause)
 {
 	struct winsize	 ws;
 	int		 mode;
@@ -564,11 +567,13 @@ window_pane_spawn(struct window_pane *wp,
 		fatal("gettimeofday");
 	tv.tv_sec = 0;
 	tv.tv_usec = NAME_INTERVAL * 1000L;
-	timeradd(&wp->window->name_timer, &tv, &wp->window->name_timer);	
+	timeradd(&wp->window->name_timer, &tv, &wp->window->name_timer);
 
  	switch (forkpty(&wp->fd, NULL, NULL, &ws)) {
 	case -1:
-		return (1);
+		wp->fd = -1;
+		xasprintf(cause, "%s: %s", cmd, strerror(errno));
+		return (-1);
 	case 0:
 		if (chdir(wp->cwd) != 0)
 			chdir("/");
