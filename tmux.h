@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.249 2009-01-25 18:51:28 tcunha Exp $ */
+/* $Id: tmux.h,v 1.250 2009-01-25 19:00:10 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1124,6 +1124,7 @@ extern const struct cmd_entry cmd_list_commands_entry;
 extern const struct cmd_entry cmd_list_keys_entry;
 extern const struct cmd_entry cmd_list_sessions_entry;
 extern const struct cmd_entry cmd_list_windows_entry;
+extern const struct cmd_entry cmd_load_buffer_entry;
 extern const struct cmd_entry cmd_lock_server_entry;
 extern const struct cmd_entry cmd_move_window_entry;
 extern const struct cmd_entry cmd_new_session_entry;

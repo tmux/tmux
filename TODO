@@ -75,7 +75,6 @@
 (hopefully) for 0.7, in no particular order:
 - swap-pane-up, swap-pane-down (maybe move-pane-*)
 - move-pane (to window) (maybe break-pane?)
-- command: load-buffer -b number filename
 - command: copy-buffer -s src-session -t dst-session -a src-index -b dst-index
   (copy from other session)
 - flag to scroll-mode/copy-mode to automatically scroll up a page

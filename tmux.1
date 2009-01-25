@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.68 2009-01-20 20:03:13 nicm Exp $
+.\" $Id: tmux.1,v 1.69 2009-01-25 19:00:10 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -507,6 +507,14 @@ List all sessions managed by the server.
 .D1 (alias: Ic lsw )
 List windows in the current session or in
 .Ar target-session .
+.It Xo Ic load-buffer
+.Op Fl b Ar buffer-index
+.Op Fl t Ar target-session
+.Ar path
+.Xc
+.D1 (alias: Ic loadb )
+Load the contents of the specified paste buffer from
+.Ar path .
 .It Xo Ic lock-server
 .Xc
 .D1 (alias: Ic lock )
