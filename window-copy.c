@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.44 2009-01-23 20:50:58 nicm Exp $ */
+/* $Id: window-copy.c,v 1.45 2009-01-25 18:51:28 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -419,7 +419,6 @@ window_copy_copy_selection(struct window_pane *wp, struct client *c)
 	/* Add the buffer to the stack. */
 	limit = options_get_number(&c->session->options, "buffer-limit");
 	paste_add(&c->session->buffers, buf, limit);
-	xfree(buf);
 }
 
 void

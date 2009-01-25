@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.248 2009-01-23 16:59:14 nicm Exp $ */
+/* $Id: tmux.h,v 1.249 2009-01-25 18:51:28 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1074,8 +1074,8 @@ struct paste_buffer *paste_get_top(struct paste_stack *);
 struct paste_buffer *paste_get_index(struct paste_stack *, u_int);
 int	     	 paste_free_top(struct paste_stack *);
 int		 paste_free_index(struct paste_stack *, u_int);
-void		 paste_add(struct paste_stack *, const char *, u_int);
-int		 paste_replace(struct paste_stack *, u_int, const char *);
+void		 paste_add(struct paste_stack *, char *, u_int);
+int		 paste_replace(struct paste_stack *, u_int, char *);
 
 /* clock.c */
 void		 clock_draw(struct screen_write_ctx *, u_int, int);

@@ -1,4 +1,4 @@
-/* $Id: cmd-set-buffer.c,v 1.6 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-set-buffer.c,v 1.7 2009-01-25 18:51:28 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,12 +52,13 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 
 	limit = options_get_number(&s->options, "buffer-limit");
-	if (data->buffer == -1)
-		paste_add(&s->buffers, data->arg, limit);
-	else if (paste_replace(&s->buffers, data->buffer, data->arg) != 0) {
+	if (data->buffer == -1) {
+		paste_add(&s->buffers, xstrdup(data->arg), limit);
+		return (0);
+	}
+	if (paste_replace(&s->buffers, data->buffer, xstrdup(data->arg)) != 0) {
 		ctx->error(ctx, "no buffer %d", data->buffer);
 		return (-1);
 	}
-
 	return (0);
 }
