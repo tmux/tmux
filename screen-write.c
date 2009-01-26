@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.28 2009-01-19 17:15:19 nicm Exp $ */
+/* $Id: screen-write.c,v 1.29 2009-01-26 20:57:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -519,6 +519,10 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		width = utf8_width(gc->data);
 	else
 		width = 1;
+
+	/* Discard zero-width characters. */
+	if (width == 0)
+		return;
 
 	/* If the character is wider than the screen, don't print it. */
 	if (width > screen_size_x(s)) {
