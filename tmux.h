@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.250 2009-01-25 19:00:10 tcunha Exp $ */
+/* $Id: tmux.h,v 1.251 2009-01-26 22:57:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -140,7 +140,7 @@ extern const char    *__progname;
 #define printflike4 __attribute__ ((format (printf, 4, 5)))
 
 /* Number of items in array. */
-#define nitems(_a)  (sizeof((_a)) / sizeof((_a)[0]))
+#define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 
 /* Buffer macros. */
 #define BUFFER_USED(b) ((b)->size)
@@ -592,6 +592,7 @@ struct window_pane {
 	char		*cwd;
 
 	int		 fd;
+	char		 tty[TTY_NAME_MAX];
 	struct buffer	*in;
 	struct buffer	*out;
 
@@ -1503,7 +1504,7 @@ int	utf8_width(u_int);
 char   *section_string(char *, size_t, size_t, size_t);
 
 /* osdep-*.c */
-char   *get_argv0(pid_t);
+char   *get_argv0(int, char *);
 
 /* buffer.c */
 struct buffer 	*buffer_create(size_t);

@@ -1,5 +1,6 @@
 26 January 2009
 
+* Be more clever about picking the right process to create the window name.
 * Don't balls up the terminal on UTF-8 combined characters. Don't support them
   properly either - they are just discarded for the moment.
 
@@ -1013,7 +1014,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.235 2009-01-26 20:57:42 nicm Exp $
+$Id: CHANGES,v 1.236 2009-01-26 22:57:18 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

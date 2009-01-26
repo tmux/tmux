@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.62 2009-01-23 16:59:14 nicm Exp $ */
+/* $Id: window.c,v 1.63 2009-01-26 22:57:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -569,7 +569,7 @@ window_pane_spawn(struct window_pane *wp,
 	tv.tv_usec = NAME_INTERVAL * 1000L;
 	timeradd(&wp->window->name_timer, &tv, &wp->window->name_timer);
 
- 	switch (forkpty(&wp->fd, NULL, NULL, &ws)) {
+ 	switch (forkpty(&wp->fd, wp->tty, NULL, &ws)) {
 	case -1:
 		wp->fd = -1;
 		xasprintf(cause, "%s: %s", cmd, strerror(errno));
