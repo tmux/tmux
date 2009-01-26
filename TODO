@@ -71,6 +71,7 @@
   errors better
 - would be nice if tmux could be the shell (tmux attach, but hard link to tmux
   binary as "tmuxsh" or wrapper script?) -- problems with tty dev permissions
+- 88 colour support; new grid cell flag, and 256<->88 88<->16 translation tables
 
 (hopefully) for 0.7, in no particular order:
 - swap-pane-up, swap-pane-down (maybe move-pane-*)
