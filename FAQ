@@ -22,6 +22,7 @@ There are still a few features screen includes that tmux omits:
   to tmux;
 - a more customisable status line, albeit with an awful syntax;
 - wider platform support, for example IRIX and AIX, and for odd terminals.
+- better UTF-8 support.
 
 * I found a bug! What do I do?
 
