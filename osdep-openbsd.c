@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.4 2009-01-27 19:44:10 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.5 2009-01-27 21:01:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -118,7 +118,8 @@ get_proc_argv0(pid_t pid)
 				continue;
 			break;
 		}
-		procname = strdup(*args);
+		if (*args != NULL)
+			procname = strdup(*args);
 		break;
 	}
 	free(args);
