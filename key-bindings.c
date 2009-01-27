@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.57 2009-01-18 18:31:45 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.58 2009-01-27 23:35:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -111,6 +111,7 @@ key_bindings_init(void)
 		{ 'w', &cmd_choose_window_entry },
 		{ 'x', &cmd_kill_pane_entry, },
 		{ '\032', &cmd_suspend_client_entry },
+		{ KEYC_PPAGE, &cmd_scroll_mode_entry },
 		{ KEYC_ADDESC('n'), &cmd_next_window_entry },
 		{ KEYC_ADDESC('p'), &cmd_previous_window_entry },
 		{ KEYC_UP, &cmd_up_pane_entry },

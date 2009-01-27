@@ -82,7 +82,7 @@
 - move-pane (to window) (maybe break-pane?)
 - command: copy-buffer -s src-session -t dst-session -a src-index -b dst-index
   (copy from other session)
-- flag to scroll-mode/copy-mode to automatically scroll up a page
+- document -u flag to scroll-mode/copy-mode
 - key to switch to copy mode from scroll mode
 - document suspend-client
 - document command sequences

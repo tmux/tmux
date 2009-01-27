@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.253 2009-01-27 21:39:15 nicm Exp $ */
+/* $Id: tmux.h,v 1.254 2009-01-27 23:35:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1458,9 +1458,11 @@ extern const struct window_mode window_clock_mode;
 
 /* window-copy.c */
 extern const struct window_mode window_copy_mode;
+void 		 window_copy_pageup(struct window_pane *);
 
 /* window-scroll.c */
 extern const struct window_mode window_scroll_mode;
+void 		 window_scroll_pageup(struct window_pane *);
 
 /* window-more.c */
 extern const struct window_mode window_more_mode;

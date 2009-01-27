@@ -1,4 +1,4 @@
-/* $Id: cmd-scroll-mode.c,v 1.15 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-scroll-mode.c,v 1.16 2009-01-27 23:35:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,13 +24,14 @@
  * Enter scroll mode.
  */
 
+void	cmd_scroll_mode_init(struct cmd *, int);
 int	cmd_scroll_mode_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_scroll_mode_entry = {
 	"scroll-mode", NULL,
 	CMD_TARGET_WINDOW_USAGE,
-	0,
-	cmd_target_init,
+	CMD_UFLAG,
+	cmd_scroll_mode_init,
 	cmd_target_parse,
 	cmd_scroll_mode_exec,
 	cmd_target_send,
@@ -38,6 +39,21 @@ const struct cmd_entry cmd_scroll_mode_entry = {
 	cmd_target_free,
 	cmd_target_print
 };
+
+void
+cmd_scroll_mode_init(struct cmd *self, int key)
+{
+	struct cmd_target_data	*data;
+
+	cmd_target_init(self, key);
+	data = self->data;
+
+	switch (key) {
+	case KEYC_PPAGE:
+		data->flags |= CMD_UFLAG;
+		break;
+	}
+}
 
 int
 cmd_scroll_mode_exec(struct cmd *self, struct cmd_ctx *ctx)
@@ -49,6 +65,8 @@ cmd_scroll_mode_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 
 	window_pane_set_mode(wl->window->active, &window_scroll_mode);
+	if (data->flags & CMD_UFLAG)
+		window_scroll_pageup(wl->window->active);
 
 	return (0);
 }

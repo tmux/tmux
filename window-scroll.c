@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.29 2009-01-27 20:22:33 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.30 2009-01-27 23:35:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -87,6 +87,20 @@ window_scroll_free(struct window_pane *wp)
 }
 
 void
+window_scroll_pageup(struct window_pane *wp)
+{
+	struct window_scroll_mode_data	*data = wp->modedata;
+	struct screen			*s = &data->screen;
+	
+	if (data->oy + screen_size_y(s) > screen_hsize(&wp->base))
+		data->oy = screen_hsize(&wp->base);
+	else
+		data->oy += screen_size_y(s);
+	
+	window_scroll_redraw_screen(wp);
+}
+
+void
 window_scroll_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window_scroll_mode_data	*data = wp->modedata;
@@ -126,11 +140,7 @@ window_scroll_key(struct window_pane *wp, unused struct client *c, int key)
 		window_scroll_scroll_down(wp);
 		break;
 	case MODEKEY_PPAGE:
-		if (data->oy + screen_size_y(s) > screen_hsize(&wp->base))
-			data->oy = screen_hsize(&wp->base);
-		else
-			data->oy += screen_size_y(s);
-		window_scroll_redraw_screen(wp);
+		window_scroll_pageup(wp);
 		break;
 	case MODEKEY_NPAGE:
 		if (data->oy < screen_size_y(s))
