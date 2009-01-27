@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.111 2009-01-21 22:47:31 nicm Exp $ */
+/* $Id: server.c,v 1.112 2009-01-27 19:40:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -763,7 +763,7 @@ server_handle_window(struct window *w, struct window_pane *wp)
 {
 	struct session	*s;
 	struct client	*c;
-	u_int		 i;
+	u_int		 i, j;
 	int		 action, update;
 
 	window_pane_parse(wp);
@@ -786,8 +786,8 @@ server_handle_window(struct window *w, struct window_pane *wp)
 			case BELL_ANY:
 				if (s->flags & SESSION_UNATTACHED)
 					break;
-				for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-					c = ARRAY_ITEM(&clients, i);
+				for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
+					c = ARRAY_ITEM(&clients, j);
 					if (c != NULL && c->session == s)
 						tty_putcode(&c->tty, TTYC_BEL);
 				}
@@ -795,8 +795,8 @@ server_handle_window(struct window *w, struct window_pane *wp)
 			case BELL_CURRENT:
 				if (w->active != wp)
 					break;
-				for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-					c = ARRAY_ITEM(&clients, i);
+				for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
+					c = ARRAY_ITEM(&clients, j);
 					if (c != NULL && c->session == s)
 						tty_putcode(&c->tty, TTYC_BEL);
 				}
