@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.5 2009-01-27 21:01:26 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.6 2009-01-27 23:10:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,7 +70,10 @@ retry:
 
 	bestp = NULL;
 	for (i = 0; i < len / sizeof (struct kinfo_proc); i++) {
+		if (buf[i].kp_eproc.e_tdev != sb.st_rdev)
+			continue;
 		p = &buf[i].kp_proc;
+		//log_debug("XXX %d %s %d %d %d", i, p->p_comm, p->p_stat, p->p_estcpu, p->p_slptime);
 		if (bestp == NULL)
 			bestp = p;
 
@@ -82,14 +85,20 @@ retry:
 			continue;
 		if (p->p_slptime > bestp->p_slptime)
 			continue;
+		if (!(p->p_flag & P_SINTR) && bestp->p_flag & P_SINTR)
+			continue;
+		if (p->p_pid < bestp->p_pid)
+			continue;
 		bestp = p;
-	}
-	
-	procname = get_proc_argv0(bestp->p_pid);
-	if (procname == NULL || *procname == '\0') {
-		free(procname);
-		procname = strdup(bestp->p_comm);
-	}
+	}	
+	if (bestp != NULL) {
+		procname = get_proc_argv0(bestp->p_pid);
+		if (procname == NULL || *procname == '\0') {
+			free(procname);
+			procname = strdup(bestp->p_comm);
+		}
+	} else
+		procname = NULL;
 
 	free(buf);
 	return (procname);
