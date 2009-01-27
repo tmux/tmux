@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.3 2009-01-26 22:57:19 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.4 2009-01-27 19:44:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,6 +27,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
+#define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 
 char	*get_argv0(int, char *);
 char	*get_proc_argv0(pid_t);
