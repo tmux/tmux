@@ -89,3 +89,4 @@
 - document find-window
 - document split-window -p and -l
 - attach should have a flag to create session if it doesn't exist
+- do mouse mode properly and fix it when window is split

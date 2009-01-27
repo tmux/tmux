@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.112 2009-01-27 19:40:56 nicm Exp $ */
+/* $Id: server.c,v 1.113 2009-01-27 21:39:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -713,10 +713,10 @@ server_handle_client(struct client *c)
 	if (c->prompt_string == NULL && c->message_string == NULL &&
 	    !server_locked && wp->screen->mode & MODE_CURSOR &&
 	    wp->yoff + wp->screen->cy < c->sy - status) {
-		tty_write(&c->tty, wp->screen, 0, TTY_CURSORMODE, 1);
+		tty_cursor_on(&c->tty);
 		tty_cursor(&c->tty, wp->screen->cx, wp->screen->cy, wp->yoff);
 	} else
-		tty_write(&c->tty, wp->screen, 0, TTY_CURSORMODE, 0);
+		tty_cursor_off(&c->tty);
 }
 
 /* Lost a client. */

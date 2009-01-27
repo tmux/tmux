@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.252 2009-01-27 20:22:33 nicm Exp $ */
+/* $Id: tmux.h,v 1.253 2009-01-27 21:39:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -335,14 +335,11 @@ enum tty_cmd {
 	TTY_CLEARSCREEN,
 	TTY_CLEARSTARTOFLINE,
 	TTY_CLEARSTARTOFSCREEN,
-	TTY_CURSORMODE,
 	TTY_DELETECHARACTER,
 	TTY_DELETELINE,
 	TTY_INSERTCHARACTER,
 	TTY_INSERTLINE,
 	TTY_INSERTMODE,
-	TTY_KCURSORMODE,
-	TTY_KKEYPADMODE,
 	TTY_LINEFEED,
 	TTY_MOUSEMODE,
 	TTY_REVERSEINDEX,
@@ -1013,6 +1010,8 @@ long long options_get_number(struct options *, const char *);
 
 /* tty.c */
 void		 tty_cursor(struct tty *, u_int, u_int, u_int);
+void		 tty_cursor_off(struct tty *);
+void		 tty_cursor_on(struct tty *);
 void		 tty_putcode(struct tty *, enum tty_code_code);
 void		 tty_putcode1(struct tty *, enum tty_code_code, int);
 void		 tty_putcode2(struct tty *, enum tty_code_code, int, int);
@@ -1028,7 +1027,7 @@ void		 tty_free(struct tty *, int);
 void		 tty_write(struct tty *,
 		     struct screen *, u_int, enum tty_cmd, ...);
 void		 tty_vwrite(struct tty *,
-		     struct screen *s, u_int, enum tty_cmd, va_list);
+		     struct screen *, u_int, enum tty_cmd, va_list);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;
@@ -1053,6 +1052,7 @@ int		 tty_keys_next(struct tty *, int *);
 /* tty-write.c */
 void		 tty_write_window(void *, enum tty_cmd, ...);
 void		 tty_vwrite_window(void *, enum tty_cmd, va_list);
+void		 tty_write_cursor_off(void *);
 
 /* options-cmd.c */
 void	set_option_string(struct cmd_ctx *,

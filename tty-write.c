@@ -1,4 +1,4 @@
-/* $Id: tty-write.c,v 1.7 2009-01-18 12:09:42 nicm Exp $ */
+/* $Id: tty-write.c,v 1.8 2009-01-27 21:39:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,5 +53,26 @@ tty_vwrite_window(void *ptr, enum tty_cmd cmd, va_list ap)
 			tty_vwrite(&c->tty, wp->screen, wp->yoff, cmd, aq);
 			va_end(aq);
 		}
+	}
+}
+
+void
+tty_write_cursor_off(void *ptr)
+{
+	struct window_pane	*wp = ptr;
+	struct client		*c;
+	u_int		 	 i;
+
+	if (wp->window->flags & WINDOW_HIDDEN || wp->flags & PANE_HIDDEN)
+		return;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (c->flags & CLIENT_SUSPENDED)
+			continue;
+
+		tty_cursor_off(&c->tty);
 	}
 }

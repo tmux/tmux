@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.29 2009-01-26 20:57:44 nicm Exp $ */
+/* $Id: screen-write.c,v 1.30 2009-01-27 21:39:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,13 +33,11 @@ screen_write_start(
 		ctx->data = wp;
 		if (ctx->s == NULL)
 			ctx->s = wp->screen;
+		tty_write_cursor_off(ctx->data);
 	} else {
 		ctx->write = NULL;
 		ctx->data = NULL;
 	}
-	
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_CURSORMODE, 0);
 }
 
 /* Finish writing. */
@@ -430,9 +428,6 @@ screen_write_kcursormode(struct screen_write_ctx *ctx, int state)
 {
 	struct screen	*s = ctx->s;
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_KCURSORMODE);
-
 	if (state)
 		s->mode |= MODE_KCURSOR;
 	else
@@ -444,9 +439,6 @@ void
 screen_write_kkeypadmode(struct screen_write_ctx *ctx, int state)
 {
 	struct screen	*s = ctx->s;
-
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_KKEYPADMODE);
 
 	if (state)
 		s->mode |= MODE_KKEYPAD;

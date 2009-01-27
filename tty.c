@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.62 2009-01-19 19:01:11 nicm Exp $ */
+/* $Id: tty.c,v 1.63 2009-01-27 21:39:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,14 +50,11 @@ void	tty_cmd_clearline(struct tty *, struct screen *, u_int, va_list);
 void	tty_cmd_clearscreen(struct tty *, struct screen *, u_int, va_list);
 void	tty_cmd_clearstartofline(struct tty *, struct screen *, u_int, va_list);
 void	tty_cmd_clearstartofscreen(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_cursormode(struct tty *, struct screen *, u_int, va_list);
 void	tty_cmd_deletecharacter(struct tty *, struct screen *, u_int, va_list);
 void	tty_cmd_deleteline(struct tty *, struct screen *, u_int, va_list);
 void	tty_cmd_insertcharacter(struct tty *, struct screen *, u_int, va_list);
 void	tty_cmd_insertline(struct tty *, struct screen *, u_int, va_list);
 void	tty_cmd_insertmode(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_kcursormode(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_kkeypadmode(struct tty *, struct screen *, u_int, va_list);
 void	tty_cmd_linefeed(struct tty *, struct screen *, u_int, va_list);
 void	tty_cmd_mousemode(struct tty *, struct screen *, u_int, va_list);
 void	tty_cmd_reverseindex(struct tty *, struct screen *, u_int, va_list);
@@ -70,14 +67,11 @@ void (*tty_cmds[])(struct tty *, struct screen *, u_int, va_list) = {
 	tty_cmd_clearscreen,
 	tty_cmd_clearstartofline,
 	tty_cmd_clearstartofscreen,
-	tty_cmd_cursormode,
 	tty_cmd_deletecharacter,
 	tty_cmd_deleteline,
 	tty_cmd_insertcharacter,
 	tty_cmd_insertline,
 	tty_cmd_insertmode,
-	tty_cmd_kcursormode,
-	tty_cmd_kkeypadmode,
 	tty_cmd_linefeed,
 	tty_cmd_mousemode,
 	tty_cmd_reverseindex,
@@ -174,6 +168,8 @@ tty_start_tty(struct tty *tty)
 	tty_putcode(tty, TTYC_SMKX);
 	tty_putcode(tty, TTYC_ENACS);
 	tty_putcode(tty, TTYC_CLEAR);
+	
+	tty_putcode(tty, TTYC_CNORM);
 
 	memcpy(&tty->cell, &grid_default_cell, sizeof tty->cell);
 
@@ -182,6 +178,8 @@ tty_start_tty(struct tty *tty)
 
 	tty->rlower = UINT_MAX;
 	tty->rupper = UINT_MAX;
+
+	tty->cursor = 1;
 }
 
 void
@@ -496,24 +494,6 @@ tty_cmd_clearstartofline(
 }
 
 void
-tty_cmd_cursormode(
-    struct tty *tty, unused struct screen *s, unused u_int oy, va_list ap)
-{
-	int	ua;
-
-	ua = va_arg(ap, int);
-
-	if (tty->cursor == ua)
-		return;
-	tty->cursor = ua;
-
-	if (ua && !(tty->flags & TTY_NOCURSOR))
-		tty_putcode(tty, TTYC_CNORM);
-	else
-		tty_putcode(tty, TTYC_CIVIS);
-}
-
-void
 tty_cmd_reverseindex(
     struct tty *tty, struct screen *s, u_int oy, unused va_list ap)
 {
@@ -531,14 +511,6 @@ tty_cmd_insertmode(unused struct tty *tty,
 	int	ua;
 
 	ua = va_arg(ap, int);
-
-#if 0
-	/* XXX */
-	if (ua)
-		tty_puts(tty, enter_insert_mode);
-	else
-		tty_puts(tty, exit_insert_mode);
-#endif
 }
 
 void
@@ -556,18 +528,6 @@ tty_cmd_mousemode(
 		tty_puts(tty, "\033[?1000h");
 	else
 		tty_puts(tty, "\033[?1000l");
-}
-
-void
-tty_cmd_kcursormode(unused struct tty *tty,
-    unused struct screen *s, unused u_int oy, unused va_list ap)
-{
-}
-
-void
-tty_cmd_kkeypadmode(unused struct tty *tty,
-    unused struct screen *s, unused u_int oy, unused va_list ap)
-{
 }
 
 void
@@ -746,6 +706,26 @@ tty_cursor(struct tty *tty, u_int cx, u_int cy, u_int oy)
 		tty->cy = oy + cy;
 		tty_putcode2(tty, TTYC_CUP, tty->cy, tty->cx);
 	}
+}
+
+void
+tty_cursor_off(struct tty *tty)
+{
+	if (!tty->cursor)
+		return;
+	tty->cursor = 0;
+
+	tty_putcode(tty, TTYC_CIVIS);
+}
+
+void
+tty_cursor_on(struct tty *tty)
+{
+	if (tty->cursor || tty->flags & TTY_NOCURSOR)
+		return;
+	tty->cursor = 1;
+	
+	tty_putcode(tty, TTYC_CNORM);
 }
 
 void
