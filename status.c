@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.67 2009-01-23 20:49:01 nicm Exp $ */
+/* $Id: status.c,v 1.68 2009-01-27 20:22:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,6 +50,7 @@ status_redraw(struct client *c)
 	size_t				size, start, width;
 	struct grid_cell	        gc;
 	int				larrow, rarrow;
+	u_char				stdattr, revattr;
 
 	left = right = NULL;
 
@@ -69,7 +70,9 @@ status_redraw(struct client *c)
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.bg = options_get_number(&s->options, "status-fg");
 	gc.fg = options_get_number(&s->options, "status-bg");
-	gc.attr |= GRID_ATTR_REVERSE;
+	gc.attr |= options_get_number(&s->options, "status-attr");
+	stdattr = gc.attr;
+	revattr = gc.attr ^ GRID_ATTR_REVERSE;
 
 	yy = c->sy - 1;
 	if (yy == 0)
@@ -199,7 +202,7 @@ draw:
 				rarrow = -1;
 		}
 
-		gc.attr |= GRID_ATTR_REVERSE;
+		gc.attr = stdattr;
 		if (offset < start + width) {
 			if (offset >= start) {
 				screen_write_putc(&ctx, &gc, ' ');
@@ -223,27 +226,27 @@ draw:
 	/* Draw the arrows. */
 	if (larrow != 0) {
 		if (larrow == -1)
-			gc.attr &= ~GRID_ATTR_REVERSE;
+			gc.attr = revattr;
 		else
-			gc.attr |= GRID_ATTR_REVERSE;
+			gc.attr = stdattr;
 		if (llen != 0)
 			screen_write_cursormove(&ctx, llen + 1, yy);
 		else
 			screen_write_cursormove(&ctx, 0, yy);
 		screen_write_putc(&ctx, &gc, '<');
-		gc.attr &= ~GRID_ATTR_REVERSE;
+		gc.attr = revattr;
 	}
 	if (rarrow != 0) {
 		if (rarrow == -1)
-			gc.attr &= ~GRID_ATTR_REVERSE;
+			gc.attr = revattr;
 		else
-			gc.attr |= GRID_ATTR_REVERSE;
+			gc.attr = stdattr;
 		if (rlen != 0)
 			screen_write_cursormove(&ctx, c->sx - rlen - 2, yy);
 		else
 			screen_write_cursormove(&ctx, c->sx - 1, yy);
 		screen_write_putc(&ctx, &gc, '>');
-		gc.attr |= GRID_ATTR_REVERSE;
+		gc.attr = stdattr;
 	}
 
 	goto out;
@@ -391,11 +394,11 @@ status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 
 	if (session_alert_has(s, wl, WINDOW_ACTIVITY)) {
 		flag = '#';
-		gc->attr &= ~GRID_ATTR_REVERSE;
+		gc->attr ^= GRID_ATTR_REVERSE;
 	}
 	if (session_alert_has(s, wl, WINDOW_BELL)) {
 		flag = '!';
-		gc->attr &= ~GRID_ATTR_REVERSE;
+		gc->attr ^= GRID_ATTR_REVERSE;
 	}
 
 	xasprintf(&text, "%d:%s%c", wl->idx, wl->window->name, flag);
@@ -425,7 +428,7 @@ status_message_redraw(struct client *c)
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.bg = options_get_number(&s->options, "message-fg");
 	gc.fg = options_get_number(&s->options, "message-bg");
-	gc.attr |= GRID_ATTR_REVERSE;
+	gc.attr |= options_get_number(&s->options, "message-attr");
 
 	screen_write_start(&ctx, NULL, &c->status);
 
@@ -462,7 +465,7 @@ status_prompt_redraw(struct client *c)
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.bg = options_get_number(&s->options, "message-fg");
 	gc.fg = options_get_number(&s->options, "message-bg");
-	gc.attr |= GRID_ATTR_REVERSE;
+	gc.attr |= options_get_number(&s->options, "message-attr");
 
 	screen_write_start(&ctx, NULL, &c->status);
 
@@ -502,7 +505,7 @@ status_prompt_redraw(struct client *c)
 		ch = c->prompt_buffer[c->prompt_index];
 	if (ch == '\0')
 		ch = ' ';
-	gc.attr &= ~GRID_ATTR_REVERSE;
+	gc.attr ^= GRID_ATTR_REVERSE;
 	screen_write_putc(&ctx, &gc, ch);
 
 	screen_write_stop(&ctx);

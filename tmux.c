@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.102 2009-01-23 16:19:56 nicm Exp $ */
+/* $Id: tmux.c,v 1.103 2009-01-27 20:22:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -237,6 +237,7 @@ main(int argc, char **argv)
 	options_set_number(&global_options, "history-limit", 2000);
 	options_set_number(&global_options, "message-bg", 3);
 	options_set_number(&global_options, "message-fg", 0);
+	options_set_number(&global_options, "message-attr", GRID_ATTR_REVERSE);
 	options_set_number(&global_options, "prefix", META);
 	options_set_number(&global_options, "repeat-time", 500);
 	options_set_number(&global_options, "set-titles", 1);
@@ -244,6 +245,7 @@ main(int argc, char **argv)
 	options_set_number(&global_options, "status", 1);
 	options_set_number(&global_options, "status-bg", 2);
 	options_set_number(&global_options, "status-fg", 0);
+	options_set_number(&global_options, "status-attr", GRID_ATTR_REVERSE);
 	options_set_number(&global_options, "status-interval", 15);
 	options_set_number(&global_options, "status-left-length", 10);
 	options_set_number(&global_options, "status-right-length", 40);
@@ -259,6 +261,7 @@ main(int argc, char **argv)
 	options_set_number(&global_window_options, "automatic-rename", 1);
 	options_set_number(&global_window_options, "mode-bg", 3);
 	options_set_number(&global_window_options, "mode-fg", 0);
+	options_set_number(&global_window_options, "mode-attr", GRID_ATTR_REVERSE);
 	options_set_number(&global_window_options, "mode-keys", MODEKEY_EMACS);
 	options_set_number(&global_window_options, "monitor-activity", 0);
 	options_set_number(&global_window_options, "utf8", 0);

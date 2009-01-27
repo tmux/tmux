@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.6 2009-01-23 20:49:01 nicm Exp $ */
+/* $Id: window-choose.c,v 1.7 2009-01-27 20:22:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -260,7 +260,7 @@ window_choose_write_line(
 	if (data->selected == data->top + py) {
 		gc.fg = options_get_number(&wp->window->options, "mode-bg");
 		gc.bg = options_get_number(&wp->window->options, "mode-fg");
-		gc.attr |= GRID_ATTR_REVERSE;
+		gc.attr |= options_get_number(&wp->window->options, "mode-attr");
 	}
 
 	screen_write_cursormove(ctx, 0, py);

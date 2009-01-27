@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.106 2009-01-25 19:00:10 tcunha Exp $
+# $Id: Makefile,v 1.107 2009-01-27 20:22:33 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -45,7 +45,7 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       options.c options-cmd.c paste.c colour.c utf8.c clock.c \
       tty.c tty-term.c tty-keys.c tty-write.c util.c names.c \
       osdep-unknown.c osdep-openbsd.c osdep-freebsd.c osdep-linux.c \
-      osdep-darwin.c
+      osdep-darwin.c attributes.c
 
 CC?= cc
 INCDIRS+= -I. -I- -I/usr/local/include

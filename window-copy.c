@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.45 2009-01-25 18:51:28 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.46 2009-01-27 20:22:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -217,7 +217,7 @@ window_copy_write_line(struct window_pane *wp, struct screen_write_ctx *ctx, u_i
 		    "[%u,%u/%u]", data->ox, data->oy, screen_hsize(&wp->base));
 		gc.bg = options_get_number(&wp->window->options, "mode-fg");
 		gc.fg = options_get_number(&wp->window->options, "mode-bg");
-		gc.attr |= GRID_ATTR_REVERSE;
+		gc.attr |= options_get_number(&wp->window->options, "mode-attr");
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
 		screen_write_puts(ctx, &gc, "%s", hdr);
 		screen_write_puts(ctx, &gc, "%s", hdr);
@@ -322,7 +322,7 @@ window_copy_update_selection(struct window_pane *wp)
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.bg = options_get_number(&wp->window->options, "mode-fg");
 	gc.fg = options_get_number(&wp->window->options, "mode-bg");
-	gc.attr |= GRID_ATTR_REVERSE;
+	gc.attr |= options_get_number(&wp->window->options, "mode-attr");
 
 	/* Find top-left of screen. */
 	tx = data->ox;

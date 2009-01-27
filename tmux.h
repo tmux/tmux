@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.251 2009-01-26 22:57:19 nicm Exp $ */
+/* $Id: tmux.h,v 1.252 2009-01-27 20:22:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -461,13 +461,13 @@ struct options_entry {
 		OPTIONS_STRING,
 		OPTIONS_NUMBER,
 		OPTIONS_KEY,
-		OPTIONS_COLOURS
+		OPTIONS_COLOURS,
+		OPTIONS_ATTRIBUTES
 	} type;
 	union {
 		char	*string;
 		long long number;
 		int	 key;
-		u_char	 colours;
 	} value;
 
 	SPLAY_ENTRY(options_entry) entry;
@@ -899,6 +899,7 @@ struct set_option_entry {
 		SET_OPTION_NUMBER,
 		SET_OPTION_KEY,
 		SET_OPTION_COLOUR,
+		SET_OPTION_ATTRIBUTES,
 		SET_OPTION_FLAG,
 		SET_OPTION_CHOICE
 	} type;
@@ -910,8 +911,8 @@ struct set_option_entry {
 };
 extern const struct set_option_entry set_option_table[];
 extern const struct set_option_entry set_window_option_table[];
-#define NSETOPTION 20
-#define NSETWINDOWOPTION 13
+#define NSETOPTION 22
+#define NSETWINDOWOPTION 14
 
 /* Edit keys. */
 enum mode_key {
@@ -1061,6 +1062,8 @@ void	set_option_number(struct cmd_ctx *,
 void	set_option_key(struct cmd_ctx *,
     	    struct options *, const struct set_option_entry *, char *);
 void	set_option_colour(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	set_option_attributes(struct cmd_ctx *,
     	    struct options *, const struct set_option_entry *, char *);
 void	set_option_flag(struct cmd_ctx *,
     	    struct options *, const struct set_option_entry *, char *);
@@ -1307,8 +1310,12 @@ void	 input_key(struct window_pane *, int);
 
 /* colour.c */
 const char *colour_tostring(u_char);
-u_char	 colour_fromstring(const char *);
+int	 colour_fromstring(const char *);
 u_char	 colour_translate256(u_char);
+
+/* attributes.c */
+const char *attributes_tostring(u_char);
+int	 attributes_fromstring(const char *);
 
 /* grid.c */
 extern const struct grid_cell grid_default_cell;

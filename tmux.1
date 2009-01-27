@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.70 2009-01-26 18:22:55 nicm Exp $
+.\" $Id: tmux.1,v 1.71 2009-01-27 20:22:33 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -789,6 +789,22 @@ or
 .Ic default .
 .It Ic message-fg Ar colour
 Set status line message foreground colour.
+.It Ic message-attr Ar attributes
+Set status line message attributes, where
+.Ar attributes
+is either
+.Ic default
+or a comma-delimited list of one or more of:
+.Ic bright
+(or
+.Ic bold ) ,
+.Ic dim ,
+.Ic underscore ,
+.Ic blink ,
+.Ic reverse ,
+.Ic hidden ,
+or
+.Ic italics .
 .It Ic prefix Ar key
 Set the current prefix key.
 .It Ic repeat-time Ar number
@@ -821,6 +837,8 @@ Show or hide the status line.
 Set status line background colour.
 .It Ic status-fg Ar colour
 Set status line foreground colour.
+.It Ic status-attr Ar attributes
+Set status line attributes.
 .It Ic status-interval Ar interval
 Update the status bar every
 .Ar interval
@@ -930,6 +948,8 @@ A value of zero restores the default unlimited setting.
 Set window modes background colour.
 .It Ic mode-fg Ar colour
 Set window modes foreground colour.
+.It Ic mode-attr Ar attributes
+Set window modes attributes.
 .It Xo Ic mode-keys
 .Op Ic vi | Ic emacs
 .Xc

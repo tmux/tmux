@@ -1,4 +1,4 @@
-/* $Id: colour.c,v 1.3 2009-01-10 01:51:21 nicm Exp $ */
+/* $Id: colour.c,v 1.4 2009-01-27 20:22:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,7 +49,7 @@ colour_tostring(u_char c)
 }
 
 /* String to colour. */
-u_char
+int
 colour_fromstring(const char *s)
 {
 	if (strcasecmp(s, "black") == 0 || (s[0] == '0' && s[1] == '\0'))
@@ -70,7 +70,7 @@ colour_fromstring(const char *s)
 		return (7);
 	if (strcasecmp(s, "default") == 0 || (s[0] == '8' && s[1] == '\0'))
 		return (8);
-	return (255);
+	return (-1);
 }
 
 u_char

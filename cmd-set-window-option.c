@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.22 2009-01-20 19:35:03 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.23 2009-01-27 20:22:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,6 +61,7 @@ const struct set_option_entry set_window_option_table[NSETWINDOWOPTION] = {
 	  SET_OPTION_CHOICE, 0, 0, set_option_clock_mode_style_list },
 	{ "force-height", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "force-width", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
+	{ "mode-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
 	{ "mode-bg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "mode-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "mode-keys", SET_OPTION_CHOICE, 0, 0, set_option_mode_keys_list },
@@ -144,6 +145,9 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			break;
 		case SET_OPTION_COLOUR:
 			set_option_colour(ctx, oo, entry, data->value);
+			break;
+		case SET_OPTION_ATTRIBUTES:
+			set_option_attributes(ctx, oo, entry, data->value);
 			break;
 		case SET_OPTION_FLAG:
 			set_option_flag(ctx, oo, entry, data->value);
