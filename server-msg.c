@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.61 2009-01-20 18:48:46 nicm Exp $ */
+/* $Id: server-msg.c,v 1.62 2009-01-28 17:57:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -276,6 +276,7 @@ server_msg_fn_unlock(struct hdr *hdr, struct client *c)
 	if (server_unlock(pass) != 0) {
 #define MSG "bad password"
 		server_write_client(c, MSG_ERROR, MSG, (sizeof MSG) - 1);
+		server_write_client(c, MSG_EXIT, NULL, 0);
 		return (0);
 #undef MSG
 	}
