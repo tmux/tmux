@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.24 2009-01-12 22:53:52 nicm Exp $ */
+/* $Id: input-keys.c,v 1.25 2009-01-28 19:52:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -204,4 +204,16 @@ input_key(struct window_pane *wp, int key)
 		return;
 	}
 	buffer_write(wp->out, ike->data, dlen);
+}
+
+/* Handle input mouse. */
+void
+input_mouse(struct window_pane *wp, u_char b, u_char x, u_char y)
+{
+	if (wp->screen->mode & MODE_MOUSE) {
+		buffer_write(wp->out, "\033[M", 3);
+		buffer_write8(wp->out, b + 32);
+		buffer_write8(wp->out, x + 33);
+		buffer_write8(wp->out, y + 33);
+	}
 }

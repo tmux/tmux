@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.254 2009-01-27 23:35:44 nicm Exp $ */
+/* $Id: tmux.h,v 1.255 2009-01-28 19:52:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -181,6 +181,9 @@ struct buffer {
 #define KEYC_REMOVESFT(k) ((k) & ~KEYC_SHIFT)
 #define KEYC_ISSFT(k) ((k) != KEYC_NONE && ((k) & KEYC_SHIFT))
 
+/* Mouse key. */
+#define KEYC_MOUSE (KEYC_OFFSET + 0x00)
+
 /* Function keys. */
 #define KEYC_F1 (KEYC_OFFSET + 0x01)
 #define KEYC_F2 (KEYC_OFFSET + 0x02)
@@ -339,9 +342,7 @@ enum tty_cmd {
 	TTY_DELETELINE,
 	TTY_INSERTCHARACTER,
 	TTY_INSERTLINE,
-	TTY_INSERTMODE,
 	TTY_LINEFEED,
-	TTY_MOUSEMODE,
 	TTY_REVERSEINDEX,
 };
 
@@ -570,6 +571,8 @@ struct window_mode {
 	void	(*free)(struct window_pane *);
 	void	(*resize)(struct window_pane *, u_int, u_int);
 	void	(*key)(struct window_pane *, struct client *, int);
+	void	(*mouse)(struct window_pane *,
+	    	    struct client *, u_char, u_char, u_char);
 	void	(*timer)(struct window_pane *);
 };
 
@@ -708,7 +711,7 @@ struct tty {
 	u_int		 cx;
 	u_int		 cy;
 
-	int		 cursor;
+	int		 mode;
 
 	u_int		 rlower;
 	u_int		 rupper;
@@ -1010,8 +1013,6 @@ long long options_get_number(struct options *, const char *);
 
 /* tty.c */
 void		 tty_cursor(struct tty *, u_int, u_int, u_int);
-void		 tty_cursor_off(struct tty *);
-void		 tty_cursor_on(struct tty *);
 void		 tty_putcode(struct tty *, enum tty_code_code);
 void		 tty_putcode1(struct tty *, enum tty_code_code, int);
 void		 tty_putcode2(struct tty *, enum tty_code_code, int, int);
@@ -1021,6 +1022,7 @@ void		 tty_init(struct tty *, char *, char *);
 void		 tty_start_tty(struct tty *);
 void		 tty_stop_tty(struct tty *);
 void		 tty_set_title(struct tty *, const char *);
+void		 tty_update_mode(struct tty *, int);
 int		 tty_open(struct tty *, char **);
 void		 tty_close(struct tty *, int);
 void		 tty_free(struct tty *, int);
@@ -1047,12 +1049,12 @@ int		 tty_keys_cmp(struct tty_key *, struct tty_key *);
 RB_PROTOTYPE(tty_keys, tty_key, entry, tty_keys_cmp);
 void		 tty_keys_init(struct tty *);
 void		 tty_keys_free(struct tty *);
-int		 tty_keys_next(struct tty *, int *);
+int		 tty_keys_next(struct tty *, int *, u_char *);
 
 /* tty-write.c */
 void		 tty_write_window(void *, enum tty_cmd, ...);
 void		 tty_vwrite_window(void *, enum tty_cmd, va_list);
-void		 tty_write_cursor_off(void *);
+void		 tty_write_update_mode(void *, int);
 
 /* options-cmd.c */
 void	set_option_string(struct cmd_ctx *,
@@ -1307,6 +1309,7 @@ void	 input_parse(struct window_pane *);
 
 /* input-key.c */
 void	 input_key(struct window_pane *, int);
+void	 input_mouse(struct window_pane *, u_char, u_char, u_char);
 
 /* colour.c */
 const char *colour_tostring(u_char);
@@ -1452,6 +1455,8 @@ int		 window_pane_set_mode(
 void		 window_pane_reset_mode(struct window_pane *);
 void		 window_pane_parse(struct window_pane *);
 void		 window_pane_key(struct window_pane *, struct client *, int);
+void		 window_pane_mouse(struct window_pane *,
+    		     struct client *, u_char, u_char, u_char);
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;

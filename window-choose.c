@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.7 2009-01-27 20:22:33 nicm Exp $ */
+/* $Id: window-choose.c,v 1.8 2009-01-28 19:52:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,6 +26,8 @@ struct screen *window_choose_init(struct window_pane *);
 void	window_choose_free(struct window_pane *);
 void	window_choose_resize(struct window_pane *, u_int, u_int);
 void	window_choose_key(struct window_pane *, struct client *, int);
+void	window_choose_mouse(
+    	    struct window_pane *, struct client *, u_char, u_char, u_char);
 
 void	window_choose_redraw_screen(struct window_pane *);
 void	window_choose_write_line(
@@ -39,7 +41,8 @@ const struct window_mode window_choose_mode = {
 	window_choose_free,
 	window_choose_resize,
 	window_choose_key,
-	NULL
+	window_choose_mouse,
+	NULL,
 };
 
 struct window_choose_mode_item {
@@ -111,6 +114,7 @@ window_choose_init(struct window_pane *wp)
 	s = &data->screen;
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	s->mode &= ~MODE_CURSOR;
+	s->mode |= MODE_MOUSE;
 	
 	return (s);
 }
@@ -220,7 +224,7 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 			else
 				data->top -= screen_size_y(s);
 		}
-		window_choose_redraw_screen(wp);
+ 		window_choose_redraw_screen(wp);
 		break;
 	case MODEKEY_NONE:
 		if (key != ' ')
@@ -242,6 +246,32 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 	default:
 		break;
 	}
+}
+
+void
+window_choose_mouse(struct window_pane *wp,
+    unused struct client *c, u_char b, u_char x, u_char y)
+{
+	struct window_choose_mode_data	*data = wp->modedata;
+	struct screen			*s = &data->screen;
+	struct window_choose_mode_item	*item;
+	u_int				 idx;
+
+	if ((b & 3) == 0)
+		return;
+	if (x >= screen_size_x(s))
+		return;
+	if (y >= screen_size_y(s))
+		return;
+
+	idx = data->top + y;
+	if (idx >= ARRAY_LENGTH(&data->list))
+		return;
+	data->selected = idx;
+
+	item = &ARRAY_ITEM(&data->list, data->selected);
+	data->callback(data->data, item->idx);
+	window_pane_reset_mode(wp);
 }
 
 void

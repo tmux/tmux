@@ -1,5 +1,13 @@
+28 January 2009
+
+* Better support for at least the most common variant of mouse input: parse it
+  and adjust for different panes. Also support mouse in window/session choice
+  mode.
+
 27 January 2009
 
+* Bring back the fancy window titles with session/window names: it is easy to
+  work around problems with elinks (see FAQ).
 * -u flag to scroll-mode and copy-mode to start scrolled one page
    up. scroll-mode -u is bound to prefix,page-up (ppage) by default.
 * Allow status, mode and message attributes to be changed by three new options:
@@ -1027,7 +1035,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.238 2009-01-27 23:35:44 nicm Exp $
+$Id: CHANGES,v 1.239 2009-01-28 19:52:21 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

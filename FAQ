@@ -161,6 +161,6 @@ The following shell function does this, and also clears the window title on
 exit (elinks, for some strange reason, sets it to the value of TERM):
 
 	elinks() {
-        	STY= `which elinks` "$*"
+        	STY= `which elinks` $*
 	        echo -ne \\033]0\;\\007;
 	}

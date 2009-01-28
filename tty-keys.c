@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.20 2009-01-12 22:48:00 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.21 2009-01-28 19:52:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,6 +25,7 @@
 
 void	tty_keys_add(struct tty *, const char *, int, int);
 int	tty_keys_parse_xterm(struct tty *, char *, size_t, size_t *);
+int	tty_keys_parse_mouse(struct tty *, char *, size_t, size_t *, u_char *);
 
 struct tty_key_ent {
 	enum tty_code_code	code;
@@ -215,7 +216,7 @@ tty_keys_find(struct tty *tty, char *buf, size_t len, size_t *size)
 }
 
 int
-tty_keys_next(struct tty *tty, int *key)
+tty_keys_next(struct tty *tty, int *key, u_char *mouse)
 {
 	struct tty_key	*tk;
 	struct timeval	 tv;
@@ -244,9 +245,20 @@ tty_keys_next(struct tty *tty, int *key)
 		return (0);
 	}
 
-	/* Not found. Try to parse xterm-type arguments. */
-	if ((*key = tty_keys_parse_xterm(tty, buf, len, &size)) != KEYC_NONE) {
+	/* Not found. Is this a mouse key press? */
+	*key = tty_keys_parse_mouse(tty, buf, len, &size, mouse);
+	if (*key != KEYC_NONE) {
 		buffer_remove(tty->in, size);
+
+		tty->flags &= ~TTY_ESCAPE;
+		return (0);
+	}
+
+	/* Not found. Try to parse xterm-type arguments. */
+	*key = tty_keys_parse_xterm(tty, buf, len, &size);
+	if (*key != KEYC_NONE) {
+		buffer_remove(tty->in, size);
+
 		tty->flags &= ~TTY_ESCAPE;
 		return (0);
 	}
@@ -299,6 +311,29 @@ tty_keys_next(struct tty *tty, int *key)
 	*key = KEYC_ADDESC('\033');
 	buffer_remove(tty->in, 1);
 	return (0);
+}
+
+int
+tty_keys_parse_mouse(
+    unused struct tty *tty, char *buf, size_t len, size_t *size, u_char *mouse)
+{
+	/*
+	 * Mouse sequences are \033[M followed by three characters indicating
+	 * buttons, X and Y, all based at 32 with 1,1 top-left.
+	 */
+
+	log_debug("mouse input is: %.*s", (int) len, buf);
+	if (len != 6 || memcmp(buf, "\033[M", 3) != 0)
+		return (KEYC_NONE);
+	*size = 6;
+	
+	if (buf[3] < 32 || buf[4] < 33 || buf[5] < 33)
+		return (KEYC_NONE);
+
+	mouse[0] = buf[3] - 32;
+	mouse[1] = buf[4] - 33;
+	mouse[2] = buf[5] - 33;
+	return (KEYC_MOUSE);
 }
 
 int

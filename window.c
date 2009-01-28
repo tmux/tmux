@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.63 2009-01-26 22:57:20 nicm Exp $ */
+/* $Id: window.c,v 1.64 2009-01-28 19:52:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -659,8 +659,26 @@ window_pane_parse(struct window_pane *wp)
 void
 window_pane_key(struct window_pane *wp, struct client *c, int key)
 {
-	if (wp->mode != NULL)
-		wp->mode->key(wp, c, key);
-	else
+	if (wp->mode != NULL) {
+		if (wp->mode->key != NULL)
+			wp->mode->key(wp, c, key);
+	} else
 		input_key(wp, key);
+}
+
+void
+window_pane_mouse(
+    struct window_pane *wp, struct client *c, u_char b, u_char x, u_char y)
+{
+	/* XXX convert from 1-based? */
+
+	if (y < wp->yoff || y >= wp->yoff + wp->sy)
+		return;
+	y -= wp->yoff;
+
+	if (wp->mode != NULL) {
+		if (wp->mode->mouse != NULL)
+			wp->mode->mouse(wp, c, b, x, y);
+	} else
+		input_mouse(wp, b, x, y);
 }

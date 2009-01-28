@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.63 2009-01-27 21:39:15 nicm Exp $ */
+/* $Id: tty.c,v 1.64 2009-01-28 19:52:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -71,9 +71,7 @@ void (*tty_cmds[])(struct tty *, struct screen *, u_int, va_list) = {
 	tty_cmd_deleteline,
 	tty_cmd_insertcharacter,
 	tty_cmd_insertline,
-	tty_cmd_insertmode,
 	tty_cmd_linefeed,
-	tty_cmd_mousemode,
 	tty_cmd_reverseindex,
 };
 
@@ -170,6 +168,8 @@ tty_start_tty(struct tty *tty)
 	tty_putcode(tty, TTYC_CLEAR);
 	
 	tty_putcode(tty, TTYC_CNORM);
+	if (tty_term_has(tty->term, TTYC_KMOUS))
+		tty_puts(tty, "\033[?1000l");
 
 	memcpy(&tty->cell, &grid_default_cell, sizeof tty->cell);
 
@@ -179,7 +179,7 @@ tty_start_tty(struct tty *tty)
 	tty->rlower = UINT_MAX;
 	tty->rupper = UINT_MAX;
 
-	tty->cursor = 1;
+	tty->mode = MODE_CURSOR;
 }
 
 void
@@ -206,7 +206,10 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
 		tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
 		tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
+
 		tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
+		if (tty_term_has(tty->term, TTYC_KMOUS))
+			tty_raw(tty, "\033[?1000l");
 	}
 }
 
@@ -333,6 +336,30 @@ tty_set_title(struct tty *tty, const char *title)
 	tty_puts(tty, "\033]0;");
 	tty_puts(tty, title);
 	tty_putc(tty, '\007');
+}
+
+void
+tty_update_mode(struct tty *tty, int mode)
+{
+	int	changed;
+
+	if (tty->flags & TTY_NOCURSOR)
+		mode &= ~MODE_CURSOR;
+
+	changed = mode ^ tty->mode;
+	if (changed & MODE_CURSOR) {
+		if (mode & MODE_CURSOR)
+			tty_putcode(tty, TTYC_CNORM);
+		else
+			tty_putcode(tty, TTYC_CIVIS);
+	}
+	if (changed & MODE_MOUSE) {
+		if (mode & MODE_MOUSE)
+			tty_puts(tty, "\033[?1000h");
+		else
+			tty_puts(tty, "\033[?1000l");
+	}
+	tty->mode = mode;
 }
 
 void
@@ -502,32 +529,6 @@ tty_cmd_reverseindex(
 	tty_cursor(tty, s->cx, s->cy, oy);
 
 	tty_putcode(tty, TTYC_RI);
-}
-
-void
-tty_cmd_insertmode(unused struct tty *tty,
-    unused struct screen *s, unused u_int oy, va_list ap)
-{
-	int	ua;
-
-	ua = va_arg(ap, int);
-}
-
-void
-tty_cmd_mousemode(
-    struct tty *tty, unused struct screen *s, unused u_int oy, va_list ap)
-{
-	int	ua;
-
-	if (!tty_term_has(tty->term, TTYC_KMOUS))
-		return;
-
-	ua = va_arg(ap, int);
-
-	if (ua)
-		tty_puts(tty, "\033[?1000h");
-	else
-		tty_puts(tty, "\033[?1000l");
 }
 
 void
@@ -706,26 +707,6 @@ tty_cursor(struct tty *tty, u_int cx, u_int cy, u_int oy)
 		tty->cy = oy + cy;
 		tty_putcode2(tty, TTYC_CUP, tty->cy, tty->cx);
 	}
-}
-
-void
-tty_cursor_off(struct tty *tty)
-{
-	if (!tty->cursor)
-		return;
-	tty->cursor = 0;
-
-	tty_putcode(tty, TTYC_CIVIS);
-}
-
-void
-tty_cursor_on(struct tty *tty)
-{
-	if (tty->cursor || tty->flags & TTY_NOCURSOR)
-		return;
-	tty->cursor = 1;
-	
-	tty_putcode(tty, TTYC_CNORM);
 }
 
 void

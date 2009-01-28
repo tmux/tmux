@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.114 2009-01-27 22:55:33 nicm Exp $ */
+/* $Id: server.c,v 1.115 2009-01-28 19:52:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -417,7 +417,7 @@ void
 server_check_redraw(struct client *c)
 {
 	struct session	*s;
-	char		*title;
+	char		 title[512];
 	int		 flags;
 
 	if (c == NULL || c->session == NULL)
@@ -428,7 +428,9 @@ server_check_redraw(struct client *c)
 	c->tty.flags &= ~TTY_FREEZE;
 
 	if (options_get_number(&s->options, "set-titles")) {
-		title = s->curw->window->active->screen->title;
+		xsnprintf(title, sizeof title, "%s:%u:%s - \"%s\"",
+		    s->name, s->curw->idx, s->curw->window->name,
+		    s->curw->window->active->screen->title);
 		if (c->title == NULL || strcmp(title, c->title) != 0) {
 			if (c->title != NULL)
 				xfree(c->title);
@@ -624,6 +626,8 @@ server_handle_client(struct client *c)
 	struct key_binding	*bd;
 	struct cmd		*cmd;
 	int		 	 key, prefix, status, xtimeout, can_repeat;
+	int			 mode;
+	u_char			 mouse[3];
 
 	xtimeout = options_get_number(&c->session->options, "repeat-time");
 	if (xtimeout != 0 && c->flags & CLIENT_REPEAT) {
@@ -635,7 +639,7 @@ server_handle_client(struct client *c)
 
 	/* Process keys. */
 	prefix = options_get_number(&c->session->options, "prefix");
-	while (tty_keys_next(&c->tty, &key) == 0) {	
+	while (tty_keys_next(&c->tty, &key, mouse) == 0) {
 		server_activity = time(NULL);
 
 		if (c->session == NULL)
@@ -650,6 +654,12 @@ server_handle_client(struct client *c)
 		if (server_locked)
 			continue;
 		
+		/* Check for mouse keys. */
+		if (key == KEYC_MOUSE) {
+			window_pane_mouse(wp, c, mouse[0], mouse[1], mouse[2]);
+			continue;
+		}
+
 		/* No previous prefix key. */
 		if (!(c->flags & CLIENT_PREFIX)) {
 			if (key == prefix)
@@ -708,15 +718,15 @@ server_handle_client(struct client *c)
 		return;
 	wp = c->session->curw->window->active;	/* could die - do each loop */
 	
-	/* Ensure the cursor is in the right place and correctly on or off. */
+	/* Ensure cursor position and mode settings. */
 	status = options_get_number(&c->session->options, "status");
-	if (c->prompt_string == NULL && c->message_string == NULL &&
-	    !server_locked && wp->screen->mode & MODE_CURSOR &&
-	    wp->yoff + wp->screen->cy < c->sy - status) {
-		tty_cursor_on(&c->tty);
+	if (wp->yoff + wp->screen->cy < c->sy - status)
 		tty_cursor(&c->tty, wp->screen->cx, wp->screen->cy, wp->yoff);
-	} else
-		tty_cursor_off(&c->tty);
+
+	mode = wp->screen->mode;
+	if (server_locked)
+		mode &= ~TTY_NOCURSOR;
+	tty_update_mode(&c->tty, mode);
 }
 
 /* Lost a client. */

@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.30 2009-01-27 21:39:14 nicm Exp $ */
+/* $Id: screen-write.c,v 1.31 2009-01-28 19:52:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,7 @@ screen_write_start(
 		ctx->data = wp;
 		if (ctx->s == NULL)
 			ctx->s = wp->screen;
-		tty_write_cursor_off(ctx->data);
+		tty_write_update_mode(ctx->data, ctx->s->mode & ~MODE_CURSOR);
 	} else {
 		ctx->write = NULL;
 		ctx->data = NULL;
@@ -374,9 +374,6 @@ screen_write_insertmode(struct screen_write_ctx *ctx, int state)
 {
 	struct screen	*s = ctx->s;
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_INSERTMODE, state);
-
 	if (state)
 		s->mode |= MODE_INSERT;
 	else
@@ -388,9 +385,6 @@ void
 screen_write_mousemode(struct screen_write_ctx *ctx, int state)
 {
 	struct screen	*s = ctx->s;
-
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_MOUSEMODE, state);
 
 	if (state)
 		s->mode |= MODE_MOUSE;

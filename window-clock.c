@@ -1,4 +1,4 @@
-/* $Id: window-clock.c,v 1.4 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: window-clock.c,v 1.5 2009-01-28 19:52:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,7 +36,8 @@ const struct window_mode window_clock_mode = {
 	window_clock_free,
 	window_clock_resize,
 	window_clock_key,
-	window_clock_timer
+	NULL,
+	window_clock_timer,
 };
 
 struct window_clock_mode_data {

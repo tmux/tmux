@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.47 2009-01-27 23:35:44 nicm Exp $ */
+/* $Id: window-copy.c,v 1.48 2009-01-28 19:52:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -64,7 +64,8 @@ const struct window_mode window_copy_mode = {
 	window_copy_free,
 	window_copy_resize,
 	window_copy_key,
-	NULL
+	NULL,
+	NULL,
 };
 
 struct window_copy_mode_data {
