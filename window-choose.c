@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.8 2009-01-28 19:52:21 nicm Exp $ */
+/* $Id: window-choose.c,v 1.9 2009-01-28 22:00:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -257,7 +257,7 @@ window_choose_mouse(struct window_pane *wp,
 	struct window_choose_mode_item	*item;
 	u_int				 idx;
 
-	if ((b & 3) == 0)
+	if ((b & 3) == 3)
 		return;
 	if (x >= screen_size_x(s))
 		return;

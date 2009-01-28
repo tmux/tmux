@@ -1,5 +1,7 @@
 28 January 2009
 
+* Support mouse in copy mode to move cursor. Can't do anything else at the
+  moment until other mouse modes are handled.
 * Better support for at least the most common variant of mouse input: parse it
   and adjust for different panes. Also support mouse in window/session choice
   mode.
@@ -1035,7 +1037,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.239 2009-01-28 19:52:21 nicm Exp $
+$Id: CHANGES,v 1.240 2009-01-28 22:00:22 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

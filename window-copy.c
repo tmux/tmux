@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.48 2009-01-28 19:52:21 nicm Exp $ */
+/* $Id: window-copy.c,v 1.49 2009-01-28 22:00:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,6 +26,8 @@ struct screen *window_copy_init(struct window_pane *);
 void	window_copy_free(struct window_pane *);
 void	window_copy_resize(struct window_pane *, u_int, u_int);
 void	window_copy_key(struct window_pane *, struct client *, int);
+void	window_copy_mouse(
+    	    struct window_pane *, struct client *, u_char, u_char, u_char);
 
 void	window_copy_redraw_lines(struct window_pane *, u_int, u_int);
 void	window_copy_redraw_screen(struct window_pane *);
@@ -64,7 +66,7 @@ const struct window_mode window_copy_mode = {
 	window_copy_free,
 	window_copy_resize,
 	window_copy_key,
-	NULL,
+	window_copy_mouse,
 	NULL,
 };
 
@@ -97,6 +99,8 @@ window_copy_init(struct window_pane *wp)
 
 	s = &data->screen;
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
+	s->mode |= MODE_MOUSE;
+
 	s->cx = data->cx;
 	s->cy = data->cy;
 
@@ -182,7 +186,7 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		window_copy_redraw_screen(wp);
 		break;
 	case MODEKEY_STARTSEL:
-		window_copy_start_selection(wp);
+ 		window_copy_start_selection(wp);
 		break;
 	case MODEKEY_CLEARSEL:
 		screen_clear_selection(&data->screen);
@@ -210,6 +214,28 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 	default:
 		break;
 	}
+}
+
+void
+window_copy_mouse(struct window_pane *wp,
+    unused struct client *c, u_char b, u_char x, u_char y)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*s = &data->screen;
+
+	if ((b & 3) == 3)
+		return;
+	if (x >= screen_size_x(s))
+		return;
+	if (y >= screen_size_y(s))
+		return;
+
+	data->cx = x;
+	data->cy = y;
+	
+	if (window_copy_update_selection(wp))
+ 		window_copy_redraw_screen(wp);		
+	window_copy_update_cursor(wp);
 }
 
 void

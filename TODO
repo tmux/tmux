@@ -76,6 +76,7 @@
   utf8 should work differently; could store as multiple cells, 1 of width >0
   and n of width 0, then translate cursor indexes on-the-fly would need to
   adjust all cursor movement and also handle different width lines properly.
+- support other mouse modes (highlight etc) and use it in copy mode 
 
 (hopefully) for 0.7, in no particular order:
 - swap-pane-up, swap-pane-down (maybe move-pane-*)
@@ -89,5 +90,4 @@
 - document find-window
 - document split-window -p and -l
 - attach should have a flag to create session if it doesn't exist
-- support mouse in copy mode
 - fix page up/down in choice mode AGAIN
