@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.115 2009-01-28 19:52:21 nicm Exp $ */
+/* $Id: server.c,v 1.116 2009-01-29 20:13:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -337,12 +337,12 @@ server_shutdown(void)
 {
 	struct session	*s;
 	struct client	*c;
-	u_int		 i;
+	u_int		 i, j;
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
+		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
+			c = ARRAY_ITEM(&clients, j);
 			if (c != NULL && c->session == s) {
 				s = NULL;
 				break;
