@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.107 2009-01-27 20:22:33 nicm Exp $
+# $Id: Makefile,v 1.108 2009-01-29 19:26:53 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -120,7 +120,7 @@ dist:		clean
 			-f ${DISTDIR}.tar.gz ${DISTFILES}
 
 lint:
-		lint -cehvx ${CFLAGS:M-D*} ${SRCS:M*.c}
+		lint -chvx ${CFLAGS:M-D*} ${SRCS:M*.c}
 
 clean:
 		rm -f ${CLEANFILES}
