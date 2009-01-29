@@ -1,3 +1,9 @@
+29 January 2009
+
+* Support #(command) in status-left, and status-right, which is displayed as
+  the first line of command's output (e.g. set -g status-right
+  "#(whoami)@#(hostname -s)"). Commands with )s aren't supported.
+
 28 January 2009
 
 * Support mouse in copy mode to move cursor. Can't do anything else at the
@@ -1037,7 +1043,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.240 2009-01-28 22:00:22 nicm Exp $
+$Id: CHANGES,v 1.241 2009-01-29 23:35:14 tcunha Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

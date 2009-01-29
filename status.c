@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.68 2009-01-27 20:22:33 nicm Exp $ */
+/* $Id: status.c,v 1.69 2009-01-29 23:35:14 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,6 +30,7 @@
 #include "tmux.h"
 
 char   *status_replace(struct session *, char *, time_t);
+char   *status_replace_popen(char **);
 size_t	status_width(struct winlink *);
 char   *status_print(struct session *, struct winlink *, struct grid_cell *);
 
@@ -299,6 +300,7 @@ status_replace(struct session *s, char *fmt, time_t t)
 	struct winlink *wl = s->curw;
 	static char	out[BUFSIZ];
 	char		in[BUFSIZ], tmp[256], ch, *iptr, *optr, *ptr, *endptr;
+	char           *savedptr;
 	size_t		len;
 	long		n;
 
@@ -307,6 +309,7 @@ status_replace(struct session *s, char *fmt, time_t t)
 
 	iptr = in;
 	optr = out;
+	savedptr = NULL;
 
 	while (*iptr != '\0') {
 		if (optr >= out + (sizeof out) - 1)
@@ -325,6 +328,14 @@ status_replace(struct session *s, char *fmt, time_t t)
 
 			ptr = NULL;
 			switch (*iptr++) {
+			case '(':
+				if (ptr == NULL) {
+					ptr = status_replace_popen(&iptr);
+					if (ptr == NULL)
+						break;
+					savedptr = ptr;
+				}
+				/* FALLTHROUGH */
 			case 'H':
 				if (ptr == NULL) {
 					if (gethostname(tmp, sizeof tmp) != 0)
@@ -353,6 +364,10 @@ status_replace(struct session *s, char *fmt, time_t t)
 				*optr++ = '#';
 				break;
 			}
+			if (savedptr != NULL) {
+				xfree(savedptr);
+				savedptr = NULL;
+			}
 			break;
 		default:
 			*optr++ = ch;
@@ -362,6 +377,44 @@ status_replace(struct session *s, char *fmt, time_t t)
 	*optr = '\0';
 
 	return (xstrdup(out));
+}
+
+char *
+status_replace_popen(char **iptr)
+{
+	FILE	*f;
+	char	*buf		= NULL;
+	char	cmd[BUFSIZ];
+	char	*ptr		= NULL;
+	size_t	len;
+
+	if (**iptr == '\0' || strchr(*iptr, ')') == NULL)
+		return (NULL);
+
+	strlcpy(cmd, *iptr, sizeof cmd);
+	cmd[strcspn(cmd, ")")] = '\0';
+
+	if ((f = popen(cmd, "r")) == NULL)
+		goto out;
+
+	if ((buf = fgetln(f, &len)) == NULL) {
+		pclose(f);
+		goto out;
+	}
+	if (buf[len - 1] == '\n') {
+		buf[len - 1] = '\0';
+		buf = xstrdup(buf);
+	} else {
+		ptr = xrealloc(ptr, 1, len + 1);
+		memcpy(ptr, buf, len);
+		ptr[len] = '\0';
+		buf = ptr;
+	}
+	pclose(f);
+
+out:
+	*iptr = (strchr(*iptr, ')') + 1);
+	return (buf);
 }
 
 size_t
