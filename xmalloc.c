@@ -1,4 +1,4 @@
-/* $Id: xmalloc.c,v 1.7 2009-01-14 19:29:32 nicm Exp $ */
+/* $Id: xmalloc.c,v 1.8 2009-01-29 19:24:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2004 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ xcalloc(size_t nmemb, size_t size)
         void	*ptr;
 
         if (size == 0 || nmemb == 0)
-	{ abort();fatalx("zero size");}
+		fatalx("zero size");
         if (SIZE_MAX / nmemb < size)
                 fatalx("nmemb * size > SIZE_MAX");
         if ((ptr = calloc(nmemb, size)) == NULL)
