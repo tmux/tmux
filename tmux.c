@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.103 2009-01-27 20:22:33 nicm Exp $ */
+/* $Id: tmux.c,v 1.104 2009-01-30 00:24:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -261,12 +261,16 @@ main(int argc, char **argv)
 	options_set_number(&global_window_options, "automatic-rename", 1);
 	options_set_number(&global_window_options, "mode-bg", 3);
 	options_set_number(&global_window_options, "mode-fg", 0);
-	options_set_number(&global_window_options, "mode-attr", GRID_ATTR_REVERSE);
+	options_set_number(
+	    &global_window_options, "mode-attr", GRID_ATTR_REVERSE);
 	options_set_number(&global_window_options, "mode-keys", MODEKEY_EMACS);
 	options_set_number(&global_window_options, "monitor-activity", 0);
 	options_set_number(&global_window_options, "utf8", 0);
 	options_set_number(&global_window_options, "xterm-keys", 0);
  	options_set_number(&global_window_options, "remain-on-exit", 0);
+	options_set_number(&global_window_options, "window-status-bg", 8);
+	options_set_number(&global_window_options, "window-status-fg", 8);
+	options_set_number(&global_window_options, "window-status-attr", 0);
 
 	if (cfg_file == NULL) {
 		home = getenv("HOME");

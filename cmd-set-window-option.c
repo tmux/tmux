@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.23 2009-01-27 20:22:33 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.24 2009-01-30 00:24:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -68,6 +68,9 @@ const struct set_option_entry set_window_option_table[NSETWINDOWOPTION] = {
 	{ "monitor-activity", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "remain-on-exit", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "utf8", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "window-status-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
+	{ "window-status-bg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "window-status-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "xterm-keys", SET_OPTION_FLAG, 0, 0, NULL },
 };
 
@@ -126,11 +129,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			return (-1);
 		}
 
-		if (options_remove(oo, entry->name) != 0) {
-			ctx->error(ctx,
-			    "can't unset option, not set: %s", entry->name);
-			return (-1);
-		}
+		options_remove(oo, entry->name);
 		ctx->info(ctx, "unset option: %s", entry->name);
 	} else {
 		switch (entry->type) {

@@ -77,16 +77,19 @@
   and n of width 0, then translate cursor indexes on-the-fly would need to
   adjust all cursor movement and also handle different width lines properly.
 - support other mouse modes (highlight etc) and use it in copy mode 
-
-(hopefully) for 0.7, in no particular order:
-- swap-pane-up, swap-pane-down (maybe move-pane-*)
-- move-pane (to window) (maybe break-pane?)
 - command: copy-buffer -s src-session -t dst-session -a src-index -b dst-index
   (copy from other session)
-- document -u flag to scroll-mode/copy-mode
+- swap-pane-up, swap-pane-down (maybe move-pane-*)
+- move-pane (to window) (maybe break-pane?)
+- $TMUX should contain socket path
+- rules to colour windows in status line based on name/title
+
+(hopefully) for 0.7, in no particular order:
 - key to switch to copy mode from scroll mode
+- attach should have a flag to create session if it doesn't exist
+- document -u flag to scroll-mode/copy-mode
 - document suspend-client
 - document command sequences
 - document find-window
 - document split-window -p and -l
-- attach should have a flag to create session if it doesn't exist
+- document window-status-{fg, bg, attr}

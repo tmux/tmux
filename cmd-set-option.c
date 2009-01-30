@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.57 2009-01-27 20:22:33 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.58 2009-01-30 00:24:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -125,11 +125,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			return (-1);
 		}
 
-		if (options_remove(oo, entry->name) != 0) {
-			ctx->error(ctx,
-			    "can't unset option, not set: %s", entry->name);
-			return (-1);
-		}
+		options_remove(oo, entry->name);
 		ctx->info(ctx, "unset option: %s", entry->name);
 	} else {
 		switch (entry->type) {

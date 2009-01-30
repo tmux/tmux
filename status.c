@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.69 2009-01-29 23:35:14 tcunha Exp $ */
+/* $Id: status.c,v 1.70 2009-01-30 00:24:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,9 +49,8 @@ status_redraw(struct client *c)
 	char		 	       *left, *right, *text, *ptr;
 	size_t				llen, rlen, offset, xx, yy, sy;
 	size_t				size, start, width;
-	struct grid_cell	        gc;
+	struct grid_cell	        stdgc, gc;
 	int				larrow, rarrow;
-	u_char				stdattr, revattr;
 
 	left = right = NULL;
 
@@ -68,12 +67,10 @@ status_redraw(struct client *c)
 
 	if (gettimeofday(&c->status_timer, NULL) != 0)
 		fatal("gettimeofday");
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.bg = options_get_number(&s->options, "status-fg");
-	gc.fg = options_get_number(&s->options, "status-bg");
-	gc.attr |= options_get_number(&s->options, "status-attr");
-	stdattr = gc.attr;
-	revattr = gc.attr ^ GRID_ATTR_REVERSE;
+	memcpy(&stdgc, &grid_default_cell, sizeof gc);
+	stdgc.bg = options_get_number(&s->options, "status-fg");
+	stdgc.fg = options_get_number(&s->options, "status-bg");
+	stdgc.attr |= options_get_number(&s->options, "status-attr");
 
 	yy = c->sy - 1;
 	if (yy == 0)
@@ -168,9 +165,9 @@ draw:
 	screen_write_start(&ctx, NULL, &c->status);
 	if (llen != 0) {
  		screen_write_cursormove(&ctx, 0, yy);
-		screen_write_puts(&ctx, &gc, "%s ", left);
+		screen_write_puts(&ctx, &stdgc, "%s ", left);
 		if (larrow)
-			screen_write_putc(&ctx, &gc, ' ');
+			screen_write_putc(&ctx, &stdgc, ' ');
 	} else {
 		if (larrow)
 			screen_write_cursormove(&ctx, 1, yy);
@@ -181,6 +178,7 @@ draw:
 	/* Draw each character in succession. */
 	offset = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
+		memcpy(&gc, &stdgc, sizeof gc);
 		text = status_print(s, wl, &gc);
 
 		if (larrow == 1 && offset < start) {
@@ -203,10 +201,9 @@ draw:
 				rarrow = -1;
 		}
 
-		gc.attr = stdattr;
 		if (offset < start + width) {
 			if (offset >= start) {
-				screen_write_putc(&ctx, &gc, ' ');
+				screen_write_putc(&ctx, &stdgc, ' ');
 			}
 			offset++;
 		}
@@ -216,38 +213,34 @@ draw:
 
 	/* Fill the remaining space if any. */
  	while (offset++ < xx)
-		screen_write_putc(&ctx, &gc, ' ');
+		screen_write_putc(&ctx, &stdgc, ' ');
 
 	/* Draw the last item. */
 	if (rlen != 0) {
 		screen_write_cursormove(&ctx, c->sx - rlen - 1, yy);
-		screen_write_puts(&ctx, &gc, " %s", right);
+		screen_write_puts(&ctx, &stdgc, " %s", right);
 	}
 
 	/* Draw the arrows. */
 	if (larrow != 0) {
+		memcpy(&gc, &stdgc, sizeof gc);
 		if (larrow == -1)
-			gc.attr = revattr;
-		else
-			gc.attr = stdattr;
+			gc.attr ^= GRID_ATTR_REVERSE;
 		if (llen != 0)
 			screen_write_cursormove(&ctx, llen + 1, yy);
 		else
 			screen_write_cursormove(&ctx, 0, yy);
 		screen_write_putc(&ctx, &gc, '<');
-		gc.attr = revattr;
 	}
 	if (rarrow != 0) {
+		memcpy(&gc, &stdgc, sizeof gc);
 		if (rarrow == -1)
-			gc.attr = revattr;
-		else
-			gc.attr = stdattr;
+			gc.attr ^= GRID_ATTR_REVERSE;
 		if (rlen != 0)
 			screen_write_cursormove(&ctx, c->sx - rlen - 2, yy);
 		else
 			screen_write_cursormove(&ctx, c->sx - 1, yy);
 		screen_write_putc(&ctx, &gc, '>');
-		gc.attr = stdattr;
 	}
 
 	goto out;
@@ -257,7 +250,7 @@ blank:
 	screen_write_start(&ctx, NULL, &c->status);
 	screen_write_cursormove(&ctx, 0, yy);
 	for (offset = 0; offset < c->sx; offset++)
-		screen_write_putc(&ctx, &gc, ' ');
+		screen_write_putc(&ctx, &stdgc, ' ');
 
 	goto out;
 
@@ -266,7 +259,7 @@ off:
 	 * Draw the real window last line. Necessary to wipe over message if
 	 * status is off. Not sure this is the right place for this.
 	 */
-	memcpy(&gc, &grid_default_cell, sizeof gc);
+	memcpy(&stdgc, &grid_default_cell, sizeof stdgc);
 	screen_write_start(&ctx, NULL, &c->status);
 
 	sy = 0;
@@ -279,7 +272,7 @@ off:
 	if (sy < c->sy) {
 		/* If the screen is too small, use blank. */
  		for (offset = 0; offset < c->sx; offset++)
- 			screen_write_putc(&ctx, &gc, ' ');
+ 			screen_write_putc(&ctx, &stdgc, ' ');
 	} else {
 		screen_write_copy(&ctx,
 		    sc, 0, sc->grid->hsize + screen_size_y(sc) - 1, c->sx, 1);
@@ -438,6 +431,17 @@ char *
 status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 {
 	char   *text, flag;
+	u_char	fg, bg, attr;
+
+	fg = options_get_number(&wl->window->options, "window-status-fg");
+	if (fg != 8)
+		gc->fg = fg;
+	bg = options_get_number(&wl->window->options, "window-status-bg");
+	if (bg != 8)
+		gc->bg = bg;
+	attr = options_get_number(&wl->window->options, "window-status-attr");
+	if (attr != 0)
+		gc->attr = attr;
 
 	flag = ' ';
  	if (wl == SLIST_FIRST(&s->lastw))

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.257 2009-01-29 19:26:53 nicm Exp $ */
+/* $Id: tmux.h,v 1.258 2009-01-30 00:24:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -459,8 +459,6 @@ struct options_entry {
 		OPTIONS_STRING,
 		OPTIONS_NUMBER,
 		OPTIONS_KEY,
-		OPTIONS_COLOURS,
-		OPTIONS_ATTRIBUTES
 	} type;
 	union {
 		char	*string;
@@ -912,7 +910,7 @@ struct set_option_entry {
 extern const struct set_option_entry set_option_table[];
 extern const struct set_option_entry set_window_option_table[];
 #define NSETOPTION 22
-#define NSETWINDOWOPTION 14
+#define NSETWINDOWOPTION 17
 
 /* Edit keys. */
 enum mode_key {
