@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.6 2009-01-27 23:10:18 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.7 2009-01-30 21:18:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -73,7 +73,6 @@ retry:
 		if (buf[i].kp_eproc.e_tdev != sb.st_rdev)
 			continue;
 		p = &buf[i].kp_proc;
-		//log_debug("XXX %d %s %d %d %d", i, p->p_comm, p->p_stat, p->p_estcpu, p->p_slptime);
 		if (bestp == NULL)
 			bestp = p;
 
