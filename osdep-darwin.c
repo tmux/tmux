@@ -1,4 +1,4 @@
-/* $Id: osdep-darwin.c,v 1.2 2009-01-26 22:57:19 nicm Exp $ */
+/* $Id: osdep-darwin.c,v 1.3 2009-01-30 20:14:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Joshua Elsasser <josh@elsasser.org>
@@ -39,7 +39,7 @@ get_argv0(int fd, __attribute__ ((unused)) char *tty)
 	struct kinfo_proc kp;
 	
 	if ((mib[3] = tcgetpgrp(fd)) == -1)
-		return (NULL)
+		return (NULL);
 
 	size = sizeof kp;
 	if (sysctl(mib, 4, &kp, &size, NULL, 0) == -1 ||
