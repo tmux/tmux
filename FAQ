@@ -164,3 +164,18 @@ exit (elinks, for some strange reason, sets it to the value of TERM):
         	STY= `which elinks` $*
 	        echo -ne \\033]0\;\\007;
 	}
+
+* What's the proper way to escape characters with #(command)?
+
+When using the character pair #(command), the command will be parsed twice.
+First when it's read by the configuration file, or the command-prompt parser,
+and another right before the command is passed to the shell by popen(3). As an
+example, to echo the string (test) to the status line, one could use single,
+or double-quotes (the meaning is the same as if in the shell):
+
+	set -g status-right "#(echo \\\\(test\\\\))"
+	set -g status-right '#(echo \\\(test\\\))'
+
+With the double-quotes, the string when is first parsed will be set to
+#(echo \\(test\\)), and then again parsed as echo \(test\) before passing the
+command to sh -c.

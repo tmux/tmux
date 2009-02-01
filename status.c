@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.70 2009-01-30 00:24:49 nicm Exp $ */
+/* $Id: status.c,v 1.71 2009-02-01 18:14:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -376,16 +376,37 @@ char *
 status_replace_popen(char **iptr)
 {
 	FILE	*f;
-	char	*buf		= NULL;
-	char	cmd[BUFSIZ];
-	char	*ptr		= NULL;
+	char	*buf, *cmd, *ptr;
+	int	lastesc;
 	size_t	len;
 
-	if (**iptr == '\0' || strchr(*iptr, ')') == NULL)
+	if (**iptr == '\0')
 		return (NULL);
+	if (**iptr == ')') {		/* no command given */
+		(*iptr)++;
+		return (NULL);
+	}
 
-	strlcpy(cmd, *iptr, sizeof cmd);
-	cmd[strcspn(cmd, ")")] = '\0';
+	buf = NULL;
+
+	cmd = xmalloc(strlen(*iptr) + 1);
+	len = 0;
+
+	lastesc = 0;
+	for (; **iptr != '\0'; (*iptr)++) {
+		if (!lastesc && **iptr == ')')
+			break;		/* unescaped ) is the end */
+		if (!lastesc && **iptr == '\\') {
+			lastesc = 1;
+			continue;	/* skip \ if not escaped */
+		}
+		lastesc = 0;
+		cmd[len++] = **iptr;
+	}
+	if (**iptr == '\0')		/* no terminating ) */
+		goto out;
+	(*iptr)++;			/* skip final ) */
+	cmd[len] = '\0';
 
 	if ((f = popen(cmd, "r")) == NULL)
 		goto out;
@@ -398,7 +419,7 @@ status_replace_popen(char **iptr)
 		buf[len - 1] = '\0';
 		buf = xstrdup(buf);
 	} else {
-		ptr = xrealloc(ptr, 1, len + 1);
+		ptr = xmalloc(len + 1);
 		memcpy(ptr, buf, len);
 		ptr[len] = '\0';
 		buf = ptr;
@@ -406,7 +427,7 @@ status_replace_popen(char **iptr)
 	pclose(f);
 
 out:
-	*iptr = (strchr(*iptr, ')') + 1);
+	xfree(cmd);
 	return (buf);
 }
 
