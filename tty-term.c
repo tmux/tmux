@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.8 2009-01-11 23:41:29 nicm Exp $ */
+/* $Id: tty-term.c,v 1.9 2009-02-01 18:11:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -134,7 +134,7 @@ tty_term_strip(const char *s)
 void
 tty_term_quirks(struct tty_term *term)
 {
-	if (strcmp(term->name, "rxvt") == 0) {
+	if (strncmp(term->name, "rxvt", 4) == 0) {
 		/* rxvt supports dch1 but some termcap files do not have it. */
 		if (!tty_term_has(term, TTYC_DCH1)) {
 			term->codes[TTYC_DCH1].type = TTYCODE_STRING;
