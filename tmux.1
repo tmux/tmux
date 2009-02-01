@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.73 2009-02-01 18:11:40 nicm Exp $
+.\" $Id: tmux.1,v 1.74 2009-02-01 18:24:25 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -398,8 +398,11 @@ is specified, it is used as the command; any %% in the template will be
 replaced by what is entered at the prompt.
 .It Xo Ic copy-mode
 .Op Fl t Ar target-window
+.Op Fl u
 .Xc
-Enter copy mode.
+Enter copy mode. The
+.Fl u
+option scrolls one page up.
 .It Xo Ic delete-buffer
 .Op Fl b Ar buffer-index
 .Op Fl t Ar target-session
@@ -662,8 +665,13 @@ The
 option appends to rather than overwriting the file.
 .It Xo Ic scroll-mode
 .Op Fl t Ar target-window
+.Op Fl u
 .Xc
-Enter scroll mode.
+Enter scroll mode. The
+.Fl u
+has the same meaning as in the
+.Ic copy-mode
+command.
 .It Xo Ic select-pane
 .Op Fl p Ar pane-index
 .Op Fl t Ar target-window
@@ -774,22 +782,6 @@ seconds of inactivity.
 The default is off (set to 0).
 This has no effect as a session option; it must be set as a global option using
 .Fl g .
-.It Ic message-bg Ar colour
-Set status line message background colour, where
-.Ar colour
-is one of:
-.Ic black ,
-.Ic red ,
-.Ic green ,
-.Ic yellow ,
-.Ic blue ,
-.Ic magenta ,
-.Ic cyan ,
-.Ic white
-or
-.Ic default .
-.It Ic message-fg Ar colour
-Set status line message foreground colour.
 .It Ic message-attr Ar attributes
 Set status line message attributes, where
 .Ar attributes
@@ -806,6 +798,22 @@ or a comma-delimited list of one or more of:
 .Ic hidden ,
 or
 .Ic italics .
+.It Ic message-bg Ar colour
+Set status line message background colour, where
+.Ar colour
+is one of:
+.Ic black ,
+.Ic red ,
+.Ic green ,
+.Ic yellow ,
+.Ic blue ,
+.Ic magenta ,
+.Ic cyan ,
+.Ic white
+or
+.Ic default .
+.It Ic message-fg Ar colour
+Set status line message foreground colour.
 .It Ic prefix Ar key
 Set the current prefix key.
 .It Ic repeat-time Ar number
@@ -834,12 +842,12 @@ variable is set.
 .Op Ic on | Ic off
 .Xc
 Show or hide the status line.
+.It Ic status-attr Ar attributes
+Set status line attributes.
 .It Ic status-bg Ar colour
 Set status line background colour.
 .It Ic status-fg Ar colour
 Set status line foreground colour.
-.It Ic status-attr Ar attributes
-Set status line attributes.
 .It Ic status-interval Ar interval
 Update the status bar every
 .Ar interval
@@ -946,12 +954,12 @@ from resizing a window to greater than
 or
 .Ar height .
 A value of zero restores the default unlimited setting.
+.It Ic mode-attr Ar attributes
+Set window modes attributes.
 .It Ic mode-bg Ar colour
 Set window modes background colour.
 .It Ic mode-fg Ar colour
 Set window modes foreground colour.
-.It Ic mode-attr Ar attributes
-Set window modes attributes.
 .It Xo Ic mode-keys
 .Op Ic vi | Ic emacs
 .Xc
@@ -1020,12 +1028,19 @@ Execute commands from
 .Ar path .
 .It Xo Ic split-window
 .Op Fl d
+.Oo
+.Fl l Ar lines | Fl p Ar percentage
+.Oc
 .Op Fl t Ar target-window
 .Op Ar command
 .Xc
 .D1 (alias: splitw )
-Creates a new window by splitting it vertically. All options have the same
-meaning as in the
+Creates a new window by splitting it vertically. The
+.Fl l
+and
+.Fl p
+options specify the size of the new window in lines, or as a percentage,
+respectively. All other options have the same meaning as in the
 .Ic new-window
 command.
 .Pp
