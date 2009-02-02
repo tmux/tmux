@@ -1,4 +1,4 @@
-/* $Id: osdep-linux.c,v 1.2 2009-01-26 22:57:19 nicm Exp $ */
+/* $Id: osdep-linux.c,v 1.3 2009-02-02 15:46:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,6 +56,7 @@ get_argv0(int fd, unused char *tty)
 	if (buf != NULL)
 		buf[len] = '\0';
 
+	fclose(f);
 	return (buf);
 }
 
