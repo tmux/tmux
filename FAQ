@@ -14,13 +14,14 @@ tmux offers several advantages over screen:
 - multiple paste buffers;
 - choice of vim or emacs key layouts;
 - an option to limit the window size;
+- a more usable status line syntax, with the ability to display the first line
+  of output of a specific command;
 - a cleaner, modern, easily extended, BSD-licensed codebase.
 
 There are still a few features screen includes that tmux omits:
 
 - builtin serial and telnet support; this is bloat and is unlikely to be added
   to tmux;
-- a more customisable status line, albeit with an awful syntax;
 - wider platform support, for example IRIX and AIX, and for odd terminals.
 - better UTF-8 support.
 
