@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.84 2009-01-25 19:00:10 tcunha Exp $ */
+/* $Id: cmd.c,v 1.85 2009-02-03 17:21:19 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,6 +32,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_choose_window_entry,
 	&cmd_clock_mode_entry,
 	&cmd_command_prompt_entry,
+	&cmd_copy_buffer_entry,
 	&cmd_copy_mode_entry,
 	&cmd_delete_buffer_entry,
 	&cmd_detach_client_entry,

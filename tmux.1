@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.74 2009-02-01 18:24:25 tcunha Exp $
+.\" $Id: tmux.1,v 1.75 2009-02-03 17:21:19 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -396,6 +396,15 @@ If
 .Ar template
 is specified, it is used as the command; any %% in the template will be
 replaced by what is entered at the prompt.
+.It Xo Ic copy-buffer
+.Op Fl a Ar src-index
+.Op Fl b Ar dst-index
+.Op Fl s Ar src-session
+.Op Fl t Ar dst-session
+.Xc
+.D1 (alias: Ic copyb)
+Copies a session paste buffer to another session. If no sessions are
+specified, the current one is used instead.
 .It Xo Ic copy-mode
 .Op Fl t Ar target-window
 .Op Fl u

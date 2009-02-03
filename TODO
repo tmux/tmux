@@ -77,8 +77,6 @@
   and n of width 0, then translate cursor indexes on-the-fly would need to
   adjust all cursor movement and also handle different width lines properly.
 - support other mouse modes (highlight etc) and use it in copy mode 
-- command: copy-buffer -s src-session -t dst-session -a src-index -b dst-index
-  (copy from other session)
 - swap-pane-up, swap-pane-down (maybe move-pane-*)
 - move-pane (to window) (maybe break-pane?)
 - $TMUX should contain socket path
