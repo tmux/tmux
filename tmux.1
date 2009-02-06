@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.75 2009-02-03 17:21:19 tcunha Exp $
+.\" $Id: tmux.1,v 1.76 2009-02-06 18:38:30 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -403,11 +403,11 @@ replaced by what is entered at the prompt.
 .Op Fl t Ar dst-session
 .Xc
 .D1 (alias: Ic copyb)
-Copies a session paste buffer to another session. If no sessions are
-specified, the current one is used instead.
+Copy a session paste buffer to another session. If no sessions are specified,
+the current one is used instead.
 .It Xo Ic copy-mode
-.Op Fl t Ar target-window
 .Op Fl u
+.Op Fl t Ar target-window
 .Xc
 Enter copy mode. The
 .Fl u
@@ -432,6 +432,17 @@ Detach the current client if bound to a key, or the specified client with
 .Xc
 .D1 (alias: Ic downp )
 Move down a pane.
+.It Xo Ic find-window
+.Op Fl t Ar target-window
+.Ar match-string
+.Xc
+.D1 (alias: Ic findw )
+Search for
+.Ar match-string
+in window names, titles, and visible content (but not history). If only one
+window is matched, it'll be automatically selected, otherwise a choice list is
+shown. This command only works from inside
+.Nm .
 .It Xo Ic has-session
 .Op Fl t Ar target-session
 .Xc
@@ -673,8 +684,8 @@ The
 .Fl a
 option appends to rather than overwriting the file.
 .It Xo Ic scroll-mode
-.Op Fl t Ar target-window
 .Op Fl u
+.Op Fl t Ar target-window
 .Xc
 Enter scroll mode. The
 .Fl u
@@ -997,6 +1008,12 @@ command.
 Instructs
 .Nm
 to expect UTF-8 sequences to appear in this window.
+.It Ic window-status-attr Ar attributes
+Set status line attributes for a single window.
+.It Ic window-status-bg Ar colour
+Set status line background colour for a single window.
+.It Ic window-status-fg Ar colour
+Set status line foreground colour for a single window.
 .It Xo xterm-keys
 .Op Ic on | Ic off
 .Xc
@@ -1072,6 +1089,11 @@ The panes are indexed from top (0) to bottom, with no numbers skipped.
 Start the
 .Nm
 server, if not already running, without creating any sessions.
+.It Xo Ic suspend-client
+.Op Fl c target-client
+.Xc
+.D1 (alias: Ic suspendc )
+Suspend a client by sending SIGTSTP (tty stop).
 .It Xo Ic swap-window
 .Op Fl d
 .Op Fl s Ar src-window

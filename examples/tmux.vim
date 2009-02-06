@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: tmux(1) configuration file
 " Maintainer: Tiago Cunha <me@tiagocunha.org>
-" Last Change: $Date: 2009-02-03 17:21:19 $
+" Last Change: $Date: 2009-02-06 18:38:30 $
 
 if version < 600
 	syntax clear
@@ -34,7 +34,8 @@ syn keyword tmuxCmds pass set-password saveb save-buffer downp down-pane killp
 syn keyword tmuxCmds kill-pane resizep-down resize-pane-down resizep-up
 syn keyword tmuxCmds resize-pane-up selectp select-pane splitw split-window
 syn keyword tmuxCmds upp up-pane choose-session choose-window loadb load-buffer
-syn keyword tmuxCmds copyb copy-buffer
+syn keyword tmuxCmds copyb copy-buffer suspendc suspend-client findw
+syn keyword tmuxCmds find-window
 
 syn keyword tmuxOptsSet prefix status status-fg status-bg bell-action
 syn keyword tmuxOptsSet default-command history-limit status-left status-right
@@ -46,7 +47,8 @@ syn keyword tmuxOptsSet message-attr status-attr
 syn keyword tmuxOptsSetw monitor-activity aggressive-resize force-width
 syn keyword tmuxOptsSetw force-height remain-on-exit uft8 mode-fg mode-bg
 syn keyword tmuxOptsSetw mode-keys clock-mode-colour clock-mode-style
-syn keyword tmuxOptsSetw xterm-keys mode-attr
+syn keyword tmuxOptsSetw xterm-keys mode-attr window-status-attr
+syn keyword tmuxOptsSetw window-status-bg window-status-fg
 
 syn keyword tmuxTodo FIXME NOTE TODO XXX contained
 

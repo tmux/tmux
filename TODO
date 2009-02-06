@@ -85,7 +85,4 @@
 (hopefully) for 0.7, in no particular order:
 - key to switch to copy mode from scroll mode
 - attach should have a flag to create session if it doesn't exist
-- document suspend-client
 - document command sequences
-- document find-window
-- document window-status-{fg, bg, attr}
