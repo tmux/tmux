@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.76 2009-02-06 18:38:30 tcunha Exp $
+.\" $Id: tmux.1,v 1.77 2009-02-06 19:36:17 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -1054,9 +1054,9 @@ Execute commands from
 .Ar path .
 .It Xo Ic split-window
 .Op Fl d
-.Oo
-.Fl l Ar lines | Fl p Ar percentage
-.Oc
+.Oo Fl l
+.Ar lines |
+.Fl p Ar percentage Oc
 .Op Fl t Ar target-window
 .Op Ar command
 .Xc
