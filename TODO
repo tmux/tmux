@@ -81,8 +81,11 @@
 - move-pane (to window) (maybe break-pane?)
 - $TMUX should contain socket path
 - rules to colour windows in status line based on name/title
-
-(hopefully) for 0.7, in no particular order:
 - key to switch to copy mode from scroll mode
 - attach should have a flag to create session if it doesn't exist
+- key to switch to copy mode from scroll mode
+- attach should have a flag to create session if it doesn't exist
+
+(hopefully) for 0.7, in no particular order:
 - document command sequences
+- document automatic-rename
