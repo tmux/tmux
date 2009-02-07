@@ -1,4 +1,4 @@
-/* $Id: osdep-freebsd.c,v 1.4 2009-01-27 23:10:18 nicm Exp $ */
+/* $Id: osdep-freebsd.c,v 1.5 2009-02-07 19:16:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,6 +35,11 @@ char	*get_argv0(int, char *);
 char	*get_proc_argv0(pid_t);
 
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
+
+#define is_runnable(p) \
+	((p)->ki_stat == SRUN || (p)->ki_stat == SIDL)
+#define is_stopped(p) \
+	((p)->ki_stat == SSTOP || (p)->ki_stat == SZOMB || (p)->ki_stat == SDEAD)
 
 char *
 get_argv0(__attribute__ ((unused)) int fd, char *tty)
@@ -78,8 +83,11 @@ retry:
 		if (bestp == NULL)
 			bestp = p;
 
-		if (p->ki_stat != SRUN && p->ki_stat != SIDL)
-			continue;
+		if (is_runnable(p) && !is_runnable(bestp))
+			bestp = p;
+		if (!is_stopped(p) && is_stopped(bestp))
+			bestp = p;
+
 		if (p->ki_estcpu < bestp->ki_estcpu)
 			continue;
 		if (p->ki_slptime > bestp->ki_slptime)
