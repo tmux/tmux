@@ -1,4 +1,4 @@
-/* $Id: osdep-darwin.c,v 1.3 2009-01-30 20:14:35 nicm Exp $ */
+/* $Id: osdep-darwin.c,v 1.4 2009-02-07 19:41:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Joshua Elsasser <josh@elsasser.org>
@@ -22,6 +22,8 @@
 #include <sys/sysctl.h>
 
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 char	*get_argv0(int, char *);
 

@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.9 2009-02-07 19:24:50 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.10 2009-02-07 19:41:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -92,7 +92,7 @@ retry:
 		if (p->p_flag & P_SINTR && !(bestp->p_flag & P_SINTR))
 			bestp = p;
 		if (LIST_FIRST(&p->p_children) == NULL &&
-		    LIST_FIRST(&bestp->p_children) != NULL)
+		    LIST_FIRST(&bestp->p_children) != NULL) /* XXX ugh */
 			bestp = p;
 	}	
 	if (bestp != NULL) {
