@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.79 2009-02-07 08:22:11 nicm Exp $
+.\" $Id: tmux.1,v 1.80 2009-02-07 08:35:26 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -980,6 +980,24 @@ current window, rather than the smallest session to which it is attached.
 The window may resize when the current window is changed on another sessions;
 this option is good for full-screen programs which support SIGWINCH and poor for
 interactive programs such as shells.
+.It Xo Ic automatic-rename
+.Op Ic on | Ic off
+.Xc
+Control automatic window renaming.
+When this setting is enabled,
+.Nm
+will attempt - on supported platforms - to rename the window to reflect the
+command currently running in it.
+This flag is automatically disabled for an individual window when a name
+is specified at creation with
+.Ic new-window or
+.Ic new-session ,
+or later with
+.Ic rename-window .
+It may be switched off globally with:
+.Bd -literal -offset indent
+set-window-option -g automatic-rename off
+.Ed
 .It Ic clock-mode-colour Ar colour
 Set clock colour.
 .It Xo Ic clock-mode-style

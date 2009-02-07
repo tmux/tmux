@@ -70,21 +70,19 @@
   errors better
 - would be nice if tmux could be the shell (tmux attach, but hard link to tmux
   binary as "tmuxsh" or wrapper script?) -- problems with tty dev permeissions
-- 88 colour support; new grid cell flag, and 256<->88 88<->16 translation tables
 - UTF-8 combining characters don't work. store in one cell - pointer to table
   of chains. bit of a hack and would mean max of 65536 per screen. OR maybe
   utf8 should work differently; could store as multiple cells, 1 of width >0
   and n of width 0, then translate cursor indexes on-the-fly would need to
   adjust all cursor movement and also handle different width lines properly.
 - support other mouse modes (highlight etc) and use it in copy mode 
+
+(hopefully) for 0.8, in no particular order:
+- key to switch to copy mode from scroll mode
+- attach should have a flag to create session if it doesn't exist
 - swap-pane-up, swap-pane-down (maybe move-pane-*)
 - move-pane (to window) (maybe break-pane?)
 - $TMUX should contain socket path
-- rules to colour windows in status line based on name/title
-- key to switch to copy mode from scroll mode
-- attach should have a flag to create session if it doesn't exist
-- key to switch to copy mode from scroll mode
-- attach should have a flag to create session if it doesn't exist
-
-(hopefully) for 0.7, in no particular order:
-- document automatic-rename
+- 88 colour support; new grid cell flag, and 256<->88 88<->16 translation tables
+- some fix for SF feature request 2527847 - now remain-by-default has gone
+  cannot control it per-session
