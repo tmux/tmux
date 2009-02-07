@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.8 2009-02-07 19:16:25 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.9 2009-02-07 19:24:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -85,16 +85,15 @@ retry:
 			bestp = p;
 		if (!is_stopped(p) && is_stopped(bestp))
 			bestp = p;
-
-		if (p->p_estcpu < bestp->p_estcpu)
-			continue;
-		if (p->p_slptime > bestp->p_slptime)
-			continue;
-		if (!(p->p_flag & P_SINTR) && bestp->p_flag & P_SINTR)
-			continue;
-		if (LIST_FIRST(&p->p_children) != NULL)
-			continue;
-		bestp = p;
+		if (p->p_estcpu > bestp->p_estcpu)
+			bestp = p;
+		if (p->p_slptime < bestp->p_slptime)
+			bestp = p;
+		if (p->p_flag & P_SINTR && !(bestp->p_flag & P_SINTR))
+			bestp = p;
+		if (LIST_FIRST(&p->p_children) == NULL &&
+		    LIST_FIRST(&bestp->p_children) != NULL)
+			bestp = p;
 	}	
 	if (bestp != NULL) {
 		procname = get_proc_argv0(bestp->p_pid);
