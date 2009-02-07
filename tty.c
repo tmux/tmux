@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.64 2009-01-28 19:52:21 nicm Exp $ */
+/* $Id: tty.c,v 1.65 2009-02-07 00:05:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -539,6 +539,7 @@ tty_cmd_linefeed(struct tty *tty, struct screen *s, u_int oy, unused va_list ap)
 	tty_cursor(tty, s->cx, s->cy, oy);
 
 	tty_putc(tty, '\n');
+	tty->cy++;
 }
 
 void
