@@ -89,4 +89,5 @@
 - if the child is suspended in window with eg ^Z it should be restarted, or
   ^Z should be ignored
 - look at osdep-openbsd/freebsd code again to try and make it more accurate
-  and more consistent
+  and more consistent. should just pull pgrp members?
+- clear window title on exit
