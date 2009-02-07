@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.69 2009-02-03 17:21:19 tcunha Exp $
+# $Id: GNUmakefile,v 1.70 2009-02-07 08:36:34 nicm Exp $
 
 .PHONY: clean
 
@@ -7,7 +7,7 @@ VERSION= 0.7
 
 DATE= $(shell date +%Y%m%d-%H%M)
 
-FDEBUG= 1
+#FDEBUG= 1
 
 META?= \002
 
