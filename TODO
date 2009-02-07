@@ -87,5 +87,4 @@
 - attach should have a flag to create session if it doesn't exist
 
 (hopefully) for 0.7, in no particular order:
-- document command sequences
 - document automatic-rename

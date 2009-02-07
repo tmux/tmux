@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.77 2009-02-06 19:36:17 tcunha Exp $
+.\" $Id: tmux.1,v 1.78 2009-02-07 08:20:54 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -325,6 +325,15 @@ When the argument does not contain a colon (:),
 first attempts to parse it as window index; if that fails, an attempt is made
 to match a session or client name.
 .Pp
+Multiple commands may be specified together as part of a 
+.Em command sequence .
+Each command should be separated by spaces and a semicolon
+.Eo ( Ql \&  \&; \&  Ec ) ;
+commands are executed sequentially from left to right.
+A literal semicolon may be included by escaping it with a backslash (for
+example, when specifying a command sequence to
+.Ic bind-key ) .
+.Pp
 Examples include:
 .Pp
 .Bd -literal -offset indent
@@ -333,6 +342,10 @@ refresh-client -t/dev/ttyp2
 rename-session -tfirst newname
 
 set-window-option -t:0 monitor-activity on
+
+new-window ; split-window -d
+
+bind-key D detach-client \e\; lock-server
 .Ed
 .Pp
 The following commands are available:
