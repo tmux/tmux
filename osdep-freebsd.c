@@ -1,4 +1,4 @@
-/* $Id: osdep-freebsd.c,v 1.10 2009-02-08 12:33:03 nicm Exp $ */
+/* $Id: osdep-freebsd.c,v 1.11 2009-02-08 13:03:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -81,8 +81,10 @@ retry:
 		if (buf[i].ki_tdev != sb.st_rdev)
 			continue;
 		p = &buf[i];
-		if (bestp == NULL)
+		if (bestp == NULL) {
 			bestp = p;
+			continue;
+		}
 
 		if (is_runnable(p) && !is_runnable(bestp))
 			bestp = p;
@@ -130,7 +132,7 @@ char *
 get_proc_argv0(pid_t pid)
 {
 	int	mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_ARGS, 0 };
-        size_t	size;
+        size_t	size, size2;
 	char   *args, *args2, *procname;
 
 	mib[3] = pid;
@@ -143,12 +145,14 @@ get_proc_argv0(pid_t pid)
 		if ((args2 = realloc(args, size)) == NULL)
 			break;
 		args = args2;
-		if (sysctl(mib, 4, args, &size, NULL, 0) == -1) {
+		size2 = size;
+		if (sysctl(mib, 4, args, &size2, NULL, 0) == -1) {
 			if (errno == ENOMEM)
 				continue;
 			break;
 		}
-		procname = strdup(args);
+		if (size2 > 0 && *args != '\0')
+			procname = strdup(args);
 		break;
 	}
 	free(args);
