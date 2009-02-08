@@ -1,4 +1,4 @@
-/* $Id: osdep-freebsd.c,v 1.9 2009-02-08 12:31:02 nicm Exp $ */
+/* $Id: osdep-freebsd.c,v 1.10 2009-02-08 12:33:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,9 +42,9 @@ char	*get_proc_argv0(pid_t);
 	((p)->ki_stat == SSTOP || (p)->ki_stat == SZOMB)
 
 char *
-get_argv0(__attribute__ ((unused)) int fd, char *tty)
+get_argv0(int fd, char *tty)
 {
-	int		 mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_TTY, 0 };
+	int		 mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PGRP, 0 };
 	struct stat	 sb;
 	size_t		 len;
 	struct kinfo_proc *buf, *newbuf, *p, *bestp;
@@ -55,7 +55,8 @@ get_argv0(__attribute__ ((unused)) int fd, char *tty)
 
 	if (stat(tty, &sb) == -1)
 		return (NULL);
-	mib[3] = sb.st_rdev;
+	if ((mib[3] = tcgetpgrp(fd)) == -1)
+		return (NULL);
 
 retry:
 	if (sysctl(mib, nitems(mib), NULL, &len, NULL, 0) == -1)
