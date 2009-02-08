@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.81 2009-02-08 16:11:52 nicm Exp $
+.\" $Id: tmux.1,v 1.82 2009-02-08 18:41:03 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -654,7 +654,7 @@ Rename the session to
 .D1 (alias: Ic renamew )
 Rename the current window, or the window at
 .Ar target-window
-if specifed, to
+if specified, to
 .Ar new-name .
 .It Xo Ic resize-pane-down
 .Op Fl p Ar pane-index
@@ -679,8 +679,8 @@ is given in lines (the default is 1).
 .Xc
 .D1 (alias: Ic respawnw )
 Reactive a window in which the command has exited (see the
-.Ic remain-in-exit
-windowoption).
+.Ic remain-on-exit
+window option).
 If
 .Ar command
 is not given, the command used when the window was created is executed.
@@ -858,7 +858,7 @@ Set the current prefix key.
 Allow multiple commands to be entered without pressing the prefix-key again
 in the specified
 .Ar number
-miliseconds (the default is 500).
+milliseconds (the default is 500).
 It only applies to
 .Ic up-pane ,
 .Ic down-pane ,
