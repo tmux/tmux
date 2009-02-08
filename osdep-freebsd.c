@@ -1,4 +1,4 @@
-/* $Id: osdep-freebsd.c,v 1.8 2009-02-07 19:33:07 nicm Exp $ */
+/* $Id: osdep-freebsd.c,v 1.9 2009-02-08 12:31:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -85,13 +85,31 @@ retry:
 
 		if (is_runnable(p) && !is_runnable(bestp))
 			bestp = p;
+		else if (!is_runnable(p) && is_runnable(bestp))
+			continue;
+
 		if (!is_stopped(p) && is_stopped(bestp))
 			bestp = p;
+		else if (is_stopped(p) && !is_stopped(bestp))
+			continue;
+
 		if (p->ki_estcpu > bestp->ki_estcpu)
 			bestp = p;
+		else if (p->ki_estcpu < bestp->ki_estcpu)
+			continue;
+
 		if (p->ki_slptime < bestp->ki_slptime)
 			bestp = p;
-		/* XXX children? */
+		else if (p->ki_slptime > bestp->ki_slptime)
+			continue;
+
+		if (strcmp(p->ki_comm, p->ki_comm) < 0)
+			bestp = p;
+		else if (strcmp(p->ki_comm, p->ki_comm) > 0)
+			continue;
+
+		if (p->ki_pid > bestp->ki_pid)
+			bestp = p;
 	}
 	if (bestp != NULL) {
 		procname = get_proc_argv0(bestp->ki_pid);

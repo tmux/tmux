@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.10 2009-02-07 19:41:35 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.11 2009-02-08 12:31:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,9 +39,9 @@ char	*get_argv0(int, char *);
 char	*get_proc_argv0(pid_t);
 
 char *
-get_argv0(__attribute__ ((unused)) int fd, char *tty)
+get_argv0(int fd, char *tty)
 {
-	int		 mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_TTY, 0 };
+	int		 mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PGRP, 0 };
 	struct stat	 sb;
 	size_t		 len;
 	struct kinfo_proc *buf, *newbuf;
@@ -53,7 +53,8 @@ get_argv0(__attribute__ ((unused)) int fd, char *tty)
 
 	if (stat(tty, &sb) == -1)
 		return (NULL);
-	mib[3] = sb.st_rdev;
+	if ((mib[3] = tcgetpgrp(fd)) == -1)
+		return (NULL);
 
 retry:
 	if (sysctl(mib, nitems(mib), NULL, &len, NULL, 0) == -1)
@@ -78,21 +79,49 @@ retry:
 		if (buf[i].kp_eproc.e_tdev != sb.st_rdev)
 			continue;
 		p = &buf[i].kp_proc;
-		if (bestp == NULL)
+		if (bestp == NULL) {
 			bestp = p;
+			continue;
+		}
 
 		if (is_runnable(p) && !is_runnable(bestp))
 			bestp = p;
+		else if (!is_runnable(p) && is_runnable(bestp))
+			continue;
+
 		if (!is_stopped(p) && is_stopped(bestp))
 			bestp = p;
+		else if (is_stopped(p) && !is_stopped(bestp))
+			continue;
+
 		if (p->p_estcpu > bestp->p_estcpu)
 			bestp = p;
+		else if (p->p_estcpu < bestp->p_estcpu)
+			continue;
+
 		if (p->p_slptime < bestp->p_slptime)
 			bestp = p;
+		else if (p->p_slptime > bestp->p_slptime)
+			continue;
+
 		if (p->p_flag & P_SINTR && !(bestp->p_flag & P_SINTR))
 			bestp = p;
+		else if (!(p->p_flag & P_SINTR) && bestp->p_flag & P_SINTR)
+			continue;
+
 		if (LIST_FIRST(&p->p_children) == NULL &&
 		    LIST_FIRST(&bestp->p_children) != NULL) /* XXX ugh */
+			bestp = p;
+		else if (LIST_FIRST(&p->p_children) != NULL &&
+		    LIST_FIRST(&bestp->p_children) == NULL)
+			continue;
+
+		if (strcmp(p->p_comm, p->p_comm) < 0)
+			bestp = p;
+		else if (strcmp(p->p_comm, p->p_comm) > 0)
+			continue;
+
+		if (p->p_pid > bestp->p_pid)
 			bestp = p;
 	}	
 	if (bestp != NULL) {
