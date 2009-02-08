@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.11 2009-01-18 14:40:48 nicm Exp $ */
+/* $Id: cmd-string.c,v 1.12 2009-02-08 16:38:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,7 +56,7 @@ int
 cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 {
 	size_t		p;
-	int		ch, argc, rval;
+	int		ch, argc, rval, have_arg;
 	char	      **argv, *buf, *t, *u;
 	size_t		len;
 
@@ -77,6 +77,8 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 	buf = NULL;
 	len = 0;
 
+	have_arg = 0;
+
 	*cause = NULL;
 
 	*cmdlist = NULL;
@@ -92,6 +94,8 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			buf = xrealloc(buf, 1, len + strlen(t) + 1);
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
+
+			have_arg = 1;
 			break;
 		case '"':
 			if ((t = cmd_string_string(s, &p, '"', 1)) == NULL)
@@ -99,6 +103,8 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			buf = xrealloc(buf, 1, len + strlen(t) + 1);
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
+
+			have_arg = 1;
 			break;
 		case '$':
 			if ((t = cmd_string_variable(s, &p)) == NULL)
@@ -106,6 +112,8 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			buf = xrealloc(buf, 1, len + strlen(t) + 1);
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
+
+			have_arg = 1;
 			break;
 		case '#':
 			/* Comment: discard rest of line. */
@@ -115,7 +123,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 		case EOF:
 		case ' ':
 		case '\t':
- 			if (len != 0) {
+ 			if (have_arg) {
 				buf = xrealloc(buf, 1, len + 1);
 				buf[len] = '\0';
 
@@ -124,6 +132,8 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 
 				buf = NULL;
 				len = 0;
+
+				have_arg = 0;
 			}
 
 			if (ch != EOF)
@@ -143,6 +153,8 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 
 			buf = xrealloc(buf, 1, len + 1);
 			buf[len++] = ch;
+
+			have_arg = 1;
 			break;
 		}
 	}

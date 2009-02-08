@@ -1,5 +1,7 @@
 08 February 2009
 
+* Don't treat empty arguments ("") differently when parsing configuration
+  file/command prompt rather than command line.
 * tmux 0.7 released.
 
 03 February 2009
@@ -1083,7 +1085,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.248 2009-02-08 14:11:37 nicm Exp $
+$Id: CHANGES,v 1.249 2009-02-08 16:38:19 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
