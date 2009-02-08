@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.105 2009-02-08 16:11:26 nicm Exp $ */
+/* $Id: tmux.c,v 1.106 2009-02-08 16:26:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -398,7 +398,7 @@ main(int argc, char **argv)
 		}
 
 		if (buffer_poll(&pfd, cctx.srv_in, cctx.srv_out) != 0)
-			fatalx("lost server");
+			goto out;
 
 	restart:
 		if (BUFFER_USED(cctx.srv_in) < sizeof hdr)
