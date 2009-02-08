@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.104 2009-01-30 00:24:49 nicm Exp $ */
+/* $Id: tmux.c,v 1.105 2009-02-08 16:11:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,7 +17,6 @@
  */
 
 #include <sys/types.h>
-#include <sys/wait.h>
 
 #include <errno.h>
 #include <pwd.h>
@@ -46,6 +45,7 @@ const char	*_malloc_options = "AJX";
 volatile sig_atomic_t sigwinch;
 volatile sig_atomic_t sigterm;
 volatile sig_atomic_t sigcont;
+volatile sig_atomic_t sigchld;
 
 char		*cfg_file;
 struct options	 global_options;
@@ -103,7 +103,7 @@ sighandler(int sig)
 		sigterm = 1;
 		break;
 	case SIGCHLD:
-		waitpid(WAIT_ANY, NULL, WNOHANG);
+		sigchld = 1;
 		break;
 	case SIGCONT:
 		sigcont = 1;

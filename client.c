@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.42 2009-01-21 22:47:31 nicm Exp $ */
+/* $Id: client.c,v 1.43 2009-02-08 16:11:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,6 +21,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
+#include <sys/wait.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -142,6 +143,10 @@ client_main(struct client_ctx *cctx)
 	error = NULL;
 	xtimeout = INFTIM;
 	while (!sigterm) {
+		if (sigchld) {
+			waitpid(WAIT_ANY, NULL, WNOHANG);
+			sigchld = 0;
+		}
 		if (sigwinch)
 			client_handle_winch(cctx);
 		if (sigcont) {

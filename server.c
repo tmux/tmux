@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.116 2009-01-29 20:13:12 nicm Exp $ */
+/* $Id: server.c,v 1.117 2009-02-08 16:11:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,6 +21,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
+#include <sys/wait.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -44,6 +45,7 @@ struct clients	 clients;
 
 int		 server_main(const char *, int);
 void		 server_shutdown(void);
+void		 server_child_signal(void);
 void		 server_fill_windows(struct pollfd **);
 void		 server_handle_windows(struct pollfd **);
 void		 server_fill_clients(struct pollfd **);
@@ -230,6 +232,12 @@ server_main(const char *srv_path, int srv_fd)
 		if (sigterm)
 			server_shutdown();
 
+		/* Handle child exit. */
+		if (sigchld) {
+			server_child_signal();
+			sigchld = 0;
+		}
+
 		/* Initialise pollfd array. */
 		nfds = 1;
 		for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
@@ -356,6 +364,44 @@ server_shutdown(void)
 		c = ARRAY_ITEM(&clients, i);
 		if (c != NULL)
 			server_write_client(c, MSG_SHUTDOWN, NULL, 0);
+	}
+}
+
+/* Handle SIGCHLD. */
+void
+server_child_signal(void)
+{
+	struct window		*w;
+	struct window_pane	*wp;
+	int		 	 status;
+	pid_t		 	 pid;
+	u_int		 	 i;
+
+	for (;;) {
+		switch (pid = waitpid(WAIT_ANY, &status, WNOHANG|WUNTRACED)) {
+		case -1:
+			if (errno == ECHILD)
+				return;
+			fatal("waitpid");
+		case 0:
+			return;
+		}
+		if (!WIFSTOPPED(status))
+			continue;
+		if (WSTOPSIG(status) == SIGTTIN || WSTOPSIG(status) == SIGTTOU)
+			continue;
+
+		for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+			w = ARRAY_ITEM(&windows, i);
+			if (w == NULL)
+				continue;
+			TAILQ_FOREACH(wp, &w->panes, entry) {
+				if (wp->pid == pid) {
+					if (killpg(pid, SIGCONT) != 0)
+						kill(pid, SIGCONT);
+				}
+			}
+		}
 	}
 }
 	

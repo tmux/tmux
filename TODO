@@ -86,6 +86,4 @@
 - 88 colour support; new grid cell flag, and 256<->88 88<->16 translation tables
 - some fix for SF feature request 2527847 - now remain-by-default has gone
   cannot control it per-session
-- if the child is suspended in window with eg ^Z it should be restarted, or
-  ^Z should be ignored
 - clear window title on exit

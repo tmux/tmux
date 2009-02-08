@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.259 2009-02-03 17:21:19 tcunha Exp $ */
+/* $Id: tmux.h,v 1.260 2009-02-08 16:11:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -585,10 +585,12 @@ struct window_pane {
 
 	int		 flags;
 #define PANE_HIDDEN 0x1
+#define PANE_RESTART 0x2
 	
 	char		*cmd;
 	char		*cwd;
 
+	pid_t		 pid;
 	int		 fd;
 	char		 tty[TTY_NAME_MAX];
 	struct buffer	*in;
@@ -610,7 +612,6 @@ TAILQ_HEAD(window_panes, window_pane);
 struct window {
 	char		*name;
 	struct timeval	 name_timer;
-	pid_t		 pgrp;
 
 	struct window_pane *active;	
 	struct window_panes panes;
@@ -974,6 +975,7 @@ char   *fgetln(FILE *, size_t *);
 extern volatile sig_atomic_t sigwinch;
 extern volatile sig_atomic_t sigterm;
 extern volatile sig_atomic_t sigcont;
+extern volatile sig_atomic_t sigchld;
 extern struct options global_options;
 extern struct options global_window_options;
 extern char	*cfg_file;

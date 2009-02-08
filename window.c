@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.64 2009-01-28 19:52:21 nicm Exp $ */
+/* $Id: window.c,v 1.65 2009-02-08 16:11:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -213,7 +213,6 @@ window_create(const char *name, const char *cmd, const char *cwd,
 
 	TAILQ_INIT(&w->panes);
 	w->active = NULL;
-	w->pgrp = -1;
 
 	w->sx = sx;
 	w->sy = sy;
@@ -562,14 +561,13 @@ window_pane_spawn(struct window_pane *wp,
 	ws.ws_col = screen_size_x(&wp->base);
 	ws.ws_row = screen_size_y(&wp->base);
 
-	wp->window->pgrp = -1;
 	if (gettimeofday(&wp->window->name_timer, NULL) != 0)
 		fatal("gettimeofday");
 	tv.tv_sec = 0;
 	tv.tv_usec = NAME_INTERVAL * 1000L;
 	timeradd(&wp->window->name_timer, &tv, &wp->window->name_timer);
 
- 	switch (forkpty(&wp->fd, wp->tty, NULL, &ws)) {
+ 	switch (wp->pid = forkpty(&wp->fd, wp->tty, NULL, &ws)) {
 	case -1:
 		wp->fd = -1;
 		xasprintf(cause, "%s: %s", cmd, strerror(errno));
