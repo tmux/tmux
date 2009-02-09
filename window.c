@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.65 2009-02-08 16:11:26 nicm Exp $ */
+/* $Id: window.c,v 1.66 2009-02-09 18:08:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -235,6 +235,7 @@ window_create(const char *name, const char *cmd, const char *cwd,
 	}
 	w->active = TAILQ_FIRST(&w->panes);
 
+	w->name_pid = -1;
 	if (name != NULL) {
 		w->name = xstrdup(name);
 		options_set_number(&w->options, "automatic-rename", 0);

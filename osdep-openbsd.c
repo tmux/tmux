@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.11 2009-02-08 12:31:02 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.12 2009-02-09 18:08:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,35 +35,36 @@
 #define is_stopped(p) \
 	((p)->p_stat == SSTOP || (p)->p_stat == SZOMB || (p)->p_stat == SDEAD)
 
-char	*get_argv0(int, char *);
-char	*get_proc_argv0(pid_t);
+int	 osdep_get_name(int, char *, pid_t *, char **);
+char	*osdep_get_argv0(pid_t);
 
-char *
-get_argv0(int fd, char *tty)
+int
+osdep_get_name(int fd, char *tty, pid_t *last_pid, char **name)
 {
 	int		 mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PGRP, 0 };
 	struct stat	 sb;
 	size_t		 len;
 	struct kinfo_proc *buf, *newbuf;
 	struct proc	*p, *bestp;
-	char		*procname;
 	u_int		 i;
+
+	*name = NULL;
 
 	buf = NULL;
 
 	if (stat(tty, &sb) == -1)
-		return (NULL);
+		return (-1);
 	if ((mib[3] = tcgetpgrp(fd)) == -1)
-		return (NULL);
+		return (-1);
 
 retry:
 	if (sysctl(mib, nitems(mib), NULL, &len, NULL, 0) == -1)
-		return (NULL);
+		return (-1);
 	len = (len * 5) / 4;
 
 	if ((newbuf = realloc(buf, len)) == NULL) {
 		free(buf);
-		return (NULL);
+		return (-1);
 	}
 	buf = newbuf;
 
@@ -71,7 +72,7 @@ retry:
 		if (errno == ENOMEM)
 			goto retry;
 		free(buf);
-		return (NULL);
+		return (-1);
 	}
 
 	bestp = NULL;
@@ -123,22 +124,30 @@ retry:
 
 		if (p->p_pid > bestp->p_pid)
 			bestp = p;
-	}	
-	if (bestp != NULL) {
-		procname = get_proc_argv0(bestp->p_pid);
-		if (procname == NULL || *procname == '\0') {
-			free(procname);
-			procname = strdup(bestp->p_comm);
-		}
-	} else
-		procname = NULL;
+	}
 
+	if (bestp == NULL) {
+		free(buf);
+		return (-1);
+	}
+
+	if (bestp->p_pid == *last_pid) {
+ 		free(buf);
+		return (1);
+	}
+	*last_pid = bestp->p_pid;
+
+	*name = osdep_get_argv0(bestp->p_pid);
+	if (*name == NULL || **name == '\0') {
+		free(*name);
+		*name = strdup(bestp->p_comm);
+	}
 	free(buf);
-	return (procname);
+	return (0);
 }
 
 char *
-get_proc_argv0(pid_t pid)
+osdep_get_argv0(pid_t pid)
 {
 	int	mib[4] = { CTL_KERN, KERN_PROC_ARGS, 0, KERN_PROC_ARGV };
         size_t	size;

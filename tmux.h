@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.261 2009-02-09 16:11:26 nicm Exp $ */
+/* $Id: tmux.h,v 1.262 2009-02-09 18:08:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -612,6 +612,7 @@ TAILQ_HEAD(window_panes, window_pane);
 struct window {
 	char		*name;
 	struct timeval	 name_timer;
+	pid_t		 name_pid;
 
 	struct window_pane *active;	
 	struct window_panes panes;
@@ -1519,7 +1520,7 @@ int	utf8_width(u_int);
 char   *section_string(char *, size_t, size_t, size_t);
 
 /* osdep-*.c */
-char   *get_argv0(int, char *);
+int	osdep_get_name(int, char *, pid_t *, char **);
 
 /* buffer.c */
 struct buffer 	*buffer_create(size_t);

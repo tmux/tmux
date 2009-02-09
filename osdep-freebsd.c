@@ -1,4 +1,4 @@
-/* $Id: osdep-freebsd.c,v 1.11 2009-02-08 13:03:43 nicm Exp $ */
+/* $Id: osdep-freebsd.c,v 1.12 2009-02-09 18:08:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,8 +31,8 @@
 #include <string.h>
 #include <unistd.h>
 
-char	*get_argv0(int, char *);
-char	*get_proc_argv0(pid_t);
+int	 osdep_get_name(int, char *, pid_t *, char **);
+char	*osdep_get_argv0(pid_t);
 
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 
@@ -41,15 +41,16 @@ char	*get_proc_argv0(pid_t);
 #define is_stopped(p) \
 	((p)->ki_stat == SSTOP || (p)->ki_stat == SZOMB)
 
-char *
-get_argv0(int fd, char *tty)
+int
+osdep_get_name(int fd, char *tty, pid_t *last_pid, char **name)
 {
 	int		 mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PGRP, 0 };
 	struct stat	 sb;
 	size_t		 len;
 	struct kinfo_proc *buf, *newbuf, *p, *bestp;
-	char		*procname;
 	u_int		 i;
+
+	*name = NULL;
 
 	buf = NULL;
 
@@ -114,22 +115,29 @@ retry:
 		if (p->ki_pid > bestp->ki_pid)
 			bestp = p;
 	}
-	if (bestp != NULL) {
-		procname = get_proc_argv0(bestp->ki_pid);
-		if (procname == NULL || *procname == '\0') {
-			free(procname);
-			procname = strdup(bestp->ki_comm);
-		}
-	} else
-		procname = NULL;
 
+	if (bestp == NULL) {
+		free(buf);
+		return (-1);
+	}
 
+	if (bestp->ki_pid == *last_pid) {
+ 		free(buf);
+		return (1);
+	}
+	*last_pid = bestp->ki_pid;
+
+	*name = osdep_get_argv0(bestp->ki_pid);
+	if (*name == NULL || **name == '\0') {
+		free(*name);
+		*name = strdup(bestp->ki_comm);
+	}
 	free(buf);
-	return (procname);
+	return (0);
 }
 
 char *
-get_proc_argv0(pid_t pid)
+osdep_get_argv0(pid_t pid)
 {
 	int	mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_ARGS, 0 };
         size_t	size, size2;
