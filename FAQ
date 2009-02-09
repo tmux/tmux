@@ -180,3 +180,10 @@ could be used:
 
 In both cases, the status-right option will be set to the string "#(echo
 \\(test\\))" and the command executed will be "echo \(test\)".
+
+* tmux uses too much CPU. What do I do?
+
+Automatic window renaming may use a lot of CPU, particularly on slow computers:
+if this is a problem, turn it off with "setw -g automatic-rename off". If this
+doesn't fix it, please report the problem.
+
