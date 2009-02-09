@@ -1,4 +1,4 @@
-/* $Id: osdep-freebsd.c,v 1.12 2009-02-09 18:08:01 nicm Exp $ */
+/* $Id: osdep-freebsd.c,v 1.13 2009-02-09 18:09:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,18 +55,18 @@ osdep_get_name(int fd, char *tty, pid_t *last_pid, char **name)
 	buf = NULL;
 
 	if (stat(tty, &sb) == -1)
-		return (NULL);
+		return (-1);
 	if ((mib[3] = tcgetpgrp(fd)) == -1)
-		return (NULL);
+		return (-1);
 
 retry:
 	if (sysctl(mib, nitems(mib), NULL, &len, NULL, 0) == -1)
-		return (NULL);
+		return (-1);
 	len = (len * 5) / 4;
 
 	if ((newbuf = realloc(buf, len)) == NULL) {
 		free(buf);
-		return (NULL);
+		return (-1);
 	}
 	buf = newbuf;
 
@@ -74,7 +74,7 @@ retry:
 		if (errno == ENOMEM)
 			goto retry;
 		free(buf);
-		return (NULL);
+		return (-1);
 	}
 
 	bestp = NULL;
