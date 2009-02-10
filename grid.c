@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.7 2009-01-17 18:47:36 nicm Exp $ */
+/* $Id: grid.c,v 1.8 2009-02-10 00:18:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -117,6 +117,30 @@ grid_destroy(struct grid_data *gd)
 	if (gd->size != NULL)
 		xfree(gd->size);
 	xfree(gd);
+}
+
+/* Compare grids. */
+int
+grid_compare(struct grid_data *ga, struct grid_data *gb)
+{
+	struct grid_cell	*gca, *gcb;
+	u_int			 xx, yy;
+
+	if (ga->sx != gb->sx || ga->sy != ga->sy)
+		return (1);
+
+	for (yy = 0; yy < ga->sy; yy++) {
+		if (ga->size[yy] != gb->size[yy])
+			return (1);
+		for (xx = 0; xx < ga->sx; xx++) {
+			gca = &ga->data[yy][xx];
+			gcb = &gb->data[yy][xx];
+			if (memcmp(gca, gcb, sizeof (struct grid_cell)) != 0)
+				return (1);
+		}
+	}
+
+	return (0);
 }
 
 /* Scroll a line into the history. */

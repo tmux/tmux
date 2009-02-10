@@ -1,3 +1,8 @@
+10 February 2009
+
+* No longer redraw the status line every status-interval unless it has actually
+  changed.
+
 08 February 2009
 
 * Don't treat empty arguments ("") differently when parsing configuration
@@ -1085,7 +1090,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.249 2009-02-08 16:38:19 nicm Exp $
+$Id: CHANGES,v 1.250 2009-02-10 00:18:06 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

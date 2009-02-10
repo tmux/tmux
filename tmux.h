@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.262 2009-02-09 18:08:01 nicm Exp $ */
+/* $Id: tmux.h,v 1.263 2009-02-10 00:18:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1296,9 +1296,9 @@ void	 server_lock(void);
 int	 server_unlock(const char *);
 
 /* status.c */
-void	 status_redraw(struct client *);
-void	 status_message_redraw(struct client *);
-void	 status_prompt_redraw(struct client *);
+int	 status_redraw(struct client *);
+int	 status_message_redraw(struct client *);
+int	 status_prompt_redraw(struct client *);
 void	 status_prompt_key(struct client *, int);
 
 /* resize.c */
@@ -1326,6 +1326,7 @@ int	 attributes_fromstring(const char *);
 extern const struct grid_cell grid_default_cell;
 struct grid_data *grid_create(u_int, u_int, u_int);
 void	 grid_destroy(struct grid_data *);
+int	 grid_compare(struct grid_data *, struct grid_data *);
 void	 grid_reduce_line(struct grid_data *, u_int, u_int);
 void	 grid_expand_line(struct grid_data *, u_int, u_int);
 void	 grid_scroll_line(struct grid_data *);

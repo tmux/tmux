@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.71 2009-02-01 18:14:49 tcunha Exp $ */
+/* $Id: status.c,v 1.72 2009-02-10 00:18:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,14 +38,14 @@ void	status_prompt_add_history(struct client *);
 char   *status_prompt_complete(const char *);
 
 /* Draw status for client on the last lines of given context. */
-void
+int
 status_redraw(struct client *c)
 {
 	struct screen_write_ctx		ctx;
 	struct session		       *s = c->session;
 	struct winlink		       *wl;
 	struct window_pane	       *wp;
-	struct screen		       *sc = NULL;
+	struct screen		       *sc = NULL, old_status;
 	char		 	       *left, *right, *text, *ptr;
 	size_t				llen, rlen, offset, xx, yy, sy;
 	size_t				size, start, width;
@@ -54,11 +54,9 @@ status_redraw(struct client *c)
 
 	left = right = NULL;
 
-	/* Resize the target screen. */
-	if (screen_size_x(&c->status) != c->sx) {
-		screen_free(&c->status);
-		screen_init(&c->status, c->sx, 1, 0);
-	}
+	/* Create the target screen. */
+	memcpy(&old_status, &c->status, sizeof old_status);
+	screen_init(&c->status, c->sx, 1, 0);
 
 	/* No status line? */
 	if (c->sy == 0 || !options_get_number(&s->options, "status"))
@@ -285,6 +283,13 @@ out:
 		xfree(left);
 	if (right != NULL)
 		xfree(right);
+
+	if (grid_compare(c->status.grid, old_status.grid) == 0) {
+		screen_free(&old_status);
+		return (0);
+	}
+	screen_free(&old_status);
+	return (1);
 }
 
 char *
@@ -484,20 +489,19 @@ status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 }
 
 /* Draw client message on status line of present else on last line. */
-void
+int
 status_message_redraw(struct client *c)
 {
 	struct screen_write_ctx		ctx;
 	struct session		       *s = c->session;
+	struct screen		        old_status;
 	size_t			        len;
 	struct grid_cell		gc;
 
 	if (c->sx == 0 || c->sy == 0)
-		return;
-	if (screen_size_x(&c->status) != c->sx) {
-		screen_free(&c->status);
-		screen_init(&c->status, c->sx, 1, 0);
-	}
+		return (0);
+	memcpy(&old_status, &c->status, sizeof old_status);
+	screen_init(&c->status, c->sx, 1, 0);
 
 	len = strlen(c->message_string);
 	if (len > c->sx)
@@ -516,24 +520,30 @@ status_message_redraw(struct client *c)
 		screen_write_putc(&ctx, &gc, ' ');
 
 	screen_write_stop(&ctx);
+
+	if (grid_compare(c->status.grid, old_status.grid) == 0) {
+		screen_free(&old_status);
+		return (0);
+	}
+	screen_free(&old_status);
+	return (1);
 }
 
 /* Draw client prompt on status line of present else on last line. */
-void
+int
 status_prompt_redraw(struct client *c)
 {
 	struct screen_write_ctx	ctx;
 	struct session		       *s = c->session;
+	struct screen		        old_status;
 	size_t			        i, size, left, len, offset, n;
 	char				ch;
 	struct grid_cell		gc;
 
 	if (c->sx == 0 || c->sy == 0)
-		return;
-	if (screen_size_x(&c->status) != c->sx) {
-		screen_free(&c->status);
-		screen_init(&c->status, c->sx, 1, 0);
-	}
+		return (0);
+	memcpy(&old_status, &c->status, sizeof old_status);
+	screen_init(&c->status, c->sx, 1, 0);
 	offset = 0;
 
 	len = strlen(c->prompt_string);
@@ -587,6 +597,13 @@ status_prompt_redraw(struct client *c)
 	screen_write_putc(&ctx, &gc, ch);
 
 	screen_write_stop(&ctx);
+
+	if (grid_compare(c->status.grid, old_status.grid) == 0) {
+		screen_free(&old_status);
+		return (0);
+	}
+	screen_free(&old_status);
+	return (1);
 }
 
 /* Handle keys in prompt. */
