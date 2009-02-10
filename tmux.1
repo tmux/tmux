@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.82 2009-02-08 18:41:03 nicm Exp $
+.\" $Id: tmux.1,v 1.83 2009-02-10 00:09:44 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -892,6 +892,7 @@ Update the status bar every
 .Ar interval
 seconds.
 By default, updates will occur every 15 seconds.
+A setting of zero disables redrawing at interval.
 .It Ic status-left Ar string
 Display
 .Ar string
