@@ -87,3 +87,5 @@
 - some fix for SF feature request 2527847 - now remain-by-default has gone
   cannot control it per-session
 - clear window title on exit
+- might be nice if attach-session behaved like switch-client inside an
+  existing client
