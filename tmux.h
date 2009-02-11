@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.268 2009-02-11 17:50:36 nicm Exp $ */
+/* $Id: tmux.h,v 1.269 2009-02-11 18:44:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -240,7 +240,6 @@ enum tty_code_code {
 	TTYC_CLEAR,	/* clear_screen, cl */
 	TTYC_CNORM,	/* cursor_normal, ve */
 	TTYC_COLORS,	/* max_colors, Co */
-	TTYC_CR,	/* carriage_return, cr */
 	TTYC_CSR,	/* change_scroll_region, cs */
 	TTYC_CUD,	/* parm_down_cursor, DO */
 	TTYC_CUD1,	/* cursor_down, do */

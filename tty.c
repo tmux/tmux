@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.68 2009-02-11 17:04:39 nicm Exp $ */
+/* $Id: tty.c,v 1.69 2009-02-11 18:44:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -397,17 +397,16 @@ tty_cmd_insertcharacter(struct tty *tty, struct window_pane *wp, va_list ap)
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
+ 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 	if (tty_term_has(tty->term, TTYC_ICH) || 
 	    tty_term_has(tty->term, TTYC_ICH1))
-	    tty_emulate_repeat(tty, TTYC_ICH, TTYC_ICH1, ua);
+		tty_emulate_repeat(tty, TTYC_ICH, TTYC_ICH1, ua);
 	else {
 		tty_putcode(tty, TTYC_SMIR);
 		while (ua-- > 0)
 			tty_putc(tty, ' ');
 		tty_putcode(tty, TTYC_RMIR);
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, s->old_cx);
 	}
 }
 
@@ -420,8 +419,8 @@ tty_cmd_deletecharacter(struct tty *tty, struct window_pane *wp, va_list ap)
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
+ 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 	tty_emulate_repeat(tty, TTYC_DCH, TTYC_DCH1, ua);
 }
 
@@ -434,9 +433,10 @@ tty_cmd_insertline(struct tty *tty, struct window_pane *wp, va_list ap)
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
- 	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
- 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
+ 	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
+
+ 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 	tty_emulate_repeat(tty, TTYC_IL, TTYC_IL1, ua);
 }
 
@@ -449,9 +449,10 @@ tty_cmd_deleteline(struct tty *tty, struct window_pane *wp, va_list ap)
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
- 	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
- 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
+ 	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
+
+ 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 	tty_emulate_repeat(tty, TTYC_DL, TTYC_DL1, ua);
 }
 
@@ -462,17 +463,13 @@ tty_cmd_clearline(struct tty *tty, struct window_pane *wp, unused va_list ap)
 	u_int		 i;
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
+ 	tty_cursor(tty, 0, s->old_cy, wp->yoff);
 	if (tty_term_has(tty->term, TTYC_EL)) {
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, 0);
 		tty_putcode(tty, TTYC_EL);
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, s->old_cx);
 	} else {
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, 0);
 		for (i = 0; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, s->old_cx);
 	}
 }
 
@@ -484,15 +481,13 @@ tty_cmd_clearendofline(
 	u_int		 i;
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
+	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 	if (tty_term_has(tty->term, TTYC_EL))
 		tty_putcode(tty, TTYC_EL);
 	else {
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, s->old_cx);
 		for (i = s->old_cx; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, s->old_cx);
 	}
 }
 
@@ -504,15 +499,14 @@ tty_cmd_clearstartofline(
 	u_int		 i;
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
-	if (tty_term_has(tty->term, TTYC_EL1))
+	if (tty_term_has(tty->term, TTYC_EL1)) {
+		tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 		tty_putcode(tty, TTYC_EL1);
-	else {
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, 0);
+	} else {
+		tty_cursor(tty, 0, s->old_cy, wp->yoff);
 		for (i = 0; i < s->old_cx + 1; i++)
 			tty_putc(tty, ' ');
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, s->old_cx);
 	}
 }
 
@@ -522,9 +516,10 @@ tty_cmd_reverseindex(struct tty *tty, struct window_pane *wp, unused va_list ap)
 	struct screen	*s = wp->screen;
 
 	tty_reset(tty);
- 	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
-	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
+ 	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
+
+	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 	tty_putcode(tty, TTYC_RI);
 }
 
@@ -534,10 +529,12 @@ tty_cmd_linefeed(struct tty *tty, struct window_pane *wp, unused va_list ap)
 	struct screen	*s = wp->screen;
 
 	tty_reset(tty);
- 	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
-	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
+ 	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
+
+	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 	tty_putc(tty, '\n');
+
 	tty->cy++;
 }
 
@@ -551,23 +548,29 @@ tty_cmd_clearendofscreen(
 	oy = wp->yoff;
 
 	tty_reset(tty);
-	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
-	if (tty_term_has(tty->term, TTYC_EL)) {
-		for (i = oy + s->old_cy; i < oy + screen_size_y(s); i++) {
+	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
+	if (tty_term_has(tty->term, TTYC_EL)) {	
+		tty_putcode(tty, TTYC_EL);
+		if (s->old_cy != screen_size_y(s) - 1) {
+			tty_putc(tty, '\r');
+			tty_putc(tty, '\n');
+		}
+		for (i = s->old_cy + 1; i < screen_size_y(s); i++) {
 			tty_putcode(tty, TTYC_EL);
-			if (i != screen_size_y(s) - 1)
+			if (i != screen_size_y(s) - 1) {
 				tty_emulate_repeat(tty, TTYC_CUD, TTYC_CUD1, 1);
+				tty->cy++;
+			}
 		}
 	} else {
 		for (i = s->old_cx; i < screen_size_y(s); i++)
 			tty_putc(tty, ' ');
-		for (j = oy + s->old_cy; j < oy + screen_size_y(s); j++) {
+		for (j = s->old_cy; j < screen_size_y(s); j++) {
 			for (i = 0; i < screen_size_x(s); i++)
 				tty_putc(tty, ' ');
 		}
 	}
-	tty_putcode2(tty, TTYC_CUP, oy + s->old_cy, s->old_cx);
 }
 
 void
@@ -575,29 +578,25 @@ tty_cmd_clearstartofscreen(
     struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
 	struct screen	*s = wp->screen;
-	u_int		 i, j, oy;
-
-	oy = wp->yoff;
+	u_int		 i, j;
 
 	tty_reset(tty);
-	tty_cursor(tty, s->old_cx, s->old_cy, oy);
 
-	tty_putcode2(tty, TTYC_CUP, oy, 0);
+	tty_cursor(tty, 0, 0, wp->yoff);
 	if (tty_term_has(tty->term, TTYC_EL)) {
-		for (i = 0; i < oy + s->old_cy; i++) {
+		for (i = 0; i < s->old_cy; i++) {
 			tty_putcode(tty, TTYC_EL);
 			tty_emulate_repeat(tty, TTYC_CUD, TTYC_CUD1, 1);
+			tty->cy++;
 		}
-		tty_putcode2(tty, TTYC_CUP, oy + s->old_cy, 0);
 	} else {
-		for (j = 0; j < oy + s->old_cy; j++) {
+		for (j = 0; j < s->old_cy; j++) {
 			for (i = 0; i < screen_size_x(s); i++)
 				tty_putc(tty, ' ');
 		}
 	}
 	for (i = 0; i < s->old_cx; i++)
 		tty_putc(tty, ' ');
-	tty_putcode2(tty, TTYC_CUP, oy + s->old_cy, s->old_cx);
 }
 
 void
@@ -605,19 +604,18 @@ tty_cmd_clearscreen(
     struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
 	struct screen	*s = wp->screen;
-	u_int		 i, j, oy;
-
-	oy = wp->yoff;
+	u_int		 i, j;
 
 	tty_reset(tty);
-	tty_cursor(tty, s->old_cx, s->old_cy, oy);
 
-	tty_putcode2(tty, TTYC_CUP, oy, 0);
+	tty_cursor(tty, 0, 0, wp->yoff);
 	if (tty_term_has(tty->term, TTYC_EL)) {
 		for (i = 0; i < screen_size_y(s); i++) {
 			tty_putcode(tty, TTYC_EL);
-			if (i != screen_size_y(s) - 1)
+			if (i != screen_size_y(s) - 1) {
 				tty_emulate_repeat(tty, TTYC_CUD, TTYC_CUD1, 1);
+				tty->cy++;
+			}
 		}
 	} else {
 		for (j = 0; j < screen_size_y(s); j++) {
@@ -625,7 +623,6 @@ tty_cmd_clearscreen(
 				tty_putc(tty, ' ');
 		}
 	}
-	tty_putcode2(tty, TTYC_CUP, oy + s->old_cy, s->old_cx);
 }
 
 void

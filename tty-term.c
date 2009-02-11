@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.10 2009-02-11 17:08:09 nicm Exp $ */
+/* $Id: tty-term.c,v 1.11 2009-02-11 18:44:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,7 +39,6 @@ struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_CLEAR, TTYCODE_STRING, "clear" },
 	{ TTYC_CNORM, TTYCODE_STRING, "cnorm" },
 	{ TTYC_COLORS, TTYCODE_NUMBER, "colors" },
-	{ TTYC_CR, TTYCODE_STRING, "cr" },
 	{ TTYC_CSR, TTYCODE_STRING, "csr" },
 	{ TTYC_CUD, TTYCODE_STRING, "cud" },
 	{ TTYC_CUD1, TTYCODE_STRING, "cud1" },
@@ -235,10 +234,6 @@ tty_term_find(char *name, int fd, char **cause)
 	/* These are always required. */
 	if (!tty_term_has(term, TTYC_CLEAR)) {
 		xasprintf(cause, "terminal does not support clear");
-		goto error;
-	}
-	if (!tty_term_has(term, TTYC_CR)) {
-		xasprintf(cause, "terminal does not support cr");
 		goto error;
 	}
 	if (!tty_term_has(term, TTYC_RI)) {
