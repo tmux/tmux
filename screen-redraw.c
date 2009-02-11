@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.22 2009-02-11 17:04:38 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.23 2009-02-11 17:50:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,8 +45,8 @@ screen_redraw_screen(struct client *c, struct screen *s)
 	status = options_get_number(&c->session->options, "status");
 
 	/* Fill in empty space on the right. */
-	if (w->sx < c->sx)
-		screen_redraw_blankx(c, w->sx, c->sx - w->sx);
+	if (w->sx < c->tty.sx)
+		screen_redraw_blankx(c, w->sx, c->tty.sx - w->sx);
 
 	/* Draw the panes. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -58,7 +58,7 @@ screen_redraw_screen(struct client *c, struct screen *s)
 		cy = s->cy;
 		if (wp->yoff + sy <= w->sy) {
 			for (i = 0; i < sy; i++) {
-				if (wp->yoff + i != c->sy - 1)
+				if (wp->yoff + i != c->tty.sy - 1)
 					screen_redraw_line(c, s, wp->yoff, i);
 			}
 			if (TAILQ_NEXT(wp, entry) != NULL)
@@ -69,8 +69,8 @@ screen_redraw_screen(struct client *c, struct screen *s)
 	}
 
 	/* Fill in empty space below. */
-	if (w->sy < c->sy - status)
-		screen_redraw_blanky(c, w->sy, c->sy - status - w->sy, '=');
+	if (w->sy < c->tty.sy - status)
+		screen_redraw_blanky(c, w->sy, c->tty.sy - status - w->sy, '=');
 
 	/* Draw the status line. */
 	screen_redraw_status(c);
@@ -80,7 +80,7 @@ screen_redraw_screen(struct client *c, struct screen *s)
 void
 screen_redraw_status(struct client *c)
 {
-	screen_redraw_line(c, &c->status, c->sy - 1, 0);
+	screen_redraw_line(c, &c->status, c->tty.sy - 1, 0);
 }
 
 /* Draw blank columns. */
@@ -90,7 +90,7 @@ screen_redraw_blankx(struct client *c, u_int ox, u_int nx)
 	u_int	i, j;
 
 	tty_putcode(&c->tty, TTYC_SGR0);
-	for (j = 0; j < c->sy; j++) {
+	for (j = 0; j < c->tty.sy; j++) {
 		tty_putcode2(&c->tty, TTYC_CUP, j, ox);
 		for (i = 0; i < nx; i++)
 			tty_putc(&c->tty, ' ');
@@ -110,7 +110,7 @@ screen_redraw_blanky(struct client *c, u_int oy, u_int ny, char ch)
 	tty_putcode(&c->tty, TTYC_SGR0);
 	for (j = 0; j < ny; j++) {
 		tty_putcode2(&c->tty, TTYC_CUP, oy + j, 0);
-		for (i = 0; i < c->sx; i++) {
+		for (i = 0; i < c->tty.sx; i++) {
 			if (j == 0)
 				tty_putc(&c->tty, ch);
 			else
@@ -132,8 +132,8 @@ screen_redraw_line(struct client *c, struct screen *s, u_int oy, u_int py)
 	u_int			 i, sx;
 
 	sx = screen_size_x(s);
-	if (sx > c->sx)
-		sx = c->sx;
+	if (sx > c->tty.sx)
+		sx = c->tty.sx;
 	for (i = 0; i < sx; i++) {
 		gc = grid_view_peek_cell(s->grid, i, py);
  		tty_cursor(&c->tty, i, py, oy);

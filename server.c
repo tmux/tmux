@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.119 2009-02-10 00:18:06 nicm Exp $ */
+/* $Id: server.c,v 1.120 2009-02-11 17:50:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -85,9 +85,9 @@ server_create_client(int fd)
 	c->title = NULL;
 
 	c->session = NULL;
-	c->sx = 80;
-	c->sy = 25;
-	screen_init(&c->status, c->sx, 1, 0);
+	c->tty.sx = 80;
+	c->tty.sy = 25;
+	screen_init(&c->status, c->tty.sx, 1, 0);
 
 	c->message_string = NULL;
 
@@ -520,8 +520,8 @@ server_redraw_locked(struct client *c)
 	u_int			colour, xx, yy;
 	int    			style;
 
-	xx = c->sx;
-	yy = c->sy - 1;
+	xx = c->tty.sx;
+	yy = c->tty.sy - 1;
 	if (xx == 0 || yy == 0)
 		return;
 	colour = options_get_number(
@@ -768,7 +768,7 @@ server_handle_client(struct client *c)
 	
 	/* Ensure cursor position and mode settings. */
 	status = options_get_number(&c->session->options, "status");
-	if (wp->yoff + wp->screen->cy < c->sy - status)
+	if (wp->yoff + wp->screen->cy < c->tty.sy - status)
 		tty_cursor(&c->tty, wp->screen->cx, wp->screen->cy, wp->yoff);
 
 	mode = wp->screen->mode;

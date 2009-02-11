@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.38 2009-01-23 16:59:14 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.39 2009-02-11 17:50:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -146,8 +146,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	sx = 80;
 	sy = 25;
 	if (!data->flag_detached) {
-		sx = c->sx;
-		sy = c->sy;
+		sx = c->tty.sx;
+		sy = c->tty.sy;
 	}
 
 	if (options_get_number(&global_options, "status")) {

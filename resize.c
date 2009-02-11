@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.18 2009-01-11 23:31:46 nicm Exp $ */
+/* $Id: resize.c,v 1.19 2009-02-11 17:50:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,10 +62,10 @@ recalculate_sizes(void)
 			if (c == NULL)
 				continue;
 			if (c->session == s) {
-				if (c->sx < ssx)
-					ssx = c->sx;
-				if (c->sy < ssy)
-					ssy = c->sy;
+				if (c->tty.sx < ssx)
+					ssx = c->tty.sx;
+				if (c->tty.sy < ssy)
+					ssy = c->tty.sy;
 			}
 		}
 		if (ssx == UINT_MAX || ssy == UINT_MAX) {

@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.72 2009-02-10 00:18:06 nicm Exp $ */
+/* $Id: status.c,v 1.73 2009-02-11 17:50:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,10 +56,10 @@ status_redraw(struct client *c)
 
 	/* Create the target screen. */
 	memcpy(&old_status, &c->status, sizeof old_status);
-	screen_init(&c->status, c->sx, 1, 0);
+	screen_init(&c->status, c->tty.sx, 1, 0);
 
 	/* No status line? */
-	if (c->sy == 0 || !options_get_number(&s->options, "status"))
+	if (c->tty.sy == 0 || !options_get_number(&s->options, "status"))
 		goto off;
 	larrow = rarrow = 0;
 
@@ -70,7 +70,7 @@ status_redraw(struct client *c)
 	stdgc.fg = options_get_number(&s->options, "status-bg");
 	stdgc.attr |= options_get_number(&s->options, "status-attr");
 
-	yy = c->sy - 1;
+	yy = c->tty.sy - 1;
 	if (yy == 0)
 		goto blank;
 
@@ -98,9 +98,9 @@ status_redraw(struct client *c)
 		xx += llen + 1;
 	if (rlen != 0)
 		xx += rlen + 1;
-	if (c->sx == 0 || c->sx <= xx)
+	if (c->tty.sx == 0 || c->tty.sx <= xx)
 		goto blank;
-	xx = c->sx - xx;
+	xx = c->tty.sx - xx;
 
 	/*
 	 * Right. We have xx characters to fill. Find out how much is to go in
@@ -215,7 +215,7 @@ draw:
 
 	/* Draw the last item. */
 	if (rlen != 0) {
-		screen_write_cursormove(&ctx, c->sx - rlen - 1, yy);
+		screen_write_cursormove(&ctx, c->tty.sx - rlen - 1, yy);
 		screen_write_puts(&ctx, &stdgc, " %s", right);
 	}
 
@@ -235,9 +235,9 @@ draw:
 		if (rarrow == -1)
 			gc.attr ^= GRID_ATTR_REVERSE;
 		if (rlen != 0)
-			screen_write_cursormove(&ctx, c->sx - rlen - 2, yy);
+			screen_write_cursormove(&ctx, c->tty.sx - rlen - 2, yy);
 		else
-			screen_write_cursormove(&ctx, c->sx - 1, yy);
+			screen_write_cursormove(&ctx, c->tty.sx - 1, yy);
 		screen_write_putc(&ctx, &gc, '>');
 	}
 
@@ -247,7 +247,7 @@ blank:
  	/* Just draw the whole line as blank. */
 	screen_write_start(&ctx, NULL, &c->status);
 	screen_write_cursormove(&ctx, 0, yy);
-	for (offset = 0; offset < c->sx; offset++)
+	for (offset = 0; offset < c->tty.sx; offset++)
 		screen_write_putc(&ctx, &stdgc, ' ');
 
 	goto out;
@@ -267,13 +267,13 @@ off:
 	}
 
 	screen_write_cursormove(&ctx, 0, 0);
-	if (sy < c->sy) {
+	if (sy < c->tty.sy) {
 		/* If the screen is too small, use blank. */
- 		for (offset = 0; offset < c->sx; offset++)
+ 		for (offset = 0; offset < c->tty.sx; offset++)
  			screen_write_putc(&ctx, &stdgc, ' ');
 	} else {
 		screen_write_copy(&ctx,
-		    sc, 0, sc->grid->hsize + screen_size_y(sc) - 1, c->sx, 1);
+		    sc, 0, sc->grid->hsize + screen_size_y(sc) - 1, c->tty.sx, 1);
 	}
 
 out:
@@ -498,14 +498,14 @@ status_message_redraw(struct client *c)
 	size_t			        len;
 	struct grid_cell		gc;
 
-	if (c->sx == 0 || c->sy == 0)
+	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
 	memcpy(&old_status, &c->status, sizeof old_status);
-	screen_init(&c->status, c->sx, 1, 0);
+	screen_init(&c->status, c->tty.sx, 1, 0);
 
 	len = strlen(c->message_string);
-	if (len > c->sx)
-		len = c->sx;
+	if (len > c->tty.sx)
+		len = c->tty.sx;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.bg = options_get_number(&s->options, "message-fg");
@@ -516,7 +516,7 @@ status_message_redraw(struct client *c)
 
 	screen_write_cursormove(&ctx, 0, 0);
 	screen_write_puts(&ctx, &gc, "%.*s", (int) len, c->message_string);
-	for (; len < c->sx; len++)
+	for (; len < c->tty.sx; len++)
 		screen_write_putc(&ctx, &gc, ' ');
 
 	screen_write_stop(&ctx);
@@ -540,15 +540,15 @@ status_prompt_redraw(struct client *c)
 	char				ch;
 	struct grid_cell		gc;
 
-	if (c->sx == 0 || c->sy == 0)
+	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
 	memcpy(&old_status, &c->status, sizeof old_status);
-	screen_init(&c->status, c->sx, 1, 0);
+	screen_init(&c->status, c->tty.sx, 1, 0);
 	offset = 0;
 
 	len = strlen(c->prompt_string);
-	if (len > c->sx)
-		len = c->sx;
+	if (len > c->tty.sx)
+		len = c->tty.sx;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.bg = options_get_number(&s->options, "message-fg");
@@ -560,7 +560,7 @@ status_prompt_redraw(struct client *c)
 	screen_write_cursormove(&ctx, 0, 0);
 	screen_write_puts(&ctx, &gc, "%.*s", (int) len, c->prompt_string);
 
-	left = c->sx - len;
+	left = c->tty.sx - len;
 	if (left != 0) {
 		if (c->prompt_index < left)
 			size = strlen(c->prompt_buffer);
@@ -581,7 +581,7 @@ status_prompt_redraw(struct client *c)
 			    "%.*s", (int) left, c->prompt_buffer + offset);
 		}
 
-		for (i = len + size; i < c->sx; i++)
+		for (i = len + size; i < c->tty.sx; i++)
 			screen_write_putc(&ctx, &gc, ' ');
 	}
 

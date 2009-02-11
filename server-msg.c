@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.62 2009-01-28 17:57:00 nicm Exp $ */
+/* $Id: server-msg.c,v 1.63 2009-02-11 17:50:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -192,8 +192,8 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 		return (0);
 	}
 
-	c->sx = data.sx;
-	c->sy = data.sy;
+	c->tty.sx = data.sx;
+	c->tty.sy = data.sy;
 
 	c->cwd = NULL;
 	if (*data.cwd != '\0')
@@ -225,12 +225,12 @@ server_msg_fn_resize(struct hdr *hdr, struct client *c)
 
 	log_debug("resize msg from client: %u,%u", data.sx, data.sy);
 
-	c->sx = data.sx;
-	if (c->sx == 0)
-		c->sx = 80;
-	c->sy = data.sy;
-	if (c->sy == 0)
-		c->sy = 25;
+	c->tty.sx = data.sx;
+	if (c->tty.sx == 0)
+		c->tty.sx = 80;
+	c->tty.sy = data.sy;
+	if (c->tty.sy == 0)
+		c->tty.sy = 25;
 	
 	c->tty.cx = UINT_MAX;
 	c->tty.cy = UINT_MAX;
