@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.70 2009-02-11 19:06:58 nicm Exp $ */
+/* $Id: tty.c,v 1.71 2009-02-11 23:16:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -309,12 +309,23 @@ tty_puts(struct tty *tty, const char *s)
 void
 tty_putc(struct tty *tty, char ch)
 {
+	u_int	sx;
+
 	if (tty->cell.attr & GRID_ATTR_CHARSET)
 		ch = tty_get_acs(tty, ch);
 	buffer_write8(tty->out, ch);
 
-	if (ch >= 0x20)
-		tty->cx++;	/* This is right most of the time. */
+	if (ch >= 0x20) {
+		sx = tty->sx;
+		if (tty->term->flags & TERM_EARLYWRAP)
+			sx--;
+
+		if (tty->cx == sx) {
+			tty->cx = 0;
+			tty->cy++;
+		} else
+			tty->cx++;
+	}
 
 	if (tty->log_fd != -1)
 		write(tty->log_fd, &ch, 1);

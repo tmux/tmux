@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.269 2009-02-11 18:44:05 nicm Exp $ */
+/* $Id: tmux.h,v 1.270 2009-02-11 23:16:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -702,6 +702,7 @@ struct tty_term {
 
 #define TERM_HASDEFAULTS 0x1
 #define TERM_256COLOURS 0x2
+#define TERM_EARLYWRAP 0x4
 	int		 flags;
 
 	SLIST_ENTRY(tty_term) entry;

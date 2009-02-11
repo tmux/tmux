@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.12 2009-02-11 19:06:58 nicm Exp $ */
+/* $Id: tty-term.c,v 1.13 2009-02-11 23:16:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -148,6 +148,26 @@ tty_term_quirks(struct tty_term *term)
 			term->codes[TTYC_ICH1].value.string = xstrdup("\033[@");
 		}
 	}
+
+#ifdef __FreeBSD__
+	if (strncmp(term->name, "cons", 4) == 0) {
+		/*
+		 * FreeBSD's console wraps lines at $COLUMNS - 1 rather than
+		 * $COLUMNS (the cursor can never be beyond $COLUMNS - 1) and
+		 * does not appear to support changing this behaviour, or any
+		 * of the obvious possibilities (turning off right margin
+		 * wrapping, insert mode).
+		 *
+		 * This is irritating, most notably because it is impossible to
+		 * write to the very bottom-right of the screen without
+		 * scrolling.
+		 *
+		 * Flag the terminal here and apply some workarounds in other
+		 * places to do the best possible.
+		 */
+		term->flags |= TERM_EARLYWRAP;
+	}
+#endif
 }
 
 struct tty_term *
