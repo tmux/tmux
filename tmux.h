@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.263 2009-02-10 00:18:06 nicm Exp $ */
+/* $Id: tmux.h,v 1.264 2009-02-11 06:31:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -506,9 +506,7 @@ struct screen {
 
 /* Screen write context. */
 struct screen_write_ctx {
-	void		*data;
-	void		 (*write)(void *, enum tty_cmd, ...);
-
+	struct window_pane *wp;
 	struct screen	*s;
 };
 
@@ -1053,9 +1051,8 @@ void		 tty_keys_free(struct tty *);
 int		 tty_keys_next(struct tty *, int *, u_char *);
 
 /* tty-write.c */
-void		 tty_write_window(void *, enum tty_cmd, ...);
-void		 tty_vwrite_window(void *, enum tty_cmd, va_list);
-void		 tty_write_update_mode(void *, int);
+void		 tty_write_cmd(struct window_pane *, enum tty_cmd, ...);
+void		 tty_write_mode(struct window_pane *, int);
 
 /* options-cmd.c */
 void	set_option_string(struct cmd_ctx *,

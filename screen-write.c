@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.31 2009-01-28 19:52:21 nicm Exp $ */
+/* $Id: screen-write.c,v 1.32 2009-02-11 06:31:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,17 +27,14 @@ void
 screen_write_start(
     struct screen_write_ctx *ctx, struct window_pane *wp, struct screen *s)
 {
-	ctx->s = s;
-	if (wp != NULL) {
-		ctx->write = tty_write_window;
-		ctx->data = wp;
-		if (ctx->s == NULL)
-			ctx->s = wp->screen;
-		tty_write_update_mode(ctx->data, ctx->s->mode & ~MODE_CURSOR);
-	} else {
-		ctx->write = NULL;
-		ctx->data = NULL;
-	}
+	ctx->wp = wp;
+	if (wp != NULL && ctx->s != NULL)
+		ctx->s = wp->screen;
+	else
+		ctx->s = s;
+	
+	if (ctx->s != NULL)
+		tty_write_mode(ctx->wp, ctx->s->mode & ~MODE_CURSOR);
 }
 
 /* Finish writing. */
@@ -180,8 +177,7 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx)
 	if (nx == 0)
 		return;
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_INSERTCHARACTER, nx);
+	tty_write_cmd(ctx->wp, TTY_INSERTCHARACTER, nx);
 
 	if (s->cx <= screen_size_x(s) - 1)
 		grid_view_insert_cells(s->grid, s->cx, s->cy, nx);
@@ -201,8 +197,7 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx)
 	if (nx == 0)
 		return;
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_DELETECHARACTER, nx);
+	tty_write_cmd(ctx->wp, TTY_DELETECHARACTER, nx);
 
 	if (s->cx <= screen_size_x(s) - 1)
 		grid_view_delete_cells(s->grid, s->cx, s->cy, nx);
@@ -222,8 +217,7 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny)
 	if (ny == 0)
 		return;
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_INSERTLINE, ny);
+	tty_write_cmd(ctx->wp, TTY_INSERTLINE, ny);
 
 	if (s->cy < s->rupper || s->cy > s->rlower)
 		grid_view_insert_lines(s->grid, s->cy, ny);
@@ -247,8 +241,7 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny)
 	if (ny == 0)
 		return;
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_DELETELINE, ny);
+	tty_write_cmd(ctx->wp, TTY_DELETELINE, ny);
 
 	if (s->cy < s->rupper || s->cy > s->rlower)
 		grid_view_delete_lines(s->grid, s->cy, ny);
@@ -264,8 +257,7 @@ screen_write_clearline(struct screen_write_ctx *ctx)
 {
 	struct screen	*s = ctx->s;
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_CLEARLINE);
+	tty_write_cmd(ctx->wp, TTY_CLEARLINE);
 
 	grid_view_clear(s->grid, 0, s->cy, screen_size_x(s), 1);
 }
@@ -279,8 +271,7 @@ screen_write_clearendofline(struct screen_write_ctx *ctx)
 
 	sx = screen_size_x(s);
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_CLEARENDOFLINE);
+	tty_write_cmd(ctx->wp, TTY_CLEARENDOFLINE);
 
 	if (s->cx <= sx - 1)
 		grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1);
@@ -295,8 +286,7 @@ screen_write_clearstartofline(struct screen_write_ctx *ctx)
 
 	sx = screen_size_x(s);
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_CLEARSTARTOFLINE);
+	tty_write_cmd(ctx->wp, TTY_CLEARSTARTOFLINE);
 
 	if (s->cx > sx - 1)
 		grid_view_clear(s->grid, 0, s->cy, sx, 1);
@@ -337,8 +327,7 @@ screen_write_reverseindex(struct screen_write_ctx *ctx)
 {
 	struct screen	*s = ctx->s;
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_REVERSEINDEX);
+	tty_write_cmd(ctx->wp, TTY_REVERSEINDEX);
 
 	if (s->cy == s->rupper)
 		grid_view_scroll_region_down(s->grid, s->rupper, s->rlower);
@@ -398,8 +387,7 @@ screen_write_linefeed(struct screen_write_ctx *ctx)
 {
 	struct screen	*s = ctx->s;
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_LINEFEED);
+	tty_write_cmd(ctx->wp, TTY_LINEFEED);
 
 	if (s->cy == s->rlower)
 		grid_view_scroll_region_up(s->grid, s->rupper, s->rlower);
@@ -450,8 +438,7 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx)
 	sx = screen_size_x(s);
 	sy = screen_size_y(s);
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_CLEARENDOFSCREEN);
+	tty_write_cmd(ctx->wp, TTY_CLEARENDOFSCREEN);
 
 	if (s->cx <= sx - 1)
 		grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1);
@@ -467,8 +454,7 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx)
 
 	sx = screen_size_x(s);
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_CLEARSTARTOFSCREEN);
+	tty_write_cmd(ctx->wp, TTY_CLEARSTARTOFSCREEN);
 
 	if (s->cy > 0)
 		grid_view_clear(s->grid, 0, 0, sx, s->cy - 1);
@@ -484,8 +470,7 @@ screen_write_clearscreen(struct screen_write_ctx *ctx)
 {
 	struct screen	*s = ctx->s;
 
-	if (ctx->write != NULL)
-		ctx->write(ctx->data, TTY_CLEARSCREEN);
+	tty_write_cmd(ctx->wp, TTY_CLEARSCREEN);
 
 	grid_view_clear(s->grid, 0, 0, screen_size_x(s), screen_size_y(s));
 }
@@ -589,15 +574,12 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 
 	/* Write the actual cell. */
 	grid_view_set_cell(gd, s->cx, s->cy, gc);
-
-	if (ctx->write != NULL) {
-		if (screen_check_selection(s, s->cx, s->cy)) {
-			memcpy(&tc, &s->sel.cell, sizeof tc);
-			tc.data = gc->data;
-			ctx->write(ctx->data, TTY_CELL, &tc);
-		} else
-			ctx->write(ctx->data, TTY_CELL, gc);
-	}
+	if (screen_check_selection(s, s->cx, s->cy)) {
+		memcpy(&tc, &s->sel.cell, sizeof tc);
+		tc.data = gc->data;
+		tty_write_cmd(ctx->wp, TTY_CELL, &tc);
+	} else
+		tty_write_cmd(ctx->wp, TTY_CELL, gc);
 
 	/* Move the cursor. */
 	s->cx += width;

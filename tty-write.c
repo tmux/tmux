@@ -1,4 +1,4 @@
-/* $Id: tty-write.c,v 1.9 2009-01-28 19:52:21 nicm Exp $ */
+/* $Id: tty-write.c,v 1.10 2009-02-11 06:31:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,23 +20,27 @@
 
 #include "tmux.h"
 
+void	tty_vwrite_cmd(struct window_pane *, enum tty_cmd, va_list);
+
 void
-tty_write_window(void *ptr, enum tty_cmd cmd, ...)
+tty_write_cmd(struct window_pane *wp, enum tty_cmd cmd, ...)
 {
 	va_list	ap;
 
 	va_start(ap, cmd);
-	tty_vwrite_window(ptr, cmd, ap);
+	tty_vwrite_cmd(wp, cmd, ap);
 	va_end(ap);
 }
 
 void
-tty_vwrite_window(void *ptr, enum tty_cmd cmd, va_list ap)
+tty_vwrite_cmd(struct window_pane *wp, enum tty_cmd cmd, va_list ap)
 {
-	struct window_pane	*wp = ptr;
-	struct client		*c;
-	va_list		 	 aq;
-	u_int		 	 i;
+	struct client	*c;
+	va_list		 aq;
+	u_int		 i;
+
+	if (wp == NULL)
+		return;
 
 	if (wp->window->flags & WINDOW_HIDDEN || wp->flags & PANE_HIDDEN)
 		return;
@@ -57,11 +61,13 @@ tty_vwrite_window(void *ptr, enum tty_cmd cmd, va_list ap)
 }
 
 void
-tty_write_update_mode(void *ptr, int mode)
+tty_write_mode(struct window_pane *wp, int mode)
 {
-	struct window_pane	*wp = ptr;
-	struct client		*c;
-	u_int		 	 i;
+	struct client	*c;
+	u_int		 i;
+
+	if (wp == NULL)
+		return;
 
 	if (wp->window->flags & WINDOW_HIDDEN || wp->flags & PANE_HIDDEN)
 		return;
