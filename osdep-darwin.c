@@ -1,4 +1,4 @@
-/* $Id: osdep-darwin.c,v 1.6 2009-02-09 18:09:58 nicm Exp $ */
+/* $Id: osdep-darwin.c,v 1.7 2009-02-11 19:31:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Joshua Elsasser <josh@elsasser.org>
@@ -42,6 +42,8 @@ osdep_get_name(int fd, unused char *tty, unused pid_t *last_pid, char **name)
         size_t	size;
 	struct kinfo_proc kp;
 	
+	*name = NULL;
+
 	if ((mib[3] = tcgetpgrp(fd)) == -1)
 		return (-1);
 
@@ -50,7 +52,8 @@ osdep_get_name(int fd, unused char *tty, unused pid_t *last_pid, char **name)
 	    kp.kp_proc.p_comm[0] == '\0')
 		return (-1);
 
-	return (strdup(kp.kp_proc.p_comm));
+	*name = strdup(kp.kp_proc.p_comm[0]);
+	return (0);
 }
 
 #endif
