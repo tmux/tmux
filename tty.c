@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.66 2009-02-11 06:50:16 nicm Exp $ */
+/* $Id: tty.c,v 1.67 2009-02-11 07:02:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,25 +41,21 @@ void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_attributes_fg(struct tty *, const struct grid_cell *);
 void	tty_attributes_bg(struct tty *, const struct grid_cell *);
 
-void	tty_cmd_bell(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_carriagereturn(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_cell(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_clearendofline(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_clearendofscreen(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_clearline(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_clearscreen(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_clearstartofline(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_clearstartofscreen(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_deletecharacter(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_deleteline(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_insertcharacter(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_insertline(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_insertmode(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_linefeed(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_mousemode(struct tty *, struct screen *, u_int, va_list);
-void	tty_cmd_reverseindex(struct tty *, struct screen *, u_int, va_list);
+void	tty_cmd_cell(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_clearendofline(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_clearendofscreen(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_clearline(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_clearscreen(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_clearstartofline(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_clearstartofscreen(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_deletecharacter(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_deleteline(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_insertcharacter(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_insertline(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_linefeed(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_reverseindex(struct tty *, struct window_pane *, va_list);
 
-void (*tty_cmds[])(struct tty *, struct screen *, u_int, va_list) = {
+void (*tty_cmds[])(struct tty *, struct window_pane *, va_list) = {
 	tty_cmd_cell,
 	tty_cmd_clearendofline,
 	tty_cmd_clearendofscreen,
@@ -375,35 +371,35 @@ tty_emulate_repeat(
 }
 
 void
-tty_write(struct tty *tty, struct screen *s, u_int oy, enum tty_cmd cmd, ...)
+tty_write(struct tty *tty, struct window_pane *wp, enum tty_cmd cmd, ...)
 {
 	va_list	ap;
 
 	va_start(ap, cmd);
-	tty_vwrite(tty, s, oy, cmd, ap);
+	tty_vwrite(tty, wp, cmd, ap);
 	va_end(ap);
 }
 
 void
 tty_vwrite(
-    struct tty *tty, struct screen *s, u_int oy, enum tty_cmd cmd, va_list ap)
+    struct tty *tty, struct window_pane *wp, enum tty_cmd cmd, va_list ap)
 {
 	if (tty->flags & TTY_FREEZE || tty->term == NULL)
 		return;
 	if (tty_cmds[cmd] != NULL)
-		tty_cmds[cmd](tty, s, oy, ap);
+		tty_cmds[cmd](tty, wp, ap);
 }
 
 void
-tty_cmd_insertcharacter(
-    struct tty *tty, unused struct screen *s, u_int oy, va_list ap)
+tty_cmd_insertcharacter(struct tty *tty, struct window_pane *wp, va_list ap)
 {
-	u_int	ua;
+	struct screen	*s = wp->screen;
+	u_int		 ua;
 
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->cx, s->cy, oy);
+ 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
 
 	if (tty_term_has(tty->term, TTYC_ICH) || 
 	    tty_term_has(tty->term, TTYC_ICH1))
@@ -413,150 +409,151 @@ tty_cmd_insertcharacter(
 		while (ua-- > 0)
 			tty_putc(tty, ' ');
 		tty_putcode(tty, TTYC_RMIR);
-		tty_putcode2(tty, TTYC_CUP, oy + s->cy, s->cx);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, s->cx);
 	}
 }
 
 void
-tty_cmd_deletecharacter(
-    struct tty *tty, unused struct screen *s, u_int oy, va_list ap)
+tty_cmd_deletecharacter(struct tty *tty, struct window_pane *wp, va_list ap)
 {
-	u_int	ua;
+	struct screen	*s = wp->screen;
+	u_int		 ua;
 
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->cx, s->cy, oy);
+ 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
 
 	tty_emulate_repeat(tty, TTYC_DCH, TTYC_DCH1, ua);
 }
 
 void
-tty_cmd_insertline(
-    struct tty *tty, unused struct screen *s, u_int oy, va_list ap)
+tty_cmd_insertline(struct tty *tty, struct window_pane *wp, va_list ap)
 {
-	u_int	ua;
+	struct screen	*s = wp->screen;
+	u_int		 ua;
 
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
- 	tty_region(tty, s, oy);
- 	tty_cursor(tty, s->cx, s->cy, oy);
+ 	tty_region(tty, s, wp->yoff);
+ 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
 
 	tty_emulate_repeat(tty, TTYC_IL, TTYC_IL1, ua);
 }
 
 void
-tty_cmd_deleteline(
-    struct tty *tty, unused struct screen *s, u_int oy, va_list ap)
+tty_cmd_deleteline(struct tty *tty, struct window_pane *wp, va_list ap)
 {
-	u_int	ua;
+	struct screen	*s = wp->screen;
+	u_int		 ua;
 
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
- 	tty_region(tty, s, oy);
- 	tty_cursor(tty, s->cx, s->cy, oy);
+ 	tty_region(tty, s, wp->yoff);
+ 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
 
 	tty_emulate_repeat(tty, TTYC_DL, TTYC_DL1, ua);
 }
 
 void
-tty_cmd_clearline(
-    struct tty *tty, struct screen *s, u_int oy, unused va_list ap)
+tty_cmd_clearline(struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
-	u_int	i;
+	struct screen	*s = wp->screen;
+	u_int		 i;
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->cx, s->cy, oy);
+ 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
 
 	if (tty_term_has(tty->term, TTYC_EL)) {
-		tty_putcode2(tty, TTYC_CUP, oy + s->cy, 0);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, 0);
 		tty_putcode(tty, TTYC_EL);
-		tty_putcode2(tty, TTYC_CUP, oy + s->cy, s->cx);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, s->cx);
 	} else {
-		tty_putcode2(tty, TTYC_CUP, oy + s->cy, 0);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, 0);
 		for (i = 0; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
-		tty_putcode2(tty, TTYC_CUP, oy + s->cy, s->cx);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, s->cx);
 	}
 }
 
 void
 tty_cmd_clearendofline(
-    struct tty *tty, struct screen *s, u_int oy, unused va_list ap)
+    struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
-	u_int	i;
+	struct screen	*s = wp->screen;
+	u_int		 i;
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->cx, s->cy, oy);
+ 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
 
 	if (tty_term_has(tty->term, TTYC_EL))
 		tty_putcode(tty, TTYC_EL);
 	else {
-		tty_putcode2(tty, TTYC_CUP, oy + s->cy, s->cx);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, s->cx);
 		for (i = s->cx; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
-		tty_putcode2(tty, TTYC_CUP, oy + s->cy, s->cx);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, s->cx);
 	}
 }
 
 void
 tty_cmd_clearstartofline(
-    struct tty *tty, struct screen *s, u_int oy, unused va_list ap)
+    struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
-	u_int	i;
+	struct screen	*s = wp->screen;
+	u_int		 i;
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->cx, s->cy, oy);
+ 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
 
 	if (tty_term_has(tty->term, TTYC_EL1))
 		tty_putcode(tty, TTYC_EL1);
 	else {
-		tty_putcode2(tty, TTYC_CUP, oy + s->cy, 0);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, 0);
 		for (i = 0; i < s->cx + 1; i++)
 			tty_putc(tty, ' ');
-		tty_putcode2(tty, TTYC_CUP, oy + s->cy, s->cx);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, s->cx);
 	}
 }
 
 void
-tty_cmd_reverseindex(
-    struct tty *tty, struct screen *s, u_int oy, unused va_list ap)
+tty_cmd_reverseindex(struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
+	struct screen	*s = wp->screen;
+
 	tty_reset(tty);
- 	tty_region(tty, s, oy);
-	tty_cursor(tty, s->cx, s->cy, oy);
+ 	tty_region(tty, s, wp->yoff);
+	tty_cursor(tty, s->cx, s->cy, wp->yoff);
 
 	tty_putcode(tty, TTYC_RI);
 }
 
 void
-tty_cmd_linefeed(struct tty *tty, struct screen *s, u_int oy, unused va_list ap)
+tty_cmd_linefeed(struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
+	struct screen	*s = wp->screen;
+
 	tty_reset(tty);
- 	tty_region(tty, s, oy);
-	tty_cursor(tty, s->cx, s->cy, oy);
+ 	tty_region(tty, s, wp->yoff);
+	tty_cursor(tty, s->cx, s->cy, wp->yoff);
 
 	tty_putc(tty, '\n');
 	tty->cy++;
 }
 
 void
-tty_cmd_bell(struct tty *tty,
-    unused struct screen *s, unused u_int oy, unused va_list ap)
-{
-	tty_putcode(tty, TTYC_BEL);
-}
-
-void
 tty_cmd_clearendofscreen(
-    struct tty *tty, struct screen *s, u_int oy, unused va_list ap)
+    struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
-	u_int	i, j;
+	struct screen	*s = wp->screen;
+	u_int		 i, j, oy;
+
+	oy = wp->yoff;
 
 	tty_reset(tty);
-	tty_cursor(tty, s->cx, s->cy, oy);
+	tty_cursor(tty, s->cx, s->cy, wp->yoff);
 
 	if (tty_term_has(tty->term, TTYC_EL)) {
 		for (i = oy + s->cy; i < oy + screen_size_y(s); i++) {
@@ -577,9 +574,12 @@ tty_cmd_clearendofscreen(
 
 void
 tty_cmd_clearstartofscreen(
-    struct tty *tty, struct screen *s, u_int oy, unused va_list ap)
+    struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
-	u_int	i, j;
+	struct screen	*s = wp->screen;
+	u_int		 i, j, oy;
+
+	oy = wp->yoff;
 
 	tty_reset(tty);
 	tty_cursor(tty, s->cx, s->cy, oy);
@@ -604,9 +604,12 @@ tty_cmd_clearstartofscreen(
 
 void
 tty_cmd_clearscreen(
-    struct tty *tty, struct screen *s, u_int oy, unused va_list ap)
+    struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
-	u_int	i, j;
+	struct screen	*s = wp->screen;
+	u_int		 i, j, oy;
+
+	oy = wp->yoff;
 
 	tty_reset(tty);
 	tty_cursor(tty, s->cx, s->cy, oy);
@@ -628,21 +631,21 @@ tty_cmd_clearscreen(
 }
 
 void
-tty_cmd_cell(struct tty *tty, struct screen *s, u_int oy, va_list ap)
+tty_cmd_cell(struct tty *tty, struct window_pane *wp, va_list ap)
 {
 	struct grid_cell	*gc;
 
 	gc = va_arg(ap, struct grid_cell *);
 
-	tty_cell(tty, s, oy, gc);
+	tty_cell(tty, wp->screen, wp->yoff, gc);
 }
 
 void
-tty_cell(struct tty *tty, struct screen *s, u_int oy, struct grid_cell *gc)
+tty_cell(
+    struct tty *tty, struct screen *s, u_int oy, const struct grid_cell *gc)
 {
-	struct grid_cell       *gc;
-	u_int			i, width;
-	u_char			out[4];
+	u_int	i, width;
+	u_char	out[4];
 
 	tty_cursor(tty, s->cx, s->cy, oy);
 

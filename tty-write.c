@@ -1,4 +1,4 @@
-/* $Id: tty-write.c,v 1.10 2009-02-11 06:31:09 nicm Exp $ */
+/* $Id: tty-write.c,v 1.11 2009-02-11 07:02:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,7 +54,7 @@ tty_vwrite_cmd(struct window_pane *wp, enum tty_cmd cmd, va_list ap)
 
 		if (c->session->curw->window == wp->window) {
 			va_copy(aq, ap);
-			tty_vwrite(&c->tty, wp->screen, wp->yoff, cmd, aq);
+			tty_vwrite(&c->tty, wp, cmd, aq);
 			va_end(aq);
 		}
 	}

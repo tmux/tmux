@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.265 2009-02-11 06:50:15 nicm Exp $ */
+/* $Id: tmux.h,v 1.266 2009-02-11 07:02:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1012,8 +1012,8 @@ long long options_get_number(struct options *, const char *);
 
 /* tty.c */
 void		 tty_cursor(struct tty *, u_int, u_int, u_int);
-void		 tty_cell(
-    		     struct tty *, struct screen *, u_int, struct grid_cell *);
+void		 tty_cell(struct tty *,
+    		     struct screen *, u_int, const struct grid_cell *);
 void		 tty_putcode(struct tty *, enum tty_code_code);
 void		 tty_putcode1(struct tty *, enum tty_code_code, int);
 void		 tty_putcode2(struct tty *, enum tty_code_code, int, int);
@@ -1027,10 +1027,10 @@ void		 tty_update_mode(struct tty *, int);
 int		 tty_open(struct tty *, char **);
 void		 tty_close(struct tty *, int);
 void		 tty_free(struct tty *, int);
-void		 tty_write(struct tty *,
-		     struct screen *, u_int, enum tty_cmd, ...);
-void		 tty_vwrite(struct tty *,
-		     struct screen *, u_int, enum tty_cmd, va_list);
+void		 tty_write(
+		     struct tty *, struct window_pane *, enum tty_cmd, ...);
+void		 tty_vwrite(
+    		     struct tty *, struct window_pane *, enum tty_cmd, va_list);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;
