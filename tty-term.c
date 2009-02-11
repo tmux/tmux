@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.11 2009-02-11 18:44:08 nicm Exp $ */
+/* $Id: tty-term.c,v 1.12 2009-02-11 19:06:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -238,10 +238,6 @@ tty_term_find(char *name, int fd, char **cause)
 	}
 	if (!tty_term_has(term, TTYC_RI)) {
 		xasprintf(cause, "terminal does not support ri");
-		goto error;
-	}
-	if (!tty_term_has(term, TTYC_CSR)) {
-		xasprintf(cause, "terminal does not support csr");
 		goto error;
 	}
 	if (!tty_term_has(term, TTYC_CUP)) {

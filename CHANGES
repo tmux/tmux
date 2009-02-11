@@ -1,3 +1,8 @@
+11 February 2009
+
+* Emulate scroll regions (slowly) to support the few terminals which don't have
+  it (some of which don't really have any excuse).
+
 10 February 2009
 
 * No longer redraw the status line every status-interval unless it has actually
@@ -1090,7 +1095,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.250 2009-02-10 00:18:06 nicm Exp $
+$Id: CHANGES,v 1.251 2009-02-11 19:06:56 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

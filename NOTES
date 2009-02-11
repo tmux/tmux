@@ -72,14 +72,6 @@ A Vim syntax file is available in the examples directory. To install it:
 - Switch on syntax highlighting in your vimrc file by adding "syntax enable"
   to it.
 
-There are the following known issues:
-
-- cons25 on the FreeBSD console doesn't support scroll region (cs) (or lies
-  about support, I'm not totally clear which). This is a pity but emulating cs
-  is nontrivial and as most modern vt220-based software terminals support it,
-  currently there are better things to work one. Diffs or ideas how to cleanly
-  emulate cs are welcome.
-
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
 
@@ -99,4 +91,4 @@ welcome. Please email:
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.42 2009-01-18 17:20:52 nicm Exp $
+$Id: NOTES,v 1.43 2009-02-11 19:06:58 nicm Exp $

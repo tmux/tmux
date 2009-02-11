@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.69 2009-02-11 18:44:08 nicm Exp $ */
+/* $Id: tty.c,v 1.70 2009-02-11 19:06:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,6 +32,7 @@ u_char	tty_get_acs(struct tty *, u_char);
 
 void	tty_emulate_repeat(
     	    struct tty *, enum tty_code_code, enum tty_code_code, u_int);
+void	tty_draw_line(struct tty *, struct window_pane *, u_int);
 
 void	tty_raw(struct tty *, const char *);
 
@@ -369,6 +370,27 @@ tty_emulate_repeat(
 }
 
 void
+tty_draw_line(struct tty *tty, struct window_pane *wp, u_int py)
+{
+	struct screen		*s = wp->screen;
+	const struct grid_cell	*gc;
+	struct grid_cell	 tc;
+	u_int			 i;
+
+	for (i = 0; i < tty->sx; i++) {
+		gc = grid_view_peek_cell(s->grid, i, py);
+
+ 		tty_cursor(tty, i, py, wp->yoff);
+		if (screen_check_selection(s, i, py)) {
+			memcpy(&tc, &s->sel.cell, sizeof tc);
+			tc.data = gc->data;
+			tty_cell(tty, &tc);
+		} else
+			tty_cell(tty, gc);
+	}
+}
+
+void
 tty_write(struct tty *tty, struct window_pane *wp, enum tty_cmd cmd, ...)
 {
 	va_list	ap;
@@ -428,7 +450,22 @@ void
 tty_cmd_insertline(struct tty *tty, struct window_pane *wp, va_list ap)
 {
 	struct screen	*s = wp->screen;
-	u_int		 ua;
+	u_int		 ua, i;
+
+ 	if (!tty_term_has(tty->term, TTYC_CSR)) {
+		/*
+		 * Scroll region unsupported. Redraw using data from screen
+		 * (already updated).
+		 */
+		if (s->old_cy < s->old_rupper || s->old_cy > s->old_rlower) {
+			for (i = s->old_cy; i < screen_size_y(s); i++)
+				tty_draw_line(tty, wp, i);
+		} else {
+			for (i = s->old_rupper; i <= s->old_rlower; i++)
+				tty_draw_line(tty, wp, i);
+		}
+		return;
+	}
 
 	ua = va_arg(ap, u_int);
 
@@ -444,7 +481,22 @@ void
 tty_cmd_deleteline(struct tty *tty, struct window_pane *wp, va_list ap)
 {
 	struct screen	*s = wp->screen;
-	u_int		 ua;
+	u_int		 ua, i;
+
+ 	if (!tty_term_has(tty->term, TTYC_CSR)) {
+		/*
+		 * Scroll region unsupported. Redraw using data from screen
+		 * (already updated).
+		 */
+		if (s->old_cy < s->old_rupper || s->old_cy > s->old_rlower) {
+			for (i = s->old_cy; i < screen_size_y(s); i++)
+				tty_draw_line(tty, wp, i);
+		} else {
+			for (i = s->old_rupper; i <= s->old_rlower; i++)
+				tty_draw_line(tty, wp, i);
+		}
+		return;
+	}
 
 	ua = va_arg(ap, u_int);
 
@@ -514,6 +566,19 @@ void
 tty_cmd_reverseindex(struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
 	struct screen	*s = wp->screen;
+	u_int		 i;
+
+ 	if (!tty_term_has(tty->term, TTYC_CSR)) {
+		/*
+		 * Scroll region unsupported. If would have scrolled, redraw
+		 * scroll region from already updated window screen.
+		 */
+		if (s->old_cy == s->old_rupper) {
+			for (i = s->old_rupper; i <= s->old_rlower; i++)
+				tty_draw_line(tty, wp, i);
+			return;
+		}
+	}
 
 	tty_reset(tty);
 
@@ -527,6 +592,19 @@ void
 tty_cmd_linefeed(struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
 	struct screen	*s = wp->screen;
+	u_int		 i;
+
+ 	if (!tty_term_has(tty->term, TTYC_CSR)) {
+		/*
+		 * Scroll region unsupported. If would have scrolled, redraw
+		 * scroll region from already updated window screen.
+		 */
+		if (s->old_cy == s->old_rlower) {
+			for (i = s->old_rupper; i <= s->old_rlower; i++)
+				tty_draw_line(tty, wp, i);
+			return;
+		}
+	}
 
 	tty_reset(tty);
 
@@ -694,11 +772,13 @@ tty_reset(struct tty *tty)
 void
 tty_region(struct tty *tty, u_int rupper, u_int rlower, u_int oy)
 {
+	if (!tty_term_has(tty->term, TTYC_CSR))
+		return;
 	if (tty->rlower != oy + rlower || tty->rupper != oy + rupper) {
 		tty->rlower = oy + rlower;
 		tty->rupper = oy + rupper;
 		tty->cx = 0;
-		tty->cy = 0;
+	 	tty->cy = 0;
 		tty_putcode2(tty, TTYC_CSR, tty->rupper, tty->rlower);
 	}
 }
