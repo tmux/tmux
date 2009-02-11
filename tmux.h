@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.264 2009-02-11 06:31:09 nicm Exp $ */
+/* $Id: tmux.h,v 1.265 2009-02-11 06:50:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1012,6 +1012,8 @@ long long options_get_number(struct options *, const char *);
 
 /* tty.c */
 void		 tty_cursor(struct tty *, u_int, u_int, u_int);
+void		 tty_cell(
+    		     struct tty *, struct screen *, u_int, struct grid_cell *);
 void		 tty_putcode(struct tty *, enum tty_code_code);
 void		 tty_putcode1(struct tty *, enum tty_code_code, int);
 void		 tty_putcode2(struct tty *, enum tty_code_code, int, int);

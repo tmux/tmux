@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.20 2009-01-19 20:14:55 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.21 2009-02-11 06:50:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -142,8 +142,8 @@ screen_redraw_line(struct client *c, struct screen *s, u_int oy, u_int py)
 		if (screen_check_selection(s, i, py)) {
 			memcpy(&tc, &s->sel.cell, sizeof tc);
 			tc.data = gc->data;
-			tty_write(&c->tty, s, oy, TTY_CELL, &tc);
+			tty_cell(&c->tty, s, oy, &tc);
 		} else
-			tty_write(&c->tty, s, oy, TTY_CELL, gc);
+			tty_cell(&c->tty, s, oy, gc);
 	}
 }
