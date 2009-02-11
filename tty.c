@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.67 2009-02-11 07:02:34 nicm Exp $ */
+/* $Id: tty.c,v 1.68 2009-02-11 17:04:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,8 +35,6 @@ void	tty_emulate_repeat(
 
 void	tty_raw(struct tty *, const char *);
 
-void	tty_reset(struct tty *);
-void	tty_region(struct tty *, struct screen *, u_int);
 void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_attributes_fg(struct tty *, const struct grid_cell *);
 void	tty_attributes_bg(struct tty *, const struct grid_cell *);
@@ -399,7 +397,7 @@ tty_cmd_insertcharacter(struct tty *tty, struct window_pane *wp, va_list ap)
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
+ 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
 	if (tty_term_has(tty->term, TTYC_ICH) || 
 	    tty_term_has(tty->term, TTYC_ICH1))
@@ -409,7 +407,7 @@ tty_cmd_insertcharacter(struct tty *tty, struct window_pane *wp, va_list ap)
 		while (ua-- > 0)
 			tty_putc(tty, ' ');
 		tty_putcode(tty, TTYC_RMIR);
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, s->cx);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, s->old_cx);
 	}
 }
 
@@ -422,7 +420,7 @@ tty_cmd_deletecharacter(struct tty *tty, struct window_pane *wp, va_list ap)
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
+ 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
 	tty_emulate_repeat(tty, TTYC_DCH, TTYC_DCH1, ua);
 }
@@ -436,8 +434,8 @@ tty_cmd_insertline(struct tty *tty, struct window_pane *wp, va_list ap)
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
- 	tty_region(tty, s, wp->yoff);
- 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
+ 	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
+ 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
 	tty_emulate_repeat(tty, TTYC_IL, TTYC_IL1, ua);
 }
@@ -451,8 +449,8 @@ tty_cmd_deleteline(struct tty *tty, struct window_pane *wp, va_list ap)
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
- 	tty_region(tty, s, wp->yoff);
- 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
+ 	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
+ 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
 	tty_emulate_repeat(tty, TTYC_DL, TTYC_DL1, ua);
 }
@@ -464,17 +462,17 @@ tty_cmd_clearline(struct tty *tty, struct window_pane *wp, unused va_list ap)
 	u_int		 i;
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
+ 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
 	if (tty_term_has(tty->term, TTYC_EL)) {
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, 0);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, 0);
 		tty_putcode(tty, TTYC_EL);
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, s->cx);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, s->old_cx);
 	} else {
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, 0);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, 0);
 		for (i = 0; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, s->cx);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, s->old_cx);
 	}
 }
 
@@ -486,15 +484,15 @@ tty_cmd_clearendofline(
 	u_int		 i;
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
+ 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
 	if (tty_term_has(tty->term, TTYC_EL))
 		tty_putcode(tty, TTYC_EL);
 	else {
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, s->cx);
-		for (i = s->cx; i < screen_size_x(s); i++)
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, s->old_cx);
+		for (i = s->old_cx; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, s->cx);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, s->old_cx);
 	}
 }
 
@@ -506,15 +504,15 @@ tty_cmd_clearstartofline(
 	u_int		 i;
 
 	tty_reset(tty);
- 	tty_cursor(tty, s->cx, s->cy, wp->yoff);
+ 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
 	if (tty_term_has(tty->term, TTYC_EL1))
 		tty_putcode(tty, TTYC_EL1);
 	else {
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, 0);
-		for (i = 0; i < s->cx + 1; i++)
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, 0);
+		for (i = 0; i < s->old_cx + 1; i++)
 			tty_putc(tty, ' ');
-		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->cy, s->cx);
+		tty_putcode2(tty, TTYC_CUP, wp->yoff + s->old_cy, s->old_cx);
 	}
 }
 
@@ -524,8 +522,8 @@ tty_cmd_reverseindex(struct tty *tty, struct window_pane *wp, unused va_list ap)
 	struct screen	*s = wp->screen;
 
 	tty_reset(tty);
- 	tty_region(tty, s, wp->yoff);
-	tty_cursor(tty, s->cx, s->cy, wp->yoff);
+ 	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
+	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
 	tty_putcode(tty, TTYC_RI);
 }
@@ -536,8 +534,8 @@ tty_cmd_linefeed(struct tty *tty, struct window_pane *wp, unused va_list ap)
 	struct screen	*s = wp->screen;
 
 	tty_reset(tty);
- 	tty_region(tty, s, wp->yoff);
-	tty_cursor(tty, s->cx, s->cy, wp->yoff);
+ 	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
+	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
 	tty_putc(tty, '\n');
 	tty->cy++;
@@ -553,23 +551,23 @@ tty_cmd_clearendofscreen(
 	oy = wp->yoff;
 
 	tty_reset(tty);
-	tty_cursor(tty, s->cx, s->cy, wp->yoff);
+	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
 	if (tty_term_has(tty->term, TTYC_EL)) {
-		for (i = oy + s->cy; i < oy + screen_size_y(s); i++) {
+		for (i = oy + s->old_cy; i < oy + screen_size_y(s); i++) {
 			tty_putcode(tty, TTYC_EL);
 			if (i != screen_size_y(s) - 1)
 				tty_emulate_repeat(tty, TTYC_CUD, TTYC_CUD1, 1);
 		}
 	} else {
-		for (i = s->cx; i < screen_size_y(s); i++)
+		for (i = s->old_cx; i < screen_size_y(s); i++)
 			tty_putc(tty, ' ');
-		for (j = oy + s->cy; j < oy + screen_size_y(s); j++) {
+		for (j = oy + s->old_cy; j < oy + screen_size_y(s); j++) {
 			for (i = 0; i < screen_size_x(s); i++)
 				tty_putc(tty, ' ');
 		}
 	}
-	tty_putcode2(tty, TTYC_CUP, oy + s->cy, s->cx);
+	tty_putcode2(tty, TTYC_CUP, oy + s->old_cy, s->old_cx);
 }
 
 void
@@ -582,24 +580,24 @@ tty_cmd_clearstartofscreen(
 	oy = wp->yoff;
 
 	tty_reset(tty);
-	tty_cursor(tty, s->cx, s->cy, oy);
+	tty_cursor(tty, s->old_cx, s->old_cy, oy);
 
 	tty_putcode2(tty, TTYC_CUP, oy, 0);
 	if (tty_term_has(tty->term, TTYC_EL)) {
-		for (i = 0; i < oy + s->cy; i++) {
+		for (i = 0; i < oy + s->old_cy; i++) {
 			tty_putcode(tty, TTYC_EL);
 			tty_emulate_repeat(tty, TTYC_CUD, TTYC_CUD1, 1);
 		}
-		tty_putcode2(tty, TTYC_CUP, oy + s->cy, 0);
+		tty_putcode2(tty, TTYC_CUP, oy + s->old_cy, 0);
 	} else {
-		for (j = 0; j < oy + s->cy; j++) {
+		for (j = 0; j < oy + s->old_cy; j++) {
 			for (i = 0; i < screen_size_x(s); i++)
 				tty_putc(tty, ' ');
 		}
 	}
-	for (i = 0; i < s->cx; i++)
+	for (i = 0; i < s->old_cx; i++)
 		tty_putc(tty, ' ');
-	tty_putcode2(tty, TTYC_CUP, oy + s->cy, s->cx);
+	tty_putcode2(tty, TTYC_CUP, oy + s->old_cy, s->old_cx);
 }
 
 void
@@ -612,7 +610,7 @@ tty_cmd_clearscreen(
 	oy = wp->yoff;
 
 	tty_reset(tty);
-	tty_cursor(tty, s->cx, s->cy, oy);
+	tty_cursor(tty, s->old_cx, s->old_cy, oy);
 
 	tty_putcode2(tty, TTYC_CUP, oy, 0);
 	if (tty_term_has(tty->term, TTYC_EL)) {
@@ -627,27 +625,27 @@ tty_cmd_clearscreen(
 				tty_putc(tty, ' ');
 		}
 	}
-	tty_putcode2(tty, TTYC_CUP, oy + s->cy, s->cx);
+	tty_putcode2(tty, TTYC_CUP, oy + s->old_cy, s->old_cx);
 }
 
 void
 tty_cmd_cell(struct tty *tty, struct window_pane *wp, va_list ap)
 {
+	struct screen		*s = wp->screen;
 	struct grid_cell	*gc;
 
 	gc = va_arg(ap, struct grid_cell *);
 
-	tty_cell(tty, wp->screen, wp->yoff, gc);
+	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
+
+	tty_cell(tty, gc);
 }
 
 void
-tty_cell(
-    struct tty *tty, struct screen *s, u_int oy, const struct grid_cell *gc)
+tty_cell(struct tty *tty, const struct grid_cell *gc)
 {
 	u_int	i, width;
 	u_char	out[4];
-
-	tty_cursor(tty, s->cx, s->cy, oy);
 
 	/* If this is a padding character, do nothing. */
 	if (gc->flags & GRID_FLAG_PADDING)
@@ -697,11 +695,11 @@ tty_reset(struct tty *tty)
 }
 
 void
-tty_region(struct tty *tty, struct screen *s, u_int oy)
+tty_region(struct tty *tty, u_int rupper, u_int rlower, u_int oy)
 {
-	if (tty->rlower != oy + s->rlower || tty->rupper != oy + s->rupper) {
-		tty->rlower = oy + s->rlower;
-		tty->rupper = oy + s->rupper;
+	if (tty->rlower != oy + rlower || tty->rupper != oy + rupper) {
+		tty->rlower = oy + rlower;
+		tty->rupper = oy + rupper;
 		tty->cx = 0;
 		tty->cy = 0;
 		tty_putcode2(tty, TTYC_CSR, tty->rupper, tty->rlower);

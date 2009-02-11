@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.21 2009-02-11 06:50:15 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.22 2009-02-11 17:04:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -135,15 +135,13 @@ screen_redraw_line(struct client *c, struct screen *s, u_int oy, u_int py)
 	if (sx > c->sx)
 		sx = c->sx;
 	for (i = 0; i < sx; i++) {
-		s->cx = i;
-		s->cy = py;
-
 		gc = grid_view_peek_cell(s->grid, i, py);
+ 		tty_cursor(&c->tty, i, py, oy);
 		if (screen_check_selection(s, i, py)) {
 			memcpy(&tc, &s->sel.cell, sizeof tc);
 			tc.data = gc->data;
-			tty_cell(&c->tty, s, oy, &tc);
+			tty_cell(&c->tty, &tc);
 		} else
-			tty_cell(&c->tty, s, oy, gc);
+			tty_cell(&c->tty, gc);
 	}
 }
