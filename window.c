@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.66 2009-02-09 18:08:01 nicm Exp $ */
+/* $Id: window.c,v 1.67 2009-02-12 17:31:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -627,6 +627,7 @@ window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode)
 
 	if (wp->mode != NULL || wp->mode == mode)
 		return (1);
+	wp->window->name_pid = -1;
 
 	wp->mode = mode;
 
@@ -641,6 +642,7 @@ window_pane_reset_mode(struct window_pane *wp)
 {
 	if (wp->mode == NULL)
 		return;
+	wp->window->name_pid = -1;
 
 	wp->mode->free(wp);
 	wp->mode = NULL;
