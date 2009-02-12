@@ -1,5 +1,7 @@
 11 February 2009
 
+* Only use ri when actually at the top of the screen; just move the cursor up
+  otherwise.
 * FreeBSD's console wraps lines at $COLUMNS - 1 rather than $COLUMNS (the
   cursor can never be beyond $COLUMNS - 1) and does not appear to support
   changing this behaviour, or any of the obvious possibilities (turning off
@@ -1102,7 +1104,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.252 2009-02-11 23:16:41 nicm Exp $
+$Id: CHANGES,v 1.253 2009-02-12 00:03:58 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
