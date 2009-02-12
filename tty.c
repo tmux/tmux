@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.72 2009-02-12 00:03:58 nicm Exp $ */
+/* $Id: tty.c,v 1.73 2009-02-12 00:18:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -734,6 +734,11 @@ tty_cell(struct tty *tty, const struct grid_cell *gc)
 {
 	u_int	i, width;
 	u_char	out[4];
+
+	/* Skip last character if terminal is stupid. */
+	if (c->tty.term->flags & TERM_EARLYWRAP && 
+	    tty->cy == tty->sy - 1 && tty->cx == tty->sx - 1)
+		return;
 
 	/* If this is a padding character, do nothing. */
 	if (gc->flags & GRID_FLAG_PADDING)
