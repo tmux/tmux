@@ -90,6 +90,7 @@
 - might be nice if attach-session behaved like switch-client inside an
   existing client
 - tmux in tmux is funny with the status line on exit
-- the CSR emulation apparently works on everything apart from the FreeBSD
-  console where it is needed, install FreeBSD and fix it
+- test bug sshing from freebsd console
+- better support for stupid margin terminals. strcmp for cons25 sucks, how can
+  these be autodetected?
 
