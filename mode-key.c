@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.8 2009-02-13 16:40:04 nicm Exp $ */
+/* $Id: mode-key.c,v 1.9 2009-02-13 21:39:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,79 +20,180 @@
 
 #include "tmux.h"
 
-struct mode_key_entry {
-	enum mode_key	mkey;
-	int		key;
-};
+enum mode_key_cmd mode_key_lookup_vi(struct mode_key_data *, int);
+enum mode_key_cmd mode_key_lookup_emacs(struct mode_key_data *, int);
 
-const struct mode_key_entry mode_key_table_vi[] = {
-	{ MODEKEY_ENTER, '\r' },	/* must come first */
-	{ MODEKEY_BOL, '0' },
-	{ MODEKEY_BOL, '^' },
-	{ MODEKEY_CLEARSEL, '\033' },
-	{ MODEKEY_COPYSEL, '\r' },
-	{ MODEKEY_DOWN, 'j' },
-	{ MODEKEY_DOWN, KEYC_DOWN },
-	{ MODEKEY_EOL, '$' },
-	{ MODEKEY_LEFT, 'h' },
-	{ MODEKEY_LEFT, KEYC_LEFT },
-	{ MODEKEY_NPAGE, '\006' },
-	{ MODEKEY_NPAGE, KEYC_NPAGE },
-	{ MODEKEY_NWORD, 'w' },
-	{ MODEKEY_PPAGE, '\025' },
-	{ MODEKEY_PPAGE, KEYC_PPAGE },
-	{ MODEKEY_PWORD, 'b' },
-	{ MODEKEY_QUIT, 'q' },
-	{ MODEKEY_RIGHT, 'l' },
-	{ MODEKEY_RIGHT, KEYC_RIGHT },
-	{ MODEKEY_STARTSEL, ' ' },
-	{ MODEKEY_UP, 'k' },
-	{ MODEKEY_UP, KEYC_UP },
-};
-
-const struct mode_key_entry mode_key_table_emacs[] = {
-	{ MODEKEY_ENTER, '\r' },	/* must come first */
-	{ MODEKEY_BOL, '\001' },
-	{ MODEKEY_CLEARSEL, '\007' },
-	{ MODEKEY_COPYSEL, '\027' },
-	{ MODEKEY_COPYSEL, KEYC_ADDESC('w') },
-	{ MODEKEY_DOWN, '\016' },
-	{ MODEKEY_DOWN, KEYC_DOWN },
-	{ MODEKEY_EOL, '\005' },
-	{ MODEKEY_LEFT, '\002' },
-	{ MODEKEY_LEFT, KEYC_LEFT },
-	{ MODEKEY_NPAGE, '\026' },
-	{ MODEKEY_NPAGE, KEYC_NPAGE },
-	{ MODEKEY_NWORD, KEYC_ADDESC('f') },
-	{ MODEKEY_PPAGE, KEYC_ADDESC('v') },
-	{ MODEKEY_PPAGE, KEYC_PPAGE },
-	{ MODEKEY_PWORD, KEYC_ADDESC('b') },
-	{ MODEKEY_QUIT, 'q' },
-	{ MODEKEY_RIGHT, '\006' },
-	{ MODEKEY_RIGHT, KEYC_RIGHT },
-	{ MODEKEY_STARTSEL, '\000' },
-	{ MODEKEY_UP, '\020' },
-	{ MODEKEY_UP, KEYC_UP },
-};
-
-enum mode_key
-mode_key_lookup(int table, int key)
+void
+mode_key_init(struct mode_key_data *mdata, int type, int flags)
 {
-	const struct mode_key_entry   	*ptr;
-	u_int				 i, n;
+	mdata->type = type;
 
-	if (table == MODEKEY_EMACS) {
-		ptr = mode_key_table_emacs;
-		n = nitems(mode_key_table_emacs);
-	} else if (table == MODEKEY_VI) {
-		ptr = mode_key_table_vi;
-		n = nitems(mode_key_table_vi);
-	} else
-		return (MODEKEY_NONE);
+	if (flags & MODEKEY_CANEDIT)
+		flags |= MODEKEY_EDITMODE;
+	mdata->flags = flags;
+}
 
-	for (i = 0; i < n; i++) {
-		if (ptr[i].key == key)
-			return (ptr[i].mkey);
+void
+mode_key_free(unused struct mode_key_data *mdata)
+{
+}
+
+enum mode_key_cmd
+mode_key_lookup(struct mode_key_data *mdata, int key)
+{
+	switch (mdata->type) {
+	case MODEKEY_VI:
+		return (mode_key_lookup_vi(mdata, key));
+	case MODEKEY_EMACS:
+		return (mode_key_lookup_emacs(mdata, key));
+	default:
+		fatalx("unknown mode key type");
 	}
-	return (MODEKEY_NONE);
+}
+
+enum mode_key_cmd
+mode_key_lookup_vi(struct mode_key_data *mdata, int key)
+{
+	if (mdata->flags & MODEKEY_EDITMODE) {
+		switch (key) {
+		case '\003':
+			return (MODEKEYCMD_QUIT);
+		case '\033':
+			if (mdata->flags & MODEKEY_CANEDIT)
+				mdata->flags &= ~MODEKEY_EDITMODE;
+			return (MODEKEYCMD_NONE);
+		case '\010':
+		case '\177':
+			return (MODEKEYCMD_BACKSPACE);
+		case '\011':
+			return (MODEKEYCMD_COMPLETE);
+		case KEYC_DC:
+			return (MODEKEYCMD_DELETE);
+		case '\r':
+			return (MODEKEYCMD_CHOOSE);
+		}
+		return (MODEKEYCMD_OTHERKEY);
+	}
+
+	switch (key) {
+	case '\010':
+	case '\177':
+		return (MODEKEYCMD_LEFT);
+	case KEYC_DC:
+		return (MODEKEYCMD_DELETE);
+	case '\011':
+		return (MODEKEYCMD_COMPLETE);
+	case 'i':
+		if (mdata->flags & MODEKEY_CANEDIT)
+			mdata->flags |= MODEKEY_EDITMODE;
+		break;
+	case 'a':
+		if (mdata->flags & MODEKEY_CANEDIT) {
+			mdata->flags |= MODEKEY_EDITMODE;
+			return (MODEKEYCMD_RIGHT);
+		}
+		break;
+	case '\r':
+		if (mdata->flags & MODEKEY_CANEDIT)
+			return (MODEKEYCMD_CHOOSE);
+		return (MODEKEYCMD_COPYSELECTION);
+	case '0':
+	case '^':
+		return (MODEKEYCMD_STARTOFLINE);
+	case '\033':
+		return (MODEKEYCMD_CLEARSELECTION);
+	case 'j':
+	case KEYC_DOWN:
+		return (MODEKEYCMD_DOWN);
+	case '$':
+		return (MODEKEYCMD_ENDOFLINE);
+	case 'h':
+	case KEYC_LEFT:
+		return (MODEKEYCMD_LEFT);
+	case '\006':
+	case KEYC_NPAGE:
+		return (MODEKEYCMD_NEXTPAGE);
+	case 'w':
+		return (MODEKEYCMD_NEXTWORD);
+	case '\025':
+	case KEYC_PPAGE:
+		return (MODEKEYCMD_PREVIOUSPAGE);
+	case 'b':
+		return (MODEKEYCMD_PREVIOUSWORD);
+	case 'q':
+	case '\003':
+		return (MODEKEYCMD_QUIT);
+	case 'l':
+	case KEYC_RIGHT:
+		return (MODEKEYCMD_RIGHT);
+	case ' ':
+		return (MODEKEYCMD_STARTSELECTION);
+	case 'k':
+	case KEYC_UP:
+		return (MODEKEYCMD_UP);
+	}
+	
+	return (MODEKEYCMD_NONE);
+}
+
+enum mode_key_cmd
+mode_key_lookup_emacs(struct mode_key_data *mdata, int key)
+{
+	switch (key) {
+	case '\010':
+	case '\177':
+		return (MODEKEYCMD_BACKSPACE);
+	case KEYC_DC:
+		return (MODEKEYCMD_DELETE);
+	case '\011':
+		return (MODEKEYCMD_COMPLETE);
+	case '\r':
+		return (MODEKEYCMD_CHOOSE);
+	case '\001':
+		return (MODEKEYCMD_STARTOFLINE);
+	case '\007':
+		return (MODEKEYCMD_CLEARSELECTION);
+	case '\027':
+	case KEYC_ADDESC('w'):
+		return (MODEKEYCMD_COPYSELECTION);
+	case '\016':
+	case KEYC_DOWN:
+		return (MODEKEYCMD_DOWN);
+	case '\005':
+		return (MODEKEYCMD_ENDOFLINE);
+	case '\002':
+	case KEYC_LEFT:
+		return (MODEKEYCMD_LEFT);
+	case ' ':
+		if (mdata->flags & MODEKEY_CANEDIT)
+			break;
+		/* FALLTHROUGH */
+	case '\026':
+	case KEYC_NPAGE:
+		return (MODEKEYCMD_NEXTPAGE);
+	case KEYC_ADDESC('f'):
+		return (MODEKEYCMD_NEXTWORD);
+	case KEYC_ADDESC('v'):
+	case KEYC_PPAGE:
+		return (MODEKEYCMD_PREVIOUSPAGE);
+	case KEYC_ADDESC('b'):
+		return (MODEKEYCMD_PREVIOUSWORD);
+	case '\006':
+	case KEYC_RIGHT:
+		return (MODEKEYCMD_RIGHT);
+	case '\000':
+		return (MODEKEYCMD_STARTSELECTION);
+	case '\020':
+	case KEYC_UP:
+		return (MODEKEYCMD_UP);
+	case 'q':
+		if (mdata->flags & MODEKEY_CANEDIT)
+			break;
+		/* FALLTHROUGH */
+	case '\003':
+	case '\033':
+		return (MODEKEYCMD_QUIT);
+	}
+
+	return (MODEKEYCMD_OTHERKEY);
 }

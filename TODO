@@ -99,3 +99,4 @@
   for stuff like mode keys?
 - bug: copy mode gets the start of the selection wrong
 - ncmpc scroll up doesn't redraw properly
+- document status-keys

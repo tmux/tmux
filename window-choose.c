@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.10 2009-01-29 20:02:33 nicm Exp $ */
+/* $Id: window-choose.c,v 1.11 2009-02-13 21:39:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,6 +52,8 @@ struct window_choose_mode_item {
 
 struct window_choose_mode_data {
 	struct screen	        screen;
+
+	struct mode_key_data	mdata;
 
 	ARRAY_DECL(, struct window_choose_mode_item) list;
 	u_int			top;
@@ -115,6 +117,9 @@ window_choose_init(struct window_pane *wp)
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	s->mode &= ~MODE_CURSOR;
 	s->mode |= MODE_MOUSE;
+
+	mode_key_init(&data->mdata,
+	    options_get_number(&wp->window->options, "mode-keys"), 0);
 	
 	return (s);
 }
@@ -124,6 +129,8 @@ window_choose_free(struct window_pane *wp)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	u_int				 i;
+
+ 	mode_key_free(&data->mdata);
 	
 	for (i = 0; i < ARRAY_LENGTH(&data->list); i++)
 		xfree(ARRAY_ITEM(&data->list, i).name);
@@ -154,23 +161,21 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx		 ctx;
 	struct window_choose_mode_item	*item;
-	int				 table;
 	u_int				 items;
 
 	items = ARRAY_LENGTH(&data->list);
 
-	table = options_get_number(&wp->window->options, "mode-keys");
-	switch (mode_key_lookup(table, key)) {
-	case MODEKEY_QUIT:
+	switch (mode_key_lookup(&data->mdata, key)) {
+	case MODEKEYCMD_QUIT:
 		data->callback(data->data, -1);
 		window_pane_reset_mode(wp);
 		break;
-	case MODEKEY_ENTER:
+	case MODEKEYCMD_CHOOSE:
 		item = &ARRAY_ITEM(&data->list, data->selected);
 		data->callback(data->data, item->idx);
 		window_pane_reset_mode(wp);
 		break;
-	case MODEKEY_UP:
+	case MODEKEYCMD_UP:
 		if (items == 0)
 			break;
 		if (data->selected == 0) {
@@ -192,7 +197,7 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 			screen_write_stop(&ctx);
 		}			
 		break;
-	case MODEKEY_DOWN:
+	case MODEKEYCMD_DOWN:
 		if (items == 0)
 			break;
 		if (data->selected == items - 1) {
@@ -213,7 +218,7 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 			screen_write_stop(&ctx);
 		}			
 		break;
-	case MODEKEY_PPAGE:
+	case MODEKEYCMD_PREVIOUSPAGE:
 		if (data->selected < screen_size_y(s)) {
 			data->selected = 0;
 			data->top = 0;
@@ -226,11 +231,7 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 		}
  		window_choose_redraw_screen(wp);
 		break;
-	case MODEKEY_NONE:
-		if (key != ' ')
-			break;
-		/* FALLTHROUGH */
-	case MODEKEY_NPAGE:
+	case MODEKEYCMD_NEXTPAGE:
 		data->selected += screen_size_y(s);
 		if (data->selected > items - 1)
 			data->selected = items - 1;

@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.49 2009-01-28 22:00:22 nicm Exp $ */
+/* $Id: window-copy.c,v 1.50 2009-02-13 21:39:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -73,6 +73,8 @@ const struct window_mode window_copy_mode = {
 struct window_copy_mode_data {
 	struct screen	screen;
 
+	struct mode_key_data	mdata;
+
 	u_int	ox;
 	u_int	oy;
 
@@ -101,6 +103,9 @@ window_copy_init(struct window_pane *wp)
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	s->mode |= MODE_MOUSE;
 
+	mode_key_init(&data->mdata,
+	    options_get_number(&wp->window->options, "mode-keys"), 0);
+
 	s->cx = data->cx;
 	s->cy = data->cy;
 
@@ -117,6 +122,8 @@ void
 window_copy_free(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
+
+ 	mode_key_free(&data->mdata);
 
 	screen_free(&data->screen);
 	xfree(data);
@@ -155,29 +162,27 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	int				 table;
 
-	table = options_get_number(&wp->window->options, "mode-keys");
-	switch (mode_key_lookup(table, key)) {
-	case MODEKEY_QUIT:
+	switch (mode_key_lookup(&data->mdata, key)) {
+	case MODEKEYCMD_QUIT:
 		window_pane_reset_mode(wp);
 		break;
-	case MODEKEY_LEFT:
+	case MODEKEYCMD_LEFT:
 		window_copy_cursor_left(wp);
 		return;
-	case MODEKEY_RIGHT:
+	case MODEKEYCMD_RIGHT:
 		window_copy_cursor_right(wp);
  		return;
-	case MODEKEY_UP:
+	case MODEKEYCMD_UP:
 		window_copy_cursor_up(wp);
 		return;
-	case MODEKEY_DOWN:
+	case MODEKEYCMD_DOWN:
 		window_copy_cursor_down(wp);
 		return;
-	case MODEKEY_PPAGE:
+	case MODEKEYCMD_PREVIOUSPAGE:
 		window_copy_pageup(wp);
 		break;
-	case MODEKEY_NPAGE:
+	case MODEKEYCMD_NEXTPAGE:
 		if (data->oy < screen_size_y(s))
 			data->oy = 0;
 		else
@@ -185,30 +190,29 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		window_copy_update_selection(wp);
 		window_copy_redraw_screen(wp);
 		break;
-	case MODEKEY_STARTSEL:
+	case MODEKEYCMD_STARTSELECTION:
  		window_copy_start_selection(wp);
 		break;
-	case MODEKEY_CLEARSEL:
+	case MODEKEYCMD_CLEARSELECTION:
 		screen_clear_selection(&data->screen);
 		window_copy_redraw_screen(wp);
 		break;
-	case MODEKEY_COPYSEL:
-	case MODEKEY_ENTER:
+	case MODEKEYCMD_COPYSELECTION:
 		if (c != NULL && c->session != NULL) {
 			window_copy_copy_selection(wp, c);
 			window_pane_reset_mode(wp);
 		}
 		break;
-	case MODEKEY_BOL:
+	case MODEKEYCMD_STARTOFLINE:
 		window_copy_cursor_start_of_line(wp);
 		break;
-	case MODEKEY_EOL:
+	case MODEKEYCMD_ENDOFLINE:
 		window_copy_cursor_end_of_line(wp);
 		break;
-	case MODEKEY_NWORD:
+	case MODEKEYCMD_NEXTWORD:
 		window_copy_cursor_next_word(wp);
 		break;
-	case MODEKEY_PWORD:
+	case MODEKEYCMD_PREVIOUSWORD:
 		window_copy_cursor_previous_word(wp);
 		break;
 	default:

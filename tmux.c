@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.106 2009-02-08 16:26:43 nicm Exp $ */
+/* $Id: tmux.c,v 1.107 2009-02-13 21:39:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -252,6 +252,7 @@ main(int argc, char **argv)
 	options_set_string(&global_options, "status-left", "[#S]");
 	options_set_string(
 	    &global_options, "status-right", "\"#24T\" %%H:%%M %%d-%%b-%%y");
+	options_set_number(&global_options, "status-keys", MODEKEY_EMACS);
 	options_init(&global_window_options, NULL);
 	options_set_number(&global_window_options, "aggressive-resize", 0);
 	options_set_number(&global_window_options, "clock-mode-colour", 4);

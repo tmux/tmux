@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.272 2009-02-13 18:57:55 nicm Exp $ */
+/* $Id: tmux.h,v 1.273 2009-02-13 21:39:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -398,6 +398,41 @@ struct msg_resize_data {
 	u_int		sy;
 };
 
+/* Editing keys. */
+enum mode_key_cmd {
+	MODEKEYCMD_BACKSPACE,
+	MODEKEYCMD_CHOOSE,
+	MODEKEYCMD_CLEARSELECTION,
+	MODEKEYCMD_COMPLETE,
+	MODEKEYCMD_COPYSELECTION,
+	MODEKEYCMD_DELETE,
+	MODEKEYCMD_DOWN,
+	MODEKEYCMD_ENDOFLINE,
+	MODEKEYCMD_LEFT,
+	MODEKEYCMD_NEXTPAGE,
+	MODEKEYCMD_NEXTWORD,
+	MODEKEYCMD_NONE,
+	MODEKEYCMD_OTHERKEY,
+	MODEKEYCMD_PREVIOUSPAGE,
+	MODEKEYCMD_PREVIOUSWORD,
+	MODEKEYCMD_QUIT,
+	MODEKEYCMD_RIGHT,
+	MODEKEYCMD_STARTOFLINE,
+	MODEKEYCMD_STARTSELECTION,
+	MODEKEYCMD_UP,
+};
+
+struct mode_key_data {	
+	int			 type;
+
+	int			 flags;
+#define MODEKEY_EDITMODE 0x1
+#define MODEKEY_CANEDIT 0x2
+};
+
+#define MODEKEY_EMACS 0
+#define MODEKEY_VI 1
+
 /* Modes. */
 #define MODE_CURSOR 0x1
 #define MODE_INSERT 0x2
@@ -786,6 +821,7 @@ struct client {
 	int		 prompt_hidden;
 	u_int		 prompt_hindex;
 	ARRAY_DECL(, char *) prompt_hdata;
+	struct mode_key_data prompt_mdata;
 
 	struct session	*session;
 };
@@ -914,30 +950,8 @@ struct set_option_entry {
 };
 extern const struct set_option_entry set_option_table[];
 extern const struct set_option_entry set_window_option_table[];
-#define NSETOPTION 22
+#define NSETOPTION 23
 #define NSETWINDOWOPTION 17
-
-/* Edit keys. */
-enum mode_key {
-	MODEKEY_BOL,
-	MODEKEY_CLEARSEL,
-	MODEKEY_COPYSEL,
-	MODEKEY_DOWN,
-	MODEKEY_ENTER,
-	MODEKEY_EOL,
-	MODEKEY_LEFT,
-	MODEKEY_NONE,
-	MODEKEY_NPAGE,
-	MODEKEY_NWORD,
-	MODEKEY_PPAGE,
-	MODEKEY_PWORD,
-	MODEKEY_QUIT,
-	MODEKEY_RIGHT,
-	MODEKEY_STARTSEL,
-	MODEKEY_UP,
-};
-#define MODEKEY_EMACS 0
-#define MODEKEY_VI 1
 
 #ifdef NO_STRTONUM
 /* strtonum.c */
@@ -999,7 +1013,9 @@ void		 sighandler(int);
 int		 load_cfg(const char *, char **x);
 
 /* mode-key.c */
-enum mode_key	 mode_key_lookup(int, int);
+void		 mode_key_init(struct mode_key_data *, int, int);
+void		 mode_key_free(struct mode_key_data *);
+enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
 
 /* options.c */
 int	options_cmp(struct options_entry *, struct options_entry *);

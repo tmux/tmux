@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.28 2009-01-28 19:52:21 nicm Exp $ */
+/* $Id: window-more.c,v 1.29 2009-02-13 21:39:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,6 +45,8 @@ const struct window_mode window_more_mode = {
 
 struct window_more_mode_data {
 	struct screen	        screen;
+
+	struct mode_key_data	mdata;
 
 	ARRAY_DECL(, char *)	list;
 	u_int			top;
@@ -97,6 +99,9 @@ window_more_init(struct window_pane *wp)
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	s->mode &= ~MODE_CURSOR;
 
+	mode_key_init(&data->mdata,
+	    options_get_number(&wp->window->options, "mode-keys"), 0);
+
 	return (s);
 }
 
@@ -105,6 +110,8 @@ window_more_free(struct window_pane *wp)
 {
 	struct window_more_mode_data	*data = wp->modedata;
 	u_int				 i;
+
+	mode_key_free(&data->mdata);
 
 	for (i = 0; i < ARRAY_LENGTH(&data->list); i++)
 		xfree(ARRAY_ITEM(&data->list, i));
@@ -129,31 +136,25 @@ window_more_key(struct window_pane *wp, unused struct client *c, int key)
 {
 	struct window_more_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	int				 table;
 
-	table = options_get_number(&wp->window->options, "mode-keys");
-	switch (mode_key_lookup(table, key)) {
-	case MODEKEY_QUIT:
+	switch (mode_key_lookup(&data->mdata, key)) {
+	case MODEKEYCMD_QUIT:
 		window_pane_reset_mode(wp);
 		break;
-	case MODEKEY_UP:
+	case MODEKEYCMD_UP:
 		window_more_scroll_up(wp);
 		break;
-	case MODEKEY_DOWN:
+	case MODEKEYCMD_DOWN:
 		window_more_scroll_down(wp);
 		break;
-	case MODEKEY_PPAGE:
+	case MODEKEYCMD_PREVIOUSPAGE:
 		if (data->top < screen_size_y(s))
 			data->top = 0;
 		else
 			data->top -= screen_size_y(s);
 		window_more_redraw_screen(wp);
 		break;
-	case MODEKEY_NONE:
-		if (key != ' ')
-			break;
-		/* FALLTHROUGH */
-	case MODEKEY_NPAGE:
+	case MODEKEYCMD_NEXTPAGE:
 		if (data->top + screen_size_y(s) > ARRAY_LENGTH(&data->list))
 			data->top = ARRAY_LENGTH(&data->list);
 		else

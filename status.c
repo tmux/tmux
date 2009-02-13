@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.74 2009-02-13 18:57:55 nicm Exp $ */
+/* $Id: status.c,v 1.75 2009-02-13 21:39:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -577,6 +577,10 @@ status_prompt_set(struct client *c,
 
 	c->prompt_hidden = hide;
 
+	mode_key_init(&c->prompt_mdata,
+	    options_get_number(&c->session->options, "status-keys"),
+	    MODEKEY_CANEDIT);
+
 	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_STATUS;
 }
@@ -586,6 +590,8 @@ status_prompt_clear(struct client *c)
 {
 	if (c->prompt_string == NULL)
 		return;
+
+	mode_key_free(&c->prompt_mdata);
 
 	xfree(c->prompt_string);
 	c->prompt_string = NULL;
@@ -682,35 +688,33 @@ status_prompt_key(struct client *c, int key)
 	size_t	size, n, off, idx;
 	char	word[64];
 
-	/* XXX This function needs some tidying... */
-
 	size = strlen(c->prompt_buffer);
-	switch (key) {
-	case KEYC_LEFT:
+	switch (mode_key_lookup(&c->prompt_mdata, key)) {
+	case MODEKEYCMD_LEFT:
 		if (c->prompt_index > 0) {
 			c->prompt_index--;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case KEYC_RIGHT:
+	case MODEKEYCMD_RIGHT:
 		if (c->prompt_index < size) {
 			c->prompt_index++;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case '\001':	/* C-a */
+	case MODEKEYCMD_STARTOFLINE:
 		if (c->prompt_index != 0) {
 			c->prompt_index = 0;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case '\005':	/* C-e */
+	case MODEKEYCMD_ENDOFLINE:
 		if (c->prompt_index != size) {
 			c->prompt_index = size;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case '\011':
+	case MODEKEYCMD_COMPLETE:
 		if (*c->prompt_buffer == '\0')
 			break;
 
@@ -758,8 +762,7 @@ status_prompt_key(struct client *c, int key)
 
 		c->flags |= CLIENT_STATUS;
 		break;
-	case '\010':
-	case '\177':
+	case MODEKEYCMD_BACKSPACE:
 		if (c->prompt_index != 0) {
 			if (c->prompt_index == size)
 				c->prompt_buffer[--c->prompt_index] = '\0';
@@ -772,7 +775,7 @@ status_prompt_key(struct client *c, int key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case KEYC_DC:
+ 	case MODEKEYCMD_DELETE:
 		if (c->prompt_index != size) {
 			memmove(c->prompt_buffer + c->prompt_index,
 			    c->prompt_buffer + c->prompt_index + 1,
@@ -780,7 +783,7 @@ status_prompt_key(struct client *c, int key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case KEYC_UP:
+	case MODEKEYCMD_UP:
 		if (ARRAY_LENGTH(&c->prompt_hdata) == 0)
 			break;
 	       	xfree(c->prompt_buffer);
@@ -793,7 +796,7 @@ status_prompt_key(struct client *c, int key)
 		c->prompt_index = strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
 		break;
-	case KEYC_DOWN:
+	case MODEKEYCMD_DOWN:
 		xfree(c->prompt_buffer);
 
 		if (c->prompt_hindex != 0) {
@@ -807,7 +810,7 @@ status_prompt_key(struct client *c, int key)
 		c->prompt_index = strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
 		break;
- 	case '\r':	/* enter */
+ 	case MODEKEYCMD_CHOOSE:
 		if (*c->prompt_buffer != '\0') {
 			status_prompt_add_history(c);
 			if (c->prompt_callback(
@@ -816,12 +819,12 @@ status_prompt_key(struct client *c, int key)
 			break;
 		}
 		/* FALLTHROUGH */
-	case '\033':	/* escape */
+	case MODEKEYCMD_QUIT:
 		if (c->prompt_callback(c->prompt_data, NULL) == 0)
 			status_prompt_clear(c);
 		break;
-	default:
-		if (key < 32)
+	case MODEKEYCMD_OTHERKEY:
+		if (key < 32 || key > 126)
 			break;
 		c->prompt_buffer = xrealloc(c->prompt_buffer, 1, size + 2);
 
@@ -836,6 +839,8 @@ status_prompt_key(struct client *c, int key)
 		}
 
 		c->flags |= CLIENT_STATUS;
+		break;
+	default:
 		break;
 	}
 }

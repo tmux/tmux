@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.31 2009-01-28 19:52:21 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.32 2009-02-13 21:39:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,6 +50,8 @@ const struct window_mode window_scroll_mode = {
 struct window_scroll_mode_data {
 	struct screen	screen;
 
+	struct mode_key_data	mdata;
+
 	u_int		ox;
 	u_int		oy;
 };
@@ -70,6 +72,9 @@ window_scroll_init(struct window_pane *wp)
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	s->mode &= ~MODE_CURSOR;
 
+	mode_key_init(&data->mdata,
+	    options_get_number(&wp->window->options, "mode-keys"), 0);
+
 	screen_write_start(&ctx, NULL, s);
 	for (i = 0; i < screen_size_y(s); i++)
 		window_scroll_write_line(wp, &ctx, i);
@@ -82,6 +87,8 @@ void
 window_scroll_free(struct window_pane *wp)
 {
 	struct window_scroll_mode_data	*data = wp->modedata;
+
+	mode_key_free(&data->mdata);
 
 	screen_free(&data->screen);
 	xfree(data);
@@ -121,29 +128,27 @@ window_scroll_key(struct window_pane *wp, unused struct client *c, int key)
 {
 	struct window_scroll_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	int				 table;
 
-	table = options_get_number(&wp->window->options, "mode-keys");
-	switch (mode_key_lookup(table, key)) {
-	case MODEKEY_QUIT:
+	switch (mode_key_lookup(&data->mdata, key)) {
+	case MODEKEYCMD_QUIT:
 		window_pane_reset_mode(wp);
 		break;
-	case MODEKEY_LEFT:
+	case MODEKEYCMD_LEFT:
 		window_scroll_scroll_left(wp);
 		break;
-	case MODEKEY_RIGHT:
+	case MODEKEYCMD_RIGHT:
 		window_scroll_scroll_right(wp);
 		break;
-	case MODEKEY_UP:
+	case MODEKEYCMD_UP:
 		window_scroll_scroll_up(wp);
 		break;
-	case MODEKEY_DOWN:
+	case MODEKEYCMD_DOWN:
 		window_scroll_scroll_down(wp);
 		break;
-	case MODEKEY_PPAGE:
+	case MODEKEYCMD_PREVIOUSPAGE:
 		window_scroll_pageup(wp);
 		break;
-	case MODEKEY_NPAGE:
+	case MODEKEYCMD_NEXTPAGE:
 		if (data->oy < screen_size_y(s))
 			data->oy = 0;
 		else
