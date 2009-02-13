@@ -1,4 +1,4 @@
-/* $Id: names.c,v 1.3 2009-02-09 18:08:01 nicm Exp $ */
+/* $Id: names.c,v 1.4 2009-02-13 00:43:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,12 +53,8 @@ set_window_names(void)
 
 		if (w->active->screen != &w->active->base)
 			name = NULL;
-		else {
-			if (osdep_get_name(w->active->fd, 
-			    w->active->tty, &w->name_pid, &name) == 1)
-				continue;
-		}
-		
+		else
+			name = osdep_get_name(w->active->fd, w->active->tty);
 		if (name == NULL)
 			wname = default_window_name(w);
 		else {

@@ -1,4 +1,4 @@
-/* $Id: osdep-freebsd.c,v 1.13 2009-02-09 18:09:58 nicm Exp $ */
+/* $Id: osdep-freebsd.c,v 1.14 2009-02-13 00:43:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,8 +31,7 @@
 #include <string.h>
 #include <unistd.h>
 
-int	 osdep_get_name(int, char *, pid_t *, char **);
-char	*osdep_get_argv0(pid_t);
+char	*osdep_get_name(int, char *);
 
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 
@@ -41,32 +40,31 @@ char	*osdep_get_argv0(pid_t);
 #define is_stopped(p) \
 	((p)->ki_stat == SSTOP || (p)->ki_stat == SZOMB)
 
-int
-osdep_get_name(int fd, char *tty, pid_t *last_pid, char **name)
+char *
+osdep_get_name(int fd, char *tty)
 {
 	int		 mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PGRP, 0 };
 	struct stat	 sb;
 	size_t		 len;
 	struct kinfo_proc *buf, *newbuf, *p, *bestp;
 	u_int		 i;
-
-	*name = NULL;
+	char		*name;
 
 	buf = NULL;
 
 	if (stat(tty, &sb) == -1)
-		return (-1);
+		return (NULL);
 	if ((mib[3] = tcgetpgrp(fd)) == -1)
-		return (-1);
+		return (NULL);
 
 retry:
 	if (sysctl(mib, nitems(mib), NULL, &len, NULL, 0) == -1)
-		return (-1);
+		return (NULL);
 	len = (len * 5) / 4;
 
 	if ((newbuf = realloc(buf, len)) == NULL) {
 		free(buf);
-		return (-1);
+		return (NULL);
 	}
 	buf = newbuf;
 
@@ -74,7 +72,7 @@ retry:
 		if (errno == ENOMEM)
 			goto retry;
 		free(buf);
-		return (-1);
+		return (NULL);
 	}
 
 	bestp = NULL;
@@ -116,56 +114,12 @@ retry:
 			bestp = p;
 	}
 
-	if (bestp == NULL) {
-		free(buf);
-		return (-1);
-	}
+	name = NULL;
+	if (bestp != NULL)
+		name = strdup(bestp->ki_comm);
 
-	if (bestp->ki_pid == *last_pid) {
- 		free(buf);
-		return (1);
-	}
-	*last_pid = bestp->ki_pid;
-
-	*name = osdep_get_argv0(bestp->ki_pid);
-	if (*name == NULL || **name == '\0') {
-		free(*name);
-		*name = strdup(bestp->ki_comm);
-	}
 	free(buf);
-	return (0);
-}
-
-char *
-osdep_get_argv0(pid_t pid)
-{
-	int	mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_ARGS, 0 };
-        size_t	size, size2;
-	char   *args, *args2, *procname;
-
-	mib[3] = pid;
-	procname = NULL;
-
-	args = NULL;
-	size = 128;
-	while (size < SIZE_MAX / 2) {
-		size *= 2;
-		if ((args2 = realloc(args, size)) == NULL)
-			break;
-		args = args2;
-		size2 = size;
-		if (sysctl(mib, 4, args, &size2, NULL, 0) == -1) {
-			if (errno == ENOMEM)
-				continue;
-			break;
-		}
-		if (size2 > 0 && *args != '\0')
-			procname = strdup(args);
-		break;
-	}
-	free(args);
-
-	return (procname);
+	return (name);
 }
 
 #endif
