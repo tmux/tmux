@@ -97,3 +97,5 @@
 - page up/down in choose mode is STILL broken. damn
 - set-option should be set-session-option and should be overall global options
   for stuff like mode keys?
+- bug: copy mode gets the start of the selection wrong
+- ncmpc scroll up doesn't redraw properly
