@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.74 2009-02-12 00:19:31 nicm Exp $ */
+/* $Id: tty.c,v 1.75 2009-02-13 16:53:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -644,18 +644,17 @@ tty_cmd_clearendofscreen(
 	if (tty_term_has(tty->term, TTYC_EL)) {	
 		tty_putcode(tty, TTYC_EL);
 		if (s->old_cy != screen_size_y(s) - 1) {
-			tty_putc(tty, '\r');
-			tty_putc(tty, '\n');
-		}
-		for (i = s->old_cy + 1; i < screen_size_y(s); i++) {
-			tty_putcode(tty, TTYC_EL);
-			if (i != screen_size_y(s) - 1) {
+			tty_cursor(tty, 0, s->old_cy + 1, wp->yoff);
+			for (i = s->old_cy + 1; i < screen_size_y(s); i++) {
+				tty_putcode(tty, TTYC_EL);
+				if (i == screen_size_y(s) - 1)
+					continue;
 				tty_emulate_repeat(tty, TTYC_CUD, TTYC_CUD1, 1);
 				tty->cy++;
 			}
 		}
 	} else {
-		for (i = s->old_cx; i < screen_size_y(s); i++)
+		for (i = s->old_cx; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
 		for (j = s->old_cy; j < screen_size_y(s); j++) {
 			for (i = 0; i < screen_size_x(s); i++)

@@ -93,4 +93,4 @@
 - test bug sshing from freebsd console
 - better support for stupid margin terminals. strcmp for cons25 sucks, how can
   these be autodetected?
-
+- the escape timer for M- is too short for escape+key. fiddle with it
