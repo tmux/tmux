@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.13 2009-01-30 21:10:10 nicm Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.14 2009-02-13 18:57:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -96,7 +96,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 		cdata->template = NULL;
 		hdr = xstrdup(":");
 	}
-	server_set_client_prompt(c, hdr, cmd_command_prompt_callback, cdata, 0);
+	status_prompt_set(c, hdr, cmd_command_prompt_callback, cdata, 0);
 	xfree(hdr);
 
 	return (0);
@@ -148,7 +148,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 		if (cause == NULL)
 			return (0);
 		*cause = toupper((u_char) *cause);
-		server_set_client_message(c, cause);
+		status_message_set(c, cause);
 		xfree(cause);
 		cmdlist = NULL;
 	}

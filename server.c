@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.120 2009-02-11 17:50:35 nicm Exp $ */
+/* $Id: server.c,v 1.121 2009-02-13 18:57:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -556,7 +556,7 @@ server_check_timers(struct client *c)
 		fatal("gettimeofday");
 
 	if (c->message_string != NULL && timercmp(&tv, &c->message_timer, >))
-		server_clear_client_message(c);
+		status_message_clear(c);
 
 	if (c->message_string != NULL || c->prompt_string != NULL) {
 		/*
@@ -694,7 +694,7 @@ server_handle_client(struct client *c)
 			return;
 		wp = c->session->curw->window->active;	/* could die */
 
-		server_clear_client_message(c);
+		status_message_clear(c);
 		if (c->prompt_string != NULL) {
 			status_prompt_key(c, key);
 			continue;

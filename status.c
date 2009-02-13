@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.73 2009-02-11 17:50:36 nicm Exp $ */
+/* $Id: status.c,v 1.74 2009-02-13 18:57:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -488,6 +488,38 @@ status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 	return (text);
 }
 
+void
+status_message_set(struct client *c, const char *msg)
+{
+	struct timeval	tv;
+	int		delay;
+
+	delay = options_get_number(&c->session->options, "display-time");
+	tv.tv_sec = delay / 1000;
+	tv.tv_usec = (delay % 1000) * 1000L;
+
+	c->message_string = xstrdup(msg);
+	if (gettimeofday(&c->message_timer, NULL) != 0)
+		fatal("gettimeofday");
+	timeradd(&c->message_timer, &tv, &c->message_timer);
+
+	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
+	c->flags |= CLIENT_STATUS;
+}
+
+void
+status_message_clear(struct client *c)
+{
+	if (c->message_string == NULL)
+		return;
+
+	xfree(c->message_string);
+	c->message_string = NULL;
+
+	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
+	c->flags |= CLIENT_REDRAW;
+}
+
 /* Draw client message on status line of present else on last line. */
 int
 status_message_redraw(struct client *c)
@@ -527,6 +559,42 @@ status_message_redraw(struct client *c)
 	}
 	screen_free(&old_status);
 	return (1);
+}
+
+void
+status_prompt_set(struct client *c,
+    const char *msg, int (*fn)(void *, const char *), void *data, int hide)
+{
+	c->prompt_string = xstrdup(msg);
+
+	c->prompt_buffer = xstrdup("");
+	c->prompt_index = 0;
+
+	c->prompt_callback = fn;
+	c->prompt_data = data;
+
+	c->prompt_hindex = 0;
+
+	c->prompt_hidden = hide;
+
+	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
+	c->flags |= CLIENT_STATUS;
+}
+
+void
+status_prompt_clear(struct client *c)
+{
+	if (c->prompt_string == NULL)
+		return;
+
+	xfree(c->prompt_string);
+	c->prompt_string = NULL;
+
+	xfree(c->prompt_buffer);
+	c->prompt_buffer = NULL;
+
+	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
+	c->flags |= CLIENT_REDRAW;
 }
 
 /* Draw client prompt on status line of present else on last line. */
@@ -744,13 +812,13 @@ status_prompt_key(struct client *c, int key)
 			status_prompt_add_history(c);
 			if (c->prompt_callback(
 			    c->prompt_data, c->prompt_buffer) == 0)
-				server_clear_client_prompt(c);
+				status_prompt_clear(c);
 			break;
 		}
 		/* FALLTHROUGH */
 	case '\033':	/* escape */
 		if (c->prompt_callback(c->prompt_data, NULL) == 0)
-			server_clear_client_prompt(c);
+			status_prompt_clear(c);
 		break;
 	default:
 		if (key < 32)

@@ -1,4 +1,4 @@
-/* $Id: cmd-select-prompt.c,v 1.6 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-select-prompt.c,v 1.7 2009-02-13 18:57:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,7 +55,7 @@ cmd_select_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (c->prompt_string != NULL)
 		return (0);
 
-	server_set_client_prompt(c, "index ", cmd_select_prompt_callback, c, 0);
+	status_prompt_set(c, "index ", cmd_select_prompt_callback, c, 0);
 
 	return (0);
 }
@@ -74,14 +74,14 @@ cmd_select_prompt_callback(void *data, const char *s)
 	idx = strtonum(s, 0, UINT_MAX, &errstr);
 	if (errstr != NULL) {
 		xsnprintf(msg, sizeof msg, "Index %s: %s", errstr, s);
-		server_set_client_message(c, msg);
+		status_message_set(c, msg);
 		return (0);
 	}
 
 	if (winlink_find_by_index(&c->session->windows, idx) == NULL) {
 		xsnprintf(msg, sizeof msg,
 		    "Window not found: %s:%d", c->session->name, idx);
-		server_set_client_message(c, msg);
+		status_message_set(c, msg);
 		return (0);
 	}
 

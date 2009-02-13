@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.271 2009-02-13 00:43:04 nicm Exp $ */
+/* $Id: tmux.h,v 1.272 2009-02-13 18:57:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1277,11 +1277,6 @@ int	 server_start(const char *);
 int	 server_msg_dispatch(struct client *);
 
 /* server-fn.c */
-void	 server_set_client_message(struct client *, const char *);
-void	 server_clear_client_message(struct client *);
-void	 server_set_client_prompt(struct client *,
-	     const char *, int (*)(void *, const char *), void *, int);
-void	 server_clear_client_prompt(struct client *);
 struct session *server_extract_session(
     	     struct msg_command_data *, char *, char **);
 void	 server_write(struct client *, enum hdrtype, const void *, size_t);
@@ -1302,7 +1297,12 @@ int	 server_unlock(const char *);
 
 /* status.c */
 int	 status_redraw(struct client *);
+void	 status_message_set(struct client *, const char *);
+void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
+void	 status_prompt_set(struct client *,
+	     const char *, int (*)(void *, const char *), void *, int);
+void	 status_prompt_clear(struct client *);
 int	 status_prompt_redraw(struct client *);
 void	 status_prompt_key(struct client *, int);
 

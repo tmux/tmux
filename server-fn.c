@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.53 2009-01-11 00:48:42 nicm Exp $ */
+/* $Id: server-fn.c,v 1.54 2009-02-13 18:57:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,74 +25,6 @@
 #include "tmux.h"
 
 int	server_lock_callback(void *, const char *);
-
-void
-server_set_client_message(struct client *c, const char *msg)
-{
-	struct timeval	tv;
-	int		delay;
-
-	delay = options_get_number(&c->session->options, "display-time");
-	tv.tv_sec = delay / 1000;
-	tv.tv_usec = (delay % 1000) * 1000L;
-
-	c->message_string = xstrdup(msg);
-	if (gettimeofday(&c->message_timer, NULL) != 0)
-		fatal("gettimeofday");
-	timeradd(&c->message_timer, &tv, &c->message_timer);
-
-	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
-	c->flags |= CLIENT_STATUS;
-}
-
-void
-server_clear_client_message(struct client *c)
-{
-	if (c->message_string == NULL)
-		return;
-
-	xfree(c->message_string);
-	c->message_string = NULL;
-
-	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
-	c->flags |= CLIENT_REDRAW;
-}
-
-void
-server_set_client_prompt(struct client *c,
-    const char *msg, int (*fn)(void *, const char *), void *data, int hide)
-{
-	c->prompt_string = xstrdup(msg);
-
-	c->prompt_buffer = xstrdup("");
-	c->prompt_index = 0;
-
-	c->prompt_callback = fn;
-	c->prompt_data = data;
-
-	c->prompt_hindex = 0;
-
-	c->prompt_hidden = hide;
-
-	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
-	c->flags |= CLIENT_STATUS;
-}
-
-void
-server_clear_client_prompt(struct client *c)
-{
-	if (c->prompt_string == NULL)
-		return;
-
-	xfree(c->prompt_string);
-	c->prompt_string = NULL;
-
-	xfree(c->prompt_buffer);
-	c->prompt_buffer = NULL;
-
-	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
-	c->flags |= CLIENT_REDRAW;
-}
 
 void
 server_write_client(
@@ -232,9 +164,8 @@ server_lock(void)
 		if (c == NULL)
 			continue;
 
-		server_clear_client_prompt(c);
-		server_set_client_prompt(
-		    c, "Password: ", server_lock_callback, c, 1);
+		status_prompt_clear(c);
+		status_prompt_set(c, "Password: ", server_lock_callback, c, 1);
   		server_redraw_client(c);
 	}
 	server_locked = 1;
@@ -269,7 +200,7 @@ server_unlock(const char *s)
 		if (c == NULL)
 			continue;
 
-		server_clear_client_prompt(c);
+		status_prompt_clear(c);
   		server_redraw_client(c);
 	}
 	server_locked = 0;
