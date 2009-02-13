@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.76 2009-02-13 17:09:55 nicm Exp $ */
+/* $Id: tty.c,v 1.77 2009-02-13 19:45:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -596,7 +596,7 @@ tty_cmd_reverseindex(struct tty *tty, struct window_pane *wp, unused va_list ap)
  	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
 
 	if (s->old_cy == s->old_rupper) {
-		tty_cursor(tty, s->old_cx, 0, wp->yoff);
+		tty_cursor(tty, s->old_cx, s->old_rupper, wp->yoff);
 		tty_putcode(tty, TTYC_RI);
 	}
 }
