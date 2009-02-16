@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.14 2009-02-12 00:18:05 nicm Exp $ */
+/* $Id: tty-term.c,v 1.15 2009-02-16 19:01:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -217,9 +217,6 @@ tty_term_find(char *name, int fd, char **cause)
 	memset(&term->codes, 0, sizeof term->codes);
 	for (i = 0; i < NTTYCODE; i++) {
 		ent = &tty_term_codes[i];
-
-//		if (ent->code == TTYC_CSR)/*XXX*/
-//			continue;
 
 		code = &term->codes[ent->code];
 		code->type = TTYCODE_NONE;

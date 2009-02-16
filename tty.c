@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.77 2009-02-13 19:45:16 nicm Exp $ */
+/* $Id: tty.c,v 1.78 2009-02-16 19:01:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -245,7 +245,7 @@ tty_close(struct tty *tty, int no_stop)
 
 	if (!no_stop)
 		tty_stop_tty(tty);
-
+	
 	tty_term_free(tty->term);
 	tty_keys_free(tty);
 
