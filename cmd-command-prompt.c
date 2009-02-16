@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.15 2009-02-16 18:57:16 nicm Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.16 2009-02-16 18:58:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -170,6 +170,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 	ctx.cmdclient = NULL;
 
 	cmd_list_exec(cmdlist, &ctx);
+	cmd_list_free(cmdlist);
 
 	if (c->prompt_callback != (void *) &cmd_command_prompt_callback)
 		return (1);
