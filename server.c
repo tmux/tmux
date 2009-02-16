@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.122 2009-02-16 18:51:39 nicm Exp $ */
+/* $Id: server.c,v 1.123 2009-02-16 19:29:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -335,6 +335,11 @@ server_main(const char *srv_path, int srv_fd)
 
 	close(srv_fd);
 	unlink(srv_path);
+
+	options_free(&global_options);
+	options_free(&global_window_options);
+	if (server_password != NULL)
+		xfree(server_password);
 
 	return (0);
 }
