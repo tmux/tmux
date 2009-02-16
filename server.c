@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.121 2009-02-13 18:57:55 nicm Exp $ */
+/* $Id: server.c,v 1.122 2009-02-16 18:51:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -789,6 +789,8 @@ server_lost_client(struct client *c)
 	}
 
 	tty_free(&c->tty, c->flags & CLIENT_SUSPENDED);
+
+	screen_free(&c->status);
 
 	if (c->title != NULL)
 		xfree(c->title);

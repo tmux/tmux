@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.8 2009-02-10 00:18:06 nicm Exp $ */
+/* $Id: grid.c,v 1.9 2009-02-16 18:51:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -107,7 +107,7 @@ grid_destroy(struct grid_data *gd)
 {
 	u_int	yy;
 
-	for (yy = 0; yy < gd->hsize + gd->sy - 1; yy++) {
+	for (yy = 0; yy < gd->hsize + gd->sy; yy++) {
 		if (gd->data[yy] != NULL)
 			xfree(gd->data[yy]);
 	}
