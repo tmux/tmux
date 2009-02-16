@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.14 2009-02-13 18:57:55 nicm Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.15 2009-02-16 18:57:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -112,8 +112,10 @@ cmd_command_prompt_callback(void *data, const char *s)
 	char				*cause, *ptr, *buf, ch;
 	size_t				 len, slen;
 
-	if (s == NULL)
+	if (s == NULL) {
+		xfree(cdata);
 		return (0);
+	}
 	slen = strlen(s);
 
 	len = 0;

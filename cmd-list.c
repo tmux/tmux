@@ -1,4 +1,4 @@
-/* $Id: cmd-list.c,v 1.2 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-list.c,v 1.3 2009-02-16 18:57:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,10 +47,8 @@ cmd_list_parse(int argc, char **argv, char **cause)
 	}
 
 	cmd = cmd_parse(argc - lastsplit, argv + lastsplit, cause);
-	if (cmd == NULL) {
-		cmd_list_free(cmdlist);
-		return (NULL);
-	}
+	if (cmd == NULL)
+		goto bad;
 	TAILQ_INSERT_TAIL(cmdlist, cmd, qentry);
        
 	return (cmdlist);
