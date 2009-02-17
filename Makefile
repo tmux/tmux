@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.111 2009-02-08 14:11:37 nicm Exp $
+# $Id: Makefile,v 1.112 2009-02-17 08:08:42 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -86,6 +86,14 @@ INCDIRS+= -Icompat
 SRCS+= compat/vis.c
 CFLAGS+= -DUSE_LIBUTIL_H -DNO_QUEUE_H -DNO_TREE_H
 LIBS+= -lcrypt
+.endif
+
+# NetBSD
+.if ${OS} == "NetBSD"
+INCDIRS+= -Icompat
+SRCS+= compat/strtonum.c compat/vis.c
+LIBS+= -lcrypt
+CFLAGS+=-DNO_STRTONUM
 .endif
 
 OBJS= ${SRCS:S/.c/.o/:S/.y/.o/}
