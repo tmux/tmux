@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.13 2009-02-13 00:43:04 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.14 2009-02-17 18:54:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,7 +22,6 @@
 #include <sys/sysctl.h>
 #include <sys/stat.h>
 
-#include <err.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
