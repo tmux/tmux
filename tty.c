@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.78 2009-02-16 19:01:16 nicm Exp $ */
+/* $Id: tty.c,v 1.79 2009-02-17 18:53:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -187,25 +187,21 @@ tty_stop_tty(struct tty *tty)
 	 * because the fd is invalid. Things like ssh -t can easily leave us
 	 * with a dead tty.
 	 */
-	if (ioctl(tty->fd, TIOCGWINSZ, &ws) == -1) {
-		if (errno != EBADF && errno != ENXIO && errno != ENOTTY)
-			fatal("ioctl(TIOCGWINSZ)");
-	} else if (tcsetattr(tty->fd, TCSANOW, &tty->tio) == -1) {
-		if (errno != EBADF && errno != ENXIO && errno != ENOTTY)
-			fatal("tcsetattr failed");
-	} else {
-		tty_raw(tty,
-		    tty_term_string2(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
-		tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
-		tty_raw(tty, tty_term_string(tty->term, TTYC_SGR0));
-		tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
-		tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
-		tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
+	if (ioctl(tty->fd, TIOCGWINSZ, &ws) == -1)
+		return;
+	if (tcsetattr(tty->fd, TCSANOW, &tty->tio) == -1)
+		return;
 
-		tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
-		if (tty_term_has(tty->term, TTYC_KMOUS))
-			tty_raw(tty, "\033[?1000l");
-	}
+	tty_raw(tty, tty_term_string2(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
+	tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
+	tty_raw(tty, tty_term_string(tty->term, TTYC_SGR0));
+	tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
+	tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
+	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
+	
+	tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
+	if (tty_term_has(tty->term, TTYC_KMOUS))
+		tty_raw(tty, "\033[?1000l");
 }
 
 void
