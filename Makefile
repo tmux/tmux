@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.114 2009-02-18 08:50:30 nicm Exp $
+# $Id: Makefile,v 1.115 2009-02-18 09:04:15 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -144,6 +144,6 @@ update-index.html:
 
 install:	all
 		${INSTALLDIR} ${DESTDIR}${PREFIX}/bin
-		${INSTALLBIN} ${PROG} ${DESTDIR}${PREFIX}/bin/${PROG}
+		${INSTALLBIN} ${PROG} ${DESTDIR}${PREFIX}/bin/
 		${INSTALLDIR} ${DESTDIR}${PREFIX}/man/man1
 		${INSTALLMAN} ${PROG}.1 ${DESTDIR}${PREFIX}/man/man1/
