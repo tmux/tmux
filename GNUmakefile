@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.71 2009-02-08 14:11:37 nicm Exp $
+# $Id: GNUmakefile,v 1.72 2009-02-18 08:41:22 nicm Exp $
 
 .PHONY: clean
 
@@ -46,7 +46,7 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       osdep-darwin.c attributes.c
 
 CC?= gcc
-INCDIRS+= -I. -I-
+CPPFLAGS+= -I. -I-
 CFLAGS+= -DBUILD="\"$(VERSION) ($(DATE))\"" -DMETA="'${META}'"
 ifdef FDEBUG
 CFLAGS+= -g -ggdb -DDEBUG
@@ -68,7 +68,7 @@ INSTALLBIN= install -g bin -o root -m 555
 INSTALLMAN= install -g bin -o root -m 444
 
 ifeq ($(shell uname),IRIX64)
-INCDIRS+= -Icompat -I/usr/local/include/ncurses
+CPPFLAGS+= -Icompat -I/usr/local/include/ncurses
 SRCS+= compat/strlcpy.c compat/strtonum.c compat/daemon.c \
 	compat/asprintf.c compat/fgetln.c compat/forkpty-irix.c
 CFLAGS+= -DNO_STRLCPY -DNO_STRTONUM -DNO_TREE_H -DNO_SETPROCTITLE \
@@ -79,7 +79,7 @@ LIBS+= -lgen
 endif
 
 ifeq ($(shell uname),SunOS)
-INCDIRS+= -Icompat -I/usr/local/include/ncurses
+CPPFLAGS+= -Icompat -I/usr/local/include/ncurses
 SRCS+= compat/strtonum.c compat/daemon.c compat/forkpty-sunos.c \
 	compat/asprintf.c compat/fgetln.c compat/vis.c
 CFLAGS+= -DNO_STRTONUM -DNO_TREE_H -DNO_PATHS_H -DNO_SETPROCTITLE \
@@ -89,14 +89,14 @@ LIBS+= -lsocket -lnsl
 endif
 
 ifeq ($(shell uname),Darwin)
-INCDIRS+= -Icompat
+CPPFLAGS+= -Icompat
 SRCS+= compat/strtonum.c compat/bsd-poll.c compat/vis.c
 CFLAGS+= -DNO_STRTONUM -DNO_SETRESUID -DNO_SETRESGID -DNO_SETPROCTITLE \
          -DNO_QUEUE_H -DNO_TREE_H -DBROKEN_POLL
 endif
 
 ifeq ($(shell uname),Linux)
-INCDIRS+= -Icompat
+CPPFLAGS+= -Icompat
 SRCS+= compat/strlcpy.c compat/strlcat.c compat/strtonum.c \
        compat/fgetln.c compat/getopt_long.c compat/vis.c
 CFLAGS+= $(shell getconf LFS_CFLAGS) -D_GNU_SOURCE \
@@ -110,15 +110,13 @@ OBJS= $(patsubst %.c,%.o,$(SRCS))
 
 CLEANFILES= ${PROG} *.o .depend *~ ${PROG}.core *.log compat/*.o index.html
 
-CPPFLAGS+= $(INCDIRS)
-
 all: $(PROG)
 
 $(PROG): $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $+ $(LIBS)
 
 depend: $(SRCS)
-	$(CC) $(CFLAGS) $(INCDIRS) -MM $(SRCS) > .depend
+	$(CC) $(CPPFLAGS) $(CFLAGS) -MM $(SRCS) > .depend
 
 install:
 	$(INSTALLDIR) $(DESTDIR)$(PREFIX)/bin
