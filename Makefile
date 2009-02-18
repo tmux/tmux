@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.113 2009-02-18 08:41:22 nicm Exp $
+# $Id: Makefile,v 1.114 2009-02-18 08:50:30 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -48,8 +48,8 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       osdep-unknown.c osdep-openbsd.c osdep-freebsd.c osdep-linux.c \
       osdep-darwin.c osdep-netbsd.c
 
-CC?= cc
-CPPFLAGS+= -I. -I- -I/usr/local/include
+CC?= c
+INCDIRS+= -I. -I- -I/usr/local/include
 CFLAGS+= -DMETA="'${META}'"
 .ifdef PROFILE
 # Don't use ccache
@@ -82,7 +82,7 @@ LIBS+= -lutil -lncurses
 
 # FreeBSD and DragonFly
 .if ${OS} == "FreeBSD" || ${OS} == "DragonFly"
-CPPFLAGS+= -Icompat
+INCDIRS+= -Icompat
 SRCS+= compat/vis.c
 CFLAGS+= -DUSE_LIBUTIL_H -DNO_QUEUE_H -DNO_TREE_H
 LIBS+= -lcrypt
@@ -90,7 +90,7 @@ LIBS+= -lcrypt
 
 # NetBSD
 .if ${OS} == "NetBSD"
-CPPFLAGS= -Icompat
+INCDIRS= -Icompat
 SRCS+= compat/strtonum.c compat/vis.c
 LIBS+= -lcrypt
 CFLAGS+=-DNO_STRTONUM
@@ -103,6 +103,8 @@ DISTFILES= *.[chyl] Makefile GNUmakefile *.[1-9] NOTES TODO CHANGES FAQ \
 	   `find examples compat -type f -and ! -path '*CVS*'`
 
 CLEANFILES= ${PROG} *.o .depend *~ ${PROG}.core *.log compat/*.o index.html
+
+CPPFLAGS:= ${INCDIRS} ${CPPFLAGS} 
 
 .c.o:
 		${CC} ${CPPFLAGS} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
