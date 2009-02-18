@@ -1,4 +1,4 @@
-/* $Id: osdep-unknown.c,v 1.2 2009-01-20 22:17:53 nicm Exp $ */
+/* $Id: osdep-unknown.c,v 1.3 2009-02-18 08:41:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,7 +17,7 @@
  */
 
 #if !defined(__OpenBSD__) && !defined(__FreeBSD__) && !defined(__linux__) && \
-	!defined(__APPLE__)
+	!defined(__APPLE__) && !defined(__NetBSD__)
 
 #include <sys/types.h>
 
