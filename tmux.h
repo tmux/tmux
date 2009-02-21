@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.273 2009-02-13 21:39:45 nicm Exp $ */
+/* $Id: tmux.h,v 1.274 2009-02-21 17:46:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -428,6 +428,7 @@ struct mode_key_data {
 	int			 flags;
 #define MODEKEY_EDITMODE 0x1
 #define MODEKEY_CANEDIT 0x2
+#define MODEKEY_CHOOSEMODE 0x4
 };
 
 #define MODEKEY_EMACS 0

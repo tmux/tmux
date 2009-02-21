@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.9 2009-02-13 21:39:45 nicm Exp $ */
+/* $Id: mode-key.c,v 1.10 2009-02-21 17:46:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -94,7 +94,7 @@ mode_key_lookup_vi(struct mode_key_data *mdata, int key)
 		}
 		break;
 	case '\r':
-		if (mdata->flags & MODEKEY_CANEDIT)
+		if (mdata->flags & (MODEKEY_CANEDIT|MODEKEY_CHOOSEMODE))
 			return (MODEKEYCMD_CHOOSE);
 		return (MODEKEYCMD_COPYSELECTION);
 	case '0':

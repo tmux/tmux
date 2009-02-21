@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.11 2009-02-13 21:39:45 nicm Exp $ */
+/* $Id: window-choose.c,v 1.12 2009-02-21 17:46:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -119,7 +119,8 @@ window_choose_init(struct window_pane *wp)
 	s->mode |= MODE_MOUSE;
 
 	mode_key_init(&data->mdata,
-	    options_get_number(&wp->window->options, "mode-keys"), 0);
+	    options_get_number(&wp->window->options, "mode-keys"),
+	    MODEKEY_CHOOSEMODE);
 	
 	return (s);
 }
