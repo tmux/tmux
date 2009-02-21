@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.33 2009-02-11 17:04:39 nicm Exp $ */
+/* $Id: screen-write.c,v 1.34 2009-02-21 19:25:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,9 +34,6 @@ screen_write_start(
 		ctx->s = wp->screen;
 	else
 		ctx->s = s;
-	
-	if (ctx->s != NULL)
-		tty_write_mode(ctx->wp, ctx->s->mode & ~MODE_CURSOR);
 }
 
 /* Finish writing. */
