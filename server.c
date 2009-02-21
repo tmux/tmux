@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.123 2009-02-16 19:29:17 nicm Exp $ */
+/* $Id: server.c,v 1.124 2009-02-21 17:52:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -506,6 +506,7 @@ server_check_redraw(struct client *c)
 			server_redraw_locked(c);
 		else
  			screen_redraw_screen(c, NULL);
+		c->flags &= ~CLIENT_STATUS;
 	}
 
 	if (c->flags & CLIENT_STATUS)

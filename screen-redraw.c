@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.25 2009-02-12 00:18:05 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.26 2009-02-21 17:52:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,7 +38,8 @@ screen_redraw_screen(struct client *c, struct screen *s)
 	/* Override the normal screen if one is given. */
 	if (s != NULL) {
 		for (i = 0; i < screen_size_y(s); i++)
-			screen_redraw_line(c, s, 0, i);
+			screen_redraw_line(c, s, 0, i);	
+		screen_redraw_status(c);
 		return;
 	}
 
