@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.34 2009-02-21 19:25:58 nicm Exp $ */
+/* $Id: screen-write.c,v 1.35 2009-02-24 21:49:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,7 +30,7 @@ screen_write_start(
     struct screen_write_ctx *ctx, struct window_pane *wp, struct screen *s)
 {
 	ctx->wp = wp;
-	if (wp != NULL && ctx->s != NULL)
+	if (wp != NULL && s == NULL)
 		ctx->s = wp->screen;
 	else
 		ctx->s = s;
