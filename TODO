@@ -10,7 +10,6 @@
 - Implicitly add exec to the commands for new windows (switch to disable it)
 - it would be nice to have multichar commands so you could have C-b K K for
   kill-window to limit accidental presses
-- refer to windows by name etc (duplicates? fnmatch?)
 - commands:
  	extend list-clients to list clients attached to a session (-a for all?)
 	bring back detach-session to detach all clients on a session?
@@ -98,3 +97,4 @@
   for stuff like mode keys?
 - bug: copy mode gets the start of the selection wrong
 - document status-keys
+- refer to windows by name etc (duplicates? fnmatch?)
