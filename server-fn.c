@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.54 2009-02-13 18:57:55 nicm Exp $ */
+/* $Id: server-fn.c,v 1.55 2009-02-27 16:01:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -161,7 +161,7 @@ server_lock(void)
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL)
+		if (c == NULL || c->session == NULL)
 			continue;
 
 		status_prompt_clear(c);
