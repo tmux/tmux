@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.68 2009-02-13 00:43:04 nicm Exp $ */
+/* $Id: window.c,v 1.69 2009-03-01 22:05:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -390,8 +390,10 @@ window_add_pane(struct window *w, int wanty, const char *cmd,
 		wanty = w->sy;
 	else {
 		sizey = w->active->sy - 1; /* for separator */
-		if (sizey < PANE_MINIMUM * 2)
+		if (sizey < PANE_MINIMUM * 2) {
+			*cause = xstrdup("pane too small");
 			return (NULL);
+		}
 
   		if (wanty == -1)
 			wanty = sizey / 2;
