@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.15 2009-02-16 19:01:16 nicm Exp $ */
+/* $Id: tty-term.c,v 1.16 2009-03-02 18:05:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,6 +70,14 @@ struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_KF10, TTYCODE_STRING, "kf10" },
 	{ TTYC_KF11, TTYCODE_STRING, "kf11" },
 	{ TTYC_KF12, TTYCODE_STRING, "kf12" },
+	{ TTYC_KF13, TTYCODE_STRING, "kf13" },
+	{ TTYC_KF14, TTYCODE_STRING, "kf14" },
+	{ TTYC_KF15, TTYCODE_STRING, "kf15" },
+	{ TTYC_KF16, TTYCODE_STRING, "kf16" },
+	{ TTYC_KF17, TTYCODE_STRING, "kf17" },
+	{ TTYC_KF18, TTYCODE_STRING, "kf18" },
+	{ TTYC_KF19, TTYCODE_STRING, "kf19" },
+	{ TTYC_KF20, TTYCODE_STRING, "kf20" },
 	{ TTYC_KF2, TTYCODE_STRING, "kf2" },
 	{ TTYC_KF3, TTYCODE_STRING, "kf3" },
 	{ TTYC_KF4, TTYCODE_STRING, "kf4" },

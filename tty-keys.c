@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.23 2009-03-02 16:55:23 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.24 2009-03-02 18:05:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,6 +49,14 @@ struct tty_key_ent tty_keys[] = {
 	{ TTYC_KF10,  NULL,     KEYC_F10,   TTYKEY_CTRL },
 	{ TTYC_KF11,  NULL,     KEYC_F11,   TTYKEY_CTRL },
 	{ TTYC_KF12,  NULL,     KEYC_F12,   TTYKEY_CTRL },
+	{ TTYC_KF13,  NULL,     KEYC_F13,   TTYKEY_CTRL },
+	{ TTYC_KF14,  NULL,     KEYC_F14,   TTYKEY_CTRL },
+	{ TTYC_KF15,  NULL,     KEYC_F15,   TTYKEY_CTRL },
+	{ TTYC_KF16,  NULL,     KEYC_F16,   TTYKEY_CTRL },
+	{ TTYC_KF17,  NULL,     KEYC_F17,   TTYKEY_CTRL },
+	{ TTYC_KF18,  NULL,     KEYC_F18,   TTYKEY_CTRL },
+	{ TTYC_KF19,  NULL,     KEYC_F19,   TTYKEY_CTRL },
+	{ TTYC_KF20,  NULL,     KEYC_F20,   TTYKEY_CTRL },
 	{ TTYC_KICH1, NULL,     KEYC_IC,    TTYKEY_CTRL },
 	{ TTYC_KDCH1, NULL,     KEYC_DC,    TTYKEY_CTRL },
 	{ TTYC_KHOME, NULL,     KEYC_HOME,  TTYKEY_CTRL },

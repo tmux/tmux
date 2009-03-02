@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.275 2009-03-02 16:55:23 nicm Exp $ */
+/* $Id: tmux.h,v 1.276 2009-03-02 18:05:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -200,13 +200,21 @@ struct buffer {
 #define KEYC_F10 (KEYC_OFFSET + 0x10)
 #define KEYC_F11 (KEYC_OFFSET + 0x11)
 #define KEYC_F12 (KEYC_OFFSET + 0x12)
-#define KEYC_IC (KEYC_OFFSET + 0x13)
-#define KEYC_DC (KEYC_OFFSET + 0x14)
-#define KEYC_HOME (KEYC_OFFSET + 0x15)
-#define KEYC_END (KEYC_OFFSET + 0x16)
-#define KEYC_NPAGE (KEYC_OFFSET + 0x17)
-#define KEYC_PPAGE (KEYC_OFFSET + 0x18)
-#define KEYC_BTAB (KEYC_OFFSET + 0x19)
+#define KEYC_F13 (KEYC_OFFSET + 0x13)
+#define KEYC_F14 (KEYC_OFFSET + 0x14)
+#define KEYC_F15 (KEYC_OFFSET + 0x15)
+#define KEYC_F16 (KEYC_OFFSET + 0x16)
+#define KEYC_F17 (KEYC_OFFSET + 0x17)
+#define KEYC_F18 (KEYC_OFFSET + 0x18)
+#define KEYC_F19 (KEYC_OFFSET + 0x19)
+#define KEYC_F20 (KEYC_OFFSET + 0x1a)
+#define KEYC_IC (KEYC_OFFSET + 0x1b)
+#define KEYC_DC (KEYC_OFFSET + 0x1c)
+#define KEYC_HOME (KEYC_OFFSET + 0x1d)
+#define KEYC_END (KEYC_OFFSET + 0x1e)
+#define KEYC_NPAGE (KEYC_OFFSET + 0x1f)
+#define KEYC_PPAGE (KEYC_OFFSET + 0x20)
+#define KEYC_BTAB (KEYC_OFFSET + 0x21)
 
 /* Arrow keys. */
 #define KEYC_UP (KEYC_OFFSET + 0x50)
@@ -273,7 +281,15 @@ enum tty_code_code {
 	TTYC_KF1,	/* key_f1, k1 */
 	TTYC_KF10,	/* key_f10, k; */
 	TTYC_KF11,	/* key_f11, F1 */
-	TTYC_KF12,	/* key_f12, 21 */
+	TTYC_KF12,	/* key_f12, F2 */
+	TTYC_KF13,	/* key_f13, F3 */
+	TTYC_KF14,	/* key_f14, F4 */
+	TTYC_KF15,	/* key_f15, F5 */
+	TTYC_KF16,	/* key_f16, F6 */
+	TTYC_KF17,	/* key_f17, F7 */
+	TTYC_KF18,	/* key_f18, F8 */
+	TTYC_KF19,	/* key_f19, F9 */
+	TTYC_KF20,	/* key_f20, F10 */
 	TTYC_KF2,	/* key_f2, k2 */
 	TTYC_KF3,	/* key_f3, k3 */
 	TTYC_KF4,	/* key_f4, k4 */

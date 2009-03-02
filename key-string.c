@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.16 2009-01-16 19:32:29 nicm Exp $ */
+/* $Id: key-string.c,v 1.17 2009-03-02 18:05:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,6 +41,14 @@ struct {
 	{ "F10",	KEYC_F10 },
 	{ "F11",	KEYC_F11 },
 	{ "F12",	KEYC_F12 },
+	{ "F13",	KEYC_F13 },
+	{ "F14",	KEYC_F14 },
+	{ "F15",	KEYC_F15 },
+	{ "F16",	KEYC_F16 },
+	{ "F17",	KEYC_F17 },
+	{ "F18",	KEYC_F18 },
+	{ "F19",	KEYC_F19 },
+	{ "F20",	KEYC_F20 },
 	{ "IC",		KEYC_IC },
 	{ "DC",		KEYC_DC },
 	{ "Home",	KEYC_HOME },
