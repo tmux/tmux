@@ -1,3 +1,8 @@
+02 March 2009
+
+* Make escape key timer work properly so escape+key can be used without
+  lightning fast key presses.
+
 13 February 2009
 
 * Redo mode keys slightly more cleanly and apply them to command prompt
@@ -1114,7 +1119,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.255 2009-02-13 21:39:45 nicm Exp $
+$Id: CHANGES,v 1.256 2009-03-02 16:55:23 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

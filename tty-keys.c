@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.22 2009-02-16 18:43:07 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.23 2009-03-02 16:55:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -239,41 +239,35 @@ tty_keys_next(struct tty *tty, int *key, u_char *mouse)
 	/* If a normal key, return it. */
 	if (*buf != '\033') {
 		*key = buffer_read8(tty->in);
-		return (0);
+		goto found;
 	}
 
 	/* Look for matching key string and return if found. */
 	tk = tty_keys_find(tty, buf + 1, len - 1, &size);
 	if (tk != NULL) {
-		*key = tk->key;
 		buffer_remove(tty->in, size + 1);
-
-		tty->flags &= ~TTY_ESCAPE;
-		return (0);
+		*key = tk->key;
+		goto found;
 	}
 
 	/* Not found. Is this a mouse key press? */
 	*key = tty_keys_parse_mouse(tty, buf, len, &size, mouse);
 	if (*key != KEYC_NONE) {
 		buffer_remove(tty->in, size);
-
-		tty->flags &= ~TTY_ESCAPE;
-		return (0);
+		goto found;
 	}
 
 	/* Not found. Try to parse xterm-type arguments. */
 	*key = tty_keys_parse_xterm(tty, buf, len, &size);
 	if (*key != KEYC_NONE) {
 		buffer_remove(tty->in, size);
-
-		tty->flags &= ~TTY_ESCAPE;
-		return (0);
+		goto found;
 	}
 	
 	/* Escape but no key string. If the timer isn't started, start it. */
 	if (!(tty->flags & TTY_ESCAPE)) {
 		tv.tv_sec = 0;
-		tv.tv_usec = 500 * 1000L;
+		tv.tv_usec = ESCAPE_PERIOD * 1000L;
 		if (gettimeofday(&tty->key_timer, NULL) != 0)
 			fatal("gettimeofday");
 		timeradd(&tty->key_timer, &tv, &tty->key_timer);
@@ -282,41 +276,39 @@ tty_keys_next(struct tty *tty, int *key, u_char *mouse)
 		return (1);
 	}
 
-	/* Otherwise, if the timer hasn't expired, wait. */
+	/* Skip the escape. */
+	buf++;
+	len--;
+
+	/* Is there a normal key following? */
+	if (len != 0 && *buf != '\033') {
+		buffer_remove(tty->in, 1);
+		*key = KEYC_ADDESC(buffer_read8(tty->in));
+		goto found;
+	} 
+
+	/* Or a key string? */
+	if (len > 1) {
+		tk = tty_keys_find(tty, buf + 1, len - 1, &size);
+		if (tk != NULL) {
+			buffer_remove(tty->in, size + 1);
+			*key = KEYC_ADDESC(tk->key);
+			goto found;
+		}
+	}
+
+	/* If the timer hasn't expired, keep waiting . */
 	if (gettimeofday(&tv, NULL) != 0)
 		fatal("gettimeofday");
-	if (!timercmp(&tty->key_timer, &tv, >))
+	if (timercmp(&tty->key_timer, &tv, >))
 		return (1);
+	
+	/* Give up and return the escape. */
+	buffer_remove(tty->in, 1);
+	*key = '\033';
+
+found:
 	tty->flags &= ~TTY_ESCAPE;
-
-	/* Remove the leading escape. */
-	buffer_remove(tty->in, 1);
-	buf = BUFFER_OUT(tty->in);
-	len = BUFFER_USED(tty->in);
-
-	/* If we have no following data, return escape. */
-	if (len == 0) {
-		*key = '\033';
-		return (0);
-	}
-
-	/* If a normal key follows, return it. */
-	if (*buf != '\033') {
-		*key = KEYC_ADDESC(buffer_read8(tty->in));
-		return (0);
-	}
-
-	/* Try to look up the key. */
-	tk = tty_keys_find(tty, buf + 1, len - 1, &size);
-	if (tk != NULL) {
-		*key = KEYC_ADDESC(tk->key);
- 		buffer_remove(tty->in, size + 1);
-		return (0);
-	}
-
-	/* If not found, return escape-escape. */
-	*key = KEYC_ADDESC('\033');
-	buffer_remove(tty->in, 1);
 	return (0);
 }
 

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.274 2009-02-21 17:46:13 nicm Exp $ */
+/* $Id: tmux.h,v 1.275 2009-03-02 16:55:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -125,6 +125,9 @@ extern const char    *__progname;
 
 /* Automatic name refresh interval, in milliseconds. */
 #define NAME_INTERVAL 500
+
+/* Escape timer period, in milliseconds. */
+#define ESCAPE_PERIOD 250
 
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
