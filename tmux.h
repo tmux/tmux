@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.276 2009-03-02 18:05:40 nicm Exp $ */
+/* $Id: tmux.h,v 1.277 2009-03-04 17:24:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION -11
+#define PROTOCOL_VERSION -12
 
 /* Shut up gcc warnings about empty if bodies. */
 #define RB_AUGMENT(x) do {} while (0)
@@ -116,9 +116,6 @@ extern const char    *__progname;
 
 /* Default prompt history length. */
 #define PROMPT_HISTORY 100
-
-/* Default environment. */
-#define CHILD_ENVIRON { NULL /* TMUX= */, "TERM=screen", NULL }
 
 /* Minimum pane size. */
 #define PANE_MINIMUM 4	/* includes separator line */
@@ -1313,9 +1310,7 @@ int	 server_start(const char *);
 int	 server_msg_dispatch(struct client *);
 
 /* server-fn.c */
-struct session *server_extract_session(
-    	     struct msg_command_data *, char *, char **);
-void	 server_write(struct client *, enum hdrtype, const void *, size_t);
+const char **server_fill_environ(struct session *);
 void	 server_write_client(
              struct client *, enum hdrtype, const void *, size_t);
 void	 server_write_session(

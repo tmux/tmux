@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.52 2009-01-23 16:59:14 nicm Exp $ */
+/* $Id: session.c,v 1.53 2009-03-04 17:24:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -200,14 +200,10 @@ session_new(struct session *s,
     const char *name, const char *cmd, const char *cwd, int idx, char **cause)
 {
 	struct window	*w;
-	const char	*env[] = CHILD_ENVIRON;
-	char		 buf[256];
+	const char     **env;
 	u_int		 i, hlimit;
 
-	if (session_index(s, &i) != 0)
-		fatalx("session not found");
-	xsnprintf(buf, sizeof buf, "TMUX=%ld,%u", (long) getpid(), i);
-	env[0] = buf;
+	env = server_fill_environ(s);
 
 	hlimit = options_get_number(&s->options, "history-limit");
 	w = window_create(name, cmd, cwd, env, s->sx, s->sy, hlimit, cause);

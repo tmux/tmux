@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.55 2009-02-27 16:01:31 nicm Exp $ */
+/* $Id: server-fn.c,v 1.56 2009-03-04 17:24:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,6 +25,23 @@
 #include "tmux.h"
 
 int	server_lock_callback(void *, const char *);
+
+const char **
+server_fill_environ(struct session *s)
+{
+	static const char *env[] = { NULL /* TMUX= */, "TERM=screen", NULL };
+	static char	  *tmuxvar[MAXPATHLEN + 256];
+	u_int		   idx;
+
+	if (session_index(s, &idx) != 0)
+		fatalx("session not found");
+
+	xsnprintf(tmuxvar, sizeof tmuxvar,
+	    "TMUX=%s,%ld,%u", socket_path, (long) getpid(), idx);
+	env[0] = tmuxvar;
+
+	return (env);
+}
 
 void
 server_write_client(

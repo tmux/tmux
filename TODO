@@ -81,7 +81,6 @@
 - attach should have a flag to create session if it doesn't exist
 - swap-pane-up, swap-pane-down (maybe move-pane-*)
 - move-pane (to window) (maybe break-pane?)
-- $TMUX should contain socket path
 - 88 colour support; new grid cell flag, and 256<->88 88<->16 translation tables
 - some fix for SF feature request 2527847 - now remain-by-default has gone
   cannot control it per-session

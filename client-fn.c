@@ -1,4 +1,4 @@
-/* $Id: client-fn.c,v 1.5 2009-01-10 14:43:43 nicm Exp $ */
+/* $Id: client-fn.c,v 1.6 2009-03-04 17:24:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,29 +26,39 @@
 void
 client_fill_session(struct msg_command_data *data)
 {
-	char		*env, *ptr, buf[256];
+	char		*env, *ptr1, *ptr2, buf[256];
+	size_t		 len;
 	const char	*errstr;
 	long long	 ll;
 
 	data->pid = -1;
 	if ((env = getenv("TMUX")) == NULL)
 		return;
-	if ((ptr = strchr(env, ',')) == NULL)
-		return;
-	if ((size_t) (ptr - env) > sizeof buf)
-		return;
-	memcpy(buf, env, ptr - env);
-	buf[ptr - env] = '\0';
 
-	ll = strtonum(ptr + 1, 0, UINT_MAX, &errstr);
-	if (errstr != NULL)
+	if ((ptr2 = strrchr(env, ',')) == NULL || ptr2 == env)
 		return;
-	data->idx = ll;
+	for (ptr1 = ptr2 - 1; ptr1 > env && *ptr1 != ','; ptr1--)
+		;
+	if (*ptr1 != ',')
+		return;
+	ptr1++;
+	ptr2++;
+
+	len = ptr2 - ptr1 - 1;
+	if (len > (sizeof buf) - 1)
+		return;
+	memcpy(buf, ptr1, len);
+	buf[len] = '\0';
 
 	ll = strtonum(buf, 0, LONG_MAX, &errstr);
 	if (errstr != NULL)
 		return;
 	data->pid = ll;
+
+	ll = strtonum(ptr2, 0, UINT_MAX, &errstr);
+	if (errstr != NULL)
+		return;
+	data->idx = ll;
 }
 
 void

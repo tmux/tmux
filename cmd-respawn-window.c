@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-window.c,v 1.13 2009-01-23 16:59:14 nicm Exp $ */
+/* $Id: cmd-respawn-window.c,v 1.14 2009-03-04 17:24:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,9 +49,8 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window		*w;
 	struct window_pane	*wp;
 	struct session		*s;
-	const char		*env[] = CHILD_ENVIRON;
-	char		 	 buf[256], *cause;
-	u_int			 i;
+	const char	       **env;
+	char		 	*cause;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return (-1);
@@ -67,10 +66,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (session_index(s, &i) != 0)
-		fatalx("session not found");
-	xsnprintf(buf, sizeof buf, "TMUX=%ld,%u", (long) getpid(), i);
-	env[0] = buf;
+	env = server_fill_environ(s);
 
 	wp = TAILQ_FIRST(&w->panes);
 	TAILQ_REMOVE(&w->panes, wp, entry);
