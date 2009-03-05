@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.36 2009-02-25 21:56:46 nicm Exp $ */
+/* $Id: screen-write.c,v 1.37 2009-03-05 20:27:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -379,7 +379,7 @@ screen_write_scrollregion(
 
 	/* Cursor moves to top-left. */
 	s->cx = 0;
-	s->cy = rupper;
+	s->cy = 0;
 
 	s->rupper = rupper;
 	s->rlower = rlower;
