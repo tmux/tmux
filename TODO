@@ -80,7 +80,6 @@
 - key to switch to copy mode from scroll mode
 - attach should have a flag to create session if it doesn't exist
 - swap-pane-up, swap-pane-down (maybe move-pane-*)
-- move-pane (to window) (maybe break-pane?)
 - some fix for SF feature request 2527847 - now remain-by-default has gone
   cannot control it per-session
 - clear window title on exit
