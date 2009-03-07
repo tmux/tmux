@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.79 2009-02-17 18:53:10 nicm Exp $ */
+/* $Id: tty.c,v 1.80 2009-03-07 10:29:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,6 +35,9 @@ void	tty_emulate_repeat(
 void	tty_draw_line(struct tty *, struct window_pane *, u_int);
 
 void	tty_raw(struct tty *, const char *);
+
+int	tty_try_256(struct tty *, u_char, const char *);
+int	tty_try_88(struct tty *, u_char, const char *);
 
 void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_attributes_fg(struct tty *, const struct grid_cell *);
@@ -866,20 +869,47 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 	}
 }
 
+int
+tty_try_256(struct tty *tty, u_char colour, const char *type)
+{
+	char	s[32];
+
+	if (!(tty->term->flags & TERM_256COLOURS) && 
+	    !(tty->term_flags & TERM_256COLOURS))
+		return (-1);
+	
+	xsnprintf(s, sizeof s, "\033[%s;5;%hhum", type, colour);
+	tty_puts(tty, s);
+	return (0);
+}
+
+int
+tty_try_88(struct tty *tty, u_char colour, const char *type)
+{
+	char	s[32];
+	
+	if (!(tty->term->flags & TERM_88COLOURS) &&
+	    !(tty->term_flags & TERM_88COLOURS))
+		return (-1);
+	colour = colour_256to88(colour);
+
+	xsnprintf(s, sizeof s, "\033[%s;5;%hhum", type, colour);
+	tty_puts(tty, s);
+	return (0);
+}
+
 void
 tty_attributes_fg(struct tty *tty, const struct grid_cell *gc)
 {
-	char	s[32];
-	u_char	fg = gc->fg;
+	u_char	fg;
 
+	fg = gc->fg;
 	if (gc->flags & GRID_FLAG_FG256) {
-		if ((tty->term->flags & TERM_256COLOURS) ||
-		    (tty->term_flags & TERM_256COLOURS)) {
-			xsnprintf(s, sizeof s, "\033[38;5;%hhum", fg);
-			tty_puts(tty, s);
+		if (tty_try_256(tty, fg, "38") == 0)
 			return;
-		}
-		fg = colour_translate256(fg);
+		if (tty_try_88(tty, fg, "38") == 0)
+			return;
+		fg = colour_256to16(fg);
 		if (fg & 8) {
 			fg &= 7;
 			tty_putcode(tty, TTYC_BOLD);
@@ -887,7 +917,7 @@ tty_attributes_fg(struct tty *tty, const struct grid_cell *gc)
 		} else if (tty->cell.attr & GRID_ATTR_BRIGHT)
 			tty_reset(tty);
 	}
-
+	
 	if (fg == 8 &&
 	    !(tty->term->flags & TERM_HASDEFAULTS) &&
 	    !(tty->term_flags & TERM_HASDEFAULTS))
@@ -901,29 +931,17 @@ tty_attributes_fg(struct tty *tty, const struct grid_cell *gc)
 void
 tty_attributes_bg(struct tty *tty, const struct grid_cell *gc)
 {
-	char	s[32];
-	u_char	bg = gc->bg;
+	u_char	bg;
 
+	bg = gc->bg;
 	if (gc->flags & GRID_FLAG_BG256) {
-		if ((tty->term->flags & TERM_256COLOURS) ||
-		    (tty->term_flags & TERM_256COLOURS)) {
-			xsnprintf(s, sizeof s, "\033[48;5;%hhum", bg);
-			tty_puts(tty, s);
+		if (tty_try_256(tty, bg, "48") == 0)
 			return;
-		}
-		bg = colour_translate256(bg);
-		if (bg & 8) {
-			/*
-			 * Bold background; can't do this on standard
-			 * terminals...
-			 */
-#if 0
-			xsnprintf(s, sizeof s, "\033[%hhum", 92 + bg);
-			tty_puts(tty, s);
+		if (tty_try_88(tty, bg, "48") == 0)
 			return;
-#endif
+		bg = colour_256to16(bg);
+		if (bg & 8)
 			bg &= 7;
-		}
 	}
 
 	if (bg == 8 &&

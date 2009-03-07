@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.278 2009-03-07 09:29:54 nicm Exp $ */
+/* $Id: tmux.h,v 1.279 2009-03-07 10:29:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -400,7 +400,8 @@ struct msg_identify_data {
 
 #define IDENTIFY_UTF8 0x1
 #define IDENTIFY_256COLOURS 0x2
-#define IDENTIFY_HASDEFAULTS 0x4
+#define IDENTIFY_88COLOURS 0x4
+#define IDENTIFY_HASDEFAULTS 0x8
 	int		flags;
 
 	u_int		sx;
@@ -753,7 +754,8 @@ struct tty_term {
 
 #define TERM_HASDEFAULTS 0x1
 #define TERM_256COLOURS 0x2
-#define TERM_EARLYWRAP 0x4
+#define TERM_88COLOURS 0x4
+#define TERM_EARLYWRAP 0x8
 	int		 flags;
 
 	SLIST_ENTRY(tty_term) entry;
@@ -1353,7 +1355,8 @@ void	 input_mouse(struct window_pane *, u_char, u_char, u_char);
 /* colour.c */
 const char *colour_tostring(u_char);
 int	 colour_fromstring(const char *);
-u_char	 colour_translate256(u_char);
+u_char	 colour_256to16(u_char);
+u_char	 colour_256to88(u_char);
 
 /* attributes.c */
 const char *attributes_tostring(u_char);

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.107 2009-02-13 21:39:45 nicm Exp $ */
+/* $Id: tmux.c,v 1.108 2009-03-07 10:29:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -191,10 +191,15 @@ main(int argc, char **argv)
 
 	unlock = flags = 0;
 	path = NULL;
-        while ((opt = getopt(argc, argv, "2df:qS:uUVv")) != -1) {
+        while ((opt = getopt(argc, argv, "28df:qS:uUVv")) != -1) {
                 switch (opt) {
 		case '2':
 			flags |= IDENTIFY_256COLOURS;
+			flags &= ~IDENTIFY_88COLOURS;
+			break;
+		case '8':
+			flags |= IDENTIFY_88COLOURS;
+			flags &= ~IDENTIFY_256COLOURS;
 			break;
 		case 'f':
 			cfg_file = xstrdup(optarg);
