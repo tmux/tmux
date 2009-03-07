@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.53 2009-03-04 17:24:07 nicm Exp $ */
+/* $Id: session.c,v 1.54 2009-03-07 10:11:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -201,7 +201,7 @@ session_new(struct session *s,
 {
 	struct window	*w;
 	const char     **env;
-	u_int		 i, hlimit;
+	u_int		 hlimit;
 
 	env = server_fill_environ(s);
 
