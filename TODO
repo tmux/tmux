@@ -93,4 +93,5 @@
 - set-option should be set-session-option and should be overall global options
   for stuff like mode keys?
 - document status-keys
+- document break-pane
 - refer to windows by name etc (duplicates? fnmatch?)

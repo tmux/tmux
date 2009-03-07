@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-pane.c,v 1.4 2009-03-07 09:29:54 nicm Exp $ */
+/* $Id: cmd-break-pane.c,v 1.1 2009-03-07 09:29:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,18 +23,18 @@
 #include "tmux.h"
 
 /*
- * Kill pane.
+ * Break pane off into a window.
  */
 
-int	cmd_kill_pane_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_break_pane_exec(struct cmd *, struct cmd_ctx *);
 
-const struct cmd_entry cmd_kill_pane_entry = {
-	"kill-pane", "killp",
-	CMD_PANE_WINDOW_USAGE,
-	0,
+const struct cmd_entry cmd_break_pane_entry = {
+	"break-pane", "breakp",
+	CMD_PANE_WINDOW_USAGE " [-d]",
+	CMD_DFLAG,
 	cmd_pane_init,
 	cmd_pane_parse,
-	cmd_kill_pane_exec,
+	cmd_break_pane_exec,
        	cmd_pane_send,
 	cmd_pane_recv,
 	cmd_pane_free,
@@ -42,13 +42,16 @@ const struct cmd_entry cmd_kill_pane_entry = {
 };
 
 int
-cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_pane_data	*data = self->data;
 	struct winlink		*wl;
+	struct session		*s;
 	struct window_pane	*wp;
+	struct window		*w;
+	char			*cause;
 	
-	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
+	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return (-1);
 	if (data->pane == -1)
 		wp = wl->window->active;
@@ -61,11 +64,29 @@ cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	if (window_count_panes(wl->window) == 1) {
-		ctx->error(ctx, "can't kill pane: %d", data->pane);
+		ctx->error(ctx, "can't break pane: %d", data->pane);
 		return (-1);
 	}
 
-	window_remove_pane(wl->window, wp);
-	server_redraw_window(wl->window);
+	TAILQ_REMOVE(&wl->window->panes, wp, entry);
+	if (wl->window->active == wp) {
+		wl->window->active = TAILQ_PREV(wp, window_panes, entry);
+		if (wl->window->active == NULL)
+			wl->window->active = TAILQ_NEXT(wp, entry);
+	}
+	window_fit_panes(wl->window);
+
+ 	w = wp->window = window_create1(s->sx, s->sy);
+ 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
+ 	w->active = wp;
+ 	window_fit_panes(w);
+ 	w->name = default_window_name(w);
+
+ 	wl = session_attach(s, w, -1, &cause); /* can't fail */
+
+ 	if (!(data->flags & CMD_DFLAG))
+ 		session_select(s, wl->idx);
+	server_redraw_session(s);
+
 	return (0);
 }

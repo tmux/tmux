@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.277 2009-03-04 17:24:07 nicm Exp $ */
+/* $Id: tmux.h,v 1.278 2009-03-07 09:29:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1147,6 +1147,7 @@ struct winlink	*cmd_find_window(
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
+extern const struct cmd_entry cmd_break_pane_entry;
 extern const struct cmd_entry cmd_choose_session_entry;
 extern const struct cmd_entry cmd_choose_window_entry;
 extern const struct cmd_entry cmd_clock_mode_entry;
@@ -1469,6 +1470,7 @@ struct winlink	*winlink_previous(struct winlinks *, struct winlink *);
 void		 winlink_stack_push(struct winlink_stack *, struct winlink *);
 void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 int	 	 window_index(struct window *, u_int *);
+struct window	*window_create1(u_int, u_int);
 struct window	*window_create(const char *, const char *,
 		     const char *, const char **, u_int, u_int, u_int, char **);
 void		 window_destroy(struct window *);

@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.61 2009-02-13 20:19:30 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.62 2009-03-07 09:29:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -77,12 +77,13 @@ key_bindings_init(void)
 		int			 key;
 		const struct cmd_entry	*entry;
 	} table[] = {
+		{ '!', &cmd_break_pane_entry },
 		{ '"', &cmd_split_window_entry },
 		{ '#', &cmd_list_buffers_entry },
 		{ '&', &cmd_kill_window_entry },
 		{ ',', &cmd_command_prompt_entry },
-		{ '.', &cmd_command_prompt_entry },
 		{ '-', &cmd_delete_buffer_entry },
+		{ '.', &cmd_command_prompt_entry },
 		{ '0', &cmd_select_window_entry },
 		{ '1', &cmd_select_window_entry },
 		{ '2', &cmd_select_window_entry },
