@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.108 2009-03-07 10:29:06 nicm Exp $ */
+/* $Id: tmux.c,v 1.109 2009-03-21 12:44:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -247,6 +247,7 @@ main(int argc, char **argv)
 	options_set_number(&global_options, "repeat-time", 500);
 	options_set_number(&global_options, "set-titles", 1);
 	options_set_number(&global_options, "lock-after-time", 0);
+	options_set_number(&global_options, "set-remain-on-exit", 0);
 	options_set_number(&global_options, "status", 1);
 	options_set_number(&global_options, "status-bg", 2);
 	options_set_number(&global_options, "status-fg", 0);

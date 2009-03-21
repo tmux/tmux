@@ -1,3 +1,11 @@
+21 March 2009
+
+* New session flag "set-remain-on-exit" to set remain-on-exit flag for new
+  windows created in that session (like "remain-by-default" used to do). Not
+  perfectly happy about this, but until I can think of a good way to introduce
+  it generically (maybe a set of options in the session) this will do. Fixes
+  SF request 2527847.
+
 07 March 2009
 
 * Support for 88 colour terminals.
@@ -1124,7 +1132,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.258 2009-03-07 10:29:06 nicm Exp $
+$Id: CHANGES,v 1.259 2009-03-21 12:44:05 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

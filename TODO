@@ -75,22 +75,22 @@
   and n of width 0, then translate cursor indexes on-the-fly would need to
   adjust all cursor movement and also handle different width lines properly.
 - support other mouse modes (highlight etc) and use it in copy mode 
+- set-remain-on-exit is a bit of a hack, some way to do it generically?
+- set-option should be set-session-option and should be overall global options
+  for stuff like mode keys?
 
 (hopefully) for 0.8, in no particular order:
 - key to switch to copy mode from scroll mode
 - attach should have a flag to create session if it doesn't exist
 - swap-pane-up, swap-pane-down (maybe move-pane-*)
-- some fix for SF feature request 2527847 - now remain-by-default has gone
-  cannot control it per-session
 - clear window title on exit
 - might be nice if attach-session behaved like switch-client inside an
   existing client
 - test bug sshing from freebsd console
 - better support for stupid margin terminals. strcmp for cons25 sucks, how can
   these be autodetected?
-- set-option should be set-session-option and should be overall global options
-  for stuff like mode keys?
 - document status-keys
 - document break-pane
 - document -8 flag
+- document set-remain-on-exit
 - refer to windows by name etc (duplicates? fnmatch?)

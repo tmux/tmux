@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.54 2009-03-07 10:11:20 nicm Exp $ */
+/* $Id: session.c,v 1.55 2009-03-21 12:44:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -210,6 +210,9 @@ session_new(struct session *s,
 	if (w == NULL)
 		return (NULL);
 
+	if (options_get_number(&s->options, "set-remain-on-exit"))
+		options_set_number(&w->options, "remain-on-exit", 1);
+	
 	return (session_attach(s, w, idx, cause));
 }
 
