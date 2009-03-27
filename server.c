@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.127 2009-03-27 08:46:02 nicm Exp $ */
+/* $Id: server.c,v 1.128 2009-03-27 15:57:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,7 +43,7 @@
 /* Client list. */
 struct clients	 clients;
 
-int		 server_main(const char *, int);
+int		 server_main(int);
 void		 server_shutdown(void);
 void		 server_child_signal(void);
 void		 server_fill_windows(struct pollfd **);
@@ -59,7 +59,7 @@ void		 server_check_redraw(struct client *);
 void		 server_redraw_locked(struct client *);
 void		 server_check_timers(struct client *);
 void		 server_second_timers(void);
-int		 server_update_socket(const char *);
+int		 server_update_socket(void);
 
 /* Create a new client. */
 struct client *
@@ -127,6 +127,9 @@ server_start(const char *path)
 	mode_t			mask;
 	int		   	n, fd, pair[2], mode;
 	char		       *cause;
+#ifndef NO_SETPROCTITLE
+	char			rpathbuf[MAXPATHLEN];
+#endif
 
 	/* The first client is special and gets a socketpair; create it. */
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
@@ -170,17 +173,20 @@ server_start(const char *path)
 		log_warnx("%s", cause);
 		exit(1);
 	}
-
 	logfile("server");
-#ifndef NO_SETPROCTITLE
-	setproctitle("server (%s)", path);
-#endif
+
 	log_debug("server started, pid %ld", (long) getpid());
 	log_debug("socket path %s", socket_path);
+
+#ifndef NO_SETPROCTITLE
+	if (realpath(socket_path, rpathbuf) == NULL)
+		strlcpy(rpathbuf, socket_path, sizeof rpathbuf);
+	setproctitle("server (%s)", rpathbuf);
+#endif
 	
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
-	size = strlcpy(sa.sun_path, path, sizeof sa.sun_path);
+	size = strlcpy(sa.sun_path, socket_path, sizeof sa.sun_path);
 	if (size >= sizeof sa.sun_path) {
 		errno = ENAMETOOLONG;
 		fatal("socket failed");
@@ -207,7 +213,7 @@ server_start(const char *path)
 
 	server_create_client(pair[1]);
 
-	n = server_main(path, fd);
+	n = server_main(fd);
 #ifdef DEBUG
 	xmalloc_report(getpid(), "server");
 #endif
@@ -216,7 +222,7 @@ server_start(const char *path)
 
 /* Main server loop. */
 int
-server_main(const char *srv_path, int srv_fd)
+server_main(int srv_fd)
 {
 	struct window	*w;
 	struct pollfd	*pfds, *pfd;
@@ -263,7 +269,7 @@ server_main(const char *srv_path, int srv_fd)
 
 		/* Update socket permissions. */
 		xtimeout = INFTIM;
-		if (sigterm || server_update_socket(srv_path) != 0)
+		if (sigterm || server_update_socket() != 0)
 			xtimeout = 100;
 
 		/* Do the poll. */
@@ -337,7 +343,9 @@ server_main(const char *srv_path, int srv_fd)
 	key_bindings_free();
 
 	close(srv_fd);
-	unlink(srv_path);
+
+	unlink(socket_path);
+	xfree(socket_path);
 
 	options_free(&global_options);
 	options_free(&global_window_options);
@@ -996,7 +1004,7 @@ server_second_timers(void)
 
 /* Update socket execute permissions based on whether sessions are attached. */
 int
-server_update_socket(const char *path)
+server_update_socket()
 {
 	struct session	*s;
 	u_int		 i;
@@ -1015,9 +1023,9 @@ server_update_socket(const char *path)
 	if (n != last) {
 		last = n;
 		if (n != 0)
-			chmod(path, S_IRWXU);
+			chmod(socket_path, S_IRWXU);
 		else
-			chmod(path, S_IRUSR|S_IWUSR);
+			chmod(socket_path, S_IRUSR|S_IWUSR);
 	}
 
 	return (n);

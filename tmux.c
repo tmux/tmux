@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.109 2009-03-21 12:44:06 nicm Exp $ */
+/* $Id: tmux.c,v 1.110 2009-03-27 15:57:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #include <errno.h>
 #include <pwd.h>
@@ -58,9 +59,10 @@ time_t		 server_activity;
 int		 debug_level;
 int		 be_quiet;
 time_t		 start_time;
-const char	*socket_path;
+char		*socket_path;
 
 __dead void	 usage(void);
+char 		*makesockpath(const char *);
 
 #ifdef NO_PROGNAME
 const char      *__progname = "tmux";
@@ -173,6 +175,34 @@ sigreset(void)
 		fatal("sigaction failed");
 }
 
+char *
+makesockpath(const char *label)
+{
+	char		base[MAXPATHLEN], *path;
+	struct stat	sb;
+	u_int		uid;
+
+	uid = getuid();
+	xsnprintf(base, MAXPATHLEN, "%s/%s-%d", _PATH_TMP, __progname, uid);
+
+	if (mkdir(base, S_IRWXU) != 0 && errno != EEXIST)
+		return (NULL);
+
+	if (lstat(base, &sb) != 0)
+		return (NULL);
+	if (!S_ISDIR(sb.st_mode) || sb.st_uid != uid) {
+		errno = EACCES;
+		return (NULL);
+	}
+	if ((sb.st_mode & (S_IRWXG|S_IRWXO)) != 0) {
+		errno = EACCES;
+		return (NULL);
+	}
+
+	xasprintf(&path, "%s/%s", base, label);
+	return (path);
+}
+
 int
 main(int argc, char **argv)
 {
@@ -185,13 +215,13 @@ main(int argc, char **argv)
 	struct hdr	 	 hdr;
 	const char		*shell;
 	struct passwd		*pw;
-	char			*path, *cause, *home, *pass = NULL;
-	char			 rpath[MAXPATHLEN], cwd[MAXPATHLEN];
+	char			*path, *label, *cause, *home, *pass = NULL;
+	char			 cwd[MAXPATHLEN]; 
 	int	 		 retcode, opt, flags, unlock, start_server;
 
 	unlock = flags = 0;
-	path = NULL;
-        while ((opt = getopt(argc, argv, "28df:qS:uUVv")) != -1) {
+	label = path = NULL;
+        while ((opt = getopt(argc, argv, "28df:L:qS:uUVv")) != -1) {
                 switch (opt) {
 		case '2':
 			flags |= IDENTIFY_256COLOURS;
@@ -204,7 +234,22 @@ main(int argc, char **argv)
 		case 'f':
 			cfg_file = xstrdup(optarg);
 			break;
+		case 'L':
+			if (path != NULL) {
+				log_warnx("-L and -S cannot be used together");
+				exit(1);
+			}
+			if (label != NULL)
+				xfree(label);
+			label = xstrdup(optarg);
+			break;
 		case 'S':
+			if (label != NULL) {
+				log_warnx("-L and -S cannot be used together");
+				exit(1);
+			}
+			if (path != NULL)
+				xfree(path);
 			path = xstrdup(optarg);
 			break;
 		case 'q':
@@ -299,26 +344,13 @@ main(int argc, char **argv)
 		}
 	}
 
-	if (path == NULL) {
-		xasprintf(&path,
-		    "%s/%s-%lu", _PATH_TMP, __progname, (u_long) getuid());
+	if (label == NULL)
+		label = xstrdup("default");
+	if (path == NULL && (path = makesockpath(label)) == NULL) {
+		log_warn("can't create socket");
+		exit(1);
 	}
-	if (realpath(path, rpath) == NULL) {
-		if (errno != ENOENT) {
-			log_warn("%s", path);
-			exit(1);
-		}
-		/*
-		 * Linux appears to fill in the buffer fine but then returns
-		 * ENOENT if the file doesn't exist. But since it returns an
-		 * error, we can't rely on the buffer. Grr.
-		 */
-		if (strlcpy(rpath, path, sizeof rpath) >= sizeof rpath) {
-			log_warnx("%s: %s", path, strerror(ENAMETOOLONG));
-			exit(1);
-		}
-	}
-	xfree(path);
+	xfree(label);
 
 	shell = getenv("SHELL");
 	if (shell == NULL || *shell == '\0') {
@@ -374,8 +406,9 @@ main(int argc, char **argv)
 	}
 	
  	memset(&cctx, 0, sizeof cctx);
-	if (client_init(rpath, &cctx, start_server, flags) != 0)
+	if (client_init(path, &cctx, start_server, flags) != 0)
 		exit(1);
+	xfree(path);
 
 	b = buffer_create(BUFSIZ);
 	if (unlock) {

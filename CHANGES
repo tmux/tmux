@@ -1,3 +1,13 @@
+27 March 2009
+
+* Sockets in /tmp are now created in a subdirectory named, tmux-UID, eg
+  tmux-1000. The default socket is thus /tmp/tmux-UID/default. To start a
+  separate server, the new -L command line option should be used: this creates
+  a socket in the same directory with a different name ("-L main" will create
+  socket called "main"). -S should only be used to place the socket outside
+  /tmp. This makes sockets a little more secure and a bit more convenient to
+  use multiple servers.
+
 21 March 2009
 
 * New session flag "set-remain-on-exit" to set remain-on-exit flag for new
@@ -1132,7 +1142,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.259 2009-03-21 12:44:05 nicm Exp $
+$Id: CHANGES,v 1.260 2009-03-27 15:57:09 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
