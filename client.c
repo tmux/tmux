@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.43 2009-02-08 16:11:26 nicm Exp $ */
+/* $Id: client.c,v 1.44 2009-03-27 08:58:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,7 @@ client_init(
 	struct buffer		       *b;
 	char			       *name;
 
-	if (stat(path, &sb) != 0) {
+	if (lstat(path, &sb) != 0) {
 		if (start_server && errno == ENOENT) {
 			if ((cctx->srv_fd = server_start(path)) == -1)
 				goto start_failed;
