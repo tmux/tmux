@@ -7,12 +7,12 @@ tmux offers several advantages over screen:
 - a clearly-defined client-server model: windows are independent entities which
   may be attached simultaneously to multiple sessions and viewed from multiple
   clients (terminals), as well as moved freely between sessions within the same
-  tmux server; 
+  tmux server;
 - a consistent, well-documented command interface, with the same syntax
   whether used interactively, as a key binding, or from the shell;
 - easily scriptable from the shell;
 - multiple paste buffers;
-- choice of vim or emacs key layouts;
+- choice of vi or emacs key layouts;
 - an option to limit the window size;
 - a more usable status line syntax, with the ability to display the first line
   of output of a specific command;
@@ -32,7 +32,7 @@ include as much of the following information as possible:
 
 - the version of tmux you are running;
 - the operating system you are using and its version;
-- the terminal emulator you are using and the TERM setting when tmux was 
+- the terminal emulator you are using and the TERM setting when tmux was
   started;
 - a description of the problem;
 - if the problem is repeatable, the steps to repeat the problem;
