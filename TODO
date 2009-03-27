@@ -94,3 +94,5 @@
 - document -8 flag
 - document set-remain-on-exit
 - refer to windows by name etc (duplicates? fnmatch?)
+- n/p repeat is annoying, turn off
+- repeat should be a key flag and should be configurable (bind -r)
