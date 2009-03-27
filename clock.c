@@ -1,4 +1,4 @@
-/* $Id: clock.c,v 1.2 2009-01-19 19:01:11 nicm Exp $ */
+/* $Id: clock.c,v 1.3 2009-03-27 16:59:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,7 +23,7 @@
 
 #include "tmux.h"
 
-char clock_table[14][5][5] = {
+const char clock_table[14][5][5] = {
 	{ { 1,1,1,1,1 }, /* 0 */
 	  { 1,0,0,0,1 },
 	  { 1,0,0,0,1 },
