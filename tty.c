@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.81 2009-03-27 16:44:00 nicm Exp $ */
+/* $Id: tty.c,v 1.82 2009-03-27 16:44:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,6 +32,7 @@ u_char	tty_get_acs(struct tty *, u_char);
 
 void	tty_emulate_repeat(
     	    struct tty *, enum tty_code_code, enum tty_code_code, u_int);
+void	tty_draw_line(struct tty *, struct window_pane *, u_int);
 
 void	tty_raw(struct tty *, const char *);
 
@@ -379,41 +380,23 @@ tty_emulate_repeat(
 }
 
 void
-tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int oy)
+tty_draw_line(struct tty *tty, struct window_pane *wp, u_int py)
 {
-	const struct grid_cell	*gc; 
+	struct screen		*s = wp->screen;
+	const struct grid_cell	*gc;
 	struct grid_cell	 tc;
-	u_int			 i, sx;
+	u_int			 i;
 
-	sx = screen_size_x(s);
-	if (sx > tty->sx)
-		sx = tty->sx;
-	if (sx > s->grid->size[s->grid->hsize + py])
-		sx = s->grid->size[s->grid->hsize + py];
-
-	for (i = 0; i < sx; i++) {
+	for (i = 0; i < tty->sx; i++) {
 		gc = grid_view_peek_cell(s->grid, i, py);
 
+ 		tty_cursor(tty, i, py, wp->yoff);
 		if (screen_check_selection(s, i, py)) {
 			memcpy(&tc, &s->sel.cell, sizeof tc);
 			tc.data = gc->data;
-			gc = &tc;
-		} 
-		
- 		tty_cursor(tty, i, py, oy);
-		tty_cell(tty, gc);
-	}
-
-	if (sx >= s->grid->size[s->grid->hsize + py])
-		return;
-	tty_reset(tty);
-		
-	tty_cursor(tty, sx, py, oy);
-	if (tty_term_has(tty->term, TTYC_EL))
-		tty_putcode(tty, TTYC_EL);
-	else {
-		for (i = sx; i < screen_size_x(s); i++)
-			tty_putc(tty, ' ');
+			tty_cell(tty, &tc);
+		} else
+			tty_cell(tty, gc);
 	}
 }
 
@@ -486,10 +469,10 @@ tty_cmd_insertline(struct tty *tty, struct window_pane *wp, va_list ap)
 		 */
 		if (s->old_cy < s->old_rupper || s->old_cy > s->old_rlower) {
 			for (i = s->old_cy; i < screen_size_y(s); i++)
-				tty_draw_line(tty, wp->screen, i, wp->yoff);
+				tty_draw_line(tty, wp, i);
 		} else {
 			for (i = s->old_rupper; i <= s->old_rlower; i++)
-				tty_draw_line(tty, wp->screen, i, wp->yoff);
+				tty_draw_line(tty, wp, i);
 		}
 		return;
 	}
@@ -517,10 +500,10 @@ tty_cmd_deleteline(struct tty *tty, struct window_pane *wp, va_list ap)
 		 */
 		if (s->old_cy < s->old_rupper || s->old_cy > s->old_rlower) {
 			for (i = s->old_cy; i < screen_size_y(s); i++)
-				tty_draw_line(tty, wp->screen, i, wp->yoff);
+				tty_draw_line(tty, wp, i);
 		} else {
 			for (i = s->old_rupper; i <= s->old_rlower; i++)
-				tty_draw_line(tty, wp->screen, i, wp->yoff);
+				tty_draw_line(tty, wp, i);
 		}
 		return;
 	}
@@ -602,7 +585,7 @@ tty_cmd_reverseindex(struct tty *tty, struct window_pane *wp, unused va_list ap)
 		 */
 		if (s->old_cy == s->old_rupper) {
 			for (i = s->old_rupper; i <= s->old_rlower; i++)
-				tty_draw_line(tty, wp->screen, i, wp->yoff);
+				tty_draw_line(tty, wp, i);
 		}
 		return;
 	}
@@ -630,7 +613,7 @@ tty_cmd_linefeed(struct tty *tty, struct window_pane *wp, unused va_list ap)
 		 */
 		if (s->old_cy == s->old_rlower) {
 			for (i = s->old_rupper; i <= s->old_rlower; i++)
-				tty_draw_line(tty, wp->screen, i, wp->yoff);
+				tty_draw_line(tty, wp, i);
 			return;
 		}
 	}
