@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.283 2009-03-27 16:44:51 nicm Exp $ */
+/* $Id: tmux.h,v 1.284 2009-03-27 17:04:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1272,7 +1272,7 @@ void	cmd_pane_free(struct cmd *);
 size_t	cmd_pane_print(struct cmd *, char *, size_t);
 
 /* client.c */
-int	 client_init(const char *, struct client_ctx *, int, int);
+int	 client_init(char *, struct client_ctx *, int, int);
 int	 client_flush(struct client_ctx *);
 int	 client_main(struct client_ctx *);
 
@@ -1307,7 +1307,7 @@ const char *key_string_lookup_key(int);
 extern struct clients clients;
 struct client *server_create_client(int);
 int	 server_client_index(struct client *);
-int	 server_start(const char *);
+int	 server_start(char *);
 
 /* server-msg.c */
 int	 server_msg_dispatch(struct client *);

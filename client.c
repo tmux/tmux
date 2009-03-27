@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.44 2009-03-27 08:58:28 nicm Exp $ */
+/* $Id: client.c,v 1.45 2009-03-27 17:04:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,8 +36,7 @@
 void	client_handle_winch(struct client_ctx *);
 
 int
-client_init(
-    const char *path, struct client_ctx *cctx, int start_server, int flags)
+client_init(char *path, struct client_ctx *cctx, int start_server, int flags)
 {
 	struct sockaddr_un		sa;
 	struct stat			sb;

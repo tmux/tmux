@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.128 2009-03-27 15:57:10 nicm Exp $ */
+/* $Id: server.c,v 1.129 2009-03-27 17:04:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -120,7 +120,7 @@ server_client_index(struct client *c)
 
 /* Fork new server. */
 int
-server_start(const char *path)
+server_start(char *path)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
