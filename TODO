@@ -89,11 +89,12 @@
 - test bug sshing from freebsd console
 - better support for stupid margin terminals. strcmp for cons25 sucks, how can
   these be autodetected?
+- refer to windows by name etc (duplicates? fnmatch?)
+- n/p repeat is annoying, turn off
+- repeat should be a key flag and should be configurable (bind -r)
+
 - document status-keys
 - document break-pane
 - document -8 flag
 - document set-remain-on-exit
-- refer to windows by name etc (duplicates? fnmatch?)
-- n/p repeat is annoying, turn off
-- repeat should be a key flag and should be configurable (bind -r)
 - document -L and update socket path bits in tmux.1
