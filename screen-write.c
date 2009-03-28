@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.39 2009-03-28 16:30:05 nicm Exp $ */
+/* $Id: screen-write.c,v 1.40 2009-03-28 20:17:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,6 +23,7 @@
 #include "tmux.h"
 
 void	screen_write_save(struct screen_write_ctx *);
+void	screen_write_overwrite(struct screen_write_ctx *);
 
 /* Initialise writing with a window. */
 void
@@ -47,7 +48,8 @@ void
 screen_write_putc(
     struct screen_write_ctx *ctx, struct grid_cell *gc, u_char ch)
 {
-	screen_write_cell(ctx, gc, ch);
+	gc->data = ch;
+	screen_write_cell(ctx, gc, NULL);
 }
 
 /* Write string. */
@@ -76,21 +78,26 @@ screen_write_copy(struct screen_write_ctx *ctx,
 	struct screen		*s = ctx->s;
 	struct grid		*gd = src->grid;
 	const struct grid_cell	*gc;
-	uint64_t		 text;
+	struct grid_utf8	*gu;
+	u_char			*udata;
 	u_int		 	 xx, yy, cx, cy;
 
 	cx = s->cx;
 	cy = s->cy;
 	for (yy = py; yy < py + ny; yy++) {
 		for (xx = px; xx < px + nx; xx++) {
-			if (xx >= gd->sx || yy >= gd->hsize + gd->sy) {
+			if (xx >= gd->sx || yy >= gd->hsize + gd->sy)
 				gc = &grid_default_cell;
-				text = ' ';
-			} else {
+			else
 				gc = grid_peek_cell(gd, xx, yy);
-				text = grid_peek_text(gd, xx, yy);
+
+			udata = NULL;
+			if (gc->flags & GRID_FLAG_UTF8) {
+				gu = grid_get_utf8(gd, xx, yy);
+				udata = gu->data;
 			}
-			screen_write_cell(ctx, gc, text);
+
+			screen_write_cell(ctx, gc, udata);
 		}
 		cy++;
 		screen_write_cursormove(ctx, cx, cy);
@@ -517,31 +524,55 @@ screen_write_clearscreen(struct screen_write_ctx *ctx)
 /* Write cell data. */
 void
 screen_write_cell(
-    struct screen_write_ctx *ctx, const struct grid_cell *gc, uint64_t text)
+    struct screen_write_ctx *ctx, const struct grid_cell *gc, u_char *udata)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
-	u_int		 	 width, xx;
-	const struct grid_cell 	*hc;
-	uint64_t		 htext;
-	struct grid_cell 	*ic, tc;
+	struct grid_utf8	 gu, *tmp_gu;
+	u_int		 	 width, uvalue, xx, i;
+	struct grid_cell 	 tmp_gc, *tmp_gc2;
+	size_t			 size;
 
 	/* Find character width. */
-	if (gc->flags & GRID_FLAG_UTF8)
-		width = utf8_width(text);
-	else
+	if (gc->flags & GRID_FLAG_UTF8) {
+		uvalue = utf8_combine(udata);
+		width = utf8_width(uvalue);
+
+		gu.width = width;
+		memcpy(&gu.data, udata, sizeof gu.data);
+ 	} else
 		width = 1;
 
-	/* Discard zero-width characters. */
-	if (width == 0)
+	/* If the width is zero, combine onto the previous character. */
+	if (width == 0) {
+		if (s->cx == 0)
+			return;
+		gc = grid_view_peek_cell(gd, s->cx - 1, s->cy);
+		if (!(gc->flags & GRID_FLAG_UTF8))
+			return;
+		tmp_gu = grid_view_get_utf8(gd, s->cx - 1, s->cy);
+
+		for (i = 0; i < 8; i++) {
+			if (tmp_gu->data[i] == 0xff)
+				break;
+		}
+		memcpy(tmp_gu->data + i, udata, 8 - i);
+
+		/* Assume the previous character has just been input. */
+		for (size = 0; size < 8; size++) {
+			if (udata[size] == 0xff)
+				break;
+		}
+		tty_write_cmd(ctx->wp, TTY_RAW, udata, size);
 		return;
+	}
 
 	/* If the character is wider than the screen, don't print it. */
 	if (width > screen_size_x(s)) {
-		memcpy(&tc, gc, sizeof tc);
-		text = '_';
+		memcpy(&tmp_gc, gc, sizeof tmp_gc);
+		tmp_gc.data = '_';
 		width = 1;
-		gc = &tc;
+		gc = &tmp_gc;
 	}
 
 	/* Check this will fit on the current line; scroll if not. */
@@ -554,18 +585,57 @@ screen_write_cell(
 	if (s->cx > screen_size_x(s) - 1 || s->cy > screen_size_y(s) - 1)
 		return;
 
+	/* Handle overwriting of UTF-8 characters. */
+	screen_write_overwrite(ctx);
+
 	/*
-	 * UTF-8 wide characters are a bit of an annoyance. They take up more
-	 * than one cell on the screen, so following cells must not be drawn by
-	 * marking them as padding.
-	 *
-	 * So far, so good. The problem is, when overwriting a padding cell, or
-	 * a UTF-8 character, it is necessary to also overwrite any other cells
-	 * which covered by the same character.
+	 * If the new character is UTF-8 wide, fill in padding cells. Have
+	 * already ensured there is enough room.
 	 */
-	hc = grid_view_peek_cell(gd, s->cx, s->cy);
-	htext = grid_view_peek_text(gd, s->cx, s->cy);
-	if (hc->flags & GRID_FLAG_PADDING) {
+	for (xx = s->cx + 1; xx < s->cx + width; xx++) {
+		tmp_gc2 = grid_view_get_cell(gd, xx, s->cy);
+		if (tmp_gc2 != NULL)
+			tmp_gc2->flags |= GRID_FLAG_PADDING;
+	}
+
+	/* Set the cell. */
+	grid_view_set_cell(gd, s->cx, s->cy, gc);
+	if (gc->flags & GRID_FLAG_UTF8)
+		grid_view_set_utf8(gd, s->cx, s->cy, &gu);
+	
+	/* Move the cursor. */
+	screen_write_save(ctx);
+	s->cx += width;
+
+	/* Draw to the screen if necessary. */
+	if (screen_check_selection(s, s->cx - width, s->cy))
+		tty_write_cmd(ctx->wp, TTY_CELL, &s->sel.cell, &gu);
+	else
+		tty_write_cmd(ctx->wp, TTY_CELL, gc, &gu);
+}
+
+/*
+ * UTF-8 wide characters are a bit of an annoyance. They take up more than one
+ * cell on the screen, so following cells must not be drawn by marking them as
+ * padding.
+ *
+ * So far, so good. The problem is, when overwriting a padding cell, or a UTF-8
+ * character, it is necessary to also overwrite any other cells which covered
+ * by the same character.
+ */
+void
+screen_write_overwrite(struct screen_write_ctx *ctx)
+{
+	struct screen		*s = ctx->s;
+	struct grid		*gd = s->grid;
+	const struct grid_cell	*gc;
+	const struct grid_utf8	*gu;
+	u_int			 xx;
+
+	gc = grid_view_peek_cell(gd, s->cx, s->cy);
+	gu = grid_view_peek_utf8(gd, s->cx, s->cy);
+
+	if (gc->flags & GRID_FLAG_PADDING) {
 		/*
 		 * A padding cell, so clear any following and leading padding
 		 * cells back to the character. Don't overwrite the current
@@ -573,8 +643,8 @@ screen_write_cell(
 		 */
 		xx = s->cx + 1;
 		while (--xx > 0) {
-			hc = grid_view_peek_cell(gd, xx, s->cy);
-			if (!(hc->flags & GRID_FLAG_PADDING))
+			gc = grid_view_peek_cell(gd, xx, s->cy);
+			if (!(gc->flags & GRID_FLAG_PADDING))
 				break;
 			grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
 		}
@@ -585,45 +655,21 @@ screen_write_cell(
 		/* Overwrite following padding cells. */
 		xx = s->cx;
 		while (++xx < screen_size_x(s)) {
-			hc = grid_view_peek_cell(gd, xx, s->cy);
-			if (!(hc->flags & GRID_FLAG_PADDING))
+			gc = grid_view_peek_cell(gd, xx, s->cy);
+			if (!(gc->flags & GRID_FLAG_PADDING))
 				break;
 			grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
 		}
-	} else if (hc->flags & GRID_FLAG_UTF8 && utf8_width(htext) > 1) {
+	} else if (gc->flags & GRID_FLAG_UTF8 && gu->width > 1) {
 		/*
 		 * An UTF-8 wide cell; overwrite following padding cells only.
 		 */
 		xx = s->cx;
 		while (++xx < screen_size_x(s)) {
-			hc = grid_view_peek_cell(gd, xx, s->cy);
-			if (!(hc->flags & GRID_FLAG_PADDING))
+			gc = grid_view_peek_cell(gd, xx, s->cy);
+			if (!(gc->flags & GRID_FLAG_PADDING))
 				break;
 			grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
 		}
 	}
-
-	/*
-	 * If the new character is UTF-8 wide, fill in padding cells. Have
-	 * already ensured there is enough room.
-	 */
-	for (xx = s->cx + 1; xx < s->cx + width; xx++) {
-		ic = grid_view_get_cell(gd, xx, s->cy);
-		if (ic != NULL)
-			ic->flags |= GRID_FLAG_PADDING;
-	}
-
-	/* Set the cell. */
-	grid_view_set_cell(gd, s->cx, s->cy, gc);
-	grid_view_set_text(gd, s->cx, s->cy, text);
-
-	/* Move the cursor. */
-	screen_write_save(ctx);
-	s->cx += width;
-
-	/* Draw to the screen if necessary. */
-	if (screen_check_selection(s, s->cx - width, s->cy))
-		tty_write_cmd(ctx->wp, TTY_CELL, &s->sel.cell, text);
-	else
-		tty_write_cmd(ctx->wp, TTY_CELL, gc, text);
 }

@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.51 2009-03-28 16:30:05 nicm Exp $ */
+/* $Id: window-copy.c,v 1.52 2009-03-28 20:17:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -462,12 +462,12 @@ window_copy_copy_selection(struct window_pane *wp, struct client *c)
 }
 
 void
-window_copy_copy_line(
-    struct window_pane *wp, char **buf, size_t *off, u_int sy, u_int sx, u_int ex)
+window_copy_copy_line(struct window_pane *wp,
+    char **buf, size_t *off, u_int sy, u_int sx, u_int ex)
 {
-	u_int		i, j, xx;
-	uint64_t	text;
-	u_char		data[4];
+ 	const struct grid_cell	*gc;
+ 	const struct grid_utf8	*gu;
+	u_int			 i, j, xx;
 
 	if (sx > ex)
 		return;
@@ -480,14 +480,18 @@ window_copy_copy_line(
 
 	if (sx < ex) {
 		for (i = sx; i < ex; i++) {
-		        text = grid_peek_text(wp->base.grid, i, sy);
-			utf8_split(text, data);
-
-			*buf = xrealloc(*buf, 1, (*off) + 4);
-			for (j = 0; j < sizeof data; j++) {
-				if (data[j] == 0xff)
-					break;
-				(*buf)[(*off)++] = data[j];
+			gc = grid_peek_cell(wp->base.grid, i, sy);
+			if (gc->flags & GRID_FLAG_UTF8) {
+				*buf = xrealloc(*buf, 1, (*off) + 1);
+				(*buf)[(*off)++] = gc->data;
+			} else {
+				gu = grid_peek_utf8(wp->base.grid, i, sy);
+				*buf = xrealloc(*buf, 1, (*off) + 8);
+				for (j = 0; j < 8; j++) {
+					if (gu->data[i] == 0xff)
+						break;
+					(*buf)[(*off)++] = gc->data;
+				}
 			}
 		}
 	}
@@ -501,28 +505,26 @@ int
 window_copy_is_space(struct window_pane *wp, u_int px, u_int py)
 {
 	const struct grid_cell	*gc;
-	uint64_t		 text;
 	const char     		*spaces = " -_@";
 
 	gc = grid_peek_cell(wp->base.grid, px, py);
-	if (gc->flags & GRID_FLAG_PADDING)
+	if (gc->flags & (GRID_FLAG_PADDING|GRID_FLAG_UTF8))
 		return (0);
-	text = grid_peek_text(wp->base.grid, px, py);
-	if (text == 0x00 || text == 0x7f || text > 0xff)
+	if (gc->data == 0x00 || gc->data == 0x7f)
 		return (0);
-	return (strchr(spaces, text) != NULL);
+	return (strchr(spaces, gc->data) != NULL);
 }
 
 u_int
 window_copy_find_length(struct window_pane *wp, u_int py)
 {
-	uint64_t	text;
-	u_int		px;
+	const struct grid_cell	*gc;
+	u_int			 px;
 
 	px = wp->base.grid->size[py];
 	while (px > 0) {
-		text = grid_peek_text(wp->base.grid, px - 1, py);
-		if (text != 0x20)
+		gc = grid_peek_cell(wp->base.grid, px - 1, py);
+		if (!(gc->flags & GRID_FLAG_UTF8) && gc->data != ' ')
 			break;
 		px--;
 	}

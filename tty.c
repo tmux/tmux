@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.84 2009-03-28 16:30:05 nicm Exp $ */
+/* $Id: tty.c,v 1.85 2009-03-28 20:17:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,6 +54,7 @@ void	tty_cmd_deleteline(struct tty *, struct window_pane *, va_list);
 void	tty_cmd_insertcharacter(struct tty *, struct window_pane *, va_list);
 void	tty_cmd_insertline(struct tty *, struct window_pane *, va_list);
 void	tty_cmd_linefeed(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_raw(struct tty *, struct window_pane *, va_list);
 void	tty_cmd_reverseindex(struct tty *, struct window_pane *, va_list);
 
 void (*tty_cmds[])(struct tty *, struct window_pane *, va_list) = {
@@ -69,6 +70,7 @@ void (*tty_cmds[])(struct tty *, struct window_pane *, va_list) = {
 	tty_cmd_insertcharacter,
 	tty_cmd_insertline,
 	tty_cmd_linefeed,
+	tty_cmd_raw,
 	tty_cmd_reverseindex,
 };
 
@@ -382,7 +384,8 @@ void
 tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int oy)
 {
 	const struct grid_cell	*gc;
-	uint64_t		 text;
+	struct grid_cell	 tmp_gc;
+	const struct grid_utf8	*gu;
 	u_int			 i, sx;
 
 	sx = screen_size_x(s);
@@ -393,13 +396,17 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int oy)
 
 	for (i = 0; i < sx; i++) {
 		gc = grid_view_peek_cell(s->grid, i, py);
-		text = grid_view_peek_text(s->grid, i, py);
+
+		gu = NULL;
+		if (gc->flags & GRID_FLAG_UTF8)
+			gu = grid_view_peek_utf8(s->grid, i, py);
 
  		tty_cursor(tty, i, py, oy);
-		if (screen_check_selection(s, i, py))
-			tty_cell(tty, &s->sel.cell, text);
-		else
-			tty_cell(tty, gc, text);		
+		if (screen_check_selection(s, i, py)) {
+			memcpy(&tmp_gc, &s->sel.cell, sizeof tmp_gc);
+			tty_cell(tty, &tmp_gc, gu);
+		} else
+			tty_cell(tty, gc, gu);
 	}
 
 	if (sx >= tty->sx)
@@ -737,21 +744,34 @@ tty_cmd_cell(struct tty *tty, struct window_pane *wp, va_list ap)
 {
 	struct screen		*s = wp->screen;
 	struct grid_cell	*gc;
-	uint64_t		 text;
+	struct grid_utf8	*gu;
 
 	gc = va_arg(ap, struct grid_cell *);
-	text = va_arg(ap, uint64_t);
+	gu = va_arg(ap, struct grid_utf8 *);
 
 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 
-	tty_cell(tty, gc, text);
+	tty_cell(tty, gc, gu);
 }
 
 void
-tty_cell(struct tty *tty, const struct grid_cell *gc, uint64_t text)
+tty_cmd_raw(struct tty *tty, unused struct window_pane *wp, va_list ap)
 {
-	u_int	i, width;
-	u_char	out[4];
+	u_char	*buf;
+	size_t	 i, len;
+
+	buf = va_arg(ap, u_char *);
+	len = va_arg(ap, size_t);
+
+	for (i = 0; i < len; i++)
+		tty_putc(tty, buf[i]);
+}
+
+void
+tty_cell(
+    struct tty *tty, const struct grid_cell *gc, const struct grid_utf8 *gu)
+{
+	u_int	i;
 
 	/* Skip last character if terminal is stupid. */
 	if (tty->term->flags & TERM_EARLYWRAP && 
@@ -767,26 +787,24 @@ tty_cell(struct tty *tty, const struct grid_cell *gc, uint64_t text)
 
 	/* If not UTF-8, write directly. */
 	if (!(gc->flags & GRID_FLAG_UTF8)) {
-		if (text > 0xff || text < 0x20 || text == 0x7f)
+		if (gc->data < 0x20 || gc->data == 0x7f)
 			return;
-		tty_putc(tty, text);
+		tty_putc(tty, gc->data);
 		return;
 	}
 
 	/* If the terminal doesn't support UTF-8, write underscores. */
 	if (!(tty->flags & TTY_UTF8)) {
-		width = utf8_width(text);
-		while (width-- > 0)
+		for (i = 0; i < gu->width; i++)
 			tty_putc(tty, '_');
 		return;
 	}
 
 	/* Otherwise, unpack UTF-8 and write it. */
-	utf8_split(text, out);
-	for (i = 0; i < 4; i++) {
-		if (out[i] == 0xff)
+	for (i = 0; i < 8; i++) {
+		if (gu->data[i] == 0xff)
 			break;
-		tty_putc(tty, out[i]);
+		tty_putc(tty, gu->data[i]);
 	}
 }
 

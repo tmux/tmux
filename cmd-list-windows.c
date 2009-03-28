@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.32 2009-03-28 16:30:05 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.33 2009-03-28 20:17:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -68,7 +68,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 			size = 0;
 			for (i = 0; i < gd->hsize; i++) {
 				size += gd->size[i] * sizeof **gd->data;
-				size += gd->size[i] * sizeof (u_short);
+				size += gd->usize[i] * sizeof **gd->udata;
 			}
 			size += gd->hsize * (sizeof *gd->data);
 			size += gd->hsize * (sizeof *gd->size);

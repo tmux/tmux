@@ -1,4 +1,4 @@
-/* $Id: cmd-find-window.c,v 1.4 2009-03-28 16:30:05 nicm Exp $ */
+/* $Id: cmd-find-window.c,v 1.5 2009-03-28 20:17:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -163,25 +163,29 @@ cmd_find_window_callback(void *data, int idx)
 char *
 cmd_find_window_search(struct window_pane *wp, const char *searchstr)
 {
-	char	*buf, *s;
-	size_t	 off;
-	uint64_t text;
-	u_int	 i, j, k;
-	u_char	 data[4];
+	const struct grid_cell	*gc;
+	const struct grid_utf8	*gu;
+	char			*buf, *s;
+	size_t	 		 off;
+	u_int	 		 i, j, k;
 
 	buf = xmalloc(1);
 				
 	for (j = 0; j < screen_size_y(&wp->base); j++) {
 		off = 0;
 		for (i = 0; i < screen_size_x(&wp->base); i++) {
-			text = grid_view_peek_text(wp->base.grid, i, j);
-			utf8_split(text, data);
-			
-			buf = xrealloc(buf, 1, off + 4);
-			for (k = 0; k < sizeof data; k++) {
-				if (data[k] == 0xff)
-					break;
-				buf[off++] = data[k];
+			gc = grid_view_peek_cell(wp->base.grid, i, j);
+			if (gc->flags & GRID_FLAG_UTF8) {
+				gu = grid_view_peek_utf8(wp->base.grid, i, j);
+				buf = xrealloc(buf, 1, off + 8);
+				for (k = 0; k < 8; k++) {
+					if (gu->data[k] == 0xff)
+						break;
+					buf[off++] = gu->data[k];
+				}
+			} else {
+				buf = xrealloc(buf, 1, off + 1);
+				buf[off++] = gc->data;
 			}
 		}
 		while (off > 0 && buf[off - 1] == ' ')

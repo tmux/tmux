@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.290 2009-03-28 16:57:03 nicm Exp $ */
+/* $Id: tmux.h,v 1.291 2009-03-28 20:17:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -346,7 +346,7 @@ struct tty_term_code_entry {
 
 /* Output commands. */
 enum tty_cmd {
-	TTY_CELL,
+	TTY_CELL,	
 	TTY_CLEARENDOFLINE,
 	TTY_CLEARENDOFSCREEN,
 	TTY_CLEARLINE,
@@ -358,6 +358,7 @@ enum tty_cmd {
 	TTY_INSERTCHARACTER,
 	TTY_INSERTLINE,
 	TTY_LINEFEED,
+	TTY_RAW,
 	TTY_REVERSEINDEX,
 };
 
@@ -482,12 +483,19 @@ struct mode_key_data {
 #define GRID_FLAG_PADDING 0x4
 #define GRID_FLAG_UTF8 0x8
 
-/* Grid cell attributes. */
+/* Grid cell data. */
 struct grid_cell {
 	u_char	attr;
 	u_char	flags;
 	u_char	fg;
 	u_char	bg;
+	u_char	data;
+} __packed;
+
+/* Grid cell UTF-8 data. Used instead of data in grid_cell for UTF-8 cells. */
+struct grid_utf8 {
+	u_char	width;
+	u_char	data[8];
 } __packed;
 
 /* Entire grid of cells. */
@@ -498,10 +506,11 @@ struct grid {
 	u_int	hsize;
 	u_int	hlimit;
 
-	u_int  *size;	/* row size */
-
+	u_int  *size;
 	struct grid_cell **data;
- 	uint16_t 	 **text;
+
+	u_int  *usize;
+ 	struct grid_utf8 **udata;
 };
 
 /* Option data structures. */
@@ -591,7 +600,7 @@ struct input_ctx {
 	size_t		 off;
 
 	struct grid_cell cell;
-	uint64_t	 text;
+	
 
 	struct grid_cell saved_cell;
 	u_int		 saved_cx;
@@ -1056,7 +1065,8 @@ long long options_get_number(struct options *, const char *);
 void		 tty_reset(struct tty *);
 void		 tty_region(struct tty *, u_int, u_int, u_int);
 void		 tty_cursor(struct tty *, u_int, u_int, u_int);
-void		 tty_cell(struct tty *, const struct grid_cell *, uint64_t);
+void		 tty_cell(struct tty *,
+    		     const struct grid_cell *, const struct grid_utf8 *);
 void		 tty_putcode(struct tty *, enum tty_code_code);
 void		 tty_putcode1(struct tty *, enum tty_code_code, int);
 void		 tty_putcode2(struct tty *, enum tty_code_code, int, int);
@@ -1372,12 +1382,14 @@ void	 grid_destroy(struct grid *);
 int	 grid_compare(struct grid *, struct grid *);
 void	 grid_reduce_line(struct grid *, u_int, u_int);
 void	 grid_expand_line(struct grid *, u_int, u_int);
+void	 grid_expand_line_utf8(struct grid *, u_int, u_int);
 void	 grid_scroll_line(struct grid *);
 const struct grid_cell *grid_peek_cell(struct grid *, u_int, u_int);
 struct grid_cell *grid_get_cell(struct grid *, u_int, u_int);
 void	 grid_set_cell(struct grid *, u_int, u_int, const struct grid_cell *);
-uint64_t grid_peek_text(struct grid *, u_int, u_int);
-void	 grid_set_text(struct grid *, u_int, u_int, uint64_t);
+const struct grid_utf8 *grid_peek_utf8(struct grid *, u_int, u_int);
+struct grid_utf8 *grid_get_utf8(struct grid *, u_int, u_int);
+void	 grid_set_utf8(struct grid *, u_int, u_int, const struct grid_utf8 *);
 void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_clear_lines(struct grid *, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
@@ -1386,12 +1398,13 @@ void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
 
 /* grid-view.c */
 const struct grid_cell *grid_view_peek_cell(struct grid *, u_int, u_int);
-uint64_t grid_view_peek_text(struct grid *, u_int, u_int);
 struct grid_cell *grid_view_get_cell(struct grid *, u_int, u_int);
 void	 grid_view_set_cell(
     	     struct grid *, u_int, u_int, const struct grid_cell *);
-uint64_t grid_view_peek_text(struct grid *, u_int, u_int);
-void	 grid_view_set_text(struct grid *, u_int, u_int, uint64_t);
+const struct grid_utf8 *grid_view_peek_utf8(struct grid *, u_int, u_int);
+struct grid_utf8 *grid_view_get_utf8(struct grid *, u_int, u_int);
+void	 grid_view_set_utf8(
+    	     struct grid *, u_int, u_int, const struct grid_utf8 *);
 void	 grid_view_clear(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_view_scroll_region_up(struct grid *, u_int, u_int);
 void	 grid_view_scroll_region_down(struct grid *, u_int, u_int);
@@ -1439,7 +1452,7 @@ void	 screen_write_clearendofscreen(struct screen_write_ctx *);
 void	 screen_write_clearstartofscreen(struct screen_write_ctx *);
 void	 screen_write_clearscreen(struct screen_write_ctx *);
 void	 screen_write_cell(
-    	     struct screen_write_ctx *, const struct grid_cell *, uint64_t);
+    	     struct screen_write_ctx *, const struct grid_cell *, u_char *);
 
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *, struct screen *);

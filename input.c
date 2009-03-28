@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.75 2009-03-28 16:30:05 nicm Exp $ */
+/* $Id: input.c,v 1.76 2009-03-28 20:17:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -528,8 +528,6 @@ input_state_string_escape(u_char ch, struct input_ctx *ictx)
 void
 input_state_utf8(u_char ch, struct input_ctx *ictx)
 {
-	u_int	value;
-
 	log_debug2("-- un %zu: %hhu (%c)", ictx->off, ch, ch);
 
 	ictx->utf8_buf[ictx->utf8_off++] = ch;
@@ -537,14 +535,9 @@ input_state_utf8(u_char ch, struct input_ctx *ictx)
 		return;
 	input_state(ictx, input_state_first);
 
-	value = utf8_combine(ictx->utf8_buf);
-	if (value > 0xffff)	/* non-BMP not supported */
-		value = '_';
-
-	ictx->text = value;
- 	ictx->cell.flags |= GRID_FLAG_UTF8;
-	screen_write_cell(&ictx->ctx, &ictx->cell, ictx->text);
- 	ictx->cell.flags &= ~GRID_FLAG_UTF8;
+	ictx->cell.flags |= GRID_FLAG_UTF8;
+	screen_write_cell(&ictx->ctx, &ictx->cell, ictx->utf8_buf);
+	ictx->cell.flags &= ~GRID_FLAG_UTF8;
 }
 
 void
@@ -585,8 +578,8 @@ input_handle_character(u_char ch, struct input_ctx *ictx)
 	}
 	log_debug2("-- ch %zu: %hhu (%c)", ictx->off, ch, ch);
 
-	ictx->text = ch;
-	screen_write_cell(&ictx->ctx, &ictx->cell, ictx->text);
+	ictx->cell.data = ch;
+	screen_write_cell(&ictx->ctx, &ictx->cell, ictx->utf8_buf);
 }
 
 void

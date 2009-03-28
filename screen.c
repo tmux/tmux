@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.80 2009-03-28 16:30:05 nicm Exp $ */
+/* $Id: screen.c,v 1.81 2009-03-28 20:17:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -89,7 +89,7 @@ screen_resize_x(struct screen *s, u_int sx)
 {
 	struct grid		*gd = s->grid;
 	const struct grid_cell	*gc;
-	uint64_t		 text;
+	const struct grid_utf8	*gu;
 	u_int			 xx, yy;
 
 	if (sx == 0)
@@ -107,16 +107,20 @@ screen_resize_x(struct screen *s, u_int sx)
 		 * If the character after the last is wide or padding, remove
 		 * it and any leading padding.
 		 */
-		text = ' ';
+		gc = &grid_default_cell;
 		for (xx = sx; xx > 0; xx--) {
 			gc = grid_peek_cell(gd, xx - 1, yy);
-			text = grid_peek_text(gd, xx - 1, yy);
 			if (!(gc->flags & GRID_FLAG_PADDING))
 				break;
 			grid_set_cell(gd, xx - 1, yy, &grid_default_cell);
 		}
-		if (xx > 0 && xx != sx && utf8_width(text) != 1)
-			grid_set_cell(gd, xx - 1, yy, &grid_default_cell);
+		if (xx > 0 && xx != sx && gc->flags & GRID_FLAG_UTF8) {
+			gu = grid_peek_utf8(gd, xx - 1, yy);
+			if (gu->width > 1) {
+				grid_set_cell(
+				    gd, xx - 1, yy, &grid_default_cell);
+			}
+		}
 
 		/* Reduce the line size. */
 		grid_reduce_line(gd, yy, sx);
@@ -167,7 +171,8 @@ screen_resize_y(struct screen *s, u_int sy)
 	/* Resize line arrays. */
 	gd->size = xrealloc(gd->size, gd->hsize + sy, sizeof *gd->size);
 	gd->data = xrealloc(gd->data, gd->hsize + sy, sizeof *gd->data);
-	gd->text = xrealloc(gd->text, gd->hsize + sy, sizeof *gd->text);
+	gd->usize = xrealloc(gd->usize, gd->hsize + sy, sizeof *gd->usize);
+	gd->udata = xrealloc(gd->udata, gd->hsize + sy, sizeof *gd->udata);
 
 	/* Size increasing. */
 	if (sy > screen_size_y(s)) {
@@ -175,7 +180,8 @@ screen_resize_y(struct screen *s, u_int sy)
 		for (yy = gd->hsize + oy; yy < gd->hsize + sy; yy++) {
 			gd->size[yy] = 0;
 			gd->data[yy] = NULL;
-			gd->text[yy] = NULL;
+			gd->usize[yy] = 0;
+			gd->udata[yy] = NULL;			
 		}
 	}
 

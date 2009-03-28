@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.13 2009-03-28 16:57:03 nicm Exp $ */
+/* $Id: grid.c,v 1.14 2009-03-28 20:17:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,13 +35,13 @@
  */
 
 /* Default grid cell data. */
-const struct grid_cell grid_default_cell = { 0, 0, 8, 8 };
+const struct grid_cell grid_default_cell = { 0, 0, 8, 8, ' ' };
 
 #define grid_put_cell(gd, px, py, gc) do {			\
 	memcpy(&gd->data[py][px], gc, sizeof gd->data[py][px]);	\
 } while (0)
-#define grid_put_text(gd, px, py, xtext) do {			\
-	gd->text[py][px] = xtext;				\
+#define grid_put_utf8(gd, px, py, gc) do {			\
+	memcpy(&gd->udata[py][px], gc, sizeof gd->udata[py][px]); \
 } while (0)
 
 int	grid_check_x(struct grid *, u_int);
@@ -100,7 +100,9 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 
 	gd->size = xcalloc(gd->sy, sizeof *gd->size);
 	gd->data = xcalloc(gd->sy, sizeof *gd->data);
-	gd->text = xcalloc(gd->sy, sizeof *gd->text);
+
+	gd->usize = xcalloc(gd->sy, sizeof *gd->usize);
+	gd->udata = xcalloc(gd->sy, sizeof *gd->udata);
 
 	return (gd);
 }
@@ -112,18 +114,22 @@ grid_destroy(struct grid *gd)
 	u_int	yy;
 
 	for (yy = 0; yy < gd->hsize + gd->sy; yy++) {
-		if (gd->text[yy] != NULL)
-			xfree(gd->text[yy]);
+		if (gd->udata[yy] != NULL)
+			xfree(gd->udata[yy]);
 		if (gd->data[yy] != NULL)
 			xfree(gd->data[yy]);
 	}
 
-	if (gd->text != NULL)
-		xfree(gd->text);
+	if (gd->udata != NULL)
+		xfree(gd->udata);
+	if (gd->usize != NULL)
+		xfree(gd->usize);
+
 	if (gd->data != NULL)
 		xfree(gd->data);
 	if (gd->size != NULL)
 		xfree(gd->size);
+
 	xfree(gd);
 }
 
@@ -145,6 +151,7 @@ grid_compare(struct grid *ga, struct grid *gb)
 			gcb = &gb->data[yy][xx];
 			if (memcmp(gca, gcb, sizeof (struct grid_cell)) != 0)
 				return (1);
+			/* XXX */
 		}
 	}
 
@@ -170,13 +177,16 @@ grid_scroll_line(struct grid *gd)
 	}
 
 	yy = gd->hsize + gd->sy;
-	gd->size = xrealloc(gd->size, yy + 1, sizeof *gd->size);
-	gd->data = xrealloc(gd->data, yy + 1, sizeof *gd->data);
-	gd->text = xrealloc(gd->text, yy + 1, sizeof *gd->text);
 
-	gd->data[yy] = NULL;
-	gd->text[yy] = NULL;
+	gd->size = xrealloc(gd->size, yy + 1, sizeof *gd->size);
 	gd->size[yy] = 0;
+	gd->data = xrealloc(gd->data, yy + 1, sizeof *gd->data);
+	gd->data[yy] = NULL;
+
+	gd->usize = xrealloc(gd->usize, yy + 1, sizeof *gd->usize);
+	gd->usize[yy] = 0;
+	gd->udata = xrealloc(gd->udata, yy + 1, sizeof *gd->udata);
+	gd->udata[yy] = NULL;
 
 	gd->hsize++;
 }
@@ -185,12 +195,14 @@ grid_scroll_line(struct grid *gd)
 void
 grid_reduce_line(struct grid *gd, u_int py, u_int sx)
 {
-	if (sx >= gd->size[py])
-		return;
-
-	gd->data[py] = xrealloc(gd->data[py], sx, sizeof **gd->data);
-	gd->text[py] = xrealloc(gd->text[py], sx, sizeof **gd->text);
-	gd->size[py] = sx;
+	if (sx < gd->size[py]) {
+		gd->data[py] = xrealloc(gd->data[py], sx, sizeof **gd->data);
+		gd->size[py] = sx;
+	}
+	if (sx < gd->usize[py]) {
+		gd->udata[py] = xrealloc(gd->udata[py], sx, sizeof **gd->udata);
+		gd->usize[py] = sx;
+	}
 }
 
 /* Expand line to fit to cell. */
@@ -203,12 +215,20 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx)
 		return;
 
 	gd->data[py] = xrealloc(gd->data[py], sx, sizeof **gd->data);
-	gd->text[py] = xrealloc(gd->text[py], sx, sizeof **gd->text);
-	for (xx = gd->size[py]; xx < sx; xx++) {
+	for (xx = gd->size[py]; xx < sx; xx++)
 		grid_put_cell(gd, xx, py, &grid_default_cell);
-		grid_put_text(gd, xx, py, ' ');
-	}
 	gd->size[py] = sx;
+}
+
+/* Expand line to fit to cell for UTF-8. */
+void
+grid_expand_line_utf8(struct grid *gd, u_int py, u_int sx)
+{
+	if (sx <= gd->usize[py])
+		return;
+
+	gd->udata[py] = xrealloc(gd->udata[py], sx, sizeof **gd->udata);
+	gd->usize[py] = sx;
 }
 
 /* Get cell for reading. */
@@ -223,20 +243,6 @@ grid_peek_cell(struct grid *gd, u_int px, u_int py)
 	if (px >= gd->size[py])
 		return (&grid_default_cell);
 	return (&gd->data[py][px]);
-}
-
-/* Get text for reading. */
-uint64_t
-grid_peek_text(struct grid *gd, u_int px, u_int py)
-{
-	if (grid_check_x(gd, px) != 0)
-		return (' ');
-	if (grid_check_y(gd, py) != 0)
-		return (' ');
-
-	if (px >= gd->size[py])
-		return (' ');
-	return (gd->text[py][px]);
 }
 
 /* Get cell at relative position (for writing). */
@@ -266,17 +272,45 @@ grid_set_cell(
 	grid_put_cell(gd, px, py, gc);
 }
 
-/* Set text at relative position. */
+/* Get UTF-8 for reading. */
+const struct grid_utf8 *
+grid_peek_utf8(struct grid *gd, u_int px, u_int py)
+{
+	if (grid_check_x(gd, px) != 0)
+		return (NULL);
+	if (grid_check_y(gd, py) != 0)
+		return (NULL);
+
+	if (px >= gd->usize[py])
+		return (NULL);
+	return (&gd->udata[py][px]);
+}
+
+/* Get utf8 at relative position (for writing). */
+struct grid_utf8 *
+grid_get_utf8(struct grid *gd, u_int px, u_int py)
+{
+	if (grid_check_x(gd, px) != 0)
+		return (NULL);
+	if (grid_check_y(gd, py) != 0)
+		return (NULL);
+
+	grid_expand_line_utf8(gd, py, px + 1);
+	return (&gd->udata[py][px]);
+}
+
+/* Set utf8 at relative position. */
 void
-grid_set_text(struct grid *gd, u_int px, u_int py, uint64_t text)
+grid_set_utf8(
+    struct grid *gd, u_int px, u_int py, const struct grid_utf8 *gc)
 {
 	if (grid_check_x(gd, px) != 0)
 		return;
 	if (grid_check_y(gd, py) != 0)
 		return;
 
-	grid_expand_line(gd, py, px + 1);
-	grid_put_text(gd, px, py, text);
+	grid_expand_line_utf8(gd, py, px + 1);
+	grid_put_utf8(gd, px, py, gc);
 }
 
 /*
@@ -312,7 +346,6 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny)
 			if (xx >= gd->size[yy])
 				break;
 			grid_put_cell(gd, xx, yy, &grid_default_cell);
-			grid_put_text(gd, xx, yy, ' ');
 		}
 	}
 }
@@ -334,12 +367,15 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny)
 		return;
 
 	for (yy = py; yy < py + ny; yy++) {
-		if (gd->data[yy] != NULL || gd->text[yy] != NULL) {
+		if (gd->data[yy] != NULL) {
 			xfree(gd->data[yy]);
-			xfree(gd->text[yy]);
 			gd->data[yy] = NULL;	
-			gd->text[yy] = NULL;
 			gd->size[yy] = 0;
+		}
+		if (gd->udata[yy] != NULL) {
+			xfree(gd->udata[yy]);
+			gd->udata[yy] = NULL;	
+			gd->usize[yy] = 0;
 		}
 	}
 }
@@ -372,16 +408,19 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny)
 	}
 
 	memmove(&gd->data[dy], &gd->data[py], ny * (sizeof *gd->data));	
-	memmove(&gd->text[dy], &gd->text[py], ny * (sizeof *gd->text));
 	memmove(&gd->size[dy], &gd->size[py], ny * (sizeof *gd->size));
+
+	memmove(&gd->udata[dy], &gd->udata[py], ny * (sizeof *gd->udata));	
+	memmove(&gd->usize[dy], &gd->usize[py], ny * (sizeof *gd->usize));
 
 	/* Wipe any lines that have been moved (without freeing them). */
 	for (yy = py; yy < py + ny; yy++) {
 		if (yy >= dy && yy < dy + ny)
 			continue;
 		gd->data[yy] = NULL;
-		gd->text[yy] = NULL;
 		gd->size[yy] = 0;
+		gd->udata[yy] = NULL;
+		gd->usize[yy] = 0;
 	}
 }
 
@@ -407,7 +446,6 @@ grid_clear_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 		if (xx >= gd->size[py])
 			break;
 		grid_put_cell(gd, xx, py, &grid_default_cell);
-		grid_put_text(gd, xx, py, ' ');
 	}
 }
 
@@ -434,14 +472,20 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 	grid_expand_line(gd, py, px + nx);
 	grid_expand_line(gd, py, dx + nx);
 	memmove(&gd->data[py][dx], &gd->data[py][px], nx * (sizeof **gd->data));
-	memmove(&gd->text[py][dx], &gd->text[py][px], nx * (sizeof **gd->text));
+
+	if (gd->udata[py] != NULL) {
+		grid_expand_line_utf8(gd, py, px + nx);
+		grid_expand_line_utf8(gd, py, dx + nx);
+		memmove(&gd->udata[py][dx],
+		    &gd->udata[py][px], nx * (sizeof **gd->udata));
+	}
 
 	/* Wipe any cells that have been moved. */
 	for (xx = px; xx < px + nx; xx++) {
 		if (xx >= dx && xx < dx + nx)
 			continue;
 		grid_put_cell(gd, xx, py, &grid_default_cell);
-		grid_put_text(gd, xx, py, ' ' );
 	}
 }
+
 

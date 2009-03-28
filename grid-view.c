@@ -1,4 +1,4 @@
-/* $Id: grid-view.c,v 1.10 2009-03-28 16:57:03 nicm Exp $ */
+/* $Id: grid-view.c,v 1.11 2009-03-28 20:17:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -37,13 +37,6 @@ grid_view_peek_cell(struct grid *gd, u_int px, u_int py)
 	return (grid_peek_cell(gd, grid_view_x(gd, px), grid_view_y(gd, py)));
 }
 
-/* Get cell text. */
-uint64_t
-grid_view_peek_text(struct grid *gd, u_int px, u_int py)
-{
-	return (grid_peek_text(gd, grid_view_x(gd, px), grid_view_y(gd, py)));
-}
-
 /* Get cell for writing. */
 struct grid_cell *
 grid_view_get_cell(struct grid *gd, u_int px, u_int py)
@@ -59,11 +52,26 @@ grid_view_set_cell(
 	grid_set_cell(gd, grid_view_x(gd, px), grid_view_y(gd, py), gc);
 }
 
-/* Set text. */
-void
-grid_view_set_text(struct grid *gd, u_int px, u_int py, uint64_t text)
+/* Get UTF-8 for reading. */
+const struct grid_utf8 *
+grid_view_peek_utf8(struct grid *gd, u_int px, u_int py)
 {
-	grid_set_text(gd, grid_view_x(gd, px), grid_view_y(gd, py), text);
+	return (grid_peek_utf8(gd, grid_view_x(gd, px), grid_view_y(gd, py)));
+}
+
+/* Get UTF-8 for writing. */
+struct grid_utf8 *
+grid_view_get_utf8(struct grid *gd, u_int px, u_int py)
+{
+	return (grid_get_utf8(gd, grid_view_x(gd, px), grid_view_y(gd, py)));
+}
+
+/* Set UTF-8. */
+void
+grid_view_set_utf8(
+    struct grid *gd, u_int px, u_int py, const struct grid_utf8 *gu)
+{
+	grid_set_utf8(gd, grid_view_x(gd, px), grid_view_y(gd, py), gu);
 }
 
 /* Clear area. */
