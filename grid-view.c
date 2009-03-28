@@ -1,4 +1,4 @@
-/* $Id: grid-view.c,v 1.8 2009-03-28 16:30:05 nicm Exp $ */
+/* $Id: grid-view.c,v 1.9 2009-03-28 16:55:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -80,15 +80,15 @@ grid_view_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny)
 
 /* Fill area. */
 void
-grid_view_fill(struct grid *gd,
-    const struct grid_cell *gc, u_int px, u_int py, u_int nx, u_int ny)
+grid_view_fill(struct grid *gd, const struct grid_cell *gc,
+    uint64_t text, u_int px, u_int py, u_int nx, u_int ny)
 {
 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u, ny=%u", px, py, nx, ny);
 
 	px = grid_view_x(gd, px);
 	py = grid_view_y(gd, py);
 
-	grid_fill(gd, gc, px, py, nx, ny);
+	grid_fill(gd, gc, text, px, py, nx, ny);
 }
 
 /* Scroll region up. */

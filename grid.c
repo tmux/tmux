@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.11 2009-03-28 16:30:05 nicm Exp $ */
+/* $Id: grid.c,v 1.12 2009-03-28 16:55:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -312,14 +312,15 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny)
 			if (xx >= gd->size[yy])
 				break;
 			grid_put_cell(gd, xx, yy, &grid_default_cell);
+			grid_put_text(gd, xx, yy, ' ');
 		}
 	}
 }
 
 /* Fill area. */
 void
-grid_fill(struct grid *gd,
-    const struct grid_cell *gc, u_int px, u_int py, u_int nx, u_int ny)
+grid_fill(struct grid *gd, const struct grid_cell *gc,
+    uint64_t text, u_int px, u_int py, u_int nx, u_int ny)
 {
 	u_int	xx, yy;
 
@@ -341,6 +342,7 @@ grid_fill(struct grid *gd,
 		for (xx = px; xx < px + nx; xx++) {
 			grid_expand_line(gd, yy, xx + 1);
 			grid_put_cell(gd, xx, py, gc);
+			grid_put_text(gd, xx, py, text);
 		}
 	}
 }
@@ -374,10 +376,10 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny)
 
 /* Fill a group of lines. */
 void
-grid_fill_lines(
-    struct grid *gd, const struct grid_cell *gc, u_int py, u_int ny)
+grid_fill_lines(struct grid *gd,
+    const struct grid_cell *gc, uint64_t text, u_int py, u_int ny)
 {
-	grid_fill(gd, gc, 0, py, gd->sx, ny);
+	grid_fill(gd, gc, text, 0, py, gd->sx, ny);
 }
 
 /* Move a group of lines. */
@@ -443,6 +445,7 @@ grid_clear_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 		if (xx >= gd->size[py])
 			break;
 		grid_put_cell(gd, xx, py, &grid_default_cell);
+		grid_put_text(gd, xx, py, ' ');
 	}
 }
 
