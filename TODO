@@ -90,6 +90,8 @@
 - better support for stupid margin terminals. strcmp for cons25 sucks, how can
   these be autodetected?
 - refer to windows by name etc (duplicates? fnmatch?)
+- a confirm-before command which asks "Are you sure? (y/n)" before executing
+  command, eg bind-key "&" confirm-before "kill-window"
 
 - document repeat behaviour and -r on bind-key
 - document status-keys
