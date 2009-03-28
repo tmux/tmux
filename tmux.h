@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.285 2009-03-28 10:15:01 nicm Exp $ */
+/* $Id: tmux.h,v 1.286 2009-03-28 14:08:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -888,7 +888,6 @@ struct cmd_entry {
 #define CMD_CANTNEST 0x2
 #define CMD_ARG1 0x4
 #define CMD_ARG01 0x8
-#define CMD_CANREPEAT 0x10
 #define CMD_KFLAG 0x10
 #define CMD_DFLAG 0x20
 #define CMD_GFLAG 0x40
@@ -944,6 +943,7 @@ struct cmd_pane_data {
 struct key_binding {
 	int		 key;
 	struct cmd_list	*cmdlist;
+	int		 can_repeat;
 
 	SPLAY_ENTRY(key_binding) entry;
 };
@@ -1291,7 +1291,7 @@ extern struct key_bindings key_bindings;
 int	 key_bindings_cmp(struct key_binding *, struct key_binding *);
 SPLAY_PROTOTYPE(key_bindings, key_binding, entry, key_bindings_cmp);
 struct key_binding *key_bindings_lookup(int);
-void	 key_bindings_add(int, struct cmd_list *);
+void	 key_bindings_add(int, int, struct cmd_list *);
 void	 key_bindings_remove(int);
 void	 key_bindings_init(void);
 void	 key_bindings_free(void);

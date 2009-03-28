@@ -1,3 +1,10 @@
+28 March 2009
+
+* Key repeating is now a property of the key binding not of the command.
+  Repeat is turned on when the key is bound with the -r flag to bind-key.
+  next/previous-window no longer repeat by default as it turned out to annoy
+  me.
+
 27 March 2009
 
 * Clear using ED when redrawing the screen. I foolishly assumed using spaces
@@ -1145,7 +1152,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.261 2009-03-28 10:15:01 nicm Exp $
+$Id: CHANGES,v 1.262 2009-03-28 14:08:09 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

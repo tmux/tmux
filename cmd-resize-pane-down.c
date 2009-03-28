@@ -1,4 +1,4 @@
-/* $Id: cmd-resize-pane-down.c,v 1.6 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-resize-pane-down.c,v 1.7 2009-03-28 14:08:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,7 @@ int	cmd_resize_pane_down_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_resize_pane_down_entry = {
 	"resize-pane-down", "resizep-down",
 	CMD_PANE_WINDOW_USAGE " [adjustment]",
-	CMD_ARG01|CMD_CANREPEAT,
+	CMD_ARG01,
 	cmd_resize_pane_down_init,
 	cmd_pane_parse,
 	cmd_resize_pane_down_exec,

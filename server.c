@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.129 2009-03-27 17:04:04 nicm Exp $ */
+/* $Id: server.c,v 1.130 2009-03-28 14:08:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -690,7 +690,7 @@ server_handle_client(struct client *c)
 	struct timeval	 	 tv;
 	struct key_binding	*bd;
 	struct cmd		*cmd;
-	int		 	 key, prefix, status, xtimeout, can_repeat;
+	int		 	 key, prefix, status, xtimeout;
 	int			 mode;
 	u_char			 mouse[3];
 
@@ -748,15 +748,8 @@ server_handle_client(struct client *c)
 			continue;
 		}
 
-		/* Check repeat flag. */
-		can_repeat = 1;
-		TAILQ_FOREACH(cmd, bd->cmdlist, qentry) {
-			if (!(cmd->entry->flags & CMD_CANREPEAT))
-				can_repeat = 0;
-		}
-
 		/* If already repeating, but this key can't repeat, skip it. */
-		if (c->flags & CLIENT_REPEAT && !can_repeat) {
+		if (c->flags & CLIENT_REPEAT && !bd->can_repeat) {
 			c->flags &= ~CLIENT_REPEAT;
 			if (key == prefix)
 				c->flags |= CLIENT_PREFIX;
@@ -766,7 +759,7 @@ server_handle_client(struct client *c)
 		}
 		
 		/* If this key can repeat, reset the repeat flags and timer. */
-		if (xtimeout != 0 && can_repeat) {
+		if (xtimeout != 0 && bd->can_repeat) {
 			c->flags |= CLIENT_PREFIX|CLIENT_REPEAT;
 
 			tv.tv_sec = xtimeout / 1000;

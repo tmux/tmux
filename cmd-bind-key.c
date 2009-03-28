@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.19 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.20 2009-03-28 14:08:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,12 +33,13 @@ size_t	cmd_bind_key_print(struct cmd *, char *, size_t);
 
 struct cmd_bind_key_data {
 	int		 key;
+	int		 can_repeat;
 	struct cmd_list	*cmdlist;
 };
 
 const struct cmd_entry cmd_bind_key_entry = {
 	"bind-key", "bind",
-	"key command [arguments]",
+	"[-r] key command [arguments]",
 	0,
 	NULL,
 	cmd_bind_key_parse,
@@ -56,11 +57,15 @@ cmd_bind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 	int				 opt;
 
 	self->data = data = xmalloc(sizeof *data);
+	data->can_repeat = 0;
 	data->cmdlist = NULL;
 
-	while ((opt = getopt(argc, argv, "")) != -1) {
+	while ((opt = getopt(argc, argv, "r")) != -1) {
 		switch (opt) {
-		default:
+		case 'r':
+			data->can_repeat = 1;
+			break;
+		default:			
 			goto usage;
 		}
 	}
@@ -97,7 +102,7 @@ cmd_bind_key_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 	if (data == NULL)
 		return (0);
 
-	key_bindings_add(data->key, data->cmdlist);
+	key_bindings_add(data->key, data->can_repeat, data->cmdlist);
 	data->cmdlist = NULL;	/* avoid free */
 
 	return (0);
