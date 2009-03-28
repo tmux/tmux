@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.130 2009-03-28 14:08:09 nicm Exp $ */
+/* $Id: server.c,v 1.131 2009-03-28 15:49:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -689,7 +689,6 @@ server_handle_client(struct client *c)
 	struct window_pane	*wp;
 	struct timeval	 	 tv;
 	struct key_binding	*bd;
-	struct cmd		*cmd;
 	int		 	 key, prefix, status, xtimeout;
 	int			 mode;
 	u_char			 mouse[3];
