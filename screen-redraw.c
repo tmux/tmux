@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.28 2009-03-27 16:44:51 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.29 2009-03-28 10:15:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -128,21 +128,5 @@ screen_redraw_blanky(struct client *c, u_int oy, u_int ny, char ch)
 void
 screen_redraw_line(struct client *c, struct screen *s, u_int oy, u_int py)
 {
-	const struct grid_cell	*gc;
-	struct grid_cell	 tc;
-	u_int			 i, sx;
-
-	sx = screen_size_x(s);
-	if (sx > c->tty.sx)
-		sx = c->tty.sx;
-	for (i = 0; i < sx; i++) {
-		gc = grid_view_peek_cell(s->grid, i, py);
- 		tty_cursor(&c->tty, i, py, oy);
-		if (screen_check_selection(s, i, py)) {
-			memcpy(&tc, &s->sel.cell, sizeof tc);
-			tc.data = gc->data;
-			tty_cell(&c->tty, &tc);
-		} else
-			tty_cell(&c->tty, gc);
-	}
+	tty_draw_line(&c->tty, s, py, oy);
 }

@@ -1,5 +1,8 @@
 27 March 2009
 
+* Clear using ED when redrawing the screen. I foolishly assumed using spaces
+  would be equivalent and terminals would pick up on this, but apparently not.
+  This fixes copy and paste in xterm/rxvt.
 * Sockets in /tmp are now created in a subdirectory named, tmux-UID, eg
   tmux-1000. The default socket is thus /tmp/tmux-UID/default. To start a
   separate server, the new -L command line option should be used: this creates
@@ -1142,7 +1145,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.260 2009-03-27 15:57:09 nicm Exp $
+$Id: CHANGES,v 1.261 2009-03-28 10:15:01 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
