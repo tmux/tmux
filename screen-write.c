@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.38 2009-03-28 15:43:41 nicm Exp $ */
+/* $Id: screen-write.c,v 1.39 2009-03-28 16:30:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,8 +47,7 @@ void
 screen_write_putc(
     struct screen_write_ctx *ctx, struct grid_cell *gc, u_char ch)
 {
-	gc->data = ch;
-	screen_write_cell(ctx, gc);
+	screen_write_cell(ctx, gc, ch);
 }
 
 /* Write string. */
@@ -77,17 +76,21 @@ screen_write_copy(struct screen_write_ctx *ctx,
 	struct screen		*s = ctx->s;
 	struct grid		*gd = src->grid;
 	const struct grid_cell	*gc;
+	uint64_t		 text;
 	u_int		 	 xx, yy, cx, cy;
 
 	cx = s->cx;
 	cy = s->cy;
 	for (yy = py; yy < py + ny; yy++) {
 		for (xx = px; xx < px + nx; xx++) {
-			if (xx >= gd->sx || yy >= gd->hsize + gd->sy)
+			if (xx >= gd->sx || yy >= gd->hsize + gd->sy) {
 				gc = &grid_default_cell;
-			else
+				text = ' ';
+			} else {
 				gc = grid_peek_cell(gd, xx, yy);
-			screen_write_cell(ctx, gc);
+				text = grid_peek_text(gd, xx, yy);
+			}
+			screen_write_cell(ctx, gc, text);
 		}
 		cy++;
 		screen_write_cursormove(ctx, cx, cy);
@@ -513,17 +516,19 @@ screen_write_clearscreen(struct screen_write_ctx *ctx)
 
 /* Write cell data. */
 void
-screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
+screen_write_cell(
+    struct screen_write_ctx *ctx, const struct grid_cell *gc, uint64_t text)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	u_int		 	 width, xx;
 	const struct grid_cell 	*hc;
+	uint64_t		 htext;
 	struct grid_cell 	*ic, tc;
 
 	/* Find character width. */
 	if (gc->flags & GRID_FLAG_UTF8)
-		width = utf8_width(gc->data);
+		width = utf8_width(text);
 	else
 		width = 1;
 
@@ -534,8 +539,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	/* If the character is wider than the screen, don't print it. */
 	if (width > screen_size_x(s)) {
 		memcpy(&tc, gc, sizeof tc);
-		tc.data = '_';
-
+		text = '_';
 		width = 1;
 		gc = &tc;
 	}
@@ -560,6 +564,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * which covered by the same character.
 	 */
 	hc = grid_view_peek_cell(gd, s->cx, s->cy);
+	htext = grid_view_peek_text(gd, s->cx, s->cy);
 	if (hc->flags & GRID_FLAG_PADDING) {
 		/*
 		 * A padding cell, so clear any following and leading padding
@@ -585,7 +590,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 				break;
 			grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
 		}
-	} else if (hc->flags & GRID_FLAG_UTF8 && utf8_width(hc->data) > 1) {
+	} else if (hc->flags & GRID_FLAG_UTF8 && utf8_width(htext) > 1) {
 		/*
 		 * An UTF-8 wide cell; overwrite following padding cells only.
 		 */
@@ -610,16 +615,15 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 
 	/* Set the cell. */
 	grid_view_set_cell(gd, s->cx, s->cy, gc);
+	grid_view_set_text(gd, s->cx, s->cy, text);
 
 	/* Move the cursor. */
 	screen_write_save(ctx);
 	s->cx += width;
 
 	/* Draw to the screen if necessary. */
-	if (screen_check_selection(s, s->cx - width, s->cy)) {
-		memcpy(&tc, &s->sel.cell, sizeof tc);
-		tc.data = gc->data;
-		tty_write_cmd(ctx->wp, TTY_CELL, &tc);
-	} else
-		tty_write_cmd(ctx->wp, TTY_CELL, gc);
+	if (screen_check_selection(s, s->cx - width, s->cy))
+		tty_write_cmd(ctx->wp, TTY_CELL, &s->sel.cell, text);
+	else
+		tty_write_cmd(ctx->wp, TTY_CELL, gc, text);
 }

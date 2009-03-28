@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.50 2009-02-13 21:39:45 nicm Exp $ */
+/* $Id: window-copy.c,v 1.51 2009-03-28 16:30:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -465,9 +465,9 @@ void
 window_copy_copy_line(
     struct window_pane *wp, char **buf, size_t *off, u_int sy, u_int sx, u_int ex)
 {
-	const struct grid_cell *gc;
-	u_int			i, j, xx;
-	u_char			data[4];
+	u_int		i, j, xx;
+	uint64_t	text;
+	u_char		data[4];
 
 	if (sx > ex)
 		return;
@@ -480,8 +480,8 @@ window_copy_copy_line(
 
 	if (sx < ex) {
 		for (i = sx; i < ex; i++) {
-			gc = grid_peek_cell(wp->base.grid, i, sy);
-			utf8_split(gc->data, data);
+		        text = grid_peek_text(wp->base.grid, i, sy);
+			utf8_split(text, data);
 
 			*buf = xrealloc(*buf, 1, (*off) + 4);
 			for (j = 0; j < sizeof data; j++) {
@@ -501,26 +501,28 @@ int
 window_copy_is_space(struct window_pane *wp, u_int px, u_int py)
 {
 	const struct grid_cell	*gc;
-	const char 		*spaces = " -_@";
+	uint64_t		 text;
+	const char     		*spaces = " -_@";
 
 	gc = grid_peek_cell(wp->base.grid, px, py);
 	if (gc->flags & GRID_FLAG_PADDING)
 		return (0);
-	if (gc->data == 0x00 || gc->data > 0xff)
+	text = grid_peek_text(wp->base.grid, px, py);
+	if (text == 0x00 || text == 0x7f || text > 0xff)
 		return (0);
-	return (strchr(spaces, gc->data) != NULL);
+	return (strchr(spaces, text) != NULL);
 }
 
 u_int
 window_copy_find_length(struct window_pane *wp, u_int py)
 {
-	const struct grid_cell	*gc;
-	u_int			 px;
+	uint64_t	text;
+	u_int		px;
 
 	px = wp->base.grid->size[py];
 	while (px > 0) {
-		gc = grid_peek_cell(wp->base.grid, px - 1, py);
-		if (gc->data != 0x20)
+		text = grid_peek_text(wp->base.grid, px - 1, py);
+		if (text != 0x20)
 			break;
 		px--;
 	}

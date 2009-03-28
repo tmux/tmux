@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.31 2009-03-28 15:43:41 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.32 2009-03-28 16:30:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -66,8 +66,10 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 			gd = wp->base.grid;
 			
 			size = 0;
-			for (i = 0; i < gd->hsize; i++)
+			for (i = 0; i < gd->hsize; i++) {
 				size += gd->size[i] * sizeof **gd->data;
+				size += gd->size[i] * sizeof (u_short);
+			}
 			size += gd->hsize * (sizeof *gd->data);
 			size += gd->hsize * (sizeof *gd->size);
 
