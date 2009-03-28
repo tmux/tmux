@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.12 2009-03-28 16:55:46 nicm Exp $ */
+/* $Id: grid.c,v 1.13 2009-03-28 16:57:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -317,36 +317,6 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny)
 	}
 }
 
-/* Fill area. */
-void
-grid_fill(struct grid *gd, const struct grid_cell *gc,
-    uint64_t text, u_int px, u_int py, u_int nx, u_int ny)
-{
-	u_int	xx, yy;
-
- 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u, ny=%u", px, py, nx, ny);
-
-	if (nx == 0 || ny == 0)
-		return;
-
-	if (grid_check_x(gd, px) != 0)
-		return;
-	if (grid_check_x(gd, px + nx - 1) != 0)
-		return;
-	if (grid_check_y(gd, py) != 0)
-		return;
-	if (grid_check_y(gd, py + ny - 1) != 0)
-		return;
-
-	for (yy = py; yy < py + ny; yy++) {
-		for (xx = px; xx < px + nx; xx++) {
-			grid_expand_line(gd, yy, xx + 1);
-			grid_put_cell(gd, xx, py, gc);
-			grid_put_text(gd, xx, py, text);
-		}
-	}
-}
-
 /* Clear lines. This just frees and truncates the lines. */
 void
 grid_clear_lines(struct grid *gd, u_int py, u_int ny)
@@ -372,14 +342,6 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny)
 			gd->size[yy] = 0;
 		}
 	}
-}
-
-/* Fill a group of lines. */
-void
-grid_fill_lines(struct grid *gd,
-    const struct grid_cell *gc, uint64_t text, u_int py, u_int ny)
-{
-	grid_fill(gd, gc, text, 0, py, gd->sx, ny);
 }
 
 /* Move a group of lines. */

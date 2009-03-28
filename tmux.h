@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.289 2009-03-28 16:55:46 nicm Exp $ */
+/* $Id: tmux.h,v 1.290 2009-03-28 16:57:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1379,10 +1379,6 @@ void	 grid_set_cell(struct grid *, u_int, u_int, const struct grid_cell *);
 uint64_t grid_peek_text(struct grid *, u_int, u_int);
 void	 grid_set_text(struct grid *, u_int, u_int, uint64_t);
 void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int);
-void	 grid_fill(struct grid *, const struct grid_cell *,
-    	     uint64_t, u_int, u_int, u_int, u_int);
-void	 grid_fill_lines(
-	     struct grid *, const struct grid_cell *, uint64_t, u_int, u_int);
 void	 grid_clear_lines(struct grid *, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_clear_cells(struct grid *, u_int, u_int, u_int);
@@ -1397,8 +1393,6 @@ void	 grid_view_set_cell(
 uint64_t grid_view_peek_text(struct grid *, u_int, u_int);
 void	 grid_view_set_text(struct grid *, u_int, u_int, uint64_t);
 void	 grid_view_clear(struct grid *, u_int, u_int, u_int, u_int);
-void	 grid_view_fill(struct grid *, const struct grid_cell *,
-    	     uint64_t, u_int, u_int, u_int, u_int);
 void	 grid_view_scroll_region_up(struct grid *, u_int, u_int);
 void	 grid_view_scroll_region_down(struct grid *, u_int, u_int);
 void	 grid_view_insert_lines(struct grid *, u_int, u_int);
