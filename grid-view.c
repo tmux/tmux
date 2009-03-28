@@ -1,4 +1,4 @@
-/* $Id: grid-view.c,v 1.6 2009-01-10 01:51:21 nicm Exp $ */
+/* $Id: grid-view.c,v 1.7 2009-03-28 15:43:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,14 +32,14 @@
 
 /* Get cell for reading. */
 const struct grid_cell *
-grid_view_peek_cell(struct grid_data *gd, u_int px, u_int py)
+grid_view_peek_cell(struct grid *gd, u_int px, u_int py)
 {
 	return (grid_peek_cell(gd, grid_view_x(gd, px), grid_view_y(gd, py)));
 }
 
 /* Get cell for writing. */
 struct grid_cell *
-grid_view_get_cell(struct grid_data *gd, u_int px, u_int py)
+grid_view_get_cell(struct grid *gd, u_int px, u_int py)
 {
 	return (grid_get_cell(gd, grid_view_x(gd, px), grid_view_y(gd, py)));
 }
@@ -47,14 +47,14 @@ grid_view_get_cell(struct grid_data *gd, u_int px, u_int py)
 /* Set cell. */
 void
 grid_view_set_cell(
-    struct grid_data *gd, u_int px, u_int py, const struct grid_cell *gc)
+    struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 {
 	grid_set_cell(gd, grid_view_x(gd, px), grid_view_y(gd, py), gc);
 }
 
 /* Clear area. */
 void
-grid_view_clear(struct grid_data *gd, u_int px, u_int py, u_int nx, u_int ny)
+grid_view_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny)
 {
 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u, ny=%u", px, py, nx, ny);
 
@@ -66,7 +66,7 @@ grid_view_clear(struct grid_data *gd, u_int px, u_int py, u_int nx, u_int ny)
 
 /* Fill area. */
 void
-grid_view_fill(struct grid_data *gd,
+grid_view_fill(struct grid *gd,
     const struct grid_cell *gc, u_int px, u_int py, u_int nx, u_int ny)
 {
 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u, ny=%u", px, py, nx, ny);
@@ -79,7 +79,7 @@ grid_view_fill(struct grid_data *gd,
 
 /* Scroll region up. */
 void
-grid_view_scroll_region_up(struct grid_data *gd, u_int rupper, u_int rlower)
+grid_view_scroll_region_up(struct grid *gd, u_int rupper, u_int rlower)
 {
 	GRID_DEBUG(gd, "rupper=%u, rlower=%u", rupper, rlower);
 
@@ -96,7 +96,7 @@ grid_view_scroll_region_up(struct grid_data *gd, u_int rupper, u_int rlower)
 
 /* Scroll region down. */
 void
-grid_view_scroll_region_down(struct grid_data *gd, u_int rupper, u_int rlower)
+grid_view_scroll_region_down(struct grid *gd, u_int rupper, u_int rlower)
 {
 	GRID_DEBUG(gd, "rupper=%u, rlower=%u", rupper, rlower);
 
@@ -108,7 +108,7 @@ grid_view_scroll_region_down(struct grid_data *gd, u_int rupper, u_int rlower)
 
 /* Insert lines. */
 void
-grid_view_insert_lines(struct grid_data *gd, u_int py, u_int ny)
+grid_view_insert_lines(struct grid *gd, u_int py, u_int ny)
 {
 	u_int	sy;
 
@@ -124,7 +124,7 @@ grid_view_insert_lines(struct grid_data *gd, u_int py, u_int ny)
 /* Insert lines in region. */
 void
 grid_view_insert_lines_region(
-    struct grid_data *gd, u_int rupper, u_int rlower, u_int py, u_int ny)
+    struct grid *gd, u_int rupper, u_int rlower, u_int py, u_int ny)
 {
 	GRID_DEBUG(
 	    gd, "rupper=%u, rlower=%u, py=%u, ny=%u", rupper, rlower, py, ny);
@@ -138,7 +138,7 @@ grid_view_insert_lines_region(
 
 /* Delete lines. */
 void
-grid_view_delete_lines(struct grid_data *gd, u_int py, u_int ny)
+grid_view_delete_lines(struct grid *gd, u_int py, u_int ny)
 {
 	u_int	sy;
 
@@ -154,7 +154,7 @@ grid_view_delete_lines(struct grid_data *gd, u_int py, u_int ny)
 /* Delete lines inside scroll region. */
 void
 grid_view_delete_lines_region(
-    struct grid_data *gd, u_int rupper, u_int rlower, u_int py, u_int ny)
+    struct grid *gd, u_int rupper, u_int rlower, u_int py, u_int ny)
 {
 	GRID_DEBUG(
 	    gd, "rupper=%u, rlower=%u, py=%u, ny=%u", rupper, rlower, py, ny);
@@ -168,7 +168,7 @@ grid_view_delete_lines_region(
 
 /* Insert characters. */
 void
-grid_view_insert_cells(struct grid_data *gd, u_int px, u_int py, u_int nx)
+grid_view_insert_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 {
 	u_int	sx;
 
@@ -187,7 +187,7 @@ grid_view_insert_cells(struct grid_data *gd, u_int px, u_int py, u_int nx)
 
 /* Delete characters. */
 void
-grid_view_delete_cells(struct grid_data *gd, u_int px, u_int py, u_int nx)
+grid_view_delete_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 {
 	u_int	sx;
 

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.286 2009-03-28 14:08:09 nicm Exp $ */
+/* $Id: tmux.h,v 1.287 2009-03-28 15:43:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -492,7 +492,7 @@ struct grid_cell {
 } __packed;
 
 /* Grid data. */
-struct grid_data {
+struct grid {
 	u_int	sx;
 	u_int	sy;
 
@@ -543,7 +543,7 @@ struct screen_sel {
 struct screen {
 	char		*title;
 
-	struct grid_data *grid;		/* grid data */
+	struct grid     *grid;		/* grid data */
 
 	u_int		 cx;		/* cursor x */
 	u_int		 cy;		/* cursor y */
@@ -1365,44 +1365,44 @@ int	 attributes_fromstring(const char *);
 
 /* grid.c */
 extern const struct grid_cell grid_default_cell;
-struct grid_data *grid_create(u_int, u_int, u_int);
-void	 grid_destroy(struct grid_data *);
-int	 grid_compare(struct grid_data *, struct grid_data *);
-void	 grid_reduce_line(struct grid_data *, u_int, u_int);
-void	 grid_expand_line(struct grid_data *, u_int, u_int);
-void	 grid_scroll_line(struct grid_data *);
-const struct grid_cell *grid_peek_cell(struct grid_data *, u_int, u_int);
-struct grid_cell *grid_get_cell(struct grid_data *, u_int, u_int);
+struct grid *grid_create(u_int, u_int, u_int);
+void	 grid_destroy(struct grid *);
+int	 grid_compare(struct grid *, struct grid *);
+void	 grid_reduce_line(struct grid *, u_int, u_int);
+void	 grid_expand_line(struct grid *, u_int, u_int);
+void	 grid_scroll_line(struct grid *);
+const struct grid_cell *grid_peek_cell(struct grid *, u_int, u_int);
+struct grid_cell *grid_get_cell(struct grid *, u_int, u_int);
 void	 grid_set_cell(
-	     struct grid_data *, u_int, u_int, const struct grid_cell *);
-void	 grid_clear(struct grid_data *, u_int, u_int, u_int, u_int);
-void	 grid_fill(struct grid_data *,
+	     struct grid *, u_int, u_int, const struct grid_cell *);
+void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int);
+void	 grid_fill(struct grid *,
     	     const struct grid_cell *, u_int, u_int, u_int, u_int);
 void	 grid_fill_lines(
-    	     struct grid_data *, const struct grid_cell *, u_int, u_int);
-void	 grid_clear_lines(struct grid_data *, u_int, u_int);
-void	 grid_move_lines(struct grid_data *, u_int, u_int, u_int);
-void	 grid_clear_cells(struct grid_data *, u_int, u_int, u_int);
-void	 grid_move_cells(struct grid_data *, u_int, u_int, u_int, u_int);
+    	     struct grid *, const struct grid_cell *, u_int, u_int);
+void	 grid_clear_lines(struct grid *, u_int, u_int);
+void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
+void	 grid_clear_cells(struct grid *, u_int, u_int, u_int);
+void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
 
 /* grid-view.c */
-const struct grid_cell *grid_view_peek_cell(struct grid_data *, u_int, u_int);
-struct grid_cell *grid_view_get_cell(struct grid_data *, u_int, u_int);
+const struct grid_cell *grid_view_peek_cell(struct grid *, u_int, u_int);
+struct grid_cell *grid_view_get_cell(struct grid *, u_int, u_int);
 void	 grid_view_set_cell(
-	     struct grid_data *, u_int, u_int, const struct grid_cell *);
-void	 grid_view_clear(struct grid_data *, u_int, u_int, u_int, u_int);
-void	 grid_view_fill(struct grid_data *,
+	     struct grid *, u_int, u_int, const struct grid_cell *);
+void	 grid_view_clear(struct grid *, u_int, u_int, u_int, u_int);
+void	 grid_view_fill(struct grid *,
     	     const struct grid_cell *, u_int, u_int, u_int, u_int);
-void	 grid_view_scroll_region_up(struct grid_data *, u_int, u_int);
-void	 grid_view_scroll_region_down(struct grid_data *, u_int, u_int);
-void	 grid_view_insert_lines(struct grid_data *, u_int, u_int);
+void	 grid_view_scroll_region_up(struct grid *, u_int, u_int);
+void	 grid_view_scroll_region_down(struct grid *, u_int, u_int);
+void	 grid_view_insert_lines(struct grid *, u_int, u_int);
 void	 grid_view_insert_lines_region(
-    	     struct grid_data *, u_int, u_int, u_int, u_int);
-void	 grid_view_delete_lines(struct grid_data *, u_int, u_int);
+    	     struct grid *, u_int, u_int, u_int, u_int);
+void	 grid_view_delete_lines(struct grid *, u_int, u_int);
 void	 grid_view_delete_lines_region(
-	     struct grid_data *, u_int, u_int, u_int, u_int);
-void	 grid_view_insert_cells(struct grid_data *, u_int, u_int, u_int);
-void	 grid_view_delete_cells(struct grid_data *, u_int, u_int, u_int);
+    	     struct grid *, u_int, u_int, u_int, u_int);
+void	 grid_view_insert_cells(struct grid *, u_int, u_int, u_int);
+void	 grid_view_delete_cells(struct grid *, u_int, u_int, u_int);
 
 /* screen-write.c */
 void	 screen_write_start(

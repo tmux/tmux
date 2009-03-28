@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.78 2009-01-10 01:51:22 nicm Exp $ */
+/* $Id: screen.c,v 1.79 2009-03-28 15:43:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -87,7 +87,7 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 void
 screen_resize_x(struct screen *s, u_int sx)
 {
-	struct grid_data	*gd = s->grid;
+	struct grid		*gd = s->grid;
 	const struct grid_cell	*gc;
 	u_int			 xx, yy;
 
@@ -128,8 +128,8 @@ screen_resize_x(struct screen *s, u_int sx)
 void
 screen_resize_y(struct screen *s, u_int sy)
 {
-	struct grid_data	*gd = s->grid;
-	u_int			 oy, yy, ny;
+	struct grid	*gd = s->grid;
+	u_int		 oy, yy, ny;
 
 	if (sy == 0)
 		fatalx("zero size");

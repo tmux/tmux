@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.37 2009-03-05 20:27:51 nicm Exp $ */
+/* $Id: screen-write.c,v 1.38 2009-03-28 15:43:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -75,7 +75,7 @@ screen_write_copy(struct screen_write_ctx *ctx,
     struct screen *src, u_int px, u_int py, u_int nx, u_int ny)
 {
 	struct screen		*s = ctx->s;
-	struct grid_data	*gd = src->grid;
+	struct grid		*gd = src->grid;
 	const struct grid_cell	*gc;
 	u_int		 	 xx, yy, cx, cy;
 
@@ -516,7 +516,7 @@ void
 screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 {
 	struct screen		*s = ctx->s;
-	struct grid_data	*gd = s->grid;
+	struct grid		*gd = s->grid;
 	u_int		 	 width, xx;
 	const struct grid_cell 	*hc;
 	struct grid_cell 	*ic, tc;

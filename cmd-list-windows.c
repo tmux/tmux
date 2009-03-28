@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.30 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.31 2009-03-28 15:43:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,7 +49,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink		*wl;
 	struct window		*w;
 	struct window_pane	*wp;	
-	struct grid_data	*gd;
+	struct grid		*gd;
 	u_int			 i;
 	unsigned long long	 size;
 	const char		*name;
