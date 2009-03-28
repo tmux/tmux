@@ -73,21 +73,22 @@
 - set-remain-on-exit is a bit of a hack, some way to do it generically?
 - set-option should be set-session-option and should be overall global options
   for stuff like mode keys?
-
-(hopefully) for 0.8, in no particular order:
-- key to switch to copy mode from scroll mode
-- attach should have a flag to create session if it doesn't exist
-- swap-pane-up, swap-pane-down (maybe move-pane-*)
-- clear window title on exit
+- a confirm-before command which asks "Are you sure? (y/n)" before executing
+  command, eg bind-key "&" confirm-before "kill-window"
 - might be nice if attach-session behaved like switch-client inside an
   existing client
-- test bug sshing from freebsd console
+- key to switch to copy mode from scroll mode
+- attach should have a flag to create session if it doesn't exist
+- clear window title on exit
 - better support for stupid margin terminals. strcmp for cons25 sucks, how can
   these be autodetected?
 - refer to windows by name etc (duplicates? fnmatch?)
-- a confirm-before command which asks "Are you sure? (y/n)" before executing
-  command, eg bind-key "&" confirm-before "kill-window"
-- c&p is funny w/ UTF-8
+
+(hopefully) for 0.8, in no particular order:
+- swap-pane-up, swap-pane-down (maybe move-pane-*)
+- test bug sshing from freebsd console
+- c&p is funny w/ UTF-8: a) skips over width=2 b) displays padding cells
+- fix compare fn for UTF-8
 
 - document repeat behaviour and -r on bind-key
 - document status-keys
