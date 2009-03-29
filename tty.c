@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.85 2009-03-28 20:17:29 nicm Exp $ */
+/* $Id: tty.c,v 1.86 2009-03-29 11:18:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -800,8 +800,8 @@ tty_cell(
 		return;
 	}
 
-	/* Otherwise, unpack UTF-8 and write it. */
-	for (i = 0; i < 8; i++) {
+	/* Otherwise, write UTF-8. */
+	for (i = 0; i < UTF8_SIZE; i++) {
 		if (gu->data[i] == 0xff)
 			break;
 		tty_putc(tty, gu->data[i]);

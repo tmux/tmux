@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.291 2009-03-28 20:17:29 nicm Exp $ */
+/* $Id: tmux.h,v 1.292 2009-03-29 11:18:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -493,9 +493,10 @@ struct grid_cell {
 } __packed;
 
 /* Grid cell UTF-8 data. Used instead of data in grid_cell for UTF-8 cells. */
+#define UTF8_SIZE 8
 struct grid_utf8 {
 	u_char	width;
-	u_char	data[8];
+	u_char	data[UTF8_SIZE];
 } __packed;
 
 /* Entire grid of cells. */

@@ -1,4 +1,4 @@
-/* $Id: cmd-find-window.c,v 1.5 2009-03-28 20:17:29 nicm Exp $ */
+/* $Id: cmd-find-window.c,v 1.6 2009-03-29 11:18:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -178,7 +178,7 @@ cmd_find_window_search(struct window_pane *wp, const char *searchstr)
 			if (gc->flags & GRID_FLAG_UTF8) {
 				gu = grid_view_peek_utf8(wp->base.grid, i, j);
 				buf = xrealloc(buf, 1, off + 8);
-				for (k = 0; k < 8; k++) {
+				for (k = 0; k < UTF8_SIZE; k++) {
 					if (gu->data[k] == 0xff)
 						break;
 					buf[off++] = gu->data[k];

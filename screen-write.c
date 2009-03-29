@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.41 2009-03-29 11:06:22 nicm Exp $ */
+/* $Id: screen-write.c,v 1.42 2009-03-29 11:18:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -561,14 +561,14 @@ screen_write_cell(
 		}
 		tmp_gu = grid_view_get_utf8(gd, s->cx - 1, s->cy);
 
-		for (i = 0; i < 8; i++) {
+		for (i = 0; i < UTF8_SIZE; i++) {
 			if (tmp_gu->data[i] == 0xff)
 				break;
 		}
-		memcpy(tmp_gu->data + i, udata, 8 - i);
+		memcpy(tmp_gu->data + i, udata, UTF8_SIZE - i);
 
 		/* Assume the previous character has just been input. */
-		for (size = 0; size < 8; size++) {
+		for (size = 0; size < UTF8_SIZE; size++) {
 			if (udata[size] == 0xff)
 				break;
 		}
