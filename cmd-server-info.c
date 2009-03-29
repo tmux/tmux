@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.11 2009-03-29 10:51:50 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.12 2009-03-29 19:09:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -80,6 +80,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		ctx->print(ctx, "configuration file is %s", cfg_file);
 	else
 		ctx->print(ctx, "configuration file not specified");
+	ctx->print(ctx, "protocol version is %d", PROTOCOL_VERSION);
 	ctx->print(ctx, "%u clients, %u sessions",
 	    ARRAY_LENGTH(&clients), ARRAY_LENGTH(&sessions));
 	ctx->print(ctx, "");
