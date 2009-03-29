@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.10 2009-02-11 17:50:33 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.11 2009-03-29 10:51:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,13 +52,19 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	struct tty_term			*term;
 	struct client			*c;
 	struct session			*s;
+	struct winlink			*wl;
+	struct window			*w;
+	struct window_pane		*wp;
 	struct tty_code			*code;
 	struct tty_term_code_entry	*ent;
 	struct utsname			 un;
-	u_int		 		 i;
+	struct grid			*gd;
+	u_int		 		 i, j, k;
 	char				 out[BUFSIZ];
 	char				*tim;
 	time_t		 		 t;
+	u_int				 lines, ulines;
+	size_t				 size, usize;
 
 	tim = ctime(&start_time);
 	*strchr(tim, '\n') = '\0';
@@ -84,14 +90,15 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		if (c == NULL || c->session == NULL)
 			continue;
 
-		ctx->print(ctx, "%4d: %s (%d, %d): %s [%ux%u %s] "
-		    "[flags=0x%x/0x%x]", i, c->tty.path, c->fd, c->tty.fd, 
+		ctx->print(ctx, "%2d: %p %s (%d, %d): %s [%ux%u %s] "
+		    "[flags=0x%x/0x%x]", i, c, c->tty.path, c->fd, c->tty.fd, 
 		    c->session->name, c->tty.sx, c->tty.sy, c->tty.termname, 
 		    c->flags, c->tty.flags);
 	}
 	ctx->print(ctx, "");
 
- 	ctx->print(ctx, "Sessions:");
+ 	ctx->print(ctx, "Sessions: [%zu/%zu]",
+	    sizeof (struct grid_cell), sizeof (struct grid_utf8));
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
 		if (s == NULL)
@@ -101,9 +108,38 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		tim = ctime(&t);
 		*strchr(tim, '\n') = '\0';
 
-		ctx->print(ctx, "%4d: %s: %u windows (created %s) [%ux%u] "
-		    "[flags=0x%x]", i, s->name, winlink_count(&s->windows),
+		ctx->print(ctx, "%2u: %p %s: %u windows (created %s) [%ux%u] "
+		    "[flags=0x%x]", i, s, s->name, winlink_count(&s->windows),
 		    tim, s->sx, s->sy, s->flags);
+		RB_FOREACH(wl, winlinks, &s->windows) {
+			w = wl->window;
+			ctx->print(ctx, "%4u: %p/%p %s [%ux%u] [flags=0x%x, "
+			    "references=%u]", wl->idx, wl, w, w->name,
+			    w->sx, w->sy, w->flags, w->references);
+			j = 0;
+			TAILQ_FOREACH(wp, &w->panes, entry) {
+				lines = ulines = size = usize = 0;
+				gd = wp->base.grid;
+				for (k = 0; k < gd->hsize + gd->sy; k++) {
+					if (gd->data[k] != NULL) {
+						lines++;
+						size += gd->size[k] *
+						    sizeof (**gd->data);
+					}
+					if (gd->udata[k] != NULL) {
+						ulines++;
+						usize += gd->usize[k] *
+						    sizeof (**gd->udata);
+					}
+				}
+				ctx->print(ctx, "%6u: %s %lu %d %u/%u, %zu "
+				    "bytes; UTF-8 %u/%u, %zu bytes", j, wp->tty,
+				    (u_long) wp->pid, wp->fd, lines,
+				    gd->hsize + gd->sy, size, ulines,
+				    gd->hsize + gd->sy, usize);
+				j++;
+			}
+		}
 	}
 	ctx->print(ctx, "");
 
@@ -116,7 +152,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 			code = &term->codes[ent->code];
 			switch (code->type) {
 			case TTYCODE_NONE:
-				ctx->print(ctx, "%4d: %s: [missing]",
+				ctx->print(ctx, "%2u: %s: [missing]",
 				    ent->code, ent->name);
 				break;
 			case TTYCODE_STRING:
@@ -124,15 +160,15 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 				    sizeof out, VIS_OCTAL|VIS_WHITE);
 				out[(sizeof out) - 1] = '\0';
 
-				ctx->print(ctx, "%4d: %s: (string) %s",
+				ctx->print(ctx, "%2u: %s: (string) %s",
 				    ent->code, ent->name, out);
 				break;
 			case TTYCODE_NUMBER:
-				ctx->print(ctx, "%4d: %s: (number) %d",
+				ctx->print(ctx, "%2u: %s: (number) %d",
 				    ent->code, ent->name, code->value.number);
 				break;
 			case TTYCODE_FLAG:
-				ctx->print(ctx, "%4d: %s: (flag) %s",
+				ctx->print(ctx, "%2u: %s: (flag) %s",
 				    ent->code, ent->name,
 				    code->value.flag ? "true" : "false");
 				break;
