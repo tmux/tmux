@@ -187,3 +187,4 @@ Automatic window renaming may use a lot of CPU, particularly on slow computers:
 if this is a problem, turn it off with "setw -g automatic-rename off". If this
 doesn't fix it, please report the problem.
 
+$Id: FAQ,v 1.20 2009-03-30 20:22:08 nicm Exp $
