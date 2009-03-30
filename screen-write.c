@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.42 2009-03-29 11:18:28 nicm Exp $ */
+/* $Id: screen-write.c,v 1.43 2009-03-30 20:14:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -617,9 +617,10 @@ screen_write_cell(
 	s->cx += width;
 
 	/* Draw to the screen if necessary. */
-	if (screen_check_selection(s, s->cx - width, s->cy))
+	if (screen_check_selection(s, s->cx - width, s->cy)) {
+		s->sel.cell.data = gc->data;
 		tty_write_cmd(ctx->wp, TTY_CELL, &s->sel.cell, &gu);
-	else
+	} else
 		tty_write_cmd(ctx->wp, TTY_CELL, gc, &gu);
 }
 
