@@ -87,7 +87,6 @@
 (hopefully) for 0.8, in no particular order:
 - swap-pane-up, swap-pane-down (maybe move-pane-*)
 - test bug sshing from freebsd console
-- c&p is funny w/ UTF-8: skips over width=2
 
 - document repeat behaviour and -r on bind-key
 - document status-keys
