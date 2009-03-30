@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.55 2009-03-30 20:14:50 nicm Exp $ */
+/* $Id: window-copy.c,v 1.56 2009-03-30 20:58:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -259,7 +259,6 @@ window_copy_write_line(struct window_pane *wp, struct screen_write_ctx *ctx, u_i
 		gc.fg = options_get_number(&wp->window->options, "mode-bg");
 		gc.attr |= options_get_number(&wp->window->options, "mode-attr");
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
-		screen_write_puts(ctx, &gc, "%s", hdr);
 		screen_write_puts(ctx, &gc, "%s", hdr);
 	} else
 		size = 0;
