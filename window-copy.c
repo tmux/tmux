@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.56 2009-03-30 20:58:25 nicm Exp $ */
+/* $Id: window-copy.c,v 1.57 2009-03-30 21:08:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -287,7 +287,7 @@ window_copy_write_column(
 
 	screen_write_cursormove(ctx, px, 0);
 	screen_write_copy(ctx, &wp->base,
-	    data->ox, screen_hsize(&wp->base) - data->oy, 1, screen_size_y(s));
+	    data->ox + px, screen_hsize(&wp->base) - data->oy, 1, screen_size_y(s));
 }
 
 void
@@ -297,7 +297,7 @@ window_copy_write_columns(
 	u_int	xx;
 
 	for (xx = px; xx < px + nx; xx++)
-		window_copy_write_column(wp, ctx, px);
+		window_copy_write_column(wp, ctx, xx);
 }
 
 void
