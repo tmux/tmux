@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.87 2009-03-30 20:14:50 nicm Exp $ */
+/* $Id: tty.c,v 1.88 2009-03-31 18:39:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -413,7 +413,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int oy)
 	tty_reset(tty);
 		
 	tty_cursor(tty, sx, py, oy);
-	if (tty_term_has(tty->term, TTYC_EL))
+	if (screen_size_x(s) >= tty->sx && tty_term_has(tty->term, TTYC_EL))
 		tty_putcode(tty, TTYC_EL);
 	else {
 		for (i = sx; i < screen_size_x(s); i++)
@@ -447,6 +447,11 @@ tty_cmd_insertcharacter(struct tty *tty, struct window_pane *wp, va_list ap)
 	struct screen	*s = wp->screen;
 	u_int		 ua;
 
+	if (screen_size_x(s) < tty->sx) {
+		tty_draw_line(tty, wp->screen, s->old_cy, wp->yoff);
+		return;
+	}
+
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
@@ -469,6 +474,11 @@ tty_cmd_deletecharacter(struct tty *tty, struct window_pane *wp, va_list ap)
 	struct screen	*s = wp->screen;
 	u_int		 ua;
 
+	if (screen_size_x(s) < tty->sx) {
+		tty_draw_line(tty, wp->screen, s->old_cy, wp->yoff);
+		return;
+	}
+
 	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
@@ -483,7 +493,7 @@ tty_cmd_insertline(struct tty *tty, struct window_pane *wp, va_list ap)
 	struct screen	*s = wp->screen;
 	u_int		 ua, i;
 
- 	if (!tty_term_has(tty->term, TTYC_CSR)) {
+ 	if (screen_size_x(s) < tty->sx || !tty_term_has(tty->term, TTYC_CSR)) {
 		/*
 		 * Scroll region unsupported. Redraw using data from screen
 		 * (already updated).
@@ -514,7 +524,7 @@ tty_cmd_deleteline(struct tty *tty, struct window_pane *wp, va_list ap)
 	struct screen	*s = wp->screen;
 	u_int		 ua, i;
 
- 	if (!tty_term_has(tty->term, TTYC_CSR)) {
+ 	if (screen_size_x(s) < tty->sx || !tty_term_has(tty->term, TTYC_CSR)) {
 		/*
 		 * Scroll region unsupported. Redraw using data from screen
 		 * (already updated).
@@ -548,7 +558,7 @@ tty_cmd_clearline(struct tty *tty, struct window_pane *wp, unused va_list ap)
 	tty_reset(tty);
 
  	tty_cursor(tty, 0, s->old_cy, wp->yoff);
-	if (tty_term_has(tty->term, TTYC_EL)) {
+	if (screen_size_x(s) >= tty->sx && tty_term_has(tty->term, TTYC_EL)) {
 		tty_putcode(tty, TTYC_EL);
 	} else {
 		for (i = 0; i < screen_size_x(s); i++)
@@ -566,7 +576,7 @@ tty_cmd_clearendofline(
 	tty_reset(tty);
 
 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
-	if (tty_term_has(tty->term, TTYC_EL))
+	if (screen_size_x(s) >= tty->sx && tty_term_has(tty->term, TTYC_EL))
 		tty_putcode(tty, TTYC_EL);
 	else {
 		for (i = s->old_cx; i < screen_size_x(s); i++)
@@ -599,7 +609,7 @@ tty_cmd_reverseindex(struct tty *tty, struct window_pane *wp, unused va_list ap)
 	struct screen	*s = wp->screen;
 	u_int		 i;
 
- 	if (!tty_term_has(tty->term, TTYC_CSR)) {
+ 	if (screen_size_x(s) < tty->sx || !tty_term_has(tty->term, TTYC_CSR)) {
 		/*
 		 * Scroll region unsupported. If would have scrolled, redraw
 		 * scroll region from already updated window screen.
@@ -627,7 +637,7 @@ tty_cmd_linefeed(struct tty *tty, struct window_pane *wp, unused va_list ap)
 	struct screen	*s = wp->screen;
 	u_int		 i;
 
- 	if (!tty_term_has(tty->term, TTYC_CSR)) {
+ 	if (screen_size_x(s) < tty->sx || !tty_term_has(tty->term, TTYC_CSR)) {
 		/*
 		 * Scroll region unsupported. If would have scrolled, redraw
 		 * scroll region from already updated window screen.
@@ -662,7 +672,7 @@ tty_cmd_clearendofscreen(
 
 	tty_cursor(tty, s->old_cx, s->old_cy, wp->yoff);
 	tty_region(tty, 0, screen_size_y(s) - 1, wp->yoff);
-	if (tty_term_has(tty->term, TTYC_EL)) {	
+	if (screen_size_x(s) >= tty->sx && tty_term_has(tty->term, TTYC_EL)) {	
 		tty_putcode(tty, TTYC_EL);
 		if (s->old_cy != screen_size_y(s) - 1) {
 			tty_cursor(tty, 0, s->old_cy + 1, wp->yoff);
@@ -678,6 +688,7 @@ tty_cmd_clearendofscreen(
 		for (i = s->old_cx; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
 		for (j = s->old_cy; j < screen_size_y(s); j++) {
+			tty_cursor(tty, 0, j, wp->yoff);
 			for (i = 0; i < screen_size_x(s); i++)
 				tty_putc(tty, ' ');
 		}
@@ -695,7 +706,7 @@ tty_cmd_clearstartofscreen(
 
 	tty_cursor(tty, 0, 0, wp->yoff);
 	tty_region(tty, 0, screen_size_y(s) - 1, wp->yoff);
-	if (tty_term_has(tty->term, TTYC_EL)) {
+	if (screen_size_x(s) >= tty->sx && tty_term_has(tty->term, TTYC_EL)) {
 		for (i = 0; i < s->old_cy; i++) {
 			tty_putcode(tty, TTYC_EL);
 			tty_emulate_repeat(tty, TTYC_CUD, TTYC_CUD1, 1);
@@ -703,6 +714,7 @@ tty_cmd_clearstartofscreen(
 		}
 	} else {
 		for (j = 0; j < s->old_cy; j++) {
+			tty_cursor(tty, 0, j, wp->yoff);
 			for (i = 0; i < screen_size_x(s); i++)
 				tty_putc(tty, ' ');
 		}
@@ -722,7 +734,7 @@ tty_cmd_clearscreen(
 
 	tty_cursor(tty, 0, 0, wp->yoff);
 	tty_region(tty, 0, screen_size_y(s) - 1, wp->yoff);
-	if (tty_term_has(tty->term, TTYC_EL)) {
+	if (screen_size_x(s) >= tty->sx && tty_term_has(tty->term, TTYC_EL)) {
 		for (i = 0; i < screen_size_y(s); i++) {
 			tty_putcode(tty, TTYC_EL);
 			if (i != screen_size_y(s) - 1) {
@@ -732,6 +744,7 @@ tty_cmd_clearscreen(
 		}
 	} else {
 		for (j = 0; j < screen_size_y(s); j++) {
+			tty_cursor(tty, 0, j, wp->yoff);
 			for (i = 0; i < screen_size_x(s); i++)
 				tty_putc(tty, ' ');
 		}

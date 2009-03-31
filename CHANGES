@@ -1,3 +1,11 @@
+31 March 2009
+
+* Draw a vertical line on the right when the window size is less than the
+  terminal size. This is partly to shake out any horizontal limit bugs on the
+  way to horizontal splitting/pane tiling. Currently a bit slow since it has to
+  do a lot of redrawing but hopefully that will improve as I get some better
+  ideas for how to do it.
+
 28 March 2009
 
 * Better UTF-8 support, including combined characters. Unicode data is now
@@ -1160,7 +1168,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.263 2009-03-28 20:17:29 nicm Exp $
+$Id: CHANGES,v 1.264 2009-03-31 18:39:45 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
