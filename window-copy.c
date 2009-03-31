@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.58 2009-03-31 12:28:45 nicm Exp $ */
+/* $Id: window-copy.c,v 1.59 2009-03-31 15:10:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -489,9 +489,9 @@ window_copy_copy_line(struct window_pane *wp,
 				gu = grid_peek_utf8(wp->base.grid, i, sy);
 				*buf = xrealloc(*buf, 1, (*off) + UTF8_SIZE);
 				for (j = 0; j < UTF8_SIZE; j++) {
-					if (gu->data[i] == 0xff)
+					if (gu->data[j] == 0xff)
 						break;
-					(*buf)[(*off)++] = gc->data;
+					(*buf)[(*off)++] = gu->data[j];
 				}
 			}
 		}
