@@ -1,5 +1,9 @@
 31 March 2009
 
+* AIX port, thanks to cmihai for access to a box. Only tested on 6.1 with xlc
+  10.1 (make sure CC is set). Needs GNU make and probably ncurses (didn't try
+  plain curses). Also won't build with DEBUG, so comment the FDEBUG=1 line in
+  GNUmakefile.
 * Draw a vertical line on the right when the window size is less than the
   terminal size. This is partly to shake out any horizontal limit bugs on the
   way to horizontal splitting/pane tiling. Currently a bit slow since it has to
@@ -1168,7 +1172,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.264 2009-03-31 18:39:45 nicm Exp $
+$Id: CHANGES,v 1.265 2009-03-31 21:30:03 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
