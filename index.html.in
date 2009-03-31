@@ -1,11 +1,15 @@
-<!-- $Id: index.html.in,v 1.1 2007-11-20 17:01:38 nicm Exp $ -->
+<!-- $Id: index.html.in,v 1.2 2009-03-31 23:15:27 nicm Exp $ -->
 <html>
 <head>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
 <title>tmux</title>
 </head>
 <body>
+<b>Welcome to the tmux website, such as it is!</b>
+<p>tmux is a &quot;terminal multiplexer&quot;, it enables a number of terminals (or windows) to be accessed and controlled from a single terminal. tmux is intended to be a simple, modern, BSD-licensed alternative to programs such as GNU screen.</p>
+<p><a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">Download tmux %%VERSION%%.</a></p>
+<p>Please see the <a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/NOTES">release notes</a> and <a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/FAQ">FAQ</a> (note these are for CVS HEAD).</p>
+<p>The change log, up to CVS HEAD, is <a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/CHANGES">here.</a></p>
 <p>The project page is <a href="http://sf.net/projects/tmux">here.</a></p>
-<p>Download tmux %%VERSION%% with <a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">this link.</a></p>
 </body>
 </html>
