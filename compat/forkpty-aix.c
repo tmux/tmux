@@ -1,4 +1,4 @@
-/* $Id: forkpty-aix.c,v 1.1 2009-03-31 21:23:18 nicm Exp $ */
+/* $Id: forkpty-aix.c,v 1.2 2009-03-31 22:08:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,18 +30,14 @@ pid_t
 forkpty(int *master,
     unused char *name, unused struct termios *tio, struct winsize *ws)
 {
-	int	slave;
+	int	slave, fd;
 	char   *path;
 	pid_t	pid;
 
 	if ((*master = open("/dev/ptc", O_RDWR|O_NOCTTY)) == -1)
 		return (-1);
-	if (grantpt(*master) != 0)
-		goto out;
-	if (unlockpt(*master) != 0)
-		goto out;
 
-	if ((path = ptsname(*master)) == NULL)
+	if ((path = ttyname(*master)) == NULL)
 		goto out;
 	if ((slave = open(path, O_RDWR|O_NOCTTY)) == -1)
 		goto out;
@@ -52,11 +48,28 @@ forkpty(int *master,
 	case 0:
 		close(*master);
 
-		setsid();
-#ifdef TIOCSCTTY
-		if (ioctl(slave, TIOCSCTTY, NULL) == -1)
-			fatal("ioctl failed");
-#endif
+		fd = open(_PATH_TTY, O_RDWR|O_NOCTTY);
+		if (fd >= 0) {
+			ioctl(fd, TIOCNOTTY, NULL);
+			close(fd);
+		}
+		
+		if (setsid() < 0)
+			fatal("setsid");
+         
+		fd = open(_PATH_TTY, O_RDWR|O_NOCTTY);
+		if (fd >= 0)
+			fatalx("open succeeded (failed to disconnect)");
+
+		fd = open(path, O_RDWR);
+		if (fd < 0)
+			fatal("open failed");
+		close(fd);
+
+		fd = open("/dev/tty", O_WRONLY);
+		if (fd < 0)
+			fatal("open failed");
+		close(fd);
 
 		if (ioctl(slave, TIOCSWINSZ, ws) == -1)
 			fatal("ioctl failed");

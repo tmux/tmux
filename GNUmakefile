@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.77 2009-03-31 21:24:33 nicm Exp $
+# $Id: GNUmakefile,v 1.78 2009-03-31 22:08:45 nicm Exp $
 
 .PHONY: clean
 
@@ -76,7 +76,7 @@ SRCS+= compat/vis.c compat/strlcpy.c compat/strlcat.c compat/strtonum.c \
 CFLAGS+= -DNO_TREE_H -DNO_ASPRINTF -DNO_QUEUE_H -DNO_VSYSLOG \
 	 -DNO_PROGNAME -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM \
 	 -DNO_SETPROCTITLE -DNO_QUEUE_H -DNO_TREE_H -DNO_FORKPTY -DNO_FGETLN \
-	 -DBROKEN_GETOPT -DBROKEN_POLL
+	 -DBROKEN_GETOPT -DBROKEN_POLL -DNO_PATHS_H
 LDFLAGS+= -L/usr/local/lib
 endif
 

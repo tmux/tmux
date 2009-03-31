@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.292 2009-03-29 11:18:28 nicm Exp $ */
+/* $Id: tmux.h,v 1.293 2009-03-31 22:08:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -109,6 +109,7 @@ extern const char    *__progname;
 #define	_PATH_BSHELL	"/bin/sh"
 #define	_PATH_TMP	"/tmp/"
 #define _PATH_DEVNULL	"/dev/null"
+#define _PATH_TTY	"/dev/tty"
 #endif
 
 /* Default configuration file. */
