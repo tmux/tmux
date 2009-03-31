@@ -1,4 +1,4 @@
-/* $Id: osdep-unknown.c,v 1.3 2009-02-18 08:41:46 nicm Exp $ */
+/* $Id: osdep-unknown.c,v 1.4 2009-03-31 21:22:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
 #include "tmux.h"
 
 char *
-get_argv0(unused pid_t pgrp)
+osdep_get_name(unused int fd, unused char *tty)
 {
 	return (NULL);
 }

@@ -49,13 +49,14 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <err.h>
+/* #include <err.h> */
 #include <errno.h>
 /* #include <getopt.h> */
 #include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
+#define warnx(a, b) /* XXX */
 
 #define	REPLACE_GETOPT		/* use this getopt as the system getopt(3) */
 

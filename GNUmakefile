@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.75 2009-03-07 09:29:54 nicm Exp $
+# $Id: GNUmakefile,v 1.76 2009-03-31 21:22:10 nicm Exp $
 
 .PHONY: clean
 
@@ -53,10 +53,12 @@ CFLAGS+= -g -ggdb -DDEBUG
 LDFLAGS+= -rdynamic
 LIBS+= -ldl
 endif
+ifeq (${CC},gcc)
 CFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wcast-qual -Wsign-compare
 CFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
+endif
 
 LDFLAGS+=
 LIBS+= -lncurses
@@ -65,6 +67,18 @@ PREFIX?= /usr/local
 INSTALLDIR= install -d
 INSTALLBIN= install -g bin -o root -m 555
 INSTALLMAN= install -g bin -o root -m 444
+
+ifeq ($(shell uname),AIX)
+INCDIRS+= -I/usr/local/include/ncurses -Icompat
+SRCS+= compat/vis.c compat/strlcpy.c compat/strlcat.c compat/strtonum.c \
+       compat/fgetln.c compat/asprintf.c compat/daemon.c compat/forkpty-aix.c \
+       compat/getopt_long.c compat/bsd-poll.c
+CFLAGS+= -DNO_TREE_H -DNO_ASPRINTF -DNO_QUEUE_H -DNO_VSYSLOG
+         -DNO_PROGNAME -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM \
+	 -DNO_SETPROCTITLE -DNO_QUEUE_H -DNO_TREE_H -DNO_FORKPTY -DNO_FGETLN \
+	 -DBROKEN_GETOPT -DBROKEN_POLL
+LDFLAGS+= -L/usr/local/lib
+endif
 
 ifeq ($(shell uname),IRIX64)
 INCDIRS+= -Icompat -I/usr/local/include/ncurses
