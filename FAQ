@@ -22,8 +22,7 @@ There are still a few features screen includes that tmux omits:
 
 - builtin serial and telnet support; this is bloat and is unlikely to be added
   to tmux;
-- wider platform support, for example IRIX and AIX, and for odd terminals.
-- better UTF-8 support.
+- wider platform support, for example IRIX and HP-UX, and for odd terminals.
 
 * I found a bug! What do I do?
 
@@ -187,4 +186,4 @@ Automatic window renaming may use a lot of CPU, particularly on slow computers:
 if this is a problem, turn it off with "setw -g automatic-rename off". If this
 doesn't fix it, please report the problem.
 
-$Id: FAQ,v 1.20 2009-03-30 20:22:08 nicm Exp $
+$Id: FAQ,v 1.21 2009-03-31 23:17:28 nicm Exp $
