@@ -9,6 +9,7 @@
   way to horizontal splitting/pane tiling. Currently a bit slow since it has to
   do a lot of redrawing but hopefully that will improve as I get some better
   ideas for how to do it.
+* Fix remaining problems with copy and paste and UTF-8.
 
 28 March 2009
 
@@ -1172,7 +1173,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.265 2009-03-31 21:30:03 nicm Exp $
+$Id: CHANGES,v 1.266 2009-03-31 23:14:22 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
