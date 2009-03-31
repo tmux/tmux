@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.131 2009-03-28 15:49:05 nicm Exp $ */
+/* $Id: server.c,v 1.132 2009-03-31 22:20:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -72,6 +72,8 @@ server_create_client(int fd)
 	if ((mode = fcntl(fd, F_GETFL)) == -1)
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
+		fatal("fcntl failed");
+	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
 
 	c = xcalloc(1, sizeof *c);

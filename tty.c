@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.88 2009-03-31 18:39:45 nicm Exp $ */
+/* $Id: tty.c,v 1.89 2009-03-31 22:20:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -98,9 +98,11 @@ tty_open(struct tty *tty, char **cause)
 	}
 
 	if ((mode = fcntl(tty->fd, F_GETFL)) == -1)
-		fatal("fcntl");
+		fatal("fcntl failed");
 	if (fcntl(tty->fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl");
+		fatal("fcntl failedo");
+	if (fcntl(tty->fd, F_SETFD, FD_CLOEXEC) == -1)
+		fatal("fcntl failed");
 
 	if (debug_level > 3)
 		tty->log_fd = open("tmux.out", O_WRONLY|O_CREAT|O_TRUNC, 0644);
