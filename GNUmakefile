@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.76 2009-03-31 21:22:10 nicm Exp $
+# $Id: GNUmakefile,v 1.77 2009-03-31 21:24:33 nicm Exp $
 
 .PHONY: clean
 
@@ -73,8 +73,8 @@ INCDIRS+= -I/usr/local/include/ncurses -Icompat
 SRCS+= compat/vis.c compat/strlcpy.c compat/strlcat.c compat/strtonum.c \
        compat/fgetln.c compat/asprintf.c compat/daemon.c compat/forkpty-aix.c \
        compat/getopt_long.c compat/bsd-poll.c
-CFLAGS+= -DNO_TREE_H -DNO_ASPRINTF -DNO_QUEUE_H -DNO_VSYSLOG
-         -DNO_PROGNAME -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM \
+CFLAGS+= -DNO_TREE_H -DNO_ASPRINTF -DNO_QUEUE_H -DNO_VSYSLOG \
+	 -DNO_PROGNAME -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM \
 	 -DNO_SETPROCTITLE -DNO_QUEUE_H -DNO_TREE_H -DNO_FORKPTY -DNO_FGETLN \
 	 -DBROKEN_GETOPT -DBROKEN_POLL
 LDFLAGS+= -L/usr/local/lib
