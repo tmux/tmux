@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.14 2009-01-18 14:40:48 nicm Exp $ */
+/* $Id: cfg.c,v 1.15 2009-03-31 22:23:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -107,10 +107,13 @@ load_cfg(const char *path, char **cause)
 	}
 	if (line != NULL)
 		xfree(line);
+	fclose(f);
 
 	return (0);
 
 error:
+	fclose(f);
+
 	xasprintf(&ptr, "%s: %s at line %u", path, *cause, n);
 	xfree(*cause);
 	*cause = ptr;
