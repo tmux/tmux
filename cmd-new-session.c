@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.39 2009-02-11 17:50:33 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.40 2009-04-01 18:21:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -185,6 +185,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		server_write_client(c, MSG_READY, NULL, 0);
 		server_redraw_client(c);
 	}
+	recalculate_sizes();
 
 	return (1);
 }

@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.116 2009-03-07 09:29:54 nicm Exp $
+# $Id: Makefile,v 1.117 2009-04-01 18:21:23 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -19,7 +19,7 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       screen.c screen-write.c screen-redraw.c \
       grid.c grid-view.c \
       window.c session.c log.c client.c client-msg.c client-fn.c cfg.c \
-      key-string.c key-bindings.c resize.c arg.c mode-key.c \
+      layout.c key-string.c key-bindings.c resize.c arg.c mode-key.c \
       cmd.c cmd-generic.c cmd-string.c cmd-list.c \
       cmd-detach-client.c cmd-list-sessions.c cmd-new-window.c cmd-bind-key.c \
       cmd-unbind-key.c cmd-previous-window.c cmd-last-window.c cmd-list-keys.c \
@@ -40,7 +40,7 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       cmd-resize-pane-up.c cmd-resize-pane-down.c cmd-kill-pane.c \
       cmd-up-pane.c cmd-down-pane.c cmd-choose-window.c cmd-choose-session.c \
       cmd-suspend-client.c cmd-find-window.c cmd-load-buffer.c \
-      cmd-copy-buffer.c cmd-break-pane.c \
+      cmd-copy-buffer.c cmd-break-pane.c cmd-next-layout.c \
       window-clock.c window-scroll.c window-more.c window-copy.c \
       window-choose.c \
       options.c options-cmd.c paste.c colour.c utf8.c clock.c \

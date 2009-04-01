@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.132 2009-03-31 22:20:42 nicm Exp $ */
+/* $Id: server.c,v 1.133 2009-04-01 18:21:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -518,7 +518,7 @@ server_check_redraw(struct client *c)
 		if (server_locked)
 			server_redraw_locked(c);
 		else
- 			screen_redraw_screen(c, NULL);
+ 			screen_redraw_screen(c);
 		c->flags &= ~CLIENT_STATUS;
 	}
 
@@ -536,7 +536,7 @@ server_redraw_locked(struct client *c)
 {
 	struct screen_write_ctx	ctx;
 	struct screen		screen;
-	u_int			colour, xx, yy;
+	u_int			colour, xx, yy, i;
 	int    			style;
 
 	xx = c->tty.sx;
@@ -554,7 +554,9 @@ server_redraw_locked(struct client *c)
 	clock_draw(&ctx, colour, style);
 	screen_write_stop(&ctx);
 
-	screen_redraw_screen(c, &screen);
+	for (i = 0; i < screen_size_y(&screen); i++)
+		tty_draw_line(&c->tty, &screen, i, 0, 0);
+	screen_redraw_status(c);
 
 	screen_free(&screen);
 }
@@ -689,6 +691,7 @@ void
 server_handle_client(struct client *c)
 {
 	struct window_pane	*wp;
+	struct screen		*s;
 	struct timeval	 	 tv;
 	struct key_binding	*bd;
 	int		 	 key, prefix, status, xtimeout;
@@ -776,13 +779,14 @@ server_handle_client(struct client *c)
 	if (c->session == NULL)
 		return;
 	wp = c->session->curw->window->active;	/* could die - do each loop */
+	s = wp->screen;
 	
 	/* Ensure cursor position and mode settings. */
 	status = options_get_number(&c->session->options, "status");
-	if (wp->yoff + wp->screen->cy < c->tty.sy - status)
-		tty_cursor(&c->tty, wp->screen->cx, wp->screen->cy, wp->yoff);
+	if (wp->yoff + s->cy < c->tty.sy - status)
+		tty_cursor(&c->tty, s->cx, s->cy, wp->xoff, wp->yoff);
 
-	mode = wp->screen->mode;
+	mode = s->mode;
 	if (server_locked)
 		mode &= ~TTY_NOCURSOR;
 	tty_update_mode(&c->tty, mode);
@@ -912,6 +916,7 @@ server_check_window(struct window *w)
 		else if (!flag) {
 			window_remove_pane(w, wp);
 			server_redraw_window(w);
+			layout_refresh(w);
 		}
 		wp = wq;
 	} 

@@ -1,3 +1,14 @@
+01 April 2009
+
+* Basic horizontal splitting and layout management. Still some redraw and other
+  issues - particularly, don't mix with manual pane resizing and be careful
+  when viewing from multiple clients; generally cycling the layout a few times
+  will fix most problems. Getting this in for testing while I think about how
+  to deal with manual mode.
+
+  Split window as normal and cycle the layouts with C-b space. Some of the
+  layouts will work better when swap-pane comes along.
+
 31 March 2009
 
 * AIX port, thanks to cmihai for access to a box. Only tested on 6.1 with xlc
@@ -1173,7 +1184,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.266 2009-03-31 23:14:22 nicm Exp $
+$Id: CHANGES,v 1.267 2009-04-01 18:21:12 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

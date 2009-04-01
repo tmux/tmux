@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.9 2009-03-04 17:24:07 nicm Exp $ */
+/* $Id: cmd-split-window.c,v 1.10 2009-04-01 18:21:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -178,6 +178,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		server_redraw_session(s);
 	} else
 		server_status_session(s);
+	layout_refresh(w);
 
 	return (0);
 }

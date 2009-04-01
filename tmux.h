@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.293 2009-03-31 22:08:45 nicm Exp $ */
+/* $Id: tmux.h,v 1.294 2009-04-01 18:21:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -650,6 +650,7 @@ struct window_pane {
 	u_int		 sx;
 	u_int		 sy;
 
+	u_int		 xoff;
 	u_int		 yoff;
 
 	int		 flags;
@@ -684,10 +685,11 @@ struct window {
 
 	struct window_pane *active;	
 	struct window_panes panes;
+	u_int		 layout;
 
 	u_int		 sx;
 	u_int		 sy;
-
+       
 	int		 flags;
 #define WINDOW_BELL 0x1
 #define WINDOW_HIDDEN 0x2
@@ -1064,9 +1066,11 @@ void	options_set_number(struct options *, const char *, long long);
 long long options_get_number(struct options *, const char *);
 
 /* tty.c */
+void		 tty_emulate_repeat(struct tty *,
+    		     enum tty_code_code, enum tty_code_code, u_int);
 void		 tty_reset(struct tty *);
 void		 tty_region(struct tty *, u_int, u_int, u_int);
-void		 tty_cursor(struct tty *, u_int, u_int, u_int);
+void		 tty_cursor(struct tty *, u_int, u_int, u_int, u_int);
 void		 tty_cell(struct tty *,
     		     const struct grid_cell *, const struct grid_utf8 *);
 void		 tty_putcode(struct tty *, enum tty_code_code);
@@ -1079,7 +1083,9 @@ void		 tty_start_tty(struct tty *);
 void		 tty_stop_tty(struct tty *);
 void		 tty_set_title(struct tty *, const char *);
 void		 tty_update_mode(struct tty *, int);
-void		 tty_draw_line(struct tty *, struct screen *, u_int, u_int);
+void		 tty_draw_line(
+    		     struct tty *, struct screen *, u_int, u_int, u_int);
+void		 tty_draw_region(struct tty *, struct screen *, u_int, u_int);
 int		 tty_open(struct tty *, char **);
 void		 tty_close(struct tty *, int);
 void		 tty_free(struct tty *, int);
@@ -1193,6 +1199,7 @@ extern const struct cmd_entry cmd_lock_server_entry;
 extern const struct cmd_entry cmd_move_window_entry;
 extern const struct cmd_entry cmd_new_session_entry;
 extern const struct cmd_entry cmd_new_window_entry;
+extern const struct cmd_entry cmd_next_layout_entry;
 extern const struct cmd_entry cmd_next_window_entry;
 extern const struct cmd_entry cmd_paste_buffer_entry;
 extern const struct cmd_entry cmd_previous_window_entry;
@@ -1457,7 +1464,7 @@ void	 screen_write_cell(
     	     struct screen_write_ctx *, const struct grid_cell *, u_char *);
 
 /* screen-redraw.c */
-void	 screen_redraw_screen(struct client *, struct screen *);
+void	 screen_redraw_screen(struct client *);
 void	 screen_redraw_status(struct client *);
 
 /* screen.c */
@@ -1518,6 +1525,10 @@ void		 window_pane_parse(struct window_pane *);
 void		 window_pane_key(struct window_pane *, struct client *, int);
 void		 window_pane_mouse(struct window_pane *,
     		     struct client *, u_char, u_char, u_char);
+
+/* layout.c */
+void		 layout_refresh(struct window *);
+void		 layout_next(struct window *);
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;

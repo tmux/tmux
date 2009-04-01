@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.19 2009-02-11 17:50:33 nicm Exp $ */
+/* $Id: resize.c,v 1.20 2009-04-01 18:21:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,11 +45,12 @@
 void
 recalculate_sizes(void)
 {
-	struct session	*s;
-	struct client	*c;
-	struct window	*w;
-	u_int		 i, j, ssx, ssy, has, limit;
-	int		 flag;
+	struct session		*s;
+	struct client		*c;
+	struct window		*w;
+	struct window_pane	*wp;
+	u_int		 	 i, j, ssx, ssy, has, limit;
+	int		 	 flag;
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
@@ -133,5 +134,6 @@ recalculate_sizes(void)
 
 		window_resize(w, ssx, ssy);
 		server_redraw_window(w);
+		layout_refresh(w);
 	}
 }

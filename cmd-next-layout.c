@@ -1,4 +1,4 @@
-/* $Id: cmd-select-pane.c,v 1.3 2009-04-01 18:21:26 nicm Exp $ */
+/* $Id: cmd-next-layout.c,v 1.1 2009-04-01 18:21:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,49 +21,34 @@
 #include "tmux.h"
 
 /*
- * Select pane.
+ * Switch window to next layout.
  */
 
-int	cmd_select_pane_exec(struct cmd *, struct cmd_ctx *);
+int	cmd_next_layout_exec(struct cmd *, struct cmd_ctx *);
 
-const struct cmd_entry cmd_select_pane_entry = {
-	"select-pane", "selectp",
-	CMD_PANE_WINDOW_USAGE,
+const struct cmd_entry cmd_next_layout_entry = {
+	"next-layout", "nextl",
+	CMD_TARGET_WINDOW_USAGE,
 	0,
-	cmd_pane_init,
-	cmd_pane_parse,
-	cmd_select_pane_exec,
-       	cmd_pane_send,
-	cmd_pane_recv,
-	cmd_pane_free,
-	cmd_pane_print
+	cmd_target_init,
+	cmd_target_parse,
+	cmd_next_layout_exec,
+	cmd_target_send,
+	cmd_target_recv,
+	cmd_target_free,
+	cmd_target_print
 };
 
 int
-cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_next_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_pane_data	*data = self->data;
+	struct cmd_target_data	*data = self->data;
 	struct winlink		*wl;
-	struct window_pane	*wp;
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
-	if (data->pane == -1)
-		wp = wl->window->active;
-	else {
-		wp = window_pane_at_index(wl->window, data->pane);
-		if (wp == NULL) {
-			ctx->error(ctx, "no pane: %d", data->pane);
-			return (-1);
-		}
-	}
 
-	if (wp->flags & PANE_HIDDEN) {
-		ctx->error(ctx, "pane %d is hidden", data->pane);
-		return (-1);
-	}
-	window_set_active_pane(wl->window, wp);
-	layout_refresh(wl->window);
+	layout_next(wl->window);
 
 	return (0);
 }

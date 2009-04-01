@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.12 2009-03-29 19:09:57 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.13 2009-04-01 18:21:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -115,8 +115,8 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		RB_FOREACH(wl, winlinks, &s->windows) {
 			w = wl->window;
 			ctx->print(ctx, "%4u: %p/%p %s [%ux%u] [flags=0x%x, "
-			    "references=%u]", wl->idx, wl, w, w->name,
-			    w->sx, w->sy, w->flags, w->references);
+			    "references=%u, layout=%u]", wl->idx, wl, w, w->name,
+			    w->sx, w->sy, w->flags, w->references, w->layout);
 			j = 0;
 			TAILQ_FOREACH(wp, &w->panes, entry) {
 				lines = ulines = size = usize = 0;

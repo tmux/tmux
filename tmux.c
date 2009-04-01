@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.110 2009-03-27 15:57:10 nicm Exp $ */
+/* $Id: tmux.c,v 1.111 2009-04-01 18:21:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -216,7 +216,7 @@ main(int argc, char **argv)
 	const char		*shell;
 	struct passwd		*pw;
 	char			*path, *label, *cause, *home, *pass = NULL;
-	char			 cwd[MAXPATHLEN]; 
+	char			 cwd[MAXPATHLEN];
 	int	 		 retcode, opt, flags, unlock, start_server;
 
 	unlock = flags = 0;
