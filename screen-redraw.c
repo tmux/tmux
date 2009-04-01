@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.31 2009-04-01 18:21:35 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.32 2009-04-01 18:33:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -113,7 +113,7 @@ screen_redraw_screen(struct client *c)
 			for (i = 0; i < sx; i++)
 				tty_putc(tty, '-');
 		}			
-		if (wp->yoff + sy < tty->sy) {
+		if (wp->yoff + sy < tty->sy - status) {
 			tty_cursor(tty, wp->xoff, wp->yoff + sy, 0, 0);
 			for (i = 0; i < sx; i++)
 				tty_putc(tty, '-');
