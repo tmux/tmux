@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.32 2009-04-01 18:33:19 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.33 2009-04-01 21:09:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -87,6 +87,9 @@ screen_redraw_screen(struct client *c)
 
 	/* Draw the panes. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp->flags & PANE_HIDDEN)
+			continue;
+
 		tty_reset(tty);
 
 		s = wp->screen;
