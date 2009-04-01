@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.71 2009-04-01 18:21:42 nicm Exp $ */
+/* $Id: window.c,v 1.72 2009-04-01 18:46:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -684,8 +684,11 @@ window_pane_mouse(
 {
 	/* XXX convert from 1-based? */
 
+	if (x < wp->xoff || x >= wp->xoff + wp->sx)
+		return;
 	if (y < wp->yoff || y >= wp->yoff + wp->sy)
 		return;
+	x -= wp->xoff;
 	y -= wp->yoff;
 
 	if (wp->mode != NULL) {
