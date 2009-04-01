@@ -1,4 +1,4 @@
-/* $Id: layout.c,v 1.2 2009-04-01 18:48:09 nicm Exp $ */
+/* $Id: layout.c,v 1.3 2009-04-01 21:10:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,15 +20,20 @@
 
 #include "tmux.h"
 
-void	layout_manual(struct window *);
-void	layout_active_only(struct window *);
-void	layout_even_horizontal(struct window *);
-void	layout_even_vertical(struct window *);
-void	layout_left_vertical(struct window *);
+/*
+ * Layout functions: second argument (int) is 1 if definitely the /only/ change
+ * has been the active pane has changed. If 0 then panes, active pane or both
+ * may have changed.
+ */
+void	layout_manual(struct window *, int);
+void	layout_active_only(struct window *, int);
+void	layout_even_horizontal(struct window *, int);
+void	layout_even_vertical(struct window *, int);
+void	layout_left_vertical(struct window *, int);
 
 const struct {
 	const char	*name;
-	void		(*fn)(struct window *);
+	void		(*fn)(struct window *, int);
 } layouts[] = {
 	{ "manual", layout_manual },
 	{ "active-only", layout_active_only },
@@ -47,23 +52,23 @@ layout_next(struct window *w)
 		window_fit_panes(w);
 		window_update_panes(w);
 	}
-	layout_refresh(w);
+	layout_refresh(w, 0);
 }
 
 void
-layout_refresh(struct window *w)
+layout_refresh(struct window *w, unused int active_changed)
 {
-	layouts[w->layout].fn(w);
+	layouts[w->layout].fn(w, active_changed);
 	server_redraw_window(w);
 }
 
 void
-layout_manual(unused struct window *w)
+layout_manual(unused struct window *w, unused int active_changed)
 {
 }
 
 void
-layout_active_only(struct window *w)
+layout_active_only(struct window *w, unused int active_changed)
 {
 	struct window_pane	*wp;
 	
@@ -78,10 +83,13 @@ layout_active_only(struct window *w)
 }
 
 void
-layout_even_horizontal(struct window *w)
+layout_even_horizontal(struct window *w, int active_changed)
 {
 	struct window_pane	*wp;
 	u_int			 i, n, width, xoff;
+
+	if (active_changed)
+		return;
 
 	/* Get number of panes. */
 	n = window_count_panes(w);
@@ -123,10 +131,13 @@ layout_even_horizontal(struct window *w)
 }
 
 void
-layout_even_vertical(struct window *w)
+layout_even_vertical(struct window *w, int active_changed)
 {
 	struct window_pane	*wp;
 	u_int			 i, n, height, yoff;
+
+	if (active_changed)
+		return;
 
 	/* Get number of panes. */
 	n = window_count_panes(w);
@@ -168,10 +179,13 @@ layout_even_vertical(struct window *w)
 }
 
 void
-layout_left_vertical(struct window *w)
+layout_left_vertical(struct window *w, int active_changed)
 {
 	struct window_pane	*wp;
 	u_int			 i, n, height, yoff;
+
+	if (active_changed)
+		return;
 
 	/* Get number of panes. */
 	n = window_count_panes(w);
@@ -180,7 +194,7 @@ layout_left_vertical(struct window *w)
 
 	/* Need >1 pane and minimum columns; if fewer, display active only. */
 	if (n == 1 || w->sx < 82 + PANE_MINIMUM) {
-		layout_active_only(w);
+		layout_active_only(w, active_changed);
 		return;
 	}
 	n--;

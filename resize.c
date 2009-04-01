@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.20 2009-04-01 18:21:32 nicm Exp $ */
+/* $Id: resize.c,v 1.21 2009-04-01 21:10:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,6 @@ recalculate_sizes(void)
 	struct session		*s;
 	struct client		*c;
 	struct window		*w;
-	struct window_pane	*wp;
 	u_int		 	 i, j, ssx, ssy, has, limit;
 	int		 	 flag;
 
@@ -134,6 +133,6 @@ recalculate_sizes(void)
 
 		window_resize(w, ssx, ssy);
 		server_redraw_window(w);
-		layout_refresh(w);
+		layout_refresh(w, 0);
 	}
 }
