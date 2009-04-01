@@ -1,4 +1,4 @@
-/* $Id: layout.c,v 1.1 2009-04-01 18:21:32 nicm Exp $ */
+/* $Id: layout.c,v 1.2 2009-04-01 18:48:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -83,8 +83,12 @@ layout_even_horizontal(struct window *w)
 	struct window_pane	*wp;
 	u_int			 i, n, width, xoff;
 
-	/* How many can we fit? */
+	/* Get number of panes. */
 	n = window_count_panes(w);
+	if (n == 0)
+		return;
+
+	/* How many can we fit? */
 	if (w->sx / n < PANE_MINIMUM) {
 		width = PANE_MINIMUM;
 		n = w->sx / PANE_MINIMUM;
@@ -124,8 +128,12 @@ layout_even_vertical(struct window *w)
 	struct window_pane	*wp;
 	u_int			 i, n, height, yoff;
 
-	/* How many can we fit? */
+	/* Get number of panes. */
 	n = window_count_panes(w);
+	if (n == 0)
+		return;
+
+	/* How many can we fit? */
 	if (w->sy / n < PANE_MINIMUM) {
 		height = PANE_MINIMUM;
 		n = w->sy / PANE_MINIMUM;
@@ -165,12 +173,17 @@ layout_left_vertical(struct window *w)
 	struct window_pane	*wp;
 	u_int			 i, n, height, yoff;
 
+	/* Get number of panes. */
+	n = window_count_panes(w);
+	if (n == 0)
+		return;
+
 	/* Need >1 pane and minimum columns; if fewer, display active only. */
-	n = window_count_panes(w) - 1;
-	if (n == 0 || w->sx < 82 + PANE_MINIMUM) {
+	if (n == 1 || w->sx < 82 + PANE_MINIMUM) {
 		layout_active_only(w);
 		return;
 	}
+	n--;
 
 	/* How many can we fit, not including first? */
 	if (w->sy / n < PANE_MINIMUM) {
