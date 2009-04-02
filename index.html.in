@@ -1,4 +1,4 @@
-<!-- $Id: index.html.in,v 1.3 2009-04-02 22:12:29 nicm Exp $ -->
+<!-- $Id: index.html.in,v 1.4 2009-04-02 23:47:41 nicm Exp $ -->
 <html>
 <head>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
@@ -19,6 +19,7 @@
 </tr><tr>
 <td><a href="tmux4.png"><img src="small-tmux4.png"></a></td>
 <td><a href="tmux5.png"><img src="small-tmux5.png"></a></td>
+<td><a href="tmux6.png"><img src="small-tmux6.png"></a></td>
 </tr></table>
 </body>
 </html>
