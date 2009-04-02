@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-pane.c,v 1.1 2009-04-02 23:28:16 nicm Exp $ */
+/* $Id: cmd-swap-pane.c,v 1.2 2009-04-02 23:32:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,7 +45,7 @@ struct cmd_swap_pane_data {
 
 const struct cmd_entry cmd_swap_pane_entry = {
 	"swap-pane", "swapp",
-	"[-dn] [-t target-window] [-p src-index] [-q dst-index]",
+	"[-dnr] [-t target-window] [-p src-index] [-q dst-index]",
 	0,
 	cmd_swap_pane_init,
 	cmd_swap_pane_parse,
@@ -265,12 +265,15 @@ cmd_swap_pane_print(struct cmd *self, char *buf, size_t len)
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
 		return (off);
-	if (off < len && (data->flag_next || data->flag_detached)) {
+	if (off < len &&
+	    (data->flag_next || data->flag_previous || data->flag_detached)) {
 		off += xsnprintf(buf + off, len - off, " -");
-		if (off < len && data->flag_next)
-			off += xsnprintf(buf + off, len - off, "d");
 		if (off < len && data->flag_detached)
+			off += xsnprintf(buf + off, len - off, "d");
+		if (off < len && data->flag_next)
 			off += xsnprintf(buf + off, len - off, "n");
+		if (off < len && data->flag_previous)
+			off += xsnprintf(buf + off, len - off, "r");
 	}
 	if (off < len && data->target != NULL)
 		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
