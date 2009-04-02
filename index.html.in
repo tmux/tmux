@@ -1,4 +1,4 @@
-<!-- $Id: index.html.in,v 1.2 2009-03-31 23:15:27 nicm Exp $ -->
+<!-- $Id: index.html.in,v 1.3 2009-04-02 22:12:29 nicm Exp $ -->
 <html>
 <head>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
@@ -11,5 +11,14 @@
 <p>Please see the <a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/NOTES">release notes</a> and <a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/FAQ">FAQ</a> (note these are for CVS HEAD).</p>
 <p>The change log, up to CVS HEAD, is <a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/CHANGES">here.</a></p>
 <p>The project page is <a href="http://sf.net/projects/tmux">here.</a></p>
+<b>Screenshots (from CVS HEAD)</b>
+<table><tr>
+<td><a href="tmux1.png"><img src="small-tmux1.png"></a></td>
+<td><a href="tmux2.png"><img src="small-tmux2.png"></a></td>
+<td><a href="tmux3.png"><img src="small-tmux3.png"></a></td>
+</tr><tr>
+<td><a href="tmux4.png"><img src="small-tmux4.png"></a></td>
+<td><a href="tmux5.png"><img src="small-tmux5.png"></a></td>
+</tr></table>
 </body>
 </html>

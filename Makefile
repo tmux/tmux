@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.117 2009-04-01 18:21:23 nicm Exp $
+# $Id: Makefile,v 1.118 2009-04-02 22:12:28 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -136,10 +136,18 @@ lint:
 clean:
 		rm -f ${CLEANFILES}
 
-upload-index.html:
-		scp index.html nicm@web.sf.net:/home/groups/t/tm/tmux/htdocs
+upload-index.html: update-index.html
+		scp index.html images/*.png \
+			nicm,tmux@web.sf.net:/home/groups/t/tm/tmux/htdocs
+		rm -f images/small-*
 
 update-index.html:
+		(cd images && \
+			rm -f small-* && \
+			for i in *.png; do \
+			convert "$$i" -resize 200x150 "small-$$i"; \
+			done \
+		)
 		sed "s/%%VERSION%%/${VERSION}/g" index.html.in >index.html
 
 install:	all
