@@ -1,4 +1,4 @@
-/* $Id: cmd-resize-pane-up.c,v 1.7 2009-03-28 14:08:09 nicm Exp $ */
+/* $Id: cmd-resize-pane-up.c,v 1.8 2009-04-02 21:11:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,6 +65,10 @@ cmd_resize_pane_up_exec(struct cmd *self, struct cmd_ctx *ctx)
 	
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
+	if (wl->window->layout != 0) {
+		ctx->error(ctx, "window not in manual layout");
+		return (-1);
+	}
 	if (data->pane == -1)
 		wp = wl->window->active;
 	else {
