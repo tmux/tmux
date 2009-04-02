@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.13 2009-04-01 18:21:28 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.14 2009-04-02 23:28:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -133,9 +133,9 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 						    sizeof (**gd->udata);
 					}
 				}
-				ctx->print(ctx, "%6u: %s %lu %d %u/%u, %zu "
-				    "bytes; UTF-8 %u/%u, %zu bytes", j, wp->tty,
-				    (u_long) wp->pid, wp->fd, lines,
+				ctx->print(ctx, "%6u: %p %s %lu %d %u/%u, %zu "
+				    "bytes; UTF-8 %u/%u, %zu bytes", j, wp,
+				    wp->tty, (u_long) wp->pid, wp->fd, lines,
 				    gd->hsize + gd->sy, size, ulines,
 				    gd->hsize + gd->sy, usize);
 				j++;

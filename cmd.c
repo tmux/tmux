@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.87 2009-04-01 18:21:29 nicm Exp $ */
+/* $Id: cmd.c,v 1.88 2009-04-02 23:28:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -86,6 +86,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_split_window_entry,
 	&cmd_start_server_entry,
 	&cmd_suspend_client_entry,
+	&cmd_swap_pane_entry,
 	&cmd_swap_window_entry,
 	&cmd_switch_client_entry,
 	&cmd_unbind_key_entry,

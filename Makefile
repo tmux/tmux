@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.118 2009-04-02 22:12:28 nicm Exp $
+# $Id: Makefile,v 1.119 2009-04-02 23:28:16 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -40,7 +40,7 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       cmd-resize-pane-up.c cmd-resize-pane-down.c cmd-kill-pane.c \
       cmd-up-pane.c cmd-down-pane.c cmd-choose-window.c cmd-choose-session.c \
       cmd-suspend-client.c cmd-find-window.c cmd-load-buffer.c \
-      cmd-copy-buffer.c cmd-break-pane.c cmd-next-layout.c \
+      cmd-copy-buffer.c cmd-break-pane.c cmd-swap-pane.c cmd-next-layout.c \
       window-clock.c window-scroll.c window-more.c window-copy.c \
       window-choose.c \
       options.c options-cmd.c paste.c colour.c utf8.c clock.c \

@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.64 2009-04-01 18:21:30 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.65 2009-04-02 23:28:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -102,6 +102,7 @@ key_bindings_init(void)
 		{ '?', 			  0, &cmd_list_keys_entry },
 		{ '[', 			  0, &cmd_copy_mode_entry },
 		{ '\'',			  0, &cmd_select_prompt_entry },
+		{ '\032', /* C-z */	  0, &cmd_suspend_client_entry },
 		{ ']', 			  0, &cmd_paste_buffer_entry },
 		{ 'c', 			  0, &cmd_new_window_entry },
 		{ 'd', 			  0, &cmd_detach_client_entry },
@@ -115,7 +116,8 @@ key_bindings_init(void)
 		{ 't', 			  0, &cmd_clock_mode_entry },
 		{ 'w', 			  0, &cmd_choose_window_entry },
 		{ 'x', 			  0, &cmd_kill_pane_entry, },
-		{ '\032', 		  0, &cmd_suspend_client_entry },
+		{ '{',			  0, &cmd_swap_pane_entry },
+		{ '}',			  0, &cmd_swap_pane_entry },
 		{ META, 		  0, &cmd_send_prefix_entry },
 		{ KEYC_PPAGE, 		  0, &cmd_scroll_mode_entry },
 		{ KEYC_ADDESC('n'), 	  0, &cmd_next_window_entry },

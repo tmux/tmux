@@ -85,7 +85,7 @@
 - test bug sshing from freebsd console
 - layout/split stuff:
      horiz split command, and similar resizing commands as for vert split
-     swap-pane command
+     rotate-window (-pane?) to rotate panes so first becomes last
      display the layout in a readable format somewhere
      previous-layout command
      select-layout command
@@ -97,6 +97,7 @@
      speed improvements?
      hardcoded 81 for left-vertical is nasty
 - document new layout stuff: next-layout
+- document swap-pane
 - document repeat behaviour and -r on bind-key
 - document status-keys
 - document break-pane
