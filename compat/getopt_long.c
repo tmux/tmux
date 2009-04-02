@@ -56,7 +56,10 @@
 #include <string.h>
 
 #include "tmux.h"
-#define warnx(a, b) /* XXX */
+int
+warnx(const char *fmt, ...)
+{
+}
 
 #define	REPLACE_GETOPT		/* use this getopt as the system getopt(3) */
 
