@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.296 2009-04-02 20:30:20 nicm Exp $ */
+/* $Id: tmux.h,v 1.297 2009-04-02 21:08:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -656,6 +656,7 @@ struct window_pane {
 	int		 flags;
 #define PANE_HIDDEN 0x1
 #define PANE_RESTART 0x2
+#define PANE_REDRAW 0x4
 	
 	char		*cmd;
 	char		*cwd;
@@ -1466,6 +1467,7 @@ void	 screen_write_cell(
 
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *);
+void	 screen_redraw_pane(struct client *, struct window_pane *);
 void	 screen_redraw_status(struct client *);
 
 /* screen.c */

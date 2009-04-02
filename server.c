@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.135 2009-04-02 20:30:20 nicm Exp $ */
+/* $Id: server.c,v 1.136 2009-04-02 21:08:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -480,9 +480,10 @@ server_handle_windows(struct pollfd **pfd)
 void
 server_check_redraw(struct client *c)
 {
-	struct session	*s;
-	char		 title[512];
-	int		 flags, redraw;
+	struct session		*s;
+	struct window_pane	*wp;
+	char		 	 title[512];
+	int		 	 flags, redraw;
 
 	if (c == NULL || c->session == NULL)
 		return;
@@ -520,6 +521,11 @@ server_check_redraw(struct client *c)
 		else
  			screen_redraw_screen(c);
 		c->flags &= ~CLIENT_STATUS;
+	} else {
+		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
+			if (wp->flags & PANE_REDRAW)
+				screen_redraw_pane(c, wp);
+		}
 	}
 
 	if (c->flags & CLIENT_STATUS)
@@ -602,8 +608,10 @@ server_check_timers(struct client *c)
 void
 server_fill_clients(struct pollfd **pfd)
 {
-	struct client	*c;
-	u_int		 i;
+	struct client		*c;
+	struct window		*w;
+	struct window_pane	*wp;
+	u_int		 	 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
@@ -631,6 +639,20 @@ server_fill_clients(struct pollfd **pfd)
 				(*pfd)->events |= POLLOUT;
 		}
 		(*pfd)++;
+	}
+	
+	/*
+	 * Clear any window redraw flags (will have been redrawn as part of *
+	 * client).
+	 */
+	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+		w = ARRAY_ITEM(&windows, i);
+		if (w == NULL)
+			continue;
+		
+		w->flags &= ~WINDOW_REDRAW;
+		TAILQ_FOREACH(wp, &w->panes, entry)
+			wp->flags &= ~PANE_REDRAW;
 	}
 }
 
@@ -920,8 +942,6 @@ server_check_window(struct window *w)
 		}
 		wp = wq;
 	} 
-
-	w->flags &= ~WINDOW_REDRAW; /* redrawn as part of client */
 
 	if (!destroyed)
 		return;

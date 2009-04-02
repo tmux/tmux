@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.91 2009-04-02 20:30:23 nicm Exp $ */
+/* $Id: tty.c,v 1.92 2009-04-02 21:08:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -395,11 +395,9 @@ tty_redraw_region(struct tty *tty, struct window_pane *wp)
 	 * most cases, this is likely to be followed by some more scrolling -
 	 * without this, the entire pane ends up being redrawn many times which
 	 * can be much more data.
-	 *
-	 * XXX Should just schedule to redraw this pane...
 	 */
 	if (s->old_rupper - s->old_rlower >= screen_size_y(s) / 2) {
-		server_redraw_window(wp->window);
+		wp->flags |= PANE_REDRAW;
 		return;
 	}
 
