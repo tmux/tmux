@@ -31,9 +31,7 @@
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
 - tidy up window modes
-- problems with force-width when wrapping line in emacs?
-- next prev word etc in command prompt; also ^K; also make it support modes
-  to support vi. is there something could use for this? editline(3)/readline?
+- next prev word etc in command prompt; also ^K
 - many more info() displays for various things
 - vi half page scroll
 - backspace should perhaps wrap backwards over newlines which were not moved
@@ -42,10 +40,7 @@
   maybe)? a single flag is insufficient as can't then tell when to /stop/
   unwrapping
 - input.c is too complicated. simplify?
-- try change from pass-though model to redraw model (use updated screen
-  data). maybe too slow though?
 - use a better termcap internally instead of screen, perhaps xterm
-- tty.c is a bit ugly
 - a command to display the status line briefly when it is turned off
 - FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw,
   more??
@@ -83,8 +78,8 @@
 - better support for stupid margin terminals. strcmp for cons25 sucks, how can
   these be autodetected?
 - refer to windows by name etc (duplicates? fnmatch?)
-- the output code (tty.c) could do with optimisation depending on term capibilities
-- find a better way to emulate scroll region/redraw < full screen etc
+- the output code (tty.c) could do with optimisation depending on term
+  capibilities
 
 (hopefully) for 0.8, in no particular order:
 - test bug sshing from freebsd console
