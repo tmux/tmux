@@ -87,9 +87,21 @@
 - find a better way to emulate scroll region/redraw < full screen etc
 
 (hopefully) for 0.8, in no particular order:
-- swap-pane-up, swap-pane-down (maybe move-pane-*)
 - test bug sshing from freebsd console
-
+- layout/split stuff:
+     horiz split command, and similar resizing commands as for vert split
+     swap-pane command
+     display the layout in a readable format somewhere
+     previous-layout command
+     select-layout command
+     make manual layout a bit less of a hack and make it handle a grid
+     should the layout be a window option???
+     more layouts
+     better resizing of shells when changing layout
+     find and fix bug with clear screen after horiz split
+     speed improvements?
+     hardcoded 81 for left-vertical is nasty
+- document new layout stuff: next-layout
 - document repeat behaviour and -r on bind-key
 - document status-keys
 - document break-pane
