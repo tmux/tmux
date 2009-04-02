@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.57 2009-03-07 09:42:13 nicm Exp $ */
+/* $Id: server-fn.c,v 1.58 2009-04-02 20:30:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -146,6 +146,7 @@ server_redraw_window(struct window *w)
 		if (c->session->curw->window == w)
 			server_redraw_client(c);
 	}
+	w->flags |= WINDOW_REDRAW;
 }
 
 void

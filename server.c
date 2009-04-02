@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.134 2009-04-01 21:10:08 nicm Exp $ */
+/* $Id: server.c,v 1.135 2009-04-02 20:30:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -920,6 +920,8 @@ server_check_window(struct window *w)
 		}
 		wp = wq;
 	} 
+
+	w->flags &= ~WINDOW_REDRAW; /* redrawn as part of client */
 
 	if (!destroyed)
 		return;

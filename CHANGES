@@ -1,3 +1,12 @@
+02 April 2009
+
+* If redrawing the region would mean redrawing > half the pane, just schedule
+  to redraw the entire window. Also add a flag to skip updating the window any
+  further if it is scheduled to be redrawn. This has the effect of batching
+  multiple redraws together.
+
+  Redraws should be moved to the pane level later.
+
 01 April 2009
 
 * Basic horizontal splitting and layout management. Still some redraw and other
@@ -1185,7 +1194,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.268 2009-04-01 18:22:31 nicm Exp $
+$Id: CHANGES,v 1.269 2009-04-02 20:30:17 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

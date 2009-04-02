@@ -1,4 +1,4 @@
-/* $Id: tty-write.c,v 1.12 2009-02-21 19:25:58 nicm Exp $ */
+/* $Id: tty-write.c,v 1.13 2009-04-02 20:30:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,6 +42,8 @@ tty_vwrite_cmd(struct window_pane *wp, enum tty_cmd cmd, va_list ap)
 	if (wp == NULL)
 		return;
 
+	if (wp->window->flags & WINDOW_REDRAW)
+		return;
 	if (wp->window->flags & WINDOW_HIDDEN || wp->flags & PANE_HIDDEN)
 		return;
 
@@ -71,6 +73,8 @@ tty_write_mode(struct window_pane *wp, int mode)
 	if (wp == NULL)
 		return;
 
+	if (wp->window->flags & WINDOW_REDRAW)
+		return;
 	if (wp->window->flags & WINDOW_HIDDEN || wp->flags & PANE_HIDDEN)
 		return;
 

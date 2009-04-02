@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.90 2009-04-01 18:21:42 nicm Exp $ */
+/* $Id: tty.c,v 1.91 2009-04-02 20:30:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -379,17 +379,36 @@ tty_emulate_repeat(
 	}
 }
 
+/*
+ * Redraw scroll region using data from screen (already updated). Used when
+ * CSR not supported, or window is a pane that doesn't take up the full
+ * width of the terminal.
+ */
 void
-tty_draw_region(struct tty *tty, struct screen *s, u_int ox, u_int oy)
+tty_redraw_region(struct tty *tty, struct window_pane *wp)
 {
-	u_int	i;
+	struct screen	*s = wp->screen;
+	u_int		 i;
+
+	/*
+	 * If region is >= 50% of the screen, just schedule a window redraw. In
+	 * most cases, this is likely to be followed by some more scrolling -
+	 * without this, the entire pane ends up being redrawn many times which
+	 * can be much more data.
+	 *
+	 * XXX Should just schedule to redraw this pane...
+	 */
+	if (s->old_rupper - s->old_rlower >= screen_size_y(s) / 2) {
+		server_redraw_window(wp->window);
+		return;
+	}
 
 	if (s->old_cy < s->old_rupper || s->old_cy > s->old_rlower) {
 		for (i = s->old_cy; i < screen_size_y(s); i++)
-			tty_draw_line(tty, s, i, ox, oy);
+			tty_draw_line(tty, s, i, wp->xoff, wp->yoff);
 	} else {
 		for (i = s->old_rupper; i <= s->old_rlower; i++)
-			tty_draw_line(tty, s, i, ox, oy);
+			tty_draw_line(tty, s, i, wp->xoff, wp->yoff);
 	}
 }
 
@@ -508,11 +527,7 @@ tty_cmd_insertline(struct tty *tty, struct window_pane *wp, va_list ap)
 
  	if (wp->xoff != 0 || screen_size_x(s) < tty->sx ||
 	    !tty_term_has(tty->term, TTYC_CSR)) {
-		/*
-		 * Scroll region unsupported. Redraw using data from screen
-		 * (already updated).
-		 */
-		tty_draw_region(tty, s, wp->xoff, wp->yoff);
+		tty_redraw_region(tty, wp);
 		return;
 	}
 
@@ -534,11 +549,7 @@ tty_cmd_deleteline(struct tty *tty, struct window_pane *wp, va_list ap)
 
  	if (wp->xoff != 0 || screen_size_x(s) < tty->sx ||
 	    !tty_term_has(tty->term, TTYC_CSR)) {
-		/*
-		 * Scroll region unsupported. Redraw using data from screen
-		 * (already updated).
-		 */
-		tty_draw_region(tty, s, wp->xoff, wp->yoff);
+		tty_redraw_region(tty, wp);
 		return;
 	}
 
@@ -612,18 +623,10 @@ void
 tty_cmd_reverseindex(struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
 	struct screen	*s = wp->screen;
-	u_int		 i;
 
  	if (wp->xoff != 0 || screen_size_x(s) < tty->sx ||
 	    !tty_term_has(tty->term, TTYC_CSR)) {
-		/*
-		 * Scroll region unsupported. If would have scrolled, redraw
-		 * scroll region from already updated window screen.
-		 */
-		if (s->old_cy != s->old_rupper)
-			return;
-		for (i = s->old_rupper; i <= s->old_rlower; i++)
-			tty_draw_line(tty, wp->screen, i, wp->xoff, wp->yoff);
+		tty_redraw_region(tty, wp);
 		return;
 	}
 
@@ -641,18 +644,10 @@ void
 tty_cmd_linefeed(struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
 	struct screen	*s = wp->screen;
-	u_int		 i;
 
  	if (wp->xoff != 0 || screen_size_x(s) < tty->sx ||
 	    !tty_term_has(tty->term, TTYC_CSR)) {
-		/*
-		 * Scroll region unsupported. If would have scrolled, redraw
-		 * scroll region from already updated window screen.
-		 */
-		if (s->old_cy != s->old_rlower)
-			return;
-		for (i = s->old_rupper; i <= s->old_rlower; i++)
-			tty_draw_line(tty, wp->screen, i, wp->xoff, wp->yoff);
+		tty_redraw_region(tty, wp);
 		return;
 	}
 
