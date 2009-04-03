@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.24 2009-04-03 17:21:46 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.25 2009-04-03 17:31:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,8 +24,8 @@
 #include "tmux.h"
 
 #define CMD_FLAGS "adDgkuU"
-#define CMD_FLAGMASK \
-	(CMD_DFLAG|CMD_GFLAG|CMD_KFLAG|CMD_UFLAG|CMD_UPPERUFLAG|CMD_UPPERDFLAG)
+#define CMD_FLAGMASK (CMD_AFLAG|CMD_DFLAG|CMD_UPPERDFLAG|CMD_GFLAG|CMD_KFLAG| \
+    CMD_UFLAG|CMD_UPPERUFLAG)
 
 int	cmd_do_flags(int, int, int *);
 size_t	cmd_print_flags(char *, size_t, size_t, int);
