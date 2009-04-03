@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-pane.c,v 1.3 2009-04-02 23:38:37 nicm Exp $ */
+/* $Id: cmd-swap-pane.c,v 1.4 2009-04-03 17:21:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,13 +39,13 @@ struct cmd_swap_pane_data {
         int	 src;
 	int	 dst;
 	int	 flag_detached;
-	int	 flag_next;
-	int	 flag_previous;
+	int	 flag_up;
+	int	 flag_down;
 };
 
 const struct cmd_entry cmd_swap_pane_entry = {
 	"swap-pane", "swapp",
-	"[-dnr] [-t target-window] [-p src-index] [-q dst-index]",
+	"[-dDU] [-t target-window] [-p src-index] [-q dst-index]",
 	0,
 	cmd_swap_pane_init,
 	cmd_swap_pane_parse,
@@ -66,15 +66,15 @@ cmd_swap_pane_init(struct cmd *self, int key)
 	data->src = -1;
 	data->dst = -1;
 	data->flag_detached = 0;
-	data->flag_next = 0;
-	data->flag_previous = 0;
+	data->flag_up = 0;
+	data->flag_down = 0;
 
 	switch (key) {
-	case '}':
-		data->flag_next = 1;
-		break;
 	case '{':
-		data->flag_previous = 1;
+		data->flag_up = 1;
+		break;
+	case '}':
+		data->flag_down = 1;
 		break;
 	}
 }
@@ -89,14 +89,14 @@ cmd_swap_pane_parse(struct cmd *self, int argc, char **argv, char **cause)
 	self->entry->init(self, 0);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, "dt:np:q:r")) != -1) {
+	while ((opt = getopt(argc, argv, "dDt:p:q:U")) != -1) {
 		switch (opt) {
 		case 'd':
 			data->flag_detached = 1;
 			break;
-		case 'n':
-			data->flag_next = 1;
-			data->flag_previous = 0;
+		case 'D':
+			data->flag_up = 0;
+			data->flag_down = 1;
 			data->dst = -1;
 			break;
 		case 't':
@@ -122,12 +122,12 @@ cmd_swap_pane_parse(struct cmd *self, int argc, char **argv, char **cause)
 				}
 				data->dst = n;
 			}
-			data->flag_next = 0;
-			data->flag_previous = 0;
+			data->flag_up = 0;
+			data->flag_down = 0;
 			break; 
-		case 'r':
-			data->flag_next = 0;
-			data->flag_previous = 1;
+		case 'U':
+			data->flag_up = 1;
+			data->flag_down = 0;
 			data->dst = -1;
 			break;
 
@@ -185,13 +185,13 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (data->dst == -1 && data->flag_next) {
-		if ((dst_wp = TAILQ_NEXT(src_wp, entry)) == NULL)
-			dst_wp = TAILQ_FIRST(&w->panes);
-	}
-	if (data->dst == -1 && data->flag_previous) {
+	if (data->dst == -1 && data->flag_up) {
 		if ((dst_wp = TAILQ_PREV(src_wp, window_panes, entry)) == NULL)
 			dst_wp = TAILQ_LAST(&w->panes, window_panes);
+	}
+	if (data->dst == -1 && data->flag_down) {
+		if ((dst_wp = TAILQ_NEXT(src_wp, entry)) == NULL)
+			dst_wp = TAILQ_FIRST(&w->panes);
 	}
 
 	if (src_wp == dst_wp)
@@ -266,14 +266,14 @@ cmd_swap_pane_print(struct cmd *self, char *buf, size_t len)
 	if (data == NULL)
 		return (off);
 	if (off < len &&
-	    (data->flag_next || data->flag_previous || data->flag_detached)) {
+	    (data->flag_down || data->flag_up || data->flag_detached)) {
 		off += xsnprintf(buf + off, len - off, " -");
 		if (off < len && data->flag_detached)
 			off += xsnprintf(buf + off, len - off, "d");
-		if (off < len && data->flag_next)
-			off += xsnprintf(buf + off, len - off, "n");
-		if (off < len && data->flag_previous)
-			off += xsnprintf(buf + off, len - off, "r");
+		if (off < len && data->flag_up)
+			off += xsnprintf(buf + off, len - off, "D");
+		if (off < len && data->flag_down)
+			off += xsnprintf(buf + off, len - off, "U");
 	}
 	if (off < len && data->target != NULL)
 		off += cmd_prarg(buf + off, len - off, " -t ", data->target);

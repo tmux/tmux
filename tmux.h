@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.298 2009-04-02 23:28:16 nicm Exp $ */
+/* $Id: tmux.h,v 1.299 2009-04-03 17:21:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -910,6 +910,9 @@ struct cmd_entry {
 #define CMD_GFLAG 0x40
 #define CMD_UFLAG 0x80
 #define CMD_AFLAG 0x100
+#define CMD_UPPERUFLAG 0x200
+#define CMD_UPPERDFLAG 0x400
+
 	int		 flags;
 
 	void		 (*init)(struct cmd *, int);
@@ -1211,6 +1214,7 @@ extern const struct cmd_entry cmd_rename_window_entry;
 extern const struct cmd_entry cmd_resize_pane_down_entry;
 extern const struct cmd_entry cmd_resize_pane_up_entry;
 extern const struct cmd_entry cmd_respawn_window_entry;
+extern const struct cmd_entry cmd_rotate_window_entry;
 extern const struct cmd_entry cmd_save_buffer_entry;
 extern const struct cmd_entry cmd_scroll_mode_entry;
 extern const struct cmd_entry cmd_select_pane_entry;

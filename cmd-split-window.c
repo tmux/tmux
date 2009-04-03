@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.11 2009-04-01 21:10:08 nicm Exp $ */
+/* $Id: cmd-split-window.c,v 1.12 2009-04-03 17:21:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,7 @@
 #include "tmux.h"
 
 /*
- * Create a new window.
+ * Split a window (add a new pane).
  */
 
 int	cmd_split_window_parse(struct cmd *, int, char **, char **);

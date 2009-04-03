@@ -1,3 +1,7 @@
+03 April 2009
+
+* rotate-window command. -U flag (default) for up, -D flag for down.
+
 02 April 2009
 
 * Change scroll/pane redraws to only redraw the single pane affected rather
@@ -1194,7 +1198,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.270 2009-04-02 21:08:13 nicm Exp $
+$Id: CHANGES,v 1.271 2009-04-03 17:21:46 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

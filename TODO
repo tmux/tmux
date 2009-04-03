@@ -80,6 +80,8 @@
 - refer to windows by name etc (duplicates? fnmatch?)
 - the output code (tty.c) could do with optimisation depending on term
   capibilities
+- resize-pane-up/down should be resize-pane -U/-D. ditto up-pane/down-pane
+  should be select-pane -U/-D
 
 (hopefully) for 0.8, in no particular order:
 - test bug sshing from freebsd console
@@ -94,10 +96,10 @@
      more layouts
      better resizing of shells when changing layout
      find and fix bug with clear screen after horiz split
-     speed improvements?
+     speed improvements? -- still too slow over ssh!
      hardcoded 81 for left-vertical is nasty
 - document new layout stuff: next-layout
-- document swap-pane
+- document swap-pane and rotate-window
 - document repeat behaviour and -r on bind-key
 - document status-keys
 - document break-pane

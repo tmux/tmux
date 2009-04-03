@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.65 2009-04-02 23:28:16 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.66 2009-04-03 17:21:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -128,6 +128,8 @@ key_bindings_init(void)
 		{ KEYC_ADDESC(KEYC_DOWN), 1, &cmd_resize_pane_down_entry },
 		{ KEYC_ADDCTL(KEYC_UP),   1, &cmd_resize_pane_up_entry },
 		{ KEYC_ADDCTL(KEYC_DOWN), 1, &cmd_resize_pane_down_entry },
+		{ KEYC_ADDESC('o'),	  0, &cmd_rotate_window_entry },
+		{ '\017',	          0, &cmd_rotate_window_entry },
 	};
 	u_int		 i;
 	struct cmd	*cmd;
