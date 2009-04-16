@@ -87,7 +87,6 @@
 - test bug sshing from freebsd console
 - layout/split stuff:
      horiz split command, and similar resizing commands as for vert split
-     rotate-window (-pane?) to rotate panes so first becomes last
      display the layout in a readable format somewhere
      previous-layout command
      select-layout command

@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.136 2009-04-02 21:08:13 nicm Exp $ */
+/* $Id: server.c,v 1.137 2009-04-16 10:59:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -642,7 +642,7 @@ server_fill_clients(struct pollfd **pfd)
 	}
 	
 	/*
-	 * Clear any window redraw flags (will have been redrawn as part of *
+	 * Clear any window redraw flags (will have been redrawn as part of
 	 * client).
 	 */
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
