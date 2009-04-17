@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.24 2009-03-02 18:05:40 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.25 2009-04-17 12:36:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -299,13 +299,13 @@ tty_keys_next(struct tty *tty, int *key, u_char *mouse)
 	if (len > 1) {
 		tk = tty_keys_find(tty, buf + 1, len - 1, &size);
 		if (tk != NULL) {
-			buffer_remove(tty->in, size + 1);
+			buffer_remove(tty->in, size + 2);
 			*key = KEYC_ADDESC(tk->key);
 			goto found;
 		}
 	}
 
-	/* If the timer hasn't expired, keep waiting . */
+	/* If the timer hasn't expired, keep waiting. */
 	if (gettimeofday(&tv, NULL) != 0)
 		fatal("gettimeofday");
 	if (timercmp(&tty->key_timer, &tv, >))
@@ -405,7 +405,7 @@ tty_keys_parse_xterm(struct tty *tty, char *buf, size_t len, size_t *size)
 		key = KEYC_ADDESC(key);
 		break;
 	case '2':
-	key = KEYC_ADDSFT(key);
+		key = KEYC_ADDSFT(key);
 		break;
 	}
 
