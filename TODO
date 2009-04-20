@@ -101,6 +101,4 @@
 - document swap-pane and rotate-window
 - document status-keys
 - document break-pane
-- document -8 flag
 - document set-remain-on-exit
-- document -L and update socket path bits in tmux.1

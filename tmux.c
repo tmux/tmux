@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.112 2009-04-01 20:15:48 nicm Exp $ */
+/* $Id: tmux.c,v 1.113 2009-04-20 19:25:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -71,8 +71,8 @@ const char      *__progname = "tmux";
 __dead void
 usage(void)
 {
-	fprintf(stderr, "usage: "
-	    "%s [-2dquVv] [-f file] [-S socket-path] [command [flags]]\n",
+	fprintf(stderr, "usage: %s [-28dqUuVv] [-f file] "
+	    "[-L socket-name] [-S socket-path] [command [flags]]\n",
 	    __progname);
 	exit(1);
 }

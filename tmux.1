@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.84 2009-04-20 19:11:31 nicm Exp $
+.\" $Id: tmux.1,v 1.85 2009-04-20 19:25:58 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd June 30, 2008
+.Dd April 20, 2009
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -23,8 +23,9 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 2dqUuVv
+.Op Fl 28dqUuVv
 .Op Fl f Ar file
+.Op Fl L Ar socket-name
 .Op Fl S Ar socket-path
 .Op Ar command Op Ar flags
 .Ek
@@ -54,6 +55,10 @@ The options are as follows:
 Force
 .Nm
 to assume the terminal supports 256 colours.
+.It Fl 2
+Like
+.Fl 8 ,
+indicates the terminal supports 88 colours.
 .It Fl d
 Force
 .Nm
@@ -70,14 +75,27 @@ commands which are executed in sequence when the server is first started.
 .It Fl q
 Prevent the server sending various information messages, for example when
 window flags are altered.
+.It Fl L Ar socket-name
+.Nm
+stores the server socket in a directory under
+.Pa /tmp ;
+the default socket is named
+.Em default .
+This option allows a different socket name to be specified, allowing several
+independent
+.Nm
+servers to be run.
+Unlike
+.Fl S
+a full path is not necessary: the sockets are all created in the same
+directory.
 .It Fl S Ar socket-path
-Specify an alternative path to the server socket.
-The default is
-.Pa /tmp/tmux-UID ,
-where
-.Em UID
-is the uid of the user who invoked
-.Nm .
+Specify a full alternative path to the server socket.
+If 
+.Fl S
+is specified, the default socket directory is not used and any
+.Fl L
+flag is ignored.
 .It Fl U
 Unlock the server.
 .It Fl u
