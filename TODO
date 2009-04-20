@@ -99,7 +99,6 @@
      hardcoded 81 for left-vertical is nasty
 - document new layout stuff: next-layout
 - document swap-pane and rotate-window
-- document repeat behaviour and -r on bind-key
 - document status-keys
 - document break-pane
 - document -8 flag

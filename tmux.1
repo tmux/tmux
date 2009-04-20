@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.83 2009-02-10 00:09:44 nicm Exp $
+.\" $Id: tmux.1,v 1.84 2009-04-20 19:11:31 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -365,6 +365,7 @@ If no server is started,
 will attempt to start it; this will fail unless sessions are created in the
 configuration file.
 .It Xo Ic bind-key
+.Op Fl r
 .Ar key Ar command Op Ar arguments
 .Xc
 .D1 (alias: Ic bind )
@@ -379,6 +380,11 @@ or
 for ctrl keys, or
 .Ql M-
 for alt (meta) keys.
+The
+.Fl r
+flag indicates this key may repeat, see the
+.Ic repeat-time
+option.
 .It Xo Ic choose-session
 .Op Fl t Ar target-window
 .Xc
@@ -859,14 +865,17 @@ Allow multiple commands to be entered without pressing the prefix-key again
 in the specified
 .Ar number
 milliseconds (the default is 500).
-It only applies to
+Whether a key repeats may be set when it is bound using the
+.Fl r
+flag to
+.Ic bind-key .
+Repeat is enabled for the default keys of the 
 .Ic up-pane ,
 .Ic down-pane ,
-.Ic next-window ,
-.Ic previous-window ,
 .Ic resize-pane-up ,
 and
-.Ic resize-pane-down .
+.Ic resize-pane-down
+commands.
 .It Xo Ic set-titles
 .Op Ic on | Ic off
 .Xc
