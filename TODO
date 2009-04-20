@@ -82,9 +82,6 @@
   capibilities
 - resize-pane-up/down should be resize-pane -U/-D. ditto up-pane/down-pane
   should be select-pane -U/-D
-
-(hopefully) for 0.8, in no particular order:
-- test bug sshing from freebsd console
 - layout/split stuff:
      horiz split command, and similar resizing commands as for vert split
      display the layout in a readable format somewhere
@@ -97,7 +94,12 @@
      find and fix bug with clear screen after horiz split
      speed improvements? -- still too slow over ssh!
      hardcoded 81 for left-vertical is nasty
-- document new layout stuff: next-layout
+- test bug sshing from freebsd console (tom iirc?)
+- fix build on solaris 10
+- rotate-window has redraw bugs... :-/
+
+(hopefully) for 0.8, in no particular order:
+- document new layout stuff: section on layouts etc; document next-layout
 - document swap-pane and rotate-window
 - document status-keys
 - document break-pane
