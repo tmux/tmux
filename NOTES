@@ -17,11 +17,12 @@ tmux consists of a server part and multiple clients. The server is created when
 required and runs continuously unless killed by the user. Clients access the
 server through a socket in /tmp. Multiple sessions may be created on a single
 server and attached to a number of clients. Each session may then have a number
-of windows and windows may be linked to a number of sessions.  Commands are
+of windows and windows may be linked to a number of sessions. Commands are
 available to create, rename and destroy windows and sessions; to attach and
-detach sessions from client terminals; to set configuration options; and to
-bind and unbind command keys (invoked preceded by a prefix key, by default
-ctrl-b). Please see the tmux(1) man page for further information.
+detach sessions from client terminals; to set configuration options; to split
+windows into several simultaneously displayed panes; and to bind and unbind
+command keys (invoked preceded by a prefix key, by default ctrl-b). Please see
+the tmux(1) man page for further information.
 
 The following is a summary of major features implemented in this version:
 
@@ -29,17 +30,15 @@ The following is a summary of major features implemented in this version:
 - Window listing and renaming.
 - Key binding.
 - Handling of client terminal resize.
-- Terminal emulation sufficient to handle most curses applications. Without
-  known issues are: emacs, irssi, mutt, ncmpc (resize problems are present in
-  both tmux and screen), vim and various tools and games in the OpenBSD base
-  system.
+- Terminal emulation sufficient to handle most curses applications.
 - A optional status line (enabled by default).
 - Window history and copy and paste.
 - Support for VT100 line drawing characters.
 - A large command set.
-- Vertical window splitting.
+- Vertical window splitting and layout.
 - Automatic server locking on inactivity.
 - A configuration file.
+- UTF-8 support.
 
 And major missing features:
 
@@ -60,17 +59,17 @@ tmux(1) and the FAQ file. In addition, when starting tmux or attaching to an
 existing session from a UTF-8-capable terminal, the -u flag must be specified.
 
 A Vim syntax file is available in the examples directory. To install it:
-- Drop the file in the syntax directory in your runtimepath
-  (e.g. ~/.vim/syntax/tmux.vim).
+
+- Drop the file in the syntax directory in your runtimepath (such as
+  ~/.vim/syntax/tmux.vim).
 - Make the filetype recognisable by adding the following to filetype.vim
-  (again) in your runtimepath (e.g. ~/.vim/filetype.vim):
+  in your runtimepath (~/.vim/filetype.vim):
 
 	augroup filetypedetect
 		au BufNewFile,BufRead .tmux.conf*,tmux.conf* setf tmux
 	augroup END
 
-- Switch on syntax highlighting in your vimrc file by adding "syntax enable"
-  to it.
+- Switch on syntax highlighting by adding "syntax enable" to your vimrc file.
 
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
@@ -84,11 +83,15 @@ anonymous CVS from SourceForge:
 If running CVS HEAD, please note it is development code and there may be bugs
 and undocumented features; please read the CHANGES file for information.
 
+tmux mailing lists are available; visit:
+
+	https://sourceforge.net/mail/?group_id=200378
+
 Bug reports, feature suggestions and especially code contributions are most
-welcome. Please email:
+welcome. Please send by email to:
 
 	nicm@users.sf.net
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.44 2009-03-31 23:16:14 nicm Exp $
+$Id: NOTES,v 1.45 2009-04-21 20:06:12 nicm Exp $
