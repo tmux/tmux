@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.86 2009-04-21 16:30:53 nicm Exp $
+.\" $Id: tmux.1,v 1.87 2009-04-21 16:34:31 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -403,6 +403,16 @@ The
 flag indicates this key may repeat, see the
 .Ic repeat-time
 option.
+.It Xo Ic break-pane
+.Op Fl d
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Xc
+Break the current pane off from its containing window to make it the only pane
+in a new window.
+If
+.Fl d
+is given, the new window does not become the current window.
 .It Xo Ic choose-session
 .Op Fl t Ar target-window
 .Xc
