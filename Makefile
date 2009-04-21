@@ -1,16 +1,16 @@
-# $Id: Makefile,v 1.121 2009-04-21 20:10:22 nicm Exp $
+# $Id: Makefile,v 1.122 2009-04-21 20:54:18 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
 
 PROG= tmux
-VERSION= 0.8
+VERSION= 0.9
 
 OS!= uname
 REL!= uname -r
 DATE!= date +%Y%m%d-%H%M
 
-#FDEBUG= 1
+FDEBUG= 1
 
 META?= \002 # C-b
 
