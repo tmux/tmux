@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.88 2009-04-21 16:38:23 nicm Exp $
+.\" $Id: tmux.1,v 1.89 2009-04-21 20:06:46 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -31,8 +31,8 @@
 .Ek
 .Sh DESCRIPTION
 .Nm
-is a terminal multiplexer; it enables a number of terminals (or windows) to be
-accessed and controlled from a single terminal.
+is a terminal multiplexer; it enables a number of terminals to be accessed and
+controlled from a single terminal.
 .Pp
 .Nm
 runs as a server-client system.
@@ -41,6 +41,9 @@ A server is created automatically when necessary and holds a number of
 each of which may have a number of
 .Em windows
 linked to it.
+A window may be split on screen into one or more
+.Em panes ,
+each of which is a separate terminal.
 Any number of
 .Em clients
 may connect to a session, or the server
@@ -286,6 +289,53 @@ or the
 command, and pasted into a window using the
 .Ic paste-buffer
 command.
+.Sh PANES AND LAYOUTS
+Each window displayed by
+.Nm
+may be split into one or more
+.Em panes ;
+each pane takes up a certain area of the display and is a separate terminal.
+A window may be split into panes using the
+.Ic split-window
+command.
+.Pp
+Panes are numbered beginning from zero; in horizontal layouts zero is the
+leftmost pane and in vertical the topmost.
+.Pp
+Panes may be arranged using several layouts.
+The layout may be cycled with the
+.Ic next-layout
+command (bound to
+.Ql C-space
+by default), the current pane may be changed with the
+.Ic up-pane
+and
+.Ic down-pane
+commands and the
+.Ic rotate-window
+and
+.Ic swap-pane
+commands may be used to swap panes without changing the window layout.
+.Pp
+The following layouts are supported:
+.Bl -tag -width Ds
+.It Ic manual
+Manual layout splits windows vertically (running across); only with this layout
+may panes be resized using the
+.Ic resize-pane-up
+and
+.Ic resize-pane-down
+commands.
+.It Ic active-only
+Only the active pane is shown - all other panes are hidden.
+.It Ic even-horizontal
+Panes are spread out evenly from left to right across the window.
+.It Ic even-vertical
+Panes are spread evenly from top to bottom.
+.It Ic left-vertical
+A large (81 column) pane is shown on the left of the window and the remaining
+panes are spread from top to bottom in the leftover space to the right.
+.El
 .Sh COMMANDS
 This section contains a list of the commands supported by
 .Nm .
@@ -650,6 +700,11 @@ New windows will automatically have
 .Dq TERM=screen
 added to their environment, but care must be taken not to reset this in shell
 start-up files.
+.It Xo Ic next-layout
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic nextl )
+Move a window to the next layout and rearrange the panes to fit.
 .It Xo Ic next-window
 .Op Fl t Ar target-session
 .Xc
@@ -721,6 +776,15 @@ is not given, the command used when the window was created is executed.
 The window must be already inactive, unless
 .Fl k
 is given, in which case any existing command is killed.
+.It Xo Ic rotate-window
+.Op Fl DU
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic rotatew )
+Rotate the positions of the panes within a window, either upward (numerically
+lower) with
+.Fl U
+or downward (numerically higher).
 .It Xo Ic save-buffer
 .Op Fl a
 .Op Fl b Ar buffer-index
@@ -1188,6 +1252,21 @@ server, if not already running, without creating any sessions.
 .Xc
 .D1 (alias: Ic suspendc )
 Suspend a client by sending SIGTSTP (tty stop).
+.It Xo Ic swap-pane
+.Op Fl dDU
+.Op Fl p Ar src-index
+.Op Fl t Ar target-window
+.Op Fl q Ar dst-index
+.Xc
+.D1 (alias: Ic swapp )
+Swap two panes within a window.
+If
+.Fl U
+is used, the pane is swapped with the pane above (before it numerically);
+.Fl D
+swaps with the pane below (the next numerically); or
+.Ar dst-index
+may be give to swap with a specific pane.
 .It Xo Ic swap-window
 .Op Fl d
 .Op Fl s Ar src-window

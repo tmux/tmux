@@ -1,4 +1,4 @@
-/* $Id: cmd-rotate-window.c,v 1.1 2009-04-03 17:21:46 nicm Exp $ */
+/* $Id: cmd-rotate-window.c,v 1.2 2009-04-21 20:06:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ int	cmd_rotate_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_rotate_window_entry = {
 	"rotate-window", "rotatew",
-	CMD_TARGET_WINDOW_USAGE,
+	"[-DU] " CMD_TARGET_WINDOW_USAGE,
 	CMD_UPPERUFLAG|CMD_UPPERDFLAG,
 	cmd_rotate_window_init,
 	cmd_target_parse,
