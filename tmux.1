@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.85 2009-04-20 19:25:58 nicm Exp $
+.\" $Id: tmux.1,v 1.86 2009-04-21 16:30:53 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -55,9 +55,9 @@ The options are as follows:
 Force
 .Nm
 to assume the terminal supports 256 colours.
-.It Fl 2
+.It Fl 8
 Like
-.Fl 8 ,
+.Fl 2 ,
 indicates the terminal supports 88 colours.
 .It Fl d
 Force
@@ -920,6 +920,15 @@ Update the status bar every
 seconds.
 By default, updates will occur every 15 seconds.
 A setting of zero disables redrawing at interval.
+.It Xo Ic status-keys
+.Op Ic vi | Ic emacs
+.Xc
+Use
+.Xr vi 1 -
+or
+.Xr emacs 1 -style
+key bindings in the status line, for example at the command prompt.
+Defaults to emacs.
 .It Ic status-left Ar string
 Display
 .Ar string
@@ -1053,8 +1062,8 @@ Set window modes foreground colour.
 Use
 .Xr vi 1 -
 or
-.Xr emacs 1 -
-style key bindings in scroll and copy modes.
+.Xr emacs 1 -style
+key bindings in scroll and copy modes.
 Key bindings default to emacs.
 .It Xo Ic monitor-activity
 .Op Ic on | Ic off
@@ -1081,7 +1090,7 @@ Set status line attributes for a single window.
 Set status line background colour for a single window.
 .It Ic window-status-fg Ar colour
 Set status line foreground colour for a single window.
-.It Xo xterm-keys
+.It Xo Ic xterm-keys
 .Op Ic on | Ic off
 .Xc
 If this option is set,
