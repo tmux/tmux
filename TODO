@@ -13,7 +13,6 @@
 - commands:
  	extend list-clients to list clients attached to a session (-a for all?)
 	bring back detach-session to detach all clients on a session?
-	clone-session command to link all windows to a new session
 - allow fnmatch for -c, so that you can, eg, detach all clients
 - bind non prefix keys
 - garbage collect window history (100 lines at a time?) if it hasn't been used
@@ -22,7 +21,6 @@
 - audit copy/scroll and other modes for problems with very small windows
 - split clients into three RB trees by fd: attached/unattached/dead?
   or tailqs? what would be fastest per-char?
-- c/p is still borken in some ways
 - better mode features: search, back word, forward word, etc
 - flags to centre screen in window
 - better terminal emulation (identify, insert mode, some other bits)
@@ -41,9 +39,6 @@
   unwrapping
 - input.c is too complicated. simplify?
 - use a better termcap internally instead of screen, perhaps xterm
-- a command to display the status line briefly when it is turned off
-- FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw,
-  more??
 - kill all but current pane
 - fix rxvt cursor fg issue (text under cursor can have non-white fg)
 - key handling sucks a bit and needs to be reworked
@@ -58,10 +53,6 @@
   number in status line/top-right would be cool for this
 - command to run something without a window at all - output to
   window-more. what for? isnt this the same as doing it w/ splitw/neww now?
-- command to purge window history? or apply history-limit changes?
-- clone session command
-- make command sequences more usable: don't require space around ;, handle
-  errors better
 - would be nice if tmux could be the shell (tmux attach, but hard link to tmux
   binary as "tmuxsh" or wrapper script?) -- problems with tty dev permissions
 - support other mouse modes (highlight etc) and use it in copy mode 
@@ -70,10 +61,6 @@
   for stuff like mode keys?
 - a confirm-before command which asks "Are you sure? (y/n)" before executing
   command, eg bind-key "&" confirm-before "kill-window"
-- might be nice if attach-session behaved like switch-client inside an
-  existing client
-- key to switch to copy mode from scroll mode
-- attach should have a flag to create session if it doesn't exist
 - clear window title on exit
 - better support for stupid margin terminals. strcmp for cons25 sucks, how can
   these be autodetected?
@@ -82,6 +69,19 @@
   capibilities
 - resize-pane-up/down should be resize-pane -U/-D. ditto up-pane/down-pane
   should be select-pane -U/-D
+
+(hopefully) for 0.9, in no particular order:
+- a command to display the status line briefly when it is turned off
+- FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw,
+  more??
+- command to purge window history? or apply history-limit changes?
+- clone session command
+- make command sequences more usable: don't require space around ;, handle
+  errors better
+- might be nice if attach-session behaved like switch-client inside an
+  existing client
+- key to switch to copy mode from scroll mode
+- attach should have a flag to create session if it doesn't exist
 - layout/split stuff:
      horiz split command, and similar resizing commands as for vert split
      display the layout in a readable format somewhere
@@ -97,7 +97,3 @@
 - test bug sshing from freebsd console (tom iirc?)
 - fix build on solaris 10
 - rotate-window has redraw bugs... :-/
-
-(hopefully) for 0.8, in no particular order:
-- nothing!
-
