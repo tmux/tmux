@@ -1,4 +1,4 @@
-<!-- $Id: index.html.in,v 1.5 2009-04-17 07:46:30 nicm Exp $ -->
+<!-- $Id: index.html.in,v 1.6 2009-04-21 20:10:22 nicm Exp $ -->
 <html>
 <head>
 <meta http-equiv="content-type" content="text/html; charset=UTF-8">
@@ -8,9 +8,9 @@
 <b>Welcome to the tmux website, such as it is!</b>
 <p>tmux is a &quot;terminal multiplexer&quot;, it enables a number of terminals (or windows) to be accessed and controlled from a single terminal. tmux is intended to be a simple, modern, BSD-licensed alternative to programs such as GNU screen.</p>
 <p><a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">Download tmux %%VERSION%%.</a></p>
-<p>Please see the <a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/NOTES">release notes</a> and <a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/FAQ">FAQ</a> (note these are for CVS HEAD).</p>
-<p>The change log, up to CVS HEAD, is <a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/CHANGES">here,</a> the project page <a href="http://sf.net/projects/tmux">here</a> and mailing lists <a href="https://sourceforge.net/mail/?group_id=200378">here.</a></p>
-<b>Screenshots (from CVS HEAD)</b>
+<p>Please see the <a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/NOTES">release notes</a> and <a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/FAQ">FAQ</a>.</p>
+<p>Also available are: <a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/CHANGES">the change log</a> (up to CVS HEAD), <a href="http://sf.net/projects/tmux">the project page</a> and <a href="https://sourceforge.net/mail/?group_id=200378">mailing lists</a>.</p>
+<b>Screenshots</b>
 <table><tr>
 <td><a href="tmux1.png"><img src="small-tmux1.png"></a></td>
 <td><a href="tmux2.png"><img src="small-tmux2.png"></a></td>

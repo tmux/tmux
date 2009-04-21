@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.120 2009-04-03 17:21:46 nicm Exp $
+# $Id: Makefile,v 1.121 2009-04-21 20:10:22 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -10,7 +10,7 @@ OS!= uname
 REL!= uname -r
 DATE!= date +%Y%m%d-%H%M
 
-FDEBUG= 1
+#FDEBUG= 1
 
 META?= \002 # C-b
 
