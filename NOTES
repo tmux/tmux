@@ -42,7 +42,6 @@ The following is a summary of major features implemented in this version:
 
 And major missing features:
 
-- Proper mouse support.
 - No support for programs changing termios(4) settings or other tty(4) ioctls.
 
 A more extensive, but rough, todo list is included in the TODO file.
@@ -94,4 +93,4 @@ welcome. Please send by email to:
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.45 2009-04-21 20:06:12 nicm Exp $
+$Id: NOTES,v 1.46 2009-04-21 20:57:10 nicm Exp $
