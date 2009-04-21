@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.87 2009-04-21 16:34:31 nicm Exp $
+.\" $Id: tmux.1,v 1.88 2009-04-21 16:38:23 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -904,6 +904,12 @@ Repeat is enabled for the default keys of the
 and
 .Ic resize-pane-down
 commands.
+.It Xo Ic set-remain-on-exit
+.Op Ic on | Ic off
+.Xc
+Set the
+.Ic remain-on-exit
+window option for any windows first created in this session.
 .It Xo Ic set-titles
 .Op Ic on | Ic off
 .Xc
