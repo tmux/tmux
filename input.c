@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.76 2009-03-28 20:17:29 nicm Exp $ */
+/* $Id: input.c,v 1.77 2009-04-23 21:28:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -630,6 +630,10 @@ input_handle_c1_control(u_char ch, struct input_ctx *ictx)
 	log_debug2("-- c1 %zu: %hhu (%c)", ictx->off, ch, ch);
 
 	switch (ch) {
+	case 'E': 	/* NEL */
+		screen_write_carriagereturn(&ictx->ctx);
+		screen_write_linefeed(&ictx->ctx);
+		break;
 	case 'M':	/* RI */
 		screen_write_reverseindex(&ictx->ctx);
 		break;
