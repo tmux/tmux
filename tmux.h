@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.299 2009-04-03 17:21:46 nicm Exp $ */
+/* $Id: tmux.h,v 1.300 2009-04-23 21:09:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -317,8 +317,9 @@ enum tty_code_code {
 	TTYC_SMKX,	/* keypad_xmit, ks */
 	TTYC_SMSO,	/* enter_standout_mode, so */
 	TTYC_SMUL,	/* enter_underline_mode, us */
+	TTYC_XENL,	/* eat_newline_glitch, xn */
 };
-#define NTTYCODE (TTYC_SMUL + 1)
+#define NTTYCODE (TTYC_XENL + 1)
 
 /* Termcap types. */
 enum tty_code_type {

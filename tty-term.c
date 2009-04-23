@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.17 2009-03-07 10:29:06 nicm Exp $ */
+/* $Id: tty-term.c,v 1.18 2009-04-23 21:09:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -107,6 +107,7 @@ struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_SMKX, TTYCODE_STRING, "smkx" },
 	{ TTYC_SMSO, TTYCODE_STRING, "smso" },
 	{ TTYC_SMUL, TTYCODE_STRING, "smul" },
+	{ TTYC_XENL, TTYCODE_FLAG, "xenl" },
 };
 
 char *
@@ -156,26 +157,6 @@ tty_term_quirks(struct tty_term *term)
 			term->codes[TTYC_ICH1].value.string = xstrdup("\033[@");
 		}
 	}
-
-#ifdef __FreeBSD__
-	if (strncmp(term->name, "cons", 4) == 0) {
-		/*
-		 * FreeBSD's console wraps lines at $COLUMNS - 1 rather than
-		 * $COLUMNS (the cursor can never be beyond $COLUMNS - 1) and
-		 * does not appear to support changing this behaviour, or any
-		 * of the obvious possibilities (turning off right margin
-		 * wrapping, insert mode).
-		 *
-		 * This is irritating, most notably because it is impossible to
-		 * write to the very bottom-right of the screen without
-		 * scrolling.
-		 *
-		 * Flag the terminal here and apply some workarounds in other
-		 * places to do the best possible.
-		 */
-		term->flags |= TERM_EARLYWRAP;
-	}
-#endif
 }
 
 struct tty_term *
@@ -322,6 +303,19 @@ tty_term_find(char *name, int fd, char **cause)
 		term->flags |= TERM_88COLOURS;
 	if (strstr(name, "88col") != NULL) /* XXX HACK */
 		term->flags |= TERM_88COLOURS;
+
+	/*
+	 * Terminals without xenl (eat newline glitch) wrap at at $COLUMNS - 1
+	 * rather than $COLUMNS (the cursor can never be beyond $COLUMNS - 1).
+	 *
+	 * This is irritating, most notably because it is impossible to write
+	 * to the very bottom-right of the screen without scrolling.
+	 *
+	 * Flag the terminal here and apply some workarounds in other places to
+	 * do the best possible.
+	 */
+	if (!tty_term_flag(term, TTYC_XENL))
+		term->flags |= TERM_EARLYWRAP;
 
 	return (term);
 

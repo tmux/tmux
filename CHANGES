@@ -1,3 +1,8 @@
+23 April 2009
+
+* Use the xenl terminfo flag to detect early-wrap terminals like the FreeBSD
+  console. Many thanks for a very informative email from Christian Weisgerber.
+
 21 April 2009
 
 * tmux 0.8 released.
@@ -1208,7 +1213,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.273 2009-04-23 17:51:57 nicm Exp $
+$Id: CHANGES,v 1.274 2009-04-23 21:09:17 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
