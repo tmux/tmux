@@ -1,3 +1,7 @@
+21 April 2009
+
+* tmux 0.8 released.
+
 17 April 2009
 
 * Remove the right number of characters from the buffer when escape then
@@ -1204,7 +1208,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.272 2009-04-17 12:36:21 nicm Exp $
+$Id: CHANGES,v 1.273 2009-04-23 17:51:57 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
