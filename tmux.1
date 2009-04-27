@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.90 2009-04-27 13:21:16 tcunha Exp $
+.\" $Id: tmux.1,v 1.91 2009-04-27 14:40:45 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -458,6 +458,7 @@ option.
 .Op Fl p Ar pane-index
 .Op Fl t Ar target-window
 .Xc
+.D1 (alias: Ic breakp)
 Break the current pane off from its containing window to make it the only pane
 in a new window.
 If
@@ -497,7 +498,7 @@ replaced by what is entered at the prompt.
 .Ar command
 .Xc
 .D1 (alias: Ic confirm)
-Asks for confirmation before executing
+Ask for confirmation before executing
 .Ar command .
 This command works only from inside
 .Nm .
