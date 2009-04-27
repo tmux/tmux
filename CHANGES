@@ -1,5 +1,7 @@
 27 April 2009
 
+* Avoid using the prompt history when the server is locked, and prevent any
+  input entered from being added to the client's prompt history.
 * New command, confirm-before (alias confirm), which asks for confirmation
   before executing a command. Bound "&" and "x" by default to confirm-before
   "kill-window" and confirm-before "kill-pane", respectively.
@@ -1222,7 +1224,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.276 2009-04-27 13:21:15 tcunha Exp $
+$Id: CHANGES,v 1.277 2009-04-27 13:56:51 tcunha Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
