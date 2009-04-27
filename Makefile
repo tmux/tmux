@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.124 2009-04-27 16:55:29 nicm Exp $
+# $Id: Makefile,v 1.125 2009-04-27 18:10:10 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -94,7 +94,7 @@ LIBS+= -lcrypt
 INCDIRS+= -Icompat
 SRCS+= compat/strtonum.c compat/vis.c
 LIBS+= -lcrypt
-CFLAGS+=-DNO_STRTONUM
+CFLAGS+=-DNO_STRTONUM -DNO_QUEUE_H
 .endif
 
 OBJS= ${SRCS:S/.c/.o/:S/.y/.o/}
