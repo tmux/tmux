@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.301 2009-04-27 13:21:16 tcunha Exp $ */
+/* $Id: tmux.h,v 1.302 2009-04-27 14:51:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -462,7 +462,9 @@ struct mode_key_data {
 #define MODE_MOUSE 0x10
 
 /* Grid output. */
-#ifdef DEBUG
+#if defined(DEBUG) && \
+    ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L) || \
+     (defined(__GNUC__) && __GNUC__ >= 3))
 #define GRID_DEBUG(gd, fmt, ...) log_debug3("%s: (sx=%u, sy=%u, hsize=%u) " \
     fmt, __func__, (gd)->sx, (gd)->sy, (gd)->hsize, ## __VA_ARGS__)
 #else
