@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.302 2009-04-27 14:51:59 nicm Exp $ */
+/* $Id: tmux.h,v 1.303 2009-04-27 17:27:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -857,9 +857,14 @@ struct client {
 	size_t		 prompt_index;
 	int		 (*prompt_callback)(void *, const char *);
 	void		*prompt_data;
-	int		 prompt_hidden;
+
+#define PROMPT_HIDDEN 0x1
+#define PROMPT_SINGLE 0x2
+	int		 prompt_flags;
+
 	u_int		 prompt_hindex;
 	ARRAY_DECL(, char *) prompt_hdata;
+
 	struct mode_key_data prompt_mdata;
 
 	struct session	*session;

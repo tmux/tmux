@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.76 2009-04-27 13:56:51 tcunha Exp $ */
+/* $Id: status.c,v 1.77 2009-04-27 17:27:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -563,7 +563,7 @@ status_message_redraw(struct client *c)
 
 void
 status_prompt_set(struct client *c,
-    const char *msg, int (*fn)(void *, const char *), void *data, int hide)
+    const char *msg, int (*fn)(void *, const char *), void *data, int flags)
 {
 	c->prompt_string = xstrdup(msg);
 
@@ -575,7 +575,7 @@ status_prompt_set(struct client *c,
 
 	c->prompt_hindex = 0;
 
-	c->prompt_hidden = hide;
+	c->prompt_flags = flags;
 
 	mode_key_init(&c->prompt_mdata,
 	    options_get_number(&c->session->options, "status-keys"),
@@ -644,7 +644,7 @@ status_prompt_redraw(struct client *c)
 				left--;
 			size = left;
 		}
-		if (c->prompt_hidden) {
+		if (c->prompt_flags & PROMPT_HIDDEN) {
 			n = strlen(c->prompt_buffer);
 			if (n > left)
 				n = left;
@@ -842,6 +842,12 @@ status_prompt_key(struct client *c, int key)
 			    c->prompt_buffer + c->prompt_index,
 			    size + 1 - c->prompt_index);
 			c->prompt_buffer[c->prompt_index++] = key;
+		}
+
+		if (c->prompt_flags & PROMPT_SINGLE) {
+			if (c->prompt_callback(
+			    c->prompt_data, c->prompt_buffer) == 0)
+				status_prompt_clear(c);
 		}
 
 		c->flags |= CLIENT_STATUS;

@@ -1,4 +1,4 @@
-/* $Id: cmd-confirm-before.c,v 1.1 2009-04-27 13:21:15 tcunha Exp $ */
+/* $Id: cmd-confirm-before.c,v 1.2 2009-04-27 17:27:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -125,7 +125,8 @@ cmd_confirm_before_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	cdata = xmalloc(sizeof *cdata);
 	cdata->data.cmd = xstrdup(data->cmd);
 	cdata->c = ctx->curclient;
-	status_prompt_set(cdata->c, buf, cmd_confirm_before_callback, cdata, 0);
+	status_prompt_set(
+	    cdata->c, buf, cmd_confirm_before_callback, cdata, PROMPT_SINGLE);
 
 	xfree(buf);
 	return (1);
@@ -183,7 +184,7 @@ cmd_confirm_before_callback(void *data, const char *s)
 	struct cmd_ctx	 	 	 ctx;
 	char				*cause;
 
-	if (s == NULL || (strcasecmp(s, "y") && strcasecmp(s, "yes")))
+	if (s == NULL || tolower((u_char) s[0]) != 'y' || s[1] != '\0')
 		goto out;
 
 	if (cmd_string_parse(cdata->data.cmd, &cmdlist, &cause) != 0) {
