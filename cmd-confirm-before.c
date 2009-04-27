@@ -1,4 +1,4 @@
-/* $Id: cmd-confirm-before.c,v 1.2 2009-04-27 17:27:36 nicm Exp $ */
+/* $Id: cmd-confirm-before.c,v 1.3 2009-04-27 17:28:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -171,7 +171,7 @@ cmd_confirm_before_print(struct cmd *self, char *buf, size_t len)
 	if (data == NULL)
 		return (off);
 	if (off < len && data->cmd != NULL)
-		off += xsnprintf(buf + off, len - off, "%s", data->cmd);
+		off += cmd_prarg(buf + off, len - off, " ", data->cmd);
 	return (off);
 }
 
