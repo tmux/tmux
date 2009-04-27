@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.123 2009-04-27 13:21:15 tcunha Exp $
+# $Id: Makefile,v 1.124 2009-04-27 16:55:29 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -91,7 +91,7 @@ LIBS+= -lcrypt
 
 # NetBSD
 .if ${OS} == "NetBSD"
-INCDIRS= -Icompat
+INCDIRS+= -Icompat
 SRCS+= compat/strtonum.c compat/vis.c
 LIBS+= -lcrypt
 CFLAGS+=-DNO_STRTONUM
