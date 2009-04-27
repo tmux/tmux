@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.66 2009-04-03 17:21:46 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.67 2009-04-27 13:21:15 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -83,7 +83,7 @@ key_bindings_init(void)
 		{ '!', 			  0, &cmd_break_pane_entry },
 		{ '"', 			  0, &cmd_split_window_entry },
 		{ '#', 			  0, &cmd_list_buffers_entry },
-		{ '&', 			  0, &cmd_kill_window_entry },
+		{ '&', 			  0, &cmd_confirm_before_entry },
 		{ ',', 			  0, &cmd_command_prompt_entry },
 		{ '-', 			  0, &cmd_delete_buffer_entry },
 		{ '.', 			  0, &cmd_command_prompt_entry },
@@ -115,7 +115,7 @@ key_bindings_init(void)
 		{ 's', 			  0, &cmd_choose_session_entry },
 		{ 't', 			  0, &cmd_clock_mode_entry },
 		{ 'w', 			  0, &cmd_choose_window_entry },
-		{ 'x', 			  0, &cmd_kill_pane_entry, },
+		{ 'x', 			  0, &cmd_confirm_before_entry },
 		{ '{',			  0, &cmd_swap_pane_entry },
 		{ '}',			  0, &cmd_swap_pane_entry },
 		{ META, 		  0, &cmd_send_prefix_entry },

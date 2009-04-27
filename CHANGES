@@ -1,3 +1,9 @@
+27 April 2009
+
+* New command, confirm-before (alias confirm), which asks for confirmation
+  before executing a command. Bound "&" and "x" by default to confirm-before
+  "kill-window" and confirm-before "kill-pane", respectively.
+
 23 April 2009
 
 * Support NEL, yet another way of making newline. Fixes the output from some
@@ -1216,7 +1222,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.275 2009-04-23 21:28:45 nicm Exp $
+$Id: CHANGES,v 1.276 2009-04-27 13:21:15 tcunha Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

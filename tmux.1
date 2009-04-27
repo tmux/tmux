@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.89 2009-04-21 20:06:46 nicm Exp $
+.\" $Id: tmux.1,v 1.90 2009-04-27 13:21:16 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -493,6 +493,14 @@ If
 .Ar template
 is specified, it is used as the command; any %% in the template will be
 replaced by what is entered at the prompt.
+.It Xo Ic confirm-before
+.Ar command
+.Xc
+.D1 (alias: Ic confirm)
+Asks for confirmation before executing
+.Ar command .
+This command works only from inside
+.Nm .
 .It Xo Ic copy-buffer
 .Op Fl a Ar src-index
 .Op Fl b Ar dst-index

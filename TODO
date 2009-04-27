@@ -59,8 +59,6 @@
 - set-remain-on-exit is a bit of a hack, some way to do it generically?
 - set-option should be set-session-option and should be overall global options
   for stuff like mode keys?
-- a confirm-before command which asks "Are you sure? (y/n)" before executing
-  command, eg bind-key "&" confirm-before "kill-window"
 - clear window title on exit
 - refer to windows by name etc (duplicates? fnmatch?)
 - the output code (tty.c) could do with optimisation depending on term
