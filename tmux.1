@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.92 2009-04-27 14:50:22 nicm Exp $
+.\" $Id: tmux.1,v 1.93 2009-04-28 18:29:44 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -495,6 +495,7 @@ If
 is specified, it is used as the command; any %% in the template will be
 replaced by what is entered at the prompt.
 .It Xo Ic confirm-before
+.Op Fl t Ar target-client
 .Ar command
 .Xc
 .D1 (alias: Ic confirm)

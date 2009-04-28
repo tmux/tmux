@@ -1,4 +1,4 @@
-/* $Id: cmd-confirm-before.c,v 1.3 2009-04-27 17:28:30 nicm Exp $ */
+/* $Id: cmd-confirm-before.c,v 1.4 2009-04-28 18:29:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -25,90 +25,53 @@
  * Asks for confirmation before executing a command.
  */
 
-int	cmd_confirm_before_parse(struct cmd *, int, char **, char **);
 int	cmd_confirm_before_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_confirm_before_send(struct cmd *, struct buffer *);
-void	cmd_confirm_before_recv(struct cmd *, struct buffer *);
-void	cmd_confirm_before_free(struct cmd *);
 void	cmd_confirm_before_init(struct cmd *, int);
-size_t	cmd_confirm_before_print(struct cmd *, char *, size_t);
+
 int	cmd_confirm_before_callback(void *, const char *);
 
 struct cmd_confirm_before_data {
-	char *cmd;
-};
-
-struct cmd_confirm_before_cdata {
-	struct client			*c;
-	struct cmd_confirm_before_data	 data;
+	struct client	*c;
+	char		*cmd;
 };
 
 const struct cmd_entry cmd_confirm_before_entry = {
 	"confirm-before", "confirm",
-	"command",
-	0,
+	CMD_TARGET_CLIENT_USAGE " command",
+	CMD_ARG1,
 	cmd_confirm_before_init,
-	cmd_confirm_before_parse,
+	cmd_target_parse,
 	cmd_confirm_before_exec,
-	cmd_confirm_before_send,
-	cmd_confirm_before_recv,
-	cmd_confirm_before_free,
-	cmd_confirm_before_print
+	cmd_target_send,
+	cmd_target_recv,
+	cmd_target_free,
+	cmd_target_print
 };
 
 void
 cmd_confirm_before_init(struct cmd *self, int key)
 {
-	struct cmd_confirm_before_data	*data;
+	struct cmd_target_data	*data;
 
-	self->data = data = xmalloc(sizeof *data);
-	data->cmd = NULL;
+	cmd_target_init(self, key);
+	data = self->data;
 
 	switch (key) {
 	case '&':
-		data->cmd = xstrdup("kill-window");
+		data->arg = xstrdup("kill-window");
 		break;
 	case 'x':
-		data->cmd = xstrdup("kill-pane");
+		data->arg = xstrdup("kill-pane");
 		break;
 	}
-}
-
-int
-cmd_confirm_before_parse(struct cmd *self, int argc, char **argv, char **cause)
-{
-	struct cmd_confirm_before_data	*data;
-	int				 opt;
-
-	self->entry->init(self, 0);
-	data = self->data;
-
-	while ((opt = getopt(argc, argv, "")) != -1) {
-		switch (opt) {
-		default:
-			goto usage;
-		}
-	}
-	argc -= optind;
-	argv += optind;
-	if (argc != 1)
-		goto usage;
-
-	data->cmd = xstrdup(argv[0]);
-	return (0);
-
-usage:
-	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
-
-	self->entry->free(self);
-	return (-1);
 }
 
 int
 cmd_confirm_before_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_confirm_before_cdata	*cdata;
-	struct cmd_confirm_before_data	*data = self->data;
+	struct cmd_target_data		*data = self->data;
+	struct cmd_confirm_before_data	*cdata;
+	struct client			*c;
 	char				*buf, *cmd, *ptr;
 
 	if (ctx->curclient == NULL) {
@@ -116,15 +79,18 @@ cmd_confirm_before_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	ptr = xstrdup(data->cmd);
+	if ((c = cmd_find_client(ctx, data->target)) == NULL)
+		return (-1);
+
+	ptr = xstrdup(data->arg);
 	if ((cmd = strtok(ptr, " \t")) == NULL)
 		cmd = ptr;
 	xasprintf(&buf, "Confirm '%s'? (y/n) ", cmd);
 	xfree(ptr);
 
 	cdata = xmalloc(sizeof *cdata);
-	cdata->data.cmd = xstrdup(data->cmd);
-	cdata->c = ctx->curclient;
+	cdata->cmd = xstrdup(data->arg);
+	cdata->c = c;
 	status_prompt_set(
 	    cdata->c, buf, cmd_confirm_before_callback, cdata, PROMPT_SINGLE);
 
@@ -132,53 +98,10 @@ cmd_confirm_before_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	return (1);
 }
 
-void
-cmd_confirm_before_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_confirm_before_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->cmd);
-}
-
-void
-cmd_confirm_before_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_confirm_before_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->cmd = cmd_recv_string(b);
-}
-
-void
-cmd_confirm_before_free(struct cmd *self)
-{
-	struct cmd_confirm_before_data	*data = self->data;
-
-	if (data->cmd != NULL)
-		xfree(data->cmd);
-	xfree(data);
-}
-
-size_t
-cmd_confirm_before_print(struct cmd *self, char *buf, size_t len)
-{
-	struct cmd_confirm_before_data	*data = self->data;
-	size_t				 off = 0;
-
-	off += xsnprintf(buf, len, "%s ", self->entry->name);
-	if (data == NULL)
-		return (off);
-	if (off < len && data->cmd != NULL)
-		off += cmd_prarg(buf + off, len - off, " ", data->cmd);
-	return (off);
-}
-
 int
 cmd_confirm_before_callback(void *data, const char *s)
 {
-	struct cmd_confirm_before_cdata	*cdata = data;
+	struct cmd_confirm_before_data	*cdata = data;
 	struct client			*c = cdata->c;
 	struct cmd_list			*cmdlist;
 	struct cmd_ctx	 	 	 ctx;
@@ -187,7 +110,7 @@ cmd_confirm_before_callback(void *data, const char *s)
 	if (s == NULL || tolower((u_char) s[0]) != 'y' || s[1] != '\0')
 		goto out;
 
-	if (cmd_string_parse(cdata->data.cmd, &cmdlist, &cause) != 0) {
+	if (cmd_string_parse(cdata->cmd, &cmdlist, &cause) != 0) {
 		if (cause != NULL) {
 			*cause = toupper((u_char) *cause);
 			status_message_set(c, cause);
@@ -210,8 +133,8 @@ cmd_confirm_before_callback(void *data, const char *s)
 	cmd_list_free(cmdlist);
 
 out:
-	if (cdata->data.cmd != NULL)
-		xfree(cdata->data.cmd);
+	if (cdata->cmd != NULL)
+		xfree(cdata->cmd);
 	xfree(cdata);
 
 	return (0);
