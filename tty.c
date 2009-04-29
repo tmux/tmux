@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.93 2009-04-29 17:06:45 nicm Exp $ */
+/* $Id: tty.c,v 1.94 2009-04-29 17:50:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -306,7 +306,7 @@ tty_puts(struct tty *tty, const char *s)
 }
 
 void
-tty_putc(struct tty *tty, char ch)
+tty_putc(struct tty *tty, u_char ch)
 {
 	u_int	sx;
 
