@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.85 2009-04-29 22:25:20 nicm Exp $
+# $Id: GNUmakefile,v 1.86 2009-04-29 22:35:45 nicm Exp $
 
 .PHONY: clean
 
@@ -98,7 +98,7 @@ SRCS+= compat/strtonum.c compat/daemon.c compat/forkpty-sunos.c \
 	compat/asprintf.c compat/fgetln.c compat/getopt.c
 CFLAGS+= -DNO_STRTONUM -DNO_TREE_H -DNO_PATHS_H -DNO_SETPROCTITLE \
 	-DNO_DAEMON -DNO_FORKPTY -DNO_PROGNAME -DNO_ASPRINTF -DNO_FGETLN \
-	-DBROKEN_GETOPT
+	-DBROKEN_GETOPT -DNO_QUEUE_H
 LDFLAGS+= -L/usr/gnu/lib
 LIBS+= -lsocket -lnsl
 endif

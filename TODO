@@ -92,5 +92,4 @@
      speed improvements? -- still too slow over ssh!
      hardcoded 81 for left-vertical is nasty
 - test bug sshing from freebsd console (tom iirc?)
-- fix build on solaris 10
 - rotate-window has redraw bugs... :-/
