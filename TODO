@@ -67,7 +67,6 @@
   should be select-pane -U/-D
 
 (hopefully) for 0.9, in no particular order:
-- UTF-8 in non-UTF-8 mode causes weird display issues.... echo -e \\0303\\0244
 - a command to display the status line briefly when it is turned off
 - FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw,
   more??
