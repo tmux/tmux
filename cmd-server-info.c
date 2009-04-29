@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.14 2009-04-02 23:28:16 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.15 2009-04-29 22:25:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,7 +23,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <vis.h>
 
 #include "tmux.h"
 
@@ -60,7 +59,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	struct utsname			 un;
 	struct grid			*gd;
 	u_int		 		 i, j, k;
-	char				 out[BUFSIZ];
+	char				 out[80];
 	char				*tim;
 	time_t		 		 t;
 	u_int				 lines, ulines;
@@ -115,8 +114,9 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		RB_FOREACH(wl, winlinks, &s->windows) {
 			w = wl->window;
 			ctx->print(ctx, "%4u: %p/%p %s [%ux%u] [flags=0x%x, "
-			    "references=%u, layout=%u]", wl->idx, wl, w, w->name,
-			    w->sx, w->sy, w->flags, w->references, w->layout);
+			    "references=%u, layout=%u]", wl->idx, wl, w, 
+			    w->name, w->sx, w->sy, w->flags, w->references,
+			    w->layout);
 			j = 0;
 			TAILQ_FOREACH(wp, &w->panes, entry) {
 				lines = ulines = size = usize = 0;
@@ -157,10 +157,8 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 				    ent->code, ent->name);
 				break;
 			case TTYCODE_STRING:
-				strnvis(out, code->value.string,
-				    sizeof out, VIS_OCTAL|VIS_WHITE);
-				out[(sizeof out) - 1] = '\0';
-
+				clean_string(
+				    code->value.string, out, sizeof out);
 				ctx->print(ctx, "%2u: %s: (string) %s",
 				    ent->code, ent->name, out);
 				break;

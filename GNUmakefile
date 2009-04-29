@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.84 2009-04-27 13:21:15 tcunha Exp $
+# $Id: GNUmakefile,v 1.85 2009-04-29 22:25:20 nicm Exp $
 
 .PHONY: clean
 
@@ -71,7 +71,7 @@ INSTALLMAN= install -g bin -o root -m 444
 
 ifeq ($(shell uname),AIX)
 INCDIRS+= -I/usr/local/include/ncurses -Icompat
-SRCS+= compat/vis.c compat/strlcpy.c compat/strlcat.c compat/strtonum.c \
+SRCS+= compat/strlcpy.c compat/strlcat.c compat/strtonum.c \
        compat/fgetln.c compat/asprintf.c compat/daemon.c compat/forkpty-aix.c \
        compat/getopt_long.c compat/bsd-poll.c
 CFLAGS+= -DNO_TREE_H -DNO_ASPRINTF -DNO_QUEUE_H -DNO_VSYSLOG \
@@ -93,18 +93,19 @@ LIBS+= -lgen
 endif
 
 ifeq ($(shell uname),SunOS)
-INCDIRS+= -Icompat -I/usr/local/include/ncurses
+INCDIRS+= -Icompat -I/usr/include/ncurses
 SRCS+= compat/strtonum.c compat/daemon.c compat/forkpty-sunos.c \
-	compat/asprintf.c compat/fgetln.c compat/vis.c
+	compat/asprintf.c compat/fgetln.c compat/getopt.c
 CFLAGS+= -DNO_STRTONUM -DNO_TREE_H -DNO_PATHS_H -DNO_SETPROCTITLE \
-	-DNO_DAEMON -DNO_FORKPTY -DNO_PROGNAME -DNO_ASPRINTF -DNO_FGETLN
-LDFLAGS+= -L/usr/local/lib
+	-DNO_DAEMON -DNO_FORKPTY -DNO_PROGNAME -DNO_ASPRINTF -DNO_FGETLN \
+	-DBROKEN_GETOPT
+LDFLAGS+= -L/usr/gnu/lib
 LIBS+= -lsocket -lnsl
 endif
 
 ifeq ($(shell uname),Darwin)
 INCDIRS+= -Icompat
-SRCS+= compat/strtonum.c compat/bsd-poll.c compat/vis.c
+SRCS+= compat/strtonum.c compat/bsd-poll.c
 CFLAGS+= -DNO_STRTONUM -DNO_SETRESUID -DNO_SETRESGID -DNO_SETPROCTITLE \
          -DNO_QUEUE_H -DNO_TREE_H -DBROKEN_POLL
 endif
@@ -112,7 +113,7 @@ endif
 ifeq ($(shell uname),Linux)
 INCDIRS+= -Icompat
 SRCS+= compat/strlcpy.c compat/strlcat.c compat/strtonum.c \
-       compat/fgetln.c compat/getopt_long.c compat/vis.c
+       compat/fgetln.c compat/getopt_long.c
 CFLAGS+= $(shell getconf LFS_CFLAGS) -D_GNU_SOURCE \
          -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM -DNO_SETPROCTITLE \
          -DNO_QUEUE_H -DNO_TREE_H -DUSE_PTY_H -DNO_FGETLN \

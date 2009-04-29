@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.304 2009-04-29 17:50:52 nicm Exp $ */
+/* $Id: tmux.h,v 1.305 2009-04-29 22:25:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1605,6 +1605,7 @@ int	utf8_width(u_int);
 
 /* util.c */
 char   *section_string(char *, size_t, size_t, size_t);
+void	clean_string(const char *, char *, size_t);
 
 /* osdep-*.c */
 char   *osdep_get_name(int, char *);

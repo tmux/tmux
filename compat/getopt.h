@@ -33,7 +33,9 @@
 #ifndef _GETOPT_H_
 #define _GETOPT_H_
 
+#if !defined (__SVR4) || !defined (__sun)
 #include <sys/cdefs.h>
+#endif
 
 /*
  * GNU-like getopt_long() and 4.4BSD getsubopt()/optreset extensions

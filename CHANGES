@@ -1,3 +1,8 @@
+29 April 2009
+
+* Get rid of compat/vis.* - only one function was used which is easily
+  replaced,and less compat code == good.
+
 27 April 2009
 
 * Avoid using the prompt history when the server is locked, and prevent any
@@ -1224,7 +1229,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.277 2009-04-27 13:56:51 tcunha Exp $
+$Id: CHANGES,v 1.278 2009-04-29 22:25:20 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
