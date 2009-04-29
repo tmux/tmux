@@ -1,3 +1,4 @@
+/* $Id: getopt.h,v 1.5 2009-04-29 22:45:32 nicm Exp $ */
 /*	$OpenBSD: getopt.h,v 1.2 2008/06/26 05:42:04 ray Exp $	*/
 /*	$NetBSD: getopt.h,v 1.4 2000/07/07 10:43:54 ad Exp $	*/
 
