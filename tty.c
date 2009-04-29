@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.92 2009-04-02 21:08:15 nicm Exp $ */
+/* $Id: tty.c,v 1.93 2009-04-29 17:06:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -314,7 +314,7 @@ tty_putc(struct tty *tty, char ch)
 		ch = tty_get_acs(tty, ch);
 	buffer_write8(tty->out, ch);
 
-	if (ch >= 0x20) {
+	if (ch >= 0x20 && ch != 0x7f) {
 		sx = tty->sx;
 		if (tty->term->flags & TERM_EARLYWRAP)
 			sx--;
