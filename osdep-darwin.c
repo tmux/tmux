@@ -1,4 +1,4 @@
-/* $Id: osdep-darwin.c,v 1.9 2009-02-13 00:43:04 nicm Exp $ */
+/* $Id: osdep-darwin.c,v 1.10 2009-04-29 23:07:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Joshua Elsasser <josh@elsasser.org>
@@ -15,8 +15,6 @@
  * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-#ifdef __APPLE__
 
 #include <sys/types.h>
 #include <sys/sysctl.h>
@@ -47,5 +45,3 @@ osdep_get_name(int fd, unused char *tty)
 
 	return (strdup(kp.kp_proc.p_comm));
 }
-
-#endif

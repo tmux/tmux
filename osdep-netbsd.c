@@ -14,8 +14,6 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifdef __NetBSD__
-
 #include <sys/param.h>
 #include <sys/proc.h>
 #include <sys/stat.h>
@@ -118,5 +116,3 @@ retry:
 	free(buf);
 	return (name);
 }
-
-#endif

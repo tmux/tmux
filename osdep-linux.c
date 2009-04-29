@@ -1,4 +1,4 @@
-/* $Id: osdep-linux.c,v 1.5 2009-02-13 00:43:04 nicm Exp $ */
+/* $Id: osdep-linux.c,v 1.6 2009-04-29 23:07:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -15,8 +15,6 @@
  * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-#ifdef __linux__
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -59,5 +57,3 @@ osdep_get_name(int fd, unused char *tty)
 	fclose(f);
 	return (buf);
 }
-
-#endif

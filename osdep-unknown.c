@@ -1,4 +1,4 @@
-/* $Id: osdep-unknown.c,v 1.4 2009-03-31 21:22:10 nicm Exp $ */
+/* $Id: osdep-unknown.c,v 1.5 2009-04-29 23:07:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -16,9 +16,6 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#if !defined(__OpenBSD__) && !defined(__FreeBSD__) && !defined(__linux__) && \
-	!defined(__APPLE__) && !defined(__NetBSD__)
-
 #include <sys/types.h>
 
 #include "tmux.h"
@@ -28,5 +25,3 @@ osdep_get_name(unused int fd, unused char *tty)
 {
 	return (NULL);
 }
-
-#endif

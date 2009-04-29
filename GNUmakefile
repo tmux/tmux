@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.88 2009-04-29 22:42:02 nicm Exp $
+# $Id: GNUmakefile,v 1.89 2009-04-29 23:07:35 nicm Exp $
 
 .PHONY: clean
 
@@ -42,9 +42,7 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       window-clock.c window-scroll.c window-more.c window-copy.c \
       window-choose.c \
       options.c options-cmd.c paste.c colour.c utf8.c clock.c \
-      tty.c tty-term.c tty-keys.c tty-write.c util.c names.c \
-      osdep-unknown.c osdep-openbsd.c osdep-freebsd.c osdep-linux.c \
-      osdep-darwin.c attributes.c
+      tty.c tty-term.c tty-keys.c tty-write.c util.c names.c attributes.c
 
 CC?= gcc
 INCDIRS+= -I. -I-
@@ -119,6 +117,10 @@ CFLAGS+= $(shell getconf LFS_CFLAGS) -D_GNU_SOURCE \
 	 -DBROKEN_GETOPT -std=c99
 LIBS+= -lcrypt -lutil
 endif
+
+LCOS= $(shell uname|tr '[:upper:]' '[:lower:]')
+OSDEP= $(shell [ -f osdep-$(LCOS).c ] && echo $(LCOS) || echo unknown)
+SRCS+= osdep-$(OSDEP).c
 
 OBJS= $(patsubst %.c,%.o,$(SRCS))
 

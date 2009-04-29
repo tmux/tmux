@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.14 2009-02-17 18:54:14 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.15 2009-04-29 23:07:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -15,8 +15,6 @@
  * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-
-#ifdef __OpenBSD__
 
 #include <sys/param.h>
 #include <sys/sysctl.h>
@@ -130,5 +128,3 @@ retry:
 	free(buf);
 	return (name);
 }
-
-#endif
