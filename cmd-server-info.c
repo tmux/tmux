@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.15 2009-04-29 22:25:20 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.16 2009-04-29 22:29:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -90,8 +90,8 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		if (c == NULL || c->session == NULL)
 			continue;
 
-		ctx->print(ctx, "%2d: %p %s (%d, %d): %s [%ux%u %s] "
-		    "[flags=0x%x/0x%x]", i, c, c->tty.path, c->fd, c->tty.fd, 
+		ctx->print(ctx, "%2d: %s (%d, %d): %s [%ux%u %s] "
+		    "[flags=0x%x/0x%x]", i, c->tty.path, c->fd, c->tty.fd, 
 		    c->session->name, c->tty.sx, c->tty.sy, c->tty.termname, 
 		    c->flags, c->tty.flags);
 	}
@@ -108,14 +108,14 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		tim = ctime(&t);
 		*strchr(tim, '\n') = '\0';
 
-		ctx->print(ctx, "%2u: %p %s: %u windows (created %s) [%ux%u] "
-		    "[flags=0x%x]", i, s, s->name, winlink_count(&s->windows),
+		ctx->print(ctx, "%2u: %s: %u windows (created %s) [%ux%u] "
+		    "[flags=0x%x]", i, s->name, winlink_count(&s->windows),
 		    tim, s->sx, s->sy, s->flags);
 		RB_FOREACH(wl, winlinks, &s->windows) {
 			w = wl->window;
-			ctx->print(ctx, "%4u: %p/%p %s [%ux%u] [flags=0x%x, "
-			    "references=%u, layout=%u]", wl->idx, wl, w, 
-			    w->name, w->sx, w->sy, w->flags, w->references,
+			ctx->print(ctx, "%4u: %s [%ux%u] [flags=0x%x, "
+			    "references=%u, layout=%u]", wl->idx, w->name,
+			    w->sx, w->sy, w->flags, w->references,
 			    w->layout);
 			j = 0;
 			TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -133,8 +133,8 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 						    sizeof (**gd->udata);
 					}
 				}
-				ctx->print(ctx, "%6u: %p %s %lu %d %u/%u, %zu "
-				    "bytes; UTF-8 %u/%u, %zu bytes", j, wp,
+				ctx->print(ctx, "%6u: %s %lu %d %u/%u, %zu "
+				    "bytes; UTF-8 %u/%u, %zu bytes", j,
 				    wp->tty, (u_long) wp->pid, wp->fd, lines,
 				    gd->hsize + gd->sy, size, ulines,
 				    gd->hsize + gd->sy, usize);
