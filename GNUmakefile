@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.87 2009-04-29 22:40:52 nicm Exp $
+# $Id: GNUmakefile,v 1.88 2009-04-29 22:42:02 nicm Exp $
 
 .PHONY: clean
 
@@ -106,8 +106,7 @@ endif
 ifeq ($(shell uname),Darwin)
 INCDIRS+= -Icompat
 SRCS+= compat/strtonum.c compat/bsd-poll.c
-CFLAGS+= -DNO_STRTONUM -DNO_SETRESUID -DNO_SETRESGID -DNO_SETPROCTITLE \
-         -DNO_QUEUE_H -DNO_TREE_H -DBROKEN_POLL
+CFLAGS+= -DNO_STRTONUM -DNO_SETPROCTITLE -DNO_QUEUE_H -DNO_TREE_H -DBROKEN_POLL
 endif
 
 ifeq ($(shell uname),Linux)
