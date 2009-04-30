@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.306 2009-04-30 06:01:24 nicm Exp $ */
+/* $Id: tmux.h,v 1.307 2009-04-30 16:27:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1543,6 +1543,7 @@ void		 window_pane_mouse(struct window_pane *,
     		     struct client *, u_char, u_char, u_char);
 
 /* layout.c */
+const char * 	 layout_name(struct window *);
 void		 layout_refresh(struct window *, int);
 void		 layout_next(struct window *);
 

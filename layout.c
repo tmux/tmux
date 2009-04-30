@@ -1,4 +1,4 @@
-/* $Id: layout.c,v 1.3 2009-04-01 21:10:08 nicm Exp $ */
+/* $Id: layout.c,v 1.4 2009-04-30 16:27:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,6 +41,12 @@ const struct {
 	{ "even-vertical", layout_even_vertical },
 	{ "left-vertical", layout_left_vertical },
 }; 
+
+const char *
+layout_name(struct window *w)
+{
+	return (layouts[w->layout].name);
+}
 
 void
 layout_next(struct window *w)
