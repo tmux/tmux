@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.67 2009-04-27 13:21:15 tcunha Exp $ */
+/* $Id: key-bindings.c,v 1.68 2009-04-30 06:01:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -124,10 +124,10 @@ key_bindings_init(void)
 		{ KEYC_ADDESC('p'), 	  0, &cmd_previous_window_entry },
 		{ KEYC_UP, 		  1, &cmd_up_pane_entry },
 		{ KEYC_DOWN, 		  1, &cmd_down_pane_entry },
-		{ KEYC_ADDESC(KEYC_UP),   1, &cmd_resize_pane_up_entry },
-		{ KEYC_ADDESC(KEYC_DOWN), 1, &cmd_resize_pane_down_entry },
-		{ KEYC_ADDCTL(KEYC_UP),   1, &cmd_resize_pane_up_entry },
-		{ KEYC_ADDCTL(KEYC_DOWN), 1, &cmd_resize_pane_down_entry },
+		{ KEYC_ADDESC(KEYC_UP),   1, &cmd_resize_pane_entry },
+		{ KEYC_ADDESC(KEYC_DOWN), 1, &cmd_resize_pane_entry },
+		{ KEYC_ADDCTL(KEYC_UP),   1, &cmd_resize_pane_entry },
+		{ KEYC_ADDCTL(KEYC_DOWN), 1, &cmd_resize_pane_entry },
 		{ KEYC_ADDESC('o'),	  0, &cmd_rotate_window_entry },
 		{ '\017',	          0, &cmd_rotate_window_entry },
 	};

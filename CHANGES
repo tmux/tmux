@@ -1,3 +1,8 @@
+30 April 2009
+
+* Merge resize-pane-up and resize-pane-down into resize-pane with -U and -D
+  flags.
+
 29 April 2009
 
 * Get rid of compat/vis.* - only one function was used which is easily
@@ -1229,7 +1234,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.278 2009-04-29 22:25:20 nicm Exp $
+$Id: CHANGES,v 1.279 2009-04-30 06:01:23 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

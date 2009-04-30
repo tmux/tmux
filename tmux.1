@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.93 2009-04-28 18:29:44 tcunha Exp $
+.\" $Id: tmux.1,v 1.94 2009-04-30 06:01:24 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -322,10 +322,8 @@ The following layouts are supported:
 .It Ic manual
 Manual layout splits windows vertically (running across); only with this layout
 may panes be resized using the
-.Ic resize-pane-up
-and
-.Ic resize-pane-down
-commands.
+.Ic resize-pane
+command.
 .It Ic active-only
 Only the active pane is shown - all other panes are hidden.
 .It Ic even-horizontal
@@ -755,19 +753,17 @@ Rename the current window, or the window at
 .Ar target-window
 if specified, to
 .Ar new-name .
-.It Xo Ic resize-pane-down
+.It Xo Ic resize-pane
+.Op Fl DU
 .Op Fl p Ar pane-index
 .Op Fl t Ar target-window
 .Op Ar adjustment
 .Xc
-.D1 (alias: Ic resizep-down )
-.It Xo Ic resize-pane-up
-.Op Fl p Ar pane-index
-.Op Fl t Ar target-window
-.Op Ar adjustment
-.Xc
-.D1 (alias: Ic resizep-up)
-Resize a pane.
+.D1 (alias: Ic resizep )
+Resize a pane, upward with
+.Fl U
+(the default) or downward with
+.Fl D .
 The
 .Ar adjustment
 is given in lines (the default is 1).
