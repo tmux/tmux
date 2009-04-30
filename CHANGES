@@ -1,5 +1,8 @@
 30 April 2009
 
+* Support command sequences without a space before the semicolon, for example
+  "neww; neww" now works as well as "neww ; neww". "neww;neww" is still an
+  error.
 * previous-layout command.
 * Display the layout name in window lists.
 * Merge resize-pane-up and resize-pane-down into resize-pane with -U and -D
@@ -1236,7 +1239,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.281 2009-04-30 21:17:06 nicm Exp $
+$Id: CHANGES,v 1.282 2009-04-30 21:53:32 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

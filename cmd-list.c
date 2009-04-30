@@ -1,4 +1,4 @@
-/* $Id: cmd-list.c,v 1.3 2009-02-16 18:57:16 nicm Exp $ */
+/* $Id: cmd-list.c,v 1.4 2009-04-30 21:53:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,28 +28,43 @@ cmd_list_parse(int argc, char **argv, char **cause)
 	struct cmd_list	*cmdlist;
 	struct cmd	*cmd;
 	int		 i, lastsplit;
+	size_t		 arglen, new_argc;
+	char	       **new_argv;
 
 	cmdlist = xmalloc(sizeof *cmdlist);
 	TAILQ_INIT(cmdlist);
 
 	lastsplit = 0;
 	for (i = 0; i < argc; i++) {
-		if (strcmp(argv[i], "\\;") == 0) {
-			argv[i][0] = ';';
-			argv[i][1] = '\0';
-		} else if (strcmp(argv[i], ";") == 0) {
-			cmd = cmd_parse(i - lastsplit, argv + lastsplit, cause);
-			if (cmd == NULL)
-				goto bad;
-			TAILQ_INSERT_TAIL(cmdlist, cmd, qentry);
-			lastsplit = i + 1;
-		}
+		arglen = strlen(argv[i]);
+		if (arglen == 0 || argv[i][arglen - 1] != ';')
+			continue;
+		argv[i][arglen - 1] = '\0';
+
+		if (arglen > 1 && argv[i][arglen - 2] == '\\') {
+			argv[i][arglen - 2] = ';';
+			continue;
+		} 
+
+		new_argc = i - lastsplit;
+		new_argv = argv + lastsplit;
+		if (arglen != 1)
+			new_argc++;
+		
+		cmd = cmd_parse(new_argc, new_argv, cause);
+		if (cmd == NULL)
+			goto bad;
+		TAILQ_INSERT_TAIL(cmdlist, cmd, qentry);
+		
+		lastsplit = i + 1;
 	}
 
-	cmd = cmd_parse(argc - lastsplit, argv + lastsplit, cause);
-	if (cmd == NULL)
-		goto bad;
-	TAILQ_INSERT_TAIL(cmdlist, cmd, qentry);
+	if (lastsplit != argc) {
+		cmd = cmd_parse(argc - lastsplit, argv + lastsplit, cause);
+		if (cmd == NULL)
+			goto bad;
+		TAILQ_INSERT_TAIL(cmdlist, cmd, qentry);
+	}
        
 	return (cmdlist);
 
