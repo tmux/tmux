@@ -1,4 +1,4 @@
-/* $Id: cmd-resize-pane.c,v 1.1 2009-04-30 06:01:35 nicm Exp $ */
+/* $Id: cmd-resize-pane.c,v 1.2 2009-04-30 06:04:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -119,7 +119,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 			}
 			if (wq == NULL)
 				break;
-		window_pane_resize(wp, wp->sx, wp->sy + 1);
+			window_pane_resize(wp, wp->sx, wp->sy + 1);
 		}
 	} else {
 		/*
