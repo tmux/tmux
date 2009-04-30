@@ -1,4 +1,4 @@
-/* $Id: util.c,v 1.4 2009-04-30 06:00:13 nicm Exp $ */
+/* $Id: util.c,v 1.5 2009-04-30 16:24:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,7 +53,7 @@ section_string(char *buf, size_t len, size_t sectoff, size_t sectlen)
 
 /* Clean string of invisible characters. */
 void
-clean_string(const u_char *in, char *buf, size_t len)
+clean_string(const char *in, char *buf, size_t len)
 {
 	const u_char	*cp;
 	size_t	 	 off;
