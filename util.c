@@ -1,4 +1,4 @@
-/* $Id: util.c,v 1.2 2009-04-29 22:25:20 nicm Exp $ */
+/* $Id: util.c,v 1.3 2009-04-30 05:42:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,17 +55,16 @@ section_string(char *buf, size_t len, size_t sectoff, size_t sectlen)
 void
 clean_string(const char *in, char *buf, size_t len)
 {
-	const u_char	*cp;
-	size_t	 	 off;
+	size_t	off;
 
 	off = 0;
-	for (cp = in; *cp != '\0'; cp++) {
+	for (; *in != '\0'; in++) {
 		if (off >= len)
 			break;
-		if (*cp >= 0x20 && *cp <= 0x7f)
-			buf[off++] = *cp;
+		if (*in >= 0x20 && *in <= 0x7f)
+			buf[off++] = *in;
 		else
-			off += xsnprintf(buf + off, len - off, "\\%03hho", *cp);
+			off += xsnprintf(buf + off, len - off, "\\%03hho", *in);
 	}
 	if (off < len)
 		buf[off] = '\0';
