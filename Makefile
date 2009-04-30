@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.128 2009-04-30 06:01:23 nicm Exp $
+# $Id: Makefile,v 1.129 2009-04-30 21:17:06 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -34,14 +34,13 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       cmd-show-window-options.c cmd-command-prompt.c cmd-set-buffer.c \
       cmd-show-buffer.c cmd-list-buffers.c cmd-delete-buffer.c \
       cmd-list-commands.c cmd-move-window.c cmd-select-prompt.c \
-      cmd-respawn-window.c cmd-source-file.c cmd-server-info.c \
-      cmd-clock-mode.c cmd-lock-server.c cmd-set-password.c \
-      cmd-save-buffer.c cmd-select-pane.c cmd-split-window.c \
-      cmd-resize-pane.c cmd-kill-pane.c \
-      cmd-up-pane.c cmd-down-pane.c cmd-choose-window.c cmd-choose-session.c \
+      cmd-respawn-window.c cmd-source-file.c cmd-server-info.c cmd-down-pane.c \
+      cmd-clock-mode.c cmd-lock-server.c cmd-set-password.c cmd-up-pane.c \
+      cmd-save-buffer.c cmd-select-pane.c cmd-split-window.c cmd-kill-pane.c \
+      cmd-resize-pane.c cmd-choose-window.c cmd-choose-session.c \
       cmd-suspend-client.c cmd-find-window.c cmd-load-buffer.c \
-      cmd-copy-buffer.c cmd-break-pane.c cmd-swap-pane.c cmd-next-layout.c \
-      cmd-rotate-window.c cmd-confirm-before.c \
+      cmd-copy-buffer.c cmd-break-pane.c cmd-swap-pane.c cmd-rotate-window.c \
+      cmd-confirm-before.c cmd-next-layout.c cmd-previous-layout.c \
       window-clock.c window-scroll.c window-more.c window-copy.c \
       window-choose.c \
       options.c options-cmd.c paste.c colour.c utf8.c clock.c \

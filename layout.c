@@ -1,4 +1,4 @@
-/* $Id: layout.c,v 1.4 2009-04-30 16:27:29 nicm Exp $ */
+/* $Id: layout.c,v 1.5 2009-04-30 21:17:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,6 +54,21 @@ layout_next(struct window *w)
 	w->layout++;
 	if (w->layout > nitems(layouts) - 1) {
 		w->layout = 0;
+		/* XXX Special-case manual. */
+		window_fit_panes(w);
+		window_update_panes(w);
+	}
+	layout_refresh(w, 0);
+}
+
+void
+layout_previous(struct window *w)
+{
+	if (w->layout == 0)
+		w->layout = nitems(layouts) - 1;
+	else
+		w->layout--;
+	if (w->layout == 0) {
 		/* XXX Special-case manual. */
 		window_fit_panes(w);
 		window_update_panes(w);

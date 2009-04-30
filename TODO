@@ -78,7 +78,6 @@
 - attach should have a flag to create session if it doesn't exist
 - layout/split stuff:
      horiz split command, and similar resizing commands as for vert split
-     previous-layout command
      select-layout command
      make manual layout a bit less of a hack and make it handle a grid
      should the layout be a window option???
