@@ -1,4 +1,4 @@
-/* $Id: util.c,v 1.3 2009-04-30 05:42:46 nicm Exp $ */
+/* $Id: util.c,v 1.4 2009-04-30 06:00:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,18 +53,19 @@ section_string(char *buf, size_t len, size_t sectoff, size_t sectlen)
 
 /* Clean string of invisible characters. */
 void
-clean_string(const char *in, char *buf, size_t len)
+clean_string(const u_char *in, char *buf, size_t len)
 {
-	size_t	off;
+	const u_char	*cp;
+	size_t	 	 off;
 
 	off = 0;
-	for (; *in != '\0'; in++) {
+	for (cp = in; *cp != '\0'; cp++) {
 		if (off >= len)
 			break;
-		if (*in >= 0x20 && *in <= 0x7f)
-			buf[off++] = *in;
+		if (*cp >= 0x20 && *cp <= 0x7f)
+			buf[off++] = *cp;
 		else
-			off += xsnprintf(buf + off, len - off, "\\%03hho", *in);
+			off += xsnprintf(buf + off, len - off, "\\%03hho", *cp);
 	}
 	if (off < len)
 		buf[off] = '\0';
