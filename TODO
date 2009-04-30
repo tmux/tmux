@@ -63,8 +63,6 @@
 - refer to windows by name etc (duplicates? fnmatch?)
 - the output code (tty.c) could do with optimisation depending on term
   capibilities
-- resize-pane-up/down should be resize-pane -U/-D. ditto up-pane/down-pane
-  should be select-pane -U/-D
 
 (hopefully) for 0.9, in no particular order:
 - a command to display the status line briefly when it is turned off
@@ -80,7 +78,6 @@
 - attach should have a flag to create session if it doesn't exist
 - layout/split stuff:
      horiz split command, and similar resizing commands as for vert split
-     display the layout in a readable format somewhere
      previous-layout command
      select-layout command
      make manual layout a bit less of a hack and make it handle a grid

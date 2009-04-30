@@ -1,5 +1,6 @@
 30 April 2009
 
+* Display the layout name in window lists.
 * Merge resize-pane-up and resize-pane-down into resize-pane with -U and -D
   flags.
 
@@ -1234,7 +1235,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.279 2009-04-30 06:01:23 nicm Exp $
+$Id: CHANGES,v 1.280 2009-04-30 20:54:52 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

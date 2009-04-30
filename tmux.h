@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.307 2009-04-30 16:27:29 nicm Exp $ */
+/* $Id: tmux.h,v 1.308 2009-04-30 20:54:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1599,9 +1599,8 @@ int		 session_select(struct session *, int);
 int		 session_last(struct session *);
 
 /* utf8.c */
-u_int	utf8_combine(const u_char *);
-void	utf8_split(u_int, u_char *);
-int	utf8_width(u_int);
+void	utf8_build(void);
+int	utf8_width(u_char *);
 
 /* util.c */
 char   *section_string(char *, size_t, size_t, size_t);

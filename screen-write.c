@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.43 2009-03-30 20:14:50 nicm Exp $ */
+/* $Id: screen-write.c,v 1.44 2009-04-30 20:54:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -529,7 +529,7 @@ screen_write_cell(
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct grid_utf8	 gu, *tmp_gu;
-	u_int		 	 width, uvalue, xx, i;
+	u_int		 	 width, xx, i;
 	struct grid_cell 	 tmp_gc, *tmp_gc2;
 	size_t			 size;
 
@@ -539,8 +539,7 @@ screen_write_cell(
 
 	/* Find character width. */
 	if (gc->flags & GRID_FLAG_UTF8) {
-		uvalue = utf8_combine(udata);
-		width = utf8_width(uvalue);
+		width = utf8_width(udata);
 
 		gu.width = width;
 		memcpy(&gu.data, udata, sizeof gu.data);

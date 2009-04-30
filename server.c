@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.137 2009-04-16 10:59:59 nicm Exp $ */
+/* $Id: server.c,v 1.138 2009-04-30 20:54:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -163,6 +163,7 @@ server_start(char *path)
 	ARRAY_INIT(&clients);
 	ARRAY_INIT(&sessions);
 	key_bindings_init();
+	utf8_build();
 
 	server_locked = 0;
 	server_password = NULL;
