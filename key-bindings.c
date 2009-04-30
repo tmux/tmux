@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.68 2009-04-30 06:01:24 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.69 2009-04-30 18:39:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,7 +74,7 @@ key_bindings_remove(int key)
 void
 key_bindings_init(void)
 {
-	struct {
+	static const struct {
 		int			 key;
 		int			 can_repeat;
 		const struct cmd_entry	*entry;
