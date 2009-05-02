@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.138 2009-04-30 20:54:53 nicm Exp $ */
+/* $Id: server.c,v 1.139 2009-05-02 08:34:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -273,7 +273,7 @@ server_main(int srv_fd)
 		/* Update socket permissions. */
 		xtimeout = INFTIM;
 		if (sigterm || server_update_socket() != 0)
-			xtimeout = 100;
+			xtimeout = POLL_TIMEOUT;
 
 		/* Do the poll. */
 		if ((nfds = poll(pfds, nfds, xtimeout)) == -1) {
@@ -596,12 +596,12 @@ server_check_timers(struct client *c)
 	if (!options_get_number(&s->options, "status"))
 		return;
 
+	/* Check timer; resolution is only a second so don't be too clever. */
 	interval = options_get_number(&s->options, "status-interval");
 	if (interval == 0)
 		return;
-
-	tv.tv_sec -= interval;
-	if (timercmp(&c->status_timer, &tv, <))
+	if (tv.tv_sec < c->status_timer.tv_sec ||
+	    tv.tv_sec - c->status_timer.tv_sec >= interval)
 		c->flags |= CLIENT_STATUS;
 }
 
@@ -1009,6 +1009,7 @@ server_second_timers(void)
 		}
 	}
 
+	/* Check for a minute having passed. */
 	gmtime_r(&t, &now);
 	gmtime_r(&last_t, &then);
 	if (now.tm_min == then.tm_min)

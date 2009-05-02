@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.309 2009-04-30 21:17:06 nicm Exp $ */
+/* $Id: tmux.h,v 1.310 2009-05-02 08:34:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -126,6 +126,9 @@ extern const char    *__progname;
 
 /* Escape timer period, in milliseconds. */
 #define ESCAPE_PERIOD 250
+
+/* Maximum poll timeout (when attached). */
+#define POLL_TIMEOUT 50
 
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
