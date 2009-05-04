@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.13 2009-02-16 19:29:17 nicm Exp $ */
+/* $Id: cmd-string.c,v 1.14 2009-05-04 19:12:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -274,7 +274,7 @@ cmd_string_variable(const char *s, size_t *p)
 		buf = xrealloc(buf, 1, len + 1);
 		buf[len++] = ch;
 
-		for(;;) {
+		for (;;) {
 			ch = cmd_string_getc(s, p);
 			if (ch == EOF || !cmd_string_other(ch))
 				break;
