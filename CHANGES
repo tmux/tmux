@@ -1,3 +1,7 @@
+04 May 2009
+
+* Use ACS line drawing characters for pane separator lines.
+
 30 April 2009
 
 * Support command sequences without a space before the semicolon, for example
@@ -1239,7 +1243,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.282 2009-04-30 21:53:32 nicm Exp $
+$Id: CHANGES,v 1.283 2009-05-04 13:20:01 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

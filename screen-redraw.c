@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.34 2009-04-02 21:08:13 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.35 2009-05-04 13:20:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -69,21 +69,39 @@ screen_redraw_screen(struct client *c)
 	struct window_pane	*wp;
 	struct screen		*s;
 	u_int		 	 i, j, sx, sy;
-	int		 	 status;
+	int		 	 status, has_acs;
+	u_char			 choriz, cvert, cbackg;
 
 	/* Get status line, er, status. */
 	status = options_get_number(&c->session->options, "status");
 
+	/* Work out ACS characters. */
+	if (tty_term_has(tty->term, TTYC_ACSC)) {
+		has_acs = 1;
+		choriz = tty_get_acs(tty, 'q');
+		cvert = tty_get_acs(tty, 'x');
+		cbackg = tty_get_acs(tty, '~');
+	} else {
+		has_acs = 0;
+		choriz = '-';
+		cvert = '|';
+		cbackg = '.';
+	}
+
 	/* Clear the screen. */
 	tty_reset(tty);
+	if (has_acs)
+		tty_putcode(tty, TTYC_SMACS);
 	for (j = 0; j < tty->sy - status; j++) {
 		for (i = 0; i < tty->sx; i++) {
 			if (!screen_redraw_check_cell(c, i, j)) {
 				tty_cursor(tty, i, j, 0, 0);
-				tty_putc(tty, '.');
+				tty_putc(tty, cbackg);
 			}
 		}
 	}
+	if (has_acs)
+		tty_putcode(tty, TTYC_RMACS);
 
 	/* Draw the panes. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -97,16 +115,18 @@ screen_redraw_screen(struct client *c)
 		sy = wp->sy;
 		
 		/* Draw left and right borders. */
+		if (has_acs)
+			tty_putcode(tty, TTYC_SMACS);
 		if (wp->xoff > 0) {
 			for (i = wp->yoff; i < wp->yoff + sy; i++) {
 				tty_cursor(tty, wp->xoff - 1, i, 0, 0);
-				tty_putc(tty, '|');
+				tty_putc(tty, cvert);
 			}
 		}
 		if (wp->xoff + sx < tty->sx) {
 			for (i = wp->yoff; i < wp->yoff + sy; i++) {
 				tty_cursor(tty, wp->xoff + sx, i, 0, 0);
-				tty_putc(&c->tty, '|');
+				tty_putc(&c->tty, cvert);
 			}
 		}
 		
@@ -114,13 +134,15 @@ screen_redraw_screen(struct client *c)
 		if (wp->yoff > 0) {
 			tty_cursor(tty, wp->xoff, wp->yoff - 1, 0, 0);
 			for (i = 0; i < sx; i++)
-				tty_putc(tty, '-');
+				tty_putc(tty, choriz);
 		}			
 		if (wp->yoff + sy < tty->sy - status) {
 			tty_cursor(tty, wp->xoff, wp->yoff + sy, 0, 0);
 			for (i = 0; i < sx; i++)
-				tty_putc(tty, '-');
+				tty_putc(tty, choriz);
 		}
+		if (has_acs)
+			tty_putcode(tty, TTYC_RMACS);
 
 		/* Draw the pane. */
 		screen_redraw_pane(c, wp);

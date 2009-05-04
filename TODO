@@ -63,6 +63,8 @@
 - refer to windows by name etc (duplicates? fnmatch?)
 - the output code (tty.c) could do with optimisation depending on term
   capibilities
+- would be nice to be able to use "--" to mark start of command w/ neww etc
+  to avoid quoting
 
 (hopefully) for 0.9, in no particular order:
 - a command to display the status line briefly when it is turned off
@@ -88,3 +90,6 @@
      hardcoded 81 for left-vertical is nasty
 - test bug sshing from freebsd console (tom iirc?)
 - rotate-window has redraw bugs... :-/
+- binding a neww ... while read i or for i in to a key doesn't work...
+  something to do with pty/tty handling?
+

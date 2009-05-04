@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.94 2009-04-29 17:50:52 nicm Exp $ */
+/* $Id: tty.c,v 1.95 2009-05-04 13:20:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,7 +28,6 @@
 #include "tmux.h"
 
 void	tty_fill_acs(struct tty *);
-u_char	tty_get_acs(struct tty *, u_char);
 
 void	tty_raw(struct tty *, const char *);
 
