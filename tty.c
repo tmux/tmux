@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.95 2009-05-04 13:20:02 nicm Exp $ */
+/* $Id: tty.c,v 1.96 2009-05-04 17:52:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -669,10 +669,10 @@ tty_cmd_clearendofscreen(
 
 	tty_reset(tty);
 
-	tty_cursor(tty, s->old_cx, s->old_cy, wp->xoff, wp->yoff);
 	tty_region(tty, 0, screen_size_y(s) - 1, wp->yoff);
+	tty_cursor(tty, s->old_cx, s->old_cy, wp->xoff, wp->yoff);
 	if (wp->xoff == 0 && screen_size_x(s) >= tty->sx &&
-	    tty_term_has(tty->term, TTYC_EL)) {	
+	    tty_term_has(tty->term, TTYC_EL)) {
 		tty_putcode(tty, TTYC_EL);
 		if (s->old_cy != screen_size_y(s) - 1) {
 			tty_cursor(tty, 0, s->old_cy + 1, wp->xoff, wp->yoff);
@@ -704,8 +704,8 @@ tty_cmd_clearstartofscreen(
 
 	tty_reset(tty);
 
-	tty_cursor(tty, 0, 0, wp->xoff, wp->yoff);
 	tty_region(tty, 0, screen_size_y(s) - 1, wp->yoff);
+	tty_cursor(tty, 0, 0, wp->xoff, wp->yoff);
 	if (wp->xoff == 0 && screen_size_x(s) >= tty->sx &&
 	    tty_term_has(tty->term, TTYC_EL)) {
 		for (i = 0; i < s->old_cy; i++) {
@@ -733,8 +733,8 @@ tty_cmd_clearscreen(
 
 	tty_reset(tty);
 
-	tty_cursor(tty, 0, 0, wp->xoff, wp->yoff);
 	tty_region(tty, 0, screen_size_y(s) - 1, wp->yoff);
+	tty_cursor(tty, 0, 0, wp->xoff, wp->yoff);
 	if (wp->xoff == 0 && screen_size_x(s) >= tty->sx &&
 	    tty_term_has(tty->term, TTYC_EL)) {
 		for (i = 0; i < screen_size_y(s); i++) {
