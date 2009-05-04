@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.26 2009-05-04 17:58:27 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.27 2009-05-04 18:05:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -131,24 +131,22 @@ tty_keys_cmp(struct tty_key *k1, struct tty_key *k2)
 void
 tty_keys_add(struct tty *tty, const char *s, int key, int flags)
 {
-	struct tty_key	*tk, tl;
-
-	tl.string = s;
-	if ((tk = RB_FIND(tty_keys, &tty->ktree, &tl)) != NULL) {
-		log_debug("already key matching: %s (old %x, new %x)",
-		    tk->string, tk->key, key);
-		return;
-	}
+	struct tty_key	*tk, *tl;
 
 	tk = xmalloc(sizeof *tk);
 	tk->string = xstrdup(s);
 	tk->key = key;
 	tk->flags = flags;
 
+	if ((tl = RB_INSERT(tty_keys, &tty->ktree, tk)) != NULL) {
+		xfree(tk->string);
+		xfree(tk);
+		log_debug("key exists: %s (old %x, new %x)", s, tl->key, key);
+ 		return;
+	}
+
 	if (strlen(tk->string) > tty->ksize)
 		tty->ksize = strlen(tk->string);
-	RB_INSERT(tty_keys, &tty->ktree, tk);
-
 	log_debug("new key %x: size now %zu (%s)", key, tty->ksize, tk->string);
 }
 
