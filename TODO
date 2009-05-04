@@ -89,7 +89,6 @@
      speed improvements? -- still too slow over ssh!
      hardcoded 81 for left-vertical is nasty
 - test bug sshing from freebsd console (tom iirc?)
-- rotate-window has redraw bugs... :-/
 - binding a neww ... while read i or for i in to a key doesn't work...
   something to do with pty/tty handling?
 
