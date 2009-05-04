@@ -1,4 +1,4 @@
-/* $Id: layout.c,v 1.5 2009-04-30 21:17:06 nicm Exp $ */
+/* $Id: layout.c,v 1.6 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -40,7 +40,7 @@ const struct {
 	{ "even-horizontal", layout_even_horizontal },
 	{ "even-vertical", layout_even_vertical },
 	{ "left-vertical", layout_left_vertical },
-}; 
+};
 
 const char *
 layout_name(struct window *w)
@@ -92,9 +92,9 @@ void
 layout_active_only(struct window *w, unused int active_changed)
 {
 	struct window_pane	*wp;
-	
+
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp == w->active) { 
+		if (wp == w->active) {
 			wp->flags &= ~PANE_HIDDEN;
 			wp->xoff = wp->yoff = 0;
 			window_pane_resize(wp, w->sx, w->sy);
@@ -123,7 +123,7 @@ layout_even_horizontal(struct window *w, int active_changed)
 		n = w->sx / PANE_MINIMUM;
 	} else
 		width = w->sx / n;
-	
+
 	/* Fit the panes. */
 	i = xoff = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -171,7 +171,7 @@ layout_even_vertical(struct window *w, int active_changed)
 		n = w->sy / PANE_MINIMUM;
 	} else
 		height = w->sy / n;
-	
+
 	/* Fit the panes. */
 	i = yoff = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
@@ -226,7 +226,7 @@ layout_left_vertical(struct window *w, int active_changed)
 		n = w->sy / PANE_MINIMUM;
 	} else
 		height = w->sy / n;
-	
+
 	/* Fit the panes. */
 	i = yoff = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {

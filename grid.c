@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.15 2009-03-30 19:44:55 nicm Exp $ */
+/* $Id: grid.c,v 1.16 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -375,12 +375,12 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny)
 	for (yy = py; yy < py + ny; yy++) {
 		if (gd->data[yy] != NULL) {
 			xfree(gd->data[yy]);
-			gd->data[yy] = NULL;	
+			gd->data[yy] = NULL;
 			gd->size[yy] = 0;
 		}
 		if (gd->udata[yy] != NULL) {
 			xfree(gd->udata[yy]);
-			gd->udata[yy] = NULL;	
+			gd->udata[yy] = NULL;
 			gd->usize[yy] = 0;
 		}
 	}
@@ -413,10 +413,10 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny)
 		grid_clear_lines(gd, yy, 1);
 	}
 
-	memmove(&gd->data[dy], &gd->data[py], ny * (sizeof *gd->data));	
+	memmove(&gd->data[dy], &gd->data[py], ny * (sizeof *gd->data));
 	memmove(&gd->size[dy], &gd->size[py], ny * (sizeof *gd->size));
 
-	memmove(&gd->udata[dy], &gd->udata[py], ny * (sizeof *gd->udata));	
+	memmove(&gd->udata[dy], &gd->udata[py], ny * (sizeof *gd->udata));
 	memmove(&gd->usize[dy], &gd->usize[py], ny * (sizeof *gd->usize));
 
 	/* Wipe any lines that have been moved (without freeing them). */

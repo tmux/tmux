@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.26 2009-03-02 18:05:40 nicm Exp $ */
+/* $Id: input-keys.c,v 1.27 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,7 +70,7 @@ struct input_key_ent input_keys[] = {
 	{ KEYC_ADDCTL(KEYC_DOWN),  "\033Ob", 0 },
 	{ KEYC_ADDCTL(KEYC_RIGHT), "\033Oc", 0 },
 	{ KEYC_ADDCTL(KEYC_LEFT),  "\033Od", 0 },
-	
+
 	{ KEYC_ADDSFT(KEYC_UP),    "\033[a", 0 },
 	{ KEYC_ADDSFT(KEYC_DOWN),  "\033[b", 0 },
 	{ KEYC_ADDSFT(KEYC_RIGHT), "\033[c", 0 },
@@ -85,7 +85,7 @@ struct input_key_ent input_keys[] = {
 	{ KEYC_DOWN,   "\033[B",   0 },
 	{ KEYC_RIGHT,  "\033[C",   0 },
 	{ KEYC_LEFT,   "\033[D",   0 },
-	    
+
 	/* Keypad keys. Keypad versions must come first. */
 	{ KEYC_KP0_1,  "/", INPUTKEY_KEYPAD },
 	{ KEYC_KP0_2,  "*", INPUTKEY_KEYPAD },

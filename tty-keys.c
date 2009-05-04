@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.25 2009-04-17 12:36:21 nicm Exp $ */
+/* $Id: tty-keys.c,v 1.26 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -135,7 +135,7 @@ tty_keys_add(struct tty *tty, const char *s, int key, int flags)
 
 	tl.string = s;
 	if ((tk = RB_FIND(tty_keys, &tty->ktree, &tl)) != NULL) {
-		log_debug("already key matching: %s (old %x, new %x)", 
+		log_debug("already key matching: %s (old %x, new %x)",
 		    tk->string, tk->key, key);
 		return;
 	}
@@ -190,7 +190,7 @@ void
 tty_keys_free(struct tty *tty)
 {
 	struct tty_key	*tk;
-	
+
 	while (!RB_EMPTY(&tty->ktree)) {
 		tk = RB_ROOT(&tty->ktree);
 		RB_REMOVE(tty_keys, &tty->ktree, tk);
@@ -271,7 +271,7 @@ tty_keys_next(struct tty *tty, int *key, u_char *mouse)
 		buffer_remove(tty->in, size);
 		goto found;
 	}
-	
+
 	/* Escape but no key string. If the timer isn't started, start it. */
 	if (!(tty->flags & TTY_ESCAPE)) {
 		tv.tv_sec = 0;
@@ -293,7 +293,7 @@ tty_keys_next(struct tty *tty, int *key, u_char *mouse)
 		buffer_remove(tty->in, 1);
 		*key = KEYC_ADDESC(buffer_read8(tty->in));
 		goto found;
-	} 
+	}
 
 	/* Or a key string? */
 	if (len > 1) {
@@ -310,7 +310,7 @@ tty_keys_next(struct tty *tty, int *key, u_char *mouse)
 		fatal("gettimeofday");
 	if (timercmp(&tty->key_timer, &tv, >))
 		return (1);
-	
+
 	/* Give up and return the escape. */
 	buffer_remove(tty->in, 1);
 	*key = '\033';
@@ -333,7 +333,7 @@ tty_keys_parse_mouse(
 	if (len != 6 || memcmp(buf, "\033[M", 3) != 0)
 		return (KEYC_NONE);
 	*size = 6;
-	
+
 	if (buf[3] < 32 || buf[4] < 33 || buf[5] < 33)
 		return (KEYC_NONE);
 

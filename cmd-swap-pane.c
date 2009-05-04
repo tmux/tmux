@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-pane.c,v 1.4 2009-04-03 17:21:46 nicm Exp $ */
+/* $Id: cmd-swap-pane.c,v 1.5 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -111,7 +111,7 @@ cmd_swap_pane_parse(struct cmd *self, int argc, char **argv, char **cause)
 					goto error;
 				}
 				data->src = n;
-			}			
+			}
 			break;
 		case 'q':
 			if (data->dst == -1) {
@@ -124,7 +124,7 @@ cmd_swap_pane_parse(struct cmd *self, int argc, char **argv, char **cause)
 			}
 			data->flag_up = 0;
 			data->flag_down = 0;
-			break; 
+			break;
 		case 'U':
 			data->flag_up = 1;
 			data->flag_down = 0;
@@ -195,7 +195,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	if (src_wp == dst_wp)
-		return (0); 
+		return (0);
 
 	tmp_wp = TAILQ_PREV(dst_wp, window_panes, entry);
 	TAILQ_REMOVE(&w->panes, dst_wp, entry);

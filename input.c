@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.77 2009-04-23 21:28:45 nicm Exp $ */
+/* $Id: input.c,v 1.78 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -544,7 +544,7 @@ void
 input_handle_character(u_char ch, struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
-	
+
 	if (ch > 0x7f && options_get_number(&wp->window->options, "utf8")) {
 		/*
 		 * UTF-8 sequence.

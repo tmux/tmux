@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-window.c,v 1.8 2009-04-30 16:27:29 nicm Exp $ */
+/* $Id: cmd-choose-window.c,v 1.9 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,7 +63,7 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
-		
+
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
 		return (0);
 

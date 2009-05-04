@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.72 2009-04-01 18:46:03 nicm Exp $ */
+/* $Id: window.c,v 1.73 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -289,7 +289,7 @@ window_fit_panes(struct window *w)
 	struct window_pane	*wp;
 	u_int			 npanes, canfit, total;
 	int			 left;
-	
+
 	if (TAILQ_EMPTY(&w->panes))
 		return;
 
@@ -352,7 +352,7 @@ window_fit_panes(struct window *w)
 			}
 		}
 	}
-			
+
 	/* Now do the resize. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		wp->sy--;

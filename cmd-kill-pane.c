@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-pane.c,v 1.6 2009-04-01 21:10:08 nicm Exp $ */
+/* $Id: cmd-kill-pane.c,v 1.7 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,7 @@ cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_pane_data	*data = self->data;
 	struct winlink		*wl;
 	struct window_pane	*wp;
-	
+
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
 	if (data->pane == -1)

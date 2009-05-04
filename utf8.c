@@ -1,4 +1,4 @@
-/* $Id: utf8.c,v 1.5 2009-04-30 20:54:53 nicm Exp $ */
+/* $Id: utf8.c,v 1.6 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -231,7 +231,7 @@ utf8_build(void)
 
 		ptr = &utf8_width_root;
 		while (*ptr != NULL) {
-			node = *ptr;			
+			node = *ptr;
 			if (item->last < node->first)
 				ptr = &(node->left);
 			else if (item->first > node->last)

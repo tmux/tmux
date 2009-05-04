@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.81 2009-03-28 20:17:29 nicm Exp $ */
+/* $Id: screen.c,v 1.82 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -181,7 +181,7 @@ screen_resize_y(struct screen *s, u_int sy)
 			gd->size[yy] = 0;
 			gd->data[yy] = NULL;
 			gd->usize[yy] = 0;
-			gd->udata[yy] = NULL;			
+			gd->udata[yy] = NULL;
 		}
 	}
 

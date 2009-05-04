@@ -1,4 +1,4 @@
-/* $Id: cmd-resize-pane.c,v 1.2 2009-04-30 06:04:26 nicm Exp $ */
+/* $Id: cmd-resize-pane.c,v 1.3 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -69,7 +69,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const char	       	*errstr;
 	struct window_pane	*wp, *wq;
 	u_int			 adjust;
-	
+
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
 	if (wl->window->layout != 0) {

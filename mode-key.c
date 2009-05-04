@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.10 2009-02-21 17:46:13 nicm Exp $ */
+/* $Id: mode-key.c,v 1.11 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -132,7 +132,7 @@ mode_key_lookup_vi(struct mode_key_data *mdata, int key)
 	case KEYC_UP:
 		return (MODEKEYCMD_UP);
 	}
-	
+
 	return (MODEKEYCMD_NONE);
 }
 

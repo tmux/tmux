@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.59 2009-03-31 15:10:43 nicm Exp $ */
+/* $Id: window-copy.c,v 1.60 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -134,7 +134,7 @@ window_copy_pageup(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	
+
 	if (data->oy + screen_size_y(s) > screen_hsize(&wp->base))
 		data->oy = screen_hsize(&wp->base);
 	else
@@ -142,7 +142,7 @@ window_copy_pageup(struct window_pane *wp)
 	window_copy_update_selection(wp);
 	window_copy_redraw_screen(wp);
 }
-     
+
 void
 window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
@@ -236,9 +236,9 @@ window_copy_mouse(struct window_pane *wp,
 
 	data->cx = x;
 	data->cy = y;
-	
+
 	if (window_copy_update_selection(wp))
- 		window_copy_redraw_screen(wp);		
+ 		window_copy_redraw_screen(wp);
 	window_copy_update_cursor(wp);
 }
 

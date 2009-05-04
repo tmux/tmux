@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.34 2009-04-30 16:27:29 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.35 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session		*s;
 	struct winlink		*wl;
 	struct window		*w;
-	struct window_pane	*wp;	
+	struct window_pane	*wp;
 	struct grid		*gd;
 	u_int			 i;
 	unsigned long long	 size;
@@ -64,7 +64,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			gd = wp->base.grid;
-			
+
 			size = 0;
 			for (i = 0; i < gd->hsize; i++) {
 				size += gd->size[i] * sizeof **gd->data;
@@ -76,9 +76,9 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 			if (wp->fd != -1)
 				name = ttyname(wp->fd);
 			else
-				name = "unknown";		
-			ctx->print(ctx, 
-			    "     %s [%ux%u %s] [history %u/%u, %llu bytes]", 
+				name = "unknown";
+			ctx->print(ctx,
+			    "     %s [%ux%u %s] [history %u/%u, %llu bytes]",
 			    name, wp->sx, wp->sy, layout_name(w), gd->hsize,
 			    gd->hlimit, size);
 		}

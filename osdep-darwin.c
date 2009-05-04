@@ -1,4 +1,4 @@
-/* $Id: osdep-darwin.c,v 1.10 2009-04-29 23:07:35 nicm Exp $ */
+/* $Id: osdep-darwin.c,v 1.11 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Joshua Elsasser <josh@elsasser.org>
@@ -33,7 +33,7 @@ osdep_get_name(int fd, unused char *tty)
 	int	mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, 0 };
         size_t	size;
 	struct kinfo_proc kp;
-	
+
 	if ((mib[3] = tcgetpgrp(fd)) == -1)
 		return (NULL);
 

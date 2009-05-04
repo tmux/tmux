@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.65 2009-03-07 10:29:06 nicm Exp $ */
+/* $Id: server-msg.c,v 1.66 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -155,7 +155,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	if (data.pid != -1) {
 		TAILQ_FOREACH(cmd, cmdlist, qentry) {
 			if (cmd->entry->flags & CMD_CANTNEST) {
-				server_msg_fn_command_error(&ctx, 
+				server_msg_fn_command_error(&ctx,
 				    "sessions should be nested with care. "
 				    "unset $TMUX to force");
 				cmd_list_free(cmdlist);
@@ -233,12 +233,12 @@ server_msg_fn_resize(struct hdr *hdr, struct client *c)
 	c->tty.sy = data.sy;
 	if (c->tty.sy == 0)
 		c->tty.sy = 25;
-	
+
 	c->tty.cx = UINT_MAX;
 	c->tty.cy = UINT_MAX;
 	c->tty.rupper = UINT_MAX;
 	c->tty.rlower = UINT_MAX;
-	
+
 	recalculate_sizes();
 
 	/* Always redraw this client. */

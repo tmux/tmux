@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.25 2009-04-03 17:31:44 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.26 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -618,7 +618,7 @@ cmd_pane_parse(struct cmd *self, int argc, char **argv, char **cause)
 					goto error;
 				}
 				data->pane = n;
-			}			
+			}
 			break;
 		case 't':
 			if (data->target == NULL)

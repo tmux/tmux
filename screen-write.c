@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.44 2009-04-30 20:54:53 nicm Exp $ */
+/* $Id: screen-write.c,v 1.45 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -610,7 +610,7 @@ screen_write_cell(
 	grid_view_set_cell(gd, s->cx, s->cy, gc);
 	if (gc->flags & GRID_FLAG_UTF8)
 		grid_view_set_utf8(gd, s->cx, s->cy, &gu);
-	
+
 	/* Move the cursor. */
 	screen_write_save(ctx);
 	s->cx += width;

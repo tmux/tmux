@@ -1,4 +1,4 @@
-/* $Id: cmd-break-pane.c,v 1.1 2009-03-07 09:29:54 nicm Exp $ */
+/* $Id: cmd-break-pane.c,v 1.2 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,7 +50,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_pane	*wp;
 	struct window		*w;
 	char			*cause;
-	
+
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return (-1);
 	if (data->pane == -1)

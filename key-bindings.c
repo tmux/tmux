@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.69 2009-04-30 18:39:34 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.70 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -183,7 +183,7 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 void printflike2
 key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	struct winlink	*wl = ctx->cursession->curw; 
+	struct winlink	*wl = ctx->cursession->curw;
 	va_list		 ap;
 
 	if (wl->window->active->mode != &window_more_mode)

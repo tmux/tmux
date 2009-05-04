@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.139 2009-05-02 08:34:38 nicm Exp $ */
+/* $Id: server.c,v 1.140 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -186,7 +186,7 @@ server_start(char *path)
 		strlcpy(rpathbuf, socket_path, sizeof rpathbuf);
 	setproctitle("server (%s)", rpathbuf);
 #endif
-	
+
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
 	size = strlcpy(sa.sun_path, socket_path, sizeof sa.sun_path);
@@ -423,7 +423,7 @@ server_child_signal(void)
 		}
 	}
 }
-	
+
 /* Fill window pollfds. */
 void
 server_fill_windows(struct pollfd **pfd)
@@ -554,7 +554,7 @@ server_redraw_locked(struct client *c)
 	    &global_window_options, "clock-mode-colour");
 	style = options_get_number(
 	    &global_window_options, "clock-mode-style");
-	
+
 	screen_init(&screen, xx, yy, 0);
 
 	screen_write_start(&ctx, NULL, &screen);
@@ -641,7 +641,7 @@ server_fill_clients(struct pollfd **pfd)
 		}
 		(*pfd)++;
 	}
-	
+
 	/*
 	 * Clear any window redraw flags (will have been redrawn as part of
 	 * client).
@@ -650,7 +650,7 @@ server_fill_clients(struct pollfd **pfd)
 		w = ARRAY_ITEM(&windows, i);
 		if (w == NULL)
 			continue;
-		
+
 		w->flags &= ~WINDOW_REDRAW;
 		TAILQ_FOREACH(wp, &w->panes, entry)
 			wp->flags &= ~PANE_REDRAW;
@@ -745,7 +745,7 @@ server_handle_client(struct client *c)
 		}
 		if (server_locked)
 			continue;
-		
+
 		/* Check for mouse keys. */
 		if (key == KEYC_MOUSE) {
 			window_pane_mouse(wp, c, mouse[0], mouse[1], mouse[2]);
@@ -784,7 +784,7 @@ server_handle_client(struct client *c)
 				window_pane_key(wp, c, key);
 			continue;
 		}
-		
+
 		/* If this key can repeat, reset the repeat flags and timer. */
 		if (xtimeout != 0 && bd->can_repeat) {
 			c->flags |= CLIENT_PREFIX|CLIENT_REPEAT;
@@ -803,7 +803,7 @@ server_handle_client(struct client *c)
 		return;
 	wp = c->session->curw->window->active;	/* could die - do each loop */
 	s = wp->screen;
-	
+
 	/* Ensure cursor position and mode settings. */
 	status = options_get_number(&c->session->options, "status");
 	if (wp->yoff + s->cy < c->tty.sy - status)
@@ -942,7 +942,7 @@ server_check_window(struct window *w)
 			layout_refresh(w, 0);
 		}
 		wp = wq;
-	} 
+	}
 
 	if (!destroyed)
 		return;
@@ -1022,7 +1022,7 @@ server_second_timers(void)
 			if (ARRAY_ITEM(&clients, i) != NULL)
 				server_redraw_client(ARRAY_ITEM(&clients, i));
 		}
-	}	
+	}
 }
 
 /* Update socket execute permissions based on whether sessions are attached. */

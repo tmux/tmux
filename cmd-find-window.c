@@ -1,4 +1,4 @@
-/* $Id: cmd-find-window.c,v 1.6 2009-03-29 11:18:28 nicm Exp $ */
+/* $Id: cmd-find-window.c,v 1.7 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,7 +70,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
-	
+
 	ARRAY_INIT(&list_idx);
 	ARRAY_INIT(&list_ctx);
 
@@ -86,7 +86,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 				if (sres == NULL &&
 				    strstr(wp->base.title, data->arg) == NULL)
 					continue;
-				
+
 				if (sres == NULL) {
 					xasprintf(&sctx,
 					    "pane %u title: \"%s\"", i - 1,
@@ -96,9 +96,9 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 					xfree(sres);
 				}
 			}
-				
+
 			ARRAY_ADD(&list_idx, wm->idx);
-			ARRAY_ADD(&list_ctx, sctx);			
+			ARRAY_ADD(&list_ctx, sctx);
 		}
 	}
 
@@ -123,7 +123,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		wm = winlink_find_by_index(
 		    &s->windows, ARRAY_ITEM(&list_idx, i));
 		w = wm->window;
-		
+
 		sctx = ARRAY_ITEM(&list_ctx, i);
 		window_choose_add(wl->window->active,
 		    wm->idx, "%3d: %s [%ux%u] (%u panes) %s", wm->idx, w->name,
@@ -170,7 +170,7 @@ cmd_find_window_search(struct window_pane *wp, const char *searchstr)
 	u_int	 		 i, j, k;
 
 	buf = xmalloc(1);
-				
+
 	for (j = 0; j < screen_size_y(&wp->base); j++) {
 		off = 0;
 		for (i = 0; i < screen_size_x(&wp->base); i++) {
@@ -191,7 +191,7 @@ cmd_find_window_search(struct window_pane *wp, const char *searchstr)
 		while (off > 0 && buf[off - 1] == ' ')
 			off--;
 		buf[off] = '\0';
-		
+
 		if ((s = strstr(buf, searchstr)) != NULL) {
 			s = section_string(buf, off, s - buf, 40);
 			xfree(buf);

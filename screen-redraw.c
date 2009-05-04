@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.35 2009-05-04 13:20:02 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.36 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -113,7 +113,7 @@ screen_redraw_screen(struct client *c)
 		s = wp->screen;
 		sx = wp->sx;
 		sy = wp->sy;
-		
+
 		/* Draw left and right borders. */
 		if (has_acs)
 			tty_putcode(tty, TTYC_SMACS);
@@ -129,13 +129,13 @@ screen_redraw_screen(struct client *c)
 				tty_putc(&c->tty, cvert);
 			}
 		}
-		
+
 		/* Draw top and bottom borders. */
 		if (wp->yoff > 0) {
 			tty_cursor(tty, wp->xoff, wp->yoff - 1, 0, 0);
 			for (i = 0; i < sx; i++)
 				tty_putc(tty, choriz);
-		}			
+		}
 		if (wp->yoff + sy < tty->sy - status) {
 			tty_cursor(tty, wp->xoff, wp->yoff + sy, 0, 0);
 			for (i = 0; i < sx; i++)
@@ -147,7 +147,7 @@ screen_redraw_screen(struct client *c)
 		/* Draw the pane. */
 		screen_redraw_pane(c, wp);
 	}
-	
+
 	/* Draw the status line. */
 	screen_redraw_status(c);
 }
@@ -161,7 +161,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 	for (i = 0; i < wp->sy; i++)
 		tty_draw_line(&c->tty, wp->screen, i, wp->xoff, wp->yoff);
 }
-	
+
 
 /* Draw the status line. */
 void

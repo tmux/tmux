@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.311 2009-05-04 13:20:02 nicm Exp $ */
+/* $Id: tmux.h,v 1.312 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -351,7 +351,7 @@ struct tty_term_code_entry {
 
 /* Output commands. */
 enum tty_cmd {
-	TTY_CELL,	
+	TTY_CELL,
 	TTY_CLEARENDOFLINE,
 	TTY_CLEARENDOFSCREEN,
 	TTY_CLEARLINE,
@@ -445,7 +445,7 @@ enum mode_key_cmd {
 	MODEKEYCMD_UP,
 };
 
-struct mode_key_data {	
+struct mode_key_data {
 	int			 type;
 
 	int			 flags;
@@ -608,7 +608,7 @@ struct input_ctx {
 	size_t		 off;
 
 	struct grid_cell cell;
-	
+
 
 	struct grid_cell saved_cell;
 	u_int		 saved_cx;
@@ -663,7 +663,7 @@ struct window_pane {
 #define PANE_HIDDEN 0x1
 #define PANE_RESTART 0x2
 #define PANE_REDRAW 0x4
-	
+
 	char		*cmd;
 	char		*cwd;
 
@@ -690,13 +690,13 @@ struct window {
 	char		*name;
 	struct timeval	 name_timer;
 
-	struct window_pane *active;	
+	struct window_pane *active;
 	struct window_panes panes;
 	u_int		 layout;
 
 	u_int		 sx;
 	u_int		 sy;
-       
+
 	int		 flags;
 #define WINDOW_BELL 0x1
 #define WINDOW_HIDDEN 0x2
@@ -1593,7 +1593,7 @@ struct session	*session_create(const char *, const char *,
     		     const char *, u_int, u_int, char **);
 void	 	 session_destroy(struct session *);
 int	 	 session_index(struct session *, u_int *);
-struct winlink	*session_new(struct session *, 
+struct winlink	*session_new(struct session *,
 	    	     const char *, const char *, const char *, int, char **);
 struct winlink	*session_attach(
     		     struct session *, struct window *, int, char **);

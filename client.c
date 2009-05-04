@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.46 2009-03-31 22:20:42 nicm Exp $ */
+/* $Id: client.c,v 1.47 2009-05-04 17:58:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -150,7 +150,7 @@ client_main(struct client_ctx *cctx)
 			client_handle_winch(cctx);
 		if (sigcont) {
 			siginit();
-			client_write_server(cctx, MSG_WAKEUP, NULL, 0);	
+			client_write_server(cctx, MSG_WAKEUP, NULL, 0);
 			sigcont = 0;
 		}
 

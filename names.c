@@ -1,4 +1,4 @@
-/* $Id: names.c,v 1.4 2009-02-13 00:43:04 nicm Exp $ */
+/* $Id: names.c,v 1.5 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,7 @@ set_window_names(void)
 	u_int		 i;
 	char		*name, *wname;
 	struct timeval	 tv, tv2;
-	
+
 	if (gettimeofday(&tv, NULL) != 0)
 		fatal("gettimeofday");
 
@@ -49,7 +49,7 @@ set_window_names(void)
 		memcpy(&w->name_timer, &tv, sizeof w->name_timer);
 		tv2.tv_sec = 0;
 		tv2.tv_usec = NAME_INTERVAL * 1000L;
-		timeradd(&w->name_timer, &tv2, &w->name_timer);	
+		timeradd(&w->name_timer, &tv2, &w->name_timer);
 
 		if (w->active->screen != &w->active->base)
 			name = NULL;
@@ -88,7 +88,7 @@ parse_window_name(const char *in)
 	name = copy = xstrdup(in);
 	if (strncmp(name, "exec ", (sizeof "exec ") - 1) == 0)
 		name = name + (sizeof "exec ") - 1;
-	
+
 	while (*name == ' ')
 		name++;
 	if ((ptr = strchr(name, ' ')) != NULL)
@@ -99,7 +99,7 @@ parse_window_name(const char *in)
 		while (ptr > name && !isalnum(*ptr))
 			*ptr-- = '\0';
 	}
-	
+
 	if (*name == '/')
 		name = xbasename(name);
 	name = xstrdup(name);

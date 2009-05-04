@@ -1,4 +1,4 @@
-/* $Id: cmd-list.c,v 1.4 2009-04-30 21:53:32 nicm Exp $ */
+/* $Id: cmd-list.c,v 1.5 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,18 +44,18 @@ cmd_list_parse(int argc, char **argv, char **cause)
 		if (arglen > 1 && argv[i][arglen - 2] == '\\') {
 			argv[i][arglen - 2] = ';';
 			continue;
-		} 
+		}
 
 		new_argc = i - lastsplit;
 		new_argv = argv + lastsplit;
 		if (arglen != 1)
 			new_argc++;
-		
+
 		cmd = cmd_parse(new_argc, new_argv, cause);
 		if (cmd == NULL)
 			goto bad;
 		TAILQ_INSERT_TAIL(cmdlist, cmd, qentry);
-		
+
 		lastsplit = i + 1;
 	}
 
@@ -65,7 +65,7 @@ cmd_list_parse(int argc, char **argv, char **cause)
 			goto bad;
 		TAILQ_INSERT_TAIL(cmdlist, cmd, qentry);
 	}
-       
+
 	return (cmdlist);
 
 bad:
@@ -125,7 +125,7 @@ void
 cmd_list_free(struct cmd_list *cmdlist)
 {
 	struct cmd	*cmd;
-	
+
 	while (!TAILQ_EMPTY(cmdlist)) {
 		cmd = TAILQ_FIRST(cmdlist);
 		TAILQ_REMOVE(cmdlist, cmd, qentry);

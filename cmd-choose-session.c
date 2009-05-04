@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-session.c,v 1.6 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-choose-session.c,v 1.7 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,7 +61,7 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
-		
+
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
 		return (0);
 

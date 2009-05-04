@@ -55,7 +55,7 @@
   window-more. what for? isnt this the same as doing it w/ splitw/neww now?
 - would be nice if tmux could be the shell (tmux attach, but hard link to tmux
   binary as "tmuxsh" or wrapper script?) -- problems with tty dev permissions
-- support other mouse modes (highlight etc) and use it in copy mode 
+- support other mouse modes (highlight etc) and use it in copy mode
 - set-remain-on-exit is a bit of a hack, some way to do it generically?
 - set-option should be set-session-option and should be overall global options
   for stuff like mode keys?

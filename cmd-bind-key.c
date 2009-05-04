@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.20 2009-03-28 14:08:09 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.21 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,7 +65,7 @@ cmd_bind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 		case 'r':
 			data->can_repeat = 1;
 			break;
-		default:			
+		default:
 			goto usage;
 		}
 	}

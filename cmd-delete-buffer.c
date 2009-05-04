@@ -1,4 +1,4 @@
-/* $Id: cmd-delete-buffer.c,v 1.4 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-delete-buffer.c,v 1.5 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,6 +56,6 @@ cmd_delete_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "no buffer %d", data->buffer);
 		return (-1);
 	}
-	
+
 	return (0);
 }

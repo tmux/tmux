@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.13 2009-03-02 17:01:00 nicm Exp $ */
+/* $Id: window-choose.c,v 1.14 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -121,7 +121,7 @@ window_choose_init(struct window_pane *wp)
 	mode_key_init(&data->mdata,
 	    options_get_number(&wp->window->options, "mode-keys"),
 	    MODEKEY_CHOOSEMODE);
-	
+
 	return (s);
 }
 
@@ -132,7 +132,7 @@ window_choose_free(struct window_pane *wp)
 	u_int				 i;
 
  	mode_key_free(&data->mdata);
-	
+
 	for (i = 0; i < ARRAY_LENGTH(&data->list); i++)
 		xfree(ARRAY_ITEM(&data->list, i).name);
 	ARRAY_FREE(&data->list);
@@ -196,7 +196,7 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 			window_choose_write_line(
 			    wp, &ctx, data->selected + 1 - data->top);
 			screen_write_stop(&ctx);
-		}			
+		}
 		break;
 	case MODEKEYCMD_DOWN:
 		if (items == 0)
@@ -217,7 +217,7 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 			window_choose_write_line(
 			    wp, &ctx, data->selected - 1 - data->top);
 			screen_write_stop(&ctx);
-		}			
+		}
 		break;
 	case MODEKEYCMD_PREVIOUSPAGE:
 		if (data->selected < screen_size_y(s)) {
@@ -354,7 +354,7 @@ window_choose_scroll_down(struct window_pane *wp)
 	screen_write_start(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0);
 	screen_write_deleteline(&ctx, 1);
-	window_choose_write_line(wp, &ctx, screen_size_y(s) - 1);	
+	window_choose_write_line(wp, &ctx, screen_size_y(s) - 1);
 	if (screen_size_y(&data->screen) > 1)
 		window_choose_write_line(wp, &ctx, screen_size_y(s) - 2);
 	screen_write_stop(&ctx);

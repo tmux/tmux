@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.96 2009-05-04 17:52:14 nicm Exp $ */
+/* $Id: tty.c,v 1.97 2009-05-04 17:58:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -163,7 +163,7 @@ tty_start_tty(struct tty *tty)
 	tty_putcode(tty, TTYC_SMKX);
 	tty_putcode(tty, TTYC_ENACS);
 	tty_putcode(tty, TTYC_CLEAR);
-	
+
 	tty_putcode(tty, TTYC_CNORM);
 	if (tty_term_has(tty->term, TTYC_KMOUS))
 		tty_puts(tty, "\033[?1000l");
@@ -200,7 +200,7 @@ tty_stop_tty(struct tty *tty)
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
-	
+
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
 	if (tty_term_has(tty->term, TTYC_KMOUS))
 		tty_raw(tty, "\033[?1000l");
@@ -243,7 +243,7 @@ tty_close(struct tty *tty, int no_stop)
 
 	if (!no_stop)
 		tty_stop_tty(tty);
-	
+
 	tty_term_free(tty->term);
 	tty_keys_free(tty);
 
@@ -440,7 +440,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 	if (sx >= tty->sx)
 		return;
 	tty_reset(tty);
-		
+
 	tty_cursor(tty, sx, py, ox, oy);
 	if (screen_size_x(s) >= tty->sx && tty_term_has(tty->term, TTYC_EL))
 		tty_putcode(tty, TTYC_EL);
@@ -486,7 +486,7 @@ tty_cmd_insertcharacter(struct tty *tty, struct window_pane *wp, va_list ap)
 	tty_reset(tty);
 
  	tty_cursor(tty, s->old_cx, s->old_cy, wp->xoff, wp->yoff);
-	if (tty_term_has(tty->term, TTYC_ICH) || 
+	if (tty_term_has(tty->term, TTYC_ICH) ||
 	    tty_term_has(tty->term, TTYC_ICH1))
 		tty_emulate_repeat(tty, TTYC_ICH, TTYC_ICH1, ua);
 	else {
@@ -788,7 +788,7 @@ tty_cell(
 	u_int	i;
 
 	/* Skip last character if terminal is stupid. */
-	if (tty->term->flags & TERM_EARLYWRAP && 
+	if (tty->term->flags & TERM_EARLYWRAP &&
 	    tty->cy == tty->sy - 1 && tty->cx == tty->sx - 1)
 		return;
 
@@ -895,7 +895,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 		if (tty_term_has(tty->term, TTYC_REV))
 			tty_putcode(tty, TTYC_REV);
 		else if (tty_term_has(tty->term, TTYC_SMSO))
-			tty_putcode(tty, TTYC_SMSO);    
+			tty_putcode(tty, TTYC_SMSO);
 	}
 	if (changed & GRID_ATTR_HIDDEN)
 		tty_putcode(tty, TTYC_INVIS);
@@ -922,10 +922,10 @@ tty_try_256(struct tty *tty, u_char colour, const char *type)
 {
 	char	s[32];
 
-	if (!(tty->term->flags & TERM_256COLOURS) && 
+	if (!(tty->term->flags & TERM_256COLOURS) &&
 	    !(tty->term_flags & TERM_256COLOURS))
 		return (-1);
-	
+
 	xsnprintf(s, sizeof s, "\033[%s;5;%hhum", type, colour);
 	tty_puts(tty, s);
 	return (0);
@@ -935,7 +935,7 @@ int
 tty_try_88(struct tty *tty, u_char colour, const char *type)
 {
 	char	s[32];
-	
+
 	if (!(tty->term->flags & TERM_88COLOURS) &&
 	    !(tty->term_flags & TERM_88COLOURS))
 		return (-1);
@@ -965,7 +965,7 @@ tty_attributes_fg(struct tty *tty, const struct grid_cell *gc)
 		} else if (tty->cell.attr & GRID_ATTR_BRIGHT)
 			tty_reset(tty);
 	}
-	
+
 	if (fg == 8 &&
 	    !(tty->term->flags & TERM_HASDEFAULTS) &&
 	    !(tty->term_flags & TERM_HASDEFAULTS))

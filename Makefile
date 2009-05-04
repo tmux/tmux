@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.129 2009-04-30 21:17:06 nicm Exp $
+# $Id: Makefile,v 1.130 2009-05-04 17:58:25 nicm Exp $
 
 .SUFFIXES: .c .o .y .h
 .PHONY: clean update-index.html upload-index.html
@@ -104,7 +104,7 @@ DISTFILES= *.[chyl] Makefile GNUmakefile *.[1-9] NOTES TODO CHANGES FAQ \
 
 CLEANFILES= ${PROG} *.o .depend *~ ${PROG}.core *.log compat/*.o index.html
 
-CPPFLAGS:= ${INCDIRS} ${CPPFLAGS} 
+CPPFLAGS:= ${INCDIRS} ${CPPFLAGS}
 
 .c.o:
 		${CC} ${CPPFLAGS} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}

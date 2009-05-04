@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.12 2009-04-03 17:21:46 nicm Exp $ */
+/* $Id: cmd-split-window.c,v 1.13 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -171,7 +171,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 	server_redraw_window(w);
-	
+
 	if (!data->flag_detached) {
 		window_set_active_pane(w, wp);
 		session_select(s, wl->idx);

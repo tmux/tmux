@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.40 2009-04-01 18:21:24 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.41 2009-05-04 17:58:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -118,7 +118,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (ctx->curclient != NULL)
 		return (0);
-	
+
 	if (!data->flag_detached) {
 		if (c == NULL) {
 			ctx->error(ctx, "no client to attach to");
