@@ -72,7 +72,7 @@
   more??
 - command to purge window history? or apply history-limit changes?
 - clone session command
-- make command sequences more usable: don't require space around ;, handle
+- make command sequences more usable: don't require space after ;, handle
   errors better
 - might be nice if attach-session behaved like switch-client inside an
   existing client
@@ -89,6 +89,3 @@
      speed improvements? -- still too slow over ssh!
      hardcoded 81 for left-vertical is nasty
 - test bug sshing from freebsd console (tom iirc?)
-- binding a neww ... while read i or for i in to a key doesn't work...
-  something to do with pty/tty handling?
-
