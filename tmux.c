@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.114 2009-05-04 17:58:27 nicm Exp $ */
+/* $Id: tmux.c,v 1.115 2009-05-13 22:10:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -288,7 +288,7 @@ main(int argc, char **argv)
 	options_set_number(&global_options, "message-bg", 3);
 	options_set_number(&global_options, "message-fg", 0);
 	options_set_number(&global_options, "message-attr", GRID_ATTR_REVERSE);
-	options_set_number(&global_options, "prefix", META);
+	options_set_number(&global_options, "prefix", '\002');
 	options_set_number(&global_options, "repeat-time", 500);
 	options_set_number(&global_options, "set-titles", 1);
 	options_set_number(&global_options, "lock-after-time", 0);

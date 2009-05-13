@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.91 2009-04-30 21:17:06 nicm Exp $
+# $Id: GNUmakefile,v 1.92 2009-05-13 22:10:39 nicm Exp $
 
 .PHONY: clean
 
@@ -8,8 +8,6 @@ VERSION= 0.9
 DATE= $(shell date +%Y%m%d-%H%M)
 
 FDEBUG= 1
-
-META?= \002
 
 SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
       xmalloc.c xmalloc-debug.c input.c input-keys.c \
@@ -45,7 +43,7 @@ SRCS= tmux.c server.c server-msg.c server-fn.c buffer.c buffer-poll.c status.c \
 
 CC?= gcc
 INCDIRS+= -I. -I-
-CFLAGS+= -DBUILD="\"$(VERSION) ($(DATE))\"" -DMETA="'${META}'"
+CFLAGS+= -DBUILD="\"$(VERSION) ($(DATE))\""
 ifdef FDEBUG
 CFLAGS+= -g -ggdb -DDEBUG
 LDFLAGS+= -rdynamic
