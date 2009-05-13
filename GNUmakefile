@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.95 2009-05-13 23:26:59 nicm Exp $
+# $Id: GNUmakefile,v 1.96 2009-05-13 23:33:54 nicm Exp $
 
 .PHONY: clean
 
@@ -44,6 +44,6 @@ clean:
 
 install:
 		$(INSTALLDIR) $(DESTDIR)$(PREFIX)/bin
-		$(INSTALLBIN) $(PROG) $(DESTDIR)$(PREFIX)/bin/$(PROG)
+		$(INSTALLBIN) tmux $(DESTDIR)$(PREFIX)/bin/tmux
 		$(INSTALLDIR) $(DESTDIR)$(PREFIX)/man/man1
-		$(INSTALLMAN) $(PROG).1 $(DESTDIR)$(PREFIX)/man/man1/$(PROG).1
+		$(INSTALLMAN) tmux.1 $(DESTDIR)$(PREFIX)/man/man1/tmux.1
