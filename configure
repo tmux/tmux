@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.2 2009-05-13 23:29:45 nicm Exp $
+# $Id: configure,v 1.3 2009-05-13 23:45:26 nicm Exp $
 
 CONFIG_H=config.h
 CONFIG_MK=config.mk
@@ -124,6 +124,7 @@ EOF
 #define HAVE_FGETLN
 #define HAVE_FORKPTY
 #define HAVE_GETOPT
+#define HAVE_LIBUTIL_H
 #define HAVE_PATHS_H
 #define HAVE_POLL
 #define HAVE_PROGNAME
@@ -131,7 +132,6 @@ EOF
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_STRTONUM
-#define HAVE_LIBUTIL_H
 #define HAVE_VSYSLOG
 EOF
 	cat <<EOF >>$CONFIG_MK
