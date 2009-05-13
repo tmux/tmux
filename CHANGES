@@ -1,3 +1,12 @@
+14 May 2009
+
+* Major cleanup and restructuring of build infrastructure. Still separate files
+  for GNU and BSD make, but they are now hugely simplified at the expense of
+  adding a configure script which must be run before make. Now build and
+  install with:
+
+	$ ./configure && make && sudo make install
+
 04 May 2009
 
 * Use ACS line drawing characters for pane separator lines.
@@ -1243,7 +1252,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.284 2009-05-04 17:58:25 nicm Exp $
+$Id: CHANGES,v 1.285 2009-05-13 23:40:30 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
