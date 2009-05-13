@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.96 2009-05-13 23:33:54 nicm Exp $
+# $Id: GNUmakefile,v 1.97 2009-05-13 23:41:58 nicm Exp $
 
 .PHONY: clean
 
@@ -34,7 +34,7 @@ include config.mk
 OBJS= $(patsubst %.c,%.o,$(SRCS))
 
 all:		$(OBJS)
-		$(CC) $(LDFLAGS) -o $@ $+ $(LIBS)
+		$(CC) $(LDFLAGS) -o tmux $+ $(LIBS)
 
 depend: 	$(SRCS)
 		$(CC) $(CPPFLAGS) $(CFLAGS) -MM $(SRCS) > .depend
