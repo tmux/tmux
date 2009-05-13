@@ -1,4 +1,4 @@
-/* $Id: bsd-poll.c,v 1.1 2008-08-28 17:45:30 nicm Exp $ */
+/* $Id: bsd-poll.c,v 1.2 2009-05-13 23:50:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2004, 2005, 2007 Darren Tucker (dtucker at zip com au).
@@ -29,7 +29,8 @@
 
 #include <stdlib.h>
 #include <errno.h>
-#include "bsd-poll.h"
+
+#include "compat/bsd-poll.h"
 
 /*
  * A minimal implementation of poll(2), built on top of select(2).
