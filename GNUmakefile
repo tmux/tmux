@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.93 2009-05-13 22:20:47 nicm Exp $
+# $Id: GNUmakefile,v 1.94 2009-05-13 22:26:11 nicm Exp $
 
 .PHONY: clean
 
@@ -74,17 +74,6 @@ CFLAGS+= -DNO_TREE_H -DNO_ASPRINTF -DNO_QUEUE_H -DNO_VSYSLOG \
 	 -DNO_SETPROCTITLE -DNO_QUEUE_H -DNO_TREE_H -DNO_FORKPTY -DNO_FGETLN \
 	 -DBROKEN_GETOPT -DBROKEN_POLL -DNO_PATHS_H
 LDFLAGS+= -L/usr/local/lib
-endif
-
-ifeq ($(shell uname),IRIX64)
-INCDIRS+= -Icompat -I/usr/local/include/ncurses
-SRCS+= compat/strlcpy.c compat/strtonum.c compat/daemon.c \
-	compat/asprintf.c compat/fgetln.c compat/forkpty-irix.c
-CFLAGS+= -DNO_STRLCPY -DNO_STRTONUM -DNO_TREE_H -DNO_SETPROCTITLE \
-	-DNO_DAEMON -DNO_FORKPTY -DNO_PROGNAME -DNO_ASPRINTF -DNO_FGETLN \
-	-DBROKEN_VSNPRINTF -D_SGI_SOURCE -std=c99
-LDFLAGS+= -L/usr/local/lib
-LIBS+= -lgen
 endif
 
 ifeq ($(shell uname),SunOS)
