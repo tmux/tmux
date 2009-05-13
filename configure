@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.1 2009-05-13 23:27:00 nicm Exp $
+# $Id: configure,v 1.2 2009-05-13 23:29:45 nicm Exp $
 
 CONFIG_H=config.h
 CONFIG_MK=config.mk
@@ -26,7 +26,6 @@ case `uname` in
 #define HAVE_STRTONUM
 #define HAVE_TREE_H
 #define HAVE_UTIL_H
-#define HAVE_VSNPRINTF
 #define HAVE_VSYSLOG
 EOF
 	cat <<EOF >>$CONFIG_MK
@@ -43,7 +42,6 @@ EOF
 #define HAVE_POLL
 #define HAVE_PROGNAME
 #define HAVE_PTY_H
-#define HAVE_VSNPRINTF
 #define HAVE_VSYSLOG
 EOF
 	cat <<EOF >>$CONFIG_MK
@@ -61,7 +59,6 @@ EOF
     AIX)
 	cat <<EOF >>$CONFIG_H
 #define HAVE_DAEMON
-#define HAVE_VSNPRINTF
 EOF
 	cat <<EOF >>$CONFIG_MK
 CPPFLAGS+= -I/usr/local/include/ncurses
@@ -83,7 +80,6 @@ EOF
 #define HAVE_POLL
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
-#define HAVE_VSNPRINTF
 #define HAVE_VSYSLOG
 EOF
 	cat <<EOF >>$CONFIG_MK
@@ -112,7 +108,6 @@ EOF
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_UTIL_H
-#define HAVE_VSNPRINTF
 #define HAVE_VSYSLOG
 EOF
 	cat <<EOF >>$CONFIG_MK
@@ -137,7 +132,6 @@ EOF
 #define HAVE_STRLCPY
 #define HAVE_STRTONUM
 #define HAVE_LIBUTIL_H
-#define HAVE_VSNPRINTF
 #define HAVE_VSYSLOG
 EOF
 	cat <<EOF >>$CONFIG_MK
@@ -161,7 +155,6 @@ EOF
 #define HAVE_STRLCPY
 #define HAVE_TREE_H
 #define HAVE_UTIL_H
-#define HAVE_VSNPRINTF
 #define HAVE_VSYSLOG
 EOF
 	cat <<EOF >>$CONFIG_MK
