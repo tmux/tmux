@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.97 2009-05-13 23:41:58 nicm Exp $
+# $Id: GNUmakefile,v 1.98 2009-05-13 23:43:27 nicm Exp $
 
 .PHONY: clean
 
@@ -16,12 +16,10 @@ ifdef FDEBUG
 LDFLAGS+= -rdynamic
 CFLAGS+= -g -ggdb -DDEBUG
 LIBS+= -ldl
-ifeq ($(CC),gcc)
 CFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wcast-qual -Wsign-compare
 CFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
-endif
 endif
 
 PREFIX?= /usr/local
