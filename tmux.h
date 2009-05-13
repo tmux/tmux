@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.313 2009-05-13 22:20:47 nicm Exp $ */
+/* $Id: tmux.h,v 1.314 2009-05-13 23:27:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,8 @@
 #ifndef TMUX_H
 #define TMUX_H
 
+#include "config.h"
+
 #define PROTOCOL_VERSION -12
 
 /* Shut up gcc warnings about empty if bodies. */
@@ -27,26 +29,25 @@
 #include <sys/param.h>
 #include <sys/time.h>
 
-#ifndef NO_QUEUE_H
+#ifdef HAVE_QUEUE_H
 #include <sys/queue.h>
 #else
 #include "compat/queue.h"
 #endif
 
-#ifndef NO_TREE_H
+#ifdef HAVE_TREE_H
 #include <sys/tree.h>
 #else
 #include "compat/tree.h"
 #endif
 
-#ifndef BROKEN_POLL
+#ifdef HAVE_POLL
 #include <poll.h>
 #else
-#undef HAVE_POLL
 #include "compat/bsd-poll.h"
 #endif
 
-#ifndef BROKEN_GETOPT
+#ifdef HAVE_GETOPT
 #include <getopt.h>
 #endif
 
@@ -103,7 +104,7 @@ extern const char    *__progname;
 #define TTY_NAME_MAX 32
 #endif
 
-#ifdef NO_PATHS_H
+#ifndef HAVE_PATHS_H
 #define	_PATH_BSHELL	"/bin/sh"
 #define	_PATH_TMP	"/tmp/"
 #define _PATH_DEVNULL	"/dev/null"
@@ -1001,43 +1002,43 @@ extern const struct set_option_entry set_window_option_table[];
 #define NSETOPTION 24
 #define NSETWINDOWOPTION 17
 
-#ifdef NO_STRTONUM
+#ifndef HAVE_STRTONUM
 /* strtonum.c */
 long long	 strtonum(const char *, long long, long long, const char **);
 #endif
 
-#ifdef NO_STRLCPY
+#ifndef HAVE_STRLCPY
 /* strlcpy.c */
 size_t	 	 strlcpy(char *, const char *, size_t);
 #endif
 
-#ifdef NO_STRLCAT
+#ifndef HAVE_STRLCAT
 /* strlcat.c */
 size_t	 	 strlcat(char *, const char *, size_t);
 #endif
 
-#ifdef NO_DAEMON
+#ifndef HAVE_DAEMON
 /* daemon.c */
 int	 	 daemon(int, int);
 #endif
 
-#ifdef NO_FORKPTY
+#ifndef HAVE_FORKPTY
 /* forkpty.c */
 pid_t		 forkpty(int *, char *, struct termios *, struct winsize *);
 #endif
 
-#ifdef NO_ASPRINTF
+#ifndef HAVE_ASPRINTF
 /* asprintf.c */
 int	asprintf(char **, const char *, ...);
 int	vasprintf(char **, const char *, va_list);
 #endif
 
-#ifdef NO_FGETLN
+#ifndef HAVE_FGETLN
 /* fgetln.c */
 char   *fgetln(FILE *, size_t *);
 #endif
 
-#ifdef BROKEN_GETOPT
+#ifndef HAVE_GETOPT
 /* getopt.c */
 extern int	BSDopterr;
 extern int	BSDoptind;

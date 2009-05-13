@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.47 2009-05-04 17:58:25 nicm Exp $ */
+/* $Id: client.c,v 1.48 2009-05-13 23:27:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -135,7 +135,7 @@ client_main(struct client_ctx *cctx)
 	siginit();
 
 	logfile("client");
-#ifndef NO_SETPROCTITLE
+#ifdef HAVE_SETPROCTITLE
 	setproctitle("client");
 #endif
 

@@ -1,4 +1,4 @@
-/* $Id: buffer-poll.c,v 1.10 2008-09-09 22:16:36 nicm Exp $ */
+/* $Id: buffer-poll.c,v 1.11 2009-05-13 23:27:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,7 +46,7 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 	    pfd->fd, pfd->revents, BUFFER_USED(out), BUFFER_USED(in));
 #endif
 
-#ifndef BROKEN_POLL
+#ifdef HAVE_POLL
 	if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP))
 		return (-1);
 #endif

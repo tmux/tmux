@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.115 2009-05-13 22:10:39 nicm Exp $ */
+/* $Id: tmux.c,v 1.116 2009-05-13 23:27:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,11 +27,11 @@
 #include <syslog.h>
 #include <unistd.h>
 
-#ifndef NO_PATHS_H
+#include "tmux.h"
+
+#ifdef HAVE_PATHS_H
 #include <paths.h>
 #endif
-
-#include "tmux.h"
 
 #ifdef DEBUG
 /* DragonFly uses an OpenBSD-like malloc() since 1.6 */
@@ -64,7 +64,7 @@ char		*socket_path;
 __dead void	 usage(void);
 char 		*makesockpath(const char *);
 
-#ifdef NO_PROGNAME
+#ifndef HAVE_PROGNAME
 const char      *__progname = "tmux";
 #endif
 

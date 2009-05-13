@@ -1,4 +1,4 @@
-/* $Id: log.c,v 1.11 2009-03-31 21:22:10 nicm Exp $ */
+/* $Id: log.c,v 1.12 2009-05-13 23:27:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -111,9 +111,7 @@ log_vwrite(int pri, const char *msg, va_list ap)
 
 	switch (log_type) {
 	case LOG_TYPE_SYSLOG:
-#ifdef NO_VSYSLOG
-		/* XXX */
-#else
+#ifdef HAVE_VSYSLOG
 		vsyslog(pri, msg, ap);
 #endif
 		break;

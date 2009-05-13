@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.140 2009-05-04 17:58:27 nicm Exp $ */
+/* $Id: server.c,v 1.141 2009-05-13 23:27:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -129,7 +129,7 @@ server_start(char *path)
 	mode_t			mask;
 	int		   	n, fd, pair[2], mode;
 	char		       *cause;
-#ifndef NO_SETPROCTITLE
+#ifdef HAVE_SETPROCTITLE
 	char			rpathbuf[MAXPATHLEN];
 #endif
 
@@ -181,7 +181,7 @@ server_start(char *path)
 	log_debug("server started, pid %ld", (long) getpid());
 	log_debug("socket path %s", socket_path);
 
-#ifndef NO_SETPROCTITLE
+#ifdef HAVE_SETPROCTITLE
 	if (realpath(socket_path, rpathbuf) == NULL)
 		strlcpy(rpathbuf, socket_path, sizeof rpathbuf);
 	setproctitle("server (%s)", rpathbuf);
@@ -284,7 +284,7 @@ server_main(int srv_fd)
 		pfd = pfds;
 
 		/* Handle server socket. */
-#ifndef BROKEN_POLL
+#ifdef HAVE_POLL
 		if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP))
 			fatalx("lost server socket");
 #endif

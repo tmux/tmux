@@ -27,7 +27,6 @@
 
 /* OPENBSD ORIGINAL: sys/sys/poll.h */
 
-#if !defined(HAVE_POLL) && !defined(HAVE_POLL_H)
 #ifndef	_COMPAT_POLL_H_
 #define	_COMPAT_POLL_H_
 
@@ -58,4 +57,3 @@ typedef unsigned int	nfds_t;
 
 int   poll(struct pollfd *, nfds_t, int);
 #endif /* !_COMPAT_POLL_H_ */
-#endif /* !HAVE_POLL_H */

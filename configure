@@ -1,0 +1,175 @@
+#!/bin/sh
+# $Id: configure,v 1.1 2009-05-13 23:27:00 nicm Exp $
+
+CONFIG_H=config.h
+CONFIG_MK=config.mk
+
+echo "/* `uname` */" >$CONFIG_H
+echo "# `uname`" >$CONFIG_MK
+
+case `uname` in
+# ------------------------------------------------------------------------------
+    OpenBSD)
+	cat <<EOF >>$CONFIG_H
+#define HAVE_ASPRINTF
+#define HAVE_DAEMON
+#define HAVE_FGETLN
+#define HAVE_FORKPTY
+#define HAVE_GETOPT
+#define HAVE_PATHS_H
+#define HAVE_POLL
+#define HAVE_PROGNAME
+#define HAVE_QUEUE_H
+#define HAVE_SETPROCTITLE
+#define HAVE_STRLCAT
+#define HAVE_STRLCPY
+#define HAVE_STRTONUM
+#define HAVE_TREE_H
+#define HAVE_UTIL_H
+#define HAVE_VSNPRINTF
+#define HAVE_VSYSLOG
+EOF
+	cat <<EOF >>$CONFIG_MK
+SRCS+= osdep-openbsd.c
+EOF
+	;;
+# ------------------------------------------------------------------------------
+    Linux)
+	cat <<EOF >>$CONFIG_H
+#define HAVE_ASPRINTF
+#define HAVE_DAEMON
+#define HAVE_FORKPTY
+#define HAVE_PATHS_H
+#define HAVE_POLL
+#define HAVE_PROGNAME
+#define HAVE_PTY_H
+#define HAVE_VSNPRINTF
+#define HAVE_VSYSLOG
+EOF
+	cat <<EOF >>$CONFIG_MK
+SRCS+= osdep-linux.c \
+	compat/fgetln.c \
+	compat/strlcat.c \
+	compat/strlcpy.c \
+	compat/strtonum.c \
+        compat/getopt.c
+CFLAGS+= -D_GNU_SOURCE -D_POSIX_SOURCE
+LIBS+= -lcrypt -lutil
+EOF
+	;;
+# ------------------------------------------------------------------------------
+    AIX)
+	cat <<EOF >>$CONFIG_H
+#define HAVE_DAEMON
+#define HAVE_VSNPRINTF
+EOF
+	cat <<EOF >>$CONFIG_MK
+CPPFLAGS+= -I/usr/local/include/ncurses
+SRCS+= osdep-unknown.c \
+	compat/asprintf.c \
+	compat/bsd-poll.c \
+	compat/daemon.c \
+	compat/forkpty-aix.c \
+	compat/strlcat.c \
+	compat/strlcpy.c \
+	compat/strtonum.c \
+       	compat/fgetln.c \
+       	compat/getopt.c
+EOF
+	;;
+# ------------------------------------------------------------------------------
+    SunOS)
+	cat <<EOF >>$CONFIG_H
+#define HAVE_POLL
+#define HAVE_STRLCAT
+#define HAVE_STRLCPY
+#define HAVE_VSNPRINTF
+#define HAVE_VSYSLOG
+EOF
+	cat <<EOF >>$CONFIG_MK
+CPPFLAGS+= -I/usr/local/include/ncurses
+LDFLAGS+= -L/usr/gnu/lib
+LIBS+= -lsocket -lnsl
+SRCS+= osdep-unknown.c \
+	compat/asprintf.c \
+	compat/daemon.c \
+	compat/fgetln.c \
+	compat/forkpty-sunos.c \
+	compat/getopt.c \
+	compat/strtonum.c
+EOF
+	;;
+# ------------------------------------------------------------------------------
+    Darwin)
+	cat <<EOF >>$CONFIG_H
+#define HAVE_ASPRINTF
+#define HAVE_DAEMON
+#define HAVE_FGETLN
+#define HAVE_FORKPTY
+#define HAVE_GETOPT
+#define HAVE_PATHS_H
+#define HAVE_PROGNAME
+#define HAVE_STRLCAT
+#define HAVE_STRLCPY
+#define HAVE_UTIL_H
+#define HAVE_VSNPRINTF
+#define HAVE_VSYSLOG
+EOF
+	cat <<EOF >>$CONFIG_MK
+SRCS+= osdep-darwin.c \
+	compat/bsd-poll.c \
+	compat/strtonum.c
+EOF
+	;;
+# ------------------------------------------------------------------------------
+    FreeBSD|DragonFly)
+	cat <<EOF >>$CONFIG_H
+#define HAVE_ASPRINTF
+#define HAVE_DAEMON
+#define HAVE_FGETLN
+#define HAVE_FORKPTY
+#define HAVE_GETOPT
+#define HAVE_PATHS_H
+#define HAVE_POLL
+#define HAVE_PROGNAME
+#define HAVE_SETPROCTITLE
+#define HAVE_STRLCAT
+#define HAVE_STRLCPY
+#define HAVE_STRTONUM
+#define HAVE_LIBUTIL_H
+#define HAVE_VSNPRINTF
+#define HAVE_VSYSLOG
+EOF
+	cat <<EOF >>$CONFIG_MK
+SRCS+= osdep-openbsd.c
+LIBS+= -lcrypt
+EOF
+	;;
+# ------------------------------------------------------------------------------
+    NetBSD)
+	cat <<EOF >>$CONFIG_H
+#define HAVE_ASPRINTF
+#define HAVE_DAEMON
+#define HAVE_FGETLN
+#define HAVE_FORKPTY
+#define HAVE_GETOPT
+#define HAVE_PATHS_H
+#define HAVE_POLL
+#define HAVE_PROGNAME
+#define HAVE_SETPROCTITLE
+#define HAVE_STRLCAT
+#define HAVE_STRLCPY
+#define HAVE_TREE_H
+#define HAVE_UTIL_H
+#define HAVE_VSNPRINTF
+#define HAVE_VSYSLOG
+EOF
+	cat <<EOF >>$CONFIG_MK
+SRCS+= osdep-openbsd.c
+LIBS+= -lcrypt
+EOF
+	;;
+# ------------------------------------------------------------------------------
+esac
+
+echo Configured for `uname`
