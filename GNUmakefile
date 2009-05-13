@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.92 2009-05-13 22:10:39 nicm Exp $
+# $Id: GNUmakefile,v 1.93 2009-05-13 22:20:47 nicm Exp $
 
 .PHONY: clean
 
@@ -68,7 +68,7 @@ ifeq ($(shell uname),AIX)
 INCDIRS+= -I/usr/local/include/ncurses -Icompat
 SRCS+= compat/strlcpy.c compat/strlcat.c compat/strtonum.c \
        compat/fgetln.c compat/asprintf.c compat/daemon.c compat/forkpty-aix.c \
-       compat/getopt_long.c compat/bsd-poll.c
+       compat/getopt.c compat/bsd-poll.c
 CFLAGS+= -DNO_TREE_H -DNO_ASPRINTF -DNO_QUEUE_H -DNO_VSYSLOG \
 	 -DNO_PROGNAME -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM \
 	 -DNO_SETPROCTITLE -DNO_QUEUE_H -DNO_TREE_H -DNO_FORKPTY -DNO_FGETLN \
@@ -90,7 +90,7 @@ endif
 ifeq ($(shell uname),SunOS)
 INCDIRS+= -Icompat -I/usr/include/ncurses
 SRCS+= compat/strtonum.c compat/daemon.c compat/forkpty-sunos.c \
-	compat/asprintf.c compat/fgetln.c compat/getopt_long.c
+	compat/asprintf.c compat/fgetln.c compat/getopt.c
 CFLAGS+= -DNO_STRTONUM -DNO_TREE_H -DNO_PATHS_H -DNO_SETPROCTITLE \
 	-DNO_DAEMON -DNO_FORKPTY -DNO_PROGNAME -DNO_ASPRINTF -DNO_FGETLN \
 	-DBROKEN_GETOPT -DNO_QUEUE_H
@@ -107,7 +107,7 @@ endif
 ifeq ($(shell uname),Linux)
 INCDIRS+= -Icompat
 SRCS+= compat/strlcpy.c compat/strlcat.c compat/strtonum.c \
-       compat/fgetln.c compat/getopt_long.c
+       compat/fgetln.c compat/getopt.c
 CFLAGS+= $(shell getconf LFS_CFLAGS) -D_GNU_SOURCE \
          -DNO_STRLCPY -DNO_STRLCAT -DNO_STRTONUM -DNO_SETPROCTITLE \
          -DNO_QUEUE_H -DNO_TREE_H -DUSE_PTY_H -DNO_FGETLN \
