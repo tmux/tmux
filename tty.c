@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.97 2009-05-04 17:58:27 nicm Exp $ */
+/* $Id: tty.c,v 1.98 2009-05-14 16:21:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -652,10 +652,10 @@ tty_cmd_linefeed(struct tty *tty, struct window_pane *wp, unused va_list ap)
 
  	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
 
-	tty_cursor(tty, s->old_cx, s->old_cy, wp->xoff, wp->yoff);
-	tty_putc(tty, '\n');
-
-	tty->cy++;
+	if (s->old_cy == s->old_rlower) {
+		tty_cursor(tty, s->old_cx, s->old_cy, wp->xoff, wp->yoff);
+		tty_putc(tty, '\n');
+	}
 }
 
 void

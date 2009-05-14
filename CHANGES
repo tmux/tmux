@@ -1,5 +1,7 @@
 14 May 2009
 
+* Don't force wrapping with \n when asked, let the cursor code figure it out.
+  Should fix terminals which use this to detect line breaks.
 * Major cleanup and restructuring of build infrastructure. Still separate files
   for GNU and BSD make, but they are now hugely simplified at the expense of
   adding a configure script which must be run before make. Now build and
@@ -1252,7 +1254,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.285 2009-05-13 23:40:30 nicm Exp $
+$Id: CHANGES,v 1.286 2009-05-14 16:21:54 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
