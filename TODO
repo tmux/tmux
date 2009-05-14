@@ -71,7 +71,6 @@
 - a command to display the status line briefly when it is turned off
 - FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw,
   more??
-- command to purge window history? or apply history-limit changes?
 - clone session command
 - make command sequences more usable: don't require space after ;, handle
   errors better
@@ -88,3 +87,5 @@
      better resizing of shells when changing layout
      hardcoded 81 for left-vertical is nasty
 - test bug sshing from freebsd console (tom iirc?)
+- document clear-history
+
