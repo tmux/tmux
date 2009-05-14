@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.135 2009-05-14 00:31:48 nicm Exp $
+# $Id: Makefile,v 1.136 2009-05-14 19:32:37 nicm Exp $
 
 .SUFFIXES: .c .o
 .PHONY: clean
@@ -42,7 +42,9 @@ OBJS= ${SRCS:S/.c/.o/}
 .c.o:
 		${CC} ${CPPFLAGS} ${CFLAGS} -c ${.IMPSRC} -o ${.TARGET}
 
-all:		${OBJS}
+all:		tmux
+
+tmux:		${OBJS}
 		${CC} ${LDFLAGS} -o tmux ${OBJS} ${LIBS}
 
 depend:
