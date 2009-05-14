@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.8 2009-05-14 00:40:58 nicm Exp $
+# $Id: configure,v 1.9 2009-05-14 07:49:23 nicm Exp $
 
 UNAME=`uname -s`
 
@@ -80,14 +80,16 @@ EOF
 # ------------------------------------------------------------------------------
     SunOS)
 	cat <<EOF >>$CONFIG_H
+#define HAVE_CRYPT_H
 #define HAVE_POLL
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_VSYSLOG
 EOF
 	cat <<EOF >>$CONFIG_MK
-CPPFLAGS+= -I/usr/local/include/ncurses
-LDFLAGS+= -L/usr/gnu/lib
+CPPFLAGS+= -I/usr/local/include/ncurses \
+	-I/opt/csw/include -I/opt/csw/include/ncurses
+LDFLAGS+= -L/usr/gnu/lib -L/opt/csw/lib
 LIBS+= -lsocket -lnsl
 SRCS+= osdep-unknown.c \
 	compat/asprintf.c \

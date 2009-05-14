@@ -1,4 +1,4 @@
-/* $Id: cmd-set-password.c,v 1.3 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-set-password.c,v 1.4 2009-05-14 07:49:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,6 +22,10 @@
 #include <unistd.h>
 
 #include "tmux.h"
+
+#ifdef HAVE_CRYPT_H
+#include <crypt.h>
+#endif
 
 /*
  * Set server password.
