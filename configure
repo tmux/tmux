@@ -1,13 +1,15 @@
 #!/bin/sh
-# $Id: configure,v 1.5 2009-05-14 00:17:37 nicm Exp $
+# $Id: configure,v 1.6 2009-05-14 00:34:25 nicm Exp $
+
+UNAME=`uname -s`
 
 CONFIG_H=config.h
 CONFIG_MK=config.mk
 
-echo "/* `uname` */" >$CONFIG_H
-echo "# `uname`" >$CONFIG_MK
+echo "/* $UNAME */" >$CONFIG_H
+echo "# $UNAME" >$CONFIG_MK
 
-case `uname` in
+case $UNAME in
 # ------------------------------------------------------------------------------
     OpenBSD)
 	cat <<EOF >>$CONFIG_H
@@ -161,9 +163,15 @@ EOF
 	cat <<EOF >>$CONFIG_MK
 SRCS+= osdep-netbsd.c
 LIBS+= -lcrypt
+CPPFLAGS+= -I/usr/pkg/include
+LDFLAGS+= -L/usr/pkg/lib
 EOF
 	;;
 # ------------------------------------------------------------------------------
+    *)
+	echo Unable to configure for $UNAME
+	exit 1
 esac
 
-echo Configured for `uname`
+echo Configured for $UNAME
+exit 0
