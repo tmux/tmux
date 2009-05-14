@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.9 2009-05-14 07:49:23 nicm Exp $
+# $Id: configure,v 1.10 2009-05-14 19:49:26 nicm Exp $
 
 UNAME=`uname -s`
 
@@ -88,8 +88,11 @@ EOF
 EOF
 	cat <<EOF >>$CONFIG_MK
 CPPFLAGS+= -I/usr/local/include/ncurses \
-	-I/opt/csw/include -I/opt/csw/include/ncurses
-LDFLAGS+= -L/usr/gnu/lib -L/opt/csw/lib
+	-I/opt/csw/include -I/opt/csw/include/ncurses \
+	-I/opt/sfw/include -I/opt/sfw/include/ncurses
+LDFLAGS+= -L/usr/gnu/lib \
+	-L/opt/csw/lib \
+	-L/opt/sfw/lib
 LIBS+= -lsocket -lnsl
 SRCS+= osdep-unknown.c \
 	compat/asprintf.c \

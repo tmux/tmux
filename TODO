@@ -67,7 +67,6 @@
   to avoid quoting
 
 (hopefully) for 0.9, in no particular order:
-- paste-buffer into command prompt
 - a command to display the status line briefly when it is turned off
 - FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw,
   more??
