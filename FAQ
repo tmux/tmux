@@ -186,4 +186,11 @@ Automatic window renaming may use a lot of CPU, particularly on slow computers:
 if this is a problem, turn it off with "setw -g automatic-rename off". If this
 doesn't fix it, please report the problem.
 
-$Id: FAQ,v 1.21 2009-03-31 23:17:28 nicm Exp $
+* How do I prevent tmux from resizing my PuTTY window?
+
+This isn't tmux's fault, but happens because the initialisation strings for the
+terminal in use (set through TERM) request it. PuTTY can be told to ignore such
+requests: in the configuration window under Terminal -> Features, check the
+"Disable remote-controlled terminal resizing" box.
+
+$Id: FAQ,v 1.22 2009-05-14 18:43:02 nicm Exp $
