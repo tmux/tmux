@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.74 2009-05-13 23:27:00 nicm Exp $ */
+/* $Id: window.c,v 1.75 2009-05-14 07:58:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,7 +38,7 @@
 #ifdef HAVE_LIBUTIL_H
 #include <libutil.h>
 #endif
-#ifdef USE_PTY_H
+#ifdef HAVE_PTY_H
 #include <pty.h>
 #endif
 #ifdef HAVE_UTIL_H

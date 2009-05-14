@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.141 2009-05-13 23:27:00 nicm Exp $ */
+/* $Id: server.c,v 1.142 2009-05-14 07:58:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -601,7 +601,7 @@ server_check_timers(struct client *c)
 	if (interval == 0)
 		return;
 	if (tv.tv_sec < c->status_timer.tv_sec ||
-	    tv.tv_sec - c->status_timer.tv_sec >= interval)
+	    ((u_int) tv.tv_sec) - c->status_timer.tv_sec >= interval)
 		c->flags |= CLIENT_STATUS;
 }
 
