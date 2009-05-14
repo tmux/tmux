@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.7 2009-05-14 00:35:53 nicm Exp $
+# $Id: configure,v 1.8 2009-05-14 00:40:58 nicm Exp $
 
 UNAME=`uname -s`
 
@@ -160,8 +160,9 @@ EOF
 #define HAVE_VSYSLOG
 EOF
 	cat <<EOF >>$CONFIG_MK
-SRCS+= osdep-netbsd.c
-LIBS+= -lcrypt
+SRCS+= osdep-netbsd.c \
+	compat/strtonum.c
+LIBS+= -lcrypt -lutil
 CPPFLAGS+= -I/usr/pkg/include
 LDFLAGS+= -L/usr/pkg/lib
 EOF
