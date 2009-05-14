@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.3 2009-05-13 23:45:26 nicm Exp $
+# $Id: configure,v 1.4 2009-05-14 00:12:42 nicm Exp $
 
 CONFIG_H=config.h
 CONFIG_MK=config.mk
@@ -135,7 +135,7 @@ EOF
 #define HAVE_VSYSLOG
 EOF
 	cat <<EOF >>$CONFIG_MK
-SRCS+= osdep-openbsd.c
+SRCS+= osdep-freebsd.c
 LIBS+= -lcrypt
 EOF
 	;;
@@ -158,7 +158,7 @@ EOF
 #define HAVE_VSYSLOG
 EOF
 	cat <<EOF >>$CONFIG_MK
-SRCS+= osdep-openbsd.c
+SRCS+= osdep-netbsd.c
 LIBS+= -lcrypt
 EOF
 	;;
