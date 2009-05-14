@@ -32,7 +32,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#ifndef NO_PATHS_H
+#ifdef HAVE_PATHS_H
 #include <paths.h>
 #endif
 
