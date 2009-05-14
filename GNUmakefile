@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.99 2009-05-14 00:06:59 nicm Exp $
+# $Id: GNUmakefile,v 1.100 2009-05-14 00:09:02 nicm Exp $
 
 .PHONY: clean
 
@@ -47,7 +47,7 @@ depend: 	$(SRCS)
 clean:
 		rm -f tmux *.o .depend *~ *.core *.log compat/*.o
 
-install:
+install:	all
 		$(INSTALLDIR) $(DESTDIR)$(PREFIX)/bin
 		$(INSTALLBIN) tmux $(DESTDIR)$(PREFIX)/bin/tmux
 		$(INSTALLDIR) $(DESTDIR)$(PREFIX)/man/man1
