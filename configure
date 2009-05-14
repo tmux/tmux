@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.6 2009-05-14 00:34:25 nicm Exp $
+# $Id: configure,v 1.7 2009-05-14 00:35:53 nicm Exp $
 
 UNAME=`uname -s`
 
@@ -156,7 +156,6 @@ EOF
 #define HAVE_SETPROCTITLE
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
-#define HAVE_TREE_H
 #define HAVE_UTIL_H
 #define HAVE_VSYSLOG
 EOF
