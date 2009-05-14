@@ -1,4 +1,6 @@
-# $Id: dist.mk,v 1.1 2009-05-14 07:48:42 nicm Exp $
+# $Id: dist.mk,v 1.2 2009-05-14 07:51:25 nicm Exp $
+
+VERSION= 0.8
 
 DISTDIR= tmux-${VERSION}
 DISTFILES= *.[ch] Makefile GNUmakefile configure tmux.1 \
