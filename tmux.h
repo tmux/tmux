@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.315 2009-05-14 16:56:23 nicm Exp $ */
+/* $Id: tmux.h,v 1.316 2009-05-14 19:36:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -422,7 +422,7 @@ struct msg_resize_data {
 
 /* Editing keys. */
 enum mode_key_cmd {
-	MODEKEYCMD_BACKSPACE,
+	MODEKEYCMD_BACKSPACE = 0x1000,
 	MODEKEYCMD_CHOOSE,
 	MODEKEYCMD_CLEARSELECTION,
 	MODEKEYCMD_COMPLETE,
@@ -435,6 +435,7 @@ enum mode_key_cmd {
 	MODEKEYCMD_NEXTWORD,
 	MODEKEYCMD_NONE,
 	MODEKEYCMD_OTHERKEY,
+	MODEKEYCMD_PASTE,
 	MODEKEYCMD_PREVIOUSPAGE,
 	MODEKEYCMD_PREVIOUSWORD,
 	MODEKEYCMD_QUIT,

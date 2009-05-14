@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.79 2009-05-13 23:29:45 nicm Exp $ */
+/* $Id: status.c,v 1.80 2009-05-14 19:36:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -673,9 +673,9 @@ status_prompt_redraw(struct client *c)
 void
 status_prompt_key(struct client *c, int key)
 {
-	char   *s, *first, *last;
-	size_t	size, n, off, idx;
-	char	word[64];
+	struct paste_buffer	*pb;
+	char   			*s, *first, *last, word[64];
+	size_t			 size, n, off, idx;
 
 	size = strlen(c->prompt_buffer);
 	switch (mode_key_lookup(&c->prompt_mdata, key)) {
@@ -804,6 +804,28 @@ status_prompt_key(struct client *c, int key)
 
 		c->prompt_index = strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
+		break;
+	case MODEKEYCMD_PASTE:
+		if ((pb = paste_get_top(&c->session->buffers)) == NULL)
+			break;
+		if ((last = strchr(pb->data, '\n')) == NULL)
+			last = strchr(pb->data, '\0');
+		n = last - pb->data;
+
+		c->prompt_buffer = xrealloc(c->prompt_buffer, 1, size + n + 1);
+		if (c->prompt_index == size) {
+			memcpy(c->prompt_buffer + c->prompt_index, pb->data, n);
+			c->prompt_index += n;
+			c->prompt_buffer[c->prompt_index] = '\0';
+		} else {
+			memmove(c->prompt_buffer + c->prompt_index + n,
+			    c->prompt_buffer + c->prompt_index,
+			    size + 1 - c->prompt_index);
+			memcpy(c->prompt_buffer + c->prompt_index, pb->data, n);
+			c->prompt_index += n;
+		}
+
+		c->flags |= CLIENT_STATUS;		
 		break;
  	case MODEKEYCMD_CHOOSE:
 		if (*c->prompt_buffer != '\0') {
