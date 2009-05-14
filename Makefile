@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.133 2009-05-14 00:17:37 nicm Exp $
+# $Id: Makefile,v 1.134 2009-05-14 00:28:04 nicm Exp $
 
 .SUFFIXES: .c .o
 .PHONY: clean
@@ -9,9 +9,17 @@ FDEBUG= 1
 
 CC?= cc
 CFLAGS+= -DBUILD="\"$(VERSION)\""
-CPPFLAGS:= -I. -I- -I/usr/local/include ${CPPFLAGS}
 LDFLAGS+= -L/usr/local/lib
 LIBS+= -lncurses
+
+# This sort of sucks but gets rid of the stupid warning and should work on
+# most platforms...
+CCV!= (${CC} -v 2>&1|awk '/gcc version 4/ { print $0 }') || true
+.if "${CCV}" == ""
+CPPFLAGS:= -I. -I- -I/usr/local/include ${CPPFLAGS}
+.else
+CPPFLAGS:= -iquote. -I/usr/local/include ${CPPFLAGS}
+.endif
 
 .ifdef FDEBUG
 LDFLAGS+= -Wl,-E
