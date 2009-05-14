@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.4 2009-05-14 00:12:42 nicm Exp $
+# $Id: configure,v 1.5 2009-05-14 00:17:37 nicm Exp $
 
 CONFIG_H=config.h
 CONFIG_MK=config.mk
@@ -30,6 +30,7 @@ case `uname` in
 EOF
 	cat <<EOF >>$CONFIG_MK
 SRCS+= osdep-openbsd.c
+LIBS+= -lutil
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -136,7 +137,7 @@ EOF
 EOF
 	cat <<EOF >>$CONFIG_MK
 SRCS+= osdep-freebsd.c
-LIBS+= -lcrypt
+LIBS+= -lcrypt -lutil
 EOF
 	;;
 # ------------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.132 2009-05-13 23:27:00 nicm Exp $
+# $Id: Makefile,v 1.133 2009-05-14 00:17:37 nicm Exp $
 
 .SUFFIXES: .c .o
 .PHONY: clean
@@ -11,7 +11,7 @@ CC?= cc
 CFLAGS+= -DBUILD="\"$(VERSION)\""
 CPPFLAGS:= -I. -I- -I/usr/local/include ${CPPFLAGS}
 LDFLAGS+= -L/usr/local/lib
-LIBS+= -lutil -lncurses
+LIBS+= -lncurses
 
 .ifdef FDEBUG
 LDFLAGS+= -Wl,-E
