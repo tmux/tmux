@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.98 2009-05-13 23:43:27 nicm Exp $
+# $Id: GNUmakefile,v 1.99 2009-05-14 00:06:59 nicm Exp $
 
 .PHONY: clean
 
@@ -8,9 +8,16 @@ FDEBUG= 1
 
 CC?= gcc
 CFLAGS+= -DBUILD="\"$(VERSION)\""
-CPPFLAGS:= -I. -I- $(CPPFLAGS)
 LDFLAGS+= -L/usr/local/lib
 LIBS+= -lncurses
+
+# This sort of sucks but gets rid of the stupid warning and should work on
+# most platforms...
+ifeq ($(shell ($(CC) -v 2>&1|awk '/gcc version 4/ { print $0 }') || true), )
+CPPFLAGS:= -I. -I- $(CPPFLAGS)
+else
+CPPFLAGS:= -iquote. $(CPPFLAGS)
+endif
 
 ifdef FDEBUG
 LDFLAGS+= -rdynamic
