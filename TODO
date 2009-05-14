@@ -86,7 +86,5 @@
      should the layout be a window option???
      more layouts
      better resizing of shells when changing layout
-     find and fix bug with clear screen after horiz split
-     speed improvements? -- still too slow over ssh!
      hardcoded 81 for left-vertical is nasty
 - test bug sshing from freebsd console (tom iirc?)
