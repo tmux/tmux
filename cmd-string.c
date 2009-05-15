@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.14 2009-05-04 19:12:37 nicm Exp $ */
+/* $Id: cmd-string.c,v 1.15 2009-05-15 12:58:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,7 +63,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 	if ((t = strchr(s, ' ')) == NULL && (t = strchr(s, '\t')) == NULL)
 		t = strchr(s, '\0');
 	if ((u = strchr(s, '=')) != NULL && u < t) {
-		if (putenv(s) != 0) {
+		if (putenv((char *) s) != 0) {
 			xasprintf(cause, "assignment failed: %s", s);
 			return (-1);
 		}
