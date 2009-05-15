@@ -1,4 +1,4 @@
-/* $Id: options.c,v 1.4 2009-01-07 19:53:17 nicm Exp $ */
+/* $Id: options.c,v 1.5 2009-05-15 12:57:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,7 +63,7 @@ options_find1(struct options *oo, const char *name)
 {
 	struct options_entry	p;
 
-	p.name = name;
+	p.name = (char *) name;
 	return (SPLAY_FIND(options_tree, &oo->tree, &p));
 }
 
@@ -72,7 +72,7 @@ options_find(struct options *oo, const char *name)
 {
 	struct options_entry	*o, p;
 
-	p.name = name;
+	p.name = (char *) name;
 	o = SPLAY_FIND(options_tree, &oo->tree, &p);
 	while (o == NULL) {
 		oo = oo->parent;

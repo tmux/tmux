@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.19 2009-05-04 17:58:27 nicm Exp $ */
+/* $Id: tty-term.c,v 1.20 2009-05-15 12:57:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -213,21 +213,21 @@ tty_term_find(char *name, int fd, char **cause)
 		case TTYCODE_NONE:
 			break;
 		case TTYCODE_STRING:
-			s = tigetstr(ent->name);
+			s = tigetstr((char *) ent->name);
 			if (s == NULL || s == (char *) -1)
 				break;
 			code->type = TTYCODE_STRING;
 			code->value.string = tty_term_strip(s);
 			break;
 		case TTYCODE_NUMBER:
-			n = tigetnum(ent->name);
+			n = tigetnum((char *) ent->name);
 			if (n == -1 || n == -2)
 				break;
 			code->type = TTYCODE_NUMBER;
 			code->value.number = n;
 			break;
 		case TTYCODE_FLAG:
-			n = tigetflag(ent->name);
+			n = tigetflag((char *) ent->name);
 			if (n == -1)
 				break;
 			code->type = TTYCODE_FLAG;
@@ -362,13 +362,13 @@ tty_term_string(struct tty_term *term, enum tty_code_code code)
 const char *
 tty_term_string1(struct tty_term *term, enum tty_code_code code, int a)
 {
-	return (tparm(tty_term_string(term, code), a));
+	return (tparm((char *) tty_term_string(term, code), a));
 }
 
 const char *
 tty_term_string2(struct tty_term *term, enum tty_code_code code, int a, int b)
 {
-	return (tparm(tty_term_string(term, code), a, b));
+	return (tparm((char *) tty_term_string(term, code), a, b));
 }
 
 int

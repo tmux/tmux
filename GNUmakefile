@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.102 2009-05-14 19:32:37 nicm Exp $
+# $Id: GNUmakefile,v 1.103 2009-05-15 12:57:36 nicm Exp $
 
 .PHONY: clean
 
@@ -25,7 +25,7 @@ CFLAGS+= -g -ggdb -DDEBUG
 LIBS+= -ldl
 CFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
-CFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wcast-qual -Wsign-compare
+CFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 CFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
 endif
 

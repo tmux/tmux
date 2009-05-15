@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.136 2009-05-14 19:32:37 nicm Exp $
+# $Id: Makefile,v 1.137 2009-05-15 12:57:36 nicm Exp $
 
 .SUFFIXES: .c .o
 .PHONY: clean
@@ -26,7 +26,7 @@ LDFLAGS+= -Wl,-E
 CFLAGS+= -g -ggdb -DDEBUG
 CFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
-CFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wcast-qual -Wsign-compare
+CFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 CFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
 .endif
 
