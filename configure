@@ -1,15 +1,15 @@
 #!/bin/sh
-# $Id: configure,v 1.10 2009-05-14 19:49:26 nicm Exp $
+# $Id: configure,v 1.11 2009-05-16 22:06:01 nicm Exp $
 
-UNAME=`uname -s`
+TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
 CONFIG_H=config.h
+echo "/* $TMUX_PLATFORM */" >$CONFIG_H
+
 CONFIG_MK=config.mk
+echo "# $TMUX_PLATFORM" >$CONFIG_MK
 
-echo "/* $UNAME */" >$CONFIG_H
-echo "# $UNAME" >$CONFIG_MK
-
-case $UNAME in
+case $TMUX_PLATFORM in
 # ------------------------------------------------------------------------------
     OpenBSD)
 	cat <<EOF >>$CONFIG_H
@@ -174,9 +174,9 @@ EOF
 	;;
 # ------------------------------------------------------------------------------
     *)
-	echo Unable to configure for $UNAME
+	echo Unable to configure for $TMUX_PLATFORM
 	exit 1
 esac
 
-echo Configured for $UNAME
+echo Configured for $TMUX_PLATFORM
 exit 0
