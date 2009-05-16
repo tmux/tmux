@@ -1,5 +1,7 @@
 16 May 2009
 
+* select-layout command and a few default key bindings (M-0, M-1, M-2, M-9) to
+  select layouts.
 * Recreate server socket on SIGUSR1, per SF feature request 2792533.
 
 14 May 2009
@@ -1261,7 +1263,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.289 2009-05-16 10:02:51 nicm Exp $
+$Id: CHANGES,v 1.290 2009-05-16 11:48:47 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

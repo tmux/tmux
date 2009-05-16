@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.317 2009-05-16 10:02:51 nicm Exp $ */
+/* $Id: tmux.h,v 1.318 2009-05-16 11:48:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1249,6 +1249,7 @@ extern const struct cmd_entry cmd_respawn_window_entry;
 extern const struct cmd_entry cmd_rotate_window_entry;
 extern const struct cmd_entry cmd_save_buffer_entry;
 extern const struct cmd_entry cmd_scroll_mode_entry;
+extern const struct cmd_entry cmd_select_layout_entry;
 extern const struct cmd_entry cmd_select_pane_entry;
 extern const struct cmd_entry cmd_select_prompt_entry;
 extern const struct cmd_entry cmd_select_window_entry;
@@ -1568,7 +1569,9 @@ void		 window_pane_mouse(struct window_pane *,
 
 /* layout.c */
 const char * 	 layout_name(struct window *);
+int		 layout_lookup(const char *);
 void		 layout_refresh(struct window *, int);
+int		 layout_select(struct window *, u_int);
 void		 layout_next(struct window *);
 void		 layout_previous(struct window *);
 

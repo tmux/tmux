@@ -79,7 +79,6 @@
 - attach should have a flag to create session if it doesn't exist
 - layout/split stuff:
      horiz split command, and similar resizing commands as for vert split
-     select-layout command
      make manual layout a bit less of a hack and make it handle a grid
      should the layout be a window option???
      more layouts
@@ -89,4 +88,4 @@
 - document clear-history
 - document paste in status line
 - document SIGUSR1 behaviour
-
+- document select-layout
