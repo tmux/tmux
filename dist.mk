@@ -1,4 +1,4 @@
-# $Id: dist.mk,v 1.2 2009-05-14 07:51:25 nicm Exp $
+# $Id: dist.mk,v 1.3 2009-05-16 21:56:38 nicm Exp $
 
 VERSION= 0.8
 
@@ -8,7 +8,7 @@ DISTFILES= *.[ch] Makefile GNUmakefile configure tmux.1 \
 	`find examples compat -type f -and ! -path '*CVS*'`
 
 dist:          
-		make clean
+		(./configure &&	make clean-all)
 		grep '^#FDEBUG=' Makefile
 		grep '^#FDEBUG=' GNUmakefile
 		[ "`(grep '^VERSION' Makefile; grep '^VERSION' GNUmakefile)| \
