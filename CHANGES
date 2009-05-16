@@ -1,3 +1,7 @@
+16 May 2009
+
+* Recreate server socket on SIGUSR1, per SF feature request 2792533.
+
 14 May 2009
 
 * Keys in status line (p in vi mode, M-y in emacs) to paste the first line
@@ -1257,7 +1261,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.288 2009-05-14 19:36:56 nicm Exp $
+$Id: CHANGES,v 1.289 2009-05-16 10:02:51 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

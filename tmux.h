@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.316 2009-05-14 19:36:56 nicm Exp $ */
+/* $Id: tmux.h,v 1.317 2009-05-16 10:02:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1060,6 +1060,8 @@ extern volatile sig_atomic_t sigwinch;
 extern volatile sig_atomic_t sigterm;
 extern volatile sig_atomic_t sigcont;
 extern volatile sig_atomic_t sigchld;
+extern volatile sig_atomic_t sigusr1;
+extern volatile sig_atomic_t sigusr2;
 extern struct options global_options;
 extern struct options global_window_options;
 extern char	*cfg_file;

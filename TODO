@@ -87,4 +87,6 @@
      hardcoded 81 for left-vertical is nasty
 - test bug sshing from freebsd console (tom iirc?)
 - document clear-history
+- document paste in status line
+- document SIGUSR1 behaviour
 

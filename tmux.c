@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.116 2009-05-13 23:27:00 nicm Exp $ */
+/* $Id: tmux.c,v 1.117 2009-05-16 10:02:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,6 +47,8 @@ volatile sig_atomic_t sigwinch;
 volatile sig_atomic_t sigterm;
 volatile sig_atomic_t sigcont;
 volatile sig_atomic_t sigchld;
+volatile sig_atomic_t sigusr1;
+volatile sig_atomic_t sigusr2;
 
 char		*cfg_file;
 struct options	 global_options;
@@ -110,6 +112,12 @@ sighandler(int sig)
 	case SIGCONT:
 		sigcont = 1;
 		break;
+	case SIGUSR1:
+		sigusr1 = 1;
+		break;
+	case SIGUSR2:
+		sigusr2 = 1;
+		break;
 	}
 	errno = saved_errno;
 }
@@ -126,10 +134,6 @@ siginit(void)
 	act.sa_handler = SIG_IGN;
 	if (sigaction(SIGPIPE, &act, NULL) != 0)
 		fatal("sigaction failed");
-	if (sigaction(SIGUSR1, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGUSR2, &act, NULL) != 0)
-		fatal("sigaction failed");
 	if (sigaction(SIGINT, &act, NULL) != 0)
 		fatal("sigaction failed");
 	if (sigaction(SIGTSTP, &act, NULL) != 0)
@@ -143,6 +147,10 @@ siginit(void)
 	if (sigaction(SIGTERM, &act, NULL) != 0)
 		fatal("sigaction failed");
 	if (sigaction(SIGCHLD, &act, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR1, &act, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR2, &act, NULL) != 0)
 		fatal("sigaction failed");
 }
 

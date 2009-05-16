@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.142 2009-05-14 07:58:38 nicm Exp $ */
+/* $Id: server.c,v 1.143 2009-05-16 10:02:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,6 +43,7 @@
 /* Client list. */
 struct clients	 clients;
 
+int		 server_create_socket(void);
 int		 server_main(int);
 void		 server_shutdown(void);
 void		 server_child_signal(void);
@@ -124,13 +125,10 @@ server_client_index(struct client *c)
 int
 server_start(char *path)
 {
-	struct sockaddr_un	sa;
-	size_t			size;
-	mode_t			mask;
-	int		   	n, fd, pair[2], mode;
-	char		       *cause;
+	int	retcode, pair[2], srv_fd;
+	char   *cause;
 #ifdef HAVE_SETPROCTITLE
-	char			rpathbuf[MAXPATHLEN];
+	char	rpathbuf[MAXPATHLEN];
 #endif
 
 	/* The first client is special and gets a socketpair; create it. */
@@ -187,6 +185,25 @@ server_start(char *path)
 	setproctitle("server (%s)", rpathbuf);
 #endif
 
+	srv_fd = server_create_socket();
+	server_create_client(pair[1]);
+
+	retcode = server_main(srv_fd);
+#ifdef DEBUG
+	xmalloc_report(getpid(), "server");
+#endif
+	exit(retcode);
+}
+
+/* Create server socket. */
+int
+server_create_socket(void)
+{
+	struct sockaddr_un	sa;
+	size_t			size;
+	mode_t			mask;
+	int			fd, mode;
+
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
 	size = strlcpy(sa.sun_path, socket_path, sizeof sa.sun_path);
@@ -214,13 +231,7 @@ server_start(char *path)
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
 
-	server_create_client(pair[1]);
-
-	n = server_main(fd);
-#ifdef DEBUG
-	xmalloc_report(getpid(), "server");
-#endif
-	exit(n);
+	return (fd);
 }
 
 /* Main server loop. */
@@ -247,6 +258,13 @@ server_main(int srv_fd)
 		if (sigchld) {
 			server_child_signal();
 			sigchld = 0;
+		}
+
+		/* Recreate socket on SIGUSR1. */
+		if (sigusr1) {
+			close(srv_fd);
+			srv_fd = server_create_socket();
+			sigusr1 = 0;
 		}
 
 		/* Initialise pollfd array. */
