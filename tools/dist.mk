@@ -1,4 +1,4 @@
-# $Id: dist.mk,v 1.3 2009-05-16 21:56:38 nicm Exp $
+# $Id: dist.mk,v 1.1 2009-05-17 18:15:41 nicm Exp $
 
 VERSION= 0.8
 
