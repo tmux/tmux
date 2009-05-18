@@ -1,4 +1,4 @@
-/* $Id: layout.c,v 1.8 2009-05-18 21:01:38 nicm Exp $ */
+/* $Id: layout.c,v 1.9 2009-05-18 21:06:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,7 +41,8 @@ const struct {
 	void		(*refresh)(struct window *, int);
 	void		(*resize)(struct window_pane *, int);
 } layouts[] = {
-	{ "manual", layout_manual_refresh, layout_manual_resize },
+	{ "manual-vertical",
+	  layout_manual_vertical_refresh, layout_manual_vertical_resize },
 	{ "active-only", layout_active_only_refresh, NULL },
 	{ "even-horizontal", layout_even_horizontal_refresh, NULL },
 	{ "even-vertical", layout_even_vertical_refresh, NULL },
