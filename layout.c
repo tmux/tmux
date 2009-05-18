@@ -1,4 +1,4 @@
-/* $Id: layout.c,v 1.10 2009-05-18 21:16:09 nicm Exp $ */
+/* $Id: layout.c,v 1.11 2009-05-18 21:29:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,21 +32,20 @@
  */
 
 void	layout_active_only_refresh(struct window *, int);
-void	layout_even_horizontal_refresh(struct window *, int);
-void	layout_even_vertical_refresh(struct window *, int);
-void	layout_left_vertical_refresh(struct window *, int);
+void	layout_even_h_refresh(struct window *, int);
+void	layout_even_v_refresh(struct window *, int);
+void	layout_left_v_refresh(struct window *, int);
 
 const struct {
 	const char     *name;
 	void		(*refresh)(struct window *, int);
 	void		(*resize)(struct window_pane *, int);
 } layouts[] = {
-	{ "manual-vertical",
-	  layout_manual_vertical_refresh, layout_manual_vertical_resize },
+	{ "manual-vertical", layout_manual_v_refresh, layout_manual_v_resize },
 	{ "active-only", layout_active_only_refresh, NULL },
-	{ "even-horizontal", layout_even_horizontal_refresh, NULL },
-	{ "even-vertical", layout_even_vertical_refresh, NULL },
-	{ "left-vertical", layout_left_vertical_refresh, NULL },
+	{ "even-horizontal", layout_even_h_refresh, NULL },
+	{ "even-vertical", layout_even_v_refresh, NULL },
+	{ "left-vertical", layout_left_v_refresh, NULL },
 };
 
 const char *
@@ -136,7 +135,7 @@ layout_active_only_refresh(struct window *w, unused int active_only)
 }
 
 void
-layout_even_horizontal_refresh(struct window *w, int active_only)
+layout_even_h_refresh(struct window *w, int active_only)
 {
 	struct window_pane	*wp;
 	u_int			 i, n, width, xoff;
@@ -184,7 +183,7 @@ layout_even_horizontal_refresh(struct window *w, int active_only)
 }
 
 void
-layout_even_vertical_refresh(struct window *w, int active_only)
+layout_even_v_refresh(struct window *w, int active_only)
 {
 	struct window_pane	*wp;
 	u_int			 i, n, height, yoff;
@@ -232,7 +231,7 @@ layout_even_vertical_refresh(struct window *w, int active_only)
 }
 
 void
-layout_left_vertical_refresh(struct window *w, int active_only)
+layout_left_v_refresh(struct window *w, int active_only)
 {
 	struct window_pane	*wp;
 	u_int			 i, n, height, yoff;

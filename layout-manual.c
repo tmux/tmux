@@ -1,4 +1,4 @@
-/* $Id: layout-manual.c,v 1.2 2009-05-18 21:06:16 nicm Exp $ */
+/* $Id: layout-manual.c,v 1.3 2009-05-18 21:29:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,10 +20,10 @@
 
 #include "tmux.h"
 
-void	layout_manual_vertical_update_offsets(struct window *);
+void	layout_manual_v_update_offsets(struct window *);
 
 void
-layout_manual_vertical_refresh(struct window *w, unused int active_only)
+layout_manual_v_refresh(struct window *w, unused int active_only)
 {
 	struct window_pane	*wp;
 	u_int			 npanes, canfit, total;
@@ -102,14 +102,14 @@ layout_manual_vertical_refresh(struct window *w, unused int active_only)
 	}
 
 	/* Fill in the offsets. */
-	layout_manual_vertical_update_offsets(w);
+	layout_manual_v_update_offsets(w);
 
 	/* Switch the active window if necessary. */
 	window_set_active_pane(w, w->active);
 }
 
 void
-layout_manual_vertical_resize(struct window_pane *wp, int adjust)
+layout_manual_v_resize(struct window_pane *wp, int adjust)
 {
 	struct window		*w = wp->window;
 	struct window_pane	*wq;
@@ -163,11 +163,11 @@ layout_manual_vertical_resize(struct window_pane *wp, int adjust)
 		}
 	}
 
-	layout_manual_vertical_update_offsets(w);
+	layout_manual_v_update_offsets(w);
 }
 
 void
-layout_manual_vertical_update_offsets(struct window *w)
+layout_manual_v_update_offsets(struct window *w)
 {
 	struct window_pane     *wp;
 	u_int			yoff;
