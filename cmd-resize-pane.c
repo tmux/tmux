@@ -1,4 +1,4 @@
-/* $Id: cmd-resize-pane.c,v 1.5 2009-05-18 21:01:38 nicm Exp $ */
+/* $Id: cmd-resize-pane.c,v 1.6 2009-05-18 21:16:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -92,10 +92,13 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (data->flags & CMD_UPPERDFLAG)
-		layout_resize(wp, adjust);
-	else
-		layout_resize(wp, -adjust);
+	if (!(data->flags & CMD_UPPERDFLAG))
+		adjust = -adjust;
+	if (layout_resize(wp, adjust) != 0) {
+		ctx->error(ctx, "layout %s "
+		    "does not support resizing", layout_name(wp->window));
+		return (-1);
+	}
 	server_redraw_window(wl->window);
 
 	return (0);

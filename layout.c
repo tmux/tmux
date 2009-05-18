@@ -1,4 +1,4 @@
-/* $Id: layout.c,v 1.9 2009-05-18 21:06:16 nicm Exp $ */
+/* $Id: layout.c,v 1.10 2009-05-18 21:16:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -109,10 +109,15 @@ layout_refresh(struct window *w, int active_only)
 	server_redraw_window(w);
 }
 
-void
+int
 layout_resize(struct window_pane *wp, int adjust)
 {
-	layouts[wp->window->layout].resize(wp, adjust);
+	struct window	*w = wp->window;
+
+	if (layouts[w->layout].resize == NULL)
+		return (-1);
+	layouts[w->layout].resize(wp, adjust);
+	return (0);
 }
 
 void
