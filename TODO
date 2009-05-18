@@ -81,8 +81,9 @@
      what to do about manual mode?
      	  - two independent manual modes: vertical and horizontal?
 	  - proper grid mode? (hard)
-     hardcoded 81 for left-vertical is nasty. how else? window option?
 - test bug sshing from freebsd console (tom iirc?)
+- document manual-vertical changes
+- document main-pane-width
 - document clear-history
 - document paste in status line
 - document SIGUSR1 behaviour

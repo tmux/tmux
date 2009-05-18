@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.322 2009-05-18 21:29:11 nicm Exp $ */
+/* $Id: tmux.h,v 1.323 2009-05-18 21:55:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1001,7 +1001,7 @@ struct set_option_entry {
 extern const struct set_option_entry set_option_table[];
 extern const struct set_option_entry set_window_option_table[];
 #define NSETOPTION 24
-#define NSETWINDOWOPTION 17
+#define NSETWINDOWOPTION 18
 
 #ifndef HAVE_STRTONUM
 /* strtonum.c */

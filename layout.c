@@ -1,4 +1,4 @@
-/* $Id: layout.c,v 1.11 2009-05-18 21:29:11 nicm Exp $ */
+/* $Id: layout.c,v 1.12 2009-05-18 21:55:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -234,7 +234,7 @@ void
 layout_left_v_refresh(struct window *w, int active_only)
 {
 	struct window_pane	*wp;
-	u_int			 i, n, height, yoff;
+	u_int			 i, n, mainwidth, height, yoff;
 
 	if (active_only)
 		return;
@@ -244,8 +244,11 @@ layout_left_v_refresh(struct window *w, int active_only)
 	if (n == 0)
 		return;
 
+	/* Get the main pane width and add one for separator line. */
+	mainwidth = options_get_number(&w->options, "main-pane-width") + 1;
+
 	/* Need >1 pane and minimum columns; if fewer, display active only. */
-	if (n == 1 || w->sx < 82 + PANE_MINIMUM) {
+	if (n == 1 || w->sx < mainwidth + PANE_MINIMUM) {
 		layout_active_only_refresh(w, active_only);
 		return;
 	}
@@ -264,7 +267,7 @@ layout_left_v_refresh(struct window *w, int active_only)
 		if (wp == TAILQ_FIRST(&w->panes)) {
 			wp->xoff = 0;
 			wp->yoff = 0;
-			window_pane_resize(wp, 81, w->sy);
+			window_pane_resize(wp, mainwidth - 1, w->sy);
 			wp->flags &= ~PANE_HIDDEN;
 			continue;
 		}
@@ -275,12 +278,12 @@ layout_left_v_refresh(struct window *w, int active_only)
 		}
 		wp->flags &= ~PANE_HIDDEN;
 
-		wp->xoff = 82;
+		wp->xoff = mainwidth;
 		wp->yoff = yoff;
 		if (i != n - 1)
- 			window_pane_resize(wp, w->sx - 82, height - 1);
+ 			window_pane_resize(wp, w->sx - mainwidth, height - 1);
 		else
- 			window_pane_resize(wp, w->sx - 82, height);
+ 			window_pane_resize(wp, w->sx - mainwidth, height);
 
 		i++;
 		yoff += height;
