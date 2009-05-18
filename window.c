@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.76 2009-05-15 12:58:56 nicm Exp $ */
+/* $Id: window.c,v 1.77 2009-05-18 21:01:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -279,107 +279,7 @@ window_resize(struct window *w, u_int sx, u_int sy)
 	w->sx = sx;
 	w->sy = sy;
 
-	window_fit_panes(w);
 	return (0);
-}
-
-void
-window_fit_panes(struct window *w)
-{
-	struct window_pane	*wp;
-	u_int			 npanes, canfit, total;
-	int			 left;
-
-	if (TAILQ_EMPTY(&w->panes))
-		return;
-
-	/* Clear hidden flags. */
-	TAILQ_FOREACH(wp, &w->panes, entry)
-	    	wp->flags &= ~PANE_HIDDEN;
-
-	/* Check the new size. */
-	npanes = window_count_panes(w);
-	if (w->sy <= PANE_MINIMUM * npanes) {
-		/* How many can we fit? */
-		canfit = w->sy / PANE_MINIMUM;
-		if (canfit == 0) {
-			/* None. Just use this size for the first. */
-			TAILQ_FOREACH(wp, &w->panes, entry) {
-				if (wp == TAILQ_FIRST(&w->panes))
-					wp->sy = w->sy;
-				else
-					wp->flags |= PANE_HIDDEN;
-			}
-		} else {
-			/* >=1, set minimum for them all. */
-			TAILQ_FOREACH(wp, &w->panes, entry) {
-				if (canfit-- > 0)
-					wp->sy = PANE_MINIMUM - 1;
-				else
-					wp->flags |= PANE_HIDDEN;
-			}
-			/* And increase the first by the rest. */
-			TAILQ_FIRST(&w->panes)->sy += 1 + w->sy % PANE_MINIMUM;
-		}
-	} else {
-		/* In theory they will all fit. Find the current total. */
-		total = 0;
-		TAILQ_FOREACH(wp, &w->panes, entry)
-			total += wp->sy;
-		total += npanes - 1;
-
-		/* Growing or shrinking? */
-		left = w->sy - total;
-		if (left > 0) {
-			/* Growing. Expand evenly. */
-			while (left > 0) {
-				TAILQ_FOREACH(wp, &w->panes, entry) {
-					wp->sy++;
-					if (--left == 0)
-						break;
-				}
-			}
-		} else {
-			/* Shrinking. Reduce evenly down to minimum. */
-			while (left < 0) {
-				TAILQ_FOREACH(wp, &w->panes, entry) {
-					if (wp->sy <= PANE_MINIMUM - 1)
-						continue;
-					wp->sy--;
-					if (++left == 0)
-						break;
-				}
-			}
-		}
-	}
-
-	/* Now do the resize. */
-	TAILQ_FOREACH(wp, &w->panes, entry) {
-		wp->sy--;
-	    	window_pane_resize(wp, w->sx, wp->sy + 1);
-	}
-
-	/* Fill in the offsets. */
-	window_update_panes(w);
-
-	/* Switch the active window if necessary. */
-	window_set_active_pane(w, w->active);
-}
-
-void
-window_update_panes(struct window *w)
-{
-	struct window_pane     *wp;
-	u_int			yoff;
-
-	yoff = 0;
-	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp->flags & PANE_HIDDEN)
-			continue;
-		wp->xoff = 0;
-		wp->yoff = yoff;
-		yoff += wp->sy + 1;
-	}
 }
 
 void
@@ -422,7 +322,6 @@ window_add_pane(struct window *w, int wanty, const char *cmd,
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	else
 		TAILQ_INSERT_AFTER(&w->panes, w->active, wp, entry);
-	window_update_panes(w);
 	if (window_pane_spawn(wp, cmd, cwd, envp, cause) != 0) {
 		window_remove_pane(w, wp);
 		return (NULL);
@@ -439,8 +338,6 @@ window_remove_pane(struct window *w, struct window_pane *wp)
 
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	window_pane_destroy(wp);
-
-	window_fit_panes(w);
 }
 
 u_int

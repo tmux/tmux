@@ -1,4 +1,4 @@
-/* $Id: cmd-resize-pane.c,v 1.4 2009-05-18 20:18:08 nicm Exp $ */
+/* $Id: cmd-resize-pane.c,v 1.5 2009-05-18 21:01:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -67,15 +67,11 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_pane_data	*data = self->data;
 	struct winlink		*wl;
 	const char	       	*errstr;
-	struct window_pane	*wp, *wq;
+	struct window_pane	*wp;
 	u_int			 adjust;
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
-	if (wl->window->layout != 0) {
-		ctx->error(ctx, "window not in manual layout");
-		return (-1);
-	}
 	if (data->pane == -1)
 		wp = wl->window->active;
 	else {
@@ -96,55 +92,10 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (data->flags & CMD_UPPERDFLAG) {
-		/*
-		 * If this is not the last pane, keep trying to increase size
-		 * and remove it from the next panes. If it is the last, do
-		 * so on the previous pane.
-		 */
-		if (TAILQ_NEXT(wp, entry) == NULL) {
-			if (wp == TAILQ_FIRST(&wl->window->panes)) {
-				/* Only one pane. */
-				return (0);
-			}
-			wp = TAILQ_PREV(wp, window_panes, entry);
-		}
-		while (adjust-- > 0) {
-			wq = wp;
-			while ((wq = TAILQ_NEXT(wq, entry)) != NULL) {
-				if (wq->sy <= PANE_MINIMUM)
-					continue;
-				window_pane_resize(wq, wq->sx, wq->sy - 1);
-				break;
-			}
-			if (wq == NULL)
-				break;
-			window_pane_resize(wp, wp->sx, wp->sy + 1);
-		}
-	} else {
-		/*
-		 * If this is not the last pane, keep trying to reduce size
-		 * and add to the following pane. If it is the last, do so on
-		 * the previous pane.
-		 */
-		wq = TAILQ_NEXT(wp, entry);
-		if (wq == NULL) {
-			if (wp == TAILQ_FIRST(&wl->window->panes)) {
-				/* Only one pane. */
-				return (0);
-			}
-			wq = wp;
-			wp = TAILQ_PREV(wq, window_panes, entry);
-		}
-		while (adjust-- > 0) {
-			if (wp->sy <= PANE_MINIMUM)
-				break;
-			window_pane_resize(wq, wq->sx, wq->sy + 1);
-			window_pane_resize(wp, wp->sx, wp->sy - 1);
-		}
-	}
-	window_update_panes(wl->window);
-
+	if (data->flags & CMD_UPPERDFLAG)
+		layout_resize(wp, adjust);
+	else
+		layout_resize(wp, -adjust);
 	server_redraw_window(wl->window);
 
 	return (0);

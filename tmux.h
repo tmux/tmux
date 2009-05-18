@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.318 2009-05-16 11:48:47 nicm Exp $ */
+/* $Id: tmux.h,v 1.319 2009-05-18 21:01:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1549,8 +1549,6 @@ struct window_pane *window_add_pane(struct window *, int,
 void		 window_remove_pane(struct window *, struct window_pane *);
 u_int		 window_index_of_pane(struct window *, struct window_pane *);
 struct window_pane *window_pane_at_index(struct window *, u_int);
-void  		 window_fit_panes(struct window *);
-void		 window_update_panes(struct window *);
 u_int		 window_count_panes(struct window *);
 void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
@@ -1571,9 +1569,14 @@ void		 window_pane_mouse(struct window_pane *,
 const char * 	 layout_name(struct window *);
 int		 layout_lookup(const char *);
 void		 layout_refresh(struct window *, int);
+void		 layout_resize(struct window_pane *, int);
 int		 layout_select(struct window *, u_int);
 void		 layout_next(struct window *);
 void		 layout_previous(struct window *);
+
+/* layout-manual.c */
+void		 layout_manual_refresh(struct window *, int);
+void		 layout_manual_resize(struct window_pane *, int);
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;

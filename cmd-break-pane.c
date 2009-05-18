@@ -1,4 +1,4 @@
-/* $Id: cmd-break-pane.c,v 1.2 2009-05-04 17:58:26 nicm Exp $ */
+/* $Id: cmd-break-pane.c,v 1.3 2009-05-18 21:01:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,18 +74,18 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (wl->window->active == NULL)
 			wl->window->active = TAILQ_NEXT(wp, entry);
 	}
-	window_fit_panes(wl->window);
+ 	layout_refresh(wl->window, 0);
 
  	w = wp->window = window_create1(s->sx, s->sy);
  	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
  	w->active = wp;
- 	window_fit_panes(w);
  	w->name = default_window_name(w);
 
  	wl = session_attach(s, w, -1, &cause); /* can't fail */
-
  	if (!(data->flags & CMD_DFLAG))
  		session_select(s, wl->idx);
+ 	layout_refresh(w, 0);
+
 	server_redraw_session(s);
 
 	return (0);
