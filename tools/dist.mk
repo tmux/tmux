@@ -1,4 +1,4 @@
-# $Id: dist.mk,v 1.2 2009-05-17 18:20:59 nicm Exp $
+# $Id: dist.mk,v 1.3 2009-05-18 15:42:30 nicm Exp $
 
 VERSION= 0.8
 
@@ -13,6 +13,7 @@ dist:
 		grep '^#FDEBUG=' GNUmakefile
 		[ "`(grep '^VERSION' Makefile; grep '^VERSION' GNUmakefile)| \
 		        uniq -u`" = "" ]
+		chmod +x configure
 		tar -zc \
 		        -s '/.*/${DISTDIR}\/\0/' \
 		        -f ${DISTDIR}.tar.gz ${DISTFILES}

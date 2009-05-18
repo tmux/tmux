@@ -1,4 +1,4 @@
-/* $Id: colour.c,v 1.5 2009-03-07 10:29:06 nicm Exp $ */
+/* $Id: colour.c,v 1.6 2009-05-18 15:42:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,6 @@ colour_tostring(u_char c)
 	return (NULL);
 }
 
-/* String to colour. */
 int
 colour_fromstring(const char *s)
 {
