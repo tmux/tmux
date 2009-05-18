@@ -1,4 +1,4 @@
-/* $Id: cmd-resize-pane.c,v 1.3 2009-05-04 17:58:26 nicm Exp $ */
+/* $Id: cmd-resize-pane.c,v 1.4 2009-05-18 20:18:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -98,9 +98,9 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (data->flags & CMD_UPPERDFLAG) {
 		/*
-		 * If this is not the last window, keep trying to increase size
-		 * and remove it from the next windows. If it is the last, do
-		 * so on the previous window.
+		 * If this is not the last pane, keep trying to increase size
+		 * and remove it from the next panes. If it is the last, do
+		 * so on the previous pane.
 		 */
 		if (TAILQ_NEXT(wp, entry) == NULL) {
 			if (wp == TAILQ_FIRST(&wl->window->panes)) {
@@ -123,9 +123,9 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	} else {
 		/*
-		 * If this is not the last window, keep trying to reduce size
-		 * and add to the following window. If it is the last, do so on
-		 * the previous window.
+		 * If this is not the last pane, keep trying to reduce size
+		 * and add to the following pane. If it is the last, do so on
+		 * the previous pane.
 		 */
 		wq = TAILQ_NEXT(wp, entry);
 		if (wq == NULL) {
