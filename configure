@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.12 2009-05-16 22:14:47 nicm Exp $
+# $Id: configure,v 1.13 2009-05-18 19:18:41 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -8,6 +8,28 @@ echo "/* $TMUX_PLATFORM */" >|$CONFIG_H
 
 CONFIG_MK=config.mk
 echo "# $TMUX_PLATFORM" >|$CONFIG_MK
+
+cat <<EOF >>$CONFIG_H
+#undef HAVE_ASPRINTF
+#undef HAVE_CRYPT_H
+#undef HAVE_DAEMON
+#undef HAVE_FGETLN
+#undef HAVE_FORKPTY
+#undef HAVE_GETOPT
+#undef HAVE_LIBUTIL_H
+#undef HAVE_PATHS_H
+#undef HAVE_POLL
+#undef HAVE_PROGNAME
+#undef HAVE_PTY_H
+#undef HAVE_QUEUE_H
+#undef HAVE_SETPROCTITLE
+#undef HAVE_STRLCAT
+#undef HAVE_STRLCPY
+#undef HAVE_STRTONUM
+#undef HAVE_TREE_H
+#undef HAVE_UTIL_H
+#undef HAVE_VSYSLOG
+EOF
 
 case $TMUX_PLATFORM in
 # ------------------------------------------------------------------------------
