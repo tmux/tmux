@@ -1,4 +1,4 @@
-/* $Id: layout.c,v 1.13 2009-05-18 21:58:40 nicm Exp $ */
+/* $Id: layout.c,v 1.14 2009-05-18 22:17:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,6 +34,7 @@
 void	layout_active_only_refresh(struct window *, int);
 void	layout_even_h_refresh(struct window *, int);
 void	layout_even_v_refresh(struct window *, int);
+void	layout_main_h_refresh(struct window *, int);
 void	layout_main_v_refresh(struct window *, int);
 
 const struct {
@@ -45,6 +46,7 @@ const struct {
 	{ "active-only", layout_active_only_refresh, NULL },
 	{ "even-horizontal", layout_even_h_refresh, NULL },
 	{ "even-vertical", layout_even_v_refresh, NULL },
+	{ "main-horizontal", layout_main_h_refresh, NULL },
 	{ "main-vertical", layout_main_v_refresh, NULL },
 };
 
@@ -297,5 +299,75 @@ layout_main_v_refresh(struct window *w, int active_only)
 		if (wp == NULL)
 			break;
 		window_pane_resize(wp, wp->sx, wp->sy + 1);
+	}
+}
+
+void
+layout_main_h_refresh(struct window *w, int active_only)
+{
+	struct window_pane	*wp;
+	u_int			 i, n, mainheight, width, xoff;
+
+	if (active_only)
+		return;
+
+	/* Get number of panes. */
+	n = window_count_panes(w);
+	if (n == 0)
+		return;
+
+	/* Get the main pane height and add one for separator line. */
+	mainheight = options_get_number(&w->options, "main-pane-height") + 1;
+
+	/* Need >1 pane and minimum rows; if fewer, display active only. */
+	if (n == 1 || w->sy < mainheight + PANE_MINIMUM) {
+		layout_active_only_refresh(w, active_only);
+		return;
+	}
+	n--;
+
+	/* How many can we fit, not including first? */
+	if (w->sx / n < PANE_MINIMUM) {
+		width = PANE_MINIMUM;
+		n = w->sx / PANE_MINIMUM;
+	} else
+		width = w->sx / n;
+
+	/* Fit the panes. */
+	i = xoff = 0;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (wp == TAILQ_FIRST(&w->panes)) {
+			wp->xoff = 0;
+			wp->yoff = 0;
+			window_pane_resize(wp, w->sx, mainheight - 1);
+			wp->flags &= ~PANE_HIDDEN;
+			continue;
+		}
+
+		if (i > n) {
+			wp->flags |= PANE_HIDDEN;
+			continue;
+		}
+		wp->flags &= ~PANE_HIDDEN;
+
+		wp->xoff = xoff;
+		wp->yoff = mainheight;
+		if (i != n - 1)
+ 			window_pane_resize(wp, width - 1, w->sy - mainheight);
+		else
+ 			window_pane_resize(wp, width - 1, w->sy - mainheight);
+
+		i++;
+		xoff += width;
+	}
+
+	/* Any space left? */
+	while (xoff++ < w->sx + 1) {
+		wp = TAILQ_LAST(&w->panes, window_panes);
+		while (wp != NULL && wp == TAILQ_FIRST(&w->panes))
+			wp = TAILQ_PREV(wp, window_panes, entry);
+		if (wp == NULL)
+			break;
+		window_pane_resize(wp, wp->sx + 1, wp->sy);
 	}
 }

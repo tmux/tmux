@@ -1,5 +1,6 @@
 18 May 2009
 
+* main-horizontal layout and main-pane-height option to match vertical.
 * New window option main-pane-width to set the width of the large left pane with
   main-vertical (was left-vertical) layout. 
 * Lots of layout cleanup. manual layout is now manual-vertical.
@@ -1269,7 +1270,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.291 2009-05-18 21:58:40 nicm Exp $
+$Id: CHANGES,v 1.292 2009-05-18 22:17:24 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

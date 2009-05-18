@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.118 2009-05-18 21:55:53 nicm Exp $ */
+/* $Id: tmux.c,v 1.119 2009-05-18 22:17:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -323,6 +323,7 @@ main(int argc, char **argv)
 	options_set_number(
 	    &global_window_options, "mode-attr", GRID_ATTR_REVERSE);
 	options_set_number(&global_window_options, "main-pane-width", 81);
+	options_set_number(&global_window_options, "main-pane-height", 24);
 	options_set_number(&global_window_options, "mode-bg", 3);
 	options_set_number(&global_window_options, "mode-fg", 0);
 	options_set_number(&global_window_options, "mode-keys", MODEKEY_EMACS);
