@@ -1,4 +1,4 @@
-/* $Id: cmd-select-layout.c,v 1.1 2009-05-16 11:48:47 nicm Exp $ */
+/* $Id: cmd-select-layout.c,v 1.2 2009-05-18 21:32:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,7 +50,7 @@ cmd_select_layout_init(struct cmd *self, int key)
 
 	switch (key) {
 	case KEYC_ADDESC('0'):
-		data->arg = xstrdup("manual");
+		data->arg = xstrdup("manual-vertical");
 		break;
 	case KEYC_ADDESC('1'):
 		data->arg = xstrdup("even-horizontal");
