@@ -1,4 +1,4 @@
-/* $Id: cmd-load-buffer.c,v 1.2 2009-01-27 23:26:15 nicm Exp $ */
+/* $Id: cmd-load-buffer.c,v 1.3 2009-05-18 16:22:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -63,7 +63,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if ((f = fopen(data->arg, "r")) == NULL) {
+	if ((f = fopen(data->arg, "rb")) == NULL) {
 		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
 		return (-1);
 	}

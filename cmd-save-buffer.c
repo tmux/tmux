@@ -1,4 +1,4 @@
-/* $Id: cmd-save-buffer.c,v 1.4 2009-02-08 13:36:40 tcunha Exp $ */
+/* $Id: cmd-save-buffer.c,v 1.5 2009-05-18 16:22:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -69,9 +69,9 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	mask = umask(S_IRWXG | S_IRWXO);
 	if (data->flags & CMD_AFLAG)
-		f = fopen(data->arg, "a");
+		f = fopen(data->arg, "ab");
 	else
-		f = fopen(data->arg, "w");
+		f = fopen(data->arg, "wb");
 	if (f == NULL) {
 		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
 		return (-1);
