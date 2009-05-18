@@ -78,12 +78,10 @@
 - key to switch to copy mode from scroll mode
 - attach should have a flag to create session if it doesn't exist
 - layout/split stuff:
-     horiz split command, and similar resizing commands as for vert split
-     make manual layout a bit less of a hack and make it handle a grid
-     should the layout be a window option???
-     more layouts
-     better resizing of shells when changing layout
-     hardcoded 81 for left-vertical is nasty
+     what to do about manual mode?
+     	  - two independent manual modes: vertical and horizontal?
+	  - proper grid mode? (hard)
+     hardcoded 81 for left-vertical is nasty. how else? window option?
 - test bug sshing from freebsd console (tom iirc?)
 - document clear-history
 - document paste in status line
