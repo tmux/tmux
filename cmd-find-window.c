@@ -1,4 +1,4 @@
-/* $Id: cmd-find-window.c,v 1.7 2009-05-04 17:58:26 nicm Exp $ */
+/* $Id: cmd-find-window.c,v 1.8 2009-05-19 13:32:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,6 @@
 int	cmd_find_window_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_find_window_callback(void *, int);
-char   *cmd_find_window_search(struct window_pane *, const char *);
 
 const struct cmd_entry cmd_find_window_entry = {
 	"find-window", "findw",
@@ -82,7 +81,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			if (strstr(wm->window->name, data->arg) != NULL)
 				sctx = xstrdup("");
 			else {
-				sres = cmd_find_window_search(wp, data->arg);
+				sres = window_pane_search(wp, data->arg);
 				if (sres == NULL &&
 				    strstr(wp->base.title, data->arg) == NULL)
 					continue;
@@ -158,47 +157,4 @@ cmd_find_window_callback(void *data, int idx)
 		recalculate_sizes();
 	}
 	xfree(cdata);
-}
-
-char *
-cmd_find_window_search(struct window_pane *wp, const char *searchstr)
-{
-	const struct grid_cell	*gc;
-	const struct grid_utf8	*gu;
-	char			*buf, *s;
-	size_t	 		 off;
-	u_int	 		 i, j, k;
-
-	buf = xmalloc(1);
-
-	for (j = 0; j < screen_size_y(&wp->base); j++) {
-		off = 0;
-		for (i = 0; i < screen_size_x(&wp->base); i++) {
-			gc = grid_view_peek_cell(wp->base.grid, i, j);
-			if (gc->flags & GRID_FLAG_UTF8) {
-				gu = grid_view_peek_utf8(wp->base.grid, i, j);
-				buf = xrealloc(buf, 1, off + 8);
-				for (k = 0; k < UTF8_SIZE; k++) {
-					if (gu->data[k] == 0xff)
-						break;
-					buf[off++] = gu->data[k];
-				}
-			} else {
-				buf = xrealloc(buf, 1, off + 1);
-				buf[off++] = gc->data;
-			}
-		}
-		while (off > 0 && buf[off - 1] == ' ')
-			off--;
-		buf[off] = '\0';
-
-		if ((s = strstr(buf, searchstr)) != NULL) {
-			s = section_string(buf, off, s - buf, 40);
-			xfree(buf);
-			return (s);
-		}
-	}
-
-	xfree(buf);
-	return (NULL);
 }

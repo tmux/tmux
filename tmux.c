@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.119 2009-05-18 22:17:24 nicm Exp $ */
+/* $Id: tmux.c,v 1.120 2009-05-19 13:32:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -328,6 +328,7 @@ main(int argc, char **argv)
 	options_set_number(&global_window_options, "mode-fg", 0);
 	options_set_number(&global_window_options, "mode-keys", MODEKEY_EMACS);
 	options_set_number(&global_window_options, "monitor-activity", 0);
+	options_set_string(&global_window_options, "monitor-content", "%s", "");
 	options_set_number(&global_window_options, "utf8", 0);
 	options_set_number(&global_window_options, "window-status-attr", 0);
 	options_set_number(&global_window_options, "window-status-bg", 8);

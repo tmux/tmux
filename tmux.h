@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.323 2009-05-18 21:55:53 nicm Exp $ */
+/* $Id: tmux.h,v 1.324 2009-05-19 13:32:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -701,6 +701,7 @@ struct window {
 #define WINDOW_BELL 0x1
 #define WINDOW_HIDDEN 0x2
 #define WINDOW_ACTIVITY 0x4
+#define WINDOW_CONTENT 0x6
 #define WINDOW_REDRAW 0x8
 
 	struct options	 options;
@@ -1001,7 +1002,7 @@ struct set_option_entry {
 extern const struct set_option_entry set_option_table[];
 extern const struct set_option_entry set_window_option_table[];
 #define NSETOPTION 24
-#define NSETWINDOWOPTION 18
+#define NSETWINDOWOPTION 19
 
 #ifndef HAVE_STRTONUM
 /* strtonum.c */
@@ -1564,6 +1565,7 @@ void		 window_pane_parse(struct window_pane *);
 void		 window_pane_key(struct window_pane *, struct client *, int);
 void		 window_pane_mouse(struct window_pane *,
     		     struct client *, u_char, u_char, u_char);
+char		*window_pane_search(struct window_pane *, const char *);
 
 /* layout.c */
 const char * 	 layout_name(struct window *);

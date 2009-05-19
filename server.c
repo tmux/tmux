@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.144 2009-05-19 08:48:49 nicm Exp $ */
+/* $Id: server.c,v 1.145 2009-05-19 13:32:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,7 +53,13 @@ void		 server_fill_clients(struct pollfd **);
 void		 server_handle_clients(struct pollfd **);
 struct client	*server_accept_client(int);
 void		 server_handle_client(struct client *);
-void		 server_handle_window(struct window *, struct window_pane *wp);
+void		 server_handle_window(struct window *, struct window_pane *);
+int		 server_check_window_bell(struct session *, struct window *,
+		      struct window_pane *);
+int		 server_check_window_activity(struct session *,
+		      struct window *);
+int		 server_check_window_content(struct session *, struct window *,
+		      struct window_pane *);
 void		 server_lost_client(struct client *);
 void	 	 server_check_window(struct window *);
 void		 server_check_redraw(struct client *);
@@ -878,13 +884,12 @@ void
 server_handle_window(struct window *w, struct window_pane *wp)
 {
 	struct session	*s;
-	struct client	*c;
-	u_int		 i, j;
-	int		 action, update;
+	u_int		 i;
+	int		 update;
 
 	window_pane_parse(wp);
 
-	if (!(w->flags & WINDOW_BELL) && !(w->flags & WINDOW_ACTIVITY))
+	if ((w->flags & (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_CONTENT)) == 0)
 		return;
 
 	update = 0;
@@ -893,45 +898,86 @@ server_handle_window(struct window *w, struct window_pane *wp)
 		if (s == NULL || !session_has(s, w))
 			continue;
 
-		if (w->flags & WINDOW_BELL &&
-		    !session_alert_has_window(s, w, WINDOW_BELL)) {
-			session_alert_add(s, w, WINDOW_BELL);
-
-			action = options_get_number(&s->options, "bell-action");
-			switch (action) {
-			case BELL_ANY:
-				if (s->flags & SESSION_UNATTACHED)
-					break;
-				for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
-					c = ARRAY_ITEM(&clients, j);
-					if (c != NULL && c->session == s)
-						tty_putcode(&c->tty, TTYC_BEL);
-				}
-				break;
-			case BELL_CURRENT:
-				if (w->active != wp)
-					break;
-				for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
-					c = ARRAY_ITEM(&clients, j);
-					if (c != NULL && c->session == s)
-						tty_putcode(&c->tty, TTYC_BEL);
-				}
-				break;
-			}
-			update = 1;
-		}
-
-		if (options_get_number(&w->options, "monitor-activity") &&
-		    (w->flags & WINDOW_ACTIVITY) &&
-		    !session_alert_has_window(s, w, WINDOW_ACTIVITY)) {
-			session_alert_add(s, w, WINDOW_ACTIVITY);
-			update = 1;
-		}
+		update += server_check_window_bell(s, w, wp);
+		update += server_check_window_activity(s, w);
+		update += server_check_window_content(s, w, wp);
 	}
 	if (update)
 		server_status_window(w);
 
-	w->flags &= ~(WINDOW_BELL|WINDOW_ACTIVITY);
+	w->flags &= ~(WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_CONTENT);
+}
+
+int
+server_check_window_bell(
+    struct session *s, struct window *w, struct window_pane *wp)
+{
+	struct client	*c;
+	u_int		 i;
+	int		 action;
+
+	if (!(w->flags & WINDOW_BELL))
+		return (0);
+	if (session_alert_has_window(s, w, WINDOW_BELL))
+		return (0);
+	session_alert_add(s, w, WINDOW_BELL);
+
+	action = options_get_number(&s->options, "bell-action");
+	switch (action) {
+	case BELL_ANY:
+		if (s->flags & SESSION_UNATTACHED)
+			break;
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			c = ARRAY_ITEM(&clients, i);
+			if (c != NULL && c->session == s)
+				tty_putcode(&c->tty, TTYC_BEL);
+		}
+		break;
+	case BELL_CURRENT:
+		if (w->active != wp)
+			break;
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			c = ARRAY_ITEM(&clients, i);
+			if (c != NULL && c->session == s)
+				tty_putcode(&c->tty, TTYC_BEL);
+		}
+		break;
+	}
+	return (1);
+}
+
+int
+server_check_window_activity(struct session *s, struct window *w)
+{
+	if (!(w->flags & WINDOW_ACTIVITY))
+		return (0);
+	if (!options_get_number(&w->options, "monitor-activity"))
+		return (0);
+	if (session_alert_has_window(s, w, WINDOW_ACTIVITY))
+		return (0);
+	session_alert_add(s, w, WINDOW_ACTIVITY);
+	return (1);
+}
+
+int
+server_check_window_content(
+    struct session *s, struct window *w, struct window_pane *wp)
+{
+	char	*found, *ptr;
+
+	if (!(w->flags & WINDOW_CONTENT))
+		return (0);
+	if ((ptr = options_get_string(&w->options, "monitor-content")) == NULL)
+		return (0);
+	if (*ptr == '\0')
+		return (0);
+	if (session_alert_has_window(s, w, WINDOW_CONTENT))
+		return (0);
+	if ((found = window_pane_search(wp, ptr)) == NULL)
+		return (0);
+	session_alert_add(s, w, WINDOW_CONTENT);
+    	xfree(found);
+	return (1);
 }
 
 /* Check if window still exists.. */

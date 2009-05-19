@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.77 2009-05-18 21:01:38 nicm Exp $ */
+/* $Id: window.c,v 1.78 2009-05-19 13:32:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -593,4 +593,47 @@ window_pane_mouse(
 			wp->mode->mouse(wp, c, b, x, y);
 	} else
 		input_mouse(wp, b, x, y);
+}
+	
+char *
+window_pane_search(struct window_pane *wp, const char *searchstr)
+{
+	const struct grid_cell	*gc;
+	const struct grid_utf8	*gu;
+	char			*buf, *s;
+	size_t	 		 off;
+	u_int	 		 i, j, k;
+
+	buf = xmalloc(1);
+
+	for (j = 0; j < screen_size_y(&wp->base); j++) {
+		off = 0;
+		for (i = 0; i < screen_size_x(&wp->base); i++) {
+			gc = grid_view_peek_cell(wp->base.grid, i, j);
+			if (gc->flags & GRID_FLAG_UTF8) {
+				gu = grid_view_peek_utf8(wp->base.grid, i, j);
+				buf = xrealloc(buf, 1, off + 8);
+				for (k = 0; k < UTF8_SIZE; k++) {
+					if (gu->data[k] == 0xff)
+						break;
+					buf[off++] = gu->data[k];
+				}
+			} else {
+				buf = xrealloc(buf, 1, off + 1);
+				buf[off++] = gc->data;
+			}
+		}
+		while (off > 0 && buf[off - 1] == ' ')
+			off--;
+		buf[off] = '\0';
+
+		if ((s = strstr(buf, searchstr)) != NULL) {
+			s = section_string(buf, off, s - buf, 40);
+			xfree(buf);
+			return (s);
+		}
+	}
+
+	xfree(buf);
+	return (NULL);
 }

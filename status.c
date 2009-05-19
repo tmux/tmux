@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.81 2009-05-17 18:15:40 nicm Exp $ */
+/* $Id: status.c,v 1.82 2009-05-19 13:32:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -184,6 +184,8 @@ draw:
 				larrow = -1;
 			else if (session_alert_has(s, wl, WINDOW_BELL))
 				larrow = -1;
+			else if (session_alert_has(s, wl, WINDOW_CONTENT))
+				larrow = -1;
 		}
 
  		for (ptr = text; *ptr != '\0'; ptr++) {
@@ -196,6 +198,8 @@ draw:
 			if (session_alert_has(s, wl, WINDOW_ACTIVITY))
 				rarrow = -1;
 			else if (session_alert_has(s, wl, WINDOW_BELL))
+				rarrow = -1;
+			else if (session_alert_has(s, wl, WINDOW_CONTENT))
 				rarrow = -1;
 		}
 
@@ -469,6 +473,9 @@ status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 		gc->attr ^= GRID_ATTR_REVERSE;
 	} else if (session_alert_has(s, wl, WINDOW_BELL)) {
 		flag = '!';
+		gc->attr ^= GRID_ATTR_REVERSE;
+	} else if (session_alert_has(s, wl, WINDOW_CONTENT)) {
+		flag = '+';
 		gc->attr ^= GRID_ATTR_REVERSE;
 	}
 

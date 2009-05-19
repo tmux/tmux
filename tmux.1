@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.96 2009-05-18 21:58:40 nicm Exp $
+.\" $Id: tmux.1,v 1.97 2009-05-19 13:32:55 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -1156,6 +1156,11 @@ Key bindings default to emacs.
 .Xc
 Monitor for activity in the window.
 Windows with activity are highlighted in the status line.
+.It Xo Ic monitor-content Ar match-string
+.Xc
+Monitor content in the window. When
+.Ar match-string
+appears in the window, it is highlighted in the status line.
 .It Xo Ic remain-on-exit
 .Op Ic on | Ic off
 .Xc

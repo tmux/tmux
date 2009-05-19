@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.56 2009-05-04 17:58:27 nicm Exp $ */
+/* $Id: session.c,v 1.57 2009-05-19 13:32:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -266,6 +266,8 @@ session_next_activity(struct session *s, struct winlink *wl)
 			break;
 		if (session_alert_has(s, wl, WINDOW_ACTIVITY))
 			break;
+		if (session_alert_has(s, wl, WINDOW_CONTENT))
+			break;
 		wl = winlink_next(&s->windows, wl);
 	}
 	return (wl);
@@ -304,6 +306,8 @@ session_previous_activity(struct session *s, struct winlink *wl)
 		if (session_alert_has(s, wl, WINDOW_BELL))
 			break;
 		if (session_alert_has(s, wl, WINDOW_ACTIVITY))
+			break;
+		if (session_alert_has(s, wl, WINDOW_CONTENT))
 			break;
 		wl = winlink_previous(&s->windows, wl);
 	}
