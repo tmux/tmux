@@ -1,5 +1,9 @@
 19 May 2009
 
+* Try to guess if the window is UTF-8 by outputting a three-byte UTF-8 wide
+  character and seeing how much the cursor moves. Currently tries to figure out
+  if this works by some stupid checks on the terminal, these need to be
+  rethought. Also might be better using a width 1 character rather than width 2.
 * If LANG contains "UTF-8", assume the terminal supports UTF-8, on the grounds
   that anyone who configures it probably wants UTF-8. Not certain if this is
   a perfect idea but let's see if it causes any problems.
@@ -1278,7 +1282,7 @@
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.294 2009-05-19 16:03:18 nicm Exp $
+$Id: CHANGES,v 1.295 2009-05-19 16:08:35 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

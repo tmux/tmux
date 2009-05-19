@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.98 2009-05-14 16:21:55 nicm Exp $ */
+/* $Id: tty.c,v 1.99 2009-05-19 16:08:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -136,6 +136,8 @@ tty_start_tty(struct tty *tty)
 	int		 what;
 #endif
 
+	tty_detect_utf8(tty);
+
 	if (tcgetattr(tty->fd, &tty->tio) != 0)
 		fatal("tcgetattr failed");
 	memcpy(&tio, &tty->tio, sizeof tio);
@@ -197,13 +199,94 @@ tty_stop_tty(struct tty *tty)
 	tty_raw(tty, tty_term_string2(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_SGR0));
-	tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
-
+	tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
+	
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
 	if (tty_term_has(tty->term, TTYC_KMOUS))
 		tty_raw(tty, "\033[?1000l");
+}
+
+void
+tty_detect_utf8(struct tty *tty)
+{
+	struct pollfd	pfd;
+	char	      	buf[7];
+	size_t		len;
+	ssize_t		n;
+	int		nfds;
+	struct termios	tio, old_tio;
+#ifdef TIOCFLUSH
+	int		 what;
+#endif
+
+	if (tty->flags & TTY_UTF8)
+		return;
+
+	/*
+	 * If the terminal looks reasonably likely to support this, try to
+	 * write a three-byte UTF-8 wide character to the terminal, then read
+	 * the cursor position.
+	 *
+	 * XXX This entire function is a hack.
+	 */
+
+	/* Check if the terminal looks sort of vt100. */
+	if (strstr(tty_term_string(tty->term, TTYC_CLEAR), "[2J") == NULL ||
+	    strstr(tty_term_string(tty->term, TTYC_CUP), "H") == NULL)
+		return;
+
+	if (tcgetattr(tty->fd, &old_tio) != 0)
+		fatal("tcgetattr failed");
+	cfmakeraw(&tio);
+	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
+		fatal("tcsetattr failed");
+
+#ifdef TIOCFLUSH
+	what = 0;
+	if (ioctl(tty->fd, TIOCFLUSH, &what) != 0)
+		fatal("ioctl(TIOCFLUSH)");
+#endif
+
+#define UTF8_TEST_DATA "\033[H\357\277\246\033[6n"
+	if (write(tty->fd, UTF8_TEST_DATA, (sizeof UTF8_TEST_DATA) - 1) == -1)
+		fatal("write failed");
+#undef UTF8_TEST_DATA
+
+	len = 0;
+	for (;;) {
+		pfd.fd = tty->fd;
+		pfd.events = POLLIN;
+
+		nfds = poll(&pfd, 1, 500);
+		if (nfds == -1) {
+			if (errno == EAGAIN || errno == EINTR)
+				continue;
+			fatal("poll failed");
+		}
+		if (nfds == 0)
+			break;
+#ifdef HAVE_POLL
+		if (pfd.revents & (POLLERR|POLLNVAL|POLLHUP))
+			break;
+#endif
+		if (!(pfd.revents & POLLIN))
+			continue;
+
+		if ((n = read(tty->fd, buf + len, 1)) != 1)
+			break;
+		buf[++len] = '\0';
+
+		if (len == (sizeof buf) - 1) {
+			if (strcmp(buf, "\033[1;3R") == 0)
+				tty->flags |= TTY_UTF8;
+			break;
+		}
+	}
+
+	if (tcsetattr(tty->fd, TCSANOW, &old_tio) != 0)
+		fatal("tcsetattr failed");
 }
 
 void
