@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.143 2009-05-16 10:02:51 nicm Exp $ */
+/* $Id: server.c,v 1.144 2009-05-19 08:48:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1045,7 +1045,7 @@ server_second_timers(void)
 
 /* Update socket execute permissions based on whether sessions are attached. */
 int
-server_update_socket()
+server_update_socket(void)
 {
 	struct session	*s;
 	u_int		 i;
