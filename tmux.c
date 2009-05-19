@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.120 2009-05-19 13:32:55 tcunha Exp $ */
+/* $Id: tmux.c,v 1.121 2009-05-19 16:03:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -223,7 +223,7 @@ main(int argc, char **argv)
 	struct hdr	 	 hdr;
 	const char		*shell;
 	struct passwd		*pw;
-	char			*path, *label, *cause, *home, *pass = NULL;
+	char			*s, *path, *label, *cause, *home, *pass = NULL;
 	char			 cwd[MAXPATHLEN];
 	int	 		 retcode, opt, flags, unlock, start_server;
 
@@ -335,6 +335,17 @@ main(int argc, char **argv)
 	options_set_number(&global_window_options, "window-status-fg", 8);
 	options_set_number(&global_window_options, "xterm-keys", 0);
  	options_set_number(&global_window_options, "remain-on-exit", 0);
+
+	if (!(flags & IDENTIFY_UTF8)) {
+		/*
+		 * If the user has set LANG to contain UTF-8, it is a safe
+		 * assumption that either they are using a UTF-8 terminal, or
+		 * if not they know that output from UTF-8-capable programs may
+		 * be wrong.
+		 */
+		if ((s = getenv("LANG")) != NULL && strstr(s, "UTF-8") != NULL)
+			flags |= IDENTIFY_UTF8;
+	}
 
 	if (cfg_file == NULL) {
 		home = getenv("HOME");
