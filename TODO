@@ -84,8 +84,10 @@
 	  - proper grid mode? (hard)
 - test bug sshing from freebsd console (tom iirc?)
 - document manual-vertical changes
-- document main-pane-width
+- document main-pane-width and main-pane-height and main-horizontal
 - document clear-history
 - document paste in status line
 - document SIGUSR1 behaviour
 - document select-layout
+- document new UTF-8 behaviour (tmux.1, FAQ, etc)
+- more testing on UTF-8 guesswork, improve tty checks
