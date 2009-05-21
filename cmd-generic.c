@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.27 2009-05-21 19:46:00 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.28 2009-05-21 19:47:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,7 +34,7 @@ int	cmd_fill_argument(int, char **, int, char **);
 size_t
 cmd_prarg(char *buf, size_t len, const char *prefix, char *arg)
 {
-	if (strchr(arg, ' ' ) != NULL)
+	if (strchr(arg, ' ') != NULL)
 		return (xsnprintf(buf, len, "%s\"%s\"", prefix, arg));
 	return (xsnprintf(buf, len, "%s%s", prefix, arg));
 }
