@@ -83,9 +83,10 @@
 	  ** NEW layout design:
 	     1. finish rewrite manual with tree of layout_cell
 	     	(resize can be recursive?)
-	     2. convert automatic layout modes to produce a tree
+	     2. convert automatic layout modes to produce a tree and make
+	        them one-off operations?
 	     3. move any size/position details from window_pane to layout_cell
-	     4. a way to address panes by name ("top-left") and position ("0,0")
+	     5. a way to address panes by name ("top-left") and position ("0,0")
 - test bug sshing from freebsd console (tom iirc?)
 - document manual-vertical changes XXX this will change again...
 - document main-pane-width and main-pane-height and main-horizontal
