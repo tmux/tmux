@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.26 2009-05-04 17:58:26 nicm Exp $ */
+/* $Id: cmd-generic.c,v 1.27 2009-05-21 19:46:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,8 +24,8 @@
 #include "tmux.h"
 
 #define CMD_FLAGS "adDgkuU"
-#define CMD_FLAGMASK (CMD_AFLAG|CMD_DFLAG|CMD_UPPERDFLAG|CMD_GFLAG|CMD_KFLAG| \
-    CMD_UFLAG|CMD_UPPERUFLAG)
+#define CMD_FLAGMASK (CMD_AFLAG|CMD_DFLAG|CMD_BIGDFLAG|CMD_GFLAG|CMD_KFLAG| \
+    CMD_UFLAG|CMD_BIGUFLAG)
 
 int	cmd_do_flags(int, int, int *);
 size_t	cmd_print_flags(char *, size_t, size_t, int);
@@ -56,8 +56,8 @@ cmd_do_flags(int opt, int iflags, int *oflags)
 		}
 		return (-1);
 	case 'D':
-		if (iflags & CMD_UPPERDFLAG) {
-			(*oflags) |= CMD_UPPERDFLAG;
+		if (iflags & CMD_BIGDFLAG) {
+			(*oflags) |= CMD_BIGDFLAG;
 			return (0);
 		}
 		return (-1);
@@ -80,8 +80,8 @@ cmd_do_flags(int opt, int iflags, int *oflags)
 		}
 		return (-1);
 	case 'U':
-		if (iflags & CMD_UPPERUFLAG) {
-			(*oflags) |= CMD_UPPERUFLAG;
+		if (iflags & CMD_BIGUFLAG) {
+			(*oflags) |= CMD_BIGUFLAG;
 			return (0);
 		}
 		return (-1);
@@ -99,7 +99,7 @@ cmd_print_flags(char *buf, size_t len, size_t off, int flags)
 	off += xsnprintf(buf + off, len - off, " -");
 	if (off < len && flags & CMD_AFLAG)
 		off += xsnprintf(buf + off, len - off, "a");
-	if (off < len && flags & CMD_UPPERDFLAG)
+	if (off < len && flags & CMD_BIGDFLAG)
 		off += xsnprintf(buf + off, len - off, "D");
 	if (off < len && flags & CMD_DFLAG)
 		off += xsnprintf(buf + off, len - off, "d");
@@ -109,7 +109,7 @@ cmd_print_flags(char *buf, size_t len, size_t off, int flags)
 		off += xsnprintf(buf + off, len - off, "k");
 	if (off < len && flags & CMD_UFLAG)
 		off += xsnprintf(buf + off, len - off, "u");
-	if (off < len && flags & CMD_UPPERUFLAG)
+	if (off < len && flags & CMD_BIGUFLAG)
 		off += xsnprintf(buf + off, len - off, "U");
 	return (off - boff);
 }

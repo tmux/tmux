@@ -1,4 +1,4 @@
-/* $Id: cmd-resize-pane.c,v 1.6 2009-05-18 21:16:09 nicm Exp $ */
+/* $Id: cmd-resize-pane.c,v 1.7 2009-05-21 19:46:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,7 @@ int	cmd_resize_pane_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_resize_pane_entry = {
 	"resize-pane", "resizep",
 	CMD_PANE_WINDOW_USAGE "[-DU] [adjustment]",
-	CMD_ARG01|CMD_UPPERUFLAG|CMD_UPPERDFLAG,
+	CMD_ARG01|CMD_BIGUFLAG|CMD_BIGDFLAG,
 	cmd_resize_pane_init,
 	cmd_pane_parse,
 	cmd_resize_pane_exec,
@@ -51,12 +51,12 @@ cmd_resize_pane_init(struct cmd *self, int key)
 	data = self->data;
 
 	if (key == KEYC_ADDCTL(KEYC_DOWN))
-		data->flags |= CMD_UPPERDFLAG;
+		data->flags |= CMD_BIGDFLAG;
 
 	if (key == KEYC_ADDESC(KEYC_UP))
 		data->arg = xstrdup("5");
 	if (key == KEYC_ADDESC(KEYC_DOWN)) {
-		data->flags |= CMD_UPPERDFLAG;
+		data->flags |= CMD_BIGDFLAG;
 		data->arg = xstrdup("5");
 	}
 }
@@ -92,7 +92,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (!(data->flags & CMD_UPPERDFLAG))
+	if (!(data->flags & CMD_BIGDFLAG))
 		adjust = -adjust;
 	if (layout_resize(wp, adjust) != 0) {
 		ctx->error(ctx, "layout %s "

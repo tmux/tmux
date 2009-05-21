@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.325 2009-05-19 16:08:35 nicm Exp $ */
+/* $Id: tmux.h,v 1.326 2009-05-21 19:46:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,7 +21,7 @@
 
 #include "config.h"
 
-#define PROTOCOL_VERSION -12
+#define PROTOCOL_VERSION -13
 
 /* Shut up gcc warnings about empty if bodies. */
 #define RB_AUGMENT(x) do {} while (0)
@@ -917,13 +917,13 @@ struct cmd_entry {
 #define CMD_CANTNEST 0x2
 #define CMD_ARG1 0x4
 #define CMD_ARG01 0x8
-#define CMD_KFLAG 0x10
+#define CMD_AFLAG 0x10
 #define CMD_DFLAG 0x20
 #define CMD_GFLAG 0x40
-#define CMD_UFLAG 0x80
-#define CMD_AFLAG 0x100
-#define CMD_UPPERUFLAG 0x200
-#define CMD_UPPERDFLAG 0x400
+#define CMD_KFLAG 0x80
+#define CMD_UFLAG 0x100
+#define CMD_BIGDFLAG 0x200
+#define CMD_BIGUFLAG 0x400
 
 	int		 flags;
 
