@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.121 2009-05-19 16:03:18 nicm Exp $ */
+/* $Id: tmux.c,v 1.122 2009-05-26 18:30:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -386,7 +386,6 @@ main(int argc, char **argv)
 	}
 	options_set_string(
 	    &global_options, "default-command", "exec %s", shell);
-
 
 	if (getcwd(cwd, sizeof cwd) == NULL) {
 		log_warn("getcwd");
