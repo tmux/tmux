@@ -1,5 +1,5 @@
-/* $Id: tree.h,v 1.3 2009-04-29 22:45:32 nicm Exp $ */
-/*	$OpenBSD: tree.h,v 1.11 2008/05/11 22:19:09 millert Exp $	*/
+/* $Id: tree.h,v 1.4 2009-05-26 18:31:10 nicm Exp $ */
+/*	$OpenBSD: tree.h,v 1.12 2009/03/02 09:42:55 mikeb Exp $	*/
 /*
  * Copyright 2002 Niels Provos <provos@citi.umich.edu>
  * All rights reserved.
@@ -330,7 +330,7 @@ struct {								\
 } while (0)
 
 #ifndef RB_AUGMENT
-#define RB_AUGMENT(x)
+#define RB_AUGMENT(x)	do {} while (0)
 #endif
 
 #define RB_ROTATE_LEFT(head, elm, tmp, field) do {			\
