@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.59 2009-04-27 17:27:36 nicm Exp $ */
+/* $Id: server-fn.c,v 1.60 2009-05-28 16:24:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -205,6 +205,7 @@ server_unlock(const char *s)
 
 	if (!server_locked)
 		return (0);
+	server_activity = time(NULL);
 
 	if (server_password != NULL) {
 		if (s == NULL)
