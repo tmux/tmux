@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.82 2009-05-19 13:32:55 tcunha Exp $ */
+/* $Id: status.c,v 1.83 2009-05-29 05:40:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -658,8 +658,12 @@ status_prompt_redraw(struct client *c)
 	screen_write_cursormove(&ctx, len + c->prompt_index - offset, 0);
 	if (c->prompt_index == strlen(c->prompt_buffer))
 		ch = ' ';
-	else
-		ch = c->prompt_buffer[c->prompt_index];
+	else {
+		if (c->prompt_flags & PROMPT_HIDDEN)
+			ch = '*';
+		else
+			ch = c->prompt_buffer[c->prompt_index];
+	}
 	if (ch == '\0')
 		ch = ' ';
 	gc.attr ^= GRID_ATTR_REVERSE;
