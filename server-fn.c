@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.60 2009-05-28 16:24:02 nicm Exp $ */
+/* $Id: server-fn.c,v 1.61 2009-05-29 23:25:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -212,7 +212,7 @@ server_unlock(const char *s)
 			return (-1);
 		out = crypt(s, server_password);
 		if (strcmp(out, server_password) != 0)
-			return (-1);
+			goto wrong;
 	}
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
@@ -223,7 +223,20 @@ server_unlock(const char *s)
 		status_prompt_clear(c);
   		server_redraw_client(c);
 	}
-	server_locked = 0;
 
+	server_locked = 0;
 	return (0);
+
+wrong:
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL)
+			continue;
+
+		*c->prompt_buffer = '\0';
+		c->prompt_index = 0;
+  		server_status_client(c);
+	}
+
+	return (-1);
 }
