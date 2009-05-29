@@ -87,6 +87,8 @@
 	        them one-off operations?
 	     3. move any size/position details from window_pane to layout_cell
 	     5. a way to address panes by name ("top-left") and position ("0,0")
+	 TO FIX: force-width/height, respawn-window, rotate-window
+	    	 split-window -> split-pane
 - test bug sshing from freebsd console (tom iirc?)
 - document manual-vertical changes XXX this will change again...
 - document main-pane-width and main-pane-height and main-horizontal
@@ -96,3 +98,5 @@
 - document select-layout
 - document new UTF-8 behaviour (tmux.1, FAQ, etc)
 - more testing on UTF-8 guesswork, improve tty checks
+- fix UTF-8 in status line: echo -e \\0343\\0202\\0202
+      set status-left '#(echo \\\\0343\\\\0202\\\\0202)'
