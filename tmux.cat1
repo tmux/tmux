@@ -1,0 +1,813 @@
+TMUX(1)                    OpenBSD Reference Manual                    TMUX(1)
+
+NNAAMMEE
+     ttmmuuxx - terminal multiplexer
+
+SSYYNNOOPPSSIISS
+     ttmmuuxx [--2288ddqqUUuuvv] [--ff _f_i_l_e] [--LL _s_o_c_k_e_t_-_n_a_m_e] [--SS _s_o_c_k_e_t_-_p_a_t_h]
+          [_c_o_m_m_a_n_d [_f_l_a_g_s]]
+
+DDEESSCCRRIIPPTTIIOONN
+     ttmmuuxx is a terminal multiplexer; it enables a number of terminals to be
+     accessed and controlled from a single terminal.
+
+     ttmmuuxx runs as a server-client system.  A server is created automatically
+     when necessary and holds a number of _s_e_s_s_i_o_n_s, each of which may have a
+     number of _w_i_n_d_o_w_s linked to it.  A window may be split on screen into one
+     or more _p_a_n_e_s, each of which is a separate terminal.  Any number of
+     _c_l_i_e_n_t_s may connect to a session, or the server may be controlled by is-
+     suing commands with ttmmuuxx.  Communication takes place through a socket, by
+     default placed in _/_t_m_p.
+
+     The options are as follows:
+
+     --22            Force ttmmuuxx to assume the terminal supports 256 colours.
+
+     --88            Like --22, indicates the terminal supports 88 colours.
+
+     --dd            Force ttmmuuxx to assume the terminal supports default colours.
+
+     --ff _f_i_l_e       Specify an alternative configuration file.  By default,
+                   ttmmuuxx will look for a config file at _~_/_._t_m_u_x_._c_o_n_f.  The con-
+                   figuration file is a set of ttmmuuxx commands which are execut-
+                   ed in sequence when the server is first started.
+
+     --qq            Prevent the server sending various information messages,
+                   for example when window flags are altered.
+
+     --LL _s_o_c_k_e_t_-_n_a_m_e
+                   ttmmuuxx stores the server socket in a directory under _/_t_m_p;
+                   the default socket is named _d_e_f_a_u_l_t.  This option allows a
+                   different socket name to be specified, allowing several in-
+                   dependent ttmmuuxx servers to be run.  Unlike --SS a full path is
+                   not necessary: the sockets are all created in the same di-
+                   rectory.
+
+     --SS _s_o_c_k_e_t_-_p_a_t_h
+                   Specify a full alternative path to the server socket.  If
+                   --SS is specified, the default socket directory is not used
+                   and any --LL flag is ignored.
+
+     --UU            Unlock the server.
+
+     --uu            Instruct ttmmuuxx that the terminal support UTF-8.
+
+     --vv            Request verbose logging.  This option may be specified mul-
+                   tiple times for increasing verbosity.  Log messages will be
+                   saved into _t_m_u_x_-_c_l_i_e_n_t_-_P_I_D_._l_o_g and _t_m_u_x_-_s_e_r_v_e_r_-_P_I_D_._l_o_g
+                   files in the current directory, where _P_I_D is the pid of the
+                   server or client process.
+
+     _c_o_m_m_a_n_d [_f_l_a_g_s]
+                   This specifies one of a set of commands used to control
+                   ttmmuuxx, and described in the following sections.  If no com-
+                   mand and flags is specified, the nneeww--sseessssiioonn command is as-
+                   sumed.
+
+QQUUIICCKK SSTTAARRTT
+     To create a new tmux session running vi(1):
+
+           $ tmux new-session vi
+
+     Most commands have a shorter form, known as an alias.  For new-session,
+     this is nneeww:
+
+           $ tmux new vi
+
+     Alternatively, the shortest unambiguous form of a command is accepted.
+     If there are several options, they are listed:
+
+           $ tmux n
+           ambiguous command: n, could be: new-session, new-window, next-window
+           $
+
+     Within an active session, a new window may be created by typing `C-b'
+     (ctrl-b, known as the prefix key) followed by the `c' key.
+
+     Windows may be navigated with: `C-b 0' (to select window 0), `C-b 1' (to
+     select window 1), and so on; `C-b n' to select the next window; and `C-b
+     p' to select the previous window.
+
+     A session may be detached using `C-b d' and reattached with:
+
+           $ tmux attach-session
+
+     Typing `C-b ?' lists the current key bindings in the current window; up
+     and down may be used to navigate the list or `Q' to exit from it.
+
+KKEEYY BBIINNDDIINNGGSS
+     ttmmuuxx may be controlled from an attached client by using a key combination
+     of a prefix key, `C-b' (ctrl-b) by default, followed by a command key.
+
+     Some of the default key bindings include:
+
+     `d'     Detach current client.
+     `c'     Create new window.
+     `n'     Change to next window in the current session.
+     `p'     Change to previous window in the current session.
+     `l'     Move to last (previously selected) window in the current session.
+     `t'     Display a large clock.
+     `?'     List current key bindings.
+
+     A complete list may be obtained with the lliisstt--kkeeyyss command (bound to `?'
+     by default).  Key bindings may be changed with the bbiinndd--kkeeyy and uunnbbiinndd--
+     kkeeyy commands.
+
+HHIISSTTOORRYY
+     ttmmuuxx maintains a configurable history buffer for each window.  By de-
+     fault, up to 2000 lines are kept, this can be altered with the hhiissttoorryy--
+     lliimmiitt option (see the sseett--ooppttiioonn command below).
+
+MMOODDEESS
+     A ttmmuuxx window may be in one of several modes.  The default permits direct
+     access to the terminal attached to the window.  The others are:
+
+     _o_u_t_p_u_t _m_o_d_e
+             This is entered when a command which produces output, such as
+             lliisstt--kkeeyyss, is executed from a key binding.
+
+     _s_c_r_o_l_l _m_o_d_e
+             This is entered with the ssccrroollll--mmooddee command (bound to `=' by de-
+             fault) and permits the window history buffer to be inspected.
+
+     _c_o_p_y _m_o_d_e
+             This permits a section of a window or its history to be copied to
+             a _p_a_s_t_e _b_u_f_f_e_r for later insertion into another window.  This
+             mode is entered with the ccooppyy--mmooddee command, bound to `[' by de-
+             fault.
+
+     The keys available depend on whether emacs(1) or vi(1) mode is selected
+     (see the mmooddee--kkeeyyss option).  The following keys are supported as appro-
+     priate for the mode:
+
+           FFuunnccttiioonn                vvii          eemmaaccss
+           Start of line           0 or ^      C-a
+           Clear selection         Escape      C-g
+           Copy selection          Enter       M-w
+           Cursor down             j           Down
+           End of line             $           C-e
+           Cursor left             h           Left
+           Next page               C-f         Page down
+           Next word               w           M-f
+           Previous page           C-u         Page up
+           Previous word           b           M-b
+           Quit mode               q           Escape
+           Cursor right            l           Right
+           Start selection         Space       C-Space
+           Cursor up               k           Up
+
+BBUUFFFFEERRSS
+     ttmmuuxx maintains a stack of _p_a_s_t_e _b_u_f_f_e_r_s for each session.  Up to the val-
+     ue of the bbuuffffeerr--lliimmiitt option are kept; when a new buffer is added, the
+     buffer at the bottom of the stack is removed.  Buffers may be added using
+     ccooppyy--mmooddee or the sseett--bbuuffffeerr command, and pasted into a window using the
+     ppaassttee--bbuuffffeerr command.
+
+PPAANNEESS AANNDD LLAAYYOOUUTTSS
+     Each window displayed by ttmmuuxx may be split into one or more _p_a_n_e_s; each
+     pane takes up a certain area of the display and is a separate terminal.
+     A window may be split into panes using the sspplliitt--wwiinnddooww command.
+
+     Panes are numbered beginning from zero; in horizontal layouts zero is the
+     leftmost pane and in vertical the topmost.
+
+     Panes may be arranged using several layouts.  The layout may be cycled
+     with the nneexxtt--llaayyoouutt command (bound to `C-space' by default), the current
+     pane may be changed with the uupp--ppaannee and ddoowwnn--ppaannee commands and the
+     rroottaattee--wwiinnddooww and sswwaapp--ppaannee commands may be used to swap panes without
+     changing the window layout.
+
+     The following layouts are supported:
+
+     mmaannuuaall  Manual layout splits windows vertically (running across); only
+             with this layout may panes be resized using the rreessiizzee--ppaannee com-
+             mand.
+
+     aaccttiivvee--oonnllyy
+             Only the active pane is shown - all other panes are hidden.
+
+     eevveenn--hhoorriizzoonnttaall
+             Panes are spread out evenly from left to right across the window.
+
+     eevveenn--vveerrttiiccaall
+             Panes are spread evenly from top to bottom.
+
+     mmaaiinn--vveerrttiiccaall
+             A large (81 column) pane is shown on the left of the window and
+             the remaining panes are spread from top to bottom in the leftover
+             space to the right.
+
+CCOOMMMMAANNDDSS
+     This section contains a list of the commands supported by ttmmuuxx.  Most
+     commands accept the optional --tt argument with one of _t_a_r_g_e_t_-_c_l_i_e_n_t,
+     _t_a_r_g_e_t_-_s_e_s_s_i_o_n or _t_a_r_g_e_t_-_w_i_n_d_o_w.  These specify the client, session or
+     window which a command should affect.  _t_a_r_g_e_t_-_c_l_i_e_n_t is the name of the
+     pty(4) file to which the client is connected, for example _/_d_e_v_/_t_t_y_p_1.
+     Clients may be listed with the lliisstt--cclliieennttss command.
+
+     _t_a_r_g_e_t_-_s_e_s_s_i_o_n is either the name of a session (as listed by the lliisstt--
+     sseessssiioonnss command); or the name of a client as for _t_a_r_g_e_t_-_c_l_i_e_n_t, in this
+     case, the session attached to the client is used.  An fnmatch(3) pattern
+     may be used to match the session name.  If a session is omitted when re-
+     quired, ttmmuuxx attempts to use the current session; if no current session
+     is available, the most recently created is chosen.  If no client is spec-
+     ified, the current client is chosen, if possible, or an error is report-
+     ed.
+
+     _t_a_r_g_e_t_-_w_i_n_d_o_w specifies a window in the form _s_e_s_s_i_o_n:_i_n_d_e_x, for example
+     mysession:1.  The session is in the same form as for _t_a_r_g_e_t_-_s_e_s_s_i_o_n.
+     _s_e_s_s_i_o_n, _i_n_d_e_x or both may be omitted.  If _s_e_s_s_i_o_n is omitted, the same
+     rules as for _t_a_r_g_e_t_-_s_e_s_s_i_o_n are followed; if _i_n_d_e_x is not present, the
+     current window for the given session is used.  When the argument does not
+     contain a colon (:), ttmmuuxx first attempts to parse it as window index; if
+     that fails, an attempt is made to match a session or client name.
+
+     Multiple commands may be specified together as part of a _c_o_m_m_a_n_d
+     _s_e_q_u_e_n_c_e.  Each command should be separated by spaces and a semicolon (`
+     ; '); commands are executed sequentially from left to right.  A literal
+     semicolon may be included by escaping it with a backslash (for example,
+     when specifying a command sequence to bbiinndd--kkeeyy).
+
+     Examples include:
+
+           refresh-client -t/dev/ttyp2
+
+           rename-session -tfirst newname
+
+           set-window-option -t:0 monitor-activity on
+
+           new-window ; split-window -d
+
+           bind-key D detach-client \; lock-server
+
+     The following commands are available:
+
+     aattttaacchh--sseessssiioonn [--dd] [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n]
+                   (alias: aattttaacchh)
+             Create a new client in the current terminal and attach it to a
+             session.  If --dd is specified, any other clients attached to the
+             session are detached.
+
+             If no server is started, aattttaacchh--sseessssiioonn will attempt to start it;
+             this will fail unless sessions are created in the configuration
+             file.
+
+     bbiinndd--kkeeyy [--rr] _k_e_y _c_o_m_m_a_n_d [_a_r_g_u_m_e_n_t_s]
+                   (alias: bbiinndd)
+             Bind key _k_e_y to _c_o_m_m_a_n_d.  Keys may be specified prefixed with
+             `C-' or `^' for ctrl keys, or `M-' for alt (meta) keys.  The --rr
+             flag indicates this key may repeat, see the rreeppeeaatt--ttiimmee option.
+
+     bbrreeaakk--ppaannee [--dd] [--pp _p_a_n_e_-_i_n_d_e_x] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+                   (alias: bbrreeaakkpp))
+             Break the current pane off from its containing window to make it
+             the only pane in a new window.  If --dd is given, the new window
+             does not become the current window.
+
+     cchhoooossee--sseessssiioonn [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+             Put a window into session choice mode, where the session for the
+             current client may be selected interactively from a list.  This
+             command works only from inside ttmmuuxx.
+
+     cchhoooossee--wwiinnddooww [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+             Put a window into window choice mode, where the window for the
+             session attached to the current client may be selected interac-
+             tively from a list.  This command works only from inside ttmmuuxx.
+
+     cclloocckk--mmooddee [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+             Display a large clock.
+
+     ccoommmmaanndd--pprroommpptt [--tt _t_a_r_g_e_t_-_c_l_i_e_n_t] [_t_e_m_p_l_a_t_e]
+             Open the command prompt in a client.  This may be used from in-
+             side ttmmuuxx to execute commands interactively.  If _t_e_m_p_l_a_t_e is
+             specified, it is used as the command; any %% in the template will
+             be replaced by what is entered at the prompt.
+
+     ccoonnffiirrmm--bbeeffoorree [--tt _t_a_r_g_e_t_-_c_l_i_e_n_t] _c_o_m_m_a_n_d
+                   (alias: ccoonnffiirrmm))
+             Ask for confirmation before executing _c_o_m_m_a_n_d.  This command
+             works only from inside ttmmuuxx.
+
+     ccooppyy--bbuuffffeerr [--aa _s_r_c_-_i_n_d_e_x] [--bb _d_s_t_-_i_n_d_e_x] [--ss _s_r_c_-_s_e_s_s_i_o_n] [--tt
+             _d_s_t_-_s_e_s_s_i_o_n]
+                   (alias: ccooppyybb))
+             Copy a session paste buffer to another session.  If no sessions
+             are specified, the current one is used instead.
+
+     ccooppyy--mmooddee [--uu] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+             Enter copy mode.  The --uu option scrolls one page up.
+
+     ddeelleettee--bbuuffffeerr [--bb _b_u_f_f_e_r_-_i_n_d_e_x] [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n]
+                   (alias: ddeelleetteebb)
+             Delete the buffer at _b_u_f_f_e_r_-_i_n_d_e_x, or the top buffer if not spec-
+             ified.
+
+     ddeettaacchh--cclliieenntt [--tt _t_a_r_g_e_t_-_c_l_i_e_n_t]
+                   (alias: ddeettaacchh)
+             Detach the current client if bound to a key, or the specified
+             client with --tt.
+
+     ddoowwnn--ppaannee [--pp _p_a_n_e_-_i_n_d_e_x] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+                   (alias: ddoowwnnpp)
+             Move down a pane.
+
+     ffiinndd--wwiinnddooww [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w] _m_a_t_c_h_-_s_t_r_i_n_g
+                   (alias: ffiinnddww)
+             Search for _m_a_t_c_h_-_s_t_r_i_n_g in window names, titles, and visible con-
+             tent (but not history).  If only one window is matched, it'll be
+             automatically selected, otherwise a choice list is shown.  This
+             command only works from inside ttmmuuxx.
+
+     hhaass--sseessssiioonn [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n]
+                   (alias: hhaass)
+             Report an error and exit with 1 if the specified session does not
+             exist.  If it does exist, exit with 0.
+
+     kkiillll--ppaannee [--pp _p_a_n_e_-_i_n_d_e_x] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+                   (alias: kkiillllpp)
+             Destroy the given pane.
+
+     kkiillll--sseerrvveerr
+             Kill the ttmmuuxx server and clients and destroy all sessions.
+
+     kkiillll--sseessssiioonn [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n]
+             Destroy the given session, closing any windows linked to it and
+             no other sessions, and detaching all clients attached to it.
+
+     kkiillll--wwiinnddooww [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+                   (alias: kkiillllww)
+             Kill the current window or the window at _t_a_r_g_e_t_-_w_i_n_d_o_w, removing
+             it from any sessions to which it is linked.
+
+     llaasstt--wwiinnddooww [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n]
+                   (alias: llaasstt)
+             Select the last (previously selected) window.  If no _t_a_r_g_e_t_-
+             _s_e_s_s_i_o_n is specified, select the last window of the current ses-
+             sion.
+
+     lliinnkk--wwiinnddooww [--ddkk] [--ss _s_r_c_-_w_i_n_d_o_w] [--tt _d_s_t_-_w_i_n_d_o_w]
+                   (alias: lliinnkkww)
+             Link the window at _s_r_c_-_w_i_n_d_o_w to the specified _d_s_t_-_w_i_n_d_o_w.  If
+             _d_s_t_-_w_i_n_d_o_w is specified and no such window exists, the _s_r_c_-_w_i_n_d_o_w
+             is linked there.  If --kk is given and _d_s_t_-_w_i_n_d_o_w exists, it is
+             killed, otherwise an error is generated.  If --dd is given, the
+             newly linked window is not selected.
+
+     lliisstt--bbuuffffeerrss [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n]
+                   (alias: llssbb)
+             List the buffers in the given session.
+
+     lliisstt--cclliieennttss
+                   (alias: llsscc)
+             List all clients attached to the server.
+
+     lliisstt--ccoommmmaannddss
+                   (alias: llssccmm)
+             List the syntax of all commands supported by ttmmuuxx.
+
+     lliisstt--kkeeyyss
+                   (alias: llsskk)
+             List all key bindings.
+
+     lliisstt--sseessssiioonnss
+                   (alias: llss)
+             List all sessions managed by the server.
+
+     lliisstt--wwiinnddoowwss [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n]
+                   (alias: llssww)
+             List windows in the current session or in _t_a_r_g_e_t_-_s_e_s_s_i_o_n.
+
+     llooaadd--bbuuffffeerr [--bb _b_u_f_f_e_r_-_i_n_d_e_x] [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n] _p_a_t_h
+                   (alias: llooaaddbb)
+             Load the contents of the specified paste buffer from _p_a_t_h.
+
+     lloocckk--sseerrvveerr
+                   (alias: lloocckk)
+             Lock the server until a password is entered.
+
+     mmoovvee--wwiinnddooww [--dd] [--ss _s_r_c_-_w_i_n_d_o_w] [--tt _d_s_t_-_w_i_n_d_o_w]
+                   (alias: mmoovveeww)
+             This is similar to lliinnkk--wwiinnddooww, except the window at _s_r_c_-_w_i_n_d_o_w
+             is moved to _d_s_t_-_w_i_n_d_o_w.
+
+     nneeww--sseessssiioonn [--dd] [--nn _w_i_n_d_o_w_-_n_a_m_e] [--ss _s_e_s_s_i_o_n_-_n_a_m_e] [_c_o_m_m_a_n_d]
+                   (alias: nneeww)
+             Create a new session with name _s_e_s_s_i_o_n_-_n_a_m_e.  The new session is
+             attached to the current terminal unless --dd is given.  _w_i_n_d_o_w_-_n_a_m_e
+             and _c_o_m_m_a_n_d are the name of and command to execute in the initial
+             window.
+
+     nneeww--wwiinnddooww [--dd] [--nn _w_i_n_d_o_w_-_n_a_m_e] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w] [_c_o_m_m_a_n_d]
+                   (alias: nneewwww)
+             Create a new window.  If --dd is given, the session does not make
+             the new window the current window.  _t_a_r_g_e_t_-_w_i_n_d_o_w represents the
+             window to be created.  _c_o_m_m_a_n_d is the command to execute.  If
+             _c_o_m_m_a_n_d is not specified, the default command is used.
+
+             The TERM environment variable must be set to ``screen'' for all
+             programs running _i_n_s_i_d_e ttmmuuxx.  New windows will automatically
+             have ``TERM=screen'' added to their environment, but care must be
+             taken not to reset this in shell start-up files.
+
+     nneexxtt--llaayyoouutt [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+                   (alias: nneexxttll)
+             Move a window to the next layout and rearrange the panes to fit.
+
+     nneexxtt--wwiinnddooww [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n]
+                   (alias: nneexxtt)
+             Move to the next window in the session.
+
+     ppaassttee--bbuuffffeerr [--dd] [--bb _b_u_f_f_e_r_-_i_n_d_e_x] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+                   (alias: ppaasstteebb)
+             Insert the contents of a paste buffer into the current window.
+
+     pprreevviioouuss--wwiinnddooww [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n]
+                   (alias: pprreevv)
+             Move to the previous window in the session.
+
+     rreeffrreesshh--cclliieenntt [--tt _t_a_r_g_e_t_-_c_l_i_e_n_t]
+                   (alias: rreeffrreesshh)
+             Refresh the current client if bound to a key, or a single client
+             if one is given with --tt.
+
+     rreennaammee--sseessssiioonn [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n] _n_e_w_-_n_a_m_e
+                   (alias: rreennaammee)
+             Rename the session to _n_e_w_-_n_a_m_e.
+
+     rreennaammee--wwiinnddooww [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w] _n_e_w_-_n_a_m_e
+                   (alias: rreennaammeeww)
+             Rename the current window, or the window at _t_a_r_g_e_t_-_w_i_n_d_o_w if
+             specified, to _n_e_w_-_n_a_m_e.
+
+     rreessiizzee--ppaannee [--DDUU] [--pp _p_a_n_e_-_i_n_d_e_x] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w] [_a_d_j_u_s_t_m_e_n_t]
+                   (alias: rreessiizzeepp)
+             Resize a pane, upward with --UU (the default) or downward with --DD.
+             The _a_d_j_u_s_t_m_e_n_t is given in lines (the default is 1).
+
+     rreessppaawwnn--wwiinnddooww [--kk] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w] [_c_o_m_m_a_n_d]
+                   (alias: rreessppaawwnnww)
+             Reactive a window in which the command has exited (see the
+             rreemmaaiinn--oonn--eexxiitt window option).  If _c_o_m_m_a_n_d is not given, the com-
+             mand used when the window was created is executed.  The window
+             must be already inactive, unless --kk is given, in which case any
+             existing command is killed.
+
+     rroottaattee--wwiinnddooww [--DDUU] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+                   (alias: rroottaatteeww)
+             Rotate the positions of the panes within a window, either upward
+             (numerically lower) with --UU or downward (numerically higher).
+
+     ssaavvee--bbuuffffeerr [--aa] [--bb _b_u_f_f_e_r_-_i_n_d_e_x] [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n] _p_a_t_h
+                   (alias: ssaavveebb)
+             Save the contents of the specified paste buffer to _p_a_t_h.  The --aa
+             option appends to rather than overwriting the file.
+
+     ssccrroollll--mmooddee [--uu] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+             Enter scroll mode.  The --uu has the same meaning as in the ccooppyy--
+             mmooddee command.
+
+     sseelleecctt--ppaannee [--pp _p_a_n_e_-_i_n_d_e_x] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+                   (alias: sseelleeccttpp)
+             Make pane _p_a_n_e_-_i_n_d_e_x the active pane in window _t_a_r_g_e_t_-_w_i_n_d_o_w.
+
+     sseelleecctt--pprroommpptt [--tt _t_a_r_g_e_t_-_c_l_i_e_n_t]
+             Open a prompt inside _t_a_r_g_e_t_-_c_l_i_e_n_t allowing a window index to be
+             entered interactively.
+
+     sseelleecctt--wwiinnddooww [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+                   (alias: sseelleeccttww)
+             Select the window at _t_a_r_g_e_t_-_w_i_n_d_o_w.
+
+     sseenndd--kkeeyyss [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w] _k_e_y _._._.
+                   (alias: sseenndd)
+             Send a key or keys to a window.  Each argument _k_e_y is the name of
+             the key (such as `C-a' or `npage' ) to send; if the string is not
+             recognised as a key, it is sent as a series of characters.  All
+             arguments are sent sequentially from first to last.
+
+     sseenndd--pprreeffiixx [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+             Send the prefix key to a window as if it was pressed.
+
+     sseerrvveerr--iinnffoo
+                   (alias: iinnffoo)
+             Show server information and terminal details.
+
+     sseett--bbuuffffeerr [--bb _b_u_f_f_e_r_-_i_n_d_e_x] [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n] _d_a_t_a
+                   (alias: sseettbb)
+             Set the contents of the specified buffer to _d_a_t_a.
+
+     sseett--ooppttiioonn [--gguu] [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n] _o_p_t_i_o_n _v_a_l_u_e
+                   (alias: sseett)
+             Set an option.  If --gg is specified, the option is set as a global
+             option.  Global options apply to all sessions which don't have
+             the option explicitly set.  If --gg is not used, the option applies
+             only to _t_a_r_g_e_t_-_s_e_s_s_i_o_n.  The --uu flag unsets an option, so a ses-
+             sion inherits the option from the global options - it is not pos-
+             sible to unset a global option.
+
+             Possible options are:
+
+             bbeellll--aaccttiioonn [aannyy | nnoonnee | ccuurrrreenntt]
+                     Set action on window bell.  aannyy means a bell in any win-
+                     dow linked to a session causes a bell in the current win-
+                     dow of that session, nnoonnee means all bells are ignored and
+                     ccuurrrreenntt means only bell in windows other than the current
+                     window are ignored.
+
+             bbuuffffeerr--lliimmiitt _n_u_m_b_e_r
+                     Set the number of buffers kept for each session; as new
+                     buffers are added to the top of the stack, old ones are
+                     removed from the bottom if necessary to maintain this
+                     maximum length.
+
+             ddeeffaauulltt--ccoommmmaanndd _c_o_m_m_a_n_d
+                     Set the command used for new windows (if not specified
+                     when the window is created) to _c_o_m_m_a_n_d.  The default is
+                     ``exec $SHELL''.
+
+             ddeeffaauulltt--ppaatthh _p_a_t_h
+                     Set the default working directory for processes created
+                     from keys, or interactively from the prompt.  The default
+                     is the current working directory when the server is
+                     started.
+
+             hhiissttoorryy--lliimmiitt _l_i_n_e_s
+                     Set the maximum number of lines held in window history.
+                     This setting applies only to new windows - existing win-
+                     dow histories are not resized and retain the limit at the
+                     point they were created.
+
+             lloocckk--aafftteerr--ttiimmee _n_u_m_b_e_r
+                     Lock the server after _n_u_m_b_e_r seconds of inactivity.  The
+                     default is off (set to 0).  This has no effect as a ses-
+                     sion option; it must be set as a global option using --gg.
+
+             mmeessssaaggee--aattttrr _a_t_t_r_i_b_u_t_e_s
+                     Set status line message attributes, where _a_t_t_r_i_b_u_t_e_s is
+                     either ddeeffaauulltt or a comma-delimited list of one or more
+                     of: bbrriigghhtt (or bboolldd), ddiimm, uunnddeerrssccoorree, bblliinnkk, rreevveerrssee,
+                     hhiiddddeenn, or iittaalliiccss.
+
+             mmeessssaaggee--bbgg _c_o_l_o_u_r
+                     Set status line message background colour, where _c_o_l_o_u_r
+                     is one of: bbllaacckk, rreedd, ggrreeeenn, yyeellllooww, bblluuee, mmaaggeennttaa,
+                     ccyyaann, wwhhiittee or ddeeffaauulltt.
+
+             mmeessssaaggee--ffgg _c_o_l_o_u_r
+                     Set status line message foreground colour.
+
+             pprreeffiixx _k_e_y
+                     Set the current prefix key.
+
+             rreeppeeaatt--ttiimmee _n_u_m_b_e_r
+                     Allow multiple commands to be entered without pressing
+                     the prefix-key again in the specified _n_u_m_b_e_r milliseconds
+                     (the default is 500).  Whether a key repeats may be set
+                     when it is bound using the --rr flag to bbiinndd--kkeeyy.  Repeat
+                     is enabled for the default keys of the uupp--ppaannee, ddoowwnn--
+                     ppaannee, rreessiizzee--ppaannee--uupp, and rreessiizzee--ppaannee--ddoowwnn commands.
+
+             sseett--rreemmaaiinn--oonn--eexxiitt [oonn | ooffff]
+                     Set the rreemmaaiinn--oonn--eexxiitt window option for any windows
+                     first created in this session.
+
+             sseett--ttiittlleess [oonn | ooffff]
+                     Attempt to set the window title using the \e]2;...\007
+                     xterm code and the terminal appears to be an xterm.  This
+                     option is enabled by default.  Note that elinks(1) will
+                     only attempt to set the window title if the STY environ-
+                     ment variable is set.
+
+             ssttaattuuss [oonn | ooffff]
+                     Show or hide the status line.
+
+             ssttaattuuss--aattttrr _a_t_t_r_i_b_u_t_e_s
+                     Set status line attributes.
+
+             ssttaattuuss--bbgg _c_o_l_o_u_r
+                     Set status line background colour.
+
+             ssttaattuuss--ffgg _c_o_l_o_u_r
+                     Set status line foreground colour.
+
+             ssttaattuuss--iinntteerrvvaall _i_n_t_e_r_v_a_l
+                     Update the status bar every _i_n_t_e_r_v_a_l seconds.  By de-
+                     fault, updates will occur every 15 seconds.  A setting of
+                     zero disables redrawing at interval.
+
+             ssttaattuuss--kkeeyyss [vvii | eemmaaccss]
+                     Use vi(1)- or emacs(1)-style key bindings in the status
+                     line, for example at the command prompt.  Defaults to
+                     emacs.
+
+             ssttaattuuss--lleefftt _s_t_r_i_n_g
+                     Display _s_t_r_i_n_g to the left of the status bar.  _s_t_r_i_n_g
+                     will be passed through strftime(3) before being used.  By
+                     default, the session name is shown.  _s_t_r_i_n_g may contain
+                     any of the following special character pairs:
+
+                           CChhaarraacctteerr ppaaiirr    RReeppllaacceedd wwiitthh
+                           #(command)        First line of command's output
+                           #H                Hostname of local host
+                           #S                Session name
+                           #T                Current window title
+                           ##                A literal `#'
+
+                     Where appropriate, these may be prefixed with a number to
+                     specify the maximum length, for example `#24T'.
+
+             ssttaattuuss--lleefftt--lleennggtthh _l_e_n_g_t_h
+                     Set the maximum _l_e_n_g_t_h of the left component of the sta-
+                     tus bar.  The default is 10.
+
+             ssttaattuuss--rriigghhtt _s_t_r_i_n_g
+                     Display _s_t_r_i_n_g to the right of the status bar.  By de-
+                     fault, the date and time will be shown.  As with ssttaattuuss--
+                     lleefftt, _s_t_r_i_n_g will be passed to strftime(3) and character
+                     pairs are replaced.
+
+             ssttaattuuss--rriigghhtt--lleennggtthh _l_e_n_g_t_h
+                     Set the maximum _l_e_n_g_t_h of the right component of the sta-
+                     tus bar.  The default is 40.
+
+     sseett--ppaasssswwoorrdd [--cc] _p_a_s_s_w_o_r_d
+                   (alias: ppaassss)
+             Set the server password.  If the --cc option is given, a pre-en-
+             crypted password may be specified.  By default, the password is
+             blank, thus any entered password will be accepted when unlocking
+             the server (see the lloocckk--sseerrvveerr command).  To prevent variable
+             expansion when an encrypted password is read from a configuration
+             file, enclose it in single quotes (').
+
+     sseett--wwiinnddooww--ooppttiioonn [--gguu] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w] _o_p_t_i_o_n _v_a_l_u_e
+                   (alias: sseettww)
+             Set a window-specific option.  The --gg and --uu flags work similarly
+             to the sseett--ooppttiioonn command.
+
+             Supported options are:
+
+             aaggggrreessssiivvee--rreessiizzee [oonn | ooffff]
+                     Aggressively resize the chosen window.  This means that
+                     ttmmuuxx will resize the window to the size of the smallest
+                     session for which it is the current window, rather than
+                     the smallest session to which it is attached.  The window
+                     may resize when the current window is changed on another
+                     sessions; this option is good for full-screen programs
+                     which support SIGWINCH and poor for interactive programs
+                     such as shells.
+
+             aauuttoommaattiicc--rreennaammee [oonn | ooffff]
+                     Control automatic window renaming.  When this setting is
+                     enabled, ttmmuuxx will attempt - on supported platforms - to
+                     rename the window to reflect the command currently run-
+                     ning in it.  This flag is automatically disabled for an
+                     individual window when a name is specified at creation
+                     with nneeww--wwiinnddooww oorr nneeww--sseessssiioonn, or later with rreennaammee--
+                     wwiinnddooww.  It may be switched off globally with:
+
+                           set-window-option -g automatic-rename off
+
+             cclloocckk--mmooddee--ccoolloouurr _c_o_l_o_u_r
+                     Set clock colour.
+
+             cclloocckk--mmooddee--ssttyyllee [1122 | 2244]
+                     Set clock hour format.
+
+             ffoorrccee--hheeiigghhtt _h_e_i_g_h_t
+
+             ffoorrccee--wwiiddtthh _w_i_d_t_h
+                     Prevent ttmmuuxx from resizing a window to greater than _w_i_d_t_h
+                     or _h_e_i_g_h_t.  A value of zero restores the default unlimit-
+                     ed setting.
+
+             mmooddee--aattttrr _a_t_t_r_i_b_u_t_e_s
+                     Set window modes attributes.
+
+             mmooddee--bbgg _c_o_l_o_u_r
+                     Set window modes background colour.
+
+             mmooddee--ffgg _c_o_l_o_u_r
+                     Set window modes foreground colour.
+
+             mmooddee--kkeeyyss [vvii | eemmaaccss]
+                     Use vi(1)- or emacs(1)-style key bindings in scroll and
+                     copy modes.  Key bindings default to emacs.
+
+             mmoonniittoorr--aaccttiivviittyy [oonn | ooffff]
+                     Monitor for activity in the window.  Windows with activi-
+                     ty are highlighted in the status line.
+
+             mmoonniittoorr--ccoonntteenntt _m_a_t_c_h_-_s_t_r_i_n_g
+                     Monitor content in the window. When _m_a_t_c_h_-_s_t_r_i_n_g appears
+                     in the window, it is highlighted in the status line.
+
+             rreemmaaiinn--oonn--eexxiitt [oonn | ooffff]
+                     A window with this flag set is not destroyed when the
+                     program running in it exits.  The window may be reacti-
+                     vated with the rreessppaawwnn--wwiinnddooww command.
+
+             uuttff88 [oonn | ooffff]
+                     Instructs ttmmuuxx to expect UTF-8 sequences to appear in
+                     this window.
+
+             wwiinnddooww--ssttaattuuss--aattttrr _a_t_t_r_i_b_u_t_e_s
+                     Set status line attributes for a single window.
+
+             wwiinnddooww--ssttaattuuss--bbgg _c_o_l_o_u_r
+                     Set status line background colour for a single window.
+
+             wwiinnddooww--ssttaattuuss--ffgg _c_o_l_o_u_r
+                     Set status line foreground colour for a single window.
+
+             xxtteerrmm--kkeeyyss [oonn | ooffff]
+                     If this option is set, ttmmuuxx will generate xterm(1)-style
+                     function key sequences; these have a number included to
+                     indicate modifiers such as shift, meta or ctrl.
+
+     sshhooww--bbuuffffeerr [--bb _b_u_f_f_e_r_-_i_n_d_e_x] [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n]
+                   (alias: sshhoowwbb)
+             Display the contents of the specified buffer.
+
+     sshhooww--ooppttiioonnss [--tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n] _o_p_t_i_o_n _v_a_l_u_e
+                   (alias: sshhooww)
+             Show the currently set options.  If a _t_a_r_g_e_t_-_s_e_s_s_i_o_n is speci-
+             fied, the options for that session are shown; otherwise, the
+             global options are listed.
+
+     sshhooww--wwiinnddooww--ooppttiioonnss [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w] _o_p_t_i_o_n _v_a_l_u_e
+                   (alias: sshhoowwww)
+             List the current options for the given window.
+
+     ssoouurrccee--ffiillee _p_a_t_h
+                   (alias: ssoouurrccee)
+             Execute commands from _p_a_t_h.
+
+     sspplliitt--wwiinnddooww [--dd] [--ll _l_i_n_e_s | --pp _p_e_r_c_e_n_t_a_g_e] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w] [_c_o_m_m_a_n_d]
+                   (alias: splitw)
+             Creates a new window by splitting it vertically.  The --ll and --pp
+             options specify the size of the new window in lines, or as a per-
+             centage, respectively.  All other options have the same meaning
+             as in the nneeww--wwiinnddooww command.
+
+             A few notes with regard to panes:
+             1.   If attempting to split a window with less than eight lines,
+                  an error will be shown.
+             2.   If the window is resized, as many panes are shown as can fit
+                  without reducing them below four lines.
+             3.   The minimum pane size is four lines (including the separator
+                  line).
+             4.   The panes are indexed from top (0) to bottom, with no num-
+                  bers skipped.
+
+     ssttaarrtt--sseerrvveerr
+                   (alias: ssttaarrtt)
+             Start the ttmmuuxx server, if not already running, without creating
+             any sessions.
+
+     ssuussppeenndd--cclliieenntt [--cc --ttaarrggeett--cclliieenntt]
+                   (alias: ssuussppeennddcc)
+             Suspend a client by sending SIGTSTP (tty stop).
+
+     sswwaapp--ppaannee [--ddDDUU] [--pp _s_r_c_-_i_n_d_e_x] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w] [--qq _d_s_t_-_i_n_d_e_x]
+                   (alias: sswwaapppp)
+             Swap two panes within a window.  If --UU is used, the pane is
+             swapped with the pane above (before it numerically); --DD swaps
+             with the pane below (the next numerically); or _d_s_t_-_i_n_d_e_x may be
+             give to swap with a specific pane.
+
+     sswwaapp--wwiinnddooww [--dd] [--ss _s_r_c_-_w_i_n_d_o_w] [--tt _d_s_t_-_w_i_n_d_o_w]
+                   (alias: sswwaappww)
+             This is similar to lliinnkk--wwiinnddooww, except the source and destination
+             windows are swapped.  It is an error if no window exists at _s_r_c_-
+             _w_i_n_d_o_w.
+
+     sswwiittcchh--cclliieenntt [--cc _t_a_r_g_e_t_-_c_l_i_e_n_t --tt _t_a_r_g_e_t_-_s_e_s_s_i_o_n]
+                   (alias: sswwiittcchhcc)
+             Switch the current session for client _t_a_r_g_e_t_-_c_l_i_e_n_t to _t_a_r_g_e_t_-
+             _s_e_s_s_i_o_n.
+
+     uunnbbiinndd--kkeeyy _k_e_y
+                   (alias: uunnbbiinndd)
+             Unbind the key bound to _k_e_y.
+
+     uunnlliinnkk--wwiinnddooww [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+                   (alias: uunnlliinnkkww)
+             Unlink _t_a_r_g_e_t_-_w_i_n_d_o_w.  A window may be unlinked only if it is
+             linked to multiple sessions - windows may not be linked to no
+             sessions.
+
+     uupp--ppaannee [--pp _p_a_n_e_-_i_n_d_e_x] [--tt _t_a_r_g_e_t_-_w_i_n_d_o_w]
+                   (alias: uupppp)
+             Move up a pane.
+
+FFIILLEESS
+     ~/.tmux.conf
+             default ttmmuuxx configuration file
+
+SSEEEE AALLSSOO
+     pty(4)
+
+AAUUTTHHOORRSS
+     Nicholas Marriott <nicm@users.sourceforge.net>
+
+OpenBSD 4.5                     April 20, 2009                              13

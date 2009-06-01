@@ -1,0 +1,1329 @@
+.\" $OpenBSD$
+.\"
+.\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
+.\"
+.\" Permission to use, copy, modify, and distribute this software for any
+.\" purpose with or without fee is hereby granted, provided that the above
+.\" copyright notice and this permission notice appear in all copies.
+.\"
+.\" THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+.\" WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+.\" MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+.\" ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+.\" WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
+.\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+.\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+.\"
+.Dd April 20, 2009
+.Dt TMUX 1
+.Os
+.Sh NAME
+.Nm tmux
+.Nd "terminal multiplexer"
+.Sh SYNOPSIS
+.Nm tmux
+.Bk -words
+.Op Fl 28dqUuv
+.Op Fl f Ar file
+.Op Fl L Ar socket-name
+.Op Fl S Ar socket-path
+.Op Ar command Op Ar flags
+.Ek
+.Sh DESCRIPTION
+.Nm
+is a terminal multiplexer; it enables a number of terminals to be accessed and
+controlled from a single terminal.
+.Pp
+.Nm
+runs as a server-client system.
+A server is created automatically when necessary and holds a number of
+.Em sessions ,
+each of which may have a number of
+.Em windows
+linked to it.
+A window may be split on screen into one or more
+.Em panes ,
+each of which is a separate terminal.
+Any number of
+.Em clients
+may connect to a session, or the server
+may be controlled by issuing commands with
+.Nm .
+Communication takes place through a socket, by default placed in
+.Pa /tmp .
+.Pp
+The options are as follows:
+.Bl -tag -width "XXXXXXXXXXXX"
+.It Fl 2
+Force
+.Nm
+to assume the terminal supports 256 colours.
+.It Fl 8
+Like
+.Fl 2 ,
+indicates the terminal supports 88 colours.
+.It Fl d
+Force
+.Nm
+to assume the terminal supports default colours.
+.It Fl f Ar file
+Specify an alternative configuration file.
+By default,
+.Nm
+will look for a config file at
+.Pa ~/.tmux.conf .
+The configuration file is a set of
+.Nm
+commands which are executed in sequence when the server is first started.
+.It Fl q
+Prevent the server sending various information messages, for example when
+window flags are altered.
+.It Fl L Ar socket-name
+.Nm
+stores the server socket in a directory under
+.Pa /tmp ;
+the default socket is named
+.Em default .
+This option allows a different socket name to be specified, allowing several
+independent
+.Nm
+servers to be run.
+Unlike
+.Fl S
+a full path is not necessary: the sockets are all created in the same
+directory.
+.It Fl S Ar socket-path
+Specify a full alternative path to the server socket.
+If
+.Fl S
+is specified, the default socket directory is not used and any
+.Fl L
+flag is ignored.
+.It Fl U
+Unlock the server.
+.It Fl u
+Instruct
+.Nm
+that the terminal support UTF-8.
+.It Fl v
+Request verbose logging.
+This option may be specified multiple times for increasing verbosity.
+Log messages will be saved into
+.Pa tmux-client-PID.log
+and
+.Pa tmux-server-PID.log
+files in the current directory, where
+.Em PID
+is the pid of the server or client process.
+.It Ar command Op Ar flags
+This specifies one of a set of commands used to control
+.Nm ,
+and described in the following sections.
+If no command and flags is specified, the
+.Ic new-session
+command is assumed.
+.Pp
+.El
+.Sh QUICK START
+To create a new tmux session running
+.Xr vi 1 :
+.Pp
+.Dl $ tmux new-session vi
+.Pp
+Most commands have a shorter form, known as an alias.
+For new-session, this is
+.Ic new :
+.Pp
+.Dl $ tmux new vi
+.Pp
+Alternatively, the shortest unambiguous form of a command is accepted.
+If there are several options, they are listed:
+.Bd -literal -offset indent
+$ tmux n
+ambiguous command: n, could be: new-session, new-window, next-window
+$
+.Ed
+.Pp
+Within an active session, a new window may be created by typing
+.Ql C-b
+(ctrl-b, known as the prefix key)
+followed by the
+.Ql c
+key.
+.Pp
+Windows may be navigated with:
+.Ql C-b 0
+(to select window 0),
+.Ql C-b 1
+(to select window 1), and so on;
+.Ql C-b n
+to select the next window; and
+.Ql C-b p
+to select the previous window.
+.Pp
+A session may be detached using
+.Ql C-b d
+and reattached with:
+.Pp
+.Dl $ tmux attach-session
+.Pp
+Typing
+.Ql C-b \&?
+lists the current key bindings in the current window; up and down may be used
+to navigate the list or
+.Ql Q
+to exit from it.
+.Sh KEY BINDINGS
+.Nm
+may be controlled from an attached client by using a key combination of a
+prefix key,
+.Ql C-b
+(ctrl-b) by default, followed by a command key.
+.Pp
+Some of the default key bindings include:
+.Pp
+.Bl -tag -width Ds -compact
+.It Ql d
+Detach current client.
+.It Ql c
+Create new window.
+.It Ql n
+Change to next window in the current session.
+.It Ql p
+Change to previous window in the current session.
+.It Ql l
+Move to last (previously selected) window in the current session.
+.It Ql t
+Display a large clock.
+.It Ql \&?
+List current key bindings.
+.El
+.Pp
+A complete list may be obtained with the
+.Ic list-keys
+command (bound to
+.Ql \&?
+by default).
+Key bindings may be changed with the
+.Ic bind-key
+and
+.Ic unbind-key
+commands.
+.Sh HISTORY
+.Nm
+maintains a configurable history buffer for each window.
+By default, up to 2000 lines are kept, this can be altered with the
+.Ic history-limit
+option (see the
+.Ic set-option
+command below).
+.Sh MODES
+A
+.Nm
+window may be in one of several modes.
+The default permits direct access to the terminal attached to the window.
+The others are:
+.Bl -tag -width Ds
+.It Em output mode
+This is entered when a command which produces output, such as
+.Ic list-keys ,
+is executed from a key binding.
+.It Em scroll mode
+This is entered with the
+.Ic scroll-mode
+command (bound to
+.Ql =
+by default) and permits the window history buffer to be inspected.
+.It Em copy mode
+This permits a section of a window or its history to be copied to a
+.Em paste buffer
+for later insertion into another window.
+This mode is entered with the
+.Ic copy-mode
+command, bound to
+.Ql [
+by default.
+.El
+.Pp
+The keys available depend on whether
+.Xr emacs 1
+or
+.Xr vi 1
+mode is selected (see the
+.Ic mode-keys
+option).
+The following keys are supported as appropriate for the mode:
+.Bl -column "FunctionXXXXXXXXXXXX" "viXXXXXX" "emacs" -offset indent
+.It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
+.It Li "Start of line" Ta "0 or ^" Ta "C-a"
+.It Li "Clear selection" Ta "Escape" Ta "C-g"
+.It Li "Copy selection" Ta "Enter" Ta "M-w"
+.It Li "Cursor down" Ta "j" Ta "Down"
+.It Li "End of line" Ta "$" Ta "C-e"
+.It Li "Cursor left" Ta "h" Ta "Left"
+.It Li "Next page" Ta "C-f" Ta "Page down"
+.It Li "Next word" Ta "w" Ta "M-f"
+.It Li "Previous page" Ta "C-u" Ta "Page up"
+.It Li "Previous word" Ta "b" Ta "M-b"
+.It Li "Quit mode" Ta "q" Ta "Escape"
+.It Li "Cursor right" Ta "l" Ta "Right"
+.It Li "Start selection" Ta "Space" Ta "C-Space"
+.It Li "Cursor up" Ta "k" Ta "Up"
+.El
+.Pp
+.Sh BUFFERS
+.Nm
+maintains a stack of
+.Em paste buffers
+for each session.
+Up to the value of the
+.Ic buffer-limit
+option are kept; when a new buffer is added, the buffer at the bottom of the
+stack is removed.
+Buffers may be added using
+.Ic copy-mode
+or the
+.Ic set-buffer
+command, and pasted into a window using the
+.Ic paste-buffer
+command.
+.Sh PANES AND LAYOUTS
+Each window displayed by
+.Nm
+may be split into one or more
+.Em panes ;
+each pane takes up a certain area of the display and is a separate terminal.
+A window may be split into panes using the
+.Ic split-window
+command.
+.Pp
+Panes are numbered beginning from zero; in horizontal layouts zero is the
+leftmost pane and in vertical the topmost.
+.Pp
+Panes may be arranged using several layouts.
+The layout may be cycled with the
+.Ic next-layout
+command (bound to
+.Ql C-space
+by default), the current pane may be changed with the
+.Ic up-pane
+and
+.Ic down-pane
+commands and the
+.Ic rotate-window
+and
+.Ic swap-pane
+commands may be used to swap panes without changing the window layout.
+.Pp
+The following layouts are supported:
+.Bl -tag -width Ds
+.It Ic manual
+Manual layout splits windows vertically (running across); only with this layout
+may panes be resized using the
+.Ic resize-pane
+command.
+.It Ic active-only
+Only the active pane is shown - all other panes are hidden.
+.It Ic even-horizontal
+Panes are spread out evenly from left to right across the window.
+.It Ic even-vertical
+Panes are spread evenly from top to bottom.
+.It Ic main-vertical
+A large (81 column) pane is shown on the left of the window and the remaining
+panes are spread from top to bottom in the leftover space to the right.
+.El
+.Sh COMMANDS
+This section contains a list of the commands supported by
+.Nm .
+Most commands accept the optional
+.Fl t
+argument with one of
+.Ar target-client ,
+.Ar target-session
+or
+.Ar target-window .
+These specify the client, session or window which a command should affect.
+.Ar target-client
+is the name of the
+.Xr pty 4
+file to which the client is connected, for example
+.Pa /dev/ttyp1 .
+Clients may be listed with the
+.Ic list-clients
+command.
+.Pp
+.Ar target-session
+is either the name of a session (as listed by the
+.Ic list-sessions
+command); or the name of a client as for
+.Ar target-client ,
+in this case, the session attached to the client is used.
+An
+.Xr fnmatch 3
+pattern may be used to match the session name.
+If a session is omitted when required,
+.Nm tmux
+attempts to use the current session; if no current session is available, the
+most recently created is chosen.
+If no client is specified, the current client is chosen, if possible, or an
+error is reported.
+.Pp
+.Ar target-window
+specifies a window in the form
+.Em session Ns \&: Ns Em index ,
+for example mysession:1.
+The session is in the same form as for
+.Ar target-session .
+.Em session ,
+.Em index
+or both may be omitted.
+If
+.Em session
+is omitted, the same rules as for
+.Ar target-session
+are followed; if
+.Em index
+is not present, the current window for the given session is used.
+When the argument does not contain a colon (:),
+.Nm
+first attempts to parse it as window index; if that fails, an attempt is made
+to match a session or client name.
+.Pp
+Multiple commands may be specified together as part of a
+.Em command sequence .
+Each command should be separated by spaces and a semicolon
+.Eo ( Ql \&  \&; \&  Ec ) ;
+commands are executed sequentially from left to right.
+A literal semicolon may be included by escaping it with a backslash (for
+example, when specifying a command sequence to
+.Ic bind-key ) .
+.Pp
+Examples include:
+.Pp
+.Bd -literal -offset indent
+refresh-client -t/dev/ttyp2
+
+rename-session -tfirst newname
+
+set-window-option -t:0 monitor-activity on
+
+new-window ; split-window -d
+
+bind-key D detach-client \e\; lock-server
+.Ed
+.Pp
+The following commands are available:
+.Bl -tag -width Ds
+.It Xo Ic attach-session
+.Op Fl d
+.Op Fl t Ar target-session
+.Xc
+.D1 (alias: Ic attach )
+Create a new client in the current terminal and attach it to a session.
+If
+.Fl d
+is specified, any other clients attached to the session are detached.
+.Pp
+If no server is started,
+.Ic attach-session
+will attempt to start it; this will fail unless sessions are created in the
+configuration file.
+.It Xo Ic bind-key
+.Op Fl r
+.Ar key Ar command Op Ar arguments
+.Xc
+.D1 (alias: Ic bind )
+Bind key
+.Ar key
+to
+.Ar command .
+Keys may be specified prefixed with
+.Ql C-
+or
+.Ql ^
+for ctrl keys, or
+.Ql M-
+for alt (meta) keys.
+The
+.Fl r
+flag indicates this key may repeat, see the
+.Ic repeat-time
+option.
+.It Xo Ic break-pane
+.Op Fl d
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic breakp)
+Break the current pane off from its containing window to make it the only pane
+in a new window.
+If
+.Fl d
+is given, the new window does not become the current window.
+.It Xo Ic choose-session
+.Op Fl t Ar target-window
+.Xc
+Put a window into session choice mode, where the session for the current
+client may be selected interactively from a list.
+This command works only from inside
+.Nm .
+.It Xo Ic choose-window
+.Op Fl t Ar target-window
+.Xc
+Put a window into window choice mode, where the window for the session
+attached to the current client may be selected interactively from a list.
+This command works only from inside
+.Nm .
+.It Xo Ic clock-mode
+.Op Fl t Ar target-window
+.Xc
+Display a large clock.
+.It Xo Ic command-prompt
+.Op Fl t Ar target-client
+.Op Ar template
+.Xc
+Open the command prompt in a client.
+This may be used from inside
+.Nm
+to execute commands interactively.
+If
+.Ar template
+is specified, it is used as the command; any %% in the template will be
+replaced by what is entered at the prompt.
+.It Xo Ic confirm-before
+.Op Fl t Ar target-client
+.Ar command
+.Xc
+.D1 (alias: Ic confirm)
+Ask for confirmation before executing
+.Ar command .
+This command works only from inside
+.Nm .
+.It Xo Ic copy-buffer
+.Op Fl a Ar src-index
+.Op Fl b Ar dst-index
+.Op Fl s Ar src-session
+.Op Fl t Ar dst-session
+.Xc
+.D1 (alias: Ic copyb)
+Copy a session paste buffer to another session.
+If no sessions are specified, the current one is used instead.
+.It Xo Ic copy-mode
+.Op Fl u
+.Op Fl t Ar target-window
+.Xc
+Enter copy mode.
+The
+.Fl u
+option scrolls one page up.
+.It Xo Ic delete-buffer
+.Op Fl b Ar buffer-index
+.Op Fl t Ar target-session
+.Xc
+.D1 (alias: Ic deleteb )
+Delete the buffer at
+.Ar buffer-index ,
+or the top buffer if not specified.
+.It Xo Ic detach-client
+.Op Fl t Ar target-client
+.Xc
+.D1 (alias: Ic detach )
+Detach the current client if bound to a key, or the specified client with
+.Fl t .
+.It Xo Ic down-pane
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic downp )
+Move down a pane.
+.It Xo Ic find-window
+.Op Fl t Ar target-window
+.Ar match-string
+.Xc
+.D1 (alias: Ic findw )
+Search for
+.Ar match-string
+in window names, titles, and visible content (but not history).
+If only one window is matched, it'll be automatically selected, otherwise a
+choice list is shown.
+This command only works from inside
+.Nm .
+.It Xo Ic has-session
+.Op Fl t Ar target-session
+.Xc
+.D1 (alias: Ic has )
+Report an error and exit with 1 if the specified session does not exist.
+If it does exist, exit with 0.
+.It Xo Ic kill-pane
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic killp )
+Destroy the given pane.
+.It Xo Ic kill-server
+.Xc
+Kill the
+.Nm
+server and clients and destroy all sessions.
+.It Xo Ic kill-session
+.Op Fl t Ar target-session
+.Xc
+Destroy the given session, closing any windows linked to it and no other
+sessions, and detaching all clients attached to it.
+.It Xo Ic kill-window
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic killw )
+Kill the current window or the window at
+.Ar target-window ,
+removing it from any sessions to which it is linked.
+.It Xo Ic last-window
+.Op Fl t Ar target-session
+.Xc
+.D1 (alias: Ic last )
+Select the last (previously selected) window.
+If no
+.Ar target-session
+is specified, select the last window of the current session.
+.It Xo Ic link-window
+.Op Fl dk
+.Op Fl s Ar src-window
+.Op Fl t Ar dst-window
+.Xc
+.D1 (alias: Ic linkw )
+Link the window at
+.Ar src-window
+to the specified
+.Ar dst-window .
+If
+.Ar dst-window
+is specified and no such window exists, the
+.Ar src-window
+is linked there.
+If
+.Fl k
+is given and
+.Ar dst-window
+exists, it is killed, otherwise an error is generated.
+If
+.Fl d
+is given, the newly linked window is not selected.
+.It Xo Ic list-buffers
+.Op Fl t Ar target-session
+.Xc
+.D1 (alias: Ic lsb )
+List the buffers in the given session.
+.It Xo Ic list-clients
+.Xc
+.D1 (alias: Ic lsc )
+List all clients attached to the server.
+.It Xo Ic list-commands
+.Xc
+.D1 (alias: Ic lscm )
+List the syntax of all commands supported by
+.Nm .
+.It Xo Ic list-keys
+.Xc
+.D1 (alias: Ic lsk )
+List all key bindings.
+.It Xo Ic list-sessions
+.Xc
+.D1 (alias: Ic ls )
+List all sessions managed by the server.
+.It Xo Ic list-windows
+.Op Fl t Ar target-session
+.Xc
+.D1 (alias: Ic lsw )
+List windows in the current session or in
+.Ar target-session .
+.It Xo Ic load-buffer
+.Op Fl b Ar buffer-index
+.Op Fl t Ar target-session
+.Ar path
+.Xc
+.D1 (alias: Ic loadb )
+Load the contents of the specified paste buffer from
+.Ar path .
+.It Xo Ic lock-server
+.Xc
+.D1 (alias: Ic lock )
+Lock the server until a password is entered.
+.It Xo Ic move-window
+.Op Fl d
+.Op Fl s Ar src-window
+.Op Fl t Ar dst-window
+.Xc
+.D1 (alias: Ic movew )
+This is similar to
+.Ic link-window ,
+except the window at
+.Ar src-window
+is moved to
+.Ar dst-window .
+.It Xo Ic new-session
+.Op Fl d
+.Op Fl n Ar window-name
+.Op Fl s Ar session-name
+.Op Ar command
+.Xc
+.D1 (alias: Ic new )
+Create a new session with name
+.Ar session-name .
+The new session is attached to the current terminal unless
+.Fl d
+is given.
+.Ar window-name
+and
+.Ar command
+are the name of and command to execute in the initial window.
+.It Xo Ic new-window
+.Op Fl d
+.Op Fl n Ar window-name
+.Op Fl t Ar target-window
+.Op Ar command
+.Xc
+.D1 (alias: Ic neww )
+Create a new window.
+If
+.Fl d
+is given, the session does not make the new window the current window.
+.Ar target-window
+represents the window to be created.
+.Ar command
+is the command to execute.
+If
+.Ar command
+is not specified, the default command is used.
+.Pp
+The
+.Ev TERM
+environment variable must be set to
+.Dq screen
+for all programs running
+.Em inside
+.Nm .
+New windows will automatically have
+.Dq TERM=screen
+added to their environment, but care must be taken not to reset this in shell
+start-up files.
+.It Xo Ic next-layout
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic nextl )
+Move a window to the next layout and rearrange the panes to fit.
+.It Xo Ic next-window
+.Op Fl t Ar target-session
+.Xc
+.D1 (alias: Ic next )
+Move to the next window in the session.
+.It Xo Ic paste-buffer
+.Op Fl d
+.Op Fl b Ar buffer-index
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic pasteb )
+Insert the contents of a paste buffer into the current window.
+.It Xo Ic previous-window
+.Op Fl t Ar target-session
+.Xc
+.D1 (alias: Ic prev )
+Move to the previous window in the session.
+.It Xo Ic refresh-client
+.Op Fl t Ar target-client
+.Xc
+.D1 (alias: Ic refresh )
+Refresh the current client if bound to a key, or a single client if one is given
+with
+.Fl t .
+.It Xo Ic rename-session
+.Op Fl t Ar target-session
+.Ar new-name
+.Xc
+.D1 (alias: Ic rename )
+Rename the session to
+.Ar new-name .
+.It Xo Ic rename-window
+.Op Fl t Ar target-window
+.Ar new-name
+.Xc
+.D1 (alias: Ic renamew )
+Rename the current window, or the window at
+.Ar target-window
+if specified, to
+.Ar new-name .
+.It Xo Ic resize-pane
+.Op Fl DU
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Op Ar adjustment
+.Xc
+.D1 (alias: Ic resizep )
+Resize a pane, upward with
+.Fl U
+(the default) or downward with
+.Fl D .
+The
+.Ar adjustment
+is given in lines (the default is 1).
+.It Xo Ic respawn-window
+.Op Fl k
+.Op Fl t Ar target-window
+.Op Ar command
+.Xc
+.D1 (alias: Ic respawnw )
+Reactive a window in which the command has exited (see the
+.Ic remain-on-exit
+window option).
+If
+.Ar command
+is not given, the command used when the window was created is executed.
+The window must be already inactive, unless
+.Fl k
+is given, in which case any existing command is killed.
+.It Xo Ic rotate-window
+.Op Fl DU
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic rotatew )
+Rotate the positions of the panes within a window, either upward (numerically
+lower) with
+.Fl U
+or downward (numerically higher).
+.It Xo Ic save-buffer
+.Op Fl a
+.Op Fl b Ar buffer-index
+.Op Fl t Ar target-session
+.Ar path
+.Xc
+.D1 (alias: Ic saveb )
+Save the contents of the specified paste buffer to
+.Ar path .
+The
+.Fl a
+option appends to rather than overwriting the file.
+.It Xo Ic scroll-mode
+.Op Fl u
+.Op Fl t Ar target-window
+.Xc
+Enter scroll mode.
+The
+.Fl u
+has the same meaning as in the
+.Ic copy-mode
+command.
+.It Xo Ic select-pane
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic selectp )
+Make pane
+.Ar pane-index
+the active pane in window
+.Ar target-window .
+.It Xo Ic select-prompt
+.Op Fl t Ar target-client
+.Xc
+Open a prompt inside
+.Ar target-client
+allowing a window index to be entered interactively.
+.It Xo Ic select-window
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic selectw )
+Select the window at
+.Ar target-window .
+.It Xo Ic send-keys
+.Op Fl t Ar target-window
+.Ar key Ar ...
+.Xc
+.D1 (alias: Ic send )
+Send a key or keys to a window.
+Each argument
+.Ar key
+is the name of the key (such as
+.Ql C-a
+or
+.Ql npage
+) to send; if the string is not recognised as a key, it is sent as a series of
+characters.
+All arguments are sent sequentially from first to last.
+.It Xo Ic send-prefix
+.Op Fl t Ar target-window
+.Xc
+Send the prefix key to a window as if it was pressed.
+.It Xo Ic server-info
+.Xc
+.D1 (alias: Ic info )
+Show server information and terminal details.
+.It Xo Ic set-buffer
+.Op Fl b Ar buffer-index
+.Op Fl t Ar target-session
+.Ar data
+.Xc
+.D1 (alias: Ic setb )
+Set the contents of the specified buffer to
+.Ar data .
+.It Xo Ic set-option
+.Op Fl gu
+.Op Fl t Ar target-session
+.Ar option Ar value
+.Xc
+.D1 (alias: Ic set )
+Set an option.
+If
+.Fl g
+is specified, the option is set as a global option.
+Global options apply to all sessions which don't have the option explicitly
+set.
+If
+.Fl g
+is not used, the option applies only to
+.Ar target-session .
+The
+.Fl u
+flag unsets an option, so a session inherits the option from the global
+options - it is not possible to unset a global option.
+.Pp
+Possible options are:
+.Bl -tag -width Ds
+.It Xo Ic bell-action
+.Op Ic any | Ic none | Ic current
+.Xc
+Set action on window bell.
+.Ic any
+means a bell in any window linked to a session causes a bell in the current
+window of that session,
+.Ic none
+means all bells are ignored and
+.Ic current
+means only bell in windows other than the current window are ignored.
+.It Ic buffer-limit Ar number
+Set the number of buffers kept for each session; as new buffers are added to
+the top of the stack, old ones are removed from the bottom if necessary to
+maintain this maximum length.
+.It Ic default-command Ar command
+Set the command used for new windows (if not specified when the window is
+created) to
+.Ar command .
+The default is
+.Dq exec $SHELL .
+.It Ic default-path Ar path
+Set the default working directory for processes created from keys, or
+interactively from the prompt.
+The default is the current working directory when the server is started.
+.It Ic history-limit Ar lines
+Set the maximum number of lines held in window history.
+This setting applies only to new windows - existing window histories are not
+resized and retain the limit at the point they were created.
+.It Ic lock-after-time Ar number
+Lock the server after
+.Ar number
+seconds of inactivity.
+The default is off (set to 0).
+This has no effect as a session option; it must be set as a global option using
+.Fl g .
+.It Ic message-attr Ar attributes
+Set status line message attributes, where
+.Ar attributes
+is either
+.Ic default
+or a comma-delimited list of one or more of:
+.Ic bright
+(or
+.Ic bold ) ,
+.Ic dim ,
+.Ic underscore ,
+.Ic blink ,
+.Ic reverse ,
+.Ic hidden ,
+or
+.Ic italics .
+.It Ic message-bg Ar colour
+Set status line message background colour, where
+.Ar colour
+is one of:
+.Ic black ,
+.Ic red ,
+.Ic green ,
+.Ic yellow ,
+.Ic blue ,
+.Ic magenta ,
+.Ic cyan ,
+.Ic white
+or
+.Ic default .
+.It Ic message-fg Ar colour
+Set status line message foreground colour.
+.It Ic prefix Ar key
+Set the current prefix key.
+.It Ic repeat-time Ar number
+Allow multiple commands to be entered without pressing the prefix-key again
+in the specified
+.Ar number
+milliseconds (the default is 500).
+Whether a key repeats may be set when it is bound using the
+.Fl r
+flag to
+.Ic bind-key .
+Repeat is enabled for the default keys of the
+.Ic up-pane ,
+.Ic down-pane ,
+.Ic resize-pane-up ,
+and
+.Ic resize-pane-down
+commands.
+.It Xo Ic set-remain-on-exit
+.Op Ic on | Ic off
+.Xc
+Set the
+.Ic remain-on-exit
+window option for any windows first created in this session.
+.It Xo Ic set-titles
+.Op Ic on | Ic off
+.Xc
+Attempt to set the window title using the \ee]2;...\e007 xterm code and
+the terminal appears to be an xterm.
+This option is enabled by default.
+Note that
+.Xr elinks 1
+will only attempt to set the window title if the STY environment
+variable is set.
+.It Xo Ic status
+.Op Ic on | Ic off
+.Xc
+Show or hide the status line.
+.It Ic status-attr Ar attributes
+Set status line attributes.
+.It Ic status-bg Ar colour
+Set status line background colour.
+.It Ic status-fg Ar colour
+Set status line foreground colour.
+.It Ic status-interval Ar interval
+Update the status bar every
+.Ar interval
+seconds.
+By default, updates will occur every 15 seconds.
+A setting of zero disables redrawing at interval.
+.It Xo Ic status-keys
+.Op Ic vi | Ic emacs
+.Xc
+Use
+.Xr vi 1 -
+or
+.Xr emacs 1 -style
+key bindings in the status line, for example at the command prompt.
+Defaults to emacs.
+.It Ic status-left Ar string
+Display
+.Ar string
+to the left of the status bar.
+.Ar string
+will be passed through
+.Xr strftime 3
+before being used.
+By default, the session name is shown.
+.Ar string
+may contain any of the following special character pairs:
+.Bl -column "Character pair" "Replaced with" -offset indent
+.It Sy "Character pair" Ta Sy "Replaced with"
+.It Li "#(command)" Ta "First line of command's output"
+.It Li "#H" Ta "Hostname of local host"
+.It Li "#S" Ta "Session name"
+.It Li "#T" Ta "Current window title"
+.It Li "##" Ta "A literal" Ql #
+.El
+.Pp
+Where appropriate, these may be prefixed with a number to specify the maximum
+length, for example
+.Ql #24T .
+.It Ic status-left-length Ar length
+Set the maximum
+.Ar length
+of the left component of the status bar.
+The default is 10.
+.It Ic status-right Ar string
+Display
+.Ar string
+to the right of the status bar.
+By default, the date and time will be shown.
+As with
+.Ic status-left ,
+.Ar string
+will be passed to
+.Xr strftime 3
+and character pairs are replaced.
+.It Ic status-right-length Ar length
+Set the maximum
+.Ar length
+of the right component of the status bar.
+The default is 40.
+.El
+.It Xo Ic set-password
+.Op Fl c
+.Ar password
+.Xc
+.D1 (alias: Ic pass )
+Set the server password.
+If the
+.Fl c
+option is given, a pre-encrypted password may be specified.
+By default, the password is blank, thus any entered password will be accepted
+when unlocking the server (see the
+.Ic lock-server
+command).
+To prevent variable expansion when an encrypted password is read from a
+configuration file, enclose it in single quotes (').
+.It Xo Ic set-window-option
+.Op Fl gu
+.Op Fl t Ar target-window
+.Ar option Ar value
+.Xc
+.D1 (alias: Ic setw )
+Set a window-specific option.
+The
+.Fl g
+and
+.Fl u
+flags work similarly to the
+.Ic set-option
+command.
+.Pp
+Supported options are:
+.Bl -tag -width Ds
+.It Xo Ic aggressive-resize
+.Op Ic on | Ic off
+.Xc
+Aggressively resize the chosen window.
+This means that
+.Nm
+will resize the window to the size of the smallest session for which it is the
+current window, rather than the smallest session to which it is attached.
+The window may resize when the current window is changed on another sessions;
+this option is good for full-screen programs which support SIGWINCH and poor for
+interactive programs such as shells.
+.It Xo Ic automatic-rename
+.Op Ic on | Ic off
+.Xc
+Control automatic window renaming.
+When this setting is enabled,
+.Nm
+will attempt - on supported platforms - to rename the window to reflect the
+command currently running in it.
+This flag is automatically disabled for an individual window when a name
+is specified at creation with
+.Ic new-window or
+.Ic new-session ,
+or later with
+.Ic rename-window .
+It may be switched off globally with:
+.Bd -literal -offset indent
+set-window-option -g automatic-rename off
+.Ed
+.It Ic clock-mode-colour Ar colour
+Set clock colour.
+.It Xo Ic clock-mode-style
+.Op Ic 12 | Ic 24
+.Xc
+Set clock hour format.
+.It Ic force-height Ar height
+.It Ic force-width Ar width
+Prevent
+.Nm
+from resizing a window to greater than
+.Ar width
+or
+.Ar height .
+A value of zero restores the default unlimited setting.
+.It Ic mode-attr Ar attributes
+Set window modes attributes.
+.It Ic mode-bg Ar colour
+Set window modes background colour.
+.It Ic mode-fg Ar colour
+Set window modes foreground colour.
+.It Xo Ic mode-keys
+.Op Ic vi | Ic emacs
+.Xc
+Use
+.Xr vi 1 -
+or
+.Xr emacs 1 -style
+key bindings in scroll and copy modes.
+Key bindings default to emacs.
+.It Xo Ic monitor-activity
+.Op Ic on | Ic off
+.Xc
+Monitor for activity in the window.
+Windows with activity are highlighted in the status line.
+.It Xo Ic monitor-content Ar match-string
+.Xc
+Monitor content in the window. When
+.Ar match-string
+appears in the window, it is highlighted in the status line.
+.It Xo Ic remain-on-exit
+.Op Ic on | Ic off
+.Xc
+A window with this flag set is not destroyed when the program running in it
+exits.
+The window may be reactivated with the
+.Ic respawn-window
+command.
+.It Xo Ic utf8
+.Op Ic on | Ic off
+.Xc
+Instructs
+.Nm
+to expect UTF-8 sequences to appear in this window.
+.It Ic window-status-attr Ar attributes
+Set status line attributes for a single window.
+.It Ic window-status-bg Ar colour
+Set status line background colour for a single window.
+.It Ic window-status-fg Ar colour
+Set status line foreground colour for a single window.
+.It Xo Ic xterm-keys
+.Op Ic on | Ic off
+.Xc
+If this option is set,
+.Nm
+will generate
+.Xr xterm 1 -style
+function key sequences; these have a number included to indicate modifiers such
+as shift, meta or ctrl.
+.El
+.It Xo Ic show-buffer
+.Op Fl b Ar buffer-index
+.Op Fl t Ar target-session
+.Xc
+.D1 (alias: Ic showb )
+Display the contents of the specified buffer.
+.It Xo Ic show-options
+.Op Fl t Ar target-session
+.Ar option Ar value
+.Xc
+.D1 (alias: Ic show )
+Show the currently set options.
+If a
+.Ar target-session
+is specified, the options for that session are shown; otherwise, the global
+options are listed.
+.It Xo Ic show-window-options
+.Op Fl t Ar target-window
+.Ar option Ar value
+.Xc
+.D1 (alias: Ic showw )
+List the current options for the given window.
+.It Xo Ic source-file
+.Ar path
+.Xc
+.D1 (alias: Ic source )
+Execute commands from
+.Ar path .
+.It Xo Ic split-window
+.Op Fl d
+.Oo Fl l
+.Ar lines |
+.Fl p Ar percentage Oc
+.Op Fl t Ar target-window
+.Op Ar command
+.Xc
+.D1 (alias: splitw )
+Creates a new window by splitting it vertically.
+The
+.Fl l
+and
+.Fl p
+options specify the size of the new window in lines, or as a percentage,
+respectively.
+All other options have the same meaning as in the
+.Ic new-window
+command.
+.Pp
+A few notes with regard to panes:
+.Bl -enum -compact
+.It
+If attempting to split a window with less than eight lines, an error will be
+shown.
+.It
+If the window is resized, as many panes are shown as can fit without reducing
+them below four lines.
+.It
+The minimum pane size is four lines (including the separator line).
+.It
+The panes are indexed from top (0) to bottom, with no numbers skipped.
+.El
+.It Xo Ic start-server
+.Xc
+.D1 (alias: Ic start )
+Start the
+.Nm
+server, if not already running, without creating any sessions.
+.It Xo Ic suspend-client
+.Op Fl c target-client
+.Xc
+.D1 (alias: Ic suspendc )
+Suspend a client by sending SIGTSTP (tty stop).
+.It Xo Ic swap-pane
+.Op Fl dDU
+.Op Fl p Ar src-index
+.Op Fl t Ar target-window
+.Op Fl q Ar dst-index
+.Xc
+.D1 (alias: Ic swapp )
+Swap two panes within a window.
+If
+.Fl U
+is used, the pane is swapped with the pane above (before it numerically);
+.Fl D
+swaps with the pane below (the next numerically); or
+.Ar dst-index
+may be give to swap with a specific pane.
+.It Xo Ic swap-window
+.Op Fl d
+.Op Fl s Ar src-window
+.Op Fl t Ar dst-window
+.Xc
+.D1 (alias: Ic swapw )
+This is similar to
+.Ic link-window ,
+except the source and destination windows are swapped.
+It is an error if no window exists at
+.Ar src-window .
+.It Xo Ic switch-client
+.Op Fl c Ar target-client Fl t Ar target-session
+.Xc
+.D1 (alias: Ic switchc )
+Switch the current session for client
+.Ar target-client
+to
+.Ar target-session .
+.It Xo Ic unbind-key
+.Ar key
+.Xc
+.D1 (alias: Ic unbind )
+Unbind the key bound to
+.Ar key .
+.It Xo Ic unlink-window
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic unlinkw )
+Unlink
+.Ar target-window .
+A window may be unlinked only if it is linked to multiple sessions - windows may
+not be linked to no sessions.
+.It Xo Ic up-pane
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic upp )
+Move up a pane.
+.El
+.Sh FILES
+.Bl -tag -width Ds -compact
+.It Pa ~/.tmux.conf
+default
+.Nm
+configuration file
+.El
+.Sh SEE ALSO
+.Xr pty 4
+.Sh AUTHORS
+.An Nicholas Marriott Aq nicm@users.sourceforge.net
