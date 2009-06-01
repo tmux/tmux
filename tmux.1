@@ -92,6 +92,12 @@ Unlike
 .Fl S
 a full path is not necessary: the sockets are all created in the same
 directory.
+.Pp
+If the socket is accidentally removed, the
+.Em SIGUSR1
+signal may be sent to the
+.Nm
+server process to recreate it.
 .It Fl S Ar socket-path
 Specify a full alternative path to the server socket.
 If
@@ -102,9 +108,18 @@ flag is ignored.
 .It Fl U
 Unlock the server.
 .It Fl u
-Instruct
 .Nm
-that the terminal support UTF-8.
+attempts to guess if the terminal is likely to support UTF-8 by first checking
+the
+.Ev LANG
+environment variable for the string "UTF-8", and then by - if the terminal
+looks suitable - trying to print a UTF-8 character and measuring the cursor
+movement.
+These are not always successful: the
+.Fl u
+flag explicitly informs
+.Nm
+that the UTF-8 is supported.
 .It Fl v
 Request verbose logging.
 This option may be specified multiple times for increasing verbosity.
@@ -269,8 +284,11 @@ The following keys are supported as appropriate for the mode:
 .It Li "Cursor right" Ta "l" Ta "Right"
 .It Li "Start selection" Ta "Space" Ta "C-Space"
 .It Li "Cursor up" Ta "k" Ta "Up"
+.It Li "Paste buffer" Ta "p" Ta "C-y"
 .El
 .Pp
+The paste buffer key pastes the first line from the top paste buffer on the
+stack.
 .Sh BUFFERS
 .Nm
 maintains a stack of
@@ -328,9 +346,20 @@ Only the active pane is shown - all other panes are hidden.
 Panes are spread out evenly from left to right across the window.
 .It Ic even-vertical
 Panes are spread evenly from top to bottom.
+.It Ic main-horizontal
+A large (main) pane is shown at the top of the window and the remaining panes are
+spread from left to right in the leftover space at the bottom. 
+Use the
+.Em main-pane-height
+window option to specify the height of the top pane.
 .It Ic main-vertical
-A large (81 column) pane is shown on the left of the window and the remaining
-panes are spread from top to bottom in the leftover space to the right.
+Similar to
+.Ic main-horizontal
+but the large pane is placed on the left and the others spread from top to
+bottom along the right.
+See the
+.Em main-pane-width
+window option.
 .El
 .Sh COMMANDS
 This section contains a list of the commands supported by
@@ -474,6 +503,12 @@ Put a window into window choice mode, where the window for the session
 attached to the current client may be selected interactively from a list.
 This command works only from inside
 .Nm .
+.It Xo Ic clear-history
+.Op Fl p Ar pane-index
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic clearhist)
+Remove and free the history for the specified pane.
 .It Xo Ic clock-mode
 .Op Fl t Ar target-window
 .Xc
@@ -811,6 +846,12 @@ The
 has the same meaning as in the
 .Ic copy-mode
 command.
+.It Xo Ic select-layout
+.Op Fl t Ar target-window
+.Ar layout-name
+.Xc
+.D1 (alias: selectl)
+Choose a specific layout for a window.
 .It Xo Ic select-pane
 .Op Fl p Ar pane-index
 .Op Fl t Ar target-window
@@ -1134,6 +1175,13 @@ from resizing a window to greater than
 or
 .Ar height .
 A value of zero restores the default unlimited setting.
+.It Ic main-pane-width Ar width
+.It Ic main-pane-height Ar height
+Set the width or height of the main (left or top) pane in the
+.Ic main-horizontal
+or
+.Ic main-vertical
+layouts.
 .It Ic mode-attr Ar attributes
 Set window modes attributes.
 .It Ic mode-bg Ar colour
