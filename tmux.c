@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.122 2009-05-26 18:30:51 nicm Exp $ */
+/* $Id: tmux.c,v 1.123 2009-06-01 20:38:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -353,7 +353,6 @@ main(int argc, char **argv)
 			pw = getpwuid(getuid());
 			if (pw != NULL)
 				home = pw->pw_dir;
-			endpwent();
 		}
 		xasprintf(&cfg_file, "%s/%s", home, DEFAULT_CFG);
 		if (access(cfg_file, R_OK) != 0) {
@@ -380,7 +379,6 @@ main(int argc, char **argv)
 		pw = getpwuid(getuid());
 		if (pw != NULL)
 			shell = pw->pw_shell;
-		endpwent();
 		if (shell == NULL || *shell == '\0')
 			shell = _PATH_BSHELL;
 	}
