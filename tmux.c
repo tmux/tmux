@@ -227,6 +227,8 @@ main(int argc, char **argv)
 			flags &= ~IDENTIFY_256COLOURS;
 			break;
 		case 'f':
+			if (cfg_file)
+				xfree(cfg_file);
 			cfg_file = xstrdup(optarg);
 			break;
 		case 'L':
