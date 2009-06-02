@@ -109,13 +109,11 @@ flag is ignored.
 Unlock the server.
 .It Fl u
 .Nm
-attempts to guess if the terminal is likely to support UTF-8 by first checking
+attempts to guess if the terminal is likely to support UTF-8 by checking
 the
 .Ev LANG
-environment variable for the string "UTF-8", and then by - if the terminal
-looks suitable - trying to print a UTF-8 character and measuring the cursor
-movement.
-These are not always successful: the
+environment variable for the string "UTF-8". 
+This is not always correct: the
 .Fl u
 flag explicitly informs
 .Nm
