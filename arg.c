@@ -76,7 +76,7 @@ arg_parse_client(const char *arg)
 
 		/* Trim a trailing : if any from the argument. */
 		n = strlen(arg2);
-		if (arg2[n - 1] == ':')
+		if (n && arg2[n - 1] == ':')
 			arg2[n - 1] = '\0';
 
 		/* Try and look up the client name. */
@@ -101,7 +101,7 @@ arg_parse_session(const char *arg)
 
 		/* Trim a trailing : if any from the argument. */
 		n = strlen(arg2);
-		if (arg2[n - 1] == ':')
+		if (n && arg2[n - 1] == ':')
 			arg2[n - 1] = '\0';
 
 		/* See if the argument matches a session. */
