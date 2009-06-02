@@ -60,8 +60,9 @@ char 		*makesockpath(const char *);
 __dead void
 usage(void)
 {
-	fprintf(stderr, "usage: %s [-28dqUuVv] [-f file] "
-	    "[-L socket-name] [-S socket-path] [command [flags]]\n",
+	fprintf(stderr,
+	    "usage: %s [-28dqUuv] [-f file] [-L socket-name] [-S socket-path]\n"
+	    "            [command [flags]]\n",
 	    __progname);
 	exit(1);
 }
