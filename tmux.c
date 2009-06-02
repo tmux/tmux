@@ -369,7 +369,7 @@ main(int argc, char **argv)
 			shell = _PATH_BSHELL;
 	}
 	options_set_string(
-	    &global_options, "default-command", "exec %s", shell);
+	    &global_options, "default-command", "exec %s -l", shell);
 
 	if (getcwd(cwd, sizeof cwd) == NULL) {
 		log_warn("getcwd");
