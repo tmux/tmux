@@ -45,7 +45,8 @@ attributes_tostring(u_char ch)
 		strlcat(buf, "hidden,", sizeof (buf));
 	if (ch & GRID_ATTR_ITALICS)
 		strlcat(buf, "italics,", sizeof (buf));
-	*(strrchr(buf, ',')) = '\0';
+	if (*buf)
+		*(strrchr(buf, ',')) = '\0';
 
 	return (buf);
 }
