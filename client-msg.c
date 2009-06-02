@@ -73,7 +73,7 @@ client_msg_dispatch(struct client_ctx *cctx, char **error)
 int
 client_msg_fn_error(struct hdr *hdr, struct client_ctx *cctx, char **error)
 {
-	if (hdr->size > SIZE_MAX - 1)
+	if (hdr->size == SIZE_MAX)
 		fatalx("bad MSG_ERROR size");
 
 	*error = xmalloc(hdr->size + 1);
