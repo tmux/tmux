@@ -52,20 +52,126 @@ screen_write_putc(
 	screen_write_cell(ctx, gc, NULL);
 }
 
+/* Calculate string length. */
+size_t printflike1
+screen_write_strlen(const char *fmt, ...)
+{
+	va_list	ap;
+	char   *msg;
+	u_char *ptr, utf8buf[4];
+	size_t	left, size = 0;
+
+	va_start(ap, fmt);
+	xvasprintf(&msg, fmt, ap);
+	va_end(ap);
+
+	ptr = msg;
+	while (*ptr != '\0') {
+		if (*ptr > 0x7f) {	/* Assume this is UTF-8. */
+			memset(utf8buf, 0xff, sizeof utf8buf);
+
+			left = strlen(ptr);
+			if (*ptr >= 0xc2 && *ptr <= 0xdf && left >= 2) {
+				memcpy(utf8buf, ptr, 2);
+				ptr += 2;
+			} else if (*ptr >= 0xe0 && *ptr <= 0xef && left >= 3) {
+				memcpy(utf8buf, ptr, 3);
+				ptr += 3;
+			} else if (*ptr >= 0xf0 && *ptr <= 0xf4 && left >= 4) {
+				memcpy(utf8buf, ptr, 4);
+				ptr += 4;
+			} else {
+				*utf8buf = *ptr;
+				ptr++;
+			}
+			size += utf8_width(utf8buf);
+		} else {
+			size++;
+			ptr++;
+		}
+	}	
+
+	return (size);
+}
+
 /* Write string. */
 void printflike3
 screen_write_puts(
     struct screen_write_ctx *ctx, struct grid_cell *gc, const char *fmt, ...)
 {
 	va_list	ap;
-	char   *msg, *ptr;
 
 	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
+	screen_write_vnputs(ctx, -1, gc, fmt, ap);
 	va_end(ap);
+}
 
-	for (ptr = msg; *ptr != '\0'; ptr++)
-		screen_write_putc(ctx, gc, (u_char) *ptr);
+/* Write string with length limit (-1 for unlimited). */
+void printflike4
+screen_write_nputs(struct screen_write_ctx *ctx,
+    ssize_t maxlen, struct grid_cell *gc, const char *fmt, ...)
+{
+	va_list	ap;
+
+	va_start(ap, fmt);
+	screen_write_vnputs(ctx, maxlen, gc, fmt, ap);
+	va_end(ap);
+}
+
+void
+screen_write_vnputs(struct screen_write_ctx *ctx,
+    ssize_t maxlen, struct grid_cell *gc, const char *fmt, va_list ap)
+{
+	char   *msg;
+	u_char *ptr, utf8buf[4];
+	size_t	left, size = 0;
+	int	width;
+
+	xvasprintf(&msg, fmt, ap);
+
+	ptr = msg;
+	while (*ptr != '\0') {
+		if (*ptr > 0x7f) {	/* Assume this is UTF-8. */
+			memset(utf8buf, 0xff, sizeof utf8buf);
+
+			left = strlen(ptr);
+			if (*ptr >= 0xc2 && *ptr <= 0xdf && left >= 2) {
+				memcpy(utf8buf, ptr, 2);
+				ptr += 2;
+			} else if (*ptr >= 0xe0 && *ptr <= 0xef && left >= 3) {
+				memcpy(utf8buf, ptr, 3);
+				ptr += 3;
+			} else if (*ptr >= 0xf0 && *ptr <= 0xf4 && left >= 4) {
+				memcpy(utf8buf, ptr, 4);
+				ptr += 4;
+			} else {
+				*utf8buf = *ptr;
+				ptr++;
+			}
+			
+			width = utf8_width(utf8buf);
+			if (maxlen > 0 && size + width > (size_t) maxlen) {
+				while (size < (size_t) maxlen) {
+					screen_write_putc(ctx, gc, ' ');
+					size++;
+				}
+				break;
+			}
+			size += width;
+
+			gc->flags |= GRID_FLAG_UTF8;
+			screen_write_cell(ctx, gc, utf8buf);
+			gc->flags &= ~GRID_FLAG_UTF8;
+
+		} else {
+			if (maxlen > 0 && size > (size_t) maxlen)
+				break;
+
+			size++;
+			screen_write_putc(ctx, gc, *ptr);
+			ptr++;
+		}
+	}
 
 	xfree(msg);
 }

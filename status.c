@@ -47,8 +47,8 @@ status_redraw(struct client *c)
 	struct window_pane	       *wp;
 	struct screen		       *sc = NULL, old_status;
 	char		 	       *left, *right, *text, *ptr;
-	size_t				llen, rlen, offset, xx, yy, sy;
-	size_t				size, start, width;
+	size_t				llen, llen2, rlen, rlen2, offset;
+	size_t				xx, yy, sy, size, start, width;
 	struct grid_cell	        stdgc, gc;
 	int				larrow, rarrow;
 
@@ -78,15 +78,16 @@ status_redraw(struct client *c)
 	left = status_replace(s, options_get_string(
 	    &s->options, "status-left"), c->status_timer.tv_sec);
 	llen = options_get_number(&s->options, "status-left-length");
-	if (strlen(left) < llen)
-		llen = strlen(left);
-	left[llen] = '\0';
+	llen2 = screen_write_strlen("%s", left);
+	if (llen2 < llen)
+		llen = llen2;
 
 	right = status_replace(s, options_get_string(
 	    &s->options, "status-right"), c->status_timer.tv_sec);
 	rlen = options_get_number(&s->options, "status-right-length");
-	if (strlen(right) < rlen)
-		rlen = strlen(right);
+	rlen2 = screen_write_strlen("%s", right);
+	if (rlen2 < rlen)
+		rlen = rlen2;
 	right[rlen] = '\0';
 
 	/*
@@ -163,7 +164,7 @@ draw:
 	screen_write_start(&ctx, NULL, &c->status);
 	if (llen != 0) {
  		screen_write_cursormove(&ctx, 0, yy);
-		screen_write_puts(&ctx, &stdgc, "%s ", left);
+		screen_write_nputs(&ctx, llen + 1, &stdgc, "%s ", left);
 		if (larrow)
 			screen_write_putc(&ctx, &stdgc, ' ');
 	} else {
@@ -220,7 +221,7 @@ draw:
 	/* Draw the last item. */
 	if (rlen != 0) {
 		screen_write_cursormove(&ctx, c->tty.sx - rlen - 1, yy);
-		screen_write_puts(&ctx, &stdgc, " %s", right);
+		screen_write_nputs(&ctx, rlen + 1, &stdgc, " %s", right);
 	}
 
 	/* Draw the arrows. */
