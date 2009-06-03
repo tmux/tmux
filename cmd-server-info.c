@@ -23,6 +23,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <vis.h>
 
 #include "tmux.h"
 
@@ -156,8 +157,8 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 				    ent->code, ent->name);
 				break;
 			case TTYCODE_STRING:
-				clean_string(
-				    code->value.string, out, sizeof out);
+				strnvis(out, code->value.string, sizeof out,
+				    VIS_OCTAL|VIS_TAB|VIS_NL);
 				ctx->print(ctx, "%2u: %s: (string) %s",
 				    ent->code, ent->name, out);
 				break;
