@@ -797,7 +797,7 @@ tty_cmd_clearstartofscreen(
 				tty_putc(tty, ' ');
 		}
 	}
-	for (i = 0; i < s->old_cx; i++)
+	for (i = 0; i <= s->old_cx; i++)
 		tty_putc(tty, ' ');
 }
 

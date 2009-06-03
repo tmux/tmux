@@ -605,11 +605,11 @@ screen_write_clearstartofscreen(struct screen_write_ctx *ctx)
 	sx = screen_size_x(s);
 
 	if (s->cy > 0)
-		grid_view_clear(s->grid, 0, 0, sx, s->cy - 1);
+		grid_view_clear(s->grid, 0, 0, sx, s->cy);
 	if (s->cx > sx - 1)
 		grid_view_clear(s->grid, 0, s->cy, sx, 1);
 	else
-		grid_view_clear(s->grid, 0, s->cy, s->cx, 1);
+		grid_view_clear(s->grid, 0, s->cy, s->cx + 1, 1);
 
 	tty_write_cmd(ctx->wp, TTY_CLEARSTARTOFSCREEN);
 }
