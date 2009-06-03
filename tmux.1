@@ -359,6 +359,62 @@ may panes be resized using the
 .Ic resize-pane
 command.
 .El
+.Sh STATUS LINE
+.Nm
+includes an optional status line which is displayed in the bottom line of each
+terminal.
+By default, the status line is enabled (it may be disabled with the
+.Ic status
+session option) and contains, from left-to-right: the name of the current
+session in square brackets; the window list; the current window title in double
+quotes; and the time and date.
+.Pp
+The status line is made of three parts: configurable left and right sections
+(which may contain dynamic content such as the time or output from a shell
+command, see the
+.Ic status-left ,
+.Ic status-left-length ,
+.Ic status-right ,
+and
+.Ic status-right-length
+options below), and a central window list.
+The window list shows the index, name and (if any) flag of the windows
+present in the current session in ascending numerical order.
+The flag is one of the following symbols appended to the window name:
+.Bl -column "Symbol" "Meaning" -offset indent
+.It Sy "Symbol" Ta Sy "Meaning"
+.It Li "*" Ta "Denotes the current window."
+.It Li "-" Ta "Marks the last window (previously selected)."
+.It Li "#" Ta "Window is monitored and activity has been detected."
+.It Li "!" Ta "A bell has occurred in the window."
+.It Li "+" Ta "Window is monitored for content and it has appeared."
+.El
+.Pp
+The # symbol relates to the
+.Ic monitor-activity
+and + to the
+.Ic monitor-content
+window options.
+The window name is printed in inverted colours if an alert (bell, activity or
+content) is present.
+.Pp
+The colour and attributes of the status line may be configured, the entire status line using
+the
+.Ic status-attr ,
+.Ic status-fg
+and
+.Ic status-bg
+session options and individual windows using the
+.Ic window-status-attr ,
+.Ic window-status-fg
+and
+.Ic window-status-bg
+window options.
+.Pp
+The status line is automatically refreshed at interval if it has changed, the interval may be
+controlled with the
+.Ic status-interval
+session option.
 .Sh COMMANDS
 This section contains a list of the commands supported by
 .Nm .
