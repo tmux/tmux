@@ -29,7 +29,7 @@ int	cmd_next_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_next_window_entry = {
 	"next-window", "next",
-	CMD_TARGET_SESSION_USAGE,
+	"[-a] " CMD_TARGET_SESSION_USAGE,
 	CMD_AFLAG,
 	cmd_next_window_init,
 	cmd_target_parse,

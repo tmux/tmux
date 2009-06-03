@@ -799,10 +799,14 @@ start-up files.
 .D1 (alias: Ic nextl )
 Move a window to the next layout and rearrange the panes to fit.
 .It Xo Ic next-window
+.Op Fl a
 .Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic next )
 Move to the next window in the session.
+If
+.Fl a 
+is used, move to the next window with a bell, activity or content alert.
 .It Xo Ic paste-buffer
 .Op Fl d
 .Op Fl b Ar buffer-index
@@ -811,10 +815,14 @@ Move to the next window in the session.
 .D1 (alias: Ic pasteb )
 Insert the contents of a paste buffer into the current window.
 .It Xo Ic previous-window
+.Op Fl a
 .Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic prev )
 Move to the previous window in the session.
+With
+.Fl a ,
+move to the previous window with a bell, activity or content alert.
 .It Xo Ic refresh-client
 .Op Fl t Ar target-client
 .Xc
