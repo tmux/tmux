@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <string.h>
+#include <vis.h>
 
 #include "tmux.h"
 
@@ -65,8 +66,12 @@ screen_free(struct screen *s)
 void
 screen_set_title(struct screen *s, const char *title)
 {
+	char	tmp[BUFSIZ];
+
+	strnvis(tmp, title, sizeof tmp, VIS_OCTAL|VIS_TAB|VIS_NL);
+
 	xfree(s->title);
-	s->title = xstrdup(title);
+	s->title = xstrdup(tmp);
 }
 
 /* Resize screen. */
