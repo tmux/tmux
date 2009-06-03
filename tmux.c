@@ -287,7 +287,7 @@ main(int argc, char **argv)
 	options_set_number(&global_options, "prefix", '\002');
 	options_set_number(&global_options, "repeat-time", 500);
 	options_set_number(&global_options, "set-remain-on-exit", 0);
-	options_set_number(&global_options, "set-titles", 1);
+	options_set_number(&global_options, "set-titles", 0);
 	options_set_number(&global_options, "status", 1);
 	options_set_number(&global_options, "status-attr", GRID_ATTR_REVERSE);
 	options_set_number(&global_options, "status-bg", 2);
