@@ -68,7 +68,7 @@
   to avoid quoting
 
 (hopefully) for 0.9, in no particular order:
-- key to goto line in copy/scroll modes
+- goto line and search history in copy/scroll modes
 - a command to display the status line briefly when it is turned off
 - FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw,
   more??
@@ -90,13 +90,13 @@
 	 TO FIX: force-width/height, respawn-window, rotate-window
 	    	 split-window -> split-pane
 - test bug sshing from freebsd console (tom iirc?)
-- document manual-vertical changes XXX this will change again...
-- document main-pane-width and main-pane-height and main-horizontal
-- document clear-history
-- document paste in status line
-- document SIGUSR1 behaviour
-- document select-layout
-- document new UTF-8 behaviour (tmux.1, FAQ, etc)
 - more testing on UTF-8 guesswork, improve tty checks
 - fix UTF-8 in status line: echo -e \\0343\\0202\\0202
       set status-left '#(echo \\\\0343\\\\0202\\\\0202)'
+- sanitise title - watch out for UTF-8!
+- look at 8-bit C1 input again. interpret unless window is in UTF-8 mode?
+- choice and more mode would be better per client than per window?
+- some way to force a screen to use the entire terminal even if it is forced
+  to be smaller by other clients. pan smaller terminal?
+- document status line better: what do */-/!/etc mean? what's on the default
+  status line?
