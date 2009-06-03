@@ -14,12 +14,12 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd April 20, 2009
+.Dd $Mdocdate$
 .Dt TMUX 1
 .Os
 .Sh NAME
 .Nm tmux
-.Nd "terminal multiplexer"
+.Nd terminal multiplexer
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
@@ -31,7 +31,7 @@
 .Ek
 .Sh DESCRIPTION
 .Nm
-is a terminal multiplexer; it enables a number of terminals to be accessed and
+is a terminal multiplexer: it enables a number of terminals to be accessed and
 controlled from a single terminal.
 .Pp
 .Nm
@@ -61,7 +61,7 @@ to assume the terminal supports 256 colours.
 .It Fl 8
 Like
 .Fl 2 ,
-indicates the terminal supports 88 colours.
+but indicates that the terminal supports 88 colours.
 .It Fl d
 Force
 .Nm
@@ -91,12 +91,12 @@ a full path is not necessary: the sockets are all created in the same
 directory.
 .Pp
 If the socket is accidentally removed, the
-.Em SIGUSR1
+.Dv SIGUSR1
 signal may be sent to the
 .Nm
 server process to recreate it.
 .It Fl q
-Prevent the server sending various information messages, for example when
+Prevent the server sending various informational messages, for example when
 window flags are altered.
 .It Fl S Ar socket-path
 Specify a full alternative path to the server socket.
@@ -117,7 +117,7 @@ This is not always correct: the
 .Fl u
 flag explicitly informs
 .Nm
-that the UTF-8 is supported.
+that UTF-8 is supported.
 .It Fl v
 Request verbose logging.
 This option may be specified multiple times for increasing verbosity.
@@ -127,18 +127,19 @@ and
 .Pa tmux-server-PID.log
 files in the current directory, where
 .Em PID
-is the pid of the server or client process.
+is the PID of the server or client process.
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
-and described in the following sections.
-If no command and flags is specified, the
+as described in the following sections.
+If no command and flags are specified, the
 .Ic new-session
 command is assumed.
-.Pp
 .El
 .Sh QUICK START
-To create a new tmux session running
+To create a new
+.Nm
+session running
 .Xr vi 1 :
 .Pp
 .Dl $ tmux new-session vi
@@ -154,15 +155,14 @@ If there are several options, they are listed:
 .Bd -literal -offset indent
 $ tmux n
 ambiguous command: n, could be: new-session, new-window, next-window
-$
 .Ed
 .Pp
 Within an active session, a new window may be created by typing
 .Ql C-b
-(ctrl-b, known as the prefix key)
+(Ctrl, known as the prefix key,
 followed by the
-.Ql c
-key.
+.Ql b
+key).
 .Pp
 Windows may be navigated with:
 .Ql C-b 0
@@ -184,31 +184,31 @@ Typing
 .Ql C-b \&?
 lists the current key bindings in the current window; up and down may be used
 to navigate the list or
-.Ql Q
+.Ql q
 to exit from it.
 .Sh KEY BINDINGS
 .Nm
 may be controlled from an attached client by using a key combination of a
 prefix key,
 .Ql C-b
-(ctrl-b) by default, followed by a command key.
+(Ctrl-b) by default, followed by a command key.
 .Pp
 Some of the default key bindings include:
 .Pp
-.Bl -tag -width Ds -compact
-.It Ql d
-Detach current client.
-.It Ql c
+.Bl -tag -width Ds -offset 3n -compact
+.It c
 Create new window.
-.It Ql n
-Change to next window in the current session.
-.It Ql p
-Change to previous window in the current session.
-.It Ql l
+.It d
+Detach current client.
+.It l
 Move to last (previously selected) window in the current session.
-.It Ql t
+.It n
+Change to next window in the current session.
+.It p
+Change to previous window in the current session.
+.It t
 Display a large clock.
-.It Ql \&?
+.It \&?
 List current key bindings.
 .El
 .Pp
@@ -225,7 +225,7 @@ commands.
 .Sh HISTORY
 .Nm
 maintains a configurable history buffer for each window.
-By default, up to 2000 lines are kept, this can be altered with the
+By default, up to 2000 lines are kept; this can be altered with the
 .Ic history-limit
 option (see the
 .Ic set-option
@@ -258,11 +258,8 @@ command, bound to
 by default.
 .El
 .Pp
-The keys available depend on whether
-.Xr emacs 1
-or
-.Xr vi 1
-mode is selected (see the
+The keys available depend on whether emacs or vi mode is selected
+(see the
 .Ic mode-keys
 option).
 The following keys are supported as appropriate for the mode:
@@ -333,20 +330,15 @@ commands may be used to swap panes without changing the window layout.
 .Pp
 The following layouts are supported:
 .Bl -tag -width Ds
-.It Ic manual
-Manual layout splits windows vertically (running across); only with this layout
-may panes be resized using the
-.Ic resize-pane
-command.
 .It Ic active-only
-Only the active pane is shown - all other panes are hidden.
+Only the active pane is shown \(en all other panes are hidden.
 .It Ic even-horizontal
 Panes are spread out evenly from left to right across the window.
 .It Ic even-vertical
 Panes are spread evenly from top to bottom.
 .It Ic main-horizontal
 A large (main) pane is shown at the top of the window and the remaining panes are
-spread from left to right in the leftover space at the bottom. 
+spread from left to right in the leftover space at the bottom.
 Use the
 .Em main-pane-height
 window option to specify the height of the top pane.
@@ -358,6 +350,11 @@ bottom along the right.
 See the
 .Em main-pane-width
 window option.
+.It Ic manual
+Manual layout splits windows vertically (running across); only with this layout
+may panes be resized using the
+.Ic resize-pane
+command.
 .El
 .Sh COMMANDS
 This section contains a list of the commands supported by
@@ -382,9 +379,9 @@ command.
 .Ar target-session
 is either the name of a session (as listed by the
 .Ic list-sessions
-command); or the name of a client as for
+command) or the name of a client,
 .Ar target-client ,
-in this case, the session attached to the client is used.
+in which case the session attached to the client is used.
 An
 .Xr fnmatch 3
 pattern may be used to match the session name.
@@ -411,22 +408,20 @@ is omitted, the same rules as for
 are followed; if
 .Em index
 is not present, the current window for the given session is used.
-When the argument does not contain a colon (:),
+When the argument does not contain a colon,
 .Nm
 first attempts to parse it as window index; if that fails, an attempt is made
 to match a session or client name.
 .Pp
 Multiple commands may be specified together as part of a
 .Em command sequence .
-Each command should be separated by spaces and a semicolon
-.Eo ( Ql \&  \&; \&  Ec ) ;
+Each command should be separated by spaces and a semicolon;
 commands are executed sequentially from left to right.
 A literal semicolon may be included by escaping it with a backslash (for
 example, when specifying a command sequence to
 .Ic bind-key ) .
 .Pp
 Examples include:
-.Pp
 .Bd -literal -offset indent
 refresh-client -t/dev/ttyp2
 
@@ -468,9 +463,9 @@ Keys may be specified prefixed with
 .Ql C-
 or
 .Ql ^
-for ctrl keys, or
+for Ctrl keys, or
 .Ql M-
-for alt (meta) keys.
+for Alt (meta) keys.
 The
 .Fl r
 flag indicates this key may repeat, see the
@@ -1023,8 +1018,7 @@ window option for any windows first created in this session.
 Attempt to set the window title using the \ee]2;...\e007 xterm code and
 the terminal appears to be an xterm.
 This option is enabled by default.
-Note that
-.Xr elinks 1
+Note that elinks
 will only attempt to set the window title if the STY environment
 variable is set.
 .It Xo Ic status
@@ -1046,10 +1040,7 @@ A setting of zero disables redrawing at interval.
 .It Xo Ic status-keys
 .Op Ic vi | Ic emacs
 .Xc
-Use
-.Xr vi 1 -
-or
-.Xr emacs 1 -style
+Use vi or emacs-style
 key bindings in the status line, for example at the command prompt.
 Defaults to emacs.
 .It Ic status-left Ar string
@@ -1138,8 +1129,9 @@ This means that
 will resize the window to the size of the smallest session for which it is the
 current window, rather than the smallest session to which it is attached.
 The window may resize when the current window is changed on another sessions;
-this option is good for full-screen programs which support SIGWINCH and poor for
-interactive programs such as shells.
+this option is good for full-screen programs which support
+.Dv SIGWINCH
+and poor for interactive programs such as shells.
 .It Xo Ic automatic-rename
 .Op Ic on | Ic off
 .Xc
@@ -1189,10 +1181,7 @@ Set window modes foreground colour.
 .It Xo Ic mode-keys
 .Op Ic vi | Ic emacs
 .Xc
-Use
-.Xr vi 1 -
-or
-.Xr emacs 1 -style
+Use vi or emacs-style
 key bindings in scroll and copy modes.
 Key bindings default to emacs.
 .It Xo Ic monitor-activity
@@ -1202,7 +1191,8 @@ Monitor for activity in the window.
 Windows with activity are highlighted in the status line.
 .It Xo Ic monitor-content Ar match-string
 .Xc
-Monitor content in the window. When
+Monitor content in the window.
+When
 .Ar match-string
 appears in the window, it is highlighted in the status line.
 .It Xo Ic remain-on-exit
@@ -1233,7 +1223,7 @@ If this option is set,
 will generate
 .Xr xterm 1 -style
 function key sequences; these have a number included to indicate modifiers such
-as shift, meta or ctrl.
+as Shift, Alt or Ctrl.
 .El
 .It Xo Ic show-buffer
 .Op Fl b Ar buffer-index
@@ -1306,7 +1296,9 @@ server, if not already running, without creating any sessions.
 .Op Fl c target-client
 .Xc
 .D1 (alias: Ic suspendc )
-Suspend a client by sending SIGTSTP (tty stop).
+Suspend a client by sending
+.Dv SIGTSTP
+(tty stop).
 .It Xo Ic swap-pane
 .Op Fl dDU
 .Op Fl p Ar src-index
@@ -1363,11 +1355,11 @@ not be linked to no sessions.
 Move up a pane.
 .El
 .Sh FILES
-.Bl -tag -width Ds -compact
+.Bl -tag -width "~/.tmux.confXXX" -compact
 .It Pa ~/.tmux.conf
-default
+Default
 .Nm
-configuration file
+configuration file.
 .El
 .Sh SEE ALSO
 .Xr pty 4
