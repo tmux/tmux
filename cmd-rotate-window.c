@@ -60,6 +60,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window		*w;
 	struct window_pane	*wp, *wp2;
 	u_int			 sx, sy, xoff, yoff;
+	int			 flags;
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
@@ -71,14 +72,19 @@ cmd_rotate_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 
 		xoff = wp->xoff; yoff = wp->yoff;
-		sx = wp->sx; sy = wp->sy;
+		sx = wp->sx; sy = wp->sy;	
+		flags = w->flags;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if ((wp2 = TAILQ_NEXT(wp, entry)) == NULL)
 				break;
 			wp->xoff = wp2->xoff; wp->yoff = wp2->yoff;
+			wp->flags &= ~PANE_HIDDEN;
+			wp->flags |= wp2->flags & PANE_HIDDEN;
 			window_pane_resize(wp, wp2->sx, wp2->sy);
 		}
 		wp->xoff = xoff; wp->yoff = yoff;
+		wp->flags &= ~PANE_HIDDEN;
+		wp->flags |= flags & PANE_HIDDEN;
 		window_pane_resize(wp, sx, sy);
 
 		if ((wp = TAILQ_PREV(w->active, window_panes, entry)) == NULL)
@@ -91,13 +97,18 @@ cmd_rotate_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		xoff = wp->xoff; yoff = wp->yoff;
 		sx = wp->sx; sy = wp->sy;
+		flags = w->flags;
 		TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
 			if ((wp2 = TAILQ_PREV(wp, window_panes, entry)) == NULL)
 				break;
 			wp->xoff = wp2->xoff; wp->yoff = wp2->yoff;
+			wp->flags &= ~PANE_HIDDEN;
+			wp->flags |= wp2->flags & PANE_HIDDEN;
 			window_pane_resize(wp, wp2->sx, wp2->sy);
 		}
 		wp->xoff = xoff; wp->yoff = yoff;
+		wp->flags &= ~PANE_HIDDEN;
+		wp->flags |= flags & PANE_HIDDEN;
 		window_pane_resize(wp, sx, sy);
 
 		if ((wp = TAILQ_NEXT(w->active, entry)) == NULL)

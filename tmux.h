@@ -589,8 +589,7 @@ struct window_pane {
 
 	int		 flags;
 #define PANE_HIDDEN 0x1
-#define PANE_RESTART 0x2
-#define PANE_REDRAW 0x4
+#define PANE_REDRAW 0x2
 
 	char		*cmd;
 	char		*cwd;
