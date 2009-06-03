@@ -1133,6 +1133,12 @@ may contain any of the following special character pairs:
 Where appropriate, these may be prefixed with a number to specify the maximum
 length, for example
 .Ql #24T .
+.Pp
+By default, UTF-8 in 
+.Ar string
+is not interpreted, to enable UTF-8, use the
+.Ic status-utf8
+option.
 .It Ic status-left-length Ar length
 Set the maximum
 .Ar length
@@ -1147,13 +1153,27 @@ As with
 .Ic status-left ,
 .Ar string
 will be passed to
-.Xr strftime 3
-and character pairs are replaced.
+.Xr strftime 3 ,
+character pairs are replaced, and UTF-8 is dependent on the
+.Ic status-utf8
+option.
 .It Ic status-right-length Ar length
 Set the maximum
 .Ar length
 of the right component of the status bar.
 The default is 40.
+.Pp
+.It Xo Ic status-utf8
+.Op Ic on | Ic off
+.Xc
+Instruct
+.Nm
+to treat top-bit-set characters in the
+.Ic status-left
+and
+.Ic status-right
+strings as UTF-8; notably, this is important for wide characters.
+This option defaults to off.
 .El
 .It Xo Ic set-password
 .Op Fl c

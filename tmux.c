@@ -299,6 +299,7 @@ main(int argc, char **argv)
 	options_set_string(&global_options, "status-left", "[#S]");
 	options_set_string(
 	    &global_options, "status-right", "\"#24T\" %%H:%%M %%d-%%b-%%y");
+	options_set_number(&global_options, "status-utf8", 0);
 
 	options_init(&global_window_options, NULL);
 	options_set_number(&global_window_options, "aggressive-resize", 0);
