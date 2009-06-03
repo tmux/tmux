@@ -38,6 +38,7 @@ void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_attributes_fg(struct tty *, const struct grid_cell *);
 void	tty_attributes_bg(struct tty *, const struct grid_cell *);
 
+void	tty_cmd_alignmenttest(struct tty *, struct window_pane *, va_list);
 void	tty_cmd_cell(struct tty *, struct window_pane *, va_list);
 void	tty_cmd_clearendofline(struct tty *, struct window_pane *, va_list);
 void	tty_cmd_clearendofscreen(struct tty *, struct window_pane *, va_list);
@@ -54,6 +55,7 @@ void	tty_cmd_raw(struct tty *, struct window_pane *, va_list);
 void	tty_cmd_reverseindex(struct tty *, struct window_pane *, va_list);
 
 void (*tty_cmds[])(struct tty *, struct window_pane *, va_list) = {
+	tty_cmd_alignmenttest,
 	tty_cmd_cell,
 	tty_cmd_clearendofline,
 	tty_cmd_clearendofscreen,
@@ -827,6 +829,24 @@ tty_cmd_clearscreen(
 			for (i = 0; i < screen_size_x(s); i++)
 				tty_putc(tty, ' ');
 		}
+	}
+}
+
+void
+tty_cmd_alignmenttest(
+    struct tty *tty, struct window_pane *wp, unused va_list ap)
+{
+	struct screen	*s = wp->screen;
+	u_int		 i, j;
+
+	tty_reset(tty);
+
+	tty_region(tty, 0, screen_size_y(s) - 1, wp->yoff);
+
+	for (j = 0; j < screen_size_y(s); j++) {
+		tty_cursor(tty, 0, j, wp->xoff, wp->yoff);
+		for (i = 0; i < screen_size_x(s); i++)
+			tty_putc(tty, 'E');
 	}
 }
 

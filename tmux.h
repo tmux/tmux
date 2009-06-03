@@ -279,6 +279,7 @@ struct tty_term_code_entry {
 
 /* Output commands. */
 enum tty_cmd {
+	TTY_ALIGNMENTTEST,
 	TTY_CELL,
 	TTY_CLEARENDOFLINE,
 	TTY_CLEARENDOFSCREEN,
@@ -1363,6 +1364,7 @@ void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorright(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorleft(struct screen_write_ctx *, u_int);
+void	 screen_write_alignmenttest(struct screen_write_ctx *);
 void	 screen_write_insertcharacter(struct screen_write_ctx *, u_int);
 void	 screen_write_deletecharacter(struct screen_write_ctx *, u_int);
 void	 screen_write_insertline(struct screen_write_ctx *, u_int);
