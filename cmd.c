@@ -108,8 +108,10 @@ cmd_parse(int argc, char **argv, char **cause)
 	int			 opt;
 
 	*cause = NULL;
-	if (argc == 0)
+	if (argc == 0) {
+		xasprintf(cause, "no command");
 		return (NULL);
+	}
 
 	entry = NULL;
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
