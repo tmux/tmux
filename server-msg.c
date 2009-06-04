@@ -278,12 +278,13 @@ server_msg_fn_unlock(struct hdr *hdr, struct client *c)
 	if (server_unlock(pass) != 0) {
 #define MSG "bad password"
 		server_write_client(c, MSG_ERROR, MSG, (sizeof MSG) - 1);
-		server_write_client(c, MSG_EXIT, NULL, 0);
-		return (0);
 #undef MSG
 	}
 
 	server_write_client(c, MSG_EXIT, NULL, 0);
+
+	memset(pass, 0, strlen(pass));
+	xfree(pass);
 
 	return (0);
 }
