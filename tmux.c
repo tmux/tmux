@@ -421,6 +421,7 @@ main(int argc, char **argv)
 	b = buffer_create(BUFSIZ);
 	if (unlock) {
 		cmd_send_string(b, pass);
+		memset(pass, 0, strlen(pass));
 		client_write_server(
 		    &cctx, MSG_UNLOCK, BUFFER_OUT(b), BUFFER_USED(b));
 	} else {
