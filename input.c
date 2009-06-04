@@ -400,6 +400,9 @@ input_state_sequence_first(u_char ch, struct input_ctx *ictx)
 			/* Abort sequence and begin with new. */
 			input_state(ictx, input_state_escape);
 		} else if (ch != 0x18 && ch != 0x1a) {	/* CAN and SUB */
+			/* Abort sequence. */
+			input_state(ictx, input_state_first);
+		} else {
 			/* Handle C0 immediately. */
 			input_handle_c0_control(ch, ictx);
 		}
@@ -465,6 +468,9 @@ input_state_sequence_next(u_char ch, struct input_ctx *ictx)
 			/* Abort sequence and begin with new. */
 			input_state(ictx, input_state_escape);
 		} else if (ch != 0x18 && ch != 0x1a) {	/* CAN and SUB */
+			/* Abort sequence. */
+			input_state(ictx, input_state_first);
+		} else  {
 			/* Handle C0 immediately. */
 			input_handle_c0_control(ch, ictx);
 		}
