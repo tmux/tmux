@@ -326,12 +326,17 @@ main(int argc, char **argv)
 
 	if (!(flags & IDENTIFY_UTF8)) {
 		/*
-		 * If the user has set LANG to contain UTF-8, it is a safe
+		 * If the user has set whichever of LC_ALL, LC_CTYPE or LANG
+		 * exist (in that order) to contain UTF-8, it is a safe
 		 * assumption that either they are using a UTF-8 terminal, or
 		 * if not they know that output from UTF-8-capable programs may
 		 * be wrong.
 		 */
-		if ((s = getenv("LANG")) != NULL && strstr(s, "UTF-8") != NULL)
+		if ((s = getenv("LC_CTYPE")) == NULL) {
+			if ((s = getenv("LC_ALL")) == NULL)
+				s = getenv("LANG");
+		}
+		if (s != NULL && strcasestr(s, "UTF-8") != NULL)
 			flags |= IDENTIFY_UTF8;
 	}
 
