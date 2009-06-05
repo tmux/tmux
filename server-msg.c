@@ -196,6 +196,7 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 	c->tty.sy = data.sy;
 
 	c->cwd = NULL;
+	data.cwd[(sizeof data.cwd) - 1] = '\0';
 	if (*data.cwd != '\0')
 		c->cwd = xstrdup(data.cwd);
 
