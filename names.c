@@ -107,4 +107,3 @@ parse_window_name(const char *in)
 	xfree(copy);
 	return (name);
 }
-

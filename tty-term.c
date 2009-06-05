@@ -390,4 +390,3 @@ tty_term_flag(struct tty_term *term, enum tty_code_code code)
 		log_fatalx("not a flag: %d", code);
 	return (term->codes[code].value.flag);
 }
-

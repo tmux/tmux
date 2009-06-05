@@ -493,5 +493,3 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 		grid_put_cell(gd, xx, py, &grid_default_cell);
 	}
 }
-
-

@@ -72,7 +72,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 
 		xoff = wp->xoff; yoff = wp->yoff;
-		sx = wp->sx; sy = wp->sy;	
+		sx = wp->sx; sy = wp->sy;
 		flags = w->flags;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if ((wp2 = TAILQ_NEXT(wp, entry)) == NULL)

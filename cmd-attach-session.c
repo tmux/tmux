@@ -77,4 +77,3 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	return (1);
 }
-

@@ -88,4 +88,3 @@ tty_write_mode(struct window_pane *wp, int mode)
 		tty_update_mode(&c->tty, mode);
 	}
 }
-
