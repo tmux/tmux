@@ -63,7 +63,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 	if ((t = strchr(s, ' ')) == NULL && (t = strchr(s, '\t')) == NULL)
 		t = strchr(s, '\0');
 	if ((u = strchr(s, '=')) != NULL && u < t) {
-		if (putenv((char *) s) != 0) {
+		if (putenv(xstrdup(s)) != 0) {
 			xasprintf(cause, "assignment failed: %s", s);
 			return (-1);
 		}

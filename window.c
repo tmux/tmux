@@ -473,7 +473,7 @@ window_pane_spawn(struct window_pane *wp,
 		if (chdir(wp->cwd) != 0)
 			chdir("/");
 		for (envq = envp; *envq != NULL; envq++) {
-			if (putenv((char *) *envq) != 0)
+			if (putenv(xstrdup(*envq)) != 0)
 				fatal("putenv failed");
 		}
 		sigreset();
