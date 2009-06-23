@@ -332,8 +332,8 @@ main(int argc, char **argv)
 		 * if not they know that output from UTF-8-capable programs may
 		 * be wrong.
 		 */
-		if ((s = getenv("LC_CTYPE")) == NULL) {
-			if ((s = getenv("LC_ALL")) == NULL)
+		if ((s = getenv("LC_ALL")) == NULL) {
+			if ((s = getenv("LC_CTYPE")) == NULL)
 				s = getenv("LANG");
 		}
 		if (s != NULL && strcasestr(s, "UTF-8") != NULL)
