@@ -228,8 +228,10 @@ screen_resize_y(struct screen *s, u_int sy)
 
 		/* Then fill the rest in with blanks. */
 		for (i = gd->hsize + sy - needed; i < gd->hsize + sy; i++) {
-			gd->size[i] = gd->usize[i] = 0;
-			gd->data[i] = gd->udata[i] = NULL;
+			gd->size[i] = 0;
+			gd->data[i] = NULL;
+			gd->usize[i] = 0;
+			gd->udata[i] = NULL;
 		}
 	}
 
