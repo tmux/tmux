@@ -409,6 +409,23 @@ tty_putc(struct tty *tty, u_char ch)
 }
 
 void
+tty_pututf8(struct tty *tty, const struct grid_utf8 *gu)
+{
+	u_int	i, width;
+
+	for (i = 0; i < UTF8_SIZE; i++) {
+		if (gu->data[i] == 0xff)
+			break;
+		buffer_write8(tty->out, gu->data[i]);
+		if (tty->log_fd != -1)
+			write(tty->log_fd, &gu->data[i], 1);
+	}
+
+	width = utf8_width(gu->data);
+	tty->cx += width;
+}
+
+void
 tty_set_title(struct tty *tty, const char *title)
 {
 	if (strstr(tty->termname, "xterm") == NULL &&
@@ -912,11 +929,7 @@ tty_cell(
 	}
 
 	/* Otherwise, write UTF-8. */
-	for (i = 0; i < UTF8_SIZE; i++) {
-		if (gu->data[i] == 0xff)
-			break;
-		tty_putc(tty, gu->data[i]);
-	}
+	tty_pututf8(tty, gu);
 }
 
 void
