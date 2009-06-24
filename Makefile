@@ -1,7 +1,5 @@
 # $OpenBSD$
 
-.PATH:	${.CURDIR}/..
-
 PROG=	tmux
 SRCS=	arg.c attributes.c buffer-poll.c buffer.c cfg.c client-fn.c \
 	client-msg.c client.c clock.c cmd-attach-session.c cmd-bind-key.c \
@@ -42,7 +40,5 @@ CFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
 
 LDADD=  -lutil -lncurses
 DPADD=  ${LIBUTIL}
-
-MAN=	tmux.1
 
 .include <bsd.prog.mk>
