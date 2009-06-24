@@ -297,7 +297,7 @@ utf8_split(u_int uvalue, u_char *data)
 }
 
 int
-utf8_width(u_char *udata)
+utf8_width(const u_char *udata)
 {
 	struct utf8_width_entry	*item;
 	u_int			 uvalue;
