@@ -959,7 +959,7 @@ server_check_window_content(
 		return (0);
 	if (session_alert_has_window(s, w, WINDOW_CONTENT))
 		return (0);
-	if ((found = window_pane_search(wp, ptr)) == NULL)
+	if ((found = window_pane_search(wp, ptr, NULL)) == NULL)
 		return (0);
 	session_alert_add(s, w, WINDOW_CONTENT);
     	xfree(found);

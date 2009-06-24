@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <fnmatch.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -58,8 +59,8 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_pane		*wp;
 	ARRAY_DECL(, u_int)	 	 list_idx;
 	ARRAY_DECL(, char *)	 	 list_ctx;
-	char				*sres, *sctx;
-	u_int				 i;
+	char				*sres, *sctx, *searchstr;
+	u_int				 i, line;
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
@@ -73,17 +74,18 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	ARRAY_INIT(&list_idx);
 	ARRAY_INIT(&list_ctx);
 
+	xasprintf(&searchstr, "*%s*", data->arg);
 	RB_FOREACH(wm, winlinks, &s->windows) {
 		i = 0;
 		TAILQ_FOREACH(wp, &wm->window->panes, entry) {
 			i++;
 
-			if (strstr(wm->window->name, data->arg) != NULL)
+			if (fnmatch(searchstr, wm->window->name, 0) == 0)
 				sctx = xstrdup("");
 			else {
-				sres = window_pane_search(wp, data->arg);
+				sres = window_pane_search(wp, data->arg, &line);
 				if (sres == NULL &&
-				    strstr(wp->base.title, data->arg) == NULL)
+				    fnmatch(searchstr, wp->base.title, 0) != 0)
 					continue;
 
 				if (sres == NULL) {
@@ -91,7 +93,9 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 					    "pane %u title: \"%s\"", i - 1,
 					    wp->base.title);
 				} else {
-					xasprintf(&sctx, "\"%s\"", sres);
+					xasprintf(&sctx,
+					    "pane %u line %u: \"%s\"", i - 1,
+					    line + 1, sres);
 					xfree(sres);
 				}
 			}
@@ -100,6 +104,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			ARRAY_ADD(&list_ctx, sctx);
 		}
 	}
+	xfree(searchstr);
 
 	if (ARRAY_LENGTH(&list_idx) == 0) {
 		ctx->error(ctx, "no windows matching: %s", data->arg);

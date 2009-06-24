@@ -1456,7 +1456,8 @@ void		 window_pane_parse(struct window_pane *);
 void		 window_pane_key(struct window_pane *, struct client *, int);
 void		 window_pane_mouse(struct window_pane *,
     		     struct client *, u_char, u_char, u_char);
-char		*window_pane_search(struct window_pane *, const char *);
+char		*window_pane_search(
+		     struct window_pane *, const char *, u_int *);
 
 /* layout.c */
 const char * 	 layout_name(struct window *);
@@ -1525,10 +1526,6 @@ int		 session_last(struct session *);
 /* utf8.c */
 void	utf8_build(void);
 int	utf8_width(const u_char *);
-
-/* util.c */
-char   *section_string(char *, size_t, size_t, size_t);
-void	clean_string(const char *, char *, size_t);
 
 /* procname.c */
 char   *get_proc_name(int, char *);

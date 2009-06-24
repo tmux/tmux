@@ -664,7 +664,9 @@ Move down a pane.
 .Ar match-string
 .Xc
 .D1 (alias: Ic findw )
-Search for
+Search for the
+.Xr fnmatch 3
+pattern
 .Ar match-string
 in window names, titles, and visible content (but not history).
 If only one window is matched, it'll be automatically selected, otherwise a
@@ -1316,6 +1318,8 @@ Windows with activity are highlighted in the status line.
 .Xc
 Monitor content in the window.
 When
+.Xr fnmatch 3
+pattern
 .Ar match-string
 appears in the window, it is highlighted in the status line.
 .It Xo Ic remain-on-exit
