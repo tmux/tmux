@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.99 2009-05-19 16:08:35 nicm Exp $ */
+/* $Id: tty.c,v 1.100 2009-06-24 17:31:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -136,7 +136,9 @@ tty_start_tty(struct tty *tty)
 	int		 what;
 #endif
 
+#if 0
 	tty_detect_utf8(tty);
+#endif
 
 	if (tcgetattr(tty->fd, &tty->tio) != 0)
 		fatal("tcgetattr failed");
@@ -208,6 +210,7 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?1000l");
 }
 
+#if 0
 void
 tty_detect_utf8(struct tty *tty)
 {
@@ -288,6 +291,7 @@ tty_detect_utf8(struct tty *tty)
 	if (tcsetattr(tty->fd, TCSANOW, &old_tio) != 0)
 		fatal("tcsetattr failed");
 }
+#endif
 
 void
 tty_fill_acs(struct tty *tty)
