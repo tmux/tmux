@@ -1327,6 +1327,7 @@ void	 grid_clear_lines(struct grid *, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_clear_cells(struct grid *, u_int, u_int, u_int);
 void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
+char	*grid_string_cells(struct grid *, u_int, u_int, u_int);
 
 /* grid-view.c */
 const struct grid_cell *grid_view_peek_cell(struct grid *, u_int, u_int);
@@ -1348,6 +1349,7 @@ void	 grid_view_delete_lines_region(
     	     struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_view_insert_cells(struct grid *, u_int, u_int, u_int);
 void	 grid_view_delete_cells(struct grid *, u_int, u_int, u_int);
+char	*grid_view_string_cells(struct grid *, u_int, u_int, u_int);
 
 /* screen-write.c */
 void	 screen_write_start(

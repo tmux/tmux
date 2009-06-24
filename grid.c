@@ -493,3 +493,49 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 		grid_put_cell(gd, xx, py, &grid_default_cell);
 	}
 }
+
+/* Convert cells into a string. */
+char *
+grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
+{
+ 	const struct grid_cell	*gc;
+ 	const struct grid_utf8	*gu;
+	char			*buf;
+	size_t			 len, off;
+	u_int			 xx;
+
+	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u", px, py, nx);
+
+	len = 128;
+	buf = xmalloc(len);
+	off = 0;
+
+	for (xx = px; xx < px + nx; xx++) {
+		gc = grid_peek_cell(gd, xx, py);
+		if (gc->flags & GRID_FLAG_PADDING)
+			continue;
+
+		if (gc->flags & GRID_FLAG_UTF8) {
+			while (len < off + UTF8_SIZE + 1) {
+				buf = xrealloc(buf, 2, len);
+				len *= 2;
+			}
+
+			gu = grid_peek_utf8(gd, xx, py);
+			memcpy(buf + off, gu->data, UTF8_SIZE);
+			off += UTF8_SIZE;
+			while (off > 0 && ((u_char) buf[off]) == 0xff)
+				off--;
+		} else {
+			while (len < off + 2) {
+				buf = xrealloc(buf, 2, len);
+				len *= 2;
+			}
+
+			buf[off++] = gc->data;
+		}
+	}
+
+	buf[off] = '\0';
+	return (buf);
+}
