@@ -196,39 +196,35 @@ to exit from it.
 Commands to be run when the
 .Nm
 server is started may be placed in the
-.Pa ~/.tmux.conf 
+.Pa ~/.tmux.conf
 configuration file.
 Common examples include:
-.Bl -ohang -width Ds
-.It Changing the default prefix key:
+.Pp
+Changing the default prefix key:
 .Bd -literal -offset indent
 set-option -g prefix C-a
 unbind-key C-b
 bind-key C-a send-prefix
 .Ed
 .Pp
-.It Xo
 Turning the status line off, or changing its colour:
-.Xc
 .Bd -literal -offset indent
 set-option -g status off
 set-option -g status-bg blue
 .Ed
 .Pp
-.It Xo
-Setting other options, such as the default command, or locking after 30 minutes 
-of inactivity:
-.Xc
+Setting other options, such as the default command,
+or locking after 30 minutes of inactivity:
 .Bd -literal -offset indent
 set-option -g default-command "exec /bin/ksh"
 set-option -g lock-after-time 1800
 .Ed
-.It Creating new key bindings:
+.Pp
+Creating new key bindings:
 .Bd -literal -offset indent
 bind-key b set-option status
 bind-key / command-prompt "split-window 'exec man %%'"
 .Ed
-.El
 .Sh KEY BINDINGS
 .Nm
 may be controlled from an attached client by using a key combination of a
