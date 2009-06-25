@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.87 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: status.c,v 1.88 2009-06-25 16:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -847,7 +847,7 @@ status_prompt_key(struct client *c, int key)
 			c->prompt_index += n;
 		}
 
-		c->flags |= CLIENT_STATUS;		
+		c->flags |= CLIENT_STATUS;
 		break;
  	case MODEKEYCMD_CHOOSE:
 		if (*c->prompt_buffer != '\0') {

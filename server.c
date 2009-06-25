@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.148 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: server.c,v 1.149 2009-06-25 16:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -131,7 +131,7 @@ server_client_index(struct client *c)
 int
 server_start(char *path)
 {
-	int	retcode, pair[2], srv_fd;
+	int	pair[2], srv_fd;
 	char   *cause;
 #ifdef HAVE_SETPROCTITLE
 	char	rpathbuf[MAXPATHLEN];
@@ -151,10 +151,6 @@ server_start(char *path)
 		return (pair[0]);
 	}
 	close(pair[0]);
-
-#ifdef DEBUG
-	xmalloc_clear();
-#endif
 
 	/*
 	 * Must daemonise before loading configuration as the PID changes so
@@ -194,11 +190,7 @@ server_start(char *path)
 	srv_fd = server_create_socket();
 	server_create_client(pair[1]);
 
-	retcode = server_main(srv_fd);
-#ifdef DEBUG
-	xmalloc_report(getpid(), "server");
-#endif
-	exit(retcode);
+	exit(server_main(srv_fd));
 }
 
 /* Create server socket. */

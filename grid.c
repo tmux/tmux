@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.20 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: grid.c,v 1.21 2009-06-25 16:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -517,5 +517,3 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 	buf[off] = '\0';
 	return (buf);
 }
-
-

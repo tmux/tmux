@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.106 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: tty.c,v 1.107 2009-06-25 16:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -206,7 +206,7 @@ tty_stop_tty(struct tty *tty)
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
-	
+
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
 	if (tty_term_has(tty->term, TTYC_KMOUS))
 		tty_raw(tty, "\033[?1000l");

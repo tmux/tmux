@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.341 2009-06-25 16:25:15 nicm Exp $ */
+/* $Id: tmux.h,v 1.342 2009-06-25 16:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1684,4 +1684,4 @@ int printflike3	 printpath(char *, size_t, const char *, ...);
 char 		*xdirname(const char *);
 char 		*xbasename(const char *);
 
-#endif
+#endif /* TMUX_H */

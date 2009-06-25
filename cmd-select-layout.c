@@ -1,4 +1,4 @@
-/* $Id: cmd-select-layout.c,v 1.2 2009-05-18 21:32:36 nicm Exp $ */
+/* $Id: cmd-select-layout.c,v 1.3 2009-06-25 16:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -78,7 +78,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "unknown or ambiguous layout: %s", data->arg);
 		return (-1);
 	}
-	
+
 	if (layout_select(wl->window, layout) == 0)
 		ctx->info(ctx, "layout now: %s", layout_name(wl->window));
 

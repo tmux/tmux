@@ -1,4 +1,4 @@
-/* $Id: cmd-list-clients.c,v 1.15 2009-05-19 16:29:35 nicm Exp $ */
+/* $Id: cmd-list-clients.c,v 1.16 2009-06-25 16:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -59,7 +59,7 @@ cmd_list_clients_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		else
 			s_utf8 = "";
 		ctx->print(ctx, "%s: %s [%ux%u %s]%s", c->tty.path,
-		    c->session->name, c->tty.sx, c->tty.sy, 
+		    c->session->name, c->tty.sx, c->tty.sy,
 		    c->tty.termname, s_utf8);
 	}
 

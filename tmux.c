@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.134 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: tmux.c,v 1.135 2009-06-25 16:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -504,8 +504,5 @@ out:
 	buffer_destroy(cctx.srv_in);
 	buffer_destroy(cctx.srv_out);
 
-#ifdef DEBUG
-	xmalloc_report(getpid(), "client");
-#endif
 	return (retcode);
 }

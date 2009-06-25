@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.25 2009-05-04 17:58:26 nicm Exp $ */
+/* $Id: cmd-attach-session.c,v 1.26 2009-06-25 16:34:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -77,4 +77,3 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	return (1);
 }
-
