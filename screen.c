@@ -1,4 +1,4 @@
-/* $OpenBSD: screen.c,v 1.2 2009/06/03 19:33:04 nicm Exp $ */
+/* $OpenBSD: screen.c,v 1.3 2009/06/04 18:48:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
 #include <vis.h>
 
@@ -34,6 +35,8 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 
 	s->title = xstrdup("");
 
+	s->tabs = NULL;
+
 	screen_reinit(s);
 }
 
@@ -48,6 +51,8 @@ screen_reinit(struct screen *s)
 	s->rlower = screen_size_y(s) - 1;
 
 	s->mode = MODE_CURSOR;
+	
+	screen_reset_tabs(s);
 
 	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy - 1);
 
@@ -60,6 +65,21 @@ screen_free(struct screen *s)
 {
 	xfree(s->title);
 	grid_destroy(s->grid);
+}
+
+/* Reset tabs to default, eight spaces apart. */
+void
+screen_reset_tabs(struct screen *s)
+{
+	u_int	i;
+
+	if (s->tabs != NULL)
+		xfree(s->tabs);
+
+	if ((s->tabs = bit_alloc(screen_size_x(s))) == NULL)
+		fatal("bit_alloc failed");
+	for (i = 8; i < screen_size_x(s); i += 8)
+		bit_set(s->tabs, i);
 }
 
 /* Set screen title. */
@@ -83,8 +103,17 @@ screen_resize(struct screen *s, u_int sx, u_int sy)
 	if (sy < 1)
 		sy = 1;
 
-	if (sx != screen_size_x(s))
+	if (sx != screen_size_x(s)) {
 		screen_resize_x(s, sx);
+
+		/*
+		 * It is unclear what should happen to tabs on resize. xterm
+		 * seems to try and maintain them, rxvt resets them. Resetting
+		 * is simpler and more reliable so let's do that.
+		 */
+		screen_reset_tabs(s);
+	}
+
 	if (sy != screen_size_y(s))
 		screen_resize_y(s, sy);
 }

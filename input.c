@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.6 2009/06/04 14:42:14 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.7 2009/06/04 18:48:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,6 +74,7 @@ void	 input_handle_sequence_vpa(struct input_ctx *);
 void	 input_handle_sequence_hpa(struct input_ctx *);
 void	 input_handle_sequence_cup(struct input_ctx *);
 void	 input_handle_sequence_cup(struct input_ctx *);
+void	 input_handle_sequence_tbc(struct input_ctx *);
 void	 input_handle_sequence_ed(struct input_ctx *);
 void	 input_handle_sequence_el(struct input_ctx *);
 void	 input_handle_sequence_sm(struct input_ctx *);
@@ -103,6 +104,7 @@ const struct input_sequence_entry input_sequence_table[] = {
 	{ 'P', input_handle_sequence_dch },
 	{ 'd', input_handle_sequence_vpa },
 	{ 'f', input_handle_sequence_cup },
+	{ 'g', input_handle_sequence_tbc },
 	{ 'h', input_handle_sequence_sm },
 	{ 'l', input_handle_sequence_rm },
 	{ 'm', input_handle_sequence_sgr },
@@ -645,12 +647,16 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 		screen_write_cursorleft(&ictx->ctx, 1);
 		break;
 	case '\011': 	/* TAB */
-		s->cx = ((s->cx / 8) * 8) + 8;
-		if (s->cx > screen_size_x(s) - 1) {
-			s->cx = 0;
-			screen_write_cursordown(&ictx->ctx, 1);
-		}
-		screen_write_cursormove(&ictx->ctx, s->cx, s->cy);
+		/* Don't tab beyond the end of the line. */
+		if (s->cx >= screen_size_x(s) - 1)
+			break;
+
+		/* Find the next tab point, or use the last column if none. */
+		do {
+			s->cx++;
+			if (bit_test(s->tabs, s->cx))
+				break;
+		} while (s->cx < screen_size_x(s) - 1);
 		break;
 	case '\013':	/* VT */
 		screen_write_linefeed(&ictx->ctx);
@@ -670,6 +676,8 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 void
 input_handle_c1_control(u_char ch, struct input_ctx *ictx)
 {
+	struct screen  *s = ictx->ctx.s;
+
 	log_debug2("-- c1 %zu: %hhu (%c)", ictx->off, ch, ch);
 
 	switch (ch) {
@@ -679,6 +687,10 @@ input_handle_c1_control(u_char ch, struct input_ctx *ictx)
 	case 'E': 	/* NEL */
 		screen_write_carriagereturn(&ictx->ctx);
 		screen_write_linefeed(&ictx->ctx);
+		break;
+	case 'H':	/* HTS */
+		if (s->cx < screen_size_x(s))
+			bit_set(s->tabs, s->cx);
 		break;
 	case 'M':	/* RI */
 		screen_write_reverseindex(&ictx->ctx);
@@ -755,7 +767,7 @@ input_handle_standard_two(u_char ch, struct input_ctx *ictx)
 	    "-- s2 %zu: %hhu (%c) %hhu", ictx->off, ch, ch, ictx->intermediate);
 
 	switch (ch) {
-	case 'B':	/* Dscs (ASCII) */
+	case 'B':	/* SCS */
 		/*
 		 * Not really supported, but fake it up enough for those that
 		 * use it to switch character sets (by redefining G0 to
@@ -773,6 +785,8 @@ input_handle_standard_two(u_char ch, struct input_ctx *ictx)
 		memcpy(&ictx->saved_cell, &ictx->cell, sizeof ictx->saved_cell);
 		ictx->saved_cx = 0;
 		ictx->saved_cy = 0;
+
+		screen_reset_tabs(ictx->ctx.s);
 
 		screen_write_scrollregion(
 		    &ictx->ctx, 0, screen_size_y(ictx->ctx.s) - 1);
@@ -1025,6 +1039,31 @@ input_handle_sequence_cup(struct input_ctx *ictx)
 		m = 1;
 
 	screen_write_cursormove(&ictx->ctx, m - 1, n - 1);
+}
+
+void
+input_handle_sequence_tbc(struct input_ctx *ictx)
+{
+	struct screen  *s = ictx->ctx.s;
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
+
+	switch (n) {
+	case 0:
+		if (s->cx < screen_size_x(s))
+			bit_clear(s->tabs, s->cx);
+		break;
+	case 3:
+		bit_nclear(s->tabs, 0, screen_size_x(s) - 1);
+		break;
+	}
 }
 
 void
