@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.11 2009/06/25 06:05:47 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.12 2009/06/25 06:15:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1128,8 +1128,6 @@ void		 tty_redraw_region(struct tty *, struct window_pane *);
 int		 tty_open(struct tty *, char **);
 void		 tty_close(struct tty *, int);
 void		 tty_free(struct tty *, int);
-void		 tty_write(
-		     struct tty *, struct window_pane *, enum tty_cmd, ...);
 void		 tty_vwrite(
     		     struct tty *, struct window_pane *, enum tty_cmd, va_list);
 
@@ -1155,7 +1153,6 @@ int		 tty_keys_next(struct tty *, int *, u_char *);
 
 /* tty-write.c */
 void		 tty_write_cmd(struct window_pane *, enum tty_cmd, ...);
-void		 tty_write_mode(struct window_pane *, int);
 
 /* options-cmd.c */
 void	set_option_string(struct cmd_ctx *,
@@ -1384,8 +1381,6 @@ void	 server_write_client(
              struct client *, enum hdrtype, const void *, size_t);
 void	 server_write_session(
              struct session *, enum hdrtype, const void *, size_t);
-void	 server_write_window(
-	     struct window *, enum hdrtype, const void *, size_t);
 void	 server_redraw_client(struct client *);
 void	 server_status_client(struct client *);
 void	 server_redraw_session(struct session *);
@@ -1446,7 +1441,6 @@ void	 grid_set_utf8(struct grid *, u_int, u_int, const struct grid_utf8 *);
 void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_clear_lines(struct grid *, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
-void	 grid_clear_cells(struct grid *, u_int, u_int, u_int);
 void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int);
 
@@ -1560,7 +1554,6 @@ void		 window_set_active_pane(struct window *, struct window_pane *);
 struct window_pane *window_add_pane(struct window *, int,
 		     const char *, const char *, const char **, u_int, char **);
 void		 window_remove_pane(struct window *, struct window_pane *);
-u_int		 window_index_of_pane(struct window *, struct window_pane *);
 struct window_pane *window_pane_at_index(struct window *, u_int);
 u_int		 window_count_panes(struct window *);
 void		 window_destroy_panes(struct window *);
@@ -1607,7 +1600,6 @@ void 		 window_scroll_pageup(struct window_pane *);
 /* window-more.c */
 extern const struct window_mode window_more_mode;
 void 		 window_more_vadd(struct window_pane *, const char *, va_list);
-void printflike2 window_more_add(struct window_pane *, const char *, ...);
 
 /* window-choose.c */
 extern const struct window_mode window_choose_mode;

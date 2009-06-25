@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.61 2009-05-29 23:25:26 nicm Exp $ */
+/* $OpenBSD: server-fn.c,v 1.2 2009/06/25 06:15:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -71,22 +71,6 @@ server_write_session(
 		if (c == NULL || c->session == NULL)
 			continue;
 		if (c->session == s)
-			server_write_client(c, type, buf, len);
-	}
-}
-
-void
-server_write_window(
-    struct window *w, enum hdrtype type, const void *buf, size_t len)
-{
-	struct client	*c;
-	u_int		 i;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (c->session->curw->window == w)
 			server_write_client(c, type, buf, len);
 	}
 }

@@ -1,4 +1,4 @@
-/* $OpenBSD: utf8.c,v 1.2 2009/06/24 05:35:07 nicm Exp $ */
+/* $OpenBSD: utf8.c,v 1.3 2009/06/25 06:15:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -198,7 +198,6 @@ struct utf8_width_entry	*utf8_width_root = NULL;
 int	utf8_overlap(struct utf8_width_entry *, struct utf8_width_entry *);
 void	utf8_print(struct utf8_width_entry *, int);
 u_int	utf8_combine(const u_char *);
-void	utf8_split(u_int, u_char *);
 
 int
 utf8_overlap(
@@ -272,28 +271,6 @@ utf8_combine(const u_char *data)
 		uvalue |= (data[0] & 0x3f) << 18;
 	}
 	return (uvalue);
-}
-
-void
-utf8_split(u_int uvalue, u_char *data)
-{
-	memset(data, 0xff, 4);
-
-	if (uvalue <= 0x7f)
-		data[0] = uvalue;
-	else if (uvalue > 0x7f && uvalue <= 0x7ff) {
-		data[0] = (uvalue >> 6) | 0xc0;
-		data[1] = (uvalue & 0x3f) | 0x80;
-	} else if (uvalue > 0x7ff && uvalue <= 0xffff) {
-		data[0] = (uvalue >> 12) | 0xe0;
-		data[1] = ((uvalue >> 6) & 0x3f) | 0x80;
-		data[2] = (uvalue & 0x3f) | 0x80;
-	} else if (uvalue > 0xffff && uvalue <= 0x10ffff) {
-		data[0] = (uvalue >> 18) | 0xf0;
-		data[1] = ((uvalue >> 12) & 0x3f) | 0x80;
-		data[2] = ((uvalue >> 6) & 0x3f) | 0x80;
-		data[3] = (uvalue & 0x3f) | 0x80;
-	}
 }
 
 int

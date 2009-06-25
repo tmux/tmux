@@ -1,4 +1,4 @@
-/* $OpenBSD: window-more.c,v 1.2 2009/06/24 23:00:31 nicm Exp $ */
+/* $OpenBSD: window-more.c,v 1.3 2009/06/25 06:15:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -73,16 +73,6 @@ window_more_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 	} else
 		window_more_write_line(wp, &ctx, 0);
 	screen_write_stop(&ctx);
-}
-
-void printflike2
-window_more_add(struct window_pane *wp, const char *fmt, ...)
-{
-	va_list	ap;
-
-	va_start(ap, fmt);
-	window_more_vadd(wp, fmt, ap);
-	va_end(ap);
 }
 
 struct screen *

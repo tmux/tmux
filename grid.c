@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.4 2009/06/24 22:49:56 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.5 2009/06/25 06:15:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -427,31 +427,6 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny)
 		gd->size[yy] = 0;
 		gd->udata[yy] = NULL;
 		gd->usize[yy] = 0;
-	}
-}
-
-/* Clear a group of cells. */
-void
-grid_clear_cells(struct grid *gd, u_int px, u_int py, u_int nx)
-{
-	u_int	xx;
-
- 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u", px, py, nx);
-
-	if (nx == 0)
-		return;
-
-	if (grid_check_x(gd, px) != 0)
-		return;
-	if (grid_check_x(gd, px + nx - 1) != 0)
-		return;
-	if (grid_check_y(gd, py) != 0)
-		return;
-
-	for (xx = px; xx < px + nx; xx++) {
-		if (xx >= gd->size[py])
-			break;
-		grid_put_cell(gd, xx, py, &grid_default_cell);
 	}
 }
 

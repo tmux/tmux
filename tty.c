@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.6 2009/06/25 05:56:44 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.7 2009/06/25 06:15:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -554,16 +554,6 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 		for (i = sx; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
 	}
-}
-
-void
-tty_write(struct tty *tty, struct window_pane *wp, enum tty_cmd cmd, ...)
-{
-	va_list	ap;
-
-	va_start(ap, cmd);
-	tty_vwrite(tty, wp, cmd, ap);
-	va_end(ap);
 }
 
 void

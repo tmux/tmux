@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.5 2009/06/24 22:49:56 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.6 2009/06/25 06:15:04 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -339,21 +339,6 @@ window_remove_pane(struct window *w, struct window_pane *wp)
 
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	window_pane_destroy(wp);
-}
-
-u_int
-window_index_of_pane(struct window *w, struct window_pane *find)
-{
-	struct window_pane	*wp;
-	u_int			 n;
-
-	n = 0;
-	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp == find)
-			return (n);
-		n++;
-	}
-	fatalx("unknown pane");
 }
 
 struct window_pane *
