@@ -371,8 +371,11 @@ main(int argc, char **argv)
 	    &global_options, "default-command", "exec %s -l", shell);
 
 	if (getcwd(cwd, sizeof cwd) == NULL) {
-		log_warn("getcwd");
-		exit(1);
+		pw = getpwuid(getuid());
+		if (pw->pw_dir != NULL && *pw->pw_dir != '\0')
+			strlcpy(cwd, pw->pw_dir, sizeof cwd);
+		else
+			strlcpy(cwd, "/", sizeof cwd);
 	}
 	options_set_string(&global_options, "default-path", "%s", cwd);
 
