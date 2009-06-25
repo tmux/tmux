@@ -1,4 +1,4 @@
-/* $Id: grid-view.c,v 1.11 2009-03-28 20:17:29 nicm Exp $ */
+/* $OpenBSD: grid-view.c,v 1.2 2009/06/24 22:04:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -208,4 +208,16 @@ grid_view_delete_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 	sx = grid_view_x(gd, gd->sx);
 
 	grid_move_cells(gd, px, px + nx, py, (sx - 1) - (px + nx));
+}
+
+/* Convert cells into a string. */
+char *
+grid_view_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
+{
+	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u", px, py, nx);
+
+	px = grid_view_x(gd, px);
+	py = grid_view_y(gd, py);
+
+	return (grid_string_cells(gd, px, py, nx));
 }

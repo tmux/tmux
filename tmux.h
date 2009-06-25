@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.8 2009/06/24 16:01:02 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.9 2009/06/24 22:04:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1448,6 +1448,7 @@ void	 grid_clear_lines(struct grid *, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_clear_cells(struct grid *, u_int, u_int, u_int);
 void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
+char	*grid_string_cells(struct grid *, u_int, u_int, u_int);
 
 /* grid-view.c */
 const struct grid_cell *grid_view_peek_cell(struct grid *, u_int, u_int);
@@ -1469,6 +1470,7 @@ void	 grid_view_delete_lines_region(
     	     struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_view_insert_cells(struct grid *, u_int, u_int, u_int);
 void	 grid_view_delete_cells(struct grid *, u_int, u_int, u_int);
+char	*grid_view_string_cells(struct grid *, u_int, u_int, u_int);
 
 /* screen-write.c */
 void	 screen_write_start(
