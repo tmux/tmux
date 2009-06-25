@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.17 2009-05-04 17:58:26 nicm Exp $ */
+/* $OpenBSD: cmd-server-info.c,v 1.2 2009/06/03 19:37:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,6 +23,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <vis.h>
 
 #include "tmux.h"
 
@@ -157,8 +158,8 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 				    ent->code, ent->name);
 				break;
 			case TTYCODE_STRING:
-				clean_string(
-				    code->value.string, out, sizeof out);
+				strnvis(out, code->value.string, sizeof out,
+				    VIS_OCTAL|VIS_TAB|VIS_NL);
 				ctx->print(ctx, "%2u: %s: (string) %s",
 				    ent->code, ent->name, out);
 				break;

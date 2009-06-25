@@ -1,4 +1,4 @@
-/* $Id: util.c,v 1.5 2009-04-30 16:24:20 nicm Exp $ */
+/* $OpenBSD: util.c,v 1.2 2009/06/03 19:37:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,24 +49,4 @@ section_string(char *buf, size_t len, size_t sectoff, size_t sectlen)
 	xasprintf(&s, "%s%.*s%s", first == 0 ? "" : "...",
 	    (int) (last - first), buf + first, last == len ? "" : "...");
 	return (s);
-}
-
-/* Clean string of invisible characters. */
-void
-clean_string(const char *in, char *buf, size_t len)
-{
-	const u_char	*cp;
-	size_t	 	 off;
-
-	off = 0;
-	for (cp = in; *cp != '\0'; cp++) {
-		if (off >= len)
-			break;
-		if (*cp >= 0x20 && *cp <= 0x7f)
-			buf[off++] = *cp;
-		else
-			off += xsnprintf(buf + off, len - off, "\\%03hho", *cp);
-	}
-	if (off < len)
-		buf[off] = '\0';
 }
