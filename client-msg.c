@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.18 2009-01-21 22:47:31 nicm Exp $ */
+/* $Id: client-msg.c,v 1.19 2009-06-25 15:25:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -73,7 +73,7 @@ client_msg_dispatch(struct client_ctx *cctx, char **error)
 int
 client_msg_fn_error(struct hdr *hdr, struct client_ctx *cctx, char **error)
 {
-	if (hdr->size > SIZE_MAX - 1)
+	if (hdr->size == SIZE_MAX)
 		fatalx("bad MSG_ERROR size");
 
 	*error = xmalloc(hdr->size + 1);

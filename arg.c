@@ -1,4 +1,4 @@
-/* $Id: arg.c,v 1.5 2008-08-28 17:45:25 nicm Exp $ */
+/* $Id: arg.c,v 1.6 2009-06-25 15:25:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -76,7 +76,7 @@ arg_parse_client(const char *arg)
 
 		/* Trim a trailing : if any from the argument. */
 		n = strlen(arg2);
-		if (arg2[n - 1] == ':')
+		if (n && arg2[n - 1] == ':')
 			arg2[n - 1] = '\0';
 
 		/* Try and look up the client name. */
@@ -101,7 +101,7 @@ arg_parse_session(const char *arg)
 
 		/* Trim a trailing : if any from the argument. */
 		n = strlen(arg2);
-		if (arg2[n - 1] == ':')
+		if (n && arg2[n - 1] == ':')
 			arg2[n - 1] = '\0';
 
 		/* See if the argument matches a session. */
