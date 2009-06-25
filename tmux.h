@@ -73,7 +73,9 @@ extern const char    *__progname;
 #define printflike5 __attribute__ ((format (printf, 5, 6)))
 
 /* Number of items in array. */
+#ifndef nitems
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
+#endif
 
 /* Buffer macros. */
 #define BUFFER_USED(b) ((b)->size)
