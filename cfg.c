@@ -30,7 +30,6 @@
  * argv array and executed as a command.
  */
 
-char	 *cfg_string(FILE *, char, int);
 void printflike2 cfg_print(struct cmd_ctx *, const char *, ...);
 void printflike2 cfg_error(struct cmd_ctx *, const char *, ...);
 

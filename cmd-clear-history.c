@@ -24,7 +24,6 @@
  * Clear pane history.
  */
 
-void	cmd_clear_history_init(struct cmd *, int);
 int	cmd_clear_history_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_clear_history_entry = {

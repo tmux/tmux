@@ -30,8 +30,6 @@
 
 int	cmd_lock_server_exec(struct cmd *, struct cmd_ctx *);
 
-int	cmd_lock_server_callback(void *, const char *);
-
 const struct cmd_entry cmd_lock_server_entry = {
 	"lock-server", "lock",
 	"",

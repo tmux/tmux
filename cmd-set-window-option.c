@@ -27,12 +27,7 @@
  * Set a window option.
  */
 
-int	cmd_set_window_option_parse(struct cmd *, int, char **, char **);
 int	cmd_set_window_option_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_set_window_option_send(struct cmd *, struct buffer *);
-void	cmd_set_window_option_recv(struct cmd *, struct buffer *);
-void	cmd_set_window_option_free(struct cmd *);
-size_t	cmd_set_window_option_print(struct cmd *, char *, size_t);
 
 const struct cmd_entry cmd_set_window_option_entry = {
 	"set-window-option", "setw",
