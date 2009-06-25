@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.2 2009/06/03 19:33:04 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.3 2009/06/03 23:30:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -630,6 +630,9 @@ input_handle_c1_control(u_char ch, struct input_ctx *ictx)
 	log_debug2("-- c1 %zu: %hhu (%c)", ictx->off, ch, ch);
 
 	switch (ch) {
+	case 'D':	/* IND */
+		screen_write_linefeed(&ictx->ctx);
+		break;
 	case 'E': 	/* NEL */
 		screen_write_carriagereturn(&ictx->ctx);
 		screen_write_linefeed(&ictx->ctx);
@@ -652,7 +655,7 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 	    "-- p2 %zu: %hhu (%c) %hhu", ictx->off, ch, ch, ictx->intermediate);
 
 	switch (ch) {
-	case '0':	/* Dscs (graphics) */
+	case '0':	/* SCS */
 		/*
 		 * Not really supported, but fake it up enough for those that
 		 * use it to switch character sets (by redefining G0 to
@@ -665,22 +668,36 @@ input_handle_private_two(u_char ch, struct input_ctx *ictx)
 		}
 		break;
 	case '=':	/* DECKPAM */
+		if (ictx->intermediate != '\0')
+			break;
 		screen_write_kkeypadmode(&ictx->ctx, 1);
 		log_debug("kkeypad on (application mode)");
 		break;
 	case '>':	/* DECKPNM */
+		if (ictx->intermediate != '\0')
+			break;
 		screen_write_kkeypadmode(&ictx->ctx, 0);
 		log_debug("kkeypad off (number mode)");
 		break;
 	case '7':	/* DECSC */
+		if (ictx->intermediate != '\0')
+			break;
 		memcpy(&ictx->saved_cell, &ictx->cell, sizeof ictx->saved_cell);
 		ictx->saved_cx = s->cx;
 		ictx->saved_cy = s->cy;
 		break;
-	case '8':	/* DECRC */
-		memcpy(&ictx->cell, &ictx->saved_cell, sizeof ictx->cell);
-		screen_write_cursormove(
-		    &ictx->ctx, ictx->saved_cx, ictx->saved_cy);
+	case '8':
+		switch (ictx->intermediate) {
+		case '\0':	/* DECRC */
+			memcpy(
+			    &ictx->cell, &ictx->saved_cell, sizeof ictx->cell);
+			screen_write_cursormove(
+			    &ictx->ctx, ictx->saved_cx, ictx->saved_cy);
+			break;
+		case '#':	/* DECALN */
+			screen_write_alignmenttest(&ictx->ctx);
+			break;
+		}
 		break;
 	default:
 		log_debug("unknown p2: %hhu", ch);

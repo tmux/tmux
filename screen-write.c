@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.4 2009/06/03 23:26:56 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.5 2009/06/03 23:30:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -289,6 +289,31 @@ screen_write_cursorleft(struct screen_write_ctx *ctx, u_int nx)
 		return;
 
 	s->cx -= nx;
+}
+
+/* VT100 alignment test. */
+void
+screen_write_alignmenttest(struct screen_write_ctx *ctx)
+{
+	struct screen		*s = ctx->s;
+	struct grid_cell       	 gc;
+	u_int			 xx, yy;
+
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.data = 'E';
+	
+	for (yy = 0; yy < screen_size_y(s); yy++) {
+		for (xx = 0; xx < screen_size_x(s); xx++)
+			grid_view_set_cell(s->grid, xx, yy, &gc);
+	}
+	
+	s->cx = 0;
+	s->cy = 0;
+
+	s->rupper = 0;
+	s->rlower = screen_size_y(s) - 1;
+
+	tty_write_cmd(ctx->wp, TTY_ALIGNMENTTEST);
 }
 
 /* Insert nx characters. */
