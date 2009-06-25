@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.4 2009/06/03 23:30:40 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.5 2009/06/24 16:01:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -416,6 +416,23 @@ tty_putc(struct tty *tty, u_char ch)
 
 	if (tty->log_fd != -1)
 		write(tty->log_fd, &ch, 1);
+}
+
+void
+tty_pututf8(struct tty *tty, const struct grid_utf8 *gu)
+{
+	u_int	i, width;
+
+	for (i = 0; i < UTF8_SIZE; i++) {
+		if (gu->data[i] == 0xff)
+			break;
+		buffer_write8(tty->out, gu->data[i]);
+		if (tty->log_fd != -1)
+			write(tty->log_fd, &gu->data[i], 1);
+	}
+
+	width = utf8_width(gu->data);
+	tty->cx += width;
 }
 
 void
@@ -922,11 +939,7 @@ tty_cell(
 	}
 
 	/* Otherwise, write UTF-8. */
-	for (i = 0; i < UTF8_SIZE; i++) {
-		if (gu->data[i] == 0xff)
-			break;
-		tty_putc(tty, gu->data[i]);
-	}
+	tty_pututf8(tty, gu);
 }
 
 void
