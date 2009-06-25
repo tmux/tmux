@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.13 2009-05-04 17:58:26 nicm Exp $ */
+/* $OpenBSD: cmd-split-window.c,v 1.2 2009/06/25 06:48:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -141,7 +141,8 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_pane		*wp;
 	const char		       **env;
 	char		 		*cmd, *cwd, *cause;
-	u_int				 hlimit, lines;
+	u_int				 hlimit;
+	int				 lines;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return (-1);
