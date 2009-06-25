@@ -1,4 +1,4 @@
-/* $Id: names.c,v 1.5 2009-05-04 17:58:27 nicm Exp $ */
+/* $OpenBSD: names.c,v 1.2 2009/06/03 04:03:16 ray Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -96,7 +96,7 @@ parse_window_name(const char *in)
 
 	if (*name != '\0') {
 		ptr = name + strlen(name) - 1;
-		while (ptr > name && !isalnum(*ptr))
+		while (ptr > name && !isalnum((u_char)*ptr))
 			*ptr-- = '\0';
 	}
 
