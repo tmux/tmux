@@ -1,4 +1,4 @@
-/* $Id: buffer-poll.c,v 1.13 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: buffer-poll.c,v 1.14 2009-06-25 16:22:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,28 +23,11 @@
 
 #include "tmux.h"
 
-/* Set up pollfd for buffers. */
-void
-buffer_set(
-    struct pollfd *pfd, int fd, unused struct buffer *in, struct buffer *out)
-{
-	pfd->fd = fd;
-	pfd->events = POLLIN;
-	if (BUFFER_USED(out) > 0)
-		pfd->events |= POLLOUT;
-}
-
 /* Fill buffers from socket based on poll results. */
 int
 buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 {
 	ssize_t	n;
-
-#if 0
-	log_debug("buffer_poll (%ld): fd=%d, revents=%d; out=%zu in=%zu",
-	    (long) getpid(),
-	    pfd->fd, pfd->revents, BUFFER_USED(out), BUFFER_USED(in));
-#endif
 
 #ifdef HAVE_POLL
 	if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP))
@@ -53,9 +36,6 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 	if (pfd->revents & POLLIN) {
 		buffer_ensure(in, BUFSIZ);
 		n = read(pfd->fd, BUFFER_IN(in), BUFFER_FREE(in));
-#if 0
-		log_debug("buffer_poll: fd=%d, read=%zd", pfd->fd, n);
-#endif
 		if (n == 0)
 			return (-1);
 		if (n == -1) {
