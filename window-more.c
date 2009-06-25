@@ -1,4 +1,4 @@
-/* $OpenBSD: window-more.c,v 1.3 2009/06/25 06:15:04 nicm Exp $ */
+/* $Id: window-more.c,v 1.32 2009-06-25 16:21:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

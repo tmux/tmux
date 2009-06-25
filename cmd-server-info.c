@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-server-info.c,v 1.2 2009/06/03 19:37:27 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.19 2009-06-25 16:21:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>

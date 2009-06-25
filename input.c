@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.8 2009/06/04 21:02:21 nicm Exp $ */
+/* $Id: input.c,v 1.86 2009-06-25 16:21:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

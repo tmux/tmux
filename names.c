@@ -1,4 +1,4 @@
-/* $OpenBSD: names.c,v 1.2 2009/06/03 04:03:16 ray Exp $ */
+/* $Id: names.c,v 1.7 2009-06-25 16:21:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

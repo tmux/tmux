@@ -1,4 +1,4 @@
-/* $OpenBSD: tty-write.c,v 1.3 2009/06/25 06:15:04 nicm Exp $ */
+/* $Id: tty-write.c,v 1.17 2009-06-25 16:21:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

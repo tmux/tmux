@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-find-window.c,v 1.2 2009/06/24 22:49:56 nicm Exp $ */
+/* $Id: cmd-find-window.c,v 1.10 2009-06-25 16:21:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

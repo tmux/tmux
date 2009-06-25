@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-set-option.c,v 1.2 2009/06/03 16:54:26 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.62 2009-06-25 16:21:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
