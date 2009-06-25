@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.c,v 1.8 2009/06/05 07:22:23 nicm Exp $ */
+/* $OpenBSD: tmux.c,v 1.9 2009/06/23 18:27:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -348,8 +348,8 @@ main(int argc, char **argv)
 		 * if not they know that output from UTF-8-capable programs may
 		 * be wrong.
 		 */
-		if ((s = getenv("LC_CTYPE")) == NULL) {
-			if ((s = getenv("LC_ALL")) == NULL)
+		if ((s = getenv("LC_ALL")) == NULL) {
+			if ((s = getenv("LC_CTYPE")) == NULL)
 				s = getenv("LANG");
 		}
 		if (s != NULL && strcasestr(s, "UTF-8") != NULL)
