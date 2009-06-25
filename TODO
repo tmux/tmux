@@ -1,15 +1,8 @@
-- line mode/char-at-a-time mode a la telnet?
-- handle ioctl/termios stuff on window sockets
-- figure out once and for all what is going on with backspace and del
-      backspace should be translated per the termios setting.
-      del passed through?
 - window creation/idle time
-- profile/optimise, particularly (i suspect) input.c
 - could use bsearch all over the place or get rid of smaller tables (clientmsg)
 - better errors when creating new windows/sessions (how?)
-- Implicitly add exec to the commands for new windows (switch to disable it)
-- it would be nice to have multichar commands so you could have C-b K K for
-  kill-window to limit accidental presses
+- implicitly add exec to the commands for new windows (switch to disable it)?
+- it would be nice to have multichar commands eg C-b K K
 - commands:
  	extend list-clients to list clients attached to a session (-a for all?)
 	bring back detach-session to detach all clients on a session?
@@ -17,14 +10,11 @@
 - bind non prefix keys
 - garbage collect window history (100 lines at a time?) if it hasn't been used
   in $x time (need window creation/use times)
-- lift SHRT_MAX limits for history
+- lift SHRT_MAX limits for history?
 - audit copy/scroll and other modes for problems with very small windows
-- split clients into three RB trees by fd: attached/unattached/dead?
-  or tailqs? what would be fastest per-char?
 - better mode features: search, back word, forward word, etc
 - flags to centre screen in window
 - better terminal emulation (identify, insert mode, some other bits)
-- when resizing, use history
 - audit for leftover/unused code
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
@@ -41,12 +31,9 @@
 - use a better termcap internally instead of screen, perhaps xterm
 - kill all but current pane
 - fix rxvt cursor fg issue (text under cursor can have non-white fg)
-- key handling sucks a bit and needs to be reworked
+- key handling sucks a bit and may need to be reworked
 - some people find first window being 0 rather than 1 is awkward on the
-  keyboard. what about a new-window-index option that sets the base at which
-  tmux starts numbering new windows, then they can do: set -g new-window-index
-  1; bind 0 selectw -t:10
-- some way to change status line colours based on something? command?
+  keyboard
 - client sx/sy should be in tty, then can let the terminal wrap at edge
   to allow xterm to pick up it should be one line for its c/p
 - should be able to move to a hidden pane and it would be moved into view. pane
@@ -54,12 +41,13 @@
 - command to run something without a window at all - output to
   window-more. what for? isnt this the same as doing it w/ splitw/neww now?
 - would be nice if tmux could be the shell (tmux attach, but hard link to tmux
-  binary as "tmuxsh" or wrapper script?) -- problems with tty dev permissions
+  binary as "tmuxsh" or wrapper script?) problems with tty dev permissions
 - support other mouse modes (highlight etc) and use it in copy mode
 - set-remain-on-exit is a bit of a hack, some way to do it generically?
 - set-option should be set-session-option and should be overall global options
   for stuff like mode keys?
       also quiet, utf8 and maybe other flags?
+  -g is a bit unexpected in conf file
 - clear window title on exit
 - refer to windows by name etc (duplicates? fnmatch?)
 - the output code (tty.c) could do with optimisation depending on term
@@ -67,11 +55,8 @@
 - would be nice to be able to use "--" to mark start of command w/ neww etc
   to avoid quoting
 
-(hopefully) for 0.9, in no particular order:
 - goto line and search history in copy/scroll modes
 - a command to display the status line briefly when it is turned off
-- FAQ "Can I have some examples of cool things I can do with tmux?" -- linkw,
-  more??
 - clone session command
 - make command sequences more usable: don't require space after ;, handle
   errors better
@@ -82,21 +67,26 @@
 - layout/split stuff:
 	  ** NEW layout design:
 	     1. finish rewrite manual with tree of layout_cell
-	     	(resize can be recursive?)
 	     2. convert automatic layout modes to produce a tree and make
-	        them one-off operations?
+	        them one-off operations
 	     3. move any size/position details from window_pane to layout_cell
-	     5. a way to address panes by name ("top-left") and position ("0,0")
-	 TO FIX: force-width/height, respawn-window, rotate-window
-	    	 split-window -> split-pane
-- test bug sshing from freebsd console (tom iirc?)
-- more testing on UTF-8 guesswork, improve tty checks
-- fix UTF-8 in status line: echo -e \\0343\\0202\\0202
-      set status-left '#(echo \\\\0343\\\\0202\\\\0202)'
-- sanitise title - watch out for UTF-8!
-- look at 8-bit C1 input again. interpret unless window is in UTF-8 mode?
+	     3.5. fix -p/-l on split
+	     4. a way to address panes by name ("top-left") and position ("0,0")
+	 TO TEST: force-width/height OK, respawn-window, rotate-window OK, break-pane??
+	** rename split-window -> split-pane
+- fix UTF-8 guesswork on sparc64, improve tty checks
 - choice and more mode would be better per client than per window?
 - some way to force a screen to use the entire terminal even if it is forced
-  to be smaller by other clients. pan smaller terminal?
-- document status line better: what do */-/!/etc mean? what's on the default
-  status line?
+  to be smaller by other clients. pan smaller terminal? (like screen F)
+- close/redirect stderr when popen to child proc for #() in status line
+- if-shell-command command to run a tmux command if a shell command returns true
+- hooks to which commands may be attached, for example:
+  	tmux add-hook "new-session" if-shell "[ -e $HOME/.tmux-session.conf ]" source-file $HOME/.tmux-session.conf
+- get it passing all the vttest tests that don't require resizing the terminal
+- does tmux require a exmple conf? where does it go?
+- there are an awful lot of commands. maybe separate man page for conf
+  file/commands -similar to ssh/ssh_config?
+- esc seq to set window title should be documented and should set automatic-rename
+- *** get rid of PANE_HIDDEN -- initially just check for outside window
+- way to set socket path from config file
+- the "window with one pane" vs window distinction is weird, eg you can't kill-pane the last pane
