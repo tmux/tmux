@@ -233,19 +233,11 @@ main(int argc, char **argv)
 			cfg_file = xstrdup(optarg);
 			break;
 		case 'L':
-			if (path != NULL) {
-				log_warnx("-L and -S cannot be used together");
-				exit(1);
-			}
 			if (label != NULL)
 				xfree(label);
 			label = xstrdup(optarg);
 			break;
 		case 'S':
-			if (label != NULL) {
-				log_warnx("-L and -S cannot be used together");
-				exit(1);
-			}
 			if (path != NULL)
 				xfree(path);
 			path = xstrdup(optarg);
