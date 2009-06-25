@@ -29,9 +29,8 @@
 
 /* Logging type. */
 #define LOG_TYPE_OFF 0
-#define LOG_TYPE_SYSLOG 1
-#define LOG_TYPE_TTY 2
-#define LOG_TYPE_FILE 3
+#define LOG_TYPE_TTY 1
+#define LOG_TYPE_FILE 2
 int	log_type = LOG_TYPE_OFF;
 
 /* Log file, if needed. */
@@ -40,17 +39,8 @@ FILE   *log_file;
 /* Debug level. */
 int	log_level;
 
-/* Open logging to syslog. */
-void
-log_open_syslog(int level)
-{
-	log_type = LOG_TYPE_SYSLOG;
-	log_level = level;
-
-	openlog(__progname, LOG_PID|LOG_NDELAY, LOG_FACILITY);
-
-	tzset();
-}
+void		 log_vwrite(int, const char *, va_list);
+__dead void	 log_vfatal(const char *, va_list);
 
 /* Open logging to tty. */
 void
@@ -93,26 +83,12 @@ log_close(void)
 
 /* Write a log message. */
 void
-log_write(int pri, const char *msg, ...)
-{
-	va_list	ap;
-
-	va_start(ap, msg);
-	log_vwrite(pri, msg, ap);
-	va_end(ap);
-}
-
-/* Write a log message. */
-void
 log_vwrite(int pri, const char *msg, va_list ap)
 {
 	char	*fmt;
 	FILE	*f = log_file;
 
 	switch (log_type) {
-	case LOG_TYPE_SYSLOG:
-		vsyslog(pri, msg, ap);
-		break;
 	case LOG_TYPE_TTY:
 		if (pri == LOG_INFO)
 			f = stdout;
