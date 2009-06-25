@@ -1,4 +1,4 @@
-/* $Id: tty-write.c,v 1.17 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: tty-write.c,v 1.18 2009-06-25 16:47:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,4 +63,3 @@ tty_vwrite_cmd(struct window_pane *wp, enum tty_cmd cmd, va_list ap)
 		}
 	}
 }
-

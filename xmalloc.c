@@ -1,4 +1,4 @@
-/* $Id: xmalloc.c,v 1.9 2009-06-25 16:34:50 nicm Exp $ */
+/* $Id: xmalloc.c,v 1.10 2009-06-25 16:47:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2004 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -141,26 +141,4 @@ xvsnprintf(char *buf, size_t len, const char *fmt, va_list ap)
                 fatal("vsnprintf failed");
 
         return (i);
-}
-
-/*
- * Some systems modify the path in place. This function and xbasename below
- * avoid that by using a temporary buffer.
- */
-char *
-xdirname(const char *src)
-{
-	static char	dst[MAXPATHLEN];
-
-	strlcpy(dst, src, sizeof dst);
-	return (dirname(dst));
-}
-
-char *
-xbasename(const char *src)
-{
-	static char	dst[MAXPATHLEN];
-
-	strlcpy(dst, src, sizeof dst);
-	return (basename(dst));
 }

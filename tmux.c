@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.135 2009-06-25 16:34:50 nicm Exp $ */
+/* $Id: tmux.c,v 1.136 2009-06-25 16:47:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,10 +28,6 @@
 #include <unistd.h>
 
 #include "tmux.h"
-
-#ifdef HAVE_PATHS_H
-#include <paths.h>
-#endif
 
 #ifdef DEBUG
 /* DragonFly uses an OpenBSD-like malloc() since 1.6 */

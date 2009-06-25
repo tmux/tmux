@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.20 2009-05-15 12:57:36 nicm Exp $ */
+/* $Id: tty-term.c,v 1.21 2009-06-25 16:47:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -390,4 +390,3 @@ tty_term_flag(struct tty_term *term, enum tty_code_code code)
 		log_fatalx("not a flag: %d", code);
 	return (term->codes[code].value.flag);
 }
-
