@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.3 2009/06/03 23:30:40 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.4 2009/06/04 14:15:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -394,15 +394,28 @@ input_state_sequence_first(u_char ch, struct input_ctx *ictx)
 	ictx->private = '\0';
 	ARRAY_CLEAR(&ictx->args);
 
+	/* Most C0 control are accepted within CSI. */
+	if (INPUT_C0CONTROL(ch)) {
+		if (ch == 0x1b) {			/* ESC */
+			/* Abort sequence and begin with new. */
+			input_state(ictx, input_state_escape);
+		} else if (ch != 0x18 && ch != 0x1a) {	/* CAN and SUB */
+			/* Handle C0 immediately. */
+			input_handle_c0_control(ch, ictx);
+		}
+		/*
+		 * Just come back to this state, in case the next character
+		 * is the start of a private sequence.
+		 */
+		return;
+	}
+
 	input_state(ictx, input_state_sequence_next);
 
-	if (INPUT_PARAMETER(ch)) {
-		input_new_argument(ictx);
-		if (ch >= 0x3c && ch <= 0x3f) {
-			/* Private control sequence. */
-			ictx->private = ch;
-			return;
-		}
+	/* Private sequence: always the first character. */
+	if (ch >= 0x3c && ch <= 0x3f) {
+		ictx->private = ch;
+		return;
 	}
 
 	/* Pass character on directly. */
@@ -423,6 +436,9 @@ input_state_sequence_next(u_char ch, struct input_ctx *ictx)
 	}
 
 	if (INPUT_PARAMETER(ch)) {
+		if (ARRAY_EMPTY(&ictx->args))
+			input_new_argument(ictx);
+
 		if (ch == ';') {
 			if (input_add_argument(ictx, '\0') != 0)
 				input_state(ictx, input_state_first);
@@ -439,6 +455,18 @@ input_state_sequence_next(u_char ch, struct input_ctx *ictx)
 		else {
 			input_state(ictx, input_state_first);
 			input_handle_sequence(ch, ictx);
+		}
+		return;
+	}
+
+	/* Most C0 control are accepted within CSI. */
+	if (INPUT_C0CONTROL(ch)) {
+		if (ch == 0x1b) {			/* ESC */
+			/* Abort sequence and begin with new. */
+			input_state(ictx, input_state_escape);
+		} else if (ch != 0x18 && ch != 0x1a) {	/* CAN and SUB */
+			/* Handle C0 immediately. */
+			input_handle_c0_control(ch, ictx);
 		}
 		return;
 	}
@@ -611,6 +639,9 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 			screen_write_cursordown(&ictx->ctx, 1);
 		}
 		screen_write_cursormove(&ictx->ctx, s->cx, s->cy);
+		break;
+	case '\013':	/* VT */
+		screen_write_linefeed(&ictx->ctx);
 		break;
 	case '\016':	/* SO */
 		ictx->cell.attr |= GRID_ATTR_CHARSET;
