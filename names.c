@@ -1,4 +1,4 @@
-/* $Id: names.c,v 1.8 2009-06-25 16:47:00 nicm Exp $ */
+/* $Id: names.c,v 1.9 2009-06-25 16:49:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <ctype.h>
+#include <libgen.h>
 #include <string.h>
 #include <unistd.h>
 
