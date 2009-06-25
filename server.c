@@ -1,4 +1,4 @@
-/* $OpenBSD: server.c,v 1.2 2009/06/24 17:36:15 nicm Exp $ */
+/* $OpenBSD: server.c,v 1.3 2009/06/24 22:49:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -973,7 +973,7 @@ server_check_window_content(
 		return (0);
 	if (session_alert_has_window(s, w, WINDOW_CONTENT))
 		return (0);
-	if ((found = window_pane_search(wp, ptr)) == NULL)
+	if ((found = window_pane_search(wp, ptr, NULL)) == NULL)
 		return (0);
 	session_alert_add(s, w, WINDOW_CONTENT);
     	xfree(found);

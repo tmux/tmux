@@ -1,4 +1,4 @@
-/* $OpenBSD: grid.c,v 1.3 2009/06/24 22:04:18 nicm Exp $ */
+/* $OpenBSD: grid.c,v 1.4 2009/06/24 22:49:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -502,7 +502,7 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
  	const struct grid_utf8	*gu;
 	char			*buf;
 	size_t			 len, off;
-	u_int			 xx;
+	u_int			 xx, i;
 
 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u", px, py, nx);
 
@@ -522,10 +522,11 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 			}
 
 			gu = grid_peek_utf8(gd, xx, py);
-			memcpy(buf + off, gu->data, UTF8_SIZE);
-			off += UTF8_SIZE;
-			while (off > 0 && ((u_char) buf[off]) == 0xff)
-				off--;
+			for (i = 0; i < UTF8_SIZE; i++) {
+				if (gu->data[i] == 0xff)
+					break;
+				buf[off++] = gu->data[i];
+			}
 		} else {
 			while (len < off + 2) {
 				buf = xrealloc(buf, 2, len);
@@ -535,7 +536,9 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 			buf[off++] = gc->data;
 		}
 	}
-
+	
+	while (off > 0 && buf[off - 1] == ' ')
+		off--;
 	buf[off] = '\0';
 	return (buf);
 }

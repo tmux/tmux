@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.9 2009/06/24 22:04:18 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.10 2009/06/24 22:49:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1577,7 +1577,8 @@ void		 window_pane_parse(struct window_pane *);
 void		 window_pane_key(struct window_pane *, struct client *, int);
 void		 window_pane_mouse(struct window_pane *,
     		     struct client *, u_char, u_char, u_char);
-char		*window_pane_search(struct window_pane *, const char *);
+char		*window_pane_search(
+		     struct window_pane *, const char *, u_int *);
 
 /* layout.c */
 const char * 	 layout_name(struct window *);
@@ -1646,10 +1647,6 @@ int		 session_last(struct session *);
 /* utf8.c */
 void	utf8_build(void);
 int	utf8_width(const u_char *);
-
-/* util.c */
-char   *section_string(char *, size_t, size_t, size_t);
-void	clean_string(const char *, char *, size_t);
 
 /* osdep-*.c */
 char   *osdep_get_name(int, char *);

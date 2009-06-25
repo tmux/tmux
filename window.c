@@ -1,4 +1,4 @@
-/* $OpenBSD: window.c,v 1.4 2009/06/24 22:04:18 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.5 2009/06/24 22:49:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,6 +21,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <fnmatch.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -602,23 +603,26 @@ window_pane_mouse(
 }
 	
 char *
-window_pane_search(struct window_pane *wp, const char *searchstr)
+window_pane_search(struct window_pane *wp, const char *searchstr, u_int *lineno)
 {
 	struct screen	*s = &wp->base;
-	char		*line, *ptr;
+	char		*newsearchstr, *line, *msg;
 	u_int	 	 i;
 
-	ptr = NULL;
+	msg = NULL;
+	xasprintf(&newsearchstr, "*%s*", searchstr);
+
 	for (i = 0; i < screen_size_y(s); i++) {
 		line = grid_view_string_cells(s->grid, 0, i, screen_size_x(s));
-		log_debug("XXX %s", line);
-		if ((ptr = strstr(line, searchstr)) != NULL)
-			break;		
+		if (fnmatch(newsearchstr, line, 0) == 0) {
+			msg = line;
+			if (lineno != NULL)
+				*lineno = i;
+			break;
+		}
 		xfree(line);
 	}
-	if (ptr != NULL) {
-		ptr = section_string(line, strlen(ptr), ptr - line, 40);
-		xfree(line);
-	}
-	return (ptr);
+
+	xfree(newsearchstr);
+	return (msg);
 }
