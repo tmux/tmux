@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.5 2009/06/24 16:01:02 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.6 2009/06/25 05:56:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -769,9 +769,7 @@ tty_cmd_clearendofscreen(
     struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
 	struct screen	*s = wp->screen;
-	u_int		 i, j, oy;
-
-	oy = wp->yoff;
+	u_int		 i, j;
 
 	tty_reset(tty);
 
