@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.12 2009/06/25 06:15:04 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.13 2009/06/25 06:23:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1658,20 +1658,15 @@ uint8_t		 buffer_read8(struct buffer *);
 int		 buffer_poll(struct pollfd *, struct buffer *, struct buffer *);
 
 /* log.c */
-#define LOG_FACILITY LOG_DAEMON
-void		 log_open_syslog(int);
 void		 log_open_tty(int);
 void		 log_open_file(int, const char *);
 void		 log_close(void);
-void		 log_vwrite(int, const char *, va_list);
-void		 log_write(int, const char *, ...);
 void printflike1 log_warn(const char *, ...);
 void printflike1 log_warnx(const char *, ...);
 void printflike1 log_info(const char *, ...);
 void printflike1 log_debug(const char *, ...);
 void printflike1 log_debug2(const char *, ...);
 void printflike1 log_debug3(const char *, ...);
-__dead void	 log_vfatal(const char *, va_list);
 __dead void	 log_fatal(const char *, ...);
 __dead void	 log_fatalx(const char *, ...);
 

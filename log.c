@@ -1,4 +1,4 @@
-/* $Id: log.c,v 1.12 2009-05-13 23:27:00 nicm Exp $ */
+/* $OpenBSD: log.c,v 1.2 2009/06/25 06:23:10 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,9 +29,8 @@
 
 /* Logging type. */
 #define LOG_TYPE_OFF 0
-#define LOG_TYPE_SYSLOG 1
-#define LOG_TYPE_TTY 2
-#define LOG_TYPE_FILE 3
+#define LOG_TYPE_TTY 1
+#define LOG_TYPE_FILE 2
 int	log_type = LOG_TYPE_OFF;
 
 /* Log file, if needed. */
@@ -40,17 +39,8 @@ FILE   *log_file;
 /* Debug level. */
 int	log_level;
 
-/* Open logging to syslog. */
-void
-log_open_syslog(int level)
-{
-	log_type = LOG_TYPE_SYSLOG;
-	log_level = level;
-
-	openlog(__progname, LOG_PID|LOG_NDELAY, LOG_FACILITY);
-
-	tzset();
-}
+void		 log_vwrite(int, const char *, va_list);
+__dead void	 log_vfatal(const char *, va_list);
 
 /* Open logging to tty. */
 void
