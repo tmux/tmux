@@ -1,4 +1,4 @@
-/* $Id: utf8.c,v 1.6 2009-05-04 17:58:27 nicm Exp $ */
+/* $OpenBSD: utf8.c,v 1.2 2009/06/24 05:35:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -297,7 +297,7 @@ utf8_split(u_int uvalue, u_char *data)
 }
 
 int
-utf8_width(u_char *udata)
+utf8_width(const u_char *udata)
 {
 	struct utf8_width_entry	*item;
 	u_int			 uvalue;

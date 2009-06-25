@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.6 2009/06/04 18:48:24 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.7 2009/06/24 05:35:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1642,7 +1642,7 @@ int		 session_last(struct session *);
 
 /* utf8.c */
 void	utf8_build(void);
-int	utf8_width(u_char *);
+int	utf8_width(const u_char *);
 
 /* util.c */
 char   *section_string(char *, size_t, size_t, size_t);
