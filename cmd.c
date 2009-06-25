@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.95 2009-05-16 11:48:47 nicm Exp $ */
+/* $OpenBSD: cmd.c,v 1.2 2009/06/04 23:34:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,8 +108,10 @@ cmd_parse(int argc, char **argv, char **cause)
 	int			 opt;
 
 	*cause = NULL;
-	if (argc == 0)
+	if (argc == 0) {
+		xasprintf(cause, "no command");
 		return (NULL);
+	}
 
 	entry = NULL;
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
