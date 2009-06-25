@@ -1,4 +1,4 @@
-/* $OpenBSD: screen.c,v 1.4 2009/06/24 19:12:44 nicm Exp $ */
+/* $OpenBSD: screen.c,v 1.5 2009/06/24 22:51:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -228,8 +228,10 @@ screen_resize_y(struct screen *s, u_int sy)
 
 		/* Then fill the rest in with blanks. */
 		for (i = gd->hsize + sy - needed; i < gd->hsize + sy; i++) {
-			gd->size[i] = gd->usize[i] = 0;
-			gd->data[i] = gd->udata[i] = NULL;
+			gd->size[i] = 0;
+			gd->data[i] = NULL;
+			gd->usize[i] = 0;
+			gd->udata[i] = NULL;
 		}
 	}
 
