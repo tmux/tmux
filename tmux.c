@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.c,v 1.2 2009/06/02 10:49:40 ray Exp $ */
+/* $Id: tmux.c,v 1.125 2009-06-25 15:44:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -385,7 +385,7 @@ main(int argc, char **argv)
 			shell = _PATH_BSHELL;
 	}
 	options_set_string(
-	    &global_options, "default-command", "exec %s", shell);
+	    &global_options, "default-command", "exec %s -l", shell);
 
 	if (getcwd(cwd, sizeof cwd) == NULL) {
 		log_warn("getcwd");
