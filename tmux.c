@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.136 2009-06-25 16:47:00 nicm Exp $ */
+/* $Id: tmux.c,v 1.137 2009-06-25 16:56:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -226,7 +226,7 @@ main(int argc, char **argv)
 
 	unlock = flags = 0;
 	label = path = NULL;
-        while ((opt = getopt(argc, argv, "28df:L:qS:uUVv")) != -1) {
+        while ((opt = getopt(argc, argv, "28df:L:qS:uUv")) != -1) {
                 switch (opt) {
 		case '2':
 			flags |= IDENTIFY_256COLOURS;
@@ -266,9 +266,6 @@ main(int argc, char **argv)
 		case 'v':
 			debug_level++;
 			break;
-		case 'V':
-			printf("%s " BUILD "\n", __progname);
-			exit(0);
                 default:
 			usage();
                 }
