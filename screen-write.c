@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.5 2009/06/03 23:30:40 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.6 2009/06/03 23:37:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -663,6 +663,7 @@ screen_write_cell(
 	u_int		 	 width, xx, i;
 	struct grid_cell 	 tmp_gc, *tmp_gc2;
 	size_t			 size;
+	int			 insert = 0;
 
 	/* Ignore padding. */
 	if (gc->flags & GRID_FLAG_PADDING)
@@ -714,6 +715,13 @@ screen_write_cell(
 		gc = &tmp_gc;
 	}
 
+	/* If in insert mode, make space for the cells. */
+	if (s->mode & MODE_INSERT && s->cx <= screen_size_x(s) - width) {
+		xx = screen_size_x(s) - s->cx - width;
+		grid_move_cells(s->grid, s->cx + width, s->cx, s->cy, xx);
+		insert = 1;
+	}
+
 	/* Check this will fit on the current line; scroll if not. */
 	if (s->cx > screen_size_x(s) - width) {
 		screen_write_carriagereturn(ctx);
@@ -747,6 +755,8 @@ screen_write_cell(
 	s->cx += width;
 
 	/* Draw to the screen if necessary. */
+	if (insert)
+		tty_write_cmd(ctx->wp, TTY_INSERTCHARACTER, width);
 	if (screen_check_selection(s, s->cx - width, s->cy)) {
 		s->sel.cell.data = gc->data;
 		tty_write_cmd(ctx->wp, TTY_CELL, &s->sel.cell, &gu);
