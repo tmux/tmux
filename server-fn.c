@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.63 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: server-fn.c,v 1.64 2009-06-25 17:02:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,6 +20,7 @@
 #include <sys/time.h>
 
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "tmux.h"

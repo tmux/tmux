@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.343 2009-06-25 16:47:00 nicm Exp $ */
+/* $Id: tmux.h,v 1.344 2009-06-25 17:02:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,14 +20,12 @@
 #define TMUX_H
 
 #include "config.h"
-#include "compat.h"
 
 #define PROTOCOL_VERSION -13
 
 #include <sys/param.h>
 #include <sys/time.h>
 
-#include <bitstring.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -36,6 +34,8 @@
 #include <termios.h>
 
 #include "array.h"
+
+#include "compat.h"
 
 extern const char    *__progname;
 

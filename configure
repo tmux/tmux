@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.13 2009-05-18 19:18:41 nicm Exp $
+# $Id: configure,v 1.14 2009-06-25 17:02:59 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -36,6 +36,7 @@ case $TMUX_PLATFORM in
     OpenBSD)
 	cat <<EOF >>$CONFIG_H
 #define HAVE_ASPRINTF
+#define HAVE_BITSTRING_H
 #define HAVE_DAEMON
 #define HAVE_FGETLN
 #define HAVE_FORKPTY

@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.1 2009-06-25 16:47:00 nicm Exp $ */
+/* $Id: compat.h,v 1.2 2009-06-25 17:02:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -66,17 +66,23 @@
 #endif
 
 #ifdef HAVE_QUEUE_H
- #include <sys/queue.h>
+#include <sys/queue.h>
 #else
 #include "compat/queue.h"
 #endif
 
 #ifdef HAVE_TREE_H
- #include <sys/tree.h>
+#include <sys/tree.h>
 #else
 #include "compat/tree.h"
 #endif
  
+#ifdef HAVE_BITSTRING_H
+#include <bitstring.h>
+#else
+#include "compat/bitstring.h"
+#endif
+
 #ifdef HAVE_POLL
 #include <poll.h>
 #else
