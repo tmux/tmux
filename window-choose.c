@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.14 2009-05-04 17:58:27 nicm Exp $ */
+/* $OpenBSD: window-choose.c,v 1.2 2009/06/24 23:00:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -285,10 +285,12 @@ window_choose_write_line(
 	struct window_choose_mode_item	*item;
 	struct screen			*s = &data->screen;
 	struct grid_cell		 gc;
+ 	int				 utf8flag;
 
 	if (data->callback == NULL)
 		fatalx("called before callback assigned");
 
+	utf8flag = options_get_number(&wp->window->options, "utf8");
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	if (data->selected == data->top + py) {
 		gc.fg = options_get_number(&wp->window->options, "mode-bg");
@@ -299,12 +301,11 @@ window_choose_write_line(
 	screen_write_cursormove(ctx, 0, py);
 	if (data->top + py  < ARRAY_LENGTH(&data->list)) {
 		item = &ARRAY_ITEM(&data->list, data->top + py);
-		screen_write_puts(
-		    ctx, &gc, "%.*s", (int) screen_size_x(s), item->name);
+		screen_write_nputs(
+		    ctx, screen_size_x(s) - 1, &gc, utf8flag, "%s", item->name);
 	}
 	while (s->cx < screen_size_x(s))
 		screen_write_putc(ctx, &gc, ' ');
-
 }
 
 void

@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.29 2009-02-13 21:39:45 nicm Exp $ */
+/* $OpenBSD: window-more.c,v 1.2 2009/06/24 23:00:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -175,7 +175,9 @@ window_more_write_line(
 	struct grid_cell		 gc;
 	char   				*msg, hdr[32];
 	size_t	 			 size;
+ 	int				 utf8flag;
 
+	utf8flag = options_get_number(&wp->window->options, "utf8");
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 
 	if (py == 0) {
@@ -193,8 +195,8 @@ window_more_write_line(
 	screen_write_cursormove(ctx, 0, py);
 	if (data->top + py  < ARRAY_LENGTH(&data->list)) {
 		msg = ARRAY_ITEM(&data->list, data->top + py);
-		screen_write_puts(
-		    ctx, &gc, "%.*s", (int) (screen_size_x(s) - size), msg);
+		screen_write_nputs(
+		    ctx, screen_size_x(s) - 1 - size, &gc, utf8flag, "%s", msg);
 	}
 	while (s->cx < screen_size_x(s) - size)
 		screen_write_putc(ctx, &gc, ' ');
