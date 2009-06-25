@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.78 2009-05-19 13:32:55 tcunha Exp $ */
+/* $OpenBSD: window.c,v 1.2 2009/06/05 07:18:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -487,7 +487,7 @@ window_pane_spawn(struct window_pane *wp,
 		if (chdir(wp->cwd) != 0)
 			chdir("/");
 		for (envq = envp; *envq != NULL; envq++) {
-			if (putenv((char *) *envq) != 0)
+			if (putenv(xstrdup(*envq)) != 0)
 				fatal("putenv failed");
 		}
 		sigreset();
