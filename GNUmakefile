@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.104 2009-05-16 21:55:54 nicm Exp $
+# $Id: GNUmakefile,v 1.105 2009-06-25 16:25:55 nicm Exp $
 
 .PHONY: clean
 
@@ -20,9 +20,7 @@ CPPFLAGS:= -iquote. $(CPPFLAGS)
 endif
 
 ifdef FDEBUG
-LDFLAGS+= -rdynamic
 CFLAGS+= -g -ggdb -DDEBUG
-LIBS+= -ldl
 CFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare

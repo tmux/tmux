@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.139 2009-05-16 21:55:54 nicm Exp $
+# $Id: Makefile,v 1.140 2009-06-25 16:25:55 nicm Exp $
 
 .SUFFIXES: .c .o
 .PHONY: clean
@@ -22,7 +22,6 @@ CPPFLAGS:= -iquote. -I/usr/local/include ${CPPFLAGS}
 .endif
 
 .ifdef FDEBUG
-LDFLAGS+= -Wl,-E
 CFLAGS+= -g -ggdb -DDEBUG
 CFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
