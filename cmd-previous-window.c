@@ -1,4 +1,4 @@
-/* $Id: cmd-previous-window.c,v 1.16 2009-03-28 14:08:09 nicm Exp $ */
+/* $Id: cmd-previous-window.c,v 1.17 2009-06-25 15:29:34 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ int	cmd_previous_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_previous_window_entry = {
 	"previous-window", "prev",
-	CMD_TARGET_SESSION_USAGE,
+	"[-a] " CMD_TARGET_SESSION_USAGE,
 	CMD_AFLAG,
 	cmd_previous_window_init,
 	cmd_target_parse,
