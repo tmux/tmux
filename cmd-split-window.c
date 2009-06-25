@@ -141,7 +141,8 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_pane		*wp;
 	const char		       **env;
 	char		 		*cmd, *cwd, *cause;
-	u_int				 hlimit, lines;
+	u_int				 hlimit;
+	int				 lines;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return (-1);
