@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.c,v 1.6 2009/06/03 17:04:16 nicm Exp $ */
+/* $OpenBSD: tmux.c,v 1.7 2009/06/04 21:56:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -437,6 +437,7 @@ main(int argc, char **argv)
 	b = buffer_create(BUFSIZ);
 	if (unlock) {
 		cmd_send_string(b, pass);
+		memset(pass, 0, strlen(pass));
 		client_write_server(
 		    &cctx, MSG_UNLOCK, BUFFER_OUT(b), BUFFER_USED(b));
 	} else {
