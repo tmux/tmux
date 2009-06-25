@@ -1,4 +1,4 @@
-/* $OpenBSD: screen.c,v 1.3 2009/06/04 18:48:24 nicm Exp $ */
+/* $OpenBSD: screen.c,v 1.4 2009/06/24 19:12:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -169,38 +169,42 @@ void
 screen_resize_y(struct screen *s, u_int sy)
 {
 	struct grid	*gd = s->grid;
-	u_int		 oy, yy, ny;
+	u_int		 needed, available, oldy, i;
 
 	if (sy == 0)
 		fatalx("zero size");
+	oldy = screen_size_y(s);
+
+	/* 
+	 * When resizing:
+	 *
+	 * If the height is decreasing, delete lines from the bottom until
+	 * hitting the cursor, then push lines from the top into the history.
+	 * 
+	 * When increasing, pull as many lines as possible from the history to
+	 * the top, then fill the remaining with blanks at the bottom.
+	 */
 
 	/* Size decreasing. */
-	if (sy < screen_size_y(s)) {
-		oy = screen_size_y(s);
+	if (sy < oldy) {
+		needed = oldy - sy;
 
-		if (s->cy != 0) {
-			/*
-			 * The cursor is not at the start. Try to remove as
-			 * many lines as possible from the top. (Up to the
-			 * cursor line.)
-			 */
-			ny = s->cy;
-			if (ny > oy - sy)
-				ny = oy - sy;
-
-			grid_view_delete_lines(gd, 0, ny);
-
- 			s->cy -= ny;
-			oy -= ny;
+		/* Delete as many lines as possible from the bottom. */
+		available = oldy - 1 - s->cy;
+		if (available > 0) {
+			if (available > needed)
+				available = needed;
+			grid_view_delete_lines(gd, oldy - available, available);
 		}
+		needed -= available;
 
-		if (sy < oy) {
-			/* Remove any remaining lines from the bottom. */
-			grid_view_delete_lines(gd, sy, oy - sy);
-			if (s->cy >= sy)
-				s->cy = sy - 1;
-		}
-	}
+		/*
+		 * Now just increase the history size to take over the lines
+		 * which are left. XXX Should apply history limit?
+		 */
+		gd->hsize += needed;
+		s->cy -= needed;
+ 	}
 
 	/* Resize line arrays. */
 	gd->size = xrealloc(gd->size, gd->hsize + sy, sizeof *gd->size);
@@ -209,18 +213,28 @@ screen_resize_y(struct screen *s, u_int sy)
 	gd->udata = xrealloc(gd->udata, gd->hsize + sy, sizeof *gd->udata);
 
 	/* Size increasing. */
-	if (sy > screen_size_y(s)) {
-		oy = screen_size_y(s);
-		for (yy = gd->hsize + oy; yy < gd->hsize + sy; yy++) {
-			gd->size[yy] = 0;
-			gd->data[yy] = NULL;
-			gd->usize[yy] = 0;
-			gd->udata[yy] = NULL;
+	if (sy > oldy) {
+		needed = sy - oldy;
+
+		/* Try to pull as much as possible out of the history. */
+		available = gd->hsize;
+		if (available > 0) {
+			if (available > needed)
+				available = needed;
+			gd->hsize -= available;
+			s->cy += available;
+		}
+		needed -= available;
+
+		/* Then fill the rest in with blanks. */
+		for (i = gd->hsize + sy - needed; i < gd->hsize + sy; i++) {
+			gd->size[i] = gd->usize[i] = 0;
+			gd->data[i] = gd->udata[i] = NULL;
 		}
 	}
 
+	/* Set the new size, and reset the scroll region. */
 	gd->sy = sy;
-
 	s->rupper = 0;
 	s->rlower = screen_size_y(s) - 1;
 }
