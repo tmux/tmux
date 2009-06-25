@@ -759,9 +759,7 @@ tty_cmd_clearendofscreen(
     struct tty *tty, struct window_pane *wp, unused va_list ap)
 {
 	struct screen	*s = wp->screen;
-	u_int		 i, j, oy;
-
-	oy = wp->yoff;
+	u_int		 i, j;
 
 	tty_reset(tty);
 
