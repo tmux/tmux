@@ -1,4 +1,4 @@
-/* $OpenBSD: server-msg.c,v 1.2 2009/06/04 21:43:24 nicm Exp $ */
+/* $OpenBSD: server-msg.c,v 1.3 2009/06/05 11:14:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -196,6 +196,7 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 	c->tty.sy = data.sy;
 
 	c->cwd = NULL;
+	data.cwd[(sizeof data.cwd) - 1] = '\0';
 	if (*data.cwd != '\0')
 		c->cwd = xstrdup(data.cwd);
 
