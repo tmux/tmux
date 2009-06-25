@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.123 2009-06-01 20:38:59 nicm Exp $ */
+/* $OpenBSD: tmux.c,v 1.2 2009/06/02 10:49:40 ray Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -240,6 +240,8 @@ main(int argc, char **argv)
 			flags &= ~IDENTIFY_256COLOURS;
 			break;
 		case 'f':
+			if (cfg_file)
+				xfree(cfg_file);
 			cfg_file = xstrdup(optarg);
 			break;
 		case 'L':
