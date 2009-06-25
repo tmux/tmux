@@ -1,4 +1,4 @@
-/* $OpenBSD: status.c,v 1.3 2009/06/03 16:54:26 nicm Exp $ */
+/* $OpenBSD: status.c,v 1.4 2009/06/04 21:43:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -597,6 +597,8 @@ status_prompt_clear(struct client *c)
 	xfree(c->prompt_string);
 	c->prompt_string = NULL;
 
+	if (c->prompt_flags & PROMPT_HIDDEN)
+		memset(c->prompt_buffer, 0, strlen(c->prompt_buffer));
 	xfree(c->prompt_buffer);
 	c->prompt_buffer = NULL;
 
@@ -794,6 +796,8 @@ status_prompt_key(struct client *c, int key)
 
 		if (ARRAY_LENGTH(&c->prompt_hdata) == 0)
 			break;
+		if (c->prompt_flags & PROMPT_HIDDEN)
+			memset(c->prompt_buffer, 0, strlen(c->prompt_buffer));
 	       	xfree(c->prompt_buffer);
 
 		c->prompt_buffer = xstrdup(ARRAY_ITEM(&c->prompt_hdata,
@@ -808,6 +812,8 @@ status_prompt_key(struct client *c, int key)
 		if (server_locked)
 			break;
 
+		if (c->prompt_flags & PROMPT_HIDDEN)
+			memset(c->prompt_buffer, 0, strlen(c->prompt_buffer));
 		xfree(c->prompt_buffer);
 
 		if (c->prompt_hindex != 0) {
