@@ -73,7 +73,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		xoff = wp->xoff; yoff = wp->yoff;
 		sx = wp->sx; sy = wp->sy;
-		flags = w->flags;
+		flags = wp->flags;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if ((wp2 = TAILQ_NEXT(wp, entry)) == NULL)
 				break;
@@ -97,7 +97,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		xoff = wp->xoff; yoff = wp->yoff;
 		sx = wp->sx; sy = wp->sy;
-		flags = w->flags;
+		flags = wp->flags;
 		TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
 			if ((wp2 = TAILQ_PREV(wp, window_panes, entry)) == NULL)
 				break;
