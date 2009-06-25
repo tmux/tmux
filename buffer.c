@@ -47,14 +47,6 @@ buffer_destroy(struct buffer *b)
 	xfree(b);
 }
 
-/* Empty a buffer. */
-void
-buffer_clear(struct buffer *b)
-{
-	b->size = 0;
-	b->off = 0;
-}
-
 /* Ensure free space for size in buffer. */
 void
 buffer_ensure(struct buffer *b, size_t size)
@@ -91,18 +83,6 @@ buffer_add(struct buffer *b, size_t size)
 	b->size += size;
 }
 
-/* Reverse buffer add. */
-void
-buffer_reverse_add(struct buffer *b, size_t size)
-{
-	if (size == 0)
-		fatalx("zero size");
-	if (size > b->size)
-		fatalx("underflow");
-
-	b->size -= size;
-}
-
 /* Adjust buffer after data removed. */
 void
 buffer_remove(struct buffer *b, size_t size)
@@ -114,50 +94,6 @@ buffer_remove(struct buffer *b, size_t size)
 
 	b->size -= size;
 	b->off += size;
-}
-
-/* Reverse buffer remove. */
-void
-buffer_reverse_remove(struct buffer *b, size_t size)
-{
-	if (size == 0)
-		fatalx("zero size");
-	if (size > b->off)
-		fatalx("overflow");
-
-	b->size += size;
-	b->off -= size;
-}
-
-/* Insert a section into the buffer. */
-void
-buffer_insert_range(struct buffer *b, size_t base, size_t size)
-{
-	if (size == 0)
-		fatalx("zero size");
-	if (base > b->size)
-		fatalx("range outside buffer");
-
-	buffer_ensure(b, size);
-	memmove(b->base + b->off + base + size,
-	    b->base + b->off + base, b->size - base);
-	b->size += size;
-}
-
-/* Delete a section from the buffer. */
-void
-buffer_delete_range(struct buffer *b, size_t base, size_t size)
-{
-	if (size == 0)
-		fatalx("zero size");
-	if (size > b->size)
-		fatalx("size too big");
-	if (base + size > b->size)
-		fatalx("range outside buffer");
-
-	memmove(b->base + b->off + base,
-	    b->base + b->off + base + size, b->size - base - size);
-	b->size -= size;
 }
 
 /* Copy data into a buffer. */
@@ -194,16 +130,6 @@ buffer_write8(struct buffer *b, uint8_t n)
 	buffer_add(b, 1);
 }
 
-/* Store a 16-bit value. */
-void
-buffer_write16(struct buffer *b, uint16_t n)
-{
-	buffer_ensure(b, 2);
-	BUFFER_IN(b)[0] = n & 0xff;
-	BUFFER_IN(b)[1] = n >> 8;
-	buffer_add(b, 2);
-}
-
 /* Extract an 8-bit value. */
 uint8_t
 buffer_read8(struct buffer *b)
@@ -212,16 +138,5 @@ buffer_read8(struct buffer *b)
 
 	n = BUFFER_OUT(b)[0];
 	buffer_remove(b, 1);
-	return (n);
-}
-
-/* Extract a 16-bit value. */
-uint16_t
-buffer_read16(struct buffer *b)
-{
-	uint16_t	n;
-
-	n = BUFFER_OUT(b)[0] | (BUFFER_OUT(b)[1] << 8);
-	buffer_remove(b, 2);
 	return (n);
 }
