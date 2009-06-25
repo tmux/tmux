@@ -547,16 +547,6 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 }
 
 void
-tty_write(struct tty *tty, struct window_pane *wp, enum tty_cmd cmd, ...)
-{
-	va_list	ap;
-
-	va_start(ap, cmd);
-	tty_vwrite(tty, wp, cmd, ap);
-	va_end(ap);
-}
-
-void
 tty_vwrite(
     struct tty *tty, struct window_pane *wp, enum tty_cmd cmd, va_list ap)
 {

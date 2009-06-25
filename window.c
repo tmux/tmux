@@ -327,21 +327,6 @@ window_remove_pane(struct window *w, struct window_pane *wp)
 	window_pane_destroy(wp);
 }
 
-u_int
-window_index_of_pane(struct window *w, struct window_pane *find)
-{
-	struct window_pane	*wp;
-	u_int			 n;
-
-	n = 0;
-	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp == find)
-			return (n);
-		n++;
-	}
-	fatalx("unknown pane");
-}
-
 struct window_pane *
 window_pane_at_index(struct window *w, u_int idx)
 {

@@ -75,16 +75,6 @@ window_more_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 	screen_write_stop(&ctx);
 }
 
-void printflike2
-window_more_add(struct window_pane *wp, const char *fmt, ...)
-{
-	va_list	ap;
-
-	va_start(ap, fmt);
-	window_more_vadd(wp, fmt, ap);
-	va_end(ap);
-}
-
 struct screen *
 window_more_init(struct window_pane *wp)
 {

@@ -430,31 +430,6 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny)
 	}
 }
 
-/* Clear a group of cells. */
-void
-grid_clear_cells(struct grid *gd, u_int px, u_int py, u_int nx)
-{
-	u_int	xx;
-
- 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u", px, py, nx);
-
-	if (nx == 0)
-		return;
-
-	if (grid_check_x(gd, px) != 0)
-		return;
-	if (grid_check_x(gd, px + nx - 1) != 0)
-		return;
-	if (grid_check_y(gd, py) != 0)
-		return;
-
-	for (xx = px; xx < px + nx; xx++) {
-		if (xx >= gd->size[py])
-			break;
-		grid_put_cell(gd, xx, py, &grid_default_cell);
-	}
-}
-
 /* Move a group of cells. */
 void
 grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)

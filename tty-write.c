@@ -63,28 +63,3 @@ tty_vwrite_cmd(struct window_pane *wp, enum tty_cmd cmd, va_list ap)
 		}
 	}
 }
-
-void
-tty_write_mode(struct window_pane *wp, int mode)
-{
-	struct client	*c;
-	u_int		 i;
-
-	if (wp == NULL)
-		return;
-
-	if (wp->window->flags & WINDOW_REDRAW || wp->flags & PANE_REDRAW)
-		return;
-	if (wp->window->flags & WINDOW_HIDDEN || wp->flags & PANE_HIDDEN)
-		return;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (c->flags & CLIENT_SUSPENDED)
-			continue;
-
-		tty_update_mode(&c->tty, mode);
-	}
-}

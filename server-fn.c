@@ -76,22 +76,6 @@ server_write_session(
 }
 
 void
-server_write_window(
-    struct window *w, enum hdrtype type, const void *buf, size_t len)
-{
-	struct client	*c;
-	u_int		 i;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (c->session->curw->window == w)
-			server_write_client(c, type, buf, len);
-	}
-}
-
-void
 server_redraw_client(struct client *c)
 {
 	c->flags |= CLIENT_REDRAW;
