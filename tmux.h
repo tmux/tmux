@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.10 2009/06/24 22:49:56 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.11 2009/06/25 06:05:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1654,26 +1654,16 @@ char   *osdep_get_name(int, char *);
 /* buffer.c */
 struct buffer 	*buffer_create(size_t);
 void		 buffer_destroy(struct buffer *);
-void		 buffer_clear(struct buffer *);
 void		 buffer_ensure(struct buffer *, size_t);
 void		 buffer_add(struct buffer *, size_t);
-void		 buffer_reverse_add(struct buffer *, size_t);
 void		 buffer_remove(struct buffer *, size_t);
-void		 buffer_reverse_remove(struct buffer *, size_t);
-void		 buffer_insert_range(struct buffer *, size_t, size_t);
-void		 buffer_delete_range(struct buffer *, size_t, size_t);
 void		 buffer_write(struct buffer *, const void *, size_t);
 void		 buffer_read(struct buffer *, void *, size_t);
 void	 	 buffer_write8(struct buffer *, uint8_t);
-void	 	 buffer_write16(struct buffer *, uint16_t);
 uint8_t		 buffer_read8(struct buffer *);
-uint16_t 	 buffer_read16(struct buffer *);
 
 /* buffer-poll.c */
-void		 buffer_set(
-		     struct pollfd *, int, struct buffer *, struct buffer *);
 int		 buffer_poll(struct pollfd *, struct buffer *, struct buffer *);
-void		 buffer_flush(int, struct buffer *n, struct buffer *);
 
 /* log.c */
 #define LOG_FACILITY LOG_DAEMON

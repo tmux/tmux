@@ -1,4 +1,4 @@
-/* $Id: buffer-poll.c,v 1.11 2009-05-13 23:27:00 nicm Exp $ */
+/* $OpenBSD: buffer-poll.c,v 1.2 2009/06/25 06:05:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -66,9 +66,6 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 	}
 	if (BUFFER_USED(out) > 0 && pfd->revents & POLLOUT) {
 		n = write(pfd->fd, BUFFER_OUT(out), BUFFER_USED(out));
-#if 0
-		log_debug("buffer_poll: fd=%d, write=%zd", pfd->fd, n);
-#endif
 		if (n == -1) {
 			if (errno != EINTR && errno != EAGAIN)
 				return (-1);
@@ -76,24 +73,4 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 			buffer_remove(out, n);
 	}
 	return (0);
-}
-
-/* Flush buffer output to socket. */
-void
-buffer_flush(int fd, struct buffer *in, struct buffer *out)
-{
-	struct pollfd	pfd;
-
-	while (BUFFER_USED(out) > 0) {
-		buffer_set(&pfd, fd, in, out);
-
-		if (poll(&pfd, 1, INFTIM) == -1) {
-			if (errno == EAGAIN || errno == EINTR)
-				continue;
-			fatal("poll failed");
-		}
-
-		if (buffer_poll(&pfd, in, out) != 0)
-			break;
-	}
 }
