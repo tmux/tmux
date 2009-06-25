@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.87 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: screen.c,v 1.88 2009-06-25 20:27:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,7 +20,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <vis.h>
 
 #include "tmux.h"
 

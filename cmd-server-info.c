@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.19 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.20 2009-06-25 20:27:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,7 +23,6 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include <vis.h>
 
 #include "tmux.h"
 

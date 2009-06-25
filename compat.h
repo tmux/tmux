@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.2 2009-06-25 17:02:59 nicm Exp $ */
+/* $Id: compat.h,v 1.3 2009-06-25 20:27:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -111,6 +111,12 @@
 #ifdef HAVE_UTIL_H
 #include <util.h>
 #endif
+#endif
+
+#ifdef HAVE_VIS
+#include <vis.h>
+#else
+#include "compat/vis.h"
 #endif
 
 #ifndef HAVE_STRTONUM
