@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.327 2009-05-26 18:31:10 nicm Exp $ */
+/* $Id: tmux.h,v 1.328 2009-06-25 15:46:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -658,8 +658,7 @@ struct window_pane {
 
 	int		 flags;
 #define PANE_HIDDEN 0x1
-#define PANE_RESTART 0x2
-#define PANE_REDRAW 0x4
+#define PANE_REDRAW 0x2
 
 	char		*cmd;
 	char		*cwd;
