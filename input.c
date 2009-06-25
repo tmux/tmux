@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.7 2009/06/04 18:48:24 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.8 2009/06/04 21:02:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -67,6 +67,7 @@ void	 input_handle_sequence_cud(struct input_ctx *);
 void	 input_handle_sequence_cuf(struct input_ctx *);
 void	 input_handle_sequence_cub(struct input_ctx *);
 void	 input_handle_sequence_dch(struct input_ctx *);
+void	 input_handle_sequence_cbt(struct input_ctx *);
 void	 input_handle_sequence_dl(struct input_ctx *);
 void	 input_handle_sequence_ich(struct input_ctx *);
 void	 input_handle_sequence_il(struct input_ctx *);
@@ -102,6 +103,7 @@ const struct input_sequence_entry input_sequence_table[] = {
 	{ 'L', input_handle_sequence_il },
 	{ 'M', input_handle_sequence_dl },
 	{ 'P', input_handle_sequence_dch },
+	{ 'Z', input_handle_sequence_cbt },
 	{ 'd', input_handle_sequence_vpa },
 	{ 'f', input_handle_sequence_cup },
 	{ 'g', input_handle_sequence_tbc },
@@ -925,6 +927,30 @@ input_handle_sequence_dch(struct input_ctx *ictx)
 		n = 1;
 
 	screen_write_deletecharacter(&ictx->ctx, n);
+}
+
+void
+input_handle_sequence_cbt(struct input_ctx *ictx)
+{
+	struct screen  *s = ictx->ctx.s;
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 1) != 0)
+		return;
+	if (n == 0)
+		n = 1;
+
+	/* Find the previous tab point, n times. */
+	while (s->cx > 0 && n-- > 0) {
+		do
+			s->cx--;
+		while (s->cx > 0 && !bit_test(s->tabs, s->cx));
+	}
 }
 
 void
