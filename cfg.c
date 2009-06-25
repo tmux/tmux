@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.16 2009-05-21 19:38:51 nicm Exp $ */
+/* $OpenBSD: cfg.c,v 1.2 2009/06/25 06:00:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,7 +30,6 @@
  * argv array and executed as a command.
  */
 
-char	 *cfg_string(FILE *, char, int);
 void printflike2 cfg_print(struct cmd_ctx *, const char *, ...);
 void printflike2 cfg_error(struct cmd_ctx *, const char *, ...);
 
