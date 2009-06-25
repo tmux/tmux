@@ -142,7 +142,6 @@ client_main(struct client_ctx *cctx)
 	logfile("client");
 
 	error = NULL;
-	xtimeout = INFTIM;
 	while (!sigterm) {
 		if (sigchld) {
 			waitpid(WAIT_ANY, NULL, WNOHANG);

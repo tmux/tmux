@@ -288,7 +288,7 @@ server_main(int srv_fd)
 			xtimeout = POLL_TIMEOUT;
 
 		/* Do the poll. */
-		if ((nfds = poll(pfds, nfds, xtimeout)) == -1) {
+		if (poll(pfds, nfds, xtimeout) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			fatal("poll failed");
