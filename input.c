@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.5 2009/06/04 14:24:49 nicm Exp $ */
+/* $OpenBSD: input.c,v 1.6 2009/06/04 14:42:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -399,13 +399,16 @@ input_state_sequence_first(u_char ch, struct input_ctx *ictx)
 		if (ch == 0x1b) {			/* ESC */
 			/* Abort sequence and begin with new. */
 			input_state(ictx, input_state_escape);
-		} else if (ch != 0x18 && ch != 0x1a) {	/* CAN and SUB */
+			return;
+		} else if (ch == 0x18 || ch == 0x1a) {	/* CAN and SUB */
 			/* Abort sequence. */
 			input_state(ictx, input_state_first);
-		} else {
-			/* Handle C0 immediately. */
-			input_handle_c0_control(ch, ictx);
+			return;
 		}
+
+		/* Handle C0 immediately. */
+		input_handle_c0_control(ch, ictx);
+
 		/*
 		 * Just come back to this state, in case the next character
 		 * is the start of a private sequence.
@@ -467,13 +470,16 @@ input_state_sequence_next(u_char ch, struct input_ctx *ictx)
 		if (ch == 0x1b) {			/* ESC */
 			/* Abort sequence and begin with new. */
 			input_state(ictx, input_state_escape);
-		} else if (ch != 0x18 && ch != 0x1a) {	/* CAN and SUB */
+			return;
+		} else if (ch == 0x18 || ch == 0x1a) {	/* CAN and SUB */
 			/* Abort sequence. */
 			input_state(ictx, input_state_first);
-		} else  {
-			/* Handle C0 immediately. */
-			input_handle_c0_control(ch, ictx);
+			return;
 		}
+
+		/* Handle C0 immediately. */
+		input_handle_c0_control(ch, ictx);
+
 		return;
 	}
 
