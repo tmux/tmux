@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.3 2009/06/03 16:05:46 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.4 2009/06/03 16:54:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -138,6 +138,7 @@ extern const char    *__progname;
 #define printflike2 __attribute__ ((format (printf, 2, 3)))
 #define printflike3 __attribute__ ((format (printf, 3, 4)))
 #define printflike4 __attribute__ ((format (printf, 4, 5)))
+#define printflike5 __attribute__ ((format (printf, 5, 6)))
 
 /* Number of items in array. */
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
@@ -997,7 +998,7 @@ struct set_option_entry {
 };
 extern const struct set_option_entry set_option_table[];
 extern const struct set_option_entry set_window_option_table[];
-#define NSETOPTION 24
+#define NSETOPTION 25
 #define NSETWINDOWOPTION 19
 
 #ifndef HAVE_STRTONUM
@@ -1468,13 +1469,13 @@ void	 grid_view_delete_cells(struct grid *, u_int, u_int, u_int);
 void	 screen_write_start(
     	     struct screen_write_ctx *, struct window_pane *, struct screen *);
 void	 screen_write_stop(struct screen_write_ctx *);
-size_t printflike1 screen_write_strlen(const char *, ...);
+size_t printflike2 screen_write_strlen(int, const char *, ...);
 void printflike3 screen_write_puts(struct screen_write_ctx *,
     	     struct grid_cell *, const char *, ...);
-void printflike4 screen_write_nputs(struct screen_write_ctx *,
-    	     ssize_t, struct grid_cell *, const char *, ...);
+void printflike5 screen_write_nputs(struct screen_write_ctx *,
+    ssize_t, struct grid_cell *, int, const char *, ...);
 void	 screen_write_vnputs(struct screen_write_ctx *,
-    	     ssize_t, struct grid_cell *, const char *, va_list);
+	     ssize_t, struct grid_cell *, int, const char *, va_list);
 void	 screen_write_putc(
     	     struct screen_write_ctx *, struct grid_cell *, u_char);
 void	 screen_write_copy(struct screen_write_ctx *,

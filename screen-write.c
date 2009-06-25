@@ -1,4 +1,4 @@
-/* $OpenBSD: screen-write.c,v 1.2 2009/06/03 16:05:46 nicm Exp $ */
+/* $OpenBSD: screen-write.c,v 1.3 2009/06/03 16:54:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,8 +53,8 @@ screen_write_putc(
 }
 
 /* Calculate string length. */
-size_t printflike1
-screen_write_strlen(const char *fmt, ...)
+size_t printflike2
+screen_write_strlen(int utf8flag, const char *fmt, ...)
 {
 	va_list	ap;
 	char   *msg;
@@ -67,7 +67,7 @@ screen_write_strlen(const char *fmt, ...)
 
 	ptr = msg;
 	while (*ptr != '\0') {
-		if (*ptr > 0x7f) {	/* Assume this is UTF-8. */
+		if (utf8flag && *ptr > 0x7f) {
 			memset(utf8buf, 0xff, sizeof utf8buf);
 
 			left = strlen(ptr);
@@ -94,7 +94,7 @@ screen_write_strlen(const char *fmt, ...)
 	return (size);
 }
 
-/* Write string. */
+/* Write simple string (no UTF-8 or maximum length). */
 void printflike3
 screen_write_puts(
     struct screen_write_ctx *ctx, struct grid_cell *gc, const char *fmt, ...)
@@ -102,25 +102,25 @@ screen_write_puts(
 	va_list	ap;
 
 	va_start(ap, fmt);
-	screen_write_vnputs(ctx, -1, gc, fmt, ap);
+	screen_write_vnputs(ctx, -1, gc, 0, fmt, ap);
 	va_end(ap);
 }
 
 /* Write string with length limit (-1 for unlimited). */
-void printflike4
+void printflike5
 screen_write_nputs(struct screen_write_ctx *ctx,
-    ssize_t maxlen, struct grid_cell *gc, const char *fmt, ...)
+    ssize_t maxlen, struct grid_cell *gc, int utf8flag, const char *fmt, ...)
 {
 	va_list	ap;
 
 	va_start(ap, fmt);
-	screen_write_vnputs(ctx, maxlen, gc, fmt, ap);
+	screen_write_vnputs(ctx, maxlen, gc, utf8flag, fmt, ap);
 	va_end(ap);
 }
 
 void
-screen_write_vnputs(struct screen_write_ctx *ctx,
-    ssize_t maxlen, struct grid_cell *gc, const char *fmt, va_list ap)
+screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
+    struct grid_cell *gc, int utf8flag, const char *fmt, va_list ap)
 {
 	char   *msg;
 	u_char *ptr, utf8buf[4];
@@ -131,7 +131,7 @@ screen_write_vnputs(struct screen_write_ctx *ctx,
 
 	ptr = msg;
 	while (*ptr != '\0') {
-		if (*ptr > 0x7f) {	/* Assume this is UTF-8. */
+		if (utf8flag && *ptr > 0x7f) {
 			memset(utf8buf, 0xff, sizeof utf8buf);
 
 			left = strlen(ptr);

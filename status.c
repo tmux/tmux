@@ -1,4 +1,4 @@
-/* $OpenBSD: status.c,v 1.2 2009/06/03 16:05:46 nicm Exp $ */
+/* $OpenBSD: status.c,v 1.3 2009/06/03 16:54:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,7 +50,7 @@ status_redraw(struct client *c)
 	size_t				llen, llen2, rlen, rlen2, offset;
 	size_t				xx, yy, sy, size, start, width;
 	struct grid_cell	        stdgc, gc;
-	int				larrow, rarrow;
+	int				larrow, rarrow, utf8flag;
 
 	left = right = NULL;
 
@@ -74,18 +74,21 @@ status_redraw(struct client *c)
 	if (yy == 0)
 		goto blank;
 
+	/* Caring about UTF-8 in status line? */
+	utf8flag = options_get_number(&s->options, "status-utf8");
+
 	/* Work out the left and right strings. */
 	left = status_replace(s, options_get_string(
 	    &s->options, "status-left"), c->status_timer.tv_sec);
 	llen = options_get_number(&s->options, "status-left-length");
-	llen2 = screen_write_strlen("%s", left);
+	llen2 = screen_write_strlen(utf8flag, "%s", left);
 	if (llen2 < llen)
 		llen = llen2;
 
 	right = status_replace(s, options_get_string(
 	    &s->options, "status-right"), c->status_timer.tv_sec);
 	rlen = options_get_number(&s->options, "status-right-length");
-	rlen2 = screen_write_strlen("%s", right);
+	rlen2 = screen_write_strlen(utf8flag, "%s", right);
 	if (rlen2 < rlen)
 		rlen = rlen2;
 	right[rlen] = '\0';
@@ -164,7 +167,8 @@ draw:
 	screen_write_start(&ctx, NULL, &c->status);
 	if (llen != 0) {
  		screen_write_cursormove(&ctx, 0, yy);
-		screen_write_nputs(&ctx, llen + 1, &stdgc, "%s ", left);
+		screen_write_nputs(
+		    &ctx, llen + 1, &stdgc, utf8flag, "%s ", left);
 		if (larrow)
 			screen_write_putc(&ctx, &stdgc, ' ');
 	} else {
@@ -221,7 +225,8 @@ draw:
 	/* Draw the last item. */
 	if (rlen != 0) {
 		screen_write_cursormove(&ctx, c->tty.sx - rlen - 1, yy);
-		screen_write_nputs(&ctx, rlen + 1, &stdgc, " %s", right);
+		screen_write_nputs(
+		    &ctx, rlen + 1, &stdgc, utf8flag, " %s", right);
 	}
 
 	/* Draw the arrows. */
