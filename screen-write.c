@@ -164,7 +164,7 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			gc->flags &= ~GRID_FLAG_UTF8;
 
 		} else {
-			if (maxlen > 0 && size > (size_t) maxlen)
+			if (maxlen > 0 && size + 1 > (size_t) maxlen)
 				break;
 
 			size++;
