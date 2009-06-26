@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.50 2009-06-25 16:21:32 nicm Exp $ */
+/* $OpenBSD: client.c,v 1.3 2009/06/25 22:09:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -146,7 +146,6 @@ client_main(struct client_ctx *cctx)
 	logfile("client");
 
 	error = NULL;
-	xtimeout = INFTIM;
 	while (!sigterm) {
 		if (sigchld) {
 			waitpid(WAIT_ANY, NULL, WNOHANG);
