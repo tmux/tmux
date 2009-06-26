@@ -26,7 +26,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifndef nitems
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
+#endif
 
 #define is_runnable(p) \
 	((p)->p_stat == LSRUN || (p)->p_stat == SIDL)

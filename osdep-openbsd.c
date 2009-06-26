@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.15 2009-04-29 23:07:35 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.16 2009-06-26 15:31:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,7 +25,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifndef nitems
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
+#endif
 
 #define is_runnable(p) \
 	((p)->p_stat == SRUN || (p)->p_stat == SIDL || (p)->p_stat == SONPROC)
