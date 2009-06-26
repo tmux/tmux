@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.88 2009-06-25 16:34:50 nicm Exp $ */
+/* $Id $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -91,7 +91,6 @@ status_redraw(struct client *c)
 	rlen2 = screen_write_strlen(utf8flag, "%s", right);
 	if (rlen2 < rlen)
 		rlen = rlen2;
-	right[rlen] = '\0';
 
 	/*
 	 * Figure out how much space we have for the window list. If there isn't
@@ -167,8 +166,8 @@ draw:
 	screen_write_start(&ctx, NULL, &c->status);
 	if (llen != 0) {
  		screen_write_cursormove(&ctx, 0, yy);
-		screen_write_nputs(
-		    &ctx, llen + 1, &stdgc, utf8flag, "%s ", left);
+		screen_write_nputs(&ctx, llen, &stdgc, utf8flag, "%s", left);
+		screen_write_putc(&ctx, &stdgc, ' ');
 		if (larrow)
 			screen_write_putc(&ctx, &stdgc, ' ');
 	} else {
@@ -225,8 +224,8 @@ draw:
 	/* Draw the last item. */
 	if (rlen != 0) {
 		screen_write_cursormove(&ctx, c->tty.sx - rlen - 1, yy);
-		screen_write_nputs(
-		    &ctx, rlen + 1, &stdgc, utf8flag, " %s", right);
+		screen_write_putc(&ctx, &stdgc, ' ');
+		screen_write_nputs(&ctx, rlen, &stdgc, utf8flag, "%s", right);
 	}
 
 	/* Draw the arrows. */
