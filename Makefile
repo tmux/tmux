@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.140 2009-06-25 16:25:55 nicm Exp $
+# $Id: Makefile,v 1.141 2009-06-26 16:01:12 nicm Exp $
 
 .SUFFIXES: .c .o
 .PHONY: clean
@@ -14,7 +14,7 @@ LIBS+= -lncurses
 
 # This sort of sucks but gets rid of the stupid warning and should work on
 # most platforms...
-CCV!= (${CC} -v 2>&1|awk '/gcc version 4/') || true
+CCV!= (LC_ALL=C ${CC} -v 2>&1|awk '/gcc version 4/') || true
 .if empty(CCV)
 CPPFLAGS:= -I. -I- -I/usr/local/include ${CPPFLAGS}
 .else

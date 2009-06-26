@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.105 2009-06-25 16:25:55 nicm Exp $
+# $Id: GNUmakefile,v 1.106 2009-06-26 16:01:12 nicm Exp $
 
 .PHONY: clean
 
@@ -13,7 +13,7 @@ LIBS+= -lncurses
 
 # This sort of sucks but gets rid of the stupid warning and should work on
 # most platforms...
-ifeq ($(shell ($(CC) -v 2>&1|awk '/gcc version 4/') || true), )
+ifeq ($(shell (LC_ALL=C $(CC) -v 2>&1|awk '/gcc version 4/') || true), )
 CPPFLAGS:= -I. -I- $(CPPFLAGS)
 else
 CPPFLAGS:= -iquote. $(CPPFLAGS)
