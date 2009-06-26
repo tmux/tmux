@@ -357,7 +357,7 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx)
 	if (s->cx <= screen_size_x(s) - 1)
 		grid_view_delete_cells(s->grid, s->cx, s->cy, nx);
 
-//	tty_write_cmd(ctx->wp, TTY_DELETECHARACTER, nx);
+	tty_write_cmd(ctx->wp, TTY_DELETECHARACTER, nx);
 }
 
 /* Insert ny lines. */
