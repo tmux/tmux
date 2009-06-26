@@ -1217,7 +1217,6 @@ size_t	cmd_pane_print(struct cmd *, char *, size_t);
 
 /* client.c */
 int	 client_init(char *, struct client_ctx *, int, int);
-int	 client_flush(struct client_ctx *);
 int	 client_main(struct client_ctx *);
 
 /* client-msg.c */
@@ -1406,8 +1405,6 @@ void	 screen_set_selection(
 	     struct screen *, u_int, u_int, u_int, u_int, struct grid_cell *);
 void	 screen_clear_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
-void	 screen_display_copy_area(struct screen *, struct screen *,
-    	     u_int, u_int, u_int, u_int, u_int, u_int);
 
 /* window.c */
 extern struct windows windows;
@@ -1443,7 +1440,6 @@ void		 window_pane_destroy(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *,
 		     const char *, const char *, const char **, char **);
 int		 window_pane_resize(struct window_pane *, u_int, u_int);
-void		 window_calculate_sizes(struct window *);
 int		 window_pane_set_mode(
 		     struct window_pane *, const struct window_mode *);
 void		 window_pane_reset_mode(struct window_pane *);
@@ -1561,6 +1557,5 @@ int printflike2	 xasprintf(char **, const char *, ...);
 int		 xvasprintf(char **, const char *, va_list);
 int printflike3	 xsnprintf(char *, size_t, const char *, ...);
 int		 xvsnprintf(char *, size_t, const char *, va_list);
-int printflike3	 printpath(char *, size_t, const char *, ...);
 
 #endif /* TMUX_H */
