@@ -131,7 +131,7 @@ server_client_index(struct client *c)
 int
 server_start(char *path)
 {
-	int	pair[2], srv_fd;
+	int	pair[2], srv_fd, null_fd;
 	char   *cause;
 #ifdef HAVE_SETPROCTITLE
 	char	rpathbuf[MAXPATHLEN];
@@ -177,6 +177,18 @@ server_start(char *path)
 		exit(1);
 	}
 	logfile("server");
+
+	/*
+	 * Close stdin/stdout/stderr. Can't let daemon() do this as they are
+	 * needed until now to print configuration file errors.
+	 */
+        if ((null_fd = open(_PATH_DEVNULL, O_RDWR)) != -1) {
+                dup2(null_fd, STDIN_FILENO);
+                dup2(null_fd, STDOUT_FILENO);
+                dup2(null_fd, STDERR_FILENO);
+                if (null_fd > 2)
+                        close(null_fd);
+        }
 
 	log_debug("server started, pid %ld", (long) getpid());
 	log_debug("socket path %s", socket_path);
