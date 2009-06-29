@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.107 2009-06-25 16:34:50 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.8 2009/06/27 12:57:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1015,6 +1015,8 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 	    (gc->flags & GRID_FLAG_FG256) != (tc->flags & GRID_FLAG_FG256)) {
 		tty_attributes_fg(tty, gc);
 		tc->fg = fg;
+		tc->flags &= ~GRID_FLAG_FG256;
+		tc->flags |= gc->flags & GRID_FLAG_FG256;
 	}
 
 	/* Set background colour. */
@@ -1022,6 +1024,8 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 	    (gc->flags & GRID_FLAG_BG256) != (tc->flags & GRID_FLAG_BG256)) {
 		tty_attributes_bg(tty, gc);
 		tc->bg = bg;
+		tc->flags &= ~GRID_FLAG_BG256;
+		tc->flags |= gc->flags & GRID_FLAG_BG256;
 	}
 }
 
