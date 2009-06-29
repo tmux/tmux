@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-copy-mode.c,v 1.2 2009/06/29 07:11:20 nicm Exp $ */
+/* $Id $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

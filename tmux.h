@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.h,v 1.15 2009/06/26 19:44:36 nicm Exp $ */
+/* $Id $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

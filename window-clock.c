@@ -1,4 +1,4 @@
-/* $OpenBSD: window-clock.c,v 1.2 2009/06/27 14:40:22 nicm Exp $ */
+/* $Id $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
