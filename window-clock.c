@@ -1,4 +1,4 @@
-/* $Id: window-clock.c,v 1.5 2009-01-28 19:52:21 nicm Exp $ */
+/* $OpenBSD: window-clock.c,v 1.2 2009/06/27 14:40:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -93,13 +93,13 @@ void
 window_clock_timer(struct window_pane *wp)
 {
 	struct window_clock_mode_data	*data = wp->modedata;
-	struct tm			*now, *then;
+	struct tm			 now, then;
 	time_t				 t;
 
 	t = time(NULL);
-	now = gmtime(&t);
-	then = gmtime(&data->tim);
-	if (now->tm_min == then->tm_min)
+	gmtime_r(&t, &now);
+	gmtime_r(&data->tim, &then);
+	if (now.tm_min == then.tm_min)
 		return;
 	data->tim = t;
 
