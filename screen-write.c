@@ -325,8 +325,8 @@ screen_write_insertcharacter(struct screen_write_ctx *ctx, u_int nx)
 	if (nx == 0)
 		nx = 1;
 
-	if (nx > screen_size_x(s) - 1 - s->cx)
-		nx = screen_size_x(s) - 1 - s->cx;
+	if (nx > screen_size_x(s) - s->cx)
+		nx = screen_size_x(s) - s->cx;
 	if (nx == 0)
 		return;
 
@@ -347,8 +347,8 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx)
 	if (nx == 0)
 		nx = 1;
 
-	if (nx > screen_size_x(s) - 1 - s->cx)
-		nx = screen_size_x(s) - 1 - s->cx;
+	if (nx > screen_size_x(s) - s->cx)
+		nx = screen_size_x(s) - s->cx;
 	if (nx == 0)
 		return;
 
@@ -369,8 +369,8 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny)
 	if (ny == 0)
 		ny = 1;
 
-	if (ny > screen_size_y(s) - 1 - s->cy)
-		ny = screen_size_y(s) - 1 - s->cy;
+	if (ny > screen_size_y(s) - s->cy)
+		ny = screen_size_y(s) - s->cy;
 	if (ny == 0)
 		return;
 
@@ -395,8 +395,8 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny)
 	if (ny == 0)
 		ny = 1;
 
-	if (ny > screen_size_y(s) - 1 - s->cy)
-		ny = screen_size_y(s) - 1 - s->cy;
+	if (ny > screen_size_y(s) - s->cy)
+		ny = screen_size_y(s) - s->cy;
 	if (ny == 0)
 		return;
 
