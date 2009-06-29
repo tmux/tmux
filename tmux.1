@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.100 2009-06-25 16:21:32 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.17 2009/06/26 22:47:06 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: June 24 2009 $
+.Dd $Mdocdate: June 26 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -571,7 +571,7 @@ option.
 .Op Fl p Ar pane-index
 .Op Fl t Ar target-window
 .Xc
-.D1 (alias: Ic breakp)
+.D1 (alias: Ic breakp )
 Break the current pane off from its containing window to make it the only pane
 in a new window.
 If
@@ -595,7 +595,7 @@ This command works only from inside
 .Op Fl p Ar pane-index
 .Op Fl t Ar target-window
 .Xc
-.D1 (alias: Ic clearhist)
+.D1 (alias: Ic clearhist )
 Remove and free the history for the specified pane.
 .It Xo Ic clock-mode
 .Op Fl t Ar target-window
@@ -617,7 +617,7 @@ replaced by what is entered at the prompt.
 .Op Fl t Ar target-client
 .Ar command
 .Xc
-.D1 (alias: Ic confirm)
+.D1 (alias: Ic confirm )
 Ask for confirmation before executing
 .Ar command .
 This command works only from inside
@@ -628,7 +628,7 @@ This command works only from inside
 .Op Fl s Ar src-session
 .Op Fl t Ar dst-session
 .Xc
-.D1 (alias: Ic copyb)
+.D1 (alias: Ic copyb )
 Copy a session paste buffer to another session.
 If no sessions are specified, the current one is used instead.
 .It Xo Ic copy-mode
@@ -948,7 +948,7 @@ command.
 .Op Fl t Ar target-window
 .Ar layout-name
 .Xc
-.D1 (alias: selectl)
+.D1 (alias: selectl )
 Choose a specific layout for a window.
 .It Xo Ic select-pane
 .Op Fl p Ar pane-index
