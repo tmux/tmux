@@ -214,7 +214,7 @@ server_unlock(const char *s)
 wrong:
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL)
+                if (c == NULL || c->prompt_buffer == NULL)
 			continue;
 
 		*c->prompt_buffer = '\0';
