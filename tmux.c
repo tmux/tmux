@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.137 2009-06-25 16:56:08 nicm Exp $ */
+/* $Id: tmux.c,v 1.138 2009-07-01 19:42:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -218,7 +218,6 @@ main(int argc, char **argv)
  	struct cmd		*cmd;
 	struct pollfd	 	 pfd;
 	struct hdr	 	 hdr;
-	const char		*shell;
 	struct passwd		*pw;
 	char			*s, *path, *label, *cause, *home, *pass = NULL;
 	char			 cwd[MAXPATHLEN];
@@ -279,6 +278,7 @@ main(int argc, char **argv)
 	options_init(&global_options, NULL);
 	options_set_number(&global_options, "bell-action", BELL_ANY);
 	options_set_number(&global_options, "buffer-limit", 9);
+	options_set_string(&global_options, "default-command", "%s", "");
 	options_set_number(&global_options, "display-time", 750);
 	options_set_number(&global_options, "history-limit", 2000);
 	options_set_number(&global_options, "lock-after-time", 0);
@@ -367,17 +367,6 @@ main(int argc, char **argv)
 		exit(1);
 	}
 	xfree(label);
-
-	shell = getenv("SHELL");
-	if (shell == NULL || *shell == '\0') {
-		pw = getpwuid(getuid());
-		if (pw != NULL)
-			shell = pw->pw_shell;
-		if (shell == NULL || *shell == '\0')
-			shell = _PATH_BSHELL;
-	}
-	options_set_string(
-	    &global_options, "default-command", "exec %s -l", shell);
 
 	if (getcwd(cwd, sizeof cwd) == NULL) {
 		pw = getpwuid(getuid());

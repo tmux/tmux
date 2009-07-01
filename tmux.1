@@ -1044,8 +1044,12 @@ maintain this maximum length.
 Set the command used for new windows (if not specified when the window is
 created) to
 .Ar command .
-The default is
-.Dq exec $SHELL -l .
+The default is an empty string, which instructs
+.Nm
+to create a login shell using the
+.Ev SHELL
+environment variable or, if it is unset, the user's shell returned by
+.Xr getpwuid 3 .
 .It Ic default-path Ar path
 Set the default working directory for processes created from keys, or
 interactively from the prompt.
