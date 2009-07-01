@@ -1,13 +1,15 @@
 #!/bin/sh
-# $Id: configure,v 1.15 2009-06-25 20:27:31 nicm Exp $
+# $Id: configure,v 1.16 2009-07-01 22:28:56 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
 CONFIG_H=config.h
-echo "/* $TMUX_PLATFORM */" >|$CONFIG_H
+rm -f $CONFIG_H
+echo "/* $TMUX_PLATFORM */" >$CONFIG_H
 
 CONFIG_MK=config.mk
-echo "# $TMUX_PLATFORM" >|$CONFIG_MK
+rm -f $CONFIG_MK
+echo "# $TMUX_PLATFORM" >$CONFIG_MK
 
 cat <<EOF >>$CONFIG_H
 #undef HAVE_ASPRINTF
