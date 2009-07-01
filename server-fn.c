@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.64 2009-06-25 17:02:59 nicm Exp $ */
+/* $Id: server-fn.c,v 1.65 2009-07-01 19:15:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -215,7 +215,7 @@ server_unlock(const char *s)
 wrong:
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL)
+                if (c == NULL || c->prompt_buffer == NULL)
 			continue;
 
 		*c->prompt_buffer = '\0';
