@@ -1,4 +1,4 @@
-/* $Id: vis.h,v 1.4 2009-06-25 20:27:32 nicm Exp $ */
+/* $Id: vis.h,v 1.5 2009-07-01 23:22:46 nicm Exp $ */
 /*	$OpenBSD: vis.h,v 1.11 2005/08/09 19:38:31 millert Exp $	*/
 /*	$NetBSD: vis.h,v 1.4 1994/10/26 00:56:41 cgd Exp $	*/
 
@@ -71,8 +71,6 @@
  * unvis flags
  */
 #define	UNVIS_END	1	/* no more characters */
-
-#include <sys/cdefs.h>
 
 char	*vis(char *, int, int, int);
 int	strvis(char *, const char *, int);
