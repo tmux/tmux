@@ -4,9 +4,10 @@ tmux is a "terminal multiplexer", it enables a number of terminals (or windows)
 to be accessed and controlled from a single terminal. tmux is intended to be a
 simple, modern, BSD-licensed alternative to programs such as GNU screen.
 
-This 0.8 release runs on OpenBSD, FreeBSD, Linux and OS X and may still run on
-Solaris (although it hasn't been tested in a while). It is usable, although
-there remain a number of missing features and some remaining bugs are expected.
+This 0.9 release runs on OpenBSD, FreeBSD, NetBSD, Linux and OS X and may still
+run on Solaris and AIX (although they hasn't been tested in a while). It is
+usable, although there remain a number of missing features and some remaining
+bugs are expected.
 
 If upgrading from 0.5, PLEASE NOTE the following configuration file changes: it
 is now required to pass the -g flag to set-option or set-window-option to set
@@ -73,15 +74,6 @@ A Vim syntax file is available in the examples directory. To install it:
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
 
-The CVS HEAD version of tmux often has additional features from the release
-versions; if interested, testing it is encouraged. It can be obtained by
-anonymous CVS from SourceForge:
-
-	$ cvs -d:pserver:anoncvs@tmux.cvs.sf.net:/cvsroot/tmux co tmux
-
-If running CVS HEAD, please note it is development code and there may be bugs
-and undocumented features; please read the CHANGES file for information.
-
 tmux mailing lists are available; visit:
 
 	https://sourceforge.net/mail/?group_id=200378
@@ -93,4 +85,4 @@ welcome. Please send by email to:
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.46 2009-04-21 20:57:10 nicm Exp $
+$Id: NOTES,v 1.47 2009-07-01 19:33:11 nicm Exp $
