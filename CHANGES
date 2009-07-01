@@ -1,10 +1,33 @@
-On 01 June 2009, tmux was imported into the OpenBSD base system. From this
-point onward changes are logged as part of the normal CVS commit message to
-either OpenBSD or SourceForge CVS.
+CHANGES FROM 0.8 TO 0.9, 01 July 2009
 
-For now on, this file will be updated to contain a summary of major changes
-with each release and to mention only important configuration or command syntax
-changes in CVS.
+* Major changes to build infrastructure: cleanup of makefiles and addition
+  of a configure script.
+* monitor-content window option to monitor a window for a specific fnmatch(3)
+  pattern. The find-window command also now accepts fnmatch(3) patterns.
+* previous-layout and select-layout commands, and a main-horizontal layout.
+* Recreate the server socket on SIGUSR1.
+* clear-history command.
+* Use ACS line drawing characters for pane separator lines.
+* UTF-8 improvements, and code to detect UTF-8 support by looking at
+  environment variables.
+* The resize-pane-up and resize-pane-down commands are now merged together
+  into a new resize-pane command with -U and -D flags.
+* confirm-before command to request a yes/no answer before executing dangerous
+  commands.
+* Status line bug fixes, support for UTF-8 (status-utf8 option), and a key to
+  paste from the paste buffer.
+* Support for some additional escape sequences and terminal features, including
+  better support for insert mode and tab stops.
+* Improved window resizing behaviour, modelled after xterm.
+* Some code reduction and a number of miscellaneous bug fixes.
+
+================================================================================
+
+On 01 June 2009, tmux was imported into the OpenBSD base system. From this date
+onward changes are logged as part of the normal CVS commit message to either
+OpenBSD or SourceForge CVS. This file will be updated to contain a summary of
+major changes with each release and to mention only important configuration or
+command syntax changes in CVS.
 
 The list of older changes is below.
 
@@ -1299,7 +1322,7 @@ The list of older changes is below.
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.297 2009-07-01 19:33:53 nicm Exp $
+$Id: CHANGES,v 1.298 2009-07-01 22:08:33 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
