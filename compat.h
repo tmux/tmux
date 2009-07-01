@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.3 2009-06-25 20:27:31 nicm Exp $ */
+/* $Id: compat.h,v 1.4 2009-07-01 22:43:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -86,7 +86,7 @@
 #ifdef HAVE_POLL
 #include <poll.h>
 #else
-#include "compat/bsdpoll.h"
+#include "compat/bsd-poll.h"
 #endif
 
 #ifdef HAVE_GETOPT
