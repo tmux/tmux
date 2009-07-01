@@ -87,9 +87,10 @@ for each tmux window or globally by setting the "utf8" flag:
 
 	setw -g utf8 on
 
-And, as it is not possible to automatically detect that a terminal is UTF-8
-capable, tmux must be told by passing the -u flag when creating or
-attaching a client to a tmux session:
+As of release 0.9, tmux attempts to autodetect a UTF-8-capable terminal by
+checking the LC_ALL, LC_CTYPE and LANG environment variables. list-clients may
+be used to check if this is detected correctly; if not, the -u command-line
+flag may be specified when creating or attaching a client to a tmux session:
 
 	  $ tmux -u new
 
@@ -193,4 +194,4 @@ terminal in use (set through TERM) request it. PuTTY can be told to ignore such
 requests: in the configuration window under Terminal -> Features, check the
 "Disable remote-controlled terminal resizing" box.
 
-$Id: FAQ,v 1.22 2009-05-14 18:43:02 nicm Exp $
+$Id: FAQ,v 1.23 2009-07-01 19:49:56 nicm Exp $
