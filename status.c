@@ -1,4 +1,4 @@
-/* $Id $ */
+/* $Id: status.c,v 1.90 2009-07-01 23:06:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

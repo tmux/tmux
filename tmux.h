@@ -1,4 +1,4 @@
-/* $Id $ */
+/* $Id: tmux.h,v 1.348 2009-07-01 23:06:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
