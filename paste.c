@@ -1,4 +1,4 @@
-/* $Id: paste.c,v 1.6 2009-01-25 18:51:28 tcunha Exp $ */
+/* $Id: paste.c,v 1.7 2009-07-02 16:23:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -100,6 +100,9 @@ void
 paste_add(struct paste_stack *ps, char *data, u_int limit)
 {
 	struct paste_buffer	*pb;
+
+	if (*data == '\0')
+		return;
 
 	while (ARRAY_LENGTH(ps) >= limit)
 		ARRAY_TRUNC(ps, 1);

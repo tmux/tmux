@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.15 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.16 2009-07-02 16:23:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,7 +63,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (pb != NULL)
+	if (pb != NULL && *pb->data != '\0')
 		buffer_write(w->active->out, pb->data, strlen(pb->data));
 
 	/* Delete the buffer if -d. */
