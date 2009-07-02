@@ -1,4 +1,4 @@
-/* $Id: names.c,v 1.10 2009-07-02 18:17:46 nicm Exp $ */
+/* $Id: names.c,v 1.11 2009-07-02 18:26:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -59,7 +59,16 @@ set_window_names(void)
 		if (name == NULL)
 			wname = default_window_name(w);
 		else {
-			wname = parse_window_name(name);
+			/* 
+			 * If tmux is using the default command, it will be a
+			 * login shell and argv[0] may have a - prefix. Remove
+			 * this if it is present. Ick.
+			 */
+			if (w->active->cmd != NULL && *w->active->cmd == '\0' &&
+			    name != NULL && name[0] == '-' && name[1] != '\0')
+				wname = parse_window_name(name + 1);
+			else
+				wname = parse_window_name(name);
 			xfree(name);
 		}
 
