@@ -423,7 +423,7 @@ window_copy_copy_selection(struct window_pane *wp, struct client *c)
 	/* Find start and end. */
 	xx = data->cx + data->ox;
 	yy = screen_hsize(&wp->base) + data->cy - data->oy;
-	if (xx < data->selx || (yy == data->sely && xx < data->selx)) {
+	if (yy < data->sely || (yy == data->sely && xx < data->selx)) {
 		sx = xx; sy = yy;
 		ex = data->selx; ey = data->sely;
 	} else {

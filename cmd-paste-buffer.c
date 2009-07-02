@@ -63,7 +63,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (pb != NULL)
+	if (pb != NULL && *pb->data != '\0')
 		buffer_write(w->active->out, pb->data, strlen(pb->data));
 
 	/* Delete the buffer if -d. */
