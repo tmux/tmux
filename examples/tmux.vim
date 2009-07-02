@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: tmux(1) configuration file
 " Maintainer: Tiago Cunha <me@tiagocunha.org>
-" Last Change: $Date: 2009-05-19 13:32:55 $
+" Last Change: $Date: 2009-07-02 13:50:27 $
 
 if version < 600
 	syntax clear
@@ -16,12 +16,12 @@ syn keyword tmuxAction	any current none
 syn keyword tmuxBoolean	off on
 
 syn keyword tmuxCmds detach[-client] ls list-sessions neww new-window
-syn keyword tmuxCmds bind[-key] unbind[-key] prev[ious-window] last
-syn keyword tmuxCmds last[-window] lsk list-keys set[-option] renamew
-syn keyword tmuxCmds rename-window selectw select-window lsw list-windows
-syn keyword tmuxCmds attach[-session] send-prefix refresh[-client] killw
-syn keyword tmuxCmds kill-window lsc list-clients linkw link-window unlinkw
-syn keyword tmuxCmds unlink-window next[-window] send[-keys] swapw swap-window
+syn keyword tmuxCmds bind[-key] unbind[-key] prev[ious-window] last[-window]
+syn keyword tmuxCmds lsk list-keys set[-option] renamew rename-window selectw
+syn keyword tmuxCmds select-window lsw list-windows attach[-session]
+syn keyword tmuxCmds send-prefix refresh[-client] killw kill-window lsc
+syn keyword tmuxCmds list-clients linkw link-window unlinkw unlink-window
+syn keyword tmuxCmds next[-window] send[-keys] swapw swap-window
 syn keyword tmuxCmds rename[-session] kill-session switchc switch-client
 syn keyword tmuxCmds has[-session] scroll-mode copy-mode pasteb paste-buffer
 syn keyword tmuxCmds new[-session] start[-server] kill-server setw
@@ -31,26 +31,27 @@ syn keyword tmuxCmds list-buffers deleteb delete-buffer lscm list-commands
 syn keyword tmuxCmds movew move-window select-prompt respawnw respawn-window
 syn keyword tmuxCmds source[-file] info server-info clock-mode lock[-server]
 syn keyword tmuxCmds pass set-password saveb save-buffer downp down-pane killp
-syn keyword tmuxCmds kill-pane resizep-down resize-pane-down resizep-up
-syn keyword tmuxCmds resize-pane-up selectp select-pane splitw split-window
-syn keyword tmuxCmds upp up-pane choose-session choose-window loadb load-buffer
-syn keyword tmuxCmds copyb copy-buffer suspendc suspend-client findw
-syn keyword tmuxCmds find-window breakp break-pane nextl next-layout rotatew
-syn keyword tmuxCmds rotate-window confirm[-before]
+syn keyword tmuxCmds kill-pane resizep resize-pane selectp select-pane swapp
+syn keyword tmuxCmds swap-pane splitw split-window upp up-pane choose-session
+syn keyword tmuxCmds choose-window loadb load-buffer copyb copy-buffer suspendc
+syn keyword tmuxCmds suspend-client findw find-window breakp break-pane nextl
+syn keyword tmuxCmds next-layout rotatew rotate-window confirm[-before]
+syn keyword tmuxCmds clearhist clear-history selectl select-layout
 
 syn keyword tmuxOptsSet prefix status status-fg status-bg bell-action
 syn keyword tmuxOptsSet default-command history-limit status-left status-right
 syn keyword tmuxOptsSet status-interval set-titles display-time buffer-limit
 syn keyword tmuxOptsSet status-left-length status-right-length message-fg
 syn keyword tmuxOptsSet message-bg lock-after-time default-path repeat-time
-syn keyword tmuxOptsSet message-attr status-attr set-remain-on-exit
+syn keyword tmuxOptsSet message-attr status-attr status-keys set-remain-on-exit
+syn keyword tmuxOptsSet status-utf8
 
 syn keyword tmuxOptsSetw monitor-activity aggressive-resize force-width
 syn keyword tmuxOptsSetw force-height remain-on-exit uft8 mode-fg mode-bg
 syn keyword tmuxOptsSetw mode-keys clock-mode-colour clock-mode-style
 syn keyword tmuxOptsSetw xterm-keys mode-attr window-status-attr
 syn keyword tmuxOptsSetw window-status-bg window-status-fg automatic-rename
-syn keyword tmuxOptsSetw monitor-content
+syn keyword tmuxOptsSetw main-pane-width main-pane-height monitor-content
 
 syn keyword tmuxTodo FIXME NOTE TODO XXX contained
 
