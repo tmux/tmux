@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.16 2009-07-01 22:28:56 nicm Exp $
+# $Id: configure,v 1.17 2009-07-02 07:31:01 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -25,6 +25,7 @@ cat <<EOF >>$CONFIG_H
 #undef HAVE_PTY_H
 #undef HAVE_QUEUE_H
 #undef HAVE_SETPROCTITLE
+#undef HAVE_STRCASESTR
 #undef HAVE_STRLCAT
 #undef HAVE_STRLCPY
 #undef HAVE_STRTONUM
@@ -48,6 +49,7 @@ case $TMUX_PLATFORM in
 #define HAVE_PROGNAME
 #define HAVE_QUEUE_H
 #define HAVE_SETPROCTITLE
+#define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_STRTONUM
@@ -70,6 +72,7 @@ EOF
 #define HAVE_POLL
 #define HAVE_PROGNAME
 #define HAVE_PTY_H
+#define HAVE_STRCASESTR
 EOF
 	cat <<EOF >>$CONFIG_MK
 SRCS+= osdep-linux.c \
@@ -95,6 +98,7 @@ SRCS+= osdep-unknown.c \
 	compat/bsd-poll.c \
 	compat/daemon.c \
 	compat/forkpty-aix.c \
+	compat/strcasestr.c \
 	compat/strlcat.c \
 	compat/strlcpy.c \
 	compat/strtonum.c \
@@ -125,6 +129,7 @@ SRCS+= osdep-unknown.c \
 	compat/fgetln.c \
 	compat/forkpty-sunos.c \
 	compat/getopt.c \
+	compat/strcasestr.c \
 	compat/strtonum.c \
 	compat/vis.c
 EOF
@@ -139,6 +144,7 @@ EOF
 #define HAVE_GETOPT
 #define HAVE_PATHS_H
 #define HAVE_PROGNAME
+#define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_UTIL_H
@@ -163,6 +169,7 @@ EOF
 #define HAVE_POLL
 #define HAVE_PROGNAME
 #define HAVE_SETPROCTITLE
+#define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_STRTONUM
@@ -185,6 +192,7 @@ EOF
 #define HAVE_POLL
 #define HAVE_PROGNAME
 #define HAVE_SETPROCTITLE
+#define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_UTIL_H

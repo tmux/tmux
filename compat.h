@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.5 2009-07-01 22:46:13 nicm Exp $ */
+/* $Id: compat.h,v 1.6 2009-07-02 07:30:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -117,6 +117,11 @@
 
 #ifndef TTY_NAME_MAX
 #define TTY_NAME_MAX 32
+#endif
+
+#ifndef HAVE_STRCASESTR
+/* strcasestr.c */
+char		*strcasestr(const char *, const char *);
 #endif
 
 #ifndef HAVE_STRTONUM
