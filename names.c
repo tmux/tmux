@@ -1,4 +1,4 @@
-/* $Id: names.c,v 1.9 2009-06-25 16:49:02 nicm Exp $ */
+/* $Id: names.c,v 1.10 2009-07-02 18:17:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -78,7 +78,9 @@ default_window_name(struct window *w)
 {
 	if (w->active->screen != &w->active->base)
 		return (xstrdup("[tmux]"));
-	return (parse_window_name(w->active->cmd));
+	if (w->active->cmd != NULL && *w->active->cmd != '\0')
+		return (parse_window_name(w->active->cmd));
+	return (parse_window_name(window_default_command()));
 }
 
 char *

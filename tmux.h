@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.348 2009-07-01 23:06:32 nicm Exp $ */
+/* $Id: tmux.h,v 1.349 2009-07-02 18:17:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1407,6 +1407,7 @@ int	 screen_check_selection(struct screen *, u_int, u_int);
 
 /* window.c */
 extern struct windows windows;
+const char	*window_default_command(void);
 int		 window_cmp(struct window *, struct window *);
 int		 winlink_cmp(struct winlink *, struct winlink *);
 RB_PROTOTYPE(windows, window, entry, window_cmp);

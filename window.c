@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.86 2009-07-01 19:42:55 nicm Exp $ */
+/* $Id: window.c,v 1.87 2009-07-02 18:17:46 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,8 +53,6 @@
 
 /* Global window list. */
 struct windows windows;
-
-const char	*window_default_command(void);
 
 RB_GENERATE(winlinks, winlink, entry, winlink_cmp);
 
