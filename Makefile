@@ -1,11 +1,11 @@
-# $Id: Makefile,v 1.142 2009-07-01 22:10:06 nicm Exp $
+# $Id: Makefile,v 1.143 2009-07-06 18:21:17 nicm Exp $
 
 .SUFFIXES: .c .o
 .PHONY: clean
 
-VERSION= 0.9
+VERSION= 1.0
 
-#FDEBUG= 1
+FDEBUG= 1
 
 CC?= cc
 CFLAGS+= -DBUILD="\"$(VERSION)\""
