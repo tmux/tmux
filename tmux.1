@@ -339,6 +339,38 @@ or the
 command, and pasted into a window using the
 .Ic paste-buffer
 command.
+.Sh OPTIONS
+The appearance and behaviour of
+.Nm
+may be modified by changing the value of various options.
+There are two types of option:
+.Em session options
+and
+.Em window options .
+.Pp
+Each individual session may have a set of session options, and there is a
+separate set of global session options.
+Sessions which do not have a particular option configured inherit the value
+from the global session options.
+Session options are set or unset with the
+.Ic set-option
+command and may be listed with the
+.Ic show-options
+command.
+The available session options are listed under the
+.Ic set-option
+command.
+.Pp
+Similarly, a set of window options is attached to each window, and there is
+a set of global window options from which any unset options are inherited.
+Window options are altered with the
+.Ic set-window-option
+command and can be listed with the
+.Ic show-window-options
+command.
+All window options are documented with the
+.Ic set-window-option
+command.
 .Sh PANES AND LAYOUTS
 Each window displayed by
 .Nm
@@ -1008,22 +1040,16 @@ Set the contents of the specified buffer to
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic set )
-Set an option.
+Set a session option.
 If
 .Fl g
-is specified, the option is set as a global option.
-Global options apply to all sessions which don't have the option explicitly
-set.
-If
-.Fl g
-is not used, the option applies only to
-.Ar target-session .
+is specified, the global session option is set.
 The
 .Fl u
 flag unsets an option, so a session inherits the option from the global
 options - it is not possible to unset a global option.
 .Pp
-Possible options are:
+Available session options are:
 .Bl -tag -width Ds
 .It Xo Ic bell-action
 .Op Ic any | Ic none | Ic current
@@ -1234,7 +1260,7 @@ configuration file, enclose it in single quotes (').
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic setw )
-Set a window-specific option.
+Set a window option.
 The
 .Fl g
 and
@@ -1243,7 +1269,7 @@ flags work similarly to the
 .Ic set-option
 command.
 .Pp
-Supported options are:
+Supported window options are:
 .Bl -tag -width Ds
 .It Xo Ic aggressive-resize
 .Op Ic on | Ic off
@@ -1359,21 +1385,24 @@ as Shift, Alt or Ctrl.
 .D1 (alias: Ic showb )
 Display the contents of the specified buffer.
 .It Xo Ic show-options
+.Op Fl g
 .Op Fl t Ar target-session
-.Ar option Ar value
 .Xc
 .D1 (alias: Ic show )
-Show the currently set options.
-If a
-.Ar target-session
-is specified, the options for that session are shown; otherwise, the global
-options are listed.
+Show the session options for
+.Ar target session ,
+or the global session options with
+.Fl g .
 .It Xo Ic show-window-options
+.Op Fl g
 .Op Fl t Ar target-window
-.Ar option Ar value
 .Xc
 .D1 (alias: Ic showw )
-List the current options for the given window.
+List the window options for
+.Ar target-window ,
+or the global window options if
+.Fl g
+is used.
 .It Xo Ic source-file
 .Ar path
 .Xc
