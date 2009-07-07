@@ -54,7 +54,7 @@ cmd_show_window_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 	long long			 vn;
 
 	if (data->flags & CMD_GFLAG)
-		oo = &global_window_options;
+		oo = &global_w_options;
 	else {
 		if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 			return (-1);

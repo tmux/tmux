@@ -127,7 +127,7 @@ session_create(const char *name,
 	RB_INIT(&s->windows);
 	SLIST_INIT(&s->alerts);
 	paste_init_stack(&s->buffers);
-	options_init(&s->options, &global_options);
+	options_init(&s->options, &global_s_options);
 
 	s->sx = sx;
 	s->sy = sy;

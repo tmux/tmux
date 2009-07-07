@@ -373,8 +373,8 @@ server_main(int srv_fd)
 	unlink(socket_path);
 	xfree(socket_path);
 
-	options_free(&global_options);
-	options_free(&global_window_options);
+	options_free(&global_s_options);
+	options_free(&global_w_options);
 	if (server_password != NULL)
 		xfree(server_password);
 
@@ -573,10 +573,8 @@ server_redraw_locked(struct client *c)
 	yy = c->tty.sy - 1;
 	if (xx == 0 || yy == 0)
 		return;
-	colour = options_get_number(
-	    &global_window_options, "clock-mode-colour");
-	style = options_get_number(
-	    &global_window_options, "clock-mode-style");
+	colour = options_get_number(&global_w_options, "clock-mode-colour");
+	style = options_get_number(&global_w_options, "clock-mode-style");
 
 	screen_init(&screen, xx, yy, 0);
 
@@ -1062,7 +1060,7 @@ server_second_timers(void)
 	time_t		 	 t;
 
 	t = time(NULL);
-	xtimeout = options_get_number(&global_options, "lock-after-time");
+	xtimeout = options_get_number(&global_s_options, "lock-after-time");
 	if (xtimeout > 0 && t > server_activity + xtimeout)
 		server_lock();
 
