@@ -154,7 +154,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (cmd == NULL)
 		cmd = options_get_string(&s->options, "default-command");
 	if (ctx->cmdclient == NULL || ctx->cmdclient->cwd == NULL)
-		cwd = options_get_string(&global_options, "default-path");
+		cwd = options_get_string(&s->options, "default-path");
 	else
 		cwd = ctx->cmdclient->cwd;
 
