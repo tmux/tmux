@@ -189,6 +189,7 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 #define MSG "protocol version mismatch"
 		server_write_client(c, MSG_ERROR, MSG, (sizeof MSG) - 1);
 #undef MSG
+		server_write_client(c, MSG_EXIT, NULL, 0);
 		return (0);
 	}
 
