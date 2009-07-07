@@ -54,7 +54,6 @@
   capibilities
 - would be nice to be able to use "--" to mark start of command w/ neww etc
   to avoid quoting
-
 - goto line and search history in copy/scroll modes
 - a command to display the status line briefly when it is turned off
 - clone session command
@@ -79,7 +78,6 @@
 - some way to force a screen to use the entire terminal even if it is forced
   to be smaller by other clients. pan smaller terminal? (like screen F)
 - close/redirect stderr when popen to child proc for #() in status line
-- if-shell-command command to run a tmux command if a shell command returns true
 - hooks to which commands may be attached, for example:
   	tmux add-hook "new-session" if-shell "[ -e $HOME/.tmux-session.conf ]" source-file $HOME/.tmux-session.conf
 - get it passing all the vttest tests that don't require resizing the terminal
@@ -90,3 +88,8 @@
 - *** get rid of PANE_HIDDEN -- initially just check for outside window
 - way to set socket path from config file
 - the "window with one pane" vs window distinction is weird, eg you can't kill-pane the last pane
+- status-active-fg/bg/attr would be nice to highlight active window, as would options to set
+  the highlight stuff
+- XXX once env stuff is in, default-path and VISUAL/EDITOR should be picked up when session is started
+- expand leading ~ in source-file save-buffer etc
+- tidy up and prioritise todo list ;-)
