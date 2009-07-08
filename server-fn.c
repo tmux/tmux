@@ -1,4 +1,4 @@
-/* $OpenBSD: server-fn.c,v 1.3 2009/06/30 13:40:30 nicm Exp $ */
+/* $Id: server-fn.c,v 1.67 2009-07-08 18:03:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

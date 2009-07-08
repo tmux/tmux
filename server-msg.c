@@ -1,4 +1,4 @@
-/* $OpenBSD: server-msg.c,v 1.5 2009/07/07 17:24:32 nicm Exp $ */
+/* $Id: server-msg.c,v 1.72 2009-07-08 18:03:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd.c,v 1.3 2009/07/07 21:23:22 nicm Exp $ */
+/* $Id: cmd.c,v 1.99 2009-07-08 18:03:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

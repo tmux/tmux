@@ -1,4 +1,4 @@
-/* $OpenBSD: tty.c,v 1.9 2009/07/07 17:24:32 nicm Exp $ */
+/* $Id: tty.c,v 1.112 2009-07-08 18:03:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
