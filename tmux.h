@@ -1408,6 +1408,7 @@ int	 screen_check_selection(struct screen *, u_int, u_int);
 
 /* window.c */
 extern struct windows windows;
+const char	*window_default_command(void);
 int		 window_cmp(struct window *, struct window *);
 int		 winlink_cmp(struct winlink *, struct winlink *);
 RB_PROTOTYPE(windows, window, entry, window_cmp);

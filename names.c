@@ -59,7 +59,16 @@ set_window_names(void)
 		if (name == NULL)
 			wname = default_window_name(w);
 		else {
-			wname = parse_window_name(name);
+			/* 
+			 * If tmux is using the default command, it will be a
+			 * login shell and argv[0] may have a - prefix. Remove
+			 * this if it is present. Ick.
+			 */
+			if (w->active->cmd != NULL && *w->active->cmd == '\0' &&
+			    name != NULL && name[0] == '-' && name[1] != '\0')
+				wname = parse_window_name(name + 1);
+			else
+				wname = parse_window_name(name);
 			xfree(name);
 		}
 
@@ -78,7 +87,9 @@ default_window_name(struct window *w)
 {
 	if (w->active->screen != &w->active->base)
 		return (xstrdup("[tmux]"));
-	return (parse_window_name(w->active->cmd));
+	if (w->active->cmd != NULL && *w->active->cmd != '\0')
+		return (parse_window_name(w->active->cmd));
+	return (parse_window_name(window_default_command()));
 }
 
 char *

@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <fnmatch.h>
 #include <paths.h>
+#include <pwd.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -56,6 +57,23 @@
 struct windows windows;
 
 RB_GENERATE(winlinks, winlink, entry, winlink_cmp);
+
+const char *
+window_default_command(void)
+{
+	const char	*shell;
+	struct passwd	*pw;
+
+	shell = getenv("SHELL");
+	if (shell != NULL && *shell != '\0')
+		return (shell);
+
+	pw = getpwuid(getuid());
+	if (pw != NULL && pw->pw_shell != NULL && *pw->pw_shell != '\0')
+		return (pw->pw_shell);
+
+	return (_PATH_BSHELL);
+}
 
 int
 winlink_cmp(struct winlink *wl1, struct winlink *wl2)
@@ -424,7 +442,8 @@ window_pane_spawn(struct window_pane *wp,
 {
 	struct winsize	 ws;
 	int		 mode;
-	const char     **envq;
+	const char     **envq, *ptr;
+	char		*argv0;
 	struct timeval	 tv;
 
 	if (wp->fd != -1)
@@ -465,7 +484,18 @@ window_pane_spawn(struct window_pane *wp,
 		sigreset();
 		log_close();
 
-		execl(_PATH_BSHELL, "sh", "-c", wp->cmd, (char *) NULL);
+		if (*wp->cmd != '\0') {
+			execl(_PATH_BSHELL, "sh", "-c", wp->cmd, (char *) NULL);
+			fatal("execl failed");
+		}
+
+		/* No command; fork a login shell. */
+		cmd = window_default_command();
+		if ((ptr = strrchr(cmd, '/')) != NULL && *(ptr + 1) != '\0')
+			xasprintf(&argv0, "-%s", ptr + 1);
+		else
+			xasprintf(&argv0, "-%s", cmd);
+		execl(cmd, argv0, (char *) NULL);
 		fatal("execl failed");
 	}
 

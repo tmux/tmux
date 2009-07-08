@@ -209,7 +209,6 @@ main(int argc, char **argv)
  	struct cmd		*cmd;
 	struct pollfd	 	 pfd;
 	struct hdr	 	 hdr;
-	const char		*shell;
 	struct passwd		*pw;
 	char			*s, *path, *label, *cause, *home, *pass = NULL;
 	char			 cwd[MAXPATHLEN];
@@ -270,6 +269,7 @@ main(int argc, char **argv)
 	options_init(&global_s_options, NULL);
 	options_set_number(&global_s_options, "bell-action", BELL_ANY);
 	options_set_number(&global_s_options, "buffer-limit", 9);
+	options_set_string(&global_s_options, "default-command", "%s", "");
 	options_set_number(&global_s_options, "display-time", 750);
 	options_set_number(&global_s_options, "history-limit", 2000);
 	options_set_number(&global_s_options, "lock-after-time", 0);
@@ -357,17 +357,6 @@ main(int argc, char **argv)
 		exit(1);
 	}
 	xfree(label);
-
-	shell = getenv("SHELL");
-	if (shell == NULL || *shell == '\0') {
-		pw = getpwuid(getuid());
-		if (pw != NULL)
-			shell = pw->pw_shell;
-		if (shell == NULL || *shell == '\0')
-			shell = _PATH_BSHELL;
-	}
-	options_set_string(
-	    &global_s_options, "default-command", "exec %s -l", shell);
 
 	if (getcwd(cwd, sizeof cwd) == NULL) {
 		pw = getpwuid(getuid());
