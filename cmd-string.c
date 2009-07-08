@@ -114,6 +114,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			buf = xrealloc(buf, 1, len + strlen(t) + 1);
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
+			xfree(t);
 
 			have_arg = 1;
 			break;
@@ -219,6 +220,7 @@ cmd_string_string(const char *s, size_t *p, char endch, int esc)
 			buf = xrealloc(buf, 1, len + strlen(t) + 1);
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
+			xfree(t);
 			continue;
                 }
 
