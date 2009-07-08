@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.97 2009-06-25 16:21:32 nicm Exp $ */
+/* $OpenBSD: cmd.c,v 1.3 2009/07/07 21:23:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -105,7 +105,7 @@ cmd_parse(int argc, char **argv, char **cause)
 	const struct cmd_entry **entryp, *entry;
 	struct cmd	        *cmd;
 	char			 s[BUFSIZ];
-	int			 opt;
+	int			 opt, ambiguous = 0;
 
 	*cause = NULL;
 	if (argc == 0) {
@@ -117,6 +117,7 @@ cmd_parse(int argc, char **argv, char **cause)
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
 		if ((*entryp)->alias != NULL &&
 		    strcmp((*entryp)->alias, argv[0]) == 0) {
+			ambiguous = 0;
 			entry = *entryp;
 			break;
 		}
@@ -124,13 +125,15 @@ cmd_parse(int argc, char **argv, char **cause)
 		if (strncmp((*entryp)->name, argv[0], strlen(argv[0])) != 0)
 			continue;
 		if (entry != NULL)
-			goto ambiguous;
+			ambiguous = 1;
 		entry = *entryp;
 
 		/* Bail now if an exact match. */
 		if (strcmp(entry->name, argv[0]) == 0)
 			break;
 	}
+	if (ambiguous)
+		goto ambiguous;
 	if (entry == NULL) {
 		xasprintf(cause, "unknown command: %s", argv[0]);
 		return (NULL);
