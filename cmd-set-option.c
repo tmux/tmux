@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.62 2009-06-25 16:21:32 nicm Exp $ */
+/* $OpenBSD: cmd-set-option.c,v 1.3 2009/07/07 19:49:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -87,7 +87,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int				 i;
 
 	if (data->flags & CMD_GFLAG)
-		oo = &global_options;
+		oo = &global_s_options;
 	else {
 		if ((s = cmd_find_session(ctx, data->target)) == NULL)
 			return (-1);

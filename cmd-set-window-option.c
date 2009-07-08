@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.28 2009-06-25 16:21:32 nicm Exp $ */
+/* $OpenBSD: cmd-set-window-option.c,v 1.3 2009/07/07 19:49:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -82,7 +82,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int				 i;
 
 	if (data->flags & CMD_GFLAG)
-		oo = &global_window_options;
+		oo = &global_w_options;
 	else {
 		if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 			return (-1);

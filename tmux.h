@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.349 2009-07-02 18:17:46 nicm Exp $ */
+/* $OpenBSD: tmux.h,v 1.16 2009/07/07 19:49:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -944,8 +944,8 @@ extern volatile sig_atomic_t sigcont;
 extern volatile sig_atomic_t sigchld;
 extern volatile sig_atomic_t sigusr1;
 extern volatile sig_atomic_t sigusr2;
-extern struct options global_options;
-extern struct options global_window_options;
+extern struct options global_s_options;
+extern struct options global_w_options;
 extern char	*cfg_file;
 extern int	 server_locked;
 extern char	*server_password;

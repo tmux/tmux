@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.138 2009-07-01 19:42:55 nicm Exp $ */
+/* $OpenBSD: tmux.c,v 1.12 2009/07/07 19:49:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,8 +47,8 @@ volatile sig_atomic_t sigusr1;
 volatile sig_atomic_t sigusr2;
 
 char		*cfg_file;
-struct options	 global_options;
-struct options	 global_window_options;
+struct options	 global_s_options;	/* session options */
+struct options	 global_w_options;	/* window options */
 
 int		 server_locked;
 char		*server_password;
@@ -275,55 +275,53 @@ main(int argc, char **argv)
 	log_open_tty(debug_level);
 	siginit();
 
-	options_init(&global_options, NULL);
-	options_set_number(&global_options, "bell-action", BELL_ANY);
-	options_set_number(&global_options, "buffer-limit", 9);
-	options_set_string(&global_options, "default-command", "%s", "");
-	options_set_number(&global_options, "display-time", 750);
-	options_set_number(&global_options, "history-limit", 2000);
-	options_set_number(&global_options, "lock-after-time", 0);
-	options_set_number(&global_options, "message-attr", GRID_ATTR_REVERSE);
-	options_set_number(&global_options, "message-bg", 3);
-	options_set_number(&global_options, "message-fg", 0);
-	options_set_number(&global_options, "prefix", '\002');
-	options_set_number(&global_options, "repeat-time", 500);
-	options_set_number(&global_options, "set-remain-on-exit", 0);
-	options_set_number(&global_options, "set-titles", 0);
-	options_set_number(&global_options, "status", 1);
-	options_set_number(&global_options, "status-attr", GRID_ATTR_REVERSE);
-	options_set_number(&global_options, "status-bg", 2);
-	options_set_number(&global_options, "status-fg", 0);
-	options_set_number(&global_options, "status-interval", 15);
-	options_set_number(&global_options, "status-keys", MODEKEY_EMACS);
-	options_set_number(&global_options, "status-left-length", 10);
-	options_set_number(&global_options, "status-right-length", 40);
-	options_set_string(&global_options, "status-left", "[#S]");
-	options_set_string(
-	    &global_options, "status-right", "\"#24T\" %%H:%%M %%d-%%b-%%y");
-	options_set_number(&global_options, "status-utf8", 0);
+	options_init(&global_s_options, NULL);
+	options_set_number(&global_s_options, "bell-action", BELL_ANY);
+	options_set_number(&global_s_options, "buffer-limit", 9);
+	options_set_number(&global_s_options, "display-time", 750);
+	options_set_number(&global_s_options, "history-limit", 2000);
+	options_set_number(&global_s_options, "lock-after-time", 0);
+	options_set_number(&global_s_options, "message-attr", GRID_ATTR_REVERSE);
+	options_set_number(&global_s_options, "message-bg", 3);
+	options_set_number(&global_s_options, "message-fg", 0);
+	options_set_number(&global_s_options, "prefix", '\002');
+	options_set_number(&global_s_options, "repeat-time", 500);
+	options_set_number(&global_s_options, "set-remain-on-exit", 0);
+	options_set_number(&global_s_options, "set-titles", 0);
+	options_set_number(&global_s_options, "status", 1);
+	options_set_number(&global_s_options, "status-attr", GRID_ATTR_REVERSE);
+	options_set_number(&global_s_options, "status-bg", 2);
+	options_set_number(&global_s_options, "status-fg", 0);
+	options_set_number(&global_s_options, "status-interval", 15);
+	options_set_number(&global_s_options, "status-keys", MODEKEY_EMACS);
+	options_set_number(&global_s_options, "status-left-length", 10);
+	options_set_number(&global_s_options, "status-right-length", 40);
+	options_set_string(&global_s_options, "status-left", "[#S]");
+ 	options_set_string(
+	    &global_s_options, "status-right", "\"#24T\" %%H:%%M %%d-%%b-%%y");
+	options_set_number(&global_s_options, "status-utf8", 0);
 
-	options_init(&global_window_options, NULL);
-	options_set_number(&global_window_options, "aggressive-resize", 0);
-	options_set_number(&global_window_options, "automatic-rename", 1);
-	options_set_number(&global_window_options, "clock-mode-colour", 4);
-	options_set_number(&global_window_options, "clock-mode-style", 1);
-	options_set_number(&global_window_options, "force-height", 0);
-	options_set_number(&global_window_options, "force-width", 0);
-	options_set_number(
-	    &global_window_options, "mode-attr", GRID_ATTR_REVERSE);
-	options_set_number(&global_window_options, "main-pane-width", 81);
-	options_set_number(&global_window_options, "main-pane-height", 24);
-	options_set_number(&global_window_options, "mode-bg", 3);
-	options_set_number(&global_window_options, "mode-fg", 0);
-	options_set_number(&global_window_options, "mode-keys", MODEKEY_EMACS);
-	options_set_number(&global_window_options, "monitor-activity", 0);
-	options_set_string(&global_window_options, "monitor-content", "%s", "");
-	options_set_number(&global_window_options, "utf8", 0);
-	options_set_number(&global_window_options, "window-status-attr", 0);
-	options_set_number(&global_window_options, "window-status-bg", 8);
-	options_set_number(&global_window_options, "window-status-fg", 8);
-	options_set_number(&global_window_options, "xterm-keys", 0);
- 	options_set_number(&global_window_options, "remain-on-exit", 0);
+	options_init(&global_w_options, NULL);
+	options_set_number(&global_w_options, "aggressive-resize", 0);
+	options_set_number(&global_w_options, "automatic-rename", 1);
+	options_set_number(&global_w_options, "clock-mode-colour", 4);
+	options_set_number(&global_w_options, "clock-mode-style", 1);
+	options_set_number(&global_w_options, "force-height", 0);
+	options_set_number(&global_w_options, "force-width", 0);
+	options_set_number(&global_w_options, "mode-attr", GRID_ATTR_REVERSE);
+	options_set_number(&global_w_options, "main-pane-width", 81);
+	options_set_number(&global_w_options, "main-pane-height", 24);
+	options_set_number(&global_w_options, "mode-bg", 3);
+	options_set_number(&global_w_options, "mode-fg", 0);
+	options_set_number(&global_w_options, "mode-keys", MODEKEY_EMACS);
+	options_set_number(&global_w_options, "monitor-activity", 0);
+	options_set_string(&global_w_options, "monitor-content", "%s", "");
+	options_set_number(&global_w_options, "utf8", 0);
+	options_set_number(&global_w_options, "window-status-attr", 0);
+	options_set_number(&global_w_options, "window-status-bg", 8);
+	options_set_number(&global_w_options, "window-status-fg", 8);
+	options_set_number(&global_w_options, "xterm-keys", 0);
+ 	options_set_number(&global_w_options, "remain-on-exit", 0);
 
 	if (!(flags & IDENTIFY_UTF8)) {
 		/*
@@ -375,7 +373,7 @@ main(int argc, char **argv)
 		else
 			strlcpy(cwd, "/", sizeof cwd);
 	}
-	options_set_string(&global_options, "default-path", "%s", cwd);
+	options_set_string(&global_s_options, "default-path", "%s", cwd);
 
 	if (unlock) {
 		if (argc != 0) {
@@ -479,8 +477,8 @@ main(int argc, char **argv)
 	}
 
 out:
-	options_free(&global_options);
-	options_free(&global_window_options);
+	options_free(&global_s_options);
+	options_free(&global_w_options);
 
 	close(cctx.srv_fd);
 	buffer_destroy(cctx.srv_in);

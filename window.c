@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.87 2009-07-02 18:17:46 nicm Exp $ */
+/* $OpenBSD: window.c,v 1.7 2009/07/07 19:49:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -220,7 +220,7 @@ window_create1(u_int sx, u_int sy)
 	w->sx = sx;
 	w->sy = sy;
 
-	options_init(&w->options, &global_window_options);
+	options_init(&w->options, &global_w_options);
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		if (ARRAY_ITEM(&windows, i) == NULL) {

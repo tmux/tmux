@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.57 2009-05-19 13:32:55 tcunha Exp $ */
+/* $OpenBSD: session.c,v 1.2 2009/07/07 19:49:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -127,7 +127,7 @@ session_create(const char *name,
 	RB_INIT(&s->windows);
 	SLIST_INIT(&s->alerts);
 	paste_init_stack(&s->buffers);
-	options_init(&s->options, &global_options);
+	options_init(&s->options, &global_s_options);
 
 	s->sx = sx;
 	s->sy = sy;

@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.41 2009-05-04 17:58:26 nicm Exp $ */
+/* $OpenBSD: cmd-new-session.c,v 1.2 2009/07/07 19:49:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -137,9 +137,9 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	cmd = data->cmd;
 	if (cmd == NULL)
-		cmd = options_get_string(&global_options, "default-command");
+		cmd = options_get_string(&global_s_options, "default-command");
 	if (c == NULL || c->cwd == NULL)
-		cwd = options_get_string(&global_options, "default-path");
+		cwd = options_get_string(&global_s_options, "default-path");
 	else
 		cwd = c->cwd;
 
@@ -150,7 +150,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		sy = c->tty.sy;
 	}
 
-	if (options_get_number(&global_options, "status")) {
+	if (options_get_number(&global_s_options, "status")) {
 		if (sy == 0)
 			sy = 1;
 		else
