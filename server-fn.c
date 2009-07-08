@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.65 2009-07-01 19:15:12 nicm Exp $ */
+/* $OpenBSD: server-fn.c,v 1.3 2009/06/30 13:40:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -202,7 +202,7 @@ server_unlock(const char *s)
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL)
+                if (c == NULL || c->prompt_buffer == NULL)
 			continue;
 
 		status_prompt_clear(c);
