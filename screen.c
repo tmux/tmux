@@ -54,7 +54,7 @@ screen_reinit(struct screen *s)
 	
 	screen_reset_tabs(s);
 
-	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy - 1);
+	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy);
 
 	screen_clear_selection(s);
 }
