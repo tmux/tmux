@@ -1,4 +1,4 @@
-/* $OpenBSD: server-msg.c,v 1.4 2009/07/07 12:34:47 nicm Exp $ */
+/* $OpenBSD: server-msg.c,v 1.5 2009/07/07 17:24:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -211,7 +211,9 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 		c->tty.term_flags |= TERM_88COLOURS;
 	if (data.flags & IDENTIFY_HASDEFAULTS)
 		c->tty.term_flags |= TERM_HASDEFAULTS;
-	xfree(term);
+
+	if (term != NULL)
+		xfree(term);
 
 	c->flags |= CLIENT_TERMINAL;
 

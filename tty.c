@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.110 2009-07-01 23:06:32 nicm Exp $ */
+/* $OpenBSD: tty.c,v 1.9 2009/07/07 17:24:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -76,7 +76,7 @@ void
 tty_init(struct tty *tty, char *path, char *term)
 {
 	tty->path = xstrdup(path);
-	if (term == NULL)
+	if (term == NULL || *term == '\0')
 		tty->termname = xstrdup("unknown");
 	else
 		tty->termname = xstrdup(term);
@@ -98,7 +98,7 @@ tty_open(struct tty *tty, char **cause)
 	if ((mode = fcntl(tty->fd, F_GETFL)) == -1)
 		fatal("fcntl failed");
 	if (fcntl(tty->fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failedo");
+		fatal("fcntl failed");
 	if (fcntl(tty->fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
 
