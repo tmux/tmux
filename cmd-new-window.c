@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.31 2009-01-23 16:59:14 nicm Exp $ */
+/* $OpenBSD: cmd-new-window.c,v 1.2 2009/07/07 06:58:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -164,7 +164,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (cmd == NULL)
 		cmd = options_get_string(&s->options, "default-command");
 	if (ctx->cmdclient == NULL || ctx->cmdclient->cwd == NULL)
-		cwd = options_get_string(&global_options, "default-path");
+		cwd = options_get_string(&s->options, "default-path");
 	else
 		cwd = ctx->cmdclient->cwd;
 
