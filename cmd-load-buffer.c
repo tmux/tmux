@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-load-buffer.c,v 1.2 2009/07/09 09:54:56 nicm Exp $ */
+/* $Id: cmd-load-buffer.c,v 1.6 2009-07-09 18:08:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
