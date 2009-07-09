@@ -378,10 +378,8 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny)
 
 	if (s->cy < s->rupper || s->cy > s->rlower)
 		grid_view_insert_lines(s->grid, s->cy, ny);
-	else {
-		grid_view_insert_lines_region(
-		    s->grid, s->rupper, s->rlower, s->cy, ny);
-	}
+	else
+		grid_view_insert_lines_region(s->grid, s->rlower, s->cy, ny);
 
 	tty_write_cmd(ctx->wp, TTY_INSERTLINE, ny);
 }
@@ -404,10 +402,8 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny)
 
 	if (s->cy < s->rupper || s->cy > s->rlower)
 		grid_view_delete_lines(s->grid, s->cy, ny);
-	else {
-		grid_view_delete_lines_region(
-		    s->grid, s->rupper, s->rlower, s->cy, ny);
-	}
+	else
+		grid_view_delete_lines_region(s->grid, s->rlower, s->cy, ny);
 
 	tty_write_cmd(ctx->wp, TTY_DELETELINE, ny);
 }

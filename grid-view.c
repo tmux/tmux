@@ -132,11 +132,9 @@ grid_view_insert_lines(struct grid *gd, u_int py, u_int ny)
 
 /* Insert lines in region. */
 void
-grid_view_insert_lines_region(
-    struct grid *gd, unused u_int rupper, u_int rlower, u_int py, u_int ny)
+grid_view_insert_lines_region(struct grid *gd, u_int rlower, u_int py, u_int ny)
 {
-	GRID_DEBUG(
-	    gd, "rupper=%u, rlower=%u, py=%u, ny=%u", rupper, rlower, py, ny);
+	GRID_DEBUG(gd, "rlower=%u, py=%u, ny=%u", rlower, py, ny);
 
 	rlower = grid_view_y(gd, rlower);
 
@@ -163,11 +161,9 @@ grid_view_delete_lines(struct grid *gd, u_int py, u_int ny)
 
 /* Delete lines inside scroll region. */
 void
-grid_view_delete_lines_region(
-    struct grid *gd, unused u_int rupper, u_int rlower, u_int py, u_int ny)
+grid_view_delete_lines_region(struct grid *gd, u_int rlower, u_int py, u_int ny)
 {
-	GRID_DEBUG(
-	    gd, "rupper=%u, rlower=%u, py=%u, ny=%u", rupper, rlower, py, ny);
+	GRID_DEBUG(gd, "rlower=%u, py=%u, ny=%u", rlower, py, ny);
 
 	rlower = grid_view_y(gd, rlower);
 
