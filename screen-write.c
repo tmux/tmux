@@ -369,11 +369,25 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny)
 	if (ny == 0)
 		ny = 1;
 
-	if (ny > screen_size_y(s) - s->cy)
-		ny = screen_size_y(s) - s->cy;
+	if (s->cy < s->rupper || s->cy > s->rlower) {
+		if (ny > screen_size_y(s) - s->cy)
+			ny = screen_size_y(s) - s->cy;
+		if (ny == 0)
+			return;
+
+		screen_write_save(ctx);
+
+		grid_view_insert_lines(s->grid, s->cy, ny);
+
+		tty_write_cmd(ctx->wp, TTY_INSERTLINE, ny);
+		return;
+	}
+
+	if (ny > s->rlower + 1 - s->cy)
+		ny = s->rlower + 1 - s->cy;
 	if (ny == 0)
 		return;
-
+	
 	screen_write_save(ctx);
 
 	if (s->cy < s->rupper || s->cy > s->rlower)
@@ -393,8 +407,22 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny)
 	if (ny == 0)
 		ny = 1;
 
-	if (ny > screen_size_y(s) - s->cy)
-		ny = screen_size_y(s) - s->cy;
+	if (s->cy < s->rupper || s->cy > s->rlower) {
+		if (ny > screen_size_y(s) - s->cy)
+			ny = screen_size_y(s) - s->cy;
+		if (ny == 0)
+			return;
+
+		screen_write_save(ctx);
+
+		grid_view_delete_lines(s->grid, s->cy, ny);
+
+		tty_write_cmd(ctx->wp, TTY_DELETELINE, ny);
+		return;
+	}
+	
+	if (ny > s->rlower + 1 - s->cy)
+		ny = s->rlower + 1 - s->cy;
 	if (ny == 0)
 		return;
 
