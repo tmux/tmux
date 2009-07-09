@@ -711,6 +711,16 @@ This command only works from inside
 .D1 (alias: Ic has )
 Report an error and exit with 1 if the specified session does not exist.
 If it does exist, exit with 0.
+.It Xo Ic if-shell
+.Ar shell-command
+.Ar command
+.Xc
+.D1 (alias: Ic if )
+Execute
+.Ar command
+if
+.Ar shell-command
+returns success.
 .It Xo Ic kill-pane
 .Op Fl p Ar pane-index
 .Op Fl t Ar target-window
