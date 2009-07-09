@@ -1,4 +1,4 @@
-/* $Id: cmd-load-buffer.c,v 1.4 2009-05-21 19:38:51 nicm Exp $ */
+/* $OpenBSD: cmd-load-buffer.c,v 1.2 2009/07/09 09:54:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -78,6 +78,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 */
 	if ((buf = malloc(statbuf.st_size + 1)) == NULL) {
 		ctx->error(ctx, "malloc error: %s", strerror(errno));
+		fclose(f);
 		return (-1);
 	}
 
