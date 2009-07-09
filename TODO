@@ -92,4 +92,9 @@
   the highlight stuff
 - XXX once env stuff is in, default-path and VISUAL/EDITOR should be picked up when session is started
 - expand leading ~ in source-file save-buffer etc
+- screen/xterm etc translate \n to \r when pasting:
+  18:31 <+NicM> so i think the best thing might be to a) stick with \n
+  	internally b) change paste-buffer to translate \r to \n per xterm c)
+  	add a -r option to paste-buffer to turn off the translation
+- paste-buffer etc should be able to handle \0, so needs a size member and no more strlen
 - tidy up and prioritise todo list ;-)
