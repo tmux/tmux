@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.106 2009-07-08 18:03:03 nicm Exp $
+.\" $Id: tmux.1,v 1.107 2009-07-09 18:14:18 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -711,6 +711,16 @@ This command only works from inside
 .D1 (alias: Ic has )
 Report an error and exit with 1 if the specified session does not exist.
 If it does exist, exit with 0.
+.It Xo Ic if-shell
+.Ar shell-command
+.Ar command
+.Xc
+.D1 (alias: Ic if )
+Execute
+.Ar command
+if
+.Ar shell-command
+returns success.
 .It Xo Ic kill-pane
 .Op Fl p Ar pane-index
 .Op Fl t Ar target-window

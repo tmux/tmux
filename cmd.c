@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.99 2009-07-08 18:03:03 nicm Exp $ */
+/* $Id: cmd.c,v 1.100 2009-07-09 18:14:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,6 +42,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_down_pane_entry,
 	&cmd_find_window_entry,
 	&cmd_has_session_entry,
+	&cmd_if_shell_entry,
 	&cmd_kill_pane_entry,
 	&cmd_kill_server_entry,
 	&cmd_kill_session_entry,
