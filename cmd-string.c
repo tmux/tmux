@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.17 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: cmd-string.c,v 1.18 2009-07-09 18:03:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -114,6 +114,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			buf = xrealloc(buf, 1, len + strlen(t) + 1);
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
+			xfree(t);
 
 			have_arg = 1;
 			break;
@@ -219,6 +220,7 @@ cmd_string_string(const char *s, size_t *p, char endch, int esc)
 			buf = xrealloc(buf, 1, len + strlen(t) + 1);
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
+			xfree(t);
 			continue;
                 }
 
