@@ -1,4 +1,4 @@
-/* $OpenBSD$ */
+/* $Id: cmd-if-shell.c,v 1.2 2009-07-09 18:16:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
