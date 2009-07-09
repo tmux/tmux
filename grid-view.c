@@ -1,4 +1,4 @@
-/* $Id: grid-view.c,v 1.15 2009-07-01 19:14:33 nicm Exp $ */
+/* $Id: grid-view.c,v 1.16 2009-07-09 18:04:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -132,11 +132,9 @@ grid_view_insert_lines(struct grid *gd, u_int py, u_int ny)
 
 /* Insert lines in region. */
 void
-grid_view_insert_lines_region(
-    struct grid *gd, unused u_int rupper, u_int rlower, u_int py, u_int ny)
+grid_view_insert_lines_region(struct grid *gd, u_int rlower, u_int py, u_int ny)
 {
-	GRID_DEBUG(
-	    gd, "rupper=%u, rlower=%u, py=%u, ny=%u", rupper, rlower, py, ny);
+	GRID_DEBUG(gd, "rlower=%u, py=%u, ny=%u", rlower, py, ny);
 
 	rlower = grid_view_y(gd, rlower);
 
@@ -163,11 +161,9 @@ grid_view_delete_lines(struct grid *gd, u_int py, u_int ny)
 
 /* Delete lines inside scroll region. */
 void
-grid_view_delete_lines_region(
-    struct grid *gd, unused u_int rupper, u_int rlower, u_int py, u_int ny)
+grid_view_delete_lines_region(struct grid *gd, u_int rlower, u_int py, u_int ny)
 {
-	GRID_DEBUG(
-	    gd, "rupper=%u, rlower=%u, py=%u, ny=%u", rupper, rlower, py, ny);
+	GRID_DEBUG(gd, "rlower=%u, py=%u, ny=%u", rlower, py, ny);
 
 	rlower = grid_view_y(gd, rlower);
 
