@@ -443,7 +443,7 @@ window_copy_copy_selection(struct window_pane *wp, struct client *c)
 		xx = window_copy_find_length(wp, sy);
 		window_copy_copy_line(wp, &buf, &off, sy, sx, xx);
 		if (ey - sy > 1) {
-			for (i = sy + 1; i < ey - 1; i++) {
+			for (i = sy + 1; i < ey; i++) {
 				xx = window_copy_find_length(wp, i);
 				window_copy_copy_line(wp, &buf, &off, i, 0, xx);
 			}
