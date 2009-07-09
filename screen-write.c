@@ -232,8 +232,15 @@ screen_write_cursorup(struct screen_write_ctx *ctx, u_int ny)
 	if (ny == 0)
 		ny = 1;
 
-	if (ny > s->cy)
-		ny = s->cy;
+	if (s->cy < s->rupper) {
+		/* Above region. */
+		if (ny > s->cy)
+			ny = s->cy;
+	} else {
+		/* Below region. */
+		if (ny > s->cy - s->rupper)
+			ny = s->cy - s->rupper;
+	}
 	if (ny == 0)
 		return;
 
@@ -249,8 +256,15 @@ screen_write_cursordown(struct screen_write_ctx *ctx, u_int ny)
 	if (ny == 0)
 		ny = 1;
 
-	if (ny > screen_size_y(s) - 1 - s->cy)
-		ny = screen_size_y(s) - 1 - s->cy;
+	if (s->cy > s->rlower) {
+		/* Below region. */
+		if (ny > screen_size_y(s) - 1 - s->cy)
+			ny = screen_size_y(s) - 1 - s->cy;
+	} else {
+		/* Above region. */
+		if (ny > s->rlower - s->cy)
+			ny = s->rlower - s->cy;
+	}
 	if (ny == 0)
 		return;
 
