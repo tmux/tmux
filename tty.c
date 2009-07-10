@@ -157,11 +157,8 @@ tty_start_tty(struct tty *tty)
 	if (ioctl(tty->fd, TIOCFLUSH, &what) != 0)
 		fatal("ioctl(TIOCFLUSH)");
 
-	tty_putcode(tty, TTYC_IS1);
-	tty_putcode(tty, TTYC_IS2);
-	tty_putcode(tty, TTYC_IS3);
-
 	tty_putcode(tty, TTYC_SMCUP);
+
 	tty_putcode(tty, TTYC_SMKX);
 	tty_putcode(tty, TTYC_ENACS);
 	tty_putcode(tty, TTYC_CLEAR);
@@ -200,12 +197,13 @@ tty_stop_tty(struct tty *tty)
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_SGR0));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
-	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
 	if (tty_term_has(tty->term, TTYC_KMOUS))
 		tty_raw(tty, "\033[?1000l");
+
+	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
 }
 
 #if 0
