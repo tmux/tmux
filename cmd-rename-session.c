@@ -53,5 +53,7 @@ cmd_rename_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	xfree(s->name);
 	s->name = xstrdup(data->arg);
 
+	server_status_session(s);
+
 	return (0);
 }
