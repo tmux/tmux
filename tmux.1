@@ -1090,6 +1090,18 @@ environment variable or, if it is unset, the user's shell returned by
 Set the default working directory for processes created from keys, or
 interactively from the prompt.
 The default is the current working directory when the server is started.
+.It Ic default-terminal Ar terminal
+Set the default terminal for new windows created in this session - the
+default value of the
+.Ev TERM
+environment variable.
+For
+.Nm
+to work correctly, this
+.Em must
+be set to
+.Ql screen
+or a derivative of it.
 .It Ic display-time Ar time
 Set the amount of time for which status line messages are displayed.
 .Ar time

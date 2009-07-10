@@ -270,6 +270,7 @@ main(int argc, char **argv)
 	options_set_number(&global_s_options, "bell-action", BELL_ANY);
 	options_set_number(&global_s_options, "buffer-limit", 9);
 	options_set_string(&global_s_options, "default-command", "%s", "");
+	options_set_string(&global_s_options, "default-terminal", "screen");
 	options_set_number(&global_s_options, "display-time", 750);
 	options_set_number(&global_s_options, "history-limit", 2000);
 	options_set_number(&global_s_options, "lock-after-time", 0);
