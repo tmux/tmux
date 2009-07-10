@@ -1090,6 +1090,10 @@ environment variable or, if it is unset, the user's shell returned by
 Set the default working directory for processes created from keys, or
 interactively from the prompt.
 The default is the current working directory when the server is started.
+.It Ic display-time Ar time
+Set the amount of time for which status line messages are displayed.
+.Ar time
+is in milliseconds.
 .It Ic history-limit Ar lines
 Set the maximum number of lines held in window history.
 This setting applies only to new windows - existing window histories are not
@@ -1135,10 +1139,10 @@ or
 Set status line message foreground colour.
 .It Ic prefix Ar key
 Set the current prefix key.
-.It Ic repeat-time Ar number
+.It Ic repeat-time Ar time
 Allow multiple commands to be entered without pressing the prefix-key again
 in the specified
-.Ar number
+.Ar time
 milliseconds (the default is 500).
 Whether a key repeats may be set when it is bound using the
 .Fl r
