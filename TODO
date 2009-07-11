@@ -97,4 +97,7 @@
   	internally b) change paste-buffer to translate \r to \n per xterm c)
   	add a -r option to paste-buffer to turn off the translation
 - paste-buffer etc should be able to handle \0, so needs a size member and no more strlen
+- is utf8 a valid charset in LANG? also check for "unicode" in TERM
+- what about utmp etc? can tmux update it like screen? setgid?
+- system-wide configuration file
 - tidy up and prioritise todo list ;-)
