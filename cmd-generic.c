@@ -23,9 +23,9 @@
 
 #include "tmux.h"
 
-#define CMD_FLAGS "adDgkuU"
+#define CMD_FLAGS "adDgkruU"
 #define CMD_FLAGMASK (CMD_AFLAG|CMD_DFLAG|CMD_BIGDFLAG|CMD_GFLAG|CMD_KFLAG| \
-    CMD_UFLAG|CMD_BIGUFLAG)
+    CMD_RFLAG|CMD_UFLAG|CMD_BIGUFLAG)
 
 int	cmd_do_flags(int, int, int *);
 size_t	cmd_print_flags(char *, size_t, size_t, int);
@@ -73,6 +73,12 @@ cmd_do_flags(int opt, int iflags, int *oflags)
 			return (0);
 		}
 		return (-1);
+	case 'r':
+		if (iflags & CMD_RFLAG) {
+			(*oflags) |= CMD_RFLAG;
+			return (0);
+		}
+		return (-1);
 	case 'u':
 		if (iflags & CMD_UFLAG) {
 			(*oflags) |= CMD_UFLAG;
@@ -107,6 +113,8 @@ cmd_print_flags(char *buf, size_t len, size_t off, int flags)
 		off += xsnprintf(buf + off, len - off, "g");
 	if (off < len && flags & CMD_KFLAG)
 		off += xsnprintf(buf + off, len - off, "k");
+	if (off < len && flags & CMD_RFLAG)
+		off += xsnprintf(buf + off, len - off, "r");
 	if (off < len && flags & CMD_UFLAG)
 		off += xsnprintf(buf + off, len - off, "u");
 	if (off < len && flags & CMD_BIGUFLAG)

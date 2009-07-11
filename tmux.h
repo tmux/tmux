@@ -858,6 +858,7 @@ struct cmd_entry {
 #define CMD_UFLAG 0x100
 #define CMD_BIGDFLAG 0x200
 #define CMD_BIGUFLAG 0x400
+#define CMD_RFLAG 0x800
 
 	int		 flags;
 
