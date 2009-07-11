@@ -172,7 +172,7 @@ grid_scroll_line(struct grid *gd)
 
  	GRID_DEBUG(gd, "");
 
-	if (gd->hsize >= gd->hlimit - 1) {
+	if (gd->hsize >= gd->hlimit) {
 		/* If the limit is hit, free the bottom 10% and shift up. */
 		yy = gd->hlimit / 10;
 		if (yy < 1)
