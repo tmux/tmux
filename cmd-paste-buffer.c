@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.16 2009-07-02 16:23:54 nicm Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.17 2009-07-12 17:11:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,11 +27,12 @@
  */
 
 int	cmd_paste_buffer_exec(struct cmd *, struct cmd_ctx *);
+void	cmd_paste_buffer_lf2cr(struct buffer *, const char *, size_t);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", "pasteb",
-	"[-d] " CMD_BUFFER_WINDOW_USAGE,
-	CMD_DFLAG,
+	"[-dr] " CMD_BUFFER_WINDOW_USAGE,
+	CMD_DFLAG|CMD_RFLAG,
 	cmd_buffer_init,
 	cmd_buffer_parse,
 	cmd_paste_buffer_exec,
@@ -63,8 +64,16 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (pb != NULL && *pb->data != '\0')
-		buffer_write(w->active->out, pb->data, strlen(pb->data));
+	if (pb != NULL && *pb->data != '\0') {
+		/* -r means raw data without LF->CR conversion. */
+		if (data->flags & CMD_RFLAG) {
+			buffer_write(
+			    w->active->out, pb->data, strlen(pb->data));
+		} else {
+			cmd_paste_buffer_lf2cr(
+			    w->active->out, pb->data, strlen(pb->data));
+		}
+	}
 
 	/* Delete the buffer if -d. */
 	if (data->flags & CMD_DFLAG) {
@@ -75,4 +84,22 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
  	return (0);
+}
+
+/* Add bytes to a buffer but change every '\n' to '\r'. */
+void
+cmd_paste_buffer_lf2cr(struct buffer *b, const char *data, size_t size)
+{
+	const char	*end = data + size;
+	const char	*lf;
+
+	while ((lf = memchr(data, '\n', end - data)) != NULL) {
+		if (lf != data)
+			buffer_write(b, data, lf - data);
+		buffer_write8(b, '\r');
+		data = lf + 1;
+	}
+
+	if (end != data)
+		buffer_write(b, data, end - data);
 }

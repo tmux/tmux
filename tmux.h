@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.354 2009-07-12 17:07:58 nicm Exp $ */
+/* $Id: tmux.h,v 1.355 2009-07-12 17:11:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -857,6 +857,7 @@ struct cmd_entry {
 #define CMD_UFLAG 0x100
 #define CMD_BIGDFLAG 0x200
 #define CMD_BIGUFLAG 0x400
+#define CMD_RFLAG 0x800
 
 	int		 flags;
 
