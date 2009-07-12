@@ -346,6 +346,9 @@ server_main(int srv_fd)
 		server_handle_windows(&pfd);
 		server_handle_clients(&pfd);
 
+		/* Collect any unset key bindings. */
+		key_bindings_clean();
+		
 		/*
 		 * If we have no sessions and clients left, let's get out
 		 * of here...
