@@ -709,6 +709,7 @@ status_prompt_key(struct client *c, int key)
 		}
 		break;
 	case MODEKEYCMD_STARTOFLINE:
+	case MODEKEYCMD_BACKTOINDENTATION:
 		if (c->prompt_index != 0) {
 			c->prompt_index = 0;
 			c->flags |= CLIENT_STATUS;

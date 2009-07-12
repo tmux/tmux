@@ -50,6 +50,7 @@ int	window_copy_is_space(struct window_pane *, u_int, u_int);
 u_int	window_copy_find_length(struct window_pane *, u_int);
 void	window_copy_set_cursor_x(struct window_pane *, u_int);
 void	window_copy_cursor_start_of_line(struct window_pane *);
+void	window_copy_cursor_back_to_indentation(struct window_pane *);
 void	window_copy_cursor_end_of_line(struct window_pane *);
 void	window_copy_cursor_left(struct window_pane *);
 void	window_copy_cursor_right(struct window_pane *);
@@ -206,6 +207,9 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		break;
 	case MODEKEYCMD_STARTOFLINE:
 		window_copy_cursor_start_of_line(wp);
+		break;
+	case MODEKEYCMD_BACKTOINDENTATION:
+		window_copy_cursor_back_to_indentation(wp);
 		break;
 	case MODEKEYCMD_ENDOFLINE:
 		window_copy_cursor_end_of_line(wp);
@@ -598,6 +602,33 @@ window_copy_cursor_start_of_line(struct window_pane *wp)
 		window_copy_redraw_lines(wp, data->cy, 1);
 	else
 		window_copy_update_cursor(wp);
+}
+
+void
+window_copy_cursor_back_to_indentation(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	u_int				 px, py, xx;
+	const struct grid_cell		*gc;
+
+	px = 0;
+	py = screen_hsize(&wp->base) + data->cy - data->oy;
+	xx = window_copy_find_length(wp, py);
+
+	/*
+	 * Don't use window_copy_is_space because that treats some word
+	 * delimiters as spaces.
+	 */
+	while (px < xx) {
+		gc = grid_peek_cell(wp->base.grid, px, py);
+		if (gc->flags & GRID_FLAG_UTF8)
+			break;
+		if (gc->data != ' ')
+			break;
+		px++;
+	}
+
+	window_copy_set_cursor_x(wp, px);
 }
 
 void
