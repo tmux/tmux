@@ -847,7 +847,7 @@ and
 .Ar command
 are the name of and command to execute in the initial window.
 .It Xo Ic new-window
-.Op Fl d
+.Op Fl dk
 .Op Fl n Ar window-name
 .Op Fl t Ar target-window
 .Op Ar command
@@ -858,7 +858,10 @@ If
 .Fl d
 is given, the session does not make the new window the current window.
 .Ar target-window
-represents the window to be created.
+represents the window to be created; if the target already exists an error is
+shown, unless the
+.Fl k
+flag is used, in which case it is destroyed.
 .Ar command
 is the command to execute.
 If
