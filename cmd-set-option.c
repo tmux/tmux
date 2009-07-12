@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.64 2009-07-08 18:03:03 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.65 2009-07-12 17:07:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,6 +53,7 @@ const struct set_option_entry set_option_table[NSETOPTION] = {
 	{ "buffer-limit", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "default-command", SET_OPTION_STRING, 0, 0, NULL },
 	{ "default-path", SET_OPTION_STRING, 0, 0, NULL },
+	{ "default-terminal", SET_OPTION_STRING, 0, 0, NULL },
 	{ "display-time", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "history-limit", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "lock-after-time", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
