@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-session.c,v 1.15 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-rename-session.c,v 1.16 2009-07-12 17:09:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,6 +52,8 @@ cmd_rename_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	xfree(s->name);
 	s->name = xstrdup(data->arg);
+
+	server_status_session(s);
 
 	return (0);
 }
