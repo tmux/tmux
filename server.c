@@ -171,6 +171,17 @@ server_start(char *path)
 	start_time = time(NULL);
 	socket_path = path;
 
+	if (access(SYSTEM_CFG, R_OK) != 0) {
+		if (errno != ENOENT) {
+			log_warn("%s", SYSTEM_CFG);
+			exit(1);
+		}
+	} else {
+		if (load_cfg(SYSTEM_CFG, &cause) != 0) {
+			log_warnx("%s", cause);
+			exit(1);
+		}
+	}
 	if (cfg_file != NULL && load_cfg(cfg_file, &cause) != 0) {
 		log_warnx("%s", cause);
 		exit(1);
