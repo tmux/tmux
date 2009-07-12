@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.62 2009-07-12 16:56:56 nicm Exp $ */
+/* $Id: window-copy.c,v 1.63 2009-07-12 17:11:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -522,7 +522,15 @@ window_copy_find_length(struct window_pane *wp, u_int py)
 	const struct grid_cell	*gc;
 	u_int			 px;
 
+	/*
+	 * If the pane has been resized, its grid can contain old overlong
+	 * lines. grid_peek_cell does not allow accessing cells beyond the
+	 * width of the grid, and screen_write_copy treats them as spaces, so
+	 * ignore them here too.
+	 */
 	px = wp->base.grid->size[py];
+	if (px > screen_size_x(&wp->base))
+		px = screen_size_x(&wp->base);
 	while (px > 0) {
 		gc = grid_peek_cell(wp->base.grid, px - 1, py);
 		if (gc->flags & GRID_FLAG_UTF8)
