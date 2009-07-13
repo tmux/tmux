@@ -19,9 +19,11 @@
 #include <sys/types.h>
 
 #include <errno.h>
+#include <pwd.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -33,6 +35,7 @@ int	cmd_string_getc(const char *, size_t *);
 void	cmd_string_ungetc(const char *, size_t *);
 char   *cmd_string_string(const char *, size_t *, char, int);
 char   *cmd_string_variable(const char *, size_t *);
+char   *cmd_string_expand_tilde(const char *, size_t *);
 
 int
 cmd_string_getc(const char *s, size_t *p)
@@ -154,6 +157,17 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 
 			rval = 0;
 			goto out;
+		case '~':
+			if (have_arg == 0) {
+				if ((t = cmd_string_expand_tilde(s, &p)) == NULL)
+					goto error;
+				buf = xrealloc(buf, 1, len + strlen(t) + 1);
+				strlcpy(buf + len, t, strlen(t) + 1);
+				len += strlen(t);
+				xfree(t);
+				break;
+			}
+			/* FALLTHROUGH */
 		default:
 			if (len >= SIZE_MAX - 2)
 				goto error;
@@ -308,4 +322,32 @@ error:
 	if (buf != NULL)
 		xfree(buf);
 	return (NULL);
+}
+
+char *
+cmd_string_expand_tilde(const char *s, size_t *p)
+{
+	struct passwd	*pw;
+	char		*home, *path, *username;
+
+	home = NULL;
+	if (cmd_string_getc(s, p) == '/') {
+		if ((home = getenv("HOME")) == NULL) {
+			if ((pw = getpwuid(getuid())) != NULL)
+				home = pw->pw_dir;
+		}
+	} else {
+		cmd_string_ungetc(s, p);
+		if ((username = cmd_string_string(s, p, '/', 0)) == NULL)
+			return (NULL);
+		if ((pw = getpwnam(username)) != NULL)
+			home = pw->pw_dir;
+		if (username != NULL)
+			xfree(username);
+	}
+	if (home == NULL)
+		return (NULL);
+
+	xasprintf(&path, "%s/", home);
+	return (path);
 }
