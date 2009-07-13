@@ -1151,7 +1151,10 @@ input_handle_sequence_el(struct input_ctx *ictx)
 void
 input_handle_sequence_sm(struct input_ctx *ictx)
 {
-	uint16_t	n;
+	struct window_pane	*wp = ictx->wp;
+	struct screen		*s = &wp->base;
+	u_int			 sx, sy;
+	uint16_t		 n;
 
 	if (ARRAY_LENGTH(&ictx->args) > 1)
 		return;
@@ -1171,6 +1174,29 @@ input_handle_sequence_sm(struct input_ctx *ictx)
 		case 1000:
 			screen_write_mousemode(&ictx->ctx, 1);
 			log_debug("mouse on");
+			break;
+		case 1049:
+			if (wp->saved_grid != NULL)
+				break;
+			sx = screen_size_x(s);
+			sy = screen_size_y(s);
+
+			/*
+			 * Enter alternative screen mode. A copy of the visible
+			 * screen is saved and the history is not updated
+			 */
+
+			wp->saved_grid = grid_create(sx, sy, 0);
+			grid_duplicate_lines(
+			    wp->saved_grid, 0, s->grid, screen_hsize(s), sy);
+			wp->saved_cx = s->cx;
+			wp->saved_cy = s->cy;
+			
+			grid_view_clear(s->grid, 0, 0, sx, sy);
+
+			wp->base.grid->flags &= ~GRID_HISTORY;
+
+			wp->flags |= PANE_REDRAW;
 			break;
 		default:
 			log_debug("unknown SM [%hhu]: %u", ictx->private, n);
@@ -1195,7 +1221,10 @@ input_handle_sequence_sm(struct input_ctx *ictx)
 void
 input_handle_sequence_rm(struct input_ctx *ictx)
 {
-	uint16_t	 n;
+	struct window_pane	*wp = ictx->wp;
+	struct screen		*s = &wp->base;
+	u_int			 sx, sy;
+	uint16_t		 n;
 
 	if (ARRAY_LENGTH(&ictx->args) > 1)
 		return;
@@ -1215,6 +1244,47 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 		case 1000:
 			screen_write_mousemode(&ictx->ctx, 0);
 			log_debug("mouse off");
+			break;
+		case 1049:
+			if (wp->saved_grid == NULL)
+				break;
+			sx = screen_size_x(s);
+			sy = screen_size_y(s);
+
+			/* 
+			 * Exit alternative screen mode and restore the copied
+			 * grid.
+			 */
+
+			/*
+			 * If the current size is bigger, temporarily resize
+			 * to the old size before copying back.
+			 */
+			if (sy > wp->saved_grid->sy)
+				screen_resize(s, sx, wp->saved_grid->sy);
+
+			/* Restore the grid and cursor position. */
+			grid_duplicate_lines(
+			    s->grid, screen_hsize(s), wp->saved_grid, 0, sy);
+			s->cx = wp->saved_cx;
+			if (s->cx > screen_size_x(s) - 1)
+				s->cx = screen_size_x(s) - 1;
+			s->cy = wp->saved_cy;
+			if (s->cy > screen_size_y(s) - 1)
+				s->cy = screen_size_y(s) - 1;
+
+			/*
+			 * Turn history back on (so resize can use it) and then
+			 * resize back to the current size.
+			 */
+  			wp->base.grid->flags |= GRID_HISTORY;
+			if (sy > wp->saved_grid->sy)
+				screen_resize(s, sx, sy);
+
+			grid_destroy(wp->saved_grid);
+			wp->saved_grid = NULL;
+
+			wp->flags |= PANE_REDRAW;
 			break;
 		default:
 			log_debug("unknown RM [%hhu]: %u", ictx->private, n);

@@ -95,6 +95,8 @@ grid_create(u_int sx, u_int sy, u_int hlimit)
 	gd->sx = sx;
 	gd->sy = sy;
 
+	gd->flags = GRID_HISTORY;
+
 	gd->hsize = 0;
 	gd->hlimit = hlimit;
 
@@ -516,4 +518,48 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 		off--;
 	buf[off] = '\0';
 	return (buf);
+}
+
+/* 
+ * Duplicate a set of lines between two grids. If there aren't enough lines in
+ * either source or destination, the number of lines is limited to the number
+ * available.
+ */
+void
+grid_duplicate_lines(
+    struct grid *dst, u_int dy, struct grid *src, u_int sy, u_int ny)
+{
+	u_int	yy;
+
+	GRID_DEBUG(src, "dy=%u, sy=%u, ny=%u", dy, sy, ny);
+
+	if (dy + ny > dst->hsize + dst->sy)
+		ny = dst->hsize + dst->sy - dy;
+	if (sy + ny > src->hsize + src->sy)
+		ny = src->hsize + src->sy - sy;
+	grid_clear_lines(dst, dy, ny);
+
+	for (yy = 0; yy < ny; yy++) {
+		dst->size[dy] = src->size[sy];
+		if (src->size[sy] == 0)
+			dst->data[dy] = NULL;
+		else {
+			dst->data[dy] = xcalloc(
+			    src->size[sy], sizeof **dst->data);
+			memcpy(dst->data[dy], src->data[sy],
+			    src->size[sy] * (sizeof **dst->data));
+		}
+
+		dst->usize[dy] = src->usize[sy];
+		if (src->usize[sy] == 0)
+			dst->udata[dy] = NULL;
+		else {
+			dst->udata[sy] = xcalloc(
+			    src->usize[sy], sizeof **dst->udata);
+			memcpy(dst->udata[dy], src->udata[sy],
+			    src->usize[sy] * (sizeof **dst->udata));
+		}
+
+		sy++; dy++;
+	}
 }

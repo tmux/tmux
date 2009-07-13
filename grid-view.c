@@ -92,7 +92,7 @@ grid_view_scroll_region_up(struct grid *gd, u_int rupper, u_int rlower)
 {
 	GRID_DEBUG(gd, "rupper=%u, rlower=%u", rupper, rlower);
 
-	if (rupper == 0 && rlower == gd->sy - 1) {
+	if (gd->flags & GRID_HISTORY && rupper == 0 && rlower == gd->sy - 1) {
 		grid_scroll_line(gd);
 		return;
 	}
