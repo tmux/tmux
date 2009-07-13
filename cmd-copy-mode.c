@@ -28,7 +28,7 @@ int	cmd_copy_mode_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_copy_mode_entry = {
 	"copy-mode", NULL,
-	CMD_TARGET_WINDOW_USAGE,
+	"[-u] " CMD_TARGET_WINDOW_USAGE,
 	CMD_UFLAG,
 	cmd_target_init,
 	cmd_target_parse,
