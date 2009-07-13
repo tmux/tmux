@@ -91,7 +91,6 @@
 - status-active-fg/bg/attr would be nice to highlight active window, as would options to set
   the highlight stuff
 - XXX once env stuff is in, default-path and VISUAL/EDITOR should be picked up when session is started
-- expand leading ~ in source-file save-buffer etc
 - the copy mode next-word behaviour is emacs style (end of word) rather than vi style (start of word) even in vi keys mode,
 - when moving up from a blank line in copy mode it always assumes you were at the end of the line so it can be a bit funny. should remember last non-blank x position and use that
 - paste-buffer etc should be able to handle \0, so needs a size member and no more strlen
