@@ -32,7 +32,7 @@ int	cmd_resize_pane_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_resize_pane_entry = {
 	"resize-pane", "resizep",
 	CMD_PANE_WINDOW_USAGE "[-DU] [adjustment]",
-	CMD_ARG01|CMD_BIGUFLAG|CMD_BIGDFLAG,
+	CMD_ARG01, CMD_CHFLAG('D')|CMD_CHFLAG('U'),
 	cmd_resize_pane_init,
 	cmd_pane_parse,
 	cmd_resize_pane_exec,
@@ -51,12 +51,12 @@ cmd_resize_pane_init(struct cmd *self, int key)
 	data = self->data;
 
 	if (key == KEYC_ADDCTL(KEYC_DOWN))
-		data->flags |= CMD_BIGDFLAG;
+		data->chflags |= CMD_CHFLAG('D');
 
 	if (key == KEYC_ADDESC(KEYC_UP))
 		data->arg = xstrdup("5");
 	if (key == KEYC_ADDESC(KEYC_DOWN)) {
-		data->flags |= CMD_BIGDFLAG;
+		data->chflags |= CMD_CHFLAG('D');
 		data->arg = xstrdup("5");
 	}
 }
@@ -92,7 +92,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (!(data->flags & CMD_BIGDFLAG))
+	if (!(data->chflags & CMD_CHFLAG('D')))
 		adjust = -adjust;
 	if (layout_resize(wp, adjust) != 0) {
 		ctx->error(ctx, "layout %s "

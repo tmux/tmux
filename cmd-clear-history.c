@@ -29,7 +29,7 @@ int	cmd_clear_history_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_clear_history_entry = {
 	"clear-history", "clearhist",
 	CMD_PANE_WINDOW_USAGE,
-	0,
+	0, 0,
 	cmd_pane_init,
 	cmd_pane_parse,
 	cmd_clear_history_exec,

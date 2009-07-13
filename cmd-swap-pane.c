@@ -46,7 +46,7 @@ struct cmd_swap_pane_data {
 const struct cmd_entry cmd_swap_pane_entry = {
 	"swap-pane", "swapp",
 	"[-dDU] [-t target-window] [-p src-index] [-q dst-index]",
-	0,
+	0, 0,
 	cmd_swap_pane_init,
 	cmd_swap_pane_parse,
 	cmd_swap_pane_exec,

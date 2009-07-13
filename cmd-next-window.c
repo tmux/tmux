@@ -30,7 +30,7 @@ int	cmd_next_window_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_next_window_entry = {
 	"next-window", "next",
 	"[-a] " CMD_TARGET_SESSION_USAGE,
-	CMD_AFLAG,
+	0, CMD_CHFLAG('a'),
 	cmd_next_window_init,
 	cmd_target_parse,
 	cmd_next_window_exec,
@@ -49,7 +49,7 @@ cmd_next_window_init(struct cmd *self, int key)
 	data = self->data;
 
 	if (key == KEYC_ADDESC('n'))
-		data->flags |= CMD_AFLAG;
+		data->chflags |= CMD_CHFLAG('a');
 }
 
 int
@@ -63,7 +63,7 @@ cmd_next_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 
 	activity = 0;
-	if (data->flags & CMD_AFLAG)
+	if (data->chflags & CMD_CHFLAG('a'))
 		activity = 1;
 
 	if (session_next(s, activity) == 0)

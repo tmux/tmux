@@ -29,7 +29,7 @@ int	cmd_refresh_client_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_refresh_client_entry = {
 	"refresh-client", "refresh",
 	CMD_TARGET_CLIENT_USAGE,
-	0,
+	0, 0,
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_refresh_client_exec,

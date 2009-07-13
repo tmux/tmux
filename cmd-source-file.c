@@ -39,7 +39,7 @@ struct cmd_source_file_data {
 const struct cmd_entry cmd_source_file_entry = {
 	"source-file", "source",
 	"path",
-	0,
+	0, 0,
 	cmd_source_file_init,
 	cmd_source_file_parse,
 	cmd_source_file_exec,

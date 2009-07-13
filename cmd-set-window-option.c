@@ -32,7 +32,7 @@ int	cmd_set_window_option_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_set_window_option_entry = {
 	"set-window-option", "setw",
 	CMD_OPTION_WINDOW_USAGE,
-	CMD_GFLAG|CMD_UFLAG,
+	0, CMD_CHFLAG('g')|CMD_CHFLAG('u'),
 	NULL,
 	cmd_option_parse,
 	cmd_set_window_option_exec,
@@ -81,7 +81,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const struct set_option_entry   *entry;
 	u_int				 i;
 
-	if (data->flags & CMD_GFLAG)
+	if (data->chflags & CMD_CHFLAG('g'))
 		oo = &global_w_options;
 	else {
 		if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
@@ -114,8 +114,8 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if (data->flags & CMD_UFLAG) {
-		if (data->flags & CMD_GFLAG) {
+	if (data->chflags & CMD_CHFLAG('u')) {
+		if (data->chflags & CMD_CHFLAG('g')) {
 			ctx->error(ctx,
 			    "can't unset global option: %s", entry->name);
 			return (-1);

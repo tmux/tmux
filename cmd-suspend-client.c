@@ -37,7 +37,7 @@ struct cmd_suspend_client_data {
 const struct cmd_entry cmd_suspend_client_entry = {
 	"suspend-client", "suspendc",
 	"[-c target-client]",
-	0,
+	0, 0,
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_suspend_client_exec,

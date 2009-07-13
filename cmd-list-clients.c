@@ -32,7 +32,7 @@ int	cmd_list_clients_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_list_clients_entry = {
 	"list-clients", "lsc",
 	"",
-	0,
+	0, 0,
 	NULL,
 	NULL,
 	cmd_list_clients_exec,

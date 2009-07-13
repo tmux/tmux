@@ -35,7 +35,7 @@ int	cmd_load_buffer_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_load_buffer_entry = {
 	"load-buffer", "loadb",
 	CMD_BUFFER_SESSION_USAGE " path",
-	CMD_ARG1,
+	CMD_ARG1, 0,
 	cmd_buffer_init,
 	cmd_buffer_parse,
 	cmd_load_buffer_exec,

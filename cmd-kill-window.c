@@ -29,7 +29,7 @@ int	cmd_kill_window_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_kill_window_entry = {
 	"kill-window", "killw",
 	CMD_TARGET_WINDOW_USAGE,
-	0,
+	0, 0,
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_kill_window_exec,

@@ -32,7 +32,7 @@ int	cmd_kill_server_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_kill_server_entry = {
 	"kill-server", NULL,
 	"",
-	0,
+	0, 0,
 	NULL,
 	NULL,
 	cmd_kill_server_exec,

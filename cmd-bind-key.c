@@ -40,7 +40,7 @@ struct cmd_bind_key_data {
 const struct cmd_entry cmd_bind_key_entry = {
 	"bind-key", "bind",
 	"[-r] key command [arguments]",
-	0,
+	0, 0,
 	NULL,
 	cmd_bind_key_parse,
 	cmd_bind_key_exec,

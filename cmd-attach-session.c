@@ -29,7 +29,7 @@ int	cmd_attach_session_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_attach_session_entry = {
 	"attach-session", "attach",
 	"[-d] " CMD_TARGET_SESSION_USAGE,
-       	CMD_DFLAG|CMD_CANTNEST|CMD_STARTSERVER,
+       	CMD_CANTNEST|CMD_STARTSERVER, CMD_CHFLAG('d'),
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_attach_session_exec,
@@ -67,7 +67,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if (data->flags & CMD_DFLAG)
+	if (data->chflags & CMD_CHFLAG('d'))
 		server_write_session(s, MSG_DETACH, NULL, 0);
 	ctx->cmdclient->session = s;
 

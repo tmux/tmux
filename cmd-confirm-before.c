@@ -38,7 +38,7 @@ struct cmd_confirm_before_data {
 const struct cmd_entry cmd_confirm_before_entry = {
 	"confirm-before", "confirm",
 	CMD_TARGET_CLIENT_USAGE " command",
-	CMD_ARG1,
+	CMD_ARG1, 0,
 	cmd_confirm_before_init,
 	cmd_target_parse,
 	cmd_confirm_before_exec,

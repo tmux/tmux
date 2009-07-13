@@ -31,7 +31,7 @@ int	cmd_swap_window_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_swap_window_entry = {
 	"swap-window", "swapw",
 	"[-d] " CMD_SRCDST_WINDOW_USAGE,
-	CMD_DFLAG,
+	0, CMD_CHFLAG('d'),
 	cmd_srcdst_init,
 	cmd_srcdst_parse,
 	cmd_swap_window_exec,
@@ -61,7 +61,7 @@ cmd_swap_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	wl_dst->window = wl_src->window;
 	wl_src->window = w;
 
-	if (!(data->flags & CMD_DFLAG)) {
+	if (!(data->chflags & CMD_CHFLAG('d'))) {
 		session_select(dst, wl_dst->idx);
 		if (src != dst)
 			session_select(src, wl_src->idx);

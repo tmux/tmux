@@ -32,7 +32,7 @@ void	cmd_paste_buffer_lf2cr(struct buffer *, const char *, size_t);
 const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", "pasteb",
 	"[-dr] " CMD_BUFFER_WINDOW_USAGE,
-	CMD_DFLAG|CMD_RFLAG,
+	0, CMD_CHFLAG('d')|CMD_CHFLAG('r'),
 	cmd_buffer_init,
 	cmd_buffer_parse,
 	cmd_paste_buffer_exec,
@@ -66,7 +66,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (pb != NULL && *pb->data != '\0') {
 		/* -r means raw data without LF->CR conversion. */
-		if (data->flags & CMD_RFLAG) {
+		if (data->chflags & CMD_CHFLAG('r')) {
 			buffer_write(
 			    w->active->out, pb->data, strlen(pb->data));
 		} else {
@@ -76,7 +76,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	/* Delete the buffer if -d. */
-	if (data->flags & CMD_DFLAG) {
+	if (data->chflags & CMD_CHFLAG('d')) {
 		if (data->buffer == -1)
 			paste_free_top(&s->buffers);
 		else

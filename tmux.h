@@ -861,16 +861,12 @@ struct cmd_entry {
 #define CMD_CANTNEST 0x2
 #define CMD_ARG1 0x4
 #define CMD_ARG01 0x8
-#define CMD_AFLAG 0x10
-#define CMD_DFLAG 0x20
-#define CMD_GFLAG 0x40
-#define CMD_KFLAG 0x80
-#define CMD_UFLAG 0x100
-#define CMD_BIGDFLAG 0x200
-#define CMD_BIGUFLAG 0x400
-#define CMD_RFLAG 0x800
-
 	int		 flags;
+
+#define CMD_CHFLAG(flag) \
+	((flag) >= 'a' && (flag) <= 'z' ? 1ULL << ((flag) - 'a') :	\
+	(flag) >= 'A' && (flag) <= 'Z' ? 1ULL << (26 + (flag) - 'A') : 0)
+	uint64_t	 chflags;
 
 	void		 (*init)(struct cmd *, int);
 	int		 (*parse)(struct cmd *, int, char **, char **);
@@ -883,34 +879,34 @@ struct cmd_entry {
 
 /* Generic command data. */
 struct cmd_target_data {
-	int	 flags;
+	uint64_t chflags;
 	char	*target;
 	char	*arg;
 };
 
 struct cmd_srcdst_data {
-	int	 flags;
+	uint64_t chflags;
 	char	*src;
 	char	*dst;
 	char	*arg;
 };
 
 struct cmd_buffer_data {
-	int	 flags;
+	uint64_t chflags;
 	char	*target;
 	int	 buffer;
 	char	*arg;
 };
 
 struct cmd_option_data {
-	int	 flags;
+	uint64_t chflags;
 	char	*target;
 	char	*option;
 	char	*value;
 };
 
 struct cmd_pane_data {
-	int	 flags;
+	uint64_t chflags;
 	char	*target;
 	char	*arg;
 	int	 pane;
