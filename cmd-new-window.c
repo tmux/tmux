@@ -126,18 +126,8 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (data == NULL)
 		return (0);
 
-	if (arg_parse_window(data->target, &s, &idx) != 0) {
-		ctx->error(ctx, "bad window: %s", data->target);
+	if ((idx = cmd_find_index(ctx, data->target, &s)) == -2)
 		return (-1);
-	}
-	if (s == NULL)
-		s = ctx->cursession;
-	if (s == NULL)
-		s = cmd_current_session(ctx);
-	if (s == NULL) {
-		ctx->error(ctx, "session not found: %s", data->target);
-		return (-1);
-	}
 
 	wl = NULL;
 	if (idx != -1)

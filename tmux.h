@@ -1076,11 +1076,6 @@ int		 paste_replace(struct paste_stack *, u_int, char *);
 /* clock.c */
 void		 clock_draw(struct screen_write_ctx *, u_int, int);
 
-/* arg.c */
-struct client 	*arg_parse_client(const char *);
-struct session 	*arg_parse_session(const char *);
-int		 arg_parse_window(const char *, struct session **, int *);
-
 /* cmd.c */
 struct cmd	*cmd_parse(int, char **, char **);
 int		 cmd_exec(struct cmd *, struct cmd_ctx *);
@@ -1094,7 +1089,9 @@ struct session	*cmd_current_session(struct cmd_ctx *);
 struct client	*cmd_find_client(struct cmd_ctx *, const char *);
 struct session	*cmd_find_session(struct cmd_ctx *, const char *);
 struct winlink	*cmd_find_window(
-    		     struct cmd_ctx *, const char *, struct session **);
+		     struct cmd_ctx *, const char *, struct session **);
+int		 cmd_find_index(
+		     struct cmd_ctx *, const char *, struct session **);
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;

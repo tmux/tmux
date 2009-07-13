@@ -500,8 +500,14 @@ These specify the client, session or window which a command should affect.
 .Ar target-client
 is the name of the
 .Xr pty 4
-file to which the client is connected, for example
+file to which the client is connected, for example either of
+.Pa /dev/ttyp1
+or
+.Pa ttyp1
+for the client attached to 
 .Pa /dev/ttyp1 .
+If no client is specified, the current client is chosen, if possible, or an
+error is reported.
 Clients may be listed with the
 .Ic list-clients
 command.
@@ -509,23 +515,32 @@ command.
 .Ar target-session
 is either the name of a session (as listed by the
 .Ic list-sessions
-command) or the name of a client,
+command) or the name of a client with the same syntax as
 .Ar target-client ,
 in which case the session attached to the client is used.
-An
+When looking for the session name, 
+.Nm
+initially searches for an exact match; if none is found, the session names
+are checked for any for which
+.Ar target-session
+is a prefix or for which it matches as an
 .Xr fnmatch 3
-pattern may be used to match the session name.
-If a session is omitted when required,
-.Nm tmux
-attempts to use the current session; if no current session is available, the
-most recently created is chosen.
-If no client is specified, the current client is chosen, if possible, or an
-error is reported.
+pattern.
+If a single match is found, it is used as the target session; multiple matches
+produce an error
+If a session is omitted, the current session is used if available; if no
+current session is available, the most recently created is chosen.
 .Pp
 .Ar target-window
 specifies a window in the form
-.Em session Ns \&: Ns Em index ,
-for example mysession:1.
+.Em session Ns \&: Ns Em window ,
+where
+.Em window
+is a window index, for example mysession:1, or a window name,
+.Xr fnmatch 3
+pattern, or prefix, such as mysession:mywin[0-3].
+If the latter, the window is looked up in a similar fashion to session name
+searches described above.
 The session is in the same form as for
 .Ar target-session .
 .Em session ,
@@ -536,7 +551,7 @@ If
 is omitted, the same rules as for
 .Ar target-session
 are followed; if
-.Em index
+.Em window
 is not present, the current window for the given session is used.
 When the argument does not contain a colon,
 .Nm
