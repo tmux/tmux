@@ -98,4 +98,6 @@
 - is utf8 a valid charset in LANG? also check for "unicode" in TERM
 - what about utmp etc? can tmux update it like screen? setgid?
 - option to show bells visually
+- window-status command to show current window info in status line
+- H/M/L commands in copy mode with vi-keys, for jumping to the top/middle/last line on the screen
 - tidy up and prioritise todo list ;-)
