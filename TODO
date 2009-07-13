@@ -97,5 +97,5 @@
 - paste-buffer etc should be able to handle \0, so needs a size member and no more strlen
 - is utf8 a valid charset in LANG? also check for "unicode" in TERM
 - what about utmp etc? can tmux update it like screen? setgid?
-- system-wide configuration file
+- option to show bells visually
 - tidy up and prioritise todo list ;-)
