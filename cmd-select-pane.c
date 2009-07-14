@@ -58,8 +58,8 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (wp->flags & PANE_HIDDEN) {
-		ctx->error(ctx, "pane %d is hidden", data->pane);
+	if (!window_pane_visible(wp)) {
+		ctx->error(ctx, "pane %d is not visible", data->pane);
 		return (-1);
 	}
 	window_set_active_pane(wl->window, wp);

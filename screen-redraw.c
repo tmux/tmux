@@ -35,6 +35,9 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py)
 		return (0);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (!window_pane_visible(wp))
+			continue;
+
 		/* Inside pane. */
 		if (px >= wp->xoff && px < wp->xoff + wp->sx &&
 		    py >= wp->yoff && py < wp->yoff + wp->sy)
@@ -104,7 +107,7 @@ screen_redraw_screen(struct client *c)
 
 	/* Draw the panes. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp->flags & PANE_HIDDEN)
+		if (!window_pane_visible(wp))
 			continue;
 
 		tty_reset(tty);

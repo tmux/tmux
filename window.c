@@ -291,8 +291,14 @@ void
 window_set_active_pane(struct window *w, struct window_pane *wp)
 {
 	w->active = wp;
-	while (w->active->flags & PANE_HIDDEN)
+
+	while (!window_pane_visible(w->active)) {
 		w->active = TAILQ_PREV(w->active, window_panes, entry);
+		if (w->active == NULL)
+			w->active = TAILQ_LAST(&w->panes, window_panes);
+		if (w->active == wp)
+			return;
+	}
 }
 
 struct window_pane *
@@ -605,6 +611,18 @@ window_pane_mouse(
 			wp->mode->mouse(wp, c, b, x, y);
 	} else
 		input_mouse(wp, b, x, y);
+}
+
+int
+window_pane_visible(struct window_pane *wp)
+{
+	struct window	*w = wp->window;
+
+	if (wp->xoff >= w->sx || wp->yoff >= w->sy)
+		return (0);
+	if (wp->xoff + wp->sx > w->sx || wp->yoff + wp->sy > w->sy)
+		return (0);
+	return (1);
 }
 
 char *

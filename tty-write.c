@@ -44,7 +44,7 @@ tty_vwrite_cmd(struct window_pane *wp, enum tty_cmd cmd, va_list ap)
 
 	if (wp->window->flags & WINDOW_REDRAW || wp->flags & PANE_REDRAW)
 		return;
-	if (wp->window->flags & WINDOW_HIDDEN || wp->flags & PANE_HIDDEN)
+	if (wp->window->flags & WINDOW_HIDDEN || !window_pane_visible(wp))
 		return;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {

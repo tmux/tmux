@@ -125,14 +125,19 @@ void
 layout_active_only_refresh(struct window *w, unused int active_only)
 {
 	struct window_pane	*wp;
+	u_int			 xoff;
 
+	xoff = w->sx;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp == w->active) {
-			wp->flags &= ~PANE_HIDDEN;
-			wp->xoff = wp->yoff = 0;
-			window_pane_resize(wp, w->sx, w->sy);
-		} else
-			wp->flags |= PANE_HIDDEN;
+		/* Put the active pane on screen and the rest to the right. */
+		if (wp == w->active)
+			wp->xoff = 0;
+		else {
+			wp->xoff = xoff;
+			xoff += w->sx;
+		}
+		wp->yoff = 0;
+		window_pane_resize(wp, w->sx, w->sy);
 	}
 }
 
@@ -145,6 +150,12 @@ layout_even_h_refresh(struct window *w, int active_only)
 	if (active_only)
 		return;
 
+	/* If the screen is too small, show active only. */
+	if (w->sx < PANE_MINIMUM || w->sy < PANE_MINIMUM) {
+		layout_active_only_refresh(w, active_only);
+		return;
+	}
+
 	/* Get number of panes. */
 	n = window_count_panes(w);
 	if (n == 0)
@@ -153,19 +164,13 @@ layout_even_h_refresh(struct window *w, int active_only)
 	/* How many can we fit? */
 	if (w->sx / n < PANE_MINIMUM) {
 		width = PANE_MINIMUM;
-		n = w->sx / PANE_MINIMUM;
+		n = UINT_MAX;
 	} else
 		width = w->sx / n;
 
 	/* Fit the panes. */
 	i = xoff = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (i > n) {
-			wp->flags |= PANE_HIDDEN;
-			continue;
-		}
-		wp->flags &= ~PANE_HIDDEN;
-
 		wp->xoff = xoff;
 		wp->yoff = 0;
 		if (i != n - 1)
@@ -193,6 +198,12 @@ layout_even_v_refresh(struct window *w, int active_only)
 	if (active_only)
 		return;
 
+	/* If the screen is too small, show active only. */
+	if (w->sx < PANE_MINIMUM || w->sy < PANE_MINIMUM) {
+		layout_active_only_refresh(w, active_only);
+		return;
+	}
+
 	/* Get number of panes. */
 	n = window_count_panes(w);
 	if (n == 0)
@@ -201,19 +212,13 @@ layout_even_v_refresh(struct window *w, int active_only)
 	/* How many can we fit? */
 	if (w->sy / n < PANE_MINIMUM) {
 		height = PANE_MINIMUM;
-		n = w->sy / PANE_MINIMUM;
+		n = UINT_MAX;
 	} else
 		height = w->sy / n;
 
 	/* Fit the panes. */
 	i = yoff = 0;
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (i > n) {
-			wp->flags |= PANE_HIDDEN;
-			continue;
-		}
-		wp->flags &= ~PANE_HIDDEN;
-
 		wp->xoff = 0;
 		wp->yoff = yoff;
 		if (i != n - 1)
@@ -250,7 +255,8 @@ layout_main_v_refresh(struct window *w, int active_only)
 	mainwidth = options_get_number(&w->options, "main-pane-width") + 1;
 
 	/* Need >1 pane and minimum columns; if fewer, display active only. */
-	if (n == 1 || w->sx < mainwidth + PANE_MINIMUM) {
+	if (n == 1 ||
+	    w->sx < mainwidth + PANE_MINIMUM || w->sy < PANE_MINIMUM) {
 		layout_active_only_refresh(w, active_only);
 		return;
 	}
@@ -270,15 +276,8 @@ layout_main_v_refresh(struct window *w, int active_only)
 			wp->xoff = 0;
 			wp->yoff = 0;
 			window_pane_resize(wp, mainwidth - 1, w->sy);
-			wp->flags &= ~PANE_HIDDEN;
 			continue;
 		}
-
-		if (i > n) {
-			wp->flags |= PANE_HIDDEN;
-			continue;
-		}
-		wp->flags &= ~PANE_HIDDEN;
 
 		wp->xoff = mainwidth;
 		wp->yoff = yoff;
@@ -320,7 +319,8 @@ layout_main_h_refresh(struct window *w, int active_only)
 	mainheight = options_get_number(&w->options, "main-pane-height") + 1;
 
 	/* Need >1 pane and minimum rows; if fewer, display active only. */
-	if (n == 1 || w->sy < mainheight + PANE_MINIMUM) {
+	if (n == 1 ||
+	    w->sy < mainheight + PANE_MINIMUM || w->sx < PANE_MINIMUM) {
 		layout_active_only_refresh(w, active_only);
 		return;
 	}
@@ -340,15 +340,8 @@ layout_main_h_refresh(struct window *w, int active_only)
 			wp->xoff = 0;
 			wp->yoff = 0;
 			window_pane_resize(wp, w->sx, mainheight - 1);
-			wp->flags &= ~PANE_HIDDEN;
 			continue;
 		}
-
-		if (i > n) {
-			wp->flags |= PANE_HIDDEN;
-			continue;
-		}
-		wp->flags &= ~PANE_HIDDEN;
 
 		wp->xoff = xoff;
 		wp->yoff = mainheight;
