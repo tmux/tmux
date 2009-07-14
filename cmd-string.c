@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.20 2009-07-14 06:38:14 nicm Exp $ */
+/* $Id: cmd-string.c,v 1.21 2009-07-14 06:54:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -158,16 +158,13 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			rval = 0;
 			goto out;
 		case '~':
-			if (!have_arg) {
-				t = cmd_string_expand_tilde(s, &p);
-				if (t == NULL)
+			if (have_arg == 0) {
+				if ((t = cmd_string_expand_tilde(s, &p)) == NULL)
 					goto error;
 				buf = xrealloc(buf, 1, len + strlen(t) + 1);
 				strlcpy(buf + len, t, strlen(t) + 1);
 				len += strlen(t);
 				xfree(t);
-				
-				have_arg = 1;
 				break;
 			}
 			/* FALLTHROUGH */
