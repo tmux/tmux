@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.155 2009-07-08 18:03:03 nicm Exp $ */
+/* $Id: server.c,v 1.156 2009-07-14 06:38:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -172,6 +172,17 @@ server_start(char *path)
 	start_time = time(NULL);
 	socket_path = path;
 
+	if (access(SYSTEM_CFG, R_OK) != 0) {
+		if (errno != ENOENT) {
+			log_warn("%s", SYSTEM_CFG);
+			exit(1);
+		}
+	} else {
+		if (load_cfg(SYSTEM_CFG, &cause) != 0) {
+			log_warnx("%s", cause);
+			exit(1);
+		}
+	}
 	if (cfg_file != NULL && load_cfg(cfg_file, &cause) != 0) {
 		log_warnx("%s", cause);
 		exit(1);

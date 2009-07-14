@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.112 2009-07-12 17:12:06 nicm Exp $
+.\" $Id: tmux.1,v 1.113 2009-07-14 06:38:14 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -70,7 +70,9 @@ to assume the terminal supports default colours.
 Specify an alternative configuration file.
 By default,
 .Nm
-will look for a config file at
+loads the system configuration file from
+.Pa /etc/tmux.conf ,
+if present, then looks for a user configuration file at
 .Pa ~/.tmux.conf .
 The configuration file is a set of
 .Nm
@@ -1549,11 +1551,13 @@ not be linked to no sessions.
 Move up a pane.
 .El
 .Sh FILES
-.Bl -tag -width "~/.tmux.confXXX" -compact
+.Bl -tag -width "/etc/tmux.confXXX" -compact
 .It Pa ~/.tmux.conf
 Default
 .Nm
 configuration file.
+.It Pa /etc/tmux.conf
+System-wide configuration file.
 .El
 .Sh SEE ALSO
 .Xr pty 4

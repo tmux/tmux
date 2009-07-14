@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.22 2009-07-12 17:12:41 nicm Exp $ */
+/* $Id: grid.c,v 1.23 2009-07-14 06:38:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>

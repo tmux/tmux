@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.355 2009-07-12 17:11:39 nicm Exp $ */
+/* $Id: tmux.h,v 1.356 2009-07-14 06:38:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,8 +39,9 @@
 
 extern const char    *__progname;
 
-/* Default configuration file. */
+/* Default configuration files. */
 #define DEFAULT_CFG ".tmux.conf"
+#define SYSTEM_CFG "/etc/tmux.conf"
 
 /* Default prompt history length. */
 #define PROMPT_HISTORY 100
