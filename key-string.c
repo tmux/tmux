@@ -57,6 +57,7 @@ struct {
 	{ "PPage",	KEYC_PPAGE },
 	{ "Tab",	'\011' },
 	{ "BTab",	KEYC_BTAB },
+	{ "BSpace",	'\177' },
 
 	/* Arrow keys. */
 	{ "Up",		KEYC_UP },
