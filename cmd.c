@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.100 2009-07-09 18:14:18 nicm Exp $ */
+/* $Id: cmd.c,v 1.101 2009-07-14 06:42:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,8 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+#include <fnmatch.h>
+#include <paths.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -99,6 +101,11 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_up_pane_entry,
 	NULL
 };
+
+struct session	*cmd_newest_session(void);
+struct client	*cmd_lookup_client(const char *);
+struct session	*cmd_lookup_session(const char *, int *);
+struct winlink	*cmd_lookup_window(struct session *, const char *, int *);
 
 struct cmd *
 cmd_parse(int argc, char **argv, char **cause)
@@ -294,106 +301,421 @@ cmd_recv_string(struct buffer *b)
 	return (s);
 }
 
+/*
+ * Figure out the current session. Use: 1) the current session, if the command
+ * context has one; 2) the session specified in the TMUX variable from the
+ * environment (as passed from the client); 3) the newest session.
+ */
 struct session *
 cmd_current_session(struct cmd_ctx *ctx)
 {
 	struct msg_command_data	*data = ctx->msgdata;
-	struct timeval		*tv;
-	struct session		*s, *newest = NULL;
-	u_int			 i;
+	struct session		*s;
 
 	if (ctx->cursession != NULL)
 		return (ctx->cursession);
 
 	if (data != NULL && data->pid != -1) {
-		if (data->pid != getpid()) {
-			ctx->error(ctx, "wrong server: %ld", (long) data->pid);
+		if (data->pid != getpid())
 			return (NULL);
-		}
-		if (data->idx > ARRAY_LENGTH(&sessions)) {
-			ctx->error(ctx, "index out of range: %d", data->idx);
+		if (data->idx > ARRAY_LENGTH(&sessions))
 			return (NULL);
-		}
-		if ((s = ARRAY_ITEM(&sessions, data->idx)) == NULL) {
-			ctx->error(ctx, "session doesn't exist: %u", data->idx);
+		if ((s = ARRAY_ITEM(&sessions, data->idx)) == NULL)
 			return (NULL);
-		}
 		return (s);
 	}
 
-	tv = NULL;
+	return (cmd_newest_session());
+}
+
+/* Find the newest session. */
+struct session *
+cmd_newest_session(void)
+{
+	struct session	*s, *snewest;
+	struct timeval	*tv = NULL;
+	u_int		 i;
+
+	snewest = NULL;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		s = ARRAY_ITEM(&sessions, i);
-		if (s != NULL && (tv == NULL || timercmp(&s->tv, tv, >))) {
-			newest = ARRAY_ITEM(&sessions, i);
+		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
+			continue;
+
+		if (tv == NULL || timercmp(&s->tv, tv, >)) {
+			snewest = s;
 			tv = &s->tv;
 		}
 	}
-	return (newest);
+
+	return (snewest);
 }
 
+/* Find the target client or report an error and return NULL. */
 struct client *
 cmd_find_client(struct cmd_ctx *ctx, const char *arg)
 {
 	struct client	*c;
+	char		*tmparg;
+	size_t		 arglen;
 
+	/* A NULL argument means the current client. */
 	if (arg == NULL)
-		c = ctx->curclient;
-	else {
-		if ((c = arg_parse_client(arg)) == NULL) {
-			if (arg != NULL)
-				ctx->error(ctx, "client not found: %s", arg);
-			else
-				ctx->error(ctx, "no client found");
-		}
-	}
+		return (ctx->curclient);
+	tmparg = xstrdup(arg);
+
+	/* Trim a single trailing colon if any. */
+	arglen = strlen(tmparg);
+	if (arglen != 0 && tmparg[arglen - 1] == ':')
+		tmparg[arglen - 1] = '\0';
+
+	/* Find the client, if any. */
+	c = cmd_lookup_client(tmparg);
+
+	/* If no client found, report an error. */
+	if (c == NULL)
+		ctx->error(ctx, "client not found: %s", tmparg);
+
+	xfree(tmparg);
 	return (c);
 }
 
+/*
+ * Lookup a client by device path. Either of a full match and a match without a
+ * leading _PATH_DEV ("/dev/") is accepted.
+ */
+struct client *
+cmd_lookup_client(const char *name)
+{
+	struct client	*c;
+	const char	*path;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		if ((c = ARRAY_ITEM(&clients, i)) == NULL)
+			continue;
+		path = c->tty.path;
+
+		/* Check for exact matches. */
+		if (strcmp(name, path) == 0)
+			return (c);
+
+		/* Check without leading /dev if present. */
+		if (strncmp(path, _PATH_DEV, (sizeof _PATH_DEV) - 1) != 0)
+			continue;
+		if (strcmp(name, path + (sizeof _PATH_DEV) - 1) == 0)
+			return (c);
+	}
+
+	return (NULL);
+}
+
+/* Lookup a session by name. If no session is found, NULL is returned. */
+struct session *
+cmd_lookup_session(const char *name, int *ambiguous)
+{
+	struct session	*s, *sfound;
+	u_int		 i;
+
+	*ambiguous = 0;
+
+	/*
+	 * Look for matches. Session names must be unique so an exact match
+	 * can't be ambigious and can just be returned.
+	 */
+	sfound = NULL;
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {	
+		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
+			continue;
+
+		/* Check for an exact match and return it if found. */
+		if (strcmp(name, s->name) == 0)
+			return (s);
+		
+		/* Then check for pattern matches. */
+		if (strncmp(name, s->name, strlen(name)) == 0 ||
+		    fnmatch(name, s->name, 0) == 0) {
+			if (sfound != NULL) {
+				*ambiguous = 1;
+				return (NULL);
+			}
+			sfound = s;
+		}
+	}
+		
+ 	return (sfound);
+}
+
+/*
+ * Lookup a window or return -1 if not found or ambigious. First try as an index
+ * and if invalid, use fnmatch or leading prefix.
+ */
+struct winlink *
+cmd_lookup_window(struct session *s, const char *name, int *ambiguous)
+{
+	struct winlink	*wl, *wlfound;
+	struct window	*w;
+	const char	*errstr;
+	u_int		 idx;
+
+	*ambiguous = 0;
+
+	/* First see if this is a valid window index in this session. */
+	idx = strtonum(name, 0, INT_MAX, &errstr);
+	if (errstr == NULL) {
+		if ((wl = winlink_find_by_index(&s->windows, idx)) != NULL)
+			return (wl);
+	}
+		
+	/* Look for exact matches, error if more than one. */
+	wlfound = NULL;
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		w = wl->window;
+		if (strcmp(name, w->name) == 0) {
+			if (wlfound != NULL) {
+				*ambiguous = 1;
+				return (NULL);
+			}
+			wlfound = wl;
+		}
+	}
+	if (wlfound != NULL)
+		return (wlfound);
+
+	/* Now look for pattern matches, again error if multiple. */
+	wlfound = NULL;
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		w = wl->window;
+		if (strncmp(name, w->name, strlen(name)) == 0 ||
+		    fnmatch(name, w->name, 0) == 0) {
+			if (wlfound != NULL) {
+				*ambiguous = 1;
+				return (NULL);
+			}
+			wlfound = wl;
+		}
+	}	
+	if (wlfound != NULL)
+		return (wlfound);
+
+	return (NULL);
+}
+
+/* Find the target session or report an error and return NULL. */
 struct session *
 cmd_find_session(struct cmd_ctx *ctx, const char *arg)
 {
 	struct session	*s;
+	struct client	*c;
+	char		*tmparg;
+	size_t		 arglen;
+	int		 ambiguous;
 
+	/* A NULL argument means the current session. */
 	if (arg == NULL)
-		s = cmd_current_session(ctx);
-	else {
-		if ((s = arg_parse_session(arg)) == NULL) {
-			if (arg != NULL)
-				ctx->error(ctx, "session not found: %s", arg);
-			else
-				ctx->error(ctx, "no session found");
-		}
+		return (cmd_current_session(ctx));
+	tmparg = xstrdup(arg);
+
+	/* Trim a single trailing colon if any. */
+	arglen = strlen(tmparg);
+	if (arglen != 0 && tmparg[arglen - 1] == ':')
+		tmparg[arglen - 1] = '\0';
+
+	/* Find the session, if any. */
+	s = cmd_lookup_session(tmparg, &ambiguous);
+
+	/* If it doesn't, try to match it as a client. */
+	if (s == NULL && (c = cmd_lookup_client(tmparg)) != NULL)
+		s = c->session;
+
+	/* If no session found, report an error. */
+	if (s == NULL) {
+		if (ambiguous)
+			ctx->error(ctx, "more than one session: %s", tmparg);
+		else
+			ctx->error(ctx, "session not found: %s", tmparg);
 	}
+
+	xfree(tmparg);
 	return (s);
 }
 
+/* Find the target session and window or report an error and return NULL. */
 struct winlink *
 cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 {
 	struct session	*s;
 	struct winlink	*wl;
-	int		 idx;
+	const char	*winptr;
+	char		*sessptr = NULL;
+	int		 ambiguous = 0;
 
-	wl = NULL;
-	if (arg_parse_window(arg, &s, &idx) != 0) {
-		ctx->error(ctx, "bad window: %s", arg);
+	/*
+	 * Find the current session. There must always be a current session, if
+	 * it can't be found, report an error.
+	 */
+	if ((s = cmd_current_session(ctx)) == NULL) {
+		ctx->error(ctx, "can't establish current session");
 		return (NULL);
 	}
-	if (s == NULL)
-		s = ctx->cursession;
-	if (s == NULL)
-		s = cmd_current_session(ctx);
-	if (s == NULL)
-		return (NULL);
+
+	/* A NULL argument means the current session and window. */
+	if (arg == NULL) {
+		if (sp != NULL)
+			*sp = s;
+		return (s->curw);
+	}
+
+	/* Time to look at the argument. If it is empty, that is an error. */
+	if (*arg == '\0')
+		goto not_found;
+
+	/* Find the separating colon. If none, assume the current session. */
+	winptr = strchr(arg, ':');
+	if (winptr == NULL)
+		winptr = xstrdup(arg);
+	else {
+		winptr++;	/* skip : */
+		sessptr = xstrdup(arg);
+		*strchr(sessptr, ':') = '\0';
+	}
+
+	log_debug("%s: winptr=%s, sessptr=%s", __func__, winptr, sessptr);
+
+	/* Try to lookup the session if present. */
+	if (sessptr != NULL && *sessptr != '\0') {
+		if  ((s = cmd_lookup_session(sessptr, &ambiguous)) == NULL)
+			goto no_session;
+	}
 	if (sp != NULL)
 		*sp = s;
 
-	if (idx == -1)
+	/*
+	 * Then work out the window. An empty string is the current window,
+	 * otherwise try to look it up in the session.
+	 */
+	if (winptr == NULL || *winptr == '\0')
 		wl = s->curw;
-	else
-		wl = winlink_find_by_index(&s->windows, idx);
-	if (wl == NULL)
-		ctx->error(ctx, "window not found: %s:%d", s->name, idx);
+	else if ((wl = cmd_lookup_window(s, winptr, &ambiguous)) == NULL)
+		goto not_found;
+	
+	if (sessptr != NULL)
+		xfree(sessptr);
 	return (wl);
+
+no_session:
+	if (ambiguous)
+		ctx->error(ctx, "multiple sessions: %s", sessptr);
+	else
+		ctx->error(ctx, "session not found: %s", sessptr);
+	if (sessptr != NULL)
+		xfree(sessptr);
+	return (NULL);
+
+not_found:
+	if (ambiguous)
+		ctx->error(ctx, "multiple windows: %s", arg);
+	else
+		ctx->error(ctx, "window not found: %s", arg);
+	if (sessptr != NULL)
+		xfree(sessptr);
+	return (NULL);
+}
+
+/*
+ * Find the target session and window index, whether or not it exists in the
+ * session. Return -2 on error or -1 if no window index is specified. This is
+ * used when parsing an argument for a window target that may not be exist (for
+ * example it is going to be created).
+ */
+int
+cmd_find_index(struct cmd_ctx *ctx, const char *arg, struct session **sp)
+{
+	struct session	*s;
+	struct winlink	*wl;
+	const char	*winptr, *errstr;
+	char		*sessptr = NULL;
+	int		 idx, ambiguous = 0;
+
+	/*
+	 * Find the current session. There must always be a current session, if
+	 * it can't be found, report an error.
+	 */
+	if ((s = cmd_current_session(ctx)) == NULL) {
+		ctx->error(ctx, "can't establish current session");
+		return (NULL);
+	}
+
+	/* A NULL argument means the current session and "no window" (-1). */
+	if (arg == NULL) {
+		if (sp != NULL)
+			*sp = s;
+		return (-1);
+	}
+
+	/* Time to look at the argument. If it is empty, that is an error. */
+	if (*arg == '\0')
+		goto not_found;
+
+	/* Find the separating colon. If none, assume the current session. */
+	winptr = strchr(arg, ':');
+	if (winptr == NULL)
+		winptr = xstrdup(arg);
+	else {
+		winptr++;	/* skip : */
+		sessptr = xstrdup(arg);
+		*strchr(sessptr, ':') = '\0';
+	}
+
+	log_debug("%s: winptr=%s, sessptr=%s", __func__, winptr, sessptr);
+
+	/* Try to lookup the session if present. */
+	if (sessptr != NULL && *sessptr != '\0') {
+		if  ((s = cmd_lookup_session(sessptr, &ambiguous)) == NULL)
+			goto no_session;
+	}
+	if (sp != NULL)
+		*sp = s;
+
+	/*
+	 * Then work out the window. No : means "no window" (-1), an empty
+	 * string is the current window, otherwise try to look it up in the
+	 * session.
+	 */
+	if (winptr == NULL)
+		idx = -1;
+	else if (*winptr == '\0')
+		idx = s->curw->idx;
+	else if ((wl = cmd_lookup_window(s, winptr, &ambiguous)) == NULL) {
+		if (ambiguous)
+			goto not_found;
+		/* Don't care it doesn't exist if this is a valid index. */
+		idx = strtonum(winptr, 0, INT_MAX, &errstr);
+		if (errstr != NULL)  {
+			ctx->error(ctx, "index %s: %s", errstr, winptr);
+			idx = -2;
+		}
+	} else
+		idx = wl->idx;
+	
+	if (sessptr != NULL)
+		xfree(sessptr);
+	return (idx);
+
+no_session:
+	if (ambiguous)
+ 		ctx->error(ctx, "multiple sessions: %s", sessptr);
+	else
+		ctx->error(ctx, "session not found: %s", sessptr);
+	if (sessptr != NULL)
+		xfree(sessptr);
+	return (-2);
+
+not_found:
+	if (ambiguous)
+		ctx->error(ctx, "multiple windows: %s", arg);
+	else
+		ctx->error(ctx, "window not found: %s", arg);
+	if (sessptr != NULL)
+		xfree(sessptr);
+	return (-2);
 }
