@@ -63,9 +63,9 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py)
 	return (0);
 }
 
-/* Redraw entire screen.. */
+/* Redraw entire screen. */
 void
-screen_redraw_screen(struct client *c)
+screen_redraw_screen(struct client *c, int status_only)
 {
 	struct window		*w = c->session->curw->window;
 	struct tty		*tty = &c->tty;
@@ -75,7 +75,16 @@ screen_redraw_screen(struct client *c)
 	u_char			 choriz, cvert, cbackg;
 
 	/* Get status line, er, status. */
-	status = options_get_number(&c->session->options, "status");
+	if (c->message_string != NULL || c->prompt_string != NULL)
+		status = 1;
+	else
+		status = options_get_number(&c->session->options, "status");
+
+	/* If only drawing status and it is present, don't need the rest. */
+	if (status_only && status) {
+		tty_draw_line(tty, &c->status, 0, 0, tty->sy - 1);
+		return;
+	}
 
 	/* Work out ACS characters. */
 	if (tty_term_has(tty->term, TTYC_ACSC)) {
@@ -95,6 +104,8 @@ screen_redraw_screen(struct client *c)
 	if (has_acs)
 		tty_putcode(tty, TTYC_SMACS);
 	for (j = 0; j < tty->sy - status; j++) {
+		if (status_only && j != tty->sy - 1)
+			continue;
 		for (i = 0; i < tty->sx; i++) {
 			if (!screen_redraw_check_cell(c, i, j)) {
 				tty_cursor(tty, i, j, 0, 0);
@@ -120,12 +131,16 @@ screen_redraw_screen(struct client *c)
 			tty_putcode(tty, TTYC_SMACS);
 		if (wp->xoff > 0) {
 			for (i = wp->yoff; i < wp->yoff + sy; i++) {
+				if (status_only && i != tty->sy - 1)
+					continue;
 				tty_cursor(tty, wp->xoff - 1, i, 0, 0);
 				tty_putc(tty, cvert);
 			}
 		}
 		if (wp->xoff + sx < tty->sx) {
 			for (i = wp->yoff; i < wp->yoff + sy; i++) {
+				if (status_only && i != tty->sy - 1)
+					continue;
 				tty_cursor(tty, wp->xoff + sx, i, 0, 0);
 				tty_putc(&c->tty, cvert);
 			}
@@ -133,24 +148,33 @@ screen_redraw_screen(struct client *c)
 
 		/* Draw top and bottom borders. */
 		if (wp->yoff > 0) {
-			tty_cursor(tty, wp->xoff, wp->yoff - 1, 0, 0);
-			for (i = 0; i < sx; i++)
-				tty_putc(tty, choriz);
+			if (!status_only || wp->yoff - 1 == tty->sy - 1) {
+				tty_cursor(tty, wp->xoff, wp->yoff - 1, 0, 0);
+				for (i = 0; i < sx; i++)
+					tty_putc(tty, choriz);
+			}
 		}
 		if (wp->yoff + sy < tty->sy - status) {
-			tty_cursor(tty, wp->xoff, wp->yoff + sy, 0, 0);
-			for (i = 0; i < sx; i++)
-				tty_putc(tty, choriz);
+			if (!status_only || wp->yoff + sy == tty->sy - 1) {
+				tty_cursor(tty, wp->xoff, wp->yoff + sy, 0, 0);
+				for (i = 0; i < sx; i++)
+					tty_putc(tty, choriz);
+			}
 		}
 		if (has_acs)
 			tty_putcode(tty, TTYC_RMACS);
 
 		/* Draw the pane. */
-		screen_redraw_pane(c, wp);
+		for (i = 0; i < wp->sy; i++) {
+			if (status_only && i != tty->sy - 1)
+				continue;
+			tty_draw_line(tty, wp->screen, i, wp->xoff, wp->yoff);
+		}
 	}
 
 	/* Draw the status line. */
-	screen_redraw_status(c);
+	if (status)
+		tty_draw_line(tty, &c->status, 0, 0, tty->sy - 1);
 }
 
 /* Draw a single pane. */
@@ -161,12 +185,4 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 
 	for (i = 0; i < wp->sy; i++)
 		tty_draw_line(&c->tty, wp->screen, i, wp->xoff, wp->yoff);
-}
-
-
-/* Draw the status line. */
-void
-screen_redraw_status(struct client *c)
-{
-	tty_draw_line(&c->tty, &c->status, 0, 0, c->tty.sy - 1);
 }

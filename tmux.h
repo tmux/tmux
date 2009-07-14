@@ -1395,9 +1395,8 @@ void	 screen_write_cell(
     	     struct screen_write_ctx *, const struct grid_cell *, u_char *);
 
 /* screen-redraw.c */
-void	 screen_redraw_screen(struct client *);
+void	 screen_redraw_screen(struct client *, int);
 void	 screen_redraw_pane(struct client *, struct window_pane *);
-void	 screen_redraw_status(struct client *);
 
 /* screen.c */
 void	 screen_init(struct screen *, u_int, u_int, u_int);

@@ -44,24 +44,27 @@ status_redraw(struct client *c)
 	struct screen_write_ctx		ctx;
 	struct session		       *s = c->session;
 	struct winlink		       *wl;
-	struct window_pane	       *wp;
-	struct screen		       *sc = NULL, old_status;
+	struct screen		      	old_status;
 	char		 	       *left, *right, *text, *ptr;
 	size_t				llen, llen2, rlen, rlen2, offset;
-	size_t				xx, yy, sy, size, start, width;
+	size_t				xx, yy, size, start, width;
 	struct grid_cell	        stdgc, gc;
 	int				larrow, rarrow, utf8flag;
 
 	left = right = NULL;
 
+	/* No status line?*/
+	if (c->tty.sy == 0 || !options_get_number(&s->options, "status"))
+		return (1);
+	larrow = rarrow = 0;
+
 	/* Create the target screen. */
 	memcpy(&old_status, &c->status, sizeof old_status);
 	screen_init(&c->status, c->tty.sx, 1, 0);
 
-	/* No status line? */
-	if (c->tty.sy == 0 || !options_get_number(&s->options, "status"))
-		goto off;
-	larrow = rarrow = 0;
+	/* Create the target screen. */
+	memcpy(&old_status, &c->status, sizeof old_status);
+	screen_init(&c->status, c->tty.sx, 1, 0);
 
 	if (gettimeofday(&c->status_timer, NULL) != 0)
 		fatal("gettimeofday");
@@ -258,32 +261,6 @@ blank:
 	screen_write_cursormove(&ctx, 0, yy);
 	for (offset = 0; offset < c->tty.sx; offset++)
 		screen_write_putc(&ctx, &stdgc, ' ');
-
-	goto out;
-
-off:
-	/*
-	 * Draw the real window last line. Necessary to wipe over message if
-	 * status is off. Not sure this is the right place for this.
-	 */
-	memcpy(&stdgc, &grid_default_cell, sizeof stdgc);
-	screen_write_start(&ctx, NULL, &c->status);
-
-	sy = 0;
-	TAILQ_FOREACH(wp, &s->curw->window->panes, entry) {
-		sy += wp->sy + 1;
-		sc = wp->screen;
-	}
-
-	screen_write_cursormove(&ctx, 0, 0);
-	if (sy < c->tty.sy) {
-		/* If the screen is too small, use blank. */
- 		for (offset = 0; offset < c->tty.sx; offset++)
- 			screen_write_putc(&ctx, &stdgc, ' ');
-	} else {
-		screen_write_copy(&ctx,
-		    sc, 0, sc->grid->hsize + screen_size_y(sc) - 1, c->tty.sx, 1);
-	}
 
 out:
 	screen_write_stop(&ctx);
@@ -518,6 +495,8 @@ status_message_clear(struct client *c)
 
 	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_REDRAW;
+
+	screen_reinit(&c->status);
 }
 
 /* Draw client message on status line of present else on last line. */
@@ -603,6 +582,8 @@ status_prompt_clear(struct client *c)
 
 	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_REDRAW;
+
+	screen_reinit(&c->status);
 }
 
 /* Draw client prompt on status line of present else on last line. */

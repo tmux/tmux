@@ -557,7 +557,7 @@ server_check_redraw(struct client *c)
 		if (server_locked)
 			server_redraw_locked(c);
 		else
- 			screen_redraw_screen(c);
+ 			screen_redraw_screen(c, 0);
 		c->flags &= ~CLIENT_STATUS;
 	} else {
 		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
@@ -567,7 +567,7 @@ server_check_redraw(struct client *c)
 	}
 
 	if (c->flags & CLIENT_STATUS)
-		screen_redraw_status(c);
+		screen_redraw_screen(c, 1);
 
 	c->tty.flags |= flags;
 
@@ -598,7 +598,7 @@ server_redraw_locked(struct client *c)
 
 	for (i = 0; i < screen_size_y(&screen); i++)
 		tty_draw_line(&c->tty, &screen, i, 0, 0);
-	screen_redraw_status(c);
+	screen_redraw_screen(c, 1);
 
 	screen_free(&screen);
 }
