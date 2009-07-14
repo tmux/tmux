@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.357 2009-07-14 06:39:10 nicm Exp $ */
+/* $Id: tmux.h,v 1.358 2009-07-14 06:40:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1238,6 +1238,7 @@ SPLAY_PROTOTYPE(key_bindings, key_binding, entry, key_bindings_cmp);
 struct key_binding *key_bindings_lookup(int);
 void	 key_bindings_add(int, int, struct cmd_list *);
 void	 key_bindings_remove(int);
+void	 key_bindings_clean(void);
 void	 key_bindings_init(void);
 void	 key_bindings_free(void);
 void	 key_bindings_dispatch(struct key_binding *, struct client *);
