@@ -580,7 +580,7 @@ window_pane_parse(struct window_pane *wp)
 void
 window_pane_key(struct window_pane *wp, struct client *c, int key)
 {
- 	if (wp->fd == -1)
+	if (wp->fd == -1 || !window_pane_visible(wp))
 		return;
 
 	if (wp->mode != NULL) {
@@ -594,7 +594,7 @@ void
 window_pane_mouse(
     struct window_pane *wp, struct client *c, u_char b, u_char x, u_char y)
 {
- 	if (wp->fd == -1)
+	if (wp->fd == -1 || !window_pane_visible(wp))
 		return;
 
 	/* XXX convert from 1-based? */
