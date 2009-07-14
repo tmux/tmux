@@ -1,4 +1,4 @@
-/* $Id: cmd-copy-buffer.c,v 1.1 2009-02-03 17:21:19 tcunha Exp $ */
+/* $Id: cmd-copy-buffer.c,v 1.2 2009-07-14 06:43:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -42,7 +42,7 @@ struct cmd_copy_buffer_data {
 const struct cmd_entry cmd_copy_buffer_entry = {
 	"copy-buffer", "copyb",
 	"[-a src-index] [-b dst-index] [-s src-session] [-t dst-session]",
-	0,
+	0, 0,
 	cmd_copy_buffer_init,
 	cmd_copy_buffer_parse,
 	cmd_copy_buffer_exec,

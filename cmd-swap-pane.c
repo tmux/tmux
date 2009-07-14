@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-pane.c,v 1.6 2009-06-25 15:28:08 nicm Exp $ */
+/* $Id: cmd-swap-pane.c,v 1.7 2009-07-14 06:43:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,7 +46,7 @@ struct cmd_swap_pane_data {
 const struct cmd_entry cmd_swap_pane_entry = {
 	"swap-pane", "swapp",
 	"[-dDU] [-t target-window] [-p src-index] [-q dst-index]",
-	0,
+	0, 0,
 	cmd_swap_pane_init,
 	cmd_swap_pane_parse,
 	cmd_swap_pane_exec,

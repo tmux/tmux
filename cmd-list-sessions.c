@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.19 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.20 2009-07-14 06:43:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@ int	cmd_list_sessions_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_sessions_entry = {
 	"list-sessions", "ls", "",
-	0,
+	0, 0,
 	NULL,
 	NULL,
 	cmd_list_sessions_exec,

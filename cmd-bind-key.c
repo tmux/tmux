@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.21 2009-05-04 17:58:26 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.22 2009-07-14 06:43:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -40,7 +40,7 @@ struct cmd_bind_key_data {
 const struct cmd_entry cmd_bind_key_entry = {
 	"bind-key", "bind",
 	"[-r] key command [arguments]",
-	0,
+	0, 0,
 	NULL,
 	cmd_bind_key_parse,
 	cmd_bind_key_exec,

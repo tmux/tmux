@@ -1,4 +1,4 @@
-/* $Id: cmd-if-shell.c,v 1.2 2009-07-09 18:16:36 nicm Exp $ */
+/* $Id: cmd-if-shell.c,v 1.3 2009-07-14 06:43:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -44,7 +44,7 @@ struct cmd_if_shell_data {
 const struct cmd_entry cmd_if_shell_entry = {
 	"if-shell", "if",
 	"shell-command command",
-	0,
+	0, 0,
 	cmd_if_shell_init,
 	cmd_if_shell_parse,
 	cmd_if_shell_exec,

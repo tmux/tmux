@@ -1,4 +1,4 @@
-/* $Id: cmd-break-pane.c,v 1.3 2009-05-18 21:01:38 nicm Exp $ */
+/* $Id: cmd-break-pane.c,v 1.4 2009-07-14 06:43:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@ int	cmd_break_pane_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_break_pane_entry = {
 	"break-pane", "breakp",
 	CMD_PANE_WINDOW_USAGE " [-d]",
-	CMD_DFLAG,
+	0, CMD_CHFLAG('d'),
 	cmd_pane_init,
 	cmd_pane_parse,
 	cmd_break_pane_exec,
@@ -82,7 +82,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
  	w->name = default_window_name(w);
 
  	wl = session_attach(s, w, -1, &cause); /* can't fail */
- 	if (!(data->flags & CMD_DFLAG))
+ 	if (!(data->chflags & CMD_CHFLAG('d')))
  		session_select(s, wl->idx);
  	layout_refresh(w, 0);
 

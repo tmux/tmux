@@ -1,4 +1,4 @@
-/* $Id: cmd-delete-buffer.c,v 1.5 2009-05-04 17:58:26 nicm Exp $ */
+/* $Id: cmd-delete-buffer.c,v 1.6 2009-07-14 06:43:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@ int	cmd_delete_buffer_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_delete_buffer_entry = {
 	"delete-buffer", "deleteb",
 	CMD_BUFFER_SESSION_USAGE,
-	0,
+	0, 0,
 	cmd_buffer_init,
 	cmd_buffer_parse,
 	cmd_delete_buffer_exec,

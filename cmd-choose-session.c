@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-session.c,v 1.7 2009-05-04 17:58:26 nicm Exp $ */
+/* $Id: cmd-choose-session.c,v 1.8 2009-07-14 06:43:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@ void	cmd_choose_session_callback(void *, int);
 const struct cmd_entry cmd_choose_session_entry = {
 	"choose-session", NULL,
 	CMD_TARGET_WINDOW_USAGE,
-	0,
+	0, 0,
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_choose_session_exec,

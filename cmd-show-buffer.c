@@ -1,4 +1,4 @@
-/* $Id: cmd-show-buffer.c,v 1.4 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-show-buffer.c,v 1.5 2009-07-14 06:43:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@ int	cmd_show_buffer_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_show_buffer_entry = {
 	"show-buffer", "showb",
 	CMD_BUFFER_SESSION_USAGE,
-	0,
+	0, 0,
 	cmd_buffer_init,
 	cmd_buffer_parse,
 	cmd_show_buffer_exec,

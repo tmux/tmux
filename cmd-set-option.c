@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.65 2009-07-12 17:07:58 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.66 2009-07-14 06:43:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,7 @@ int	cmd_set_option_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set",
 	CMD_OPTION_SESSION_USAGE,
-	CMD_GFLAG|CMD_UFLAG,
+	0, CMD_CHFLAG('g')|CMD_CHFLAG('u'),
 	NULL,
 	cmd_option_parse,
 	cmd_set_option_exec,
@@ -87,7 +87,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const struct set_option_entry   *entry;
 	u_int				 i;
 
-	if (data->flags & CMD_GFLAG)
+	if (data->chflags & CMD_CHFLAG('g'))
 		oo = &global_s_options;
 	else {
 		if ((s = cmd_find_session(ctx, data->target)) == NULL)
@@ -120,8 +120,8 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if (data->flags & CMD_UFLAG) {
-		if (data->flags & CMD_GFLAG) {
+	if (data->chflags & CMD_CHFLAG('u')) {
+		if (data->chflags & CMD_CHFLAG('g')) {
 			ctx->error(ctx,
 			    "can't unset global option: %s", entry->name);
 			return (-1);

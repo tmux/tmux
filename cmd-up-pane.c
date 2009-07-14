@@ -1,4 +1,4 @@
-/* $Id: cmd-up-pane.c,v 1.7 2009-04-01 21:10:08 nicm Exp $ */
+/* $Id: cmd-up-pane.c,v 1.8 2009-07-14 06:43:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ int	cmd_up_pane_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_up_pane_entry = {
 	"up-pane", "upp",
 	CMD_TARGET_WINDOW_USAGE,
-	0,
+	0, 0,
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_up_pane_exec,

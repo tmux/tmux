@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.29 2009-07-14 06:42:05 nicm Exp $ */
+/* $Id: cmd-link-window.c,v 1.30 2009-07-14 06:43:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@ int	cmd_link_window_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_link_window_entry = {
 	"link-window", "linkw",
 	"[-dk] " CMD_SRCDST_WINDOW_USAGE,
-	CMD_DFLAG|CMD_KFLAG,
+	0, CMD_CHFLAG('d')|CMD_CHFLAG('k'),
 	cmd_srcdst_init,
 	cmd_srcdst_parse,
 	cmd_link_window_exec,
@@ -62,7 +62,7 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (wl_dst->window == wl_src->window)
 			return (0);
 
-		if (data->flags & CMD_KFLAG) {
+		if (data->chflags & CMD_CHFLAG('k')) {
 			/*
 			 * Can't use session_detach as it will destroy session
 			 * if this makes it empty.
@@ -73,7 +73,7 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 			/* Force select/redraw if current. */
 			if (wl_dst == dst->curw) {
-				data->flags &= ~CMD_DFLAG;
+				data->chflags &= ~CMD_CHFLAG('d');
 				dst->curw = NULL;
 			}
 		}
@@ -86,7 +86,7 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if (data->flags & CMD_DFLAG)
+	if (data->chflags & CMD_CHFLAG('d'))
 		server_status_session(dst);
 	else {
 		session_select(dst, wl_dst->idx);

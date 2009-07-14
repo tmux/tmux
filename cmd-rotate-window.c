@@ -1,4 +1,4 @@
-/* $Id: cmd-rotate-window.c,v 1.4 2009-06-25 15:28:08 nicm Exp $ */
+/* $Id: cmd-rotate-window.c,v 1.5 2009-07-14 06:43:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,7 +30,7 @@ int	cmd_rotate_window_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_rotate_window_entry = {
 	"rotate-window", "rotatew",
 	"[-DU] " CMD_TARGET_WINDOW_USAGE,
-	CMD_BIGUFLAG|CMD_BIGDFLAG,
+	0, CMD_CHFLAG('D')|CMD_CHFLAG('U'),
 	cmd_rotate_window_init,
 	cmd_target_parse,
 	cmd_rotate_window_exec,
@@ -49,7 +49,7 @@ cmd_rotate_window_init(struct cmd *self, int key)
 	data = self->data;
 
 	if (key == KEYC_ADDESC('o'))
-		data->flags |= CMD_BIGDFLAG;
+		data->chflags |= CMD_CHFLAG('D');
 }
 
 int
@@ -66,7 +66,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	w = wl->window;
 
-	if (data->flags & CMD_BIGDFLAG) {
+	if (data->chflags & CMD_CHFLAG('D')) {
 		wp = TAILQ_LAST(&w->panes, window_panes);
 		TAILQ_REMOVE(&w->panes, wp, entry);
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);

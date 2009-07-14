@@ -1,4 +1,4 @@
-/* $Id: cmd-load-buffer.c,v 1.6 2009-07-09 18:08:29 nicm Exp $ */
+/* $Id: cmd-load-buffer.c,v 1.7 2009-07-14 06:43:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -35,7 +35,7 @@ int	cmd_load_buffer_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_load_buffer_entry = {
 	"load-buffer", "loadb",
 	CMD_BUFFER_SESSION_USAGE " path",
-	CMD_ARG1,
+	CMD_ARG1, 0,
 	cmd_buffer_init,
 	cmd_buffer_parse,
 	cmd_load_buffer_exec,

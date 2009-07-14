@@ -1,4 +1,4 @@
-/* $Id: cmd-refresh-client.c,v 1.8 2009-01-19 18:23:40 nicm Exp $ */
+/* $Id: cmd-refresh-client.c,v 1.9 2009-07-14 06:43:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ int	cmd_refresh_client_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_refresh_client_entry = {
 	"refresh-client", "refresh",
 	CMD_TARGET_CLIENT_USAGE,
-	0,
+	0, 0,
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_refresh_client_exec,
