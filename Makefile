@@ -38,7 +38,7 @@ CDIAGFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CDIAGFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 CDIAGFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
 
-LDADD=  -lutil -lncurses
+LDADD=  -lutil -lcurses
 DPADD=  ${LIBUTIL}
 
 .include <bsd.prog.mk>
