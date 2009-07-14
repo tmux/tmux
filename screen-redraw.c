@@ -166,7 +166,7 @@ screen_redraw_screen(struct client *c, int status_only)
 
 		/* Draw the pane. */
 		for (i = 0; i < wp->sy; i++) {
-			if (status_only && i != tty->sy - 1)
+			if (status_only && wp->yoff + i != tty->sy - 1)
 				continue;
 			tty_draw_line(tty, wp->screen, i, wp->xoff, wp->yoff);
 		}

@@ -494,7 +494,7 @@ status_message_clear(struct client *c)
 	c->message_string = NULL;
 
 	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
-	c->flags |= CLIENT_REDRAW;
+	c->flags |= CLIENT_STATUS;
 
 	screen_reinit(&c->status);
 }
@@ -581,7 +581,7 @@ status_prompt_clear(struct client *c)
 	c->prompt_buffer = NULL;
 
 	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
-	c->flags |= CLIENT_REDRAW;
+	c->flags |= CLIENT_STATUS;
 
 	screen_reinit(&c->status);
 }
