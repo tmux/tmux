@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.72 2009-05-16 11:48:47 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.73 2009-07-14 06:39:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,6 +27,7 @@
 SPLAY_GENERATE(key_bindings, key_binding, entry, key_bindings_cmp);
 
 struct key_bindings	key_bindings;
+struct key_bindings	dead_key_bindings;
 
 int
 key_bindings_cmp(struct key_binding *bd1, struct key_binding *bd2)
@@ -48,12 +49,12 @@ key_bindings_add(int key, int can_repeat, struct cmd_list *cmdlist)
 {
 	struct key_binding	*bd;
 
-	if ((bd = key_bindings_lookup(key)) == NULL) {
-		bd = xmalloc(sizeof *bd);
-		bd->key = key;
-		SPLAY_INSERT(key_bindings, &key_bindings, bd);
-	} else
-		cmd_list_free(bd->cmdlist);
+	key_bindings_remove(key);
+		    
+	bd = xmalloc(sizeof *bd);
+	bd->key = key;
+	SPLAY_INSERT(key_bindings, &key_bindings, bd);
+	
 	bd->can_repeat = can_repeat;
 	bd->cmdlist = cmdlist;
 }
@@ -66,9 +67,20 @@ key_bindings_remove(int key)
 	if ((bd = key_bindings_lookup(key)) == NULL)
 		return;
 	SPLAY_REMOVE(key_bindings, &key_bindings, bd);
+	SPLAY_INSERT(key_bindings, &dead_key_bindings, bd);
+}
 
-	cmd_list_free(bd->cmdlist);
-	xfree(bd);
+void
+key_bindings_clean(void)
+{
+	struct key_binding	*bd;
+
+	while (!SPLAY_EMPTY(&dead_key_bindings)) {
+		bd = SPLAY_ROOT(&dead_key_bindings);
+		SPLAY_REMOVE(key_bindings, &dead_key_bindings, bd);
+		cmd_list_free(bd->cmdlist);
+		xfree(bd);
+	}
 }
 
 void
@@ -162,6 +174,7 @@ key_bindings_free(void)
 {
 	struct key_binding	*bd;
 
+	key_bindings_clean();
 	while (!SPLAY_EMPTY(&key_bindings)) {
 		bd = SPLAY_ROOT(&key_bindings);
 		SPLAY_REMOVE(key_bindings, &key_bindings, bd);
