@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.358 2009-07-14 06:40:03 nicm Exp $ */
+/* $Id: tmux.h,v 1.359 2009-07-14 06:40:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -442,6 +442,9 @@ struct grid_utf8 {
 
 /* Entire grid of cells. */
 struct grid {
+	int	flags;
+#define GRID_HISTORY 0x1	/* scroll lines into history */
+
 	u_int	sx;
 	u_int	sy;
 
@@ -612,6 +615,11 @@ struct window_pane {
 
 	struct screen	*screen;
 	struct screen	 base;
+
+	/* Saved in alternative screen mode. */
+ 	u_int		 saved_cx;
+ 	u_int		 saved_cy;
+	struct grid	*saved_grid;
 
 	const struct window_mode *mode;
 	void		*modedata;
@@ -1327,6 +1335,8 @@ void	 grid_clear_lines(struct grid *, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int);
+void	 grid_duplicate_lines(
+    	     struct grid *, u_int, struct grid *, u_int, u_int);
 
 /* grid-view.c */
 const struct grid_cell *grid_view_peek_cell(struct grid *, u_int, u_int);

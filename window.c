@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.89 2009-07-08 18:03:03 nicm Exp $ */
+/* $Id: window.c,v 1.90 2009-07-14 06:40:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -405,6 +405,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->sx = sx;
 	wp->sy = sy;
 
+	wp->saved_grid = NULL;
+
 	screen_init(&wp->base, sx, sy, hlimit);
 	wp->screen = &wp->base;
 
@@ -423,6 +425,8 @@ window_pane_destroy(struct window_pane *wp)
 
 	window_pane_reset_mode(wp);
 	screen_free(&wp->base);
+	if (wp->saved_grid != NULL)
+		grid_destroy(wp->saved_grid);
 
 	buffer_destroy(wp->in);
 	buffer_destroy(wp->out);

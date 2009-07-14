@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.91 2009-07-12 17:03:11 nicm Exp $ */
+/* $Id: screen.c,v 1.92 2009-07-14 06:40:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -173,10 +173,20 @@ screen_resize_y(struct screen *s, u_int sy)
 		needed -= available;
 
 		/*
-		 * Now just increase the history size to take over the lines
-		 * which are left. XXX Should apply history limit?
+		 * Now just increase the history size, if possible, to take
+		 * over the lines which are left. If history is off, delete
+		 * lines from the top.
+		 *
+		 * XXX Should apply history limit?
 		 */
-		gd->hsize += needed;
+		available = s->cy;
+		if (gd->flags & GRID_HISTORY)
+			gd->hsize += needed;
+		else if (available > 0) {
+			if (available > needed)
+				available = needed;
+			grid_view_delete_lines(gd, 0, available);
+		}
 		s->cy -= needed;
  	}
 
@@ -190,14 +200,18 @@ screen_resize_y(struct screen *s, u_int sy)
 	if (sy > oldy) {
 		needed = sy - oldy;
 
-		/* Try to pull as much as possible out of the history. */
+		/*
+		 * Try to pull as much as possible out of the history, if is
+		 * is enabled.
+		 */
 		available = gd->hsize;
-		if (available > 0) {
+		if (gd->flags & GRID_HISTORY && available > 0) {
 			if (available > needed)
 				available = needed;
 			gd->hsize -= available;
 			s->cy += available;
-		}
+		} else
+			available = 0;
 		needed -= available;
 
 		/* Then fill the rest in with blanks. */
