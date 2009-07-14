@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.143 2009-07-06 18:21:17 nicm Exp $
+# $Id: Makefile,v 1.144 2009-07-14 06:47:12 nicm Exp $
 
 .SUFFIXES: .c .o
 .PHONY: clean
@@ -10,7 +10,7 @@ FDEBUG= 1
 CC?= cc
 CFLAGS+= -DBUILD="\"$(VERSION)\""
 LDFLAGS+= -L/usr/local/lib
-LIBS+= -lncurses
+LIBS+= -lcurses
 
 # This sort of sucks but gets rid of the stupid warning and should work on
 # most platforms...

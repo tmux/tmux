@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.21 2009-06-25 16:47:00 nicm Exp $ */
+/* $OpenBSD: tty-term.c,v 1.3 2009/07/14 06:30:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,7 @@
 
 #include <sys/types.h>
 
-#include <ncurses.h>
+#include <curses.h>
 #include <string.h>
 #include <term.h>
 
@@ -183,7 +183,7 @@ tty_term_find(char *name, int fd, char **cause)
 	term->flags = 0;
 	SLIST_INSERT_HEAD(&tty_terms, term, entry);
 
-	/* Set up ncurses terminal. */
+	/* Set up curses terminal. */
 	if (setupterm(name, fd, &error) != OK) {
 		switch (error) {
 		case 0:
@@ -237,7 +237,7 @@ tty_term_find(char *name, int fd, char **cause)
 	}
 	tty_term_quirks(term);
 
-	/* Delete ncurses data. */
+	/* Delete curses data. */
 	del_curterm(cur_term);
 
 	/* These are always required. */
@@ -358,7 +358,7 @@ tty_term_string(struct tty_term *term, enum tty_code_code code)
 	return (term->codes[code].value.string);
 }
 
-/* No vtparm. Fucking ncurses. */
+/* No vtparm. Fucking curses. */
 const char *
 tty_term_string1(struct tty_term *term, enum tty_code_code code, int a)
 {
