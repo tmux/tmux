@@ -1,4 +1,4 @@
-/* $Id: cmd-copy-mode.c,v 1.19 2009-07-01 23:06:32 nicm Exp $ */
+/* $Id: cmd-copy-mode.c,v 1.20 2009-07-14 06:42:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,7 +28,7 @@ int	cmd_copy_mode_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_copy_mode_entry = {
 	"copy-mode", NULL,
-	CMD_TARGET_WINDOW_USAGE,
+	"[-u] " CMD_TARGET_WINDOW_USAGE,
 	CMD_UFLAG,
 	cmd_target_init,
 	cmd_target_parse,
