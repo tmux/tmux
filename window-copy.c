@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.63 2009-07-12 17:11:07 nicm Exp $ */
+/* $Id: window-copy.c,v 1.64 2009-07-14 06:38:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,6 +48,7 @@ void	window_copy_copy_line(
 	    struct window_pane *, char **, size_t *, u_int, u_int, u_int);
 int	window_copy_is_space(struct window_pane *, u_int, u_int);
 u_int	window_copy_find_length(struct window_pane *, u_int);
+void	window_copy_set_cursor_x(struct window_pane *, u_int);
 void	window_copy_cursor_start_of_line(struct window_pane *);
 void	window_copy_cursor_end_of_line(struct window_pane *);
 void	window_copy_cursor_left(struct window_pane *);
@@ -542,30 +543,15 @@ window_copy_find_length(struct window_pane *wp, u_int py)
 	return (px);
 }
 
+/*
+ * Set the cursor X coordinate and scroll horizontally to make it visible.
+ * Also redraw the selection or the cursor, as needed.
+ */
 void
-window_copy_cursor_start_of_line(struct window_pane *wp)
-{
-	struct window_copy_mode_data	*data = wp->modedata;
-
-	if (data->ox != 0)
-		window_copy_scroll_right(wp, data->ox);
-	data->cx = 0;
-
-	if (window_copy_update_selection(wp))
-		window_copy_redraw_lines(wp, data->cy, 1);
-	else
-		window_copy_update_cursor(wp);
-}
-
-void
-window_copy_cursor_end_of_line(struct window_pane *wp)
+window_copy_set_cursor_x(struct window_pane *wp, u_int px)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	u_int				 px, py;
-
-	py = screen_hsize(&wp->base) + data->cy - data->oy;
-	px = window_copy_find_length(wp, py);
 
 	/* On screen. */
 	if (px > data->ox && px <= data->ox + screen_size_x(s) - 1)
@@ -597,6 +583,33 @@ window_copy_cursor_end_of_line(struct window_pane *wp)
 		window_copy_redraw_lines(wp, data->cy, 1);
 	else
 		window_copy_update_cursor(wp);
+}
+
+void
+window_copy_cursor_start_of_line(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+
+	if (data->ox != 0)
+		window_copy_scroll_right(wp, data->ox);
+	data->cx = 0;
+
+	if (window_copy_update_selection(wp))
+		window_copy_redraw_lines(wp, data->cy, 1);
+	else
+		window_copy_update_cursor(wp);
+}
+
+void
+window_copy_cursor_end_of_line(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	u_int				 px, py;
+
+	py = screen_hsize(&wp->base) + data->cy - data->oy;
+	px = window_copy_find_length(wp, py);
+
+	window_copy_set_cursor_x(wp, px);
 }
 
 void
@@ -748,43 +761,13 @@ window_copy_cursor_next_word(struct window_pane *wp)
 	}
 out:
 
-	/* On screen. */
-	if (px > data->ox && px <= data->ox + screen_size_x(s) - 1)
-		data->cx = px - data->ox;
-
-	/* Off right of screen. */
-	if (px > data->ox + screen_size_x(s) - 1) {
-		/* Move cursor to last and scroll screen. */
-		window_copy_scroll_left(
-		    wp, px - data->ox - (screen_size_x(s) - 1));
-		data->cx = screen_size_x(s) - 1;
-	}
-
-	/* Off left of screen. */
-	if (px <= data->ox) {
-		if (px < screen_size_x(s) - 1) {
-			/* Short enough to fit on screen. */
-			window_copy_scroll_right(wp, data->ox);
-			data->cx = px;
-		} else {
-			/* Too long to fit on screen. */
-			window_copy_scroll_right(
-			    wp, data->ox - (px - (screen_size_x(s) - 1)));
-			data->cx = screen_size_x(s) - 1;
-		}
- 	}
-
-	if (window_copy_update_selection(wp))
-		window_copy_redraw_lines(wp, data->cy, 1);
-	else
-		window_copy_update_cursor(wp);
+	window_copy_set_cursor_x(wp, px);
 }
 
 void
 window_copy_cursor_previous_word(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
-	struct screen			*s = &data->screen;
 	u_int				 ox, px, py, skip;
 
 	ox = px = data->ox + data->cx;
@@ -830,36 +813,7 @@ window_copy_cursor_previous_word(struct window_pane *wp)
 	}
 out:
 
-	/* On screen. */
-	if (px > data->ox && px <= data->ox + screen_size_x(s) - 1)
-		data->cx = px - data->ox;
-
-	/* Off right of screen. */
-	if (px > data->ox + screen_size_x(s) - 1) {
-		/* Move cursor to last and scroll screen. */
-		window_copy_scroll_left(
-		    wp, px - data->ox - (screen_size_x(s) - 1));
-		data->cx = screen_size_x(s) - 1;
-	}
-
-	/* Off left of screen. */
-	if (px <= data->ox) {
-		if (px < screen_size_x(s) - 1) {
-			/* Short enough to fit on screen. */
-			window_copy_scroll_right(wp, data->ox);
-			data->cx = px;
-		} else {
-			/* Too long to fit on screen. */
-			window_copy_scroll_right(
-			    wp, data->ox - (px - (screen_size_x(s) - 1)));
-			data->cx = screen_size_x(s) - 1;
-		}
- 	}
-
-	if (window_copy_update_selection(wp))
-		window_copy_redraw_lines(wp, data->cy, 1);
-	else
-		window_copy_update_cursor(wp);
+	window_copy_set_cursor_x(wp, px);
 }
 
 void
