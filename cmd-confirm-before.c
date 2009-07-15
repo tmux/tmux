@@ -1,4 +1,4 @@
-/* $Id: cmd-confirm-before.c,v 1.5 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-confirm-before.c,v 1.6 2009-07-15 17:50:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -113,7 +113,7 @@ cmd_confirm_before_callback(void *data, const char *s)
 	if (cmd_string_parse(cdata->cmd, &cmdlist, &cause) != 0) {
 		if (cause != NULL) {
 			*cause = toupper((u_char) *cause);
-			status_message_set(c, cause);
+			status_message_set(c, "%s", cause);
 			xfree(cause);
 		}
 		goto out;

@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.73 2009-07-14 06:39:25 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.74 2009-07-15 17:50:11 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -194,7 +194,7 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 
 	*msg = toupper((u_char) *msg);
- 	status_message_set(ctx->curclient, msg);
+ 	status_message_set(ctx->curclient, "%s", msg);
 	xfree(msg);
 }
 
@@ -227,7 +227,7 @@ key_bindings_info(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 
 	*msg = toupper((u_char) *msg);
- 	status_message_set(ctx->curclient, msg);
+ 	status_message_set(ctx->curclient, "%s", msg);
 	xfree(msg);
 }
 
