@@ -99,4 +99,8 @@
 - option to show bells visually
 - window-status command to show current window info in status line
 - H/M/L commands in copy mode with vi-keys, for jumping to the top/middle/last line on the screen
+- if the server is started with IDENTIFY_UTF8 then set the global utf8 option?
+- I think there are potential leaks in the prompt code if a new prompt is created without the
+  callback for the old being cleared; this might be quite hard to hit, lock-server seems the only
+  candidate
 - tidy up and prioritise todo list ;-)

@@ -1,4 +1,4 @@
-/* $Id: cmd-select-pane.c,v 1.5 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-select-pane.c,v 1.6 2009-07-15 17:42:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,8 +58,8 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (wp->flags & PANE_HIDDEN) {
-		ctx->error(ctx, "pane %d is hidden", data->pane);
+	if (!window_pane_visible(wp)) {
+		ctx->error(ctx, "pane %d is not visible", data->pane);
 		return (-1);
 	}
 	window_set_active_pane(wl->window, wp);

@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.21 2009-04-01 21:10:08 nicm Exp $ */
+/* $Id: resize.c,v 1.22 2009-07-15 17:42:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,6 +48,7 @@ recalculate_sizes(void)
 	struct session		*s;
 	struct client		*c;
 	struct window		*w;
+	struct window_pane	*wp;
 	u_int		 	 i, j, ssx, ssy, has, limit;
 	int		 	 flag;
 
@@ -132,6 +133,20 @@ recalculate_sizes(void)
 		    "window size %u,%u (was %u,%u)", ssx, ssy, w->sx, w->sy);
 
 		window_resize(w, ssx, ssy);
+
+		/*
+		 * If the current pane is now not visible, move to the next
+		 * that is.
+		 */
+		wp = w->active;
+		while (!window_pane_visible(w->active)) {
+			w->active = TAILQ_PREV(w->active, window_panes, entry);
+			if (w->active == NULL)
+				w->active = TAILQ_LAST(&w->panes, window_panes);
+			if (w->active == wp)
+			       break;
+		}
+
 		server_redraw_window(w);
 		layout_refresh(w, 0);
 	}

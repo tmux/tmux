@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.361 2009-07-14 06:43:33 nicm Exp $ */
+/* $Id: tmux.h,v 1.362 2009-07-15 17:42:44 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,7 @@ extern const char    *__progname;
 #define PROMPT_HISTORY 100
 
 /* Minimum pane size. */
-#define PANE_MINIMUM 4	/* includes separator line */
+#define PANE_MINIMUM 5	/* includes separator line */
 
 /* Automatic name refresh interval, in milliseconds. */
 #define NAME_INTERVAL 500
@@ -599,8 +599,7 @@ struct window_pane {
 	u_int		 yoff;
 
 	int		 flags;
-#define PANE_HIDDEN 0x1
-#define PANE_REDRAW 0x2
+#define PANE_REDRAW 0x1
 
 	char		*cmd;
 	char		*cwd;
@@ -1453,6 +1452,7 @@ void		 window_pane_parse(struct window_pane *);
 void		 window_pane_key(struct window_pane *, struct client *, int);
 void		 window_pane_mouse(struct window_pane *,
     		     struct client *, u_char, u_char, u_char);
+int		 window_pane_visible(struct window_pane *);
 char		*window_pane_search(
 		     struct window_pane *, const char *, u_int *);
 

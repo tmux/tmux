@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-pane.c,v 1.7 2009-07-14 06:43:33 nicm Exp $ */
+/* $Id: cmd-swap-pane.c,v 1.8 2009-07-15 17:42:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -158,7 +158,6 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window			*w;
 	struct window_pane		*tmp_wp, *src_wp, *dst_wp;
 	u_int				 xx, yy;
-	int				 flags;
 
 	if (data == NULL)
 		return (0);
@@ -210,15 +209,10 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	xx = src_wp->xoff;
 	yy = src_wp->yoff;
-	flags = src_wp->flags;
  	src_wp->xoff = dst_wp->xoff;
  	src_wp->yoff = dst_wp->yoff;
-	src_wp->flags &= ~PANE_HIDDEN;
-	src_wp->flags |= dst_wp->flags & PANE_HIDDEN;
  	dst_wp->xoff = xx;
  	dst_wp->yoff = yy;
-	dst_wp->flags &= ~PANE_HIDDEN;
-	dst_wp->flags |= flags & PANE_HIDDEN;
 
 	xx = src_wp->sx;
 	yy = src_wp->sy;
@@ -227,7 +221,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (!data->flag_detached) {
 		tmp_wp = dst_wp;
-		if (tmp_wp->flags & PANE_HIDDEN)
+		if (!window_pane_visible(tmp_wp))
 			tmp_wp = src_wp;
 		window_set_active_pane(w, tmp_wp);
 		layout_refresh(w, 0);

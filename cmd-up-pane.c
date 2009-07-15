@@ -1,4 +1,4 @@
-/* $Id: cmd-up-pane.c,v 1.8 2009-07-14 06:43:33 nicm Exp $ */
+/* $Id: cmd-up-pane.c,v 1.9 2009-07-15 17:42:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,7 +55,7 @@ cmd_up_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (w->active == NULL)
 			w->active = TAILQ_LAST(&w->panes, window_panes);
 		layout_refresh(w, 1);
-	} while (w->active->flags & PANE_HIDDEN);
+	} while (!window_pane_visible(w->active));
 
 	return (0);
 }
