@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.31 2009-07-14 06:43:33 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.32 2009-07-15 17:44:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,6 +56,7 @@ const struct set_option_entry set_window_option_table[NSETWINDOWOPTION] = {
 	  SET_OPTION_CHOICE, 0, 0, set_option_clock_mode_style_list },
 	{ "force-height", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "force-width", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
+	{ "main-pane-height", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "main-pane-width", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "mode-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
 	{ "mode-bg", SET_OPTION_COLOUR, 0, 0, NULL },
