@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.92 2009-07-15 17:43:45 nicm Exp $ */
+/* $Id: status.c,v 1.93 2009-07-15 17:44:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -494,7 +494,7 @@ status_message_clear(struct client *c)
 	c->message_string = NULL;
 
 	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
-	c->flags |= CLIENT_REDRAW;
+	c->flags |= CLIENT_STATUS;
 
 	screen_reinit(&c->status);
 }
@@ -581,7 +581,7 @@ status_prompt_clear(struct client *c)
 	c->prompt_buffer = NULL;
 
 	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
-	c->flags |= CLIENT_REDRAW;
+	c->flags |= CLIENT_STATUS;
 
 	screen_reinit(&c->status);
 }

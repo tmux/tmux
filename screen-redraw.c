@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.40 2009-07-15 17:43:45 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.41 2009-07-15 17:44:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -166,7 +166,7 @@ screen_redraw_screen(struct client *c, int status_only)
 
 		/* Draw the pane. */
 		for (i = 0; i < wp->sy; i++) {
-			if (status_only && i != tty->sy - 1)
+			if (status_only && wp->yoff + i != tty->sy - 1)
 				continue;
 			tty_draw_line(tty, wp->screen, i, wp->xoff, wp->yoff);
 		}
