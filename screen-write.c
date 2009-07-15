@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.59 2009-07-09 18:08:13 nicm Exp $ */
+/* $Id: screen-write.c,v 1.60 2009-07-15 17:43:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -553,7 +553,7 @@ screen_write_scrollregion(
 		rupper = screen_size_y(s) - 1;
 	if (rlower > screen_size_y(s) - 1)
 		rlower = screen_size_y(s) - 1;
-	if (rupper > rlower)
+	if (rupper >= rlower)	/* cannot be one line */
 		return;
 
 	/* Cursor moves to top-left. */
