@@ -898,7 +898,7 @@ status_prompt_complete(const char *s)
 	const struct set_option_entry  *optent;
 	ARRAY_DECL(, const char *)	list;
 	char			       *prefix, *s2;
-	u_int			 	i;
+	u_int				i;
 	size_t			 	j;
 
 	if (*s == '\0')
@@ -910,13 +910,11 @@ status_prompt_complete(const char *s)
 		if (strncmp((*cmdent)->name, s, strlen(s)) == 0)
 			ARRAY_ADD(&list, (*cmdent)->name);
 	}
-	for (i = 0; i < NSETOPTION; i++) {
-		optent = &set_option_table[i];
+	for (optent = set_option_table; optent->name != NULL; optent++) {
 		if (strncmp(optent->name, s, strlen(s)) == 0)
 			ARRAY_ADD(&list, optent->name);
 	}
-	for (i = 0; i < NSETWINDOWOPTION; i++) {
-		optent = &set_window_option_table[i];
+	for (optent = set_window_option_table; optent->name != NULL; optent++) {
 		if (strncmp(optent->name, s, strlen(s)) == 0)
 			ARRAY_ADD(&list, optent->name);
 	}

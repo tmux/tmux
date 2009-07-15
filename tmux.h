@@ -941,8 +941,6 @@ struct set_option_entry {
 };
 extern const struct set_option_entry set_option_table[];
 extern const struct set_option_entry set_window_option_table[];
-#define NSETOPTION 26
-#define NSETWINDOWOPTION 20
 
 /* tmux.c */
 extern volatile sig_atomic_t sigwinch;

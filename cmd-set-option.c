@@ -48,7 +48,7 @@ const char *set_option_status_keys_list[] = {
 const char *set_option_bell_action_list[] = {
 	"none", "any", "current", NULL
 };
-const struct set_option_entry set_option_table[NSETOPTION] = {
+const struct set_option_entry set_option_table[] = {
 	{ "bell-action", SET_OPTION_CHOICE, 0, 0, set_option_bell_action_list },
 	{ "buffer-limit", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "default-command", SET_OPTION_STRING, 0, 0, NULL },
@@ -75,6 +75,7 @@ const struct set_option_entry set_option_table[NSETOPTION] = {
 	{ "status-right", SET_OPTION_STRING, 0, 0, NULL },
 	{ "status-right-length", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
 	{ "status-utf8", SET_OPTION_FLAG, 0, 0, NULL },
+	{ NULL, 0, 0, 0, NULL }
 };
 
 int
@@ -84,7 +85,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session			*s;
 	struct client			*c;
 	struct options			*oo;
-	const struct set_option_entry   *entry;
+	const struct set_option_entry   *entry, *opt;
 	u_int				 i;
 
 	if (data->chflags & CMD_CHFLAG('g'))
@@ -101,15 +102,14 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	entry = NULL;
-	for (i = 0; i < NSETOPTION; i++) {
-		if (strncmp(set_option_table[i].name,
-		    data->option, strlen(data->option)) != 0)
+	for (opt = set_option_table; opt->name != NULL; opt++) {
+		if (strncmp(opt->name, data->option, strlen(data->option)) != 0)
 			continue;
 		if (entry != NULL) {
 			ctx->error(ctx, "ambiguous option: %s", data->option);
 			return (-1);
 		}
-		entry = &set_option_table[i];
+		entry = opt;
 
 		/* Bail now if an exact match. */
 		if (strcmp(entry->name, data->option) == 0)

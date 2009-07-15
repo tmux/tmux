@@ -49,7 +49,6 @@ cmd_show_window_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink			*wl;
 	struct options			*oo;
 	const struct set_option_entry	*entry;
-	u_int				 i;
 	char				*vs;
 	long long			 vn;
 
@@ -61,9 +60,7 @@ cmd_show_window_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 		oo = &wl->window->options;
 	}
 
-	for (i = 0; i < NSETWINDOWOPTION; i++) {
-		entry = &set_window_option_table[i];
-
+	for (entry = set_window_option_table; entry->name != NULL; entry++) {
 		if (options_find1(oo, entry->name) == NULL)
 			continue;
 

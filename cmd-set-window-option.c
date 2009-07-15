@@ -48,7 +48,7 @@ const char *set_option_mode_keys_list[] = {
 const char *set_option_clock_mode_style_list[] = {
 	"12", "24", NULL
 };
-const struct set_option_entry set_window_option_table[NSETWINDOWOPTION] = {
+const struct set_option_entry set_window_option_table[] = {
 	{ "aggressive-resize", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "automatic-rename", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "clock-mode-colour", SET_OPTION_COLOUR, 0, 0, NULL },
@@ -70,6 +70,7 @@ const struct set_option_entry set_window_option_table[NSETWINDOWOPTION] = {
 	{ "window-status-bg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "window-status-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "xterm-keys", SET_OPTION_FLAG, 0, 0, NULL },
+	{ NULL, 0, 0, 0, NULL }
 };
 
 int
@@ -79,7 +80,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink			*wl;
 	struct client			*c;
 	struct options			*oo;
-	const struct set_option_entry   *entry;
+	const struct set_option_entry   *entry, *opt;
 	u_int				 i;
 
 	if (data->chflags & CMD_CHFLAG('g'))
@@ -96,15 +97,14 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	entry = NULL;
-	for (i = 0; i < NSETWINDOWOPTION; i++) {
-		if (strncmp(set_window_option_table[i].name,
-		    data->option, strlen(data->option)) != 0)
+	for (opt = set_window_option_table; opt->name != NULL; opt++) {
+		if (strncmp(opt->name, data->option, strlen(data->option)) != 0)
 			continue;
 		if (entry != NULL) {
 			ctx->error(ctx, "ambiguous option: %s", data->option);
 			return (-1);
 		}
-		entry = &set_window_option_table[i];
+		entry = opt;
 
 		/* Bail now if an exact match. */
 		if (strcmp(entry->name, data->option) == 0)
