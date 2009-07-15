@@ -82,6 +82,19 @@ winlink_cmp(struct winlink *wl1, struct winlink *wl2)
 }
 
 struct winlink *
+winlink_find_by_window(struct winlinks *wwl, struct window *w)
+{
+	struct winlink	*wl;
+
+	RB_FOREACH(wl, winlinks, wwl) {
+		if (wl->window == w)
+			return (wl);
+	}
+
+	return (NULL);
+}
+
+struct winlink *
 winlink_find_by_index(struct winlinks *wwl, int idx)
 {
 	struct winlink	wl;
