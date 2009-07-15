@@ -642,7 +642,7 @@ cmd_find_index(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 	 */
 	if ((s = cmd_current_session(ctx)) == NULL) {
 		ctx->error(ctx, "can't establish current session");
-		return (NULL);
+		return (-1);
 	}
 
 	/* A NULL argument means the current session and "no window" (-1). */
