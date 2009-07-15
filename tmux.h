@@ -1275,7 +1275,7 @@ int	 server_unlock(const char *);
 
 /* status.c */
 int	 status_redraw(struct client *);
-void	 status_message_set(struct client *, const char *);
+void printflike2 status_message_set(struct client *, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
 void	 status_prompt_set(struct client *,

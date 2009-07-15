@@ -150,7 +150,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 		if (cause == NULL)
 			return (0);
 		*cause = toupper((u_char) *cause);
-		status_message_set(c, cause);
+		status_message_set(c, "%s", cause);
 		xfree(cause);
 		cmdlist = NULL;
 	}

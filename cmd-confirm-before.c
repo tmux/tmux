@@ -113,7 +113,7 @@ cmd_confirm_before_callback(void *data, const char *s)
 	if (cmd_string_parse(cdata->cmd, &cmdlist, &cause) != 0) {
 		if (cause != NULL) {
 			*cause = toupper((u_char) *cause);
-			status_message_set(c, cause);
+			status_message_set(c, "%s", cause);
 			xfree(cause);
 		}
 		goto out;

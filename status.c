@@ -465,17 +465,20 @@ status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 	return (text);
 }
 
-void
-status_message_set(struct client *c, const char *msg)
+void printflike2
+status_message_set(struct client *c, const char *fmt, ...)
 {
 	struct timeval	tv;
+	va_list		ap;
 	int		delay;
 
 	delay = options_get_number(&c->session->options, "display-time");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
-	c->message_string = xstrdup(msg);
+	va_start(ap, fmt);
+	xvasprintf(&c->message_string, fmt, ap);
+	va_end(ap);
 	if (gettimeofday(&c->message_timer, NULL) != 0)
 		fatal("gettimeofday");
 	timeradd(&c->message_timer, &tv, &c->message_timer);

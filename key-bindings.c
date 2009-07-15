@@ -194,7 +194,7 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 
 	*msg = toupper((u_char) *msg);
- 	status_message_set(ctx->curclient, msg);
+ 	status_message_set(ctx->curclient, "%s", msg);
 	xfree(msg);
 }
 
@@ -227,7 +227,7 @@ key_bindings_info(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 
 	*msg = toupper((u_char) *msg);
- 	status_message_set(ctx->curclient, msg);
+ 	status_message_set(ctx->curclient, "%s", msg);
 	xfree(msg);
 }
 
