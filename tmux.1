@@ -1555,13 +1555,20 @@ to
 Unbind the key bound to
 .Ar key .
 .It Xo Ic unlink-window
+.Op Fl k
 .Op Fl t Ar target-window
 .Xc
 .D1 (alias: Ic unlinkw )
 Unlink
 .Ar target-window .
-A window may be unlinked only if it is linked to multiple sessions - windows may
-not be linked to no sessions.
+Unless
+.Fl k
+is given, a window may be unlinked only if it is linked to multiple sessions -
+windows may not be linked to no sessions;
+if
+.Fl k
+is specified and the window is linked to only one session, it is unlinked and
+destroyed.
 .It Xo Ic up-pane
 .Op Fl p Ar pane-index
 .Op Fl t Ar target-window
