@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-window.c,v 1.16 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-kill-window.c,v 1.17 2009-07-15 17:45:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,24 +44,35 @@ cmd_kill_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
 	struct winlink		*wl;
+	struct window		*w;
 	struct session		*s;
 	struct client		*c;
-	u_int		 	 i;
+	u_int		 	 i, j;
 	int		 	 destroyed;
 
-	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
+	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
+	w = wl->window;
 
- 	destroyed = session_detach(s, wl);
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session != s)
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		s = ARRAY_ITEM(&sessions, i);
+		if (s == NULL || !session_has(s, w))
 			continue;
-		if (destroyed) {
-			c->session = NULL;
-			server_write_client(c, MSG_EXIT, NULL, 0);
-		} else
-			server_redraw_client(c);
+		if ((wl = winlink_find_by_window(&s->windows, w)) == NULL)
+			continue;
+
+		destroyed = session_detach(s, wl);
+		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
+			c = ARRAY_ITEM(&clients, j);
+			if (c == NULL || c->session != s)
+				continue;
+
+			if (destroyed) {
+				c->session = NULL;
+				server_write_client(c, MSG_EXIT, NULL, 0);
+			} else
+				server_redraw_client(c);
+		}
 	}
 	recalculate_sizes();
 

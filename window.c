@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.92 2009-07-15 17:43:21 nicm Exp $ */
+/* $Id: window.c,v 1.93 2009-07-15 17:45:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -77,6 +77,19 @@ int
 winlink_cmp(struct winlink *wl1, struct winlink *wl2)
 {
 	return (wl1->idx - wl2->idx);
+}
+
+struct winlink *
+winlink_find_by_window(struct winlinks *wwl, struct window *w)
+{
+	struct winlink	*wl;
+
+	RB_FOREACH(wl, winlinks, wwl) {
+		if (wl->window == w)
+			return (wl);
+	}
+
+	return (NULL);
 }
 
 struct winlink *
