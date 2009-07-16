@@ -554,7 +554,7 @@ grid_duplicate_lines(
 		if (src->usize[sy] == 0)
 			dst->udata[dy] = NULL;
 		else {
-			dst->udata[sy] = xcalloc(
+			dst->udata[dy] = xcalloc(
 			    src->usize[sy], sizeof **dst->udata);
 			memcpy(dst->udata[dy], src->udata[sy],
 			    src->usize[sy] * (sizeof **dst->udata));
