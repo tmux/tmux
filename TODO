@@ -103,4 +103,10 @@
 - I think there are potential leaks in the prompt code if a new prompt is created without the
   callback for the old being cleared; this might be quite hard to hit, lock-server seems the only
   candidate
+- split list-windows into separate list-windows and list-panes
+- warts on current naming:
+  	- display-time but message-fg/bg/attr
+	- list-* vs show-*
+	- server-info
+	- up-pane/down-pane vs next-*/previous-* vs resize-pane U/D/L/R
 - tidy up and prioritise todo list ;-)
