@@ -62,10 +62,6 @@ status_redraw(struct client *c)
 	memcpy(&old_status, &c->status, sizeof old_status);
 	screen_init(&c->status, c->tty.sx, 1, 0);
 
-	/* Create the target screen. */
-	memcpy(&old_status, &c->status, sizeof old_status);
-	screen_init(&c->status, c->tty.sx, 1, 0);
-
 	if (gettimeofday(&c->status_timer, NULL) != 0)
 		fatal("gettimeofday");
 	memcpy(&stdgc, &grid_default_cell, sizeof gc);
