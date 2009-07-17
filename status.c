@@ -468,6 +468,9 @@ status_message_set(struct client *c, const char *fmt, ...)
 	va_list		ap;
 	int		delay;
 
+	status_prompt_clear(c);
+	status_message_clear(c);
+
 	delay = options_get_number(&c->session->options, "display-time");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
@@ -493,7 +496,7 @@ status_message_clear(struct client *c)
 	c->message_string = NULL;
 
 	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
-	c->flags |= CLIENT_STATUS;
+	c->flags |= CLIENT_REDRAW; /* screen was frozen and may have changed */
 
 	screen_reinit(&c->status);
 }
@@ -540,15 +543,20 @@ status_message_redraw(struct client *c)
 }
 
 void
-status_prompt_set(struct client *c,
-    const char *msg, int (*fn)(void *, const char *), void *data, int flags)
+status_prompt_set(struct client *c, const char *msg,
+    int (*callbackfn)(void *, const char *), void (*freefn)(void *),
+    void *data, int flags)
 {
+	status_message_clear(c);
+	status_prompt_clear(c);
+
 	c->prompt_string = xstrdup(msg);
 
 	c->prompt_buffer = xstrdup("");
 	c->prompt_index = 0;
 
-	c->prompt_callback = fn;
+	c->prompt_callbackfn = callbackfn;
+	c->prompt_freefn = freefn;
 	c->prompt_data = data;
 
 	c->prompt_hindex = 0;
@@ -566,8 +574,11 @@ status_prompt_set(struct client *c,
 void
 status_prompt_clear(struct client *c)
 {
-	if (c->prompt_string == NULL)
+ 	if (c->prompt_string == NULL)
 		return;
+
+	if (c->prompt_freefn != NULL && c->prompt_data != NULL)
+		c->prompt_freefn(c->prompt_data);
 
 	mode_key_free(&c->prompt_mdata);
 
@@ -580,7 +591,7 @@ status_prompt_clear(struct client *c)
 	c->prompt_buffer = NULL;
 
 	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
-	c->flags |= CLIENT_STATUS;
+	c->flags |= CLIENT_REDRAW; /* screen was frozen and may have changed */
 
 	screen_reinit(&c->status);
 }
@@ -832,14 +843,14 @@ status_prompt_key(struct client *c, int key)
  	case MODEKEYCMD_CHOOSE:
 		if (*c->prompt_buffer != '\0') {
 			status_prompt_add_history(c);
-			if (c->prompt_callback(
+			if (c->prompt_callbackfn(
 			    c->prompt_data, c->prompt_buffer) == 0)
 				status_prompt_clear(c);
 			break;
 		}
 		/* FALLTHROUGH */
 	case MODEKEYCMD_QUIT:
-		if (c->prompt_callback(c->prompt_data, NULL) == 0)
+		if (c->prompt_callbackfn(c->prompt_data, NULL) == 0)
 			status_prompt_clear(c);
 		break;
 	case MODEKEYCMD_OTHERKEY:
@@ -858,7 +869,7 @@ status_prompt_key(struct client *c, int key)
 		}
 
 		if (c->prompt_flags & PROMPT_SINGLE) {
-			if (c->prompt_callback(
+			if (c->prompt_callbackfn(
 			    c->prompt_data, c->prompt_buffer) == 0)
 				status_prompt_clear(c);
 		}

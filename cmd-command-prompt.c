@@ -31,6 +31,7 @@ void	cmd_command_prompt_init(struct cmd *, int);
 int	cmd_command_prompt_exec(struct cmd *, struct cmd_ctx *);
 
 int	cmd_command_prompt_callback(void *, const char *);
+void	cmd_command_prompt_free(void *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
 	"command-prompt", NULL,
@@ -96,7 +97,8 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 		cdata->template = NULL;
 		hdr = xstrdup(":");
 	}
-	status_prompt_set(c, hdr, cmd_command_prompt_callback, cdata, 0);
+	status_prompt_set(c, hdr,
+	    cmd_command_prompt_callback, cmd_command_prompt_free, cdata, 0);
 	xfree(hdr);
 
 	return (0);
@@ -112,10 +114,8 @@ cmd_command_prompt_callback(void *data, const char *s)
 	char				*cause, *ptr, *buf, ch;
 	size_t				 len, slen;
 
-	if (s == NULL) {
-		xfree(cdata);
+	if (s == NULL)
 		return (0);
-	}
 	slen = strlen(s);
 
 	len = 0;
@@ -139,12 +139,10 @@ cmd_command_prompt_callback(void *data, const char *s)
 				break;
 			}
 		}
-		xfree(cdata->template);
 
 		buf[len] = '\0';
 		s = buf;
 	}
-	xfree(cdata);
 
 	if (cmd_string_parse(s, &cmdlist, &cause) != 0) {
 		if (cause == NULL)
@@ -172,7 +170,17 @@ cmd_command_prompt_callback(void *data, const char *s)
 	cmd_list_exec(cmdlist, &ctx);
 	cmd_list_free(cmdlist);
 
-	if (c->prompt_callback != (void *) &cmd_command_prompt_callback)
+	if (c->prompt_callbackfn != (void *) &cmd_command_prompt_callback)
 		return (1);
 	return (0);
+}
+
+void
+cmd_command_prompt_free(void *data)
+{
+	struct cmd_command_prompt_data	*cdata = data;
+
+	if (cdata->template != NULL)
+		xfree(cdata->template);
+	xfree(cdata);
 }
