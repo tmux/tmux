@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.92 2009-07-14 06:40:33 nicm Exp $ */
+/* $Id: screen.c,v 1.93 2009-07-17 18:35:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -182,7 +182,7 @@ screen_resize_y(struct screen *s, u_int sy)
 		available = s->cy;
 		if (gd->flags & GRID_HISTORY)
 			gd->hsize += needed;
-		else if (available > 0) {
+		else if (needed > 0 && available > 0) {
 			if (available > needed)
 				available = needed;
 			grid_view_delete_lines(gd, 0, available);
