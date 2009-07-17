@@ -596,7 +596,11 @@ The following commands are available:
 .Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic attach )
-Create a new client in the current terminal and attach it to a session.
+If run from outside
+.Nm ,
+create a new client in the current terminal and attach it to
+.Ar target-session .
+If used from inside, switch the current client.
 If
 .Fl d
 is specified, any other clients attached to the session are detached.

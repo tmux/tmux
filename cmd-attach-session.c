@@ -44,10 +44,9 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
 	struct session		*s;
+	struct client		*c;
 	char			*cause;
-
-	if (ctx->curclient != NULL)
-		return (0);
+	u_int			 i;
 
 	if (ARRAY_LENGTH(&sessions) == 0) {
 		ctx->error(ctx, "no sessions");
@@ -56,24 +55,44 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
 
-	if (!(ctx->cmdclient->flags & CLIENT_TERMINAL)) {
-		ctx->error(ctx, "not a terminal");
-		return (-1);
+	if (ctx->cmdclient == NULL) {
+		if (data->chflags & CMD_CHFLAG('d')) {
+			/* 
+			 * Can't use server_write_session in case attaching to
+			 * the same session as currently attached to.
+			 */
+			for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+				c = ARRAY_ITEM(&clients, i);
+				if (c == NULL || c->session != s)
+					continue;
+				if (c == ctx->curclient)
+					continue;
+				server_write_client(c, MSG_DETACH, NULL, 0);
+			}
+		}
+		
+		ctx->curclient->session = s;
+		server_redraw_client(ctx->curclient);
+	} else {
+		if (!(ctx->cmdclient->flags & CLIENT_TERMINAL)) {
+			ctx->error(ctx, "not a terminal");
+			return (-1);
+		}
+
+		if (tty_open(&ctx->cmdclient->tty, &cause) != 0) {
+			ctx->error(ctx, "terminal open failed: %s", cause);
+			xfree(cause);
+			return (-1);
+		}
+
+		if (data->chflags & CMD_CHFLAG('d'))
+			server_write_session(s, MSG_DETACH, NULL, 0);
+
+		ctx->cmdclient->session = s;
+		server_write_client(ctx->cmdclient, MSG_READY, NULL, 0);
+		server_redraw_client(ctx->cmdclient);
 	}
-
-	if (tty_open(&ctx->cmdclient->tty, &cause) != 0) {
-		ctx->error(ctx, "terminal open failed: %s", cause);
-		xfree(cause);
-		return (-1);
-	}
-
-	if (data->chflags & CMD_CHFLAG('d'))
-		server_write_session(s, MSG_DETACH, NULL, 0);
-	ctx->cmdclient->session = s;
-
-	server_write_client(ctx->cmdclient, MSG_READY, NULL, 0);
 	recalculate_sizes();
-	server_redraw_client(ctx->cmdclient);
 
-	return (1);
+	return (1);	/* 1 means don't tell command client to exit */
 }

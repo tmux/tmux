@@ -835,8 +835,18 @@ struct client_ctx {
 struct cmd_ctx {
 	struct client  *cmdclient;
 
+	/*
+	 * curclient is the client where this command was executed if inside
+	 * tmux. This is NULL if the command came from the command-line.
+	 *
+	 * cmdclient is the client which sent the MSG_COMMAND to the server, if
+	 * any. This is NULL unless the command came from the command-line.
+	 *
+	 * One of curclient or cmdclient is always NULL and the other not.
+	 */
 	struct client  *curclient;
 	struct session *cursession;
+
 	struct msg_command_data	*msgdata;
 
 	void		(*print)(struct cmd_ctx *, const char *, ...);
