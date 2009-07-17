@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.366 2009-07-15 17:50:11 nicm Exp $ */
+/* $Id: tmux.h,v 1.367 2009-07-17 09:26:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -801,7 +801,8 @@ struct client {
 	char		*prompt_string;
 	char		*prompt_buffer;
 	size_t		 prompt_index;
-	int		 (*prompt_callback)(void *, const char *);
+	int		 (*prompt_callbackfn)(void *, const char *);
+	void		 (*prompt_freefn)(void *);
 	void		*prompt_data;
 
 #define PROMPT_HIDDEN 0x1
@@ -1277,8 +1278,8 @@ int	 status_redraw(struct client *);
 void printflike2 status_message_set(struct client *, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
-void	 status_prompt_set(struct client *,
-	     const char *, int (*)(void *, const char *), void *, int);
+void	 status_prompt_set(struct client *, const char *,
+    	     int (*)(void *, const char *), void (*)(void *), void *, int);
 void	 status_prompt_clear(struct client *);
 int	 status_prompt_redraw(struct client *);
 void	 status_prompt_key(struct client *, int);

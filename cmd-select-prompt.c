@@ -1,4 +1,4 @@
-/* $Id: cmd-select-prompt.c,v 1.9 2009-07-15 17:50:11 nicm Exp $ */
+/* $Id: cmd-select-prompt.c,v 1.10 2009-07-17 09:26:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,7 +55,7 @@ cmd_select_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (c->prompt_string != NULL)
 		return (0);
 
-	status_prompt_set(c, "index ", cmd_select_prompt_callback, c, 0);
+	status_prompt_set(c, "index ", cmd_select_prompt_callback, NULL, c, 0);
 
 	return (0);
 }
