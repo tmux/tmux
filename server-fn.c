@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.73 2009-07-17 09:28:27 nicm Exp $ */
+/* $Id: server-fn.c,v 1.74 2009-07-17 12:12:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

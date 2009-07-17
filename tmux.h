@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.367 2009-07-17 09:26:21 nicm Exp $ */
+/* $Id: tmux.h,v 1.368 2009-07-17 12:12:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1489,7 +1489,7 @@ void 		 window_choose_vadd(
 void printflike3 window_choose_add(
     		     struct window_pane *, int, const char *, ...);
 void		 window_choose_ready(struct window_pane *,
-		     u_int, void (*)(void *, int), void *);
+		     u_int, void (*)(void *, int), void (*)(void *), void *);
 
 /* names.c */
 void		 set_window_names(void);

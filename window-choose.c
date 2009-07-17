@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.16 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: window-choose.c,v 1.17 2009-07-17 12:12:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -59,7 +59,8 @@ struct window_choose_mode_data {
 	u_int			top;
 	u_int			selected;
 
-	void 			(*callback)(void *, int);
+	void 			(*callbackfn)(void *, int);
+	void			(*freefn)(void *);
 	void		       *data;
 };
 
@@ -86,8 +87,8 @@ window_choose_add(struct window_pane *wp, int idx, const char *fmt, ...)
 }
 
 void
-window_choose_ready(struct window_pane *wp,
-    u_int cur, void (*callback)(void *, int), void *cdata)
+window_choose_ready(struct window_pane *wp, u_int cur,
+    void (*callbackfn)(void *, int), void (*freefn)(void *), void *cdata)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -96,7 +97,8 @@ window_choose_ready(struct window_pane *wp,
 	if (data->selected > screen_size_y(s) - 1)
 		data->top = ARRAY_LENGTH(&data->list) - screen_size_y(s);
 
-	data->callback = callback;
+	data->callbackfn = callbackfn;
+	data->freefn = freefn;
 	data->data = cdata;
 
 	window_choose_redraw_screen(wp);
@@ -109,7 +111,11 @@ window_choose_init(struct window_pane *wp)
 	struct screen			*s;
 
 	wp->modedata = data = xmalloc(sizeof *data);
-	data->callback = NULL;
+
+	data->callbackfn = NULL;
+	data->freefn = NULL;
+	data->data = NULL;
+
 	ARRAY_INIT(&data->list);
 	data->top = 0;
 
@@ -130,6 +136,9 @@ window_choose_free(struct window_pane *wp)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	u_int				 i;
+
+	if (data->freefn != NULL && data->data != NULL)
+		data->freefn(data->data);
 
  	mode_key_free(&data->mdata);
 
@@ -168,12 +177,12 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 
 	switch (mode_key_lookup(&data->mdata, key)) {
 	case MODEKEYCMD_QUIT:
-		data->callback(data->data, -1);
+		data->callbackfn(data->data, -1);
 		window_pane_reset_mode(wp);
 		break;
 	case MODEKEYCMD_CHOOSE:
 		item = &ARRAY_ITEM(&data->list, data->selected);
-		data->callback(data->data, item->idx);
+		data->callbackfn(data->data, item->idx);
 		window_pane_reset_mode(wp);
 		break;
 	case MODEKEYCMD_UP:
@@ -273,7 +282,7 @@ window_choose_mouse(struct window_pane *wp,
 	data->selected = idx;
 
 	item = &ARRAY_ITEM(&data->list, data->selected);
-	data->callback(data->data, item->idx);
+	data->callbackfn(data->data, item->idx);
 	window_pane_reset_mode(wp);
 }
 
@@ -287,7 +296,7 @@ window_choose_write_line(
 	struct grid_cell		 gc;
  	int				 utf8flag;
 
-	if (data->callback == NULL)
+	if (data->callbackfn == NULL)
 		fatalx("called before callback assigned");
 
 	utf8flag = options_get_number(&wp->window->options, "utf8");

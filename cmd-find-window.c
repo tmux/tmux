@@ -1,4 +1,4 @@
-/* $Id: cmd-find-window.c,v 1.11 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-find-window.c,v 1.12 2009-07-17 12:12:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -140,7 +140,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		fatalx("session not found");
 
 	window_choose_ready(
-	    wl->window->active, 0, cmd_find_window_callback, cdata);
+	    wl->window->active, 0, cmd_find_window_callback, xfree, cdata);
 
 out:
 	ARRAY_FREE(&list_idx);
@@ -161,5 +161,4 @@ cmd_find_window_callback(void *data, int idx)
 			server_redraw_session(s);
 		recalculate_sizes();
 	}
-	xfree(cdata);
 }
