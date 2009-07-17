@@ -104,6 +104,9 @@
   callback for the old being cleared; this might be quite hard to hit, lock-server seems the only
   candidate
 - split list-windows into separate list-windows and list-panes
+- option (mode-mouse) to turn off mouse in copy-mode etc
+- way to override terminfo definitions
+- ability to rebind mode keys
 - warts on current naming:
   	- display-time but message-fg/bg/attr
 	- list-* vs show-*
