@@ -183,7 +183,7 @@ screen_resize_y(struct screen *s, u_int sy)
 		available = s->cy;
 		if (gd->flags & GRID_HISTORY)
 			gd->hsize += needed;
-		else if (available > 0) {
+		else if (needed > 0 && available > 0) {
 			if (available > needed)
 				available = needed;
 			grid_view_delete_lines(gd, 0, available);
