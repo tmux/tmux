@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.95 2009-07-15 17:50:11 nicm Exp $ */
+/* $Id: status.c,v 1.96 2009-07-17 07:46:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -57,10 +57,6 @@ status_redraw(struct client *c)
 	if (c->tty.sy == 0 || !options_get_number(&s->options, "status"))
 		return (1);
 	larrow = rarrow = 0;
-
-	/* Create the target screen. */
-	memcpy(&old_status, &c->status, sizeof old_status);
-	screen_init(&c->status, c->tty.sx, 1, 0);
 
 	/* Create the target screen. */
 	memcpy(&old_status, &c->status, sizeof old_status);
