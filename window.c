@@ -380,6 +380,21 @@ window_pane_at_index(struct window *w, u_int idx)
 }
 
 u_int
+window_pane_index(struct window *w, struct window_pane *wp)
+{
+	struct window_pane	*wq;
+	u_int			 n;
+
+	n = 0;
+	TAILQ_FOREACH(wq, &w->panes, entry) {
+		if (wp == wq)
+			break;
+		n++;
+	}
+	return (n);
+}
+
+u_int
 window_count_panes(struct window *w)
 {
 	struct window_pane	*wp;

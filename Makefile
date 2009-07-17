@@ -25,7 +25,8 @@ SRCS=	attributes.c buffer-poll.c buffer.c cfg.c client-fn.c \
 	cmd-split-window.c cmd-start-server.c cmd-string.c cmd-if-shell.c \
 	cmd-suspend-client.c cmd-swap-pane.c cmd-swap-window.c \
 	cmd-switch-client.c cmd-unbind-key.c cmd-unlink-window.c \
-	cmd-up-pane.c cmd.c colour.c grid-view.c grid.c input-keys.c \
+	cmd-up-pane.c cmd-display-message.c cmd.c \
+	colour.c grid-view.c grid.c input-keys.c \
 	input.c key-bindings.c key-string.c layout-manual.c layout.c log.c \
 	mode-key.c names.c options-cmd.c options.c paste.c procname.c \
 	resize.c screen-redraw.c screen-write.c screen.c server-fn.c \

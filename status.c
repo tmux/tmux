@@ -29,7 +29,6 @@
 
 #include "tmux.h"
 
-char   *status_replace(struct session *, char *, time_t);
 char   *status_replace_popen(char **);
 size_t	status_width(struct winlink *);
 char   *status_print(struct session *, struct winlink *, struct grid_cell *);
@@ -275,7 +274,7 @@ out:
 }
 
 char *
-status_replace(struct session *s, char *fmt, time_t t)
+status_replace(struct session *s, const char *fmt, time_t t)
 {
 	struct winlink *wl = s->curw;
 	static char	out[BUFSIZ];
@@ -323,6 +322,20 @@ status_replace(struct session *s, char *fmt, time_t t)
 					ptr = tmp;
 				}
 				/* FALLTHROUGH */
+			case 'I':
+				if (ptr == NULL) {
+					xsnprintf(tmp, sizeof tmp, "%d", wl->idx);
+					ptr = tmp;
+				}
+				/* FALLTHROUGH */
+			case 'P':
+				if (ptr == NULL) {
+					xsnprintf(tmp, sizeof tmp, "%u",
+						  window_pane_index(wl->window,
+						  wl->window->active));
+					ptr = tmp;
+				}
+				/* FALLTHOUGH */
 			case 'S':
 				if (ptr == NULL)
 					ptr = s->name;
@@ -330,6 +343,10 @@ status_replace(struct session *s, char *fmt, time_t t)
 			case 'T':
 				if (ptr == NULL)
 					ptr = wl->window->active->base.title;
+				/* FALLTHROUGH */
+			case 'W':
+				if (ptr == NULL)
+					ptr = wl->window->name;
 				len = strlen(ptr);
 				if ((size_t) n < len)
 					len = n;

@@ -717,6 +717,15 @@ or the top buffer if not specified.
 .D1 (alias: Ic detach )
 Detach the current client if bound to a key, or the specified client with
 .Fl t .
+.It Xo Ic display-message
+.Op Fl t Ar target-client
+.Op Ar message
+.Xc
+.D1 (alias: Ic display )
+Display a message (see the
+.Ic status-left
+option below)
+in the status line.
 .It Xo Ic down-pane
 .Op Fl p Ar pane-index
 .Op Fl t Ar target-window
@@ -1262,8 +1271,11 @@ may contain any of the following special character pairs:
 .It Sy "Character pair" Ta Sy "Replaced with"
 .It Li "#(command)" Ta "First line of command's output"
 .It Li "#H" Ta "Hostname of local host"
+.It Li "#I" Ta "Current window index"
+.It Li "#P" Ta "Current pane index"
 .It Li "#S" Ta "Session name"
 .It Li "#T" Ta "Current window title"
+.It Li "#W" Ta "Current window name"
 .It Li "##" Ta "A literal" Ql #
 .El
 .Pp

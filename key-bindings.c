@@ -119,6 +119,7 @@ key_bindings_init(void)
 		{ 'c', 			  0, &cmd_new_window_entry },
 		{ 'd', 			  0, &cmd_detach_client_entry },
 		{ 'f', 			  0, &cmd_command_prompt_entry },
+		{ 'i',			  0, &cmd_display_message_entry },
 		{ 'l', 			  0, &cmd_last_window_entry },
 		{ 'n', 			  0, &cmd_next_window_entry },
 		{ 'o', 			  0, &cmd_down_pane_entry },
