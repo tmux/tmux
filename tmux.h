@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.368 2009-07-17 12:12:54 nicm Exp $ */
+/* $Id: tmux.h,v 1.369 2009-07-17 18:32:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,7 +21,7 @@
 
 #include "config.h"
 
-#define PROTOCOL_VERSION -13
+#define PROTOCOL_VERSION -14
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -1099,6 +1099,7 @@ extern const struct cmd_entry cmd_copy_buffer_entry;
 extern const struct cmd_entry cmd_copy_mode_entry;
 extern const struct cmd_entry cmd_delete_buffer_entry;
 extern const struct cmd_entry cmd_detach_client_entry;
+extern const struct cmd_entry cmd_display_message_entry;
 extern const struct cmd_entry cmd_down_pane_entry;
 extern const struct cmd_entry cmd_find_window_entry;
 extern const struct cmd_entry cmd_has_session_entry;
@@ -1275,6 +1276,7 @@ int	 server_unlock(const char *);
 
 /* status.c */
 int	 status_redraw(struct client *);
+char	*status_replace(struct session *, const char *, time_t);
 void printflike2 status_message_set(struct client *, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
@@ -1436,6 +1438,7 @@ struct window_pane *window_add_pane(struct window *, int,
 		     const char *, const char *, const char **, u_int, char **);
 void		 window_remove_pane(struct window *, struct window_pane *);
 struct window_pane *window_pane_at_index(struct window *, u_int);
+u_int		 window_pane_index(struct window *, struct window_pane *);
 u_int		 window_count_panes(struct window *);
 void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);

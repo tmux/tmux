@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.93 2009-07-15 17:45:09 nicm Exp $ */
+/* $Id: window.c,v 1.94 2009-07-17 18:32:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -375,6 +375,21 @@ window_pane_at_index(struct window *w, u_int idx)
 		n++;
 	}
 	return (NULL);
+}
+
+u_int
+window_pane_index(struct window *w, struct window_pane *wp)
+{
+	struct window_pane	*wq;
+	u_int			 n;
+
+	n = 0;
+	TAILQ_FOREACH(wq, &w->panes, entry) {
+		if (wp == wq)
+			break;
+		n++;
+	}
+	return (n);
 }
 
 u_int
