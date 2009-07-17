@@ -36,11 +36,13 @@ controlled from a single terminal.
 .Pp
 .Nm
 runs as a server-client system.
-A server is created automatically when necessary and holds a number of
+A server holds a number of
 .Em sessions ,
 each of which may have a number of
 .Em windows
 linked to it.
+A server is started automatically when the first session is created and exits
+when all the sessions it contains are destroyed.
 A window may be split on screen into one or more
 .Em panes ,
 each of which is a separate terminal.
@@ -123,6 +125,14 @@ This is not always correct: the
 flag explicitly informs
 .Nm
 that UTF-8 is supported.
+.Pp
+If the server is started from a client passed
+.Fl u
+or where UTF-8 is detected, the
+.Ic utf8
+and
+.Ic status-utf8
+options are enabled in the global window and session options respectively.
 .It Fl v
 Request verbose logging.
 This option may be specified multiple times for increasing verbosity.

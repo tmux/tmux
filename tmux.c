@@ -266,6 +266,22 @@ main(int argc, char **argv)
 	log_open_tty(debug_level);
 	siginit();
 
+	if (!(flags & IDENTIFY_UTF8)) {
+		/*
+		 * If the user has set whichever of LC_ALL, LC_CTYPE or LANG
+		 * exist (in that order) to contain UTF-8, it is a safe
+		 * assumption that either they are using a UTF-8 terminal, or
+		 * if not they know that output from UTF-8-capable programs may
+		 * be wrong.
+		 */
+		if ((s = getenv("LC_ALL")) == NULL) {
+			if ((s = getenv("LC_CTYPE")) == NULL)
+				s = getenv("LANG");
+		}
+		if (s != NULL && strcasestr(s, "UTF-8") != NULL)
+			flags |= IDENTIFY_UTF8;
+	}
+
 	options_init(&global_s_options, NULL);
 	options_set_number(&global_s_options, "bell-action", BELL_ANY);
 	options_set_number(&global_s_options, "buffer-limit", 9);
@@ -292,7 +308,10 @@ main(int argc, char **argv)
 	options_set_string(&global_s_options, "status-left", "[#S]");
 	options_set_string(
 	    &global_s_options, "status-right", "\"#24T\" %%H:%%M %%d-%%b-%%y");
-	options_set_number(&global_s_options, "status-utf8", 0);
+	if (flags & IDENTIFY_UTF8)
+		options_set_number(&global_s_options, "status-utf8", 1);
+	else
+		options_set_number(&global_s_options, "status-utf8", 0);
 
 	options_init(&global_w_options, NULL);
 	options_set_number(&global_w_options, "aggressive-resize", 0);
@@ -309,28 +328,15 @@ main(int argc, char **argv)
 	options_set_number(&global_w_options, "mode-keys", MODEKEY_EMACS);
 	options_set_number(&global_w_options, "monitor-activity", 0);
 	options_set_string(&global_w_options, "monitor-content", "%s", "");
-	options_set_number(&global_w_options, "utf8", 0);
+	if (flags & IDENTIFY_UTF8)
+		options_set_number(&global_w_options, "utf8", 1);
+	else
+		options_set_number(&global_w_options, "utf8", 0);
 	options_set_number(&global_w_options, "window-status-attr", 0);
 	options_set_number(&global_w_options, "window-status-bg", 8);
 	options_set_number(&global_w_options, "window-status-fg", 8);
 	options_set_number(&global_w_options, "xterm-keys", 0);
  	options_set_number(&global_w_options, "remain-on-exit", 0);
-
-	if (!(flags & IDENTIFY_UTF8)) {
-		/*
-		 * If the user has set whichever of LC_ALL, LC_CTYPE or LANG
-		 * exist (in that order) to contain UTF-8, it is a safe
-		 * assumption that either they are using a UTF-8 terminal, or
-		 * if not they know that output from UTF-8-capable programs may
-		 * be wrong.
-		 */
-		if ((s = getenv("LC_ALL")) == NULL) {
-			if ((s = getenv("LC_CTYPE")) == NULL)
-				s = getenv("LANG");
-		}
-		if (s != NULL && strcasestr(s, "UTF-8") != NULL)
-			flags |= IDENTIFY_UTF8;
-	}
 
 	if (cfg_file == NULL) {
 		home = getenv("HOME");
