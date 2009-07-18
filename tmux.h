@@ -644,8 +644,8 @@ struct window {
 #define WINDOW_BELL 0x1
 #define WINDOW_HIDDEN 0x2
 #define WINDOW_ACTIVITY 0x4
-#define WINDOW_CONTENT 0x6
-#define WINDOW_REDRAW 0x8
+#define WINDOW_CONTENT 0x8
+#define WINDOW_REDRAW 0x10
 
 	struct options	 options;
 
