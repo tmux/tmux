@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.75 2009-07-17 18:32:54 tcunha Exp $ */
+/* $Id: key-bindings.c,v 1.76 2009-07-18 11:05:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -136,12 +136,11 @@ key_bindings_init(void)
 		{ KEYC_ADDESC('1'),	  0, &cmd_select_layout_entry },
 		{ KEYC_ADDESC('2'),	  0, &cmd_select_layout_entry },
 		{ KEYC_ADDESC('9'),	  0, &cmd_select_layout_entry },
-		{ KEYC_ADDCTL(KEYC_DOWN), 1, &cmd_resize_pane_entry },
 		{ KEYC_PPAGE, 		  0, &cmd_scroll_mode_entry },
 		{ KEYC_ADDESC('n'), 	  0, &cmd_next_window_entry },
 		{ KEYC_ADDESC('p'), 	  0, &cmd_previous_window_entry },
-		{ KEYC_UP, 		  1, &cmd_up_pane_entry },
-		{ KEYC_DOWN, 		  1, &cmd_down_pane_entry },
+		{ KEYC_UP, 		  0, &cmd_up_pane_entry },
+		{ KEYC_DOWN, 		  0, &cmd_down_pane_entry },
 		{ KEYC_ADDESC(KEYC_UP),   1, &cmd_resize_pane_entry },
 		{ KEYC_ADDESC(KEYC_DOWN), 1, &cmd_resize_pane_entry },
 		{ KEYC_ADDCTL(KEYC_UP),   1, &cmd_resize_pane_entry },
