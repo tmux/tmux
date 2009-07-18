@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.93 2009-07-17 18:35:55 nicm Exp $ */
+/* $Id: screen.c,v 1.94 2009-07-18 11:06:35 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
