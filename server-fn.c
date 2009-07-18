@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.74 2009-07-17 12:12:54 nicm Exp $ */
+/* $Id: server-fn.c,v 1.75 2009-07-18 11:07:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -227,4 +227,37 @@ wrong:
 	}
 
 	return (-1);
+}
+
+void
+server_kill_window(struct window *w)
+{
+	struct session	*s;
+	struct winlink	*wl;
+	struct client	*c;
+	u_int		 i, j;
+	int		 destroyed;
+
+	
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		s = ARRAY_ITEM(&sessions, i);
+		if (s == NULL || !session_has(s, w))
+			continue;
+		if ((wl = winlink_find_by_window(&s->windows, w)) == NULL)
+			continue;
+		
+		destroyed = session_detach(s, wl);
+		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
+			c = ARRAY_ITEM(&clients, j);
+			if (c == NULL || c->session != s)
+				continue;
+			
+			if (destroyed) {
+				c->session = NULL;
+				server_write_client(c, MSG_EXIT, NULL, 0);
+			} else
+				server_redraw_client(c);
+		}
+	}
+	recalculate_sizes();
 }
