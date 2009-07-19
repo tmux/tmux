@@ -132,6 +132,7 @@ recalculate_sizes(void)
 		log_debug(
 		    "window size %u,%u (was %u,%u)", ssx, ssy, w->sx, w->sy);
 
+		layout_resize(w, ssx, ssy);
 		window_resize(w, ssx, ssy);
 
 		/*
@@ -148,6 +149,5 @@ recalculate_sizes(void)
 		}
 
 		server_redraw_window(w);
-		layout_refresh(w, 0);
 	}
 }

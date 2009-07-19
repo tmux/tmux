@@ -393,15 +393,17 @@ each pane takes up a certain area of the display and is a separate terminal.
 A window may be split into panes using the
 .Ic split-window
 command.
-.Pp
-Panes are numbered beginning from zero; in horizontal layouts zero is the
-leftmost pane and in vertical the topmost.
-.Pp
-Panes may be arranged using several layouts.
-The layout may be cycled with the
-.Ic next-layout
+Windows may be split horizontally (with the
+.Fl h
+flag) or vertically.
+Panes may be resized with the
+.Ic resize-pane
 command (bound to
-.Ql C-space
+.Ql C-up ,
+.Ql C-down
+.Ql C-left
+and
+.Ql C-right
 by default), the current pane may be changed with the
 .Ic up-pane
 and
@@ -410,12 +412,22 @@ commands and the
 .Ic rotate-window
 and
 .Ic swap-pane
-commands may be used to swap panes without changing the window layout.
+commands may be used to swap panes without changing their position.
+Panes are numbered beginning from zero in the order they are created.
+.Pp
+A number of preset
+.Em layouts
+are available.
+These may be selected with the
+.Ic select-layout
+command or cycled with
+.Ic next-layout
+(bound to
+.Ql C-space
+by default); once a layout is chosen, panes within it may be moved and resized as normal.
 .Pp
 The following layouts are supported:
 .Bl -tag -width Ds
-.It Ic active-only
-Only the active pane is shown \(en all other panes are hidden.
 .It Ic even-horizontal
 Panes are spread out evenly from left to right across the window.
 .It Ic even-vertical
@@ -434,11 +446,6 @@ bottom along the right.
 See the
 .Em main-pane-width
 window option.
-.It Ic manual
-Manual layout splits windows vertically (running across); only with this layout
-may panes be resized using the
-.Ic resize-pane
-command.
 .El
 .Sh STATUS LINE
 .Nm
@@ -980,7 +987,7 @@ Rename the current window, or the window at
 if specified, to
 .Ar new-name .
 .It Xo Ic resize-pane
-.Op Fl DU
+.Op Fl DLUR
 .Op Fl p Ar pane-index
 .Op Fl t Ar target-window
 .Op Ar adjustment
@@ -988,11 +995,15 @@ if specified, to
 .D1 (alias: Ic resizep )
 Resize a pane, upward with
 .Fl U
-(the default) or downward with
-.Fl D .
+(the default), downward with
+.Fl D ,
+to the left with
+.Fl L
+and to the right with
+.Fl R.
 The
 .Ar adjustment
-is given in lines (the default is 1).
+is given in lines or cells (the default is 1).
 .It Xo Ic respawn-window
 .Op Fl k
 .Op Fl t Ar target-window
@@ -1520,38 +1531,30 @@ is used.
 Execute commands from
 .Ar path .
 .It Xo Ic split-window
-.Op Fl d
+.Op Fl dhv
 .Oo Fl l
-.Ar lines |
+.Ar size |
 .Fl p Ar percentage Oc
 .Op Fl t Ar target-window
 .Op Ar command
 .Xc
 .D1 (alias: splitw )
-Creates a new window by splitting it vertically.
+Creates a new pane by splitting the active pane:
+.Fl h
+does a horizontal split and
+.Fl v
+a vertical split; if neither is specified,
+.Fl v
+is assumed.
 The
 .Fl l
 and
 .Fl p
-options specify the size of the new window in lines, or as a percentage,
-respectively.
+options specify the size of the new window in lines (for vertical split) or in
+cells (for horizontal split), or as a percentage, respectively.
 All other options have the same meaning as in the
 .Ic new-window
 command.
-.Pp
-A few notes with regard to panes:
-.Bl -enum -compact
-.It
-If attempting to split a window with less than eight lines, an error will be
-shown.
-.It
-If the window is resized, as many panes are shown as can fit without reducing
-them below four lines.
-.It
-The minimum pane size is four lines (including the separator line).
-.It
-The panes are indexed from top (0) to bottom, with no numbers skipped.
-.El
 .It Xo Ic start-server
 .Xc
 .D1 (alias: Ic start )

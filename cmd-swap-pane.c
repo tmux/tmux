@@ -157,6 +157,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink			*wl;
 	struct window			*w;
 	struct window_pane		*tmp_wp, *src_wp, *dst_wp;
+	struct layout_cell		*lc;
 	u_int				 xx, yy;
 
 	if (data == NULL)
@@ -207,12 +208,15 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		TAILQ_INSERT_AFTER(&w->panes, tmp_wp, src_wp, entry);
 
+	lc = src_wp->layout_cell;
 	xx = src_wp->xoff;
 	yy = src_wp->yoff;
- 	src_wp->xoff = dst_wp->xoff;
- 	src_wp->yoff = dst_wp->yoff;
- 	dst_wp->xoff = xx;
- 	dst_wp->yoff = yy;
+	src_wp->layout_cell = dst_wp->layout_cell;
+	if (src_wp->layout_cell != NULL)
+		src_wp->layout_cell->wp = src_wp;
+	dst_wp->layout_cell = lc;
+	if (dst_wp->layout_cell != NULL)
+		dst_wp->layout_cell->wp = dst_wp;
 
 	xx = src_wp->sx;
 	yy = src_wp->sy;
@@ -224,8 +228,8 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (!window_pane_visible(tmp_wp))
 			tmp_wp = src_wp;
 		window_set_active_pane(w, tmp_wp);
-		layout_refresh(w, 0);
 	}
+	server_redraw_window(w);
 
 	return (0);
 }

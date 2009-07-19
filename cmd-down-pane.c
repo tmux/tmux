@@ -54,7 +54,6 @@ cmd_down_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		w->active = TAILQ_NEXT(w->active, entry);
 		if (w->active == NULL)
 			w->active = TAILQ_FIRST(&w->panes);
-		layout_refresh(w, 1);
 	} while (!window_pane_visible(w->active));
 
 	return (0);

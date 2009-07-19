@@ -32,7 +32,8 @@ int	cmd_resize_pane_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_resize_pane_entry = {
 	"resize-pane", "resizep",
 	CMD_PANE_WINDOW_USAGE "[-DU] [adjustment]",
-	CMD_ARG01, CMD_CHFLAG('D')|CMD_CHFLAG('U'),
+	CMD_ARG01,
+	CMD_CHFLAG('D')|CMD_CHFLAG('L')|CMD_CHFLAG('R')|CMD_CHFLAG('U'),
 	cmd_resize_pane_init,
 	cmd_pane_parse,
 	cmd_resize_pane_exec,
@@ -50,13 +51,29 @@ cmd_resize_pane_init(struct cmd *self, int key)
 	cmd_pane_init(self, key);
 	data = self->data;
 
+	if (key == KEYC_ADDCTL(KEYC_UP))
+		data->chflags |= CMD_CHFLAG('U');
 	if (key == KEYC_ADDCTL(KEYC_DOWN))
 		data->chflags |= CMD_CHFLAG('D');
+	if (key == KEYC_ADDCTL(KEYC_LEFT))
+		data->chflags |= CMD_CHFLAG('L');
+	if (key == KEYC_ADDCTL(KEYC_RIGHT))
+		data->chflags |= CMD_CHFLAG('R');
 
-	if (key == KEYC_ADDESC(KEYC_UP))
+	if (key == KEYC_ADDESC(KEYC_UP)) {
+		data->chflags |= CMD_CHFLAG('U');
 		data->arg = xstrdup("5");
+	}
 	if (key == KEYC_ADDESC(KEYC_DOWN)) {
 		data->chflags |= CMD_CHFLAG('D');
+		data->arg = xstrdup("5");
+	}
+	if (key == KEYC_ADDESC(KEYC_LEFT)) {
+		data->chflags |= CMD_CHFLAG('L');
+		data->arg = xstrdup("5");
+	}
+	if (key == KEYC_ADDESC(KEYC_RIGHT)) {
+		data->chflags |= CMD_CHFLAG('R');
 		data->arg = xstrdup("5");
 	}
 }
@@ -92,12 +109,14 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (!(data->chflags & CMD_CHFLAG('D')))
-		adjust = -adjust;
-	if (layout_resize(wp, adjust) != 0) {
-		ctx->error(ctx, "layout %s "
-		    "does not support resizing", layout_name(wp->window));
-		return (-1);
+	if (data->chflags & (CMD_CHFLAG('L')|CMD_CHFLAG('R'))) {
+		if (data->chflags & CMD_CHFLAG('L'))
+			adjust = -adjust;
+		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, adjust);
+	} else {
+		if (data->chflags & CMD_CHFLAG('U'))
+			adjust = -adjust;
+		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, adjust);
 	}
 	server_redraw_window(wl->window);
 

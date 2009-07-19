@@ -47,8 +47,11 @@ extern const char    *__progname;
 /* Default prompt history length. */
 #define PROMPT_HISTORY 100
 
-/* Minimum pane size. */
-#define PANE_MINIMUM 5	/* includes separator line */
+/* 
+ * Minimum layout cell size, NOT including separator line. The scroll region
+ * cannot be one line in height so this must be at least two.
+ */
+#define PANE_MINIMUM 2
 
 /* Automatic name refresh interval, in milliseconds. */
 #define NAME_INTERVAL 500
@@ -592,6 +595,7 @@ struct window_mode {
 /* Child window structure. */
 struct window_pane {
 	struct window	*window;
+	struct layout_cell *layout_cell;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -635,7 +639,9 @@ struct window {
 
 	struct window_pane *active;
 	struct window_panes panes;
+
 	u_int		 layout;
+	struct layout_cell *layout_root;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -663,6 +669,34 @@ struct winlink {
 };
 RB_HEAD(winlinks, winlink);
 SLIST_HEAD(winlink_stack, winlink);
+
+/* Layout direction. */
+enum layout_type {
+	LAYOUT_LEFTRIGHT,
+	LAYOUT_TOPBOTTOM,
+	LAYOUT_WINDOWPANE
+};
+
+/* Layout cells queue. */
+TAILQ_HEAD(layout_cells, layout_cell);
+
+/* Layout cell. */
+struct layout_cell {
+	enum layout_type type;
+
+	struct layout_cell *parent;
+
+	u_int		 sx;
+	u_int		 sy;
+
+	u_int		 xoff;
+	u_int		 yoff;
+
+	struct window_pane *wp;
+	struct layout_cells cells;
+
+	TAILQ_ENTRY(layout_cell) entry;
+};
 
 /* Paste buffer. */
 struct paste_buffer {
@@ -1446,8 +1480,7 @@ struct window	*window_create(const char *, const char *,
 void		 window_destroy(struct window *);
 int		 window_resize(struct window *, u_int, u_int);
 void		 window_set_active_pane(struct window *, struct window_pane *);
-struct window_pane *window_add_pane(struct window *, int,
-		     const char *, const char *, const char **, u_int, char **);
+struct window_pane *window_add_pane(struct window *, u_int, char **);
 void		 window_remove_pane(struct window *, struct window_pane *);
 struct window_pane *window_pane_at_index(struct window *, u_int);
 u_int		 window_pane_index(struct window *, struct window_pane *);
@@ -1467,20 +1500,38 @@ void		 window_pane_mouse(struct window_pane *,
     		     struct client *, u_char, u_char, u_char);
 int		 window_pane_visible(struct window_pane *);
 char		*window_pane_search(
-		     struct window_pane *, const char *, u_int *);
+    		     struct window_pane *, const char *, u_int *);
 
 /* layout.c */
-const char * 	 layout_name(struct window *);
-int		 layout_lookup(const char *);
-void		 layout_refresh(struct window *, int);
-int		 layout_resize(struct window_pane *, int);
-int		 layout_select(struct window *, u_int);
-void		 layout_next(struct window *);
-void		 layout_previous(struct window *);
+struct layout_cell *layout_create_cell(struct layout_cell *);
+void		 layout_free_cell(struct layout_cell *);
+void		 layout_print_cell(struct layout_cell *, const char *, u_int);
+void		 layout_set_size(
+		     struct layout_cell *, u_int, u_int, u_int, u_int);
+void		 layout_make_leaf(
+		     struct layout_cell *, struct window_pane *);
+void		 layout_make_node(struct layout_cell *, enum layout_type);
+void		 layout_fix_offsets(struct layout_cell *);
+void		 layout_fix_panes(struct window *, u_int, u_int);
+u_int		 layout_resize_check(struct layout_cell *, enum layout_type);
+void		 layout_resize_adjust(
+		     struct layout_cell *, enum layout_type, int);
+void		 layout_init(struct window *);
+void		 layout_free(struct window *);
+void		 layout_resize(struct window *, u_int, u_int);
+void		 layout_resize_pane(
+    		     struct window_pane *, enum layout_type, int);
+int		 layout_split_pane(struct window_pane *,
+		     enum layout_type, int, struct window_pane *);
+void		 layout_close_pane(struct window_pane *);
 
-/* layout-manual.c */
-void		 layout_manual_v_refresh(struct window *, int);
-void		 layout_manual_v_resize(struct window_pane *, int);
+/* layout-set.c */
+const char	*layout_set_name(u_int);
+int		 layout_set_lookup(const char *);
+u_int		 layout_set_select(struct window *, u_int);
+u_int		 layout_set_next(struct window *);
+u_int		 layout_set_previous(struct window *);
+void		 layout_set_active_changed(struct window *);
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;
