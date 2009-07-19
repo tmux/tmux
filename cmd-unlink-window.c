@@ -1,4 +1,4 @@
-/* $Id: cmd-unlink-window.c,v 1.14 2009-07-14 06:43:33 nicm Exp $ */
+/* $Id: cmd-unlink-window.c,v 1.15 2009-07-19 00:39:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,8 +28,8 @@ int	cmd_unlink_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_unlink_window_entry = {
 	"unlink-window", "unlinkw",
-	CMD_TARGET_WINDOW_USAGE,
-	0, 0,
+	"[-k] " CMD_TARGET_WINDOW_USAGE,
+	0, CMD_CHFLAG('k'),
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_unlink_window_exec,
@@ -52,7 +52,7 @@ cmd_unlink_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return (-1);
 
-	if (wl->window->references == 1) {
+	if (!(data->chflags & CMD_CHFLAG('k')) && wl->window->references == 1) {
 		ctx->error(ctx, "window is only linked to one session");
 		return (-1);
 	}
