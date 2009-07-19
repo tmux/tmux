@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.143 2009-07-18 11:05:13 nicm Exp $ */
+/* $Id: tmux.c,v 1.144 2009-07-19 14:35:56 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -321,6 +321,9 @@ main(int argc, char **argv)
 		options_set_number(&global_s_options, "status-utf8", 1);
 	else
 		options_set_number(&global_s_options, "status-utf8", 0);
+	options_set_number(&global_s_options, "visual-activity", 0);
+	options_set_number(&global_s_options, "visual-bell", 0);
+	options_set_number(&global_s_options, "visual-content", 0);
 
 	options_init(&global_w_options, NULL);
 	options_set_number(&global_w_options, "aggressive-resize", 0);

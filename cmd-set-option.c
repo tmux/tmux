@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.67 2009-07-15 17:44:47 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.68 2009-07-19 14:35:56 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -75,6 +75,9 @@ const struct set_option_entry set_option_table[] = {
 	{ "status-right", SET_OPTION_STRING, 0, 0, NULL },
 	{ "status-right-length", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
 	{ "status-utf8", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "visual-activity", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "visual-bell", SET_OPTION_FLAG, 0, 0, NULL },	
+	{ "visual-content", SET_OPTION_FLAG, 0, 0, NULL },
 	{ NULL, 0, 0, 0, NULL }
 };
 

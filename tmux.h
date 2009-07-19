@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.371 2009-07-18 11:07:14 nicm Exp $ */
+/* $Id: tmux.h,v 1.372 2009-07-19 14:35:56 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -643,8 +643,8 @@ struct window {
 #define WINDOW_BELL 0x1
 #define WINDOW_HIDDEN 0x2
 #define WINDOW_ACTIVITY 0x4
-#define WINDOW_CONTENT 0x6
-#define WINDOW_REDRAW 0x8
+#define WINDOW_CONTENT 0x8
+#define WINDOW_REDRAW 0x10
 
 	struct options	 options;
 

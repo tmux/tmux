@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.122 2009-07-19 00:39:37 tcunha Exp $
+.\" $Id: tmux.1,v 1.123 2009-07-19 14:35:56 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -1324,6 +1324,30 @@ and
 .Ic status-right
 strings as UTF-8; notably, this is important for wide characters.
 This option defaults to off.
+.It Xo Ic visual-activity
+.Op Ic on | Ic off
+.Xc
+If on, display a status line message when activity occurs in a window
+for with the
+.Ic monitor-activity
+window option is enabled.
+.It Xo Ic visual-bell
+.Op Ic on | Ic off
+.Xc
+If this option is on, a message is shown on a bell instead of it being passed
+through to the terminal (which normally makes a sound).
+Also see the
+.Ic bell-action
+option.
+.It Xo Ic visual-content
+.Op Ic on | Ic off
+.Xc
+Like
+.Ic visual-activity ,
+display a message when content is present in a window
+for with the
+.Ic monitor-content
+window option is enabled.
 .El
 .It Xo Ic set-password
 .Op Fl c
