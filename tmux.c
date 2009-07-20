@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.146 2009-07-20 16:01:07 tcunha Exp $ */
+/* $Id: tmux.c,v 1.147 2009-07-20 16:07:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,6 +51,7 @@ struct options	 global_s_options;	/* session options */
 struct options	 global_w_options;	/* window options */
 
 int		 server_locked;
+u_int		 password_failures;
 char		*server_password;
 time_t		 server_activity;
 

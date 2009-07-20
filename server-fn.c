@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.75 2009-07-18 11:07:14 nicm Exp $ */
+/* $Id: server-fn.c,v 1.76 2009-07-20 16:07:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -213,9 +213,11 @@ server_unlock(const char *s)
 	}
 
 	server_locked = 0;
+	password_failures = 0;
 	return (0);
 
 wrong:
+	password_failures++;
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
                 if (c == NULL || c->prompt_buffer == NULL)
@@ -223,7 +225,7 @@ wrong:
 
 		*c->prompt_buffer = '\0';
 		c->prompt_index = 0;
-  		server_status_client(c);
+  		server_redraw_client(c);
 	}
 
 	return (-1);

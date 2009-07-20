@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.160 2009-07-20 15:42:05 tcunha Exp $ */
+/* $Id: server.c,v 1.161 2009-07-20 16:07:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -584,6 +584,7 @@ server_redraw_locked(struct client *c)
 {
 	struct screen_write_ctx	ctx;
 	struct screen		screen;
+	struct grid_cell	gc;
 	u_int			colour, xx, yy, i;
 	int    			style;
 
@@ -594,10 +595,21 @@ server_redraw_locked(struct client *c)
 	colour = options_get_number(&global_w_options, "clock-mode-colour");
 	style = options_get_number(&global_w_options, "clock-mode-style");
 
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.fg = colour;
+	gc.attr |= GRID_ATTR_BRIGHT;
+
 	screen_init(&screen, xx, yy, 0);
 
 	screen_write_start(&ctx, NULL, &screen);
 	clock_draw(&ctx, colour, style);
+
+	if (password_failures != 0) {
+		screen_write_cursormove(&ctx, 0, 0);
+		screen_write_puts(
+		    &ctx, &gc, "%u failed attempts", password_failures);
+	}
+
 	screen_write_stop(&ctx);
 
 	for (i = 0; i < screen_size_y(&screen); i++)
