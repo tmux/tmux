@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.125 2009-07-20 15:46:55 tcunha Exp $
+.\" $Id: tmux.1,v 1.126 2009-07-20 15:57:05 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -1489,6 +1489,12 @@ Set status line attributes for a single window.
 Set status line background colour for a single window.
 .It Ic window-status-fg Ar colour
 Set status line foreground colour for a single window.
+.It Ic window-status-current-attr Ar attributes
+Set status line attributes for the currently active window.
+.It Ic window-status-current-bg Ar colour
+Set status line background colour for the currently active window.
+.It Ic window-status-current-fg Ar colour
+Set status line foreground colour for the currently active window.
 .It Xo Ic xterm-keys
 .Op Ic on | Ic off
 .Xc

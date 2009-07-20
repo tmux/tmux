@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.33 2009-07-15 17:44:47 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.34 2009-07-20 15:57:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -68,6 +68,9 @@ const struct set_option_entry set_window_option_table[] = {
 	{ "utf8", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "window-status-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
 	{ "window-status-bg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "window-status-current-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
+	{ "window-status-current-bg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "window-status-current-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "window-status-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "xterm-keys", SET_OPTION_FLAG, 0, 0, NULL },
 	{ NULL, 0, 0, 0, NULL }
