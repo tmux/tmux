@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-pane.c,v 1.9 2009-07-18 11:07:14 nicm Exp $ */
+/* $Id: cmd-kill-pane.c,v 1.10 2009-07-20 15:42:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -66,8 +66,8 @@ cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (0);
 	}
 
+	layout_close_pane(wp);
 	window_remove_pane(wl->window, wp);
 	server_redraw_window(wl->window);
-	layout_refresh(wl->window, 0);
 	return (0);
 }

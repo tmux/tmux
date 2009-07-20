@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-window.c,v 1.11 2009-07-17 12:12:54 nicm Exp $ */
+/* $Id: cmd-choose-window.c,v 1.12 2009-07-20 15:42:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -76,8 +76,8 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		idx++;
 
 		window_choose_add(wl->window->active,
-		    wm->idx, "%3d: %s [%ux%u %s] (%u panes)", wm->idx, w->name,
-		    w->sx, w->sy, layout_name(w), window_count_panes(w));
+		    wm->idx, "%3d: %s [%ux%u] (%u panes)",
+		    wm->idx, w->name, w->sx, w->sy, window_count_panes(w));
 	}
 
 	cdata = xmalloc(sizeof *cdata);

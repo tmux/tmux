@@ -1,4 +1,4 @@
-/* $Id: cmd-rotate-window.c,v 1.6 2009-07-15 17:42:43 nicm Exp $ */
+/* $Id: cmd-rotate-window.c,v 1.7 2009-07-20 15:42:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -59,6 +59,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink		*wl;
 	struct window		*w;
 	struct window_pane	*wp, *wp2;
+	struct layout_cell	*lc;
 	u_int			 sx, sy, xoff, yoff;
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
@@ -70,42 +71,56 @@ cmd_rotate_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		TAILQ_REMOVE(&w->panes, wp, entry);
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 
+		lc = wp->layout_cell;
 		xoff = wp->xoff; yoff = wp->yoff;
 		sx = wp->sx; sy = wp->sy;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if ((wp2 = TAILQ_NEXT(wp, entry)) == NULL)
 				break;
+			wp->layout_cell = wp2->layout_cell;
+			if (wp->layout_cell != NULL)
+				wp->layout_cell->wp = wp;
 			wp->xoff = wp2->xoff; wp->yoff = wp2->yoff;
 			window_pane_resize(wp, wp2->sx, wp2->sy);
 		}
+		wp->layout_cell = lc;
+		if (wp->layout_cell != NULL)
+			wp->layout_cell->wp = wp;
 		wp->xoff = xoff; wp->yoff = yoff;
 		window_pane_resize(wp, sx, sy);
 
 		if ((wp = TAILQ_PREV(w->active, window_panes, entry)) == NULL)
 			wp = TAILQ_LAST(&w->panes, window_panes);
 		window_set_active_pane(w, wp);
+		server_redraw_window(w);
 	} else {
 		wp = TAILQ_FIRST(&w->panes);
 		TAILQ_REMOVE(&w->panes, wp, entry);
 		TAILQ_INSERT_TAIL(&w->panes, wp, entry);
 
+		lc = wp->layout_cell;
 		xoff = wp->xoff; yoff = wp->yoff;
 		sx = wp->sx; sy = wp->sy;
 		TAILQ_FOREACH_REVERSE(wp, &w->panes, window_panes, entry) {
 			if ((wp2 = TAILQ_PREV(wp, window_panes, entry)) == NULL)
 				break;
+			wp->layout_cell = wp2->layout_cell;
+			if (wp->layout_cell != NULL)
+				wp->layout_cell->wp = wp;
 			wp->xoff = wp2->xoff; wp->yoff = wp2->yoff;
 			window_pane_resize(wp, wp2->sx, wp2->sy);
 		}
+		wp->layout_cell = lc;
+		if (wp->layout_cell != NULL)
+			wp->layout_cell->wp = wp;
 		wp->xoff = xoff; wp->yoff = yoff;
 		window_pane_resize(wp, sx, sy);
 
 		if ((wp = TAILQ_NEXT(w->active, entry)) == NULL)
 			wp = TAILQ_FIRST(&w->panes);
 		window_set_active_pane(w, wp);
+		server_redraw_window(w);
 	}
-
-	layout_refresh(w, 0);
 
 	return (0);
 }

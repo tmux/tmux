@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-window.c,v 1.15 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-respawn-window.c,v 1.16 2009-07-20 15:42:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,6 +70,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	wp = TAILQ_FIRST(&w->panes);
 	TAILQ_REMOVE(&w->panes, wp, entry);
+	layout_free(w);
  	window_destroy_panes(w);
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	window_pane_resize(wp, w->sx, w->sy);
@@ -78,6 +79,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		xfree(cause);
 		return (-1);
 	}
+	layout_init(w);
 	screen_reinit(&wp->base);
 
 	recalculate_sizes();

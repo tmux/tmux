@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.22 2009-07-15 17:42:44 nicm Exp $ */
+/* $Id: resize.c,v 1.23 2009-07-20 15:42:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -132,6 +132,7 @@ recalculate_sizes(void)
 		log_debug(
 		    "window size %u,%u (was %u,%u)", ssx, ssy, w->sx, w->sy);
 
+		layout_resize(w, ssx, ssy);
 		window_resize(w, ssx, ssy);
 
 		/*
@@ -148,6 +149,5 @@ recalculate_sizes(void)
 		}
 
 		server_redraw_window(w);
-		layout_refresh(w, 0);
 	}
 }

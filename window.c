@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.94 2009-07-17 18:32:54 tcunha Exp $ */
+/* $Id: window.c,v 1.95 2009-07-20 15:42:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,7 @@
 #include "tmux.h"
 
 /*
- * Each window is attached to one or two panes, each of which is a pty. This
+ * Each window is attached to a number of panes, each of which is a pty. This
  * file contains code to handle them.
  *
  * A pane has two buffers attached, these are filled and emptied by the main
@@ -228,8 +228,10 @@ window_create1(u_int sx, u_int sy)
 
 	TAILQ_INIT(&w->panes);
 	w->active = NULL;
-	w->layout = 0;
 
+	w->layout = 0;
+	w->layout_root = NULL;
+	
 	w->sx = sx;
 	w->sy = sy;
 
@@ -252,15 +254,20 @@ struct window *
 window_create(const char *name, const char *cmd, const char *cwd,
     const char **envp, u_int sx, u_int sy, u_int hlimit, char **cause)
 {
-	struct window	*w;
+	struct window		*w;
+	struct window_pane	*wp;
 
 	w = window_create1(sx, sy);
-	if (window_add_pane(w, -1, cmd, cwd, envp, hlimit, cause) == NULL) {
+	if ((wp = window_add_pane(w, hlimit, cause)) == NULL) {
+		window_destroy(w);
+		return (NULL);
+	}
+	layout_init(w);
+	if (window_pane_spawn(wp, cmd, cwd, envp, cause) != 0) {
 		window_destroy(w);
 		return (NULL);
 	}
 	w->active = TAILQ_FIRST(&w->panes);
-
 	if (name != NULL) {
 		w->name = xstrdup(name);
 		options_set_number(&w->options, "automatic-rename", 0);
@@ -279,6 +286,9 @@ window_destroy(struct window *w)
 	ARRAY_SET(&windows, i, NULL);
 	while (!ARRAY_EMPTY(&windows) && ARRAY_LAST(&windows) == NULL)
 		ARRAY_TRUNC(&windows, 1);
+
+	if (w->layout_root != NULL)
+		layout_free(w);
 
 	options_free(&w->options);
 
@@ -302,7 +312,6 @@ void
 window_set_active_pane(struct window *w, struct window_pane *wp)
 {
 	w->active = wp;
-
 	while (!window_pane_visible(w->active)) {
 		w->active = TAILQ_PREV(w->active, window_panes, entry);
 		if (w->active == NULL)
@@ -313,41 +322,15 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 }
 
 struct window_pane *
-window_add_pane(struct window *w, int wanty, const char *cmd,
-    const char *cwd, const char **envp, u_int hlimit, char **cause)
+window_add_pane(struct window *w, u_int hlimit, unused char **cause)
 {
 	struct window_pane	*wp;
-	u_int			 sizey;
 
-	if (TAILQ_EMPTY(&w->panes))
-		wanty = w->sy;
-	else {
-		sizey = w->active->sy - 1; /* for separator */
-		if (sizey < PANE_MINIMUM * 2) {
-			*cause = xstrdup("pane too small");
-			return (NULL);
-		}
-
-  		if (wanty == -1)
-			wanty = sizey / 2;
-
-		if (wanty < PANE_MINIMUM)
-			wanty = PANE_MINIMUM;
-		if ((u_int) wanty > sizey - PANE_MINIMUM)
-			wanty = sizey - PANE_MINIMUM;
-
-		window_pane_resize(w->active, w->sx, sizey - wanty);
-	}
-
-	wp = window_pane_create(w, w->sx, wanty, hlimit);
+	wp = window_pane_create(w, w->sx, w->sy, hlimit);
 	if (TAILQ_EMPTY(&w->panes))
 		TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	else
 		TAILQ_INSERT_AFTER(&w->panes, w->active, wp, entry);
-	if (window_pane_spawn(wp, cmd, cwd, envp, cause) != 0) {
-		window_remove_pane(w, wp);
-		return (NULL);
-	}
 	return (wp);
 }
 
@@ -432,6 +415,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->out = buffer_create(BUFSIZ);
 
 	wp->mode = NULL;
+
+	wp->layout_cell = NULL;
 
 	wp->xoff = 0;
  	wp->yoff = 0;

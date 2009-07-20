@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.159 2009-07-19 14:35:56 tcunha Exp $ */
+/* $Id: server.c,v 1.160 2009-07-20 15:42:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -845,7 +845,9 @@ server_handle_client(struct client *c)
 
 	/* Ensure cursor position and mode settings. */
 	status = options_get_number(&c->session->options, "status");
-	if (wp->yoff + s->cy < c->tty.sy - status)
+	if (!window_pane_visible(wp) || wp->yoff + s->cy >= c->tty.sy - status)
+		tty_cursor(&c->tty, 0, 0, 0, 0);
+	else
 		tty_cursor(&c->tty, s->cx, s->cy, wp->xoff, wp->yoff);
 
 	mode = s->mode;
@@ -1077,9 +1079,9 @@ server_check_window(struct window *w)
 		 * pane dies).
 		 */
 		if (wp->fd == -1 && !flag) {
+			layout_close_pane(wp);
 			window_remove_pane(w, wp);
 			server_redraw_window(w);
-			layout_refresh(w, 0);
 		} else 
 			destroyed = 0;
 		wp = wq;

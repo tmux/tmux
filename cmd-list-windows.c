@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.36 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.37 2009-07-20 15:42:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -78,9 +78,8 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 			else
 				name = "unknown";
 			ctx->print(ctx,
-			    "     %s [%ux%u %s] [history %u/%u, %llu bytes]",
-			    name, wp->sx, wp->sy, layout_name(w), gd->hsize,
-			    gd->hlimit, size);
+			    "     %s [%ux%u] [history %u/%u, %llu bytes]",
+			    name, wp->sx, wp->sy, gd->hsize, gd->hlimit, size);
 		}
 	}
 

@@ -1,4 +1,4 @@
-/* $Id: cmd-previous-layout.c,v 1.2 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-previous-layout.c,v 1.3 2009-07-20 15:42:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,12 +44,13 @@ cmd_previous_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
 	struct winlink		*wl;
-
+	u_int			 layout;
+	
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
 
-	layout_previous(wl->window);
-	ctx->info(ctx, "layout now: %s", layout_name(wl->window));
+	layout = layout_set_previous(wl->window);
+	ctx->info(ctx, "arranging in: %s", layout_set_name(layout));
 
 	return (0);
 }

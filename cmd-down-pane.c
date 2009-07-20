@@ -1,4 +1,4 @@
-/* $Id: cmd-down-pane.c,v 1.9 2009-07-15 17:42:43 nicm Exp $ */
+/* $Id: cmd-down-pane.c,v 1.10 2009-07-20 15:42:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,7 +54,6 @@ cmd_down_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		w->active = TAILQ_NEXT(w->active, entry);
 		if (w->active == NULL)
 			w->active = TAILQ_FIRST(&w->panes);
-		layout_refresh(w, 1);
 	} while (!window_pane_visible(w->active));
 
 	return (0);
