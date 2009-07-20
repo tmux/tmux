@@ -122,10 +122,9 @@ layout_set_even_h(struct window *w)
 		return;
 
 	/* How many can we fit? */
-	if (w->sx / n < PANE_MINIMUM + 1) {
+	if (w->sx / n < PANE_MINIMUM + 1)
 		width = PANE_MINIMUM + 1;
-		n = UINT_MAX;
-	} else
+	else
 		width = w->sx / n;
 
 	/* Free the old root and construct a new. */
@@ -177,10 +176,9 @@ layout_set_even_v(struct window *w)
 		return;
 
 	/* How many can we fit? */
-	if (w->sy / n < PANE_MINIMUM + 1) {
+	if (w->sy / n < PANE_MINIMUM + 1)
 		height = PANE_MINIMUM + 1;
-		n = UINT_MAX;
-	} else
+	else
 		height = w->sy / n;
 
 	/* Free the old root and construct a new. */

@@ -140,6 +140,8 @@ cmd_command_prompt_callback(void *data, const char *s)
 			}
 		}
 
+		if (buf == NULL)
+			return (0);
 		buf[len] = '\0';
 		s = buf;
 	}
