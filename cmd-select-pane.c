@@ -63,6 +63,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 	window_set_active_pane(wl->window, wp);
+	server_status_window(wl->window);
 
 	return (0);
 }
