@@ -158,7 +158,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window			*w;
 	struct window_pane		*tmp_wp, *src_wp, *dst_wp;
 	struct layout_cell		*lc;
-	u_int				 xx, yy;
+	u_int				 sx, sy, xoff, yoff;
 
 	if (data == NULL)
 		return (0);
@@ -209,8 +209,6 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		TAILQ_INSERT_AFTER(&w->panes, tmp_wp, src_wp, entry);
 
 	lc = src_wp->layout_cell;
-	xx = src_wp->xoff;
-	yy = src_wp->yoff;
 	src_wp->layout_cell = dst_wp->layout_cell;
 	if (src_wp->layout_cell != NULL)
 		src_wp->layout_cell->wp = src_wp;
@@ -218,10 +216,12 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (dst_wp->layout_cell != NULL)
 		dst_wp->layout_cell->wp = dst_wp;
 
-	xx = src_wp->sx;
-	yy = src_wp->sy;
+	sx = src_wp->sx; sy = src_wp->sy;
+	xoff = src_wp->xoff; yoff = src_wp->yoff;
+	src_wp->xoff = dst_wp->xoff; src_wp->yoff = dst_wp->yoff;
 	window_pane_resize(src_wp, dst_wp->sx, dst_wp->sy);
-	window_pane_resize(dst_wp, xx, yy);
+	dst_wp->xoff = xoff; dst_wp->yoff = yoff;
+	window_pane_resize(dst_wp, sx, sy);
 
 	if (!data->flag_detached) {
 		tmp_wp = dst_wp;
