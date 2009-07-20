@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.109 2009-07-14 06:47:12 nicm Exp $
+# $Id: GNUmakefile,v 1.110 2009-07-20 05:40:12 nicm Exp $
 
 .PHONY: clean
 
@@ -11,20 +11,23 @@ CFLAGS+= -DBUILD="\"$(VERSION)\""
 LDFLAGS+= -L/usr/local/lib
 LIBS+= -lcurses
 
-# This sort of sucks but gets rid of the stupid warning and should work on
-# most platforms...
-ifeq ($(shell (LC_ALL=C $(CC) -v 2>&1|awk '/gcc version 4/') || true), )
-CPPFLAGS:= -I. -I- $(CPPFLAGS)
-else
-CPPFLAGS:= -iquote. $(CPPFLAGS)
-endif
-
 ifdef FDEBUG
 CFLAGS+= -g -ggdb -DDEBUG
 CFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 CFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
+endif
+
+# This sort of sucks but gets rid of the stupid warning and should work on
+# most platforms...
+ifeq ($(shell (LC_ALL=C $(CC) -v 2>&1|awk '/gcc version 4/') || true), )
+CPPFLAGS:= -I. -I- $(CPPFLAGS)
+else
+CPPFLAGS:= -iquote. $(CPPFLAGS)
+ifdef FDEBUG
+CFLAGS+= -Wno-pointer-sign
+endif
 endif
 
 PREFIX?= /usr/local
