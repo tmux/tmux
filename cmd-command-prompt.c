@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.19 2009-07-17 09:26:21 nicm Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.20 2009-07-20 15:51:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -140,6 +140,8 @@ cmd_command_prompt_callback(void *data, const char *s)
 			}
 		}
 
+		if (buf == NULL)
+			return (0);
 		buf[len] = '\0';
 		s = buf;
 	}
