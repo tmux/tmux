@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.126 2009-07-20 15:57:05 tcunha Exp $
+.\" $Id: tmux.1,v 1.127 2009-07-20 16:01:07 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -1262,6 +1262,11 @@ Update the status bar every
 seconds.
 By default, updates will occur every 15 seconds.
 A setting of zero disables redrawing at interval.
+.It Xo Ic status-justify
+.Op Ic left | Ic centre | Ic right
+.Xc
+Set the position of the window list component of the status line: left, centre
+or right justified.
 .It Xo Ic status-keys
 .Op Ic vi | Ic emacs
 .Xc

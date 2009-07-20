@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.68 2009-07-19 14:35:56 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.69 2009-07-20 16:01:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,6 +45,9 @@ const struct cmd_entry cmd_set_option_entry = {
 const char *set_option_status_keys_list[] = {
 	"emacs", "vi", NULL
 };
+const char *set_option_status_justify_list[] = {
+	"left", "centre", "right", NULL
+};
 const char *set_option_bell_action_list[] = {
 	"none", "any", "current", NULL
 };
@@ -69,6 +72,8 @@ const struct set_option_entry set_option_table[] = {
 	{ "status-bg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "status-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "status-interval", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
+	{ "status-justify", 
+	  SET_OPTION_CHOICE, 0, 0, set_option_status_justify_list },
 	{ "status-keys", SET_OPTION_CHOICE, 0, 0, set_option_status_keys_list },
 	{ "status-left", SET_OPTION_STRING, 0, 0, NULL },
 	{ "status-left-length", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
