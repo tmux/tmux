@@ -46,7 +46,7 @@ status_redraw(struct client *c)
 	struct screen		      	old_status;
 	char		 	       *left, *right, *text, *ptr;
 	size_t				llen, llen2, rlen, rlen2, offset;
-	size_t				xx, yy, size, start, width;
+	size_t				ox, xx, yy, size, start, width;
 	struct grid_cell	        stdgc, gc;
 	int				larrow, rarrow, utf8flag;
 
@@ -173,6 +173,21 @@ draw:
 			screen_write_cursormove(&ctx, 1, yy);
 		else
 			screen_write_cursormove(&ctx, 0, yy);
+	}
+
+	ox = 0;
+	if (width < xx) {
+		switch (options_get_number(&s->options, "status-justify")) {
+		case 1:	/* centered */
+			ox = 1 + (xx - width) / 2;
+			break;
+		case 2:	/* right */
+			ox = 1 + (xx - width);
+			break;
+		}
+		xx -= ox;
+		while (ox-- > 0)
+			screen_write_putc(&ctx, &stdgc, ' ');
 	}
 
 	/* Draw each character in succession. */
