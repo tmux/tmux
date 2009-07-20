@@ -213,9 +213,11 @@ server_unlock(const char *s)
 	}
 
 	server_locked = 0;
+	password_failures = 0;
 	return (0);
 
 wrong:
+	password_failures++;
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
                 if (c == NULL || c->prompt_buffer == NULL)
@@ -223,7 +225,7 @@ wrong:
 
 		*c->prompt_buffer = '\0';
 		c->prompt_index = 0;
-  		server_status_client(c);
+  		server_redraw_client(c);
 	}
 
 	return (-1);
