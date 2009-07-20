@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.124 2009-07-20 15:42:05 tcunha Exp $
+.\" $Id: tmux.1,v 1.125 2009-07-20 15:46:55 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -987,7 +987,7 @@ Rename the current window, or the window at
 if specified, to
 .Ar new-name .
 .It Xo Ic resize-pane
-.Op Fl DLUR
+.Op Fl DLRU
 .Op Fl p Ar pane-index
 .Op Fl t Ar target-window
 .Op Ar adjustment
@@ -1000,7 +1000,7 @@ Resize a pane, upward with
 to the left with
 .Fl L
 and to the right with
-.Fl R.
+.Fl R .
 The
 .Ar adjustment
 is given in lines or cells (the default is 1).
@@ -1339,7 +1339,7 @@ This option defaults to off.
 .Op Ic on | Ic off
 .Xc
 If on, display a status line message when activity occurs in a window
-for with the
+for which the
 .Ic monitor-activity
 window option is enabled.
 .It Xo Ic visual-bell
@@ -1356,7 +1356,7 @@ option.
 Like
 .Ic visual-activity ,
 display a message when content is present in a window
-for with the
+for which the
 .Ic monitor-content
 window option is enabled.
 .El
