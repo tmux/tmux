@@ -301,13 +301,11 @@ window_destroy(struct window *w)
 	xfree(w);
 }
 
-int
+void
 window_resize(struct window *w, u_int sx, u_int sy)
 {
 	w->sx = sx;
 	w->sy = sy;
-
-	return (0);
 }
 
 void
@@ -532,13 +530,13 @@ window_pane_spawn(struct window_pane *wp,
 	return (0);
 }
 
-int
+void
 window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct winsize	ws;
 
 	if (sx == wp->sx && sy == wp->sy)
-		return (-1);
+		return;
 	wp->sx = sx;
 	wp->sy = sy;
 
@@ -552,7 +550,6 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 
 	if (wp->fd != -1 && ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
 		fatal("ioctl failed");
-	return (0);
 }
 
 int
@@ -560,9 +557,8 @@ window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode)
 {
 	struct screen	*s;
 
-	if (wp->mode != NULL || wp->mode == mode)
+	if (wp->mode != NULL)
 		return (1);
-
 	wp->mode = mode;
 
 	if ((s = wp->mode->init(wp)) != NULL)

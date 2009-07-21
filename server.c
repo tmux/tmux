@@ -44,6 +44,7 @@
 /* Client list. */
 struct clients	 clients;
 
+void		 server_create_client(int);
 int		 server_create_socket(void);
 int		 server_main(int);
 void		 server_shutdown(void);
@@ -52,7 +53,7 @@ void		 server_fill_windows(struct pollfd **);
 void		 server_handle_windows(struct pollfd **);
 void		 server_fill_clients(struct pollfd **);
 void		 server_handle_clients(struct pollfd **);
-struct client	*server_accept_client(int);
+void		 server_accept_client(int);
 void		 server_handle_client(struct client *);
 void		 server_handle_window(struct window *, struct window_pane *);
 int		 server_check_window_bell(struct session *, struct window *);
@@ -69,7 +70,7 @@ void		 server_second_timers(void);
 int		 server_update_socket(void);
 
 /* Create a new client. */
-struct client *
+void
 server_create_client(int fd)
 {
 	struct client	*c;
@@ -107,11 +108,10 @@ server_create_client(int fd)
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		if (ARRAY_ITEM(&clients, i) == NULL) {
 			ARRAY_SET(&clients, i, c);
-			return (c);
+			return;
 		}
 	}
 	ARRAY_ADD(&clients, c);
-	return (c);
 }
 
 /* Find client index. */
@@ -735,7 +735,7 @@ server_handle_clients(struct pollfd **pfd)
 }
 
 /* accept(2) and create new client. */
-struct client *
+void
 server_accept_client(int srv_fd)
 {
 	struct sockaddr_storage	sa;
@@ -745,14 +745,14 @@ server_accept_client(int srv_fd)
 	fd = accept(srv_fd, (struct sockaddr *) &sa, &slen);
 	if (fd == -1) {
 		if (errno == EAGAIN || errno == EINTR || errno == ECONNABORTED)
-			return (NULL);
+			return;
 		fatal("accept failed");
 	}
 	if (sigterm) {
 		close(fd);
-		return (NULL);
+		return;
 	}
-	return (server_create_client(fd));
+	server_create_client(fd);
 }
 
 /* Input data from client. */

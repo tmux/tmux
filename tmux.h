@@ -1014,7 +1014,7 @@ void	options_init(struct options *, struct options *);
 void	options_free(struct options *);
 struct options_entry *options_find1(struct options *, const char *);
 struct options_entry *options_find(struct options *, const char *);
-int	options_remove(struct options *, const char *);
+void	options_remove(struct options *, const char *);
 void printflike3 options_set_string(
     	    struct options *, const char *, const char *, ...);
 char   *options_get_string(struct options *, const char *);
@@ -1287,7 +1287,6 @@ const char *key_string_lookup_key(int);
 
 /* server.c */
 extern struct clients clients;
-struct client *server_create_client(int);
 int	 server_client_index(struct client *);
 int	 server_start(char *);
 
@@ -1467,9 +1466,9 @@ struct window	*window_create1(u_int, u_int);
 struct window	*window_create(const char *, const char *,
 		     const char *, const char **, u_int, u_int, u_int, char **);
 void		 window_destroy(struct window *);
-int		 window_resize(struct window *, u_int, u_int);
 void		 window_set_active_pane(struct window *, struct window_pane *);
 struct window_pane *window_add_pane(struct window *, u_int, char **);
+void		 window_resize(struct window *, u_int, u_int);
 void		 window_remove_pane(struct window *, struct window_pane *);
 struct window_pane *window_pane_at_index(struct window *, u_int);
 u_int		 window_pane_index(struct window *, struct window_pane *);
@@ -1479,7 +1478,7 @@ struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *,
 		     const char *, const char *, const char **, char **);
-int		 window_pane_resize(struct window_pane *, u_int, u_int);
+void		 window_pane_resize(struct window_pane *, u_int, u_int);
 int		 window_pane_set_mode(
 		     struct window_pane *, const struct window_mode *);
 void		 window_pane_reset_mode(struct window_pane *);
