@@ -1,4 +1,4 @@
-/* $Id: cmd-select-pane.c,v 1.7 2009-07-20 15:42:05 tcunha Exp $ */
+/* $Id: cmd-select-pane.c,v 1.8 2009-07-21 16:27:41 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,6 +63,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 	window_set_active_pane(wl->window, wp);
+	server_status_window(wl->window);
 
 	return (0);
 }
