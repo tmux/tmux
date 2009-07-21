@@ -118,7 +118,6 @@ cmd_set_password_exec(struct cmd *self, struct cmd_ctx *ctx)
 		server_password = NULL;
 	else
 		server_password = xstrdup(data->password);
-	log_debug("pw now %s", server_password);
 
  	return (0);
 }
