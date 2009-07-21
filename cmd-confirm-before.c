@@ -68,7 +68,7 @@ cmd_confirm_before_init(struct cmd *self, int key)
 }
 
 int
-cmd_confirm_before_exec(unused struct cmd *self, struct cmd_ctx *ctx)
+cmd_confirm_before_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data		*data = self->data;
 	struct cmd_confirm_before_data	*cdata;
