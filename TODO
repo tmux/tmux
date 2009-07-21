@@ -111,4 +111,5 @@
 	- list-* vs show-*
 	- server-info
 	- up-pane/down-pane vs next-*/previous-* vs resize-pane U/D/L/R
+- pxvt25 doesn't work properly, why? (bce?)
 - tidy up and prioritise todo list ;-)
