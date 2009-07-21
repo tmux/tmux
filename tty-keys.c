@@ -76,14 +76,14 @@ struct tty_key_ent tty_keys[] = {
 	{ 0,          "\033[C", KEYC_RIGHT, TTYKEY_RAW },
 	{ 0,          "\033[D", KEYC_LEFT,  TTYKEY_RAW },
 
-	{ 0,          "\033Oa", KEYC_ADDCTL(KEYC_UP),    TTYKEY_RAW },
-	{ 0,          "\033Ob", KEYC_ADDCTL(KEYC_DOWN),  TTYKEY_RAW },
-	{ 0,          "\033Oc", KEYC_ADDCTL(KEYC_RIGHT), TTYKEY_RAW },
-	{ 0,          "\033Od", KEYC_ADDCTL(KEYC_LEFT),  TTYKEY_RAW },
-	{ 0,          "\033[a", KEYC_ADDSFT(KEYC_UP),    TTYKEY_RAW },
-	{ 0,          "\033[b", KEYC_ADDSFT(KEYC_DOWN),  TTYKEY_RAW },
-	{ 0,          "\033[c", KEYC_ADDSFT(KEYC_RIGHT), TTYKEY_RAW },
-	{ 0,          "\033[d", KEYC_ADDSFT(KEYC_LEFT),  TTYKEY_RAW },
+	{ 0,          "\033Oa", KEYC_UP | KEYC_CTRL,    TTYKEY_RAW },
+	{ 0,          "\033Ob", KEYC_DOWN | KEYC_CTRL,  TTYKEY_RAW },
+	{ 0,          "\033Oc", KEYC_RIGHT | KEYC_CTRL, TTYKEY_RAW },
+	{ 0,          "\033Od", KEYC_LEFT | KEYC_CTRL,  TTYKEY_RAW },
+	{ 0,          "\033[a", KEYC_UP | KEYC_SHIFT,    TTYKEY_RAW },
+	{ 0,          "\033[b", KEYC_DOWN | KEYC_SHIFT,  TTYKEY_RAW },
+	{ 0,          "\033[c", KEYC_RIGHT | KEYC_SHIFT, TTYKEY_RAW },
+	{ 0,          "\033[d", KEYC_LEFT | KEYC_SHIFT,  TTYKEY_RAW },
 
 	{ TTYC_KCUU1, NULL,     KEYC_UP,    TTYKEY_CTRL },
 	{ TTYC_KCUD1, NULL,     KEYC_DOWN,  TTYKEY_CTRL },
@@ -179,7 +179,7 @@ tty_keys_init(struct tty *tty)
 			if (strlcpy(tmp, s, sizeof tmp) >= sizeof tmp)
 				continue;
 			tmp[strlen(tmp) - 1] ^= 0x20;
-			tty_keys_add(tty, tmp + 1, KEYC_ADDCTL(tke->key), 0);
+			tty_keys_add(tty, tmp + 1, tke->key | KEYC_CTRL, 0);
 		}
 	}
 }
@@ -289,7 +289,7 @@ tty_keys_next(struct tty *tty, int *key, u_char *mouse)
 	/* Is there a normal key following? */
 	if (len != 0 && *buf != '\033') {
 		buffer_remove(tty->in, 1);
-		*key = KEYC_ADDESC(buffer_read8(tty->in));
+		*key = buffer_read8(tty->in) | KEYC_ESCAPE;
 		goto found;
 	}
 
@@ -298,7 +298,7 @@ tty_keys_next(struct tty *tty, int *key, u_char *mouse)
 		tk = tty_keys_find(tty, buf + 1, len - 1, &size);
 		if (tk != NULL) {
 			buffer_remove(tty->in, size + 2);
-			*key = KEYC_ADDESC(tk->key);
+			*key = tk->key | KEYC_ESCAPE;
 			goto found;
 		}
 	}
@@ -380,30 +380,25 @@ tty_keys_parse_xterm(struct tty *tty, char *buf, size_t len, size_t *size)
 
 	switch (buf[4]) {
 	case '8':
-		key = KEYC_ADDSFT(key);
-		key = KEYC_ADDESC(key);
-		key = KEYC_ADDCTL(key);
+		key |= KEYC_SHIFT|KEYC_ESCAPE|KEYC_CTRL;
 		break;
 	case '7':
-		key = KEYC_ADDESC(key);
-		key = KEYC_ADDCTL(key);
+		key |= KEYC_ESCAPE|KEYC_CTRL;
 		break;
 	case '6':
-		key = KEYC_ADDSFT(key);
-		key = KEYC_ADDCTL(key);
+		key |= KEYC_SHIFT|KEYC_CTRL;
 		break;
 	case '5':
-		key = KEYC_ADDCTL(key);
+		key |= KEYC_CTRL;
 		break;
 	case '4':
-		key = KEYC_ADDSFT(key);
-		key = KEYC_ADDESC(key);
+		key |= KEYC_SHIFT|KEYC_ESCAPE;
 		break;
 	case '3':
-		key = KEYC_ADDESC(key);
+		key |= KEYC_ESCAPE;
 		break;
 	case '2':
-		key = KEYC_ADDSFT(key);
+		key |= KEYC_SHIFT;
 		break;
 	}
 

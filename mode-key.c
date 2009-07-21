@@ -54,8 +54,8 @@ mode_key_lookup(struct mode_key_data *mdata, int key)
 enum mode_key_cmd
 mode_key_lookup_vi(struct mode_key_data *mdata, int key)
 {
-	if (KEYC_ISESC(key)) {
-		key = KEYC_REMOVEESC(key);
+	if (key & KEYC_ESCAPE) {
+		key &= ~KEYC_ESCAPE;
 		if (mdata->flags & MODEKEY_CANEDIT)
 			mdata->flags ^= MODEKEY_EDITMODE;
 	}
@@ -161,12 +161,12 @@ mode_key_lookup_emacs(struct mode_key_data *mdata, int key)
 		return (MODEKEYCMD_CHOOSE);
 	case '\001':
 		return (MODEKEYCMD_STARTOFLINE);
-	case KEYC_ADDESC('m'):
+	case 'm' | KEYC_ESCAPE:
 		return (MODEKEYCMD_BACKTOINDENTATION);
 	case '\007':
 		return (MODEKEYCMD_CLEARSELECTION);
 	case '\027':
-	case KEYC_ADDESC('w'):
+	case 'w' | KEYC_ESCAPE:
 		return (MODEKEYCMD_COPYSELECTION);
 	case '\016':
 	case KEYC_DOWN:
@@ -183,14 +183,14 @@ mode_key_lookup_emacs(struct mode_key_data *mdata, int key)
 	case '\026':
 	case KEYC_NPAGE:
 		return (MODEKEYCMD_NEXTPAGE);
-	case KEYC_ADDESC('f'):
+	case 'f' | KEYC_ESCAPE:
 		return (MODEKEYCMD_NEXTWORD);
 	case '\031':
 		return (MODEKEYCMD_PASTE);
-	case KEYC_ADDESC('v'):
+	case 'v' | KEYC_ESCAPE:
 	case KEYC_PPAGE:
 		return (MODEKEYCMD_PREVIOUSPAGE);
-	case KEYC_ADDESC('b'):
+	case 'b' | KEYC_ESCAPE:
 		return (MODEKEYCMD_PREVIOUSWORD);
 	case '\006':
 	case KEYC_RIGHT:

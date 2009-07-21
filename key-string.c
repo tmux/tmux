@@ -126,7 +126,7 @@ key_string_lookup_string(const char *string)
 		}
 		key = key_string_search_table(ptr);
 		if (key != KEYC_NONE)
-			return (KEYC_ADDCTL(key));
+			return (key | KEYC_CTRL);
 		return (KEYC_NONE);
 	}
 
@@ -137,11 +137,11 @@ key_string_lookup_string(const char *string)
 		if (ptr[1] == '\0') {
 			if (ptr[0] < 32 || ptr[0] > 127)
 				return (KEYC_NONE);
-			return (KEYC_ADDESC(ptr[0]));
+			return (ptr[0] | KEYC_ESCAPE);
 		}
 		key = key_string_lookup_string(ptr);
 		if (key != KEYC_NONE)
-			return (KEYC_ADDESC(key));
+			return (key | KEYC_ESCAPE);
 		return (KEYC_NONE);
 	}
 
@@ -158,20 +158,20 @@ key_string_lookup_key(int key)
 	if (key == 127)
 		return (NULL);
 
-	if (KEYC_ISESC(key)) {
-		if ((s = key_string_lookup_key(KEYC_REMOVEESC(key))) == NULL)
+	if (key & KEYC_ESCAPE) {
+		if ((s = key_string_lookup_key(key & ~KEYC_ESCAPE)) == NULL)
 			return (NULL);
 		xsnprintf(tmp2, sizeof tmp2, "M-%s", s);
 		return (tmp2);
 	}
-	if (KEYC_ISCTL(key)) {
-		if ((s = key_string_lookup_key(KEYC_REMOVECTL(key))) == NULL)
+	if (key & KEYC_CTRL) {
+		if ((s = key_string_lookup_key(key & ~KEYC_CTRL)) == NULL)
 			return (NULL);
 		xsnprintf(tmp2, sizeof tmp2, "C-%s", s);
 		return (tmp2);
 	}
-	if (KEYC_ISSFT(key)) {
-		if ((s = key_string_lookup_key(KEYC_REMOVESFT(key))) == NULL)
+	if (key & KEYC_SHIFT) {
+		if ((s = key_string_lookup_key(key & ~KEYC_SHIFT)) == NULL)
 			return (NULL);
 		xsnprintf(tmp2, sizeof tmp2, "S-%s", s);
 		return (tmp2);

@@ -48,7 +48,7 @@ cmd_next_window_init(struct cmd *self, int key)
 	cmd_target_init(self, key);
 	data = self->data;
 
-	if (key == KEYC_ADDESC('n'))
+	if (key == ('n' | KEYC_ESCAPE))
 		data->chflags |= CMD_CHFLAG('a');
 }
 

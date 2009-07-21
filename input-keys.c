@@ -66,16 +66,16 @@ struct input_key_ent input_keys[] = {
 	{ KEYC_BTAB,   "\033[Z",   INPUTKEY_CTRL },
 
 	/* Arrow keys. Cursor versions must come first. */
-	{ KEYC_ADDCTL(KEYC_UP),    "\033Oa", 0 },
-	{ KEYC_ADDCTL(KEYC_DOWN),  "\033Ob", 0 },
-	{ KEYC_ADDCTL(KEYC_RIGHT), "\033Oc", 0 },
-	{ KEYC_ADDCTL(KEYC_LEFT),  "\033Od", 0 },
-
-	{ KEYC_ADDSFT(KEYC_UP),    "\033[a", 0 },
-	{ KEYC_ADDSFT(KEYC_DOWN),  "\033[b", 0 },
-	{ KEYC_ADDSFT(KEYC_RIGHT), "\033[c", 0 },
-	{ KEYC_ADDSFT(KEYC_LEFT),  "\033[d", 0 },
-
+	{ KEYC_UP | KEYC_CTRL,     "\033Oa", 0 },
+	{ KEYC_DOWN | KEYC_CTRL,   "\033Ob", 0 },
+	{ KEYC_RIGHT | KEYC_CTRL,  "\033Oc", 0 },
+	{ KEYC_LEFT | KEYC_CTRL,   "\033Od", 0 },
+	
+	{ KEYC_UP | KEYC_SHIFT,    "\033[a", 0 },
+	{ KEYC_DOWN | KEYC_SHIFT,  "\033[b", 0 },
+	{ KEYC_RIGHT | KEYC_SHIFT, "\033[c", 0 },
+	{ KEYC_LEFT | KEYC_SHIFT,  "\033[d", 0 },
+	
 	{ KEYC_UP,     "\033OA",   INPUTKEY_CURSOR },
 	{ KEYC_DOWN,   "\033OB",   INPUTKEY_CURSOR },
 	{ KEYC_RIGHT,  "\033OC",   INPUTKEY_CURSOR },
@@ -133,10 +133,10 @@ input_key(struct window_pane *wp, int key)
 
 	log_debug2("writing key 0x%x", key);
 
-	if (key != KEYC_NONE && KEYC_REMOVEESC(key) < KEYC_OFFSET) {
-		if (KEYC_ISESC(key))
+	if (key != KEYC_NONE && (key & ~KEYC_ESCAPE) < 0x100) {
+		if (key & KEYC_ESCAPE)
 			buffer_write8(wp->out, '\033');
-		buffer_write8(wp->out, (uint8_t) KEYC_REMOVEESC(key));
+		buffer_write8(wp->out, (uint8_t) (key & ~KEYC_ESCAPE));
 		return;
 	}
 
@@ -150,11 +150,11 @@ input_key(struct window_pane *wp, int key)
 		    !(wp->screen->mode & MODE_KCURSOR))
 			continue;
 
-		if (KEYC_ISESC(key) && KEYC_ADDESC(ike->key) == key)
+		if ((key & KEYC_ESCAPE) && (ike->key | KEYC_ESCAPE) == key)
 			break;
-		if (KEYC_ISSFT(key) && KEYC_ADDSFT(ike->key) == key)
+		if ((key & KEYC_SHIFT) && (ike->key | KEYC_SHIFT) == key)
 			break;
-		if (KEYC_ISCTL(key) && KEYC_ADDCTL(ike->key) == key) {
+		if ((key & KEYC_CTRL) && (ike->key | KEYC_CTRL) == key) {
 			if (ike->flags & INPUTKEY_CTRL)
 				break;
 		}
@@ -176,19 +176,19 @@ input_key(struct window_pane *wp, int key)
 	xterm_keys = options_get_number(&wp->window->options, "xterm-keys");
 	if (xterm_keys && ike->flags & INPUTKEY_XTERM) {
 		ch = '\0';
-		if (KEYC_ISSFT(key) && KEYC_ISESC(key) && KEYC_ISCTL(key))
+		if (key & (KEYC_SHIFT|KEYC_ESCAPE|KEYC_CTRL))
 			ch = '8';
-		else if (KEYC_ISESC(key) && KEYC_ISCTL(key))
+		else if (key & (KEYC_ESCAPE|KEYC_CTRL))
 			ch = '7';
-		else if (KEYC_ISSFT(key) && KEYC_ISCTL(key))
+		else if (key & (KEYC_SHIFT|KEYC_CTRL))
 			ch = '6';
-		else if (KEYC_ISCTL(key))
+		else if (key & KEYC_CTRL)
 			ch = '5';
-		else if (KEYC_ISSFT(key) && KEYC_ISESC(key))
+		else if (key & (KEYC_SHIFT|KEYC_ESCAPE))
 			ch = '4';
-		else if (KEYC_ISESC(key))
+		else if (key & KEYC_ESCAPE)
 			ch = '3';
-		else if (KEYC_ISSFT(key))
+		else if (key & KEYC_SHIFT)
 			ch = '2';
 		if (ch != '\0') {
 			buffer_write(wp->out, ike->data, dlen - 1);
@@ -204,9 +204,9 @@ input_key(struct window_pane *wp, int key)
 	 * Not in xterm mode. Prefix a \033 for escape, and set bit 5 of the
 	 * last byte for ctrl.
 	 */
-	if (KEYC_ISESC(key))
+	if (key & KEYC_ESCAPE)
 		buffer_write8(wp->out, '\033');
-	if (KEYC_ISCTL(key) && ike->flags & INPUTKEY_CTRL) {
+	if (key & KEYC_CTRL && ike->flags & INPUTKEY_CTRL) {
 		buffer_write(wp->out, ike->data, dlen - 1);
 		buffer_write8(wp->out, ike->data[dlen - 1] ^ 0x20);
 		return;

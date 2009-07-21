@@ -48,7 +48,7 @@ cmd_rotate_window_init(struct cmd *self, int key)
 	cmd_target_init(self, key);
 	data = self->data;
 
-	if (key == KEYC_ADDESC('o'))
+	if (key == ('o' | KEYC_ESCAPE))
 		data->chflags |= CMD_CHFLAG('D');
 }
 

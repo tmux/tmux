@@ -49,16 +49,16 @@ cmd_select_layout_init(struct cmd *self, int key)
 	data = self->data;
 
 	switch (key) {
-	case KEYC_ADDESC('1'):
+	case ('1' | KEYC_ESCAPE):
 		data->arg = xstrdup("even-horizontal");
 		break;
-	case KEYC_ADDESC('2'):
+	case ('2' | KEYC_ESCAPE):
 		data->arg = xstrdup("even-vertical");
-		break;
-	case KEYC_ADDESC('3'):
+    		break;
+	case ('3' | KEYC_ESCAPE):
 		data->arg = xstrdup("main-horizontal");
 		break;
-	case KEYC_ADDESC('4'):
+	case ('4' | KEYC_ESCAPE):
 		data->arg = xstrdup("main-vertical");
 		break;
 	}
