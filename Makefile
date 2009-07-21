@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.145 2009-07-20 05:40:13 nicm Exp $
+# $Id: Makefile,v 1.146 2009-07-21 13:51:30 nicm Exp $
 
 .SUFFIXES: .c .o
 .PHONY: clean
@@ -53,9 +53,12 @@ depend:
 		mkdep ${CPPFLAGS} ${CFLAGS} ${SRCS:M*.c}
 
 clean:
-		rm -f tmux *.o .depend *~ *.core *.log compat/*.o
+		rm -f tmux *.o *~ *.core *.log compat/*.o
 
-clean-all:	clean
+clean-depend:
+		rm -f .depend
+
+clean-all:	clean clean-depend
 		rm -f config.h config.mk
 
 install:	all
