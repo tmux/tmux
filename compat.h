@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.6 2009-07-02 07:30:59 nicm Exp $ */
+/* $Id: compat.h,v 1.7 2009-07-21 13:07:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,6 +21,7 @@
 #define	_PATH_TMP	"/tmp/"
 #define _PATH_DEVNULL	"/dev/null"
 #define _PATH_TTY	"/dev/tty"
+#define _PATH_DEV	"/dev/"
 #endif
 
 #ifdef HAVE_QUEUE_H

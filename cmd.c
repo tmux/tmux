@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.105 2009-07-17 18:32:54 tcunha Exp $ */
+/* $Id: cmd.c,v 1.106 2009-07-21 13:07:50 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,7 +20,6 @@
 #include <sys/time.h>
 
 #include <fnmatch.h>
-#include <paths.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
