@@ -38,7 +38,7 @@
 
 #include "array.h"
 
-extern const char    *__progname;
+extern char    *__progname;
 
 /* Default configuration files. */
 #define DEFAULT_CFG ".tmux.conf"
