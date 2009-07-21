@@ -199,20 +199,6 @@ grid_scroll_line(struct grid *gd)
 	gd->hsize++;
 }
 
-/* Reduce line to fit to cell. */
-void
-grid_reduce_line(struct grid *gd, u_int py, u_int sx)
-{
-	if (sx < gd->size[py]) {
-		gd->data[py] = xrealloc(gd->data[py], sx, sizeof **gd->data);
-		gd->size[py] = sx;
-	}
-	if (sx < gd->usize[py]) {
-		gd->udata[py] = xrealloc(gd->udata[py], sx, sizeof **gd->udata);
-		gd->usize[py] = sx;
-	}
-}
-
 /* Expand line to fit to cell. */
 void
 grid_expand_line(struct grid *gd, u_int py, u_int sx)

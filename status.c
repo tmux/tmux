@@ -350,7 +350,7 @@ status_replace(struct session *s, const char *fmt, time_t t)
 						  wl->window->active));
 					ptr = tmp;
 				}
-				/* FALLTHOUGH */
+				/* FALLTHROUGH */
 			case 'S':
 				if (ptr == NULL)
 					ptr = s->name;

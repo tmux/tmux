@@ -171,19 +171,6 @@ log_debug2(const char *msg, ...)
 	}
 }
 
-/* Log a debug message at level 3. */
-void printflike1
-log_debug3(const char *msg, ...)
-{
-	va_list	ap;
-
-	if (log_level > 2) {
-		va_start(ap, msg);
-		log_vwrite(LOG_DEBUG, msg, ap);
-		va_end(ap);
-	}
-}
-
 /* Log a critical error, with error string if necessary, and die. */
 __dead void
 log_vfatal(const char *msg, va_list ap)
