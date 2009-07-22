@@ -376,7 +376,7 @@ struct mode_key_data {
 #if defined(DEBUG) && \
     ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L) || \
      (defined(__GNUC__) && __GNUC__ >= 3))
-#define GRID_DEBUG(gd, fmt, ...) log_debug3("%s: (sx=%u, sy=%u, hsize=%u) " \
+#define GRID_DEBUG(gd, fmt, ...) log_debug2("%s: (sx=%u, sy=%u, hsize=%u) " \
     fmt, __func__, (gd)->sx, (gd)->sy, (gd)->hsize, ## __VA_ARGS__)
 #else
 #define GRID_DEBUG(...)
