@@ -1,4 +1,4 @@
-/* $Id: cmd-list-keys.c,v 1.15 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-list-keys.c,v 1.16 2009-07-22 17:53:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,6 +17,8 @@
  */
 
 #include <sys/types.h>
+
+#include <string.h>
 
 #include "tmux.h"
 
@@ -45,6 +47,18 @@ cmd_list_keys_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	struct key_binding	*bd;
 	const char		*key;
 	char			 tmp[BUFSIZ];
+	int		       	 width, keywidth;
+
+	width = 0;
+	SPLAY_FOREACH(bd, key_bindings, &key_bindings) {
+		if ((key = key_string_lookup_key(bd->key)) == NULL)
+			continue;
+
+		keywidth = strlen(key) + 1;
+		if (keywidth > width)
+			width = keywidth;
+	}
+
 
 	SPLAY_FOREACH(bd, key_bindings, &key_bindings) {
 		if ((key = key_string_lookup_key(bd->key)) == NULL)
@@ -52,7 +66,8 @@ cmd_list_keys_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 
 		*tmp = '\0';
 		cmd_list_print(bd->cmdlist, tmp, sizeof tmp);
-		ctx->print(ctx, "%11s: %s", key, tmp);
+
+		ctx->print(ctx, "%*s: %s", width, key, tmp);
 	}
 
 	return (0);
