@@ -518,6 +518,37 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 }
 
 void
+tty_write(void (*cmdfn)(struct tty *, struct tty_ctx *), struct tty_ctx *ctx)
+{
+	struct window_pane	*wp = ctx->wp;
+	struct client		*c;
+	u_int		 	 i;
+
+	if (wp == NULL)
+		return;
+
+	if (wp->window->flags & WINDOW_REDRAW || wp->flags & PANE_REDRAW)
+		return;
+	if (wp->window->flags & WINDOW_HIDDEN || !window_pane_visible(wp))
+		return;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (c->flags & CLIENT_SUSPENDED)
+			continue;
+
+		if (c->session->curw->window == wp->window) {
+			if (c->tty.flags & TTY_FREEZE || c->tty.term == NULL)
+				continue;
+			tty_update_mode(&c->tty, c->tty.mode & ~MODE_CURSOR);
+			cmdfn(&c->tty, ctx);
+		}
+	}
+}
+
+void
 tty_cmd_insertcharacter(struct tty *tty, struct tty_ctx *ctx)
 {
   	struct window_pane	*wp = ctx->wp;

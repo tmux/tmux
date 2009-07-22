@@ -791,7 +791,6 @@ struct tty_ctx {
 	u_int		 orupper;
 	u_int		 orlower;
 };
-typedef void tty_cmd_func(struct tty *, struct tty_ctx *);
 
 /* Client connection. */
 struct client {
@@ -1076,9 +1075,6 @@ RB_PROTOTYPE(tty_keys, tty_key, entry, tty_keys_cmp);
 void	tty_keys_init(struct tty *);
 void	tty_keys_free(struct tty *);
 int	tty_keys_next(struct tty *, int *, u_char *);
-
-/* tty-write.c */
-void	tty_write(tty_cmd_func *, struct tty_ctx *);
 
 /* options-cmd.c */
 void	set_option_string(struct cmd_ctx *,
