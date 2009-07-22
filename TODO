@@ -86,10 +86,12 @@
 - option (mode-mouse) to turn off mouse in copy-mode etc
 - way to override terminfo definitions
 - ability to rebind mode keys
+  	  - make key binding code generic (key_tree?) from key_bindings, then use it for mode keya
+	  - split mode keys into separate trees for edit/choice/movement? flag for mode (vi)?
 - warts on current naming:
   	- display-time but message-fg/bg/attr
 	- list-* vs show-*
 	- server-info
 	- up-pane/down-pane vs next-*/previous-* vs resize-pane U/D/L/R
-- pxvt25 doesn't work properly, why? (bce?)
+- pcvt25 doesn't work properly, why? (bce?)
 - tidy up and prioritise todo list ;-)
