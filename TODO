@@ -11,11 +11,9 @@
 - garbage collect window history (100 lines at a time?) if it hasn't been used
   in $x time (need window creation/use times)
 - lift SHRT_MAX limits for history?
-- audit copy/scroll and other modes for problems with very small windows
 - better mode features: search, back word, forward word, etc
 - flags to centre screen in window
-- better terminal emulation (identify, insert mode, some other bits)
-- audit for leftover/unused code
+- better terminal emulation
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
 - tidy up window modes
@@ -32,7 +30,7 @@
 - kill all but current pane
 - fix rxvt cursor fg issue (text under cursor can have non-white fg)
 - some people find first window being 0 rather than 1 is awkward on the
-  keyboard
+  keyboard (index-base option or similar for new window start)
 - client sx/sy should be in tty, then can let the terminal wrap at edge
   to allow xterm to pick up it should be one line for its c/p
 - should be able to move to a hidden pane and it would be moved into view. pane
@@ -48,13 +46,11 @@
       also quiet, utf8 and maybe other flags?
   -g is a bit unexpected in conf file
 - clear window title on exit
-- refer to windows by name etc (duplicates? fnmatch?)
 - the output code (tty.c) could do with optimisation depending on term
   capibilities
 - would be nice to be able to use "--" to mark start of command w/ neww etc
   to avoid quoting
 - goto line and search history in copy/scroll modes
-- a command to display the status line briefly when it is turned off
 - clone session command
 - make command sequences more usable: don't require space after ;, handle
   errors better
