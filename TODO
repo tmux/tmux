@@ -31,7 +31,6 @@
 - use a better termcap internally instead of screen, perhaps xterm
 - kill all but current pane
 - fix rxvt cursor fg issue (text under cursor can have non-white fg)
-- key handling sucks a bit and may need to be reworked
 - some people find first window being 0 rather than 1 is awkward on the
   keyboard
 - client sx/sy should be in tty, then can let the terminal wrap at edge
@@ -59,20 +58,10 @@
 - clone session command
 - make command sequences more usable: don't require space after ;, handle
   errors better
-- might be nice if attach-session behaved like switch-client inside an
-  existing client
 - key to switch to copy mode from scroll mode
 - attach should have a flag to create session if it doesn't exist
-- layout/split stuff:
-	  ** NEW layout design:
-	     1. finish rewrite manual with tree of layout_cell
-	     2. convert automatic layout modes to produce a tree and make
-	        them one-off operations
-	     3. move any size/position details from window_pane to layout_cell
-	     3.5. fix -p/-l on split
-	     4. a way to address panes by name ("top-left") and position ("0,0")
-	 TO TEST: force-width/height OK, respawn-window, rotate-window OK, break-pane??
-	** rename split-window -> split-pane
+- a way to address panes by name ("top-left") and position ("0,0")
+- rename split-window -> split-pane??
 - fix UTF-8 guesswork on sparc64, improve tty checks
 - choice and more mode would be better per client than per window?
 - some way to force a screen to use the entire terminal even if it is forced
@@ -85,23 +74,14 @@
 - there are an awful lot of commands. maybe separate man page for conf
   file/commands -similar to ssh/ssh_config?
 - esc seq to set window title should be documented and should set automatic-rename
-- *** get rid of PANE_HIDDEN -- initially just check for outside window
 - way to set socket path from config file
-- the "window with one pane" vs window distinction is weird, eg you can't kill-pane the last pane
-- status-active-fg/bg/attr would be nice to highlight active window, as would options to set
-  the highlight stuff
 - XXX once env stuff is in, default-path and VISUAL/EDITOR should be picked up when session is started
 - the copy mode next-word behaviour is emacs style (end of word) rather than vi style (start of word) even in vi keys mode,
 - when moving up from a blank line in copy mode it always assumes you were at the end of the line so it can be a bit funny. should remember last non-blank x position and use that
 - paste-buffer etc should be able to handle \0, so needs a size member and no more strlen
 - is utf8 a valid charset in LANG? also check for "unicode" in TERM
 - what about utmp etc? can tmux update it like screen? setgid?
-- option to show bells visually
 - H/M/L commands in copy mode with vi-keys, for jumping to the top/middle/last line on the screen
-- if the server is started with IDENTIFY_UTF8 then set the global utf8 option?
-- I think there are potential leaks in the prompt code if a new prompt is created without the
-  callback for the old being cleared; this might be quite hard to hit, lock-server seems the only
-  candidate
 - split list-windows into separate list-windows and list-panes
 - option (mode-mouse) to turn off mouse in copy-mode etc
 - way to override terminfo definitions
