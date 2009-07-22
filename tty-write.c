@@ -18,26 +18,48 @@
 
 #include <sys/types.h>
 
+#include <string.h>
+
 #include "tmux.h"
 
-void	tty_vwrite_cmd(struct window_pane *, enum tty_cmd, va_list);
-
 void
-tty_write_cmd(struct window_pane *wp, enum tty_cmd cmd, ...)
+tty_write0(struct window_pane *wp, enum tty_cmd cmd)
 {
-	va_list	ap;
+	struct tty_ctx	ctx;
 
-	va_start(ap, cmd);
-	tty_vwrite_cmd(wp, cmd, ap);
-	va_end(ap);
+	memset(&ctx, 0, sizeof ctx);
+	ctx.wp = wp;
+	tty_write_cmd(cmd, &ctx);
 }
 
 void
-tty_vwrite_cmd(struct window_pane *wp, enum tty_cmd cmd, va_list ap)
+tty_writenum(struct window_pane *wp, enum tty_cmd cmd, u_int num)
 {
-	struct client	*c;
-	va_list		 aq;
-	u_int		 i;
+	struct tty_ctx	ctx;
+
+	memset(&ctx, 0, sizeof ctx);
+	ctx.wp = wp;
+	ctx.num = num;
+	tty_write_cmd(cmd, &ctx);
+}
+
+void
+tty_writeptr(struct window_pane *wp, enum tty_cmd cmd, void *ptr)
+{
+	struct tty_ctx	ctx;
+
+	memset(&ctx, 0, sizeof ctx);
+	ctx.wp = wp;
+	ctx.ptr = ptr;
+	tty_write_cmd(cmd, &ctx);
+}
+
+void
+tty_write_cmd(enum tty_cmd cmd, struct tty_ctx *ctx)
+{
+	struct window_pane	*wp = ctx->wp;
+	struct client		*c;
+	u_int		 	 i;
 
 	if (wp == NULL)
 		return;
@@ -57,9 +79,7 @@ tty_vwrite_cmd(struct window_pane *wp, enum tty_cmd cmd, va_list ap)
 		if (c->session->curw->window == wp->window) {
 			tty_update_mode(&c->tty, c->tty.mode & ~MODE_CURSOR);
 
-			va_copy(aq, ap);
-			tty_vwrite(&c->tty, wp, cmd, aq);
-			va_end(aq);
+			tty_write(&c->tty, cmd, ctx);
 		}
 	}
 }

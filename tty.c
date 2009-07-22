@@ -38,23 +38,23 @@ void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_attributes_fg(struct tty *, const struct grid_cell *);
 void	tty_attributes_bg(struct tty *, const struct grid_cell *);
 
-void	tty_cmd_alignmenttest(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_cell(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_clearendofline(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_clearendofscreen(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_clearline(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_clearscreen(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_clearstartofline(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_clearstartofscreen(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_deletecharacter(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_deleteline(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_insertcharacter(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_insertline(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_linefeed(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_utf8character(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_reverseindex(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_alignmenttest(struct tty *, struct tty_ctx *);
+void	tty_cmd_cell(struct tty *, struct tty_ctx *);
+void	tty_cmd_clearendofline(struct tty *, struct tty_ctx *);
+void	tty_cmd_clearendofscreen(struct tty *, struct tty_ctx *);
+void	tty_cmd_clearline(struct tty *, struct tty_ctx *);
+void	tty_cmd_clearscreen(struct tty *, struct tty_ctx *);
+void	tty_cmd_clearstartofline(struct tty *, struct tty_ctx *);
+void	tty_cmd_clearstartofscreen(struct tty *, struct tty_ctx *);
+void	tty_cmd_deletecharacter(struct tty *, struct tty_ctx *);
+void	tty_cmd_deleteline(struct tty *, struct tty_ctx *);
+void	tty_cmd_insertcharacter(struct tty *, struct tty_ctx *);
+void	tty_cmd_insertline(struct tty *, struct tty_ctx *);
+void	tty_cmd_linefeed(struct tty *, struct tty_ctx *);
+void	tty_cmd_utf8character(struct tty *, struct tty_ctx *);
+void	tty_cmd_reverseindex(struct tty *, struct tty_ctx *);
 
-void (*tty_cmds[])(struct tty *, struct window_pane *, va_list) = {
+void (*tty_cmds[])(struct tty *, struct tty_ctx *) = {
 	tty_cmd_alignmenttest,
 	tty_cmd_cell,
 	tty_cmd_clearendofline,
@@ -545,66 +545,61 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 }
 
 void
-tty_vwrite(
-    struct tty *tty, struct window_pane *wp, enum tty_cmd cmd, va_list ap)
+tty_write(struct tty *tty, enum tty_cmd cmd, struct tty_ctx *ctx)
 {
 	if (tty->flags & TTY_FREEZE || tty->term == NULL)
 		return;
 	if (tty_cmds[cmd] != NULL)
-		tty_cmds[cmd](tty, wp, ap);
+		tty_cmds[cmd](tty, ctx);
 }
 
 void
-tty_cmd_insertcharacter(struct tty *tty, struct window_pane *wp, va_list ap)
+tty_cmd_insertcharacter(struct tty *tty, struct tty_ctx *ctx)
 {
-	struct screen	*s = wp->screen;
-	u_int		 ua;
+  	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
 
 	if (wp->xoff != 0 || screen_size_x(s) < tty->sx) {
 		tty_draw_line(tty, wp->screen, s->old_cy, wp->xoff, wp->yoff);
 		return;
 	}
-
-	ua = va_arg(ap, u_int);
 
 	tty_reset(tty);
 
  	tty_cursor(tty, s->old_cx, s->old_cy, wp->xoff, wp->yoff);
 	if (tty_term_has(tty->term, TTYC_ICH) ||
 	    tty_term_has(tty->term, TTYC_ICH1))
-		tty_emulate_repeat(tty, TTYC_ICH, TTYC_ICH1, ua);
+		tty_emulate_repeat(tty, TTYC_ICH, TTYC_ICH1, ctx->num);
 	else {
 		tty_putcode(tty, TTYC_SMIR);
-		while (ua-- > 0)
+		while (ctx->num-- > 0)
 			tty_putc(tty, ' ');
 		tty_putcode(tty, TTYC_RMIR);
 	}
 }
 
 void
-tty_cmd_deletecharacter(struct tty *tty, struct window_pane *wp, va_list ap)
+tty_cmd_deletecharacter(struct tty *tty, struct tty_ctx *ctx)
 {
-	struct screen	*s = wp->screen;
-	u_int		 ua;
+  	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
 
 	if (wp->xoff != 0 || screen_size_x(s) < tty->sx) {
 		tty_draw_line(tty, wp->screen, s->old_cy, wp->xoff, wp->yoff);
 		return;
 	}
 
-	ua = va_arg(ap, u_int);
-
 	tty_reset(tty);
 
  	tty_cursor(tty, s->old_cx, s->old_cy, wp->xoff, wp->yoff);
-	tty_emulate_repeat(tty, TTYC_DCH, TTYC_DCH1, ua);
+	tty_emulate_repeat(tty, TTYC_DCH, TTYC_DCH1, ctx->num);
 }
 
 void
-tty_cmd_insertline(struct tty *tty, struct window_pane *wp, va_list ap)
+tty_cmd_insertline(struct tty *tty, struct tty_ctx *ctx)
 {
-	struct screen	*s = wp->screen;
-	u_int		 ua;
+  	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
 
  	if (wp->xoff != 0 || screen_size_x(s) < tty->sx ||
 	    !tty_term_has(tty->term, TTYC_CSR)) {
@@ -612,21 +607,19 @@ tty_cmd_insertline(struct tty *tty, struct window_pane *wp, va_list ap)
 		return;
 	}
 
-	ua = va_arg(ap, u_int);
-
 	tty_reset(tty);
 
  	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
 
  	tty_cursor(tty, s->old_cx, s->old_cy, wp->xoff, wp->yoff);
-	tty_emulate_repeat(tty, TTYC_IL, TTYC_IL1, ua);
+	tty_emulate_repeat(tty, TTYC_IL, TTYC_IL1, ctx->num);
 }
 
 void
-tty_cmd_deleteline(struct tty *tty, struct window_pane *wp, va_list ap)
+tty_cmd_deleteline(struct tty *tty, struct tty_ctx *ctx)
 {
-	struct screen	*s = wp->screen;
-	u_int		 ua;
+  	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
 
  	if (wp->xoff != 0 || screen_size_x(s) < tty->sx ||
 	    !tty_term_has(tty->term, TTYC_CSR)) {
@@ -634,21 +627,20 @@ tty_cmd_deleteline(struct tty *tty, struct window_pane *wp, va_list ap)
 		return;
 	}
 
-	ua = va_arg(ap, u_int);
-
 	tty_reset(tty);
 
  	tty_region(tty, s->old_rupper, s->old_rlower, wp->yoff);
 
  	tty_cursor(tty, s->old_cx, s->old_cy, wp->xoff, wp->yoff);
-	tty_emulate_repeat(tty, TTYC_DL, TTYC_DL1, ua);
+	tty_emulate_repeat(tty, TTYC_DL, TTYC_DL1, ctx->num);
 }
 
 void
-tty_cmd_clearline(struct tty *tty, struct window_pane *wp, unused va_list ap)
+tty_cmd_clearline(struct tty *tty, struct tty_ctx *ctx)
 {
-	struct screen	*s = wp->screen;
-	u_int		 i;
+  	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
+	u_int		 	 i;
 
 	tty_reset(tty);
 
@@ -663,11 +655,11 @@ tty_cmd_clearline(struct tty *tty, struct window_pane *wp, unused va_list ap)
 }
 
 void
-tty_cmd_clearendofline(
-    struct tty *tty, struct window_pane *wp, unused va_list ap)
+tty_cmd_clearendofline(struct tty *tty, struct tty_ctx *ctx)
 {
-	struct screen	*s = wp->screen;
-	u_int		 i;
+  	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
+	u_int		 	 i;
 
 	tty_reset(tty);
 
@@ -682,11 +674,11 @@ tty_cmd_clearendofline(
 }
 
 void
-tty_cmd_clearstartofline(
-    struct tty *tty, struct window_pane *wp, unused va_list ap)
+tty_cmd_clearstartofline(struct tty *tty, struct tty_ctx *ctx)
 {
-	struct screen	*s = wp->screen;
-	u_int		 i;
+  	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
+	u_int		 	 i;
 
 	tty_reset(tty);
 
@@ -701,9 +693,10 @@ tty_cmd_clearstartofline(
 }
 
 void
-tty_cmd_reverseindex(struct tty *tty, struct window_pane *wp, unused va_list ap)
+tty_cmd_reverseindex(struct tty *tty, struct tty_ctx *ctx)
 {
-	struct screen	*s = wp->screen;
+  	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
 
  	if (wp->xoff != 0 || screen_size_x(s) < tty->sx ||
 	    !tty_term_has(tty->term, TTYC_CSR)) {
@@ -722,9 +715,10 @@ tty_cmd_reverseindex(struct tty *tty, struct window_pane *wp, unused va_list ap)
 }
 
 void
-tty_cmd_linefeed(struct tty *tty, struct window_pane *wp, unused va_list ap)
+tty_cmd_linefeed(struct tty *tty, struct tty_ctx *ctx)
 {
-	struct screen	*s = wp->screen;
+  	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
 
  	if (wp->xoff != 0 || screen_size_x(s) < tty->sx ||
 	    !tty_term_has(tty->term, TTYC_CSR)) {
@@ -743,11 +737,11 @@ tty_cmd_linefeed(struct tty *tty, struct window_pane *wp, unused va_list ap)
 }
 
 void
-tty_cmd_clearendofscreen(
-    struct tty *tty, struct window_pane *wp, unused va_list ap)
+tty_cmd_clearendofscreen(struct tty *tty, struct tty_ctx *ctx)
 {
-	struct screen	*s = wp->screen;
-	u_int		 i, j;
+  	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
+	u_int		 	 i, j;
 
 	tty_reset(tty);
 
@@ -778,11 +772,11 @@ tty_cmd_clearendofscreen(
 }
 
 void
-tty_cmd_clearstartofscreen(
-    struct tty *tty, struct window_pane *wp, unused va_list ap)
+tty_cmd_clearstartofscreen(struct tty *tty, struct tty_ctx *ctx)
 {
-	struct screen	*s = wp->screen;
-	u_int		 i, j;
+ 	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
+	u_int		 	 i, j;
 
 	tty_reset(tty);
 
@@ -807,11 +801,11 @@ tty_cmd_clearstartofscreen(
 }
 
 void
-tty_cmd_clearscreen(
-    struct tty *tty, struct window_pane *wp, unused va_list ap)
+tty_cmd_clearscreen(struct tty *tty, struct tty_ctx *ctx)
 {
-	struct screen	*s = wp->screen;
-	u_int		 i, j;
+ 	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
+	u_int		 	 i, j;
 
 	tty_reset(tty);
 
@@ -836,11 +830,11 @@ tty_cmd_clearscreen(
 }
 
 void
-tty_cmd_alignmenttest(
-    struct tty *tty, struct window_pane *wp, unused va_list ap)
+tty_cmd_alignmenttest(struct tty *tty, struct tty_ctx *ctx)
 {
-	struct screen	*s = wp->screen;
-	u_int		 i, j;
+	struct window_pane	*wp = ctx->wp;
+	struct screen		*s = wp->screen;
+	u_int			 i, j;
 
 	tty_reset(tty);
 
@@ -854,33 +848,26 @@ tty_cmd_alignmenttest(
 }
 
 void
-tty_cmd_cell(struct tty *tty, struct window_pane *wp, va_list ap)
+tty_cmd_cell(struct tty *tty, struct tty_ctx *ctx)
 {
+	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	struct grid_cell	*gc;
-	struct grid_utf8	*gu;
-
-	gc = va_arg(ap, struct grid_cell *);
-	gu = va_arg(ap, struct grid_utf8 *);
 
 	tty_cursor(tty, s->old_cx, s->old_cy, wp->xoff, wp->yoff);
 
-	tty_cell(tty, gc, gu);
+	tty_cell(tty, ctx->cell, ctx->utf8);
 }
 
 void
-tty_cmd_utf8character(
-    struct tty *tty, unused struct window_pane *wp, va_list ap)
+tty_cmd_utf8character(struct tty *tty, struct tty_ctx *ctx)
 {
-	u_char	*buf;
+	u_char	*ptr = ctx->ptr;
 	size_t	 i;
 
-	buf = va_arg(ap, u_char *);
-	
 	for (i = 0; i < UTF8_SIZE; i++) {
-		if (buf[i] == 0xff)
+		if (ptr[i] == 0xff)
 			break;
-		tty_putc(tty, buf[i]);
+		tty_putc(tty, ptr[i]);
 	}
 }
 
