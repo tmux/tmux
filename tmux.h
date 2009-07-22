@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.380 2009-07-22 17:46:53 tcunha Exp $ */
+/* $Id: tmux.h,v 1.381 2009-07-22 17:58:42 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -287,7 +287,7 @@ enum tty_cmd {
 	TTY_INSERTCHARACTER,
 	TTY_INSERTLINE,
 	TTY_LINEFEED,
-	TTY_RAW,
+	TTY_UTF8CHARACTER,
 	TTY_REVERSEINDEX,
 };
 

@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.60 2009-07-15 17:43:02 nicm Exp $ */
+/* $Id: screen-write.c,v 1.61 2009-07-22 17:58:42 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -700,7 +700,6 @@ screen_write_cell(
 	struct grid_utf8	 gu, *tmp_gu;
 	u_int		 	 width, xx, i;
 	struct grid_cell 	 tmp_gc, *tmp_gc2;
-	size_t			 size;
 	int			 insert = 0;
 
 	/* Ignore padding. */
@@ -737,11 +736,7 @@ screen_write_cell(
 		memcpy(tmp_gu->data + i, udata, UTF8_SIZE - i);
 
 		/* Assume the previous character has just been input. */
-		for (size = 0; size < UTF8_SIZE; size++) {
-			if (udata[size] == 0xff)
-				break;
-		}
-		tty_write_cmd(ctx->wp, TTY_RAW, udata, size);
+		tty_write_cmd(ctx->wp, TTY_UTF8CHARACTER, udata);
 		return;
 	}
 
