@@ -213,7 +213,7 @@ main(int argc, char **argv)
 	struct passwd		*pw;
 	char			*s, *path, *label, *cause, *home, *pass = NULL;
 	char			 cwd[MAXPATHLEN];
-	int	 		 retcode, opt, flags, unlock, start_server;
+	int	 		 retcode, opt, flags, unlock, cmdflags = 0;
 
 	unlock = flags = 0;
 	label = path = NULL;
@@ -390,7 +390,7 @@ main(int argc, char **argv)
 		cmdlist = NULL;
 		if ((pass = getpass("Password: ")) == NULL)
 			exit(1);
-		start_server = 0;
+		cmdflags &= ~CMD_STARTSERVER;
 	} else {
 		if (argc == 0) {
 			cmd = xmalloc(sizeof *cmd);
@@ -407,17 +407,16 @@ main(int argc, char **argv)
 				exit(1);
 			}
 		}
-		start_server = 0;
 		TAILQ_FOREACH(cmd, cmdlist, qentry) {
 			if (cmd->entry->flags & CMD_STARTSERVER) {
-				start_server = 1;
+				cmdflags |= CMD_STARTSERVER;
 				break;
 			}
 		}
 	}
 
  	memset(&cctx, 0, sizeof cctx);
-	if (client_init(path, &cctx, start_server, flags) != 0)
+	if (client_init(path, &cctx, cmdflags, flags) != 0)
 		exit(1);
 	xfree(path);
 

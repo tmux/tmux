@@ -36,7 +36,7 @@
 void	client_handle_winch(struct client_ctx *);
 
 int
-client_init(char *path, struct client_ctx *cctx, int start_server, int flags)
+client_init(char *path, struct client_ctx *cctx, int cmdflags, int flags)
 {
 	struct sockaddr_un		sa;
 	struct stat			sb;
@@ -53,7 +53,7 @@ client_init(char *path, struct client_ctx *cctx, int start_server, int flags)
 	setproctitle("client (%s)", rpathbuf);
 
 	if (lstat(path, &sb) != 0) {
-		if (start_server && errno == ENOENT) {
+		if (cmdflags & CMD_STARTSERVER && errno == ENOENT) {
 			if ((cctx->srv_fd = server_start(path)) == -1)
 				goto start_failed;
 			goto server_started;
@@ -79,7 +79,7 @@ client_init(char *path, struct client_ctx *cctx, int start_server, int flags)
 	if (connect(
 	    cctx->srv_fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
 		if (errno == ECONNREFUSED) {
-			if (unlink(path) != 0 || !start_server)
+			if (unlink(path) != 0 || !(cmdflags & CMD_STARTSERVER))
 				goto not_found;
 			if ((cctx->srv_fd = server_start(path)) == -1)
 				goto start_failed;
