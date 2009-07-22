@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.374 2009-07-20 16:07:23 tcunha Exp $ */
+/* $Id: tmux.h,v 1.375 2009-07-22 16:24:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -101,79 +101,68 @@ struct buffer {
 #define BELL_CURRENT 2
 
 /* Key codes. ncurses defines KEY_*. Grrr. */
-#define KEYC_NONE    0x00ffff
-#define KEYC_OFFSET  0x010000
-#define KEYC_ESCAPE  0x020000
-#define KEYC_CONTROL 0x080000
-#define KEYC_SHIFT   0x100000
+#define KEYC_NONE    0x0fff
+#define KEYC_ESCAPE  0x2000
+#define KEYC_CTRL    0x4000
+#define KEYC_SHIFT   0x8000
 
-#define KEYC_ADDESC(k) ((k) | KEYC_ESCAPE)
-#define KEYC_REMOVEESC(k) ((k) & ~KEYC_ESCAPE)
-#define KEYC_ISESC(k) ((k) != KEYC_NONE && ((k) & KEYC_ESCAPE))
+enum key_code {
+	/* Mouse key. */
+	KEYC_MOUSE = 0x1000,
 
-#define KEYC_ADDCTL(k) ((k) | KEYC_CONTROL)
-#define KEYC_REMOVECTL(k) ((k) & ~KEYC_CONTROL)
-#define KEYC_ISCTL(k) ((k) != KEYC_NONE && ((k) & KEYC_CONTROL))
+	/* Function keys. */
+	KEYC_F1,
+	KEYC_F2,
+	KEYC_F3,
+	KEYC_F4,
+	KEYC_F5,
+	KEYC_F6,
+	KEYC_F7,
+	KEYC_F8,
+	KEYC_F9,
+	KEYC_F10,
+	KEYC_F11,
+	KEYC_F12,
+	KEYC_F13,
+	KEYC_F14,
+	KEYC_F15,
+	KEYC_F16,
+	KEYC_F17,
+	KEYC_F18,
+	KEYC_F19,
+	KEYC_F20,
+	KEYC_IC,
+	KEYC_DC,
+	KEYC_HOME,
+	KEYC_END,
+	KEYC_NPAGE,
+	KEYC_PPAGE,
+	KEYC_BTAB,
 
-#define KEYC_ADDSFT(k) ((k) | KEYC_SHIFT)
-#define KEYC_REMOVESFT(k) ((k) & ~KEYC_SHIFT)
-#define KEYC_ISSFT(k) ((k) != KEYC_NONE && ((k) & KEYC_SHIFT))
+	/* Arrow keys. */
+	KEYC_UP,
+	KEYC_DOWN,
+	KEYC_LEFT,
+	KEYC_RIGHT,
 
-/* Mouse key. */
-#define KEYC_MOUSE (KEYC_OFFSET + 0x00)
-
-/* Function keys. */
-#define KEYC_F1 (KEYC_OFFSET + 0x01)
-#define KEYC_F2 (KEYC_OFFSET + 0x02)
-#define KEYC_F3 (KEYC_OFFSET + 0x03)
-#define KEYC_F4 (KEYC_OFFSET + 0x04)
-#define KEYC_F5 (KEYC_OFFSET + 0x05)
-#define KEYC_F6 (KEYC_OFFSET + 0x06)
-#define KEYC_F7 (KEYC_OFFSET + 0x07)
-#define KEYC_F8 (KEYC_OFFSET + 0x08)
-#define KEYC_F9 (KEYC_OFFSET + 0x09)
-#define KEYC_F10 (KEYC_OFFSET + 0x10)
-#define KEYC_F11 (KEYC_OFFSET + 0x11)
-#define KEYC_F12 (KEYC_OFFSET + 0x12)
-#define KEYC_F13 (KEYC_OFFSET + 0x13)
-#define KEYC_F14 (KEYC_OFFSET + 0x14)
-#define KEYC_F15 (KEYC_OFFSET + 0x15)
-#define KEYC_F16 (KEYC_OFFSET + 0x16)
-#define KEYC_F17 (KEYC_OFFSET + 0x17)
-#define KEYC_F18 (KEYC_OFFSET + 0x18)
-#define KEYC_F19 (KEYC_OFFSET + 0x19)
-#define KEYC_F20 (KEYC_OFFSET + 0x1a)
-#define KEYC_IC (KEYC_OFFSET + 0x1b)
-#define KEYC_DC (KEYC_OFFSET + 0x1c)
-#define KEYC_HOME (KEYC_OFFSET + 0x1d)
-#define KEYC_END (KEYC_OFFSET + 0x1e)
-#define KEYC_NPAGE (KEYC_OFFSET + 0x1f)
-#define KEYC_PPAGE (KEYC_OFFSET + 0x20)
-#define KEYC_BTAB (KEYC_OFFSET + 0x21)
-
-/* Arrow keys. */
-#define KEYC_UP (KEYC_OFFSET + 0x50)
-#define KEYC_DOWN (KEYC_OFFSET + 0x51)
-#define KEYC_LEFT (KEYC_OFFSET + 0x52)
-#define KEYC_RIGHT (KEYC_OFFSET + 0x53)
-
-/* Numeric keypad. Numbered from top-left, KPY_X. */
-#define KEYC_KP0_1 (KEYC_OFFSET + 0x100)
-#define KEYC_KP0_2 (KEYC_OFFSET + 0x101)
-#define KEYC_KP0_3 (KEYC_OFFSET + 0x102)
-#define KEYC_KP1_0 (KEYC_OFFSET + 0x103)
-#define KEYC_KP1_1 (KEYC_OFFSET + 0x104)
-#define KEYC_KP1_2 (KEYC_OFFSET + 0x105)
-#define KEYC_KP1_3 (KEYC_OFFSET + 0x106)
-#define KEYC_KP2_0 (KEYC_OFFSET + 0x107)
-#define KEYC_KP2_1 (KEYC_OFFSET + 0x108)
-#define KEYC_KP2_2 (KEYC_OFFSET + 0x109)
-#define KEYC_KP3_0 (KEYC_OFFSET + 0x10a)
-#define KEYC_KP3_1 (KEYC_OFFSET + 0x10b)
-#define KEYC_KP3_2 (KEYC_OFFSET + 0x10c)
-#define KEYC_KP3_3 (KEYC_OFFSET + 0x10d)
-#define KEYC_KP4_0 (KEYC_OFFSET + 0x10e)
-#define KEYC_KP4_2 (KEYC_OFFSET + 0x10f)
+	/* Numeric keypad. Numbered from top-left, KPY_X. */
+	KEYC_KP0_1,
+	KEYC_KP0_2,
+	KEYC_KP0_3,
+	KEYC_KP1_0,
+	KEYC_KP1_1,
+	KEYC_KP1_2,
+	KEYC_KP1_3,
+	KEYC_KP2_0,
+	KEYC_KP2_1,
+	KEYC_KP2_2,
+	KEYC_KP3_0,
+	KEYC_KP3_1,
+	KEYC_KP3_2,
+	KEYC_KP3_3,
+	KEYC_KP4_0,
+	KEYC_KP4_2,
+};
 
 /* Termcap codes. */
 enum tty_code_code {

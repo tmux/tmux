@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.77 2009-07-20 15:42:05 tcunha Exp $ */
+/* $Id: key-bindings.c,v 1.78 2009-07-22 16:24:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -133,24 +133,24 @@ key_bindings_init(void)
 		{ '{',			  0, &cmd_swap_pane_entry },
 		{ '}',			  0, &cmd_swap_pane_entry },
 		{ '\002', 		  0, &cmd_send_prefix_entry },
-		{ KEYC_ADDESC('1'),	  0, &cmd_select_layout_entry },
-		{ KEYC_ADDESC('2'),	  0, &cmd_select_layout_entry },
-		{ KEYC_ADDESC('3'),	  0, &cmd_select_layout_entry },
-		{ KEYC_ADDESC('4'),	  0, &cmd_select_layout_entry },
+		{ '1' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
+		{ '2' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
+		{ '3' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
+		{ '4' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
 		{ KEYC_PPAGE, 		  0, &cmd_scroll_mode_entry },
-		{ KEYC_ADDESC('n'), 	  0, &cmd_next_window_entry },
-		{ KEYC_ADDESC('p'), 	  0, &cmd_previous_window_entry },
+		{ 'n' | KEYC_ESCAPE, 	  0, &cmd_next_window_entry },
+		{ 'p' | KEYC_ESCAPE, 	  0, &cmd_previous_window_entry },
 		{ KEYC_UP, 		  0, &cmd_up_pane_entry },
 		{ KEYC_DOWN, 		  0, &cmd_down_pane_entry },
-		{ KEYC_ADDESC(KEYC_UP),   1, &cmd_resize_pane_entry },
-		{ KEYC_ADDESC(KEYC_DOWN), 1, &cmd_resize_pane_entry },
-		{ KEYC_ADDESC(KEYC_LEFT), 1, &cmd_resize_pane_entry },
-		{ KEYC_ADDESC(KEYC_RIGHT),1, &cmd_resize_pane_entry },
-		{ KEYC_ADDCTL(KEYC_UP),   1, &cmd_resize_pane_entry },
-		{ KEYC_ADDCTL(KEYC_DOWN), 1, &cmd_resize_pane_entry },	
-		{ KEYC_ADDCTL(KEYC_LEFT), 1, &cmd_resize_pane_entry },
-		{ KEYC_ADDCTL(KEYC_RIGHT),1, &cmd_resize_pane_entry },
-		{ KEYC_ADDESC('o'),	  0, &cmd_rotate_window_entry },
+		{ KEYC_UP | KEYC_ESCAPE,  1, &cmd_resize_pane_entry },
+		{ KEYC_DOWN | KEYC_ESCAPE,  1, &cmd_resize_pane_entry },
+		{ KEYC_LEFT | KEYC_ESCAPE,  1, &cmd_resize_pane_entry },
+		{ KEYC_RIGHT | KEYC_ESCAPE, 1, &cmd_resize_pane_entry },
+		{ KEYC_UP | KEYC_CTRL,    1, &cmd_resize_pane_entry },
+		{ KEYC_DOWN | KEYC_CTRL,  1, &cmd_resize_pane_entry },	
+		{ KEYC_LEFT | KEYC_CTRL,  1, &cmd_resize_pane_entry },
+		{ KEYC_RIGHT | KEYC_CTRL, 1, &cmd_resize_pane_entry },
+		{ 'o' | KEYC_ESCAPE,	  0, &cmd_rotate_window_entry },
 		{ '\017',	          0, &cmd_rotate_window_entry },
 	};
 	u_int		 i;

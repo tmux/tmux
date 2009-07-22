@@ -1,4 +1,4 @@
-/* $Id: cmd-previous-window.c,v 1.18 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-previous-window.c,v 1.19 2009-07-22 16:24:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,7 @@ cmd_previous_window_init(struct cmd *self, int key)
 	cmd_target_init(self, key);
 	data = self->data;
 
-	if (key == KEYC_ADDESC('p'))
+	if (key == ('p' | KEYC_ESCAPE))
 		data->chflags |= CMD_CHFLAG('a');
 }
 
