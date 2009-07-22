@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.381 2009-07-22 17:58:42 tcunha Exp $ */
+/* $Id: tmux.h,v 1.382 2009-07-22 18:08:56 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -289,6 +289,16 @@ enum tty_cmd {
 	TTY_LINEFEED,
 	TTY_UTF8CHARACTER,
 	TTY_REVERSEINDEX,
+};
+
+struct tty_ctx {
+	struct window_pane *wp;
+
+	const struct grid_cell *cell;
+	const struct grid_utf8 *utf8;
+
+	u_int		    num;
+	void		   *ptr; 
 };
 
 /* Message codes. */
@@ -1047,8 +1057,7 @@ void		 tty_redraw_region(struct tty *, struct window_pane *);
 int		 tty_open(struct tty *, char **);
 void		 tty_close(struct tty *, int);
 void		 tty_free(struct tty *, int);
-void		 tty_vwrite(
-    		     struct tty *, struct window_pane *, enum tty_cmd, va_list);
+void		 tty_write(struct tty *, enum tty_cmd, struct tty_ctx *);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;
@@ -1071,7 +1080,10 @@ void		 tty_keys_free(struct tty *);
 int		 tty_keys_next(struct tty *, int *, u_char *);
 
 /* tty-write.c */
-void		 tty_write_cmd(struct window_pane *, enum tty_cmd, ...);
+void		 tty_write0(struct window_pane *, enum tty_cmd);
+void		 tty_writenum(struct window_pane *, enum tty_cmd, u_int);
+void		 tty_writeptr(struct window_pane *, enum tty_cmd, void *);
+void		 tty_write_cmd(enum tty_cmd, struct tty_ctx *);
 
 /* options-cmd.c */
 void	set_option_string(struct cmd_ctx *,
