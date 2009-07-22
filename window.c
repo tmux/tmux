@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.95 2009-07-20 15:42:05 tcunha Exp $ */
+/* $Id: window.c,v 1.96 2009-07-22 12:42:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -549,6 +549,15 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 		wp->mode->resize(wp, sx, sy);
 
 	if (wp->fd != -1 && ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
+#ifdef __sun__
+		/*
+		 * Some versions of Solaris apparently can return an error when
+		 * resizing; don't know why this happens, can't reproduce on
+		 * other platforms and ignoring it doesn't seem to cause any
+		 * issues.
+		 */
+		if (errno != EINVAL)
+#endif
 		fatal("ioctl failed");
 	return (0);
 }
