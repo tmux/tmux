@@ -477,14 +477,8 @@ struct screen {
 	u_int		 cx;		/* cursor x */
 	u_int		 cy;		/* cursor y */
 
-	u_int		 old_cx;
-	u_int		 old_cy;
-
 	u_int		 rupper;	/* scroll region top */
 	u_int		 rlower;	/* scroll region bottom */
-
-	u_int		 old_rupper;
-	u_int		 old_rlower;
 
 	int		 mode;
 
@@ -783,8 +777,19 @@ struct tty_ctx {
 	const struct grid_cell *cell;
 	const struct grid_utf8 *utf8;
 
-	u_int		    num;
-	void		   *ptr; 
+	u_int		 num;
+	void		*ptr; 
+
+	/* 
+	 * Cursor and region position before the screen was updated - this is
+	 * where the command should be applied; the values in the screen have
+	 * already been updated.
+	 */
+	u_int		 ocx;
+	u_int		 ocy;
+
+	u_int		 orupper;
+	u_int		 orlower;
 };
 typedef void tty_cmd_func(struct tty *, struct tty_ctx *);
 
@@ -1032,10 +1037,10 @@ void	tty_detect_utf8(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int);
-void	tty_redraw_region(struct tty *, struct window_pane *);
 int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *, int);
 void	tty_free(struct tty *, int);
+void	tty_write(void (*)(struct tty *, struct tty_ctx *), struct tty_ctx *);
 void	tty_cmd_alignmenttest(struct tty *, struct tty_ctx *);
 void	tty_cmd_cell(struct tty *, struct tty_ctx *);
 void	tty_cmd_clearendofline(struct tty *, struct tty_ctx *);
@@ -1073,9 +1078,6 @@ void	tty_keys_free(struct tty *);
 int	tty_keys_next(struct tty *, int *, u_char *);
 
 /* tty-write.c */
-void	tty_write0(struct window_pane *, tty_cmd_func *);
-void	tty_writenum(struct window_pane *, tty_cmd_func *, u_int);
-void	tty_writeptr(struct window_pane *, tty_cmd_func *, void *);
 void	tty_write(tty_cmd_func *, struct tty_ctx *);
 
 /* options-cmd.c */
