@@ -1,4 +1,4 @@
-/* $Id: cmd-set-password.c,v 1.6 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-set-password.c,v 1.7 2009-07-22 17:49:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -118,7 +118,6 @@ cmd_set_password_exec(struct cmd *self, struct cmd_ctx *ctx)
 		server_password = NULL;
 	else
 		server_password = xstrdup(data->password);
-	log_debug("pw now %s", server_password);
 
  	return (0);
 }
