@@ -51,7 +51,7 @@ void	tty_cmd_deleteline(struct tty *, struct window_pane *, va_list);
 void	tty_cmd_insertcharacter(struct tty *, struct window_pane *, va_list);
 void	tty_cmd_insertline(struct tty *, struct window_pane *, va_list);
 void	tty_cmd_linefeed(struct tty *, struct window_pane *, va_list);
-void	tty_cmd_raw(struct tty *, struct window_pane *, va_list);
+void	tty_cmd_utf8character(struct tty *, struct window_pane *, va_list);
 void	tty_cmd_reverseindex(struct tty *, struct window_pane *, va_list);
 
 void (*tty_cmds[])(struct tty *, struct window_pane *, va_list) = {
@@ -68,7 +68,7 @@ void (*tty_cmds[])(struct tty *, struct window_pane *, va_list) = {
 	tty_cmd_insertcharacter,
 	tty_cmd_insertline,
 	tty_cmd_linefeed,
-	tty_cmd_raw,
+	tty_cmd_utf8character,
 	tty_cmd_reverseindex,
 };
 
@@ -869,16 +869,19 @@ tty_cmd_cell(struct tty *tty, struct window_pane *wp, va_list ap)
 }
 
 void
-tty_cmd_raw(struct tty *tty, unused struct window_pane *wp, va_list ap)
+tty_cmd_utf8character(
+    struct tty *tty, unused struct window_pane *wp, va_list ap)
 {
 	u_char	*buf;
-	size_t	 i, len;
+	size_t	 i;
 
 	buf = va_arg(ap, u_char *);
-	len = va_arg(ap, size_t);
-
-	for (i = 0; i < len; i++)
+	
+	for (i = 0; i < UTF8_SIZE; i++) {
+		if (buf[i] == 0xff)
+			break;
 		tty_putc(tty, buf[i]);
+	}
 }
 
 void
