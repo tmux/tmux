@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.147 2009-07-20 16:07:23 tcunha Exp $ */
+/* $Id: tmux.c,v 1.148 2009-07-22 16:53:30 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -64,7 +64,7 @@ __dead void	 usage(void);
 char 		*makesockpath(const char *);
 
 #ifndef HAVE_PROGNAME
-const char      *__progname = "tmux";
+char      *__progname = (char *) "tmux";
 #endif
 
 __dead void
