@@ -38,39 +38,10 @@ void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_attributes_fg(struct tty *, const struct grid_cell *);
 void	tty_attributes_bg(struct tty *, const struct grid_cell *);
 
-void	tty_cmd_alignmenttest(struct tty *, struct tty_ctx *);
-void	tty_cmd_cell(struct tty *, struct tty_ctx *);
-void	tty_cmd_clearendofline(struct tty *, struct tty_ctx *);
-void	tty_cmd_clearendofscreen(struct tty *, struct tty_ctx *);
-void	tty_cmd_clearline(struct tty *, struct tty_ctx *);
-void	tty_cmd_clearscreen(struct tty *, struct tty_ctx *);
-void	tty_cmd_clearstartofline(struct tty *, struct tty_ctx *);
-void	tty_cmd_clearstartofscreen(struct tty *, struct tty_ctx *);
-void	tty_cmd_deletecharacter(struct tty *, struct tty_ctx *);
-void	tty_cmd_deleteline(struct tty *, struct tty_ctx *);
-void	tty_cmd_insertcharacter(struct tty *, struct tty_ctx *);
-void	tty_cmd_insertline(struct tty *, struct tty_ctx *);
-void	tty_cmd_linefeed(struct tty *, struct tty_ctx *);
-void	tty_cmd_utf8character(struct tty *, struct tty_ctx *);
-void	tty_cmd_reverseindex(struct tty *, struct tty_ctx *);
-
-void (*tty_cmds[])(struct tty *, struct tty_ctx *) = {
-	tty_cmd_alignmenttest,
-	tty_cmd_cell,
-	tty_cmd_clearendofline,
-	tty_cmd_clearendofscreen,
-	tty_cmd_clearline,
-	tty_cmd_clearscreen,
-	tty_cmd_clearstartofline,
-	tty_cmd_clearstartofscreen,
-	tty_cmd_deletecharacter,
-	tty_cmd_deleteline,
-	tty_cmd_insertcharacter,
-	tty_cmd_insertline,
-	tty_cmd_linefeed,
-	tty_cmd_utf8character,
-	tty_cmd_reverseindex,
-};
+void	tty_emulate_repeat(
+	    struct tty *, enum tty_code_code, enum tty_code_code, u_int);
+void	 tty_cell(struct tty *,
+    		     const struct grid_cell *, const struct grid_utf8 *);
 
 void
 tty_init(struct tty *tty, char *path, char *term)
@@ -542,15 +513,6 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 		for (i = sx; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
 	}
-}
-
-void
-tty_write(struct tty *tty, enum tty_cmd cmd, struct tty_ctx *ctx)
-{
-	if (tty->flags & TTY_FREEZE || tty->term == NULL)
-		return;
-	if (tty_cmds[cmd] != NULL)
-		tty_cmds[cmd](tty, ctx);
 }
 
 void

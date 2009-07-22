@@ -273,35 +273,6 @@ struct tty_term_code_entry {
 	const char	       *name;
 };
 
-/* Output commands. */
-enum tty_cmd {
-	TTY_ALIGNMENTTEST,
-	TTY_CELL,
-	TTY_CLEARENDOFLINE,
-	TTY_CLEARENDOFSCREEN,
-	TTY_CLEARLINE,
-	TTY_CLEARSCREEN,
-	TTY_CLEARSTARTOFLINE,
-	TTY_CLEARSTARTOFSCREEN,
-	TTY_DELETECHARACTER,
-	TTY_DELETELINE,
-	TTY_INSERTCHARACTER,
-	TTY_INSERTLINE,
-	TTY_LINEFEED,
-	TTY_UTF8CHARACTER,
-	TTY_REVERSEINDEX,
-};
-
-struct tty_ctx {
-	struct window_pane *wp;
-
-	const struct grid_cell *cell;
-	const struct grid_utf8 *utf8;
-
-	u_int		    num;
-	void		   *ptr; 
-};
-
 /* Message codes. */
 enum hdrtype {
 	MSG_COMMAND,
@@ -805,6 +776,18 @@ struct tty {
 	RB_HEAD(tty_keys, tty_key) ktree;
 };
 
+/* TTY command context and function pointer. */
+struct tty_ctx {
+	struct window_pane *wp;
+
+	const struct grid_cell *cell;
+	const struct grid_utf8 *utf8;
+
+	u_int		    num;
+	void		   *ptr; 
+};
+typedef void tty_cmd_func(struct tty *, struct tty_ctx *);
+
 /* Client connection. */
 struct client {
 	int		 fd;
@@ -1032,33 +1015,42 @@ void	options_set_number(struct options *, const char *, long long);
 long long options_get_number(struct options *, const char *);
 
 /* tty.c */
-u_char		 tty_get_acs(struct tty *, u_char);
-void		 tty_emulate_repeat(struct tty *,
-    		     enum tty_code_code, enum tty_code_code, u_int);
-void		 tty_reset(struct tty *);
-void		 tty_region(struct tty *, u_int, u_int, u_int);
-void		 tty_cursor(struct tty *, u_int, u_int, u_int, u_int);
-void		 tty_cell(struct tty *,
-    		     const struct grid_cell *, const struct grid_utf8 *);
-void		 tty_putcode(struct tty *, enum tty_code_code);
-void		 tty_putcode1(struct tty *, enum tty_code_code, int);
-void		 tty_putcode2(struct tty *, enum tty_code_code, int, int);
-void		 tty_puts(struct tty *, const char *);
-void		 tty_putc(struct tty *, u_char);
-void		 tty_pututf8(struct tty *, const struct grid_utf8 *);
-void		 tty_init(struct tty *, char *, char *);
-void		 tty_start_tty(struct tty *);
-void		 tty_stop_tty(struct tty *);
-void		 tty_detect_utf8(struct tty *);
-void		 tty_set_title(struct tty *, const char *);
-void		 tty_update_mode(struct tty *, int);
-void		 tty_draw_line(
-    		     struct tty *, struct screen *, u_int, u_int, u_int);
-void		 tty_redraw_region(struct tty *, struct window_pane *);
-int		 tty_open(struct tty *, char **);
-void		 tty_close(struct tty *, int);
-void		 tty_free(struct tty *, int);
-void		 tty_write(struct tty *, enum tty_cmd, struct tty_ctx *);
+u_char	tty_get_acs(struct tty *, u_char);
+void	tty_reset(struct tty *);
+void	tty_region(struct tty *, u_int, u_int, u_int);
+void	tty_cursor(struct tty *, u_int, u_int, u_int, u_int);
+void	tty_putcode(struct tty *, enum tty_code_code);
+void	tty_putcode1(struct tty *, enum tty_code_code, int);
+void	tty_putcode2(struct tty *, enum tty_code_code, int, int);
+void	tty_puts(struct tty *, const char *);
+void	tty_putc(struct tty *, u_char);
+void	tty_pututf8(struct tty *, const struct grid_utf8 *);
+void	tty_init(struct tty *, char *, char *);
+void	tty_start_tty(struct tty *);
+void	tty_stop_tty(struct tty *);
+void	tty_detect_utf8(struct tty *);
+void	tty_set_title(struct tty *, const char *);
+void	tty_update_mode(struct tty *, int);
+void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int);
+void	tty_redraw_region(struct tty *, struct window_pane *);
+int	tty_open(struct tty *, char **);
+void	tty_close(struct tty *, int);
+void	tty_free(struct tty *, int);
+void	tty_cmd_alignmenttest(struct tty *, struct tty_ctx *);
+void	tty_cmd_cell(struct tty *, struct tty_ctx *);
+void	tty_cmd_clearendofline(struct tty *, struct tty_ctx *);
+void	tty_cmd_clearendofscreen(struct tty *, struct tty_ctx *);
+void	tty_cmd_clearline(struct tty *, struct tty_ctx *);
+void	tty_cmd_clearscreen(struct tty *, struct tty_ctx *);
+void	tty_cmd_clearstartofline(struct tty *, struct tty_ctx *);
+void	tty_cmd_clearstartofscreen(struct tty *, struct tty_ctx *);
+void	tty_cmd_deletecharacter(struct tty *, struct tty_ctx *);
+void	tty_cmd_deleteline(struct tty *, struct tty_ctx *);
+void	tty_cmd_insertcharacter(struct tty *, struct tty_ctx *);
+void	tty_cmd_insertline(struct tty *, struct tty_ctx *);
+void	tty_cmd_linefeed(struct tty *, struct tty_ctx *);
+void	tty_cmd_utf8character(struct tty *, struct tty_ctx *);
+void	tty_cmd_reverseindex(struct tty *, struct tty_ctx *);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;
@@ -1074,17 +1066,17 @@ int		 tty_term_number(struct tty_term *, enum tty_code_code);
 int		 tty_term_flag(struct tty_term *, enum tty_code_code);
 
 /* tty-keys.c */
-int		 tty_keys_cmp(struct tty_key *, struct tty_key *);
+int	tty_keys_cmp(struct tty_key *, struct tty_key *);
 RB_PROTOTYPE(tty_keys, tty_key, entry, tty_keys_cmp);
-void		 tty_keys_init(struct tty *);
-void		 tty_keys_free(struct tty *);
-int		 tty_keys_next(struct tty *, int *, u_char *);
+void	tty_keys_init(struct tty *);
+void	tty_keys_free(struct tty *);
+int	tty_keys_next(struct tty *, int *, u_char *);
 
 /* tty-write.c */
-void		 tty_write0(struct window_pane *, enum tty_cmd);
-void		 tty_writenum(struct window_pane *, enum tty_cmd, u_int);
-void		 tty_writeptr(struct window_pane *, enum tty_cmd, void *);
-void		 tty_write_cmd(enum tty_cmd, struct tty_ctx *);
+void	tty_write0(struct window_pane *, tty_cmd_func *);
+void	tty_writenum(struct window_pane *, tty_cmd_func *, u_int);
+void	tty_writeptr(struct window_pane *, tty_cmd_func *, void *);
+void	tty_write(tty_cmd_func *, struct tty_ctx *);
 
 /* options-cmd.c */
 void	set_option_string(struct cmd_ctx *,
