@@ -544,36 +544,36 @@ is a prefix or for which it matches as an
 .Xr fnmatch 3
 pattern.
 If a single match is found, it is used as the target session; multiple matches
-produce an error
+produce an error.
 If a session is omitted, the current session is used if available; if no
 current session is available, the most recently created is chosen.
 .Pp
 .Ar target-window
 specifies a window in the form
-.Em session Ns \&: Ns Em window ,
-where
-.Em window
-is a window index, for example mysession:1, or a window name,
-.Xr fnmatch 3
-pattern, or prefix, such as mysession:mywin[0-3].
-If the latter, the window is looked up in a similar fashion to session name
-searches described above.
-The session is in the same form as for
-.Ar target-session .
-.Em session ,
-.Em index
-or both may be omitted.
-If
+.Em session Ns \&: Ns Em window .
 .Em session
-is omitted, the same rules as for
-.Ar target-session
-are followed; if
+follows the same rules as for
+.Ar target-session ,
+and
 .Em window
-is not present, the current window for the given session is used.
+is looked for in order: as a window index, for example mysession:1; as an exact
+window name, such as mysession:mywindow; then as an
+.Xr fnmatch 3
+pattern or the start of a window name, such as mysession:mywin* or
+mysession:mywin.
+An empty window name specifies the next unused index if appropriate (for
+example the
+.Ic new-window
+and
+.Ic link-window
+commands)
+otherwise the current window in
+.Em session
+is chosen.
 When the argument does not contain a colon,
 .Nm
-first attempts to parse it as window index; if that fails, an attempt is made
-to match a session or client name.
+first attempts to parse it as window; if that fails, an attempt is made to
+match a session.
 .Pp
 Multiple commands may be specified together as part of a
 .Em command sequence .
