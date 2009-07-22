@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.27 2009-07-17 12:35:01 nicm Exp $ */
+/* $Id: grid.c,v 1.28 2009-07-22 17:31:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -197,20 +197,6 @@ grid_scroll_line(struct grid *gd)
 	gd->udata[yy] = NULL;
 
 	gd->hsize++;
-}
-
-/* Reduce line to fit to cell. */
-void
-grid_reduce_line(struct grid *gd, u_int py, u_int sx)
-{
-	if (sx < gd->size[py]) {
-		gd->data[py] = xrealloc(gd->data[py], sx, sizeof **gd->data);
-		gd->size[py] = sx;
-	}
-	if (sx < gd->usize[py]) {
-		gd->udata[py] = xrealloc(gd->udata[py], sx, sizeof **gd->udata);
-		gd->usize[py] = sx;
-	}
 }
 
 /* Expand line to fit to cell. */
