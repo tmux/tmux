@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.87 2009-07-14 06:40:33 nicm Exp $ */
+/* $Id: input.c,v 1.88 2009-07-22 17:46:53 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,7 +35,7 @@
 #define INPUT_SPECIAL(ch)	(ch == 0xff)
 
 int	 input_get_argument(struct input_ctx *, u_int, uint16_t *, uint16_t);
-int	 input_new_argument(struct input_ctx *);
+void	 input_new_argument(struct input_ctx *);
 int	 input_add_argument(struct input_ctx *, u_char);
 
 void	 input_start_string(struct input_ctx *, int);
@@ -123,7 +123,7 @@ input_sequence_cmp(const void *a, const void *b)
 	return (ai - bi);
 }
 
-int
+void
 input_new_argument(struct input_ctx *ictx)
 {
 	struct input_arg       *arg;
@@ -132,8 +132,6 @@ input_new_argument(struct input_ctx *ictx)
 
 	arg = &ARRAY_LAST(&ictx->args);
 	arg->used = 0;
-
-	return (0);
 }
 
 int
