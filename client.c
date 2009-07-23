@@ -134,14 +134,12 @@ int
 client_main(struct client_ctx *cctx)
 {
 	struct pollfd	 pfd;
-	char		*error;
 	int		 xtimeout; /* Yay for ncurses namespace! */
 
 	siginit();
 
 	logfile("client");
 
-	error = NULL;
 	while (!sigterm) {
 		if (sigchld) {
 			waitpid(WAIT_ANY, NULL, WNOHANG);
