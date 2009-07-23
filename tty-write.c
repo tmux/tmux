@@ -1,4 +1,4 @@
-/* $Id: tty-write.c,v 1.21 2009-07-23 12:38:01 tcunha Exp $ */
+/* $Id: tty-write.c,v 1.22 2009-07-23 12:48:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,41 +18,7 @@
 
 #include <sys/types.h>
 
-#include <string.h>
-
 #include "tmux.h"
-
-void
-tty_write0(struct window_pane *wp, tty_cmd_func *cmdfn)
-{
-	struct tty_ctx	ctx;
-
-	memset(&ctx, 0, sizeof ctx);
-	ctx.wp = wp;
-	tty_write(cmdfn, &ctx);
-}
-
-void
-tty_writenum(struct window_pane *wp, tty_cmd_func *cmdfn, u_int num)
-{
-	struct tty_ctx	ctx;
-
-	memset(&ctx, 0, sizeof ctx);
-	ctx.wp = wp;
-	ctx.num = num;
-	tty_write(cmdfn, &ctx);
-}
-
-void
-tty_writeptr(struct window_pane *wp, tty_cmd_func *cmdfn, void *ptr)
-{
-	struct tty_ctx	ctx;
-
-	memset(&ctx, 0, sizeof ctx);
-	ctx.wp = wp;
-	ctx.ptr = ptr;
-	tty_write(cmdfn, &ctx);
-}
 
 void
 tty_write(tty_cmd_func *cmdfn, struct tty_ctx *ctx)
