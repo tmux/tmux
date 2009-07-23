@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.387 2009-07-23 13:25:27 tcunha Exp $ */
+/* $Id: tmux.h,v 1.388 2009-07-23 23:42:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -844,10 +844,13 @@ struct client_ctx {
 	struct buffer	*srv_in;
 	struct buffer	*srv_out;
 
-#define CCTX_DETACH 0x1
-#define CCTX_EXIT 0x2
-#define CCTX_SHUTDOWN 0x4
-	int 		 flags;
+	enum {
+		CCTX_DETACH,
+		CCTX_EXIT,
+		CCTX_DIED,
+		CCTX_SHUTDOWN,
+	} exittype;
+	const char	*errstr;
 };
 
 /* Key/command line command. */
@@ -1260,7 +1263,7 @@ int	 client_init(char *, struct client_ctx *, int, int);
 int	 client_main(struct client_ctx *);
 
 /* client-msg.c */
-int	 client_msg_dispatch(struct client_ctx *, char **);
+int	 client_msg_dispatch(struct client_ctx *);
 
 /* client-fn.c */
 void	 client_write_server(struct client_ctx *, enum hdrtype, void *, size_t);

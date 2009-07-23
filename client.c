@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.54 2009-07-23 13:15:41 tcunha Exp $ */
+/* $Id: client.c,v 1.55 2009-07-23 23:42:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -159,7 +159,7 @@ client_main(struct client_ctx *cctx)
 			sigcont = 0;
 		}
 
-		switch (client_msg_dispatch(cctx, &error)) {
+		switch (client_msg_dispatch(cctx)) {
 		case -1:
 			goto out;
 		case 0:
@@ -183,8 +183,10 @@ client_main(struct client_ctx *cctx)
 			fatal("poll failed");
 		}
 
-		if (buffer_poll(&pfd, cctx->srv_in, cctx->srv_out) != 0)
-			goto server_dead;
+		if (buffer_poll(&pfd, cctx->srv_in, cctx->srv_out) != 0) {
+			cctx->exittype = CCTX_DIED;
+			break;
+		}
 	}
 
 out:
@@ -192,28 +194,23 @@ out:
  		printf("[terminated]\n");
  		return (1);
  	}
-
-	if (cctx->flags & CCTX_SHUTDOWN) {
+	switch (cctx->exittype) {
+	case CCTX_DIED:
+		printf("[lost server]\n");
+		return (0);
+	case CCTX_SHUTDOWN:
 		printf("[server exited]\n");
 		return (0);
-	}
-
-	if (cctx->flags & CCTX_EXIT) {
+	case CCTX_EXIT:
 		printf("[exited]\n");
 		return (0);
-	}
-
-	if (cctx->flags & CCTX_DETACH) {
+	case CCTX_DETACH:
 		printf("[detached]\n");
 		return (0);
+	default:
+		printf("[error: %s]\n", cctx->errstr);
+		return (1);
 	}
-
-	printf("[error: %s]\n", error);
-	return (1);
-
-server_dead:
-	printf("[lost server]\n");
-	return (0);
 }
 
 void
