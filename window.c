@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.97 2009-07-22 17:46:53 tcunha Exp $ */
+/* $Id: window.c,v 1.98 2009-07-23 13:10:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -258,10 +258,7 @@ window_create(const char *name, const char *cmd, const char *cwd,
 	struct window_pane	*wp;
 
 	w = window_create1(sx, sy);
-	if ((wp = window_add_pane(w, hlimit, cause)) == NULL) {
-		window_destroy(w);
-		return (NULL);
-	}
+	wp = window_add_pane(w, hlimit);
 	layout_init(w);
 	if (window_pane_spawn(wp, cmd, cwd, envp, cause) != 0) {
 		window_destroy(w);
@@ -320,7 +317,7 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 }
 
 struct window_pane *
-window_add_pane(struct window *w, u_int hlimit, unused char **cause)
+window_add_pane(struct window *w, u_int hlimit)
 {
 	struct window_pane	*wp;
 
