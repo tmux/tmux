@@ -194,6 +194,7 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		break;
 	case MODEKEYCMD_STARTSELECTION:
  		window_copy_start_selection(wp);
+		window_copy_redraw_screen(wp);
 		break;
 	case MODEKEYCMD_CLEARSELECTION:
 		screen_clear_selection(&data->screen);
