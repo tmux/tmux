@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.386 2009-07-23 13:10:38 tcunha Exp $ */
+/* $Id: tmux.h,v 1.387 2009-07-23 13:25:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -861,7 +861,8 @@ struct cmd_ctx {
 	 * cmdclient is the client which sent the MSG_COMMAND to the server, if
 	 * any. This is NULL unless the command came from the command-line.
 	 *
-	 * One of curclient or cmdclient is always NULL and the other not.
+	 * cmdclient and curclient may both be NULL if the command is in the
+	 * configuration file.
 	 */
 	struct client  *curclient;
 	struct session *cursession;
