@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.65 2009-07-14 06:39:10 nicm Exp $ */
+/* $Id: window-copy.c,v 1.66 2009-07-23 23:37:14 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -194,6 +194,7 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		break;
 	case MODEKEYCMD_STARTSELECTION:
  		window_copy_start_selection(wp);
+		window_copy_redraw_screen(wp);
 		break;
 	case MODEKEYCMD_CLEARSELECTION:
 		screen_clear_selection(&data->screen);
