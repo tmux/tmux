@@ -153,6 +153,7 @@ mode_key_lookup_emacs(struct mode_key_data *mdata, int key)
 	case '\010':
 	case '\177':
 		return (MODEKEYCMD_BACKSPACE);
+	case '\004':
 	case KEYC_DC:
 		return (MODEKEYCMD_DELETE);
 	case '\011':
