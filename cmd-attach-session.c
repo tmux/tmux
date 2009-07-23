@@ -55,6 +55,9 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
 
+	if (ctx->cmdclient == NULL && ctx->curclient == NULL)
+		return (0);
+
 	if (ctx->cmdclient == NULL) {
 		if (data->chflags & CMD_CHFLAG('d')) {
 			/* 

@@ -862,7 +862,8 @@ struct cmd_ctx {
 	 * cmdclient is the client which sent the MSG_COMMAND to the server, if
 	 * any. This is NULL unless the command came from the command-line.
 	 *
-	 * One of curclient or cmdclient is always NULL and the other not.
+	 * cmdclient and curclient may both be NULL if the command is in the
+	 * configuration file.
 	 */
 	struct client  *curclient;
 	struct session *cursession;

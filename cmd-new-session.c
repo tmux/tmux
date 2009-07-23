@@ -114,6 +114,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session			*s;
 	struct options			*oo;
 	char				*cmd, *cwd, *cause;
+	int				 detached;
 	u_int				 sx, sy;
 
 	if (data->newname != NULL && session_find(data->newname) != NULL) {
@@ -122,7 +123,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	/*
-	 * There are two cases:
+	 * There are three cases:
 	 *
 	 * 1. If cmdclient is non-NULL, new-session has been called from the
 	 *    command-line - cmdclient is to become a new attached, interactive
@@ -132,12 +133,20 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 * 2. If cmdclient is NULL, new-session has been called from an
 	 *    existing client (such as a key binding).
 	 *
-	 * In both cases, a new additional session needs to be created and
+	 * 3. Both are NULL, the command was in the configuration file. Treat
+	 *    this as if -d was given even if it was not.
+	 *
+	 * In all cases, a new additional session needs to be created and
 	 * (unless -d) set as the current session for the client.
 	 */
 
+	/* Set -d if no client. */
+	detached = data->flag_detached;
+	if (ctx->cmdclient == NULL && ctx->curclient == NULL)
+		detached = 1;
+
 	/* Open the terminal if necessary. */
-	if (!data->flag_detached && ctx->cmdclient != NULL) {
+	if (!detached && ctx->cmdclient != NULL) {
 		if (!(ctx->cmdclient->flags & CLIENT_TERMINAL)) {
 			ctx->error(ctx, "not a terminal");
 			return (-1);
@@ -155,11 +164,11 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 * path and command.
 	 */
 	oo = &global_s_options;
-	if (ctx->cmdclient == NULL)
+	if (ctx->cmdclient == NULL && ctx->curclient != NULL)
 		oo = &ctx->curclient->session->options;
 
 	/* Find new session size and options. */
-	if (data->flag_detached) {
+	if (detached) {
 		sx = 80;
 		sy = 25;
 	} else {
@@ -207,14 +216,14 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 * to exit.
 	 */
 	if (ctx->cmdclient != NULL) {
-		if (!data->flag_detached)
+		if (!detached)
 			server_write_client(ctx->cmdclient, MSG_READY, NULL, 0);
 		else 
 			server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
 	}
 	
 	/* Set the client to the new session. */
- 	if (!data->flag_detached) {
+ 	if (!detached) {
 		if (ctx->cmdclient != NULL) {
  			ctx->cmdclient->session = s;
 			server_redraw_client(ctx->cmdclient);
