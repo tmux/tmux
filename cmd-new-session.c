@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.47 2009-07-23 13:25:27 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.48 2009-07-23 23:35:10 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -112,7 +112,6 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_new_session_data	*data = self->data;
 	struct session			*s;
-	struct options			*oo;
 	char				*cmd, *cwd, *cause;
 	int				 detached;
 	u_int				 sx, sy;
@@ -159,14 +158,6 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	/* 
-	 * If the called from inside, use the source session for the default
-	 * path and command.
-	 */
-	oo = &global_s_options;
-	if (ctx->cmdclient == NULL && ctx->curclient != NULL)
-		oo = &ctx->curclient->session->options;
-
 	/* Find new session size and options. */
 	if (detached) {
 		sx = 80;
@@ -180,7 +171,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 			sy = ctx->curclient->tty.sy;
 		}
 	}
-	if (sy > 0 && options_get_number(oo, "status"))
+	if (sy > 0 && options_get_number(&global_s_options, "status"))
 		sy--;
 	if (sx == 0)
 		sx = 1;
@@ -189,11 +180,11 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
 		cwd = ctx->cmdclient->cwd;
 	else
-		cwd = options_get_string(oo, "default-path");
+		cwd = options_get_string(&global_s_options, "default-path");
 	if (data->cmd != NULL)
 		cmd = data->cmd;
 	else
-		cmd = options_get_string(oo, "default-command");
+		cmd = options_get_string(&global_s_options, "default-command");
 
 	/* Create the new session. */
 	s = session_create(data->newname, cmd, cwd, sx, sy, &cause);
