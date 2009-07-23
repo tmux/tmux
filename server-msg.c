@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.72 2009-07-08 18:03:03 nicm Exp $ */
+/* $Id: server-msg.c,v 1.73 2009-07-23 23:47:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,12 +26,12 @@
 
 #include "tmux.h"
 
-int	server_msg_fn_command(struct hdr *, struct client *);
-int	server_msg_fn_identify(struct hdr *, struct client *);
-int	server_msg_fn_resize(struct hdr *, struct client *);
-int	server_msg_fn_exiting(struct hdr *, struct client *);
-int	server_msg_fn_unlock(struct hdr *, struct client *);
-int	server_msg_fn_wakeup(struct hdr *, struct client *);
+void	server_msg_fn_command(struct hdr *, struct client *);
+void	server_msg_fn_identify(struct hdr *, struct client *);
+void	server_msg_fn_resize(struct hdr *, struct client *);
+void	server_msg_fn_exiting(struct hdr *, struct client *);
+void	server_msg_fn_unlock(struct hdr *, struct client *);
+void	server_msg_fn_wakeup(struct hdr *, struct client *);
 
 void printflike2 server_msg_fn_command_error(
     	    struct cmd_ctx *, const char *, ...);
@@ -42,7 +42,7 @@ void printflike2 server_msg_fn_command_info(
 
 struct server_msg {
 	enum hdrtype	type;
-	int	        (*fn)(struct hdr *, struct client *);
+	void	        (*fn)(struct hdr *, struct client *);
 };
 const struct server_msg server_msg_table[] = {
 	{ MSG_IDENTIFY, server_msg_fn_identify },
@@ -59,7 +59,6 @@ server_msg_dispatch(struct client *c)
 	struct hdr		 hdr;
 	const struct server_msg	*msg;
 	u_int		 	 i;
-	int			 n;
 
 	for (;;) {
 		if (BUFFER_USED(c->in) < sizeof hdr)
@@ -72,8 +71,7 @@ server_msg_dispatch(struct client *c)
 		for (i = 0; i < nitems(server_msg_table); i++) {
 			msg = server_msg_table + i;
 			if (msg->type == hdr.type) {
-				if ((n = msg->fn(&hdr, c)) != 0)
-					return (n);
+				msg->fn(&hdr, c);
 				break;
 			}
 		}
@@ -127,7 +125,7 @@ server_msg_fn_command_info(struct cmd_ctx *ctx, const char *fmt, ...)
 	xfree(msg);
 }
 
-int
+void
 server_msg_fn_command(struct hdr *hdr, struct client *c)
 {
 	struct msg_command_data	data;
@@ -160,7 +158,7 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 				    "unset $TMUX to force");
 				cmd_list_free(cmdlist);
 				server_write_client(c, MSG_EXIT, NULL, 0);
-				return (0);
+				return;
 			}
 		}
 	}
@@ -168,10 +166,9 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	if (cmd_list_exec(cmdlist, &ctx) != 1)
 		server_write_client(c, MSG_EXIT, NULL, 0);
 	cmd_list_free(cmdlist);
-	return (0);
 }
 
-int
+void
 server_msg_fn_identify(struct hdr *hdr, struct client *c)
 {
 	struct msg_identify_data	data;
@@ -190,7 +187,7 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 		server_write_client(c, MSG_ERROR, MSG, (sizeof MSG) - 1);
 #undef MSG
 		server_write_client(c, MSG_EXIT, NULL, 0);
-		return (0);
+		return;
 	}
 
 	c->tty.sx = data.sx;
@@ -216,11 +213,9 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 		xfree(term);
 
 	c->flags |= CLIENT_TERMINAL;
-
-	return (0);
 }
 
-int
+void
 server_msg_fn_resize(struct hdr *hdr, struct client *c)
 {
 	struct msg_resize_data	data;
@@ -247,11 +242,9 @@ server_msg_fn_resize(struct hdr *hdr, struct client *c)
 
 	/* Always redraw this client. */
 	server_redraw_client(c);
-
-	return (0);
 }
 
-int
+void
 server_msg_fn_exiting(struct hdr *hdr, struct client *c)
 {
 	if (hdr->size != 0)
@@ -264,11 +257,9 @@ server_msg_fn_exiting(struct hdr *hdr, struct client *c)
 	tty_close(&c->tty, c->flags & CLIENT_SUSPENDED);
 
 	server_write_client(c, MSG_EXITED, NULL, 0);
-
-	return (0);
 }
 
-int
+void
 server_msg_fn_unlock(struct hdr *hdr, struct client *c)
 {
         char	*pass;
@@ -289,11 +280,9 @@ server_msg_fn_unlock(struct hdr *hdr, struct client *c)
 
 	memset(pass, 0, strlen(pass));
 	xfree(pass);
-
-	return (0);
 }
 
-int
+void
 server_msg_fn_wakeup(struct hdr *hdr, struct client *c)
 {
 	if (hdr->size != 0)
@@ -304,6 +293,4 @@ server_msg_fn_wakeup(struct hdr *hdr, struct client *c)
 	c->flags &= ~CLIENT_SUSPENDED;
 	tty_start_tty(&c->tty);
 	server_redraw_client(c);
-
-	return (0);
 }

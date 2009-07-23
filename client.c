@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.55 2009-07-23 23:42:59 tcunha Exp $ */
+/* $Id: client.c,v 1.56 2009-07-23 23:47:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -138,14 +138,12 @@ int
 client_main(struct client_ctx *cctx)
 {
 	struct pollfd	 pfd;
-	char		*error;
 	int		 xtimeout; /* Yay for ncurses namespace! */
 
 	siginit();
 
 	logfile("client");
 
-	error = NULL;
 	while (!sigterm) {
 		if (sigchld) {
 			waitpid(WAIT_ANY, NULL, WNOHANG);
