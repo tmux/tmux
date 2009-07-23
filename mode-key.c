@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.14 2009-07-22 16:24:59 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.15 2009-07-23 23:29:53 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -153,6 +153,7 @@ mode_key_lookup_emacs(struct mode_key_data *mdata, int key)
 	case '\010':
 	case '\177':
 		return (MODEKEYCMD_BACKSPACE);
+	case '\004':
 	case KEYC_DC:
 		return (MODEKEYCMD_DELETE);
 	case '\011':
