@@ -25,16 +25,16 @@
 
 #include "tmux.h"
 
-int	client_msg_fn_detach(struct hdr *, struct client_ctx *, char **);
-int	client_msg_fn_error(struct hdr *, struct client_ctx *, char **);
-int	client_msg_fn_shutdown(struct hdr *, struct client_ctx *, char **);
-int	client_msg_fn_exit(struct hdr *, struct client_ctx *, char **);
-int	client_msg_fn_exited(struct hdr *, struct client_ctx *, char **);
-int	client_msg_fn_suspend(struct hdr *, struct client_ctx *, char **);
+int	client_msg_fn_detach(struct hdr *, struct client_ctx *);
+int	client_msg_fn_error(struct hdr *, struct client_ctx *);
+int	client_msg_fn_shutdown(struct hdr *, struct client_ctx *);
+int	client_msg_fn_exit(struct hdr *, struct client_ctx *);
+int	client_msg_fn_exited(struct hdr *, struct client_ctx *);
+int	client_msg_fn_suspend(struct hdr *, struct client_ctx *);
 
 struct client_msg {
 	enum hdrtype   type;
-	int	       (*fn)(struct hdr *, struct client_ctx *, char **);
+	int	       (*fn)(struct hdr *, struct client_ctx *);
 };
 struct client_msg client_msg_table[] = {
 	{ MSG_DETACH, client_msg_fn_detach },
@@ -46,7 +46,7 @@ struct client_msg client_msg_table[] = {
 };
 
 int
-client_msg_dispatch(struct client_ctx *cctx, char **error)
+client_msg_dispatch(struct client_ctx *cctx)
 {
 	struct hdr		 hdr;
 	struct client_msg	*msg;
@@ -61,70 +61,67 @@ client_msg_dispatch(struct client_ctx *cctx, char **error)
 
 	for (i = 0; i < nitems(client_msg_table); i++) {
 		msg = client_msg_table + i;
-		if (msg->type == hdr.type) {
-			if (msg->fn(&hdr, cctx, error) != 0)
-				return (-1);
-			return (0);
-		}
+		if (msg->type == hdr.type)
+			return (msg->fn(&hdr, cctx));
 	}
 	fatalx("unexpected message");
 }
 
 int
-client_msg_fn_error(struct hdr *hdr, struct client_ctx *cctx, char **error)
+client_msg_fn_error(struct hdr *hdr, struct client_ctx *cctx)
 {
+	char	*errstr;
+
 	if (hdr->size == SIZE_MAX)
 		fatalx("bad MSG_ERROR size");
 
-	*error = xmalloc(hdr->size + 1);
-	buffer_read(cctx->srv_in, *error, hdr->size);
-	(*error)[hdr->size] = '\0';
+	errstr = xmalloc(hdr->size + 1);
+	buffer_read(cctx->srv_in, errstr, hdr->size);
+	errstr[hdr->size] = '\0';
 
+	cctx->errstr = errstr;
 	return (-1);
 }
 
 int
-client_msg_fn_detach(
-    struct hdr *hdr, struct client_ctx *cctx, unused char **error)
+client_msg_fn_detach(struct hdr *hdr, struct client_ctx *cctx)
 {
 	if (hdr->size != 0)
 		fatalx("bad MSG_DETACH size");
 
 	client_write_server(cctx, MSG_EXITING, NULL, 0);
-	cctx->flags |= CCTX_DETACH;
+	cctx->exittype = CCTX_DETACH;
 
 	return (0);
 }
 
 int
 client_msg_fn_shutdown(
-    struct hdr *hdr, struct client_ctx *cctx, unused char **error)
+    struct hdr *hdr, struct client_ctx *cctx)
 {
 	if (hdr->size != 0)
 		fatalx("bad MSG_SHUTDOWN size");
 
 	client_write_server(cctx, MSG_EXITING, NULL, 0);
-	cctx->flags |= CCTX_SHUTDOWN;
+	cctx->exittype = CCTX_SHUTDOWN;
 
 	return (0);
 }
 
 int
-client_msg_fn_exit(
-    struct hdr *hdr, struct client_ctx *cctx, unused char **error)
+client_msg_fn_exit(struct hdr *hdr, struct client_ctx *cctx)
 {
 	if (hdr->size != 0)
 		fatalx("bad MSG_EXIT size");
 
 	client_write_server(cctx, MSG_EXITING, NULL, 0);
-	cctx->flags |= CCTX_EXIT;
+	cctx->exittype = CCTX_EXIT;
 
 	return (0);
 }
 
 int
-client_msg_fn_exited(
-    struct hdr *hdr, unused struct client_ctx *cctx, unused char **error)
+client_msg_fn_exited(struct hdr *hdr, unused struct client_ctx *cctx)
 {
 	if (hdr->size != 0)
 		fatalx("bad MSG_EXITED size");
@@ -133,8 +130,7 @@ client_msg_fn_exited(
 }
 
 int
-client_msg_fn_suspend(
-    struct hdr *hdr, unused struct client_ctx *cctx, unused char **error)
+client_msg_fn_suspend(struct hdr *hdr, unused struct client_ctx *cctx)
 {
 	struct sigaction	 act;
 
