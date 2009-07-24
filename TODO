@@ -91,3 +91,5 @@
 	- up-pane/down-pane vs next-*/previous-* vs resize-pane U/D/L/R
 - pcvt25 doesn't work properly, why? (bce?)
 - tidy up and prioritise todo list ;-)
+- neww and attach can create a session if none exists?
+       would work fine with config file since
