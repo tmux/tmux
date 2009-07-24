@@ -81,6 +81,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	layout_init(w);
 	screen_reinit(&wp->base);
+	window_set_active_pane(w, wp);
 
 	recalculate_sizes();
 	server_redraw_window(w);
