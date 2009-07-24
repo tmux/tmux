@@ -91,5 +91,6 @@
 	- up-pane/down-pane vs next-*/previous-* vs resize-pane U/D/L/R
 - pcvt25 doesn't work properly, why? (bce?)
 - tidy up and prioritise todo list ;-)
+- it is only possible to specify 8 colours to fg/bg options; should be able to set 256 as well
 - neww and attach can create a session if none exists?
        would work fine with config file since
