@@ -802,14 +802,19 @@ server_handle_client(struct client *c)
 		if (!(c->flags & CLIENT_PREFIX)) {
 			if (key == prefix)
 				c->flags |= CLIENT_PREFIX;
-			else
-				window_pane_key(wp, c, key);
+			else {
+				/* Try as a non-prefix key binding. */
+				if ((bd = key_bindings_lookup(key)) == NULL)
+					window_pane_key(wp, c, key);
+				else
+					key_bindings_dispatch(bd, c);
+			}
 			continue;
 		}
 
 		/* Prefix key already pressed. Reset prefix and lookup key. */
 		c->flags &= ~CLIENT_PREFIX;
-		if ((bd = key_bindings_lookup(key)) == NULL) {
+		if ((bd = key_bindings_lookup(key | KEYC_PREFIX)) == NULL) {
 			/* If repeating, treat this as a key, else ignore. */
 			if (c->flags & CLIENT_REPEAT) {
 				c->flags &= ~CLIENT_REPEAT;

@@ -36,7 +36,7 @@ struct cmd_unbind_key_data {
 
 const struct cmd_entry cmd_unbind_key_entry = {
 	"unbind-key", "unbind",
-	"key",
+	"[-n] key",
 	0, 0,
 	NULL,
 	cmd_unbind_key_parse,
@@ -51,12 +51,15 @@ int
 cmd_unbind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_unbind_key_data	*data;
-	int				 opt;
+	int				 opt, no_prefix = 0;
 
 	self->data = data = xmalloc(sizeof *data);
 
-	while ((opt = getopt(argc, argv, "")) != -1) {
+	while ((opt = getopt(argc, argv, "n")) != -1) {
 		switch (opt) {
+		case 'n':
+			no_prefix = 1;
+			break;
 		default:
 			goto usage;
 		}
@@ -70,6 +73,8 @@ cmd_unbind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 		xasprintf(cause, "unknown key: %s", argv[0]);
 		goto error;
 	}
+	if (!no_prefix)
+		data->key |= KEYC_PREFIX;
 
 	return (0);
 
