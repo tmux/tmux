@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.130 2009-07-25 08:39:39 tcunha Exp $
+.\" $Id: tmux.1,v 1.131 2009-07-25 08:52:04 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -617,7 +617,7 @@ If no server is started,
 will attempt to start it; this will fail unless sessions are created in the
 configuration file.
 .It Xo Ic bind-key
-.Op Fl r
+.Op Fl nr
 .Ar key Ar command Op Ar arguments
 .Xc
 .D1 (alias: Ic bind )
@@ -632,6 +632,13 @@ or
 for Ctrl keys, or
 .Ql M-
 for Alt (meta) keys.
+If
+.Fl n
+is specified, it is not necessary to use the prefix key,
+.Ar command
+is bound to
+.Ar key
+alone.
 The
 .Fl r
 flag indicates this key may repeat, see the
@@ -842,6 +849,10 @@ List the syntax of all commands supported by
 .Xc
 .D1 (alias: Ic lsk )
 List all key bindings.
+Keys bound without the prefix key (see
+.Ic bind-key
+.Fl n )
+are enclosed in square brackets.
 .It Xo Ic list-sessions
 .Xc
 .D1 (alias: Ic ls )
@@ -1613,11 +1624,17 @@ Switch the current session for client
 to
 .Ar target-session .
 .It Xo Ic unbind-key
+.Op Fl n
 .Ar key
 .Xc
 .D1 (alias: Ic unbind )
 Unbind the command bound to
 .Ar key .
+If
+.Fl n
+is specified, the command bound to
+.Ar key
+without a prefix (if any) is removed.
 .It Xo Ic unlink-window
 .Op Fl k
 .Op Fl t Ar target-window

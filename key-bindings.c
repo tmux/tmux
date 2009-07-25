@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.78 2009-07-22 16:24:59 tcunha Exp $ */
+/* $Id: key-bindings.c,v 1.79 2009-07-25 08:52:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,18 @@ struct key_bindings	dead_key_bindings;
 int
 key_bindings_cmp(struct key_binding *bd1, struct key_binding *bd2)
 {
-	return (bd1->key - bd2->key);
+	int	key1, key2;
+
+	key1 = bd1->key & ~KEYC_PREFIX;
+	key2 = bd2->key & ~KEYC_PREFIX;
+	if (key1 != key2)
+		return (key1 - key2);
+
+	if (bd1->key & KEYC_PREFIX && !(bd2->key & KEYC_PREFIX))
+		return (-1);
+	if (bd2->key & KEYC_PREFIX && !(bd1->key & KEYC_PREFIX))
+		return (1);
+	return (0);
 }
 
 struct key_binding *
@@ -170,7 +181,8 @@ key_bindings_init(void)
 			cmd->entry->init(cmd, table[i].key);
 		TAILQ_INSERT_HEAD(cmdlist, cmd, qentry);
 
-		key_bindings_add(table[i].key, table[i].can_repeat, cmdlist);
+		key_bindings_add(
+		    table[i].key | KEYC_PREFIX, table[i].can_repeat, cmdlist);
 	}
 }
 

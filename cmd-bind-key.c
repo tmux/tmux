@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.22 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-bind-key.c,v 1.23 2009-07-25 08:52:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,7 +39,7 @@ struct cmd_bind_key_data {
 
 const struct cmd_entry cmd_bind_key_entry = {
 	"bind-key", "bind",
-	"[-r] key command [arguments]",
+	"[-nr] key command [arguments]",
 	0, 0,
 	NULL,
 	cmd_bind_key_parse,
@@ -54,14 +54,17 @@ int
 cmd_bind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 {
 	struct cmd_bind_key_data	*data;
-	int				 opt;
+	int				 opt, no_prefix = 0;
 
 	self->data = data = xmalloc(sizeof *data);
 	data->can_repeat = 0;
 	data->cmdlist = NULL;
 
-	while ((opt = getopt(argc, argv, "r")) != -1) {
+	while ((opt = getopt(argc, argv, "nr")) != -1) {
 		switch (opt) {
+		case 'n':
+			no_prefix = 1;
+			break;
 		case 'r':
 			data->can_repeat = 1;
 			break;
@@ -78,6 +81,8 @@ cmd_bind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 		xasprintf(cause, "unknown key: %s", argv[0]);
 		goto error;
 	}
+	if (!no_prefix)
+		data->key |= KEYC_PREFIX;
 
 	argc--;
 	argv++;

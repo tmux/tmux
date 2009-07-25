@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.388 2009-07-23 23:42:59 tcunha Exp $ */
+/* $Id: tmux.h,v 1.389 2009-07-25 08:52:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -101,10 +101,12 @@ struct buffer {
 #define BELL_CURRENT 2
 
 /* Key codes. ncurses defines KEY_*. Grrr. */
-#define KEYC_NONE    0x0fff
-#define KEYC_ESCAPE  0x2000
-#define KEYC_CTRL    0x4000
-#define KEYC_SHIFT   0x8000
+#define KEYC_NONE 0xfff
+/* 0x1000 is base for special keys */
+#define KEYC_ESCAPE 0x2000
+#define KEYC_CTRL 0x4000
+#define KEYC_SHIFT 0x8000
+#define KEYC_PREFIX 0x10000
 
 enum key_code {
 	/* Mouse key. */
@@ -855,8 +857,6 @@ struct client_ctx {
 
 /* Key/command line command. */
 struct cmd_ctx {
-	struct client  *cmdclient;
-
 	/*
 	 * curclient is the client where this command was executed if inside
 	 * tmux. This is NULL if the command came from the command-line.
@@ -868,6 +868,8 @@ struct cmd_ctx {
 	 * configuration file.
 	 */
 	struct client  *curclient;
+	struct client  *cmdclient;
+
 	struct session *cursession;
 
 	struct msg_command_data	*msgdata;
