@@ -35,8 +35,6 @@
   to allow xterm to pick up it should be one line for its c/p
 - should be able to move to a hidden pane and it would be moved into view. pane
   number in status line/top-right would be cool for this
-- command to run something without a window at all - output to
-  window-more. what for? isnt this the same as doing it w/ splitw/neww now?
 - would be nice if tmux could be the shell (tmux attach, but hard link to tmux
   binary as "tmuxsh" or wrapper script?) problems with tty dev permissions
 - support other mouse modes (highlight etc) and use it in copy mode
@@ -99,5 +97,9 @@
  (i think someone suggested this before and i poo-poo'd it, don't remember why
  is there a downside?)
 - a way for force-width/height to apply to only one
- pane (how?)
-
+  pane (how?)
+- **** a command to run something without a window and send any output to the
+  window-more. if no output, info() a line saying "'%s' returned %d". so i can
+  bind mpc control commands to function keys ;-)
+- command to list what is actually running in each window with command line,
+  pid (need some adaption of the osdep code)
