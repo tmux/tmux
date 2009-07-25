@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.107 2009-07-23 13:06:31 tcunha Exp $ */
+/* $Id: cmd.c,v 1.108 2009-07-25 08:59:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -675,7 +675,7 @@ cmd_find_index(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 	 */
 	if ((s = cmd_current_session(ctx)) == NULL) {
 		ctx->error(ctx, "can't establish current session");
-		return (-1);
+		return (-2);
 	}
 
 	/* A NULL argument means the current session and "no window" (-1). */
