@@ -94,3 +94,10 @@
 - it is only possible to specify 8 colours to fg/bg options; should be able to set 256 as well
 - neww and attach can create a session if none exists?
        would work fine with config file since
+- option to set customisable prompt for command-prompt (so eg bind -n F2
+  command-prompt "splitw 'exec man %%') can have "man: " instead of "(splitw)".
+ (i think someone suggested this before and i poo-poo'd it, don't remember why
+ is there a downside?)
+- a way for force-width/height to apply to only one
+ pane (how?)
+
