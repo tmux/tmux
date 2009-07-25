@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.41 2009-07-15 17:44:06 nicm Exp $ */
+/* $Id: screen-redraw.c,v 1.42 2009-07-25 08:58:19 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,6 +24,13 @@
 
 int	screen_redraw_check_cell(struct client *, u_int, u_int);
 
+#define CELL_INSIDE 0
+#define CELL_LEFT 1
+#define CELL_RIGHT 2
+#define CELL_TOP 3
+#define CELL_BOTTOM 4
+#define CELL_OUTSIDE 5
+
 /* Check if cell inside a pane. */
 int
 screen_redraw_check_cell(struct client *c, u_int px, u_int py)
@@ -32,7 +39,7 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py)
 	struct window_pane	*wp;
 
 	if (px > w->sx || py > w->sy)
-		return (0);
+		return (CELL_OUTSIDE);
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (!window_pane_visible(wp))
@@ -41,26 +48,26 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py)
 		/* Inside pane. */
 		if (px >= wp->xoff && px < wp->xoff + wp->sx &&
 		    py >= wp->yoff && py < wp->yoff + wp->sy)
-			return (1);
+			return (CELL_INSIDE);
 
 		/* Left/right borders. */
 		if (py >= wp->yoff && py < wp->yoff + wp->sy) {
 			if (wp->xoff != 0 && px == wp->xoff - 1)
-				return (1);
+				return (CELL_LEFT);
 			if (px == wp->xoff + wp->sx)
-				return (1);
+				return (CELL_RIGHT);
 		}
 
 		/* Top/bottom borders. */
 		if (px >= wp->xoff && px < wp->xoff + wp->sx) {
 			if (wp->yoff != 0 && py == wp->yoff - 1)
-				return (1);
+				return (CELL_TOP);
 			if (py == wp->yoff + wp->sy)
-				return (1);
+				return (CELL_BOTTOM);
 		}
 	}
 
-	return (0);
+	return (CELL_OUTSIDE);
 }
 
 /* Redraw entire screen. */
@@ -70,9 +77,9 @@ screen_redraw_screen(struct client *c, int status_only)
 	struct window		*w = c->session->curw->window;
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
-	u_int		 	 i, j, sx, sy;
-	int		 	 status, has_acs;
-	u_char			 choriz, cvert, cbackg;
+	u_int		 	 i, j, type;
+	int		 	 status;
+	const u_char		*border;
 
 	/* Get status line, er, status. */
 	if (c->message_string != NULL || c->prompt_string != NULL)
@@ -86,85 +93,30 @@ screen_redraw_screen(struct client *c, int status_only)
 		return;
 	}
 
-	/* Work out ACS characters. */
-	if (tty_term_has(tty->term, TTYC_ACSC)) {
-		has_acs = 1;
-		choriz = tty_get_acs(tty, 'q');
-		cvert = tty_get_acs(tty, 'x');
-		cbackg = tty_get_acs(tty, '~');
-	} else {
-		has_acs = 0;
-		choriz = '-';
-		cvert = '|';
-		cbackg = '.';
-	}
-
-	/* Clear the screen. */
+	/* Draw background and borders. */
 	tty_reset(tty);
-	if (has_acs)
+	if (tty_term_has(tty->term, TTYC_ACSC)) {
+		border = " xxqq~";
 		tty_putcode(tty, TTYC_SMACS);
+	} else 
+		border = " ||--.";
 	for (j = 0; j < tty->sy - status; j++) {
 		if (status_only && j != tty->sy - 1)
 			continue;
 		for (i = 0; i < tty->sx; i++) {
-			if (!screen_redraw_check_cell(c, i, j)) {
+			type = screen_redraw_check_cell(c, i, j);
+			if (type != CELL_INSIDE) {
 				tty_cursor(tty, i, j, 0, 0);
-				tty_putc(tty, cbackg);
+				tty_putc(tty, border[type]);
 			}
 		}
 	}
-	if (has_acs)
-		tty_putcode(tty, TTYC_RMACS);
+	tty_putcode(tty, TTYC_RMACS);
 
 	/* Draw the panes. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (!window_pane_visible(wp))
 			continue;
-
-		tty_reset(tty);
-
-		sx = wp->sx;
-		sy = wp->sy;
-
-		/* Draw left and right borders. */
-		if (has_acs)
-			tty_putcode(tty, TTYC_SMACS);
-		if (wp->xoff > 0) {
-			for (i = wp->yoff; i < wp->yoff + sy; i++) {
-				if (status_only && i != tty->sy - 1)
-					continue;
-				tty_cursor(tty, wp->xoff - 1, i, 0, 0);
-				tty_putc(tty, cvert);
-			}
-		}
-		if (wp->xoff + sx < tty->sx) {
-			for (i = wp->yoff; i < wp->yoff + sy; i++) {
-				if (status_only && i != tty->sy - 1)
-					continue;
-				tty_cursor(tty, wp->xoff + sx, i, 0, 0);
-				tty_putc(&c->tty, cvert);
-			}
-		}
-
-		/* Draw top and bottom borders. */
-		if (wp->yoff > 0) {
-			if (!status_only || wp->yoff - 1 == tty->sy - 1) {
-				tty_cursor(tty, wp->xoff, wp->yoff - 1, 0, 0);
-				for (i = 0; i < sx; i++)
-					tty_putc(tty, choriz);
-			}
-		}
-		if (wp->yoff + sy < tty->sy - status) {
-			if (!status_only || wp->yoff + sy == tty->sy - 1) {
-				tty_cursor(tty, wp->xoff, wp->yoff + sy, 0, 0);
-				for (i = 0; i < sx; i++)
-					tty_putc(tty, choriz);
-			}
-		}
-		if (has_acs)
-			tty_putcode(tty, TTYC_RMACS);
-
-		/* Draw the pane. */
 		for (i = 0; i < wp->sy; i++) {
 			if (status_only && wp->yoff + i != tty->sy - 1)
 				continue;
