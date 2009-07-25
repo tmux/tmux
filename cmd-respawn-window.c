@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-window.c,v 1.16 2009-07-20 15:42:05 tcunha Exp $ */
+/* $Id: cmd-respawn-window.c,v 1.17 2009-07-25 09:04:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -81,6 +81,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	layout_init(w);
 	screen_reinit(&wp->base);
+	window_set_active_pane(w, wp);
 
 	recalculate_sizes();
 	server_redraw_window(w);
