@@ -82,41 +82,48 @@ retry:
 			continue;
 		}
 
-		if (is_runnable(p) && !is_runnable(bestp))
+		if (is_runnable(p) && !is_runnable(bestp)) {
 			bestp = p;
-		else if (!is_runnable(p) && is_runnable(bestp))
+			continue;
+		} else if (!is_runnable(p) && is_runnable(bestp))
 			continue;
 
-		if (!is_stopped(p) && is_stopped(bestp))
+		if (!is_stopped(p) && is_stopped(bestp)) {
 			bestp = p;
-		else if (is_stopped(p) && !is_stopped(bestp))
+			continue;
+		} else if (is_stopped(p) && !is_stopped(bestp))
 			continue;
 
-		if (p->p_estcpu > bestp->p_estcpu)
+		if (p->p_estcpu > bestp->p_estcpu) {
 			bestp = p;
-		else if (p->p_estcpu < bestp->p_estcpu)
+			continue;
+		} else if (p->p_estcpu < bestp->p_estcpu)
 			continue;
 
-		if (p->p_slptime < bestp->p_slptime)
+		if (p->p_slptime < bestp->p_slptime) {
 			bestp = p;
-		else if (p->p_slptime > bestp->p_slptime)
+			continue;
+		} else if (p->p_slptime > bestp->p_slptime)
 			continue;
 
-		if (p->p_flag & P_SINTR && !(bestp->p_flag & P_SINTR))
+		if (p->p_flag & P_SINTR && !(bestp->p_flag & P_SINTR)) {
 			bestp = p;
-		else if (!(p->p_flag & P_SINTR) && bestp->p_flag & P_SINTR)
+			continue;
+		} else if (!(p->p_flag & P_SINTR) && bestp->p_flag & P_SINTR)
 			continue;
 
 		if (LIST_FIRST(&p->p_children) == NULL &&
-		    LIST_FIRST(&bestp->p_children) != NULL) /* XXX ugh */
+		    LIST_FIRST(&bestp->p_children) != NULL) { /* XXX ugh */
 			bestp = p;
-		else if (LIST_FIRST(&p->p_children) != NULL &&
+			continue;
+		} else if (LIST_FIRST(&p->p_children) != NULL &&
 		    LIST_FIRST(&bestp->p_children) == NULL)
 			continue;
 
-		if (strcmp(p->p_comm, p->p_comm) < 0)
+		if (strcmp(p->p_comm, bestp->p_comm) < 0) {
 			bestp = p;
-		else if (strcmp(p->p_comm, p->p_comm) > 0)
+			continue;
+		} else if (strcmp(p->p_comm, bestp->p_comm) > 0)
 			continue;
 
 		if (p->p_pid > bestp->p_pid)
