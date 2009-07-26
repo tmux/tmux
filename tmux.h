@@ -121,6 +121,9 @@ enum key_code {
 	/* Mouse key. */
 	KEYC_MOUSE = 0x1000,
 
+	/* Backspace key. */
+	KEYC_BSPACE,
+
 	/* Function keys. */
 	KEYC_F1,
 	KEYC_F2,

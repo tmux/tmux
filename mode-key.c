@@ -70,7 +70,7 @@ mode_key_lookup_vi(struct mode_key_data *mdata, int key)
 				mdata->flags &= ~MODEKEY_EDITMODE;
 			return (MODEKEYCMD_NONE);
 		case '\010':
-		case '\177':
+		case KEYC_BSPACE:
 			return (MODEKEYCMD_BACKSPACE);
 		case '\011':
 			return (MODEKEYCMD_COMPLETE);
@@ -84,7 +84,7 @@ mode_key_lookup_vi(struct mode_key_data *mdata, int key)
 
 	switch (key) {
 	case '\010':
-	case '\177':
+	case KEYC_BSPACE:
 		return (MODEKEYCMD_LEFT);
 	case KEYC_DC:
 		return (MODEKEYCMD_DELETE);
@@ -151,7 +151,7 @@ mode_key_lookup_emacs(struct mode_key_data *mdata, int key)
 {
 	switch (key) {
 	case '\010':
-	case '\177':
+	case KEYC_BSPACE:
 		return (MODEKEYCMD_BACKSPACE);
 	case '\004':
 	case KEYC_DC:

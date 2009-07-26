@@ -36,6 +36,9 @@ struct input_key_ent {
 };
 
 struct input_key_ent input_keys[] = {
+	/* Backspace key. */
+	{ KEYC_BSPACE, "\177",	   0 },
+
 	/* Function keys. */
 	{ KEYC_F1,     "\033OP",   INPUTKEY_CTRL|INPUTKEY_XTERM },
 	{ KEYC_F2,     "\033OQ",   INPUTKEY_CTRL|INPUTKEY_XTERM },
