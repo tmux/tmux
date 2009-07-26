@@ -645,7 +645,7 @@ status_prompt_redraw(struct client *c)
 	struct screen_write_ctx	ctx;
 	struct session		       *s = c->session;
 	struct screen		        old_status;
-	size_t			        i, size, left, len, offset, n;
+	size_t			        i, size, left, len, off, n;
 	char				ch;
 	struct grid_cell		gc;
 
@@ -653,7 +653,7 @@ status_prompt_redraw(struct client *c)
 		return (0);
 	memcpy(&old_status, &c->status, sizeof old_status);
 	screen_init(&c->status, c->tty.sx, 1, 0);
-	offset = 0;
+	off = 0;
 
 	len = strlen(c->prompt_string);
 	if (len > c->tty.sx)
@@ -674,7 +674,7 @@ status_prompt_redraw(struct client *c)
 		if (c->prompt_index < left)
 			size = strlen(c->prompt_buffer);
 		else {
-			offset = c->prompt_index - left - 1;
+			off = c->prompt_index - left + 1;
 			if (c->prompt_index == strlen(c->prompt_buffer))
 				left--;
 			size = left;
@@ -687,27 +687,27 @@ status_prompt_redraw(struct client *c)
 				screen_write_putc(&ctx, &gc, '*');
 		} else {
 			screen_write_puts(&ctx, &gc,
-			    "%.*s", (int) left, c->prompt_buffer + offset);
+			    "%.*s", (int) left, c->prompt_buffer + off);
 		}
 
 		for (i = len + size; i < c->tty.sx; i++)
 			screen_write_putc(&ctx, &gc, ' ');
-	}
 
-	/* Draw a fake cursor. */
-	screen_write_cursormove(&ctx, len + c->prompt_index - offset, 0);
-	if (c->prompt_index == strlen(c->prompt_buffer))
-		ch = ' ';
-	else {
-		if (c->prompt_flags & PROMPT_HIDDEN)
-			ch = '*';
-		else
-			ch = c->prompt_buffer[c->prompt_index];
+		/* Draw a fake cursor. */
+		screen_write_cursormove(&ctx, len + c->prompt_index - off, 0);
+		if (c->prompt_index == strlen(c->prompt_buffer))
+			ch = ' ';
+		else {
+			if (c->prompt_flags & PROMPT_HIDDEN)
+				ch = '*';
+			else
+				ch = c->prompt_buffer[c->prompt_index];
+		}
+		if (ch == '\0')
+			ch = ' ';
+		gc.attr ^= GRID_ATTR_REVERSE;
+		screen_write_putc(&ctx, &gc, ch);
 	}
-	if (ch == '\0')
-		ch = ' ';
-	gc.attr ^= GRID_ATTR_REVERSE;
-	screen_write_putc(&ctx, &gc, ch);
 
 	screen_write_stop(&ctx);
 
