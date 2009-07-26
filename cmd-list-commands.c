@@ -34,8 +34,6 @@ const struct cmd_entry cmd_list_commands_entry = {
 	NULL,
 	cmd_list_commands_exec,
 	NULL,
-	NULL,
-	NULL,
 	NULL
 };
 

@@ -39,8 +39,6 @@ const struct cmd_entry cmd_lock_server_entry = {
 	cmd_lock_server_exec,
 	NULL,
 	NULL,
-	NULL,
-	NULL,
 };
 
 int

@@ -57,6 +57,8 @@ char		*socket_path;
 
 __dead void	 usage(void);
 char 		*makesockpath(const char *);
+int		 prepare_unlock(enum hdrtype *, void **, size_t *, int);
+int		 prepare_cmd(enum hdrtype *, void **, size_t *, int, char **);
 
 __dead void
 usage(void)
@@ -201,18 +203,69 @@ makesockpath(const char *label)
 }
 
 int
+prepare_unlock(enum hdrtype *msg, void **buf, size_t *len, int argc)
+{
+	static struct msg_unlock_data	 unlockdata;
+	char				*pass;
+
+	if (argc != 0) {
+		log_warnx("can't specify a command when unlocking");
+		return (-1);
+	}
+	
+	if ((pass = getpass("Password: ")) == NULL)
+		return (-1);
+
+	if (strlen(pass) >= sizeof unlockdata.pass) {
+		log_warnx("password too long");
+		return (-1);
+	}
+		
+	strlcpy(unlockdata.pass, pass, sizeof unlockdata.pass);
+	memset(pass, 0, strlen(pass));
+
+	*buf = &unlockdata;
+	*len = sizeof unlockdata;
+
+	*msg = MSG_UNLOCK;
+	return (0);
+}
+
+int
+prepare_cmd(enum hdrtype *msg, void **buf, size_t *len, int argc, char **argv)
+{
+	static struct msg_command_data	 cmddata;
+
+	client_fill_session(&cmddata);
+	
+	cmddata.argc = argc;
+	if (cmd_pack_argv(argc, argv, cmddata.argv, sizeof cmddata.argv) != 0) {
+		log_warnx("command too long");
+		return (-1);
+	}
+
+	*buf = &cmddata;
+	*len = sizeof cmddata;
+
+	*msg = MSG_COMMAND;
+	return (0);
+}
+
+int
 main(int argc, char **argv)
 {
 	struct client_ctx	 cctx;
-	struct msg_command_data	 cmddata;
-	struct buffer		*b;
 	struct cmd_list		*cmdlist;
  	struct cmd		*cmd;
 	struct pollfd	 	 pfd;
+	enum hdrtype		 msg;
 	struct hdr	 	 hdr;
 	struct passwd		*pw;
-	char			*s, *path, *label, *cause, *home, *pass = NULL;
+	struct msg_print_data	 printdata;
+	char			*s, *path, *label, *home, *cause;
 	char			 cwd[MAXPATHLEN];
+	void			*buf;
+	size_t			 len;
 	int	 		 retcode, opt, flags, unlock, cmdflags = 0;
 
 	unlock = flags = 0;
@@ -364,7 +417,7 @@ main(int argc, char **argv)
 			exit(1);
 		}
 	}
-
+	
 	if (label == NULL)
 		label = xstrdup("default");
 	if (path == NULL && (path = makesockpath(label)) == NULL) {
@@ -383,36 +436,35 @@ main(int argc, char **argv)
 	options_set_string(&global_s_options, "default-path", "%s", cwd);
 
 	if (unlock) {
-		if (argc != 0) {
-			log_warnx("can't specify a command when unlocking");
+		if (prepare_unlock(&msg, &buf, &len, argc) != 0)
 			exit(1);
-		}
-		cmdlist = NULL;
-		if ((pass = getpass("Password: ")) == NULL)
-			exit(1);
-		cmdflags &= ~CMD_STARTSERVER;
 	} else {
-		if (argc == 0) {
-			cmd = xmalloc(sizeof *cmd);
-			cmd->entry = &cmd_new_session_entry;
-			cmd->entry->init(cmd, 0);
+		if (prepare_cmd(&msg, &buf, &len, argc, argv) != 0)
+			exit(1);
+	}
 
-			cmdlist = xmalloc(sizeof *cmdlist);
-			TAILQ_INIT(cmdlist);
-			TAILQ_INSERT_HEAD(cmdlist, cmd, qentry);
-		} else {
-			cmdlist = cmd_list_parse(argc, argv, &cause);
-			if (cmdlist == NULL) {
-				log_warnx("%s", cause);
-				exit(1);
-			}
+	if (unlock)
+		cmdflags &= ~CMD_STARTSERVER;
+	else if (argc == 0)
+		cmdflags |= CMD_STARTSERVER;
+	else {
+		/*
+		 * It sucks parsing the command string twice (in client and
+		 * later in server) but it is necessary to get the start server
+		 * flag.
+		 */
+		if ((cmdlist = cmd_list_parse(argc, argv, &cause)) == NULL) {
+			log_warnx("%s", cause);
+			exit(1);
 		}
+		cmdflags &= ~CMD_STARTSERVER;
 		TAILQ_FOREACH(cmd, cmdlist, qentry) {
 			if (cmd->entry->flags & CMD_STARTSERVER) {
 				cmdflags |= CMD_STARTSERVER;
 				break;
 			}
 		}
+		cmd_list_free(cmdlist);
 	}
 
  	memset(&cctx, 0, sizeof cctx);
@@ -420,20 +472,8 @@ main(int argc, char **argv)
 		exit(1);
 	xfree(path);
 
-	b = buffer_create(BUFSIZ);
-	if (unlock) {
-		cmd_send_string(b, pass);
-		memset(pass, 0, strlen(pass));
-		client_write_server(
-		    &cctx, MSG_UNLOCK, BUFFER_OUT(b), BUFFER_USED(b));
-	} else {
-		cmd_list_send(cmdlist, b);
-		cmd_list_free(cmdlist);
-		client_fill_session(&cmddata);
-		client_write_server2(&cctx, MSG_COMMAND,
-		    &cmddata, sizeof cmddata, BUFFER_OUT(b), BUFFER_USED(b));
-	}
-	buffer_destroy(b);
+	client_write_server(&cctx, msg, buf, len);
+	memset(buf, 0, len);
 
 	retcode = 0;
 	for (;;) {
@@ -467,12 +507,12 @@ main(int argc, char **argv)
 			retcode = 1;
 			/* FALLTHROUGH */
 		case MSG_PRINT:
-			if (hdr.size > INT_MAX - 1)
+			if (hdr.size < sizeof printdata)
 				fatalx("bad MSG_PRINT size");
-			log_info("%.*s",
-			    (int) hdr.size, BUFFER_OUT(cctx.srv_in));
-			if (hdr.size != 0)
-				buffer_remove(cctx.srv_in, hdr.size);
+			buffer_read(cctx.srv_in, &printdata, sizeof printdata);
+
+			printdata.msg[(sizeof printdata.msg) - 1] = '\0';
+			log_info("%s", printdata.msg);
 			goto restart;
 		case MSG_READY:
 			retcode = client_main(&cctx);

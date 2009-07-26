@@ -41,8 +41,6 @@ const struct cmd_entry cmd_server_info_entry = {
 	NULL,
 	cmd_server_info_exec,
 	NULL,
-	NULL,
-	NULL,
 	NULL
 };
 

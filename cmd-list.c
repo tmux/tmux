@@ -87,41 +87,6 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 }
 
 void
-cmd_list_send(struct cmd_list *cmdlist, struct buffer *b)
-{
-	struct cmd	*cmd;
-	u_int		 n;
-
-	n = 0;
-	TAILQ_FOREACH(cmd, cmdlist, qentry)
-	    	n++;
-
-	buffer_write(b, &n, sizeof n);
-	TAILQ_FOREACH(cmd, cmdlist, qentry)
-	    	cmd_send(cmd, b);
-}
-
-struct cmd_list *
-cmd_list_recv(struct buffer *b)
-{
-	struct cmd_list	*cmdlist;
-	struct cmd	*cmd;
-	u_int		 n;
-
-	buffer_read(b, &n, sizeof n);
-
-	cmdlist = xmalloc(sizeof *cmdlist);
-	TAILQ_INIT(cmdlist);
-
-	while (n-- > 0) {
-		cmd = cmd_recv(b);
-		TAILQ_INSERT_TAIL(cmdlist, cmd, qentry);
-	}
-
-	return (cmdlist);
-}
-
-void
 cmd_list_free(struct cmd_list *cmdlist)
 {
 	struct cmd	*cmd;

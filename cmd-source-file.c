@@ -26,8 +26,6 @@
 
 int	cmd_source_file_parse(struct cmd *, int, char **, char **);
 int	cmd_source_file_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_source_file_send(struct cmd *, struct buffer *);
-void	cmd_source_file_recv(struct cmd *, struct buffer *);
 void	cmd_source_file_free(struct cmd *);
 void	cmd_source_file_init(struct cmd *, int);
 size_t	cmd_source_file_print(struct cmd *, char *, size_t);
@@ -43,8 +41,6 @@ const struct cmd_entry cmd_source_file_entry = {
 	cmd_source_file_init,
 	cmd_source_file_parse,
 	cmd_source_file_exec,
-	cmd_source_file_send,
-	cmd_source_file_recv,
 	cmd_source_file_free,
 	cmd_source_file_print
 };
@@ -101,25 +97,6 @@ cmd_source_file_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	return (0);
-}
-
-void
-cmd_source_file_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_source_file_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->path);
-}
-
-void
-cmd_source_file_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_source_file_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->path = cmd_recv_string(b);
 }
 
 void

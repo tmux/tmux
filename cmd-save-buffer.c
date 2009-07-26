@@ -37,8 +37,6 @@ const struct cmd_entry cmd_save_buffer_entry = {
 	cmd_buffer_init,
 	cmd_buffer_parse,
 	cmd_save_buffer_exec,
-	cmd_buffer_send,
-	cmd_buffer_recv,
 	cmd_buffer_free,
 	cmd_buffer_print
 };

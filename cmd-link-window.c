@@ -35,8 +35,6 @@ const struct cmd_entry cmd_link_window_entry = {
 	cmd_srcdst_init,
 	cmd_srcdst_parse,
 	cmd_link_window_exec,
-	cmd_srcdst_send,
-	cmd_srcdst_recv,
 	cmd_srcdst_free,
 	cmd_srcdst_print
 };

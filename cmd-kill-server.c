@@ -37,8 +37,6 @@ const struct cmd_entry cmd_kill_server_entry = {
 	NULL,
 	cmd_kill_server_exec,
 	NULL,
-	NULL,
-	NULL,
 	NULL
 };
 

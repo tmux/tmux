@@ -29,8 +29,6 @@
 
 int	cmd_set_password_parse(struct cmd *, int, char **, char **);
 int	cmd_set_password_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_set_password_send(struct cmd *, struct buffer *);
-void	cmd_set_password_recv(struct cmd *, struct buffer *);
 void	cmd_set_password_free(struct cmd *);
 void	cmd_set_password_init(struct cmd *, int);
 size_t	cmd_set_password_print(struct cmd *, char *, size_t);
@@ -47,8 +45,6 @@ const struct cmd_entry cmd_set_password_entry = {
 	cmd_set_password_init,
 	cmd_set_password_parse,
 	cmd_set_password_exec,
-	cmd_set_password_send,
-	cmd_set_password_recv,
 	cmd_set_password_free,
 	cmd_set_password_print
 };
@@ -120,25 +116,6 @@ cmd_set_password_exec(struct cmd *self, struct cmd_ctx *ctx)
 		server_password = xstrdup(data->password);
 
  	return (0);
-}
-
-void
-cmd_set_password_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_set_password_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->password);
-}
-
-void
-cmd_set_password_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_set_password_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->password = cmd_recv_string(b);
 }
 
 void

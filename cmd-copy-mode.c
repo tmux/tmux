@@ -33,8 +33,6 @@ const struct cmd_entry cmd_copy_mode_entry = {
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_copy_mode_exec,
-	cmd_target_send,
-	cmd_target_recv,
 	cmd_target_free,
 	NULL
 };

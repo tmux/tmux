@@ -35,8 +35,6 @@ const struct cmd_entry cmd_break_pane_entry = {
 	cmd_pane_init,
 	cmd_pane_parse,
 	cmd_break_pane_exec,
-       	cmd_pane_send,
-	cmd_pane_recv,
 	cmd_pane_free,
 	cmd_pane_print
 };

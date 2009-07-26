@@ -40,8 +40,6 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	cmd_command_prompt_init,
 	cmd_target_parse,
 	cmd_command_prompt_exec,
-	cmd_target_send,
-	cmd_target_recv,
 	cmd_target_free,
 	cmd_target_print
 };

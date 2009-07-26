@@ -177,27 +177,6 @@ usage:
 }
 
 void
-cmd_target_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_target_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->target);
-	cmd_send_string(b, data->arg);
-}
-
-void
-cmd_target_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_target_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->target = cmd_recv_string(b);
-	data->arg = cmd_recv_string(b);
-}
-
-void
 cmd_target_free(struct cmd *self)
 {
 	struct cmd_target_data	*data = self->data;
@@ -276,29 +255,6 @@ usage:
 
 	self->entry->free(self);
 	return (-1);
-}
-
-void
-cmd_srcdst_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_srcdst_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->src);
-	cmd_send_string(b, data->dst);
-	cmd_send_string(b, data->arg);
-}
-
-void
-cmd_srcdst_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_srcdst_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->src = cmd_recv_string(b);
-	data->dst = cmd_recv_string(b);
-	data->arg = cmd_recv_string(b);
 }
 
 void
@@ -395,27 +351,6 @@ error:
 }
 
 void
-cmd_buffer_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_buffer_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->target);
-	cmd_send_string(b, data->arg);
-}
-
-void
-cmd_buffer_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_buffer_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->target = cmd_recv_string(b);
-	data->arg = cmd_recv_string(b);
-}
-
-void
 cmd_buffer_free(struct cmd *self)
 {
 	struct cmd_buffer_data	*data = self->data;
@@ -498,29 +433,6 @@ usage:
 
 	self->entry->free(self);
 	return (-1);
-}
-
-void
-cmd_option_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_option_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->target);
-	cmd_send_string(b, data->option);
-	cmd_send_string(b, data->value);
-}
-
-void
-cmd_option_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_option_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->target = cmd_recv_string(b);
-	data->option = cmd_recv_string(b);
-	data->value = cmd_recv_string(b);
 }
 
 void
@@ -615,27 +527,6 @@ usage:
 error:
 	self->entry->free(self);
 	return (-1);
-}
-
-void
-cmd_pane_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_pane_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->target);
-	cmd_send_string(b, data->arg);
-}
-
-void
-cmd_pane_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_pane_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->target = cmd_recv_string(b);
-	data->arg = cmd_recv_string(b);
 }
 
 void

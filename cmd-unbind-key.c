@@ -26,8 +26,6 @@
 
 int	cmd_unbind_key_parse(struct cmd *, int, char **, char **);
 int	cmd_unbind_key_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_unbind_key_send(struct cmd *, struct buffer *);
-void	cmd_unbind_key_recv(struct cmd *, struct buffer *);
 void	cmd_unbind_key_free(struct cmd *);
 
 struct cmd_unbind_key_data {
@@ -41,8 +39,6 @@ const struct cmd_entry cmd_unbind_key_entry = {
 	NULL,
 	cmd_unbind_key_parse,
 	cmd_unbind_key_exec,
-	cmd_unbind_key_send,
-	cmd_unbind_key_recv,
 	cmd_unbind_key_free,
 	NULL
 };
@@ -97,23 +93,6 @@ cmd_unbind_key_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 	key_bindings_remove(data->key);
 
 	return (0);
-}
-
-void
-cmd_unbind_key_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_unbind_key_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-}
-
-void
-cmd_unbind_key_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_unbind_key_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
 }
 
 void

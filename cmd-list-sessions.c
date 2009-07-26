@@ -36,8 +36,6 @@ const struct cmd_entry cmd_list_sessions_entry = {
 	NULL,
 	cmd_list_sessions_exec,
 	NULL,
-	NULL,
-	NULL,
 	NULL
 };
 

@@ -48,6 +48,15 @@ server_fill_environ(struct session *s)
 }
 
 void
+server_write_error(struct client *c, const char *msg)
+{
+	struct msg_print_data	printdata;
+
+	strlcpy(printdata.msg, msg, sizeof printdata.msg);
+	server_write_client(c, MSG_ERROR, &printdata, sizeof printdata);
+}
+
+void
 server_write_client(
     struct client *c, enum hdrtype type, const void *buf, size_t len)
 {
@@ -220,7 +229,7 @@ wrong:
 	password_failures++;
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-                if (c == NULL || c->prompt_buffer == NULL)
+		if (c == NULL || c->prompt_buffer == NULL)
 			continue;
 
 		*c->prompt_buffer = '\0';

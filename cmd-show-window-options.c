@@ -36,8 +36,6 @@ const struct cmd_entry cmd_show_window_options_entry = {
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_show_window_options_exec,
-	cmd_target_send,
-	cmd_target_recv,
 	cmd_target_free,
 	cmd_target_print
 };

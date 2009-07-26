@@ -28,8 +28,6 @@
 
 int	cmd_send_keys_parse(struct cmd *, int, char **, char **);
 int	cmd_send_keys_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_send_keys_send(struct cmd *, struct buffer *);
-void	cmd_send_keys_recv(struct cmd *, struct buffer *);
 void	cmd_send_keys_free(struct cmd *);
 size_t	cmd_send_keys_print(struct cmd *, char *, size_t);
 
@@ -47,8 +45,6 @@ const struct cmd_entry cmd_send_keys_entry = {
 	NULL,
 	cmd_send_keys_parse,
 	cmd_send_keys_exec,
-	cmd_send_keys_send,
-	cmd_send_keys_recv,
 	cmd_send_keys_free,
 	cmd_send_keys_print
 };
@@ -125,28 +121,6 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	return (0);
-}
-
-void
-cmd_send_keys_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_send_keys_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->target);
-	buffer_write(b, data->keys, data->nkeys * sizeof *data->keys);
-}
-
-void
-cmd_send_keys_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_send_keys_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->target = cmd_recv_string(b);
-	data->keys = xcalloc(data->nkeys, sizeof *data->keys);
-	buffer_read(b, data->keys, data->nkeys * sizeof *data->keys);
 }
 
 void
