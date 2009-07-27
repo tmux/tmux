@@ -140,8 +140,6 @@ window_choose_free(struct window_pane *wp)
 	if (data->freefn != NULL && data->data != NULL)
 		data->freefn(data->data);
 
- 	mode_key_free(&data->mdata);
-
 	for (i = 0; i < ARRAY_LENGTH(&data->list); i++)
 		xfree(ARRAY_ITEM(&data->list, i).name);
 	ARRAY_FREE(&data->list);

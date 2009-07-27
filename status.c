@@ -622,8 +622,6 @@ status_prompt_clear(struct client *c)
 	if (c->prompt_freefn != NULL && c->prompt_data != NULL)
 		c->prompt_freefn(c->prompt_data);
 
-	mode_key_free(&c->prompt_mdata);
-
 	xfree(c->prompt_string);
 	c->prompt_string = NULL;
 

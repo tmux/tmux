@@ -33,11 +33,6 @@ mode_key_init(struct mode_key_data *mdata, int type, int flags)
 	mdata->flags = flags;
 }
 
-void
-mode_key_free(unused struct mode_key_data *mdata)
-{
-}
-
 enum mode_key_cmd
 mode_key_lookup(struct mode_key_data *mdata, int key)
 {

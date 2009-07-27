@@ -101,8 +101,6 @@ window_more_free(struct window_pane *wp)
 	struct window_more_mode_data	*data = wp->modedata;
 	u_int				 i;
 
-	mode_key_free(&data->mdata);
-
 	for (i = 0; i < ARRAY_LENGTH(&data->list); i++)
 		xfree(ARRAY_ITEM(&data->list, i));
 	ARRAY_FREE(&data->list);

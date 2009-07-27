@@ -88,8 +88,6 @@ window_scroll_free(struct window_pane *wp)
 {
 	struct window_scroll_mode_data	*data = wp->modedata;
 
-	mode_key_free(&data->mdata);
-
 	screen_free(&data->screen);
 	xfree(data);
 }

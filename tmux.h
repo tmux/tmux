@@ -1033,7 +1033,6 @@ int		 load_cfg(const char *, char **x);
 
 /* mode-key.c */
 void		 mode_key_init(struct mode_key_data *, int, int);
-void		 mode_key_free(struct mode_key_data *);
 enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
 
 /* options.c */

@@ -125,8 +125,6 @@ window_copy_free(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 
- 	mode_key_free(&data->mdata);
-
 	screen_free(&data->screen);
 	xfree(data);
 }
