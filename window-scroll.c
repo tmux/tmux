@@ -132,7 +132,7 @@ window_scroll_key(struct window_pane *wp, unused struct client *c, int key)
 	struct screen			*s = &data->screen;
 
 	switch (mode_key_lookup(&data->mdata, key)) {
-	case MODEKEYCOPY_QUIT:
+	case MODEKEYCOPY_CANCEL:
 		window_pane_reset_mode(wp);
 		break;
 	case MODEKEYCOPY_LEFT:
