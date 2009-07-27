@@ -63,6 +63,7 @@ window_scroll_init(struct window_pane *wp)
 	struct screen			*s;
 	struct screen_write_ctx	 	 ctx;
 	u_int				 i;
+	int				 keys;
 
 	wp->modedata = data = xmalloc(sizeof *data);
 	data->ox = 0;
@@ -72,8 +73,11 @@ window_scroll_init(struct window_pane *wp)
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	s->mode &= ~MODE_CURSOR;
 
-	mode_key_init(&data->mdata,
-	    options_get_number(&wp->window->options, "mode-keys"), 0);
+	keys = options_get_number(&wp->window->options, "mode-keys");
+	if (keys == MODEKEY_EMACS)
+		mode_key_init(&data->mdata, mode_key_emacs_copy);
+	else
+		mode_key_init(&data->mdata, mode_key_vi_copy);
 
 	screen_write_start(&ctx, NULL, s);
 	for (i = 0; i < screen_size_y(s); i++)
@@ -128,25 +132,25 @@ window_scroll_key(struct window_pane *wp, unused struct client *c, int key)
 	struct screen			*s = &data->screen;
 
 	switch (mode_key_lookup(&data->mdata, key)) {
-	case MODEKEYCMD_QUIT:
+	case MODEKEYCOPY_QUIT:
 		window_pane_reset_mode(wp);
 		break;
-	case MODEKEYCMD_LEFT:
+	case MODEKEYCOPY_LEFT:
 		window_scroll_scroll_left(wp);
 		break;
-	case MODEKEYCMD_RIGHT:
+	case MODEKEYCOPY_RIGHT:
 		window_scroll_scroll_right(wp);
 		break;
-	case MODEKEYCMD_UP:
+	case MODEKEYCOPY_UP:
 		window_scroll_scroll_up(wp);
 		break;
-	case MODEKEYCMD_DOWN:
+	case MODEKEYCOPY_DOWN:
 		window_scroll_scroll_down(wp);
 		break;
-	case MODEKEYCMD_PREVIOUSPAGE:
+	case MODEKEYCOPY_PREVIOUSPAGE:
 		window_scroll_pageup(wp);
 		break;
-	case MODEKEYCMD_NEXTPAGE:
+	case MODEKEYCOPY_NEXTPAGE:
 		if (data->oy < screen_size_y(s))
 			data->oy = 0;
 		else

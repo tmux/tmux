@@ -80,6 +80,7 @@ window_more_init(struct window_pane *wp)
 {
 	struct window_more_mode_data	*data;
 	struct screen			*s;
+	int				 keys;
 
 	wp->modedata = data = xmalloc(sizeof *data);
 	ARRAY_INIT(&data->list);
@@ -89,8 +90,11 @@ window_more_init(struct window_pane *wp)
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	s->mode &= ~MODE_CURSOR;
 
-	mode_key_init(&data->mdata,
-	    options_get_number(&wp->window->options, "mode-keys"), 0);
+	keys = options_get_number(&wp->window->options, "mode-keys");
+	if (keys == MODEKEY_EMACS)
+		mode_key_init(&data->mdata, mode_key_emacs_choice);
+	else
+		mode_key_init(&data->mdata, mode_key_vi_choice);
 
 	return (s);
 }
@@ -126,23 +130,23 @@ window_more_key(struct window_pane *wp, unused struct client *c, int key)
 	struct screen			*s = &data->screen;
 
 	switch (mode_key_lookup(&data->mdata, key)) {
-	case MODEKEYCMD_QUIT:
+	case MODEKEYCHOICE_CANCEL:
 		window_pane_reset_mode(wp);
 		break;
-	case MODEKEYCMD_UP:
+	case MODEKEYCHOICE_UP:
 		window_more_scroll_up(wp);
 		break;
-	case MODEKEYCMD_DOWN:
+	case MODEKEYCHOICE_DOWN:
 		window_more_scroll_down(wp);
 		break;
-	case MODEKEYCMD_PREVIOUSPAGE:
+	case MODEKEYCHOICE_PAGEUP:
 		if (data->top < screen_size_y(s))
 			data->top = 0;
 		else
 			data->top -= screen_size_y(s);
 		window_more_redraw_screen(wp);
 		break;
-	case MODEKEYCMD_NEXTPAGE:
+	case MODEKEYCHOICE_PAGEDOWN:
 		if (data->top + screen_size_y(s) > ARRAY_LENGTH(&data->list))
 			data->top = ARRAY_LENGTH(&data->list);
 		else
