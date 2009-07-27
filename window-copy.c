@@ -796,55 +796,40 @@ out:
 	window_copy_set_cursor_x(wp, px);
 }
 
+/* Move to the previous place where a word begins. */
 void
 window_copy_cursor_previous_word(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
-	u_int				 ox, px, py, skip;
+	u_int				 px, py;
 
-	ox = px = data->ox + data->cx;
+	px = data->ox + data->cx;
 	py = screen_hsize(&wp->base) + data->cy - data->oy;
 
-	skip = 1;
-	if (px != 0) {
-		/* If currently on a space, skip space. */
-		if (window_copy_is_space(wp, px - 1, py))
-			skip = 0;
-	}
+	/* Move back to the previous word character. */
 	for (;;) {
-		if (px == 0) {
-			if (ox != 0)
+		if (px > 0) {
+			px--;
+			if (!window_copy_is_space(wp, px, py))
 				break;
-
-			while (px == 0) {
-				if (data->cy == 0 &&
-				    (screen_hsize(&wp->base) == 0 ||
-				    data->oy >= screen_hsize(&wp->base) - 1))
-					goto out;
-
-				window_copy_cursor_up(wp);
-
-				py = screen_hsize(
-				    &wp->base) + data->cy - data->oy;
-				px = window_copy_find_length(wp, py);
-			}
-			goto out;
-		}
-
-		if (skip) {
-			/* Currently skipping non-space (until space). */
-			if (window_copy_is_space(wp, px - 1, py))
-				skip = 0;
 		} else {
-			/* Currently skipping space (until non-space). */
-			if (!window_copy_is_space(wp, px - 1, py))
-				break;
+			if (data->cy == 0 &&
+			    (screen_hsize(&wp->base) == 0 ||
+			    data->oy >= screen_hsize(&wp->base) - 1))
+				goto out;
+			window_copy_cursor_up(wp);
+
+			py = screen_hsize(
+			    &wp->base) + data->cy - data->oy;
+			px = window_copy_find_length(wp, py);
 		}
-
-		px--;
 	}
-out:
 
+	/* Move back to the beginning of this word. */
+	while (px > 0 && !window_copy_is_space(wp, px - 1, py))
+		px--;
+
+out:
 	window_copy_set_cursor_x(wp, px);
 }
 
