@@ -480,6 +480,7 @@ void
 tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 {
 	const struct grid_cell	*gc;
+	struct grid_cell	 tmpgc;
 	const struct grid_utf8	*gu;
 	u_int			 i, sx;
 
@@ -498,8 +499,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 			gu = grid_view_peek_utf8(s->grid, i, py);
 
 		if (screen_check_selection(s, i, py)) {
-			s->sel.cell.data = gc->data;
-			tty_cell(tty, &s->sel.cell, gu);
+			memcpy(&tmpgc, &s->sel.cell, sizeof tmpgc);
+			tmpgc.data = gc->data;
+			tmpgc.flags = gc->flags;
+			tty_cell(tty, &tmpgc, gu);
 		} else
 			tty_cell(tty, gc, gu);
 	}
