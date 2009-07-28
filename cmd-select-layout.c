@@ -29,8 +29,8 @@ int	cmd_select_layout_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_select_layout_entry = {
 	"select-layout", "selectl",
-	CMD_TARGET_WINDOW_USAGE " layout-name",
-	CMD_ARG1, 0,
+	CMD_TARGET_WINDOW_USAGE " [layout-name]",
+	CMD_ARG01, 0,
 	cmd_select_layout_init,
 	cmd_target_parse,
 	cmd_select_layout_exec,
@@ -72,11 +72,15 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
 
-	if ((layout = layout_set_lookup(data->arg)) == -1) {
- 		ctx->error(ctx, "unknown or ambiguous layout: %s", data->arg);
- 		return (-1);
- 	}
-
+	if (data->arg == NULL) {
+		layout = wl->window->lastlayout;
+		if (layout == -1)
+			return (0);
+	} else if ((layout = layout_set_lookup(data->arg)) == -1) {
+		ctx->error(ctx, "unknown layout or ambiguous: %s", data->arg);
+		return (-1);
+	}
+	
 	layout = layout_set_select(wl->window, layout);
 	ctx->info(ctx, "arranging in: %s", layout_set_name(layout));
 

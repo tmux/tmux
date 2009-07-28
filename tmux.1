@@ -1064,10 +1064,13 @@ has the same meaning as in the
 command.
 .It Xo Ic select-layout
 .Op Fl t Ar target-window
-.Ar layout-name
+.Op Ar layout-name
 .Xc
 .D1 (alias: selectl )
 Choose a specific layout for a window.
+If
+.Ar layout-name
+is not given, the last layout used (if any) is reapplied.
 .It Xo Ic select-pane
 .Op Fl p Ar pane-index
 .Op Fl t Ar target-window

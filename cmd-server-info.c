@@ -112,9 +112,9 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		RB_FOREACH(wl, winlinks, &s->windows) {
 			w = wl->window;
 			ctx->print(ctx, "%4u: %s [%ux%u] [flags=0x%x, "
-			    "references=%u, layout=%u]", wl->idx, w->name,
+			    "references=%u, last layout=%d]", wl->idx, w->name,
 			    w->sx, w->sy, w->flags, w->references,
-			    w->layout);
+			    w->lastlayout);
 			j = 0;
 			TAILQ_FOREACH(wp, &w->panes, entry) {
 				lines = ulines = size = usize = 0;

@@ -663,7 +663,7 @@ struct window {
 	struct window_pane *active;
 	struct window_panes panes;
 
-	u_int		 layout;
+	int		 lastlayout;
 	struct layout_cell *layout_root;
 
 	u_int		 sx;
