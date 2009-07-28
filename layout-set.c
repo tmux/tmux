@@ -1,4 +1,4 @@
-/* $Id: layout-set.c,v 1.2 2009-07-20 15:51:32 tcunha Exp $ */
+/* $Id: layout-set.c,v 1.3 2009-07-28 23:04:29 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,36 +74,47 @@ layout_set_select(struct window *w, u_int layout)
 	if (layout_sets[layout].arrange != NULL)
 		layout_sets[layout].arrange(w);
 
-	w->layout = layout;
+	w->lastlayout = layout;
 	return (layout);
 }
 
 u_int
 layout_set_next(struct window *w)
 {
-	u_int	layout = w->layout;
+	u_int	layout;
+
+	if (w->lastlayout == -1)
+		layout = 0;
+	else {
+		layout = w->lastlayout + 1;
+		if (layout > nitems(layout_sets) - 1)
+			layout = 0;
+	}
 
 	if (layout_sets[layout].arrange != NULL)
 		layout_sets[layout].arrange(w);
-
-	w->layout++;
-	if (w->layout > nitems(layout_sets) - 1)
-		w->layout = 0;
+	w->lastlayout = layout;
 	return (layout);
 }
 
 u_int
 layout_set_previous(struct window *w)
 {
-	u_int	layout = w->layout;
+	u_int	layout;
+
+	if (w->lastlayout == -1)
+		layout = nitems(layout_sets) - 1;
+	else {
+		layout = w->lastlayout;
+		if (layout == 0)
+			layout = nitems(layout_sets) - 1;
+		else
+			layout--;
+	}
 
 	if (layout_sets[layout].arrange != NULL)
 		layout_sets[layout].arrange(w);
-
-	if (w->layout == 0)
-		w->layout = nitems(layout_sets) - 1;
-	else
-		w->layout--;
+	w->lastlayout = layout;
 	return (layout);
 }
 

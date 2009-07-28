@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.395 2009-07-28 22:58:20 tcunha Exp $ */
+/* $Id: tmux.h,v 1.396 2009-07-28 23:04:29 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -662,7 +662,7 @@ struct window {
 	struct window_pane *active;
 	struct window_panes panes;
 
-	u_int		 layout;
+	int		 lastlayout;
 	struct layout_cell *layout_root;
 
 	u_int		 sx;

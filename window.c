@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.98 2009-07-23 13:10:38 tcunha Exp $ */
+/* $Id: window.c,v 1.99 2009-07-28 23:04:29 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -229,7 +229,7 @@ window_create1(u_int sx, u_int sy)
 	TAILQ_INIT(&w->panes);
 	w->active = NULL;
 
-	w->layout = 0;
+	w->lastlayout = -1;
 	w->layout_root = NULL;
 	
 	w->sx = sx;
