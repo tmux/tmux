@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.64 2009-07-23 12:48:18 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.65 2009-07-28 22:41:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -723,7 +723,7 @@ screen_write_cell(
 	struct tty_ctx		 ttyctx;
 	struct grid_utf8	 gu, *tmp_gu;
 	u_int		 	 width, xx, i;
-	struct grid_cell 	 tmp_gc, *tmp_gc2;
+	struct grid_cell 	 tmp_gc, tmp_gc2, *tmp_gcp;
 	int			 insert = 0;
 
 	/* Ignore padding. */
@@ -743,11 +743,11 @@ screen_write_cell(
 	if (width == 0) {
 		if (s->cx == 0)
 			return;
-		tmp_gc2 = grid_view_get_cell(gd, s->cx - 1, s->cy);
-		if (!(tmp_gc2->flags & GRID_FLAG_UTF8)) {
-			tmp_gc2->flags |= GRID_FLAG_UTF8;
+		tmp_gcp = grid_view_get_cell(gd, s->cx - 1, s->cy);
+		if (!(tmp_gcp->flags & GRID_FLAG_UTF8)) {
+			tmp_gcp->flags |= GRID_FLAG_UTF8;
 			memset(&gu.data, 0xff, sizeof gu.data);
-			*gu.data = tmp_gc2->data;
+			*gu.data = tmp_gcp->data;
 			gu.width = 1;
 			grid_view_set_utf8(gd, s->cx - 1, s->cy, &gu);
 		}
@@ -799,9 +799,9 @@ screen_write_cell(
 	 * already ensured there is enough room.
 	 */
 	for (xx = s->cx + 1; xx < s->cx + width; xx++) {
-		tmp_gc2 = grid_view_get_cell(gd, xx, s->cy);
-		if (tmp_gc2 != NULL)
-			tmp_gc2->flags |= GRID_FLAG_PADDING;
+		tmp_gcp = grid_view_get_cell(gd, xx, s->cy);
+		if (tmp_gcp != NULL)
+			tmp_gcp->flags |= GRID_FLAG_PADDING;
 	}
 
 	/* Set the cell. */
@@ -820,8 +820,10 @@ screen_write_cell(
 	}
 	ttyctx.utf8 = &gu;
 	if (screen_check_selection(s, s->cx - width, s->cy)) {
-		s->sel.cell.data = gc->data;
-		ttyctx.cell = &s->sel.cell;
+		memcpy(&tmp_gc2, &s->sel.cell, sizeof tmp_gc2);
+		tmp_gc2.data = gc->data;
+		tmp_gc2.flags = gc->flags;
+		ttyctx.cell = &tmp_gc2;
 		tty_write(tty_cmd_cell, &ttyctx);
 	} else {
 		ttyctx.cell = gc;
