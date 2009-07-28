@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.104 2009-07-28 22:49:26 tcunha Exp $ */
+/* $Id: status.c,v 1.105 2009-07-28 22:55:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -589,6 +589,8 @@ status_prompt_set(struct client *c, const char *msg,
     int (*callbackfn)(void *, const char *), void (*freefn)(void *),
     void *data, int flags)
 {
+	int	keys;
+
 	status_message_clear(c);
 	status_prompt_clear(c);
 
@@ -605,9 +607,11 @@ status_prompt_set(struct client *c, const char *msg,
 
 	c->prompt_flags = flags;
 
-	mode_key_init(&c->prompt_mdata,
-	    options_get_number(&c->session->options, "status-keys"),
-	    MODEKEY_CANEDIT);
+	keys = options_get_number(&c->session->options, "status-keys");
+	if (keys == MODEKEY_EMACS)
+		mode_key_init(&c->prompt_mdata, mode_key_emacs_edit);
+	else
+		mode_key_init(&c->prompt_mdata, mode_key_vi_edit);
 
 	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_STATUS;
@@ -727,32 +731,32 @@ status_prompt_key(struct client *c, int key)
 
 	size = strlen(c->prompt_buffer);
 	switch (mode_key_lookup(&c->prompt_mdata, key)) {
-	case MODEKEYCMD_LEFT:
+	case MODEKEYEDIT_CURSORLEFT:
 		if (c->prompt_index > 0) {
 			c->prompt_index--;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYCMD_RIGHT:
+	case MODEKEYEDIT_SWITCHMODEAPPEND:
+	case MODEKEYEDIT_CURSORRIGHT:
 		if (c->prompt_index < size) {
 			c->prompt_index++;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYCMD_STARTOFLINE:
-	case MODEKEYCMD_BACKTOINDENTATION:
+	case MODEKEYEDIT_STARTOFLINE:
 		if (c->prompt_index != 0) {
 			c->prompt_index = 0;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYCMD_ENDOFLINE:
+	case MODEKEYEDIT_ENDOFLINE:
 		if (c->prompt_index != size) {
 			c->prompt_index = size;
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYCMD_COMPLETE:
+	case MODEKEYEDIT_COMPLETE:
 		if (*c->prompt_buffer == '\0')
 			break;
 
@@ -800,7 +804,7 @@ status_prompt_key(struct client *c, int key)
 
 		c->flags |= CLIENT_STATUS;
 		break;
-	case MODEKEYCMD_BACKSPACE:
+	case MODEKEYEDIT_BACKSPACE:
 		if (c->prompt_index != 0) {
 			if (c->prompt_index == size)
 				c->prompt_buffer[--c->prompt_index] = '\0';
@@ -813,7 +817,7 @@ status_prompt_key(struct client *c, int key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
- 	case MODEKEYCMD_DELETE:
+ 	case MODEKEYEDIT_DELETE:
 		if (c->prompt_index != size) {
 			memmove(c->prompt_buffer + c->prompt_index,
 			    c->prompt_buffer + c->prompt_index + 1,
@@ -821,13 +825,13 @@ status_prompt_key(struct client *c, int key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYCMD_DELETETOENDOFLINE:
+	case MODEKEYEDIT_DELETETOENDOFLINE:
 		if (c->prompt_index < size) {
 			c->prompt_buffer[c->prompt_index] = '\0';
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
-	case MODEKEYCMD_UP:
+	case MODEKEYEDIT_HISTORYUP:
 		if (server_locked)
 			break;
 
@@ -845,7 +849,7 @@ status_prompt_key(struct client *c, int key)
 		c->prompt_index = strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
 		break;
-	case MODEKEYCMD_DOWN:
+	case MODEKEYEDIT_HISTORYDOWN:
 		if (server_locked)
 			break;
 
@@ -864,7 +868,7 @@ status_prompt_key(struct client *c, int key)
 		c->prompt_index = strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
 		break;
-	case MODEKEYCMD_PASTE:
+	case MODEKEYEDIT_PASTE:
 		if ((pb = paste_get_top(&c->session->buffers)) == NULL)
 			break;
 		if ((last = strchr(pb->data, '\n')) == NULL)
@@ -886,7 +890,7 @@ status_prompt_key(struct client *c, int key)
 
 		c->flags |= CLIENT_STATUS;
 		break;
- 	case MODEKEYCMD_CHOOSE:
+ 	case MODEKEYEDIT_ENTER:
 		if (*c->prompt_buffer != '\0') {
 			status_prompt_add_history(c);
 			if (c->prompt_callbackfn(
@@ -895,11 +899,11 @@ status_prompt_key(struct client *c, int key)
 			break;
 		}
 		/* FALLTHROUGH */
-	case MODEKEYCMD_QUIT:
+	case MODEKEYEDIT_CANCEL:
 		if (c->prompt_callbackfn(c->prompt_data, NULL) == 0)
 			status_prompt_clear(c);
 		break;
-	case MODEKEYCMD_OTHERKEY:
+	case MODEKEY_OTHER:
 		if (key < 32 || key > 126)
 			break;
 		c->prompt_buffer = xrealloc(c->prompt_buffer, 1, size + 2);

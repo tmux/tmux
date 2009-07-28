@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.393 2009-07-28 22:49:26 tcunha Exp $ */
+/* $Id: tmux.h,v 1.394 2009-07-28 22:55:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -357,40 +357,71 @@ struct msg_unlock_data {
 
 /* Editing keys. */
 enum mode_key_cmd {
-	MODEKEYCMD_BACKSPACE = 0x1000,
-	MODEKEYCMD_BACKTOINDENTATION,
-	MODEKEYCMD_CHOOSE,
-	MODEKEYCMD_CLEARSELECTION,
-	MODEKEYCMD_COMPLETE,
-	MODEKEYCMD_COPYSELECTION,
-	MODEKEYCMD_DELETE,
-	MODEKEYCMD_DELETETOENDOFLINE,
-	MODEKEYCMD_DOWN,
-	MODEKEYCMD_ENDOFLINE,
-	MODEKEYCMD_LEFT,
-	MODEKEYCMD_NEXTPAGE,
-	MODEKEYCMD_NEXTWORD,
-	MODEKEYCMD_NONE,
-	MODEKEYCMD_OTHERKEY,
-	MODEKEYCMD_PASTE,
-	MODEKEYCMD_PREVIOUSPAGE,
-	MODEKEYCMD_PREVIOUSWORD,
-	MODEKEYCMD_QUIT,
-	MODEKEYCMD_RIGHT,
-	MODEKEYCMD_STARTOFLINE,
-	MODEKEYCMD_STARTSELECTION,
-	MODEKEYCMD_UP,
+	MODEKEY_NONE,
+	MODEKEY_OTHER,
+
+	/* Editing keys. */
+	MODEKEYEDIT_BACKSPACE,
+	MODEKEYEDIT_CANCEL,
+	MODEKEYEDIT_COMPLETE,
+	MODEKEYEDIT_CURSORLEFT,
+	MODEKEYEDIT_CURSORRIGHT,
+	MODEKEYEDIT_DELETE,
+	MODEKEYEDIT_DELETETOENDOFLINE,
+	MODEKEYEDIT_ENDOFLINE,
+	MODEKEYEDIT_ENTER,
+	MODEKEYEDIT_HISTORYDOWN,
+	MODEKEYEDIT_HISTORYUP,
+	MODEKEYEDIT_PASTE,
+	MODEKEYEDIT_STARTOFLINE,
+	MODEKEYEDIT_SWITCHMODE,
+	MODEKEYEDIT_SWITCHMODEAPPEND,
+	
+	/* Menu (choice) keys. */
+	MODEKEYCHOICE_CANCEL,
+	MODEKEYCHOICE_CHOOSE,
+	MODEKEYCHOICE_DOWN,
+	MODEKEYCHOICE_PAGEDOWN,
+	MODEKEYCHOICE_PAGEUP,
+	MODEKEYCHOICE_UP,
+
+	/* Copy keys. */
+	MODEKEYCOPY_CANCEL,
+	MODEKEYCOPY_BACKTOINDENTATION,
+	MODEKEYCOPY_CLEARSELECTION,
+	MODEKEYCOPY_COPYSELECTION,
+	MODEKEYCOPY_DOWN,
+	MODEKEYCOPY_ENDOFLINE,
+	MODEKEYCOPY_LEFT,
+	MODEKEYCOPY_NEXTPAGE,
+	MODEKEYCOPY_NEXTWORD,
+	MODEKEYCOPY_NONE,
+	MODEKEYCOPY_PREVIOUSPAGE,
+	MODEKEYCOPY_PREVIOUSWORD,
+	MODEKEYCOPY_QUIT,
+	MODEKEYCOPY_RIGHT,
+	MODEKEYCOPY_STARTOFLINE,
+	MODEKEYCOPY_STARTSELECTION,
+	MODEKEYCOPY_UP,
 };
 
+struct mode_key_entry {
+	int			key;
+
+	/*
+	 * Editing mode for vi: 0 is edit mode, keys not in the table are
+	 * returned as MODEKEY_OTHER; 1 is command mode, keys not in the table
+	 * are returned as MODEKEY_NONE. This is also matched on, allowing some
+	 * keys to be bound in edit mode.
+	 */
+	int			mode;
+
+	enum mode_key_cmd	cmd;
+};
 struct mode_key_data {
-	int			 type;
-
-	int			 flags;
-#define MODEKEY_EDITMODE 0x1
-#define MODEKEY_CANEDIT 0x2
-#define MODEKEY_CHOOSEMODE 0x4
+	const struct mode_key_entry *table;
+	int	mode;
 };
-
 #define MODEKEY_EMACS 0
 #define MODEKEY_VI 1
 
@@ -1031,7 +1062,14 @@ void		 sighandler(int);
 int		 load_cfg(const char *, char **x);
 
 /* mode-key.c */
-void		 mode_key_init(struct mode_key_data *, int, int);
+extern const struct mode_key_entry mode_key_vi_edit[];
+extern const struct mode_key_entry mode_key_vi_choice[];
+extern const struct mode_key_entry mode_key_vi_copy[];
+extern const struct mode_key_entry mode_key_emacs_edit[];
+extern const struct mode_key_entry mode_key_emacs_choice[];
+extern const struct mode_key_entry mode_key_emacs_copy[];
+void		 mode_key_init(
+    		     struct mode_key_data *, const struct mode_key_entry *);
 enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
 
 /* options.c */
