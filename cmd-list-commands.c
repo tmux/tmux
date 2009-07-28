@@ -1,4 +1,4 @@
-/* $Id: cmd-list-commands.c,v 1.4 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-list-commands.c,v 1.5 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,8 +33,6 @@ const struct cmd_entry cmd_list_commands_entry = {
 	NULL,
 	NULL,
 	cmd_list_commands_exec,
-	NULL,
-	NULL,
 	NULL,
 	NULL
 };

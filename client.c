@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.56 2009-07-23 23:47:23 tcunha Exp $ */
+/* $Id: client.c,v 1.57 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,8 +44,7 @@ client_init(char *path, struct client_ctx *cctx, int cmdflags, int flags)
 	struct winsize			ws;
 	size_t				size;
 	int				mode;
-	struct buffer		       *b;
-	char			       *name;
+	char			       *name, *term;
 #ifdef HAVE_SETPROCTITLE
 	char		 		rpathbuf[MAXPATHLEN];
 #endif
@@ -107,20 +106,24 @@ server_started:
 		data.flags = flags;
 		data.sx = ws.ws_col;
 		data.sy = ws.ws_row;
-		*data.tty = '\0';
+
 		if (getcwd(data.cwd, sizeof data.cwd) == NULL)
 			*data.cwd = '\0';
 
+		*data.term = '\0';
+		if ((term = getenv("TERM")) != NULL) {
+			if (strlcpy(data.term,
+			    term, sizeof data.term) >= sizeof data.term)
+				*data.term = '\0';
+		}
+
+		*data.tty = '\0';
 		if ((name = ttyname(STDIN_FILENO)) == NULL)
 			fatal("ttyname failed");
 		if (strlcpy(data.tty, name, sizeof data.tty) >= sizeof data.tty)
 			fatalx("ttyname failed");
 
-		b = buffer_create(BUFSIZ);
-		cmd_send_string(b, getenv("TERM"));
-		client_write_server2(cctx, MSG_IDENTIFY,
-		    &data, sizeof data, BUFFER_OUT(b), BUFFER_USED(b));
-		buffer_destroy(b);
+		client_write_server(cctx, MSG_IDENTIFY, &data, sizeof data);
 	}
 
 	return (0);

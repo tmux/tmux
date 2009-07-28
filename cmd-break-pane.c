@@ -1,4 +1,4 @@
-/* $Id: cmd-break-pane.c,v 1.5 2009-07-20 15:42:05 tcunha Exp $ */
+/* $Id: cmd-break-pane.c,v 1.6 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,8 +35,6 @@ const struct cmd_entry cmd_break_pane_entry = {
 	cmd_pane_init,
 	cmd_pane_parse,
 	cmd_break_pane_exec,
-       	cmd_pane_send,
-	cmd_pane_recv,
 	cmd_pane_free,
 	cmd_pane_print
 };

@@ -1,4 +1,4 @@
-/* $Id: cmd-unlink-window.c,v 1.15 2009-07-19 00:39:37 tcunha Exp $ */
+/* $Id: cmd-unlink-window.c,v 1.16 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,8 +33,6 @@ const struct cmd_entry cmd_unlink_window_entry = {
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_unlink_window_exec,
-	cmd_target_send,
-	cmd_target_recv,
 	cmd_target_free,
 	cmd_target_print
 };

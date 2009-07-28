@@ -1,4 +1,4 @@
-/* $Id: cmd-copy-buffer.c,v 1.2 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-copy-buffer.c,v 1.3 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -26,8 +26,6 @@
 
 int	cmd_copy_buffer_parse(struct cmd *, int, char **, char **);
 int	cmd_copy_buffer_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_copy_buffer_send(struct cmd *, struct buffer *);
-void	cmd_copy_buffer_recv(struct cmd *, struct buffer *);
 void	cmd_copy_buffer_free(struct cmd *);
 void	cmd_copy_buffer_init(struct cmd *, int);
 size_t	cmd_copy_buffer_print(struct cmd *, char *, size_t);
@@ -46,8 +44,6 @@ const struct cmd_entry cmd_copy_buffer_entry = {
 	cmd_copy_buffer_init,
 	cmd_copy_buffer_parse,
 	cmd_copy_buffer_exec,
-	cmd_copy_buffer_send,
-	cmd_copy_buffer_recv,
 	cmd_copy_buffer_free,
 	cmd_copy_buffer_print
 };
@@ -158,27 +154,6 @@ cmd_copy_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	return (0);
-}
-
-void
-cmd_copy_buffer_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_copy_buffer_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->dst_session);
-	cmd_send_string(b, data->src_session);
-}
-
-void
-cmd_copy_buffer_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_copy_buffer_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->dst_session = cmd_recv_string(b);
-	data->src_session = cmd_recv_string(b);
 }
 
 void

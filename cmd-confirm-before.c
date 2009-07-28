@@ -1,4 +1,4 @@
-/* $Id: cmd-confirm-before.c,v 1.8 2009-07-22 17:38:11 tcunha Exp $ */
+/* $Id: cmd-confirm-before.c,v 1.9 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -38,8 +38,6 @@ const struct cmd_entry cmd_confirm_before_entry = {
 	cmd_confirm_before_init,
 	cmd_target_parse,
 	cmd_confirm_before_exec,
-	cmd_target_send,
-	cmd_target_recv,
 	cmd_target_free,
 	cmd_target_print
 };

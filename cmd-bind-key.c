@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.23 2009-07-25 08:52:04 tcunha Exp $ */
+/* $Id: cmd-bind-key.c,v 1.24 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,8 +26,6 @@
 
 int	cmd_bind_key_parse(struct cmd *, int, char **, char **);
 int	cmd_bind_key_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_bind_key_send(struct cmd *, struct buffer *);
-void	cmd_bind_key_recv(struct cmd *, struct buffer *);
 void	cmd_bind_key_free(struct cmd *);
 size_t	cmd_bind_key_print(struct cmd *, char *, size_t);
 
@@ -44,8 +42,6 @@ const struct cmd_entry cmd_bind_key_entry = {
 	NULL,
 	cmd_bind_key_parse,
 	cmd_bind_key_exec,
-	cmd_bind_key_send,
-	cmd_bind_key_recv,
 	cmd_bind_key_free,
 	cmd_bind_key_print
 };
@@ -111,25 +107,6 @@ cmd_bind_key_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 	data->cmdlist = NULL;	/* avoid free */
 
 	return (0);
-}
-
-void
-cmd_bind_key_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_bind_key_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_list_send(data->cmdlist, b);
-}
-
-void
-cmd_bind_key_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_bind_key_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->cmdlist = cmd_list_recv(b);
 }
 
 void

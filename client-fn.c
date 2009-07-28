@@ -1,4 +1,4 @@
-/* $Id: client-fn.c,v 1.6 2009-03-04 17:24:07 nicm Exp $ */
+/* $Id: client-fn.c,v 1.7 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -73,20 +73,4 @@ client_write_server(
 
 	if (buf != NULL && len > 0)
 		buffer_write(cctx->srv_out, buf, len);
-}
-
-void
-client_write_server2(struct client_ctx *cctx,
-    enum hdrtype type, void *buf1, size_t len1, void *buf2, size_t len2)
-{
-	struct hdr	hdr;
-
-	hdr.type = type;
-	hdr.size = len1 + len2;
-	buffer_write(cctx->srv_out, &hdr, sizeof hdr);
-
-	if (buf1 != NULL && len1 > 0)
-		buffer_write(cctx->srv_out, buf1, len1);
-	if (buf2 != NULL && len2 > 0)
-		buffer_write(cctx->srv_out, buf2, len2);
 }

@@ -1,4 +1,4 @@
-/* $Id: cmd-down-pane.c,v 1.11 2009-07-21 16:27:40 tcunha Exp $ */
+/* $Id: cmd-down-pane.c,v 1.12 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,8 +33,6 @@ const struct cmd_entry cmd_down_pane_entry = {
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_down_pane_exec,
-	cmd_target_send,
-	cmd_target_recv,
 	cmd_target_free,
 	cmd_target_print
 };

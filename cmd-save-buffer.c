@@ -1,4 +1,4 @@
-/* $Id: cmd-save-buffer.c,v 1.6 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-save-buffer.c,v 1.7 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -37,8 +37,6 @@ const struct cmd_entry cmd_save_buffer_entry = {
 	cmd_buffer_init,
 	cmd_buffer_parse,
 	cmd_save_buffer_exec,
-	cmd_buffer_send,
-	cmd_buffer_recv,
 	cmd_buffer_free,
 	cmd_buffer_print
 };

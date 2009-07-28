@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-window.c,v 1.16 2009-07-14 06:43:33 nicm Exp $ */
+/* $Id: cmd-swap-window.c,v 1.17 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,8 +35,6 @@ const struct cmd_entry cmd_swap_window_entry = {
 	cmd_srcdst_init,
 	cmd_srcdst_parse,
 	cmd_swap_window_exec,
-	cmd_srcdst_send,
-	cmd_srcdst_recv,
 	cmd_srcdst_free,
 	cmd_srcdst_print
 };

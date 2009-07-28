@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.73 2009-07-23 23:47:23 tcunha Exp $ */
+/* $Id: server-msg.c,v 1.74 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -83,46 +83,43 @@ server_msg_dispatch(struct client *c)
 void printflike2
 server_msg_fn_command_error(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	va_list	ap;
-	char   *msg;
+	struct msg_print_data	data;
+	va_list			ap;
 
 	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
+	xvsnprintf(data.msg, sizeof data.msg, fmt, ap);
 	va_end(ap);
 
-	server_write_client(ctx->cmdclient, MSG_ERROR, msg, strlen(msg));
-	xfree(msg);
+	server_write_client(ctx->cmdclient, MSG_ERROR, &data, sizeof data);
 }
 
 void printflike2
 server_msg_fn_command_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	va_list	ap;
-	char   *msg;
+	struct msg_print_data	data;
+	va_list			ap;
 
 	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
+	xvsnprintf(data.msg, sizeof data.msg, fmt, ap);
 	va_end(ap);
 
-	server_write_client(ctx->cmdclient, MSG_PRINT, msg, strlen(msg));
-	xfree(msg);
+	server_write_client(ctx->cmdclient, MSG_PRINT, &data, sizeof data);
 }
 
 void printflike2
 server_msg_fn_command_info(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	va_list	ap;
-	char   *msg;
+	struct msg_print_data	data;
+	va_list			ap;
 
 	if (be_quiet)
 		return;
 
 	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
+	xvsnprintf(data.msg, sizeof data.msg, fmt, ap);
 	va_end(ap);
 
-	server_write_client(ctx->cmdclient, MSG_PRINT, msg, strlen(msg));
-	xfree(msg);
+	server_write_client(ctx->cmdclient, MSG_PRINT, &data, sizeof data);
 }
 
 void
@@ -130,14 +127,15 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 {
 	struct msg_command_data	data;
 	struct cmd_ctx	 	ctx;
-	struct cmd_list	       *cmdlist;
+	struct cmd_list	       *cmdlist = NULL;
 	struct cmd	       *cmd;
+	int			argc;
+	char		      **argv, *cause;
 
 	if (hdr->size < sizeof data)
 		fatalx("bad MSG_COMMAND size");
 	buffer_read(c->in, &data, sizeof data);
 
-	cmdlist = cmd_list_recv(c->in);
 	server_activity = time(NULL);
 
 	ctx.error = server_msg_fn_command_error;
@@ -150,15 +148,33 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 
 	ctx.cmdclient = c;
 
+	argc = data.argc;
+	data.argv[(sizeof data.argv) - 1] = '\0';
+	if (cmd_unpack_argv(data.argv, sizeof data.argv, argc, &argv) != 0) {
+		server_msg_fn_command_error(&ctx, "command too long");
+		goto error;
+	}
+
+	if (argc == 0) {
+		argc = 1;
+		argv = xcalloc(1, sizeof *argv);
+		*argv = xstrdup("new-session");
+	}
+
+	if ((cmdlist = cmd_list_parse(argc, argv, &cause)) == NULL) {
+		server_msg_fn_command_error(&ctx, "%s", cause);
+		cmd_free_argv(argc, argv);
+		goto error;
+	}
+	cmd_free_argv(argc, argv);
+
 	if (data.pid != -1) {
 		TAILQ_FOREACH(cmd, cmdlist, qentry) {
 			if (cmd->entry->flags & CMD_CANTNEST) {
 				server_msg_fn_command_error(&ctx,
 				    "sessions should be nested with care. "
 				    "unset $TMUX to force");
-				cmd_list_free(cmdlist);
-				server_write_client(c, MSG_EXIT, NULL, 0);
-				return;
+				goto error;
 			}
 		}
 	}
@@ -166,27 +182,28 @@ server_msg_fn_command(struct hdr *hdr, struct client *c)
 	if (cmd_list_exec(cmdlist, &ctx) != 1)
 		server_write_client(c, MSG_EXIT, NULL, 0);
 	cmd_list_free(cmdlist);
+	return;
+
+error:
+	if (cmdlist != NULL)
+		cmd_list_free(cmdlist);
+	server_write_client(c, MSG_EXIT, NULL, 0);
 }
 
 void
 server_msg_fn_identify(struct hdr *hdr, struct client *c)
 {
 	struct msg_identify_data	data;
-        char			       *term;
 
 	if (hdr->size < sizeof data)
 		fatalx("bad MSG_IDENTIFY size");
 	buffer_read(c->in, &data, sizeof data);
-	term = cmd_recv_string(c->in);
 
 	log_debug("identify msg from client: %u,%u (%d)",
 	    data.sx, data.sy, data.version);
 
 	if (data.version != PROTOCOL_VERSION) {
-#define MSG "protocol version mismatch"
-		server_write_client(c, MSG_ERROR, MSG, (sizeof MSG) - 1);
-#undef MSG
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		server_write_error(c, "protocol version mismatch");
 		return;
 	}
 
@@ -199,7 +216,8 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 		c->cwd = xstrdup(data.cwd);
 
 	data.tty[(sizeof data.tty) - 1] = '\0';
-	tty_init(&c->tty, data.tty, term);
+	data.term[(sizeof data.term) - 1] = '\0';
+	tty_init(&c->tty, data.tty, data.term);
 	if (data.flags & IDENTIFY_UTF8)
 		c->tty.flags |= TTY_UTF8;
 	if (data.flags & IDENTIFY_256COLOURS)
@@ -208,9 +226,6 @@ server_msg_fn_identify(struct hdr *hdr, struct client *c)
 		c->tty.term_flags |= TERM_88COLOURS;
 	if (data.flags & IDENTIFY_HASDEFAULTS)
 		c->tty.term_flags |= TERM_HASDEFAULTS;
-
-	if (term != NULL)
-		xfree(term);
 
 	c->flags |= CLIENT_TERMINAL;
 }
@@ -262,24 +277,20 @@ server_msg_fn_exiting(struct hdr *hdr, struct client *c)
 void
 server_msg_fn_unlock(struct hdr *hdr, struct client *c)
 {
-        char	*pass;
+	struct msg_unlock_data	data;
 
-	if (hdr->size == 0)
+	if (hdr->size != sizeof data)
 		fatalx("bad MSG_UNLOCK size");
-	pass = cmd_recv_string(c->in);
+	buffer_read(c->in, &data, sizeof data);
 
 	log_debug("unlock msg from client");
 
-	if (server_unlock(pass) != 0) {
-#define MSG "bad password"
-		server_write_client(c, MSG_ERROR, MSG, (sizeof MSG) - 1);
-#undef MSG
-	}
+	data.pass[(sizeof data.pass) - 1] = '\0';
+	if (server_unlock(data.pass) != 0)
+		server_write_error(c, "bad password");
+	memset(&data, 0, sizeof data);
 
 	server_write_client(c, MSG_EXIT, NULL, 0);
-
-	memset(pass, 0, strlen(pass));
-	xfree(pass);
 }
 
 void

@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.21 2009-07-23 23:42:59 tcunha Exp $ */
+/* $Id: client-msg.c,v 1.22 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,16 +70,15 @@ client_msg_dispatch(struct client_ctx *cctx)
 int
 client_msg_fn_error(struct hdr *hdr, struct client_ctx *cctx)
 {
-	char	*errstr;
+	struct msg_print_data	data;
 
-	if (hdr->size == SIZE_MAX)
-		fatalx("bad MSG_ERROR size");
+	if (hdr->size < sizeof data)
+		fatalx("bad MSG_PRINT size");
+	buffer_read(cctx->srv_in, &data, sizeof data);
 
-	errstr = xmalloc(hdr->size + 1);
-	buffer_read(cctx->srv_in, errstr, hdr->size);
-	errstr[hdr->size] = '\0';
+	data.msg[(sizeof data.msg) - 1] = '\0';
+	cctx->errstr = xstrdup(data.msg);
 
-	cctx->errstr = errstr;
 	return (-1);
 }
 

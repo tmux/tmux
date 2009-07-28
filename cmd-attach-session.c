@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.29 2009-07-23 13:25:27 tcunha Exp $ */
+/* $Id: cmd-attach-session.c,v 1.30 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,8 +33,6 @@ const struct cmd_entry cmd_attach_session_entry = {
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_attach_session_exec,
-	cmd_target_send,
-	cmd_target_recv,
 	cmd_target_free,
 	cmd_target_print
 };

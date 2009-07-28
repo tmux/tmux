@@ -1,4 +1,4 @@
-/* $Id: cmd-select-pane.c,v 1.8 2009-07-21 16:27:41 tcunha Exp $ */
+/* $Id: cmd-select-pane.c,v 1.9 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,8 +33,6 @@ const struct cmd_entry cmd_select_pane_entry = {
 	cmd_pane_init,
 	cmd_pane_parse,
 	cmd_select_pane_exec,
-       	cmd_pane_send,
-	cmd_pane_recv,
 	cmd_pane_free,
 	cmd_pane_print
 };

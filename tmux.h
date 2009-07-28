@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.389 2009-07-25 08:52:04 tcunha Exp $ */
+/* $Id: tmux.h,v 1.390 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,7 +21,7 @@
 
 #include "config.h"
 
-#define PROTOCOL_VERSION -14
+#define PROTOCOL_VERSION -15
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -60,6 +60,14 @@ extern char    *__progname;
 
 /* Maximum poll timeout (when attached). */
 #define POLL_TIMEOUT 50
+
+/*
+ * Maximum sizes of strings in message data. Don't forget to bump
+ * PROTOCOL_VERSION if any of these change!
+ */
+#define COMMAND_LENGTH 2048	/* packed argv size */
+#define TERMINAL_LENGTH 128	/* length of TERM environment variable */
+#define PRINT_LENGTH 512	/* printed error/message size */
 
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
@@ -292,17 +300,29 @@ enum hdrtype {
 	MSG_WAKEUP,
 };
 
-/* Message header structure. */
+/*
+ * Message header and data. 
+ *
+ * Don't forget to bump PROTOCOL_VERSION if any of these change!
+ *
+ * Changing sizeof (struct hdr) or sizeof (struct msg_identify_data) will make
+ * the tmux client hang even if the protocol version is bumped.
+ */
 struct hdr {
 	enum hdrtype	type;
 	size_t		size;
+};
+
+struct msg_print_data {
+	char		msg[PRINT_LENGTH];
 };
 
 struct msg_command_data {
 	pid_t		pid;			/* pid from $TMUX or -1 */
 	u_int		idx;			/* index from $TMUX */
 
-	size_t		namelen;
+	int		argc;
+	char		argv[COMMAND_LENGTH];
 };
 
 struct msg_identify_data {
@@ -310,6 +330,8 @@ struct msg_identify_data {
 	int	        version;
 
 	char		cwd[MAXPATHLEN];
+
+	char		term[TERMINAL_LENGTH];
 
 #define IDENTIFY_UTF8 0x1
 #define IDENTIFY_256COLOURS 0x2
@@ -319,13 +341,15 @@ struct msg_identify_data {
 
 	u_int		sx;
 	u_int		sy;
-
-	size_t		termlen;
 };
 
 struct msg_resize_data {
 	u_int		sx;
 	u_int		sy;
+};
+
+struct msg_unlock_data {
+	char	       	pass[PASS_MAX];
 };
 
 /* Editing keys. */
@@ -906,8 +930,6 @@ struct cmd_entry {
 	void		 (*init)(struct cmd *, int);
 	int		 (*parse)(struct cmd *, int, char **, char **);
 	int		 (*exec)(struct cmd *, struct cmd_ctx *);
-	void		 (*send)(struct cmd *, struct buffer *);
-	void	         (*recv)(struct cmd *, struct buffer *);
 	void		 (*free)(struct cmd *);
 	size_t 		 (*print)(struct cmd *, char *, size_t);
 };
@@ -1112,14 +1134,13 @@ int		 paste_replace(struct paste_stack *, u_int, char *);
 void		 clock_draw(struct screen_write_ctx *, u_int, int);
 
 /* cmd.c */
+int		 cmd_pack_argv(int, char **, char *, size_t);
+int		 cmd_unpack_argv(char *, size_t, int, char ***);
+void		 cmd_free_argv(int, char **);
 struct cmd	*cmd_parse(int, char **, char **);
 int		 cmd_exec(struct cmd *, struct cmd_ctx *);
-void		 cmd_send(struct cmd *, struct buffer *);
-struct cmd	*cmd_recv(struct buffer *);
 void		 cmd_free(struct cmd *);
 size_t		 cmd_print(struct cmd *, char *, size_t);
-void		 cmd_send_string(struct buffer *, const char *);
-char		*cmd_recv_string(struct buffer *);
 struct session	*cmd_current_session(struct cmd_ctx *);
 struct client	*cmd_find_client(struct cmd_ctx *, const char *);
 struct session	*cmd_find_session(struct cmd_ctx *, const char *);
@@ -1204,8 +1225,6 @@ extern const struct cmd_entry cmd_up_pane_entry;
 /* cmd-list.c */
 struct cmd_list	*cmd_list_parse(int, char **, char **);
 int		 cmd_list_exec(struct cmd_list *, struct cmd_ctx *);
-void		 cmd_list_send(struct cmd_list *, struct buffer *);
-struct cmd_list	*cmd_list_recv(struct buffer *);
 void		 cmd_list_free(struct cmd_list *);
 size_t		 cmd_list_print(struct cmd_list *, char *, size_t);
 
@@ -1219,8 +1238,6 @@ size_t  cmd_prarg(char *, size_t, const char *, char *);
 #define CMD_TARGET_CLIENT_USAGE "[-t target-client]"
 void	cmd_target_init(struct cmd *, int);
 int	cmd_target_parse(struct cmd *, int, char **, char **);
-void	cmd_target_send(struct cmd *, struct buffer *);
-void	cmd_target_recv(struct cmd *, struct buffer *);
 void	cmd_target_free(struct cmd *);
 size_t	cmd_target_print(struct cmd *, char *, size_t);
 #define CMD_SRCDST_WINDOW_USAGE "[-s src-window] [-t dst-window]"
@@ -1228,8 +1245,6 @@ size_t	cmd_target_print(struct cmd *, char *, size_t);
 #define CMD_SRCDST_CLIENT_USAGE "[-s src-client] [-t dst-client]"
 void	cmd_srcdst_init(struct cmd *, int);
 int	cmd_srcdst_parse(struct cmd *, int, char **, char **);
-void	cmd_srcdst_send(struct cmd *, struct buffer *);
-void	cmd_srcdst_recv(struct cmd *, struct buffer *);
 void	cmd_srcdst_free(struct cmd *);
 size_t	cmd_srcdst_print(struct cmd *, char *, size_t);
 #define CMD_BUFFER_WINDOW_USAGE "[-b buffer-index] [-t target-window]"
@@ -1237,8 +1252,6 @@ size_t	cmd_srcdst_print(struct cmd *, char *, size_t);
 #define CMD_BUFFER_CLIENT_USAGE "[-b buffer-index] [-t target-client]"
 void	cmd_buffer_init(struct cmd *, int);
 int	cmd_buffer_parse(struct cmd *, int, char **, char **);
-void	cmd_buffer_send(struct cmd *, struct buffer *);
-void	cmd_buffer_recv(struct cmd *, struct buffer *);
 void	cmd_buffer_free(struct cmd *);
 size_t	cmd_buffer_print(struct cmd *, char *, size_t);
 #define CMD_OPTION_WINDOW_USAGE "[-gu] [-t target-window] option [value]"
@@ -1246,8 +1259,6 @@ size_t	cmd_buffer_print(struct cmd *, char *, size_t);
 #define CMD_OPTION_CLIENT_USAGE "[-gu] [-t target-client] option [value]"
 void	cmd_option_init(struct cmd *, int);
 int	cmd_option_parse(struct cmd *, int, char **, char **);
-void	cmd_option_send(struct cmd *, struct buffer *);
-void	cmd_option_recv(struct cmd *, struct buffer *);
 void	cmd_option_free(struct cmd *);
 size_t	cmd_option_print(struct cmd *, char *, size_t);
 #define CMD_PANE_WINDOW_USAGE "[-t target-window] [-p pane-index]"
@@ -1255,8 +1266,6 @@ size_t	cmd_option_print(struct cmd *, char *, size_t);
 #define CMD_PANE_CLIENT_USAGE "[-t target-client] [-p pane-index]"
 void	cmd_pane_init(struct cmd *, int);
 int	cmd_pane_parse(struct cmd *, int, char **, char **);
-void	cmd_pane_send(struct cmd *, struct buffer *);
-void	cmd_pane_recv(struct cmd *, struct buffer *);
 void	cmd_pane_free(struct cmd *);
 size_t	cmd_pane_print(struct cmd *, char *, size_t);
 
@@ -1269,8 +1278,6 @@ int	 client_msg_dispatch(struct client_ctx *);
 
 /* client-fn.c */
 void	 client_write_server(struct client_ctx *, enum hdrtype, void *, size_t);
-void	 client_write_server2(
-    	     struct client_ctx *, enum hdrtype, void *, size_t, void *, size_t);
 void	 client_fill_session(struct msg_command_data *);
 
 /* key-bindings.c */
@@ -1302,6 +1309,7 @@ int	 server_msg_dispatch(struct client *);
 
 /* server-fn.c */
 const char **server_fill_environ(struct session *);
+void	 server_write_error(struct client *, const char *);
 void	 server_write_client(
              struct client *, enum hdrtype, const void *, size_t);
 void	 server_write_session(

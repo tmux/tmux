@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.37 2009-07-20 15:42:05 tcunha Exp $ */
+/* $Id: cmd-list-windows.c,v 1.38 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,8 +35,6 @@ const struct cmd_entry cmd_list_windows_entry = {
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_list_windows_exec,
-	cmd_target_send,
-	cmd_target_recv,
 	cmd_target_free,
 	cmd_target_print
 };

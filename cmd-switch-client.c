@@ -1,4 +1,4 @@
-/* $Id: cmd-switch-client.c,v 1.16 2009-07-14 06:43:33 nicm Exp $ */
+/* $Id: cmd-switch-client.c,v 1.17 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,8 +29,6 @@
 
 int	cmd_switch_client_parse(struct cmd *, int, char **, char **);
 int	cmd_switch_client_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_switch_client_send(struct cmd *, struct buffer *);
-void	cmd_switch_client_recv(struct cmd *, struct buffer *);
 void	cmd_switch_client_free(struct cmd *);
 size_t	cmd_switch_client_print(struct cmd *, char *, size_t);
 
@@ -46,8 +44,6 @@ const struct cmd_entry cmd_switch_client_entry = {
 	NULL,
 	cmd_switch_client_parse,
 	cmd_switch_client_exec,
-	cmd_switch_client_send,
-	cmd_switch_client_recv,
 	cmd_switch_client_free,
 	cmd_switch_client_print
 };
@@ -109,27 +105,6 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	server_redraw_client(c);
 
 	return (0);
-}
-
-void
-cmd_switch_client_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_switch_client_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->name);
-	cmd_send_string(b, data->target);
-}
-
-void
-cmd_switch_client_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_switch_client_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->name = cmd_recv_string(b);
-	data->target = cmd_recv_string(b);
 }
 
 void

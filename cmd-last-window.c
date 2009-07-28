@@ -1,4 +1,4 @@
-/* $Id: cmd-last-window.c,v 1.17 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-last-window.c,v 1.18 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,8 +33,6 @@ const struct cmd_entry cmd_last_window_entry = {
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_last_window_exec,
-	cmd_target_send,
-	cmd_target_recv,
 	cmd_target_free,
 	cmd_target_print
 };

@@ -1,4 +1,4 @@
-/* $Id: cmd-select-layout.c,v 1.6 2009-07-22 16:24:59 tcunha Exp $ */
+/* $Id: cmd-select-layout.c,v 1.7 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,8 +34,6 @@ const struct cmd_entry cmd_select_layout_entry = {
 	cmd_select_layout_init,
 	cmd_target_parse,
 	cmd_select_layout_exec,
-	cmd_target_send,
-	cmd_target_recv,
 	cmd_target_free,
 	cmd_target_print
 };

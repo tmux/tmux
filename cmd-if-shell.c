@@ -1,4 +1,4 @@
-/* $Id: cmd-if-shell.c,v 1.3 2009-07-14 06:43:32 nicm Exp $ */
+/* $Id: cmd-if-shell.c,v 1.4 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -30,8 +30,6 @@
 
 int	cmd_if_shell_parse(struct cmd *, int, char **, char **);
 int	cmd_if_shell_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_if_shell_send(struct cmd *, struct buffer *);
-void	cmd_if_shell_recv(struct cmd *, struct buffer *);
 void	cmd_if_shell_free(struct cmd *);
 void	cmd_if_shell_init(struct cmd *, int);
 size_t	cmd_if_shell_print(struct cmd *, char *, size_t);
@@ -48,8 +46,6 @@ const struct cmd_entry cmd_if_shell_entry = {
 	cmd_if_shell_init,
 	cmd_if_shell_parse,
 	cmd_if_shell_exec,
-	cmd_if_shell_send,
-	cmd_if_shell_recv,
 	cmd_if_shell_free,
 	cmd_if_shell_print
 };
@@ -124,27 +120,6 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	cmd_list_free(cmdlist);
 	return (0);
-}
-
-void
-cmd_if_shell_send(struct cmd *self, struct buffer *b)
-{
-	struct cmd_if_shell_data	*data = self->data;
-
-	buffer_write(b, data, sizeof *data);
-	cmd_send_string(b, data->cmd);
-	cmd_send_string(b, data->sh_cmd);
-}
-
-void
-cmd_if_shell_recv(struct cmd *self, struct buffer *b)
-{
-	struct cmd_if_shell_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	buffer_read(b, data, sizeof *data);
-	data->cmd = cmd_recv_string(b);
-	data->sh_cmd = cmd_recv_string(b);
 }
 
 void

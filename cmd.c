@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.108 2009-07-25 08:59:38 tcunha Exp $ */
+/* $Id: cmd.c,v 1.109 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,6 +108,64 @@ struct session	*cmd_lookup_session(const char *, int *);
 struct winlink	*cmd_lookup_window(struct session *, const char *, int *);
 int		 cmd_lookup_index(struct session *, const char *, int *);
 
+int
+cmd_pack_argv(int argc, char **argv, char *buf, size_t len)
+{
+	size_t	arglen;
+	int	i;
+
+	*buf = '\0';
+	for (i = 0; i < argc; i++) {
+		if (strlcpy(buf, argv[i], len) >= len)
+			return (-1);
+		arglen = strlen(argv[i]) + 1;
+		buf += arglen;
+		len -= arglen;
+	}
+
+	return (0);
+}
+
+int
+cmd_unpack_argv(char *buf, size_t len, int argc, char ***argv)
+{
+	int	i;
+	size_t	arglen;
+
+	if (argc == 0)
+		return (0);
+	*argv = xcalloc(argc, sizeof **argv);
+
+	buf[len - 1] = '\0';
+	for (i = 0; i < argc; i++) {
+		if (len == 0) {
+			cmd_free_argv(argc, *argv);
+			return (-1);
+		}
+
+		arglen = strlen(buf) + 1;
+		(*argv)[i] = xstrdup(buf);
+		buf += arglen;
+		len -= arglen;
+	}
+
+	return (0);
+}
+
+void
+cmd_free_argv(int argc, char **argv)
+{
+	int	i;
+
+	if (argc == 0)
+		return; 
+	for (i = 0; i < argc; i++) {
+		if (argv[i] != NULL)
+			xfree(argv[i]);
+	}
+	xfree(argv);
+}
+
 struct cmd *
 cmd_parse(int argc, char **argv, char **cause)
 {
@@ -204,53 +262,6 @@ cmd_exec(struct cmd *cmd, struct cmd_ctx *ctx)
 }
 
 void
-cmd_send(struct cmd *cmd, struct buffer *b)
-{
-	const struct cmd_entry **entryp;
-	u_int			 n;
-
-	n = 0;
-	for (entryp = cmd_table; *entryp != NULL; entryp++) {
-		if (*entryp == cmd->entry)
-			break;
-		n++;
-	}
-	if (*entryp == NULL)
-		fatalx("command not found");
-
-	buffer_write(b, &n, sizeof n);
-
-	if (cmd->entry->send != NULL)
-		cmd->entry->send(cmd, b);
-}
-
-struct cmd *
-cmd_recv(struct buffer *b)
-{
-	const struct cmd_entry **entryp;
-	struct cmd   	        *cmd;
-	u_int			 m, n;
-
-	buffer_read(b, &m, sizeof m);
-
-	n = 0;
-	for (entryp = cmd_table; *entryp != NULL; entryp++) {
-		if (n == m)
-			break;
-		n++;
-	}
-	if (*entryp == NULL)
-		fatalx("command not found");
-
-	cmd = xmalloc(sizeof *cmd);
-	cmd->entry = *entryp;
-
-	if (cmd->entry->recv != NULL)
-		cmd->entry->recv(cmd, b);
-	return (cmd);
-}
-
-void
 cmd_free(struct cmd *cmd)
 {
 	if (cmd->data != NULL && cmd->entry->free != NULL)
@@ -265,41 +276,6 @@ cmd_print(struct cmd *cmd, char *buf, size_t len)
 		return (xsnprintf(buf, len, "%s", cmd->entry->name));
 	}
 	return (cmd->entry->print(cmd, buf, len));
-}
-
-void
-cmd_send_string(struct buffer *b, const char *s)
-{
-	size_t	n;
-
-	if (s == NULL) {
-		n = 0;
-		buffer_write(b, &n, sizeof n);
-		return;
-	}
-
-	n = strlen(s) + 1;
-	buffer_write(b, &n, sizeof n);
-
-	buffer_write(b, s, n);
-}
-
-char *
-cmd_recv_string(struct buffer *b)
-{
-	char   *s;
-	size_t	n;
-
-	buffer_read(b, &n, sizeof n);
-
-	if (n == 0)
-		return (NULL);
-
-	s = xmalloc(n);
-	buffer_read(b, s, n);
-	s[n - 1] = '\0';
-
-	return (s);
 }
 
 /*

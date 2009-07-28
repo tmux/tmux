@@ -1,4 +1,4 @@
-/* $Id: cmd-select-prompt.c,v 1.10 2009-07-17 09:26:21 nicm Exp $ */
+/* $Id: cmd-select-prompt.c,v 1.11 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -37,8 +37,6 @@ const struct cmd_entry cmd_select_prompt_entry = {
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_select_prompt_exec,
-	cmd_target_send,
-	cmd_target_recv,
 	cmd_target_free,
 	cmd_target_print
 };

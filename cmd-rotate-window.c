@@ -1,4 +1,4 @@
-/* $Id: cmd-rotate-window.c,v 1.8 2009-07-22 16:24:59 tcunha Exp $ */
+/* $Id: cmd-rotate-window.c,v 1.9 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,8 +34,6 @@ const struct cmd_entry cmd_rotate_window_entry = {
 	cmd_rotate_window_init,
 	cmd_target_parse,
 	cmd_rotate_window_exec,
-	cmd_target_send,
-	cmd_target_recv,
 	cmd_target_free,
 	cmd_target_print
 };

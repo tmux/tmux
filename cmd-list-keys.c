@@ -1,4 +1,4 @@
-/* $Id: cmd-list-keys.c,v 1.17 2009-07-25 08:52:04 tcunha Exp $ */
+/* $Id: cmd-list-keys.c,v 1.18 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,8 +35,6 @@ const struct cmd_entry cmd_list_keys_entry = {
 	NULL,
 	NULL,
 	cmd_list_keys_exec,
-	NULL,
-	NULL,
 	NULL,
 	NULL
 };

@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.34 2009-07-20 15:57:05 tcunha Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.35 2009-07-28 22:12:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,8 +36,6 @@ const struct cmd_entry cmd_set_window_option_entry = {
 	NULL,
 	cmd_option_parse,
 	cmd_set_window_option_exec,
-	cmd_option_send,
-	cmd_option_recv,
 	cmd_option_free,
 	cmd_option_print
 };
