@@ -58,6 +58,8 @@ struct {
 	{ "Tab",	'\011' },
 	{ "BTab",	KEYC_BTAB },
 	{ "BSpace",	KEYC_BSPACE },
+	{ "Enter",	'\r' },
+	{ "Escape",	'\033' },
 
 	/* Arrow keys. */
 	{ "Up",		KEYC_UP },
@@ -177,6 +179,11 @@ key_string_lookup_key(int key)
 		return (tmp2);
 	}
 
+	for (i = 0; i < nitems(key_string_table); i++) {
+		if (key == key_string_table[i].key)
+			return (key_string_table[i].string);
+	}
+
 	if (key >= 32 && key <= 255) {
 		tmp[0] = key;
 		tmp[1] = '\0';
@@ -191,9 +198,5 @@ key_string_lookup_key(int key)
 		return (tmp);
 	}
 
-	for (i = 0; i < nitems(key_string_table); i++) {
-		if (key == key_string_table[i].key)
-			return (key_string_table[i].string);
-	}
 	return (NULL);
 }
