@@ -18,6 +18,8 @@
 
 #include <sys/types.h>
 
+#include <string.h>
+
 #include "tmux.h"
 
 /*
@@ -54,6 +56,8 @@ struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 	{ MODEKEYEDIT_STARTOFLINE, "start-of-line" },
 	{ MODEKEYEDIT_SWITCHMODE, "switch-mode" },
 	{ MODEKEYEDIT_SWITCHMODEAPPEND, "switch-mode-append" },
+
+	{ 0, NULL }
 };
 	
 /* Choice keys command strings. */
@@ -64,6 +68,8 @@ struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
 	{ MODEKEYCHOICE_PAGEDOWN, "page-down" },
 	{ MODEKEYCHOICE_PAGEUP, "page-up" },
 	{ MODEKEYCHOICE_UP, "up" },
+
+	{ 0, NULL }
 };
 
 /* Copy keys command strings. */
@@ -83,6 +89,8 @@ struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_STARTOFLINE, "start-of-line" },
 	{ MODEKEYCOPY_STARTSELECTION, "begin-selection" },
 	{ MODEKEYCOPY_UP, "cursor-up" },
+
+	{ 0, NULL }
 };
 
 /* vi editing keys. */
@@ -274,6 +282,28 @@ mode_key_tostring(struct mode_key_cmdstr *cmdstr, enum mode_key_cmd cmd)
 	for (; cmdstr->name != NULL; cmdstr++) {
 		if (cmdstr->cmd == cmd)
 			return (cmdstr->name);
+	}
+	return (NULL);
+}
+
+enum mode_key_cmd
+mode_key_fromstring(struct mode_key_cmdstr *cmdstr, const char *name)
+{
+	for (; cmdstr->name != NULL; cmdstr++) {
+		if (strcasecmp(cmdstr->name, name) == 0)
+			return (cmdstr->cmd);
+	}
+	return (MODEKEY_NONE);
+}
+
+const struct mode_key_table *
+mode_key_findtable(const char *name)
+{
+	const struct mode_key_table	*mtab;
+		
+	for (mtab = mode_key_tables; mtab->name != NULL; mtab++) {
+		if (strcasecmp(name, mtab->name) == 0)
+			return (mtab);
 	}
 	return (NULL);
 }

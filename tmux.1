@@ -352,7 +352,10 @@ and
 used in copy and scroll modes.
 The tables may be viewed with the
 .Ic list-keys
-command.
+command and keys modified or removed with
+.Ic bind-key
+and
+.Ic unbind-key .
 .Pp
 The paste buffer key pastes the first line from the top paste buffer on the
 stack.
@@ -637,7 +640,8 @@ If no server is started,
 will attempt to start it; this will fail unless sessions are created in the
 configuration file.
 .It Xo Ic bind-key
-.Op Fl nr
+.Op Fl cnr
+.Op Fl t Ar key-table
 .Ar key Ar command Op Ar arguments
 .Xc
 .D1 (alias: Ic bind )
@@ -652,7 +656,11 @@ or
 for Ctrl keys, or
 .Ql M-
 for Alt (meta) keys.
-If
+.Pp
+By default (without
+.Fl t )
+the primary key bindings are modified (those normally activated with the prefix
+key); in this case, if
 .Fl n
 is specified, it is not necessary to use the prefix key,
 .Ar command
@@ -664,6 +672,19 @@ The
 flag indicates this key may repeat, see the
 .Ic repeat-time
 option.
+.Pp
+If
+.Fl t
+is present,
+.Ar key
+is bound in
+.Ar key-table :
+the binding for command mode with
+.Fl c
+or for normal mode without.
+To view the default bindings and possible commands, see the
+.Ic list-keys
+command.
 .It Xo Ic break-pane
 .Op Fl d
 .Op Fl p Ar pane-index
@@ -866,7 +887,7 @@ List all clients attached to the server.
 List the syntax of all commands supported by
 .Nm .
 .It Xo Ic list-keys
-.Op Ar Fl t Ar key-table
+.Op Fl t Ar key-table
 .Xc
 .D1 (alias: Ic lsk )
 List all key bindings.
@@ -1665,17 +1686,30 @@ Switch the current session for client
 to
 .Ar target-session .
 .It Xo Ic unbind-key
-.Op Fl n
+.Op Fl cn
+.Op Fl t Ar key-table
 .Ar key
 .Xc
 .D1 (alias: Ic unbind )
 Unbind the command bound to
 .Ar key .
-If
+Without
+.Fl t
+the primary key bindings are modified; in this case, if
 .Fl n
 is specified, the command bound to
 .Ar key
 without a prefix (if any) is removed.
+.Pp
+If
+.Fl t
+is present,
+.Ar key
+in
+.Ar key-table
+is unbound: the binding for command mode with
+.Fl c
+or for normal mode without.
 .It Xo Ic unlink-window
 .Op Fl k
 .Op Fl t Ar target-window

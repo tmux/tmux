@@ -92,11 +92,7 @@ cmd_list_keys_table(struct cmd *self, struct cmd_ctx *ctx)
 	const char			*key, *cmdstr, *mode;
 	int			 	 width, keywidth;
 
-	for (mtab = mode_key_tables; mtab->name != NULL; mtab++) {
-		if (strcasecmp(data->target, mtab->name) == 0)
-			break;
-	}
-	if (mtab->name == NULL) {
+	if ((mtab = mode_key_findtable(data->target)) == NULL) {
 		ctx->error(ctx, "unknown key table: %s", data->target);
 		return (-1);
 	}

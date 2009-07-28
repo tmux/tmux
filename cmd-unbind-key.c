@@ -28,13 +28,18 @@ int	cmd_unbind_key_parse(struct cmd *, int, char **, char **);
 int	cmd_unbind_key_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_unbind_key_free(struct cmd *);
 
+int	cmd_unbind_key_table(struct cmd *, struct cmd_ctx *);
+
 struct cmd_unbind_key_data {
 	int	key;
+
+	int	command_key;
+	char   *tablename;
 };
 
 const struct cmd_entry cmd_unbind_key_entry = {
 	"unbind-key", "unbind",
-	"[-n] key",
+	"[-cn] [-t key-table] key",
 	0, 0,
 	NULL,
 	cmd_unbind_key_parse,
@@ -50,11 +55,19 @@ cmd_unbind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 	int				 opt, no_prefix = 0;
 
 	self->data = data = xmalloc(sizeof *data);
+	data->command_key = 0;
+	data->tablename = NULL;
 
-	while ((opt = getopt(argc, argv, "n")) != -1) {
+	while ((opt = getopt(argc, argv, "cnt:")) != -1) {
 		switch (opt) {
+		case 'c':
+			data->command_key = 1;
+			break;
 		case 'n':
 			no_prefix = 1;
+			break;
+		case 't':
+			data->tablename = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -89,9 +102,32 @@ cmd_unbind_key_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 
 	if (data == NULL)
 		return (0);
+	if (data->tablename != NULL)
+		return (cmd_unbind_key_table(self, ctx));
 
 	key_bindings_remove(data->key);
 
+	return (0);
+}
+
+int
+cmd_unbind_key_table(struct cmd *self, struct cmd_ctx *ctx)
+{
+	struct cmd_unbind_key_data	*data = self->data;
+	const struct mode_key_table	*mtab;
+	struct mode_key_binding		*mbind, mtmp;
+
+	if ((mtab = mode_key_findtable(data->tablename)) == NULL) {
+		ctx->error(ctx, "unknown key table: %s", data->tablename);
+		return (-1);
+	}
+
+	mtmp.key = data->key & ~KEYC_PREFIX;
+	mtmp.mode = data->command_key ? 1 : 0;
+	if ((mbind = SPLAY_FIND(mode_key_tree, mtab->tree, &mtmp)) != NULL) {
+		SPLAY_REMOVE(mode_key_tree, mtab->tree, mbind);
+		xfree(mbind);
+	}
 	return (0);
 }
 
@@ -100,5 +136,7 @@ cmd_unbind_key_free(struct cmd *self)
 {
 	struct cmd_unbind_key_data	*data = self->data;
 
+	if (data->tablename != NULL)
+		xfree(data->tablename);
 	xfree(data);
 }

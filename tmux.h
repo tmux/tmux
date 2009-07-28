@@ -1098,6 +1098,8 @@ extern struct mode_key_tree mode_key_tree_emacs_copy;
 int	mode_key_cmp(struct mode_key_binding *, struct mode_key_binding *);
 SPLAY_PROTOTYPE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
 const char *mode_key_tostring(struct mode_key_cmdstr *r, enum mode_key_cmd);
+enum mode_key_cmd mode_key_fromstring(struct mode_key_cmdstr *, const char *);
+const struct mode_key_table *mode_key_findtable(const char *);
 void	mode_key_init_trees(void);
 void	mode_key_free_trees(void);
 void	mode_key_init(struct mode_key_data *, struct mode_key_tree *);
