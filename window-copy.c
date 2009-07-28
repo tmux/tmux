@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.70 2009-07-28 22:58:20 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.71 2009-07-28 23:11:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,9 +108,9 @@ window_copy_init(struct window_pane *wp)
 
 	keys = options_get_number(&wp->window->options, "mode-keys");
 	if (keys == MODEKEY_EMACS)
-		mode_key_init(&data->mdata, mode_key_emacs_copy);
+		mode_key_init(&data->mdata, &mode_key_tree_emacs_copy);
 	else
-		mode_key_init(&data->mdata, mode_key_vi_copy);
+		mode_key_init(&data->mdata, &mode_key_tree_vi_copy);
 
 	s->cx = data->cx;
 	s->cy = data->cy;

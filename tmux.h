@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.396 2009-07-28 23:04:29 tcunha Exp $ */
+/* $Id: tmux.h,v 1.397 2009-07-28 23:11:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -355,7 +355,7 @@ struct msg_unlock_data {
 	char	       	pass[PASS_MAX];
 };
 
-/* Editing keys. */
+/* Mode key commands. */
 enum mode_key_cmd {
 	MODEKEY_NONE,
 	MODEKEY_OTHER,
@@ -403,6 +403,7 @@ enum mode_key_cmd {
 	MODEKEYCOPY_UP,
 };
 
+/* Entry in the default mode key tables. */
 struct mode_key_entry {
 	int			key;
 
@@ -413,15 +414,41 @@ struct mode_key_entry {
 	 * keys to be bound in edit mode.
 	 */
 	int			mode;
-
 	enum mode_key_cmd	cmd;
 };
+
+/* Data required while mode keys are in use. */
 struct mode_key_data {
-	const struct mode_key_entry *table;
-	int	mode;
+	struct mode_key_tree   *tree;
+	int			mode;
 };
 #define MODEKEY_EMACS 0
 #define MODEKEY_VI 1
+
+/* Binding between a key and a command. */
+struct mode_key_binding {
+	int			key;
+
+	int			mode;
+	enum mode_key_cmd	cmd;
+
+	SPLAY_ENTRY(mode_key_binding) entry;
+};
+SPLAY_HEAD(mode_key_tree, mode_key_binding);
+
+/* Command to string mapping. */
+struct mode_key_cmdstr {
+	enum mode_key_cmd      	 cmd;
+	const char		*name;
+};
+
+/* Named mode key table description. */
+struct mode_key_table {
+	const char	       	*name;
+	struct mode_key_cmdstr	*cmdstr;
+	struct mode_key_tree	*tree;
+	const struct mode_key_entry *table;	/* default entries */
+};
 
 /* Modes. */
 #define MODE_CURSOR 0x1
@@ -1060,14 +1087,19 @@ void		 sighandler(int);
 int		 load_cfg(const char *, char **x);
 
 /* mode-key.c */
-extern const struct mode_key_entry mode_key_vi_edit[];
-extern const struct mode_key_entry mode_key_vi_choice[];
-extern const struct mode_key_entry mode_key_vi_copy[];
-extern const struct mode_key_entry mode_key_emacs_edit[];
-extern const struct mode_key_entry mode_key_emacs_choice[];
-extern const struct mode_key_entry mode_key_emacs_copy[];
-void		 mode_key_init(
-    		     struct mode_key_data *, const struct mode_key_entry *);
+extern const struct mode_key_table mode_key_tables[];
+extern struct mode_key_tree mode_key_tree_vi_edit;
+extern struct mode_key_tree mode_key_tree_vi_choice;
+extern struct mode_key_tree mode_key_tree_vi_copy;
+extern struct mode_key_tree mode_key_tree_emacs_edit;
+extern struct mode_key_tree mode_key_tree_emacs_choice;
+extern struct mode_key_tree mode_key_tree_emacs_copy;
+int	mode_key_cmp(struct mode_key_binding *, struct mode_key_binding *);
+SPLAY_PROTOTYPE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
+const char *mode_key_tostring(struct mode_key_cmdstr *r, enum mode_key_cmd);
+void	mode_key_init_trees(void);
+void	mode_key_free_trees(void);
+void	mode_key_init(struct mode_key_data *, struct mode_key_tree *);
 enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
 
 /* options.c */

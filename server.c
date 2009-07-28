@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.163 2009-07-25 08:52:04 tcunha Exp $ */
+/* $Id: server.c,v 1.164 2009-07-28 23:11:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -161,6 +161,7 @@ server_start(char *path)
 	ARRAY_INIT(&windows);
 	ARRAY_INIT(&clients);
 	ARRAY_INIT(&sessions);
+	mode_key_init_trees();
 	key_bindings_init();
 	utf8_build();
 
@@ -384,6 +385,7 @@ server_main(int srv_fd)
 	}
 	ARRAY_FREE(&clients);
 
+	mode_key_free_trees();
 	key_bindings_free();
 
 	close(srv_fd);

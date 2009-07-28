@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.20 2009-07-28 22:58:20 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.21 2009-07-28 23:11:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,71 @@
 #include <sys/types.h>
 
 #include "tmux.h"
+
+/*
+ * Mode keys. These are the key bindings used when editing (status prompt), and
+ * in the modes. They are split into two sets of three tables, one set of three
+ * for vi and the other for emacs key bindings. The three tables are for
+ * editing, for menu-like modes (choice, more), and for copy modes (copy,
+ * scroll).
+ *
+ * The fixed tables of struct mode_key_entry below are the defaults: they are
+ * built into a tree of struct mode_key_binding by mode_key_init_trees, which
+ * can then be modified.
+ *
+ * vi command mode is handled by having a mode flag in the struct which allows
+ * two sets of bindings to be swapped between. A couple of editing commands
+ * (MODEKEYEDIT_SWITCHMODE and MODEKEYEDIT_SWITCHMODEAPPEND) are special-cased
+ * to do this.
+ */
+
+/* Edit keys command strings. */
+struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
+	{ MODEKEYEDIT_BACKSPACE, "backspace" },
+ 	{ MODEKEYEDIT_CANCEL, "cancel" },
+	{ MODEKEYEDIT_COMPLETE, "complete" },
+	{ MODEKEYEDIT_CURSORLEFT, "cursor-left" },
+	{ MODEKEYEDIT_CURSORRIGHT, "cursor-right" },
+	{ MODEKEYEDIT_DELETE, "delete" },
+	{ MODEKEYEDIT_DELETETOENDOFLINE, "delete-end-of-line" },
+	{ MODEKEYEDIT_ENDOFLINE, "end-of-line" },
+	{ MODEKEYEDIT_ENTER, "enter" },
+	{ MODEKEYEDIT_HISTORYDOWN, "history-down" },
+	{ MODEKEYEDIT_HISTORYUP, "history-up" },
+	{ MODEKEYEDIT_PASTE, "paste" },
+	{ MODEKEYEDIT_STARTOFLINE, "start-of-line" },
+	{ MODEKEYEDIT_SWITCHMODE, "switch-mode" },
+	{ MODEKEYEDIT_SWITCHMODEAPPEND, "switch-mode-append" },
+};
+	
+/* Choice keys command strings. */
+struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
+	{ MODEKEYCHOICE_CANCEL, "cancel" },
+	{ MODEKEYCHOICE_CHOOSE, "choose" },
+	{ MODEKEYCHOICE_DOWN, "down" },
+	{ MODEKEYCHOICE_PAGEDOWN, "page-down" },
+	{ MODEKEYCHOICE_PAGEUP, "page-up" },
+	{ MODEKEYCHOICE_UP, "up" },
+};
+
+/* Copy keys command strings. */
+struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
+	{ MODEKEYCOPY_CANCEL, "cancel" },
+	{ MODEKEYCOPY_BACKTOINDENTATION, "back-to-indentation" },
+	{ MODEKEYCOPY_CLEARSELECTION, "clear-selection" },
+	{ MODEKEYCOPY_COPYSELECTION, "copy-selection" },
+	{ MODEKEYCOPY_DOWN, "cursor-down" },
+	{ MODEKEYCOPY_ENDOFLINE, "end-of-line" },
+	{ MODEKEYCOPY_LEFT, "cursor-left" },
+	{ MODEKEYCOPY_NEXTPAGE, "page-down" },
+	{ MODEKEYCOPY_NEXTWORD, "next-word" },
+	{ MODEKEYCOPY_PREVIOUSPAGE, "page-up" },
+	{ MODEKEYCOPY_PREVIOUSWORD, "previous-word" },
+	{ MODEKEYCOPY_RIGHT, "cursor-right" },
+	{ MODEKEYCOPY_STARTOFLINE, "start-of-line" },
+	{ MODEKEYCOPY_STARTSELECTION, "begin-selection" },
+	{ MODEKEYCOPY_UP, "cursor-up" },
+};
 
 /* vi editing keys. */
 const struct mode_key_entry mode_key_vi_edit[] = {
@@ -53,6 +118,7 @@ const struct mode_key_entry mode_key_vi_edit[] = {
 
 	{ 0,		       -1, 0 }
 };
+struct mode_key_tree mode_key_tree_vi_edit;
 
 /* vi choice selection keys. */
 const struct mode_key_entry mode_key_vi_choice[] = {
@@ -68,6 +134,7 @@ const struct mode_key_entry mode_key_vi_choice[] = {
 
 	{ 0,			-1, 0 }
 };
+struct mode_key_tree mode_key_tree_vi_choice;
 
 /* vi copy mode keys. */
 const struct mode_key_entry mode_key_vi_copy[] = {
@@ -98,6 +165,7 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 
 	{ 0,			-1, 0 }
 };
+struct mode_key_tree mode_key_tree_vi_copy;
 
 /* emacs editing keys. */
 const struct mode_key_entry mode_key_emacs_edit[] = {
@@ -123,6 +191,7 @@ const struct mode_key_entry mode_key_emacs_edit[] = {
 
 	{ 0,		       -1, 0 }
 };
+struct mode_key_tree mode_key_tree_emacs_edit;
 
 /* emacs choice selection keys. */
 const struct mode_key_entry mode_key_emacs_choice[] = {
@@ -137,6 +206,7 @@ const struct mode_key_entry mode_key_emacs_choice[] = {
 
 	{ 0,			-1, 0 }
 };
+struct mode_key_tree mode_key_tree_emacs_choice;
 
 /* emacs copy mode keys. */
 const struct mode_key_entry mode_key_emacs_copy[] = {
@@ -168,34 +238,105 @@ const struct mode_key_entry mode_key_emacs_copy[] = {
 
 	{ 0,			-1, 0 }	
 };
+struct mode_key_tree mode_key_tree_emacs_copy;
+
+/* Table mapping key table names to default settings and trees. */
+const struct mode_key_table mode_key_tables[] = {
+	{ "vi-edit", mode_key_cmdstr_edit,
+	  &mode_key_tree_vi_edit, mode_key_vi_edit },
+	{ "vi-choice", mode_key_cmdstr_choice,
+	  &mode_key_tree_vi_choice, mode_key_vi_choice },
+	{ "vi-copy", mode_key_cmdstr_copy,
+	  &mode_key_tree_vi_copy, mode_key_vi_copy },
+	{ "emacs-edit", mode_key_cmdstr_edit,
+	  &mode_key_tree_emacs_edit, mode_key_emacs_edit },
+	{ "emacs-choice", mode_key_cmdstr_choice,
+	  &mode_key_tree_emacs_choice, mode_key_emacs_choice },
+	{ "emacs-copy", mode_key_cmdstr_copy,
+	  &mode_key_tree_emacs_copy, mode_key_emacs_copy },
+
+	{ NULL, NULL, NULL, NULL }
+};
+
+SPLAY_GENERATE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
+
+int
+mode_key_cmp(struct mode_key_binding *mbind1, struct mode_key_binding *mbind2)
+{
+	if (mbind1->mode != mbind2->mode)
+		return (mbind1->mode - mbind2->mode);
+	return (mbind1->key - mbind2->key);
+}
+
+const char *
+mode_key_tostring(struct mode_key_cmdstr *cmdstr, enum mode_key_cmd cmd)
+{
+	for (; cmdstr->name != NULL; cmdstr++) {
+		if (cmdstr->cmd == cmd)
+			return (cmdstr->name);
+	}
+	return (NULL);
+}
 
 void
-mode_key_init(struct mode_key_data *mdata, const struct mode_key_entry *table)
+mode_key_init_trees(void)
 {
-	mdata->table = table;
+	const struct mode_key_table	*mtab;
+	const struct mode_key_entry	*ment;
+	struct mode_key_binding		*mbind;
+
+	for (mtab = mode_key_tables; mtab->name != NULL; mtab++) {
+		SPLAY_INIT(mtab->tree);
+		for (ment = mtab->table; ment->mode != -1; ment++) {
+			mbind = xmalloc(sizeof *mbind);
+			mbind->key = ment->key;
+			mbind->mode = ment->mode;
+			mbind->cmd = ment->cmd;
+			SPLAY_INSERT(mode_key_tree, mtab->tree, mbind);
+		}
+	}
+}
+
+void
+mode_key_free_trees(void)
+{
+	const struct mode_key_table	*mtab;
+	struct mode_key_binding		*mbind;
+
+	for (mtab = mode_key_tables; mtab->name != NULL; mtab++) {
+		while (!SPLAY_EMPTY(mtab->tree)) {
+			mbind = SPLAY_ROOT(mtab->tree);
+			SPLAY_REMOVE(mode_key_tree, mtab->tree, mbind);
+		}
+	}
+}
+
+void
+mode_key_init(struct mode_key_data *mdata, struct mode_key_tree *mtree)
+{
+	mdata->tree = mtree;
 	mdata->mode = 0;
 }
 
 enum mode_key_cmd
 mode_key_lookup(struct mode_key_data *mdata, int key)
 {
-	const struct mode_key_entry	*ment;
-	int				 mode;
+	struct mode_key_binding	*mbind, mtmp;
 
-	mode = mdata->mode;
-	for (ment = mdata->table; ment->mode != -1; ment++) {
-		if (ment->mode == mode && key == ment->key) {
-			switch (ment->cmd) {
-			case MODEKEYEDIT_SWITCHMODE:
-			case MODEKEYEDIT_SWITCHMODEAPPEND:
-				mdata->mode = 1 - mdata->mode;
-				/* FALLTHROUGH */
-			default:
-				return (ment->cmd);
-			}
-		}
+	mtmp.key = key;
+	mtmp.mode = mdata->mode;
+	if ((mbind = SPLAY_FIND(mode_key_tree, mdata->tree, &mtmp)) == NULL) {
+		if (mdata->mode != 0)
+			return (MODEKEY_NONE);
+		return (MODEKEY_OTHER);
 	}
-	if (mode != 0)
-		return (MODEKEY_NONE);
-	return (MODEKEY_OTHER);
+
+	switch (mbind->cmd) {
+	case MODEKEYEDIT_SWITCHMODE:
+	case MODEKEYEDIT_SWITCHMODEAPPEND:
+		mdata->mode = 1 - mdata->mode;
+		/* FALLTHROUGH */
+	default:
+		return (mbind->cmd);
+	}
 }

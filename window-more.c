@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.34 2009-07-28 22:55:59 tcunha Exp $ */
+/* $Id: window-more.c,v 1.35 2009-07-28 23:11:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -92,9 +92,9 @@ window_more_init(struct window_pane *wp)
 
 	keys = options_get_number(&wp->window->options, "mode-keys");
 	if (keys == MODEKEY_EMACS)
-		mode_key_init(&data->mdata, mode_key_emacs_choice);
+		mode_key_init(&data->mdata, &mode_key_tree_emacs_choice);
 	else
-		mode_key_init(&data->mdata, mode_key_vi_choice);
+		mode_key_init(&data->mdata, &mode_key_tree_vi_choice);
 
 	return (s);
 }
