@@ -28,24 +28,30 @@
 
 int	cmd_list_keys_exec(struct cmd *, struct cmd_ctx *);
 
+int	cmd_list_keys_table(struct cmd *, struct cmd_ctx *);
+
 const struct cmd_entry cmd_list_keys_entry = {
 	"list-keys", "lsk",
-	"",
+	"[-t key-table]",
 	0, 0,
-	NULL,
-	NULL,
+	cmd_target_init,
+	cmd_target_parse,
 	cmd_list_keys_exec,
-	NULL,
-	NULL
+	cmd_target_free,
+	cmd_target_print
 };
 
 int
-cmd_list_keys_exec(unused struct cmd *self, struct cmd_ctx *ctx)
+cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
+	struct cmd_target_data	*data = self->data;
 	struct key_binding	*bd;
 	const char		*key;
 	char			 tmp[BUFSIZ], keytmp[64];
 	int			 width, keywidth;
+
+	if (data->target != NULL)
+		return (cmd_list_keys_table(self, ctx));
 
 	width = 0;
 	SPLAY_FOREACH(bd, key_bindings, &key_bindings) {
@@ -72,6 +78,51 @@ cmd_list_keys_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 			key = keytmp;
 		}
 		ctx->print(ctx, "%*s: %s", width, key, tmp);
+	}
+
+	return (0);
+}
+
+int
+cmd_list_keys_table(struct cmd *self, struct cmd_ctx *ctx)
+{
+	struct cmd_target_data		*data = self->data;
+	const struct mode_key_table	*mtab;
+	struct mode_key_binding		*mbind;
+	const char			*key, *cmdstr, *mode;
+	int			 	 width, keywidth;
+
+	for (mtab = mode_key_tables; mtab->name != NULL; mtab++) {
+		if (strcasecmp(data->target, mtab->name) == 0)
+			break;
+	}
+	if (mtab->name == NULL) {
+		ctx->error(ctx, "unknown key table: %s", data->target);
+		return (-1);
+	}
+
+	width = 0;
+	SPLAY_FOREACH(mbind, mode_key_tree, mtab->tree) {
+		key = key_string_lookup_key(mbind->key);
+		if (key == NULL)
+			continue;
+
+		keywidth = strlen(key) + 1;
+		if (keywidth > width)
+			width = keywidth;
+	}
+
+	SPLAY_FOREACH(mbind, mode_key_tree, mtab->tree) {
+		key = key_string_lookup_key(mbind->key);
+		if (key == NULL)
+			continue;
+
+		mode = "";
+		if (mbind->mode != 0)
+			mode = "(command mode) ";
+		cmdstr = mode_key_tostring(mtab->cmdstr, mbind->cmd);
+		if (cmdstr != NULL)
+			ctx->print(ctx, "%*s: %s%s", width, key, mode, cmdstr);
 	}
 
 	return (0);

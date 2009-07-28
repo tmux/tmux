@@ -92,9 +92,9 @@ window_more_init(struct window_pane *wp)
 
 	keys = options_get_number(&wp->window->options, "mode-keys");
 	if (keys == MODEKEY_EMACS)
-		mode_key_init(&data->mdata, mode_key_emacs_choice);
+		mode_key_init(&data->mdata, &mode_key_tree_emacs_choice);
 	else
-		mode_key_init(&data->mdata, mode_key_vi_choice);
+		mode_key_init(&data->mdata, &mode_key_tree_vi_choice);
 
 	return (s);
 }

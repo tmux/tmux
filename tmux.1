@@ -331,9 +331,28 @@ The following keys are supported as appropriate for the mode:
 .It Li "Cursor right" Ta "l" Ta "Right"
 .It Li "Start selection" Ta "Space" Ta "C-Space"
 .It Li "Cursor up" Ta "k" Ta "Up"
-.It Li "Delete to end of line" Ta "D or C" Ta "C-k"
+.It Li "Delete to end of line" Ta "D" Ta "C-k"
 .It Li "Paste buffer" Ta "p" Ta "C-y"
 .El
+.Pp
+These key bindings are defined in a set of named tables:
+.Em vi-edit
+and
+.Em emacs-edit
+for keys used when line editing at the command prompt;
+.Em vi-choice
+and
+.Em emacs-choice
+for keys used when choosing from lists (such as produced by the
+.Ic window-choose
+command) or in output mode; and
+.Em vi-copy
+and
+.Em emacs-copy
+used in copy and scroll modes.
+The tables may be viewed with the
+.Ic list-keys
+command.
 .Pp
 The paste buffer key pastes the first line from the top paste buffer on the
 stack.
@@ -847,13 +866,31 @@ List all clients attached to the server.
 List the syntax of all commands supported by
 .Nm .
 .It Xo Ic list-keys
+.Op Ar Fl t Ar key-table
 .Xc
 .D1 (alias: Ic lsk )
 List all key bindings.
+Without
+.Fl t
+the primary key bindings - those executed when preceded by the prefix key -
+are printed.
 Keys bound without the prefix key (see
 .Ic bind-key
 .Fl n )
 are enclosed in square brackets.
+.Pp
+With
+.Fl t ,
+the key bindings in
+.Ar key-table
+are listed; this may be one of:
+.Em vi-edit ,
+.Em emacs-edit ,
+.Em vi-choice ,
+.Em emacs-choice ,
+.Em vi-copy
+or
+.Em emacs-copy .
 .It Xo Ic list-sessions
 .Xc
 .D1 (alias: Ic ls )
