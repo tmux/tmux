@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.24 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-bind-key.c,v 1.25 2009-07-28 23:19:06 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,6 +18,8 @@
 
 #include <sys/types.h>
 
+#include <string.h>
+
 #include "tmux.h"
 
 /*
@@ -29,15 +31,21 @@ int	cmd_bind_key_exec(struct cmd *, struct cmd_ctx *);
 void	cmd_bind_key_free(struct cmd *);
 size_t	cmd_bind_key_print(struct cmd *, char *, size_t);
 
+int	cmd_bind_key_table(struct cmd *, struct cmd_ctx *);
+
 struct cmd_bind_key_data {
 	int		 key;
 	int		 can_repeat;
 	struct cmd_list	*cmdlist;
+
+	int		 command_key;
+	char		*tablename;
+	char 		*modecmd;
 };
 
 const struct cmd_entry cmd_bind_key_entry = {
 	"bind-key", "bind",
-	"[-nr] key command [arguments]",
+	"[-cnr] [-t key-table] key command [arguments]",
 	0, 0,
 	NULL,
 	cmd_bind_key_parse,
@@ -55,14 +63,23 @@ cmd_bind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 	self->data = data = xmalloc(sizeof *data);
 	data->can_repeat = 0;
 	data->cmdlist = NULL;
+	data->command_key = 0;
+	data->tablename = NULL;
+	data->modecmd = NULL;
 
-	while ((opt = getopt(argc, argv, "nr")) != -1) {
+	while ((opt = getopt(argc, argv, "cnrt:")) != -1) {
 		switch (opt) {
+		case 'c':
+			data->command_key = 1;
+			break;
 		case 'n':
 			no_prefix = 1;
 			break;
 		case 'r':
 			data->can_repeat = 1;
+			break;
+		case 't':
+			data->tablename = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -82,8 +99,14 @@ cmd_bind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 
 	argc--;
 	argv++;
-	if ((data->cmdlist = cmd_list_parse(argc, argv, cause)) == NULL)
-		goto error;
+	if (data->tablename != NULL) {
+		if (argc != 1)
+			goto usage;
+		data->modecmd = xstrdup(argv[0]);
+	} else {
+		if ((data->cmdlist = cmd_list_parse(argc, argv, cause)) == NULL)
+			goto error;
+	}
 
 	return (0);
 
@@ -102,10 +125,45 @@ cmd_bind_key_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 
 	if (data == NULL)
 		return (0);
+	if (data->tablename != NULL)
+		return (cmd_bind_key_table(self, ctx));
 
 	key_bindings_add(data->key, data->can_repeat, data->cmdlist);
 	data->cmdlist = NULL;	/* avoid free */
 
+	return (0);
+}
+
+int
+cmd_bind_key_table(struct cmd *self, struct cmd_ctx *ctx)
+{
+	struct cmd_bind_key_data	*data = self->data;
+	const struct mode_key_table	*mtab;
+	struct mode_key_binding		*mbind, mtmp;
+	enum mode_key_cmd		 cmd;
+
+	if ((mtab = mode_key_findtable(data->tablename)) == NULL) {
+		ctx->error(ctx, "unknown key table: %s", data->tablename);
+		return (-1);
+	}
+
+	cmd = mode_key_fromstring(mtab->cmdstr, data->modecmd);
+	if (cmd == MODEKEY_NONE) {
+		ctx->error(ctx, "unknown command: %s", data->modecmd);
+		return (-1);
+	}
+	
+	mtmp.key = data->key & ~KEYC_PREFIX;
+	mtmp.mode = data->command_key ? 1 : 0;
+	if ((mbind = SPLAY_FIND(mode_key_tree, mtab->tree, &mtmp)) != NULL) {
+		mbind->cmd = cmd;
+		return (0);
+	}
+	mbind = xmalloc(sizeof *mbind);
+	mbind->key = mtmp.key;
+	mbind->mode = mtmp.mode;
+	mbind->cmd = cmd;
+	SPLAY_INSERT(mode_key_tree, mtab->tree, mbind);
 	return (0);
 }
 
@@ -116,6 +174,10 @@ cmd_bind_key_free(struct cmd *self)
 
 	if (data->cmdlist != NULL)
 		cmd_list_free(data->cmdlist);
+	if (data->tablename != NULL)
+		xfree(data->tablename);
+	if (data->modecmd != NULL)
+		xfree(data->modecmd);
 	xfree(data);
 }
 

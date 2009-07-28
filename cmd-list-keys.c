@@ -1,4 +1,4 @@
-/* $Id: cmd-list-keys.c,v 1.19 2009-07-28 23:11:18 tcunha Exp $ */
+/* $Id: cmd-list-keys.c,v 1.20 2009-07-28 23:19:06 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -92,11 +92,7 @@ cmd_list_keys_table(struct cmd *self, struct cmd_ctx *ctx)
 	const char			*key, *cmdstr, *mode;
 	int			 	 width, keywidth;
 
-	for (mtab = mode_key_tables; mtab->name != NULL; mtab++) {
-		if (strcasecmp(data->target, mtab->name) == 0)
-			break;
-	}
-	if (mtab->name == NULL) {
+	if ((mtab = mode_key_findtable(data->target)) == NULL) {
 		ctx->error(ctx, "unknown key table: %s", data->target);
 		return (-1);
 	}
