@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.28 2009-07-22 16:24:59 tcunha Exp $ */
+/* $Id: input-keys.c,v 1.29 2009-07-28 22:37:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,6 +36,9 @@ struct input_key_ent {
 };
 
 struct input_key_ent input_keys[] = {
+	/* Backspace key. */
+	{ KEYC_BSPACE, "\177",	   0 },
+
 	/* Function keys. */
 	{ KEYC_F1,     "\033OP",   INPUTKEY_CTRL|INPUTKEY_XTERM },
 	{ KEYC_F2,     "\033OQ",   INPUTKEY_CTRL|INPUTKEY_XTERM },

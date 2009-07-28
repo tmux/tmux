@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.20 2009-07-25 08:53:48 tcunha Exp $ */
+/* $Id: key-string.c,v 1.21 2009-07-28 22:37:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -57,7 +57,7 @@ struct {
 	{ "PPage",	KEYC_PPAGE },
 	{ "Tab",	'\011' },
 	{ "BTab",	KEYC_BTAB },
-	{ "BSpace",	'\177' },
+	{ "BSpace",	KEYC_BSPACE },
 
 	/* Arrow keys. */
 	{ "Up",		KEYC_UP },

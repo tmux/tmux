@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.390 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: tmux.h,v 1.391 2009-07-28 22:37:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -119,6 +119,9 @@ struct buffer {
 enum key_code {
 	/* Mouse key. */
 	KEYC_MOUSE = 0x1000,
+
+	/* Backspace key. */
+	KEYC_BSPACE,
 
 	/* Function keys. */
 	KEYC_F1,
