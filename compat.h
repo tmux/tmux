@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.7 2009-07-21 13:07:50 nicm Exp $ */
+/* $Id: compat.h,v 1.8 2009-07-28 22:17:10 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -114,6 +114,10 @@
 			(vvp)->tv_usec -= 1000000;			\
 		}							\
 	} while (0)
+#endif
+
+#ifndef PASS_MAX
+#define PASS_MAX 128
 #endif
 
 #ifndef TTY_NAME_MAX
