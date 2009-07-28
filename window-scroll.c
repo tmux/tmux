@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.35 2009-07-28 22:55:59 tcunha Exp $ */
+/* $Id: window-scroll.c,v 1.36 2009-07-28 22:58:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -132,7 +132,7 @@ window_scroll_key(struct window_pane *wp, unused struct client *c, int key)
 	struct screen			*s = &data->screen;
 
 	switch (mode_key_lookup(&data->mdata, key)) {
-	case MODEKEYCOPY_QUIT:
+	case MODEKEYCOPY_CANCEL:
 		window_pane_reset_mode(wp);
 		break;
 	case MODEKEYCOPY_LEFT:

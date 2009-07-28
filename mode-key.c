@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.19 2009-07-28 22:55:59 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.20 2009-07-28 22:58:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,7 +74,7 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ ' ',			0, MODEKEYCOPY_STARTSELECTION },
 	{ '$',			0, MODEKEYCOPY_ENDOFLINE },
 	{ '0',			0, MODEKEYCOPY_STARTOFLINE },
-	{ '\003' /* C-c */,	0, MODEKEYCOPY_QUIT },
+	{ '\003' /* C-c */,	0, MODEKEYCOPY_CANCEL },
 	{ '\006' /* C-f */,	0, MODEKEYCOPY_NEXTPAGE },
 	{ '\010' /* C-h */,	0, MODEKEYCOPY_LEFT },
 	{ '\025' /* C-u */,	0, MODEKEYCOPY_PREVIOUSPAGE },
@@ -86,7 +86,7 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ 'j',			0, MODEKEYCOPY_DOWN },
 	{ 'k',			0, MODEKEYCOPY_UP },
 	{ 'l',			0, MODEKEYCOPY_RIGHT },
-	{ 'q',			0, MODEKEYCOPY_QUIT },
+	{ 'q',			0, MODEKEYCOPY_CANCEL },
 	{ 'w',			0, MODEKEYCOPY_NEXTWORD },
 	{ KEYC_BSPACE,		0, MODEKEYCOPY_LEFT },
 	{ KEYC_DOWN,		0, MODEKEYCOPY_DOWN },
@@ -144,7 +144,7 @@ const struct mode_key_entry mode_key_emacs_copy[] = {
 	{ '\000' /* C-Space */,	0, MODEKEYCOPY_STARTSELECTION },
 	{ '\001' /* C-a */,	0, MODEKEYCOPY_STARTOFLINE },
 	{ '\002' /* C-b */,	0, MODEKEYCOPY_LEFT },
-	{ '\003' /* C-c */,	0, MODEKEYCOPY_QUIT },
+	{ '\003' /* C-c */,	0, MODEKEYCOPY_CANCEL },
 	{ '\005' /* C-e */,	0, MODEKEYCOPY_ENDOFLINE },
 	{ '\006' /* C-f */,	0, MODEKEYCOPY_RIGHT },
 	{ '\007' /* C-g */,	0, MODEKEYCOPY_CLEARSELECTION },
@@ -152,11 +152,11 @@ const struct mode_key_entry mode_key_emacs_copy[] = {
 	{ '\020' /* C-p */,	0, MODEKEYCOPY_UP },
 	{ '\026' /* C-v */,	0, MODEKEYCOPY_NEXTPAGE },
 	{ '\027' /* C-w */,	0, MODEKEYCOPY_COPYSELECTION },
-	{ '\033' /* Escape */,	0, MODEKEYCOPY_QUIT },
+	{ '\033' /* Escape */,	0, MODEKEYCOPY_CANCEL },
 	{ 'b' | KEYC_ESCAPE,	0, MODEKEYCOPY_PREVIOUSWORD },
 	{ 'f' | KEYC_ESCAPE,	0, MODEKEYCOPY_NEXTWORD },
 	{ 'm' | KEYC_ESCAPE,	0, MODEKEYCOPY_BACKTOINDENTATION },
-	{ 'q',			0, MODEKEYCOPY_QUIT },
+	{ 'q',			0, MODEKEYCOPY_CANCEL },
 	{ 'v' | KEYC_ESCAPE,	0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ 'w' | KEYC_ESCAPE,	0, MODEKEYCOPY_COPYSELECTION },
 	{ KEYC_DOWN,		0, MODEKEYCOPY_DOWN },
