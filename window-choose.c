@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.17 2009-07-17 12:12:54 nicm Exp $ */
+/* $Id: window-choose.c,v 1.18 2009-07-28 22:49:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -139,8 +139,6 @@ window_choose_free(struct window_pane *wp)
 
 	if (data->freefn != NULL && data->data != NULL)
 		data->freefn(data->data);
-
- 	mode_key_free(&data->mdata);
 
 	for (i = 0; i < ARRAY_LENGTH(&data->list); i++)
 		xfree(ARRAY_ITEM(&data->list, i).name);

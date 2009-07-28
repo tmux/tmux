@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.33 2009-05-04 17:58:27 nicm Exp $ */
+/* $Id: window-scroll.c,v 1.34 2009-07-28 22:49:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -87,8 +87,6 @@ void
 window_scroll_free(struct window_pane *wp)
 {
 	struct window_scroll_mode_data	*data = wp->modedata;
-
-	mode_key_free(&data->mdata);
 
 	screen_free(&data->screen);
 	xfree(data);

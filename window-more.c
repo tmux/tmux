@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.32 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: window-more.c,v 1.33 2009-07-28 22:49:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -100,8 +100,6 @@ window_more_free(struct window_pane *wp)
 {
 	struct window_more_mode_data	*data = wp->modedata;
 	u_int				 i;
-
-	mode_key_free(&data->mdata);
 
 	for (i = 0; i < ARRAY_LENGTH(&data->list); i++)
 		xfree(ARRAY_ITEM(&data->list, i));

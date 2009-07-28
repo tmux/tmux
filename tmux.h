@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.392 2009-07-28 22:44:38 tcunha Exp $ */
+/* $Id: tmux.h,v 1.393 2009-07-28 22:49:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1032,7 +1032,6 @@ int		 load_cfg(const char *, char **x);
 
 /* mode-key.c */
 void		 mode_key_init(struct mode_key_data *, int, int);
-void		 mode_key_free(struct mode_key_data *);
 enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
 
 /* options.c */

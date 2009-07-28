@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.67 2009-07-28 22:39:29 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.68 2009-07-28 22:49:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -124,8 +124,6 @@ void
 window_copy_free(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
-
- 	mode_key_free(&data->mdata);
 
 	screen_free(&data->screen);
 	xfree(data);
