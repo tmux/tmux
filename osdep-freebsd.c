@@ -1,4 +1,4 @@
-/* $Id: osdep-freebsd.c,v 1.16 2009-06-26 15:31:15 nicm Exp $ */
+/* $Id: osdep-freebsd.c,v 1.17 2009-07-28 22:28:11 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -85,29 +85,34 @@ retry:
 			continue;
 		}
 
-		if (is_runnable(p) && !is_runnable(bestp))
+		if (is_runnable(p) && !is_runnable(bestp)) {
 			bestp = p;
-		else if (!is_runnable(p) && is_runnable(bestp))
+			continue;
+		} else if (!is_runnable(p) && is_runnable(bestp))
 			continue;
 
-		if (!is_stopped(p) && is_stopped(bestp))
+		if (!is_stopped(p) && is_stopped(bestp)) {
 			bestp = p;
-		else if (is_stopped(p) && !is_stopped(bestp))
+			continue;
+		} else if (is_stopped(p) && !is_stopped(bestp))
 			continue;
 
-		if (p->ki_estcpu > bestp->ki_estcpu)
+		if (p->ki_estcpu > bestp->ki_estcpu) {
 			bestp = p;
-		else if (p->ki_estcpu < bestp->ki_estcpu)
+			continue;
+		} else if (p->ki_estcpu < bestp->ki_estcpu)
 			continue;
 
-		if (p->ki_slptime < bestp->ki_slptime)
+		if (p->ki_slptime < bestp->ki_slptime) {
 			bestp = p;
-		else if (p->ki_slptime > bestp->ki_slptime)
+			continue;
+		} else if (p->ki_slptime > bestp->ki_slptime)
 			continue;
 
-		if (strcmp(p->ki_comm, p->ki_comm) < 0)
+		if (strcmp(p->ki_comm, bestp->ki_comm) < 0) {
 			bestp = p;
-		else if (strcmp(p->ki_comm, p->ki_comm) > 0)
+			continue;
+		} else if (strcmp(p->ki_comm, bestp->ki_comm) > 0)
 			continue;
 
 		if (p->ki_pid > bestp->ki_pid)
