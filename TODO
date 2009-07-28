@@ -73,8 +73,6 @@
 - way to set socket path from config file
 - XXX once env stuff is in, default-path and VISUAL/EDITOR should be picked up
   when session is started
-- the copy mode next-word behaviour is emacs style (end of word) rather than vi
-  style (start of word) even in vi keys mode,
 - when moving up from a blank line in copy mode it always assumes you were at
   the end of the line so it can be a bit funny. should remember last non-blank
   x position and use that
@@ -87,11 +85,6 @@
 - split list-windows into separate list-windows and list-panes
 - option (mode-mouse) to turn off mouse in copy-mode etc
 - way to override terminfo definitions
-- ability to rebind mode keys
-  	  - make key binding code generic (key_tree?) from key_bindings, then
-            use it for mode keys
-	  - split mode keys into separate trees for edit/choice/movement? flag
-            for mode (vi)?
 - warts on current naming:
   	- display-time but message-fg/bg/attr
 	- list-* vs show-*
