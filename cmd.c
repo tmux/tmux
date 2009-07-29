@@ -103,7 +103,7 @@ const struct cmd_entry *cmd_table[] = {
 	NULL
 };
 
-struct session	*cmd_newest_session(void);
+struct session	*cmd_newest_session(struct sessions *);
 struct client	*cmd_lookup_client(const char *);
 struct session	*cmd_lookup_session(const char *, int *);
 struct winlink	*cmd_lookup_window(struct session *, const char *, int *);
@@ -281,18 +281,57 @@ cmd_print(struct cmd *cmd, char *buf, size_t len)
 
 /*
  * Figure out the current session. Use: 1) the current session, if the command
- * context has one; 2) the session specified in the TMUX variable from the
- * environment (as passed from the client); 3) the newest session.
+ * context has one; 2) the session containing the pty of the calling client, if
+ * any 3) the session specified in the TMUX variable from the environment (as
+ * passed from the client); 3) the newest session.
  */
 struct session *
 cmd_current_session(struct cmd_ctx *ctx)
 {
 	struct msg_command_data	*data = ctx->msgdata;
+	struct client		*c = ctx->cmdclient;
 	struct session		*s;
+	struct sessions		 ss;
+	struct winlink		*wl;
+	struct window_pane	*wp;
+	u_int			 i;
+	int			 found;
 
 	if (ctx->cursession != NULL)
 		return (ctx->cursession);
 
+	/*
+	 * If the name of the calling client's pty is know, build a list of the
+	 * sessions that contain it and if any choose either the first or the
+	 * newest.
+	 */
+	if (c != NULL && c->tty.path != NULL) {
+		ARRAY_INIT(&ss);
+		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+			if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
+				continue;
+			found = 0;
+			RB_FOREACH(wl, winlinks, &s->windows) {
+				TAILQ_FOREACH(wp, &wl->window->panes, entry) {
+					if (strcmp(wp->tty, c->tty.path) == 0) {
+						found = 1;
+						break;
+					}
+				}
+				if (found)
+					break;
+			}
+			if (found)
+				ARRAY_ADD(&ss, s);
+		}
+
+		s = cmd_newest_session(&ss);
+		ARRAY_FREE(&ss);
+		if (s != NULL)
+			return (s);
+	}
+
+	/* Use the session from the TMUX environment variable. */
 	if (data != NULL && data->pid != -1) {
 		if (data->pid != getpid())
 			return (NULL);
@@ -303,20 +342,20 @@ cmd_current_session(struct cmd_ctx *ctx)
 		return (s);
 	}
 
-	return (cmd_newest_session());
+	return (cmd_newest_session(&sessions));
 }
 
 /* Find the newest session. */
 struct session *
-cmd_newest_session(void)
+cmd_newest_session(struct sessions *ss)
 {
 	struct session	*s, *snewest;
 	struct timeval	*tv = NULL;
 	u_int		 i;
 
 	snewest = NULL;
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
+	for (i = 0; i < ARRAY_LENGTH(ss); i++) {
+		if ((s = ARRAY_ITEM(ss, i)) == NULL)
 			continue;
 
 		if (tv == NULL || timercmp(&s->tv, tv, >)) {
