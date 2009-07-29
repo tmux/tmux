@@ -362,7 +362,7 @@ main(int argc, char **argv)
 	options_set_number(&global_s_options, "status-right-length", 40);
 	options_set_string(&global_s_options, "status-left", "[#S]");
 	options_set_string(
-	    &global_s_options, "status-right", "\"#24T\" %%H:%%M %%d-%%b-%%y");
+	    &global_s_options, "status-right", "\"#22T\" %%H:%%M %%d-%%b-%%y");
 	if (flags & IDENTIFY_UTF8)
 		options_set_number(&global_s_options, "status-utf8", 1);
 	else
