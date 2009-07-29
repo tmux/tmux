@@ -63,7 +63,7 @@ client_fill_session(struct msg_command_data *data)
 
 void
 client_write_server(
-    struct client_ctx *cctx, enum hdrtype type, void *buf, size_t len)
+    struct client_ctx *cctx, enum msgtype type, void *buf, size_t len)
 {
 	struct hdr	hdr;
 

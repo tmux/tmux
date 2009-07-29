@@ -33,7 +33,7 @@ int	client_msg_fn_exited(struct hdr *, struct client_ctx *);
 int	client_msg_fn_suspend(struct hdr *, struct client_ctx *);
 
 struct client_msg {
-	enum hdrtype   type;
+	enum msgtype   type;
 	int	       (*fn)(struct hdr *, struct client_ctx *);
 };
 struct client_msg client_msg_table[] = {

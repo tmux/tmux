@@ -41,7 +41,7 @@ void printflike2 server_msg_fn_command_info(
     	    struct cmd_ctx *, const char *, ...);
 
 struct server_msg {
-	enum hdrtype	type;
+	enum msgtype	type;
 	void	        (*fn)(struct hdr *, struct client *);
 };
 const struct server_msg server_msg_table[] = {

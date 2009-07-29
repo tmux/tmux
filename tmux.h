@@ -287,7 +287,7 @@ struct tty_term_code_entry {
 };
 
 /* Message codes. */
-enum hdrtype {
+enum msgtype {
 	MSG_COMMAND,
 	MSG_DETACH,
 	MSG_ERROR,
@@ -313,7 +313,7 @@ enum hdrtype {
  * the tmux client hang even if the protocol version is bumped.
  */
 struct hdr {
-	enum hdrtype	type;
+	enum msgtype	type;
 	size_t		size;
 };
 
@@ -1351,7 +1351,7 @@ int	 client_main(struct client_ctx *);
 int	 client_msg_dispatch(struct client_ctx *);
 
 /* client-fn.c */
-void	 client_write_server(struct client_ctx *, enum hdrtype, void *, size_t);
+void	 client_write_server(struct client_ctx *, enum msgtype, void *, size_t);
 void	 client_fill_session(struct msg_command_data *);
 
 /* key-bindings.c */
@@ -1385,9 +1385,9 @@ int	 server_msg_dispatch(struct client *);
 const char **server_fill_environ(struct session *);
 void	 server_write_error(struct client *, const char *);
 void	 server_write_client(
-             struct client *, enum hdrtype, const void *, size_t);
+             struct client *, enum msgtype, const void *, size_t);
 void	 server_write_session(
-             struct session *, enum hdrtype, const void *, size_t);
+             struct session *, enum msgtype, const void *, size_t);
 void	 server_redraw_client(struct client *);
 void	 server_status_client(struct client *);
 void	 server_redraw_session(struct session *);
