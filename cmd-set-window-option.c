@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.35 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.36 2009-07-30 20:32:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -60,6 +60,7 @@ const struct set_option_entry set_window_option_table[] = {
 	{ "mode-bg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "mode-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "mode-keys", SET_OPTION_CHOICE, 0, 0, set_option_mode_keys_list },
+	{ "mode-mouse", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "monitor-activity", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "monitor-content", SET_OPTION_STRING, 0, 0, NULL },
 	{ "remain-on-exit", SET_OPTION_FLAG, 0, 0, NULL },

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.152 2009-07-30 20:21:55 tcunha Exp $ */
+/* $Id: tmux.c,v 1.153 2009-07-30 20:32:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -387,12 +387,13 @@ main(int argc, char **argv)
 	options_set_number(&global_w_options, "clock-mode-style", 1);
 	options_set_number(&global_w_options, "force-height", 0);
 	options_set_number(&global_w_options, "force-width", 0);
-	options_set_number(&global_w_options, "mode-attr", GRID_ATTR_REVERSE);
 	options_set_number(&global_w_options, "main-pane-width", 81);
 	options_set_number(&global_w_options, "main-pane-height", 24);
+	options_set_number(&global_w_options, "mode-attr", GRID_ATTR_REVERSE);
 	options_set_number(&global_w_options, "mode-bg", 3);
 	options_set_number(&global_w_options, "mode-fg", 0);
 	options_set_number(&global_w_options, "mode-keys", MODEKEY_EMACS);
+	options_set_number(&global_w_options, "mode-mouse", 1);
 	options_set_number(&global_w_options, "monitor-activity", 0);
 	options_set_string(&global_w_options, "monitor-content", "%s", "");
 	if (flags & IDENTIFY_UTF8)
