@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.57 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: client.c,v 1.58 2009-07-30 20:50:10 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -147,7 +147,9 @@ client_main(struct client_ctx *cctx)
 
 	logfile("client");
 
-	while (!sigterm) {
+	for (;;) {
+		if (sigterm)
+			client_write_server(cctx, MSG_EXITING, NULL, 0);
 		if (sigchld) {
 			waitpid(WAIT_ANY, NULL, WNOHANG);
 			sigchld = 0;
