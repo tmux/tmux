@@ -771,3 +771,88 @@ not_found:
 		xfree(sessptr);
 	return (-2);
 }
+
+/*
+ * Find the target session, window and pane number or report an error and
+ * return NULL. The pane number is separated from the session:window by a .,
+ * such as mysession:mywindow.0.
+ */
+struct winlink *
+cmd_find_pane(struct cmd_ctx *ctx,
+    const char *arg, struct session **sp, struct window_pane **wpp)
+{
+	struct session	*s;
+	struct winlink	*wl;
+	const char	*period;
+	char		*winptr, *paneptr;
+	const char	*errstr;
+	u_int		 idx;
+
+	/* Get the current session. */
+	if ((s = cmd_current_session(ctx)) == NULL) {
+       		ctx->error(ctx, "can't establish current session");
+		return (NULL);
+	}
+	if (sp != NULL)
+		*sp = s;
+
+	/* A NULL argument means the current session, window and pane. */
+	if (arg == NULL) {
+		*wpp = s->curw->window->active;
+		return (s->curw);
+	}
+
+	/* Look for a separating period. */
+	if ((period = strrchr(arg, '.')) == NULL)
+		goto no_period;
+
+	/* Pull out the window part and parse it. */
+	winptr = xstrdup(arg);
+	winptr[period - arg] = '\0';
+	if (*winptr == '\0')
+		wl = s->curw;
+	else if ((wl = cmd_find_window(ctx, winptr, sp)) == NULL)
+		goto error;
+
+	/* Find the pane section and look it up. */
+	paneptr = winptr + (period - arg) + 1;
+	if (*paneptr == '\0')
+		*wpp = wl->window->active;
+	else {
+		idx = strtonum(paneptr, 0, INT_MAX, &errstr);
+		if (errstr != NULL) {
+			ctx->error(ctx, "pane %s: %s", errstr, paneptr);
+			goto error;
+		}
+		*wpp = window_pane_at_index(wl->window, idx);
+		if (*wpp == NULL) {
+			ctx->error(ctx, "no such pane: %u", idx);
+			goto error;
+		}
+	}
+
+	xfree(winptr);
+	return (wl);
+
+no_period:
+	/* Try as a pane number alone. */
+	idx = strtonum(arg, 0, INT_MAX, &errstr);
+	if (errstr != NULL)
+		goto lookup_window;
+
+	/* Try index in the current session and window. */
+	if ((*wpp = window_pane_at_index(s->curw->window, idx)) == NULL)
+		goto lookup_window;
+	
+	return (s->curw);
+
+lookup_window:
+	/* Try as a window and use the active pane. */
+	if ((wl = cmd_find_window(ctx, arg, sp)) != NULL)
+		*wpp = wl->window->active;
+	return (wl);
+	
+error:
+	xfree(winptr);
+	return (NULL);
+}

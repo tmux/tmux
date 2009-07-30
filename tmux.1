@@ -534,9 +534,10 @@ Most commands accept the optional
 argument with one of
 .Ar target-client ,
 .Ar target-session
+.Ar target-window ,
 or
-.Ar target-window .
-These specify the client, session or window which a command should affect.
+.Ar target-pane .
+These specify the client, session, window or pane which a command should affect.
 .Ar target-client
 is the name of the
 .Xr pty 4
@@ -597,6 +598,19 @@ When the argument does not contain a colon,
 .Nm
 first attempts to parse it as window; if that fails, an attempt is made to
 match a session.
+.Pp
+.Ar target-pane
+takes a similar form to
+.Ar target-window
+but with the optional addition of a period followed by a pane index, for
+example: mysession:mywindow.1.
+If the pane index is omitted, the currently active pane in the specified
+window is used.
+If neither a colon nor period appears,
+.Nm
+first attempts to use the argument as a pane index; if that fails, it is looked
+up as for
+.Ar target-window .
 .Pp
 Multiple commands may be specified together as part of a
 .Em command sequence .
@@ -687,12 +701,12 @@ To view the default bindings and possible commands, see the
 command.
 .It Xo Ic break-pane
 .Op Fl d
-.Op Fl p Ar pane-index
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic breakp )
-Break the current pane off from its containing window to make it the only pane
-in a new window.
+Break
+.Ar target-pane
+off from its containing window to make it the only pane in a new window.
 If
 .Fl d
 is given, the new window does not become the current window.
@@ -711,8 +725,7 @@ attached to the current client may be selected interactively from a list.
 This command works only from inside
 .Nm .
 .It Xo Ic clear-history
-.Op Fl p Ar pane-index
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic clearhist )
 Remove and free the history for the specified pane.
@@ -782,8 +795,7 @@ Display a message (see the
 option below)
 in the status line.
 .It Xo Ic down-pane
-.Op Fl p Ar pane-index
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic downp )
 Move down a pane.
@@ -818,8 +830,7 @@ if
 .Ar shell-command
 returns success.
 .It Xo Ic kill-pane
-.Op Fl p Ar pane-index
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic killp )
 Destroy the given pane.
@@ -1058,8 +1069,7 @@ if specified, to
 .Ar new-name .
 .It Xo Ic resize-pane
 .Op Fl DLRU
-.Op Fl p Ar pane-index
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Op Ar adjustment
 .Xc
 .D1 (alias: Ic resizep )
@@ -1130,12 +1140,11 @@ If
 .Ar layout-name
 is not given, the last layout used (if any) is reapplied.
 .It Xo Ic select-pane
-.Op Fl p Ar pane-index
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic selectp )
 Make pane
-.Ar pane-index
+.Ar target-pane
 the active pane in window
 .Ar target-window .
 .It Xo Ic select-prompt
@@ -1297,11 +1306,9 @@ Whether a key repeats may be set when it is bound using the
 .Fl r
 flag to
 .Ic bind-key .
-Repeat is enabled for the default keys of the
-.Ic resize-pane-up
-and
-.Ic resize-pane-down
-commands.
+Repeat is enabled for the default keys bound to the
+.Ic resize-pane
+command.
 .It Xo Ic set-remain-on-exit
 .Op Ic on | Ic off
 .Xc
@@ -1659,19 +1666,18 @@ Suspend a client by sending
 (tty stop).
 .It Xo Ic swap-pane
 .Op Fl dDU
-.Op Fl p Ar src-index
-.Op Fl t Ar target-window
-.Op Fl q Ar dst-index
+.Op Fl s Ar src-pane
+.Op Fl t Ar dst-pane
 .Xc
 .D1 (alias: Ic swapp )
-Swap two panes within a window.
+Swap two panes.
 If
 .Fl U
-is used, the pane is swapped with the pane above (before it numerically);
+is used and no source pane is specified with
+.Fl s ,
+.Ar dst-pane is swapped with the previous pane (before it numerically);
 .Fl D
-swaps with the pane below (the next numerically); or
-.Ar dst-index
-may be give to swap with a specific pane.
+swaps with the next pane (after it numerically).
 .It Xo Ic swap-window
 .Op Fl d
 .Op Fl s Ar src-window
@@ -1733,8 +1739,7 @@ if
 is specified and the window is linked to only one session, it is unlinked and
 destroyed.
 .It Xo Ic up-pane
-.Op Fl p Ar pane-index
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic upp )
 Move up a pane.
