@@ -1,4 +1,4 @@
-/* $Id: client-msg.c,v 1.22 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: client-msg.c,v 1.23 2009-07-30 20:21:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,7 @@ int	client_msg_fn_exited(struct hdr *, struct client_ctx *);
 int	client_msg_fn_suspend(struct hdr *, struct client_ctx *);
 
 struct client_msg {
-	enum hdrtype   type;
+	enum msgtype   type;
 	int	       (*fn)(struct hdr *, struct client_ctx *);
 };
 struct client_msg client_msg_table[] = {

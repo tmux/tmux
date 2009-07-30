@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.151 2009-07-30 20:17:25 tcunha Exp $ */
+/* $Id: tmux.c,v 1.152 2009-07-30 20:21:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,8 +62,8 @@ char		*socket_path;
 
 __dead void	 usage(void);
 char 		*makesockpath(const char *);
-int		 prepare_unlock(enum hdrtype *, void **, size_t *, int);
-int		 prepare_cmd(enum hdrtype *, void **, size_t *, int, char **);
+int		 prepare_unlock(enum msgtype *, void **, size_t *, int);
+int		 prepare_cmd(enum msgtype *, void **, size_t *, int, char **);
 
 #ifndef HAVE_PROGNAME
 char      *__progname = (char *) "tmux";
@@ -212,7 +212,7 @@ makesockpath(const char *label)
 }
 
 int
-prepare_unlock(enum hdrtype *msg, void **buf, size_t *len, int argc)
+prepare_unlock(enum msgtype *msg, void **buf, size_t *len, int argc)
 {
 	static struct msg_unlock_data	 unlockdata;
 	char				*pass;
@@ -241,7 +241,7 @@ prepare_unlock(enum hdrtype *msg, void **buf, size_t *len, int argc)
 }
 
 int
-prepare_cmd(enum hdrtype *msg, void **buf, size_t *len, int argc, char **argv)
+prepare_cmd(enum msgtype *msg, void **buf, size_t *len, int argc, char **argv)
 {
 	static struct msg_command_data	 cmddata;
 
@@ -267,7 +267,7 @@ main(int argc, char **argv)
 	struct cmd_list		*cmdlist;
  	struct cmd		*cmd;
 	struct pollfd	 	 pfd;
-	enum hdrtype		 msg;
+	enum msgtype		 msg;
 	struct hdr	 	 hdr;
 	struct passwd		*pw;
 	struct msg_print_data	 printdata;

@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.77 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.78 2009-07-30 20:21:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,7 +58,7 @@ server_write_error(struct client *c, const char *msg)
 
 void
 server_write_client(
-    struct client *c, enum hdrtype type, const void *buf, size_t len)
+    struct client *c, enum msgtype type, const void *buf, size_t len)
 {
 	struct hdr	 hdr;
 
@@ -74,7 +74,7 @@ server_write_client(
 
 void
 server_write_session(
-    struct session *s, enum hdrtype type, const void *buf, size_t len)
+    struct session *s, enum msgtype type, const void *buf, size_t len)
 {
 	struct client	*c;
 	u_int		 i;

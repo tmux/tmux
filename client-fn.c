@@ -1,4 +1,4 @@
-/* $Id: client-fn.c,v 1.7 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: client-fn.c,v 1.8 2009-07-30 20:21:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,7 +63,7 @@ client_fill_session(struct msg_command_data *data)
 
 void
 client_write_server(
-    struct client_ctx *cctx, enum hdrtype type, void *buf, size_t len)
+    struct client_ctx *cctx, enum msgtype type, void *buf, size_t len)
 {
 	struct hdr	hdr;
 
