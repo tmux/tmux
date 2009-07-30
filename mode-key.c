@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.22 2009-07-28 23:19:06 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.23 2009-07-30 21:14:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -337,6 +337,7 @@ mode_key_free_trees(void)
 		while (!SPLAY_EMPTY(mtab->tree)) {
 			mbind = SPLAY_ROOT(mtab->tree);
 			SPLAY_REMOVE(mode_key_tree, mtab->tree, mbind);
+			xfree(mbind);
 		}
 	}
 }

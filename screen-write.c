@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.65 2009-07-28 22:41:38 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.66 2009-07-30 21:14:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -91,6 +91,7 @@ screen_write_strlen(int utf8flag, const char *fmt, ...)
 		}
 	}
 
+	xfree(msg);
 	return (size);
 }
 

@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.94 2009-07-18 11:06:35 nicm Exp $ */
+/* $Id: screen.c,v 1.95 2009-07-30 21:14:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,6 +62,8 @@ screen_reinit(struct screen *s)
 void
 screen_free(struct screen *s)
 {
+	if (s->tabs != NULL)
+		xfree(s->tabs);
 	xfree(s->title);
 	grid_destroy(s->grid);
 }

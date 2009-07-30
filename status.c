@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.106 2009-07-28 23:11:18 tcunha Exp $ */
+/* $Id: status.c,v 1.107 2009-07-30 21:14:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -801,6 +801,7 @@ status_prompt_key(struct client *c, int key)
  		memcpy(first, s, strlen(s));
 
 		c->prompt_index = (first - c->prompt_buffer) + strlen(s);
+		xfree(s);
 
 		c->flags |= CLIENT_STATUS;
 		break;
