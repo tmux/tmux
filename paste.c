@@ -104,8 +104,12 @@ paste_add(struct paste_stack *ps, char *data, u_int limit)
 	if (*data == '\0')
 		return;
 
-	while (ARRAY_LENGTH(ps) >= limit)
+	while (ARRAY_LENGTH(ps) >= limit) {
+		pb = ARRAY_LAST(ps);
+		xfree(pb->data);
+		xfree(pb);
 		ARRAY_TRUNC(ps, 1);
+	}
 
 	pb = xmalloc(sizeof *pb);
 	ARRAY_INSERT(ps, 0, pb);
