@@ -41,11 +41,10 @@ int
 cmd_clear_history_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
-	struct winlink		*wl;
 	struct window_pane	*wp;
 	struct grid		*gd;
 
-	if ((wl = cmd_find_pane(ctx, data->target, NULL, &wp)) == NULL)
+	if (cmd_find_pane(ctx, data->target, NULL, &wp) == NULL)
 		return (-1);
 	gd = wp->base.grid;
 
