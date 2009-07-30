@@ -1,5 +1,4 @@
 - window creation/idle time
-- could use bsearch all over the place or get rid of smaller tables (clientmsg)
 - better errors when creating new windows/sessions (how?)
 - implicitly add exec to the commands for new windows (switch to disable it)?
 - it would be nice to have multichar commands eg C-b K K
@@ -7,7 +6,6 @@
  	extend list-clients to list clients attached to a session (-a for all?)
 	bring back detach-session to detach all clients on a session?
 - allow fnmatch for -c, so that you can, eg, detach all clients
-- bind non prefix keys
 - garbage collect window history (100 lines at a time?) if it hasn't been used
   in $x time (need window creation/use times)
 - lift SHRT_MAX limits for history?
@@ -16,7 +14,6 @@
 - better terminal emulation
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
-- tidy up window modes
 - next prev word etc in command prompt; also ^K
 - many more info() displays for various things
 - vi half page scroll
@@ -60,7 +57,6 @@
 - choice and more mode would be better per client than per window?
 - some way to force a screen to use the entire terminal even if it is forced
   to be smaller by other clients. pan smaller terminal? (like screen F)
-- close/redirect stderr when popen to child proc for #() in status line
 - hooks to which commands may be attached, for example: tmux add-hook
   "new-session" if-shell "[ -e $HOME/.tmux-session.conf ]" source-file
   $HOME/.tmux-session.conf
@@ -83,13 +79,12 @@
 - H/M/L commands in copy mode with vi-keys, for jumping to the top/middle/last
   line on the screen
 - split list-windows into separate list-windows and list-panes
-- option (mode-mouse) to turn off mouse in copy-mode etc
 - way to override terminfo definitions
 - warts on current naming:
   	- display-time but message-fg/bg/attr
 	- list-* vs show-*
 	- server-info
-	- up-pane/down-pane vs next-*/previous-* vs resize-pane U/D/L/R
+	- up-pane/down-pane/swap-pane -U/swap-pane -D vs next-*/previous-*
 - pcvt25 doesn't work properly, why? (bce?)
 - tidy up and prioritise todo list ;-)
 - it is only possible to specify 8 colours to fg/bg options; should be able to
@@ -98,8 +93,6 @@
        would work fine with config file since
 - option to set customisable prompt for command-prompt (so eg bind -n F2
   command-prompt "splitw 'exec man %%') can have "man: " instead of "(splitw)".
- (i think someone suggested this before and i poo-poo'd it, don't remember why
- is there a downside?)
 - a way for force-width/height to apply to only one
   pane (how?)
 - **** a command to run something without a window and send any output to the
@@ -112,3 +105,4 @@
   reverse from status-attr, but confusing by default if they are fixed. best
   would be to make fg/bg adaptive and have them do the right thing. need
   changes/additions to options though
+- support for bce
