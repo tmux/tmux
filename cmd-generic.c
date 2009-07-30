@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.31 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-generic.c,v 1.32 2009-07-30 20:45:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -465,95 +465,5 @@ cmd_option_print(struct cmd *self, char *buf, size_t len)
 		off += xsnprintf(buf + off, len - off, " %s", data->option);
  	if (off < len && data->value != NULL)
 		off += xsnprintf(buf + off, len - off, " %s", data->value);
-	return (off);
-}
-
-void
-cmd_pane_init(struct cmd *self, unused int key)
-{
-	struct cmd_pane_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	data->chflags = 0;
-	data->target = NULL;
-	data->arg = NULL;
-	data->pane = -1;
-}
-
-int
-cmd_pane_parse(struct cmd *self, int argc, char **argv, char **cause)
-{
-	struct cmd_pane_data	*data;
-	const struct cmd_entry	*entry = self->entry;
-	int			 opt, n;
-	const char		*errstr;
-
-	/* Don't use the entry version since it may be dependent on key. */
-	cmd_pane_init(self, 0);
-	data = self->data;
-
-	while ((opt = cmd_getopt(argc, argv, "p:t:", entry->chflags)) != -1) {
-		if (cmd_flags(opt, entry->chflags, &data->chflags) == 0)
-			continue;
-		switch (opt) {
-		case 'p':
-			if (data->pane == -1) {
-				n = strtonum(optarg, 0, INT_MAX, &errstr);
-				if (errstr != NULL) {
-					xasprintf(cause, "pane %s", errstr);
-					goto error;
-				}
-				data->pane = n;
-			}
-			break;
-		case 't':
-			if (data->target == NULL)
-				data->target = xstrdup(optarg);
-			break;
-		default:
-			goto usage;
-		}
-	}
-	argc -= optind;
-	argv += optind;
-
-	if (cmd_fill_argument(self->entry->flags, &data->arg, argc, argv) != 0)
-		goto usage;
-	return (0);
-
-usage:
-	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
-
-error:
-	self->entry->free(self);
-	return (-1);
-}
-
-void
-cmd_pane_free(struct cmd *self)
-{
-	struct cmd_pane_data	*data = self->data;
-
-	if (data->target != NULL)
-		xfree(data->target);
-	if (data->arg != NULL)
-		xfree(data->arg);
-	xfree(data);
-}
-
-size_t
-cmd_pane_print(struct cmd *self, char *buf, size_t len)
-{
-	struct cmd_pane_data	*data = self->data;
-	size_t			 off = 0;
-
-	off += xsnprintf(buf, len, "%s", self->entry->name);
-	if (data == NULL)
-		return (off);
-	off += cmd_print_flags(buf, len, off, data->chflags);
-	if (off < len && data->target != NULL)
-		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
- 	if (off < len && data->arg != NULL)
-		off += cmd_prarg(buf + off, len - off, " ", data->arg);
 	return (off);
 }

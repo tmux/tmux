@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-pane.c,v 1.11 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-swap-pane.c,v 1.12 2009-07-30 20:45:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,191 +26,93 @@
  * Swap two panes.
  */
 
-int	cmd_swap_pane_parse(struct cmd *, int, char **, char **);
-int	cmd_swap_pane_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_swap_pane_free(struct cmd *);
 void	cmd_swap_pane_init(struct cmd *, int);
-size_t	cmd_swap_pane_print(struct cmd *, char *, size_t);
-
-struct cmd_swap_pane_data {
-	char	*target;
-        int	 src;
-	int	 dst;
-	int	 flag_detached;
-	int	 flag_up;
-	int	 flag_down;
-};
+int	cmd_swap_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_swap_pane_entry = {
 	"swap-pane", "swapp",
-	"[-dDU] [-t target-window] [-p src-index] [-q dst-index]",
-	0, 0,
+	"[-dDU] " CMD_SRCDST_PANE_USAGE,
+	0, CMD_CHFLAG('d')|CMD_CHFLAG('D')|CMD_CHFLAG('U'),
 	cmd_swap_pane_init,
-	cmd_swap_pane_parse,
+	cmd_srcdst_parse,
 	cmd_swap_pane_exec,
-	cmd_swap_pane_free,
-	cmd_swap_pane_print
+	cmd_srcdst_free,
+	cmd_srcdst_print
 };
 
 void
 cmd_swap_pane_init(struct cmd *self, int key)
 {
-	struct cmd_swap_pane_data	 *data;
+	struct cmd_target_data	*data;
 
-	self->data = data = xmalloc(sizeof *data);
-	data->target = NULL;
-	data->src = -1;
-	data->dst = -1;
-	data->flag_detached = 0;
-	data->flag_up = 0;
-	data->flag_down = 0;
-
-	switch (key) {
-	case '{':
-		data->flag_up = 1;
-		break;
-	case '}':
-		data->flag_down = 1;
-		break;
-	}
-}
-
-int
-cmd_swap_pane_parse(struct cmd *self, int argc, char **argv, char **cause)
-{
-	struct cmd_swap_pane_data	*data;
-	int				 opt, n;
-	const char			*errstr;
-
-	self->entry->init(self, 0);
+	cmd_srcdst_init(self, key);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, "dDt:p:q:U")) != -1) {
-		switch (opt) {
-		case 'd':
-			data->flag_detached = 1;
-			break;
-		case 'D':
-			data->flag_up = 0;
-			data->flag_down = 1;
-			data->dst = -1;
-			break;
-		case 't':
-			if (data->target == NULL)
-				data->target = xstrdup(optarg);
-			break;
-		case 'p':
-			if (data->src == -1) {
-				n = strtonum(optarg, 0, INT_MAX, &errstr);
-				if (errstr != NULL) {
-					xasprintf(cause, "src %s", errstr);
-					goto error;
-				}
-				data->src = n;
-			}
-			break;
-		case 'q':
-			if (data->dst == -1) {
-				n = strtonum(optarg, 0, INT_MAX, &errstr);
-				if (errstr != NULL) {
-					xasprintf(cause, "dst %s", errstr);
-					goto error;
-				}
-				data->dst = n;
-			}
-			data->flag_up = 0;
-			data->flag_down = 0;
-			break;
-		case 'U':
-			data->flag_up = 1;
-			data->flag_down = 0;
-			data->dst = -1;
-			break;
-
-		default:
-			goto usage;
-		}
-	}
-	argc -= optind;
-	argv += optind;
-	if (argc != 0)
-		goto usage;
-
-	return (0);
-
-usage:
-	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
-
-error:
-	self->entry->free(self);
-	return (-1);
+	if (key == '{')
+		data->chflags |= CMD_CHFLAG('U');
+	else if (key == '}')
+		data->chflags |= CMD_CHFLAG('D');
 }
 
 int
 cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_swap_pane_data	*data = self->data;
-	struct winlink			*wl;
-	struct window			*w;
-	struct window_pane		*tmp_wp, *src_wp, *dst_wp;
-	struct layout_cell		*lc;
-	u_int				 sx, sy, xoff, yoff;
+	struct cmd_srcdst_data	*data = self->data;
+	struct winlink		*src_wl, *dst_wl;
+	struct window		*src_w, *dst_w;
+	struct window_pane	*tmp_wp, *src_wp, *dst_wp;
+	struct layout_cell	*src_lc, *dst_lc;
+	u_int			 sx, sy, xoff, yoff;
 
 	if (data == NULL)
 		return (0);
 
-	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
+	if ((dst_wl = cmd_find_pane(ctx, data->dst, NULL, &dst_wp)) == NULL)
 		return (-1);
-	w = wl->window;
+	dst_w = dst_wl->window;
 
-	if (data->src == -1)
-		src_wp = w->active;
-	else {
-		src_wp = window_pane_at_index(w, data->src);
-		if (src_wp == NULL) {
-			ctx->error(ctx, "no pane: %d", data->src);
+	if (data->src == NULL) {
+		src_wl = dst_wl;
+		src_w = dst_w;
+		if (data->chflags & CMD_CHFLAG('D')) {
+			src_wp = TAILQ_NEXT(dst_wp, entry);
+			if (src_wp == NULL)
+				src_wp = TAILQ_FIRST(&dst_w->panes);
+		} else if (data->chflags & CMD_CHFLAG('U')) {
+			src_wp = TAILQ_PREV(dst_wp, window_panes, entry);
+			if (src_wp == NULL)
+				src_wp = TAILQ_LAST(&dst_w->panes, window_panes);
+		} else
+			return (0);
+	} else {
+		src_wl = cmd_find_pane(ctx, data->src, NULL, &src_wp);
+		if (src_wl == NULL)
 			return (-1);
-		}
-	}
-	if (data->dst == -1)
-		dst_wp = w->active;
-	else {
-		dst_wp = window_pane_at_index(w, data->dst);
-		if (dst_wp == NULL) {
-			ctx->error(ctx, "no pane: %d", data->dst);
-			return (-1);
-		}
-	}
-
-	if (data->dst == -1 && data->flag_up) {
-		if ((dst_wp = TAILQ_PREV(src_wp, window_panes, entry)) == NULL)
-			dst_wp = TAILQ_LAST(&w->panes, window_panes);
-	}
-	if (data->dst == -1 && data->flag_down) {
-		if ((dst_wp = TAILQ_NEXT(src_wp, entry)) == NULL)
-			dst_wp = TAILQ_FIRST(&w->panes);
+		src_w = src_wl->window;
 	}
 
 	if (src_wp == dst_wp)
 		return (0);
 
 	tmp_wp = TAILQ_PREV(dst_wp, window_panes, entry);
-	TAILQ_REMOVE(&w->panes, dst_wp, entry);
-	TAILQ_REPLACE(&w->panes, src_wp, dst_wp, entry);
+	TAILQ_REMOVE(&dst_w->panes, dst_wp, entry);
+	TAILQ_REPLACE(&src_w->panes, src_wp, dst_wp, entry);
 	if (tmp_wp == src_wp)
 		tmp_wp = dst_wp;
 	if (tmp_wp == NULL)
-		TAILQ_INSERT_HEAD(&w->panes, src_wp, entry);
+		TAILQ_INSERT_HEAD(&dst_w->panes, src_wp, entry);
 	else
-		TAILQ_INSERT_AFTER(&w->panes, tmp_wp, src_wp, entry);
+		TAILQ_INSERT_AFTER(&dst_w->panes, tmp_wp, src_wp, entry);
 
-	lc = src_wp->layout_cell;
-	src_wp->layout_cell = dst_wp->layout_cell;
-	if (src_wp->layout_cell != NULL)
-		src_wp->layout_cell->wp = src_wp;
-	dst_wp->layout_cell = lc;
-	if (dst_wp->layout_cell != NULL)
-		dst_wp->layout_cell->wp = dst_wp;
+	src_lc = src_wp->layout_cell;
+	dst_lc = dst_wp->layout_cell;
+	src_lc->wp = dst_wp;
+	dst_wp->layout_cell = src_lc;
+	dst_lc->wp = src_wp;
+	src_wp->layout_cell = dst_lc;
+	
+	src_wp->window = dst_w;
+	dst_wp->window = src_w;
 
 	sx = src_wp->sx; sy = src_wp->sy;
 	xoff = src_wp->xoff; yoff = src_wp->yoff;
@@ -219,51 +121,24 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	dst_wp->xoff = xoff; dst_wp->yoff = yoff;
 	window_pane_resize(dst_wp, sx, sy);
 
-	if (!data->flag_detached) {
-		tmp_wp = dst_wp;
-		if (!window_pane_visible(tmp_wp))
-			tmp_wp = src_wp;
-		window_set_active_pane(w, tmp_wp);
+	if (!(data->chflags & CMD_CHFLAG('d'))) {
+		if (src_w != dst_w) {
+			window_set_active_pane(src_w, dst_wp);
+			window_set_active_pane(dst_w, src_wp);
+		} else {
+			tmp_wp = dst_wp;
+			if (!window_pane_visible(tmp_wp))
+				tmp_wp = src_wp;
+			window_set_active_pane(src_w, tmp_wp);
+		}
+	} else {
+		if (src_w->active == src_wp)
+			window_set_active_pane(src_w, dst_wp);
+		if (dst_w->active == dst_wp)
+			window_set_active_pane(dst_w, src_wp);
 	}
-	server_redraw_window(w);
+	server_redraw_window(src_w);
+	server_redraw_window(dst_w);
 
 	return (0);
-}
-
-void
-cmd_swap_pane_free(struct cmd *self)
-{
-	struct cmd_swap_pane_data	*data = self->data;
-
-	if (data->target != NULL)
-		xfree(data->target);
-	xfree(data);
-}
-
-size_t
-cmd_swap_pane_print(struct cmd *self, char *buf, size_t len)
-{
-	struct cmd_swap_pane_data	*data = self->data;
-	size_t				 off = 0;
-
-	off += xsnprintf(buf, len, "%s", self->entry->name);
-	if (data == NULL)
-		return (off);
-	if (off < len &&
-	    (data->flag_down || data->flag_up || data->flag_detached)) {
-		off += xsnprintf(buf + off, len - off, " -");
-		if (off < len && data->flag_detached)
-			off += xsnprintf(buf + off, len - off, "d");
-		if (off < len && data->flag_up)
-			off += xsnprintf(buf + off, len - off, "D");
-		if (off < len && data->flag_down)
-			off += xsnprintf(buf + off, len - off, "U");
-	}
-	if (off < len && data->target != NULL)
-		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
-	if (off < len && data->src != -1)
-		off += xsnprintf(buf + off, len - off, " -p %d", data->src);
-	if (off < len && data->dst != -1)
-		off += xsnprintf(buf + off, len - off, " -q %d", data->dst);
-	return (off);
 }
