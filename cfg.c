@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.18 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: cfg.c,v 1.19 2009-07-30 21:07:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,20 +55,10 @@ load_cfg(const char *path, char **cause)
 {
 	FILE   	        *f;
 	u_int		 n;
-	struct stat	 sb;
 	char	        *buf, *line, *ptr;
 	size_t		 len;
 	struct cmd_list	*cmdlist;
 	struct cmd_ctx	 ctx;
-
-	if (stat(path, &sb) != 0) {
-		xasprintf(cause, "%s: %s", path, strerror(errno));
-		return (-1);
-	}
-	if (!S_ISREG(sb.st_mode)) {
-		xasprintf(cause, "%s: not a regular file", path);
-		return (-1);
-	}
 
 	if ((f = fopen(path, "rb")) == NULL) {
 		xasprintf(cause, "%s: %s", path, strerror(errno));

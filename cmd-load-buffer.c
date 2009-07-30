@@ -1,4 +1,4 @@
-/* $Id: cmd-load-buffer.c,v 1.8 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-load-buffer.c,v 1.9 2009-07-30 21:07:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -58,10 +58,6 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (stat(data->arg, &statbuf) < 0) {
 		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
-		return (-1);
-	}
-	if (!S_ISREG(statbuf.st_mode)) {
-		ctx->error(ctx, "%s: not a regular file", data->arg);
 		return (-1);
 	}
 
