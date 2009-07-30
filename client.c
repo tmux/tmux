@@ -143,7 +143,9 @@ client_main(struct client_ctx *cctx)
 
 	logfile("client");
 
-	while (!sigterm) {
+	for (;;) {
+		if (sigterm)
+			client_write_server(cctx, MSG_EXITING, NULL, 0);
 		if (sigchld) {
 			waitpid(WAIT_ANY, NULL, WNOHANG);
 			sigchld = 0;
