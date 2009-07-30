@@ -60,10 +60,6 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
 		return (-1);
 	}
-	if (!S_ISREG(statbuf.st_mode)) {
-		ctx->error(ctx, "%s: not a regular file", data->arg);
-		return (-1);
-	}
 
 	if ((f = fopen(data->arg, "rb")) == NULL) {
 		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
