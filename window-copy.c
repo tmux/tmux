@@ -104,7 +104,8 @@ window_copy_init(struct window_pane *wp)
 
 	s = &data->screen;
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
-	s->mode |= MODE_MOUSE;
+	if (options_get_number(&wp->window->options, "mode-mouse"))
+		s->mode |= MODE_MOUSE;
 
 	keys = options_get_number(&wp->window->options, "mode-keys");
 	if (keys == MODEKEY_EMACS)

@@ -60,6 +60,7 @@ const struct set_option_entry set_window_option_table[] = {
 	{ "mode-bg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "mode-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "mode-keys", SET_OPTION_CHOICE, 0, 0, set_option_mode_keys_list },
+	{ "mode-mouse", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "monitor-activity", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "monitor-content", SET_OPTION_STRING, 0, 0, NULL },
 	{ "remain-on-exit", SET_OPTION_FLAG, 0, 0, NULL },
