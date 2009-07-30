@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-pane.c,v 1.12 2009-07-30 20:45:20 tcunha Exp $ */
+/* $Id: cmd-swap-pane.c,v 1.13 2009-07-30 21:04:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -72,7 +72,6 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	dst_w = dst_wl->window;
 
 	if (data->src == NULL) {
-		src_wl = dst_wl;
 		src_w = dst_w;
 		if (data->chflags & CMD_CHFLAG('D')) {
 			src_wp = TAILQ_NEXT(dst_wp, entry);

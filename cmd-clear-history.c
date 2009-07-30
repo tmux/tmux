@@ -1,4 +1,4 @@
-/* $Id: cmd-clear-history.c,v 1.6 2009-07-30 20:45:20 tcunha Exp $ */
+/* $Id: cmd-clear-history.c,v 1.7 2009-07-30 21:04:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,11 +41,10 @@ int
 cmd_clear_history_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
-	struct winlink		*wl;
 	struct window_pane	*wp;
 	struct grid		*gd;
 
-	if ((wl = cmd_find_pane(ctx, data->target, NULL, &wp)) == NULL)
+	if (cmd_find_pane(ctx, data->target, NULL, &wp) == NULL)
 		return (-1);
 	gd = wp->base.grid;
 
