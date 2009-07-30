@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.58 2009-07-30 20:50:10 tcunha Exp $ */
+/* $Id: client.c,v 1.59 2009-07-30 20:57:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -141,7 +141,6 @@ int
 client_main(struct client_ctx *cctx)
 {
 	struct pollfd	 pfd;
-	int		 xtimeout; /* Yay for ncurses namespace! */
 
 	siginit();
 
@@ -162,25 +161,12 @@ client_main(struct client_ctx *cctx)
 			sigcont = 0;
 		}
 
-		switch (client_msg_dispatch(cctx)) {
-		case -1:
-			goto out;
-		case 0:
-			/* May be more in buffer, don't let poll block. */
-			xtimeout = 0;
-			break;
-		default:
-			/* Out of data, poll may block. */
-			xtimeout = INFTIM;
-			break;
-		}
-
 		pfd.fd = cctx->srv_fd;
 		pfd.events = POLLIN;
 		if (BUFFER_USED(cctx->srv_out) > 0)
 			pfd.events |= POLLOUT;
 
-		if (poll(&pfd, 1, xtimeout) == -1) {
+		if (poll(&pfd, 1, INFTIM) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			fatal("poll failed");
@@ -190,9 +176,11 @@ client_main(struct client_ctx *cctx)
 			cctx->exittype = CCTX_DIED;
 			break;
 		}
+
+		if (client_msg_dispatch(cctx) != 0)
+			break;
 	}
 
-out:
  	if (sigterm) {
  		printf("[terminated]\n");
  		return (1);
@@ -230,4 +218,65 @@ client_handle_winch(struct client_ctx *cctx)
 	client_write_server(cctx, MSG_RESIZE, &data, sizeof data);
 
 	sigwinch = 0;
+}
+
+int
+client_msg_dispatch(struct client_ctx *cctx)
+{
+	struct hdr		 hdr;
+	struct msg_print_data	 printdata;
+
+	for (;;) {
+		if (BUFFER_USED(cctx->srv_in) < sizeof hdr)
+			return (0);
+		memcpy(&hdr, BUFFER_OUT(cctx->srv_in), sizeof hdr);
+		if (BUFFER_USED(cctx->srv_in) < (sizeof hdr) + hdr.size)
+			return (0);
+		buffer_remove(cctx->srv_in, sizeof hdr);
+
+		switch (hdr.type) {
+		case MSG_DETACH:
+			if (hdr.size != 0)
+				fatalx("bad MSG_DETACH size");
+
+			client_write_server(cctx, MSG_EXITING, NULL, 0);
+			cctx->exittype = CCTX_DETACH;
+			break;
+		case MSG_ERROR:
+			if (hdr.size != sizeof printdata)
+				fatalx("bad MSG_PRINT size");
+			buffer_read(cctx->srv_in, &printdata, sizeof printdata);
+			printdata.msg[(sizeof printdata.msg) - 1] = '\0';
+
+			cctx->errstr = xstrdup(printdata.msg);
+			return (-1);
+		case MSG_EXIT:
+			if (hdr.size != 0)
+				fatalx("bad MSG_EXIT size");
+		
+			client_write_server(cctx, MSG_EXITING, NULL, 0);
+			cctx->exittype = CCTX_EXIT;
+			break;
+		case MSG_EXITED:
+			if (hdr.size != 0)
+				fatalx("bad MSG_EXITED size");
+
+			return (-1);
+		case MSG_SHUTDOWN:
+			if (hdr.size != 0)
+				fatalx("bad MSG_SHUTDOWN size");
+
+			client_write_server(cctx, MSG_EXITING, NULL, 0);
+			cctx->exittype = CCTX_SHUTDOWN;
+			break;
+		case MSG_SUSPEND:
+			if (hdr.size != 0)
+				fatalx("bad MSG_SUSPEND size");
+
+			client_suspend();
+			break;
+		default:
+			fatalx("unexpected message");
+		}
+	}
 }
