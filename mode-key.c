@@ -337,6 +337,7 @@ mode_key_free_trees(void)
 		while (!SPLAY_EMPTY(mtab->tree)) {
 			mbind = SPLAY_ROOT(mtab->tree);
 			SPLAY_REMOVE(mode_key_tree, mtab->tree, mbind);
+			xfree(mbind);
 		}
 	}
 }

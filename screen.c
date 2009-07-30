@@ -63,6 +63,8 @@ screen_reinit(struct screen *s)
 void
 screen_free(struct screen *s)
 {
+	if (s->tabs != NULL)
+		xfree(s->tabs);
 	xfree(s->title);
 	grid_destroy(s->grid);
 }

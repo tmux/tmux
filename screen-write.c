@@ -91,6 +91,7 @@ screen_write_strlen(int utf8flag, const char *fmt, ...)
 		}
 	}
 
+	xfree(msg);
 	return (size);
 }
 
