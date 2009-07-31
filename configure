@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.19 2009-07-31 10:30:40 nicm Exp $
+# $Id: configure,v 1.20 2009-07-31 10:44:03 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -58,8 +58,8 @@ case $TMUX_PLATFORM in
 #define HAVE_VIS
 EOF
 	cat <<EOF >>$CONFIG_MK
+LIBS+= -lcurses -lutil
 SRCS+= osdep-openbsd.c
-LIBS+= -lutil
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -75,6 +75,8 @@ EOF
 #define HAVE_STRCASESTR
 EOF
 	cat <<EOF >>$CONFIG_MK
+CFLAGS+= -std=c99 -D_GNU_SOURCE -D_POSIX_SOURCE
+LIBS+= -lncurses -lcrypt -lutil
 SRCS+= osdep-linux.c \
 	compat/fgetln.c \
 	compat/strlcat.c \
@@ -82,8 +84,6 @@ SRCS+= osdep-linux.c \
 	compat/strtonum.c \
         compat/getopt.c \
 	compat/vis.c
-CFLAGS+= -std=c99 -D_GNU_SOURCE -D_POSIX_SOURCE
-LIBS+= -lcrypt -lutil
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -92,6 +92,7 @@ EOF
 #define HAVE_DAEMON
 EOF
 	cat <<EOF >>$CONFIG_MK
+LIBS+= -lcurses
 SRCS+= osdep-unknown.c \
 	compat/asprintf.c \
 	compat/bsd-poll.c \
@@ -121,7 +122,7 @@ CPPFLAGS+= -I/usr/local/include/ncurses \
 LDFLAGS+= -L/usr/gnu/lib \
 	-L/opt/csw/lib \
 	-L/opt/sfw/lib
-LIBS+= -lsocket -lnsl
+LIBS+= -lcurses -lsocket -lnsl
 SRCS+= osdep-unknown.c \
 	compat/asprintf.c \
 	compat/daemon.c \
@@ -149,6 +150,7 @@ EOF
 #define HAVE_UTIL_H
 EOF
 	cat <<EOF >>$CONFIG_MK
+LIBS+= -lcurses
 SRCS+= osdep-darwin.c \
 	compat/bsd-poll.c \
 	compat/strtonum.c \
@@ -174,9 +176,9 @@ EOF
 #define HAVE_STRTONUM
 EOF
 	cat <<EOF >>$CONFIG_MK
+LIBS+= -lcurses -lcrypt -lutil
 SRCS+= osdep-freebsd.c \
 	compat/vis.c
-LIBS+= -lcrypt -lutil
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -197,12 +199,12 @@ EOF
 #define HAVE_UTIL_H
 EOF
 	cat <<EOF >>$CONFIG_MK
+CPPFLAGS+= -I/usr/pkg/include
+LDFLAGS+= -L/usr/pkg/lib
+LIBS+= -lncurses -lcrypt -lutil
 SRCS+= osdep-netbsd.c \
 	compat/strtonum.c \
 	compat/vis.c
-LIBS+= -lcrypt -lutil
-CPPFLAGS+= -I/usr/pkg/include
-LDFLAGS+= -L/usr/pkg/lib
 EOF
 	;;
 # ------------------------------------------------------------------------------
