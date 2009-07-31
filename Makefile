@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.146 2009-07-21 13:51:30 nicm Exp $
+# $Id: Makefile,v 1.147 2009-07-31 10:45:22 nicm Exp $
 
 .SUFFIXES: .c .o
 .PHONY: clean
@@ -10,7 +10,7 @@ FDEBUG= 1
 CC?= cc
 CFLAGS+= -DBUILD="\"$(VERSION)\""
 LDFLAGS+= -L/usr/local/lib
-LIBS+= -lcurses
+LIBS+=
 
 .ifdef FDEBUG
 CFLAGS+= -g -ggdb -DDEBUG

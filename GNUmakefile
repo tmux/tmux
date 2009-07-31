@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.111 2009-07-21 13:51:30 nicm Exp $
+# $Id: GNUmakefile,v 1.112 2009-07-31 10:45:22 nicm Exp $
 
 .PHONY: clean
 
@@ -9,7 +9,7 @@ FDEBUG= 1
 CC?= gcc
 CFLAGS+= -DBUILD="\"$(VERSION)\""
 LDFLAGS+= -L/usr/local/lib
-LIBS+= -lcurses
+LIBS+=
 
 ifdef FDEBUG
 CFLAGS+= -g -ggdb -DDEBUG
