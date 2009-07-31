@@ -161,7 +161,8 @@ screen_redraw_screen(struct client *c, int status_only)
 	struct window_pane	*wp;
 	u_int		 	 i, j, type;
 	int		 	 status;
-	const u_char		*border;
+	const u_char		*base, *ptr;
+	u_char		       	 ch, border[20];
 
 	/* Get status line, er, status. */
 	if (c->message_string != NULL || c->prompt_string != NULL)
@@ -177,11 +178,15 @@ screen_redraw_screen(struct client *c, int status_only)
 
 	/* Draw background and borders. */
 	tty_reset(tty);
+	strlcpy(border, " |-....--||+.", sizeof border);
 	if (tty_term_has(tty->term, TTYC_ACSC)) {
-		border = " xqlkmjwvtun~";
+		base = " xqlkmjwvtun~";
+		for (ptr = base; *ptr != '\0'; ptr++) {
+			if ((ch = tty_get_acs(tty, *ptr)) != '\0')
+				border[ptr - base] = ch;
+		}
 		tty_putcode(tty, TTYC_SMACS);
-	} else 
-		border = " |-....--||+.";
+	}
 	for (j = 0; j < tty->sy - status; j++) {
 		if (status_only && j != tty->sy - 1)
 			continue;
