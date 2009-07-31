@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.43 2009-07-25 09:03:33 tcunha Exp $ */
+/* $Id: screen-redraw.c,v 1.44 2009-07-31 20:35:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -161,7 +161,8 @@ screen_redraw_screen(struct client *c, int status_only)
 	struct window_pane	*wp;
 	u_int		 	 i, j, type;
 	int		 	 status;
-	const u_char		*border;
+	const u_char		*base, *ptr;
+	u_char		       	 ch, border[20];
 
 	/* Get status line, er, status. */
 	if (c->message_string != NULL || c->prompt_string != NULL)
@@ -177,11 +178,15 @@ screen_redraw_screen(struct client *c, int status_only)
 
 	/* Draw background and borders. */
 	tty_reset(tty);
+	strlcpy(border, " |-....--||+.", sizeof border);
 	if (tty_term_has(tty->term, TTYC_ACSC)) {
-		border = " xqlkmjwvtun~";
+		base = " xqlkmjwvtun~";
+		for (ptr = base; *ptr != '\0'; ptr++) {
+			if ((ch = tty_get_acs(tty, *ptr)) != '\0')
+				border[ptr - base] = ch;
+		}
 		tty_putcode(tty, TTYC_SMACS);
-	} else 
-		border = " |-....--||+.";
+	}
 	for (j = 0; j < tty->sy - status; j++) {
 		if (status_only && j != tty->sy - 1)
 			continue;
