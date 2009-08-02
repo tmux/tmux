@@ -186,13 +186,13 @@ tty_term_find(char *name, int fd, char **cause)
 	/* Set up curses terminal. */
 	if (setupterm(name, fd, &error) != OK) {
 		switch (error) {
-		case 0:
-			xasprintf(cause, "can't use hardcopy terminal");
-			break;
 		case 1:
-			xasprintf(cause, "missing or unsuitable terminal");
+			xasprintf(cause, "can't use hardcopy terminal: %s", name);
 			break;
-		case 2:
+		case 0:
+			xasprintf(cause, "missing or unsuitable terminal: %s", name);
+			break;
+		case -1:
 			xasprintf(cause, "can't find terminfo database");
 			break;
 		default:
