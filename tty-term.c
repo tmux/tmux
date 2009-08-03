@@ -196,7 +196,8 @@ tty_term_override(struct tty_term *term, const char *overrides)
 				case TTYCODE_NONE:
 					break;
 				case TTYCODE_STRING:
-					xfree(code->value.string);
+					if (code->type == TTYCODE_STRING)
+						xfree(code->value.string);
 					code->value.string = xstrdup(val);
 					code->type = ent->type;
 					break;
