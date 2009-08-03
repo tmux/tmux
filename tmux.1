@@ -1418,9 +1418,7 @@ and
 .Ic status-right
 strings as UTF-8; notably, this is important for wide characters.
 This option defaults to off.
-.It Xo Ic terminal-overrides
-.Ar string
-.Xc
+.It Ic terminal-overrides Ar string
 Contains a list of entries which override terminal descriptions read using
 .Xr terminfo 5 .
 .Ar string
@@ -1440,7 +1438,7 @@ for all terminal types and the
 .Ql dch1
 entry to
 .Ql \ee[P
-for the 
+for the
 .Ql rxvt
 terminal type, the option could be set to the string:
 .Bd -literal -offset indent
