@@ -1418,6 +1418,44 @@ and
 .Ic status-right
 strings as UTF-8; notably, this is important for wide characters.
 This option defaults to off.
+.It Xo Ic terminal-overrides
+.Ar string
+.Xc
+Contains a list of entries which override terminal descriptions read using
+.Xr terminfo 5 .
+.Ar string
+is a comma-separated list of items each a colon-separated string made up of a
+terminal type pattern (matched using
+.Xr fnmatch 3 )
+and a set of
+.Em name=value
+entries.
+.Pp
+For example, to set the
+.Ql clear
+.Xr terminfo 5
+entry to
+.Ql \ee[H\ee[2J
+for all terminal types and the
+.Ql dch1
+entry to
+.Ql \ee[P
+for the 
+.Ql rxvt
+terminal type, the option could be set to the string:
+.Bd -literal -offset indent
+"*:clear=\ee[H\ee[2J,rxvt:dch1=\ee[P"
+.Ed
+.Pp
+The terminal entry value is passed through
+.Xr strunvis 3
+before interpretation.
+The default value forcibly corrects the
+.Ql colors
+entry for terminals which support 88 or 256 colours:
+.Bd -literal -offset indent
+"*88col*:colors=88,*256col*:colors=256"
+.Ed
 .It Xo Ic visual-activity
 .Op Ic on | Ic off
 .Xc

@@ -367,6 +367,8 @@ main(int argc, char **argv)
 		options_set_number(&global_s_options, "status-utf8", 1);
 	else
 		options_set_number(&global_s_options, "status-utf8", 0);
+	options_set_string(&global_s_options,
+	    "terminal-overrides", "*88col*:colors=88,*256col*:colors=256");
 	options_set_number(&global_s_options, "visual-activity", 0);
 	options_set_number(&global_s_options, "visual-bell", 0);
 	options_set_number(&global_s_options, "visual-content", 0);

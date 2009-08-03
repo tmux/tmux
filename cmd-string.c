@@ -215,6 +215,9 @@ cmd_string_string(const char *s, size_t *p, char endch, int esc)
                         switch (ch = cmd_string_getc(s, p)) {
 			case EOF:
 				goto error;
+			case 'e':
+				ch = '\033';
+				break;
                         case 'r':
                                 ch = '\r';
                                 break;
