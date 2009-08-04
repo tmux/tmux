@@ -710,28 +710,20 @@ off from its containing window to make it the only pane in a new window.
 If
 .Fl d
 is given, the new window does not become the current window.
-.It Xo Ic choose-session
-.Op Fl t Ar target-window
-.Xc
+.It Ic choose-session Op Fl t Ar target-window
 Put a window into session choice mode, where the session for the current
 client may be selected interactively from a list.
 This command works only from inside
 .Nm .
-.It Xo Ic choose-window
-.Op Fl t Ar target-window
-.Xc
+.It Ic choose-window Op Fl t Ar target-window
 Put a window into window choice mode, where the window for the session
 attached to the current client may be selected interactively from a list.
 This command works only from inside
 .Nm .
-.It Xo Ic clear-history
-.Op Fl t Ar target-pane
-.Xc
+.It Ic clear-history Op Fl t Ar target-pane
 .D1 (alias: Ic clearhist )
 Remove and free the history for the specified pane.
-.It Xo Ic clock-mode
-.Op Fl t Ar target-window
-.Xc
+.It Ic clock-mode Op Fl t Ar target-window
 Display a large clock.
 .It Xo Ic command-prompt
 .Op Fl t Ar target-client
@@ -779,9 +771,7 @@ option scrolls one page up.
 Delete the buffer at
 .Ar buffer-index ,
 or the top buffer if not specified.
-.It Xo Ic detach-client
-.Op Fl t Ar target-client
-.Xc
+.It Ic detach-client Op Fl t Ar target-client
 .D1 (alias: Ic detach )
 Detach the current client if bound to a key, or the specified client with
 .Fl t .
@@ -794,9 +784,7 @@ Display a message (see the
 .Ic status-left
 option below)
 in the status line.
-.It Xo Ic down-pane
-.Op Fl t Ar target-pane
-.Xc
+.It Ic down-pane Op Fl t Ar target-pane
 .D1 (alias: Ic downp )
 Move down a pane.
 .It Xo Ic find-window
@@ -813,48 +801,34 @@ If only one window is matched, it'll be automatically selected, otherwise a
 choice list is shown.
 This command only works from inside
 .Nm .
-.It Xo Ic has-session
-.Op Fl t Ar target-session
-.Xc
+.It Ic has-session Op Fl t Ar target-session
 .D1 (alias: Ic has )
 Report an error and exit with 1 if the specified session does not exist.
 If it does exist, exit with 0.
-.It Xo Ic if-shell
-.Ar shell-command
-.Ar command
-.Xc
+.It Ic if-shell Ar shell-command command
 .D1 (alias: Ic if )
 Execute
 .Ar command
 if
 .Ar shell-command
 returns success.
-.It Xo Ic kill-pane
-.Op Fl t Ar target-pane
-.Xc
+.It Ic kill-pane Op Fl t Ar target-pane
 .D1 (alias: Ic killp )
 Destroy the given pane.
 If no panes remain in the containing window, it is also destroyed.
-.It Xo Ic kill-server
-.Xc
+.It Ic kill-server
 Kill the
 .Nm
 server and clients and destroy all sessions.
-.It Xo Ic kill-session
-.Op Fl t Ar target-session
-.Xc
+.It Ic kill-session Op Fl t Ar target-session
 Destroy the given session, closing any windows linked to it and no other
 sessions, and detaching all clients attached to it.
-.It Xo Ic kill-window
-.Op Fl t Ar target-window
-.Xc
+.It Ic kill-window Op Fl t Ar target-window
 .D1 (alias: Ic killw )
 Kill the current window or the window at
 .Ar target-window ,
 removing it from any sessions to which it is linked.
-.It Xo Ic last-window
-.Op Fl t Ar target-session
-.Xc
+.It Ic last-window Op Fl t Ar target-session
 .D1 (alias: Ic last )
 Select the last (previously selected) window.
 If no
@@ -883,23 +857,17 @@ exists, it is killed, otherwise an error is generated.
 If
 .Fl d
 is given, the newly linked window is not selected.
-.It Xo Ic list-buffers
-.Op Fl t Ar target-session
-.Xc
+.It Ic list-buffers Op Fl t Ar target-session
 .D1 (alias: Ic lsb )
 List the buffers in the given session.
-.It Xo Ic list-clients
-.Xc
+.It Ic list-clients
 .D1 (alias: Ic lsc )
 List all clients attached to the server.
-.It Xo Ic list-commands
-.Xc
+.It Ic list-commands
 .D1 (alias: Ic lscm )
 List the syntax of all commands supported by
 .Nm .
-.It Xo Ic list-keys
-.Op Fl t Ar key-table
-.Xc
+.It Ic list-keys Op Fl t Ar key-table
 .D1 (alias: Ic lsk )
 List all key bindings.
 Without
@@ -923,13 +891,10 @@ are listed; this may be one of:
 .Em vi-copy
 or
 .Em emacs-copy .
-.It Xo Ic list-sessions
-.Xc
+.It Ic list-sessions
 .D1 (alias: Ic ls )
 List all sessions managed by the server.
-.It Xo Ic list-windows
-.Op Fl t Ar target-session
-.Xc
+.It Ic list-windows Op Fl t Ar target-session
 .D1 (alias: Ic lsw )
 List windows in the current session or in
 .Ar target-session .
@@ -941,8 +906,7 @@ List windows in the current session or in
 .D1 (alias: Ic loadb )
 Load the contents of the specified paste buffer from
 .Ar path .
-.It Xo Ic lock-server
-.Xc
+.It Ic lock-server
 .D1 (alias: Ic lock )
 Lock the server until a password is entered.
 .It Xo Ic move-window
@@ -1006,9 +970,7 @@ New windows will automatically have
 .Dq TERM=screen
 added to their environment, but care must be taken not to reset this in shell
 start-up files.
-.It Xo Ic next-layout
-.Op Fl t Ar target-window
-.Xc
+.It Ic next-layout Op Fl t Ar target-window
 .D1 (alias: Ic nextl )
 Move a window to the next layout and rearrange the panes to fit.
 .It Xo Ic next-window
@@ -1044,9 +1006,7 @@ Move to the previous window in the session.
 With
 .Fl a ,
 move to the previous window with a bell, activity or content alert.
-.It Xo Ic refresh-client
-.Op Fl t Ar target-client
-.Xc
+.It Ic refresh-client Op Fl t Ar target-client
 .D1 (alias: Ic refresh )
 Refresh the current client if bound to a key, or a single client if one is given
 with
@@ -1139,23 +1099,17 @@ Choose a specific layout for a window.
 If
 .Ar layout-name
 is not given, the last layout used (if any) is reapplied.
-.It Xo Ic select-pane
-.Op Fl t Ar target-pane
-.Xc
+.It Ic select-pane Op Fl t Ar target-pane
 .D1 (alias: Ic selectp )
 Make pane
 .Ar target-pane
 the active pane in window
 .Ar target-window .
-.It Xo Ic select-prompt
-.Op Fl t Ar target-client
-.Xc
+.It Ic select-prompt Op Fl t Ar target-client
 Open a prompt inside
 .Ar target-client
 allowing a window index to be entered interactively.
-.It Xo Ic select-window
-.Op Fl t Ar target-window
-.Xc
+.It Ic select-window Op Fl t Ar target-window
 .D1 (alias: Ic selectw )
 Select the window at
 .Ar target-window .
@@ -1174,12 +1128,9 @@ or
 ) to send; if the string is not recognised as a key, it is sent as a series of
 characters.
 All arguments are sent sequentially from first to last.
-.It Xo Ic send-prefix
-.Op Fl t Ar target-window
-.Xc
+.It Ic send-prefix Op Fl t Ar target-window
 Send the prefix key to a window as if it was pressed.
-.It Xo Ic server-info
-.Xc
+.It Ic server-info
 .D1 (alias: Ic info )
 Show server information and terminal details.
 .It Xo Ic set-buffer
@@ -1208,7 +1159,7 @@ options - it is not possible to unset a global option.
 Available session options are:
 .Bl -tag -width Ds
 .It Xo Ic bell-action
-.Op Ic any | Ic none | Ic current
+.Op Ic any | none | current
 .Xc
 Set action on window bell.
 .Ic any
@@ -1310,13 +1261,13 @@ Repeat is enabled for the default keys bound to the
 .Ic resize-pane
 command.
 .It Xo Ic set-remain-on-exit
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 Set the
 .Ic remain-on-exit
 window option for any windows first created in this session.
 .It Xo Ic set-titles
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 Attempt to set the window title using the \ee]2;...\e007 xterm code and
 the terminal appears to be an xterm.
@@ -1325,7 +1276,7 @@ Note that elinks
 will only attempt to set the window title if the STY environment
 variable is set.
 .It Xo Ic status
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 Show or hide the status line.
 .It Ic status-attr Ar attributes
@@ -1341,12 +1292,12 @@ seconds.
 By default, updates will occur every 15 seconds.
 A setting of zero disables redrawing at interval.
 .It Xo Ic status-justify
-.Op Ic left | Ic centre | Ic right
+.Op Ic left | centre | right
 .Xc
 Set the position of the window list component of the status line: left, centre
 or right justified.
 .It Xo Ic status-keys
-.Op Ic vi | Ic emacs
+.Op Ic vi | emacs
 .Xc
 Use vi or emacs-style
 key bindings in the status line, for example at the command prompt.
@@ -1408,7 +1359,7 @@ of the right component of the status bar.
 The default is 40.
 .Pp
 .It Xo Ic status-utf8
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 Instruct
 .Nm
@@ -1455,14 +1406,14 @@ entry for terminals which support 88 or 256 colours:
 "*88col*:colors=88,*256col*:colors=256"
 .Ed
 .It Xo Ic visual-activity
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 If on, display a status line message when activity occurs in a window
 for which the
 .Ic monitor-activity
 window option is enabled.
 .It Xo Ic visual-bell
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 If this option is on, a message is shown on a bell instead of it being passed
 through to the terminal (which normally makes a sound).
@@ -1470,7 +1421,7 @@ Also see the
 .Ic bell-action
 option.
 .It Xo Ic visual-content
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 Like
 .Ic visual-activity ,
@@ -1510,9 +1461,10 @@ flags work similarly to the
 command.
 .Pp
 Supported window options are:
-.Bl -tag -width Ds
+.Pp
+.Bl -tag -width Ds -compact
 .It Xo Ic aggressive-resize
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 Aggressively resize the chosen window.
 This means that
@@ -1523,8 +1475,9 @@ The window may resize when the current window is changed on another sessions;
 this option is good for full-screen programs which support
 .Dv SIGWINCH
 and poor for interactive programs such as shells.
+.Pp
 .It Xo Ic automatic-rename
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 Control automatic window renaming.
 When this setting is enabled,
@@ -1541,12 +1494,15 @@ It may be switched off globally with:
 .Bd -literal -offset indent
 set-window-option -g automatic-rename off
 .Ed
+.Pp
 .It Ic clock-mode-colour Ar colour
 Set clock colour.
+.Pp
 .It Xo Ic clock-mode-style
-.Op Ic 12 | Ic 24
+.Op Ic 12 | 24
 .Xc
 Set clock hour format.
+.Pp
 .It Ic force-height Ar height
 .It Ic force-width Ar width
 Prevent
@@ -1556,6 +1512,7 @@ from resizing a window to greater than
 or
 .Ar height .
 A value of zero restores the default unlimited setting.
+.Pp
 .It Ic main-pane-width Ar width
 .It Ic main-pane-height Ar height
 Set the width or height of the main (left or top) pane in the
@@ -1563,66 +1520,81 @@ Set the width or height of the main (left or top) pane in the
 or
 .Ic main-vertical
 layouts.
+.Pp
 .It Ic mode-attr Ar attributes
 Set window modes attributes.
+.Pp
 .It Ic mode-bg Ar colour
 Set window modes background colour.
+.Pp
 .It Ic mode-fg Ar colour
 Set window modes foreground colour.
+.Pp
 .It Xo Ic mode-keys
-.Op Ic vi | Ic emacs
+.Op Ic vi | emacs
 .Xc
 Use vi or emacs-style key bindings in scroll, copy and choice modes.
 Key bindings default to emacs.
+.Pp
 .It Xo Ic mode-mouse
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 Mouse state in modes.
 If on,
 .Nm
 will respond to mouse clicks by moving the cursor in copy mode or selecting an
 option in choice mode.
+.Pp
 .It Xo Ic monitor-activity
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 Monitor for activity in the window.
 Windows with activity are highlighted in the status line.
-.It Xo Ic monitor-content Ar match-string
-.Xc
+.Pp
+.It Ic monitor-content Ar match-string
 Monitor content in the window.
 When
 .Xr fnmatch 3
 pattern
 .Ar match-string
 appears in the window, it is highlighted in the status line.
+.Pp
 .It Xo Ic remain-on-exit
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 A window with this flag set is not destroyed when the program running in it
 exits.
 The window may be reactivated with the
 .Ic respawn-window
 command.
+.Pp
 .It Xo Ic utf8
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 Instructs
 .Nm
 to expect UTF-8 sequences to appear in this window.
+.Pp
 .It Ic window-status-attr Ar attributes
 Set status line attributes for a single window.
+.Pp
 .It Ic window-status-bg Ar colour
 Set status line background colour for a single window.
+.Pp
 .It Ic window-status-fg Ar colour
 Set status line foreground colour for a single window.
+.Pp
 .It Ic window-status-current-attr Ar attributes
 Set status line attributes for the currently active window.
+.Pp
 .It Ic window-status-current-bg Ar colour
 Set status line background colour for the currently active window.
+.Pp
 .It Ic window-status-current-fg Ar colour
 Set status line foreground colour for the currently active window.
+.Pp
 .It Xo Ic xterm-keys
-.Op Ic on | Ic off
+.Op Ic on | off
 .Xc
 If this option is set,
 .Nm
@@ -1656,9 +1628,7 @@ List the window options for
 or the global window options if
 .Fl g
 is used.
-.It Xo Ic source-file
-.Ar path
-.Xc
+.It Ic source-file Ar path
 .D1 (alias: Ic source )
 Execute commands from
 .Ar path .
@@ -1687,14 +1657,13 @@ cells (for horizontal split), or as a percentage, respectively.
 All other options have the same meaning as in the
 .Ic new-window
 command.
-.It Xo Ic start-server
-.Xc
+.It Ic start-server
 .D1 (alias: Ic start )
 Start the
 .Nm
 server, if not already running, without creating any sessions.
 .It Xo Ic suspend-client
-.Op Fl c target-client
+.Op Fl c Ar target-client
 .Xc
 .D1 (alias: Ic suspendc )
 Suspend a client by sending
@@ -1775,9 +1744,7 @@ if
 .Fl k
 is specified and the window is linked to only one session, it is unlinked and
 destroyed.
-.It Xo Ic up-pane
-.Op Fl t Ar target-pane
-.Xc
+.It Ic up-pane Op Fl t Ar target-pane
 .D1 (alias: Ic upp )
 Move up a pane.
 .El
