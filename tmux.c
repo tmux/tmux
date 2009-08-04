@@ -332,7 +332,8 @@ main(int argc, char **argv)
 			if ((s = getenv("LC_CTYPE")) == NULL)
 				s = getenv("LANG");
 		}
-		if (s != NULL && strcasestr(s, "UTF-8") != NULL)
+		if (s != NULL && (strcasestr(s, "UTF-8") != NULL ||
+		    strcasestr(s, "UTF8") != NULL))
 			flags |= IDENTIFY_UTF8;
 	}
 
