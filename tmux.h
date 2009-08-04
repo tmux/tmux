@@ -1172,7 +1172,7 @@ int	tty_keys_next(struct tty *, int *, u_char *);
 
 /* options-cmd.c */
 void	set_option_string(struct cmd_ctx *,
-	    struct options *, const struct set_option_entry *, char *);
+	    struct options *, const struct set_option_entry *, char *, int);
 void	set_option_number(struct cmd_ctx *,
     	    struct options *, const struct set_option_entry *, char *);
 void	set_option_key(struct cmd_ctx *,
@@ -1326,10 +1326,10 @@ void	cmd_buffer_init(struct cmd *, int);
 int	cmd_buffer_parse(struct cmd *, int, char **, char **);
 void	cmd_buffer_free(struct cmd *);
 size_t	cmd_buffer_print(struct cmd *, char *, size_t);
-#define CMD_OPTION_PANE_USAGE "[-gu] [-t target-pane] option [value]"
-#define CMD_OPTION_WINDOW_USAGE "[-gu] [-t target-window] option [value]"
-#define CMD_OPTION_SESSION_USAGE "[-gu] [-t target-session] option [value]"
-#define CMD_OPTION_CLIENT_USAGE "[-gu] [-t target-client] option [value]"
+#define CMD_OPTION_PANE_USAGE "[-t target-pane] option [value]"
+#define CMD_OPTION_WINDOW_USAGE "[-t target-window] option [value]"
+#define CMD_OPTION_SESSION_USAGE "[-t target-session] option [value]"
+#define CMD_OPTION_CLIENT_USAGE "[-t target-client] option [value]"
 void	cmd_option_init(struct cmd *, int);
 int	cmd_option_parse(struct cmd *, int, char **, char **);
 void	cmd_option_free(struct cmd *);

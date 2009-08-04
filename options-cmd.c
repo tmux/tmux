@@ -25,15 +25,26 @@
 
 void
 set_option_string(struct cmd_ctx *ctx, struct options *oo,
-    const struct set_option_entry *entry, char *value)
+    const struct set_option_entry *entry, char *value, int append)
 {
+	char	*oldvalue, *newvalue;
+
 	if (value == NULL) {
 		ctx->error(ctx, "empty value");
 		return;
 	}
 
-	options_set_string(oo, entry->name, "%s", value);
-	ctx->info(ctx, "set option: %s -> %s", entry->name, value);
+	if (append) {
+		oldvalue = options_get_string(oo, entry->name);
+		xasprintf(&newvalue, "%s%s", oldvalue, value);
+	} else
+		newvalue = value;
+		
+	options_set_string(oo, entry->name, "%s", newvalue);
+	ctx->info(ctx, "set option: %s -> %s", entry->name, newvalue);
+
+	if (newvalue != value)
+		xfree(newvalue);
 }
 
 void

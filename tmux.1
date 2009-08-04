@@ -1021,12 +1021,17 @@ command.
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
-.Op Fl gu
+.Op Fl agu
 .Op Fl t Ar target-session
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic set )
 Set a session option.
+With
+.Fl a ,
+and if the option expects a string,
+.Ar value
+is appended to the existing setting.
 If
 .Fl g
 is specified, the global session option is set.
@@ -1310,13 +1315,14 @@ for which the
 window option is enabled.
 .El
 .It Xo Ic set-window-option
-.Op Fl gu
+.Op Fl agu
 .Op Fl t Ar target-window
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic setw )
 Set a window option.
 The
+.Fl a ,
 .Fl g
 and
 .Fl u
