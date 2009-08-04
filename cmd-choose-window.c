@@ -52,6 +52,8 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink			*wl, *wm;
 	struct window			*w;
 	u_int			 	 idx, cur;
+	char				 flag, *title;
+	const char			*left, *right;
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
@@ -73,9 +75,30 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			cur = idx;
 		idx++;
 
+		flag = ' ';
+		if (session_alert_has(s, wm, WINDOW_ACTIVITY))
+			flag = '#';
+		else if (session_alert_has(s, wm, WINDOW_BELL))
+			flag = '!';
+		else if (session_alert_has(s, wm, WINDOW_CONTENT))
+			flag = '+';
+		else if (wm == s->curw)
+			flag = '*';
+		else if (wm == SLIST_FIRST(&s->lastw))
+			flag = '-';
+
+		title = w->active->screen->title;
+		if (wm == wl)
+			title = w->active->base.title;
+		left = " \"";
+		right = "\"";
+		if (*title == '\0')
+			left = right = "";
+
 		window_choose_add(wl->window->active,
-		    wm->idx, "%3d: %s [%ux%u] (%u panes)",
-		    wm->idx, w->name, w->sx, w->sy, window_count_panes(w));
+		    wm->idx, "%3d: %s%c [%ux%u] (%u panes)%s%s%s",
+		    wm->idx, w->name, flag, w->sx, w->sy, window_count_panes(w),
+		    left, title, right);
 	}
 
 	cdata = xmalloc(sizeof *cdata);
