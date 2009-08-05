@@ -245,6 +245,7 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 	term->name = xstrdup(name);
 	term->references = 1;
 	term->flags = 0;
+	memset(&term->codes, 0, sizeof term->codes);
 	SLIST_INSERT_HEAD(&tty_terms, term, entry);
 
 	/* Set up curses terminal. */
@@ -267,7 +268,6 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 	}
 
 	/* Fill in codes. */
-	memset(&term->codes, 0, sizeof term->codes);
 	for (i = 0; i < NTTYCODE; i++) {
 		ent = &tty_term_codes[i];
 
