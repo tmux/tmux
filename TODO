@@ -106,3 +106,7 @@
   would be to make fg/bg adaptive and have them do the right thing. need
   changes/additions to options though
 - support for bce
+- when the external term doesn't support setaf/setab, the term inside still
+  does so programs which attempt to show reverse by swapping fg/bg colours
+  rather than with the reverse attribute (eg mc) will display incorrectly ** if
+  this was fixed, could lose reverse from status-fg/bg and fix reverse problems

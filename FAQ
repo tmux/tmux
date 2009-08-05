@@ -117,9 +117,9 @@ a 256-colour terminal inside tmux:
   http://vim.wikia.com/wiki/256_colors_in_vim.
 - If the platform includes it, using the "screen-256color" termcap (set
   TERM=screen-256color). "infocmp screen-256color" can be used to check if this
-  is supported. It is not currently possible to set this globally inside tmux
-  but it may be done in a shell startup script by checking if TERM is screen
-  and exporting TERM=screen-256color instead.
+  is supported. It is possible to set this globally inside tmux using thr
+  default-terminal session option, or it may be done in a shell startup script
+  by checking if TERM is screen and exporting TERM=screen-256color instead.
 - Creating a custom terminfo file that includes Co#256 in ~/.terminfo and using
   it instead. These may be compiled with tic(1).
 
@@ -194,4 +194,4 @@ terminal in use (set through TERM) request it. PuTTY can be told to ignore such
 requests: in the configuration window under Terminal -> Features, check the
 "Disable remote-controlled terminal resizing" box.
 
-$Id: FAQ,v 1.23 2009-07-01 19:49:56 nicm Exp $
+$Id: FAQ,v 1.24 2009-08-05 14:42:08 nicm Exp $
