@@ -117,10 +117,10 @@ a 256-colour terminal inside tmux:
   http://vim.wikia.com/wiki/256_colors_in_vim.
 - If the platform includes it, using the "screen-256color" termcap (set
   TERM=screen-256color). "infocmp screen-256color" can be used to check if this
-  is supported. It is possible to set this globally inside tmux using thr
+  is supported. It is possible to set this globally inside tmux using the
   default-terminal session option, or it may be done in a shell startup script
   by checking if TERM is screen and exporting TERM=screen-256color instead.
-- Creating a custom terminfo file that includes Co#256 in ~/.terminfo and using
+- Creating a custom terminfo file that includes colors#256 in ~/.terminfo and using
   it instead. These may be compiled with tic(1).
 
 * How do I make Ctrl-PgUp and Ctrl-PgDn work in vim?
@@ -194,4 +194,12 @@ terminal in use (set through TERM) request it. PuTTY can be told to ignore such
 requests: in the configuration window under Terminal -> Features, check the
 "Disable remote-controlled terminal resizing" box.
 
-$Id: FAQ,v 1.24 2009-08-05 14:42:08 nicm Exp $
+* I use PuTTY and my tmux window pane separators are all qqqqqqqqq's! 
+
+PuTTY is using a character set translation that doesn't support ACS line
+drawing. With a Unicode font, try setting PuTTY to use a different translation
+on the Window -> Translation configuration page. For example, change UTF-8 to
+ISO-8859-1 or CP437. It may also be necessary to adjust the way PuTTY treats
+line drawing characters in the lower part of the same configuration page.
+
+$Id: FAQ,v 1.25 2009-08-05 14:56:58 nicm Exp $
