@@ -189,13 +189,6 @@ Automatic window renaming may use a lot of CPU, particularly on slow computers:
 if this is a problem, turn it off with "setw -g automatic-rename off". If this
 doesn't fix it, please report the problem.
 
-* How do I prevent tmux from resizing my PuTTY window?
-
-This isn't tmux's fault, but happens because the initialisation strings for the
-terminal in use (set through TERM) request it. PuTTY can be told to ignore such
-requests: in the configuration window under Terminal -> Features, check the
-"Disable remote-controlled terminal resizing" box.
-
 * I use PuTTY and my tmux window pane separators are all qqqqqqqqq's! 
 
 PuTTY is using a character set translation that doesn't support ACS line
@@ -204,4 +197,4 @@ on the Window -> Translation configuration page. For example, change UTF-8 to
 ISO-8859-1 or CP437. It may also be necessary to adjust the way PuTTY treats
 line drawing characters in the lower part of the same configuration page.
 
-$Id: FAQ,v 1.26 2009-08-05 16:29:50 nicm Exp $
+$Id: FAQ,v 1.27 2009-08-06 12:22:50 nicm Exp $
