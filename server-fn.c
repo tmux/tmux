@@ -62,6 +62,8 @@ server_write_client(
 {
 	struct hdr	 hdr;
 
+	if (c->flags & CLIENT_BAD)
+		return;
 	log_debug("writing %d to client %d", type, c->fd);
 
 	hdr.type = type;

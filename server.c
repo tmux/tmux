@@ -131,9 +131,10 @@ server_client_index(struct client *c)
 int
 server_start(char *path)
 {
-	int	pair[2], srv_fd, null_fd;
-	char   *cause;
-	char	rpathbuf[MAXPATHLEN];
+	struct client	*c;
+	int		 pair[2], srv_fd;
+	char		*cause;
+	char		 rpathbuf[MAXPATHLEN];
 
 	/* The first client is special and gets a socketpair; create it. */
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
@@ -154,8 +155,11 @@ server_start(char *path)
 	 * Must daemonise before loading configuration as the PID changes so
 	 * $TMUX would be wrong for sessions created in the config file.
 	 */
-	if (daemon(1, 1) != 0)
+	if (daemon(1, 0) != 0)
 		fatal("daemon failed");
+
+	logfile("server");
+	log_debug("server started, pid %ld", (long) getpid());
 
 	ARRAY_INIT(&windows);
 	ARRAY_INIT(&clients);
@@ -171,44 +175,36 @@ server_start(char *path)
 	start_time = time(NULL);
 	socket_path = path;
 
-	if (access(SYSTEM_CFG, R_OK) != 0) {
-		if (errno != ENOENT) {
-			log_warn("%s", SYSTEM_CFG);
-			exit(1);
-		}
-	} else {
-		if (load_cfg(SYSTEM_CFG, &cause) != 0) {
-			log_warnx("%s", cause);
-			exit(1);
-		}
-	}
-	if (cfg_file != NULL && load_cfg(cfg_file, &cause) != 0) {
-		log_warnx("%s", cause);
-		exit(1);
-	}
-	logfile("server");
-
-	/*
-	 * Close stdin/stdout/stderr. Can't let daemon() do this as they are
-	 * needed until now to print configuration file errors.
-	 */
-        if ((null_fd = open(_PATH_DEVNULL, O_RDWR)) != -1) {
-                dup2(null_fd, STDIN_FILENO);
-                dup2(null_fd, STDOUT_FILENO);
-                dup2(null_fd, STDERR_FILENO);
-                if (null_fd > 2)
-                        close(null_fd);
-        }
-
-	log_debug("server started, pid %ld", (long) getpid());
-	log_debug("socket path %s", socket_path);
-
 	if (realpath(socket_path, rpathbuf) == NULL)
 		strlcpy(rpathbuf, socket_path, sizeof rpathbuf);
+	log_debug("socket path %s", socket_path);
 	setproctitle("server (%s)", rpathbuf);
 
 	srv_fd = server_create_socket();
 	server_create_client(pair[1]);
+
+	if (access(SYSTEM_CFG, R_OK) != 0) {
+		if (errno != ENOENT) {
+			xasprintf(
+			    &cause, "%s: %s", strerror(errno), SYSTEM_CFG);
+			goto error;
+		}
+	} else if (load_cfg(SYSTEM_CFG, &cause) != 0)
+		goto error;
+	if (cfg_file != NULL && load_cfg(cfg_file, &cause) != 0)
+		goto error;
+
+	exit(server_main(srv_fd));
+
+error:
+	/* Write the error and shutdown the server. */
+	c = ARRAY_FIRST(&clients);
+
+	server_write_error(c, cause);
+	xfree(cause);
+
+	server_shutdown();
+	c->flags |= CLIENT_BAD;
 
 	exit(server_main(srv_fd));
 }
@@ -419,8 +415,13 @@ server_shutdown(void)
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL)
-			server_write_client(c, MSG_SHUTDOWN, NULL, 0);
+		if (c != NULL) {
+			if (c->flags & CLIENT_BAD)
+				server_lost_client(c);
+			else
+				server_write_client(c, MSG_SHUTDOWN, NULL, 0);
+			c->flags |= CLIENT_BAD;
+		}
 	}
 }
 
@@ -672,7 +673,8 @@ server_fill_clients(struct pollfd **pfd)
 			(*pfd)->fd = -1;
 		else {
 			(*pfd)->fd = c->fd;
-			(*pfd)->events = POLLIN;
+			if (!(c->flags & CLIENT_BAD))
+				(*pfd)->events = POLLIN;
 			if (BUFFER_USED(c->out) > 0)
 				(*pfd)->events |= POLLOUT;
 		}
@@ -720,6 +722,11 @@ server_handle_clients(struct pollfd **pfd)
 				server_lost_client(c);
 				(*pfd) += 2;
 				continue;
+			} else if (c->flags & CLIENT_BAD) {
+				if (BUFFER_USED(c->out) == 0)
+					server_lost_client(c);
+				(*pfd) += 2;
+				continue;			
 			} else
 				server_msg_dispatch(c);
 		}
