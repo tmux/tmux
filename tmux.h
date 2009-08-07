@@ -602,7 +602,6 @@ struct input_ctx {
 
 	struct grid_cell cell;
 
-
 	struct grid_cell saved_cell;
 	u_int		 saved_cx;
 	u_int		 saved_cy;
@@ -674,6 +673,7 @@ struct window_pane {
  	u_int		 saved_cx;
  	u_int		 saved_cy;
 	struct grid	*saved_grid;
+	struct grid_cell saved_cell;
 
 	const struct window_mode *mode;
 	void		*modedata;
