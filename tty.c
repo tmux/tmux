@@ -486,8 +486,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 	u_int			 i, sx;
 
 	sx = screen_size_x(s);
-	if (sx > s->grid->size[s->grid->hsize + py])
-		sx = s->grid->size[s->grid->hsize + py];
+	if (sx > s->grid->linedata[s->grid->hsize + py].cellsize)
+		sx = s->grid->linedata[s->grid->hsize + py].cellsize;
 	if (sx > tty->sx)
 		sx = tty->sx;
 

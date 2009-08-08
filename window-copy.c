@@ -537,7 +537,7 @@ window_copy_find_length(struct window_pane *wp, u_int py)
 	 * width of the grid, and screen_write_copy treats them as spaces, so
 	 * ignore them here too.
 	 */
-	px = wp->base.grid->size[py];
+	px = wp->base.grid->linedata[py].cellsize;
 	if (px > screen_size_x(&wp->base))
 		px = screen_size_x(&wp->base);
 	while (px > 0) {

@@ -500,6 +500,15 @@ struct grid_utf8 {
 	u_char	data[UTF8_SIZE];
 } __packed;
 
+/* Grid line. */
+struct grid_line {
+	u_int	cellsize;
+	struct grid_cell *celldata;
+
+	u_int	utf8size;
+	struct grid_utf8 *utf8data;
+} __packed;
+
 /* Entire grid of cells. */
 struct grid {
 	int	flags;
@@ -511,11 +520,7 @@ struct grid {
 	u_int	hsize;
 	u_int	hlimit;
 
-	u_int  *size;
-	struct grid_cell **data;
-
-	u_int  *usize;
- 	struct grid_utf8 **udata;
+	struct grid_line *linedata;
 };
 
 /* Option data structures. */
