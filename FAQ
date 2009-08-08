@@ -97,13 +97,14 @@ flag may be specified when creating or attaching a client to a tmux session:
 
 * How do I use a 256 colour terminal?
 
-Provided the underlying terminal supports 256 colours,, it is usually
-sufficient to add the following to ~/.tmux.conf:
+Provided the underlying terminal supports 256 colours, it is usually sufficient
+to add the following to ~/.tmux.conf:
 
 	set -g default-terminal "screen-256color"
 
-Note that some platforms do not support "screen-256color" - in this case see
-the next entry in this FAQ.
+Note that some platforms do not support "screen-256color" ("infocmp
+screen-256color" will return an error) - in this case see the next entry in
+this FAQ.
 
 tmux attempts to detect a 256 colour terminal both by looking at the colors
 terminfo entry and by looking for the string "256col" in the TERM environment
@@ -200,4 +201,4 @@ on the Window -> Translation configuration page. For example, change UTF-8 to
 ISO-8859-1 or CP437. It may also be necessary to adjust the way PuTTY treats
 line drawing characters in the lower part of the same configuration page.
 
-$Id: FAQ,v 1.28 2009-08-08 20:42:42 nicm Exp $
+$Id: FAQ,v 1.29 2009-08-08 20:46:26 nicm Exp $
