@@ -72,9 +72,10 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 			}
 			size += gd->hsize * sizeof *gd->linedata;
 
+			name = NULL;
 			if (wp->fd != -1)
 				name = ttyname(wp->fd);
-			else
+			if (name == NULL)
 				name = "unknown";
 			ctx->print(ctx,
 			    "     %s [%ux%u] [history %u/%u, %llu bytes]",
