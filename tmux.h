@@ -484,6 +484,9 @@ struct mode_key_table {
 #define GRID_FLAG_PADDING 0x4
 #define GRID_FLAG_UTF8 0x8
 
+/* Grid line flags. */
+#define GRID_LINE_WRAPPED 0x1
+
 /* Grid cell data. */
 struct grid_cell {
 	u_char	attr;
@@ -507,6 +510,8 @@ struct grid_line {
 
 	u_int	utf8size;
 	struct grid_utf8 *utf8data;
+
+	int	flags;
 } __packed;
 
 /* Entire grid of cells. */
@@ -1504,7 +1509,7 @@ void	 screen_write_reverseindex(struct screen_write_ctx *);
 void	 screen_write_scrollregion(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_insertmode(struct screen_write_ctx *, int);
 void	 screen_write_mousemode(struct screen_write_ctx *, int);
-void	 screen_write_linefeed(struct screen_write_ctx *);
+void	 screen_write_linefeed(struct screen_write_ctx *, int);
 void	 screen_write_carriagereturn(struct screen_write_ctx *);
 void	 screen_write_kcursormode(struct screen_write_ctx *, int);
 void	 screen_write_kkeypadmode(struct screen_write_ctx *, int);

@@ -635,7 +635,7 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 	case '\0':	/* NUL */
 		break;
 	case '\n':	/* LF */
-		screen_write_linefeed(&ictx->ctx);
+		screen_write_linefeed(&ictx->ctx, 0);
 		break;
 	case '\r':	/* CR */
 		screen_write_carriagereturn(&ictx->ctx);
@@ -659,7 +659,7 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 		} while (s->cx < screen_size_x(s) - 1);
 		break;
 	case '\013':	/* VT */
-		screen_write_linefeed(&ictx->ctx);
+		screen_write_linefeed(&ictx->ctx, 0);
 		break;
 	case '\016':	/* SO */
 		ictx->cell.attr |= GRID_ATTR_CHARSET;
@@ -682,11 +682,11 @@ input_handle_c1_control(u_char ch, struct input_ctx *ictx)
 
 	switch (ch) {
 	case 'D':	/* IND */
-		screen_write_linefeed(&ictx->ctx);
+		screen_write_linefeed(&ictx->ctx, 0);
 		break;
 	case 'E': 	/* NEL */
 		screen_write_carriagereturn(&ictx->ctx);
-		screen_write_linefeed(&ictx->ctx);
+		screen_write_linefeed(&ictx->ctx, 0);
 		break;
 	case 'H':	/* HTS */
 		if (s->cx < screen_size_x(s))
