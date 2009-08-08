@@ -359,11 +359,17 @@ main(int argc, char **argv)
 	options_set_number(&global_s_options, "status-interval", 15);
 	options_set_number(&global_s_options, "status-keys", MODEKEY_EMACS);
 	options_set_number(&global_s_options, "status-justify", 0);
-	options_set_number(&global_s_options, "status-left-length", 10);
-	options_set_number(&global_s_options, "status-right-length", 40);
 	options_set_string(&global_s_options, "status-left", "[#S]");
+	options_set_number(&global_s_options, "status-left-attr", 0);
+	options_set_number(&global_s_options, "status-left-fg", 8);
+	options_set_number(&global_s_options, "status-left-bg", 8);
+	options_set_number(&global_s_options, "status-left-length", 10);
 	options_set_string(
 	    &global_s_options, "status-right", "\"#22T\" %%H:%%M %%d-%%b-%%y");
+	options_set_number(&global_s_options, "status-right-attr", 0);
+	options_set_number(&global_s_options, "status-right-fg", 8);
+	options_set_number(&global_s_options, "status-right-bg", 8);
+	options_set_number(&global_s_options, "status-right-length", 40);
 	if (flags & IDENTIFY_UTF8)
 		options_set_number(&global_s_options, "status-utf8", 1);
 	else
