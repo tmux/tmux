@@ -134,14 +134,14 @@ void
 environ_update(const char *vars, struct environ *srcenv, struct environ *dstenv)
 {
 	struct environ_entry	*envent;
-	char			*var, *next;
+	char			*copyvars, *var, *next;
 
-	vars = next = xstrdup(vars);
+	copyvars = next = xstrdup(vars);
 	while ((var = strsep(&next, " ")) != NULL) {
 		if ((envent = environ_find(srcenv, var)) == NULL)
 			environ_set(dstenv, var, NULL);
 		else
 			environ_set(dstenv, envent->name, envent->value);
 	}
-	xfree(vars);
+	xfree(copyvars);
 }
