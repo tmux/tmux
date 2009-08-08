@@ -39,6 +39,7 @@
 #include "array.h"
 
 extern char    *__progname;
+extern char   **environ;
 
 /* Default configuration files. */
 #define DEFAULT_CFG ".tmux.conf"
@@ -69,6 +70,7 @@ extern char    *__progname;
 #define COMMAND_LENGTH 2048	/* packed argv size */
 #define TERMINAL_LENGTH 128	/* length of TERM environment variable */
 #define PRINT_LENGTH 512	/* printed error/message size */
+#define ENVIRON_LENGTH 1024	/* environment variable length */
 
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
@@ -302,6 +304,7 @@ enum msgtype {
 	MSG_SUSPEND,
 	MSG_UNLOCK,
 	MSG_WAKEUP,
+	MSG_ENVIRON
 };
 
 /*
@@ -354,6 +357,10 @@ struct msg_resize_data {
 
 struct msg_unlock_data {
 	char	       	pass[PASS_MAX];
+};
+
+struct msg_environ_data {
+	char	     	var[ENVIRON_LENGTH];
 };
 
 /* Mode key commands. */
@@ -765,6 +772,15 @@ struct paste_buffer {
 };
 ARRAY_DECL(paste_stack, struct paste_buffer *);
 
+/* Environment variable. */
+struct environ_entry {
+	char		*name;
+	char		*value;
+
+	RB_ENTRY(environ_entry) entry;
+};
+RB_HEAD(environ, environ_entry);
+
 /* Client session. */
 struct session_alert {
 	struct winlink	*wl;
@@ -792,6 +808,8 @@ struct session {
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
 	int		 flags;
+
+	struct environ	 environ;
 };
 ARRAY_DECL(sessions, struct session *);
 
@@ -894,6 +912,8 @@ struct client {
 	struct buffer	*in;
 	struct buffer	*out;
 
+	struct environ	 environ;
+
 	char		*title;
 	char		*cwd;
 
@@ -992,6 +1012,7 @@ struct cmd_entry {
 #define CMD_CANTNEST 0x2
 #define CMD_ARG1 0x4
 #define CMD_ARG01 0x8
+#define CMD_SENDENVIRON 0x10
 	int		 flags;
 
 #define CMD_CHFLAG(flag) \
@@ -1074,6 +1095,7 @@ extern volatile sig_atomic_t sigusr1;
 extern volatile sig_atomic_t sigusr2;
 extern struct options global_s_options;
 extern struct options global_w_options;
+extern struct environ global_environ;
 extern char	*cfg_file;
 extern int	 server_locked;
 extern u_int	 password_failures;
@@ -1122,6 +1144,18 @@ void printflike3 options_set_string(
 char   *options_get_string(struct options *, const char *);
 void	options_set_number(struct options *, const char *, long long);
 long long options_get_number(struct options *, const char *);
+
+/* environ.c */
+int	environ_cmp(struct environ_entry *, struct environ_entry *);
+RB_PROTOTYPE(environ, environ_entry, entry, environ_cmp);
+void	environ_init(struct environ *);
+void	environ_free(struct environ *);
+void	environ_copy(struct environ *, struct environ *);
+struct environ_entry *environ_find(struct environ *, const char *);
+void	environ_set(struct environ *, const char *, const char *);
+void	environ_put(struct environ *, const char *);
+void	environ_unset(struct environ *, const char *);
+void 	environ_update(const char *, struct environ *, struct environ *);
 
 /* tty.c */
 u_char	tty_get_acs(struct tty *, u_char);
@@ -1285,10 +1319,12 @@ extern const struct cmd_entry cmd_send_keys_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;
 extern const struct cmd_entry cmd_server_info_entry;
 extern const struct cmd_entry cmd_set_buffer_entry;
+extern const struct cmd_entry cmd_set_environment_entry;
 extern const struct cmd_entry cmd_set_option_entry;
 extern const struct cmd_entry cmd_set_password_entry;
 extern const struct cmd_entry cmd_set_window_option_entry;
 extern const struct cmd_entry cmd_show_buffer_entry;
+extern const struct cmd_entry cmd_show_environment_entry;
 extern const struct cmd_entry cmd_show_options_entry;
 extern const struct cmd_entry cmd_show_window_options_entry;
 extern const struct cmd_entry cmd_source_file_entry;
@@ -1384,7 +1420,7 @@ int	 server_start(char *);
 int	 server_msg_dispatch(struct client *);
 
 /* server-fn.c */
-const char **server_fill_environ(struct session *);
+void	 server_fill_environ(struct session *, struct environ *);
 void	 server_write_error(struct client *, const char *);
 void	 server_write_client(
              struct client *, enum msgtype, const void *, size_t);
@@ -1554,8 +1590,8 @@ void		 winlink_stack_push(struct winlink_stack *, struct winlink *);
 void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 int	 	 window_index(struct window *, u_int *);
 struct window	*window_create1(u_int, u_int);
-struct window	*window_create(const char *, const char *,
-		     const char *, const char **, u_int, u_int, u_int, char **);
+struct window	*window_create(const char *, const char *, const char *,
+    		     struct environ *, u_int, u_int, u_int, char **);
 void		 window_destroy(struct window *);
 void		 window_set_active_pane(struct window *, struct window_pane *);
 struct window_pane *window_add_pane(struct window *, u_int);
@@ -1568,7 +1604,7 @@ void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *,
-		     const char *, const char *, const char **, char **);
+		     const char *, const char *, struct environ *, char **);
 void		 window_pane_resize(struct window_pane *, u_int, u_int);
 int		 window_pane_set_mode(
 		     struct window_pane *, const struct window_mode *);
@@ -1648,7 +1684,7 @@ int	 session_alert_has(struct session *, struct winlink *, int);
 int	 session_alert_has_window(struct session *, struct window *, int);
 struct session	*session_find(const char *);
 struct session	*session_create(const char *, const char *,
-    		     const char *, u_int, u_int, char **);
+    		     const char *, struct environ *, u_int, u_int, char **);
 void	 	 session_destroy(struct session *);
 int	 	 session_index(struct session *, u_int *);
 struct winlink	*session_new(struct session *,

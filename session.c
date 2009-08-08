@@ -112,8 +112,8 @@ session_find(const char *name)
 
 /* Create a new session. */
 struct session *
-session_create(const char *name,
-    const char *cmd, const char *cwd, u_int sx, u_int sy, char **cause)
+session_create(const char *name, const char *cmd, const char *cwd,
+    struct environ *env, u_int sx, u_int sy, char **cause)
 {
 	struct session	*s;
 	u_int		 i;
@@ -128,6 +128,9 @@ session_create(const char *name,
 	SLIST_INIT(&s->alerts);
 	paste_init_stack(&s->buffers);
 	options_init(&s->options, &global_s_options);
+	environ_init(&s->environ);
+	if (env != NULL)
+		environ_copy(env, &s->environ);
 
 	s->sx = sx;
 	s->sy = sy;
@@ -171,6 +174,7 @@ session_destroy(struct session *s)
 		ARRAY_TRUNC(&sessions, 1);
 
 	session_alert_cancel(s, NULL);
+	environ_free(&s->environ);
 	options_free(&s->options);
 	paste_free_stack(&s->buffers);
 
@@ -200,15 +204,21 @@ session_new(struct session *s,
     const char *name, const char *cmd, const char *cwd, int idx, char **cause)
 {
 	struct window	*w;
-	const char     **env;
+	struct environ	 env;
 	u_int		 hlimit;
 
-	env = server_fill_environ(s);
+	environ_init(&env);
+	environ_copy(&global_environ, &env);
+	environ_copy(&s->environ, &env);
+	server_fill_environ(s, &env);
 
 	hlimit = options_get_number(&s->options, "history-limit");
-	w = window_create(name, cmd, cwd, env, s->sx, s->sy, hlimit, cause);
-	if (w == NULL)
+	w = window_create(name, cmd, cwd, &env, s->sx, s->sy, hlimit, cause);
+	if (w == NULL) {
+		environ_free(&env);
 		return (NULL);
+	}
+	environ_free(&env);
 
 	if (options_get_number(&s->options, "set-remain-on-exit"))
 		options_set_number(&w->options, "remain-on-exit", 1);

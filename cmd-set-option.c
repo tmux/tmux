@@ -85,6 +85,7 @@ const struct set_option_entry set_option_table[] = {
 	{ "status-right-length", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
 	{ "status-utf8", SET_OPTION_FLAG, 0, 0, NULL },	
 	{ "terminal-overrides", SET_OPTION_STRING, 0, 0, NULL },
+	{ "update-environment", SET_OPTION_STRING, 0, 0, NULL },
 	{ "visual-activity", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "visual-bell", SET_OPTION_FLAG, 0, 0, NULL },	
 	{ "visual-content", SET_OPTION_FLAG, 0, 0, NULL },

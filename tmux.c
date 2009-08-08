@@ -44,6 +44,7 @@ volatile sig_atomic_t sigusr2;
 char		*cfg_file;
 struct options	 global_s_options;	/* session options */
 struct options	 global_w_options;	/* window options */
+struct environ	 global_environ;
 
 int		 server_locked;
 u_int		 password_failures;
@@ -262,7 +263,7 @@ main(int argc, char **argv)
 	struct hdr	 	 hdr;
 	struct passwd		*pw;
 	struct msg_print_data	 printdata;
-	char			*s, *path, *label, *home, *cause;
+	char			*s, *path, *label, *home, *cause, **var;
 	char			 cwd[MAXPATHLEN];
 	void			*buf;
 	size_t			 len;
@@ -320,6 +321,10 @@ main(int argc, char **argv)
 	log_open_tty(debug_level);
 	siginit();
 
+	environ_init(&global_environ);
+ 	for (var = environ; *var != NULL; var++)
+		environ_put(&global_environ, *var);
+
 	if (!(flags & IDENTIFY_UTF8)) {
 		/*
 		 * If the user has set whichever of LC_ALL, LC_CTYPE or LANG
@@ -376,6 +381,7 @@ main(int argc, char **argv)
 		options_set_number(&global_s_options, "status-utf8", 0);
 	options_set_string(&global_s_options,
 	    "terminal-overrides", "*88col*:colors=88,*256col*:colors=256");
+	options_set_string(&global_s_options, "update-environment", "DISPLAY");
 	options_set_number(&global_s_options, "visual-activity", 0);
 	options_set_number(&global_s_options, "visual-bell", 0);
 	options_set_number(&global_s_options, "visual-content", 0);
@@ -469,10 +475,10 @@ main(int argc, char **argv)
 		}
 		cmdflags &= ~CMD_STARTSERVER;
 		TAILQ_FOREACH(cmd, cmdlist, qentry) {
-			if (cmd->entry->flags & CMD_STARTSERVER) {
+			if (cmd->entry->flags & CMD_STARTSERVER)
 				cmdflags |= CMD_STARTSERVER;
-				break;
-			}
+			if (cmd->entry->flags & CMD_SENDENVIRON)
+				cmdflags |= CMD_SENDENVIRON;
 		}
 		cmd_list_free(cmdlist);
 	}
