@@ -101,12 +101,7 @@
 - command to list what is actually running in each window with command line,
   pid (need some adaption of the osdep code)
 - options to change/remove the symbols (*-+ etc) in status line (bloat?)
-- status-fg/bg (and mode, message) are reversed, this is confusing if remove
-  reverse from status-attr, but confusing by default if they are fixed. best
-  would be to make fg/bg adaptive and have them do the right thing. need
-  changes/additions to options though
-- support for bce
-- when the external term doesn't support setaf/setab, the term inside still
-  does so programs which attempt to show reverse by swapping fg/bg colours
-  rather than with the reverse attribute (eg mc) will display incorrectly ** if
-  this was fixed, could lose reverse from status-fg/bg and fix reverse problems
+- asupport for bce
+- reset attributes when idle so ~./pkill are less likely to leave terminal upset
+- it would be nice if the start/end line keys in copy mode were aware of
+  wrapped lines
