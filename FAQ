@@ -93,11 +93,19 @@ checking the LC_ALL, LC_CTYPE and LANG environment variables. list-clients may
 be used to check if this is detected correctly; if not, the -u command-line
 flag may be specified when creating or attaching a client to a tmux session:
 
-	  $ tmux -u new
+	$ tmux -u new
 
 * How do I use a 256 colour terminal?
 
-tmux will attempt to detect a 256 colour terminal both by looking at the colors
+Provided the underlying terminal supports 256 colours,, it is usually
+sufficient to add the following to ~/.tmux.conf:
+
+	set -g default-terminal "screen-256color"
+
+Note that some platforms do not support "screen-256color" - in this case see
+the next entry in this FAQ.
+
+tmux attempts to detect a 256 colour terminal both by looking at the colors
 terminfo entry and by looking for the string "256col" in the TERM environment
 variable.
 
@@ -111,19 +119,14 @@ by checking the colors terminfo or Co termcap entry. However, this is not
 reliable, and in any case is missing from the "screen" terminal description
 used inside tmux.
 
-There are three options to allow programs to recognise they are running on
-a 256-colour terminal inside tmux:
+There are two options (aside from using "screen-256color") to allow programs to
+recognise they are running on a 256-colour terminal inside tmux:
 
 - Manually force the application to use 256 colours always or if TERM is set to
   screen. For vim, you can do this by overriding the t_Co option, see
   http://vim.wikia.com/wiki/256_colors_in_vim.
-- If the platform includes it, using the "screen-256color" terminal description
-  (set TERM=screen-256color). "infocmp screen-256color" can be used to check if
-  this is supported. It is possible to set this globally inside tmux using the
-  default-terminal session option, or it may be done in a shell startup script
-  by checking if TERM is screen and exporting TERM=screen-256color instead.
-- Creating a custom terminfo file that includes colors#256 in ~/.terminfo and using
-  it instead. These may be compiled with tic(1).
+- Creating a custom terminfo file that includes colors#256 in ~/.terminfo and
+  using it instead. These may be compiled with tic(1).
 
 * How do I make Ctrl-PgUp and Ctrl-PgDn work in vim?
 
@@ -197,4 +200,4 @@ on the Window -> Translation configuration page. For example, change UTF-8 to
 ISO-8859-1 or CP437. It may also be necessary to adjust the way PuTTY treats
 line drawing characters in the lower part of the same configuration page.
 
-$Id: FAQ,v 1.27 2009-08-06 12:22:50 nicm Exp $
+$Id: FAQ,v 1.28 2009-08-08 20:42:42 nicm Exp $
