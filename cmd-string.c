@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.22 2009-08-09 15:26:24 tcunha Exp $ */
+/* $Id: cmd-string.c,v 1.23 2009-08-09 17:48:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -59,20 +59,10 @@ int
 cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 {
 	size_t		p;
-	int		ch, argc, rval, have_arg;
-	char	      **argv, *buf, *t, *u;
+	int		ch, i, argc, rval, have_arg;
+	char	      **argv, *buf, *t;
+	const char     *whitespace, *equals;
 	size_t		len;
-
-	if ((t = strchr(s, ' ')) == NULL && (t = strchr(s, '\t')) == NULL)
-		t = strchr(s, '\0');
-	if ((u = strchr(s, '=')) != NULL && u < t) {
-		if (putenv(xstrdup(s)) != 0) {
-			xasprintf(cause, "assignment failed: %s", s);
-			return (-1);
-		}
-		*cmdlist = NULL;
-		return (0);
-	}
 
 	argv = NULL;
 	argc = 0;
@@ -144,6 +134,18 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 
 			if (ch != EOF)
 				break;
+			if (argc == 0)
+				goto out;
+
+			for (i = 0; i < argc; i++) {
+				equals = strchr(argv[i], '=');
+				whitespace = argv[i] + strcspn(argv[i], " \t");
+				if (equals == NULL || equals > whitespace)
+					break;
+				environ_put(&global_environ, argv[i]);
+				memmove(&argv[i], &argv[i + 1], argc - i - 1);
+				argc--;
+			}
 			if (argc == 0)
 				goto out;
 

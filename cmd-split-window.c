@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.21 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-split-window.c,v 1.22 2009-08-09 17:48:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -149,7 +149,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink			*wl;
 	struct window			*w;
 	struct window_pane		*wp;
-	const char		       **env;
+	struct environ			 env;
 	char		 		*cmd, *cwd, *cause;
 	u_int				 hlimit;
 	int				 size;
@@ -159,7 +159,10 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	w = wl->window;
 
-	env = server_fill_environ(s);
+	environ_init(&env);
+	environ_copy(&global_environ, &env);
+	environ_copy(&s->environ, &env);
+	server_fill_environ(s, &env);
 
 	cmd = data->cmd;
 	if (cmd == NULL)
@@ -181,7 +184,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		type = LAYOUT_LEFTRIGHT;
 
 	wp = window_add_pane(w, hlimit);
-	if (window_pane_spawn(wp, cmd, cwd, env, &cause) != 0)
+	if (window_pane_spawn(wp, cmd, cwd, &env, &cause) != 0)
 		goto error;
 	if (layout_split_pane(w->active, type, size, wp) != 0) {
 		cause = xstrdup("pane too small");
@@ -197,9 +200,11 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	} else
 		server_status_session(s);
 
+	environ_free(&env);
 	return (0);
 
 error:
+	environ_free(&env);
 	if (wp != NULL)
 		window_remove_pane(w, wp);
 	ctx->error(ctx, "create pane failed: %s", cause);

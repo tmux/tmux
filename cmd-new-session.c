@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.50 2009-08-09 15:26:24 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.51 2009-08-09 17:48:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -40,7 +40,7 @@ struct cmd_new_session_data {
 const struct cmd_entry cmd_new_session_entry = {
 	"new-session", "new",
 	"[-d] [-n window-name] [-s session-name] [command]",
-	CMD_STARTSERVER|CMD_CANTNEST, 0,
+	CMD_STARTSERVER|CMD_CANTNEST|CMD_SENDENVIRON, 0,
 	cmd_new_session_init,
 	cmd_new_session_parse,
 	cmd_new_session_exec,
@@ -108,6 +108,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_new_session_data	*data = self->data;
 	struct session			*s;
+	struct environ			 env;
+	const char			*update;
 	char				*overrides, *cmd, *cwd, *cause;
 	int				 detached;
 	u_int				 sx, sy;
@@ -184,13 +186,20 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		cmd = options_get_string(&global_s_options, "default-command");
 
+	/* Construct the environment. */
+	environ_init(&env);
+	update = options_get_string(&global_s_options, "update-environment");
+	if (ctx->cmdclient != NULL)
+		environ_update(update, &ctx->cmdclient->environ, &env);
+
 	/* Create the new session. */
-	s = session_create(data->newname, cmd, cwd, sx, sy, &cause);
+	s = session_create(data->newname, cmd, cwd, &env, sx, sy, &cause);
 	if (s == NULL) {
 		ctx->error(ctx, "create session failed: %s", cause);
 		xfree(cause);
 		return (-1);
 	}
+	environ_free(&env);
 
 	if (data->winname != NULL) {
 		xfree(s->curw->window->name);

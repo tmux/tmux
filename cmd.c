@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.111 2009-07-30 20:45:20 tcunha Exp $ */
+/* $Id: cmd.c,v 1.112 2009-08-09 17:48:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -83,10 +83,12 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_send_prefix_entry,
 	&cmd_server_info_entry,
 	&cmd_set_buffer_entry,
+	&cmd_set_environment_entry,
 	&cmd_set_option_entry,
 	&cmd_set_password_entry,
 	&cmd_set_window_option_entry,
 	&cmd_show_buffer_entry,
+	&cmd_show_environment_entry,
 	&cmd_show_options_entry,
 	&cmd_show_window_options_entry,
 	&cmd_source_file_entry,

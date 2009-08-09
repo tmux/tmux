@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.99 2009-07-28 23:04:29 tcunha Exp $ */
+/* $Id: window.c,v 1.100 2009-08-09 17:48:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -252,7 +252,7 @@ window_create1(u_int sx, u_int sy)
 
 struct window *
 window_create(const char *name, const char *cmd, const char *cwd,
-    const char **envp, u_int sx, u_int sy, u_int hlimit, char **cause)
+    struct environ *env, u_int sx, u_int sy, u_int hlimit, char **cause)
 {
 	struct window		*w;
 	struct window_pane	*wp;
@@ -260,7 +260,7 @@ window_create(const char *name, const char *cmd, const char *cwd,
 	w = window_create1(sx, sy);
 	wp = window_add_pane(w, hlimit);
 	layout_init(w);
-	if (window_pane_spawn(wp, cmd, cwd, envp, cause) != 0) {
+	if (window_pane_spawn(wp, cmd, cwd, env, cause) != 0) {
 		window_destroy(w);
 		return (NULL);
 	}
@@ -454,13 +454,16 @@ window_pane_destroy(struct window_pane *wp)
 
 int
 window_pane_spawn(struct window_pane *wp,
-    const char *cmd, const char *cwd, const char **envp, char **cause)
+    const char *cmd, const char *cwd, struct environ *env, char **cause)
 {
-	struct winsize	 ws;
-	int		 mode;
-	const char     **envq, *ptr;
-	char		*argv0;
-	struct timeval	 tv;
+	struct winsize	 	 ws;
+	int		 	 mode;
+	char			*argv0, **varp, *var;
+	ARRAY_DECL(, char *)	 varlist;
+	struct environ_entry	*envent;
+	const char		*ptr;
+	struct timeval	 	 tv;
+	u_int		 	 i;
 
 	if (wp->fd != -1)
 		close(wp->fd);
@@ -493,10 +496,22 @@ window_pane_spawn(struct window_pane *wp,
 	case 0:
 		if (chdir(wp->cwd) != 0)
 			chdir("/");
-		for (envq = envp; *envq != NULL; envq++) {
-			if (putenv(xstrdup(*envq)) != 0)
-				fatal("putenv failed");
+
+		ARRAY_INIT(&varlist);
+		for (varp = environ; *varp != NULL; varp++) {
+			var = xstrdup(*varp);
+			var[strcspn(var, "=")] = '\0';
+			ARRAY_ADD(&varlist, var);
 		}
+		for (i = 0; i < ARRAY_LENGTH(&varlist); i++) {
+			var = ARRAY_ITEM(&varlist, i);
+			unsetenv(var);
+		}
+		RB_FOREACH(envent, environ, env) {
+			if (envent->value != NULL)
+				setenv(envent->name, envent->value, 1);
+		}
+
 		sigreset();
 		log_close();
 

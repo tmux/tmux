@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.60 2009-08-09 17:43:00 tcunha Exp $ */
+/* $Id: client.c,v 1.61 2009-08-09 17:48:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,6 +33,7 @@
 
 #include "tmux.h"
 
+void	client_send_environ(struct client_ctx *);
 void	client_handle_winch(struct client_ctx *);
 
 int
@@ -99,6 +100,8 @@ server_started:
 	cctx->srv_in = buffer_create(BUFSIZ);
 	cctx->srv_out = buffer_create(BUFSIZ);
 
+	if (cmdflags & CMD_SENDENVIRON)
+		client_send_environ(cctx);
 	if (isatty(STDIN_FILENO)) {
 		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
 			fatal("ioctl(TIOCGWINSZ)");
@@ -135,6 +138,19 @@ start_failed:
 not_found:
 	log_warn("server not found");
 	return (1);
+}
+
+void
+client_send_environ(struct client_ctx *cctx)
+{
+	char		      **var;
+	struct msg_environ_data	data;
+
+ 	for (var = environ; *var != NULL; var++) {
+		if (strlcpy(data.var, *var, sizeof data.var) >= sizeof data.var)
+			continue;
+		client_write_server(cctx, MSG_ENVIRON, &data, sizeof data);
+	}
 }
 
 int
@@ -246,8 +262,8 @@ client_msg_dispatch(struct client_ctx *cctx)
 			if (hdr.size != sizeof printdata)
 				fatalx("bad MSG_PRINT size");
 			buffer_read(cctx->srv_in, &printdata, sizeof printdata);
-			printdata.msg[(sizeof printdata.msg) - 1] = '\0';
 
+			printdata.msg[(sizeof printdata.msg) - 1] = '\0';
 			cctx->errstr = xstrdup(printdata.msg);
 			return (-1);
 		case MSG_EXIT:

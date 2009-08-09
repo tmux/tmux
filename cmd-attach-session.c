@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.31 2009-08-09 15:26:24 tcunha Exp $ */
+/* $Id: cmd-attach-session.c,v 1.32 2009-08-09 17:48:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ int	cmd_attach_session_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_attach_session_entry = {
 	"attach-session", "attach",
 	"[-d] " CMD_TARGET_SESSION_USAGE,
-       	CMD_CANTNEST|CMD_STARTSERVER, CMD_CHFLAG('d'),
+       	CMD_CANTNEST|CMD_STARTSERVER|CMD_SENDENVIRON, CMD_CHFLAG('d'),
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_attach_session_exec,
@@ -43,6 +43,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_target_data	*data = self->data;
 	struct session		*s;
 	struct client		*c;
+	const char		*update;
 	char			*overrides, *cause;
 	u_int			 i;
 
@@ -93,6 +94,10 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		ctx->cmdclient->session = s;
 		server_write_client(ctx->cmdclient, MSG_READY, NULL, 0);
+
+		update = options_get_string(&s->options, "update-environment");
+		environ_update(update, &ctx->cmdclient->environ, &s->environ);
+
 		server_redraw_client(ctx->cmdclient);
 	}
 	recalculate_sizes();
