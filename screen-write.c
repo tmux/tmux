@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.66 2009-07-30 21:14:04 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.67 2009-08-09 17:32:06 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -610,12 +610,19 @@ screen_write_mousemode(struct screen_write_ctx *ctx, int state)
 
 /* Line feed (down with scroll). */
 void
-screen_write_linefeed(struct screen_write_ctx *ctx)
+screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
 {
-	struct screen	*s = ctx->s;
-	struct tty_ctx	 ttyctx;
+	struct screen		*s = ctx->s;
+	struct grid_line	*gl;
+	struct tty_ctx		 ttyctx;
 
 	screen_write_initctx(ctx, &ttyctx);
+
+	gl = &s->grid->linedata[s->grid->hsize + s->cy];
+	if (wrapped)
+		gl->flags |= GRID_LINE_WRAPPED;
+	else
+		gl->flags &= ~GRID_LINE_WRAPPED;
 
 	if (s->cy == s->rlower)
 		grid_view_scroll_region_up(s->grid, s->rupper, s->rlower);
@@ -782,10 +789,10 @@ screen_write_cell(
 		insert = 1;
 	}
 
-	/* Check this will fit on the current line; scroll if not. */
+	/* Check this will fit on the current line and wrap if not. */
 	if (s->cx > screen_size_x(s) - width) {
 		screen_write_carriagereturn(ctx);
-		screen_write_linefeed(ctx);
+		screen_write_linefeed(ctx, 1);
 	}
 
 	/* Sanity checks. */

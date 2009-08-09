@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.74 2009-08-09 17:28:24 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.75 2009-08-09 17:32:06 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -449,13 +449,11 @@ window_copy_copy_selection(struct window_pane *wp, struct client *c)
 	if (sy == ey)
 		window_copy_copy_line(wp, &buf, &off, sy, sx, ex);
 	else {
-		xx = window_copy_find_length(wp, sy);
+		xx = screen_size_x(s);
 		window_copy_copy_line(wp, &buf, &off, sy, sx, xx);
 		if (ey - sy > 1) {
-			for (i = sy + 1; i < ey; i++) {
-				xx = window_copy_find_length(wp, i);
+			for (i = sy + 1; i < ey; i++)
 				window_copy_copy_line(wp, &buf, &off, i, 0, xx);
-			}
 		}
 		window_copy_copy_line(wp, &buf, &off, ey, 0, ex);
 	}
@@ -473,14 +471,28 @@ void
 window_copy_copy_line(struct window_pane *wp,
     char **buf, size_t *off, u_int sy, u_int sx, u_int ex)
 {
+	struct grid		*gd = wp->base.grid;
  	const struct grid_cell	*gc;
  	const struct grid_utf8	*gu;
-	u_int			 i, j, xx;
+	struct grid_line	*gl;
+	u_int			 i, j, xx, wrapped = 0;
 
 	if (sx > ex)
 		return;
 
-	xx = window_copy_find_length(wp, sy);
+	/*
+	 * Work out if the line was wrapped at the screen edge and all of it is
+	 * on screen.
+	 */
+	gl = &gd->linedata[sy];
+ 	if (gl->flags & GRID_LINE_WRAPPED && gl->cellsize <= gd->sx)
+		wrapped = 1;
+
+	/* If the line was wrapped, don't strip spaces (use the full length). */
+	if (wrapped)
+		xx = gl->cellsize;
+	else
+		xx = window_copy_find_length(wp, sy);
 	if (ex > xx)
 		ex = xx;
 	if (sx > xx)
@@ -488,14 +500,14 @@ window_copy_copy_line(struct window_pane *wp,
 
 	if (sx < ex) {
 		for (i = sx; i < ex; i++) {
-			gc = grid_peek_cell(wp->base.grid, i, sy);
+			gc = grid_peek_cell(gd, i, sy);
 			if (gc->flags & GRID_FLAG_PADDING)
 				continue;
 			if (!(gc->flags & GRID_FLAG_UTF8)) {
 				*buf = xrealloc(*buf, 1, (*off) + 1);
 				(*buf)[(*off)++] = gc->data;
 			} else {
-				gu = grid_peek_utf8(wp->base.grid, i, sy);
+				gu = grid_peek_utf8(gd, i, sy);
 				*buf = xrealloc(*buf, 1, (*off) + UTF8_SIZE);
 				for (j = 0; j < UTF8_SIZE; j++) {
 					if (gu->data[j] == 0xff)
@@ -506,9 +518,11 @@ window_copy_copy_line(struct window_pane *wp,
 		}
 	}
 
-	*buf = xrealloc(*buf, 1, (*off) + 1);
-	(*buf)[*off] = '\n';
-	(*off)++;
+	/* Only add a newline if the line wasn't wrapped. */
+ 	if (!wrapped) {
+		*buf = xrealloc(*buf, 1, (*off) + 1);
+		(*buf)[(*off)++] = '\n';
+	}
 }
 
 int
