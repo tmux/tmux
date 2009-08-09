@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.17 2009-07-28 22:26:13 tcunha Exp $ */
+/* $Id: osdep-openbsd.c,v 1.18 2009-08-09 16:08:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,7 +34,55 @@
 #define is_stopped(p) \
 	((p)->p_stat == SSTOP || (p)->p_stat == SZOMB || (p)->p_stat == SDEAD)
 
-char	*osdep_get_name(int, char *);
+struct proc	*cmp_procs(struct proc *, struct proc *);
+char		*osdep_get_name(int, char *);
+
+struct proc *
+cmp_procs(struct proc *p1, struct proc *p2)
+{
+	void	*ptr1, *ptr2;
+
+	if (is_runnable(p1) && !is_runnable(p2))
+		return (p1);
+	if (!is_runnable(p1) && is_runnable(p2))
+		return (p2);
+
+	if (is_stopped(p1) && !is_stopped(p2))
+		return (p1);
+	if (!is_stopped(p1) && is_stopped(p2))
+		return (p2);
+
+	if (p1->p_estcpu > p2->p_estcpu)
+		return (p1);
+	if (p1->p_estcpu < p2->p_estcpu)
+		return (p2);
+
+	if (p1->p_slptime < p2->p_slptime)
+		return (p1);
+	if (p1->p_slptime > p2->p_slptime)
+		return (p2);
+
+	if ((p1->p_flag & P_SINTR) && !(p2->p_flag & P_SINTR))
+		return (p1);
+	if (!(p1->p_flag & P_SINTR) && (p2->p_flag & P_SINTR))
+		return (p2);
+
+	ptr1 = LIST_FIRST(&p1->p_children);
+	ptr2 = LIST_FIRST(&p2->p_children);
+	if (ptr1 == NULL && ptr2 != NULL)
+		return (p1);
+	if (ptr1 != NULL && ptr2 == NULL)
+		return (p2);
+
+	if (strcmp(p1->p_comm, p2->p_comm) < 0)
+		return (p1);
+	if (strcmp(p1->p_comm, p2->p_comm) > 0)
+		return (p2);
+
+	if (p1->p_pid > p2->p_pid)
+		return (p1);
+	return (p2);
+}
 
 char *
 osdep_get_name(int fd, char *tty)
@@ -59,17 +107,14 @@ retry:
 		return (NULL);
 	len = (len * 5) / 4;
 
-	if ((newbuf = realloc(buf, len)) == NULL) {
-		free(buf);
-		return (NULL);
-	}
+	if ((newbuf = realloc(buf, len)) == NULL)
+		goto error;
 	buf = newbuf;
 
 	if (sysctl(mib, nitems(mib), buf, &len, NULL, 0) == -1) {
 		if (errno == ENOMEM)
 			goto retry;
-		free(buf);
-		return (NULL);
+		goto error;
 	}
 
 	bestp = NULL;
@@ -77,57 +122,10 @@ retry:
 		if (buf[i].kp_eproc.e_tdev != sb.st_rdev)
 			continue;
 		p = &buf[i].kp_proc;
-		if (bestp == NULL) {
-			bestp = p;
-			continue;
-		}
-
-		if (is_runnable(p) && !is_runnable(bestp)) {
-			bestp = p;
-			continue;
-		} else if (!is_runnable(p) && is_runnable(bestp))
-			continue;
-
-		if (!is_stopped(p) && is_stopped(bestp)) {
-			bestp = p;
-			continue;
-		} else if (is_stopped(p) && !is_stopped(bestp))
-			continue;
-
-		if (p->p_estcpu > bestp->p_estcpu) {
-			bestp = p;
-			continue;
-		} else if (p->p_estcpu < bestp->p_estcpu)
-			continue;
-
-		if (p->p_slptime < bestp->p_slptime) {
-			bestp = p;
-			continue;
-		} else if (p->p_slptime > bestp->p_slptime)
-			continue;
-
-		if (p->p_flag & P_SINTR && !(bestp->p_flag & P_SINTR)) {
-			bestp = p;
-			continue;
-		} else if (!(p->p_flag & P_SINTR) && bestp->p_flag & P_SINTR)
-			continue;
-
-		if (LIST_FIRST(&p->p_children) == NULL &&
-		    LIST_FIRST(&bestp->p_children) != NULL) { /* XXX ugh */
-			bestp = p;
-			continue;
-		} else if (LIST_FIRST(&p->p_children) != NULL &&
-		    LIST_FIRST(&bestp->p_children) == NULL)
-			continue;
-
-		if (strcmp(p->p_comm, bestp->p_comm) < 0) {
-			bestp = p;
-			continue;
-		} else if (strcmp(p->p_comm, bestp->p_comm) > 0)
-			continue;
-
-		if (p->p_pid > bestp->p_pid)
-			bestp = p;
+		if (bestp == NULL)
+			bestp = &buf[i].kp_proc;
+		else
+			bestp = cmp_procs(&buf[i].kp_proc, bestp);
 	}
 
 	name = NULL;
@@ -136,4 +134,8 @@ retry:
 
 	free(buf);
 	return (name);
+
+error:
+	free(buf);
+	return (NULL);
 }
