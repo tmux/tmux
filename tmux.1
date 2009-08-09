@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.140 2009-08-06 19:25:44 nicm Exp $
+.\" $Id: tmux.1,v 1.141 2009-08-09 16:54:46 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 4 2009 $
+.Dd $Mdocdate: August 6 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -31,8 +31,9 @@
 .Ek
 .Sh DESCRIPTION
 .Nm
-is a terminal multiplexer: it enables a number of terminals to be accessed and
-controlled from a single terminal.
+is a terminal multiplexer:
+it enables a number of terminals to be created, accessed, and
+controlled from a single screen.
 .Pp
 The options are as follows:
 .Bl -tag -width "XXXXXXXXXXXX"
@@ -127,30 +128,41 @@ is the PID of the server or client process.
 This specifies one of a set of commands used to control
 .Nm ,
 as described in the following sections.
-If no command and flags are specified, the
+If no commands are specified, the
 .Ic new-session
 command is assumed.
 .El
 .Sh INTRODUCTION
+When
 .Nm
-runs as a server-client system.
-A server holds a number of
-.Em sessions ,
-each of which may have a number of
-.Em windows
-linked to it.
-A server is started automatically when the first session is created and exits
-when all the sessions it contains are destroyed.
-A window may be split on screen into one or more
-.Em panes ,
-each of which is a separate terminal.
-Any number of
-.Em clients
-may connect to a session, or the server
-may be controlled by issuing commands with
+is started it creates a new
+.Em session
+with a single
+.Em window
+and displays it on screen.
+A status line at the bottom of the screen
+shows information on the current session
+and is used to enter interactive commands.
+.Pp
+A session is a single collection of
+.Em pseudo terminals
+under the management of
 .Nm .
-Communication takes place through a socket, by default placed in
-.Pa /tmp .
+Each session has one or more
+windows linked to it.
+A window occupies the entire screen
+and may be split into rectangular panes,
+each of which is a separate pseudo terminal
+(the
+.Xr pty 4
+manual page documents the technical details of pseudo terminals).
+Any number of
+.Nm
+instances may connect to the same session,
+and any number of windows may be present in the same session.
+Once all sessions are killed,
+.Nm
+exits.
 .Pp
 This is an overview of the sections in this manual page:
 .Bl -ohang
