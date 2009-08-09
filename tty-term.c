@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.23 2009-07-14 06:54:38 nicm Exp $ */
+/* $Id: tty-term.c,v 1.24 2009-08-09 12:06:25 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -186,13 +186,13 @@ tty_term_find(char *name, int fd, char **cause)
 	/* Set up curses terminal. */
 	if (setupterm(name, fd, &error) != OK) {
 		switch (error) {
-		case 0:
-			xasprintf(cause, "can't use hardcopy terminal");
-			break;
 		case 1:
-			xasprintf(cause, "missing or unsuitable terminal");
+			xasprintf(cause, "can't use hardcopy terminal: %s", name);
 			break;
-		case 2:
+		case 0:
+			xasprintf(cause, "missing or unsuitable terminal: %s", name);
+			break;
+		case -1:
 			xasprintf(cause, "can't find terminfo database");
 			break;
 		default:
