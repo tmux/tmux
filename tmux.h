@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.401 2009-07-30 20:57:39 tcunha Exp $ */
+/* $Id: tmux.h,v 1.402 2009-08-09 15:26:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1129,7 +1129,7 @@ void	tty_detect_utf8(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int);
-int	tty_open(struct tty *, char **);
+int	tty_open(struct tty *, const char *, char **);
 void	tty_close(struct tty *, int);
 void	tty_free(struct tty *, int);
 void	tty_write(void (*)(struct tty *, struct tty_ctx *), struct tty_ctx *);
@@ -1152,7 +1152,7 @@ void	tty_cmd_reverseindex(struct tty *, struct tty_ctx *);
 /* tty-term.c */
 extern struct tty_terms tty_terms;
 extern struct tty_term_code_entry tty_term_codes[NTTYCODE];
-struct tty_term *tty_term_find(char *, int, char **);
+struct tty_term *tty_term_find(char *, int, const char *, char **);
 void 		 tty_term_free(struct tty_term *);
 int		 tty_term_has(struct tty_term *, enum tty_code_code);
 const char	*tty_term_string(struct tty_term *, enum tty_code_code);

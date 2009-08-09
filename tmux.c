@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.153 2009-07-30 20:32:05 tcunha Exp $ */
+/* $Id: tmux.c,v 1.154 2009-08-09 15:26:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -376,6 +376,8 @@ main(int argc, char **argv)
 		options_set_number(&global_s_options, "status-utf8", 1);
 	else
 		options_set_number(&global_s_options, "status-utf8", 0);
+	options_set_string(&global_s_options,
+	    "terminal-overrides", "*88col*:colors=88,*256col*:colors=256");
 	options_set_number(&global_s_options, "visual-activity", 0);
 	options_set_number(&global_s_options, "visual-bell", 0);
 	options_set_number(&global_s_options, "visual-content", 0);

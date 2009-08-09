@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.21 2009-07-14 06:54:38 nicm Exp $ */
+/* $Id: cmd-string.c,v 1.22 2009-08-09 15:26:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -215,6 +215,9 @@ cmd_string_string(const char *s, size_t *p, char endch, int esc)
                         switch (ch = cmd_string_getc(s, p)) {
 			case EOF:
 				goto error;
+			case 'e':
+				ch = '\033';
+				break;
                         case 'r':
                                 ch = '\r';
                                 break;

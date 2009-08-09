@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.24 2009-08-09 12:06:25 tcunha Exp $ */
+/* $Id: tty-term.c,v 1.25 2009-08-09 15:26:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,12 +19,15 @@
 #include <sys/types.h>
 
 #include <curses.h>
+#include <fnmatch.h>
+#include <stdlib.h>
 #include <string.h>
 #include <term.h>
+#include <vis.h>
 
 #include "tmux.h"
 
-void	 tty_term_quirks(struct tty_term *);
+void	 tty_term_override(struct tty_term *, const char *);
 char	*tty_term_strip(const char *);
 
 struct tty_terms tty_terms = SLIST_HEAD_INITIALIZER(tty_terms);
@@ -140,27 +143,87 @@ tty_term_strip(const char *s)
 }
 
 void
-tty_term_quirks(struct tty_term *term)
+tty_term_override(struct tty_term *term, const char *overrides)
 {
-	if (strncmp(term->name, "rxvt", 4) == 0) {
-		/* rxvt supports dch1 but some termcap files do not have it. */
-		if (!tty_term_has(term, TTYC_DCH1)) {
-			term->codes[TTYC_DCH1].type = TTYCODE_STRING;
-			term->codes[TTYC_DCH1].value.string = xstrdup("\033[P");
+	struct tty_term_code_entry	*ent;
+	struct tty_code			*code;
+	char				*termnext, *termstr, *entnext, *entstr;
+	char				*s, *ptr, *val;
+	const char			*errstr;
+	u_int				 i;
+	int				 n, removeflag;
+
+	s = xstrdup(overrides);
+
+	termnext = s;
+	while ((termstr = strsep(&termnext, ",")) != NULL) {
+		entnext = termstr;
+		
+		entstr = strsep(&entnext, ":");
+		if (entstr == NULL || entnext == NULL)
+			continue;
+		if (fnmatch(entstr, term->name, 0) != 0)
+			continue;
+		while ((entstr = strsep(&entnext, ":")) != NULL) {
+			if (*entstr == '\0')
+				continue;
+
+			val = NULL;
+			removeflag = 0;
+ 			if ((ptr = strchr(entstr, '=')) != NULL) {
+				*ptr++ = '\0';
+				val = xstrdup(ptr);
+				if (strunvis(val, ptr) == NULL) {
+					xfree(val);
+					val = xstrdup(ptr);
+				}
+			} else if (entstr[strlen(entstr) - 1] == '@') {
+				entstr[strlen(entstr) - 1] = '\0';
+				removeflag = 1;
+			}
+
+			for (i = 0; i < NTTYCODE; i++) {
+				ent = &tty_term_codes[i];
+				if (strcmp(entstr, ent->name) != 0)
+					continue;
+				code = &term->codes[ent->code];
+
+				if (removeflag) {
+					code->type = TTYCODE_NONE;
+					continue;
+				}
+				switch (ent->type) {
+				case TTYCODE_NONE:
+					break;
+				case TTYCODE_STRING:
+					xfree(code->value.string);
+					code->value.string = xstrdup(val);
+					code->type = ent->type;
+					break;
+				case TTYCODE_NUMBER:
+					n = strtonum(val, 0, INT_MAX, &errstr);
+					if (errstr != NULL)
+						break;
+					code->value.number = n;
+					code->type = ent->type;
+					break;
+				case TTYCODE_FLAG:
+					code->value.flag = 1;
+					code->type = ent->type;
+					break;
+				}
+			}
+
+			if (val != NULL)
+				xfree(val);
 		}
 	}
 
-	if (strncmp(term->name, "xterm", 5) == 0) {
-		/* xterm supports ich1 but some termcaps omit it. */
-		if (!tty_term_has(term, TTYC_ICH1)) {
-			term->codes[TTYC_ICH1].type = TTYCODE_STRING;
-			term->codes[TTYC_ICH1].value.string = xstrdup("\033[@");
-		}
-	}
+	xfree(s);
 }
 
 struct tty_term *
-tty_term_find(char *name, int fd, char **cause)
+tty_term_find(char *name, int fd, const char *overrides, char **cause)
 {
 	struct tty_term			*term;
 	struct tty_term_code_entry	*ent;
@@ -235,7 +298,7 @@ tty_term_find(char *name, int fd, char **cause)
 			break;
 		}
 	}
-	tty_term_quirks(term);
+	tty_term_override(term, overrides);
 
 	/* Delete curses data. */
 	del_curterm(cur_term);
@@ -297,11 +360,7 @@ tty_term_find(char *name, int fd, char **cause)
 	 */
 	if (tty_term_number(term, TTYC_COLORS) == 256)
 		term->flags |= TERM_256COLOURS;
-	if (strstr(name, "256col") != NULL) /* XXX HACK */
-		term->flags |= TERM_256COLOURS;
 	if (tty_term_number(term, TTYC_COLORS) == 88)
-		term->flags |= TERM_88COLOURS;
-	if (strstr(name, "88col") != NULL) /* XXX HACK */
 		term->flags |= TERM_88COLOURS;
 
 	/*

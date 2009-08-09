@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.49 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.50 2009-08-09 15:26:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,7 +108,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_new_session_data	*data = self->data;
 	struct session			*s;
-	char				*cmd, *cwd, *cause;
+	char				*overrides, *cmd, *cwd, *cause;
 	int				 detached;
 	u_int				 sx, sy;
 
@@ -147,7 +147,9 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 			return (-1);
 		}
 		
-		if (tty_open(&ctx->cmdclient->tty, &cause) != 0) {
+		overrides = 
+		    options_get_string(&global_s_options, "terminal-overrides");
+		if (tty_open(&ctx->cmdclient->tty, overrides, &cause) != 0) {
 			ctx->error(ctx, "open terminal failed: %s", cause);
 			xfree(cause);
 			return (-1);
