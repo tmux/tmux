@@ -1,4 +1,4 @@
-/* $Id: environ.c,v 1.1 2009-08-09 17:48:55 tcunha Exp $ */
+/* $Id: environ.c,v 1.2 2009-08-09 17:52:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -134,14 +134,14 @@ void
 environ_update(const char *vars, struct environ *srcenv, struct environ *dstenv)
 {
 	struct environ_entry	*envent;
-	char			*var, *next;
+	char			*copyvars, *var, *next;
 
-	vars = next = xstrdup(vars);
+	copyvars = next = xstrdup(vars);
 	while ((var = strsep(&next, " ")) != NULL) {
 		if ((envent = environ_find(srcenv, var)) == NULL)
 			environ_set(dstenv, var, NULL);
 		else
 			environ_set(dstenv, envent->name, envent->value);
 	}
-	xfree(vars);
+	xfree(copyvars);
 }
