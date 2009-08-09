@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.78 2009-07-30 20:21:55 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.79 2009-08-09 17:19:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,6 +62,8 @@ server_write_client(
 {
 	struct hdr	 hdr;
 
+	if (c->flags & CLIENT_BAD)
+		return;
 	log_debug("writing %d to client %d", type, c->fd);
 
 	hdr.type = type;

@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.142 2009-08-09 16:59:35 tcunha Exp $
+.\" $Id: tmux.1,v 1.143 2009-08-09 17:19:18 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -120,6 +120,10 @@ if present, then looks for a user configuration file at
 The configuration file is a set of
 .Nm
 commands which are executed in sequence when the server is first started.
+.Pp
+If a command in the configuration file fails,
+.Nm
+will report an error and exit without executing further commands.
 .It Fl L Ar socket-name
 .Nm
 stores the server socket in a directory under

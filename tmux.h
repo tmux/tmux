@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.404 2009-08-09 16:57:49 tcunha Exp $ */
+/* $Id: tmux.h,v 1.405 2009-08-09 17:19:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -899,6 +899,7 @@ struct client {
 #define CLIENT_STATUS 0x10
 #define CLIENT_REPEAT 0x20	/* allow command to repeat within repeat time */
 #define CLIENT_SUSPENDED 0x40
+#define CLIENT_BAD 0x80
 	int		 flags;
 
 	char		*message_string;
