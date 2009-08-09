@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.59 2009-07-30 20:57:39 tcunha Exp $ */
+/* $Id: client.c,v 1.60 2009-08-09 17:43:00 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,7 +43,7 @@ client_init(char *path, struct client_ctx *cctx, int cmdflags, int flags)
 	struct msg_identify_data	data;
 	struct winsize			ws;
 	size_t				size;
-	int				mode;
+	int				fd, mode;
 	char			       *name, *term;
 #ifdef HAVE_SETPROCTITLE
 	char		 		rpathbuf[MAXPATHLEN];
@@ -57,7 +57,7 @@ client_init(char *path, struct client_ctx *cctx, int cmdflags, int flags)
 
 	if (lstat(path, &sb) != 0) {
 		if (cmdflags & CMD_STARTSERVER && errno == ENOENT) {
-			if ((cctx->srv_fd = server_start(path)) == -1)
+			if ((fd = server_start(path)) == -1)
 				goto start_failed;
 			goto server_started;
 		}
@@ -76,15 +76,14 @@ client_init(char *path, struct client_ctx *cctx, int cmdflags, int flags)
 		goto not_found;
 	}
 
-	if ((cctx->srv_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
+	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		fatal("socket");
 
-	if (connect(
-	    cctx->srv_fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
+	if (connect(fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
 		if (errno == ECONNREFUSED) {
 			if (unlink(path) != 0 || !(cmdflags & CMD_STARTSERVER))
 				goto not_found;
-			if ((cctx->srv_fd = server_start(path)) == -1)
+			if ((fd = server_start(path)) == -1)
 				goto start_failed;
 			goto server_started;
 		}
@@ -92,10 +91,11 @@ client_init(char *path, struct client_ctx *cctx, int cmdflags, int flags)
 	}
 
 server_started:
-	if ((mode = fcntl(cctx->srv_fd, F_GETFL)) == -1)
+	if ((mode = fcntl(fd, F_GETFL)) == -1)
 		fatal("fcntl failed");
-	if (fcntl(cctx->srv_fd, F_SETFL, mode|O_NONBLOCK) == -1)
+	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
+	cctx->srv_fd = fd;
 	cctx->srv_in = buffer_create(BUFSIZ);
 	cctx->srv_out = buffer_create(BUFSIZ);
 
