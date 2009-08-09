@@ -1,4 +1,4 @@
-/* $Id: getopt.c,v 1.1 2009-05-13 22:20:48 nicm Exp $ */
+/* $Id: getopt.c,v 1.2 2009-08-09 18:35:38 nicm Exp $ */
 
 /*
  * Copyright (c) 1987, 1993, 1994
@@ -87,7 +87,7 @@ BSDgetopt(nargc, nargv, ostr)
 			++BSDoptind;
 		if (BSDopterr && *ostr != ':')
 			(void)fprintf(stderr,
-			    "%s: illegal option -- %c\n", __progname, BSDoptopt);
+			    "%s: unknown option -- %c\n", __progname, BSDoptopt);
 		return (BADCH);
 	}
 	if (*++oli != ':') {			/* don't need argument */
