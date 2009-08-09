@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.25 2009-08-09 15:26:24 tcunha Exp $ */
+/* $Id: tty-term.c,v 1.26 2009-08-09 15:29:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,7 +23,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <term.h>
-#include <vis.h>
 
 #include "tmux.h"
 
