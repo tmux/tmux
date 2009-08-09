@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.155 2009-08-09 16:39:40 tcunha Exp $ */
+/* $Id: tmux.c,v 1.156 2009-08-09 16:50:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -354,7 +354,7 @@ main(int argc, char **argv)
 	options_set_number(&global_s_options, "display-time", 750);
 	options_set_number(&global_s_options, "history-limit", 2000);
 	options_set_number(&global_s_options, "lock-after-time", 0);
-	options_set_number(&global_s_options, "message-attr", GRID_ATTR_REVERSE);
+	options_set_number(&global_s_options, "message-attr", 0);
 	options_set_number(&global_s_options, "message-bg", 3);
 	options_set_number(&global_s_options, "message-fg", 0);
 	options_set_number(&global_s_options, "prefix", '\002');
@@ -362,7 +362,7 @@ main(int argc, char **argv)
 	options_set_number(&global_s_options, "set-remain-on-exit", 0);
 	options_set_number(&global_s_options, "set-titles", 0);
 	options_set_number(&global_s_options, "status", 1);
-	options_set_number(&global_s_options, "status-attr", GRID_ATTR_REVERSE);
+	options_set_number(&global_s_options, "status-attr", 0);
 	options_set_number(&global_s_options, "status-bg", 2);
 	options_set_number(&global_s_options, "status-fg", 0);
 	options_set_number(&global_s_options, "status-interval", 15);
@@ -392,7 +392,7 @@ main(int argc, char **argv)
 	options_set_number(&global_w_options, "force-width", 0);
 	options_set_number(&global_w_options, "main-pane-width", 81);
 	options_set_number(&global_w_options, "main-pane-height", 24);
-	options_set_number(&global_w_options, "mode-attr", GRID_ATTR_REVERSE);
+	options_set_number(&global_w_options, "mode-attr", 0);
 	options_set_number(&global_w_options, "mode-bg", 3);
 	options_set_number(&global_w_options, "mode-fg", 0);
 	options_set_number(&global_w_options, "mode-keys", MODEKEY_EMACS);

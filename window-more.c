@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.35 2009-07-28 23:11:18 tcunha Exp $ */
+/* $Id: window-more.c,v 1.36 2009-08-09 16:50:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -176,8 +176,8 @@ window_more_write_line(
 		size = xsnprintf(hdr, sizeof hdr,
 		    "[%u/%u]", data->top, ARRAY_LENGTH(&data->list));
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
-		gc.bg = options_get_number(&wp->window->options, "mode-fg");
-		gc.fg = options_get_number(&wp->window->options, "mode-bg");
+		gc.fg = options_get_number(&wp->window->options, "mode-fg");
+		gc.bg = options_get_number(&wp->window->options, "mode-bg");
 		gc.attr |= options_get_number(&wp->window->options, "mode-attr");
 		screen_write_puts(ctx, &gc, "%s", hdr);
 		memcpy(&gc, &grid_default_cell, sizeof gc);

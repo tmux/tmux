@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.37 2009-07-28 23:11:18 tcunha Exp $ */
+/* $Id: window-scroll.c,v 1.38 2009-08-09 16:50:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -176,8 +176,8 @@ window_scroll_write_line(
 		memcpy(&gc, &grid_default_cell, sizeof gc);
 		size = xsnprintf(hdr, sizeof hdr,
 		    "[%u,%u/%u]", data->ox, data->oy, screen_hsize(&wp->base));
-		gc.bg = options_get_number(&wp->window->options, "mode-fg");
-		gc.fg = options_get_number(&wp->window->options, "mode-bg");
+		gc.fg = options_get_number(&wp->window->options, "mode-fg");
+		gc.bg = options_get_number(&wp->window->options, "mode-bg");
 		gc.attr |= options_get_number(&wp->window->options, "mode-attr");
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
 		screen_write_puts(ctx, &gc, "%s", hdr);

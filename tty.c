@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.120 2009-08-09 15:26:24 tcunha Exp $ */
+/* $Id: tty.c,v 1.121 2009-08-09 16:50:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -961,19 +961,33 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
 	u_char			 changed;
-	u_int			 fg, bg;
+	u_int			 fg, bg, attr;
+
+	/*
+	 * If no setab, try to use the reverse attribute as a best-effort for a
+	 * non-default background. This is a bit of a hack but it doesn't do
+	 * any serious harm and makes a couple of applications happier.
+	 */
+	fg = gc->fg; bg = gc->bg; attr = gc->attr;
+	if (!tty_term_has(tty->term, TTYC_SETAB)) {
+		if (attr & GRID_ATTR_REVERSE) {
+			if (fg != 7 && fg != 8)
+				attr &= ~GRID_ATTR_REVERSE;
+		} else {
+			if (bg != 0 && bg != 8)
+				attr |= GRID_ATTR_REVERSE;
+		}
+	}
 
 	/* If any bits are being cleared, reset everything. */
-	if (tc->attr & ~gc->attr)
+	if (tc->attr & ~attr)
 		tty_reset(tty);
 
 	/* Filter out attribute bits already set. */
-	changed = gc->attr & ~tc->attr;
-	tc->attr = gc->attr;
+	changed = attr & ~tc->attr;
+	tc->attr = attr;
 
 	/* Set the attributes. */
-	fg = gc->fg;
-	bg = gc->bg;
 	if (changed & GRID_ATTR_BRIGHT)
 		tty_putcode(tty, TTYC_BOLD);
 	if (changed & GRID_ATTR_DIM)
