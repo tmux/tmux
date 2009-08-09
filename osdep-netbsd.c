@@ -1,4 +1,4 @@
-/* $Id: osdep-netbsd.c,v 1.7 2009-08-09 16:37:05 tcunha Exp $ */
+/* $Id: osdep-netbsd.c,v 1.8 2009-08-09 18:00:45 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -68,7 +68,7 @@ osdep_get_name(int fd, __unused char *tty)
 	int		 mib[6];
 	struct stat	 sb;
 	size_t		 len, i;
-	struct kinfo_proc2 *buf, *newbuf, *p, *bestp;
+	struct kinfo_proc2 *buf, *newbuf, *bestp;
 	char		*name;
 
 	if (stat(tty, &sb) == -1)
@@ -103,7 +103,6 @@ retry:
 	for (i = 0; i < len / sizeof (*buf); i++) {
 		if (buf[i].p_tdev != sb.st_rdev)
 			continue;
-		p = &buf[i];
 		if (bestp == NULL)
 			bestp = &buf[i];
 		else

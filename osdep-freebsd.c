@@ -1,4 +1,4 @@
-/* $Id: osdep-freebsd.c,v 1.18 2009-08-09 16:37:04 tcunha Exp $ */
+/* $Id: osdep-freebsd.c,v 1.19 2009-08-09 18:00:45 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -80,7 +80,7 @@ osdep_get_name(int fd, char *tty)
 	int		 mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PGRP, 0 };
 	struct stat	 sb;
 	size_t		 len;
-	struct kinfo_proc *buf, *newbuf, *p, *bestp;
+	struct kinfo_proc *buf, *newbuf, *bestp;
 	u_int		 i;
 	char		*name;
 
@@ -110,7 +110,6 @@ retry:
 	for (i = 0; i < len / sizeof (struct kinfo_proc); i++) {
 		if (buf[i].ki_tdev != sb.st_rdev)
 			continue;
-		p = &buf[i];
 		if (bestp == NULL)
 			bestp = &buf[i];
 		else
