@@ -1,4 +1,4 @@
-/* $Id: osdep-freebsd.c,v 1.17 2009-07-28 22:28:11 tcunha Exp $ */
+/* $Id: osdep-freebsd.c,v 1.18 2009-08-09 16:37:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,8 @@
 #include <string.h>
 #include <unistd.h>
 
-char	*osdep_get_name(int, char *);
+struct kinfo_proc	*cmp_procs(struct kinfo_proc *, struct kinfo_proc *);
+char			*osdep_get_name(int, char *);
 
 #ifndef nitems
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
@@ -39,6 +40,39 @@ char	*osdep_get_name(int, char *);
 	((p)->ki_stat == SRUN || (p)->ki_stat == SIDL)
 #define is_stopped(p) \
 	((p)->ki_stat == SSTOP || (p)->ki_stat == SZOMB)
+
+struct kinfo_proc *
+cmp_procs(struct kinfo_proc *p1, struct kinfo_proc *p2)
+{
+	if (is_runnable(p1) && !is_runnable(p2))
+		return (p1);
+	if (!is_runnable(p1) && is_runnable(p2))
+		return (p2);
+
+	if (is_stopped(p1) && !is_stopped(p2))
+		return (p1);
+	if (!is_stopped(p1) && is_stopped(p2))
+		return (p2);
+
+	if (p1->ki_estcpu > p2->ki_estcpu)
+		return (p1);
+	if (p1->ki_estcpu < p2->ki_estcpu)
+		return (p2);
+
+	if (p1->ki_slptime < p2->ki_slptime)
+		return (p1);
+	if (p1->ki_slptime > p2->ki_slptime)
+		return (p2);
+
+	if (strcmp(p1->ki_comm, p2->ki_comm) < 0)
+		return (p1);
+	if (strcmp(p1->ki_comm, p2->ki_comm) > 0)
+		return (p2);
+
+	if (p1->ki_pid > p2->ki_pid)
+		return (p1);
+	return (p2);
+}
 
 char *
 osdep_get_name(int fd, char *tty)
@@ -62,17 +96,14 @@ retry:
 		return (NULL);
 	len = (len * 5) / 4;
 
-	if ((newbuf = realloc(buf, len)) == NULL) {
-		free(buf);
-		return (NULL);
-	}
+	if ((newbuf = realloc(buf, len)) == NULL)
+		goto error;
 	buf = newbuf;
 
 	if (sysctl(mib, nitems(mib), buf, &len, NULL, 0) == -1) {
 		if (errno == ENOMEM)
 			goto retry;
-		free(buf);
-		return (NULL);
+		goto error;
 	}
 
 	bestp = NULL;
@@ -80,43 +111,10 @@ retry:
 		if (buf[i].ki_tdev != sb.st_rdev)
 			continue;
 		p = &buf[i];
-		if (bestp == NULL) {
-			bestp = p;
-			continue;
-		}
-
-		if (is_runnable(p) && !is_runnable(bestp)) {
-			bestp = p;
-			continue;
-		} else if (!is_runnable(p) && is_runnable(bestp))
-			continue;
-
-		if (!is_stopped(p) && is_stopped(bestp)) {
-			bestp = p;
-			continue;
-		} else if (is_stopped(p) && !is_stopped(bestp))
-			continue;
-
-		if (p->ki_estcpu > bestp->ki_estcpu) {
-			bestp = p;
-			continue;
-		} else if (p->ki_estcpu < bestp->ki_estcpu)
-			continue;
-
-		if (p->ki_slptime < bestp->ki_slptime) {
-			bestp = p;
-			continue;
-		} else if (p->ki_slptime > bestp->ki_slptime)
-			continue;
-
-		if (strcmp(p->ki_comm, bestp->ki_comm) < 0) {
-			bestp = p;
-			continue;
-		} else if (strcmp(p->ki_comm, bestp->ki_comm) > 0)
-			continue;
-
-		if (p->ki_pid > bestp->ki_pid)
-			bestp = p;
+		if (bestp == NULL)
+			bestp = &buf[i];
+		else
+			bestp = cmp_procs(&buf[i], bestp);
 	}
 
 	name = NULL;
@@ -125,4 +123,8 @@ retry:
 
 	free(buf);
 	return (name);
+
+error:
+	free(buf);
+	return (NULL);
 }

@@ -1,4 +1,4 @@
-/* $Id: osdep-netbsd.c,v 1.6 2009-07-28 22:28:11 tcunha Exp $ */
+/* $Id: osdep-netbsd.c,v 1.7 2009-08-09 16:37:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,36 @@
 #define is_stopped(p) \
         ((p)->p_stat == SSTOP || (p)->p_stat == SZOMB)
 
-char	*osdep_get_name(int, char *);
+struct kinfo_proc2	*cmp_procs(struct kinfo_proc2 *, struct kinfo_proc2 *);
+char			*osdep_get_name(int, char *);
+
+struct kinfo_proc2 *
+cmp_procs(struct kinfo_proc2 *p1, struct kinfo_proc2 *p2)
+{
+	if (is_runnable(p1) && !is_runnable(p2))
+		return (p1);
+	if (!is_runnable(p1) && is_runnable(p2))
+		return (p2);
+
+	if (is_stopped(p1) && !is_stopped(p2))
+		return (p1);
+	if (!is_stopped(p1) && is_stopped(p2))
+		return (p2);
+
+	if (p1->p_estcpu > p2->p_estcpu)
+		return (p1);
+	if (p1->p_estcpu < p2->p_estcpu)
+		return (p2);
+
+	if (p1->p_slptime < p2->p_slptime)
+		return (p1);
+	if (p1->p_slptime > p2->p_slptime)
+		return (p2);
+
+	if (p1->p_pid > p2->p_pid)
+		return (p1);
+	return (p2);
+}
 
 char *
 osdep_get_name(int fd, __unused char *tty)
@@ -59,18 +88,15 @@ retry:
 	if (sysctl(mib, __arraycount(mib), NULL, &len, NULL, 0) == -1)
 		return (NULL);
 
-	if ((newbuf = realloc(buf, len * sizeof (*buf))) == NULL) {
-		free(buf);
-		return (NULL);
-	}
+	if ((newbuf = realloc(buf, len * sizeof (*buf))) == NULL)
+		goto error;
 	buf = newbuf;
 
 	mib[5] = len / sizeof(*buf);
 	if (sysctl(mib, __arraycount(mib), buf, &len, NULL, 0) == -1) {
 		if (errno == ENOMEM)
 			goto retry; /* possible infinite loop? */
-		free(buf);
-		return (NULL);
+		goto error;
 	}
 
 	bestp = NULL;
@@ -78,43 +104,20 @@ retry:
 		if (buf[i].p_tdev != sb.st_rdev)
 			continue;
 		p = &buf[i];
-		if (bestp == NULL) {
-			bestp = p;
-			continue;
-		}
-
-		if (is_runnable(p) && !is_runnable(bestp)) {
-			bestp = p;
-			continue;
-		} else if (!is_runnable(p) && is_runnable(bestp))
-			continue;
-
-		if (!is_stopped(p) && is_stopped(bestp)) {
-			bestp = p;
-			continue;
-		} else if (is_stopped(p) && !is_stopped(bestp))
-			continue;
-
-		if (p->p_estcpu > bestp->p_estcpu) {
-			bestp = p;
-			continue;
-		} else if (p->p_estcpu < bestp->p_estcpu)
-			continue;
-
-		if (p->p_slptime < bestp->p_slptime) {
-			bestp = p;
-			continue;
-		} else if (p->p_slptime > bestp->p_slptime)
-			continue;
-
-		if (p->p_pid > bestp->p_pid)
-			bestp = p;
+		if (bestp == NULL)
+			bestp = &buf[i];
+		else
+			bestp = cmp_procs(&buf[i], bestp);
 	}
 
 	name = NULL;
 	if (bestp != NULL)
 		name = strdup(bestp->p_comm);
-	
+
 	free(buf);
 	return (name);
+
+error:
+	free(buf);
+	return (NULL);
 }
