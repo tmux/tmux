@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.145 2009-08-09 17:48:55 tcunha Exp $
+.\" $Id: tmux.1,v 1.146 2009-08-09 17:55:59 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 8 2009 $
+.Dd $Mdocdate: August 9 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -34,6 +34,8 @@
 is a terminal multiplexer:
 it enables a number of terminals to be created, accessed, and
 controlled from a single screen.
+Programs may be detached from the screen, continue running in the background,
+and be reattached to the same or a different screen.
 .Pp
 When
 .Nm
@@ -66,35 +68,26 @@ Once all sessions are killed,
 .Nm
 exits.
 .Pp
-For a quick start guide,
-see the
-.Sx EXAMPLES
-section at the bottom of the page.
-An overview of the sections in this manual page:
-.Bl -ohang
-.It Sy Commands
-An overview of how
+Each session is persistent and will survive accidental disconnection
+(such as 
+.Xr ssh 1
+connection timeout) or intentional detachment (with the
+.Ql C-b d
+key strokes).
 .Nm
-commands work.
-.It Sy Clients and sessions
-Commands for managing clients and sessions.
-.It Sy Windows and panes
-Commands for managing windows and panes.
-.It Sy Key bindings
-How key bindings work.
-.It Sy Options
-Configuration options for
-.Nm .
-.It Sy Status line
-Commands pertinent to the status line.
-.It Sy Buffers
-Copy and paste operations.
-.It Sy Miscellaneous
-Miscellaneous commands.
-.It Sy Examples
-A quick start guide.
-.El
+may be reattached using:
 .Pp
+.Dl $ tmux attach
+.Pp
+In
+.Nm ,
+a session is displayed on screen by a
+.Em client
+and all sessions are managed by a single
+.Em server .
+The server and each client are separate processes which communicate through a
+socket in
+.Pa /tmp .
 The options are as follows:
 .Bl -tag -width "XXXXXXXXXXXX"
 .It Fl 2
@@ -196,6 +189,43 @@ If no commands are specified, the
 .Ic new-session
 command is assumed.
 .El
+.Sh KEY BINDINGS
+.Nm
+may be controlled from an attached client by using a key combination of a
+prefix key,
+.Ql C-b
+(Ctrl-b) by default, followed by a command key.
+.Pp
+Some of the default key bindings are:
+.Pp
+.Bl -tag -width Ds -offset 3n -compact
+.It c
+Create new window.
+.It d
+Detach current client.
+.It l
+Move to last (previously selected) window in the current session.
+.It n
+Change to next window in the current session.
+.It p
+Change to previous window in the current session.
+.It t
+Display a large clock.
+.It \&?
+List current key bindings.
+.El
+.Pp
+A complete list may be obtained with the
+.Ic list-keys
+command (bound to
+.Ql \&?
+by default).
+Key bindings may be changed with the
+.Ic bind-key
+and
+.Ic unbind-key
+commands.
+.Pp
 .Sh COMMANDS
 This section contains a list of the commands supported by
 .Nm .
@@ -854,42 +884,6 @@ destroyed.
 Move up a pane.
 .El
 .Sh KEY BINDINGS
-.Nm
-may be controlled from an attached client by using a key combination of a
-prefix key,
-.Ql C-b
-(Ctrl-b) by default, followed by a command key.
-.Pp
-Some of the default key bindings include:
-.Pp
-.Bl -tag -width Ds -offset 3n -compact
-.It c
-Create new window.
-.It d
-Detach current client.
-.It l
-Move to last (previously selected) window in the current session.
-.It n
-Change to next window in the current session.
-.It p
-Change to previous window in the current session.
-.It t
-Display a large clock.
-.It \&?
-List current key bindings.
-.El
-.Pp
-A complete list may be obtained with the
-.Ic list-keys
-command (bound to
-.Ql \&?
-by default).
-Key bindings may be changed with the
-.Ic bind-key
-and
-.Ic unbind-key
-commands.
-.Pp
 Commands related to key bindings are as follows:
 .Bl -tag -width Ds
 .It Xo Ic bind-key
@@ -1871,7 +1865,9 @@ to select the previous window.
 .Pp
 A session may be detached using
 .Ql C-b d
-and reattached with:
+(or by an external event such as
+.Xr ssh 1
+disconnection) and reattached with:
 .Pp
 .Dl $ tmux attach-session
 .Pp
