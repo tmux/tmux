@@ -112,6 +112,8 @@ load_cfg(const char *path, char **cause)
 	return (0);
 
 error:
+	if (line != NULL)
+		xfree(line);
 	fclose(f);
 
 	xasprintf(&ptr, "%s: %s at line %u", path, *cause, n);
