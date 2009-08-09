@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.403 2009-08-09 16:48:34 tcunha Exp $ */
+/* $Id: tmux.h,v 1.404 2009-08-09 16:57:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -601,7 +601,6 @@ struct input_ctx {
 
 	struct grid_cell cell;
 
-
 	struct grid_cell saved_cell;
 	u_int		 saved_cx;
 	u_int		 saved_cy;
@@ -673,6 +672,7 @@ struct window_pane {
  	u_int		 saved_cx;
  	u_int		 saved_cy;
 	struct grid	*saved_grid;
+	struct grid_cell saved_cell;
 
 	const struct window_mode *mode;
 	void		*modedata;
