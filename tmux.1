@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.143 2009-08-09 17:19:18 tcunha Exp $
+.\" $Id: tmux.1,v 1.144 2009-08-09 17:40:17 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 7 2009 $
+.Dd $Mdocdate: August 8 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1238,6 +1238,12 @@ By default, UTF-8 in
 is not interpreted, to enable UTF-8, use the
 .Ic status-utf8
 option.
+.It Ic status-left-attr Ar attributes
+Set the attribute of the left part of the status line. 
+.It Ic status-left-fg Ar colour
+Set the foreground colour of the left part of the status line.
+.It Ic status-left-bg Ar colour
+Set the background colour of the left part of the status line.
 .It Ic status-left-length Ar length
 Set the maximum
 .Ar length
@@ -1256,6 +1262,12 @@ will be passed to
 character pairs are replaced, and UTF-8 is dependent on the
 .Ic status-utf8
 option.
+.It Ic status-right-attr Ar attributes
+Set the attribute of the right part of the status line. 
+.It Ic status-right-fg Ar colour
+Set the foreground colour of the right part of the status line.
+.It Ic status-right-bg Ar colour
+Set the background colour of the right part of the status line.
 .It Ic status-right-length Ar length
 Set the maximum
 .Ar length

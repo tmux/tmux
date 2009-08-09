@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.72 2009-08-09 16:48:34 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.73 2009-08-09 17:40:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,8 +74,14 @@ const struct set_option_entry set_option_table[] = {
 	  SET_OPTION_CHOICE, 0, 0, set_option_status_justify_list },
 	{ "status-keys", SET_OPTION_CHOICE, 0, 0, set_option_status_keys_list },
 	{ "status-left", SET_OPTION_STRING, 0, 0, NULL },
+	{ "status-left-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
+	{ "status-left-bg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "status-left-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "status-left-length", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
 	{ "status-right", SET_OPTION_STRING, 0, 0, NULL },
+	{ "status-right-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
+	{ "status-right-bg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "status-right-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "status-right-length", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
 	{ "status-utf8", SET_OPTION_FLAG, 0, 0, NULL },	
 	{ "terminal-overrides", SET_OPTION_STRING, 0, 0, NULL },

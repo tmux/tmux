@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.108 2009-08-09 16:50:57 tcunha Exp $ */
+/* $Id: status.c,v 1.109 2009-08-09 17:40:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,8 +47,10 @@ status_redraw(struct client *c)
 	char		 	       *left, *right, *text, *ptr;
 	size_t				llen, llen2, rlen, rlen2, offset;
 	size_t				ox, xx, yy, size, start, width;
-	struct grid_cell	        stdgc, gc;
+	struct grid_cell	        stdgc, sl_stdgc, sr_stdgc, gc;
 	int				larrow, rarrow, utf8flag;
+	int				sl_fg, sl_bg, sr_fg, sr_bg;
+	int				sl_attr, sr_attr;
 
 	left = right = NULL;
 
@@ -67,6 +69,32 @@ status_redraw(struct client *c)
 	stdgc.fg = options_get_number(&s->options, "status-fg");
 	stdgc.bg = options_get_number(&s->options, "status-bg");
 	stdgc.attr |= options_get_number(&s->options, "status-attr");
+
+	/* 
+	 * Set the status-left and status-right parts to the default status
+	 * line options and only change them where they differ from the
+	 * defaults.
+	 */
+	memcpy(&sl_stdgc, &stdgc, sizeof sl_stdgc);
+	memcpy(&sr_stdgc, &stdgc, sizeof sr_stdgc);
+	sl_fg = options_get_number(&s->options, "status-left-fg");
+	if (sl_fg != 8)
+		sl_stdgc.fg = sl_fg;
+	sl_bg = options_get_number(&s->options, "status-left-bg");
+	if (sl_bg != 8)
+		sl_stdgc.bg = sl_bg;		
+	sl_attr = options_get_number(&s->options, "status-left-attr");
+	if (sl_attr != 0)
+		sl_stdgc.attr = sl_attr;
+	sr_fg = options_get_number(&s->options, "status-right-fg");
+	if (sr_fg != 8)
+		sr_stdgc.fg = sr_fg;
+	sr_bg = options_get_number(&s->options, "status-right-bg");
+	if (sr_bg != 8)
+		sr_stdgc.bg = sr_bg;
+	sr_attr = options_get_number(&s->options, "status-right-attr");
+	if (sr_attr != 0)
+		sr_stdgc.attr = sr_attr;
 
 	yy = c->tty.sy - 1;
 	if (yy == 0)
@@ -164,7 +192,7 @@ draw:
 	screen_write_start(&ctx, NULL, &c->status);
 	if (llen != 0) {
  		screen_write_cursormove(&ctx, 0, yy);
-		screen_write_nputs(&ctx, llen, &stdgc, utf8flag, "%s", left);
+		screen_write_nputs(&ctx, llen, &sl_stdgc, utf8flag, "%s", left);
 		screen_write_putc(&ctx, &stdgc, ' ');
 		if (larrow)
 			screen_write_putc(&ctx, &stdgc, ' ');
@@ -238,7 +266,7 @@ draw:
 	if (rlen != 0) {
 		screen_write_cursormove(&ctx, c->tty.sx - rlen - 1, yy);
 		screen_write_putc(&ctx, &stdgc, ' ');
-		screen_write_nputs(&ctx, rlen, &stdgc, utf8flag, "%s", right);
+		screen_write_nputs(&ctx, rlen, &sr_stdgc, utf8flag, "%s", right);
 	}
 
 	/* Draw the arrows. */
