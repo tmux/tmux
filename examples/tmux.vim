@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: tmux(1) configuration file
 " Maintainer: Tiago Cunha <me@tiagocunha.org>
-" Last Change: $Date: 2009-08-09 17:41:46 $
+" Last Change: $Date: 2009-08-09 17:51:19 $
 
 if version < 600
 	syntax clear
@@ -37,7 +37,7 @@ syn keyword tmuxCmds choose-window loadb load-buffer copyb copy-buffer suspendc
 syn keyword tmuxCmds suspend-client findw find-window breakp break-pane nextl
 syn keyword tmuxCmds next-layout rotatew rotate-window confirm[-before]
 syn keyword tmuxCmds clearhist clear-history selectl select-layout if[-shell]
-syn keyword tmuxCmds display[-message]
+syn keyword tmuxCmds display[-message] set-environment show-environment
 
 syn keyword tmuxOptsSet prefix status status-fg status-bg bell-action
 syn keyword tmuxOptsSet default-command history-limit status-left status-right
@@ -49,7 +49,7 @@ syn keyword tmuxOptsSet status-utf8 default-terminal visual-activity
 syn keyword tmuxOptsSet visual-bell visual-content status-justify
 syn keyword tmuxOptsSet terminal-overrides status-left-attr status-left-bg
 syn keyword tmuxOptsSet status-left-fg status-right-attr status-right-bg
-syn keyword tmuxOptsSet status-right-fg
+syn keyword tmuxOptsSet status-right-fg update-environment
 
 syn keyword tmuxOptsSetw monitor-activity aggressive-resize force-width
 syn keyword tmuxOptsSetw force-height remain-on-exit uft8 mode-fg mode-bg
