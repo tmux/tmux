@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.21 2009-08-09 15:48:03 tcunha Exp $
+# $Id: configure,v 1.22 2009-08-09 15:53:02 tcunha Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -83,7 +83,8 @@ SRCS+= osdep-linux.c \
 	compat/strlcpy.c \
 	compat/strtonum.c \
         compat/getopt.c \
-	compat/vis.c
+	compat/vis.c \
+	compat/unvis.c
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -104,7 +105,8 @@ SRCS+= osdep-unknown.c \
 	compat/strtonum.c \
        	compat/fgetln.c \
        	compat/getopt.c \
-	compat/vis.c
+	compat/vis.c \
+	compat/unvis.c
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -131,7 +133,8 @@ SRCS+= osdep-unknown.c \
 	compat/getopt.c \
 	compat/strcasestr.c \
 	compat/strtonum.c \
-	compat/vis.c
+	compat/vis.c \
+	compat/unvis.c
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -154,7 +157,8 @@ LIBS+= -lcurses
 SRCS+= osdep-darwin.c \
 	compat/bsd-poll.c \
 	compat/strtonum.c \
-	compat/vis.c
+	compat/vis.c \
+	compat/unvis.c
 EOF
 	;;
 # ------------------------------------------------------------------------------
