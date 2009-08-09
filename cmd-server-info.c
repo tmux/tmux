@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.23 2009-07-28 23:04:29 tcunha Exp $ */
+/* $Id: cmd-server-info.c,v 1.24 2009-08-09 17:28:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,6 +56,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	struct tty_term_code_entry	*ent;
 	struct utsname			 un;
 	struct grid			*gd;
+	struct grid_line		*gl;
 	u_int		 		 i, j, k;
 	char				 out[80];
 	char				*tim;
@@ -120,15 +121,16 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 				lines = ulines = size = usize = 0;
 				gd = wp->base.grid;
 				for (k = 0; k < gd->hsize + gd->sy; k++) {
-					if (gd->data[k] != NULL) {
+					gl = &gd->linedata[k];
+					if (gl->celldata != NULL) {
 						lines++;
-						size += gd->size[k] *
-						    sizeof (**gd->data);
+						size += gl->cellsize *
+						    sizeof *gl->celldata;
 					}
-					if (gd->udata[k] != NULL) {
+					if (gl->utf8data != NULL) {
 						ulines++;
-						usize += gd->usize[k] *
-						    sizeof (**gd->udata);
+						usize += gl->utf8size *
+						    sizeof *gl->utf8data;
 					}
 				}
 				ctx->print(ctx, "%6u: %s %lu %d %u/%u, %zu "

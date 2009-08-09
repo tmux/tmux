@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.405 2009-08-09 17:19:18 tcunha Exp $ */
+/* $Id: tmux.h,v 1.406 2009-08-09 17:28:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -499,6 +499,15 @@ struct grid_utf8 {
 	u_char	data[UTF8_SIZE];
 } __packed;
 
+/* Grid line. */
+struct grid_line {
+	u_int	cellsize;
+	struct grid_cell *celldata;
+
+	u_int	utf8size;
+	struct grid_utf8 *utf8data;
+} __packed;
+
 /* Entire grid of cells. */
 struct grid {
 	int	flags;
@@ -510,11 +519,7 @@ struct grid {
 	u_int	hsize;
 	u_int	hlimit;
 
-	u_int  *size;
-	struct grid_cell **data;
-
-	u_int  *usize;
- 	struct grid_utf8 **udata;
+	struct grid_line *linedata;
 };
 
 /* Option data structures. */

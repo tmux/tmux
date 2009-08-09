@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.39 2009-08-08 16:03:09 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.40 2009-08-09 17:28:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,6 +48,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window		*w;
 	struct window_pane	*wp;
 	struct grid		*gd;
+	struct grid_line	*gl;
 	u_int			 i;
 	unsigned long long	 size;
 	const char		*name;
@@ -65,11 +66,11 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 			size = 0;
 			for (i = 0; i < gd->hsize; i++) {
-				size += gd->size[i] * sizeof **gd->data;
-				size += gd->usize[i] * sizeof **gd->udata;
+				gl = &gd->linedata[i];
+				size += gl->cellsize * sizeof *gl->celldata;
+				size += gl->utf8size * sizeof *gl->utf8data;
 			}
-			size += gd->hsize * (sizeof *gd->data);
-			size += gd->hsize * (sizeof *gd->size);
+			size += gd->hsize * sizeof *gd->linedata;
 
 			name = NULL;
 			if (wp->fd != -1)

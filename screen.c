@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.95 2009-07-30 21:14:04 tcunha Exp $ */
+/* $Id: screen.c,v 1.96 2009-08-09 17:28:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -193,10 +193,8 @@ screen_resize_y(struct screen *s, u_int sy)
  	}
 
 	/* Resize line arrays. */
-	gd->size = xrealloc(gd->size, gd->hsize + sy, sizeof *gd->size);
-	gd->data = xrealloc(gd->data, gd->hsize + sy, sizeof *gd->data);
-	gd->usize = xrealloc(gd->usize, gd->hsize + sy, sizeof *gd->usize);
-	gd->udata = xrealloc(gd->udata, gd->hsize + sy, sizeof *gd->udata);
+	gd->linedata = xrealloc(
+	    gd->linedata, gd->hsize + sy, sizeof *gd->linedata);
 
 	/* Size increasing. */
 	if (sy > oldy) {
@@ -217,12 +215,8 @@ screen_resize_y(struct screen *s, u_int sy)
 		needed -= available;
 
 		/* Then fill the rest in with blanks. */
-		for (i = gd->hsize + sy - needed; i < gd->hsize + sy; i++) {
-			gd->size[i] = 0;
-			gd->data[i] = NULL;
-			gd->usize[i] = 0;
-			gd->udata[i] = NULL;
-		}
+		for (i = gd->hsize + sy - needed; i < gd->hsize + sy; i++)
+			memset(&gd->linedata[i], 0, sizeof gd->linedata[i]);
 	}
 
 	/* Set the new size, and reset the scroll region. */

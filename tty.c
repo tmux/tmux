@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.121 2009-08-09 16:50:57 tcunha Exp $ */
+/* $Id: tty.c,v 1.122 2009-08-09 17:28:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -496,8 +496,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 	u_int			 i, sx;
 
 	sx = screen_size_x(s);
-	if (sx > s->grid->size[s->grid->hsize + py])
-		sx = s->grid->size[s->grid->hsize + py];
+	if (sx > s->grid->linedata[s->grid->hsize + py].cellsize)
+		sx = s->grid->linedata[s->grid->hsize + py].cellsize;
 	if (sx > tty->sx)
 		sx = tty->sx;
 
