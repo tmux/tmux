@@ -1,4 +1,4 @@
-/* $Id: environ.c,v 1.2 2009-08-09 17:52:54 tcunha Exp $ */
+/* $Id: environ.c,v 1.3 2009-08-09 17:57:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,8 +28,6 @@
  */
 
 RB_GENERATE(environ, environ_entry, entry, environ_cmp);
-
-void	environ_set1(struct environ *, char *, char *);
 
 int
 environ_cmp(struct environ_entry *envent1, struct environ_entry *envent2)

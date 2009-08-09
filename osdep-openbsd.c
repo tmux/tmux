@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.18 2009-08-09 16:08:12 tcunha Exp $ */
+/* $Id: osdep-openbsd.c,v 1.19 2009-08-09 17:57:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -91,7 +91,7 @@ osdep_get_name(int fd, char *tty)
 	struct stat	 sb;
 	size_t		 len;
 	struct kinfo_proc *buf, *newbuf;
-	struct proc	*p, *bestp;
+	struct proc	*bestp;
 	u_int		 i;
 	char		*name;
 
@@ -121,7 +121,6 @@ retry:
 	for (i = 0; i < len / sizeof (struct kinfo_proc); i++) {
 		if (buf[i].kp_eproc.e_tdev != sb.st_rdev)
 			continue;
-		p = &buf[i].kp_proc;
 		if (bestp == NULL)
 			bestp = &buf[i].kp_proc;
 		else
