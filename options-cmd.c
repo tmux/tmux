@@ -1,4 +1,4 @@
-/* $Id: options-cmd.c,v 1.4 2009-01-27 20:22:33 nicm Exp $ */
+/* $Id: options-cmd.c,v 1.5 2009-08-09 16:48:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,15 +25,26 @@
 
 void
 set_option_string(struct cmd_ctx *ctx, struct options *oo,
-    const struct set_option_entry *entry, char *value)
+    const struct set_option_entry *entry, char *value, int append)
 {
+	char	*oldvalue, *newvalue;
+
 	if (value == NULL) {
 		ctx->error(ctx, "empty value");
 		return;
 	}
 
-	options_set_string(oo, entry->name, "%s", value);
-	ctx->info(ctx, "set option: %s -> %s", entry->name, value);
+	if (append) {
+		oldvalue = options_get_string(oo, entry->name);
+		xasprintf(&newvalue, "%s%s", oldvalue, value);
+	} else
+		newvalue = value;
+		
+	options_set_string(oo, entry->name, "%s", newvalue);
+	ctx->info(ctx, "set option: %s -> %s", entry->name, newvalue);
+
+	if (newvalue != value)
+		xfree(newvalue);
 }
 
 void
