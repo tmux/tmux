@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.146 2009-08-09 17:55:59 tcunha Exp $
+.\" $Id: tmux.1,v 1.147 2009-08-09 18:02:02 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -88,6 +88,7 @@ and all sessions are managed by a single
 The server and each client are separate processes which communicate through a
 socket in
 .Pa /tmp .
+.Pp
 The options are as follows:
 .Bl -tag -width "XXXXXXXXXXXX"
 .It Fl 2
@@ -200,19 +201,21 @@ Some of the default key bindings are:
 .Pp
 .Bl -tag -width Ds -offset 3n -compact
 .It c
-Create new window.
+Create a new window.
 .It d
-Detach current client.
+Detach the current client.
 .It l
-Move to last (previously selected) window in the current session.
+Move to the previously selected window.
 .It n
-Change to next window in the current session.
+Change to the next window.
 .It p
-Change to previous window in the current session.
-.It t
-Display a large clock.
+Change to the previous window.
+.It &
+Kill the current window.
+.It ,
+Rename the current window.
 .It \&?
-List current key bindings.
+List all key bindings.
 .El
 .Pp
 A complete list may be obtained with the
