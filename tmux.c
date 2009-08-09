@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.154 2009-08-09 15:26:24 tcunha Exp $ */
+/* $Id: tmux.c,v 1.155 2009-08-09 16:39:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -341,7 +341,8 @@ main(int argc, char **argv)
 			if ((s = getenv("LC_CTYPE")) == NULL)
 				s = getenv("LANG");
 		}
-		if (s != NULL && strcasestr(s, "UTF-8") != NULL)
+		if (s != NULL && (strcasestr(s, "UTF-8") != NULL ||
+		    strcasestr(s, "UTF8") != NULL))
 			flags |= IDENTIFY_UTF8;
 	}
 
