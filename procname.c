@@ -91,7 +91,7 @@ get_proc_name(int fd, char *tty)
 	struct stat	 sb;
 	size_t		 len;
 	struct kinfo_proc *buf, *newbuf;
-	struct proc	*p, *bestp;
+	struct proc	*bestp;
 	u_int		 i;
 	char		*name;
 
@@ -121,7 +121,6 @@ retry:
 	for (i = 0; i < len / sizeof (struct kinfo_proc); i++) {
 		if (buf[i].kp_eproc.e_tdev != sb.st_rdev)
 			continue;
-		p = &buf[i].kp_proc;
 		if (bestp == NULL)
 			bestp = &buf[i].kp_proc;
 		else

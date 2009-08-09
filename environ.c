@@ -29,8 +29,6 @@
 
 RB_GENERATE(environ, environ_entry, entry, environ_cmp);
 
-void	environ_set1(struct environ *, char *, char *);
-
 int
 environ_cmp(struct environ_entry *envent1, struct environ_entry *envent2)
 {
