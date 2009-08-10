@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.158 2009-08-09 17:48:55 tcunha Exp $ */
+/* $Id: tmux.c,v 1.159 2009-08-10 21:43:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -471,7 +471,7 @@ main(int argc, char **argv)
 	if (unlock)
 		cmdflags &= ~CMD_STARTSERVER;
 	else if (argc == 0)
-		cmdflags |= CMD_STARTSERVER;
+		cmdflags |= CMD_STARTSERVER|CMD_SENDENVIRON;
 	else {
 		/*
 		 * It sucks parsing the command string twice (in client and
