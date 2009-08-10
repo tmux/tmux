@@ -866,6 +866,7 @@ server_handle_client(struct client *c)
 
 	/* Ensure cursor position and mode settings. */
 	status = options_get_number(&c->session->options, "status");
+	tty_region(&c->tty, 0, c->tty.sy - 1, 0);
 	if (!window_pane_visible(wp) || wp->yoff + s->cy >= c->tty.sy - status)
 		tty_cursor(&c->tty, 0, 0, 0, 0);
 	else

@@ -173,6 +173,7 @@ screen_redraw_screen(struct client *c, int status_only)
 	/* If only drawing status and it is present, don't need the rest. */
 	if (status_only && status) {
 		tty_draw_line(tty, &c->status, 0, 0, tty->sy - 1);
+		tty_reset(tty);
 		return;
 	}
 
@@ -214,6 +215,7 @@ screen_redraw_screen(struct client *c, int status_only)
 	/* Draw the status line. */
 	if (status)
 		tty_draw_line(tty, &c->status, 0, 0, tty->sy - 1);
+	tty_reset(tty);
 }
 
 /* Draw a single pane. */
@@ -224,4 +226,5 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 
 	for (i = 0; i < wp->sy; i++)
 		tty_draw_line(&c->tty, wp->screen, i, wp->xoff, wp->yoff);
+	tty_reset(&c->tty);
 }
