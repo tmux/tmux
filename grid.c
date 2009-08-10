@@ -514,8 +514,8 @@ grid_duplicate_lines(
 	grid_clear_lines(dst, dy, ny);
 
 	for (yy = 0; yy < ny; yy++) {
-		srcl = &src->linedata[yy];
-		dstl = &dst->linedata[yy];
+		srcl = &src->linedata[sy];
+		dstl = &dst->linedata[dy];
 
 		memcpy(dstl, srcl, sizeof *dstl);
 		if (srcl->cellsize != 0) {
