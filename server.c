@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.165 2009-08-09 17:19:18 tcunha Exp $ */
+/* $Id: server.c,v 1.166 2009-08-10 21:41:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -871,6 +871,7 @@ server_handle_client(struct client *c)
 
 	/* Ensure cursor position and mode settings. */
 	status = options_get_number(&c->session->options, "status");
+	tty_region(&c->tty, 0, c->tty.sy - 1, 0);
 	if (!window_pane_visible(wp) || wp->yoff + s->cy >= c->tty.sy - status)
 		tty_cursor(&c->tty, 0, 0, 0, 0);
 	else
