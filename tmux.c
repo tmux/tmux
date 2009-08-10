@@ -462,7 +462,7 @@ main(int argc, char **argv)
 	if (unlock)
 		cmdflags &= ~CMD_STARTSERVER;
 	else if (argc == 0)
-		cmdflags |= CMD_STARTSERVER;
+		cmdflags |= CMD_STARTSERVER|CMD_SENDENVIRON;
 	else {
 		/*
 		 * It sucks parsing the command string twice (in client and
