@@ -34,8 +34,10 @@
 is a terminal multiplexer:
 it enables a number of terminals to be created, accessed, and
 controlled from a single screen.
-Programs may be detached from the screen, continue running in the background,
-and be reattached to the same or a different screen.
+.Nm
+may be detached from a screen
+and continue running in the background,
+then later reattached.
 .Pp
 When
 .Nm
@@ -71,7 +73,7 @@ exits.
 Each session is persistent and will survive accidental disconnection
 (such as
 .Xr ssh 1
-connection timeout) or intentional detachment (with the
+connection timeout) or intentional detaching (with the
 .Ql C-b d
 key strokes).
 .Nm
@@ -199,7 +201,7 @@ prefix key,
 .Pp
 Some of the default key bindings are:
 .Pp
-.Bl -tag -width Ds -offset 3n -compact
+.Bl -tag -width Ds -offset indent -compact
 .It c
 Create a new window.
 .It d
