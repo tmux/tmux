@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.29 2009-08-09 17:28:23 tcunha Exp $ */
+/* $Id: grid.c,v 1.30 2009-08-10 21:40:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -514,8 +514,8 @@ grid_duplicate_lines(
 	grid_clear_lines(dst, dy, ny);
 
 	for (yy = 0; yy < ny; yy++) {
-		srcl = &src->linedata[yy];
-		dstl = &dst->linedata[yy];
+		srcl = &src->linedata[sy];
+		dstl = &dst->linedata[dy];
 
 		memcpy(dstl, srcl, sizeof *dstl);
 		if (srcl->cellsize != 0) {
