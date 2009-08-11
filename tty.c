@@ -49,6 +49,7 @@ tty_init(struct tty *tty, int fd, char *path, char *term)
 {
 	tty->path = xstrdup(path);
 	tty->fd = fd;
+	tty->log_fd = -1;
 
 	if (term == NULL || *term == '\0')
 		tty->termname = xstrdup("unknown");
