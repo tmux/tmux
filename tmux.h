@@ -1010,9 +1010,11 @@ struct cmd_entry {
 
 #define CMD_STARTSERVER 0x1
 #define CMD_CANTNEST 0x2
-#define CMD_ARG1 0x4
-#define CMD_ARG01 0x8
-#define CMD_SENDENVIRON 0x10
+#define CMD_SENDENVIRON 0x4
+#define CMD_ARG1 0x8
+#define CMD_ARG01 0x10
+#define CMD_ARG2 0x20
+#define CMD_ARG12 0x40
 	int		 flags;
 
 #define CMD_CHFLAG(flag) \
@@ -1032,6 +1034,7 @@ struct cmd_target_data {
 	uint64_t chflags;
 	char	*target;
 	char	*arg;
+	char	*arg2;
 };
 
 struct cmd_srcdst_data {
@@ -1039,6 +1042,7 @@ struct cmd_srcdst_data {
 	char	*src;
 	char	*dst;
 	char	*arg;
+	char	*arg2;
 };
 
 struct cmd_buffer_data {
@@ -1046,13 +1050,7 @@ struct cmd_buffer_data {
 	char	*target;
 	int	 buffer;
 	char	*arg;
-};
-
-struct cmd_option_data {
-	uint64_t chflags;
-	char	*target;
-	char	*option;
-	char	*value;
+	char	*arg2;
 };
 
 /* Key binding. */
@@ -1373,14 +1371,6 @@ void	cmd_buffer_init(struct cmd *, int);
 int	cmd_buffer_parse(struct cmd *, int, char **, char **);
 void	cmd_buffer_free(struct cmd *);
 size_t	cmd_buffer_print(struct cmd *, char *, size_t);
-#define CMD_OPTION_PANE_USAGE "[-t target-pane] option [value]"
-#define CMD_OPTION_WINDOW_USAGE "[-t target-window] option [value]"
-#define CMD_OPTION_SESSION_USAGE "[-t target-session] option [value]"
-#define CMD_OPTION_CLIENT_USAGE "[-t target-client] option [value]"
-void	cmd_option_init(struct cmd *, int);
-int	cmd_option_parse(struct cmd *, int, char **, char **);
-void	cmd_option_free(struct cmd *);
-size_t	cmd_option_print(struct cmd *, char *, size_t);
 
 /* client.c */
 int	 client_init(char *, struct client_ctx *, int, int);

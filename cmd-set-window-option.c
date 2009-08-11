@@ -31,13 +31,13 @@ int	cmd_set_window_option_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_set_window_option_entry = {
 	"set-window-option", "setw",
-	"[-agu] " CMD_OPTION_WINDOW_USAGE,
-	0, CMD_CHFLAG('a')|CMD_CHFLAG('g')|CMD_CHFLAG('u'),
+	"[-agu] " CMD_TARGET_WINDOW_USAGE " option [value]",
+	CMD_ARG12, CMD_CHFLAG('a')|CMD_CHFLAG('g')|CMD_CHFLAG('u'),
 	NULL,
-	cmd_option_parse,
+	cmd_target_parse,
 	cmd_set_window_option_exec,
-	cmd_option_free,
-	cmd_option_print
+	cmd_target_free,
+	cmd_target_print
 };
 
 const char *set_option_mode_keys_list[] = {
@@ -78,7 +78,7 @@ const struct set_option_entry set_window_option_table[] = {
 int
 cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_option_data		*data = self->data;
+	struct cmd_target_data		*data = self->data;
 	struct winlink			*wl;
 	struct client			*c;
 	struct options			*oo;
@@ -93,27 +93,27 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		oo = &wl->window->options;
 	}
 
-	if (*data->option == '\0') {
+	if (*data->arg == '\0') {
 		ctx->error(ctx, "invalid option");
 		return (-1);
 	}
 
 	entry = NULL;
 	for (opt = set_window_option_table; opt->name != NULL; opt++) {
-		if (strncmp(opt->name, data->option, strlen(data->option)) != 0)
+		if (strncmp(opt->name, data->arg, strlen(data->arg)) != 0)
 			continue;
 		if (entry != NULL) {
-			ctx->error(ctx, "ambiguous option: %s", data->option);
+			ctx->error(ctx, "ambiguous option: %s", data->arg);
 			return (-1);
 		}
 		entry = opt;
 
 		/* Bail now if an exact match. */
-		if (strcmp(entry->name, data->option) == 0)
+		if (strcmp(entry->name, data->arg) == 0)
 			break;
 	}
 	if (entry == NULL) {
-		ctx->error(ctx, "unknown option: %s", data->option);
+		ctx->error(ctx, "unknown option: %s", data->arg);
 		return (-1);
 	}
 
@@ -123,7 +123,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			    "can't unset global option: %s", entry->name);
 			return (-1);
 		}
-		if (data->value != NULL) {
+		if (data->arg2 != NULL) {
 			ctx->error(ctx,
 			    "value passed to unset option: %s", entry->name);
 			return (-1);
@@ -135,25 +135,25 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		switch (entry->type) {
 		case SET_OPTION_STRING:
 			set_option_string(ctx, oo, entry,
-			    data->value, data->chflags & CMD_CHFLAG('a'));
+			    data->arg2, data->chflags & CMD_CHFLAG('a'));
 			break;
 		case SET_OPTION_NUMBER:
-			set_option_number(ctx, oo, entry, data->value);
+			set_option_number(ctx, oo, entry, data->arg2);
 			break;
 		case SET_OPTION_KEY:
-			set_option_key(ctx, oo, entry, data->value);
+			set_option_key(ctx, oo, entry, data->arg2);
 			break;
 		case SET_OPTION_COLOUR:
-			set_option_colour(ctx, oo, entry, data->value);
+			set_option_colour(ctx, oo, entry, data->arg2);
 			break;
 		case SET_OPTION_ATTRIBUTES:
-			set_option_attributes(ctx, oo, entry, data->value);
+			set_option_attributes(ctx, oo, entry, data->arg2);
 			break;
 		case SET_OPTION_FLAG:
-			set_option_flag(ctx, oo, entry, data->value);
+			set_option_flag(ctx, oo, entry, data->arg2);
 			break;
 		case SET_OPTION_CHOICE:
-			set_option_choice(ctx, oo, entry, data->value);
+			set_option_choice(ctx, oo, entry, data->arg2);
 			break;
 		}
 	}
