@@ -55,15 +55,10 @@
 - rename split-window -> split-pane??
 - fix UTF-8 guesswork on sparc64, improve tty checks
 - choice and more mode would be better per client than per window?
-- some way to force a screen to use the entire terminal even if it is forced
-  to be smaller by other clients. pan smaller terminal? (like screen F)
 - hooks to which commands may be attached, for example: tmux add-hook
   "new-session" if-shell "[ -e $HOME/.tmux-session.conf ]" source-file
   $HOME/.tmux-session.conf
 - get it passing all the vttest tests that don't require resizing the terminal
-- does tmux require a exmple conf? where does it go?
-- there are an awful lot of commands. maybe separate man page for conf
-  file/commands -similar to ssh/ssh_config?
 - esc seq to set window title should be documented and should set
   automatic-rename
 - way to set socket path from config file
@@ -74,12 +69,10 @@
   x position and use that
 - paste-buffer etc should be able to handle \0, so needs a size member and no
   more strlen
-- is utf8 a valid charset in LANG? also check for "unicode" in TERM
 - what about utmp etc? can tmux update it like screen? setgid?
 - H/M/L commands in copy mode with vi-keys, for jumping to the top/middle/last
   line on the screen
 - split list-windows into separate list-windows and list-panes
-- way to override terminfo definitions
 - warts on current naming:
   	- display-time but message-fg/bg/attr
 	- list-* vs show-*
@@ -93,8 +86,7 @@
        would work fine with config file since
 - option to set customisable prompt for command-prompt (so eg bind -n F2
   command-prompt "splitw 'exec man %%') can have "man: " instead of "(splitw)".
-- a way for force-width/height to apply to only one
-  pane (how?)
+- a way for force-width/height to apply to only one pane (how?)
 - **** a command to run something without a window and send any output to the
   window-more. if no output, info() a line saying "'%s' returned %d". so i can
   bind mpc control commands to function keys ;-)
@@ -102,6 +94,10 @@
   pid (need some adaption of the osdep code)
 - options to change/remove the symbols (*-+ etc) in status line (bloat?)
 - asupport for bce
-- reset attributes when idle so ~./pkill are less likely to leave terminal upset
 - it would be nice if the start/end line keys in copy mode were aware of
   wrapped lines
+- per session locking
+- some way to force a screen to use the entire terminal even if it is forced
+  to be smaller by other clients. pan smaller terminal? (like screen F)
+		-- idea of a "view" onto a window, need base x/y offsets
+		   for redraw
