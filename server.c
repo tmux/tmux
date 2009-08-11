@@ -85,9 +85,7 @@ server_create_client(int fd)
 		fatal("fcntl failed");
 
 	c = xcalloc(1, sizeof *c);
-	c->fd = fd;
-	c->in = buffer_create(BUFSIZ);
-	c->out = buffer_create(BUFSIZ);
+	imsg_init(&c->ibuf, fd);
 
 	ARRAY_INIT(&c->prompt_hdata);
 
@@ -672,10 +670,10 @@ server_fill_clients(struct pollfd **pfd)
 		if (c == NULL)
 			(*pfd)->fd = -1;
 		else {
-			(*pfd)->fd = c->fd;
+			(*pfd)->fd = c->ibuf.fd;
 			if (!(c->flags & CLIENT_BAD))
-				(*pfd)->events = POLLIN;
-			if (BUFFER_USED(c->out) > 0)
+				(*pfd)->events |= POLLIN;
+			if (c->ibuf.w.queued > 0)
 				(*pfd)->events |= POLLOUT;
 		}
 		(*pfd)++;
@@ -718,17 +716,32 @@ server_handle_clients(struct pollfd **pfd)
 		c = ARRAY_ITEM(&clients, i);
 
 		if (c != NULL) {
-			if (buffer_poll(*pfd, c->in, c->out) != 0) {
+			if ((*pfd)->revents & (POLLERR|POLLNVAL|POLLHUP)) {
 				server_lost_client(c);
 				(*pfd) += 2;
 				continue;
-			} else if (c->flags & CLIENT_BAD) {
-				if (BUFFER_USED(c->out) == 0)
+			}
+
+			if ((*pfd)->revents & POLLOUT) {
+				if (msgbuf_write(&c->ibuf.w) < 0) {
+					server_lost_client(c);
+					(*pfd) += 2;
+					continue;
+				}
+			}
+
+			if (c->flags & CLIENT_BAD) {
+				if (c->ibuf.w.queued == 0)
 					server_lost_client(c);
 				(*pfd) += 2;
-				continue;			
-			} else
-				server_msg_dispatch(c);
+				continue;
+			} else if ((*pfd)->revents & POLLIN) {
+				if (server_msg_dispatch(c) != 0) {
+					server_lost_client(c);
+					(*pfd) += 2;
+					continue;
+				}
+			}
 		}
 		(*pfd)++;
 
@@ -910,9 +923,8 @@ server_lost_client(struct client *c)
 	if (c->cwd != NULL)
 		xfree(c->cwd);
 
-	close(c->fd);
-	buffer_destroy(c->in);
-	buffer_destroy(c->out);
+	close(c->ibuf.fd);
+	imsg_clear(&c->ibuf);
 	xfree(c);
 
 	recalculate_sizes();

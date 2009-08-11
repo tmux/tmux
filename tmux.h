@@ -19,12 +19,13 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION -15
+#define PROTOCOL_VERSION 1
 
 #include <sys/param.h>
 #include <sys/time.h>
 #include <sys/queue.h>
 #include <sys/tree.h>
+#include <sys/uio.h>
 
 #include <bitstring.h>
 #include <getopt.h>
@@ -37,6 +38,7 @@
 #include <termios.h>
 
 #include "array.h"
+#include "imsg.h"
 
 extern char    *__progname;
 extern char   **environ;
@@ -303,23 +305,16 @@ enum msgtype {
 	MSG_SHUTDOWN,
 	MSG_SUSPEND,
 	MSG_UNLOCK,
+	MSG_VERSION,
 	MSG_WAKEUP,
 	MSG_ENVIRON
 };
 
 /*
- * Message header and data. 
+ * Message data.
  *
  * Don't forget to bump PROTOCOL_VERSION if any of these change!
- *
- * Changing sizeof (struct hdr) or sizeof (struct msg_identify_data) will make
- * the tmux client hang even if the protocol version is bumped.
  */
-struct hdr {
-	enum msgtype	type;
-	size_t		size;
-};
-
 struct msg_print_data {
 	char		msg[PRINT_LENGTH];
 };
@@ -334,7 +329,6 @@ struct msg_command_data {
 
 struct msg_identify_data {
 	char		tty[TTY_NAME_MAX];
-	int	        version;
 
 	char		cwd[MAXPATHLEN];
 
@@ -908,9 +902,7 @@ struct tty_ctx {
 
 /* Client connection. */
 struct client {
-	int		 fd;
-	struct buffer	*in;
-	struct buffer	*out;
+	struct imsgbuf	 ibuf;
 
 	struct environ	 environ;
 
@@ -958,9 +950,7 @@ ARRAY_DECL(clients, struct client *);
 
 /* Client context. */
 struct client_ctx {
-	int		 srv_fd;
-	struct buffer	*srv_in;
-	struct buffer	*srv_out;
+	struct imsgbuf	 ibuf;
 
 	enum {
 		CCTX_DETACH,
