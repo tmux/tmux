@@ -61,18 +61,29 @@ RB_GENERATE(winlinks, winlink, entry, winlink_cmp);
 const char *
 window_default_command(void)
 {
-	const char	*shell;
+	const char	*shell, *ptr;
 	struct passwd	*pw;
 
 	shell = getenv("SHELL");
 	if (shell != NULL && *shell != '\0')
-		return (shell);
+		goto found;
 
 	pw = getpwuid(getuid());
-	if (pw != NULL && pw->pw_shell != NULL && *pw->pw_shell != '\0')
-		return (pw->pw_shell);
+	if (pw != NULL && pw->pw_shell != NULL && *pw->pw_shell != '\0') {
+		shell = pw->pw_shell;
+		goto found;
+	}
 
 	return (_PATH_BSHELL);
+
+found:
+	if ((ptr = strrchr(shell, '/')) != NULL)
+		ptr++;
+	else
+		ptr = shell;
+	if (strcmp(ptr, __progname) == 0)
+		return (_PATH_BSHELL);
+	return (shell);
 }
 
 int

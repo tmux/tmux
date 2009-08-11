@@ -119,7 +119,8 @@ server_started:
 		if (strlcpy(data.tty, name, sizeof data.tty) >= sizeof data.tty)
 			fatalx("ttyname failed");
 
-		client_write_server(cctx, MSG_IDENTIFY, &data, sizeof data);
+		imsg_compose(&cctx->ibuf, MSG_IDENTIFY,
+		    PROTOCOL_VERSION, -1, STDIN_FILENO, &data, sizeof data);
 	}
 
 	return (0);

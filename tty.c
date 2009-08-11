@@ -45,9 +45,11 @@ void	tty_cell(struct tty *,
     	    const struct grid_cell *, const struct grid_utf8 *);
 
 void
-tty_init(struct tty *tty, char *path, char *term)
+tty_init(struct tty *tty, int fd, char *path, char *term)
 {
 	tty->path = xstrdup(path);
+	tty->fd = fd;
+
 	if (term == NULL || *term == '\0')
 		tty->termname = xstrdup("unknown");
 	else
@@ -59,12 +61,14 @@ tty_init(struct tty *tty, char *path, char *term)
 int
 tty_open(struct tty *tty, const char *overrides, char **cause)
 {
-	int		 mode;
+	int	mode;
 
-	tty->fd = open(tty->path, O_RDWR|O_NONBLOCK);
 	if (tty->fd == -1) {
-		xasprintf(cause, "%s: %s", tty->path, strerror(errno));
-		return (-1);
+		tty->fd = open(tty->path, O_RDWR|O_NONBLOCK);
+		if (tty->fd == -1) {
+			xasprintf(cause, "%s: %s", tty->path, strerror(errno));
+			return (-1);
+		}
 	}
 
 	if ((mode = fcntl(tty->fd, F_GETFL)) == -1)

@@ -27,7 +27,7 @@
 #include "tmux.h"
 
 void	server_msg_command(struct client *, struct msg_command_data *);
-void	server_msg_identify(struct client *, struct msg_identify_data *);
+void	server_msg_identify(struct client *, struct msg_identify_data *, int);
 void	server_msg_resize(struct client *, struct msg_resize_data *);
 
 void printflike2 server_msg_command_error(struct cmd_ctx *, const char *, ...);
@@ -76,7 +76,7 @@ server_msg_dispatch(struct client *c)
 				fatalx("bad MSG_IDENTIFY size");
 			memcpy(&identifydata, imsg.data, sizeof identifydata);
 
-			server_msg_identify(c, &identifydata);
+			server_msg_identify(c, &identifydata, imsg.fd);
 			break;
 		case MSG_RESIZE:
 			if (datalen != sizeof resizedata)
@@ -235,7 +235,7 @@ error:
 }
 
 void
-server_msg_identify(struct client *c, struct msg_identify_data *data)
+server_msg_identify(struct client *c, struct msg_identify_data *data, int fd)
 {
 	c->tty.sx = data->sx;
 	c->tty.sy = data->sy;
@@ -247,7 +247,7 @@ server_msg_identify(struct client *c, struct msg_identify_data *data)
 
 	data->tty[(sizeof data->tty) - 1] = '\0';
 	data->term[(sizeof data->term) - 1] = '\0';
-	tty_init(&c->tty, data->tty, data->term);
+	tty_init(&c->tty, fd, data->tty, data->term);
 	if (data->flags & IDENTIFY_UTF8)
 		c->tty.flags |= TTY_UTF8;
 	if (data->flags & IDENTIFY_256COLOURS)
