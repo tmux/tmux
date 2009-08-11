@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.32 2009-07-30 20:45:20 tcunha Exp $ */
+/* $Id: cmd-generic.c,v 1.33 2009-08-11 14:42:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
 int	cmd_getopt(int, char **, const char *, uint64_t);
 int	cmd_flags(int, uint64_t, uint64_t *);
 size_t	cmd_print_flags(char *, size_t, size_t, uint64_t);
-int	cmd_fill_argument(int, char **, int, char **);
+int	cmd_fill_argument(int, char **, char **, int, char **);
 
 size_t
 cmd_prarg(char *buf, size_t len, const char *prefix, char *arg)
@@ -104,9 +104,10 @@ cmd_print_flags(char *buf, size_t len, size_t off, uint64_t chflags)
 }
 
 int
-cmd_fill_argument(int flags, char **arg, int argc, char **argv)
+cmd_fill_argument(int flags, char **arg, char **arg2, int argc, char **argv)
 {
 	*arg = NULL;
+	*arg2 = NULL;
 
 	if (flags & CMD_ARG1) {
 		if (argc != 1)
@@ -122,6 +123,23 @@ cmd_fill_argument(int flags, char **arg, int argc, char **argv)
 			*arg = xstrdup(argv[0]);
 		return (0);
 	}
+
+	if (flags & CMD_ARG2) {
+		if (argc != 2)
+			return (-1);
+		*arg = xstrdup(argv[0]);
+		*arg2 = xstrdup(argv[1]);
+		return (0);
+	}
+
+	if (flags & CMD_ARG12) {
+		if (argc != 1 && argc != 2)
+			return (-1);
+		*arg = xstrdup(argv[0]);
+		if (argc == 2)
+			*arg2 = xstrdup(argv[1]);
+		return (0);
+	}		
 
 	if (argc != 0)
 		return (-1);
@@ -165,7 +183,8 @@ cmd_target_parse(struct cmd *self, int argc, char **argv, char **cause)
 	argc -= optind;
 	argv += optind;
 
-	if (cmd_fill_argument(self->entry->flags, &data->arg, argc, argv) != 0)
+	if (cmd_fill_argument(
+	    self->entry->flags, &data->arg, &data->arg2, argc, argv) != 0)
 		goto usage;
 	return (0);
 
@@ -202,6 +221,8 @@ cmd_target_print(struct cmd *self, char *buf, size_t len)
 		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
  	if (off < len && data->arg != NULL)
 		off += cmd_prarg(buf + off, len - off, " ", data->arg);
+ 	if (off < len && data->arg2 != NULL)
+		off += cmd_prarg(buf + off, len - off, " ", data->arg2);
 	return (off);
 }
 
@@ -246,7 +267,8 @@ cmd_srcdst_parse(struct cmd *self, int argc, char **argv, char **cause)
 	argc -= optind;
 	argv += optind;
 
-	if (cmd_fill_argument(self->entry->flags, &data->arg, argc, argv) != 0)
+	if (cmd_fill_argument(
+	    self->entry->flags, &data->arg, &data->arg2, argc, argv) != 0)
 		goto usage;
 	return (0);
 
@@ -287,6 +309,8 @@ cmd_srcdst_print(struct cmd *self, char *buf, size_t len)
 		off += xsnprintf(buf + off, len - off, " -t %s", data->dst);
  	if (off < len && data->arg != NULL)
 		off += cmd_prarg(buf + off, len - off, " ", data->arg);
+ 	if (off < len && data->arg2 != NULL)
+		off += cmd_prarg(buf + off, len - off, " ", data->arg2);
 	return (off);
 }
 
@@ -338,7 +362,8 @@ cmd_buffer_parse(struct cmd *self, int argc, char **argv, char **cause)
 	argc -= optind;
 	argv += optind;
 
-	if (cmd_fill_argument(self->entry->flags, &data->arg, argc, argv) != 0)
+	if (cmd_fill_argument(
+	    self->entry->flags, &data->arg, &data->arg2, argc, argv) != 0)
 		goto usage;
 	return (0);
 
@@ -378,92 +403,7 @@ cmd_buffer_print(struct cmd *self, char *buf, size_t len)
 		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
  	if (off < len && data->arg != NULL)
 		off += cmd_prarg(buf + off, len - off, " ", data->arg);
-	return (off);
-}
-
-void
-cmd_option_init(struct cmd *self, unused int key)
-{
-	struct cmd_option_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	data->chflags = 0;
-	data->target = NULL;
-	data->option = NULL;
-	data->value = NULL;
-}
-
-int
-cmd_option_parse(struct cmd *self, int argc, char **argv, char **cause)
-{
-	struct cmd_option_data	*data;
-	const struct cmd_entry	*entry = self->entry;
-	int			 opt;
-
-	/* Don't use the entry version since it may be dependent on key. */
-	cmd_option_init(self, 0);
-	data = self->data;
-
-	while ((opt = cmd_getopt(argc, argv, "t:", entry->chflags)) != -1) {
-		if (cmd_flags(opt, entry->chflags, &data->chflags) == 0)
-			continue;
-		switch (opt) {
-		case 't':
-			if (data->target == NULL)
-				data->target = xstrdup(optarg);
-			break;
-		default:
-			goto usage;
-		}
-	}
-	argc -= optind;
-	argv += optind;
-
-	if (argc == 2) {
-		data->option = xstrdup(argv[0]);
-		data->value = xstrdup(argv[1]);
-	} else if (argc == 1)
-		data->option = xstrdup(argv[0]);
-	else
-		goto usage;
-	return (0);
-
-usage:
-	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
-
-	self->entry->free(self);
-	return (-1);
-}
-
-void
-cmd_option_free(struct cmd *self)
-{
-	struct cmd_option_data	*data = self->data;
-
-	if (data->target != NULL)
-		xfree(data->target);
-	if (data->option != NULL)
-		xfree(data->option);
-	if (data->value != NULL)
-		xfree(data->value);
-	xfree(data);
-}
-
-size_t
-cmd_option_print(struct cmd *self, char *buf, size_t len)
-{
-	struct cmd_option_data	*data = self->data;
-	size_t			 off = 0;
-
-	off += xsnprintf(buf, len, "%s", self->entry->name);
-	if (data == NULL)
-		return (off);
-	off += cmd_print_flags(buf, len, off, data->chflags);
-	if (off < len && data->target != NULL)
-		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
- 	if (off < len && data->option != NULL)
-		off += xsnprintf(buf + off, len - off, " %s", data->option);
- 	if (off < len && data->value != NULL)
-		off += xsnprintf(buf + off, len - off, " %s", data->value);
+ 	if (off < len && data->arg2 != NULL)
+		off += cmd_prarg(buf + off, len - off, " ", data->arg2);
 	return (off);
 }

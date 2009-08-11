@@ -104,4 +104,5 @@
 - stuff should be pane targets rather than window targets:
        	 - send-keys/send-prefix
 	 - all the mode stuff
+- a window option which means data is echoed to all panes in a window
 
