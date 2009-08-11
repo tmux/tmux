@@ -869,6 +869,7 @@ struct tty {
 #define TTY_ESCAPE 0x4
 #define TTY_UTF8 0x8
 #define TTY_STARTED 0x10
+#define TTY_OPENED 0x20
 	int    		 flags;
 
 	int		 term_flags;
