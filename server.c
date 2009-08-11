@@ -902,7 +902,7 @@ server_lost_client(struct client *c)
 			ARRAY_SET(&clients, i, NULL);
 	}
 
-	tty_free(&c->tty, c->flags & CLIENT_SUSPENDED);
+	tty_free(&c->tty);
 
 	screen_free(&c->status);
 

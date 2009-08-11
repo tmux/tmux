@@ -868,6 +868,7 @@ struct tty {
 #define TTY_FREEZE 0x2
 #define TTY_ESCAPE 0x4
 #define TTY_UTF8 0x8
+#define TTY_STARTED 0x10
 	int    		 flags;
 
 	int		 term_flags;
@@ -1164,8 +1165,8 @@ void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int);
 int	tty_open(struct tty *, const char *, char **);
-void	tty_close(struct tty *, int);
-void	tty_free(struct tty *, int);
+void	tty_close(struct tty *);
+void	tty_free(struct tty *);
 void	tty_write(void (*)(struct tty *, struct tty_ctx *), struct tty_ctx *);
 void	tty_cmd_alignmenttest(struct tty *, struct tty_ctx *);
 void	tty_cmd_cell(struct tty *, struct tty_ctx *);

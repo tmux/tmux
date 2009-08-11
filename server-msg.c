@@ -90,7 +90,7 @@ server_msg_dispatch(struct client *c)
 				fatalx("bad MSG_EXITING size");
 
 			c->session = NULL;
-			tty_close(&c->tty, c->flags & CLIENT_SUSPENDED);
+			tty_close(&c->tty);
 			server_write_client(c, MSG_EXITED, NULL, 0);
 			break;
 		case MSG_UNLOCK:

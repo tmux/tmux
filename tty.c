@@ -149,12 +149,18 @@ tty_start_tty(struct tty *tty)
 	tty->rupper = UINT_MAX;
 
 	tty->mode = MODE_CURSOR;
+
+	tty->flags |= TTY_STARTED;
 }
 
 void
 tty_stop_tty(struct tty *tty)
 {
 	struct winsize	ws;
+
+	if (!(tty->flags & TTY_STARTED))
+		return;
+	tty->flags &= ~TTY_STARTED;
 
 	/*
 	 * Be flexible about error handling and try not kill the server just
@@ -281,7 +287,7 @@ tty_get_acs(struct tty *tty, u_char ch)
 }
 
 void
-tty_close(struct tty *tty, int no_stop)
+tty_close(struct tty *tty)
 {
 	if (tty->fd == -1)
 		return;
@@ -291,8 +297,7 @@ tty_close(struct tty *tty, int no_stop)
 		tty->log_fd = -1;
 	}
 
-	if (!no_stop)
-		tty_stop_tty(tty);
+	tty_stop_tty(tty);
 
 	tty_term_free(tty->term);
 	tty_keys_free(tty);
@@ -305,9 +310,9 @@ tty_close(struct tty *tty, int no_stop)
 }
 
 void
-tty_free(struct tty *tty, int no_stop)
+tty_free(struct tty *tty)
 {
-	tty_close(tty, no_stop);
+	tty_close(tty);
 
 	if (tty->path != NULL)
 		xfree(tty->path);
