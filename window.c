@@ -62,6 +62,7 @@ const char *
 window_default_command(void)
 {
 	const char	*shell, *ptr;
+	char		*progname;
 	struct passwd	*pw;
 
 	shell = getenv("SHELL");
@@ -81,7 +82,10 @@ found:
 		ptr++;
 	else
 		ptr = shell;
-	if (strcmp(ptr, __progname) == 0)
+	progname = __progname;
+	if (*progname == '-')
+		progname++;
+	if (strcmp(ptr, progname) == 0)
 		return (_PATH_BSHELL);
 	return (shell);
 }

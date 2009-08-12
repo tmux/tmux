@@ -79,8 +79,7 @@ logfile(const char *name)
 
 	log_close();
 	if (debug_level > 0) {
-		xasprintf(
-		    &path, "%s-%s-%ld.log", __progname, name, (long) getpid());
+		xasprintf(&path, "tmux-%s-%ld.log", name, (long) getpid());
 		log_open_file(debug_level, path);
 		xfree(path);
 	}
@@ -184,7 +183,7 @@ makesockpath(const char *label)
 	u_int		uid;
 
 	uid = getuid();
-	xsnprintf(base, MAXPATHLEN, "%s/%s-%d", _PATH_TMP, __progname, uid);
+	xsnprintf(base, MAXPATHLEN, "%s/tmux-%d", _PATH_TMP, uid);
 
 	if (mkdir(base, S_IRWXU) != 0 && errno != EEXIST)
 		return (NULL);
