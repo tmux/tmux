@@ -154,6 +154,8 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		cwd = ctx->cmdclient->cwd;
 
+	if (idx == -1)
+		idx = -1 - options_get_number(&s->options, "base-index");
 	wl = session_new(s, data->name, cmd, cwd, idx, &cause);
 	if (wl == NULL) {
 		ctx->error(ctx, "create window failed: %s", cause);

@@ -48,6 +48,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_pane	*wp;
 	struct window		*w;
 	char			*cause;
+	int			 base_idx;
 
 	if ((wl = cmd_find_pane(ctx, data->target, &s, &wp)) == NULL)
 		return (-1);
@@ -71,7 +72,8 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
  	w->name = default_window_name(w);
 	layout_init(w);
 
- 	wl = session_attach(s, w, -1, &cause); /* can't fail */
+	base_idx = options_get_number(&s->options, "base-index");
+ 	wl = session_attach(s, w, -1 - base_idx, &cause); /* can't fail */
  	if (!(data->chflags & CMD_CHFLAG('d')))
  		session_select(s, wl->idx);
 

@@ -77,6 +77,8 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
+	if (idx == -1)
+		idx = -1 - options_get_number(&dst->options, "base-index");
 	wl_dst = session_attach(dst, wl_src->window, idx, &cause);
 	if (wl_dst == NULL) {
 		ctx->error(ctx, "create session failed: %s", cause);

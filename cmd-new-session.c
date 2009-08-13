@@ -118,7 +118,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct termios			 tio;
 	const char			*update;
 	char				*overrides, *cmd, *cwd, *cause;
-	int				 detached;
+	int				 detached, idx;
 	u_int				 sx, sy;
 
 	if (data->newname != NULL && session_find(data->newname) != NULL) {
@@ -216,7 +216,9 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	tio.c_ospeed = TTYDEF_SPEED;
 
 	/* Create the new session. */
-	s = session_create(data->newname, cmd, cwd, &env, &tio, sx, sy, &cause);
+	idx = -1 - options_get_number(&global_s_options, "base-index");
+	s = session_create(
+	    data->newname, cmd, cwd, &env, &tio, idx, sx, sy, &cause);
 	if (s == NULL) {
 		ctx->error(ctx, "create session failed: %s", cause);
 		xfree(cause);

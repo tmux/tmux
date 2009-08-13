@@ -1565,7 +1565,7 @@ RB_PROTOTYPE(windows, window, entry, window_cmp);
 RB_PROTOTYPE(winlinks, winlink, entry, winlink_cmp);
 struct winlink	*winlink_find_by_index(struct winlinks *, int);
 struct winlink 	*winlink_find_by_window(struct winlinks *, struct window *);
-int		 winlink_next_index(struct winlinks *);
+int		 winlink_next_index(struct winlinks *, int);
 u_int		 winlink_count(struct winlinks *);
 struct winlink	*winlink_add(struct winlinks *, struct window *, int);
 void		 winlink_remove(struct winlinks *, struct winlink *);
@@ -1670,7 +1670,8 @@ int	 session_alert_has(struct session *, struct winlink *, int);
 int	 session_alert_has_window(struct session *, struct window *, int);
 struct session	*session_find(const char *);
 struct session	*session_create(const char *, const char *, const char *,
-    		     struct environ *, struct termios *, u_int, u_int, char **);
+		     struct environ *, struct termios *, int, u_int, u_int,
+		     char **);
 void	 	 session_destroy(struct session *);
 int	 	 session_index(struct session *, u_int *);
 struct winlink	*session_new(struct session *,

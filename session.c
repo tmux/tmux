@@ -113,7 +113,8 @@ session_find(const char *name)
 /* Create a new session. */
 struct session *
 session_create(const char *name, const char *cmd, const char *cwd,
-    struct environ *env, struct termios *tio, u_int sx, u_int sy, char **cause)
+    struct environ *env, struct termios *tio, int idx, u_int sx, u_int sy,
+    char **cause)
 {
 	struct session	*s;
 	u_int		 i;
@@ -149,11 +150,11 @@ session_create(const char *name, const char *cmd, const char *cwd,
 		s->name = xstrdup(name);
 	else
 		xasprintf(&s->name, "%u", i);
-	if (session_new(s, NULL, cmd, cwd, -1, cause) == NULL) {
+	if (session_new(s, NULL, cmd, cwd, idx, cause) == NULL) {
 		session_destroy(s);
 		return (NULL);
 	}
-	session_select(s, 0);
+	session_select(s, RB_ROOT(&s->windows)->idx);
 
 	log_debug("session %s created", s->name);
 
