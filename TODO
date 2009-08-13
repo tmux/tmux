@@ -9,14 +9,13 @@
 - garbage collect window history (100 lines at a time?) if it hasn't been used
   in $x time (need window creation/use times)
 - lift SHRT_MAX limits for history?
-- better mode features: search, back word, forward word, etc
+- better mode features: search
 - flags to centre screen in window
 - better terminal emulation
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
 - next prev word etc in command prompt; also ^K
 - many more info() displays for various things
-- vi half page scroll
 - backspace should perhaps wrap backwards over newlines which were not moved
   down by a newline: screen and the OS X terminal does this but xterm and most
   others do not. this might be hard: a flag for each grid line (top bit of size
@@ -26,14 +25,10 @@
 - use a better termcap internally instead of screen, perhaps xterm
 - kill all but current pane
 - fix rxvt cursor fg issue (text under cursor can have non-white fg)
-- some people find first window being 0 rather than 1 is awkward on the
-  keyboard (index-base option or similar for new window start)
 - client sx/sy should be in tty, then can let the terminal wrap at edge
   to allow xterm to pick up it should be one line for its c/p
 - should be able to move to a hidden pane and it would be moved into view. pane
   number in status line/top-right would be cool for this
-- would be nice if tmux could be the shell (tmux attach, but hard link to tmux
-  binary as "tmuxsh" or wrapper script?) problems with tty dev permissions
 - support other mouse modes (highlight etc) and use it in copy mode
 - set-remain-on-exit is a bit of a hack, some way to do it generically?
 - set-option should be set-session-option and should be overall global options
@@ -92,8 +87,8 @@
   bind mpc control commands to function keys ;-)
 - command to list what is actually running in each window with command line,
   pid (need some adaption of the osdep code)
-- options to change/remove the symbols (*-+ etc) in status line (bloat?)
-- asupport for bce
+- string option to change/remove the symbols (*-+ etc) in status line
+- support for bce
 - it would be nice if the start/end line keys in copy mode were aware of
   wrapped lines
 - per session locking
@@ -105,4 +100,8 @@
        	 - send-keys/send-prefix
 	 - all the mode stuff
 - a window option which means data is echoed to all panes in a window
-
+- support running tmux from inside tmux [#(), if-shell] --
+  	  generic system-like function which may take a callback
+	  also sets up environment (TMUX) and has a timeout
+- handle resize better in copy mode
+- way to copy stuff that is off screen due to resize
