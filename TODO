@@ -105,3 +105,4 @@
 	  also sets up environment (TMUX) and has a timeout
 - handle resize better in copy mode
 - way to copy stuff that is off screen due to resize
+- fix line wrapping c&p problems in xterm etc
