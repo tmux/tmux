@@ -184,7 +184,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		type = LAYOUT_LEFTRIGHT;
 
 	wp = window_add_pane(w, hlimit);
-	if (window_pane_spawn(wp, cmd, cwd, &env, &cause) != 0)
+	if (window_pane_spawn(wp, cmd, cwd, &env, &s->tio, &cause) != 0)
 		goto error;
 	if (layout_split_pane(w->active, type, size, wp) != 0) {
 		cause = xstrdup("pane too small");

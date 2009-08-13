@@ -75,7 +75,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
  	window_destroy_panes(w);
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	window_pane_resize(wp, w->sx, w->sy);
-	if (window_pane_spawn(wp, data->arg, NULL, &env, &cause) != 0) {
+	if (window_pane_spawn(wp, data->arg, NULL, &env, &s->tio, &cause) != 0) {
 		ctx->error(ctx, "respawn window failed: %s", cause);
 		xfree(cause);
 		environ_free(&env);

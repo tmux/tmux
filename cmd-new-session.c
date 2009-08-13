@@ -18,6 +18,12 @@
 
 #include <sys/types.h>
 
+#include <string.h>
+#include <termios.h>
+
+#define TTYDEFCHARS
+#include <sys/ttydefaults.h>
+
 #include "tmux.h"
 
 /*
@@ -109,6 +115,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_new_session_data	*data = self->data;
 	struct session			*s;
 	struct environ			 env;
+	struct termios			 tio;
 	const char			*update;
 	char				*overrides, *cmd, *cwd, *cause;
 	int				 detached;
@@ -192,8 +199,24 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (ctx->cmdclient != NULL)
 		environ_update(update, &ctx->cmdclient->environ, &env);
 
+	/*
+	 * Fill in the termios settings used for new windows in this session;
+	 * if there is a command client, use the control characters from it.
+	 */
+	if (ctx->cmdclient != NULL && ctx->cmdclient->tty.fd != -1) {
+		if (tcgetattr(ctx->cmdclient->tty.fd, &tio) != 0)
+			fatal("tcgetattr failed");
+	} else
+		memcpy(tio.c_cc, ttydefchars, sizeof tio.c_cc);
+	tio.c_iflag = TTYDEF_IFLAG;
+	tio.c_oflag = TTYDEF_OFLAG;
+	tio.c_lflag = TTYDEF_LFLAG;
+	tio.c_cflag = TTYDEF_CFLAG;
+	tio.c_ispeed = TTYDEF_SPEED;
+	tio.c_ospeed = TTYDEF_SPEED;
+
 	/* Create the new session. */
-	s = session_create(data->newname, cmd, cwd, &env, sx, sy, &cause);
+	s = session_create(data->newname, cmd, cwd, &env, &tio, sx, sy, &cause);
 	if (s == NULL) {
 		ctx->error(ctx, "create session failed: %s", cause);
 		xfree(cause);

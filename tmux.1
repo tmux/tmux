@@ -398,6 +398,10 @@ is given.
 and
 .Ar command
 are the name of and command to execute in the initial window.
+.Pp
+If run from a terminal, any
+.Xr termios 4
+special characters are saved and used for new windows in the new session.
 .It Ic refresh-client Op Fl t Ar target-client
 .D1 (alias: Ic refresh )
 Refresh the current client if bound to a key, or a single client if one is given
