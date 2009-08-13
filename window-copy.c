@@ -203,6 +203,24 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		window_copy_update_selection(wp);
 		window_copy_redraw_screen(wp);
 		break;
+	case MODEKEYCOPY_HALFPAGEUP:
+		n = screen_size_y(s) / 2;
+		if (data->oy + n > screen_hsize(&wp->base))
+			data->oy = screen_hsize(&wp->base);
+		else
+			data->oy += n;
+		window_copy_update_selection(wp);
+		window_copy_redraw_screen(wp);
+		break;
+	case MODEKEYCOPY_HALFPAGEDOWN:
+		n = screen_size_y(s) / 2;
+		if (data->oy < n)
+			data->oy = 0;
+		else
+			data->oy -= n;
+		window_copy_update_selection(wp);
+		window_copy_redraw_screen(wp);
+		break;
 	case MODEKEYCOPY_STARTSELECTION:
  		window_copy_start_selection(wp);
 		window_copy_redraw_screen(wp);
