@@ -66,7 +66,7 @@ cmd_select_prompt_callback(void *data, const char *s)
 	char		 msg[128];
 	u_int		 idx;
 
-	if (s == NULL)
+	if (s == NULL || *s == '\0')
 		return (0);
 
 	idx = strtonum(s, 0, UINT_MAX, &errstr);
