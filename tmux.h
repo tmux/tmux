@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.410 2009-08-14 21:04:04 tcunha Exp $ */
+/* $Id: tmux.h,v 1.411 2009-08-14 21:13:48 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,7 +35,6 @@
 #include <termios.h>
 
 #include "array.h"
-#include "imsg.h"
 
 #include "compat.h"
 

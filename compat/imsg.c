@@ -26,7 +26,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "imsg.h"
+#include "tmux.h"
 
 int	 imsg_get_fd(struct imsgbuf *);
 

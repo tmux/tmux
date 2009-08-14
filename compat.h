@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.8 2009-07-28 22:17:10 tcunha Exp $ */
+/* $Id: compat.h,v 1.9 2009-08-14 21:13:48 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -76,6 +76,10 @@
 #include <vis.h>
 #else
 #include "compat/vis.h"
+#endif
+
+#ifndef HAVE_IMSG
+#include "compat/imsg.h"
 #endif
 
 #ifndef INFTIM

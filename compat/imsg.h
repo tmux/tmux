@@ -18,7 +18,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/tree.h>
+#include "tmux.h"
 
 #define READ_BUF_SIZE		65535
 #define IMSG_HEADER_SIZE	sizeof(struct imsg_hdr)

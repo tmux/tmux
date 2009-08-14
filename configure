@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.22 2009-08-09 15:53:02 tcunha Exp $
+# $Id: configure,v 1.23 2009-08-14 21:13:48 tcunha Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -18,6 +18,7 @@ cat <<EOF >>$CONFIG_H
 #undef HAVE_FGETLN
 #undef HAVE_FORKPTY
 #undef HAVE_GETOPT
+#undef HAVE_IMSG
 #undef HAVE_LIBUTIL_H
 #undef HAVE_PATHS_H
 #undef HAVE_POLL
@@ -59,7 +60,9 @@ case $TMUX_PLATFORM in
 EOF
 	cat <<EOF >>$CONFIG_MK
 LIBS+= -lcurses -lutil
-SRCS+= osdep-openbsd.c
+SRCS+= osdep-openbsd.c \
+	compat/imsg-buffer.c \
+	compat/imsg.c
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -84,7 +87,9 @@ SRCS+= osdep-linux.c \
 	compat/strtonum.c \
         compat/getopt.c \
 	compat/vis.c \
-	compat/unvis.c
+	compat/unvis.c \
+	compat/imsg-buffer.c \
+	compat/imsg.c
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -106,7 +111,9 @@ SRCS+= osdep-unknown.c \
        	compat/fgetln.c \
        	compat/getopt.c \
 	compat/vis.c \
-	compat/unvis.c
+	compat/unvis.c \
+	compat/imsg-buffer.c \
+	compat/imsg.c
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -134,7 +141,9 @@ SRCS+= osdep-unknown.c \
 	compat/strcasestr.c \
 	compat/strtonum.c \
 	compat/vis.c \
-	compat/unvis.c
+	compat/unvis.c \
+	compat/imsg-buffer.c \
+	compat/imsg.c
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -158,7 +167,9 @@ SRCS+= osdep-darwin.c \
 	compat/bsd-poll.c \
 	compat/strtonum.c \
 	compat/vis.c \
-	compat/unvis.c
+	compat/unvis.c \
+	compat/imsg-buffer.c \
+	compat/imsg.c
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -182,7 +193,9 @@ EOF
 EOF
 	cat <<EOF >>$CONFIG_MK
 LIBS+= -lcurses -lcrypt -lutil
-SRCS+= osdep-freebsd.c
+SRCS+= osdep-freebsd.c \
+	compat/imsg-buffer.c \
+	compat/imsg.c
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -208,7 +221,9 @@ CPPFLAGS+= -I/usr/pkg/include
 LDFLAGS+= -L/usr/pkg/lib
 LIBS+= -lncurses -lcrypt -lutil
 SRCS+= osdep-netbsd.c \
-	compat/strtonum.c
+	compat/strtonum.c \
+	compat/imsg-buffer.c \
+	compat/imsg.c
 EOF
 	;;
 # ------------------------------------------------------------------------------
