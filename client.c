@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.62 2009-08-14 21:04:04 tcunha Exp $ */
+/* $Id: client.c,v 1.63 2009-08-14 21:23:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -123,7 +123,8 @@ server_started:
 		if (strlcpy(data.tty, name, sizeof data.tty) >= sizeof data.tty)
 			fatalx("ttyname failed");
 
-		client_write_server(cctx, MSG_IDENTIFY, &data, sizeof data);
+		imsg_compose(&cctx->ibuf, MSG_IDENTIFY,
+		    PROTOCOL_VERSION, -1, STDIN_FILENO, &data, sizeof data);
 	}
 
 	return (0);
