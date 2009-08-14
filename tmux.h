@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.412 2009-08-14 21:17:54 tcunha Exp $ */
+/* $Id: tmux.h,v 1.413 2009-08-14 21:20:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -867,6 +867,7 @@ struct tty {
 #define TTY_ESCAPE 0x4
 #define TTY_UTF8 0x8
 #define TTY_STARTED 0x10
+#define TTY_OPENED 0x20
 	int    		 flags;
 
 	int		 term_flags;

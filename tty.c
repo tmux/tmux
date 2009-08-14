@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.123 2009-08-14 21:17:54 tcunha Exp $ */
+/* $Id: tty.c,v 1.124 2009-08-14 21:20:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -80,8 +80,11 @@ tty_open(struct tty *tty, const char *overrides, char **cause)
 		tty->log_fd = -1;
 
 	tty->term = tty_term_find(tty->termname, tty->fd, overrides, cause);
-	if (tty->term == NULL)
-		goto error;
+	if (tty->term == NULL) {
+		tty_close(tty);
+		return (-1);
+	}
+	tty->flags |= TTY_OPENED;
 
 	tty->in = buffer_create(BUFSIZ);
 	tty->out = buffer_create(BUFSIZ);
@@ -95,12 +98,6 @@ tty_open(struct tty *tty, const char *overrides, char **cause)
 	tty_fill_acs(tty);
 
 	return (0);
-
-error:
-	close(tty->fd);
-	tty->fd = -1;
-
-	return (-1);
 }
 
 void
@@ -299,9 +296,6 @@ tty_get_acs(struct tty *tty, u_char ch)
 void
 tty_close(struct tty *tty)
 {
-	if (tty->fd == -1)
-		return;
-
 	if (tty->log_fd != -1) {
 		close(tty->log_fd);
 		tty->log_fd = -1;
@@ -309,14 +303,20 @@ tty_close(struct tty *tty)
 
 	tty_stop_tty(tty);
 
-	tty_term_free(tty->term);
-	tty_keys_free(tty);
+	if (tty->flags & TTY_OPENED) {
+		tty_term_free(tty->term);
+		tty_keys_free(tty);
 
-	close(tty->fd);
-	tty->fd = -1;
+		buffer_destroy(tty->in);
+		buffer_destroy(tty->out);
 
-	buffer_destroy(tty->in);
-	buffer_destroy(tty->out);
+		tty->flags &= ~TTY_OPENED;
+	}
+
+	if (tty->fd != -1) {
+		close(tty->fd);
+		tty->fd = -1;
+	}
 }
 
 void
