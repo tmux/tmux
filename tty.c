@@ -134,6 +134,9 @@ tty_start_tty(struct tty *tty)
 
 	tty_putcode(tty, TTYC_SMCUP);
 
+	tty_putcode(tty, TTYC_SGR0);
+	memcpy(&tty->cell, &grid_default_cell, sizeof tty->cell);
+
 	tty_putcode(tty, TTYC_SMKX);
 	tty_putcode(tty, TTYC_ENACS);
 	tty_putcode(tty, TTYC_CLEAR);
@@ -141,8 +144,6 @@ tty_start_tty(struct tty *tty)
 	tty_putcode(tty, TTYC_CNORM);
 	if (tty_term_has(tty->term, TTYC_KMOUS))
 		tty_puts(tty, "\033[?1000l");
-
-	memcpy(&tty->cell, &grid_default_cell, sizeof tty->cell);
 
 	tty->cx = UINT_MAX;
 	tty->cy = UINT_MAX;
