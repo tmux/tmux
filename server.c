@@ -879,7 +879,16 @@ server_handle_client(struct client *c)
 	wp = c->session->curw->window->active;	/* could die - do each loop */
 	s = wp->screen;
 
-	/* Ensure cursor position and mode settings. */
+	/*
+	 * Update cursor position and mode settings. The scroll region and
+	 * attributes are cleared across poll(2) as this is the most likely
+	 * time a user may interrupt tmux, for example with ~^Z in ssh(1). This
+	 * is a compromise between excessive resets and likelihood of an
+	 * interrupt.
+	 *
+	 * tty_region/tty_reset/tty_update_mode already take care of not
+	 * resetting things that are already in their default state.
+	 */
 	status = options_get_number(&c->session->options, "status");
 	tty_region(&c->tty, 0, c->tty.sy - 1, 0);
 	if (!window_pane_visible(wp) || wp->yoff + s->cy >= c->tty.sy - status)
@@ -891,6 +900,7 @@ server_handle_client(struct client *c)
 	if (server_locked)
 		mode &= ~TTY_NOCURSOR;
 	tty_update_mode(&c->tty, mode);
+	tty_reset(&c->tty);
 }
 
 /* Lost a client. */
