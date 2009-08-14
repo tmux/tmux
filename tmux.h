@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.414 2009-08-14 21:23:20 tcunha Exp $ */
+/* $Id: tmux.h,v 1.415 2009-08-14 21:30:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1166,22 +1166,23 @@ void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int);
 int	tty_open(struct tty *, const char *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
-void	tty_write(void (*)(struct tty *, struct tty_ctx *), struct tty_ctx *);
-void	tty_cmd_alignmenttest(struct tty *, struct tty_ctx *);
-void	tty_cmd_cell(struct tty *, struct tty_ctx *);
-void	tty_cmd_clearendofline(struct tty *, struct tty_ctx *);
-void	tty_cmd_clearendofscreen(struct tty *, struct tty_ctx *);
-void	tty_cmd_clearline(struct tty *, struct tty_ctx *);
-void	tty_cmd_clearscreen(struct tty *, struct tty_ctx *);
-void	tty_cmd_clearstartofline(struct tty *, struct tty_ctx *);
-void	tty_cmd_clearstartofscreen(struct tty *, struct tty_ctx *);
-void	tty_cmd_deletecharacter(struct tty *, struct tty_ctx *);
-void	tty_cmd_deleteline(struct tty *, struct tty_ctx *);
-void	tty_cmd_insertcharacter(struct tty *, struct tty_ctx *);
-void	tty_cmd_insertline(struct tty *, struct tty_ctx *);
-void	tty_cmd_linefeed(struct tty *, struct tty_ctx *);
-void	tty_cmd_utf8character(struct tty *, struct tty_ctx *);
-void	tty_cmd_reverseindex(struct tty *, struct tty_ctx *);
+void	tty_write(void (*)(
+	    struct tty *, const struct tty_ctx *), const struct tty_ctx *);
+void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
+void	tty_cmd_cell(struct tty *, const struct tty_ctx *);
+void	tty_cmd_clearendofline(struct tty *, const struct tty_ctx *);
+void	tty_cmd_clearendofscreen(struct tty *, const struct tty_ctx *);
+void	tty_cmd_clearline(struct tty *, const struct tty_ctx *);
+void	tty_cmd_clearscreen(struct tty *, const struct tty_ctx *);
+void	tty_cmd_clearstartofline(struct tty *, const struct tty_ctx *);
+void	tty_cmd_clearstartofscreen(struct tty *, const struct tty_ctx *);
+void	tty_cmd_deletecharacter(struct tty *, const struct tty_ctx *);
+void	tty_cmd_deleteline(struct tty *, const struct tty_ctx *);
+void	tty_cmd_insertcharacter(struct tty *, const struct tty_ctx *);
+void	tty_cmd_insertline(struct tty *, const struct tty_ctx *);
+void	tty_cmd_linefeed(struct tty *, const struct tty_ctx *);
+void	tty_cmd_utf8character(struct tty *, const struct tty_ctx *);
+void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;

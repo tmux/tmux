@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.126 2009-08-14 21:24:46 tcunha Exp $ */
+/* $Id: tty.c,v 1.127 2009-08-14 21:30:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,7 +38,7 @@ void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_attributes_fg(struct tty *, const struct grid_cell *);
 void	tty_attributes_bg(struct tty *, const struct grid_cell *);
 
-void	tty_redraw_region(struct tty *, struct tty_ctx *);
+void	tty_redraw_region(struct tty *, const struct tty_ctx *);
 void	tty_emulate_repeat(
 	    struct tty *, enum tty_code_code, enum tty_code_code, u_int);
 void	tty_cell(struct tty *,
@@ -471,7 +471,7 @@ tty_emulate_repeat(
  * width of the terminal.
  */
 void
-tty_redraw_region(struct tty *tty, struct tty_ctx *ctx)
+tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
@@ -542,7 +542,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 }
 
 void
-tty_write(void (*cmdfn)(struct tty *, struct tty_ctx *), struct tty_ctx *ctx)
+tty_write(void (*cmdfn)(
+    struct tty *, const struct tty_ctx *), const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct client		*c;
@@ -573,10 +574,11 @@ tty_write(void (*cmdfn)(struct tty *, struct tty_ctx *), struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_insertcharacter(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
   	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
+	u_int			 i;
 
 	if (wp->xoff != 0 || screen_size_x(s) < tty->sx) {
 		tty_draw_line(tty, wp->screen, ctx->ocy, wp->xoff, wp->yoff);
@@ -591,14 +593,14 @@ tty_cmd_insertcharacter(struct tty *tty, struct tty_ctx *ctx)
 		tty_emulate_repeat(tty, TTYC_ICH, TTYC_ICH1, ctx->num);
 	else {
 		tty_putcode(tty, TTYC_SMIR);
-		while (ctx->num-- > 0)
+		for (i = 0; i < ctx->num; i++)
 			tty_putc(tty, ' ');
 		tty_putcode(tty, TTYC_RMIR);
 	}
 }
 
 void
-tty_cmd_deletecharacter(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
   	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
@@ -615,7 +617,7 @@ tty_cmd_deletecharacter(struct tty *tty, struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_insertline(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 {
   	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
@@ -635,7 +637,7 @@ tty_cmd_insertline(struct tty *tty, struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_deleteline(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 {
   	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
@@ -655,7 +657,7 @@ tty_cmd_deleteline(struct tty *tty, struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_clearline(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_clearline(struct tty *tty, const struct tty_ctx *ctx)
 {
   	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
@@ -674,7 +676,7 @@ tty_cmd_clearline(struct tty *tty, struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_clearendofline(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_clearendofline(struct tty *tty, const struct tty_ctx *ctx)
 {
   	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
@@ -693,7 +695,7 @@ tty_cmd_clearendofline(struct tty *tty, struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_clearstartofline(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_clearstartofline(struct tty *tty, const struct tty_ctx *ctx)
 {
   	struct window_pane	*wp = ctx->wp;
 	u_int		 	 i;
@@ -711,7 +713,7 @@ tty_cmd_clearstartofline(struct tty *tty, struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_reverseindex(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 {
   	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
@@ -733,7 +735,7 @@ tty_cmd_reverseindex(struct tty *tty, struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_linefeed(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 {
   	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
@@ -755,7 +757,7 @@ tty_cmd_linefeed(struct tty *tty, struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_clearendofscreen(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_clearendofscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
   	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
@@ -790,7 +792,7 @@ tty_cmd_clearendofscreen(struct tty *tty, struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_clearstartofscreen(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_clearstartofscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
  	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
@@ -819,7 +821,7 @@ tty_cmd_clearstartofscreen(struct tty *tty, struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_clearscreen(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 {
  	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
@@ -848,7 +850,7 @@ tty_cmd_clearscreen(struct tty *tty, struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_alignmenttest(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
@@ -866,7 +868,7 @@ tty_cmd_alignmenttest(struct tty *tty, struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_cell(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 
@@ -876,7 +878,7 @@ tty_cmd_cell(struct tty *tty, struct tty_ctx *ctx)
 }
 
 void
-tty_cmd_utf8character(struct tty *tty, struct tty_ctx *ctx)
+tty_cmd_utf8character(struct tty *tty, const struct tty_ctx *ctx)
 {
 	u_char	*ptr = ctx->ptr;
 	size_t	 i;
