@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.80 2009-08-14 21:23:20 tcunha Exp $ */
+/* $Id: server-msg.c,v 1.81 2009-08-14 21:31:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -238,7 +238,11 @@ void
 server_msg_identify(struct client *c, struct msg_identify_data *data, int fd)
 {
 	c->tty.sx = data->sx;
+	if (c->tty.sx == 0)
+		c->tty.sx = 80;
 	c->tty.sy = data->sy;
+	if (c->tty.sy == 0)
+		c->tty.sy = 25;
 
 	c->cwd = NULL;
 	data->cwd[(sizeof data->cwd) - 1] = '\0';
