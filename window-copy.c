@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.75 2009-08-09 17:32:06 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.76 2009-08-14 21:33:42 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -160,6 +160,7 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 	window_copy_write_lines(wp, &ctx, 0, screen_size_y(s) - 1);
 	screen_write_stop(&ctx);
 	window_copy_update_selection(wp);
+	window_copy_redraw_screen(wp);
 }
 
 void
