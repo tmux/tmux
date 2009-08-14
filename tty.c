@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.125 2009-08-14 21:23:20 tcunha Exp $ */
+/* $Id: tty.c,v 1.126 2009-08-14 21:24:46 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,6 +49,7 @@ tty_init(struct tty *tty, int fd, char *path, char *term)
 {
 	tty->path = xstrdup(path);
 	tty->fd = fd;
+	tty->log_fd = -1;
 
 	if (term == NULL || *term == '\0')
 		tty->termname = xstrdup("unknown");
