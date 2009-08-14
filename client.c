@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.61 2009-08-09 17:48:55 tcunha Exp $ */
+/* $Id: client.c,v 1.62 2009-08-14 21:04:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -96,16 +96,13 @@ server_started:
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
-	cctx->srv_fd = fd;
-	cctx->srv_in = buffer_create(BUFSIZ);
-	cctx->srv_out = buffer_create(BUFSIZ);
+	imsg_init(&cctx->ibuf, fd);
 
 	if (cmdflags & CMD_SENDENVIRON)
 		client_send_environ(cctx);
 	if (isatty(STDIN_FILENO)) {
 		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
 			fatal("ioctl(TIOCGWINSZ)");
-		data.version = PROTOCOL_VERSION;
 		data.flags = flags;
 		data.sx = ws.ws_col;
 		data.sy = ws.ws_row;
@@ -157,6 +154,7 @@ int
 client_main(struct client_ctx *cctx)
 {
 	struct pollfd	 pfd;
+	int		 nfds;
 
 	siginit();
 
@@ -177,24 +175,33 @@ client_main(struct client_ctx *cctx)
 			sigcont = 0;
 		}
 
-		pfd.fd = cctx->srv_fd;
+		pfd.fd = cctx->ibuf.fd;
 		pfd.events = POLLIN;
-		if (BUFFER_USED(cctx->srv_out) > 0)
+		if (cctx->ibuf.w.queued > 0)
 			pfd.events |= POLLOUT;
 
-		if (poll(&pfd, 1, INFTIM) == -1) {
+		if ((nfds = poll(&pfd, 1, INFTIM)) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			fatal("poll failed");
 		}
+		if (nfds == 0)
+			continue;
 
-		if (buffer_poll(&pfd, cctx->srv_in, cctx->srv_out) != 0) {
-			cctx->exittype = CCTX_DIED;
-			break;
+		if (pfd.revents & (POLLERR|POLLHUP|POLLNVAL))
+			fatalx("socket error");
+
+		if (pfd.revents & POLLIN) {
+			if (client_msg_dispatch(cctx) != 0)
+				break;
 		}
 
-		if (client_msg_dispatch(cctx) != 0)
-			break;
+		if (pfd.revents & POLLOUT) {
+			if (msgbuf_write(&cctx->ibuf.w) < 0) {
+				cctx->exittype = CCTX_DIED;
+				break;
+			}
+		}
 	}
 
  	if (sigterm) {
@@ -239,54 +246,61 @@ client_handle_winch(struct client_ctx *cctx)
 int
 client_msg_dispatch(struct client_ctx *cctx)
 {
-	struct hdr		 hdr;
+	struct imsg		 imsg;
 	struct msg_print_data	 printdata;
+	ssize_t			 n, datalen;
+
+	if ((n = imsg_read(&cctx->ibuf)) == -1 || n == 0) {
+		cctx->exittype = CCTX_DIED;
+		return (-1);
+	}
 
 	for (;;) {
-		if (BUFFER_USED(cctx->srv_in) < sizeof hdr)
+		if ((n = imsg_get(&cctx->ibuf, &imsg)) == -1)
+			fatalx("imsg_get failed");
+		if (n == 0)
 			return (0);
-		memcpy(&hdr, BUFFER_OUT(cctx->srv_in), sizeof hdr);
-		if (BUFFER_USED(cctx->srv_in) < (sizeof hdr) + hdr.size)
-			return (0);
-		buffer_remove(cctx->srv_in, sizeof hdr);
+		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
 
-		switch (hdr.type) {
+		switch (imsg.hdr.type) {
 		case MSG_DETACH:
-			if (hdr.size != 0)
+			if (datalen != 0)
 				fatalx("bad MSG_DETACH size");
 
 			client_write_server(cctx, MSG_EXITING, NULL, 0);
 			cctx->exittype = CCTX_DETACH;
 			break;
 		case MSG_ERROR:
-			if (hdr.size != sizeof printdata)
-				fatalx("bad MSG_PRINT size");
-			buffer_read(cctx->srv_in, &printdata, sizeof printdata);
+			if (datalen != sizeof printdata)
+				fatalx("bad MSG_ERROR size");
+			memcpy(&printdata, imsg.data, sizeof printdata);
 
 			printdata.msg[(sizeof printdata.msg) - 1] = '\0';
 			cctx->errstr = xstrdup(printdata.msg);
+			imsg_free(&imsg);
 			return (-1);
 		case MSG_EXIT:
-			if (hdr.size != 0)
+			if (datalen != 0)
 				fatalx("bad MSG_EXIT size");
-		
+
 			client_write_server(cctx, MSG_EXITING, NULL, 0);
 			cctx->exittype = CCTX_EXIT;
 			break;
 		case MSG_EXITED:
-			if (hdr.size != 0)
+			if (datalen != 0)
 				fatalx("bad MSG_EXITED size");
 
+			imsg_free(&imsg);
 			return (-1);
 		case MSG_SHUTDOWN:
-			if (hdr.size != 0)
+			if (datalen != 0)
 				fatalx("bad MSG_SHUTDOWN size");
 
 			client_write_server(cctx, MSG_EXITING, NULL, 0);
 			cctx->exittype = CCTX_SHUTDOWN;
 			break;
 		case MSG_SUSPEND:
-			if (hdr.size != 0)
+			if (datalen != 0)
 				fatalx("bad MSG_SUSPEND size");
 
 			client_suspend();
@@ -294,5 +308,7 @@ client_msg_dispatch(struct client_ctx *cctx)
 		default:
 			fatalx("unexpected message");
 		}
+
+		imsg_free(&imsg);
 	}
 }

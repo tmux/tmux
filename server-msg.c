@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.77 2009-08-09 17:48:55 tcunha Exp $ */
+/* $Id: server-msg.c,v 1.78 2009-08-14 21:04:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -37,45 +37,56 @@ void printflike2 server_msg_command_info(struct cmd_ctx *, const char *, ...);
 int
 server_msg_dispatch(struct client *c)
 {
-	struct hdr		 hdr;
+	struct imsg		 imsg;
 	struct msg_command_data	 commanddata;
 	struct msg_identify_data identifydata;
 	struct msg_resize_data	 resizedata;
 	struct msg_unlock_data	 unlockdata;
 	struct msg_environ_data	 environdata;
+	ssize_t			 n, datalen;
+
+        if ((n = imsg_read(&c->ibuf)) == -1 || n == 0)
+                return (-1);
 
 	for (;;) {
-		if (BUFFER_USED(c->in) < sizeof hdr)
+		if ((n = imsg_get(&c->ibuf, &imsg)) == -1)
+			return (-1);
+		if (n == 0)
 			return (0);
-		memcpy(&hdr, BUFFER_OUT(c->in), sizeof hdr);
-		if (BUFFER_USED(c->in) < (sizeof hdr) + hdr.size)
-			return (0);
-		buffer_remove(c->in, sizeof hdr);
+		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
 
-		switch (hdr.type) {
+		if (imsg.hdr.peerid != PROTOCOL_VERSION) {
+			server_write_client(c, MSG_VERSION, NULL, 0);
+			c->flags |= CLIENT_BAD;
+			imsg_free(&imsg);
+			continue;
+		}
+
+		log_debug("got %d from client %d", imsg.hdr.type, c->ibuf.fd);
+		switch (imsg.hdr.type) {
 		case MSG_COMMAND:
-			if (hdr.size != sizeof commanddata)
+			if (datalen != sizeof commanddata)
 				fatalx("bad MSG_COMMAND size");
-			buffer_read(c->in, &commanddata, sizeof commanddata);
+			memcpy(&commanddata, imsg.data, sizeof commanddata);
 
 			server_msg_command(c, &commanddata);
 			break;
 		case MSG_IDENTIFY:
-			if (hdr.size != sizeof identifydata)
+			if (datalen != sizeof identifydata)
 				fatalx("bad MSG_IDENTIFY size");
-			buffer_read(c->in, &identifydata, sizeof identifydata);
+			memcpy(&identifydata, imsg.data, sizeof identifydata);
 
 			server_msg_identify(c, &identifydata);
 			break;
 		case MSG_RESIZE:
-			if (hdr.size != sizeof resizedata)
+			if (datalen != sizeof resizedata)
 				fatalx("bad MSG_RESIZE size");
-			buffer_read(c->in, &resizedata, sizeof resizedata);
+			memcpy(&resizedata, imsg.data, sizeof resizedata);
 
 			server_msg_resize(c, &resizedata);
 			break;
 		case MSG_EXITING:
-			if (hdr.size != 0)
+			if (datalen != 0)
 				fatalx("bad MSG_EXITING size");
 
 			c->session = NULL;
@@ -83,9 +94,9 @@ server_msg_dispatch(struct client *c)
 			server_write_client(c, MSG_EXITED, NULL, 0);
 			break;
 		case MSG_UNLOCK:
-			if (hdr.size != sizeof unlockdata)
+			if (datalen != sizeof unlockdata)
 				fatalx("bad MSG_UNLOCK size");
-			buffer_read(c->in, &unlockdata, sizeof unlockdata);
+			memcpy(&unlockdata, imsg.data, sizeof unlockdata);
 
 			unlockdata.pass[(sizeof unlockdata.pass) - 1] = '\0';
 			if (server_unlock(unlockdata.pass) != 0)
@@ -94,7 +105,7 @@ server_msg_dispatch(struct client *c)
 			server_write_client(c, MSG_EXIT, NULL, 0);
 			break;
 		case MSG_WAKEUP:
-			if (hdr.size != 0)
+			if (datalen != 0)
 				fatalx("bad MSG_WAKEUP size");
 
 			c->flags &= ~CLIENT_SUSPENDED;
@@ -102,9 +113,9 @@ server_msg_dispatch(struct client *c)
 			server_redraw_client(c);
 			break;
 		case MSG_ENVIRON:
-			if (hdr.size != sizeof environdata)
+			if (datalen != sizeof environdata)
 				fatalx("bad MSG_ENVIRON size");
-			buffer_read(c->in, &environdata, sizeof environdata);
+			memcpy(&environdata, imsg.data, sizeof environdata);
 
 			environdata.var[(sizeof environdata.var) - 1] = '\0';
 			if (strchr(environdata.var, '=') != NULL)
@@ -113,6 +124,8 @@ server_msg_dispatch(struct client *c)
 		default:
 			fatalx("unexpected message");
 		}
+
+		imsg_free(&imsg);
 	}
 }
 
@@ -224,11 +237,6 @@ error:
 void
 server_msg_identify(struct client *c, struct msg_identify_data *data)
 {
-	if (data->version != PROTOCOL_VERSION) {
-		server_write_error(c, "protocol version mismatch");
-		return;
-	}
-
 	c->tty.sx = data->sx;
 	c->tty.sy = data->sy;
 

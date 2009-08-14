@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.159 2009-08-10 21:43:34 tcunha Exp $ */
+/* $Id: tmux.c,v 1.160 2009-08-14 21:04:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,6 +65,7 @@ __dead void	 usage(void);
 char 		*makesockpath(const char *);
 int		 prepare_unlock(enum msgtype *, void **, size_t *, int);
 int		 prepare_cmd(enum msgtype *, void **, size_t *, int, char **);
+int		 dispatch_imsg(struct client_ctx *, int *);
 
 #ifndef HAVE_PROGNAME
 char      *__progname = (char *) "tmux";
@@ -269,14 +270,13 @@ main(int argc, char **argv)
  	struct cmd		*cmd;
 	struct pollfd	 	 pfd;
 	enum msgtype		 msg;
-	struct hdr	 	 hdr;
 	struct passwd		*pw;
-	struct msg_print_data	 printdata;
 	char			*s, *path, *label, *home, *cause, **var;
 	char			 cwd[MAXPATHLEN];
 	void			*buf;
 	size_t			 len;
 	int	 		 retcode, opt, flags, unlock, cmdflags = 0;
+	int			 nfds;
 
 	unlock = flags = 0;
 	label = path = NULL;
@@ -502,58 +502,92 @@ main(int argc, char **argv)
 
 	retcode = 0;
 	for (;;) {
-		pfd.fd = cctx.srv_fd;
+		pfd.fd = cctx.ibuf.fd;
 		pfd.events = POLLIN;
-		if (BUFFER_USED(cctx.srv_out) > 0)
+		if (cctx.ibuf.w.queued != 0)
 			pfd.events |= POLLOUT;
 
-		if (poll(&pfd, 1, INFTIM) == -1) {
+		if ((nfds = poll(&pfd, 1, INFTIM)) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			fatal("poll failed");
 		}
-
-		if (buffer_poll(&pfd, cctx.srv_in, cctx.srv_out) != 0)
-			goto out;
-
-	restart:
-		if (BUFFER_USED(cctx.srv_in) < sizeof hdr)
+		if (nfds == 0)
 			continue;
-		memcpy(&hdr, BUFFER_OUT(cctx.srv_in), sizeof hdr);
-		if (BUFFER_USED(cctx.srv_in) < (sizeof hdr) + hdr.size)
-			continue;
-		buffer_remove(cctx.srv_in, sizeof hdr);
 
-		switch (hdr.type) {
-		case MSG_EXIT:
-		case MSG_SHUTDOWN:
-			goto out;
-		case MSG_ERROR:
-			retcode = 1;
-			/* FALLTHROUGH */
-		case MSG_PRINT:
-			if (hdr.size < sizeof printdata)
-				fatalx("bad MSG_PRINT size");
-			buffer_read(cctx.srv_in, &printdata, sizeof printdata);
+		if (pfd.revents & (POLLERR|POLLHUP|POLLNVAL))
+			fatalx("socket error");
 
-			printdata.msg[(sizeof printdata.msg) - 1] = '\0';
-			log_info("%s", printdata.msg);
-			goto restart;
-		case MSG_READY:
-			retcode = client_main(&cctx);
-			goto out;
-		default:
-			fatalx("unexpected command");
+                if (pfd.revents & POLLIN) {
+			if (dispatch_imsg(&cctx, &retcode) != 0)
+				break;
+		}
+
+		if (pfd.revents & POLLOUT) {
+			if (msgbuf_write(&cctx.ibuf.w) < 0)
+				fatalx("msgbuf_write failed");
 		}
 	}
 
-out:
 	options_free(&global_s_options);
 	options_free(&global_w_options);
 
-	close(cctx.srv_fd);
-	buffer_destroy(cctx.srv_in);
-	buffer_destroy(cctx.srv_out);
-
 	return (retcode);
+}
+
+int
+dispatch_imsg(struct client_ctx *cctx, int *retcode)
+{
+	struct imsg		imsg;
+	ssize_t			n, datalen;
+	struct msg_print_data	printdata;
+
+        if ((n = imsg_read(&cctx->ibuf)) == -1 || n == 0)
+		fatalx("imsg_read failed");
+
+	for (;;) {
+		if ((n = imsg_get(&cctx->ibuf, &imsg)) == -1)
+			fatalx("imsg_get failed");
+		if (n == 0)
+			return (0);
+		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
+
+		switch (imsg.hdr.type) {
+		case MSG_EXIT:
+		case MSG_SHUTDOWN:
+			if (datalen != 0)
+				fatalx("bad MSG_EXIT size");
+
+			return (-1);
+		case MSG_ERROR:
+			*retcode = 1;
+			/* FALLTHROUGH */
+		case MSG_PRINT:
+			if (datalen != sizeof printdata)
+				fatalx("bad MSG_PRINT size");
+			memcpy(&printdata, imsg.data, sizeof printdata);
+			printdata.msg[(sizeof printdata.msg) - 1] = '\0';
+
+			log_info("%s", printdata.msg);
+			break;
+		case MSG_READY:
+			if (datalen != 0)
+				fatalx("bad MSG_READY size");
+
+			*retcode = client_main(cctx);
+			return (-1);
+		case MSG_VERSION:
+			if (datalen != 0)
+				fatalx("bad MSG_VERSION size");
+
+			log_warnx("protocol version mismatch (client %u, "
+			    "server %u)", PROTOCOL_VERSION, imsg.hdr.peerid);
+			*retcode = 1;
+			return (-1);
+		default:
+			fatalx("unexpected message");
+		}
+
+		imsg_free(&imsg);
+	}
 }
