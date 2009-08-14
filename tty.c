@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.122 2009-08-09 17:28:24 tcunha Exp $ */
+/* $Id: tty.c,v 1.123 2009-08-14 21:17:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -153,12 +153,18 @@ tty_start_tty(struct tty *tty)
 	tty->rupper = UINT_MAX;
 
 	tty->mode = MODE_CURSOR;
+
+	tty->flags |= TTY_STARTED;
 }
 
 void
 tty_stop_tty(struct tty *tty)
 {
 	struct winsize	ws;
+
+	if (!(tty->flags & TTY_STARTED))
+		return;
+	tty->flags &= ~TTY_STARTED;
 
 	/*
 	 * Be flexible about error handling and try not kill the server just
@@ -291,7 +297,7 @@ tty_get_acs(struct tty *tty, u_char ch)
 }
 
 void
-tty_close(struct tty *tty, int no_stop)
+tty_close(struct tty *tty)
 {
 	if (tty->fd == -1)
 		return;
@@ -301,8 +307,7 @@ tty_close(struct tty *tty, int no_stop)
 		tty->log_fd = -1;
 	}
 
-	if (!no_stop)
-		tty_stop_tty(tty);
+	tty_stop_tty(tty);
 
 	tty_term_free(tty->term);
 	tty_keys_free(tty);
@@ -315,9 +320,9 @@ tty_close(struct tty *tty, int no_stop)
 }
 
 void
-tty_free(struct tty *tty, int no_stop)
+tty_free(struct tty *tty)
 {
-	tty_close(tty, no_stop);
+	tty_close(tty);
 
 	if (tty->path != NULL)
 		xfree(tty->path);

@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.167 2009-08-14 21:04:04 tcunha Exp $ */
+/* $Id: server.c,v 1.168 2009-08-14 21:17:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -907,7 +907,7 @@ server_lost_client(struct client *c)
 			ARRAY_SET(&clients, i, NULL);
 	}
 
-	tty_free(&c->tty, c->flags & CLIENT_SUSPENDED);
+	tty_free(&c->tty);
 
 	screen_free(&c->status);
 

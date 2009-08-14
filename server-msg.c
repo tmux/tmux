@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.78 2009-08-14 21:04:04 tcunha Exp $ */
+/* $Id: server-msg.c,v 1.79 2009-08-14 21:17:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -90,7 +90,7 @@ server_msg_dispatch(struct client *c)
 				fatalx("bad MSG_EXITING size");
 
 			c->session = NULL;
-			tty_close(&c->tty, c->flags & CLIENT_SUSPENDED);
+			tty_close(&c->tty);
 			server_write_client(c, MSG_EXITED, NULL, 0);
 			break;
 		case MSG_UNLOCK:
