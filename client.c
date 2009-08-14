@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.63 2009-08-14 21:23:20 tcunha Exp $ */
+/* $Id: client.c,v 1.64 2009-08-14 21:26:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ client_init(char *path, struct client_ctx *cctx, int cmdflags, int flags)
 	struct msg_identify_data	data;
 	struct winsize			ws;
 	size_t				size;
-	int				fd, mode;
+	int				fd, fd2, mode;
 	char			       *name, *term;
 #ifdef HAVE_SETPROCTITLE
 	char		 		rpathbuf[MAXPATHLEN];
@@ -123,8 +123,9 @@ server_started:
 		if (strlcpy(data.tty, name, sizeof data.tty) >= sizeof data.tty)
 			fatalx("ttyname failed");
 
+		fd2 = dup(STDIN_FILENO);
 		imsg_compose(&cctx->ibuf, MSG_IDENTIFY,
-		    PROTOCOL_VERSION, -1, STDIN_FILENO, &data, sizeof data);
+		    PROTOCOL_VERSION, -1, fd2, &data, sizeof data);
 	}
 
 	return (0);
