@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.101 2009-08-14 21:23:20 tcunha Exp $ */
+/* $Id: window.c,v 1.102 2009-08-14 21:28:00 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -60,6 +60,7 @@ const char *
 window_default_command(void)
 {
 	const char	*shell, *ptr;
+	char		*progname;
 	struct passwd	*pw;
 
 	shell = getenv("SHELL");
@@ -79,7 +80,10 @@ found:
 		ptr++;
 	else
 		ptr = shell;
-	if (strcmp(ptr, __progname) == 0)
+	progname = __progname;
+	if (*progname == '-')
+		progname++;
+	if (strcmp(ptr, progname) == 0)
 		return (_PATH_BSHELL);
 	return (shell);
 }
