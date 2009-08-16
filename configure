@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.24 2009-08-16 16:15:53 nicm Exp $
+# $Id: configure,v 1.25 2009-08-16 19:48:17 tcunha Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -196,11 +196,12 @@ EOF
 #define HAVE_STRLCPY
 #define HAVE_STRTONUM
 #define HAVE_STRSEP
-#define HAVE_VIS
 EOF
 	cat <<EOF >>$CONFIG_MK
 LIBS+= -lcurses -lcrypt -lutil
 SRCS+= osdep-freebsd.c \
+	compat/vis.c \
+	compat/unvis.c \
 	compat/imsg-buffer.c \
 	compat/imsg.c
 EOF
@@ -222,7 +223,6 @@ EOF
 #define HAVE_STRLCPY
 #define HAVE_STRSEP
 #define HAVE_UTIL_H
-#define HAVE_VIS
 EOF
 	cat <<EOF >>$CONFIG_MK
 CPPFLAGS+= -I/usr/pkg/include
@@ -230,6 +230,8 @@ LDFLAGS+= -L/usr/pkg/lib
 LIBS+= -lncurses -lcrypt -lutil
 SRCS+= osdep-netbsd.c \
 	compat/strtonum.c \
+	compat/vis.c \
+	compat/unvis.c \
 	compat/imsg-buffer.c \
 	compat/imsg.c
 EOF
