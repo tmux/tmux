@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.127 2009-08-14 21:30:24 tcunha Exp $ */
+/* $Id: tty.c,v 1.128 2009-08-16 19:31:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -138,6 +138,9 @@ tty_start_tty(struct tty *tty)
 
 	tty_putcode(tty, TTYC_SMCUP);
 
+	tty_putcode(tty, TTYC_SGR0);
+	memcpy(&tty->cell, &grid_default_cell, sizeof tty->cell);
+
 	tty_putcode(tty, TTYC_SMKX);
 	tty_putcode(tty, TTYC_ENACS);
 	tty_putcode(tty, TTYC_CLEAR);
@@ -145,8 +148,6 @@ tty_start_tty(struct tty *tty)
 	tty_putcode(tty, TTYC_CNORM);
 	if (tty_term_has(tty->term, TTYC_KMOUS))
 		tty_puts(tty, "\033[?1000l");
-
-	memcpy(&tty->cell, &grid_default_cell, sizeof tty->cell);
 
 	tty->cx = UINT_MAX;
 	tty->cy = UINT_MAX;
