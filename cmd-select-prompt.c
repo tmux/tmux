@@ -1,4 +1,4 @@
-/* $Id: cmd-select-prompt.c,v 1.11 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-select-prompt.c,v 1.12 2009-08-16 19:29:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -66,7 +66,7 @@ cmd_select_prompt_callback(void *data, const char *s)
 	char		 msg[128];
 	u_int		 idx;
 
-	if (s == NULL)
+	if (s == NULL || *s == '\0')
 		return (0);
 
 	idx = strtonum(s, 0, UINT_MAX, &errstr);

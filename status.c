@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.109 2009-08-09 17:40:17 tcunha Exp $ */
+/* $Id: status.c,v 1.110 2009-08-16 19:29:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -920,14 +920,11 @@ status_prompt_key(struct client *c, int key)
 		c->flags |= CLIENT_STATUS;
 		break;
  	case MODEKEYEDIT_ENTER:
-		if (*c->prompt_buffer != '\0') {
+		if (*c->prompt_buffer != '\0')
 			status_prompt_add_history(c);
-			if (c->prompt_callbackfn(
-			    c->prompt_data, c->prompt_buffer) == 0)
-				status_prompt_clear(c);
-			break;
-		}
-		/* FALLTHROUGH */
+		if (c->prompt_callbackfn(c->prompt_data, c->prompt_buffer) == 0)
+			status_prompt_clear(c);
+		break;
 	case MODEKEYEDIT_CANCEL:
 		if (c->prompt_callbackfn(c->prompt_data, NULL) == 0)
 			status_prompt_clear(c);

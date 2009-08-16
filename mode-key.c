@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.24 2009-08-16 19:26:49 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.25 2009-08-16 19:29:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -181,6 +181,7 @@ struct mode_key_tree mode_key_tree_vi_copy;
 const struct mode_key_entry mode_key_emacs_edit[] = {
 	{ '\001' /* C-a */,	0, MODEKEYEDIT_STARTOFLINE }, 
 	{ '\002' /* C-p */,	0, MODEKEYEDIT_CURSORLEFT },
+	{ '\003' /* C-c */,	0, MODEKEYEDIT_CANCEL },
 	{ '\004' /* C-d */,	0, MODEKEYEDIT_DELETE },
 	{ '\005' /* C-e	*/,	0, MODEKEYEDIT_ENDOFLINE },
 	{ '\006' /* C-f */,	0, MODEKEYEDIT_CURSORRIGHT },
@@ -190,6 +191,7 @@ const struct mode_key_entry mode_key_emacs_edit[] = {
 	{ '\016' /* C-n */,	0, MODEKEYEDIT_HISTORYDOWN },
 	{ '\020' /* C-p */,	0, MODEKEYEDIT_HISTORYUP },
 	{ '\031' /* C-y */,	0, MODEKEYEDIT_PASTE },
+	{ '\033' /* Escape */,	0, MODEKEYEDIT_CANCEL },
 	{ '\r',			0, MODEKEYEDIT_ENTER },
 	{ 'm' | KEYC_ESCAPE,	0, MODEKEYEDIT_STARTOFLINE }, 
 	{ KEYC_BSPACE,		0, MODEKEYEDIT_BACKSPACE },
