@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.38 2009-08-09 16:50:57 tcunha Exp $ */
+/* $Id: window-scroll.c,v 1.39 2009-08-16 19:23:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -101,11 +101,15 @@ window_scroll_pageup(struct window_pane *wp)
 {
 	struct window_scroll_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
+	u_int				 n;
 
-	if (data->oy + screen_size_y(s) > screen_hsize(&wp->base))
+	n = 1;
+	if (screen_size_y(s) > 2)
+		n = screen_size_y(s) - 2;
+	if (data->oy + n > screen_hsize(&wp->base))
 		data->oy = screen_hsize(&wp->base);
 	else
-		data->oy += screen_size_y(s);
+		data->oy += n;
 
 	window_scroll_redraw_screen(wp);
 }
@@ -130,6 +134,7 @@ window_scroll_key(struct window_pane *wp, unused struct client *c, int key)
 {
 	struct window_scroll_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
+	u_int				 n;
 
 	switch (mode_key_lookup(&data->mdata, key)) {
 	case MODEKEYCOPY_CANCEL:
@@ -151,10 +156,13 @@ window_scroll_key(struct window_pane *wp, unused struct client *c, int key)
 		window_scroll_pageup(wp);
 		break;
 	case MODEKEYCOPY_NEXTPAGE:
-		if (data->oy < screen_size_y(s))
+		n = 1;
+		if (screen_size_y(s) > 2)
+			n = screen_size_y(s) - 2;
+		if (data->oy < n)
 			data->oy = 0;
 		else
-			data->oy -= screen_size_y(s);
+			data->oy -= n;
 		window_scroll_redraw_screen(wp);
 		break;
 	default:

@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.77 2009-08-16 19:12:07 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.78 2009-08-16 19:23:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -130,11 +130,15 @@ window_copy_pageup(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
+	u_int				 n;
 
-	if (data->oy + screen_size_y(s) > screen_hsize(&wp->base))
+	n = 1;
+	if (screen_size_y(s) > 2)
+		n = screen_size_y(s) - 2;
+	if (data->oy + n > screen_hsize(&wp->base))
 		data->oy = screen_hsize(&wp->base);
 	else
-		data->oy += screen_size_y(s);
+		data->oy += n;
 	window_copy_update_selection(wp);
 	window_copy_redraw_screen(wp);
 }
@@ -167,6 +171,7 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
+	u_int				 n;
 
 	switch (mode_key_lookup(&data->mdata, key)) {
 	case MODEKEYCOPY_CANCEL:
@@ -188,10 +193,13 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		window_copy_pageup(wp);
 		break;
 	case MODEKEYCOPY_NEXTPAGE:
-		if (data->oy < screen_size_y(s))
+		n = 1;
+		if (screen_size_y(s) > 2)
+			n = screen_size_y(s) - 2;
+		if (data->oy < n)
 			data->oy = 0;
 		else
-			data->oy -= screen_size_y(s);
+			data->oy -= n;
 		window_copy_update_selection(wp);
 		window_copy_redraw_screen(wp);
 		break;
