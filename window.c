@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.102 2009-08-14 21:28:00 tcunha Exp $ */
+/* $Id: window.c,v 1.103 2009-08-16 18:59:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -267,7 +267,8 @@ window_create1(u_int sx, u_int sy)
 
 struct window *
 window_create(const char *name, const char *cmd, const char *cwd,
-    struct environ *env, u_int sx, u_int sy, u_int hlimit, char **cause)
+    struct environ *env, struct termios *tio, u_int sx, u_int sy, u_int hlimit,
+    char **cause)
 {
 	struct window		*w;
 	struct window_pane	*wp;
@@ -275,7 +276,7 @@ window_create(const char *name, const char *cmd, const char *cwd,
 	w = window_create1(sx, sy);
 	wp = window_add_pane(w, hlimit);
 	layout_init(w);
-	if (window_pane_spawn(wp, cmd, cwd, env, cause) != 0) {
+	if (window_pane_spawn(wp, cmd, cwd, env, tio, cause) != 0) {
 		window_destroy(w);
 		return (NULL);
 	}
@@ -468,8 +469,8 @@ window_pane_destroy(struct window_pane *wp)
 }
 
 int
-window_pane_spawn(struct window_pane *wp,
-    const char *cmd, const char *cwd, struct environ *env, char **cause)
+window_pane_spawn(struct window_pane *wp, const char *cmd,
+    const char *cwd, struct environ *env, struct termios *tio, char **cause)
 {
 	struct winsize	 	 ws;
 	int		 	 mode;
@@ -503,7 +504,7 @@ window_pane_spawn(struct window_pane *wp,
 	tv.tv_usec = NAME_INTERVAL * 1000L;
 	timeradd(&wp->window->name_timer, &tv, &wp->window->name_timer);
 
- 	switch (wp->pid = forkpty(&wp->fd, wp->tty, NULL, &ws)) {
+ 	switch (wp->pid = forkpty(&wp->fd, wp->tty, tio, &ws)) {
 	case -1:
 		wp->fd = -1;
 		xasprintf(cause, "%s: %s", cmd, strerror(errno));

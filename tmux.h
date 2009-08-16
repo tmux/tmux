@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.415 2009-08-14 21:30:24 tcunha Exp $ */
+/* $Id: tmux.h,v 1.416 2009-08-16 18:59:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -801,6 +801,8 @@ struct session {
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
 	int		 flags;
 
+	struct termios   tio;
+
 	struct environ	 environ;
 };
 ARRAY_DECL(sessions, struct session *);
@@ -1572,7 +1574,8 @@ void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 int	 	 window_index(struct window *, u_int *);
 struct window	*window_create1(u_int, u_int);
 struct window	*window_create(const char *, const char *, const char *,
-    		     struct environ *, u_int, u_int, u_int, char **);
+    		     struct environ *, struct termios *, u_int, u_int, u_int,
+		     char **);
 void		 window_destroy(struct window *);
 void		 window_set_active_pane(struct window *, struct window_pane *);
 struct window_pane *window_add_pane(struct window *, u_int);
@@ -1584,8 +1587,8 @@ u_int		 window_count_panes(struct window *);
 void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
-int		 window_pane_spawn(struct window_pane *,
-		     const char *, const char *, struct environ *, char **);
+int		 window_pane_spawn(struct window_pane *, const char *,
+		     const char *, struct environ *, struct termios *, char **);
 void		 window_pane_resize(struct window_pane *, u_int, u_int);
 int		 window_pane_set_mode(
 		     struct window_pane *, const struct window_mode *);
@@ -1664,8 +1667,8 @@ void	 session_alert_cancel(struct session *, struct winlink *);
 int	 session_alert_has(struct session *, struct winlink *, int);
 int	 session_alert_has_window(struct session *, struct window *, int);
 struct session	*session_find(const char *);
-struct session	*session_create(const char *, const char *,
-    		     const char *, struct environ *, u_int, u_int, char **);
+struct session	*session_create(const char *, const char *, const char *,
+    		     struct environ *, struct termios *, u_int, u_int, char **);
 void	 	 session_destroy(struct session *);
 int	 	 session_index(struct session *, u_int *);
 struct winlink	*session_new(struct session *,

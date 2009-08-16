@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.60 2009-08-09 17:48:55 tcunha Exp $ */
+/* $Id: session.c,v 1.61 2009-08-16 18:59:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -113,7 +113,7 @@ session_find(const char *name)
 /* Create a new session. */
 struct session *
 session_create(const char *name, const char *cmd, const char *cwd,
-    struct environ *env, u_int sx, u_int sy, char **cause)
+    struct environ *env, struct termios *tio, u_int sx, u_int sy, char **cause)
 {
 	struct session	*s;
 	u_int		 i;
@@ -131,6 +131,7 @@ session_create(const char *name, const char *cmd, const char *cwd,
 	environ_init(&s->environ);
 	if (env != NULL)
 		environ_copy(env, &s->environ);
+	memcpy(&s->tio, tio, sizeof s->tio);
 
 	s->sx = sx;
 	s->sy = sy;
@@ -200,7 +201,7 @@ session_index(struct session *s, u_int *i)
 
 /* Create a new window on a session. */
 struct winlink *
-session_new(struct session *s,
+session_new(struct session *s, 
     const char *name, const char *cmd, const char *cwd, int idx, char **cause)
 {
 	struct window	*w;
@@ -213,7 +214,8 @@ session_new(struct session *s,
 	server_fill_environ(s, &env);
 
 	hlimit = options_get_number(&s->options, "history-limit");
-	w = window_create(name, cmd, cwd, &env, s->sx, s->sy, hlimit, cause);
+	w = window_create(
+	    name, cmd, cwd, &env, &s->tio, s->sx, s->sy, hlimit, cause);
 	if (w == NULL) {
 		environ_free(&env);
 		return (NULL);

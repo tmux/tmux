@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.149 2009-08-10 21:39:15 tcunha Exp $
+.\" $Id: tmux.1,v 1.150 2009-08-16 18:59:12 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 10 2009 $
+.Dd $Mdocdate: August 13 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -398,6 +398,10 @@ is given.
 and
 .Ar command
 are the name of and command to execute in the initial window.
+.Pp
+If run from a terminal, any
+.Xr termios 4
+special characters are saved and used for new windows in the new session.
 .It Ic refresh-client Op Fl t Ar target-client
 .D1 (alias: Ic refresh )
 Refresh the current client if bound to a key, or a single client if one is given
