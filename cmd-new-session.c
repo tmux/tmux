@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.52 2009-08-16 18:59:12 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.53 2009-08-16 19:04:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,6 +20,7 @@
 
 #include <string.h>
 #include <termios.h>
+#include <unistd.h>
 
 #define TTYDEFCHARS
 #include <sys/ttydefaults.h>
