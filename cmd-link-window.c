@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.31 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-link-window.c,v 1.32 2009-08-16 19:16:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -77,6 +77,8 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
+	if (idx == -1)
+		idx = -1 - options_get_number(&dst->options, "base-index");
 	wl_dst = session_attach(dst, wl_src->window, idx, &cause);
 	if (wl_dst == NULL) {
 		ctx->error(ctx, "create session failed: %s", cause);

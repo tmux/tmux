@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.161 2009-08-14 21:28:00 tcunha Exp $ */
+/* $Id: tmux.c,v 1.162 2009-08-16 19:16:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -351,6 +351,7 @@ main(int argc, char **argv)
 	}
 
 	options_init(&global_s_options, NULL);
+	options_set_number(&global_s_options, "base-index", 0);
 	options_set_number(&global_s_options, "bell-action", BELL_ANY);
 	options_set_number(&global_s_options, "buffer-limit", 9);
 	options_set_string(&global_s_options, "default-command", "%s", "");

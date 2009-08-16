@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.103 2009-08-16 18:59:12 tcunha Exp $ */
+/* $Id: window.c,v 1.104 2009-08-16 19:16:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -120,16 +120,20 @@ winlink_find_by_index(struct winlinks *wwl, int idx)
 }
 
 int
-winlink_next_index(struct winlinks *wwl)
+winlink_next_index(struct winlinks *wwl, int idx)
 {
-	u_int	i;
+	int	i;
 
-	for (i = 0; i < INT_MAX; i++) {
+	i = idx;
+	do {
 		if (winlink_find_by_index(wwl, i) == NULL)
 			return (i);
-	}
-
-	fatalx("no free indexes");
+		if (i == INT_MAX)
+			i = 0;
+		else
+			i++;
+	} while (i != idx);
+	return (-1);
 }
 
 u_int
@@ -150,13 +154,11 @@ winlink_add(struct winlinks *wwl, struct window *w, int idx)
 {
 	struct winlink	*wl;
 
-	if (idx == -1)
-		idx = winlink_next_index(wwl);
-	else if (winlink_find_by_index(wwl, idx) != NULL)
+	if (idx < 0) {
+		if ((idx = winlink_next_index(wwl, -idx - 1)) == -1)
+			return (NULL);
+	} else if (winlink_find_by_index(wwl, idx) != NULL)
 		return (NULL);
-
-	if (idx < 0)
-		fatalx("bad index");
 
 	wl = xcalloc(1, sizeof *wl);
 	wl->idx = idx;

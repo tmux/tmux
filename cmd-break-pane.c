@@ -1,4 +1,4 @@
-/* $Id: cmd-break-pane.c,v 1.7 2009-07-30 20:45:20 tcunha Exp $ */
+/* $Id: cmd-break-pane.c,v 1.8 2009-08-16 19:16:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,6 +48,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_pane	*wp;
 	struct window		*w;
 	char			*cause;
+	int			 base_idx;
 
 	if ((wl = cmd_find_pane(ctx, data->target, &s, &wp)) == NULL)
 		return (-1);
@@ -71,7 +72,8 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
  	w->name = default_window_name(w);
 	layout_init(w);
 
- 	wl = session_attach(s, w, -1, &cause); /* can't fail */
+	base_idx = options_get_number(&s->options, "base-index");
+ 	wl = session_attach(s, w, -1 - base_idx, &cause); /* can't fail */
  	if (!(data->chflags & CMD_CHFLAG('d')))
  		session_select(s, wl->idx);
 
