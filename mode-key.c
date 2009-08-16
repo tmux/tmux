@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.23 2009-07-30 21:14:04 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.24 2009-08-16 19:26:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -149,10 +149,12 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ ' ',			0, MODEKEYCOPY_STARTSELECTION },
 	{ '$',			0, MODEKEYCOPY_ENDOFLINE },
 	{ '0',			0, MODEKEYCOPY_STARTOFLINE },
+	{ '\002' /* C-b */,	0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ '\003' /* C-c */,	0, MODEKEYCOPY_CANCEL },
+	{ '\004' /* C-d */,	0, MODEKEYCOPY_HALFPAGEDOWN },
 	{ '\006' /* C-f */,	0, MODEKEYCOPY_NEXTPAGE },
 	{ '\010' /* C-h */,	0, MODEKEYCOPY_LEFT },
-	{ '\025' /* C-u */,	0, MODEKEYCOPY_PREVIOUSPAGE },
+	{ '\025' /* C-u */,	0, MODEKEYCOPY_HALFPAGEUP },
 	{ '\033' /* Escape */,	0, MODEKEYCOPY_CLEARSELECTION },
 	{ '\r',			0, MODEKEYCOPY_COPYSELECTION },
 	{ '^',			0, MODEKEYCOPY_BACKTOINDENTATION },
@@ -237,11 +239,13 @@ const struct mode_key_entry mode_key_emacs_copy[] = {
 	{ 'q',			0, MODEKEYCOPY_CANCEL },
 	{ 'v' | KEYC_ESCAPE,	0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ 'w' | KEYC_ESCAPE,	0, MODEKEYCOPY_COPYSELECTION },
+	{ KEYC_DOWN | KEYC_ESCAPE, 0, MODEKEYCOPY_HALFPAGEDOWN },
 	{ KEYC_DOWN,		0, MODEKEYCOPY_DOWN },
 	{ KEYC_LEFT,		0, MODEKEYCOPY_LEFT },
 	{ KEYC_NPAGE,		0, MODEKEYCOPY_NEXTPAGE },
 	{ KEYC_PPAGE,		0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ KEYC_RIGHT,		0, MODEKEYCOPY_RIGHT },
+	{ KEYC_UP | KEYC_ESCAPE, 0, MODEKEYCOPY_HALFPAGEUP },
 	{ KEYC_UP,		0, MODEKEYCOPY_UP },
 
 	{ 0,			-1, 0 }	

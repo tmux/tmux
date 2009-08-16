@@ -1,4 +1,4 @@
-/* $Id: window-scroll.c,v 1.39 2009-08-16 19:23:07 tcunha Exp $ */
+/* $Id: window-scroll.c,v 1.40 2009-08-16 19:26:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -159,6 +159,22 @@ window_scroll_key(struct window_pane *wp, unused struct client *c, int key)
 		n = 1;
 		if (screen_size_y(s) > 2)
 			n = screen_size_y(s) - 2;
+		if (data->oy < n)
+			data->oy = 0;
+		else
+			data->oy -= n;
+		window_scroll_redraw_screen(wp);
+		break;
+	case MODEKEYCOPY_HALFPAGEUP:
+		n = screen_size_y(s) / 2;
+		if (data->oy + n > screen_hsize(&wp->base))
+			data->oy = screen_hsize(&wp->base);
+		else
+			data->oy += n;
+		window_scroll_redraw_screen(wp);
+		break;
+	case MODEKEYCOPY_HALFPAGEDOWN:
+		n = screen_size_y(s) / 2;
 		if (data->oy < n)
 			data->oy = 0;
 		else
