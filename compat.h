@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.9 2009-08-14 21:13:48 tcunha Exp $ */
+/* $Id: compat.h,v 1.10 2009-08-16 16:15:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -131,6 +131,11 @@
 #ifndef HAVE_STRCASESTR
 /* strcasestr.c */
 char		*strcasestr(const char *, const char *);
+#endif
+
+#ifndef HAVE_STRSEP
+/* strsep.c */
+char		*strsep(char **, const char *);
 #endif
 
 #ifndef HAVE_STRTONUM

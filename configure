@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.23 2009-08-14 21:13:48 tcunha Exp $
+# $Id: configure,v 1.24 2009-08-16 16:15:53 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -29,6 +29,7 @@ cat <<EOF >>$CONFIG_H
 #undef HAVE_STRCASESTR
 #undef HAVE_STRLCAT
 #undef HAVE_STRLCPY
+#undef HAVE_STRSEP
 #undef HAVE_STRTONUM
 #undef HAVE_TREE_H
 #undef HAVE_UTIL_H
@@ -53,6 +54,7 @@ case $TMUX_PLATFORM in
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
+#define HAVE_STRSEP
 #define HAVE_STRTONUM
 #define HAVE_TREE_H
 #define HAVE_UTIL_H
@@ -76,6 +78,7 @@ EOF
 #define HAVE_PROGNAME
 #define HAVE_PTY_H
 #define HAVE_STRCASESTR
+#define HAVE_STRSEP
 EOF
 	cat <<EOF >>$CONFIG_MK
 CFLAGS+= -std=c99 -D_GNU_SOURCE -D_POSIX_SOURCE
@@ -107,6 +110,7 @@ SRCS+= osdep-unknown.c \
 	compat/strcasestr.c \
 	compat/strlcat.c \
 	compat/strlcpy.c \
+	compat/strsep.c \
 	compat/strtonum.c \
        	compat/fgetln.c \
        	compat/getopt.c \
@@ -139,6 +143,7 @@ SRCS+= osdep-unknown.c \
 	compat/forkpty-sunos.c \
 	compat/getopt.c \
 	compat/strcasestr.c \
+	compat/strsep.c \
 	compat/strtonum.c \
 	compat/vis.c \
 	compat/unvis.c \
@@ -159,6 +164,7 @@ EOF
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
+#define HAVE_STRSEP
 #define HAVE_UTIL_H
 EOF
 	cat <<EOF >>$CONFIG_MK
@@ -189,6 +195,7 @@ EOF
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_STRTONUM
+#define HAVE_STRSEP
 #define HAVE_VIS
 EOF
 	cat <<EOF >>$CONFIG_MK
@@ -213,6 +220,7 @@ EOF
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
+#define HAVE_STRSEP
 #define HAVE_UTIL_H
 #define HAVE_VIS
 EOF
