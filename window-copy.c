@@ -596,7 +596,6 @@ window_copy_search_down(struct window_pane *wp, const char *searchstr)
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	screen_write_nputs(&ctx, -1, &gc, utf8flag, "%s", searchstr);
 	screen_write_stop(&ctx);
-	searchlen = strlen(searchstr);
 
 	fx = data->cx;
 	fy = gd->hsize - data->oy + data->cy;
