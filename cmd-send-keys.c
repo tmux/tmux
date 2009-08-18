@@ -40,7 +40,7 @@ struct cmd_send_keys_data {
 
 const struct cmd_entry cmd_send_keys_entry = {
 	"send-keys", "send",
-	"[-t target-window] key ...",
+	"[-t target-pane] key ...",
 	0, 0,
 	NULL,
 	cmd_send_keys_parse,
@@ -106,19 +106,17 @@ int
 cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_send_keys_data	*data = self->data;
-	struct winlink			*wl;
+	struct window_pane		*wp;
 	u_int				 i;
 
 	if (data == NULL)
 		return (-1);
 
-	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
+	if (cmd_find_pane(ctx, data->target, NULL, &wp) == NULL)
 		return (-1);
 
-	for (i = 0; i < data->nkeys; i++) {
-		window_pane_key(
-		    wl->window->active, ctx->curclient, data->keys[i]);
-	}
+	for (i = 0; i < data->nkeys; i++)
+		window_pane_key(wp, ctx->curclient, data->keys[i]);
 
 	return (0);
 }
