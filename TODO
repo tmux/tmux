@@ -96,9 +96,6 @@
   to be smaller by other clients. pan smaller terminal? (like screen F)
 		-- idea of a "view" onto a window, need base x/y offsets
 		   for redraw
-- stuff should be pane targets rather than window targets:
-       	 - send-keys/send-prefix
-	 - all the mode stuff
 - a window option which means data is echoed to all panes in a window
 - support running tmux from inside tmux [#(), if-shell] --
   	  generic system-like function which may take a callback
