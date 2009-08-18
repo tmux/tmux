@@ -617,6 +617,7 @@ struct input_ctx {
 	u_char		*buf;
 	size_t		 len;
 	size_t		 off;
+	size_t		 was;
 
 	struct grid_cell cell;
 
