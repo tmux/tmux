@@ -1124,7 +1124,7 @@ server_check_window(struct window *w)
 		 * the window to be destroyed (or it'll close when the last
 		 * pane dies).
 		 */
-		if (wp->fd == -1 && options_get_number(oo, "remain-on-exit")) {
+		if (wp->fd == -1 && !options_get_number(oo, "remain-on-exit")) {
 			layout_close_pane(wp);
 			window_remove_pane(w, wp);
 			server_redraw_window(w);
