@@ -991,9 +991,9 @@ struct cmd_ctx {
 
 	struct msg_command_data	*msgdata;
 
-	void		(*print)(struct cmd_ctx *, const char *, ...);
-	void		(*info)(struct cmd_ctx *, const char *, ...);
-	void		(*error)(struct cmd_ctx *, const char *, ...);
+	void printflike2 (*print)(struct cmd_ctx *, const char *, ...);
+	void printflike2 (*info)(struct cmd_ctx *, const char *, ...);
+	void printflike2 (*error)(struct cmd_ctx *, const char *, ...);
 };
 
 struct cmd {
@@ -1722,8 +1722,8 @@ void printflike1 log_warnx(const char *, ...);
 void printflike1 log_info(const char *, ...);
 void printflike1 log_debug(const char *, ...);
 void printflike1 log_debug2(const char *, ...);
-__dead void	 log_fatal(const char *, ...);
-__dead void	 log_fatalx(const char *, ...);
+__dead void printflike1 log_fatal(const char *, ...);
+__dead void printflike1 log_fatalx(const char *, ...);
 
 /* xmalloc.c */
 char		*xstrdup(const char *);

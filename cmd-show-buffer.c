@@ -94,7 +94,7 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	
 	if (len != 0) {
 		buf[len] = '\0';
-		ctx->print(ctx, buf);
+		ctx->print(ctx, "%s", buf);
 	}
 	xfree(buf);
 
