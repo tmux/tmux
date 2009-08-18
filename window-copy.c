@@ -365,6 +365,9 @@ window_copy_key_input(struct window_pane *wp, int key)
 		if (inputlen > 0)
 			data->inputstr[inputlen - 1] = '\0';
 		break;
+	case MODEKEYEDIT_DELETELINE:
+		*data->inputstr = '\0';
+		break;
 	case MODEKEYEDIT_ENTER:
 		switch (data->inputtype) {
 		case WINDOW_COPY_OFF:

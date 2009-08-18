@@ -854,6 +854,11 @@ status_prompt_key(struct client *c, int key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
+	case MODEKEYEDIT_DELETELINE:
+		*c->prompt_buffer = '\0';
+		c->prompt_index = 0;
+		c->flags |= CLIENT_STATUS;
+		break;
 	case MODEKEYEDIT_DELETETOENDOFLINE:
 		if (c->prompt_index < size) {
 			c->prompt_buffer[c->prompt_index] = '\0';
