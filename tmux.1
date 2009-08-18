@@ -475,23 +475,27 @@ option).
 The following keys are supported as appropriate for the mode:
 .Bl -column "FunctionXXXXXXXXXXXX" "viXXXXXX" "emacs" -offset indent
 .It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
-.It Li "Start of line" Ta "0" Ta "C-a"
 .It Li "Back to indentation" Ta "^" Ta "M-m"
 .It Li "Clear selection" Ta "Escape" Ta "C-g"
 .It Li "Copy selection" Ta "Enter" Ta "M-w"
 .It Li "Cursor down" Ta "j" Ta "Down"
-.It Li "End of line" Ta "$" Ta "C-e"
 .It Li "Cursor left" Ta "h" Ta "Left"
+.It Li "Cursor right" Ta "l" Ta "Right"
+.It Li "Cursor up" Ta "k" Ta "Up"
+.It Li "Delete to end of line" Ta "D" Ta "C-k"
+.It Li "End of line" Ta "$" Ta "C-e"
+.It Li "Goto line" Ta "g" Ta "g"
 .It Li "Next page" Ta "C-f" Ta "Page down"
 .It Li "Next word" Ta "w" Ta "M-f"
+.It Li "Paste buffer" Ta "p" Ta "C-y"
 .It Li "Previous page" Ta "C-u" Ta "Page up"
 .It Li "Previous word" Ta "b" Ta "M-b"
 .It Li "Quit mode" Ta "q" Ta "Escape"
-.It Li "Cursor right" Ta "l" Ta "Right"
+.It Li "Search again" Ta "n" Ta "n"
+.It Li "Search backward" Ta "?" Ta "C-r"
+.It Li "Search forward" Ta "/" Ta "C-s"
+.It Li "Start of line" Ta "0" Ta "C-a"
 .It Li "Start selection" Ta "Space" Ta "C-Space"
-.It Li "Cursor up" Ta "k" Ta "Up"
-.It Li "Delete to end of line" Ta "D" Ta "C-k"
-.It Li "Paste buffer" Ta "p" Ta "C-y"
 .El
 .Pp
 These key bindings are defined in a set of named tables:
