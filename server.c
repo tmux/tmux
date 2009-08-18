@@ -1106,13 +1106,12 @@ void
 server_check_window(struct window *w)
 {
 	struct window_pane	*wp, *wq;
+	struct options		*oo = &w->options;
 	struct client		*c;
 	struct session		*s;
 	struct winlink		*wl;
 	u_int		 	 i, j;
-	int		 	 destroyed, flag;
-
-	flag = options_get_number(&w->options, "remain-on-exit");
+	int		 	 destroyed;
 
 	destroyed = 1;
 
@@ -1125,7 +1124,7 @@ server_check_window(struct window *w)
 		 * the window to be destroyed (or it'll close when the last
 		 * pane dies).
 		 */
-		if (wp->fd == -1 && !flag) {
+		if (wp->fd == -1 && options_get_number(oo, "remain-on-exit")) {
 			layout_close_pane(wp);
 			window_remove_pane(w, wp);
 			server_redraw_window(w);
