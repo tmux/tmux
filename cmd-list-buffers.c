@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <string.h>
+#include <vis.h>
 
 #include "tmux.h"
 
@@ -46,44 +47,33 @@ cmd_list_buffers_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session		*s;
 	struct paste_buffer	*pb;
 	u_int			 idx;
-	char			*tmp;
-	size_t			 size, in, out;
+	char			 tmp[51 * 4 + 1];
+	size_t			 size, len;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
 
-	if (s->sx > 35) {	/* leave three for ... */
-		size = s->sx - 32;
-		tmp = xmalloc(size + 1);
-	} else {
-		size = 0;
-		tmp = NULL;
-	}
-
 	idx = 0;
 	while ((pb = paste_walk_stack(&s->buffers, &idx)) != NULL) {
-		if (tmp != NULL) {
-			in = out = 0;
-			while (out < size && pb->data[in] != '\0') {
-				if (pb->data[in] > 31 && pb->data[in] != 127)
-					tmp[out++] = pb->data[in];
-				in++;
-			}
-			tmp[out] = '\0';
-			if (out == size) {
-				tmp[out - 1] = '.';
-				tmp[out - 2] = '.';
-				tmp[out - 3] = '.';
-			}
+		size = strlen(pb->data);
 
-			ctx->print(ctx, "%d: %zu bytes: \"%s\"",
-			    idx - 1, strlen(pb->data), tmp);
-		} else
-			ctx->print(ctx, "%d: %zu bytes", idx, strlen(pb->data));
+		/* Translate the first 50 characters. */
+		len = size;
+		if (len > 50)
+			len = 50;
+		strvisx(tmp, pb->data, len, VIS_OCTAL|VIS_TAB|VIS_NL);
+
+		/*
+		 * If the first 50 characterswere encoded as a longer string,
+		 * or there is definitely more data, add "...".
+		 */
+		if (size > 50 || strlen(tmp) > 50) {
+			tmp[50 - 3] = '\0';
+			strlcat(tmp, "...", sizeof tmp);
+		}
+		
+		ctx->print(ctx, "%u: %zu bytes: \"%s\"", idx - 1, size, tmp);
 	}
-
-	if (tmp != NULL)
-		xfree(tmp);
 
 	return (0);
 }
