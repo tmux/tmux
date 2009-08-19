@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.64 2009-08-14 21:26:07 tcunha Exp $ */
+/* $Id: client.c,v 1.65 2009-08-19 08:36:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -190,8 +190,10 @@ client_main(struct client_ctx *cctx)
 		if (nfds == 0)
 			continue;
 
+#ifdef HAVE_POLL
 		if (pfd.revents & (POLLERR|POLLHUP|POLLNVAL))
 			fatalx("socket error");
+#endif
 
 		if (pfd.revents & POLLIN) {
 			if (client_msg_dispatch(cctx) != 0)
