@@ -1685,17 +1685,20 @@ if it is present, or
 if not.
 Before the command is executed, the first occurrence of the string
 .Ql %%
-and all occurences of
+and all occurrences of
 .Ql %1
 are replaced by the response to the first prompt, the second
 .Ql %%
 and all
 .Ql %2
 are replaced with the response to the second prompt, and so on for further
-prompts. Up to nine prompt responses may be replaced
-.Ns ( Ql %1
+prompts.
+Up to nine prompt responses may be replaced
+.Po
+.Ql %1
 to
-.Ns Ql %9 ) .
+.Ql %9
+.Pc .
 .It Xo Ic confirm-before
 .Op Fl t Ar target-client
 .Ar command
