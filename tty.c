@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.128 2009-08-16 19:31:37 tcunha Exp $ */
+/* $Id: tty.c,v 1.129 2009-08-19 09:00:06 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -252,10 +252,8 @@ tty_detect_utf8(struct tty *tty)
 		}
 		if (nfds == 0)
 			break;
-#ifdef HAVE_POLL
 		if (pfd.revents & (POLLERR|POLLNVAL|POLLHUP))
 			break;
-#endif
 		if (!(pfd.revents & POLLIN))
 			continue;
 

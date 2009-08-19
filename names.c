@@ -1,4 +1,4 @@
-/* $Id: names.c,v 1.11 2009-07-02 18:26:55 nicm Exp $ */
+/* $OpenBSD: names.c,v 1.5 2009/08/18 21:18:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,8 +42,6 @@ set_window_names(void)
 		w = ARRAY_ITEM(&windows, i);
 		if (w == NULL || w->active == NULL)
 			continue;
-		if (!options_get_number(&w->options, "automatic-rename"))
-			continue;
 
 		if (timercmp(&tv, &w->name_timer, <))
 			continue;
@@ -51,6 +49,9 @@ set_window_names(void)
 		tv2.tv_sec = 0;
 		tv2.tv_usec = NAME_INTERVAL * 1000L;
 		timeradd(&w->name_timer, &tv2, &w->name_timer);
+
+		if (!options_get_number(&w->options, "automatic-rename"))
+			continue;
 
 		if (w->active->screen != &w->active->base)
 			name = NULL;

@@ -1,4 +1,4 @@
-/* $Id: buffer-poll.c,v 1.14 2009-06-25 16:22:36 nicm Exp $ */
+/* $Id: buffer-poll.c,v 1.15 2009-08-19 09:00:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,10 +29,9 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 {
 	ssize_t	n;
 
-#ifdef HAVE_POLL
 	if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP))
 		return (-1);
-#endif
+
 	if (pfd->revents & POLLIN) {
 		buffer_ensure(in, BUFSIZ);
 		n = read(pfd->fd, BUFFER_IN(in), BUFFER_FREE(in));
