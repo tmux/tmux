@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.25 2009-08-16 19:48:17 tcunha Exp $
+# $Id: configure,v 1.26 2009-08-19 15:57:54 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -32,6 +32,7 @@ cat <<EOF >>$CONFIG_H
 #undef HAVE_STRSEP
 #undef HAVE_STRTONUM
 #undef HAVE_TREE_H
+#undef HAVE_TTYDEFCHARS
 #undef HAVE_UTIL_H
 #undef HAVE_VIS
 EOF
@@ -57,6 +58,7 @@ case $TMUX_PLATFORM in
 #define HAVE_STRSEP
 #define HAVE_STRTONUM
 #define HAVE_TREE_H
+#define HAVE_TTYDEFCHARS
 #define HAVE_UTIL_H
 #define HAVE_VIS
 EOF
@@ -165,6 +167,7 @@ EOF
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_STRSEP
+#define HAVE_TTYDEFCHARS
 #define HAVE_UTIL_H
 EOF
 	cat <<EOF >>$CONFIG_MK
@@ -196,6 +199,7 @@ EOF
 #define HAVE_STRLCPY
 #define HAVE_STRTONUM
 #define HAVE_STRSEP
+#define HAVE_TTYDEFCHARS
 EOF
 	cat <<EOF >>$CONFIG_MK
 LIBS+= -lcurses -lcrypt -lutil
@@ -222,6 +226,7 @@ EOF
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_STRSEP
+#define HAVE_TTYDEFCHARS
 #define HAVE_UTIL_H
 EOF
 	cat <<EOF >>$CONFIG_MK

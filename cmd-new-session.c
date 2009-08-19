@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.56 2009-08-19 14:32:49 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.57 2009-08-19 15:57:54 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -207,8 +207,28 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (ctx->cmdclient != NULL && ctx->cmdclient->tty.fd != -1) {
 		if (tcgetattr(ctx->cmdclient->tty.fd, &tio) != 0)
 			fatal("tcgetattr failed");
-	} else
+	} else {
+#ifdef HAVE_TTYDEFCHARS
 		memcpy(tio.c_cc, ttydefchars, sizeof tio.c_cc);
+#else
+		memset(tio.c_cc, _POSIX_VDISABLE, sizeof tio.c_cc);
+		tio.c_cc[VINTR] = CINTR;
+		tio.c_cc[VQUIT] = CQUIT;
+		tio.c_cc[VERASE] = CERASE;
+		tio.c_cc[VKILL] = CKILL;
+		tio.c_cc[VEOF] = CEOF;
+		tio.c_cc[VTIME] = CTIME;
+		tio.c_cc[VMIN] = CMIN;
+		tio.c_cc[VSTART] = CSTART;
+		tio.c_cc[VSTOP] = CSTOP;
+		tio.c_cc[VSUSP] = CSUSP;
+		tio.c_cc[VEOL] = CEOL;
+		tio.c_cc[VREPRINT] = CREPRINT;
+		tio.c_cc[VDISCARD] = CDISCARD;
+		tio.c_cc[VWERASE] = CWERASE;
+		tio.c_cc[VLNEXT] = CLNEXT;
+#endif
+	}
 	tio.c_iflag = TTYDEF_IFLAG;
 	tio.c_oflag = TTYDEF_OFLAG;
 	tio.c_lflag = TTYDEF_LFLAG;
