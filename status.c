@@ -668,6 +668,20 @@ status_prompt_clear(struct client *c)
 	screen_reinit(&c->status);
 }
 
+void
+status_prompt_update(struct client *c, const char *msg)
+{
+	xfree(c->prompt_string);
+	c->prompt_string = xstrdup(msg);
+
+	*c->prompt_buffer = '\0';
+	c->prompt_index = 0;
+
+	c->prompt_hindex = 0;
+
+	c->flags |= CLIENT_STATUS;
+}
+
 /* Draw client prompt on status line of present else on last line. */
 int
 status_prompt_redraw(struct client *c)

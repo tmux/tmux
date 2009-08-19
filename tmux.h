@@ -1440,6 +1440,7 @@ void	 status_prompt_set(struct client *, const char *,
 void	 status_prompt_clear(struct client *);
 int	 status_prompt_redraw(struct client *);
 void	 status_prompt_key(struct client *, int);
+void	 status_prompt_update(struct client *, const char *);
 
 /* resize.c */
 void	 recalculate_sizes(void);
