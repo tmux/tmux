@@ -1,4 +1,4 @@
-/* $Id: forkpty-sunos.c,v 1.6 2008-06-23 21:54:48 nicm Exp $ */
+/* $Id: forkpty-sunos.c,v 1.7 2009-08-19 16:06:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,8 +27,7 @@
 #include "tmux.h"
 
 pid_t
-forkpty(int *master,
-    unused char *name, unused struct termios *tio, struct winsize *ws)
+forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)
 {
 	int	slave;
 	char   *path;
@@ -63,6 +62,8 @@ forkpty(int *master,
 		if (ioctl(slave, I_PUSH, "ldterm") == -1)
 			fatal("ioctl failed");
 
+		if (tcsetattr(slave, TCSAFLUSH, tio) == -1)
+			fatal("tcsetattr failed");
 		if (ioctl(slave, TIOCSWINSZ, ws) == -1)
 			fatal("ioctl failed");
 
@@ -70,7 +71,7 @@ forkpty(int *master,
 		dup2(slave, 1);
 		dup2(slave, 2);
 		if (slave > 2)
-			close(slave);
+			close(slave);		
 		return (0);
 	}
 

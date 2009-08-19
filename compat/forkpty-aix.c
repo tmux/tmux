@@ -1,4 +1,4 @@
-/* $Id: forkpty-aix.c,v 1.2 2009-03-31 22:08:45 nicm Exp $ */
+/* $Id: forkpty-aix.c,v 1.3 2009-08-19 16:06:45 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,8 +27,7 @@
 #include "tmux.h"
 
 pid_t
-forkpty(int *master,
-    unused char *name, unused struct termios *tio, struct winsize *ws)
+forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)
 {
 	int	slave, fd;
 	char   *path;
@@ -71,6 +70,8 @@ forkpty(int *master,
 			fatal("open failed");
 		close(fd);
 
+		if (tcsetattr(slave, TCSAFLUSH, tio) == -1)
+			fatal("tcsetattr failed");
 		if (ioctl(slave, TIOCSWINSZ, ws) == -1)
 			fatal("ioctl failed");
 
