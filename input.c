@@ -1,4 +1,4 @@
-/* $OpenBSD: input.c,v 1.13 2009/08/18 21:41:13 nicm Exp $ */
+/* $Id: input.c,v 1.92 2009-08-19 09:04:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -235,8 +235,6 @@ input_init(struct window_pane *wp)
 	ictx->saved_cy = 0;
 
 	input_state(ictx, input_state_first);
-
-	ictx->was = 0;
 }
 
 void
@@ -254,9 +252,8 @@ input_parse(struct window_pane *wp)
 	struct input_ctx	*ictx = &wp->ictx;
 	u_char			 ch;
 
-	if (BUFFER_USED(wp->in) == ictx->was)
+	if (BUFFER_USED(wp->in) == 0)
 		return;
-	wp->window->flags |= WINDOW_ACTIVITY;
 
 	ictx->buf = BUFFER_OUT(wp->in);
 	ictx->len = BUFFER_USED(wp->in);
@@ -264,11 +261,15 @@ input_parse(struct window_pane *wp)
 
 	ictx->wp = wp;
 
+	log_debug2("entry; buffer=%zu", ictx->len);
+
 	if (wp->mode == NULL)
 		screen_write_start(&ictx->ctx, wp, &wp->base);
 	else
 		screen_write_start(&ictx->ctx, NULL, &wp->base);
 
+	if (ictx->off != ictx->len)
+		wp->window->flags |= WINDOW_ACTIVITY;
 	while (ictx->off < ictx->len) {
 		ch = ictx->buf[ictx->off++];
 		ictx->state(ch, ictx);
@@ -277,7 +278,6 @@ input_parse(struct window_pane *wp)
 	screen_write_stop(&ictx->ctx);
 
 	buffer_remove(wp->in, ictx->len);
-	ictx->was = BUFFER_USED(wp->in);
 }
 
 void
