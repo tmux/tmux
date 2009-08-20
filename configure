@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.27 2009-08-20 05:34:58 nicm Exp $
+# $Id: configure,v 1.28 2009-08-20 12:25:17 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -13,6 +13,7 @@ echo "# $TMUX_PLATFORM" >$CONFIG_MK
 
 cat <<EOF >>$CONFIG_H
 #undef HAVE_ASPRINTF
+#undef HAVE_BZERO
 #undef HAVE_CRYPT_H
 #undef HAVE_DAEMON
 #undef HAVE_FGETLN
@@ -44,6 +45,7 @@ case $TMUX_PLATFORM in
 	cat <<EOF >>$CONFIG_H
 #define HAVE_ASPRINTF
 #define HAVE_BITSTRING_H
+#define HAVE_BZERO
 #define HAVE_DAEMON
 #define HAVE_FGETLN
 #define HAVE_FORKPTY
@@ -75,6 +77,7 @@ EOF
     Linux)
 	cat <<EOF >>$CONFIG_H
 #define HAVE_ASPRINTF
+#define HAVE_BZERO
 #define HAVE_DAEMON
 #define HAVE_FORKPTY
 #define HAVE_PATHS_H
@@ -103,6 +106,7 @@ EOF
 # ------------------------------------------------------------------------------
     AIX)
 	cat <<EOF >>$CONFIG_H
+#define HAVE_BZERO
 #define HAVE_DAEMON
 EOF
 	cat <<EOF >>$CONFIG_MK
@@ -160,6 +164,7 @@ EOF
     Darwin)
 	cat <<EOF >>$CONFIG_H
 #define HAVE_ASPRINTF
+#define HAVE_BZERO
 #define HAVE_DAEMON
 #define HAVE_FGETLN
 #define HAVE_FORKPTY
@@ -189,6 +194,7 @@ EOF
     FreeBSD|DragonFly)
 	cat <<EOF >>$CONFIG_H
 #define HAVE_ASPRINTF
+#define HAVE_BZERO
 #define HAVE_DAEMON
 #define HAVE_FGETLN
 #define HAVE_FORKPTY
@@ -218,6 +224,7 @@ EOF
     NetBSD)
 	cat <<EOF >>$CONFIG_H
 #define HAVE_ASPRINTF
+#define HAVE_BZERO
 #define HAVE_DAEMON
 #define HAVE_FGETLN
 #define HAVE_FORKPTY

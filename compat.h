@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.12 2009-08-20 05:34:58 nicm Exp $ */
+/* $Id: compat.h,v 1.13 2009-08-20 12:25:17 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -140,6 +140,10 @@
 
 #ifndef TTY_NAME_MAX
 #define TTY_NAME_MAX 32
+#endif
+
+#ifndef HAVE_BZERO
+#define bzero(buf, len) memset((buf), 0, (len));
 #endif
 
 #ifndef HAVE_STRCASESTR
