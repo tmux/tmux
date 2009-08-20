@@ -956,7 +956,6 @@ input_handle_sequence_cbt(struct input_ctx *ictx)
 void
 input_handle_sequence_da(struct input_ctx *ictx)
 {
-	struct screen  *s = ictx->ctx.s;
 	uint16_t	n;
 
 	if (ictx->private != '\0')
