@@ -1,3 +1,4 @@
+/* $Id: imsg.c,v 1.3 2009-08-20 12:54:08 nicm Exp $ */
 /*	$OpenBSD: imsg.c,v 1.1 2009/08/11 17:18:35 nicm Exp $	*/
 
 /*
@@ -17,7 +18,6 @@
  */
 
 #include <sys/param.h>
-#include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
 
