@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.93 2009-08-20 11:48:01 tcunha Exp $ */
+/* $Id: input.c,v 1.94 2009-08-20 11:54:58 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -68,6 +68,7 @@ void	 input_handle_sequence_cuf(struct input_ctx *);
 void	 input_handle_sequence_cub(struct input_ctx *);
 void	 input_handle_sequence_dch(struct input_ctx *);
 void	 input_handle_sequence_cbt(struct input_ctx *);
+void	 input_handle_sequence_da(struct input_ctx *);
 void	 input_handle_sequence_dl(struct input_ctx *);
 void	 input_handle_sequence_ich(struct input_ctx *);
 void	 input_handle_sequence_il(struct input_ctx *);
@@ -104,6 +105,7 @@ const struct input_sequence_entry input_sequence_table[] = {
 	{ 'M', input_handle_sequence_dl },
 	{ 'P', input_handle_sequence_dch },
 	{ 'Z', input_handle_sequence_cbt },
+	{ 'c', input_handle_sequence_da },
 	{ 'd', input_handle_sequence_vpa },
 	{ 'f', input_handle_sequence_cup },
 	{ 'g', input_handle_sequence_tbc },
@@ -949,6 +951,25 @@ input_handle_sequence_cbt(struct input_ctx *ictx)
 			s->cx--;
 		while (s->cx > 0 && !bit_test(s->tabs, s->cx));
 	}
+}
+
+void
+input_handle_sequence_da(struct input_ctx *ictx)
+{
+	struct screen  *s = ictx->ctx.s;
+	uint16_t	n;
+
+	if (ictx->private != '\0')
+		return;
+
+	if (ARRAY_LENGTH(&ictx->args) > 1)
+		return;
+	if (input_get_argument(ictx, 0, &n, 0) != 0)
+		return;
+	if (n != 0)
+		return;
+	
+	buffer_write(ictx->wp->out, "\033[?1;2c", (sizeof "\033[?1;2c") - 1);
 }
 
 void
