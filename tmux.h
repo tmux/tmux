@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.423 2009-08-20 11:35:16 tcunha Exp $ */
+/* $Id: tmux.h,v 1.424 2009-08-20 11:48:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -615,6 +615,7 @@ struct input_ctx {
 	u_char		*buf;
 	size_t		 len;
 	size_t		 off;
+	size_t		 was;
 
 	struct grid_cell cell;
 
