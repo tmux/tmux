@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.173 2009-08-20 11:40:15 tcunha Exp $ */
+/* $Id: server.c,v 1.174 2009-08-20 11:45:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1127,7 +1127,7 @@ server_check_window(struct window *w)
 		 * the window to be destroyed (or it'll close when the last
 		 * pane dies).
 		 */
-		if (wp->fd == -1 && options_get_number(oo, "remain-on-exit")) {
+		if (wp->fd == -1 && !options_get_number(oo, "remain-on-exit")) {
 			layout_close_pane(wp);
 			window_remove_pane(w, wp);
 			server_redraw_window(w);
