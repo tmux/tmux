@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.154 2009-08-20 11:37:46 tcunha Exp $
+.\" $Id: tmux.1,v 1.155 2009-08-20 11:51:20 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 18 2009 $
+.Dd $Mdocdate: August 19 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1662,6 +1662,7 @@ session option.
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
 .It Xo Ic command-prompt
+.Op Fl p Ar prompts
 .Op Fl t Ar target-client
 .Op Ar template
 .Xc
@@ -1671,8 +1672,30 @@ This may be used from inside
 to execute commands interactively.
 If
 .Ar template
-is specified, it is used as the command; any %% in the template will be
-replaced by what is entered at the prompt.
+is specified, it is used as the command.
+If
+.Fl p
+is given,
+.Ar prompts
+is a comma-separated list of prompts which are displayed in order; otherwise
+a single prompt is displayed, constructed from
+.Ar template
+if it is present, or
+.Ql \&:
+if not.
+Before the command is executed, the first occurrence of the string
+.Ql %%
+and all occurences of
+.Ql %1
+are replaced by the response to the first prompt, the second
+.Ql %%
+and all
+.Ql %2
+are replaced with the response to the second prompt, and so on for further
+prompts. Up to nine prompt responses may be replaced
+.Ns ( Ql %1
+to
+.Ns Ql %9 ) .
 .It Xo Ic confirm-before
 .Op Fl t Ar target-client
 .Ar command
@@ -1926,6 +1949,7 @@ Creating new key bindings:
 .Bd -literal -offset indent
 bind-key b set-option status
 bind-key / command-prompt "split-window 'exec man %%'"
+bind-key S command-prompt "new-window -n %1 'ssh %1'"
 .Ed
 .Sh SEE ALSO
 .Xr pty 4

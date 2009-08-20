@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.111 2009-08-20 11:22:47 tcunha Exp $ */
+/* $Id: status.c,v 1.112 2009-08-20 11:51:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -666,6 +666,20 @@ status_prompt_clear(struct client *c)
 	c->flags |= CLIENT_REDRAW; /* screen was frozen and may have changed */
 
 	screen_reinit(&c->status);
+}
+
+void
+status_prompt_update(struct client *c, const char *msg)
+{
+	xfree(c->prompt_string);
+	c->prompt_string = xstrdup(msg);
+
+	*c->prompt_buffer = '\0';
+	c->prompt_index = 0;
+
+	c->prompt_hindex = 0;
+
+	c->flags |= CLIENT_STATUS;
 }
 
 /* Draw client prompt on status line of present else on last line. */
