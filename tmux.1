@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.153 2009-08-20 11:22:47 tcunha Exp $
+.\" $Id: tmux.1,v 1.154 2009-08-20 11:37:46 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -528,7 +528,7 @@ The mode commands are as follows:
 .Bl -tag -width Ds
 .It Xo Ic copy-mode
 .Op Fl u
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Xc
 Enter copy mode.
 The
@@ -536,7 +536,7 @@ The
 option scrolls one page up.
 .It Xo Ic scroll-mode
 .Op Fl u
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Xc
 Enter scroll mode.
 The
@@ -970,7 +970,7 @@ are listed; this may be one of:
 or
 .Em emacs-copy .
 .It Xo Ic send-keys
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Ar key Ar ...
 .Xc
 .D1 (alias: Ic send )
@@ -984,7 +984,7 @@ or
 ) to send; if the string is not recognised as a key, it is sent as a series of
 characters.
 All arguments are sent sequentially from first to last.
-.It Ic send-prefix Op Fl t Ar target-window
+.It Ic send-prefix Op Fl t Ar target-pane
 Send the prefix key to a window as if it was pressed.
 .It Xo Ic unbind-key
 .Op Fl cn
@@ -1799,7 +1799,7 @@ Display the contents of the specified buffer.
 .Pp
 Miscellaneous commands are as follows:
 .Bl -tag -width Ds
-.It Ic clock-mode Op Fl t Ar target-window
+.It Ic clock-mode Op Fl t Ar target-pane
 Display a large clock.
 .It Ic if-shell Ar shell-command command
 .D1 (alias: Ic if )

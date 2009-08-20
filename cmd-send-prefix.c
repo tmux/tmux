@@ -1,4 +1,4 @@
-/* $Id: cmd-send-prefix.c,v 1.25 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-send-prefix.c,v 1.26 2009-08-20 11:37:46 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,7 +28,7 @@ int	cmd_send_prefix_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_send_prefix_entry = {
 	"send-prefix", NULL,
-	CMD_TARGET_WINDOW_USAGE,
+	CMD_TARGET_PANE_USAGE,
 	0, 0,
 	cmd_target_init,
 	cmd_target_parse,
@@ -42,14 +42,14 @@ cmd_send_prefix_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
 	struct session		*s;
-	struct winlink		*wl;
+	struct window_pane	*wp;
 	int			 key;
 
-	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
+	if (cmd_find_pane(ctx, data->target, &s, &wp) == NULL)
 		return (-1);
 
 	key = options_get_number(&s->options, "prefix");
-	window_pane_key(wl->window->active, ctx->curclient, key);
+	window_pane_key(wp, ctx->curclient, key);
 
 	return (0);
 }

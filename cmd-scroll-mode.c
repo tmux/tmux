@@ -1,4 +1,4 @@
-/* $Id: cmd-scroll-mode.c,v 1.22 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-scroll-mode.c,v 1.23 2009-08-20 11:37:46 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ int	cmd_scroll_mode_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_scroll_mode_entry = {
 	"scroll-mode", NULL,
-	"[-u] " CMD_TARGET_WINDOW_USAGE,
+	"[-u] " CMD_TARGET_PANE_USAGE,
 	0, CMD_CHFLAG('u'),
 	cmd_scroll_mode_init,
 	cmd_target_parse,
@@ -57,12 +57,10 @@ int
 cmd_scroll_mode_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
-	struct winlink		*wl;
 	struct window_pane	*wp;
 
-	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
+	if (cmd_find_pane(ctx, data->target, NULL, &wp) == NULL)
 		return (-1);
-	wp = wl->window->active;
 
 	window_pane_set_mode(wp, &window_scroll_mode);
 	if (wp->mode == &window_scroll_mode && data->chflags & CMD_CHFLAG('u'))
