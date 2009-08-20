@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.26 2009-08-20 11:20:24 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.27 2009-08-20 11:22:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,6 +47,7 @@ struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 	{ MODEKEYEDIT_CURSORLEFT, "cursor-left" },
 	{ MODEKEYEDIT_CURSORRIGHT, "cursor-right" },
 	{ MODEKEYEDIT_DELETE, "delete" },
+	{ MODEKEYEDIT_DELETELINE, "delete-line" },
 	{ MODEKEYEDIT_DELETETOENDOFLINE, "delete-end-of-line" },
 	{ MODEKEYEDIT_ENDOFLINE, "end-of-line" },
 	{ MODEKEYEDIT_ENTER, "enter" },
@@ -109,6 +110,7 @@ const struct mode_key_entry mode_key_vi_edit[] = {
 
 	{ '$',			1, MODEKEYEDIT_ENDOFLINE },
 	{ '0',			1, MODEKEYEDIT_STARTOFLINE },
+	{ 'd',			1, MODEKEYEDIT_DELETELINE },
 	{ 'D',			1, MODEKEYEDIT_DELETETOENDOFLINE },
 	{ '\003' /* C-c */,	1, MODEKEYEDIT_CANCEL },
 	{ '\010' /* C-h */, 	1, MODEKEYEDIT_BACKSPACE },
@@ -194,10 +196,11 @@ const struct mode_key_entry mode_key_emacs_edit[] = {
 	{ '\005' /* C-e	*/,	0, MODEKEYEDIT_ENDOFLINE },
 	{ '\006' /* C-f */,	0, MODEKEYEDIT_CURSORRIGHT },
 	{ '\010' /* C-H */, 	0, MODEKEYEDIT_BACKSPACE },
-	{ '\011' /* Tab */,	0, MODEKEYEDIT_COMPLETE },
+	{ '\011' /* Tab */,     0, MODEKEYEDIT_COMPLETE },
 	{ '\013' /* C-k	*/,	0, MODEKEYEDIT_DELETETOENDOFLINE },
 	{ '\016' /* C-n */,	0, MODEKEYEDIT_HISTORYDOWN },
 	{ '\020' /* C-p */,	0, MODEKEYEDIT_HISTORYUP },
+	{ '\025' /* C-u	*/,	0, MODEKEYEDIT_DELETELINE },
 	{ '\031' /* C-y */,	0, MODEKEYEDIT_PASTE },
 	{ '\033' /* Escape */,	0, MODEKEYEDIT_CANCEL },
 	{ '\r',			0, MODEKEYEDIT_ENTER },

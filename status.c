@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.110 2009-08-16 19:29:24 tcunha Exp $ */
+/* $Id: status.c,v 1.111 2009-08-20 11:22:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -853,6 +853,11 @@ status_prompt_key(struct client *c, int key)
 			    size + 1 - c->prompt_index);
 			c->flags |= CLIENT_STATUS;
 		}
+		break;
+	case MODEKEYEDIT_DELETELINE:
+		*c->prompt_buffer = '\0';
+		c->prompt_index = 0;
+		c->flags |= CLIENT_STATUS;
 		break;
 	case MODEKEYEDIT_DELETETOENDOFLINE:
 		if (c->prompt_index < size) {

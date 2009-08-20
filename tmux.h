@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.421 2009-08-20 11:20:24 tcunha Exp $ */
+/* $Id: tmux.h,v 1.422 2009-08-20 11:22:48 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -367,6 +367,7 @@ enum mode_key_cmd {
 	MODEKEYEDIT_CURSORLEFT,
 	MODEKEYEDIT_CURSORRIGHT,
 	MODEKEYEDIT_DELETE,
+	MODEKEYEDIT_DELETELINE,
 	MODEKEYEDIT_DELETETOENDOFLINE,
 	MODEKEYEDIT_ENDOFLINE,
 	MODEKEYEDIT_ENTER,

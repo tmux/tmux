@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.80 2009-08-20 11:20:24 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.81 2009-08-20 11:22:48 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -364,6 +364,9 @@ window_copy_key_input(struct window_pane *wp, int key)
 		inputlen = strlen(data->inputstr);
 		if (inputlen > 0)
 			data->inputstr[inputlen - 1] = '\0';
+		break;
+	case MODEKEYEDIT_DELETELINE:
+		*data->inputstr = '\0';
 		break;
 	case MODEKEYEDIT_ENTER:
 		switch (data->inputtype) {
