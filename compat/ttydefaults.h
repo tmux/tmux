@@ -1,4 +1,4 @@
-/* $Id: ttydefaults.h,v 1.1 2009-08-20 05:34:58 nicm Exp $ */
+/* $Id: ttydefaults.h,v 1.2 2009-08-20 12:27:58 nicm Exp $ */
 /*	$OpenBSD: ttydefaults.h,v 1.6 2003/06/02 23:28:22 millert Exp $	*/
 /*	$NetBSD: ttydefaults.h,v 1.8 1996/04/09 20:55:45 cgd Exp $	*/
 
@@ -57,28 +57,70 @@
  * Control Character Defaults
  */
 #define CTRL(x)	(x&037)
+#ifndef CEOF
 #define	CEOF		CTRL('d')
+#endif
+#ifndef CEOL
 #define	CEOL		((unsigned char)'\377')	/* XXX avoid _POSIX_VDISABLE */
+#endif
+#ifndef CERASE
 #define	CERASE		0177
+#endif
+#ifndef CINTR
 #define	CINTR		CTRL('c')
+#endif
+#ifndef CSTATUS
 #define	CSTATUS		((unsigned char)'\377')	/* XXX avoid _POSIX_VDISABLE */
+#endif
+#ifndef CKILL
 #define	CKILL		CTRL('u')
+#endif
+#ifndef CMIN
 #define	CMIN		1
+#endif
+#ifndef CQUIT
 #define	CQUIT		034		/* FS, ^\ */
+#endif
+#ifndef CSUSP
 #define	CSUSP		CTRL('z')
+#endif
+#ifndef CTIME
 #define	CTIME		0
+#endif
+#ifndef CDSUSP
 #define	CDSUSP		CTRL('y')
+#endif
+#ifndef CSTART
 #define	CSTART		CTRL('q')
+#endif
+#ifndef CSTOP
 #define	CSTOP		CTRL('s')
+#endif
+#ifndef CLNEXT
 #define	CLNEXT		CTRL('v')
+#endif
+#ifndef CDISCARD
 #define	CDISCARD 	CTRL('o')
+#endif
+#ifndef CWERASE
 #define	CWERASE 	CTRL('w')
+#endif
+#ifndef CREPRINT
 #define	CREPRINT 	CTRL('r')
+#endif
+#ifndef CEOT
 #define	CEOT		CEOF
+#endif
 /* compat */
+#ifndef CBRK
 #define	CBRK		CEOL
+#endif
+#ifndef CRPRNT
 #define CRPRNT		CREPRINT
+#endif
+#ifndef CFLUSH
 #define	CFLUSH		CDISCARD
+#endif
 
 /* PROTECTED INCLUSION ENDS HERE */
 #endif /* !_SYS_TTYDEFAULTS_H_ */
