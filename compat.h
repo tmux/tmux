@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.13 2009-08-20 12:25:17 nicm Exp $ */
+/* $Id: compat.h,v 1.14 2009-08-20 12:49:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -15,6 +15,13 @@
  * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
+#ifndef HAVE_U_INT
+typedef uint8_t u_int8_t;
+typedef uint16_t u_int16_t;
+typedef uint32_t u_int32_t;
+typedef uint64_t u_int64_t;
+#endif
 
 #ifndef HAVE_PATHS_H
 #define	_PATH_BSHELL	"/bin/sh"

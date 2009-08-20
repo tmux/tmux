@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.30 2009-08-20 12:39:21 nicm Exp $
+# $Id: configure,v 1.31 2009-08-20 12:49:18 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -36,6 +36,7 @@ cat <<EOF >>$CONFIG_H
 #undef HAVE_TTYDEFAULTS_H
 #undef HAVE_TTYDEFCHARS
 #undef HAVE_UTIL_H
+#undef HAVE_U_INT
 #undef HAVE_VIS
 EOF
 
@@ -64,6 +65,7 @@ case $TMUX_PLATFORM in
 #define HAVE_TTYDEFAULTS_H
 #define HAVE_TTYDEFCHARS
 #define HAVE_UTIL_H
+#define HAVE_U_INT
 #define HAVE_VIS
 EOF
 	cat <<EOF >>$CONFIG_MK
@@ -87,6 +89,7 @@ EOF
 #define HAVE_STRCASESTR
 #define HAVE_STRSEP
 #define HAVE_TTYDEFAULTS_H
+#define HAVE_U_INT
 EOF
 	cat <<EOF >>$CONFIG_MK
 CFLAGS+= -std=c99 -D_GNU_SOURCE -D_POSIX_SOURCE
@@ -178,6 +181,7 @@ EOF
 #define HAVE_TTYDEFAULTS_H
 #define HAVE_TTYDEFCHARS
 #define HAVE_UTIL_H
+#define HAVE_U_INT
 EOF
 	cat <<EOF >>$CONFIG_MK
 LIBS+= -lcurses
@@ -210,6 +214,7 @@ EOF
 #define HAVE_STRTONUM
 #define HAVE_STRSEP
 #define HAVE_TTYDEFCHARS
+#define HAVE_U_INT
 EOF
 	cat <<EOF >>$CONFIG_MK
 LIBS+= -lcurses -lcrypt -lutil
@@ -239,6 +244,7 @@ EOF
 #define HAVE_STRSEP
 #define HAVE_TTYDEFCHARS
 #define HAVE_UTIL_H
+#define HAVE_U_INT
 EOF
 	cat <<EOF >>$CONFIG_MK
 CPPFLAGS+= -I/usr/pkg/include
