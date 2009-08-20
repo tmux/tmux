@@ -1,4 +1,4 @@
-/* $Id: ttydefaults.h,v 1.2 2009-08-20 12:27:58 nicm Exp $ */
+/* $Id: ttydefaults.h,v 1.3 2009-08-20 12:38:37 nicm Exp $ */
 /*	$OpenBSD: ttydefaults.h,v 1.6 2003/06/02 23:28:22 millert Exp $	*/
 /*	$NetBSD: ttydefaults.h,v 1.8 1996/04/09 20:55:45 cgd Exp $	*/
 
@@ -56,6 +56,7 @@
 /*
  * Control Character Defaults
  */
+#undef CTRL
 #define CTRL(x)	(x&037)
 #ifndef CEOF
 #define	CEOF		CTRL('d')
