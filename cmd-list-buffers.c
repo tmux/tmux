@@ -1,4 +1,4 @@
-/* $Id: cmd-list-buffers.c,v 1.10 2009-08-20 11:28:05 tcunha Exp $ */
+/* $Id: cmd-list-buffers.c,v 1.11 2009-08-20 11:33:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,6 @@
 #include <sys/types.h>
 
 #include <string.h>
-#include <vis.h>
 
 #include "tmux.h"
 

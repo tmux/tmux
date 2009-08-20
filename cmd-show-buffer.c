@@ -1,4 +1,4 @@
-/* $Id: cmd-show-buffer.c,v 1.7 2009-08-20 11:30:24 tcunha Exp $ */
+/* $Id: cmd-show-buffer.c,v 1.8 2009-08-20 11:33:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,6 @@
 #include <sys/types.h>
 
 #include <string.h>
-#include <vis.h>
 
 #include "tmux.h"
 
