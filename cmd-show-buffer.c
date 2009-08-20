@@ -1,4 +1,4 @@
-/* $Id: cmd-show-buffer.c,v 1.8 2009-08-20 11:33:13 tcunha Exp $ */
+/* $Id: cmd-show-buffer.c,v 1.9 2009-08-20 11:35:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -93,7 +93,7 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	
 	if (len != 0) {
 		buf[len] = '\0';
-		ctx->print(ctx, buf);
+		ctx->print(ctx, "%s", buf);
 	}
 	xfree(buf);
 
