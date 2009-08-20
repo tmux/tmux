@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.81 2009-08-20 11:22:48 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.82 2009-08-20 11:23:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -596,7 +596,6 @@ window_copy_search_down(struct window_pane *wp, const char *searchstr)
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	screen_write_nputs(&ctx, -1, &gc, utf8flag, "%s", searchstr);
 	screen_write_stop(&ctx);
-	searchlen = strlen(searchstr);
 
 	fx = data->cx;
 	fy = gd->hsize - data->oy + data->cy;
