@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.36 2009-08-09 16:50:57 tcunha Exp $ */
+/* $Id: window-more.c,v 1.37 2009-08-20 11:24:33 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -188,7 +188,7 @@ window_more_write_line(
 	if (data->top + py  < ARRAY_LENGTH(&data->list)) {
 		msg = ARRAY_ITEM(&data->list, data->top + py);
 		screen_write_nputs(
-		    ctx, screen_size_x(s) - 1 - size, &gc, utf8flag, "%s", msg);
+		    ctx, screen_size_x(s) - size, &gc, utf8flag, "%s", msg);
 	}
 	while (s->cx < screen_size_x(s) - size)
 		screen_write_putc(ctx, &gc, ' ');
