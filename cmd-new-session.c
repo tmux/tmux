@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.58 2009-08-20 05:34:57 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.59 2009-08-20 18:35:53 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -214,8 +214,6 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		tio.c_cc[VERASE] = CERASE;
 		tio.c_cc[VKILL] = CKILL;
 		tio.c_cc[VEOF] = CEOF;
-		tio.c_cc[VTIME] = CTIME;
-		tio.c_cc[VMIN] = CMIN;
 		tio.c_cc[VSTART] = CSTART;
 		tio.c_cc[VSTOP] = CSTOP;
 		tio.c_cc[VSUSP] = CSUSP;
