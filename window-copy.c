@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.82 2009-08-20 11:23:36 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.83 2009-08-20 11:52:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -504,6 +504,8 @@ window_copy_search_rl(struct grid *gd,
 	u_int	ax, bx, px;
 
 	for (ax = last + 1; ax > first; ax--) {
+		if (gd->sx - (ax - 1) < sgd->sx)
+			continue;
 		for (bx = 0; bx < sgd->sx; bx++) {
 			px = ax - 1 + bx;
 			if (!window_copy_search_compare(gd, px, py, sgd, bx))
