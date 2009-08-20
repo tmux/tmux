@@ -1,4 +1,4 @@
-/* $Id: cmd-show-buffer.c,v 1.6 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-show-buffer.c,v 1.7 2009-08-20 11:30:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,8 @@
 
 #include <sys/types.h>
 
-#include <stdlib.h>
+#include <string.h>
+#include <vis.h>
 
 #include "tmux.h"
 
@@ -45,9 +46,9 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_buffer_data	*data = self->data;
 	struct session		*s;
 	struct paste_buffer	*pb;
-	u_int			 size;
-	char			*buf, *ptr;
-	size_t			 len;
+	char			*in, *buf, *ptr;
+	size_t			 size, len;
+	u_int			 width;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
@@ -61,27 +62,43 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "no buffer %d", data->buffer);
 		return (-1);
 	}
+	if (pb == NULL)
+		return (0);
 
-	if (pb != NULL) {
-		size = s->sx;
+	size = strlen(pb->data);
+	if (size > SIZE_MAX / 4 - 1)
+		size = SIZE_MAX / 4 - 1;
+	in = xmalloc(size * 4 + 1);
+	strvisx(in, pb->data, size, VIS_OCTAL|VIS_TAB);
 
-		buf = xmalloc(size + 1);
-		len = 0;
+	width = s->sx;
+	if (ctx->cmdclient != NULL)
+		width = ctx->cmdclient->tty.sx;
+	
+	buf = xmalloc(width + 1);
+	len = 0;
+	
+	ptr = in;
+	do {
+		buf[len++] = *ptr++;
+		
+		if (len == width || buf[len - 1] == '\n') {
+			if (buf[len - 1] == '\n')
+				len--;
+			buf[len] = '\0';
 
-		ptr = pb->data;
-		do {
-			buf[len++] = *ptr++;
-
-			if (len == size) {
-				buf[len] = '\0';
-				ctx->print(ctx, buf);
-
-				len = 0;
-			}
-		} while (*ptr != '\0');
+			ctx->print(ctx, "%s", buf);		
+			len = 0;
+		}
+	} while (*ptr != '\0');
+	
+	if (len != 0) {
 		buf[len] = '\0';
 		ctx->print(ctx, buf);
 	}
+	xfree(buf);
+
+	xfree(in);
 
 	return (0);
 }
