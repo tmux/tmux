@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.11 2009-08-19 09:00:05 nicm Exp $ */
+/* $Id: compat.h,v 1.12 2009-08-20 05:34:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -78,6 +78,18 @@
 #include <vis.h>
 #else
 #include "compat/vis.h"
+#endif
+
+#ifdef HAVE_TTYDEFAULTS_H
+#ifdef HAVE_TTYDEFCHARS
+#define TTYDEFCHARS
+#endif
+#include <sys/ttydefaults.h>
+#else
+#ifndef OXTABS
+#define OXTABS 0
+#endif
+#include "compat/ttydefaults.h"
 #endif
 
 #ifndef HAVE_IMSG

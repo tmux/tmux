@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.26 2009-08-19 15:57:54 nicm Exp $
+# $Id: configure,v 1.27 2009-08-20 05:34:58 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -32,6 +32,7 @@ cat <<EOF >>$CONFIG_H
 #undef HAVE_STRSEP
 #undef HAVE_STRTONUM
 #undef HAVE_TREE_H
+#undef HAVE_TTYDEFAULTS_H
 #undef HAVE_TTYDEFCHARS
 #undef HAVE_UTIL_H
 #undef HAVE_VIS
@@ -58,6 +59,7 @@ case $TMUX_PLATFORM in
 #define HAVE_STRSEP
 #define HAVE_STRTONUM
 #define HAVE_TREE_H
+#define HAVE_TTYDEFAULTS_H
 #define HAVE_TTYDEFCHARS
 #define HAVE_UTIL_H
 #define HAVE_VIS
@@ -81,6 +83,7 @@ EOF
 #define HAVE_PTY_H
 #define HAVE_STRCASESTR
 #define HAVE_STRSEP
+#define HAVE_TTYDEFAULTS_H
 EOF
 	cat <<EOF >>$CONFIG_MK
 CFLAGS+= -std=c99 -D_GNU_SOURCE -D_POSIX_SOURCE
@@ -167,6 +170,7 @@ EOF
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_STRSEP
+#define HAVE_TTYDEFAULTS_H
 #define HAVE_TTYDEFCHARS
 #define HAVE_UTIL_H
 EOF

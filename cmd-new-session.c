@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.57 2009-08-19 15:57:54 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.58 2009-08-20 05:34:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,9 +21,6 @@
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
-
-#define TTYDEFCHARS
-#include <sys/ttydefaults.h>
 
 #include "tmux.h"
 
