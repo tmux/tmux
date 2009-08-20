@@ -100,9 +100,6 @@ buffer_remove(struct buffer *b, size_t size)
 void
 buffer_write(struct buffer *b, const void *data, size_t size)
 {
-	if (size == 0)
-		fatalx("zero size");
-
 	buffer_ensure(b, size);
 	memcpy(BUFFER_IN(b), data, size);
 	buffer_add(b, size);
@@ -127,7 +124,7 @@ buffer_write8(struct buffer *b, uint8_t n)
 {
 	buffer_ensure(b, 1);
 	BUFFER_IN(b)[0] = n;
-	buffer_add(b, 1);
+	b->size++;
 }
 
 /* Extract an 8-bit value. */

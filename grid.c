@@ -198,6 +198,10 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx)
 	if (sx <= gl->cellsize)
 		return;
 
+	if (gl->cellsize > gd->sx / 2)
+		sx = gd->sx;
+	else
+		sx = 1 + gl->cellsize * 2;
 	gl->celldata = xrealloc(gl->celldata, sx, sizeof *gl->celldata);
 	for (xx = gl->cellsize; xx < sx; xx++)
 		grid_put_cell(gd, xx, py, &grid_default_cell);
