@@ -858,9 +858,6 @@ screen_write_overwrite(struct screen_write_ctx *ctx)
 	u_int			 xx;
 
 	gc = grid_view_peek_cell(gd, s->cx, s->cy);
-	if (gc->flags & GRID_FLAG_UTF8)
-		gu = grid_view_peek_utf8(gd, s->cx, s->cy);
-
 	if (gc->flags & GRID_FLAG_PADDING) {
 		/*
 		 * A padding cell, so clear any following and leading padding
