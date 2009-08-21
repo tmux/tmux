@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.94 2009-08-20 11:54:58 tcunha Exp $ */
+/* $Id: input.c,v 1.95 2009-08-21 21:07:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -956,7 +956,6 @@ input_handle_sequence_cbt(struct input_ctx *ictx)
 void
 input_handle_sequence_da(struct input_ctx *ictx)
 {
-	struct screen  *s = ictx->ctx.s;
 	uint16_t	n;
 
 	if (ictx->private != '\0')
