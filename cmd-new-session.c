@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.59 2009-08-20 18:35:53 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.60 2009-08-21 11:38:09 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -147,6 +147,45 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (ctx->cmdclient == NULL && ctx->curclient == NULL)
 		detached = 1;
 
+	/*
+	 * Fill in the termios settings used for new windows in this session;
+	 * if there is a command client, use the control characters from it.
+	 *
+	 * This is read again with tcgetattr() rather than using tty.tio as if
+	 * detached, tty_open won't be called. Because of this, it must be done
+	 * before opening the terminal as that calls tcsetattr() to prepare for
+	 * tmux taking over.
+	 */
+	if (ctx->cmdclient != NULL && ctx->cmdclient->tty.fd != -1) {
+		if (tcgetattr(ctx->cmdclient->tty.fd, &tio) != 0)
+			fatal("tcgetattr failed");
+	} else {
+#ifdef HAVE_TTYDEFCHARS
+		memcpy(tio.c_cc, ttydefchars, sizeof tio.c_cc);
+#else
+		memset(tio.c_cc, _POSIX_VDISABLE, sizeof tio.c_cc);
+		tio.c_cc[VINTR] = CINTR;
+		tio.c_cc[VQUIT] = CQUIT;
+		tio.c_cc[VERASE] = CERASE;
+		tio.c_cc[VKILL] = CKILL;
+		tio.c_cc[VEOF] = CEOF;
+		tio.c_cc[VSTART] = CSTART;
+		tio.c_cc[VSTOP] = CSTOP;
+		tio.c_cc[VSUSP] = CSUSP;
+		tio.c_cc[VEOL] = CEOL;
+		tio.c_cc[VREPRINT] = CREPRINT;
+		tio.c_cc[VDISCARD] = CDISCARD;
+		tio.c_cc[VWERASE] = CWERASE;
+		tio.c_cc[VLNEXT] = CLNEXT;
+#endif
+	}
+	tio.c_iflag = TTYDEF_IFLAG;
+	tio.c_oflag = TTYDEF_OFLAG;
+	tio.c_lflag = TTYDEF_LFLAG;
+	tio.c_cflag = TTYDEF_CFLAG;
+	cfsetispeed(&tio, TTYDEF_SPEED);
+	cfsetospeed(&tio, TTYDEF_SPEED);
+
 	/* Open the terminal if necessary. */
 	if (!detached && ctx->cmdclient != NULL) {
 		if (!(ctx->cmdclient->flags & CLIENT_TERMINAL)) {
@@ -196,40 +235,6 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	update = options_get_string(&global_s_options, "update-environment");
 	if (ctx->cmdclient != NULL)
 		environ_update(update, &ctx->cmdclient->environ, &env);
-
-	/*
-	 * Fill in the termios settings used for new windows in this session;
-	 * if there is a command client, use the control characters from it.
-	 */
-	if (ctx->cmdclient != NULL && ctx->cmdclient->tty.fd != -1) {
-		if (tcgetattr(ctx->cmdclient->tty.fd, &tio) != 0)
-			fatal("tcgetattr failed");
-	} else {
-#ifdef HAVE_TTYDEFCHARS
-		memcpy(tio.c_cc, ttydefchars, sizeof tio.c_cc);
-#else
-		memset(tio.c_cc, _POSIX_VDISABLE, sizeof tio.c_cc);
-		tio.c_cc[VINTR] = CINTR;
-		tio.c_cc[VQUIT] = CQUIT;
-		tio.c_cc[VERASE] = CERASE;
-		tio.c_cc[VKILL] = CKILL;
-		tio.c_cc[VEOF] = CEOF;
-		tio.c_cc[VSTART] = CSTART;
-		tio.c_cc[VSTOP] = CSTOP;
-		tio.c_cc[VSUSP] = CSUSP;
-		tio.c_cc[VEOL] = CEOL;
-		tio.c_cc[VREPRINT] = CREPRINT;
-		tio.c_cc[VDISCARD] = CDISCARD;
-		tio.c_cc[VWERASE] = CWERASE;
-		tio.c_cc[VLNEXT] = CLNEXT;
-#endif
-	}
-	tio.c_iflag = TTYDEF_IFLAG;
-	tio.c_oflag = TTYDEF_OFLAG;
-	tio.c_lflag = TTYDEF_LFLAG;
-	tio.c_cflag = TTYDEF_CFLAG;
-	cfsetispeed(&tio, TTYDEF_SPEED);
-	cfsetospeed(&tio, TTYDEF_SPEED);
 
 	/* Create the new session. */
 	idx = -1 - options_get_number(&global_s_options, "base-index");
