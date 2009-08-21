@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.30 2009-08-10 21:40:21 tcunha Exp $ */
+/* $Id: grid.c,v 1.31 2009-08-21 21:09:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -198,6 +198,10 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx)
 	if (sx <= gl->cellsize)
 		return;
 
+	if (gl->cellsize > gd->sx / 2)
+		sx = gd->sx;
+	else
+		sx = 1 + gl->cellsize * 2;
 	gl->celldata = xrealloc(gl->celldata, sx, sizeof *gl->celldata);
 	for (xx = gl->cellsize; xx < sx; xx++)
 		grid_put_cell(gd, xx, py, &grid_default_cell);

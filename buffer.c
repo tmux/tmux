@@ -1,4 +1,4 @@
-/* $Id: buffer.c,v 1.7 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: buffer.c,v 1.8 2009-08-21 21:09:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -100,9 +100,6 @@ buffer_remove(struct buffer *b, size_t size)
 void
 buffer_write(struct buffer *b, const void *data, size_t size)
 {
-	if (size == 0)
-		fatalx("zero size");
-
 	buffer_ensure(b, size);
 	memcpy(BUFFER_IN(b), data, size);
 	buffer_add(b, size);
@@ -127,7 +124,7 @@ buffer_write8(struct buffer *b, uint8_t n)
 {
 	buffer_ensure(b, 1);
 	BUFFER_IN(b)[0] = n;
-	buffer_add(b, 1);
+	b->size++;
 }
 
 /* Extract an 8-bit value. */
