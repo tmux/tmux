@@ -596,7 +596,9 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
   	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
 
-	if (wp->xoff != 0 || screen_size_x(s) < tty->sx) {
+	if (wp->xoff != 0 || screen_size_x(s) < tty->sx ||
+	    (!tty_term_has(tty->term, TTYC_DCH) &&
+	    !tty_term_has(tty->term, TTYC_DCH1))) {
 		tty_draw_line(tty, wp->screen, ctx->ocy, wp->xoff, wp->yoff);
 		return;
 	}
@@ -604,7 +606,9 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 	tty_reset(tty);
 
  	tty_cursor(tty, ctx->ocx, ctx->ocy, wp->xoff, wp->yoff);
-	tty_emulate_repeat(tty, TTYC_DCH, TTYC_DCH1, ctx->num);
+	if (tty_term_has(tty->term, TTYC_DCH) ||
+	    tty_term_has(tty->term, TTYC_DCH1))
+		tty_emulate_repeat(tty, TTYC_DCH, TTYC_DCH1, ctx->num);
 }
 
 void

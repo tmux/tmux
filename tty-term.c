@@ -338,10 +338,6 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 		    "terminal does not support ich1 or ich or smir and rmir");
 		goto error;
 	}
-	if (!tty_term_has(term, TTYC_DCH1) && !tty_term_has(term, TTYC_DCH)) {
-		xasprintf(cause, "terminal does not support dch1 or dch");
-		goto error;
-	}
 
 	/*
 	 * Figure out if terminal support default colours. AX is a screen
