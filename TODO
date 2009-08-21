@@ -79,8 +79,6 @@
   set 256 as well
 - neww and attach can create a session if none exists?
        would work fine with config file since
-- option to set customisable prompt for command-prompt (so eg bind -n F2
-  command-prompt "splitw 'exec man %%') can have "man: " instead of "(splitw)".
 - a way for force-width/height to apply to only one pane (how?)
 - **** a command to run something without a window and send any output to the
   window-more. if no output, info() a line saying "'%s' returned %d". so i can
