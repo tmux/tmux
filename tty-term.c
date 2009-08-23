@@ -173,7 +173,7 @@ tty_term_override(struct tty_term *term, const char *overrides)
  			if ((ptr = strchr(entstr, '=')) != NULL) {
 				*ptr++ = '\0';
 				val = xstrdup(ptr);
-				if (strunvis(val, ptr) == NULL) {
+				if (strunvis(val, ptr) == -1) {
 					xfree(val);
 					val = xstrdup(ptr);
 				}
