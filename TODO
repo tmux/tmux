@@ -101,3 +101,7 @@
 - handle resize better in copy mode
 - way to copy stuff that is off screen due to resize
 - fix line wrapping c&p problems in xterm etc
+- it would be awesome if choose-window/choose-session (+choose-client) were
+  extended to accept a command: so you could do "choose-window 'killw -t%%'"
+  and it will replace the selected window target (fully qualified w/ session
+  name etc) in the command and execute it

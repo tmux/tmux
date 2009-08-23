@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.29 2009-08-21 21:15:00 tcunha Exp $ */
+/* $Id: tty-term.c,v 1.30 2009-08-23 11:50:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -172,7 +172,7 @@ tty_term_override(struct tty_term *term, const char *overrides)
  			if ((ptr = strchr(entstr, '=')) != NULL) {
 				*ptr++ = '\0';
 				val = xstrdup(ptr);
-				if (strunvis(val, ptr) == NULL) {
+				if (strunvis(val, ptr) == -1) {
 					xfree(val);
 					val = xstrdup(ptr);
 				}
