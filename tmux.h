@@ -1109,7 +1109,7 @@ void		 sigreset(void);
 void		 sighandler(int);
 
 /* cfg.c */
-int		 load_cfg(const char *, char **x);
+int		 load_cfg(const char *, struct cmd_ctx *, char **);
 
 /* mode-key.c */
 extern const struct mode_key_table mode_key_tables[];

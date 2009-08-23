@@ -51,7 +51,7 @@ cfg_error(unused struct cmd_ctx *ctx, const char *fmt, ...)
 }
 
 int
-load_cfg(const char *path, char **cause)
+load_cfg(const char *path, struct cmd_ctx *ctxin, char **cause)
 {
 	FILE   	        *f;
 	u_int		 n;
@@ -87,14 +87,19 @@ load_cfg(const char *path, char **cause)
 			continue;
 		cfg_cause = NULL;
 
-		ctx.msgdata = NULL;
-		ctx.curclient = NULL;
+		if (ctxin == NULL) {
+			ctx.msgdata = NULL;
+			ctx.curclient = NULL;
+			ctx.cmdclient = NULL;
+		} else {
+			ctx.msgdata = ctxin->msgdata;
+			ctx.curclient = ctxin->curclient;
+			ctx.cmdclient = ctxin->cmdclient;
+		}
 
 		ctx.error = cfg_error;
 		ctx.print = cfg_print;
 		ctx.info = cfg_print;
-
-		ctx.cmdclient = NULL;
 
 		cfg_cause = NULL;
 		cmd_list_exec(cmdlist, &ctx);

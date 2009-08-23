@@ -188,9 +188,9 @@ server_start(char *path)
 			    &cause, "%s: %s", strerror(errno), SYSTEM_CFG);
 			goto error;
 		}
-	} else if (load_cfg(SYSTEM_CFG, &cause) != 0)
+	} else if (load_cfg(SYSTEM_CFG, NULL, &cause) != 0)
 		goto error;
-	if (cfg_file != NULL && load_cfg(cfg_file, &cause) != 0)
+	if (cfg_file != NULL && load_cfg(cfg_file, NULL, &cause) != 0)
 		goto error;
 
 	exit(server_main(srv_fd));

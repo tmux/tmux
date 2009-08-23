@@ -90,7 +90,7 @@ cmd_source_file_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_source_file_data	*data = self->data;
 	char				*cause;
 
-	if (load_cfg(data->path, &cause) != 0) {
+	if (load_cfg(data->path, ctx, &cause) != 0) {
 		ctx->error(ctx, "%s", cause);
 		xfree(cause);
 		return (-1);
