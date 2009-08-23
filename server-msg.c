@@ -188,7 +188,6 @@ server_msg_command(struct client *c, struct msg_command_data *data)
 
 	ctx.msgdata = data;
 	ctx.curclient = NULL;
-	ctx.cursession = NULL;
 
 	ctx.cmdclient = c;
 

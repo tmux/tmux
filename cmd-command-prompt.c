@@ -238,7 +238,6 @@ cmd_command_prompt_callback(void *data, const char *s)
 	}
 
 	ctx.msgdata = NULL;
-	ctx.cursession = c->session;
 	ctx.curclient = c;
 
 	ctx.error = key_bindings_error;

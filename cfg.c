@@ -88,7 +88,6 @@ load_cfg(const char *path, char **cause)
 		cfg_cause = NULL;
 
 		ctx.msgdata = NULL;
-		ctx.cursession = NULL;
 		ctx.curclient = NULL;
 
 		ctx.error = cfg_error;

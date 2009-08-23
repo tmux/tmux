@@ -988,8 +988,6 @@ struct cmd_ctx {
 	struct client  *curclient;
 	struct client  *cmdclient;
 
-	struct session *cursession;
-
 	struct msg_command_data	*msgdata;
 
 	void printflike2 (*print)(struct cmd_ctx *, const char *, ...);

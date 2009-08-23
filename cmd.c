@@ -299,8 +299,8 @@ cmd_current_session(struct cmd_ctx *ctx)
 	u_int			 i;
 	int			 found;
 
-	if (ctx->cursession != NULL)
-		return (ctx->cursession);
+	if (ctx->curclient != NULL && ctx->curclient->session != NULL)
+		return (ctx->curclient->session);
 
 	/*
 	 * If the name of the calling client's pty is know, build a list of the

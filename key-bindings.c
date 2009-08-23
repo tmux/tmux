@@ -218,7 +218,7 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 void printflike2
 key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	struct winlink	*wl = ctx->cursession->curw;
+	struct winlink	*wl = ctx->curclient->session->curw;
 	va_list		 ap;
 
 	if (wl->window->active->mode != &window_more_mode)
@@ -254,7 +254,6 @@ key_bindings_dispatch(struct key_binding *bd, struct client *c)
 	struct cmd_ctx	 	 ctx;
 
 	ctx.msgdata = NULL;
-	ctx.cursession = c->session;
 	ctx.curclient = c;
 
 	ctx.error = key_bindings_error;
