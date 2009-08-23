@@ -381,7 +381,8 @@ main(int argc, char **argv)
 		options_set_number(&global_s_options, "status-utf8", 0);
 	options_set_string(&global_s_options,
 	    "terminal-overrides", "*88col*:colors=88,*256col*:colors=256");
-	options_set_string(&global_s_options, "update-environment", "DISPLAY");
+	options_set_string(&global_s_options, "update-environment", "DISPLAY "
+	    "WINDOWID SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION");
 	options_set_number(&global_s_options, "visual-activity", 0);
 	options_set_number(&global_s_options, "visual-bell", 0);
 	options_set_number(&global_s_options, "visual-content", 0);
