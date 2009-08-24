@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.60 2009-08-21 11:38:09 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.61 2009-08-24 16:31:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -112,6 +112,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_new_session_data	*data = self->data;
 	struct session			*s;
+	struct window			*w;
 	struct environ			 env;
 	struct termios			 tio;
 	const char			*update;
@@ -202,18 +203,22 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	/* Find new session size and options. */
+	/* Get the new session working directory. */
+	if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
+		cwd = ctx->cmdclient->cwd;
+	else
+		cwd = options_get_string(&global_s_options, "default-path");
+
+	/* Find new session size. */
 	if (detached) {
 		sx = 80;
 		sy = 25;
+	} else if (ctx->cmdclient != NULL) {
+		sx = ctx->cmdclient->tty.sx;
+		sy = ctx->cmdclient->tty.sy;
 	} else {
-		if (ctx->cmdclient != NULL) {
-			sx = ctx->cmdclient->tty.sx;
-			sy = ctx->cmdclient->tty.sy;
-		} else {
-			sx = ctx->curclient->tty.sx;
-			sy = ctx->curclient->tty.sy;
-		}
+		sx = ctx->curclient->tty.sx;
+		sy = ctx->curclient->tty.sy;
 	}
 	if (sy > 0 && options_get_number(&global_s_options, "status"))
 		sy--;
@@ -221,10 +226,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		sx = 1;
 	if (sy == 0)
 		sy = 1;
-	if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
-		cwd = ctx->cmdclient->cwd;
-	else
-		cwd = options_get_string(&global_s_options, "default-path");
+
+	/* Figure out the command for the new window. */
 	if (data->cmd != NULL)
 		cmd = data->cmd;
 	else
@@ -247,26 +250,23 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	environ_free(&env);
 
+	/* Set the initial window name if one given. */
 	if (data->winname != NULL) {
-		xfree(s->curw->window->name);
-		s->curw->window->name = xstrdup(data->winname);
-		options_set_number(
-		    &s->curw->window->options, "automatic-rename", 0);
+		w = s->curw->window;
+
+		xfree(w->name);
+		w->name = xstrdup(data->winname);
+
+		options_set_number(&w->options, "automatic-rename", 0);
 	}
 
-	/* 
-	 * If a command client exists, it is either taking this session (and
-	 * needs to get MSG_READY and stay around), or -d is given and it needs
-	 * to exit.
+	/*
+	 * Set the client to the new session. If a command client exists, it is
+	 * taking this session and needs to get MSG_READY and stay around.
 	 */
-	if (ctx->cmdclient != NULL) {
-		if (!detached)
-			server_write_client(ctx->cmdclient, MSG_READY, NULL, 0);
-	}
-	
-	/* Set the client to the new session. */
  	if (!detached) {
 		if (ctx->cmdclient != NULL) {
+			server_write_client(ctx->cmdclient, MSG_READY, NULL, 0);
  			ctx->cmdclient->session = s;
 			server_redraw_client(ctx->cmdclient);
 		} else {
