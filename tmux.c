@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.163 2009-08-16 19:20:37 tcunha Exp $ */
+/* $Id: tmux.c,v 1.164 2009-08-24 16:35:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -390,7 +390,8 @@ main(int argc, char **argv)
 		options_set_number(&global_s_options, "status-utf8", 0);
 	options_set_string(&global_s_options,
 	    "terminal-overrides", "*88col*:colors=88,*256col*:colors=256");
-	options_set_string(&global_s_options, "update-environment", "DISPLAY");
+	options_set_string(&global_s_options, "update-environment", "DISPLAY "
+	    "WINDOWID SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION");
 	options_set_number(&global_s_options, "visual-activity", 0);
 	options_set_number(&global_s_options, "visual-bell", 0);
 	options_set_number(&global_s_options, "visual-content", 0);
