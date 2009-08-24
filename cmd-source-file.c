@@ -1,4 +1,4 @@
-/* $Id: cmd-source-file.c,v 1.7 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-source-file.c,v 1.8 2009-08-24 16:27:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Tiago Cunha <me@tiagocunha.org>
@@ -90,7 +90,7 @@ cmd_source_file_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_source_file_data	*data = self->data;
 	char				*cause;
 
-	if (load_cfg(data->path, &cause) != 0) {
+	if (load_cfg(data->path, ctx, &cause) != 0) {
 		ctx->error(ctx, "%s", cause);
 		xfree(cause);
 		return (-1);

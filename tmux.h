@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.426 2009-08-24 16:24:18 tcunha Exp $ */
+/* $Id: tmux.h,v 1.427 2009-08-24 16:27:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1107,7 +1107,7 @@ void		 sigreset(void);
 void		 sighandler(int);
 
 /* cfg.c */
-int		 load_cfg(const char *, char **x);
+int		 load_cfg(const char *, struct cmd_ctx *, char **);
 
 /* mode-key.c */
 extern const struct mode_key_table mode_key_tables[];

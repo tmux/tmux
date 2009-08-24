@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.174 2009-08-20 11:45:37 tcunha Exp $ */
+/* $Id: server.c,v 1.175 2009-08-24 16:27:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -191,9 +191,9 @@ server_start(char *path)
 			    &cause, "%s: %s", strerror(errno), SYSTEM_CFG);
 			goto error;
 		}
-	} else if (load_cfg(SYSTEM_CFG, &cause) != 0)
+	} else if (load_cfg(SYSTEM_CFG, NULL, &cause) != 0)
 		goto error;
-	if (cfg_file != NULL && load_cfg(cfg_file, &cause) != 0)
+	if (cfg_file != NULL && load_cfg(cfg_file, NULL, &cause) != 0)
 		goto error;
 
 	exit(server_main(srv_fd));
