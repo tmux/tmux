@@ -990,9 +990,16 @@ struct cmd_ctx {
 
 	struct msg_command_data	*msgdata;
 
+	/* gcc2 doesn't understand attributes on function pointers... */
+#if defined(__GNUC__) && __GNUC__ >= 3
 	void printflike2 (*print)(struct cmd_ctx *, const char *, ...);
 	void printflike2 (*info)(struct cmd_ctx *, const char *, ...);
 	void printflike2 (*error)(struct cmd_ctx *, const char *, ...);
+#else
+	void (*print)(struct cmd_ctx *, const char *, ...);
+	void (*info)(struct cmd_ctx *, const char *, ...);
+	void (*error)(struct cmd_ctx *, const char *, ...);
+#endif
 };
 
 struct cmd {
