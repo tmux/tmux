@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.112 2009-08-09 17:48:55 tcunha Exp $ */
+/* $Id: cmd.c,v 1.113 2009-08-24 16:24:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -298,8 +298,8 @@ cmd_current_session(struct cmd_ctx *ctx)
 	u_int			 i;
 	int			 found;
 
-	if (ctx->cursession != NULL)
-		return (ctx->cursession);
+	if (ctx->curclient != NULL && ctx->curclient->session != NULL)
+		return (ctx->curclient->session);
 
 	/*
 	 * If the name of the calling client's pty is know, build a list of the

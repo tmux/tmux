@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.81 2009-08-14 21:31:20 tcunha Exp $ */
+/* $Id: server-msg.c,v 1.82 2009-08-24 16:24:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -188,7 +188,6 @@ server_msg_command(struct client *c, struct msg_command_data *data)
 
 	ctx.msgdata = data;
 	ctx.curclient = NULL;
-	ctx.cursession = NULL;
 
 	ctx.cmdclient = c;
 

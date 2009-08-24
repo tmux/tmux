@@ -1,4 +1,4 @@
-/* $Id: cmd-confirm-before.c,v 1.10 2009-08-16 19:29:24 tcunha Exp $ */
+/* $Id: cmd-confirm-before.c,v 1.11 2009-08-24 16:24:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -122,7 +122,6 @@ cmd_confirm_before_callback(void *data, const char *s)
 	}
 
 	ctx.msgdata = NULL;
-	ctx.cursession = c->session;
 	ctx.curclient = c;
 
 	ctx.error = key_bindings_error;

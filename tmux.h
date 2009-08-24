@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.425 2009-08-20 11:51:20 tcunha Exp $ */
+/* $Id: tmux.h,v 1.426 2009-08-24 16:24:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -985,8 +985,6 @@ struct cmd_ctx {
 	 */
 	struct client  *curclient;
 	struct client  *cmdclient;
-
-	struct session *cursession;
 
 	struct msg_command_data	*msgdata;
 

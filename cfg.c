@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.20 2009-08-09 17:53:50 tcunha Exp $ */
+/* $Id: cfg.c,v 1.21 2009-08-24 16:24:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -88,7 +88,6 @@ load_cfg(const char *path, char **cause)
 		cfg_cause = NULL;
 
 		ctx.msgdata = NULL;
-		ctx.cursession = NULL;
 		ctx.curclient = NULL;
 
 		ctx.error = cfg_error;
