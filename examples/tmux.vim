@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: tmux(1) configuration file
 " Maintainer: Tiago Cunha <me@tiagocunha.org>
-" Last Change: $Date: 2009-08-16 19:18:10 $
+" Last Change: $Date: 2009-08-25 16:50:34 $
 
 if version < 600
 	syntax clear
@@ -38,6 +38,7 @@ syn keyword tmuxCmds suspend-client findw find-window breakp break-pane nextl
 syn keyword tmuxCmds next-layout rotatew rotate-window confirm[-before]
 syn keyword tmuxCmds clearhist clear-history selectl select-layout if[-shell]
 syn keyword tmuxCmds display[-message] set-environment show-environment
+syn keyword tmuxCmds choose-client
 
 syn keyword tmuxOptsSet prefix status status-fg status-bg bell-action
 syn keyword tmuxOptsSet default-command history-limit status-left status-right
