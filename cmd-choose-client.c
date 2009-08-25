@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-client.c,v 1.1 2009-08-25 13:53:39 tcunha Exp $ */
+/* $Id: cmd-choose-client.c,v 1.2 2009-08-25 13:55:29 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,6 +17,8 @@
  */
 
 #include <sys/types.h>
+
+#include <ctype.h>
 
 #include "tmux.h"
 
