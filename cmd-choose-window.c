@@ -27,11 +27,12 @@
 int	cmd_choose_window_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_choose_window_callback(void *, int);
+void	cmd_choose_window_free(void *);
 
 const struct cmd_entry cmd_choose_window_entry = {
 	"choose-window", NULL,
-	CMD_TARGET_WINDOW_USAGE,
-	0, 0,
+	CMD_TARGET_WINDOW_USAGE " [template]",
+	CMD_ARG01, 0,
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_choose_window_exec,
@@ -40,7 +41,9 @@ const struct cmd_entry cmd_choose_window_entry = {
 };
 
 struct cmd_choose_window_data {
-	u_int	session;
+	u_int		 client;
+	u_int		 session;
+	char   		*template;
 };
 
 int
@@ -104,9 +107,14 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	cdata = xmalloc(sizeof *cdata);
 	if (session_index(s, &cdata->session) != 0)
 		fatalx("session not found");
+	if (data->arg != NULL)
+		cdata->template = xstrdup(data->arg);
+	else
+		cdata->template = xstrdup("select-window -t '%%'");
+	cdata->client = server_client_index(ctx->curclient);
 
-	window_choose_ready(
-	    wl->window->active, cur, cmd_choose_window_callback, xfree, cdata);
+	window_choose_ready(wl->window->active, 
+	    cur, cmd_choose_window_callback, cmd_choose_window_free, cdata);
 
  	return (0);
 }
@@ -115,12 +123,56 @@ void
 cmd_choose_window_callback(void *data, int idx)
 {
 	struct cmd_choose_window_data	*cdata = data;
+	struct client			*c;
 	struct session			*s;
+	struct cmd_list			*cmdlist;
+	struct cmd_ctx			 ctx;
+	char				*target, *template, *cause;
 
-	if (idx != -1 && cdata->session <= ARRAY_LENGTH(&sessions) - 1) {
-		s = ARRAY_ITEM(&sessions, cdata->session);
-		if (s != NULL && session_select(s, idx) == 0)
-			server_redraw_session(s);
-		recalculate_sizes();
+	if (idx == -1)
+		return;
+	if (cdata->client > ARRAY_LENGTH(&clients) - 1)
+		return;
+	c = ARRAY_ITEM(&clients, cdata->client);
+	if (cdata->session > ARRAY_LENGTH(&sessions) - 1)
+		return;
+	s = ARRAY_ITEM(&sessions, cdata->session);
+	if (c->session != s)
+		return;
+
+	xasprintf(&target, "%s:%d", s->name, idx);
+	template = cmd_template_replace(cdata->template, target, 1);
+	xfree(target);
+
+	if (cmd_string_parse(template, &cmdlist, &cause) != 0) {
+		if (cause != NULL) {
+			*cause = toupper((u_char) *cause);
+			status_message_set(c, "%s", cause);
+			xfree(cause);
+		}
+		xfree(template);
+		return;
 	}
+	xfree(template);
+
+	ctx.msgdata = NULL;
+	ctx.curclient = c;
+
+	ctx.error = key_bindings_error;
+	ctx.print = key_bindings_print;
+	ctx.info = key_bindings_info;
+
+	ctx.cmdclient = NULL;
+
+	cmd_list_exec(cmdlist, &ctx);
+	cmd_list_free(cmdlist);
+}
+
+void
+cmd_choose_window_free(void *data)
+{
+	struct cmd_choose_window_data	*cdata = data;
+
+	xfree(cdata->template);
+	xfree(cdata);
 }

@@ -1268,10 +1268,12 @@ int		 cmd_find_index(
 		     struct cmd_ctx *, const char *, struct session **);
 struct winlink	*cmd_find_pane(struct cmd_ctx *,
 		     const char *, struct session **, struct window_pane **);
+char		*cmd_template_replace(char *, const char *, int);
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_break_pane_entry;
+extern const struct cmd_entry cmd_choose_client_entry;
 extern const struct cmd_entry cmd_choose_session_entry;
 extern const struct cmd_entry cmd_choose_window_entry;
 extern const struct cmd_entry cmd_clear_history_entry;

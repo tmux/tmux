@@ -130,6 +130,7 @@ key_bindings_init(void)
 		{ ']', 			  0, &cmd_paste_buffer_entry },
 		{ 'c', 			  0, &cmd_new_window_entry },
 		{ 'd', 			  0, &cmd_detach_client_entry },
+		{ 'D',			  0, &cmd_choose_client_entry },
 		{ 'f', 			  0, &cmd_command_prompt_entry },
 		{ 'i',			  0, &cmd_display_message_entry },
 		{ 'l', 			  0, &cmd_last_window_entry },
@@ -143,7 +144,7 @@ key_bindings_init(void)
 		{ 'x', 			  0, &cmd_confirm_before_entry },
 		{ '{',			  0, &cmd_swap_pane_entry },
 		{ '}',			  0, &cmd_swap_pane_entry },
-		{ '\002', 		  0, &cmd_send_prefix_entry },
+		{ '\002', /* C-b */	  0, &cmd_send_prefix_entry },
 		{ '1' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
 		{ '2' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
 		{ '3' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
@@ -162,7 +163,7 @@ key_bindings_init(void)
 		{ KEYC_LEFT | KEYC_CTRL,  1, &cmd_resize_pane_entry },
 		{ KEYC_RIGHT | KEYC_CTRL, 1, &cmd_resize_pane_entry },
 		{ 'o' | KEYC_ESCAPE,	  0, &cmd_rotate_window_entry },
-		{ '\017',	          0, &cmd_rotate_window_entry },
+		{ '\017', /* C-o */	  0, &cmd_rotate_window_entry },
 	};
 	u_int		 i;
 	struct cmd	*cmd;

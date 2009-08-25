@@ -35,7 +35,6 @@ size_t	 cmd_command_prompt_print(struct cmd *, char *, size_t);
 
 int	 cmd_command_prompt_callback(void *, const char *);
 void	 cmd_command_prompt_cfree(void *);
-char	*cmd_command_prompt_replace(char *, const char *, int);
 
 const struct cmd_entry cmd_command_prompt_entry = {
 	"command-prompt", NULL,
@@ -216,7 +215,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 	if (s == NULL)
 		return (0);
 
-	newtempl = cmd_command_prompt_replace(cdata->template, s, cdata->idx);
+	newtempl = cmd_template_replace(cdata->template, s, cdata->idx);
 	xfree(cdata->template);
 	cdata->template = newtempl;
 
@@ -264,44 +263,4 @@ cmd_command_prompt_cfree(void *data)
 	if (cdata->template != NULL)
 		xfree(cdata->template);
 	xfree(cdata);
-}
-
-char *
-cmd_command_prompt_replace(char *template, const char *s, int idx)
-{
-	char	 ch;
-	char	*buf, *ptr;
-	int	 replaced;
-	size_t	 len;
-
-	if (strstr(template, "%") == NULL)
-		return (xstrdup(template));
-
-	buf = xmalloc(1);
-	*buf = '\0';
-	len = 0;
-	replaced = 0;
-
-	ptr = template;
-	while (*ptr != '\0') {
-		switch (ch = *ptr++) {
-		case '%':
-			if (*ptr < '1' || *ptr > '9' || *ptr - '0' != idx) {
-				if (*ptr != '%' || replaced)
-					break;
-				replaced = 1;
-			}
-			ptr++;
-
-			len += strlen(s);
-			buf = xrealloc(buf, 1, len + 1);
-			strlcat(buf, s, len + 1);
-			continue;
-		}
-		buf = xrealloc(buf, 1, len + 2);
-		buf[len++] = ch;
-		buf[len] = '\0';
-	}
-
-	return (buf);
 }
