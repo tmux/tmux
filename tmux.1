@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.157 2009-08-24 16:35:24 tcunha Exp $
+.\" $Id: tmux.1,v 1.158 2009-08-25 13:53:39 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 23 2009 $
+.Dd $Mdocdate: August 25 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -622,14 +622,57 @@ off from its containing window to make it the only pane in a new window.
 If
 .Fl d
 is given, the new window does not become the current window.
-.It Ic choose-session Op Fl t Ar target-window
-Put a window into session choice mode, where the session for the current
-client may be selected interactively from a list.
+.It Xo
+.Ic choose-client
+.Op Fl t Ar target-window
+.Op Ar template
+.Xc
+Put a window into client choice mode, allowing a client to be selected
+interactively from a list.
+After a client is chosen,
+.Ql %%
+is replaced by the client
+.Xr pty 4
+path in
+.Ar template
+and the result executed as a command.
+If
+.Ar template
+is not given, "detach-client -t '%%'" is used.
 This command works only from inside
 .Nm .
-.It Ic choose-window Op Fl t Ar target-window
-Put a window into window choice mode, where the window for the session
-attached to the current client may be selected interactively from a list.
+.It Xo
+.Ic choose-session
+.Op Fl t Ar target-window
+.Op Ar template
+.Xc
+Put a window into session choice mode, where a session may be selected
+interactively from a list.
+When one is chosen,
+.Ql %%
+is replaced by the session name in
+.Ar template
+and the result executed as a command.
+If
+.Ar template
+is not given, "switch-client -t '%%'" is used.
+This command works only from inside
+.Nm .
+.It Xo
+.Ic choose-window
+.Op Fl t Ar target-window
+.Op Ar template
+.Xc
+Put a window into window choice mode, where a window may be chosen
+interactively from a list.
+After a window is selected,
+.Ql %%
+is replaced by the session name and window index in
+.Ar template
+and the result executed as a command.
+If
+.Ar template
+is not given, "select-window -t '%%'" is used.
 This command works only from inside
 .Nm .
 .It Ic down-pane Op Fl t Ar target-pane

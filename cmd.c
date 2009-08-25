@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.113 2009-08-24 16:24:18 tcunha Exp $ */
+/* $Id: cmd.c,v 1.114 2009-08-25 13:53:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,6 +30,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_attach_session_entry,
 	&cmd_bind_key_entry,
 	&cmd_break_pane_entry,
+	&cmd_choose_client_entry,
 	&cmd_choose_session_entry,
 	&cmd_choose_window_entry,
 	&cmd_clear_history_entry,
@@ -856,4 +857,45 @@ lookup_window:
 error:
 	xfree(winptr);
 	return (NULL);
+}
+
+/* Replace the first %% or %idx in template by s. */
+char *
+cmd_template_replace(char *template, const char *s, int idx)
+{
+	char	 ch;
+	char	*buf, *ptr;
+	int	 replaced;
+	size_t	 len;
+
+	if (strstr(template, "%") == NULL)
+		return (xstrdup(template));
+
+	buf = xmalloc(1);
+	*buf = '\0';
+	len = 0;
+	replaced = 0;
+
+	ptr = template;
+	while (*ptr != '\0') {
+		switch (ch = *ptr++) {
+		case '%':
+			if (*ptr < '1' || *ptr > '9' || *ptr - '0' != idx) {
+				if (*ptr != '%' || replaced)
+					break;
+				replaced = 1;
+			}
+			ptr++;
+
+			len += strlen(s);
+			buf = xrealloc(buf, 1, len + 1);
+			strlcat(buf, s, len + 1);
+			continue;
+		}
+		buf = xrealloc(buf, 1, len + 2);
+		buf[len++] = ch;
+		buf[len] = '\0';
+	}
+
+	return (buf);
 }
