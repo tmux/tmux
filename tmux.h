@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.427 2009-08-24 16:27:03 tcunha Exp $ */
+/* $Id: tmux.h,v 1.428 2009-08-25 13:11:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -988,9 +988,16 @@ struct cmd_ctx {
 
 	struct msg_command_data	*msgdata;
 
+	/* gcc2 doesn't understand attributes on function pointers... */
+#if defined(__GNUC__) && __GNUC__ >= 3
 	void printflike2 (*print)(struct cmd_ctx *, const char *, ...);
 	void printflike2 (*info)(struct cmd_ctx *, const char *, ...);
 	void printflike2 (*error)(struct cmd_ctx *, const char *, ...);
+#else
+	void (*print)(struct cmd_ctx *, const char *, ...);
+	void (*info)(struct cmd_ctx *, const char *, ...);
+	void (*error)(struct cmd_ctx *, const char *, ...);
+#endif
 };
 
 struct cmd {
