@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.23 2009-08-16 18:59:12 tcunha Exp $ */
+/* $Id: cmd-split-window.c,v 1.24 2009-08-25 16:52:42 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -237,6 +237,12 @@ cmd_split_window_print(struct cmd *self, char *buf, size_t len)
 		off += xsnprintf(buf + off, len - off, " -d");
 	if (off < len && data->flag_horizontal)
 		off += xsnprintf(buf + off, len - off, " -h");
+	if (off < len && data->size > 0)
+		off += xsnprintf(buf + off, len - off, " -l %d", data->size);
+	if (off < len && data->percentage > 0) {
+		off += xsnprintf(
+		    buf + off, len - off, " -p %d", data->percentage);
+	}
 	if (off < len && data->target != NULL)
 		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
 	if (off < len && data->cmd != NULL)
