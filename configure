@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.32 2009-08-20 13:35:59 nicm Exp $
+# $Id: configure,v 1.33 2009-08-26 08:58:39 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -214,6 +214,7 @@ EOF
 #define HAVE_STRLCPY
 #define HAVE_STRTONUM
 #define HAVE_STRSEP
+#define HAVE_TTYDEFAULTS_H
 #define HAVE_TTYDEFCHARS
 #define HAVE_U_INT
 EOF
@@ -243,6 +244,7 @@ EOF
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_STRSEP
+#define HAVE_TTYDEFAULTS_H
 #define HAVE_TTYDEFCHARS
 #define HAVE_UTIL_H
 #define HAVE_U_INT

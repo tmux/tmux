@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.112 2009-07-31 10:45:22 nicm Exp $
+# $Id: GNUmakefile,v 1.113 2009-08-26 08:58:39 nicm Exp $
 
 .PHONY: clean
 
@@ -21,7 +21,7 @@ endif
 
 # This sort of sucks but gets rid of the stupid warning and should work on
 # most platforms...
-ifeq ($(shell (LC_ALL=C $(CC) -v 2>&1|awk '/gcc version 4/') || true), )
+ifeq ($(shell (LC_ALL=C $(CC) -v 2>&1|awk '/gcc version 4|clang/') || true), )
 CPPFLAGS:= -I. -I- $(CPPFLAGS)
 else
 CPPFLAGS:= -iquote. $(CPPFLAGS)

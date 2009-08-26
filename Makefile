@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.147 2009-07-31 10:45:22 nicm Exp $
+# $Id: Makefile,v 1.148 2009-08-26 08:58:39 nicm Exp $
 
 .SUFFIXES: .c .o
 .PHONY: clean
@@ -22,7 +22,7 @@ CFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
 
 # This sort of sucks but gets rid of the stupid warning and should work on
 # most platforms...
-CCV!= (LC_ALL=C ${CC} -v 2>&1|awk '/gcc version 4/') || true
+CCV!= (LC_ALL=C ${CC} -v 2>&1|awk '/gcc version 4|clang/') || true
 .if empty(CCV)
 CPPFLAGS:= -I. -I- -I/usr/local/include ${CPPFLAGS}
 .else

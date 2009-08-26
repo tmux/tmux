@@ -46,7 +46,6 @@
   errors better
 - key to switch to copy mode from scroll mode
 - attach should have a flag to create session if it doesn't exist
-- a way to address panes by name ("top-left") and position ("0,0")
 - rename split-window -> split-pane??
 - fix UTF-8 guesswork on sparc64, improve tty checks
 - choice and more mode would be better per client than per window?
@@ -101,3 +100,7 @@
 - handle resize better in copy mode
 - way to copy stuff that is off screen due to resize
 - fix line wrapping c&p problems in xterm etc
+- a way to address panes by name ("top-left") and position ("0,0")
+- a mode to identify panes
+- show pane number somewhere (separator lines?)
+
