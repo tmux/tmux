@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.61 2009-08-24 16:31:26 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.62 2009-08-26 09:10:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,6 +23,18 @@
 #include <unistd.h>
 
 #include "tmux.h"
+
+#ifdef HAVE_TTYDEFAULTS_H
+#ifdef HAVE_TTYDEFCHARS
+#define TTYDEFCHARS
+#endif
+#include <sys/ttydefaults.h>
+#else
+#ifndef OXTABS
+#define OXTABS 0
+#endif
+#include "compat/ttydefaults.h"
+#endif
 
 /*
  * Create a new session and attach to the current terminal unless -d is given.

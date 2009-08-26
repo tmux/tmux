@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.14 2009-08-20 12:49:18 nicm Exp $ */
+/* $Id: compat.h,v 1.15 2009-08-26 09:10:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -85,18 +85,6 @@ typedef uint64_t u_int64_t;
 #include <vis.h>
 #else
 #include "compat/vis.h"
-#endif
-
-#ifdef HAVE_TTYDEFAULTS_H
-#ifdef HAVE_TTYDEFCHARS
-#define TTYDEFCHARS
-#endif
-#include <sys/ttydefaults.h>
-#else
-#ifndef OXTABS
-#define OXTABS 0
-#endif
-#include "compat/ttydefaults.h"
 #endif
 
 #ifndef HAVE_IMSG
