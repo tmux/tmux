@@ -1,4 +1,4 @@
-/* $Id: clock.c,v 1.5 2009-08-26 22:11:00 tcunha Exp $ */
+/* $Id: clock.c,v 1.6 2009-08-26 22:12:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -112,8 +112,6 @@ clock_draw(struct screen_write_ctx *ctx, u_int colour, int style)
 		strftime(tim, sizeof tim, "%H:%M", localtime(&t));
 
 	screen_write_clearscreen(ctx);
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.bg = colour;
 
 	if (screen_size_x(s) < 6 * strlen(tim) || screen_size_y(s) < 6) {
 		if (screen_size_x(s) >= strlen(tim) && screen_size_y(s) != 0) {
@@ -121,6 +119,7 @@ clock_draw(struct screen_write_ctx *ctx, u_int colour, int style)
 			y = screen_size_y(s) / 2;
 			screen_write_cursormove(ctx, x, y);
 
+			memcpy(&gc, &grid_default_cell, sizeof gc);
 			gc.fg = colour;
 			screen_write_puts(ctx, &gc, "%s", tim);
 		}
@@ -130,6 +129,8 @@ clock_draw(struct screen_write_ctx *ctx, u_int colour, int style)
 	x = (screen_size_x(s) / 2) - 3 * strlen(tim);
 	y = (screen_size_y(s) / 2) - 3;
 
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.bg = colour;
 	for (ptr = tim; *ptr != '\0'; ptr++) {
 		if (*ptr >= '0' && *ptr <= '9')
 			idx = *ptr - '0';
