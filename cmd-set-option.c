@@ -56,6 +56,8 @@ const struct set_option_entry set_option_table[] = {
 	{ "default-command", SET_OPTION_STRING, 0, 0, NULL },
 	{ "default-path", SET_OPTION_STRING, 0, 0, NULL },
 	{ "default-terminal", SET_OPTION_STRING, 0, 0, NULL },
+	{ "display-panes-colour", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "display-panes-time", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "display-time", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "history-limit", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "lock-after-time", SET_OPTION_NUMBER, 0, INT_MAX, NULL },

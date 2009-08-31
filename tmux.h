@@ -935,7 +935,10 @@ struct client {
 #define CLIENT_REPEAT 0x20	/* allow command to repeat within repeat time */
 #define CLIENT_SUSPENDED 0x40
 #define CLIENT_BAD 0x80
+#define CLIENT_IDENTIFY 0x100
 	int		 flags;
+
+	struct timeval	 identify_timer;
 
 	char		*message_string;
 	struct timeval	 message_timer;
@@ -1164,6 +1167,7 @@ void 	environ_update(const char *, struct environ *, struct environ *);
 
 /* tty.c */
 u_char	tty_get_acs(struct tty *, u_char);
+void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_reset(struct tty *);
 void	tty_region(struct tty *, u_int, u_int, u_int);
 void	tty_cursor(struct tty *, u_int, u_int, u_int, u_int);
@@ -1249,6 +1253,7 @@ void		 paste_add(struct paste_stack *, char *, u_int);
 int		 paste_replace(struct paste_stack *, u_int, char *);
 
 /* clock.c */
+extern const char clock_table[14][5][5];
 void		 clock_draw(struct screen_write_ctx *, u_int, int);
 
 /* cmd.c */
@@ -1285,6 +1290,7 @@ extern const struct cmd_entry cmd_copy_mode_entry;
 extern const struct cmd_entry cmd_delete_buffer_entry;
 extern const struct cmd_entry cmd_detach_client_entry;
 extern const struct cmd_entry cmd_display_message_entry;
+extern const struct cmd_entry cmd_display_panes_entry;
 extern const struct cmd_entry cmd_down_pane_entry;
 extern const struct cmd_entry cmd_find_window_entry;
 extern const struct cmd_entry cmd_has_session_entry;
@@ -1435,6 +1441,8 @@ void	 server_status_window(struct window *);
 void	 server_lock(void);
 int	 server_unlock(const char *);
 void	 server_kill_window(struct window *);
+void	 server_set_identify(struct client *);
+void	 server_clear_identify(struct client *);
 
 /* status.c */
 int	 status_redraw(struct client *);

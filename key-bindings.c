@@ -137,6 +137,7 @@ key_bindings_init(void)
 		{ 'n', 			  0, &cmd_next_window_entry },
 		{ 'o', 			  0, &cmd_down_pane_entry },
 		{ 'p', 			  0, &cmd_previous_window_entry },
+		{ 'q',			  0, &cmd_display_panes_entry },
 		{ 'r', 			  0, &cmd_refresh_client_entry },
 		{ 's', 			  0, &cmd_choose_session_entry },
 		{ 't', 			  0, &cmd_clock_mode_entry },

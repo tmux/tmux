@@ -541,13 +541,14 @@ status_message_set(struct client *c, const char *fmt, ...)
 	status_prompt_clear(c);
 	status_message_clear(c);
 
+	va_start(ap, fmt);
+	xvasprintf(&c->message_string, fmt, ap);
+	va_end(ap);
+
 	delay = options_get_number(&c->session->options, "display-time");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
-	va_start(ap, fmt);
-	xvasprintf(&c->message_string, fmt, ap);
-	va_end(ap);
 	if (gettimeofday(&c->message_timer, NULL) != 0)
 		fatal("gettimeofday");
 	timeradd(&c->message_timer, &tv, &c->message_timer);
