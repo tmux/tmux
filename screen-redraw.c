@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.45 2009-08-10 21:41:35 tcunha Exp $ */
+/* $Id: screen-redraw.c,v 1.46 2009-08-31 22:30:15 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,6 +24,7 @@
 
 int	screen_redraw_cell_border(struct client *, u_int, u_int);
 int	screen_redraw_check_cell(struct client *, u_int, u_int);
+void	screen_redraw_draw_number(struct client *, struct window_pane *);
 
 #define CELL_INSIDE 0
 #define CELL_LEFTRIGHT 1
@@ -210,6 +211,8 @@ screen_redraw_screen(struct client *c, int status_only)
 				continue;
 			tty_draw_line(tty, wp->screen, i, wp->xoff, wp->yoff);
 		}
+		if (c->flags & CLIENT_IDENTIFY)
+			screen_redraw_draw_number(c, wp);
 	}
 
 	/* Draw the status line. */
@@ -227,4 +230,57 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 	for (i = 0; i < wp->sy; i++)
 		tty_draw_line(&c->tty, wp->screen, i, wp->xoff, wp->yoff);
 	tty_reset(&c->tty);
+}
+
+/* Draw number on a pane. */
+void
+screen_redraw_draw_number(struct client *c, struct window_pane *wp)
+{
+	struct tty		*tty = &c->tty;
+	struct session		*s = c->session;
+	struct grid_cell	 gc;
+	u_int			 idx, px, py, i, j;
+	u_char			 colour;
+	char			 buf[16], *ptr;
+	size_t			 len;
+
+	idx = window_pane_index(wp->window, wp);
+	len = xsnprintf(buf, sizeof buf, "%u", idx);
+
+	if (wp->sx < len)
+		return;
+	colour = options_get_number(&s->options, "display-panes-colour");
+
+	px = wp->sx / 2;
+	py = wp->sy / 2;
+	if (wp->sx < len * 6 || wp->sy < 5) {
+		tty_cursor(tty, px - len / 2, py, wp->xoff, wp->yoff);
+		memcpy(&gc, &grid_default_cell, sizeof gc);
+		gc.fg = colour;
+		tty_attributes(tty, &gc);
+		tty_puts(tty, buf);
+		return;
+	}
+	
+	px -= len * 3;
+	py -= 2;
+
+	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.bg = colour;
+	tty_attributes(tty, &gc);
+	for (ptr = buf; *ptr != '\0'; ptr++) {
+		if (*ptr < '0' || *ptr > '9')
+			continue;
+		idx = *ptr - '0';
+		
+		for (j = 0; j < 5; j++) {
+			for (i = px; i < px + 5; i++) {
+				tty_cursor(tty, i, py + j, wp->xoff, wp->yoff);
+				if (!clock_table[idx][j][i - px])
+					continue;
+				tty_putc(tty, ' ');
+			}
+		}
+		px += 6;
+	}
 }

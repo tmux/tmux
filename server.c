@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.176 2009-08-31 22:24:18 tcunha Exp $ */
+/* $Id: server.c,v 1.177 2009-08-31 22:30:15 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -635,6 +635,9 @@ server_check_timers(struct client *c)
 	if (gettimeofday(&tv, NULL) != 0)
 		fatal("gettimeofday");
 
+	if (c->flags & CLIENT_IDENTIFY && timercmp(&tv, &c->identify_timer, >))
+		server_clear_identify(c);
+
 	if (c->message_string != NULL && timercmp(&tv, &c->message_timer, >))
 		status_message_clear(c);
 
@@ -812,6 +815,7 @@ server_handle_client(struct client *c)
 		wp = c->session->curw->window->active;	/* could die */
 
 		status_message_clear(c);
+		server_clear_identify(c);
 		if (c->prompt_string != NULL) {
 			status_prompt_key(c, key);
 			continue;

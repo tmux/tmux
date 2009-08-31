@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.130 2009-08-21 21:15:00 tcunha Exp $ */
+/* $Id: tty.c,v 1.131 2009-08-31 22:30:15 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,7 +34,6 @@ void	tty_raw(struct tty *, const char *);
 int	tty_try_256(struct tty *, u_char, const char *);
 int	tty_try_88(struct tty *, u_char, const char *);
 
-void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_attributes_fg(struct tty *, const struct grid_cell *);
 void	tty_attributes_bg(struct tty *, const struct grid_cell *);
 

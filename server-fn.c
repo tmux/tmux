@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.81 2009-08-14 21:04:04 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.82 2009-08-31 22:30:15 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -262,4 +262,33 @@ server_kill_window(struct window *w)
 		}
 	}
 	recalculate_sizes();
+}
+
+void
+server_set_identify(struct client *c)
+{
+	struct timeval	tv;
+	int		delay;
+
+	delay = options_get_number(&c->session->options, "display-panes-time");
+	tv.tv_sec = delay / 1000;
+	tv.tv_usec = (delay % 1000) * 1000L;
+
+	if (gettimeofday(&c->identify_timer, NULL) != 0)
+		fatal("gettimeofday");
+	timeradd(&c->identify_timer, &tv, &c->identify_timer);
+
+	c->flags |= CLIENT_IDENTIFY;
+	c->tty.flags |= (TTY_FREEZE|TTY_NOCURSOR);
+	server_redraw_client(c);
+}
+
+void
+server_clear_identify(struct client *c)
+{
+	if (c->flags & CLIENT_IDENTIFY) {
+		c->flags &= ~CLIENT_IDENTIFY;
+		c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
+		server_redraw_client(c);
+	}
 }

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.164 2009-08-24 16:35:24 tcunha Exp $ */
+/* $Id: tmux.c,v 1.165 2009-08-31 22:30:15 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -356,6 +356,8 @@ main(int argc, char **argv)
 	options_set_number(&global_s_options, "buffer-limit", 9);
 	options_set_string(&global_s_options, "default-command", "%s", "");
 	options_set_string(&global_s_options, "default-terminal", "screen");
+	options_set_number(&global_s_options, "display-panes-colour", 4);
+	options_set_number(&global_s_options, "display-panes-time", 1000);
 	options_set_number(&global_s_options, "display-time", 750);
 	options_set_number(&global_s_options, "history-limit", 2000);
 	options_set_number(&global_s_options, "lock-after-time", 0);

@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.76 2009-08-16 19:16:27 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.77 2009-08-31 22:30:15 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,6 +56,8 @@ const struct set_option_entry set_option_table[] = {
 	{ "default-command", SET_OPTION_STRING, 0, 0, NULL },
 	{ "default-path", SET_OPTION_STRING, 0, 0, NULL },
 	{ "default-terminal", SET_OPTION_STRING, 0, 0, NULL },
+	{ "display-panes-colour", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "display-panes-time", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "display-time", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "history-limit", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "lock-after-time", SET_OPTION_NUMBER, 0, INT_MAX, NULL },

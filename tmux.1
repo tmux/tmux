@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.159 2009-08-31 22:25:33 tcunha Exp $
+.\" $Id: tmux.1,v 1.160 2009-08-31 22:30:15 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -675,6 +675,15 @@ If
 is not given, "select-window -t '%%'" is used.
 This command works only from inside
 .Nm .
+.It Ic display-panes Op Fl t Ar target-client
+.D1 (alias: Ic displayp)
+Display a visible indicator of each pane shown by
+.Ar target-client .
+See the
+.Ic display-panes-time
+and
+.Ic display-panes-colour
+session options.
 .It Ic down-pane Op Fl t Ar target-pane
 .D1 (alias: Ic downp )
 Move down a pane.
@@ -1157,8 +1166,17 @@ to work correctly, this
 be set to
 .Ql screen
 or a derivative of it.
+.It Ic display-panes-colour Ar colour
+Set the colour used for the
+.Ic display-panes
+command.
+.It Ic display-panes-time Ar time
+Set the time in milliseconds for which the indicators shown by the
+.Ic display-panes
+command appear.
 .It Ic display-time Ar time
-Set the amount of time for which status line messages are displayed.
+Set the amount of time for which status line messages and other on-screen
+indicators are displayed.
 .Ar time
 is in milliseconds.
 .It Ic history-limit Ar lines
