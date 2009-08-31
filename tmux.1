@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.158 2009-08-25 13:53:39 tcunha Exp $
+.\" $Id: tmux.1,v 1.159 2009-08-31 22:25:33 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 25 2009 $
+.Dd $Mdocdate: August 31 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1227,7 +1227,7 @@ window option for any windows first created in this session.
 .It Xo Ic set-titles
 .Op Ic on | off
 .Xc
-Attempt to set the window title using the \ee]2;...\e007 xterm code and
+Attempt to set the window title using the \ee]2;...\e007 xterm code if
 the terminal appears to be an xterm.
 This option is off by default.
 Note that elinks
