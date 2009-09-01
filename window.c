@@ -58,38 +58,6 @@ struct windows windows;
 
 RB_GENERATE(winlinks, winlink, entry, winlink_cmp);
 
-const char *
-window_default_command(void)
-{
-	const char	*shell, *ptr;
-	char		*progname;
-	struct passwd	*pw;
-
-	shell = getenv("SHELL");
-	if (shell != NULL && *shell != '\0')
-		goto found;
-
-	pw = getpwuid(getuid());
-	if (pw != NULL && pw->pw_shell != NULL && *pw->pw_shell != '\0') {
-		shell = pw->pw_shell;
-		goto found;
-	}
-
-	return (_PATH_BSHELL);
-
-found:
-	if ((ptr = strrchr(shell, '/')) != NULL)
-		ptr++;
-	else
-		ptr = shell;
-	progname = __progname;
-	if (*progname == '-')
-		progname++;
-	if (strcmp(ptr, progname) == 0)
-		return (_PATH_BSHELL);
-	return (shell);
-}
-
 int
 winlink_cmp(struct winlink *wl1, struct winlink *wl2)
 {
@@ -270,9 +238,9 @@ window_create1(u_int sx, u_int sy)
 }
 
 struct window *
-window_create(const char *name, const char *cmd, const char *cwd,
-    struct environ *env, struct termios *tio, u_int sx, u_int sy, u_int hlimit,
-    char **cause)
+window_create(const char *name, const char *cmd, const char *shell,
+    const char *cwd, struct environ *env, struct termios *tio,
+    u_int sx, u_int sy, u_int hlimit,char **cause)
 {
 	struct window		*w;
 	struct window_pane	*wp;
@@ -280,7 +248,7 @@ window_create(const char *name, const char *cmd, const char *cwd,
 	w = window_create1(sx, sy);
 	wp = window_add_pane(w, hlimit);
 	layout_init(w);
-	if (window_pane_spawn(wp, cmd, cwd, env, tio, cause) != 0) {
+	if (window_pane_spawn(wp, cmd, shell, cwd, env, tio, cause) != 0) {
 		window_destroy(w);
 		return (NULL);
 	}
@@ -423,6 +391,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->window = w;
 
 	wp->cmd = NULL;
+	wp->shell = NULL;
 	wp->cwd = NULL;
 
 	wp->fd = -1;
@@ -467,13 +436,15 @@ window_pane_destroy(struct window_pane *wp)
 
 	if (wp->cwd != NULL)
 		xfree(wp->cwd);
+	if (wp->shell != NULL)
+		xfree(wp->shell);
 	if (wp->cmd != NULL)
 		xfree(wp->cmd);
 	xfree(wp);
 }
 
 int
-window_pane_spawn(struct window_pane *wp, const char *cmd,
+window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
     const char *cwd, struct environ *env, struct termios *tio, char **cause)
 {
 	struct winsize	 	 ws;
@@ -491,6 +462,11 @@ window_pane_spawn(struct window_pane *wp, const char *cmd,
 		if (wp->cmd != NULL)
 			xfree(wp->cmd);
 		wp->cmd = xstrdup(cmd);
+	}
+	if (shell != NULL) {
+		if (wp->shell != NULL)
+			xfree(wp->shell);
+		wp->shell = xstrdup(shell);
 	}
 	if (cwd != NULL) {
 		if (wp->cwd != NULL)
@@ -541,12 +517,12 @@ window_pane_spawn(struct window_pane *wp, const char *cmd,
 		}
 
 		/* No command; fork a login shell. */
-		cmd = window_default_command();
-		if ((ptr = strrchr(cmd, '/')) != NULL && *(ptr + 1) != '\0')
+		ptr = strrchr(wp->shell, '/');
+		if (ptr != NULL && *(ptr + 1) != '\0')
 			xasprintf(&argv0, "-%s", ptr + 1);
 		else
-			xasprintf(&argv0, "-%s", cmd);
-		execl(cmd, argv0, (char *) NULL);
+			xasprintf(&argv0, "-%s", wp->shell);
+		execl(wp->shell, argv0, (char *) NULL);
 		fatal("execl failed");
 	}
 

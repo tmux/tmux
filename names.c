@@ -90,7 +90,7 @@ default_window_name(struct window *w)
 		return (xstrdup("[tmux]"));
 	if (w->active->cmd != NULL && *w->active->cmd != '\0')
 		return (parse_window_name(w->active->cmd));
-	return (parse_window_name(window_default_command()));
+	return (parse_window_name(w->active->shell));
 }
 
 char *

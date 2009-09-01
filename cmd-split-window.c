@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <paths.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -151,6 +152,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_pane		*wp;
 	struct environ			 env;
 	char		 		*cmd, *cwd, *cause;
+	const char			*shell;
 	u_int				 hlimit;
 	int				 size;
 	enum layout_type		 type;
@@ -183,8 +185,12 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (data->flag_horizontal)
 		type = LAYOUT_LEFTRIGHT;
 
+	shell = options_get_string(&s->options, "default-shell");
+	if (*shell == '\0' || areshell(shell))
+		shell = _PATH_BSHELL;
+
 	wp = window_add_pane(w, hlimit);
-	if (window_pane_spawn(wp, cmd, cwd, &env, &s->tio, &cause) != 0)
+	if (window_pane_spawn(wp, cmd, shell, cwd, &env, &s->tio, &cause) != 0)
 		goto error;
 	if (layout_split_pane(w->active, type, size, wp) != 0) {
 		cause = xstrdup("pane too small");
