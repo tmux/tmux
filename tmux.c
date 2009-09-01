@@ -214,7 +214,7 @@ prepare_unlock(enum msgtype *msg, void **buf, size_t *len, int argc)
 		return (-1);
 	}
 	
-	if ((pass = getpass("Password: ")) == NULL)
+	if ((pass = getpass("Password:")) == NULL)
 		return (-1);
 
 	if (strlen(pass) >= sizeof unlockdata.pass) {

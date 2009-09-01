@@ -172,7 +172,7 @@ server_lock(void)
 
 		status_prompt_clear(c);
 		status_prompt_set(c,
-		    "Password: ", server_lock_callback, NULL, c, PROMPT_HIDDEN);
+		    "Password:", server_lock_callback, NULL, c, PROMPT_HIDDEN);
   		server_redraw_client(c);
 	}
 	server_locked = 1;
