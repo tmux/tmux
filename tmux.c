@@ -280,6 +280,9 @@ main(int argc, char **argv)
 			flags |= IDENTIFY_88COLOURS;
 			flags &= ~IDENTIFY_256COLOURS;
 			break;
+		case 'd':
+			flags |= IDENTIFY_HASDEFAULTS;
+			break;
 		case 'f':
 			if (cfg_file)
 				xfree(cfg_file);
@@ -290,22 +293,19 @@ main(int argc, char **argv)
 				xfree(label);
 			label = xstrdup(optarg);
 			break;
+		case 'q':
+			be_quiet = 1;
+			break;
 		case 'S':
 			if (path != NULL)
 				xfree(path);
 			path = xstrdup(optarg);
-			break;
-		case 'q':
-			be_quiet = 1;
 			break;
 		case 'u':
 			flags |= IDENTIFY_UTF8;
 			break;
 		case 'U':
 			unlock = 1;
-			break;
-		case 'd':
-			flags |= IDENTIFY_HASDEFAULTS;
 			break;
 		case 'v':
 			debug_level++;
