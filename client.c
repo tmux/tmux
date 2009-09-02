@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.68 2009-09-02 20:16:29 nicm Exp $ */
+/* $Id: client.c,v 1.69 2009-09-02 20:17:23 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -268,7 +268,6 @@ client_msg_dispatch(struct client_ctx *cctx)
 			return (0);
 		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
 
-		log_debug("CLIENT GOT %d", imsg.hdr.type);
 		switch (imsg.hdr.type) {
 		case MSG_DETACH:
 			if (datalen != 0)
