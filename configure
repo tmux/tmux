@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.33 2009-08-26 08:58:39 nicm Exp $
+# $Id: configure,v 1.34 2009-09-02 12:30:56 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -13,6 +13,7 @@ echo "# $TMUX_PLATFORM" >$CONFIG_MK
 
 cat <<EOF >>$CONFIG_H
 #undef HAVE_ASPRINTF
+#undef HAVE_BROKEN_CMSG_FIRSTHDR
 #undef HAVE_BZERO
 #undef HAVE_CRYPT_H
 #undef HAVE_DAEMON
@@ -168,6 +169,7 @@ EOF
     Darwin)
 	cat <<EOF >>$CONFIG_H
 #define HAVE_ASPRINTF
+#define HAVE_BROKEN_CMSG_FIRSTHDR
 #define HAVE_BZERO
 #define HAVE_DAEMON
 #define HAVE_FGETLN

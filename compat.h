@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.15 2009-08-26 09:10:47 nicm Exp $ */
+/* $Id: compat.h,v 1.16 2009-09-02 12:30:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -89,6 +89,15 @@ typedef uint64_t u_int64_t;
 
 #ifndef HAVE_IMSG
 #include "compat/imsg.h"
+#endif
+
+#ifdef HAVE_BROKEN_CMSG_FIRSTHDR
+/* Broken on OS X. */
+#undef CMSG_FIRSTHDR
+#define CMSG_FIRSTHDR(mhdr) \
+        ((mhdr)->msg_controllen >= sizeof(struct cmsghdr) ? \
+	    (struct cmsghdr *)(mhdr)->msg_control : \
+	    (struct cmsghdr *)NULL)
 #endif
 
 #ifndef INFTIM
