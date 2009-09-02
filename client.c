@@ -152,11 +152,20 @@ int
 client_main(struct client_ctx *cctx)
 {
 	struct pollfd	 pfd;
-	int		 nfds;
+	int		 n, nfds;
 
 	siginit();
 
 	logfile("client");
+
+	/*
+	 * imsg_read in the first client poll loop (before the terminal has
+	 * been initialiased) may have read messages into the buffer after the
+	 * MSG_READY switched to here. Process anything outstanding now so poll
+	 * doesn't hang waiting for messages that have already arrived.
+	 */
+	if (client_msg_dispatch(cctx) != 0)
+		goto out;
 
 	for (;;) {
 		if (sigterm)
@@ -190,6 +199,10 @@ client_main(struct client_ctx *cctx)
 			fatalx("socket error");
 
 		if (pfd.revents & POLLIN) {
+			if ((n = imsg_read(&cctx->ibuf)) == -1 || n == 0) {
+				cctx->exittype = CCTX_DIED;
+				break;
+			}
 			if (client_msg_dispatch(cctx) != 0)
 				break;
 		}
@@ -201,7 +214,8 @@ client_main(struct client_ctx *cctx)
 			}
 		}
 	}
-	
+
+out:
  	if (sigterm) {
  		printf("[terminated]\n");
  		return (1);
@@ -251,11 +265,6 @@ client_msg_dispatch(struct client_ctx *cctx)
 	struct imsg		 imsg;
 	struct msg_print_data	 printdata;
 	ssize_t			 n, datalen;
-
-	if ((n = imsg_read(&cctx->ibuf)) == -1 || n == 0) {
-		cctx->exittype = CCTX_DIED;
-		return (-1);
-	}
 
 	for (;;) {
 		if ((n = imsg_get(&cctx->ibuf, &imsg)) == -1)
