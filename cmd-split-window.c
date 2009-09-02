@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.25 2009-09-02 01:02:44 tcunha Exp $ */
+/* $Id: cmd-split-window.c,v 1.26 2009-09-02 01:05:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <paths.h>
 #include <stdlib.h>
 #include <unistd.h>
 

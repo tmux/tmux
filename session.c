@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.63 2009-09-02 01:02:44 tcunha Exp $ */
+/* $Id: session.c,v 1.64 2009-09-02 01:05:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,6 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
-#include <paths.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
