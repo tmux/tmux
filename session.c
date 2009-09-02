@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.62 2009-08-16 19:16:27 tcunha Exp $ */
+/* $Id: session.c,v 1.63 2009-09-02 01:02:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+#include <paths.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -207,6 +208,7 @@ session_new(struct session *s,
 {
 	struct window	*w;
 	struct environ	 env;
+	const char	*shell;
 	u_int		 hlimit;
 
 	environ_init(&env);
@@ -214,9 +216,13 @@ session_new(struct session *s,
 	environ_copy(&s->environ, &env);
 	server_fill_environ(s, &env);
 
+	shell = options_get_string(&s->options, "default-shell");
+	if (*shell == '\0' || areshell(shell))
+		shell = _PATH_BSHELL;
+
 	hlimit = options_get_number(&s->options, "history-limit");
 	w = window_create(
-	    name, cmd, cwd, &env, &s->tio, s->sx, s->sy, hlimit, cause);
+	    name, cmd, shell, cwd, &env, &s->tio, s->sx, s->sy, hlimit, cause);
 	if (w == NULL) {
 		environ_free(&env);
 		return (NULL);

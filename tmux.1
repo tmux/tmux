@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.160 2009-08-31 22:30:15 tcunha Exp $
+.\" $Id: tmux.1,v 1.161 2009-09-02 01:02:44 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 31 2009 $
+.Dd $Mdocdate: September 1 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1143,13 +1143,31 @@ maintain this maximum length.
 .It Ic default-command Ar command
 Set the command used for new windows (if not specified when the window is
 created) to
-.Ar command .
+.Ar command ,
+which may be any
+.Xr sh 1
+command.
 The default is an empty string, which instructs
 .Nm
-to create a login shell using the
+to create a login shell using the value of the
+.Ic default-shell
+option.
+.It Ic default-shell Ar path
+Specify the default shell.
+This is used as the login shell for new windows when the
+.Ic default-command
+option is set to empty, and must be the full path of the executable.
+When started
+.Nm
+tries to set a default value from the first suitable of the
 .Ev SHELL
-environment variable or, if it is unset, the user's shell returned by
-.Xr getpwuid 3 .
+environment variable, the shell returned by
+.Xr getpwuid 3 ,
+or
+.Pa /bin/sh .
+This option should be configured when
+.Nm
+is used as a login shell.
 .It Ic default-path Ar path
 Set the default working directory for processes created from keys, or
 interactively from the prompt.

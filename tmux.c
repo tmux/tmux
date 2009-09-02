@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.167 2009-09-02 00:55:49 tcunha Exp $ */
+/* $Id: tmux.c,v 1.168 2009-09-02 01:02:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -184,6 +184,50 @@ sigreset(void)
 		fatal("sigaction failed");
 }
 
+const char *
+getshell(void)
+{
+	struct passwd	*pw;
+	const char	*shell;
+
+	shell = getenv("SHELL");
+	if (checkshell(shell))
+		return (shell);
+
+	pw = getpwuid(getuid());
+	if (pw != NULL && checkshell(pw->pw_shell))
+		return (pw->pw_shell);
+
+	return (_PATH_BSHELL);
+}
+
+int
+checkshell(const char *shell)
+{
+	if (shell == NULL || *shell == '\0' || areshell(shell))
+		return (0);
+	if (access(shell, X_OK) != 0)
+		return (0);
+	return (1);
+}
+
+int
+areshell(const char *shell)
+{
+	const char	*progname, *ptr;
+
+	if ((ptr = strrchr(shell, '/')) != NULL)
+		ptr++;
+	else
+		ptr = shell;
+	progname = __progname;
+	if (*progname == '-')
+		progname++;
+	if (strcmp(ptr, progname) == 0)
+		return (1);
+	return (0);
+}
+
 char *
 makesockpath(const char *label)
 {
@@ -355,6 +399,8 @@ main(int argc, char **argv)
 	options_set_number(&global_s_options, "bell-action", BELL_ANY);
 	options_set_number(&global_s_options, "buffer-limit", 9);
 	options_set_string(&global_s_options, "default-command", "%s", "");
+	options_set_string(
+	    &global_s_options, "default-shell", "%s", getshell());
 	options_set_string(&global_s_options, "default-terminal", "screen");
 	options_set_number(&global_s_options, "display-panes-colour", 4);
 	options_set_number(&global_s_options, "display-panes-time", 1000);

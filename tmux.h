@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.430 2009-08-31 22:30:15 tcunha Exp $ */
+/* $Id: tmux.h,v 1.431 2009-09-02 01:02:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -673,6 +673,7 @@ struct window_pane {
 #define PANE_REDRAW 0x1
 
 	char		*cmd;
+	char		*shell;
 	char		*cwd;
 
 	pid_t		 pid;
@@ -1115,6 +1116,9 @@ void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);
 void		 sighandler(int);
+const char	*getshell(void);
+int		 checkshell(const char *);
+int		 areshell(const char *);
 
 /* cfg.c */
 int		 load_cfg(const char *, struct cmd_ctx *, char **);
@@ -1580,7 +1584,6 @@ int	 screen_check_selection(struct screen *, u_int, u_int);
 
 /* window.c */
 extern struct windows windows;
-const char	*window_default_command(void);
 int		 window_cmp(struct window *, struct window *);
 int		 winlink_cmp(struct winlink *, struct winlink *);
 RB_PROTOTYPE(windows, window, entry, window_cmp);
@@ -1598,8 +1601,8 @@ void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 int	 	 window_index(struct window *, u_int *);
 struct window	*window_create1(u_int, u_int);
 struct window	*window_create(const char *, const char *, const char *,
-    		     struct environ *, struct termios *, u_int, u_int, u_int,
-		     char **);
+		     const char *, struct environ *, struct termios *,
+    		     u_int, u_int, u_int, char **);
 void		 window_destroy(struct window *);
 void		 window_set_active_pane(struct window *, struct window_pane *);
 struct window_pane *window_add_pane(struct window *, u_int);
@@ -1612,7 +1615,8 @@ void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *, const char *,
-		     const char *, struct environ *, struct termios *, char **);
+		     const char *, const char *, struct environ *,
+		     struct termios *, char **);
 void		 window_pane_resize(struct window_pane *, u_int, u_int);
 int		 window_pane_set_mode(
 		     struct window_pane *, const struct window_mode *);
