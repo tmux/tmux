@@ -214,16 +214,17 @@ client_main(struct client_ctx *cctx)
 		printf("[server exited]\n");
 		return (0);
 	case CCTX_EXIT:
+		if (cctx->errstr != NULL) {
+			printf("[error: %s]\n", cctx->errstr);
+			return (1);
+		}
 		printf("[exited]\n");
 		return (0);
 	case CCTX_DETACH:
 		printf("[detached]\n");
 		return (0);
-	case CCTX_ERROR:
-		printf("[error: %s]\n", cctx->errstr);
-		return (1);
 	default:
-		printf("[error: unknown error]\n");
+		printf("[unknown error]\n");
 		return (1);
 	}
 }
@@ -277,8 +278,8 @@ client_msg_dispatch(struct client_ctx *cctx)
 			memcpy(&printdata, imsg.data, sizeof printdata);
 
 			printdata.msg[(sizeof printdata.msg) - 1] = '\0';
+			/* Error string used after exit message from server. */
 			cctx->errstr = xstrdup(printdata.msg);
-			cctx->exittype = CCTX_ERROR;
 			imsg_free(&imsg);
 			return (-1);
 		case MSG_EXIT:
