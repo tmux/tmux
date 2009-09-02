@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.27 2009-08-20 11:22:47 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.28 2009-09-02 22:45:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -57,6 +57,7 @@ struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 	{ MODEKEYEDIT_STARTOFLINE, "start-of-line" },
 	{ MODEKEYEDIT_SWITCHMODE, "switch-mode" },
 	{ MODEKEYEDIT_SWITCHMODEAPPEND, "switch-mode-append" },
+	{ MODEKEYEDIT_TRANSPOSECHARS, "transpose-chars" },
 
 	{ 0, NULL }
 };
@@ -200,6 +201,7 @@ const struct mode_key_entry mode_key_emacs_edit[] = {
 	{ '\013' /* C-k	*/,	0, MODEKEYEDIT_DELETETOENDOFLINE },
 	{ '\016' /* C-n */,	0, MODEKEYEDIT_HISTORYDOWN },
 	{ '\020' /* C-p */,	0, MODEKEYEDIT_HISTORYUP },
+	{ '\024' /* C-t */,	0, MODEKEYEDIT_TRANSPOSECHARS },
 	{ '\025' /* C-u	*/,	0, MODEKEYEDIT_DELETELINE },
 	{ '\031' /* C-y */,	0, MODEKEYEDIT_PASTE },
 	{ '\033' /* Escape */,	0, MODEKEYEDIT_CANCEL },

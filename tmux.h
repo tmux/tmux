@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.433 2009-09-02 20:16:29 nicm Exp $ */
+/* $Id: tmux.h,v 1.434 2009-09-02 22:45:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -377,6 +377,7 @@ enum mode_key_cmd {
 	MODEKEYEDIT_STARTOFLINE,
 	MODEKEYEDIT_SWITCHMODE,
 	MODEKEYEDIT_SWITCHMODEAPPEND,
+	MODEKEYEDIT_TRANSPOSECHARS,
 	
 	/* Menu (choice) keys. */
 	MODEKEYCHOICE_CANCEL,
