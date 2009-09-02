@@ -202,8 +202,8 @@ error:
 	server_write_error(c, cause);
 	xfree(cause);
 
+	sigterm = 1;
 	server_shutdown();
-	c->flags |= CLIENT_BAD;
 
 	exit(server_main(srv_fd));
 }
@@ -304,7 +304,7 @@ server_main(int srv_fd)
 
 		/* Update socket permissions. */
 		xtimeout = INFTIM;
-		if (sigterm || server_update_socket() != 0)
+		if (server_update_socket() != 0)
 			xtimeout = POLL_TIMEOUT;
 
 		/* Do the poll. */
@@ -420,7 +420,6 @@ server_shutdown(void)
 				server_lost_client(c);
 			else
 				server_write_client(c, MSG_SHUTDOWN, NULL, 0);
-			c->flags |= CLIENT_BAD;
 		}
 	}
 }
