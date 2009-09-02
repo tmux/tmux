@@ -1,4 +1,4 @@
-/* $OpenBSD: client.c,v 1.15 2009/09/02 20:00:10 nicm Exp $ */
+/* $Id: client.c,v 1.68 2009-09-02 20:16:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -218,16 +218,17 @@ client_main(struct client_ctx *cctx)
 		printf("[server exited]\n");
 		return (0);
 	case CCTX_EXIT:
+		if (cctx->errstr != NULL) {
+			printf("[error: %s]\n", cctx->errstr);
+			return (1);
+		}
 		printf("[exited]\n");
 		return (0);
 	case CCTX_DETACH:
 		printf("[detached]\n");
 		return (0);
-	case CCTX_ERROR:
-		printf("[error: %s]\n", cctx->errstr);
-		return (1);
 	default:
-		printf("[error: unknown error]\n");
+		printf("[unknown error]\n");
 		return (1);
 	}
 }
@@ -267,6 +268,7 @@ client_msg_dispatch(struct client_ctx *cctx)
 			return (0);
 		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
 
+		log_debug("CLIENT GOT %d", imsg.hdr.type);
 		switch (imsg.hdr.type) {
 		case MSG_DETACH:
 			if (datalen != 0)
@@ -281,8 +283,8 @@ client_msg_dispatch(struct client_ctx *cctx)
 			memcpy(&printdata, imsg.data, sizeof printdata);
 
 			printdata.msg[(sizeof printdata.msg) - 1] = '\0';
+			/* Error string used after exit message from server. */
 			cctx->errstr = xstrdup(printdata.msg);
-			cctx->exittype = CCTX_ERROR;
 			imsg_free(&imsg);
 			return (-1);
 		case MSG_EXIT:

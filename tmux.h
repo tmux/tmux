@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.432 2009-09-02 20:01:22 nicm Exp $ */
+/* $Id: tmux.h,v 1.433 2009-09-02 20:16:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -970,8 +970,7 @@ struct client_ctx {
 		CCTX_DETACH,
 		CCTX_EXIT,
 		CCTX_DIED,
-		CCTX_SHUTDOWN,
-		CCTX_ERROR
+		CCTX_SHUTDOWN
 	} exittype;
 	const char	*errstr;
 };
