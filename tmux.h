@@ -974,6 +974,7 @@ struct client_ctx {
 		CCTX_EXIT,
 		CCTX_DIED,
 		CCTX_SHUTDOWN,
+		CCTX_ERROR
 	} exittype;
 	const char	*errstr;
 };

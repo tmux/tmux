@@ -201,7 +201,7 @@ client_main(struct client_ctx *cctx)
 			}
 		}
 	}
-
+	
  	if (sigterm) {
  		printf("[terminated]\n");
  		return (1);
@@ -219,8 +219,11 @@ client_main(struct client_ctx *cctx)
 	case CCTX_DETACH:
 		printf("[detached]\n");
 		return (0);
-	default:
+	case CCTX_ERROR:
 		printf("[error: %s]\n", cctx->errstr);
+		return (1);
+	default:
+		printf("[error: unknown error]\n");
 		return (1);
 	}
 }
@@ -275,6 +278,7 @@ client_msg_dispatch(struct client_ctx *cctx)
 
 			printdata.msg[(sizeof printdata.msg) - 1] = '\0';
 			cctx->errstr = xstrdup(printdata.msg);
+			cctx->exittype = CCTX_ERROR;
 			imsg_free(&imsg);
 			return (-1);
 		case MSG_EXIT:
