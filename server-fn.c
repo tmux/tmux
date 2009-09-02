@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.82 2009-08-31 22:30:15 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.83 2009-09-02 00:55:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -172,7 +172,7 @@ server_lock(void)
 
 		status_prompt_clear(c);
 		status_prompt_set(c,
-		    "Password: ", server_lock_callback, NULL, c, PROMPT_HIDDEN);
+		    "Password:", server_lock_callback, NULL, c, PROMPT_HIDDEN);
   		server_redraw_client(c);
 	}
 	server_locked = 1;

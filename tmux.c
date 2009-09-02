@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.166 2009-09-02 00:54:00 tcunha Exp $ */
+/* $Id: tmux.c,v 1.167 2009-09-02 00:55:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -223,7 +223,7 @@ prepare_unlock(enum msgtype *msg, void **buf, size_t *len, int argc)
 		return (-1);
 	}
 	
-	if ((pass = getpass("Password: ")) == NULL)
+	if ((pass = getpass("Password:")) == NULL)
 		return (-1);
 
 	if (strlen(pass) >= sizeof unlockdata.pass) {

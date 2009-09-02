@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.113 2009-08-31 22:30:15 tcunha Exp $ */
+/* $Id: status.c,v 1.114 2009-09-02 00:55:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -690,7 +690,7 @@ status_prompt_redraw(struct client *c)
 	struct screen_write_ctx	ctx;
 	struct session		       *s = c->session;
 	struct screen		        old_status;
-	size_t			        i, size, left, len, off, n;
+	size_t			        i, size, left, len, off;
 	char				ch;
 	struct grid_cell		gc;
 
@@ -724,13 +724,9 @@ status_prompt_redraw(struct client *c)
 				left--;
 			size = left;
 		}
-		if (c->prompt_flags & PROMPT_HIDDEN) {
-			n = strlen(c->prompt_buffer);
-			if (n > left)
-				n = left;
-			for (i = 0; i < n; i++)
-				screen_write_putc(&ctx, &gc, '*');
-		} else {
+		if (c->prompt_flags & PROMPT_HIDDEN)
+			size = 0;
+		else {
 			screen_write_puts(&ctx, &gc,
 			    "%.*s", (int) left, c->prompt_buffer + off);
 		}
@@ -739,17 +735,15 @@ status_prompt_redraw(struct client *c)
 			screen_write_putc(&ctx, &gc, ' ');
 
 		/* Draw a fake cursor. */
-		screen_write_cursormove(&ctx, len + c->prompt_index - off, 0);
-		if (c->prompt_index == strlen(c->prompt_buffer))
-			ch = ' ';
+		ch = ' ';
+		if (c->prompt_flags & PROMPT_HIDDEN)
+			screen_write_cursormove(&ctx, len, 0);
 		else {
-			if (c->prompt_flags & PROMPT_HIDDEN)
-				ch = '*';
-			else
+			screen_write_cursormove(&ctx,
+			    len + c->prompt_index - off, 0);
+			if (c->prompt_index < strlen(c->prompt_buffer))
 				ch = c->prompt_buffer[c->prompt_index];
 		}
-		if (ch == '\0')
-			ch = ' ';
 		gc.attr ^= GRID_ATTR_REVERSE;
 		screen_write_putc(&ctx, &gc, ch);
 	}
