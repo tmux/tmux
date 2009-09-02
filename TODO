@@ -101,6 +101,4 @@
 - way to copy stuff that is off screen due to resize
 - fix line wrapping c&p problems in xterm etc
 - a way to address panes by name ("top-left") and position ("0,0")
-- a mode to identify panes
-- show pane number somewhere (separator lines?)
-
+- ability to specify multiple prefix keys
