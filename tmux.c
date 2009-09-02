@@ -47,7 +47,9 @@ struct options	 global_w_options;	/* window options */
 struct environ	 global_environ;
 
 int		 server_locked;
+struct passwd	*server_locked_pw;
 u_int		 password_failures;
+time_t		 password_backoff;
 char		*server_password;
 time_t		 server_activity;
 

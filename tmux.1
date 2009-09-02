@@ -1209,6 +1209,11 @@ seconds of inactivity.
 The default is off (set to 0).
 This has no effect as a session option; it must be set as a global option using
 .Fl g .
+When passwords are entered incorrectly,
+.Nm
+follows the behaviour of
+.Xr login 1
+and ignores further password attempts for an increasing timeout.
 .It Ic message-attr Ar attributes
 Set status line message attributes, where
 .Ar attributes
