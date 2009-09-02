@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 28dqUuv
+.Op Fl 28dlqUuv
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
 .Op Fl S Ar socket-path
@@ -120,6 +120,10 @@ commands which are executed in sequence when the server is first started.
 If a command in the configuration file fails,
 .Nm
 will report an error and exit without executing further commands.
+.It Fl l
+Behave as a login shell.
+This flag currently has no effect and is for compatibility with other shells
+when using tmux as a login shell.
 .It Fl L Ar socket-name
 .Nm
 stores the server socket in a directory under

@@ -57,6 +57,7 @@ int		 debug_level;
 int		 be_quiet;
 time_t		 start_time;
 char		*socket_path;
+int		 login_shell;
 
 __dead void	 usage(void);
 char 		*makesockpath(const char *);
@@ -68,8 +69,8 @@ __dead void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-28dqUuv] [-f file] [-L socket-name] [-S socket-path]\n"
-	    "            [command [flags]]\n",
+	    "usage: %s [-28dlqUuv] [-f file] [-L socket-name]\n"
+	    "            [-S socket-path] [command [flags]]\n",
 	    __progname);
 	exit(1);
 }
@@ -316,8 +317,9 @@ main(int argc, char **argv)
 
 	unlock = flags = 0;
 	label = path = NULL;
-        while ((opt = getopt(argc, argv, "28df:L:qS:uUv")) != -1) {
-                switch (opt) {
+	login_shell = (**argv == '-');
+	while ((opt = getopt(argc, argv, "28df:lL:qS:uUv")) != -1) {
+		switch (opt) {
 		case '2':
 			flags |= IDENTIFY_256COLOURS;
 			flags &= ~IDENTIFY_88COLOURS;
@@ -333,6 +335,9 @@ main(int argc, char **argv)
 			if (cfg_file)
 				xfree(cfg_file);
 			cfg_file = xstrdup(optarg);
+			break;
+		case 'l':
+			login_shell = 1;
 			break;
 		case 'L':
 			if (label != NULL)

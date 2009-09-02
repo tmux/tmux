@@ -1117,6 +1117,7 @@ extern int	 debug_level;
 extern int	 be_quiet;
 extern time_t	 start_time;
 extern char 	*socket_path;
+extern int	 login_shell;
 void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);
