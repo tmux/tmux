@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.435 2009-09-03 20:44:38 tcunha Exp $ */
+/* $Id: tmux.h,v 1.436 2009-09-03 21:02:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1115,6 +1115,7 @@ extern int	 debug_level;
 extern int	 be_quiet;
 extern time_t	 start_time;
 extern char 	*socket_path;
+extern int	 login_shell;
 void		 logfile(const char *);
 void		 siginit(void);
 void		 sigreset(void);
