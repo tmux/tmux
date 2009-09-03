@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.34 2009-09-02 12:30:56 nicm Exp $
+# $Id: configure,v 1.35 2009-09-03 20:54:39 tcunha Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -22,6 +22,7 @@ cat <<EOF >>$CONFIG_H
 #undef HAVE_GETOPT
 #undef HAVE_IMSG
 #undef HAVE_LIBUTIL_H
+#undef HAVE_LOGIN_CAP
 #undef HAVE_PATHS_H
 #undef HAVE_POLL
 #undef HAVE_PROGNAME
@@ -52,6 +53,7 @@ case $TMUX_PLATFORM in
 #define HAVE_FGETLN
 #define HAVE_FORKPTY
 #define HAVE_GETOPT
+#define HAVE_LOGIN_CAP
 #define HAVE_PATHS_H
 #define HAVE_POLL
 #define HAVE_PROGNAME
@@ -207,6 +209,7 @@ EOF
 #define HAVE_FORKPTY
 #define HAVE_GETOPT
 #define HAVE_LIBUTIL_H
+#define HAVE_LOGIN_CAP
 #define HAVE_PATHS_H
 #define HAVE_POLL
 #define HAVE_PROGNAME
@@ -238,6 +241,7 @@ EOF
 #define HAVE_FGETLN
 #define HAVE_FORKPTY
 #define HAVE_GETOPT
+#define HAVE_LOGIN_CAP
 #define HAVE_PATHS_H
 #define HAVE_POLL
 #define HAVE_PROGNAME

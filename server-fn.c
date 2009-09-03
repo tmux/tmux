@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.84 2009-09-03 20:44:38 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.85 2009-09-03 20:54:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <login_cap.h>
 #include <pwd.h>
 #include <string.h>
 #include <time.h>
@@ -199,7 +198,9 @@ int
 server_unlock(const char *s)
 {
 	struct client	*c;
+#ifdef HAVE_LOGIN_CAP
 	login_cap_t	*lc;
+#endif
 	u_int		 i;
 	char		*out;
 	u_int		 failures, tries, backoff;
@@ -250,6 +251,7 @@ wrong:
 	 * Start slowing down after "login-backoff" attempts and reset every
 	 * "login-tries" attempts.
 	 */
+#ifdef HAVE_LOGIN_CAP
 	lc = login_getclass(server_locked_pw->pw_class);
 	if (lc != NULL) {
 		tries = login_getcapnum(lc, (char *) "login-tries", 10, 10);
@@ -258,6 +260,10 @@ wrong:
 		tries = 10;
 		backoff = 3;
 	}
+#else
+	tries = 10;
+	backoff = 3;
+#endif
 	failures = password_failures % tries;
 	if (failures > backoff) {
 		password_backoff += ((failures - backoff) * tries / 2);

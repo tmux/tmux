@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.16 2009-09-02 12:30:56 nicm Exp $ */
+/* $Id: compat.h,v 1.17 2009-09-03 20:54:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -91,6 +91,10 @@ typedef uint64_t u_int64_t;
 #include "compat/imsg.h"
 #endif
 
+#ifdef HAVE_LOGIN_CAP
+#include <login_cap.h>
+#endif
+
 #ifdef HAVE_BROKEN_CMSG_FIRSTHDR
 /* Broken on OS X. */
 #undef CMSG_FIRSTHDR
@@ -146,6 +150,10 @@ typedef uint64_t u_int64_t;
 #define TTY_NAME_MAX 32
 #endif
 
+#ifndef _PW_BUF_LEN
+#define _PW_BUF_LEN 1024
+#endif
+
 #ifndef HAVE_BZERO
 #define bzero(buf, len) memset((buf), 0, (len));
 #endif
@@ -160,57 +168,6 @@ char		*strcasestr(const char *, const char *);
 char		*strsep(char **, const char *);
 #endif
 
-#ifndef HAVE_STRTONUM
-/* strtonum.c */
-long long	 strtonum(const char *, long long, long long, const char **);
-#endif
-
-#ifndef HAVE_STRLCPY
-/* strlcpy.c */
-size_t	 	 strlcpy(char *, const char *, size_t);
-#endif
-
-#ifndef HAVE_STRLCAT
-/* strlcat.c */
-size_t	 	 strlcat(char *, const char *, size_t);
-#endif
-
-#ifndef HAVE_DAEMON
-/* daemon.c */
-int	 	 daemon(int, int);
-#endif
-
-#ifndef HAVE_FORKPTY
-/* forkpty.c */
-pid_t		 forkpty(int *, char *, struct termios *, struct winsize *);
-#endif
-
-#ifndef HAVE_ASPRINTF
-/* asprintf.c */
-int	asprintf(char **, const char *, ...);
-int	vasprintf(char **, const char *, va_list);
-#endif
-
-#ifndef HAVE_FGETLN
-/* fgetln.c */
-char   *fgetln(FILE *, size_t *);
-#endif
-
-#ifndef HAVE_GETOPT
-/* getopt.c */
-extern int	BSDopterr;
-extern int	BSDoptind;
-extern int	BSDoptopt;
-extern int	BSDoptreset;
-extern char    *BSDoptarg;
-int	BSDgetopt(int, char *const *, const char *);
-#define getopt(ac, av, o)  BSDgetopt(ac, av, o)
-#define opterr             BSDopterr
-#define optind             BSDoptind
-#define optopt             BSDoptopt
-#define optreset           BSDoptreset
-#define optarg             BSDoptarg
-#endif
 #ifndef HAVE_STRTONUM
 /* strtonum.c */
 long long	 strtonum(const char *, long long, long long, const char **);
