@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.162 2009-09-02 22:45:17 tcunha Exp $
+.\" $Id: tmux.1,v 1.163 2009-09-03 20:44:38 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -1209,6 +1209,11 @@ seconds of inactivity.
 The default is off (set to 0).
 This has no effect as a session option; it must be set as a global option using
 .Fl g .
+When passwords are entered incorrectly,
+.Nm
+follows the behaviour of
+.Xr login 1
+and ignores further password attempts for an increasing timeout.
 .It Ic message-attr Ar attributes
 Set status line message attributes, where
 .Ar attributes

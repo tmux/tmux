@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.434 2009-09-02 22:45:17 tcunha Exp $ */
+/* $Id: tmux.h,v 1.435 2009-09-03 20:44:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1106,7 +1106,9 @@ extern struct options global_w_options;
 extern struct environ global_environ;
 extern char	*cfg_file;
 extern int	 server_locked;
+extern struct passwd *server_locked_pw;
 extern u_int	 password_failures;
+extern time_t	 password_backoff;
 extern char	*server_password;
 extern time_t	 server_activity;
 extern int	 debug_level;

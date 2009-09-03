@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.82 2009-08-24 16:24:18 tcunha Exp $ */
+/* $Id: server-msg.c,v 1.83 2009-09-03 20:44:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -99,8 +99,15 @@ server_msg_dispatch(struct client *c)
 			memcpy(&unlockdata, imsg.data, sizeof unlockdata);
 
 			unlockdata.pass[(sizeof unlockdata.pass) - 1] = '\0';
-			if (server_unlock(unlockdata.pass) != 0)
+			switch (server_unlock(unlockdata.pass)) {
+			case -1:
 				server_write_error(c, "bad password");
+				break;
+			case -2:
+				server_write_error(c,
+				    "too many bad passwords, sleeping");
+				break;
+			}
 			memset(&unlockdata, 0, sizeof unlockdata);
 			server_write_client(c, MSG_EXIT, NULL, 0);
 			break;
