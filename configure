@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.35 2009-09-03 20:54:39 tcunha Exp $
+# $Id: configure,v 1.36 2009-09-04 14:48:25 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -147,7 +147,7 @@ EOF
 CPPFLAGS+= -I/usr/local/include/ncurses \
 	-I/opt/csw/include -I/opt/csw/include/ncurses \
 	-I/opt/sfw/include -I/opt/sfw/include/ncurses
-CFLAGS+= -D_XPG4_2 -D__EXTENSIONS__
+CFLAGS+= -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
 LDFLAGS+= -L/usr/gnu/lib \
 	-L/opt/csw/lib \
 	-L/opt/sfw/lib
