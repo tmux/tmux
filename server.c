@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.178 2009-09-02 21:36:00 nicm Exp $ */
+/* $Id: server.c,v 1.179 2009-09-04 20:27:06 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -608,6 +608,8 @@ server_redraw_locked(struct client *c)
 		screen_write_cursormove(&ctx, 0, 0);
 		screen_write_puts(
 		    &ctx, &gc, "%u failed attempts", password_failures);
+		if (time(NULL) < password_backoff)
+			screen_write_puts(&ctx, &gc, "; sleeping");
 	}
 
 	screen_write_stop(&ctx);
@@ -1186,6 +1188,7 @@ void
 server_second_timers(void)
 {
 	struct window		*w;
+	struct client		*c;
 	struct window_pane	*wp;
 	u_int		 	 i;
 	int			 xtimeout;
@@ -1194,6 +1197,7 @@ server_second_timers(void)
 	time_t		 	 t;
 
 	t = time(NULL);
+
 	xtimeout = options_get_number(&global_s_options, "lock-after-time");
 	if (xtimeout > 0 && t > server_activity + xtimeout)
 		server_lock();
@@ -1206,6 +1210,13 @@ server_second_timers(void)
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->mode != NULL && wp->mode->timer != NULL)
 				wp->mode->timer(wp);
+		}
+	}
+
+	if (t > password_backoff) {
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			if ((c = ARRAY_ITEM(&clients, i)) != NULL)
+				server_redraw_client(c);
 		}
 	}
 
