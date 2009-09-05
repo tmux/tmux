@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.85 2009-09-03 20:54:39 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.86 2009-09-05 19:03:41 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -234,8 +234,8 @@ server_unlock(const char *s)
 	return (0);
 
 wrong:
-	password_backoff = server_activity;
 	password_failures++;
+	password_backoff = 0;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
@@ -266,7 +266,8 @@ wrong:
 #endif
 	failures = password_failures % tries;
 	if (failures > backoff) {
-		password_backoff += ((failures - backoff) * tries / 2);
+		password_backoff = 
+		    server_activity + ((failures - backoff) * tries / 2);
 		return (-2);
 	}
 	return (-1);

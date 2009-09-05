@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.179 2009-09-04 20:27:06 tcunha Exp $ */
+/* $Id: server.c,v 1.180 2009-09-05 19:03:41 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1213,11 +1213,12 @@ server_second_timers(void)
 		}
 	}
 
-	if (t > password_backoff) {
+	if (password_backoff != 0 && t >= password_backoff) {
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 			if ((c = ARRAY_ITEM(&clients, i)) != NULL)
 				server_redraw_client(c);
 		}
+		password_backoff = 0;
 	}
 
 	/* Check for a minute having passed. */
