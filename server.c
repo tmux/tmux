@@ -1210,11 +1210,12 @@ server_second_timers(void)
 		}
 	}
 
-	if (t > password_backoff) {
+	if (password_backoff != 0 && t >= password_backoff) {
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 			if ((c = ARRAY_ITEM(&clients, i)) != NULL)
 				server_redraw_client(c);
 		}
+		password_backoff = 0;
 	}
 
 	/* Check for a minute having passed. */

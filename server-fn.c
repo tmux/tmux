@@ -233,8 +233,8 @@ server_unlock(const char *s)
 	return (0);
 
 wrong:
-	password_backoff = server_activity;
 	password_failures++;
+	password_backoff = 0;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
@@ -260,7 +260,8 @@ wrong:
 	}
 	failures = password_failures % tries;
 	if (failures > backoff) {
-		password_backoff += ((failures - backoff) * tries / 2);
+		password_backoff = 
+		    server_activity + ((failures - backoff) * tries / 2);
 		return (-2);
 	}
 	return (-1);
