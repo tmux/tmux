@@ -107,14 +107,14 @@ status_redraw(struct client *c)
 	left = status_replace(s, options_get_string(
 	    &s->options, "status-left"), c->status_timer.tv_sec);
 	llen = options_get_number(&s->options, "status-left-length");
-	llen2 = screen_write_strlen(utf8flag, "%s", left);
+	llen2 = screen_write_cstrlen(utf8flag, "%s", left);
 	if (llen2 < llen)
 		llen = llen2;
 
 	right = status_replace(s, options_get_string(
 	    &s->options, "status-right"), c->status_timer.tv_sec);
 	rlen = options_get_number(&s->options, "status-right-length");
-	rlen2 = screen_write_strlen(utf8flag, "%s", right);
+	rlen2 = screen_write_cstrlen(utf8flag, "%s", right);
 	if (rlen2 < rlen)
 		rlen = rlen2;
 
@@ -192,7 +192,7 @@ draw:
 	screen_write_start(&ctx, NULL, &c->status);
 	if (llen != 0) {
  		screen_write_cursormove(&ctx, 0, yy);
-		screen_write_nputs(&ctx, llen, &sl_stdgc, utf8flag, "%s", left);
+		screen_write_cnputs(&ctx, llen, &sl_stdgc, utf8flag, "%s", left);
 		screen_write_putc(&ctx, &stdgc, ' ');
 		if (larrow)
 			screen_write_putc(&ctx, &stdgc, ' ');
@@ -266,7 +266,7 @@ draw:
 	if (rlen != 0) {
 		screen_write_cursormove(&ctx, c->tty.sx - rlen - 1, yy);
 		screen_write_putc(&ctx, &stdgc, ' ');
-		screen_write_nputs(&ctx, rlen, &sr_stdgc, utf8flag, "%s", right);
+		screen_write_cnputs(&ctx, rlen, &sr_stdgc, utf8flag, "%s", right);
 	}
 
 	/* Draw the arrows. */
@@ -398,6 +398,20 @@ status_replace(struct session *s, const char *fmt, time_t t)
 				while (len > 0 && *ptr != '\0') {
 					*optr++ = *ptr++;
 					len--;
+				}
+				break;
+			case '[':
+				/* 
+				 * Embedded style, handled at display time.
+				 * Leave present and skip input until ].
+				 */
+				*optr++ = '#';
+
+				iptr--;	/* include [ */
+				while (*iptr != ']' && *iptr != '\0') {
+					if (optr >= out + (sizeof out) - 1)
+						break;
+					*optr++ = *iptr++;
 				}
 				break;
 			case '#':

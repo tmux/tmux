@@ -1316,10 +1316,11 @@ will be passed through
 before being used.
 By default, the session name is shown.
 .Ar string
-may contain any of the following special character pairs:
+may contain any of the following special character sequences:
 .Bl -column "Character pair" "Replaced with" -offset indent
 .It Sy "Character pair" Ta Sy "Replaced with"
 .It Li "#(command)" Ta "First line of command's output"
+.It Li "#[attributes]" Ta "Colour or attribute change"
 .It Li "#H" Ta "Hostname of local host"
 .It Li "#I" Ta "Current window index"
 .It Li "#P" Ta "Current pane index"
@@ -1328,6 +1329,23 @@ may contain any of the following special character pairs:
 .It Li "#W" Ta "Current window name"
 .It Li "##" Ta "A literal" Ql #
 .El
+.Pp
+The #(command) form executes
+.Ql command
+as a shell command and inserts the first line of its output.
+#[attributes] allows a comma-separated list of attributes to be specified,
+these may be
+.Ql fg=colour
+to set the foreground colour,
+.Ql bg=colour
+to set the background colour, or one of the attributes described under the
+.Ic message-attr
+option.
+Examples are:
+.Bd -literal -offset indent
+#(sysctl vm.loadavg)
+#[fg=yellow,bold]#(apm -l)%%#[default] [#S]
+.Ed
 .Pp
 Where appropriate, these may be prefixed with a number to specify the maximum
 length, for example

@@ -52,6 +52,41 @@ screen_write_putc(
 	screen_write_cell(ctx, gc, NULL);
 }
 
+/* Calculate string length, with embedded formatting. */
+size_t printflike2
+screen_write_cstrlen(int utf8flag, const char *fmt, ...)
+{
+	va_list	ap;
+	char   *msg, *msg2, *ptr, *ptr2;
+	size_t	size;
+
+	va_start(ap, fmt);
+	xvasprintf(&msg, fmt, ap);
+	va_end(ap);
+	msg2 = xmalloc(strlen(msg) + 1);
+
+	ptr = msg;
+	ptr2 = msg2;
+	while (*ptr != '\0') {
+		if (ptr[0] == '#' && ptr[1] == '[') {
+			while (*ptr != ']' && *ptr != '\0')
+				ptr++;
+			if (*ptr == ']')
+				ptr++;
+			continue;
+		}
+		*ptr2++ = *ptr++;
+	}
+	*ptr2 = '\0';
+
+	size = screen_write_strlen(utf8flag, "%s", msg2);
+
+	xfree(msg);
+	xfree(msg2);
+
+	return (size);
+}
+
 /* Calculate string length. */
 size_t printflike2
 screen_write_strlen(int utf8flag, const char *fmt, ...)
@@ -175,6 +210,143 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 	}
 
 	xfree(msg);
+}
+
+/* Write string, similar to nputs, but with embedded formatting (#[]). */
+void printflike5
+screen_write_cnputs(struct screen_write_ctx *ctx,
+    ssize_t maxlen, struct grid_cell *gc, int utf8flag, const char *fmt, ...)
+{
+	struct grid_cell	 lgc;
+	va_list			 ap;
+	char			*msg;
+	u_char 			*ptr, *last, utf8buf[4];
+	size_t			 left, size = 0;
+	int			 width;
+
+	va_start(ap, fmt);
+	xvasprintf(&msg, fmt, ap);
+	va_end(ap);
+
+	memcpy(&lgc, gc, sizeof lgc);
+
+	ptr = msg;
+	while (*ptr != '\0') {
+		if (ptr[0] == '#' && ptr[1] == '[') {
+			ptr += 2;
+			last = ptr + strcspn(ptr, "]");
+			if (*last == '\0') {
+				/* No ]. Not much point in doing anything. */
+				break;
+			}
+			*last = '\0';
+
+			screen_write_parsestyle(gc, &lgc, ptr);
+			ptr = last + 1;
+			continue;
+		}
+
+		if (utf8flag && *ptr > 0x7f) {
+			memset(utf8buf, 0xff, sizeof utf8buf);
+
+			left = strlen(ptr);
+			if (*ptr >= 0xc2 && *ptr <= 0xdf && left >= 2) {
+				memcpy(utf8buf, ptr, 2);
+				ptr += 2;
+			} else if (*ptr >= 0xe0 && *ptr <= 0xef && left >= 3) {
+				memcpy(utf8buf, ptr, 3);
+				ptr += 3;
+			} else if (*ptr >= 0xf0 && *ptr <= 0xf4 && left >= 4) {
+				memcpy(utf8buf, ptr, 4);
+				ptr += 4;
+			} else {
+				*utf8buf = *ptr;
+				ptr++;
+			}
+
+			width = utf8_width(utf8buf);
+			if (maxlen > 0 && size + width > (size_t) maxlen) {
+				while (size < (size_t) maxlen) {
+					screen_write_putc(ctx, gc, ' ');
+					size++;
+				}
+				break;
+			}
+			size += width;
+
+			lgc.flags |= GRID_FLAG_UTF8;
+			screen_write_cell(ctx, &lgc, utf8buf);
+			lgc.flags &= ~GRID_FLAG_UTF8;
+
+		} else {
+			if (maxlen > 0 && size + 1 > (size_t) maxlen)
+				break;
+
+			size++;
+			screen_write_putc(ctx, &lgc, *ptr);
+			ptr++;
+		}
+	}
+
+	xfree(msg);
+}
+
+/* Parse an embedded style of the form "fg=colour,bg=colour,bright,...". */
+void
+screen_write_parsestyle(
+    struct grid_cell *defgc, struct grid_cell *gc, const char *in)
+{
+	const char	delimiters[] = " ,";
+	char		tmp[32];
+	int		val;
+	size_t		end;
+	u_char		fg, bg, attr;
+
+	if (*in == '\0')
+		return;
+	if (strchr(delimiters, in[strlen(in) - 1]) != NULL)
+		return;
+
+	fg = gc->fg;
+	bg = gc->bg;
+	attr = 0;
+	do {
+		end = strcspn(in, delimiters);
+		if (end > (sizeof tmp) - 1)
+			return;
+		memcpy(tmp, in, end);
+		tmp[end] = '\0';
+
+		if (strcasecmp(tmp, "default") == 0) {
+			fg = defgc->fg;
+			bg = defgc->bg;
+			attr = defgc->attr;
+		} else if (end > 3 && strncasecmp(tmp + 1, "g=", 2) == 0) {
+			if ((val = colour_fromstring(tmp + 3)) == -1)
+				return;
+			if (*in == 'f' || *in == 'F') {
+				if (val != 8)
+					fg = val;
+				else
+					fg = defgc->fg;
+			} else if (*in == 'b' || *in == 'B') {
+				if (val != 8)
+					bg = val;
+				else
+					bg = defgc->bg;
+			} else
+				return;
+		} else {
+			if ((val = attributes_fromstring(tmp)) == -1)
+				return;
+			attr |= val;
+		}
+
+		in += end + strspn(in + end, delimiters);
+	} while (*in != '\0');
+	gc->fg = fg;
+	gc->bg = bg;
+	gc->attr = attr;
 }
 
 /* Copy from another screen. */
