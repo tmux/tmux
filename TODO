@@ -102,3 +102,5 @@
 - fix line wrapping c&p problems in xterm etc
 - a way to address panes by name ("top-left") and position ("0,0")
 - ability to specify multiple prefix keys
+- commands should be able to succeed or fail and have || or && for command
+  lists
