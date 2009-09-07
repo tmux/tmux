@@ -1228,8 +1228,8 @@ server_second_timers(void)
 	/* If locked, redraw all clients. */
 	if (server_locked) {
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			if (ARRAY_ITEM(&clients, i) != NULL)
-				server_redraw_client(ARRAY_ITEM(&clients, i));
+			if ((c = ARRAY_ITEM(&clients, i)) != NULL)
+				server_redraw_client(c);
 		}
 	}
 }
