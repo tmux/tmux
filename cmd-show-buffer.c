@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <string.h>
 #include <vis.h>
 
 #include "tmux.h"
@@ -65,7 +64,7 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (pb == NULL)
 		return (0);
 
-	size = strlen(pb->data);
+	size = pb->size;
 	if (size > SIZE_MAX / 4 - 1)
 		size = SIZE_MAX / 4 - 1;
 	in = xmalloc(size * 4 + 1);

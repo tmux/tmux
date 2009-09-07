@@ -928,9 +928,10 @@ status_prompt_key(struct client *c, int key)
 	case MODEKEYEDIT_PASTE:
 		if ((pb = paste_get_top(&c->session->buffers)) == NULL)
 			break;
-		if ((last = strchr(pb->data, '\n')) == NULL)
-			last = strchr(pb->data, '\0');
-		n = last - pb->data;
+		for (n = 0; n < pb->size; n++) {
+			if (pb->data[n] < 32 || pb->data[n] == 127)
+				break;
+		}
 
 		c->prompt_buffer = xrealloc(c->prompt_buffer, 1, size + n + 1);
 		if (c->prompt_index == size) {

@@ -45,13 +45,13 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
 	struct winlink		*wl;
-	struct window		*w;
+	struct window_pane	*wp;
 	struct session		*s;
 	struct paste_buffer	*pb;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return (-1);
-	w = wl->window;
+	wp = wl->window->active;
 
 	if (data->buffer == -1)
 		pb = paste_get_top(&s->buffers);
@@ -64,13 +64,10 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (pb != NULL && *pb->data != '\0') {
 		/* -r means raw data without LF->CR conversion. */
-		if (data->chflags & CMD_CHFLAG('r')) {
-			buffer_write(
-			    w->active->out, pb->data, strlen(pb->data));
-		} else {
-			cmd_paste_buffer_lf2cr(
-			    w->active->out, pb->data, strlen(pb->data));
-		}
+		if (data->chflags & CMD_CHFLAG('r'))
+			buffer_write(wp->out, pb->data, pb->size);
+		else
+			cmd_paste_buffer_lf2cr(wp->out, pb->data, pb->size);
 	}
 
 	/* Delete the buffer if -d. */

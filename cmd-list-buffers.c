@@ -55,7 +55,7 @@ cmd_list_buffers_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	idx = 0;
 	while ((pb = paste_walk_stack(&s->buffers, &idx)) != NULL) {
-		size = strlen(pb->data);
+		size = pb->size;
 
 		/* Translate the first 50 characters. */
 		len = size;

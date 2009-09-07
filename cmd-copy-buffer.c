@@ -16,7 +16,10 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/types.h>
+
 #include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -122,34 +125,38 @@ cmd_copy_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_copy_buffer_data	*data = self->data;
 	struct paste_buffer		*pb;
+	struct paste_stack		*dst_ps, *src_ps;
+	u_char				*pdata;
 	struct session			*dst_session, *src_session;
 	u_int				 limit;
 
 	if ((dst_session = cmd_find_session(ctx, data->dst_session)) == NULL ||
 	    (src_session = cmd_find_session(ctx, data->src_session)) == NULL)
 	    	return (-1);
+	dst_ps = &dst_session->buffers;
+	src_ps = &src_session->buffers;
 
 	if (data->src_idx == -1) {
-		if ((pb = paste_get_top(&src_session->buffers)) == NULL) {
+		if ((pb = paste_get_top(src_ps)) == NULL) {
 			ctx->error(ctx, "no buffers");
 			return (-1);
 		}
 	} else {
-		if ((pb = paste_get_index(&src_session->buffers,
-		    data->src_idx)) == NULL) {
+		if ((pb = paste_get_index(src_ps, data->src_idx)) == NULL) {
 		    	ctx->error(ctx, "no buffer %d", data->src_idx);
 		    	return (-1);
 		}
 	}
-
 	limit = options_get_number(&dst_session->options, "buffer-limit");
-	if (data->dst_idx == -1) {
-		paste_add(&dst_session->buffers, xstrdup(pb->data), limit);
-		return (0);
-	}
-	if (paste_replace(&dst_session->buffers, data->dst_idx,
-	    xstrdup(pb->data)) != 0) {
+
+	pdata = xmalloc(pb->size);
+	memcpy(pdata, pb->data, pb->size);
+
+	if (data->dst_idx == -1)
+		paste_add(dst_ps, pdata, pb->size, limit);
+	else if (paste_replace(dst_ps, data->dst_idx, pdata, pb->size) != 0) {
 		ctx->error(ctx, "no buffer %d", data->dst_idx);
+		xfree(pdata);
 		return (-1);
 	}
 

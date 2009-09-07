@@ -75,7 +75,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if (fwrite(pb->data, 1, strlen(pb->data), f) != strlen(pb->data)) {
+	if (fwrite(pb->data, 1, pb->size, f) != pb->size) {
 	    	ctx->error(ctx, "%s: fwrite error", data->arg);
 	    	fclose(f);
 	    	return (-1);

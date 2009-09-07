@@ -18,7 +18,7 @@
 
 #include <sys/types.h>
 
-#include <stdlib.h>
+#include <string.h>
 
 #include "tmux.h"
 
@@ -45,17 +45,23 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_buffer_data	*data = self->data;
 	struct session		*s;
 	u_int			 limit;
+	u_char			*pdata;
+	size_t			 psize;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
-
 	limit = options_get_number(&s->options, "buffer-limit");
+
+	pdata = xstrdup(data->arg);
+	psize = strlen(pdata);
+
 	if (data->buffer == -1) {
-		paste_add(&s->buffers, xstrdup(data->arg), limit);
+		paste_add(&s->buffers, pdata, psize, limit);
 		return (0);
 	}
-	if (paste_replace(&s->buffers, data->buffer, xstrdup(data->arg)) != 0) {
+	if (paste_replace(&s->buffers, data->buffer, pdata, psize) != 0) {
 		ctx->error(ctx, "no buffer %d", data->buffer);
+		xfree(pdata);
 		return (-1);
 	}
 	return (0);
