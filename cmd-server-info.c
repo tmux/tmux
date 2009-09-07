@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.27 2009-09-03 21:02:55 tcunha Exp $ */
+/* $Id: cmd-server-info.c,v 1.28 2009-09-07 23:59:19 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -91,9 +91,10 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 			continue;
 
 		ctx->print(ctx, "%2d: %s (%d, %d): %s [%ux%u %s] "
-		    "[flags=0x%x/0x%x]", i, c->tty.path, c->ibuf.fd, c->tty.fd,
-		    c->session->name, c->tty.sx, c->tty.sy, c->tty.termname,
-		    c->flags, c->tty.flags);
+		    "[flags=0x%x/0x%x, references=%u]", i, c->tty.path,
+		    c->ibuf.fd, c->tty.fd, c->session->name,
+		    c->tty.sx, c->tty.sy, c->tty.termname, c->flags, 
+		    c->tty.flags, c->references);
 	}
 	ctx->print(ctx, "%s", "");
 
@@ -109,8 +110,9 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		*strchr(tim, '\n') = '\0';
 
 		ctx->print(ctx, "%2u: %s: %u windows (created %s) [%ux%u] "
-		    "[flags=0x%x]", i, s->name, winlink_count(&s->windows),
-		    tim, s->sx, s->sy, s->flags);
+		    "[flags=0x%x, references=%u]", i, s->name,
+		    winlink_count(&s->windows), tim, s->sx, s->sy, s->flags,
+		    s->references);
 		RB_FOREACH(wl, winlinks, &s->windows) {
 			w = wl->window;
 			ctx->print(ctx, "%4u: %s [%ux%u] [flags=0x%x, "

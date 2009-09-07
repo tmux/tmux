@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-session.c,v 1.12 2009-08-25 13:55:29 tcunha Exp $ */
+/* $Id: cmd-choose-session.c,v 1.13 2009-09-07 23:59:19 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,7 +43,7 @@ const struct cmd_entry cmd_choose_session_entry = {
 };
 
 struct cmd_choose_session_data {
-	u_int		 client;
+	struct client	*client;
 	char   		*template;
 };
 
@@ -87,7 +87,8 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		cdata->template = xstrdup(data->arg);
 	else
 		cdata->template = xstrdup("switch-client -t '%%'");
-	cdata->client = server_client_index(ctx->curclient);
+	cdata->client = ctx->curclient;
+	cdata->client->references++;
 
 	window_choose_ready(wl->window->active,
 	    cur, cmd_choose_session_callback, cmd_choose_session_free, cdata);
@@ -99,7 +100,6 @@ void
 cmd_choose_session_callback(void *data, int idx)
 {
 	struct cmd_choose_session_data	*cdata = data;
-	struct client  			*c;
 	struct session			*s;
 	struct cmd_list			*cmdlist;
 	struct cmd_ctx			 ctx;
@@ -107,9 +107,8 @@ cmd_choose_session_callback(void *data, int idx)
 
 	if (idx == -1)
 		return;
-	if (cdata->client > ARRAY_LENGTH(&clients) - 1)
+	if (cdata->client->flags & CLIENT_DEAD)
 		return;
-	c = ARRAY_ITEM(&clients, cdata->client);
 
 	if ((u_int) idx > ARRAY_LENGTH(&sessions) - 1)
 		return;
@@ -121,7 +120,7 @@ cmd_choose_session_callback(void *data, int idx)
 	if (cmd_string_parse(template, &cmdlist, &cause) != 0) {
 		if (cause != NULL) {
 			*cause = toupper((u_char) *cause);
-			status_message_set(c, "%s", cause);
+			status_message_set(cdata->client, "%s", cause);
 			xfree(cause);
 		}
 		xfree(template);
@@ -130,7 +129,7 @@ cmd_choose_session_callback(void *data, int idx)
 	xfree(template);
 
 	ctx.msgdata = NULL;
-	ctx.curclient = c;
+	ctx.curclient = cdata->client;
 
 	ctx.error = key_bindings_error;
 	ctx.print = key_bindings_print;
@@ -147,6 +146,7 @@ cmd_choose_session_free(void *data)
 {
 	struct cmd_choose_session_data	*cdata = data;
 
+	cdata->client->references--;
 	xfree(cdata->template);
 	xfree(cdata);
 }

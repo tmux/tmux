@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-window.c,v 1.16 2009-08-25 13:55:29 tcunha Exp $ */
+/* $Id: cmd-choose-window.c,v 1.17 2009-09-07 23:59:19 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,8 +43,8 @@ const struct cmd_entry cmd_choose_window_entry = {
 };
 
 struct cmd_choose_window_data {
-	u_int		 client;
-	u_int		 session;
+	struct client	*client;
+	struct session	*session;
 	char   		*template;
 };
 
@@ -107,13 +107,14 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	cdata = xmalloc(sizeof *cdata);
-	if (session_index(s, &cdata->session) != 0)
-		fatalx("session not found");
 	if (data->arg != NULL)
 		cdata->template = xstrdup(data->arg);
 	else
 		cdata->template = xstrdup("select-window -t '%%'");
-	cdata->client = server_client_index(ctx->curclient);
+	cdata->session = s;
+	cdata->session->references++;
+	cdata->client = ctx->curclient;
+	cdata->client->references++;
 
 	window_choose_ready(wl->window->active, 
 	    cur, cmd_choose_window_callback, cmd_choose_window_free, cdata);
@@ -125,31 +126,27 @@ void
 cmd_choose_window_callback(void *data, int idx)
 {
 	struct cmd_choose_window_data	*cdata = data;
-	struct client			*c;
-	struct session			*s;
 	struct cmd_list			*cmdlist;
 	struct cmd_ctx			 ctx;
 	char				*target, *template, *cause;
 
 	if (idx == -1)
 		return;
-	if (cdata->client > ARRAY_LENGTH(&clients) - 1)
+	if (cdata->client->flags & CLIENT_DEAD)
+		return;	
+	if (cdata->session->flags & SESSION_DEAD)
 		return;
-	c = ARRAY_ITEM(&clients, cdata->client);
-	if (cdata->session > ARRAY_LENGTH(&sessions) - 1)
-		return;
-	s = ARRAY_ITEM(&sessions, cdata->session);
-	if (c->session != s)
+	if (cdata->client->session != cdata->session)
 		return;
 
-	xasprintf(&target, "%s:%d", s->name, idx);
+	xasprintf(&target, "%s:%d", cdata->session->name, idx);
 	template = cmd_template_replace(cdata->template, target, 1);
 	xfree(target);
 
 	if (cmd_string_parse(template, &cmdlist, &cause) != 0) {
 		if (cause != NULL) {
 			*cause = toupper((u_char) *cause);
-			status_message_set(c, "%s", cause);
+			status_message_set(cdata->client, "%s", cause);
 			xfree(cause);
 		}
 		xfree(template);
@@ -158,7 +155,7 @@ cmd_choose_window_callback(void *data, int idx)
 	xfree(template);
 
 	ctx.msgdata = NULL;
-	ctx.curclient = c;
+	ctx.curclient = cdata->client;
 
 	ctx.error = key_bindings_error;
 	ctx.print = key_bindings_print;
@@ -175,6 +172,8 @@ cmd_choose_window_free(void *data)
 {
 	struct cmd_choose_window_data	*cdata = data;
 
+	cdata->session->references--;
+	cdata->client->references--;
 	xfree(cdata->template);
 	xfree(cdata);
 }
