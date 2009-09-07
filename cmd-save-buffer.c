@@ -1,4 +1,4 @@
-/* $Id: cmd-save-buffer.c,v 1.7 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-save-buffer.c,v 1.8 2009-09-07 23:48:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -75,7 +75,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if (fwrite(pb->data, 1, strlen(pb->data), f) != strlen(pb->data)) {
+	if (fwrite(pb->data, 1, pb->size, f) != pb->size) {
 	    	ctx->error(ctx, "%s: fwrite error", data->arg);
 	    	fclose(f);
 	    	return (-1);

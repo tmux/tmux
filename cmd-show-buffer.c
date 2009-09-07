@@ -1,4 +1,4 @@
-/* $Id: cmd-show-buffer.c,v 1.9 2009-08-20 11:35:16 tcunha Exp $ */
+/* $Id: cmd-show-buffer.c,v 1.10 2009-09-07 23:48:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -17,8 +17,6 @@
  */
 
 #include <sys/types.h>
-
-#include <string.h>
 
 #include "tmux.h"
 
@@ -64,7 +62,7 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (pb == NULL)
 		return (0);
 
-	size = strlen(pb->data);
+	size = pb->size;
 	if (size > SIZE_MAX / 4 - 1)
 		size = SIZE_MAX / 4 - 1;
 	in = xmalloc(size * 4 + 1);

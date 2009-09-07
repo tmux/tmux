@@ -1,4 +1,4 @@
-/* $Id: cmd-list-buffers.c,v 1.11 2009-08-20 11:33:13 tcunha Exp $ */
+/* $Id: cmd-list-buffers.c,v 1.12 2009-09-07 23:48:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,7 +54,7 @@ cmd_list_buffers_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	idx = 0;
 	while ((pb = paste_walk_stack(&s->buffers, &idx)) != NULL) {
-		size = strlen(pb->data);
+		size = pb->size;
 
 		/* Translate the first 50 characters. */
 		len = size;
