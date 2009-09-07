@@ -43,7 +43,7 @@ const struct cmd_entry cmd_choose_client_entry = {
 };
 
 struct cmd_choose_client_data {
-	u_int		 client;
+	struct client	*client;
 	char   		*template;
 };
 
@@ -87,7 +87,8 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 		cdata->template = xstrdup(data->arg);
 	else
 		cdata->template = xstrdup("detach-client -t '%%'");
-	cdata->client = server_client_index(ctx->curclient);
+	cdata->client = ctx->curclient;
+	cdata->client->references++;
 
 	window_choose_ready(wl->window->active,
 	    cur, cmd_choose_client_callback, cmd_choose_client_free, cdata);
@@ -99,23 +100,22 @@ void
 cmd_choose_client_callback(void *data, int idx)
 {
 	struct cmd_choose_client_data	*cdata = data;
-	struct client  			*c, *c2;
+	struct client  			*c;
 	struct cmd_list			*cmdlist;
 	struct cmd_ctx			 ctx;
 	char				*template, *cause;
 
 	if (idx == -1)
 		return;
-	if (cdata->client > ARRAY_LENGTH(&clients) - 1)
+	if (cdata->client->flags & CLIENT_DEAD)
 		return;
-	c = ARRAY_ITEM(&clients, cdata->client);
 
 	if ((u_int) idx > ARRAY_LENGTH(&clients) - 1)
 		return;
-	c2 = ARRAY_ITEM(&clients, idx);
-	if (c2 == NULL || c2->session == NULL)
+	c = ARRAY_ITEM(&clients, idx);
+	if (c == NULL || c->session == NULL)
 		return;
-	template = cmd_template_replace(cdata->template, c2->tty.path, 1);
+	template = cmd_template_replace(cdata->template, c->tty.path, 1);
 
 	if (cmd_string_parse(template, &cmdlist, &cause) != 0) {
 		if (cause != NULL) {
@@ -129,7 +129,7 @@ cmd_choose_client_callback(void *data, int idx)
 	xfree(template);
 
 	ctx.msgdata = NULL;
-	ctx.curclient = c;
+	ctx.curclient = cdata->client;
 
 	ctx.error = key_bindings_error;
 	ctx.print = key_bindings_print;
@@ -146,6 +146,7 @@ cmd_choose_client_free(void *data)
 {
 	struct cmd_choose_client_data	*cdata = data;
 
+	cdata->client->references--;
 	xfree(cdata->template);
 	xfree(cdata);
 }

@@ -28,6 +28,7 @@
 
 /* Global session list. */
 struct sessions	sessions;
+struct sessions dead_sessions;
 
 struct winlink *session_next_activity(struct session *, struct winlink *);
 struct winlink *session_previous_activity(struct session *, struct winlink *);
@@ -121,14 +122,19 @@ session_create(const char *name, const char *cmd, const char *cwd,
 	u_int		 i;
 
 	s = xmalloc(sizeof *s);
+	s->references = 0;
 	s->flags = 0;
+
 	if (gettimeofday(&s->tv, NULL) != 0)
 		fatal("gettimeofday");
+
 	s->curw = NULL;
 	SLIST_INIT(&s->lastw);
 	RB_INIT(&s->windows);
 	SLIST_INIT(&s->alerts);
+
 	paste_init_stack(&s->buffers);
+
 	options_init(&s->options, &global_s_options);
 	environ_init(&s->environ);
 	if (env != NULL)
@@ -187,7 +193,16 @@ session_destroy(struct session *s)
 		winlink_remove(&s->windows, RB_ROOT(&s->windows));
 
 	xfree(s->name);
-	xfree(s);
+	
+	for (i = 0; i < ARRAY_LENGTH(&dead_sessions); i++) {
+		if (ARRAY_ITEM(&dead_sessions, i) == NULL) {
+			ARRAY_SET(&dead_sessions, i, s);
+			break;
+		}
+	}
+	if (i == ARRAY_LENGTH(&dead_sessions))
+		ARRAY_ADD(&dead_sessions, s);
+	s->flags |= SESSION_DEAD;
 }
 
 /* Find session index. */

@@ -43,6 +43,7 @@
 
 /* Client list. */
 struct clients	 clients;
+struct clients	 dead_clients;
 
 void		 server_create_client(int);
 int		 server_create_socket(void);
@@ -61,6 +62,7 @@ int		 server_check_window_activity(struct session *,
 		      struct window *);
 int		 server_check_window_content(struct session *, struct window *,
 		      struct window_pane *);
+void		 server_clean_dead(void);
 void		 server_lost_client(struct client *);
 void	 	 server_check_window(struct window *);
 void		 server_check_redraw(struct client *);
@@ -85,6 +87,7 @@ server_create_client(int fd)
 		fatal("fcntl failed");
 
 	c = xcalloc(1, sizeof *c);
+	c->references = 0;
 	imsg_init(&c->ibuf, fd);
 
 	ARRAY_INIT(&c->prompt_hdata);
@@ -162,7 +165,9 @@ server_start(char *path)
 
 	ARRAY_INIT(&windows);
 	ARRAY_INIT(&clients);
+	ARRAY_INIT(&dead_clients);
 	ARRAY_INIT(&sessions);
+	ARRAY_INIT(&dead_sessions);
 	mode_key_init_trees();
 	key_bindings_init();
 	utf8_build();
@@ -344,6 +349,9 @@ server_main(int srv_fd)
 
 		/* Collect any unset key bindings. */
 		key_bindings_clean();
+
+		/* Collect dead clients and sessions. */
+		server_clean_dead();
 		
 		/*
 		 * If we have no sessions and clients left, let's get out
@@ -948,9 +956,43 @@ server_lost_client(struct client *c)
 
 	close(c->ibuf.fd);
 	imsg_clear(&c->ibuf);
-	xfree(c);
+
+	for (i = 0; i < ARRAY_LENGTH(&dead_clients); i++) {
+		if (ARRAY_ITEM(&dead_clients, i) == NULL) {
+			ARRAY_SET(&dead_clients, i, c);
+			break;
+		}
+	}
+	if (i == ARRAY_LENGTH(&dead_clients))
+		ARRAY_ADD(&dead_clients, c);
+	c->flags |= CLIENT_DEAD;
 
 	recalculate_sizes();
+}
+
+/* Free dead, unreferenced clients and sessions. */
+void
+server_clean_dead(void)
+{
+	struct session	*s;
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&dead_sessions); i++) {
+		s = ARRAY_ITEM(&dead_sessions, i);
+		if (s == NULL || s->references != 0)
+			continue;
+		ARRAY_SET(&dead_sessions, i, NULL);
+		xfree(s);
+	}
+
+	for (i = 0; i < ARRAY_LENGTH(&dead_clients); i++) {
+		c = ARRAY_ITEM(&dead_clients, i);
+		if (c == NULL || c->references != 0)
+			continue;
+		ARRAY_SET(&dead_clients, i, NULL);
+		xfree(c);
+	}
 }
 
 /* Handle window data. */

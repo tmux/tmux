@@ -812,11 +812,14 @@ struct session {
 	SLIST_HEAD(, session_alert) alerts;
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
+#define SESSION_DEAD 0x2
 	int		 flags;
 
 	struct termios   tio;
 
 	struct environ	 environ;
+
+	int		 references;
 };
 ARRAY_DECL(sessions, struct session *);
 
@@ -939,6 +942,7 @@ struct client {
 #define CLIENT_SUSPENDED 0x40
 #define CLIENT_BAD 0x80
 #define CLIENT_IDENTIFY 0x100
+#define CLIENT_DEAD 0x200
 	int		 flags;
 
 	struct timeval	 identify_timer;
@@ -963,6 +967,8 @@ struct client {
 	struct mode_key_data prompt_mdata;
 
 	struct session	*session;
+
+	int		 references;
 };
 ARRAY_DECL(clients, struct client *);
 
@@ -1428,6 +1434,7 @@ const char *key_string_lookup_key(int);
 
 /* server.c */
 extern struct clients clients;
+extern struct clients dead_clients;
 int	 server_client_index(struct client *);
 int	 server_start(char *);
 
@@ -1702,6 +1709,7 @@ char 		*default_window_name(struct window *);
 
 /* session.c */
 extern struct sessions sessions;
+extern struct sessions dead_sessions;
 void	 session_alert_add(struct session *, struct window *, int);
 void	 session_alert_cancel(struct session *, struct winlink *);
 int	 session_alert_has(struct session *, struct winlink *, int);
