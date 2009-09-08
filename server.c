@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.182 2009-09-07 23:59:19 tcunha Exp $ */
+/* $Id: server.c,v 1.183 2009-09-08 00:01:11 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -798,6 +798,7 @@ server_accept_client(int srv_fd)
 void
 server_handle_client(struct client *c)
 {
+	struct window		*w;
 	struct window_pane	*wp;
 	struct screen		*s;
 	struct timeval	 	 tv;
@@ -821,8 +822,18 @@ server_handle_client(struct client *c)
 
 		if (c->session == NULL)
 			return;
-		wp = c->session->curw->window->active;	/* could die */
+		w = c->session->curw->window;
+		wp = w->active;	/* could die */
 
+		/* Special case: number keys jump to pane in identify mode. */
+		if (c->flags & CLIENT_IDENTIFY && key >= '0' && key <= '9') {	
+			wp = window_pane_at_index(w, key - '0');
+			if (wp != NULL && window_pane_visible(wp))
+				window_set_active_pane(w, wp);
+			server_clear_identify(c);
+			continue;
+		}
+		
 		status_message_clear(c);
 		server_clear_identify(c);
 		if (c->prompt_string != NULL) {
