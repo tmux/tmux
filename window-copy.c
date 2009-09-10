@@ -660,14 +660,15 @@ window_copy_write_line(
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
+	struct options			*oo = &wp->window->options;
 	struct grid_cell		 gc;
 	char				 hdr[32];
 	size_t	 			 last, xoff = 0, size = 0;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.fg = options_get_number(&wp->window->options, "mode-fg");
-	gc.bg = options_get_number(&wp->window->options, "mode-bg");
-	gc.attr |= options_get_number(&wp->window->options, "mode-attr");
+	colour_set_fg(&gc, options_get_number(oo, "mode-fg"));
+	colour_set_bg(&gc, options_get_number(oo, "mode-bg"));
+	gc.attr |= options_get_number(oo, "mode-attr");
 
 	last = screen_size_y(s) - 1;
 	if (py == 0) {
@@ -765,6 +766,7 @@ window_copy_update_selection(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
+	struct options			*oo = &wp->window->options;
 	struct grid_cell		 gc;
 	u_int				 sx, sy, ty;
 
@@ -773,9 +775,9 @@ window_copy_update_selection(struct window_pane *wp)
 
 	/* Set colours. */
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.fg = options_get_number(&wp->window->options, "mode-fg");
-	gc.bg = options_get_number(&wp->window->options, "mode-bg");
-	gc.attr |= options_get_number(&wp->window->options, "mode-attr");
+	colour_set_fg(&gc, options_get_number(oo, "mode-fg"));
+	colour_set_bg(&gc, options_get_number(oo, "mode-bg"));
+	gc.attr |= options_get_number(oo, "mode-attr");
 
 	/* Find top of screen. */
 	ty = screen_hsize(&wp->base) - data->oy;

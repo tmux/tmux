@@ -295,6 +295,7 @@ window_choose_write_line(
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct window_choose_mode_item	*item;
+	struct options			*oo = &wp->window->options;
 	struct screen			*s = &data->screen;
 	struct grid_cell		 gc;
  	int				 utf8flag;
@@ -305,9 +306,9 @@ window_choose_write_line(
 	utf8flag = options_get_number(&wp->window->options, "utf8");
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	if (data->selected == data->top + py) {
-		gc.fg = options_get_number(&wp->window->options, "mode-fg");
-		gc.bg = options_get_number(&wp->window->options, "mode-bg");
-		gc.attr |= options_get_number(&wp->window->options, "mode-attr");
+		colour_set_fg(&gc, options_get_number(oo, "mode-fg"));
+		colour_set_bg(&gc, options_get_number(oo, "mode-bg"));
+		gc.attr |= options_get_number(oo, "mode-attr");
 	}
 
 	screen_write_cursormove(ctx, 0, py);

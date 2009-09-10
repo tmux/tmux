@@ -601,7 +601,7 @@ server_redraw_locked(struct client *c)
 	style = options_get_number(&global_w_options, "clock-mode-style");
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.fg = colour;
+	colour_set_fg(&gc, colour);
 	gc.attr |= GRID_ATTR_BRIGHT;
 
 	screen_init(&screen, xx, yy, 0);

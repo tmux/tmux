@@ -120,7 +120,7 @@ clock_draw(struct screen_write_ctx *ctx, u_int colour, int style)
 			screen_write_cursormove(ctx, x, y);
 
 			memcpy(&gc, &grid_default_cell, sizeof gc);
-			gc.fg = colour;
+			colour_set_fg(&gc, colour);
 			screen_write_puts(ctx, &gc, "%s", tim);
 		}
 		return;
@@ -130,7 +130,7 @@ clock_draw(struct screen_write_ctx *ctx, u_int colour, int style)
 	y = (screen_size_y(s) / 2) - 3;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.bg = colour;
+	colour_set_bg(&gc, colour);
 	for (ptr = tim; *ptr != '\0'; ptr++) {
 		if (*ptr >= '0' && *ptr <= '9')
 			idx = *ptr - '0';

@@ -1486,7 +1486,9 @@ void	 input_key(struct window_pane *, int);
 void	 input_mouse(struct window_pane *, u_char, u_char, u_char);
 
 /* colour.c */
-const char *colour_tostring(u_char);
+void	 colour_set_fg(struct grid_cell *, int);
+void	 colour_set_bg(struct grid_cell *, int);
+const char *colour_tostring(int);
 int	 colour_fromstring(const char *);
 u_char	 colour_256to16(u_char);
 u_char	 colour_256to88(u_char);
