@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.71 2009-09-07 23:37:48 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.72 2009-09-11 14:13:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -300,7 +300,7 @@ screen_write_parsestyle(
 	char		tmp[32];
 	int		val;
 	size_t		end;
-	u_char		fg, bg, attr;
+	u_char		fg, bg, attr, flags;
 
 	if (*in == '\0')
 		return;
@@ -309,7 +309,8 @@ screen_write_parsestyle(
 
 	fg = gc->fg;
 	bg = gc->bg;
-	attr = 0;
+	attr = gc->attr;
+	flags = gc->flags;
 	do {
 		end = strcspn(in, delimiters);
 		if (end > (sizeof tmp) - 1)
@@ -325,14 +326,24 @@ screen_write_parsestyle(
 			if ((val = colour_fromstring(tmp + 3)) == -1)
 				return;
 			if (*in == 'f' || *in == 'F') {
-				if (val != 8)
+				if (val != 8) {
+					if (val & 0x100) {
+						flags |= GRID_FLAG_FG256;
+						val &= ~0x100;
+					} else
+						flags &= ~GRID_FLAG_FG256;
 					fg = val;
-				else
+				} else
 					fg = defgc->fg;
 			} else if (*in == 'b' || *in == 'B') {
-				if (val != 8)
+				if (val != 8) {
+					if (val & 0x100) {
+						flags |= GRID_FLAG_BG256;
+						val &= ~0x100;
+					} else
+						flags &= ~GRID_FLAG_BG256;
 					bg = val;
-				else
+				} else
 					bg = defgc->bg;
 			} else
 				return;
@@ -347,6 +358,7 @@ screen_write_parsestyle(
 	gc->fg = fg;
 	gc->bg = bg;
 	gc->attr = attr;
+	gc->flags = flags;
 }
 
 /* Copy from another screen. */
@@ -1002,7 +1014,8 @@ screen_write_cell(
 	if (screen_check_selection(s, s->cx - width, s->cy)) {
 		memcpy(&tmp_gc2, &s->sel.cell, sizeof tmp_gc2);
 		tmp_gc2.data = gc->data;
-		tmp_gc2.flags = gc->flags;
+		tmp_gc2.flags = gc->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
+		tmp_gc2.flags |= s->sel.cell.flags & (GRID_FLAG_FG256|GRID_FLAG_BG256);
 		ttyctx.cell = &tmp_gc2;
 		tty_write(tty_cmd_cell, &ttyctx);
 	} else {

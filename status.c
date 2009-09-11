@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.117 2009-09-07 23:48:54 tcunha Exp $ */
+/* $Id: status.c,v 1.118 2009-09-11 14:13:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -66,8 +66,8 @@ status_redraw(struct client *c)
 	if (gettimeofday(&c->status_timer, NULL) != 0)
 		fatal("gettimeofday");
 	memcpy(&stdgc, &grid_default_cell, sizeof gc);
-	stdgc.fg = options_get_number(&s->options, "status-fg");
-	stdgc.bg = options_get_number(&s->options, "status-bg");
+	colour_set_fg(&stdgc, options_get_number(&s->options, "status-fg"));
+	colour_set_bg(&stdgc, options_get_number(&s->options, "status-bg"));
 	stdgc.attr |= options_get_number(&s->options, "status-attr");
 
 	/* 
@@ -79,19 +79,19 @@ status_redraw(struct client *c)
 	memcpy(&sr_stdgc, &stdgc, sizeof sr_stdgc);
 	sl_fg = options_get_number(&s->options, "status-left-fg");
 	if (sl_fg != 8)
-		sl_stdgc.fg = sl_fg;
+		colour_set_fg(&sl_stdgc, sl_fg);
 	sl_bg = options_get_number(&s->options, "status-left-bg");
 	if (sl_bg != 8)
-		sl_stdgc.bg = sl_bg;		
+		colour_set_bg(&sl_stdgc, sl_bg);
 	sl_attr = options_get_number(&s->options, "status-left-attr");
 	if (sl_attr != 0)
 		sl_stdgc.attr = sl_attr;
 	sr_fg = options_get_number(&s->options, "status-right-fg");
 	if (sr_fg != 8)
-		sr_stdgc.fg = sr_fg;
+		colour_set_fg(&sr_stdgc, sr_fg);
 	sr_bg = options_get_number(&s->options, "status-right-bg");
 	if (sr_bg != 8)
-		sr_stdgc.bg = sr_bg;
+		colour_set_bg(&sr_stdgc, sr_bg);
 	sr_attr = options_get_number(&s->options, "status-right-attr");
 	if (sr_attr != 0)
 		sr_stdgc.attr = sr_attr;
@@ -501,16 +501,17 @@ status_width(struct winlink *wl)
 char *
 status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 {
-	char   *text, flag;
-	u_char	fg, bg, attr;
+	struct options	*oo = &wl->window->options;
+	char   		*text, flag;
+	u_char		 fg, bg, attr;
 
-	fg = options_get_number(&wl->window->options, "window-status-fg");
+	fg = options_get_number(oo, "window-status-fg");
 	if (fg != 8)
-		gc->fg = fg;
-	bg = options_get_number(&wl->window->options, "window-status-bg");
+		colour_set_fg(gc, fg);
+	bg = options_get_number(oo, "window-status-bg");
 	if (bg != 8)
-		gc->bg = bg;
-	attr = options_get_number(&wl->window->options, "window-status-attr");
+		colour_set_bg(gc, bg);
+	attr = options_get_number(oo, "window-status-attr");
 	if (attr != 0)
 		gc->attr = attr;
 
@@ -518,13 +519,13 @@ status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
  	if (wl == SLIST_FIRST(&s->lastw))
 		flag = '-';
 	if (wl == s->curw) {
-		fg = options_get_number(&wl->window->options, "window-status-current-fg");
+		fg = options_get_number(oo, "window-status-current-fg");
 		if (fg != 8)
-			gc->fg = fg;
-		bg = options_get_number(&wl->window->options, "window-status-current-bg");
+			colour_set_fg(gc, fg);
+		bg = options_get_number(oo, "window-status-current-bg");
 		if (bg != 8)
-			gc->bg = bg;
-		attr = options_get_number(&wl->window->options, "window-status-current-attr");
+			colour_set_bg(gc, bg);
+		attr = options_get_number(oo, "window-status-current-attr");
 		if (attr != 0)
 			gc->attr = attr;
 		flag = '*';
@@ -606,8 +607,8 @@ status_message_redraw(struct client *c)
 		len = c->tty.sx;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.fg = options_get_number(&s->options, "message-fg");
-	gc.bg = options_get_number(&s->options, "message-bg");
+	colour_set_fg(&gc, options_get_number(&s->options, "message-fg"));
+	colour_set_bg(&gc, options_get_number(&s->options, "message-bg"));
 	gc.attr |= options_get_number(&s->options, "message-attr");
 
 	screen_write_start(&ctx, NULL, &c->status);
@@ -719,8 +720,8 @@ status_prompt_redraw(struct client *c)
 		len = c->tty.sx;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.fg = options_get_number(&s->options, "message-fg");
-	gc.bg = options_get_number(&s->options, "message-bg");
+	colour_set_fg(&gc, options_get_number(&s->options, "message-fg"));
+	colour_set_bg(&gc, options_get_number(&s->options, "message-bg"));
 	gc.attr |= options_get_number(&s->options, "message-attr");
 
 	screen_write_start(&ctx, NULL, &c->status);

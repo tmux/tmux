@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.37 2009-08-20 11:24:33 tcunha Exp $ */
+/* $Id: window-more.c,v 1.38 2009-09-11 14:13:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -164,6 +164,7 @@ window_more_write_line(
 {
 	struct window_more_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
+	struct options			*oo = &wp->window->options;	
 	struct grid_cell		 gc;
 	char   				*msg, hdr[32];
 	size_t	 			 size;
@@ -176,9 +177,9 @@ window_more_write_line(
 		size = xsnprintf(hdr, sizeof hdr,
 		    "[%u/%u]", data->top, ARRAY_LENGTH(&data->list));
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
-		gc.fg = options_get_number(&wp->window->options, "mode-fg");
-		gc.bg = options_get_number(&wp->window->options, "mode-bg");
-		gc.attr |= options_get_number(&wp->window->options, "mode-attr");
+		colour_set_fg(&gc, options_get_number(oo, "mode-fg"));
+		colour_set_bg(&gc, options_get_number(oo, "mode-bg"));
+		gc.attr |= options_get_number(oo, "mode-attr");
 		screen_write_puts(ctx, &gc, "%s", hdr);
 		memcpy(&gc, &grid_default_cell, sizeof gc);
 	} else

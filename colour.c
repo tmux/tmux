@@ -1,4 +1,4 @@
-/* $Id: colour.c,v 1.6 2009-05-18 15:42:30 nicm Exp $ */
+/* $Id: colour.c,v 1.7 2009-09-11 14:13:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,13 +18,42 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
 
-const char *
-colour_tostring(u_char c)
+/*
+ * Colour to string conversion functions. Bit 8 of the colour means it is one
+ * of the 256 colour palette.
+ */
+
+void
+colour_set_fg(struct grid_cell *gc, int c)
 {
+	if (c & 0x100)
+		gc->flags |= GRID_FLAG_FG256;
+	gc->fg = c;
+}
+
+void
+colour_set_bg(struct grid_cell *gc, int c)
+{
+	if (c & 0x100)
+		gc->flags |= GRID_FLAG_BG256;
+	gc->bg = c;
+}
+
+const char *
+colour_tostring(int c)
+{
+	static char	s[32];
+
+	if (c & 0x100) {
+		xsnprintf(s, sizeof s, "colour%u", c & ~0x100);
+		return (s);
+	}
+
 	switch (c) {
 	case 0:
 		return ("black");
@@ -51,6 +80,16 @@ colour_tostring(u_char c)
 int
 colour_fromstring(const char *s)
 {
+	const char	*errstr;
+	int		 n;
+
+	if (strncasecmp(s, "colour", (sizeof "colour") - 1) == 0) {
+		n = strtonum(s + (sizeof "colour") - 1, 0, 255, &errstr);
+		if (errstr != NULL)
+			return (-1);
+		return (n | 0x100);
+	}
+
 	if (strcasecmp(s, "black") == 0 || (s[0] == '0' && s[1] == '\0'))
 		return (0);
 	if (strcasecmp(s, "red") == 0 || (s[0] == '1' && s[1] == '\0'))

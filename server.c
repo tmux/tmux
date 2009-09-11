@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.183 2009-09-08 00:01:11 tcunha Exp $ */
+/* $Id: server.c,v 1.184 2009-09-11 14:13:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -604,7 +604,7 @@ server_redraw_locked(struct client *c)
 	style = options_get_number(&global_w_options, "clock-mode-style");
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.fg = colour;
+	colour_set_fg(&gc, colour);
 	gc.attr |= GRID_ATTR_BRIGHT;
 
 	screen_init(&screen, xx, yy, 0);

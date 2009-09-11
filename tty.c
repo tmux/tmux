@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.131 2009-08-31 22:30:15 tcunha Exp $ */
+/* $Id: tty.c,v 1.132 2009-09-11 14:13:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -520,7 +520,8 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 		if (screen_check_selection(s, i, py)) {
 			memcpy(&tmpgc, &s->sel.cell, sizeof tmpgc);
 			tmpgc.data = gc->data;
-			tmpgc.flags = gc->flags;
+			tmpgc.flags = gc->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
+			tmpgc.flags |= s->sel.cell.flags & (GRID_FLAG_FG256|GRID_FLAG_BG256);
 			tty_cell(tty, &tmpgc, gu);
 		} else
 			tty_cell(tty, gc, gu);

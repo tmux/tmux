@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.439 2009-09-07 23:59:19 tcunha Exp $ */
+/* $Id: tmux.h,v 1.440 2009-09-11 14:13:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1484,7 +1484,9 @@ void	 input_key(struct window_pane *, int);
 void	 input_mouse(struct window_pane *, u_char, u_char, u_char);
 
 /* colour.c */
-const char *colour_tostring(u_char);
+void	 colour_set_fg(struct grid_cell *, int);
+void	 colour_set_bg(struct grid_cell *, int);
+const char *colour_tostring(int);
 int	 colour_fromstring(const char *);
 u_char	 colour_256to16(u_char);
 u_char	 colour_256to88(u_char);
