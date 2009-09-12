@@ -1457,6 +1457,7 @@ void	 server_status_window(struct window *);
 void	 server_lock(void);
 int	 server_unlock(const char *);
 void	 server_kill_window(struct window *);
+void	 server_destroy_session(struct session *);
 void	 server_set_identify(struct client *);
 void	 server_clear_identify(struct client *);
 
