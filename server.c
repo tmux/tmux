@@ -1170,10 +1170,9 @@ server_check_window(struct window *w)
 {
 	struct window_pane	*wp, *wq;
 	struct options		*oo = &w->options;
-	struct client		*c;
 	struct session		*s;
 	struct winlink		*wl;
-	u_int		 	 i, j;
+	u_int		 	 i;
 	int		 	 destroyed;
 
 	destroyed = 1;
