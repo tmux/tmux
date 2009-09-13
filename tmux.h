@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.440 2009-09-11 14:13:52 tcunha Exp $ */
+/* $Id: tmux.h,v 1.441 2009-09-13 20:37:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1455,6 +1455,7 @@ void	 server_status_window(struct window *);
 void	 server_lock(void);
 int	 server_unlock(const char *);
 void	 server_kill_window(struct window *);
+void	 server_destroy_session(struct session *);
 void	 server_set_identify(struct client *);
 void	 server_clear_identify(struct client *);
 

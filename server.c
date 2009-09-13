@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.184 2009-09-11 14:13:52 tcunha Exp $ */
+/* $Id: server.c,v 1.185 2009-09-13 20:37:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1214,21 +1214,11 @@ server_check_window(struct window *w)
 		RB_FOREACH(wl, winlinks, &s->windows) {
 			if (wl->window != w)
 				continue;
-			destroyed = session_detach(s, wl);
-			for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
-				c = ARRAY_ITEM(&clients, j);
-				if (c == NULL || c->session != s)
-					continue;
-				if (!destroyed) {
-					server_redraw_client(c);
-					continue;
-				}
-				c->session = NULL;
-				server_write_client(c, MSG_EXIT, NULL, 0);
-			}
-			/* If the session was destroyed, bail now. */
-			if (destroyed)
+			if (session_detach(s, wl)) {
+				server_destroy_session(s);
 				break;
+			}
+			server_redraw_session(s);
 			goto restart;
 		}
 	}

@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.86 2009-09-05 19:03:41 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.87 2009-09-13 20:37:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -278,10 +278,7 @@ server_kill_window(struct window *w)
 {
 	struct session	*s;
 	struct winlink	*wl;
-	struct client	*c;
-	u_int		 i, j;
-	int		 destroyed;
-
+	u_int		 i;
 	
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
@@ -290,20 +287,27 @@ server_kill_window(struct window *w)
 		if ((wl = winlink_find_by_window(&s->windows, w)) == NULL)
 			continue;
 		
-		destroyed = session_detach(s, wl);
-		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
-			c = ARRAY_ITEM(&clients, j);
-			if (c == NULL || c->session != s)
-				continue;
-			
-			if (destroyed) {
-				c->session = NULL;
-				server_write_client(c, MSG_EXIT, NULL, 0);
-			} else
-				server_redraw_client(c);
-		}
+		if (session_detach(s, wl))
+			server_destroy_session(s);
+		else
+			server_redraw_session(s);
 	}
 	recalculate_sizes();
+}
+
+void
+server_destroy_session(struct session *s)
+{
+	struct client	*c;
+	u_int		 i;
+	
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session != s)
+			continue;
+		c->session = NULL;
+		server_write_client(c, MSG_EXIT, NULL, 0);
+	}
 }
 
 void
