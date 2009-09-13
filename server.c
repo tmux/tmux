@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.185 2009-09-13 20:37:37 tcunha Exp $ */
+/* $Id: server.c,v 1.186 2009-09-13 20:43:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1173,10 +1173,9 @@ server_check_window(struct window *w)
 {
 	struct window_pane	*wp, *wq;
 	struct options		*oo = &w->options;
-	struct client		*c;
 	struct session		*s;
 	struct winlink		*wl;
-	u_int		 	 i, j;
+	u_int		 	 i;
 	int		 	 destroyed;
 
 	destroyed = 1;
