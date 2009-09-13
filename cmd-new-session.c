@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.62 2009-08-26 09:10:47 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.63 2009-09-13 20:30:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -179,7 +179,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		memset(tio.c_cc, _POSIX_VDISABLE, sizeof tio.c_cc);
 		tio.c_cc[VINTR] = CINTR;
 		tio.c_cc[VQUIT] = CQUIT;
-		tio.c_cc[VERASE] = CERASE;
+		tio.c_cc[VERASE] = '\177';
 		tio.c_cc[VKILL] = CKILL;
 		tio.c_cc[VEOF] = CEOF;
 		tio.c_cc[VSTART] = CSTART;
