@@ -116,19 +116,6 @@ server_create_client(int fd)
 	log_debug("new client %d", fd);
 }
 
-/* Find client index. */
-int
-server_client_index(struct client *c)
-{
-	u_int	i;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		if (c == ARRAY_ITEM(&clients, i))
-			return (i);
-	}
-	return (-1);
-}
-
 /* Fork new server. */
 int
 server_start(char *path)

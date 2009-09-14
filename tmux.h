@@ -1435,7 +1435,6 @@ const char *key_string_lookup_key(int);
 /* server.c */
 extern struct clients clients;
 extern struct clients dead_clients;
-int	 server_client_index(struct client *);
 int	 server_start(char *);
 
 /* server-msg.c */
