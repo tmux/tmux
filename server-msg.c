@@ -248,7 +248,7 @@ server_msg_identify(struct client *c, struct msg_identify_data *data, int fd)
 		c->tty.sx = 80;
 	c->tty.sy = data->sy;
 	if (c->tty.sy == 0)
-		c->tty.sy = 25;
+		c->tty.sy = 24;
 
 	c->cwd = NULL;
 	data->cwd[(sizeof data->cwd) - 1] = '\0';
@@ -278,7 +278,7 @@ server_msg_resize(struct client *c, struct msg_resize_data *data)
 		c->tty.sx = 80;
 	c->tty.sy = data->sy;
 	if (c->tty.sy == 0)
-		c->tty.sy = 25;
+		c->tty.sy = 24;
 
 	c->tty.cx = UINT_MAX;
 	c->tty.cy = UINT_MAX;

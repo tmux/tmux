@@ -197,7 +197,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	/* Find new session size. */
 	if (detached) {
 		sx = 80;
-		sy = 25;
+		sy = 24;
 	} else if (ctx->cmdclient != NULL) {
 		sx = ctx->cmdclient->tty.sx;
 		sy = ctx->cmdclient->tty.sy;

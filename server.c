@@ -97,7 +97,7 @@ server_create_client(int fd)
 
 	c->session = NULL;
 	c->tty.sx = 80;
-	c->tty.sy = 25;
+	c->tty.sy = 24;
 	screen_init(&c->status, c->tty.sx, 1, 0);
 
 	c->message_string = NULL;
