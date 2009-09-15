@@ -104,3 +104,4 @@
 - ability to specify multiple prefix keys
 - commands should be able to succeed or fail and have || or && for command
   lists
+- support the mouse wheel to scroll through history
