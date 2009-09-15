@@ -105,3 +105,5 @@
 - commands should be able to succeed or fail and have || or && for command
   lists
 - support the mouse wheel to scroll through history
+- improve set-titles - should only check when CLIENT_STATUS, should be under
+  status-interval, and should be customisable a la status-left/right
