@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.64 2009-09-13 20:56:52 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.65 2009-09-15 23:52:30 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -224,7 +224,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	/* Find new session size. */
 	if (detached) {
 		sx = 80;
-		sy = 25;
+		sy = 24;
 	} else if (ctx->cmdclient != NULL) {
 		sx = ctx->cmdclient->tty.sx;
 		sy = ctx->cmdclient->tty.sy;

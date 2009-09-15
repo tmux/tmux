@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.187 2009-09-15 23:50:32 tcunha Exp $ */
+/* $Id: server.c,v 1.188 2009-09-15 23:52:30 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -96,7 +96,7 @@ server_create_client(int fd)
 
 	c->session = NULL;
 	c->tty.sx = 80;
-	c->tty.sy = 25;
+	c->tty.sy = 24;
 	screen_init(&c->status, c->tty.sx, 1, 0);
 
 	c->message_string = NULL;
