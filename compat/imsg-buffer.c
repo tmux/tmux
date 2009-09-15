@@ -1,5 +1,5 @@
-/* $Id: imsg-buffer.c,v 1.3 2009-08-20 12:54:08 nicm Exp $ */
-/*	$OpenBSD: imsg-buffer.c,v 1.1 2009/08/11 17:18:35 nicm Exp $	*/
+/* $Id: imsg-buffer.c,v 1.4 2009-09-15 23:59:40 tcunha Exp $ */
+/*	$OpenBSD: imsg-buffer.c,v 1.2 2009/09/15 18:12:51 jacekm Exp $	*/
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -144,7 +144,7 @@ int
 buf_write(struct msgbuf *msgbuf)
 {
 	struct iovec	 iov[IOV_MAX];
-	struct buf	*buf, *next;
+	struct buf	*buf;
 	unsigned int	 i = 0;
 	ssize_t	n;
 
@@ -170,17 +170,7 @@ buf_write(struct msgbuf *msgbuf)
 		return (-2);
 	}
 
-	for (buf = TAILQ_FIRST(&msgbuf->bufs); buf != NULL && n > 0;
-	    buf = next) {
-		next = TAILQ_NEXT(buf, entry);
-		if (buf->rpos + n >= buf->wpos) {
-			n -= buf->wpos - buf->rpos;
-			buf_dequeue(msgbuf, buf);
-		} else {
-			buf->rpos += n;
-			n = 0;
-		}
-	}
+	msgbuf_drain(msgbuf, n);
 
 	return (0);
 }
@@ -201,6 +191,24 @@ msgbuf_init(struct msgbuf *msgbuf)
 }
 
 void
+msgbuf_drain(struct msgbuf *msgbuf, size_t n)
+{
+	struct buf	*buf, *next;
+
+	for (buf = TAILQ_FIRST(&msgbuf->bufs); buf != NULL && n > 0;
+	    buf = next) {
+		next = TAILQ_NEXT(buf, entry);
+		if (buf->rpos + n >= buf->wpos) {
+			n -= buf->wpos - buf->rpos;
+			buf_dequeue(msgbuf, buf);
+		} else {
+			buf->rpos += n;
+			n = 0;
+		}
+	}
+}
+
+void
 msgbuf_clear(struct msgbuf *msgbuf)
 {
 	struct buf	*buf;
@@ -213,7 +221,7 @@ int
 msgbuf_write(struct msgbuf *msgbuf)
 {
 	struct iovec	 iov[IOV_MAX];
-	struct buf	*buf, *next;
+	struct buf	*buf;
 	unsigned int	 i = 0;
 	ssize_t		 n;
 	struct msghdr	 msg;
@@ -270,17 +278,7 @@ msgbuf_write(struct msgbuf *msgbuf)
 		buf->fd = -1;
 	}
 
-	for (buf = TAILQ_FIRST(&msgbuf->bufs); buf != NULL && n > 0;
-	    buf = next) {
-		next = TAILQ_NEXT(buf, entry);
-		if (buf->rpos + n >= buf->wpos) {
-			n -= buf->wpos - buf->rpos;
-			buf_dequeue(msgbuf, buf);
-		} else {
-			buf->rpos += n;
-			n = 0;
-		}
-	}
+	msgbuf_drain(msgbuf, n);
 
 	return (0);
 }
