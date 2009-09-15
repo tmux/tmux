@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.72 2009-09-11 14:13:52 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.73 2009-09-15 23:54:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -371,25 +371,42 @@ screen_write_copy(struct screen_write_ctx *ctx,
 	struct grid_line	*gl;
 	const struct grid_cell	*gc;
 	u_char			*udata;
-	u_int		 	 xx, yy, cx, cy;
+	u_int		 	 xx, yy, cx, cy, ax, bx;
 
 	cx = s->cx;
 	cy = s->cy;
 	for (yy = py; yy < py + ny; yy++) {
 		gl = &gd->linedata[yy];
-		for (xx = px; xx < px + nx; xx++) {
- 			udata = NULL;
-
-			if (xx >= gl->cellsize || yy >= gd->hsize + gd->sy)
-				gc = &grid_default_cell;
-			else {
-				gc = &gl->celldata[xx];
-				if (gc->flags & GRID_FLAG_UTF8)
-					udata = gl->utf8data[xx].data;
+		if (yy < gd->hsize + gd->sy) {
+			/*
+			 * Find start and end position and copy between
+			 * them. Limit to the real end of the line then use a
+			 * clear EOL only if copying to the end, otherwise
+			 * could overwrite whatever is there already.
+			 */
+			if (px > gl->cellsize)
+				ax = gl->cellsize;
+			else
+				ax = px;
+			if (px + nx == gd->sx && px + nx > gl->cellsize)
+				bx = gl->cellsize;
+			else
+				bx = px + nx;
+			for (xx = ax; xx < bx; xx++) {
+				udata = NULL;
+				if (xx >= gl->cellsize)
+					gc = &grid_default_cell;
+				else {
+					gc = &gl->celldata[xx];
+					if (gc->flags & GRID_FLAG_UTF8)
+						udata = gl->utf8data[xx].data;
+				}
+				screen_write_cell(ctx, gc, udata);
 			}
-
-			screen_write_cell(ctx, gc, udata);
-		}
+			if (px + nx == gd->sx && px + nx > gl->cellsize)
+				screen_write_clearendofline(ctx);
+		} else
+ 			screen_write_clearline(ctx);
 		cy++;
 		screen_write_cursormove(ctx, cx, cy);
 	}

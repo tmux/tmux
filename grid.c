@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.32 2009-08-21 21:10:37 tcunha Exp $ */
+/* $Id: grid.c,v 1.33 2009-09-15 23:54:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -189,22 +189,15 @@ grid_scroll_line(struct grid *gd)
 
 /* Expand line to fit to cell. */
 void
-grid_expand_line(struct grid *gd, u_int py, u_int wantx)
+grid_expand_line(struct grid *gd, u_int py, u_int sx)
 {
 	struct grid_line	*gl;
-	u_int			 xx, sx;
+	u_int			 xx;
 
 	gl = &gd->linedata[py];
-	if (wantx <= gl->cellsize)
+	if (sx <= gl->cellsize)
 		return;
 
-	if (gl->cellsize > gd->sx / 2)
-		sx = gd->sx;
-	else {
-		sx = gl->cellsize + 1;
-		while (sx < wantx)
-			sx *= 2;
-	}
 	gl->celldata = xrealloc(gl->celldata, sx, sizeof *gl->celldata);
 	for (xx = gl->cellsize; xx < sx; xx++)
 		grid_put_cell(gd, xx, py, &grid_default_cell);
@@ -307,10 +300,7 @@ grid_set_utf8(
 	grid_put_utf8(gd, px, py, gc);
 }
 
-/*
- * Clear area. Note this is different from a fill as it just omits unallocated
- * cells.
- */
+/* Clear area. */
 void
 grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny)
 {
@@ -336,6 +326,12 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny)
 		return;
 
 	for (yy = py; yy < py + ny; yy++) {
+		if (px >= gd->linedata[yy].cellsize)
+			continue;
+		if (px + nx >= gd->linedata[yy].cellsize) {
+			gd->linedata[yy].cellsize = px;
+			continue;
+		}
 		for (xx = px; xx < px + nx; xx++) {
 			if (xx >= gd->linedata[yy].cellsize)
 				break;
