@@ -90,6 +90,7 @@ void		 buf_free(struct buf *);
 void		 msgbuf_init(struct msgbuf *);
 void		 msgbuf_clear(struct msgbuf *);
 int		 msgbuf_write(struct msgbuf *);
+void		 msgbuf_drain(struct msgbuf *, size_t);
 
 /* imsg.c */
 void	 imsg_init(struct imsgbuf *, int);
