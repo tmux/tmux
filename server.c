@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.186 2009-09-13 20:43:21 tcunha Exp $ */
+/* $Id: server.c,v 1.187 2009-09-15 23:50:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -113,19 +113,6 @@ server_create_client(int fd)
 	}
 	ARRAY_ADD(&clients, c);
 	log_debug("new client %d", fd);
-}
-
-/* Find client index. */
-int
-server_client_index(struct client *c)
-{
-	u_int	i;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		if (c == ARRAY_ITEM(&clients, i))
-			return (i);
-	}
-	return (-1);
 }
 
 /* Fork new server. */
