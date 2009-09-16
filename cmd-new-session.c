@@ -21,9 +21,6 @@
 #include <string.h>
 #include <termios.h>
 
-#define TTYDEFCHARS
-#include <sys/ttydefaults.h>
-
 #include "tmux.h"
 
 /*
@@ -116,7 +113,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session			*s;
 	struct window			*w;
 	struct environ			 env;
-	struct termios			 tio;
+	struct termios			 tio, *tiop;
 	const char			*update;
 	char				*overrides, *cmd, *cwd, *cause;
 	int				 detached, idx;
@@ -151,8 +148,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		detached = 1;
 
 	/*
-	 * Fill in the termios settings used for new windows in this session;
-	 * if there is a command client, use the control characters from it.
+	 * Save the termios settings, part of which is used for new windows in
+	 * this session.
 	 *
 	 * This is read again with tcgetattr() rather than using tty.tio as if
 	 * detached, tty_open won't be called. Because of this, it must be done
@@ -162,15 +159,9 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (ctx->cmdclient != NULL && ctx->cmdclient->tty.fd != -1) {
 		if (tcgetattr(ctx->cmdclient->tty.fd, &tio) != 0)
 			fatal("tcgetattr failed");
+		tiop = &tio;
 	} else
-		memcpy(tio.c_cc, ttydefchars, sizeof tio.c_cc);
-	tio.c_cc[VERASE] = '\177';
-	tio.c_iflag = TTYDEF_IFLAG;
-	tio.c_oflag = TTYDEF_OFLAG;
-	tio.c_lflag = TTYDEF_LFLAG;
-	tio.c_cflag = TTYDEF_CFLAG;
-	cfsetispeed(&tio, TTYDEF_SPEED);
-	cfsetospeed(&tio, TTYDEF_SPEED);
+		tiop = NULL;
 
 	/* Open the terminal if necessary. */
 	if (!detached && ctx->cmdclient != NULL) {
@@ -227,7 +218,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	/* Create the new session. */
 	idx = -1 - options_get_number(&global_s_options, "base-index");
 	s = session_create(
-	    data->newname, cmd, cwd, &env, &tio, idx, sx, sy, &cause);
+	    data->newname, cmd, cwd, &env, tiop, idx, sx, sy, &cause);
 	if (s == NULL) {
 		ctx->error(ctx, "create session failed: %s", cause);
 		xfree(cause);

@@ -815,7 +815,7 @@ struct session {
 #define SESSION_DEAD 0x2
 	int		 flags;
 
-	struct termios   tio;
+	struct termios	*tio;
 
 	struct environ	 environ;
 

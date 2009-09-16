@@ -139,7 +139,12 @@ session_create(const char *name, const char *cmd, const char *cwd,
 	environ_init(&s->environ);
 	if (env != NULL)
 		environ_copy(env, &s->environ);
-	memcpy(&s->tio, tio, sizeof s->tio);
+
+	s->tio = NULL;
+	if (tio != NULL) {
+		s->tio = xmalloc(sizeof *s->tio);
+		memcpy(s->tio, tio, sizeof *s->tio);
+	}
 
 	s->sx = sx;
 	s->sy = sy;
@@ -181,6 +186,9 @@ session_destroy(struct session *s)
 	ARRAY_SET(&sessions, i, NULL);
 	while (!ARRAY_EMPTY(&sessions) && ARRAY_LAST(&sessions) == NULL)
 		ARRAY_TRUNC(&sessions, 1);
+
+	if (s->tio != NULL)
+		xfree(s->tio);
 
 	session_alert_cancel(s, NULL);
 	environ_free(&s->environ);
@@ -237,7 +245,7 @@ session_new(struct session *s,
 
 	hlimit = options_get_number(&s->options, "history-limit");
 	w = window_create(
-	    name, cmd, shell, cwd, &env, &s->tio, s->sx, s->sy, hlimit, cause);
+	    name, cmd, shell, cwd, &env, s->tio, s->sx, s->sy, hlimit, cause);
 	if (w == NULL) {
 		environ_free(&env);
 		return (NULL);
