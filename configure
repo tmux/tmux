@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.36 2009-09-04 14:48:25 nicm Exp $
+# $Id: configure,v 1.37 2009-09-16 12:36:27 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -35,8 +35,6 @@ cat <<EOF >>$CONFIG_H
 #undef HAVE_STRSEP
 #undef HAVE_STRTONUM
 #undef HAVE_TREE_H
-#undef HAVE_TTYDEFAULTS_H
-#undef HAVE_TTYDEFCHARS
 #undef HAVE_UTIL_H
 #undef HAVE_U_INT
 #undef HAVE_VIS
@@ -65,8 +63,6 @@ case $TMUX_PLATFORM in
 #define HAVE_STRSEP
 #define HAVE_STRTONUM
 #define HAVE_TREE_H
-#define HAVE_TTYDEFAULTS_H
-#define HAVE_TTYDEFCHARS
 #define HAVE_UTIL_H
 #define HAVE_U_INT
 #define HAVE_VIS
@@ -91,7 +87,6 @@ EOF
 #define HAVE_PTY_H
 #define HAVE_STRCASESTR
 #define HAVE_STRSEP
-#define HAVE_TTYDEFAULTS_H
 #define HAVE_U_INT
 EOF
 	cat <<EOF >>$CONFIG_MK
@@ -183,8 +178,6 @@ EOF
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_STRSEP
-#define HAVE_TTYDEFAULTS_H
-#define HAVE_TTYDEFCHARS
 #define HAVE_UTIL_H
 #define HAVE_U_INT
 EOF
@@ -219,8 +212,6 @@ EOF
 #define HAVE_STRLCPY
 #define HAVE_STRTONUM
 #define HAVE_STRSEP
-#define HAVE_TTYDEFAULTS_H
-#define HAVE_TTYDEFCHARS
 #define HAVE_U_INT
 EOF
 	cat <<EOF >>$CONFIG_MK
@@ -250,8 +241,6 @@ EOF
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 #define HAVE_STRSEP
-#define HAVE_TTYDEFAULTS_H
-#define HAVE_TTYDEFCHARS
 #define HAVE_UTIL_H
 #define HAVE_U_INT
 EOF

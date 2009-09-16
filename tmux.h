@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.442 2009-09-15 23:50:32 tcunha Exp $ */
+/* $Id: tmux.h,v 1.443 2009-09-16 12:36:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -813,7 +813,7 @@ struct session {
 #define SESSION_DEAD 0x2
 	int		 flags;
 
-	struct termios   tio;
+	struct termios	*tio;
 
 	struct environ	 environ;
 

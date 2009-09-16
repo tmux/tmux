@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-window.c,v 1.21 2009-09-02 01:02:44 tcunha Exp $ */
+/* $Id: cmd-respawn-window.c,v 1.22 2009-09-16 12:36:27 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -76,7 +76,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	window_pane_resize(wp, w->sx, w->sy);
 	if (window_pane_spawn(
-	    wp, data->arg, NULL, NULL, &env, &s->tio, &cause) != 0) {
+	    wp, data->arg, NULL, NULL, &env, s->tio, &cause) != 0) {
 		ctx->error(ctx, "respawn window failed: %s", cause);
 		xfree(cause);
 		environ_free(&env);
