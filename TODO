@@ -97,6 +97,10 @@
 - support running tmux from inside tmux [#(), if-shell] --
   	  generic system-like function which may take a callback
 	  also sets up environment (TMUX) and has a timeout
+	for #(): command schedular, status line queues it with a time, run in
+	main loop, and uses most recent result -- can also be used for persistent
+	commands which never exit just continually output
+	for if-shell, callback??
 - handle resize better in copy mode
 - way to copy stuff that is off screen due to resize
 - fix line wrapping c&p problems in xterm etc
