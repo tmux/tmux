@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.171 2009-09-04 20:37:40 tcunha Exp $ */
+/* $Id: tmux.c,v 1.172 2009-09-19 18:53:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -422,6 +422,7 @@ main(int argc, char **argv)
 	options_set_number(so, "repeat-time", 500);
 	options_set_number(so, "set-remain-on-exit", 0);
 	options_set_number(so, "set-titles", 0);
+	options_set_string(so, "set-titles-string", "#S:#I:#W - \"#T\"");
 	options_set_number(so, "status", 1);
 	options_set_number(so, "status-attr", 0);
 	options_set_number(so, "status-bg", 2);

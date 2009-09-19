@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.188 2009-09-15 23:52:30 tcunha Exp $ */
+/* $Id: server.c,v 1.189 2009-09-19 18:53:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,6 +65,7 @@ void		 server_clean_dead(void);
 void		 server_lost_client(struct client *);
 void	 	 server_check_window(struct window *);
 void		 server_check_redraw(struct client *);
+void		 server_set_title(struct client *);
 void		 server_redraw_locked(struct client *);
 void		 server_check_timers(struct client *);
 void		 server_second_timers(void);
@@ -519,7 +520,6 @@ server_check_redraw(struct client *c)
 {
 	struct session		*s;
 	struct window_pane	*wp;
-	char		 	 title[512];
 	int		 	 flags, redraw;
 
 	if (c == NULL || c->session == NULL)
@@ -529,19 +529,10 @@ server_check_redraw(struct client *c)
 	flags = c->tty.flags & TTY_FREEZE;
 	c->tty.flags &= ~TTY_FREEZE;
 
-	if (options_get_number(&s->options, "set-titles")) {
-		xsnprintf(title, sizeof title, "%s:%u:%s - \"%s\"",
-		    s->name, s->curw->idx, s->curw->window->name,
-		    s->curw->window->active->screen->title);
-		if (c->title == NULL || strcmp(title, c->title) != 0) {
-			if (c->title != NULL)
-				xfree(c->title);
-			c->title = xstrdup(title);
-			tty_set_title(&c->tty, c->title);
-		}
-	}
-
 	if (c->flags & (CLIENT_REDRAW|CLIENT_STATUS)) {
+		if (options_get_number(&s->options, "set-titles"))
+			server_set_title(c);
+	
 		if (c->message_string != NULL)
 			redraw = status_message_redraw(c);
 		else if (c->prompt_string != NULL)
@@ -571,6 +562,26 @@ server_check_redraw(struct client *c)
 	c->tty.flags |= flags;
 
 	c->flags &= ~(CLIENT_REDRAW|CLIENT_STATUS);
+}
+
+/* Set client title. */
+void
+server_set_title(struct client *c)
+{
+	struct session	*s = c->session;
+	const char	*template;
+	char		*title;
+
+	template = options_get_string(&s->options, "set-titles-string");
+	
+	title = status_replace(c->session, template, time(NULL));
+	if (c->title == NULL || strcmp(title, c->title) != 0) {
+		if (c->title != NULL)
+			xfree(c->title);
+		c->title = xstrdup(title);
+		tty_set_title(&c->tty, c->title);
+	}
+	xfree(title);
 }
 
 /* Redraw client when locked. */

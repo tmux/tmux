@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.78 2009-09-02 01:02:44 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.79 2009-09-19 18:53:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -69,6 +69,7 @@ const struct set_option_entry set_option_table[] = {
 	{ "repeat-time", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
 	{ "set-remain-on-exit", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "set-titles", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "set-titles-string", SET_OPTION_STRING, 0, 0, NULL },
 	{ "status", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "status-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
 	{ "status-bg", SET_OPTION_COLOUR, 0, 0, NULL },
