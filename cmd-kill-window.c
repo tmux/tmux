@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-window.c,v 1.19 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-kill-window.c,v 1.20 2009-09-20 22:15:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,6 +47,7 @@ cmd_kill_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 
 	server_kill_window(wl->window);
+	recalculate_sizes();
 
 	return (0);
 }

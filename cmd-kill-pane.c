@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-pane.c,v 1.12 2009-07-30 20:45:20 tcunha Exp $ */
+/* $Id: cmd-kill-pane.c,v 1.13 2009-09-20 22:15:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,6 +52,7 @@ cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (window_count_panes(wl->window) == 1) {
 		/* Only one pane, kill the window. */
 		server_kill_window(wl->window);
+		recalculate_sizes();
 		return (0);
 	}
 

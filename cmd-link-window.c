@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.32 2009-08-16 19:16:27 tcunha Exp $ */
+/* $Id: cmd-link-window.c,v 1.33 2009-09-20 22:15:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,53 +44,21 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_srcdst_data	*data = self->data;
 	struct session		*dst;
-	struct winlink		*wl_src, *wl_dst;
+	struct winlink		*wl;
 	char			*cause;
-	int			 idx;
+	int			 idx, kflag, dflag;
 
-	if ((wl_src = cmd_find_window(ctx, data->src, NULL)) == NULL)
+	if ((wl = cmd_find_window(ctx, data->src, NULL)) == NULL)
 		return (-1);
 	if ((idx = cmd_find_index(ctx, data->dst, &dst)) == -2)
 		return (-1);
 
-	wl_dst = NULL;
-	if (idx != -1)
-		wl_dst = winlink_find_by_index(&dst->windows, idx);
-	if (wl_dst != NULL) {
-		if (wl_dst->window == wl_src->window)
-			return (0);
-
-		if (data->chflags & CMD_CHFLAG('k')) {
-			/*
-			 * Can't use session_detach as it will destroy session
-			 * if this makes it empty.
-			 */
-			session_alert_cancel(dst, wl_dst);
-			winlink_stack_remove(&dst->lastw, wl_dst);
-			winlink_remove(&dst->windows, wl_dst);
-
-			/* Force select/redraw if current. */
-			if (wl_dst == dst->curw) {
-				data->chflags &= ~CMD_CHFLAG('d');
-				dst->curw = NULL;
-			}
-		}
-	}
-
-	if (idx == -1)
-		idx = -1 - options_get_number(&dst->options, "base-index");
-	wl_dst = session_attach(dst, wl_src->window, idx, &cause);
-	if (wl_dst == NULL) {
-		ctx->error(ctx, "create session failed: %s", cause);
+	kflag = data->chflags & CMD_CHFLAG('k');
+	dflag = data->chflags & CMD_CHFLAG('d');
+	if (server_link_window(wl, dst, idx, kflag, !dflag, &cause) != 0) {
+		ctx->error(ctx, "can't create session: %s", cause);
 		xfree(cause);
 		return (-1);
-	}
-
-	if (data->chflags & CMD_CHFLAG('d'))
-		server_status_session(dst);
-	else {
-		session_select(dst, wl_dst->idx);
-		server_redraw_session(dst);
 	}
 	recalculate_sizes();
 
