@@ -1,4 +1,4 @@
-/* $Id: forkpty-sunos.c,v 1.7 2009-08-19 16:06:45 nicm Exp $ */
+/* $Id: forkpty-sunos.c,v 1.8 2009-09-20 18:31:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,7 +62,7 @@ forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)
 		if (ioctl(slave, I_PUSH, "ldterm") == -1)
 			fatal("ioctl failed");
 
-		if (tcsetattr(slave, TCSAFLUSH, tio) == -1)
+		if (tio != NULL && tcsetattr(slave, TCSAFLUSH, tio) == -1)
 			fatal("tcsetattr failed");
 		if (ioctl(slave, TIOCSWINSZ, ws) == -1)
 			fatal("ioctl failed");

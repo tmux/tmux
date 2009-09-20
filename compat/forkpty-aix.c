@@ -1,4 +1,4 @@
-/* $Id: forkpty-aix.c,v 1.3 2009-08-19 16:06:45 nicm Exp $ */
+/* $Id: forkpty-aix.c,v 1.4 2009-09-20 18:31:16 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,7 +70,7 @@ forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)
 			fatal("open failed");
 		close(fd);
 
-		if (tcsetattr(slave, TCSAFLUSH, tio) == -1)
+		if (tio != NULL && tcsetattr(slave, TCSAFLUSH, tio) == -1)
 			fatal("tcsetattr failed");
 		if (ioctl(slave, TIOCSWINSZ, ws) == -1)
 			fatal("ioctl failed");
