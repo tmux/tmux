@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.87 2009-09-13 20:37:37 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.88 2009-09-20 22:11:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -321,7 +321,7 @@ server_set_identify(struct client *c)
 	tv.tv_usec = (delay % 1000) * 1000L;
 
 	if (gettimeofday(&c->identify_timer, NULL) != 0)
-		fatal("gettimeofday");
+		fatal("gettimeofday failed");
 	timeradd(&c->identify_timer, &tv, &c->identify_timer);
 
 	c->flags |= CLIENT_IDENTIFY;

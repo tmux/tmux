@@ -1,4 +1,4 @@
-/* $Id: names.c,v 1.15 2009-09-02 01:02:44 tcunha Exp $ */
+/* $Id: names.c,v 1.16 2009-09-20 22:11:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,7 +36,7 @@ set_window_names(void)
 	struct timeval	 tv, tv2;
 
 	if (gettimeofday(&tv, NULL) != 0)
-		fatal("gettimeofday");
+		fatal("gettimeofday failed");
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);

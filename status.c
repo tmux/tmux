@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.118 2009-09-11 14:13:52 tcunha Exp $ */
+/* $Id: status.c,v 1.119 2009-09-20 22:11:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -64,7 +64,7 @@ status_redraw(struct client *c)
 	screen_init(&c->status, c->tty.sx, 1, 0);
 
 	if (gettimeofday(&c->status_timer, NULL) != 0)
-		fatal("gettimeofday");
+		fatal("gettimeofday failed");
 	memcpy(&stdgc, &grid_default_cell, sizeof gc);
 	colour_set_fg(&stdgc, options_get_number(&s->options, "status-fg"));
 	colour_set_bg(&stdgc, options_get_number(&s->options, "status-bg"));
@@ -361,7 +361,7 @@ status_replace(struct session *s, const char *fmt, time_t t)
 			case 'H':
 				if (ptr == NULL) {
 					if (gethostname(tmp, sizeof tmp) != 0)
-						fatal("gethostname");
+						fatal("gethostname failed");
 					ptr = tmp;
 				}
 				/* FALLTHROUGH */
@@ -565,7 +565,7 @@ status_message_set(struct client *c, const char *fmt, ...)
 	tv.tv_usec = (delay % 1000) * 1000L;
 
 	if (gettimeofday(&c->message_timer, NULL) != 0)
-		fatal("gettimeofday");
+		fatal("gettimeofday failed");
 	timeradd(&c->message_timer, &tv, &c->message_timer);
 
 	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);

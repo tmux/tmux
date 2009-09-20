@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.29 2009-07-28 22:37:02 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.30 2009-09-20 22:11:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -287,7 +287,7 @@ tty_keys_next(struct tty *tty, int *key, u_char *mouse)
 		tv.tv_sec = 0;
 		tv.tv_usec = ESCAPE_PERIOD * 1000L;
 		if (gettimeofday(&tty->key_timer, NULL) != 0)
-			fatal("gettimeofday");
+			fatal("gettimeofday failed");
 		timeradd(&tty->key_timer, &tv, &tty->key_timer);
 
 		tty->flags |= TTY_ESCAPE;
@@ -317,7 +317,7 @@ tty_keys_next(struct tty *tty, int *key, u_char *mouse)
 
 	/* If the timer hasn't expired, keep waiting. */
 	if (gettimeofday(&tv, NULL) != 0)
-		fatal("gettimeofday");
+		fatal("gettimeofday failed");
 	if (timercmp(&tty->key_timer, &tv, >))
 		return (1);
 

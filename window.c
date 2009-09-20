@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.107 2009-09-16 12:36:28 nicm Exp $ */
+/* $Id: window.c,v 1.108 2009-09-20 22:11:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -478,7 +478,7 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 	ws.ws_row = screen_size_y(&wp->base);
 
 	if (gettimeofday(&wp->window->name_timer, NULL) != 0)
-		fatal("gettimeofday");
+		fatal("gettimeofday failed");
 	tv.tv_sec = 0;
 	tv.tv_usec = NAME_INTERVAL * 1000L;
 	timeradd(&wp->window->name_timer, &tv, &wp->window->name_timer);

@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.70 2009-09-03 21:06:30 tcunha Exp $ */
+/* $Id: client.c,v 1.71 2009-09-20 22:11:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -78,7 +78,7 @@ client_init(char *path, struct client_ctx *cctx, int cmdflags, int flags)
 	}
 
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-		fatal("socket");
+		fatal("socket failed");
 
 	if (connect(fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
 		if (errno == ECONNREFUSED) {
