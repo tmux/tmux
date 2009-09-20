@@ -1,4 +1,4 @@
-/* $Id: cmd-unlink-window.c,v 1.17 2009-09-20 22:15:32 tcunha Exp $ */
+/* $Id: cmd-unlink-window.c,v 1.18 2009-09-20 22:17:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,9 +43,6 @@ cmd_unlink_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_target_data	*data = self->data;
 	struct winlink		*wl;
 	struct session		*s;
-	struct client		*c;
-	u_int			 i;
-	int			 destroyed;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return (-1);

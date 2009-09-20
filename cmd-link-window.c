@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.33 2009-09-20 22:15:32 tcunha Exp $ */
+/* $Id: cmd-link-window.c,v 1.34 2009-09-20 22:17:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,7 +56,7 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	kflag = data->chflags & CMD_CHFLAG('k');
 	dflag = data->chflags & CMD_CHFLAG('d');
 	if (server_link_window(wl, dst, idx, kflag, !dflag, &cause) != 0) {
-		ctx->error(ctx, "can't create session: %s", cause);
+		ctx->error(ctx, "can't link window: %s", cause);
 		xfree(cause);
 		return (-1);
 	}

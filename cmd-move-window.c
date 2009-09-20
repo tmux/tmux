@@ -1,4 +1,4 @@
-/* $Id: cmd-move-window.c,v 1.10 2009-09-20 22:15:32 tcunha Exp $ */
+/* $Id: cmd-move-window.c,v 1.11 2009-09-20 22:17:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,7 +56,7 @@ cmd_move_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	kflag = data->chflags & CMD_CHFLAG('k');
 	dflag = data->chflags & CMD_CHFLAG('d');
 	if (server_link_window(wl, dst, idx, kflag, !dflag, &cause) != 0) {
-		ctx->error(ctx, "can't create session: %s", cause);
+		ctx->error(ctx, "can't move window: %s", cause);
 		xfree(cause);
 		return (-1);
 	}
