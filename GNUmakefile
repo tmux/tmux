@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.115 2009-09-20 19:01:01 nicm Exp $
+# $Id: GNUmakefile,v 1.116 2009-09-20 22:06:34 tcunha Exp $
 
 .PHONY: clean
 
@@ -48,7 +48,7 @@ depend: 	$(SRCS)
 		$(CC) $(CPPFLAGS) $(CFLAGS) -MM $(SRCS) > .depend
 
 clean:
-		rm -f tmux *.o *~ *.core *.log compat/*.o
+		rm -f tmux *.o *~ *.core *.log compat/*.o compat/*~
 
 clean-depend:
 		rm -f .depend
