@@ -1338,6 +1338,7 @@ extern const struct cmd_entry cmd_rename_window_entry;
 extern const struct cmd_entry cmd_resize_pane_entry;
 extern const struct cmd_entry cmd_respawn_window_entry;
 extern const struct cmd_entry cmd_rotate_window_entry;
+extern const struct cmd_entry cmd_run_shell_entry;
 extern const struct cmd_entry cmd_save_buffer_entry;
 extern const struct cmd_entry cmd_scroll_mode_entry;
 extern const struct cmd_entry cmd_select_layout_entry;

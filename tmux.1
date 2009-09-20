@@ -1959,6 +1959,15 @@ returns success.
 .It Ic lock-server
 .D1 (alias: Ic lock )
 Lock the server until a password is entered.
+.It Ic run-shell Ar command
+.D1 (alias: Ic run )
+Execute
+.Ar command
+without creating a window.
+Any output to stdout is displayed in output mode.
+If
+.Ar command 
+doesn't return success, the exit status is also displayed.
 .It Ic server-info
 .D1 (alias: Ic info )
 Show server information and terminal details.
