@@ -56,7 +56,7 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	kflag = data->chflags & CMD_CHFLAG('k');
 	dflag = data->chflags & CMD_CHFLAG('d');
 	if (server_link_window(wl, dst, idx, kflag, !dflag, &cause) != 0) {
-		ctx->error(ctx, "can't create session: %s", cause);
+		ctx->error(ctx, "can't link window: %s", cause);
 		xfree(cause);
 		return (-1);
 	}
