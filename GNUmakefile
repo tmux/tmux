@@ -1,10 +1,10 @@
-# $Id: GNUmakefile,v 1.113 2009-08-26 08:58:39 nicm Exp $
+# $Id: GNUmakefile,v 1.114 2009-09-20 18:54:21 nicm Exp $
 
 .PHONY: clean
 
 VERSION= 1.0
 
-FDEBUG= 1
+#FDEBUG= 1
 
 CC?= gcc
 CFLAGS+= -DBUILD="\"$(VERSION)\""

@@ -1,3 +1,39 @@
+CHANGES FROM 0.9 TO 1.0, 20 Sept 2009
+
+* Option to alter the format of the window title set by tmux.
+* Backoff for a while after multiple incorrect password attempts.
+* Quick display of pane numbers (C-b q).
+* Better choose-window, choose-session commands and a new choose-client command.
+* Option to request multiple responses when using command-prompt.
+* Improved environment handling.
+* Combine wrapped lines when pasting.
+* Option to override terminal settings (terminal-overrides).
+* Use the full range of ACS characters for drawing pane separator lines.
+* Customisable mode keys.
+* Status line colour options, with embedded colours in status-left/right, and
+  an option to centre the window list.
+* Much improved layouts, including both horizontal and vertical splitting.
+* Optional visual bell, activity and content indications.
+* Set the utf8 and status-utf8 options when the server is started with -u.
+* display-message command to show a message in the status line, by default some
+  information about the current window.
+* Improved current process detection on NetBSD.
+* unlink-window -k is now the same as kill-window.
+* attach-session now works from inside tmux.
+* A system-wide configuration file, /etc/tmux.conf.
+* A number of new commands in copy mode, including searching.
+* Panes are now specified using the target (-t) notation.
+* -t now accepts fnmatch(3) patterns and looks for prefixes.
+* Translate \r into \n when pasting.
+* Support for binding commands to keys without the prefix key
+* Support for alternate screen (terminfo smcup/rmcup).
+* Maintain data that goes off screen after reducing the window size, so it can
+  be restored when the size is increased again.
+* New if-shell command to test a shell command before running a tmux command.
+* tmux now works as the shell.
+* Man page reorganisation.
+* Many minor additions, much code tidying and several bug fixes.
+
 CHANGES FROM 0.8 TO 0.9, 01 July 2009
 
 * Major changes to build infrastructure: cleanup of makefiles and addition
@@ -1322,7 +1358,7 @@ The list of older changes is below.
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.299 2009-07-01 22:15:16 nicm Exp $
+$Id: CHANGES,v 1.300 2009-09-20 18:54:21 nicm Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
