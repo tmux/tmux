@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.168 2009-09-19 18:53:01 tcunha Exp $
+.\" $Id: tmux.1,v 1.169 2009-09-20 22:20:10 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 18 2009 $
+.Dd $Mdocdate: September 20 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1959,6 +1959,15 @@ returns success.
 .It Ic lock-server
 .D1 (alias: Ic lock )
 Lock the server until a password is entered.
+.It Ic run-shell Ar command
+.D1 (alias: Ic run )
+Execute
+.Ar command
+without creating a window.
+Any output to stdout is displayed in output mode.
+If
+.Ar command 
+doesn't return success, the exit status is also displayed.
 .It Ic server-info
 .D1 (alias: Ic info )
 Show server information and terminal details.

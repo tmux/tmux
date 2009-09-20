@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.444 2009-09-20 22:15:32 tcunha Exp $ */
+/* $Id: tmux.h,v 1.445 2009-09-20 22:20:10 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1336,6 +1336,7 @@ extern const struct cmd_entry cmd_rename_window_entry;
 extern const struct cmd_entry cmd_resize_pane_entry;
 extern const struct cmd_entry cmd_respawn_window_entry;
 extern const struct cmd_entry cmd_rotate_window_entry;
+extern const struct cmd_entry cmd_run_shell_entry;
 extern const struct cmd_entry cmd_save_buffer_entry;
 extern const struct cmd_entry cmd_scroll_mode_entry;
 extern const struct cmd_entry cmd_select_layout_entry;
