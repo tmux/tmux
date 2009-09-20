@@ -315,7 +315,7 @@ server_set_identify(struct client *c)
 	tv.tv_usec = (delay % 1000) * 1000L;
 
 	if (gettimeofday(&c->identify_timer, NULL) != 0)
-		fatal("gettimeofday");
+		fatal("gettimeofday failed");
 	timeradd(&c->identify_timer, &tv, &c->identify_timer);
 
 	c->flags |= CLIENT_IDENTIFY;

@@ -480,7 +480,7 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 	ws.ws_row = screen_size_y(&wp->base);
 
 	if (gettimeofday(&wp->window->name_timer, NULL) != 0)
-		fatal("gettimeofday");
+		fatal("gettimeofday failed");
 	tv.tv_sec = 0;
 	tv.tv_usec = NAME_INTERVAL * 1000L;
 	timeradd(&wp->window->name_timer, &tv, &wp->window->name_timer);

@@ -126,7 +126,7 @@ session_create(const char *name, const char *cmd, const char *cwd,
 	s->flags = 0;
 
 	if (gettimeofday(&s->tv, NULL) != 0)
-		fatal("gettimeofday");
+		fatal("gettimeofday failed");
 
 	s->curw = NULL;
 	SLIST_INIT(&s->lastw);

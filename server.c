@@ -435,7 +435,7 @@ server_child_signal(void)
 		case -1:
 			if (errno == ECHILD)
 				return;
-			fatal("waitpid");
+			fatal("waitpid failed");
 		case 0:
 			return;
 		}
@@ -637,7 +637,7 @@ server_check_timers(struct client *c)
 	s = c->session;
 
 	if (gettimeofday(&tv, NULL) != 0)
-		fatal("gettimeofday");
+		fatal("gettimeofday failed");
 
 	if (c->flags & CLIENT_IDENTIFY && timercmp(&tv, &c->identify_timer, >))
 		server_clear_identify(c);
@@ -805,7 +805,7 @@ server_handle_client(struct client *c)
 	xtimeout = options_get_number(&c->session->options, "repeat-time");
 	if (xtimeout != 0 && c->flags & CLIENT_REPEAT) {
 		if (gettimeofday(&tv, NULL) != 0)
-			fatal("gettimeofday");
+			fatal("gettimeofday failed");
 		if (timercmp(&tv, &c->repeat_timer, >))
 			c->flags &= ~(CLIENT_PREFIX|CLIENT_REPEAT);
 	}
@@ -889,7 +889,7 @@ server_handle_client(struct client *c)
 			tv.tv_sec = xtimeout / 1000;
 			tv.tv_usec = (xtimeout % 1000) * 1000L;
 			if (gettimeofday(&c->repeat_timer, NULL) != 0)
-				fatal("gettimeofday");
+				fatal("gettimeofday failed");
 			timeradd(&c->repeat_timer, &tv, &c->repeat_timer);
 		}
 

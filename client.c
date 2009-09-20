@@ -74,7 +74,7 @@ client_init(char *path, struct client_ctx *cctx, int cmdflags, int flags)
 	}
 
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-		fatal("socket");
+		fatal("socket failed");
 
 	if (connect(fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
 		if (errno == ECONNREFUSED) {
