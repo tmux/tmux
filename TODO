@@ -58,11 +58,6 @@
 - way to set socket path from config file
 - XXX once env stuff is in, default-path and VISUAL/EDITOR should be picked up
   when session is started
-- when moving up from a blank line in copy mode it always assumes you were at
-  the end of the line so it can be a bit funny. should remember last non-blank
-  x position and use that
-- paste-buffer etc should be able to handle \0, so needs a size member and no
-  more strlen
 - what about utmp etc? can tmux update it like screen? setgid?
 - H/M/L commands in copy mode with vi-keys, for jumping to the top/middle/last
   line on the screen
@@ -109,5 +104,3 @@
 - commands should be able to succeed or fail and have || or && for command
   lists
 - support the mouse wheel to scroll through history
-- improve set-titles - should only check when CLIENT_STATUS, should be under
-  status-interval, and should be customisable a la status-left/right
