@@ -47,6 +47,7 @@ cmd_kill_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 
 	server_kill_window(wl->window);
+	recalculate_sizes();
 
 	return (0);
 }

@@ -52,6 +52,7 @@ cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (window_count_panes(wl->window) == 1) {
 		/* Only one pane, kill the window. */
 		server_kill_window(wl->window);
+		recalculate_sizes();
 		return (0);
 	}
 

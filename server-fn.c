@@ -286,7 +286,59 @@ server_kill_window(struct window *w)
 		else
 			server_redraw_session(s);
 	}
-	recalculate_sizes();
+}
+
+int
+server_link_window(
+    struct winlink *srcwl, struct session *dst, int dstidx,
+    int killflag, int selectflag, char **cause)
+{
+	struct winlink	*dstwl;
+
+	dstwl = NULL;
+	if (dstidx != -1)
+		dstwl = winlink_find_by_index(&dst->windows, dstidx);
+	if (dstwl != NULL) {
+		if (dstwl->window == srcwl->window)
+			return (0);
+		if (killflag) {
+			/*
+			 * Can't use session_detach as it will destroy session
+			 * if this makes it empty.
+			 */
+			session_alert_cancel(dst, dstwl);
+			winlink_stack_remove(&dst->lastw, dstwl);
+			winlink_remove(&dst->windows, dstwl);
+
+			/* Force select/redraw if current. */
+			if (dstwl == dst->curw)
+				selectflag = 1;
+		}
+	}
+
+	if (dstidx == -1)
+		dstidx = -1 - options_get_number(&dst->options, "base-index");
+	dstwl = session_attach(dst, srcwl->window, dstidx, cause);
+	if (dstwl == NULL)
+		return (-1);
+
+	if (!selectflag)
+		server_status_session(dst);
+	else {
+		session_select(dst, dstwl->idx);
+		server_redraw_session(dst);
+	}
+
+	return (0);
+}
+
+void
+server_unlink_window(struct session *s, struct winlink *wl)
+{
+	if (session_detach(s, wl))
+		server_destroy_session(s);
+	else
+		server_redraw_session(s);
 }
 
 void
