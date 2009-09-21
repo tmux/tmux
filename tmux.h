@@ -545,10 +545,9 @@ struct options_entry {
 		OPTIONS_STRING,
 		OPTIONS_NUMBER,
 	} type;
-	union {
-		char	*string;
-		long long number;
-	} value;
+
+	char		*str;
+	long long	 num;
 
 	SPLAY_ENTRY(options_entry) entry;
 };
