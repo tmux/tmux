@@ -544,12 +544,10 @@ struct options_entry {
 	enum {
 		OPTIONS_STRING,
 		OPTIONS_NUMBER,
-		OPTIONS_KEY,
 	} type;
 	union {
 		char	*string;
 		long long number;
-		int	 key;
 	} value;
 
 	SPLAY_ENTRY(options_entry) entry;
