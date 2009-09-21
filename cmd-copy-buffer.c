@@ -70,7 +70,7 @@ cmd_copy_buffer_parse(struct cmd *self, int argc, char **argv, char **cause)
 	const char			*errstr;
 	int				 n, opt;
 
-	self->entry->init(self, 0);
+	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
 	while ((opt = getopt(argc, argv, "a:b:s:t:")) != -1) {

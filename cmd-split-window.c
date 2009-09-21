@@ -84,7 +84,7 @@ cmd_split_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 	int				 opt;
 	const char			*errstr;
 
-	self->entry->init(self, 0);
+	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
 	while ((opt = getopt(argc, argv, "dhl:p:t:v")) != -1) {

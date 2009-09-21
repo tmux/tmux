@@ -70,7 +70,7 @@ cmd_new_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 	struct cmd_new_window_data	*data;
 	int				 opt;
 
-	self->entry->init(self, 0);
+	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
 	while ((opt = getopt(argc, argv, "dkt:n:")) != -1) {

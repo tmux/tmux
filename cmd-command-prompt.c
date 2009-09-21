@@ -90,7 +90,7 @@ cmd_command_prompt_parse(struct cmd *self, int argc, char **argv, char **cause)
 	struct cmd_command_prompt_data	*data;
 	int				 opt;
 
-	self->entry->init(self, 0);
+	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
 	while ((opt = getopt(argc, argv, "p:t:")) != -1) {

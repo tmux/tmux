@@ -66,7 +66,7 @@ cmd_if_shell_parse(struct cmd *self, int argc, char **argv, char **cause)
 	struct cmd_if_shell_data	*data;
 	int				 opt;
 
-	self->entry->init(self, 0);
+	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
 	while ((opt = getopt(argc, argv, "")) != -1) {
