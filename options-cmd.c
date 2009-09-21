@@ -23,6 +23,46 @@
 
 #include "tmux.h"
 
+const char *
+set_option_print(const struct set_option_entry *entry, struct options_entry *o)
+{
+	static char	out[BUFSIZ];
+	const char     *s;
+
+	*out = '\0';
+	switch (entry->type) {
+		case SET_OPTION_STRING:
+			xsnprintf(out, sizeof out, "\"%s\"", o->str);
+			break;
+		case SET_OPTION_NUMBER:
+			xsnprintf(out, sizeof out, "%lld", o->num);
+			break;
+		case SET_OPTION_KEY:
+			s = key_string_lookup_key(o->num);
+			xsnprintf(out, sizeof out, "%s", s);
+			break;
+		case SET_OPTION_COLOUR:
+			s = colour_tostring(o->num);
+			xsnprintf(out, sizeof out, "%s", s);
+			break;
+		case SET_OPTION_ATTRIBUTES:
+			s = attributes_tostring(o->num);
+			xsnprintf(out, sizeof out, "%s", s);
+			break;
+		case SET_OPTION_FLAG:
+			if (o->num)
+				strlcpy(out, "on", sizeof out);
+			else
+				strlcpy(out, "off", sizeof out);
+			break;
+		case SET_OPTION_CHOICE:
+			s = entry->choices[o->num];
+			xsnprintf(out, sizeof out, "%s", s);
+			break;
+	}
+	return (out);
+}
+
 void
 set_option_string(struct cmd_ctx *ctx, struct options *oo,
     const struct set_option_entry *entry, char *value, int append)

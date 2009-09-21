@@ -1238,6 +1238,8 @@ void	tty_keys_free(struct tty *);
 int	tty_keys_next(struct tty *, int *, u_char *);
 
 /* options-cmd.c */
+const char *set_option_print(
+    	    const struct set_option_entry *, struct options_entry *);
 void	set_option_string(struct cmd_ctx *,
 	    struct options *, const struct set_option_entry *, char *, int);
 void	set_option_number(struct cmd_ctx *,
