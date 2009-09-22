@@ -93,7 +93,7 @@ tty_open(struct tty *tty, const char *overrides, char **cause)
 	tty->in = buffer_create(BUFSIZ);
 	tty->out = buffer_create(BUFSIZ);
 
-	tty->flags &= TTY_UTF8;
+	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_ESCAPE);
 
 	tty_start_tty(tty);
 
