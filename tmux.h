@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.446 2009-09-22 13:45:06 tcunha Exp $ */
+/* $Id: tmux.h,v 1.447 2009-09-22 13:49:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -543,10 +543,9 @@ struct options_entry {
 		OPTIONS_STRING,
 		OPTIONS_NUMBER,
 	} type;
-	union {
-		char	*string;
-		long long number;
-	} value;
+
+	char		*str;
+	long long	 num;
 
 	SPLAY_ENTRY(options_entry) entry;
 };
