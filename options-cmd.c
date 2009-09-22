@@ -1,4 +1,4 @@
-/* $Id: options-cmd.c,v 1.6 2009-09-22 13:56:02 tcunha Exp $ */
+/* $Id: options-cmd.c,v 1.7 2009-09-22 13:59:46 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -67,7 +67,8 @@ void
 set_option_string(struct cmd_ctx *ctx, struct options *oo,
     const struct set_option_entry *entry, char *value, int append)
 {
-	char	*oldvalue, *newvalue;
+	struct options_entry	*o;
+	char			*oldvalue, *newvalue;
 
 	if (value == NULL) {
 		ctx->error(ctx, "empty value");
@@ -80,8 +81,9 @@ set_option_string(struct cmd_ctx *ctx, struct options *oo,
 	} else
 		newvalue = value;
 		
-	options_set_string(oo, entry->name, "%s", newvalue);
-	ctx->info(ctx, "set option: %s -> %s", entry->name, newvalue);
+	o = options_set_string(oo, entry->name, "%s", newvalue);
+	ctx->info(
+	    ctx, "set option: %s -> %s", o->name, set_option_print(entry, o));
 
 	if (newvalue != value)
 		xfree(newvalue);
@@ -91,8 +93,9 @@ void
 set_option_number(struct cmd_ctx *ctx, struct options *oo,
     const struct set_option_entry *entry, char *value)
 {
-	long long	number;
-	const char     *errstr;
+	struct options_entry	*o;
+	long long		 number;
+	const char     		*errstr;
 
 	if (value == NULL) {
 		ctx->error(ctx, "empty value");
@@ -104,15 +107,18 @@ set_option_number(struct cmd_ctx *ctx, struct options *oo,
 		ctx->error(ctx, "value is %s: %s", errstr, value);
 		return;
 	}
-	options_set_number(oo, entry->name, number);
-	ctx->info(ctx, "set option: %s -> %lld", entry->name, number);
+
+	o = options_set_number(oo, entry->name, number);
+	ctx->info(
+	    ctx, "set option: %s -> %s", o->name, set_option_print(entry, o));
 }
 
 void
 set_option_key(struct cmd_ctx *ctx, struct options *oo,
     const struct set_option_entry *entry, char *value)
 {
-	int	key;
+	struct options_entry	*o;
+	int			 key;
 
 	if (value == NULL) {
 		ctx->error(ctx, "empty value");
@@ -123,16 +129,18 @@ set_option_key(struct cmd_ctx *ctx, struct options *oo,
 		ctx->error(ctx, "unknown key: %s", value);
 		return;
 	}
-	options_set_number(oo, entry->name, key);
-	ctx->info(ctx,
-	    "set option: %s -> %s", entry->name, key_string_lookup_key(key));
+
+	o = options_set_number(oo, entry->name, key);
+	ctx->info(
+	    ctx, "set option: %s -> %s", o->name, set_option_print(entry, o));
 }
 
 void
 set_option_colour(struct cmd_ctx *ctx, struct options *oo,
     const struct set_option_entry *entry, char *value)
 {
-	int	colour;
+	struct options_entry	*o;
+	int			 colour;
 
 	if (value == NULL) {
 		ctx->error(ctx, "empty value");
@@ -144,16 +152,17 @@ set_option_colour(struct cmd_ctx *ctx, struct options *oo,
 		return;
 	}
 
-	options_set_number(oo, entry->name, colour);
-	ctx->info(ctx,
-	    "set option: %s -> %s", entry->name, colour_tostring(colour));
+	o = options_set_number(oo, entry->name, colour);
+	ctx->info(
+	    ctx, "set option: %s -> %s", o->name, set_option_print(entry, o));
 }
 
 void
 set_option_attributes(struct cmd_ctx *ctx, struct options *oo,
     const struct set_option_entry *entry, char *value)
 {
-	int	attr;
+	struct options_entry	*o;
+	int			 attr;
 
 	if (value == NULL) {
 		ctx->error(ctx, "empty value");
@@ -165,16 +174,17 @@ set_option_attributes(struct cmd_ctx *ctx, struct options *oo,
 		return;
 	}
 
-	options_set_number(oo, entry->name, attr);
-	ctx->info(ctx,
-	    "set option: %s -> %s", entry->name, attributes_tostring(attr));
+	o = options_set_number(oo, entry->name, attr);
+	ctx->info(
+	    ctx, "set option: %s -> %s", o->name, set_option_print(entry, o));
 }
 
 void
 set_option_flag(struct cmd_ctx *ctx, struct options *oo,
     const struct set_option_entry *entry, char *value)
 {
-	int	flag;
+	struct options_entry	*o;
+	int			 flag;
 
 	if (value == NULL || *value == '\0')
 		flag = !options_get_number(oo, entry->name);
@@ -193,17 +203,18 @@ set_option_flag(struct cmd_ctx *ctx, struct options *oo,
 		}
 	}
 
-	options_set_number(oo, entry->name, flag);
-	ctx->info(ctx,
-	    "set option: %s -> %s", entry->name, flag ? "on" : "off");
+	o = options_set_number(oo, entry->name, flag);
+	ctx->info(
+	    ctx, "set option: %s -> %s", o->name, set_option_print(entry, o));
 }
 
 void
 set_option_choice(struct cmd_ctx *ctx, struct options *oo,
     const struct set_option_entry *entry, char *value)
 {
-	const char     **choicep;
-	int		 n, choice = -1;
+	struct options_entry	*o;
+	const char     	       **choicep;
+	int		 	 n, choice = -1;
 
 	if (value == NULL) {
 		ctx->error(ctx, "empty value");
@@ -227,7 +238,7 @@ set_option_choice(struct cmd_ctx *ctx, struct options *oo,
 		return;
 	}
 
-	options_set_number(oo, entry->name, choice);
-	ctx->info(ctx,
-	    "set option: %s -> %s", entry->name, entry->choices[choice]);
+	o = options_set_number(oo, entry->name, choice);
+	ctx->info(
+	    ctx, "set option: %s -> %s", o->name, set_option_print(entry, o));
 }

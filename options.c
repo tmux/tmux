@@ -1,4 +1,4 @@
-/* $Id: options.c,v 1.7 2009-09-22 13:49:13 tcunha Exp $ */
+/* $Id: options.c,v 1.8 2009-09-22 13:59:46 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -98,7 +98,7 @@ options_remove(struct options *oo, const char *name)
 	xfree(o);
 }
 
-void printflike3
+struct options_entry *printflike3
 options_set_string(struct options *oo, const char *name, const char *fmt, ...)
 {
 	struct options_entry	*o;
@@ -115,6 +115,7 @@ options_set_string(struct options *oo, const char *name, const char *fmt, ...)
 	o->type = OPTIONS_STRING;
 	xvasprintf(&o->str, fmt, ap);
 	va_end(ap);
+	return (o);
 }
 
 char *
@@ -129,7 +130,7 @@ options_get_string(struct options *oo, const char *name)
 	return (o->str);
 }
 
-void
+struct options_entry *
 options_set_number(struct options *oo, const char *name, long long value)
 {
 	struct options_entry	*o;
@@ -143,7 +144,7 @@ options_set_number(struct options *oo, const char *name, long long value)
 
 	o->type = OPTIONS_NUMBER;
 	o->num = value;
-
+	return (o);
 }
 
 long long
