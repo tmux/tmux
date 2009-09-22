@@ -37,7 +37,7 @@
   -g is a bit unexpected in conf file
 - clear window title on exit
 - the output code (tty.c) could do with optimisation depending on term
-  capibilities
+  capabilities
 - would be nice to be able to use "--" to mark start of command w/ neww etc
   to avoid quoting
 - goto line and search history in copy/scroll modes
@@ -69,14 +69,9 @@
 	- up-pane/down-pane/swap-pane -U/swap-pane -D vs next-*/previous-*
 - pcvt25 doesn't work properly, why? (bce?)
 - tidy up and prioritise todo list ;-)
-- it is only possible to specify 8 colours to fg/bg options; should be able to
-  set 256 as well
 - neww and attach can create a session if none exists?
        would work fine with config file since
 - a way for force-width/height to apply to only one pane (how?)
-- **** a command to run something without a window and send any output to the
-  window-more. if no output, info() a line saying "'%s' returned %d". so i can
-  bind mpc control commands to function keys ;-)
 - command to list what is actually running in each window with command line,
   pid (need some adaption of the osdep code)
 - string option to change/remove the symbols (*-+ etc) in status line
