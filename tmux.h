@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.449 2009-09-22 13:59:46 tcunha Exp $ */
+/* $Id: tmux.h,v 1.450 2009-09-22 14:22:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -542,10 +542,14 @@ struct options_entry {
 	enum {
 		OPTIONS_STRING,
 		OPTIONS_NUMBER,
+		OPTIONS_DATA,
 	} type;
 
 	char		*str;
 	long long	 num;
+	void		*data;
+
+	void		 (*freefn)(void *);
 
 	SPLAY_ENTRY(options_entry) entry;
 };
@@ -554,6 +558,9 @@ struct options {
 	SPLAY_HEAD(options_tree, options_entry) tree;
 	struct options	*parent;
 };
+
+/* Key list for prefix option. */
+ARRAY_DECL(keylist, int);
 
 /* Screen selection. */
 struct screen_sel {
@@ -1083,7 +1090,7 @@ struct set_option_entry {
 	enum {
 		SET_OPTION_STRING,
 		SET_OPTION_NUMBER,
-		SET_OPTION_KEY,
+		SET_OPTION_KEYS,
 		SET_OPTION_COLOUR,
 		SET_OPTION_ATTRIBUTES,
 		SET_OPTION_FLAG,
@@ -1163,6 +1170,9 @@ char   *options_get_string(struct options *, const char *);
 struct options_entry *options_set_number(
     	    struct options *, const char *, long long);
 long long options_get_number(struct options *, const char *);
+struct options_entry *options_set_data(
+    	    struct options *, const char *, void *, void (*)(void *));
+void   *options_get_data(struct options *, const char *);
 
 /* environ.c */
 int	environ_cmp(struct environ_entry *, struct environ_entry *);
@@ -1243,7 +1253,7 @@ void	set_option_string(struct cmd_ctx *,
 	    struct options *, const struct set_option_entry *, char *, int);
 void	set_option_number(struct cmd_ctx *,
     	    struct options *, const struct set_option_entry *, char *);
-void	set_option_key(struct cmd_ctx *,
+void	set_option_keys(struct cmd_ctx *,
     	    struct options *, const struct set_option_entry *, char *);
 void	set_option_colour(struct cmd_ctx *,
     	    struct options *, const struct set_option_entry *, char *);

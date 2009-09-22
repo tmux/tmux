@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.38 2009-08-11 14:42:59 nicm Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.39 2009-09-22 14:22:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -140,8 +140,8 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		case SET_OPTION_NUMBER:
 			set_option_number(ctx, oo, entry, data->arg2);
 			break;
-		case SET_OPTION_KEY:
-			set_option_key(ctx, oo, entry, data->arg2);
+		case SET_OPTION_KEYS:
+			set_option_keys(ctx, oo, entry, data->arg2);
 			break;
 		case SET_OPTION_COLOUR:
 			set_option_colour(ctx, oo, entry, data->arg2);

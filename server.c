@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.190 2009-09-20 22:11:27 tcunha Exp $ */
+/* $Id: server.c,v 1.191 2009-09-22 14:22:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -801,8 +801,9 @@ server_handle_client(struct client *c)
 	struct screen		*s;
 	struct timeval	 	 tv;
 	struct key_binding	*bd;
-	int		 	 key, prefix, status, xtimeout;
-	int			 mode;
+	struct keylist		*keylist;
+	int		 	 key, status, xtimeout, mode, isprefix;
+	u_int			 i;
 	u_char			 mouse[3];
 
 	xtimeout = options_get_number(&c->session->options, "repeat-time");
@@ -814,7 +815,7 @@ server_handle_client(struct client *c)
 	}
 
 	/* Process keys. */
-	prefix = options_get_number(&c->session->options, "prefix");
+	keylist = options_get_data(&c->session->options, "prefix");
 	while (tty_keys_next(&c->tty, &key, mouse) == 0) {
 		server_activity = time(NULL);
 
@@ -847,9 +848,18 @@ server_handle_client(struct client *c)
 			continue;
 		}
 
+		/* Is this a prefix key? */
+		isprefix = 0;
+		for (i = 0; i < ARRAY_LENGTH(keylist); i++) {
+			if (key == ARRAY_ITEM(keylist, i)) {
+				isprefix = 1;
+				break;
+			}
+		}
+
 		/* No previous prefix key. */
 		if (!(c->flags & CLIENT_PREFIX)) {
-			if (key == prefix)
+			if (isprefix)
 				c->flags |= CLIENT_PREFIX;
 			else {
 				/* Try as a non-prefix key binding. */
@@ -867,7 +877,7 @@ server_handle_client(struct client *c)
 			/* If repeating, treat this as a key, else ignore. */
 			if (c->flags & CLIENT_REPEAT) {
 				c->flags &= ~CLIENT_REPEAT;
-				if (key == prefix)
+				if (isprefix)
 					c->flags |= CLIENT_PREFIX;
 				else
 					window_pane_key(wp, c, key);
@@ -878,7 +888,7 @@ server_handle_client(struct client *c)
 		/* If already repeating, but this key can't repeat, skip it. */
 		if (c->flags & CLIENT_REPEAT && !bd->can_repeat) {
 			c->flags &= ~CLIENT_REPEAT;
-			if (key == prefix)
+			if (isprefix)
 				c->flags |= CLIENT_PREFIX;
 			else
 				window_pane_key(wp, c, key);
