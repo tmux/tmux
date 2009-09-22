@@ -1,4 +1,4 @@
-/* $Id: cmd-show-window-options.c,v 1.12 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-show-window-options.c,v 1.13 2009-09-22 13:56:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,9 +46,9 @@ cmd_show_window_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_target_data		*data = self->data;
 	struct winlink			*wl;
 	struct options			*oo;
+	struct options_entry		*o;
 	const struct set_option_entry	*entry;
-	char				*vs;
-	long long			 vn;
+	const char			*optval;
 
 	if (data->chflags & CMD_CHFLAG('g'))
 		oo = &global_w_options;
@@ -59,46 +59,10 @@ cmd_show_window_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	for (entry = set_window_option_table; entry->name != NULL; entry++) {
-		if (options_find1(oo, entry->name) == NULL)
+		if ((o = options_find1(oo, entry->name)) == NULL)
 			continue;
-
-		switch (entry->type) {
-		case SET_OPTION_STRING:
-			vs = options_get_string(oo, entry->name);
-			ctx->print(ctx, "%s \"%s\"", entry->name, vs);
-			break;
-		case SET_OPTION_NUMBER:
-			vn = options_get_number(oo, entry->name);
-			ctx->print(ctx, "%s %lld", entry->name, vn);
-			break;
-		case SET_OPTION_KEY:
-			vn = options_get_number(oo, entry->name);
- 			ctx->print(ctx, "%s %s",
-			    entry->name, key_string_lookup_key(vn));
-			break;
-		case SET_OPTION_COLOUR:
-			vn = options_get_number(oo, entry->name);
- 			ctx->print(ctx, "%s %s",
-			    entry->name, colour_tostring(vn));
-			break;
-		case SET_OPTION_ATTRIBUTES:
-			vn = options_get_number(oo, entry->name);
- 			ctx->print(ctx, "%s %s",
-			    entry->name, attributes_tostring(vn));
-			break;
-		case SET_OPTION_FLAG:
-			vn = options_get_number(oo, entry->name);
-			if (vn)
-				ctx->print(ctx, "%s on", entry->name);
-			else
-				ctx->print(ctx, "%s off", entry->name);
-			break;
-		case SET_OPTION_CHOICE:
-			vn = options_get_number(oo, entry->name);
-			ctx->print(ctx, "%s %s",
-			    entry->name, entry->choices[vn]);
-			break;
-		}
+		optval = set_option_print(entry, o);
+		ctx->print(ctx, "%s %s", entry->name, optval);
 	}
 
 	return (0);

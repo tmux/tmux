@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.447 2009-09-22 13:49:13 tcunha Exp $ */
+/* $Id: tmux.h,v 1.448 2009-09-22 13:56:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1236,6 +1236,8 @@ void	tty_keys_free(struct tty *);
 int	tty_keys_next(struct tty *, int *, u_char *);
 
 /* options-cmd.c */
+const char *set_option_print(
+    	    const struct set_option_entry *, struct options_entry *);
 void	set_option_string(struct cmd_ctx *,
 	    struct options *, const struct set_option_entry *, char *, int);
 void	set_option_number(struct cmd_ctx *,
