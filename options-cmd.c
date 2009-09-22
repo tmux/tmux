@@ -28,6 +28,8 @@ set_option_print(const struct set_option_entry *entry, struct options_entry *o)
 {
 	static char	out[BUFSIZ];
 	const char     *s;
+	struct keylist *keylist;
+	u_int		i;
 
 	*out = '\0';
 	switch (entry->type) {
@@ -37,9 +39,14 @@ set_option_print(const struct set_option_entry *entry, struct options_entry *o)
 		case SET_OPTION_NUMBER:
 			xsnprintf(out, sizeof out, "%lld", o->num);
 			break;
-		case SET_OPTION_KEY:
-			s = key_string_lookup_key(o->num);
-			xsnprintf(out, sizeof out, "%s", s);
+		case SET_OPTION_KEYS:
+			keylist = o->data;
+			for (i = 0; i < ARRAY_LENGTH(keylist); i++) {
+				strlcat(out, key_string_lookup_key(
+				    ARRAY_ITEM(keylist, i)), sizeof out);
+				if (i != ARRAY_LENGTH(keylist) - 1)
+					strlcat(out, ",", sizeof out);
+			}
 			break;
 		case SET_OPTION_COLOUR:
 			s = colour_tostring(o->num);
@@ -114,23 +121,35 @@ set_option_number(struct cmd_ctx *ctx, struct options *oo,
 }
 
 void
-set_option_key(struct cmd_ctx *ctx, struct options *oo,
+set_option_keys(struct cmd_ctx *ctx, struct options *oo,
     const struct set_option_entry *entry, char *value)
 {
 	struct options_entry	*o;
-	int			 key;
+	struct keylist		*keylist;
+	char			*copyvalue, *ptr, *str;
+	int		 	 key;
 
 	if (value == NULL) {
 		ctx->error(ctx, "empty value");
 		return;
 	}
 
-	if ((key = key_string_lookup_string(value)) == KEYC_NONE) {
-		ctx->error(ctx, "unknown key: %s", value);
-		return;
-	}
+	keylist = xmalloc(sizeof *keylist);
+	ARRAY_INIT(keylist);
 
-	o = options_set_number(oo, entry->name, key);
+	ptr = copyvalue = xstrdup(value);
+	while ((str = strsep(&ptr, ",")) != NULL) {
+		if ((key = key_string_lookup_string(str)) == KEYC_NONE) {
+			xfree(keylist);
+			ctx->error(ctx, "unknown key: %s", str);
+			xfree(copyvalue);
+			return;
+		}
+		ARRAY_ADD(keylist, key);
+	}
+	xfree(copyvalue);
+
+	o = options_set_data(oo, entry->name, keylist, xfree);
 	ctx->info(
 	    ctx, "set option: %s -> %s", o->name, set_option_print(entry, o));
 }

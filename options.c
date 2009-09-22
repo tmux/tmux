@@ -54,6 +54,8 @@ options_free(struct options *oo)
 		xfree(o->name);
 		if (o->type == OPTIONS_STRING)
 			xfree(o->str);
+		else if (o->type == OPTIONS_DATA)
+			o->freefn(o->data);
 		xfree(o);
 	}
 }
@@ -95,6 +97,8 @@ options_remove(struct options *oo, const char *name)
 	xfree(o->name);
 	if (o->type == OPTIONS_STRING)
 		xfree(o->str);
+	else if (o->type == OPTIONS_DATA)
+		o->freefn(o->data);
 	xfree(o);
 }
 
@@ -110,6 +114,8 @@ options_set_string(struct options *oo, const char *name, const char *fmt, ...)
 		SPLAY_INSERT(options_tree, &oo->tree, o);
 	} else if (o->type == OPTIONS_STRING)
 		xfree(o->str);
+	else if (o->type == OPTIONS_DATA)
+		o->freefn(o->data);
 
 	va_start(ap, fmt);
 	o->type = OPTIONS_STRING;
@@ -141,6 +147,8 @@ options_set_number(struct options *oo, const char *name, long long value)
 		SPLAY_INSERT(options_tree, &oo->tree, o);
 	} else if (o->type == OPTIONS_STRING)
 		xfree(o->str);
+	else if (o->type == OPTIONS_DATA)
+		o->freefn(o->data);
 
 	o->type = OPTIONS_NUMBER;
 	o->num = value;
@@ -157,4 +165,37 @@ options_get_number(struct options *oo, const char *name)
 	if (o->type != OPTIONS_NUMBER)
 		fatalx("option not a number");
 	return (o->num);
+}
+
+struct options_entry *
+options_set_data(
+    struct options *oo, const char *name, void *value, void (*freefn)(void *))
+{
+	struct options_entry	*o;
+
+	if ((o = options_find1(oo, name)) == NULL) {
+		o = xmalloc(sizeof *o);
+		o->name = xstrdup(name);
+		SPLAY_INSERT(options_tree, &oo->tree, o);
+	} else if (o->type == OPTIONS_STRING)
+		xfree(o->str);
+	else if (o->type == OPTIONS_DATA)
+		o->freefn(o->data);
+
+	o->type = OPTIONS_DATA;
+	o->data = value;
+	o->freefn = freefn;
+	return (o);
+}
+
+void *
+options_get_data(struct options *oo, const char *name)
+{
+	struct options_entry	*o;
+
+	if ((o = options_find(oo, name)) == NULL)
+		fatalx("missing option");
+	if (o->type != OPTIONS_DATA)
+		fatalx("option not data");
+	return (o->data);
 }
