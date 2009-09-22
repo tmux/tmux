@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.66 2009-09-16 12:36:27 nicm Exp $ */
+/* $Id: cmd-new-session.c,v 1.67 2009-09-22 14:06:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,7 +70,7 @@ cmd_new_session_parse(struct cmd *self, int argc, char **argv, char **cause)
 	struct cmd_new_session_data	*data;
 	int				 opt;
 
-	self->entry->init(self, 0);
+	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
 	while ((opt = getopt(argc, argv, "ds:n:")) != -1) {

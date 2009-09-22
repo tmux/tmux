@@ -1,4 +1,4 @@
-/* $Id: cmd-if-shell.c,v 1.4 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-if-shell.c,v 1.5 2009-09-22 14:06:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -66,7 +66,7 @@ cmd_if_shell_parse(struct cmd *self, int argc, char **argv, char **cause)
 	struct cmd_if_shell_data	*data;
 	int				 opt;
 
-	self->entry->init(self, 0);
+	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
 	while ((opt = getopt(argc, argv, "")) != -1) {

@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.27 2009-09-16 12:36:27 nicm Exp $ */
+/* $Id: cmd-split-window.c,v 1.28 2009-09-22 14:06:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -83,7 +83,7 @@ cmd_split_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 	int				 opt;
 	const char			*errstr;
 
-	self->entry->init(self, 0);
+	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
 	while ((opt = getopt(argc, argv, "dhl:p:t:v")) != -1) {

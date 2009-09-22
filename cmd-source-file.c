@@ -1,4 +1,4 @@
-/* $Id: cmd-source-file.c,v 1.8 2009-08-24 16:27:03 tcunha Exp $ */
+/* $Id: cmd-source-file.c,v 1.9 2009-09-22 14:06:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Tiago Cunha <me@tiagocunha.org>
@@ -60,7 +60,7 @@ cmd_source_file_parse(struct cmd *self, int argc, char **argv, char **cause)
 	struct cmd_source_file_data	*data;
 	int				 opt;
 
-	self->entry->init(self, 0);
+	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
 	while ((opt = getopt(argc, argv, "")) != -1) {

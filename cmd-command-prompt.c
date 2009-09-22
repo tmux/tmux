@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.25 2009-08-25 13:53:39 tcunha Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.26 2009-09-22 14:06:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -90,7 +90,7 @@ cmd_command_prompt_parse(struct cmd *self, int argc, char **argv, char **cause)
 	struct cmd_command_prompt_data	*data;
 	int				 opt;
 
-	self->entry->init(self, 0);
+	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
 	while ((opt = getopt(argc, argv, "p:t:")) != -1) {

@@ -1,4 +1,4 @@
-/* $Id: cmd-set-password.c,v 1.8 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-set-password.c,v 1.9 2009-09-22 14:06:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -66,7 +66,7 @@ cmd_set_password_parse(struct cmd *self, int argc, char **argv, char **cause)
 	int				 opt;
 	char				*out;
 
-	self->entry->init(self, 0);
+	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
 	while ((opt = getopt(argc, argv, "c")) != -1) {
