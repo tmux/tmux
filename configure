@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.38 2009-09-20 17:51:54 nicm Exp $
+# $Id: configure,v 1.39 2009-09-22 19:20:08 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -139,13 +139,7 @@ EOF
 #define HAVE_STRLCPY
 EOF
 	cat <<EOF >>$CONFIG_MK
-CPPFLAGS+= -I/usr/local/include/ncurses \
-	-I/opt/csw/include -I/opt/csw/include/ncurses \
-	-I/opt/sfw/include -I/opt/sfw/include/ncurses
 CFLAGS+= -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
-LDFLAGS+= -L/usr/gnu/lib \
-	-L/opt/csw/lib \
-	-L/opt/sfw/lib
 LIBS+= -lcurses -lsocket -lnsl
 SRCS+= osdep-unknown.c \
 	compat/asprintf.c \
