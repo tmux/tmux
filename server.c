@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.192 2009-09-23 15:00:08 tcunha Exp $ */
+/* $Id: server.c,v 1.193 2009-09-23 15:10:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,6 +48,7 @@ void		 server_create_client(int);
 int		 server_create_socket(void);
 int		 server_main(int);
 void		 server_shutdown(void);
+int		 server_should_shutdown(void);
 void		 server_child_signal(void);
 void		 server_fill_windows(struct pollfd **);
 void		 server_handle_windows(struct pollfd **);
@@ -247,7 +248,7 @@ server_main(int srv_fd)
 	struct window	*w;
 	struct pollfd	*pfds, *pfd;
 	int		 nfds, xtimeout;
-	u_int		 i, n;
+	u_int		 i;
 	time_t		 now, last;
 
 	siginit();
@@ -260,6 +261,10 @@ server_main(int srv_fd)
 		/* If sigterm, kill all windows and clients. */
 		if (sigterm)
 			server_shutdown();
+
+		/* Stop if no sessions or clients left. */
+		if (server_should_shutdown())
+			break;
 
 		/* Handle child exit. */
 		if (sigchld) {
@@ -340,22 +345,6 @@ server_main(int srv_fd)
 
 		/* Collect dead clients and sessions. */
 		server_clean_dead();
-		
-		/*
-		 * If we have no sessions and clients left, let's get out
-		 * of here...
-		 */
-		n = 0;
-		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-			if (ARRAY_ITEM(&sessions, i) != NULL)
-				n++;
-		}
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			if (ARRAY_ITEM(&clients, i) != NULL)
-				n++;
-		}
-		if (n == 0)
-			break;
 	}
 	if (pfds != NULL)
 		xfree(pfds);
@@ -394,6 +383,16 @@ server_shutdown(void)
 	struct client	*c;
 	u_int		 i, j;
 
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL) {
+			if (c->flags & (CLIENT_BAD|CLIENT_SUSPENDED))
+				server_lost_client(c);
+			else
+				server_write_client(c, MSG_SHUTDOWN, NULL, 0);
+		}
+	}
+
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
 		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
@@ -406,16 +405,23 @@ server_shutdown(void)
 		if (s != NULL)
 			session_destroy(s);
 	}
+}
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL) {
-			if (c->flags & CLIENT_BAD)
-				server_lost_client(c);
-			else
-				server_write_client(c, MSG_SHUTDOWN, NULL, 0);
-		}
+/* Check if the server should be shutting down (no more clients or windows). */
+int
+server_should_shutdown(void)
+{
+	u_int	i;
+
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		if (ARRAY_ITEM(&sessions, i) != NULL)
+			return (0);
 	}
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		if (ARRAY_ITEM(&clients, i) != NULL)
+			return (0);
+	}
+	return (1);
 }
 
 /* Handle SIGCHLD. */
