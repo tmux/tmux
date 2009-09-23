@@ -44,7 +44,6 @@ void	tty_cell(struct tty *,
 void
 tty_init(struct tty *tty, int fd, char *term)
 {
-	int	 mode;
 	char	*path;
 
 	memset(tty, 0, sizeof *tty);
@@ -55,10 +54,6 @@ tty_init(struct tty *tty, int fd, char *term)
 	else
 		tty->termname = xstrdup(term);
 
-	if ((mode = fcntl(fd, F_GETFL)) == -1)
-		fatal("fcntl failed");
-	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
 	tty->fd = fd;
@@ -129,10 +124,15 @@ void
 tty_start_tty(struct tty *tty)
 {
 	struct termios	 tio;
-	int		 what;
+	int		 what, mode;
 
 	if (tty->fd == -1)
 		return;
+
+	if ((mode = fcntl(tty->fd, F_GETFL)) == -1)
+		fatal("fcntl failed");
+	if (fcntl(tty->fd, F_SETFL, mode|O_NONBLOCK) == -1)
+		fatal("fcntl failed");
 
 #if 0
 	tty_detect_utf8(tty);
@@ -183,6 +183,7 @@ void
 tty_stop_tty(struct tty *tty)
 {
 	struct winsize	ws;
+	int		mode;
 
 	if (!(tty->flags & TTY_STARTED))
 		return;
@@ -193,6 +194,10 @@ tty_stop_tty(struct tty *tty)
 	 * because the fd is invalid. Things like ssh -t can easily leave us
 	 * with a dead tty.
 	 */
+	if ((mode = fcntl(tty->fd, F_GETFL)) == -1)
+		return;
+	if (fcntl(tty->fd, F_SETFL, mode & ~O_NONBLOCK) == -1)
+		return;
 	if (ioctl(tty->fd, TIOCGWINSZ, &ws) == -1)
 		return;
 	if (tcsetattr(tty->fd, TCSANOW, &tty->tio) == -1)

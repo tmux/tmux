@@ -91,6 +91,8 @@ server_started:
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
+	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
+		fatal("fcntl failed");
 	imsg_init(&cctx->ibuf, fd);
 
 	if (cmdflags & CMD_SENDENVIRON)

@@ -24,6 +24,7 @@
 .Nm tmux
 .Bk -words
 .Op Fl 28dlquv
+.Op Fl c Ar shell-command
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
 .Op Fl S Ar socket-path
@@ -101,6 +102,15 @@ to assume the terminal supports 256 colours.
 Like
 .Fl 2 ,
 but indicates that the terminal supports 88 colours.
+.It Fl c Ar shell-command
+Execute
+.Ar shell-command
+using the default shell.
+If necessary, the
+.Nm
+server will be started to retrieve the
+.Ic default-shell
+option.
 .It Fl d
 Force
 .Nm

@@ -57,13 +57,14 @@ int		 login_shell;
 __dead void	 usage(void);
 char 		*makesockpath(const char *);
 int		 prepare_cmd(enum msgtype *, void **, size_t *, int, char **);
-int		 dispatch_imsg(struct client_ctx *, int *);
+int		 dispatch_imsg(struct client_ctx *, const char *, int *);
+__dead void	 shell_exec(const char *, const char *);
 
 __dead void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-28dlquv] [-f file] [-L socket-name]\n"
+	    "usage: %s [-28dlquv] [-c shell-command] [-f file] [-L socket-name]\n"
 	    "            [-S socket-path] [command [flags]]\n",
 	    __progname);
 	exit(1);
@@ -275,17 +276,17 @@ main(int argc, char **argv)
 	struct passwd		*pw;
 	struct options		*so, *wo;
 	struct keylist		*keylist;
-	char			*s, *path, *label, *home, *cause, **var;
-	char			 cwd[MAXPATHLEN];
+	char			*s, *shellcmd, *path, *label, *home, *cause;
+	char			 cwd[MAXPATHLEN], **var;
 	void			*buf;
 	size_t			 len;
 	int	 		 retcode, opt, flags, cmdflags = 0;
 	int			 nfds;
 
 	flags = 0;
-	label = path = NULL;
+	shellcmd = label = path = NULL;
 	login_shell = (**argv == '-');
-	while ((opt = getopt(argc, argv, "28df:lL:qS:uUv")) != -1) {
+	while ((opt = getopt(argc, argv, "28c:df:lL:qS:uUv")) != -1) {
 		switch (opt) {
 		case '2':
 			flags |= IDENTIFY_256COLOURS;
@@ -294,6 +295,11 @@ main(int argc, char **argv)
 		case '8':
 			flags |= IDENTIFY_88COLOURS;
 			flags &= ~IDENTIFY_256COLOURS;
+			break;
+		case 'c':
+			if (shellcmd != NULL)
+				xfree(shellcmd);
+			shellcmd = xstrdup(optarg);
 			break;
 		case 'd':
 			flags |= IDENTIFY_HASDEFAULTS;
@@ -331,6 +337,9 @@ main(int argc, char **argv)
         }
 	argc -= optind;
 	argv += optind;
+
+	if (shellcmd != NULL && argc != 0)
+		usage();
 
 	log_open_tty(debug_level);
 	siginit();
@@ -477,10 +486,16 @@ main(int argc, char **argv)
 	}
 	xfree(label);
 
-	if (prepare_cmd(&msg, &buf, &len, argc, argv) != 0)
+	if (shellcmd != NULL) {
+		msg = MSG_SHELL;
+		buf = NULL;
+		len = 0;
+	} else if (prepare_cmd(&msg, &buf, &len, argc, argv) != 0)
 		exit(1);
 
-	if (argc == 0)	/* new-session is the default */
+	if (shellcmd != NULL)
+		cmdflags |= CMD_STARTSERVER;
+	else if (argc == 0)	/* new-session is the default */
 		cmdflags |= CMD_STARTSERVER|CMD_SENDENVIRON;
 	else {
 		/*
@@ -529,7 +544,7 @@ main(int argc, char **argv)
 			fatalx("socket error");
 
                 if (pfd.revents & POLLIN) {
-			if (dispatch_imsg(&cctx, &retcode) != 0)
+			if (dispatch_imsg(&cctx, shellcmd, &retcode) != 0)
 				break;
 		}
 
@@ -546,11 +561,12 @@ main(int argc, char **argv)
 }
 
 int
-dispatch_imsg(struct client_ctx *cctx, int *retcode)
+dispatch_imsg(struct client_ctx *cctx, const char *shellcmd, int *retcode)
 {
 	struct imsg		imsg;
 	ssize_t			n, datalen;
 	struct msg_print_data	printdata;
+	struct msg_shell_data	shelldata;
 
         if ((n = imsg_read(&cctx->ibuf)) == -1 || n == 0)
 		fatalx("imsg_read failed");
@@ -594,10 +610,40 @@ dispatch_imsg(struct client_ctx *cctx, int *retcode)
 			    "server %u)", PROTOCOL_VERSION, imsg.hdr.peerid);
 			*retcode = 1;
 			return (-1);
+		case MSG_SHELL:
+			if (datalen != sizeof shelldata)
+				fatalx("bad MSG_SHELL size");
+			memcpy(&shelldata, imsg.data, sizeof shelldata);
+			shelldata.shell[(sizeof shelldata.shell) - 1] = '\0';
+			
+			shell_exec(shelldata.shell, shellcmd);
 		default:
 			fatalx("unexpected message");
 		}
 
 		imsg_free(&imsg);
 	}
+}
+
+__dead void
+shell_exec(const char *shell, const char *shellcmd)
+{
+	const char	*shellname, *ptr;
+	char		*argv0;
+
+	sigreset();
+				
+	ptr = strrchr(shell, '/');
+	if (ptr != NULL && *(ptr + 1) != '\0')
+		shellname = ptr + 1;
+	else
+		shellname = shell;
+	if (login_shell)
+		xasprintf(&argv0, "-%s", shellname);
+	else
+		xasprintf(&argv0, "%s", shellname);
+	setenv("SHELL", shell, 1);
+
+	execl(shell, argv0, "-c", shellcmd, (char *) NULL);
+	fatal("execl failed");
 }
