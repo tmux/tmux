@@ -44,16 +44,31 @@ void	tty_cell(struct tty *,
     	    const struct grid_cell *, const struct grid_utf8 *);
 
 void
-tty_init(struct tty *tty, int fd, char *path, char *term)
+tty_init(struct tty *tty, int fd, char *term)
 {
-	tty->path = xstrdup(path);
-	tty->fd = fd;
+	int	 mode;
+	char	*path;
+
+	memset(tty, 0, sizeof *tty);
 	tty->log_fd = -1;
 
 	if (term == NULL || *term == '\0')
 		tty->termname = xstrdup("unknown");
 	else
 		tty->termname = xstrdup(term);
+
+	if ((mode = fcntl(fd, F_GETFL)) == -1)
+		fatal("fcntl failed");
+	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
+		fatal("fcntl failed");
+	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
+		fatal("fcntl failed");
+	tty->fd = fd;
+
+	if ((path = ttyname(fd)) == NULL)
+		fatalx("ttyname failed");
+	tty->path = xstrdup(path);
+
 	tty->flags = 0;
 	tty->term_flags = 0;
 }
@@ -61,27 +76,14 @@ tty_init(struct tty *tty, int fd, char *path, char *term)
 int
 tty_open(struct tty *tty, const char *overrides, char **cause)
 {
-	int	mode;
+	int	fd;
 
-	if (tty->fd == -1) {
-		tty->fd = open(tty->path, O_RDWR|O_NONBLOCK);
-		if (tty->fd == -1) {
-			xasprintf(cause, "%s: %s", tty->path, strerror(errno));
-			return (-1);
-		}
+	if (debug_level > 3) {
+		fd = open("tmux.out", O_WRONLY|O_CREAT|O_TRUNC, 0644);
+		if (fd != -1 && fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
+			fatal("fcntl failed");
+		tty->log_fd = fd;
 	}
-
-	if ((mode = fcntl(tty->fd, F_GETFL)) == -1)
-		fatal("fcntl failed");
-	if (fcntl(tty->fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failed");
-	if (fcntl(tty->fd, F_SETFD, FD_CLOEXEC) == -1)
-		fatal("fcntl failed");
-
-	if (debug_level > 3)
-		tty->log_fd = open("tmux.out", O_WRONLY|O_CREAT|O_TRUNC, 0644);
-	else
-		tty->log_fd = -1;
 
 	tty->term = tty_term_find(tty->termname, tty->fd, overrides, cause);
 	if (tty->term == NULL) {

@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION 1
+#define PROTOCOL_VERSION 2
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -328,8 +328,6 @@ struct msg_command_data {
 };
 
 struct msg_identify_data {
-	char		tty[TTY_NAME_MAX];
-
 	char		cwd[MAXPATHLEN];
 
 	char		term[TERMINAL_LENGTH];
@@ -1200,7 +1198,7 @@ void	tty_putcode2(struct tty *, enum tty_code_code, int, int);
 void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
 void	tty_pututf8(struct tty *, const struct grid_utf8 *);
-void	tty_init(struct tty *, int, char *, char *);
+void	tty_init(struct tty *, int, char *);
 void	tty_start_tty(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_detect_utf8(struct tty *);
