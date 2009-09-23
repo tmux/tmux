@@ -131,6 +131,9 @@ tty_start_tty(struct tty *tty)
 	struct termios	 tio;
 	int		 what;
 
+	if (tty->fd == -1)
+		return;
+
 #if 0
 	tty_detect_utf8(tty);
 #endif
