@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.72 2009-09-23 14:39:30 tcunha Exp $ */
+/* $Id: client.c,v 1.73 2009-09-23 14:44:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,7 +34,6 @@
 #include "tmux.h"
 
 void	client_send_environ(struct client_ctx *);
-void	client_handle_winch(struct client_ctx *);
 
 int
 client_init(char *path, struct client_ctx *cctx, int cmdflags, int flags)
@@ -104,8 +103,6 @@ server_started:
 		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
 			fatal("ioctl(TIOCGWINSZ)");
 		data.flags = flags;
-		data.sx = ws.ws_col;
-		data.sy = ws.ws_row;
 
 		if (getcwd(data.cwd, sizeof data.cwd) == NULL)
 			*data.cwd = '\0';
@@ -173,8 +170,10 @@ client_main(struct client_ctx *cctx)
 			waitpid(WAIT_ANY, NULL, WNOHANG);
 			sigchld = 0;
 		}
-		if (sigwinch)
-			client_handle_winch(cctx);
+		if (sigwinch) {
+			client_write_server(cctx, MSG_RESIZE, NULL, 0);
+ 			sigwinch = 0;
+		}
 		if (sigcont) {
 			siginit();
 			client_write_server(cctx, MSG_WAKEUP, NULL, 0);
@@ -240,22 +239,6 @@ out:
 		printf("[unknown error]\n");
 		return (1);
 	}
-}
-
-void
-client_handle_winch(struct client_ctx *cctx)
-{
-	struct msg_resize_data	data;
-	struct winsize		ws;
-
-	if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
-		fatal("ioctl failed");
-
-	data.sx = ws.ws_col;
-	data.sy = ws.ws_row;
-	client_write_server(cctx, MSG_RESIZE, &data, sizeof data);
-
-	sigwinch = 0;
 }
 
 int

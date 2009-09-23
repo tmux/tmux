@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.134 2009-09-23 14:39:30 tcunha Exp $ */
+/* $Id: tty.c,v 1.135 2009-09-23 14:44:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -71,6 +71,27 @@ tty_init(struct tty *tty, int fd, char *term)
 
 	tty->flags = 0;
 	tty->term_flags = 0;
+}
+
+void
+tty_resize(struct tty *tty)
+{
+	struct winsize	ws;
+
+	if (ioctl(tty->fd, TIOCGWINSZ, &ws) != -1) {
+		tty->sx = ws.ws_col;
+		tty->sy = ws.ws_row;
+	}
+	if (tty->sx == 0)
+		tty->sx = 80;
+	if (tty->sy == 0)
+		tty->sy = 24;
+
+	tty->cx = UINT_MAX;
+	tty->cy = UINT_MAX;
+
+	tty->rupper = UINT_MAX;
+	tty->rlower = UINT_MAX;
 }
 
 int
