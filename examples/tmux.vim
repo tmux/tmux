@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: tmux(1) configuration file
 " Maintainer: Tiago Cunha <me@tiagocunha.org>
-" Last Change: $Date: 2009-09-20 22:20:51 $
+" Last Change: $Date: 2009-09-23 15:01:10 $
 
 if version < 600
 	syntax clear
@@ -30,7 +30,7 @@ syn keyword tmuxCmds command-prompt setb set-buffer showb show-buffer lsb
 syn keyword tmuxCmds list-buffers deleteb delete-buffer lscm list-commands
 syn keyword tmuxCmds movew move-window select-prompt respawnw respawn-window
 syn keyword tmuxCmds source[-file] info server-info clock-mode lock[-server]
-syn keyword tmuxCmds pass set-password saveb save-buffer downp down-pane killp
+syn keyword tmuxCmds saveb save-buffer downp down-pane killp
 syn keyword tmuxCmds kill-pane resizep resize-pane selectp select-pane swapp
 syn keyword tmuxCmds swap-pane splitw split-window upp up-pane choose-session
 syn keyword tmuxCmds choose-window loadb load-buffer copyb copy-buffer suspendc
@@ -52,7 +52,7 @@ syn keyword tmuxOptsSet terminal-overrides status-left-attr status-left-bg
 syn keyword tmuxOptsSet status-left-fg status-right-attr status-right-bg
 syn keyword tmuxOptsSet status-right-fg update-environment base-index
 syn keyword tmuxOptsSet display-panes-colour display-panes-time default-shell
-syn keyword tmuxOptsSet set-titles-string
+syn keyword tmuxOptsSet set-titles-string lock-command
 
 syn keyword tmuxOptsSetw monitor-activity aggressive-resize force-width
 syn keyword tmuxOptsSetw force-height remain-on-exit uft8 mode-fg mode-bg
