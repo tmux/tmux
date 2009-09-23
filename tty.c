@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.136 2009-09-23 15:00:09 tcunha Exp $ */
+/* $Id: tty.c,v 1.137 2009-09-23 15:08:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -132,6 +132,9 @@ tty_start_tty(struct tty *tty)
 #ifdef TIOCFLUSH
 	int		 what;
 #endif
+
+	if (tty->fd == -1)
+		return;
 
 #if 0
 	tty_detect_utf8(tty);
