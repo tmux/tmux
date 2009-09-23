@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.453 2009-09-23 15:00:09 tcunha Exp $ */
+/* $Id: tmux.h,v 1.454 2009-09-23 15:18:56 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -21,7 +21,7 @@
 
 #include "config.h"
 
-#define PROTOCOL_VERSION 4
+#define PROTOCOL_VERSION 5
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -128,6 +128,7 @@ enum key_code {
 
 	/* Function keys. */
 	KEYC_F1,
+
 	KEYC_F2,
 	KEYC_F3,
 	KEYC_F4,
@@ -306,7 +307,8 @@ enum msgtype {
 	MSG_WAKEUP,
 	MSG_ENVIRON,
 	MSG_UNLOCK,
-	MSG_LOCK
+	MSG_LOCK,
+	MSG_SHELL
 };
 
 /*
@@ -344,6 +346,10 @@ struct msg_lock_data {
 
 struct msg_environ_data {
 	char	     	var[ENVIRON_LENGTH];
+};
+
+struct msg_shell_data {
+	char	       	shell[MAXPATHLEN];
 };
 
 /* Mode key commands. */

@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.87 2009-09-23 15:00:08 tcunha Exp $ */
+/* $Id: server-msg.c,v 1.88 2009-09-23 15:18:56 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,6 +20,7 @@
 #include <sys/ioctl.h>
 
 #include <errno.h>
+#include <paths.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -29,6 +30,7 @@
 
 void	server_msg_command(struct client *, struct msg_command_data *);
 void	server_msg_identify(struct client *, struct msg_identify_data *, int);
+void	server_msg_shell(struct client *);
 
 void printflike2 server_msg_command_error(struct cmd_ctx *, const char *, ...);
 void printflike2 server_msg_command_print(struct cmd_ctx *, const char *, ...);
@@ -112,6 +114,12 @@ server_msg_dispatch(struct client *c)
 			environdata.var[(sizeof environdata.var) - 1] = '\0';
 			if (strchr(environdata.var, '=') != NULL)
 				environ_put(&c->environ, environdata.var);
+			break;
+		case MSG_SHELL:
+			if (datalen != 0)
+				fatalx("bad MSG_SHELL size");
+
+			server_msg_shell(c);
 			break;
 		default:
 			fatalx("unexpected message");
@@ -247,4 +255,21 @@ server_msg_identify(struct client *c, struct msg_identify_data *data, int fd)
 	tty_resize(&c->tty);
 
 	c->flags |= CLIENT_TERMINAL;
+}
+
+void
+server_msg_shell(struct client *c)
+{
+	struct msg_shell_data	 data;
+	const char		*shell;
+	
+	shell = options_get_string(&global_s_options, "default-shell");
+
+	if (*shell == '\0' || areshell(shell))
+		shell = _PATH_BSHELL;
+	if (strlcpy(data.shell, shell, sizeof data.shell) >= sizeof data.shell)
+		strlcpy(data.shell, _PATH_BSHELL, sizeof data.shell);
+	
+	server_write_client(c, MSG_SHELL, &data, sizeof data);
+	c->flags |= CLIENT_BAD;	/* it will die after exec */
 }
