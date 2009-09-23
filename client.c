@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.73 2009-09-23 14:44:02 tcunha Exp $ */
+/* $Id: client.c,v 1.74 2009-09-23 15:00:08 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -246,6 +246,7 @@ client_msg_dispatch(struct client_ctx *cctx)
 {
 	struct imsg		 imsg;
 	struct msg_print_data	 printdata;
+	struct msg_lock_data	 lockdata;
 	ssize_t			 n, datalen;
 
 	for (;;) {
@@ -298,6 +299,15 @@ client_msg_dispatch(struct client_ctx *cctx)
 				fatalx("bad MSG_SUSPEND size");
 
 			client_suspend();
+			break;
+		case MSG_LOCK:
+			if (datalen != sizeof lockdata)
+				fatalx("bad MSG_LOCK size");
+			memcpy(&lockdata, imsg.data, sizeof lockdata);
+			
+			lockdata.cmd[(sizeof lockdata.cmd) - 1] = '\0';
+			system(lockdata.cmd);
+			client_write_server(cctx, MSG_UNLOCK, NULL, 0);
 			break;
 		default:
 			fatalx("unexpected message");

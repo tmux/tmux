@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.119 2009-09-20 22:11:27 tcunha Exp $ */
+/* $Id: status.c,v 1.120 2009-09-23 15:00:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -890,9 +890,6 @@ status_prompt_key(struct client *c, int key)
 		}
 		break;
 	case MODEKEYEDIT_HISTORYUP:
-		if (server_locked)
-			break;
-
 		if (ARRAY_LENGTH(&c->prompt_hdata) == 0)
 			break;
 		if (c->prompt_flags & PROMPT_HIDDEN)
@@ -908,9 +905,6 @@ status_prompt_key(struct client *c, int key)
 		c->flags |= CLIENT_STATUS;
 		break;
 	case MODEKEYEDIT_HISTORYDOWN:
-		if (server_locked)
-			break;
-
 		if (c->prompt_flags & PROMPT_HIDDEN)
 			memset(c->prompt_buffer, 0, strlen(c->prompt_buffer));
 		xfree(c->prompt_buffer);
@@ -1003,9 +997,6 @@ status_prompt_key(struct client *c, int key)
 void
 status_prompt_add_history(struct client *c)
 {
-	if (server_locked)
-		return;
-
 	if (ARRAY_LENGTH(&c->prompt_hdata) > 0 &&
 	    strcmp(ARRAY_LAST(&c->prompt_hdata), c->prompt_buffer) == 0)
 		return;

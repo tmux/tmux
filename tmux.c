@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.173 2009-09-22 14:22:21 tcunha Exp $ */
+/* $Id: tmux.c,v 1.174 2009-09-23 15:00:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,11 +51,6 @@ struct options	 global_s_options;	/* session options */
 struct options	 global_w_options;	/* window options */
 struct environ	 global_environ;
 
-int		 server_locked;
-struct passwd	*server_locked_pw;
-u_int		 password_failures;
-time_t		 password_backoff;
-char		*server_password;
 time_t		 server_activity;
 
 int		 debug_level;
@@ -66,7 +61,6 @@ int		 login_shell;
 
 __dead void	 usage(void);
 char 		*makesockpath(const char *);
-int		 prepare_unlock(enum msgtype *, void **, size_t *, int);
 int		 prepare_cmd(enum msgtype *, void **, size_t *, int, char **);
 int		 dispatch_imsg(struct client_ctx *, int *);
 
@@ -78,7 +72,7 @@ __dead void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-28dlqUuv] [-f file] [-L socket-name]\n"
+	    "usage: %s [-28dlquv] [-f file] [-L socket-name]\n"
 	    "            [-S socket-path] [command [flags]]\n",
 	    __progname);
 	exit(1);
@@ -260,35 +254,6 @@ makesockpath(const char *label)
 }
 
 int
-prepare_unlock(enum msgtype *msg, void **buf, size_t *len, int argc)
-{
-	static struct msg_unlock_data	 unlockdata;
-	char				*pass;
-
-	if (argc != 0) {
-		log_warnx("can't specify a command when unlocking");
-		return (-1);
-	}
-	
-	if ((pass = getpass("Password:")) == NULL)
-		return (-1);
-
-	if (strlen(pass) >= sizeof unlockdata.pass) {
-		log_warnx("password too long");
-		return (-1);
-	}
-		
-	strlcpy(unlockdata.pass, pass, sizeof unlockdata.pass);
-	memset(pass, 0, strlen(pass));
-
-	*buf = &unlockdata;
-	*len = sizeof unlockdata;
-
-	*msg = MSG_UNLOCK;
-	return (0);
-}
-
-int
 prepare_cmd(enum msgtype *msg, void **buf, size_t *len, int argc, char **argv)
 {
 	static struct msg_command_data	 cmddata;
@@ -323,10 +288,10 @@ main(int argc, char **argv)
 	char			 cwd[MAXPATHLEN];
 	void			*buf;
 	size_t			 len;
-	int	 		 retcode, opt, flags, unlock, cmdflags = 0;
+	int	 		 retcode, opt, flags, cmdflags = 0;
 	int			 nfds;
 
-	unlock = flags = 0;
+	flags = 0;
 	label = path = NULL;
 	login_shell = (**argv == '-');
 	while ((opt = getopt(argc, argv, "28df:lL:qS:uUv")) != -1) {
@@ -365,9 +330,6 @@ main(int argc, char **argv)
 			break;
 		case 'u':
 			flags |= IDENTIFY_UTF8;
-			break;
-		case 'U':
-			unlock = 1;
 			break;
 		case 'v':
 			debug_level++;
@@ -416,6 +378,7 @@ main(int argc, char **argv)
 	options_set_number(so, "display-time", 750);
 	options_set_number(so, "history-limit", 2000);
 	options_set_number(so, "lock-after-time", 0);
+	options_set_string(so, "lock-command", "lock -np");
 	options_set_number(so, "message-attr", 0);
 	options_set_number(so, "message-bg", 3);
 	options_set_number(so, "message-fg", 0);
@@ -523,17 +486,10 @@ main(int argc, char **argv)
 	}
 	xfree(label);
 
-	if (unlock) {
-		if (prepare_unlock(&msg, &buf, &len, argc) != 0)
-			exit(1);
-	} else {
-		if (prepare_cmd(&msg, &buf, &len, argc, argv) != 0)
-			exit(1);
-	}
+	if (prepare_cmd(&msg, &buf, &len, argc, argv) != 0)
+		exit(1);
 
-	if (unlock)
-		cmdflags &= ~CMD_STARTSERVER;
-	else if (argc == 0)	/* new-session is the default */
+	if (argc == 0)	/* new-session is the default */
 		cmdflags |= CMD_STARTSERVER|CMD_SENDENVIRON;
 	else {
 		/*
