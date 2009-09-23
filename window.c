@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.108 2009-09-20 22:11:27 tcunha Exp $ */
+/* $Id: window.c,v 1.109 2009-09-23 16:09:12 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -568,7 +568,7 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 		wp->mode->resize(wp, sx, sy);
 
 	if (wp->fd != -1 && ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
-#ifdef __sun__
+#ifdef __sun
 		/*
 		 * Some versions of Solaris apparently can return an error when
 		 * resizing; don't know why this happens, can't reproduce on
