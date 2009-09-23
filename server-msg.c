@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.88 2009-09-23 15:18:56 tcunha Exp $ */
+/* $Id: server-msg.c,v 1.89 2009-09-23 15:20:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,7 +20,6 @@
 #include <sys/ioctl.h>
 
 #include <errno.h>
-#include <paths.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
