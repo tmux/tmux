@@ -20,7 +20,7 @@ SRCS=	attributes.c buffer-poll.c buffer.c cfg.c client-fn.c \
 	cmd-scroll-mode.c cmd-select-layout.c cmd-select-pane.c \
 	cmd-select-prompt.c cmd-select-window.c cmd-send-keys.c \
 	cmd-send-prefix.c cmd-server-info.c cmd-set-buffer.c cmd-set-option.c \
-	cmd-set-password.c cmd-set-window-option.c cmd-show-buffer.c \
+	cmd-set-window-option.c cmd-show-buffer.c \
 	cmd-show-options.c cmd-show-window-options.c cmd-source-file.c \
 	cmd-split-window.c cmd-start-server.c cmd-string.c cmd-if-shell.c \
 	cmd-run-shell.c cmd-suspend-client.c cmd-swap-pane.c cmd-swap-window.c \

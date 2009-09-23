@@ -18,15 +18,11 @@
 
 #include <sys/types.h>
 
-#include <login_cap.h>
-#include <pwd.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 
 #include "tmux.h"
-
-int	server_lock_callback(void *, const char *);
 
 void
 server_fill_environ(struct session *s, struct environ *env)
@@ -161,110 +157,30 @@ server_status_window(struct window *w)
 void
 server_lock(void)
 {
-	struct client	       *c;
-	static struct passwd   *pw, pwstore;
-	static char		pwbuf[_PW_BUF_LEN];
-	u_int			i;
-
-	if (server_locked)
-		return;
-
-	if (getpwuid_r(getuid(), &pwstore, pwbuf, sizeof pwbuf, &pw) != 0) {
-		server_locked_pw = NULL;
-		return;
-	}
-	server_locked_pw = pw;
+	struct client		*c;
+	const char		*cmd;
+	struct msg_lock_data	 lockdata;
+	u_int			 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (c == NULL || c->session == NULL)
 			continue;
-
-		status_prompt_clear(c);
-		status_prompt_set(c,
-		    "Password:", server_lock_callback, NULL, c, PROMPT_HIDDEN);
-  		server_redraw_client(c);
-	}
-
-	server_locked = 1;
-}
-
-int
-server_lock_callback(unused void *data, const char *s)
-{
-	return (server_unlock(s));
-}
-
-int
-server_unlock(const char *s)
-{
-	struct client	*c;
-	login_cap_t	*lc;
-	u_int		 i;
-	char		*out;
-	u_int		 failures, tries, backoff;
-
-	if (!server_locked || server_locked_pw == NULL)
-		return (0);
-	server_activity = time(NULL);
-	if (server_activity < password_backoff)
-		return (-2);
-
-	if (server_password != NULL) {
-		if (s == NULL)
-			return (-1);
-		out = crypt(s, server_password);
-		if (strcmp(out, server_password) != 0)
-			goto wrong;
-	}
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL)
+		if (c->flags & CLIENT_SUSPENDED)
 			continue;
 
-		status_prompt_clear(c);
-  		server_redraw_client(c);
-	}
-
-	server_locked = 0;
-	password_failures = 0;
-	password_backoff = 0;
-	return (0);
-
-wrong:
-	password_failures++;
-	password_backoff = 0;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->prompt_buffer == NULL)
+		cmd = options_get_string(&c->session->options, "lock-command");
+		if (strlcpy(lockdata.cmd, 
+		    cmd, sizeof lockdata.cmd) >= sizeof lockdata.cmd)
 			continue;
 
-		*c->prompt_buffer = '\0';
-		c->prompt_index = 0;
-  		server_redraw_client(c);
-	}
+		tty_stop_tty(&c->tty);
+		tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_SMCUP));
+		tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_CLEAR));
 
-	/*
-	 * Start slowing down after "login-backoff" attempts and reset every
-	 * "login-tries" attempts.
-	 */
-	lc = login_getclass(server_locked_pw->pw_class);
-	if (lc != NULL) {
-		tries = login_getcapnum(lc, (char *) "login-tries", 10, 10);
-		backoff = login_getcapnum(lc, (char *) "login-backoff", 3, 3);
-	} else {
-		tries = 10;
-		backoff = 3;
+		c->flags |= CLIENT_SUSPENDED;
+		server_write_client(c, MSG_LOCK, &lockdata, sizeof lockdata);
 	}
-	failures = password_failures % tries;
-	if (failures > backoff) {
-		password_backoff = 
-		    server_activity + ((failures - backoff) * tries / 2);
-		return (-2);
-	}
-	return (-1);
 }
 
 void

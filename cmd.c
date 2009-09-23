@@ -89,7 +89,6 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_set_buffer_entry,
 	&cmd_set_environment_entry,
 	&cmd_set_option_entry,
-	&cmd_set_password_entry,
 	&cmd_set_window_option_entry,
 	&cmd_show_buffer_entry,
 	&cmd_show_environment_entry,
@@ -260,10 +259,6 @@ usage:
 int
 cmd_exec(struct cmd *cmd, struct cmd_ctx *ctx)
 {
-	if (server_locked) {
-		ctx->error(ctx, "server is locked");
-		return (-1);
-	}
 	return (cmd->entry->exec(cmd, ctx));
 }
 

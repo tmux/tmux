@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 28dlqUuv
+.Op Fl 28dlquv
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
 .Op Fl S Ar socket-path
@@ -154,8 +154,6 @@ If
 is specified, the default socket directory is not used and any
 .Fl L
 flag is ignored.
-.It Fl U
-Unlock the server.
 .It Fl u
 .Nm
 attempts to guess if the terminal is likely to support UTF-8 by checking the
@@ -337,8 +335,6 @@ rename-session -tfirst newname
 set-window-option -t:0 monitor-activity on
 
 new-window ; split-window -d
-
-bind-key D detach-client \e\; lock-server
 .Ed
 .Sh CLIENTS AND SESSIONS
 The following commands are available:
@@ -1213,17 +1209,20 @@ Set the maximum number of lines held in window history.
 This setting applies only to new windows - existing window histories are not
 resized and retain the limit at the point they were created.
 .It Ic lock-after-time Ar number
-Lock the server after
+Lock the server (like the
+.Ic lock-server
+command) after
 .Ar number
 seconds of inactivity.
 The default is off (set to 0).
 This has no effect as a session option; it must be set as a global option using
 .Fl g .
-When passwords are entered incorrectly,
-.Nm
-follows the behaviour of
-.Xr login 1
-and ignores further password attempts for an increasing timeout.
+.It Ic lock-command Ar command
+Command to run when locking each client.
+The default is to run
+.Xr lock 1
+with
+.Fl np .
 .It Ic message-attr Ar attributes
 Set status line message attributes, where
 .Ar attributes
@@ -1962,7 +1961,9 @@ if
 returns success.
 .It Ic lock-server
 .D1 (alias: Ic lock )
-Lock the server until a password is entered.
+Lock each client individually by running the command specified by the
+.Ic lock-command
+option.
 .It Ic run-shell Ar command
 .D1 (alias: Ic run )
 Execute
@@ -1975,21 +1976,6 @@ doesn't return success, the exit status is also displayed.
 .It Ic server-info
 .D1 (alias: Ic info )
 Show server information and terminal details.
-.It Xo Ic set-password
-.Op Fl c
-.Ar password
-.Xc
-.D1 (alias: Ic pass )
-Set the server password.
-If the
-.Fl c
-option is given, a pre-encrypted password may be specified.
-By default, the password is blank, thus any entered password will be accepted
-when unlocking the server (see the
-.Ic lock-server
-command).
-To prevent variable expansion when an encrypted password is read from a
-configuration file, enclose it in single quotes (').
 .El
 .Sh FILES
 .Bl -tag -width "/etc/tmux.confXXX" -compact

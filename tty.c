@@ -29,8 +29,6 @@
 
 void	tty_fill_acs(struct tty *);
 
-void	tty_raw(struct tty *, const char *);
-
 int	tty_try_256(struct tty *, u_char, const char *);
 int	tty_try_88(struct tty *, u_char, const char *);
 

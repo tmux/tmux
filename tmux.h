@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION 3
+#define PROTOCOL_VERSION 4
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -304,10 +304,11 @@ enum msgtype {
 	MSG_RESIZE,
 	MSG_SHUTDOWN,
 	MSG_SUSPEND,
-	MSG_UNLOCK,
 	MSG_VERSION,
 	MSG_WAKEUP,
-	MSG_ENVIRON
+	MSG_ENVIRON,
+	MSG_UNLOCK,
+	MSG_LOCK
 };
 
 /*
@@ -339,8 +340,8 @@ struct msg_identify_data {
 	int		flags;
 };
 
-struct msg_unlock_data {
-	char	       	pass[PASS_MAX];
+struct msg_lock_data {
+	char	       	cmd[COMMAND_LENGTH];
 };
 
 struct msg_environ_data {
@@ -1108,11 +1109,6 @@ extern struct options global_s_options;
 extern struct options global_w_options;
 extern struct environ global_environ;
 extern char	*cfg_file;
-extern int	 server_locked;
-extern struct passwd *server_locked_pw;
-extern u_int	 password_failures;
-extern time_t	 password_backoff;
-extern char	*server_password;
 extern time_t	 server_activity;
 extern int	 debug_level;
 extern int	 be_quiet;
@@ -1179,6 +1175,7 @@ void	environ_unset(struct environ *, const char *);
 void 	environ_update(const char *, struct environ *, struct environ *);
 
 /* tty.c */
+void	tty_raw(struct tty *, const char *);
 u_char	tty_get_acs(struct tty *, u_char);
 void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_reset(struct tty *);
@@ -1352,7 +1349,6 @@ extern const struct cmd_entry cmd_server_info_entry;
 extern const struct cmd_entry cmd_set_buffer_entry;
 extern const struct cmd_entry cmd_set_environment_entry;
 extern const struct cmd_entry cmd_set_option_entry;
-extern const struct cmd_entry cmd_set_password_entry;
 extern const struct cmd_entry cmd_set_window_option_entry;
 extern const struct cmd_entry cmd_show_buffer_entry;
 extern const struct cmd_entry cmd_show_environment_entry;

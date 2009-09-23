@@ -67,7 +67,6 @@ void		 server_lost_client(struct client *);
 void	 	 server_check_window(struct window *);
 void		 server_check_redraw(struct client *);
 void		 server_set_title(struct client *);
-void		 server_redraw_locked(struct client *);
 void		 server_check_timers(struct client *);
 void		 server_second_timers(void);
 int		 server_update_socket(void);
@@ -160,8 +159,6 @@ server_start(char *path)
 	key_bindings_init();
 	utf8_build();
 
-	server_locked = 0;
-	server_password = NULL;
 	server_activity = time(NULL);
 
 	start_time = time(NULL);
@@ -382,8 +379,6 @@ server_main(int srv_fd)
 
 	options_free(&global_s_options);
 	options_free(&global_w_options);
-	if (server_password != NULL)
-		xfree(server_password);
 
 	return (0);
 }
@@ -541,10 +536,7 @@ server_check_redraw(struct client *c)
 	}
 
 	if (c->flags & CLIENT_REDRAW) {
-		if (server_locked)
-			server_redraw_locked(c);
-		else
- 			screen_redraw_screen(c, 0);
+		screen_redraw_screen(c, 0);
 		c->flags &= ~CLIENT_STATUS;
 	} else {
 		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
@@ -579,49 +571,6 @@ server_set_title(struct client *c)
 		tty_set_title(&c->tty, c->title);
 	}
 	xfree(title);
-}
-
-/* Redraw client when locked. */
-void
-server_redraw_locked(struct client *c)
-{
-	struct screen_write_ctx	ctx;
-	struct screen		screen;
-	struct grid_cell	gc;
-	u_int			colour, xx, yy, i;
-	int    			style;
-
-	xx = c->tty.sx;
-	yy = c->tty.sy - 1;
-	if (xx == 0 || yy == 0)
-		return;
-	colour = options_get_number(&global_w_options, "clock-mode-colour");
-	style = options_get_number(&global_w_options, "clock-mode-style");
-
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	colour_set_fg(&gc, colour);
-	gc.attr |= GRID_ATTR_BRIGHT;
-
-	screen_init(&screen, xx, yy, 0);
-
-	screen_write_start(&ctx, NULL, &screen);
-	clock_draw(&ctx, colour, style);
-
-	if (password_failures != 0) {
-		screen_write_cursormove(&ctx, 0, 0);
-		screen_write_puts(
-		    &ctx, &gc, "%u failed attempts", password_failures);
-		if (time(NULL) < password_backoff)
-			screen_write_puts(&ctx, &gc, "; sleeping");
-	}
-
-	screen_write_stop(&ctx);
-
-	for (i = 0; i < screen_size_y(&screen); i++)
-		tty_draw_line(&c->tty, &screen, i, 0, 0);
-	screen_redraw_screen(c, 1);
-
-	screen_free(&screen);
 }
 
 /* Check for timers on client. */
@@ -836,8 +785,6 @@ server_handle_client(struct client *c)
 			status_prompt_key(c, key);
 			continue;
 		}
-		if (server_locked)
-			continue;
 
 		/* Check for mouse keys. */
 		if (key == KEYC_MOUSE) {
@@ -929,8 +876,6 @@ server_handle_client(struct client *c)
 		tty_cursor(&c->tty, s->cx, s->cy, wp->xoff, wp->yoff);
 
 	mode = s->mode;
-	if (server_locked)
-		mode &= ~TTY_NOCURSOR;
 	tty_update_mode(&c->tty, mode);
 	tty_reset(&c->tty);
 }
@@ -1235,12 +1180,9 @@ void
 server_second_timers(void)
 {
 	struct window		*w;
-	struct client		*c;
 	struct window_pane	*wp;
 	u_int		 	 i;
 	int			 xtimeout;
-	struct tm	 	 now, then;
-	static time_t	 	 last_t = 0;
 	time_t		 	 t;
 
 	t = time(NULL);
@@ -1257,29 +1199,6 @@ server_second_timers(void)
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->mode != NULL && wp->mode->timer != NULL)
 				wp->mode->timer(wp);
-		}
-	}
-
-	if (password_backoff != 0 && t >= password_backoff) {
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			if ((c = ARRAY_ITEM(&clients, i)) != NULL)
-				server_redraw_client(c);
-		}
-		password_backoff = 0;
-	}
-
-	/* Check for a minute having passed. */
-	gmtime_r(&t, &now);
-	gmtime_r(&last_t, &then);
-	if (now.tm_min == then.tm_min)
-		return;
-	last_t = t;
-
-	/* If locked, redraw all clients. */
-	if (server_locked) {
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			if ((c = ARRAY_ITEM(&clients, i)) != NULL)
-				server_redraw_client(c);
 		}
 	}
 }

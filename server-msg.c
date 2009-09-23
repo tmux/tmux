@@ -40,7 +40,6 @@ server_msg_dispatch(struct client *c)
 	struct imsg		 imsg;
 	struct msg_command_data	 commanddata;
 	struct msg_identify_data identifydata;
-	struct msg_unlock_data	 unlockdata;
 	struct msg_environ_data	 environdata;
 	ssize_t			 n, datalen;
 
@@ -95,31 +94,15 @@ server_msg_dispatch(struct client *c)
 			tty_close(&c->tty);
 			server_write_client(c, MSG_EXITED, NULL, 0);
 			break;
-		case MSG_UNLOCK:
-			if (datalen != sizeof unlockdata)
-				fatalx("bad MSG_UNLOCK size");
-			memcpy(&unlockdata, imsg.data, sizeof unlockdata);
-
-			unlockdata.pass[(sizeof unlockdata.pass) - 1] = '\0';
-			switch (server_unlock(unlockdata.pass)) {
-			case -1:
-				server_write_error(c, "bad password");
-				break;
-			case -2:
-				server_write_error(c,
-				    "too many bad passwords, sleeping");
-				break;
-			}
-			memset(&unlockdata, 0, sizeof unlockdata);
-			server_write_client(c, MSG_EXIT, NULL, 0);
-			break;
 		case MSG_WAKEUP:
+		case MSG_UNLOCK:
 			if (datalen != 0)
 				fatalx("bad MSG_WAKEUP size");
 
 			c->flags &= ~CLIENT_SUSPENDED;
 			tty_start_tty(&c->tty);
 			server_redraw_client(c);
+			server_activity = time(NULL);
 			break;
 		case MSG_ENVIRON:
 			if (datalen != sizeof environdata)
