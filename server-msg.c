@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.84 2009-09-15 23:52:30 tcunha Exp $ */
+/* $Id: server-msg.c,v 1.85 2009-09-23 14:39:30 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,6 +74,8 @@ server_msg_dispatch(struct client *c)
 		case MSG_IDENTIFY:
 			if (datalen != sizeof identifydata)
 				fatalx("bad MSG_IDENTIFY size");
+			if (imsg.fd == -1)
+				fatalx("MSG_IDENTIFY missing fd");
 			memcpy(&identifydata, imsg.data, sizeof identifydata);
 
 			server_msg_identify(c, &identifydata, imsg.fd);
@@ -243,21 +245,13 @@ error:
 void
 server_msg_identify(struct client *c, struct msg_identify_data *data, int fd)
 {
-	c->tty.sx = data->sx;
-	if (c->tty.sx == 0)
-		c->tty.sx = 80;
-	c->tty.sy = data->sy;
-	if (c->tty.sy == 0)
-		c->tty.sy = 24;
-
 	c->cwd = NULL;
 	data->cwd[(sizeof data->cwd) - 1] = '\0';
 	if (*data->cwd != '\0')
 		c->cwd = xstrdup(data->cwd);
 
-	data->tty[(sizeof data->tty) - 1] = '\0';
 	data->term[(sizeof data->term) - 1] = '\0';
-	tty_init(&c->tty, fd, data->tty, data->term);
+	tty_init(&c->tty, fd, data->term);
 	if (data->flags & IDENTIFY_UTF8)
 		c->tty.flags |= TTY_UTF8;
 	if (data->flags & IDENTIFY_256COLOURS)
@@ -266,6 +260,13 @@ server_msg_identify(struct client *c, struct msg_identify_data *data, int fd)
 		c->tty.term_flags |= TERM_88COLOURS;
 	if (data->flags & IDENTIFY_HASDEFAULTS)
 		c->tty.term_flags |= TERM_HASDEFAULTS;
+
+	c->tty.sx = data->sx;
+	if (c->tty.sx == 0)
+		c->tty.sx = 80;
+	c->tty.sy = data->sy;
+	if (c->tty.sy == 0)
+		c->tty.sy = 24;
 
 	c->flags |= CLIENT_TERMINAL;
 }
