@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION 2
+#define PROTOCOL_VERSION 3
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -337,14 +337,6 @@ struct msg_identify_data {
 #define IDENTIFY_88COLOURS 0x4
 #define IDENTIFY_HASDEFAULTS 0x8
 	int		flags;
-
-	u_int		sx;
-	u_int		sy;
-};
-
-struct msg_resize_data {
-	u_int		sx;
-	u_int		sy;
 };
 
 struct msg_unlock_data {
@@ -1199,6 +1191,7 @@ void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
 void	tty_pututf8(struct tty *, const struct grid_utf8 *);
 void	tty_init(struct tty *, int, char *);
+void	tty_resize(struct tty *);
 void	tty_start_tty(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_detect_utf8(struct tty *);

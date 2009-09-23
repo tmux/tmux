@@ -73,6 +73,27 @@ tty_init(struct tty *tty, int fd, char *term)
 	tty->term_flags = 0;
 }
 
+void
+tty_resize(struct tty *tty)
+{
+	struct winsize	ws;
+
+	if (ioctl(tty->fd, TIOCGWINSZ, &ws) != -1) {
+		tty->sx = ws.ws_col;
+		tty->sy = ws.ws_row;
+	}
+	if (tty->sx == 0)
+		tty->sx = 80;
+	if (tty->sy == 0)
+		tty->sy = 24;
+
+	tty->cx = UINT_MAX;
+	tty->cy = UINT_MAX;
+
+	tty->rupper = UINT_MAX;
+	tty->rlower = UINT_MAX;
+}
+
 int
 tty_open(struct tty *tty, const char *overrides, char **cause)
 {

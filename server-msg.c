@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/ioctl.h>
 
 #include <errno.h>
 #include <stdlib.h>
@@ -28,7 +29,6 @@
 
 void	server_msg_command(struct client *, struct msg_command_data *);
 void	server_msg_identify(struct client *, struct msg_identify_data *, int);
-void	server_msg_resize(struct client *, struct msg_resize_data *);
 
 void printflike2 server_msg_command_error(struct cmd_ctx *, const char *, ...);
 void printflike2 server_msg_command_print(struct cmd_ctx *, const char *, ...);
@@ -40,7 +40,6 @@ server_msg_dispatch(struct client *c)
 	struct imsg		 imsg;
 	struct msg_command_data	 commanddata;
 	struct msg_identify_data identifydata;
-	struct msg_resize_data	 resizedata;
 	struct msg_unlock_data	 unlockdata;
 	struct msg_environ_data	 environdata;
 	ssize_t			 n, datalen;
@@ -81,11 +80,12 @@ server_msg_dispatch(struct client *c)
 			server_msg_identify(c, &identifydata, imsg.fd);
 			break;
 		case MSG_RESIZE:
-			if (datalen != sizeof resizedata)
+			if (datalen != 0)
 				fatalx("bad MSG_RESIZE size");
-			memcpy(&resizedata, imsg.data, sizeof resizedata);
 
-			server_msg_resize(c, &resizedata);
+			tty_resize(&c->tty);
+			recalculate_sizes();
+			server_redraw_client(c);
 			break;
 		case MSG_EXITING:
 			if (datalen != 0)
@@ -261,33 +261,7 @@ server_msg_identify(struct client *c, struct msg_identify_data *data, int fd)
 	if (data->flags & IDENTIFY_HASDEFAULTS)
 		c->tty.term_flags |= TERM_HASDEFAULTS;
 
-	c->tty.sx = data->sx;
-	if (c->tty.sx == 0)
-		c->tty.sx = 80;
-	c->tty.sy = data->sy;
-	if (c->tty.sy == 0)
-		c->tty.sy = 24;
+	tty_resize(&c->tty);
 
 	c->flags |= CLIENT_TERMINAL;
-}
-
-void
-server_msg_resize(struct client *c, struct msg_resize_data *data)
-{
-	c->tty.sx = data->sx;
-	if (c->tty.sx == 0)
-		c->tty.sx = 80;
-	c->tty.sy = data->sy;
-	if (c->tty.sy == 0)
-		c->tty.sy = 24;
-
-	c->tty.cx = UINT_MAX;
-	c->tty.cy = UINT_MAX;
-	c->tty.rupper = UINT_MAX;
-	c->tty.rlower = UINT_MAX;
-
-	recalculate_sizes();
-
-	/* Always redraw this client. */
-	server_redraw_client(c);
 }
