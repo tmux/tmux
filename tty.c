@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.132 2009-09-11 14:13:52 tcunha Exp $ */
+/* $Id: tty.c,v 1.133 2009-09-23 14:33:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -93,7 +93,7 @@ tty_open(struct tty *tty, const char *overrides, char **cause)
 	tty->in = buffer_create(BUFSIZ);
 	tty->out = buffer_create(BUFSIZ);
 
-	tty->flags &= TTY_UTF8;
+	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_ESCAPE);
 
 	tty_start_tty(tty);
 
