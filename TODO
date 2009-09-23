@@ -99,3 +99,5 @@
 - commands should be able to succeed or fail and have || or && for command
   lists
 - support the mouse wheel to scroll through history
+- if the window is dead, automatic-rename should mark is [dead] or something
+  (or a different symbol??)
