@@ -392,6 +392,19 @@ List the syntax of all commands supported by
 .It Ic list-sessions
 .D1 (alias: Ic ls )
 List all sessions managed by the server.
+.It Xo Ic lock-client
+.Op Fl t Ar target-client
+.Xc
+Lock
+.Ar target-client ,
+see the
+.Ic lock-server
+command.
+.It Xo Ic lock-session
+.Op Fl t Ar target-session
+.Xc
+Lock all clients attached to
+.Ar target-session .
 .It Xo Ic new-session
 .Op Fl d
 .Op Fl n Ar window-name
