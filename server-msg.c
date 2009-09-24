@@ -104,6 +104,7 @@ server_msg_dispatch(struct client *c)
 			c->flags &= ~CLIENT_SUSPENDED;
 			tty_start_tty(&c->tty);
 			server_redraw_client(c);
+			recalculate_sizes();
 			server_activity = time(NULL);
 			break;
 		case MSG_ENVIRON:

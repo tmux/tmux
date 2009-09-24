@@ -60,7 +60,7 @@ recalculate_sizes(void)
 		ssx = ssy = UINT_MAX;
 		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
 			c = ARRAY_ITEM(&clients, j);
-			if (c == NULL)
+			if (c == NULL || c->flags & CLIENT_SUSPENDED)
 				continue;
 			if (c->session == s) {
 				if (c->tty.sx < ssx)

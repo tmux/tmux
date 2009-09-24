@@ -45,6 +45,7 @@ int
 cmd_lock_server_exec(unused struct cmd *self, unused struct cmd_ctx *ctx)
 {
 	server_lock();
+	recalculate_sizes();
 
 	return (0);
 }

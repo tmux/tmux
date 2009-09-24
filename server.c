@@ -1194,8 +1194,10 @@ server_second_timers(void)
 	t = time(NULL);
 
 	xtimeout = options_get_number(&global_s_options, "lock-after-time");
-	if (xtimeout > 0 && t > server_activity + xtimeout)
+	if (xtimeout > 0 && t > server_activity + xtimeout) {
 		server_lock();
+		recalculate_sizes();
+	}
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);
