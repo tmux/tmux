@@ -1,4 +1,4 @@
-/* $Id: osdep-netbsd.c,v 1.8 2009-08-09 18:00:45 tcunha Exp $ */
+/* $Id: osdep-netbsd.c,v 1.9 2009-09-24 12:30:22 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -77,7 +77,7 @@ osdep_get_name(int fd, __unused char *tty)
 		return (NULL);
 
 	buf = NULL;
-	len = sizeof(p);
+	len = sizeof(bestp);
 	mib[0] = CTL_KERN;
 	mib[1] = KERN_PROC2;
 	mib[2] = KERN_PROC_PGRP;
