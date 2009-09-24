@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.40 2009-09-23 15:05:03 tcunha Exp $
+# $Id: configure,v 1.41 2009-09-24 07:15:22 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -203,7 +203,6 @@ EOF
 #define HAVE_STRLCPY
 #define HAVE_STRTONUM
 #define HAVE_STRSEP
-#define HAVE_TREE_H
 #define HAVE_U_INT
 EOF
 	cat <<EOF >>$CONFIG_MK
