@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.193 2009-09-23 15:10:37 tcunha Exp $ */
+/* $Id: server.c,v 1.194 2009-09-25 17:47:42 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1197,8 +1197,10 @@ server_second_timers(void)
 	t = time(NULL);
 
 	xtimeout = options_get_number(&global_s_options, "lock-after-time");
-	if (xtimeout > 0 && t > server_activity + xtimeout)
+	if (xtimeout > 0 && t > server_activity + xtimeout) {
 		server_lock();
+		recalculate_sizes();
+	}
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);

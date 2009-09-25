@@ -1,4 +1,4 @@
-/* $Id: cmd-lock-server.c,v 1.6 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-lock-server.c,v 1.7 2009-09-25 17:47:42 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,6 +45,7 @@ int
 cmd_lock_server_exec(unused struct cmd *self, unused struct cmd_ctx *ctx)
 {
 	server_lock();
+	recalculate_sizes();
 
 	return (0);
 }

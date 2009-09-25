@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.23 2009-07-20 15:42:05 tcunha Exp $ */
+/* $Id: resize.c,v 1.24 2009-09-25 17:47:42 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -60,7 +60,7 @@ recalculate_sizes(void)
 		ssx = ssy = UINT_MAX;
 		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
 			c = ARRAY_ITEM(&clients, j);
-			if (c == NULL)
+			if (c == NULL || c->flags & CLIENT_SUSPENDED)
 				continue;
 			if (c->session == s) {
 				if (c->tty.sx < ssx)
