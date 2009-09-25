@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.455 2009-09-25 17:45:46 tcunha Exp $ */
+/* $Id: tmux.h,v 1.456 2009-09-25 17:51:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1324,7 +1324,9 @@ extern const struct cmd_entry cmd_list_keys_entry;
 extern const struct cmd_entry cmd_list_sessions_entry;
 extern const struct cmd_entry cmd_list_windows_entry;
 extern const struct cmd_entry cmd_load_buffer_entry;
+extern const struct cmd_entry cmd_lock_client_entry;
 extern const struct cmd_entry cmd_lock_server_entry;
+extern const struct cmd_entry cmd_lock_session_entry;
 extern const struct cmd_entry cmd_move_window_entry;
 extern const struct cmd_entry cmd_new_session_entry;
 extern const struct cmd_entry cmd_new_window_entry;
@@ -1455,6 +1457,8 @@ void	 server_status_session(struct session *);
 void	 server_redraw_window(struct window *);
 void	 server_status_window(struct window *);
 void	 server_lock(void);
+void	 server_lock_session(struct session *);
+void	 server_lock_client(struct client *);
 int	 server_unlock(const char *);
 void	 server_kill_window(struct window *);
 int	 server_link_window(

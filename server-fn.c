@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.90 2009-09-23 15:00:08 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.91 2009-09-25 17:51:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -157,10 +157,8 @@ server_status_window(struct window *w)
 void
 server_lock(void)
 {
-	struct client		*c;
-	const char		*cmd;
-	struct msg_lock_data	 lockdata;
-	u_int			 i;
+	struct client	*c;
+	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
@@ -168,19 +166,44 @@ server_lock(void)
 			continue;
 		if (c->flags & CLIENT_SUSPENDED)
 			continue;
-
-		cmd = options_get_string(&c->session->options, "lock-command");
-		if (strlcpy(lockdata.cmd, 
-		    cmd, sizeof lockdata.cmd) >= sizeof lockdata.cmd)
-			continue;
-
-		tty_stop_tty(&c->tty);
-		tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_SMCUP));
-		tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_CLEAR));
-
-		c->flags |= CLIENT_SUSPENDED;
-		server_write_client(c, MSG_LOCK, &lockdata, sizeof lockdata);
+		server_lock_client(c);
 	}
+}
+
+void
+server_lock_session(struct session *s)
+{
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL || c->session != s)
+			continue;
+		if (c->flags & CLIENT_SUSPENDED)
+			continue;
+		server_lock_client(c);
+	}	
+}
+
+void
+server_lock_client(struct client *c)
+{
+	const char		*cmd;
+	size_t			 cmdlen;
+	struct msg_lock_data	 lockdata;
+
+	cmd = options_get_string(&c->session->options, "lock-command");
+	cmdlen = strlcpy(lockdata.cmd, cmd, sizeof lockdata.cmd);
+	if (cmdlen >= sizeof lockdata.cmd)
+		return;
+      
+	tty_stop_tty(&c->tty);
+	tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_SMCUP));
+	tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_CLEAR));
+
+	c->flags |= CLIENT_SUSPENDED;
+	server_write_client(c, MSG_LOCK, &lockdata, sizeof lockdata);
 }
 
 void

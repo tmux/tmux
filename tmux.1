@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.173 2009-09-23 15:18:56 tcunha Exp $
+.\" $Id: tmux.1,v 1.174 2009-09-25 17:51:39 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 23 2009 $
+.Dd $Mdocdate: September 24 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -392,6 +392,19 @@ List the syntax of all commands supported by
 .It Ic list-sessions
 .D1 (alias: Ic ls )
 List all sessions managed by the server.
+.It Xo Ic lock-client
+.Op Fl t Ar target-client
+.Xc
+Lock
+.Ar target-client ,
+see the
+.Ic lock-server
+command.
+.It Xo Ic lock-session
+.Op Fl t Ar target-session
+.Xc
+Lock all clients attached to
+.Ar target-session .
 .It Xo Ic new-session
 .Op Fl d
 .Op Fl n Ar window-name
