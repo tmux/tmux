@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.454 2009-09-23 15:18:56 tcunha Exp $ */
+/* $Id: tmux.h,v 1.455 2009-09-25 17:45:46 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -956,8 +956,7 @@ struct client {
 	void		 (*prompt_freefn)(void *);
 	void		*prompt_data;
 
-#define PROMPT_HIDDEN 0x1
-#define PROMPT_SINGLE 0x2
+#define PROMPT_SINGLE 0x1
 	int		 prompt_flags;
 
 	u_int		 prompt_hindex;

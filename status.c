@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.120 2009-09-23 15:00:09 tcunha Exp $ */
+/* $Id: status.c,v 1.121 2009-09-25 17:45:46 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -673,8 +673,6 @@ status_prompt_clear(struct client *c)
 	xfree(c->prompt_string);
 	c->prompt_string = NULL;
 
-	if (c->prompt_flags & PROMPT_HIDDEN)
-		memset(c->prompt_buffer, 0, strlen(c->prompt_buffer));
 	xfree(c->prompt_buffer);
 	c->prompt_buffer = NULL;
 
@@ -739,26 +737,17 @@ status_prompt_redraw(struct client *c)
 				left--;
 			size = left;
 		}
-		if (c->prompt_flags & PROMPT_HIDDEN)
-			size = 0;
-		else {
-			screen_write_puts(&ctx, &gc,
-			    "%.*s", (int) left, c->prompt_buffer + off);
-		}
+		screen_write_puts(
+		    &ctx, &gc, "%.*s", (int) left, c->prompt_buffer + off);
 
 		for (i = len + size; i < c->tty.sx; i++)
 			screen_write_putc(&ctx, &gc, ' ');
 
 		/* Draw a fake cursor. */
 		ch = ' ';
-		if (c->prompt_flags & PROMPT_HIDDEN)
-			screen_write_cursormove(&ctx, len, 0);
-		else {
-			screen_write_cursormove(&ctx,
-			    len + c->prompt_index - off, 0);
-			if (c->prompt_index < strlen(c->prompt_buffer))
-				ch = c->prompt_buffer[c->prompt_index];
-		}
+		screen_write_cursormove(&ctx, len + c->prompt_index - off, 0);
+		if (c->prompt_index < strlen(c->prompt_buffer))
+			ch = c->prompt_buffer[c->prompt_index];
 		gc.attr ^= GRID_ATTR_REVERSE;
 		screen_write_putc(&ctx, &gc, ch);
 	}
@@ -892,8 +881,6 @@ status_prompt_key(struct client *c, int key)
 	case MODEKEYEDIT_HISTORYUP:
 		if (ARRAY_LENGTH(&c->prompt_hdata) == 0)
 			break;
-		if (c->prompt_flags & PROMPT_HIDDEN)
-			memset(c->prompt_buffer, 0, strlen(c->prompt_buffer));
 	       	xfree(c->prompt_buffer);
 
 		c->prompt_buffer = xstrdup(ARRAY_ITEM(&c->prompt_hdata,
@@ -905,8 +892,6 @@ status_prompt_key(struct client *c, int key)
 		c->flags |= CLIENT_STATUS;
 		break;
 	case MODEKEYEDIT_HISTORYDOWN:
-		if (c->prompt_flags & PROMPT_HIDDEN)
-			memset(c->prompt_buffer, 0, strlen(c->prompt_buffer));
 		xfree(c->prompt_buffer);
 
 		if (c->prompt_hindex != 0) {
