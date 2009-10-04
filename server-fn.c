@@ -164,8 +164,6 @@ server_lock(void)
 		c = ARRAY_ITEM(&clients, i);
 		if (c == NULL || c->session == NULL)
 			continue;
-		if (c->flags & CLIENT_SUSPENDED)
-			continue;
 		server_lock_client(c);
 	}
 }
@@ -180,8 +178,6 @@ server_lock_session(struct session *s)
 		c = ARRAY_ITEM(&clients, i);
 		if (c == NULL || c->session == NULL || c->session != s)
 			continue;
-		if (c->flags & CLIENT_SUSPENDED)
-			continue;
 		server_lock_client(c);
 	}	
 }
@@ -192,6 +188,9 @@ server_lock_client(struct client *c)
 	const char		*cmd;
 	size_t			 cmdlen;
 	struct msg_lock_data	 lockdata;
+
+	if (c->flags & CLIENT_SUSPENDED)
+		return;
 
 	cmd = options_get_string(&c->session->options, "lock-command");
 	cmdlen = strlcpy(lockdata.cmd, cmd, sizeof lockdata.cmd);
