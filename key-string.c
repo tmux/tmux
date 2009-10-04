@@ -57,6 +57,7 @@ struct {
 	{ "PPage",	KEYC_PPAGE },
 	{ "Tab",	'\011' },
 	{ "BTab",	KEYC_BTAB },
+	{ "Space",	' ' },
 	{ "BSpace",	KEYC_BSPACE },
 	{ "Enter",	'\r' },
 	{ "Escape",	'\033' },
