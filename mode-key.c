@@ -191,7 +191,7 @@ struct mode_key_tree mode_key_tree_vi_copy;
 /* emacs editing keys. */
 const struct mode_key_entry mode_key_emacs_edit[] = {
 	{ '\001' /* C-a */,	0, MODEKEYEDIT_STARTOFLINE }, 
-	{ '\002' /* C-p */,	0, MODEKEYEDIT_CURSORLEFT },
+	{ '\002' /* C-b */,	0, MODEKEYEDIT_CURSORLEFT },
 	{ '\003' /* C-c */,	0, MODEKEYEDIT_CANCEL },
 	{ '\004' /* C-d */,	0, MODEKEYEDIT_DELETE },
 	{ '\005' /* C-e	*/,	0, MODEKEYEDIT_ENDOFLINE },
@@ -221,6 +221,8 @@ struct mode_key_tree mode_key_tree_emacs_edit;
 /* emacs choice selection keys. */
 const struct mode_key_entry mode_key_emacs_choice[] = {
 	{ '\003' /* C-c */,	0, MODEKEYCHOICE_CANCEL },
+	{ '\016' /* C-n */,	0, MODEKEYCHOICE_DOWN },
+	{ '\020' /* C-p */,	0, MODEKEYCHOICE_UP },
 	{ '\033' /* Escape */,	0, MODEKEYCHOICE_CANCEL },
 	{ '\r',			0, MODEKEYCHOICE_CHOOSE },
 	{ 'q',			0, MODEKEYCHOICE_CANCEL },
