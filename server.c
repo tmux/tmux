@@ -90,6 +90,9 @@ server_create_client(int fd)
 	c = xcalloc(1, sizeof *c);
 	c->references = 0;
 	imsg_init(&c->ibuf, fd);
+	
+	if (gettimeofday(&c->tv, NULL) != 0)
+		fatal("gettimeofday failed");
 
 	ARRAY_INIT(&c->prompt_hdata);
 

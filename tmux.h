@@ -922,6 +922,7 @@ struct tty_ctx {
 /* Client connection. */
 struct client {
 	struct imsgbuf	 ibuf;
+	struct timeval	 tv;
 
 	struct environ	 environ;
 
