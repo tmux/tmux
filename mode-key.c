@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.30 2009-10-05 18:19:52 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.31 2009-10-05 18:25:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -155,9 +155,10 @@ struct mode_key_tree mode_key_tree_vi_choice;
 const struct mode_key_entry mode_key_vi_copy[] = {
 	{ ' ',			0, MODEKEYCOPY_STARTSELECTION },
 	{ '$',			0, MODEKEYCOPY_ENDOFLINE },
-	{ '/',			0, MODEKEYCOPY_SEARCHUP },
+	{ '/',			0, MODEKEYCOPY_SEARCHDOWN },
 	{ '0',			0, MODEKEYCOPY_STARTOFLINE },
-	{ '?',			0, MODEKEYCOPY_SEARCHDOWN },
+	{ ':',			0, MODEKEYCOPY_GOTOLINE },
+	{ '?',			0, MODEKEYCOPY_SEARCHUP },
 	{ '\002' /* C-b */,	0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ '\003' /* C-c */,	0, MODEKEYCOPY_CANCEL },
 	{ '\004' /* C-d */,	0, MODEKEYCOPY_HALFPAGEDOWN },
@@ -168,7 +169,6 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ '\r',			0, MODEKEYCOPY_COPYSELECTION },
 	{ '^',			0, MODEKEYCOPY_BACKTOINDENTATION },
 	{ 'b',			0, MODEKEYCOPY_PREVIOUSWORD },
-	{ 'g',			0, MODEKEYCOPY_GOTOLINE },
 	{ 'h',			0, MODEKEYCOPY_LEFT },
 	{ 'j',			0, MODEKEYCOPY_DOWN },
 	{ 'k',			0, MODEKEYCOPY_UP },
