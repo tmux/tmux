@@ -18,7 +18,7 @@ SRCS=	attributes.c buffer-poll.c buffer.c cfg.c client-fn.c \
 	cmd-previous-layout.c cmd-previous-window.c cmd-refresh-client.c \
 	cmd-rename-session.c cmd-rename-window.c cmd-resize-pane.c \
 	cmd-respawn-window.c cmd-rotate-window.c cmd-save-buffer.c \
-	cmd-scroll-mode.c cmd-select-layout.c cmd-select-pane.c \
+	cmd-select-layout.c cmd-select-pane.c \
 	cmd-select-prompt.c cmd-select-window.c cmd-send-keys.c \
 	cmd-send-prefix.c cmd-server-info.c cmd-set-buffer.c cmd-set-option.c \
 	cmd-set-window-option.c cmd-show-buffer.c \
@@ -35,7 +35,7 @@ SRCS=	attributes.c buffer-poll.c buffer.c cfg.c client-fn.c \
 	resize.c screen-redraw.c screen-write.c screen.c server-fn.c \
 	server-msg.c server.c session.c status.c tmux.c tty-keys.c tty-term.c \
 	tty.c utf8.c window-choose.c window-clock.c \
-	window-copy.c window-more.c window-scroll.c window.c xmalloc.c
+	window-copy.c window-more.c window.c xmalloc.c
 
 CDIAGFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CDIAGFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
