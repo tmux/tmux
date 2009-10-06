@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: tmux(1) configuration file
 " Maintainer: Tiago Cunha <me@tiagocunha.org>
-" Last Change: $Date: 2009-09-25 17:52:26 $
+" Last Change: $Date: 2009-10-06 14:14:40 $
 
 if version < 600
 	syntax clear
@@ -23,7 +23,7 @@ syn keyword tmuxCmds send-prefix refresh[-client] killw kill-window lsc
 syn keyword tmuxCmds list-clients linkw link-window unlinkw unlink-window
 syn keyword tmuxCmds next[-window] send[-keys] swapw swap-window
 syn keyword tmuxCmds rename[-session] kill-session switchc switch-client
-syn keyword tmuxCmds has[-session] scroll-mode copy-mode pasteb paste-buffer
+syn keyword tmuxCmds has[-session] copy-mode pasteb paste-buffer
 syn keyword tmuxCmds new[-session] start[-server] kill-server setw
 syn keyword tmuxCmds set-window-option show[-options] showw show-window-options
 syn keyword tmuxCmds command-prompt setb set-buffer showb show-buffer lsb
