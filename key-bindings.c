@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.82 2009-08-31 22:30:15 tcunha Exp $ */
+/* $Id: key-bindings.c,v 1.83 2009-10-06 14:14:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -122,7 +122,6 @@ key_bindings_init(void)
 		{ '8', 			  0, &cmd_select_window_entry },
 		{ '9', 			  0, &cmd_select_window_entry },
 		{ ':', 			  0, &cmd_command_prompt_entry },
-		{ '=', 			  0, &cmd_scroll_mode_entry },
 		{ '?', 			  0, &cmd_list_keys_entry },
 		{ '[', 			  0, &cmd_copy_mode_entry },
 		{ '\'',			  0, &cmd_select_prompt_entry },
@@ -150,7 +149,7 @@ key_bindings_init(void)
 		{ '2' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
 		{ '3' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
 		{ '4' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
-		{ KEYC_PPAGE, 		  0, &cmd_scroll_mode_entry },
+		{ KEYC_PPAGE, 		  0, &cmd_copy_mode_entry },
 		{ 'n' | KEYC_ESCAPE, 	  0, &cmd_next_window_entry },
 		{ 'p' | KEYC_ESCAPE, 	  0, &cmd_previous_window_entry },
 		{ KEYC_UP, 		  0, &cmd_up_pane_entry },

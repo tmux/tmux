@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.178 2009-10-06 14:10:10 tcunha Exp $
+.\" $Id: tmux.1,v 1.179 2009-10-06 14:14:07 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -474,12 +474,6 @@ The others are:
 This is entered when a command which produces output, such as
 .Ic list-keys ,
 is executed from a key binding.
-.It Em scroll mode
-This is entered with the
-.Ic scroll-mode
-command (bound to
-.Ql =
-by default) and permits the window history buffer to be inspected.
 .It Em copy mode
 This permits a section of a window or its history to be copied to a
 .Em paste buffer
@@ -539,7 +533,7 @@ command) or in output mode; and
 .Em vi-copy
 and
 .Em emacs-copy
-used in copy and scroll modes.
+used in copy mode.
 The tables may be viewed with the
 .Ic list-keys
 command and keys modified or removed with
@@ -560,16 +554,6 @@ Enter copy mode.
 The
 .Fl u
 option scrolls one page up.
-.It Xo Ic scroll-mode
-.Op Fl u
-.Op Fl t Ar target-pane
-.Xc
-Enter scroll mode.
-The
-.Fl u
-has the same meaning as in the
-.Ic copy-mode
-command.
 .El
 .Pp
 Each window displayed by

@@ -1,4 +1,4 @@
-/* $Id: cmd-copy-mode.c,v 1.23 2009-08-20 11:37:46 tcunha Exp $ */
+/* $Id: cmd-copy-mode.c,v 1.24 2009-10-06 14:14:06 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,18 +24,34 @@
  * Enter copy mode.
  */
 
+void	cmd_copy_mode_init(struct cmd *, int);
 int	cmd_copy_mode_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_copy_mode_entry = {
 	"copy-mode", NULL,
 	"[-u] " CMD_TARGET_PANE_USAGE,
 	0, CMD_CHFLAG('u'),
-	cmd_target_init,
+	cmd_copy_mode_init,
 	cmd_target_parse,
 	cmd_copy_mode_exec,
 	cmd_target_free,
 	NULL
 };
+
+void
+cmd_copy_mode_init(struct cmd *self, int key)
+{
+	struct cmd_target_data	*data;
+
+	cmd_target_init(self, key);
+	data = self->data;
+
+	switch (key) {
+	case KEYC_PPAGE:
+		data->chflags |= CMD_CHFLAG('u');
+		break;
+	}
+}
 
 int
 cmd_copy_mode_exec(struct cmd *self, struct cmd_ctx *ctx)
