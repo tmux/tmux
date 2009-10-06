@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.23 2009-10-05 18:21:58 tcunha Exp $ */
+/* $Id: key-string.c,v 1.24 2009-10-06 14:15:45 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -121,6 +121,8 @@ key_string_lookup_string(const char *string)
 		if (ptr[1] == '\0') {
 			if (ptr[0] == 32)
 				return (0);
+			if (ptr[0] == 63)
+				return (KEYC_BSPACE);
 			if (ptr[0] >= 64 && ptr[0] <= 95)
 				return (ptr[0] - 64);
 			if (ptr[0] >= 97 && ptr[0] <= 122)
