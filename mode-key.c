@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.31 2009-10-05 18:25:05 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.32 2009-10-06 14:10:10 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -89,6 +89,8 @@ struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_PREVIOUSPAGE, "page-up" },
 	{ MODEKEYCOPY_PREVIOUSWORD, "previous-word" },
 	{ MODEKEYCOPY_RIGHT, "cursor-right" },
+	{ MODEKEYCOPY_SCROLLDOWN, "scroll-down" },
+	{ MODEKEYCOPY_SCROLLUP, "scroll-up" },
 	{ MODEKEYCOPY_SEARCHAGAIN, "search-again" },
 	{ MODEKEYCOPY_SEARCHDOWN, "search-forward" },
 	{ MODEKEYCOPY_SEARCHUP, "search-backward" },
@@ -177,11 +179,13 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ 'q',			0, MODEKEYCOPY_CANCEL },
 	{ 'w',			0, MODEKEYCOPY_NEXTWORD },
 	{ KEYC_BSPACE,		0, MODEKEYCOPY_LEFT },
+	{ KEYC_DOWN | KEYC_CTRL,0, MODEKEYCOPY_SCROLLDOWN },
 	{ KEYC_DOWN,		0, MODEKEYCOPY_DOWN },
 	{ KEYC_LEFT,		0, MODEKEYCOPY_LEFT },
 	{ KEYC_NPAGE,		0, MODEKEYCOPY_NEXTPAGE },
 	{ KEYC_PPAGE,		0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ KEYC_RIGHT,		0, MODEKEYCOPY_RIGHT },
+	{ KEYC_UP | KEYC_CTRL,	0, MODEKEYCOPY_SCROLLUP },
 	{ KEYC_UP,		0, MODEKEYCOPY_UP },
 
 	{ 0,			-1, 0 }
@@ -262,12 +266,14 @@ const struct mode_key_entry mode_key_emacs_copy[] = {
 	{ 'q',			0, MODEKEYCOPY_CANCEL },
 	{ 'v' | KEYC_ESCAPE,	0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ 'w' | KEYC_ESCAPE,	0, MODEKEYCOPY_COPYSELECTION },
+	{ KEYC_DOWN | KEYC_CTRL,0, MODEKEYCOPY_SCROLLDOWN },
 	{ KEYC_DOWN | KEYC_ESCAPE, 0, MODEKEYCOPY_HALFPAGEDOWN },
 	{ KEYC_DOWN,		0, MODEKEYCOPY_DOWN },
 	{ KEYC_LEFT,		0, MODEKEYCOPY_LEFT },
 	{ KEYC_NPAGE,		0, MODEKEYCOPY_NEXTPAGE },
 	{ KEYC_PPAGE,		0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ KEYC_RIGHT,		0, MODEKEYCOPY_RIGHT },
+	{ KEYC_UP | KEYC_CTRL,	0, MODEKEYCOPY_SCROLLUP },
 	{ KEYC_UP | KEYC_ESCAPE, 0, MODEKEYCOPY_HALFPAGEUP },
 	{ KEYC_UP,		0, MODEKEYCOPY_UP },
 

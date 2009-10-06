@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.86 2009-09-11 14:13:52 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.87 2009-10-06 14:10:10 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,8 +61,8 @@ void	window_copy_cursor_back_to_indentation(struct window_pane *);
 void	window_copy_cursor_end_of_line(struct window_pane *);
 void	window_copy_cursor_left(struct window_pane *);
 void	window_copy_cursor_right(struct window_pane *);
-void	window_copy_cursor_up(struct window_pane *);
-void	window_copy_cursor_down(struct window_pane *);
+void	window_copy_cursor_up(struct window_pane *, int);
+void	window_copy_cursor_down(struct window_pane *, int);
 void	window_copy_cursor_next_word(struct window_pane *);
 void	window_copy_cursor_previous_word(struct window_pane *);
 void	window_copy_scroll_up(struct window_pane *, u_int);
@@ -235,11 +235,17 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		window_copy_cursor_right(wp);
  		return;
 	case MODEKEYCOPY_UP:
-		window_copy_cursor_up(wp);
+		window_copy_cursor_up(wp, 0);
 		return;
 	case MODEKEYCOPY_DOWN:
-		window_copy_cursor_down(wp);
+		window_copy_cursor_down(wp, 0);
 		return;
+	case MODEKEYCOPY_SCROLLUP:
+		window_copy_cursor_up(wp, 1);
+		break;
+	case MODEKEYCOPY_SCROLLDOWN:
+		window_copy_cursor_down(wp, 1);
+		break;
 	case MODEKEYCOPY_PREVIOUSPAGE:
 		window_copy_pageup(wp);
 		break;
@@ -1020,7 +1026,7 @@ window_copy_cursor_left(struct window_pane *wp)
 	struct window_copy_mode_data	*data = wp->modedata;
 
 	if (data->cx == 0) {
-		window_copy_cursor_up(wp);
+		window_copy_cursor_up(wp, 0);
 		window_copy_cursor_end_of_line(wp);
 	} else {
 		window_copy_update_cursor(wp, data->cx - 1, data->cy);
@@ -1040,7 +1046,7 @@ window_copy_cursor_right(struct window_pane *wp)
 
 	if (data->cx >= px) {
 		window_copy_cursor_start_of_line(wp);
-		window_copy_cursor_down(wp);
+		window_copy_cursor_down(wp, 0);
 	} else {
 		window_copy_update_cursor(wp, data->cx + 1, data->cy);
 		if (window_copy_update_selection(wp))
@@ -1049,7 +1055,7 @@ window_copy_cursor_right(struct window_pane *wp)
 }
 
 void
-window_copy_cursor_up(struct window_pane *wp)
+window_copy_cursor_up(struct window_pane *wp, int scroll_only)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	u_int				 ox, oy, px, py;
@@ -1062,9 +1068,11 @@ window_copy_cursor_up(struct window_pane *wp)
 	}
 
 	data->cx = data->lastcx;
-	if (data->cy == 0)
+	if (scroll_only || data->cy == 0) {
 		window_copy_scroll_down(wp, 1);
-	else {
+		if (scroll_only && window_copy_update_selection(wp))
+			window_copy_redraw_lines(wp, data->cy, 2);
+	} else {
 		window_copy_update_cursor(wp, data->cx, data->cy - 1);
 		if (window_copy_update_selection(wp))
 			window_copy_redraw_lines(wp, data->cy, 2);
@@ -1077,7 +1085,7 @@ window_copy_cursor_up(struct window_pane *wp)
 }
 
 void
-window_copy_cursor_down(struct window_pane *wp)
+window_copy_cursor_down(struct window_pane *wp, int scroll_only)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -1091,9 +1099,11 @@ window_copy_cursor_down(struct window_pane *wp)
 	}
 
 	data->cx = data->lastcx;
-	if (data->cy == screen_size_y(s) - 1)
+	if (scroll_only || data->cy == screen_size_y(s) - 1) {
 		window_copy_scroll_up(wp, 1);
-	else {
+		if (scroll_only && window_copy_update_selection(wp))
+			window_copy_redraw_lines(wp, data->cy - 1, 2);
+	} else {
 		window_copy_update_cursor(wp, data->cx, data->cy + 1);
 		if (window_copy_update_selection(wp))
 			window_copy_redraw_lines(wp, data->cy - 1, 2);
@@ -1137,7 +1147,7 @@ window_copy_cursor_next_word(struct window_pane *wp)
 				}
 
 				px = 0;
-				window_copy_cursor_down(wp);
+				window_copy_cursor_down(wp, 0);
 
 				py =screen_hsize(
 				    &wp->base) + data->cy - data->oy;
@@ -1185,7 +1195,7 @@ window_copy_cursor_previous_word(struct window_pane *wp)
 			    (screen_hsize(&wp->base) == 0 ||
 			    data->oy >= screen_hsize(&wp->base) - 1))
 				goto out;
-			window_copy_cursor_up(wp);
+			window_copy_cursor_up(wp, 0);
 
 			py = screen_hsize(
 			    &wp->base) + data->cy - data->oy;

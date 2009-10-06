@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.457 2009-10-06 14:00:50 tcunha Exp $ */
+/* $Id: tmux.h,v 1.458 2009-10-06 14:10:10 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -400,6 +400,8 @@ enum mode_key_cmd {
 	MODEKEYCOPY_PREVIOUSPAGE,
 	MODEKEYCOPY_PREVIOUSWORD,
 	MODEKEYCOPY_RIGHT,
+	MODEKEYCOPY_SCROLLDOWN,
+	MODEKEYCOPY_SCROLLUP,
 	MODEKEYCOPY_SEARCHAGAIN,
 	MODEKEYCOPY_SEARCHDOWN,
 	MODEKEYCOPY_SEARCHUP,
