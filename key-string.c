@@ -121,6 +121,8 @@ key_string_lookup_string(const char *string)
 		if (ptr[1] == '\0') {
 			if (ptr[0] == 32)
 				return (0);
+			if (ptr[0] == 63)
+				return (KEYC_BSPACE);
 			if (ptr[0] >= 64 && ptr[0] <= 95)
 				return (ptr[0] - 64);
 			if (ptr[0] >= 97 && ptr[0] <= 122)
