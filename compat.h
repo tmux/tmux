@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.18 2009-09-23 15:05:03 tcunha Exp $ */
+/* $Id: compat.h,v 1.19 2009-10-06 15:32:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -138,16 +138,8 @@ typedef uint64_t u_int64_t;
 	} while (0)
 #endif
 
-#ifndef PASS_MAX
-#define PASS_MAX 128
-#endif
-
 #ifndef TTY_NAME_MAX
 #define TTY_NAME_MAX 32
-#endif
-
-#ifndef _PW_BUF_LEN
-#define _PW_BUF_LEN 1024
 #endif
 
 #ifndef HAVE_BZERO
