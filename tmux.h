@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.456 2009-09-25 17:51:39 tcunha Exp $ */
+/* $Id: tmux.h,v 1.457 2009-10-06 14:00:50 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -920,6 +920,7 @@ struct tty_ctx {
 /* Client connection. */
 struct client {
 	struct imsgbuf	 ibuf;
+	struct timeval	 tv;
 
 	struct environ	 environ;
 

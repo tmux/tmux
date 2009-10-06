@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.194 2009-09-25 17:47:42 tcunha Exp $ */
+/* $Id: server.c,v 1.195 2009-10-06 14:00:50 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -89,6 +89,9 @@ server_create_client(int fd)
 	c = xcalloc(1, sizeof *c);
 	c->references = 0;
 	imsg_init(&c->ibuf, fd);
+	
+	if (gettimeofday(&c->tv, NULL) != 0)
+		fatal("gettimeofday failed");
 
 	ARRAY_INIT(&c->prompt_hdata);
 

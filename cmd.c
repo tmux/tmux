@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.118 2009-09-25 17:51:39 tcunha Exp $ */
+/* $Id: cmd.c,v 1.119 2009-10-06 14:00:50 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -109,6 +109,7 @@ const struct cmd_entry *cmd_table[] = {
 };
 
 struct session	*cmd_newest_session(struct sessions *);
+struct client	*cmd_newest_client(void);
 struct client	*cmd_lookup_client(const char *);
 struct session	*cmd_lookup_session(const char *, int *);
 struct winlink	*cmd_lookup_window(struct session *, const char *, int *);
@@ -368,17 +369,63 @@ cmd_newest_session(struct sessions *ss)
 	return (snewest);
 }
 
+/* Find the newest client. */
+struct client *
+cmd_newest_client(void)
+{
+	struct client	*c, *cnewest;
+	struct timeval	*tv = NULL;
+	u_int		 i;
+
+	cnewest = NULL;
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		if ((c = ARRAY_ITEM(&clients, i)) == NULL)
+			continue;
+		if (c->session == NULL)
+			continue;
+
+		if (tv == NULL || timercmp(&c->tv, tv, >)) {
+			cnewest = c;
+			tv = &c->tv;
+		}
+	}
+
+	return (cnewest);
+}
+
 /* Find the target client or report an error and return NULL. */
 struct client *
 cmd_find_client(struct cmd_ctx *ctx, const char *arg)
 {
 	struct client	*c;
+	struct session	*s;
 	char		*tmparg;
 	size_t		 arglen;
+	u_int		 i;
 
 	/* A NULL argument means the current client. */
-	if (arg == NULL)
-		return (ctx->curclient);
+	if (arg == NULL) {
+		if (ctx->curclient != NULL)
+			return (ctx->curclient);
+		/*
+		 * No current client set. Find the current session and see if
+		 * it has only has one client.
+		 */
+		s = cmd_current_session(ctx);
+		if (s != NULL) {
+			c = NULL;
+			for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+				if (ARRAY_ITEM(&clients, i)->session == s) {
+					if (c != NULL)
+						break;
+					c = ARRAY_ITEM(&clients, i);
+				}
+			}
+			if (i == ARRAY_LENGTH(&clients) && c != NULL)
+				return (c);
+		}
+		return (cmd_newest_client());
+	}
 	tmparg = xstrdup(arg);
 
 	/* Trim a single trailing colon if any. */
