@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.120 2009-10-06 14:14:06 tcunha Exp $ */
+/* $Id: cmd.c,v 1.121 2009-10-07 17:10:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -408,7 +408,7 @@ cmd_find_client(struct cmd_ctx *ctx, const char *arg)
 			return (ctx->curclient);
 		/*
 		 * No current client set. Find the current session and see if
-		 * it has only has one client.
+		 * it has only one client.
 		 */
 		s = cmd_current_session(ctx);
 		if (s != NULL) {
