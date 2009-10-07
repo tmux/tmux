@@ -409,7 +409,7 @@ cmd_find_client(struct cmd_ctx *ctx, const char *arg)
 			return (ctx->curclient);
 		/*
 		 * No current client set. Find the current session and see if
-		 * it has only has one client.
+		 * it has only one client.
 		 */
 		s = cmd_current_session(ctx);
 		if (s != NULL) {
