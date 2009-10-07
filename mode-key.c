@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.32 2009-10-06 14:10:10 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.33 2009-10-07 17:13:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -161,6 +161,8 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ '0',			0, MODEKEYCOPY_STARTOFLINE },
 	{ ':',			0, MODEKEYCOPY_GOTOLINE },
 	{ '?',			0, MODEKEYCOPY_SEARCHUP },
+	{ 'J',			0, MODEKEYCOPY_SCROLLDOWN },
+	{ 'K',			0, MODEKEYCOPY_SCROLLUP },
 	{ '\002' /* C-b */,	0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ '\003' /* C-c */,	0, MODEKEYCOPY_CANCEL },
 	{ '\004' /* C-d */,	0, MODEKEYCOPY_HALFPAGEDOWN },
