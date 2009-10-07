@@ -161,6 +161,8 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ '0',			0, MODEKEYCOPY_STARTOFLINE },
 	{ ':',			0, MODEKEYCOPY_GOTOLINE },
 	{ '?',			0, MODEKEYCOPY_SEARCHUP },
+	{ 'J',			0, MODEKEYCOPY_SCROLLDOWN },
+	{ 'K',			0, MODEKEYCOPY_SCROLLUP },
 	{ '\002' /* C-b */,	0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ '\003' /* C-c */,	0, MODEKEYCOPY_CANCEL },
 	{ '\004' /* C-d */,	0, MODEKEYCOPY_HALFPAGEDOWN },
