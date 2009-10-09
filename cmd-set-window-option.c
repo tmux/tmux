@@ -64,6 +64,7 @@ const struct set_option_entry set_window_option_table[] = {
 	{ "monitor-activity", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "monitor-content", SET_OPTION_STRING, 0, 0, NULL },
 	{ "remain-on-exit", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "synchronize-panes", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "utf8", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "window-status-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
 	{ "window-status-bg", SET_OPTION_COLOUR, 0, 0, NULL },

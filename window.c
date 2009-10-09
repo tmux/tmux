@@ -610,14 +610,26 @@ window_pane_parse(struct window_pane *wp)
 void
 window_pane_key(struct window_pane *wp, struct client *c, int key)
 {
+	struct window_pane	*wp2;
+
 	if (wp->fd == -1 || !window_pane_visible(wp))
 		return;
 
 	if (wp->mode != NULL) {
 		if (wp->mode->key != NULL)
 			wp->mode->key(wp, c, key);
-	} else
-		input_key(wp, key);
+		return;
+	} 
+
+	input_key(wp, key);
+	if (options_get_number(&wp->window->options, "synchronize-panes")) {
+		TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
+			if (wp2 == wp || wp2->mode != NULL)
+				continue;
+			if (wp2->fd != -1 && window_pane_visible(wp2))
+				input_key(wp2, key);
+		}
+	}
 }
 
 void

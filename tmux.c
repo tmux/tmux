@@ -441,6 +441,7 @@ main(int argc, char **argv)
 	options_set_number(wo, "window-status-fg", 8);
 	options_set_number(wo, "xterm-keys", 0);
  	options_set_number(wo, "remain-on-exit", 0);
+	options_set_number(wo, "synchronize-panes", 0);
 
  	if (flags & IDENTIFY_UTF8) {
 		options_set_number(so, "status-utf8", 1);
