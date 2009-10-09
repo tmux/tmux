@@ -40,14 +40,11 @@
   capabilities
 - would be nice to be able to use "--" to mark start of command w/ neww etc
   to avoid quoting
-- goto line and search history in copy/scroll modes
 - clone session command
 - make command sequences more usable: don't require space after ;, handle
   errors better
-- key to switch to copy mode from scroll mode
 - attach should have a flag to create session if it doesn't exist
 - rename split-window -> split-pane??
-- fix UTF-8 guesswork on sparc64, improve tty checks
 - choice and more mode would be better per client than per window?
 - hooks to which commands may be attached, for example: tmux add-hook
   "new-session" if-shell "[ -e $HOME/.tmux-session.conf ]" source-file
@@ -85,7 +82,6 @@
   to be smaller by other clients. pan smaller terminal? (like screen F)
 		-- idea of a "view" onto a window, need base x/y offsets
 		   for redraw
-- a window option which means data is echoed to all panes in a window
 - support running tmux from inside tmux [#(), if-shell] --
   	  generic system-like function which may take a callback
 	  also sets up environment (TMUX) and has a timeout
@@ -97,7 +93,6 @@
 - way to copy stuff that is off screen due to resize
 - fix line wrapping c&p problems in xterm etc
 - a way to address panes by name ("top-left") and position ("0,0")
-- ability to specify multiple prefix keys
 - commands should be able to succeed or fail and have || or && for command
   lists
 - support the mouse wheel to scroll through history
