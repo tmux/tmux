@@ -75,6 +75,8 @@
 - command to list what is actually running in each window with command line,
   pid (need some adaption of the osdep code)
 - string option to change/remove the symbols (*-+ etc) in status line
+  * or to set entire format, eg window-list-format '#N:#W#P' or something,
+  then could use embedded colours
 - support for bce
 - it would be nice if the start/end line keys in copy mode were aware of
   wrapped lines
