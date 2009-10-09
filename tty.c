@@ -134,10 +134,6 @@ tty_start_tty(struct tty *tty)
 	if (fcntl(tty->fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
 
-#if 0
-	tty_detect_utf8(tty);
-#endif
-
 	if (tcgetattr(tty->fd, &tty->tio) != 0)
 		fatal("tcgetattr failed");
 	memcpy(&tio, &tty->tio, sizeof tio);
@@ -215,83 +211,6 @@ tty_stop_tty(struct tty *tty)
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
 }
-
-#if 0
-void
-tty_detect_utf8(struct tty *tty)
-{
-	struct pollfd	pfd;
-	char	      	buf[7];
-	size_t		len;
-	ssize_t		n;
-	int		nfds;
-	struct termios	tio, old_tio;
-	int		 what;
-
-	if (tty->flags & TTY_UTF8)
-		return;
-
-	/*
-	 * If the terminal looks reasonably likely to support this, try to
-	 * write a three-byte UTF-8 wide character to the terminal, then read
-	 * the cursor position.
-	 *
-	 * XXX This entire function is a hack.
-	 */
-
-	/* Check if the terminal looks sort of vt100. */
-	if (strstr(tty_term_string(tty->term, TTYC_CLEAR), "[2J") == NULL ||
-	    strstr(tty_term_string(tty->term, TTYC_CUP), "H") == NULL)
-		return;
-
-	if (tcgetattr(tty->fd, &old_tio) != 0)
-		fatal("tcgetattr failed");
-	cfmakeraw(&tio);
-	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
-		fatal("tcsetattr failed");
-
-	what = 0;
-	if (ioctl(tty->fd, TIOCFLUSH, &what) != 0)
-		fatal("ioctl(TIOCFLUSH)");
-
-#define UTF8_TEST_DATA "\033[H\357\277\246\033[6n"
-	if (write(tty->fd, UTF8_TEST_DATA, (sizeof UTF8_TEST_DATA) - 1) == -1)
-		fatal("write failed");
-#undef UTF8_TEST_DATA
-
-	len = 0;
-	for (;;) {
-		pfd.fd = tty->fd;
-		pfd.events = POLLIN;
-
-		nfds = poll(&pfd, 1, 500);
-		if (nfds == -1) {
-			if (errno == EAGAIN || errno == EINTR)
-				continue;
-			fatal("poll failed");
-		}
-		if (nfds == 0)
-			break;
-		if (pfd.revents & (POLLERR|POLLNVAL|POLLHUP))
-			break;
-		if (!(pfd.revents & POLLIN))
-			continue;
-
-		if ((n = read(tty->fd, buf + len, 1)) != 1)
-			break;
-		buf[++len] = '\0';
-
-		if (len == (sizeof buf) - 1) {
-			if (strcmp(buf, "\033[1;3R") == 0)
-				tty->flags |= TTY_UTF8;
-			break;
-		}
-	}
-
-	if (tcsetattr(tty->fd, TCSANOW, &old_tio) != 0)
-		fatal("tcsetattr failed");
-}
-#endif
 
 void
 tty_fill_acs(struct tty *tty)
