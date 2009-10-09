@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.175 2009-09-23 15:18:56 tcunha Exp $ */
+/* $Id: tmux.c,v 1.176 2009-10-09 13:07:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -450,6 +450,7 @@ main(int argc, char **argv)
 	options_set_number(wo, "window-status-fg", 8);
 	options_set_number(wo, "xterm-keys", 0);
  	options_set_number(wo, "remain-on-exit", 0);
+	options_set_number(wo, "synchronize-panes", 0);
 
  	if (flags & IDENTIFY_UTF8) {
 		options_set_number(so, "status-utf8", 1);
