@@ -23,6 +23,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "tmux.h"
 
@@ -124,6 +125,7 @@ session_create(const char *name, const char *cmd, const char *cwd,
 	s = xmalloc(sizeof *s);
 	s->references = 0;
 	s->flags = 0;
+	s->activity = time(NULL);
 
 	if (gettimeofday(&s->tv, NULL) != 0)
 		fatal("gettimeofday failed");

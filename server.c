@@ -86,6 +86,8 @@ void	 	 server_check_window(struct window *);
 void		 server_check_redraw(struct client *);
 void		 server_set_title(struct client *);
 void		 server_check_timers(struct client *);
+void		 server_lock_server(void);
+void		 server_lock_sessions(void);
 void		 server_second_timers(void);
 int		 server_update_socket(void);
 
@@ -248,8 +250,6 @@ server_start(char *path)
 	mode_key_init_trees();
 	key_bindings_init();
 	utf8_build();
-
-	server_activity = time(NULL);
 
 	start_time = time(NULL);
 	socket_path = path;
@@ -842,10 +842,10 @@ server_handle_client(struct client *c)
 	/* Process keys. */
 	keylist = options_get_data(&c->session->options, "prefix");
 	while (tty_keys_next(&c->tty, &key, mouse) == 0) {
-		server_activity = time(NULL);
-
 		if (c->session == NULL)
 			return;
+
+		c->session->activity = time(NULL);
 		w = c->session->curw->window;
 		wp = w->active;	/* could die */
 
@@ -1254,6 +1254,51 @@ server_check_window(struct window *w)
 	recalculate_sizes();
 }
 
+/* Lock the server if ALL sessions have hit the time limit. */
+void
+server_lock_server(void)
+{
+	struct session  *s;
+	u_int            i;
+	int		 timeout;
+	time_t           t;
+
+	t = time(NULL);
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
+			continue;
+
+		timeout = options_get_number(&s->options, "lock-after-time");
+		if (timeout <= 0 || t <= s->activity + timeout)
+			return;	/* not timed out */
+	}
+
+	server_lock();
+	recalculate_sizes();
+}
+
+/* Lock any sessions which have timed out. */
+void
+server_lock_sessions(void)
+{
+        struct session  *s;
+        u_int            i;
+	int		 timeout;
+        time_t           t;
+
+        t = time(NULL);
+        for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
+			continue;
+
+		timeout = options_get_number(&s->options, "lock-after-time");
+		if (timeout > 0 && t > s->activity + timeout) {
+			server_lock_session(s);
+			recalculate_sizes();
+		}
+	}
+}
+
 /* Call any once-per-second timers. */
 void
 server_second_timers(void)
@@ -1261,16 +1306,11 @@ server_second_timers(void)
 	struct window		*w;
 	struct window_pane	*wp;
 	u_int		 	 i;
-	int			 xtimeout;
-	time_t		 	 t;
 
-	t = time(NULL);
-
-	xtimeout = options_get_number(&global_s_options, "lock-after-time");
-	if (xtimeout > 0 && t > server_activity + xtimeout) {
-		server_lock();
-		recalculate_sizes();
-	}
+	if (options_get_number(&global_s_options, "lock-server"))
+		server_lock_server();
+	else
+		server_lock_sessions();
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);
