@@ -629,15 +629,17 @@ window_pane_key(struct window_pane *wp, struct client *c, int key)
 {
 	struct window_pane	*wp2;
 
-	if (wp->fd == -1 || !window_pane_visible(wp))
+	if (!window_pane_visible(wp))
 		return;
 
 	if (wp->mode != NULL) {
 		if (wp->mode->key != NULL)
 			wp->mode->key(wp, c, key);
 		return;
-	} 
+	}
 
+	if (wp->fd == -1)
+		return;
 	input_key(wp, key);
 	if (options_get_number(&wp->window->options, "synchronize-panes")) {
 		TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
@@ -653,7 +655,7 @@ void
 window_pane_mouse(
     struct window_pane *wp, struct client *c, u_char b, u_char x, u_char y)
 {
-	if (wp->fd == -1 || !window_pane_visible(wp))
+	if (!window_pane_visible(wp))
 		return;
 
 	/* XXX convert from 1-based? */
@@ -668,7 +670,7 @@ window_pane_mouse(
 	if (wp->mode != NULL) {
 		if (wp->mode->mouse != NULL)
 			wp->mode->mouse(wp, c, b, x, y);
-	} else
+	} else if (wp->fd != -1)
 		input_mouse(wp, b, x, y);
 }
 
