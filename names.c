@@ -73,6 +73,12 @@ set_window_names(void)
 			xfree(name);
 		}
 
+		if (w->active->fd == -1) {
+			xasprintf(&name, "%s[dead]", wname);
+			xfree(wname);
+			wname = name;
+		}
+
 		if (strcmp(wname, w->name) == 0)
 			xfree(wname);
 		else {
