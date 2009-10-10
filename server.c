@@ -45,16 +45,33 @@
 struct clients	 clients;
 struct clients	 dead_clients;
 
+/* Mapping of a pollfd to an fd independent of its position in the array. */
+struct poll_item {
+	struct pollfd	 pfd;
+
+	RB_ENTRY(poll_item) entry;
+};
+RB_HEAD(poll_items, poll_item) poll_items;
+
+int		 server_poll_cmp(struct poll_item *, struct poll_item *);
+struct pollfd	*server_poll_lookup(int);
+void		 server_poll_add(int, int);
+struct pollfd	*server_poll_flatten(int *);
+void		 server_poll_parse(struct pollfd *);
+void		 server_poll_reset(void);
+RB_PROTOTYPE(poll_items, poll_item, entry, server_poll_cmp);
+RB_GENERATE(poll_items, poll_item, entry, server_poll_cmp);
+
 void		 server_create_client(int);
 int		 server_create_socket(void);
 int		 server_main(int);
 void		 server_shutdown(void);
 int		 server_should_shutdown(void);
 void		 server_child_signal(void);
-void		 server_fill_windows(struct pollfd **);
-void		 server_handle_windows(struct pollfd **);
-void		 server_fill_clients(struct pollfd **);
-void		 server_handle_clients(struct pollfd **);
+void		 server_fill_windows(void);
+void		 server_handle_windows(void);
+void		 server_fill_clients(void);
+void		 server_handle_clients(void);
 void		 server_accept_client(int);
 void		 server_handle_client(struct client *);
 void		 server_handle_window(struct window *, struct window_pane *);
@@ -71,6 +88,75 @@ void		 server_set_title(struct client *);
 void		 server_check_timers(struct client *);
 void		 server_second_timers(void);
 int		 server_update_socket(void);
+
+int
+server_poll_cmp(struct poll_item *pitem1, struct poll_item *pitem2)
+{
+	return (pitem1->pfd.fd - pitem2->pfd.fd);
+}
+
+struct pollfd *
+server_poll_lookup(int fd)
+{
+	struct poll_item	pitem;
+
+	pitem.pfd.fd = fd;
+	return (&RB_FIND(poll_items, &poll_items, &pitem)->pfd);
+}
+
+void
+server_poll_add(int fd, int events)
+{
+	struct poll_item	*pitem;
+
+	pitem = xmalloc(sizeof *pitem);
+	pitem->pfd.fd = fd;
+	pitem->pfd.events = events;
+	RB_INSERT(poll_items, &poll_items, pitem);
+}
+
+struct pollfd *
+server_poll_flatten(int *nfds)
+{
+	struct poll_item	*pitem;
+	struct pollfd		*pfds;
+
+	pfds = NULL;
+	*nfds = 0;
+	RB_FOREACH(pitem, poll_items, &poll_items) {
+		pfds = xrealloc(pfds, (*nfds) + 1, sizeof *pfds);
+		pfds[*nfds].fd = pitem->pfd.fd;
+		pfds[*nfds].events = pitem->pfd.events;
+		(*nfds)++;
+	}
+	return (pfds);
+}
+
+void
+server_poll_parse(struct pollfd *pfds)
+{
+	struct poll_item	*pitem;
+	int			 nfds;
+
+	nfds = 0;
+	RB_FOREACH(pitem, poll_items, &poll_items) {
+		pitem->pfd.revents = pfds[nfds].revents;
+		nfds++;
+	}
+	xfree(pfds);
+}
+
+void
+server_poll_reset(void)
+{
+	struct poll_item	*pitem;
+
+	while (!RB_EMPTY(&poll_items)) {
+		pitem = RB_ROOT(&poll_items);
+		RB_REMOVE(poll_items, &poll_items, pitem);
+		xfree(pitem);
+	}
+}
 
 /* Create a new client. */
 void
@@ -245,7 +331,6 @@ server_create_socket(void)
 int
 server_main(int srv_fd)
 {
-	struct window	*w;
 	struct pollfd	*pfds, *pfd;
 	int		 nfds, xtimeout;
 	u_int		 i;
@@ -279,26 +364,13 @@ server_main(int srv_fd)
 			sigusr1 = 0;
 		}
 
-		/* Initialise pollfd array. */
-		nfds = 1;
-		for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-			w = ARRAY_ITEM(&windows, i);
-			if (w != NULL)
-				nfds += window_count_panes(w);
-		}
-		nfds += ARRAY_LENGTH(&clients) * 2;
-		pfds = xrealloc(pfds, nfds, sizeof *pfds);
-		memset(pfds, 0, nfds * sizeof *pfds);
-		pfd = pfds;
-
-		/* Fill server socket. */
-		pfd->fd = srv_fd;
-		pfd->events = POLLIN;
-		pfd++;
+		/* Initialise pollfd array and add server socket. */
+		server_poll_reset();
+		server_poll_add(srv_fd, POLLIN);
 
 		/* Fill window and client sockets. */
-		server_fill_windows(&pfd);
-		server_fill_clients(&pfd);
+		server_fill_windows();
+		server_fill_clients();
 
 		/* Update socket permissions. */
 		xtimeout = INFTIM;
@@ -306,21 +378,23 @@ server_main(int srv_fd)
 			xtimeout = POLL_TIMEOUT;
 
 		/* Do the poll. */
+		pfds = server_poll_flatten(&nfds);
+		log_debug("polling %d", nfds);
 		if (poll(pfds, nfds, xtimeout) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			fatal("poll failed");
 		}
-		pfd = pfds;
+		server_poll_parse(pfds);
 
 		/* Handle server socket. */
+		pfd = server_poll_lookup(srv_fd);
 		if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP))
 			fatalx("lost server socket");
 		if (pfd->revents & POLLIN) {
 			server_accept_client(srv_fd);
 			continue;
 		}
-		pfd++;
 
 		/* Call second-based timers. */
 		now = time(NULL);
@@ -337,8 +411,8 @@ server_main(int srv_fd)
 		 * windows, so windows must come first to avoid messing up by
 		 * increasing the array size.
 		 */
-		server_handle_windows(&pfd);
-		server_handle_clients(&pfd);
+		server_handle_windows();
+		server_handle_clients();
 
 		/* Collect any unset key bindings. */
 		key_bindings_clean();
@@ -346,8 +420,7 @@ server_main(int srv_fd)
 		/* Collect dead clients and sessions. */
 		server_clean_dead();
 	}
-	if (pfds != NULL)
-		xfree(pfds);
+	server_poll_reset();
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		if (ARRAY_ITEM(&sessions, i) != NULL)
@@ -464,35 +537,36 @@ server_child_signal(void)
 
 /* Fill window pollfds. */
 void
-server_fill_windows(struct pollfd **pfd)
+server_fill_windows(void)
 {
 	struct window		*w;
 	struct window_pane	*wp;
 	u_int		 	 i;
+	int			 events;
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);
 		if (w == NULL)
 			continue;
 
-		TAILQ_FOREACH(wp, &w->panes, entry) {
-			(*pfd)->fd = wp->fd;
-			if (wp->fd != -1) {
-				(*pfd)->events = POLLIN;
-				if (BUFFER_USED(wp->out) > 0)
-					(*pfd)->events |= POLLOUT;
-			}
-			(*pfd)++;
+		TAILQ_FOREACH(wp, &w->panes, entry) {	
+			if (wp->fd == -1)
+				continue;
+			events = POLLIN;
+			if (BUFFER_USED(wp->out) > 0)
+				events |= POLLOUT;
+			server_poll_add(wp->fd, events);
 		}
 	}
 }
 
 /* Handle window pollfds. */
 void
-server_handle_windows(struct pollfd **pfd)
+server_handle_windows(void)
 {
 	struct window		*w;
 	struct window_pane	*wp;
+	struct pollfd		*pfd;
 	u_int		 	 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
@@ -501,14 +575,15 @@ server_handle_windows(struct pollfd **pfd)
 			continue;
 
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->fd != -1) {
-				if (buffer_poll(*pfd, wp->in, wp->out) != 0) {
-					close(wp->fd);
-					wp->fd = -1;
-				} else
-					server_handle_window(w, wp);
-			}
-			(*pfd)++;
+			if (wp->fd == -1)
+				continue;
+			if ((pfd = server_poll_lookup(wp->fd)) == NULL)
+				continue;
+			if (buffer_poll(pfd, wp->in, wp->out) != 0) {
+				close(wp->fd);
+				wp->fd = -1;
+			} else
+				server_handle_window(w, wp);
 		}
 
 		server_check_window(w);
@@ -624,12 +699,13 @@ server_check_timers(struct client *c)
 
 /* Fill client pollfds. */
 void
-server_fill_clients(struct pollfd **pfd)
+server_fill_clients(void)
 {
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
 	u_int		 	 i;
+	int			 events;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
@@ -637,27 +713,22 @@ server_fill_clients(struct pollfd **pfd)
 		server_check_timers(c);
 		server_check_redraw(c);
 
-		if (c == NULL)
-			(*pfd)->fd = -1;
-		else {
-			(*pfd)->fd = c->ibuf.fd;
+		if (c != NULL) {
+			events = 0;
 			if (!(c->flags & CLIENT_BAD))
-				(*pfd)->events |= POLLIN;
+				events |= POLLIN;
 			if (c->ibuf.w.queued > 0)
-				(*pfd)->events |= POLLOUT;
+				events |= POLLOUT;
+			server_poll_add(c->ibuf.fd, events);
 		}
-		(*pfd)++;
 
-		if (c == NULL || c->flags & CLIENT_SUSPENDED ||
-		    c->tty.fd == -1 || c->session == NULL)
-			(*pfd)->fd = -1;
-		else {
-			(*pfd)->fd = c->tty.fd;
-			(*pfd)->events = POLLIN;
+		if (c != NULL && !(c->flags & CLIENT_SUSPENDED) &&
+		    c->tty.fd != -1 && c->session != NULL) {
+			events = POLLIN;
 			if (BUFFER_USED(c->tty.out) > 0)
-				(*pfd)->events |= POLLOUT;
+				events |= POLLOUT;
+			server_poll_add(c->tty.fd, events);
 		}
-		(*pfd)++;
 	}
 
 	/*
@@ -677,25 +748,26 @@ server_fill_clients(struct pollfd **pfd)
 
 /* Handle client pollfds. */
 void
-server_handle_clients(struct pollfd **pfd)
+server_handle_clients(void)
 {
 	struct client	*c;
+	struct pollfd	*pfd;
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 
 		if (c != NULL) {
-			if ((*pfd)->revents & (POLLERR|POLLNVAL|POLLHUP)) {
+			if ((pfd = server_poll_lookup(c->ibuf.fd)) == NULL)
+				continue;
+			if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP)) {
 				server_lost_client(c);
-				(*pfd) += 2;
 				continue;
 			}
 
-			if ((*pfd)->revents & POLLOUT) {
+			if (pfd->revents & POLLOUT) {
 				if (msgbuf_write(&c->ibuf.w) < 0) {
 					server_lost_client(c);
-					(*pfd) += 2;
 					continue;
 				}
 			}
@@ -703,26 +775,24 @@ server_handle_clients(struct pollfd **pfd)
 			if (c->flags & CLIENT_BAD) {
 				if (c->ibuf.w.queued == 0)
 					server_lost_client(c);
-				(*pfd) += 2;
 				continue;
-			} else if ((*pfd)->revents & POLLIN) {
+			} else if (pfd->revents & POLLIN) {
 				if (server_msg_dispatch(c) != 0) {
 					server_lost_client(c);
-					(*pfd) += 2;
 					continue;
 				}
 			}
 		}
-		(*pfd)++;
 
 		if (c != NULL && !(c->flags & CLIENT_SUSPENDED) &&
 		    c->tty.fd != -1 && c->session != NULL) {
-			if (buffer_poll(*pfd, c->tty.in, c->tty.out) != 0)
+			if ((pfd = server_poll_lookup(c->tty.fd)) == NULL)
+				continue;
+			if (buffer_poll(pfd, c->tty.in, c->tty.out) != 0)
 				server_lost_client(c);
 			else
 				server_handle_client(c);
 		}
-		(*pfd)++;
 	}
 }
 
