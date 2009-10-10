@@ -693,11 +693,10 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
-	tty_reset(tty);
-
- 	tty_region(tty, ctx->orupper, ctx->orlower, wp->yoff);
 
 	if (ctx->ocy == ctx->orlower) {
+		tty_reset(tty);
+		tty_region(tty, ctx->orupper, ctx->orlower, wp->yoff);
 		tty_cursor(tty, ctx->ocx, ctx->ocy, wp->xoff, wp->yoff);
 		tty_putc(tty, '\n');
 	}
