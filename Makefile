@@ -11,7 +11,8 @@ SRCS=	attributes.c buffer-poll.c buffer.c cfg.c client-fn.c \
 	cmd-kill-server.c cmd-kill-session.c cmd-kill-window.c \
 	cmd-last-window.c cmd-link-window.c cmd-list-buffers.c \
 	cmd-list-clients.c cmd-list-commands.c cmd-list-keys.c \
-	cmd-list-sessions.c cmd-list-windows.c cmd-list.c cmd-load-buffer.c \
+	cmd-list-sessions.c cmd-list-windows.c cmd-list-panes.c \
+	cmd-list.c cmd-load-buffer.c \
 	cmd-lock-server.c cmd-lock-client.c cmd-lock-session.c \
 	cmd-move-window.c cmd-new-session.c cmd-new-window.c \
 	cmd-next-layout.c cmd-next-window.c cmd-paste-buffer.c \

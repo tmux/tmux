@@ -45,42 +45,13 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_target_data	*data = self->data;
 	struct session		*s;
 	struct winlink		*wl;
-	struct window		*w;
-	struct window_pane	*wp;
-	struct grid		*gd;
-	struct grid_line	*gl;
-	u_int			 i;
-	unsigned long long	 size;
-	const char		*name;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
 
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		w = wl->window;
-		ctx->print(ctx,
-		    "%3d: %s [%ux%u]", wl->idx, w->name, w->sx, w->sy);
-
-		TAILQ_FOREACH(wp, &w->panes, entry) {
-			gd = wp->base.grid;
-
-			size = 0;
-			for (i = 0; i < gd->hsize; i++) {
-				gl = &gd->linedata[i];
-				size += gl->cellsize * sizeof *gl->celldata;
-				size += gl->utf8size * sizeof *gl->utf8data;
-			}
-			size += gd->hsize * sizeof *gd->linedata;
-
-			name = NULL;
-			if (wp->fd != -1)
-				name = ttyname(wp->fd);
-			if (name == NULL)
-				name = "unknown";
-			ctx->print(ctx,
-			    "     %s [%ux%u] [history %u/%u, %llu bytes]",
-			    name, wp->sx, wp->sy, gd->hsize, gd->hlimit, size);
-		}
+		ctx->print(ctx, "%d: %s [%ux%u]",
+		    wl->idx, wl->window->name, wl->window->sx, wl->window->sy);
 	}
 
 	return (0);

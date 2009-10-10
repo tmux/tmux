@@ -1367,6 +1367,7 @@ extern const struct cmd_entry cmd_list_buffers_entry;
 extern const struct cmd_entry cmd_list_clients_entry;
 extern const struct cmd_entry cmd_list_commands_entry;
 extern const struct cmd_entry cmd_list_keys_entry;
+extern const struct cmd_entry cmd_list_panes_entry;
 extern const struct cmd_entry cmd_list_sessions_entry;
 extern const struct cmd_entry cmd_list_windows_entry;
 extern const struct cmd_entry cmd_load_buffer_entry;
