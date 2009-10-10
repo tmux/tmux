@@ -1648,6 +1648,7 @@ struct window	*window_create(const char *, const char *, const char *,
 		     const char *, struct environ *, struct termios *,
     		     u_int, u_int, u_int, char **);
 void		 window_destroy(struct window *);
+void		 window_set_active_at(struct window *, u_int, u_int);
 void		 window_set_active_pane(struct window *, struct window_pane *);
 struct window_pane *window_add_pane(struct window *, u_int);
 void		 window_resize(struct window *, u_int, u_int);

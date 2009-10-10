@@ -825,6 +825,7 @@ server_handle_client(struct client *c)
 	struct window		*w;
 	struct window_pane	*wp;
 	struct screen		*s;
+	struct options		*oo;
 	struct timeval	 	 tv;
 	struct key_binding	*bd;
 	struct keylist		*keylist;
@@ -849,6 +850,7 @@ server_handle_client(struct client *c)
 		c->session->activity = time(NULL);
 		w = c->session->curw->window;
 		wp = w->active;	/* could die */
+		oo = &c->session->options;
 
 		/* Special case: number keys jump to pane in identify mode. */
 		if (c->flags & CLIENT_IDENTIFY && key >= '0' && key <= '9') {	
@@ -868,6 +870,10 @@ server_handle_client(struct client *c)
 
 		/* Check for mouse keys. */
 		if (key == KEYC_MOUSE) {
+			if (options_get_number(oo, "mouse-select-pane")) {
+				window_set_active_at(w, mouse[1], mouse[2]);
+				wp = w->active;
+			}
 			window_pane_mouse(wp, c, mouse[0], mouse[1], mouse[2]);
 			continue;
 		}
@@ -935,7 +941,9 @@ server_handle_client(struct client *c)
 	}
 	if (c->session == NULL)
 		return;
-	wp = c->session->curw->window->active;	/* could die - do each loop */
+	w = c->session->curw->window;
+	wp = w->active;
+	oo = &c->session->options;
 	s = wp->screen;
 
 	/*
@@ -948,7 +956,7 @@ server_handle_client(struct client *c)
 	 * tty_region/tty_reset/tty_update_mode already take care of not
 	 * resetting things that are already in their default state.
 	 */
-	status = options_get_number(&c->session->options, "status");
+	status = options_get_number(oo, "status");
 	tty_region(&c->tty, 0, c->tty.sy - 1, 0);
 	if (!window_pane_visible(wp) || wp->yoff + s->cy >= c->tty.sy - status)
 		tty_cursor(&c->tty, 0, 0, 0, 0);
@@ -956,6 +964,9 @@ server_handle_client(struct client *c)
 		tty_cursor(&c->tty, s->cx, s->cy, wp->xoff, wp->yoff);
 
 	mode = s->mode;
+	if (TAILQ_NEXT(TAILQ_FIRST(&w->panes), entry) != NULL &&
+	    options_get_number(oo, "mouse-select-pane"))
+		mode |= MODE_MOUSE;
 	tty_update_mode(&c->tty, mode);
 	tty_reset(&c->tty);
 }

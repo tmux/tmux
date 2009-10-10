@@ -1292,7 +1292,7 @@ with
 .Op Ic on | off
 .Xc
 If this option is
-.Ic on 
+.Ic on
 (the default),
 instead of each session locking individually as each has been
 idle for
@@ -1336,6 +1336,14 @@ from the 256-colour palette, or
 .Ic default .
 .It Ic message-fg Ar colour
 Set status line message foreground colour.
+.It Xo Ic mouse-select-pane
+.Op Ic on | off
+.Xc
+If on,
+.Nm
+captures the mouse and when a window is split into multiple panes the mouse may
+be used to select the current pane.
+The mouse click is also passed through to the application as normal.
 .It Ic prefix Ar keys
 Set the keys accepted as a prefix key.
 .Ar keys

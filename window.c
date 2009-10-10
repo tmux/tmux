@@ -304,6 +304,23 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 	}
 }
 
+void
+window_set_active_at(struct window *w, u_int x, u_int y)
+{
+	struct window_pane	*wp;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (!window_pane_visible(wp))
+			continue;
+		if (x < wp->xoff || x >= wp->xoff + wp->sx)
+			continue;
+		if (y < wp->yoff || y >= wp->yoff + wp->sy)
+			continue;
+		window_set_active_pane(w, wp);
+		break;
+	}
+}
+
 struct window_pane *
 window_add_pane(struct window *w, u_int hlimit)
 {
