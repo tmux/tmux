@@ -43,19 +43,19 @@ int
 cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_srcdst_data	*data = self->data;
-	struct session		*dst;
+	struct session		*src, *dst;
 	struct winlink		*wl;
 	char			*cause;
 	int			 idx, kflag, dflag;
 
-	if ((wl = cmd_find_window(ctx, data->src, NULL)) == NULL)
+	if ((wl = cmd_find_window(ctx, data->src, &src)) == NULL)
 		return (-1);
 	if ((idx = cmd_find_index(ctx, data->dst, &dst)) == -2)
 		return (-1);
 
 	kflag = data->chflags & CMD_CHFLAG('k');
 	dflag = data->chflags & CMD_CHFLAG('d');
-	if (server_link_window(wl, dst, idx, kflag, !dflag, &cause) != 0) {
+	if (server_link_window(src, wl, dst, idx, kflag, !dflag, &cause) != 0) {
 		ctx->error(ctx, "can't link window: %s", cause);
 		xfree(cause);
 		return (-1);

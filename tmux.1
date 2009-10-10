@@ -409,6 +409,7 @@ Lock all clients attached to
 .Op Fl d
 .Op Fl n Ar window-name
 .Op Fl s Ar session-name
+.Op Fl t Ar target-session
 .Op Ar command
 .Xc
 .D1 (alias: Ic new )
@@ -425,6 +426,26 @@ are the name of and command to execute in the initial window.
 If run from a terminal, any
 .Xr termios 4
 special characters are saved and used for new windows in the new session.
+.Pp
+If
+.Fl t
+is given, the new session is
+.Em grouped
+with
+.Ar target-session .
+This means they share the same set of windows - all windows from
+.Ar target-session
+are linked to the new session and any subsequent new windows or windows being
+closed are applied to both sessions.
+The current and previous window and any session options remain independent and
+either session may be killed without affecting the other.
+Giving
+.Fl n
+or
+.Ar command
+are invalid if
+.Fl t
+is used.
 .It Ic refresh-client Op Fl t Ar target-client
 .D1 (alias: Ic refresh )
 Refresh the current client if bound to a key, or a single client if one is given

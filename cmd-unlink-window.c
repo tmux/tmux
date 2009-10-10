@@ -42,16 +42,28 @@ cmd_unlink_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
 	struct winlink		*wl;
-	struct session		*s;
+	struct window		*w;
+	struct session		*s, *s2;
+	struct session_group	*sg;
+	u_int			 references;
 
 	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
 		return (-1);
+	w = wl->window;
 
-	if (!(data->chflags & CMD_CHFLAG('k')) && wl->window->references == 1) {
+	sg = session_group_find(s);
+	if (sg != NULL) {
+		references = 0;
+		TAILQ_FOREACH(s2, &sg->sessions, gentry)
+			references++;
+	} else
+		references = 1;
+
+	if (!(data->chflags & CMD_CHFLAG('k')) && w->references == references) {
 		ctx->error(ctx, "window is only linked to one session");
 		return (-1);
 	}
-
+	
 	server_unlink_window(s, wl);
 	recalculate_sizes();
 

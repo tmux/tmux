@@ -89,7 +89,7 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			flag = '+';
 		else if (wm == s->curw)
 			flag = '*';
-		else if (wm == SLIST_FIRST(&s->lastw))
+		else if (wm == TAILQ_FIRST(&s->lastw))
 			flag = '-';
 
 		title = w->active->screen->title;

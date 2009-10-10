@@ -174,7 +174,7 @@ winlink_stack_push(struct winlink_stack *stack, struct winlink *wl)
 		return;
 
 	winlink_stack_remove(stack, wl);
-	SLIST_INSERT_HEAD(stack, wl, sentry);
+	TAILQ_INSERT_HEAD(stack, wl, sentry);
 }
 
 void
@@ -184,10 +184,10 @@ winlink_stack_remove(struct winlink_stack *stack, struct winlink *wl)
 
 	if (wl == NULL)
 		return;
-
-	SLIST_FOREACH(wl2, stack, sentry) {
+	
+	TAILQ_FOREACH(wl2, stack, sentry) {
 		if (wl2 == wl) {
-			SLIST_REMOVE(stack, wl, winlink, sentry);
+			TAILQ_REMOVE(stack, wl, sentry);
 			return;
 		}
 	}

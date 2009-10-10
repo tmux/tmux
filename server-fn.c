@@ -105,6 +105,19 @@ server_redraw_session(struct session *s)
 }
 
 void
+server_redraw_session_group(struct session *s)
+{
+	struct session_group	*sg;
+
+	if ((sg = session_group_find(s)) == NULL)
+		server_redraw_session(s);
+	else {
+		TAILQ_FOREACH(s, &sg->sessions, gentry)
+			server_redraw_session(s);
+	}
+}
+
+void
 server_status_session(struct session *s)
 {
 	struct client	*c;
@@ -116,6 +129,19 @@ server_status_session(struct session *s)
 			continue;
 		if (c->session == s)
 			server_status_client(c);
+	}
+}
+
+void
+server_status_session_group(struct session *s)
+{
+	struct session_group	*sg;
+
+	if ((sg = session_group_find(s)) == NULL)
+		server_status_session(s);
+	else {
+		TAILQ_FOREACH(s, &sg->sessions, gentry)
+			server_status_session(s);
 	}
 }
 
@@ -220,18 +246,27 @@ server_kill_window(struct window *w)
 			continue;
 		
 		if (session_detach(s, wl))
-			server_destroy_session(s);
-		else
+			server_destroy_session_group(s);
+		else {
 			server_redraw_session(s);
+			server_status_session_group(s);
+		}
 	}
 }
 
 int
-server_link_window(
-    struct winlink *srcwl, struct session *dst, int dstidx,
-    int killflag, int selectflag, char **cause)
+server_link_window(struct session *src, struct winlink *srcwl,
+    struct session *dst, int dstidx, int killflag, int selectflag, char **cause)
 {
-	struct winlink	*dstwl;
+	struct winlink		*dstwl;
+	struct session_group	*srcsg, *dstsg;
+
+	srcsg = session_group_find(src);
+	dstsg = session_group_find(dst);
+	if (src != dst && srcsg != NULL && dstsg != NULL && srcsg == dstsg) {
+		xasprintf(cause, "sessions are grouped");
+		return (-1);
+	}
 
 	dstwl = NULL;
 	if (dstidx != -1)
@@ -260,12 +295,9 @@ server_link_window(
 	if (dstwl == NULL)
 		return (-1);
 
-	if (!selectflag)
-		server_status_session(dst);
-	else {
+	if (selectflag)
 		session_select(dst, dstwl->idx);
-		server_redraw_session(dst);
-	}
+	server_redraw_session_group(dst);
 
 	return (0);
 }
@@ -274,9 +306,24 @@ void
 server_unlink_window(struct session *s, struct winlink *wl)
 {
 	if (session_detach(s, wl))
-		server_destroy_session(s);
+		server_destroy_session_group(s);
 	else
-		server_redraw_session(s);
+		server_redraw_session_group(s);
+}
+
+void
+server_destroy_session_group(struct session *s)
+{
+	struct session_group	*sg;
+
+	if ((sg = session_group_find(s)) == NULL)
+		server_destroy_session(s);
+	else {
+		TAILQ_FOREACH(s, &sg->sessions, gentry)
+			server_destroy_session(s);
+		TAILQ_REMOVE(&session_groups, sg, entry);
+		xfree(sg);
+	}
 }
 
 void

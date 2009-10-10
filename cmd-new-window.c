@@ -164,9 +164,9 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	if (!data->flag_detached) {
 		session_select(s, wl->idx);
-		server_redraw_session(s);
-	} else
-		server_status_session(s);
+		server_redraw_session_group(s);
+	} else	
+		server_status_session_group(s);
 
 	return (0);
 }

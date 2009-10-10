@@ -30,6 +30,7 @@
 /* Global session list. */
 struct sessions	sessions;
 struct sessions dead_sessions;
+struct session_groups session_groups;
 
 struct winlink *session_next_activity(struct session *, struct winlink *);
 struct winlink *session_previous_activity(struct session *, struct winlink *);
@@ -131,7 +132,7 @@ session_create(const char *name, const char *cmd, const char *cwd,
 		fatal("gettimeofday failed");
 
 	s->curw = NULL;
-	SLIST_INIT(&s->lastw);
+	TAILQ_INIT(&s->lastw);
 	RB_INIT(&s->windows);
 	SLIST_INIT(&s->alerts);
 
@@ -164,11 +165,14 @@ session_create(const char *name, const char *cmd, const char *cwd,
 		s->name = xstrdup(name);
 	else
 		xasprintf(&s->name, "%u", i);
-	if (session_new(s, NULL, cmd, cwd, idx, cause) == NULL) {
-		session_destroy(s);
-		return (NULL);
+	
+	if (cmd != NULL) {
+		if (session_new(s, NULL, cmd, cwd, idx, cause) == NULL) {
+			session_destroy(s);
+			return (NULL);
+		}
+		session_select(s, RB_ROOT(&s->windows)->idx);
 	}
-	session_select(s, RB_ROOT(&s->windows)->idx);
 
 	log_debug("session %s created", s->name);
 
@@ -192,13 +196,14 @@ session_destroy(struct session *s)
 	if (s->tio != NULL)
 		xfree(s->tio);
 
+	session_group_remove(s);
 	session_alert_cancel(s, NULL);
 	environ_free(&s->environ);
 	options_free(&s->options);
 	paste_free_stack(&s->buffers);
 
-	while (!SLIST_EMPTY(&s->lastw))
-		winlink_stack_remove(&s->lastw, SLIST_FIRST(&s->lastw));
+	while (!TAILQ_EMPTY(&s->lastw))
+		winlink_stack_remove(&s->lastw, TAILQ_FIRST(&s->lastw));
 	while (!RB_EMPTY(&s->windows))
 		winlink_remove(&s->windows, RB_ROOT(&s->windows));
 
@@ -268,6 +273,7 @@ session_attach(struct session *s, struct window *w, int idx, char **cause)
 
 	if ((wl = winlink_add(&s->windows, w, idx)) == NULL)
 		xasprintf(cause, "index in use: %d", idx);
+	session_group_synchronize_from(s);
 	return (wl);
 }
 
@@ -282,6 +288,7 @@ session_detach(struct session *s, struct winlink *wl)
 	session_alert_cancel(s, wl);
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_remove(&s->windows, wl);
+	session_group_synchronize_from(s);
 	if (RB_EMPTY(&s->windows)) {
 		session_destroy(s);
 		return (1);
@@ -408,7 +415,7 @@ session_last(struct session *s)
 {
 	struct winlink	*wl;
 
-	wl = SLIST_FIRST(&s->lastw);
+	wl = TAILQ_FIRST(&s->lastw);
 	if (wl == NULL)
 		return (-1);
 	if (wl == s->curw)
@@ -419,4 +426,170 @@ session_last(struct session *s)
 	s->curw = wl;
 	session_alert_cancel(s, wl);
 	return (0);
+}
+
+/* Find the session group containing a session. */
+struct session_group *
+session_group_find(struct session *target)
+{
+	struct session_group	*sg;
+	struct session		*s;
+
+	TAILQ_FOREACH(sg, &session_groups, entry) {
+		TAILQ_FOREACH(s, &sg->sessions, gentry) {
+			if (s == target)
+				return (sg);
+		}
+	}
+	return (NULL);
+}
+
+/* Find session group index. */
+u_int
+session_group_index(struct session_group *sg)
+{
+	struct session_group   *sg2;
+	u_int			i;
+
+	i = 0;
+	TAILQ_FOREACH(sg2, &session_groups, entry) {
+		if (sg == sg2)
+			return (i);
+		i++;
+	}
+
+	fatalx("session group not found");
+}
+
+/*
+ * Add a session to the session group containing target, creating it if
+ * necessary. 
+ */
+void
+session_group_add(struct session *target, struct session *s)
+{
+	struct session_group	*sg;
+
+	if ((sg = session_group_find(target)) == NULL) {
+		sg = xmalloc(sizeof *sg);
+		TAILQ_INSERT_TAIL(&session_groups, sg, entry);
+		TAILQ_INIT(&sg->sessions);
+		TAILQ_INSERT_TAIL(&sg->sessions, target, gentry);
+	}
+	TAILQ_INSERT_TAIL(&sg->sessions, s, gentry);
+}
+
+/* Remove a session from its group and destroy the group if empty. */
+void
+session_group_remove(struct session *s)
+{
+	struct session_group	*sg;
+
+	if ((sg = session_group_find(s)) == NULL)
+		return;
+	TAILQ_REMOVE(&sg->sessions, s, gentry);
+	if (TAILQ_NEXT(TAILQ_FIRST(&sg->sessions), gentry) == NULL)
+		TAILQ_REMOVE(&sg->sessions, TAILQ_FIRST(&sg->sessions), gentry);
+	if (TAILQ_EMPTY(&sg->sessions)) {
+		TAILQ_REMOVE(&session_groups, sg, entry);
+		xfree(sg);
+	}
+}
+
+/* Synchronize a session to its session group. */
+void
+session_group_synchronize_to(struct session *s)
+{
+	struct session_group	*sg;
+	struct session		*target;
+
+	if ((sg = session_group_find(s)) == NULL)
+		return;
+
+	target = NULL;
+	TAILQ_FOREACH(target, &sg->sessions, gentry) {
+		if (target != s)
+			break;
+	}
+	session_group_synchronize1(target, s);
+}
+
+/* Synchronize a session group to a session. */
+void
+session_group_synchronize_from(struct session *target)
+{
+	struct session_group	*sg;
+	struct session		*s;
+
+	if ((sg = session_group_find(target)) == NULL)
+		return;
+
+	TAILQ_FOREACH(s, &sg->sessions, gentry) {
+		if (s != target)
+			session_group_synchronize1(target, s);
+	}
+}
+
+/*
+ * Synchronize a session with a target session. This means destroying all
+ * winlinks then recreating them, then updating the current window, last window
+ * stack and alerts.
+ */
+void
+session_group_synchronize1(struct session *target, struct session *s)
+{
+	struct winlinks		 old_windows, *ww;
+	struct winlink_stack	 old_lastw;
+	struct winlink		*wl, *wl2;
+	struct session_alert	*sa;
+
+	/* Don't do anything if the session is empty (it'll be destroyed). */
+	ww = &target->windows;
+	if (RB_EMPTY(ww))
+		return;
+
+	/* If the current window has vanished, move to the next now. */
+	if (s->curw != NULL) {
+		while (winlink_find_by_index(ww, s->curw->idx) == NULL)
+			session_next(s, 0);
+	}
+
+	/* Save the old pointer and reset it. */
+	memcpy(&old_windows, &s->windows, sizeof old_windows);
+	RB_INIT(&s->windows);
+
+	/* Link all the windows from the target. */
+	RB_FOREACH(wl, winlinks, ww)
+		winlink_add(&s->windows, wl->window, wl->idx);
+
+	/* Fix up the current window. */
+	if (s->curw != NULL)
+		s->curw = winlink_find_by_index(&s->windows, s->curw->idx);
+	else
+		s->curw = winlink_find_by_index(&s->windows, target->curw->idx);
+
+	/* Fix up the last window stack. */
+	memcpy(&old_lastw, &s->lastw, sizeof old_lastw);
+	TAILQ_INIT(&s->lastw);
+	TAILQ_FOREACH(wl, &old_lastw, sentry) {
+		wl2 = winlink_find_by_index(&s->windows, wl->idx);
+		if (wl2 != NULL)
+			TAILQ_INSERT_TAIL(&s->lastw, wl2, sentry);
+	}
+
+	/* And update the alerts list. */
+	SLIST_FOREACH(sa, &s->alerts, entry) {
+		wl = winlink_find_by_index(&s->windows, sa->wl->idx);
+		if (wl == NULL)
+			session_alert_cancel(s, sa->wl);
+		else
+			sa->wl = wl;
+	}
+
+	/* Then free the old winlinks list. */
+	while (!RB_EMPTY(&old_windows)) {
+		wl = RB_ROOT(&old_windows);
+		RB_REMOVE(winlinks, &old_windows, wl);
+		xfree(wl);
+	}
 }

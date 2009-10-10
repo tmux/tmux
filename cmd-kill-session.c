@@ -53,7 +53,7 @@ cmd_kill_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c->session == s) {
+		if (c != NULL && c->session == s) {
 			c->session = NULL;
 			server_write_client(c, MSG_EXIT, NULL, 0);
 		}

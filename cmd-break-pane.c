@@ -78,6 +78,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
  		session_select(s, wl->idx);
 
 	server_redraw_session(s);
+	server_status_session_group(s);
 
 	return (0);
 }
