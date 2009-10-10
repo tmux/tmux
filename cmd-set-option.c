@@ -186,8 +186,11 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	recalculate_sizes();
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session != NULL)
+		if (c != NULL && c->session != NULL) {
+			job_tree_free(&c->status_jobs);
+			job_tree_init(&c->status_jobs);
 			server_redraw_client(c);
+		}
 	}
 
 	return (0);

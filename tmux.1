@@ -1437,6 +1437,11 @@ may contain any of the following special character sequences:
 The #(command) form executes
 .Ql command
 as a shell command and inserts the first line of its output.
+Note that shell commands are only executed once at the interval specified by
+the
+.Ic status-interval
+option: if the status line is redrawn in the meantime, the previous result is
+used.
 #[attributes] allows a comma-separated list of attributes to be specified,
 these may be
 .Ql fg=colour

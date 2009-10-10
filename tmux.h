@@ -563,6 +563,24 @@ struct options {
 /* Key list for prefix option. */
 ARRAY_DECL(keylist, int);
 
+/* Scheduled job. */
+struct job {
+	char		*cmd;
+	pid_t		 pid;
+
+	struct client	*client;
+
+	int		 fd;
+	struct buffer	*out;
+
+	void		(*callbackfn)(struct job *);
+	void		(*freefn)(void *);
+	void		*data;
+
+	RB_ENTRY(job)	 entry;
+};
+RB_HEAD(jobs, job);
+
 /* Screen selection. */
 struct screen_sel {
 	int		 flag;
@@ -942,9 +960,10 @@ struct client {
 	char		*cwd;
 
 	struct tty 	 tty;
-	struct timeval	 status_timer;
 	struct timeval	 repeat_timer;
 
+	struct timeval	 status_timer;
+	struct jobs	 status_jobs;
 	struct screen	 status;
 
 #define CLIENT_TERMINAL 0x1
@@ -1178,6 +1197,20 @@ long long options_get_number(struct options *, const char *);
 struct options_entry *options_set_data(
     	    struct options *, const char *, void *, void (*)(void *));
 void   *options_get_data(struct options *, const char *);
+
+/* job.c */
+extern struct jobs jobs_tree;
+int	job_cmp(struct job *, struct job *);
+RB_PROTOTYPE(jobs, job, entry, job_cmp);
+void	job_tree_init(struct jobs *);
+void	job_tree_free(struct jobs *);
+u_int	job_tree_size(struct jobs *);
+struct job *job_get(struct jobs *, const char *);
+struct job *job_add(struct jobs *, struct client *,
+	    const char *, void (*)(struct job *), void (*)(void *), void *);
+void	job_free(struct job *);
+int	job_run(struct job *);
+void	job_kill(struct job *);
 
 /* environ.c */
 int	environ_cmp(struct environ_entry *, struct environ_entry *);
@@ -1485,7 +1518,7 @@ void	 server_clear_identify(struct client *);
 
 /* status.c */
 int	 status_redraw(struct client *);
-char	*status_replace(struct session *, const char *, time_t);
+char	*status_replace(struct client *, const char *, time_t);
 void printflike2 status_message_set(struct client *, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);

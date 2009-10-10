@@ -55,7 +55,7 @@ cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		template = data->arg;
 
-	msg = status_replace(c->session, template, time(NULL));
+	msg = status_replace(c, template, time(NULL));
 	status_message_set(c, "%s", msg);
 	xfree(msg);
 

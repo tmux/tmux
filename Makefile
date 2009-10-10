@@ -30,7 +30,7 @@ SRCS=	attributes.c buffer-poll.c buffer.c cfg.c client-fn.c \
 	cmd-up-pane.c cmd-display-message.c cmd-display-panes.c cmd.c \
 	colour.c environ.c grid-view.c grid.c input-keys.c \
 	imsg.c imsg-buffer.c input.c key-bindings.c key-string.c \
-	layout-set.c layout.c log.c \
+	layout-set.c layout.c log.c job.c \
 	mode-key.c names.c options-cmd.c options.c paste.c procname.c \
 	resize.c screen-redraw.c screen-write.c screen.c server-fn.c \
 	server-msg.c server.c session.c status.c tmux.c tty-keys.c tty-term.c \

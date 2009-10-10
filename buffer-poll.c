@@ -29,9 +29,9 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 {
 	ssize_t	n;
 
-	if (pfd->revents & (POLLERR|POLLNVAL|POLLHUP))
+	if (pfd->revents & (POLLERR|POLLNVAL))
 		return (-1);
-	if (pfd->revents & POLLIN) {
+	if (in != NULL && pfd->revents & POLLIN) {
 		buffer_ensure(in, BUFSIZ);
 		n = read(pfd->fd, BUFFER_IN(in), BUFFER_FREE(in));
 		if (n == 0)
@@ -41,8 +41,9 @@ buffer_poll(struct pollfd *pfd, struct buffer *in, struct buffer *out)
 				return (-1);
 		} else
 			buffer_add(in, n);
-	}
-	if (BUFFER_USED(out) > 0 && pfd->revents & POLLOUT) {
+	} else if (pfd->revents & POLLHUP)
+		return (-1);
+	if (out != NULL && BUFFER_USED(out) > 0 && pfd->revents & POLLOUT) {
 		n = write(pfd->fd, BUFFER_OUT(out), BUFFER_USED(out));
 		if (n == -1) {
 			if (errno != EINTR && errno != EAGAIN)

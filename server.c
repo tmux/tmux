@@ -72,6 +72,10 @@ void		 server_fill_windows(void);
 void		 server_handle_windows(void);
 void		 server_fill_clients(void);
 void		 server_handle_clients(void);
+void		 server_fill_jobs(void);
+void		 server_fill_jobs1(struct jobs *);
+void		 server_handle_jobs(void);
+void		 server_handle_jobs1(struct jobs *);
 void		 server_accept_client(int);
 void		 server_handle_client(struct client *);
 void		 server_handle_window(struct window *, struct window_pane *);
@@ -190,7 +194,9 @@ server_create_client(int fd)
 	c->session = NULL;
 	c->tty.sx = 80;
 	c->tty.sy = 24;
+
 	screen_init(&c->status, c->tty.sx, 1, 0);
+	job_tree_init(&c->status_jobs);
 
 	c->message_string = NULL;
 
@@ -370,6 +376,7 @@ server_main(int srv_fd)
 		server_poll_add(srv_fd, POLLIN);
 
 		/* Fill window and client sockets. */
+		server_fill_jobs();
 		server_fill_windows();
 		server_fill_clients();
 
@@ -412,6 +419,7 @@ server_main(int srv_fd)
 		 * windows, so windows must come first to avoid messing up by
 		 * increasing the array size.
 		 */
+		server_handle_jobs();
 		server_handle_windows();
 		server_handle_clients();
 
@@ -648,7 +656,7 @@ server_set_title(struct client *c)
 
 	template = options_get_string(&s->options, "set-titles-string");
 	
-	title = status_replace(c->session, template, time(NULL));
+	title = status_replace(c, template, time(NULL));
 	if (c->title == NULL || strcmp(title, c->title) != 0) {
 		if (c->title != NULL)
 			xfree(c->title);
@@ -663,6 +671,7 @@ void
 server_check_timers(struct client *c)
 {
 	struct session	*s;
+	struct job	*job;
 	struct timeval	 tv;
 	u_int		 interval;
 
@@ -694,8 +703,12 @@ server_check_timers(struct client *c)
 	if (interval == 0)
 		return;
 	if (tv.tv_sec < c->status_timer.tv_sec ||
-	    ((u_int) tv.tv_sec) - c->status_timer.tv_sec >= interval)
+	    ((u_int) tv.tv_sec) - c->status_timer.tv_sec >= interval) {
+		/* Run the jobs for this client and schedule for redraw. */
+		RB_FOREACH(job, jobs, &c->status_jobs)
+			job_run(job);
 		c->flags |= CLIENT_STATUS;
+	}
 }
 
 /* Fill client pollfds. */
@@ -744,6 +757,66 @@ server_fill_clients(void)
 		w->flags &= ~WINDOW_REDRAW;
 		TAILQ_FOREACH(wp, &w->panes, entry)
 			wp->flags &= ~PANE_REDRAW;
+	}
+}
+
+/* Fill in job fds. */
+void
+server_fill_jobs(void)
+{
+ 	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL)
+			server_fill_jobs1(&c->status_jobs);
+	}
+}
+
+void
+server_fill_jobs1(struct jobs *jobs)
+{
+	struct job	*job;
+
+	RB_FOREACH(job, jobs, jobs) {
+		if (job->fd == -1)
+			continue;
+		server_poll_add(job->fd, POLLIN);
+	}
+}
+
+/* Handle job fds. */
+void
+server_handle_jobs(void)
+{
+	struct client	*c;
+	u_int		 i;
+	
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL)
+			server_handle_jobs1(&c->status_jobs);
+	}
+}
+
+void
+server_handle_jobs1(struct jobs *jobs)
+{
+	struct job	*job;
+	struct pollfd	*pfd;
+
+	RB_FOREACH(job, jobs, jobs) {
+		if (job->fd == -1)
+			continue;
+		if ((pfd = server_poll_lookup(job->fd)) == NULL)
+			continue;
+		if (buffer_poll(pfd, job->out, NULL) != 0) {
+			close(job->fd);
+			job->fd = -1;
+			if (job->callbackfn != NULL)
+				job->callbackfn(job);
+		}
 	}
 }
 
@@ -991,6 +1064,7 @@ server_lost_client(struct client *c)
 		tty_free(&c->tty);
 
 	screen_free(&c->status);
+	job_tree_free(&c->status_jobs);
 
 	if (c->title != NULL)
 		xfree(c->title);
