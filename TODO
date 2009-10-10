@@ -82,13 +82,6 @@
   to be smaller by other clients. pan smaller terminal? (like screen F)
 		-- idea of a "view" onto a window, need base x/y offsets
 		   for redraw
-- support running tmux from inside tmux [#(), if-shell] --
-  	  generic system-like function which may take a callback
-	  also sets up environment (TMUX) and has a timeout
-	for #(): command schedular, status line queues it with a time, run in
-	main loop, and uses most recent result -- can also be used for persistent
-	commands which never exit just continually output
-	for if-shell, callback??
 - handle resize better in copy mode
 - way to copy stuff that is off screen due to resize
 - fix line wrapping c&p problems in xterm etc
@@ -98,3 +91,6 @@
 - support the mouse wheel to scroll through history
 - if the window is dead, automatic-rename should mark is [dead] or something
   (or a different symbol??)
+- use job stuff for run-shell and if-shell
+- some way to KEEP a command running continually and just use its LAST line of
+  output
