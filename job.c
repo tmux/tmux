@@ -105,6 +105,8 @@ job_add(struct jobs *jobs, struct client *c, const char *cmd,
 	job->freefn = freefn;
 	job->data = data;
 
+	job->flags = JOB_DONE;
+
 	RB_INSERT(jobs, jobs, job);
 	SLIST_INSERT_HEAD(&all_jobs, job, lentry);
 	
@@ -133,8 +135,9 @@ job_run(struct job *job)
 {
 	int	nullfd, out[2], mode;
 
-	if (job->fd != -1)
+	if (!(job->flags & JOB_DONE))
 		return (0);
+	job->flags &= ~JOB_DONE;
 
 	if (pipe(out) != 0)
 		return (-1);

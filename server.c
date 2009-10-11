@@ -88,6 +88,7 @@ void	 	 server_check_window(struct window *);
 void		 server_check_redraw(struct client *);
 void		 server_set_title(struct client *);
 void		 server_check_timers(struct client *);
+void		 server_check_jobs(void);
 void		 server_lock_server(void);
 void		 server_lock_sessions(void);
 void		 server_check_clients(void);
@@ -370,7 +371,8 @@ server_main(int srv_fd)
 			sigusr1 = 0;
 		}
 
-		/* Process client actions. */
+		/* Collect any jobs that have died and process clients. */
+		server_check_jobs();
 		server_check_clients();
 
 		/* Initialise pollfd array and add server socket. */
@@ -389,7 +391,6 @@ server_main(int srv_fd)
 
 		/* Do the poll. */
 		pfds = server_poll_flatten(&nfds);
-		log_debug("polling %d", nfds);
 		if (poll(pfds, nfds, xtimeout) == -1) {
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
@@ -510,6 +511,7 @@ server_child_signal(void)
 {
 	struct window		*w;
 	struct window_pane	*wp;
+	struct job		*job;
 	int		 	 status;
 	pid_t		 	 pid;
 	u_int		 	 i;
@@ -523,8 +525,15 @@ server_child_signal(void)
 		case 0:
 			return;
 		}
-		if (!WIFSTOPPED(status))
+		if (!WIFSTOPPED(status)) {
+			SLIST_FOREACH(job, &all_jobs, lentry) {
+				if (pid == job->pid) {
+					job->pid = -1;
+					job->status = status;
+				}
+			}
 			continue;
+		}
 		if (WSTOPSIG(status) == SIGTTIN || WSTOPSIG(status) == SIGTTOU)
 			continue;
 
@@ -792,9 +801,22 @@ server_handle_jobs(void)
 		if (buffer_poll(pfd, job->out, NULL) != 0) {
 			close(job->fd);
 			job->fd = -1;
-			if (job->callbackfn != NULL)
-				job->callbackfn(job);
 		}
+	}
+}
+
+/* Handle job fds. */
+void
+server_check_jobs(void)
+{
+	struct job	*job;
+
+	SLIST_FOREACH(job, &all_jobs, lentry) {
+		if (job->flags & JOB_DONE || job->fd != -1 || job->pid != -1)
+			continue;
+		if (job->callbackfn != NULL)
+			job->callbackfn(job);
+		job->flags |= JOB_DONE;
 	}
 }
 

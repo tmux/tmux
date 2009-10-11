@@ -567,6 +567,7 @@ ARRAY_DECL(keylist, int);
 struct job {
 	char		*cmd;
 	pid_t		 pid;
+	int		 status;
 
 	struct client	*client;
 
@@ -576,6 +577,9 @@ struct job {
 	void		(*callbackfn)(struct job *);
 	void		(*freefn)(void *);
 	void		*data;
+
+	int		 flags;
+#define JOB_DONE 0x1
 
 	RB_ENTRY(job)	 entry;
 	SLIST_ENTRY(job) lentry;
