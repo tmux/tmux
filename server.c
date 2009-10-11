@@ -572,6 +572,13 @@ server_fill_windows(void)
 			if (BUFFER_USED(wp->out) > 0)
 				events |= POLLOUT;
 			server_poll_add(wp->fd, events);
+
+			if (wp->pipe_fd == -1)
+				continue;
+			events = 0;
+			if (BUFFER_USED(wp->pipe_buf) > 0)
+				events |= POLLOUT;
+			server_poll_add(wp->pipe_fd, events);
 		}
 	}
 }
@@ -600,6 +607,16 @@ server_handle_windows(void)
 				wp->fd = -1;
 			} else
 				server_handle_window(w, wp);
+
+			if (wp->pipe_fd == -1)
+				continue;
+			if ((pfd = server_poll_lookup(wp->pipe_fd)) == NULL)
+				continue;
+			if (buffer_poll(pfd, NULL, wp->pipe_buf) != 0) {
+				buffer_destroy(wp->pipe_buf);
+				close(wp->pipe_fd);
+				wp->pipe_fd = -1;
+			}
 		}
 
 		server_check_window(w);
