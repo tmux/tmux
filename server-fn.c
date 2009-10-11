@@ -284,8 +284,10 @@ server_link_window(struct session *src, struct winlink *srcwl,
 			winlink_remove(&dst->windows, dstwl);
 
 			/* Force select/redraw if current. */
-			if (dstwl == dst->curw)
+			if (dstwl == dst->curw) {
 				selectflag = 1;
+				dst->curw = NULL;
+			}
 		}
 	}
 
