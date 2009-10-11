@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.122 2009-10-11 23:38:16 tcunha Exp $ */
+/* $Id: status.c,v 1.123 2009-10-11 23:55:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,8 @@
 
 #include "tmux.h"
 
-char   *status_replace_popen(char **);
+char   *status_job(struct client *, char **);
+void	status_job_callback(struct job *);
 size_t	status_width(struct winlink *);
 char   *status_print(struct session *, struct winlink *, struct grid_cell *);
 
@@ -104,14 +105,14 @@ status_redraw(struct client *c)
 	utf8flag = options_get_number(&s->options, "status-utf8");
 
 	/* Work out the left and right strings. */
-	left = status_replace(s, options_get_string(
+	left = status_replace(c, options_get_string(
 	    &s->options, "status-left"), c->status_timer.tv_sec);
 	llen = options_get_number(&s->options, "status-left-length");
 	llen2 = screen_write_cstrlen(utf8flag, "%s", left);
 	if (llen2 < llen)
 		llen = llen2;
 
-	right = status_replace(s, options_get_string(
+	right = status_replace(c, options_get_string(
 	    &s->options, "status-right"), c->status_timer.tv_sec);
 	rlen = options_get_number(&s->options, "status-right-length");
 	rlen2 = screen_write_cstrlen(utf8flag, "%s", right);
@@ -317,15 +318,17 @@ out:
 }
 
 char *
-status_replace(struct session *s, const char *fmt, time_t t)
+status_replace(struct client *c, const char *fmt, time_t t)
 {
+	struct session *s = c->session;
 	struct winlink *wl = s->curw;
 	static char	out[BUFSIZ];
 	char		in[BUFSIZ], tmp[256], ch, *iptr, *optr, *ptr, *endptr;
-	char           *savedptr;
+	char           *savedptr;	/* freed at end of each loop */
 	size_t		len;
 	long		n;
-
+	
+	
 	strftime(in, sizeof in, fmt, localtime(&t));
 	in[(sizeof in) - 1] = '\0';
 
@@ -352,7 +355,7 @@ status_replace(struct session *s, const char *fmt, time_t t)
 			switch (*iptr++) {
 			case '(':
 				if (ptr == NULL) {
-					ptr = status_replace_popen(&iptr);
+					ptr = status_job(c, &iptr);
 					if (ptr == NULL)
 						break;
 					savedptr = ptr;
@@ -374,8 +377,8 @@ status_replace(struct session *s, const char *fmt, time_t t)
 			case 'P':
 				if (ptr == NULL) {
 					xsnprintf(tmp, sizeof tmp, "%u",
-						  window_pane_index(wl->window,
-						  wl->window->active));
+					    window_pane_index(wl->window,
+					    wl->window->active));
 					ptr = tmp;
 				}
 				/* FALLTHROUGH */
@@ -434,12 +437,12 @@ status_replace(struct session *s, const char *fmt, time_t t)
 }
 
 char *
-status_replace_popen(char **iptr)
+status_job(struct client *c, char **iptr)
 {
-	FILE	*f;
-	char	*buf, *cmd, *ptr;
-	int	lastesc;
-	size_t	len;
+	struct job	*job;
+	char   		*buf, *cmd;
+	int		 lastesc;
+	size_t		 len;
 
 	if (**iptr == '\0')
 		return (NULL);
@@ -464,32 +467,44 @@ status_replace_popen(char **iptr)
 		lastesc = 0;
 		cmd[len++] = **iptr;
 	}
-	if (**iptr == '\0')		/* no terminating ) */
-		goto out;
+	if (**iptr == '\0')		/* no terminating ) */ {
+		xfree(cmd);
+		return (NULL);
+	}
 	(*iptr)++;			/* skip final ) */
 	cmd[len] = '\0';
 
-	if ((f = popen(cmd, "r")) == NULL)
-		goto out;
-
-	if ((buf = fgetln(f, &len)) == NULL) {
-		pclose(f);
-		goto out;
+	job = job_get(&c->status_jobs, cmd);
+	if (job == NULL) {
+		job = job_add(
+		    &c->status_jobs, c, cmd, status_job_callback, xfree, NULL);
+		job_run(job);
 	}
-	if (buf[len - 1] == '\n') {
-		buf[len - 1] = '\0';
-		buf = xstrdup(buf);
-	} else {
-		ptr = xmalloc(len + 1);
-		memcpy(ptr, buf, len);
-		ptr[len] = '\0';
-		buf = ptr;
-	}
-	pclose(f);
+	if (job->data == NULL)
+		return (xstrdup(""));
+	return (xstrdup(job->data));
+}
 
-out:
-	xfree(cmd);
-	return (buf);
+void
+status_job_callback(struct job *job)
+{
+	char	*buf;
+	size_t	 len;
+
+	len = BUFFER_USED(job->out);
+	buf = xmalloc(len + 1);
+	if (len != 0)
+		buffer_read(job->out, buf, len);
+	buf[len] = '\0';
+	buf[strcspn(buf, "\n")] = '\0';
+
+	if (job->data != NULL)
+		xfree(job->data);
+	else
+		server_redraw_client(job->client);
+	job->data = xstrdup(buf);
+
+	xfree(buf);
 }
 
 size_t
