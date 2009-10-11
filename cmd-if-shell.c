@@ -2,6 +2,7 @@
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
+ * Copyright (c) 2009 Nicholas Marriott <nicm@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -17,9 +18,8 @@
  */
 
 #include <sys/types.h>
+#include <sys/wait.h>
 
-#include <errno.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -28,124 +28,92 @@
  * Executes a tmux command if a shell command returns true.
  */
 
-int	cmd_if_shell_parse(struct cmd *, int, char **, char **);
 int	cmd_if_shell_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_if_shell_free(struct cmd *);
-void	cmd_if_shell_init(struct cmd *, int);
-size_t	cmd_if_shell_print(struct cmd *, char *, size_t);
 
-struct cmd_if_shell_data {
-	char *cmd;
-	char *sh_cmd;
-};
+void	cmd_if_shell_callback(struct job *);
+void	cmd_if_shell_free(void *);
 
 const struct cmd_entry cmd_if_shell_entry = {
 	"if-shell", "if",
 	"shell-command command",
-	0, 0,
-	cmd_if_shell_init,
-	cmd_if_shell_parse,
+	CMD_ARG2, 0,
+	cmd_target_init,
+	cmd_target_parse,
 	cmd_if_shell_exec,
-	cmd_if_shell_free,
-	cmd_if_shell_print
+	cmd_target_free,
+	cmd_target_print
 };
 
-void
-cmd_if_shell_init(struct cmd *self, unused int arg)
-{
-	struct cmd_if_shell_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	data->cmd = NULL;
-	data->sh_cmd = NULL;
-}
-
-int
-cmd_if_shell_parse(struct cmd *self, int argc, char **argv, char **cause)
-{
-	struct cmd_if_shell_data	*data;
-	int				 opt;
-
-	self->entry->init(self, KEYC_NONE);
-	data = self->data;
-
-	while ((opt = getopt(argc, argv, "")) != -1) {
-		switch (opt) {
-		default:
-			goto usage;
-		}
-	}
-	argc -= optind;
-	argv += optind;
-	if (argc != 2)
-		goto usage;
-
-	data->sh_cmd = xstrdup(argv[0]);
-	data->cmd = xstrdup(argv[1]);
-	return (0);
-
-usage:
-	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
-
-	self->entry->free(self);
-	return (-1);
-}
+struct cmd_if_shell_data {
+	char		*cmd;
+	struct cmd_ctx	 ctx;
+};
 
 int
 cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_if_shell_data	*data = self->data;
+	struct cmd_target_data		*data = self->data;
+	struct cmd_if_shell_data	*cdata;
+	struct job			*job;
+
+	cdata = xmalloc(sizeof *cdata);
+	cdata->cmd = xstrdup(data->arg2);
+	memcpy(&cdata->ctx, ctx, sizeof cdata->ctx);
+
+	if (ctx->cmdclient != NULL)
+		ctx->cmdclient->references++;
+	if (ctx->curclient != NULL)
+		ctx->curclient->references++;
+
+	job = job_add(NULL, NULL,
+	    data->arg, cmd_if_shell_callback, cmd_if_shell_free, cdata);
+	job_run(job);
+
+	return (1);	/* don't let client exit */
+}
+
+void
+cmd_if_shell_callback(struct job *job)
+{
+	struct cmd_if_shell_data	*cdata = job->data;
+	struct cmd_ctx			*ctx = &cdata->ctx;
 	struct cmd_list			*cmdlist;
 	char				*cause;
-	int				 ret;
 
-	if ((ret = system(data->sh_cmd)) < 0) {
-		ctx->error(ctx, "system error: %s", strerror(errno));
-		return (-1);
-	} else if (ret != 0)
-		return (0);
+	if (!WIFEXITED(job->status) || WEXITSTATUS(job->status) != 0) {
+		job_free(job);	/* calls cmd_if_shell_free */
+		return;
+	}
 
-	if (cmd_string_parse(data->cmd, &cmdlist, &cause) != 0) {
+	if (cmd_string_parse(cdata->cmd, &cmdlist, &cause) != 0) {
 		if (cause != NULL) {
 			ctx->error(ctx, "%s", cause);
 			xfree(cause);
 		}
-		return (-1);
+		return;
 	}
 
 	if (cmd_list_exec(cmdlist, ctx) < 0) {
 		cmd_list_free(cmdlist);
-		return (-1);
+		return;
 	}
 
 	cmd_list_free(cmdlist);
-	return (0);
 }
 
 void
-cmd_if_shell_free(struct cmd *self)
+cmd_if_shell_free(void *data)
 {
-	struct cmd_if_shell_data	*data = self->data;
+	struct cmd_if_shell_data	*cdata = data;
+	struct cmd_ctx			*ctx = &cdata->ctx;
 
-	if (data->cmd != NULL)
-		xfree(data->cmd);
-	if (data->sh_cmd != NULL)
-		xfree(data->sh_cmd);
-	xfree(data);
-}
+	if (ctx->cmdclient != NULL) {
+		ctx->cmdclient->references--;
+		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	}
+	if (ctx->curclient != NULL)
+		ctx->curclient->references--;
 
-size_t
-cmd_if_shell_print(struct cmd *self, char *buf, size_t len)
-{
-	struct cmd_if_shell_data	*data = self->data;
-	size_t				off = 0;
-
-	off += xsnprintf(buf, len, "%s", self->entry->name);
-	if (data == NULL)
-		return (off);
-	if (off < len && data->sh_cmd != NULL)
-		off += cmd_prarg(buf + off, len - off, " ", data->sh_cmd);
-	if (off < len && data->cmd != NULL)
-		off += cmd_prarg(buf + off, len - off, " ", data->cmd);
-	return (off);
+	xfree(cdata->cmd);
+	xfree(cdata);
 }
