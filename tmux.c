@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.176 2009-10-09 13:07:04 tcunha Exp $ */
+/* $Id: tmux.c,v 1.177 2009-10-11 23:30:28 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,8 +50,6 @@ char		*cfg_file;
 struct options	 global_s_options;	/* session options */
 struct options	 global_w_options;	/* window options */
 struct environ	 global_environ;
-
-time_t		 server_activity;
 
 int		 debug_level;
 int		 be_quiet;
@@ -388,6 +386,7 @@ main(int argc, char **argv)
 	options_set_number(so, "history-limit", 2000);
 	options_set_number(so, "lock-after-time", 0);
 	options_set_string(so, "lock-command", "lock -np");
+	options_set_number(so, "lock-server", 1);
 	options_set_number(so, "message-attr", 0);
 	options_set_number(so, "message-bg", 3);
 	options_set_number(so, "message-fg", 0);

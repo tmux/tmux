@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.181 2009-10-09 13:07:04 tcunha Exp $
+.\" $Id: tmux.1,v 1.182 2009-10-11 23:30:28 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 9 2009 $
+.Dd $Mdocdate: October 10 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1253,20 +1253,33 @@ Set the maximum number of lines held in window history.
 This setting applies only to new windows - existing window histories are not
 resized and retain the limit at the point they were created.
 .It Ic lock-after-time Ar number
-Lock the server (like the
-.Ic lock-server
+Lock the session (like the
+.Ic lock-session
 command) after
 .Ar number
-seconds of inactivity.
-The default is off (set to 0).
-This has no effect as a session option; it must be set as a global option using
-.Fl g .
+seconds of inactivity, or the entire server (all sessions) if the
+.Ic lock-server
+option is set.
+The default is not to lock (set to 0).
 .It Ic lock-command Ar command
 Command to run when locking each client.
 The default is to run
 .Xr lock 1
 with
 .Fl np .
+.It Xo Ic lock-server
+.Op Ic on | off
+.Xc
+If this option is
+.Ic on 
+(the default),
+instead of each session locking individually as each has been
+idle for
+.Ic lock-after-time
+, the entire server will lock after
+.Em all
+sessions would have locked.
+This has no effect as a session option; it must be set as a global option.
 .It Ic message-attr Ar attributes
 Set status line message attributes, where
 .Ar attributes

@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.67 2009-09-20 22:11:27 tcunha Exp $ */
+/* $Id: session.c,v 1.68 2009-10-11 23:30:28 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
 
 #include "tmux.h"
 
@@ -123,6 +124,7 @@ session_create(const char *name, const char *cmd, const char *cwd,
 	s = xmalloc(sizeof *s);
 	s->references = 0;
 	s->flags = 0;
+	s->activity = time(NULL);
 
 	if (gettimeofday(&s->tv, NULL) != 0)
 		fatal("gettimeofday failed");

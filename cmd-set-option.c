@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.81 2009-09-23 15:00:08 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.82 2009-10-11 23:30:28 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,6 +63,7 @@ const struct set_option_entry set_option_table[] = {
 	{ "history-limit", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "lock-after-time", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "lock-command", SET_OPTION_STRING, 0, 0, NULL },
+	{ "lock-server", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "message-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
 	{ "message-bg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "message-fg", SET_OPTION_COLOUR, 0, 0, NULL },
