@@ -29,6 +29,9 @@
 
 int	cmd_run_shell_exec(struct cmd *, struct cmd_ctx *);
 
+void	cmd_run_shell_callback(struct job *);
+void	cmd_run_shell_free(void *);
+
 const struct cmd_entry cmd_run_shell_entry = {
 	"run-shell", "run",
 	"command",
@@ -40,57 +43,97 @@ const struct cmd_entry cmd_run_shell_entry = {
 	cmd_target_print
 };
 
+struct cmd_run_shell_data {
+	char		*cmd;
+	struct cmd_ctx	 ctx;
+};
+
 int
 cmd_run_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	FILE			*fp;
-	char			*buf, *lbuf, *msg;
-	size_t			 len;
-	int			 has_output, ret, status;
+	struct cmd_target_data		*data = self->data;
+	struct cmd_run_shell_data	*cdata;
+	struct job			*job;
 
-	if ((fp = popen(data->arg, "r")) == NULL) {
-		ctx->error(ctx, "popen error");
-		return (-1);
-	}
+	cdata = xmalloc(sizeof *cdata);
+	cdata->cmd = xstrdup(data->arg);
+	memcpy(&cdata->ctx, ctx, sizeof cdata->ctx);
 
-	has_output = 0;
-	lbuf = NULL;
-	while ((buf = fgetln(fp, &len)) != NULL) {
-		if (buf[len - 1] == '\n')
-			buf[len - 1] = '\0';
-		else {
-			lbuf = xmalloc(len + 1);
-			memcpy(lbuf, buf, len);
-			lbuf[len] = '\0';
-			buf = lbuf;
+	if (ctx->cmdclient != NULL)
+		ctx->cmdclient->references++;
+	if (ctx->curclient != NULL)
+		ctx->curclient->references++;
+
+	job = job_add(NULL, NULL,
+	    data->arg, cmd_run_shell_callback, cmd_run_shell_free, cdata);
+	job_run(job);
+
+	return (1);	/* don't let client exit */
+}
+
+void
+cmd_run_shell_callback(struct job *job)
+{
+	struct cmd_run_shell_data	*cdata = job->data;
+	struct cmd_ctx			*ctx = &cdata->ctx;
+	char				*cmd, *msg, *line, *buf;
+	size_t				 off, len, llen;
+	int				 retcode;
+
+	buf = BUFFER_OUT(job->out);
+	len = BUFFER_USED(job->out);
+
+	cmd = cdata->cmd;
+
+	if (len != 0) {
+		line = buf;
+		for (off = 0; off < len; off++) {
+			if (buf[off] == '\n') {
+				llen = buf + off - line;
+				if (llen > INT_MAX)
+					break;
+				ctx->print(ctx, "%.*s", (int) llen, line);
+				line = buf + off + 1;
+			}
 		}
-		ctx->print(ctx, "%s", buf);
-		has_output = 1;
+		llen = buf + len - line;
+		if (llen > 0 && llen < INT_MAX)
+			ctx->print(ctx, "%.*s", (int) llen, line);
 	}
-	if (lbuf != NULL)
-		xfree(lbuf);
 
 	msg = NULL;
-	status = pclose(fp);
-
-	if (WIFEXITED(status)) {
-		if ((ret = WEXITSTATUS(status)) == 0)
-			return (0);
-		xasprintf(&msg, "'%s' returned %d", data->arg, ret);
-	} else if (WIFSIGNALED(status)) {
-		xasprintf(
-		    &msg, "'%s' terminated by signal %d", data->arg,
-		    WTERMSIG(status));
+	if (WIFEXITED(job->status)) {
+		if ((retcode = WEXITSTATUS(job->status)) != 0)
+			xasprintf(&msg, "'%s' returned %d", cmd, retcode);
+	} else if (WIFSIGNALED(job->status)) {
+		retcode = WTERMSIG(job->status);
+		xasprintf(&msg, "'%s' terminated by signal %d", cmd, retcode);
 	}
-
 	if (msg != NULL) {
-		if (has_output)
+		if (len != 0)
 			ctx->print(ctx, "%s", msg);
 		else
 			ctx->info(ctx, "%s", msg);
 		xfree(msg);
 	}
 
-	return (0);
+	job_free(job);	/* calls cmd_run_shell_free */
+}
+
+void
+cmd_run_shell_free(void *data)
+{
+	struct cmd_run_shell_data	*cdata = data;
+	struct cmd_ctx			*ctx = &cdata->ctx;
+
+	return;
+	if (ctx->cmdclient != NULL) {
+		ctx->cmdclient->references--;
+		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
+	}
+	if (ctx->curclient != NULL)
+		ctx->curclient->references--;
+
+	xfree(cdata->cmd);
+	xfree(cdata);
 }

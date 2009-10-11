@@ -70,7 +70,6 @@ job_tree_free(struct jobs *jobs)
 	while (!RB_EMPTY(jobs)) {
 		job = RB_ROOT(jobs);
 		RB_REMOVE(jobs, jobs, job);
-		SLIST_REMOVE(&all_jobs, job, job, lentry);
 		job_free(job);
 	}
 }
@@ -120,6 +119,7 @@ job_free(struct job *job)
 {
 	job_kill(job);
 
+	SLIST_REMOVE(&all_jobs, job, job, lentry);
 	xfree(job->cmd);
 
 	if (job->freefn != NULL && job->data != NULL)

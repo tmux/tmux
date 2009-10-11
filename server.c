@@ -810,13 +810,17 @@ void
 server_check_jobs(void)
 {
 	struct job	*job;
-
+	
+restart:
 	SLIST_FOREACH(job, &all_jobs, lentry) {
 		if (job->flags & JOB_DONE || job->fd != -1 || job->pid != -1)
 			continue;
-		if (job->callbackfn != NULL)
-			job->callbackfn(job);
 		job->flags |= JOB_DONE;
+
+		if (job->callbackfn != NULL) {
+			job->callbackfn(job);
+			goto restart;	/* could be freed by callback */
+		}
 	}
 }
 
