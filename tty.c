@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.140 2009-10-09 13:11:42 tcunha Exp $ */
+/* $Id: tty.c,v 1.141 2009-10-11 23:39:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -698,11 +698,10 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
-	tty_reset(tty);
-
- 	tty_region(tty, ctx->orupper, ctx->orlower, wp->yoff);
 
 	if (ctx->ocy == ctx->orlower) {
+		tty_reset(tty);
+		tty_region(tty, ctx->orupper, ctx->orlower, wp->yoff);
 		tty_cursor(tty, ctx->ocx, ctx->ocy, wp->xoff, wp->yoff);
 		tty_putc(tty, '\n');
 	}
