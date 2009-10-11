@@ -1,4 +1,4 @@
-/* $Id: job.c,v 1.1 2009-10-11 23:55:26 tcunha Exp $ */
+/* $Id: job.c,v 1.2 2009-10-11 23:59:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,6 @@
 #include <sys/types.h>
 
 #include <fcntl.h>
-#include <paths.h>
 #include <string.h>
 #include <unistd.h>
 
