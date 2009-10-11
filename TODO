@@ -40,7 +40,6 @@
   capabilities
 - would be nice to be able to use "--" to mark start of command w/ neww etc
   to avoid quoting
-- clone session command
 - make command sequences more usable: don't require space after ;, handle
   errors better
 - attach should have a flag to create session if it doesn't exist
@@ -58,7 +57,6 @@
 - what about utmp etc? can tmux update it like screen? setgid?
 - H/M/L commands in copy mode with vi-keys, for jumping to the top/middle/last
   line on the screen
-- split list-windows into separate list-windows and list-panes
 - warts on current naming:
   	- display-time but message-fg/bg/attr
 	- list-* vs show-*
@@ -76,7 +74,6 @@
 - support for bce
 - it would be nice if the start/end line keys in copy mode were aware of
   wrapped lines
-- per session locking
 - some way to force a screen to use the entire terminal even if it is forced
   to be smaller by other clients. pan smaller terminal? (like screen F)
 		-- idea of a "view" onto a window, need base x/y offsets
@@ -88,8 +85,6 @@
 - commands should be able to succeed or fail and have || or && for command
   lists
 - support the mouse wheel to scroll through history
-- if the window is dead, automatic-rename should mark is [dead] or something
-  (or a different symbol??)
-- use job stuff for run-shell and if-shell
 - some way to KEEP a command running continually and just use its LAST line of
   output
+- bind commands to mouse buttons
