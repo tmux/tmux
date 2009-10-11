@@ -462,8 +462,10 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 		if (screen_check_selection(s, i, py)) {
 			memcpy(&tmpgc, &s->sel.cell, sizeof tmpgc);
 			tmpgc.data = gc->data;
-			tmpgc.flags = gc->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
-			tmpgc.flags |= s->sel.cell.flags & (GRID_FLAG_FG256|GRID_FLAG_BG256);
+			tmpgc.flags = gc->flags & 
+			    ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
+			tmpgc.flags |= s->sel.cell.flags &
+			    (GRID_FLAG_FG256|GRID_FLAG_BG256);
 			tty_cell(tty, &tmpgc, gu);
 		} else
 			tty_cell(tty, gc, gu);
@@ -671,11 +673,9 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
-	tty_reset(tty);
-
- 	tty_region(tty, ctx->orupper, ctx->orlower, wp->yoff);
-
 	if (ctx->ocy == ctx->orupper) {
+		tty_reset(tty);
+		tty_region(tty, ctx->orupper, ctx->orlower, wp->yoff);
 		tty_cursor(tty, ctx->ocx, ctx->orupper, wp->xoff, wp->yoff);
 		tty_putcode(tty, TTYC_RI);
 	}
@@ -692,7 +692,6 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 		tty_redraw_region(tty, ctx);
 		return;
 	}
-
 
 	if (ctx->ocy == ctx->orlower) {
 		tty_reset(tty);
