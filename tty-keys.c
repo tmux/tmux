@@ -27,7 +27,7 @@
 
 void	tty_keys_add(struct tty *, const char *, int, int);
 int	tty_keys_parse_xterm(struct tty *, char *, size_t, size_t *);
-int	tty_keys_parse_mouse(struct tty *, char *, size_t, size_t *, u_char *);
+int	tty_keys_parse_mouse(char *, size_t, size_t *, struct mouse_event *);
 
 struct tty_key_ent {
 	enum tty_code_code	code;
@@ -231,7 +231,7 @@ tty_keys_find(struct tty *tty, char *buf, size_t len, size_t *size)
 }
 
 int
-tty_keys_next(struct tty *tty, int *key, u_char *mouse)
+tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 {
 	struct tty_key	*tk;
 	struct timeval	 tv;
@@ -269,7 +269,7 @@ tty_keys_next(struct tty *tty, int *key, u_char *mouse)
 	}
 
 	/* Not found. Is this a mouse key press? */
-	*key = tty_keys_parse_mouse(tty, buf, len, &size, mouse);
+	*key = tty_keys_parse_mouse(buf, len, &size, mouse);
 	if (*key != KEYC_NONE) {
 		buffer_remove(tty->in, size);
 		goto found;
@@ -331,8 +331,7 @@ found:
 }
 
 int
-tty_keys_parse_mouse(
-    unused struct tty *tty, char *buf, size_t len, size_t *size, u_char *mouse)
+tty_keys_parse_mouse(char *buf, size_t len, size_t *size, struct mouse_event *m)
 {
 	/*
 	 * Mouse sequences are \033[M followed by three characters indicating
@@ -344,12 +343,14 @@ tty_keys_parse_mouse(
 		return (KEYC_NONE);
 	*size = 6;
 
-	if (buf[3] < 32 || buf[4] < 33 || buf[5] < 33)
+	m->b = buf[3];
+	m->x = buf[4];
+	m->y = buf[5];
+	if (m->b < 32 || m->x < 33 || m->y < 33)
 		return (KEYC_NONE);
-
-	mouse[0] = buf[3] - 32;
-	mouse[1] = buf[4] - 33;
-	mouse[2] = buf[5] - 33;
+	m->b -= 32;
+	m->x -= 33;
+	m->y -= 33;
 	return (KEYC_MOUSE);
 }
 

@@ -674,13 +674,14 @@ struct input_ctx {
  */
 struct client;
 struct window;
+struct mouse_event;
 struct window_mode {
 	struct screen *(*init)(struct window_pane *);
 	void	(*free)(struct window_pane *);
 	void	(*resize)(struct window_pane *, u_int, u_int);
 	void	(*key)(struct window_pane *, struct client *, int);
 	void	(*mouse)(struct window_pane *,
-	    	    struct client *, u_char, u_char, u_char);
+	    	    struct client *, struct mouse_event *);
 	void	(*timer)(struct window_pane *);
 };
 
@@ -949,6 +950,13 @@ struct tty_ctx {
 
 	u_int		 orupper;
 	u_int		 orlower;
+};
+
+/* Mouse input. */
+struct mouse_event {
+	u_char	b;
+	u_char	x;
+	u_char	y;
 };
 
 /* Client connection. */
@@ -1285,7 +1293,7 @@ int	tty_keys_cmp(struct tty_key *, struct tty_key *);
 RB_PROTOTYPE(tty_keys, tty_key, entry, tty_keys_cmp);
 void	tty_keys_init(struct tty *);
 void	tty_keys_free(struct tty *);
-int	tty_keys_next(struct tty *, int *, u_char *);
+int	tty_keys_next(struct tty *, int *, struct mouse_event *);
 
 /* options-cmd.c */
 const char *set_option_print(
@@ -1542,7 +1550,7 @@ void	 input_parse(struct window_pane *);
 
 /* input-key.c */
 void	 input_key(struct window_pane *, int);
-void	 input_mouse(struct window_pane *, u_char, u_char, u_char);
+void	 input_mouse(struct window_pane *, struct mouse_event *);
 
 /* colour.c */
 void	 colour_set_fg(struct grid_cell *, int);
@@ -1705,7 +1713,7 @@ void		 window_pane_reset_mode(struct window_pane *);
 void		 window_pane_parse(struct window_pane *);
 void		 window_pane_key(struct window_pane *, struct client *, int);
 void		 window_pane_mouse(struct window_pane *,
-    		     struct client *, u_char, u_char, u_char);
+    		     struct client *, struct mouse_event *);
 int		 window_pane_visible(struct window_pane *);
 char		*window_pane_search(
     		     struct window_pane *, const char *, u_int *);

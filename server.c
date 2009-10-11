@@ -880,9 +880,9 @@ server_handle_client(struct client *c)
 	struct timeval	 	 tv;
 	struct key_binding	*bd;
 	struct keylist		*keylist;
+	struct mouse_event	 mouse;
 	int		 	 key, status, xtimeout, mode, isprefix;
 	u_int			 i;
-	u_char			 mouse[3];
 
 	xtimeout = options_get_number(&c->session->options, "repeat-time");
 	if (xtimeout != 0 && c->flags & CLIENT_REPEAT) {
@@ -894,7 +894,7 @@ server_handle_client(struct client *c)
 
 	/* Process keys. */
 	keylist = options_get_data(&c->session->options, "prefix");
-	while (tty_keys_next(&c->tty, &key, mouse) == 0) {
+	while (tty_keys_next(&c->tty, &key, &mouse) == 0) {
 		if (c->session == NULL)
 			return;
 
@@ -922,10 +922,10 @@ server_handle_client(struct client *c)
 		/* Check for mouse keys. */
 		if (key == KEYC_MOUSE) {
 			if (options_get_number(oo, "mouse-select-pane")) {
-				window_set_active_at(w, mouse[1], mouse[2]);
+				window_set_active_at(w, mouse.x, mouse.y);
 				wp = w->active;
 			}
-			window_pane_mouse(wp, c, mouse[0], mouse[1], mouse[2]);
+			window_pane_mouse(wp, c, &mouse);
 			continue;
 		}
 

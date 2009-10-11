@@ -29,7 +29,7 @@ void	window_copy_resize(struct window_pane *, u_int, u_int);
 void	window_copy_key(struct window_pane *, struct client *, int);
 int	window_copy_key_input(struct window_pane *, int);
 void	window_copy_mouse(
-    	    struct window_pane *, struct client *, u_char, u_char, u_char);
+    	    struct window_pane *, struct client *, struct mouse_event *);
 
 void	window_copy_redraw_lines(struct window_pane *, u_int, u_int);
 void	window_copy_redraw_screen(struct window_pane *);
@@ -418,20 +418,20 @@ window_copy_key_input(struct window_pane *wp, int key)
 }
 
 void
-window_copy_mouse(struct window_pane *wp,
-    unused struct client *c, u_char b, u_char x, u_char y)
+window_copy_mouse(
+    struct window_pane *wp, unused struct client *c, struct mouse_event *m)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 
-	if ((b & 3) == 3)
+	if ((m->b & 3) == 3)
 		return;
-	if (x >= screen_size_x(s))
+	if (m->x >= screen_size_x(s))
 		return;
-	if (y >= screen_size_y(s))
+	if (m->y >= screen_size_y(s))
 		return;
 
-	window_copy_update_cursor(wp, x, y);
+	window_copy_update_cursor(wp, m->x, m->y);
 	if (window_copy_update_selection(wp))
  		window_copy_redraw_screen(wp);
 }
