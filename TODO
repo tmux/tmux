@@ -88,3 +88,4 @@
 - some way to KEEP a command running continually and just use its LAST line of
   output
 - bind commands to mouse buttons
+- dim/nobright etc in #[]
