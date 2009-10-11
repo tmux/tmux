@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.111 2009-10-11 23:38:16 tcunha Exp $ */
+/* $Id: window.c,v 1.112 2009-10-11 23:46:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -299,6 +299,23 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 			w->active = TAILQ_LAST(&w->panes, window_panes);
 		if (w->active == wp)
 			return;
+	}
+}
+
+void
+window_set_active_at(struct window *w, u_int x, u_int y)
+{
+	struct window_pane	*wp;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (!window_pane_visible(wp))
+			continue;
+		if (x < wp->xoff || x >= wp->xoff + wp->sx)
+			continue;
+		if (y < wp->yoff || y >= wp->yoff + wp->sy)
+			continue;
+		window_set_active_pane(w, wp);
+		break;
 	}
 }
 

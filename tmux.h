@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.462 2009-10-11 23:38:16 tcunha Exp $ */
+/* $Id: tmux.h,v 1.463 2009-10-11 23:46:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1646,6 +1646,7 @@ struct window	*window_create(const char *, const char *, const char *,
 		     const char *, struct environ *, struct termios *,
     		     u_int, u_int, u_int, char **);
 void		 window_destroy(struct window *);
+void		 window_set_active_at(struct window *, u_int, u_int);
 void		 window_set_active_pane(struct window *, struct window_pane *);
 struct window_pane *window_add_pane(struct window *, u_int);
 void		 window_resize(struct window *, u_int, u_int);
