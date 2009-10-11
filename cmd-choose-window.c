@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-window.c,v 1.17 2009-09-07 23:59:19 tcunha Exp $ */
+/* $Id: cmd-choose-window.c,v 1.18 2009-10-11 23:38:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -89,7 +89,7 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			flag = '+';
 		else if (wm == s->curw)
 			flag = '*';
-		else if (wm == SLIST_FIRST(&s->lastw))
+		else if (wm == TAILQ_FIRST(&s->lastw))
 			flag = '-';
 
 		title = w->active->screen->title;

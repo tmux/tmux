@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.67 2009-09-22 14:06:40 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.68 2009-10-11 23:38:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,6 +35,7 @@ void	cmd_new_session_init(struct cmd *, int);
 size_t	cmd_new_session_print(struct cmd *, char *, size_t);
 
 struct cmd_new_session_data {
+	char	*target;
 	char	*newname;
 	char	*winname;
 	char	*cmd;
@@ -43,7 +44,7 @@ struct cmd_new_session_data {
 
 const struct cmd_entry cmd_new_session_entry = {
 	"new-session", "new",
-	"[-d] [-n window-name] [-s session-name] [command]",
+	"[-d] [-n window-name] [-s session-name] [-t target-session] [command]",
 	CMD_STARTSERVER|CMD_CANTNEST|CMD_SENDENVIRON, 0,
 	cmd_new_session_init,
 	cmd_new_session_parse,
@@ -59,6 +60,7 @@ cmd_new_session_init(struct cmd *self, unused int arg)
 
 	self->data = data = xmalloc(sizeof *data);
 	data->flag_detached = 0;
+	data->target = NULL;
 	data->newname = NULL;
 	data->winname = NULL;
 	data->cmd = NULL;
@@ -73,7 +75,7 @@ cmd_new_session_parse(struct cmd *self, int argc, char **argv, char **cause)
 	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, "ds:n:")) != -1) {
+	while ((opt = getopt(argc, argv, "ds:t:n:")) != -1) {
 		switch (opt) {
 		case 'd':
 			data->flag_detached = 1;
@@ -81,6 +83,10 @@ cmd_new_session_parse(struct cmd *self, int argc, char **argv, char **cause)
 		case 's':
 			if (data->newname == NULL)
 				data->newname = xstrdup(optarg);
+			break;
+		case 't':
+			if (data->target == NULL)
+				data->target = xstrdup(optarg);
 			break;
 		case 'n':
 			if (data->winname == NULL)
@@ -93,6 +99,9 @@ cmd_new_session_parse(struct cmd *self, int argc, char **argv, char **cause)
 	argc -= optind;
 	argv += optind;
 	if (argc != 0 && argc != 1)
+		goto usage;
+
+	if (data->target != NULL && (argc == 1 || data->winname != NULL))
 		goto usage;
 
 	if (argc == 1)
@@ -111,7 +120,7 @@ int
 cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_new_session_data	*data = self->data;
-	struct session			*s;
+	struct session			*s, *groupwith;
 	struct window			*w;
 	struct environ			 env;
 	struct termios			 tio, *tiop;
@@ -124,6 +133,11 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "duplicate session: %s", data->newname);
 		return (-1);
 	}
+
+	groupwith = NULL;
+	if (data->target != NULL &&
+	    (groupwith = cmd_find_session(ctx, data->target)) == NULL)
+		return (-1);
 
 	/*
 	 * There are three cases:
@@ -205,7 +219,9 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		sy = 1;
 
 	/* Figure out the command for the new window. */
-	if (data->cmd != NULL)
+	if (data->target != NULL)
+		cmd = NULL;
+	else if (data->cmd != NULL)
 		cmd = data->cmd;
 	else
 		cmd = options_get_string(&global_s_options, "default-command");
@@ -228,13 +244,23 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	environ_free(&env);
 
 	/* Set the initial window name if one given. */
-	if (data->winname != NULL) {
+	if (cmd != NULL && data->winname != NULL) {
 		w = s->curw->window;
 
 		xfree(w->name);
 		w->name = xstrdup(data->winname);
 
 		options_set_number(&w->options, "automatic-rename", 0);
+	}
+
+	/*
+	 * If a target session is given, this is to be part of a session group,
+	 * so add it to the group and synchronize.
+	 */
+	if (groupwith != NULL) {
+		session_group_add(groupwith, s);
+		session_group_synchronize_to(s);
+		session_select(s, RB_ROOT(&s->windows)->idx);
 	}
 
 	/*

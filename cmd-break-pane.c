@@ -1,4 +1,4 @@
-/* $Id: cmd-break-pane.c,v 1.8 2009-08-16 19:16:27 tcunha Exp $ */
+/* $Id: cmd-break-pane.c,v 1.9 2009-10-11 23:38:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -78,6 +78,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
  		session_select(s, wl->idx);
 
 	server_redraw_session(s);
+	server_status_session_group(s);
 
 	return (0);
 }

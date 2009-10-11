@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-session.c,v 1.14 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-kill-session.c,v 1.15 2009-10-11 23:38:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,7 +53,7 @@ cmd_kill_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c->session == s) {
+		if (c != NULL && c->session == s) {
 			c->session = NULL;
 			server_write_client(c, MSG_EXIT, NULL, 0);
 		}

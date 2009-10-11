@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.461 2009-10-11 23:30:28 tcunha Exp $ */
+/* $Id: tmux.h,v 1.462 2009-10-11 23:38:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -737,10 +737,10 @@ struct winlink {
 	struct window	*window;
 
 	RB_ENTRY(winlink) entry;
-	SLIST_ENTRY(winlink) sentry;
+	TAILQ_ENTRY(winlink) sentry;
 };
 RB_HEAD(winlinks, winlink);
-SLIST_HEAD(winlink_stack, winlink);
+TAILQ_HEAD(winlink_stack, winlink);
 
 /* Layout direction. */
 enum layout_type {
@@ -795,6 +795,13 @@ struct session_alert {
 	SLIST_ENTRY(session_alert) entry;
 };
 
+struct session_group {
+	TAILQ_HEAD(, session) sessions;
+
+	TAILQ_ENTRY(session_group) entry;
+};
+TAILQ_HEAD(session_groups, session_group);
+
 struct session {
 	char		*name;
 	struct timeval	 tv;
@@ -822,6 +829,8 @@ struct session {
 	struct environ	 environ;
 
 	int		 references;
+
+	TAILQ_ENTRY(session) gentry;
 };
 ARRAY_DECL(sessions, struct session *);
 
@@ -1454,7 +1463,9 @@ void	 server_write_session(
 void	 server_redraw_client(struct client *);
 void	 server_status_client(struct client *);
 void	 server_redraw_session(struct session *);
+void	 server_redraw_session_group(struct session *);
 void	 server_status_session(struct session *);
+void	 server_status_session_group(struct session *);
 void	 server_redraw_window(struct window *);
 void	 server_status_window(struct window *);
 void	 server_lock(void);
@@ -1462,9 +1473,10 @@ void	 server_lock_session(struct session *);
 void	 server_lock_client(struct client *);
 int	 server_unlock(const char *);
 void	 server_kill_window(struct window *);
-int	 server_link_window(
+int	 server_link_window(struct session *,
 	     struct winlink *, struct session *, int, int, int, char **);
 void	 server_unlink_window(struct session *, struct winlink *);
+void	 server_destroy_session_group(struct session *);
 void	 server_destroy_session(struct session *);
 void	 server_set_identify(struct client *);
 void	 server_clear_identify(struct client *);
@@ -1717,6 +1729,7 @@ char 		*default_window_name(struct window *);
 /* session.c */
 extern struct sessions sessions;
 extern struct sessions dead_sessions;
+extern struct session_groups session_groups;
 void	 session_alert_add(struct session *, struct window *, int);
 void	 session_alert_cancel(struct session *, struct winlink *);
 int	 session_alert_has(struct session *, struct winlink *, int);
@@ -1737,6 +1750,13 @@ int		 session_next(struct session *, int);
 int		 session_previous(struct session *, int);
 int		 session_select(struct session *, int);
 int		 session_last(struct session *);
+struct session_group *session_group_find(struct session *);
+u_int		 session_group_index(struct session_group *);
+void		 session_group_add(struct session *, struct session *);
+void		 session_group_remove(struct session *);
+void		 session_group_synchronize_to(struct session *);
+void		 session_group_synchronize_from(struct session *);
+void		 session_group_synchronize1(struct session *, struct session *);
 
 /* utf8.c */
 void	utf8_build(void);

@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.21 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.22 2009-10-11 23:38:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,23 +42,32 @@ const struct cmd_entry cmd_list_sessions_entry = {
 int
 cmd_list_sessions_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct session	*s;
-	char		*tim;
-	u_int		 i;
-	time_t		 t;
+	struct session		*s;
+	struct session_group	*sg;
+	char			*tim, tmp[64];
+	u_int			 i, idx;
+	time_t			 t;
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
 		if (s == NULL)
 			continue;
 
+		sg = session_group_find(s);
+		if (sg == NULL)
+			*tmp = '\0';
+		else {
+			idx = session_group_index(sg);
+			xsnprintf(tmp, sizeof tmp, " (group %u)", idx);
+		}
+
 		t = s->tv.tv_sec;
 		tim = ctime(&t);
 		*strchr(tim, '\n') = '\0';
 
-		ctx->print(ctx, "%s: %u windows (created %s) [%ux%u]%s",
+		ctx->print(ctx, "%s: %u windows (created %s) [%ux%u]%s%s",
 		    s->name, winlink_count(&s->windows), tim, s->sx, s->sy,
-		    s->flags & SESSION_UNATTACHED ? "" : " (attached)");
+		    tmp, s->flags & SESSION_UNATTACHED ? "" : " (attached)");
 	}
 
 	return (0);
