@@ -1,7 +1,8 @@
-/* $Id: cmd-run-shell.c,v 1.2 2009-10-12 00:25:25 tcunha Exp $ */
+/* $Id: cmd-run-shell.c,v 1.3 2009-10-12 00:26:06 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
+ * Copyright (c) 2009 Nicholas Marriott <nicm@openbsd.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -126,7 +127,6 @@ cmd_run_shell_free(void *data)
 	struct cmd_run_shell_data	*cdata = data;
 	struct cmd_ctx			*ctx = &cdata->ctx;
 
-	return;
 	if (ctx->cmdclient != NULL) {
 		ctx->cmdclient->references--;
 		server_write_client(ctx->cmdclient, MSG_EXIT, NULL, 0);
