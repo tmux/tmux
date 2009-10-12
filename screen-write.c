@@ -347,6 +347,10 @@ screen_write_parsestyle(
 					bg = defgc->bg;
 			} else
 				return;
+		} else if (end > 2 && strncasecmp(tmp, "no", 2) == 0) {
+			if ((val = attributes_fromstring(tmp + 2)) == -1)
+				return;
+			attr &= ~val;
 		} else {
 			if ((val = attributes_fromstring(tmp)) == -1)
 				return;
