@@ -1,4 +1,4 @@
-/* $Id: job.c,v 1.4 2009-10-12 00:21:08 tcunha Exp $ */
+/* $Id: job.c,v 1.5 2009-10-12 00:22:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -106,7 +106,8 @@ job_add(struct jobs *jobs, struct client *c, const char *cmd,
 
 	job->flags = JOB_DONE;
 
-	RB_INSERT(jobs, jobs, job);
+	if (jobs != NULL)
+		RB_INSERT(jobs, jobs, job);
 	SLIST_INSERT_HEAD(&all_jobs, job, lentry);
 	
 	return (job);
@@ -119,6 +120,9 @@ job_free(struct job *job)
 	job_kill(job);
 
 	xfree(job->cmd);
+
+	if (job->freefn != NULL && job->data != NULL)
+		job->freefn(job->data);
 
 	if (job->fd != -1)
 		close(job->fd);
