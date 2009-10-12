@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.467 2009-10-12 00:18:19 tcunha Exp $ */
+/* $Id: tmux.h,v 1.468 2009-10-12 00:21:08 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -565,6 +565,7 @@ ARRAY_DECL(keylist, int);
 struct job {
 	char		*cmd;
 	pid_t		 pid;
+	int		 status;
 
 	struct client	*client;
 
@@ -574,6 +575,9 @@ struct job {
 	void		(*callbackfn)(struct job *);
 	void		(*freefn)(void *);
 	void		*data;
+
+	int		 flags;
+#define JOB_DONE 0x1
 
 	RB_ENTRY(job)	 entry;
 	SLIST_ENTRY(job) lentry;
