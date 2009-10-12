@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.121 2009-10-07 17:10:44 tcunha Exp $ */
+/* $Id: cmd.c,v 1.122 2009-10-12 00:08:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -57,6 +57,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_list_clients_entry,
 	&cmd_list_commands_entry,
 	&cmd_list_keys_entry,
+	&cmd_list_panes_entry,
 	&cmd_list_sessions_entry,
 	&cmd_list_windows_entry,
 	&cmd_load_buffer_entry,

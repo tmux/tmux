@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.185 2009-10-11 23:55:26 tcunha Exp $
+.\" $Id: tmux.1,v 1.186 2009-10-12 00:08:12 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -775,6 +775,10 @@ exists, it is killed, otherwise an error is generated.
 If
 .Fl d
 is given, the newly linked window is not selected.
+.It Ic list-panes Op Fl t Ar target-window
+.D1 (alias: Ic lsp )
+List the panes in the current window or in
+.Ar target-window .
 .It Ic list-windows Op Fl t Ar target-session
 .D1 (alias: Ic lsw )
 List windows in the current session or in
