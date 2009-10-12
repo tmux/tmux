@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.200 2009-10-11 23:55:26 tcunha Exp $ */
+/* $Id: server.c,v 1.201 2009-10-12 00:12:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -72,9 +72,7 @@ void		 server_handle_windows(void);
 void		 server_fill_clients(void);
 void		 server_handle_clients(void);
 void		 server_fill_jobs(void);
-void		 server_fill_jobs1(struct jobs *);
 void		 server_handle_jobs(void);
-void		 server_handle_jobs1(struct jobs *);
 void		 server_accept_client(int);
 void		 server_handle_client(struct client *);
 void		 server_handle_window(struct window *, struct window_pane *);
@@ -417,11 +415,7 @@ server_main(int srv_fd)
 		/* Set window names. */
 		set_window_names();
 
-		/*
-		 * Handle window and client sockets. Clients can create
-		 * windows, so windows must come first to avoid messing up by
-		 * increasing the array size.
-		 */
+		/* Handle window and client sockets. */
 		server_handle_jobs();
 		server_handle_windows();
 		server_handle_clients();
@@ -767,22 +761,9 @@ server_fill_clients(void)
 void
 server_fill_jobs(void)
 {
- 	struct client	*c;
-	u_int		 i;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL)
-			server_fill_jobs1(&c->status_jobs);
-	}
-}
-
-void
-server_fill_jobs1(struct jobs *jobs)
-{
 	struct job	*job;
 
-	RB_FOREACH(job, jobs, jobs) {
+	SLIST_FOREACH(job, &all_jobs, lentry) {
 		if (job->fd == -1)
 			continue;
 		server_poll_add(job->fd, POLLIN);
@@ -793,23 +774,10 @@ server_fill_jobs1(struct jobs *jobs)
 void
 server_handle_jobs(void)
 {
-	struct client	*c;
-	u_int		 i;
-	
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL)
-			server_handle_jobs1(&c->status_jobs);
-	}
-}
-
-void
-server_handle_jobs1(struct jobs *jobs)
-{
 	struct job	*job;
 	struct pollfd	*pfd;
 
-	RB_FOREACH(job, jobs, jobs) {
+	SLIST_FOREACH(job, &all_jobs, lentry) {
 		if (job->fd == -1)
 			continue;
 		if ((pfd = server_poll_lookup(job->fd)) == NULL)

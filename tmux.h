@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.465 2009-10-12 00:08:12 tcunha Exp $ */
+/* $Id: tmux.h,v 1.466 2009-10-12 00:12:33 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -576,8 +576,10 @@ struct job {
 	void		*data;
 
 	RB_ENTRY(job)	 entry;
+	SLIST_ENTRY(job) lentry;
 };
 RB_HEAD(jobs, job);
+SLIST_HEAD(joblist, job);
 
 /* Screen selection. */
 struct screen_sel {
@@ -1197,7 +1199,7 @@ struct options_entry *options_set_data(
 void   *options_get_data(struct options *, const char *);
 
 /* job.c */
-extern struct jobs jobs_tree;
+extern struct joblist all_jobs;
 int	job_cmp(struct job *, struct job *);
 RB_PROTOTYPE(jobs, job, entry, job_cmp);
 void	job_tree_init(struct jobs *);

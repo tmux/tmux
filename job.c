@@ -1,4 +1,4 @@
-/* $Id: job.c,v 1.2 2009-10-11 23:59:34 tcunha Exp $ */
+/* $Id: job.c,v 1.3 2009-10-12 00:12:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,6 +28,9 @@
  * Job scheduling. Run queued commands in the background and record their
  * output.
  */
+
+/* All jobs list. */
+struct joblist	all_jobs = SLIST_HEAD_INITIALIZER(&all_jobs);
 
 RB_GENERATE(jobs, job, entry, job_cmp);
 
@@ -66,6 +69,7 @@ job_tree_free(struct jobs *jobs)
 	while (!RB_EMPTY(jobs)) {
 		job = RB_ROOT(jobs);
 		RB_REMOVE(jobs, jobs, job);
+		SLIST_REMOVE(&all_jobs, job, job, lentry);
 		job_free(job);
 	}
 }
@@ -89,6 +93,7 @@ job_add(struct jobs *jobs, struct client *c, const char *cmd,
  
 	job = xmalloc(sizeof *job);
 	job->cmd = xstrdup(cmd);
+	job->pid = -1;
 
 	job->client = c;
 
@@ -100,6 +105,7 @@ job_add(struct jobs *jobs, struct client *c, const char *cmd,
 	job->data = data;
 
 	RB_INSERT(jobs, jobs, job);
+	SLIST_INSERT_HEAD(&all_jobs, job, lentry);
 	
 	return (job);
 }
