@@ -646,7 +646,7 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 		ictx->wp->window->flags |= WINDOW_BELL;
 		break;
 	case '\010': 	/* BS */
-		screen_write_cursorleft(&ictx->ctx, 1);
+		screen_write_backspace(&ictx->ctx);
 		break;
 	case '\011': 	/* TAB */
 		/* Don't tab beyond the end of the line. */

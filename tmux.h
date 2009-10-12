@@ -1646,6 +1646,7 @@ void	 screen_write_putc(
     	     struct screen_write_ctx *, struct grid_cell *, u_char);
 void	 screen_write_copy(struct screen_write_ctx *,
 	     struct screen *, u_int, u_int, u_int, u_int);
+void	 screen_write_backspace(struct screen_write_ctx *);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorright(struct screen_write_ctx *, u_int);

@@ -513,6 +513,25 @@ screen_write_cursorleft(struct screen_write_ctx *ctx, u_int nx)
 	s->cx -= nx;
 }
 
+/* Backspace; cursor left unless at start of wrapped line when can move up. */
+void
+screen_write_backspace(struct screen_write_ctx *ctx)
+{
+	struct screen		*s = ctx->s;
+	struct grid_line	*gl;
+
+	if (s->cx == 0) {
+		if (s->cy == 0)
+			return;
+		gl = &s->grid->linedata[s->grid->hsize + s->cy - 1];
+		if (gl->flags & GRID_LINE_WRAPPED) {
+			s->cy--;
+			s->cx = screen_size_x(s) - 1;
+		}
+	} else
+		s->cx--;
+}
+
 /* VT100 alignment test. */
 void
 screen_write_alignmenttest(struct screen_write_ctx *ctx)
@@ -536,6 +555,7 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	s->cy = 0;
 
 	s->rupper = 0;
+
 	s->rlower = screen_size_y(s) - 1;
 
 	tty_write(tty_cmd_alignmenttest, &ttyctx);
