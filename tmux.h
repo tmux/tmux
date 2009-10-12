@@ -195,9 +195,15 @@ enum tty_code_code {
 	TTYC_CNORM,	/* cursor_normal, ve */
 	TTYC_COLORS,	/* max_colors, Co */
 	TTYC_CSR,	/* change_scroll_region, cs */
+	TTYC_CUB,	/* parm_left_cursor, LE */
+	TTYC_CUB1,	/* cursor_left, le */
 	TTYC_CUD,	/* parm_down_cursor, DO */
 	TTYC_CUD1,	/* cursor_down, do */
+	TTYC_CUF,	/* parm_right_cursor, RI */
+	TTYC_CUF1,	/* cursor_right, nd */
 	TTYC_CUP,	/* cursor_address, cm */
+	TTYC_CUU,	/* parm_up_cursor, UP */
+	TTYC_CUU1,	/* cursor_up, up */
 	TTYC_DCH,	/* parm_dch, DC */
 	TTYC_DCH1,	/* delete_character, dc */
 	TTYC_DIM,	/* enter_dim_mode, mh */
@@ -206,6 +212,8 @@ enum tty_code_code {
 	TTYC_EL,	/* clr_eol, ce */
 	TTYC_EL1,	/* clr_bol, cb */
 	TTYC_ENACS,	/* ena_acs, eA */
+	TTYC_HOME,	/* cursor_home, ho */
+	TTYC_HPA,	/* column_address, ch */
 	TTYC_ICH,	/* parm_ich, IC */
 	TTYC_ICH1,	/* insert_character, ic */
 	TTYC_IL,	/* parm_insert_line, IL */
@@ -232,8 +240,8 @@ enum tty_code_code {
 	TTYC_KF17,	/* key_f17, F7 */
 	TTYC_KF18,	/* key_f18, F8 */
 	TTYC_KF19,	/* key_f19, F9 */
-	TTYC_KF20,	/* key_f20, F10 */
 	TTYC_KF2,	/* key_f2, k2 */
+	TTYC_KF20,	/* key_f20, F10 */
 	TTYC_KF3,	/* key_f3, k3 */
 	TTYC_KF4,	/* key_f4, k4 */
 	TTYC_KF5,	/* key_f5, k5 */
@@ -262,6 +270,7 @@ enum tty_code_code {
 	TTYC_SMKX,	/* keypad_xmit, ks */
 	TTYC_SMSO,	/* enter_standout_mode, so */
 	TTYC_SMUL,	/* enter_underline_mode, us */
+	TTYC_VPA,	/* row_address, cv */
 	TTYC_XENL,	/* eat_newline_glitch, xn */
 };
 #define NTTYCODE (TTYC_XENL + 1)

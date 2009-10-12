@@ -21,6 +21,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
@@ -916,13 +917,14 @@ tty_region(struct tty *tty, u_int rupper, u_int rlower)
 
 	tty->rupper = rupper;
 	tty->rlower = rlower;
-	
+
 	tty->cx = 0;
 	tty->cy = 0;
 
 	tty_putcode2(tty, TTYC_CSR, tty->rupper, tty->rlower);
 }
 
+/* Move cursor inside pane. */
 void
 tty_cursor_pane(struct tty *tty, const struct tty_ctx *ctx, u_int cx, u_int cy)
 {
@@ -931,17 +933,122 @@ tty_cursor_pane(struct tty *tty, const struct tty_ctx *ctx, u_int cx, u_int cy)
 	tty_cursor(tty, wp->xoff + cx, wp->yoff + cy);
 }
 
+/* Move cursor to absolute position. */
 void
 tty_cursor(struct tty *tty, u_int cx, u_int cy)
 {
-	if (cx == 0 && tty->cx != 0 && tty->cy == cy) {
-		tty->cx = 0;
-		tty_putc(tty, '\r');
-	} else if (tty->cx != cx || tty->cy != cy) {
-		tty->cx = cx;
-		tty->cy = cy;
-		tty_putcode2(tty, TTYC_CUP, tty->cy, tty->cx);
+	struct tty_term	*term = tty->term;
+	u_int		 thisx, thisy;
+	int		 change;
+	
+	if (cx > tty->sx - 1)
+		cx = tty->sx - 1;
+
+	thisx = tty->cx;
+	if (thisx > tty->sx - 1)
+		thisx = tty->sx - 1;
+	thisy = tty->cy;
+
+	/* No change. */
+	if (cx == thisx && cy == thisy)
+		return;
+
+	/* Move to home position (0, 0). */
+	if (cx == 0 && cy == 0 && tty_term_has(term, TTYC_HOME)) {
+		tty_putcode(tty, TTYC_HOME);
+		goto out;
 	}
+
+	/* Zero on the next line. */
+	if (cx == 0 && cy == thisy + 1) {
+		tty_putc(tty, '\r');
+		tty_putc(tty, '\n');
+		goto out;
+	}
+
+	/* Row staying the same. */
+	if (cy == thisy) {
+		/* To left edge. */
+		if (cx == 0)	{
+			tty_putc(tty, '\r');
+			goto out;
+		}
+
+		/* One to the left. */
+		if (cx == thisx - 1 && tty_term_has(term, TTYC_CUB1)) {
+			tty_putcode(tty, TTYC_CUB1);
+			goto out;
+		}
+
+		/* One to the right. */
+		if (cx == thisx + 1 && tty_term_has(term, TTYC_CUF1)) {
+			tty_putcode(tty, TTYC_CUF1);
+			goto out;
+		}
+
+		/* Calculate difference. */
+		change = thisx - cx;	/* +ve left, -ve right */
+
+		/*
+		 * Use HPA if change is larger than absolute, otherwise move
+		 * the cursor with CUB/CUF.
+		 */
+		if (abs(change) > cx && tty_term_has(term, TTYC_HPA)) {
+			tty_putcode1(tty, TTYC_HPA, cx);
+			goto out;
+		} else if (change > 0 && tty_term_has(term, TTYC_CUB)) {
+			tty_putcode1(tty, TTYC_CUB, change);
+			goto out;
+		} else if (change < 0 && tty_term_has(term, TTYC_CUF)) {
+			tty_putcode1(tty, TTYC_CUF, -change);
+			goto out;
+		}
+	}
+
+	/* Column staying the same. */
+	if (cx == thisx ) {
+		/* One above. */
+		if (cy != tty->rupper && 
+		    cy == thisy - 1 && tty_term_has(term, TTYC_CUU1)) {
+			tty_putcode(tty, TTYC_CUU1);
+			goto out;
+		}
+
+		/* One below. */
+		if (cy != tty->rlower &&
+		    cy == thisy + 1 && tty_term_has(term, TTYC_CUD1)) {
+			tty_putcode(tty, TTYC_CUD1);
+			goto out;
+		}
+
+		/* Calculate difference. */
+		change = thisy - cy;	/* +ve up, -ve down */
+
+		/*
+		 * Use VPA if change is larger than absolute or if this change
+		 * would cross the scroll region, otherwise use CUU/CUD.
+		 */
+		if ((abs(change) > cy ||
+		    (change < 0 && cy - change > tty->rlower) ||
+		    (change > 0 && cy - change < tty->rupper)) &&
+		    tty_term_has(term, TTYC_VPA)) {
+			tty_putcode1(tty, TTYC_VPA, cy);
+			goto out;
+		} else if (change > 0 && tty_term_has(term, TTYC_CUU)) {
+			tty_putcode1(tty, TTYC_CUU, change);
+			goto out;
+		} else if (change < 0 && tty_term_has(term, TTYC_CUD)) {
+			tty_putcode1(tty, TTYC_CUD, -change);
+			goto out;
+		}
+	}
+
+	/* Absolute movement. */
+	tty_putcode2(tty, TTYC_CUP, cy, cx);
+
+out:
+	tty->cx = cx;
+	tty->cy = cy;
 }
 
 void
