@@ -893,17 +893,19 @@ tty_reset(struct tty *tty)
 	memcpy(gc, &grid_default_cell, sizeof *gc);
 }
 
+/* Set region inside pane. */
 void
 tty_region_pane(
     struct tty *tty, const struct tty_ctx *ctx, u_int rupper, u_int rlower)
 {
   	struct window_pane	*wp = ctx->wp;
 
-	tty_region_absolute(tty, wp->yoff + rupper, wp->yoff + rlower);
+	tty_region(tty, wp->yoff + rupper, wp->yoff + rlower);
 }
 
+/* Set region at absolute position. */
 void
-tty_region_absolute(struct tty *tty, u_int rupper, u_int rlower)
+tty_region(struct tty *tty, u_int rupper, u_int rlower)
 {
 	if (tty->rlower == rlower && tty->rupper == rupper)
 		return;
