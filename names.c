@@ -1,4 +1,4 @@
-/* $Id: names.c,v 1.16 2009-09-20 22:11:27 tcunha Exp $ */
+/* $Id: names.c,v 1.17 2009-10-12 00:03:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -71,6 +71,12 @@ set_window_names(void)
 			else
 				wname = parse_window_name(name);
 			xfree(name);
+		}
+
+		if (w->active->fd == -1) {
+			xasprintf(&name, "%s[dead]", wname);
+			xfree(wname);
+			wname = name;
 		}
 
 		if (strcmp(wname, w->name) == 0)
