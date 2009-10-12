@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.68 2009-10-11 23:38:16 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.69 2009-10-12 00:49:06 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,7 +20,6 @@
 
 #include <string.h>
 #include <termios.h>
-#include <unistd.h>
 
 #include "tmux.h"
 
