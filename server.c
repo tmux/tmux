@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.204 2009-10-12 00:21:08 tcunha Exp $ */
+/* $Id: server.c,v 1.205 2009-10-12 00:25:25 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -813,13 +813,17 @@ void
 server_check_jobs(void)
 {
 	struct job	*job;
-
+	
+restart:
 	SLIST_FOREACH(job, &all_jobs, lentry) {
 		if (job->flags & JOB_DONE || job->fd != -1 || job->pid != -1)
 			continue;
-		if (job->callbackfn != NULL)
-			job->callbackfn(job);
 		job->flags |= JOB_DONE;
+
+		if (job->callbackfn != NULL) {
+			job->callbackfn(job);
+			goto restart;	/* could be freed by callback */
+		}
 	}
 }
 

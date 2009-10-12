@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.187 2009-10-12 00:09:48 tcunha Exp $
+.\" $Id: tmux.1,v 1.188 2009-10-12 00:25:25 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 10 2009 $
+.Dd $Mdocdate: October 11 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2068,8 +2068,8 @@ option.
 .D1 (alias: Ic run )
 Execute
 .Ar command
-without creating a window.
-Any output to stdout is displayed in output mode.
+in the background without creating a window.
+After the command finishes, any output to stdout is displayed in output mode.
 If
 .Ar command
 doesn't return success, the exit status is also displayed.

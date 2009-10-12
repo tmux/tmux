@@ -1,4 +1,4 @@
-/* $Id: job.c,v 1.5 2009-10-12 00:22:17 tcunha Exp $ */
+/* $Id: job.c,v 1.6 2009-10-12 00:25:25 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -69,7 +69,6 @@ job_tree_free(struct jobs *jobs)
 	while (!RB_EMPTY(jobs)) {
 		job = RB_ROOT(jobs);
 		RB_REMOVE(jobs, jobs, job);
-		SLIST_REMOVE(&all_jobs, job, job, lentry);
 		job_free(job);
 	}
 }
@@ -119,6 +118,7 @@ job_free(struct job *job)
 {
 	job_kill(job);
 
+	SLIST_REMOVE(&all_jobs, job, job, lentry);
 	xfree(job->cmd);
 
 	if (job->freefn != NULL && job->data != NULL)
