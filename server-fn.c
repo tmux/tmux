@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.93 2009-10-11 23:38:16 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.94 2009-10-12 00:37:41 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -284,8 +284,10 @@ server_link_window(struct session *src, struct winlink *srcwl,
 			winlink_remove(&dst->windows, dstwl);
 
 			/* Force select/redraw if current. */
-			if (dstwl == dst->curw)
+			if (dstwl == dst->curw) {
 				selectflag = 1;
+				dst->curw = NULL;
+			}
 		}
 	}
 
