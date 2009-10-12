@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.188 2009-10-12 00:25:25 tcunha Exp $
+.\" $Id: tmux.1,v 1.189 2009-10-12 00:35:08 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -840,6 +840,30 @@ Move to the next window in the session.
 If
 .Fl a
 is used, move to the next window with a bell, activity or content alert.
+.It Xo Ic pipe-pane
+.Op Fl o
+.Op Fl t Ar target-pane
+.Op Ar command
+.Xc
+.D1 (alias: Ic pipep )
+Pipe any output sent by the program in
+.Ar target-pane
+to a shell command.
+A pane may only be piped to one command at a time, any existing pipe is
+closed before
+.Ar command
+is executed.
+If no
+.Ar command
+is given, the current pipe (if any) is closed.
+.Pp
+The
+.Fl o
+option only opens a new pipe if no previous pipe exists, allowing a pipe to
+be toggled with a single key, for example:
+.Bd -literal -offset indent
+bind-key C-p pipe-pane -o 'cat >>~/output'
+.Ed
 .It Xo Ic previous-window
 .Op Fl a
 .Op Fl t Ar target-session

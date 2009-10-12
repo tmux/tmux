@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.114 2009-10-12 00:18:19 tcunha Exp $ */
+/* $Id: window.c,v 1.115 2009-10-12 00:35:08 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -423,6 +423,10 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->sx = sx;
 	wp->sy = sy;
 
+	wp->pipe_fd = -1;
+	wp->pipe_buf = NULL;
+	wp->pipe_off = 0;
+
 	wp->saved_grid = NULL;
 
 	screen_init(&wp->base, sx, sy, hlimit);
@@ -445,6 +449,11 @@ window_pane_destroy(struct window_pane *wp)
 	screen_free(&wp->base);
 	if (wp->saved_grid != NULL)
 		grid_destroy(wp->saved_grid);
+
+	if (wp->pipe_fd != -1) {
+		buffer_destroy(wp->pipe_buf);
+		close(wp->pipe_fd);
+	}
 
 	buffer_destroy(wp->in);
 	buffer_destroy(wp->out);
@@ -628,7 +637,15 @@ window_pane_reset_mode(struct window_pane *wp)
 void
 window_pane_parse(struct window_pane *wp)
 {
+	size_t	new_size;
+
+	new_size = BUFFER_USED(wp->in) - wp->pipe_off;
+	if (wp->pipe_fd != -1 && new_size > 0)
+		buffer_write(wp->pipe_buf, BUFFER_OUT(wp->in), new_size);
+	
 	input_parse(wp);
+
+	wp->pipe_off = BUFFER_USED(wp->in);
 }
 
 void
