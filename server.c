@@ -1054,9 +1054,9 @@ server_handle_client(struct client *c)
 
 	status = options_get_number(oo, "status");
 	if (!window_pane_visible(wp) || wp->yoff + s->cy >= c->tty.sy - status)
-		tty_cursor(&c->tty, 0, 0, 0, 0);
+		tty_cursor(&c->tty, 0, 0);
 	else
-		tty_cursor(&c->tty, s->cx, s->cy, wp->xoff, wp->yoff);
+		tty_cursor(&c->tty, wp->xoff + s->cx, wp->yoff + s->cy);
 
 	mode = s->mode;
 	if (TAILQ_NEXT(TAILQ_FIRST(&w->panes), entry) != NULL &&
