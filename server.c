@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.201 2009-10-12 00:12:32 tcunha Exp $ */
+/* $Id: server.c,v 1.202 2009-10-12 00:14:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -89,6 +89,7 @@ void		 server_set_title(struct client *);
 void		 server_check_timers(struct client *);
 void		 server_lock_server(void);
 void		 server_lock_sessions(void);
+void		 server_check_clients(void);
 void		 server_second_timers(void);
 int		 server_update_socket(void);
 
@@ -372,6 +373,9 @@ server_main(int srv_fd)
 			sigusr1 = 0;
 		}
 
+		/* Process client actions. */
+		server_check_clients();
+
 		/* Initialise pollfd array and add server socket. */
 		server_poll_reset();
 		server_poll_add(srv_fd, POLLIN);
@@ -596,17 +600,46 @@ server_handle_windows(void)
 	}
 }
 
+/* Check clients for redraw and timers. */
+void
+server_check_clients(void)
+{
+	struct client		*c;
+	struct window		*w;
+	struct window_pane	*wp;
+	u_int		 	 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+
+		server_check_timers(c);
+		server_check_redraw(c);
+	}
+
+	/*
+	 * Clear any window redraw flags (will have been redrawn as part of
+	 * client).
+	 */
+	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+		w = ARRAY_ITEM(&windows, i);
+		if (w == NULL)
+			continue;
+
+		w->flags &= ~WINDOW_REDRAW;
+		TAILQ_FOREACH(wp, &w->panes, entry)
+			wp->flags &= ~PANE_REDRAW;
+	}
+}
+
 /* Check for general redraw on client. */
 void
 server_check_redraw(struct client *c)
 {
-	struct session		*s;
+	struct session		*s = c->session;
 	struct window_pane	*wp;
 	int		 	 flags, redraw;
-
-	if (c == NULL || c->session == NULL)
-		return;
-	s = c->session;
 
 	flags = c->tty.flags & TTY_FREEZE;
 	c->tty.flags &= ~TTY_FREEZE;
@@ -667,14 +700,10 @@ server_set_title(struct client *c)
 void
 server_check_timers(struct client *c)
 {
-	struct session	*s;
+	struct session	*s = c->session;
 	struct job	*job;
 	struct timeval	 tv;
 	u_int		 interval;
-
-	if (c == NULL || c->session == NULL)
-		return;
-	s = c->session;
 
 	if (gettimeofday(&tv, NULL) != 0)
 		fatal("gettimeofday failed");
@@ -712,17 +741,12 @@ server_check_timers(struct client *c)
 void
 server_fill_clients(void)
 {
-	struct client		*c;
-	struct window		*w;
-	struct window_pane	*wp;
-	u_int		 	 i;
-	int			 events;
+	struct client	*c;
+	u_int		 i;
+	int		 events;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-
-		server_check_timers(c);
-		server_check_redraw(c);
 
 		if (c != NULL) {
 			events = 0;
@@ -740,20 +764,6 @@ server_fill_clients(void)
 				events |= POLLOUT;
 			server_poll_add(c->tty.fd, events);
 		}
-	}
-
-	/*
-	 * Clear any window redraw flags (will have been redrawn as part of
-	 * client).
-	 */
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		w = ARRAY_ITEM(&windows, i);
-		if (w == NULL)
-			continue;
-
-		w->flags &= ~WINDOW_REDRAW;
-		TAILQ_FOREACH(wp, &w->panes, entry)
-			wp->flags &= ~PANE_REDRAW;
 	}
 }
 
