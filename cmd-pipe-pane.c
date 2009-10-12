@@ -1,4 +1,4 @@
-/* $Id: cmd-pipe-pane.c,v 1.1 2009-10-12 00:35:08 tcunha Exp $ */
+/* $Id: cmd-pipe-pane.c,v 1.2 2009-10-12 00:36:31 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,7 +20,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <paths.h>
 #include <string.h>
 #include <unistd.h>
 
