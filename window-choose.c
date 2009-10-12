@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.23 2009-09-11 14:13:52 tcunha Exp $ */
+/* $Id: window-choose.c,v 1.24 2009-10-12 00:18:19 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,7 +27,7 @@ void	window_choose_free(struct window_pane *);
 void	window_choose_resize(struct window_pane *, u_int, u_int);
 void	window_choose_key(struct window_pane *, struct client *, int);
 void	window_choose_mouse(
-    	    struct window_pane *, struct client *, u_char, u_char, u_char);
+    	    struct window_pane *, struct client *, struct mouse_event *);
 
 void	window_choose_redraw_screen(struct window_pane *);
 void	window_choose_write_line(
@@ -264,22 +264,22 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 }
 
 void
-window_choose_mouse(struct window_pane *wp,
-    unused struct client *c, u_char b, u_char x, u_char y)
+window_choose_mouse(
+    struct window_pane *wp, unused struct client *c, struct mouse_event *m)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	struct window_choose_mode_item	*item;
 	u_int				 idx;
 
-	if ((b & 3) == 3)
+	if ((m->b & 3) == 3)
 		return;
-	if (x >= screen_size_x(s))
+	if (m->x >= screen_size_x(s))
 		return;
-	if (y >= screen_size_y(s))
+	if (m->y >= screen_size_y(s))
 		return;
 
-	idx = data->top + y;
+	idx = data->top + m->y;
 	if (idx >= ARRAY_LENGTH(&data->list))
 		return;
 	data->selected = idx;

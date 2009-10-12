@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.113 2009-10-12 00:04:56 tcunha Exp $ */
+/* $Id: window.c,v 1.114 2009-10-12 00:18:19 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -660,25 +660,23 @@ window_pane_key(struct window_pane *wp, struct client *c, int key)
 
 void
 window_pane_mouse(
-    struct window_pane *wp, struct client *c, u_char b, u_char x, u_char y)
+    struct window_pane *wp, struct client *c, struct mouse_event *m)
 {
 	if (!window_pane_visible(wp))
 		return;
 
-	/* XXX convert from 1-based? */
-
-	if (x < wp->xoff || x >= wp->xoff + wp->sx)
+	if (m->x < wp->xoff || m->x >= wp->xoff + wp->sx)
 		return;
-	if (y < wp->yoff || y >= wp->yoff + wp->sy)
+	if (m->y < wp->yoff || m->y >= wp->yoff + wp->sy)
 		return;
-	x -= wp->xoff;
-	y -= wp->yoff;
+	m->x -= wp->xoff;
+	m->y -= wp->yoff;
 
 	if (wp->mode != NULL) {
 		if (wp->mode->mouse != NULL)
-			wp->mode->mouse(wp, c, b, x, y);
+			wp->mode->mouse(wp, c, m);
 	} else if (wp->fd != -1)
-		input_mouse(wp, b, x, y);
+		input_mouse(wp, m);
 }
 
 int
