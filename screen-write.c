@@ -833,15 +833,15 @@ screen_write_mousemode(struct screen_write_ctx *ctx, int state)
 		s->mode &= ~MODE_MOUSE;
 }
 
-/* Line feed (down with scroll). */
+/*
+ * Line feed the screen only (don't update the tty). Used for printing single
+ * characters, where might want to let the scroll happen naturally.
+ */
 void
-screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
+screen_write_linefeedscreen(struct screen_write_ctx *ctx, int wrapped)
 {
 	struct screen		*s = ctx->s;
 	struct grid_line	*gl;
-	struct tty_ctx		 ttyctx;
-
-	screen_write_initctx(ctx, &ttyctx);
 
 	gl = &s->grid->linedata[s->grid->hsize + s->cy];
 	if (wrapped)
@@ -853,6 +853,17 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
 		grid_view_scroll_region_up(s->grid, s->rupper, s->rlower);
 	else if (s->cy < screen_size_y(s) - 1)
 		s->cy++;
+}
+
+/* Line feed (down with scroll). */
+void
+screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
+{
+	struct tty_ctx	 ttyctx;
+
+	screen_write_initctx(ctx, &ttyctx);
+
+	screen_write_linefeedscreen(ctx, wrapped);
 
  	tty_write(tty_cmd_linefeed, &ttyctx);
 }
@@ -952,6 +963,7 @@ screen_write_cell(
     struct screen_write_ctx *ctx, const struct grid_cell *gc, u_char *udata)
 {
 	struct screen		*s = ctx->s;
+	struct window_pane	*wp = ctx->wp;
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
 	struct grid_utf8	 gu, *tmp_gu;
@@ -1016,8 +1028,16 @@ screen_write_cell(
 
 	/* Check this will fit on the current line and wrap if not. */
 	if (s->cx > screen_size_x(s) - width) {
-		screen_write_carriagereturn(ctx);
-		screen_write_linefeed(ctx, 1);
+		/* 
+		 * Don't update the terminal now, just update the screen and
+		 * leave the cursor to scroll naturally, unless this is only
+		 * part of the screen width.
+		 */
+		if (wp->xoff != 0 || wp->sx != screen_size_x(s))
+			screen_write_linefeed(ctx, 1);
+		else
+			screen_write_linefeedscreen(ctx, 1);
+		s->cx = 0;	/* carriage return */
 	}
 
 	/* Sanity checks. */
