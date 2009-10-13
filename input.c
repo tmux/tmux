@@ -1185,6 +1185,10 @@ input_handle_sequence_sm(struct input_ctx *ictx)
 			screen_write_kcursormode(&ictx->ctx, 1);
 			log_debug("kcursor on");
 			break;
+		case 3:		/* DECCOLM */
+			screen_write_cursormove(&ictx->ctx, 0, 0);			
+			screen_write_clearscreen(&ictx->ctx);
+			break;
 		case 25:	/* TCEM */
 			screen_write_cursormode(&ictx->ctx, 1);
 			log_debug("cursor on");
@@ -1256,6 +1260,10 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 		case 1:		/* GATM */
 			screen_write_kcursormode(&ictx->ctx, 0);
 			log_debug("kcursor off");
+			break;
+		case 3:		/* DECCOLM */
+			screen_write_cursormove(&ictx->ctx, 0, 0);			
+			screen_write_clearscreen(&ictx->ctx);
 			break;
 		case 25:	/* TCEM */
 			screen_write_cursormode(&ictx->ctx, 0);
