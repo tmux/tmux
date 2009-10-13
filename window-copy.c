@@ -278,6 +278,24 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		window_copy_update_selection(wp);
 		window_copy_redraw_screen(wp);
 		break;
+	case MODEKEYCOPY_TOPLINE:
+		data->cx = 0;
+		data->cy = 0;
+		window_copy_update_selection(wp);
+		window_copy_redraw_screen(wp);
+		break;
+	case MODEKEYCOPY_MIDDLELINE:
+		data->cx = 0;
+		data->cy = (screen_size_y(s) - 1) / 2;
+		window_copy_update_selection(wp);
+		window_copy_redraw_screen(wp);
+		break;
+	case MODEKEYCOPY_BOTTOMLINE:
+		data->cx = 0;
+		data->cy = screen_size_y(s) - 1;
+		window_copy_update_selection(wp);
+		window_copy_redraw_screen(wp);
+		break;
 	case MODEKEYCOPY_STARTSELECTION:
  		window_copy_start_selection(wp);
 		window_copy_redraw_screen(wp);

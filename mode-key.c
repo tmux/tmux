@@ -77,6 +77,7 @@ struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
 /* Copy keys command strings. */
 struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_BACKTOINDENTATION, "back-to-indentation" },
+	{ MODEKEYCOPY_BOTTOMLINE, "bottom-line" },
 	{ MODEKEYCOPY_CANCEL, "cancel" },
 	{ MODEKEYCOPY_CLEARSELECTION, "clear-selection" },
 	{ MODEKEYCOPY_COPYSELECTION, "copy-selection" },
@@ -84,6 +85,7 @@ struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_ENDOFLINE, "end-of-line" },
 	{ MODEKEYCOPY_GOTOLINE, "goto-line" },
 	{ MODEKEYCOPY_LEFT, "cursor-left" },
+	{ MODEKEYCOPY_MIDDLELINE, "middle-line" },
 	{ MODEKEYCOPY_NEXTPAGE, "page-down" },
 	{ MODEKEYCOPY_NEXTWORD, "next-word" },
 	{ MODEKEYCOPY_PREVIOUSPAGE, "page-up" },
@@ -96,6 +98,7 @@ struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_SEARCHUP, "search-backward" },
 	{ MODEKEYCOPY_STARTOFLINE, "start-of-line" },
 	{ MODEKEYCOPY_STARTSELECTION, "begin-selection" },
+	{ MODEKEYCOPY_TOPLINE, "top-line" },
 	{ MODEKEYCOPY_UP, "cursor-up" },
 
 	{ 0, NULL }
@@ -161,8 +164,11 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ '0',			0, MODEKEYCOPY_STARTOFLINE },
 	{ ':',			0, MODEKEYCOPY_GOTOLINE },
 	{ '?',			0, MODEKEYCOPY_SEARCHUP },
+	{ 'H',			0, MODEKEYCOPY_TOPLINE },
 	{ 'J',			0, MODEKEYCOPY_SCROLLDOWN },
 	{ 'K',			0, MODEKEYCOPY_SCROLLUP },
+	{ 'L',			0, MODEKEYCOPY_BOTTOMLINE },
+	{ 'M',			0, MODEKEYCOPY_MIDDLELINE },
 	{ '\002' /* C-b */,	0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ '\003' /* C-c */,	0, MODEKEYCOPY_CANCEL },
 	{ '\004' /* C-d */,	0, MODEKEYCOPY_HALFPAGEDOWN },
@@ -189,7 +195,7 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ KEYC_RIGHT,		0, MODEKEYCOPY_RIGHT },
 	{ KEYC_UP | KEYC_CTRL,	0, MODEKEYCOPY_SCROLLUP },
 	{ KEYC_UP,		0, MODEKEYCOPY_UP },
-
+	
 	{ 0,			-1, 0 }
 };
 struct mode_key_tree mode_key_tree_vi_copy;
@@ -266,6 +272,8 @@ const struct mode_key_entry mode_key_emacs_copy[] = {
 	{ 'm' | KEYC_ESCAPE,	0, MODEKEYCOPY_BACKTOINDENTATION },
 	{ 'n',			0, MODEKEYCOPY_SEARCHAGAIN },
 	{ 'q',			0, MODEKEYCOPY_CANCEL },
+	{ 'r' | KEYC_ESCAPE,	0, MODEKEYCOPY_MIDDLELINE },
+	{ 'R' | KEYC_ESCAPE,	0, MODEKEYCOPY_TOPLINE },
 	{ 'v' | KEYC_ESCAPE,	0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ 'w' | KEYC_ESCAPE,	0, MODEKEYCOPY_COPYSELECTION },
 	{ KEYC_DOWN | KEYC_CTRL,0, MODEKEYCOPY_SCROLLDOWN },
