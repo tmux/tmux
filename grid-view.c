@@ -92,15 +92,20 @@ grid_view_scroll_region_up(struct grid *gd, u_int rupper, u_int rlower)
 {
 	GRID_DEBUG(gd, "rupper=%u, rlower=%u", rupper, rlower);
 
-	if (gd->flags & GRID_HISTORY && rupper == 0 && rlower == gd->sy - 1) {
-		grid_scroll_line(gd);
-		return;
+	if (gd->flags & GRID_HISTORY) {
+		grid_collect_history(gd);
+		if (rupper == 0 && rlower == gd->sy - 1)
+			grid_scroll_history(gd);
+		else {
+			rupper = grid_view_y(gd, rupper);
+			rlower = grid_view_y(gd, rlower);
+			grid_scroll_history_region(gd, rupper, rlower);
+		}
+	} else {
+		rupper = grid_view_y(gd, rupper);
+		rlower = grid_view_y(gd, rlower);
+		grid_move_lines(gd, rupper, rupper + 1, rlower - rupper);
 	}
-
-	rupper = grid_view_y(gd, rupper);
-	rlower = grid_view_y(gd, rlower);
-
-	grid_move_lines(gd, rupper, rupper + 1, rlower - rupper);
 }
 
 /* Scroll region down. */
