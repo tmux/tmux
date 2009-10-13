@@ -34,7 +34,6 @@
 - make command sequences more usable: don't require space after ;, handle
   errors better
 - attach should have a flag to create session if it doesn't exist
-- rename split-window -> split-pane??
 - choice and more mode would be better per client than per window?
 - hooks to which commands may be attached, for example: tmux add-hook
   "new-session" if-shell "[ -e $HOME/.tmux-session.conf ]" source-file
@@ -51,6 +50,7 @@
 	- list-* vs show-*
 	- server-info
 	- up-pane/down-pane/swap-pane -U/swap-pane -D vs next-*/previous-*
+	- split-window -> split-pane??
 - tidy up and prioritise todo list ;-)
 - neww and attach can create a session if none exists?
        would work fine with config file since
@@ -78,3 +78,4 @@
 - bind commands to mouse buttons
 - UTF-8 to a non-UTF-8 terminal should not be able to balls up
   the terminal - www/ruby-addressable; make regress
+- copy mode needs a tidy/cleanup
