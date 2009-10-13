@@ -79,3 +79,4 @@
 - UTF-8 to a non-UTF-8 terminal should not be able to balls up
   the terminal - www/ruby-addressable; make regress
 - copy mode needs a tidy/cleanup
+- things like display-message will leak job entries if #() is used
