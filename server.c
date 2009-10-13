@@ -1377,6 +1377,11 @@ server_lock_server(void)
 		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
 			continue;
 
+		if (s->flags & SESSION_UNATTACHED) {
+			s->activity = time(NULL);
+			continue;
+		}
+
 		timeout = options_get_number(&s->options, "lock-after-time");
 		if (timeout <= 0 || t <= s->activity + timeout)
 			return;	/* not timed out */
@@ -1399,6 +1404,11 @@ server_lock_sessions(void)
         for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
 			continue;
+
+		if (s->flags & SESSION_UNATTACHED) {
+			s->activity = time(NULL);
+			continue;
+		}
 
 		timeout = options_get_number(&s->options, "lock-after-time");
 		if (timeout > 0 && t > s->activity + timeout) {
