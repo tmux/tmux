@@ -216,32 +216,33 @@ out:
 	 * Print exit status message, unless running as a login shell where it
 	 * would either be pointless or irritating.
 	 */
-	if (!login_shell) {
-		if (sigterm) {
-			printf("[terminated]\n");
-			return (1);
-		}
-		switch (cctx->exittype) {
-		case CCTX_DIED:
-			printf("[lost server]\n");
-			return (0);
-		case CCTX_SHUTDOWN:
+	if (sigterm) {
+		printf("[terminated]\n");
+		return (1);
+	}
+	switch (cctx->exittype) {
+	case CCTX_DIED:
+		printf("[lost server]\n");
+		return (0);
+	case CCTX_SHUTDOWN:
+ 		if (!login_shell)
 			printf("[server exited]\n");
-			return (0);
-		case CCTX_EXIT:
-			if (cctx->errstr != NULL) {
-				printf("[error: %s]\n", cctx->errstr);
-				return (1);
-			}
-			printf("[exited]\n");
-			return (0);
-		case CCTX_DETACH:
-			printf("[detached]\n");
-			return (0);
-		default:
-			printf("[unknown error]\n");
+		return (0);
+	case CCTX_EXIT:
+		if (cctx->errstr != NULL) {
+			printf("[error: %s]\n", cctx->errstr);
 			return (1);
 		}
+ 		if (!login_shell)
+			printf("[exited]\n");
+		return (0);
+	case CCTX_DETACH:
+		if (!login_shell)
+			printf("[detached]\n");
+		return (0);
+	default:
+		printf("[unknown error]\n");
+		return (1);
 	}
 }
 
