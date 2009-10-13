@@ -13,25 +13,17 @@
 - better terminal emulation
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
-- next prev word etc in command prompt; also ^K
+- next prev word etc in command prompt
 - many more info() displays for various things
-- backspace should perhaps wrap backwards over newlines which were not moved
-  down by a newline: screen and the OS X terminal does this but xterm and most
-  others do not. this might be hard: a flag for each grid line (top bit of size
-  maybe)? a single flag is insufficient as can't then tell when to /stop/
-  unwrapping
 - input.c is too complicated. simplify?
 - use a better termcap internally instead of screen, perhaps xterm
 - kill all but current pane
 - fix rxvt cursor fg issue (text under cursor can have non-white fg)
-- client sx/sy should be in tty, then can let the terminal wrap at edge
-  to allow xterm to pick up it should be one line for its c/p
 - should be able to move to a hidden pane and it would be moved into view. pane
   number in status line/top-right would be cool for this
 - support other mouse modes (highlight etc) and use it in copy mode
 - set-remain-on-exit is a bit of a hack, some way to do it generically?
 - set-option should be set-session-option and should be overall global options
-  for stuff like mode keys?
       also quiet, utf8 and maybe other flags?
   -g is a bit unexpected in conf file
 - clear window title on exit
@@ -54,8 +46,6 @@
 - XXX once env stuff is in, default-path and VISUAL/EDITOR should be picked up
   when session is started
 - what about utmp etc? can tmux update it like screen? setgid?
-- H/M/L commands in copy mode with vi-keys, for jumping to the top/middle/last
-  line on the screen
 - warts on current naming:
   	- display-time but message-fg/bg/attr
 	- list-* vs show-*
@@ -79,7 +69,6 @@
 		   for redraw
 - handle resize better in copy mode
 - way to copy stuff that is off screen due to resize
-- fix line wrapping c&p problems in xterm etc
 - a way to address panes by name ("top-left") and position ("0,0")
 - commands should be able to succeed or fail and have || or && for command
   lists
@@ -87,6 +76,5 @@
 - some way to KEEP a command running continually and just use its LAST line of
   output
 - bind commands to mouse buttons
-- dim/nobright etc in #[]
 - UTF-8 to a non-UTF-8 terminal should not be able to balls up
   the terminal - www/ruby-addressable; make regress
