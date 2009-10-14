@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.41 2009-09-24 07:15:22 nicm Exp $
+# $Id: configure,v 1.42 2009-10-14 10:14:21 nicm Exp $
 
 TMUX_PLATFORM=${TMUX_PLATFORM:-`uname -s`}
 
@@ -139,7 +139,7 @@ EOF
 	cat <<EOF >>$CONFIG_MK
 CFLAGS+= -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
 LIBS+= -lcurses -lsocket -lnsl
-SRCS+= osdep-unknown.c \
+SRCS+= osdep-sunos.c \
 	compat/asprintf.c \
 	compat/daemon.c \
 	compat/fgetln.c \

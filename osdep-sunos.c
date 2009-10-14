@@ -1,0 +1,68 @@
+/* $Id: osdep-sunos.c,v 1.1 2009-10-14 10:14:21 nicm Exp $ */
+
+/*
+ * Copyright (c) 2009 Todd Carson <toc@daybefore.net>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
+ * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#include <sys/types.h>
+#include <sys/stat.h>
+
+#include <fcntl.h>
+#include <procfs.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
+#include "tmux.h"
+
+char *
+osdep_get_name(int fd, unused char *tty)
+{
+	struct psinfo	 p;
+	struct stat	 st;
+	char		*path;
+	ssize_t		 bytes;
+	int		 f;
+	pid_t		 pgrp;
+
+	if ((path = ptsname(fd)) == NULL)
+		return (NULL);
+
+	if ((f = open(path, O_RDONLY)) < 0)
+		return (NULL);
+
+	if ((fstat(f, &st) != 0) ||
+	    (ioctl(f, TIOCGPGRP, &pgrp) != 0)) {
+		(void) close(f);
+		return (NULL);
+	}
+	(void) close(f);
+
+	xasprintf(&path, "/proc/%hu/psinfo", pgrp);
+	f = open(path, O_RDONLY);
+	xfree(path);
+	if (f < 0)
+		return (NULL);
+
+	bytes = read(f, &p, sizeof(p));
+	(void) close(f);
+	if (bytes != sizeof(p))
+		return (NULL);
+
+	if (p.pr_ttydev != st.st_rdev)
+		return (NULL);
+
+	return (xstrdup(p.pr_fname));
+}
