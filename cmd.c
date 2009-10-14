@@ -458,7 +458,8 @@ cmd_lookup_client(const char *name)
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		if ((c = ARRAY_ITEM(&clients, i)) == NULL)
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
 			continue;
 		path = c->tty.path;
 
