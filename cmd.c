@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.123 2009-10-12 00:35:08 tcunha Exp $ */
+/* $Id: cmd.c,v 1.124 2009-10-14 13:22:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -457,7 +457,8 @@ cmd_lookup_client(const char *name)
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		if ((c = ARRAY_ITEM(&clients, i)) == NULL)
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
 			continue;
 		path = c->tty.path;
 
