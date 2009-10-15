@@ -1,4 +1,4 @@
-/* $Id: osdep-sunos.c,v 1.1 2009-10-14 10:14:21 nicm Exp $ */
+/* $Id: osdep-sunos.c,v 1.2 2009-10-15 07:11:25 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Todd Carson <toc@daybefore.net>
@@ -28,7 +28,7 @@
 #include "tmux.h"
 
 char *
-osdep_get_name(int fd, unused char *tty)
+osdep_get_name(int fd, char *tty)
 {
 	struct psinfo	 p;
 	struct stat	 st;
@@ -37,18 +37,15 @@ osdep_get_name(int fd, unused char *tty)
 	int		 f;
 	pid_t		 pgrp;
 
-	if ((path = ptsname(fd)) == NULL)
-		return (NULL);
-
-	if ((f = open(path, O_RDONLY)) < 0)
+	if ((f = open(tty, O_RDONLY)) < 0)
 		return (NULL);
 
 	if ((fstat(f, &st) != 0) ||
 	    (ioctl(f, TIOCGPGRP, &pgrp) != 0)) {
-		(void) close(f);
+		close(f);
 		return (NULL);
 	}
-	(void) close(f);
+	close(f);
 
 	xasprintf(&path, "/proc/%hu/psinfo", pgrp);
 	f = open(path, O_RDONLY);
@@ -57,7 +54,7 @@ osdep_get_name(int fd, unused char *tty)
 		return (NULL);
 
 	bytes = read(f, &p, sizeof(p));
-	(void) close(f);
+	close(f);
 	if (bytes != sizeof(p))
 		return (NULL);
 
