@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.151 2009-10-15 01:42:07 tcunha Exp $ */
+/* $Id: tty.c,v 1.152 2009-10-15 01:44:15 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1009,7 +1009,7 @@ tty_cursor(struct tty *tty, u_int cx, u_int cy)
 	}
 
 	/* Zero on the next line. */
-	if (cx == 0 && cy == thisy + 1) {
+	if (cx == 0 && cy == thisy + 1 && thisy != tty->rlower) {
 		tty_putc(tty, '\r');
 		tty_putc(tty, '\n');
 		goto out;
