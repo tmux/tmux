@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.148 2009-10-15 01:36:53 tcunha Exp $ */
+/* $Id: tty.c,v 1.149 2009-10-15 01:38:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -973,8 +973,12 @@ tty_cursor(struct tty *tty, u_int cx, u_int cy)
 		goto out;
 	}
 
-	/* Row staying the same. */
+	/* Moving column or row. */
 	if (cy == thisy) {
+		/*
+		 * Moving column only, row staying the same.
+		 */
+
 		/* To left edge. */
 		if (cx == 0)	{
 			tty_putc(tty, '\r');
@@ -1010,10 +1014,11 @@ tty_cursor(struct tty *tty, u_int cx, u_int cy)
 			tty_putcode1(tty, TTYC_CUF, -change);
 			goto out;
 		}
-	}
+	} else if (cx == thisx) {
+		/*
+		 * Moving row only, column staying the same.
+		 */
 
-	/* Column staying the same. */
-	if (cx == thisx ) {
 		/* One above. */
 		if (cy != tty->rupper && 
 		    cy == thisy - 1 && tty_term_has(term, TTYC_CUU1)) {
