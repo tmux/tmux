@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.75 2009-09-23 15:18:56 tcunha Exp $ */
+/* $Id: client.c,v 1.76 2009-10-15 01:45:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -216,30 +216,36 @@ client_main(struct client_ctx *cctx)
 	}
 
 out:
- 	if (sigterm) {
- 		printf("[terminated]\n");
- 		return (1);
- 	}
-	switch (cctx->exittype) {
-	case CCTX_DIED:
-		printf("[lost server]\n");
-		return (0);
-	case CCTX_SHUTDOWN:
-		printf("[server exited]\n");
-		return (0);
-	case CCTX_EXIT:
-		if (cctx->errstr != NULL) {
-			printf("[error: %s]\n", cctx->errstr);
+	/*
+	 * Print exit status message, unless running as a login shell where it
+	 * would either be pointless or irritating.
+	 */
+	if (!login_shell) {
+		if (sigterm) {
+			printf("[terminated]\n");
 			return (1);
 		}
-		printf("[exited]\n");
-		return (0);
-	case CCTX_DETACH:
-		printf("[detached]\n");
-		return (0);
-	default:
-		printf("[unknown error]\n");
-		return (1);
+		switch (cctx->exittype) {
+		case CCTX_DIED:
+			printf("[lost server]\n");
+			return (0);
+		case CCTX_SHUTDOWN:
+			printf("[server exited]\n");
+			return (0);
+		case CCTX_EXIT:
+			if (cctx->errstr != NULL) {
+				printf("[error: %s]\n", cctx->errstr);
+				return (1);
+			}
+			printf("[exited]\n");
+			return (0);
+		case CCTX_DETACH:
+			printf("[detached]\n");
+			return (0);
+		default:
+			printf("[unknown error]\n");
+			return (1);
+		}
 	}
 }
 
