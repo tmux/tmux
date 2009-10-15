@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.191 2009-10-15 01:31:38 tcunha Exp $
+.\" $Id: tmux.1,v 1.192 2009-10-15 01:52:47 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 12 2009 $
+.Dd $Mdocdate: October 13 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -538,6 +538,9 @@ The following keys are supported as appropriate for the mode:
 .It Li "Start of line" Ta "0" Ta "C-a"
 .It Li "Start selection" Ta "Space" Ta "C-Space"
 .It Li "Transpose chars" Ta "" Ta "C-t"
+.It Li "Cursor to top line" Ta "H" Ta "M-R"
+.It Li "Cursor to middle line" Ta "M" Ta "M-r"
+.It Li "Cursor to bottom line" Ta "L" Ta ""
 .El
 .Pp
 These key bindings are defined in a set of named tables:
