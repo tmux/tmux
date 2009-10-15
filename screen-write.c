@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.73 2009-09-15 23:54:57 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.74 2009-10-15 01:31:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -347,6 +347,10 @@ screen_write_parsestyle(
 					bg = defgc->bg;
 			} else
 				return;
+		} else if (end > 2 && strncasecmp(tmp, "no", 2) == 0) {
+			if ((val = attributes_fromstring(tmp + 2)) == -1)
+				return;
+			attr &= ~val;
 		} else {
 			if ((val = attributes_fromstring(tmp)) == -1)
 				return;

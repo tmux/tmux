@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.190 2009-10-12 00:38:31 tcunha Exp $
+.\" $Id: tmux.1,v 1.191 2009-10-15 01:31:38 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 11 2009 $
+.Dd $Mdocdate: October 12 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1470,22 +1470,26 @@ the
 .Ic status-interval
 option: if the status line is redrawn in the meantime, the previous result is
 used.
+.Pp
 #[attributes] allows a comma-separated list of attributes to be specified,
 these may be
 .Ql fg=colour
 to set the foreground colour,
 .Ql bg=colour
-to set the background colour, or one of the attributes described under the
+to set the background colour, the name of one of the attributes (listed under the
 .Ic message-attr
-option.
+option) to turn an attribute on, or an attribute prefixed with
+.Ql no
+to turn one off, for example
+.Ic nobright .
 Examples are:
 .Bd -literal -offset indent
 #(sysctl vm.loadavg)
 #[fg=yellow,bold]#(apm -l)%%#[default] [#S]
 .Ed
 .Pp
-Where appropriate, these may be prefixed with a number to specify the maximum
-length, for example
+Where appropriate, special character sequences may be prefixed with a number to
+specify the maximum length, for example
 .Ql #24T .
 .Pp
 By default, UTF-8 in
