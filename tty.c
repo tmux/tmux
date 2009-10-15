@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.147 2009-10-15 01:34:28 tcunha Exp $ */
+/* $Id: tty.c,v 1.148 2009-10-15 01:36:53 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1032,15 +1032,16 @@ tty_cursor(struct tty *tty, u_int cx, u_int cy)
 		change = thisy - cy;	/* +ve up, -ve down */
 
 		/*
-		 * Use VPA if change is larger than absolute or if this change
+		 * Try to use VPA if change is larger than absolute or if this change
 		 * would cross the scroll region, otherwise use CUU/CUD.
 		 */
-		if ((abs(change) > cy ||
+		if (abs(change) > cy ||
 		    (change < 0 && cy - change > tty->rlower) ||
-		    (change > 0 && cy - change < tty->rupper)) &&
-		    tty_term_has(term, TTYC_VPA)) {
-			tty_putcode1(tty, TTYC_VPA, cy);
-			goto out;
+		    (change > 0 && cy - change < tty->rupper)) {
+			    if (tty_term_has(term, TTYC_VPA)) {
+				    tty_putcode1(tty, TTYC_VPA, cy);
+				    goto out;
+			    }
 		} else if (change > 0 && tty_term_has(term, TTYC_CUU)) {
 			tty_putcode1(tty, TTYC_CUU, change);
 			goto out;
