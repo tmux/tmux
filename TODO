@@ -80,3 +80,8 @@
   the terminal - www/ruby-addressable; make regress
 - copy mode needs a tidy/cleanup
 - things like display-message will leak job entries if #() is used
+- message log
+- an option to NOT remove message when key pressed
+- would be nice to be able to press 0-9a-zA-Z to select window in choose-window
+  mode, also to start typing and it searches
+
