@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.74 2009-10-15 01:31:38 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.75 2009-10-15 01:35:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1035,8 +1035,10 @@ screen_write_cell(
 	if (screen_check_selection(s, s->cx - width, s->cy)) {
 		memcpy(&tmp_gc2, &s->sel.cell, sizeof tmp_gc2);
 		tmp_gc2.data = gc->data;
-		tmp_gc2.flags = gc->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
-		tmp_gc2.flags |= s->sel.cell.flags & (GRID_FLAG_FG256|GRID_FLAG_BG256);
+		tmp_gc2.flags = gc->flags &
+		    ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
+		tmp_gc2.flags |= s->sel.cell.flags &
+		    (GRID_FLAG_FG256|GRID_FLAG_BG256);
 		ttyctx.cell = &tmp_gc2;
 		tty_write(tty_cmd_cell, &ttyctx);
 	} else {
