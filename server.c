@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.209 2009-10-15 01:30:00 tcunha Exp $ */
+/* $Id: server.c,v 1.210 2009-10-15 01:43:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1380,6 +1380,11 @@ server_lock_server(void)
 		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
 			continue;
 
+		if (s->flags & SESSION_UNATTACHED) {
+			s->activity = time(NULL);
+			continue;
+		}
+
 		timeout = options_get_number(&s->options, "lock-after-time");
 		if (timeout <= 0 || t <= s->activity + timeout)
 			return;	/* not timed out */
@@ -1402,6 +1407,11 @@ server_lock_sessions(void)
         for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
 			continue;
+
+		if (s->flags & SESSION_UNATTACHED) {
+			s->activity = time(NULL);
+			continue;
+		}
 
 		timeout = options_get_number(&s->options, "lock-after-time");
 		if (timeout > 0 && t > s->activity + timeout) {
