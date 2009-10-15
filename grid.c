@@ -1,4 +1,4 @@
-/* $Id: grid.c,v 1.33 2009-09-15 23:54:57 tcunha Exp $ */
+/* $Id: grid.c,v 1.34 2009-10-15 01:55:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -161,29 +161,77 @@ grid_compare(struct grid *ga, struct grid *gb)
 	return (0);
 }
 
-/* Scroll a line into the history. */
+/*
+ * Collect lines from the history if at the limit. Free the top (oldest) 10%
+ * and shift up.
+ */
 void
-grid_scroll_line(struct grid *gd)
+grid_collect_history(struct grid *gd)
 {
 	u_int	yy;
 
  	GRID_DEBUG(gd, "");
 
-	if (gd->hsize >= gd->hlimit) {
-		/* If the limit is hit, free the bottom 10% and shift up. */
-		yy = gd->hlimit / 10;
-		if (yy < 1)
-			yy = 1;
+	if (gd->hsize < gd->hlimit)
+		return;
 
-		grid_move_lines(gd, 0, yy, gd->hsize + gd->sy - yy);
-		gd->hsize -= yy;
-	}
+	yy = gd->hlimit / 10;
+	if (yy < 1)
+		yy = 1;
+
+	grid_move_lines(gd, 0, yy, gd->hsize + gd->sy - yy);
+	gd->hsize -= yy;
+}
+
+/* 
+ * Scroll the entire visible screen, moving one line into the history. Just
+ * allocate a new line at the bottom and move the history size indicator.
+ */
+void
+grid_scroll_history(struct grid *gd)
+{
+	u_int	yy;
+
+ 	GRID_DEBUG(gd, "");
 
 	yy = gd->hsize + gd->sy;
-
 	gd->linedata = xrealloc(gd->linedata, yy + 1, sizeof *gd->linedata);
 	memset(&gd->linedata[yy], 0, sizeof gd->linedata[yy]);
+	
+	gd->hsize++;
+}
 
+/* Scroll a region up, moving the top line into the history. */
+void
+grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower)
+{
+	struct grid_line	*gl_history, *gl_upper, *gl_lower;
+	u_int			 yy;
+
+ 	GRID_DEBUG(gd, "upper=%u, lower=%u", upper, lower);
+
+	/* Create a space for a new line. */
+	yy = gd->hsize + gd->sy;
+	gd->linedata = xrealloc(gd->linedata, yy + 1, sizeof *gd->linedata);
+
+	/* Move the entire screen down to free a space for this line. */
+	gl_history = &gd->linedata[gd->hsize];
+	memmove(gl_history + 1, gl_history, gd->sy * sizeof *gl_history);
+
+	/* Adjust the region and find its start and end. */
+	upper++;
+	gl_upper = &gd->linedata[upper];
+	lower++;
+	gl_lower = &gd->linedata[lower];
+
+	/* Move the line into the history. */
+	memcpy(gl_history, gl_upper, sizeof *gl_history);
+
+	/* Then move the region up and clear the bottom line. */
+	memmove(gl_upper, gl_upper + 1, (lower - upper) * sizeof *gl_upper);
+	memset(gl_lower, 0, sizeof *gl_lower);
+
+	/* Move the history offset down over the line. */
 	gd->hsize++;
 }
 
