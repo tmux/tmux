@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.31 2009-09-22 19:20:08 nicm Exp $ */
+/* $Id: tty-term.c,v 1.32 2009-10-15 01:33:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,9 +42,15 @@ struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_CNORM, TTYCODE_STRING, "cnorm" },
 	{ TTYC_COLORS, TTYCODE_NUMBER, "colors" },
 	{ TTYC_CSR, TTYCODE_STRING, "csr" },
+	{ TTYC_CUB, TTYCODE_STRING, "cub" },
+	{ TTYC_CUB1, TTYCODE_STRING, "cub1" },
 	{ TTYC_CUD, TTYCODE_STRING, "cud" },
 	{ TTYC_CUD1, TTYCODE_STRING, "cud1" },
+	{ TTYC_CUF, TTYCODE_STRING, "cuf" },
+	{ TTYC_CUF1, TTYCODE_STRING, "cuf1" },
 	{ TTYC_CUP, TTYCODE_STRING, "cup" },
+	{ TTYC_CUU, TTYCODE_STRING, "cuu" },
+	{ TTYC_CUU1, TTYCODE_STRING, "cuu1" },
 	{ TTYC_DCH, TTYCODE_STRING, "dch" },
 	{ TTYC_DCH1, TTYCODE_STRING, "dch1" },
 	{ TTYC_DIM, TTYCODE_STRING, "dim" },
@@ -53,6 +59,8 @@ struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_EL, TTYCODE_STRING, "el" },
 	{ TTYC_EL1, TTYCODE_STRING, "el1" },
 	{ TTYC_ENACS, TTYCODE_STRING, "enacs" },
+	{ TTYC_HOME, TTYCODE_STRING, "home" },
+	{ TTYC_HPA, TTYCODE_STRING, "hpa" },
 	{ TTYC_ICH, TTYCODE_STRING, "ich" },
 	{ TTYC_ICH1, TTYCODE_STRING, "ich1" },
 	{ TTYC_IL, TTYCODE_STRING, "il" },
@@ -79,8 +87,8 @@ struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_KF17, TTYCODE_STRING, "kf17" },
 	{ TTYC_KF18, TTYCODE_STRING, "kf18" },
 	{ TTYC_KF19, TTYCODE_STRING, "kf19" },
-	{ TTYC_KF20, TTYCODE_STRING, "kf20" },
 	{ TTYC_KF2, TTYCODE_STRING, "kf2" },
+	{ TTYC_KF20, TTYCODE_STRING, "kf20" },
 	{ TTYC_KF3, TTYCODE_STRING, "kf3" },
 	{ TTYC_KF4, TTYCODE_STRING, "kf4" },
 	{ TTYC_KF5, TTYCODE_STRING, "kf5" },
@@ -109,6 +117,7 @@ struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_SMKX, TTYCODE_STRING, "smkx" },
 	{ TTYC_SMSO, TTYCODE_STRING, "smso" },
 	{ TTYC_SMUL, TTYCODE_STRING, "smul" },
+	{ TTYC_VPA, TTYCODE_STRING, "vpa" },
 	{ TTYC_XENL, TTYCODE_FLAG, "xenl" },
 };
 
