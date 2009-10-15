@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.206 2009-10-12 00:35:08 tcunha Exp $ */
+/* $Id: server.c,v 1.207 2009-10-15 01:26:50 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1053,8 +1053,9 @@ server_handle_client(struct client *c)
 	 * tty_region/tty_reset/tty_update_mode already take care of not
 	 * resetting things that are already in their default state.
 	 */
+	tty_region_absolute(&c->tty, 0, c->tty.sy - 1);
+
 	status = options_get_number(oo, "status");
-	tty_region(&c->tty, 0, c->tty.sy - 1, 0);
 	if (!window_pane_visible(wp) || wp->yoff + s->cy >= c->tty.sy - status)
 		tty_cursor(&c->tty, 0, 0, 0, 0);
 	else

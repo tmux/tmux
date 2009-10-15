@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.469 2009-10-12 00:35:08 tcunha Exp $ */
+/* $Id: tmux.h,v 1.470 2009-10-15 01:26:50 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1245,7 +1245,8 @@ void	tty_raw(struct tty *, const char *);
 u_char	tty_get_acs(struct tty *, u_char);
 void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_reset(struct tty *);
-void	tty_region(struct tty *, u_int, u_int, u_int);
+void	tty_region_pane(struct tty *, const struct tty_ctx *, u_int, u_int);
+void	tty_region_absolute(struct tty *, u_int, u_int);
 void	tty_cursor(struct tty *, u_int, u_int, u_int, u_int);
 void	tty_putcode(struct tty *, enum tty_code_code);
 void	tty_putcode1(struct tty *, enum tty_code_code, int);
