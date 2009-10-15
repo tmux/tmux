@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.124 2009-10-14 13:22:24 nicm Exp $ */
+/* $Id: cmd.c,v 1.125 2009-10-15 01:56:45 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -398,7 +398,7 @@ cmd_newest_client(void)
 struct client *
 cmd_find_client(struct cmd_ctx *ctx, const char *arg)
 {
-	struct client	*c;
+	struct client	*c, *lastc;
 	struct session	*s;
 	char		*tmparg;
 	size_t		 arglen;
@@ -414,16 +414,17 @@ cmd_find_client(struct cmd_ctx *ctx, const char *arg)
 		 */
 		s = cmd_current_session(ctx);
 		if (s != NULL) {
-			c = NULL;
+			lastc = NULL;
 			for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-				if (ARRAY_ITEM(&clients, i)->session == s) {
-					if (c != NULL)
+				c = ARRAY_ITEM(&clients, i);
+				if (c != NULL && c->session == s) {
+					if (lastc != NULL)
 						break;
-					c = ARRAY_ITEM(&clients, i);
+					lastc = c;
 				}
 			}
-			if (i == ARRAY_LENGTH(&clients) && c != NULL)
-				return (c);
+			if (i == ARRAY_LENGTH(&clients) && lastc != NULL)
+				return (lastc);
 		}
 		return (cmd_newest_client());
 	}
