@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.116 2009-09-20 22:06:34 tcunha Exp $
+# $Id: GNUmakefile,v 1.117 2009-10-15 08:15:06 nicm Exp $
 
 .PHONY: clean
 
@@ -6,10 +6,16 @@ VERSION= 1.1
 
 FDEBUG= 1
 
-CC?= gcc
+CC?= cc
 CFLAGS+= -DBUILD="\"$(VERSION)\""
 LDFLAGS+= -L/usr/local/lib
 LIBS+=
+
+# Sun CC 
+ifneq ($(shell (cc -V 2>&1|awk '/Sun C/' || true)), )
+	CFLAGS+=-erroff=E_EMPTY_DECLARATION
+	FDEBUG=
+endif
 
 ifdef FDEBUG
 CFLAGS+= -g -ggdb -DDEBUG
