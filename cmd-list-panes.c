@@ -47,13 +47,13 @@ cmd_list_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_pane	*wp;
 	struct grid		*gd;
 	struct grid_line	*gl;
-	u_int			 i;
+	u_int			 i, n;
 	unsigned long long	 size;
-	const char		*name;
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
 
+	n = 0;
 	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
 		gd = wp->base.grid;
 		
@@ -65,13 +65,9 @@ cmd_list_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 		size += gd->hsize * sizeof *gd->linedata;
 		
-		name = NULL;
-		if (wp->fd != -1)
-			name = ttyname(wp->fd);
-		if (name == NULL)
-			name = "unknown";
-		ctx->print(ctx, "%s [%ux%u] [history %u/%u, %llu bytes]",
-		    name, wp->sx, wp->sy, gd->hsize, gd->hlimit, size);
+		ctx->print(ctx, "%u: [%ux%u] [history %u/%u, %llu bytes]",
+		    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size);
+		n++;
 	}
 
 	return (0);
