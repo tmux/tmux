@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.473 2009-10-15 01:33:21 tcunha Exp $ */
+/* $Id: tmux.h,v 1.474 2009-10-15 01:39:30 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1644,6 +1644,7 @@ void	 screen_write_putc(
     	     struct screen_write_ctx *, struct grid_cell *, u_char);
 void	 screen_write_copy(struct screen_write_ctx *,
 	     struct screen *, u_int, u_int, u_int, u_int);
+void	 screen_write_backspace(struct screen_write_ctx *);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorright(struct screen_write_ctx *, u_int);

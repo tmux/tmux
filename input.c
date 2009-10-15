@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.95 2009-08-21 21:07:20 tcunha Exp $ */
+/* $Id: input.c,v 1.96 2009-10-15 01:39:30 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -646,7 +646,7 @@ input_handle_c0_control(u_char ch, struct input_ctx *ictx)
 		ictx->wp->window->flags |= WINDOW_BELL;
 		break;
 	case '\010': 	/* BS */
-		screen_write_cursorleft(&ictx->ctx, 1);
+		screen_write_backspace(&ictx->ctx);
 		break;
 	case '\011': 	/* TAB */
 		/* Don't tab beyond the end of the line. */
