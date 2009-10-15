@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.47 2009-09-11 14:13:52 tcunha Exp $ */
+/* $Id: screen-redraw.c,v 1.48 2009-10-15 01:30:00 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -195,7 +195,7 @@ screen_redraw_screen(struct client *c, int status_only)
 		for (i = 0; i < tty->sx; i++) {
 			type = screen_redraw_check_cell(c, i, j);
 			if (type != CELL_INSIDE) {
-				tty_cursor(tty, i, j, 0, 0);
+				tty_cursor(tty, i, j);
 				tty_putc(tty, border[type]);
 			}
 		}
@@ -239,7 +239,7 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 	struct tty		*tty = &c->tty;
 	struct session		*s = c->session;
 	struct grid_cell	 gc;
-	u_int			 idx, px, py, i, j;
+	u_int			 idx, px, py, i, j, xoff, yoff;
 	int			 colour;
 	char			 buf[16], *ptr;
 	size_t			 len;
@@ -251,10 +251,11 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 		return;
 	colour = options_get_number(&s->options, "display-panes-colour");
 
-	px = wp->sx / 2;
-	py = wp->sy / 2;
+	px = wp->sx / 2; py = wp->sy / 2;
+	xoff = wp->xoff; yoff = wp->yoff;
+
 	if (wp->sx < len * 6 || wp->sy < 5) {
-		tty_cursor(tty, px - len / 2, py, wp->xoff, wp->yoff);
+		tty_cursor(tty, xoff + px - len / 2, yoff + py);
 		memcpy(&gc, &grid_default_cell, sizeof gc);
 		colour_set_fg(&gc, colour);
 		tty_attributes(tty, &gc);
@@ -275,7 +276,7 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 		
 		for (j = 0; j < 5; j++) {
 			for (i = px; i < px + 5; i++) {
-				tty_cursor(tty, i, py + j, wp->xoff, wp->yoff);
+				tty_cursor(tty, xoff + i, yoff + py + j);
 				if (clock_table[idx][j][i - px])
 					tty_putc(tty, ' ');
 			}

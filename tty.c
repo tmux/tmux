@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.144 2009-10-15 01:28:14 tcunha Exp $ */
+/* $Id: tty.c,v 1.145 2009-10-15 01:30:00 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -456,7 +456,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 	if (sx > tty->sx)
 		sx = tty->sx;
 
-	tty_cursor(tty, 0, py, ox, oy);
+	tty_cursor(tty, ox, oy + py);
 	for (i = 0; i < sx; i++) {
 		gc = grid_view_peek_cell(s->grid, i, py);
 
@@ -482,7 +482,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 	}
 	tty_reset(tty);
 
-	tty_cursor(tty, sx, py, ox, oy);
+	tty_cursor(tty, ox + sx, oy + py);
 	if (screen_size_x(s) >= tty->sx && tty_term_has(tty->term, TTYC_EL))
 		tty_putcode(tty, TTYC_EL);
 	else {
@@ -537,7 +537,8 @@ tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_reset(tty);
 
- 	tty_cursor(tty, ctx->ocx, ctx->ocy, wp->xoff, wp->yoff);
+ 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
+
 	if (tty_term_has(tty->term, TTYC_ICH) ||
 	    tty_term_has(tty->term, TTYC_ICH1))
 		tty_emulate_repeat(tty, TTYC_ICH, TTYC_ICH1, ctx->num);
@@ -564,7 +565,8 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_reset(tty);
 
- 	tty_cursor(tty, ctx->ocx, ctx->ocy, wp->xoff, wp->yoff);
+ 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
+
 	if (tty_term_has(tty->term, TTYC_DCH) ||
 	    tty_term_has(tty->term, TTYC_DCH1))
 		tty_emulate_repeat(tty, TTYC_DCH, TTYC_DCH1, ctx->num);
@@ -585,8 +587,8 @@ tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 	tty_reset(tty);
 
  	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
+ 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
- 	tty_cursor(tty, ctx->ocx, ctx->ocy, wp->xoff, wp->yoff);
 	tty_emulate_repeat(tty, TTYC_IL, TTYC_IL1, ctx->num);
 }
 
@@ -605,8 +607,8 @@ tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 	tty_reset(tty);
 
  	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
+ 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
- 	tty_cursor(tty, ctx->ocx, ctx->ocy, wp->xoff, wp->yoff);
 	tty_emulate_repeat(tty, TTYC_DL, TTYC_DL1, ctx->num);
 }
 
@@ -619,7 +621,8 @@ tty_cmd_clearline(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_reset(tty);
 
- 	tty_cursor(tty, 0, ctx->ocy, wp->xoff, wp->yoff);
+ 	tty_cursor_pane(tty, ctx, 0, ctx->ocy);
+
 	if (wp->xoff == 0 && screen_size_x(s) >= tty->sx &&
 	    tty_term_has(tty->term, TTYC_EL)) {
 		tty_putcode(tty, TTYC_EL);
@@ -638,7 +641,8 @@ tty_cmd_clearendofline(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_reset(tty);
 
-	tty_cursor(tty, ctx->ocx, ctx->ocy, wp->xoff, wp->yoff);
+	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
+
 	if (wp->xoff == 0 && screen_size_x(s) >= tty->sx &&
 	    tty_term_has(tty->term, TTYC_EL))
 		tty_putcode(tty, TTYC_EL);
@@ -657,10 +661,10 @@ tty_cmd_clearstartofline(struct tty *tty, const struct tty_ctx *ctx)
 	tty_reset(tty);
 
 	if (wp->xoff == 0 && tty_term_has(tty->term, TTYC_EL1)) {
-		tty_cursor(tty, ctx->ocx, ctx->ocy, wp->xoff, wp->yoff);
+		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 		tty_putcode(tty, TTYC_EL1);
 	} else {
-		tty_cursor(tty, 0, ctx->ocy, wp->xoff, wp->yoff);
+		tty_cursor_pane(tty, ctx, 0, ctx->ocy);
 		for (i = 0; i < ctx->ocx + 1; i++)
 			tty_putc(tty, ' ');
 	}
@@ -682,7 +686,7 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 		tty_reset(tty);
 
 		tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
-		tty_cursor(tty, ctx->ocx, ctx->orupper, wp->xoff, wp->yoff);
+		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->orupper);
 
 		tty_putcode(tty, TTYC_RI);
 	}
@@ -704,7 +708,7 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 		tty_reset(tty);
 
 		tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
-		tty_cursor(tty, ctx->ocx, ctx->ocy, wp->xoff, wp->yoff);
+		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
 		tty_putc(tty, '\n');
 	}
@@ -720,13 +724,13 @@ tty_cmd_clearendofscreen(struct tty *tty, const struct tty_ctx *ctx)
 	tty_reset(tty);
 
 	tty_region_pane(tty, ctx, 0, screen_size_y(s) - 1);
-	tty_cursor(tty, ctx->ocx, ctx->ocy, wp->xoff, wp->yoff);
+	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
 	if (wp->xoff == 0 && screen_size_x(s) >= tty->sx &&
 	    tty_term_has(tty->term, TTYC_EL)) {
 		tty_putcode(tty, TTYC_EL);
 		if (ctx->ocy != screen_size_y(s) - 1) {
-			tty_cursor(tty, 0, ctx->ocy + 1, wp->xoff, wp->yoff);
+			tty_cursor_pane(tty, ctx, 0, ctx->ocy + 1);
 			for (i = ctx->ocy + 1; i < screen_size_y(s); i++) {
 				tty_putcode(tty, TTYC_EL);
 				if (i == screen_size_y(s) - 1)
@@ -739,7 +743,7 @@ tty_cmd_clearendofscreen(struct tty *tty, const struct tty_ctx *ctx)
 		for (i = ctx->ocx; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
 		for (j = ctx->ocy; j < screen_size_y(s); j++) {
-			tty_cursor(tty, 0, j, wp->xoff, wp->yoff);
+			tty_cursor_pane(tty, ctx, 0, j);
 			for (i = 0; i < screen_size_x(s); i++)
 				tty_putc(tty, ' ');
 		}
@@ -756,7 +760,7 @@ tty_cmd_clearstartofscreen(struct tty *tty, const struct tty_ctx *ctx)
 	tty_reset(tty);
 
 	tty_region_pane(tty, ctx, 0, screen_size_y(s) - 1);
-	tty_cursor(tty, 0, 0, wp->xoff, wp->yoff);
+	tty_cursor_pane(tty, ctx, 0, 0);
 
 	if (wp->xoff == 0 && screen_size_x(s) >= tty->sx &&
 	    tty_term_has(tty->term, TTYC_EL)) {
@@ -767,7 +771,7 @@ tty_cmd_clearstartofscreen(struct tty *tty, const struct tty_ctx *ctx)
 		}
 	} else {
 		for (j = 0; j < ctx->ocy; j++) {
-			tty_cursor(tty, 0, j, wp->xoff, wp->yoff);
+			tty_cursor_pane(tty, ctx, 0, j);
 			for (i = 0; i < screen_size_x(s); i++)
 				tty_putc(tty, ' ');
 		}
@@ -786,7 +790,7 @@ tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 	tty_reset(tty);
 
 	tty_region_pane(tty, ctx, 0, screen_size_y(s) - 1);
-	tty_cursor(tty, 0, 0, wp->xoff, wp->yoff);
+	tty_cursor_pane(tty, ctx, 0, 0);
 
 	if (wp->xoff == 0 && screen_size_x(s) >= tty->sx &&
 	    tty_term_has(tty->term, TTYC_EL)) {
@@ -799,7 +803,7 @@ tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 		}
 	} else {
 		for (j = 0; j < screen_size_y(s); j++) {
-			tty_cursor(tty, 0, j, wp->xoff, wp->yoff);
+			tty_cursor_pane(tty, ctx, 0, j);
 			for (i = 0; i < screen_size_x(s); i++)
 				tty_putc(tty, ' ');
 		}
@@ -818,7 +822,7 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 	tty_region_pane(tty, ctx, 0, screen_size_y(s) - 1);
 
 	for (j = 0; j < screen_size_y(s); j++) {
-		tty_cursor(tty, 0, j, wp->xoff, wp->yoff);
+		tty_cursor_pane(tty, ctx, 0, j);
 		for (i = 0; i < screen_size_x(s); i++)
 			tty_putc(tty, 'E');
 	}
@@ -827,9 +831,7 @@ tty_cmd_alignmenttest(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct window_pane	*wp = ctx->wp;
-
-	tty_cursor(tty, ctx->ocx, ctx->ocy, wp->xoff, wp->yoff);
+	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_cell(tty, ctx->cell, ctx->utf8);
 }
@@ -927,14 +929,22 @@ tty_region(struct tty *tty, u_int rupper, u_int rlower)
 }
 
 void
-tty_cursor(struct tty *tty, u_int cx, u_int cy, u_int ox, u_int oy)
+tty_cursor_pane(struct tty *tty, const struct tty_ctx *ctx, u_int cx, u_int cy)
 {
-	if (ox + cx == 0 && tty->cx != 0 && tty->cy == oy + cy) {
+  	struct window_pane	*wp = ctx->wp;
+
+	tty_cursor(tty, wp->xoff + cx, wp->yoff + cy);
+}
+
+void
+tty_cursor(struct tty *tty, u_int cx, u_int cy)
+{
+	if (cx == 0 && tty->cx != 0 && tty->cy == cy) {
 		tty->cx = 0;
 		tty_putc(tty, '\r');
-	} else if (tty->cx != ox + cx || tty->cy != oy + cy) {
-		tty->cx = ox + cx;
-		tty->cy = oy + cy;
+	} else if (tty->cx != cx || tty->cy != cy) {
+		tty->cx = cx;
+		tty->cy = cy;
 		tty_putcode2(tty, TTYC_CUP, tty->cy, tty->cx);
 	}
 }
