@@ -1057,14 +1057,14 @@ tty_cursor(struct tty *tty, u_int cx, u_int cy)
 		 */
 
 		/* One above. */
-		if (cy != tty->rupper && 
+		if (thisy != tty->rupper && 
 		    cy == thisy - 1 && tty_term_has(term, TTYC_CUU1)) {
 			tty_putcode(tty, TTYC_CUU1);
 			goto out;
 		}
 
 		/* One below. */
-		if (cy != tty->rlower &&
+		if (thisy != tty->rlower &&
 		    cy == thisy + 1 && tty_term_has(term, TTYC_CUD1)) {
 			tty_putcode(tty, TTYC_CUD1);
 			goto out;
