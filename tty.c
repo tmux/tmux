@@ -850,7 +850,8 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	 * Should the cursor be in the last cursor position ready for a natural
 	 * wrap? If so - and it isn't - move to and rewrite the last cell.
 	 */
-	if (ctx->ocx + wp->xoff > tty->sx - ctx->last_width) {
+	if (!(tty->term->flags & TERM_EARLYWRAP) &&
+	    ctx->ocx + wp->xoff > tty->sx - ctx->last_width) {
 		if (tty->cx < tty->sx) {
 			cx = screen_size_x(s) - ctx->last_width;
 			tty_cursor_pane(tty, ctx, cx, ctx->ocy);
