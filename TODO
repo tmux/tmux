@@ -84,4 +84,10 @@
 - an option to NOT remove message when key pressed
 - would be nice to be able to press 0-9a-zA-Z to select window in choose-window
   mode, also to start typing and it searches
+- the wrapping stuff should work when redrawn from scroll mode too (screen_write_copy)
+- ability to save history (to buffer?)
+- multiple keys could be done with tables, ie have prefixes go and instead
+	bind -n ^A prefix-table "default"
+  where prefix-table sets command lookup table and sets prefix flag, then next key
+  is looked up in that table
 
