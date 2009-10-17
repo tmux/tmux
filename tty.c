@@ -456,7 +456,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 
 	/*
 	 * Don't move the cursor to the start permission if it will wrap there
-	 * itself; much the same as the conditions in tty_cmd_cell.
+	 * itself.
 	 */
 	gl = NULL;
 	if (py != 0)
@@ -842,33 +842,21 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	struct grid_line	*gl;
-	u_int			 wx, wy;
+	u_int			 cx;
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 
-	wx = ctx->ocx + wp->xoff;
-	wy = ctx->ocy + wp->yoff;
-
 	/*
-	 * If:
-	 * 
-	 * - the line was wrapped:
-	 * - the cursor is beyond the edge of the screen,
-	 * - the desired position is at the left,
-	 * - and either a) the desired next line is the one below the current
-	 *   or b) the current line is the bottom of the scroll region,
-	 *
-	 * Then just printing the next character will be enough to scroll into
-	 * place, so don't do an explicit cursor move.
+	 * Should the cursor be in the last cursor position ready for a natural
+	 * wrap? If so - and it isn't - move to and rewrite the last cell.
 	 */
-	gl = NULL;
-	if (ctx->ocy != 0)
-		gl = &s->grid->linedata[s->grid->hsize + ctx->ocy - 1];
-	if (wy == 0 || (gl != NULL && !(gl->flags & GRID_LINE_WRAPPED)) ||
-	    tty->cx < tty->sx ||	/* not at edge of screen */
-	    wx != 0 ||			/* don't want 0 next */
-	    (wy != tty->cy + 1 && tty->cy != ctx->orlower + wp->yoff))
+	if (ctx->ocx + wp->xoff > tty->sx - ctx->last_width) {
+		if (tty->cx < tty->sx) {
+			cx = screen_size_x(s) - ctx->last_width;
+			tty_cursor_pane(tty, ctx, cx, ctx->ocy);
+			tty_cell(tty, &ctx->last_cell, &ctx->last_utf8);
+		}
+	} else
 		tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
 	tty_cell(tty, ctx->cell, ctx->utf8);

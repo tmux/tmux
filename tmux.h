@@ -970,6 +970,11 @@ struct tty_ctx {
 
 	u_int		 orupper;
 	u_int		 orlower;
+
+	/* Saved last cell on line. */
+	struct grid_cell last_cell;
+	struct grid_utf8 last_utf8;
+	u_int		 last_width;
 };
 
 /* Mouse input. */
