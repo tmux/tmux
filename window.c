@@ -632,6 +632,9 @@ window_pane_parse(struct window_pane *wp)
 {
 	size_t	new_size;
 
+	if (wp->mode != NULL)
+		return;
+
 	new_size = BUFFER_USED(wp->in) - wp->pipe_off;
 	if (wp->pipe_fd != -1 && new_size > 0)
 		buffer_write(wp->pipe_buf, BUFFER_OUT(wp->in), new_size);
