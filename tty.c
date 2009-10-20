@@ -713,6 +713,14 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 	}
 
+	/*
+	 * If this line wrapped naturally (ctx->num is nonzero), don't do
+	 * anything - the cursor can just be moved to the last cell and wrap
+	 * naturally.
+	 */
+	if (ctx->num && !(tty->term->flags & TERM_EARLYWRAP))
+		return;
+
 	if (ctx->ocy == ctx->orlower) {
 		tty_reset(tty);
 
