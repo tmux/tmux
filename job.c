@@ -153,6 +153,12 @@ job_run(struct job *job)
 		sigreset();
 		/* XXX environ? */
 
+		close(out[1]);
+		if (dup2(out[0], STDOUT_FILENO) == -1)
+			fatal("dup2 failed");
+		if (out[0] != STDOUT_FILENO)
+			close(out[0]);
+
 		nullfd = open(_PATH_DEVNULL, O_RDONLY, 0);
 		if (nullfd < 0)
 			fatal("open failed");
@@ -162,12 +168,6 @@ job_run(struct job *job)
 			fatal("dup2 failed");
 		if (nullfd != STDIN_FILENO && nullfd != STDERR_FILENO)
 			close(nullfd);
-
-		close(out[1]);
-		if (dup2(out[0], STDOUT_FILENO) == -1)
-			fatal("dup2 failed");
-		if (out[0] != STDOUT_FILENO)
-			close(out[0]);
 
 		execl(_PATH_BSHELL, "sh", "-c", job->cmd, (char *) NULL);
 		fatal("execl failed");
