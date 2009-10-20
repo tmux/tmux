@@ -477,6 +477,23 @@ struct mode_key_table {
 #define MODE_KKEYPAD 0x8
 #define MODE_MOUSE 0x10
 
+/*
+ * A single UTF-8 character. 
+ *
+ * The data member in this must be UTF8_SIZE to allow screen_write_copy to
+ * reinject stored UTF-8 data back into screen_write_cell after combining (ugh
+ * XXX XXX).
+ */
+#define UTF8_SIZE 9
+struct utf8_data {
+	u_char	data[UTF8_SIZE];
+
+	size_t	have;
+	size_t	size;
+
+	u_int	width;
+};
+
 /* Grid output. */
 #if defined(DEBUG) && \
     ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L) || \
@@ -516,7 +533,6 @@ struct grid_cell {
 } __packed;
 
 /* Grid cell UTF-8 data. Used instead of data in grid_cell for UTF-8 cells. */
-#define UTF8_SIZE 9
 struct grid_utf8 {
 	u_char	width;
 	u_char	data[UTF8_SIZE];
@@ -672,9 +688,7 @@ struct input_ctx {
 #define STRING_APPLICATION 1
 #define STRING_NAME 2
 
-	u_char		 utf8_buf[4];
-	u_int		 utf8_len;
-	u_int		 utf8_off;
+	struct utf8_data utf8data;
 
 	u_char		 intermediate;
 	void 		*(*state)(u_char, struct input_ctx *);
@@ -1682,8 +1696,8 @@ void	 screen_write_kkeypadmode(struct screen_write_ctx *, int);
 void	 screen_write_clearendofscreen(struct screen_write_ctx *);
 void	 screen_write_clearstartofscreen(struct screen_write_ctx *);
 void	 screen_write_clearscreen(struct screen_write_ctx *);
-void	 screen_write_cell(
-    	     struct screen_write_ctx *, const struct grid_cell *, u_char *);
+void	 screen_write_cell(struct screen_write_ctx *,
+    	     const struct grid_cell *, const struct utf8_data *);
 
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *, int);
@@ -1838,7 +1852,8 @@ void		 session_group_synchronize1(struct session *, struct session *);
 
 /* utf8.c */
 void	utf8_build(void);
-int	utf8_width(const u_char *);
+int	utf8_open(struct utf8_data *, u_char);
+int	utf8_append(struct utf8_data *, u_char);
 
 /* procname.c */
 char   *get_proc_name(int, char *);

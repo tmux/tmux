@@ -342,7 +342,7 @@ tty_putc(struct tty *tty, u_char ch)
 void
 tty_pututf8(struct tty *tty, const struct grid_utf8 *gu)
 {
-	u_int	i, width;
+	u_int	i;
 
 	for (i = 0; i < UTF8_SIZE; i++) {
 		if (gu->data[i] == 0xff)
@@ -352,8 +352,7 @@ tty_pututf8(struct tty *tty, const struct grid_utf8 *gu)
 			write(tty->log_fd, &gu->data[i], 1);
 	}
 
-	width = utf8_width(gu->data);
-	tty->cx += width;
+	tty->cx += gu->width;
 }
 
 void
