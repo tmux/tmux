@@ -90,4 +90,4 @@
 	bind -n ^A prefix-table "default"
   where prefix-table sets command lookup table and sets prefix flag, then next key
   is looked up in that table
-
+- fix UTF-8 and split-window
