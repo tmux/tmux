@@ -24,6 +24,7 @@
 
 void	screen_write_initctx(struct screen_write_ctx *, struct tty_ctx *, int);
 void	screen_write_overwrite(struct screen_write_ctx *);
+int	screen_write_combine(struct screen_write_ctx *, u_char *);
 
 /* Initialise writing with a window. */
 void
@@ -977,8 +978,8 @@ screen_write_cell(
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
-	struct grid_utf8	 gu, *tmp_gu;
-	u_int		 	 width, xx, i;
+	struct grid_utf8	 gu;
+	u_int		 	 width, xx;
 	struct grid_cell 	 tmp_gc, *tmp_gcp;
 	int			 insert = 0;
 
@@ -1003,34 +1004,15 @@ screen_write_cell(
 	    (s->cx != screen_size_x(s) && s->cx > screen_size_x(s) - width)))
 		return;
 
-	/* If the width is zero, combine onto the previous character. */
+	/*
+	 * If the width is zero, combine onto the previous character, if
+	 * there is space. 
+	 */
 	if (width == 0) {
-		if (s->cx == 0)
-			return;
-		tmp_gcp = grid_view_get_cell(gd, s->cx - 1, s->cy);
-		if (!(tmp_gcp->flags & GRID_FLAG_UTF8)) {
-			tmp_gcp->flags |= GRID_FLAG_UTF8;
-			memset(&gu.data, 0xff, sizeof gu.data);
-			*gu.data = tmp_gcp->data;
-			gu.width = 1;
-			grid_view_set_utf8(gd, s->cx - 1, s->cy, &gu);
+		if (screen_write_combine(ctx, udata) == 0) {
+			screen_write_initctx(ctx, &ttyctx, 0);
+			tty_write(tty_cmd_utf8character, &ttyctx);
 		}
-		tmp_gu = grid_view_get_utf8(gd, s->cx - 1, s->cy);
-
-		for (i = 0; i < UTF8_SIZE; i++) {
-			if (tmp_gu->data[i] == 0xff)
-				break;
-		}
-		memcpy(tmp_gu->data + i, udata, UTF8_SIZE - i);
-
-		/*
-		 * Assume the previous character has just been input. 
-		 * XXX There is no guarantee this is true, need to redraw
-		 * entire line.
-		 */
-		screen_write_initctx(ctx, &ttyctx, 0);
-		ttyctx.ptr = udata;
-		tty_write(tty_cmd_utf8character, &ttyctx);
 		return;
 	}
 
@@ -1099,6 +1081,62 @@ screen_write_cell(
 		ttyctx.cell = gc;
 		tty_write(tty_cmd_cell, &ttyctx);
 	}
+}
+
+/* Combine a UTF-8 zero-width character onto the previous. */
+int
+screen_write_combine(struct screen_write_ctx *ctx, u_char *udata)
+{
+	struct screen		*s = ctx->s;
+	struct grid		*gd = s->grid;
+	struct grid_cell	*gc;
+	struct grid_utf8	*gu, tmp_gu;
+	u_int			 i, old_size, new_size;
+
+	/* Can't combine if at 0. */
+	if (s->cx == 0)
+		return (-1);
+
+	/* Retrieve the previous cell and convert to UTF-8 if not already. */
+	gc = grid_view_get_cell(gd, s->cx - 1, s->cy);
+	if (!(gc->flags & GRID_FLAG_UTF8)) {
+		memset(&tmp_gu.data, 0xff, sizeof tmp_gu.data);
+		*tmp_gu.data = gc->data;
+		tmp_gu.width = 1;
+
+		grid_view_set_utf8(gd, s->cx - 1, s->cy, &tmp_gu);
+		gc->flags |= GRID_FLAG_UTF8;
+	}
+
+	/* Get the previous cell's UTF-8 data. */
+	gu = grid_view_get_utf8(gd, s->cx - 1, s->cy);
+
+	/* Find the new size. */
+	for (new_size = 0; new_size < UTF8_SIZE; new_size++) {
+		if (udata[new_size] == 0xff)
+			break;
+	}
+
+	/* And the old size. */
+	for (old_size = 0; old_size < UTF8_SIZE; old_size++) {
+		if (gu->data[old_size] == 0xff)
+			break;
+	}
+
+	/* If there isn't space, scrap this character. */
+	if (old_size + new_size > UTF8_SIZE) {
+		for (i = 0; i < gu->width && i != UTF8_SIZE; i++)
+			gu->data[i] = '_';
+		if (i != UTF8_SIZE)
+			gu->data[i] = 0xff;
+		return (0);
+	}
+
+	/* Otherwise save the character. */
+	memcpy(gu->data + old_size, udata, new_size);
+	if (old_size + new_size != UTF8_SIZE)
+		gu->data[old_size + new_size] = 0xff;
+	return (0);
 }
 
 /*
