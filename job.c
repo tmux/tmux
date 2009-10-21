@@ -48,19 +48,6 @@ job_tree_init(struct jobs *jobs)
 	RB_INIT(jobs);
 }
 
-/* Count the number of jobs in a tree. */
-u_int
-job_tree_size(struct jobs *jobs)
-{
-	struct job	*job;
-	u_int		 n;
-
-	n = 0;
-	RB_FOREACH(job, jobs, jobs)
-		n++;
-	return (n);
-}
-
 /* Destroy a job tree. */
 void
 job_tree_free(struct jobs *jobs)
