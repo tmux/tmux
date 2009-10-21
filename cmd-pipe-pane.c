@@ -47,11 +47,10 @@ int
 cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
-	struct winlink		*wl;
 	struct window_pane	*wp;
 	int			 old_fd, pipe_fd[2], null_fd, mode;
 
-	if ((wl = cmd_find_pane(ctx, data->target, NULL, &wp)) == NULL)
+	if (cmd_find_pane(ctx, data->target, NULL, &wp) == NULL)
 		return (-1);
 
 	/* Destroy the old pipe. */
