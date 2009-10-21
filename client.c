@@ -36,6 +36,7 @@
 struct imsgbuf	client_ibuf;
 const char     *client_exitmsg;
 
+void	client_send_identify(int);
 void	client_send_environ(void);
 void	client_write_server(enum msgtype, void *, size_t);
 int	client_dispatch(void);
@@ -44,14 +45,11 @@ void	client_suspend(void);
 struct imsgbuf *
 client_init(char *path, int cmdflags, int flags)
 {
-	struct sockaddr_un		sa;
-	struct stat			sb;
-	struct msg_identify_data	data;
-	struct winsize			ws;
-	size_t				size;
-	int				fd, fd2, mode;
-	char			       *term;
-	char		 		rpathbuf[MAXPATHLEN];
+	struct sockaddr_un	sa;
+	struct stat		sb;
+	size_t			size;
+	int			fd, mode;
+	char		      	rpathbuf[MAXPATHLEN];
 
 	if (realpath(path, rpathbuf) == NULL)
 		strlcpy(rpathbuf, path, sizeof rpathbuf);
@@ -103,26 +101,8 @@ server_started:
 
 	if (cmdflags & CMD_SENDENVIRON)
 		client_send_environ();
-	if (isatty(STDIN_FILENO)) {
-		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
-			fatal("ioctl(TIOCGWINSZ)");
-		data.flags = flags;
-
-		if (getcwd(data.cwd, sizeof data.cwd) == NULL)
-			*data.cwd = '\0';
-
-		*data.term = '\0';
-		if ((term = getenv("TERM")) != NULL) {
-			if (strlcpy(data.term,
-			    term, sizeof data.term) >= sizeof data.term)
-				*data.term = '\0';
-		}
-
-		if ((fd2 = dup(STDIN_FILENO)) == -1)
-			fatal("dup failed");
-		imsg_compose(&client_ibuf, MSG_IDENTIFY,
-		    PROTOCOL_VERSION, -1, fd2, &data, sizeof data);
-	}
+	if (isatty(STDIN_FILENO))
+		client_send_identify(flags);
 
 	return (&client_ibuf);
 
@@ -136,10 +116,36 @@ not_found:
 }
 
 void
+client_send_identify(int flags)
+{
+	struct msg_identify_data	data;
+	struct winsize			ws;
+	char			       *term;
+	int				fd;
+
+	if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
+		fatal("ioctl(TIOCGWINSZ)");
+	data.flags = flags;
+
+	if (getcwd(data.cwd, sizeof data.cwd) == NULL)
+		*data.cwd = '\0';
+	
+	term = getenv("TERM");
+	if (term == NULL ||
+	    strlcpy(data.term, term, sizeof data.term) >= sizeof data.term)
+		*data.term = '\0';
+
+	if ((fd = dup(STDIN_FILENO)) == -1)
+		fatal("dup failed");
+	imsg_compose(&client_ibuf,
+	    MSG_IDENTIFY, PROTOCOL_VERSION, -1, fd, &data, sizeof data);
+}
+
+void
 client_send_environ(void)
 {
-	char		      **var;
 	struct msg_environ_data	data;
+	char		      **var;
 
  	for (var = environ; *var != NULL; var++) {
 		if (strlcpy(data.var, *var, sizeof data.var) >= sizeof data.var)
