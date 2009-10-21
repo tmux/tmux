@@ -153,13 +153,13 @@ job_run(struct job *job)
 		sigreset();
 		/* XXX environ? */
 
-		close(out[1]);
-		if (dup2(out[0], STDOUT_FILENO) == -1)
+		if (dup2(out[1], STDOUT_FILENO) == -1)
 			fatal("dup2 failed");
-		if (out[0] != STDOUT_FILENO)
-			close(out[0]);
+		if (out[1] != STDOUT_FILENO)
+			close(out[1]);
+		close(out[0]);
 
-		nullfd = open(_PATH_DEVNULL, O_RDONLY, 0);
+		nullfd = open(_PATH_DEVNULL, O_RDWR, 0);
 		if (nullfd < 0)
 			fatal("open failed");
 		if (dup2(nullfd, STDIN_FILENO) == -1)
@@ -172,9 +172,9 @@ job_run(struct job *job)
 		execl(_PATH_BSHELL, "sh", "-c", job->cmd, (char *) NULL);
 		fatal("execl failed");
 	default:	/* parent */
-		close(out[0]);
+		close(out[1]);
 
-		job->fd = out[1];
+		job->fd = out[0];
 		if ((mode = fcntl(job->fd, F_GETFL)) == -1)
 			fatal("fcntl failed");
 		if (fcntl(job->fd, F_SETFL, mode|O_NONBLOCK) == -1)
