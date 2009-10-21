@@ -1,7 +1,7 @@
 # $OpenBSD$
 
 PROG=	tmux
-SRCS=	attributes.c buffer-poll.c buffer.c cfg.c client-fn.c \
+SRCS=	attributes.c buffer-poll.c buffer.c cfg.c \
 	client.c clock.c cmd-attach-session.c cmd-bind-key.c \
 	cmd-break-pane.c cmd-choose-session.c cmd-choose-window.c \
 	cmd-clear-history.c cmd-clock-mode.c cmd-command-prompt.c \
