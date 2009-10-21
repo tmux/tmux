@@ -955,6 +955,15 @@ tty_region(struct tty *tty, u_int rupper, u_int rlower)
 	tty->rupper = rupper;
 	tty->rlower = rlower;
 
+	/*
+	 * Some terminals (such as PuTTY) do not correctly reset the cursor to
+	 * 0,0 if it is beyond the last column (they do not reset their wrap
+	 * flag so further output causes a line feed). As a workaround, do an
+	 * explicit move to 0 first.
+	 */
+	if (tty->cx >= tty->sx)
+		tty_cursor(tty, 0, tty->cy);
+
 	tty->cx = 0;
 	tty->cy = 0;
 
