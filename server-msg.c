@@ -101,6 +101,8 @@ server_msg_dispatch(struct client *c)
 			if (datalen != 0)
 				fatalx("bad MSG_WAKEUP size");
 
+			if (!(c->flags & CLIENT_SUSPENDED))
+				break;
 			c->flags &= ~CLIENT_SUSPENDED;
 			tty_start_tty(&c->tty);
 			server_redraw_client(c);
