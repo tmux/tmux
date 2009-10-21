@@ -851,7 +851,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int			 cx, sx;
+	u_int			 cx;
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 
