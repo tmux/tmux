@@ -851,17 +851,24 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int			 cx;
+	u_int			 cx, sx;
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 
-	/*
-	 * Should the cursor be in the last cursor position ready for a natural
-	 * wrap? If so - and it isn't - move to and rewrite the last cell.
-	 */
-	if (!(tty->term->flags & TERM_EARLYWRAP) &&
-	    ctx->ocx + wp->xoff > tty->sx - ctx->last_width) {
-		if (tty->cx < tty->sx) {
+	/* Is the cursor in the very last position? */
+	if (ctx->ocx > wp->sx - ctx->last_width) {
+		if (wp->xoff != 0 || wp->sx != tty->sx) {
+			/*
+			 * The pane doesn't fill the entire line, the linefeed
+			 * will already have happened, so just move the cursor.
+			 */
+			tty_cursor_pane(tty, ctx, 0, ctx->ocy + 1);
+		} else if (tty->cx < tty->sx) {
+			/*
+			 * The cursor isn't in the last position already, so
+			 * move as far left as possinble and redraw the last
+			 * cell to move into the last position.
+			 */
 			cx = screen_size_x(s) - ctx->last_width;
 			tty_cursor_pane(tty, ctx, cx, ctx->ocy);
 			tty_cell(tty, &ctx->last_cell, &ctx->last_utf8);
