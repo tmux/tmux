@@ -1517,8 +1517,19 @@ extern struct clients clients;
 extern struct clients dead_clients;
 int	 server_start(char *);
 
-/* server-msg.c */
-int	 server_msg_dispatch(struct client *);
+/* server-client.c */
+void	 server_client_create(int);
+void	 server_client_lost(struct client *);
+void	 server_client_callback(int, int, void *);
+void	 server_client_loop(void);
+
+/* server-job.c */
+void	 server_job_callback(int, int, void *);
+void	 server_job_loop(void);
+
+/* server-window.c */
+void	 server_window_callback(int, int, void *);
+void	 server_window_loop(void);
 
 /* server-fn.c */
 void	 server_fill_environ(struct session *, struct environ *);
@@ -1850,7 +1861,7 @@ void	 	 buffer_write8(struct buffer *, uint8_t);
 uint8_t		 buffer_read8(struct buffer *);
 
 /* buffer-poll.c */
-int		 buffer_poll(struct pollfd *, struct buffer *, struct buffer *);
+int		 buffer_poll(int, int, struct buffer *, struct buffer *);
 
 /* log.c */
 void		 log_open_tty(int);

@@ -1,7 +1,7 @@
 /* $OpenBSD$ */
 
 /*
- * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
+ * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,38 +18,40 @@
 
 #include <sys/types.h>
 
-#include <errno.h>
 #include <unistd.h>
 
 #include "tmux.h"
 
-/* Fill buffers from socket based on poll results. */
-int
-buffer_poll(int fd, int events, struct buffer *in, struct buffer *out)
+/* Process a single job event. */
+void
+server_job_callback(int fd, int events, void *data)
 {
-	ssize_t	n;
+	struct job	*job = data;
 
-	if (events & (POLLERR|POLLNVAL))
-		return (-1);
-	if (in != NULL && events & POLLIN) {
-		buffer_ensure(in, BUFSIZ);
-		n = read(fd, BUFFER_IN(in), BUFFER_FREE(in));
-		if (n == 0)
-			return (-1);
-		if (n == -1) {
-			if (errno != EINTR && errno != EAGAIN)
-				return (-1);
-		} else
-			buffer_add(in, n);
-	} else if (events & POLLHUP)
-		return (-1);
-	if (out != NULL && BUFFER_USED(out) > 0 && events & POLLOUT) {
-		n = write(fd, BUFFER_OUT(out), BUFFER_USED(out));
-		if (n == -1) {
-			if (errno != EINTR && errno != EAGAIN)
-				return (-1);
-		} else
-			buffer_remove(out, n);
+	if (job->fd == -1)
+		return;
+
+	if (buffer_poll(fd, events, job->out, NULL) != 0) {
+		close(job->fd);
+		job->fd = -1;
 	}
-	return (0);
+}
+
+/* Job functions that happen once a loop. */
+void
+server_job_loop(void)
+{
+	struct job	*job;
+	
+restart:
+	SLIST_FOREACH(job, &all_jobs, lentry) {
+		if (job->flags & JOB_DONE || job->fd != -1 || job->pid != -1)
+			continue;
+		job->flags |= JOB_DONE;
+
+		if (job->callbackfn != NULL) {
+			job->callbackfn(job);
+			goto restart;	/* could be freed by callback */
+		}
+	}
 }

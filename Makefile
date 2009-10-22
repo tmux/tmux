@@ -34,10 +34,11 @@ SRCS=	attributes.c buffer-poll.c buffer.c cfg.c \
 	imsg.c imsg-buffer.c input.c key-bindings.c key-string.c \
 	layout-set.c layout.c log.c job.c \
 	mode-key.c names.c options-cmd.c options.c paste.c procname.c \
-	resize.c screen-redraw.c screen-write.c screen.c server-fn.c \
-	server-msg.c server.c session.c status.c tmux.c tty-keys.c tty-term.c \
-	tty.c utf8.c window-choose.c window-clock.c \
-	window-copy.c window-more.c window.c xmalloc.c
+	resize.c screen-redraw.c screen-write.c screen.c session.c status.c \
+	server-fn.c server.c server-client.c server-window.c server-job.c \
+	tmux.c tty-keys.c tty-term.c tty.c utf8.c \
+	window-choose.c window-clock.c window-copy.c window-more.c window.c \
+	xmalloc.c
 
 CDIAGFLAGS+= -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CDIAGFLAGS+= -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
