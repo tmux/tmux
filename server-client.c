@@ -197,10 +197,10 @@ server_client_loop(void)
 		if (c == NULL || c->session == NULL)
 			continue;
 
+		server_client_handle_data(c);
+
 		server_client_check_timers(c);
 		server_client_check_redraw(c);
-
-		server_client_handle_data(c);
 	}
 
 	/*
