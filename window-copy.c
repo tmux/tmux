@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.89 2009-10-15 01:52:47 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.90 2009-10-23 17:17:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1088,7 +1088,7 @@ window_copy_cursor_up(struct window_pane *wp, int scroll_only)
 	data->cx = data->lastcx;
 	if (scroll_only || data->cy == 0) {
 		window_copy_scroll_down(wp, 1);
-		if (scroll_only && window_copy_update_selection(wp))
+		if (scroll_only)
 			window_copy_redraw_lines(wp, data->cy, 2);
 	} else {
 		window_copy_update_cursor(wp, data->cx, data->cy - 1);
@@ -1119,7 +1119,7 @@ window_copy_cursor_down(struct window_pane *wp, int scroll_only)
 	data->cx = data->lastcx;
 	if (scroll_only || data->cy == screen_size_y(s) - 1) {
 		window_copy_scroll_up(wp, 1);
-		if (scroll_only && window_copy_update_selection(wp))
+		if (scroll_only && data->cy > 0)
 			window_copy_redraw_lines(wp, data->cy - 1, 2);
 	} else {
 		window_copy_update_cursor(wp, data->cx, data->cy + 1);
@@ -1250,7 +1250,10 @@ window_copy_scroll_up(struct window_pane *wp, u_int ny)
 	screen_write_deleteline(&ctx, ny);
 	window_copy_write_lines(wp, &ctx, screen_size_y(s) - ny, ny);
 	window_copy_write_line(wp, &ctx, 0);
-	window_copy_write_line(wp, &ctx, 1);
+	if (screen_size_y(s) > 1)
+		window_copy_write_line(wp, &ctx, 1);
+	if (screen_size_y(s) > 3)
+		window_copy_write_line(wp, &ctx, screen_size_y(s) - 2);
 	if (s->sel.flag && screen_size_y(s) > ny)
 		window_copy_write_line(wp, &ctx, screen_size_y(s) - ny - 1);
 	screen_write_cursormove(&ctx, data->cx, data->cy);
