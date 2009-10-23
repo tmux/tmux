@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.80 2009-10-23 17:08:30 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.81 2009-10-23 17:11:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -855,15 +855,15 @@ screen_write_mousemode(struct screen_write_ctx *ctx, int state)
 		s->mode &= ~MODE_MOUSE;
 }
 
-/*
- * Line feed the screen only (don't update the tty). Used for printing single
- * characters, where might want to let the scroll happen naturally.
- */
+/* Line feed. */
 void
-screen_write_linefeedscreen(struct screen_write_ctx *ctx, int wrapped)
+screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
 {
 	struct screen		*s = ctx->s;
 	struct grid_line	*gl;
+	struct tty_ctx	 	 ttyctx;
+
+	screen_write_initctx(ctx, &ttyctx, 0);
 
 	gl = &s->grid->linedata[s->grid->hsize + s->cy];
 	if (wrapped)
@@ -875,18 +875,8 @@ screen_write_linefeedscreen(struct screen_write_ctx *ctx, int wrapped)
 		grid_view_scroll_region_up(s->grid, s->rupper, s->rlower);
 	else if (s->cy < screen_size_y(s) - 1)
 		s->cy++;
-}
 
-/* Line feed (down with scroll). */
-void
-screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
-{
-	struct tty_ctx	 ttyctx;
-
-	screen_write_initctx(ctx, &ttyctx, 0);
-
-	screen_write_linefeedscreen(ctx, wrapped);
-
+	ttyctx.num = wrapped;
  	tty_write(tty_cmd_linefeed, &ttyctx);
 }
 
@@ -985,7 +975,6 @@ screen_write_cell(
     struct screen_write_ctx *ctx, const struct grid_cell *gc, u_char *udata)
 {
 	struct screen		*s = ctx->s;
-	struct window_pane	*wp = ctx->wp;
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
 	struct grid_utf8	 gu, *tmp_gu;
@@ -1062,10 +1051,7 @@ screen_write_cell(
 		 * leave the cursor to scroll naturally, unless this is only
 		 * part of the screen width.
 		 */
-		if (wp->xoff != 0 || wp->sx != screen_size_x(s))
-			screen_write_linefeed(ctx, 1);
-		else
-			screen_write_linefeedscreen(ctx, 1);
+		screen_write_linefeed(ctx, 1);
 		s->cx = 0;	/* carriage return */
 	}
 

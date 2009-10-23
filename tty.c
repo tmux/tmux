@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.155 2009-10-23 17:08:30 tcunha Exp $ */
+/* $Id: tty.c,v 1.156 2009-10-23 17:11:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -717,6 +717,14 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 		tty_redraw_region(tty, ctx);
 		return;
 	}
+
+	/*
+	 * If this line wrapped naturally (ctx->num is nonzero), don't do
+	 * anything - the cursor can just be moved to the last cell and wrap
+	 * naturally.
+	 */
+	if (ctx->num && !(tty->term->flags & TERM_EARLYWRAP))
+		return;
 
 	if (ctx->ocy == ctx->orlower) {
 		tty_reset(tty);
