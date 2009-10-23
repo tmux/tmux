@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.116 2009-10-23 17:09:21 tcunha Exp $ */
+/* $Id: window.c,v 1.117 2009-10-23 17:41:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -617,7 +617,7 @@ window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode)
 
 	if ((s = wp->mode->init(wp)) != NULL)
 		wp->screen = s;
-	server_redraw_window(wp->window);
+	wp->flags |= PANE_REDRAW;
 	return (0);
 }
 
@@ -631,7 +631,7 @@ window_pane_reset_mode(struct window_pane *wp)
 	wp->mode = NULL;
 
 	wp->screen = &wp->base;
-	server_redraw_window(wp->window);
+	wp->flags |= PANE_REDRAW;
 }
 
 void
