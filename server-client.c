@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.2 2009-10-23 17:51:02 tcunha Exp $ */
+/* $Id: server-client.c,v 1.3 2009-10-23 17:51:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -174,7 +174,6 @@ server_client_callback(int fd, int events, void *data)
 
 		if (buffer_poll(fd, events, c->tty.in, c->tty.out) != 0)
 			goto client_lost;
-		server_client_handle_data(c);
 	}
 
 	return;
@@ -183,7 +182,42 @@ client_lost:
 	server_client_lost(c);
 }
 
-/* Input data from client. */
+/* Client functions that need to happen every loop. */
+void
+server_client_loop(void)
+{
+	struct client		*c;
+	struct window		*w;
+	struct window_pane	*wp;
+	u_int		 	 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+
+		server_client_check_timers(c);
+		server_client_check_redraw(c);
+
+		server_client_handle_data(c);
+	}
+
+	/*
+	 * Any windows will have been redrawn as part of clients, so clear
+	 * their flags now.
+	 */
+	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+		w = ARRAY_ITEM(&windows, i);
+		if (w == NULL)
+			continue;
+
+		w->flags &= ~WINDOW_REDRAW;
+		TAILQ_FOREACH(wp, &w->panes, entry)
+			wp->flags &= ~PANE_REDRAW;
+	}
+}
+
+/* Handle data input or output from client. */
 void
 server_client_handle_data(struct client *c)
 {
@@ -335,39 +369,6 @@ server_client_handle_data(struct client *c)
 		mode |= MODE_MOUSE;
 	tty_update_mode(&c->tty, mode);
 	tty_reset(&c->tty);
-}
-
-/* Client functions that need to happen every loop. */
-void
-server_client_loop(void)
-{
-	struct client		*c;
-	struct window		*w;
-	struct window_pane	*wp;
-	u_int		 	 i;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-
-		server_client_check_timers(c);
-		server_client_check_redraw(c);
-	}
-
-	/*
-	 * Any windows will have been redrawn as part of clients, so clear
-	 * their flags now.
-	 */
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		w = ARRAY_ITEM(&windows, i);
-		if (w == NULL)
-			continue;
-
-		w->flags &= ~WINDOW_REDRAW;
-		TAILQ_FOREACH(wp, &w->panes, entry)
-			wp->flags &= ~PANE_REDRAW;
-	}
 }
 
 /* Check for client redraws. */
