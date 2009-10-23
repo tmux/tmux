@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.179 2009-10-23 17:32:26 tcunha Exp $ */
+/* $Id: tmux.c,v 1.180 2009-10-23 17:40:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -60,7 +60,6 @@ int		 login_shell;
 __dead void	 usage(void);
 void	 	 fill_session(struct msg_command_data *);
 char 		*makesockpath(const char *);
-int		 prepare_cmd(enum msgtype *, void **, size_t *, int, char **);
 int		 dispatch_imsg(struct imsgbuf *, const char *, int *);
 __dead void	 shell_exec(const char *, const char *);
 
@@ -292,41 +291,22 @@ makesockpath(const char *label)
 }
 
 int
-prepare_cmd(enum msgtype *msg, void **buf, size_t *len, int argc, char **argv)
-{
-	static struct msg_command_data	 cmddata;
-
-	fill_session(&cmddata);
-	
-	cmddata.argc = argc;
-	if (cmd_pack_argv(argc, argv, cmddata.argv, sizeof cmddata.argv) != 0) {
-		log_warnx("command too long");
-		return (-1);
-	}
-
-	*buf = &cmddata;
-	*len = sizeof cmddata;
-
-	*msg = MSG_COMMAND;
-	return (0);
-}
-
-int
 main(int argc, char **argv)
 {
-	struct cmd_list	*cmdlist;
- 	struct cmd	*cmd;
-	struct pollfd	 pfd;
-	enum msgtype	 msg;
-	struct passwd	*pw;
-	struct options	*so, *wo;
-	struct keylist	*keylist;
-	struct imsgbuf	*ibuf;
-	char		*s, *shellcmd, *path, *label, *home, *cause;
-	char		 cwd[MAXPATHLEN], **var;
-	void		*buf;
-	size_t		 len;
-	int	 	 nfds, retcode, opt, flags, cmdflags = 0;
+	struct cmd_list		*cmdlist;
+ 	struct cmd		*cmd;
+	struct pollfd		 pfd;
+	enum msgtype		 msg;
+	struct passwd		*pw;
+	struct options		*so, *wo;
+	struct keylist		*keylist;
+	struct imsgbuf		*ibuf;
+	struct msg_command_data	 cmddata;
+	char			*s, *shellcmd, *path, *label, *home, *cause;
+	char			 cwd[MAXPATHLEN], **var;
+	void			*buf;
+	size_t			 len;
+	int	 		 nfds, retcode, opt, flags, cmdflags = 0;
 
 	flags = 0;
 	shellcmd = label = path = NULL;
@@ -538,8 +518,20 @@ main(int argc, char **argv)
 		msg = MSG_SHELL;
 		buf = NULL;
 		len = 0;
-	} else if (prepare_cmd(&msg, &buf, &len, argc, argv) != 0)
-		exit(1);
+	} else {
+		fill_session(&cmddata);
+	
+		cmddata.argc = argc;
+		if (cmd_pack_argv(
+		    argc, argv, cmddata.argv, sizeof cmddata.argv) != 0) {
+			log_warnx("command too long");
+			exit(1);
+		}
+		
+		msg = MSG_COMMAND;
+		buf = &cmddata;
+		len = sizeof cmddata;
+	}
 
 	if (shellcmd != NULL)
 		cmdflags |= CMD_STARTSERVER;
