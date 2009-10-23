@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.477 2009-10-15 01:55:12 tcunha Exp $ */
+/* $Id: tmux.h,v 1.478 2009-10-23 17:06:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -968,6 +968,11 @@ struct tty_ctx {
 
 	u_int		 orupper;
 	u_int		 orlower;
+
+	/* Saved last cell on line. */
+	struct grid_cell last_cell;
+	struct grid_utf8 last_utf8;
+	u_int		 last_width;
 };
 
 /* Mouse input. */
