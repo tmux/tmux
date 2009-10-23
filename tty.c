@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.156 2009-10-23 17:11:26 tcunha Exp $ */
+/* $Id: tty.c,v 1.157 2009-10-23 17:13:10 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -879,14 +879,13 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_utf8character(struct tty *tty, const struct tty_ctx *ctx)
 {
-	u_char	*ptr = ctx->ptr;
-	size_t	 i;
+	struct window_pane	*wp = ctx->wp;
 
-	for (i = 0; i < UTF8_SIZE; i++) {
-		if (ptr[i] == 0xff)
-			break;
-		tty_putc(tty, ptr[i]);
-	}
+	/*
+	 * Cannot rely on not being a partial character, so just redraw the
+	 * whole line.
+	 */
+	tty_draw_line(tty, wp->screen, ctx->ocy, wp->xoff, wp->yoff);	
 }
 
 void
