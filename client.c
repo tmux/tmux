@@ -1,4 +1,4 @@
-/* $OpenBSD: client.c,v 1.26 2009/10/21 21:11:55 nicm Exp $ */
+/* $Id: client.c,v 1.81 2009-10-23 17:38:42 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
