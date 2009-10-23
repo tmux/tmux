@@ -1,4 +1,4 @@
-/* $Id: server-msg.c,v 1.91 2009-10-11 23:30:28 tcunha Exp $ */
+/* $Id: server-msg.c,v 1.92 2009-10-23 17:33:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -100,6 +100,8 @@ server_msg_dispatch(struct client *c)
 			if (datalen != 0)
 				fatalx("bad MSG_WAKEUP size");
 
+			if (!(c->flags & CLIENT_SUSPENDED))
+				break;
 			c->flags &= ~CLIENT_SUSPENDED;
 			tty_start_tty(&c->tty);
 			server_redraw_client(c);
