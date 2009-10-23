@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.161 2009-10-23 17:25:51 tcunha Exp $ */
+/* $Id: tty.c,v 1.162 2009-10-23 17:28:29 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -856,7 +856,7 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int			 cx, sx;
+	u_int			 cx;
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 
