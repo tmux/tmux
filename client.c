@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.78 2009-10-15 01:51:09 tcunha Exp $ */
+/* $Id: client.c,v 1.79 2009-10-23 17:32:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,10 +33,16 @@
 
 #include "tmux.h"
 
-void	client_send_environ(struct client_ctx *);
+struct imsgbuf	client_ibuf;
+const char     *client_exitmsg;
 
-int
-client_init(char *path, struct client_ctx *cctx, int cmdflags, int flags)
+void	client_send_environ(void);
+void	client_write_server(enum msgtype, void *, size_t);
+int	client_dispatch(void);
+void	client_suspend(void);
+
+struct imsgbuf *
+client_init(char *path, int cmdflags, int flags)
 {
 	struct sockaddr_un		sa;
 	struct stat			sb;
@@ -97,10 +103,10 @@ server_started:
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
-	imsg_init(&cctx->ibuf, fd);
+	imsg_init(&client_ibuf, fd);
 
 	if (cmdflags & CMD_SENDENVIRON)
-		client_send_environ(cctx);
+		client_send_environ();
 	if (isatty(STDIN_FILENO)) {
 		if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
 			fatal("ioctl(TIOCGWINSZ)");
@@ -118,23 +124,23 @@ server_started:
 
 		if ((fd2 = dup(STDIN_FILENO)) == -1)
 			fatal("dup failed");
-		imsg_compose(&cctx->ibuf, MSG_IDENTIFY,
+		imsg_compose(&client_ibuf, MSG_IDENTIFY,
 		    PROTOCOL_VERSION, -1, fd2, &data, sizeof data);
 	}
 
-	return (0);
+	return (&client_ibuf);
 
 start_failed:
 	log_warnx("server failed to start");
-	return (1);
+	return (NULL);
 
 not_found:
 	log_warn("server not found");
-	return (1);
+	return (NULL);
 }
 
 void
-client_send_environ(struct client_ctx *cctx)
+client_send_environ(void)
 {
 	char		      **var;
 	struct msg_environ_data	data;
@@ -142,12 +148,18 @@ client_send_environ(struct client_ctx *cctx)
  	for (var = environ; *var != NULL; var++) {
 		if (strlcpy(data.var, *var, sizeof data.var) >= sizeof data.var)
 			continue;
-		client_write_server(cctx, MSG_ENVIRON, &data, sizeof data);
+		client_write_server(MSG_ENVIRON, &data, sizeof data);
 	}
 }
 
-int
-client_main(struct client_ctx *cctx)
+void
+client_write_server(enum msgtype type, void *buf, size_t len)
+{
+ 	imsg_compose(&client_ibuf, type, PROTOCOL_VERSION, -1, -1, buf, len);
+}
+
+__dead void
+client_main(void)
 {
 	struct pollfd	 pfd;
 	int		 n, nfds;
@@ -162,29 +174,31 @@ client_main(struct client_ctx *cctx)
 	 * MSG_READY switched to here. Process anything outstanding now so poll
 	 * doesn't hang waiting for messages that have already arrived.
 	 */
-	if (client_msg_dispatch(cctx) != 0)
+	if (client_dispatch() != 0)
 		goto out;
 
 	for (;;) {
-		if (sigterm)
-			client_write_server(cctx, MSG_EXITING, NULL, 0);
+		if (sigterm) {
+			client_exitmsg = "terminated";
+			client_write_server(MSG_EXITING, NULL, 0);
+		}
 		if (sigchld) {
 			waitpid(WAIT_ANY, NULL, WNOHANG);
 			sigchld = 0;
 		}
 		if (sigwinch) {
-			client_write_server(cctx, MSG_RESIZE, NULL, 0);
+			client_write_server(MSG_RESIZE, NULL, 0);
  			sigwinch = 0;
 		}
 		if (sigcont) {
 			siginit();
-			client_write_server(cctx, MSG_WAKEUP, NULL, 0);
+			client_write_server(MSG_WAKEUP, NULL, 0);
 			sigcont = 0;
 		}
 
-		pfd.fd = cctx->ibuf.fd;
+		pfd.fd = client_ibuf.fd;
 		pfd.events = POLLIN;
-		if (cctx->ibuf.w.queued > 0)
+		if (client_ibuf.w.queued > 0)
 			pfd.events |= POLLOUT;
 
 		if ((nfds = poll(&pfd, 1, INFTIM)) == -1) {
@@ -199,67 +213,41 @@ client_main(struct client_ctx *cctx)
 			fatalx("socket error");
 
 		if (pfd.revents & POLLIN) {
-			if ((n = imsg_read(&cctx->ibuf)) == -1 || n == 0) {
-				cctx->exittype = CCTX_DIED;
+			if ((n = imsg_read(&client_ibuf)) == -1 || n == 0) {
+				client_exitmsg = "lost server";
 				break;
 			}
-			if (client_msg_dispatch(cctx) != 0)
+			if (client_dispatch() != 0)
 				break;
 		}
 
 		if (pfd.revents & POLLOUT) {
-			if (msgbuf_write(&cctx->ibuf.w) < 0) {
-				cctx->exittype = CCTX_DIED;
+			if (msgbuf_write(&client_ibuf.w) < 0) {
+				client_exitmsg = "lost server";
 				break;
 			}
 		}
 	}
 
 out:
-	/*
-	 * Print exit status message, unless running as a login shell where it
-	 * would either be pointless or irritating.
-	 */
-	if (sigterm) {
-		printf("[terminated]\n");
-		return (1);
-	}
-	switch (cctx->exittype) {
-	case CCTX_DIED:
-		printf("[lost server]\n");
-		return (0);
-	case CCTX_SHUTDOWN:
- 		if (!login_shell)
-			printf("[server exited]\n");
-		return (0);
-	case CCTX_EXIT:
-		if (cctx->errstr != NULL) {
-			printf("[error: %s]\n", cctx->errstr);
-			return (1);
-		}
- 		if (!login_shell)
-			printf("[exited]\n");
-		return (0);
-	case CCTX_DETACH:
+	/* Print the exit message, if any, and exit. */
+	if (client_exitmsg != NULL) {
 		if (!login_shell)
-			printf("[detached]\n");
-		return (0);
-	default:
-		printf("[unknown error]\n");
-		return (1);
+			printf("[%s]\n", client_exitmsg);
+		exit(1);
 	}
+	exit(0);
 }
 
 int
-client_msg_dispatch(struct client_ctx *cctx)
+client_dispatch(void)
 {
 	struct imsg		 imsg;
-	struct msg_print_data	 printdata;
 	struct msg_lock_data	 lockdata;
 	ssize_t			 n, datalen;
 
 	for (;;) {
-		if ((n = imsg_get(&cctx->ibuf, &imsg)) == -1)
+		if ((n = imsg_get(&client_ibuf, &imsg)) == -1)
 			fatalx("imsg_get failed");
 		if (n == 0)
 			return (0);
@@ -270,25 +258,15 @@ client_msg_dispatch(struct client_ctx *cctx)
 			if (datalen != 0)
 				fatalx("bad MSG_DETACH size");
 
-			client_write_server(cctx, MSG_EXITING, NULL, 0);
-			cctx->exittype = CCTX_DETACH;
+			client_write_server(MSG_EXITING, NULL, 0);
+			client_exitmsg = "detached";
 			break;
-		case MSG_ERROR:
-			if (datalen != sizeof printdata)
-				fatalx("bad MSG_ERROR size");
-			memcpy(&printdata, imsg.data, sizeof printdata);
-
-			printdata.msg[(sizeof printdata.msg) - 1] = '\0';
-			/* Error string used after exit message from server. */
-			cctx->errstr = xstrdup(printdata.msg);
-			imsg_free(&imsg);
-			return (-1);
 		case MSG_EXIT:
 			if (datalen != 0)
 				fatalx("bad MSG_EXIT size");
 
-			client_write_server(cctx, MSG_EXITING, NULL, 0);
-			cctx->exittype = CCTX_EXIT;
+			client_write_server(MSG_EXITING, NULL, 0);
+			client_exitmsg = "exited";
 			break;
 		case MSG_EXITED:
 			if (datalen != 0)
@@ -300,8 +278,8 @@ client_msg_dispatch(struct client_ctx *cctx)
 			if (datalen != 0)
 				fatalx("bad MSG_SHUTDOWN size");
 
-			client_write_server(cctx, MSG_EXITING, NULL, 0);
-			cctx->exittype = CCTX_SHUTDOWN;
+			client_write_server(MSG_EXITING, NULL, 0);
+			client_exitmsg = "server exited";
 			break;
 		case MSG_SUSPEND:
 			if (datalen != 0)
@@ -316,7 +294,7 @@ client_msg_dispatch(struct client_ctx *cctx)
 			
 			lockdata.cmd[(sizeof lockdata.cmd) - 1] = '\0';
 			system(lockdata.cmd);
-			client_write_server(cctx, MSG_UNLOCK, NULL, 0);
+			client_write_server(MSG_UNLOCK, NULL, 0);
 			break;
 		default:
 			fatalx("unexpected message");
@@ -324,4 +302,24 @@ client_msg_dispatch(struct client_ctx *cctx)
 
 		imsg_free(&imsg);
 	}
+}
+
+void
+client_suspend(void)
+{
+	struct sigaction	 act;
+
+	memset(&act, 0, sizeof act);
+	sigemptyset(&act.sa_mask);
+	act.sa_flags = SA_RESTART;
+
+	act.sa_handler = SIG_DFL;
+	if (sigaction(SIGTSTP, &act, NULL) != 0)
+		fatal("sigaction failed");
+
+	act.sa_handler = sighandler;
+	if (sigaction(SIGCONT, &act, NULL) != 0)
+		fatal("sigaction failed");
+
+	kill(getpid(), SIGTSTP);
 }

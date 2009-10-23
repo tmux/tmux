@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.178 2009-10-11 23:46:02 tcunha Exp $ */
+/* $Id: tmux.c,v 1.179 2009-10-23 17:32:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,9 +58,10 @@ char		*socket_path;
 int		 login_shell;
 
 __dead void	 usage(void);
+void	 	 fill_session(struct msg_command_data *);
 char 		*makesockpath(const char *);
 int		 prepare_cmd(enum msgtype *, void **, size_t *, int, char **);
-int		 dispatch_imsg(struct client_ctx *, const char *, int *);
+int		 dispatch_imsg(struct imsgbuf *, const char *, int *);
 __dead void	 shell_exec(const char *, const char *);
 
 #ifndef HAVE_PROGNAME
@@ -224,6 +225,44 @@ areshell(const char *shell)
 	return (0);
 }
 
+void
+fill_session(struct msg_command_data *data)
+{
+	char		*env, *ptr1, *ptr2, buf[256];
+	size_t		 len;
+	const char	*errstr;
+	long long	 ll;
+
+	data->pid = -1;
+	if ((env = getenv("TMUX")) == NULL)
+		return;
+
+	if ((ptr2 = strrchr(env, ',')) == NULL || ptr2 == env)
+		return;
+	for (ptr1 = ptr2 - 1; ptr1 > env && *ptr1 != ','; ptr1--)
+		;
+	if (*ptr1 != ',')
+		return;
+	ptr1++;
+	ptr2++;
+
+	len = ptr2 - ptr1 - 1;
+	if (len > (sizeof buf) - 1)
+		return;
+	memcpy(buf, ptr1, len);
+	buf[len] = '\0';
+
+	ll = strtonum(buf, 0, LONG_MAX, &errstr);
+	if (errstr != NULL)
+		return;
+	data->pid = ll;
+
+	ll = strtonum(ptr2, 0, UINT_MAX, &errstr);
+	if (errstr != NULL)
+		return;
+	data->idx = ll;
+}
+
 char *
 makesockpath(const char *label)
 {
@@ -257,7 +296,7 @@ prepare_cmd(enum msgtype *msg, void **buf, size_t *len, int argc, char **argv)
 {
 	static struct msg_command_data	 cmddata;
 
-	client_fill_session(&cmddata);
+	fill_session(&cmddata);
 	
 	cmddata.argc = argc;
 	if (cmd_pack_argv(argc, argv, cmddata.argv, sizeof cmddata.argv) != 0) {
@@ -275,20 +314,19 @@ prepare_cmd(enum msgtype *msg, void **buf, size_t *len, int argc, char **argv)
 int
 main(int argc, char **argv)
 {
-	struct client_ctx	 cctx;
-	struct cmd_list		*cmdlist;
- 	struct cmd		*cmd;
-	struct pollfd	 	 pfd;
-	enum msgtype		 msg;
-	struct passwd		*pw;
-	struct options		*so, *wo;
-	struct keylist		*keylist;
-	char			*s, *shellcmd, *path, *label, *home, *cause;
-	char			 cwd[MAXPATHLEN], **var;
-	void			*buf;
-	size_t			 len;
-	int	 		 retcode, opt, flags, cmdflags = 0;
-	int			 nfds;
+	struct cmd_list	*cmdlist;
+ 	struct cmd	*cmd;
+	struct pollfd	 pfd;
+	enum msgtype	 msg;
+	struct passwd	*pw;
+	struct options	*so, *wo;
+	struct keylist	*keylist;
+	struct imsgbuf	*ibuf;
+	char		*s, *shellcmd, *path, *label, *home, *cause;
+	char		 cwd[MAXPATHLEN], **var;
+	void		*buf;
+	size_t		 len;
+	int	 	 nfds, retcode, opt, flags, cmdflags = 0;
 
 	flags = 0;
 	shellcmd = label = path = NULL;
@@ -527,19 +565,17 @@ main(int argc, char **argv)
 		cmd_list_free(cmdlist);
 	}
 
- 	memset(&cctx, 0, sizeof cctx);
-	if (client_init(path, &cctx, cmdflags, flags) != 0)
+	if ((ibuf = client_init(path, cmdflags, flags)) == NULL)
 		exit(1);
 	xfree(path);
 
-	client_write_server(&cctx, msg, buf, len);
-	memset(buf, 0, len);
+ 	imsg_compose(ibuf, msg, PROTOCOL_VERSION, -1, -1, buf, len);
 
 	retcode = 0;
 	for (;;) {
-		pfd.fd = cctx.ibuf.fd;
+		pfd.fd = ibuf->fd;
 		pfd.events = POLLIN;
-		if (cctx.ibuf.w.queued != 0)
+		if (ibuf->w.queued != 0)
 			pfd.events |= POLLOUT;
 
 		if ((nfds = poll(&pfd, 1, INFTIM)) == -1) {
@@ -554,12 +590,12 @@ main(int argc, char **argv)
 			fatalx("socket error");
 
                 if (pfd.revents & POLLIN) {
-			if (dispatch_imsg(&cctx, shellcmd, &retcode) != 0)
+			if (dispatch_imsg(ibuf, shellcmd, &retcode) != 0)
 				break;
 		}
 
 		if (pfd.revents & POLLOUT) {
-			if (msgbuf_write(&cctx.ibuf.w) < 0)
+			if (msgbuf_write(&ibuf->w) < 0)
 				fatalx("msgbuf_write failed");
 		}
 	}
@@ -571,18 +607,18 @@ main(int argc, char **argv)
 }
 
 int
-dispatch_imsg(struct client_ctx *cctx, const char *shellcmd, int *retcode)
+dispatch_imsg(struct imsgbuf *ibuf, const char *shellcmd, int *retcode)
 {
 	struct imsg		imsg;
 	ssize_t			n, datalen;
 	struct msg_print_data	printdata;
 	struct msg_shell_data	shelldata;
 
-        if ((n = imsg_read(&cctx->ibuf)) == -1 || n == 0)
+        if ((n = imsg_read(ibuf)) == -1 || n == 0)
 		fatalx("imsg_read failed");
 
 	for (;;) {
-		if ((n = imsg_get(&cctx->ibuf, &imsg)) == -1)
+		if ((n = imsg_get(ibuf, &imsg)) == -1)
 			fatalx("imsg_get failed");
 		if (n == 0)
 			return (0);
@@ -610,8 +646,7 @@ dispatch_imsg(struct client_ctx *cctx, const char *shellcmd, int *retcode)
 			if (datalen != 0)
 				fatalx("bad MSG_READY size");
 
-			*retcode = client_main(cctx);
-			return (-1);
+			client_main();	/* doesn't return */
 		case MSG_VERSION:
 			if (datalen != 0)
 				fatalx("bad MSG_VERSION size");
