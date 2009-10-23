@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.478 2009-10-23 17:06:23 tcunha Exp $ */
+/* $Id: tmux.h,v 1.479 2009-10-23 17:10:00 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -128,7 +128,6 @@ enum key_code {
 
 	/* Function keys. */
 	KEYC_F1,
-
 	KEYC_F2,
 	KEYC_F3,
 	KEYC_F4,
