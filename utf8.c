@@ -1,4 +1,4 @@
-/* $Id: utf8.c,v 1.10 2009-10-23 17:16:25 tcunha Exp $ */
+/* $Id: utf8.c,v 1.11 2009-10-23 17:21:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -227,7 +227,7 @@ utf8_open(struct utf8_data *utf8data, u_char ch)
 /*
  * Append character to UTF-8, closing if finished.
  *
- * Returns 1 if more UTF-8 data to come, 1 if finished.
+ * Returns 1 if more UTF-8 data to come, 0 if finished.
  */
 int
 utf8_append(struct utf8_data *utf8data, u_char ch)
