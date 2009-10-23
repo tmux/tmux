@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.192 2009-10-15 01:52:47 tcunha Exp $
+.\" $Id: tmux.1,v 1.193 2009-10-23 17:24:57 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 13 2009 $
+.Dd $Mdocdate: October 21 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -725,7 +725,7 @@ to
 keys.
 .It Ic down-pane Op Fl t Ar target-pane
 .D1 (alias: Ic downp )
-Move down a pane.
+Change the active pane to the next pane (higher index).
 .It Xo Ic find-window
 .Op Fl t Ar target-window
 .Ar match-string
@@ -1013,7 +1013,7 @@ is specified and the window is linked to only one session, it is unlinked and
 destroyed.
 .It Ic up-pane Op Fl t Ar target-pane
 .D1 (alias: Ic upp )
-Move up a pane.
+Change the active pane to the previous pane (lower index).
 .El
 .Sh KEY BINDINGS
 .Nm
