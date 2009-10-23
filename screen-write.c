@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.78 2009-10-23 17:06:23 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.79 2009-10-23 17:07:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1006,6 +1006,14 @@ screen_write_cell(
  	} else
 		width = 1;
 
+	/*
+	 * If this is a wide character and there is no room on the screen, for
+	 * the entire character, don't print it.
+	 */
+	if (width > 1 && (width > screen_size_x(s) ||
+	    (s->cx != screen_size_x(s) && s->cx > screen_size_x(s) - width)))
+		return;
+
 	/* If the width is zero, combine onto the previous character. */
 	if (width == 0) {
 		if (s->cx == 0)
@@ -1035,14 +1043,6 @@ screen_write_cell(
 		ttyctx.ptr = udata;
 		tty_write(tty_cmd_utf8character, &ttyctx);
 		return;
-	}
-
-	/* If the character is wider than the screen, don't print it. */
-	if (width > screen_size_x(s)) {
-		memcpy(&tmp_gc, gc, sizeof tmp_gc);
-		tmp_gc.data = '_';
-		width = 1;
-		gc = &tmp_gc;
 	}
 
 	/* Initialise the redraw context, saving the last cell. */
