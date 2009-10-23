@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.157 2009-10-23 17:13:10 tcunha Exp $ */
+/* $Id: tty.c,v 1.158 2009-10-23 17:16:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -347,7 +347,7 @@ tty_putc(struct tty *tty, u_char ch)
 void
 tty_pututf8(struct tty *tty, const struct grid_utf8 *gu)
 {
-	u_int	i, width;
+	u_int	i;
 
 	for (i = 0; i < UTF8_SIZE; i++) {
 		if (gu->data[i] == 0xff)
@@ -357,8 +357,7 @@ tty_pututf8(struct tty *tty, const struct grid_utf8 *gu)
 			write(tty->log_fd, &gu->data[i], 1);
 	}
 
-	width = utf8_width(gu->data);
-	tty->cx += width;
+	tty->cx += gu->width;
 }
 
 void

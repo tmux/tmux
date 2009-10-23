@@ -1,4 +1,4 @@
-/* $Id: utf8.c,v 1.9 2009-06-25 16:21:32 nicm Exp $ */
+/* $Id: utf8.c,v 1.10 2009-10-23 17:16:25 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -196,9 +196,56 @@ struct utf8_width_entry utf8_width_table[] = {
 struct utf8_width_entry	*utf8_width_root = NULL;
 
 int	utf8_overlap(struct utf8_width_entry *, struct utf8_width_entry *);
-void	utf8_print(struct utf8_width_entry *, int);
-u_int	utf8_combine(const u_char *);
+u_int	utf8_combine(const struct utf8_data *);
+u_int	utf8_width(const struct utf8_data *);
 
+/*
+ * Open UTF-8 sequence.
+ *
+ * 11000010-11011111 C2-DF start of 2-byte sequence
+ * 11100000-11101111 E0-EF start of 3-byte sequence
+ * 11110000-11110100 F0-F4 start of 4-byte sequence
+ *
+ * Returns 1 if more UTF-8 to come, 0 if not UTF-8.
+ */
+int
+utf8_open(struct utf8_data *utf8data, u_char ch)
+{
+	memset(utf8data, 0, sizeof *utf8data);
+	if (ch >= 0xc2 && ch <= 0xdf)
+		utf8data->size = 2;
+	else if (ch >= 0xe0 && ch <= 0xef)
+		utf8data->size = 3;
+	else if (ch >= 0xf0 && ch <= 0xf4)
+		utf8data->size = 4;
+	else
+		return (0);
+	utf8_append(utf8data, ch);
+	return (1);
+}
+
+/*
+ * Append character to UTF-8, closing if finished.
+ *
+ * Returns 1 if more UTF-8 data to come, 1 if finished.
+ */
+int
+utf8_append(struct utf8_data *utf8data, u_char ch)
+{
+	if (utf8data->have >= utf8data->size)
+		fatalx("UTF-8 character overflow");
+	if (utf8data->size > sizeof utf8data->data)
+		fatalx("UTF-8 character size too large");
+
+	utf8data->data[utf8data->have++] = ch;
+	if (utf8data->have != utf8data->size)
+		return (1);
+
+	utf8data->width = utf8_width(utf8data);
+	return (0);
+}
+
+/* Check if two width tree entries overlap. */
 int
 utf8_overlap(
     struct utf8_width_entry *item1, struct utf8_width_entry *item2)
@@ -214,6 +261,7 @@ utf8_overlap(
 	return (0);
 }
 
+/* Build UTF-8 width tree. */
 void
 utf8_build(void)
 {
@@ -240,52 +288,50 @@ utf8_build(void)
 	}
 }
 
-void
-utf8_print(struct utf8_width_entry *node, int n)
-{
-	log_debug("%*s%04x -> %04x", n, " ",  node->first, node->last);
-	if (node->left != NULL)
-		utf8_print(node->left, n + 1);
-	if (node->right != NULL)
-		utf8_print(node->right, n + 1);
-}
-
+/* Combine UTF-8 into 32-bit Unicode. */
 u_int
-utf8_combine(const u_char *data)
+utf8_combine(const struct utf8_data *utf8data)
 {
-	u_int	uvalue;
+	u_int	value;
 
-	if (data[1] == 0xff)
-		uvalue = data[0];
-	else if (data[2] == 0xff) {
-		uvalue = data[1] & 0x3f;
-		uvalue |= (data[0] & 0x1f) << 6;
-	} else if (data[3] == 0xff) {
-		uvalue = data[2] & 0x3f;
-		uvalue |= (data[1] & 0x3f) << 6;
-		uvalue |= (data[0] & 0x0f) << 12;
-	} else {
-		uvalue = data[3] & 0x3f;
-		uvalue |= (data[2] & 0x3f) << 6;
-		uvalue |= (data[1] & 0x3f) << 12;
-		uvalue |= (data[0] & 0x3f) << 18;
+	value = 0xff;
+	switch (utf8data->size) {
+	case 1:
+		value = utf8data->data[0];
+		break;
+	case 2:
+		value = utf8data->data[1] & 0x3f;
+		value |= (utf8data->data[0] & 0x1f) << 6;
+		break;
+	case 3:
+		value = utf8data->data[2] & 0x3f;
+		value |= (utf8data->data[1] & 0x3f) << 6;
+		value |= (utf8data->data[0] & 0x0f) << 12;
+		break;
+	case 4:
+		value = utf8data->data[3] & 0x3f;
+		value |= (utf8data->data[2] & 0x3f) << 6;
+		value |= (utf8data->data[1] & 0x3f) << 12;
+		value |= (utf8data->data[0] & 0x3f) << 18;
+		break;
 	}
-	return (uvalue);
+	return (value);
 }
 
-int
-utf8_width(const u_char *udata)
+/* Lookup width of UTF-8 data in tree. */
+u_int
+utf8_width(const struct utf8_data *utf8data)
 {
 	struct utf8_width_entry	*item;
-	u_int			 uvalue;
+	u_int			 value;
 
-	uvalue = utf8_combine(udata);
+	value = utf8_combine(utf8data);
 
 	item = utf8_width_root;
 	while (item != NULL) {
-		if (uvalue < item->first)
+		if (value < item->first)
 			item = item->left;
-		else if (uvalue > item->last)
+		else if (value > item->last)
 			item = item->right;
 		else
 			return (item->width);

@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.82 2009-10-23 17:13:10 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.83 2009-10-23 17:16:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,8 @@
 
 void	screen_write_initctx(struct screen_write_ctx *, struct tty_ctx *, int);
 void	screen_write_overwrite(struct screen_write_ctx *);
-int	screen_write_combine(struct screen_write_ctx *, u_char *);
+int	screen_write_combine(
+	    struct screen_write_ctx *, const struct utf8_data *);
 
 /* Initialise writing with a window. */
 void
@@ -92,10 +93,11 @@ screen_write_cstrlen(int utf8flag, const char *fmt, ...)
 size_t printflike2
 screen_write_strlen(int utf8flag, const char *fmt, ...)
 {
-	va_list	ap;
-	char   *msg;
-	u_char *ptr, utf8buf[4];
-	size_t	left, size = 0;
+	va_list			ap;
+	char   	       	       *msg;
+	struct utf8_data	utf8data;
+	u_char 	      	       *ptr;
+	size_t			left, size = 0;
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
@@ -103,24 +105,17 @@ screen_write_strlen(int utf8flag, const char *fmt, ...)
 
 	ptr = msg;
 	while (*ptr != '\0') {
-		if (utf8flag && *ptr > 0x7f) {
-			memset(utf8buf, 0xff, sizeof utf8buf);
+		if (utf8flag && *ptr > 0x7f && utf8_open(&utf8data, *ptr)) {
+			ptr++;
 
 			left = strlen(ptr);
-			if (*ptr >= 0xc2 && *ptr <= 0xdf && left >= 2) {
-				memcpy(utf8buf, ptr, 2);
-				ptr += 2;
-			} else if (*ptr >= 0xe0 && *ptr <= 0xef && left >= 3) {
-				memcpy(utf8buf, ptr, 3);
-				ptr += 3;
-			} else if (*ptr >= 0xf0 && *ptr <= 0xf4 && left >= 4) {
-				memcpy(utf8buf, ptr, 4);
-				ptr += 4;
-			} else {
-				*utf8buf = *ptr;
+			if (left < utf8data.size - 1)
+				break;
+			while (utf8_append(&utf8data, *ptr))
 				ptr++;
-			}
-			size += utf8_width(utf8buf);
+			ptr++;
+
+			size += utf8data.width;
 		} else {
 			size++;
 			ptr++;
@@ -159,47 +154,38 @@ void
 screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
     struct grid_cell *gc, int utf8flag, const char *fmt, va_list ap)
 {
-	char   *msg;
-	u_char *ptr, utf8buf[4];
-	size_t	left, size = 0;
-	int	width;
+	char   		       *msg;
+	struct utf8_data	utf8data;
+	u_char 		       *ptr;
+	size_t		 	left, size = 0;
 
 	xvasprintf(&msg, fmt, ap);
 
 	ptr = msg;
 	while (*ptr != '\0') {
-		if (utf8flag && *ptr > 0x7f) {
-			memset(utf8buf, 0xff, sizeof utf8buf);
+		if (utf8flag && *ptr > 0x7f && utf8_open(&utf8data, *ptr)) {
+			ptr++;
 
 			left = strlen(ptr);
-			if (*ptr >= 0xc2 && *ptr <= 0xdf && left >= 2) {
-				memcpy(utf8buf, ptr, 2);
-				ptr += 2;
-			} else if (*ptr >= 0xe0 && *ptr <= 0xef && left >= 3) {
-				memcpy(utf8buf, ptr, 3);
-				ptr += 3;
-			} else if (*ptr >= 0xf0 && *ptr <= 0xf4 && left >= 4) {
-				memcpy(utf8buf, ptr, 4);
-				ptr += 4;
-			} else {
-				*utf8buf = *ptr;
+			if (left < utf8data.size - 1)
+				break;
+			while (utf8_append(&utf8data, *ptr))
 				ptr++;
-			}
+			ptr++;
 
-			width = utf8_width(utf8buf);
-			if (maxlen > 0 && size + width > (size_t) maxlen) {
+			if (maxlen > 0 &&
+			    size + utf8data.width > (size_t) maxlen) {
 				while (size < (size_t) maxlen) {
 					screen_write_putc(ctx, gc, ' ');
 					size++;
 				}
 				break;
 			}
-			size += width;
-
+			size += utf8data.width;
+			
 			gc->flags |= GRID_FLAG_UTF8;
-			screen_write_cell(ctx, gc, utf8buf);
+			screen_write_cell(ctx, gc, &utf8data);
 			gc->flags &= ~GRID_FLAG_UTF8;
-
 		} else {
 			if (maxlen > 0 && size + 1 > (size_t) maxlen)
 				break;
@@ -219,11 +205,11 @@ screen_write_cnputs(struct screen_write_ctx *ctx,
     ssize_t maxlen, struct grid_cell *gc, int utf8flag, const char *fmt, ...)
 {
 	struct grid_cell	 lgc;
+	struct utf8_data	 utf8data;
 	va_list			 ap;
 	char			*msg;
-	u_char 			*ptr, *last, utf8buf[4];
+	u_char 			*ptr, *last;
 	size_t			 left, size = 0;
-	int			 width;
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
@@ -247,38 +233,29 @@ screen_write_cnputs(struct screen_write_ctx *ctx,
 			continue;
 		}
 
-		if (utf8flag && *ptr > 0x7f) {
-			memset(utf8buf, 0xff, sizeof utf8buf);
+		if (utf8flag && *ptr > 0x7f && utf8_open(&utf8data, *ptr)) {
+			ptr++;
 
 			left = strlen(ptr);
-			if (*ptr >= 0xc2 && *ptr <= 0xdf && left >= 2) {
-				memcpy(utf8buf, ptr, 2);
-				ptr += 2;
-			} else if (*ptr >= 0xe0 && *ptr <= 0xef && left >= 3) {
-				memcpy(utf8buf, ptr, 3);
-				ptr += 3;
-			} else if (*ptr >= 0xf0 && *ptr <= 0xf4 && left >= 4) {
-				memcpy(utf8buf, ptr, 4);
-				ptr += 4;
-			} else {
-				*utf8buf = *ptr;
+			if (left < utf8data.size - 1)
+				break;
+			while (utf8_append(&utf8data, *ptr))
 				ptr++;
-			}
+			ptr++;
 
-			width = utf8_width(utf8buf);
-			if (maxlen > 0 && size + width > (size_t) maxlen) {
+			if (maxlen > 0 &&
+			    size + utf8data.width > (size_t) maxlen) {
 				while (size < (size_t) maxlen) {
 					screen_write_putc(ctx, gc, ' ');
 					size++;
 				}
 				break;
 			}
-			size += width;
+			size += utf8data.width;
 
 			lgc.flags |= GRID_FLAG_UTF8;
-			screen_write_cell(ctx, &lgc, utf8buf);
+			screen_write_cell(ctx, &lgc, &utf8data);
 			lgc.flags &= ~GRID_FLAG_UTF8;
-
 		} else {
 			if (maxlen > 0 && size + 1 > (size_t) maxlen)
 				break;
@@ -375,8 +352,9 @@ screen_write_copy(struct screen_write_ctx *ctx,
 	struct grid		*gd = src->grid;
 	struct grid_line	*gl;
 	const struct grid_cell	*gc;
-	u_char			*udata;
-	u_int		 	 xx, yy, cx, cy, ax, bx;
+	const struct grid_utf8	*gu;
+	struct utf8_data	 utf8data;
+	u_int		 	 xx, yy, cx, cy, ax, bx, i;
 
 	cx = s->cx;
 	cy = s->cy;
@@ -397,21 +375,30 @@ screen_write_copy(struct screen_write_ctx *ctx,
 				bx = gl->cellsize;
 			else
 				bx = px + nx;
+			
 			for (xx = ax; xx < bx; xx++) {
-				udata = NULL;
 				if (xx >= gl->cellsize)
 					gc = &grid_default_cell;
-				else {
+				else
 					gc = &gl->celldata[xx];
-					if (gc->flags & GRID_FLAG_UTF8)
-						udata = gl->utf8data[xx].data;
+				if (gc->flags & GRID_FLAG_UTF8) {
+					gu = &gl->utf8data[xx]; 
+					memcpy(utf8data.data,
+					    gu->data, sizeof utf8data.data);
+					utf8data.width = gu->width;
+					utf8data.size = 0;
+					for (i = 0; i < UTF8_SIZE; i++) {
+						if (gu->data[i] == 0xff)
+							break;
+						utf8data.size++;
+					}
 				}
-				screen_write_cell(ctx, gc, udata);
+				screen_write_cell(ctx, gc, &utf8data);
 			}
 			if (px + nx == gd->sx && px + nx > gl->cellsize)
 				screen_write_clearendofline(ctx);
 		} else
- 			screen_write_clearline(ctx);
+			screen_write_clearline(ctx);
 		cy++;
 		screen_write_cursormove(ctx, cx, cy);
 	}
@@ -972,8 +959,8 @@ screen_write_clearscreen(struct screen_write_ctx *ctx)
 
 /* Write cell data. */
 void
-screen_write_cell(
-    struct screen_write_ctx *ctx, const struct grid_cell *gc, u_char *udata)
+screen_write_cell(struct screen_write_ctx *ctx,
+    const struct grid_cell *gc, const struct utf8_data *utf8data)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
@@ -988,12 +975,9 @@ screen_write_cell(
 		return;
 
 	/* Find character width. */
-	if (gc->flags & GRID_FLAG_UTF8) {
-		width = utf8_width(udata);
-
-		gu.width = width;
-		memcpy(&gu.data, udata, sizeof gu.data);
- 	} else
+	if (gc->flags & GRID_FLAG_UTF8)
+		width = utf8data->width;
+	else
 		width = 1;
 
 	/*
@@ -1009,7 +993,7 @@ screen_write_cell(
 	 * there is space. 
 	 */
 	if (width == 0) {
-		if (screen_write_combine(ctx, udata) == 0) {
+		if (screen_write_combine(ctx, utf8data) == 0) {
 			screen_write_initctx(ctx, &ttyctx, 0);
 			tty_write(tty_cmd_utf8character, &ttyctx);
 		}
@@ -1028,11 +1012,6 @@ screen_write_cell(
 
 	/* Check this will fit on the current line and wrap if not. */
 	if (s->cx > screen_size_x(s) - width) {
-		/* 
-		 * Don't update the terminal now, just update the screen and
-		 * leave the cursor to scroll naturally, unless this is only
-		 * part of the screen width.
-		 */
 		screen_write_linefeed(ctx, 1);
 		s->cx = 0;	/* carriage return */
 	}
@@ -1056,8 +1035,15 @@ screen_write_cell(
 
 	/* Set the cell. */
 	grid_view_set_cell(gd, s->cx, s->cy, gc);
-	if (gc->flags & GRID_FLAG_UTF8)
+	if (gc->flags & GRID_FLAG_UTF8) {
+		/* Construct UTF-8 and write it. */
+		gu.width = utf8data->width;
+		memset(gu.data, 0xff, sizeof gu.data);
+		if (utf8data->size > sizeof gu.data)
+			fatalx("UTF-8 data overflow");
+		memcpy(gu.data, utf8data->data, utf8data->size);
 		grid_view_set_utf8(gd, s->cx, s->cy, &gu);
+	}
 
 	/* Move the cursor. */
 	s->cx += width;
@@ -1085,13 +1071,14 @@ screen_write_cell(
 
 /* Combine a UTF-8 zero-width character onto the previous. */
 int
-screen_write_combine(struct screen_write_ctx *ctx, u_char *udata)
+screen_write_combine(
+    struct screen_write_ctx *ctx, const struct utf8_data *utf8data)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct grid_cell	*gc;
 	struct grid_utf8	*gu, tmp_gu;
-	u_int			 i, old_size, new_size;
+	u_int			 i, old_size;
 
 	/* Can't combine if at 0. */
 	if (s->cx == 0)
@@ -1108,23 +1095,15 @@ screen_write_combine(struct screen_write_ctx *ctx, u_char *udata)
 		gc->flags |= GRID_FLAG_UTF8;
 	}
 
-	/* Get the previous cell's UTF-8 data. */
+	/* Get the previous cell's UTF-8 data and its size. */
 	gu = grid_view_get_utf8(gd, s->cx - 1, s->cy);
-
-	/* Find the new size. */
-	for (new_size = 0; new_size < UTF8_SIZE; new_size++) {
-		if (udata[new_size] == 0xff)
-			break;
-	}
-
-	/* And the old size. */
 	for (old_size = 0; old_size < UTF8_SIZE; old_size++) {
 		if (gu->data[old_size] == 0xff)
 			break;
 	}
 
 	/* If there isn't space, scrap this character. */
-	if (old_size + new_size > UTF8_SIZE) {
+	if (old_size + utf8data->size > UTF8_SIZE) {
 		for (i = 0; i < gu->width && i != UTF8_SIZE; i++)
 			gu->data[i] = '_';
 		if (i != UTF8_SIZE)
@@ -1133,9 +1112,9 @@ screen_write_combine(struct screen_write_ctx *ctx, u_char *udata)
 	}
 
 	/* Otherwise save the character. */
-	memcpy(gu->data + old_size, udata, new_size);
-	if (old_size + new_size != UTF8_SIZE)
-		gu->data[old_size + new_size] = 0xff;
+	memcpy(gu->data + old_size, utf8data->data, utf8data->size);
+	if (old_size + utf8data->size != UTF8_SIZE)
+		gu->data[old_size + utf8data->size] = 0xff;
 	return (0);
 }
 

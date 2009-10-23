@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.97 2009-10-15 01:53:48 tcunha Exp $ */
+/* $Id: input.c,v 1.98 2009-10-23 17:16:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -572,15 +572,14 @@ input_state_string_escape(u_char ch, struct input_ctx *ictx)
 void
 input_state_utf8(u_char ch, struct input_ctx *ictx)
 {
-	log_debug2("-- un %zu: %hhu (%c)", ictx->off, ch, ch);
+	log_debug2("-- utf8 next: %zu: %hhu (%c)", ictx->off, ch, ch);
 
-	ictx->utf8_buf[ictx->utf8_off++] = ch;
-	if (--ictx->utf8_len != 0)
-		return;
+	if (utf8_append(&ictx->utf8data, ch))
+		return;		/* more to come */
 	input_state(ictx, input_state_first);
 
 	ictx->cell.flags |= GRID_FLAG_UTF8;
-	screen_write_cell(&ictx->ctx, &ictx->cell, ictx->utf8_buf);
+	screen_write_cell(&ictx->ctx, &ictx->cell, &ictx->utf8data);
 	ictx->cell.flags &= ~GRID_FLAG_UTF8;
 }
 
@@ -590,40 +589,17 @@ input_handle_character(u_char ch, struct input_ctx *ictx)
 	struct window_pane	*wp = ictx->wp;
 
 	if (ch > 0x7f && options_get_number(&wp->window->options, "utf8")) {
-		/*
-		 * UTF-8 sequence.
-		 *
-		 * 11000010-11011111 C2-DF start of 2-byte sequence
-		 * 11100000-11101111 E0-EF start of 3-byte sequence
-		 * 11110000-11110100 F0-F4 start of 4-byte sequence
-		 */
-		memset(ictx->utf8_buf, 0xff, sizeof ictx->utf8_buf);
-		ictx->utf8_buf[0] = ch;
-		ictx->utf8_off = 1;
-
-		if (ch >= 0xc2 && ch <= 0xdf) {
-			log_debug2("-- u2 %zu: %hhu (%c)", ictx->off, ch, ch);
+		if (utf8_open(&ictx->utf8data, ch)) {
+			log_debug2("-- utf8 size %u: %zu: %hhu (%c)", 
+			    ictx->utf8data.size, ictx->off, ch, ch);
 			input_state(ictx, input_state_utf8);
-			ictx->utf8_len = 1;
-			return;
-		}
-		if (ch >= 0xe0 && ch <= 0xef) {
-			log_debug2("-- u3 %zu: %hhu (%c)", ictx->off, ch, ch);
-			input_state(ictx, input_state_utf8);
-			ictx->utf8_len = 2;
-			return;
-		}
-		if (ch >= 0xf0 && ch <= 0xf4) {
-			log_debug2("-- u4 %zu: %hhu (%c)", ictx->off, ch, ch);
-			input_state(ictx, input_state_utf8);
-			ictx->utf8_len = 3;
 			return;
 		}
 	}
 	log_debug2("-- ch %zu: %hhu (%c)", ictx->off, ch, ch);
 
 	ictx->cell.data = ch;
-	screen_write_cell(&ictx->ctx, &ictx->cell, ictx->utf8_buf);
+	screen_write_cell(&ictx->ctx, &ictx->cell, NULL);
 }
 
 void
