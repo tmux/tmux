@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.117 2009-10-15 08:15:06 nicm Exp $
+# $Id: GNUmakefile,v 1.118 2009-10-24 22:02:18 nicm Exp $
 
 .PHONY: clean
 
@@ -12,7 +12,7 @@ LDFLAGS+= -L/usr/local/lib
 LIBS+=
 
 # Sun CC 
-ifneq ($(shell (cc -V 2>&1|awk '/Sun C/' || true)), )
+ifneq ($(shell ($(CC) -V 2>&1|awk '/Sun C/' || true)), )
 	CFLAGS+=-erroff=E_EMPTY_DECLARATION
 	FDEBUG=
 endif
