@@ -740,10 +740,17 @@ If only one window is matched, it'll be automatically selected, otherwise a
 choice list is shown.
 This command only works from inside
 .Nm .
-.It Ic kill-pane Op Fl t Ar target-pane
+.It Xo Ic kill-pane
+.Op Fl a
+.Op Fl t Ar target-pane
+.Xc
 .D1 (alias: Ic killp )
 Destroy the given pane.
 If no panes remain in the containing window, it is also destroyed.
+The
+.Fl a
+option kills all but the pane given with
+.Fl t .
 .It Ic kill-window Op Fl t Ar target-window
 .D1 (alias: Ic killw )
 Kill the current window or the window at
