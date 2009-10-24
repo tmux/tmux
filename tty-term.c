@@ -359,11 +359,7 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 	if (strcmp(tty_term_string(term, TTYC_OP), "\033[39;49m") == 0)
 		term->flags |= TERM_HASDEFAULTS;
 
-	/*
-	 * Try to figure out if we have 256 or 88 colours. The standard xterm
-	 * definitions are broken (well, or the way they are parsed is: in any
-	 * case they end up returning 8). So also do a hack.
-	 */
+	/* Figure out if we have 256 or 88 colours. */
 	if (tty_term_number(term, TTYC_COLORS) == 256)
 		term->flags |= TERM_256COLOURS;
 	if (tty_term_number(term, TTYC_COLORS) == 88)
