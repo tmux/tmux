@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.193 2009-10-23 17:24:57 tcunha Exp $
+.\" $Id: tmux.1,v 1.194 2009-10-25 10:41:03 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 21 2009 $
+.Dd $Mdocdate: October 24 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -740,10 +740,17 @@ If only one window is matched, it'll be automatically selected, otherwise a
 choice list is shown.
 This command only works from inside
 .Nm .
-.It Ic kill-pane Op Fl t Ar target-pane
+.It Xo Ic kill-pane
+.Op Fl a
+.Op Fl t Ar target-pane
+.Xc
 .D1 (alias: Ic killp )
 Destroy the given pane.
 If no panes remain in the containing window, it is also destroyed.
+The
+.Fl a
+option kills all but the pane given with
+.Fl t .
 .It Ic kill-window Op Fl t Ar target-window
 .D1 (alias: Ic killw )
 Kill the current window or the window at
