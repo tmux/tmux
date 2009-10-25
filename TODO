@@ -92,3 +92,4 @@
   is looked up in that table
 - check fix UTF-8 and split-window? should be okay
 - UTF-8 should be a pointer into a combined string buffer
+- check irssi (term_charset) works with UTF-8
