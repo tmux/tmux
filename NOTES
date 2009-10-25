@@ -81,6 +81,12 @@ welcome. Please send by email to:
 
 	nicm@users.sf.net
 
+This file and the CHANGES, FAQ and TODO files are licensed under the ISC
+license. Files under examples/ remain copyright their authors unless otherwise
+stated in the file but permission has been received to distribute them with
+tmux. All other files have a license and copyright notice at their
+start. Please contact me with any queries.
+
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.49 2009-07-06 18:53:24 nicm Exp $
+$Id: NOTES,v 1.50 2009-10-25 21:45:26 nicm Exp $
