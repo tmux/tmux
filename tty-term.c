@@ -348,17 +348,6 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 		goto error;
 	}
 
-	/*
-	 * Figure out if terminal support default colours. AX is a screen
-	 * extension which indicates this. Also check if op (orig_pair) uses
-	 * the default colours - if it does, this is a good indication the
-	 * terminal supports them.
-	 */
-	if (tty_term_flag(term, TTYC_AX))
-		term->flags |= TERM_HASDEFAULTS;
-	if (strcmp(tty_term_string(term, TTYC_OP), "\033[39;49m") == 0)
-		term->flags |= TERM_HASDEFAULTS;
-
 	/* Figure out if we have 256 or 88 colours. */
 	if (tty_term_number(term, TTYC_COLORS) == 256)
 		term->flags |= TERM_256COLOURS;

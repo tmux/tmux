@@ -62,7 +62,7 @@ __dead void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-28dlquv] [-c shell-command] [-f file] [-L socket-name]\n"
+	    "usage: %s [-28lquv] [-c shell-command] [-f file] [-L socket-name]\n"
 	    "            [-S socket-path] [command [flags]]\n",
 	    __progname);
 	exit(1);
@@ -316,9 +316,6 @@ main(int argc, char **argv)
 			if (shellcmd != NULL)
 				xfree(shellcmd);
 			shellcmd = xstrdup(optarg);
-			break;
-		case 'd':
-			flags |= IDENTIFY_HASDEFAULTS;
 			break;
 		case 'f':
 			if (cfg_file != NULL)
