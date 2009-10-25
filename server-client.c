@@ -20,6 +20,7 @@
 
 #include <fcntl.h>
 #include <string.h>
+#include <time.h>
 #include <paths.h>
 #include <unistd.h>
 
