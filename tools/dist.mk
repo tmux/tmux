@@ -1,4 +1,4 @@
-# $Id: dist.mk,v 1.5 2009-09-20 18:54:21 nicm Exp $
+# $Id: dist.mk,v 1.6 2009-10-25 08:14:33 nicm Exp $
 
 VERSION= 1.0
 
@@ -19,7 +19,7 @@ dist:
 		        -f ${DISTDIR}.tar.gz ${DISTFILES}
 
 upload-index.html: update-index.html
-		scp www/index.html www/images/*.png \
+		scp www/index.html www/main.css www/images/*.png \
 		        nicm,tmux@web.sf.net:/home/groups/t/tm/tmux/htdocs
 		rm -f www/index.html www/images/small-*
 
