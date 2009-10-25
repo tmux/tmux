@@ -17,7 +17,6 @@
 - many more info() displays for various things
 - input.c is too complicated. simplify?
 - use a better termcap internally instead of screen, perhaps xterm
-- kill all but current pane
 - fix rxvt cursor fg issue (text under cursor can have non-white fg)
 - should be able to move to a hidden pane and it would be moved into view. pane
   number in status line/top-right would be cool for this
