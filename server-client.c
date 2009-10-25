@@ -199,9 +199,10 @@ server_client_loop(void)
 			continue;
 
 		server_client_handle_data(c);
-
-		server_client_check_timers(c);
-		server_client_check_redraw(c);
+		if (c->session != NULL) {
+			server_client_check_timers(c);
+			server_client_check_redraw(c);
+		}
 	}
 
 	/*
