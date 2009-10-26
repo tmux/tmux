@@ -344,10 +344,10 @@ main(int argc, char **argv)
 		case 'v':
 			debug_level++;
 			break;
-                default:
+		default:
 			usage();
-                }
-        }
+		}
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -569,7 +569,7 @@ main(int argc, char **argv)
 		if (pfd.revents & (POLLERR|POLLHUP|POLLNVAL))
 			fatalx("socket error");
 
-                if (pfd.revents & POLLIN) {
+		if (pfd.revents & POLLIN) {
 			if (dispatch_imsg(ibuf, shellcmd, &retcode) != 0)
 				break;
 		}
@@ -594,7 +594,7 @@ dispatch_imsg(struct imsgbuf *ibuf, const char *shellcmd, int *retcode)
 	struct msg_print_data	printdata;
 	struct msg_shell_data	shelldata;
 
-        if ((n = imsg_read(ibuf)) == -1 || n == 0)
+	if ((n = imsg_read(ibuf)) == -1 || n == 0)
 		fatalx("imsg_read failed");
 
 	for (;;) {

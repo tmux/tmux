@@ -144,7 +144,7 @@ tty_start_tty(struct tty *tty)
 	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHONL|ECHOCTL|
 	    ECHOPRT|ECHOKE|ECHOCTL|ISIG);
 	tio.c_cc[VMIN] = 1;
-        tio.c_cc[VTIME] = 0;
+	tio.c_cc[VTIME] = 0;
 	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
 		fatal("tcsetattr failed");
 

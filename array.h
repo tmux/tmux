@@ -85,7 +85,7 @@
 		    ARRAY_ITEMSIZE(a) * ((a)->num - (i) - 1));		\
 	}								\
 	(a)->num--;							\
-        if ((a)->num == 0)						\
+	if ((a)->num == 0)						\
 		ARRAY_FREE(a);						\
 } while (0)
 

@@ -667,12 +667,12 @@ void
 server_lock_sessions(void)
 {
         struct session  *s;
-        u_int            i;
+	u_int		 i;
 	int		 timeout;
-        time_t           t;
+	time_t		 t;
 
-        t = time(NULL);
-        for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+	t = time(NULL);
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
 			continue;
 

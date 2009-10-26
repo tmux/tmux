@@ -179,7 +179,7 @@ struct cmd *
 cmd_parse(int argc, char **argv, char **cause)
 {
 	const struct cmd_entry **entryp, *entry;
-	struct cmd	        *cmd;
+	struct cmd		*cmd;
 	char			 s[BUFSIZ];
 	int			 opt, ambiguous = 0;
 
@@ -842,7 +842,7 @@ cmd_find_pane(struct cmd_ctx *ctx,
 
 	/* Get the current session. */
 	if ((s = cmd_current_session(ctx)) == NULL) {
-       		ctx->error(ctx, "can't establish current session");
+		ctx->error(ctx, "can't establish current session");
 		return (NULL);
 	}
 	if (sp != NULL)

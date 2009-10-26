@@ -70,8 +70,8 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	ctx->print(ctx, "pid %ld, started %s", (long) getpid(), tim);
 	ctx->print(ctx, "socket path %s, debug level %d%s",
 	    socket_path, debug_level, be_quiet ? ", quiet" : "");
-        if (uname(&un) == 0) {
-                ctx->print(ctx, "system is %s %s %s %s",
+	if (uname(&un) == 0) {
+		ctx->print(ctx, "system is %s %s %s %s",
 		    un.sysname, un.release, un.version, un.machine);
 	}
 	if (cfg_file != NULL)

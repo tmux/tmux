@@ -53,9 +53,9 @@ cfg_error(unused struct cmd_ctx *ctx, const char *fmt, ...)
 int
 load_cfg(const char *path, struct cmd_ctx *ctxin, char **cause)
 {
-	FILE   	        *f;
+	FILE		*f;
 	u_int		 n;
-	char	        *buf, *line, *ptr;
+	char		*buf, *line, *ptr;
 	size_t		 len;
 	struct cmd_list	*cmdlist;
 	struct cmd_ctx	 ctx;
