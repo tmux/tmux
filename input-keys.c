@@ -96,6 +96,7 @@ struct input_key_ent input_keys[] = {
 	{ KEYC_BTAB,		"\033[Z",	0 },
 
 	/* Arrow keys. Cursor versions must come first. */
+/*
 	{ KEYC_UP|KEYC_CTRL,	"\033Oa",	0 },
 	{ KEYC_DOWN|KEYC_CTRL,	"\033Ob",	0 },
 	{ KEYC_RIGHT|KEYC_CTRL,	"\033Oc",	0 },
@@ -105,11 +106,12 @@ struct input_key_ent input_keys[] = {
 	{ KEYC_DOWN|KEYC_SHIFT,	"\033[b",	0 },
 	{ KEYC_RIGHT|KEYC_SHIFT,"\033[c",	0 },
 	{ KEYC_LEFT|KEYC_SHIFT,	"\033[d",	0 },
+*/
 
-	{ KEYC_UP|KEYC_CTRL,	"\033OA",	INPUTKEY_CURSOR },
-	{ KEYC_DOWN|KEYC_CTRL,	"\033OB",	INPUTKEY_CURSOR },
-	{ KEYC_RIGHT|KEYC_CTRL,	"\033OC",	INPUTKEY_CURSOR },
-	{ KEYC_LEFT|KEYC_CTRL,	"\033OD",	INPUTKEY_CURSOR },
+	{ KEYC_UP|KEYC_CTRL,	"\033[A",	INPUTKEY_CURSOR },
+	{ KEYC_DOWN|KEYC_CTRL,	"\033[B",	INPUTKEY_CURSOR },
+	{ KEYC_RIGHT|KEYC_CTRL,	"\033[C",	INPUTKEY_CURSOR },
+	{ KEYC_LEFT|KEYC_CTRL,	"\033[D",	INPUTKEY_CURSOR },
 	
 	{ KEYC_UP,		"\033OA",	INPUTKEY_CURSOR },
 	{ KEYC_DOWN,		"\033OB",	INPUTKEY_CURSOR },
@@ -169,6 +171,7 @@ input_key(struct window_pane *wp, int key)
 	struct input_key_ent   *ike;
 	u_int			i;
 	size_t			dlen;
+	char		       *out;
 
 	log_debug2("writing key 0x%x", key);
 
