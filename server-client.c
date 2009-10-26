@@ -153,6 +153,9 @@ server_client_callback(int fd, int events, void *data)
 {
 	struct client	*c = data;
 
+	if (c->flags & CLIENT_DEAD)
+		return;
+
 	if (fd == c->ibuf.fd) {
 		if (events & (POLLERR|POLLNVAL|POLLHUP))
 			goto client_lost;
