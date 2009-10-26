@@ -25,6 +25,10 @@
 
 #include "tmux.h"
 
+/*
+ * Handle keys input from the outside terminal.
+ */
+
 void	tty_keys_add(struct tty *, const char *, int, int);
 int	tty_keys_mouse(char *, size_t, size_t *, struct mouse_event *);
 
@@ -67,21 +71,26 @@ struct tty_key_ent tty_keys[] = {
 	{ TTYC_KPP,	NULL,		KEYC_PPAGE,		TTYKEY_CTRL },
 	{ TTYC_KCBT,	NULL,		KEYC_BTAB,		TTYKEY_CTRL },
 
-	/* Arrow keys. */
+	/*
+	 * Arrow keys. There are several variants of these so just accept them.
+	 * We always put the terminal into application keys mode so ctrl should
+	 * swap between SS3 and CSI.
+	 */
 	{ 0,		"\033OA",	KEYC_UP,		TTYKEY_RAW },
 	{ 0,		"\033OB",	KEYC_DOWN,		TTYKEY_RAW },
 	{ 0,		"\033OC",	KEYC_RIGHT,		TTYKEY_RAW },
 	{ 0,		"\033OD",	KEYC_LEFT,		TTYKEY_RAW },
 
-	{ 0,		"\033[A",	KEYC_UP,		TTYKEY_RAW },
-	{ 0,		"\033[B",	KEYC_DOWN,		TTYKEY_RAW },
-	{ 0,		"\033[C",	KEYC_RIGHT,		TTYKEY_RAW },
-	{ 0,		"\033[D",	KEYC_LEFT,		TTYKEY_RAW },
+	{ 0,		"\033[A",	KEYC_UP|KEYC_CTRL,	TTYKEY_RAW },
+	{ 0,		"\033[B",	KEYC_DOWN|KEYC_CTRL,	TTYKEY_RAW },
+	{ 0,		"\033[C",	KEYC_RIGHT|KEYC_CTRL,	TTYKEY_RAW },
+	{ 0,		"\033[D",	KEYC_LEFT|KEYC_CTRL,	TTYKEY_RAW },
 
 	{ 0,		"\033Oa",	KEYC_UP|KEYC_CTRL,	TTYKEY_RAW },
 	{ 0,		"\033Ob",	KEYC_DOWN|KEYC_CTRL,	TTYKEY_RAW },
 	{ 0,		"\033Oc",	KEYC_RIGHT|KEYC_CTRL,	TTYKEY_RAW },
 	{ 0,		"\033Od",	KEYC_LEFT|KEYC_CTRL,	TTYKEY_RAW },
+
 	{ 0,		"\033[a",	KEYC_UP|KEYC_SHIFT,	TTYKEY_RAW },
 	{ 0,		"\033[b",	KEYC_DOWN|KEYC_SHIFT,	TTYKEY_RAW },
 	{ 0,		"\033[c",	KEYC_RIGHT|KEYC_SHIFT,	TTYKEY_RAW },
