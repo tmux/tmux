@@ -328,15 +328,17 @@ server_main(int srv_fd)
 
 		/* Handle child exit. */
 		if (sigchld) {
-			server_child_signal();
 			sigchld = 0;
+			server_child_signal();
+			continue;
 		}
 
 		/* Recreate socket on SIGUSR1. */
 		if (sigusr1) {
+			sigusr1 = 0;
 			close(srv_fd);
 			srv_fd = server_create_socket();
-			sigusr1 = 0;
+			continue;
 		}
 
 		/* Initialise pollfd array and add server socket. */
