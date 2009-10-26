@@ -1,6 +1,6 @@
 body {
     font-family: Sans-Serif;
-    font-size: small;
+    font-size: 10pt;
     background-color: white;
 }
 #body-wrapper {
@@ -32,12 +32,10 @@ body {
 }
 #main-content-wrapper {
     margin-left: 2em;
-    width: 75%;
 }
-#main-content-wrapper ul li {
+#main-content-wrapper li {
     list-style: disc;
-    margin-left: 10em;
-    width: 65%;
+    margin-left: 12em
 }
 #screenshots {
     text-align: center;
