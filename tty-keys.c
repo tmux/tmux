@@ -101,22 +101,22 @@ struct tty_key_ent tty_keys[] = {
 	 * mode. Translation of numbers mode/applications mode is done in
 	 * input-keys.c.
 	 */
-	{ 0,          "\033Oo", KEYC_KP0_1, TTYKEY_RAW },
-	{ 0,          "\033Oj", KEYC_KP0_2, TTYKEY_RAW },
-	{ 0,          "\033Om", KEYC_KP0_3, TTYKEY_RAW },
-	{ 0,          "\033Ow", KEYC_KP1_0, TTYKEY_RAW },
-	{ 0,          "\033Ox", KEYC_KP1_1, TTYKEY_RAW },
-	{ 0,          "\033Oy", KEYC_KP1_2, TTYKEY_RAW },
-	{ 0,          "\033Ok", KEYC_KP1_3, TTYKEY_RAW },
-	{ 0,          "\033Ot", KEYC_KP2_0, TTYKEY_RAW },
-	{ 0,          "\033Ou", KEYC_KP2_1, TTYKEY_RAW },
-	{ 0,          "\033Ov", KEYC_KP2_2, TTYKEY_RAW },
-	{ 0,          "\033Oq", KEYC_KP3_0, TTYKEY_RAW },
-	{ 0,          "\033Or", KEYC_KP3_1, TTYKEY_RAW },
-	{ 0,          "\033Os", KEYC_KP3_2, TTYKEY_RAW },
-	{ 0,          "\033OM", KEYC_KP3_3, TTYKEY_RAW },
-	{ 0,          "\033Op", KEYC_KP4_0, TTYKEY_RAW },
-	{ 0,          "\033On", KEYC_KP4_2, TTYKEY_RAW },
+	{ 0,          "\033Oo", KEYC_KP_SLASH,  TTYKEY_RAW },
+	{ 0,          "\033Oj", KEYC_KP_STAR,   TTYKEY_RAW },
+	{ 0,          "\033Om", KEYC_KP_MINUS,  TTYKEY_RAW },
+	{ 0,          "\033Ow", KEYC_KP_SEVEN,  TTYKEY_RAW },
+	{ 0,          "\033Ox", KEYC_KP_EIGHT,  TTYKEY_RAW },
+	{ 0,          "\033Oy", KEYC_KP_NINE,   TTYKEY_RAW },
+	{ 0,          "\033Ok", KEYC_KP_PLUS,   TTYKEY_RAW },
+	{ 0,          "\033Ot", KEYC_KP_FOUR,   TTYKEY_RAW },
+	{ 0,          "\033Ou", KEYC_KP_FIVE,   TTYKEY_RAW },
+	{ 0,          "\033Ov", KEYC_KP_SIX,    TTYKEY_RAW },
+	{ 0,          "\033Oq", KEYC_KP_ONE,    TTYKEY_RAW },
+	{ 0,          "\033Or", KEYC_KP_TWO,    TTYKEY_RAW },
+	{ 0,          "\033Os", KEYC_KP_THREE,  TTYKEY_RAW },
+	{ 0,          "\033OM", KEYC_KP_ENTER,  TTYKEY_RAW },
+	{ 0,          "\033Op", KEYC_KP_ZERO,   TTYKEY_RAW },
+	{ 0,          "\033On", KEYC_KP_PERIOD, TTYKEY_RAW },
 };
 
 RB_GENERATE(tty_keys, tty_key, entry, tty_keys_cmp);
