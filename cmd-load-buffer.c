@@ -56,13 +56,14 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
 
-	if (stat(data->arg, &sb) < 0) {
+	if ((f = fopen(data->arg, "rb")) == NULL) {
 		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
 		return (-1);
 	}
 
-	if ((f = fopen(data->arg, "rb")) == NULL) {
+	if (fstat(fileno(f), &sb) < 0) {
 		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
+		fclose(f);
 		return (-1);
 	}
 
