@@ -70,6 +70,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		f = fopen(data->arg, "ab");
 	else
 		f = fopen(data->arg, "wb");
+	umask(mask);
 	if (f == NULL) {
 		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
 		return (-1);
@@ -82,7 +83,6 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	fclose(f);
-	umask(mask);
 
 	return (0);
 }
