@@ -146,7 +146,6 @@ xterm_keys_find(const char *buf, size_t len, size_t *size)
 	if (i == nitems(xterm_keys_table))
 		return (KEYC_NONE);
 	*size = strlen(entry->template);
-	log_debug("XXX %x %x", entry->key, xterm_keys_modifiers(entry->template, buf, len));
 	return (entry->key | xterm_keys_modifiers(entry->template, buf, len));
 }
 
