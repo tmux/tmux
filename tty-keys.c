@@ -26,8 +26,7 @@
 #include "tmux.h"
 
 void	tty_keys_add(struct tty *, const char *, int, int);
-int	tty_keys_parse_xterm(struct tty *, char *, size_t, size_t *);
-int	tty_keys_parse_mouse(char *, size_t, size_t *, struct mouse_event *);
+int	tty_keys_mouse(char *, size_t, size_t *, struct mouse_event *);
 
 struct tty_key_ent {
 	enum tty_code_code	code;
@@ -269,14 +268,7 @@ tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 	}
 
 	/* Not found. Is this a mouse key press? */
-	*key = tty_keys_parse_mouse(buf, len, &size, mouse);
-	if (*key != KEYC_NONE) {
-		buffer_remove(tty->in, size);
-		goto found;
-	}
-
-	/* Not found. Try to parse xterm-type arguments. */
-	*key = tty_keys_parse_xterm(tty, buf, len, &size);
+	*key = tty_keys_mouse(buf, len, &size, mouse);
 	if (*key != KEYC_NONE) {
 		buffer_remove(tty->in, size);
 		goto found;
@@ -331,7 +323,7 @@ found:
 }
 
 int
-tty_keys_parse_mouse(char *buf, size_t len, size_t *size, struct mouse_event *m)
+tty_keys_mouse(char *buf, size_t len, size_t *size, struct mouse_event *m)
 {
 	/*
 	 * Mouse sequences are \033[M followed by three characters indicating
@@ -352,69 +344,4 @@ tty_keys_parse_mouse(char *buf, size_t len, size_t *size, struct mouse_event *m)
 	m->x -= 33;
 	m->y -= 33;
 	return (KEYC_MOUSE);
-}
-
-int
-tty_keys_parse_xterm(struct tty *tty, char *buf, size_t len, size_t *size)
-{
-	struct tty_key	*tk;
-	char		 tmp[5];
-	size_t		 tmplen;
-	int		 key;
-
-	/*
-	 * xterm sequences with modifier keys are of the form:
-	 *
-	 * ^[[1;xD becomes ^[[D
-	 * ^[[5;x~ becomes ^[[5~
-	 *
-	 * This function is a bit of a hack. Need to figure out what exact
-	 * format and meaning xterm outputs and fix it. XXX
-	 */
-
-	log_debug("xterm input is: %.*s", (int) len, buf);
-	if (len != 6 || memcmp(buf, "\033[1;", 4) != 0)
-		return (KEYC_NONE);
-	*size = 6;
-
-	tmplen = 0;
-	tmp[tmplen++] = '[';
-	if (buf[5] == '~') {
-		tmp[tmplen++] = buf[2];
-		tmp[tmplen++] = '~';
-	} else
-		tmp[tmplen++] = buf[5];
-	log_debug("xterm output is: %.*s", (int) tmplen, tmp);
-
-	tk = tty_keys_find(tty, tmp, tmplen, size);
-	if (tk == NULL)
-		return (KEYC_NONE);
-	key = tk->key;
-
-	switch (buf[4]) {
-	case '8':
-		key |= KEYC_SHIFT|KEYC_ESCAPE|KEYC_CTRL;
-		break;
-	case '7':
-		key |= KEYC_ESCAPE|KEYC_CTRL;
-		break;
-	case '6':
-		key |= KEYC_SHIFT|KEYC_CTRL;
-		break;
-	case '5':
-		key |= KEYC_CTRL;
-		break;
-	case '4':
-		key |= KEYC_SHIFT|KEYC_ESCAPE;
-		break;
-	case '3':
-		key |= KEYC_ESCAPE;
-		break;
-	case '2':
-		key |= KEYC_SHIFT;
-		break;
-	}
-
-	*size = 6;
-	return (key);
 }
