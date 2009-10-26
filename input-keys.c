@@ -96,18 +96,6 @@ struct input_key_ent input_keys[] = {
 	{ KEYC_BTAB,		"\033[Z",	0 },
 
 	/* Arrow keys. Cursor versions must come first. */
-/*
-	{ KEYC_UP|KEYC_CTRL,	"\033Oa",	0 },
-	{ KEYC_DOWN|KEYC_CTRL,	"\033Ob",	0 },
-	{ KEYC_RIGHT|KEYC_CTRL,	"\033Oc",	0 },
-	{ KEYC_LEFT|KEYC_CTRL,	"\033Od",	0 },
-	
-	{ KEYC_UP|KEYC_SHIFT,	"\033[a",	0 },
-	{ KEYC_DOWN|KEYC_SHIFT,	"\033[b",	0 },
-	{ KEYC_RIGHT|KEYC_SHIFT,"\033[c",	0 },
-	{ KEYC_LEFT|KEYC_SHIFT,	"\033[d",	0 },
-*/
-
 	{ KEYC_UP|KEYC_CTRL,	"\033[A",	INPUTKEY_CURSOR },
 	{ KEYC_DOWN|KEYC_CTRL,	"\033[B",	INPUTKEY_CURSOR },
 	{ KEYC_RIGHT|KEYC_CTRL,	"\033[C",	INPUTKEY_CURSOR },
