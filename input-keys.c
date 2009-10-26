@@ -174,6 +174,18 @@ input_key(struct window_pane *wp, int key)
 		return;
 	}
 
+	/* 
+	 * Then try to look this up as an xterm key, if the flag to output them
+	 * is set.
+	 */
+	if (options_get_number(&wp->window->options, "xterm-keys")) {
+		if ((out = xterm_keys_lookup(key)) != NULL) {
+			buffer_write(wp->out, out, strlen(out));
+			xfree(out);
+			return;
+		}
+	}
+
 	/* Otherwise look the key up in the table. */
 	for (i = 0; i < nitems(input_keys); i++) {
 		ike = &input_keys[i];

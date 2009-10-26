@@ -1,0 +1,202 @@
+/* $OpenBSD$ */
+
+/*
+ * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF MIND, USE, DATA OR PROFITS, WHETHER
+ * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
+ * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#include <sys/types.h>
+
+#include <string.h>
+
+#include "tmux.h"
+
+/*
+ * xterm-style function keys append one of the following values before the last
+ * character:
+ *
+ * 2 Shift
+ * 3 Alt 
+ * 4 Shift + Alt 
+ * 5 Ctrl 
+ * 6 Shift + Ctrl 
+ * 7 Alt + Ctrl 
+ * 8 Shift + Alt + Ctrl
+ *
+ * Rather than parsing them, just match against a table.
+ *
+ * There are two forms for F1-F4 (\\033O_P or \\033[1;_P). We accept either but
+ * always output the latter (it comes first in the table).
+ */
+
+int	xterm_keys_match(const char *, const char *, size_t);
+int	xterm_keys_modifiers(const char *, const char *, size_t);
+
+struct xterm_keys_entry {
+	int		 key;
+	const char	*template;
+};
+
+struct xterm_keys_entry xterm_keys_table[] = {
+	{ KEYC_F1,	"\033[1;_P" },
+	{ KEYC_F1,	"\033[O_P" },
+	{ KEYC_F2,	"\033[1;_Q" },
+	{ KEYC_F2,	"\033[O_Q" },
+	{ KEYC_F3,	"\033[1;_R" },
+	{ KEYC_F3,	"\033[O_R" },
+	{ KEYC_F4,	"\033[1;_S" },
+	{ KEYC_F4,	"\033[O_S" },
+	{ KEYC_F5,	"\033[15;_~" },
+	{ KEYC_F6,	"\033[17;_~" },
+	{ KEYC_F7,	"\033[18;_~" },
+	{ KEYC_F8,	"\033[19;_~" },
+	{ KEYC_F9,	"\033[20;_~" },
+	{ KEYC_F10,	"\033[21;_~" },
+	{ KEYC_F11,	"\033[23;_~" },
+	{ KEYC_F12,	"\033[24;_~" },
+	{ KEYC_F13,	"\033[25;_~" },
+	{ KEYC_F14,	"\033[26;_~" },
+	{ KEYC_F15,	"\033[28;_~" },
+	{ KEYC_F16,	"\033[29;_~" },
+	{ KEYC_F17,	"\033[31;_~" },
+	{ KEYC_F18,	"\033[32;_~" },
+	{ KEYC_F19,	"\033[33;_~" },
+	{ KEYC_F20,	"\033[34;_~" },
+	{ KEYC_UP,	"\033[1;_A" },
+	{ KEYC_DOWN,	"\033[1;_B" },
+	{ KEYC_RIGHT,	"\033[1;_C" },
+	{ KEYC_LEFT,	"\033[1;_D" },
+	{ KEYC_HOME,	"\033[1;_H" },
+	{ KEYC_END,	"\033[1;_F" },
+	{ KEYC_PPAGE,	"\033[5;_~" },
+	{ KEYC_NPAGE,	"\033[6;_~" },
+	{ KEYC_IC,	"\033[2;_~" },
+	{ KEYC_DC,	"\033[3;_~" },
+};
+
+/* Match key against buffer, treating _ as a wildcard. */
+int
+xterm_keys_match(const char *template, const char *buf, size_t len)
+{
+	size_t	pos;
+
+	if (len == 0 || len < strlen(template))
+		return (0);
+
+	pos = 0;
+	do {
+		if (*template != '_' && buf[pos] != *template)
+			return (0);
+	} while (pos++ != len && *++template != '\0');
+
+	return (1);
+}
+
+/* Find modifiers based on template. */
+int
+xterm_keys_modifiers(const char *template, const char *buf, size_t len)
+{
+	size_t	idx;
+
+	idx = strcspn(template, "_");
+	if (idx >= len)
+		return (0);
+	switch (buf[idx]) {
+	case '2':
+		return (KEYC_SHIFT);
+	case '3':
+		return (KEYC_ESCAPE);
+	case '4':
+		return (KEYC_SHIFT|KEYC_ESCAPE);
+	case '5':
+		return (KEYC_CTRL);
+	case '6':
+		return (KEYC_SHIFT|KEYC_CTRL);
+	case '7':
+		return (KEYC_ESCAPE|KEYC_CTRL);
+	case '8':
+ 		return (KEYC_SHIFT|KEYC_ESCAPE|KEYC_CTRL);
+	}
+	return (0);
+}
+
+/* Lookup key from buffer against table. */
+int
+xterm_keys_find(const char *buf, size_t len, size_t *size)
+{
+	struct xterm_keys_entry	*entry;
+	u_int			 i;
+
+	for (i = 0; i < nitems(xterm_keys_table); i++) {
+		entry = &xterm_keys_table[i];
+		if (xterm_keys_match(entry->template, buf, len))
+			break;
+	}
+	if (i == nitems(xterm_keys_table))
+		return (KEYC_NONE);
+	*size = strlen(entry->template);
+	log_debug("XXX %x %x", entry->key, xterm_keys_modifiers(entry->template, buf, len));
+	return (entry->key | xterm_keys_modifiers(entry->template, buf, len));
+}
+
+/* Lookup a key number from the table. */
+char *
+xterm_keys_lookup(int key)
+{
+	struct xterm_keys_entry	*entry;
+	u_int			 i;
+	int			 modifiers;
+	char			*out;
+
+#define KEY_MODIFIERS(key, modifiers) \
+	(((key) & (KEYC_SHIFT|KEYC_ESCAPE|KEYC_CTRL)) == (modifiers))
+	modifiers = 0;
+	if (KEY_MODIFIERS(key, KEYC_SHIFT))
+		modifiers = 2;
+	else if (KEY_MODIFIERS(key, KEYC_ESCAPE))
+		modifiers = 3;
+	else if (KEY_MODIFIERS(key, KEYC_SHIFT|KEYC_ESCAPE))
+		modifiers = 4;
+	else if (KEY_MODIFIERS(key, KEYC_CTRL))
+		modifiers = 5;
+	else if (KEY_MODIFIERS(key, KEYC_SHIFT|KEYC_CTRL))
+		modifiers = 6;
+	else if (KEY_MODIFIERS(key, KEYC_ESCAPE|KEYC_CTRL))
+		modifiers = 7;
+	else if (KEY_MODIFIERS(key, KEYC_SHIFT|KEYC_ESCAPE|KEYC_CTRL))
+		modifiers = 8;
+#undef KEY_MODIFIERS
+
+	/*
+	 * If the key has no modifiers, return NULL and let it fall through to
+	 * the normal lookup.
+	 */
+	if (modifiers == 0)
+		return (NULL);
+
+	/* Otherwise, find the key in the table. */
+	key &= ~(KEYC_SHIFT|KEYC_ESCAPE|KEYC_CTRL);
+	for (i = 0; i < nitems(xterm_keys_table); i++) {
+		entry = &xterm_keys_table[i];
+		if (key == entry->key)
+			break;
+	}
+	if (i == nitems(xterm_keys_table))
+		return (NULL);
+	
+	/* Copy the template and replace the modifier. */
+	out = xstrdup(entry->template);
+	out[strcspn(out, "_")] = '0' + modifiers;
+	return (out);
+}

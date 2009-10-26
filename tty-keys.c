@@ -341,6 +341,13 @@ tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 		goto found;
 	}
 
+	/* Not found. Try to parse a key with an xterm-style modifier. */
+	*key = xterm_keys_find(buf, len, &size);
+	if (*key != KEYC_NONE) {
+		buffer_remove(tty->in, size);
+		goto found;
+	}
+
 	/* Escape but no key string. If the timer isn't started, start it. */
 	if (!(tty->flags & TTY_ESCAPE)) {
 		tv.tv_sec = 0;
