@@ -32,6 +32,7 @@ body {
 }
 #main-content-wrapper {
     margin-left: 2em;
+    margin-right: 4em;
 }
 #main-content-wrapper li {
     list-style: disc;
