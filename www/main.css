@@ -10,7 +10,7 @@ body {
     font-size:xx-large;
     margin-top: 0;
 }
-#left-menu li{
+#left-menu li {
     list-style: none;
     margin-top: 1em;
 }
@@ -44,7 +44,7 @@ body {
     margin: 1em;
     margin-left: 10em;
 }
-#screenshots img{
+#screenshots img {
     text-align: center;
     margin: 0.5em;
 }
