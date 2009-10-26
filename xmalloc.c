@@ -29,13 +29,14 @@
 char *
 xstrdup(const char *s)
 {
-	void	*ptr;
+	char	*ptr;
 	size_t	 len;
 
 	len = strlen(s) + 1;
 	ptr = xmalloc(len);
 
-        return (strncpy(ptr, s, len));
+	strlcpy(ptr, s, len);
+	return (ptr);
 }
 
 void *
