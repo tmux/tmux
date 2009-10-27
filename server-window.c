@@ -28,6 +28,39 @@ int	server_window_check_content(
 	    struct session *, struct window *, struct window_pane *);
 void	server_window_check_alive(struct window *);
 
+/* Register windows for poll. */
+void
+server_window_prepare(void)
+{
+	struct window		*w;
+	struct window_pane	*wp;
+	u_int		 	 i;
+	int			 events;
+
+	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+		if ((w = ARRAY_ITEM(&windows, i)) == NULL)
+			continue;
+
+		TAILQ_FOREACH(wp, &w->panes, entry) {	
+			if (wp->fd == -1)
+				continue;
+			events = POLLIN;
+			if (BUFFER_USED(wp->out) > 0)
+				events |= POLLOUT;
+			server_poll_add(
+			    wp->fd, events, server_window_callback, wp);
+
+			if (wp->pipe_fd == -1)
+				continue;
+			events = 0;
+			if (BUFFER_USED(wp->pipe_buf) > 0)
+				events |= POLLOUT;
+			server_poll_add(
+			    wp->pipe_fd, events, server_window_callback, wp);
+		}
+	}
+}
+
 /* Process a single window pane event. */
 void
 server_window_callback(int fd, int events, void *data)

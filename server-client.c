@@ -147,6 +147,36 @@ server_client_lost(struct client *c)
 	recalculate_sizes();
 }
 
+/* Register clients for poll. */
+void
+server_client_prepare(void)
+{
+	struct client	*c;
+	u_int		 i;
+	int		 events;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		if ((c = ARRAY_ITEM(&clients, i)) == NULL)
+			continue;
+
+		events = 0;
+		if (!(c->flags & CLIENT_BAD))
+			events |= POLLIN;
+		if (c->ibuf.w.queued > 0)
+			events |= POLLOUT;
+		server_poll_add(c->ibuf.fd, events, server_client_callback, c);
+
+		if (c->tty.fd == -1)
+			continue;
+		if (c->flags & CLIENT_SUSPENDED || c->session == NULL)
+			continue;
+		events = POLLIN;
+		if (BUFFER_USED(c->tty.out) > 0)
+			events |= POLLOUT;
+		server_poll_add(c->tty.fd, events, server_client_callback, c);
+	}
+}
+
 /* Process a single client event. */
 void
 server_client_callback(int fd, int events, void *data)

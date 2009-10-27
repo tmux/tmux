@@ -22,6 +22,19 @@
 
 #include "tmux.h"
 
+/* Register jobs for poll. */
+void
+server_job_prepare(void)
+{
+	struct job	*job;
+
+	SLIST_FOREACH(job, &all_jobs, lentry) {
+		if (job->fd == -1)
+			continue;
+		server_poll_add(job->fd, POLLIN, server_job_callback, job);
+	}
+}
+
 /* Process a single job event. */
 void
 server_job_callback(int fd, int events, void *data)

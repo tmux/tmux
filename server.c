@@ -59,7 +59,6 @@ RB_HEAD(poll_items, poll_item) poll_items;
 
 int		 server_poll_cmp(struct poll_item *, struct poll_item *);
 struct poll_item*server_poll_lookup(int);
-void		 server_poll_add(int, int, void (*)(int, int, void *), void *);
 struct pollfd	*server_poll_flatten(int *);
 void		 server_poll_dispatch(struct pollfd *, int);
 void		 server_poll_reset(void);
@@ -72,9 +71,6 @@ int		 server_main(int);
 void		 server_shutdown(void);
 int		 server_should_shutdown(void);
 void		 server_child_signal(void);
-void		 server_fill_windows(void);
-void		 server_fill_clients(void);
-void		 server_fill_jobs(void);
 void		 server_clean_dead(void);
 void		 server_second_timers(void);
 void		 server_lock_server(void);
@@ -346,10 +342,10 @@ server_main(int srv_fd)
 		server_poll_add(srv_fd, POLLIN, server_callback, NULL);
 
 		/* Fill window and client sockets. */
-		server_fill_jobs();
-		server_fill_windows();
-		server_fill_clients();
-
+		server_job_prepare();
+		server_window_prepare();
+		server_client_prepare();
+		
 		/* Update socket permissions. */
 		xtimeout = INFTIM;
 		if (server_update_socket() != 0)
@@ -502,85 +498,6 @@ server_child_signal(void)
 				}
 			}
 		}
-	}
-}
-
-/* Fill window pollfds. */
-void
-server_fill_windows(void)
-{
-	struct window		*w;
-	struct window_pane	*wp;
-	u_int		 	 i;
-	int			 events;
-
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		w = ARRAY_ITEM(&windows, i);
-		if (w == NULL)
-			continue;
-
-		TAILQ_FOREACH(wp, &w->panes, entry) {	
-			if (wp->fd == -1)
-				continue;
-			events = POLLIN;
-			if (BUFFER_USED(wp->out) > 0)
-				events |= POLLOUT;
-			server_poll_add(
-			    wp->fd, events, server_window_callback, wp);
-
-			if (wp->pipe_fd == -1)
-				continue;
-			events = 0;
-			if (BUFFER_USED(wp->pipe_buf) > 0)
-				events |= POLLOUT;
-			server_poll_add(
-			    wp->pipe_fd, events, server_window_callback, wp);
-		}
-	}
-}
-
-/* Fill client pollfds. */
-void
-server_fill_clients(void)
-{
-	struct client	*c;
-	u_int		 i;
-	int		 events;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-
-		if (c != NULL) {
-			events = 0;
-			if (!(c->flags & CLIENT_BAD))
-				events |= POLLIN;
-			if (c->ibuf.w.queued > 0)
-				events |= POLLOUT;
-			server_poll_add(
-			    c->ibuf.fd, events, server_client_callback, c);
-		}
-
-		if (c != NULL && !(c->flags & CLIENT_SUSPENDED) &&
-		    c->tty.fd != -1 && c->session != NULL) {
-			events = POLLIN;
-			if (BUFFER_USED(c->tty.out) > 0)
-				events |= POLLOUT;
-			server_poll_add(
-			    c->tty.fd, events, server_client_callback, c);
-		}
-	}
-}
-
-/* Fill in job fds. */
-void
-server_fill_jobs(void)
-{
-	struct job	*job;
-
-	SLIST_FOREACH(job, &all_jobs, lentry) {
-		if (job->fd == -1)
-			continue;
-		server_poll_add(job->fd, POLLIN, server_job_callback, job);
 	}
 }
 
