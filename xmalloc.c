@@ -1,4 +1,4 @@
-/* $Id: xmalloc.c,v 1.10 2009-06-25 16:47:00 nicm Exp $ */
+/* $Id: xmalloc.c,v 1.11 2009-10-28 23:08:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2004 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,13 +29,14 @@
 char *
 xstrdup(const char *s)
 {
-	void	*ptr;
+	char	*ptr;
 	size_t	 len;
 
 	len = strlen(s) + 1;
 	ptr = xmalloc(len);
 
-        return (strncpy(ptr, s, len));
+	strlcpy(ptr, s, len);
+	return (ptr);
 }
 
 void *
