@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.7 2009-10-28 22:50:24 tcunha Exp $ */
+/* $Id: server-client.c,v 1.8 2009-10-28 23:06:41 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -151,6 +151,9 @@ void
 server_client_callback(int fd, int events, void *data)
 {
 	struct client	*c = data;
+
+	if (c->flags & CLIENT_DEAD)
+		return;
 
 	if (fd == c->ibuf.fd) {
 		if (events & (POLLERR|POLLNVAL|POLLHUP))
