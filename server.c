@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.211 2009-10-23 17:49:47 tcunha Exp $ */
+/* $Id: server.c,v 1.212 2009-10-28 23:11:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -331,15 +331,17 @@ server_main(int srv_fd)
 
 		/* Handle child exit. */
 		if (sigchld) {
-			server_child_signal();
 			sigchld = 0;
+			server_child_signal();
+			continue;
 		}
 
 		/* Recreate socket on SIGUSR1. */
 		if (sigusr1) {
+			sigusr1 = 0;
 			close(srv_fd);
 			srv_fd = server_create_socket();
-			sigusr1 = 0;
+			continue;
 		}
 
 		/* Initialise pollfd array and add server socket. */
