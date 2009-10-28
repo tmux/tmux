@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.33 2009-10-28 22:53:03 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.34 2009-10-28 22:56:50 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,85 +38,81 @@ struct tty_key_ent {
 
 struct tty_key_ent tty_keys[] = {
 	/* Function keys. */
-	{ TTYC_KF1,   NULL,     KEYC_F1,    TTYKEY_CTRL },
-	{ TTYC_KF2,   NULL,     KEYC_F2,    TTYKEY_CTRL },
-	{ TTYC_KF3,   NULL,     KEYC_F3,    TTYKEY_CTRL },
-	{ TTYC_KF4,   NULL,     KEYC_F4,    TTYKEY_CTRL },
-	{ TTYC_KF5,   NULL,     KEYC_F5,    TTYKEY_CTRL },
-	{ TTYC_KF6,   NULL,     KEYC_F6,    TTYKEY_CTRL },
-	{ TTYC_KF7,   NULL,     KEYC_F7,    TTYKEY_CTRL },
-	{ TTYC_KF8,   NULL,     KEYC_F8,    TTYKEY_CTRL },
-	{ TTYC_KF9,   NULL,     KEYC_F9,    TTYKEY_CTRL },
-	{ TTYC_KF10,  NULL,     KEYC_F10,   TTYKEY_CTRL },
-	{ TTYC_KF11,  NULL,     KEYC_F11,   TTYKEY_CTRL },
-	{ TTYC_KF12,  NULL,     KEYC_F12,   TTYKEY_CTRL },
-	{ TTYC_KF13,  NULL,     KEYC_F13,   TTYKEY_CTRL },
-	{ TTYC_KF14,  NULL,     KEYC_F14,   TTYKEY_CTRL },
-	{ TTYC_KF15,  NULL,     KEYC_F15,   TTYKEY_CTRL },
-	{ TTYC_KF16,  NULL,     KEYC_F16,   TTYKEY_CTRL },
-	{ TTYC_KF17,  NULL,     KEYC_F17,   TTYKEY_CTRL },
-	{ TTYC_KF18,  NULL,     KEYC_F18,   TTYKEY_CTRL },
-	{ TTYC_KF19,  NULL,     KEYC_F19,   TTYKEY_CTRL },
-	{ TTYC_KF20,  NULL,     KEYC_F20,   TTYKEY_CTRL },
-	{ TTYC_KICH1, NULL,     KEYC_IC,    TTYKEY_CTRL },
-	{ TTYC_KDCH1, NULL,     KEYC_DC,    TTYKEY_CTRL },
-	{ TTYC_KHOME, NULL,     KEYC_HOME,  TTYKEY_CTRL },
-	{ TTYC_KEND,  NULL,     KEYC_END,   TTYKEY_CTRL },
-	{ TTYC_KNP,   NULL,     KEYC_NPAGE, TTYKEY_CTRL },
-	{ TTYC_KPP,   NULL,     KEYC_PPAGE, TTYKEY_CTRL },
-	{ TTYC_KCBT,  NULL,	KEYC_BTAB,  TTYKEY_CTRL },
+	{ TTYC_KF1,	NULL,		KEYC_F1,		TTYKEY_CTRL },
+	{ TTYC_KF1,	NULL,		KEYC_F1,		TTYKEY_CTRL },
+	{ TTYC_KF2,	NULL,		KEYC_F2,		TTYKEY_CTRL },
+	{ TTYC_KF3,	NULL,		KEYC_F3,		TTYKEY_CTRL },
+	{ TTYC_KF4,	NULL,		KEYC_F4,		TTYKEY_CTRL },
+	{ TTYC_KF5,	NULL,		KEYC_F5,		TTYKEY_CTRL },
+	{ TTYC_KF6,	NULL,		KEYC_F6,		TTYKEY_CTRL },
+	{ TTYC_KF7,	NULL,		KEYC_F7,		TTYKEY_CTRL },
+	{ TTYC_KF8,	NULL,		KEYC_F8,		TTYKEY_CTRL },
+	{ TTYC_KF9,	NULL,		KEYC_F9,		TTYKEY_CTRL },
+	{ TTYC_KF10,	NULL,		KEYC_F10,		TTYKEY_CTRL },
+	{ TTYC_KF11,	NULL,		KEYC_F11,		TTYKEY_CTRL },
+	{ TTYC_KF12,	NULL,		KEYC_F12,		TTYKEY_CTRL },
+	{ TTYC_KF13,	NULL,		KEYC_F13,		TTYKEY_CTRL },
+	{ TTYC_KF14,	NULL,		KEYC_F14,		TTYKEY_CTRL },
+	{ TTYC_KF15,	NULL,		KEYC_F15,		TTYKEY_CTRL },
+	{ TTYC_KF16,	NULL,		KEYC_F16,		TTYKEY_CTRL },
+	{ TTYC_KF17,	NULL,		KEYC_F17,		TTYKEY_CTRL },
+	{ TTYC_KF18,	NULL,		KEYC_F18,		TTYKEY_CTRL },
+	{ TTYC_KF19,	NULL,		KEYC_F19,		TTYKEY_CTRL },
+	{ TTYC_KF20,	NULL,		KEYC_F20,		TTYKEY_CTRL },
+	{ TTYC_KICH1,	NULL,		KEYC_IC,		TTYKEY_CTRL },
+	{ TTYC_KDCH1,	NULL,		KEYC_DC,		TTYKEY_CTRL },
+	{ TTYC_KHOME,	NULL,		KEYC_HOME,		TTYKEY_CTRL },
+	{ TTYC_KEND,	NULL,		KEYC_END,		TTYKEY_CTRL },
+	{ TTYC_KNP,	NULL,		KEYC_NPAGE,		TTYKEY_CTRL },
+	{ TTYC_KPP,	NULL,		KEYC_PPAGE,		TTYKEY_CTRL },
+	{ TTYC_KCBT,	NULL,		KEYC_BTAB,		TTYKEY_CTRL },
 
 	/* Arrow keys. */
-	{ 0,          "\033OA", KEYC_UP,    TTYKEY_RAW },
-	{ 0,          "\033OB", KEYC_DOWN,  TTYKEY_RAW },
-	{ 0,          "\033OC", KEYC_RIGHT, TTYKEY_RAW },
-	{ 0,          "\033OD", KEYC_LEFT,  TTYKEY_RAW },
+	{ 0,		"\033OA",	KEYC_UP,		TTYKEY_RAW },
+	{ 0,		"\033OB",	KEYC_DOWN,		TTYKEY_RAW },
+	{ 0,		"\033OC",	KEYC_RIGHT,		TTYKEY_RAW },
+	{ 0,		"\033OD",	KEYC_LEFT,		TTYKEY_RAW },
 
-	{ 0,          "\033[A", KEYC_UP,    TTYKEY_RAW },
-	{ 0,          "\033[B", KEYC_DOWN,  TTYKEY_RAW },
-	{ 0,          "\033[C", KEYC_RIGHT, TTYKEY_RAW },
-	{ 0,          "\033[D", KEYC_LEFT,  TTYKEY_RAW },
+	{ 0,		"\033[A",	KEYC_UP,		TTYKEY_RAW },
+	{ 0,		"\033[B",	KEYC_DOWN,		TTYKEY_RAW },
+	{ 0,		"\033[C",	KEYC_RIGHT,		TTYKEY_RAW },
+	{ 0,		"\033[D",	KEYC_LEFT,		TTYKEY_RAW },
 
-	{ 0,          "\033Oa", KEYC_UP | KEYC_CTRL,    TTYKEY_RAW },
-	{ 0,          "\033Ob", KEYC_DOWN | KEYC_CTRL,  TTYKEY_RAW },
-	{ 0,          "\033Oc", KEYC_RIGHT | KEYC_CTRL, TTYKEY_RAW },
-	{ 0,          "\033Od", KEYC_LEFT | KEYC_CTRL,  TTYKEY_RAW },
-	{ 0,          "\033[a", KEYC_UP | KEYC_SHIFT,    TTYKEY_RAW },
-	{ 0,          "\033[b", KEYC_DOWN | KEYC_SHIFT,  TTYKEY_RAW },
-	{ 0,          "\033[c", KEYC_RIGHT | KEYC_SHIFT, TTYKEY_RAW },
-	{ 0,          "\033[d", KEYC_LEFT | KEYC_SHIFT,  TTYKEY_RAW },
+	{ 0,		"\033Oa",	KEYC_UP|KEYC_CTRL,	TTYKEY_RAW },
+	{ 0,		"\033Ob",	KEYC_DOWN|KEYC_CTRL,	TTYKEY_RAW },
+	{ 0,		"\033Oc",	KEYC_RIGHT|KEYC_CTRL,	TTYKEY_RAW },
+	{ 0,		"\033Od",	KEYC_LEFT|KEYC_CTRL,	TTYKEY_RAW },
+	{ 0,		"\033[a",	KEYC_UP|KEYC_SHIFT,	TTYKEY_RAW },
+	{ 0,		"\033[b",	KEYC_DOWN|KEYC_SHIFT,	TTYKEY_RAW },
+	{ 0,		"\033[c",	KEYC_RIGHT|KEYC_SHIFT,	TTYKEY_RAW },
+	{ 0,		"\033[d",	KEYC_LEFT|KEYC_SHIFT,	TTYKEY_RAW },
 
-	{ TTYC_KCUU1, NULL,     KEYC_UP,    TTYKEY_CTRL },
-	{ TTYC_KCUD1, NULL,     KEYC_DOWN,  TTYKEY_CTRL },
-	{ TTYC_KCUB1, NULL,     KEYC_LEFT,  TTYKEY_CTRL },
-	{ TTYC_KCUF1, NULL,     KEYC_RIGHT, TTYKEY_CTRL },
+	{ TTYC_KCUU1,	NULL,		KEYC_UP,		TTYKEY_CTRL },
+	{ TTYC_KCUD1,	NULL,		KEYC_DOWN,		TTYKEY_CTRL },
+	{ TTYC_KCUB1,	NULL,		KEYC_LEFT,		TTYKEY_CTRL },
+	{ TTYC_KCUF1,	NULL,		KEYC_RIGHT,		TTYKEY_CTRL },
 
 	/*
-	 * Numeric keypad. termcap and terminfo are totally confusing for this.
-	 * There are definitions for some keypad keys and for function keys,
-	 * but these seem to now be used for the real function keys rather than
-	 * for the keypad keys in application mode (which is different from
-	 * what it says in the termcap file). So, we just hardcode the vt100
-	 * escape sequences here and always put the terminal into keypad_xmit
-	 * mode. Translation of numbers mode/applications mode is done in
-	 * input-keys.c.
+	 * Numeric keypad. Just use the vt100 escape sequences here and always
+	 * put the terminal into keypad_xmit mode. Translation of numbers
+	 * mode/applications mode is done in input-keys.c.
 	 */
-	{ 0,          "\033Oo", KEYC_KP_SLASH,  TTYKEY_RAW },
-	{ 0,          "\033Oj", KEYC_KP_STAR,   TTYKEY_RAW },
-	{ 0,          "\033Om", KEYC_KP_MINUS,  TTYKEY_RAW },
-	{ 0,          "\033Ow", KEYC_KP_SEVEN,  TTYKEY_RAW },
-	{ 0,          "\033Ox", KEYC_KP_EIGHT,  TTYKEY_RAW },
-	{ 0,          "\033Oy", KEYC_KP_NINE,   TTYKEY_RAW },
-	{ 0,          "\033Ok", KEYC_KP_PLUS,   TTYKEY_RAW },
-	{ 0,          "\033Ot", KEYC_KP_FOUR,   TTYKEY_RAW },
-	{ 0,          "\033Ou", KEYC_KP_FIVE,   TTYKEY_RAW },
-	{ 0,          "\033Ov", KEYC_KP_SIX,    TTYKEY_RAW },
-	{ 0,          "\033Oq", KEYC_KP_ONE,    TTYKEY_RAW },
-	{ 0,          "\033Or", KEYC_KP_TWO,    TTYKEY_RAW },
-	{ 0,          "\033Os", KEYC_KP_THREE,  TTYKEY_RAW },
-	{ 0,          "\033OM", KEYC_KP_ENTER,  TTYKEY_RAW },
-	{ 0,          "\033Op", KEYC_KP_ZERO,   TTYKEY_RAW },
-	{ 0,          "\033On", KEYC_KP_PERIOD, TTYKEY_RAW },
+	{ 0,		"\033Oo",	KEYC_KP_SLASH,		TTYKEY_RAW },
+	{ 0,		"\033Oj",	KEYC_KP_STAR,		TTYKEY_RAW },
+	{ 0,		"\033Om",	KEYC_KP_MINUS,		TTYKEY_RAW },
+	{ 0,		"\033Ow",	KEYC_KP_SEVEN,		TTYKEY_RAW },
+	{ 0,		"\033Ox",	KEYC_KP_EIGHT,		TTYKEY_RAW },
+	{ 0,		"\033Oy",	KEYC_KP_NINE,		TTYKEY_RAW },
+	{ 0,		"\033Ok",	KEYC_KP_PLUS,		TTYKEY_RAW },
+	{ 0,		"\033Ot",	KEYC_KP_FOUR,		TTYKEY_RAW },
+	{ 0,		"\033Ou",	KEYC_KP_FIVE,		TTYKEY_RAW },
+	{ 0,		"\033Ov",	KEYC_KP_SIX,		TTYKEY_RAW },
+	{ 0,		"\033Oq",	KEYC_KP_ONE,		TTYKEY_RAW },
+	{ 0,		"\033Or",	KEYC_KP_TWO,		TTYKEY_RAW },
+	{ 0,		"\033Os",	KEYC_KP_THREE,		TTYKEY_RAW },
+	{ 0,		"\033OM",	KEYC_KP_ENTER,		TTYKEY_RAW },
+	{ 0,		"\033Op",	KEYC_KP_ZERO,		TTYKEY_RAW },
+	{ 0,		"\033On",	KEYC_KP_PERIOD,		TTYKEY_RAW },
 };
 
 RB_GENERATE(tty_keys, tty_key, entry, tty_keys_cmp);
