@@ -33,8 +33,9 @@ void	tty_fill_acs(struct tty *);
 int	tty_try_256(struct tty *, u_char, const char *);
 int	tty_try_88(struct tty *, u_char, const char *);
 
-void	tty_attributes_fg(struct tty *, const struct grid_cell *);
-void	tty_attributes_bg(struct tty *, const struct grid_cell *);
+void	tty_colours(struct tty *, const struct grid_cell *, int *);
+void	tty_colours_fg(struct tty *, const struct grid_cell *, int *);
+void	tty_colours_bg(struct tty *, const struct grid_cell *, int *);
 
 void	tty_redraw_region(struct tty *, const struct tty_ctx *);
 void	tty_emulate_repeat(
@@ -1120,14 +1121,23 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
 	u_char			 changed;
-	u_int			 fg, bg, attr;
+	u_int			 fg = gc->fg, bg = gc->bg, attr = gc->attr;
+
+	/* If any bits are being cleared, reset everything. */
+	if (tc->attr & ~attr)
+		tty_reset(tty);
+
+	/*
+	 * Set the colours. This may call tty_reset() (so it comes next) and
+	 * may add to the desired attributes in attr.
+	 */
+	tty_colours(tty, gc, &attr);
 
 	/*
 	 * If no setab, try to use the reverse attribute as a best-effort for a
 	 * non-default background. This is a bit of a hack but it doesn't do
 	 * any serious harm and makes a couple of applications happier.
 	 */
-	fg = gc->fg; bg = gc->bg; attr = gc->attr;
 	if (!tty_term_has(tty->term, TTYC_SETAB)) {
 		if (attr & GRID_ATTR_REVERSE) {
 			if (fg != 7 && fg != 8)
@@ -1137,10 +1147,6 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 				attr |= GRID_ATTR_REVERSE;
 		}
 	}
-
-	/* If any bits are being cleared, reset everything. */
-	if (tc->attr & ~attr)
-		tty_reset(tty);
 
 	/* Filter out attribute bits already set. */
 	changed = attr & ~tc->attr;
@@ -1167,24 +1173,140 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 		tty_putcode(tty, TTYC_INVIS);
 	if (changed & GRID_ATTR_CHARSET)
 		tty_putcode(tty, TTYC_SMACS);
+}
 
-	/* Set foreground colour. */
-	if (fg != tc->fg ||
-	    (gc->flags & GRID_FLAG_FG256) != (tc->flags & GRID_FLAG_FG256)) {
-		tty_attributes_fg(tty, gc);
-		tc->fg = fg;
-		tc->flags &= ~GRID_FLAG_FG256;
-		tc->flags |= gc->flags & GRID_FLAG_FG256;
+void
+tty_colours(struct tty *tty, const struct grid_cell *gc, int *attr)
+{
+	struct grid_cell	*tc = &tty->cell;
+	u_char			 fg = gc->fg, bg = gc->bg;
+	int			 flags, have_ax;
+	int			 fg_default, bg_default;
+
+	/* No changes? Nothing is necessary. */
+	flags = (gc->flags ^ tc->flags) & (GRID_FLAG_FG256|GRID_FLAG_BG256);
+	if (fg == tc->fg && bg == tc->bg && flags == 0)
+		return;
+
+	/*
+	 * Is either the default colour? This is handled specially because the
+	 * best solution might be to reset both colours to default, in which
+	 * case if only one is default need to fall onward to set the other
+	 * colour.
+	 */
+	fg_default = (fg == 8 && !(gc->flags & GRID_FLAG_FG256));
+	bg_default = (bg == 8 && !(gc->flags & GRID_FLAG_BG256));
+	if (fg_default || bg_default) {
+		/*
+		 * If don't have AX but do have op, send sgr0 (op can't
+		 * actually be used because it is sometimes the same as sgr0
+		 * and sometimes isn't). This resets both colours to default.
+		 *
+		 * Otherwise, try to set the default colour only as needed.
+		 */
+		have_ax = tty_term_has(tty->term, TTYC_AX);
+		if (!have_ax && tty_term_has(tty->term, TTYC_OP))
+			tty_reset(tty);
+		else {
+			if (fg_default &&
+			    fg != tc->fg && !(tc->flags & GRID_FLAG_FG256)) {
+				if (have_ax)
+					tty_puts(tty, "\033[39m");
+				else if (tc->fg != 7)
+					tty_putcode1(tty, TTYC_SETAF, 7);
+				tc->fg = 8;
+				tc->flags &= ~GRID_FLAG_FG256;
+			}
+			if (bg_default &&
+			    bg != tc->bg && !(tc->flags & GRID_FLAG_BG256)) {
+				if (have_ax)					
+					tty_puts(tty, "\033[49m");
+				else if (tc->bg != 0)
+					tty_putcode1(tty, TTYC_SETAB, 0);
+				tc->bg = 8;
+				tc->flags &= ~GRID_FLAG_BG256;
+			}
+		}
 	}
 
-	/* Set background colour. */
-	if (bg != tc->bg ||
-	    (gc->flags & GRID_FLAG_BG256) != (tc->flags & GRID_FLAG_BG256)) {
-		tty_attributes_bg(tty, gc);
-		tc->bg = bg;
-		tc->flags &= ~GRID_FLAG_BG256;
-		tc->flags |= gc->flags & GRID_FLAG_BG256;
+	/* Set the foreground colour. */
+	if (!fg_default && (fg != tc->fg ||
+	    ((gc->flags & GRID_FLAG_FG256) != (tc->flags & GRID_FLAG_FG256))))
+		tty_colours_fg(tty, gc, attr);
+
+	/*
+	 * Set the background colour. This must come after the foreground as
+	 * tty_colour_fg() can call tty_reset().
+	 */
+	if (!bg_default && (bg != tc->bg ||
+	    ((gc->flags & GRID_FLAG_BG256) != (tc->flags & GRID_FLAG_BG256))))
+		tty_colours_bg(tty, gc, attr);
+}
+
+void
+tty_colours_fg(struct tty *tty, const struct grid_cell *gc, int *attr)
+{
+	struct grid_cell	*tc = &tty->cell;
+	u_char			 fg = gc->fg;
+
+	/* Is this a 256-colour colour? */
+	if (gc->flags & GRID_FLAG_FG256) {
+		/* Try as 256 colours or translating to 88. */
+		if (tty_try_256(tty, fg, "38") == 0)
+			goto save_fg;
+		if (tty_try_88(tty, fg, "38") == 0)
+			goto save_fg;
+
+		/* Translate to 16-colour palette, updating bold if needed. */
+		fg = colour_256to16(fg);
+		if (fg & 8) {
+			fg &= 7;
+			(*attr) |= GRID_ATTR_BRIGHT;
+		} else
+			tty_reset(tty);		/* turn off bold */
 	}
+
+	/* Otherwise set the foreground colour. */
+	tty_putcode1(tty, TTYC_SETAF, fg);
+
+save_fg:	
+	/* Save the new values in the terminal current cell. */
+	tc->fg = fg;
+	tc->flags &= ~GRID_FLAG_FG256;
+	tc->flags |= gc->flags & GRID_FLAG_FG256;
+}
+
+void
+tty_colours_bg(struct tty *tty, const struct grid_cell *gc, unused int *attr)
+{
+	struct grid_cell	*tc = &tty->cell;
+	u_char			 bg = gc->bg;
+
+	/* Is this a 256-colour colour? */
+	if (gc->flags & GRID_FLAG_BG256) {
+		/* Try as 256 colours or translating to 88. */
+		if (tty_try_256(tty, bg, "48") == 0)
+			goto save_bg;
+		if (tty_try_88(tty, bg, "48") == 0)
+			goto save_bg;
+
+		/*
+		 * Translate to 16-colour palette. Bold background doesn't
+		 * exist portably, so just discard the bold bit if set.
+		 */
+		bg = colour_256to16(bg);
+		if (bg & 8)
+			bg &= 7;
+	}
+
+	/* Otherwise set the background colour. */
+	tty_putcode1(tty, TTYC_SETAB, bg);
+
+save_bg:
+	/* Save the new values in the terminal current cell. */
+	tc->bg = bg;
+	tc->flags &= ~GRID_FLAG_BG256;
+	tc->flags |= gc->flags & GRID_FLAG_BG256;
 }
 
 int
@@ -1214,69 +1336,4 @@ tty_try_88(struct tty *tty, u_char colour, const char *type)
 	xsnprintf(s, sizeof s, "\033[%s;5;%hhum", type, colour);
 	tty_puts(tty, s);
 	return (0);
-}
-
-void
-tty_attributes_fg(struct tty *tty, const struct grid_cell *gc)
-{
-	u_char	fg;
-
-	fg = gc->fg;
-	if (gc->flags & GRID_FLAG_FG256) {
-		if (tty_try_256(tty, fg, "38") == 0)
-			return;
-		if (tty_try_88(tty, fg, "38") == 0)
-			return;
-		fg = colour_256to16(fg);
-		if (fg & 8) {
-			fg &= 7;
-			tty_putcode(tty, TTYC_BOLD);
-			tty->cell.attr |= GRID_ATTR_BRIGHT;
-		} else if (tty->cell.attr & GRID_ATTR_BRIGHT)
-			tty_reset(tty);
-	}
-
-	if (fg == 8) {
-		if (tty_term_has(tty->term, TTYC_AX)) {
-			/* AX is an extension that means \033[39m works. */
-			tty_puts(tty, "\033[39m");	
-		} else if (tty_term_has(tty->term, TTYC_OP)) {
-			/*
-			 * op can be used to look for default colours but there
-			 * is no point in using it - with some terminals it
-			 * does SGR0 and others not, so SGR0 is needed anyway
-			 * to put the terminal into a known state.
-			 */
-			tty_reset(tty);
-		} else
-			tty_putcode1(tty, TTYC_SETAF, 7);
-	} else
-		tty_putcode1(tty, TTYC_SETAF, fg);
-}
-
-void
-tty_attributes_bg(struct tty *tty, const struct grid_cell *gc)
-{
-	u_char	bg;
-
-	bg = gc->bg;
-	if (gc->flags & GRID_FLAG_BG256) {
-		if (tty_try_256(tty, bg, "48") == 0)
-			return;
-		if (tty_try_88(tty, bg, "48") == 0)
-			return;
-		bg = colour_256to16(bg);
-		if (bg & 8)
-			bg &= 7;
-	}
-
-	if (bg == 8) {
-		if (tty_term_has(tty->term, TTYC_AX)) {
-			tty_puts(tty, "\033[49m");	
-		} else if (tty_term_has(tty->term, TTYC_OP))
-			tty_reset(tty);
-		else
-			tty_putcode1(tty, TTYC_SETAB, 0);
-	} else
-		tty_putcode1(tty, TTYC_SETAB, bg);
 }
