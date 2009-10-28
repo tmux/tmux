@@ -1,4 +1,4 @@
-/* $Id: cmd-load-buffer.c,v 1.10 2009-09-07 23:48:54 tcunha Exp $ */
+/* $Id: cmd-load-buffer.c,v 1.11 2009-10-28 23:10:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -56,13 +56,14 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
 
-	if (stat(data->arg, &sb) < 0) {
+	if ((f = fopen(data->arg, "rb")) == NULL) {
 		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
 		return (-1);
 	}
 
-	if ((f = fopen(data->arg, "rb")) == NULL) {
+	if (fstat(fileno(f), &sb) < 0) {
 		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
+		fclose(f);
 		return (-1);
 	}
 
