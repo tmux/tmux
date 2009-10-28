@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.37 2009-10-28 23:03:51 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.38 2009-10-28 23:05:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -71,21 +71,23 @@ struct tty_key_ent tty_keys[] = {
 	{ TTYC_KPP,	NULL,		KEYC_PPAGE,		TTYKEY_CTRL },
 	{ TTYC_KCBT,	NULL,		KEYC_BTAB,		TTYKEY_CTRL },
 
-	/*
-	 * Arrow keys. There are several variants of these so just accept them.
-	 * We always put the terminal into application keys mode so ctrl should
-	 * swap between SS3 and CSI.
-	 */
+	/* Arrow keys. */
 	{ 0,		"\033OA",	KEYC_UP,		TTYKEY_RAW },
 	{ 0,		"\033OB",	KEYC_DOWN,		TTYKEY_RAW },
 	{ 0,		"\033OC",	KEYC_RIGHT,		TTYKEY_RAW },
 	{ 0,		"\033OD",	KEYC_LEFT,		TTYKEY_RAW },
 
-	{ 0,		"\033[A",	KEYC_UP|KEYC_CTRL,	TTYKEY_RAW },
-	{ 0,		"\033[B",	KEYC_DOWN|KEYC_CTRL,	TTYKEY_RAW },
-	{ 0,		"\033[C",	KEYC_RIGHT|KEYC_CTRL,	TTYKEY_RAW },
-	{ 0,		"\033[D",	KEYC_LEFT|KEYC_CTRL,	TTYKEY_RAW },
+	{ 0,		"\033[A",	KEYC_UP,		TTYKEY_RAW },
+	{ 0,		"\033[B",	KEYC_DOWN,		TTYKEY_RAW },
+	{ 0,		"\033[C",	KEYC_RIGHT,		TTYKEY_RAW },
+	{ 0,		"\033[D",	KEYC_LEFT,		TTYKEY_RAW },
 
+	{ TTYC_KCUU1,	NULL,		KEYC_UP,		TTYKEY_CTRL },
+	{ TTYC_KCUD1,	NULL,		KEYC_DOWN,		TTYKEY_CTRL },
+	{ TTYC_KCUB1,	NULL,		KEYC_LEFT,		TTYKEY_CTRL },
+	{ TTYC_KCUF1,	NULL,		KEYC_RIGHT,		TTYKEY_CTRL },
+
+	/* Special-case arrow keys for rxvt until terminfo has kRIT5 etc. */
 	{ 0,		"\033Oa",	KEYC_UP|KEYC_CTRL,	TTYKEY_RAW },
 	{ 0,		"\033Ob",	KEYC_DOWN|KEYC_CTRL,	TTYKEY_RAW },
 	{ 0,		"\033Oc",	KEYC_RIGHT|KEYC_CTRL,	TTYKEY_RAW },
@@ -95,11 +97,6 @@ struct tty_key_ent tty_keys[] = {
 	{ 0,		"\033[b",	KEYC_DOWN|KEYC_SHIFT,	TTYKEY_RAW },
 	{ 0,		"\033[c",	KEYC_RIGHT|KEYC_SHIFT,	TTYKEY_RAW },
 	{ 0,		"\033[d",	KEYC_LEFT|KEYC_SHIFT,	TTYKEY_RAW },
-
-	{ TTYC_KCUU1,	NULL,		KEYC_UP,		TTYKEY_CTRL },
-	{ TTYC_KCUD1,	NULL,		KEYC_DOWN,		TTYKEY_CTRL },
-	{ TTYC_KCUB1,	NULL,		KEYC_LEFT,		TTYKEY_CTRL },
-	{ TTYC_KCUF1,	NULL,		KEYC_RIGHT,		TTYKEY_CTRL },
 
 	/*
 	 * Numeric keypad. Just use the vt100 escape sequences here and always

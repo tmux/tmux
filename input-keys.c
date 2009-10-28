@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.38 2009-10-28 23:03:51 tcunha Exp $ */
+/* $Id: input-keys.c,v 1.39 2009-10-28 23:05:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -95,7 +95,10 @@ struct input_key_ent input_keys[] = {
 	{ KEYC_PPAGE|KEYC_CTRL,	"\033[5^",	0 },
 	{ KEYC_BTAB,		"\033[Z",	0 },
 
-	/* Arrow keys. Cursor versions must come first. */
+	/*
+	 * Arrow keys. Cursor versions must come first. The codes are toggled
+	 * between CSI and SS3 versions when ctrl is pressed.
+	 */
 	{ KEYC_UP|KEYC_CTRL,	"\033[A",	INPUTKEY_CURSOR },
 	{ KEYC_DOWN|KEYC_CTRL,	"\033[B",	INPUTKEY_CURSOR },
 	{ KEYC_RIGHT|KEYC_CTRL,	"\033[C",	INPUTKEY_CURSOR },
