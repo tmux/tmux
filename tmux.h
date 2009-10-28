@@ -65,6 +65,9 @@ extern char   **environ;
 /* Maximum poll timeout (when attached). */
 #define POLL_TIMEOUT 50
 
+/* Maximum data to buffer for output before suspending reading from panes. */
+#define BACKOFF_THRESHOLD 1024
+
 /*
  * Maximum sizes of strings in message data. Don't forget to bump
  * PROTOCOL_VERSION if any of these change!
