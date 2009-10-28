@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.488 2009-10-28 23:03:51 tcunha Exp $ */
+/* $Id: tmux.h,v 1.489 2009-10-28 23:14:15 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1572,18 +1572,22 @@ const char *key_string_lookup_key(int);
 extern struct clients clients;
 extern struct clients dead_clients;
 int	 server_start(char *);
+void	 server_poll_add(int, int, void (*)(int, int, void *), void *);
 
 /* server-client.c */
 void	 server_client_create(int);
 void	 server_client_lost(struct client *);
+void	 server_client_prepare(void);
 void	 server_client_callback(int, int, void *);
 void	 server_client_loop(void);
 
 /* server-job.c */
+void	 server_job_prepare(void);
 void	 server_job_callback(int, int, void *);
 void	 server_job_loop(void);
 
 /* server-window.c */
+void	 server_window_prepare(void);
 void	 server_window_callback(int, int, void *);
 void	 server_window_loop(void);
 

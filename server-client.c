@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.9 2009-10-28 23:12:38 tcunha Exp $ */
+/* $Id: server-client.c,v 1.10 2009-10-28 23:14:15 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -144,6 +144,36 @@ server_client_lost(struct client *c)
 	c->flags |= CLIENT_DEAD;
 
 	recalculate_sizes();
+}
+
+/* Register clients for poll. */
+void
+server_client_prepare(void)
+{
+	struct client	*c;
+	u_int		 i;
+	int		 events;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		if ((c = ARRAY_ITEM(&clients, i)) == NULL)
+			continue;
+
+		events = 0;
+		if (!(c->flags & CLIENT_BAD))
+			events |= POLLIN;
+		if (c->ibuf.w.queued > 0)
+			events |= POLLOUT;
+		server_poll_add(c->ibuf.fd, events, server_client_callback, c);
+
+		if (c->tty.fd == -1)
+			continue;
+		if (c->flags & CLIENT_SUSPENDED || c->session == NULL)
+			continue;
+		events = POLLIN;
+		if (BUFFER_USED(c->tty.out) > 0)
+			events |= POLLOUT;
+		server_poll_add(c->tty.fd, events, server_client_callback, c);
+	}
 }
 
 /* Process a single client event. */

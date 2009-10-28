@@ -1,4 +1,4 @@
-/* $Id: server-window.c,v 1.1 2009-10-23 17:49:47 tcunha Exp $ */
+/* $Id: server-window.c,v 1.2 2009-10-28 23:14:15 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,6 +27,39 @@ int	server_window_check_activity(struct session *, struct window *);
 int	server_window_check_content(
 	    struct session *, struct window *, struct window_pane *);
 void	server_window_check_alive(struct window *);
+
+/* Register windows for poll. */
+void
+server_window_prepare(void)
+{
+	struct window		*w;
+	struct window_pane	*wp;
+	u_int		 	 i;
+	int			 events;
+
+	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+		if ((w = ARRAY_ITEM(&windows, i)) == NULL)
+			continue;
+
+		TAILQ_FOREACH(wp, &w->panes, entry) {	
+			if (wp->fd == -1)
+				continue;
+			events = POLLIN;
+			if (BUFFER_USED(wp->out) > 0)
+				events |= POLLOUT;
+			server_poll_add(
+			    wp->fd, events, server_window_callback, wp);
+
+			if (wp->pipe_fd == -1)
+				continue;
+			events = 0;
+			if (BUFFER_USED(wp->pipe_buf) > 0)
+				events |= POLLOUT;
+			server_poll_add(
+			    wp->pipe_fd, events, server_window_callback, wp);
+		}
+	}
+}
 
 /* Process a single window pane event. */
 void
