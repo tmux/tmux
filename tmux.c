@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.180 2009-10-23 17:40:23 tcunha Exp $ */
+/* $Id: tmux.c,v 1.181 2009-10-28 22:48:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -71,7 +71,7 @@ __dead void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-28dlquv] [-c shell-command] [-f file] [-L socket-name]\n"
+	    "usage: %s [-28lquv] [-c shell-command] [-f file] [-L socket-name]\n"
 	    "            [-S socket-path] [command [flags]]\n",
 	    __progname);
 	exit(1);
@@ -325,9 +325,6 @@ main(int argc, char **argv)
 			if (shellcmd != NULL)
 				xfree(shellcmd);
 			shellcmd = xstrdup(optarg);
-			break;
-		case 'd':
-			flags |= IDENTIFY_HASDEFAULTS;
 			break;
 		case 'f':
 			if (cfg_file != NULL)

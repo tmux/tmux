@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.484 2009-10-23 17:49:47 tcunha Exp $ */
+/* $Id: tmux.h,v 1.485 2009-10-28 22:48:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -344,7 +344,6 @@ struct msg_identify_data {
 #define IDENTIFY_UTF8 0x1
 #define IDENTIFY_256COLOURS 0x2
 #define IDENTIFY_88COLOURS 0x4
-#define IDENTIFY_HASDEFAULTS 0x8
 	int		flags;
 };
 
@@ -906,10 +905,9 @@ struct tty_term {
 
 	struct tty_code	 codes[NTTYCODE];
 
-#define TERM_HASDEFAULTS 0x1
-#define TERM_256COLOURS 0x2
-#define TERM_88COLOURS 0x4
-#define TERM_EARLYWRAP 0x8
+#define TERM_256COLOURS 0x1
+#define TERM_88COLOURS 0x2
+#define TERM_EARLYWRAP 0x4
 	int		 flags;
 
 	SLIST_ENTRY(tty_term) entry;

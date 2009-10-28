@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.5 2009-10-28 22:46:15 tcunha Exp $ */
+/* $Id: server-client.c,v 1.6 2009-10-28 22:48:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -702,8 +702,6 @@ server_client_msg_identify(
 		c->tty.term_flags |= TERM_256COLOURS;
 	else if (data->flags & IDENTIFY_88COLOURS)
 		c->tty.term_flags |= TERM_88COLOURS;
-	if (data->flags & IDENTIFY_HASDEFAULTS)
-		c->tty.term_flags |= TERM_HASDEFAULTS;
 
 	tty_resize(&c->tty);
 

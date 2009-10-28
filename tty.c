@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.162 2009-10-23 17:28:29 tcunha Exp $ */
+/* $Id: tty.c,v 1.163 2009-10-28 22:48:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1241,13 +1241,21 @@ tty_attributes_fg(struct tty *tty, const struct grid_cell *gc)
 			tty_reset(tty);
 	}
 
-	if (fg == 8 &&
-	    !(tty->term->flags & TERM_HASDEFAULTS) &&
-	    !(tty->term_flags & TERM_HASDEFAULTS))
-		fg = 7;
-	if (fg == 8)
-		tty_puts(tty, "\033[39m");
-	else
+	if (fg == 8) {
+		if (tty_term_has(tty->term, TTYC_AX)) {
+			/* AX is an extension that means \033[39m works. */
+			tty_puts(tty, "\033[39m");	
+		} else if (tty_term_has(tty->term, TTYC_OP)) {
+			/*
+			 * op can be used to look for default colours but there
+			 * is no point in using it - with some terminals it
+			 * does SGR0 and others not, so SGR0 is needed anyway
+			 * to put the terminal into a known state.
+			 */
+			tty_reset(tty);
+		} else
+			tty_putcode1(tty, TTYC_SETAF, 7);
+	} else
 		tty_putcode1(tty, TTYC_SETAF, fg);
 }
 
@@ -1267,12 +1275,13 @@ tty_attributes_bg(struct tty *tty, const struct grid_cell *gc)
 			bg &= 7;
 	}
 
-	if (bg == 8 &&
-	    !(tty->term->flags & TERM_HASDEFAULTS) &&
-	    !(tty->term_flags & TERM_HASDEFAULTS))
-		bg = 0;
-	if (bg == 8)
-		tty_puts(tty, "\033[49m");
-	else
+	if (bg == 8) {
+		if (tty_term_has(tty->term, TTYC_AX)) {
+			tty_puts(tty, "\033[49m");	
+		} else if (tty_term_has(tty->term, TTYC_OP))
+			tty_reset(tty);
+		else
+			tty_putcode1(tty, TTYC_SETAB, 0);
+	} else
 		tty_putcode1(tty, TTYC_SETAB, bg);
 }

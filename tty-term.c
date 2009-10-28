@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.33 2009-10-25 10:42:08 tcunha Exp $ */
+/* $Id: tty-term.c,v 1.34 2009-10-28 22:48:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -346,17 +346,6 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 		    "terminal does not support ich1 or ich or smir and rmir");
 		goto error;
 	}
-
-	/*
-	 * Figure out if terminal support default colours. AX is a screen
-	 * extension which indicates this. Also check if op (orig_pair) uses
-	 * the default colours - if it does, this is a good indication the
-	 * terminal supports them.
-	 */
-	if (tty_term_flag(term, TTYC_AX))
-		term->flags |= TERM_HASDEFAULTS;
-	if (strcmp(tty_term_string(term, TTYC_OP), "\033[39;49m") == 0)
-		term->flags |= TERM_HASDEFAULTS;
 
 	/* Figure out if we have 256 or 88 colours. */
 	if (tty_term_number(term, TTYC_COLORS) == 256)
