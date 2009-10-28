@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.30 2009-10-15 01:51:09 tcunha Exp $ */
+/* $Id: cmd-server-info.c,v 1.31 2009-10-28 23:12:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,8 +70,8 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	    "tmux " BUILD ", pid %ld, started %s", (long) getpid(), tim);
 	ctx->print(ctx, "socket path %s, debug level %d%s",
 	    socket_path, debug_level, be_quiet ? ", quiet" : "");
-        if (uname(&un) == 0) {
-                ctx->print(ctx, "system is %s %s %s %s",
+	if (uname(&un) == 0) {
+		ctx->print(ctx, "system is %s %s %s %s",
 		    un.sysname, un.release, un.version, un.machine);
 	}
 	if (cfg_file != NULL)

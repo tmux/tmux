@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.100 2009-10-25 10:39:48 tcunha Exp $ */
+/* $Id: input.c,v 1.101 2009-10-28 23:12:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -128,7 +128,7 @@ input_sequence_cmp(const void *a, const void *b)
 void
 input_new_argument(struct input_ctx *ictx)
 {
-	struct input_arg       *arg;
+	struct input_arg	*arg;
 
 	ARRAY_EXPAND(&ictx->args, 1);
 
@@ -139,7 +139,7 @@ input_new_argument(struct input_ctx *ictx)
 int
 input_add_argument(struct input_ctx *ictx, u_char ch)
 {
-	struct input_arg       *arg;
+	struct input_arg	*arg;
 
 	if (ARRAY_LENGTH(&ictx->args) == 0)
 		return (0);
@@ -792,7 +792,7 @@ input_handle_sequence(u_char ch, struct input_ctx *ictx)
 {
 	struct input_sequence_entry	*entry, find;
 	struct screen	 		*s = ictx->ctx.s;
-	u_int			         i;
+	u_int				 i;
 	struct input_arg 		*iarg;
 
 	log_debug2("-- sq %zu: %hhu (%c): %u [sx=%u, sy=%u, cx=%u, cy=%u, "

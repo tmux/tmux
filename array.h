@@ -1,4 +1,4 @@
-/* $Id: array.h,v 1.7 2008-09-29 16:58:02 nicm Exp $ */
+/* $Id: array.h,v 1.8 2009-10-28 23:12:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2006 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -85,7 +85,7 @@
 		    ARRAY_ITEMSIZE(a) * ((a)->num - (i) - 1));		\
 	}								\
 	(a)->num--;							\
-        if ((a)->num == 0)						\
+	if ((a)->num == 0)						\
 		ARRAY_FREE(a);						\
 } while (0)
 

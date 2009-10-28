@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.212 2009-10-28 23:11:07 tcunha Exp $ */
+/* $Id: server.c,v 1.213 2009-10-28 23:12:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -670,12 +670,12 @@ void
 server_lock_sessions(void)
 {
         struct session  *s;
-        u_int            i;
+	u_int		 i;
 	int		 timeout;
-        time_t           t;
+	time_t		 t;
 
-        t = time(NULL);
-        for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+	t = time(NULL);
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
 			continue;
 

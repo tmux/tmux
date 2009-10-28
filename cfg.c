@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.22 2009-08-24 16:27:03 tcunha Exp $ */
+/* $Id: cfg.c,v 1.23 2009-10-28 23:12:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,9 +53,9 @@ cfg_error(unused struct cmd_ctx *ctx, const char *fmt, ...)
 int
 load_cfg(const char *path, struct cmd_ctx *ctxin, char **cause)
 {
-	FILE   	        *f;
+	FILE		*f;
 	u_int		 n;
-	char	        *buf, *line, *ptr;
+	char		*buf, *line, *ptr;
 	size_t		 len;
 	struct cmd_list	*cmdlist;
 	struct cmd_ctx	 ctx;

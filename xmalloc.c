@@ -1,4 +1,4 @@
-/* $Id: xmalloc.c,v 1.11 2009-10-28 23:08:04 tcunha Exp $ */
+/* $Id: xmalloc.c,v 1.12 2009-10-28 23:12:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2004 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,16 +42,16 @@ xstrdup(const char *s)
 void *
 xcalloc(size_t nmemb, size_t size)
 {
-        void	*ptr;
+	void	*ptr;
 
-        if (size == 0 || nmemb == 0)
+	if (size == 0 || nmemb == 0)
 		fatalx("zero size");
-        if (SIZE_MAX / nmemb < size)
-                fatalx("nmemb * size > SIZE_MAX");
-        if ((ptr = calloc(nmemb, size)) == NULL)
+	if (SIZE_MAX / nmemb < size)
+		fatalx("nmemb * size > SIZE_MAX");
+	if ((ptr = calloc(nmemb, size)) == NULL)
 		fatal("xcalloc failed");
 
-        return (ptr);
+	return (ptr);
 }
 
 void *
@@ -59,12 +59,12 @@ xmalloc(size_t size)
 {
 	void	*ptr;
 
-        if (size == 0)
-                fatalx("zero size");
-        if ((ptr = malloc(size)) == NULL)
+	if (size == 0)
+		fatalx("zero size");
+	if ((ptr = malloc(size)) == NULL)
 		fatal("xmalloc failed");
 
-        return (ptr);
+	return (ptr);
 }
 
 void *
@@ -74,13 +74,13 @@ xrealloc(void *oldptr, size_t nmemb, size_t size)
 	void	*newptr;
 
 	if (newsize == 0)
-                fatalx("zero size");
-        if (SIZE_MAX / nmemb < size)
-                fatalx("nmemb * size > SIZE_MAX");
-        if ((newptr = realloc(oldptr, newsize)) == NULL)
+		fatalx("zero size");
+	if (SIZE_MAX / nmemb < size)
+		fatalx("nmemb * size > SIZE_MAX");
+	if ((newptr = realloc(oldptr, newsize)) == NULL)
 		fatal("xrealloc failed");
 
-        return (newptr);
+	return (newptr);
 }
 
 void
@@ -94,12 +94,12 @@ xfree(void *ptr)
 int printflike2
 xasprintf(char **ret, const char *fmt, ...)
 {
-        va_list ap;
-        int	i;
+	va_list ap;
+	int	i;
 
-        va_start(ap, fmt);
-        i = xvasprintf(ret, fmt, ap);
-        va_end(ap);
+	va_start(ap, fmt);
+	i = xvasprintf(ret, fmt, ap);
+	va_end(ap);
 
 	return (i);
 }
@@ -110,21 +110,21 @@ xvasprintf(char **ret, const char *fmt, va_list ap)
 	int	i;
 
 	i = vasprintf(ret, fmt, ap);
-        if (i < 0 || *ret == NULL)
-                fatal("xvasprintf failed");
+	if (i < 0 || *ret == NULL)
+		fatal("xvasprintf failed");
 
-        return (i);
+	return (i);
 }
 
 int printflike3
 xsnprintf(char *buf, size_t len, const char *fmt, ...)
 {
-        va_list ap;
-        int	i;
+	va_list ap;
+	int	i;
 
-        va_start(ap, fmt);
-        i = xvsnprintf(buf, len, fmt, ap);
-        va_end(ap);
+	va_start(ap, fmt);
+	i = xvsnprintf(buf, len, fmt, ap);
+	va_end(ap);
 
 	return (i);
 }
@@ -138,8 +138,8 @@ xvsnprintf(char *buf, size_t len, const char *fmt, va_list ap)
 		fatalx("len > INT_MAX");
 
 	i = vsnprintf(buf, len, fmt, ap);
-        if (i < 0)
-                fatal("vsnprintf failed");
+	if (i < 0)
+		fatal("vsnprintf failed");
 
-        return (i);
+	return (i);
 }

@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.163 2009-10-28 22:48:35 tcunha Exp $ */
+/* $Id: tty.c,v 1.164 2009-10-28 23:12:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -147,7 +147,7 @@ tty_start_tty(struct tty *tty)
 	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHONL|ECHOCTL|
 	    ECHOPRT|ECHOKE|ECHOCTL|ISIG);
 	tio.c_cc[VMIN] = 1;
-        tio.c_cc[VTIME] = 0;
+	tio.c_cc[VTIME] = 0;
 	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
 		fatal("tcsetattr failed");
 

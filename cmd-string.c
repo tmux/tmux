@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.23 2009-08-09 17:48:55 tcunha Exp $ */
+/* $Id: cmd-string.c,v 1.24 2009-10-28 23:12:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -204,33 +204,33 @@ cmd_string_string(const char *s, size_t *p, char endch, int esc)
 	char   *buf, *t;
 	size_t	len;
 
-        buf = NULL;
+	buf = NULL;
 	len = 0;
 
-        while ((ch = cmd_string_getc(s, p)) != endch) {
-                switch (ch) {
+	while ((ch = cmd_string_getc(s, p)) != endch) {
+		switch (ch) {
 		case EOF:
 			goto error;
-                case '\\':
+		case '\\':
 			if (!esc)
 				break;
-                        switch (ch = cmd_string_getc(s, p)) {
+			switch (ch = cmd_string_getc(s, p)) {
 			case EOF:
 				goto error;
 			case 'e':
 				ch = '\033';
 				break;
-                        case 'r':
-                                ch = '\r';
-                                break;
-                        case 'n':
-                                ch = '\n';
-                                break;
-                        case 't':
-                                ch = '\t';
-                                break;
-                        }
-                        break;
+			case 'r':
+				ch = '\r';
+				break;
+			case 'n':
+				ch = '\n';
+				break;
+			case 't':
+				ch = '\t';
+				break;
+			}
+			break;
 		case '$':
 			if (!esc)
 				break;
@@ -241,13 +241,13 @@ cmd_string_string(const char *s, size_t *p, char endch, int esc)
 			len += strlen(t);
 			xfree(t);
 			continue;
-                }
+		}
 
 		if (len >= SIZE_MAX - 2)
 			goto error;
 		buf = xrealloc(buf, 1, len + 1);
-                buf[len++] = ch;
-        }
+		buf[len++] = ch;
+	}
 
 	buf = xrealloc(buf, 1, len + 1);
 	buf[len] = '\0';
@@ -272,7 +272,7 @@ cmd_string_variable(const char *s, size_t *p)
 	((ch) >= 'a' && (ch) <= 'z') || ((ch) >= 'A' && (ch) <= 'Z') || \
 	((ch) >= '0' && (ch) <= '9'))
 
-        buf = NULL;
+	buf = NULL;
 	len = 0;
 
 	fch = EOF;

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.181 2009-10-28 22:48:35 tcunha Exp $ */
+/* $Id: tmux.c,v 1.182 2009-10-28 23:12:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -353,10 +353,10 @@ main(int argc, char **argv)
 		case 'v':
 			debug_level++;
 			break;
-                default:
+		default:
 			usage();
-                }
-        }
+		}
+	}
 	argc -= optind;
 	argv += optind;
 
@@ -578,7 +578,7 @@ main(int argc, char **argv)
 		if (pfd.revents & (POLLERR|POLLHUP|POLLNVAL))
 			fatalx("socket error");
 
-                if (pfd.revents & POLLIN) {
+		if (pfd.revents & POLLIN) {
 			if (dispatch_imsg(ibuf, shellcmd, &retcode) != 0)
 				break;
 		}
@@ -603,7 +603,7 @@ dispatch_imsg(struct imsgbuf *ibuf, const char *shellcmd, int *retcode)
 	struct msg_print_data	printdata;
 	struct msg_shell_data	shelldata;
 
-        if ((n = imsg_read(ibuf)) == -1 || n == 0)
+	if ((n = imsg_read(ibuf)) == -1 || n == 0)
 		fatalx("imsg_read failed");
 
 	for (;;) {
