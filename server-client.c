@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.4 2009-10-23 17:53:16 tcunha Exp $ */
+/* $Id: server-client.c,v 1.5 2009-10-28 22:46:15 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,6 +20,7 @@
 
 #include <fcntl.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "tmux.h"
