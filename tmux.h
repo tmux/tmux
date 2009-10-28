@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.486 2009-10-28 22:53:03 tcunha Exp $ */
+/* $Id: tmux.h,v 1.487 2009-10-28 23:01:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -224,8 +224,26 @@ enum tty_code_code {
 	TTYC_KCUD1,	/* key_down, kd */
 	TTYC_KCUF1,	/* key_right, kr */
 	TTYC_KCUU1,	/* key_up, ku */
+	TTYC_KDC2,
+	TTYC_KDC3,
+	TTYC_KDC4,
+	TTYC_KDC5,
+	TTYC_KDC6,
+	TTYC_KDC7,
 	TTYC_KDCH1,	/* key_dc, kD */
+	TTYC_KDN2,
+	TTYC_KDN3,
+	TTYC_KDN4,
+	TTYC_KDN5,
+	TTYC_KDN6,
+	TTYC_KDN7,
 	TTYC_KEND,	/* key_end, ke */
+	TTYC_KEND2,
+	TTYC_KEND3,
+	TTYC_KEND4,
+	TTYC_KEND5,
+	TTYC_KEND6,
+	TTYC_KEND7,
 	TTYC_KF1,	/* key_f1, k1 */
 	TTYC_KF10,	/* key_f10, k; */
 	TTYC_KF11,	/* key_f11, F1 */
@@ -246,11 +264,53 @@ enum tty_code_code {
 	TTYC_KF7,	/* key_f7, k7 */
 	TTYC_KF8,	/* key_f8, k8 */
 	TTYC_KF9,	/* key_f9, k9 */
+	TTYC_KHOM2,
+	TTYC_KHOM3,
+	TTYC_KHOM4,
+	TTYC_KHOM5,
+	TTYC_KHOM6,
+	TTYC_KHOM7,
 	TTYC_KHOME,	/* key_home, kh */
+	TTYC_KIC2,
+	TTYC_KIC3,
+	TTYC_KIC4,
+	TTYC_KIC5,
+	TTYC_KIC6,
+	TTYC_KIC7,
 	TTYC_KICH1,	/* key_ic, kI */
+	TTYC_KLFT2,
+	TTYC_KLFT3,
+	TTYC_KLFT4,
+	TTYC_KLFT5,
+	TTYC_KLFT6,
+	TTYC_KLFT7,
 	TTYC_KMOUS,	/* key_mouse, Km */
 	TTYC_KNP,	/* key_npage, kN */
+	TTYC_KNXT2,
+	TTYC_KNXT3,
+	TTYC_KNXT4,
+	TTYC_KNXT5,
+	TTYC_KNXT6,
+	TTYC_KNXT7,
 	TTYC_KPP,	/* key_ppage, kP */
+	TTYC_KPRV2,
+	TTYC_KPRV3,
+	TTYC_KPRV4,
+	TTYC_KPRV5,
+	TTYC_KPRV6,
+	TTYC_KPRV7,
+	TTYC_KRIT2,
+	TTYC_KRIT3,
+	TTYC_KRIT4,
+	TTYC_KRIT5,
+	TTYC_KRIT6,
+	TTYC_KRIT7,
+	TTYC_KUP2,
+	TTYC_KUP3,
+	TTYC_KUP4,
+	TTYC_KUP5,
+	TTYC_KUP6,
+	TTYC_KUP7,
 	TTYC_OP,	/* orig_pair, op */
 	TTYC_REV,	/* enter_reverse_mode, mr */
 	TTYC_RI,	/* scroll_reverse, sr */
