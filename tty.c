@@ -1179,14 +1179,13 @@ void
 tty_colours(struct tty *tty, const struct grid_cell *gc, int *attr)
 {
 	struct grid_cell	*tc = &tty->cell;
-	u_char			 fg = gc->fg, bg = gc->bg;
-	int			 flags, have_ax;
-	int			 fg_default, bg_default;
+	u_char			 fg = gc->fg, bg = gc->bg, flags = gc->flags;
+	int			 have_ax, fg_default, bg_default;
 
 	/* No changes? Nothing is necessary. */
-	flags = (gc->flags ^ tc->flags) & (GRID_FLAG_FG256|GRID_FLAG_BG256);
-	if (fg == tc->fg && bg == tc->bg && flags == 0)
-		return;
+	if (fg == tc->fg && bg == tc->bg &&
+	    ((flags ^ tc->flags) & (GRID_FLAG_FG256|GRID_FLAG_BG256)) == 0)
+		return;  
 
 	/*
 	 * Is either the default colour? This is handled specially because the
@@ -1194,8 +1193,8 @@ tty_colours(struct tty *tty, const struct grid_cell *gc, int *attr)
 	 * case if only one is default need to fall onward to set the other
 	 * colour.
 	 */
-	fg_default = (fg == 8 && !(gc->flags & GRID_FLAG_FG256));
-	bg_default = (bg == 8 && !(gc->flags & GRID_FLAG_BG256));
+	fg_default = (fg == 8 && !(flags & GRID_FLAG_FG256));
+	bg_default = (bg == 8 && !(flags & GRID_FLAG_BG256));
 	if (fg_default || bg_default) {
 		/*
 		 * If don't have AX but do have op, send sgr0 (op can't
@@ -1231,7 +1230,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc, int *attr)
 
 	/* Set the foreground colour. */
 	if (!fg_default && (fg != tc->fg ||
-	    ((gc->flags & GRID_FLAG_FG256) != (tc->flags & GRID_FLAG_FG256))))
+	    ((flags & GRID_FLAG_FG256) != (tc->flags & GRID_FLAG_FG256))))
 		tty_colours_fg(tty, gc, attr);
 
 	/*
@@ -1239,7 +1238,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc, int *attr)
 	 * tty_colour_fg() can call tty_reset().
 	 */
 	if (!bg_default && (bg != tc->bg ||
-	    ((gc->flags & GRID_FLAG_BG256) != (tc->flags & GRID_FLAG_BG256))))
+	    ((flags & GRID_FLAG_BG256) != (tc->flags & GRID_FLAG_BG256))))
 		tty_colours_bg(tty, gc, attr);
 }
 
