@@ -1,4 +1,4 @@
-/* $Id: xterm-keys.c,v 1.1 2009-10-28 23:03:51 tcunha Exp $ */
+/* $Id: xterm-keys.c,v 1.2 2009-10-28 23:05:43 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -146,7 +146,6 @@ xterm_keys_find(const char *buf, size_t len, size_t *size)
 	if (i == nitems(xterm_keys_table))
 		return (KEYC_NONE);
 	*size = strlen(entry->template);
-	log_debug("XXX %x %x", entry->key, xterm_keys_modifiers(entry->template, buf, len));
 	return (entry->key | xterm_keys_modifiers(entry->template, buf, len));
 }
 
