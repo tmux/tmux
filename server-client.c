@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.6 2009-10-28 22:48:35 tcunha Exp $ */
+/* $Id: server-client.c,v 1.7 2009-10-28 22:50:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -198,9 +198,10 @@ server_client_loop(void)
 			continue;
 
 		server_client_handle_data(c);
-
-		server_client_check_timers(c);
-		server_client_check_redraw(c);
+		if (c->session != NULL) {
+			server_client_check_timers(c);
+			server_client_check_redraw(c);
+		}
 	}
 
 	/*
