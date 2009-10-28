@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.33 2009-10-28 22:54:00 tcunha Exp $ */
+/* $Id: input-keys.c,v 1.34 2009-10-28 22:54:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,6 +23,13 @@
 #include <string.h>
 
 #include "tmux.h"
+
+/*
+ * This file is rather misleadingly named, it contains the code which takes a
+ * key code and translates it into something suitable to be sent to the
+ * application running in a pane (similar to input.c does in the other
+ * direction with output).
+ */
 
 struct input_key_ent {
 	int		 key;
@@ -88,7 +95,7 @@ struct input_key_ent input_keys[] = {
 	{ KEYC_RIGHT,		"\033[C",	0 },
 	{ KEYC_LEFT,		"\033[D",	0 },
 
-	/* Keypad keys. Keypad versions must come first.*/
+	/* Keypad keys. Keypad versions must come first. */
 	{ KEYC_KP_SLASH,	"/",		INPUTKEY_KEYPAD },
 	{ KEYC_KP_STAR,		"*",		INPUTKEY_KEYPAD },
 	{ KEYC_KP_MINUS,	"-",		INPUTKEY_KEYPAD },
@@ -124,18 +131,20 @@ struct input_key_ent input_keys[] = {
 	{ KEYC_KP_PERIOD,	"\033On",	0 },
 };
 
-/* Translate a key code from client into an output key sequence. */
+/* Translate a key code into an output key sequence. */
 void
 input_key(struct window_pane *wp, int key)
 {
 	struct input_key_ent   *ike;
 	u_int			i;
-	char			ch;
 	size_t			dlen;
-	int			xterm_keys;
 
 	log_debug2("writing key 0x%x", key);
 
+	/*
+	 * If this is a normal 7-bit key, just send it, with a leading escape
+	 * if necessary.
+	 */
 	if (key != KEYC_NONE && (key & ~KEYC_ESCAPE) < 0x100) {
 		if (key & KEYC_ESCAPE)
 			buffer_write8(wp->out, '\033');
@@ -143,6 +152,7 @@ input_key(struct window_pane *wp, int key)
 		return;
 	}
 
+	/* Otherwise look the key up in the table. */
 	for (i = 0; i < nitems(input_keys); i++) {
 		ike = &input_keys[i];
 
@@ -172,10 +182,7 @@ input_key(struct window_pane *wp, int key)
 
 	log_debug2("found key 0x%x: \"%s\"", key, ike->data);
 
-	/*
-	 * Not in xterm mode. Prefix a \033 for escape, and set bit 5 of the
-	 * last byte for ctrl.
-	 */
+	/* Prefix a \033 for escape and set bit 5 of the last byte for ctrl. */
 	if (key & KEYC_ESCAPE)
 		buffer_write8(wp->out, '\033');
 	if (key & KEYC_CTRL && ike->flags & INPUTKEY_CTRL) {
@@ -186,7 +193,7 @@ input_key(struct window_pane *wp, int key)
 	buffer_write(wp->out, ike->data, dlen);
 }
 
-/* Handle input mouse. */
+/* Translate mouse and output. */
 void
 input_mouse(struct window_pane *wp, struct mouse_event *m)
 {
