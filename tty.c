@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.166 2009-10-28 23:16:30 tcunha Exp $ */
+/* $Id: tty.c,v 1.167 2009-10-28 23:17:28 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1124,9 +1124,23 @@ out:
 void
 tty_attributes(struct tty *tty, const struct grid_cell *gc)
 {
-	struct grid_cell	*tc = &tty->cell;
+	struct grid_cell	*tc = &tty->cell, gc2;
 	u_char			 changed;
 	u_int			 fg = gc->fg, bg = gc->bg, attr = gc->attr;
+
+	/* If the character is space, don't care about foreground. */
+	if (gc->data == ' ' && !(gc->flags & GRID_FLAG_UTF8)) {
+		memcpy(&gc2, gc, sizeof gc2);
+
+		if (gc->attr & GRID_ATTR_REVERSE)
+			gc2.bg = tc->bg;
+		else
+			gc2.fg = tc->fg;
+		gc2.attr = tc->attr & ~GRID_ATTR_REVERSE;
+		gc2.attr |= gc->attr & GRID_ATTR_REVERSE;
+
+		gc = &gc2;
+	}
 
 	/* If any bits are being cleared, reset everything. */
 	if (tc->attr & ~attr)
@@ -1190,7 +1204,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc, int *attr)
 	/* No changes? Nothing is necessary. */
 	if (fg == tc->fg && bg == tc->bg &&
 	    ((flags ^ tc->flags) & (GRID_FLAG_FG256|GRID_FLAG_BG256)) == 0)
-		return;  
+		return;
 
 	/*
 	 * Is either the default colour? This is handled specially because the

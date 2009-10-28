@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.48 2009-10-15 01:30:00 tcunha Exp $ */
+/* $Id: screen-redraw.c,v 1.49 2009-10-28 23:17:28 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -257,6 +257,7 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 	if (wp->sx < len * 6 || wp->sy < 5) {
 		tty_cursor(tty, xoff + px - len / 2, yoff + py);
 		memcpy(&gc, &grid_default_cell, sizeof gc);
+		gc.data = '_'; /* not space */
 		colour_set_fg(&gc, colour);
 		tty_attributes(tty, &gc);
 		tty_puts(tty, buf);
@@ -267,6 +268,7 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 	py -= 2;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
+	gc.data = '_'; /* not space */
 	colour_set_bg(&gc, colour);
 	tty_attributes(tty, &gc);
 	for (ptr = buf; *ptr != '\0'; ptr++) {
