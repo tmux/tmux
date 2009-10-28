@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.37 2009-10-28 23:00:21 tcunha Exp $ */
+/* $Id: input-keys.c,v 1.38 2009-10-28 23:03:51 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -172,6 +172,18 @@ input_key(struct window_pane *wp, int key)
 			buffer_write8(wp->out, '\033');
 		buffer_write8(wp->out, (uint8_t) (key & ~KEYC_ESCAPE));
 		return;
+	}
+
+	/* 
+	 * Then try to look this up as an xterm key, if the flag to output them
+	 * is set.
+	 */
+	if (options_get_number(&wp->window->options, "xterm-keys")) {
+		if ((out = xterm_keys_lookup(key)) != NULL) {
+			buffer_write(wp->out, out, strlen(out));
+			xfree(out);
+			return;
+		}
 	}
 
 	/* Otherwise look the key up in the table. */

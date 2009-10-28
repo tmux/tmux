@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.36 2009-10-28 23:01:44 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.37 2009-10-28 23:03:51 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -336,6 +336,13 @@ tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 
 	/* Not found. Is this a mouse key press? */
 	*key = tty_keys_mouse(buf, len, &size, mouse);
+	if (*key != KEYC_NONE) {
+		buffer_remove(tty->in, size);
+		goto found;
+	}
+
+	/* Not found. Try to parse a key with an xterm-style modifier. */
+	*key = xterm_keys_find(buf, len, &size);
 	if (*key != KEYC_NONE) {
 		buffer_remove(tty->in, size);
 		goto found;
