@@ -476,8 +476,8 @@ status_job(struct client *c, char **iptr)
 
 	job = job_get(&c->status_jobs, cmd);
 	if (job == NULL) {
-		job = job_add(
-		    &c->status_jobs, c, cmd, status_job_callback, xfree, NULL);
+		job = job_add(&c->status_jobs,
+		    JOB_PERSIST, c, cmd, status_job_callback, xfree, NULL);
 		job_run(job);
 	}
 	if (job->data == NULL)

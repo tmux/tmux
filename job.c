@@ -73,7 +73,7 @@ job_get(struct jobs *jobs, const char *cmd)
 
 /* Add a job. */
 struct job *
-job_add(struct jobs *jobs, struct client *c, const char *cmd,
+job_add(struct jobs *jobs, int flags, struct client *c, const char *cmd,
     void (*callbackfn)(struct job *), void (*freefn)(void *), void *data)
 {
 	struct job	*job;
@@ -81,6 +81,7 @@ job_add(struct jobs *jobs, struct client *c, const char *cmd,
 	job = xmalloc(sizeof *job);
 	job->cmd = xstrdup(cmd);
 	job->pid = -1;
+	job->status = 0;
 
 	job->client = c;
 
@@ -91,13 +92,22 @@ job_add(struct jobs *jobs, struct client *c, const char *cmd,
 	job->freefn = freefn;
 	job->data = data;
 
-	job->flags = JOB_DONE;
+	job->flags = flags|JOB_DONE;
 
 	if (jobs != NULL)
 		RB_INSERT(jobs, jobs, job);
 	SLIST_INSERT_HEAD(&all_jobs, job, lentry);
-	
+
 	return (job);
+}
+
+/* Remove job from tree and free. */
+void
+job_remove(struct jobs *jobs, struct job *job)
+{
+	if (jobs != NULL)
+		RB_REMOVE(jobs, jobs, job);
+	job_free(job);
 }
 
 /* Kill and free an individual job. */

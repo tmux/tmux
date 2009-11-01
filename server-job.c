@@ -64,7 +64,10 @@ restart:
 
 		if (job->callbackfn != NULL) {
 			job->callbackfn(job);
-			goto restart;	/* could be freed by callback */
+			if ((!job->flags & JOB_PERSIST)) {
+				job_free(job);
+				goto restart;
+			}
 		}
 	}
 }

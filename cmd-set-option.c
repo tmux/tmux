@@ -108,7 +108,10 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct client			*c;
 	struct options			*oo;
 	const struct set_option_entry   *entry, *opt;
+	struct jobs			*jobs;
+	struct job			*job, *nextjob;
 	u_int				 i;
+	int				 try_again;
 
 	if (data->chflags & CMD_CHFLAG('g'))
 		oo = &global_s_options;
@@ -184,11 +187,34 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	recalculate_sizes();
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session != NULL) {
-			job_tree_free(&c->status_jobs);
-			job_tree_init(&c->status_jobs);
+
+	/* 
+	 * Special-case: kill all persistent jobs if status-left, status-right
+	 * or set-titles-string have changed. Persistent jobs are only used by
+	 * the status line at the moment so this works XXX.
+	 */
+	if (strcmp(entry->name, "status-left") == 0 ||
+	    strcmp(entry->name, "status-right") == 0 ||
+	    strcmp(entry->name, "set-titles-string") == 0) {
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			c = ARRAY_ITEM(&clients, i);
+			if (c == NULL || c->session == NULL)
+				continue;
+
+			jobs = &c->status_jobs;
+			do {
+				try_again = 0;	
+				job = RB_ROOT(jobs);
+				while (job != NULL) {
+					nextjob = RB_NEXT(jobs, jobs, job);
+					if (job->flags & JOB_PERSIST) {
+						job_remove(jobs, job);
+						try_again = 1;
+						break;
+					}
+					job = nextjob;
+				}
+			} while (try_again);
 			server_redraw_client(c);
 		}
 	}

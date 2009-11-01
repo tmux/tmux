@@ -65,7 +65,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (ctx->curclient != NULL)
 		ctx->curclient->references++;
 
-	job = job_add(NULL, NULL,
+	job = job_add(NULL, 0, NULL,
 	    data->arg, cmd_run_shell_callback, cmd_run_shell_free, cdata);
 	job_run(job);
 
@@ -117,8 +117,6 @@ cmd_run_shell_callback(struct job *job)
 			ctx->info(ctx, "%s", msg);
 		xfree(msg);
 	}
-
-	job_free(job);	/* calls cmd_run_shell_free */
 }
 
 void

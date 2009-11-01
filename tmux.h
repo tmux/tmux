@@ -669,6 +669,7 @@ struct job {
 
 	int		 flags;
 #define JOB_DONE 0x1
+#define JOB_PERSIST 0x2	/* don't free after callback */
 
 	RB_ENTRY(job)	 entry;
 	SLIST_ENTRY(job) lentry;
@@ -1301,8 +1302,9 @@ RB_PROTOTYPE(jobs, job, entry, job_cmp);
 void	job_tree_init(struct jobs *);
 void	job_tree_free(struct jobs *);
 struct job *job_get(struct jobs *, const char *);
-struct job *job_add(struct jobs *, struct client *,
+struct job *job_add(struct jobs *, int, struct client *,
 	    const char *, void (*)(struct job *), void (*)(void *), void *);
+void	job_remove(struct jobs *, struct job *);
 void	job_free(struct job *);
 int	job_run(struct job *);
 void	job_kill(struct job *);
