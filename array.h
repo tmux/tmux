@@ -1,4 +1,4 @@
-/* $Id: array.h,v 1.8 2009-10-28 23:12:38 tcunha Exp $ */
+/* $Id: array.h,v 1.9 2009-11-02 21:34:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2006 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -102,7 +102,7 @@
 
 #define ARRAY_CONCAT(a, b) do {						\
 	ARRAY_ENSURE(a, (b)->num);					\
-	memcpy((a)->list + (a)->num, (b)->list, (b)->num * ARRAY_ITEMSIZE(a)) \
+	memcpy((a)->list + (a)->num, (b)->list, (b)->num * ARRAY_ITEMSIZE(a)); \
 	(a)->num += (b)->num;						\
 } while (0)
 
