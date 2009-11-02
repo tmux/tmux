@@ -60,7 +60,7 @@ extern char   **environ;
 #define NAME_INTERVAL 500
 
 /* Escape timer period, in milliseconds. */
-#define ESCAPE_PERIOD 250
+#define ESCAPE_PERIOD 500
 
 /* Maximum poll timeout (when attached). */
 #define POLL_TIMEOUT 50
