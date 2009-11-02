@@ -1,4 +1,4 @@
-/* $Id: server-window.c,v 1.2 2009-10-28 23:14:15 tcunha Exp $ */
+/* $Id: server-window.c,v 1.3 2009-11-02 21:32:51 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,6 +22,7 @@
 
 #include "tmux.h"
 
+int	server_window_backoff(struct window_pane *);
 int	server_window_check_bell(struct session *, struct window *);
 int	server_window_check_activity(struct session *, struct window *);
 int	server_window_check_content(
@@ -44,7 +45,9 @@ server_window_prepare(void)
 		TAILQ_FOREACH(wp, &w->panes, entry) {	
 			if (wp->fd == -1)
 				continue;
-			events = POLLIN;
+			events = 0;
+			if (!server_window_backoff(wp))
+				events |= POLLIN;
 			if (BUFFER_USED(wp->out) > 0)
 				events |= POLLOUT;
 			server_poll_add(
@@ -59,6 +62,28 @@ server_window_prepare(void)
 			    wp->pipe_fd, events, server_window_callback, wp);
 		}
 	}
+}
+
+/* Check if this window should suspend reading. */
+int
+server_window_backoff(struct window_pane *wp)
+{
+	struct client	*c;
+	u_int		 i;
+
+	if (!window_pane_visible(wp))
+		return (0);
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (c->session->curw->window != wp->window)
+			continue;
+		if (BUFFER_USED(c->tty.out) > BACKOFF_THRESHOLD)
+			return (1);
+	}
+	return (0);
 }
 
 /* Process a single window pane event. */

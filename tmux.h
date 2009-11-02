@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.489 2009-10-28 23:14:15 tcunha Exp $ */
+/* $Id: tmux.h,v 1.490 2009-11-02 21:32:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,6 +62,9 @@ extern char   **environ;
 
 /* Maximum poll timeout (when attached). */
 #define POLL_TIMEOUT 50
+
+/* Maximum data to buffer for output before suspending reading from panes. */
+#define BACKOFF_THRESHOLD 1024
 
 /*
  * Maximum sizes of strings in message data. Don't forget to bump
