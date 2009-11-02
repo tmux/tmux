@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.83 2009-11-02 21:40:44 tcunha Exp $ */
+/* $Id: client.c,v 1.84 2009-11-02 21:41:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,7 +46,6 @@ struct imsgbuf *
 client_init(char *path, int cmdflags, int flags)
 {
 	struct sockaddr_un	sa;
-	struct stat		sb;
 	size_t			size;
 	int			fd, mode;
 #ifdef HAVE_SETPROCTITLE
