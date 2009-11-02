@@ -272,14 +272,13 @@ server_start(char *path)
 	srv_fd = server_create_socket();
 	server_client_create(pair[1]);
 
-	if (access(SYSTEM_CFG, R_OK) != 0) {
-		if (errno != ENOENT) {
-			xasprintf(
-			    &cause, "%s: %s", strerror(errno), SYSTEM_CFG);
+	if (access(SYSTEM_CFG, R_OK) == 0) {
+		if (load_cfg(SYSTEM_CFG, NULL, &cause) != 0)
 			goto error;
-		}
-	} else if (load_cfg(SYSTEM_CFG, NULL, &cause) != 0)
+	} else if (errno != ENOENT) {
+		xasprintf(&cause, "%s: %s", strerror(errno), SYSTEM_CFG);
 		goto error;
+	}
 	if (cfg_file != NULL && load_cfg(cfg_file, NULL, &cause) != 0)
 		goto error;
 
