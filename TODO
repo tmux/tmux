@@ -93,4 +93,5 @@
 - UTF-8 should be a pointer into a combined string buffer
 - check irssi (term_charset) works with UTF-8
 - rectangle copy/paste
-
+- half page/up down are missing from key table
+- support esc-esc to quit in modes
