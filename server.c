@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.214 2009-10-28 23:14:15 tcunha Exp $ */
+/* $Id: server.c,v 1.215 2009-11-02 21:39:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -275,14 +275,13 @@ server_start(char *path)
 	srv_fd = server_create_socket();
 	server_client_create(pair[1]);
 
-	if (access(SYSTEM_CFG, R_OK) != 0) {
-		if (errno != ENOENT) {
-			xasprintf(
-			    &cause, "%s: %s", strerror(errno), SYSTEM_CFG);
+	if (access(SYSTEM_CFG, R_OK) == 0) {
+		if (load_cfg(SYSTEM_CFG, NULL, &cause) != 0)
 			goto error;
-		}
-	} else if (load_cfg(SYSTEM_CFG, NULL, &cause) != 0)
+	} else if (errno != ENOENT) {
+		xasprintf(&cause, "%s: %s", strerror(errno), SYSTEM_CFG);
 		goto error;
+	}
 	if (cfg_file != NULL && load_cfg(cfg_file, NULL, &cause) != 0)
 		goto error;
 
