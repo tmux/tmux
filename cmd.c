@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.126 2009-10-28 23:12:38 tcunha Exp $ */
+/* $Id: cmd.c,v 1.127 2009-11-02 21:42:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -487,19 +487,25 @@ cmd_lookup_session(const char *name, int *ambiguous)
 	*ambiguous = 0;
 
 	/*
-	 * Look for matches. Session names must be unique so an exact match
-	 * can't be ambigious and can just be returned.
+	 * Look for matches. First look for exact matches - session names must
+	 * be unique so an exact match can't be ambigious and can just be
+	 * returned.
+	 */
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {	
+		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
+			continue;
+		if (strcmp(name, s->name) == 0)
+			return (s);
+	}
+
+	/*
+	 * Otherwise look for partial matches, returning early if it is found to
+	 * be ambiguous.
 	 */
 	sfound = NULL;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {	
 		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
 			continue;
-
-		/* Check for an exact match and return it if found. */
-		if (strcmp(name, s->name) == 0)
-			return (s);
-		
-		/* Then check for pattern matches. */
 		if (strncmp(name, s->name, strlen(name)) == 0 ||
 		    fnmatch(name, s->name, 0) == 0) {
 			if (sfound != NULL) {
@@ -509,7 +515,6 @@ cmd_lookup_session(const char *name, int *ambiguous)
 			sfound = s;
 		}
 	}
-		
  	return (sfound);
 }
 
