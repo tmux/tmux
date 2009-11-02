@@ -46,7 +46,6 @@ struct imsgbuf *
 client_init(char *path, int cmdflags, int flags)
 {
 	struct sockaddr_un	sa;
-	struct stat		sb;
 	size_t			size;
 	int			fd, mode;
 	char		      	rpathbuf[MAXPATHLEN];
