@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.196 2009-10-28 22:49:22 tcunha Exp $
+.\" $Id: tmux.1,v 1.197 2009-11-02 21:35:40 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 25 2009 $
+.Dd $Mdocdate: November 1 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1838,6 +1838,7 @@ Commands to alter and view the environment are:
 .Op Fl t Ar target-session
 .Ar name Op Ar value
 .Xc
+.D1 (alias: Ic setenv )
 Set or unset an environment variable.
 If
 .Fl g
@@ -1854,6 +1855,7 @@ new process.
 .Op Fl g
 .Op Fl t Ar target-session
 .Xc
+.D1 (alias: Ic showenv )
 Display the environment for
 .Ar target-session
 or the global environment with
