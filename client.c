@@ -55,19 +55,6 @@ client_init(char *path, int cmdflags, int flags)
 		strlcpy(rpathbuf, path, sizeof rpathbuf);
 	setproctitle("client (%s)", rpathbuf);
 
-	if (lstat(path, &sb) != 0) {
-		if (cmdflags & CMD_STARTSERVER && errno == ENOENT) {
-			if ((fd = server_start(path)) == -1)
-				goto start_failed;
-			goto server_started;
-		}
-		goto not_found;
-	}
-	if (!S_ISSOCK(sb.st_mode)) {
-		errno = ENOTSOCK;
-		goto not_found;
-	}
-
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
 	size = strlcpy(sa.sun_path, path, sizeof sa.sun_path);
@@ -80,9 +67,14 @@ client_init(char *path, int cmdflags, int flags)
 		fatal("socket failed");
 
 	if (connect(fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
-		if (errno == ECONNREFUSED) {
-			if (unlink(path) != 0 || !(cmdflags & CMD_STARTSERVER))
+		if (!(cmdflags & CMD_STARTSERVER))
+			goto not_found;
+		switch (errno) {
+		case ECONNREFUSED:
+			if (unlink(path) != 0)
 				goto not_found;
+			/* FALLTHROUGH */
+		case ENOENT:
 			if ((fd = server_start(path)) == -1)
 				goto start_failed;
 			goto server_started;
