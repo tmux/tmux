@@ -1,4 +1,4 @@
-/* $Id: cmd-if-shell.c,v 1.6 2009-10-12 00:29:03 tcunha Exp $ */
+/* $Id: cmd-if-shell.c,v 1.7 2009-11-02 21:38:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -65,7 +65,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (ctx->curclient != NULL)
 		ctx->curclient->references++;
 
-	job = job_add(NULL, NULL,
+	job = job_add(NULL, 0, NULL,
 	    data->arg, cmd_if_shell_callback, cmd_if_shell_free, cdata);
 	job_run(job);
 
@@ -80,10 +80,8 @@ cmd_if_shell_callback(struct job *job)
 	struct cmd_list			*cmdlist;
 	char				*cause;
 
-	if (!WIFEXITED(job->status) || WEXITSTATUS(job->status) != 0) {
-		job_free(job);	/* calls cmd_if_shell_free */
+	if (!WIFEXITED(job->status) || WEXITSTATUS(job->status) != 0)
 		return;
-	}
 
 	if (cmd_string_parse(cdata->cmd, &cmdlist, &cause) != 0) {
 		if (cause != NULL) {

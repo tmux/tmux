@@ -1,4 +1,4 @@
-/* $Id: cmd-run-shell.c,v 1.3 2009-10-12 00:26:06 tcunha Exp $ */
+/* $Id: cmd-run-shell.c,v 1.4 2009-11-02 21:38:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -65,7 +65,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (ctx->curclient != NULL)
 		ctx->curclient->references++;
 
-	job = job_add(NULL, NULL,
+	job = job_add(NULL, 0, NULL,
 	    data->arg, cmd_run_shell_callback, cmd_run_shell_free, cdata);
 	job_run(job);
 
@@ -117,8 +117,6 @@ cmd_run_shell_callback(struct job *job)
 			ctx->info(ctx, "%s", msg);
 		xfree(msg);
 	}
-
-	job_free(job);	/* calls cmd_run_shell_free */
 }
 
 void

@@ -1,4 +1,4 @@
-/* $Id: server-job.c,v 1.2 2009-10-28 23:14:15 tcunha Exp $ */
+/* $Id: server-job.c,v 1.3 2009-11-02 21:38:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -64,7 +64,10 @@ restart:
 
 		if (job->callbackfn != NULL) {
 			job->callbackfn(job);
-			goto restart;	/* could be freed by callback */
+			if ((!job->flags & JOB_PERSIST)) {
+				job_free(job);
+				goto restart;
+			}
 		}
 	}
 }

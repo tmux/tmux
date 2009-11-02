@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.31 2009-10-28 23:12:38 tcunha Exp $ */
+/* $Id: cmd-server-info.c,v 1.32 2009-11-02 21:38:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,6 +55,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	struct tty_code			*code;
 	struct tty_term_code_entry	*ent;
 	struct utsname			 un;
+	struct job			*job;
 	struct grid			*gd;
 	struct grid_line		*gl;
 	u_int		 		 i, j, k;
@@ -177,6 +178,12 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 	ctx->print(ctx, "%s", "");
+
+  	ctx->print(ctx, "Jobs:");
+	SLIST_FOREACH(job, &all_jobs, lentry) {
+		ctx->print(ctx, "%s [fd=%d, pid=%d, status=%d, flags=0x%x]",
+		    job->cmd, job->fd, job->pid, job->status, job->flags);
+	}
 
 	return (0);
 }
