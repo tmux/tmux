@@ -893,7 +893,6 @@ struct layout_cell {
 struct paste_buffer {
      	char		*data;
 	size_t		 size;
-	struct timeval	 tv;
 };
 ARRAY_DECL(paste_stack, struct paste_buffer *);
 

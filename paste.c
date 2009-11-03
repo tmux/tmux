@@ -116,8 +116,6 @@ paste_add(struct paste_stack *ps, u_char *data, size_t size, u_int limit)
 
 	pb->data = data;
 	pb->size = size;
-	if (gettimeofday(&pb->tv, NULL) != 0)
-		fatal("gettimeofday failed");
 }
 
 int
@@ -133,8 +131,6 @@ paste_replace(struct paste_stack *ps, u_int idx, u_char *data, size_t size)
 
 	pb->data = data;
 	pb->size = size;
-	if (gettimeofday(&pb->tv, NULL) != 0)
-		fatal("gettimeofday failed");
 
 	return (0);
 }
