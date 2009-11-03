@@ -111,7 +111,7 @@ const struct cmd_entry *cmd_table[] = {
 };
 
 struct session	*cmd_newest_session(struct sessions *);
-struct client	*cmd_newest_client(void);
+struct client	*cmd_newest_client(struct clients *);
 struct client	*cmd_lookup_client(const char *);
 struct session	*cmd_lookup_session(const char *, int *);
 struct winlink	*cmd_lookup_window(struct session *, const char *, int *);
@@ -371,17 +371,56 @@ cmd_newest_session(struct sessions *ss)
 	return (snewest);
 }
 
+/*
+ * Find the current client. First try the current client if set, then pick the
+ * newest of the clients attached to the current session if any, then the
+ * newest client.
+ */
+struct client *
+cmd_current_client(struct cmd_ctx *ctx)
+{
+	struct session		*s;
+	struct client		*c;
+	struct clients		 cc;
+	u_int			 i;
+
+	if (ctx->curclient != NULL)
+		return (ctx->curclient);
+
+	/*
+	 * No current client set. Find the current session and return the
+	 * newest of its clients.
+	 */
+	s = cmd_current_session(ctx);
+	if (s != NULL && !(s->flags & SESSION_UNATTACHED)) {
+		ARRAY_INIT(&cc);
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			if ((c = ARRAY_ITEM(&clients, i)) == NULL)
+				continue;
+			if (s == c->session)
+				ARRAY_ADD(&cc, c);
+		}
+
+		c = cmd_newest_client(&cc);
+		ARRAY_FREE(&cc);
+		if (c != NULL)
+			return (c);
+	}
+
+	return (cmd_newest_client(&clients));
+}
+
 /* Find the newest client. */
 struct client *
-cmd_newest_client(void)
+cmd_newest_client(struct clients *cc)
 {
 	struct client	*c, *cnewest;
 	struct timeval	*tv = NULL;
 	u_int		 i;
 
 	cnewest = NULL;
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		if ((c = ARRAY_ITEM(&clients, i)) == NULL)
+	for (i = 0; i < ARRAY_LENGTH(cc); i++) {
+		if ((c = ARRAY_ITEM(cc, i)) == NULL)
 			continue;
 		if (c->session == NULL)
 			continue;
@@ -399,36 +438,13 @@ cmd_newest_client(void)
 struct client *
 cmd_find_client(struct cmd_ctx *ctx, const char *arg)
 {
-	struct client	*c, *lastc;
-	struct session	*s;
+	struct client	*c;
 	char		*tmparg;
 	size_t		 arglen;
-	u_int		 i;
 
 	/* A NULL argument means the current client. */
-	if (arg == NULL) {
-		if (ctx->curclient != NULL)
-			return (ctx->curclient);
-		/*
-		 * No current client set. Find the current session and see if
-		 * it has only one client.
-		 */
-		s = cmd_current_session(ctx);
-		if (s != NULL) {
-			lastc = NULL;
-			for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-				c = ARRAY_ITEM(&clients, i);
-				if (c != NULL && c->session == s) {
-					if (lastc != NULL)
-						break;
-					lastc = c;
-				}
-			}
-			if (i == ARRAY_LENGTH(&clients) && lastc != NULL)
-				return (lastc);
-		}
-		return (cmd_newest_client());
-	}
+	if (arg == NULL)
+		return (cmd_current_client(ctx));
 	tmparg = xstrdup(arg);
 
 	/* Trim a single trailing colon if any. */
