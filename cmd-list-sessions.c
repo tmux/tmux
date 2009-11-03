@@ -61,7 +61,7 @@ cmd_list_sessions_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 			xsnprintf(tmp, sizeof tmp, " (group %u)", idx);
 		}
 
-		t = s->tv.tv_sec;
+		t = s->creation_time.tv_sec;
 		tim = ctime(&t);
 		*strchr(tim, '\n') = '\0';
 

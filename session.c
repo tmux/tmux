@@ -126,10 +126,10 @@ session_create(const char *name, const char *cmd, const char *cwd,
 	s = xmalloc(sizeof *s);
 	s->references = 0;
 	s->flags = 0;
-	s->activity = time(NULL);
 
-	if (gettimeofday(&s->tv, NULL) != 0)
+	if (gettimeofday(&s->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
+	memcpy(&s->activity_time, &s->creation_time, sizeof s->activity_time);
 
 	s->curw = NULL;
 	TAILQ_INIT(&s->lastw);

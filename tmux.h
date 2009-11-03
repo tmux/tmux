@@ -922,8 +922,9 @@ TAILQ_HEAD(session_groups, session_group);
 
 struct session {
 	char		*name;
-	struct timeval	 tv;
-	time_t		 activity;
+
+	struct timeval	 creation_time;
+	struct timeval	 activity_time;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1061,7 +1062,8 @@ struct mouse_event {
 /* Client connection. */
 struct client {
 	struct imsgbuf	 ibuf;
-	struct timeval	 tv;
+
+	struct timeval	 creation_time;
 
 	struct environ	 environ;
 

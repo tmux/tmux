@@ -105,7 +105,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		if (s == NULL)
 			continue;
 
-		t = s->tv.tv_sec;
+		t = s->creation_time.tv_sec;
 		tim = ctime(&t);
 		*strchr(tim, '\n') = '\0';
 

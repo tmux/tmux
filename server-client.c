@@ -61,7 +61,7 @@ server_client_create(int fd)
 	c->references = 0;
 	imsg_init(&c->ibuf, fd);
 	
-	if (gettimeofday(&c->tv, NULL) != 0)
+	if (gettimeofday(&c->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
 
 	ARRAY_INIT(&c->prompt_hdata);
@@ -261,18 +261,19 @@ server_client_handle_data(struct client *c)
 	struct window_pane	*wp;
 	struct screen		*s;
 	struct options		*oo;
-	struct timeval	 	 tv;
+	struct timeval		 tv_add, tv_now;
 	struct key_binding	*bd;
 	struct keylist		*keylist;
 	struct mouse_event	 mouse;
 	int		 	 key, status, xtimeout, mode, isprefix;
 	u_int			 i;
 
+	/* Check and update repeat flag. */
+	if (gettimeofday(&tv_now, NULL) != 0)
+		fatal("gettimeofday failed");
 	xtimeout = options_get_number(&c->session->options, "repeat-time");
 	if (xtimeout != 0 && c->flags & CLIENT_REPEAT) {
-		if (gettimeofday(&tv, NULL) != 0)
-			fatal("gettimeofday failed");
-		if (timercmp(&tv, &c->repeat_timer, >))
+		if (timercmp(&tv_now, &c->repeat_timer, >))
 			c->flags &= ~(CLIENT_PREFIX|CLIENT_REPEAT);
 	}
 
@@ -281,11 +282,13 @@ server_client_handle_data(struct client *c)
 	while (tty_keys_next(&c->tty, &key, &mouse) == 0) {
 		if (c->session == NULL)
 			return;
-
-		c->session->activity = time(NULL);
 		w = c->session->curw->window;
 		wp = w->active;	/* could die */
 		oo = &c->session->options;
+
+		/* Update activity timer. */
+		memcpy(&c->session->activity_time,
+		    &tv_now, sizeof c->session->activity_time);
 
 		/* Special case: number keys jump to pane in identify mode. */
 		if (c->flags & CLIENT_IDENTIFY && key >= '0' && key <= '9') {	
@@ -364,11 +367,9 @@ server_client_handle_data(struct client *c)
 		if (xtimeout != 0 && bd->can_repeat) {
 			c->flags |= CLIENT_PREFIX|CLIENT_REPEAT;
 
-			tv.tv_sec = xtimeout / 1000;
-			tv.tv_usec = (xtimeout % 1000) * 1000L;
-			if (gettimeofday(&c->repeat_timer, NULL) != 0)
-				fatal("gettimeofday failed");
-			timeradd(&c->repeat_timer, &tv, &c->repeat_timer);
+			tv_add.tv_sec = xtimeout / 1000;
+			tv_add.tv_usec = (xtimeout % 1000) * 1000L;
+			timeradd(&tv_now, &tv_add, &c->repeat_timer);
 		}
 
 		/* Dispatch the command. */
@@ -581,11 +582,14 @@ server_client_msg_dispatch(struct client *c)
 			if (!(c->flags & CLIENT_SUSPENDED))
 				break;
 			c->flags &= ~CLIENT_SUSPENDED;
+
+			if (c->session != NULL &&
+			    gettimeofday(&c->session->activity_time, NULL) != 0)
+				fatal("gettimeofday failed");
+
 			tty_start_tty(&c->tty);
 			server_redraw_client(c);
 			recalculate_sizes();
-			if (c->session != NULL)
-				c->session->activity = time(NULL);
 			break;
 		case MSG_ENVIRON:
 			if (datalen != sizeof environdata)
@@ -664,9 +668,6 @@ server_client_msg_command(struct client *c, struct msg_command_data *data)
 	struct cmd	*cmd;
 	int		 argc;
 	char	       **argv, *cause;
-
-	if (c->session != NULL)
-		c->session->activity = time(NULL);
 
 	ctx.error = server_client_msg_error;
 	ctx.print = server_client_msg_print;
