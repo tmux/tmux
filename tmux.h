@@ -1064,6 +1064,7 @@ struct client {
 	struct imsgbuf	 ibuf;
 
 	struct timeval	 creation_time;
+	struct timeval	 activity_time;
 
 	struct environ	 environ;
 

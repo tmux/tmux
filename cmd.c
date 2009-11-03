@@ -110,8 +110,8 @@ const struct cmd_entry *cmd_table[] = {
 	NULL
 };
 
-struct session	*cmd_newest_session(struct sessions *);
-struct client	*cmd_newest_client(struct clients *);
+struct session	*cmd_choose_session(struct sessions *);
+struct client	*cmd_choose_client(struct clients *);
 struct client	*cmd_lookup_client(const char *);
 struct session	*cmd_lookup_session(const char *, int *);
 struct winlink	*cmd_lookup_window(struct session *, const char *, int *);
@@ -285,9 +285,10 @@ cmd_print(struct cmd *cmd, char *buf, size_t len)
 
 /*
  * Figure out the current session. Use: 1) the current session, if the command
- * context has one; 2) the session containing the pty of the calling client, if
- * any 3) the session specified in the TMUX variable from the environment (as
- * passed from the client); 3) the newest session.
+ * context has one; 2) the most recently used session containing the pty of the
+ * calling client, if any; 3) the session specified in the TMUX variable from
+ * the environment (as passed from the client); 4) the most recently used
+ * session from all sessions.
  */
 struct session *
 cmd_current_session(struct cmd_ctx *ctx)
@@ -329,7 +330,7 @@ cmd_current_session(struct cmd_ctx *ctx)
 				ARRAY_ADD(&ss, s);
 		}
 
-		s = cmd_newest_session(&ss);
+		s = cmd_choose_session(&ss);
 		ARRAY_FREE(&ss);
 		if (s != NULL)
 			return (s);
@@ -346,35 +347,35 @@ cmd_current_session(struct cmd_ctx *ctx)
 		return (s);
 	}
 
-	return (cmd_newest_session(&sessions));
+	return (cmd_choose_session(&sessions));
 }
 
-/* Find the newest session. */
+/* Find the most recently used session from a list. */
 struct session *
-cmd_newest_session(struct sessions *ss)
+cmd_choose_session(struct sessions *ss)
 {
-	struct session	*s, *snewest;
+	struct session	*s, *sbest;
 	struct timeval	*tv = NULL;
 	u_int		 i;
 
-	snewest = NULL;
+	sbest = NULL;
 	for (i = 0; i < ARRAY_LENGTH(ss); i++) {
 		if ((s = ARRAY_ITEM(ss, i)) == NULL)
 			continue;
 
-		if (tv == NULL || timercmp(&s->creation_time, tv, >)) {
-			snewest = s;
-			tv = &s->creation_time;
+		if (tv == NULL || timercmp(&s->activity_time, tv, >)) {
+			sbest = s;
+			tv = &s->activity_time;
 		}
 	}
 
-	return (snewest);
+	return (sbest);
 }
 
 /*
  * Find the current client. First try the current client if set, then pick the
- * newest of the clients attached to the current session if any, then the
- * newest client.
+ * most recently used of the clients attached to the current session if any,
+ * then of all clients.
  */
 struct client *
 cmd_current_client(struct cmd_ctx *ctx)
@@ -401,37 +402,37 @@ cmd_current_client(struct cmd_ctx *ctx)
 				ARRAY_ADD(&cc, c);
 		}
 
-		c = cmd_newest_client(&cc);
+		c = cmd_choose_client(&cc);
 		ARRAY_FREE(&cc);
 		if (c != NULL)
 			return (c);
 	}
 
-	return (cmd_newest_client(&clients));
+	return (cmd_choose_client(&clients));
 }
 
-/* Find the newest client. */
+/* Choose the most recently used client from a list. */
 struct client *
-cmd_newest_client(struct clients *cc)
+cmd_choose_client(struct clients *cc)
 {
-	struct client	*c, *cnewest;
+	struct client	*c, *cbest;
 	struct timeval	*tv = NULL;
 	u_int		 i;
 
-	cnewest = NULL;
+	cbest = NULL;
 	for (i = 0; i < ARRAY_LENGTH(cc); i++) {
 		if ((c = ARRAY_ITEM(cc, i)) == NULL)
 			continue;
 		if (c->session == NULL)
 			continue;
 
-		if (tv == NULL || timercmp(&c->creation_time, tv, >)) {
-			cnewest = c;
-			tv = &c->creation_time;
+		if (tv == NULL || timercmp(&c->activity_time, tv, >)) {
+			cbest = c;
+			tv = &c->activity_time;
 		}
 	}
 
-	return (cnewest);
+	return (cbest);
 }
 
 /* Find the target client or report an error and return NULL. */
