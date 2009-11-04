@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.168 2009-11-04 23:09:48 tcunha Exp $ */
+/* $Id: tty.c,v 1.169 2009-11-04 23:10:43 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1131,14 +1131,10 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 	/* If the character is space, don't care about foreground. */
 	if (gc->data == ' ' && !(gc->flags & GRID_FLAG_UTF8)) {
 		memcpy(&gc2, gc, sizeof gc2);
-
 		if (gc->attr & GRID_ATTR_REVERSE)
 			gc2.bg = tc->bg;
 		else
 			gc2.fg = tc->fg;
-		gc2.attr = tc->attr & ~GRID_ATTR_REVERSE;
-		gc2.attr |= gc->attr & GRID_ATTR_REVERSE;
-
 		gc = &gc2;
 	}
 
