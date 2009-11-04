@@ -30,7 +30,6 @@
 void	server_client_handle_data(struct client *);
 void	server_client_check_redraw(struct client *);
 void	server_client_set_title(struct client *);
-void	server_client_check_timers(struct client *);
 
 int	server_client_msg_dispatch(struct client *);
 void	server_client_msg_command(struct client *, struct msg_command_data *);
@@ -184,6 +183,45 @@ client_lost:
 	server_client_lost(c);
 }
 
+/* Handle client status timer. */
+void
+server_client_status_timer(void)
+{
+	struct client	*c;
+	struct session	*s;
+	struct job	*job;
+	struct timeval	 tv;
+	u_int		 i, interval;
+
+	if (gettimeofday(&tv, NULL) != 0)
+		fatal("gettimeofday failed");
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (c->message_string != NULL || c->prompt_string != NULL) {
+			/*
+			 * Don't need timed redraw for messages/prompts so bail
+			 * now. The status timer isn't reset when they are
+			 * redrawn anyway.
+			 */
+			continue;
+		}
+		s = c->session;
+
+		if (!options_get_number(&s->options, "status"))
+			continue;
+		interval = options_get_number(&s->options, "status-interval");
+
+		if (tv.tv_sec - c->status_timer.tv_sec >= interval) {
+			RB_FOREACH(job, jobs, &c->status_jobs)
+			    job_run(job);
+			c->flags |= CLIENT_STATUS;
+		}
+	}
+}
+
 /* Client functions that need to happen every loop. */
 void
 server_client_loop(void)
@@ -199,10 +237,8 @@ server_client_loop(void)
 			continue;
 
 		server_client_handle_data(c);
-		if (c->session != NULL) {
-			server_client_check_timers(c);
+		if (c->session != NULL)
 			server_client_check_redraw(c);
-		}
 	}
 
 	/*
@@ -437,42 +473,6 @@ server_client_set_title(struct client *c)
 		tty_set_title(&c->tty, c->title);
 	}
 	xfree(title);
-}
-
-/* Check client timers. */
-void
-server_client_check_timers(struct client *c)
-{
-	struct session	*s = c->session;
-	struct job	*job;
-	struct timeval	 tv;
-	u_int		 interval;
-
-	if (gettimeofday(&tv, NULL) != 0)
-		fatal("gettimeofday failed");
-
-	if (c->message_string != NULL || c->prompt_string != NULL) {
-		/*
-		 * Don't need timed redraw for messages/prompts so bail now.
-		 * The status timer isn't reset when they are redrawn anyway.
-		 */
-		return;
-
-	}
-	if (!options_get_number(&s->options, "status"))
-		return;
-
-	/* Check timer; resolution is only a second so don't be too clever. */
-	interval = options_get_number(&s->options, "status-interval");
-	if (interval == 0)
-		return;
-	if (tv.tv_sec < c->status_timer.tv_sec ||
-	    ((u_int) tv.tv_sec) - c->status_timer.tv_sec >= interval) {
-		/* Run the jobs for this client and schedule for redraw. */
-		RB_FOREACH(job, jobs, &c->status_jobs)
-			job_run(job);
-		c->flags |= CLIENT_STATUS;
-	}
 }
 
 /* Dispatch message from client. */
