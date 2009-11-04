@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.11 2009-11-04 22:42:31 tcunha Exp $ */
+/* $Id: server-client.c,v 1.12 2009-11-04 22:46:25 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,6 +62,7 @@ server_client_create(int fd)
 	
 	if (gettimeofday(&c->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
+	memcpy(&c->activity_time, &c->creation_time, sizeof c->activity_time);
 
 	ARRAY_INIT(&c->prompt_hdata);
 
@@ -286,6 +287,7 @@ server_client_handle_data(struct client *c)
 		oo = &c->session->options;
 
 		/* Update activity timer. */
+		memcpy(&c->activity_time, &tv_now, sizeof c->activity_time);
 		memcpy(&c->session->activity_time,
 		    &tv_now, sizeof c->session->activity_time);
 
@@ -582,9 +584,13 @@ server_client_msg_dispatch(struct client *c)
 				break;
 			c->flags &= ~CLIENT_SUSPENDED;
 
-			if (c->session != NULL &&
-			    gettimeofday(&c->session->activity_time, NULL) != 0)
-				fatal("gettimeofday failed");
+			if (gettimeofday(&c->activity_time, NULL) != 0)
+				fatal("gettimeofday");
+			if (c->session != NULL) {
+				memcpy(&c->session->activity_time,
+				    &c->activity_time,
+				    sizeof c->session->activity_time);
+			}
 
 			tty_start_tty(&c->tty);
 			server_redraw_client(c);

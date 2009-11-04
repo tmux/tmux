@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.495 2009-11-04 22:44:01 tcunha Exp $ */
+/* $Id: tmux.h,v 1.496 2009-11-04 22:46:25 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1062,6 +1062,7 @@ struct client {
 	struct imsgbuf	 ibuf;
 
 	struct timeval	 creation_time;
+	struct timeval	 activity_time;
 
 	struct environ	 environ;
 
