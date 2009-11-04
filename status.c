@@ -440,7 +440,7 @@ char *
 status_job(struct client *c, char **iptr)
 {
 	struct job	*job;
-	char   		*buf, *cmd;
+	char   		*cmd;
 	int		 lastesc;
 	size_t		 len;
 
@@ -450,8 +450,6 @@ status_job(struct client *c, char **iptr)
 		(*iptr)++;
 		return (NULL);
 	}
-
-	buf = NULL;
 
 	cmd = xmalloc(strlen(*iptr) + 1);
 	len = 0;
