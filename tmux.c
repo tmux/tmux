@@ -504,7 +504,6 @@ main(int argc, char **argv)
 	client_main();	/* doesn't return */
 }
 
-
 void
 main_set_signals(void)
 {

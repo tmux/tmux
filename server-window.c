@@ -48,7 +48,7 @@ server_window_prepare(void)
 				continue;
 			events = 0;
 			if (!server_window_backoff(wp))
-				events = EV_READ;
+				events |= EV_READ;
 			if (BUFFER_USED(wp->out) > 0)
 				events |= EV_WRITE;
 			event_del(&wp->event);
