@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.492 2009-11-04 22:37:18 tcunha Exp $ */
+/* $Id: tmux.h,v 1.493 2009-11-04 22:39:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -891,7 +891,6 @@ struct layout_cell {
 struct paste_buffer {
      	char		*data;
 	size_t		 size;
-	struct timeval	 tv;
 };
 ARRAY_DECL(paste_stack, struct paste_buffer *);
 

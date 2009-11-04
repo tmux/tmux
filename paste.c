@@ -1,4 +1,4 @@
-/* $Id: paste.c,v 1.10 2009-09-20 22:11:27 tcunha Exp $ */
+/* $Id: paste.c,v 1.11 2009-11-04 22:39:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -116,8 +116,6 @@ paste_add(struct paste_stack *ps, u_char *data, size_t size, u_int limit)
 
 	pb->data = data;
 	pb->size = size;
-	if (gettimeofday(&pb->tv, NULL) != 0)
-		fatal("gettimeofday failed");
 }
 
 int
@@ -133,8 +131,6 @@ paste_replace(struct paste_stack *ps, u_int idx, u_char *data, size_t size)
 
 	pb->data = data;
 	pb->size = size;
-	if (gettimeofday(&pb->tv, NULL) != 0)
-		fatal("gettimeofday failed");
 
 	return (0);
 }
