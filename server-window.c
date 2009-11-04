@@ -1,4 +1,4 @@
-/* $Id: server-window.c,v 1.3 2009-11-02 21:32:51 tcunha Exp $ */
+/* $Id: server-window.c,v 1.4 2009-11-04 22:47:29 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -77,6 +77,8 @@ server_window_backoff(struct window_pane *wp)
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (c == NULL || c->session == NULL)
+			continue;
+		if ((c->flags & (CLIENT_SUSPENDED|CLIENT_DEAD)) != 0)
 			continue;
 		if (c->session->curw->window != wp->window)
 			continue;
