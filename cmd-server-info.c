@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.32 2009-11-02 21:38:26 tcunha Exp $ */
+/* $Id: cmd-server-info.c,v 1.33 2009-11-04 22:42:31 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -105,7 +105,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		if (s == NULL)
 			continue;
 
-		t = s->tv.tv_sec;
+		t = s->creation_time.tv_sec;
 		tim = ctime(&t);
 		*strchr(tim, '\n') = '\0';
 

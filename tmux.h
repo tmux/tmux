@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.493 2009-11-04 22:39:20 tcunha Exp $ */
+/* $Id: tmux.h,v 1.494 2009-11-04 22:42:31 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -920,8 +920,9 @@ TAILQ_HEAD(session_groups, session_group);
 
 struct session {
 	char		*name;
-	struct timeval	 tv;
-	time_t		 activity;
+
+	struct timeval	 creation_time;
+	struct timeval	 activity_time;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1059,7 +1060,8 @@ struct mouse_event {
 /* Client connection. */
 struct client {
 	struct imsgbuf	 ibuf;
-	struct timeval	 tv;
+
+	struct timeval	 creation_time;
 
 	struct environ	 environ;
 

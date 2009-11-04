@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.127 2009-11-02 21:42:27 tcunha Exp $ */
+/* $Id: cmd.c,v 1.128 2009-11-04 22:42:31 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -361,9 +361,9 @@ cmd_newest_session(struct sessions *ss)
 		if ((s = ARRAY_ITEM(ss, i)) == NULL)
 			continue;
 
-		if (tv == NULL || timercmp(&s->tv, tv, >)) {
+		if (tv == NULL || timercmp(&s->creation_time, tv, >)) {
 			snewest = s;
-			tv = &s->tv;
+			tv = &s->creation_time;
 		}
 	}
 
@@ -385,9 +385,9 @@ cmd_newest_client(void)
 		if (c->session == NULL)
 			continue;
 
-		if (tv == NULL || timercmp(&c->tv, tv, >)) {
+		if (tv == NULL || timercmp(&c->creation_time, tv, >)) {
 			cnewest = c;
-			tv = &c->tv;
+			tv = &c->creation_time;
 		}
 	}
 

@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.215 2009-11-02 21:39:34 tcunha Exp $ */
+/* $Id: server.c,v 1.216 2009-11-04 22:42:31 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -568,12 +568,13 @@ server_lock_server(void)
 			continue;
 
 		if (s->flags & SESSION_UNATTACHED) {
-			s->activity = time(NULL);
+			if (gettimeofday(&s->activity_time, NULL) != 0)
+				fatal("gettimeofday failed");
 			continue;
 		}
 
 		timeout = options_get_number(&s->options, "lock-after-time");
-		if (timeout <= 0 || t <= s->activity + timeout)
+		if (timeout <= 0 || t <= s->activity_time.tv_sec + timeout)
 			return;	/* not timed out */
 	}
 
@@ -596,12 +597,13 @@ server_lock_sessions(void)
 			continue;
 
 		if (s->flags & SESSION_UNATTACHED) {
-			s->activity = time(NULL);
+			if (gettimeofday(&s->activity_time, NULL) != 0)
+				fatal("gettimeofday failed");
 			continue;
 		}
 
 		timeout = options_get_number(&s->options, "lock-after-time");
-		if (timeout > 0 && t > s->activity + timeout) {
+		if (timeout > 0 && t > s->activity_time.tv_sec + timeout) {
 			server_lock_session(s);
 			recalculate_sizes();
 		}

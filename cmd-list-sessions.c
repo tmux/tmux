@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.22 2009-10-11 23:38:16 tcunha Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.23 2009-11-04 22:42:31 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,7 +61,7 @@ cmd_list_sessions_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 			xsnprintf(tmp, sizeof tmp, " (group %u)", idx);
 		}
 
-		t = s->tv.tv_sec;
+		t = s->creation_time.tv_sec;
 		tim = ctime(&t);
 		*strchr(tim, '\n') = '\0';
 

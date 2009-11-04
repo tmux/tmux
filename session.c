@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.69 2009-10-11 23:38:16 tcunha Exp $ */
+/* $Id: session.c,v 1.70 2009-11-04 22:42:31 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -125,10 +125,10 @@ session_create(const char *name, const char *cmd, const char *cwd,
 	s = xmalloc(sizeof *s);
 	s->references = 0;
 	s->flags = 0;
-	s->activity = time(NULL);
 
-	if (gettimeofday(&s->tv, NULL) != 0)
+	if (gettimeofday(&s->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
+	memcpy(&s->activity_time, &s->creation_time, sizeof s->activity_time);
 
 	s->curw = NULL;
 	TAILQ_INIT(&s->lastw);
