@@ -31,7 +31,7 @@
 #include "tmux.h"
 
 #ifdef DEBUG
-const char	*malloc_options = "AFGJPX";
+extern char	*malloc_options;
 #endif
 
 volatile sig_atomic_t sigwinch;
@@ -298,6 +298,10 @@ main(int argc, char **argv)
 	void			*buf;
 	size_t			 len;
 	int	 		 nfds, retcode, opt, flags, cmdflags = 0;
+
+#ifdef DEBUG
+	malloc_options = (char *) "AFGJPX";
+#endif
 
 	flags = 0;
 	shellcmd = label = path = NULL;
