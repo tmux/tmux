@@ -59,6 +59,7 @@ server_write_client(
 		return;
 	log_debug("writing %d to client %d", type, c->ibuf.fd);
 	imsg_compose(ibuf, type, PROTOCOL_VERSION, -1, -1, (void *) buf, len);
+	server_update_event(c);	
 }
 
 void
@@ -370,4 +371,19 @@ server_clear_identify(struct client *c)
 		c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
 		server_redraw_client(c);
 	}
+}
+
+void
+server_update_event(struct client *c)
+{
+	short	events;
+
+	events = 0;
+	if (!(c->flags & CLIENT_BAD))
+		events |= EV_READ;
+	if (c->ibuf.w.queued > 0)
+		events |= EV_WRITE;
+	event_del(&c->event);
+	event_set(&c->event, c->ibuf.fd, events, server_client_callback, c);
+	event_add(&c->event, NULL);	
 }

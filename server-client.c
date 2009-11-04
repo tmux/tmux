@@ -61,6 +61,7 @@ server_client_create(int fd)
 	c = xcalloc(1, sizeof *c);
 	c->references = 0;
 	imsg_init(&c->ibuf, fd);
+	server_update_event(c);
 	
 	if (gettimeofday(&c->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
@@ -150,30 +151,6 @@ server_client_lost(struct client *c)
 	recalculate_sizes();
 }
 
-/* Register clients for poll. */
-void
-server_client_prepare(void)
-{
-	struct client	*c;
-	u_int		 i;
-	int		 events;
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		if ((c = ARRAY_ITEM(&clients, i)) == NULL)
-			continue;
-
-		events = 0;
-		if (!(c->flags & CLIENT_BAD))
-			events |= EV_READ;
-		if (c->ibuf.w.queued > 0)
-			events |= EV_WRITE;
-		event_del(&c->event);
-		event_set(&c->event,
-		    c->ibuf.fd, events, server_client_callback, c);
-		event_add(&c->event, NULL);
-	}
-}
-
 /* Process a single client event. */
 void
 server_client_callback(int fd, short events, void *data)
@@ -196,7 +173,8 @@ server_client_callback(int fd, short events, void *data)
 		if (events & EV_READ && server_client_msg_dispatch(c) != 0)
 			goto client_lost;
 	}
-	
+
+	server_update_event(c);	
 	return;
 
 client_lost:

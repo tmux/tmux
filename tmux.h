@@ -1564,7 +1564,6 @@ void	 server_signal_clear(void);
 /* server-client.c */
 void	 server_client_create(int);
 void	 server_client_lost(struct client *);
-void	 server_client_prepare(void);
 void	 server_client_callback(int, short, void *);
 void	 server_client_loop(void);
 
@@ -1598,6 +1597,7 @@ void	 server_destroy_session_group(struct session *);
 void	 server_destroy_session(struct session *);
 void	 server_set_identify(struct client *);
 void	 server_clear_identify(struct client *);
+void	 server_update_event(struct client *);
 
 /* status.c */
 int	 status_redraw(struct client *);
