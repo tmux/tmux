@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/socket.h>
 
 #include <errno.h>
 #include <fcntl.h>
@@ -31,6 +32,8 @@
  */
 
 int	cmd_pipe_pane_exec(struct cmd *, struct cmd_ctx *);
+
+void	cmd_pipe_pane_error_callback(struct bufferevent *, short, void *);
 
 const struct cmd_entry cmd_pipe_pane_entry = {
 	"pipe-pane", "pipep",
@@ -56,7 +59,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	/* Destroy the old pipe. */
 	old_fd = wp->pipe_fd;
 	if (wp->pipe_fd != -1) {
-		buffer_destroy(wp->pipe_buf);
+		bufferevent_free(wp->pipe_event);
 		close(wp->pipe_fd);
 		wp->pipe_fd = -1;
 	}
@@ -75,8 +78,8 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (0);
 
 	/* Open the new pipe. */
-	if (pipe(pipe_fd) != 0) {
-		ctx->error(ctx, "pipe error: %s", strerror(errno));
+	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pipe_fd) != 0) {
+		ctx->error(ctx, "socketpair error: %s", strerror(errno));
 		return (-1);
 	}
 
@@ -110,8 +113,11 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		close(pipe_fd[1]);
 
 		wp->pipe_fd = pipe_fd[0];
-		wp->pipe_buf = buffer_create(BUFSIZ);
 		wp->pipe_off = BUFFER_USED(wp->in);
+		
+		wp->pipe_event = bufferevent_new(wp->pipe_fd,
+		    NULL, NULL, cmd_pipe_pane_error_callback, wp);
+		bufferevent_enable(wp->pipe_event, EV_WRITE);
 		
 		if ((mode = fcntl(wp->pipe_fd, F_GETFL)) == -1)
 			fatal("fcntl failed");
@@ -123,4 +129,15 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	return (0);
+}
+
+void
+cmd_pipe_pane_error_callback(
+    unused struct bufferevent *bufev, unused short what, void *data)
+{
+	struct window_pane	*wp = data;
+
+	bufferevent_free(wp->pipe_event);
+	close(wp->pipe_fd);
+	wp->pipe_fd = -1;
 }

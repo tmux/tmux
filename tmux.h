@@ -805,8 +805,7 @@ struct window_pane {
 	struct input_ctx ictx;
 
 	int		 pipe_fd;
-	struct event	 pipe_event;
-	struct buffer	*pipe_buf;
+	struct bufferevent *pipe_event;
 	size_t		 pipe_off;
 
 	struct screen	*screen;

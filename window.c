@@ -426,8 +426,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->sy = sy;
 
 	wp->pipe_fd = -1;
-	wp->pipe_buf = NULL;
 	wp->pipe_off = 0;
+	wp->pipe_event = NULL;
 
 	wp->saved_grid = NULL;
 
@@ -453,9 +453,8 @@ window_pane_destroy(struct window_pane *wp)
 		grid_destroy(wp->saved_grid);
 
 	if (wp->pipe_fd != -1) {
-		buffer_destroy(wp->pipe_buf);
 		close(wp->pipe_fd);
-		event_del(&wp->pipe_event);
+		bufferevent_free(wp->pipe_event);
 	}
 
 	buffer_destroy(wp->in);
@@ -639,7 +638,7 @@ window_pane_parse(struct window_pane *wp)
 
 	new_size = BUFFER_USED(wp->in) - wp->pipe_off;
 	if (wp->pipe_fd != -1 && new_size > 0)
-		buffer_write(wp->pipe_buf, BUFFER_OUT(wp->in), new_size);
+		bufferevent_write(wp->pipe_event, BUFFER_OUT(wp->in), new_size);
 	
 	input_parse(wp);
 
