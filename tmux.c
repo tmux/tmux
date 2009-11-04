@@ -1,4 +1,4 @@
-/* $OpenBSD: tmux.c,v 1.54 2009/11/04 12:41:43 nicm Exp $ */
+/* $Id: tmux.c,v 1.184 2009-11-04 23:09:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,14 +29,8 @@
 
 #include "tmux.h"
 
-#ifdef DEBUG
-/* DragonFly uses an OpenBSD-like malloc() since 1.6 */
-#if defined(__OpenBSD__) || defined(__DragonFly__)
+#if defined(DEBUG) && defined(__OpenBSD__)
 extern char	*malloc_options;
-#endif
-#ifdef __FreeBSD__
-const char	*_malloc_options = "AJX";
-#endif
 #endif
 
 volatile sig_atomic_t sigwinch;
@@ -308,7 +302,7 @@ main(int argc, char **argv)
 	size_t			 len;
 	int	 		 nfds, retcode, opt, flags, cmdflags = 0;
 
-#ifdef DEBUG
+#if defined(DEBUG) && defined(__OpenBSD__)
 	malloc_options = (char *) "AFGJPX";
 #endif
 
