@@ -30,35 +30,6 @@ int	server_window_check_content(
 	    struct session *, struct window *, struct window_pane *);
 void	server_window_check_alive(struct window *);
 
-/* Register windows for poll. */
-void
-server_window_prepare(void)
-{
-	struct window		*w;
-	struct window_pane	*wp;
-	u_int		 	 i;
-	int			 events;
-
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		if ((w = ARRAY_ITEM(&windows, i)) == NULL)
-			continue;
-
-		TAILQ_FOREACH(wp, &w->panes, entry) {	
-			if (wp->fd == -1)
-				continue;
-			events = 0;
-			if (!server_window_backoff(wp))
-				events |= EV_READ;
-			if (BUFFER_USED(wp->out) > 0)
-				events |= EV_WRITE;
-			event_del(&wp->event);
-			event_set(&wp->event,
-			    wp->fd, events, server_window_callback, wp);
-			event_add(&wp->event, NULL);
-		}
-	}
-}
-
 /* Check if this window should suspend reading. */
 int
 server_window_backoff(struct window_pane *wp)
@@ -84,24 +55,6 @@ server_window_backoff(struct window_pane *wp)
 	return (0);
 }
 
-/* Process a single window pane event. */
-void
-server_window_callback(int fd, short events, void *data)
-{
-	struct window_pane	*wp = data;
-
-	if (wp->fd == -1)
-		return;
-
-	if (fd == wp->fd) {
-		if (buffer_poll(fd, events, wp->in, wp->out) != 0) {
-			close(wp->fd);
-			wp->fd = -1;
-		} else
-			window_pane_parse(wp);
-	}
-}
-
 /* Window functions that need to happen every loop. */
 void
 server_window_loop(void)
@@ -115,6 +68,13 @@ server_window_loop(void)
 		w = ARRAY_ITEM(&windows, i);
 		if (w == NULL)
 			continue;
+
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (server_window_backoff(wp))
+				bufferevent_disable(wp->event, EV_READ);
+			else
+				bufferevent_enable(wp->event, EV_READ);
+		}
 
 		for (j = 0; j < ARRAY_LENGTH(&sessions); j++) {
 			s = ARRAY_ITEM(&sessions, j);

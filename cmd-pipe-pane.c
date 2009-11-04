@@ -113,7 +113,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		close(pipe_fd[1]);
 
 		wp->pipe_fd = pipe_fd[0];
-		wp->pipe_off = BUFFER_USED(wp->in);
+		wp->pipe_off = EVBUFFER_LENGTH(wp->event->input);
 		
 		wp->pipe_event = bufferevent_new(wp->pipe_fd,
 		    NULL, NULL, cmd_pipe_pane_error_callback, wp);

@@ -56,6 +56,9 @@
 /* Global window list. */
 struct windows windows;
 
+void	window_pane_read_callback(struct bufferevent *, void *);
+void	window_pane_error_callback(struct bufferevent *, short, void *);
+
 RB_GENERATE(winlinks, winlink, entry, winlink_cmp);
 
 int
@@ -412,8 +415,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->cwd = NULL;
 
 	wp->fd = -1;
-	wp->in = buffer_create(BUFSIZ);
-	wp->out = buffer_create(BUFSIZ);
+	wp->event = NULL;
 
 	wp->mode = NULL;
 
@@ -442,8 +444,10 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 void
 window_pane_destroy(struct window_pane *wp)
 {
-	if (wp->fd != -1)
+	if (wp->fd != -1) {
 		close(wp->fd);
+		bufferevent_free(wp->event);
+	}
 
 	input_free(wp);
 
@@ -456,10 +460,6 @@ window_pane_destroy(struct window_pane *wp)
 		close(wp->pipe_fd);
 		bufferevent_free(wp->pipe_event);
 	}
-
-	buffer_destroy(wp->in);
-	buffer_destroy(wp->out);
-	event_del(&wp->event);
 
 	if (wp->cwd != NULL)
 		xfree(wp->cwd);
@@ -484,8 +484,10 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 	struct termios		 tio2;
 	u_int		 	 i;
 
-	if (wp->fd != -1)
+	if (wp->fd != -1) {
 		close(wp->fd);
+		bufferevent_free(wp->event);
+	}
 	if (cmd != NULL) {
 		if (wp->cmd != NULL)
 			xfree(wp->cmd);
@@ -574,8 +576,30 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 		fatal("fcntl failed");
 	if (fcntl(wp->fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
+	wp->event = bufferevent_new(wp->fd,
+	    window_pane_read_callback, NULL, window_pane_error_callback, wp);
+	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 
 	return (0);
+}
+
+void
+window_pane_read_callback(unused struct bufferevent *bufev, void *data)
+{
+	struct window_pane *wp = data;
+
+	window_pane_parse(wp);
+}
+
+void
+window_pane_error_callback(
+    unused struct bufferevent *bufev, unused short what, void *data)
+{
+	struct window_pane *wp = data;
+
+	close(wp->fd);
+	bufferevent_free(wp->event);
+	wp->fd = -1;
 }
 
 void
@@ -631,18 +655,21 @@ window_pane_reset_mode(struct window_pane *wp)
 void
 window_pane_parse(struct window_pane *wp)
 {
+	char   *data;
 	size_t	new_size;
 
 	if (wp->mode != NULL)
 		return;
 
-	new_size = BUFFER_USED(wp->in) - wp->pipe_off;
-	if (wp->pipe_fd != -1 && new_size > 0)
-		bufferevent_write(wp->pipe_event, BUFFER_OUT(wp->in), new_size);
+	new_size = EVBUFFER_LENGTH(wp->event->input) - wp->pipe_off;
+	if (wp->pipe_fd != -1 && new_size > 0) {
+		data = EVBUFFER_DATA(wp->event->input);
+		bufferevent_write(wp->pipe_event, data, new_size);
+	}
 	
 	input_parse(wp);
 
-	wp->pipe_off = BUFFER_USED(wp->in);
+	wp->pipe_off = EVBUFFER_LENGTH(wp->event->input);
 }
 
 void

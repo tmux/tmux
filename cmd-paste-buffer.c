@@ -27,7 +27,7 @@
  */
 
 int	cmd_paste_buffer_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_paste_buffer_lf2cr(struct buffer *, const char *, size_t);
+void	cmd_paste_buffer_lf2cr(struct window_pane *, const char *, size_t);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", "pasteb",
@@ -65,9 +65,9 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (pb != NULL && *pb->data != '\0') {
 		/* -r means raw data without LF->CR conversion. */
 		if (data->chflags & CMD_CHFLAG('r'))
-			buffer_write(wp->out, pb->data, pb->size);
+			bufferevent_write(wp->event, pb->data, pb->size);
 		else
-			cmd_paste_buffer_lf2cr(wp->out, pb->data, pb->size);
+			cmd_paste_buffer_lf2cr(wp, pb->data, pb->size);
 	}
 
 	/* Delete the buffer if -d. */
@@ -83,18 +83,18 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 /* Add bytes to a buffer but change every '\n' to '\r'. */
 void
-cmd_paste_buffer_lf2cr(struct buffer *b, const char *data, size_t size)
+cmd_paste_buffer_lf2cr(struct window_pane *wp, const char *data, size_t size)
 {
 	const char	*end = data + size;
 	const char	*lf;
 
 	while ((lf = memchr(data, '\n', end - data)) != NULL) {
 		if (lf != data)
-			buffer_write(b, data, lf - data);
-		buffer_write8(b, '\r');
+			bufferevent_write(wp->event, data, lf - data);
+		bufferevent_write(wp->event, "\r", 1);
 		data = lf + 1;
 	}
 
 	if (end != data)
-		buffer_write(b, data, end - data);
+		bufferevent_write(wp->event, data, end - data);
 }

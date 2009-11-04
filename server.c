@@ -214,7 +214,6 @@ server_loop(void)
 	while (!server_should_shutdown()) {
 		server_update_socket();
 
-		server_window_prepare();
 		server_client_prepare();
 
 		event_loopexit(&tv);

@@ -256,12 +256,12 @@ input_parse(struct window_pane *wp)
 	struct input_ctx	*ictx = &wp->ictx;
 	u_char			 ch;
 
-	if (BUFFER_USED(wp->in) == ictx->was)
+	if (EVBUFFER_LENGTH(wp->event->input) == ictx->was)
 		return;
 	wp->window->flags |= WINDOW_ACTIVITY;
 
-	ictx->buf = BUFFER_OUT(wp->in);
-	ictx->len = BUFFER_USED(wp->in);
+	ictx->buf = EVBUFFER_DATA(wp->event->input);
+	ictx->len = EVBUFFER_LENGTH(wp->event->input);
 	ictx->off = 0;
 
 	ictx->wp = wp;
@@ -278,8 +278,8 @@ input_parse(struct window_pane *wp)
 
 	screen_write_stop(&ictx->ctx);
 
-	buffer_remove(wp->in, ictx->len);
-	ictx->was = BUFFER_USED(wp->in);
+	evbuffer_drain(wp->event->input, ictx->len);
+	ictx->was = EVBUFFER_LENGTH(wp->event->input);
 }
 
 void
@@ -932,7 +932,8 @@ input_handle_sequence_cbt(struct input_ctx *ictx)
 void
 input_handle_sequence_da(struct input_ctx *ictx)
 {
-	uint16_t	n;
+	struct window_pane	*wp = ictx->wp;
+	uint16_t		 n;
 
 	if (ictx->private != '\0')
 		return;
@@ -944,7 +945,7 @@ input_handle_sequence_da(struct input_ctx *ictx)
 	if (n != 0)
 		return;
 	
-	buffer_write(ictx->wp->out, "\033[?1;2c", (sizeof "\033[?1;2c") - 1);
+	bufferevent_write(wp->event, "\033[?1;2c", (sizeof "\033[?1;2c") - 1);
 }
 
 void
@@ -1314,9 +1315,10 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 void
 input_handle_sequence_dsr(struct input_ctx *ictx)
 {
-	struct screen  *s = ictx->ctx.s;
-	uint16_t	n;
-	char		reply[32];
+	struct window_pane	*wp = ictx->wp;
+	struct screen		*s = ictx->ctx.s;
+	uint16_t		 n;
+	char			reply[32];
 
 	if (ARRAY_LENGTH(&ictx->args) > 1)
 		return;
@@ -1329,7 +1331,7 @@ input_handle_sequence_dsr(struct input_ctx *ictx)
 			xsnprintf(reply, sizeof reply,
 			    "\033[%u;%uR", s->cy + 1, s->cx + 1);
 			log_debug("cursor request, reply: %s", reply);
-			buffer_write(ictx->wp->out, reply, strlen(reply));
+			bufferevent_write(wp->event, reply, strlen(reply));
 			break;
 		}
 	}
