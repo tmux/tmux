@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.491 2009-11-02 21:38:27 tcunha Exp $ */
+/* $Id: tmux.h,v 1.492 2009-11-04 22:37:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,7 +58,7 @@ extern char   **environ;
 #define NAME_INTERVAL 500
 
 /* Escape timer period, in milliseconds. */
-#define ESCAPE_PERIOD 250
+#define ESCAPE_PERIOD 500
 
 /* Maximum poll timeout (when attached). */
 #define POLL_TIMEOUT 50
