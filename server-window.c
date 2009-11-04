@@ -78,6 +78,8 @@ server_window_backoff(struct window_pane *wp)
 		c = ARRAY_ITEM(&clients, i);
 		if (c == NULL || c->session == NULL)
 			continue;
+		if ((c->flags & (CLIENT_SUSPENDED|CLIENT_DEAD)) != 0)
+			continue;
 		if (c->session->curw->window != wp->window)
 			continue;
 		if (BUFFER_USED(c->tty.out) > BACKOFF_THRESHOLD)
