@@ -212,7 +212,7 @@ window_create1(u_int sx, u_int sy)
 	struct window	*w;
 	u_int		 i;
 
-	w = xmalloc(sizeof *w);
+	w = xcalloc(1, sizeof *w);
 	w->name = NULL;
 	w->flags = 0;
 
@@ -224,6 +224,8 @@ window_create1(u_int sx, u_int sy)
 	
 	w->sx = sx;
 	w->sy = sy;
+
+	queue_window_name(w);
 
 	options_init(&w->options, &global_w_options);
 
@@ -277,6 +279,8 @@ window_destroy(struct window *w)
 
 	if (w->layout_root != NULL)
 		layout_free(w);
+
+	evtimer_del(&w->name_timer);
 
 	options_free(&w->options);
 
@@ -480,7 +484,6 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 	ARRAY_DECL(, char *)	 varlist;
 	struct environ_entry	*envent;
 	const char		*ptr;
-	struct timeval	 	 tv;
 	struct termios		 tio2;
 	u_int		 	 i;
 
@@ -507,12 +510,6 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = screen_size_x(&wp->base);
 	ws.ws_row = screen_size_y(&wp->base);
-
-	if (gettimeofday(&wp->window->name_timer, NULL) != 0)
-		fatal("gettimeofday failed");
-	tv.tv_sec = 0;
-	tv.tv_usec = NAME_INTERVAL * 1000L;
-	timeradd(&wp->window->name_timer, &tv, &wp->window->name_timer);
 
  	switch (wp->pid = forkpty(&wp->fd, wp->tty, NULL, &ws)) {
 	case -1:

@@ -810,7 +810,7 @@ TAILQ_HEAD(window_panes, window_pane);
 /* Window structure. */
 struct window {
 	char		*name;
-	struct timeval	 name_timer;
+	struct event	 name_timer;
 
 	struct window_pane *active;
 	struct window_panes panes;
@@ -1851,7 +1851,7 @@ void		 window_choose_ready(struct window_pane *,
 		     u_int, void (*)(void *, int), void (*)(void *), void *);
 
 /* names.c */
-void		 set_window_names(void);
+void		 queue_window_name(struct window *);
 char 		*default_window_name(struct window *);
 
 /* session.c */

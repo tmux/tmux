@@ -91,8 +91,6 @@ server_window_loop(void)
 
 		server_window_check_alive(w);
 	}
-
-	set_window_names();
 }
 
 /* Check for bell in window. */
