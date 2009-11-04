@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <event.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -47,19 +48,23 @@ server_window_prepare(void)
 				continue;
 			events = 0;
 			if (!server_window_backoff(wp))
-				events |= POLLIN;
+				events = EV_READ;
 			if (BUFFER_USED(wp->out) > 0)
-				events |= POLLOUT;
-			server_poll_add(
+				events |= EV_WRITE;
+			event_del(&wp->event);
+			event_set(&wp->event,
 			    wp->fd, events, server_window_callback, wp);
+			event_add(&wp->event, NULL);
 
 			if (wp->pipe_fd == -1)
 				continue;
 			events = 0;
 			if (BUFFER_USED(wp->pipe_buf) > 0)
-				events |= POLLOUT;
-			server_poll_add(
+				events |= EV_WRITE;
+			event_del(&wp->pipe_event);
+			event_set(&wp->pipe_event,
 			    wp->pipe_fd, events, server_window_callback, wp);
+			event_add(&wp->pipe_event, NULL);
 		}
 	}
 }
@@ -90,7 +95,7 @@ server_window_backoff(struct window_pane *wp)
 
 /* Process a single window pane event. */
 void
-server_window_callback(int fd, int events, void *data)
+server_window_callback(int fd, short events, void *data)
 {
 	struct window_pane	*wp = data;
 

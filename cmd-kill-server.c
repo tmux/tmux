@@ -43,7 +43,7 @@ const struct cmd_entry cmd_kill_server_entry = {
 int
 cmd_kill_server_exec(unused struct cmd *self, unused struct cmd_ctx *ctx)
 {
-	sigterm = 1;
+	kill(getpid(), SIGTERM);
 
 	return (0);
 }

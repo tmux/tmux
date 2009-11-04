@@ -28,9 +28,9 @@
 #include <sys/uio.h>
 
 #include <bitstring.h>
+#include <event.h>
 #include <getopt.h>
 #include <limits.h>
-#include <poll.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -661,6 +661,7 @@ struct job {
 	struct client	*client;
 
 	int		 fd;
+	struct event	 event;
 	struct buffer	*out;
 
 	void		(*callbackfn)(struct job *);
@@ -796,14 +797,17 @@ struct window_pane {
 	char		*cwd;
 
 	pid_t		 pid;
-	int		 fd;
 	char		 tty[TTY_NAME_MAX];
+
+	int		 fd;
+	struct event	 event;
 	struct buffer	*in;
 	struct buffer	*out;
 
 	struct input_ctx ictx;
 
 	int		 pipe_fd;
+	struct event	 pipe_event;
 	struct buffer	*pipe_buf;
 	size_t		 pipe_off;
 
@@ -998,6 +1002,7 @@ struct tty {
 	struct tty_term	*term;
 
 	int		 fd;
+	struct event	 event;
 	struct buffer	*in;
 	struct buffer	*out;
 
@@ -1062,6 +1067,7 @@ struct mouse_event {
 /* Client connection. */
 struct client {
 	struct imsgbuf	 ibuf;
+	struct event	 event;
 
 	struct timeval	 creation_time;
 	struct timeval	 activity_time;
@@ -1235,12 +1241,6 @@ extern const struct set_option_entry set_option_table[];
 extern const struct set_option_entry set_window_option_table[];
 
 /* tmux.c */
-extern volatile sig_atomic_t sigwinch;
-extern volatile sig_atomic_t sigterm;
-extern volatile sig_atomic_t sigcont;
-extern volatile sig_atomic_t sigchld;
-extern volatile sig_atomic_t sigusr1;
-extern volatile sig_atomic_t sigusr2;
 extern struct options global_s_options;
 extern struct options global_w_options;
 extern struct environ global_environ;
@@ -1251,9 +1251,6 @@ extern time_t	 start_time;
 extern char 	*socket_path;
 extern int	 login_shell;
 void		 logfile(const char *);
-void		 siginit(void);
-void		 sigreset(void);
-void		 sighandler(int);
 const char	*getshell(void);
 int		 checkshell(const char *);
 int		 areshell(const char *);
@@ -1582,23 +1579,24 @@ const char *key_string_lookup_key(int);
 extern struct clients clients;
 extern struct clients dead_clients;
 int	 server_start(char *);
-void	 server_poll_add(int, int, void (*)(int, int, void *), void *);
+void	 server_signal_set(void);
+void	 server_signal_clear(void);
 
 /* server-client.c */
 void	 server_client_create(int);
 void	 server_client_lost(struct client *);
 void	 server_client_prepare(void);
-void	 server_client_callback(int, int, void *);
+void	 server_client_callback(int, short, void *);
 void	 server_client_loop(void);
 
 /* server-job.c */
 void	 server_job_prepare(void);
-void	 server_job_callback(int, int, void *);
+void	 server_job_callback(int, short, void *);
 void	 server_job_loop(void);
 
 /* server-window.c */
 void	 server_window_prepare(void);
-void	 server_window_callback(int, int, void *);
+void	 server_window_callback(int, short, void *);
 void	 server_window_loop(void);
 
 /* server-fn.c */

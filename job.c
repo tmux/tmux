@@ -87,6 +87,7 @@ job_add(struct jobs *jobs, int flags, struct client *c, const char *cmd,
 
 	job->fd = -1;
 	job->out = buffer_create(BUFSIZ);
+	memset(&job->event, 0, sizeof job->event);
 
 	job->callbackfn = callbackfn;
 	job->freefn = freefn;
@@ -126,6 +127,7 @@ job_free(struct job *job)
 		close(job->fd);
 	if (job->out != NULL)
 		buffer_destroy(job->out);
+	event_del(&job->event);
 
 	xfree(job);
 }
@@ -147,7 +149,7 @@ job_run(struct job *job)
 	case -1:
 		return (-1);
 	case 0:		/* child */
-		sigreset();
+		server_signal_clear();
 		/* XXX environ? */
 
 		if (dup2(out[1], STDOUT_FILENO) == -1)

@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <event.h>
 #include <fcntl.h>
 #include <string.h>
 #include <time.h>
@@ -134,7 +135,9 @@ server_client_lost(struct client *c)
 
 	close(c->ibuf.fd);
 	imsg_clear(&c->ibuf);
-
+	event_del(&c->event);
+	event_del(&c->tty.event);
+	
 	for (i = 0; i < ARRAY_LENGTH(&dead_clients); i++) {
 		if (ARRAY_ITEM(&dead_clients, i) == NULL) {
 			ARRAY_SET(&dead_clients, i, c);
@@ -162,25 +165,31 @@ server_client_prepare(void)
 
 		events = 0;
 		if (!(c->flags & CLIENT_BAD))
-			events |= POLLIN;
+			events |= EV_READ;
 		if (c->ibuf.w.queued > 0)
-			events |= POLLOUT;
-		server_poll_add(c->ibuf.fd, events, server_client_callback, c);
+			events |= EV_WRITE;
+		event_del(&c->event);
+		event_set(&c->event,
+		    c->ibuf.fd, events, server_client_callback, c);
+		event_add(&c->event, NULL);
 
 		if (c->tty.fd == -1)
 			continue;
 		if (c->flags & CLIENT_SUSPENDED || c->session == NULL)
 			continue;
-		events = POLLIN;
+		events = EV_READ;
 		if (BUFFER_USED(c->tty.out) > 0)
-			events |= POLLOUT;
-		server_poll_add(c->tty.fd, events, server_client_callback, c);
+			events |= EV_WRITE;
+		event_del(&c->tty.event);
+		event_set(&c->tty.event,
+		    c->tty.fd, events, server_client_callback, c);
+		event_add(&c->tty.event, NULL);
 	}
 }
 
 /* Process a single client event. */
 void
-server_client_callback(int fd, int events, void *data)
+server_client_callback(int fd, short events, void *data)
 {
 	struct client	*c = data;
 
@@ -188,10 +197,7 @@ server_client_callback(int fd, int events, void *data)
 		return;
 
 	if (fd == c->ibuf.fd) {
-		if (events & (POLLERR|POLLNVAL|POLLHUP))
-			goto client_lost;
-
-		if (events & POLLOUT && msgbuf_write(&c->ibuf.w) < 0)
+		if (events & EV_WRITE && msgbuf_write(&c->ibuf.w) < 0)
 			goto client_lost;
 
 		if (c->flags & CLIENT_BAD) {
@@ -200,7 +206,7 @@ server_client_callback(int fd, int events, void *data)
 			return;
 		}
 
-		if (events & POLLIN && server_client_msg_dispatch(c) != 0)
+		if (events & EV_READ && server_client_msg_dispatch(c) != 0)
 			goto client_lost;
 	}
 
@@ -211,7 +217,7 @@ server_client_callback(int fd, int events, void *data)
 		if (buffer_poll(fd, events, c->tty.in, c->tty.out) != 0)
 			goto client_lost;
 	}
-
+	
 	return;
 
 client_lost:
@@ -424,7 +430,7 @@ server_client_check_redraw(struct client *c)
 	if (c->flags & (CLIENT_REDRAW|CLIENT_STATUS)) {
 		if (options_get_number(&s->options, "set-titles"))
 			server_client_set_title(c);
-	
+
 		if (c->message_string != NULL)
 			redraw = status_message_redraw(c);
 		else if (c->prompt_string != NULL)

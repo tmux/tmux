@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <errno.h>
+#include <event.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -29,9 +30,7 @@ buffer_poll(int fd, int events, struct buffer *in, struct buffer *out)
 {
 	ssize_t	n;
 
-	if (events & (POLLERR|POLLNVAL))
-		return (-1);
-	if (in != NULL && events & POLLIN) {
+	if (in != NULL && events & EV_READ) {
 		buffer_ensure(in, BUFSIZ);
 		n = read(fd, BUFFER_IN(in), BUFFER_FREE(in));
 		if (n == 0)
@@ -41,9 +40,8 @@ buffer_poll(int fd, int events, struct buffer *in, struct buffer *out)
 				return (-1);
 		} else
 			buffer_add(in, n);
-	} else if (events & POLLHUP)
-		return (-1);
-	if (out != NULL && BUFFER_USED(out) > 0 && events & POLLOUT) {
+	}
+	if (out != NULL && BUFFER_USED(out) > 0 && events & EV_WRITE) {
 		n = write(fd, BUFFER_OUT(out), BUFFER_USED(out));
 		if (n == -1) {
 			if (errno != EINTR && errno != EAGAIN)

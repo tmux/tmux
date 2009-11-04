@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 
 #include <errno.h>
+#include <event.h>
 #include <paths.h>
 #include <pwd.h>
 #include <signal.h>
@@ -33,13 +34,6 @@
 #ifdef DEBUG
 extern char	*malloc_options;
 #endif
-
-volatile sig_atomic_t sigwinch;
-volatile sig_atomic_t sigterm;
-volatile sig_atomic_t sigcont;
-volatile sig_atomic_t sigchld;
-volatile sig_atomic_t sigusr1;
-volatile sig_atomic_t sigusr2;
 
 char		*cfg_file;
 struct options	 global_s_options;	/* session options */
@@ -55,8 +49,17 @@ int		 login_shell;
 __dead void	 usage(void);
 void	 	 fill_session(struct msg_command_data *);
 char 		*makesockpath(const char *);
-int		 dispatch_imsg(struct imsgbuf *, const char *, int *);
 __dead void	 shell_exec(const char *, const char *);
+
+struct imsgbuf	*main_ibuf;
+struct event	 main_ev_sigterm;
+int	         main_exitval;
+
+void		 main_set_signals(void);
+void		 main_clear_signals(void);
+void		 main_signal(int, short, unused void *);
+void		 main_callback(int, short, void *);
+void		 main_dispatch(const char *);
 
 __dead void
 usage(void)
@@ -79,96 +82,6 @@ logfile(const char *name)
 		log_open_file(debug_level, path);
 		xfree(path);
 	}
-}
-
-void
-sighandler(int sig)
-{
-	int	saved_errno;
-
-	saved_errno = errno;
-	switch (sig) {
-	case SIGWINCH:
-		sigwinch = 1;
-		break;
-	case SIGTERM:
-		sigterm = 1;
-		break;
-	case SIGCHLD:
-		sigchld = 1;
-		break;
-	case SIGCONT:
-		sigcont = 1;
-		break;
-	case SIGUSR1:
-		sigusr1 = 1;
-		break;
-	case SIGUSR2:
-		sigusr2 = 1;
-		break;
-	}
-	errno = saved_errno;
-}
-
-void
-siginit(void)
-{
-	struct sigaction	 act;
-
-	memset(&act, 0, sizeof act);
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = SA_RESTART;
-
-	act.sa_handler = SIG_IGN;
-	if (sigaction(SIGPIPE, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGINT, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGTSTP, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGQUIT, &act, NULL) != 0)
-		fatal("sigaction failed");
-
-	act.sa_handler = sighandler;
-	if (sigaction(SIGWINCH, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGTERM, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGCHLD, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGUSR1, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGUSR2, &act, NULL) != 0)
-		fatal("sigaction failed");
-}
-
-void
-sigreset(void)
-{
-	struct sigaction act;
-
-	memset(&act, 0, sizeof act);
-	sigemptyset(&act.sa_mask);
-
-	act.sa_handler = SIG_DFL;
-	if (sigaction(SIGPIPE, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGUSR1, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGUSR2, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGINT, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGTSTP, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGQUIT, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGWINCH, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGTERM, &act, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGCHLD, &act, NULL) != 0)
-		fatal("sigaction failed");
 }
 
 const char *
@@ -281,23 +194,43 @@ makesockpath(const char *label)
 	return (path);
 }
 
+__dead void
+shell_exec(const char *shell, const char *shellcmd)
+{
+	const char	*shellname, *ptr;
+	char		*argv0;
+
+	ptr = strrchr(shell, '/');
+	if (ptr != NULL && *(ptr + 1) != '\0')
+		shellname = ptr + 1;
+	else
+		shellname = shell;
+	if (login_shell)
+		xasprintf(&argv0, "-%s", shellname);
+	else
+		xasprintf(&argv0, "%s", shellname);
+	setenv("SHELL", shell, 1);
+
+	execl(shell, argv0, "-c", shellcmd, (char *) NULL);
+	fatal("execl failed");
+}
+
 int
 main(int argc, char **argv)
 {
 	struct cmd_list		*cmdlist;
  	struct cmd		*cmd;
-	struct pollfd		 pfd;
 	enum msgtype		 msg;
 	struct passwd		*pw;
 	struct options		*so, *wo;
 	struct keylist		*keylist;
-	struct imsgbuf		*ibuf;
 	struct msg_command_data	 cmddata;
 	char			*s, *shellcmd, *path, *label, *home, *cause;
 	char			 cwd[MAXPATHLEN], **var;
 	void			*buf;
 	size_t			 len;
-	int	 		 nfds, retcode, opt, flags, cmdflags = 0;
+	int	 		 opt, flags, cmdflags = 0;
+	short		 	 events;
 
 #ifdef DEBUG
 	malloc_options = (char *) "AFGJPX";
@@ -359,7 +292,6 @@ main(int argc, char **argv)
 		usage();
 
 	log_open_tty(debug_level);
-	siginit();
 
 	if (!(flags & IDENTIFY_UTF8)) {
 		/*
@@ -549,63 +481,121 @@ main(int argc, char **argv)
 		cmd_list_free(cmdlist);
 	}
 
-	if ((ibuf = client_init(path, cmdflags, flags)) == NULL)
+	if ((main_ibuf = client_init(path, cmdflags, flags)) == NULL)
 		exit(1);
 	xfree(path);
 
- 	imsg_compose(ibuf, msg, PROTOCOL_VERSION, -1, -1, buf, len);
+	event_init();
 
-	retcode = 0;
-	for (;;) {
-		pfd.fd = ibuf->fd;
-		pfd.events = POLLIN;
-		if (ibuf->w.queued != 0)
-			pfd.events |= POLLOUT;
+ 	imsg_compose(main_ibuf, msg, PROTOCOL_VERSION, -1, -1, buf, len);
 
-		if ((nfds = poll(&pfd, 1, INFTIM)) == -1) {
-			if (errno == EAGAIN || errno == EINTR)
-				continue;
-			fatal("poll failed");
-		}
-		if (nfds == 0)
-			continue;
+	main_set_signals();
 
-		if (pfd.revents & (POLLERR|POLLHUP|POLLNVAL))
-			fatalx("socket error");
+	events = EV_READ;
+	if (main_ibuf->w.queued > 0)
+		events |= EV_WRITE;
+	event_once(main_ibuf->fd, events, main_callback, shellcmd, NULL);
 
-		if (pfd.revents & POLLIN) {
-			if (dispatch_imsg(ibuf, shellcmd, &retcode) != 0)
-				break;
-		}
+	main_exitval = 0;
+	event_dispatch();
 
-		if (pfd.revents & POLLOUT) {
-			if (msgbuf_write(&ibuf->w) < 0)
-				fatalx("msgbuf_write failed");
-		}
-	}
+	main_clear_signals();
 
-	options_free(&global_s_options);
-	options_free(&global_w_options);
-
-	return (retcode);
+	client_main();	/* doesn't return */
 }
 
-int
-dispatch_imsg(struct imsgbuf *ibuf, const char *shellcmd, int *retcode)
+
+void
+main_set_signals(void)
+{
+	struct sigaction	sigact;
+
+	memset(&sigact, 0, sizeof sigact);
+	sigemptyset(&sigact.sa_mask);
+	sigact.sa_flags = SA_RESTART;
+	sigact.sa_handler = SIG_IGN;
+	if (sigaction(SIGINT, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGPIPE, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR1, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR2, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	
+	signal_set(&main_ev_sigterm, SIGTERM, main_signal, NULL);
+	signal_add(&main_ev_sigterm, NULL);
+}
+
+void
+main_clear_signals(void)
+{
+	struct sigaction	sigact;
+
+	memset(&sigact, 0, sizeof sigact);
+	sigemptyset(&sigact.sa_mask);
+	sigact.sa_flags = SA_RESTART;
+	sigact.sa_handler = SIG_DFL;
+	if (sigaction(SIGINT, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGPIPE, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR1, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR2, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	
+	event_del(&main_ev_sigterm);
+}
+
+void
+main_signal(int sig, unused short events, unused void *data)
+{
+	switch (sig) {
+	case SIGTERM:
+		exit(1);
+	}
+}
+
+void
+main_callback(unused int fd, short events, void *data)
+{
+	char	*shellcmd = data;
+
+	if (events & EV_READ)
+		main_dispatch(shellcmd);
+	
+	if (events & EV_WRITE) {
+		if (msgbuf_write(&main_ibuf->w) < 0)
+			fatalx("msgbuf_write failed");
+	}
+
+	events = EV_READ;
+	if (main_ibuf->w.queued > 0)
+		events |= EV_WRITE;
+	event_once(main_ibuf->fd, events, main_callback, shellcmd, NULL);
+}
+
+void
+main_dispatch(const char *shellcmd)
 {
 	struct imsg		imsg;
 	ssize_t			n, datalen;
 	struct msg_print_data	printdata;
 	struct msg_shell_data	shelldata;
 
-	if ((n = imsg_read(ibuf)) == -1 || n == 0)
+	if ((n = imsg_read(main_ibuf)) == -1 || n == 0)
 		fatalx("imsg_read failed");
 
 	for (;;) {
-		if ((n = imsg_get(ibuf, &imsg)) == -1)
+		if ((n = imsg_get(main_ibuf, &imsg)) == -1)
 			fatalx("imsg_get failed");
 		if (n == 0)
-			return (0);
+			return;
 		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
 
 		switch (imsg.hdr.type) {
@@ -614,10 +604,8 @@ dispatch_imsg(struct imsgbuf *ibuf, const char *shellcmd, int *retcode)
 			if (datalen != 0)
 				fatalx("bad MSG_EXIT size");
 
-			return (-1);
+			exit(main_exitval);
 		case MSG_ERROR:
-			*retcode = 1;
-			/* FALLTHROUGH */
 		case MSG_PRINT:
 			if (datalen != sizeof printdata)
 				fatalx("bad MSG_PRINT size");
@@ -625,26 +613,30 @@ dispatch_imsg(struct imsgbuf *ibuf, const char *shellcmd, int *retcode)
 			printdata.msg[(sizeof printdata.msg) - 1] = '\0';
 
 			log_info("%s", printdata.msg);
+			if (imsg.hdr.type == MSG_ERROR)
+				main_exitval = 1;
 			break;
 		case MSG_READY:
 			if (datalen != 0)
 				fatalx("bad MSG_READY size");
 
-			client_main();	/* doesn't return */
+			event_loopexit(NULL);	/* move to client_main() */
+			break;
 		case MSG_VERSION:
 			if (datalen != 0)
 				fatalx("bad MSG_VERSION size");
 
 			log_warnx("protocol version mismatch (client %u, "
 			    "server %u)", PROTOCOL_VERSION, imsg.hdr.peerid);
-			*retcode = 1;
-			return (-1);
+			exit(1);
 		case MSG_SHELL:
 			if (datalen != sizeof shelldata)
 				fatalx("bad MSG_SHELL size");
 			memcpy(&shelldata, imsg.data, sizeof shelldata);
 			shelldata.shell[(sizeof shelldata.shell) - 1] = '\0';
-			
+
+			main_clear_signals();
+
 			shell_exec(shelldata.shell, shellcmd);
 		default:
 			fatalx("unexpected message");
@@ -652,27 +644,4 @@ dispatch_imsg(struct imsgbuf *ibuf, const char *shellcmd, int *retcode)
 
 		imsg_free(&imsg);
 	}
-}
-
-__dead void
-shell_exec(const char *shell, const char *shellcmd)
-{
-	const char	*shellname, *ptr;
-	char		*argv0;
-
-	sigreset();
-				
-	ptr = strrchr(shell, '/');
-	if (ptr != NULL && *(ptr + 1) != '\0')
-		shellname = ptr + 1;
-	else
-		shellname = shell;
-	if (login_shell)
-		xasprintf(&argv0, "-%s", shellname);
-	else
-		xasprintf(&argv0, "%s", shellname);
-	setenv("SHELL", shell, 1);
-
-	execl(shell, argv0, "-c", shellcmd, (char *) NULL);
-	fatal("execl failed");
 }

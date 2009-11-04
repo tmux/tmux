@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <event.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -31,13 +32,16 @@ server_job_prepare(void)
 	SLIST_FOREACH(job, &all_jobs, lentry) {
 		if (job->fd == -1)
 			continue;
-		server_poll_add(job->fd, POLLIN, server_job_callback, job);
+		event_del(&job->event);
+		event_set(
+		    &job->event, job->fd, EV_READ, server_job_callback, job);
+		event_add(&job->event, NULL);
 	}
 }
 
 /* Process a single job event. */
 void
-server_job_callback(int fd, int events, void *data)
+server_job_callback(int fd, short events, void *data)
 {
 	struct job	*job = data;
 
@@ -55,7 +59,7 @@ void
 server_job_loop(void)
 {
 	struct job	*job;
-	
+
 restart:
 	SLIST_FOREACH(job, &all_jobs, lentry) {
 		if (job->flags & JOB_DONE || job->fd != -1 || job->pid != -1)
