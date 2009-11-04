@@ -87,7 +87,8 @@ server_window_backoff(struct window_pane *wp)
 			continue;
 		if (c->session->curw->window != wp->window)
 			continue;
-		if (BUFFER_USED(c->tty.out) > BACKOFF_THRESHOLD)
+
+		if (EVBUFFER_LENGTH(c->tty.event->output) > BACKOFF_THRESHOLD)
 			return (1);
 	}
 	return (0);

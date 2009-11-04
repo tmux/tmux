@@ -1000,9 +1000,7 @@ struct tty {
 	struct tty_term	*term;
 
 	int		 fd;
-	struct event	 event;
-	struct buffer	*in;
-	struct buffer	*out;
+	struct bufferevent *event;
 
 	int		 log_fd;
 
