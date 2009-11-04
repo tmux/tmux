@@ -1121,7 +1121,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell, gc2;
 	u_char			 changed;
-	u_int			 fg = gc->fg, bg = gc->bg, attr = gc->attr;
+	u_int			 new_attr;
 
 	/* If the character is space, don't care about foreground. */
 	if (gc->data == ' ' && !(gc->flags & GRID_FLAG_UTF8)) {
@@ -1137,34 +1137,40 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 		gc = &gc2;
 	}
 
-	/* If any bits are being cleared, reset everything. */
-	if (tc->attr & ~attr)
-		tty_reset(tty);
-
-	/*
-	 * Set the colours. This may call tty_reset() (so it comes next) and
-	 * may add to the desired attributes in attr.
-	 */
-	tty_colours(tty, gc, &attr);
-
 	/*
 	 * If no setab, try to use the reverse attribute as a best-effort for a
 	 * non-default background. This is a bit of a hack but it doesn't do
 	 * any serious harm and makes a couple of applications happier.
 	 */
 	if (!tty_term_has(tty->term, TTYC_SETAB)) {
-		if (attr & GRID_ATTR_REVERSE) {
-			if (fg != 7 && fg != 8)
-				attr &= ~GRID_ATTR_REVERSE;
+		if (gc != &gc2) {
+			memcpy(&gc2, gc, sizeof gc2);
+			gc = &gc2;
+		}
+
+		if (gc->attr & GRID_ATTR_REVERSE) {
+			if (gc->fg != 7 && gc->fg != 8)
+				gc2.attr &= ~GRID_ATTR_REVERSE;
 		} else {
-			if (bg != 0 && bg != 8)
-				attr |= GRID_ATTR_REVERSE;
+			if (gc->bg != 0 && gc->bg != 8)
+				gc2.attr |= GRID_ATTR_REVERSE;
 		}
 	}
 
+	/* If any bits are being cleared, reset everything. */
+	if (tc->attr & ~gc->attr)
+		tty_reset(tty);
+
+	/*
+	 * Set the colours. This may call tty_reset() (so it comes next) and
+	 * may add to (NOT remove) the desired attributes by changing new_attr.
+	 */
+	new_attr = gc->attr;
+	tty_colours(tty, gc, &new_attr);
+
 	/* Filter out attribute bits already set. */
-	changed = attr & ~tc->attr;
-	tc->attr = attr;
+	changed = new_attr & ~tc->attr;
+	tc->attr = new_attr;
 
 	/* Set the attributes. */
 	if (changed & GRID_ATTR_BRIGHT)
