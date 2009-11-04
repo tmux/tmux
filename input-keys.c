@@ -173,9 +173,8 @@ input_key(struct window_pane *wp, int key)
 	 */
 	if (key != KEYC_NONE && (key & ~KEYC_ESCAPE) < 0x100) {
 		if (key & KEYC_ESCAPE)
-			ch = '\033';
-		else
-			ch = key & ~KEYC_ESCAPE;
+			bufferevent_write(wp->event, "\033", 1);
+		ch = key & ~KEYC_ESCAPE;
 		bufferevent_write(wp->event, &ch, 1);
 		return;
 	}
