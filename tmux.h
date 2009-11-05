@@ -939,10 +939,6 @@ struct tty_key {
 	int	 	 key;
 	char		*string;
 
-	int		 flags;
-#define TTYKEY_CTRL 0x1
-#define TTYKEY_RAW 0x2
-
 	RB_ENTRY(tty_key) entry;
 };
 

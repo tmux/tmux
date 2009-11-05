@@ -29,7 +29,7 @@
  * Handle keys input from the outside terminal.
  */
 
-void	tty_keys_add(struct tty *, const char *, int, int);
+void	tty_keys_add(struct tty *, const char *, int);
 void	tty_keys_callback(int, short, void *);
 int	tty_keys_mouse(char *, size_t, size_t *, struct mouse_event *);
 
@@ -39,6 +39,8 @@ struct tty_key_ent {
 
 	int	 	 	key;
 	int		 	flags;
+#define TTYKEY_CTRL 0x1
+#define TTYKEY_RAW 0x2
 };
 
 struct tty_key_ent tty_keys[] = {
@@ -195,14 +197,13 @@ tty_keys_cmp(struct tty_key *k1, struct tty_key *k2)
 }
 
 void
-tty_keys_add(struct tty *tty, const char *s, int key, int flags)
+tty_keys_add(struct tty *tty, const char *s, int key)
 {
 	struct tty_key	*tk, *tl;
 
 	tk = xmalloc(sizeof *tk);
 	tk->string = xstrdup(s);
 	tk->key = key;
-	tk->flags = flags;
 
 	if ((tl = RB_INSERT(tty_keys, &tty->ktree, tk)) != NULL) {
 		xfree(tk->string);
@@ -240,12 +241,12 @@ tty_keys_init(struct tty *tty)
 				continue;
 		}
 
-		tty_keys_add(tty, s + 1, tke->key, tke->flags);
+		tty_keys_add(tty, s + 1, tke->key);
 		if (tke->flags & TTYKEY_CTRL) {
 			if (strlcpy(tmp, s, sizeof tmp) >= sizeof tmp)
 				continue;
 			tmp[strlen(tmp) - 1] ^= 0x20;
-			tty_keys_add(tty, tmp + 1, tke->key | KEYC_CTRL, 0);
+			tty_keys_add(tty, tmp + 1, tke->key | KEYC_CTRL);
 		}
 	}
 }
