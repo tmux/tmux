@@ -50,13 +50,13 @@ struct xterm_keys_entry {
 
 struct xterm_keys_entry xterm_keys_table[] = {
 	{ KEYC_F1,	"\033[1;_P" },
-	{ KEYC_F1,	"\033[O_P" },
+	{ KEYC_F1,	"\033O_P" },
 	{ KEYC_F2,	"\033[1;_Q" },
-	{ KEYC_F2,	"\033[O_Q" },
+	{ KEYC_F2,	"\033O_Q" },
 	{ KEYC_F3,	"\033[1;_R" },
-	{ KEYC_F3,	"\033[O_R" },
+	{ KEYC_F3,	"\033O_R" },
 	{ KEYC_F4,	"\033[1;_S" },
-	{ KEYC_F4,	"\033[O_S" },
+	{ KEYC_F4,	"\033O_S" },
 	{ KEYC_F5,	"\033[15;_~" },
 	{ KEYC_F6,	"\033[17;_~" },
 	{ KEYC_F7,	"\033[18;_~" },
