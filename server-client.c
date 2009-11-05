@@ -27,10 +27,11 @@
 
 #include "tmux.h"
 
-void	server_client_handle_data(struct client *);
+void	server_client_handle_key(int, struct mouse_event *, void *);
 void	server_client_repeat_timer(int, short, void *);
 void	server_client_check_redraw(struct client *);
 void	server_client_set_title(struct client *);
+void	server_client_reset_state(struct client *);
 
 int	server_client_msg_dispatch(struct client *);
 void	server_client_msg_command(struct client *, struct msg_command_data *);
@@ -226,6 +227,127 @@ server_client_status_timer(void)
 	}
 }
 
+/* Handle data key input from client. */
+void
+server_client_handle_key(int key, struct mouse_event *mouse, void *data)
+{
+	struct client		*c = data;
+	struct session		*s;
+	struct window		*w;
+	struct window_pane	*wp;
+	struct options		*oo;
+	struct timeval		 tv;
+	struct key_binding	*bd;
+	struct keylist		*keylist;
+	int		      	 xtimeout, isprefix;
+	u_int			 i;
+
+	/* Check the client is good to accept input. */
+	if ((c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)
+		return;
+	if (c->session == NULL)
+		return;
+	s = c->session;
+
+	/* Update the activity timer. */
+	if (gettimeofday(&c->activity_time, NULL) != 0)
+		fatal("gettimeofday failed");
+	memcpy(&s->activity_time, &c->activity_time, sizeof s->activity_time);
+
+	w = c->session->curw->window;
+	wp = w->active;
+	oo = &c->session->options;
+
+	/* Special case: number keys jump to pane in identify mode. */
+	if (c->flags & CLIENT_IDENTIFY && key >= '0' && key <= '9') {	
+		wp = window_pane_at_index(w, key - '0');
+		if (wp != NULL && window_pane_visible(wp))
+			window_set_active_pane(w, wp);
+		server_clear_identify(c);
+		return;
+	}
+
+	/* Handle status line. */
+	status_message_clear(c);
+	server_clear_identify(c);
+	if (c->prompt_string != NULL) {
+		status_prompt_key(c, key);
+		return;
+	}
+
+	/* Check for mouse keys. */
+	if (key == KEYC_MOUSE) {
+		if (options_get_number(oo, "mouse-select-pane")) {
+			window_set_active_at(w, mouse->x, mouse->y);
+			wp = w->active;
+		}
+		window_pane_mouse(wp, c, mouse);
+		return;
+	}
+
+	/* Is this a prefix key? */
+	keylist = options_get_data(&c->session->options, "prefix");
+	isprefix = 0;
+	for (i = 0; i < ARRAY_LENGTH(keylist); i++) {
+		if (key == ARRAY_ITEM(keylist, i)) {
+			isprefix = 1;
+			break;
+		}
+	}
+
+	/* No previous prefix key. */
+	if (!(c->flags & CLIENT_PREFIX)) {
+		if (isprefix)
+			c->flags |= CLIENT_PREFIX;
+		else {
+			/* Try as a non-prefix key binding. */
+			if ((bd = key_bindings_lookup(key)) == NULL)
+				window_pane_key(wp, c, key);
+			else
+				key_bindings_dispatch(bd, c);
+		}
+		return;
+	}
+
+	/* Prefix key already pressed. Reset prefix and lookup key. */
+	c->flags &= ~CLIENT_PREFIX;
+	if ((bd = key_bindings_lookup(key | KEYC_PREFIX)) == NULL) {
+		/* If repeating, treat this as a key, else ignore. */
+		if (c->flags & CLIENT_REPEAT) {
+			c->flags &= ~CLIENT_REPEAT;
+			if (isprefix)
+				c->flags |= CLIENT_PREFIX;
+			else
+				window_pane_key(wp, c, key);
+		}
+		return;
+	}
+
+	/* If already repeating, but this key can't repeat, skip it. */
+	if (c->flags & CLIENT_REPEAT && !bd->can_repeat) {
+		c->flags &= ~CLIENT_REPEAT;
+		if (isprefix)
+			c->flags |= CLIENT_PREFIX;
+		else
+			window_pane_key(wp, c, key);
+		return;
+	}
+
+	/* If this key can repeat, reset the repeat flags and timer. */
+	xtimeout = options_get_number(&c->session->options, "repeat-time");
+	if (xtimeout != 0 && bd->can_repeat) {
+		c->flags |= CLIENT_PREFIX|CLIENT_REPEAT;
+		
+		tv.tv_sec = xtimeout / 1000;
+		tv.tv_usec = (xtimeout % 1000) * 1000L;
+		evtimer_del(&c->repeat_timer);
+		evtimer_add(&c->repeat_timer, &tv);
+	}
+
+	/* Dispatch the command. */
+	key_bindings_dispatch(bd, c);
+}
+
 /* Client functions that need to happen every loop. */
 void
 server_client_loop(void)
@@ -240,9 +362,8 @@ server_client_loop(void)
 		if (c == NULL || c->session == NULL)
 			continue;
 
-		server_client_handle_data(c);
-		if (c->session != NULL)
-			server_client_check_redraw(c);
+		server_client_check_redraw(c);
+		server_client_reset_state(c);
 	}
 
 	/*
@@ -260,143 +381,24 @@ server_client_loop(void)
 	}
 }
 
-/* Handle data input or output from client. */
+/*
+ * Update cursor position and mode settings. The scroll region and attributes
+ * are cleared when idle (waiting for an event) as this is the most likely time
+ * a user may interrupt tmux, for example with ~^Z in ssh(1). This is a
+ * compromise between excessive resets and likelihood of an interrupt.
+ *
+ * tty_region/tty_reset/tty_update_mode already take care of not resetting
+ * things that are already in their default state.
+ */
 void
-server_client_handle_data(struct client *c)
+server_client_reset_state(struct client *c)
 {
-	struct window		*w;
-	struct window_pane	*wp;
-	struct screen		*s;
-	struct options		*oo;
-	struct timeval		 tv, tv_now;
-	struct key_binding	*bd;
-	struct keylist		*keylist;
-	struct mouse_event	 mouse;
-	int		 	 key, status, xtimeout, mode, isprefix;
-	u_int			 i;
+	struct window		*w = c->session->curw->window;
+	struct window_pane	*wp = w->active;
+	struct screen		*s = wp->screen;
+	struct options		*oo = &c->session->options;
+	int			 status, mode;
 
-	/* Get the time for the activity timer. */
-	if (gettimeofday(&tv_now, NULL) != 0)
-		fatal("gettimeofday failed");
-	xtimeout = options_get_number(&c->session->options, "repeat-time");
-
-	/* Process keys. */
-	keylist = options_get_data(&c->session->options, "prefix");
-	while (tty_keys_next(&c->tty, &key, &mouse) == 0) {
-		if (c->session == NULL)
-			return;
-		w = c->session->curw->window;
-		wp = w->active;	/* could die */
-		oo = &c->session->options;
-
-		/* Update activity timer. */
-		memcpy(&c->activity_time, &tv_now, sizeof c->activity_time);
-		memcpy(&c->session->activity_time,
-		    &tv_now, sizeof c->session->activity_time);
-
-		/* Special case: number keys jump to pane in identify mode. */
-		if (c->flags & CLIENT_IDENTIFY && key >= '0' && key <= '9') {	
-			wp = window_pane_at_index(w, key - '0');
-			if (wp != NULL && window_pane_visible(wp))
-				window_set_active_pane(w, wp);
-			server_clear_identify(c);
-			continue;
-		}
-		
-		status_message_clear(c);
-		server_clear_identify(c);
-		if (c->prompt_string != NULL) {
-			status_prompt_key(c, key);
-			continue;
-		}
-
-		/* Check for mouse keys. */
-		if (key == KEYC_MOUSE) {
-			if (options_get_number(oo, "mouse-select-pane")) {
-				window_set_active_at(w, mouse.x, mouse.y);
-				wp = w->active;
-			}
-			window_pane_mouse(wp, c, &mouse);
-			continue;
-		}
-
-		/* Is this a prefix key? */
-		isprefix = 0;
-		for (i = 0; i < ARRAY_LENGTH(keylist); i++) {
-			if (key == ARRAY_ITEM(keylist, i)) {
-				isprefix = 1;
-				break;
-			}
-		}
-
-		/* No previous prefix key. */
-		if (!(c->flags & CLIENT_PREFIX)) {
-			if (isprefix)
-				c->flags |= CLIENT_PREFIX;
-			else {
-				/* Try as a non-prefix key binding. */
-				if ((bd = key_bindings_lookup(key)) == NULL)
-					window_pane_key(wp, c, key);
-				else
-					key_bindings_dispatch(bd, c);
-			}
-			continue;
-		}
-
-		/* Prefix key already pressed. Reset prefix and lookup key. */
-		c->flags &= ~CLIENT_PREFIX;
-		if ((bd = key_bindings_lookup(key | KEYC_PREFIX)) == NULL) {
-			/* If repeating, treat this as a key, else ignore. */
-			if (c->flags & CLIENT_REPEAT) {
-				c->flags &= ~CLIENT_REPEAT;
-				if (isprefix)
-					c->flags |= CLIENT_PREFIX;
-				else
-					window_pane_key(wp, c, key);
-			}
-			continue;
-		}
-
-		/* If already repeating, but this key can't repeat, skip it. */
-		if (c->flags & CLIENT_REPEAT && !bd->can_repeat) {
-			c->flags &= ~CLIENT_REPEAT;
-			if (isprefix)
-				c->flags |= CLIENT_PREFIX;
-			else
-				window_pane_key(wp, c, key);
-			continue;
-		}
-
-		/* If this key can repeat, reset the repeat flags and timer. */
-		if (xtimeout != 0 && bd->can_repeat) {
-			c->flags |= CLIENT_PREFIX|CLIENT_REPEAT;
-
-			tv.tv_sec = xtimeout / 1000;
-			tv.tv_usec = (xtimeout % 1000) * 1000L;
-			evtimer_del(&c->repeat_timer);
-			evtimer_add(&c->repeat_timer, &tv);
-		}
-
-		/* Dispatch the command. */
-		key_bindings_dispatch(bd, c);
-	}
-	if (c->session == NULL)
-		return;
-	w = c->session->curw->window;
-	wp = w->active;
-	oo = &c->session->options;
-	s = wp->screen;
-
-	/*
-	 * Update cursor position and mode settings. The scroll region and
-	 * attributes are cleared across poll(2) as this is the most likely
-	 * time a user may interrupt tmux, for example with ~^Z in ssh(1). This
-	 * is a compromise between excessive resets and likelihood of an
-	 * interrupt.
-	 *
-	 * tty_region/tty_reset/tty_update_mode already take care of not
-	 * resetting things that are already in their default state.
-	 */
 	tty_region(&c->tty, 0, c->tty.sy - 1);
 
 	status = options_get_number(oo, "status");
@@ -715,6 +717,8 @@ server_client_msg_identify(
 		c->tty.term_flags |= TERM_256COLOURS;
 	else if (data->flags & IDENTIFY_88COLOURS)
 		c->tty.term_flags |= TERM_88COLOURS;
+	c->tty.key_callback = server_client_handle_key;
+	c->tty.key_data = c;
 
 	tty_resize(&c->tty);
 

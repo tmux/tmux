@@ -1002,7 +1002,9 @@ struct tty {
 
 	int		 term_flags;
 
-	struct timeval	 key_timer;
+	void		 (*key_callback)(int, struct mouse_event *, void *);
+	void		*key_data;
+	struct event	 key_timer;
 
 	size_t		 ksize;	/* maximum key size */
 	RB_HEAD(tty_keys, tty_key) ktree;
@@ -1360,7 +1362,7 @@ int	tty_keys_cmp(struct tty_key *, struct tty_key *);
 RB_PROTOTYPE(tty_keys, tty_key, entry, tty_keys_cmp);
 void	tty_keys_init(struct tty *);
 void	tty_keys_free(struct tty *);
-int	tty_keys_next(struct tty *, int *, struct mouse_event *);
+int	tty_keys_next(struct tty *);
 
 /* options-cmd.c */
 const char *set_option_print(

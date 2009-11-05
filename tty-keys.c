@@ -30,6 +30,7 @@
  */
 
 void	tty_keys_add(struct tty *, const char *, int, int);
+void	tty_keys_callback(int, short, void *);
 int	tty_keys_mouse(char *, size_t, size_t *, struct mouse_event *);
 
 struct tty_key_ent {
@@ -294,25 +295,27 @@ tty_keys_find(struct tty *tty, char *buf, size_t len, size_t *size)
 }
 
 int
-tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
+tty_keys_next(struct tty *tty)
 {
-	struct tty_key	*tk;
-	struct timeval	 tv;
-	char		*buf;
-	u_char		 ch;
-	size_t		 len, size;
-	cc_t		 bspace;
+	struct tty_key		*tk;
+	struct timeval		 tv;
+	struct mouse_event	 mouse;
+	char			*buf;
+	size_t			 len, size;
+	cc_t			 bspace;
+	int			 key;
+	u_char			 ch;
 
 	buf = EVBUFFER_DATA(tty->event->input);
 	len = EVBUFFER_LENGTH(tty->event->input);
 	if (len == 0)
-		return (1);
+		return (0);
 	log_debug("keys are %zu (%.*s)", len, (int) len, buf);
 
 	/* If a normal key, return it. */
 	if (*buf != '\033') {
 		bufferevent_read(tty->event, &ch, 1);
-		*key = ch;
+		key = ch;
 
 		/*
 		 * Check for backspace key using termios VERASE - the terminfo
@@ -320,8 +323,8 @@ tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 		 * used. termios should have a better idea.
 		 */
 		bspace = tty->tio.c_cc[VERASE];
-		if (bspace != _POSIX_VDISABLE && *key == bspace)
-			*key = KEYC_BSPACE;
+		if (bspace != _POSIX_VDISABLE && key == bspace)
+			key = KEYC_BSPACE;
 		goto found;
 	}
 
@@ -329,34 +332,22 @@ tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 	tk = tty_keys_find(tty, buf + 1, len - 1, &size);
 	if (tk != NULL) {
 		evbuffer_drain(tty->event->input, size + 1);
-		*key = tk->key;
+		key = tk->key;
 		goto found;
 	}
 
 	/* Not found. Is this a mouse key press? */
-	*key = tty_keys_mouse(buf, len, &size, mouse);
-	if (*key != KEYC_NONE) {
+	key = tty_keys_mouse(buf, len, &size, &mouse);
+	if (key != KEYC_NONE) {
 		evbuffer_drain(tty->event->input, size);
 		goto found;
 	}
 
 	/* Not found. Try to parse a key with an xterm-style modifier. */
-	*key = xterm_keys_find(buf, len, &size);
-	if (*key != KEYC_NONE) {
+	key = xterm_keys_find(buf, len, &size);
+	if (key != KEYC_NONE) {
 		evbuffer_drain(tty->event->input, size);
 		goto found;
-	}
-
-	/* Escape but no key string. If the timer isn't started, start it. */
-	if (!(tty->flags & TTY_ESCAPE)) {
-		tv.tv_sec = 0;
-		tv.tv_usec = ESCAPE_PERIOD * 1000L;
-		if (gettimeofday(&tty->key_timer, NULL) != 0)
-			fatal("gettimeofday failed");
-		timeradd(&tty->key_timer, &tv, &tty->key_timer);
-
-		tty->flags |= TTY_ESCAPE;
-		return (1);
 	}
 
 	/* Skip the escape. */
@@ -367,7 +358,7 @@ tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 	if (len != 0 && *buf != '\033') {
 		evbuffer_drain(tty->event->input, 1);
 		bufferevent_read(tty->event, &ch, 1);
-		*key = ch | KEYC_ESCAPE;
+		key = ch | KEYC_ESCAPE;
 		goto found;
 	}
 
@@ -376,24 +367,46 @@ tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 		tk = tty_keys_find(tty, buf + 1, len - 1, &size);
 		if (tk != NULL) {
 			evbuffer_drain(tty->event->input, size + 2);
-			*key = tk->key | KEYC_ESCAPE;
+			key = tk->key | KEYC_ESCAPE;
 			goto found;
 		}
 	}
 
-	/* If the timer hasn't expired, keep waiting. */
-	if (gettimeofday(&tv, NULL) != 0)
-		fatal("gettimeofday failed");
-	if (timercmp(&tty->key_timer, &tv, >))
-		return (1);
+	/*
+	 * Escape but no key string. If have, already seen an escape, then the
+	 * timer must have expired, so give up waiting and send the escape.
+	 */
+	if (tty->flags & TTY_ESCAPE) {
+		evbuffer_drain(tty->event->input, 1);
+		key = '\033';
+		goto found;
+	}
 
-	/* Give up and return the escape. */
-	evbuffer_drain(tty->event->input, 1);
-	*key = '\033';
+	/* Start the timer and wait for expiry or more data. */
+	tv.tv_sec = 0;
+	tv.tv_usec = ESCAPE_PERIOD * 1000L;
+	
+	evtimer_del(&tty->key_timer);
+	evtimer_set(&tty->key_timer, tty_keys_callback, tty);
+	evtimer_add(&tty->key_timer, &tv);
+	
+	tty->flags |= TTY_ESCAPE;
+	return (0);
 
 found:
+	evtimer_del(&tty->key_timer);
+	tty->key_callback(key, &mouse, tty->key_data);
 	tty->flags &= ~TTY_ESCAPE;
-	return (0);
+	return (1);
+}
+
+void
+tty_keys_callback(unused int fd, unused short events, void *data)
+{
+	struct tty	*tty = data;
+
+	if (tty->flags & TTY_ESCAPE)
+		tty_keys_next(tty);
 }
 
 int
