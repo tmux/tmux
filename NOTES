@@ -4,15 +4,17 @@ tmux is a "terminal multiplexer", it enables a number of terminals (or windows)
 to be accessed and controlled from a single terminal. tmux is intended to be a
 simple, modern, BSD-licensed alternative to programs such as GNU screen.
 
-This 0.9 release runs on OpenBSD, FreeBSD, NetBSD, Linux and OS X and may still
-run on Solaris and AIX (although they hasn't been tested in a while). It is
+This release runs on OpenBSD, FreeBSD, NetBSD, Linux and OS X and may still
+run on Solaris and AIX (although they haven't been tested in a while). It is
 usable, although there remain a number of missing features and some remaining
 bugs are expected.
 
-If upgrading from 0.5, PLEASE NOTE the following configuration file changes: it
-is now required to pass the -g flag to set-option or set-window-option to set
-global options; remain-by-default and utf8-default are now gone, use global
-window options (set-window-option -g) instead.
+If upgrading from 1.0, PLEASE NOTE:
+- The internal locking mechanism has gone, so the set-password command and -U
+  command line option have been removed.
+- The -d command line flag was dropped. It will now automatically detect the
+  default colours by using op/AX. Nevertheless, if needed, the
+  terminal-overrides session option can replace it.
 
 tmux consists of a server part and multiple clients. The server is created when
 required and runs continuously unless killed by the user. Clients access the
@@ -37,17 +39,14 @@ The following is a summary of major features implemented in this version:
 - Support for VT100 line drawing characters.
 - A large command set.
 - Vertical window splitting and layout.
-- Automatic server locking on inactivity.
+- Automatic server locking on inactivity by running an external command.
 - A configuration file.
 - UTF-8 support.
 
 A more extensive, but rough, todo list is included in the TODO file.
 
 tmux also depends on several features of the client terminal (TERM), if these
-are missing it may refuse to run, or not behave correctly. Known working are
-TERM=screen (tmux in screen), xterm, xterm-color and rxvt. Note that TERM=xterm
-does not support colour on OpenBSD. screen ignores this, tmux does not: use
-xterm-color or rxvt for colour.
+are missing it may refuse to run, or not behave correctly.
 
 tmux supports UTF-8. To use it, the utf8 option must be set on each window;
 this may be turned on for all windows by setting it as a global option, see
@@ -89,4 +88,4 @@ start. Please contact me with any queries.
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.50 2009-10-25 21:45:26 nicm Exp $
+$Id: NOTES,v 1.51 2009-11-05 12:35:47 tcunha Exp $

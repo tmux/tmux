@@ -1,3 +1,55 @@
+CHANGES FROM 1.0 TO 1.1, 05 November 2009
+
+* New run-shell (alias run) command to run an external command without a
+  window, capture it's stdout, and send it to output mode.
+* Ability to define multiple prefix keys.
+* Internal locking mechanism removed. Instead, detach each client and run the
+  external command specified in the new session option lock-command (by default
+  lock -np), thus allowing the system password to be used.
+* set-password command, and -U command line flag removed per the above change.
+* Add support for -c command line flag to execute a shell command.
+* New lock-client (alias lockc), and lock-session (alias locks) commands to
+  lock a particular client, or all clients attached to a session.
+* Support C-n/C-p/C-v/M-v with emacs keys in choice mode.
+* Use : for goto line rather than g in vi mode. 
+* Try to guess which client to use when no target client was specified. Finds
+  the current session, and if only one client is present, use it. Otherwise,
+  return the most recently used client.
+* Make C-Down/C-Up in copy mode scroll the screen down/up one line without
+  moving the cursor.
+* Scroll mode superseded by copy mode.
+* New synchronize-panes window option to send all input to all other panes in
+  the same window.
+* New lock-server session option to lock, when off (on by default), each
+  session when it has been idle for the lock-after-time setting. When on, the
+  entire server locks when all sessions have been idle for their individual
+  lock-after-time setting.
+* Add support for grouped sessions which have independent name, options,
+  current window, but where the linked windows are synchronized (ie creating,
+  killing windows are mirrored between the sessions). A grouped session may be
+  created by passing -t to new-session.
+* New mouse-select-pane session option to select the current pane with the
+  mouse.
+* Queue, and run commands in the background for if-shell, status-left,
+  status-right, and #() by starting each once every status-interval. Adds the
+  capability to call some programs which would previously cause the server to
+  hang (eg sleep/tmux). It also avoids running commands excessively (ie if used
+  multiple times, it will be run only once).
+* When a window is zombified and automatic-rename is on, append [dead] to the
+  name.
+* Split list-panes (alias lsp) off from list-windows.
+* New pipe-pane (alias pipep) to redirect a pane output to an external command.
+* Support for automatic-renames for Solaris.
+* Permit attributes to be turned off in #[] by prefixing with no (eg nobright).
+* Add H/M/L in vi mode, and M-R/M-r in emacs to move the cursor to the top,
+  middle, and bottom of the screen.
+* -a option added to kill-pane to kill all except current pane.
+* The -d command line flag is now gone (can be replaced by terminal-overrides).
+  Just use op/AX to detect default colours.
+* input/tty/utf8 improvements.
+* xterm-keys rewrite.
+* Additional code reduction, and bug fixes.
+
 CHANGES FROM 0.9 TO 1.0, 20 Sept 2009
 
 * Option to alter the format of the window title set by tmux.
@@ -1358,7 +1410,7 @@ The list of older changes is below.
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.300 2009-09-20 18:54:21 nicm Exp $
+$Id: CHANGES,v 1.301 2009-11-05 12:35:47 tcunha Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
