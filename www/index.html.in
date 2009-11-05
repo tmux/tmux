@@ -11,7 +11,7 @@
             <div id="left-menu-container">
                 <p id="upper-left-title">tmux</p>
                 <ul id="left-menu">
-                <li><a href="http://downloads.sourceforge.net/tmux/tmux-1.0.tar.gz">Download</a></li>
+                <li><a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">Download</a></li>
                 <li><a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/NOTES">Release Notes</a>
                 <li><a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/CHANGES">Changelog</a></li>
                 <li><a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/FAQ">FAQ</a></li>
