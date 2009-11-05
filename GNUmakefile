@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.119 2009-10-25 21:45:25 nicm Exp $
+# $Id: GNUmakefile,v 1.120 2009-11-05 12:30:55 tcunha Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -19,7 +19,7 @@
 
 VERSION= 1.1
 
-FDEBUG= 1
+#FDEBUG= 1
 
 CC?= cc
 CFLAGS+= -DBUILD="\"$(VERSION)\""
