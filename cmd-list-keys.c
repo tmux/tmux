@@ -47,7 +47,8 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_target_data	*data = self->data;
 	struct key_binding	*bd;
 	const char		*key;
-	char			 tmp[BUFSIZ], keytmp[64];
+	char			 tmp[BUFSIZ];
+	size_t			 used;
 	int			 width, keywidth;
 
 	if (data->target != NULL)
@@ -70,14 +71,15 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 		key = key_string_lookup_key(bd->key & ~KEYC_PREFIX);
 		if (key == NULL)
 			continue;
+		if (!(bd->key & KEYC_PREFIX))
+			used = xsnprintf(tmp, sizeof tmp, "[%s]: ", key);
+		else
+			used = xsnprintf(tmp, sizeof tmp, "%*s: ", width, key);
+		if (used >= sizeof tmp)
+			continue;
 
-		*tmp = '\0';
-		cmd_list_print(bd->cmdlist, tmp, sizeof tmp);
-		if (!(bd->key & KEYC_PREFIX)) {
-			xsnprintf(keytmp, sizeof keytmp, "[%s]", key);
-			key = keytmp;
-		}
-		ctx->print(ctx, "%*s: %s", width, key, tmp);
+		cmd_list_print(bd->cmdlist, tmp + used, (sizeof tmp) - used);
+		ctx->print(ctx, "%s", tmp);
 	}
 
 	return (0);
