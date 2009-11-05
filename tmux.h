@@ -62,9 +62,6 @@ extern char   **environ;
 /* Escape timer period, in milliseconds. */
 #define ESCAPE_PERIOD 500
 
-/* Maximum poll timeout (when attached). */
-#define POLL_TIMEOUT 50
-
 /* Maximum data to buffer for output before suspending reading from panes. */
 #define BACKOFF_THRESHOLD 1024
 
