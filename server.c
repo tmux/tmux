@@ -210,7 +210,6 @@ server_loop(void)
 	while (!server_should_shutdown()) {
 		server_update_socket();
 
-		event_loopexit(NULL);
 		event_loop(EVLOOP_ONCE);
 
 		server_window_loop();
