@@ -350,7 +350,7 @@ tty_keys_next(struct tty *tty)
 	struct tty_key		*tk;
 	struct timeval		 tv;
 	struct mouse_event	 mouse;
-	char			*buf, *ptr;
+	char			*buf;
 	size_t			 len, size;
 	cc_t			 bspace;
 	int			 key;
