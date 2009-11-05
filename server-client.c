@@ -28,6 +28,7 @@
 #include "tmux.h"
 
 void	server_client_handle_data(struct client *);
+void	server_client_repeat_timer(int, short, void *);
 void	server_client_check_redraw(struct client *);
 void	server_client_set_title(struct client *);
 
@@ -40,7 +41,6 @@ void	server_client_msg_shell(struct client *);
 void printflike2 server_client_msg_error(struct cmd_ctx *, const char *, ...);
 void printflike2 server_client_msg_print(struct cmd_ctx *, const char *, ...);
 void printflike2 server_client_msg_info(struct cmd_ctx *, const char *, ...);
-
 
 /* Create a new client. */
 void
@@ -84,6 +84,8 @@ server_client_create(int fd)
 	c->prompt_buffer = NULL;
 	c->prompt_index = 0;
 
+	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
+
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		if (ARRAY_ITEM(&clients, i) == NULL) {
 			ARRAY_SET(&clients, i, c);
@@ -118,6 +120,8 @@ server_client_lost(struct client *c)
 
 	if (c->title != NULL)
 		xfree(c->title);
+
+	evtimer_del(&c->repeat_timer);
 
 	evtimer_del(&c->identify_timer);
 
@@ -264,21 +268,17 @@ server_client_handle_data(struct client *c)
 	struct window_pane	*wp;
 	struct screen		*s;
 	struct options		*oo;
-	struct timeval		 tv_add, tv_now;
+	struct timeval		 tv, tv_now;
 	struct key_binding	*bd;
 	struct keylist		*keylist;
 	struct mouse_event	 mouse;
 	int		 	 key, status, xtimeout, mode, isprefix;
 	u_int			 i;
 
-	/* Check and update repeat flag. */
+	/* Get the time for the activity timer. */
 	if (gettimeofday(&tv_now, NULL) != 0)
 		fatal("gettimeofday failed");
 	xtimeout = options_get_number(&c->session->options, "repeat-time");
-	if (xtimeout != 0 && c->flags & CLIENT_REPEAT) {
-		if (timercmp(&tv_now, &c->repeat_timer, >))
-			c->flags &= ~(CLIENT_PREFIX|CLIENT_REPEAT);
-	}
 
 	/* Process keys. */
 	keylist = options_get_data(&c->session->options, "prefix");
@@ -371,9 +371,10 @@ server_client_handle_data(struct client *c)
 		if (xtimeout != 0 && bd->can_repeat) {
 			c->flags |= CLIENT_PREFIX|CLIENT_REPEAT;
 
-			tv_add.tv_sec = xtimeout / 1000;
-			tv_add.tv_usec = (xtimeout % 1000) * 1000L;
-			timeradd(&tv_now, &tv_add, &c->repeat_timer);
+			tv.tv_sec = xtimeout / 1000;
+			tv.tv_usec = (xtimeout % 1000) * 1000L;
+			evtimer_del(&c->repeat_timer);
+			evtimer_add(&c->repeat_timer, &tv);
 		}
 
 		/* Dispatch the command. */
@@ -410,6 +411,16 @@ server_client_handle_data(struct client *c)
 		mode |= MODE_MOUSE;
 	tty_update_mode(&c->tty, mode);
 	tty_reset(&c->tty);
+}
+
+/* Repeat time callback. */
+void
+server_client_repeat_timer(unused int fd, unused short events, void *data)
+{
+	struct client	*c = data;
+
+	if (c->flags & CLIENT_REPEAT)
+		c->flags &= ~(CLIENT_PREFIX|CLIENT_REPEAT);
 }
 
 /* Check for client redraws. */

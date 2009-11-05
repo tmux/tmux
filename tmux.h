@@ -1056,7 +1056,7 @@ struct client {
 	char		*cwd;
 
 	struct tty 	 tty;
-	struct timeval	 repeat_timer;
+	struct event	 repeat_timer;
 
 	struct timeval	 status_timer;
 	struct jobs	 status_jobs;
