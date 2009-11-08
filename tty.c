@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.171 2009-11-08 23:26:56 tcunha Exp $ */
+/* $Id: tty.c,v 1.172 2009-11-08 23:34:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -789,7 +789,7 @@ tty_cmd_clearendofscreen(struct tty *tty, const struct tty_ctx *ctx)
 	} else {
 		for (i = ctx->ocx; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
-		for (j = ctx->ocy; j < screen_size_y(s); j++) {
+		for (j = ctx->ocy + 1; j < screen_size_y(s); j++) {
 			tty_cursor_pane(tty, ctx, 0, j);
 			for (i = 0; i < screen_size_x(s); i++)
 				tty_putc(tty, ' ');
