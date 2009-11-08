@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.223 2009-11-08 23:12:35 tcunha Exp $ */
+/* $Id: server.c,v 1.224 2009-11-08 23:27:58 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -211,15 +211,10 @@ error:
 void
 server_loop(void)
 {
-	struct timeval	tv;
-
-	memset(&tv, 0, sizeof tv);
-	tv.tv_usec = POLL_TIMEOUT * 1000;
-
 	while (!server_should_shutdown()) {
 		server_update_socket();
 
-		event_loopexit(&tv);
+		event_loopexit(NULL);
 		event_loop(EVLOOP_ONCE);
 
 		server_window_loop();

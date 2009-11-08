@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.508 2009-11-08 23:26:56 tcunha Exp $ */
+/* $Id: tmux.h,v 1.509 2009-11-08 23:27:58 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -60,9 +60,6 @@ extern char   **environ;
 
 /* Escape timer period, in milliseconds. */
 #define ESCAPE_PERIOD 500
-
-/* Maximum poll timeout (when attached). */
-#define POLL_TIMEOUT 50
 
 /* Maximum data to buffer for output before suspending reading from panes. */
 #define BACKOFF_THRESHOLD 1024
