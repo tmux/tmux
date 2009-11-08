@@ -1,4 +1,4 @@
-/* $Id: names.c,v 1.18 2009-11-08 23:22:24 tcunha Exp $ */
+/* $Id: names.c,v 1.19 2009-11-08 23:23:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,7 +54,7 @@ window_name_callback(unused int fd, unused short events, void *data)
 	if (w->active->screen != &w->active->base)
 		name = NULL;
 	else
-		name = get_proc_name(w->active->fd, w->active->tty);
+		name = osdep_get_name(w->active->fd, w->active->tty);
 	if (name == NULL)
 		wname = default_window_name(w);
 	else {
