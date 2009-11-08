@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.170 2009-11-08 22:58:38 tcunha Exp $ */
+/* $Id: tty.c,v 1.171 2009-11-08 23:26:56 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,6 +28,7 @@
 
 #include "tmux.h"
 
+void	tty_read_callback(struct bufferevent *, void *);
 void	tty_error_callback(struct bufferevent *, short, void *);
 
 void	tty_fill_acs(struct tty *);
@@ -113,7 +114,7 @@ tty_open(struct tty *tty, const char *overrides, char **cause)
 	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_ESCAPE);
 
 	tty->event = bufferevent_new(
-	    tty->fd, NULL, NULL, tty_error_callback, tty);
+	    tty->fd, tty_read_callback, NULL, tty_error_callback, tty);
 
 	tty_start_tty(tty);
 
@@ -122,6 +123,15 @@ tty_open(struct tty *tty, const char *overrides, char **cause)
 	tty_fill_acs(tty);
 
 	return (0);
+}
+
+void
+tty_read_callback(unused struct bufferevent *bufev, void *data)
+{
+	struct tty	*tty = data;
+
+	while (tty_keys_next(tty))
+		;
 }
 
 void
@@ -264,6 +274,7 @@ tty_close(struct tty *tty)
 		tty->log_fd = -1;
 	}
 
+	evtimer_del(&tty->key_timer);
 	tty_stop_tty(tty);
 
 	if (tty->flags & TTY_OPENED) {
