@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.505 2009-11-08 23:12:35 tcunha Exp $ */
+/* $Id: tmux.h,v 1.506 2009-11-08 23:22:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -809,7 +809,7 @@ TAILQ_HEAD(window_panes, window_pane);
 /* Window structure. */
 struct window {
 	char		*name;
-	struct timeval	 name_timer;
+	struct event	 name_timer;
 
 	struct window_pane *active;
 	struct window_panes panes;
@@ -1850,7 +1850,7 @@ void		 window_choose_ready(struct window_pane *,
 		     u_int, void (*)(void *, int), void (*)(void *), void *);
 
 /* names.c */
-void		 set_window_names(void);
+void		 queue_window_name(struct window *);
 char 		*default_window_name(struct window *);
 
 /* session.c */

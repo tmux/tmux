@@ -1,4 +1,4 @@
-/* $Id: names.c,v 1.17 2009-10-12 00:03:04 tcunha Exp $ */
+/* $Id: names.c,v 1.18 2009-11-08 23:22:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,67 +25,64 @@
 
 #include "tmux.h"
 
+void	 window_name_callback(unused int, unused short, void *);
 char	*parse_window_name(const char *);
 
 void
-set_window_names(void)
+queue_window_name(struct window *w)
 {
-	struct window	*w;
-	u_int		 i;
+	struct timeval	tv;
+
+	tv.tv_sec = 0;
+	tv.tv_usec = NAME_INTERVAL * 1000L;
+
+	evtimer_del(&w->name_timer);
+	evtimer_set(&w->name_timer, window_name_callback, w);
+	evtimer_add(&w->name_timer, &tv);
+}
+
+void
+window_name_callback(unused int fd, unused short events, void *data)
+{
+	struct window	*w = data;
 	char		*name, *wname;
-	struct timeval	 tv, tv2;
 
-	if (gettimeofday(&tv, NULL) != 0)
-		fatal("gettimeofday failed");
+	queue_window_name(w);	/* XXX even if the option is off? */
+	if (!options_get_number(&w->options, "automatic-rename"))
+		return;
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		w = ARRAY_ITEM(&windows, i);
-		if (w == NULL || w->active == NULL)
-			continue;
-
-		if (timercmp(&tv, &w->name_timer, <))
-			continue;
-		memcpy(&w->name_timer, &tv, sizeof w->name_timer);
-		tv2.tv_sec = 0;
-		tv2.tv_usec = NAME_INTERVAL * 1000L;
-		timeradd(&w->name_timer, &tv2, &w->name_timer);
-
-		if (!options_get_number(&w->options, "automatic-rename"))
-			continue;
-
-		if (w->active->screen != &w->active->base)
-			name = NULL;
+	if (w->active->screen != &w->active->base)
+		name = NULL;
+	else
+		name = get_proc_name(w->active->fd, w->active->tty);
+	if (name == NULL)
+		wname = default_window_name(w);
+	else {
+		/* 
+		 * If tmux is using the default command, it will be a login
+		 * shell and argv[0] may have a - prefix. Remove this if it is
+		 * present. Ick.
+		 */
+		if (w->active->cmd != NULL && *w->active->cmd == '\0' &&
+		    name != NULL && name[0] == '-' && name[1] != '\0')
+			wname = parse_window_name(name + 1);
 		else
-			name = osdep_get_name(w->active->fd, w->active->tty);
-		if (name == NULL)
-			wname = default_window_name(w);
-		else {
-			/* 
-			 * If tmux is using the default command, it will be a
-			 * login shell and argv[0] may have a - prefix. Remove
-			 * this if it is present. Ick.
-			 */
-			if (w->active->cmd != NULL && *w->active->cmd == '\0' &&
-			    name != NULL && name[0] == '-' && name[1] != '\0')
-				wname = parse_window_name(name + 1);
-			else
 				wname = parse_window_name(name);
-			xfree(name);
-		}
-
-		if (w->active->fd == -1) {
-			xasprintf(&name, "%s[dead]", wname);
-			xfree(wname);
-			wname = name;
-		}
-
-		if (strcmp(wname, w->name) == 0)
-			xfree(wname);
-		else {
-			xfree(w->name);
-			w->name = wname;
-			server_status_window(w);
-		}
+		xfree(name);
+	}
+	
+	if (w->active->fd == -1) {
+		xasprintf(&name, "%s[dead]", wname);
+		xfree(wname);
+		wname = name;
+	}
+	
+	if (strcmp(wname, w->name) == 0)
+		xfree(wname);
+	else {
+		xfree(w->name);
+		w->name = wname;
+		server_status_window(w);
 	}
 }
 
