@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.504 2009-11-08 23:11:23 tcunha Exp $ */
+/* $Id: tmux.h,v 1.505 2009-11-08 23:12:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1564,6 +1564,7 @@ void	 server_signal_clear(void);
 void	 server_client_create(int);
 void	 server_client_lost(struct client *);
 void	 server_client_callback(int, short, void *);
+void	 server_client_status_timer(void);
 void	 server_client_loop(void);
 
 /* server-window.c */

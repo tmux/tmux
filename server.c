@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.222 2009-11-08 23:09:36 tcunha Exp $ */
+/* $Id: server.c,v 1.223 2009-11-08 23:12:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -523,6 +523,8 @@ server_second_callback(unused int fd, unused short events, unused void *arg)
 				wp->mode->timer(wp);
 		}
 	}
+
+	server_client_status_timer();
 
 	evtimer_del(&server_ev_second);
 	memset(&tv, 0, sizeof tv);
