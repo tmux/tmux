@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.218 2009-11-08 22:56:04 tcunha Exp $ */
+/* $Id: server.c,v 1.219 2009-11-08 23:00:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -167,6 +167,8 @@ server_start(char *path)
 	server_fd = server_create_socket();
 	server_client_create(pair[1]);
 
+	event_init();
+
 	if (access(SYSTEM_CFG, R_OK) == 0) {
 		if (load_cfg(SYSTEM_CFG, NULL, &cause) != 0)
 			goto error;
@@ -176,8 +178,6 @@ server_start(char *path)
 	}
 	if (cfg_file != NULL && load_cfg(cfg_file, NULL, &cause) != 0)
 		goto error;
-
-	event_init();
 
 	event_set(&server_ev_accept,
 	    server_fd, EV_READ|EV_PERSIST, server_accept_callback, NULL);
