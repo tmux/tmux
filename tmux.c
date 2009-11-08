@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.185 2009-11-08 22:40:36 tcunha Exp $ */
+/* $Id: tmux.c,v 1.186 2009-11-08 22:53:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -506,7 +506,6 @@ main(int argc, char **argv)
 
 	client_main();	/* doesn't return */
 }
-
 
 void
 main_set_signals(void)

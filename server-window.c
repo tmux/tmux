@@ -1,4 +1,4 @@
-/* $Id: server-window.c,v 1.5 2009-11-08 22:40:36 tcunha Exp $ */
+/* $Id: server-window.c,v 1.6 2009-11-08 22:53:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,7 @@ server_window_prepare(void)
 				continue;
 			events = 0;
 			if (!server_window_backoff(wp))
-				events = EV_READ;
+				events |= EV_READ;
 			if (BUFFER_USED(wp->out) > 0)
 				events |= EV_WRITE;
 			event_del(&wp->event);
