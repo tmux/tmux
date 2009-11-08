@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.42 2009-11-08 23:32:39 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.43 2009-11-08 23:33:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -350,7 +350,7 @@ tty_keys_next(struct tty *tty)
 	struct tty_key		*tk;
 	struct timeval		 tv;
 	struct mouse_event	 mouse;
-	char			*buf, *ptr;
+	char			*buf;
 	size_t			 len, size;
 	cc_t			 bspace;
 	int			 key;
