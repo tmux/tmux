@@ -1,4 +1,4 @@
-/* $Id: cmd-run-shell.c,v 1.4 2009-11-02 21:38:26 tcunha Exp $ */
+/* $Id: cmd-run-shell.c,v 1.5 2009-11-08 22:56:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -77,30 +77,32 @@ cmd_run_shell_callback(struct job *job)
 {
 	struct cmd_run_shell_data	*cdata = job->data;
 	struct cmd_ctx			*ctx = &cdata->ctx;
-	char				*cmd, *msg, *line, *buf;
-	size_t				 off, len, llen;
+	char				*cmd, *msg, *line;
+	size_t				 size;
 	int				 retcode;
+	u_int				 lines;
 
-	buf = BUFFER_OUT(job->out);
-	len = BUFFER_USED(job->out);
+	lines = 0;
+	do {
+		if ((line = evbuffer_readline(job->event->input)) != NULL) {
+			ctx->print(ctx, "%s", line);
+			lines++;
+		}
+	} while (line != NULL);
+
+	size = EVBUFFER_LENGTH(job->event->input);
+	if (size != 0) {
+		line = xmalloc(size + 1);
+		memcpy(line, EVBUFFER_DATA(job->event->input), size);
+		line[size] = '\0';
+
+		ctx->print(ctx, "%s", line);
+		lines++;
+
+		xfree(line);
+	}
 
 	cmd = cdata->cmd;
-
-	if (len != 0) {
-		line = buf;
-		for (off = 0; off < len; off++) {
-			if (buf[off] == '\n') {
-				llen = buf + off - line;
-				if (llen > INT_MAX)
-					break;
-				ctx->print(ctx, "%.*s", (int) llen, line);
-				line = buf + off + 1;
-			}
-		}
-		llen = buf + len - line;
-		if (llen > 0 && llen < INT_MAX)
-			ctx->print(ctx, "%.*s", (int) llen, line);
-	}
 
 	msg = NULL;
 	if (WIFEXITED(job->status)) {
@@ -111,7 +113,7 @@ cmd_run_shell_callback(struct job *job)
 		xasprintf(&msg, "'%s' terminated by signal %d", cmd, retcode);
 	}
 	if (msg != NULL) {
-		if (len != 0)
+		if (lines != 0)
 			ctx->print(ctx, "%s", msg);
 		else
 			ctx->info(ctx, "%s", msg);

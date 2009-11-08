@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.497 2009-11-08 22:40:36 tcunha Exp $ */
+/* $Id: tmux.h,v 1.498 2009-11-08 22:56:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -660,16 +660,14 @@ struct job {
 	struct client	*client;
 
 	int		 fd;
-	struct event	 event;
-	struct buffer	*out;
+	struct bufferevent *event;
 
 	void		(*callbackfn)(struct job *);
 	void		(*freefn)(void *);
 	void		*data;
 
 	int		 flags;
-#define JOB_DONE 0x1
-#define JOB_PERSIST 0x2	/* don't free after callback */
+#define JOB_PERSIST 0x1	/* don't free after callback */
 
 	RB_ENTRY(job)	 entry;
 	SLIST_ENTRY(job) lentry;
@@ -1305,6 +1303,7 @@ struct job *job_add(struct jobs *, int, struct client *,
 void	job_remove(struct jobs *, struct job *);
 void	job_free(struct job *);
 int	job_run(struct job *);
+void	job_died(struct job *, int);
 void	job_kill(struct job *);
 
 /* environ.c */
@@ -1587,11 +1586,6 @@ void	 server_client_lost(struct client *);
 void	 server_client_prepare(void);
 void	 server_client_callback(int, short, void *);
 void	 server_client_loop(void);
-
-/* server-job.c */
-void	 server_job_prepare(void);
-void	 server_job_callback(int, short, void *);
-void	 server_job_loop(void);
 
 /* server-window.c */
 void	 server_window_prepare(void);

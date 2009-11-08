@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.125 2009-11-04 23:12:32 tcunha Exp $ */
+/* $Id: status.c,v 1.126 2009-11-08 22:56:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -486,23 +486,26 @@ status_job(struct client *c, char **iptr)
 void
 status_job_callback(struct job *job)
 {
-	char	*buf;
+	char	*line, *buf;
 	size_t	 len;
 
-	len = BUFFER_USED(job->out);
-	buf = xmalloc(len + 1);
-	if (len != 0)
-		buffer_read(job->out, buf, len);
-	buf[len] = '\0';
-	buf[strcspn(buf, "\n")] = '\0';
+	buf = NULL;
+	if ((line = evbuffer_readline(job->event->input)) == NULL) {
+		len = EVBUFFER_LENGTH(job->event->input);
+		buf = xmalloc(len + 1);
+		if (len != 0)
+			memcpy(buf, EVBUFFER_DATA(job->event->input), len);
+		buf[len] = '\0';
+	}
 
 	if (job->data != NULL)
 		xfree(job->data);
 	else
 		server_redraw_client(job->client);
-	job->data = xstrdup(buf);
+	job->data = xstrdup(line);
 
-	xfree(buf);
+	if (buf != NULL)
+		xfree(buf);
 }
 
 size_t
