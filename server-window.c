@@ -1,4 +1,4 @@
-/* $Id: server-window.c,v 1.6 2009-11-08 22:53:13 tcunha Exp $ */
+/* $Id: server-window.c,v 1.7 2009-11-08 22:58:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -87,7 +87,8 @@ server_window_backoff(struct window_pane *wp)
 			continue;
 		if (c->session->curw->window != wp->window)
 			continue;
-		if (BUFFER_USED(c->tty.out) > BACKOFF_THRESHOLD)
+
+		if (EVBUFFER_LENGTH(c->tty.event->output) > BACKOFF_THRESHOLD)
 			return (1);
 	}
 	return (0);

@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.13 2009-11-08 22:40:36 tcunha Exp $ */
+/* $Id: server-client.c,v 1.14 2009-11-08 22:58:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -135,8 +135,7 @@ server_client_lost(struct client *c)
 	close(c->ibuf.fd);
 	imsg_clear(&c->ibuf);
 	event_del(&c->event);
-	event_del(&c->tty.event);
-	
+
 	for (i = 0; i < ARRAY_LENGTH(&dead_clients); i++) {
 		if (ARRAY_ITEM(&dead_clients, i) == NULL) {
 			ARRAY_SET(&dead_clients, i, c);
@@ -171,18 +170,6 @@ server_client_prepare(void)
 		event_set(&c->event,
 		    c->ibuf.fd, events, server_client_callback, c);
 		event_add(&c->event, NULL);
-
-		if (c->tty.fd == -1)
-			continue;
-		if (c->flags & CLIENT_SUSPENDED || c->session == NULL)
-			continue;
-		events = EV_READ;
-		if (BUFFER_USED(c->tty.out) > 0)
-			events |= EV_WRITE;
-		event_del(&c->tty.event);
-		event_set(&c->tty.event,
-		    c->tty.fd, events, server_client_callback, c);
-		event_add(&c->tty.event, NULL);
 	}
 }
 
@@ -206,14 +193,6 @@ server_client_callback(int fd, short events, void *data)
 		}
 
 		if (events & EV_READ && server_client_msg_dispatch(c) != 0)
-			goto client_lost;
-	}
-
-	if (c->tty.fd != -1 && fd == c->tty.fd) {
-		if (c->flags & CLIENT_SUSPENDED || c->session == NULL)
-			return;
-
-		if (buffer_poll(fd, events, c->tty.in, c->tty.out) != 0)
 			goto client_lost;
 	}
 	

@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.169 2009-11-04 23:10:43 tcunha Exp $ */
+/* $Id: tty.c,v 1.170 2009-11-08 22:58:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,6 +27,8 @@
 #include <unistd.h>
 
 #include "tmux.h"
+
+void	tty_error_callback(struct bufferevent *, short, void *);
 
 void	tty_fill_acs(struct tty *);
 
@@ -108,10 +110,10 @@ tty_open(struct tty *tty, const char *overrides, char **cause)
 	}
 	tty->flags |= TTY_OPENED;
 
-	tty->in = buffer_create(BUFSIZ);
-	tty->out = buffer_create(BUFSIZ);
-
 	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_ESCAPE);
+
+	tty->event = bufferevent_new(
+	    tty->fd, NULL, NULL, tty_error_callback, tty);
 
 	tty_start_tty(tty);
 
@@ -120,6 +122,13 @@ tty_open(struct tty *tty, const char *overrides, char **cause)
 	tty_fill_acs(tty);
 
 	return (0);
+}
+
+void
+tty_error_callback(
+    unused struct bufferevent *bufev, unused short what, unused void *data)
+{
+	fatalx("lost terminal");
 }
 
 void
@@ -138,6 +147,8 @@ tty_start_tty(struct tty *tty)
 		fatal("fcntl failed");
 	if (fcntl(tty->fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
+
+	bufferevent_enable(tty->event, EV_READ|EV_WRITE);
 
 	if (tcgetattr(tty->fd, &tty->tio) != 0)
 		fatal("tcgetattr failed");
@@ -191,6 +202,8 @@ tty_stop_tty(struct tty *tty)
 	if (!(tty->flags & TTY_STARTED))
 		return;
 	tty->flags &= ~TTY_STARTED;
+
+	bufferevent_disable(tty->event, EV_READ|EV_WRITE);
 
 	/*
 	 * Be flexible about error handling and try not kill the server just
@@ -254,11 +267,10 @@ tty_close(struct tty *tty)
 	tty_stop_tty(tty);
 
 	if (tty->flags & TTY_OPENED) {
+		bufferevent_free(tty->event);
+
 		tty_term_free(tty->term);
 		tty_keys_free(tty);
-
-		buffer_destroy(tty->in);
-		buffer_destroy(tty->out);
 
 		tty->flags &= ~TTY_OPENED;
 	}
@@ -313,7 +325,7 @@ tty_puts(struct tty *tty, const char *s)
 {
 	if (*s == '\0')
 		return;
-	buffer_write(tty->out, s, strlen(s));
+	bufferevent_write(tty->event, s, strlen(s));
 
 	if (tty->log_fd != -1)
 		write(tty->log_fd, s, strlen(s));
@@ -326,7 +338,7 @@ tty_putc(struct tty *tty, u_char ch)
 
 	if (tty->cell.attr & GRID_ATTR_CHARSET)
 		ch = tty_get_acs(tty, ch);
-	buffer_write8(tty->out, ch);
+	bufferevent_write(tty->event, &ch, 1);
 
 	if (ch >= 0x20 && ch != 0x7f) {
 		sx = tty->sx;
@@ -353,7 +365,7 @@ tty_pututf8(struct tty *tty, const struct grid_utf8 *gu)
 	for (i = 0; i < UTF8_SIZE; i++) {
 		if (gu->data[i] == 0xff)
 			break;
-		buffer_write8(tty->out, gu->data[i]);
+		bufferevent_write(tty->event, &gu->data[i], 1);
 		if (tty->log_fd != -1)
 			write(tty->log_fd, &gu->data[i], 1);
 	}

@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.38 2009-10-28 23:05:01 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.39 2009-11-08 22:58:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -299,18 +299,20 @@ tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 	struct tty_key	*tk;
 	struct timeval	 tv;
 	char		*buf;
+	u_char		 ch;
 	size_t		 len, size;
 	cc_t		 bspace;
 
-	buf = BUFFER_OUT(tty->in);
-	len = BUFFER_USED(tty->in);
+	buf = EVBUFFER_DATA(tty->event->input);
+	len = EVBUFFER_LENGTH(tty->event->input);
 	if (len == 0)
 		return (1);
 	log_debug("keys are %zu (%.*s)", len, (int) len, buf);
 
 	/* If a normal key, return it. */
 	if (*buf != '\033') {
-		*key = buffer_read8(tty->in);
+		bufferevent_read(tty->event, &ch, 1);
+		*key = ch;
 
 		/*
 		 * Check for backspace key using termios VERASE - the terminfo
@@ -326,7 +328,7 @@ tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 	/* Look for matching key string and return if found. */
 	tk = tty_keys_find(tty, buf + 1, len - 1, &size);
 	if (tk != NULL) {
-		buffer_remove(tty->in, size + 1);
+		evbuffer_drain(tty->event->input, size + 1);
 		*key = tk->key;
 		goto found;
 	}
@@ -334,14 +336,14 @@ tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 	/* Not found. Is this a mouse key press? */
 	*key = tty_keys_mouse(buf, len, &size, mouse);
 	if (*key != KEYC_NONE) {
-		buffer_remove(tty->in, size);
+		evbuffer_drain(tty->event->input, size);
 		goto found;
 	}
 
 	/* Not found. Try to parse a key with an xterm-style modifier. */
 	*key = xterm_keys_find(buf, len, &size);
 	if (*key != KEYC_NONE) {
-		buffer_remove(tty->in, size);
+		evbuffer_drain(tty->event->input, size);
 		goto found;
 	}
 
@@ -363,8 +365,9 @@ tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 
 	/* Is there a normal key following? */
 	if (len != 0 && *buf != '\033') {
-		buffer_remove(tty->in, 1);
-		*key = buffer_read8(tty->in) | KEYC_ESCAPE;
+		evbuffer_drain(tty->event->input, 1);
+		bufferevent_read(tty->event, &ch, 1);
+		*key = ch | KEYC_ESCAPE;
 		goto found;
 	}
 
@@ -372,7 +375,7 @@ tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 	if (len > 1) {
 		tk = tty_keys_find(tty, buf + 1, len - 1, &size);
 		if (tk != NULL) {
-			buffer_remove(tty->in, size + 2);
+			evbuffer_drain(tty->event->input, size + 2);
 			*key = tk->key | KEYC_ESCAPE;
 			goto found;
 		}
@@ -385,7 +388,7 @@ tty_keys_next(struct tty *tty, int *key, struct mouse_event *mouse)
 		return (1);
 
 	/* Give up and return the escape. */
-	buffer_remove(tty->in, 1);
+	evbuffer_drain(tty->event->input, 1);
 	*key = '\033';
 
 found:

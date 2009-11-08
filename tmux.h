@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.498 2009-11-08 22:56:04 tcunha Exp $ */
+/* $Id: tmux.h,v 1.499 2009-11-08 22:58:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -999,9 +999,7 @@ struct tty {
 	struct tty_term	*term;
 
 	int		 fd;
-	struct event	 event;
-	struct buffer	*in;
-	struct buffer	*out;
+	struct bufferevent *event;
 
 	int		 log_fd;
 
