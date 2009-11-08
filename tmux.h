@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.510 2009-11-08 23:29:34 tcunha Exp $ */
+/* $Id: tmux.h,v 1.511 2009-11-08 23:32:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -935,10 +935,13 @@ ARRAY_DECL(sessions, struct session *);
 
 /* TTY information. */
 struct tty_key {
+	char		 ch;
 	int	 	 key;
-	char		*string;
 
-	RB_ENTRY(tty_key) entry;
+	struct tty_key	*left;
+	struct tty_key	*right;
+
+	struct tty_key	*next;
 };
 
 struct tty_term {
@@ -997,9 +1000,7 @@ struct tty {
 	void		 (*key_callback)(int, struct mouse_event *, void *);
 	void		*key_data;
 	struct event	 key_timer;
-
-	size_t		 ksize;	/* maximum key size */
-	RB_HEAD(tty_keys, tty_key) ktree;
+	struct tty_key	*key_tree;
 };
 
 /* TTY command context and function pointer. */
@@ -1350,8 +1351,6 @@ int		 tty_term_number(struct tty_term *, enum tty_code_code);
 int		 tty_term_flag(struct tty_term *, enum tty_code_code);
 
 /* tty-keys.c */
-int	tty_keys_cmp(struct tty_key *, struct tty_key *);
-RB_PROTOTYPE(tty_keys, tty_key, entry, tty_keys_cmp);
 void	tty_keys_init(struct tty *);
 void	tty_keys_free(struct tty *);
 int	tty_keys_next(struct tty *);
