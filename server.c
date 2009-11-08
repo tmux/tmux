@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.220 2009-11-08 23:02:56 tcunha Exp $ */
+/* $Id: server.c,v 1.221 2009-11-08 23:06:25 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -197,6 +197,7 @@ error:
 	c = ARRAY_FIRST(&clients);
 
 	server_write_error(c, cause);
+	server_write_client(c, MSG_EXIT, NULL, 0);
 	xfree(cause);
 
 	server_shutdown = 1;
