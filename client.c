@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.84 2009-11-02 21:41:16 tcunha Exp $ */
+/* $Id: client.c,v 1.85 2009-11-08 22:40:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,6 +24,7 @@
 #include <sys/wait.h>
 
 #include <errno.h>
+#include <event.h>
 #include <fcntl.h>
 #include <pwd.h>
 #include <stdlib.h>
@@ -34,13 +35,15 @@
 #include "tmux.h"
 
 struct imsgbuf	client_ibuf;
+struct event	client_event;
 const char     *client_exitmsg;
 
-void	client_send_identify(int);
-void	client_send_environ(void);
-void	client_write_server(enum msgtype, void *, size_t);
-int	client_dispatch(void);
-void	client_suspend(void);
+void		client_send_identify(int);
+void		client_send_environ(void);
+void		client_write_server(enum msgtype, void *, size_t);
+void		client_signal(int, short, void *);
+void		client_callback(int, short, void *);
+int		client_dispatch(void);
 
 struct imsgbuf *
 client_init(char *path, int cmdflags, int flags)
@@ -158,76 +161,54 @@ client_write_server(enum msgtype type, void *buf, size_t len)
 __dead void
 client_main(void)
 {
-	struct pollfd	 pfd;
-	int		 n, nfds;
-
-	siginit();
+	struct event		ev_sigcont, ev_sigterm, ev_sigwinch;
+	struct sigaction	sigact;
+	short	 		events;
 
 	logfile("client");
 
+	/* Note: event_init() has already been called. */
+
+ 	/* Set up signals. */
+	memset(&sigact, 0, sizeof sigact);
+	sigemptyset(&sigact.sa_mask);
+	sigact.sa_flags = SA_RESTART;
+	sigact.sa_handler = SIG_IGN;
+	if (sigaction(SIGINT, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGPIPE, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR1, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR2, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+
+	signal_set(&ev_sigcont, SIGCONT, client_signal, NULL);
+	signal_add(&ev_sigcont, NULL);
+	signal_set(&ev_sigterm, SIGTERM, client_signal, NULL);
+	signal_add(&ev_sigterm, NULL);
+	signal_set(&ev_sigwinch, SIGWINCH, client_signal, NULL);
+	signal_add(&ev_sigwinch, NULL);
+
 	/*
 	 * imsg_read in the first client poll loop (before the terminal has
-	 * been initialiased) may have read messages into the buffer after the
-	 * MSG_READY switched to here. Process anything outstanding now so poll
-	 * doesn't hang waiting for messages that have already arrived.
+	 * been initialised) may have read messages into the buffer after the
+	 * MSG_READY switched to here. Process anything outstanding now to
+	 * avoid hanging waiting for messages that have already arrived.
 	 */
 	if (client_dispatch() != 0)
 		goto out;
 
-	for (;;) {
-		if (sigterm) {
-			client_exitmsg = "terminated";
-			client_write_server(MSG_EXITING, NULL, 0);
-		}
-		if (sigchld) {
-			sigchld = 0;
-			waitpid(WAIT_ANY, NULL, WNOHANG);
-			continue;
-		}
-		if (sigwinch) {
-			sigwinch = 0;
-			client_write_server(MSG_RESIZE, NULL, 0);
-			continue;
-		}
-		if (sigcont) {
-			sigcont = 0;
-			siginit();
-			client_write_server(MSG_WAKEUP, NULL, 0);
-			continue;
-		}
-
-		pfd.fd = client_ibuf.fd;
-		pfd.events = POLLIN;
-		if (client_ibuf.w.queued > 0)
-			pfd.events |= POLLOUT;
-
-		if ((nfds = poll(&pfd, 1, INFTIM)) == -1) {
-			if (errno == EAGAIN || errno == EINTR)
-				continue;
-			fatal("poll failed");
-		}
-		if (nfds == 0)
-			continue;
-
-		if (pfd.revents & (POLLERR|POLLHUP|POLLNVAL))
-			fatalx("socket error");
-
-		if (pfd.revents & POLLIN) {
-			if ((n = imsg_read(&client_ibuf)) == -1 || n == 0) {
-				client_exitmsg = "lost server";
-				break;
-			}
-			if (client_dispatch() != 0)
-				break;
-		}
-
-		if (pfd.revents & POLLOUT) {
-			if (msgbuf_write(&client_ibuf.w) < 0) {
-				client_exitmsg = "lost server";
-				break;
-			}
-		}
-	}
+	/* Set up the client-server socket event. */
+	events = EV_READ;
+	if (client_ibuf.w.queued > 0)
+		events |= EV_WRITE;
+	event_set(&client_event, client_ibuf.fd, events, client_callback, NULL);
+	event_add(&client_event, NULL);
+	
+	event_dispatch();
 
 out:
 	/* Print the exit message, if any, and exit. */
@@ -239,12 +220,78 @@ out:
 	exit(0);
 }
 
+void
+client_signal(int sig, short events, unused void *data)
+{
+	struct sigaction	sigact;
+
+	switch (sig) {
+	case SIGTERM:
+		client_exitmsg = "terminated";
+		client_write_server(MSG_EXITING, NULL, 0);
+		break;
+	case SIGWINCH:
+		client_write_server(MSG_RESIZE, NULL, 0);
+		break;
+	case SIGCONT:
+		memset(&sigact, 0, sizeof sigact);
+		sigemptyset(&sigact.sa_mask);
+		sigact.sa_flags = SA_RESTART;
+		sigact.sa_handler = SIG_IGN;
+		if (sigaction(SIGTSTP, &sigact, NULL) != 0)
+			fatal("sigaction failed");
+		client_write_server(MSG_WAKEUP, NULL, 0);
+		break;
+	}
+
+	event_del(&client_event);
+	events = EV_READ;
+	if (client_ibuf.w.queued > 0)
+		events |= EV_WRITE;
+	event_set(&client_event, client_ibuf.fd, events, client_callback, NULL);
+	event_add(&client_event, NULL);
+}
+
+void
+client_callback(unused int fd, short events, unused void *data)
+{
+	int	n;
+
+	if (events & EV_READ) {
+		if ((n = imsg_read(&client_ibuf)) == -1 || n == 0)
+			goto lost_server;
+		if (client_dispatch() != 0) {
+			event_loopexit(NULL);
+			return;
+		}	
+	}
+	
+	if (events & EV_WRITE) {
+		if (msgbuf_write(&client_ibuf.w) < 0)
+			goto lost_server;
+	}
+
+	event_del(&client_event);
+	events = EV_READ;
+	if (client_ibuf.w.queued > 0)
+		events |= EV_WRITE;
+	event_set(&client_event, client_ibuf.fd, events, client_callback, NULL);
+	event_add(&client_event, NULL);
+
+	return;
+
+lost_server:
+	client_exitmsg = "lost server";
+	event_loopexit(NULL);
+}
+
 int
 client_dispatch(void)
 {
-	struct imsg		 imsg;
-	struct msg_lock_data	 lockdata;
-	ssize_t			 n, datalen;
+	struct imsg		imsg;
+	struct msg_lock_data	lockdata;
+	struct sigaction	sigact;
+	ssize_t			n, datalen;
 
 	for (;;) {
 		if ((n = imsg_get(&client_ibuf, &imsg)) == -1)
@@ -253,6 +300,7 @@ client_dispatch(void)
 			return (0);
 		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
 
+		log_debug("client got %d", imsg.hdr.type);
 		switch (imsg.hdr.type) {
 		case MSG_DETACH:
 			if (datalen != 0)
@@ -285,7 +333,13 @@ client_dispatch(void)
 			if (datalen != 0)
 				fatalx("bad MSG_SUSPEND size");
 
-			client_suspend();
+			memset(&sigact, 0, sizeof sigact);
+			sigemptyset(&sigact.sa_mask);
+			sigact.sa_flags = SA_RESTART;
+			sigact.sa_handler = SIG_DFL;
+			if (sigaction(SIGTSTP, &sigact, NULL) != 0)
+				fatal("sigaction failed");
+			kill(getpid(), SIGTSTP);
 			break;
 		case MSG_LOCK:
 			if (datalen != sizeof lockdata)
@@ -302,24 +356,4 @@ client_dispatch(void)
 
 		imsg_free(&imsg);
 	}
-}
-
-void
-client_suspend(void)
-{
-	struct sigaction	 act;
-
-	memset(&act, 0, sizeof act);
-	sigemptyset(&act.sa_mask);
-	act.sa_flags = SA_RESTART;
-
-	act.sa_handler = SIG_DFL;
-	if (sigaction(SIGTSTP, &act, NULL) != 0)
-		fatal("sigaction failed");
-
-	act.sa_handler = sighandler;
-	if (sigaction(SIGCONT, &act, NULL) != 0)
-		fatal("sigaction failed");
-
-	kill(getpid(), SIGTSTP);
 }

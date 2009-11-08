@@ -1,4 +1,4 @@
-/* $Id: cmd-pipe-pane.c,v 1.3 2009-10-23 17:26:40 tcunha Exp $ */
+/* $Id: cmd-pipe-pane.c,v 1.4 2009-11-08 22:40:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -87,7 +87,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	case 0:
 		/* Child process. */
 		close(pipe_fd[0]);
-		sigreset();
+		server_signal_clear();
 
 		if (dup2(pipe_fd[1], STDIN_FILENO) == -1)
 			_exit(1);
