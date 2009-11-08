@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.509 2009-11-08 23:27:58 tcunha Exp $ */
+/* $Id: tmux.h,v 1.510 2009-11-08 23:29:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -937,10 +937,6 @@ ARRAY_DECL(sessions, struct session *);
 struct tty_key {
 	int	 	 key;
 	char		*string;
-
-	int		 flags;
-#define TTYKEY_CTRL 0x1
-#define TTYKEY_RAW 0x2
 
 	RB_ENTRY(tty_key) entry;
 };
