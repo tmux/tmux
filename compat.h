@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.19 2009-10-06 15:32:21 tcunha Exp $ */
+/* $Id: compat.h,v 1.20 2009-11-08 22:51:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,14 +47,6 @@ typedef uint64_t u_int64_t;
 #include <bitstring.h>
 #else
 #include "compat/bitstring.h"
-#endif
-
-#ifdef HAVE_POLL
-#include <poll.h>
-#else
-#define POLLNVAL 0
-#define POLLHUP 0
-#include "compat/bsd-poll.h"
 #endif
 
 #ifdef HAVE_GETOPT

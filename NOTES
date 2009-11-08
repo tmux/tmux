@@ -16,6 +16,11 @@ If upgrading from 1.0, PLEASE NOTE:
   default colours by using op/AX. Nevertheless, if needed, the
   terminal-overrides session option can replace it.
 
+Since the 1.2 release that tmux depends on libevent. Download the stable
+version from:
+
+	http://www.monkey.org/~provos/libevent/
+
 tmux consists of a server part and multiple clients. The server is created when
 required and runs continuously unless killed by the user. Clients access the
 server through a socket in /tmp. Multiple sessions may be created on a single
@@ -88,4 +93,4 @@ start. Please contact me with any queries.
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.51 2009-11-05 12:35:47 tcunha Exp $
+$Id: NOTES,v 1.52 2009-11-08 22:51:34 tcunha Exp $

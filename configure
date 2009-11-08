@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.43 2009-10-25 21:45:26 nicm Exp $
+# $Id: configure,v 1.44 2009-11-08 22:51:34 tcunha Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -38,7 +38,6 @@ cat <<EOF >>$CONFIG_H
 #undef HAVE_IMSG
 #undef HAVE_LIBUTIL_H
 #undef HAVE_PATHS_H
-#undef HAVE_POLL
 #undef HAVE_PROGNAME
 #undef HAVE_PTY_H
 #undef HAVE_QUEUE_H
@@ -66,7 +65,6 @@ case $TMUX_PLATFORM in
 #define HAVE_FORKPTY
 #define HAVE_GETOPT
 #define HAVE_PATHS_H
-#define HAVE_POLL
 #define HAVE_PROGNAME
 #define HAVE_QUEUE_H
 #define HAVE_SETPROCTITLE
@@ -81,7 +79,7 @@ case $TMUX_PLATFORM in
 #define HAVE_VIS
 EOF
 	cat <<EOF >>$CONFIG_MK
-LIBS+= -lcurses -lutil
+LIBS+= -lcurses -lutil -levent
 SRCS+= osdep-openbsd.c \
 	compat/imsg-buffer.c \
 	compat/imsg.c
@@ -95,7 +93,6 @@ EOF
 #define HAVE_DAEMON
 #define HAVE_FORKPTY
 #define HAVE_PATHS_H
-#define HAVE_POLL
 #define HAVE_PROGNAME
 #define HAVE_PTY_H
 #define HAVE_STRCASESTR
@@ -104,7 +101,7 @@ EOF
 EOF
 	cat <<EOF >>$CONFIG_MK
 CFLAGS+= -std=c99 -D_GNU_SOURCE -D_POSIX_SOURCE
-LIBS+= -lncurses -lcrypt -lutil
+LIBS+= -lncurses -lcrypt -lutil -levent
 SRCS+= osdep-linux.c \
 	compat/fgetln.c \
 	compat/strlcat.c \
@@ -124,10 +121,9 @@ EOF
 #define HAVE_DAEMON
 EOF
 	cat <<EOF >>$CONFIG_MK
-LIBS+= -lcurses
+LIBS+= -lcurses -levent
 SRCS+= osdep-unknown.c \
 	compat/asprintf.c \
-	compat/bsd-poll.c \
 	compat/daemon.c \
 	compat/forkpty-aix.c \
 	compat/strcasestr.c \
@@ -147,13 +143,12 @@ EOF
     SunOS)
 	cat <<EOF >>$CONFIG_H
 #define HAVE_CRYPT_H
-#define HAVE_POLL
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 EOF
 	cat <<EOF >>$CONFIG_MK
 CFLAGS+= -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
-LIBS+= -lcurses -lsocket -lnsl
+LIBS+= -lcurses -lsocket -lnsl -levent
 SRCS+= osdep-sunos.c \
 	compat/asprintf.c \
 	compat/daemon.c \
@@ -189,9 +184,8 @@ EOF
 #define HAVE_U_INT
 EOF
 	cat <<EOF >>$CONFIG_MK
-LIBS+= -lcurses
+LIBS+= -lcurses -levent
 SRCS+= osdep-darwin.c \
-	compat/bsd-poll.c \
 	compat/strtonum.c \
 	compat/vis.c \
 	compat/unvis.c \
@@ -210,7 +204,6 @@ EOF
 #define HAVE_GETOPT
 #define HAVE_LIBUTIL_H
 #define HAVE_PATHS_H
-#define HAVE_POLL
 #define HAVE_PROGNAME
 #define HAVE_SETPROCTITLE
 #define HAVE_STRCASESTR
@@ -221,7 +214,7 @@ EOF
 #define HAVE_U_INT
 EOF
 	cat <<EOF >>$CONFIG_MK
-LIBS+= -lcurses -lcrypt -lutil
+LIBS+= -lcurses -lcrypt -lutil -levent
 SRCS+= osdep-freebsd.c \
 	compat/vis.c \
 	compat/unvis.c \
@@ -239,7 +232,6 @@ EOF
 #define HAVE_FORKPTY
 #define HAVE_GETOPT
 #define HAVE_PATHS_H
-#define HAVE_POLL
 #define HAVE_PROGNAME
 #define HAVE_SETPROCTITLE
 #define HAVE_STRCASESTR
@@ -252,7 +244,7 @@ EOF
 	cat <<EOF >>$CONFIG_MK
 CPPFLAGS+= -I/usr/pkg/include
 LDFLAGS+= -L/usr/pkg/lib
-LIBS+= -lncurses -lcrypt -lutil
+LIBS+= -lncurses -lcrypt -lutil -levent
 SRCS+= osdep-netbsd.c \
 	compat/strtonum.c \
 	compat/vis.c \
