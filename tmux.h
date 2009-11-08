@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.506 2009-11-08 23:22:24 tcunha Exp $ */
+/* $Id: tmux.h,v 1.507 2009-11-08 23:24:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1055,7 +1055,7 @@ struct client {
 	char		*cwd;
 
 	struct tty 	 tty;
-	struct timeval	 repeat_timer;
+	struct event	 repeat_timer;
 
 	struct timeval	 status_timer;
 	struct jobs	 status_jobs;
