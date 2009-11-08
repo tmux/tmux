@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.501 2009-11-08 23:02:56 tcunha Exp $ */
+/* $Id: tmux.h,v 1.502 2009-11-08 23:05:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -94,21 +94,6 @@ extern char   **environ;
 #ifndef nitems
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
 #endif
-
-/* Buffer macros. */
-#define BUFFER_USED(b) ((b)->size)
-#define BUFFER_FREE(b) ((b)->space - (b)->off - (b)->size)
-#define BUFFER_IN(b) ((b)->base + (b)->off + (b)->size)
-#define BUFFER_OUT(b) ((b)->base + (b)->off)
-
-/* Buffer structure. */
-struct buffer {
-	u_char	*base;		/* buffer start */
-	size_t	 space;		/* total size of buffer */
-
-	size_t	 size;		/* size of data in buffer */
-	size_t	 off;		/* offset of data in buffer */
-};
 
 /* Bell option values. */
 #define BELL_NONE 0
@@ -1906,20 +1891,6 @@ int	utf8_append(struct utf8_data *, u_char);
 
 /* osdep-*.c */
 char   *osdep_get_name(int, char *);
-
-/* buffer.c */
-struct buffer 	*buffer_create(size_t);
-void		 buffer_destroy(struct buffer *);
-void		 buffer_ensure(struct buffer *, size_t);
-void		 buffer_add(struct buffer *, size_t);
-void		 buffer_remove(struct buffer *, size_t);
-void		 buffer_write(struct buffer *, const void *, size_t);
-void		 buffer_read(struct buffer *, void *, size_t);
-void	 	 buffer_write8(struct buffer *, uint8_t);
-uint8_t		 buffer_read8(struct buffer *);
-
-/* buffer-poll.c */
-int		 buffer_poll(int, int, struct buffer *, struct buffer *);
 
 /* log.c */
 void		 log_open_tty(int);
