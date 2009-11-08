@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.126 2009-11-08 22:56:04 tcunha Exp $ */
+/* $Id: status.c,v 1.127 2009-11-08 23:11:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,6 +33,7 @@ char   *status_job(struct client *, char **);
 void	status_job_callback(struct job *);
 size_t	status_width(struct winlink *);
 char   *status_print(struct session *, struct winlink *, struct grid_cell *);
+void	status_message_callback(int, short, void *);
 
 void	status_prompt_add_history(struct client *);
 char   *status_prompt_complete(const char *);
@@ -579,10 +580,10 @@ status_message_set(struct client *c, const char *fmt, ...)
 	delay = options_get_number(&c->session->options, "display-time");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
-
-	if (gettimeofday(&c->message_timer, NULL) != 0)
-		fatal("gettimeofday failed");
-	timeradd(&c->message_timer, &tv, &c->message_timer);
+	
+	evtimer_del(&c->message_timer);
+	evtimer_set(&c->message_timer, status_message_callback, c);
+	evtimer_add(&c->message_timer, &tv);
 
 	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_STATUS;
@@ -601,6 +602,14 @@ status_message_clear(struct client *c)
 	c->flags |= CLIENT_REDRAW; /* screen was frozen and may have changed */
 
 	screen_reinit(&c->status);
+}
+
+void
+status_message_callback(unused int fd, unused short event, void *data)
+{
+	struct client	*c = data;
+
+	status_message_clear(c);
 }
 
 /* Draw client message on status line of present else on last line. */

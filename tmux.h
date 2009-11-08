@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.503 2009-11-08 23:09:36 tcunha Exp $ */
+/* $Id: tmux.h,v 1.504 2009-11-08 23:11:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1073,10 +1073,10 @@ struct client {
 #define CLIENT_DEAD 0x200
 	int		 flags;
 
-	struct timeval	 identify_timer;
+	struct event	 identify_timer;
 
 	char		*message_string;
-	struct timeval	 message_timer;
+	struct event	 message_timer;
 
 	char		*prompt_string;
 	char		*prompt_buffer;

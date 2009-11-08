@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.95 2009-11-08 23:09:36 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.96 2009-11-08 23:11:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,6 +23,8 @@
 #include <unistd.h>
 
 #include "tmux.h"
+
+void	server_callback_identify(int, short, void *);
 
 void
 server_fill_environ(struct session *s, struct environ *env)
@@ -353,10 +355,10 @@ server_set_identify(struct client *c)
 	delay = options_get_number(&c->session->options, "display-panes-time");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
-
-	if (gettimeofday(&c->identify_timer, NULL) != 0)
-		fatal("gettimeofday failed");
-	timeradd(&c->identify_timer, &tv, &c->identify_timer);
+	
+	evtimer_del(&c->identify_timer);
+	evtimer_set(&c->identify_timer, server_callback_identify, c);
+	evtimer_add(&c->identify_timer, &tv);
 
 	c->flags |= CLIENT_IDENTIFY;
 	c->tty.flags |= (TTY_FREEZE|TTY_NOCURSOR);
@@ -371,6 +373,14 @@ server_clear_identify(struct client *c)
 		c->tty.flags &= ~(TTY_FREEZE|TTY_NOCURSOR);
 		server_redraw_client(c);
 	}
+}
+
+void
+server_callback_identify(unused int fd, unused short events, void *data)
+{
+	struct client	*c = data;
+
+	server_clear_identify(c);
 }
 
 void
