@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.85 2009-11-08 22:40:36 tcunha Exp $ */
+/* $Id: client.c,v 1.86 2009-11-08 23:07:14 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,6 +41,7 @@ const char     *client_exitmsg;
 void		client_send_identify(int);
 void		client_send_environ(void);
 void		client_write_server(enum msgtype, void *, size_t);
+void		client_update_event(void);
 void		client_signal(int, short, void *);
 void		client_callback(int, short, void *);
 int		client_dispatch(void);
@@ -158,12 +159,24 @@ client_write_server(enum msgtype type, void *buf, size_t len)
  	imsg_compose(&client_ibuf, type, PROTOCOL_VERSION, -1, -1, buf, len);
 }
 
+void
+client_update_event(void)
+{
+	short	events;
+
+	event_del(&client_event);
+	events = EV_READ;
+	if (client_ibuf.w.queued > 0)
+		events |= EV_WRITE;
+	event_set(&client_event, client_ibuf.fd, events, client_callback, NULL);
+	event_add(&client_event, NULL);
+}
+
 __dead void
 client_main(void)
 {
 	struct event		ev_sigcont, ev_sigterm, ev_sigwinch;
 	struct sigaction	sigact;
-	short	 		events;
 
 	logfile("client");
 
@@ -201,13 +214,8 @@ client_main(void)
 	if (client_dispatch() != 0)
 		goto out;
 
-	/* Set up the client-server socket event. */
-	events = EV_READ;
-	if (client_ibuf.w.queued > 0)
-		events |= EV_WRITE;
-	event_set(&client_event, client_ibuf.fd, events, client_callback, NULL);
-	event_add(&client_event, NULL);
-	
+	/* Set the event and dispatch. */
+	client_update_event();	
 	event_dispatch();
 
 out:
@@ -221,7 +229,7 @@ out:
 }
 
 void
-client_signal(int sig, short events, unused void *data)
+client_signal(int sig, unused short events, unused void *data)
 {
 	struct sigaction	sigact;
 
@@ -244,12 +252,7 @@ client_signal(int sig, short events, unused void *data)
 		break;
 	}
 
-	event_del(&client_event);
-	events = EV_READ;
-	if (client_ibuf.w.queued > 0)
-		events |= EV_WRITE;
-	event_set(&client_event, client_ibuf.fd, events, client_callback, NULL);
-	event_add(&client_event, NULL);
+	client_update_event();
 }
 
 void
@@ -271,13 +274,7 @@ client_callback(unused int fd, short events, unused void *data)
 			goto lost_server;
 	}
 
-	event_del(&client_event);
-	events = EV_READ;
-	if (client_ibuf.w.queued > 0)
-		events |= EV_WRITE;
-	event_set(&client_event, client_ibuf.fd, events, client_callback, NULL);
-	event_add(&client_event, NULL);
-
+	client_update_event();
 	return;
 
 lost_server:
