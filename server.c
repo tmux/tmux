@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.221 2009-11-08 23:06:25 tcunha Exp $ */
+/* $Id: server.c,v 1.222 2009-11-08 23:09:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -164,10 +164,10 @@ server_start(char *path)
 	setproctitle("server (%s)", rpathbuf);
 #endif
 
+	event_init();
+
 	server_fd = server_create_socket();
 	server_client_create(pair[1]);
-
-	event_init();
 
 	if (access(SYSTEM_CFG, R_OK) == 0) {
 		if (load_cfg(SYSTEM_CFG, NULL, &cause) != 0)
@@ -218,8 +218,6 @@ server_loop(void)
 
 	while (!server_should_shutdown()) {
 		server_update_socket();
-
-		server_client_prepare();
 
 		event_loopexit(&tv);
 		event_loop(EVLOOP_ONCE);
