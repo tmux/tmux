@@ -1,4 +1,4 @@
-/* $Id: server-window.c,v 1.10 2009-11-08 23:22:24 tcunha Exp $ */
+/* $Id: server-window.c,v 1.11 2009-11-08 23:35:53 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,10 +70,12 @@ server_window_loop(void)
 			continue;
 
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (server_window_backoff(wp))
-				bufferevent_disable(wp->event, EV_READ);
-			else
-				bufferevent_enable(wp->event, EV_READ);
+			if (wp->fd != -1) {
+				if (server_window_backoff(wp))
+					bufferevent_disable(wp->event, EV_READ);
+				else
+					bufferevent_enable(wp->event, EV_READ);
+			}
 		}
 
 		for (j = 0; j < ARRAY_LENGTH(&sessions); j++) {
