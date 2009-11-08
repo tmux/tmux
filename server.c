@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.224 2009-11-08 23:27:58 tcunha Exp $ */
+/* $Id: server.c,v 1.225 2009-11-08 23:28:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -214,7 +214,6 @@ server_loop(void)
 	while (!server_should_shutdown()) {
 		server_update_socket();
 
-		event_loopexit(NULL);
 		event_loop(EVLOOP_ONCE);
 
 		server_window_loop();
