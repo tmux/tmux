@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.500 2009-11-08 22:59:53 tcunha Exp $ */
+/* $Id: tmux.h,v 1.501 2009-11-08 23:02:56 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -797,9 +797,7 @@ struct window_pane {
 	char		 tty[TTY_NAME_MAX];
 
 	int		 fd;
-	struct event	 event;
-	struct buffer	*in;
-	struct buffer	*out;
+	struct bufferevent *event;
 
 	struct input_ctx ictx;
 
@@ -1585,8 +1583,6 @@ void	 server_client_callback(int, short, void *);
 void	 server_client_loop(void);
 
 /* server-window.c */
-void	 server_window_prepare(void);
-void	 server_window_callback(int, short, void *);
 void	 server_window_loop(void);
 
 /* server-fn.c */
