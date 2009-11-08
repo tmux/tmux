@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.499 2009-11-08 22:58:37 tcunha Exp $ */
+/* $Id: tmux.h,v 1.500 2009-11-08 22:59:53 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -804,8 +804,7 @@ struct window_pane {
 	struct input_ctx ictx;
 
 	int		 pipe_fd;
-	struct event	 pipe_event;
-	struct buffer	*pipe_buf;
+	struct bufferevent *pipe_event;
 	size_t		 pipe_off;
 
 	struct screen	*screen;

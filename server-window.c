@@ -1,4 +1,4 @@
-/* $Id: server-window.c,v 1.7 2009-11-08 22:58:37 tcunha Exp $ */
+/* $Id: server-window.c,v 1.8 2009-11-08 22:59:53 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,16 +55,6 @@ server_window_prepare(void)
 			event_set(&wp->event,
 			    wp->fd, events, server_window_callback, wp);
 			event_add(&wp->event, NULL);
-
-			if (wp->pipe_fd == -1)
-				continue;
-			events = 0;
-			if (BUFFER_USED(wp->pipe_buf) > 0)
-				events |= EV_WRITE;
-			event_del(&wp->pipe_event);
-			event_set(&wp->pipe_event,
-			    wp->pipe_fd, events, server_window_callback, wp);
-			event_add(&wp->pipe_event, NULL);
 		}
 	}
 }
@@ -109,14 +99,6 @@ server_window_callback(int fd, short events, void *data)
 			wp->fd = -1;
 		} else
 			window_pane_parse(wp);
-	}
-
-	if (fd == wp->pipe_fd) {
-		if (buffer_poll(fd, events, NULL, wp->pipe_buf) != 0) {
-			buffer_destroy(wp->pipe_buf);
-			close(wp->pipe_fd);
-			wp->pipe_fd = -1;
-		}
 	}
 }
 
