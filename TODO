@@ -38,8 +38,8 @@
   "new-session" if-shell "[ -e $HOME/.tmux-session.conf ]" source-file
   $HOME/.tmux-session.conf
 - get it passing all the vttest tests that don't require resizing the terminal
-- esc seq to set window title should be documented and should set
-  automatic-rename
+- esc seq to set window name and title should be documented, and name variant
+  should clear automatic-rename
 - way to set socket path from config file
 - XXX once env stuff is in, default-path and VISUAL/EDITOR should be picked up
   when session is started
@@ -95,3 +95,4 @@
 - rectangle copy/paste
 - half page/up down are missing from key table
 - support esc-esc to quit in modes
+- permit top-bit-set characters/utf-8 in command prompt
