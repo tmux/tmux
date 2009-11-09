@@ -138,7 +138,6 @@ void
 tty_error_callback(
     unused struct bufferevent *bufev, unused short what, unused void *data)
 {
-	fatalx("lost terminal");
 }
 
 void
