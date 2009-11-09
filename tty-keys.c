@@ -364,7 +364,7 @@ tty_keys_next(struct tty *tty)
 
 	/* If a normal key, return it. */
 	if (*buf != '\033') {
-		key = *buf;
+		key = (u_char) *buf;
 		evbuffer_drain(tty->event->input, 1);
 
 		/*
