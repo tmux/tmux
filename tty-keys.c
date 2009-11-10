@@ -47,45 +47,43 @@ struct tty_key_ent {
 
 	int	 	 	key;
 	int		 	flags;
-#define TTYKEY_CTRL 0x1
-#define TTYKEY_RAW 0x2
+#define TTYKEY_RAW 0x1
 };
 
 /* 
  * Default key tables. Those flagged with TTYKEY_RAW are inserted directly,
- * otherwise they are looked up in terminfo(5). Any keys marked TTYKEY_CTRL
- * have their last byte twiddled and are inserted as a Ctrl key as well.
+ * otherwise they are looked up in terminfo(5).
  */
 struct tty_key_ent tty_keys[] = {
 	/* Function keys. */
-	{ TTYC_KF1,	NULL,		KEYC_F1,		TTYKEY_CTRL },
-	{ TTYC_KF1,	NULL,		KEYC_F1,		TTYKEY_CTRL },
-	{ TTYC_KF2,	NULL,		KEYC_F2,		TTYKEY_CTRL },
-	{ TTYC_KF3,	NULL,		KEYC_F3,		TTYKEY_CTRL },
-	{ TTYC_KF4,	NULL,		KEYC_F4,		TTYKEY_CTRL },
-	{ TTYC_KF5,	NULL,		KEYC_F5,		TTYKEY_CTRL },
-	{ TTYC_KF6,	NULL,		KEYC_F6,		TTYKEY_CTRL },
-	{ TTYC_KF7,	NULL,		KEYC_F7,		TTYKEY_CTRL },
-	{ TTYC_KF8,	NULL,		KEYC_F8,		TTYKEY_CTRL },
-	{ TTYC_KF9,	NULL,		KEYC_F9,		TTYKEY_CTRL },
-	{ TTYC_KF10,	NULL,		KEYC_F10,		TTYKEY_CTRL },
-	{ TTYC_KF11,	NULL,		KEYC_F11,		TTYKEY_CTRL },
-	{ TTYC_KF12,	NULL,		KEYC_F12,		TTYKEY_CTRL },
-	{ TTYC_KF13,	NULL,		KEYC_F13,		TTYKEY_CTRL },
-	{ TTYC_KF14,	NULL,		KEYC_F14,		TTYKEY_CTRL },
-	{ TTYC_KF15,	NULL,		KEYC_F15,		TTYKEY_CTRL },
-	{ TTYC_KF16,	NULL,		KEYC_F16,		TTYKEY_CTRL },
-	{ TTYC_KF17,	NULL,		KEYC_F17,		TTYKEY_CTRL },
-	{ TTYC_KF18,	NULL,		KEYC_F18,		TTYKEY_CTRL },
-	{ TTYC_KF19,	NULL,		KEYC_F19,		TTYKEY_CTRL },
-	{ TTYC_KF20,	NULL,		KEYC_F20,		TTYKEY_CTRL },
-	{ TTYC_KICH1,	NULL,		KEYC_IC,		TTYKEY_CTRL },
-	{ TTYC_KDCH1,	NULL,		KEYC_DC,		TTYKEY_CTRL },
-	{ TTYC_KHOME,	NULL,		KEYC_HOME,		TTYKEY_CTRL },
-	{ TTYC_KEND,	NULL,		KEYC_END,		TTYKEY_CTRL },
-	{ TTYC_KNP,	NULL,		KEYC_NPAGE,		TTYKEY_CTRL },
-	{ TTYC_KPP,	NULL,		KEYC_PPAGE,		TTYKEY_CTRL },
-	{ TTYC_KCBT,	NULL,		KEYC_BTAB,		TTYKEY_CTRL },
+	{ TTYC_KF1,	NULL,		KEYC_F1,		0 },
+	{ TTYC_KF1,	NULL,		KEYC_F1,		0 },
+	{ TTYC_KF2,	NULL,		KEYC_F2,		0 },
+	{ TTYC_KF3,	NULL,		KEYC_F3,		0 },
+	{ TTYC_KF4,	NULL,		KEYC_F4,		0 },
+	{ TTYC_KF5,	NULL,		KEYC_F5,		0 },
+	{ TTYC_KF6,	NULL,		KEYC_F6,		0 },
+	{ TTYC_KF7,	NULL,		KEYC_F7,		0 },
+	{ TTYC_KF8,	NULL,		KEYC_F8,		0 },
+	{ TTYC_KF9,	NULL,		KEYC_F9,		0 },
+	{ TTYC_KF10,	NULL,		KEYC_F10,		0 },
+	{ TTYC_KF11,	NULL,		KEYC_F11,		0 },
+	{ TTYC_KF12,	NULL,		KEYC_F12,		0 },
+	{ TTYC_KF13,	NULL,		KEYC_F13,		0 },
+	{ TTYC_KF14,	NULL,		KEYC_F14,		0 },
+	{ TTYC_KF15,	NULL,		KEYC_F15,		0 },
+	{ TTYC_KF16,	NULL,		KEYC_F16,		0 },
+	{ TTYC_KF17,	NULL,		KEYC_F17,		0 },
+	{ TTYC_KF18,	NULL,		KEYC_F18,		0 },
+	{ TTYC_KF19,	NULL,		KEYC_F19,		0 },
+	{ TTYC_KF20,	NULL,		KEYC_F20,		0 },
+	{ TTYC_KICH1,	NULL,		KEYC_IC,		0 },
+	{ TTYC_KDCH1,	NULL,		KEYC_DC,		0 },
+	{ TTYC_KHOME,	NULL,		KEYC_HOME,		0 },
+	{ TTYC_KEND,	NULL,		KEYC_END,		0 },
+	{ TTYC_KNP,	NULL,		KEYC_NPAGE,		0 },
+	{ TTYC_KPP,	NULL,		KEYC_PPAGE,		0 },
+	{ TTYC_KCBT,	NULL,		KEYC_BTAB,		0 },
 
 	/* Arrow keys. */
 	{ 0,		"\033OA",	KEYC_UP,		TTYKEY_RAW },
@@ -98,10 +96,10 @@ struct tty_key_ent tty_keys[] = {
 	{ 0,		"\033[C",	KEYC_RIGHT,		TTYKEY_RAW },
 	{ 0,		"\033[D",	KEYC_LEFT,		TTYKEY_RAW },
 
-	{ TTYC_KCUU1,	NULL,		KEYC_UP,		TTYKEY_CTRL },
-	{ TTYC_KCUD1,	NULL,		KEYC_DOWN,		TTYKEY_CTRL },
-	{ TTYC_KCUB1,	NULL,		KEYC_LEFT,		TTYKEY_CTRL },
-	{ TTYC_KCUF1,	NULL,		KEYC_RIGHT,		TTYKEY_CTRL },
+	{ TTYC_KCUU1,	NULL,		KEYC_UP,		0 },
+	{ TTYC_KCUD1,	NULL,		KEYC_DOWN,		0 },
+	{ TTYC_KCUB1,	NULL,		KEYC_LEFT,		0 },
+	{ TTYC_KCUF1,	NULL,		KEYC_RIGHT,		0 },
 
 	/* Special-case arrow keys for rxvt until terminfo has kRIT5 etc. */
 	{ 0,		"\033Oa",	KEYC_UP|KEYC_CTRL,	TTYKEY_RAW },
@@ -255,7 +253,6 @@ tty_keys_init(struct tty *tty)
 	struct tty_key_ent	*tke;
 	u_int		 	 i;
 	const char		*s;
-	char			 tmp[64];
 
 	tty->key_tree = NULL;
 	for (i = 0; i < nitems(tty_keys); i++) {
@@ -272,12 +269,6 @@ tty_keys_init(struct tty *tty)
 			continue;
 
 		tty_keys_add(tty, s + 1, tke->key);
-		if (!(tke->flags & TTYKEY_CTRL)) {
-			if (strlcpy(tmp, s, sizeof tmp) >= sizeof tmp)
-				continue;
-			tmp[strlen(tmp) - 1] ^= 0x20;
-			tty_keys_add(tty, tmp + 1, tke->key | KEYC_CTRL);
-		}
 	}
 }
 
