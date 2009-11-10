@@ -96,3 +96,5 @@
 - half page/up down are missing from key table
 - support esc-esc to quit in modes
 - permit top-bit-set characters/utf-8 in command prompt
+- fix ctrl+F1-F4 output
+
