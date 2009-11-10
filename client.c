@@ -37,6 +37,7 @@
 struct imsgbuf	client_ibuf;
 struct event	client_event;
 const char     *client_exitmsg;
+int		client_exitval;
 
 void		client_send_identify(int);
 void		client_send_environ(void);
@@ -211,17 +212,14 @@ client_main(void)
 		goto out;
 
 	/* Set the event and dispatch. */
-	client_update_event();	
+	client_update_event();
 	event_dispatch();
 
 out:
 	/* Print the exit message, if any, and exit. */
-	if (client_exitmsg != NULL) {
-		if (!login_shell)
-			printf("[%s]\n", client_exitmsg);
-		exit(1);
-	}
-	exit(0);
+	if (client_exitmsg != NULL && !login_shell)
+		printf("[%s]\n", client_exitmsg);
+	exit(client_exitval);
 }
 
 void
@@ -232,6 +230,7 @@ client_signal(int sig, unused short events, unused void *data)
 	switch (sig) {
 	case SIGTERM:
 		client_exitmsg = "terminated";
+		client_exitval = 1;
 		client_write_server(MSG_EXITING, NULL, 0);
 		break;
 	case SIGWINCH:
@@ -275,6 +274,7 @@ client_callback(unused int fd, short events, unused void *data)
 
 lost_server:
 	client_exitmsg = "lost server";
+	client_exitval = 1;
 	event_loopexit(NULL);
 }
 
@@ -321,6 +321,7 @@ client_dispatch(void)
 
 			client_write_server(MSG_EXITING, NULL, 0);
 			client_exitmsg = "server exited";
+			client_exitval = 1;
 			break;
 		case MSG_SUSPEND:
 			if (datalen != 0)
