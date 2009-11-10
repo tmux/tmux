@@ -87,6 +87,7 @@ struct {
 	{ "KP.",	KEYC_KP_PERIOD },
 };
 
+/* Find key string in table. */
 int
 key_string_search_table(const char *string)
 {
@@ -99,6 +100,7 @@ key_string_search_table(const char *string)
 	return (KEYC_NONE);
 }
 
+/* Lookup a string and convert to a key value, handling C-/M-/S- prefix. */
 int
 key_string_lookup_string(const char *string)
 {
@@ -118,20 +120,34 @@ key_string_lookup_string(const char *string)
 	if (ptr != NULL) {
 		if (ptr[0] == '\0')
 			return (KEYC_NONE);
-		if (ptr[1] == '\0') {
-			if (ptr[0] == 32)
-				return (0);
-			if (ptr[0] == 63)
-				return (KEYC_BSPACE);
-			if (ptr[0] >= 64 && ptr[0] <= 95)
-				return (ptr[0] - 64);
-			if (ptr[0] >= 97 && ptr[0] <= 122)
-				return (ptr[0] - 96);
-			return (KEYC_NONE);
-		}
+		/*
+		 * Lookup as a named key. If a function key (>= KEYC_BASE),
+		 * return it with the ctrl modifier, otherwise fallthrough with
+		 * the key value from the table (eg for C-Space). If not a
+		 * named key, check for single character keys and try that.
+		 */
 		key = key_string_search_table(ptr);
-		if (key != KEYC_NONE)
-			return (key | KEYC_CTRL);
+		if (key != KEYC_NONE) {
+			if (key >= KEYC_BASE)
+				return (key | KEYC_CTRL);
+		} else {
+			if (ptr[1] != '\0')
+				return (KEYC_NONE);
+			key = ptr[0];
+		}
+
+		/* 
+		 * Figure out if the single character in key is a valid ctrl
+		 * key.
+		 */
+		if (key == 32)
+			return (0);
+		if (key == 63)
+			return (KEYC_BSPACE);
+		if (key >= 64 && key <= 95)
+			return (key - 64);
+		if (key >= 97 && key <= 122)
+			return (key - 96);
 		return (KEYC_NONE);
 	}
 	
@@ -139,13 +155,17 @@ key_string_lookup_string(const char *string)
 		ptr = string + 2;
 		if (ptr[0] == '\0')
 			return (KEYC_NONE);
-		if (ptr[1] == '\0') {
-			if (ptr[0] < 32 || ptr[0] > 127)
-				return (KEYC_NONE);
-			return (ptr[0] | KEYC_ESCAPE);
-		}
 		key = key_string_lookup_string(ptr);
-		if (key != KEYC_NONE)
+		if (key != KEYC_NONE) {
+			if (key >= KEYC_BASE)
+				return (key | KEYC_ESCAPE);
+		} else {
+			if (ptr[1] == '\0')
+				return (KEYC_NONE);
+			key = ptr[0];
+		}
+
+		if (key >= 32 && key <= 127)
 			return (key | KEYC_ESCAPE);
 		return (KEYC_NONE);
 	}
@@ -153,6 +173,7 @@ key_string_lookup_string(const char *string)
 	return (key_string_search_table(string));
 }
 
+/* Convert a key code into string format, with prefix if necessary. */
 const char *
 key_string_lookup_key(int key)
 {
