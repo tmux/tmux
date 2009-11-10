@@ -98,17 +98,20 @@ extern char   **environ;
 #define BELL_ANY 1
 #define BELL_CURRENT 2
 
-/* Key codes. ncurses defines KEY_*. Grrr. */
+/* Special key codes. */
 #define KEYC_NONE 0xfff
-/* 0x1000 is base for special keys */
+#define KEYC_BASE 0x1000
+
+/* Key modifier bits. */
 #define KEYC_ESCAPE 0x2000
 #define KEYC_CTRL 0x4000
 #define KEYC_SHIFT 0x8000
 #define KEYC_PREFIX 0x10000
 
+/* Other key codes. */
 enum key_code {
 	/* Mouse key. */
-	KEYC_MOUSE = 0x1000,
+	KEYC_MOUSE = KEYC_BASE,
 
 	/* Backspace key. */
 	KEYC_BSPACE,
