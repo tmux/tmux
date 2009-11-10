@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.44 2009-11-10 23:26:13 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.45 2009-11-10 23:27:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -364,7 +364,7 @@ tty_keys_next(struct tty *tty)
 
 	/* If a normal key, return it. */
 	if (*buf != '\033') {
-		key = *buf;
+		key = (u_char) *buf;
 		evbuffer_drain(tty->event->input, 1);
 
 		/*
