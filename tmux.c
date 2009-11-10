@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.186 2009-11-08 22:53:13 tcunha Exp $ */
+/* $Id: tmux.c,v 1.187 2009-11-10 23:34:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -393,7 +393,7 @@ main(int argc, char **argv)
 	options_set_number(wo, "window-status-current-bg", 8);
 	options_set_number(wo, "window-status-current-fg", 8);
 	options_set_number(wo, "window-status-fg", 8);
-	options_set_number(wo, "xterm-keys", 0);
+	options_set_number(wo, "xterm-keys", 1);
  	options_set_number(wo, "remain-on-exit", 0);
 	options_set_number(wo, "synchronize-panes", 0);
 
