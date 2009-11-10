@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.172 2009-11-08 23:34:47 tcunha Exp $ */
+/* $Id: tty.c,v 1.173 2009-11-10 23:27:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -138,7 +138,6 @@ void
 tty_error_callback(
     unused struct bufferevent *bufev, unused short what, unused void *data)
 {
-	fatalx("lost terminal");
 }
 
 void
