@@ -450,6 +450,7 @@ server_child_exited(pid_t pid, int status)
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->pid == pid) {
 				close(wp->fd);
+				bufferevent_free(wp->event);
 				wp->fd = -1;
 			}
 		}
