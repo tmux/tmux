@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.225 2009-11-08 23:28:40 tcunha Exp $ */
+/* $Id: server.c,v 1.226 2009-11-11 09:54:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -164,7 +164,21 @@ server_start(char *path)
 	setproctitle("server (%s)", rpathbuf);
 #endif
 
+#ifdef HAVE_BROKEN_KQUEUE
+	if (setenv("EVENT_NOKQUEUE", "1", 1) != 0)
+		fatal("setenv failed");
+#endif
+#ifdef HAVE_BROKEN_POLL
+	if (setenv("EVENT_NOPOLL", "1", 1) != 0)
+		fatal("setenv failed");
+#endif
 	event_init();
+#ifdef HAVE_BROKEN_KQUEUE
+	unsetenv("EVENT_NOKQUEUE");
+#endif
+#ifdef HAVE_BROKEN_POLL
+	unsetenv("EVENT_NOPOLL");
+#endif
 
 	server_fd = server_create_socket();
 	server_client_create(pair[1]);
