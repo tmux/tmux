@@ -101,6 +101,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		server_redraw_client(ctx->cmdclient);
 	}
 	recalculate_sizes();
+	server_update_socket();
 
 	return (1);	/* 1 means don't tell command client to exit */
 }

@@ -1557,6 +1557,7 @@ extern struct clients dead_clients;
 int	 server_start(char *);
 void	 server_signal_set(void);
 void	 server_signal_clear(void);
+void	 server_update_socket(void);
 
 /* server-client.c */
 void	 server_client_create(int);

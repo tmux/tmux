@@ -156,6 +156,7 @@ server_client_lost(struct client *c)
 	c->flags |= CLIENT_DEAD;
 
 	recalculate_sizes();
+	server_update_socket();
 }
 
 /* Process a single client event. */
