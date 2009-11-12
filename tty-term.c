@@ -378,10 +378,6 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 		xasprintf(cause, "terminal does not support clear");
 		goto error;
 	}
-	if (!tty_term_has(term, TTYC_RI)) {
-		xasprintf(cause, "terminal does not support ri");
-		goto error;
-	}
 	if (!tty_term_has(term, TTYC_CUP)) {
 		xasprintf(cause, "terminal does not support cup");
 		goto error;
