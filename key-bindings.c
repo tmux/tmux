@@ -187,20 +187,6 @@ key_bindings_init(void)
 	}
 }
 
-void
-key_bindings_free(void)
-{
-	struct key_binding	*bd;
-
-	key_bindings_clean();
-	while (!SPLAY_EMPTY(&key_bindings)) {
-		bd = SPLAY_ROOT(&key_bindings);
-		SPLAY_REMOVE(key_bindings, &key_bindings, bd);
-		cmd_list_free(bd->cmdlist);
-		xfree(bd);
-	}
-}
-
 void printflike2
 key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 {

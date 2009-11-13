@@ -371,21 +371,6 @@ mode_key_init_trees(void)
 }
 
 void
-mode_key_free_trees(void)
-{
-	const struct mode_key_table	*mtab;
-	struct mode_key_binding		*mbind;
-
-	for (mtab = mode_key_tables; mtab->name != NULL; mtab++) {
-		while (!SPLAY_EMPTY(mtab->tree)) {
-			mbind = SPLAY_ROOT(mtab->tree);
-			SPLAY_REMOVE(mode_key_tree, mtab->tree, mbind);
-			xfree(mbind);
-		}
-	}
-}
-
-void
 mode_key_init(struct mode_key_data *mdata, struct mode_key_tree *mtree)
 {
 	mdata->tree = mtree;
