@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.227 2009-11-13 16:51:49 tcunha Exp $ */
+/* $Id: server.c,v 1.228 2009-11-13 16:52:46 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -468,6 +468,7 @@ server_child_exited(pid_t pid, int status)
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->pid == pid) {
 				close(wp->fd);
+				bufferevent_free(wp->event);
 				wp->fd = -1;
 			}
 		}
