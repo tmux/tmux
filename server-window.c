@@ -28,7 +28,6 @@ int	server_window_check_bell(struct session *, struct window *);
 int	server_window_check_activity(struct session *, struct window *);
 int	server_window_check_content(
 	    struct session *, struct window *, struct window_pane *);
-void	server_window_check_alive(struct window *);
 
 /* Check if this window should suspend reading. */
 int
@@ -90,8 +89,6 @@ server_window_loop(void)
 				server_window_check_content(s, w, wp);
 		}
 		w->flags &= ~(WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_CONTENT);
-
-		server_window_check_alive(w);
 	}
 }
 
@@ -227,63 +224,4 @@ server_window_check_content(
 	}
 
 	return (1);
-}
-
-/* Check if window still exists. */
-void
-server_window_check_alive(struct window *w)
-{
-	struct window_pane	*wp, *wq;
-	struct options		*oo = &w->options;
-	struct session		*s;
-	struct winlink		*wl;
-	u_int		 	 i;
-	int		 	 destroyed;
-
-	destroyed = 1;
-
-	wp = TAILQ_FIRST(&w->panes);
-	while (wp != NULL) {
-		wq = TAILQ_NEXT(wp, entry);
-		/*
-		 * If the pane has died and the remain-on-exit flag is not set,
-		 * remove the pane; otherwise, if the flag is set, don't allow
-		 * the window to be destroyed (or it'll close when the last
-		 * pane dies).
-		 */
-		if (wp->fd == -1 && !options_get_number(oo, "remain-on-exit")) {
-			layout_close_pane(wp);
-			window_remove_pane(w, wp);
-			server_redraw_window(w);
-		} else 
-			destroyed = 0;
-		wp = wq;
-	}
-
-	if (!destroyed)
-		return;
-
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		s = ARRAY_ITEM(&sessions, i);
-		if (s == NULL)
-			continue;
-		if (!session_has(s, w))
-			continue;
-
-	restart:
-		/* Detach window and either redraw or kill clients. */
-		RB_FOREACH(wl, winlinks, &s->windows) {
-			if (wl->window != w)
-				continue;
-			if (session_detach(s, wl)) {
-				server_destroy_session_group(s);
-				break;
-			}
-			server_redraw_session(s);
-			server_status_session_group(s);
-			goto restart;
-		}
-	}
-
-	recalculate_sizes();
 }

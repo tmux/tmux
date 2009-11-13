@@ -594,9 +594,7 @@ window_pane_error_callback(
 {
 	struct window_pane *wp = data;
 
-	close(wp->fd);
-	bufferevent_free(wp->event);
-	wp->fd = -1;
+	server_destroy_pane(wp);
 }
 
 void

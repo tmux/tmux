@@ -317,6 +317,27 @@ server_unlink_window(struct session *s, struct winlink *wl)
 }
 
 void
+server_destroy_pane(struct window_pane *wp)
+{
+	struct window	*w = wp->window;
+
+	close(wp->fd);
+	bufferevent_free(wp->event);
+	wp->fd = -1;
+
+	if (options_get_number(&w->options, "remain-on-exit"))
+		return;
+
+	layout_close_pane(wp);
+	window_remove_pane(w, wp);
+
+	if (TAILQ_EMPTY(&w->panes))
+		server_kill_window(w);
+	else
+		server_redraw_window(w);
+}
+
+void
 server_destroy_session_group(struct session *s)
 {
 	struct session_group	*sg;

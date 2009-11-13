@@ -80,6 +80,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "respawn window failed: %s", cause);
 		xfree(cause);
 		environ_free(&env);
+		server_destroy_pane(wp);
 		return (-1);
 	}
 	layout_init(w);
