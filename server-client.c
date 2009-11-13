@@ -197,7 +197,9 @@ server_client_status_timer(void)
 	struct session	*s;
 	struct job	*job;
 	struct timeval	 tv;
-	u_int		 i, interval;
+	u_int		 i;
+	int		 interval;
+	time_t		 difference;
 
 	if (gettimeofday(&tv, NULL) != 0)
 		fatal("gettimeofday failed");
@@ -220,9 +222,10 @@ server_client_status_timer(void)
 			continue;
 		interval = options_get_number(&s->options, "status-interval");
 
-		if (tv.tv_sec - c->status_timer.tv_sec >= interval) {
+		difference = tv.tv_sec - c->status_timer.tv_sec;
+		if (difference >= interval) {
 			RB_FOREACH(job, jobs, &c->status_jobs)
-			    job_run(job);
+				job_run(job);
 			c->flags |= CLIENT_STATUS;
 		}
 	}
