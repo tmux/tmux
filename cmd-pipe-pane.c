@@ -127,8 +127,6 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 			fatal("fcntl failed");	
 		return (0);
 	}
-
-	return (0);
 }
 
 void
