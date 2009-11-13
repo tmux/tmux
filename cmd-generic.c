@@ -85,7 +85,7 @@ cmd_parse_flags(int opt, const char *chflagstr, uint64_t *chflags)
 	return (0);
 }
 
-/* Print the flags supported in chflags. */
+/* Print the flags present in chflags. */
 size_t
 cmd_print_flags(char *buf, size_t len, size_t off, uint64_t chflags)
 {
