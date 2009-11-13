@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.173 2009-11-10 23:27:57 tcunha Exp $ */
+/* $Id: tty.c,v 1.174 2009-11-13 16:57:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -716,7 +716,8 @@ tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 		return;
 
  	if (wp->xoff != 0 || screen_size_x(s) < tty->sx ||
-	    !tty_term_has(tty->term, TTYC_CSR)) {
+	    !tty_term_has(tty->term, TTYC_CSR) ||
+	    !tty_term_has(tty->term, TTYC_RI)) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}

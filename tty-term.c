@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.35 2009-10-28 23:01:44 tcunha Exp $ */
+/* $Id: tty-term.c,v 1.36 2009-11-13 16:57:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -375,10 +375,6 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 	/* These are always required. */
 	if (!tty_term_has(term, TTYC_CLEAR)) {
 		xasprintf(cause, "terminal does not support clear");
-		goto error;
-	}
-	if (!tty_term_has(term, TTYC_RI)) {
-		xasprintf(cause, "terminal does not support ri");
 		goto error;
 	}
 	if (!tty_term_has(term, TTYC_CUP)) {
