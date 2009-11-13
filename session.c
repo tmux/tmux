@@ -589,7 +589,6 @@ session_group_synchronize1(struct session *target, struct session *s)
 	/* Then free the old winlinks list. */
 	while (!RB_EMPTY(&old_windows)) {
 		wl = RB_ROOT(&old_windows);
-		RB_REMOVE(winlinks, &old_windows, wl);
-		xfree(wl);
+		winlink_remove(&old_windows, wl);
 	}
 }
