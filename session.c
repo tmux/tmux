@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.70 2009-11-04 22:42:31 tcunha Exp $ */
+/* $Id: session.c,v 1.71 2009-11-13 16:59:19 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -588,7 +588,6 @@ session_group_synchronize1(struct session *target, struct session *s)
 	/* Then free the old winlinks list. */
 	while (!RB_EMPTY(&old_windows)) {
 		wl = RB_ROOT(&old_windows);
-		RB_REMOVE(winlinks, &old_windows, wl);
-		xfree(wl);
+		winlink_remove(&old_windows, wl);
 	}
 }
