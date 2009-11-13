@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.83 2009-10-23 17:16:24 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.84 2009-11-13 16:54:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1039,6 +1039,8 @@ screen_write_cell(struct screen_write_ctx *ctx,
 		/* Construct UTF-8 and write it. */
 		gu.width = utf8data->width;
 		memset(gu.data, 0xff, sizeof gu.data);
+		if (utf8data->size == 0)
+			fatalx("UTF-8 data empty");
 		if (utf8data->size > sizeof gu.data)
 			fatalx("UTF-8 data overflow");
 		memcpy(gu.data, utf8data->data, utf8data->size);
@@ -1084,6 +1086,10 @@ screen_write_combine(
 	if (s->cx == 0)
 		return (-1);
 
+	/* Empty utf8data is out. */
+	if (utf8data->size == 0)
+		fatalx("UTF-8 data empty");
+
 	/* Retrieve the previous cell and convert to UTF-8 if not already. */
 	gc = grid_view_get_cell(gd, s->cx - 1, s->cy);
 	if (!(gc->flags & GRID_FLAG_UTF8)) {
@@ -1108,6 +1114,7 @@ screen_write_combine(
 			gu->data[i] = '_';
 		if (i != UTF8_SIZE)
 			gu->data[i] = 0xff;
+		gu->width = i;
 		return (0);
 	}
 
@@ -1166,14 +1173,16 @@ screen_write_overwrite(struct screen_write_ctx *ctx)
 		gu = grid_view_peek_utf8(gd, s->cx, s->cy);
 		if (gu->width > 1) {
 			/*
-			 * An UTF-8 wide cell; overwrite following padding cells only.
+			 * An UTF-8 wide cell; overwrite following padding
+			 * cells only.
 			 */
 			xx = s->cx;
 			while (++xx < screen_size_x(s)) {
 				gc = grid_view_peek_cell(gd, xx, s->cy);
 				if (!(gc->flags & GRID_FLAG_PADDING))
 					break;
-				grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
+				grid_view_set_cell(
+				    gd, xx, s->cy, &grid_default_cell);
 			}
 		}
 	}
