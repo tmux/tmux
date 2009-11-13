@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.83 2009-10-06 14:14:07 tcunha Exp $ */
+/* $Id: key-bindings.c,v 1.84 2009-11-13 16:58:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -184,20 +184,6 @@ key_bindings_init(void)
 
 		key_bindings_add(
 		    table[i].key | KEYC_PREFIX, table[i].can_repeat, cmdlist);
-	}
-}
-
-void
-key_bindings_free(void)
-{
-	struct key_binding	*bd;
-
-	key_bindings_clean();
-	while (!SPLAY_EMPTY(&key_bindings)) {
-		bd = SPLAY_ROOT(&key_bindings);
-		SPLAY_REMOVE(key_bindings, &key_bindings, bd);
-		cmd_list_free(bd->cmdlist);
-		xfree(bd);
 	}
 }
 

@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.34 2009-10-15 01:52:47 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.35 2009-11-13 16:58:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -366,21 +366,6 @@ mode_key_init_trees(void)
 			mbind->mode = ment->mode;
 			mbind->cmd = ment->cmd;
 			SPLAY_INSERT(mode_key_tree, mtab->tree, mbind);
-		}
-	}
-}
-
-void
-mode_key_free_trees(void)
-{
-	const struct mode_key_table	*mtab;
-	struct mode_key_binding		*mbind;
-
-	for (mtab = mode_key_tables; mtab->name != NULL; mtab++) {
-		while (!SPLAY_EMPTY(mtab->tree)) {
-			mbind = SPLAY_ROOT(mtab->tree);
-			SPLAY_REMOVE(mode_key_tree, mtab->tree, mbind);
-			xfree(mbind);
 		}
 	}
 }
