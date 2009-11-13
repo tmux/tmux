@@ -32,7 +32,7 @@ int	cmd_select_window_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_select_window_entry = {
 	"select-window", "selectw",
 	CMD_TARGET_WINDOW_USAGE,
-	0, 0,
+	0, "",
 	cmd_select_window_init,
 	cmd_target_parse,
 	cmd_select_window_exec,

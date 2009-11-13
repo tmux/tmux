@@ -34,7 +34,7 @@ void	cmd_choose_client_free(void *);
 const struct cmd_entry cmd_choose_client_entry = {
 	"choose-client", NULL,
 	CMD_TARGET_WINDOW_USAGE " [template]",
-	CMD_ARG01, 0,
+	CMD_ARG01, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_choose_client_exec,

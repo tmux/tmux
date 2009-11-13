@@ -29,7 +29,7 @@ int	cmd_lock_session_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_lock_session_entry = {
 	"lock-session", "locks",
 	CMD_TARGET_SESSION_USAGE,
-	0, 0,
+	0, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_lock_session_exec,

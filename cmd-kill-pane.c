@@ -31,7 +31,7 @@ int	cmd_kill_pane_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_kill_pane_entry = {
 	"kill-pane", "killp",
 	"[-a] " CMD_TARGET_PANE_USAGE,
-	0, CMD_CHFLAG('a'),
+	0, "a",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_kill_pane_exec,
@@ -56,7 +56,7 @@ cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (0);
 	}
 
-	if (data->chflags & CMD_CHFLAG('a')) {
+	if (cmd_check_flag(data->chflags, 'a')) {
 		loopwp = TAILQ_FIRST(&wl->window->panes);
 		while (loopwp != NULL) {
 			nextwp = TAILQ_NEXT(loopwp, entry);

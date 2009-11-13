@@ -36,7 +36,7 @@ void	cmd_run_shell_free(void *);
 const struct cmd_entry cmd_run_shell_entry = {
 	"run-shell", "run",
 	"command",
-	CMD_ARG1, 0,
+	CMD_ARG1, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_run_shell_exec,

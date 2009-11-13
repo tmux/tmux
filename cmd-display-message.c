@@ -31,7 +31,7 @@ int	cmd_display_message_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_display_message_entry = {
 	"display-message", "display",
 	CMD_TARGET_CLIENT_USAGE " [message]",
-	CMD_ARG01, 0,
+	CMD_ARG01, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_display_message_exec,

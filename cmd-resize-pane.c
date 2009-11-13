@@ -31,9 +31,8 @@ int	cmd_resize_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_resize_pane_entry = {
 	"resize-pane", "resizep",
-	"[-DU] " CMD_TARGET_PANE_USAGE " [adjustment]",
-	CMD_ARG01,
-	CMD_CHFLAG('D')|CMD_CHFLAG('L')|CMD_CHFLAG('R')|CMD_CHFLAG('U'),
+	"[-DLRU] " CMD_TARGET_PANE_USAGE " [adjustment]",
+	CMD_ARG01, "DLRU",
 	cmd_resize_pane_init,
 	cmd_target_parse,
 	cmd_resize_pane_exec,
@@ -50,28 +49,28 @@ cmd_resize_pane_init(struct cmd *self, int key)
 	data = self->data;
 
 	if (key == (KEYC_UP | KEYC_CTRL))
-		data->chflags |= CMD_CHFLAG('U');
+		cmd_set_flag(&data->chflags, 'U');
 	if (key == (KEYC_DOWN | KEYC_CTRL))
-		data->chflags |= CMD_CHFLAG('D');
+		cmd_set_flag(&data->chflags, 'D');
 	if (key == (KEYC_LEFT | KEYC_CTRL))
-		data->chflags |= CMD_CHFLAG('L');
+		cmd_set_flag(&data->chflags, 'L');
 	if (key == (KEYC_RIGHT | KEYC_CTRL))
-		data->chflags |= CMD_CHFLAG('R');
+		cmd_set_flag(&data->chflags, 'R');
 	
 	if (key == (KEYC_UP | KEYC_ESCAPE)) {
-		data->chflags |= CMD_CHFLAG('U');
+		cmd_set_flag(&data->chflags, 'U');
 		data->arg = xstrdup("5");
 	}
 	if (key == (KEYC_DOWN | KEYC_ESCAPE)) {
-		data->chflags |= CMD_CHFLAG('D');
+		cmd_set_flag(&data->chflags, 'D');
 		data->arg = xstrdup("5");
 	}
 	if (key == (KEYC_LEFT | KEYC_ESCAPE)) {
-		data->chflags |= CMD_CHFLAG('L');
+		cmd_set_flag(&data->chflags, 'L');
 		data->arg = xstrdup("5");
 	}
 	if (key == (KEYC_RIGHT | KEYC_ESCAPE)) {
-		data->chflags |= CMD_CHFLAG('R');
+		cmd_set_flag(&data->chflags, 'R');
 		data->arg = xstrdup("5");
 	}
 }
@@ -98,15 +97,14 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (data->chflags & (CMD_CHFLAG('L')|CMD_CHFLAG('R'))) {
-		if (data->chflags & CMD_CHFLAG('L'))
-			adjust = -adjust;
+	if (cmd_check_flag(data->chflags, 'L'))
+		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, -adjust);
+	else if (cmd_check_flag(data->chflags, 'R'))
 		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, adjust);
-	} else {
-		if (data->chflags & CMD_CHFLAG('U'))
-			adjust = -adjust;
+	else if (cmd_check_flag(data->chflags, 'U'))
+		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, -adjust);
+	else if (cmd_check_flag(data->chflags, 'D'))
 		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, adjust);
-	}
 	server_redraw_window(wl->window);
 
 	return (0);

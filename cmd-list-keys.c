@@ -33,7 +33,7 @@ int	cmd_list_keys_table(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_list_keys_entry = {
 	"list-keys", "lsk",
 	"[-t key-table]",
-	0, 0,
+	0, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_list_keys_exec,

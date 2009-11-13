@@ -32,7 +32,7 @@ int	cmd_set_option_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set",
 	"[-agu] " CMD_TARGET_SESSION_USAGE " option [value]",
-	CMD_ARG12, CMD_CHFLAG('a')|CMD_CHFLAG('g')|CMD_CHFLAG('u'),
+	CMD_ARG12, "agu",
 	NULL,
 	cmd_target_parse,
 	cmd_set_option_exec,
@@ -113,7 +113,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int				 i;
 	int				 try_again;
 
-	if (data->chflags & CMD_CHFLAG('g'))
+	if (cmd_check_flag(data->chflags, 'g'))
 		oo = &global_s_options;
 	else {
 		if ((s = cmd_find_session(ctx, data->target)) == NULL)
@@ -145,8 +145,8 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if (data->chflags & CMD_CHFLAG('u')) {
-		if (data->chflags & CMD_CHFLAG('g')) {
+	if (cmd_check_flag(data->chflags, 'u')) {
+		if (cmd_check_flag(data->chflags, 'g')) {
 			ctx->error(ctx,
 			    "can't unset global option: %s", entry->name);
 			return (-1);
@@ -163,7 +163,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		switch (entry->type) {
 		case SET_OPTION_STRING:
 			set_option_string(ctx, oo, entry,
-			    data->arg2, data->chflags & CMD_CHFLAG('a'));
+			    data->arg2, cmd_check_flag(data->chflags, 'a'));
 			break;
 		case SET_OPTION_NUMBER:
 			set_option_number(ctx, oo, entry, data->arg2);

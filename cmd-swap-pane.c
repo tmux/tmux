@@ -32,7 +32,7 @@ int	cmd_swap_pane_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_swap_pane_entry = {
 	"swap-pane", "swapp",
 	"[-dDU] " CMD_SRCDST_PANE_USAGE,
-	0, CMD_CHFLAG('d')|CMD_CHFLAG('D')|CMD_CHFLAG('U'),
+	0, "dDU",
 	cmd_swap_pane_init,
 	cmd_srcdst_parse,
 	cmd_swap_pane_exec,
@@ -49,10 +49,11 @@ cmd_swap_pane_init(struct cmd *self, int key)
 	data = self->data;
 
 	if (key == '{')
-		data->chflags |= CMD_CHFLAG('U');
+		cmd_set_flag(&data->chflags, 'U');
 	else if (key == '}')
-		data->chflags |= CMD_CHFLAG('D');
+		cmd_set_flag(&data->chflags, 'D');
 }
+
 
 int
 cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
@@ -73,11 +74,11 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (data->src == NULL) {
 		src_w = dst_w;
-		if (data->chflags & CMD_CHFLAG('D')) {
+		if (cmd_check_flag(data->chflags, 'D')) {
 			src_wp = TAILQ_NEXT(dst_wp, entry);
 			if (src_wp == NULL)
 				src_wp = TAILQ_FIRST(&dst_w->panes);
-		} else if (data->chflags & CMD_CHFLAG('U')) {
+		} else if (cmd_check_flag(data->chflags, 'U')) {
 			src_wp = TAILQ_PREV(dst_wp, window_panes, entry);
 			if (src_wp == NULL)
 				src_wp = TAILQ_LAST(&dst_w->panes, window_panes);
@@ -120,7 +121,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	dst_wp->xoff = xoff; dst_wp->yoff = yoff;
 	window_pane_resize(dst_wp, sx, sy);
 
-	if (!(data->chflags & CMD_CHFLAG('d'))) {
+	if (!cmd_check_flag(data->chflags, 'd')) {
 		if (src_w != dst_w) {
 			window_set_active_pane(src_w, dst_wp);
 			window_set_active_pane(dst_w, src_wp);

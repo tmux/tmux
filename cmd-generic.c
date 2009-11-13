@@ -23,8 +23,8 @@
 
 #include "tmux.h"
 
-int	cmd_getopt(int, char **, const char *, uint64_t);
-int	cmd_flags(int, uint64_t, uint64_t *);
+int	cmd_getopt(int, char **, const char *, const char *);
+int	cmd_parse_flags(int, const char *, uint64_t *);
 size_t	cmd_print_flags(char *, size_t, size_t, uint64_t);
 int	cmd_fill_argument(int, char **, char **, int, char **);
 
@@ -36,51 +36,53 @@ cmd_prarg(char *buf, size_t len, const char *prefix, char *arg)
 	return (xsnprintf(buf, len, "%s%s", prefix, arg));
 }
 
-/* Prepend flags from chflags onto flagstr and call getopt. */
+/* Append two flag strings together and call getopt. */
 int
-cmd_getopt(int argc, char **argv, const char *flagstr, uint64_t chflags)
+cmd_getopt(int argc, char **argv, const char *flagstr, const char *chflagstr)
 {
-	u_char	ch;
-	char	buf[128];
-	size_t	len, off;
+	char	tmp[BUFSIZ];
 
-	*buf = '\0';
-
-	len = sizeof buf;
-	off = 0;
-
-	for (ch = 0; ch < 26; ch++) {
-		if (chflags & CMD_CHFLAG('a' + ch))
-			off += xsnprintf(buf + off, len - off, "%c", 'a' + ch);
-		if (chflags & CMD_CHFLAG('A' + ch))
-			off += xsnprintf(buf + off, len - off, "%c", 'A' + ch);
-	}
-	
-	strlcat(buf, flagstr, sizeof buf);
-
-	return (getopt(argc, argv, buf));
+	if (strlcpy(tmp, flagstr, sizeof tmp) >= sizeof tmp)
+		fatalx("strlcpy overflow");
+	if (strlcat(tmp, chflagstr, sizeof tmp) >= sizeof tmp)
+		fatalx("strlcat overflow");
+	return (getopt(argc, argv, tmp));
 }
 
-/* 
- * If this option is expected (in ichflags), set it in ochflags, otherwise
- * return -1.
- */
+/* Return if flag character is set. */
 int
-cmd_flags(int opt, uint64_t ichflags, uint64_t *ochflags)
+cmd_check_flag(uint64_t chflags, int flag)
 {
-	u_char	ch;
+	if (flag >= 'A' && flag <= 'Z')
+		flag = 26 + flag - 'A';
+	else if (flag >= 'a' && flag <= 'z')
+		flag = flag - 'a';
+	else
+		return (0);
+	return ((chflags & (1ULL << flag)) != 0);
+}
 
-	for (ch = 0; ch < 26; ch++) {
-		if (opt == 'a' + ch && ichflags & CMD_CHFLAG(opt)) {
-			(*ochflags) |= CMD_CHFLAG(opt);
-			return (0);
-		}
-		if (opt == 'A' + ch && ichflags & CMD_CHFLAG(opt)) {
-			(*ochflags) |= CMD_CHFLAG(opt);
-			return (0);
-		}
-	}
-	return (-1);
+/* Set flag character. */
+void
+cmd_set_flag(uint64_t *chflags, int flag)
+{
+	if (flag >= 'A' && flag <= 'Z')
+		flag = 26 + flag - 'A';
+	else if (flag >= 'a' && flag <= 'z')
+		flag = flag - 'a';
+	else
+		return;
+	(*chflags) |= (1ULL << flag);
+}
+
+/* If this option is expected, set it in chflags, otherwise return -1. */
+int
+cmd_parse_flags(int opt, const char *chflagstr, uint64_t *chflags)
+{
+	if (strchr(chflagstr, opt) == NULL)
+		return (-1);
+	cmd_set_flag(chflags, opt);
+	return (0);
 }
 
 /* Print the flags supported in chflags. */
@@ -95,9 +97,9 @@ cmd_print_flags(char *buf, size_t len, size_t off, uint64_t chflags)
 	off += xsnprintf(buf + off, len - off, " -");
 
 	for (ch = 0; ch < 26; ch++) {
-		if (chflags & CMD_CHFLAG('a' + ch))
+		if (cmd_check_flag(chflags, 'a' + ch))
 			off += xsnprintf(buf + off, len - off, "%c", 'a' + ch);
-		if (chflags & CMD_CHFLAG('A' + ch))
+		if (cmd_check_flag(chflags, 'A' + ch))
 			off += xsnprintf(buf + off, len - off, "%c", 'A' + ch);
 	}
 	return (off - boff);
@@ -170,7 +172,7 @@ cmd_target_parse(struct cmd *self, int argc, char **argv, char **cause)
 	data = self->data;
 
 	while ((opt = cmd_getopt(argc, argv, "t:", entry->chflags)) != -1) {
-		if (cmd_flags(opt, entry->chflags, &data->chflags) == 0)
+		if (cmd_parse_flags(opt, entry->chflags, &data->chflags) == 0)
 			continue;
 		switch (opt) {
 		case 't':
@@ -253,7 +255,7 @@ cmd_srcdst_parse(struct cmd *self, int argc, char **argv, char **cause)
 	data = self->data;
 
 	while ((opt = cmd_getopt(argc, argv, "s:t:", entry->chflags)) != -1) {
-		if (cmd_flags(opt, entry->chflags, &data->chflags) == 0)
+		if (cmd_parse_flags(opt, entry->chflags, &data->chflags) == 0)
 			continue;
 		switch (opt) {
 		case 's':
@@ -345,7 +347,7 @@ cmd_buffer_parse(struct cmd *self, int argc, char **argv, char **cause)
 	data = self->data;
 
 	while ((opt = cmd_getopt(argc, argv, "b:t:", entry->chflags)) != -1) {
-		if (cmd_flags(opt, entry->chflags, &data->chflags) == 0)
+		if (cmd_parse_flags(opt, entry->chflags, &data->chflags) == 0)
 			continue;
 		switch (opt) {
 		case 'b':

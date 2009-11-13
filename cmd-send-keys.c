@@ -40,7 +40,7 @@ struct cmd_send_keys_data {
 const struct cmd_entry cmd_send_keys_entry = {
 	"send-keys", "send",
 	"[-t target-pane] key ...",
-	0, 0,
+	0, "",
 	NULL,
 	cmd_send_keys_parse,
 	cmd_send_keys_exec,

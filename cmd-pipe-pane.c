@@ -38,7 +38,7 @@ void	cmd_pipe_pane_error_callback(struct bufferevent *, short, void *);
 const struct cmd_entry cmd_pipe_pane_entry = {
 	"pipe-pane", "pipep",
 	CMD_TARGET_PANE_USAGE "[-o] [command]",
-	CMD_ARG01, CMD_CHFLAG('o'),
+	CMD_ARG01, "o",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_pipe_pane_exec,
@@ -74,7 +74,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 *
 	 *	bind ^p pipep -o 'cat >>~/output'
 	 */
-	if (data->chflags & CMD_CHFLAG('o') && old_fd != -1)
+	if (cmd_check_flag(data->chflags, 'o') && old_fd != -1)
 		return (0);
 
 	/* Open the new pipe. */

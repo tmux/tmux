@@ -39,7 +39,7 @@ void	 cmd_command_prompt_cfree(void *);
 const struct cmd_entry cmd_command_prompt_entry = {
 	"command-prompt", NULL,
 	CMD_TARGET_CLIENT_USAGE " [-p prompts] [template]",
-	0, 0,
+	0, "",
 	cmd_command_prompt_init,
 	cmd_command_prompt_parse,
 	cmd_command_prompt_exec,

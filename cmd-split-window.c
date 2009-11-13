@@ -46,7 +46,7 @@ struct cmd_split_window_data {
 const struct cmd_entry cmd_split_window_entry = {
 	"split-window", "splitw",
 	"[-dhv] [-p percentage|-l size] [-t target-window] [command]",
-	0, 0,
+	0, "",
 	cmd_split_window_init,
 	cmd_split_window_parse,
 	cmd_split_window_exec,

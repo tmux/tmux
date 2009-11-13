@@ -32,7 +32,7 @@ int	cmd_set_environment_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_set_environment_entry = {
 	"set-environment", "setenv",
 	"[-gru] " CMD_TARGET_SESSION_USAGE " name [value]",
-	CMD_ARG12, CMD_CHFLAG('g')|CMD_CHFLAG('r')|CMD_CHFLAG('u'),
+	CMD_ARG12, "gru",
 	NULL,
 	cmd_target_parse,
 	cmd_set_environment_exec,
@@ -56,7 +56,7 @@ cmd_set_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if (data->chflags & CMD_CHFLAG('g'))
+	if (cmd_check_flag(data->chflags, 'g'))
 		env = &global_environ;
 	else {
 		if ((s = cmd_find_session(ctx, data->target)) == NULL)
@@ -64,13 +64,13 @@ cmd_set_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
 		env = &s->environ;
 	}
 
-	if (data->chflags & CMD_CHFLAG('u')) {
+	if (cmd_check_flag(data->chflags, 'u')) {
 		if (data->arg2 != NULL) {
 			ctx->error(ctx, "can't specify a value with -u");
 			return (-1);
 		}
 		environ_unset(env, data->arg);
-	} else if (data->chflags & CMD_CHFLAG('r')) {
+	} else if (cmd_check_flag(data->chflags, 'r')) {
 		if (data->arg2 != NULL) {
 			ctx->error(ctx, "can't specify a value with -r");
 			return (-1);
