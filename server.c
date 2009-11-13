@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.226 2009-11-11 09:54:07 nicm Exp $ */
+/* $Id: server.c,v 1.227 2009-11-13 16:51:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,7 +58,6 @@ void		 server_loop(void);
 int		 server_should_shutdown(void);
 void		 server_send_shutdown(void);
 void		 server_clean_dead(void);
-int		 server_update_socket(void);
 void		 server_accept_callback(int, short, void *);
 void		 server_signal_callback(int, short, void *);
 void		 server_child_signal(void);
@@ -103,6 +102,8 @@ server_create_socket(void)
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
+
+	server_update_socket();
 
 	return (fd);
 }
@@ -226,8 +227,6 @@ void
 server_loop(void)
 {
 	while (!server_should_shutdown()) {
-		server_update_socket();
-
 		event_loop(EVLOOP_ONCE);
 
 		server_window_loop();
@@ -306,7 +305,7 @@ server_clean_dead(void)
 }
 
 /* Update socket execute permissions based on whether sessions are attached. */
-int
+void
 server_update_socket(void)
 {
 	struct session	*s;
@@ -330,8 +329,6 @@ server_update_socket(void)
 		else
 			chmod(socket_path, S_IRUSR|S_IWUSR);
 	}
-
-	return (n);
 }
 
 /* Callback for server socket. */

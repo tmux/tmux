@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.512 2009-11-10 23:31:21 tcunha Exp $ */
+/* $Id: tmux.h,v 1.513 2009-11-13 16:51:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1556,6 +1556,7 @@ extern struct clients dead_clients;
 int	 server_start(char *);
 void	 server_signal_set(void);
 void	 server_signal_clear(void);
+void	 server_update_socket(void);
 
 /* server-client.c */
 void	 server_client_create(int);

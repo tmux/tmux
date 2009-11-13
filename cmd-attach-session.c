@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.32 2009-08-09 17:48:55 tcunha Exp $ */
+/* $Id: cmd-attach-session.c,v 1.33 2009-11-13 16:51:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -101,6 +101,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		server_redraw_client(ctx->cmdclient);
 	}
 	recalculate_sizes();
+	server_update_socket();
 
 	return (1);	/* 1 means don't tell command client to exit */
 }

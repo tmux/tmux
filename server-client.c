@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.19 2009-11-08 23:26:56 tcunha Exp $ */
+/* $Id: server-client.c,v 1.20 2009-11-13 16:51:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -155,6 +155,7 @@ server_client_lost(struct client *c)
 	c->flags |= CLIENT_DEAD;
 
 	recalculate_sizes();
+	server_update_socket();
 }
 
 /* Process a single client event. */

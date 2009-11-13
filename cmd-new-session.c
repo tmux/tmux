@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.69 2009-10-12 00:49:06 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.70 2009-11-13 16:51:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -277,6 +277,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 	recalculate_sizes();
+	server_update_socket();
 
 	return (!detached);	/* 1 means don't tell command client to exit */
 }
