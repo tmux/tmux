@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.87 2009-11-10 23:28:53 tcunha Exp $ */
+/* $Id: client.c,v 1.88 2009-11-14 17:49:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -257,7 +257,7 @@ client_signal(int sig, unused short events, unused void *data)
 void
 client_callback(unused int fd, short events, unused void *data)
 {
-	int	n;
+	ssize_t	n;
 
 	if (events & EV_READ) {
 		if ((n = imsg_read(&client_ibuf)) == -1 || n == 0)
