@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.516 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: tmux.h,v 1.517 2009-11-14 17:57:41 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1161,23 +1161,29 @@ struct cmd_entry {
 /* Generic command data. */
 struct cmd_target_data {
 	uint64_t chflags;
+
 	char	*target;
+
 	char	*arg;
 	char	*arg2;
 };
 
 struct cmd_srcdst_data {
 	uint64_t chflags;
+
 	char	*src;
 	char	*dst;
+
 	char	*arg;
 	char	*arg2;
 };
 
 struct cmd_buffer_data {
 	uint64_t chflags;
+
 	char	*target;
 	int	 buffer;
+
 	char	*arg;
 	char	*arg2;
 };
