@@ -1,4 +1,4 @@
-/* $Id: cmd-set-buffer.c,v 1.10 2009-09-07 23:48:54 tcunha Exp $ */
+/* $Id: cmd-set-buffer.c,v 1.11 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@ int	cmd_set_buffer_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_set_buffer_entry = {
 	"set-buffer", "setb",
 	CMD_BUFFER_SESSION_USAGE " data",
-	CMD_ARG1, 0,
+	CMD_ARG1, "",
 	cmd_buffer_init,
 	cmd_buffer_parse,
 	cmd_set_buffer_exec,

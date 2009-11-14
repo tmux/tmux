@@ -1,4 +1,4 @@
-/* $Id: cmd-select-prompt.c,v 1.12 2009-08-16 19:29:24 tcunha Exp $ */
+/* $Id: cmd-select-prompt.c,v 1.13 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,7 @@ int	cmd_select_prompt_callback(void *, const char *);
 const struct cmd_entry cmd_select_prompt_entry = {
 	"select-prompt", NULL,
 	CMD_TARGET_CLIENT_USAGE,
-	0, 0,
+	0, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_select_prompt_exec,

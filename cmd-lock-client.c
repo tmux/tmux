@@ -1,4 +1,4 @@
-/* $Id: cmd-lock-client.c,v 1.1 2009-09-25 17:51:39 tcunha Exp $ */
+/* $Id: cmd-lock-client.c,v 1.2 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ int	cmd_lock_client_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_lock_client_entry = {
 	"lock-client", "lockc",
 	CMD_TARGET_CLIENT_USAGE,
-	0, 0,
+	0, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_lock_client_exec,

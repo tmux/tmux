@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-session.c,v 1.14 2009-10-11 23:38:16 tcunha Exp $ */
+/* $Id: cmd-choose-session.c,v 1.15 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,7 +34,7 @@ void	cmd_choose_session_free(void *);
 const struct cmd_entry cmd_choose_session_entry = {
 	"choose-session", NULL,
 	CMD_TARGET_WINDOW_USAGE " [template]",
-	CMD_ARG01, 0,
+	CMD_ARG01, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_choose_session_exec,

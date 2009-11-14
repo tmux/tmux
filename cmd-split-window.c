@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.28 2009-09-22 14:06:40 tcunha Exp $ */
+/* $Id: cmd-split-window.c,v 1.29 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,7 +45,7 @@ struct cmd_split_window_data {
 const struct cmd_entry cmd_split_window_entry = {
 	"split-window", "splitw",
 	"[-dhv] [-p percentage|-l size] [-t target-window] [command]",
-	0, 0,
+	0, "",
 	cmd_split_window_init,
 	cmd_split_window_parse,
 	cmd_split_window_exec,

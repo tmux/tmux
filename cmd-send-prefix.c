@@ -1,4 +1,4 @@
-/* $Id: cmd-send-prefix.c,v 1.27 2009-09-22 14:22:20 tcunha Exp $ */
+/* $Id: cmd-send-prefix.c,v 1.28 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ int	cmd_send_prefix_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_send_prefix_entry = {
 	"send-prefix", NULL,
 	CMD_TARGET_PANE_USAGE,
-	0, 0,
+	0, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_send_prefix_exec,

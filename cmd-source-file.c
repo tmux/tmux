@@ -1,4 +1,4 @@
-/* $Id: cmd-source-file.c,v 1.9 2009-09-22 14:06:40 tcunha Exp $ */
+/* $Id: cmd-source-file.c,v 1.10 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Tiago Cunha <me@tiagocunha.org>
@@ -37,7 +37,7 @@ struct cmd_source_file_data {
 const struct cmd_entry cmd_source_file_entry = {
 	"source-file", "source",
 	"path",
-	0, 0,
+	0, "",
 	cmd_source_file_init,
 	cmd_source_file_parse,
 	cmd_source_file_exec,

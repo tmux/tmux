@@ -1,4 +1,4 @@
-/* $Id: cmd-show-window-options.c,v 1.13 2009-09-22 13:56:02 tcunha Exp $ */
+/* $Id: cmd-show-window-options.c,v 1.14 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,7 @@ int	cmd_show_window_options_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_show_window_options_entry = {
 	"show-window-options", "showw",
 	"[-g] " CMD_TARGET_WINDOW_USAGE,
-	0, CMD_CHFLAG('g'),
+	0, "g",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_show_window_options_exec,
@@ -50,7 +50,7 @@ cmd_show_window_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const struct set_option_entry	*entry;
 	const char			*optval;
 
-	if (data->chflags & CMD_CHFLAG('g'))
+	if (cmd_check_flag(data->chflags, 'g'))
 		oo = &global_w_options;
 	else {
 		if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)

@@ -1,4 +1,4 @@
-/* $Id: cmd-show-options.c,v 1.17 2009-09-22 13:56:02 tcunha Exp $ */
+/* $Id: cmd-show-options.c,v 1.18 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,7 @@ int	cmd_show_options_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_show_options_entry = {
 	"show-options", "show",
 	"[-g] " CMD_TARGET_SESSION_USAGE,
-	0, CMD_CHFLAG('g'),
+	0, "g",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_show_options_exec,
@@ -50,7 +50,7 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const struct set_option_entry   *entry;
 	const char			*optval;
 
-	if (data->chflags & CMD_CHFLAG('g'))
+	if (cmd_check_flag(data->chflags, 'g'))
 		oo = &global_s_options;
 	else {
 		if ((s = cmd_find_session(ctx, data->target)) == NULL)

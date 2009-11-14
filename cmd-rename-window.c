@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-window.c,v 1.30 2009-10-11 23:38:16 tcunha Exp $ */
+/* $Id: cmd-rename-window.c,v 1.31 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@ int	cmd_rename_window_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_rename_window_entry = {
 	"rename-window", "renamew",
 	CMD_TARGET_WINDOW_USAGE " new-name",
-	CMD_ARG1, 0,
+	CMD_ARG1, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_rename_window_exec,

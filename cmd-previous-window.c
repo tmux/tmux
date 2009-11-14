@@ -1,4 +1,4 @@
-/* $Id: cmd-previous-window.c,v 1.20 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-previous-window.c,v 1.21 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,7 +30,7 @@ int	cmd_previous_window_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_previous_window_entry = {
 	"previous-window", "prev",
 	"[-a] " CMD_TARGET_SESSION_USAGE,
-	0, CMD_CHFLAG('a'),
+	0, "a",
 	cmd_previous_window_init,
 	cmd_target_parse,
 	cmd_previous_window_exec,
@@ -47,7 +47,7 @@ cmd_previous_window_init(struct cmd *self, int key)
 	data = self->data;
 
 	if (key == ('p' | KEYC_ESCAPE))
-		data->chflags |= CMD_CHFLAG('a');
+		cmd_set_flag(&data->chflags, 'a');
 }
 
 int
@@ -61,7 +61,7 @@ cmd_previous_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 
 	activity = 0;
-	if (data->chflags & CMD_CHFLAG('a'))
+	if (cmd_check_flag(data->chflags, 'a'))
 		activity = 1;
 
 	if (session_previous(s, activity) == 0)

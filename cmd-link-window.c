@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.35 2009-10-11 23:38:16 tcunha Exp $ */
+/* $Id: cmd-link-window.c,v 1.36 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@ int	cmd_link_window_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_link_window_entry = {
 	"link-window", "linkw",
 	"[-dk] " CMD_SRCDST_WINDOW_USAGE,
-	0, CMD_CHFLAG('d')|CMD_CHFLAG('k'),
+	0, "dk",
 	cmd_srcdst_init,
 	cmd_srcdst_parse,
 	cmd_link_window_exec,
@@ -53,8 +53,8 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((idx = cmd_find_index(ctx, data->dst, &dst)) == -2)
 		return (-1);
 
-	kflag = data->chflags & CMD_CHFLAG('k');
-	dflag = data->chflags & CMD_CHFLAG('d');
+	kflag = cmd_check_flag(data->chflags, 'k');
+	dflag = cmd_check_flag(data->chflags, 'd');
 	if (server_link_window(src, wl, dst, idx, kflag, !dflag, &cause) != 0) {
 		ctx->error(ctx, "can't link window: %s", cause);
 		xfree(cause);

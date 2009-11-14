@@ -1,4 +1,4 @@
-/* $Id: cmd-clock-mode.c,v 1.6 2009-08-20 11:37:46 tcunha Exp $ */
+/* $Id: cmd-clock-mode.c,v 1.7 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ int	cmd_clock_mode_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_clock_mode_entry = {
 	"clock-mode", NULL,
 	CMD_TARGET_PANE_USAGE,
-	0, 0,
+	0, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_clock_mode_exec,

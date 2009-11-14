@@ -1,4 +1,4 @@
-/* $Id: cmd-confirm-before.c,v 1.11 2009-08-24 16:24:18 tcunha Exp $ */
+/* $Id: cmd-confirm-before.c,v 1.12 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -34,7 +34,7 @@ void	cmd_confirm_before_free(void *);
 const struct cmd_entry cmd_confirm_before_entry = {
 	"confirm-before", "confirm",
 	CMD_TARGET_CLIENT_USAGE " command",
-	CMD_ARG1, 0,
+	CMD_ARG1, "",
 	cmd_confirm_before_init,
 	cmd_target_parse,
 	cmd_confirm_before_exec,

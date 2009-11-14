@@ -1,4 +1,4 @@
-/* $Id: cmd-list-buffers.c,v 1.12 2009-09-07 23:48:54 tcunha Exp $ */
+/* $Id: cmd-list-buffers.c,v 1.13 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@ int	cmd_list_buffers_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_list_buffers_entry = {
 	"list-buffers", "lsb",
 	CMD_TARGET_SESSION_USAGE,
-	0, 0,
+	0, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_list_buffers_exec,

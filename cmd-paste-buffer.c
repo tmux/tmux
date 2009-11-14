@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.21 2009-11-08 23:02:56 tcunha Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.22 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,7 @@ void	cmd_paste_buffer_lf2cr(struct window_pane *, const char *, size_t);
 const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", "pasteb",
 	"[-dr] " CMD_BUFFER_WINDOW_USAGE,
-	0, CMD_CHFLAG('d')|CMD_CHFLAG('r'),
+	0, "dr",
 	cmd_buffer_init,
 	cmd_buffer_parse,
 	cmd_paste_buffer_exec,
@@ -64,14 +64,14 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (pb != NULL && *pb->data != '\0') {
 		/* -r means raw data without LF->CR conversion. */
-		if (data->chflags & CMD_CHFLAG('r'))
+		if (cmd_check_flag(data->chflags, 'r'))
 			bufferevent_write(wp->event, pb->data, pb->size);
 		else
 			cmd_paste_buffer_lf2cr(wp, pb->data, pb->size);
 	}
 
 	/* Delete the buffer if -d. */
-	if (data->chflags & CMD_CHFLAG('d')) {
+	if (cmd_check_flag(data->chflags, 'd')) {
 		if (data->buffer == -1)
 			paste_free_top(&s->buffers);
 		else

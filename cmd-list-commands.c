@@ -1,4 +1,4 @@
-/* $Id: cmd-list-commands.c,v 1.5 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-list-commands.c,v 1.6 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ int	cmd_list_commands_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_list_commands_entry = {
 	"list-commands", "lscm",
 	"",
-	0, 0,
+	0, "",
 	NULL,
 	NULL,
 	cmd_list_commands_exec,

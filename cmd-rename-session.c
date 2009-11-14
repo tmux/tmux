@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-session.c,v 1.18 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-rename-session.c,v 1.19 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@ int	cmd_rename_session_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_rename_session_entry = {
 	"rename-session", "rename",
 	CMD_TARGET_SESSION_USAGE " new-name",
-	CMD_ARG1, 0,
+	CMD_ARG1, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_rename_session_exec,

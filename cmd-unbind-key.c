@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.20 2009-07-28 23:19:06 tcunha Exp $ */
+/* $Id: cmd-unbind-key.c,v 1.21 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -40,7 +40,7 @@ struct cmd_unbind_key_data {
 const struct cmd_entry cmd_unbind_key_entry = {
 	"unbind-key", "unbind",
 	"[-cn] [-t key-table] key",
-	0, 0,
+	0, "",
 	NULL,
 	cmd_unbind_key_parse,
 	cmd_unbind_key_exec,

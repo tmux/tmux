@@ -1,4 +1,4 @@
-/* $Id: cmd-save-buffer.c,v 1.9 2009-10-28 23:08:52 tcunha Exp $ */
+/* $Id: cmd-save-buffer.c,v 1.10 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -33,7 +33,7 @@ int	cmd_save_buffer_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_save_buffer_entry = {
 	"save-buffer", "saveb",
 	"[-a] " CMD_BUFFER_SESSION_USAGE " path",
-	CMD_ARG1, CMD_CHFLAG('a'),
+	CMD_ARG1, "a",
 	cmd_buffer_init,
 	cmd_buffer_parse,
 	cmd_save_buffer_exec,
@@ -66,7 +66,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	mask = umask(S_IRWXG | S_IRWXO);
-	if (data->chflags & CMD_CHFLAG('a'))
+	if (cmd_check_flag(data->chflags, 'a'))
 		f = fopen(data->arg, "ab");
 	else
 		f = fopen(data->arg, "wb");

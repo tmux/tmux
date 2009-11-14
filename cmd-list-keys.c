@@ -1,4 +1,4 @@
-/* $Id: cmd-list-keys.c,v 1.21 2009-11-08 23:30:42 tcunha Exp $ */
+/* $Id: cmd-list-keys.c,v 1.22 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,7 @@ int	cmd_list_keys_table(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_list_keys_entry = {
 	"list-keys", "lsk",
 	"[-t key-table]",
-	0, 0,
+	0, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_list_keys_exec,

@@ -1,4 +1,4 @@
-/* $Id: cmd-lock-server.c,v 1.7 2009-09-25 17:47:42 tcunha Exp $ */
+/* $Id: cmd-lock-server.c,v 1.8 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,7 @@ int	cmd_lock_server_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_lock_server_entry = {
 	"lock-server", "lock",
 	"",
-	0, 0,
+	0, "",
 	NULL,
 	NULL,
 	cmd_lock_server_exec,

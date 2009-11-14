@@ -1,4 +1,4 @@
-/* $Id: cmd-clear-history.c,v 1.7 2009-07-30 21:04:40 tcunha Exp $ */
+/* $Id: cmd-clear-history.c,v 1.8 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ int	cmd_clear_history_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_clear_history_entry = {
 	"clear-history", "clearhist",
 	CMD_TARGET_PANE_USAGE,
-	0, 0,
+	0, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_clear_history_exec,

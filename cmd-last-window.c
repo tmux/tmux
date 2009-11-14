@@ -1,4 +1,4 @@
-/* $Id: cmd-last-window.c,v 1.18 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-last-window.c,v 1.19 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ int	cmd_last_window_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_last_window_entry = {
 	"last-window", "last",
 	CMD_TARGET_SESSION_USAGE,
-	0, 0,
+	0, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_last_window_exec,

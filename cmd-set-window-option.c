@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.40 2009-10-09 13:07:04 tcunha Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.41 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,7 @@ int	cmd_set_window_option_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_set_window_option_entry = {
 	"set-window-option", "setw",
 	"[-agu] " CMD_TARGET_WINDOW_USAGE " option [value]",
-	CMD_ARG12, CMD_CHFLAG('a')|CMD_CHFLAG('g')|CMD_CHFLAG('u'),
+	CMD_ARG12, "agu",
 	NULL,
 	cmd_target_parse,
 	cmd_set_window_option_exec,
@@ -86,7 +86,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const struct set_option_entry   *entry, *opt;
 	u_int				 i;
 
-	if (data->chflags & CMD_CHFLAG('g'))
+	if (cmd_check_flag(data->chflags, 'g'))
 		oo = &global_w_options;
 	else {
 		if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
@@ -118,8 +118,8 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if (data->chflags & CMD_CHFLAG('u')) {
-		if (data->chflags & CMD_CHFLAG('g')) {
+	if (cmd_check_flag(data->chflags, 'u')) {
+		if (cmd_check_flag(data->chflags, 'g')) {
 			ctx->error(ctx,
 			    "can't unset global option: %s", entry->name);
 			return (-1);
@@ -136,7 +136,7 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		switch (entry->type) {
 		case SET_OPTION_STRING:
 			set_option_string(ctx, oo, entry,
-			    data->arg2, data->chflags & CMD_CHFLAG('a'));
+			    data->arg2, cmd_check_flag(data->chflags, 'a'));
 			break;
 		case SET_OPTION_NUMBER:
 			set_option_number(ctx, oo, entry, data->arg2);

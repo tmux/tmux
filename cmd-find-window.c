@@ -1,4 +1,4 @@
-/* $Id: cmd-find-window.c,v 1.13 2009-07-28 22:12:16 tcunha Exp $ */
+/* $Id: cmd-find-window.c,v 1.14 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,7 +34,7 @@ void	cmd_find_window_callback(void *, int);
 const struct cmd_entry cmd_find_window_entry = {
 	"find-window", "findw",
 	CMD_TARGET_WINDOW_USAGE " match-string",
-	CMD_ARG1, 0,
+	CMD_ARG1, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_find_window_exec,

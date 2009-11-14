@@ -1,4 +1,4 @@
-/* $Id: cmd-select-layout.c,v 1.8 2009-07-28 23:04:29 tcunha Exp $ */
+/* $Id: cmd-select-layout.c,v 1.9 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,7 +30,7 @@ int	cmd_select_layout_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_select_layout_entry = {
 	"select-layout", "selectl",
 	CMD_TARGET_WINDOW_USAGE " [layout-name]",
-	CMD_ARG01, 0,
+	CMD_ARG01, "",
 	cmd_select_layout_init,
 	cmd_target_parse,
 	cmd_select_layout_exec,

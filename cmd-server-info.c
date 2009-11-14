@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.33 2009-11-04 22:42:31 tcunha Exp $ */
+/* $Id: cmd-server-info.c,v 1.34 2009-11-14 17:56:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,7 +35,7 @@ int	cmd_server_info_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_server_info_entry = {
 	"server-info", "info",
 	"",
-	0, 0,
+	0, "",
 	NULL,
 	NULL,
 	cmd_server_info_exec,
