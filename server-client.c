@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.20 2009-11-13 16:51:49 tcunha Exp $ */
+/* $Id: server-client.c,v 1.21 2009-11-14 17:51:06 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -196,7 +196,9 @@ server_client_status_timer(void)
 	struct session	*s;
 	struct job	*job;
 	struct timeval	 tv;
-	u_int		 i, interval;
+	u_int		 i;
+	int		 interval;
+	time_t		 difference;
 
 	if (gettimeofday(&tv, NULL) != 0)
 		fatal("gettimeofday failed");
@@ -219,9 +221,10 @@ server_client_status_timer(void)
 			continue;
 		interval = options_get_number(&s->options, "status-interval");
 
-		if (tv.tv_sec - c->status_timer.tv_sec >= interval) {
+		difference = tv.tv_sec - c->status_timer.tv_sec;
+		if (difference >= interval) {
 			RB_FOREACH(job, jobs, &c->status_jobs)
-			    job_run(job);
+				job_run(job);
 			c->flags |= CLIENT_STATUS;
 		}
 	}
