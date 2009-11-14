@@ -1,4 +1,4 @@
-/* $Id: cmd-pipe-pane.c,v 1.6 2009-11-08 23:02:56 tcunha Exp $ */
+/* $Id: cmd-pipe-pane.c,v 1.7 2009-11-14 17:52:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -126,8 +126,6 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 			fatal("fcntl failed");	
 		return (0);
 	}
-
-	return (0);
 }
 
 void
