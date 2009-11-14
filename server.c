@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.228 2009-11-13 16:52:46 tcunha Exp $ */
+/* $Id: server.c,v 1.229 2009-11-14 17:48:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -353,7 +353,6 @@ server_accept_callback(int fd, short events, unused void *data)
 		return;
 	}
 	server_client_create(newfd);
-
 }
 
 /* Set up server signal handling. */
@@ -467,9 +466,8 @@ server_child_exited(pid_t pid, int status)
 			continue;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->pid == pid) {
-				close(wp->fd);
-				bufferevent_free(wp->event);
-				wp->fd = -1;
+				server_destroy_pane(wp);
+				break;
 			}
 		}
 	}		

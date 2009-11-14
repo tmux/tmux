@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.121 2009-11-08 23:22:24 tcunha Exp $ */
+/* $Id: window.c,v 1.122 2009-11-14 17:48:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -592,9 +592,7 @@ window_pane_error_callback(
 {
 	struct window_pane *wp = data;
 
-	close(wp->fd);
-	bufferevent_free(wp->event);
-	wp->fd = -1;
+	server_destroy_pane(wp);
 }
 
 void
