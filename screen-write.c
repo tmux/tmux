@@ -427,8 +427,8 @@ screen_write_initctx(
 		return;
 
 	/* Save the last cell on the screen. */
-	gc = NULL;
-	for (xx = 1; xx < screen_size_x(s); xx++) {
+	gc = &grid_default_cell;
+	for (xx = 1; xx <= screen_size_x(s); xx++) {
 		gc = grid_view_peek_cell(gd, screen_size_x(s) - xx, s->cy);
 		if (!(gc->flags & GRID_FLAG_PADDING))
 			break;
