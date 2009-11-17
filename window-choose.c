@@ -64,6 +64,9 @@ struct window_choose_mode_data {
 	void		       *data;
 };
 
+int	window_choose_key_index(struct window_choose_mode_data *, u_int);
+int	window_choose_index_key(struct window_choose_mode_data *, int);
+
 void
 window_choose_vadd(struct window_pane *wp, int idx, const char *fmt, va_list ap)
 {
@@ -173,7 +176,8 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx		 ctx;
 	struct window_choose_mode_item	*item;
-	u_int				 items;
+	u_int		       		 items;
+	int				 idx;
 
 	items = ARRAY_LENGTH(&data->list);
 
@@ -259,6 +263,14 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 		window_choose_redraw_screen(wp);
 		break;
 	default:
+		idx = window_choose_index_key(data, key);
+		if (idx < 0 || (u_int) idx >= ARRAY_LENGTH(&data->list))
+			break;
+		data->selected = idx;
+		
+		item = &ARRAY_ITEM(&data->list, data->selected);
+		data->callbackfn(data->data, item->idx);
+		window_pane_reset_mode(wp);
 		break;
 	}
 }
@@ -299,6 +311,7 @@ window_choose_write_line(
 	struct screen			*s = &data->screen;
 	struct grid_cell		 gc;
  	int				 utf8flag;
+	char				 key;
 
 	if (data->callbackfn == NULL)
 		fatalx("called before callback assigned");
@@ -314,11 +327,54 @@ window_choose_write_line(
 	screen_write_cursormove(ctx, 0, py);
 	if (data->top + py  < ARRAY_LENGTH(&data->list)) {
 		item = &ARRAY_ITEM(&data->list, data->top + py);
-		screen_write_nputs(
-		    ctx, screen_size_x(s) - 1, &gc, utf8flag, "%s", item->name);
+		key = window_choose_key_index(data, data->top + py);
+		if (key != -1) {
+			screen_write_nputs(ctx, screen_size_x(s) - 1,
+			    &gc, utf8flag, "(%c) %s", key, item->name);
+		} else {
+			screen_write_nputs(ctx, screen_size_x(s) - 1,
+			    &gc, utf8flag, "    %s", item->name);
+		}
+
 	}
 	while (s->cx < screen_size_x(s))
 		screen_write_putc(ctx, &gc, ' ');
+}
+
+int
+window_choose_key_index(struct window_choose_mode_data *data, u_int idx)
+{
+	static const char	keys[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+	const char	       *ptr;
+	int			mkey;
+
+	for (ptr = keys; *ptr != '\0'; ptr++) {
+		mkey = mode_key_lookup(&data->mdata, *ptr);
+		if (mkey != MODEKEY_NONE && mkey != MODEKEY_OTHER)
+			continue;
+		if (idx-- == 0)
+			return (*ptr);
+	}
+	return (-1);
+}
+
+int
+window_choose_index_key(struct window_choose_mode_data *data, int key)
+{
+	static const char	keys[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+	const char	       *ptr;
+	int			mkey;
+	u_int			idx = 0;
+
+	for (ptr = keys; *ptr != '\0'; ptr++) {
+		mkey = mode_key_lookup(&data->mdata, *ptr);
+		if (mkey != MODEKEY_NONE && mkey != MODEKEY_OTHER)
+			continue;
+		if (key == *ptr)
+			return (idx);
+		idx++;
+	}
+	return (-1);
 }
 
 void
