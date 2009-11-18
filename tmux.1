@@ -454,6 +454,16 @@ with
 .D1 (alias: Ic rename )
 Rename the session to
 .Ar new-name .
+.It Xo Ic show-messages 
+.Op Fl t Ar target-client
+.Xc
+.D1 (alias: Ic showmsgs )
+Any messages displayed on the status line are saved in a per-client message
+log, up to a maximum of the limit set by the
+.Ar message-limit
+session option for the session attached to that client.
+This command displays the log for
+.Ar target-client .
 .It Ic source-file Ar path
 .D1 (alias: Ic source )
 Execute commands from
@@ -1373,6 +1383,10 @@ from the 256-colour palette, or
 .Ic default .
 .It Ic message-fg Ar colour
 Set status line message foreground colour.
+.It Ic message-limit Ar number
+Set the number of error or information messages to save in the message log for
+each client.
+The default is 20.
 .It Xo Ic mouse-select-pane
 .Op Ic on | off
 .Xc

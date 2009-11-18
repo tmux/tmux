@@ -332,6 +332,7 @@ main(int argc, char **argv)
 	options_set_number(so, "message-attr", 0);
 	options_set_number(so, "message-bg", 3);
 	options_set_number(so, "message-fg", 0);
+	options_set_number(so, "message-limit", 20);
 	options_set_number(so, "mouse-select-pane", 0);
 	options_set_number(so, "repeat-time", 500);
 	options_set_number(so, "set-remain-on-exit", 0);

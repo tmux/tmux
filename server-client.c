@@ -80,6 +80,7 @@ server_client_create(int fd)
 	job_tree_init(&c->status_jobs);
 
 	c->message_string = NULL;
+	ARRAY_INIT(&c->message_log);
 
 	c->prompt_string = NULL;
 	c->prompt_buffer = NULL;
@@ -101,7 +102,8 @@ server_client_create(int fd)
 void
 server_client_lost(struct client *c)
 {
-	u_int	i;
+	struct message_entry	*msg;
+	u_int			 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		if (ARRAY_ITEM(&clients, i) == c)
@@ -129,6 +131,11 @@ server_client_lost(struct client *c)
 	if (c->message_string != NULL)
 		xfree(c->message_string);
 	evtimer_del(&c->message_timer);
+	for (i = 0; i < ARRAY_LENGTH(&c->message_log); i++) {
+		msg = &ARRAY_ITEM(&c->message_log, i);
+		xfree(msg->msg);
+	}
+	ARRAY_FREE(&c->message_log);
 
 	if (c->prompt_string != NULL)
 		xfree(c->prompt_string);
