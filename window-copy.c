@@ -486,7 +486,6 @@ window_copy_search_compare(
 {
 	const struct grid_cell	*gc, *sgc;
 	const struct grid_utf8	*gu, *sgu;
-	size_t			 size;
 
 	gc = grid_peek_cell(gd, px, py);
 	sgc = grid_peek_cell(sgd, spx, 0);
