@@ -93,8 +93,14 @@
 - UTF-8 should be a pointer into a combined string buffer
 - check irssi (term_charset) works with UTF-8
 - rectangle copy/paste
-- half page/up down are missing from key table
 - support esc-esc to quit in modes
-- permit top-bit-set characters/utf-8 in command prompt
-- fix ctrl+F1-F4 output
-
+- fix ctrl+F1-F4 output. to what?
+- look into xterm clearing its selection when scrolling etc
+- better utf8 support:
+  	 window names
+	 prompt input
+	 message display
+	 copy and paste cursor and wide characters
+	 ...?
+- would prompt history/message log be better as server-global? need server global options
+- don't require mouse/xterm input to be atomic
