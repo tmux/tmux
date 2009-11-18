@@ -502,8 +502,8 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
  	const struct grid_cell	*gc;
  	const struct grid_utf8	*gu;
 	char			*buf;
-	size_t			 len, off;
-	u_int			 xx, i;
+	size_t			 len, off, size;
+	u_int			 xx;
 
 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u", px, py, nx);
 
@@ -517,17 +517,15 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 			continue;
 
 		if (gc->flags & GRID_FLAG_UTF8) {
-			while (len < off + UTF8_SIZE + 1) {
+			gu = grid_peek_utf8(gd, xx, py);
+
+			size = grid_utf8_size(gu);
+			while (len < off + size + 1) {
 				buf = xrealloc(buf, 2, len);
 				len *= 2;
 			}
 
-			gu = grid_peek_utf8(gd, xx, py);
-			for (i = 0; i < UTF8_SIZE; i++) {
-				if (gu->data[i] == 0xff)
-					break;
-				buf[off++] = gu->data[i];
-			}
+			off += grid_utf8_copy(gu, buf + off, len - off);
 		} else {
 			while (len < off + 2) {
 				buf = xrealloc(buf, 2, len);

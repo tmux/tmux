@@ -365,16 +365,12 @@ tty_putc(struct tty *tty, u_char ch)
 void
 tty_pututf8(struct tty *tty, const struct grid_utf8 *gu)
 {
-	u_int	i;
+	size_t	size;
 
-	for (i = 0; i < UTF8_SIZE; i++) {
-		if (gu->data[i] == 0xff)
-			break;
-		bufferevent_write(tty->event, &gu->data[i], 1);
-		if (tty->log_fd != -1)
-			write(tty->log_fd, &gu->data[i], 1);
-	}
-
+	size = grid_utf8_size(gu);
+	bufferevent_write(tty->event, gu->data, size);
+	if (tty->log_fd != -1)
+		write(tty->log_fd, gu->data, size);
 	tty->cx += gu->width;
 }
 

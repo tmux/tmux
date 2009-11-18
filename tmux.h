@@ -74,6 +74,12 @@ extern char   **environ;
 #define PRINT_LENGTH 512	/* printed error/message size */
 #define ENVIRON_LENGTH 1024	/* environment variable length */
 
+/*
+ * UTF-8 data size. This must be big enough to hold combined characters as well
+ * as single.
+ */
+#define UTF8_SIZE 9
+
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
 #define fatalx(msg) log_fatalx("%s: %s", __func__, msg);
@@ -525,13 +531,12 @@ struct mode_key_table {
 #define MODE_MOUSE 0x10
 
 /*
- * A single UTF-8 character. 
+ * A single UTF-8 character.
  *
  * The data member in this must be UTF8_SIZE to allow screen_write_copy to
  * reinject stored UTF-8 data back into screen_write_cell after combining (ugh
  * XXX XXX).
  */
-#define UTF8_SIZE 9
 struct utf8_data {
 	u_char	data[UTF8_SIZE];
 
@@ -1674,6 +1679,13 @@ void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int);
 void	 grid_duplicate_lines(
     	     struct grid *, u_int, struct grid *, u_int, u_int);
+
+/* grid-utf8.c */
+size_t	 grid_utf8_size(const struct grid_utf8 *);
+size_t	 grid_utf8_copy(const struct grid_utf8 *, char *, size_t);
+void	 grid_utf8_set(struct grid_utf8 *, const struct utf8_data *);
+int	 grid_utf8_append(struct grid_utf8 *, const struct utf8_data *);
+int	 grid_utf8_compare(const struct grid_utf8 *, const struct grid_utf8 *);
 
 /* grid-view.c */
 const struct grid_cell *grid_view_peek_cell(struct grid *, u_int, u_int);
