@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.127 2009-11-08 23:11:23 tcunha Exp $ */
+/* $Id: status.c,v 1.128 2009-11-18 01:28:43 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -976,7 +976,7 @@ status_prompt_key(struct client *c, int key)
 			status_prompt_clear(c);
 		break;
 	case MODEKEY_OTHER:
-		if (key < 32 || key > 126)
+		if (key < 32 || key == 127)
 			break;
 		c->prompt_buffer = xrealloc(c->prompt_buffer, 1, size + 2);
 
