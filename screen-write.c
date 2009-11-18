@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.84 2009-11-13 16:54:04 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.85 2009-11-18 01:25:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -427,8 +427,8 @@ screen_write_initctx(
 		return;
 
 	/* Save the last cell on the screen. */
-	gc = NULL;
-	for (xx = 1; xx < screen_size_x(s); xx++) {
+	gc = &grid_default_cell;
+	for (xx = 1; xx <= screen_size_x(s); xx++) {
 		gc = grid_view_peek_cell(gd, screen_size_x(s) - xx, s->cy);
 		if (!(gc->flags & GRID_FLAG_PADDING))
 			break;
