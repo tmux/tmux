@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.22 2009-11-19 22:20:04 tcunha Exp $ */
+/* $Id: server-client.c,v 1.23 2009-11-19 22:25:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -488,7 +488,7 @@ server_client_set_title(struct client *c)
 
 	template = options_get_string(&s->options, "set-titles-string");
 	
-	title = status_replace(c, template, time(NULL));
+	title = status_replace(c, template, time(NULL), 1);
 	if (c->title == NULL || strcmp(title, c->title) != 0) {
 		if (c->title != NULL)
 			xfree(c->title);

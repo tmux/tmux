@@ -1,4 +1,4 @@
-/* $Id: cmd-display-message.c,v 1.4 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-display-message.c,v 1.5 2009-11-19 22:25:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -55,7 +55,7 @@ cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		template = data->arg;
 
-	msg = status_replace(c, template, time(NULL));
+	msg = status_replace(c, template, time(NULL), 0);
 	status_message_set(c, "%s", msg);
 	xfree(msg);
 

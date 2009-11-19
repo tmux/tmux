@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.203 2009-11-19 22:23:27 tcunha Exp $
+.\" $Id: tmux.1,v 1.204 2009-11-19 22:25:52 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: November 18 2009 $
+.Dd $Mdocdate: November 19 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1992,10 +1992,11 @@ This command works only from inside
 .Op Ar message
 .Xc
 .D1 (alias: Ic display )
-Display a message (see the
-.Ic status-left
-option below)
-in the status line.
+Display a message in the status line.
+The format of
+.Ar message is as for
+.Ic status-left ,
+with the exception that #() are not handled.
 .It Ic select-prompt Op Fl t Ar target-client
 Open a prompt inside
 .Ar target-client
