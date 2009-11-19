@@ -1,4 +1,4 @@
-/* $Id: cmd-list-keys.c,v 1.22 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-list-keys.c,v 1.23 2009-11-19 22:15:58 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -71,13 +71,15 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 		key = key_string_lookup_key(bd->key & ~KEYC_PREFIX);
 		if (key == NULL)
 			continue;
-		if (!(bd->key & KEYC_PREFIX))
-			used = xsnprintf(tmp, sizeof tmp, "[%s]: ", key);
-		else
-			used = xsnprintf(tmp, sizeof tmp, "%*s: ", width, key);
+		used = xsnprintf(tmp, sizeof tmp, "%*s: ", width, key);
 		if (used >= sizeof tmp)
 			continue;
 
+ 		if (!(bd->key & KEYC_PREFIX)) {
+			used = strlcat(tmp, "(no prefix) ", sizeof tmp);
+			if (used >= sizeof tmp)
+				continue;
+		}
 		cmd_list_print(bd->cmdlist, tmp + used, (sizeof tmp) - used);
 		ctx->print(ctx, "%s", tmp);
 	}
