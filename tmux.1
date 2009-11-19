@@ -1477,6 +1477,7 @@ may contain any of the following special character sequences:
 .It Li "#(command)" Ta "First line of command's output"
 .It Li "#[attributes]" Ta "Colour or attribute change"
 .It Li "#H" Ta "Hostname of local host"
+.It Li "#F" Ta "Current window flag"
 .It Li "#I" Ta "Current window index"
 .It Li "#P" Ta "Current pane index"
 .It Li "#S" Ta "Session name"
@@ -1785,6 +1786,14 @@ Set status line background colour for a single window.
 .It Ic window-status-fg Ar colour
 Set status line foreground colour for a single window.
 .Pp
+.It Ic window-status-format Ar string
+Set the format in which the window is displayed in the status line window list.
+See the
+.Ar status-left
+option for details of special character sequences available.
+The default is
+.Ql #I:#W#F .
+.Pp
 .It Ic window-status-current-attr Ar attributes
 Set status line attributes for the currently active window.
 .Pp
@@ -1793,6 +1802,11 @@ Set status line background colour for the currently active window.
 .Pp
 .It Ic window-status-current-fg Ar colour
 Set status line foreground colour for the currently active window.
+.Pp
+.It Ic window-status-current-format Ar string
+Like
+.Ar window-status-format ,
+but is the format used when the window is the current window.
 .Pp
 .It Xo Ic xterm-keys
 .Op Ic on | off
@@ -1900,8 +1914,13 @@ command, see the
 and
 .Ic status-right-length
 options below), and a central window list.
-The window list shows the index, name and (if any) flag of the windows
-present in the current session in ascending numerical order.
+By default, the window list shows the index, name and (if any) flag of the
+windows present in the current session in ascending numerical order.
+It may be customised with the
+.Ar window-status-format
+and
+.Ar window-status-current-format
+options.
 The flag is one of the following symbols appended to the window name:
 .Bl -column "Symbol" "Meaning" -offset indent
 .It Sy "Symbol" Ta Sy "Meaning"

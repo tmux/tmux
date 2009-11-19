@@ -71,7 +71,9 @@ const struct set_option_entry set_window_option_table[] = {
 	{ "window-status-current-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
 	{ "window-status-current-bg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "window-status-current-fg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "window-status-current-format", SET_OPTION_STRING, 0, 0, NULL },
 	{ "window-status-fg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "window-status-format", SET_OPTION_STRING, 0, 0, NULL },
 	{ "xterm-keys", SET_OPTION_FLAG, 0, 0, NULL },
 	{ NULL, 0, 0, 0, NULL }
 };
@@ -84,7 +86,10 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct client			*c;
 	struct options			*oo;
 	const struct set_option_entry   *entry, *opt;
+	struct jobs			*jobs;
+	struct job			*job, *nextjob;
 	u_int				 i;
+	int				 try_again;
 
 	if (cmd_check_flag(data->chflags, 'g'))
 		oo = &global_w_options;
@@ -164,6 +169,35 @@ cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		c = ARRAY_ITEM(&clients, i);
 		if (c != NULL && c->session != NULL)
 			server_redraw_client(c);
+	}
+
+	/* 
+	 * Special-case: kill all persistent jobs if window-status-format has
+	 * changed. Persistent jobs are only used by the status line at the
+	 * moment so this works XXX.
+	 */
+	if (strcmp(entry->name, "window-status-format") == 0) {
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			c = ARRAY_ITEM(&clients, i);
+			if (c == NULL || c->session == NULL)
+				continue;
+
+			jobs = &c->status_jobs;
+			do {
+				try_again = 0;	
+				job = RB_ROOT(jobs);
+				while (job != NULL) {
+					nextjob = RB_NEXT(jobs, jobs, job);
+					if (job->flags & JOB_PERSIST) {
+						job_remove(jobs, job);
+						try_again = 1;
+						break;
+					}
+					job = nextjob;
+				}
+			} while (try_again);
+			server_redraw_client(c);
+		}
 	}
 
 	return (0);
