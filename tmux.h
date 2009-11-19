@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.520 2009-11-19 22:25:52 tcunha Exp $ */
+/* $Id: tmux.h,v 1.521 2009-11-19 22:35:10 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1616,7 +1616,8 @@ void	 server_update_event(struct client *);
 
 /* status.c */
 int	 status_redraw(struct client *);
-char	*status_replace(struct client *, const char *, time_t, int);
+char	*status_replace(
+    	     struct client *, struct winlink *, const char *, time_t, int);
 void printflike2 status_message_set(struct client *, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);

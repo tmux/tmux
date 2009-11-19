@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.131 2009-11-19 22:30:39 tcunha Exp $ */
+/* $Id: status.c,v 1.132 2009-11-19 22:35:10 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,10 +31,11 @@
 
 char   *status_job(struct client *, char **);
 void	status_job_callback(struct job *);
-size_t	status_width(struct winlink *);
-char   *status_print(struct session *, struct winlink *, struct grid_cell *);
-void	status_replace1(
-	    struct client *, char **, char **, char *, size_t, int);
+size_t	status_width(struct client *, struct winlink *, time_t);
+char   *status_print(
+    	    struct client *, struct winlink *, time_t, struct grid_cell *);
+void	status_replace1(struct client *,
+    	    struct winlink *, char **, char **, char *, size_t, int);
 void	status_message_callback(int, short, void *);
 
 void	status_prompt_add_history(struct client *);
@@ -108,14 +109,14 @@ status_redraw(struct client *c)
 	utf8flag = options_get_number(&s->options, "status-utf8");
 
 	/* Work out the left and right strings. */
-	left = status_replace(c, options_get_string(
+	left = status_replace(c, NULL, options_get_string(
 	    &s->options, "status-left"), c->status_timer.tv_sec, 1);
 	llen = options_get_number(&s->options, "status-left-length");
 	llen2 = screen_write_cstrlen(utf8flag, "%s", left);
 	if (llen2 < llen)
 		llen = llen2;
 
-	right = status_replace(c, options_get_string(
+	right = status_replace(c, NULL, options_get_string(
 	    &s->options, "status-right"), c->status_timer.tv_sec, 1);
 	rlen = options_get_number(&s->options, "status-right-length");
 	rlen2 = screen_write_cstrlen(utf8flag, "%s", right);
@@ -141,7 +142,7 @@ status_redraw(struct client *c)
 	 */
 	width = offset = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		size = status_width(wl) + 1;
+		size = status_width(c, wl, c->status_timer.tv_sec) + 1;
 		if (wl == s->curw)
 			offset = width;
 		width += size;
@@ -153,7 +154,7 @@ status_redraw(struct client *c)
 		goto draw;
 
 	/* Find size of current window text. */
-	size = status_width(s->curw);
+	size = status_width(c, s->curw, c->status_timer.tv_sec);
 
 	/*
 	 * If the offset is already on screen, we're good to draw from the
@@ -226,7 +227,7 @@ draw:
 	offset = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		memcpy(&gc, &stdgc, sizeof gc);
-		text = status_print(s, wl, &gc);
+		text = status_print(c, wl, c->status_timer.tv_sec, &gc);
 
 		if (larrow == 1 && offset < start) {
 			if (session_alert_has(s, wl, WINDOW_ACTIVITY))
@@ -237,10 +238,13 @@ draw:
 				larrow = -1;
 		}
 
- 		for (ptr = text; *ptr != '\0'; ptr++) {
-			if (offset >= start && offset < start + width)
-				screen_write_putc(&ctx, &gc, *ptr);
-			offset++;
+		ptr = text;
+		for (; offset < start; offset++)
+			ptr++;	/* XXX should skip UTF-8 characters */
+		if (offset < start + width) {
+			screen_write_cnputs(&ctx, 
+			    start + width - offset, &gc, utf8flag, "%s", text);
+			offset += screen_write_cstrlen(utf8flag, "%s", text);
 		}
 
 		if (rarrow == 1 && offset > start + width) {
@@ -322,14 +326,16 @@ out:
 
 /* Replace a single special sequence (prefixed by #). */
 void
-status_replace1(struct client *c,
+status_replace1(struct client *c,struct winlink *wl,
     char **iptr, char **optr, char *out, size_t outsize, int jobsflag)
 {
 	struct session *s = c->session;
-	struct winlink *wl = s->curw;
 	char		ch, tmp[256], *ptr, *endptr, *freeptr;
 	size_t		ptrlen;
 	long		limit;
+
+	if (wl == NULL)
+		wl = s->curw;
 
 	errno = 0;
 	limit = strtol(*iptr, &endptr, 10);
@@ -376,6 +382,21 @@ status_replace1(struct client *c,
 	case 'W':
 		ptr = wl->window->name;
 		goto do_replace;
+	case 'F':
+		tmp[0] = ' ';
+		if (session_alert_has(s, wl, WINDOW_CONTENT))
+			tmp[0] = '+';
+		else if (session_alert_has(s, wl, WINDOW_BELL))
+			tmp[0] = '!';
+		else if (session_alert_has(s, wl, WINDOW_ACTIVITY))
+			tmp[0] = '#';
+		else if (wl == s->curw)
+			tmp[0] = '*';
+		else if (wl == TAILQ_FIRST(&s->lastw))
+			tmp[0] = '-';
+		tmp[1] = '\0';
+		ptr = tmp;
+		goto do_replace;
 	case '[':
 		/* 
 		 * Embedded style, handled at display time. Leave present and
@@ -419,11 +440,12 @@ skip_to:
 
 /* Replace special sequences in fmt. */
 char *
-status_replace(struct client *c, const char *fmt, time_t t, int jobsflag)
+status_replace(struct client *c,
+    struct winlink *wl, const char *fmt, time_t t, int jobsflag)
 {
 	static char	out[BUFSIZ];
 	char		in[BUFSIZ], ch, *iptr, *optr;
-	
+
 	strftime(in, sizeof in, fmt, localtime(&t));
 	in[(sizeof in) - 1] = '\0';
 
@@ -439,7 +461,7 @@ status_replace(struct client *c, const char *fmt, time_t t, int jobsflag)
 			*optr++ = ch;
 			continue;
 		}
-		status_replace1(c, &iptr, &optr, out, sizeof out, jobsflag);
+		status_replace1(c, wl, &iptr, &optr, out, sizeof out, jobsflag);
 	}
 	*optr = '\0';
 
@@ -522,17 +544,37 @@ status_job_callback(struct job *job)
 
 /* Calculate winlink status line entry width. */
 size_t
-status_width(struct winlink *wl)
+status_width(struct client *c, struct winlink *wl, time_t t)
 {
-	return (xsnprintf(NULL, 0, "%d:%s ", wl->idx, wl->window->name));
+	struct options	*oo = &wl->window->options;
+	struct session	*s = c->session;
+	const char	*fmt;
+	char		*text;
+	size_t		 size;
+	int		 utf8flag;
+
+	utf8flag = options_get_number(&s->options, "status-utf8");
+
+	fmt = options_get_string(&wl->window->options, "window-status-format");
+	if (wl == s->curw)
+		fmt = options_get_string(oo, "window-status-current-format");
+
+	text = status_replace(c, wl, fmt, t, 1);
+	size = screen_write_cstrlen(utf8flag, "%s", text);
+	xfree(text);
+
+	return (size);
 }
 
 /* Return winlink status line entry and adjust gc as necessary. */
 char *
-status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
+status_print(
+    struct client *c, struct winlink *wl, time_t t, struct grid_cell *gc)
 {
 	struct options	*oo = &wl->window->options;
-	char   		*text, flag;
+	struct session	*s = c->session;
+	const char	*fmt;
+	char   		*text;
 	u_char		 fg, bg, attr;
 
 	fg = options_get_number(oo, "window-status-fg");
@@ -544,10 +586,7 @@ status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 	attr = options_get_number(oo, "window-status-attr");
 	if (attr != 0)
 		gc->attr = attr;
-
-	flag = ' ';
- 	if (wl == TAILQ_FIRST(&s->lastw))
-		flag = '-';
+	fmt = options_get_string(oo, "window-status-format");
 	if (wl == s->curw) {
 		fg = options_get_number(oo, "window-status-current-fg");
 		if (fg != 8)
@@ -558,21 +597,15 @@ status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 		attr = options_get_number(oo, "window-status-current-attr");
 		if (attr != 0)
 			gc->attr = attr;
-		flag = '*';
+		fmt = options_get_string(oo, "window-status-current-format");
 	}
 
-	if (session_alert_has(s, wl, WINDOW_ACTIVITY)) {
-		flag = '#';
+	if (session_alert_has(s, wl, WINDOW_ACTIVITY) ||
+	    session_alert_has(s, wl, WINDOW_BELL) ||
+	    session_alert_has(s, wl, WINDOW_CONTENT))
 		gc->attr ^= GRID_ATTR_REVERSE;
-	} else if (session_alert_has(s, wl, WINDOW_BELL)) {
-		flag = '!';
-		gc->attr ^= GRID_ATTR_REVERSE;
-	} else if (session_alert_has(s, wl, WINDOW_CONTENT)) {
-		flag = '+';
-		gc->attr ^= GRID_ATTR_REVERSE;
-	}
 
-	xasprintf(&text, "%d:%s%c", wl->idx, wl->window->name, flag);
+	text = status_replace(c, wl, fmt, t, 1);
 	return (text);
 }
 
