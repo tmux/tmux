@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.128 2009-11-18 01:28:43 tcunha Exp $ */
+/* $Id: status.c,v 1.129 2009-11-19 22:20:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -566,9 +566,12 @@ status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 void printflike2
 status_message_set(struct client *c, const char *fmt, ...)
 {
-	struct timeval	tv;
-	va_list		ap;
-	int		delay;
+	struct timeval		 tv;
+	struct session		*s = c->session;
+	struct message_entry	*msg;
+	va_list			 ap;
+	int			 delay;
+	u_int			 i, limit;
 
 	status_prompt_clear(c);
 	status_message_clear(c);
@@ -577,10 +580,25 @@ status_message_set(struct client *c, const char *fmt, ...)
 	xvasprintf(&c->message_string, fmt, ap);
 	va_end(ap);
 
+	ARRAY_EXPAND(&c->message_log, 1);
+	msg = &ARRAY_LAST(&c->message_log);
+	msg->msg_time = time(NULL);
+	msg->msg = xstrdup(c->message_string);
+
+	if (s == NULL)
+		limit = 0;
+	else
+		limit = options_get_number(&s->options, "message-limit");
+	for (i = ARRAY_LENGTH(&c->message_log); i > limit; i--) {
+		msg = &ARRAY_ITEM(&c->message_log, i - 1);
+		xfree(msg->msg);
+		ARRAY_REMOVE(&c->message_log, i - 1);
+	}
+
 	delay = options_get_number(&c->session->options, "display-time");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
-	
+
 	evtimer_del(&c->message_timer);
 	evtimer_set(&c->message_timer, status_message_callback, c);
 	evtimer_add(&c->message_timer, &tv);

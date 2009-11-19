@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.517 2009-11-14 17:57:41 tcunha Exp $ */
+/* $Id: tmux.h,v 1.518 2009-11-19 22:20:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1040,6 +1040,12 @@ struct mouse_event {
 	u_char	y;
 };
 
+/* Saved message entry. */
+struct message_entry {
+	char   *msg;
+	time_t	msg_time;
+};
+
 /* Client connection. */
 struct client {
 	struct imsgbuf	 ibuf;
@@ -1076,6 +1082,7 @@ struct client {
 
 	char		*message_string;
 	struct event	 message_timer;
+	ARRAY_DECL(, struct message_entry) message_log;
 
 	char		*prompt_string;
 	char		*prompt_buffer;
@@ -1480,6 +1487,7 @@ extern const struct cmd_entry cmd_set_option_entry;
 extern const struct cmd_entry cmd_set_window_option_entry;
 extern const struct cmd_entry cmd_show_buffer_entry;
 extern const struct cmd_entry cmd_show_environment_entry;
+extern const struct cmd_entry cmd_show_messages_entry;
 extern const struct cmd_entry cmd_show_options_entry;
 extern const struct cmd_entry cmd_show_window_options_entry;
 extern const struct cmd_entry cmd_source_file_entry;

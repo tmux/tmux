@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.188 2009-11-11 09:54:07 nicm Exp $ */
+/* $Id: tmux.c,v 1.189 2009-11-19 22:20:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -335,6 +335,7 @@ main(int argc, char **argv)
 	options_set_number(so, "message-attr", 0);
 	options_set_number(so, "message-bg", 3);
 	options_set_number(so, "message-fg", 0);
+	options_set_number(so, "message-limit", 20);
 	options_set_number(so, "mouse-select-pane", 0);
 	options_set_number(so, "repeat-time", 500);
 	options_set_number(so, "set-remain-on-exit", 0);
