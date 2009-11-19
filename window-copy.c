@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.91 2009-11-19 22:23:27 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.92 2009-11-19 22:24:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -486,7 +486,6 @@ window_copy_search_compare(
 {
 	const struct grid_cell	*gc, *sgc;
 	const struct grid_utf8	*gu, *sgu;
-	size_t			 size;
 
 	gc = grid_peek_cell(gd, px, py);
 	sgc = grid_peek_cell(sgd, spx, 0);
