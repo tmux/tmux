@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.130 2009-11-19 22:25:52 tcunha Exp $ */
+/* $Id: status.c,v 1.131 2009-11-19 22:30:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,6 +33,8 @@ char   *status_job(struct client *, char **);
 void	status_job_callback(struct job *);
 size_t	status_width(struct winlink *);
 char   *status_print(struct session *, struct winlink *, struct grid_cell *);
+void	status_replace1(
+	    struct client *, char **, char **, char *, size_t, int);
 void	status_message_callback(int, short, void *);
 
 void	status_prompt_add_history(struct client *);
@@ -318,139 +320,133 @@ out:
 	return (1);
 }
 
-char *
-status_replace(struct client *c, const char *fmt, time_t t, int run_jobs)
+/* Replace a single special sequence (prefixed by #). */
+void
+status_replace1(struct client *c,
+    char **iptr, char **optr, char *out, size_t outsize, int jobsflag)
 {
 	struct session *s = c->session;
 	struct winlink *wl = s->curw;
-	static char	out[BUFSIZ];
-	char		in[BUFSIZ], tmp[256], ch, *iptr, *optr, *ptr, *endptr;
-	char           *savedptr;	/* freed at end of each loop */
-	size_t		len;
-	long		n;
+	char		ch, tmp[256], *ptr, *endptr, *freeptr;
+	size_t		ptrlen;
+	long		limit;
+
+	errno = 0;
+	limit = strtol(*iptr, &endptr, 10);
+	if ((limit == 0 && errno != EINVAL) ||
+	    (limit == LONG_MIN && errno != ERANGE) ||
+	    (limit == LONG_MAX && errno != ERANGE) || 
+	    limit != 0)
+		*iptr = endptr;
+	if (limit <= 0)
+		limit = LONG_MAX;
+
+	freeptr = NULL;
+
+	switch (*(*iptr)++) {
+	case '(':
+		if (!jobsflag) {
+			ch = ')';
+			goto skip_to;
+		}
+		if ((ptr = status_job(c, iptr)) == NULL)
+			return;
+		freeptr = ptr;
+		goto do_replace;
+	case 'H':
+		if (gethostname(tmp, sizeof tmp) != 0)
+			fatal("gethostname failed");
+		ptr = tmp;
+		goto do_replace;
+	case 'I':
+		xsnprintf(tmp, sizeof tmp, "%d", wl->idx);
+		ptr = tmp;
+		goto do_replace;
+	case 'P':
+		xsnprintf(tmp, sizeof tmp, "%u",
+		    window_pane_index(wl->window, wl->window->active));
+		ptr = tmp;
+		goto do_replace;
+	case 'S':
+		ptr = s->name;
+		goto do_replace;
+	case 'T':
+		ptr = wl->window->active->base.title;
+		goto do_replace;
+	case 'W':
+		ptr = wl->window->name;
+		goto do_replace;
+	case '[':
+		/* 
+		 * Embedded style, handled at display time. Leave present and
+		 * skip input until ].
+		 */
+		ch = ']';
+		goto skip_to;
+	case '#':
+		*(*optr++) = '#';
+		break;
+	}
+
+	return;
 	
+do_replace:
+	ptrlen = strlen(ptr);
+	if ((size_t) limit < ptrlen)
+		ptrlen = limit;
+
+	if (*optr + ptrlen >= out + outsize - 1)
+		return;
+	while (ptrlen > 0 && *ptr != '\0') {
+		*(*optr)++ = *ptr++;
+		ptrlen--;
+	}
+
+	if (freeptr != NULL)
+		xfree(freeptr);
+	return;
+
+skip_to:
+	*(*optr)++ = '#';
+
+	(*iptr)--;	/* include ch */
+	while (**iptr != ch && **iptr != '\0') {
+		if (*optr >=  out + outsize - 1)
+			break;
+		*(*optr)++ = *(*iptr)++;
+	}
+}
+
+/* Replace special sequences in fmt. */
+char *
+status_replace(struct client *c, const char *fmt, time_t t, int jobsflag)
+{
+	static char	out[BUFSIZ];
+	char		in[BUFSIZ], ch, *iptr, *optr;
 	
 	strftime(in, sizeof in, fmt, localtime(&t));
 	in[(sizeof in) - 1] = '\0';
 
 	iptr = in;
 	optr = out;
-	savedptr = NULL;
 
 	while (*iptr != '\0') {
 		if (optr >= out + (sizeof out) - 1)
 			break;
-		switch (ch = *iptr++) {
-		case '#':
-			errno = 0;
-			n = strtol(iptr, &endptr, 10);
-			if ((n == 0 && errno != EINVAL) ||
-			    (n == LONG_MIN && errno != ERANGE) ||
-			    (n == LONG_MAX && errno != ERANGE) ||
-			    n != 0)
-				iptr = endptr;
-			if (n <= 0)
-				n = LONG_MAX;
+		ch = *iptr++;
 
-			ptr = NULL;
-			switch (*iptr++) {
-			case '(':
-				if (run_jobs) {
-					if (ptr == NULL) {
-						ptr = status_job(c, &iptr);
-						if (ptr == NULL)
-							break;
-						savedptr = ptr;
-					}
-				} else {
-					/* Don't run jobs. Copy to ). */
-					*optr++ = '#';
-
-					iptr--;	/* include [ */
-					while (*iptr != ')' && *iptr != '\0') {
-						if (optr >=
-						    out + (sizeof out) - 1)
-							break;
-						*optr++ = *iptr++;
-					}
-					break;
-				}
-				/* FALLTHROUGH */
-			case 'H':
-				if (ptr == NULL) {
-					if (gethostname(tmp, sizeof tmp) != 0)
-						fatal("gethostname failed");
-					ptr = tmp;
-				}
-				/* FALLTHROUGH */
-			case 'I':
-				if (ptr == NULL) {
-					xsnprintf(tmp, sizeof tmp, "%d", wl->idx);
-					ptr = tmp;
-				}
-				/* FALLTHROUGH */
-			case 'P':
-				if (ptr == NULL) {
-					xsnprintf(tmp, sizeof tmp, "%u",
-					    window_pane_index(wl->window,
-					    wl->window->active));
-					ptr = tmp;
-				}
-				/* FALLTHROUGH */
-			case 'S':
-				if (ptr == NULL)
-					ptr = s->name;
-				/* FALLTHROUGH */
-			case 'T':
-				if (ptr == NULL)
-					ptr = wl->window->active->base.title;
-				/* FALLTHROUGH */
-			case 'W':
-				if (ptr == NULL)
-					ptr = wl->window->name;
-				len = strlen(ptr);
-				if ((size_t) n < len)
-					len = n;
-				if (optr + len >= out + (sizeof out) - 1)
-					break;
-				while (len > 0 && *ptr != '\0') {
-					*optr++ = *ptr++;
-					len--;
-				}
-				break;
-			case '[':
-				/* 
-				 * Embedded style, handled at display time.
-				 * Leave present and skip input until ].
-				 */
-				*optr++ = '#';
-
-				iptr--;	/* include [ */
-				while (*iptr != ']' && *iptr != '\0') {
-					if (optr >= out + (sizeof out) - 1)
-						break;
-					*optr++ = *iptr++;
-				}
-				break;
-			case '#':
-				*optr++ = '#';
-				break;
-			}
-			if (savedptr != NULL) {
-				xfree(savedptr);
-				savedptr = NULL;
-			}
-			break;
-		default:
+		if (ch != '#') {
 			*optr++ = ch;
-			break;
+			continue;
 		}
+		status_replace1(c, &iptr, &optr, out, sizeof out, jobsflag);
 	}
 	*optr = '\0';
 
 	return (xstrdup(out));
 }
 
+/* Figure out job name and get its result, starting it off if necessary. */
 char *
 status_job(struct client *c, char **iptr)
 {
@@ -498,6 +494,7 @@ status_job(struct client *c, char **iptr)
 	return (xstrdup(job->data));
 }
 
+/* Job has finished: save its result. */
 void
 status_job_callback(struct job *job)
 {
@@ -523,12 +520,14 @@ status_job_callback(struct job *job)
 		xfree(buf);
 }
 
+/* Calculate winlink status line entry width. */
 size_t
 status_width(struct winlink *wl)
 {
 	return (xsnprintf(NULL, 0, "%d:%s ", wl->idx, wl->window->name));
 }
 
+/* Return winlink status line entry and adjust gc as necessary. */
 char *
 status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 {
@@ -577,6 +576,7 @@ status_print(struct session *s, struct winlink *wl, struct grid_cell *gc)
 	return (text);
 }
 
+/* Set a status line message. */
 void printflike2
 status_message_set(struct client *c, const char *fmt, ...)
 {
@@ -621,6 +621,7 @@ status_message_set(struct client *c, const char *fmt, ...)
 	c->flags |= CLIENT_STATUS;
 }
 
+/* Clear status line message. */
 void
 status_message_clear(struct client *c)
 {
@@ -636,6 +637,7 @@ status_message_clear(struct client *c)
 	screen_reinit(&c->status);
 }
 
+/* Clear status line message after timer expires. */
 void
 status_message_callback(unused int fd, unused short event, void *data)
 {
@@ -685,6 +687,7 @@ status_message_redraw(struct client *c)
 	return (1);
 }
 
+/* Enable status line prompt. */
 void
 status_prompt_set(struct client *c, const char *msg,
     int (*callbackfn)(void *, const char *), void (*freefn)(void *),
@@ -718,6 +721,7 @@ status_prompt_set(struct client *c, const char *msg,
 	c->flags |= CLIENT_STATUS;
 }
 
+/* Remove status line prompt. */
 void
 status_prompt_clear(struct client *c)
 {
@@ -739,6 +743,7 @@ status_prompt_clear(struct client *c)
 	screen_reinit(&c->status);
 }
 
+/* Update status line prompt with a new prompt string. */
 void
 status_prompt_update(struct client *c, const char *msg)
 {
