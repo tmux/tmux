@@ -1992,10 +1992,11 @@ This command works only from inside
 .Op Ar message
 .Xc
 .D1 (alias: Ic display )
-Display a message (see the
-.Ic status-left
-option below)
-in the status line.
+Display a message in the status line.
+The format of
+.Ar message is as for
+.Ic status-left ,
+with the exception that #() are not handled.
 .It Ic select-prompt Op Fl t Ar target-client
 Open a prompt inside
 .Ar target-client

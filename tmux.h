@@ -1617,7 +1617,7 @@ void	 server_update_event(struct client *);
 
 /* status.c */
 int	 status_redraw(struct client *);
-char	*status_replace(struct client *, const char *, time_t);
+char	*status_replace(struct client *, const char *, time_t, int);
 void printflike2 status_message_set(struct client *, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);

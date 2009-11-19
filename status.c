@@ -107,14 +107,14 @@ status_redraw(struct client *c)
 
 	/* Work out the left and right strings. */
 	left = status_replace(c, options_get_string(
-	    &s->options, "status-left"), c->status_timer.tv_sec);
+	    &s->options, "status-left"), c->status_timer.tv_sec, 1);
 	llen = options_get_number(&s->options, "status-left-length");
 	llen2 = screen_write_cstrlen(utf8flag, "%s", left);
 	if (llen2 < llen)
 		llen = llen2;
 
 	right = status_replace(c, options_get_string(
-	    &s->options, "status-right"), c->status_timer.tv_sec);
+	    &s->options, "status-right"), c->status_timer.tv_sec, 1);
 	rlen = options_get_number(&s->options, "status-right-length");
 	rlen2 = screen_write_cstrlen(utf8flag, "%s", right);
 	if (rlen2 < rlen)
@@ -319,7 +319,7 @@ out:
 }
 
 char *
-status_replace(struct client *c, const char *fmt, time_t t)
+status_replace(struct client *c, const char *fmt, time_t t, int run_jobs)
 {
 	struct session *s = c->session;
 	struct winlink *wl = s->curw;
@@ -355,11 +355,25 @@ status_replace(struct client *c, const char *fmt, time_t t)
 			ptr = NULL;
 			switch (*iptr++) {
 			case '(':
-				if (ptr == NULL) {
-					ptr = status_job(c, &iptr);
-					if (ptr == NULL)
-						break;
-					savedptr = ptr;
+				if (run_jobs) {
+					if (ptr == NULL) {
+						ptr = status_job(c, &iptr);
+						if (ptr == NULL)
+							break;
+						savedptr = ptr;
+					}
+				} else {
+					/* Don't run jobs. Copy to ). */
+					*optr++ = '#';
+
+					iptr--;	/* include [ */
+					while (*iptr != ')' && *iptr != '\0') {
+						if (optr >=
+						    out + (sizeof out) - 1)
+							break;
+						*optr++ = *iptr++;
+					}
+					break;
 				}
 				/* FALLTHROUGH */
 			case 'H':
