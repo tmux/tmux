@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.122 2009-11-14 17:48:39 tcunha Exp $ */
+/* $Id: window.c,v 1.123 2009-11-19 22:37:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -147,6 +147,8 @@ winlink_remove(struct winlinks *wwl, struct winlink *wl)
 	struct window	*w = wl->window;
 
 	RB_REMOVE(winlinks, wwl, wl);
+	if (wl->status_text != NULL)
+		xfree(wl->status_text);
 	xfree(wl);
 
 	if (w->references == 0)

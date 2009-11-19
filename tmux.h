@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.521 2009-11-19 22:35:10 tcunha Exp $ */
+/* $Id: tmux.h,v 1.522 2009-11-19 22:37:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -842,6 +842,10 @@ ARRAY_DECL(windows, struct window *);
 struct winlink {
 	int		 idx;
 	struct window	*window;
+
+	size_t		 status_width;
+	struct grid_cell status_cell;
+	char		*status_text;
 
 	RB_ENTRY(winlink) entry;
 	TAILQ_ENTRY(winlink) sentry;
