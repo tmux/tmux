@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: tmux(1) configuration file
 " Maintainer: Tiago Cunha <me@tiagocunha.org>
-" Last Change: $Date: 2009-10-25 22:16:55 $
+" Last Change: $Date: 2009-11-19 22:28:59 $
 " License: This file is placed in the public domain.
 
 if version < 600
@@ -38,10 +38,10 @@ syn keyword tmuxCmds choose-window loadb load-buffer copyb copy-buffer suspendc
 syn keyword tmuxCmds suspend-client findw find-window breakp break-pane nextl
 syn keyword tmuxCmds next-layout rotatew rotate-window confirm[-before]
 syn keyword tmuxCmds clearhist clear-history selectl select-layout if[-shell]
-syn keyword tmuxCmds display[-message] set-environment show-environment
-syn keyword tmuxCmds choose-client displayp display-panes run[-shell] lockc
-syn keyword tmuxCmds lock-client locks lock-session lsp list-panes pipep
-syn keyword tmuxCmds pipe-pane
+syn keyword tmuxCmds display[-message] setenv set-environment showenv
+syn keyword tmuxCmds show-environment choose-client displayp display-panes
+syn keyword tmuxCmds run[-shell] lockc lock-client locks lock-session lsp
+syn keyword tmuxCmds list-panes pipep pipe-pane showmsgs show-messages
 
 syn keyword tmuxOptsSet prefix status status-fg status-bg bell-action
 syn keyword tmuxOptsSet default-command history-limit status-left status-right
@@ -56,7 +56,7 @@ syn keyword tmuxOptsSet status-left-fg status-right-attr status-right-bg
 syn keyword tmuxOptsSet status-right-fg update-environment base-index
 syn keyword tmuxOptsSet display-panes-colour display-panes-time default-shell
 syn keyword tmuxOptsSet set-titles-string lock-command lock-server
-syn keyword tmuxOptsSet mouse-select-pane
+syn keyword tmuxOptsSet mouse-select-pane message-limit
 
 syn keyword tmuxOptsSetw monitor-activity aggressive-resize force-width
 syn keyword tmuxOptsSetw force-height remain-on-exit uft8 mode-fg mode-bg
