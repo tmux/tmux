@@ -844,6 +844,10 @@ struct winlink {
 	int		 idx;
 	struct window	*window;
 
+	size_t		 status_width;
+	struct grid_cell status_cell;
+	char		*status_text;
+
 	RB_ENTRY(winlink) entry;
 	TAILQ_ENTRY(winlink) sentry;
 };

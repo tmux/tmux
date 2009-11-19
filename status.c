@@ -29,6 +29,10 @@
 
 #include "tmux.h"
 
+char   *status_redraw_get_left(
+	    struct client *, time_t, int, struct grid_cell *, size_t *);
+char   *status_redraw_get_right(
+	    struct client *, time_t, int, struct grid_cell *, size_t *);
 char   *status_job(struct client *, char **);
 void	status_job_callback(struct job *);
 size_t	status_width(struct client *, struct winlink *, time_t);
@@ -41,195 +45,211 @@ void	status_message_callback(int, short, void *);
 void	status_prompt_add_history(struct client *);
 char   *status_prompt_complete(const char *);
 
+/* Retrieve options for left string. */
+char *
+status_redraw_get_left(struct client *c,
+    time_t t, int utf8flag, struct grid_cell *gc, size_t *size)
+{
+	struct session	*s = c->session;
+	char		*left;
+	u_char		 fg, bg, attr;
+	size_t		 leftlen;
+
+	fg = options_get_number(&s->options, "status-left-fg");
+	if (fg != 8)
+		colour_set_fg(gc, fg);
+	bg = options_get_number(&s->options, "status-left-bg");
+	if (bg != 8)
+		colour_set_bg(gc, bg);
+	attr = options_get_number(&s->options, "status-left-attr");
+	if (attr != 0)
+		gc->attr = attr;
+
+	left = status_replace(
+	    c, NULL, options_get_string(&s->options, "status-left"), t, 1);
+
+	*size = options_get_number(&s->options, "status-left-length");
+	leftlen = screen_write_cstrlen(utf8flag, "%s", left);
+	if (leftlen < *size)
+		*size = leftlen;
+	return (left);
+}
+
+/* Retrieve options for right string. */
+char *
+status_redraw_get_right(struct client *c,
+    time_t t, int utf8flag, struct grid_cell *gc, size_t *size)
+{
+	struct session	*s = c->session;
+	char		*right;
+	u_char		 fg, bg, attr;
+	size_t		 rightlen;
+
+	fg = options_get_number(&s->options, "status-right-fg");
+	if (fg != 8)
+		colour_set_fg(gc, fg);
+	bg = options_get_number(&s->options, "status-right-bg");
+	if (bg != 8)
+		colour_set_bg(gc, bg);
+	attr = options_get_number(&s->options, "status-right-attr");
+	if (attr != 0)
+		gc->attr = attr;
+
+	right = status_replace(
+	    c, NULL, options_get_string(&s->options, "status-right"), t, 1);
+
+	*size = options_get_number(&s->options, "status-right-length");
+	rightlen = screen_write_cstrlen(utf8flag, "%s", right);
+	if (rightlen < *size)
+		*size = rightlen;
+	return (right);
+}
+
 /* Draw status for client on the last lines of given context. */
 int
 status_redraw(struct client *c)
 {
-	struct screen_write_ctx		ctx;
-	struct session		       *s = c->session;
-	struct winlink		       *wl;
-	struct screen		      	old_status;
-	char		 	       *left, *right, *text, *ptr;
-	size_t				llen, llen2, rlen, rlen2, offset;
-	size_t				ox, xx, yy, size, start, width;
-	struct grid_cell	        stdgc, sl_stdgc, sr_stdgc, gc;
-	int				larrow, rarrow, utf8flag;
-	int				sl_fg, sl_bg, sr_fg, sr_bg;
-	int				sl_attr, sr_attr;
-
-	left = right = NULL;
+	struct screen_write_ctx	ctx;
+	struct session	       *s = c->session;
+	struct winlink	       *wl;
+	struct screen		old_status, window_list;
+	struct grid_cell	stdgc, lgc, rgc, gc;
+	time_t			t;
+	char		       *left, *right;
+	u_int			offset, needed;
+	u_int			wlstart, wlwidth, wlavailable, wloffset, wlsize;
+	size_t			llen, rlen;
+	int			larrow, rarrow, utf8flag;
 
 	/* No status line?*/
 	if (c->tty.sy == 0 || !options_get_number(&s->options, "status"))
 		return (1);
+	left = right = NULL;
 	larrow = rarrow = 0;
 
-	/* Create the target screen. */
-	memcpy(&old_status, &c->status, sizeof old_status);
-	screen_init(&c->status, c->tty.sx, 1, 0);
-
+	/* Update status timer. */
 	if (gettimeofday(&c->status_timer, NULL) != 0)
 		fatal("gettimeofday failed");
+	t = c->status_timer.tv_sec;
+
+	/* Set up default colour. */
 	memcpy(&stdgc, &grid_default_cell, sizeof gc);
 	colour_set_fg(&stdgc, options_get_number(&s->options, "status-fg"));
 	colour_set_bg(&stdgc, options_get_number(&s->options, "status-bg"));
 	stdgc.attr |= options_get_number(&s->options, "status-attr");
 
-	/* 
-	 * Set the status-left and status-right parts to the default status
-	 * line options and only change them where they differ from the
-	 * defaults.
-	 */
-	memcpy(&sl_stdgc, &stdgc, sizeof sl_stdgc);
-	memcpy(&sr_stdgc, &stdgc, sizeof sr_stdgc);
-	sl_fg = options_get_number(&s->options, "status-left-fg");
-	if (sl_fg != 8)
-		colour_set_fg(&sl_stdgc, sl_fg);
-	sl_bg = options_get_number(&s->options, "status-left-bg");
-	if (sl_bg != 8)
-		colour_set_bg(&sl_stdgc, sl_bg);
-	sl_attr = options_get_number(&s->options, "status-left-attr");
-	if (sl_attr != 0)
-		sl_stdgc.attr = sl_attr;
-	sr_fg = options_get_number(&s->options, "status-right-fg");
-	if (sr_fg != 8)
-		colour_set_fg(&sr_stdgc, sr_fg);
-	sr_bg = options_get_number(&s->options, "status-right-bg");
-	if (sr_bg != 8)
-		colour_set_bg(&sr_stdgc, sr_bg);
-	sr_attr = options_get_number(&s->options, "status-right-attr");
-	if (sr_attr != 0)
-		sr_stdgc.attr = sr_attr;
+	/* Create the target screen. */
+	memcpy(&old_status, &c->status, sizeof old_status);
+	screen_init(&c->status, c->tty.sx, 1, 0);
+	screen_write_start(&ctx, NULL, &c->status);
+	for (offset = 0; offset < c->tty.sx; offset++)
+		screen_write_putc(&ctx, &stdgc, ' ');
+	screen_write_stop(&ctx);
 
-	yy = c->tty.sy - 1;
-	if (yy == 0)
-		goto blank;
+	/* If the height is one line, blank status line. */
+	if (c->tty.sy <= 1)
+		goto out;
 
-	/* Caring about UTF-8 in status line? */
+	/* Get UTF-8 flag. */
 	utf8flag = options_get_number(&s->options, "status-utf8");
 
-	/* Work out the left and right strings. */
-	left = status_replace(c, NULL, options_get_string(
-	    &s->options, "status-left"), c->status_timer.tv_sec, 1);
-	llen = options_get_number(&s->options, "status-left-length");
-	llen2 = screen_write_cstrlen(utf8flag, "%s", left);
-	if (llen2 < llen)
-		llen = llen2;
-
-	right = status_replace(c, NULL, options_get_string(
-	    &s->options, "status-right"), c->status_timer.tv_sec, 1);
-	rlen = options_get_number(&s->options, "status-right-length");
-	rlen2 = screen_write_cstrlen(utf8flag, "%s", right);
-	if (rlen2 < rlen)
-		rlen = rlen2;
+	/* Work out left and right strings. */
+	memcpy(&lgc, &stdgc, sizeof lgc);
+	left = status_redraw_get_left(c, t, utf8flag, &lgc, &llen);
+	memcpy(&rgc, &stdgc, sizeof rgc);
+	right = status_redraw_get_right(c, t, utf8flag, &rgc, &rlen);
 
 	/*
-	 * Figure out how much space we have for the window list. If there isn't
-	 * enough space, just wimp out.
+	 * Figure out how much space we have for the window list. If there
+	 * isn't enough space, just show a blank status line.
 	 */
-	xx = 0;
+        needed = 0;
 	if (llen != 0)
-		xx += llen + 1;
+		needed += llen + 1;
 	if (rlen != 0)
-		xx += rlen + 1;
-	if (c->tty.sx == 0 || c->tty.sx <= xx)
-		goto blank;
-	xx = c->tty.sx - xx;
+		needed += rlen + 1;
+	if (c->tty.sx == 0 || c->tty.sx <= needed)
+		goto out;
+	wlavailable = c->tty.sx - needed;
 
-	/*
-	 * Right. We have xx characters to fill. Find out how much is to go in
-	 * them and the offset of the current window (it must be on screen).
-	 */
-	width = offset = 0;
+	/* Calculate the total size needed for the window list. */
+	wlstart = wloffset = wlwidth = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		size = status_width(c, wl, c->status_timer.tv_sec) + 1;
-		if (wl == s->curw)
-			offset = width;
-		width += size;
-	}
-	start = 0;
+		if (wl->status_text != NULL)
+			xfree(wl->status_text);
+		memcpy(&wl->status_cell, &stdgc, sizeof wl->status_cell);
+		wl->status_text = status_print(c, wl, t, &wl->status_cell);
+		wl->status_width = 
+		    screen_write_cstrlen(utf8flag, "%s", wl->status_text);
 
-	/* If there is enough space for the total width, all is gravy. */
-	if (width <= xx)
+		if (wl == s->curw)
+			wloffset = wlwidth;
+		wlwidth += wl->status_width + 1;
+	}
+
+	/* Create a new screen for the window list. */
+	screen_init(&window_list, wlwidth, 1, 0);
+
+	/* And draw the window list into it. */
+	screen_write_start(&ctx, NULL, &window_list);
+	RB_FOREACH(wl, winlinks, &s->windows) {
+ 		screen_write_cnputs(&ctx,
+		    -1, &wl->status_cell, utf8flag, "%s", wl->status_text);
+		screen_write_putc(&ctx, &stdgc, ' ');
+	}
+	screen_write_stop(&ctx);
+
+	/* If there is enough space for the total width, skip to draw now. */
+	if (wlwidth <= wlavailable)
 		goto draw;
 
 	/* Find size of current window text. */
-	size = status_width(c, s->curw, c->status_timer.tv_sec);
+	wlsize = s->curw->status_width;
 
 	/*
-	 * If the offset is already on screen, we're good to draw from the
+	 * If the current window is already on screen, good to draw from the
 	 * start and just leave off the end.
 	 */
-	if (offset + size < xx) {
-		if (xx > 0) {
+	if (wloffset + wlsize < wlavailable) {
+		if (wlavailable > 0) {
 			rarrow = 1;
-			xx--;
+			wlavailable--;
 		}
+		wlwidth = wlavailable;
+	} else {
+		/*
+		 * Work out how many characters we need to omit from the
+		 * start. There are wlavailable characters to fill, and
+		 * wloffset + wlsize must be the last. So, the start character
+		 * is wloffset + wlsize - wlavailable.
+		 */
+		if (wlavailable > 0) {
+			larrow = 1;
+			wlavailable--;
+		}
+		
+		wlstart = wloffset + wlsize - wlavailable;
+		if (wlavailable > 0 && wlwidth > wlstart + wlavailable + 1) {
+			rarrow = 1;
+			wlstart++;
+			wlavailable--;
+		}
+		wlwidth = wlavailable;
+	}
 
-		width = xx;
-		goto draw;
+	/* Bail if anything is now too small too. */
+	if (wlwidth == 0 || wlavailable == 0) {
+		screen_free(&window_list);
+		goto out;
 	}
 
 	/*
-	 * Work out how many characters we need to omit from the start. There
-	 * are xx characters to fill, and offset + size must be the last. So,
-	 * the start character is offset + size - xx.
+	 * Now the start position is known, work out the state of the left and
+	 * right arrows.
 	 */
-	if (xx > 0) {
-		larrow = 1;
-		xx--;
-	}
-
-	start = offset + size - xx;
- 	if (xx > 0 && width > start + xx + 1) { /* + 1, eh? */
- 		rarrow = 1;
- 		start++;
- 		xx--;
- 	}
- 	width = xx;
-
-draw:
-	/* Bail here if anything is too small too. XXX. */
-	if (width == 0 || xx == 0)
-		goto blank;
-
- 	/* Begin drawing and move to the starting position. */
-	screen_write_start(&ctx, NULL, &c->status);
-	if (llen != 0) {
- 		screen_write_cursormove(&ctx, 0, yy);
-		screen_write_cnputs(&ctx, llen, &sl_stdgc, utf8flag, "%s", left);
-		screen_write_putc(&ctx, &stdgc, ' ');
-		if (larrow)
-			screen_write_putc(&ctx, &stdgc, ' ');
-	} else {
-		if (larrow)
-			screen_write_cursormove(&ctx, 1, yy);
-		else
-			screen_write_cursormove(&ctx, 0, yy);
-	}
-
-	ox = 0;
-	if (width < xx) {
-		switch (options_get_number(&s->options, "status-justify")) {
-		case 1:	/* centered */
-			ox = 1 + (xx - width) / 2;
-			break;
-		case 2:	/* right */
-			ox = 1 + (xx - width);
-			break;
-		}
-		xx -= ox;
-		while (ox-- > 0)
-			screen_write_putc(&ctx, &stdgc, ' ');
-	}
-
-	/* Draw each character in succession. */
 	offset = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		memcpy(&gc, &stdgc, sizeof gc);
-		text = status_print(c, wl, c->status_timer.tv_sec, &gc);
-
-		if (larrow == 1 && offset < start) {
+		if (larrow == 1 && offset < wlstart) {
 			if (session_alert_has(s, wl, WINDOW_ACTIVITY))
 				larrow = -1;
 			else if (session_alert_has(s, wl, WINDOW_BELL))
@@ -238,16 +258,9 @@ draw:
 				larrow = -1;
 		}
 
-		ptr = text;
-		for (; offset < start; offset++)
-			ptr++;	/* XXX should skip UTF-8 characters */
-		if (offset < start + width) {
-			screen_write_cnputs(&ctx, 
-			    start + width - offset, &gc, utf8flag, "%s", text);
-			offset += screen_write_cstrlen(utf8flag, "%s", text);
-		}
+		offset += wl->status_width;
 
-		if (rarrow == 1 && offset > start + width) {
+		if (rarrow == 1 && offset > wlstart + wlwidth) {
 			if (session_alert_has(s, wl, WINDOW_ACTIVITY))
 				rarrow = -1;
 			else if (session_alert_has(s, wl, WINDOW_BELL))
@@ -255,62 +268,63 @@ draw:
 			else if (session_alert_has(s, wl, WINDOW_CONTENT))
 				rarrow = -1;
 		}
-
-		if (offset < start + width) {
-			if (offset >= start) {
-				screen_write_putc(&ctx, &stdgc, ' ');
-			}
-			offset++;
-		}
-
-		xfree(text);
 	}
 
-	/* Fill the remaining space if any. */
- 	while (offset++ < xx)
-		screen_write_putc(&ctx, &stdgc, ' ');
+draw:
+ 	/* Begin drawing. */
+	screen_write_start(&ctx, NULL, &c->status);
 
-	/* Draw the last item. */
-	if (rlen != 0) {
-		screen_write_cursormove(&ctx, c->tty.sx - rlen - 1, yy);
+	/* Draw the left string and arrow. */
+	screen_write_cursormove(&ctx, 0, 0);
+	if (llen != 0) {
+		screen_write_cnputs(&ctx, llen, &lgc, utf8flag, "%s", left);
 		screen_write_putc(&ctx, &stdgc, ' ');
-		screen_write_cnputs(&ctx, rlen, &sr_stdgc, utf8flag, "%s", right);
 	}
-
-	/* Draw the arrows. */
 	if (larrow != 0) {
 		memcpy(&gc, &stdgc, sizeof gc);
 		if (larrow == -1)
 			gc.attr ^= GRID_ATTR_REVERSE;
-		if (llen != 0)
-			screen_write_cursormove(&ctx, llen + 1, yy);
-		else
-			screen_write_cursormove(&ctx, 0, yy);
 		screen_write_putc(&ctx, &gc, '<');
 	}
+
+	/* Draw the right string and arrow. */
 	if (rarrow != 0) {
+		screen_write_cursormove(&ctx, c->tty.sx - rlen - 2, 0);
 		memcpy(&gc, &stdgc, sizeof gc);
 		if (rarrow == -1)
 			gc.attr ^= GRID_ATTR_REVERSE;
-		if (rlen != 0)
-			screen_write_cursormove(&ctx, c->tty.sx - rlen - 2, yy);
-		else
-			screen_write_cursormove(&ctx, c->tty.sx - 1, yy);
 		screen_write_putc(&ctx, &gc, '>');
+	} else
+		screen_write_cursormove(&ctx, c->tty.sx - rlen - 1, 0);
+	if (rlen != 0) {
+		screen_write_putc(&ctx, &stdgc, ' ');
+		screen_write_cnputs(&ctx, rlen, &rgc, utf8flag, "%s", right);
 	}
 
-	goto out;
+	/* Figure out the offset for the window list. */
+	wloffset = 1;
+	if (wlwidth < wlavailable) {
+		switch (options_get_number(&s->options, "status-justify")) {
+		case 1:	/* centered */
+			wloffset = 1 + (wlavailable - wlwidth) / 2;
+			break;
+		case 2:	/* right */
+			wloffset = 1 + (wlavailable - wlwidth);
+			break;
+		}
+	}
+	wloffset += llen;
+	if (larrow != 0)
+		wloffset++;
 
-blank:
- 	/* Just draw the whole line as blank. */
-	screen_write_start(&ctx, NULL, &c->status);
-	screen_write_cursormove(&ctx, 0, yy);
-	for (offset = 0; offset < c->tty.sx; offset++)
-		screen_write_putc(&ctx, &stdgc, ' ');
+	/* Copy the window list. */
+	screen_write_cursormove(&ctx, wloffset, 0);
+	screen_write_copy(&ctx, &window_list, wlstart, 0, wlwidth, 1);
+ 	screen_free(&window_list);
 
-out:
 	screen_write_stop(&ctx);
 
+out:
 	if (left != NULL)
 		xfree(left);
 	if (right != NULL)
