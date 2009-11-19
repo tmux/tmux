@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.90 2009-10-23 17:17:20 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.91 2009-11-19 22:23:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -486,6 +486,7 @@ window_copy_search_compare(
 {
 	const struct grid_cell	*gc, *sgc;
 	const struct grid_utf8	*gu, *sgu;
+	size_t			 size;
 
 	gc = grid_peek_cell(gd, px, py);
 	sgc = grid_peek_cell(sgd, spx, 0);
@@ -496,7 +497,7 @@ window_copy_search_compare(
 	if (gc->flags & GRID_FLAG_UTF8) {
 		gu = grid_peek_utf8(gd, px, py);
 		sgu = grid_peek_utf8(sgd, spx, 0);
-		if (memcmp(gu->data, sgu->data, UTF8_SIZE) == 0)
+		if (grid_utf8_compare(gu, sgu))
 			return (1);
 	} else {
 		if (gc->data == sgc->data)
@@ -895,7 +896,8 @@ window_copy_copy_line(struct window_pane *wp,
  	const struct grid_cell	*gc;
  	const struct grid_utf8	*gu;
 	struct grid_line	*gl;
-	u_int			 i, j, xx, wrapped = 0;
+	u_int			 i, xx, wrapped = 0;
+	size_t			 size;
 
 	if (sx > ex)
 		return;
@@ -928,12 +930,9 @@ window_copy_copy_line(struct window_pane *wp,
 				(*buf)[(*off)++] = gc->data;
 			} else {
 				gu = grid_peek_utf8(gd, i, sy);
-				*buf = xrealloc(*buf, 1, (*off) + UTF8_SIZE);
-				for (j = 0; j < UTF8_SIZE; j++) {
-					if (gu->data[j] == 0xff)
-						break;
-					(*buf)[(*off)++] = gu->data[j];
-				}
+				size = grid_utf8_size(gu);
+				*buf = xrealloc(*buf, 1, (*off) + size);
+				*off += grid_utf8_copy(gu, *buf + *off, size);
 			}
 		}
 	}

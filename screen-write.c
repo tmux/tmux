@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.85 2009-11-18 01:25:35 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.86 2009-11-19 22:23:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -354,7 +354,7 @@ screen_write_copy(struct screen_write_ctx *ctx,
 	const struct grid_cell	*gc;
 	const struct grid_utf8	*gu;
 	struct utf8_data	 utf8data;
-	u_int		 	 xx, yy, cx, cy, ax, bx, i;
+	u_int		 	 xx, yy, cx, cy, ax, bx;
 
 	cx = s->cx;
 	cy = s->cy;
@@ -381,18 +381,15 @@ screen_write_copy(struct screen_write_ctx *ctx,
 					gc = &grid_default_cell;
 				else
 					gc = &gl->celldata[xx];
-				if (gc->flags & GRID_FLAG_UTF8) {
-					gu = &gl->utf8data[xx]; 
-					memcpy(utf8data.data,
-					    gu->data, sizeof utf8data.data);
-					utf8data.width = gu->width;
-					utf8data.size = 0;
-					for (i = 0; i < UTF8_SIZE; i++) {
-						if (gu->data[i] == 0xff)
-							break;
-						utf8data.size++;
-					}
+				if (!(gc->flags & GRID_FLAG_UTF8)) {
+					screen_write_cell(ctx, gc, NULL);
+					continue;
 				}
+				/* Reinject the UTF-8 sequence. */
+				gu = &gl->utf8data[xx];
+				utf8data.size = grid_utf8_copy(
+				    gu, utf8data.data, sizeof utf8data.data);
+				utf8data.width = gu->width;
 				screen_write_cell(ctx, gc, &utf8data);
 			}
 			if (px + nx == gd->sx && px + nx > gl->cellsize)
@@ -1037,13 +1034,7 @@ screen_write_cell(struct screen_write_ctx *ctx,
 	grid_view_set_cell(gd, s->cx, s->cy, gc);
 	if (gc->flags & GRID_FLAG_UTF8) {
 		/* Construct UTF-8 and write it. */
-		gu.width = utf8data->width;
-		memset(gu.data, 0xff, sizeof gu.data);
-		if (utf8data->size == 0)
-			fatalx("UTF-8 data empty");
-		if (utf8data->size > sizeof gu.data)
-			fatalx("UTF-8 data overflow");
-		memcpy(gu.data, utf8data->data, utf8data->size);
+		grid_utf8_set(&gu, utf8data);
 		grid_view_set_utf8(gd, s->cx, s->cy, &gu);
 	}
 
@@ -1080,7 +1071,7 @@ screen_write_combine(
 	struct grid		*gd = s->grid;
 	struct grid_cell	*gc;
 	struct grid_utf8	*gu, tmp_gu;
-	u_int			 i, old_size;
+	u_int			 i;
 
 	/* Can't combine if at 0. */
 	if (s->cx == 0)
@@ -1093,35 +1084,30 @@ screen_write_combine(
 	/* Retrieve the previous cell and convert to UTF-8 if not already. */
 	gc = grid_view_get_cell(gd, s->cx - 1, s->cy);
 	if (!(gc->flags & GRID_FLAG_UTF8)) {
-		memset(&tmp_gu.data, 0xff, sizeof tmp_gu.data);
-		*tmp_gu.data = gc->data;
+		tmp_gu.data[0] = gc->data;
+		tmp_gu.data[1] = 0xff;
 		tmp_gu.width = 1;
 
 		grid_view_set_utf8(gd, s->cx - 1, s->cy, &tmp_gu);
 		gc->flags |= GRID_FLAG_UTF8;
 	}
 
-	/* Get the previous cell's UTF-8 data and its size. */
+	/* Append the current cell. */
 	gu = grid_view_get_utf8(gd, s->cx - 1, s->cy);
-	for (old_size = 0; old_size < UTF8_SIZE; old_size++) {
-		if (gu->data[old_size] == 0xff)
-			break;
+	if (grid_utf8_append(gu, utf8data) != 0) {
+		/* Failed: scrap this character and replace with underscores. */
+		if (gu->width == 1) {
+			gc->data = '_';
+			gc->flags &= ~GRID_FLAG_UTF8;
+		} else {
+			for (i = 0; i < gu->width && i != sizeof gu->data; i++)
+				gu->data[i] = '_';
+			if (i != sizeof gu->data)
+				gu->data[i] = 0xff;
+			gu->width = i;
+		}
 	}
 
-	/* If there isn't space, scrap this character. */
-	if (old_size + utf8data->size > UTF8_SIZE) {
-		for (i = 0; i < gu->width && i != UTF8_SIZE; i++)
-			gu->data[i] = '_';
-		if (i != UTF8_SIZE)
-			gu->data[i] = 0xff;
-		gu->width = i;
-		return (0);
-	}
-
-	/* Otherwise save the character. */
-	memcpy(gu->data + old_size, utf8data->data, utf8data->size);
-	if (old_size + utf8data->size != UTF8_SIZE)
-		gu->data[old_size + utf8data->size] = 0xff;
 	return (0);
 }
 
