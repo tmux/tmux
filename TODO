@@ -104,3 +104,4 @@
 	 ...?
 - would prompt history/message log be better as server-global? need server global options
 - don't require mouse/xterm input to be atomic
+- option so that when session is destroyed, attach client to another session rather than exiting
