@@ -705,13 +705,16 @@ status_message_redraw(struct client *c)
 	struct screen		        old_status;
 	size_t			        len;
 	struct grid_cell		gc;
+	int				utf8flag;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
 	memcpy(&old_status, &c->status, sizeof old_status);
 	screen_init(&c->status, c->tty.sx, 1, 0);
 
-	len = strlen(c->message_string);
+	utf8flag = options_get_number(&s->options, "status-utf8");
+
+	len = screen_write_strlen(utf8flag, "%s", c->message_string);
 	if (len > c->tty.sx)
 		len = c->tty.sx;
 
@@ -723,7 +726,7 @@ status_message_redraw(struct client *c)
 	screen_write_start(&ctx, NULL, &c->status);
 
 	screen_write_cursormove(&ctx, 0, 0);
-	screen_write_puts(&ctx, &gc, "%.*s", (int) len, c->message_string);
+	screen_write_nputs(&ctx, len, &gc, utf8flag, "%s", c->message_string);
 	for (; len < c->tty.sx; len++)
 		screen_write_putc(&ctx, &gc, ' ');
 
@@ -812,22 +815,24 @@ status_prompt_update(struct client *c, const char *msg)
 int
 status_prompt_redraw(struct client *c)
 {
-	struct screen_write_ctx	ctx;
+	struct screen_write_ctx		ctx;
 	struct session		       *s = c->session;
 	struct screen		        old_status;
 	size_t			        i, size, left, len, off;
-	char				ch;
-	struct grid_cell		gc;
+	struct grid_cell		gc, *gcp;
+	int				utf8flag;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
 	memcpy(&old_status, &c->status, sizeof old_status);
 	screen_init(&c->status, c->tty.sx, 1, 0);
-	off = 0;
 
-	len = strlen(c->prompt_string);
+	utf8flag = options_get_number(&s->options, "status-utf8");
+
+	len = screen_write_strlen(utf8flag, "%s", c->prompt_string);
 	if (len > c->tty.sx)
 		len = c->tty.sx;
+	off = 0;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	colour_set_fg(&gc, options_get_number(&s->options, "message-fg"));
@@ -837,34 +842,30 @@ status_prompt_redraw(struct client *c)
 	screen_write_start(&ctx, NULL, &c->status);
 
 	screen_write_cursormove(&ctx, 0, 0);
-	screen_write_puts(&ctx, &gc, "%.*s", (int) len, c->prompt_string);
+	screen_write_nputs(&ctx, len, &gc, utf8flag, "%s", c->prompt_string);
 
 	left = c->tty.sx - len;
 	if (left != 0) {
-		if (c->prompt_index < left)
-			size = strlen(c->prompt_buffer);
-		else {
+		size = screen_write_strlen(utf8flag, "%s", c->prompt_buffer);
+		if (c->prompt_index >= left) {
 			off = c->prompt_index - left + 1;
-			if (c->prompt_index == strlen(c->prompt_buffer))
+			if (c->prompt_index == size)
 				left--;
 			size = left;
 		}
-		screen_write_puts(
-		    &ctx, &gc, "%.*s", (int) left, c->prompt_buffer + off);
+		screen_write_nputs(
+		    &ctx, left, &gc, utf8flag, "%s", c->prompt_buffer + off);
 
-		for (i = len + size; i < c->tty.sx; i++)
-			screen_write_putc(&ctx, &gc, ' ');
-
-		/* Draw a fake cursor. */
-		ch = ' ';
-		screen_write_cursormove(&ctx, len + c->prompt_index - off, 0);
-		if (c->prompt_index < strlen(c->prompt_buffer))
-			ch = c->prompt_buffer[c->prompt_index];
-		gc.attr ^= GRID_ATTR_REVERSE;
-		screen_write_putc(&ctx, &gc, ch);
+ 		for (i = len + size; i < c->tty.sx; i++)
+ 			screen_write_putc(&ctx, &gc, ' ');
 	}
 
 	screen_write_stop(&ctx);
+
+	/* Apply fake cursor. */
+	off = len + c->prompt_index - off;
+	gcp = grid_view_get_cell(c->status.grid, off, 0);
+	gcp->attr ^= GRID_ATTR_REVERSE;
 
 	if (grid_compare(c->status.grid, old_status.grid) == 0) {
 		screen_free(&old_status);
