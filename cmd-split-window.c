@@ -174,16 +174,20 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		cwd = ctx->cmdclient->cwd;
 
-	size = -1;
-	if (data->size != -1)
-		size = data->size;
-	else if (data->percentage != -1)
-		size = (w->active->sy * data->percentage) / 100;
-	hlimit = options_get_number(&s->options, "history-limit");
-
 	type = LAYOUT_TOPBOTTOM;
 	if (data->flag_horizontal)
 		type = LAYOUT_LEFTRIGHT;
+
+	size = -1;
+	if (data->size != -1)
+		size = data->size;
+	else if (data->percentage != -1) {
+		if (type == LAYOUT_TOPBOTTOM)
+			size = (w->active->sy * data->percentage) / 100;
+		else
+			size = (w->active->sx * data->percentage) / 100;
+	}
+	hlimit = options_get_number(&s->options, "history-limit");
 
 	shell = options_get_string(&s->options, "default-shell");
 	if (*shell == '\0' || areshell(shell))
