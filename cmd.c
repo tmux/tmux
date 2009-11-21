@@ -278,9 +278,8 @@ cmd_free(struct cmd *cmd)
 size_t
 cmd_print(struct cmd *cmd, char *buf, size_t len)
 {
-	if (cmd->entry->print == NULL) {
+	if (cmd->entry->print == NULL)
 		return (xsnprintf(buf, len, "%s", cmd->entry->name));
-	}
 	return (cmd->entry->print(cmd, buf, len));
 }
 

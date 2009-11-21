@@ -332,7 +332,7 @@ cmd_string_expand_tilde(const char *s, size_t *p)
 
 	home = NULL;
 	if (cmd_string_getc(s, p) == '/') {
-		if ((home = getenv("HOME")) == NULL) {
+		if ((home = getenv("HOME")) == NULL || *home == '\0') {
 			if ((pw = getpwuid(getuid())) != NULL)
 				home = pw->pw_dir;
 		}
