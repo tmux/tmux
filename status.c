@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.133 2009-11-19 22:37:04 tcunha Exp $ */
+/* $Id: status.c,v 1.134 2009-11-22 00:09:42 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -121,7 +121,7 @@ status_redraw(struct client *c)
 	size_t			llen, rlen;
 	int			larrow, rarrow, utf8flag;
 
-	/* No status line?*/
+	/* No status line? */
 	if (c->tty.sy == 0 || !options_get_number(&s->options, "status"))
 		return (1);
 	left = right = NULL;
@@ -419,7 +419,7 @@ status_replace1(struct client *c,struct winlink *wl,
 		ch = ']';
 		goto skip_to;
 	case '#':
-		*(*optr++) = '#';
+		*(*optr)++ = '#';
 		break;
 	}
 
