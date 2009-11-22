@@ -56,9 +56,6 @@
 - a way for force-width/height to apply to only one pane (how?)
 - command to list what is actually running in each window with command line,
   pid (need some adaption of the osdep code)
-- string option to change/remove the symbols (*-+ etc) in status line
-  * or to set entire format, eg window-list-format '#N:#W#P' or something,
-  then could use embedded colours
 - support for bce
 - it would be nice if the start/end line keys in copy mode were aware of
   wrapped lines
@@ -78,11 +75,7 @@
 - UTF-8 to a non-UTF-8 terminal should not be able to balls up
   the terminal - www/ruby-addressable; make regress
 - copy mode needs a tidy/cleanup
-- things like display-message will leak job entries if #() is used
-- message log
 - an option to NOT remove message when key pressed
-- would be nice to be able to press 0-9a-zA-Z to select window in choose-window
-  mode, also to start typing and it searches
 - the wrapping stuff should work when redrawn from scroll mode too (screen_write_copy)
 - ability to save history (to buffer?)
 - multiple keys could be done with tables, ie have prefixes go and instead
