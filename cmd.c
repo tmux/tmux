@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.131 2009-11-19 22:20:04 tcunha Exp $ */
+/* $Id: cmd.c,v 1.132 2009-11-22 00:13:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -277,9 +277,8 @@ cmd_free(struct cmd *cmd)
 size_t
 cmd_print(struct cmd *cmd, char *buf, size_t len)
 {
-	if (cmd->entry->print == NULL) {
+	if (cmd->entry->print == NULL)
 		return (xsnprintf(buf, len, "%s", cmd->entry->name));
-	}
 	return (cmd->entry->print(cmd, buf, len));
 }
 

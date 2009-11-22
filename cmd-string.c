@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.26 2009-11-18 01:24:33 tcunha Exp $ */
+/* $Id: cmd-string.c,v 1.27 2009-11-22 00:13:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -332,7 +332,7 @@ cmd_string_expand_tilde(const char *s, size_t *p)
 
 	home = NULL;
 	if (cmd_string_getc(s, p) == '/') {
-		if ((home = getenv("HOME")) == NULL) {
+		if ((home = getenv("HOME")) == NULL || *home == '\0') {
 			if ((pw = getpwuid(getuid())) != NULL)
 				home = pw->pw_dir;
 		}
