@@ -201,4 +201,12 @@ on the Window -> Translation configuration page. For example, change UTF-8 to
 ISO-8859-1 or CP437. It may also be necessary to adjust the way PuTTY treats
 line drawing characters in the lower part of the same configuration page.
 
-$Id: FAQ,v 1.29 2009-08-08 20:46:26 nicm Exp $
+* What is the best way to display the load average? Why no #L?
+
+It isn't possible to get the load average portably in code and it is preferable
+not to add portability goop. The following works on at least Linux, *BSD and OS
+X:
+
+uptime|awk '{split(substr($0, index($0, "load")), a, ":"); print a[2]}'
+
+$Id: FAQ,v 1.30 2009-11-23 09:53:24 nicm Exp $
