@@ -30,8 +30,8 @@ int	cmd_display_message_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_display_message_entry = {
 	"display-message", "display",
-	CMD_TARGET_CLIENT_USAGE " [message]",
-	CMD_ARG01, "",
+	"[-p] " CMD_TARGET_CLIENT_USAGE " [message]",
+	CMD_ARG01, "p",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_display_message_exec,
@@ -56,7 +56,10 @@ cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 		template = data->arg;
 
 	msg = status_replace(c, NULL, template, time(NULL), 0);
-	status_message_set(c, "%s", msg);
+	if (cmd_check_flag(data->chflags, 'p'))
+		ctx->print(ctx, "%s", msg);
+	else
+		status_message_set(c, "%s", msg);
 	xfree(msg);
 
 	return (0);

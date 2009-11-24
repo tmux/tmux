@@ -2011,11 +2011,17 @@ Ask for confirmation before executing
 This command works only from inside
 .Nm .
 .It Xo Ic display-message
+.Op Fl p
 .Op Fl t Ar target-client
 .Op Ar message
 .Xc
 .D1 (alias: Ic display )
-Display a message in the status line.
+Display a message.
+If
+.Fl p
+is given, the output is printed to stdout, otherwise it is displayed in the
+.Ar target-client
+status line.
 The format of
 .Ar message
 is as for
