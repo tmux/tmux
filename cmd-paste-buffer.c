@@ -62,7 +62,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (pb != NULL && *pb->data != '\0') {
+	if (pb != NULL) {
 		/* -r means raw data without LF->CR conversion. */
 		if (cmd_check_flag(data->chflags, 'r'))
 			bufferevent_write(wp->event, pb->data, pb->size);

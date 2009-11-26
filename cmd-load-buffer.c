@@ -50,7 +50,8 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session		*s;
 	struct stat		 sb;
 	FILE			*f;
-	u_char		      	*buf;
+	char		      	*pdata = NULL;
+	size_t			 psize;
 	u_int			 limit;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
@@ -63,39 +64,45 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (fstat(fileno(f), &sb) < 0) {
 		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
-		fclose(f);
-		return (-1);
+		goto error;
 	}
+	if (sb.st_size > SIZE_MAX) {
+		ctx->error(ctx, "%s: file too large", data->arg);
+		goto error;
+	}
+	psize = (size_t) sb.st_size;
 
 	/*
 	 * We don't want to die due to memory exhaustion, hence xmalloc can't
 	 * be used here.
 	 */
-	if ((buf = malloc(sb.st_size + 1)) == NULL) {
+	if ((pdata = malloc(psize)) == NULL) {
 		ctx->error(ctx, "malloc error: %s", strerror(errno));
-		fclose(f);
-		return (-1);
+		goto error;
 	}
 
-	if (fread(buf, 1, sb.st_size, f) != (size_t) sb.st_size) {
+	if (fread(pdata, 1, psize, f) != psize) {
 		ctx->error(ctx, "%s: fread error", data->arg);
-		xfree(buf);
-		fclose(f);
-		return (-1);
+		goto error;
 	}
 
 	fclose(f);
 
 	limit = options_get_number(&s->options, "buffer-limit");
 	if (data->buffer == -1) {
-		paste_add(&s->buffers, buf, sb.st_size, limit);
+		paste_add(&s->buffers, pdata, psize, limit);
 		return (0);
 	}
-	if (paste_replace(&s->buffers, data->buffer, buf, sb.st_size) != 0) {
+	if (paste_replace(&s->buffers, data->buffer, pdata, psize) != 0) {
 		ctx->error(ctx, "no buffer %d", data->buffer);
-		xfree(buf);
-		return (-1);
+		goto error;
 	}
 
 	return (0);
+
+error:
+	if (pdata != NULL)
+		xfree(pdata);
+	fclose(f);
+	return (-1);
 }

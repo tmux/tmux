@@ -45,7 +45,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_buffer_data	*data = self->data;
 	struct session		*s;
 	u_int			 limit;
-	u_char			*pdata;
+	char			*pdata;
 	size_t			 psize;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
