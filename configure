@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.45 2009-11-11 09:54:07 nicm Exp $
+# $Id: configure,v 1.46 2009-11-26 09:19:04 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -29,6 +29,7 @@ echo "# $TMUX_PLATFORM" >$CONFIG_MK
 cat <<EOF >>$CONFIG_H
 #undef HAVE_ASPRINTF
 #undef HAVE_BROKEN_CMSG_FIRSTHDR
+#undef HAVE_BROKEN_CURSES_H
 #undef HAVE_BROKEN_KQUEUE
 #undef HAVE_BROKEN_POLL
 #undef HAVE_BZERO
@@ -230,6 +231,7 @@ EOF
     NetBSD)
 	cat <<EOF >>$CONFIG_H
 #define HAVE_ASPRINTF
+#define HAVE_BROKEN_CURSES_H
 #define HAVE_BZERO
 #define HAVE_DAEMON
 #define HAVE_FGETLN
