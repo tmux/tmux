@@ -105,12 +105,12 @@ int
 key_string_lookup_string(const char *string)
 {
 	int	      	 key;
-	const u_char	*ptr;
+	const char	*ptr;
 
 	if (string[0] == '\0')
 		return (KEYC_NONE);
 	if (string[1] == '\0')
-		return (string[0]);
+		return ((u_char) string[0]);
 
 	ptr = NULL;
 	if ((string[0] == 'C' || string[0] == 'c') && string[1] == '-')
@@ -133,7 +133,7 @@ key_string_lookup_string(const char *string)
 		} else {
 			if (ptr[1] != '\0')
 				return (KEYC_NONE);
-			key = ptr[0];
+			key = (u_char) ptr[0];
 		}
 
 		/* 
@@ -162,7 +162,7 @@ key_string_lookup_string(const char *string)
 		} else {
 			if (ptr[1] == '\0')
 				return (KEYC_NONE);
-			key = ptr[0];
+			key = (u_char) ptr[0];
 		}
 
 		if (key >= 32 && key <= 127)
@@ -209,7 +209,7 @@ key_string_lookup_key(int key)
 	}
 
 	if (key >= 32 && key <= 255) {
-		tmp[0] = key;
+		tmp[0] = (char) key;
 		tmp[1] = '\0';
 		return (tmp);
 	}
