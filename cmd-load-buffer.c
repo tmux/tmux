@@ -66,8 +66,8 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
 		goto error;
 	}
-	if (sb.st_size > SIZE_MAX) {
-		ctx->error(ctx, "%s: file too large", data->arg);
+	if (sb.st_size <= 0 || (uintmax_t) sb.st_size > SIZE_MAX) {
+		ctx->error(ctx, "%s: file empty or too large", data->arg);
 		goto error;
 	}
 	psize = (size_t) sb.st_size;
