@@ -467,8 +467,7 @@ tty_keys_next(struct tty *tty)
 		key = KEYC_MOUSE;
 		goto handle_key;
 	case -1:	/* no, or not valid */
-		evbuffer_drain(tty->event->input, size);
-		return (1);
+		break;
 	case 1:		/* partial */
 		goto partial_key;
 	}
