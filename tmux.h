@@ -1408,7 +1408,7 @@ int		 paste_replace(struct paste_stack *, u_int, char *, size_t);
 
 /* clock.c */
 extern const char clock_table[14][5][5];
-void		 clock_draw(struct screen_write_ctx *, u_int, int);
+void		 clock_draw(struct screen_write_ctx *, int, int);
 
 /* cmd.c */
 int		 cmd_pack_argv(int, char **, char *, size_t);

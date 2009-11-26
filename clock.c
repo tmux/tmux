@@ -97,7 +97,7 @@ const char clock_table[14][5][5] = {
 };
 
 void
-clock_draw(struct screen_write_ctx *ctx, u_int colour, int style)
+clock_draw(struct screen_write_ctx *ctx, int colour, int style)
 {
 	struct screen		*s = ctx->s;
 	struct grid_cell	 gc;

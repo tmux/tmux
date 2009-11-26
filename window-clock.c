@@ -113,8 +113,7 @@ window_clock_draw_screen(struct window_pane *wp)
 {
 	struct window_clock_mode_data	*data = wp->modedata;
 	struct screen_write_ctx	 	 ctx;
-	u_int				 colour;
-	int				 style;
+	int				 colour, style;
 
 	colour = options_get_number(&wp->window->options, "clock-mode-colour");
 	style = options_get_number(&wp->window->options, "clock-mode-style");
