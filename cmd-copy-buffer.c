@@ -51,6 +51,7 @@ const struct cmd_entry cmd_copy_buffer_entry = {
 	cmd_copy_buffer_print
 };
 
+/* ARGSUSED */
 void
 cmd_copy_buffer_init(struct cmd *self, unused int arg)
 {

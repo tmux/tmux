@@ -123,6 +123,7 @@ window_more_resize(struct window_pane *wp, u_int sx, u_int sy)
 	window_more_redraw_screen(wp);
 }
 
+/* ARGSUSED */
 void
 window_more_key(struct window_pane *wp, unused struct client *c, int key)
 {

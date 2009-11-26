@@ -222,6 +222,7 @@ out:
 	exit(client_exitval);
 }
 
+/* ARGSUSED */
 void
 client_signal(int sig, unused short events, unused void *data)
 {
@@ -250,6 +251,7 @@ client_signal(int sig, unused short events, unused void *data)
 	client_update_event();
 }
 
+/* ARGSUSED */
 void
 client_callback(unused int fd, short events, unused void *data)
 {

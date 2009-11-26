@@ -35,11 +35,13 @@ void printflike2 cfg_error(struct cmd_ctx *, const char *, ...);
 
 char	 *cfg_cause;
 
+/* ARGSUSED */
 void printflike2
 cfg_print(unused struct cmd_ctx *ctx, unused const char *fmt, ...)
 {
 }
 
+/* ARGSUSED */
 void printflike2
 cfg_error(unused struct cmd_ctx *ctx, const char *fmt, ...)
 {

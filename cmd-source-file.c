@@ -45,6 +45,7 @@ const struct cmd_entry cmd_source_file_entry = {
 	cmd_source_file_print
 };
 
+/* ARGSUSED */
 void
 cmd_source_file_init(struct cmd *self, unused int arg)
 {

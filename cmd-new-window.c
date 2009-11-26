@@ -51,6 +51,7 @@ const struct cmd_entry cmd_new_window_entry = {
 	cmd_new_window_print
 };
 
+/* ARGSUSED */
 void
 cmd_new_window_init(struct cmd *self, unused int arg)
 {

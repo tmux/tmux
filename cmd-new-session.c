@@ -52,6 +52,7 @@ const struct cmd_entry cmd_new_session_entry = {
 	cmd_new_session_print
 };
 
+/* ARGSUSED */
 void
 cmd_new_session_init(struct cmd *self, unused int arg)
 {

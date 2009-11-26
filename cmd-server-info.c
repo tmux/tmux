@@ -44,6 +44,7 @@ const struct cmd_entry cmd_server_info_entry = {
 	NULL
 };
 
+/* ARGSUSED */
 int
 cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {

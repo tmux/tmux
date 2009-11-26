@@ -192,6 +192,7 @@ job_run(struct job *job)
 }
 
 /* Job buffer error callback. */
+/* ARGSUSED */
 void
 job_callback(unused struct bufferevent *bufev, unused short events, void *data)
 {

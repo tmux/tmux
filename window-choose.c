@@ -169,6 +169,7 @@ window_choose_resize(struct window_pane *wp, u_int sx, u_int sy)
 	window_choose_redraw_screen(wp);
 }
 
+/* ARGSUSED */
 void
 window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 {
@@ -275,6 +276,7 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 	}
 }
 
+/* ARGSUSED */
 void
 window_choose_mouse(
     struct window_pane *wp, unused struct client *c, struct mouse_event *m)

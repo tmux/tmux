@@ -37,6 +37,7 @@ const struct cmd_entry cmd_list_commands_entry = {
 	NULL
 };
 
+/* ARGSUSED */
 int
 cmd_list_commands_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {

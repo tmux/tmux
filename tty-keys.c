@@ -555,6 +555,7 @@ handle_key:
 }
 
 /* Key timer callback. */
+/* ARGSUSED */
 void
 tty_keys_callback(unused int fd, unused short events, void *data)
 {

@@ -554,6 +554,7 @@ main_clear_signals(void)
 	event_del(&main_ev_sigterm);
 }
 
+/* ARGSUSED */
 void
 main_signal(int sig, unused short events, unused void *data)
 {
@@ -563,6 +564,7 @@ main_signal(int sig, unused short events, unused void *data)
 	}
 }
 
+/* ARGSUSED */
 void
 main_callback(unused int fd, short events, void *data)
 {

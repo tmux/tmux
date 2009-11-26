@@ -161,13 +161,13 @@ winlink_remove(struct winlinks *wwl, struct winlink *wl)
 }
 
 struct winlink *
-winlink_next(unused struct winlinks *wwl, struct winlink *wl)
+winlink_next(struct winlink *wl)
 {
 	return (RB_NEXT(winlinks, wwl, wl));
 }
 
 struct winlink *
-winlink_previous(unused struct winlinks *wwl, struct winlink *wl)
+winlink_previous(struct winlink *wl)
 {
 	return (RB_PREV(winlinks, wwl, wl));
 }
@@ -582,6 +582,7 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 	return (0);
 }
 
+/* ARGSUSED */
 void
 window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 {
@@ -590,6 +591,7 @@ window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 	window_pane_parse(wp);
 }
 
+/* ARGSUSED */
 void
 window_pane_error_callback(
     unused struct bufferevent *bufev, unused short what, void *data)

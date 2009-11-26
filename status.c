@@ -688,6 +688,7 @@ status_message_clear(struct client *c)
 }
 
 /* Clear status line message after timer expires. */
+/* ARGSUSED */
 void
 status_message_callback(unused int fd, unused short event, void *data)
 {

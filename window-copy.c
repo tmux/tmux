@@ -435,6 +435,7 @@ window_copy_key_input(struct window_pane *wp, int key)
 	return (0);
 }
 
+/* ARGSUSED */
 void
 window_copy_mouse(
     struct window_pane *wp, unused struct client *c, struct mouse_event *m)
