@@ -266,6 +266,7 @@ input_parse(struct window_pane *wp)
 
 	ictx->wp = wp;
 
+	/* If there is a mode set, don't want to update the screen. */
 	if (wp->mode == NULL)
 		screen_write_start(&ictx->ctx, wp, &wp->base);
 	else

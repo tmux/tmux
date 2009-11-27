@@ -529,6 +529,7 @@ tty_write(void (*cmdfn)(
 	struct client		*c;
 	u_int		 	 i;
 
+	/* wp can be NULL if updating the screen but not the terminal. */
 	if (wp == NULL)
 		return;
 
