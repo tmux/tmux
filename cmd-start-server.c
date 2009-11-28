@@ -1,4 +1,4 @@
-/* $Id: cmd-start-server.c,v 1.9 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-start-server.c,v 1.10 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -37,6 +37,7 @@ const struct cmd_entry cmd_start_server_entry = {
 	NULL
 };
 
+/* ARGSUSED */
 int
 cmd_start_server_exec(unused struct cmd *self, unused struct cmd_ctx *ctx)
 {

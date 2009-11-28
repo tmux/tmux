@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.48 2009-11-28 14:44:00 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.49 2009-11-28 14:50:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -555,6 +555,7 @@ handle_key:
 }
 
 /* Key timer callback. */
+/* ARGSUSED */
 void
 tty_keys_callback(unused int fd, unused short events, void *data)
 {

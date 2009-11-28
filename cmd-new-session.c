@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.71 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.72 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,6 +52,7 @@ const struct cmd_entry cmd_new_session_entry = {
 	cmd_new_session_print
 };
 
+/* ARGSUSED */
 void
 cmd_new_session_init(struct cmd *self, unused int arg)
 {

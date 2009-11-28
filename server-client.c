@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.24 2009-11-19 22:35:10 tcunha Exp $ */
+/* $Id: server-client.c,v 1.25 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -426,6 +426,7 @@ server_client_reset_state(struct client *c)
 }
 
 /* Repeat time callback. */
+/* ARGSUSED */
 void
 server_client_repeat_timer(unused int fd, unused short events, void *data)
 {

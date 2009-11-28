@@ -1,4 +1,4 @@
-/* $Id: cmd-list-sessions.c,v 1.24 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-list-sessions.c,v 1.25 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,6 +39,7 @@ const struct cmd_entry cmd_list_sessions_entry = {
 	NULL
 };
 
+/* ARGSUSED */
 int
 cmd_list_sessions_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {

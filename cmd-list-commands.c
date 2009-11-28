@@ -1,4 +1,4 @@
-/* $Id: cmd-list-commands.c,v 1.6 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-list-commands.c,v 1.7 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -37,6 +37,7 @@ const struct cmd_entry cmd_list_commands_entry = {
 	NULL
 };
 
+/* ARGSUSED */
 int
 cmd_list_commands_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {

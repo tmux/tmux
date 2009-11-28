@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.88 2009-11-14 17:49:37 tcunha Exp $ */
+/* $Id: client.c,v 1.89 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -226,6 +226,7 @@ out:
 	exit(client_exitval);
 }
 
+/* ARGSUSED */
 void
 client_signal(int sig, unused short events, unused void *data)
 {
@@ -254,6 +255,7 @@ client_signal(int sig, unused short events, unused void *data)
 	client_update_event();
 }
 
+/* ARGSUSED */
 void
 client_callback(unused int fd, short events, unused void *data)
 {

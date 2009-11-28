@@ -1,4 +1,4 @@
-/* $Id: names.c,v 1.19 2009-11-08 23:23:36 tcunha Exp $ */
+/* $Id: names.c,v 1.20 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -41,6 +41,7 @@ queue_window_name(struct window *w)
 	evtimer_add(&w->name_timer, &tv);
 }
 
+/* ARGSUSED */
 void
 window_name_callback(unused int fd, unused short events, void *data)
 {

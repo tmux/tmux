@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.136 2009-11-22 00:11:33 tcunha Exp $ */
+/* $Id: status.c,v 1.137 2009-11-28 14:50:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -688,6 +688,7 @@ status_message_clear(struct client *c)
 }
 
 /* Clear status line message after timer expires. */
+/* ARGSUSED */
 void
 status_message_callback(unused int fd, unused short event, void *data)
 {

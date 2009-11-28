@@ -1,4 +1,4 @@
-/* $Id: cmd-source-file.c,v 1.10 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-source-file.c,v 1.11 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Tiago Cunha <me@tiagocunha.org>
@@ -45,6 +45,7 @@ const struct cmd_entry cmd_source_file_entry = {
 	cmd_source_file_print
 };
 
+/* ARGSUSED */
 void
 cmd_source_file_init(struct cmd *self, unused int arg)
 {

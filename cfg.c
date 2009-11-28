@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.23 2009-10-28 23:12:38 tcunha Exp $ */
+/* $Id: cfg.c,v 1.24 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,11 +35,13 @@ void printflike2 cfg_error(struct cmd_ctx *, const char *, ...);
 
 char	 *cfg_cause;
 
+/* ARGSUSED */
 void printflike2
 cfg_print(unused struct cmd_ctx *ctx, unused const char *fmt, ...)
 {
 }
 
+/* ARGSUSED */
 void printflike2
 cfg_error(unused struct cmd_ctx *ctx, const char *fmt, ...)
 {

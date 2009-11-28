@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.123 2009-11-19 22:37:04 tcunha Exp $ */
+/* $Id: window.c,v 1.124 2009-11-28 14:50:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -159,13 +159,13 @@ winlink_remove(struct winlinks *wwl, struct winlink *wl)
 }
 
 struct winlink *
-winlink_next(unused struct winlinks *wwl, struct winlink *wl)
+winlink_next(struct winlink *wl)
 {
 	return (RB_NEXT(winlinks, wwl, wl));
 }
 
 struct winlink *
-winlink_previous(unused struct winlinks *wwl, struct winlink *wl)
+winlink_previous(struct winlink *wl)
 {
 	return (RB_PREV(winlinks, wwl, wl));
 }
@@ -580,6 +580,7 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 	return (0);
 }
 
+/* ARGSUSED */
 void
 window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 {
@@ -588,6 +589,7 @@ window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 	window_pane_parse(wp);
 }
 
+/* ARGSUSED */
 void
 window_pane_error_callback(
     unused struct bufferevent *bufev, unused short what, void *data)

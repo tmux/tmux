@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.97 2009-11-14 17:48:39 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.98 2009-11-28 14:50:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -396,6 +396,7 @@ server_clear_identify(struct client *c)
 	}
 }
 
+/* ARGSUSED */
 void
 server_callback_identify(unused int fd, unused short events, void *data)
 {

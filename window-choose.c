@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.25 2009-11-18 01:27:33 tcunha Exp $ */
+/* $Id: window-choose.c,v 1.26 2009-11-28 14:50:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -169,6 +169,7 @@ window_choose_resize(struct window_pane *wp, u_int sx, u_int sy)
 	window_choose_redraw_screen(wp);
 }
 
+/* ARGSUSED */
 void
 window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 {
@@ -275,6 +276,7 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 	}
 }
 
+/* ARGSUSED */
 void
 window_choose_mouse(
     struct window_pane *wp, unused struct client *c, struct mouse_event *m)

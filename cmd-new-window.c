@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.40 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-new-window.c,v 1.41 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,6 +51,7 @@ const struct cmd_entry cmd_new_window_entry = {
 	cmd_new_window_print
 };
 
+/* ARGSUSED */
 void
 cmd_new_window_init(struct cmd *self, unused int arg)
 {

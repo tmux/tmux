@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.191 2009-11-19 22:35:10 tcunha Exp $ */
+/* $Id: tmux.c,v 1.192 2009-11-28 14:50:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -571,6 +571,7 @@ main_clear_signals(void)
 	event_del(&main_ev_sigterm);
 }
 
+/* ARGSUSED */
 void
 main_signal(int sig, unused short events, unused void *data)
 {
@@ -580,6 +581,7 @@ main_signal(int sig, unused short events, unused void *data)
 	}
 }
 
+/* ARGSUSED */
 void
 main_callback(unused int fd, short events, void *data)
 {

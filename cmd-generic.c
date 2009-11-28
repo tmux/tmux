@@ -1,4 +1,4 @@
-/* $Id: cmd-generic.c,v 1.36 2009-11-14 17:57:41 tcunha Exp $ */
+/* $Id: cmd-generic.c,v 1.37 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -148,6 +148,7 @@ cmd_fill_argument(int flags, char **arg, char **arg2, int argc, char **argv)
 	return (0);
 }
 
+/* ARGSUSED */
 void
 cmd_target_init(struct cmd *self, unused int key)
 {
@@ -231,6 +232,7 @@ cmd_target_print(struct cmd *self, char *buf, size_t len)
 	return (off);
 }
 
+/* ARGSUSED */
 void
 cmd_srcdst_init(struct cmd *self, unused int key)
 {
@@ -322,6 +324,7 @@ cmd_srcdst_print(struct cmd *self, char *buf, size_t len)
 	return (off);
 }
 
+/* ARGSUSED */
 void
 cmd_buffer_init(struct cmd *self, unused int key)
 {

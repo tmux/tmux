@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.86 2009-11-19 22:23:27 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.87 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -40,6 +40,7 @@ screen_write_start(
 }
 
 /* Finish writing. */
+/* ARGSUSED */
 void
 screen_write_stop(unused struct screen_write_ctx *ctx)
 {

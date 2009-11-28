@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.34 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-server-info.c,v 1.35 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,6 +43,7 @@ const struct cmd_entry cmd_server_info_entry = {
 	NULL
 };
 
+/* ARGSUSED */
 int
 cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {

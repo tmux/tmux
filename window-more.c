@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.38 2009-09-11 14:13:52 tcunha Exp $ */
+/* $Id: window-more.c,v 1.39 2009-11-28 14:50:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -123,6 +123,7 @@ window_more_resize(struct window_pane *wp, u_int sx, u_int sy)
 	window_more_redraw_screen(wp);
 }
 
+/* ARGSUSED */
 void
 window_more_key(struct window_pane *wp, unused struct client *c, int key)
 {

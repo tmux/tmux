@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.71 2009-11-13 16:59:19 tcunha Exp $ */
+/* $Id: session.c,v 1.72 2009-11-28 14:50:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -318,7 +318,7 @@ session_next_activity(struct session *s, struct winlink *wl)
 			break;
 		if (session_alert_has(s, wl, WINDOW_CONTENT))
 			break;
-		wl = winlink_next(&s->windows, wl);
+		wl = winlink_next(wl);
 	}
 	return (wl);
 }
@@ -332,7 +332,7 @@ session_next(struct session *s, int activity)
 	if (s->curw == NULL)
 		return (-1);
 
-	wl = winlink_next(&s->windows, s->curw);
+	wl = winlink_next(s->curw);
 	if (activity)
 		wl = session_next_activity(s, wl);
 	if (wl == NULL) {
@@ -359,7 +359,7 @@ session_previous_activity(struct session *s, struct winlink *wl)
 			break;
 		if (session_alert_has(s, wl, WINDOW_CONTENT))
 			break;
-		wl = winlink_previous(&s->windows, wl);
+		wl = winlink_previous(wl);
 	}
 	return (wl);
 }
@@ -373,7 +373,7 @@ session_previous(struct session *s, int activity)
 	if (s->curw == NULL)
 		return (-1);
 
-	wl = winlink_previous(&s->windows, s->curw);
+	wl = winlink_previous(s->curw);
 	if (activity)
 		wl = session_previous_activity(s, wl);
 	if (wl == NULL) {

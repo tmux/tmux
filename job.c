@@ -1,4 +1,4 @@
-/* $Id: job.c,v 1.12 2009-11-08 22:56:54 tcunha Exp $ */
+/* $Id: job.c,v 1.13 2009-11-28 14:50:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -191,6 +191,7 @@ job_run(struct job *job)
 }
 
 /* Job buffer error callback. */
+/* ARGSUSED */
 void
 job_callback(unused struct bufferevent *bufev, unused short events, void *data)
 {

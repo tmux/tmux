@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.176 2009-11-28 14:42:21 tcunha Exp $ */
+/* $Id: tty.c,v 1.177 2009-11-28 14:50:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,7 +38,7 @@ int	tty_try_88(struct tty *, u_char, const char *);
 
 void	tty_colours(struct tty *, const struct grid_cell *, int *);
 void	tty_colours_fg(struct tty *, const struct grid_cell *, int *);
-void	tty_colours_bg(struct tty *, const struct grid_cell *, int *);
+void	tty_colours_bg(struct tty *, const struct grid_cell *);
 
 void	tty_redraw_region(struct tty *, const struct tty_ctx *);
 void	tty_emulate_repeat(
@@ -125,6 +125,7 @@ tty_open(struct tty *tty, const char *overrides, char **cause)
 	return (0);
 }
 
+/* ARGSUSED */
 void
 tty_read_callback(unused struct bufferevent *bufev, void *data)
 {
@@ -134,6 +135,7 @@ tty_read_callback(unused struct bufferevent *bufev, void *data)
 		;
 }
 
+/* ARGSUSED */
 void
 tty_error_callback(
     unused struct bufferevent *bufev, unused short what, unused void *data)
@@ -1283,7 +1285,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc, int *attr)
 	 */
 	if (!bg_default && (bg != tc->bg ||
 	    ((flags & GRID_FLAG_BG256) != (tc->flags & GRID_FLAG_BG256))))
-		tty_colours_bg(tty, gc, attr);
+		tty_colours_bg(tty, gc);
 }
 
 void
@@ -1320,7 +1322,7 @@ save_fg:
 }
 
 void
-tty_colours_bg(struct tty *tty, const struct grid_cell *gc, unused int *attr)
+tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
 	u_char			 bg = gc->bg;
