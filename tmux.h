@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.522 2009-11-19 22:37:04 tcunha Exp $ */
+/* $Id: tmux.h,v 1.523 2009-11-28 14:41:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -526,7 +526,7 @@ struct mode_key_table {
 #define MODE_CURSOR 0x1
 #define MODE_INSERT 0x2
 #define MODE_KCURSOR 0x4
-#define MODE_KKEYPAD 0x8
+#define MODE_KKEYPAD 0x8	/* set = application, clear = number */
 #define MODE_MOUSE 0x10
 
 /*
