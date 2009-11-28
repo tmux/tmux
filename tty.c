@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.178 2009-11-28 14:56:11 tcunha Exp $ */
+/* $Id: tty.c,v 1.179 2009-11-28 14:59:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -534,6 +534,7 @@ tty_write(void (*cmdfn)(
 	struct client		*c;
 	u_int		 	 i;
 
+	/* wp can be NULL if updating the screen but not the terminal. */
 	if (wp == NULL)
 		return;
 

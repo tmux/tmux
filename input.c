@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.102 2009-11-08 23:02:56 tcunha Exp $ */
+/* $Id: input.c,v 1.103 2009-11-28 14:59:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -266,6 +266,7 @@ input_parse(struct window_pane *wp)
 
 	ictx->wp = wp;
 
+	/* If there is a mode set, don't want to update the screen. */
 	if (wp->mode == NULL)
 		screen_write_start(&ictx->ctx, wp, &wp->base);
 	else
