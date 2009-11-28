@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.49 2009-11-28 14:50:37 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.50 2009-11-28 14:51:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -467,8 +467,7 @@ tty_keys_next(struct tty *tty)
 		key = KEYC_MOUSE;
 		goto handle_key;
 	case -1:	/* no, or not valid */
-		evbuffer_drain(tty->event->input, size);
-		return (1);
+		break;
 	case 1:		/* partial */
 		goto partial_key;
 	}
