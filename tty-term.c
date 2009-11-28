@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.37 2009-11-26 09:19:05 nicm Exp $ */
+/* $Id: tty-term.c,v 1.38 2009-11-28 14:42:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -390,21 +390,6 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 	/* These can be emulated so one of the two is required. */
 	if (!tty_term_has(term, TTYC_CUD1) && !tty_term_has(term, TTYC_CUD)) {
 		xasprintf(cause, "terminal does not support cud1 or cud");
-		goto error;
-	}
-	if (!tty_term_has(term, TTYC_IL1) && !tty_term_has(term, TTYC_IL)) {
-		xasprintf(cause, "terminal does not support il1 or il");
-		goto error;
-	}
-	if (!tty_term_has(term, TTYC_DL1) && !tty_term_has(term, TTYC_DL)) {
-		xasprintf(cause, "terminal does not support dl1 or dl");
-		goto error;
-	}
-	if (!tty_term_has(term, TTYC_ICH1) &&
-	    !tty_term_has(term, TTYC_ICH) && (!tty_term_has(term, TTYC_SMIR) ||
-	    !tty_term_has(term, TTYC_RMIR))) {
-		xasprintf(cause,
-		    "terminal does not support ich1 or ich or smir and rmir");
 		goto error;
 	}
 

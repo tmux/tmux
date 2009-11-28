@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.175 2009-11-19 22:23:27 tcunha Exp $ */
+/* $Id: tty.c,v 1.176 2009-11-28 14:42:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -574,12 +574,14 @@ tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 	if (tty_term_has(tty->term, TTYC_ICH) ||
 	    tty_term_has(tty->term, TTYC_ICH1))
 		tty_emulate_repeat(tty, TTYC_ICH, TTYC_ICH1, ctx->num);
-	else {
+	else if (tty_term_has(tty->term, TTYC_SMIR) && 
+	    tty_term_has(tty->term, TTYC_RMIR)) {
 		tty_putcode(tty, TTYC_SMIR);
 		for (i = 0; i < ctx->num; i++)
 			tty_putc(tty, ' ');
 		tty_putcode(tty, TTYC_RMIR);
-	}
+	} else
+		tty_draw_line(tty, wp->screen, ctx->ocy, wp->xoff, wp->yoff);
 }
 
 void
@@ -611,7 +613,8 @@ tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 	struct screen		*s = wp->screen;
 
  	if (wp->xoff != 0 || screen_size_x(s) < tty->sx ||
-	    !tty_term_has(tty->term, TTYC_CSR)) {
+	    !tty_term_has(tty->term, TTYC_CSR) || 
+	    !tty_term_has(tty->term, TTYC_IL1)) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
@@ -631,7 +634,8 @@ tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 	struct screen		*s = wp->screen;
 
  	if (wp->xoff != 0 || screen_size_x(s) < tty->sx ||
-	    !tty_term_has(tty->term, TTYC_CSR)) {
+	    !tty_term_has(tty->term, TTYC_CSR) ||
+	    !tty_term_has(tty->term, TTYC_DL1)) {
 		tty_redraw_region(tty, ctx);
 		return;
 	}
