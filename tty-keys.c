@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.47 2009-11-13 16:56:15 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.48 2009-11-28 14:44:00 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -418,7 +418,7 @@ tty_keys_find1(struct tty_key *tk, const char *buf, size_t len, size_t *size)
 
 /*
  * Process at least one key in the buffer and invoke tty->key_callback. Return
- * 1 if there are no further keys, or 0 if there is more in the buffer.
+ * 0 if there are no further keys, or 1 if there could be more in the buffer.
  */
 int
 tty_keys_next(struct tty *tty)
@@ -461,11 +461,18 @@ tty_keys_next(struct tty *tty)
 	}
 
 	/* Not found. Is this a mouse key press? */
-	key = tty_keys_mouse(buf, len, &size, &mouse);
-	if (key != KEYC_NONE) {
+	switch (tty_keys_mouse(buf, len, &size, &mouse)) {
+	case 0:		/* yes */
 		evbuffer_drain(tty->event->input, size);
+		key = KEYC_MOUSE;
 		goto handle_key;
+	case -1:	/* no, or not valid */
+		evbuffer_drain(tty->event->input, size);
+		return (1);
+	case 1:		/* partial */
+		goto partial_key;
 	}
+
 
 	/* Not found. Try to parse a key with an xterm-style modifier. */
 	key = xterm_keys_find(buf, len, &size);
@@ -560,7 +567,10 @@ tty_keys_callback(unused int fd, unused short events, void *data)
 		;
 }
 
-/* Handle mouse key input. */
+/* 
+ * Handle mouse key input. Returns 0 for success, -1 for failure, 1 for partial
+ * (probably a mouse sequence but need more data).
+ */
 int
 tty_keys_mouse(const char *buf, size_t len, size_t *size, struct mouse_event *m)
 {
@@ -569,19 +579,36 @@ tty_keys_mouse(const char *buf, size_t len, size_t *size, struct mouse_event *m)
 	 * buttons, X and Y, all based at 32 with 1,1 top-left.
 	 */
 
-	if (len != 6 || memcmp(buf, "\033[M", 3) != 0)
-		return (KEYC_NONE);
+	*size = 0;
+
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+
+	if (buf[1] != '[')
+		return (-1);
+	if (len == 2)
+		return (1);
+		
+	if (buf[2] != 'M')
+		return (-1);
+	if (len == 3)
+		return (1);
+
+	if (len < 6)
+		return (1);
 	*size = 6;
 
-	log_debug("mouse input is: %.*s", (int) len, buf);
+	log_debug("mouse input is: %.6s", buf);
 
 	m->b = buf[3];
 	m->x = buf[4];
 	m->y = buf[5];
 	if (m->b < 32 || m->x < 33 || m->y < 33)
-		return (KEYC_NONE);
+		return (-1);
 	m->b -= 32;
 	m->x -= 33;
 	m->y -= 33;
-	return (KEYC_MOUSE);
+	return (0);
 }
