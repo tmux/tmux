@@ -1,4 +1,4 @@
-/* $Id: clock.c,v 1.7 2009-09-11 14:13:52 tcunha Exp $ */
+/* $Id: clock.c,v 1.8 2009-11-28 14:57:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -97,7 +97,7 @@ const char clock_table[14][5][5] = {
 };
 
 void
-clock_draw(struct screen_write_ctx *ctx, u_int colour, int style)
+clock_draw(struct screen_write_ctx *ctx, int colour, int style)
 {
 	struct screen		*s = ctx->s;
 	struct grid_cell	 gc;

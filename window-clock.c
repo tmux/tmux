@@ -1,4 +1,4 @@
-/* $Id: window-clock.c,v 1.9 2009-11-28 14:50:37 tcunha Exp $ */
+/* $Id: window-clock.c,v 1.10 2009-11-28 14:57:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -113,8 +113,7 @@ window_clock_draw_screen(struct window_pane *wp)
 {
 	struct window_clock_mode_data	*data = wp->modedata;
 	struct screen_write_ctx	 	 ctx;
-	u_int				 colour;
-	int				 style;
+	int				 colour, style;
 
 	colour = options_get_number(&wp->window->options, "clock-mode-colour");
 	style = options_get_number(&wp->window->options, "clock-mode-style");

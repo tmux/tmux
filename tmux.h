@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.525 2009-11-28 14:54:12 tcunha Exp $ */
+/* $Id: tmux.h,v 1.526 2009-11-28 14:57:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1407,7 +1407,7 @@ int		 paste_replace(struct paste_stack *, u_int, char *, size_t);
 
 /* clock.c */
 extern const char clock_table[14][5][5];
-void		 clock_draw(struct screen_write_ctx *, u_int, int);
+void		 clock_draw(struct screen_write_ctx *, int, int);
 
 /* cmd.c */
 int		 cmd_pack_argv(int, char **, char *, size_t);
