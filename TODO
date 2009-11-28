@@ -99,3 +99,4 @@
 - don't require mouse/xterm input to be atomic
 - option so that when session is destroyed, attach client to another session rather than exiting
 - session history for client and last-session command
+- fix to reflect application keypad mode so num lock works
