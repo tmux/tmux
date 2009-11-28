@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.27 2009-11-22 00:13:34 tcunha Exp $ */
+/* $Id: cmd-string.c,v 1.28 2009-11-28 14:45:30 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,7 @@
  */
 
 int	cmd_string_getc(const char *, size_t *);
-void	cmd_string_ungetc(const char *, size_t *);
+void	cmd_string_ungetc(size_t *);
 char   *cmd_string_string(const char *, size_t *, char, int);
 char   *cmd_string_variable(const char *, size_t *);
 char   *cmd_string_expand_tilde(const char *, size_t *);
@@ -40,13 +40,15 @@ char   *cmd_string_expand_tilde(const char *, size_t *);
 int
 cmd_string_getc(const char *s, size_t *p)
 {
-	if (s[*p] == '\0')
+	const u_char	*ucs = s;
+
+	if (ucs[*p] == '\0')
 		return (EOF);
-	return (s[(*p)++]);
+	return (ucs[(*p)++]);
 }
 
 void
-cmd_string_ungetc(unused const char *s, size_t *p)
+cmd_string_ungetc(size_t *p)
 {
 	(*p)--;
 }
@@ -306,7 +308,7 @@ cmd_string_variable(const char *s, size_t *p)
 	if (fch == '{' && ch != '}')
 		goto error;
 	if (ch != EOF && fch != '{')
-		cmd_string_ungetc(s, p); /* ch */
+		cmd_string_ungetc(p); /* ch */
 
 	buf = xrealloc(buf, 1, len + 1);
 	buf[len] = '\0';
@@ -337,7 +339,7 @@ cmd_string_expand_tilde(const char *s, size_t *p)
 				home = pw->pw_dir;
 		}
 	} else {
-		cmd_string_ungetc(s, p);
+		cmd_string_ungetc(p);
 		if ((username = cmd_string_string(s, p, '/', 0)) == NULL)
 			return (NULL);
 		if ((pw = getpwnam(username)) != NULL)
