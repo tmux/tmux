@@ -1,4 +1,4 @@
-/* $Id: cmd-set-buffer.c,v 1.11 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-set-buffer.c,v 1.12 2009-11-28 14:54:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,7 +45,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_buffer_data	*data = self->data;
 	struct session		*s;
 	u_int			 limit;
-	u_char			*pdata;
+	char			*pdata;
 	size_t			 psize;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)

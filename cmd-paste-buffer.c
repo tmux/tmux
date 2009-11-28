@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.22 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.23 2009-11-28 14:54:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,7 +62,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	if (pb != NULL && *pb->data != '\0') {
+	if (pb != NULL) {
 		/* -r means raw data without LF->CR conversion. */
 		if (cmd_check_flag(data->chflags, 'r'))
 			bufferevent_write(wp->event, pb->data, pb->size);

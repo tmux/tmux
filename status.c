@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.137 2009-11-28 14:50:37 tcunha Exp $ */
+/* $Id: status.c,v 1.138 2009-11-28 14:54:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -882,6 +882,7 @@ status_prompt_key(struct client *c, int key)
 {
 	struct paste_buffer	*pb;
 	char   			*s, *first, *last, word[64], swapc;
+	u_char			 ch;
 	size_t			 size, n, off, idx;
 
 	size = strlen(c->prompt_buffer);
@@ -1023,7 +1024,8 @@ status_prompt_key(struct client *c, int key)
 		if ((pb = paste_get_top(&c->session->buffers)) == NULL)
 			break;
 		for (n = 0; n < pb->size; n++) {
-			if (pb->data[n] < 32 || pb->data[n] == 127)
+			ch = (u_char) pb->data[n];
+			if (ch < 32 || ch == 127)
 				break;
 		}
 

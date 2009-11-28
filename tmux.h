@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.524 2009-11-28 14:50:37 tcunha Exp $ */
+/* $Id: tmux.h,v 1.525 2009-11-28 14:54:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -883,7 +883,7 @@ struct layout_cell {
 
 /* Paste buffer. */
 struct paste_buffer {
-     	char		*data;
+	char		*data;
 	size_t		 size;
 };
 ARRAY_DECL(paste_stack, struct paste_buffer *);
@@ -1402,8 +1402,8 @@ struct paste_buffer *paste_get_top(struct paste_stack *);
 struct paste_buffer *paste_get_index(struct paste_stack *, u_int);
 int	     	 paste_free_top(struct paste_stack *);
 int		 paste_free_index(struct paste_stack *, u_int);
-void		 paste_add(struct paste_stack *, u_char *, size_t, u_int);
-int		 paste_replace(struct paste_stack *, u_int, u_char *, size_t);
+void		 paste_add(struct paste_stack *, char *, size_t, u_int);
+int		 paste_replace(struct paste_stack *, u_int, char *, size_t);
 
 /* clock.c */
 extern const char clock_table[14][5][5];
