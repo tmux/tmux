@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.177 2009-11-28 14:50:37 tcunha Exp $ */
+/* $Id: tty.c,v 1.178 2009-11-28 14:56:11 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,8 +36,8 @@ void	tty_fill_acs(struct tty *);
 int	tty_try_256(struct tty *, u_char, const char *);
 int	tty_try_88(struct tty *, u_char, const char *);
 
-void	tty_colours(struct tty *, const struct grid_cell *, int *);
-void	tty_colours_fg(struct tty *, const struct grid_cell *, int *);
+void	tty_colours(struct tty *, const struct grid_cell *, u_char *);
+void	tty_colours_fg(struct tty *, const struct grid_cell *, u_char *);
 void	tty_colours_bg(struct tty *, const struct grid_cell *);
 
 void	tty_redraw_region(struct tty *, const struct tty_ctx *);
@@ -1150,8 +1150,7 @@ void
 tty_attributes(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell, gc2;
-	u_char			 changed;
-	u_int			 new_attr;
+	u_char			 changed, new_attr;
 
 	/* If the character is space, don't care about foreground. */
 	if (gc->data == ' ' && !(gc->flags & GRID_FLAG_UTF8)) {
@@ -1222,7 +1221,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 }
 
 void
-tty_colours(struct tty *tty, const struct grid_cell *gc, int *attr)
+tty_colours(struct tty *tty, const struct grid_cell *gc, u_char *attr)
 {
 	struct grid_cell	*tc = &tty->cell;
 	u_char			 fg = gc->fg, bg = gc->bg, flags = gc->flags;
@@ -1289,7 +1288,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc, int *attr)
 }
 
 void
-tty_colours_fg(struct tty *tty, const struct grid_cell *gc, int *attr)
+tty_colours_fg(struct tty *tty, const struct grid_cell *gc, u_char *attr)
 {
 	struct grid_cell	*tc = &tty->cell;
 	u_char			 fg = gc->fg;
