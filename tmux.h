@@ -1647,7 +1647,7 @@ void	 input_mouse(struct window_pane *, struct mouse_event *);
 
 /* xterm-keys.c */
 char 	*xterm_keys_lookup(int);
-int	 xterm_keys_find(const char *, size_t, size_t *);
+int	 xterm_keys_find(const char *, size_t, size_t *, int *);
 
 /* colour.c */
 void	 colour_set_fg(struct grid_cell *, int);
