@@ -31,6 +31,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_attach_session_entry,
 	&cmd_bind_key_entry,
 	&cmd_break_pane_entry,
+	&cmd_capture_pane_entry,
 	&cmd_choose_client_entry,
 	&cmd_choose_session_entry,
 	&cmd_choose_window_entry,
