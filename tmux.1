@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.209 2009-11-28 14:39:53 tcunha Exp $
+.\" $Id: tmux.1,v 1.210 2009-12-02 15:10:44 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: November 24 2009 $
+.Dd $Mdocdate: December 1 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -664,6 +664,13 @@ off from its containing window to make it the only pane in a new window.
 If
 .Fl d
 is given, the new window does not become the current window.
+.It Xo Ic capture-pane
+.Op Fl b Ar buffer-index
+.Op Fl t Ar target-pane
+.Xc
+.D1 (alias: Ic capturep )
+Capture the contents of a pane to the specified buffer, or a new buffer if none
+is specified.
 .It Xo
 .Ic choose-client
 .Op Fl t Ar target-window

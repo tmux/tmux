@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.527 2009-12-02 15:06:34 tcunha Exp $ */
+/* $Id: tmux.h,v 1.528 2009-12-02 15:10:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1432,6 +1432,7 @@ extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_break_pane_entry;
+extern const struct cmd_entry cmd_capture_pane_entry;
 extern const struct cmd_entry cmd_choose_client_entry;
 extern const struct cmd_entry cmd_choose_session_entry;
 extern const struct cmd_entry cmd_choose_window_entry;
