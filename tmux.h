@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.526 2009-11-28 14:57:59 tcunha Exp $ */
+/* $Id: tmux.h,v 1.527 2009-12-02 15:06:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1646,7 +1646,7 @@ void	 input_mouse(struct window_pane *, struct mouse_event *);
 
 /* xterm-keys.c */
 char 	*xterm_keys_lookup(int);
-int	 xterm_keys_find(const char *, size_t, size_t *);
+int	 xterm_keys_find(const char *, size_t, size_t *, int *);
 
 /* colour.c */
 void	 colour_set_fg(struct grid_cell *, int);

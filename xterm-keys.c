@@ -1,4 +1,4 @@
-/* $Id: xterm-keys.c,v 1.3 2009-11-08 23:33:57 tcunha Exp $ */
+/* $Id: xterm-keys.c,v 1.4 2009-12-02 15:06:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -85,22 +85,28 @@ struct xterm_keys_entry xterm_keys_table[] = {
 	{ KEYC_DC,	"\033[3;_~" },
 };
 
-/* Match key against buffer, treating _ as a wildcard. */
+/* 
+ * Match key against buffer, treating _ as a wildcard. Return -1 for no match,
+ * 0 for match, 1 if the end of the buffer is reached (need more data).
+ */
 int
 xterm_keys_match(const char *template, const char *buf, size_t len)
 {
 	size_t	pos;
 
-	if (len == 0 || len < strlen(template))
+	if (len == 0)
 		return (0);
 
 	pos = 0;
 	do {
 		if (*template != '_' && buf[pos] != *template)
-			return (0);
+			return (-1);
 	} while (pos++ != len && *++template != '\0');
 
-	return (1);
+	if (*template != '\0')	/* partial */
+		return (1);
+
+	return (0);
 }
 
 /* Find modifiers based on template. */
@@ -131,22 +137,29 @@ xterm_keys_modifiers(const char *template, const char *buf, size_t len)
 	return (0);
 }
 
-/* Lookup key from buffer against table. */
+/*
+ * Lookup key from a buffer against the table. Returns 0 for found (and the
+ * key), -1 for not found, 1 for partial match.
+ */
 int
-xterm_keys_find(const char *buf, size_t len, size_t *size)
+xterm_keys_find(const char *buf, size_t len, size_t *size, int *key)
 {
 	struct xterm_keys_entry	*entry;
 	u_int			 i;
 
 	for (i = 0; i < nitems(xterm_keys_table); i++) {
 		entry = &xterm_keys_table[i];
-		if (xterm_keys_match(entry->template, buf, len))
-			break;
+		switch (xterm_keys_match(entry->template, buf, len)) {
+		case 0:
+			*size = strlen(entry->template);
+			*key = entry->key;
+			*key |= xterm_keys_modifiers(entry->template, buf, len);
+			return (0);
+		case 1:
+			return (1);
+		}
 	}
-	if (i == nitems(xterm_keys_table))
-		return (KEYC_NONE);
-	*size = strlen(entry->template);
-	return (entry->key | xterm_keys_modifiers(entry->template, buf, len));
+	return (-1);
 }
 
 /* Lookup a key number from the table. */

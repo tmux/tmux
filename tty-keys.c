@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.50 2009-11-28 14:51:37 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.51 2009-12-02 15:06:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -472,12 +472,15 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
-
 	/* Not found. Try to parse a key with an xterm-style modifier. */
-	key = xterm_keys_find(buf, len, &size);
-	if (key != KEYC_NONE) {
+	switch (xterm_keys_find(buf, len, &size, &key)) {
+	case 0:		/* found */
 		evbuffer_drain(tty->event->input, size);
 		goto handle_key;
+	case -1:	/* not found */
+		break;
+	case 1:
+		goto partial_key;
 	}
 
 	/* Skip the escape. */
