@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.51 2009-12-02 15:06:35 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.52 2009-12-02 15:07:28 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -453,14 +453,7 @@ tty_keys_next(struct tty *tty)
 		goto handle_key;
 	}
 
-	/* Look for matching key string and return if found. */
-	tk = tty_keys_find(tty, buf + 1, len - 1, &size);
-	if (tk != NULL) {
-		key = tk->key;
-		goto found_key;
-	}
-
-	/* Not found. Is this a mouse key press? */
+	/* Is this a mouse key press? */
 	switch (tty_keys_mouse(buf, len, &size, &mouse)) {
 	case 0:		/* yes */
 		evbuffer_drain(tty->event->input, size);
@@ -472,7 +465,7 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
-	/* Not found. Try to parse a key with an xterm-style modifier. */
+	/* Try to parse a key with an xterm-style modifier. */
 	switch (xterm_keys_find(buf, len, &size, &key)) {
 	case 0:		/* found */
 		evbuffer_drain(tty->event->input, size);
@@ -481,6 +474,13 @@ tty_keys_next(struct tty *tty)
 		break;
 	case 1:
 		goto partial_key;
+	}
+
+	/* Look for matching key string and return if found. */
+	tk = tty_keys_find(tty, buf + 1, len - 1, &size);
+	if (tk != NULL) {
+		key = tk->key;
+		goto found_key;
 	}
 
 	/* Skip the escape. */
