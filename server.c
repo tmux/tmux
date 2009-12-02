@@ -431,7 +431,7 @@ server_child_signal(void)
 		}
 		if (WIFSTOPPED(status))
 			server_child_stopped(pid, status);
-		else if (WIFEXITED(status))
+		else if (WIFEXITED(status) || WIFSIGNALED(status))
 			server_child_exited(pid, status);
 	}
 }
