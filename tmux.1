@@ -1230,8 +1230,8 @@ command.
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
-.Op Fl agu
-.Op Fl t Ar target-session
+.Op Fl aguw
+.Op Fl t Ar target-session | Ar target-window
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic set )
@@ -1248,6 +1248,13 @@ The
 .Fl u
 flag unsets an option, so a session inherits the option from the global
 options - it is not possible to unset a global option.
+.Pp
+With
+.Fl w ,
+this command is equivalent to
+.Ic set-window-option 
+with
+.Ar target-window .
 .Pp
 Available session options are:
 .Bl -tag -width Ds
@@ -1831,14 +1838,21 @@ as Shift, Alt or Ctrl.
 The default is off.
 .El
 .It Xo Ic show-options
-.Op Fl g
-.Op Fl t Ar target-session
+.Op Fl gw
+.Op Fl t Ar target-session | Ar target-window
 .Xc
 .D1 (alias: Ic show )
 Show the session options for
 .Ar target session ,
 or the global session options with
 .Fl g .
+.Pp
+If
+.Fl w
+is used, this command is equivalent to
+.Ic show-window-options 
+with
+.Ar target-window .
 .It Xo Ic show-window-options
 .Op Fl g
 .Op Fl t Ar target-window

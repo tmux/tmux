@@ -1115,7 +1115,7 @@ char *
 status_prompt_complete(const char *s)
 {
 	const struct cmd_entry 	      **cmdent;
-	const struct set_option_entry  *optent;
+	const struct set_option_entry  *entry;
 	ARRAY_DECL(, const char *)	list;
 	char			       *prefix, *s2;
 	u_int				i;
@@ -1130,13 +1130,13 @@ status_prompt_complete(const char *s)
 		if (strncmp((*cmdent)->name, s, strlen(s)) == 0)
 			ARRAY_ADD(&list, (*cmdent)->name);
 	}
-	for (optent = set_option_table; optent->name != NULL; optent++) {
-		if (strncmp(optent->name, s, strlen(s)) == 0)
-			ARRAY_ADD(&list, optent->name);
+	for (entry = set_session_option_table; entry->name != NULL; entry++) {
+		if (strncmp(entry->name, s, strlen(s)) == 0)
+			ARRAY_ADD(&list, entry->name);
 	}
-	for (optent = set_window_option_table; optent->name != NULL; optent++) {
-		if (strncmp(optent->name, s, strlen(s)) == 0)
-			ARRAY_ADD(&list, optent->name);
+	for (entry = set_window_option_table; entry->name != NULL; entry++) {
+		if (strncmp(entry->name, s, strlen(s)) == 0)
+			ARRAY_ADD(&list, entry->name);
 	}
 
 	/* If none, bail now. */
