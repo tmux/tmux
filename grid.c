@@ -170,7 +170,7 @@ grid_collect_history(struct grid *gd)
 {
 	u_int	yy;
 
- 	GRID_DEBUG(gd, "");
+	GRID_DEBUG(gd, "");
 
 	if (gd->hsize < gd->hlimit)
 		return;
@@ -183,7 +183,7 @@ grid_collect_history(struct grid *gd)
 	gd->hsize -= yy;
 }
 
-/* 
+/*
  * Scroll the entire visible screen, moving one line into the history. Just
  * allocate a new line at the bottom and move the history size indicator.
  */
@@ -192,12 +192,12 @@ grid_scroll_history(struct grid *gd)
 {
 	u_int	yy;
 
- 	GRID_DEBUG(gd, "");
+	GRID_DEBUG(gd, "");
 
 	yy = gd->hsize + gd->sy;
 	gd->linedata = xrealloc(gd->linedata, yy + 1, sizeof *gd->linedata);
 	memset(&gd->linedata[yy], 0, sizeof gd->linedata[yy]);
-	
+
 	gd->hsize++;
 }
 
@@ -208,7 +208,7 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower)
 	struct grid_line	*gl_history, *gl_upper, *gl_lower;
 	u_int			 yy;
 
- 	GRID_DEBUG(gd, "upper=%u, lower=%u", upper, lower);
+	GRID_DEBUG(gd, "upper=%u, lower=%u", upper, lower);
 
 	/* Create a space for a new line. */
 	yy = gd->hsize + gd->sy;
@@ -354,7 +354,7 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny)
 {
 	u_int	xx, yy;
 
- 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u, ny=%u", px, py, nx, ny);
+	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u, ny=%u", px, py, nx, ny);
 
 	if (nx == 0 || ny == 0)
 		return;
@@ -395,7 +395,7 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny)
 	struct grid_line	*gl;
 	u_int			 yy;
 
- 	GRID_DEBUG(gd, "py=%u, ny=%u", py, ny);
+	GRID_DEBUG(gd, "py=%u, ny=%u", py, ny);
 
 	if (ny == 0)
 		return;
@@ -421,7 +421,7 @@ grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny)
 {
 	u_int	yy;
 
- 	GRID_DEBUG(gd, "dy=%u, py=%u, ny=%u", dy, py, ny);
+	GRID_DEBUG(gd, "dy=%u, py=%u, ny=%u", dy, py, ny);
 
 	if (ny == 0 || py == dy)
 		return;
@@ -460,7 +460,7 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 	struct grid_line	*gl;
 	u_int			 xx;
 
- 	GRID_DEBUG(gd, "dx=%u, px=%u, py=%u, nx=%u", dx, px, py, nx);
+	GRID_DEBUG(gd, "dx=%u, px=%u, py=%u, nx=%u", dx, px, py, nx);
 
 	if (nx == 0 || px == dx)
 		return;
@@ -499,8 +499,8 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 char *
 grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 {
- 	const struct grid_cell	*gc;
- 	const struct grid_utf8	*gu;
+	const struct grid_cell	*gc;
+	const struct grid_utf8	*gu;
 	char			*buf;
 	size_t			 len, off, size;
 	u_int			 xx;
@@ -535,14 +535,14 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 			buf[off++] = gc->data;
 		}
 	}
-	
+
 	while (off > 0 && buf[off - 1] == ' ')
 		off--;
 	buf[off] = '\0';
 	return (buf);
 }
 
-/* 
+/*
  * Duplicate a set of lines between two grids. If there aren't enough lines in
  * either source or destination, the number of lines is limited to the number
  * available.

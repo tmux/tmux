@@ -33,7 +33,7 @@ size_t	cmd_send_keys_print(struct cmd *, char *, size_t);
 
 struct cmd_send_keys_data {
 	char	*target;
-  	u_int	 nkeys;
+	u_int	 nkeys;
 	int	*keys;
 };
 

@@ -121,7 +121,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 		case EOF:
 		case ' ':
 		case '\t':
- 			if (have_arg) {
+			if (have_arg) {
 				buf = xrealloc(buf, 1, len + 1);
 				buf[len] = '\0';
 

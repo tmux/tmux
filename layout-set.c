@@ -295,7 +295,7 @@ layout_set_main_h(struct window *w)
 			continue;
 		}
 
- 		/* Add in the columns. */
+		/* Add in the columns. */
 		layout_make_node(lcrow, LAYOUT_LEFTRIGHT);
 		for (i = 0; i < columns; i++) {
 			/* Create and add a pane cell. */
@@ -312,11 +312,11 @@ layout_set_main_h(struct window *w)
 		/* Adjust the row to fit the full width if necessary. */
 		if (i == columns)
 			i--;
- 		used = ((i + 1) * width) - 1;
- 		if (w->sx <= used)
- 			continue;
- 		lcchild = TAILQ_LAST(&lcrow->cells, layout_cells);
- 		layout_resize_adjust(lcchild, LAYOUT_LEFTRIGHT, w->sx - used);
+		used = ((i + 1) * width) - 1;
+		if (w->sx <= used)
+			continue;
+		lcchild = TAILQ_LAST(&lcrow->cells, layout_cells);
+		layout_resize_adjust(lcchild, LAYOUT_LEFTRIGHT, w->sx - used);
 	}
 
 	/* Adjust the last row height to fit if necessary. */
@@ -422,10 +422,10 @@ layout_set_main_v(struct window *w)
 		if (i == rows)
 			i--;
 		used = ((i + 1) * height) - 1;
- 		if (w->sy <= used)
- 			continue;
- 		lcchild = TAILQ_LAST(&lccolumn->cells, layout_cells);
- 		layout_resize_adjust(lcchild, LAYOUT_TOPBOTTOM, w->sy - used);
+		if (w->sy <= used)
+			continue;
+		lcchild = TAILQ_LAST(&lccolumn->cells, layout_cells);
+		layout_resize_adjust(lcchild, LAYOUT_TOPBOTTOM, w->sy - used);
 	}
 
 	/* Adjust the last column width to fit if necessary. */

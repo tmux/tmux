@@ -92,5 +92,5 @@ grid_utf8_compare(const struct grid_utf8 *gu1, const struct grid_utf8 *gu2)
 		return (0);
 	if (memcmp(gu1->data, gu2->data, size) != 0)
 		return (0);
-	return (1);	
+	return (1);
 }

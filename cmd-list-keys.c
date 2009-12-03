@@ -75,7 +75,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (used >= sizeof tmp)
 			continue;
 
- 		if (!(bd->key & KEYC_PREFIX)) {
+		if (!(bd->key & KEYC_PREFIX)) {
 			used = strlcat(tmp, "(no prefix) ", sizeof tmp);
 			if (used >= sizeof tmp)
 				continue;

@@ -51,7 +51,7 @@ screen_reinit(struct screen *s)
 	s->rlower = screen_size_y(s) - 1;
 
 	s->mode = MODE_CURSOR;
-	
+
 	screen_reset_tabs(s);
 
 	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy);
@@ -152,12 +152,12 @@ screen_resize_y(struct screen *s, u_int sy)
 		fatalx("zero size");
 	oldy = screen_size_y(s);
 
-	/* 
+	/*
 	 * When resizing:
 	 *
 	 * If the height is decreasing, delete lines from the bottom until
 	 * hitting the cursor, then push lines from the top into the history.
-	 * 
+	 *
 	 * When increasing, pull as many lines as possible from the history to
 	 * the top, then fill the remaining with blanks at the bottom.
 	 */
@@ -191,7 +191,7 @@ screen_resize_y(struct screen *s, u_int sy)
 			grid_view_delete_lines(gd, 0, available);
 		}
 		s->cy -= needed;
- 	}
+	}
 
 	/* Resize line arrays. */
 	gd->linedata = xrealloc(

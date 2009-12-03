@@ -59,7 +59,7 @@ window_name_callback(unused int fd, unused short events, void *data)
 	if (name == NULL)
 		wname = default_window_name(w);
 	else {
-		/* 
+		/*
 		 * If tmux is using the default command, it will be a login
 		 * shell and argv[0] may have a - prefix. Remove this if it is
 		 * present. Ick.
@@ -71,13 +71,13 @@ window_name_callback(unused int fd, unused short events, void *data)
 				wname = parse_window_name(name);
 		xfree(name);
 	}
-	
+
 	if (w->active->fd == -1) {
 		xasprintf(&name, "%s[dead]", wname);
 		xfree(wname);
 		wname = name;
 	}
-	
+
 	if (strcmp(wname, w->name) == 0)
 		xfree(wname);
 	else {

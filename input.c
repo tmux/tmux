@@ -230,7 +230,7 @@ input_init(struct window_pane *wp)
 	ictx->string_len = 0;
 	ictx->string_buf = NULL;
 
- 	memcpy(&ictx->cell, &grid_default_cell, sizeof ictx->cell);
+	memcpy(&ictx->cell, &grid_default_cell, sizeof ictx->cell);
 
 	memcpy(&ictx->saved_cell, &grid_default_cell, sizeof ictx->saved_cell);
 	ictx->saved_cx = 0;
@@ -297,7 +297,7 @@ input_state_first(u_char ch, struct input_ctx *ictx)
 	}
 
 #if 0
-  	if (INPUT_C1CONTROL(ch)) {
+	if (INPUT_C1CONTROL(ch)) {
 		ch -= 0x40;
 		if (ch == '[')
 			input_state(ictx, input_state_sequence_first);
@@ -591,7 +591,7 @@ input_handle_character(u_char ch, struct input_ctx *ictx)
 
 	if (ch > 0x7f && options_get_number(&wp->window->options, "utf8")) {
 		if (utf8_open(&ictx->utf8data, ch)) {
-			log_debug2("-- utf8 size %zu: %zu: %hhu (%c)", 
+			log_debug2("-- utf8 size %zu: %zu: %hhu (%c)",
 			    ictx->utf8data.size, ictx->off, ch, ch);
 			input_state(ictx, input_state_utf8);
 			return;
@@ -945,7 +945,7 @@ input_handle_sequence_da(struct input_ctx *ictx)
 		return;
 	if (n != 0)
 		return;
-	
+
 	bufferevent_write(wp->event, "\033[?1;2c", (sizeof "\033[?1;2c") - 1);
 }
 
@@ -1164,7 +1164,7 @@ input_handle_sequence_sm(struct input_ctx *ictx)
 			log_debug("kcursor on");
 			break;
 		case 3:		/* DECCOLM */
-			screen_write_cursormove(&ictx->ctx, 0, 0);			
+			screen_write_cursormove(&ictx->ctx, 0, 0);
 			screen_write_clearscreen(&ictx->ctx);
 			break;
 		case 25:	/* TCEM */
@@ -1240,7 +1240,7 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 			log_debug("kcursor off");
 			break;
 		case 3:		/* DECCOLM */
-			screen_write_cursormove(&ictx->ctx, 0, 0);			
+			screen_write_cursormove(&ictx->ctx, 0, 0);
 			screen_write_clearscreen(&ictx->ctx);
 			break;
 		case 25:	/* TCEM */
@@ -1257,7 +1257,7 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 			sx = screen_size_x(s);
 			sy = screen_size_y(s);
 
-			/* 
+			/*
 			 * Exit alternative screen mode and restore the copied
 			 * grid.
 			 */
@@ -1284,7 +1284,7 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 			 * Turn history back on (so resize can use it) and then
 			 * resize back to the current size.
 			 */
-  			wp->base.grid->flags |= GRID_HISTORY;
+			wp->base.grid->flags |= GRID_HISTORY;
 			if (sy > wp->saved_grid->sy)
 				screen_resize(s, sx, sy);
 
@@ -1372,7 +1372,7 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 	if (ARRAY_LENGTH(&ictx->args) == 0) {
 		attr = gc->attr;
 		memcpy(gc, &grid_default_cell, sizeof *gc);
- 		gc->attr |= (attr & GRID_ATTR_CHARSET);
+		gc->attr |= (attr & GRID_ATTR_CHARSET);
 		return;
 	}
 

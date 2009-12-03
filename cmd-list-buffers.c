@@ -71,7 +71,7 @@ cmd_list_buffers_exec(struct cmd *self, struct cmd_ctx *ctx)
 			tmp[50 - 3] = '\0';
 			strlcat(tmp, "...", sizeof tmp);
 		}
-		
+
 		ctx->print(ctx, "%u: %zu bytes: \"%s\"", idx - 1, size, tmp);
 	}
 

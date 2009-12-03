@@ -184,8 +184,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 			ctx->error(ctx, "not a terminal");
 			return (-1);
 		}
-		
-		overrides = 
+
+		overrides =
 		    options_get_string(&global_s_options, "terminal-overrides");
 		if (tty_open(&ctx->cmdclient->tty, overrides, &cause) != 0) {
 			ctx->error(ctx, "open terminal failed: %s", cause);
@@ -267,13 +267,13 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 * Set the client to the new session. If a command client exists, it is
 	 * taking this session and needs to get MSG_READY and stay around.
 	 */
- 	if (!detached) {
+	if (!detached) {
 		if (ctx->cmdclient != NULL) {
 			server_write_client(ctx->cmdclient, MSG_READY, NULL, 0);
- 			ctx->cmdclient->session = s;
+			ctx->cmdclient->session = s;
 			server_redraw_client(ctx->cmdclient);
 		} else {
- 			ctx->curclient->session = s;
+			ctx->curclient->session = s;
 			server_redraw_client(ctx->curclient);
 		}
 	}

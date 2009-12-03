@@ -63,7 +63,7 @@ cmd_unlink_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "window is only linked to one session");
 		return (-1);
 	}
-	
+
 	server_unlink_window(s, wl);
 	recalculate_sizes();
 

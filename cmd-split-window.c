@@ -70,7 +70,7 @@ cmd_split_window_init(struct cmd *self, int key)
 	switch (key) {
 	case '%':
 		data->flag_horizontal = 1;
-		break;		
+		break;
 	case '"':
 		data->flag_horizontal = 0;
 		break;

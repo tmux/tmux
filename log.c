@@ -183,7 +183,7 @@ log_vfatal(const char *msg, va_list ap)
 		log_vwrite(LOG_CRIT, fmt, ap);
 	} else {
 		if (asprintf(&fmt, "fatal: %s", msg) == -1)
-       			exit(1);
+			exit(1);
 		log_vwrite(LOG_CRIT, fmt, ap);
 	}
 	free(fmt);

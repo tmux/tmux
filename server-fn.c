@@ -61,7 +61,7 @@ server_write_client(
 		return;
 	log_debug("writing %d to client %d", type, c->ibuf.fd);
 	imsg_compose(ibuf, type, PROTOCOL_VERSION, -1, -1, (void *) buf, len);
-	server_update_event(c);	
+	server_update_event(c);
 }
 
 void
@@ -208,7 +208,7 @@ server_lock_session(struct session *s)
 		if (c == NULL || c->session == NULL || c->session != s)
 			continue;
 		server_lock_client(c);
-	}	
+	}
 }
 
 void
@@ -225,7 +225,7 @@ server_lock_client(struct client *c)
 	cmdlen = strlcpy(lockdata.cmd, cmd, sizeof lockdata.cmd);
 	if (cmdlen >= sizeof lockdata.cmd)
 		return;
-      
+
 	tty_stop_tty(&c->tty);
 	tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_SMCUP));
 	tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_CLEAR));
@@ -240,14 +240,14 @@ server_kill_window(struct window *w)
 	struct session	*s;
 	struct winlink	*wl;
 	u_int		 i;
-	
+
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
 		if (s == NULL || !session_has(s, w))
 			continue;
 		if ((wl = winlink_find_by_window(&s->windows, w)) == NULL)
 			continue;
-		
+
 		if (session_detach(s, wl))
 			server_destroy_session_group(s);
 		else {
@@ -357,7 +357,7 @@ server_destroy_session(struct session *s)
 {
 	struct client	*c;
 	u_int		 i;
-	
+
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (c == NULL || c->session != s)
@@ -376,7 +376,7 @@ server_set_identify(struct client *c)
 	delay = options_get_number(&c->session->options, "display-panes-time");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
-	
+
 	evtimer_del(&c->identify_timer);
 	evtimer_set(&c->identify_timer, server_callback_identify, c);
 	evtimer_add(&c->identify_timer, &tv);
@@ -417,5 +417,5 @@ server_update_event(struct client *c)
 		events |= EV_WRITE;
 	event_del(&c->event);
 	event_set(&c->event, c->ibuf.fd, events, server_client_callback, c);
-	event_add(&c->event, NULL);	
+	event_add(&c->event, NULL);
 }

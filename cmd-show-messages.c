@@ -57,7 +57,7 @@ cmd_show_messages_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		tim = ctime(&msg->msg_time);
 		*strchr(tim, '\n') = '\0';
-		
+
 		ctx->print(ctx, "%s %s", tim, msg->msg);
 	}
 

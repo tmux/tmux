@@ -78,7 +78,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 			paste_free_index(&s->buffers, data->buffer);
 	}
 
- 	return (0);
+	return (0);
 }
 
 /* Add bytes to a buffer but change every '\n' to '\r'. */

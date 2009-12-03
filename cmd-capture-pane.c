@@ -48,7 +48,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct screen		*s;
 	struct session		*sess;
 	u_int			 i, limit;
-	size_t         		 len, linelen; 
+	size_t         		 len, linelen;
 
 	if (cmd_find_pane(ctx, data->target, &sess, &wp) == NULL)
 		return (-1);

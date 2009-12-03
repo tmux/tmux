@@ -149,7 +149,7 @@ grid_view_insert_lines_region(struct grid *gd, u_int rlower, u_int py, u_int ny)
 
 	ny2 = rlower + 1 - py - ny;
 	grid_move_lines(gd, rlower + 1 - ny2, py, ny2);
- 	grid_clear(gd, 0, py + ny2, gd->sx, ny - ny2);
+	grid_clear(gd, 0, py + ny2, gd->sx, ny - ny2);
 }
 
 /* Delete lines. */
@@ -165,7 +165,7 @@ grid_view_delete_lines(struct grid *gd, u_int py, u_int ny)
 	sy = grid_view_y(gd, gd->sy);
 
 	grid_move_lines(gd, py, py + ny, sy - py - ny);
- 	grid_clear(gd, 0, sy - ny, gd->sx, py + ny - (sy - ny));
+	grid_clear(gd, 0, sy - ny, gd->sx, py + ny - (sy - ny));
 }
 
 /* Delete lines inside scroll region. */
@@ -182,7 +182,7 @@ grid_view_delete_lines_region(struct grid *gd, u_int rlower, u_int py, u_int ny)
 
 	ny2 = rlower + 1 - py - ny;
 	grid_move_lines(gd, py, py + ny, ny2);
- 	grid_clear(gd, 0, py + ny2, gd->sx, ny - ny2);
+	grid_clear(gd, 0, py + ny2, gd->sx, ny - ny2);
 }
 
 /* Insert characters. */

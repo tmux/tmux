@@ -23,7 +23,7 @@
 #include "tmux.h"
 
 /*
- * List panes on given window..
+ * List panes on given window.
  */
 
 int	cmd_list_panes_exec(struct cmd *, struct cmd_ctx *);
@@ -56,7 +56,7 @@ cmd_list_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 	n = 0;
 	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
 		gd = wp->base.grid;
-		
+
 		size = 0;
 		for (i = 0; i < gd->hsize; i++) {
 			gl = &gd->linedata[i];
@@ -64,7 +64,7 @@ cmd_list_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 			size += gl->utf8size * sizeof *gl->utf8data;
 		}
 		size += gd->hsize * sizeof *gd->linedata;
-		
+
 		ctx->print(ctx, "%u: [%ux%u] [history %u/%u, %llu bytes]",
 		    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size);
 		n++;

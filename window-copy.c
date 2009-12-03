@@ -29,14 +29,14 @@ void	window_copy_resize(struct window_pane *, u_int, u_int);
 void	window_copy_key(struct window_pane *, struct client *, int);
 int	window_copy_key_input(struct window_pane *, int);
 void	window_copy_mouse(
-    	    struct window_pane *, struct client *, struct mouse_event *);
+	    struct window_pane *, struct client *, struct mouse_event *);
 
 void	window_copy_redraw_lines(struct window_pane *, u_int, u_int);
 void	window_copy_redraw_screen(struct window_pane *);
 void	window_copy_write_line(
-    	    struct window_pane *, struct screen_write_ctx *, u_int);
+	    struct window_pane *, struct screen_write_ctx *, u_int);
 void	window_copy_write_lines(
-    	    struct window_pane *, struct screen_write_ctx *, u_int, u_int);
+	    struct window_pane *, struct screen_write_ctx *, u_int, u_int);
 
 void	window_copy_scroll_to(struct window_pane *, u_int, u_int);
 int	window_copy_search_compare(
@@ -195,7 +195,7 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 	struct screen_write_ctx	 	 ctx;
 
 	screen_resize(s, sx, sy);
-	
+
 	if (data->cy > sy - 1)
 		data->cy = sy - 1;
 	if (data->cx > sx)
@@ -233,7 +233,7 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		return;
 	case MODEKEYCOPY_RIGHT:
 		window_copy_cursor_right(wp);
- 		return;
+		return;
 	case MODEKEYCOPY_UP:
 		window_copy_cursor_up(wp, 0);
 		return;
@@ -297,7 +297,7 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		window_copy_redraw_screen(wp);
 		break;
 	case MODEKEYCOPY_STARTSELECTION:
- 		window_copy_start_selection(wp);
+		window_copy_start_selection(wp);
 		window_copy_redraw_screen(wp);
 		break;
 	case MODEKEYCOPY_CLEARSELECTION:
@@ -422,7 +422,7 @@ window_copy_key_input(struct window_pane *wp, int key)
 		if (key < 32 || key > 126)
 			break;
 		inputlen = strlen(data->inputstr) + 2;
-		
+
 		data->inputstr = xrealloc(data->inputstr, 1, inputlen);
 		data->inputstr[inputlen - 2] = key;
 		data->inputstr[inputlen - 1] = '\0';
@@ -452,7 +452,7 @@ window_copy_mouse(
 
 	window_copy_update_cursor(wp, m->x, m->y);
 	if (window_copy_update_selection(wp))
- 		window_copy_redraw_screen(wp);
+		window_copy_redraw_screen(wp);
 }
 
 void
@@ -476,7 +476,7 @@ window_copy_scroll_to(struct window_pane *wp, u_int px, u_int py)
 		offset = py + gap - gd->sy;
 		data->cy = py - offset;
 	}
- 	data->oy = gd->hsize - offset;
+	data->oy = gd->hsize - offset;
 
 	window_copy_redraw_screen(wp);
 }
@@ -490,7 +490,7 @@ window_copy_search_compare(
 
 	gc = grid_peek_cell(gd, px, py);
 	sgc = grid_peek_cell(sgd, spx, 0);
-	
+
 	if ((gc->flags & GRID_FLAG_UTF8) != (sgc->flags & GRID_FLAG_UTF8))
 		return (0);
 
@@ -674,7 +674,7 @@ window_copy_goto_line(struct window_pane *wp, const char *linestr)
 	lineno = strtonum(linestr, 0, screen_hsize(&wp->base), &errstr);
 	if (errstr != NULL)
 		return;
-	
+
 	data->oy = lineno;
 	window_copy_redraw_screen(wp);
 }
@@ -893,8 +893,8 @@ window_copy_copy_line(struct window_pane *wp,
     char **buf, size_t *off, u_int sy, u_int sx, u_int ex)
 {
 	struct grid		*gd = wp->base.grid;
- 	const struct grid_cell	*gc;
- 	const struct grid_utf8	*gu;
+	const struct grid_cell	*gc;
+	const struct grid_utf8	*gu;
 	struct grid_line	*gl;
 	u_int			 i, xx, wrapped = 0;
 	size_t			 size;
@@ -907,7 +907,7 @@ window_copy_copy_line(struct window_pane *wp,
 	 * on screen.
 	 */
 	gl = &gd->linedata[sy];
- 	if (gl->flags & GRID_LINE_WRAPPED && gl->cellsize <= gd->sx)
+	if (gl->flags & GRID_LINE_WRAPPED && gl->cellsize <= gd->sx)
 		wrapped = 1;
 
 	/* If the line was wrapped, don't strip spaces (use the full length). */
@@ -938,7 +938,7 @@ window_copy_copy_line(struct window_pane *wp,
 	}
 
 	/* Only add a newline if the line wasn't wrapped. */
- 	if (!wrapped) {
+	if (!wrapped) {
 		*buf = xrealloc(*buf, 1, (*off) + 1);
 		(*buf)[(*off)++] = '\n';
 	}

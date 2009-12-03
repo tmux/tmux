@@ -72,7 +72,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	wp = TAILQ_FIRST(&w->panes);
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	layout_free(w);
- 	window_destroy_panes(w);
+	window_destroy_panes(w);
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	window_pane_resize(wp, w->sx, w->sy);
 	if (window_pane_spawn(

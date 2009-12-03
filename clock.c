@@ -134,13 +134,13 @@ clock_draw(struct screen_write_ctx *ctx, int colour, int style)
 	for (ptr = tim; *ptr != '\0'; ptr++) {
 		if (*ptr >= '0' && *ptr <= '9')
 			idx = *ptr - '0';
- 		else if (*ptr == ':')
+		else if (*ptr == ':')
 			idx = 10;
- 		else if (*ptr == 'A')
+		else if (*ptr == 'A')
 			idx = 11;
- 		else if (*ptr == 'P')
+		else if (*ptr == 'P')
 			idx = 12;
- 		else if (*ptr == 'M')
+		else if (*ptr == 'M')
 			idx = 13;
 		else {
 			x += 6;

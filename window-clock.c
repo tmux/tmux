@@ -78,7 +78,7 @@ window_clock_resize(struct window_pane *wp, u_int sx, u_int sy)
 	struct window_clock_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 
- 	screen_resize(s, sx, sy);
+	screen_resize(s, sx, sy);
 	window_clock_draw_screen(wp);
 }
 

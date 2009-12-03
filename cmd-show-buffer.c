@@ -73,24 +73,24 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	width = s->sx;
 	if (ctx->cmdclient != NULL)
 		width = ctx->cmdclient->tty.sx;
-	
+
 	buf = xmalloc(width + 1);
 	len = 0;
-	
+
 	ptr = in;
 	do {
 		buf[len++] = *ptr++;
-		
+
 		if (len == width || buf[len - 1] == '\n') {
 			if (buf[len - 1] == '\n')
 				len--;
 			buf[len] = '\0';
 
-			ctx->print(ctx, "%s", buf);		
+			ctx->print(ctx, "%s", buf);
 			len = 0;
 		}
 	} while (*ptr != '\0');
-	
+
 	if (len != 0) {
 		buf[len] = '\0';
 		ctx->print(ctx, "%s", buf);

@@ -56,7 +56,7 @@ cmd_resize_pane_init(struct cmd *self, int key)
 		cmd_set_flag(&data->chflags, 'L');
 	if (key == (KEYC_RIGHT | KEYC_CTRL))
 		cmd_set_flag(&data->chflags, 'R');
-	
+
 	if (key == (KEYC_UP | KEYC_ESCAPE)) {
 		cmd_set_flag(&data->chflags, 'U');
 		data->arg = xstrdup("5");

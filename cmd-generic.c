@@ -141,7 +141,7 @@ cmd_fill_argument(int flags, char **arg, char **arg2, int argc, char **argv)
 		if (argc == 2)
 			*arg2 = xstrdup(argv[1]);
 		return (0);
-	}		
+	}
 
 	if (argc != 0)
 		return (-1);
@@ -225,9 +225,9 @@ cmd_target_print(struct cmd *self, char *buf, size_t len)
 	off += cmd_print_flags(buf, len, off, data->chflags);
 	if (off < len && data->target != NULL)
 		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
- 	if (off < len && data->arg != NULL)
+	if (off < len && data->arg != NULL)
 		off += cmd_prarg(buf + off, len - off, " ", data->arg);
- 	if (off < len && data->arg2 != NULL)
+	if (off < len && data->arg2 != NULL)
 		off += cmd_prarg(buf + off, len - off, " ", data->arg2);
 	return (off);
 }
@@ -317,9 +317,9 @@ cmd_srcdst_print(struct cmd *self, char *buf, size_t len)
 		off += xsnprintf(buf + off, len - off, " -s %s", data->src);
 	if (off < len && data->dst != NULL)
 		off += xsnprintf(buf + off, len - off, " -t %s", data->dst);
- 	if (off < len && data->arg != NULL)
+	if (off < len && data->arg != NULL)
 		off += cmd_prarg(buf + off, len - off, " ", data->arg);
- 	if (off < len && data->arg2 != NULL)
+	if (off < len && data->arg2 != NULL)
 		off += cmd_prarg(buf + off, len - off, " ", data->arg2);
 	return (off);
 }
@@ -415,9 +415,9 @@ cmd_buffer_print(struct cmd *self, char *buf, size_t len)
 		off += xsnprintf(buf + off, len - off, " -b %d", data->buffer);
 	if (off < len && data->target != NULL)
 		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
- 	if (off < len && data->arg != NULL)
+	if (off < len && data->arg != NULL)
 		off += cmd_prarg(buf + off, len - off, " ", data->arg);
- 	if (off < len && data->arg2 != NULL)
+	if (off < len && data->arg2 != NULL)
 		off += cmd_prarg(buf + off, len - off, " ", data->arg2);
 	return (off);
 }

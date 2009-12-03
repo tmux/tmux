@@ -94,12 +94,12 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		ctx->print(ctx, "%2d: %s (%d, %d): %s [%ux%u %s] "
 		    "[flags=0x%x/0x%x, references=%u]", i, c->tty.path,
 		    c->ibuf.fd, c->tty.fd, c->session->name,
-		    c->tty.sx, c->tty.sy, c->tty.termname, c->flags, 
+		    c->tty.sx, c->tty.sy, c->tty.termname, c->flags,
 		    c->tty.flags, c->references);
 	}
 	ctx->print(ctx, "%s", "");
 
- 	ctx->print(ctx, "Sessions: [%zu/%zu]",
+	ctx->print(ctx, "Sessions: [%zu/%zu]",
 	    sizeof (struct grid_cell), sizeof (struct grid_utf8));
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
@@ -148,7 +148,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	}
 	ctx->print(ctx, "%s", "");
 
-  	ctx->print(ctx, "Terminals:");
+	ctx->print(ctx, "Terminals:");
 	SLIST_FOREACH(term, &tty_terms, entry) {
 		ctx->print(ctx, "%s [references=%u, flags=0x%x]:",
 		    term->name, term->references, term->flags);
@@ -180,7 +180,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	}
 	ctx->print(ctx, "%s", "");
 
-  	ctx->print(ctx, "Jobs:");
+	ctx->print(ctx, "Jobs:");
 	SLIST_FOREACH(job, &all_jobs, lentry) {
 		ctx->print(ctx, "%s [fd=%d, pid=%d, status=%d, flags=0x%x]",
 		    job->cmd, job->fd, job->pid, job->status, job->flags);

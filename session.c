@@ -165,7 +165,7 @@ session_create(const char *name, const char *cmd, const char *cwd,
 		s->name = xstrdup(name);
 	else
 		xasprintf(&s->name, "%u", i);
-	
+
 	if (cmd != NULL) {
 		if (session_new(s, NULL, cmd, cwd, idx, cause) == NULL) {
 			session_destroy(s);
@@ -208,7 +208,7 @@ session_destroy(struct session *s)
 		winlink_remove(&s->windows, RB_ROOT(&s->windows));
 
 	xfree(s->name);
-	
+
 	for (i = 0; i < ARRAY_LENGTH(&dead_sessions); i++) {
 		if (ARRAY_ITEM(&dead_sessions, i) == NULL) {
 			ARRAY_SET(&dead_sessions, i, s);
@@ -233,7 +233,7 @@ session_index(struct session *s, u_int *i)
 
 /* Create a new window on a session. */
 struct winlink *
-session_new(struct session *s, 
+session_new(struct session *s,
     const char *name, const char *cmd, const char *cwd, int idx, char **cause)
 {
 	struct window	*w;
@@ -463,7 +463,7 @@ session_group_index(struct session_group *sg)
 
 /*
  * Add a session to the session group containing target, creating it if
- * necessary. 
+ * necessary.
  */
 void
 session_group_add(struct session *target, struct session *s)

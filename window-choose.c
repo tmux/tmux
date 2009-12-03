@@ -27,11 +27,11 @@ void	window_choose_free(struct window_pane *);
 void	window_choose_resize(struct window_pane *, u_int, u_int);
 void	window_choose_key(struct window_pane *, struct client *, int);
 void	window_choose_mouse(
-    	    struct window_pane *, struct client *, struct mouse_event *);
+	    struct window_pane *, struct client *, struct mouse_event *);
 
 void	window_choose_redraw_screen(struct window_pane *);
 void	window_choose_write_line(
-    	    struct window_pane *, struct screen_write_ctx *, u_int);
+	    struct window_pane *, struct screen_write_ctx *, u_int);
 
 void	window_choose_scroll_up(struct window_pane *);
 void	window_choose_scroll_down(struct window_pane *);
@@ -247,7 +247,7 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 			else
 				data->top -= screen_size_y(s);
 		}
- 		window_choose_redraw_screen(wp);
+		window_choose_redraw_screen(wp);
 		break;
 	case MODEKEYCHOICE_PAGEDOWN:
 		data->selected += screen_size_y(s);
@@ -268,7 +268,7 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 		if (idx < 0 || (u_int) idx >= ARRAY_LENGTH(&data->list))
 			break;
 		data->selected = idx;
-		
+
 		item = &ARRAY_ITEM(&data->list, data->selected);
 		data->callbackfn(data->data, item->idx);
 		window_pane_reset_mode(wp);
@@ -312,7 +312,7 @@ window_choose_write_line(
 	struct options			*oo = &wp->window->options;
 	struct screen			*s = &data->screen;
 	struct grid_cell		 gc;
- 	int				 utf8flag;
+	int				 utf8flag;
 	char				 key;
 
 	if (data->callbackfn == NULL)

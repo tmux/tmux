@@ -116,10 +116,10 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	cdata->client = ctx->curclient;
 	cdata->client->references++;
 
-	window_choose_ready(wl->window->active, 
+	window_choose_ready(wl->window->active,
 	    cur, cmd_choose_window_callback, cmd_choose_window_free, cdata);
 
- 	return (0);
+	return (0);
 }
 
 void
@@ -133,7 +133,7 @@ cmd_choose_window_callback(void *data, int idx)
 	if (idx == -1)
 		return;
 	if (cdata->client->flags & CLIENT_DEAD)
-		return;	
+		return;
 	if (cdata->session->flags & SESSION_DEAD)
 		return;
 	if (cdata->client->session != cdata->session)

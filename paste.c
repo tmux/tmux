@@ -106,7 +106,7 @@ paste_free_index(struct paste_stack *ps, u_int idx)
 	return (0);
 }
 
-/* 
+/*
  * Add an item onto the top of the stack, freeing the bottom if at limit. Note
  * that the caller is responsible for allocating data.
  */
@@ -133,7 +133,7 @@ paste_add(struct paste_stack *ps, char *data, size_t size, u_int limit)
 }
 
 
-/* 
+/*
  * Replace an item on the stack. Note that the caller is responsible for
  * allocating data.
  */

@@ -80,7 +80,7 @@ job_add(struct jobs *jobs, int flags, struct client *c, const char *cmd,
     void (*callbackfn)(struct job *), void (*freefn)(void *), void *data)
 {
 	struct job	*job;
- 
+
 	job = xmalloc(sizeof *job);
 	job->cmd = xstrdup(cmd);
 	job->pid = -1;
@@ -183,7 +183,7 @@ job_run(struct job *job)
 
 		if (job->event != NULL)
 			bufferevent_free(job->event);
-		job->event = 
+		job->event =
 		    bufferevent_new(job->fd, NULL, NULL, job_callback, job);
 		bufferevent_enable(job->event, EV_READ);
 
@@ -216,7 +216,7 @@ job_died(struct job *job, int status)
 {
 	job->status = status;
 	job->pid = -1;
-	
+
 	if (job->fd == -1) {
 		if (job->callbackfn != NULL)
 			job->callbackfn(job);

@@ -125,7 +125,7 @@ client_send_identify(int flags)
 
 	if (getcwd(data.cwd, sizeof data.cwd) == NULL)
 		*data.cwd = '\0';
-	
+
 	term = getenv("TERM");
 	if (term == NULL ||
 	    strlcpy(data.term, term, sizeof data.term) >= sizeof data.term)
@@ -143,7 +143,7 @@ client_send_environ(void)
 	struct msg_environ_data	data;
 	char		      **var;
 
- 	for (var = environ; *var != NULL; var++) {
+	for (var = environ; *var != NULL; var++) {
 		if (strlcpy(data.var, *var, sizeof data.var) >= sizeof data.var)
 			continue;
 		client_write_server(MSG_ENVIRON, &data, sizeof data);
@@ -153,7 +153,7 @@ client_send_environ(void)
 void
 client_write_server(enum msgtype type, void *buf, size_t len)
 {
- 	imsg_compose(&client_ibuf, type, PROTOCOL_VERSION, -1, -1, buf, len);
+	imsg_compose(&client_ibuf, type, PROTOCOL_VERSION, -1, -1, buf, len);
 }
 
 void
@@ -179,7 +179,7 @@ client_main(void)
 
 	/* Note: event_init() has already been called. */
 
- 	/* Set up signals. */
+	/* Set up signals. */
 	memset(&sigact, 0, sizeof sigact);
 	sigemptyset(&sigact.sa_mask);
 	sigact.sa_flags = SA_RESTART;
@@ -263,9 +263,9 @@ client_callback(unused int fd, short events, unused void *data)
 		if (client_dispatch() != 0) {
 			event_loopexit(NULL);
 			return;
-		}	
+		}
 	}
-	
+
 	if (events & EV_WRITE) {
 		if (msgbuf_write(&client_ibuf.w) < 0)
 			goto lost_server;
@@ -341,7 +341,7 @@ client_dispatch(void)
 			if (datalen != sizeof lockdata)
 				fatalx("bad MSG_LOCK size");
 			memcpy(&lockdata, imsg.data, sizeof lockdata);
-			
+
 			lockdata.cmd[(sizeof lockdata.cmd) - 1] = '\0';
 			system(lockdata.cmd);
 			client_write_server(MSG_UNLOCK, NULL, 0);

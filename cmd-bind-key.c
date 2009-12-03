@@ -152,7 +152,7 @@ cmd_bind_key_table(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "unknown command: %s", data->modecmd);
 		return (-1);
 	}
-	
+
 	mtmp.key = data->key & ~KEYC_PREFIX;
 	mtmp.mode = data->command_key ? 1 : 0;
 	if ((mbind = SPLAY_FIND(mode_key_tree, mtab->tree, &mtmp)) != NULL) {
