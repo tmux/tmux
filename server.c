@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.230 2009-11-28 14:50:37 tcunha Exp $ */
+/* $Id: server.c,v 1.231 2009-12-04 22:04:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -449,7 +449,7 @@ server_child_signal(void)
 		}
 		if (WIFSTOPPED(status))
 			server_child_stopped(pid, status);
-		else if (WIFEXITED(status))
+		else if (WIFEXITED(status) || WIFSIGNALED(status))
 			server_child_exited(pid, status);
 	}
 }
