@@ -1,4 +1,4 @@
-/* $Id: cmd-show-options.c,v 1.19 2009-12-04 22:11:23 tcunha Exp $ */
+/* $Id: cmd-show-options.c,v 1.20 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,7 +43,7 @@ const struct cmd_entry cmd_show_options_entry = {
 int
 cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data		*data = self->data;	
+	struct cmd_target_data		*data = self->data;
 	const struct set_option_entry	*table;
 	struct session			*s;
 	struct winlink			*wl;

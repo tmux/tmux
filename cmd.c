@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.133 2009-12-02 15:10:44 tcunha Exp $ */
+/* $Id: cmd.c,v 1.134 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -168,7 +168,7 @@ cmd_free_argv(int argc, char **argv)
 	int	i;
 
 	if (argc == 0)
-		return; 
+		return;
 	for (i = 0; i < argc; i++) {
 		if (argv[i] != NULL)
 			xfree(argv[i]);
@@ -509,7 +509,7 @@ cmd_lookup_session(const char *name, int *ambiguous)
 	 * be unique so an exact match can't be ambigious and can just be
 	 * returned.
 	 */
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {	
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
 			continue;
 		if (strcmp(name, s->name) == 0)
@@ -521,7 +521,7 @@ cmd_lookup_session(const char *name, int *ambiguous)
 	 * be ambiguous.
 	 */
 	sfound = NULL;
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {	
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
 			continue;
 		if (strncmp(name, s->name, strlen(name)) == 0 ||
@@ -533,7 +533,7 @@ cmd_lookup_session(const char *name, int *ambiguous)
 			sfound = s;
 		}
 	}
- 	return (sfound);
+	return (sfound);
 }
 
 /*
@@ -557,7 +557,7 @@ cmd_lookup_window(struct session *s, const char *name, int *ambiguous)
 		if ((wl = winlink_find_by_index(&s->windows, idx)) != NULL)
 			return (wl);
 	}
-		
+
 	/* Look for exact matches, error if more than one. */
 	wlfound = NULL;
 	RB_FOREACH(wl, winlinks, &s->windows) {
@@ -583,7 +583,7 @@ cmd_lookup_window(struct session *s, const char *name, int *ambiguous)
 			}
 			wlfound = wl;
 		}
-	}	
+	}
 	if (wlfound != NULL)
 		return (wlfound);
 
@@ -706,7 +706,7 @@ cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 		wl = s->curw;
 	else if ((wl = cmd_lookup_window(s, winptr, &ambiguous)) == NULL)
 		goto not_found;
-	
+
 	if (sessptr != NULL)
 		xfree(sessptr);
 	return (wl);
@@ -807,7 +807,7 @@ cmd_find_index(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 		ctx->error(ctx, "invalid index: %s", arg);
 		idx = -2;
 	}
-	
+
 	if (sessptr != NULL)
 		xfree(sessptr);
 	return (idx);
@@ -829,7 +829,7 @@ no_colon:
 
 no_session:
 	if (ambiguous)
- 		ctx->error(ctx, "multiple sessions: %s", arg);
+		ctx->error(ctx, "multiple sessions: %s", arg);
 	else
 		ctx->error(ctx, "session not found: %s", arg);
 	if (sessptr != NULL)
@@ -917,7 +917,7 @@ no_period:
 	/* Try index in the current session and window. */
 	if ((*wpp = window_pane_at_index(s->curw->window, idx)) == NULL)
 		goto lookup_window;
-	
+
 	return (s->curw);
 
 lookup_window:
@@ -925,7 +925,7 @@ lookup_window:
 	if ((wl = cmd_find_window(ctx, arg, sp)) != NULL)
 		*wpp = wl->window->active;
 	return (wl);
-	
+
 error:
 	xfree(winptr);
 	return (NULL);

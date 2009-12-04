@@ -1,4 +1,4 @@
-/* $Id: grid-utf8.c,v 1.1 2009-11-19 22:23:27 tcunha Exp $ */
+/* $Id: grid-utf8.c,v 1.2 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -92,5 +92,5 @@ grid_utf8_compare(const struct grid_utf8 *gu1, const struct grid_utf8 *gu2)
 		return (0);
 	if (memcmp(gu1->data, gu2->data, size) != 0)
 		return (0);
-	return (1);	
+	return (1);
 }

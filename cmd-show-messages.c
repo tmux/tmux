@@ -1,4 +1,4 @@
-/* $Id: cmd-show-messages.c,v 1.1 2009-11-19 22:20:04 tcunha Exp $ */
+/* $Id: cmd-show-messages.c,v 1.2 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -57,7 +57,7 @@ cmd_show_messages_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		tim = ctime(&msg->msg_time);
 		*strchr(tim, '\n') = '\0';
-		
+
 		ctx->print(ctx, "%s %s", tim, msg->msg);
 	}
 

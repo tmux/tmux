@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.35 2009-11-13 16:58:24 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.36 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,7 +42,7 @@
 /* Edit keys command strings. */
 struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 	{ MODEKEYEDIT_BACKSPACE, "backspace" },
- 	{ MODEKEYEDIT_CANCEL, "cancel" },
+	{ MODEKEYEDIT_CANCEL, "cancel" },
 	{ MODEKEYEDIT_COMPLETE, "complete" },
 	{ MODEKEYEDIT_CURSORLEFT, "cursor-left" },
 	{ MODEKEYEDIT_CURSORRIGHT, "cursor-right" },
@@ -61,7 +61,7 @@ struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 
 	{ 0, NULL }
 };
-	
+
 /* Choice keys command strings. */
 struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
 	{ MODEKEYCHOICE_CANCEL, "cancel" },
@@ -195,14 +195,14 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ KEYC_RIGHT,		0, MODEKEYCOPY_RIGHT },
 	{ KEYC_UP | KEYC_CTRL,	0, MODEKEYCOPY_SCROLLUP },
 	{ KEYC_UP,		0, MODEKEYCOPY_UP },
-	
+
 	{ 0,			-1, 0 }
 };
 struct mode_key_tree mode_key_tree_vi_copy;
 
 /* emacs editing keys. */
 const struct mode_key_entry mode_key_emacs_edit[] = {
-	{ '\001' /* C-a */,	0, MODEKEYEDIT_STARTOFLINE }, 
+	{ '\001' /* C-a */,	0, MODEKEYEDIT_STARTOFLINE },
 	{ '\002' /* C-b */,	0, MODEKEYEDIT_CURSORLEFT },
 	{ '\003' /* C-c */,	0, MODEKEYEDIT_CANCEL },
 	{ '\004' /* C-d */,	0, MODEKEYEDIT_DELETE },
@@ -218,7 +218,7 @@ const struct mode_key_entry mode_key_emacs_edit[] = {
 	{ '\031' /* C-y */,	0, MODEKEYEDIT_PASTE },
 	{ '\033' /* Escape */,	0, MODEKEYEDIT_CANCEL },
 	{ '\r',			0, MODEKEYEDIT_ENTER },
-	{ 'm' | KEYC_ESCAPE,	0, MODEKEYEDIT_STARTOFLINE }, 
+	{ 'm' | KEYC_ESCAPE,	0, MODEKEYEDIT_STARTOFLINE },
 	{ KEYC_BSPACE,		0, MODEKEYEDIT_BACKSPACE },
 	{ KEYC_DC,		0, MODEKEYEDIT_DELETE },
 	{ KEYC_DOWN,		0, MODEKEYEDIT_HISTORYDOWN },
@@ -287,7 +287,7 @@ const struct mode_key_entry mode_key_emacs_copy[] = {
 	{ KEYC_UP | KEYC_ESCAPE, 0, MODEKEYCOPY_HALFPAGEUP },
 	{ KEYC_UP,		0, MODEKEYCOPY_UP },
 
-	{ 0,			-1, 0 }	
+	{ 0,			-1, 0 }
 };
 struct mode_key_tree mode_key_tree_emacs_copy;
 
@@ -343,7 +343,7 @@ const struct mode_key_table *
 mode_key_findtable(const char *name)
 {
 	const struct mode_key_table	*mtab;
-		
+
 	for (mtab = mode_key_tables; mtab->name != NULL; mtab++) {
 		if (strcasecmp(name, mtab->name) == 0)
 			return (mtab);

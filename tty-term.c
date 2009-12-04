@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.39 2009-12-03 14:33:27 nicm Exp $ */
+/* $Id: tty-term.c,v 1.40 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -230,7 +230,7 @@ tty_term_override(struct tty_term *term, const char *overrides)
 	termnext = s;
 	while ((termstr = strsep(&termnext, ",")) != NULL) {
 		entnext = termstr;
-		
+
 		entstr = strsep(&entnext, ":");
 		if (entstr == NULL || entnext == NULL)
 			continue;
@@ -242,7 +242,7 @@ tty_term_override(struct tty_term *term, const char *overrides)
 
 			val = NULL;
 			removeflag = 0;
- 			if ((ptr = strchr(entstr, '=')) != NULL) {
+			if ((ptr = strchr(entstr, '=')) != NULL) {
 				*ptr++ = '\0';
 				val = xstrdup(ptr);
 				if (strunvis(val, ptr) == -1) {
@@ -324,10 +324,12 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 	if (setupterm(name, fd, &error) != OK) {
 		switch (error) {
 		case 1:
-			xasprintf(cause, "can't use hardcopy terminal: %s", name);
+			xasprintf(
+			    cause, "can't use hardcopy terminal: %s", name);
 			break;
 		case 0:
-			xasprintf(cause, "missing or unsuitable terminal: %s", name);
+			xasprintf(
+			    cause, "missing or unsuitable terminal: %s", name);
 			break;
 		case -1:
 			xasprintf(cause, "can't find terminfo database");

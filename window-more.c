@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.39 2009-11-28 14:50:37 tcunha Exp $ */
+/* $Id: window-more.c,v 1.40 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ void	window_more_key(struct window_pane *, struct client *, int);
 
 void	window_more_redraw_screen(struct window_pane *);
 void	window_more_write_line(
-    	    struct window_pane *, struct screen_write_ctx *, u_int);
+	    struct window_pane *, struct screen_write_ctx *, u_int);
 
 void	window_more_scroll_up(struct window_pane *);
 void	window_more_scroll_down(struct window_pane *);
@@ -165,11 +165,11 @@ window_more_write_line(
 {
 	struct window_more_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	struct options			*oo = &wp->window->options;	
+	struct options			*oo = &wp->window->options;
 	struct grid_cell		 gc;
 	char   				*msg, hdr[32];
 	size_t	 			 size;
- 	int				 utf8flag;
+	int				 utf8flag;
 
 	utf8flag = options_get_number(&wp->window->options, "utf8");
 	memcpy(&gc, &grid_default_cell, sizeof gc);

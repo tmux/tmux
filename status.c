@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.139 2009-12-04 22:11:23 tcunha Exp $ */
+/* $Id: status.c,v 1.140 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -37,9 +37,9 @@ char   *status_job(struct client *, char **);
 void	status_job_callback(struct job *);
 size_t	status_width(struct client *, struct winlink *, time_t);
 char   *status_print(
-    	    struct client *, struct winlink *, time_t, struct grid_cell *);
+	    struct client *, struct winlink *, time_t, struct grid_cell *);
 void	status_replace1(struct client *,
-    	    struct winlink *, char **, char **, char *, size_t, int);
+	    struct winlink *, char **, char **, char *, size_t, int);
 void	status_message_callback(int, short, void *);
 
 void	status_prompt_add_history(struct client *);
@@ -163,7 +163,7 @@ status_redraw(struct client *c)
 	 * Figure out how much space we have for the window list. If there
 	 * isn't enough space, just show a blank status line.
 	 */
-        needed = 0;
+	needed = 0;
 	if (llen != 0)
 		needed += llen + 1;
 	if (rlen != 0)
@@ -179,7 +179,7 @@ status_redraw(struct client *c)
 			xfree(wl->status_text);
 		memcpy(&wl->status_cell, &stdgc, sizeof wl->status_cell);
 		wl->status_text = status_print(c, wl, t, &wl->status_cell);
-		wl->status_width = 
+		wl->status_width =
 		    screen_write_cstrlen(utf8flag, "%s", wl->status_text);
 
 		if (wl == s->curw)
@@ -193,7 +193,7 @@ status_redraw(struct client *c)
 	/* And draw the window list into it. */
 	screen_write_start(&ctx, NULL, &window_list);
 	RB_FOREACH(wl, winlinks, &s->windows) {
- 		screen_write_cnputs(&ctx,
+		screen_write_cnputs(&ctx,
 		    -1, &wl->status_cell, utf8flag, "%s", wl->status_text);
 		screen_write_putc(&ctx, &stdgc, ' ');
 	}
@@ -227,7 +227,7 @@ status_redraw(struct client *c)
 			larrow = 1;
 			wlavailable--;
 		}
-		
+
 		wlstart = wloffset + wlsize - wlavailable;
 		if (wlavailable > 0 && wlwidth > wlstart + wlavailable + 1) {
 			rarrow = 1;
@@ -271,7 +271,7 @@ status_redraw(struct client *c)
 	}
 
 draw:
- 	/* Begin drawing. */
+	/* Begin drawing. */
 	screen_write_start(&ctx, NULL, &c->status);
 
 	/* Draw the left string and arrow. */
@@ -320,7 +320,7 @@ draw:
 	/* Copy the window list. */
 	screen_write_cursormove(&ctx, wloffset, 0);
 	screen_write_copy(&ctx, &window_list, wlstart, 0, wlwidth, 1);
- 	screen_free(&window_list);
+	screen_free(&window_list);
 
 	screen_write_stop(&ctx);
 
@@ -355,7 +355,7 @@ status_replace1(struct client *c,struct winlink *wl,
 	limit = strtol(*iptr, &endptr, 10);
 	if ((limit == 0 && errno != EINVAL) ||
 	    (limit == LONG_MIN && errno != ERANGE) ||
-	    (limit == LONG_MAX && errno != ERANGE) || 
+	    (limit == LONG_MAX && errno != ERANGE) ||
 	    limit != 0)
 		*iptr = endptr;
 	if (limit <= 0)
@@ -412,7 +412,7 @@ status_replace1(struct client *c,struct winlink *wl,
 		ptr = tmp;
 		goto do_replace;
 	case '[':
-		/* 
+		/*
 		 * Embedded style, handled at display time. Leave present and
 		 * skip input until ].
 		 */
@@ -424,7 +424,7 @@ status_replace1(struct client *c,struct winlink *wl,
 	}
 
 	return;
-	
+
 do_replace:
 	ptrlen = strlen(ptr);
 	if ((size_t) limit < ptrlen)
@@ -779,7 +779,7 @@ status_prompt_set(struct client *c, const char *msg,
 void
 status_prompt_clear(struct client *c)
 {
- 	if (c->prompt_string == NULL)
+	if (c->prompt_string == NULL)
 		return;
 
 	if (c->prompt_freefn != NULL && c->prompt_data != NULL)
@@ -857,8 +857,8 @@ status_prompt_redraw(struct client *c)
 		screen_write_nputs(
 		    &ctx, left, &gc, utf8flag, "%s", c->prompt_buffer + off);
 
- 		for (i = len + size; i < c->tty.sx; i++)
- 			screen_write_putc(&ctx, &gc, ' ');
+		for (i = len + size; i < c->tty.sx; i++)
+			screen_write_putc(&ctx, &gc, ' ');
 	}
 
 	screen_write_stop(&ctx);
@@ -949,12 +949,12 @@ status_prompt_key(struct client *c, int key)
 		size -= last - first;
 
 		/* Insert the new word. */
- 		size += strlen(s);
+		size += strlen(s);
 		off = first - c->prompt_buffer;
- 		c->prompt_buffer = xrealloc(c->prompt_buffer, 1, size + 1);
+		c->prompt_buffer = xrealloc(c->prompt_buffer, 1, size + 1);
 		first = c->prompt_buffer + off;
- 		memmove(first + strlen(s), first, n);
- 		memcpy(first, s, strlen(s));
+		memmove(first + strlen(s), first, n);
+		memcpy(first, s, strlen(s));
 
 		c->prompt_index = (first - c->prompt_buffer) + strlen(s);
 		xfree(s);
@@ -974,7 +974,7 @@ status_prompt_key(struct client *c, int key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
- 	case MODEKEYEDIT_DELETE:
+	case MODEKEYEDIT_DELETE:
 		if (c->prompt_index != size) {
 			memmove(c->prompt_buffer + c->prompt_index,
 			    c->prompt_buffer + c->prompt_index + 1,
@@ -1056,7 +1056,7 @@ status_prompt_key(struct client *c, int key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
- 	case MODEKEYEDIT_ENTER:
+	case MODEKEYEDIT_ENTER:
 		if (*c->prompt_buffer != '\0')
 			status_prompt_add_history(c);
 		if (c->prompt_callbackfn(c->prompt_data, c->prompt_buffer) == 0)

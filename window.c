@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.124 2009-11-28 14:50:37 tcunha Exp $ */
+/* $Id: window.c,v 1.125 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -187,7 +187,7 @@ winlink_stack_remove(struct winlink_stack *stack, struct winlink *wl)
 
 	if (wl == NULL)
 		return;
-	
+
 	TAILQ_FOREACH(wl2, stack, sentry) {
 		if (wl2 == wl) {
 			TAILQ_REMOVE(stack, wl, sentry);
@@ -221,7 +221,7 @@ window_create1(u_int sx, u_int sy)
 
 	w->lastlayout = -1;
 	w->layout_root = NULL;
-	
+
 	w->sx = sx;
 	w->sy = sy;
 
@@ -426,7 +426,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->layout_cell = NULL;
 
 	wp->xoff = 0;
- 	wp->yoff = 0;
+	wp->yoff = 0;
 
 	wp->sx = sx;
 	wp->sy = sy;
@@ -511,7 +511,7 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 	ws.ws_col = screen_size_x(&wp->base);
 	ws.ws_row = screen_size_y(&wp->base);
 
- 	switch (wp->pid = forkpty(&wp->fd, wp->tty, NULL, &ws)) {
+	switch (wp->pid = forkpty(&wp->fd, wp->tty, NULL, &ws)) {
 	case -1:
 		wp->fd = -1;
 		xasprintf(cause, "%s: %s", cmd, strerror(errno));
@@ -672,7 +672,7 @@ window_pane_parse(struct window_pane *wp)
 		data = EVBUFFER_DATA(wp->event->input);
 		bufferevent_write(wp->pipe_event, data, new_size);
 	}
-	
+
 	input_parse(wp);
 
 	wp->pipe_off = EVBUFFER_LENGTH(wp->event->input);

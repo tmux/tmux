@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-pane.c,v 1.14 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-swap-pane.c,v 1.15 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -110,7 +110,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	dst_wp->layout_cell = src_lc;
 	dst_lc->wp = src_wp;
 	src_wp->layout_cell = dst_lc;
-	
+
 	src_wp->window = dst_w;
 	dst_wp->window = src_w;
 

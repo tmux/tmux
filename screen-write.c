@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.87 2009-11-28 14:50:36 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.88 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -183,7 +183,7 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 				break;
 			}
 			size += utf8data.width;
-			
+
 			gc->flags |= GRID_FLAG_UTF8;
 			screen_write_cell(ctx, gc, &utf8data);
 			gc->flags &= ~GRID_FLAG_UTF8;
@@ -376,7 +376,7 @@ screen_write_copy(struct screen_write_ctx *ctx,
 				bx = gl->cellsize;
 			else
 				bx = px + nx;
-			
+
 			for (xx = ax; xx < bx; xx++) {
 				if (xx >= gl->cellsize)
 					gc = &grid_default_cell;
@@ -646,7 +646,7 @@ screen_write_insertline(struct screen_write_ctx *ctx, u_int ny)
 		ny = s->rlower + 1 - s->cy;
 	if (ny == 0)
 		return;
-	
+
 	screen_write_initctx(ctx, &ttyctx, 0);
 
 	if (s->cy < s->rupper || s->cy > s->rlower)
@@ -682,7 +682,7 @@ screen_write_deleteline(struct screen_write_ctx *ctx, u_int ny)
 		tty_write(tty_cmd_deleteline, &ttyctx);
 		return;
 	}
-	
+
 	if (ny > s->rlower + 1 - s->cy)
 		ny = s->rlower + 1 - s->cy;
 	if (ny == 0)
@@ -728,7 +728,7 @@ screen_write_clearendofline(struct screen_write_ctx *ctx)
 	if (s->cx <= sx - 1)
 		grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1);
 
- 	tty_write(tty_cmd_clearendofline, &ttyctx);
+	tty_write(tty_cmd_clearendofline, &ttyctx);
 }
 
 /* Clear to start of line from cursor. */
@@ -863,7 +863,7 @@ screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
 		s->cy++;
 
 	ttyctx.num = wrapped;
- 	tty_write(tty_cmd_linefeed, &ttyctx);
+	tty_write(tty_cmd_linefeed, &ttyctx);
 }
 
 /* Carriage return (cursor to start of line). */
@@ -988,7 +988,7 @@ screen_write_cell(struct screen_write_ctx *ctx,
 
 	/*
 	 * If the width is zero, combine onto the previous character, if
-	 * there is space. 
+	 * there is space.
 	 */
 	if (width == 0) {
 		if (screen_write_combine(ctx, utf8data) == 0) {

@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.25 2009-11-28 14:50:36 tcunha Exp $ */
+/* $Id: server-client.c,v 1.26 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,7 +35,7 @@ void	server_client_reset_state(struct client *);
 int	server_client_msg_dispatch(struct client *);
 void	server_client_msg_command(struct client *, struct msg_command_data *);
 void	server_client_msg_identify(
-    	    struct client *, struct msg_identify_data *, int);
+	    struct client *, struct msg_identify_data *, int);
 void	server_client_msg_shell(struct client *);
 
 void printflike2 server_client_msg_error(struct cmd_ctx *, const char *, ...);
@@ -61,7 +61,7 @@ server_client_create(int fd)
 	c->references = 0;
 	imsg_init(&c->ibuf, fd);
 	server_update_event(c);
-	
+
 	if (gettimeofday(&c->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
 	memcpy(&c->activity_time, &c->creation_time, sizeof c->activity_time);
@@ -188,7 +188,7 @@ server_client_callback(int fd, short events, void *data)
 			goto client_lost;
 	}
 
-	server_update_event(c);	
+	server_update_event(c);
 	return;
 
 client_lost:
@@ -269,7 +269,7 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 	oo = &c->session->options;
 
 	/* Special case: number keys jump to pane in identify mode. */
-	if (c->flags & CLIENT_IDENTIFY && key >= '0' && key <= '9') {	
+	if (c->flags & CLIENT_IDENTIFY && key >= '0' && key <= '9') {
 		wp = window_pane_at_index(w, key - '0');
 		if (wp != NULL && window_pane_visible(wp))
 			window_set_active_pane(w, wp);
@@ -347,7 +347,7 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 	xtimeout = options_get_number(&c->session->options, "repeat-time");
 	if (xtimeout != 0 && bd->can_repeat) {
 		c->flags |= CLIENT_PREFIX|CLIENT_REPEAT;
-		
+
 		tv.tv_sec = xtimeout / 1000;
 		tv.tv_usec = (xtimeout % 1000) * 1000L;
 		evtimer_del(&c->repeat_timer);
@@ -488,7 +488,7 @@ server_client_set_title(struct client *c)
 	char		*title;
 
 	template = options_get_string(&s->options, "set-titles-string");
-	
+
 	title = status_replace(c, NULL, template, time(NULL), 1);
 	if (c->title == NULL || strcmp(title, c->title) != 0) {
 		if (c->title != NULL)
@@ -742,14 +742,14 @@ server_client_msg_shell(struct client *c)
 {
 	struct msg_shell_data	 data;
 	const char		*shell;
-	
+
 	shell = options_get_string(&global_s_options, "default-shell");
 
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 	if (strlcpy(data.shell, shell, sizeof data.shell) >= sizeof data.shell)
 		strlcpy(data.shell, _PATH_BSHELL, sizeof data.shell);
-	
+
 	server_write_client(c, MSG_SHELL, &data, sizeof data);
 	c->flags |= CLIENT_BAD;	/* it will die after exec */
 }

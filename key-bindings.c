@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.85 2009-11-19 22:20:04 tcunha Exp $ */
+/* $Id: key-bindings.c,v 1.86 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,11 +61,11 @@ key_bindings_add(int key, int can_repeat, struct cmd_list *cmdlist)
 	struct key_binding	*bd;
 
 	key_bindings_remove(key);
-		    
+
 	bd = xmalloc(sizeof *bd);
 	bd->key = key;
 	SPLAY_INSERT(key_bindings, &key_bindings, bd);
-	
+
 	bd->can_repeat = can_repeat;
 	bd->cmdlist = cmdlist;
 }
@@ -104,9 +104,9 @@ key_bindings_init(void)
 	} table[] = {
 		{ ' ',			  0, &cmd_next_layout_entry },
 		{ '!', 			  0, &cmd_break_pane_entry },
-		{ '"', 			  0, &cmd_split_window_entry },	
+		{ '"', 			  0, &cmd_split_window_entry },
 		{ '#', 			  0, &cmd_list_buffers_entry },
-		{ '%', 			  0, &cmd_split_window_entry },	
+		{ '%', 			  0, &cmd_split_window_entry },
 		{ '&', 			  0, &cmd_confirm_before_entry },
 		{ ',', 			  0, &cmd_command_prompt_entry },
 		{ '-', 			  0, &cmd_delete_buffer_entry },
@@ -162,7 +162,7 @@ key_bindings_init(void)
 		{ KEYC_LEFT | KEYC_ESCAPE,  1, &cmd_resize_pane_entry },
 		{ KEYC_RIGHT | KEYC_ESCAPE, 1, &cmd_resize_pane_entry },
 		{ KEYC_UP | KEYC_CTRL,    1, &cmd_resize_pane_entry },
-		{ KEYC_DOWN | KEYC_CTRL,  1, &cmd_resize_pane_entry },	
+		{ KEYC_DOWN | KEYC_CTRL,  1, &cmd_resize_pane_entry },
 		{ KEYC_LEFT | KEYC_CTRL,  1, &cmd_resize_pane_entry },
 		{ KEYC_RIGHT | KEYC_CTRL, 1, &cmd_resize_pane_entry },
 	};
@@ -199,7 +199,7 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 
 	*msg = toupper((u_char) *msg);
- 	status_message_set(ctx->curclient, "%s", msg);
+	status_message_set(ctx->curclient, "%s", msg);
 	xfree(msg);
 }
 
@@ -232,7 +232,7 @@ key_bindings_info(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 
 	*msg = toupper((u_char) *msg);
- 	status_message_set(ctx->curclient, "%s", msg);
+	status_message_set(ctx->curclient, "%s", msg);
 	xfree(msg);
 }
 

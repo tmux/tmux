@@ -1,4 +1,4 @@
-/* $Id: cmd-capture-pane.c,v 1.1 2009-12-02 15:10:44 tcunha Exp $ */
+/* $Id: cmd-capture-pane.c,v 1.2 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Jonathan Alvarado <radobobo@users.sourceforge.net>
@@ -48,7 +48,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct screen		*s;
 	struct session		*sess;
 	u_int			 i, limit;
-	size_t         		 len, linelen; 
+	size_t         		 len, linelen;
 
 	if (cmd_find_pane(ctx, data->target, &sess, &wp) == NULL)
 		return (-1);

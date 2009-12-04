@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.26 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-bind-key.c,v 1.27 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -152,7 +152,7 @@ cmd_bind_key_table(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "unknown command: %s", data->modecmd);
 		return (-1);
 	}
-	
+
 	mtmp.key = data->key & ~KEYC_PREFIX;
 	mtmp.mode = data->command_key ? 1 : 0;
 	if ((mbind = SPLAY_FIND(mode_key_tree, mtab->tree, &mtmp)) != NULL) {

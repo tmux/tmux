@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.49 2009-10-28 23:17:28 tcunha Exp $ */
+/* $Id: screen-redraw.c,v 1.50 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -67,7 +67,7 @@ screen_redraw_cell_border(struct client *c, u_int px, u_int py)
 		}
 
 		/* Top/bottom borders. */
-		if ((wp->xoff == 0 || px >= wp->xoff - 1) && 
+		if ((wp->xoff == 0 || px >= wp->xoff - 1) &&
 		    px <= wp->xoff + wp->sx) {
 			if (wp->yoff != 0 && py == wp->yoff - 1)
 				return (1);
@@ -105,7 +105,7 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py)
 		if (!screen_redraw_cell_border(c, px, py))
 			return (CELL_INSIDE);
 
-		/* 
+		/*
 		 * Construct a bitmask of whether the cells to the left (bit
 		 * 4), right, top, and bottom (bit 1) of this cell are borders.
 		 */
@@ -119,7 +119,7 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py)
 		if (py <= w->sy && screen_redraw_cell_border(c, px, py + 1))
 			borders |= 1;
 
-		/* 
+		/*
 		 * Figure out what kind of border this cell is. Only one bit
 		 * set doesn't make sense (can't have a border cell with no
 		 * others connected).
@@ -263,7 +263,7 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 		tty_puts(tty, buf);
 		return;
 	}
-	
+
 	px -= len * 3;
 	py -= 2;
 
@@ -275,7 +275,7 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 		if (*ptr < '0' || *ptr > '9')
 			continue;
 		idx = *ptr - '0';
-		
+
 		for (j = 0; j < 5; j++) {
 			for (i = px; i < px + 5; i++) {
 				tty_cursor(tty, xoff + i, yoff + py + j);

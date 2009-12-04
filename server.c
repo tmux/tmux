@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.231 2009-12-04 22:04:55 tcunha Exp $ */
+/* $Id: server.c,v 1.232 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -234,7 +234,7 @@ server_loop(void)
 
 		key_bindings_clean();
 		server_clean_dead();
-	} 
+	}
 }
 
 /* Check if the server should be shutting down (no more clients or windows). */
@@ -472,7 +472,7 @@ server_child_exited(pid_t pid, int status)
 				break;
 			}
 		}
-	}		
+	}
 
 	SLIST_FOREACH(job, &all_jobs, lentry) {
 		if (pid == job->pid) {
@@ -572,7 +572,7 @@ server_lock_server(void)
 void
 server_lock_sessions(void)
 {
-        struct session  *s;
+	struct session  *s;
 	u_int		 i;
 	int		 timeout;
 	time_t		 t;

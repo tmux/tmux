@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.88 2009-12-04 22:11:23 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.89 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,17 +34,17 @@ const char *cmd_set_option_print(
 void	cmd_set_option_string(struct cmd_ctx *,
 	    struct options *, const struct set_option_entry *, char *, int);
 void	cmd_set_option_number(struct cmd_ctx *,
-    	    struct options *, const struct set_option_entry *, char *);
+	    struct options *, const struct set_option_entry *, char *);
 void	cmd_set_option_keys(struct cmd_ctx *,
-    	    struct options *, const struct set_option_entry *, char *);
+	    struct options *, const struct set_option_entry *, char *);
 void	cmd_set_option_colour(struct cmd_ctx *,
-    	    struct options *, const struct set_option_entry *, char *);
+	    struct options *, const struct set_option_entry *, char *);
 void	cmd_set_option_attributes(struct cmd_ctx *,
-    	    struct options *, const struct set_option_entry *, char *);
+	    struct options *, const struct set_option_entry *, char *);
 void	cmd_set_option_flag(struct cmd_ctx *,
-    	    struct options *, const struct set_option_entry *, char *);
+	    struct options *, const struct set_option_entry *, char *);
 void	cmd_set_option_choice(struct cmd_ctx *,
-    	    struct options *, const struct set_option_entry *, char *);
+	    struct options *, const struct set_option_entry *, char *);
 
 const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set",
@@ -103,7 +103,7 @@ const struct set_option_entry set_session_option_table[] = {
 	{ "status-bg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "status-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "status-interval", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
-	{ "status-justify", 
+	{ "status-justify",
 	  SET_OPTION_CHOICE, 0, 0, set_option_status_justify_list },
 	{ "status-keys", SET_OPTION_CHOICE, 0, 0, set_option_status_keys_list },
 	{ "status-left", SET_OPTION_STRING, 0, 0, NULL },
@@ -116,11 +116,11 @@ const struct set_option_entry set_session_option_table[] = {
 	{ "status-right-bg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "status-right-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "status-right-length", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
-	{ "status-utf8", SET_OPTION_FLAG, 0, 0, NULL },	
+	{ "status-utf8", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "terminal-overrides", SET_OPTION_STRING, 0, 0, NULL },
 	{ "update-environment", SET_OPTION_STRING, 0, 0, NULL },
 	{ "visual-activity", SET_OPTION_FLAG, 0, 0, NULL },
-	{ "visual-bell", SET_OPTION_FLAG, 0, 0, NULL },	
+	{ "visual-bell", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "visual-content", SET_OPTION_FLAG, 0, 0, NULL },
 	{ NULL, 0, 0, 0, NULL }
 };
@@ -266,7 +266,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			server_redraw_client(c);
 	}
 
-	/* 
+	/*
 	 * Special-case: kill all persistent jobs if status-left, status-right
 	 * or set-titles-string have changed. Persistent jobs are only used by
 	 * the status line at the moment so this works XXX.
@@ -282,7 +282,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 			jobs = &c->status_jobs;
 			do {
-				try_again = 0;	
+				try_again = 0;
 				job = RB_ROOT(jobs);
 				while (job != NULL) {
 					nextjob = RB_NEXT(jobs, jobs, job);
@@ -366,7 +366,7 @@ cmd_set_option_string(struct cmd_ctx *ctx, struct options *oo,
 		xasprintf(&newvalue, "%s%s", oldvalue, value);
 	} else
 		newvalue = value;
-		
+
 	o = options_set_string(oo, entry->name, "%s", newvalue);
 	ctx->info(ctx,
 	    "set option: %s -> %s", o->name, cmd_set_option_print(entry, o));

@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.41 2009-11-28 14:50:36 tcunha Exp $ */
+/* $Id: cmd-new-window.c,v 1.42 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -166,7 +166,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (!data->flag_detached) {
 		session_select(s, wl->idx);
 		server_redraw_session_group(s);
-	} else	
+	} else
 		server_status_session_group(s);
 
 	return (0);

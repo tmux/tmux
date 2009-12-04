@@ -1,4 +1,4 @@
-/* $Id: cmd-select-layout.c,v 1.9 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-select-layout.c,v 1.10 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,7 +52,7 @@ cmd_select_layout_init(struct cmd *self, int key)
 		break;
 	case ('2' | KEYC_ESCAPE):
 		data->arg = xstrdup("even-vertical");
-    		break;
+		break;
 	case ('3' | KEYC_ESCAPE):
 		data->arg = xstrdup("main-horizontal");
 		break;
@@ -80,7 +80,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "unknown layout or ambiguous: %s", data->arg);
 		return (-1);
 	}
-	
+
 	layout = layout_set_select(wl->window, layout);
 	ctx->info(ctx, "arranging in: %s", layout_set_name(layout));
 

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.192 2009-11-28 14:50:37 tcunha Exp $ */
+/* $Id: tmux.c,v 1.193 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -222,7 +222,7 @@ int
 main(int argc, char **argv)
 {
 	struct cmd_list		*cmdlist;
- 	struct cmd		*cmd;
+	struct cmd		*cmd;
 	enum msgtype		 msg;
 	struct passwd		*pw;
 	struct options		*so, *wo;
@@ -314,7 +314,7 @@ main(int argc, char **argv)
 	}
 
 	environ_init(&global_environ);
- 	for (var = environ; *var != NULL; var++)
+	for (var = environ; *var != NULL; var++)
 		environ_put(&global_environ, *var);
 
 	options_init(&global_s_options, NULL);
@@ -397,10 +397,10 @@ main(int argc, char **argv)
 	options_set_string(wo, "window-status-format", "#I:#W#F");
 	options_set_string(wo, "window-status-current-format", "#I:#W#F");
 	options_set_number(wo, "xterm-keys", 0);
- 	options_set_number(wo, "remain-on-exit", 0);
+	options_set_number(wo, "remain-on-exit", 0);
 	options_set_number(wo, "synchronize-panes", 0);
 
- 	if (flags & IDENTIFY_UTF8) {
+	if (flags & IDENTIFY_UTF8) {
 		options_set_number(so, "status-utf8", 1);
 		options_set_number(wo, "utf8", 1);
 	} else {
@@ -435,7 +435,7 @@ main(int argc, char **argv)
 			exit(1);
 		}
 	}
-	
+
 	if (label == NULL)
 		label = xstrdup("default");
 	if (path == NULL && (path = makesockpath(label)) == NULL) {
@@ -450,14 +450,14 @@ main(int argc, char **argv)
 		len = 0;
 	} else {
 		fill_session(&cmddata);
-	
+
 		cmddata.argc = argc;
 		if (cmd_pack_argv(
 		    argc, argv, cmddata.argv, sizeof cmddata.argv) != 0) {
 			log_warnx("command too long");
 			exit(1);
 		}
-		
+
 		msg = MSG_COMMAND;
 		buf = &cmddata;
 		len = sizeof cmddata;
@@ -507,7 +507,7 @@ main(int argc, char **argv)
 	unsetenv("EVENT_NOPOLL");
 #endif
 
- 	imsg_compose(main_ibuf, msg, PROTOCOL_VERSION, -1, -1, buf, len);
+	imsg_compose(main_ibuf, msg, PROTOCOL_VERSION, -1, -1, buf, len);
 
 	main_set_signals();
 
@@ -543,7 +543,7 @@ main_set_signals(void)
 		fatal("sigaction failed");
 	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
 		fatal("sigaction failed");
-	
+
 	signal_set(&main_ev_sigterm, SIGTERM, main_signal, NULL);
 	signal_add(&main_ev_sigterm, NULL);
 }
@@ -567,7 +567,7 @@ main_clear_signals(void)
 		fatal("sigaction failed");
 	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
 		fatal("sigaction failed");
-	
+
 	event_del(&main_ev_sigterm);
 }
 
@@ -589,7 +589,7 @@ main_callback(unused int fd, short events, void *data)
 
 	if (events & EV_READ)
 		main_dispatch(shellcmd);
-	
+
 	if (events & EV_WRITE) {
 		if (msgbuf_write(&main_ibuf->w) < 0)
 			fatalx("msgbuf_write failed");

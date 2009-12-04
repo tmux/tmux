@@ -1,4 +1,4 @@
-/* $Id: cmd-send-keys.c,v 1.23 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-send-keys.c,v 1.24 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,7 +33,7 @@ size_t	cmd_send_keys_print(struct cmd *, char *, size_t);
 
 struct cmd_send_keys_data {
 	char	*target;
-  	u_int	 nkeys;
+	u_int	 nkeys;
 	int	*keys;
 };
 

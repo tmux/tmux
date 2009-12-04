@@ -1,4 +1,4 @@
-/* $Id: paste.c,v 1.12 2009-11-28 14:54:12 tcunha Exp $ */
+/* $Id: paste.c,v 1.13 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -106,7 +106,7 @@ paste_free_index(struct paste_stack *ps, u_int idx)
 	return (0);
 }
 
-/* 
+/*
  * Add an item onto the top of the stack, freeing the bottom if at limit. Note
  * that the caller is responsible for allocating data.
  */
@@ -133,7 +133,7 @@ paste_add(struct paste_stack *ps, char *data, size_t size, u_int limit)
 }
 
 
-/* 
+/*
  * Replace an item on the stack. Note that the caller is responsible for
  * allocating data.
  */

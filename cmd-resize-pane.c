@@ -1,4 +1,4 @@
-/* $Id: cmd-resize-pane.c,v 1.13 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-resize-pane.c,v 1.14 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,7 +56,7 @@ cmd_resize_pane_init(struct cmd *self, int key)
 		cmd_set_flag(&data->chflags, 'L');
 	if (key == (KEYC_RIGHT | KEYC_CTRL))
 		cmd_set_flag(&data->chflags, 'R');
-	
+
 	if (key == (KEYC_UP | KEYC_ESCAPE)) {
 		cmd_set_flag(&data->chflags, 'U');
 		data->arg = xstrdup("5");

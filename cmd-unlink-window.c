@@ -1,4 +1,4 @@
-/* $Id: cmd-unlink-window.c,v 1.20 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-unlink-window.c,v 1.21 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,7 +63,7 @@ cmd_unlink_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "window is only linked to one session");
 		return (-1);
 	}
-	
+
 	server_unlink_window(s, wl);
 	recalculate_sizes();
 

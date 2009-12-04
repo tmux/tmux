@@ -1,4 +1,4 @@
-/* $Id: cmd-pipe-pane.c,v 1.9 2009-11-28 14:50:36 tcunha Exp $ */
+/* $Id: cmd-pipe-pane.c,v 1.10 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -86,7 +86,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	switch (fork()) {
 	case -1:
 		ctx->error(ctx, "fork error: %s", strerror(errno));
-		return (-1);		
+		return (-1);
 	case 0:
 		/* Child process. */
 		close(pipe_fd[0]);
@@ -113,17 +113,17 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		wp->pipe_fd = pipe_fd[0];
 		wp->pipe_off = EVBUFFER_LENGTH(wp->event->input);
-		
+
 		wp->pipe_event = bufferevent_new(wp->pipe_fd,
 		    NULL, NULL, cmd_pipe_pane_error_callback, wp);
 		bufferevent_enable(wp->pipe_event, EV_WRITE);
-		
+
 		if ((mode = fcntl(wp->pipe_fd, F_GETFL)) == -1)
 			fatal("fcntl failed");
 		if (fcntl(wp->pipe_fd, F_SETFL, mode|O_NONBLOCK) == -1)
 			fatal("fcntl failed");
 		if (fcntl(wp->pipe_fd, F_SETFD, FD_CLOEXEC) == -1)
-			fatal("fcntl failed");	
+			fatal("fcntl failed");
 		return (0);
 	}
 }

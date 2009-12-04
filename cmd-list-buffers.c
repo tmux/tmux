@@ -1,4 +1,4 @@
-/* $Id: cmd-list-buffers.c,v 1.14 2009-11-28 14:54:12 tcunha Exp $ */
+/* $Id: cmd-list-buffers.c,v 1.15 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -70,7 +70,7 @@ cmd_list_buffers_exec(struct cmd *self, struct cmd_ctx *ctx)
 			tmp[50 - 3] = '\0';
 			strlcat(tmp, "...", sizeof tmp);
 		}
-		
+
 		ctx->print(ctx, "%u: %zu bytes: \"%s\"", idx - 1, size, tmp);
 	}
 

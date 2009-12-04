@@ -1,4 +1,4 @@
-/* $Id: window-clock.c,v 1.10 2009-11-28 14:57:59 tcunha Exp $ */
+/* $Id: window-clock.c,v 1.11 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -78,7 +78,7 @@ window_clock_resize(struct window_pane *wp, u_int sx, u_int sy)
 	struct window_clock_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 
- 	screen_resize(s, sx, sy);
+	screen_resize(s, sx, sy);
 	window_clock_draw_screen(wp);
 }
 

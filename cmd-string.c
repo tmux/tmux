@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.28 2009-11-28 14:45:30 tcunha Exp $ */
+/* $Id: cmd-string.c,v 1.29 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -121,7 +121,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 		case EOF:
 		case ' ':
 		case '\t':
- 			if (have_arg) {
+			if (have_arg) {
 				buf = xrealloc(buf, 1, len + 1);
 				buf[len] = '\0';
 

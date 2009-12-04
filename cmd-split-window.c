@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.30 2009-11-22 00:12:33 tcunha Exp $ */
+/* $Id: cmd-split-window.c,v 1.31 2009-12-04 22:14:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -69,7 +69,7 @@ cmd_split_window_init(struct cmd *self, int key)
 	switch (key) {
 	case '%':
 		data->flag_horizontal = 1;
-		break;		
+		break;
 	case '"':
 		data->flag_horizontal = 0;
 		break;
