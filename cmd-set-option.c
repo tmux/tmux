@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.87 2009-11-19 22:20:04 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.88 2009-12-04 22:11:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,10 +29,27 @@
 
 int	cmd_set_option_exec(struct cmd *, struct cmd_ctx *);
 
+const char *cmd_set_option_print(
+	    const struct set_option_entry *, struct options_entry *);
+void	cmd_set_option_string(struct cmd_ctx *,
+	    struct options *, const struct set_option_entry *, char *, int);
+void	cmd_set_option_number(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	cmd_set_option_keys(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	cmd_set_option_colour(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	cmd_set_option_attributes(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	cmd_set_option_flag(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+void	cmd_set_option_choice(struct cmd_ctx *,
+    	    struct options *, const struct set_option_entry *, char *);
+
 const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set",
-	"[-agu] " CMD_TARGET_SESSION_USAGE " option [value]",
-	CMD_ARG12, "agu",
+	"[-aguw] [-t target-session|target-window] option [value]",
+	CMD_ARG12, "aguw",
 	NULL,
 	cmd_target_parse,
 	cmd_set_option_exec,
@@ -40,6 +57,12 @@ const struct cmd_entry cmd_set_option_entry = {
 	cmd_target_print
 };
 
+const char *set_option_mode_keys_list[] = {
+	"emacs", "vi", NULL
+};
+const char *set_option_clock_mode_style_list[] = {
+	"12", "24", NULL
+};
 const char *set_option_status_keys_list[] = {
 	"emacs", "vi", NULL
 };
@@ -49,7 +72,8 @@ const char *set_option_status_justify_list[] = {
 const char *set_option_bell_action_list[] = {
 	"none", "any", "current", NULL
 };
-const struct set_option_entry set_option_table[] = {
+
+const struct set_option_entry set_session_option_table[] = {
 	{ "base-index", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "bell-action", SET_OPTION_CHOICE, 0, 0, set_option_bell_action_list },
 	{ "buffer-limit", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
@@ -101,11 +125,45 @@ const struct set_option_entry set_option_table[] = {
 	{ NULL, 0, 0, 0, NULL }
 };
 
+const struct set_option_entry set_window_option_table[] = {
+	{ "aggressive-resize", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "automatic-rename", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "clock-mode-colour", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "clock-mode-style",
+	  SET_OPTION_CHOICE, 0, 0, set_option_clock_mode_style_list },
+	{ "force-height", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
+	{ "force-width", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
+	{ "main-pane-height", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
+	{ "main-pane-width", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
+	{ "mode-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
+	{ "mode-bg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "mode-fg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "mode-keys", SET_OPTION_CHOICE, 0, 0, set_option_mode_keys_list },
+	{ "mode-mouse", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "monitor-activity", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "monitor-content", SET_OPTION_STRING, 0, 0, NULL },
+	{ "remain-on-exit", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "synchronize-panes", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "utf8", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "window-status-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
+	{ "window-status-bg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "window-status-current-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
+	{ "window-status-current-bg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "window-status-current-fg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "window-status-current-format", SET_OPTION_STRING, 0, 0, NULL },
+	{ "window-status-fg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "window-status-format", SET_OPTION_STRING, 0, 0, NULL },
+	{ "xterm-keys", SET_OPTION_FLAG, 0, 0, NULL },
+	{ NULL, 0, 0, 0, NULL }
+};
+
 int
 cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data		*data = self->data;
+	const struct set_option_entry	*table;
 	struct session			*s;
+	struct winlink			*wl;
 	struct client			*c;
 	struct options			*oo;
 	const struct set_option_entry   *entry, *opt;
@@ -114,12 +172,26 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int				 i;
 	int				 try_again;
 
-	if (cmd_check_flag(data->chflags, 'g'))
-		oo = &global_s_options;
-	else {
-		if ((s = cmd_find_session(ctx, data->target)) == NULL)
-			return (-1);
-		oo = &s->options;
+	if (cmd_check_flag(data->chflags, 'w')) {
+		table = set_window_option_table;
+		if (cmd_check_flag(data->chflags, 'g'))
+			oo = &global_w_options;
+		else {
+			wl = cmd_find_window(ctx, data->target, NULL);
+			if (wl == NULL)
+				return (-1);
+			oo = &wl->window->options;
+		}
+	} else {
+		table = set_session_option_table;
+		if (cmd_check_flag(data->chflags, 'g'))
+			oo = &global_s_options;
+		else {
+			s = cmd_find_session(ctx, data->target);
+			if (s == NULL)
+				return (-1);
+			oo = &s->options;
+		}
 	}
 
 	if (*data->arg == '\0') {
@@ -128,7 +200,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	entry = NULL;
-	for (opt = set_option_table; opt->name != NULL; opt++) {
+	for (opt = table; opt->name != NULL; opt++) {
 		if (strncmp(opt->name, data->arg, strlen(data->arg)) != 0)
 			continue;
 		if (entry != NULL) {
@@ -163,31 +235,36 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	} else {
 		switch (entry->type) {
 		case SET_OPTION_STRING:
-			set_option_string(ctx, oo, entry,
+			cmd_set_option_string(ctx, oo, entry,
 			    data->arg2, cmd_check_flag(data->chflags, 'a'));
 			break;
 		case SET_OPTION_NUMBER:
-			set_option_number(ctx, oo, entry, data->arg2);
+			cmd_set_option_number(ctx, oo, entry, data->arg2);
 			break;
 		case SET_OPTION_KEYS:
-			set_option_keys(ctx, oo, entry, data->arg2);
+			cmd_set_option_keys(ctx, oo, entry, data->arg2);
 			break;
 		case SET_OPTION_COLOUR:
-			set_option_colour(ctx, oo, entry, data->arg2);
+			cmd_set_option_colour(ctx, oo, entry, data->arg2);
 			break;
 		case SET_OPTION_ATTRIBUTES:
-			set_option_attributes(ctx, oo, entry, data->arg2);
+			cmd_set_option_attributes(ctx, oo, entry, data->arg2);
 			break;
 		case SET_OPTION_FLAG:
-			set_option_flag(ctx, oo, entry, data->arg2);
+			cmd_set_option_flag(ctx, oo, entry, data->arg2);
 			break;
 		case SET_OPTION_CHOICE:
-			set_option_choice(ctx, oo, entry, data->arg2);
+			cmd_set_option_choice(ctx, oo, entry, data->arg2);
 			break;
 		}
 	}
 
 	recalculate_sizes();
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL && c->session != NULL)
+			server_redraw_client(c);
+	}
 
 	/* 
 	 * Special-case: kill all persistent jobs if status-left, status-right
@@ -196,7 +273,8 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 */
 	if (strcmp(entry->name, "status-left") == 0 ||
 	    strcmp(entry->name, "status-right") == 0 ||
-	    strcmp(entry->name, "set-titles-string") == 0) {
+	    strcmp(entry->name, "set-titles-string") == 0 ||
+	    strcmp(entry->name, "window-status-format") == 0) {
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 			c = ARRAY_ITEM(&clients, i);
 			if (c == NULL || c->session == NULL)
@@ -221,4 +299,244 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	return (0);
+}
+
+const char *
+cmd_set_option_print(
+    const struct set_option_entry *entry, struct options_entry *o)
+{
+	static char	out[BUFSIZ];
+	const char     *s;
+	struct keylist *keylist;
+	u_int		i;
+
+	*out = '\0';
+	switch (entry->type) {
+		case SET_OPTION_STRING:
+			xsnprintf(out, sizeof out, "\"%s\"", o->str);
+			break;
+		case SET_OPTION_NUMBER:
+			xsnprintf(out, sizeof out, "%lld", o->num);
+			break;
+		case SET_OPTION_KEYS:
+			keylist = o->data;
+			for (i = 0; i < ARRAY_LENGTH(keylist); i++) {
+				strlcat(out, key_string_lookup_key(
+				    ARRAY_ITEM(keylist, i)), sizeof out);
+				if (i != ARRAY_LENGTH(keylist) - 1)
+					strlcat(out, ",", sizeof out);
+			}
+			break;
+		case SET_OPTION_COLOUR:
+			s = colour_tostring(o->num);
+			xsnprintf(out, sizeof out, "%s", s);
+			break;
+		case SET_OPTION_ATTRIBUTES:
+			s = attributes_tostring(o->num);
+			xsnprintf(out, sizeof out, "%s", s);
+			break;
+		case SET_OPTION_FLAG:
+			if (o->num)
+				strlcpy(out, "on", sizeof out);
+			else
+				strlcpy(out, "off", sizeof out);
+			break;
+		case SET_OPTION_CHOICE:
+			s = entry->choices[o->num];
+			xsnprintf(out, sizeof out, "%s", s);
+			break;
+	}
+	return (out);
+}
+
+void
+cmd_set_option_string(struct cmd_ctx *ctx, struct options *oo,
+    const struct set_option_entry *entry, char *value, int append)
+{
+	struct options_entry	*o;
+	char			*oldvalue, *newvalue;
+
+	if (value == NULL) {
+		ctx->error(ctx, "empty value");
+		return;
+	}
+
+	if (append) {
+		oldvalue = options_get_string(oo, entry->name);
+		xasprintf(&newvalue, "%s%s", oldvalue, value);
+	} else
+		newvalue = value;
+		
+	o = options_set_string(oo, entry->name, "%s", newvalue);
+	ctx->info(ctx,
+	    "set option: %s -> %s", o->name, cmd_set_option_print(entry, o));
+
+	if (newvalue != value)
+		xfree(newvalue);
+}
+
+void
+cmd_set_option_number(struct cmd_ctx *ctx, struct options *oo,
+    const struct set_option_entry *entry, char *value)
+{
+	struct options_entry	*o;
+	long long		 number;
+	const char     		*errstr;
+
+	if (value == NULL) {
+		ctx->error(ctx, "empty value");
+		return;
+	}
+
+	number = strtonum(value, entry->minimum, entry->maximum, &errstr);
+	if (errstr != NULL) {
+		ctx->error(ctx, "value is %s: %s", errstr, value);
+		return;
+	}
+
+	o = options_set_number(oo, entry->name, number);
+	ctx->info(ctx,
+	    "set option: %s -> %s", o->name, cmd_set_option_print(entry, o));
+}
+
+void
+cmd_set_option_keys(struct cmd_ctx *ctx, struct options *oo,
+    const struct set_option_entry *entry, char *value)
+{
+	struct options_entry	*o;
+	struct keylist		*keylist;
+	char			*copyvalue, *ptr, *str;
+	int		 	 key;
+
+	if (value == NULL) {
+		ctx->error(ctx, "empty value");
+		return;
+	}
+
+	keylist = xmalloc(sizeof *keylist);
+	ARRAY_INIT(keylist);
+
+	ptr = copyvalue = xstrdup(value);
+	while ((str = strsep(&ptr, ",")) != NULL) {
+		if ((key = key_string_lookup_string(str)) == KEYC_NONE) {
+			xfree(keylist);
+			ctx->error(ctx, "unknown key: %s", str);
+			xfree(copyvalue);
+			return;
+		}
+		ARRAY_ADD(keylist, key);
+	}
+	xfree(copyvalue);
+
+	o = options_set_data(oo, entry->name, keylist, xfree);
+	ctx->info(ctx,
+	    "set option: %s -> %s", o->name, cmd_set_option_print(entry, o));
+}
+
+void
+cmd_set_option_colour(struct cmd_ctx *ctx, struct options *oo,
+    const struct set_option_entry *entry, char *value)
+{
+	struct options_entry	*o;
+	int			 colour;
+
+	if (value == NULL) {
+		ctx->error(ctx, "empty value");
+		return;
+	}
+
+	if ((colour = colour_fromstring(value)) == -1) {
+		ctx->error(ctx, "bad colour: %s", value);
+		return;
+	}
+
+	o = options_set_number(oo, entry->name, colour);
+	ctx->info(ctx,
+	    "set option: %s -> %s", o->name, cmd_set_option_print(entry, o));
+}
+
+void
+cmd_set_option_attributes(struct cmd_ctx *ctx, struct options *oo,
+    const struct set_option_entry *entry, char *value)
+{
+	struct options_entry	*o;
+	int			 attr;
+
+	if (value == NULL) {
+		ctx->error(ctx, "empty value");
+		return;
+	}
+
+	if ((attr = attributes_fromstring(value)) == -1) {
+		ctx->error(ctx, "bad attributes: %s", value);
+		return;
+	}
+
+	o = options_set_number(oo, entry->name, attr);
+	ctx->info(ctx,
+	    "set option: %s -> %s", o->name, cmd_set_option_print(entry, o));
+}
+
+void
+cmd_set_option_flag(struct cmd_ctx *ctx, struct options *oo,
+    const struct set_option_entry *entry, char *value)
+{
+	struct options_entry	*o;
+	int			 flag;
+
+	if (value == NULL || *value == '\0')
+		flag = !options_get_number(oo, entry->name);
+	else {
+		if ((value[0] == '1' && value[1] == '\0') ||
+		    strcasecmp(value, "on") == 0 ||
+		    strcasecmp(value, "yes") == 0)
+			flag = 1;
+		else if ((value[0] == '0' && value[1] == '\0') ||
+		    strcasecmp(value, "off") == 0 ||
+		    strcasecmp(value, "no") == 0)
+			flag = 0;
+		else {
+			ctx->error(ctx, "bad value: %s", value);
+			return;
+		}
+	}
+
+	o = options_set_number(oo, entry->name, flag);
+	ctx->info(ctx,
+	    "set option: %s -> %s", o->name, cmd_set_option_print(entry, o));
+}
+
+void
+cmd_set_option_choice(struct cmd_ctx *ctx, struct options *oo,
+    const struct set_option_entry *entry, char *value)
+{
+	struct options_entry	*o;
+	const char     	       **choicep;
+	int		 	 n, choice = -1;
+
+	if (value == NULL) {
+		ctx->error(ctx, "empty value");
+		return;
+	}
+
+	n = 0;
+	for (choicep = entry->choices; *choicep != NULL; choicep++) {
+		n++;
+		if (strncmp(*choicep, value, strlen(value)) != 0)
+			continue;
+
+		if (choice != -1) {
+			ctx->error(ctx, "ambiguous option value: %s", value);
+			return;
+		}
+		choice = n - 1;
+	}
+	if (choice == -1) {
+		ctx->error(ctx, "unknown option value: %s", value);
+		return;
+	}
+
+	o = options_set_number(oo, entry->name, choice);
+	ctx->info(ctx,
+	    "set option: %s -> %s", o->name, cmd_set_option_print(entry, o));
 }

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.528 2009-12-02 15:10:44 tcunha Exp $ */
+/* $Id: tmux.h,v 1.529 2009-12-04 22:11:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1232,8 +1232,6 @@ struct set_option_entry {
 
 	const char     **choices;
 };
-extern const struct set_option_entry set_option_table[];
-extern const struct set_option_entry set_window_option_table[];
 
 /* tmux.c */
 extern struct options global_s_options;
@@ -1376,24 +1374,6 @@ void	tty_keys_init(struct tty *);
 void	tty_keys_free(struct tty *);
 int	tty_keys_next(struct tty *);
 
-/* options-cmd.c */
-const char *set_option_print(
-    	    const struct set_option_entry *, struct options_entry *);
-void	set_option_string(struct cmd_ctx *,
-	    struct options *, const struct set_option_entry *, char *, int);
-void	set_option_number(struct cmd_ctx *,
-    	    struct options *, const struct set_option_entry *, char *);
-void	set_option_keys(struct cmd_ctx *,
-    	    struct options *, const struct set_option_entry *, char *);
-void	set_option_colour(struct cmd_ctx *,
-    	    struct options *, const struct set_option_entry *, char *);
-void	set_option_attributes(struct cmd_ctx *,
-    	    struct options *, const struct set_option_entry *, char *);
-void	set_option_flag(struct cmd_ctx *,
-    	    struct options *, const struct set_option_entry *, char *);
-void	set_option_choice(struct cmd_ctx *,
-    	    struct options *, const struct set_option_entry *, char *);
-
 /* paste.c */
 void		 paste_init_stack(struct paste_stack *);
 void		 paste_free_stack(struct paste_stack *);
@@ -1408,6 +1388,12 @@ int		 paste_replace(struct paste_stack *, u_int, char *, size_t);
 /* clock.c */
 extern const char clock_table[14][5][5];
 void		 clock_draw(struct screen_write_ctx *, int, int);
+
+/* cmd-set-option.c */
+extern const struct set_option_entry set_session_option_table[];
+extern const struct set_option_entry set_window_option_table[];
+const char 	*cmd_set_option_print(
+		    const struct set_option_entry *, struct options_entry *);
 
 /* cmd.c */
 int		 cmd_pack_argv(int, char **, char *, size_t);

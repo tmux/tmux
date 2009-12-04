@@ -1,4 +1,4 @@
-/* $Id: cmd-show-options.c,v 1.18 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-show-options.c,v 1.19 2009-12-04 22:11:23 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,8 +31,8 @@ int	cmd_show_options_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_options_entry = {
 	"show-options", "show",
-	"[-g] " CMD_TARGET_SESSION_USAGE,
-	0, "g",
+	"[-gw] [-t target-session|target-window]",
+	0, "gw",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_show_options_exec,
@@ -43,25 +43,41 @@ const struct cmd_entry cmd_show_options_entry = {
 int
 cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data		*data = self->data;
+	struct cmd_target_data		*data = self->data;	
+	const struct set_option_entry	*table;
 	struct session			*s;
+	struct winlink			*wl;
 	struct options			*oo;
 	struct options_entry		*o;
 	const struct set_option_entry   *entry;
 	const char			*optval;
 
-	if (cmd_check_flag(data->chflags, 'g'))
-		oo = &global_s_options;
-	else {
-		if ((s = cmd_find_session(ctx, data->target)) == NULL)
-			return (-1);
-		oo = &s->options;
+	if (cmd_check_flag(data->chflags, 'w')) {
+		table = set_window_option_table;
+		if (cmd_check_flag(data->chflags, 'g'))
+			oo = &global_w_options;
+		else {
+			wl = cmd_find_window(ctx, data->target, NULL);
+			if (wl == NULL)
+				return (-1);
+			oo = &wl->window->options;
+		}
+	} else {
+		table = set_session_option_table;
+		if (cmd_check_flag(data->chflags, 'g'))
+			oo = &global_s_options;
+		else {
+			s = cmd_find_session(ctx, data->target);
+			if (s == NULL)
+				return (-1);
+			oo = &s->options;
+		}
 	}
 
-	for (entry = set_option_table; entry->name != NULL; entry++) {
+	for (entry = table; entry->name != NULL; entry++) {
 		if ((o = options_find1(oo, entry->name)) == NULL)
 			continue;
-		optval = set_option_print(entry, o);
+		optval = cmd_set_option_print(entry, o);
 		ctx->print(ctx, "%s %s", entry->name, optval);
 	}
 

@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.210 2009-12-02 15:10:44 tcunha Exp $
+.\" $Id: tmux.1,v 1.211 2009-12-04 22:11:23 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: December 1 2009 $
+.Dd $Mdocdate: December 3 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1230,8 +1230,8 @@ command.
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
-.Op Fl agu
-.Op Fl t Ar target-session
+.Op Fl aguw
+.Op Fl t Ar target-session | Ar target-window
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic set )
@@ -1248,6 +1248,13 @@ The
 .Fl u
 flag unsets an option, so a session inherits the option from the global
 options - it is not possible to unset a global option.
+.Pp
+With
+.Fl w ,
+this command is equivalent to
+.Ic set-window-option 
+with
+.Ar target-window .
 .Pp
 Available session options are:
 .Bl -tag -width Ds
@@ -1831,14 +1838,21 @@ as Shift, Alt or Ctrl.
 The default is off.
 .El
 .It Xo Ic show-options
-.Op Fl g
-.Op Fl t Ar target-session
+.Op Fl gw
+.Op Fl t Ar target-session | Ar target-window
 .Xc
 .D1 (alias: Ic show )
 Show the session options for
 .Ar target session ,
 or the global session options with
 .Fl g .
+.Pp
+If
+.Fl w
+is used, this command is equivalent to
+.Ic show-window-options 
+with
+.Ar target-window .
 .It Xo Ic show-window-options
 .Op Fl g
 .Op Fl t Ar target-window
