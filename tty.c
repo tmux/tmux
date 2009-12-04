@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.181 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: tty.c,v 1.182 2009-12-04 22:17:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1011,10 +1011,8 @@ tty_region(struct tty *tty, u_int rupper, u_int rlower)
 	if (tty->cx >= tty->sx)
 		tty_cursor(tty, 0, tty->cy);
 
-	tty->cx = 0;
-	tty->cy = 0;
-
 	tty_putcode2(tty, TTYC_CSR, tty->rupper, tty->rlower);
+	tty_cursor(tty, 0, 0);
 }
 
 /* Move cursor inside pane. */
