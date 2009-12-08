@@ -1844,6 +1844,9 @@ u_int		 layout_set_next(struct window *);
 u_int		 layout_set_previous(struct window *);
 void		 layout_set_active_changed(struct window *);
 
+/* layout-string.c */
+struct layout_cell *layout_find_string(struct window *, const char *);
+
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;
 

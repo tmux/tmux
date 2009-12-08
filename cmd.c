@@ -856,12 +856,12 @@ struct winlink *
 cmd_find_pane(struct cmd_ctx *ctx,
     const char *arg, struct session **sp, struct window_pane **wpp)
 {
-	struct session	*s;
-	struct winlink	*wl;
-	const char	*period;
-	char		*winptr, *paneptr;
-	const char	*errstr;
-	u_int		 idx;
+	struct session		*s;
+	struct winlink		*wl;
+	struct layout_cell	*lc;
+	const char		*period, *errstr;
+	char			*winptr, *paneptr;
+	u_int			 idx;
 
 	/* Get the current session. */
 	if ((s = cmd_current_session(ctx)) == NULL) {
@@ -895,19 +895,26 @@ cmd_find_pane(struct cmd_ctx *ctx,
 		*wpp = wl->window->active;
 	else {
 		idx = strtonum(paneptr, 0, INT_MAX, &errstr);
-		if (errstr != NULL) {
-			ctx->error(ctx, "pane %s: %s", errstr, paneptr);
-			goto error;
-		}
+		if (errstr != NULL)
+			goto lookup_string;
 		*wpp = window_pane_at_index(wl->window, idx);
-		if (*wpp == NULL) {
-			ctx->error(ctx, "no such pane: %u", idx);
-			goto error;
-		}
+		if (*wpp == NULL)
+			goto lookup_string;
 	}
 
 	xfree(winptr);
 	return (wl);
+
+lookup_string:
+	/* Try pane string description. */
+	if ((lc = layout_find_string(s->curw->window, paneptr)) == NULL) {
+		ctx->error(ctx, "can't find pane: %s", paneptr);
+		goto error;
+	}
+	*wpp = lc->wp;
+
+	xfree(winptr);
+	return (s->curw);
 
 no_period:
 	/* Try as a pane number alone. */
@@ -922,6 +929,12 @@ no_period:
 	return (s->curw);
 
 lookup_window:
+	/* Try pane string description. */
+	if ((lc = layout_find_string(s->curw->window, arg)) != NULL) {
+		*wpp = lc->wp;
+		return (s->curw);
+	}
+
 	/* Try as a window and use the active pane. */
 	if ((wl = cmd_find_window(ctx, arg, sp)) != NULL)
 		*wpp = wl->window->active;

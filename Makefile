@@ -32,7 +32,7 @@ SRCS=	attributes.c cfg.c client.c clock.c \
 	cmd-pipe-pane.c cmd-capture-pane.c cmd.c \
 	colour.c environ.c grid-view.c grid-utf8.c grid.c input-keys.c \
 	imsg.c imsg-buffer.c input.c key-bindings.c key-string.c \
-	layout-set.c layout.c log.c job.c \
+	layout-set.c layout-string.c layout.c log.c job.c \
 	mode-key.c names.c options.c paste.c procname.c \
 	resize.c screen-redraw.c screen-write.c screen.c session.c status.c \
 	server-fn.c server.c server-client.c server-window.c \
