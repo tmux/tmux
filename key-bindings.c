@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.86 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: key-bindings.c,v 1.87 2009-12-10 16:59:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -224,7 +224,7 @@ key_bindings_info(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_list	ap;
 	char   *msg;
 
-	if (be_quiet)
+	if (options_get_number(&global_options, "quiet"))
 		return;
 
 	va_start(ap, fmt);

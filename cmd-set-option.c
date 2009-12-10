@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.89 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.90 2009-12-10 16:59:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,8 +48,8 @@ void	cmd_set_option_choice(struct cmd_ctx *,
 
 const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set",
-	"[-aguw] [-t target-session|target-window] option [value]",
-	CMD_ARG12, "aguw",
+	"[-agsuw] [-t target-session|target-window] option [value]",
+	CMD_ARG12, "agsuw",
 	NULL,
 	cmd_target_parse,
 	cmd_set_option_exec,
@@ -71,6 +71,10 @@ const char *set_option_status_justify_list[] = {
 };
 const char *set_option_bell_action_list[] = {
 	"none", "any", "current", NULL
+};
+
+const struct set_option_entry set_option_table[] = {
+	{ "quiet", SET_OPTION_FLAG, 0, 0, NULL },
 };
 
 const struct set_option_entry set_session_option_table[] = {
@@ -172,7 +176,10 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int				 i;
 	int				 try_again;
 
-	if (cmd_check_flag(data->chflags, 'w')) {
+	if (cmd_check_flag(data->chflags, 's')) {
+		oo = &global_options;
+		table = set_option_table;
+	} else if (cmd_check_flag(data->chflags, 'w')) {
 		table = set_window_option_table;
 		if (cmd_check_flag(data->chflags, 'g'))
 			oo = &global_w_options;

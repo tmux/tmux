@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.193 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: tmux.c,v 1.194 2009-12-10 16:59:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,12 +35,12 @@ extern char	*malloc_options;
 #endif
 
 char		*cfg_file;
+struct options	 global_options;	/* server options */
 struct options	 global_s_options;	/* session options */
 struct options	 global_w_options;	/* window options */
 struct environ	 global_environ;
 
 int		 debug_level;
-int		 be_quiet;
 time_t		 start_time;
 char		*socket_path;
 int		 login_shell;
@@ -225,14 +225,14 @@ main(int argc, char **argv)
 	struct cmd		*cmd;
 	enum msgtype		 msg;
 	struct passwd		*pw;
-	struct options		*so, *wo;
+	struct options		*oo, *so, *wo;
 	struct keylist		*keylist;
 	struct msg_command_data	 cmddata;
 	char			*s, *shellcmd, *path, *label, *home, *cause;
 	char			 cwd[MAXPATHLEN], **var;
 	void			*buf;
 	size_t			 len;
-	int	 		 opt, flags, cmdflags = 0;
+	int	 		 opt, flags, quiet, cmdflags = 0;
 	short		 	 events;
 
 #if defined(DEBUG) && defined(__OpenBSD__)
@@ -271,7 +271,7 @@ main(int argc, char **argv)
 			label = xstrdup(optarg);
 			break;
 		case 'q':
-			be_quiet = 1;
+			quiet = 1;
 			break;
 		case 'S':
 			if (path != NULL)
@@ -316,6 +316,10 @@ main(int argc, char **argv)
 	environ_init(&global_environ);
 	for (var = environ; *var != NULL; var++)
 		environ_put(&global_environ, *var);
+
+	options_init(&global_options, NULL);
+	oo = &global_options;
+	options_set_number(oo, "quiet", 0);
 
 	options_init(&global_s_options, NULL);
 	so = &global_s_options;

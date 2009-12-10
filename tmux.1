@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.214 2009-12-10 16:52:58 tcunha Exp $
+.\" $Id: tmux.1,v 1.215 2009-12-10 16:59:02 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: December 8 2009 $
+.Dd $Mdocdate: December 10 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -151,8 +151,9 @@ signal may be sent to the
 .Nm
 server process to recreate it.
 .It Fl q
-Prevent the server sending various informational messages, for example when
-window flags are altered.
+Set the
+.Ic quiet
+server option to prevent the server sending various informational messages.
 .It Fl S Ar socket-path
 Specify a full alternative path to the server socket.
 If
@@ -1209,13 +1210,26 @@ or for normal mode without.
 The appearance and behaviour of
 .Nm
 may be modified by changing the value of various options.
-There are two types of option:
+There are three types of option:
+.Em server options ,
 .Em session options
 and
 .Em window options .
 .Pp
-Each individual session may have a set of session options, and there is a
-separate set of global session options.
+The
+.Nm
+server has a set of global options which do not apply to any particular
+window or session.
+These are altered with the
+.Ic set-option
+.Fl s
+command, or displayed with the
+.Ic show-options
+.Fl s
+command.
+.Pp
+In addition, each individual session may have a set of session options, and
+there is a separate set of global session options.
 Sessions which do not have a particular option configured inherit the value
 from the global session options.
 Session options are set or unset with the
@@ -1223,7 +1237,7 @@ Session options are set or unset with the
 command and may be listed with the
 .Ic show-options
 command.
-The available session options are listed under the
+The available server and session options are listed under the
 .Ic set-option
 command.
 .Pp
@@ -1241,31 +1255,44 @@ command.
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
-.Op Fl aguw
+.Op Fl agsuw
 .Op Fl t Ar target-session | Ar target-window
 .Ar option Ar value
 .Xc
 .D1 (alias: Ic set )
-Set a session option.
+Set a window option with
+.Fl w
+(equivalent to the
+.Ic set-window-option
+command),
+a server option with
+.Fl s ,
+otherwise a session option.
+.Pp
+If
+.Fl g
+is specified, the global session or window option is set.
 With
 .Fl a ,
 and if the option expects a string,
 .Ar value
 is appended to the existing setting.
-If
-.Fl g
-is specified, the global session option is set.
 The
 .Fl u
 flag unsets an option, so a session inherits the option from the global
-options - it is not possible to unset a global option.
+options.
+It is not possible to unset a global option.
 .Pp
-With
-.Fl w ,
-this command is equivalent to
-.Ic set-window-option
-with
-.Ar target-window .
+Available window options are listed under
+.Ic set-window-option .
+.Pp
+Available server options are:
+.Bl -tag -width Ds
+.It Ic quiet
+Enable of disable the display of various informational messages (see also the
+.Fl q
+command line flag).
+.El
 .Pp
 Available session options are:
 .Bl -tag -width Ds
@@ -1850,21 +1877,21 @@ as Shift, Alt or Ctrl.
 The default is off.
 .El
 .It Xo Ic show-options
-.Op Fl gw
+.Op Fl gsw
 .Op Fl t Ar target-session | Ar target-window
 .Xc
 .D1 (alias: Ic show )
-Show the session options for
-.Ar target session ,
-or the global session options with
-.Fl g .
-.Pp
-If
+Show the window options with
 .Fl w
-is used, this command is equivalent to
-.Ic show-window-options
-with
-.Ar target-window .
+(equivalent to
+.Ic show-window-options ),
+the server options with
+.Fl s ,
+otherwise the session options for
+.Ar target session .
+Global session or window options are listed if
+.Fl g
+is used.
 .It Xo Ic show-window-options
 .Op Fl g
 .Op Fl t Ar target-window
