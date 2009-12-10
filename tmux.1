@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.213 2009-12-04 22:16:15 tcunha Exp $
+.\" $Id: tmux.1,v 1.214 2009-12-10 16:52:58 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: December 3 2009 $
+.Dd $Mdocdate: December 8 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -323,6 +323,16 @@ If neither a colon nor period appears,
 first attempts to use the argument as a pane index; if that fails, it is looked
 up as for
 .Ar target-window .
+One of the strings
+.Em top ,
+.Em bottom ,
+.Em left ,
+.Em right ,
+.Em top-left ,
+.Em top-right ,
+.Em bottom-left or
+.Em bottom-right
+may be used instead of a pane index.
 .Pp
 Multiple commands may be specified together as part of a
 .Em command sequence .

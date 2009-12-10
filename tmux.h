@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.530 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: tmux.h,v 1.531 2009-12-10 16:52:58 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1842,6 +1842,9 @@ u_int		 layout_set_select(struct window *, u_int);
 u_int		 layout_set_next(struct window *);
 u_int		 layout_set_previous(struct window *);
 void		 layout_set_active_changed(struct window *);
+
+/* layout-string.c */
+struct layout_cell *layout_find_string(struct window *, const char *);
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;
