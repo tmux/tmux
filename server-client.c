@@ -640,7 +640,7 @@ server_client_msg_info(struct cmd_ctx *ctx, const char *fmt, ...)
 	struct msg_print_data	data;
 	va_list			ap;
 
-	if (be_quiet)
+	if (options_get_number(&global_options, "quiet"))
 		return;
 
 	va_start(ap, fmt);

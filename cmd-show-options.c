@@ -31,8 +31,8 @@ int	cmd_show_options_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_options_entry = {
 	"show-options", "show",
-	"[-gw] [-t target-session|target-window]",
-	0, "gw",
+	"[-gsw] [-t target-session|target-window]",
+	0, "gsw",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_show_options_exec,
@@ -52,7 +52,10 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const struct set_option_entry   *entry;
 	const char			*optval;
 
-	if (cmd_check_flag(data->chflags, 'w')) {
+	if (cmd_check_flag(data->chflags, 's')) {
+		oo = &global_options;
+		table = set_option_table;
+	} else if (cmd_check_flag(data->chflags, 'w')) {
 		table = set_window_option_table;
 		if (cmd_check_flag(data->chflags, 'g'))
 			oo = &global_w_options;

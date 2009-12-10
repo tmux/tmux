@@ -224,7 +224,7 @@ key_bindings_info(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_list	ap;
 	char   *msg;
 
-	if (be_quiet)
+	if (options_get_number(&global_options, "quiet"))
 		return;
 
 	va_start(ap, fmt);
