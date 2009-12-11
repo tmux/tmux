@@ -229,7 +229,7 @@ main(int argc, char **argv)
 	char			 cwd[MAXPATHLEN], **var;
 	void			*buf;
 	size_t			 len;
-	int	 		 opt, flags, quiet, cmdflags = 0;
+	int	 		 opt, flags, quiet = 0, cmdflags = 0;
 	short		 	 events;
 
 #ifdef DEBUG
@@ -316,7 +316,7 @@ main(int argc, char **argv)
 
 	options_init(&global_options, NULL);
 	oo = &global_options;
-	options_set_number(oo, "quiet", 0);
+	options_set_number(oo, "quiet", quiet);
 
 	options_init(&global_s_options, NULL);
 	so = &global_s_options;
