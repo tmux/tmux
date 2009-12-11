@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.46 2009-11-26 09:19:04 nicm Exp $
+# $Id: configure,v 1.47 2009-12-11 20:08:18 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -189,6 +189,8 @@ EOF
 #define HAVE_U_INT
 EOF
 	cat <<EOF >>$CONFIG_MK
+CPPFLAGS+= -I/opt/local/include
+LDFLAGS+= -L/opt/local/lib
 LIBS+= -lcurses -levent
 SRCS+= osdep-darwin.c \
 	compat/strtonum.c \
