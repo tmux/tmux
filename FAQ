@@ -212,7 +212,8 @@ uptime|awk '{split(substr($0, index($0, "load")), a, ":"); print a[2]}'
 * How do I attach the same session to multiple clients but with a different
   current window, like screen -x?
 
-One or more of the windows can either be linked into multiple sessions manually
-with link-window, or a grouped session can be created with new-window -t.
+One or more of the windows can be linked into multiple sessions manually with
+link-window, or a grouped session with all the windows can be created with
+new-window -t.
 
-$Id: FAQ,v 1.31 2009-12-12 09:54:02 nicm Exp $
+$Id: FAQ,v 1.32 2009-12-12 09:54:42 nicm Exp $
