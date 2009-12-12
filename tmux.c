@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.194 2009-12-10 16:59:02 tcunha Exp $ */
+/* $Id: tmux.c,v 1.195 2009-12-12 01:01:11 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -232,7 +232,7 @@ main(int argc, char **argv)
 	char			 cwd[MAXPATHLEN], **var;
 	void			*buf;
 	size_t			 len;
-	int	 		 opt, flags, quiet, cmdflags = 0;
+	int	 		 opt, flags, quiet = 0, cmdflags = 0;
 	short		 	 events;
 
 #if defined(DEBUG) && defined(__OpenBSD__)
@@ -319,7 +319,7 @@ main(int argc, char **argv)
 
 	options_init(&global_options, NULL);
 	oo = &global_options;
-	options_set_number(oo, "quiet", 0);
+	options_set_number(oo, "quiet", quiet);
 
 	options_init(&global_s_options, NULL);
 	so = &global_s_options;

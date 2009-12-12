@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.90 2009-12-10 16:59:02 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.91 2009-12-12 01:01:11 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -75,6 +75,7 @@ const char *set_option_bell_action_list[] = {
 
 const struct set_option_entry set_option_table[] = {
 	{ "quiet", SET_OPTION_FLAG, 0, 0, NULL },
+	{ NULL, 0, 0, 0, NULL }
 };
 
 const struct set_option_entry set_session_option_table[] = {
