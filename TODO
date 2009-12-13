@@ -65,7 +65,6 @@
 		   for redraw
 - handle resize better in copy mode
 - way to copy stuff that is off screen due to resize
-- a way to address panes by name ("top-left") and position ("0,0")
 - commands should be able to succeed or fail and have || or && for command
   lists
 - support the mouse wheel to scroll through history
@@ -76,13 +75,11 @@
   the terminal - www/ruby-addressable; make regress
 - copy mode needs a tidy/cleanup
 - an option to NOT remove message when key pressed
-- the wrapping stuff should work when redrawn from scroll mode too (screen_write_copy)
 - ability to save history (to buffer?)
 - multiple keys could be done with tables, ie have prefixes go and instead
 	bind -n ^A prefix-table "default"
   where prefix-table sets command lookup table and sets prefix flag, then next key
   is looked up in that table
-- check fix UTF-8 and split-window? should be okay
 - UTF-8 should be a pointer into a combined string buffer
 - check irssi (term_charset) works with UTF-8
 - rectangle copy/paste
@@ -96,7 +93,7 @@
 	 copy and paste cursor and wide characters
 	 ...?
 - would prompt history/message log be better as server-global? need server global options
-- don't require mouse/xterm input to be atomic
 - option so that when session is destroyed, attach client to another session rather than exiting
 - session history for client and last-session command
-- fix to reflect application keypad mode so num lock works
+- option to change status line colour when current window is in a mode?
+
