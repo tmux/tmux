@@ -1130,6 +1130,10 @@ status_prompt_complete(const char *s)
 		if (strncmp((*cmdent)->name, s, strlen(s)) == 0)
 			ARRAY_ADD(&list, (*cmdent)->name);
 	}
+	for (entry = set_option_table; entry->name != NULL; entry++) {
+		if (strncmp(entry->name, s, strlen(s)) == 0)
+			ARRAY_ADD(&list, entry->name);
+	}
 	for (entry = set_session_option_table; entry->name != NULL; entry++) {
 		if (strncmp(entry->name, s, strlen(s)) == 0)
 			ARRAY_ADD(&list, entry->name);
