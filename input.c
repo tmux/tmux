@@ -1481,8 +1481,7 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 		case 95:
 		case 96:
 		case 97:
-			gc->flags |= GRID_FLAG_FG256;
-			gc->fg = m - 82;
+			gc->fg = m;
 			break;
 		case 100:
 		case 101:
@@ -1492,8 +1491,7 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 		case 105:
 		case 106:
 		case 107:
-			gc->flags |= GRID_FLAG_BG256;
-			gc->bg = m - 92;
+			gc->bg = m;
 			break;
 		}
 	}
