@@ -317,6 +317,7 @@ main(int argc, char **argv)
 	options_init(&global_options, NULL);
 	oo = &global_options;
 	options_set_number(oo, "quiet", quiet);
+	options_set_number(oo, "escape-time", 500);
 
 	options_init(&global_s_options, NULL);
 	so = &global_s_options;

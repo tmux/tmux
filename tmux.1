@@ -1288,8 +1288,14 @@ Available window options are listed under
 .Pp
 Available server options are:
 .Bl -tag -width Ds
+.It Ic escape-time
+Set the time in milliseconds for which
+.Nm
+waits after an escape is input to determine if it is part of a function or meta
+key sequences.
+The default is 500 milliseconds.
 .It Ic quiet
-Enable of disable the display of various informational messages (see also the
+Enable or disable the display of various informational messages (see also the
 .Fl q
 command line flag).
 .El
@@ -1884,7 +1890,7 @@ The default is off.
 Show the window options with
 .Fl w
 (equivalent to
-.Ic show-window-options ),
+.Ic show-window-options ) ,
 the server options with
 .Fl s ,
 otherwise the session options for

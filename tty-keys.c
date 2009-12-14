@@ -429,7 +429,7 @@ tty_keys_next(struct tty *tty)
 	const char		*buf;
 	size_t			 len, size;
 	cc_t			 bspace;
-	int			 key;
+	int			 key, delay;
 
 	buf = EVBUFFER_DATA(tty->event->input);
 	len = EVBUFFER_LENGTH(tty->event->input);
@@ -521,8 +521,9 @@ partial_key:
 
 start_timer:
 	/* Start the timer and wait for expiry or more data. */
-	tv.tv_sec = 0;
-	tv.tv_usec = ESCAPE_PERIOD * 1000L;
+	delay = options_get_number(&global_options, "escape-time");
+	tv.tv_sec = delay / 1000;
+	tv.tv_usec = (delay % 1000) * 1000L;
 
 	evtimer_del(&tty->key_timer);
 	evtimer_set(&tty->key_timer, tty_keys_callback, tty);

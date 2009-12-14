@@ -74,6 +74,7 @@ const char *set_option_bell_action_list[] = {
 };
 
 const struct set_option_entry set_option_table[] = {
+	{ "escape-time", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "quiet", SET_OPTION_FLAG, 0, 0, NULL },
 	{ NULL, 0, 0, 0, NULL }
 };
