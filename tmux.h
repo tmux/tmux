@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.532 2009-12-10 16:59:02 tcunha Exp $ */
+/* $Id: tmux.h,v 1.533 2009-12-16 01:09:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,7 +49,7 @@ extern char   **environ;
 /* Default prompt history length. */
 #define PROMPT_HISTORY 100
 
-/* 
+/*
  * Minimum layout cell size, NOT including separator line. The scroll region
  * cannot be one line in height so this must be at least two.
  */
@@ -57,9 +57,6 @@ extern char   **environ;
 
 /* Automatic name refresh interval, in milliseconds. */
 #define NAME_INTERVAL 500
-
-/* Escape timer period, in milliseconds. */
-#define ESCAPE_PERIOD 500
 
 /* Maximum data to buffer for output before suspending reading from panes. */
 #define BACKOFF_THRESHOLD 1024

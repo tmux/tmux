@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.195 2009-12-12 01:01:11 tcunha Exp $ */
+/* $Id: tmux.c,v 1.196 2009-12-16 01:09:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -320,6 +320,7 @@ main(int argc, char **argv)
 	options_init(&global_options, NULL);
 	oo = &global_options;
 	options_set_number(oo, "quiet", quiet);
+	options_set_number(oo, "escape-time", 500);
 
 	options_init(&global_s_options, NULL);
 	so = &global_s_options;

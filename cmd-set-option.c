@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.91 2009-12-12 01:01:11 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.92 2009-12-16 01:09:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,6 +74,7 @@ const char *set_option_bell_action_list[] = {
 };
 
 const struct set_option_entry set_option_table[] = {
+	{ "escape-time", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "quiet", SET_OPTION_FLAG, 0, 0, NULL },
 	{ NULL, 0, 0, 0, NULL }
 };

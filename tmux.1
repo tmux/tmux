@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.215 2009-12-10 16:59:02 tcunha Exp $
+.\" $Id: tmux.1,v 1.216 2009-12-16 01:09:01 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: December 10 2009 $
+.Dd $Mdocdate: December 14 2009 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1288,8 +1288,14 @@ Available window options are listed under
 .Pp
 Available server options are:
 .Bl -tag -width Ds
+.It Ic escape-time
+Set the time in milliseconds for which
+.Nm
+waits after an escape is input to determine if it is part of a function or meta
+key sequences.
+The default is 500 milliseconds.
 .It Ic quiet
-Enable of disable the display of various informational messages (see also the
+Enable or disable the display of various informational messages (see also the
 .Fl q
 command line flag).
 .El
@@ -1884,7 +1890,7 @@ The default is off.
 Show the window options with
 .Fl w
 (equivalent to
-.Ic show-window-options ),
+.Ic show-window-options ) ,
 the server options with
 .Fl s ,
 otherwise the session options for
