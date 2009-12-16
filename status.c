@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.140 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: status.c,v 1.141 2009-12-16 01:10:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1129,6 +1129,10 @@ status_prompt_complete(const char *s)
 	for (cmdent = cmd_table; *cmdent != NULL; cmdent++) {
 		if (strncmp((*cmdent)->name, s, strlen(s)) == 0)
 			ARRAY_ADD(&list, (*cmdent)->name);
+	}
+	for (entry = set_option_table; entry->name != NULL; entry++) {
+		if (strncmp(entry->name, s, strlen(s)) == 0)
+			ARRAY_ADD(&list, entry->name);
 	}
 	for (entry = set_session_option_table; entry->name != NULL; entry++) {
 		if (strncmp(entry->name, s, strlen(s)) == 0)
