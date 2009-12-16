@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.104 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: input.c,v 1.105 2009-12-16 01:13:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1481,8 +1481,7 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 		case 95:
 		case 96:
 		case 97:
-			gc->flags |= GRID_FLAG_FG256;
-			gc->fg = m - 82;
+			gc->fg = m;
 			break;
 		case 100:
 		case 101:
@@ -1492,8 +1491,7 @@ input_handle_sequence_sgr(struct input_ctx *ictx)
 		case 105:
 		case 106:
 		case 107:
-			gc->flags |= GRID_FLAG_BG256;
-			gc->bg = m - 92;
+			gc->bg = m;
 			break;
 		}
 	}

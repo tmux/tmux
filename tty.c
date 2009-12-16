@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.182 2009-12-04 22:17:26 tcunha Exp $ */
+/* $Id: tty.c,v 1.183 2009-12-16 01:13:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1236,6 +1236,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc, u_char *attr)
 	if (fg == tc->fg && bg == tc->bg &&
 	    ((flags ^ tc->flags) & (GRID_FLAG_FG256|GRID_FLAG_BG256)) == 0)
 		return;
+	log_debug("fg was %hhu, now %hhu", tc->fg, fg);
 
 	/*
 	 * Is either the default colour? This is handled specially because the
@@ -1297,6 +1298,7 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc, u_char *attr)
 {
 	struct grid_cell	*tc = &tty->cell;
 	u_char			 fg = gc->fg;
+	char			 s[32];
 
 	/* Is this a 256-colour colour? */
 	if (gc->flags & GRID_FLAG_FG256) {
@@ -1315,6 +1317,18 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc, u_char *attr)
 			tty_reset(tty);		/* turn off bold */
 	}
 
+	/* Is this an aixterm bright colour? */
+	if (fg >= 90 && fg <= 97) {
+		/* 16 colour terminals or above only. */
+		if (tty_term_number(tty->term, TTYC_COLORS) >= 16) {
+			xsnprintf(s, sizeof s, "\033[%dm", fg);
+			tty_puts(tty, s);
+			goto save_fg;
+		}
+		fg -= 90;
+		(*attr) |= GRID_ATTR_BRIGHT;
+	}
+
 	/* Otherwise set the foreground colour. */
 	tty_putcode1(tty, TTYC_SETAF, fg);
 
@@ -1330,6 +1344,7 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
 	u_char			 bg = gc->bg;
+	char			 s[32];
 
 	/* Is this a 256-colour colour? */
 	if (gc->flags & GRID_FLAG_BG256) {
@@ -1346,6 +1361,18 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 		bg = colour_256to16(bg);
 		if (bg & 8)
 			bg &= 7;
+	}
+
+	/* Is this an aixterm bright colour? */
+	if (bg >= 100 && bg <= 107) {
+		/* 16 colour terminals or above only. */
+		if (tty_term_number(tty->term, TTYC_COLORS) >= 16) {
+			xsnprintf(s, sizeof s, "\033[%dm", bg);
+			tty_puts(tty, s);
+			goto save_bg;
+		}
+		bg -= 100;
+		/* no such thing as a bold background */
 	}
 
 	/* Otherwise set the background colour. */
