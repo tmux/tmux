@@ -1021,9 +1021,9 @@ struct tty_ctx {
 	const struct grid_utf8 *utf8;
 
 	u_int		 num;
-	void		*ptr; 
+	void		*ptr;
 
-	/* 
+	/*
 	 * Cursor and region position before the screen was updated - this is
 	 * where the command should be applied; the values in the screen have
 	 * already been updated.
