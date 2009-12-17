@@ -1,5 +1,17 @@
 tmux frequently asked questions
 
+******************************************************************************
+* PLEASE NOTE: most display problems are due to incorrect TERM! Before       *
+* reporting problems make SURE that TERM settings are correct inside and     *
+* outside tmux.                                                              *
+*                                                                            *
+* Inside tmux TERM must be "screen" or similar (such as "screen-256color").  *
+* Don't bother reporting problems where it isn't!                            *
+*                                                                            *
+* Outside, it must match your terminal: particularly, use "rxvt" for rxvt    *
+* and derivatives.                                                           *
+******************************************************************************
+
 * How is tmux different from GNU screen? What else does it offer?
 
 tmux offers several advantages over screen:
@@ -26,8 +38,9 @@ There are still a few features screen includes that tmux omits:
 
 * I found a bug! What do I do?
 
-Please send bug reports by email to nicm@users.sourceforge.net. Please
-include as much of the following information as possible:
+Please send bug reports by email to nicm@users.sourceforge.net or
+tmux-users@lists.sourceforge.net. Please include as much of the following
+information as possible:
 
 - the version of tmux you are running;
 - the operating system you are using and its version;
@@ -216,4 +229,14 @@ One or more of the windows can be linked into multiple sessions manually with
 link-window, or a grouped session with all the windows can be created with
 new-window -t.
 
-$Id: FAQ,v 1.32 2009-12-12 09:54:42 nicm Exp $
+* Ctrl and arrow keys doesn't work in putty! What do I do?
+
+putty inverts the sense of the cursor key mode on ctrl, which is a bit hard for
+tmux to detect properly. To get ctrl keys right, change the terminfo settings
+so kUP5 (Ctrl-Up etc) are the adjusted versions, and disable smkx/rmkx so tmux
+doesn't change the mode. For example with this line in .tmux.conf (assuming you
+have TERM set to xterm):
+
+set -g terminal-overrides "xterm*:kLFT5=\eOD:kRIT5=\eOC:kUP5=\eOA:kDN5=\eOB:smkx@:rmkx@"
+
+$Id: FAQ,v 1.33 2009-12-17 10:00:15 nicm Exp $
