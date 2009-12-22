@@ -96,4 +96,5 @@
 - option so that when session is destroyed, attach client to another session rather than exiting
 - session history for client and last-session command
 - option to change status line colour when current window is in a mode?
+- permit read-only clients
 
