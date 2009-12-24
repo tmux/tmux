@@ -34,14 +34,12 @@
 #define is_stopped(p) \
 	((p)->p_stat == SSTOP || (p)->p_stat == SZOMB || (p)->p_stat == SDEAD)
 
-struct proc	*cmp_procs(struct proc *, struct proc *);
+struct kinfo_proc2	*cmp_procs(struct kinfo_proc2 *, struct kinfo_proc2 *);
 char		*get_proc_name(int, char *);
 
-struct proc *
-cmp_procs(struct proc *p1, struct proc *p2)
+struct kinfo_proc2 *
+cmp_procs(struct kinfo_proc2 *p1, struct kinfo_proc2 *p2)
 {
-	void	*ptr1, *ptr2;
-
 	if (is_runnable(p1) && !is_runnable(p2))
 		return (p1);
 	if (!is_runnable(p1) && is_runnable(p2))
@@ -67,13 +65,6 @@ cmp_procs(struct proc *p1, struct proc *p2)
 	if (!(p1->p_flag & P_SINTR) && (p2->p_flag & P_SINTR))
 		return (p2);
 
-	ptr1 = LIST_FIRST(&p1->p_children);
-	ptr2 = LIST_FIRST(&p2->p_children);
-	if (ptr1 == NULL && ptr2 != NULL)
-		return (p1);
-	if (ptr1 != NULL && ptr2 == NULL)
-		return (p2);
-
 	if (strcmp(p1->p_comm, p2->p_comm) < 0)
 		return (p1);
 	if (strcmp(p1->p_comm, p2->p_comm) > 0)
@@ -87,11 +78,11 @@ cmp_procs(struct proc *p1, struct proc *p2)
 char *
 get_proc_name(int fd, char *tty)
 {
-	int		 mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PGRP, 0 };
+	int		 mib[6] = { CTL_KERN, KERN_PROC2, KERN_PROC_PGRP, 0,
+				    sizeof(struct kinfo_proc2), 0 };
 	struct stat	 sb;
 	size_t		 len;
-	struct kinfo_proc *buf, *newbuf;
-	struct proc	*bestp;
+	struct kinfo_proc2 *buf, *newbuf, *bestp;
 	u_int		 i;
 	char		*name;
 
@@ -111,6 +102,7 @@ retry:
 		goto error;
 	buf = newbuf;
 
+	mib[5] = (int)(len / sizeof(struct kinfo_proc2));
 	if (sysctl(mib, nitems(mib), buf, &len, NULL, 0) == -1) {
 		if (errno == ENOMEM)
 			goto retry;
@@ -118,13 +110,13 @@ retry:
 	}
 
 	bestp = NULL;
-	for (i = 0; i < len / sizeof (struct kinfo_proc); i++) {
-		if (buf[i].kp_eproc.e_tdev != sb.st_rdev)
+	for (i = 0; i < len / sizeof (struct kinfo_proc2); i++) {
+		if ((dev_t)buf[i].p_tdev != sb.st_rdev)
 			continue;
 		if (bestp == NULL)
-			bestp = &buf[i].kp_proc;
+			bestp = &buf[i];
 		else
-			bestp = cmp_procs(&buf[i].kp_proc, bestp);
+			bestp = cmp_procs(&buf[i], bestp);
 	}
 
 	name = NULL;
