@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.99 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.100 2009-12-26 23:45:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -250,10 +250,8 @@ server_kill_window(struct window *w)
 
 		if (session_detach(s, wl))
 			server_destroy_session_group(s);
-		else {
-			server_redraw_session(s);
-			server_status_session_group(s);
-		}
+		else
+			server_redraw_session_group(s);
 	}
 }
 
