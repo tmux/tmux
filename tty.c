@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.183 2009-12-16 01:13:09 tcunha Exp $ */
+/* $Id: tty.c,v 1.184 2009-12-26 23:49:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1236,7 +1236,6 @@ tty_colours(struct tty *tty, const struct grid_cell *gc, u_char *attr)
 	if (fg == tc->fg && bg == tc->bg &&
 	    ((flags ^ tc->flags) & (GRID_FLAG_FG256|GRID_FLAG_BG256)) == 0)
 		return;
-	log_debug("fg was %hhu, now %hhu", tc->fg, fg);
 
 	/*
 	 * Is either the default colour? This is handled specially because the
