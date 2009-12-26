@@ -1253,19 +1253,21 @@ tty_colours(struct tty *tty, const struct grid_cell *gc, u_char *attr)
 			tty_reset(tty);
 		else {
 			if (fg_default &&
-			    fg != tc->fg && !(tc->flags & GRID_FLAG_FG256)) {
+			    (tc->fg != 8 || tc->flags & GRID_FLAG_FG256)) {
 				if (have_ax)
 					tty_puts(tty, "\033[39m");
-				else if (tc->fg != 7)
+				else if (tc->fg != 7 ||
+				    tc->flags & GRID_FLAG_FG256)
 					tty_putcode1(tty, TTYC_SETAF, 7);
 				tc->fg = 8;
 				tc->flags &= ~GRID_FLAG_FG256;
 			}
 			if (bg_default &&
-			    bg != tc->bg && !(tc->flags & GRID_FLAG_BG256)) {
+			    (tc->bg != 8 || tc->flags & GRID_FLAG_BG256)) {
 				if (have_ax)
 					tty_puts(tty, "\033[49m");
-				else if (tc->bg != 0)
+				else if (tc->bg != 0 ||
+				    tc->flags & GRID_FLAG_BG256)
 					tty_putcode1(tty, TTYC_SETAB, 0);
 				tc->bg = 8;
 				tc->flags &= ~GRID_FLAG_BG256;
