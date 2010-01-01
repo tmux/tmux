@@ -146,7 +146,7 @@ void
 tty_start_tty(struct tty *tty)
 {
 	struct termios	 tio;
-	int		 what, mode;
+	int		 mode;
 
 	if (tty->fd == -1)
 		return;
@@ -170,10 +170,7 @@ tty_start_tty(struct tty *tty)
 	tio.c_cc[VTIME] = 0;
 	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
 		fatal("tcsetattr failed");
-
-	what = 0;
-	if (ioctl(tty->fd, TIOCFLUSH, &what) != 0)
-		fatal("ioctl(TIOCFLUSH)");
+	tcflush(tty->fd, TCIOFLUSH);
 
 	tty_putcode(tty, TTYC_SMCUP);
 
