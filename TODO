@@ -95,6 +95,7 @@
 - would prompt history/message log be better as server-global? need server global options
 - option so that when session is destroyed, attach client to another session rather than exiting
 - session history for client and last-session command
+- change colour of active pane border
 - option to change status line colour when current window is in a mode?
 - permit read-only clients
 - option to move copy mode indicator into status line
