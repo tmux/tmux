@@ -463,8 +463,8 @@ server_client_check_redraw(struct client *c)
 	}
 
 	if (c->flags & CLIENT_REDRAW) {
-		screen_redraw_screen(c, 0);
-		c->flags &= ~CLIENT_STATUS;
+		screen_redraw_screen(c, 0, 0);
+		c->flags &= ~(CLIENT_STATUS|CLIENT_BORDERS);
 	} else {
 		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
 			if (wp->flags & PANE_REDRAW)
@@ -472,12 +472,15 @@ server_client_check_redraw(struct client *c)
 		}
 	}
 
+	if (c->flags & CLIENT_BORDERS)
+		screen_redraw_screen(c, 0, 1);
+
 	if (c->flags & CLIENT_STATUS)
-		screen_redraw_screen(c, 1);
+		screen_redraw_screen(c, 1, 0);
 
 	c->tty.flags |= flags;
 
-	c->flags &= ~(CLIENT_REDRAW|CLIENT_STATUS);
+	c->flags &= ~(CLIENT_REDRAW|CLIENT_STATUS|CLIENT_BORDERS);
 }
 
 /* Set client title. */

@@ -1083,6 +1083,7 @@ struct client {
 #define CLIENT_BAD 0x80
 #define CLIENT_IDENTIFY 0x100
 #define CLIENT_DEAD 0x200
+#define CLIENT_BORDERS 0x400
 	int		 flags;
 
 	struct event	 identify_timer;
@@ -1589,6 +1590,7 @@ void	 server_redraw_session_group(struct session *);
 void	 server_status_session(struct session *);
 void	 server_status_session_group(struct session *);
 void	 server_redraw_window(struct window *);
+void	 server_redraw_window_borders(struct window *);
 void	 server_status_window(struct window *);
 void	 server_lock(void);
 void	 server_lock_session(struct session *);
@@ -1749,7 +1751,7 @@ void	 screen_write_cell(struct screen_write_ctx *,
 	     const struct grid_cell *, const struct utf8_data *);
 
 /* screen-redraw.c */
-void	 screen_redraw_screen(struct client *, int);
+void	 screen_redraw_screen(struct client *, int, int);
 void	 screen_redraw_pane(struct client *, struct window_pane *);
 
 /* screen.c */

@@ -165,6 +165,21 @@ server_redraw_window(struct window *w)
 }
 
 void
+server_redraw_window_borders(struct window *w)
+{
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+		if (c->session->curw->window == w)
+			c->flags |= CLIENT_BORDERS;
+	}
+}
+
+void
 server_status_window(struct window *w)
 {
 	struct session	*s;
