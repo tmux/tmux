@@ -234,11 +234,31 @@ screen_set_selection(struct screen *s,
 	struct screen_sel	*sel = &s->sel;
 
 	memcpy(&sel->cell, gc, sizeof sel->cell);
-
 	sel->flag = 1;
-	if (ey < sy || (sy == ey && ex < sx)) {
+
+	/* starting line < ending line -- downward selection. */
+	if (sy < ey) {
+		sel->sx = sx; sel->sy = sy;
+		sel->ex = ex; sel->ey = ey;
+		return;
+	}
+
+	/* starting line > ending line -- upward selection. */
+	if (sy > ey) {
+		if (sx > 0) {
+			sel->sx = ex; sel->sy = ey;
+			sel->ex = sx - 1; sel->ey = sy;
+		} else {
+			sel->sx = ex; sel->sy = ey;
+			sel->ex = -1; sel->ey = sy - 1;
+		}
+		return;
+	}
+
+	/* starting line == ending line. */
+	if (ex < sx) {
 		sel->sx = ex; sel->sy = ey;
-		sel->ex = sx; sel->ey = sy;
+		sel->ex = sx - 1; sel->ey = sy;
 	} else {
 		sel->sx = sx; sel->sy = sy;
 		sel->ex = ex; sel->ey = ey;
