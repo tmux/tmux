@@ -1,4 +1,4 @@
-/* $Id: cmd-copy-mode.c,v 1.25 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-copy-mode.c,v 1.26 2010-01-05 23:50:22 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,7 +35,7 @@ const struct cmd_entry cmd_copy_mode_entry = {
 	cmd_target_parse,
 	cmd_copy_mode_exec,
 	cmd_target_free,
-	NULL
+	cmd_target_print
 };
 
 void
