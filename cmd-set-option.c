@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.92 2009-12-16 01:09:01 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.93 2010-01-05 23:52:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -99,6 +99,10 @@ const struct set_option_entry set_session_option_table[] = {
 	{ "message-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "message-limit", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "mouse-select-pane", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "pane-active-border-bg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "pane-active-border-fg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "pane-border-bg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "pane-border-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "prefix", SET_OPTION_KEYS, 0, 0, NULL },
 	{ "repeat-time", SET_OPTION_NUMBER, 0, SHRT_MAX, NULL },
 	{ "set-remain-on-exit", SET_OPTION_FLAG, 0, 0, NULL },

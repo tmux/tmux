@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.50 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: screen-redraw.c,v 1.51 2010-01-05 23:52:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,6 +22,7 @@
 
 #include "tmux.h"
 
+int	screen_redraw_cell_border1(struct window_pane *, u_int, u_int);
 int	screen_redraw_cell_border(struct client *, u_int, u_int);
 int	screen_redraw_check_cell(struct client *, u_int, u_int);
 void	screen_redraw_draw_number(struct client *, struct window_pane *);
@@ -40,40 +41,49 @@ void	screen_redraw_draw_number(struct client *, struct window_pane *);
 #define CELL_JOIN 11
 #define CELL_OUTSIDE 12
 
+/* Check if cell is on the border of a particular pane. */
+int
+screen_redraw_cell_border1(struct window_pane *wp, u_int px, u_int py)
+{
+	/* Inside pane. */
+	if (px >= wp->xoff && px < wp->xoff + wp->sx &&
+	    py >= wp->yoff && py < wp->yoff + wp->sy)
+		return (0);
+
+	/* Left/right borders. */
+	if ((wp->yoff == 0 || py >= wp->yoff - 1) && py <= wp->yoff + wp->sy) {
+		if (wp->xoff != 0 && px == wp->xoff - 1)
+			return (1);
+		if (px == wp->xoff + wp->sx)
+			return (1);
+	}
+
+	/* Top/bottom borders. */
+	if ((wp->xoff == 0 || px >= wp->xoff - 1) && px <= wp->xoff + wp->sx) {
+		if (wp->yoff != 0 && py == wp->yoff - 1)
+			return (1);
+		if (py == wp->yoff + wp->sy)
+			return (1);
+	}
+
+	/* Outside pane. */
+	return (-1);
+}
+
 /* Check if a cell is on the pane border. */
 int
 screen_redraw_cell_border(struct client *c, u_int px, u_int py)
 {
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp;
+	int			 retval;
 
 	/* Check all the panes. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (!window_pane_visible(wp))
 			continue;
-
-		/* Inside pane. */
-		if (px >= wp->xoff && px < wp->xoff + wp->sx &&
-		    py >= wp->yoff && py < wp->yoff + wp->sy)
-			return (0);
-
-		/* Left/right borders. */
-		if ((wp->yoff == 0 || py >= wp->yoff - 1) &&
-		    py <= wp->yoff + wp->sy) {
-			if (wp->xoff != 0 && px == wp->xoff - 1)
-				return (1);
-			if (px == wp->xoff + wp->sx)
-				return (1);
-		}
-
-		/* Top/bottom borders. */
-		if ((wp->xoff == 0 || px >= wp->xoff - 1) &&
-		    px <= wp->xoff + wp->sx) {
-			if (wp->yoff != 0 && py == wp->yoff - 1)
-				return (1);
-			if (py == wp->yoff + wp->sy)
-				return (1);
-		}
+		if ((retval = screen_redraw_cell_border1(wp, px, py)) != -1)
+			return (retval);
 	}
 
 	return (0);
@@ -155,13 +165,14 @@ screen_redraw_check_cell(struct client *c, u_int px, u_int py)
 
 /* Redraw entire screen. */
 void
-screen_redraw_screen(struct client *c, int status_only)
+screen_redraw_screen(struct client *c, int status_only, int borders_only)
 {
 	struct window		*w = c->session->curw->window;
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
+	struct grid_cell	 active_gc, other_gc;
 	u_int		 	 i, j, type;
-	int		 	 status;
+	int		 	 status, fg, bg;
 	const u_char		*base, *ptr;
 	u_char		       	 ch, border[20];
 
@@ -178,8 +189,20 @@ screen_redraw_screen(struct client *c, int status_only)
 		return;
 	}
 
+	/* Set up pane border attributes. */
+	memcpy(&other_gc, &grid_default_cell, sizeof other_gc);
+	memcpy(&active_gc, &grid_default_cell, sizeof active_gc);
+	active_gc.data = other_gc.data = 'x'; /* not space */
+	fg = options_get_number(&c->session->options, "pane-border-fg");
+	colour_set_fg(&other_gc, fg);
+	bg = options_get_number(&c->session->options, "pane-border-bg");
+	colour_set_bg(&other_gc, bg);
+	fg = options_get_number(&c->session->options, "pane-active-border-fg");
+	colour_set_fg(&active_gc, fg);
+	bg = options_get_number(&c->session->options, "pane-active-border-bg");
+	colour_set_bg(&active_gc, bg);
+
 	/* Draw background and borders. */
-	tty_reset(tty);
 	strlcpy(border, " |-....--||+.", sizeof border);
 	if (tty_term_has(tty->term, TTYC_ACSC)) {
 		base = " xqlkmjwvtun~";
@@ -187,22 +210,30 @@ screen_redraw_screen(struct client *c, int status_only)
 			if ((ch = tty_get_acs(tty, *ptr)) != '\0')
 				border[ptr - base] = ch;
 		}
-		tty_putcode(tty, TTYC_SMACS);
+		other_gc.attr |= GRID_ATTR_CHARSET;
+		active_gc.attr |= GRID_ATTR_CHARSET;
 	}
 	for (j = 0; j < tty->sy - status; j++) {
 		if (status_only && j != tty->sy - 1)
 			continue;
 		for (i = 0; i < tty->sx; i++) {
 			type = screen_redraw_check_cell(c, i, j);
-			if (type != CELL_INSIDE) {
-				tty_cursor(tty, i, j);
-				tty_putc(tty, border[type]);
-			}
+			if (type == CELL_INSIDE)
+				continue;
+			if (screen_redraw_cell_border1(w->active, i, j) == 1)
+				tty_attributes(tty, &active_gc);
+			else
+				tty_attributes(tty, &other_gc);
+			tty_cursor(tty, i, j);
+			tty_putc(tty, border[type]);
 		}
 	}
-	tty_putcode(tty, TTYC_RMACS);
 
-	/* Draw the panes. */
+	/* If only drawing borders, that's it. */
+	if (borders_only)
+		return;
+
+	/* Draw the panes, if necessary. */
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (!window_pane_visible(wp))
 			continue;

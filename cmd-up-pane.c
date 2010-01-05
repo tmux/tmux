@@ -1,4 +1,4 @@
-/* $Id: cmd-up-pane.c,v 1.13 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-up-pane.c,v 1.14 2010-01-05 23:52:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,6 +54,7 @@ cmd_up_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 			w->active = TAILQ_LAST(&w->panes, window_panes);
 	} while (!window_pane_visible(w->active));
 	server_status_window(wl->window);
+	server_redraw_window_borders(wl->window);
 
 	return (0);
 }

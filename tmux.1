@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.216 2009-12-16 01:09:01 tcunha Exp $
+.\" $Id: tmux.1,v 1.217 2010-01-05 23:52:37 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: December 14 2009 $
+.Dd $Mdocdate: January 3 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1457,6 +1457,12 @@ If on,
 captures the mouse and when a window is split into multiple panes the mouse may
 be used to select the current pane.
 The mouse click is also passed through to the application as normal.
+.It Ic pane-border-fg Ar colour
+.It Ic pane-border-bg Ar colour
+Set the pane border colour for panes aside from the active pane.
+.It Ic pane-active-border-fg Ar colour
+.It Ic pane-active-border-bg Ar colour
+Set the pane border colour for the currently active pane.
 .It Ic prefix Ar keys
 Set the keys accepted as a prefix key.
 .Ar keys

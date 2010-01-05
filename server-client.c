@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.27 2009-12-10 16:59:02 tcunha Exp $ */
+/* $Id: server-client.c,v 1.28 2010-01-05 23:52:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -462,8 +462,8 @@ server_client_check_redraw(struct client *c)
 	}
 
 	if (c->flags & CLIENT_REDRAW) {
-		screen_redraw_screen(c, 0);
-		c->flags &= ~CLIENT_STATUS;
+		screen_redraw_screen(c, 0, 0);
+		c->flags &= ~(CLIENT_STATUS|CLIENT_BORDERS);
 	} else {
 		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
 			if (wp->flags & PANE_REDRAW)
@@ -471,12 +471,15 @@ server_client_check_redraw(struct client *c)
 		}
 	}
 
+	if (c->flags & CLIENT_BORDERS)
+		screen_redraw_screen(c, 0, 1);
+
 	if (c->flags & CLIENT_STATUS)
-		screen_redraw_screen(c, 1);
+		screen_redraw_screen(c, 1, 0);
 
 	c->tty.flags |= flags;
 
-	c->flags &= ~(CLIENT_REDRAW|CLIENT_STATUS);
+	c->flags &= ~(CLIENT_REDRAW|CLIENT_STATUS|CLIENT_BORDERS);
 }
 
 /* Set client title. */
