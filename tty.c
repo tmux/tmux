@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.185 2009-12-26 23:50:15 tcunha Exp $ */
+/* $Id: tty.c,v 1.186 2010-01-05 23:49:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -147,9 +147,6 @@ tty_start_tty(struct tty *tty)
 {
 	struct termios	 tio;
 	int		 mode;
-#ifdef TIOCFLUSH
-	int		 what;
-#endif
 
 	if (tty->fd == -1)
 		return;
@@ -173,12 +170,7 @@ tty_start_tty(struct tty *tty)
 	tio.c_cc[VTIME] = 0;
 	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
 		fatal("tcsetattr failed");
-
-#ifdef TIOCFLUSH
-	what = 0;
-	if (ioctl(tty->fd, TIOCFLUSH, &what) != 0)
-		fatal("ioctl(TIOCFLUSH)");
-#endif
+	tcflush(tty->fd, TCIOFLUSH);
 
 	tty_putcode(tty, TTYC_SMCUP);
 
