@@ -47,21 +47,21 @@ layout_find_string(struct window *w, const char *s)
 	lc = NULL;
 
 	if (strcasecmp(s, "top") == 0)
-		lc = layout_find_top(lc);
+		lc = layout_find_top(w->layout_root);
 	else if (strcasecmp(s, "bottom") == 0)
-		lc = layout_find_bottom(lc);
+		lc = layout_find_bottom(w->layout_root);
 	else if (strcasecmp(s, "left") == 0)
-		lc = layout_find_left(lc);
+		lc = layout_find_left(w->layout_root);
 	else if (strcasecmp(s, "right") == 0)
-		lc = layout_find_right(lc);
+		lc = layout_find_right(w->layout_root);
 	else if (strcasecmp(s, "top-left") == 0)
-		lc = layout_find_topleft(lc);
+		lc = layout_find_topleft(w->layout_root);
 	else if (strcasecmp(s, "top-right") == 0)
-		lc = layout_find_topright(lc);
+		lc = layout_find_topright(w->layout_root);
 	else if (strcasecmp(s, "bottom-left") == 0)
-		lc = layout_find_bottomleft(lc);
+		lc = layout_find_bottomleft(w->layout_root);
 	else if (strcasecmp(s, "bottom-right") == 0)
-		lc = layout_find_bottomright(lc);
+		lc = layout_find_bottomright(w->layout_root);
 
 	if (lc == NULL || lc->type != LAYOUT_WINDOWPANE)
 		return (NULL);
