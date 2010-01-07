@@ -984,11 +984,12 @@ Select the window at
 .Oo Fl l
 .Ar size |
 .Fl p Ar percentage Oc
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Op Ar command
 .Xc
 .D1 (alias: splitw )
-Creates a new pane by splitting the active pane:
+Create a new pane by splitting
+.Ar target-pane :
 .Fl h
 does a horizontal split and
 .Fl v
@@ -999,9 +1000,9 @@ The
 .Fl l
 and
 .Fl p
-options specify the size of the new window in lines (for vertical split) or in
+options specify the size of the new pane in lines (for vertical split) or in
 cells (for horizontal split), or as a percentage, respectively.
-All other options have the same meaning as in the
+All other options have the same meaning as for the
 .Ic new-window
 command.
 .It Xo Ic swap-pane
