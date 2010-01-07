@@ -49,6 +49,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_find_window_entry,
 	&cmd_has_session_entry,
 	&cmd_if_shell_entry,
+	&cmd_join_pane_entry,
 	&cmd_kill_pane_entry,
 	&cmd_kill_server_entry,
 	&cmd_kill_session_entry,
