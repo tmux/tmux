@@ -183,9 +183,9 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		size = data->size;
 	else if (data->percentage != -1) {
 		if (type == LAYOUT_TOPBOTTOM)
-			size = (w->active->sy * data->percentage) / 100;
+			size = (wp->sy * data->percentage) / 100;
 		else
-			size = (w->active->sx * data->percentage) / 100;
+			size = (wp->sx * data->percentage) / 100;
 	}
 	hlimit = options_get_number(&s->options, "history-limit");
 
