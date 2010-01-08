@@ -290,6 +290,7 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 	if (key == KEYC_MOUSE) {
 		if (options_get_number(oo, "mouse-select-pane")) {
 			window_set_active_at(w, mouse->x, mouse->y);
+			server_redraw_window_borders(w);
 			wp = w->active;
 		}
 		window_pane_mouse(wp, c, mouse);
