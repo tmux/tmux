@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.218 2010-01-08 16:23:38 tcunha Exp $
+.\" $Id: tmux.1,v 1.219 2010-01-08 16:31:35 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -767,6 +767,24 @@ If only one window is matched, it'll be automatically selected, otherwise a
 choice list is shown.
 This command only works from inside
 .Nm .
+.It Xo Ic join-pane
+.Op Fl dhv
+.Oo Fl l
+.Ar size |
+.Fl p Ar percentage Oc
+.Op Fl s Ar src-pane
+.Op Fl t Ar dst-pane
+.Xc
+.D1 (alias: Ic joinp )
+Like
+.Ic split-window ,
+but instead of splitting
+.Ar dst-pane
+and creating a new pane, split it and move
+.Ar src-pane
+into the space.
+This can be used to reverse
+.Ic break-pane .
 .It Xo Ic kill-pane
 .Op Fl a
 .Op Fl t Ar target-pane

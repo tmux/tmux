@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.535 2010-01-05 23:52:37 tcunha Exp $ */
+/* $Id: tmux.h,v 1.536 2010-01-08 16:31:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1436,6 +1436,7 @@ extern const struct cmd_entry cmd_down_pane_entry;
 extern const struct cmd_entry cmd_find_window_entry;
 extern const struct cmd_entry cmd_has_session_entry;
 extern const struct cmd_entry cmd_if_shell_entry;
+extern const struct cmd_entry cmd_join_pane_entry;
 extern const struct cmd_entry cmd_kill_pane_entry;
 extern const struct cmd_entry cmd_kill_server_entry;
 extern const struct cmd_entry cmd_kill_session_entry;
@@ -1832,8 +1833,9 @@ void		 layout_free(struct window *);
 void		 layout_resize(struct window *, u_int, u_int);
 void		 layout_resize_pane(
 		     struct window_pane *, enum layout_type, int);
-int		 layout_split_pane(struct window_pane *,
-		     enum layout_type, int, struct window_pane *);
+void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
+struct layout_cell *layout_split_pane(
+		     struct window_pane *, enum layout_type, int);
 void		 layout_close_pane(struct window_pane *);
 
 /* layout-set.c */

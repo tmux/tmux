@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.33 2010-01-08 16:24:21 tcunha Exp $ */
+/* $Id: cmd-split-window.c,v 1.34 2010-01-08 16:31:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -148,13 +148,14 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session			*s;
 	struct winlink			*wl;
 	struct window			*w;
-	struct window_pane		*wp, *new_wp;
+	struct window_pane		*wp, *new_wp = NULL;
 	struct environ			 env;
 	char		 		*cmd, *cwd, *cause;
 	const char			*shell;
 	u_int				 hlimit;
 	int				 size;
 	enum layout_type		 type;
+	struct layout_cell		*lc;
 
 	if ((wl = cmd_find_pane(ctx, data->target, &s, &wp)) == NULL)
 		return (-1);
@@ -192,13 +193,15 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 
-	new_wp = window_add_pane(w, hlimit);
-	if (window_pane_spawn(new_wp, cmd, shell, cwd, &env, s->tio, &cause) != 0)
-		goto error;
-	if (layout_split_pane(wp, type, size, new_wp) != 0) {
+	if ((lc = layout_split_pane(wp, type, size)) == NULL) {
 		cause = xstrdup("pane too small");
 		goto error;
 	}
+	new_wp = window_add_pane(w, hlimit);
+	if (window_pane_spawn(
+	    new_wp, cmd, shell, cwd, &env, s->tio, &cause) != 0)
+		goto error;
+	layout_assign_pane(lc, new_wp);
 
 	server_redraw_window(w);
 

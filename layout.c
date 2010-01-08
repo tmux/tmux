@@ -1,4 +1,4 @@
-/* $Id: layout.c,v 1.17 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: layout.c,v 1.18 2010-01-08 16:31:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -485,10 +485,20 @@ layout_resize_pane_shrink(
 	return (size);
 }
 
-/* Split a pane into two. size is a hint, or -1 for default half/half split. */
-int
-layout_split_pane(struct window_pane *wp,
-    enum layout_type type, int size, struct window_pane *new_wp)
+/* Assign window pane to newly split cell. */
+void
+layout_assign_pane(struct layout_cell *lc, struct window_pane *wp)
+{
+	layout_make_leaf(lc, wp);
+	layout_fix_panes(wp->window, wp->window->sx, wp->window->sy);
+}
+
+/*
+ * Split a pane into two. size is a hint, or -1 for default half/half
+ * split. This must be followed by layout_assign_pane before much else happens!
+ **/
+struct layout_cell *
+layout_split_pane(struct window_pane *wp, enum layout_type type, int size)
 {
 	struct layout_cell     *lc, *lcparent, *lcnew;
 	u_int			sx, sy, xoff, yoff, size1, size2;
@@ -505,11 +515,11 @@ layout_split_pane(struct window_pane *wp,
 	switch (type) {
 	case LAYOUT_LEFTRIGHT:
 		if (sx < PANE_MINIMUM * 2 + 1)
-			return (-1);
+			return (NULL);
 		break;
 	case LAYOUT_TOPBOTTOM:
 		if (sy < PANE_MINIMUM * 2 + 1)
-			return (-1);
+			return (NULL);
 		break;
 	default:
 		fatalx("bad layout type");
@@ -583,12 +593,8 @@ layout_split_pane(struct window_pane *wp,
 
 	/* Assign the panes. */
 	layout_make_leaf(lc, wp);
-	layout_make_leaf(lcnew, new_wp);
 
-	/* Fix pane offsets and sizes. */
-	layout_fix_panes(wp->window, wp->window->sx, wp->window->sy);
-
-	return (0);
+	return (lcnew);
 }
 
 /* Destroy the layout associated with a pane and redistribute the space. */
