@@ -1,4 +1,4 @@
-/* $Id: cmd-join-pane.c,v 1.1 2010-01-08 16:31:35 tcunha Exp $ */
+/* $Id: cmd-join-pane.c,v 1.2 2010-01-08 16:34:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <paths.h>
 #include <stdlib.h>
 #include <unistd.h>
 
