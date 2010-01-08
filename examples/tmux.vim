@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: tmux(1) configuration file
 " Maintainer: Tiago Cunha <me@tiagocunha.org>
-" Last Change: $Date: 2010-01-05 23:54:00 $
+" Last Change: $Date: 2010-01-08 16:34:49 $
 " License: This file is placed in the public domain.
 
 if version < 600
@@ -42,7 +42,7 @@ syn keyword tmuxCmds display[-message] setenv set-environment showenv
 syn keyword tmuxCmds show-environment choose-client displayp display-panes
 syn keyword tmuxCmds run[-shell] lockc lock-client locks lock-session lsp
 syn keyword tmuxCmds list-panes pipep pipe-pane showmsgs show-messages capturep
-syn keyword tmuxCmds capture-pane
+syn keyword tmuxCmds capture-pane joinp join-pane
 
 syn keyword tmuxOptsSet prefix status status-fg status-bg bell-action
 syn keyword tmuxOptsSet default-command history-limit status-left status-right
