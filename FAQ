@@ -227,7 +227,7 @@ uptime|awk '{split(substr($0, index($0, "load")), a, ":"); print a[2]}'
 
 One or more of the windows can be linked into multiple sessions manually with
 link-window, or a grouped session with all the windows can be created with
-new-window -t.
+new-session -t.
 
 * Ctrl and arrow keys doesn't work in putty! What do I do?
 
@@ -239,4 +239,4 @@ have TERM set to xterm):
 
 set -g terminal-overrides "xterm*:kLFT5=\eOD:kRIT5=\eOC:kUP5=\eOA:kDN5=\eOB:smkx@:rmkx@"
 
-$Id: FAQ,v 1.33 2009-12-17 10:00:15 nicm Exp $
+$Id: FAQ,v 1.34 2010-01-10 00:14:34 nicm Exp $
