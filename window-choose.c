@@ -312,8 +312,7 @@ window_choose_write_line(
 	struct options			*oo = &wp->window->options;
 	struct screen			*s = &data->screen;
 	struct grid_cell		 gc;
-	int				 utf8flag;
-	char				 key;
+	int				 utf8flag, key;
 
 	if (data->callbackfn == NULL)
 		fatalx("called before callback assigned");
