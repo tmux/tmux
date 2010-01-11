@@ -15,6 +15,7 @@
                 <li><a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/NOTES">Release Notes</a>
                 <li><a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/CHANGES">Changelog</a></li>
                 <li><a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/FAQ">FAQ</a></li>
+		<li><a href="http://www.openbsd.org/faq/faq7.html#tmux">tmux in the OpenBSD FAQ</a></li>
 		<li><a href="http://tmux.cvs.sourceforge.net/viewvc/tmux/tmux/examples/">Examples</a></li>
                 <li>&nbsp;</li>
                 <li class="menu-headings">Source Code</li>
@@ -59,8 +60,8 @@ development.</li>
 </ul>
 
 <p>tmux is part of the <a href="http://www.openbsd.org">OpenBSD</a> base
-system. The portable version is hosted on SourceForge and runs on Linux,
-FreeBSD, NetBSD, Solaris and AIX.</p>
+system. The portable version is hosted on <a href="http://sf.net/projects/tmux">
+SourceForge</a> and runs on Linux, FreeBSD, NetBSD, Solaris and AIX.</p>
 
                 <div id="screenshots">
                     <a href="tmux3.png"><img src="small-tmux3.png"></a>
