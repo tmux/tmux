@@ -101,4 +101,10 @@
 - option to move copy mode indicator into status line
 - list-buffer/show-buffer should display UTF-8
 - selection behaviour closer to vi in vi mode
-
+- live update: server started with -U connects to server, requests sessions and
+  windows, receives fds
+- convert status line history to be server global (anything else?)
+- extensions to -t; windows, panes, sessions:
+	! for previous window selected in current session
+	+/- for next/previous numerically
+	others?
