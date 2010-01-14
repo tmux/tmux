@@ -108,3 +108,4 @@
 	! for previous window selected in current session
 	+/- for next/previous numerically
 	others?
+- command to show a tree of sessions-windows-panes (active marked with *)
