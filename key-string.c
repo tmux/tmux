@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.28 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: key-string.c,v 1.29 2010-01-17 19:01:27 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -167,6 +167,25 @@ key_string_lookup_string(const char *string)
 
 		if (key >= 32 && key <= 127)
 			return (key | KEYC_ESCAPE);
+		return (KEYC_NONE);
+	}
+
+	if ((string[0] == 'S' || string[0] == 's') && string[1] == '-') {
+		ptr = string + 2;
+		if (ptr[0] == '\0')
+			return (KEYC_NONE);
+		key = key_string_lookup_string(ptr);
+		if (key != KEYC_NONE) {
+			if (key >= KEYC_BASE)
+				return (key | KEYC_SHIFT);
+		} else {
+			if (ptr[1] == '\0')
+				return (KEYC_NONE);
+			key = (u_char) ptr[0];
+		}
+
+		if (key >= 32 && key <= 127)
+			return (key | KEYC_SHIFT);
 		return (KEYC_NONE);
 	}
 
