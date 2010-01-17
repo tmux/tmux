@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.27 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: window-choose.c,v 1.28 2010-01-17 19:00:05 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -312,8 +312,7 @@ window_choose_write_line(
 	struct options			*oo = &wp->window->options;
 	struct screen			*s = &data->screen;
 	struct grid_cell		 gc;
-	int				 utf8flag;
-	char				 key;
+	int				 utf8flag, key;
 
 	if (data->callbackfn == NULL)
 		fatalx("called before callback assigned");
