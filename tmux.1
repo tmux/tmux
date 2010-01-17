@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.219 2010-01-08 16:31:35 tcunha Exp $
+.\" $Id: tmux.1,v 1.220 2010-01-17 19:02:47 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: January 7 2010 $
+.Dd $Mdocdate: January 14 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1038,6 +1038,10 @@ is used and no source pane is specified with
 is swapped with the previous pane (before it numerically);
 .Fl D
 swaps with the next pane (after it numerically).
+.Fl d
+instructs
+.Nm
+not to change the active pane.
 .It Xo Ic swap-window
 .Op Fl d
 .Op Fl s Ar src-window
