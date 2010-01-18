@@ -109,3 +109,6 @@
 	+/- for next/previous numerically
 	others?
 - command to show a tree of sessions-windows-panes (active marked with *)
+- sort out inheriting config from shell on new sessions/windows:
+        should pick up default-path/termios/etc from client if possible,
+	else leave empty/default
