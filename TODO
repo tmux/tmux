@@ -74,7 +74,6 @@
 - UTF-8 to a non-UTF-8 terminal should not be able to balls up
   the terminal - www/ruby-addressable; make regress
 - copy mode needs a tidy/cleanup
-- an option to NOT remove message when key pressed
 - ability to save history (to buffer?)
 - multiple keys could be done with tables, ie have prefixes go and instead
 	bind -n ^A prefix-table "default"
@@ -95,7 +94,6 @@
 - would prompt history/message log be better as server-global? need server global options
 - option so that when session is destroyed, attach client to another session rather than exiting
 - session history for client and last-session command
-- change colour of active pane border
 - option to change status line colour when current window is in a mode?
 - permit read-only clients
 - option to move copy mode indicator into status line
