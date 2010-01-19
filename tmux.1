@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.220 2010-01-17 19:02:47 tcunha Exp $
+.\" $OpenBSD: tmux.1,v 1.139 2010/01/18 19:16:04 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: January 14 2010 $
+.Dd $Mdocdate: January 18 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1862,6 +1862,7 @@ command.
 .Xc
 Duplicate input to any pane to all other panes in the same window, except
 for panes that are not in output mode.
+.Pp
 .It Xo Ic utf8
 .Op Ic on | off
 .Xc
