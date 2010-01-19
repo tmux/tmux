@@ -12,7 +12,7 @@
                 <p id="upper-left-title">tmux</p>
                 <ul id="left-menu">
                 <li><a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">Download</a></li>
-                <li><a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/NOTES">Release Notes</a>
+                <li><a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/NOTES">Release Notes</a></li>
                 <li><a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/CHANGES">Changelog</a></li>
                 <li><a href="http://tmux.cvs.sourceforge.net/viewvc/*checkout*/tmux/tmux/FAQ">FAQ</a></li>
 		<li><a href="http://www.openbsd.org/faq/faq7.html#tmux">tmux in the OpenBSD FAQ</a></li>
@@ -64,9 +64,9 @@ system. The portable version is hosted on <a href="http://sf.net/projects/tmux">
 SourceForge</a> and runs on Linux, FreeBSD, NetBSD, Solaris and AIX.</p>
 
                 <div id="screenshots">
-                    <a href="tmux3.png"><img src="small-tmux3.png"></a>
-                    <a href="tmux4.png"><img src="small-tmux4.png"></a>
-                    <a href="tmux5.png"><img src="small-tmux5.png"></a>
+                    <a href="tmux3.png"><img src="small-tmux3.png" alt="Screenshot"/></a>
+                    <a href="tmux4.png"><img src="small-tmux4.png" alt="Screenshot"/></a>
+                    <a href="tmux5.png"><img src="small-tmux5.png" alt="Screenshot"/></a>
                 </div>
             </div>
        </div>
