@@ -95,18 +95,16 @@ default) to the new key. For example:
 
 * How do I use UTF-8?
 
-When running tmux in a UTF-8 capable terminal, two things must be done to
-enable support. UTF-8 must be turned on in tmux; this may be done separately
-for each tmux window or globally by setting the "utf8" flag:
-
-	setw -g utf8 on
-
-As of release 0.9, tmux attempts to autodetect a UTF-8-capable terminal by
+When running tmux in a UTF-8 capable terminal, UTF-8 must be turned on in tmux;
+as of release 0.9, tmux attempts to autodetect a UTF-8-capable terminal by
 checking the LC_ALL, LC_CTYPE and LANG environment variables. list-clients may
 be used to check if this is detected correctly; if not, the -u command-line
 flag may be specified when creating or attaching a client to a tmux session:
 
 	$ tmux -u new
+
+Since the 1.0 release, tmux will turn on UTF-8 related options automatically
+(ie status-utf8, and utf8) if the above conditions are met.
 
 * How do I use a 256 colour terminal?
 
@@ -239,4 +237,4 @@ have TERM set to xterm):
 
 set -g terminal-overrides "xterm*:kLFT5=\eOD:kRIT5=\eOC:kUP5=\eOA:kDN5=\eOB:smkx@:rmkx@"
 
-$Id: FAQ,v 1.34 2010-01-10 00:14:34 nicm Exp $
+$Id: FAQ,v 1.35 2010-01-19 00:55:56 tcunha Exp $
