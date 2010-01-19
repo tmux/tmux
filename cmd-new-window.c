@@ -129,21 +129,19 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	wl = NULL;
 	if (idx != -1)
 		wl = winlink_find_by_index(&s->windows, idx);
-	if (wl != NULL) {
-		if (data->flag_kill) {
-			/*
-			 * Can't use session_detach as it will destroy session
-			 * if this makes it empty.
-			 */
-			session_alert_cancel(s, wl);
-			winlink_stack_remove(&s->lastw, wl);
-			winlink_remove(&s->windows, wl);
+	if (wl != NULL && data->flag_kill) {
+		/*
+		 * Can't use session_detach as it will destroy session if this
+		 * makes it empty.
+		 */
+		session_alert_cancel(s, wl);
+		winlink_stack_remove(&s->lastw, wl);
+		winlink_remove(&s->windows, wl);
 
-			/* Force select/redraw if current. */
-			if (wl == s->curw) {
-				data->flag_detached = 0;
-				s->curw = NULL;
-			}
+		/* Force select/redraw if current. */
+		if (wl == s->curw) {
+			data->flag_detached = 0;
+			s->curw = NULL;
 		}
 	}
 

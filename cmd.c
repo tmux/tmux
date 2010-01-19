@@ -702,11 +702,19 @@ cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 
 	/*
 	 * Then work out the window. An empty string is the current window,
-	 * otherwise try to look it up in the session.
+	 * otherwise try special cases then to look it up in the session.
 	 */
 	if (*winptr == '\0')
 		wl = s->curw;
-	else if ((wl = cmd_lookup_window(s, winptr, &ambiguous)) == NULL)
+	else if (winptr[0] == '!' && winptr[1] == '\0')
+		wl = TAILQ_FIRST(&s->lastw);
+	else if (winptr[0] == '+' && winptr[1] == '\0')
+		wl = winlink_next(s->curw);
+	else if (winptr[0] == '-' && winptr[1] == '\0')
+		wl = winlink_previous(s->curw);
+	else
+		wl = cmd_lookup_window(s, winptr, &ambiguous);
+	if (wl == NULL)
 		goto not_found;
 
 	if (sessptr != NULL)
@@ -714,8 +722,20 @@ cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 	return (wl);
 
 no_colon:
-	/* No colon in the string, first try as a window then as a session. */
-	if ((wl = cmd_lookup_window(s, arg, &ambiguous)) == NULL) {
+	/*
+	 * No colon in the string, first try special cases, then as a window
+	 * and lastly as a session.
+	 */
+	if (arg[0] == '!' && arg[1] == '\0') {
+		if ((wl = TAILQ_FIRST(&s->lastw)) == NULL)
+			goto not_found;
+	} else if (arg[0] == '+' && arg[1] == '\0') {
+		if ((wl = winlink_next(s->curw)) == NULL)
+			goto not_found;
+	} else if (arg[0] == '-' && arg[1] == '\0') {
+		if ((wl = winlink_previous(s->curw)) == NULL)
+			goto not_found;
+	} else if ((wl = cmd_lookup_window(s, arg, &ambiguous)) == NULL) {
 		if (ambiguous)
 			goto not_found;
 		if ((s = cmd_lookup_session(arg, &ambiguous)) == NULL)
@@ -757,6 +777,7 @@ int
 cmd_find_index(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 {
 	struct session	*s;
+	struct winlink	*wl;
 	const char	*winptr;
 	char		*sessptr = NULL;
 	int		 idx, ambiguous = 0;
@@ -802,8 +823,20 @@ cmd_find_index(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 	 * try to look it up in the session.
 	 */
 	if (*winptr == '\0')
-		 idx = -1;
-	else if ((idx = cmd_lookup_index(s, winptr, &ambiguous)) == -1) {
+		idx = -1;
+	else if (winptr[0] == '!' && winptr[1] == '\0') {
+		if ((wl = TAILQ_FIRST(&s->lastw)) == NULL)
+			goto not_found;
+		idx = wl->idx;
+	} else if (winptr[0] == '+' && winptr[1] == '\0') {
+		if (s->curw->idx == INT_MAX)
+			goto not_found;
+		idx = s->curw->idx + 1;
+	} else if (winptr[0] == '-' && winptr[1] == '\0') {
+		if (s->curw->idx == 0)
+			goto not_found;
+		idx = s->curw->idx - 1;
+	} else if ((idx = cmd_lookup_index(s, winptr, &ambiguous)) == -1) {
 		if (ambiguous)
 			goto not_found;
 		ctx->error(ctx, "invalid index: %s", arg);
@@ -815,8 +848,23 @@ cmd_find_index(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 	return (idx);
 
 no_colon:
-	/* No colon in the string, first try as a window then as a session. */
-	if ((idx = cmd_lookup_index(s, arg, &ambiguous)) == -1) {
+	/*
+	 * No colon in the string, first try special cases, then as a window
+	 * and lastly as a session.
+	 */
+	if (arg[0] == '!' && arg[1] == '\0') {
+		if ((wl = TAILQ_FIRST(&s->lastw)) == NULL)
+			goto not_found;
+		idx = wl->idx;
+	} else if (arg[0] == '+' && arg[1] == '\0') {
+		if (s->curw->idx == INT_MAX)
+			goto not_found;
+		idx = s->curw->idx + 1;
+	} else if (arg[0] == '-' && arg[1] == '\0') {
+		if (s->curw->idx == 0)
+			goto not_found;
+		idx = s->curw->idx - 1;
+	} else if ((idx = cmd_lookup_index(s, arg, &ambiguous)) == -1) {
 		if (ambiguous)
 			goto not_found;
 		if ((s = cmd_lookup_session(arg, &ambiguous)) == NULL)
