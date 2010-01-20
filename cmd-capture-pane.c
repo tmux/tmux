@@ -65,6 +65,8 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	       memcpy(buf + len, line, linelen);
 	       len += linelen;
 	       buf[len++] = '\n';
+
+	       xfree(line);
 	}
 
 	limit = options_get_number(&sess->options, "buffer-limit");
