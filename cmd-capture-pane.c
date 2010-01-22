@@ -1,4 +1,4 @@
-/* $Id: cmd-capture-pane.c,v 1.2 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: cmd-capture-pane.c,v 1.3 2010-01-22 17:29:19 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Jonathan Alvarado <radobobo@users.sourceforge.net>
@@ -65,6 +65,8 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	       memcpy(buf + len, line, linelen);
 	       len += linelen;
 	       buf[len++] = '\n';
+
+	       xfree(line);
 	}
 
 	limit = options_get_number(&sess->options, "buffer-limit");
