@@ -1,4 +1,4 @@
-.\" $OpenBSD: tmux.1,v 1.139 2010/01/18 19:16:04 nicm Exp $
+.\" $Id: tmux.1,v 1.222 2010-01-22 17:28:34 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: January 18 2010 $
+.Dd $Mdocdate: January 19 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -307,6 +307,13 @@ commands)
 otherwise the current window in
 .Em session
 is chosen.
+The special character
+.Ql \&!
+uses the last (previously current) window, or
+.Ql +
+and
+.Ql -
+are the next window or the previous window by number.
 When the argument does not contain a colon,
 .Nm
 first attempts to parse it as window; if that fails, an attempt is made to
