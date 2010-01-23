@@ -61,10 +61,12 @@ cmd_switch_client_parse(struct cmd *self, int argc, char **argv, char **cause)
 	while ((opt = getopt(argc, argv, "c:t:")) != -1) {
 		switch (opt) {
 		case 'c':
-			data->name = xstrdup(optarg);
+			if (data->name == NULL)
+				data->name = xstrdup(optarg);
 			break;
 		case 't':
-			data->target = xstrdup(optarg);
+			if (data->target == NULL)
+				data->target = xstrdup(optarg);
 			break;
 		default:
 			goto usage;

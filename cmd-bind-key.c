@@ -79,7 +79,8 @@ cmd_bind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 			data->can_repeat = 1;
 			break;
 		case 't':
-			data->tablename = xstrdup(optarg);
+			if (data->tablename == NULL)
+				data->tablename = xstrdup(optarg);
 			break;
 		default:
 			goto usage;

@@ -67,7 +67,8 @@ cmd_unbind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 			no_prefix = 1;
 			break;
 		case 't':
-			data->tablename = xstrdup(optarg);
+			if (data->tablename == NULL)
+				data->tablename = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
