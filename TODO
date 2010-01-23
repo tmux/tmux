@@ -110,3 +110,4 @@
 - sort out inheriting config from shell on new sessions/windows:
         should pick up default-path/termios/etc from client if possible,
 	else leave empty/default
+- why does new-session/attach stop command sequence parsing? document it?
