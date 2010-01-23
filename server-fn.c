@@ -260,13 +260,13 @@ server_kill_window(struct window *w)
 		s = ARRAY_ITEM(&sessions, i);
 		if (s == NULL || !session_has(s, w))
 			continue;
-		if ((wl = winlink_find_by_window(&s->windows, w)) == NULL)
-			continue;
-
-		if (session_detach(s, wl))
-			server_destroy_session_group(s);
-		else
-			server_redraw_session_group(s);
+		while ((wl = winlink_find_by_window(&s->windows, w)) != NULL) {
+			if (session_detach(s, wl)) {
+				server_destroy_session_group(s);
+				break;
+			} else
+				server_redraw_session_group(s);
+		}
 	}
 }
 
