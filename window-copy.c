@@ -296,6 +296,20 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		window_copy_update_selection(wp);
 		window_copy_redraw_screen(wp);
 		break;
+	case MODEKEYCOPY_HISTORYTOP:
+		data->cx = 0;
+		data->cy = 0;
+		data->oy = screen_hsize(&wp->base);
+		window_copy_update_selection(wp);
+		window_copy_redraw_screen(wp);
+		break;
+	case MODEKEYCOPY_HISTORYBOTTOM:
+		data->cx = 0;
+		data->cy = screen_size_y(s) - 1;
+		data->oy = 0;
+		window_copy_update_selection(wp);
+		window_copy_redraw_screen(wp);
+		break;
 	case MODEKEYCOPY_STARTSELECTION:
 		window_copy_start_selection(wp);
 		window_copy_redraw_screen(wp);
