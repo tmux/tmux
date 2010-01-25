@@ -112,3 +112,6 @@
 	else leave empty/default
 - why does new-session/attach stop command sequence parsing? document it?
 - search should update selection and searching
+- define custom layouts
+- link panes into multiple windows
+- -h option to capture-pane to capture the history as well
