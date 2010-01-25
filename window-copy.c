@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.94 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.95 2010-01-25 17:14:42 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1075,6 +1075,7 @@ void
 window_copy_cursor_up(struct window_pane *wp, int scroll_only)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*s = &data->screen;
 	u_int				 ox, oy, px, py;
 
 	oy = screen_hsize(&wp->base) + data->cy - data->oy;
@@ -1087,12 +1088,20 @@ window_copy_cursor_up(struct window_pane *wp, int scroll_only)
 	data->cx = data->lastcx;
 	if (scroll_only || data->cy == 0) {
 		window_copy_scroll_down(wp, 1);
-		if (scroll_only)
-			window_copy_redraw_lines(wp, data->cy, 2);
+		if (scroll_only) {
+			if (data->cy == screen_size_y(s) - 1)
+				window_copy_redraw_lines(wp, data->cy, 1);
+			else
+				window_copy_redraw_lines(wp, data->cy, 2);
+		}
 	} else {
 		window_copy_update_cursor(wp, data->cx, data->cy - 1);
-		if (window_copy_update_selection(wp))
-			window_copy_redraw_lines(wp, data->cy, 2);
+		if (window_copy_update_selection(wp)) {
+			if (data->cy == screen_size_y(s) - 1)
+				window_copy_redraw_lines(wp, data->cy, 1);
+			else
+				window_copy_redraw_lines(wp, data->cy, 2);
+		}
 	}
 
 	py = screen_hsize(&wp->base) + data->cy - data->oy;
