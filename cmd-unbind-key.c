@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.21 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-unbind-key.c,v 1.22 2010-01-25 17:12:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -67,7 +67,8 @@ cmd_unbind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 			no_prefix = 1;
 			break;
 		case 't':
-			data->tablename = xstrdup(optarg);
+			if (data->tablename == NULL)
+				data->tablename = xstrdup(optarg);
 			break;
 		default:
 			goto usage;

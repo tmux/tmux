@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.27 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: cmd-bind-key.c,v 1.28 2010-01-25 17:12:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -79,7 +79,8 @@ cmd_bind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 			data->can_repeat = 1;
 			break;
 		case 't':
-			data->tablename = xstrdup(optarg);
+			if (data->tablename == NULL)
+				data->tablename = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
