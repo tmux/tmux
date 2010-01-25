@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.222 2010-01-22 17:28:34 tcunha Exp $
+.\" $Id: tmux.1,v 1.223 2010-01-25 17:11:42 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: January 19 2010 $
+.Dd $Mdocdate: January 23 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -535,7 +535,7 @@ The keys available depend on whether emacs or vi mode is selected
 .Ic mode-keys
 option).
 The following keys are supported as appropriate for the mode:
-.Bl -column "FunctionXXXXXXXXXXXX" "viXXXXXXXXX" "emacs" -offset indent
+.Bl -column "FunctionXXXXXXXXXXXX" "viXXXXXXXXXX" "emacs" -offset indent
 .It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
 .It Li "Back to indentation" Ta "^" Ta "M-m"
 .It Li "Clear selection" Ta "Escape" Ta "C-g"
@@ -559,8 +559,8 @@ The following keys are supported as appropriate for the mode:
 .It Li "Previous page" Ta "C-b" Ta "Page up"
 .It Li "Previous word" Ta "b" Ta "M-b"
 .It Li "Quit mode" Ta "q" Ta "Escape"
-.It Li "Scroll down" Ta "C-Down or J" Ta "C-Down"
-.It Li "Scroll up" Ta "C-Up or K" Ta "C-Up"
+.It Li "Scroll down" Ta "C-Down or C-e" Ta "C-Down"
+.It Li "Scroll up" Ta "C-Up or C-y" Ta "C-Up"
 .It Li "Search again" Ta "n" Ta "n"
 .It Li "Search backward" Ta "?" Ta "C-r"
 .It Li "Search forward" Ta "/" Ta "C-s"
