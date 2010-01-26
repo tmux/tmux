@@ -550,10 +550,11 @@ status_job_callback(struct job *job)
 		xfree(job->data);
 	else
 		server_redraw_client(job->client);
-	job->data = xstrdup(line);
 
-	if (buf != NULL)
-		xfree(buf);
+	if (line == NULL)
+		job->data = buf;
+	else
+		job->data = xstrdup(line);
 }
 
 /* Calculate winlink status line entry width. */
