@@ -185,6 +185,7 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ '\r',			0, MODEKEYCOPY_COPYSELECTION },
 	{ '^',			0, MODEKEYCOPY_BACKTOINDENTATION },
 	{ 'b',			0, MODEKEYCOPY_PREVIOUSWORD },
+	{ 'e',                  0, MODEKEYCOPY_NEXTWORDEND },
 	{ 'g',			0, MODEKEYCOPY_HISTORYTOP },
 	{ 'h',			0, MODEKEYCOPY_LEFT },
 	{ 'j',			0, MODEKEYCOPY_DOWN },
