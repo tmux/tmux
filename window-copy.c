@@ -64,6 +64,7 @@ void	window_copy_cursor_right(struct window_pane *);
 void	window_copy_cursor_up(struct window_pane *, int);
 void	window_copy_cursor_down(struct window_pane *, int);
 void	window_copy_cursor_next_word(struct window_pane *);
+void	window_copy_cursor_next_word_end(struct window_pane *);
 void	window_copy_cursor_previous_word(struct window_pane *);
 void	window_copy_scroll_up(struct window_pane *, u_int);
 void	window_copy_scroll_down(struct window_pane *, u_int);
@@ -335,6 +336,9 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		break;
 	case MODEKEYCOPY_NEXTWORD:
 		window_copy_cursor_next_word(wp);
+		break;
+	case MODEKEYCOPY_NEXTWORDEND:
+		window_copy_cursor_next_word_end(wp);
 		break;
 	case MODEKEYCOPY_PREVIOUSWORD:
 		window_copy_cursor_previous_word(wp);
@@ -1159,6 +1163,42 @@ window_copy_cursor_down(struct window_pane *wp, int scroll_only)
 
 void
 window_copy_cursor_next_word(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*base_s = &wp->base;
+	u_int				 px, py, xx, yy;
+
+	px = data->cx;
+	py = screen_hsize(base_s) + data->cy - data->oy;
+	xx = window_copy_find_length(wp, py);
+	yy = screen_hsize(base_s) + screen_size_y(base_s) - 1;
+
+	/* Are we in a word? Skip it! */
+	while (!window_copy_is_space(wp, px, py))
+		px++;
+
+	/* Find the start of a word. */
+	while (px > xx || window_copy_is_space(wp, px, py)) {
+		/* Past the end of the line? Nothing but spaces. */
+		if (px > xx) {
+			if (py == yy)
+				return;
+			window_copy_cursor_down(wp, 0);
+			px = 0;
+
+			py = screen_hsize(base_s) + data->cy - data->oy;
+			xx = window_copy_find_length(wp, py);
+		}
+		px++;
+	}
+
+	window_copy_update_cursor(wp, px, data->cy);
+	if (window_copy_update_selection(wp))
+		window_copy_redraw_lines(wp, data->cy, 1);
+}
+
+void
+window_copy_cursor_next_word_end(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*base_s = &wp->base;
