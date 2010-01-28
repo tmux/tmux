@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.141 2009-12-16 01:10:36 tcunha Exp $ */
+/* $Id: status.c,v 1.142 2010-01-28 22:44:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -550,10 +550,11 @@ status_job_callback(struct job *job)
 		xfree(job->data);
 	else
 		server_redraw_client(job->client);
-	job->data = xstrdup(line);
 
-	if (buf != NULL)
-		xfree(buf);
+	if (line == NULL)
+		job->data = buf;
+	else
+		job->data = xstrdup(line);
 }
 
 /* Calculate winlink status line entry width. */
