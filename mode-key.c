@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.38 2010-01-28 22:41:45 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.39 2010-01-28 22:45:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -90,6 +90,7 @@ struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_MIDDLELINE, "middle-line" },
 	{ MODEKEYCOPY_NEXTPAGE, "page-down" },
 	{ MODEKEYCOPY_NEXTWORD, "next-word" },
+	{ MODEKEYCOPY_NEXTWORDEND, "next-word-end" },
 	{ MODEKEYCOPY_PREVIOUSPAGE, "page-up" },
 	{ MODEKEYCOPY_PREVIOUSWORD, "previous-word" },
 	{ MODEKEYCOPY_RIGHT, "cursor-right" },
@@ -276,7 +277,7 @@ const struct mode_key_entry mode_key_emacs_copy[] = {
 	{ '\027' /* C-w */,	0, MODEKEYCOPY_COPYSELECTION },
 	{ '\033' /* Escape */,	0, MODEKEYCOPY_CANCEL },
 	{ 'b' | KEYC_ESCAPE,	0, MODEKEYCOPY_PREVIOUSWORD },
-	{ 'f' | KEYC_ESCAPE,	0, MODEKEYCOPY_NEXTWORD },
+	{ 'f' | KEYC_ESCAPE,	0, MODEKEYCOPY_NEXTWORDEND },
 	{ 'g',			0, MODEKEYCOPY_GOTOLINE },
 	{ 'm' | KEYC_ESCAPE,	0, MODEKEYCOPY_BACKTOINDENTATION },
 	{ 'n',			0, MODEKEYCOPY_SEARCHAGAIN },
