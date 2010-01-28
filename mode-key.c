@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.39 2010-01-28 22:45:57 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.40 2010-01-28 22:47:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -185,6 +185,7 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ '\r',			0, MODEKEYCOPY_COPYSELECTION },
 	{ '^',			0, MODEKEYCOPY_BACKTOINDENTATION },
 	{ 'b',			0, MODEKEYCOPY_PREVIOUSWORD },
+	{ 'e',                  0, MODEKEYCOPY_NEXTWORDEND },
 	{ 'g',			0, MODEKEYCOPY_HISTORYTOP },
 	{ 'h',			0, MODEKEYCOPY_LEFT },
 	{ 'j',			0, MODEKEYCOPY_DOWN },
