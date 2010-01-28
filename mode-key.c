@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.37 2010-01-25 17:11:42 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.38 2010-01-28 22:41:45 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -84,6 +84,8 @@ struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_DOWN, "cursor-down" },
 	{ MODEKEYCOPY_ENDOFLINE, "end-of-line" },
 	{ MODEKEYCOPY_GOTOLINE, "goto-line" },
+	{ MODEKEYCOPY_HISTORYBOTTOM, "history-bottom" },
+	{ MODEKEYCOPY_HISTORYTOP, "history-top" },
 	{ MODEKEYCOPY_LEFT, "cursor-left" },
 	{ MODEKEYCOPY_MIDDLELINE, "middle-line" },
 	{ MODEKEYCOPY_NEXTPAGE, "page-down" },
@@ -116,13 +118,13 @@ const struct mode_key_entry mode_key_vi_edit[] = {
 
 	{ '$',			1, MODEKEYEDIT_ENDOFLINE },
 	{ '0',			1, MODEKEYEDIT_STARTOFLINE },
-	{ 'd',			1, MODEKEYEDIT_DELETELINE },
 	{ 'D',			1, MODEKEYEDIT_DELETETOENDOFLINE },
 	{ '\003' /* C-c */,	1, MODEKEYEDIT_CANCEL },
 	{ '\010' /* C-h */, 	1, MODEKEYEDIT_BACKSPACE },
 	{ '\r',			1, MODEKEYEDIT_ENTER },
 	{ '^',			1, MODEKEYEDIT_STARTOFLINE },
 	{ 'a',			1, MODEKEYEDIT_SWITCHMODEAPPEND },
+	{ 'd',			1, MODEKEYEDIT_DELETELINE },
 	{ 'h',			1, MODEKEYEDIT_CURSORLEFT },
 	{ 'i',			1, MODEKEYEDIT_SWITCHMODE },
 	{ 'j',			1, MODEKEYEDIT_HISTORYDOWN },
@@ -164,6 +166,7 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ '0',			0, MODEKEYCOPY_STARTOFLINE },
 	{ ':',			0, MODEKEYCOPY_GOTOLINE },
 	{ '?',			0, MODEKEYCOPY_SEARCHUP },
+	{ 'G',			0, MODEKEYCOPY_HISTORYBOTTOM },
 	{ 'H',			0, MODEKEYCOPY_TOPLINE },
 	{ 'J',			0, MODEKEYCOPY_SCROLLDOWN },
 	{ 'K',			0, MODEKEYCOPY_SCROLLUP },
@@ -181,6 +184,7 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ '\r',			0, MODEKEYCOPY_COPYSELECTION },
 	{ '^',			0, MODEKEYCOPY_BACKTOINDENTATION },
 	{ 'b',			0, MODEKEYCOPY_PREVIOUSWORD },
+	{ 'g',			0, MODEKEYCOPY_HISTORYTOP },
 	{ 'h',			0, MODEKEYCOPY_LEFT },
 	{ 'j',			0, MODEKEYCOPY_DOWN },
 	{ 'k',			0, MODEKEYCOPY_UP },
@@ -254,6 +258,9 @@ struct mode_key_tree mode_key_tree_emacs_choice;
 /* emacs copy mode keys. */
 const struct mode_key_entry mode_key_emacs_copy[] = {
 	{ ' ',			0, MODEKEYCOPY_NEXTPAGE },
+	{ '<' | KEYC_ESCAPE,0, MODEKEYCOPY_HISTORYTOP },
+	{ '>' | KEYC_ESCAPE, 0, MODEKEYCOPY_HISTORYBOTTOM },
+	{ 'R' | KEYC_ESCAPE,	0, MODEKEYCOPY_TOPLINE },
 	{ '\000' /* C-Space */,	0, MODEKEYCOPY_STARTSELECTION },
 	{ '\001' /* C-a */,	0, MODEKEYCOPY_STARTOFLINE },
 	{ '\002' /* C-b */,	0, MODEKEYCOPY_LEFT },
@@ -275,7 +282,6 @@ const struct mode_key_entry mode_key_emacs_copy[] = {
 	{ 'n',			0, MODEKEYCOPY_SEARCHAGAIN },
 	{ 'q',			0, MODEKEYCOPY_CANCEL },
 	{ 'r' | KEYC_ESCAPE,	0, MODEKEYCOPY_MIDDLELINE },
-	{ 'R' | KEYC_ESCAPE,	0, MODEKEYCOPY_TOPLINE },
 	{ 'v' | KEYC_ESCAPE,	0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ 'w' | KEYC_ESCAPE,	0, MODEKEYCOPY_COPYSELECTION },
 	{ KEYC_DOWN | KEYC_CTRL,0, MODEKEYCOPY_SCROLLDOWN },

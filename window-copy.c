@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.95 2010-01-25 17:14:42 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.96 2010-01-28 22:41:45 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -293,6 +293,20 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 	case MODEKEYCOPY_BOTTOMLINE:
 		data->cx = 0;
 		data->cy = screen_size_y(s) - 1;
+		window_copy_update_selection(wp);
+		window_copy_redraw_screen(wp);
+		break;
+	case MODEKEYCOPY_HISTORYTOP:
+		data->cx = 0;
+		data->cy = 0;
+		data->oy = screen_hsize(&wp->base);
+		window_copy_update_selection(wp);
+		window_copy_redraw_screen(wp);
+		break;
+	case MODEKEYCOPY_HISTORYBOTTOM:
+		data->cx = 0;
+		data->cy = screen_size_y(s) - 1;
+		data->oy = 0;
 		window_copy_update_selection(wp);
 		window_copy_redraw_screen(wp);
 		break;
