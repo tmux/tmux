@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.142 2010-01-28 22:44:16 tcunha Exp $ */
+/* $Id: status.c,v 1.143 2010-01-28 22:46:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -302,18 +302,20 @@ draw:
 	}
 
 	/* Figure out the offset for the window list. */
-	wloffset = 1;
+	if (llen != 0)
+		wloffset = llen + 1;
+	else
+		wloffset = 0;
 	if (wlwidth < wlavailable) {
 		switch (options_get_number(&s->options, "status-justify")) {
 		case 1:	/* centered */
-			wloffset = 1 + (wlavailable - wlwidth) / 2;
+			wloffset += (wlavailable - wlwidth) / 2;
 			break;
 		case 2:	/* right */
-			wloffset = 1 + (wlavailable - wlwidth);
+			wloffset += (wlavailable - wlwidth);
 			break;
 		}
 	}
-	wloffset += llen;
 	if (larrow != 0)
 		wloffset++;
 
