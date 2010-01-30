@@ -115,3 +115,6 @@
 - define custom layouts
 - link panes into multiple windows
 - -h option to capture-pane to capture the history as well
+- tmux should not die on recoverable errors in the config file, instead start
+  up with the window in output mode with a list of warnings (like emacs)
+- bells should be passed between sessions with visual-bell etc
