@@ -356,6 +356,8 @@ server_signal_set(void)
 		fatal("sigaction failed");
 	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
 		fatal("sigaction failed");
+	if (sigaction(SIGHUP, &sigact, NULL) != 0)
+		fatal("sigaction failed");
 
 	signal_set(&server_ev_sigchld, SIGCHLD, server_signal_callback, NULL);
 	signal_add(&server_ev_sigchld, NULL);
@@ -382,6 +384,8 @@ server_signal_clear(void)
 	if (sigaction(SIGUSR2, &sigact, NULL) != 0)
 		fatal("sigaction failed");
 	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGHUP, &sigact, NULL) != 0)
 		fatal("sigaction failed");
 
 	signal_del(&server_ev_sigchld);
