@@ -344,8 +344,7 @@ cmd_string_expand_tilde(const char *s, size_t *p)
 			return (NULL);
 		if ((pw = getpwnam(username)) != NULL)
 			home = pw->pw_dir;
-		if (username != NULL)
-			xfree(username);
+		xfree(username);
 	}
 	if (home == NULL)
 		return (NULL);
