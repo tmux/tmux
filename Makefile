@@ -46,6 +46,6 @@ CDIAGFLAGS+= -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 CDIAGFLAGS+= -Wundef -Wbad-function-cast -Winline -Wcast-align
 
 LDADD=  -lutil -lcurses -levent
-DPADD=  ${LIBUTIL}
+DPADD=  ${LIBUTIL} ${LIBCURSES} ${LIBEVENT}
 
 .include <bsd.prog.mk>
