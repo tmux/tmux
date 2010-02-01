@@ -135,9 +135,11 @@ window_more_key(struct window_pane *wp, unused struct client *c, int key)
 		window_pane_reset_mode(wp);
 		break;
 	case MODEKEYCHOICE_UP:
+	case MODEKEYCHOICE_SCROLLUP:
 		window_more_scroll_up(wp);
 		break;
 	case MODEKEYCHOICE_DOWN:
+	case MODEKEYCHOICE_SCROLLDOWN:
 		window_more_scroll_down(wp);
 		break;
 	case MODEKEYCHOICE_PAGEUP:
