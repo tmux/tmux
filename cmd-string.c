@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.29 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: cmd-string.c,v 1.30 2010-02-02 23:53:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -344,8 +344,7 @@ cmd_string_expand_tilde(const char *s, size_t *p)
 			return (NULL);
 		if ((pw = getpwnam(username)) != NULL)
 			home = pw->pw_dir;
-		if (username != NULL)
-			xfree(username);
+		xfree(username);
 	}
 	if (home == NULL)
 		return (NULL);
