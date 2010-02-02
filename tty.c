@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.186 2010-01-05 23:49:24 tcunha Exp $ */
+/* $Id: tty.c,v 1.187 2010-02-02 23:56:25 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -484,7 +484,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 	gl = NULL;
 	if (py != 0)
 		gl = &s->grid->linedata[s->grid->hsize + py - 1];
-	if (oy + py == 0 || (gl != NULL && !(gl->flags & GRID_LINE_WRAPPED)) ||
+	if (oy + py == 0 || gl == NULL || !(gl->flags & GRID_LINE_WRAPPED) ||
 	    tty->cx < tty->sx || ox != 0 ||
 	    (oy + py != tty->cy + 1 && tty->cy != s->rlower + oy))
 		tty_cursor(tty, ox, oy + py);
