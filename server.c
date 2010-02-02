@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.232 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: server.c,v 1.233 2010-02-02 23:50:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -374,6 +374,8 @@ server_signal_set(void)
 		fatal("sigaction failed");
 	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
 		fatal("sigaction failed");
+	if (sigaction(SIGHUP, &sigact, NULL) != 0)
+		fatal("sigaction failed");
 
 	signal_set(&server_ev_sigchld, SIGCHLD, server_signal_callback, NULL);
 	signal_add(&server_ev_sigchld, NULL);
@@ -400,6 +402,8 @@ server_signal_clear(void)
 	if (sigaction(SIGUSR2, &sigact, NULL) != 0)
 		fatal("sigaction failed");
 	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGHUP, &sigact, NULL) != 0)
 		fatal("sigaction failed");
 
 	signal_del(&server_ev_sigchld);
