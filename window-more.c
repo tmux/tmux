@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.40 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: window-more.c,v 1.41 2010-02-02 23:55:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -135,9 +135,11 @@ window_more_key(struct window_pane *wp, unused struct client *c, int key)
 		window_pane_reset_mode(wp);
 		break;
 	case MODEKEYCHOICE_UP:
+	case MODEKEYCHOICE_SCROLLUP:
 		window_more_scroll_up(wp);
 		break;
 	case MODEKEYCHOICE_DOWN:
+	case MODEKEYCHOICE_SCROLLDOWN:
 		window_more_scroll_down(wp);
 		break;
 	case MODEKEYCHOICE_PAGEUP:

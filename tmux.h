@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.538 2010-01-28 22:45:57 tcunha Exp $ */
+/* $Id: tmux.h,v 1.539 2010-02-02 23:55:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -441,6 +441,8 @@ enum mode_key_cmd {
 	MODEKEYCHOICE_DOWN,
 	MODEKEYCHOICE_PAGEDOWN,
 	MODEKEYCHOICE_PAGEUP,
+	MODEKEYCHOICE_SCROLLDOWN,
+	MODEKEYCHOICE_SCROLLUP,
 	MODEKEYCHOICE_UP,
 
 	/* Copy keys. */

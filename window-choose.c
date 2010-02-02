@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.28 2010-01-17 19:00:05 tcunha Exp $ */
+/* $Id: window-choose.c,v 1.29 2010-02-02 23:55:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -225,16 +225,41 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 		}
 		data->selected++;
 
-		if (data->selected >= data->top + screen_size_y(&data->screen))
-			window_choose_scroll_down(wp);
-		else {
+		if (data->selected < data->top + screen_size_y(s)) {
 			screen_write_start(&ctx, wp, NULL);
 			window_choose_write_line(
 			    wp, &ctx, data->selected - data->top);
 			window_choose_write_line(
 			    wp, &ctx, data->selected - 1 - data->top);
 			screen_write_stop(&ctx);
-		}
+		} else
+			window_choose_scroll_down(wp);
+		break;
+	case MODEKEYCHOICE_SCROLLUP:
+		if (items == 0 || data->top == 0)
+			break;
+		if (data->selected == data->top + screen_size_y(s) - 1) {
+			data->selected--;
+			window_choose_scroll_up(wp);
+			screen_write_start(&ctx, wp, NULL);
+			window_choose_write_line(
+			    wp, &ctx, screen_size_y(s) - 1);
+			screen_write_stop(&ctx);
+		} else
+			window_choose_scroll_up(wp);
+		break;
+	case MODEKEYCHOICE_SCROLLDOWN:
+		if (items == 0 ||
+		    data->top + screen_size_y(&data->screen) >= items)
+			break;
+		if (data->selected == data->top) {
+			data->selected++;
+			window_choose_scroll_down(wp);
+			screen_write_start(&ctx, wp, NULL);
+			window_choose_write_line(wp, &ctx, 0);
+			screen_write_stop(&ctx);
+		} else
+			window_choose_scroll_down(wp);
 		break;
 	case MODEKEYCHOICE_PAGEUP:
 		if (data->selected < screen_size_y(s)) {

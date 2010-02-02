@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.40 2010-01-28 22:47:21 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.41 2010-02-02 23:55:21 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -69,6 +69,8 @@ struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
 	{ MODEKEYCHOICE_DOWN, "down" },
 	{ MODEKEYCHOICE_PAGEDOWN, "page-down" },
 	{ MODEKEYCHOICE_PAGEUP, "page-up" },
+	{ MODEKEYCHOICE_SCROLLDOWN, "scroll-down" },
+	{ MODEKEYCHOICE_SCROLLUP, "scroll-up" },
 	{ MODEKEYCHOICE_UP, "up" },
 
 	{ 0, NULL }
@@ -145,14 +147,20 @@ struct mode_key_tree mode_key_tree_vi_edit;
 
 /* vi choice selection keys. */
 const struct mode_key_entry mode_key_vi_choice[] = {
+	{ '\002' /* C-b */,     0, MODEKEYCHOICE_PAGEUP },
 	{ '\003' /* C-c */,	0, MODEKEYCHOICE_CANCEL },
+	{ '\005' /* C-e */,     0, MODEKEYCHOICE_SCROLLDOWN },
+	{ '\006' /* C-f */,     0, MODEKEYCHOICE_PAGEDOWN },
+	{ '\031' /* C-y */,     0, MODEKEYCHOICE_SCROLLUP },
 	{ '\r',			0, MODEKEYCHOICE_CHOOSE },
 	{ 'j',			0, MODEKEYCHOICE_DOWN },
 	{ 'k',			0, MODEKEYCHOICE_UP },
 	{ 'q',			0, MODEKEYCHOICE_CANCEL },
+	{ KEYC_DOWN | KEYC_CTRL,0, MODEKEYCHOICE_SCROLLDOWN },
 	{ KEYC_DOWN,		0, MODEKEYCHOICE_DOWN },
 	{ KEYC_NPAGE,		0, MODEKEYCHOICE_PAGEDOWN },
 	{ KEYC_PPAGE,		0, MODEKEYCHOICE_PAGEUP },
+	{ KEYC_UP | KEYC_CTRL,	0, MODEKEYCHOICE_SCROLLUP },
 	{ KEYC_UP,		0, MODEKEYCHOICE_UP },
 
 	{ 0,			-1, 0 }
@@ -248,9 +256,11 @@ const struct mode_key_entry mode_key_emacs_choice[] = {
 	{ '\r',			0, MODEKEYCHOICE_CHOOSE },
 	{ 'q',			0, MODEKEYCHOICE_CANCEL },
 	{ 'v' | KEYC_ESCAPE,	0, MODEKEYCHOICE_PAGEUP },
+	{ KEYC_DOWN | KEYC_CTRL,0, MODEKEYCHOICE_SCROLLDOWN },
 	{ KEYC_DOWN,		0, MODEKEYCHOICE_DOWN },
 	{ KEYC_NPAGE,		0, MODEKEYCHOICE_PAGEDOWN },
 	{ KEYC_PPAGE,		0, MODEKEYCHOICE_PAGEUP },
+	{ KEYC_UP | KEYC_CTRL,	0, MODEKEYCHOICE_SCROLLUP },
 	{ KEYC_UP,		0, MODEKEYCHOICE_UP },
 
 	{ 0,			-1, 0 }
