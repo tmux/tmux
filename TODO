@@ -118,3 +118,11 @@
 - tmux should not die on recoverable errors in the config file, instead start
   up with the window in output mode with a list of warnings (like emacs)
 - bells should be passed between sessions with visual-bell etc
+- use screen-256color when started on 256 colour terminal??
+- if-shell/run-shell should block further command execution in the same command
+  sequence until its shell exits, to allow them to be used from the config file
+- better session sharing: create-socket command to create socket somewhere (-r
+  flag for readonly)
+- allow buffer to be specified when copying in copy mode
+- multiline status line
+
