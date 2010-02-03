@@ -244,6 +244,8 @@ layout_set_main_h(struct window *w)
 
 	/* How many rows and columns will be needed? */
 	columns = w->sx / (PANE_MINIMUM + 1);	/* maximum columns */
+	if (columns == 0)
+		columns = 1;
 	rows = 1 + (n - 1) / columns;
 	columns = 1 + (n - 1) / rows;
 	width = w->sx / columns;
@@ -353,6 +355,8 @@ layout_set_main_v(struct window *w)
 
 	/* How many rows and columns will be needed? */
 	rows = w->sy / (PANE_MINIMUM + 1);	/* maximum rows */
+	if (rows == 0)
+		rows = 1;
 	columns = 1 + (n - 1) / rows;
 	rows = 1 + (n - 1) / columns;
 	height = w->sy / rows;
