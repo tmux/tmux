@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: tmux(1) configuration file
 " Maintainer: Tiago Cunha <me@tiagocunha.org>
-" Last Change: $Date: 2010-01-08 16:34:49 $
+" Last Change: $Date: 2010-02-03 00:21:48 $
 " License: This file is placed in the public domain.
 
 if version < 600
@@ -75,7 +75,7 @@ syn keyword tmuxTodo FIXME NOTE TODO XXX contained
 
 syn match tmuxKey		/\(C-\|M-\|\^\)\p/	display
 syn match tmuxNumber 		/\d\+/			display
-syn match tmuxOptions		/\s-\a/			display
+syn match tmuxOptions		/\s-\a\+/		display
 syn match tmuxVariable		/\w\+=/			display
 syn match tmuxVariableExpansion	/\${\=\w\+}\=/		display
 
