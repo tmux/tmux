@@ -751,9 +751,10 @@ This command works only from inside
 Display a visible indicator of each pane shown by
 .Ar target-client .
 See the
-.Ic display-panes-time
+.Ic display-panes-time ,
+.Ic display-panes-colour ,
 and
-.Ic display-panes-colour
+.Ic display-panes-active-colour
 session options.
 While the indicator is on screen, a pane may be selected with the
 .Ql 0
@@ -1398,10 +1399,14 @@ to work correctly, this
 be set to
 .Ql screen
 or a derivative of it.
-.It Ic display-panes-colour Ar colour
-Set the colour used for the
+.It Ic display-panes-active-colour Ar colour
+Set the colour used by the
 .Ic display-panes
-command.
+command to show the indicator for the active pane.
+.It Ic display-panes-colour Ar colour
+Set the colour used by the
+.Ic display-panes
+command to show the indicators for inactive panes.
 .It Ic display-panes-time Ar time
 Set the time in milliseconds for which the indicators shown by the
 .Ic display-panes
