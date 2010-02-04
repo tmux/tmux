@@ -237,4 +237,6 @@ have TERM set to xterm):
 
 set -g terminal-overrides "xterm*:kLFT5=\eOD:kRIT5=\eOC:kUP5=\eOA:kDN5=\eOB:smkx@:rmkx@"
 
-$Id: FAQ,v 1.35 2010-01-19 00:55:56 tcunha Exp $
+Note that this will only work in tmux 1.2 and above.
+
+$Id: FAQ,v 1.36 2010-02-04 21:01:59 nicm Exp $
