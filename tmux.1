@@ -535,7 +535,7 @@ The keys available depend on whether emacs or vi mode is selected
 .Ic mode-keys
 option).
 The following keys are supported as appropriate for the mode:
-.Bl -column "FunctionXXXXXXXXXXXX" "viXXXXXXXXXX" "emacs" -offset indent
+.Bl -column "FunctionXXXXXXXXXXXXXX" "viXXXXXXXXXX" "emacs" -offset indent
 .It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
 .It Li "Back to indentation" Ta "^" Ta "M-m"
 .It Li "Bottom of history" Ta "G" Ta "M-<"
@@ -555,11 +555,14 @@ The following keys are supported as appropriate for the mode:
 .It Li "Half page down" Ta "C-d" Ta "M-Down"
 .It Li "Half page up" Ta "C-u" Ta "M-Up"
 .It Li "Next page" Ta "C-f" Ta "Page down"
+.It Li "Next space" Ta "W" Ta ""
+.It Li "Next space, end of word" Ta "E" Ta ""
 .It Li "Next word" Ta "w" Ta ""
 .It Li "Next word end" Ta "e" Ta "M-f"
 .It Li "Paste buffer" Ta "p" Ta "C-y"
 .It Li "Previous page" Ta "C-b" Ta "Page up"
 .It Li "Previous word" Ta "b" Ta "M-b"
+.It Li "Previous space" Ta "B" Ta ""
 .It Li "Quit mode" Ta "q" Ta "Escape"
 .It Li "Scroll down" Ta "C-Down or C-e" Ta "C-Down"
 .It Li "Scroll up" Ta "C-Up or C-y" Ta "C-Up"
@@ -571,6 +574,18 @@ The following keys are supported as appropriate for the mode:
 .It Li "Top of history" Ta "g" Ta "M->"
 .It Li "Transpose chars" Ta "" Ta "C-t"
 .El
+.Pp
+The next and previous word keys use space and the
+.Ql - ,
+.Ql _ ,
+.Ql \&"
+and
+.Ql @
+characters as word delimiters.
+Next word moves to the start of the next word, next word end to the end of the
+next word and previous word to the start of the previous word.
+The three next and previous space keys work similarly but use a space alone as
+the word separator.
 .Pp
 These key bindings are defined in a set of named tables:
 .Em vi-edit

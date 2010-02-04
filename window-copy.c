@@ -54,7 +54,7 @@ int	window_copy_update_selection(struct window_pane *);
 void	window_copy_copy_selection(struct window_pane *, struct client *);
 void	window_copy_copy_line(
 	    struct window_pane *, char **, size_t *, u_int, u_int, u_int);
-int	window_copy_is_space(struct window_pane *, u_int, u_int);
+int	window_copy_in_set(struct window_pane *, u_int, u_int, const char *);
 u_int	window_copy_find_length(struct window_pane *, u_int);
 void	window_copy_cursor_start_of_line(struct window_pane *);
 void	window_copy_cursor_back_to_indentation(struct window_pane *);
@@ -63,9 +63,9 @@ void	window_copy_cursor_left(struct window_pane *);
 void	window_copy_cursor_right(struct window_pane *);
 void	window_copy_cursor_up(struct window_pane *, int);
 void	window_copy_cursor_down(struct window_pane *, int);
-void	window_copy_cursor_next_word(struct window_pane *);
-void	window_copy_cursor_next_word_end(struct window_pane *);
-void	window_copy_cursor_previous_word(struct window_pane *);
+void	window_copy_cursor_next_word(struct window_pane *, const char *);
+void	window_copy_cursor_next_word_end(struct window_pane *, const char *);
+void	window_copy_cursor_previous_word(struct window_pane *, const char *);
 void	window_copy_scroll_up(struct window_pane *, u_int);
 void	window_copy_scroll_down(struct window_pane *, u_int);
 
@@ -214,6 +214,7 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 void
 window_copy_key(struct window_pane *wp, struct client *c, int key)
 {
+	const char			*word_separators = " -_@";
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	u_int				 n;
@@ -334,14 +335,23 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 	case MODEKEYCOPY_ENDOFLINE:
 		window_copy_cursor_end_of_line(wp);
 		break;
+	case MODEKEYCOPY_NEXTSPACE:
+		window_copy_cursor_next_word(wp, " ");
+		break;
+	case MODEKEYCOPY_NEXTSPACEEND:
+		window_copy_cursor_next_word_end(wp, " ");
+		break;
 	case MODEKEYCOPY_NEXTWORD:
-		window_copy_cursor_next_word(wp);
+		window_copy_cursor_next_word(wp, word_separators);
 		break;
 	case MODEKEYCOPY_NEXTWORDEND:
-		window_copy_cursor_next_word_end(wp);
+		window_copy_cursor_next_word_end(wp, word_separators);
+		break;
+	case MODEKEYCOPY_PREVIOUSSPACE:
+		window_copy_cursor_previous_word(wp, " ");
 		break;
 	case MODEKEYCOPY_PREVIOUSWORD:
-		window_copy_cursor_previous_word(wp);
+		window_copy_cursor_previous_word(wp, word_separators);
 		break;
 	case MODEKEYCOPY_SEARCHUP:
 		data->inputtype = WINDOW_COPY_SEARCHUP;
@@ -965,17 +975,16 @@ window_copy_copy_line(struct window_pane *wp,
 }
 
 int
-window_copy_is_space(struct window_pane *wp, u_int px, u_int py)
+window_copy_in_set(struct window_pane *wp, u_int px, u_int py, const char *set)
 {
 	const struct grid_cell	*gc;
-	const char     		*spaces = " -_@";
 
 	gc = grid_peek_cell(wp->base.grid, px, py);
 	if (gc->flags & (GRID_FLAG_PADDING|GRID_FLAG_UTF8))
 		return (0);
 	if (gc->data == 0x00 || gc->data == 0x7f)
 		return (0);
-	return (strchr(spaces, gc->data) != NULL);
+	return (strchr(set, gc->data) != NULL);
 }
 
 u_int
@@ -1025,10 +1034,6 @@ window_copy_cursor_back_to_indentation(struct window_pane *wp)
 	py = screen_hsize(&wp->base) + data->cy - data->oy;
 	xx = window_copy_find_length(wp, py);
 
-	/*
-	 * Don't use window_copy_is_space because that treats some word
-	 * delimiters as spaces.
-	 */
 	while (px < xx) {
 		gc = grid_peek_cell(wp->base.grid, px, py);
 		if (gc->flags & GRID_FLAG_UTF8)
@@ -1162,7 +1167,7 @@ window_copy_cursor_down(struct window_pane *wp, int scroll_only)
 }
 
 void
-window_copy_cursor_next_word(struct window_pane *wp)
+window_copy_cursor_next_word(struct window_pane *wp, const char *separators)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*base_s = &wp->base;
@@ -1174,11 +1179,11 @@ window_copy_cursor_next_word(struct window_pane *wp)
 	yy = screen_hsize(base_s) + screen_size_y(base_s) - 1;
 
 	/* Are we in a word? Skip it! */
-	while (!window_copy_is_space(wp, px, py))
+	while (!window_copy_in_set(wp, px, py, separators))
 		px++;
 
 	/* Find the start of a word. */
-	while (px > xx || window_copy_is_space(wp, px, py)) {
+	while (px > xx || window_copy_in_set(wp, px, py, separators)) {
 		/* Past the end of the line? Nothing but spaces. */
 		if (px > xx) {
 			if (py == yy)
@@ -1198,7 +1203,7 @@ window_copy_cursor_next_word(struct window_pane *wp)
 }
 
 void
-window_copy_cursor_next_word_end(struct window_pane *wp)
+window_copy_cursor_next_word_end(struct window_pane *wp, const char *separators)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*base_s = &wp->base;
@@ -1210,7 +1215,7 @@ window_copy_cursor_next_word_end(struct window_pane *wp)
 	yy = screen_hsize(base_s) + screen_size_y(base_s) - 1;
 
 	/* Are we on spaces? Skip 'em! */
-	while (px > xx || window_copy_is_space(wp, px, py)) {
+	while (px > xx || window_copy_in_set(wp, px, py, separators)) {
 		/* Nothing but spaces past the end of the line, so move down. */
 		if (px > xx) {
 			if (py == yy)
@@ -1225,7 +1230,7 @@ window_copy_cursor_next_word_end(struct window_pane *wp)
 	}
 
 	/* Find the end of this word. */
-	while (!window_copy_is_space(wp, px, py))
+	while (!window_copy_in_set(wp, px, py, separators))
 		px++;
 
 	window_copy_update_cursor(wp, px, data->cy);
@@ -1235,7 +1240,7 @@ window_copy_cursor_next_word_end(struct window_pane *wp)
 
 /* Move to the previous place where a word begins. */
 void
-window_copy_cursor_previous_word(struct window_pane *wp)
+window_copy_cursor_previous_word(struct window_pane *wp, const char *separators)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	u_int				 px, py;
@@ -1247,7 +1252,7 @@ window_copy_cursor_previous_word(struct window_pane *wp)
 	for (;;) {
 		if (px > 0) {
 			px--;
-			if (!window_copy_is_space(wp, px, py))
+			if (!window_copy_in_set(wp, px, py, separators))
 				break;
 		} else {
 			if (data->cy == 0 &&
@@ -1262,7 +1267,7 @@ window_copy_cursor_previous_word(struct window_pane *wp)
 	}
 
 	/* Move back to the beginning of this word. */
-	while (px > 0 && !window_copy_is_space(wp, px - 1, py))
+	while (px > 0 && !window_copy_in_set(wp, px - 1, py, separators))
 		px--;
 
 out:
