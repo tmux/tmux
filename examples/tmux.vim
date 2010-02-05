@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: tmux(1) configuration file
 " Maintainer: Tiago Cunha <me@tiagocunha.org>
-" Last Change: $Date: 2010-02-03 00:21:48 $
+" Last Change: $Date: 2010-02-05 02:09:27 $
 " License: This file is placed in the public domain.
 
 if version < 600
@@ -60,6 +60,7 @@ syn keyword tmuxOptsSet set-titles-string lock-command lock-server
 syn keyword tmuxOptsSet mouse-select-pane message-limit quiet escape-time
 syn keyword tmuxOptsSet pane-active-border-bg pane-active-border-fg
 syn keyword tmuxOptsSet pane-border-bg pane-border-fg
+syn keyword tmuxOptsSet display-panes-active-colour
 
 syn keyword tmuxOptsSetw monitor-activity aggressive-resize force-width
 syn keyword tmuxOptsSetw force-height remain-on-exit uft8 mode-fg mode-bg
