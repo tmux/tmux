@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.51 2010-01-05 23:52:37 tcunha Exp $ */
+/* $Id: screen-redraw.c,v 1.52 2010-02-05 01:31:06 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -269,18 +269,21 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 {
 	struct tty		*tty = &c->tty;
 	struct session		*s = c->session;
+	struct options	        *oo = &s->options;
+	struct window		*w = wp->window;
 	struct grid_cell	 gc;
 	u_int			 idx, px, py, i, j, xoff, yoff;
-	int			 colour;
+	int			 colour, active_colour;
 	char			 buf[16], *ptr;
 	size_t			 len;
 
-	idx = window_pane_index(wp->window, wp);
+	idx = window_pane_index(w, wp);
 	len = xsnprintf(buf, sizeof buf, "%u", idx);
 
 	if (wp->sx < len)
 		return;
-	colour = options_get_number(&s->options, "display-panes-colour");
+	colour = options_get_number(oo, "display-panes-colour");
+	active_colour = options_get_number(oo, "display-panes-active-colour");
 
 	px = wp->sx / 2; py = wp->sy / 2;
 	xoff = wp->xoff; yoff = wp->yoff;
@@ -289,7 +292,10 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 		tty_cursor(tty, xoff + px - len / 2, yoff + py);
 		memcpy(&gc, &grid_default_cell, sizeof gc);
 		gc.data = '_'; /* not space */
-		colour_set_fg(&gc, colour);
+		if (w->active == wp)
+			colour_set_fg(&gc, active_colour);
+		else
+			colour_set_fg(&gc, colour);
 		tty_attributes(tty, &gc);
 		tty_puts(tty, buf);
 		return;
@@ -300,7 +306,10 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	gc.data = '_'; /* not space */
-	colour_set_bg(&gc, colour);
+	if (w->active == wp)
+		colour_set_bg(&gc, active_colour);
+	else
+		colour_set_bg(&gc, colour);
 	tty_attributes(tty, &gc);
 	for (ptr = buf; *ptr != '\0'; ptr++) {
 		if (*ptr < '0' || *ptr > '9')
