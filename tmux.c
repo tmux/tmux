@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.198 2010-02-05 01:31:06 tcunha Exp $ */
+/* $Id: tmux.c,v 1.199 2010-02-05 01:32:10 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -446,13 +446,30 @@ main(int argc, char **argv)
 		}
 	}
 
-	if (label == NULL)
-		label = xstrdup("default");
-	if (path == NULL && (path = makesockpath(label)) == NULL) {
-		log_warn("can't create socket");
-		exit(1);
+	/*
+	 * Figure out the socket path. If specified on the command-line with
+	 * -S or -L, use it, otherwise try $TMUX or assume -L default.
+	 */
+	if (path == NULL) {
+		/* No -L. Try $TMUX, or default. */
+		if (label == NULL) {
+			if ((path = getenv("TMUX")) != NULL) {
+				path = xstrdup(path);
+				path[strcspn(path, ",")] = '\0';
+			} else
+				label = xstrdup("default");
+		}
+
+		/* -L or default set. */
+		if (label != NULL) {
+			if ((path = makesockpath(label)) == NULL) {
+				log_warn("can't create socket");
+				exit(1);
+			}
+		}
 	}
-	xfree(label);
+	if (label != NULL)
+		xfree(label);
 
 	if (shellcmd != NULL) {
 		msg = MSG_SHELL;
