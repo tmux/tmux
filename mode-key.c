@@ -89,6 +89,7 @@ struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_HISTORYBOTTOM, "history-bottom" },
 	{ MODEKEYCOPY_HISTORYTOP, "history-top" },
 	{ MODEKEYCOPY_LEFT, "cursor-left" },
+	{ MODEKEYCOPY_RECTANGLETOGGLE, "rectangle-toggle" },
 	{ MODEKEYCOPY_MIDDLELINE, "middle-line" },
 	{ MODEKEYCOPY_NEXTPAGE, "page-down" },
 	{ MODEKEYCOPY_NEXTSPACE, "next-space" },
@@ -207,6 +208,7 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ 'l',			0, MODEKEYCOPY_RIGHT },
 	{ 'n',			0, MODEKEYCOPY_SEARCHAGAIN },
 	{ 'q',			0, MODEKEYCOPY_CANCEL },
+	{ 'v',			0, MODEKEYCOPY_RECTANGLETOGGLE },
 	{ 'w',			0, MODEKEYCOPY_NEXTWORD },
 	{ KEYC_BSPACE,		0, MODEKEYCOPY_LEFT },
 	{ KEYC_DOWN | KEYC_CTRL,0, MODEKEYCOPY_SCROLLDOWN },
@@ -276,9 +278,10 @@ struct mode_key_tree mode_key_tree_emacs_choice;
 /* emacs copy mode keys. */
 const struct mode_key_entry mode_key_emacs_copy[] = {
 	{ ' ',			0, MODEKEYCOPY_NEXTPAGE },
-	{ '<' | KEYC_ESCAPE,0, MODEKEYCOPY_HISTORYTOP },
-	{ '>' | KEYC_ESCAPE, 0, MODEKEYCOPY_HISTORYBOTTOM },
+	{ '<' | KEYC_ESCAPE,    0, MODEKEYCOPY_HISTORYTOP },
+	{ '>' | KEYC_ESCAPE,    0, MODEKEYCOPY_HISTORYBOTTOM },
 	{ 'R' | KEYC_ESCAPE,	0, MODEKEYCOPY_TOPLINE },
+	{ 'R',			0, MODEKEYCOPY_RECTANGLETOGGLE },
 	{ '\000' /* C-Space */,	0, MODEKEYCOPY_STARTSELECTION },
 	{ '\001' /* C-a */,	0, MODEKEYCOPY_STARTOFLINE },
 	{ '\002' /* C-b */,	0, MODEKEYCOPY_LEFT },
