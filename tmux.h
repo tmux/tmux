@@ -1094,6 +1094,7 @@ struct client {
 #define CLIENT_IDENTIFY 0x100
 #define CLIENT_DEAD 0x200
 #define CLIENT_BORDERS 0x400
+#define CLIENT_READONLY 0x800
 	int		 flags;
 
 	struct event	 identify_timer;
@@ -1172,6 +1173,7 @@ struct cmd_entry {
 #define CMD_ARG01 0x10
 #define CMD_ARG2 0x20
 #define CMD_ARG12 0x40
+#define CMD_READONLY 0x80
 	int		 flags;
 
 	const char	*chflags;
