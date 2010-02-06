@@ -693,17 +693,6 @@ server_client_msg_command(struct client *c, struct msg_command_data *data)
 	}
 	cmd_free_argv(argc, argv);
 
-	if (data->pid != -1) {
-		TAILQ_FOREACH(cmd, cmdlist, qentry) {
-			if (cmd->entry->flags & CMD_CANTNEST) {
-				server_client_msg_error(&ctx,
-				    "sessions should be nested with care. "
-				    "unset $TMUX to force");
-				goto error;
-			}
-		}
-	}
-
 	if (cmd_list_exec(cmdlist, &ctx) != 1)
 		server_write_client(c, MSG_EXIT, NULL, 0);
 	cmd_list_free(cmdlist);
