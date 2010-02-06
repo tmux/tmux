@@ -115,7 +115,7 @@ server_start(char *path)
 {
 	struct window_pane	*wp;
 	int	 		 pair[2], retval;
-	char			 rpathbuf[MAXPATHLEN];
+	char			 rpathbuf[MAXPATHLEN], *cause;
 	struct timeval		 tv;
 	u_int			 i;
 
@@ -169,27 +169,27 @@ server_start(char *path)
 
 	retval = 0;
 	if (access(SYSTEM_CFG, R_OK) == 0)
-		load_cfg(SYSTEM_CFG, NULL, &cfg_ncauses, &cfg_causes);
+		load_cfg(SYSTEM_CFG, NULL, &cfg_causes);
 	else if (errno != ENOENT) {
-		cfg_add_cause(&cfg_ncauses, &cfg_causes,
-		    "%s: %s", strerror(errno), SYSTEM_CFG);
+		cfg_add_cause(
+		    &cfg_causes, "%s: %s", strerror(errno), SYSTEM_CFG);
 	}
 	if (cfg_file != NULL)
-		load_cfg(cfg_file, NULL, &cfg_ncauses, &cfg_causes);
+		load_cfg(cfg_file, NULL, &cfg_causes);
 
 	/*
 	 * If there is a session already, put the current window and pane into
 	 * more mode.
 	 */
-	if (!ARRAY_EMPTY(&sessions) && cfg_ncauses != 0) {
+	if (!ARRAY_EMPTY(&sessions) && !ARRAY_EMPTY(&cfg_causes)) {
 		wp = ARRAY_FIRST(&sessions)->curw->window->active;
 		window_pane_set_mode(wp, &window_more_mode);
-		for (i = 0; i < cfg_ncauses; i++) {
-			window_more_add(wp, "%s", cfg_causes[i]);
-			xfree(cfg_causes[i]);
+		for (i = 0; i < ARRAY_LENGTH(&cfg_causes); i++) {
+			cause = ARRAY_ITEM(&cfg_causes, i);
+			window_more_add(wp, "%s", cause);
+			xfree(cause);
 		}
-		xfree(cfg_causes);
-		cfg_ncauses = 0;
+		ARRAY_FREE(&cfg_causes);
 	}
 	cfg_finished = 1;
 

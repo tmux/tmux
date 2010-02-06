@@ -19,6 +19,8 @@
 #ifndef ARRAY_H
 #define ARRAY_H
 
+#define ARRAY_INITIALIZER { NULL, 0, 0 }
+
 #define ARRAY_DECL(n, c)						\
 	struct n {							\
 		c	*list;						\

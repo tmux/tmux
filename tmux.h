@@ -1244,6 +1244,9 @@ struct set_option_entry {
 	const char     **choices;
 };
 
+/* List of configuration causes. */
+ARRAY_DECL(causelist, char *);
+
 /* tmux.c */
 extern struct options global_options;
 extern struct options global_s_options;
@@ -1262,10 +1265,9 @@ int		 areshell(const char *);
 
 /* cfg.c */
 extern int       cfg_finished;
-extern char    **cfg_causes;
-extern u_int     cfg_ncauses;
-void printflike3 cfg_add_cause(u_int *, char ***, const char *, ...);
-int		 load_cfg(const char *, struct cmd_ctx *, u_int *, char ***);
+struct causelist cfg_causes;
+void printflike2 cfg_add_cause(struct causelist *, const char *, ...);
+int		 load_cfg(const char *, struct cmd_ctx *, struct causelist *);
 
 /* mode-key.c */
 extern const struct mode_key_table mode_key_tables[];

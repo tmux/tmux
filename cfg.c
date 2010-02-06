@@ -33,10 +33,9 @@
 void printflike2 cfg_print(struct cmd_ctx *, const char *, ...);
 void printflike2 cfg_error(struct cmd_ctx *, const char *, ...);
 
-char	 *cfg_cause;
-int       cfg_finished;
-char    **cfg_causes;
-u_int     cfg_ncauses;
+char	 	       *cfg_cause;
+int     	 	cfg_finished;
+struct causelist	cfg_causes = ARRAY_INITIALIZER;
 
 /* ARGSUSED */
 void printflike2
@@ -55,8 +54,8 @@ cfg_error(unused struct cmd_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 }
 
-void printflike3
-cfg_add_cause(u_int *ncauses, char ***causes, const char *fmt, ...)
+void printflike2
+cfg_add_cause(struct causelist *causes, const char *fmt, ...)
 {
 	char	*cause;
 	va_list	 ap;
@@ -65,8 +64,7 @@ cfg_add_cause(u_int *ncauses, char ***causes, const char *fmt, ...)
 	xvasprintf(&cause, fmt, ap);
 	va_end(ap);
 
-	*causes = xrealloc(*causes, *ncauses + 1, sizeof **causes);
-	(*causes)[(*ncauses)++] = cause;
+	ARRAY_ADD(causes, cause);
 }
 
 /*
@@ -74,8 +72,7 @@ cfg_add_cause(u_int *ncauses, char ***causes, const char *fmt, ...)
  * causes. Note that causes and ncauses must be initialised by the caller!
  */
 int
-load_cfg(
-    const char *path, struct cmd_ctx *ctxin, u_int *ncauses, char ***causes)
+load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 {
 	FILE		*f;
 	u_int		 n;
@@ -85,7 +82,7 @@ load_cfg(
 	struct cmd_ctx	 ctx;
 
 	if ((f = fopen(path, "rb")) == NULL) {
-		cfg_add_cause(ncauses, causes, "%s: %s", path, strerror(errno));
+		cfg_add_cause(causes, "%s: %s", path, strerror(errno));
 		return (-1);
 	}
 	n = 0;
@@ -105,8 +102,7 @@ load_cfg(
 		if (cmd_string_parse(buf, &cmdlist, &cause) != 0) {
 			if (cause == NULL)
 				continue;
-			cfg_add_cause(
-			    ncauses, causes, "%s: %u: %s", path, n, cause);
+			cfg_add_cause(causes, "%s: %u: %s", path, n, cause);
 			xfree(cause);
 			continue;
 		}
@@ -132,8 +128,7 @@ load_cfg(
 		cmd_list_exec(cmdlist, &ctx);
 		cmd_list_free(cmdlist);
 		if (cfg_cause != NULL) {
-			cfg_add_cause(
-			    ncauses, causes, "%s: %d: %s", path, n, cfg_cause);
+			cfg_add_cause(causes, "%s: %d: %s", path, n, cfg_cause);
 			xfree(cfg_cause);
 			continue;
 		}
@@ -142,7 +137,7 @@ load_cfg(
 		xfree(line);
 	fclose(f);
 
-	if (*ncauses != 0)
+	if (ARRAY_LENGTH(causes) != 0)
 		return (-1);
 	return (0);
 }
