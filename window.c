@@ -657,9 +657,6 @@ window_pane_parse(struct window_pane *wp)
 	char   *data;
 	size_t	new_size;
 
-	if (wp->mode != NULL)
-		return;
-
 	new_size = EVBUFFER_LENGTH(wp->event->input) - wp->pipe_off;
 	if (wp->pipe_fd != -1 && new_size > 0) {
 		data = EVBUFFER_DATA(wp->event->input);

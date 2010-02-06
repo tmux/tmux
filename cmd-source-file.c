@@ -89,12 +89,18 @@ int
 cmd_source_file_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_source_file_data	*data = self->data;
-	char				*cause;
+	char			       **causes;
+	u_int				 i, ncauses;
 
-	if (load_cfg(data->path, ctx, &cause) != 0) {
-		ctx->error(ctx, "%s", cause);
-		xfree(cause);
-		return (-1);
+	causes = NULL;
+	ncauses = 0;
+
+	if (load_cfg(data->path, ctx, &ncauses, &causes) != 0) {
+		for (i = 0; i < ncauses; i++) {
+			ctx->print(ctx, "%s", causes[i]);
+			xfree(causes[i]);
+		}
+		xfree(causes);
 	}
 
 	return (0);

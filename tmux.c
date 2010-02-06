@@ -432,14 +432,9 @@ main(int argc, char **argv)
 				home = pw->pw_dir;
 		}
 		xasprintf(&cfg_file, "%s/%s", home, DEFAULT_CFG);
-		if (access(cfg_file, R_OK) != 0) {
+		if (access(cfg_file, R_OK) != 0 && errno == ENOENT) {
 			xfree(cfg_file);
 			cfg_file = NULL;
-		}
-	} else {
-		if (access(cfg_file, R_OK) != 0) {
-			log_warn("%s", cfg_file);
-			exit(1);
 		}
 	}
 
