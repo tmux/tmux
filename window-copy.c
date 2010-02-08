@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.100 2010-02-05 01:34:08 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.101 2010-02-08 18:13:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -68,6 +68,7 @@ void	window_copy_cursor_next_word_end(struct window_pane *, const char *);
 void	window_copy_cursor_previous_word(struct window_pane *, const char *);
 void	window_copy_scroll_up(struct window_pane *, u_int);
 void	window_copy_scroll_down(struct window_pane *, u_int);
+void	window_copy_rectangle_toggle(struct window_pane *);
 
 const struct window_mode window_copy_mode = {
 	window_copy_init,
@@ -94,6 +95,8 @@ struct window_copy_mode_data {
 
 	u_int		selx;
 	u_int		sely;
+
+	u_int		rectflag; /* are we in rectangle copy mode? */
 
 	u_int		cx;
 	u_int		cy;
@@ -125,6 +128,8 @@ window_copy_init(struct window_pane *wp)
 
 	data->lastcx = 0;
 	data->lastsx = 0;
+
+	data->rectflag = 0;
 
 	data->inputtype = WINDOW_COPY_OFF;
 	data->inputprompt = NULL;
@@ -379,6 +384,9 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		data->inputprompt = "Goto Line";
 		*data->inputstr = '\0';
 		goto input_on;
+	case MODEKEYCOPY_RECTANGLETOGGLE:
+		window_copy_rectangle_toggle(wp);
+		return;
 	default:
 		break;
 	}
@@ -823,7 +831,7 @@ window_copy_update_selection(struct window_pane *wp)
 	struct screen			*s = &data->screen;
 	struct options			*oo = &wp->window->options;
 	struct grid_cell		 gc;
-	u_int				 sx, sy, ty;
+	u_int				 sx, sy, ty, cy;
 
 	if (!s->sel.flag)
 		return (0);
@@ -841,17 +849,33 @@ window_copy_update_selection(struct window_pane *wp)
 	sx = data->selx;
 	sy = data->sely;
 	if (sy < ty) {					/* above screen */
-		sx = 0;
+		if (!data->rectflag)
+			sx = 0;
 		sy = 0;
 	} else if (sy > ty + screen_size_y(s) - 1) {	/* below screen */
-		sx = screen_size_x(s) - 1;
+		if (!data->rectflag)
+			sx = screen_size_x(s) - 1;
 		sy = screen_size_y(s) - 1;
 	} else
 		sy -= ty;
 	sy = screen_hsize(s) + sy;
 
-	screen_set_selection(
-	    s, sx, sy, data->cx, screen_hsize(s) + data->cy, &gc);
+	screen_set_selection(s,
+	    sx, sy, data->cx, screen_hsize(s) + data->cy, data->rectflag, &gc);
+
+	if (data->rectflag) {
+		/*
+		 * Can't rely on the caller to redraw the right lines for
+		 * rectangle selection - find the highest line and the number
+		 * of lines, and redraw just past that in both directions
+		 */
+		cy = data->cy;
+		if (sy < cy)
+			window_copy_redraw_lines(wp, sy, cy - sy + 1);
+		else
+			window_copy_redraw_lines(wp, cy, sy - cy + 1);
+	}
+
 	return (1);
 }
 
@@ -861,8 +885,9 @@ window_copy_copy_selection(struct window_pane *wp, struct client *c)
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	char				*buf;
-	size_t	 			 off;
-	u_int	 			 i, xx, yy, sx, sy, ex, ey, limit;
+	size_t				 off;
+	u_int				 i, xx, yy, sx, sy, ex, ey, limit;
+	u_int				 firstsx, lastex, restex, restsx;
 
 	if (!s->sel.flag)
 		return;
@@ -893,17 +918,53 @@ window_copy_copy_selection(struct window_pane *wp, struct client *c)
 	if (ex > xx)
 		ex = xx;
 
+	/*
+	 * Deal with rectangle-copy if necessary; four situations: start of
+	 * first line (firstsx), end of last line (lastex), start (restsx) and
+	 * end (restex) of all other lines.
+	 */
+	xx = screen_size_x(s);
+	if (data->rectflag) {
+		/*
+		 * Need to ignore the column with the cursor in it, which for
+		 * rectangular copy means knowing which side the cursor is on.
+		 */
+		if (data->selx < data->cx) {
+			/* Selection start is on the left. */
+			lastex = data->cx;
+			restex = data->cx;
+			firstsx = data->selx;
+			restsx = data->selx;
+		} else {
+			/* Cursor is on the left. */
+			lastex = data->selx + 1;
+			restex = data->selx + 1;
+			firstsx = data->cx + 1;
+			restsx = data->cx + 1;
+		}
+	} else {
+		/*
+		 * Like emacs, keep the top-left-most character, and drop the
+		 * bottom-right-most, regardless of copy direction.
+		 */
+		lastex = ex;
+		restex = xx;
+		firstsx = sx;
+		restsx = 0;
+	}
+
 	/* Copy the lines. */
 	if (sy == ey)
-		window_copy_copy_line(wp, &buf, &off, sy, sx, ex);
+		window_copy_copy_line(wp, &buf, &off, sy, firstsx, lastex);
 	else {
-		xx = screen_size_x(s);
-		window_copy_copy_line(wp, &buf, &off, sy, sx, xx);
+		window_copy_copy_line(wp, &buf, &off, sy, firstsx, restex);
 		if (ey - sy > 1) {
-			for (i = sy + 1; i < ey; i++)
-				window_copy_copy_line(wp, &buf, &off, i, 0, xx);
+			for (i = sy + 1; i < ey; i++) {
+				window_copy_copy_line(
+				    wp, &buf, &off, i, restsx, restex);
+			}
 		}
-		window_copy_copy_line(wp, &buf, &off, ey, 0, ex);
+		window_copy_copy_line(wp, &buf, &off, ey, restsx, lastex);
 	}
 
 	/* Don't bother if no data. */
@@ -1288,7 +1349,6 @@ window_copy_scroll_up(struct window_pane *wp, u_int ny)
 	if (ny == 0)
 		return;
 	data->oy -= ny;
-	window_copy_update_selection(wp);
 
 	screen_write_start(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0);
@@ -1299,9 +1359,12 @@ window_copy_scroll_up(struct window_pane *wp, u_int ny)
 		window_copy_write_line(wp, &ctx, 1);
 	if (screen_size_y(s) > 3)
 		window_copy_write_line(wp, &ctx, screen_size_y(s) - 2);
-	if (s->sel.flag && screen_size_y(s) > ny)
+	if (s->sel.flag && screen_size_y(s) > ny) {
+		window_copy_update_selection(wp);
 		window_copy_write_line(wp, &ctx, screen_size_y(s) - ny - 1);
+	}
 	screen_write_cursormove(&ctx, data->cx, data->cy);
+	window_copy_update_selection(wp);
 	screen_write_stop(&ctx);
 }
 
@@ -1320,16 +1383,29 @@ window_copy_scroll_down(struct window_pane *wp, u_int ny)
 	if (ny == 0)
 		return;
 	data->oy += ny;
-	window_copy_update_selection(wp);
 
 	screen_write_start(&ctx, wp, NULL);
 	screen_write_cursormove(&ctx, 0, 0);
 	screen_write_insertline(&ctx, ny);
 	window_copy_write_lines(wp, &ctx, 0, ny);
-	if (s->sel.flag && screen_size_y(s) > ny)
+	if (s->sel.flag && screen_size_y(s) > ny) {
+		window_copy_update_selection(wp);
 		window_copy_write_line(wp, &ctx, ny);
-	else if (ny == 1) /* nuke position */
+	} else if (ny == 1) /* nuke position */
 		window_copy_write_line(wp, &ctx, 1);
 	screen_write_cursormove(&ctx, data->cx, data->cy);
+	window_copy_update_selection(wp);
 	screen_write_stop(&ctx);
 }
+
+void
+window_copy_rectangle_toggle(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+
+	data->rectflag = !data->rectflag;
+
+	window_copy_update_selection(wp);
+	window_copy_redraw_screen(wp);
+}
+

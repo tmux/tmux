@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.541 2010-02-08 18:10:07 tcunha Exp $ */
+/* $Id: tmux.h,v 1.542 2010-02-08 18:13:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -468,6 +468,7 @@ enum mode_key_cmd {
 	MODEKEYCOPY_PREVIOUSPAGE,
 	MODEKEYCOPY_PREVIOUSSPACE,
 	MODEKEYCOPY_PREVIOUSWORD,
+	MODEKEYCOPY_RECTANGLETOGGLE,
 	MODEKEYCOPY_RIGHT,
 	MODEKEYCOPY_SCROLLDOWN,
 	MODEKEYCOPY_SCROLLUP,
@@ -673,6 +674,7 @@ SLIST_HEAD(joblist, job);
 /* Screen selection. */
 struct screen_sel {
 	int		 flag;
+	int		 rectflag;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1773,8 +1775,8 @@ void	 screen_free(struct screen *);
 void	 screen_reset_tabs(struct screen *);
 void	 screen_set_title(struct screen *, const char *);
 void	 screen_resize(struct screen *, u_int, u_int);
-void	 screen_set_selection(
-	     struct screen *, u_int, u_int, u_int, u_int, struct grid_cell *);
+void	 screen_set_selection(struct screen *,
+	     u_int, u_int, u_int, u_int, u_int, struct grid_cell *);
 void	 screen_clear_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
 
