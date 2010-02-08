@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.74 2010-02-08 18:10:07 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.75 2010-02-08 18:29:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -285,15 +285,15 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 * If there are still configuration file errors to display, put the new
 	 * session's current window into more mode and display them now.
 	 */
-	if (cfg_finished && cfg_ncauses != 0) {
+	if (cfg_finished && !ARRAY_EMPTY(&cfg_causes)) {
 		wp = s->curw->window->active;
 		window_pane_set_mode(wp, &window_more_mode);
-		for (i = 0; i < cfg_ncauses; i++) {
-			window_more_add(wp, "%s", cfg_causes[i]);
-			xfree(cfg_causes[i]);
+		for (i = 0; i < ARRAY_LENGTH(&cfg_causes); i++) {
+			cause = ARRAY_ITEM(&cfg_causes, i);
+			window_more_add(wp, "%s", cause);
+			xfree(cause);
 		}
-		xfree(cfg_causes);
-		cfg_ncauses = 0;
+		ARRAY_FREE(&cfg_causes);
 	}
 
 	return (!detached);	/* 1 means don't tell command client to exit */

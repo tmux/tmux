@@ -1,4 +1,4 @@
-/* $Id: array.h,v 1.9 2009-11-02 21:34:32 tcunha Exp $ */
+/* $Id: array.h,v 1.10 2010-02-08 18:29:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2006 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,6 +18,8 @@
 
 #ifndef ARRAY_H
 #define ARRAY_H
+
+#define ARRAY_INITIALIZER { NULL, 0, 0 }
 
 #define ARRAY_DECL(n, c)						\
 	struct n {							\
