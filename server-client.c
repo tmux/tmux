@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.30 2010-02-08 18:25:04 tcunha Exp $ */
+/* $Id: server-client.c,v 1.31 2010-02-08 18:27:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -270,6 +270,8 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 
 	/* Special case: number keys jump to pane in identify mode. */
 	if (c->flags & CLIENT_IDENTIFY && key >= '0' && key <= '9') {
+		if (c->flags & CLIENT_READONLY)
+			return;
 		wp = window_pane_at_index(w, key - '0');
 		if (wp != NULL && window_pane_visible(wp))
 			window_set_active_pane(w, wp);
@@ -278,15 +280,20 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 	}
 
 	/* Handle status line. */
-	status_message_clear(c);
-	server_clear_identify(c);
+	if (!(c->flags & CLIENT_READONLY)) {
+		status_message_clear(c);
+		server_clear_identify(c);
+	}
 	if (c->prompt_string != NULL) {
-		status_prompt_key(c, key);
+		if (!(c->flags & CLIENT_READONLY))
+			status_prompt_key(c, key);
 		return;
 	}
 
 	/* Check for mouse keys. */
 	if (key == KEYC_MOUSE) {
+		if (c->flags & CLIENT_READONLY)
+			return;
 		if (options_get_number(oo, "mouse-select-pane")) {
 			window_set_active_at(w, mouse->x, mouse->y);
 			server_redraw_window_borders(w);
@@ -312,9 +319,10 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 			c->flags |= CLIENT_PREFIX;
 		else {
 			/* Try as a non-prefix key binding. */
-			if ((bd = key_bindings_lookup(key)) == NULL)
-				window_pane_key(wp, c, key);
-			else
+			if ((bd = key_bindings_lookup(key)) == NULL) {
+				if (!(c->flags & CLIENT_READONLY))
+					window_pane_key(wp, c, key);
+			} else
 				key_bindings_dispatch(bd, c);
 		}
 		return;
@@ -328,7 +336,7 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 			c->flags &= ~CLIENT_REPEAT;
 			if (isprefix)
 				c->flags |= CLIENT_PREFIX;
-			else
+			else if (!(c->flags & CLIENT_READONLY))
 				window_pane_key(wp, c, key);
 		}
 		return;
@@ -339,7 +347,7 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 		c->flags &= ~CLIENT_REPEAT;
 		if (isprefix)
 			c->flags |= CLIENT_PREFIX;
-		else
+		else if (!(c->flags & CLIENT_READONLY))
 			window_pane_key(wp, c, key);
 		return;
 	}
@@ -659,7 +667,6 @@ server_client_msg_command(struct client *c, struct msg_command_data *data)
 {
 	struct cmd_ctx	 ctx;
 	struct cmd_list	*cmdlist = NULL;
-	struct cmd	*cmd;
 	int		 argc;
 	char	       **argv, *cause;
 

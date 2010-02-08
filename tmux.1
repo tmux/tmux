@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.229 2010-02-08 18:13:17 tcunha Exp $
+.\" $Id: tmux.1,v 1.230 2010-02-08 18:27:34 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -364,7 +364,7 @@ new-window ; split-window -d
 The following commands are available:
 .Bl -tag -width Ds
 .It Xo Ic attach-session
-.Op Fl d
+.Op Fl dr
 .Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic attach )
@@ -376,6 +376,10 @@ If used from inside, switch the current client.
 If
 .Fl d
 is specified, any other clients attached to the session are detached.
+.Fl r
+signifies the client is read-only (only keys bound to the
+.Ic detach-client
+command have any effect)
 .Pp
 If no server is started,
 .Ic attach-session

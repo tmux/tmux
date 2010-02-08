@@ -1,4 +1,4 @@
-/* $Id: cmd-detach-client.c,v 1.10 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-detach-client.c,v 1.11 2010-02-08 18:27:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,7 +29,7 @@ int	cmd_detach_client_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_detach_client_entry = {
 	"detach-client", "detach",
 	CMD_TARGET_CLIENT_USAGE,
-	0, "",
+	CMD_READONLY, "",
 	cmd_target_init,
 	cmd_target_parse,
 	cmd_detach_client_exec,

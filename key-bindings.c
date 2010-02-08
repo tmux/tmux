@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.87 2009-12-10 16:59:02 tcunha Exp $ */
+/* $Id: key-bindings.c,v 1.88 2010-02-08 18:27:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -239,7 +239,9 @@ key_bindings_info(struct cmd_ctx *ctx, const char *fmt, ...)
 void
 key_bindings_dispatch(struct key_binding *bd, struct client *c)
 {
-	struct cmd_ctx	 	 ctx;
+	struct cmd_ctx	 ctx;
+	struct cmd	*cmd;
+	int		 readonly;
 
 	ctx.msgdata = NULL;
 	ctx.curclient = c;
@@ -249,6 +251,16 @@ key_bindings_dispatch(struct key_binding *bd, struct client *c)
 	ctx.info = key_bindings_info;
 
 	ctx.cmdclient = NULL;
+
+	readonly = 1;
+	TAILQ_FOREACH(cmd, bd->cmdlist, qentry) {
+		if (!(cmd->entry->flags & CMD_READONLY))
+			readonly = 0;
+	}
+	if (!readonly && c->flags & CLIENT_READONLY) {
+		key_bindings_info(&ctx, "Client is read-only");
+		return;
+	}
 
 	cmd_list_exec(bd->cmdlist, &ctx);
 }
