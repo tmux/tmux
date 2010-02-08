@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.200 2010-02-08 18:10:07 tcunha Exp $ */
+/* $Id: tmux.c,v 1.201 2010-02-08 18:23:48 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,8 +45,14 @@ time_t		 start_time;
 char		*socket_path;
 int		 login_shell;
 
+struct env_data {
+	char	*path;
+	pid_t	 pid;
+	u_int	 idx;
+};
+
 __dead void	 usage(void);
-void	 	 fill_session(struct msg_command_data *);
+void	 	 parse_env(struct env_data *);
 char 		*makesockpath(const char *);
 __dead void	 shell_exec(const char *, const char *);
 
@@ -132,9 +138,9 @@ areshell(const char *shell)
 }
 
 void
-fill_session(struct msg_command_data *data)
+parse_env(struct env_data *data)
 {
-	char		*env, *ptr1, *ptr2, buf[256];
+	char		*env, *path_pid, *pid_idx, buf[256];
 	size_t		 len;
 	const char	*errstr;
 	long long	 ll;
@@ -143,19 +149,24 @@ fill_session(struct msg_command_data *data)
 	if ((env = getenv("TMUX")) == NULL)
 		return;
 
-	if ((ptr2 = strrchr(env, ',')) == NULL || ptr2 == env)
+	if ((path_pid = strchr(env, ',')) == NULL || path_pid == env)
 		return;
-	for (ptr1 = ptr2 - 1; ptr1 > env && *ptr1 != ','; ptr1--)
-		;
-	if (*ptr1 != ',')
+	if ((pid_idx = strchr(path_pid + 1, ',')) == NULL)
 		return;
-	ptr1++;
-	ptr2++;
+	if ((pid_idx == path_pid + 1 || pid_idx[1] == '\0'))
+		return;
 
-	len = ptr2 - ptr1 - 1;
+	/* path */
+	len = path_pid - env;
+	data->path = xmalloc (len + 1);
+	memcpy(data->path, env, len);
+	data->path[len] = '\0';
+
+	/* pid */
+	len = pid_idx - path_pid - 1;
 	if (len > (sizeof buf) - 1)
 		return;
-	memcpy(buf, ptr1, len);
+	memcpy(buf, path_pid + 1, len);
 	buf[len] = '\0';
 
 	ll = strtonum(buf, 0, LONG_MAX, &errstr);
@@ -163,7 +174,8 @@ fill_session(struct msg_command_data *data)
 		return;
 	data->pid = ll;
 
-	ll = strtonum(ptr2, 0, UINT_MAX, &errstr);
+	/* idx */
+	ll = strtonum(pid_idx+1, 0, UINT_MAX, &errstr);
 	if (errstr != NULL)
 		return;
 	data->idx = ll;
@@ -227,6 +239,7 @@ main(int argc, char **argv)
 	struct passwd		*pw;
 	struct options		*oo, *so, *wo;
 	struct keylist		*keylist;
+	struct env_data		 envdata;
 	struct msg_command_data	 cmddata;
 	char			*s, *shellcmd, *path, *label, *home, *cause;
 	char			 cwd[MAXPATHLEN], **var;
@@ -241,6 +254,7 @@ main(int argc, char **argv)
 
 	flags = 0;
 	shellcmd = label = path = NULL;
+	envdata.path = NULL;
 	login_shell = (**argv == '-');
 	while ((opt = getopt(argc, argv, "28c:df:lL:qS:uUv")) != -1) {
 		switch (opt) {
@@ -445,13 +459,12 @@ main(int argc, char **argv)
 	 * Figure out the socket path. If specified on the command-line with
 	 * -S or -L, use it, otherwise try $TMUX or assume -L default.
 	 */
+	parse_env(&envdata);
 	if (path == NULL) {
 		/* No -L. Try $TMUX, or default. */
 		if (label == NULL) {
-			if ((path = getenv("TMUX")) != NULL) {
-				path = xstrdup(path);
-				path[strcspn(path, ",")] = '\0';
-			} else
+			path = envdata.path;
+			if (path == NULL)
 				label = xstrdup("default");
 		}
 
@@ -471,7 +484,8 @@ main(int argc, char **argv)
 		buf = NULL;
 		len = 0;
 	} else {
-		fill_session(&cmddata);
+		cmddata.pid = envdata.pid;
+		cmddata.idx = envdata.idx;
 
 		cmddata.argc = argc;
 		if (cmd_pack_argv(
