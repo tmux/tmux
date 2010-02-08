@@ -395,6 +395,7 @@ main(int argc, char **argv)
 	options_init(&global_w_options, NULL);
 	wo = &global_w_options;
 	options_set_number(wo, "aggressive-resize", 0);
+	options_set_number(wo, "alternate-screen", 1);
 	options_set_number(wo, "automatic-rename", 1);
 	options_set_number(wo, "clock-mode-colour", 4);
 	options_set_number(wo, "clock-mode-style", 1);

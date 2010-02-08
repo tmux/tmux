@@ -1148,6 +1148,7 @@ void
 input_handle_sequence_sm(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
+	struct options		*oo = &wp->window->options;
 	struct screen		*s = &wp->base;
 	u_int			 sx, sy;
 	uint16_t		 n;
@@ -1177,6 +1178,8 @@ input_handle_sequence_sm(struct input_ctx *ictx)
 			break;
 		case 1049:
 			if (wp->saved_grid != NULL)
+				break;
+			if (!options_get_number(oo, "alternate-screen"))
 				break;
 			sx = screen_size_x(s);
 			sy = screen_size_y(s);
@@ -1224,6 +1227,7 @@ void
 input_handle_sequence_rm(struct input_ctx *ictx)
 {
 	struct window_pane	*wp = ictx->wp;
+	struct options		*oo = &wp->window->options;
 	struct screen		*s = &wp->base;
 	u_int			 sx, sy;
 	uint16_t		 n;
@@ -1253,6 +1257,8 @@ input_handle_sequence_rm(struct input_ctx *ictx)
 			break;
 		case 1049:
 			if (wp->saved_grid == NULL)
+				break;
+			if (!options_get_number(oo, "alternate-screen"))
 				break;
 			sx = screen_size_x(s);
 			sy = screen_size_y(s);

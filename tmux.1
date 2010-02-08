@@ -1898,6 +1898,19 @@ command.
 Duplicate input to any pane to all other panes in the same window, except
 for panes that are not in output mode.
 .Pp
+.It Xo Ic alternate-screen
+.Op Ic on | off
+.Xc
+This option configures whether programs running inside
+.Nm
+may use the terminal alternate screen feature, which allows the
+.Em smcup
+and
+.Em rmcup
+.Xr terminfo 5
+capabilities to be issued to preserve the existing window content on start and
+restore it on exit.
+.Pp
 .It Xo Ic utf8
 .Op Ic on | off
 .Xc

@@ -138,6 +138,7 @@ const struct set_option_entry set_session_option_table[] = {
 
 const struct set_option_entry set_window_option_table[] = {
 	{ "aggressive-resize", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "alternate-screen", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "automatic-rename", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "clock-mode-colour", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "clock-mode-style",
