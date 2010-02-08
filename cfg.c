@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.24 2009-11-28 14:50:36 tcunha Exp $ */
+/* $Id: cfg.c,v 1.25 2010-02-08 18:10:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,6 +34,9 @@ void printflike2 cfg_print(struct cmd_ctx *, const char *, ...);
 void printflike2 cfg_error(struct cmd_ctx *, const char *, ...);
 
 char	 *cfg_cause;
+int       cfg_finished;
+char    **cfg_causes;
+u_int     cfg_ncauses;
 
 /* ARGSUSED */
 void printflike2
@@ -52,19 +55,38 @@ cfg_error(unused struct cmd_ctx *ctx, const char *fmt, ...)
 	va_end(ap);
 }
 
+void printflike3
+cfg_add_cause(u_int *ncauses, char ***causes, const char *fmt, ...)
+{
+	char	*cause;
+	va_list	 ap;
+
+	va_start(ap, fmt);
+	xvasprintf(&cause, fmt, ap);
+	va_end(ap);
+
+	*causes = xrealloc(*causes, *ncauses + 1, sizeof **causes);
+	(*causes)[(*ncauses)++] = cause;
+}
+
+/*
+ * Load configuration file. Returns -1 for an error with a list of messages in
+ * causes. Note that causes and ncauses must be initialised by the caller!
+ */
 int
-load_cfg(const char *path, struct cmd_ctx *ctxin, char **cause)
+load_cfg(
+    const char *path, struct cmd_ctx *ctxin, u_int *ncauses, char ***causes)
 {
 	FILE		*f;
 	u_int		 n;
-	char		*buf, *line, *ptr;
+	char		*buf, *line, *cause;
 	size_t		 len;
 	struct cmd_list	*cmdlist;
 	struct cmd_ctx	 ctx;
 
 	if ((f = fopen(path, "rb")) == NULL) {
-		xasprintf(cause, "%s: %s", path, strerror(errno));
-		return (1);
+		cfg_add_cause(ncauses, causes, "%s: %s", path, strerror(errno));
+		return (-1);
 	}
 	n = 0;
 
@@ -80,10 +102,13 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, char **cause)
 		}
 		n++;
 
-		if (cmd_string_parse(buf, &cmdlist, cause) != 0) {
-			if (*cause == NULL)
+		if (cmd_string_parse(buf, &cmdlist, &cause) != 0) {
+			if (cause == NULL)
 				continue;
-			goto error;
+			cfg_add_cause(
+			    ncauses, causes, "%s: %u: %s", path, n, cause);
+			xfree(cause);
+			continue;
 		}
 		if (cmdlist == NULL)
 			continue;
@@ -107,23 +132,17 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, char **cause)
 		cmd_list_exec(cmdlist, &ctx);
 		cmd_list_free(cmdlist);
 		if (cfg_cause != NULL) {
-			*cause = cfg_cause;
-			goto error;
+			cfg_add_cause(
+			    ncauses, causes, "%s: %d: %s", path, n, cfg_cause);
+			xfree(cfg_cause);
+			continue;
 		}
 	}
 	if (line != NULL)
 		xfree(line);
 	fclose(f);
 
+	if (*ncauses != 0)
+		return (-1);
 	return (0);
-
-error:
-	if (line != NULL)
-		xfree(line);
-	fclose(f);
-
-	xasprintf(&ptr, "%s: %s at line %u", path, *cause, n);
-	xfree(*cause);
-	*cause = ptr;
-	return (1);
 }

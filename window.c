@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.125 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: window.c,v 1.126 2010-02-08 18:10:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -663,9 +663,6 @@ window_pane_parse(struct window_pane *wp)
 {
 	char   *data;
 	size_t	new_size;
-
-	if (wp->mode != NULL)
-		return;
 
 	new_size = EVBUFFER_LENGTH(wp->event->input) - wp->pipe_off;
 	if (wp->pipe_fd != -1 && new_size > 0) {

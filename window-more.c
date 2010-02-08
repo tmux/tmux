@@ -1,4 +1,4 @@
-/* $Id: window-more.c,v 1.41 2010-02-02 23:55:21 tcunha Exp $ */
+/* $Id: window-more.c,v 1.42 2010-02-08 18:10:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,6 +51,16 @@ struct window_more_mode_data {
 	ARRAY_DECL(, char *)	list;
 	u_int			top;
 };
+
+void
+window_more_add(struct window_pane *wp, const char *fmt, ...)
+{
+	va_list	ap;
+
+	va_start(ap, fmt);
+	window_more_vadd(wp, fmt, ap);
+	va_end(ap);
+}
 
 void
 window_more_vadd(struct window_pane *wp, const char *fmt, va_list ap)

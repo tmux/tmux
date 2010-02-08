@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.233 2010-02-02 23:50:01 tcunha Exp $ */
+/* $Id: server.c,v 1.234 2010-02-08 18:10:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -112,12 +112,12 @@ server_create_socket(void)
 int
 server_start(char *path)
 {
-	struct client	*c;
-	int		 pair[2];
-	char		*cause;
-	struct timeval	 tv;
+	struct window_pane	*wp;
+	int			 pair[2], retval;
+	struct timeval		 tv;
+	u_int			 i;
 #ifdef HAVE_SETPROCTITLE
-	char		 rpathbuf[MAXPATHLEN];
+	char			 rpathbuf[MAXPATHLEN];
 #endif
 
 	/* The first client is special and gets a socketpair; create it. */
@@ -184,15 +184,31 @@ server_start(char *path)
 	server_fd = server_create_socket();
 	server_client_create(pair[1]);
 
-	if (access(SYSTEM_CFG, R_OK) == 0) {
-		if (load_cfg(SYSTEM_CFG, NULL, &cause) != 0)
-			goto error;
-	} else if (errno != ENOENT) {
-		xasprintf(&cause, "%s: %s", strerror(errno), SYSTEM_CFG);
-		goto error;
+	retval = 0;
+	if (access(SYSTEM_CFG, R_OK) == 0)
+		load_cfg(SYSTEM_CFG, NULL, &cfg_ncauses, &cfg_causes);
+	else if (errno != ENOENT) {
+		cfg_add_cause(&cfg_ncauses, &cfg_causes,
+		    "%s: %s", strerror(errno), SYSTEM_CFG);
 	}
-	if (cfg_file != NULL && load_cfg(cfg_file, NULL, &cause) != 0)
-		goto error;
+	if (cfg_file != NULL)
+		load_cfg(cfg_file, NULL, &cfg_ncauses, &cfg_causes);
+
+	/*
+	 * If there is a session already, put the current window and pane into
+	 * more mode.
+	 */
+	if (!ARRAY_EMPTY(&sessions) && cfg_ncauses != 0) {
+		wp = ARRAY_FIRST(&sessions)->curw->window->active;
+		window_pane_set_mode(wp, &window_more_mode);
+		for (i = 0; i < cfg_ncauses; i++) {
+			window_more_add(wp, "%s", cfg_causes[i]);
+			xfree(cfg_causes[i]);
+		}
+		xfree(cfg_causes);
+		cfg_ncauses = 0;
+	}
+	cfg_finished = 1;
 
 	event_set(&server_ev_accept,
 	    server_fd, EV_READ|EV_PERSIST, server_accept_callback, NULL);
@@ -206,20 +222,6 @@ server_start(char *path)
 	server_signal_set();
 	server_loop();
 	exit(0);
-
-error:
-	/* Write the error and shutdown the server. */
-	c = ARRAY_FIRST(&clients);
-
-	server_write_error(c, cause);
-	server_write_client(c, MSG_EXIT, NULL, 0);
-	xfree(cause);
-
-	server_shutdown = 1;
-
-	server_signal_set();
-	server_loop();
-	exit(1);
 }
 
 /* Main server loop. */

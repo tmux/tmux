@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.73 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.74 2010-02-08 18:10:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -122,12 +122,13 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_new_session_data	*data = self->data;
 	struct session			*s, *groupwith;
 	struct window			*w;
+	struct window_pane		*wp;
 	struct environ			 env;
 	struct termios			 tio, *tiop;
 	const char			*update;
 	char				*overrides, *cmd, *cwd, *cause;
 	int				 detached, idx;
-	u_int				 sx, sy;
+	u_int				 sx, sy, i;
 
 	if (data->newname != NULL && session_find(data->newname) != NULL) {
 		ctx->error(ctx, "duplicate session: %s", data->newname);
@@ -279,6 +280,21 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	recalculate_sizes();
 	server_update_socket();
+
+	/*
+	 * If there are still configuration file errors to display, put the new
+	 * session's current window into more mode and display them now.
+	 */
+	if (cfg_finished && cfg_ncauses != 0) {
+		wp = s->curw->window->active;
+		window_pane_set_mode(wp, &window_more_mode);
+		for (i = 0; i < cfg_ncauses; i++) {
+			window_more_add(wp, "%s", cfg_causes[i]);
+			xfree(cfg_causes[i]);
+		}
+		xfree(cfg_causes);
+		cfg_ncauses = 0;
+	}
 
 	return (!detached);	/* 1 means don't tell command client to exit */
 }
