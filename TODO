@@ -125,4 +125,5 @@
   flag for readonly)
 - allow buffer to be specified when copying in copy mode
 - multiline status line
-
+- flag for absolute pane size to resize-pane
+- sanity check input to socket
