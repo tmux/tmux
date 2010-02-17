@@ -1038,7 +1038,7 @@ window_copy_copy_line(struct window_pane *wp,
 	}
 
 	/* Only add a newline if the line wasn't wrapped. */
-	if (!wrapped) {
+	if (!wrapped || ex != xx) {
 		*buf = xrealloc(*buf, 1, (*off) + 1);
 		(*buf)[(*off)++] = '\n';
 	}
