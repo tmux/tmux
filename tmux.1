@@ -111,6 +111,11 @@ If necessary, the
 server will be started to retrieve the
 .Ic default-shell
 option.
+This option is for compatibility with
+.Xr sh 1
+when
+.Nm
+is used as a login shell.
 .It Fl f Ar file
 Specify an alternative configuration file.
 By default,
@@ -342,6 +347,32 @@ One of the strings
 .Em bottom-right
 may be used instead of a pane index.
 .Pp
+.Ar shell-command
+arguments are
+.Xr sh 1
+commands.
+These must be passed as a single item, which typically means quoting them, for
+example:
+.Bd -literal -offset indent
+new-window 'vi /etc/passwd'
+.Ed
+.Pp
+.Ar command
+.Op Ar arguments
+refers to a
+.Nm
+command, passed with the command and arguments separately, for example:
+.Bd -literal -offset indent
+bind-key F1 set-window-option force-width 81
+.Ed
+.Pp
+Or if using
+.Xr sh 1 :
+.Pp
+.Bd -literal -offset indent
+$ tmux bind-key F1 set-window-option force-width 81
+.Ed
+.Pp
 Multiple commands may be specified together as part of a
 .Em command sequence .
 Each command should be separated by spaces and a semicolon;
@@ -350,7 +381,9 @@ A literal semicolon may be included by escaping it with a backslash (for
 example, when specifying a command sequence to
 .Ic bind-key ) .
 .Pp
-Examples include:
+Example
+.Nm
+commands include:
 .Bd -literal -offset indent
 refresh-client -t/dev/ttyp2
 
@@ -360,8 +393,40 @@ set-window-option -t:0 monitor-activity on
 
 new-window ; split-window -d
 .Ed
+.Pp
+Or from
+.Xr sh 1 :
+.Pp
+.Bd -literal -offset indent
+$ tmux kill-window -t :1
+
+$ tmux new-window \\; split-window -d
+
+$ tmux new-session -d 'vi /etc/passwd' \\; split-window -d \\; attach
+.Ed
 .Sh CLIENTS AND SESSIONS
-The following commands are available:
+The
+.Nm
+server manages clients, sessions, windows and panes.
+Clients are attached to sessions to interact with them, either
+when they are created with the
+.Ic new-session
+command, or later with the
+.Ic attach-session
+command.
+Each session has one of more windows
+.Em linked
+into it.
+Windows may be linked to multiple sessions and are made up of one or
+more panes,
+each of which contains a pseudo terminal.
+Commands for creating, linking and otherwise manipulating windows
+are covered
+in the
+.Sx WINDOWS AND PANES
+section.
+.Pp
+The following commands are available to manage clients and sessions:
 .Bl -tag -width Ds
 .It Xo Ic attach-session
 .Op Fl dr
@@ -428,18 +493,19 @@ Lock all clients attached to
 .Op Fl n Ar window-name
 .Op Fl s Ar session-name
 .Op Fl t Ar target-session
-.Op Ar command
+.Op Ar shell-command
 .Xc
 .D1 (alias: Ic new )
 Create a new session with name
 .Ar session-name .
+.Pp
 The new session is attached to the current terminal unless
 .Fl d
 is given.
 .Ar window-name
 and
-.Ar command
-are the name of and command to execute in the initial window.
+.Ar shell-command
+are the name of and shell command to execute in the initial window.
 .Pp
 If run from a terminal, any
 .Xr termios 4
@@ -460,7 +526,7 @@ either session may be killed without affecting the other.
 Giving
 .Fl n
 or
-.Ar command
+.Ar shell-command
 are invalid if
 .Fl t
 is used.
@@ -886,7 +952,7 @@ is moved to
 .Op Fl dk
 .Op Fl n Ar window-name
 .Op Fl t Ar target-window
-.Op Ar command
+.Op Ar shell-command
 .Xc
 .D1 (alias: Ic neww )
 Create a new window.
@@ -898,11 +964,18 @@ represents the window to be created; if the target already exists an error is
 shown, unless the
 .Fl k
 flag is used, in which case it is destroyed.
-.Ar command
+.Ar shell-command
 is the command to execute.
 If
-.Ar command
-is not specified, the default command is used.
+.Ar shell-command
+is not specified, the value of the
+.Ic default-command
+option is used.
+.Pp
+When the shell command completes, the window closes.
+See the
+.Ic remain-on-exit
+option to change this behaviour.
 .Pp
 The
 .Ev TERM
@@ -930,7 +1003,7 @@ is used, move to the next window with a bell, activity or content alert.
 .It Xo Ic pipe-pane
 .Op Fl o
 .Op Fl t Ar target-pane
-.Op Ar command
+.Op Ar shell-command
 .Xc
 .D1 (alias: Ic pipep )
 Pipe any output sent by the program in
@@ -938,10 +1011,10 @@ Pipe any output sent by the program in
 to a shell command.
 A pane may only be piped to one command at a time, any existing pipe is
 closed before
-.Ar command
+.Ar shell-command
 is executed.
 If no
-.Ar command
+.Ar shell-command
 is given, the current pipe (if any) is closed.
 .Pp
 The
@@ -989,14 +1062,14 @@ is given in lines or cells (the default is 1).
 .It Xo Ic respawn-window
 .Op Fl k
 .Op Fl t Ar target-window
-.Op Ar command
+.Op Ar shell-command
 .Xc
 .D1 (alias: Ic respawnw )
-Reactive a window in which the command has exited (see the
+Reactivate a window in which the command has exited (see the
 .Ic remain-on-exit
 window option).
 If
-.Ar command
+.Ar shell-command
 is not given, the command used when the window was created is executed.
 The window must be already inactive, unless
 .Fl k
@@ -1035,7 +1108,7 @@ Select the window at
 .Ar size |
 .Fl p Ar percentage Oc
 .Op Fl t Ar target-pane
-.Op Ar command
+.Op Ar shell-command
 .Xc
 .D1 (alias: splitw )
 Create a new pane by splitting
@@ -1376,10 +1449,10 @@ means only bell in windows other than the current window are ignored.
 Set the number of buffers kept for each session; as new buffers are added to
 the top of the stack, old ones are removed from the bottom if necessary to
 maintain this maximum length.
-.It Ic default-command Ar command
+.It Ic default-command Ar shell-command
 Set the command used for new windows (if not specified when the window is
 created) to
-.Ar command ,
+.Ar shell-command ,
 which may be any
 .Xr sh 1
 command.
@@ -1450,7 +1523,7 @@ seconds of inactivity, or the entire server (all sessions) if the
 .Ic lock-server
 option is set.
 The default is not to lock (set to 0).
-.It Ic lock-command Ar command
+.It Ic lock-command Ar shell-command
 Command to run when locking each client.
 The default is to run
 .Xr lock 1
@@ -1545,6 +1618,13 @@ command.
 Set the
 .Ic remain-on-exit
 window option for any windows first created in this session.
+When this option is true, windows in which the running program has
+exited do not close, instead remaining open but inactivate.
+Use the
+.Ic respawn-window
+command to reactivate such a window, or the
+.Ic kill-window
+command to destroy it.
 .It Xo Ic set-titles
 .Op Ic on | off
 .Xc
@@ -1601,7 +1681,7 @@ By default, the session name is shown.
 may contain any of the following special character sequences:
 .Bl -column "Character pair" "Replaced with" -offset indent
 .It Sy "Character pair" Ta Sy "Replaced with"
-.It Li "#(command)" Ta "First line of command's output"
+.It Li "#(shell-command)" Ta "First line of the command's output"
 .It Li "#[attributes]" Ta "Colour or attribute change"
 .It Li "#H" Ta "Hostname of local host"
 .It Li "#F" Ta "Current window flag"
@@ -1613,9 +1693,9 @@ may contain any of the following special character sequences:
 .It Li "##" Ta "A literal" Ql #
 .El
 .Pp
-The #(command) form executes
-.Ql command
-as a shell command and inserts the first line of its output.
+The #(shell-command) form executes
+.Ql shell-command
+and inserts the first line of its output.
 Note that shell commands are only executed once at the interval specified by
 the
 .Ic status-interval
@@ -2295,15 +2375,13 @@ returns success.
 Lock each client individually by running the command specified by the
 .Ic lock-command
 option.
-.It Ic run-shell Ar command
+.It Ic run-shell Ar shell-command
 .D1 (alias: Ic run )
 Execute
-.Ar command
+.Ar shell-command
 in the background without creating a window.
-After the command finishes, any output to stdout is displayed in output mode.
-If
-.Ar command
-doesn't return success, the exit status is also displayed.
+After it finishes, any output to stdout is displayed in output mode.
+If the command doesn't return success, the exit status is also displayed.
 .It Ic server-info
 .D1 (alias: Ic info )
 Show server information and terminal details.
