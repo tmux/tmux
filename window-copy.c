@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.101 2010-02-08 18:13:17 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.102 2010-02-18 12:35:16 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -224,6 +224,7 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 	struct screen			*s = &data->screen;
 	u_int				 n;
 	int				 keys;
+	enum mode_key_cmd		 cmd;
 
 	if (data->inputtype != WINDOW_COPY_OFF) {
 		if (window_copy_key_input(wp, key) != 0)
@@ -231,7 +232,8 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		return;
 	}
 
-	switch (mode_key_lookup(&data->mdata, key)) {
+	cmd = mode_key_lookup(&data->mdata, key);
+	switch (cmd) {
 	case MODEKEYCOPY_CANCEL:
 		window_pane_reset_mode(wp);
 		break;
@@ -367,15 +369,22 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		data->inputprompt = "Search Down";
 		goto input_on;
 	case MODEKEYCOPY_SEARCHAGAIN:
+	case MODEKEYCOPY_SEARCHREVERSE:
 		switch (data->searchtype) {
 		case WINDOW_COPY_OFF:
 		case WINDOW_COPY_GOTOLINE:
 			break;
 		case WINDOW_COPY_SEARCHUP:
-			window_copy_search_up(wp, data->searchstr);
+			if (cmd == MODEKEYCOPY_SEARCHAGAIN)
+				window_copy_search_up(wp, data->searchstr);
+			else
+				window_copy_search_down(wp, data->searchstr);
 			break;
 		case WINDOW_COPY_SEARCHDOWN:
-			window_copy_search_down(wp, data->searchstr);
+			if (cmd == MODEKEYCOPY_SEARCHAGAIN)
+				window_copy_search_down(wp, data->searchstr);
+			else
+				window_copy_search_up(wp, data->searchstr);
 			break;
 		}
 		break;
