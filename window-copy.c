@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.103 2010-02-18 12:36:18 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.104 2010-02-18 12:38:24 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1263,8 +1263,8 @@ window_copy_cursor_next_word(struct window_pane *wp, const char *separators)
 
 			py = screen_hsize(base_s) + data->cy - data->oy;
 			xx = window_copy_find_length(wp, py);
-		}
-		px++;
+		} else
+			px++;
 	}
 
 	window_copy_update_cursor(wp, px, data->cy);
@@ -1295,8 +1295,8 @@ window_copy_cursor_next_word_end(struct window_pane *wp, const char *separators)
 
 			py = screen_hsize(base_s) + data->cy - data->oy;
 			xx = window_copy_find_length(wp, py);
-		}
-		px++;
+		} else
+			px++;
 	}
 
 	/* Find the end of this word. */
@@ -1417,4 +1417,3 @@ window_copy_rectangle_toggle(struct window_pane *wp)
 	window_copy_update_selection(wp);
 	window_copy_redraw_screen(wp);
 }
-
