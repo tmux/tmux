@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.102 2010-02-18 12:35:16 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.103 2010-02-18 12:36:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1038,7 +1038,7 @@ window_copy_copy_line(struct window_pane *wp,
 	}
 
 	/* Only add a newline if the line wasn't wrapped. */
-	if (!wrapped) {
+	if (!wrapped || ex != xx) {
 		*buf = xrealloc(*buf, 1, (*off) + 1);
 		(*buf)[(*off)++] = '\n';
 	}
