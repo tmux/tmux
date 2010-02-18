@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.232 2010-02-08 18:32:34 tcunha Exp $
+.\" $Id: tmux.1,v 1.233 2010-02-18 12:33:52 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: February 8 2010 $
+.Dd $Mdocdate: February 10 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1663,7 +1663,8 @@ The default is 10.
 Display
 .Ar string
 to the right of the status bar.
-By default, the date and time will be shown.
+By default, the current window title in double quotes, the date and the time
+are shown.
 As with
 .Ic status-left ,
 .Ar string
