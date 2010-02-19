@@ -787,6 +787,7 @@ struct window_pane {
 
 	int		 flags;
 #define PANE_REDRAW 0x1
+#define PANE_FREEZE 0x2
 
 	char		*cmd;
 	char		*shell;

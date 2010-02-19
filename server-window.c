@@ -69,7 +69,9 @@ server_window_loop(void)
 			continue;
 
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->fd != -1) {
+			if (wp->fd == -1)
+				continue;
+			if (!(wp->flags & PANE_FREEZE)) {
 				if (server_window_backoff(wp))
 					bufferevent_disable(wp->event, EV_READ);
 				else

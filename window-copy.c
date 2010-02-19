@@ -138,6 +138,9 @@ window_copy_init(struct window_pane *wp)
 	data->searchtype = WINDOW_COPY_OFF;
 	data->searchstr = NULL;
 
+	wp->flags |= PANE_FREEZE;
+	bufferevent_disable(wp->event, EV_READ|EV_WRITE);
+
 	s = &data->screen;
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	if (options_get_number(&wp->window->options, "mode-mouse"))
@@ -165,6 +168,9 @@ void
 window_copy_free(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
+
+	wp->flags &= ~PANE_FREEZE;
+	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 
 	if (data->searchstr != NULL)
 		xfree(data->searchstr);
