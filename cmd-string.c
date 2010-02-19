@@ -61,7 +61,7 @@ int
 cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 {
 	size_t		p;
-	int		ch, i, argc, rval, have_arg;
+	int		ch, i, argc, rval;
 	char	      **argv, *buf, *t;
 	const char     *whitespace, *equals;
 	size_t		len;
@@ -71,8 +71,6 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 
 	buf = NULL;
 	len = 0;
-
-	have_arg = 0;
 
 	*cause = NULL;
 
@@ -90,8 +88,6 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
 			xfree(t);
-
-			have_arg = 1;
 			break;
 		case '"':
 			if ((t = cmd_string_string(s, &p, '"', 1)) == NULL)
@@ -100,8 +96,6 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
 			xfree(t);
-
-			have_arg = 1;
 			break;
 		case '$':
 			if ((t = cmd_string_variable(s, &p)) == NULL)
@@ -110,8 +104,6 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
 			xfree(t);
-
-			have_arg = 1;
 			break;
 		case '#':
 			/* Comment: discard rest of line. */
@@ -121,7 +113,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 		case EOF:
 		case ' ':
 		case '\t':
-			if (have_arg) {
+			if (buf != NULL) {
 				buf = xrealloc(buf, 1, len + 1);
 				buf[len] = '\0';
 
@@ -130,8 +122,6 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 
 				buf = NULL;
 				len = 0;
-
-				have_arg = 0;
 			}
 
 			if (ch != EOF)
@@ -156,7 +146,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			rval = 0;
 			goto out;
 		case '~':
-			if (have_arg == 0) {
+			if (buf == NULL) {
 				if ((t = cmd_string_expand_tilde(s, &p)) == NULL)
 					goto error;
 				buf = xrealloc(buf, 1, len + strlen(t) + 1);
@@ -172,8 +162,6 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 
 			buf = xrealloc(buf, 1, len + 1);
 			buf[len++] = ch;
-
-			have_arg = 1;
 			break;
 		}
 	}
