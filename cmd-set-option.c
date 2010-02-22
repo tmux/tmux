@@ -165,6 +165,7 @@ const struct set_option_entry set_window_option_table[] = {
 	{ "window-status-current-format", SET_OPTION_STRING, 0, 0, NULL },
 	{ "window-status-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "window-status-format", SET_OPTION_STRING, 0, 0, NULL },
+	{ "word-separators", SET_OPTION_STRING, 0, 0, NULL },
 	{ "xterm-keys", SET_OPTION_FLAG, 0, 0, NULL },
 	{ NULL, 0, 0, 0, NULL }
 };
