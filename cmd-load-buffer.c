@@ -16,13 +16,10 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-
 #include <errno.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #include "tmux.h"
 
@@ -48,11 +45,11 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
 	struct session		*s;
-	struct stat		 sb;
 	FILE			*f;
-	char		      	*pdata = NULL;
+	char		      	*pdata, *new_pdata;
 	size_t			 psize;
 	u_int			 limit;
+	int			 ch;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
@@ -62,29 +59,23 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if (fstat(fileno(f), &sb) < 0) {
-		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
+	pdata = NULL;
+	psize = 0;
+	while ((ch = getc(f)) != EOF) {
+		/* Do not let the server die due to memory exhaustion. */
+		if ((new_pdata = realloc(pdata, psize + 2)) == NULL) {
+			ctx->error(ctx, "realloc error: %s", strerror(errno));
+			goto error;
+		}
+		pdata = new_pdata;
+		pdata[psize++] = ch;
+	}
+	if (ferror(f)) {
+		ctx->error(ctx, "%s: read error", data->arg);
 		goto error;
 	}
-	if (sb.st_size <= 0 || (uintmax_t) sb.st_size > SIZE_MAX) {
-		ctx->error(ctx, "%s: file empty or too large", data->arg);
-		goto error;
-	}
-	psize = (size_t) sb.st_size;
-
-	/*
-	 * We don't want to die due to memory exhaustion, hence xmalloc can't
-	 * be used here.
-	 */
-	if ((pdata = malloc(psize)) == NULL) {
-		ctx->error(ctx, "malloc error: %s", strerror(errno));
-		goto error;
-	}
-
-	if (fread(pdata, 1, psize, f) != psize) {
-		ctx->error(ctx, "%s: fread error", data->arg);
-		goto error;
-	}
+	if (pdata != NULL)
+		pdata[psize] = '\0';
 
 	fclose(f);
 
