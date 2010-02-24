@@ -32,7 +32,7 @@
  */
 
 /* All jobs list. */
-struct joblist	all_jobs = SLIST_HEAD_INITIALIZER(&all_jobs);
+struct joblist	all_jobs = SLIST_HEAD_INITIALIZER(all_jobs);
 
 RB_GENERATE(jobs, job, entry, job_cmp);
 
