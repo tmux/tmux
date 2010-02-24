@@ -127,5 +127,5 @@
 - multiline status line
 - flag for absolute pane size to resize-pane
 - sanity check input to socket
-- allow load-buffer to read until EOF for fifos and whatnot
-
+- stdin fd should be passed up to parent so load-buffer and others could use it
+  for nonattaching clients
