@@ -129,3 +129,4 @@
 - sanity check input to socket
 - stdin fd should be passed up to parent so load-buffer and others could use it
   for nonattaching clients
+- environment should be set up for jobs
