@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.187 2010-02-02 23:56:25 tcunha Exp $ */
+/* $Id: tty.c,v 1.188 2010-02-26 13:34:15 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -213,10 +213,6 @@ tty_stop_tty(struct tty *tty)
 	 * because the fd is invalid. Things like ssh -t can easily leave us
 	 * with a dead tty.
 	 */
-	if ((mode = fcntl(tty->fd, F_GETFL)) == -1)
-		return;
-	if (fcntl(tty->fd, F_SETFL, mode & ~O_NONBLOCK) == -1)
-		return;
 	if (ioctl(tty->fd, TIOCGWINSZ, &ws) == -1)
 		return;
 	if (tcsetattr(tty->fd, TCSANOW, &tty->tio) == -1)
@@ -233,6 +229,9 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?1000l");
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
+
+	if ((mode = fcntl(tty->fd, F_GETFL)) != -1)
+		fcntl(tty->fd, F_SETFL, mode & ~O_NONBLOCK);
 }
 
 void
