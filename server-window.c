@@ -1,4 +1,4 @@
-/* $Id: server-window.c,v 1.13 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: server-window.c,v 1.14 2010-02-26 13:26:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -69,7 +69,9 @@ server_window_loop(void)
 			continue;
 
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->fd != -1) {
+			if (wp->fd == -1)
+				continue;
+			if (!(wp->flags & PANE_FREEZE)) {
 				if (server_window_backoff(wp))
 					bufferevent_disable(wp->event, EV_READ);
 				else
