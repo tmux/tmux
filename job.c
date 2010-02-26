@@ -1,4 +1,4 @@
-/* $Id: job.c,v 1.14 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: job.c,v 1.15 2010-02-26 13:35:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@
  */
 
 /* All jobs list. */
-struct joblist	all_jobs = SLIST_HEAD_INITIALIZER(&all_jobs);
+struct joblist	all_jobs = SLIST_HEAD_INITIALIZER(all_jobs);
 
 RB_GENERATE(jobs, job, entry, job_cmp);
 
