@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.235 2010-02-18 12:37:30 tcunha Exp $
+.\" $Id: tmux.1,v 1.236 2010-02-26 13:31:39 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: February 17 2010 $
+.Dd $Mdocdate: February 22 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -649,11 +649,13 @@ The following keys are supported as appropriate for the mode:
 .Pp
 The next and previous word keys use space and the
 .Ql - ,
-.Ql _ ,
-.Ql \&"
+.Ql _
 and
 .Ql @
-characters as word delimiters.
+characters as word delimiters by default, but this can be adjusted by
+setting the
+.Em word-separators
+window option.
 Next word moves to the start of the next word, next word end to the end of the
 next word and previous word to the start of the previous word.
 The three next and previous space keys work similarly but use a space alone as
@@ -2030,6 +2032,13 @@ Set status line foreground colour for the currently active window.
 Like
 .Ar window-status-format ,
 but is the format used when the window is the current window.
+.Pp
+.It Ic word-separators Ar string
+Sets the window's conception of what characters are considered word
+separators, for the purposes of the next and previous word commands in
+copy mode.
+The default is
+.Ql \ -_@ .
 .Pp
 .It Xo Ic xterm-keys
 .Op Ic on | off

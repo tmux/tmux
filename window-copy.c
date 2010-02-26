@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.106 2010-02-26 13:29:25 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.107 2010-02-26 13:31:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -226,7 +226,7 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 void
 window_copy_key(struct window_pane *wp, struct client *c, int key)
 {
-	const char			*word_separators = " -_@";
+	const char			*word_separators;
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	u_int				 n;
@@ -356,15 +356,21 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		window_copy_cursor_next_word_end(wp, " ");
 		break;
 	case MODEKEYCOPY_NEXTWORD:
+		word_separators =
+		    options_get_string(&wp->window->options, "word-separators");
 		window_copy_cursor_next_word(wp, word_separators);
 		break;
 	case MODEKEYCOPY_NEXTWORDEND:
+		word_separators =
+		    options_get_string(&wp->window->options, "word-separators");
 		window_copy_cursor_next_word_end(wp, word_separators);
 		break;
 	case MODEKEYCOPY_PREVIOUSSPACE:
 		window_copy_cursor_previous_word(wp, " ");
 		break;
 	case MODEKEYCOPY_PREVIOUSWORD:
+		word_separators =
+		    options_get_string(&wp->window->options, "word-separators");
 		window_copy_cursor_previous_word(wp, word_separators);
 		break;
 	case MODEKEYCOPY_SEARCHUP:
@@ -1271,30 +1277,36 @@ window_copy_cursor_next_word(struct window_pane *wp, const char *separators)
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*base_s = &wp->base;
 	u_int				 px, py, xx, yy;
+	int				 expected = 0;
 
 	px = data->cx;
 	py = screen_hsize(base_s) + data->cy - data->oy;
 	xx = window_copy_find_length(wp, py);
 	yy = screen_hsize(base_s) + screen_size_y(base_s) - 1;
 
-	/* Are we in a word? Skip it! */
-	while (!window_copy_in_set(wp, px, py, separators))
-		px++;
+	/*
+	 * First skip past any nonword characters and then any word characters.
+	 *
+	 * expected is initially set to 0 for the former and then 1 for the
+	 * latter.
+	 */
+	do {
+		while (px > xx ||
+		    window_copy_in_set(wp, px, py, separators) == expected) {
+			/* Move down if we're past the end of the line. */
+			if (px > xx) {
+				if (py == yy)
+					return;
+				window_copy_cursor_down(wp, 0);
+				px = 0;
 
-	/* Find the start of a word. */
-	while (px > xx || window_copy_in_set(wp, px, py, separators)) {
-		/* Past the end of the line? Nothing but spaces. */
-		if (px > xx) {
-			if (py == yy)
-				return;
-			window_copy_cursor_down(wp, 0);
-			px = 0;
-
-			py = screen_hsize(base_s) + data->cy - data->oy;
-			xx = window_copy_find_length(wp, py);
-		} else
-			px++;
-	}
+				py = screen_hsize(base_s) + data->cy - data->oy;
+				xx = window_copy_find_length(wp, py);
+			} else
+				px++;
+		}
+		expected = !expected;
+	} while (expected == 1);
 
 	window_copy_update_cursor(wp, px, data->cy);
 	if (window_copy_update_selection(wp))
@@ -1307,30 +1319,36 @@ window_copy_cursor_next_word_end(struct window_pane *wp, const char *separators)
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*base_s = &wp->base;
 	u_int				 px, py, xx, yy;
+	int				 expected = 1;
 
 	px = data->cx;
 	py = screen_hsize(base_s) + data->cy - data->oy;
 	xx = window_copy_find_length(wp, py);
 	yy = screen_hsize(base_s) + screen_size_y(base_s) - 1;
 
-	/* Are we on spaces? Skip 'em! */
-	while (px > xx || window_copy_in_set(wp, px, py, separators)) {
-		/* Nothing but spaces past the end of the line, so move down. */
-		if (px > xx) {
-			if (py == yy)
-				return;
-			window_copy_cursor_down(wp, 0);
-			px = 0;
+	/*
+	 * First skip past any word characters, then any nonword characters.
+	 *
+	 * expected is initially set to 1 for the former and then 0 for the
+	 * latter.
+	 */
+	do {
+		while (px > xx ||
+		    window_copy_in_set(wp, px, py, separators) == expected) {
+			/* Move down if we're past the end of the line. */
+			if (px > xx) {
+				if (py == yy)
+					return;
+				window_copy_cursor_down(wp, 0);
+				px = 0;
 
-			py = screen_hsize(base_s) + data->cy - data->oy;
-			xx = window_copy_find_length(wp, py);
-		} else
-			px++;
-	}
-
-	/* Find the end of this word. */
-	while (!window_copy_in_set(wp, px, py, separators))
-		px++;
+				py = screen_hsize(base_s) + data->cy - data->oy;
+				xx = window_copy_find_length(wp, py);
+			} else
+				px++;
+		}
+		expected = !expected;
+	} while (expected == 0);
 
 	window_copy_update_cursor(wp, px, data->cy);
 	if (window_copy_update_selection(wp))

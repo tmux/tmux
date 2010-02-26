@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.95 2010-02-08 18:32:34 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.96 2010-02-26 13:31:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -165,6 +165,7 @@ const struct set_option_entry set_window_option_table[] = {
 	{ "window-status-current-format", SET_OPTION_STRING, 0, 0, NULL },
 	{ "window-status-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "window-status-format", SET_OPTION_STRING, 0, 0, NULL },
+	{ "word-separators", SET_OPTION_STRING, 0, 0, NULL },
 	{ "xterm-keys", SET_OPTION_FLAG, 0, 0, NULL },
 	{ NULL, 0, 0, 0, NULL }
 };
