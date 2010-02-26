@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: tmux(1) configuration file
 " Maintainer: Tiago Cunha <me@tiagocunha.org>
-" Last Change: $Date: 2010-02-08 18:33:21 $
+" Last Change: $Date: 2010-02-26 13:33:22 $
 " License: This file is placed in the public domain.
 
 if version < 600
@@ -71,6 +71,7 @@ syn keyword tmuxOptsSetw main-pane-width main-pane-height monitor-content
 syn keyword tmuxOptsSetw window-status-current-attr window-status-current-bg
 syn keyword tmuxOptsSetw window-status-current-fg mode-mouse synchronize-panes
 syn keyword tmuxOptsSetw window-status-format window-status-current-format
+syn keyword tmuxOptsSetw word-separators
 
 syn keyword tmuxTodo FIXME NOTE TODO XXX contained
 
