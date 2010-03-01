@@ -125,3 +125,9 @@ z- option to move copy mode indicator into status line
 - select-buffer command
 - fix jobs so they block in config file rather than executing at an arbitrary
   future point -- need state stored in client so other clients can proceed
+- rectangle copy:
+	when selecting leftward, cursor should be inside block per emacs
+	key to rotate corner at which cursor is
+- double C-a should walk back over wrapped lines like C-e
+- support title stack, both internally and externally
+	http://docs.freebsd.org/cgi/getmsg.cgi?fetch=1149299+0+archive/2010/freebsd-questions/20100207.freebsd-questions
