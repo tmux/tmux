@@ -77,8 +77,8 @@
 - ability to save history (to buffer?)
 - multiple keys could be done with tables, ie have prefixes go and instead
 	bind -n ^A prefix-table "default"
-  where prefix-table sets command lookup table and sets prefix flag, then next key
-  is looked up in that table
+  where prefix-table sets command lookup table and sets prefix flag, then next
+  key is looked up in that table
 - UTF-8 should be a pointer into a combined string buffer
 - check irssi (term_charset) works with UTF-8
 - rectangle copy/paste
@@ -91,21 +91,17 @@
 	 message display
 	 copy and paste cursor and wide characters
 	 ...?
-- would prompt history/message log be better as server-global? need server global options
-- option so that when session is destroyed, attach client to another session rather than exiting
+- option so that when session is destroyed, attach client to another session
+  rather than exiting
 - session history for client and last-session command
 - option to change status line colour when current window is in a mode?
-- permit read-only clients
-- option to move copy mode indicator into status line
+z- option to move copy mode indicator into status line
 - list-buffer/show-buffer should display UTF-8
 - selection behaviour closer to vi in vi mode
 - live update: server started with -U connects to server, requests sessions and
   windows, receives fds
 - convert status line history to be server global (anything else?)
-- extensions to -t; windows, panes, sessions:
-	! for previous window selected in current session
-	+/- for next/previous numerically
-	others?
+- something for -t "last window in session" so a session can be used as a stack
 - command to show a tree of sessions-windows-panes (active marked with *)
 - sort out inheriting config from shell on new sessions/windows:
         should pick up default-path/termios/etc from client if possible,
@@ -127,3 +123,5 @@
   for nonattaching clients
 - environment should be set up for jobs
 - select-buffer command
+- fix jobs so they block in config file rather than executing at an arbitrary
+  future point -- need state stored in client so other clients can proceed
