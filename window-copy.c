@@ -28,6 +28,7 @@ void	window_copy_free(struct window_pane *);
 void	window_copy_resize(struct window_pane *, u_int, u_int);
 void	window_copy_key(struct window_pane *, struct client *, int);
 int	window_copy_key_input(struct window_pane *, int);
+int	window_copy_key_numeric_prefix(struct window_pane *, int);
 void	window_copy_mouse(
 	    struct window_pane *, struct client *, struct mouse_event *);
 
@@ -82,6 +83,7 @@ const struct window_mode window_copy_mode = {
 
 enum window_copy_input_type {
 	WINDOW_COPY_OFF,
+	WINDOW_COPY_NUMERICPREFIX,
 	WINDOW_COPY_SEARCHUP,
 	WINDOW_COPY_SEARCHDOWN,
 	WINDOW_COPY_GOTOLINE,
@@ -109,6 +111,8 @@ struct window_copy_mode_data {
 	const char     *inputprompt;
 	char   	       *inputstr;
 
+	u_int		numprefix;
+
 	enum window_copy_input_type searchtype;
 	char	       *searchstr;
 };
@@ -135,6 +139,7 @@ window_copy_init(struct window_pane *wp)
 	data->inputtype = WINDOW_COPY_OFF;
 	data->inputprompt = NULL;
 	data->inputstr = xstrdup("");
+	data->numprefix = 0;
 
 	data->searchtype = WINDOW_COPY_OFF;
 	data->searchstr = NULL;
@@ -229,11 +234,20 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 	const char			*word_separators;
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	u_int				 n;
+	u_int				 n, np;
 	int				 keys;
 	enum mode_key_cmd		 cmd;
 
-	if (data->inputtype != WINDOW_COPY_OFF) {
+	np = data->numprefix;
+	if (np == 0)
+		np = 1;
+
+	if (data->inputtype == WINDOW_COPY_NUMERICPREFIX) {
+		if (window_copy_key_numeric_prefix(wp, key) == 0)
+			return;
+		data->inputtype = WINDOW_COPY_OFF;
+		window_copy_redraw_lines(wp, screen_size_y(s) - 1, 1);
+	} else if (data->inputtype != WINDOW_COPY_OFF) {
 		if (window_copy_key_input(wp, key) != 0)
 			goto input_off;
 		return;
@@ -242,55 +256,69 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 	cmd = mode_key_lookup(&data->mdata, key);
 	switch (cmd) {
 	case MODEKEYCOPY_CANCEL:
-		window_pane_reset_mode(wp);
+		for (; np != 0; np--)
+			window_pane_reset_mode(wp);
 		break;
 	case MODEKEYCOPY_LEFT:
-		window_copy_cursor_left(wp);
-		return;
+		for (; np != 0; np--)
+			window_copy_cursor_left(wp);
+		break;
 	case MODEKEYCOPY_RIGHT:
-		window_copy_cursor_right(wp);
-		return;
+		for (; np != 0; np--)
+			window_copy_cursor_right(wp);
+		break;
 	case MODEKEYCOPY_UP:
-		window_copy_cursor_up(wp, 0);
-		return;
+		for (; np != 0; np--)
+			window_copy_cursor_up(wp, 0);
+		break;
 	case MODEKEYCOPY_DOWN:
-		window_copy_cursor_down(wp, 0);
-		return;
+		for (; np != 0; np--)
+			window_copy_cursor_down(wp, 0);
+		break;
 	case MODEKEYCOPY_SCROLLUP:
-		window_copy_cursor_up(wp, 1);
+		for (; np != 0; np--)
+			window_copy_cursor_up(wp, 1);
 		break;
 	case MODEKEYCOPY_SCROLLDOWN:
-		window_copy_cursor_down(wp, 1);
+		for (; np != 0; np--)
+			window_copy_cursor_down(wp, 1);
 		break;
 	case MODEKEYCOPY_PREVIOUSPAGE:
-		window_copy_pageup(wp);
+		for (; np != 0; np--)
+			window_copy_pageup(wp);
 		break;
 	case MODEKEYCOPY_NEXTPAGE:
 		n = 1;
 		if (screen_size_y(s) > 2)
 			n = screen_size_y(s) - 2;
-		if (data->oy < n)
-			data->oy = 0;
-		else
-			data->oy -= n;
+		for (; np != 0; np--) {
+			if (data->oy < n)
+				data->oy = 0;
+			else
+				data->oy -= n;
+		}
 		window_copy_update_selection(wp);
 		window_copy_redraw_screen(wp);
 		break;
 	case MODEKEYCOPY_HALFPAGEUP:
 		n = screen_size_y(s) / 2;
-		if (data->oy + n > screen_hsize(&wp->base))
-			data->oy = screen_hsize(&wp->base);
-		else
-			data->oy += n;
+		for (; np != 0; np--) {
+			if (data->oy + n > screen_hsize(&wp->base))
+				data->oy = screen_hsize(&wp->base);
+			else
+				data->oy += n;
+		}
 		window_copy_update_selection(wp);
 		window_copy_redraw_screen(wp);
 		break;
 	case MODEKEYCOPY_HALFPAGEDOWN:
 		n = screen_size_y(s) / 2;
-		if (data->oy < n)
-			data->oy = 0;
-		else
-			data->oy -= n;
+		for (; np != 0; np--) {
+			if (data->oy < n)
+				data->oy = 0;
+			else
+				data->oy -= n;
+		}
 		window_copy_update_selection(wp);
 		window_copy_redraw_screen(wp);
 		break;
@@ -350,28 +378,34 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		window_copy_cursor_end_of_line(wp);
 		break;
 	case MODEKEYCOPY_NEXTSPACE:
-		window_copy_cursor_next_word(wp, " ");
+		for (; np != 0; np--)
+			window_copy_cursor_next_word(wp, " ");
 		break;
 	case MODEKEYCOPY_NEXTSPACEEND:
-		window_copy_cursor_next_word_end(wp, " ");
+		for (; np != 0; np--)
+			window_copy_cursor_next_word_end(wp, " ");
 		break;
 	case MODEKEYCOPY_NEXTWORD:
 		word_separators =
 		    options_get_string(&wp->window->options, "word-separators");
-		window_copy_cursor_next_word(wp, word_separators);
+		for (; np != 0; np--)
+			window_copy_cursor_next_word(wp, word_separators);
 		break;
 	case MODEKEYCOPY_NEXTWORDEND:
 		word_separators =
 		    options_get_string(&wp->window->options, "word-separators");
-		window_copy_cursor_next_word_end(wp, word_separators);
+		for (; np != 0; np--)
+			window_copy_cursor_next_word_end(wp, word_separators);
 		break;
 	case MODEKEYCOPY_PREVIOUSSPACE:
-		window_copy_cursor_previous_word(wp, " ");
+		for (; np != 0; np--)
+			window_copy_cursor_previous_word(wp, " ");
 		break;
 	case MODEKEYCOPY_PREVIOUSWORD:
 		word_separators =
 		    options_get_string(&wp->window->options, "word-separators");
-		window_copy_cursor_previous_word(wp, word_separators);
+		for (; np != 0; np--)
+			window_copy_cursor_previous_word(wp, word_separators);
 		break;
 	case MODEKEYCOPY_SEARCHUP:
 		data->inputtype = WINDOW_COPY_SEARCHUP;
@@ -386,18 +420,33 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		switch (data->searchtype) {
 		case WINDOW_COPY_OFF:
 		case WINDOW_COPY_GOTOLINE:
+		case WINDOW_COPY_NUMERICPREFIX:
 			break;
 		case WINDOW_COPY_SEARCHUP:
-			if (cmd == MODEKEYCOPY_SEARCHAGAIN)
-				window_copy_search_up(wp, data->searchstr);
-			else
-				window_copy_search_down(wp, data->searchstr);
+			if (cmd == MODEKEYCOPY_SEARCHAGAIN) {
+				for (; np != 0; np--) {
+					window_copy_search_up(
+					    wp, data->searchstr);
+				}
+			} else {
+				for (; np != 0; np--) {
+					window_copy_search_down(
+					    wp, data->searchstr);
+				}
+			}
 			break;
 		case WINDOW_COPY_SEARCHDOWN:
-			if (cmd == MODEKEYCOPY_SEARCHAGAIN)
-				window_copy_search_down(wp, data->searchstr);
-			else
-				window_copy_search_up(wp, data->searchstr);
+			if (cmd == MODEKEYCOPY_SEARCHAGAIN) {
+				for (; np != 0; np--) {
+					window_copy_search_down(
+					    wp, data->searchstr);
+				}
+			} else {
+				for (; np != 0; np--) {
+					window_copy_search_up(
+					    wp, data->searchstr);
+				}
+			}
 			break;
 		}
 		break;
@@ -406,13 +455,23 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		data->inputprompt = "Goto Line";
 		*data->inputstr = '\0';
 		goto input_on;
+	case MODEKEYCOPY_STARTNUMBERPREFIX:
+		key &= 0xff;
+		if (key >= '0' && key <= '9') {
+			data->inputtype = WINDOW_COPY_NUMERICPREFIX;
+			data->numprefix = 0;
+			window_copy_key_numeric_prefix(wp, key);
+			return;
+		}
+		break;
 	case MODEKEYCOPY_RECTANGLETOGGLE:
 		window_copy_rectangle_toggle(wp);
-		return;
+		break;
 	default:
 		break;
 	}
 
+	data->numprefix = 0;
 	return;
 
 input_on:
@@ -444,9 +503,11 @@ window_copy_key_input(struct window_pane *wp, int key)
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	size_t				 inputlen;
+	u_int				 np;
 
 	switch (mode_key_lookup(&data->mdata, key)) {
 	case MODEKEYEDIT_CANCEL:
+		data->numprefix = 0;
 		return (-1);
 	case MODEKEYEDIT_BACKSPACE:
 		inputlen = strlen(data->inputstr);
@@ -457,16 +518,23 @@ window_copy_key_input(struct window_pane *wp, int key)
 		*data->inputstr = '\0';
 		break;
 	case MODEKEYEDIT_ENTER:
+		np = data->numprefix;
+		if (np == 0)
+			np = 1;
+
 		switch (data->inputtype) {
 		case WINDOW_COPY_OFF:
+		case WINDOW_COPY_NUMERICPREFIX:
 			break;
 		case WINDOW_COPY_SEARCHUP:
-			window_copy_search_up(wp, data->inputstr);
+			for (; np != 0; np--)
+				window_copy_search_up(wp, data->inputstr);
 			data->searchtype = data->inputtype;
 			data->searchstr = xstrdup(data->inputstr);
 			break;
 		case WINDOW_COPY_SEARCHDOWN:
-			window_copy_search_down(wp, data->inputstr);
+			for (; np != 0; np--)
+				window_copy_search_down(wp, data->inputstr);
 			data->searchtype = data->inputtype;
 			data->searchstr = xstrdup(data->inputstr);
 			break;
@@ -475,6 +543,7 @@ window_copy_key_input(struct window_pane *wp, int key)
 			*data->inputstr = '\0';
 			break;
 		}
+		data->numprefix = 0;
 		return (1);
 	case MODEKEY_OTHER:
 		if (key < 32 || key > 126)
@@ -491,6 +560,24 @@ window_copy_key_input(struct window_pane *wp, int key)
 
 	window_copy_redraw_lines(wp, screen_size_y(s) - 1, 1);
 	return (0);
+}
+
+int
+window_copy_key_numeric_prefix(struct window_pane *wp, int key)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*s = &data->screen;
+
+	key &= 0xff;
+	if (key < '0' || key > '9')
+		return 1;
+
+	if (data->numprefix >= 100)	/* no more than three digits */
+		return 0;
+	data->numprefix = data->numprefix * 10 + key - '0';
+
+	window_copy_redraw_lines(wp, screen_size_y(s) - 1, 1);
+	return 0;
 }
 
 /* ARGSUSED */
@@ -762,8 +849,13 @@ window_copy_write_line(
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
 		screen_write_puts(ctx, &gc, "%s", hdr);
 	} else if (py == last && data->inputtype != WINDOW_COPY_OFF) {
-		xoff = size = xsnprintf(hdr, sizeof hdr,
-		    "%s: %s", data->inputprompt, data->inputstr);
+		if (data->inputtype == WINDOW_COPY_NUMERICPREFIX) {
+			xoff = size = xsnprintf(hdr, sizeof hdr,
+			    "Repeat: %u", data->numprefix);
+		} else {
+			xoff = size = xsnprintf(hdr, sizeof hdr,
+			    "%s: %s", data->inputprompt, data->inputstr);
+		}
 		screen_write_cursormove(ctx, 0, last);
 		screen_write_puts(ctx, &gc, "%s", hdr);
 	} else

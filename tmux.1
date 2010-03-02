@@ -661,7 +661,16 @@ next word and previous word to the start of the previous word.
 The three next and previous space keys work similarly but use a space alone as
 the word separator.
 .Pp
-These key bindings are defined in a set of named tables:
+Commands in copy mode may be prefaced by an optional repeat count.
+With vi key bindings, a prefix is entered using the number keys; with
+emacs, the Alt (meta) key and a number begins prefix entry.
+For example, to move the cursor forward by ten words, use
+.Ql M-1 0 M-f
+in emacs mode, and
+.Ql 10w
+in vi.
+.Pp
+Mode key bindings are defined in a set of named tables:
 .Em vi-edit
 and
 .Em emacs-edit
