@@ -131,3 +131,6 @@ z- option to move copy mode indicator into status line
 - double C-a should walk back over wrapped lines like C-e
 - support title stack, both internally and externally
 	http://docs.freebsd.org/cgi/getmsg.cgi?fetch=1149299+0+archive/2010/freebsd-questions/20100207.freebsd-questions
+- copy buffers should be global, limit can be server option, nuke copy-buffer
+  command
+- command to show status line information briefly when it is off
