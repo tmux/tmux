@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.188 2010-02-26 13:34:15 tcunha Exp $ */
+/* $Id: tty.c,v 1.189 2010-03-08 14:53:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,8 +36,10 @@ void	tty_fill_acs(struct tty *);
 int	tty_try_256(struct tty *, u_char, const char *);
 int	tty_try_88(struct tty *, u_char, const char *);
 
-void	tty_colours(struct tty *, const struct grid_cell *, u_char *);
-void	tty_colours_fg(struct tty *, const struct grid_cell *, u_char *);
+void	tty_colours(struct tty *, const struct grid_cell *);
+void	tty_check_fg(struct tty *, struct grid_cell *);
+void	tty_check_bg(struct tty *, struct grid_cell *);
+void	tty_colours_fg(struct tty *, const struct grid_cell *);
 void	tty_colours_bg(struct tty *, const struct grid_cell *);
 
 void	tty_redraw_region(struct tty *, const struct tty_ctx *);
@@ -1146,17 +1148,9 @@ void
 tty_attributes(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell, gc2;
-	u_char			 changed, new_attr;
+	u_char			 changed;
 
-	/* If the character is space, don't care about foreground. */
-	if (gc->data == ' ' && !(gc->flags & GRID_FLAG_UTF8)) {
-		memcpy(&gc2, gc, sizeof gc2);
-		if (gc->attr & GRID_ATTR_REVERSE)
-			gc2.bg = tc->bg;
-		else
-			gc2.fg = tc->fg;
-		gc = &gc2;
-	}
+	memcpy(&gc2, gc, sizeof gc2);
 
 	/*
 	 * If no setab, try to use the reverse attribute as a best-effort for a
@@ -1164,34 +1158,32 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 	 * any serious harm and makes a couple of applications happier.
 	 */
 	if (!tty_term_has(tty->term, TTYC_SETAB)) {
-		if (gc != &gc2) {
-			memcpy(&gc2, gc, sizeof gc2);
-			gc = &gc2;
-		}
-
-		if (gc->attr & GRID_ATTR_REVERSE) {
-			if (gc->fg != 7 && gc->fg != 8)
+		if (gc2.attr & GRID_ATTR_REVERSE) {
+			if (gc2.fg != 7 && gc2.fg != 8)
 				gc2.attr &= ~GRID_ATTR_REVERSE;
 		} else {
-			if (gc->bg != 0 && gc->bg != 8)
+			if (gc2.bg != 0 && gc2.bg != 8)
 				gc2.attr |= GRID_ATTR_REVERSE;
 		}
 	}
 
+	/* Fix up the colours if necessary. */
+	tty_check_fg(tty, &gc2);
+	tty_check_bg(tty, &gc2);
+
 	/* If any bits are being cleared, reset everything. */
-	if (tc->attr & ~gc->attr)
+	if (tc->attr & ~gc2.attr)
 		tty_reset(tty);
 
 	/*
 	 * Set the colours. This may call tty_reset() (so it comes next) and
 	 * may add to (NOT remove) the desired attributes by changing new_attr.
 	 */
-	new_attr = gc->attr;
-	tty_colours(tty, gc, &new_attr);
+	tty_colours(tty, &gc2);
 
 	/* Filter out attribute bits already set. */
-	changed = new_attr & ~tc->attr;
-	tc->attr = new_attr;
+	changed = gc2.attr & ~tc->attr;
+	tc->attr = gc2.attr;
 
 	/* Set the attributes. */
 	if (changed & GRID_ATTR_BRIGHT)
@@ -1217,7 +1209,7 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 }
 
 void
-tty_colours(struct tty *tty, const struct grid_cell *gc, u_char *attr)
+tty_colours(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
 	u_char			 fg = gc->fg, bg = gc->bg, flags = gc->flags;
@@ -1274,7 +1266,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc, u_char *attr)
 	/* Set the foreground colour. */
 	if (!fg_default && (fg != tc->fg ||
 	    ((flags & GRID_FLAG_FG256) != (tc->flags & GRID_FLAG_FG256))))
-		tty_colours_fg(tty, gc, attr);
+		tty_colours_fg(tty, gc);
 
 	/*
 	 * Set the background colour. This must come after the foreground as
@@ -1286,7 +1278,71 @@ tty_colours(struct tty *tty, const struct grid_cell *gc, u_char *attr)
 }
 
 void
-tty_colours_fg(struct tty *tty, const struct grid_cell *gc, u_char *attr)
+tty_check_fg(struct tty *tty, struct grid_cell *gc)
+{
+	u_int	colours;
+
+	/* Is this a 256-colour colour? */
+	if (gc->flags & GRID_FLAG_FG256) {
+		/* And not a 256 colour mode? */
+		if (!(tty->term->flags & TERM_88COLOURS) &&
+		    !(tty->term_flags & TERM_88COLOURS) &&
+		    !(tty->term->flags & TERM_256COLOURS) &&
+		    !(tty->term_flags & TERM_256COLOURS)) {
+			gc->fg = colour_256to16(gc->fg);
+			if (gc->fg & 8) {
+				gc->fg &= 7;
+				gc->attr |= GRID_ATTR_BRIGHT;
+			} else
+				gc->attr &= ~GRID_ATTR_BRIGHT;
+			gc->flags &= ~GRID_FLAG_FG256;
+		}
+		return;
+	}
+
+	/* Is this an aixterm colour? */
+	colours = tty_term_number(tty->term, TTYC_COLORS);
+	if (gc->fg >= 90 && gc->fg <= 97 && colours < 16) {
+		gc->fg -= 90;
+		gc->attr |= GRID_ATTR_BRIGHT;
+	}
+}
+
+void
+tty_check_bg(struct tty *tty, struct grid_cell *gc)
+{
+	u_int	colours;
+
+	/* Is this a 256-colour colour? */
+	if (gc->flags & GRID_FLAG_BG256) {
+		/*
+		 * And not a 256 colour mode? Translate to 16-colour
+		 * palette. Bold background doesn't exist portably, so just
+		 * discard the bold bit if set.
+		 */
+		if (!(tty->term->flags & TERM_88COLOURS) &&
+		    !(tty->term_flags & TERM_88COLOURS) &&
+		    !(tty->term->flags & TERM_256COLOURS) &&
+		    !(tty->term_flags & TERM_256COLOURS)) {
+			gc->bg = colour_256to16(gc->bg);
+			if (gc->bg & 8)
+				gc->bg &= 7;
+			gc->attr &= ~GRID_ATTR_BRIGHT;
+			gc->flags &= ~GRID_FLAG_BG256;
+		}
+		return;
+	}
+
+	/* Is this an aixterm colour? */
+	colours = tty_term_number(tty->term, TTYC_COLORS);
+	if (gc->bg >= 100 && gc->bg <= 107 && colours < 16) {
+		gc->bg -= 90;
+		gc->attr |= GRID_ATTR_BRIGHT;
+	}
+}
+
+void
+tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
 	u_char			 fg = gc->fg;
@@ -1299,26 +1355,15 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc, u_char *attr)
 			goto save_fg;
 		if (tty_try_88(tty, fg, "38") == 0)
 			goto save_fg;
-
-		/* Translate to 16-colour palette, updating bold if needed. */
-		fg = colour_256to16(fg);
-		if (fg & 8) {
-			fg &= 7;
-			(*attr) |= GRID_ATTR_BRIGHT;
-		} else
-			tty_reset(tty);		/* turn off bold */
+		/* Else already handled by tty_check_fg. */
+		return;
 	}
 
 	/* Is this an aixterm bright colour? */
 	if (fg >= 90 && fg <= 97) {
-		/* 16 colour terminals or above only. */
-		if (tty_term_number(tty->term, TTYC_COLORS) >= 16) {
-			xsnprintf(s, sizeof s, "\033[%dm", fg);
-			tty_puts(tty, s);
-			goto save_fg;
-		}
-		fg -= 90;
-		(*attr) |= GRID_ATTR_BRIGHT;
+		xsnprintf(s, sizeof s, "\033[%dm", fg);
+		tty_puts(tty, s);
+		goto save_fg;
 	}
 
 	/* Otherwise set the foreground colour. */
@@ -1345,14 +1390,8 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 			goto save_bg;
 		if (tty_try_88(tty, bg, "48") == 0)
 			goto save_bg;
-
-		/*
-		 * Translate to 16-colour palette. Bold background doesn't
-		 * exist portably, so just discard the bold bit if set.
-		 */
-		bg = colour_256to16(bg);
-		if (bg & 8)
-			bg &= 7;
+		/* Else already handled by tty_check_bg. */
+		return;
 	}
 
 	/* Is this an aixterm bright colour? */
