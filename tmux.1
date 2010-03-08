@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.236 2010-02-26 13:31:39 tcunha Exp $
+.\" $Id: tmux.1,v 1.237 2010-03-08 15:02:07 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: February 22 2010 $
+.Dd $Mdocdate: March 2 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -661,7 +661,16 @@ next word and previous word to the start of the previous word.
 The three next and previous space keys work similarly but use a space alone as
 the word separator.
 .Pp
-These key bindings are defined in a set of named tables:
+Commands in copy mode may be prefaced by an optional repeat count.
+With vi key bindings, a prefix is entered using the number keys; with
+emacs, the Alt (meta) key and a number begins prefix entry.
+For example, to move the cursor forward by ten words, use
+.Ql M-1 0 M-f
+in emacs mode, and
+.Ql 10w
+in vi.
+.Pp
+Mode key bindings are defined in a set of named tables:
 .Em vi-edit
 and
 .Em emacs-edit
