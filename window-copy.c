@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.107 2010-02-26 13:31:39 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.108 2010-03-08 14:56:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1149,12 +1149,27 @@ void
 window_copy_cursor_end_of_line(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*base_s = &wp->base;
+	struct grid			*gd = base_s->grid;
 	u_int				 px, py;
 
-	py = screen_hsize(&wp->base) + data->cy - data->oy;
+	py = screen_hsize(base_s) + data->cy - data->oy;
 	px = window_copy_find_length(wp, py);
 
+	if (data->cx == px) {
+		if (data->screen.sel.flag && data->rectflag)
+			px = screen_size_x(&wp->base);
+		if (gd->linedata[py].flags & GRID_LINE_WRAPPED) {
+			while (py < gd->sy + gd->hsize &&
+			    gd->linedata[py].flags & GRID_LINE_WRAPPED) {
+				window_copy_cursor_down(wp, 0);
+				py = screen_hsize(base_s) + data->cy - data->oy;
+			}
+			px = window_copy_find_length(wp, py);
+		}
+	}
 	window_copy_update_cursor(wp, px, data->cy);
+
 	if (window_copy_update_selection(wp))
 		window_copy_redraw_lines(wp, data->cy, 1);
 }
@@ -1233,7 +1248,8 @@ window_copy_cursor_up(struct window_pane *wp, int scroll_only)
 	if (!data->screen.sel.flag || !data->rectflag) {
 		py = screen_hsize(&wp->base) + data->cy - data->oy;
 		px = window_copy_find_length(wp, py);
-		if (data->cx >= data->lastsx || data->cx > px)
+		if ((data->cx >= data->lastsx && data->cx != px) ||
+		    data->cx > px)
 			window_copy_cursor_end_of_line(wp);
 	}
 }
@@ -1266,7 +1282,8 @@ window_copy_cursor_down(struct window_pane *wp, int scroll_only)
 	if (!data->screen.sel.flag || !data->rectflag) {
 		py = screen_hsize(&wp->base) + data->cy - data->oy;
 		px = window_copy_find_length(wp, py);
-		if (data->cx >= data->lastsx || data->cx > px)
+		if ((data->cx >= data->lastsx && data->cx != px) ||
+		    data->cx > px)
 			window_copy_cursor_end_of_line(wp);
 	}
 }
