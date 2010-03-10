@@ -133,3 +133,5 @@
 - copy buffers should be global, limit can be server option, nuke copy-buffer
   command
 - command to show status line information briefly when it is off
+- why are alerts per-winlink? try per window?
+- some way to pad # stuff with spaces, #!2T maybe
