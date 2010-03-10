@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.143 2010-01-28 22:46:44 tcunha Exp $ */
+/* $Id: status.c,v 1.144 2010-03-10 13:41:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -527,6 +527,7 @@ status_job(struct client *c, char **iptr)
 		    JOB_PERSIST, c, cmd, status_job_callback, xfree, NULL);
 		job_run(job);
 	}
+	xfree(cmd);
 	if (job->data == NULL)
 		return (xstrdup(""));
 	return (xstrdup(job->data));
