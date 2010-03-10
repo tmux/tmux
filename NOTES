@@ -9,13 +9,6 @@ run on Solaris and AIX (although they haven't been tested in a while). It is
 usable, although there remain a number of missing features and some remaining
 bugs are expected.
 
-If upgrading from 1.0, PLEASE NOTE:
-- The internal locking mechanism has gone, so the set-password command and -U
-  command line option have been removed.
-- The -d command line flag was dropped. It will now automatically detect the
-  default colours by using op/AX. Nevertheless, if needed, the
-  terminal-overrides session option can replace it.
-
 Since the 1.2 release that tmux depends on libevent. Download the stable
 version from:
 
@@ -56,7 +49,7 @@ are missing it may refuse to run, or not behave correctly.
 tmux supports UTF-8. To use it, the utf8 option must be set on each window;
 this may be turned on for all windows by setting it as a global option, see
 tmux(1) and the FAQ file. As of 0.9, tmux attempts to autodetect a
-UTF-8-capable terminal by checking the LC_ALL, LC_CTYPE and LANG environment
+UTF-8 capable terminal by checking the LC_ALL, LC_CTYPE and LANG environment
 variables. list-clients may be used to check if this is detected correctly; if
 not, the -u command-line flag may be specified.
 
@@ -93,4 +86,4 @@ start. Please contact me with any queries.
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.52 2009-11-08 22:51:34 tcunha Exp $
+$Id: NOTES,v 1.53 2010-03-10 15:18:11 tcunha Exp $

@@ -1,3 +1,60 @@
+CHANGES FROM 1.1 TO 1.2, 10 March 2010
+
+* Switch to libevent.
+* Emulate the ri (reverse index) capability, ergo allowing tmux to at least
+  start on Sun consoles (TERM=sun, or sun-color).
+* Assign each entry a number, or lowercase letter in choose mode, and accept
+  that as a shortcut key.
+* Permit top-bit-set characters to be entered in the status line.
+* Mark no-prefix keys with (no prefix), rather than [] in list-keys.
+* New command show-messages (alias showmsgs), and new session option
+  message-limit, to show a per-client log of status lines messages up to the
+  number defined by message-limit.
+* Do not interpret #() for display-message to avoid leaking commands.
+* New window options window-status-format, and window-status-current-format to
+  control the format of each window in the status line.
+* Add a -p flag to display-message to print the output, instead of displaying
+  it in the status line.
+* Emulate il1, dl1, ich1 to run with vt100 feature set.
+* New command capture-pane (alias capturep) to copy the entire pane contents
+  to a paste buffer.
+* Avoid duplicating code by adding a -w flag to set-option, and show-options to
+  set, and show window options. The commands set-window-option, and
+  show-window-options are now aliases.
+* Panes can now be referred to as top, bottom, top-left, etc.
+* Add server-wide options, which can be set with set-option -s, and shown with
+  show-options -s.
+* New server option quiet (like -q from the command line).
+* New server option escape-time to set the timeout used to detect if escapes
+  are alone, part of a function key, or meta sequence.
+* New session options pane-active-border-bg, pane-active-border-fg,
+  pane-border-bg, and pane-border-fg to set pane colours.
+* Make split-window accept a pane target, instead of a window.
+* New command join-pane (alias joinp) to split, and move an existing pane into
+  the space (the opposite of break-pane), thus simplifying calls to
+  split-window, followed by move-window.
+* Permit S- prefix on keys for shift when the terminal/terminfo supports them.
+* Window targets (-t flag) can now refer to the last window (!), next (+), and
+  previous (-) window by number.
+* Mode keys to jump to the bottom/top of history, end of the next word, scroll
+  up/down, and reverse search in copy mode.
+* New session option display-panes-active-colour to display the active pane in
+  a different colour with the display-panes command.
+* Read the socket path from $TMUX if it's present, and -L, and -S are not
+  given.
+* Vi-style mode keys B, W, and E to navigate between words in copy mode.
+* Start in more mode when configuration file errors are detected.
+* Rectangle copy support added.
+* If attach-session was specified with the -r flag, make the client read-only.
+* Per-window alternate-screen option.
+* Make load-buffer work with FIFOs.
+* New window option word-separators to set the characters considered as word
+  separators in copy mode.
+* Permit keys in copy mode to be prefixed by a repeat count, entered with [1-9]
+  in vi mode, or M-[1-9] in emacs mode.
+* utf8 improvements.
+* As usual, additional code reduction, bug fixes, and manpage enhancements.
+
 CHANGES FROM 1.0 TO 1.1, 05 November 2009
 
 * New run-shell (alias run) command to run an external command without a
@@ -1410,7 +1467,7 @@ The list of older changes is below.
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.301 2009-11-05 12:35:47 tcunha Exp $
+$Id: CHANGES,v 1.302 2010-03-10 15:18:11 tcunha Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
