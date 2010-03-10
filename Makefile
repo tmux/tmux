@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.154 2009-11-05 13:18:19 tcunha Exp $
+# $Id: Makefile,v 1.155 2010-03-10 15:15:33 tcunha Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -20,7 +20,7 @@
 
 VERSION= 1.2
 
-FDEBUG= 1
+#FDEBUG= 1
 
 CC?= cc
 CFLAGS+= -DBUILD="\"$(VERSION)\""
