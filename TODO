@@ -81,7 +81,6 @@
   key is looked up in that table
 - UTF-8 should be a pointer into a combined string buffer
 - check irssi (term_charset) works with UTF-8
-- rectangle copy/paste
 - support esc-esc to quit in modes
 - fix ctrl+F1-F4 output. to what?
 - look into xterm clearing its selection when scrolling etc
@@ -95,7 +94,7 @@
   rather than exiting
 - session history for client and last-session command
 - option to change status line colour when current window is in a mode?
-z- option to move copy mode indicator into status line
+- option to move copy mode indicator into status line
 - list-buffer/show-buffer should display UTF-8
 - selection behaviour closer to vi in vi mode
 - live update: server started with -U connects to server, requests sessions and
