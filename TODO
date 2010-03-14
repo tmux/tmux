@@ -100,7 +100,6 @@
 - live update: server started with -U connects to server, requests sessions and
   windows, receives fds
 - convert status line history to be server global (anything else?)
-- something for -t "last window in session" so a session can be used as a stack
 - command to show a tree of sessions-windows-panes (active marked with *)
 - sort out inheriting config from shell on new sessions/windows:
         should pick up default-path/termios/etc from client if possible,
@@ -118,20 +117,26 @@
 - multiline status line
 - flag for absolute pane size to resize-pane
 - sanity check input to socket
-- stdin fd should be passed up to parent so load-buffer and others could use it
-  for nonattaching clients
-- environment should be set up for jobs
 - select-buffer command
-- fix jobs so they block in config file rather than executing at an arbitrary
-  future point -- need state stored in client so other clients can proceed
-- rectangle copy:
-	when selecting leftward, cursor should be inside block per emacs
-	key to rotate corner at which cursor is
-- double C-a should walk back over wrapped lines like C-e
 - support title stack, both internally and externally
 	http://docs.freebsd.org/cgi/getmsg.cgi?fetch=1149299+0+archive/2010/freebsd-questions/20100207.freebsd-questions
 - copy buffers should be global, limit can be server option, nuke copy-buffer
   command
 - command to show status line information briefly when it is off
-- why are alerts per-winlink? try per window?
 - some way to pad # stuff with spaces, #!2T maybe
+
+For 1.3:
+
+1 new input parser
+2 move left/right/up/down around panes not just next/previous
+3 why are alerts per-winlink? try per window?
+4 audit of escape sequence support vs xterm
+5 double C-a should walk back over wrapped lines like C-e
+6 rectangle copy: when selecting leftward, cursor should be inside block per
+  emacs key to rotate corner at which cursor is
+7 environment should be set up for jobs
+8 stdin fd should be passed up to parent so load-buffer and others could use it
+  for nonattaching clients
+9 something for -t "last window in session" so a session can be used as a stack
+...
+
