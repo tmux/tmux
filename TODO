@@ -124,6 +124,7 @@
   command
 - command to show status line information briefly when it is off
 - some way to pad # stuff with spaces, #!2T maybe
+- FreeBSD console problems
 
 For 1.3:
 
