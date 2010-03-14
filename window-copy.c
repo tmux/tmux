@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.109 2010-03-08 15:02:07 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.110 2010-03-14 23:17:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -256,9 +256,8 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 	cmd = mode_key_lookup(&data->mdata, key);
 	switch (cmd) {
 	case MODEKEYCOPY_CANCEL:
-		for (; np != 0; np--)
-			window_pane_reset_mode(wp);
-		break;
+		window_pane_reset_mode(wp);
+		return;
 	case MODEKEYCOPY_LEFT:
 		for (; np != 0; np--)
 			window_copy_cursor_left(wp);
@@ -366,6 +365,7 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		if (c != NULL && c->session != NULL) {
 			window_copy_copy_selection(wp, c);
 			window_pane_reset_mode(wp);
+			return;
 		}
 		break;
 	case MODEKEYCOPY_STARTOFLINE:
