@@ -139,5 +139,7 @@ For 1.3:
 8 stdin fd should be passed up to parent so load-buffer and others could use it
   for nonattaching clients
 9 something for -t "last window in session" so a session can be used as a stack
+10 synchronous commands - client sends cmd and blocks, neww/splitw saves client ptr
+   then when program inside died, sends MSG_SOMETHING with wait status to client
 ...
 
