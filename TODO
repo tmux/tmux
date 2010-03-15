@@ -125,11 +125,12 @@
 - command to show status line information briefly when it is off
 - some way to pad # stuff with spaces, #!2T maybe
 - FreeBSD console problems
+- + and - should be more powerful:
+	- wrap for windows like panes
+	- +2 -2 etc to move by two
 
 For 1.3:
 
-1 new input parser
-2 move left/right/up/down around panes not just next/previous
 3 why are alerts per-winlink? try per window?
 4 audit of escape sequence support vs xterm
 5 double C-a should walk back over wrapped lines like C-e

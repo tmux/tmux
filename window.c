@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.127 2010-03-15 12:51:23 nicm Exp $ */
+/* $Id: window.c,v 1.128 2010-03-15 22:03:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -833,4 +833,114 @@ window_pane_search(struct window_pane *wp, const char *searchstr, u_int *lineno)
 
 	xfree(newsearchstr);
 	return (msg);
+}
+
+/* Find the pane directly above another. */
+struct window_pane *
+window_pane_find_up(struct window_pane *wp)
+{
+	struct window_pane     *wp2;
+	u_int			left, top;
+
+	if (wp == NULL || !window_pane_visible(wp))
+		return (NULL);
+
+	top = wp->yoff;
+	if (top == 0)
+		top = wp->window->sy + 1;
+	left = wp->xoff;
+
+	TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
+		if (!window_pane_visible(wp2))
+			continue;
+		if (wp2->yoff + wp2->sy + 1 != top)
+			continue;
+		if (left >= wp2->xoff && left <= wp2->xoff + wp2->sx)
+			return (wp2);
+	}
+	return (NULL);
+}
+
+/* Find the pane directly below another. */
+struct window_pane *
+window_pane_find_down(struct window_pane *wp)
+{
+	struct window_pane     *wp2;
+	u_int			left, bottom;
+
+	if (wp == NULL || !window_pane_visible(wp))
+		return (NULL);
+
+	bottom = wp->yoff + wp->sy + 1;
+	if (bottom >= wp->window->sy)
+		bottom = 0;
+	left = wp->xoff;
+
+	TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
+		if (!window_pane_visible(wp2))
+			continue;
+		if (wp2->yoff != bottom)
+			continue;
+		if (left >= wp2->xoff && left <= wp2->xoff + wp2->sx)
+			return (wp2);
+	}
+	return (NULL);
+}
+
+/*
+ * Find the pane directly to the left of another, adjacent to the left side and
+ * containing the top edge.
+ */
+struct window_pane *
+window_pane_find_left(struct window_pane *wp)
+{
+	struct window_pane     *wp2;
+	u_int			left, top;
+
+	if (wp == NULL || !window_pane_visible(wp))
+		return (NULL);
+
+	left = wp->xoff;
+	if (left == 0)
+		left = wp->window->sx + 1;
+	top = wp->yoff;
+
+	TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
+		if (!window_pane_visible(wp2))
+			continue;
+		if (wp2->xoff + wp2->sx + 1 != left)
+			continue;
+		if (top >= wp2->yoff && top <= wp2->yoff + wp2->sy)
+			return (wp2);
+	}
+	return (NULL);
+}
+
+/*
+ * Find the pane directly to the right of another, that is adjacent to the
+ * right edge and including the top edge.
+ */
+struct window_pane *
+window_pane_find_right(struct window_pane *wp)
+{
+	struct window_pane     *wp2;
+	u_int			right, top;
+
+	if (wp == NULL || !window_pane_visible(wp))
+		return (NULL);
+
+	right = wp->xoff + wp->sx + 1;
+	if (right >= wp->window->sx)
+		right = 0;
+	top = wp->yoff;
+
+	TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
+		if (!window_pane_visible(wp2))
+			continue;
+		if (wp2->xoff != right)
+			continue;
+		if (top >= wp2->yoff && top <= wp2->yoff + wp2->sy)
+			return (wp2);
+	}
+	return (NULL);
 }

@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.88 2010-02-08 18:27:34 tcunha Exp $ */
+/* $Id: key-bindings.c,v 1.89 2010-03-15 22:03:38 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -136,7 +136,7 @@ key_bindings_init(void)
 		{ 'i',			  0, &cmd_display_message_entry },
 		{ 'l', 			  0, &cmd_last_window_entry },
 		{ 'n', 			  0, &cmd_next_window_entry },
-		{ 'o', 			  0, &cmd_down_pane_entry },
+		{ 'o', 			  0, &cmd_select_pane_entry },
 		{ 'p', 			  0, &cmd_previous_window_entry },
 		{ 'q',			  0, &cmd_display_panes_entry },
 		{ 'r', 			  0, &cmd_refresh_client_entry },
@@ -155,8 +155,10 @@ key_bindings_init(void)
 		{ 'n' | KEYC_ESCAPE, 	  0, &cmd_next_window_entry },
 		{ 'o' | KEYC_ESCAPE,	  0, &cmd_rotate_window_entry },
 		{ 'p' | KEYC_ESCAPE, 	  0, &cmd_previous_window_entry },
-		{ KEYC_UP, 		  0, &cmd_up_pane_entry },
-		{ KEYC_DOWN, 		  0, &cmd_down_pane_entry },
+		{ KEYC_UP, 		  1, &cmd_select_pane_entry },
+		{ KEYC_DOWN, 		  1, &cmd_select_pane_entry },
+		{ KEYC_LEFT, 		  1, &cmd_select_pane_entry },
+		{ KEYC_RIGHT, 		  1, &cmd_select_pane_entry },
 		{ KEYC_UP | KEYC_ESCAPE,  1, &cmd_resize_pane_entry },
 		{ KEYC_DOWN | KEYC_ESCAPE,  1, &cmd_resize_pane_entry },
 		{ KEYC_LEFT | KEYC_ESCAPE,  1, &cmd_resize_pane_entry },
