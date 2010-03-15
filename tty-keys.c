@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.55 2009-12-18 18:57:00 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.56 2010-03-15 20:44:51 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -408,7 +408,7 @@ tty_keys_find1(struct tty_key *tk, const char *buf, size_t len, size_t *size)
 		(*size)++;
 
 		/* At the end of the string, return the current node. */
-		if (len == 0)
+		if (len == 0 || (tk->next == NULL && tk->key != KEYC_NONE))
 			return (tk);
 
 		/* Move into the next tree for the following character. */
