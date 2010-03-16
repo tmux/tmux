@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.239 2010-03-16 17:30:58 micahcowan Exp $
+.\" $Id: tmux.1,v 1.240 2010-03-16 17:51:32 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -671,14 +671,16 @@ The three next and previous space keys work similarly but use a space alone as
 the word separator.
 .Pp
 The jump commands enable quick movement within a line.
-For instance, with the default bindings (in either vi or emacs mode),
-you can type
-.Ql f/ ,
-and the cursor will jump to the next slash character on the current line.
-You can then type
+For instance, typing
+.Ql f
+followed by
+.Ql /
+will move the cursor to the next
+.Ql /
+character on the current line.
+A
 .Ql \&;
-to cause the cursor to jump to the next occurrence of a slash.
-(These are based on vi editor commands.)
+will then jump to the next occurrence.
 .Pp
 Commands in copy mode may be prefaced by an optional repeat count.
 With vi key bindings, a prefix is entered using the number keys; with

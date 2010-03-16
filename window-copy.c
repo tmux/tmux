@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.111 2010-03-16 17:30:58 micahcowan Exp $ */
+/* $Id: window-copy.c,v 1.112 2010-03-16 17:51:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -258,10 +258,10 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		if ((key & 0xff00) == 0) {
 			data->jumpchar = key;
 			if (data->inputtype == WINDOW_COPY_JUMPFORWARD) {
-				for ( ; np != 0; np--)
+				for (; np != 0; np--)
 					window_copy_cursor_jump(wp);
 			}  else {
-				for ( ; np != 0; np--)
+				for (; np != 0; np--)
 					window_copy_cursor_jump_back(wp);
 			}
 		}
@@ -442,19 +442,19 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		return; /* skip numprefix reset */
 	case MODEKEYCOPY_JUMPAGAIN:
 		if (data->jumptype == WINDOW_COPY_JUMPFORWARD) {
-			for ( ; np != 0; np--)
+			for (; np != 0; np--)
 				window_copy_cursor_jump(wp);
 		} else if (data->jumptype == WINDOW_COPY_JUMPBACK) {
-			for ( ; np != 0; np--)
+			for (; np != 0; np--)
 				window_copy_cursor_jump_back(wp);
 		}
 		break;
 	case MODEKEYCOPY_JUMPREVERSE:
 		if (data->jumptype == WINDOW_COPY_JUMPFORWARD) {
-			for ( ; np != 0; np--)
+			for (; np != 0; np--)
 				window_copy_cursor_jump_back(wp);
 		} else if (data->jumptype == WINDOW_COPY_JUMPBACK) {
-			for ( ; np != 0; np--)
+			for (; np != 0; np--)
 				window_copy_cursor_jump(wp);
 		}
 		break;
@@ -463,7 +463,6 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		data->inputprompt = "Jump Back";
 		*data->inputstr = '\0';
 		window_copy_redraw_lines(wp, screen_size_y(s) - 1, 1);
-		return; /* skip numprefix reset */
 		return; /* skip numprefix reset */
 	case MODEKEYCOPY_SEARCHUP:
 		data->inputtype = WINDOW_COPY_SEARCHUP;
