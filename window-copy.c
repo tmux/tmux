@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.110 2010-03-14 23:17:59 nicm Exp $ */
+/* $Id: window-copy.c,v 1.111 2010-03-16 17:30:58 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,6 +65,8 @@ void	window_copy_cursor_left(struct window_pane *);
 void	window_copy_cursor_right(struct window_pane *);
 void	window_copy_cursor_up(struct window_pane *, int);
 void	window_copy_cursor_down(struct window_pane *, int);
+void	window_copy_cursor_jump(struct window_pane *);
+void	window_copy_cursor_jump_back(struct window_pane *);
 void	window_copy_cursor_next_word(struct window_pane *, const char *);
 void	window_copy_cursor_next_word_end(struct window_pane *, const char *);
 void	window_copy_cursor_previous_word(struct window_pane *, const char *);
@@ -86,6 +88,8 @@ enum window_copy_input_type {
 	WINDOW_COPY_NUMERICPREFIX,
 	WINDOW_COPY_SEARCHUP,
 	WINDOW_COPY_SEARCHDOWN,
+	WINDOW_COPY_JUMPFORWARD,
+	WINDOW_COPY_JUMPBACK,
 	WINDOW_COPY_GOTOLINE,
 };
 
@@ -115,6 +119,9 @@ struct window_copy_mode_data {
 
 	enum window_copy_input_type searchtype;
 	char	       *searchstr;
+
+	enum window_copy_input_type jumptype;
+	char		jumpchar;
 };
 
 struct screen *
@@ -146,6 +153,9 @@ window_copy_init(struct window_pane *wp)
 
 	wp->flags |= PANE_FREEZE;
 	bufferevent_disable(wp->event, EV_READ|EV_WRITE);
+
+	data->jumptype = WINDOW_COPY_OFF;
+	data->jumpchar = '\0';
 
 	s = &data->screen;
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
@@ -242,7 +252,24 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 	if (np == 0)
 		np = 1;
 
-	if (data->inputtype == WINDOW_COPY_NUMERICPREFIX) {
+	if (data->inputtype == WINDOW_COPY_JUMPFORWARD
+	    || data->inputtype == WINDOW_COPY_JUMPBACK) {
+		/* Ignore keys with modifiers. */
+		if ((key & 0xff00) == 0) {
+			data->jumpchar = key;
+			if (data->inputtype == WINDOW_COPY_JUMPFORWARD) {
+				for ( ; np != 0; np--)
+					window_copy_cursor_jump(wp);
+			}  else {
+				for ( ; np != 0; np--)
+					window_copy_cursor_jump_back(wp);
+			}
+		}
+		data->jumptype = data->inputtype;
+		data->inputtype = WINDOW_COPY_OFF;
+		window_copy_redraw_lines(wp, screen_size_y(s) - 1, 1);
+		return;
+	} if (data->inputtype == WINDOW_COPY_NUMERICPREFIX) {
 		if (window_copy_key_numeric_prefix(wp, key) == 0)
 			return;
 		data->inputtype = WINDOW_COPY_OFF;
@@ -407,6 +434,37 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		for (; np != 0; np--)
 			window_copy_cursor_previous_word(wp, word_separators);
 		break;
+	case MODEKEYCOPY_JUMP:
+		data->inputtype = WINDOW_COPY_JUMPFORWARD;
+		data->inputprompt = "Jump Forward";
+		*data->inputstr = '\0';
+		window_copy_redraw_lines(wp, screen_size_y(s) - 1, 1);
+		return; /* skip numprefix reset */
+	case MODEKEYCOPY_JUMPAGAIN:
+		if (data->jumptype == WINDOW_COPY_JUMPFORWARD) {
+			for ( ; np != 0; np--)
+				window_copy_cursor_jump(wp);
+		} else if (data->jumptype == WINDOW_COPY_JUMPBACK) {
+			for ( ; np != 0; np--)
+				window_copy_cursor_jump_back(wp);
+		}
+		break;
+	case MODEKEYCOPY_JUMPREVERSE:
+		if (data->jumptype == WINDOW_COPY_JUMPFORWARD) {
+			for ( ; np != 0; np--)
+				window_copy_cursor_jump_back(wp);
+		} else if (data->jumptype == WINDOW_COPY_JUMPBACK) {
+			for ( ; np != 0; np--)
+				window_copy_cursor_jump(wp);
+		}
+		break;
+	case MODEKEYCOPY_JUMPBACK:
+		data->inputtype = WINDOW_COPY_JUMPBACK;
+		data->inputprompt = "Jump Back";
+		*data->inputstr = '\0';
+		window_copy_redraw_lines(wp, screen_size_y(s) - 1, 1);
+		return; /* skip numprefix reset */
+		return; /* skip numprefix reset */
 	case MODEKEYCOPY_SEARCHUP:
 		data->inputtype = WINDOW_COPY_SEARCHUP;
 		data->inputprompt = "Search Up";
@@ -420,6 +478,8 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		switch (data->searchtype) {
 		case WINDOW_COPY_OFF:
 		case WINDOW_COPY_GOTOLINE:
+		case WINDOW_COPY_JUMPFORWARD:
+		case WINDOW_COPY_JUMPBACK:
 		case WINDOW_COPY_NUMERICPREFIX:
 			break;
 		case WINDOW_COPY_SEARCHUP:
@@ -524,6 +584,8 @@ window_copy_key_input(struct window_pane *wp, int key)
 
 		switch (data->inputtype) {
 		case WINDOW_COPY_OFF:
+		case WINDOW_COPY_JUMPFORWARD:
+		case WINDOW_COPY_JUMPBACK:
 		case WINDOW_COPY_NUMERICPREFIX:
 			break;
 		case WINDOW_COPY_SEARCHUP:
@@ -1377,6 +1439,62 @@ window_copy_cursor_down(struct window_pane *wp, int scroll_only)
 		if ((data->cx >= data->lastsx && data->cx != px) ||
 		    data->cx > px)
 			window_copy_cursor_end_of_line(wp);
+	}
+}
+
+void
+window_copy_cursor_jump(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*base_s = &wp->base;
+	const struct grid_cell		*gc;
+	uint				 px, py, xx;
+
+	px = data->cx + 1;
+	py = screen_hsize(base_s) + data->cy - data->oy;
+	xx = window_copy_find_length(wp, py);
+
+	while (px < xx) {
+		gc = grid_peek_cell(base_s->grid, px, py);
+		if ((gc->flags & (GRID_FLAG_PADDING|GRID_FLAG_UTF8)) == 0
+		    && gc->data == data->jumpchar) {
+
+			window_copy_update_cursor(wp, px, data->cy);
+			if (window_copy_update_selection(wp))
+				window_copy_redraw_lines(wp, data->cy, 1);
+			return;
+		}
+		px++;
+	}
+}
+
+void
+window_copy_cursor_jump_back(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*base_s = &wp->base;
+	const struct grid_cell		*gc;
+	uint				 px, py;
+
+	px = data->cx;
+	py = screen_hsize(base_s) + data->cy - data->oy;
+
+	if (px > 0)
+		px--;
+
+	for (;;) {
+		gc = grid_peek_cell(base_s->grid, px, py);
+		if ((gc->flags & (GRID_FLAG_PADDING|GRID_FLAG_UTF8)) == 0
+		    && gc->data == data->jumpchar) {
+
+			window_copy_update_cursor(wp, px, data->cy);
+			if (window_copy_update_selection(wp))
+				window_copy_redraw_lines(wp, data->cy, 1);
+			return;
+		}
+		if (px == 0)
+			break;
+		px--;
 	}
 }
 
