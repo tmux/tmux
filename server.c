@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.235 2010-02-08 18:29:32 tcunha Exp $ */
+/* $Id: server.c,v 1.236 2010-03-16 23:40:14 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -113,7 +113,7 @@ int
 server_start(char *path)
 {
 	struct window_pane	*wp;
-	int			 pair[2], retval;
+	int			 pair[2];
 	char			*cause;
 	struct timeval		 tv;
 	u_int			 i;
@@ -185,7 +185,6 @@ server_start(char *path)
 	server_fd = server_create_socket();
 	server_client_create(pair[1]);
 
-	retval = 0;
 	if (access(SYSTEM_CFG, R_OK) == 0)
 		load_cfg(SYSTEM_CFG, NULL, &cfg_causes);
 	else if (errno != ENOENT) {
