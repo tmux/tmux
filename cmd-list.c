@@ -1,4 +1,4 @@
-/* $Id: cmd-list.c,v 1.7 2010-02-02 23:51:04 tcunha Exp $ */
+/* $Id: cmd-list.c,v 1.8 2010-03-18 21:06:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -99,6 +99,10 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 			if (ctx->curclient == NULL) {
 				ctx->curclient = ctx->cmdclient;
 				ctx->cmdclient = NULL;
+
+				ctx->error = key_bindings_error;
+				ctx->print = key_bindings_print;
+				ctx->info = key_bindings_info;
 			}
 		}
 	}
