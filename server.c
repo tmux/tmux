@@ -114,7 +114,7 @@ int
 server_start(char *path)
 {
 	struct window_pane	*wp;
-	int	 		 pair[2], retval;
+	int	 		 pair[2];
 	char			 rpathbuf[MAXPATHLEN], *cause;
 	struct timeval		 tv;
 	u_int			 i;
@@ -167,7 +167,6 @@ server_start(char *path)
 	server_fd = server_create_socket();
 	server_client_create(pair[1]);
 
-	retval = 0;
 	if (access(SYSTEM_CFG, R_OK) == 0)
 		load_cfg(SYSTEM_CFG, NULL, &cfg_causes);
 	else if (errno != ENOENT) {
