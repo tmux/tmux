@@ -1597,7 +1597,6 @@ void	 server_window_loop(void);
 
 /* server-fn.c */
 void	 server_fill_environ(struct session *, struct environ *);
-void	 server_write_error(struct client *, const char *);
 void	 server_write_client(
 	     struct client *, enum msgtype, const void *, size_t);
 void	 server_write_session(

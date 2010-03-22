@@ -35,7 +35,6 @@ char   *status_redraw_get_right(
 	    struct client *, time_t, int, struct grid_cell *, size_t *);
 char   *status_job(struct client *, char **);
 void	status_job_callback(struct job *);
-size_t	status_width(struct client *, struct winlink *, time_t);
 char   *status_print(
 	    struct client *, struct winlink *, time_t, struct grid_cell *);
 void	status_replace1(struct client *,
@@ -557,30 +556,6 @@ status_job_callback(struct job *job)
 		job->data = buf;
 	else
 		job->data = xstrdup(line);
-}
-
-/* Calculate winlink status line entry width. */
-size_t
-status_width(struct client *c, struct winlink *wl, time_t t)
-{
-	struct options	*oo = &wl->window->options;
-	struct session	*s = c->session;
-	const char	*fmt;
-	char		*text;
-	size_t		 size;
-	int		 utf8flag;
-
-	utf8flag = options_get_number(&s->options, "status-utf8");
-
-	fmt = options_get_string(&wl->window->options, "window-status-format");
-	if (wl == s->curw)
-		fmt = options_get_string(oo, "window-status-current-format");
-
-	text = status_replace(c, wl, fmt, t, 1);
-	size = screen_write_cstrlen(utf8flag, "%s", text);
-	xfree(text);
-
-	return (size);
 }
 
 /* Return winlink status line entry and adjust gc as necessary. */

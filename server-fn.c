@@ -43,15 +43,6 @@ server_fill_environ(struct session *s, struct environ *env)
 }
 
 void
-server_write_error(struct client *c, const char *msg)
-{
-	struct msg_print_data	printdata;
-
-	strlcpy(printdata.msg, msg, sizeof printdata.msg);
-	server_write_client(c, MSG_ERROR, &printdata, sizeof printdata);
-}
-
-void
 server_write_client(
     struct client *c, enum msgtype type, const void *buf, size_t len)
 {
