@@ -1,4 +1,4 @@
-.\" $OpenBSD$
+.\" $Id$
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -610,7 +610,7 @@ The keys available depend on whether emacs or vi mode is selected
 .Ic mode-keys
 option).
 The following keys are supported as appropriate for the mode:
-.Bl -column "FunctionXXXXXXXXXXXXXX" "viXXXXXXXXXX" "emacs" -offset indent
+.Bl -column "FunctionXXXXXXXXXXXXXXXXX" "viXXXXXXXXXX" "emacs" -offset indent
 .It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
 .It Li "Back to indentation" Ta "^" Ta "M-m"
 .It Li "Bottom of history" Ta "G" Ta "M-<"
@@ -629,6 +629,10 @@ The following keys are supported as appropriate for the mode:
 .It Li "Go to line" Ta ":" Ta "g"
 .It Li "Half page down" Ta "C-d" Ta "M-Down"
 .It Li "Half page up" Ta "C-u" Ta "M-Up"
+.It Li "Jump forward" Ta "f" Ta "f"
+.It Li "Jump backward" Ta "F" Ta "F"
+.It Li "Jump again" Ta ";" Ta ";"
+.It Li "Jump again in reverse" Ta "," Ta ","
 .It Li "Next page" Ta "C-f" Ta "Page down"
 .It Li "Next space" Ta "W" Ta ""
 .It Li "Next space, end of word" Ta "E" Ta ""
@@ -665,6 +669,18 @@ Next word moves to the start of the next word, next word end to the end of the
 next word and previous word to the start of the previous word.
 The three next and previous space keys work similarly but use a space alone as
 the word separator.
+.Pp
+The jump commands enable quick movement within a line.
+For instance, typing
+.Ql f
+followed by
+.Ql /
+will move the cursor to the next
+.Ql /
+character on the current line.
+A
+.Ql \&;
+will then jump to the next occurrence.
 .Pp
 Commands in copy mode may be prefaced by an optional repeat count.
 With vi key bindings, a prefix is entered using the number keys; with
