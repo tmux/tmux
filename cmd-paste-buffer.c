@@ -31,7 +31,7 @@ void	cmd_paste_buffer_lf2cr(struct window_pane *, const char *, size_t);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", "pasteb",
-	"[-dr] " CMD_BUFFER_WINDOW_USAGE,
+	"[-dr] " CMD_BUFFER_PANE_USAGE,
 	0, "dr",
 	cmd_buffer_init,
 	cmd_buffer_parse,
@@ -49,9 +49,8 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session		*s;
 	struct paste_buffer	*pb;
 
-	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
+	if ((wl = cmd_find_pane(ctx, data->target, &s, &wp)) == NULL)
 		return (-1);
-	wp = wl->window->active;
 
 	if (data->buffer == -1)
 		pb = paste_get_top(&s->buffers);

@@ -1,4 +1,4 @@
-.\" $Id$
+.\" $OpenBSD$
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -2360,10 +2360,11 @@ Load the contents of the specified paste buffer from
 .It Xo Ic paste-buffer
 .Op Fl dr
 .Op Fl b Ar buffer-index
-.Op Fl t Ar target-window
+.Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic pasteb )
-Insert the contents of a paste buffer into the current window.
+Insert the contents of a paste buffer into the specified pane.
+If not specified, paste into the current one.
 With
 .Fl d ,
 also delete the paste buffer from the stack.
