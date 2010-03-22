@@ -24,18 +24,39 @@
  * Select pane.
  */
 
+void	cmd_select_pane_init(struct cmd *, int);
 int	cmd_select_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_select_pane_entry = {
 	"select-pane", "selectp",
-	CMD_TARGET_PANE_USAGE,
-	0, "",
-	cmd_target_init,
+	"[-DLRU] " CMD_TARGET_PANE_USAGE,
+	0, "DLRU",
+	cmd_select_pane_init,
 	cmd_target_parse,
 	cmd_select_pane_exec,
 	cmd_target_free,
 	cmd_target_print
 };
+
+void
+cmd_select_pane_init(struct cmd *self, int key)
+{
+	struct cmd_target_data	*data;
+
+	cmd_target_init(self, key);
+	data = self->data;
+
+	if (key == KEYC_UP)
+		cmd_set_flag(&data->chflags, 'U');
+	if (key == KEYC_DOWN)
+		cmd_set_flag(&data->chflags, 'D');
+	if (key == KEYC_LEFT)
+		cmd_set_flag(&data->chflags, 'L');
+	if (key == KEYC_RIGHT)
+		cmd_set_flag(&data->chflags, 'R');
+	if (key == 'o')
+		data->target = xstrdup(":.+");
+}
 
 int
 cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
@@ -51,6 +72,20 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "pane not visible: %s", data->target);
 		return (-1);
 	}
+
+	if (cmd_check_flag(data->chflags, 'L'))
+		wp = window_pane_find_left(wp);
+	else if (cmd_check_flag(data->chflags, 'R'))
+		wp = window_pane_find_right(wp);
+	else if (cmd_check_flag(data->chflags, 'U'))
+		wp = window_pane_find_up(wp);
+	else if (cmd_check_flag(data->chflags, 'D'))
+		wp = window_pane_find_down(wp);
+	if (wp == NULL) {
+		ctx->error(ctx, "pane not found");
+		return (-1);
+	}
+
 	window_set_active_pane(wl->window, wp);
 	server_status_window(wl->window);
 	server_redraw_window_borders(wl->window);

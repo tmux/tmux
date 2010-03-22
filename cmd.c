@@ -45,7 +45,6 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_detach_client_entry,
 	&cmd_display_message_entry,
 	&cmd_display_panes_entry,
-	&cmd_down_pane_entry,
 	&cmd_find_window_entry,
 	&cmd_has_session_entry,
 	&cmd_if_shell_entry,
@@ -109,7 +108,6 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_switch_client_entry,
 	&cmd_unbind_key_entry,
 	&cmd_unlink_window_entry,
-	&cmd_up_pane_entry,
 	NULL
 };
 
@@ -955,15 +953,29 @@ cmd_find_pane(struct cmd_ctx *ctx,
 	return (wl);
 
 lookup_string:
+	/* Try as next or previous pane. */
+	if (paneptr[0] == '+' && paneptr[1] == '\0') {
+		*wpp = TAILQ_NEXT(wl->window->active, entry);
+		if (*wpp == NULL)
+			*wpp = TAILQ_FIRST(&wl->window->panes);
+		return (wl);
+	}
+	if (paneptr[0] == '-' && paneptr[1] == '\0') {
+		*wpp = TAILQ_PREV(wl->window->active, window_panes, entry);
+		if (*wpp == NULL)
+			*wpp = TAILQ_LAST(&wl->window->panes, window_panes);
+		return (wl);
+	}
+
 	/* Try pane string description. */
-	if ((lc = layout_find_string(s->curw->window, paneptr)) == NULL) {
+	if ((lc = layout_find_string(wl->window, paneptr)) == NULL) {
 		ctx->error(ctx, "can't find pane: %s", paneptr);
 		goto error;
 	}
 	*wpp = lc->wp;
 
 	xfree(winptr);
-	return (s->curw);
+	return (wl);
 
 no_period:
 	/* Try as a pane number alone. */

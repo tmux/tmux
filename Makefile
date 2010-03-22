@@ -6,7 +6,7 @@ SRCS=	attributes.c cfg.c client.c clock.c \
 	cmd-break-pane.c cmd-choose-session.c cmd-choose-window.c \
 	cmd-clear-history.c cmd-clock-mode.c cmd-command-prompt.c \
 	cmd-confirm-before.c cmd-copy-buffer.c cmd-copy-mode.c \
-	cmd-delete-buffer.c cmd-detach-client.c cmd-down-pane.c \
+	cmd-delete-buffer.c cmd-detach-client.c \
 	cmd-find-window.c cmd-generic.c cmd-has-session.c cmd-kill-pane.c \
 	cmd-kill-server.c cmd-kill-session.c cmd-kill-window.c \
 	cmd-last-window.c cmd-link-window.c cmd-list-buffers.c \
@@ -28,7 +28,7 @@ SRCS=	attributes.c cfg.c client.c clock.c \
 	cmd-run-shell.c cmd-suspend-client.c cmd-swap-pane.c cmd-swap-window.c \
 	cmd-switch-client.c cmd-unbind-key.c cmd-unlink-window.c \
 	cmd-set-environment.c cmd-show-environment.c cmd-choose-client.c \
-	cmd-up-pane.c cmd-display-message.c cmd-display-panes.c \
+	cmd-display-message.c cmd-display-panes.c \
 	cmd-pipe-pane.c cmd-capture-pane.c cmd.c \
 	colour.c environ.c grid-view.c grid-utf8.c grid.c input-keys.c \
 	imsg.c imsg-buffer.c input.c key-bindings.c key-string.c \

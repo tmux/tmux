@@ -336,6 +336,11 @@ If neither a colon nor period appears,
 first attempts to use the argument as a pane index; if that fails, it is looked
 up as for
 .Ar target-window .
+A
+.Ql +
+or
+.Ql -
+indicate the next or previous pane index, respectively.
 One of the strings
 .Em top ,
 .Em bottom ,
@@ -727,10 +732,8 @@ command (bound to
 and
 .Ql C-right
 by default), the current pane may be changed with the
-.Ic up-pane
-and
-.Ic down-pane
-commands and the
+.Ic select-pane
+command and the
 .Ic rotate-window
 and
 .Ic swap-pane
@@ -859,9 +862,6 @@ While the indicator is on screen, a pane may be selected with the
 to
 .Ql 9
 keys.
-.It Ic down-pane Op Fl t Ar target-pane
-.D1 (alias: Ic downp )
-Change the active pane to the next pane (higher index).
 .It Xo Ic find-window
 .Op Fl t Ar target-window
 .Ar match-string
@@ -1103,12 +1103,23 @@ Choose a specific layout for a window.
 If
 .Ar layout-name
 is not given, the last layout used (if any) is reapplied.
-.It Ic select-pane Op Fl t Ar target-pane
+.It Xo Ic select-pane
+.Op Fl DLRU
+.Op Fl t Ar target-pane
+.Xc
 .D1 (alias: Ic selectp )
 Make pane
 .Ar target-pane
 the active pane in window
 .Ar target-window .
+If one of
+.Fl D ,
+.Fl L ,
+.Fl R ,
+or
+.Fl U
+is used, respectively the pane below, to the left, to the right, or above the
+target pane is used.
 .It Ic select-window Op Fl t Ar target-window
 .D1 (alias: Ic selectw )
 Select the window at
@@ -1184,9 +1195,6 @@ if
 .Fl k
 is specified and the window is linked to only one session, it is unlinked and
 destroyed.
-.It Ic up-pane Op Fl t Ar target-pane
-.D1 (alias: Ic upp )
-Change the active pane to the previous pane (lower index).
 .El
 .Sh KEY BINDINGS
 .Nm
