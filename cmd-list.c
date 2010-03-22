@@ -99,6 +99,10 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 			if (ctx->curclient == NULL) {
 				ctx->curclient = ctx->cmdclient;
 				ctx->cmdclient = NULL;
+
+				ctx->error = key_bindings_error;
+				ctx->print = key_bindings_print;
+				ctx->info = key_bindings_info;
 			}
 		}
 	}
