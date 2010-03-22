@@ -408,7 +408,7 @@ tty_keys_find1(struct tty_key *tk, const char *buf, size_t len, size_t *size)
 		(*size)++;
 
 		/* At the end of the string, return the current node. */
-		if (len == 0)
+		if (len == 0 || (tk->next == NULL && tk->key != KEYC_NONE))
 			return (tk);
 
 		/* Move into the next tree for the following character. */
