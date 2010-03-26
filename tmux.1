@@ -405,9 +405,9 @@ Or from
 .Bd -literal -offset indent
 $ tmux kill-window -t :1
 
-$ tmux new-window \\; split-window -d
+$ tmux new-window \e; split-window -d
 
-$ tmux new-session -d 'vi /etc/passwd' \\; split-window -d \\; attach
+$ tmux new-session -d 'vi /etc/passwd' \e; split-window -d \e; attach
 .Ed
 .Sh CLIENTS AND SESSIONS
 The
