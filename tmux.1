@@ -976,13 +976,22 @@ except the window at
 is moved to
 .Ar dst-window .
 .It Xo Ic new-window
-.Op Fl dk
+.Op Fl adk
 .Op Fl n Ar window-name
 .Op Fl t Ar target-window
 .Op Ar shell-command
 .Xc
 .D1 (alias: Ic neww )
 Create a new window.
+With
+.Fl a ,
+the new window is inserted at the next index up from the specified
+.Ar target-window ,
+moving windows up if necessary,
+otherwise
+.Ar target-window
+is the new window location.
+.Pp
 If
 .Fl d
 is given, the session does not make the new window the current window.
