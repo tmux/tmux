@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.241 2010-03-18 21:02:41 nicm Exp $
+.\" $OpenBSD: tmux.1,v 1.160 2010/03/27 11:46:58 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: March 2 2010 $
+.Dd $Mdocdate: March 27 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -405,9 +405,9 @@ Or from
 .Bd -literal -offset indent
 $ tmux kill-window -t :1
 
-$ tmux new-window \\; split-window -d
+$ tmux new-window \e; split-window -d
 
-$ tmux new-session -d 'vi /etc/passwd' \\; split-window -d \\; attach
+$ tmux new-session -d 'vi /etc/passwd' \e; split-window -d \e; attach
 .Ed
 .Sh CLIENTS AND SESSIONS
 The
@@ -976,13 +976,22 @@ except the window at
 is moved to
 .Ar dst-window .
 .It Xo Ic new-window
-.Op Fl dk
+.Op Fl adk
 .Op Fl n Ar window-name
 .Op Fl t Ar target-window
 .Op Ar shell-command
 .Xc
 .D1 (alias: Ic neww )
 Create a new window.
+With
+.Fl a ,
+the new window is inserted at the next index up from the specified
+.Ar target-window ,
+moving windows up if necessary,
+otherwise
+.Ar target-window
+is the new window location.
+.Pp
 If
 .Fl d
 is given, the session does not make the new window the current window.

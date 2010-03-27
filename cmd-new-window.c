@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.43 2010-01-22 17:28:34 tcunha Exp $ */
+/* $OpenBSD: cmd-new-window.c,v 1.13 2010/03/27 11:46:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,13 +36,14 @@ struct cmd_new_window_data {
 	char	*target;
 	char	*name;
 	char	*cmd;
+	int	 flag_insert_after;
 	int	 flag_detached;
 	int	 flag_kill;
 };
 
 const struct cmd_entry cmd_new_window_entry = {
 	"new-window", "neww",
-	"[-dk] [-n window-name] [-t target-window] [command]",
+	"[-adk] [-n window-name] [-t target-window] [command]",
 	0, "",
 	cmd_new_window_init,
 	cmd_new_window_parse,
@@ -61,6 +62,7 @@ cmd_new_window_init(struct cmd *self, unused int arg)
 	data->target = NULL;
 	data->name = NULL;
 	data->cmd = NULL;
+	data->flag_insert_after = 0;
 	data->flag_detached = 0;
 	data->flag_kill = 0;
 }
@@ -74,8 +76,11 @@ cmd_new_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, "dkt:n:")) != -1) {
+	while ((opt = getopt(argc, argv, "adkt:n:")) != -1) {
 		switch (opt) {
+		case 'a':
+			data->flag_insert_after = 1;
+			break;
 		case 'd':
 			data->flag_detached = 1;
 			break;
@@ -118,13 +123,36 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session			*s;
 	struct winlink			*wl;
 	char				*cmd, *cwd, *cause;
-	int				 idx;
+	int				 idx, last;
 
 	if (data == NULL)
 		return (0);
 
-	if ((idx = cmd_find_index(ctx, data->target, &s)) == -2)
-		return (-1);
+	if (data->flag_insert_after) {
+		if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
+			return (-1);
+		idx = wl->idx + 1;
+
+		/* Find the next free index. */
+		for (last = idx; last < INT_MAX; last++) {
+			if (winlink_find_by_index(&s->windows, last) == NULL)
+				break;
+		}
+		if (last == INT_MAX) {
+			ctx->error(ctx, "no free window indexes");
+			return (-1);
+		}
+
+		/* Move everything from last - 1 to idx up a bit. */
+		for (; last > idx; last--) {
+			wl = winlink_find_by_index(&s->windows, last - 1);
+			server_link_window(s, wl, s, last, 0, 0, NULL);
+			server_unlink_window(s, wl);
+		}
+	} else {
+		if ((idx = cmd_find_index(ctx, data->target, &s)) == -2)
+			return (-1);
+	}
 
 	wl = NULL;
 	if (idx != -1)
