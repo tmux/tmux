@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.550 2010-03-16 17:30:58 micahcowan Exp $ */
+/* $Id: tmux.h,v 1.551 2010-03-27 15:12:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1596,7 +1596,6 @@ void	 server_window_loop(void);
 
 /* server-fn.c */
 void	 server_fill_environ(struct session *, struct environ *);
-void	 server_write_error(struct client *, const char *);
 void	 server_write_client(
 	     struct client *, enum msgtype, const void *, size_t);
 void	 server_write_session(

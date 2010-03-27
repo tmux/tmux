@@ -1,4 +1,4 @@
-/* $OpenBSD: cmd-new-window.c,v 1.13 2010/03/27 11:46:58 nicm Exp $ */
+/* $Id: cmd-new-window.c,v 1.45 2010-03-27 15:12:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
