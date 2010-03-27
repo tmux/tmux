@@ -128,6 +128,8 @@
 - + and - should be more powerful:
 	- wrap for windows like panes
 	- +2 -2 etc to move by two
+- a binding to "scroll down and exit at bottom" copy mode
+- some way to pass keystrokes in copy mode through to underlying window
 
 For 1.3 (not in order):
 
