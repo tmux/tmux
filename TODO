@@ -147,5 +147,7 @@ For 1.3 (not in order):
 11 documentation improvements - rlpowell's tutorial
                               - build instructions
 12 better configure? with-libevent
+13 fix binding multiple keys, C-M-Left C-M-Up etc
+14 bind commands to key sequences?
 ...
 
