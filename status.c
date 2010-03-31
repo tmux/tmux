@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.145 2010-03-27 15:12:56 nicm Exp $ */
+/* $Id: status.c,v 1.146 2010-03-31 18:24:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1046,7 +1046,7 @@ status_prompt_key(struct client *c, int key)
 			status_prompt_clear(c);
 		break;
 	case MODEKEY_OTHER:
-		if (key < 32 || key == 127)
+		if ((key & 0xff00) != 0 || key < 32 || key == 127)
 			break;
 		c->prompt_buffer = xrealloc(c->prompt_buffer, 1, size + 2);
 
