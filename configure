@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.47 2009-12-11 20:08:18 nicm Exp $
+# $Id: configure,v 1.48 2010-04-02 21:26:40 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -104,7 +104,7 @@ EOF
 EOF
 	cat <<EOF >>$CONFIG_MK
 CFLAGS+= -std=c99 -D_GNU_SOURCE -D_POSIX_SOURCE
-LIBS+= -lncurses -lcrypt -lutil -levent
+LIBS+= -lncurses -lcrypt -lutil -levent -lrt
 SRCS+= osdep-linux.c \
 	compat/fgetln.c \
 	compat/strlcat.c \
