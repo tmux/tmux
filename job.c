@@ -150,7 +150,8 @@ job_run(struct job *job)
 		return (-1);
 	case 0:		/* child */
 		server_signal_clear();
-		/* XXX environ? */
+
+		environ_push(&global_environ);
 
 		if (dup2(out[1], STDOUT_FILENO) == -1)
 			fatal("dup2 failed");

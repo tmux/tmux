@@ -480,14 +480,11 @@ int
 window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
     const char *cwd, struct environ *env, struct termios *tio, char **cause)
 {
-	struct winsize	 	 ws;
-	int		 	 mode;
-	char			*argv0, **varp, *var;
-	ARRAY_DECL(, char *)	 varlist;
-	struct environ_entry	*envent;
-	const char		*ptr;
-	struct termios		 tio2;
-	u_int		 	 i;
+	struct winsize	 ws;
+	int		 mode;
+	char		*argv0;
+	const char	*ptr;
+	struct termios	 tio2;
 
 	if (wp->fd != -1) {
 		close(wp->fd);
@@ -530,20 +527,7 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 		if (tcsetattr(STDIN_FILENO, TCSANOW, &tio2) != 0)
 			fatal("tcgetattr failed");
 
-		ARRAY_INIT(&varlist);
-		for (varp = environ; *varp != NULL; varp++) {
-			var = xstrdup(*varp);
-			var[strcspn(var, "=")] = '\0';
-			ARRAY_ADD(&varlist, var);
-		}
-		for (i = 0; i < ARRAY_LENGTH(&varlist); i++) {
-			var = ARRAY_ITEM(&varlist, i);
-			unsetenv(var);
-		}
-		RB_FOREACH(envent, environ, env) {
-			if (envent->value != NULL)
-				setenv(envent->name, envent->value, 1);
-		}
+		environ_push(env);
 
 		server_signal_clear();
 		log_close();
