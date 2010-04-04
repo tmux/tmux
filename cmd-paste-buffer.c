@@ -44,12 +44,11 @@ int
 cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
-	struct winlink		*wl;
 	struct window_pane	*wp;
 	struct session		*s;
 	struct paste_buffer	*pb;
 
-	if ((wl = cmd_find_pane(ctx, data->target, &s, &wp)) == NULL)
+	if (cmd_find_pane(ctx, data->target, &s, &wp) == NULL)
 		return (-1);
 
 	if (data->buffer == -1)
