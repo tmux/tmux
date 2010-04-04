@@ -45,7 +45,7 @@ struct cmd_join_pane_data {
 
 const struct cmd_entry cmd_join_pane_entry = {
 	"join-pane", "joinp",
-	"[-dhv] [-p percentage|-l size] [-t src-pane] [-t dst-pane] [command]",
+	"[-dhv] [-p percentage|-l size] [-s src-pane] [-t dst-pane] [command]",
 	0, "",
 	cmd_join_pane_init,
 	cmd_join_pane_parse,
