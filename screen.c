@@ -31,9 +31,14 @@ void	screen_resize_y(struct screen *, u_int);
 void
 screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 {
+	char hn[MAXHOSTNAMELEN];
+
 	s->grid = grid_create(sx, sy, hlimit);
 
-	s->title = xstrdup("");
+	if (gethostname(hn, MAXHOSTNAMELEN) == 0)
+		s->title = xstrdup(hn);
+	else
+		s->title = xstrdup("");
 
 	s->tabs = NULL;
 
