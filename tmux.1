@@ -1749,6 +1749,14 @@ global environment set (see the
 .Sx ENVIRONMENT
 section).
 .Pp
+The window title (#T) is the title set by the program running within the window
+using the OSC title setting sequence, for example:
+.Bd -literal -offset indent
+$ printf '\e033]2;My Title\e033\e\e'
+.Ed
+.Pp
+When a window is first created, its title is the hostname.
+.Pp
 #[attributes] allows a comma-separated list of attributes to be specified,
 these may be
 .Ql fg=colour
