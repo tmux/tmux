@@ -130,6 +130,7 @@
 	- +2 -2 etc to move by two
 - a binding to "scroll down and exit at bottom" copy mode
 - some way to pass keystrokes in copy mode through to underlying window
+- last window update time and # replacement for it for display-message
 
 For 1.3 (not in order):
 
