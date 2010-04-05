@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.99 2010-02-08 18:13:17 tcunha Exp $ */
+/* $Id: screen.c,v 1.100 2010-04-05 05:11:44 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,7 +49,7 @@ screen_reinit(struct screen *s)
 	s->rupper = 0;
 	s->rlower = screen_size_y(s) - 1;
 
-	s->mode = MODE_CURSOR;
+	s->mode = MODE_CURSOR | MODE_WRAP;
 
 	screen_reset_tabs(s);
 

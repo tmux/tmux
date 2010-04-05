@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.89 2010-03-15 22:03:38 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.90 2010-04-05 05:11:43 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -211,12 +211,14 @@ key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 	struct winlink	*wl = ctx->curclient->session->curw;
 	va_list		 ap;
 
-	if (wl->window->active->mode != &window_more_mode)
+	if (wl->window->active->mode != &window_copy_mode) {
 		window_pane_reset_mode(wl->window->active);
-	window_pane_set_mode(wl->window->active, &window_more_mode);
+		window_pane_set_mode(wl->window->active, &window_copy_mode);
+		window_copy_init_for_output(wl->window->active);
+	}
 
 	va_start(ap, fmt);
-	window_more_vadd(wl->window->active, fmt, ap);
+	window_copy_vadd(wl->window->active, fmt, ap);
 	va_end(ap);
 }
 

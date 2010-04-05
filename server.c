@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.236 2010-03-16 23:40:14 nicm Exp $ */
+/* $Id: server.c,v 1.237 2010-04-05 05:11:44 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -200,10 +200,11 @@ server_start(char *path)
 	 */
 	if (!ARRAY_EMPTY(&sessions) && !ARRAY_EMPTY(&cfg_causes)) {
 		wp = ARRAY_FIRST(&sessions)->curw->window->active;
-		window_pane_set_mode(wp, &window_more_mode);
+		window_pane_set_mode(wp, &window_copy_mode);
+		window_copy_init_for_output(wp);
 		for (i = 0; i < ARRAY_LENGTH(&cfg_causes); i++) {
 			cause = ARRAY_ITEM(&cfg_causes, i);
-			window_more_add(wp, "%s", cause);
+			window_copy_add(wp, "%s", cause);
 			xfree(cause);
 		}
 		ARRAY_FREE(&cfg_causes);

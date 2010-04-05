@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.76 2010-02-26 13:28:15 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.77 2010-04-05 05:11:43 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -287,10 +287,11 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 */
 	if (cfg_finished && !ARRAY_EMPTY(&cfg_causes)) {
 		wp = s->curw->window->active;
-		window_pane_set_mode(wp, &window_more_mode);
+		window_pane_set_mode(wp, &window_copy_mode);
+		window_copy_init_for_output(wp);
 		for (i = 0; i < ARRAY_LENGTH(&cfg_causes); i++) {
 			cause = ARRAY_ITEM(&cfg_causes, i);
-			window_more_add(wp, "%s", cause);
+			window_copy_add(wp, "%s", cause);
 			xfree(cause);
 		}
 		ARRAY_FREE(&cfg_causes);

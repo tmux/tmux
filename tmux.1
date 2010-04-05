@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.243 2010-03-27 15:12:56 nicm Exp $
+.\" $Id: tmux.1,v 1.244 2010-04-05 05:11:44 micahcowan Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -588,14 +588,8 @@ A
 .Nm
 window may be in one of several modes.
 The default permits direct access to the terminal attached to the window.
-The others are:
-.Bl -tag -width Ds
-.It Em output mode
-This is entered when a command which produces output, such as
-.Ic list-keys ,
-is executed from a key binding.
-.It Em copy mode
-This permits a section of a window or its history to be copied to a
+The other is copy mode, which permits a section of a window or its
+history to be copied to a
 .Em paste buffer
 for later insertion into another window.
 This mode is entered with the
@@ -603,7 +597,9 @@ This mode is entered with the
 command, bound to
 .Ql \&[
 by default.
-.El
+It is also entered when a command that produces output, such as
+.Ic list-keys ,
+is executed from a key binding.
 .Pp
 The keys available depend on whether emacs or vi mode is selected
 (see the
@@ -701,7 +697,7 @@ and
 .Em emacs-choice
 for keys used when choosing from lists (such as produced by the
 .Ic choose-window
-command) or in output mode; and
+command); and
 .Em vi-copy
 and
 .Em emacs-copy
@@ -716,7 +712,9 @@ and
 The paste buffer key pastes the first line from the top paste buffer on the
 stack.
 .Pp
-The mode commands are as follows:
+The synopsis for the
+.Ic copy-mode
+command is:
 .Bl -tag -width Ds
 .It Xo Ic copy-mode
 .Op Fl u
@@ -2021,8 +2019,8 @@ command.
 .It Xo Ic synchronize-panes
 .Op Ic on | off
 .Xc
-Duplicate input to any pane to all other panes in the same window, except
-for panes that are not in output mode.
+Duplicate input to any pane to all other panes in the same window (only
+for panes that are not in any special mode).
 .Pp
 .It Xo Ic alternate-screen
 .Op Ic on | off
@@ -2432,7 +2430,7 @@ option.
 Execute
 .Ar shell-command
 in the background without creating a window.
-After it finishes, any output to stdout is displayed in output mode.
+After it finishes, any output to stdout is displayed in copy mode.
 If the command doesn't return success, the exit status is also displayed.
 .It Ic server-info
 .D1 (alias: Ic info )
