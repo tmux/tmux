@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.48 2010-04-02 21:26:40 nicm Exp $
+# $Id: configure,v 1.49 2010-04-05 22:28:25 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -204,6 +204,7 @@ EOF
     FreeBSD|DragonFly)
 	cat <<EOF >>$CONFIG_H
 #define HAVE_ASPRINTF
+#define HAVE_BROKEN_KQUEUE
 #define HAVE_BZERO
 #define HAVE_DAEMON
 #define HAVE_FGETLN
