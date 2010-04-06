@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.100 2010-04-05 05:11:44 micahcowan Exp $ */
+/* $Id: screen.c,v 1.101 2010-04-06 22:01:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -30,9 +31,14 @@ void	screen_resize_y(struct screen *, u_int);
 void
 screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 {
+	char hn[MAXHOSTNAMELEN];
+
 	s->grid = grid_create(sx, sy, hlimit);
 
-	s->title = xstrdup("");
+	if (gethostname(hn, MAXHOSTNAMELEN) == 0)
+		s->title = xstrdup(hn);
+	else
+		s->title = xstrdup("");
 
 	s->tabs = NULL;
 
