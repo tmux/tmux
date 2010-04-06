@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.114 2010-04-06 21:45:36 nicm Exp $ */
+/* $Id: window-copy.c,v 1.115 2010-04-06 22:02:52 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -115,7 +115,7 @@ struct window_copy_mode_data {
 	struct screen  *backing;
 	int		backing_written; /* backing display has started */
 
-	struct mode_key_data mdata
+	struct mode_key_data mdata;
 
 	u_int		oy;
 
