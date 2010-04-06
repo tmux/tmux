@@ -1,4 +1,4 @@
-/* $Id: environ.c,v 1.3 2009-08-09 17:57:39 tcunha Exp $ */
+/* $Id: environ.c,v 1.4 2010-04-06 21:59:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,12 +35,14 @@ environ_cmp(struct environ_entry *envent1, struct environ_entry *envent2)
 	return (strcmp(envent1->name, envent2->name));
 }
 
+/* Initialise the environment. */
 void
 environ_init(struct environ *env)
 {
 	RB_INIT(env);
 }
 
+/* Free an environment. */
 void
 environ_free(struct environ *env)
 {
@@ -56,6 +58,7 @@ environ_free(struct environ *env)
 	}
 }
 
+/* Copy one environment into another. */
 void
 environ_copy(struct environ *srcenv, struct environ *dstenv)
 {
@@ -65,6 +68,7 @@ environ_copy(struct environ *srcenv, struct environ *dstenv)
 		environ_set(dstenv, envent->name, envent->value);
 }
 
+/* Find an environment variable. */
 struct environ_entry *
 environ_find(struct environ *env, const char *name)
 {
@@ -74,6 +78,7 @@ environ_find(struct environ *env, const char *name)
 	return (RB_FIND(environ, env, &envent));
 }
 
+/* Set an environment variable. */
 void
 environ_set(struct environ *env, const char *name, const char *value)
 {
@@ -97,10 +102,11 @@ environ_set(struct environ *env, const char *name, const char *value)
 	}
 }
 
+/* Set an environment variable from a NAME=VALUE string. */
 void
 environ_put(struct environ *env, const char *var)
 {
-	char		*name, *value;
+	char	*name, *value;
 
 	value = strchr(var, '=');
 	if (value == NULL)
@@ -114,6 +120,7 @@ environ_put(struct environ *env, const char *var)
 	xfree(name);
 }
 
+/* Unset an environment variable. */
 void
 environ_unset(struct environ *env, const char *name)
 {
@@ -128,6 +135,10 @@ environ_unset(struct environ *env, const char *name)
 	xfree(envent);
 }
 
+/*
+ * Copy a space-separated list of variables from a destination into a source
+ * environment.
+ */
 void
 environ_update(const char *vars, struct environ *srcenv, struct environ *dstenv)
 {
@@ -142,4 +153,29 @@ environ_update(const char *vars, struct environ *srcenv, struct environ *dstenv)
 			environ_set(dstenv, envent->name, envent->value);
 	}
 	xfree(copyvars);
+}
+
+/* Push environment into the real environment - use after fork(). */
+void
+environ_push(struct environ *env)
+{
+	ARRAY_DECL(, char *)	varlist;
+	struct environ_entry   *envent;
+	char		      **varp, *var;
+	u_int			i;
+
+	ARRAY_INIT(&varlist);
+	for (varp = environ; *varp != NULL; varp++) {
+		var = xstrdup(*varp);
+		var[strcspn(var, "=")] = '\0';
+		ARRAY_ADD(&varlist, var);
+	}
+	for (i = 0; i < ARRAY_LENGTH(&varlist); i++)
+		unsetenv(ARRAY_ITEM(&varlist, i));
+	ARRAY_FREE(&varlist);
+
+	RB_FOREACH(envent, environ, env) {
+		if (envent->value != NULL)
+			setenv(envent->name, envent->value, 1);
+	}
 }

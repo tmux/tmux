@@ -1,4 +1,4 @@
-/* $Id: job.c,v 1.15 2010-02-26 13:35:04 tcunha Exp $ */
+/* $Id: job.c,v 1.16 2010-04-06 21:59:19 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -149,7 +149,8 @@ job_run(struct job *job)
 		return (-1);
 	case 0:		/* child */
 		server_signal_clear();
-		/* XXX environ? */
+
+		environ_push(&global_environ);
 
 		if (dup2(out[1], STDOUT_FILENO) == -1)
 			fatal("dup2 failed");

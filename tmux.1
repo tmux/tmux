@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.244 2010-04-05 05:11:44 micahcowan Exp $
+.\" $Id: tmux.1,v 1.245 2010-04-06 21:59:19 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: March 27 2010 $
+.Dd $Mdocdate: April 4 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1743,6 +1743,10 @@ the
 .Ic status-interval
 option: if the status line is redrawn in the meantime, the previous result is
 used.
+Shell commands are executed with the
+.Nm
+global environment set (see the
+.Sx ENVIRONMENT section).
 .Pp
 #[attributes] allows a comma-separated list of attributes to be specified,
 these may be
