@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.553 2010-04-06 21:45:36 nicm Exp $ */
+/* $Id: tmux.h,v 1.554 2010-04-06 21:58:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1828,7 +1828,6 @@ void		 window_pane_alternate_off(
 int		 window_pane_set_mode(
 		     struct window_pane *, const struct window_mode *);
 void		 window_pane_reset_mode(struct window_pane *);
-void		 window_pane_parse(struct window_pane *);
 void		 window_pane_key(struct window_pane *, struct client *, int);
 void		 window_pane_mouse(struct window_pane *,
 		     struct client *, struct mouse_event *);

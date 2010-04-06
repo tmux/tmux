@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.128 2010-03-15 22:03:38 nicm Exp $ */
+/* $Id: window.c,v 1.129 2010-04-06 21:58:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -584,9 +584,19 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 void
 window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 {
-	struct window_pane *wp = data;
+	struct window_pane     *wp = data;
+	char   		       *new_data;
+	size_t			new_size;
 
-	window_pane_parse(wp);
+	new_size = EVBUFFER_LENGTH(wp->event->input) - wp->pipe_off;
+	if (wp->pipe_fd != -1 && new_size > 0) {
+		new_data = EVBUFFER_DATA(wp->event->input);
+		bufferevent_write(wp->pipe_event, new_data, new_size);
+	}
+
+	input_parse(wp);
+
+	wp->pipe_off = EVBUFFER_LENGTH(wp->event->input);
 }
 
 /* ARGSUSED */
@@ -731,23 +741,6 @@ window_pane_reset_mode(struct window_pane *wp)
 
 	wp->screen = &wp->base;
 	wp->flags |= PANE_REDRAW;
-}
-
-void
-window_pane_parse(struct window_pane *wp)
-{
-	char   *data;
-	size_t	new_size;
-
-	new_size = EVBUFFER_LENGTH(wp->event->input) - wp->pipe_off;
-	if (wp->pipe_fd != -1 && new_size > 0) {
-		data = EVBUFFER_DATA(wp->event->input);
-		bufferevent_write(wp->pipe_event, data, new_size);
-	}
-
-	input_parse(wp);
-
-	wp->pipe_off = EVBUFFER_LENGTH(wp->event->input);
 }
 
 void
