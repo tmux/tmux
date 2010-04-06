@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.245 2010-04-06 21:59:19 nicm Exp $
+.\" $Id: tmux.1,v 1.246 2010-04-06 22:02:03 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: April 4 2010 $
+.Dd $Mdocdate: April 6 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -373,7 +373,6 @@ bind-key F1 set-window-option force-width 81
 .Pp
 Or if using
 .Xr sh 1 :
-.Pp
 .Bd -literal -offset indent
 $ tmux bind-key F1 set-window-option force-width 81
 .Ed
@@ -401,7 +400,6 @@ new-window ; split-window -d
 .Pp
 Or from
 .Xr sh 1 :
-.Pp
 .Bd -literal -offset indent
 $ tmux kill-window -t :1
 
@@ -1746,7 +1744,16 @@ used.
 Shell commands are executed with the
 .Nm
 global environment set (see the
-.Sx ENVIRONMENT section).
+.Sx ENVIRONMENT
+section).
+.Pp
+The window title (#T) is the title set by the program running within the window
+using the OSC title setting sequence, for example:
+.Bd -literal -offset indent
+$ printf '\e033]2;My Title\e033\e\e'
+.Ed
+.Pp
+When a window is first created, its title is the hostname.
 .Pp
 #[attributes] allows a comma-separated list of attributes to be specified,
 these may be
