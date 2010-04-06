@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.113 2010-04-05 05:11:44 micahcowan Exp $ */
+/* $Id: window-copy.c,v 1.114 2010-04-06 21:45:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -111,9 +111,11 @@ enum window_copy_input_type {
  */
 struct window_copy_mode_data {
 	struct screen	screen;
-	struct screen	*backing;
 
-	struct mode_key_data mdata;
+	struct screen  *backing;
+	int		backing_written; /* backing display has started */
+
+	struct mode_key_data mdata
 
 	u_int		oy;
 
@@ -127,9 +129,6 @@ struct window_copy_mode_data {
 
 	u_int		lastcx; /* position in last line with content */
 	u_int		lastsx; /* size of last line with content */
-
-	int		backing_written; /* where to write next line
-					    in backing */
 
 	enum window_copy_input_type inputtype;
 	const char     *inputprompt;
@@ -196,16 +195,13 @@ window_copy_init(struct window_pane *wp)
 void
 window_copy_init_from_pane(struct window_pane *wp)
 {
-	struct window_copy_mode_data	*data;
-	struct screen			*s;
+	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*s = &data->screen;
 	struct screen_write_ctx	 	 ctx;
 	u_int				 i;
 
 	if (wp->mode != &window_copy_mode)
 		fatalx("not in copy mode");
-
-	data =  wp->modedata;
-	s    = &data->screen;
 
 	data->backing = &wp->base;
 	data->cx = data->backing->cx;
@@ -289,7 +285,7 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 		screen_write_carriagereturn(&back_ctx);
 		screen_write_linefeed(&back_ctx, 0);
 	} else
-		data->backing_written++;
+		data->backing_written = 1;
 	screen_write_vnputs(&back_ctx, 0, &gc, utf8flag, fmt, ap);
 	screen_write_stop(&back_ctx);
 

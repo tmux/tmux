@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.552 2010-04-05 05:11:44 micahcowan Exp $ */
+/* $Id: tmux.h,v 1.553 2010-04-06 21:45:36 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -541,7 +541,6 @@ struct mode_key_table {
 #define MODE_KKEYPAD 0x8	/* set = application, clear = number */
 #define MODE_MOUSE 0x10
 #define MODE_WRAP 0x20		/* whether lines wrap */
-
 
 /*
  * A single UTF-8 character.
