@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <vis.h>
 
 #include "tmux.h"
@@ -55,7 +56,7 @@ screen_reinit(struct screen *s)
 	s->rupper = 0;
 	s->rlower = screen_size_y(s) - 1;
 
-	s->mode = MODE_CURSOR;
+	s->mode = MODE_CURSOR | MODE_WRAP;
 
 	screen_reset_tabs(s);
 

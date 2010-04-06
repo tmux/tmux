@@ -63,6 +63,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 
 	window_pane_set_mode(wp, &window_copy_mode);
+	window_copy_init_from_pane(wp);
 	if (wp->mode == &window_copy_mode && cmd_check_flag(data->chflags, 'u'))
 		window_copy_pageup(wp);
 

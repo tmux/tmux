@@ -541,6 +541,7 @@ struct mode_key_table {
 #define MODE_KCURSOR 0x4
 #define MODE_KKEYPAD 0x8	/* set = application, clear = number */
 #define MODE_MOUSE 0x10
+#define MODE_WRAP 0x20		/* whether lines wrap */
 
 /*
  * A single UTF-8 character.
@@ -1880,12 +1881,11 @@ extern const struct window_mode window_clock_mode;
 
 /* window-copy.c */
 extern const struct window_mode window_copy_mode;
+void		 window_copy_init_from_pane(struct window_pane *);
+void		 window_copy_init_for_output(struct window_pane *);
+void		 window_copy_add(struct window_pane *, const char *, ...);
+void		 window_copy_vadd(struct window_pane *, const char *, va_list);
 void		 window_copy_pageup(struct window_pane *);
-
-/* window-more.c */
-extern const struct window_mode window_more_mode;
-void		 window_more_add(struct window_pane *, const char *, ...);
-void		 window_more_vadd(struct window_pane *, const char *, va_list);
 
 /* window-choose.c */
 extern const struct window_mode window_choose_mode;

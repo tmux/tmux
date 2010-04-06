@@ -46,18 +46,9 @@ const struct grid_cell grid_default_cell = { 0, 0, 8, 8, ' ' };
 	    gc, sizeof gd->linedata[py].utf8data[px]);		\
 } while (0)
 
-int	grid_check_x(struct grid *, u_int);
 int	grid_check_y(struct grid *, u_int);
 
 #ifdef DEBUG
-int
-grid_check_x(struct grid *gd, u_int px)
-{
-	if ((px) >= (gd)->sx)
-		log_fatalx("x out of range: %u", px);
-	return (0);
-}
-
 int
 grid_check_y(struct grid *gd, u_int py)
 {
@@ -66,16 +57,6 @@ grid_check_y(struct grid *gd, u_int py)
 	return (0);
 }
 #else
-int
-grid_check_x(struct grid *gd, u_int px)
-{
-	if ((px) >= (gd)->sx) {
-		log_debug("x out of range: %u", px);
-		return (-1);
-	}
-	return (0);
-}
-
 int
 grid_check_y(struct grid *gd, u_int py)
 {
@@ -270,8 +251,6 @@ grid_expand_line_utf8(struct grid *gd, u_int py, u_int sx)
 const struct grid_cell *
 grid_peek_cell(struct grid *gd, u_int px, u_int py)
 {
-	if (grid_check_x(gd, px) != 0)
-		return (&grid_default_cell);
 	if (grid_check_y(gd, py) != 0)
 		return (&grid_default_cell);
 
@@ -284,8 +263,6 @@ grid_peek_cell(struct grid *gd, u_int px, u_int py)
 struct grid_cell *
 grid_get_cell(struct grid *gd, u_int px, u_int py)
 {
-	if (grid_check_x(gd, px) != 0)
-		return (NULL);
 	if (grid_check_y(gd, py) != 0)
 		return (NULL);
 
@@ -298,8 +275,6 @@ void
 grid_set_cell(
     struct grid *gd, u_int px, u_int py, const struct grid_cell *gc)
 {
-	if (grid_check_x(gd, px) != 0)
-		return;
 	if (grid_check_y(gd, py) != 0)
 		return;
 
@@ -311,8 +286,6 @@ grid_set_cell(
 const struct grid_utf8 *
 grid_peek_utf8(struct grid *gd, u_int px, u_int py)
 {
-	if (grid_check_x(gd, px) != 0)
-		return (NULL);
 	if (grid_check_y(gd, py) != 0)
 		return (NULL);
 
@@ -325,8 +298,6 @@ grid_peek_utf8(struct grid *gd, u_int px, u_int py)
 struct grid_utf8 *
 grid_get_utf8(struct grid *gd, u_int px, u_int py)
 {
-	if (grid_check_x(gd, px) != 0)
-		return (NULL);
 	if (grid_check_y(gd, py) != 0)
 		return (NULL);
 
@@ -339,8 +310,6 @@ void
 grid_set_utf8(
     struct grid *gd, u_int px, u_int py, const struct grid_utf8 *gc)
 {
-	if (grid_check_x(gd, px) != 0)
-		return;
 	if (grid_check_y(gd, py) != 0)
 		return;
 
@@ -364,10 +333,6 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny)
 		return;
 	}
 
-	if (grid_check_x(gd, px) != 0)
-		return;
-	if (grid_check_x(gd, px + nx - 1) != 0)
-		return;
 	if (grid_check_y(gd, py) != 0)
 		return;
 	if (grid_check_y(gd, py + ny - 1) != 0)
@@ -465,12 +430,6 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 	if (nx == 0 || px == dx)
 		return;
 
-	if (grid_check_x(gd, px) != 0)
-		return;
-	if (grid_check_x(gd, px + nx - 1) != 0)
-		return;
-	if (grid_check_x(gd, dx + nx - 1) != 0)
-		return;
 	if (grid_check_y(gd, py) != 0)
 		return;
 	gl = &gd->linedata[py];
