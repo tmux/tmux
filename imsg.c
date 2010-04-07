@@ -79,7 +79,7 @@ imsg_read(struct imsgbuf *ibuf)
 		    cmsg->cmsg_type == SCM_RIGHTS) {
 			fd = (*(int *)CMSG_DATA(cmsg));
 			if ((ifd = calloc(1, sizeof(struct imsg_fd))) == NULL) {
-				/* XXX: this return can leak */
+				close(fd);
 				return (-1);
 			}
 			ifd->fd = fd;
