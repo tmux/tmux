@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.238 2010-04-06 22:08:10 nicm Exp $ */
+/* $Id: server.c,v 1.239 2010-04-08 07:54:43 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -114,7 +114,7 @@ server_start(char *path)
 {
 	struct window_pane	*wp;
 	int	 		 pair[2];
-	char			 rpathbuf[MAXPATHLEN], *cause;
+	char			*cause;
 	struct timeval		 tv;
 	u_int			 i;
 #ifdef HAVE_SETPROCTITLE
