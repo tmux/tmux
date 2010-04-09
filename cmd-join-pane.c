@@ -1,4 +1,4 @@
-/* $Id: cmd-join-pane.c,v 1.3 2010-04-06 21:59:59 nicm Exp $ */
+/* $Id: cmd-join-pane.c,v 1.4 2010-04-09 07:09:37 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -150,13 +150,14 @@ cmd_join_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink			*src_wl, *dst_wl;
 	struct window			*src_w, *dst_w;
 	struct window_pane		*src_wp, *dst_wp;
-	int				 size;
+	int				 size, dst_idx;
 	enum layout_type		 type;
 	struct layout_cell		*lc;
 
 	if ((dst_wl = cmd_find_pane(ctx, data->dst, &dst_s, &dst_wp)) == NULL)
 		return (-1);
 	dst_w = dst_wl->window;
+	dst_idx = dst_wl->idx;
 
 	if ((src_wl = cmd_find_pane(ctx, data->src, NULL, &src_wp)) == NULL)
 		return (-1);
@@ -209,7 +210,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (!data->flag_detached) {
 		window_set_active_pane(dst_w, src_wp);
-		session_select(dst_s, dst_wl->idx);
+		session_select(dst_s, dst_idx);
 		server_redraw_session(dst_s);
 	} else
 		server_status_session(dst_s);
