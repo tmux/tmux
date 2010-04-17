@@ -325,9 +325,11 @@ server_destroy_pane(struct window_pane *wp)
 {
 	struct window	*w = wp->window;
 
-	close(wp->fd);
-	bufferevent_free(wp->event);
-	wp->fd = -1;
+	if (wp->fd != -1) {
+		close(wp->fd);
+		bufferevent_free(wp->event);
+		wp->fd = -1;
+	}
 
 	if (options_get_number(&w->options, "remain-on-exit"))
 		return;
