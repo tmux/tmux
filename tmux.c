@@ -238,6 +238,7 @@ main(int argc, char **argv)
 	struct keylist		*keylist;
 	struct env_data		 envdata;
 	struct msg_command_data	 cmddata;
+	struct sigaction	 sigact;
 	char			*s, *shellcmd, *path, *label, *home, *cause;
 	char			 cwd[MAXPATHLEN], **var;
 	void			*buf;
@@ -537,6 +538,14 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
+	/* Catch SIGCHLD to avoid a zombie when starting the server. */
+	memset(&sigact, 0, sizeof sigact);
+	sigemptyset(&sigact.sa_mask);
+	sigact.sa_handler = SIG_IGN;
+	if (sigaction(SIGCHLD, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+
+	/* Initialise the client socket/start the server. */
 	if ((main_ibuf = client_init(path, cmdflags, flags)) == NULL)
 		exit(1);
 	xfree(path);
