@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.108 2010-03-15 12:51:23 nicm Exp $ */
+/* $Id: input.c,v 1.109 2010-04-18 15:11:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -385,7 +385,7 @@ const struct input_transition input_state_esc_enter_table[] = {
 	{ 0x5f, 0x5f, NULL,		  &input_state_apc_string },
 	{ 0x60, 0x6a, input_esc_dispatch, &input_state_ground },
 	{ 0x6b, 0x6b, NULL,		  &input_state_rename_string },
-	{ 0x6c, 0x7c, input_esc_dispatch, &input_state_ground },
+	{ 0x6c, 0x7e, input_esc_dispatch, &input_state_ground },
 	{ 0x7f, 0xff, NULL,		  NULL },
 
 	{ -1, -1, NULL, NULL }
