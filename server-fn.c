@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.104 2010-04-06 21:45:36 nicm Exp $ */
+/* $Id: server-fn.c,v 1.105 2010-04-18 15:10:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -325,9 +325,11 @@ server_destroy_pane(struct window_pane *wp)
 {
 	struct window	*w = wp->window;
 
-	close(wp->fd);
-	bufferevent_free(wp->event);
-	wp->fd = -1;
+	if (wp->fd != -1) {
+		close(wp->fd);
+		bufferevent_free(wp->event);
+		wp->fd = -1;
+	}
 
 	if (options_get_number(&w->options, "remain-on-exit"))
 		return;
