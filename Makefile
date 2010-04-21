@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.156 2010-03-10 15:44:13 tcunha Exp $
+# $Id: Makefile,v 1.157 2010-04-21 21:22:06 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -49,8 +49,8 @@ CFLAGS+= -Wno-pointer-sign
 
 PREFIX?= /usr/local
 INSTALLDIR= install -d
-INSTALLBIN= install -g bin -o root -m 555
-INSTALLMAN= install -g bin -o root -m 444
+INSTALLBIN= install -m 555
+INSTALLMAN= install -m 444
 
 SRCS!= echo *.c|sed 's|osdep-[a-z0-9]*.c||g'
 .include "config.mk"
