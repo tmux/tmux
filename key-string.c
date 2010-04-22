@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.29 2010-01-17 19:01:27 tcunha Exp $ */
+/* $Id: key-string.c,v 1.30 2010-04-22 21:50:30 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,10 +23,11 @@
 #include "tmux.h"
 
 int	key_string_search_table(const char *);
+int	key_string_get_modifiers(const char **);
 
 struct {
-	const char *string;
-	int	 key;
+	const char     *string;
+	int	 	key;
 } key_string_table[] = {
 	/* Function keys. */
 	{ "F1",		KEYC_F1 },
@@ -100,146 +101,123 @@ key_string_search_table(const char *string)
 	return (KEYC_NONE);
 }
 
-/* Lookup a string and convert to a key value, handling C-/M-/S- prefix. */
+/* Find modifiers. */
+int
+key_string_get_modifiers(const char **string)
+{
+	int	modifiers;
+
+	modifiers = 0;
+	while (((*string)[0] != '\0') && (*string)[1] == '-') {
+		switch ((*string)[0]) {
+		case 'C':
+		case 'c':
+			modifiers |= KEYC_CTRL;
+			break;
+		case 'M':
+		case 'm':
+			modifiers |= KEYC_ESCAPE;
+			break;
+		case 'S':
+		case 's':
+			modifiers |= KEYC_SHIFT;
+			break;
+		}
+		*string += 2;
+	}
+	return (modifiers);
+}
+
+/* Lookup a string and convert to a key value. */
 int
 key_string_lookup_string(const char *string)
 {
-	int	      	 key;
-	const char	*ptr;
+	int	key, modifiers;
 
+	/* Check for modifiers. */
+	modifiers = 0;
+	if (string[0] == '^' && string[1] != '\0') {
+		modifiers |= KEYC_CTRL;
+		string++;
+	}
+	modifiers |= key_string_get_modifiers(&string);
 	if (string[0] == '\0')
 		return (KEYC_NONE);
-	if (string[1] == '\0')
-		return ((u_char) string[0]);
 
-	ptr = NULL;
-	if ((string[0] == 'C' || string[0] == 'c') && string[1] == '-')
-		ptr = string + 2;
-	else if (string[0] == '^')
-		ptr = string + 1;
-	if (ptr != NULL) {
-		if (ptr[0] == '\0')
+	/* Is this a standard ASCII key? */
+	if (string[1] == '\0') {
+		key = (u_char) string[0];
+		if (key < 32 || key > 126)
 			return (KEYC_NONE);
-		/*
-		 * Lookup as a named key. If a function key (>= KEYC_BASE),
-		 * return it with the ctrl modifier, otherwise fallthrough with
-		 * the key value from the table (eg for C-Space). If not a
-		 * named key, check for single character keys and try that.
-		 */
-		key = key_string_search_table(ptr);
-		if (key != KEYC_NONE) {
-			if (key >= KEYC_BASE)
-				return (key | KEYC_CTRL);
-		} else {
-			if (ptr[1] != '\0')
+
+		/* Convert the standard control keys. */
+		if (modifiers & KEYC_CTRL) {
+			if (key >= 97 && key <= 122)
+				key -= 96;
+			else if (key >= 65 && key <= 90)
+				key -= 65;
+			else if (key == 32)
+				key = 0;
+			else if (key == 63)
+				key = KEYC_BSPACE;
+			else
 				return (KEYC_NONE);
-			key = (u_char) ptr[0];
+			modifiers &= ~KEYC_CTRL;
 		}
 
-		/*
-		 * Figure out if the single character in key is a valid ctrl
-		 * key.
-		 */
-		if (key == 32)
-			return (0);
-		if (key == 63)
-			return (KEYC_BSPACE);
-		if (key >= 64 && key <= 95)
-			return (key - 64);
-		if (key >= 97 && key <= 122)
-			return (key - 96);
-		return (KEYC_NONE);
+		return (key | modifiers);
 	}
 
-	if ((string[0] == 'M' || string[0] == 'm') && string[1] == '-') {
-		ptr = string + 2;
-		if (ptr[0] == '\0')
-			return (KEYC_NONE);
-		key = key_string_lookup_string(ptr);
-		if (key != KEYC_NONE) {
-			if (key >= KEYC_BASE)
-				return (key | KEYC_ESCAPE);
-		} else {
-			if (ptr[1] == '\0')
-				return (KEYC_NONE);
-			key = (u_char) ptr[0];
-		}
-
-		if (key >= 32 && key <= 127)
-			return (key | KEYC_ESCAPE);
+	/* Otherwise look the key up in the table. */
+	key = key_string_search_table(string);
+	if (key == KEYC_NONE)
 		return (KEYC_NONE);
-	}
-
-	if ((string[0] == 'S' || string[0] == 's') && string[1] == '-') {
-		ptr = string + 2;
-		if (ptr[0] == '\0')
-			return (KEYC_NONE);
-		key = key_string_lookup_string(ptr);
-		if (key != KEYC_NONE) {
-			if (key >= KEYC_BASE)
-				return (key | KEYC_SHIFT);
-		} else {
-			if (ptr[1] == '\0')
-				return (KEYC_NONE);
-			key = (u_char) ptr[0];
-		}
-
-		if (key >= 32 && key <= 127)
-			return (key | KEYC_SHIFT);
-		return (KEYC_NONE);
-	}
-
-	return (key_string_search_table(string));
+	return (key | modifiers);
 }
 
 /* Convert a key code into string format, with prefix if necessary. */
 const char *
 key_string_lookup_key(int key)
 {
-	static char tmp[24], tmp2[24];
-	const char *s;
-	u_int	    i;
+	static char	out[24];
+	char		tmp[8];
+	u_int	   	i;
 
-	if (key == 127)
-		return (NULL);
+	*out = '\0';
 
-	if (key & KEYC_ESCAPE) {
-		if ((s = key_string_lookup_key(key & ~KEYC_ESCAPE)) == NULL)
-			return (NULL);
-		xsnprintf(tmp2, sizeof tmp2, "M-%s", s);
-		return (tmp2);
-	}
-	if (key & KEYC_CTRL) {
-		if ((s = key_string_lookup_key(key & ~KEYC_CTRL)) == NULL)
-			return (NULL);
-		xsnprintf(tmp2, sizeof tmp2, "C-%s", s);
-		return (tmp2);
-	}
-	if (key & KEYC_SHIFT) {
-		if ((s = key_string_lookup_key(key & ~KEYC_SHIFT)) == NULL)
-			return (NULL);
-		xsnprintf(tmp2, sizeof tmp2, "S-%s", s);
-		return (tmp2);
-	}
+	/* Fill in the modifiers. */
+	if (key & KEYC_CTRL)
+		strlcat(out, "C-", sizeof out);
+	if (key & KEYC_ESCAPE)
+		strlcat(out, "M-", sizeof out);
+	if (key & KEYC_SHIFT)
+		strlcat(out, "S-", sizeof out);
+	key &= ~(KEYC_CTRL|KEYC_ESCAPE|KEYC_SHIFT);
 
+	/* Try the key against the string table. */
 	for (i = 0; i < nitems(key_string_table); i++) {
 		if (key == key_string_table[i].key)
-			return (key_string_table[i].string);
+			break;
+	}
+	if (i != nitems(key_string_table)) {
+		strlcat(out, key_string_table[i].string, sizeof out);
+		return (out);
 	}
 
-	if (key >= 32 && key <= 255) {
-		tmp[0] = (char) key;
-		tmp[1] = '\0';
-		return (tmp);
-	}
+	/* Invalid keys are errors. */
+	if (key >= 127)
+		return (NULL);
 
+	/* Check for standard or control key. */
 	if (key >= 0 && key <= 32) {
 		if (key == 0 || key > 26)
 			xsnprintf(tmp, sizeof tmp, "C-%c", 64 + key);
 		else
 			xsnprintf(tmp, sizeof tmp, "C-%c", 96 + key);
-		return (tmp);
+	} else if (key >= 32 && key <= 126) {
+		tmp[0] = key;
+		tmp[1] = '\0';
 	}
-
-	return (NULL);
+	strlcat(out, tmp, sizeof out);
+	return (out);
 }
