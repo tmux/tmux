@@ -155,7 +155,7 @@ key_string_lookup_string(const char *string)
 			if (key >= 97 && key <= 122)
 				key -= 96;
 			else if (key >= 65 && key <= 90)
-				key -= 65;
+				key -= 64;
 			else if (key == 32)
 				key = 0;
 			else if (key == 63)
