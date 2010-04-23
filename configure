@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.49 2010-04-05 22:28:25 nicm Exp $
+# $Id: configure,v 1.50 2010-04-23 07:29:39 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -234,7 +234,6 @@ EOF
     NetBSD)
 	cat <<EOF >>$CONFIG_H
 #define HAVE_ASPRINTF
-#define HAVE_BROKEN_CURSES_H
 #define HAVE_BZERO
 #define HAVE_DAEMON
 #define HAVE_FGETLN
@@ -250,10 +249,23 @@ EOF
 #define HAVE_UTIL_H
 #define HAVE_U_INT
 EOF
-	cat <<EOF >>$CONFIG_MK
+	# NetBSD-6 has its own terminfo implementation
+	if test -f /lib/libterminfo.so; then
+	    cat <<EOF >>$CONFIG_MK
+LIBS+= -lterminfo
+EOF
+	else
+	    cat <<EOF >>$CONFIG_MK
 CPPFLAGS+= -I/usr/pkg/include
 LDFLAGS+= -L/usr/pkg/lib
-LIBS+= -lncurses -lcrypt -lutil -levent
+LIBS+= -lncurses
+EOF
+	    cat <<EOF >>$CONFIG_H
+#define HAVE_BROKEN_CURSES_H
+EOF
+	fi
+	cat <<EOF >>$CONFIG_MK
+LIBS+= -lcrypt -lutil -levent
 SRCS+= osdep-netbsd.c \
 	compat/strtonum.c \
 	compat/vis.c \
