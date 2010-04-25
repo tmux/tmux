@@ -151,6 +151,7 @@ key_bindings_init(void)
 		{ '2' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
 		{ '3' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
 		{ '4' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
+		{ '5' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
 		{ KEYC_PPAGE, 		  0, &cmd_copy_mode_entry },
 		{ 'n' | KEYC_ESCAPE, 	  0, &cmd_next_window_entry },
 		{ 'o' | KEYC_ESCAPE,	  0, &cmd_rotate_window_entry },

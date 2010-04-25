@@ -59,6 +59,9 @@ cmd_select_layout_init(struct cmd *self, int key)
 	case ('4' | KEYC_ESCAPE):
 		data->arg = xstrdup("main-vertical");
 		break;
+	case ('5' | KEYC_ESCAPE):
+		data->arg = xstrdup("tiled");
+		break;
 	}
 }
 
