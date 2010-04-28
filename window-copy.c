@@ -340,6 +340,8 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 		data->cy = sy - 1;
 	if (data->cx > sx)
 		data->cx = sx;
+	if (data->oy > screen_hsize(data->backing))
+		data->oy = screen_hsize(data->backing);
 
 	window_copy_clear_selection(wp);
 
