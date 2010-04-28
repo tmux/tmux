@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.115 2010-04-06 22:02:52 nicm Exp $ */
+/* $Id: window-copy.c,v 1.116 2010-04-28 14:29:27 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -340,6 +340,8 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 		data->cy = sy - 1;
 	if (data->cx > sx)
 		data->cx = sx;
+	if (data->oy > screen_hsize(data->backing))
+		data->oy = screen_hsize(data->backing);
 
 	window_copy_clear_selection(wp);
 
