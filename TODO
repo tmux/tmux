@@ -133,6 +133,8 @@
 - last window update time and # replacement for it for display-message
 - way to define bell etc colours in status line
 - find-window across sessions - other ways to make session handling easier?
+- ' and " should be parsed the same (eg "\e" vs '\e') in config and command
+  prompt?x
 
 For 1.3 (not in order):
 
@@ -144,8 +146,9 @@ For 1.3 (not in order):
 8 stdin fd should be passed up to parent so load-buffer and others could use it
   for nonattaching clients
 9 something for -t "last window in session" so a session can be used as a stack
-10 synchronous commands - client sends cmd and blocks, neww/splitw saves client ptr
-   then when program inside died, sends MSG_SOMETHING with wait status to client
+10 synchronous commands - client sends cmd and blocks, neww/splitw saves client
+   ptr then when program inside died, sends MSG_SOMETHING with wait status to
+   client
 11 documentation improvements - rlpowell's tutorial
                               - build instructions
 12 better configure? with-libevent
