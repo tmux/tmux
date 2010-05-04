@@ -529,7 +529,7 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 
 		environ_push(env);
 
-		clear_signals();
+		server_signal_clear();
 		log_close();
 
 		if (*wp->cmd != '\0') {

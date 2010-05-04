@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
 
 #include <errno.h>
 #include <event.h>
@@ -42,8 +41,6 @@ struct options	 global_s_options;	/* session options */
 struct options	 global_w_options;	/* window options */
 struct environ	 global_environ;
 
-struct event_base *ev_base;
-
 int		 debug_level;
 time_t		 start_time;
 char		*socket_path;
@@ -61,8 +58,11 @@ char 		*makesockpath(const char *);
 __dead void	 shell_exec(const char *, const char *);
 
 struct imsgbuf	*main_ibuf;
+struct event	 main_ev_sigterm;
 int	         main_exitval;
 
+void		 main_set_signals(void);
+void		 main_clear_signals(void);
 void		 main_signal(int, short, unused void *);
 void		 main_callback(int, short, void *);
 void		 main_dispatch(const char *);
@@ -238,6 +238,7 @@ main(int argc, char **argv)
 	struct keylist		*keylist;
 	struct env_data		 envdata;
 	struct msg_command_data	 cmddata;
+	struct sigaction	 sigact;
 	char			*s, *shellcmd, *path, *label, *home, *cause;
 	char			 cwd[MAXPATHLEN], **var;
 	void			*buf;
@@ -537,21 +538,23 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	/* Initialise the client socket/start the server. */
-	if ((main_ibuf = client_init(path, cmdflags, flags)) == NULL)
-		exit(1);
-	xfree(path);
-
-	ev_base = event_init();
-
-	set_signals(main_signal);
+	/* Catch SIGCHLD to avoid a zombie when starting the server. */
+	memset(&sigact, 0, sizeof sigact);
+	sigemptyset(&sigact.sa_mask);
+	sigact.sa_handler = SIG_IGN;
+	if (sigaction(SIGCHLD, &sigact, NULL) != 0)
+		fatal("sigaction failed");
 
 	/* Initialise the client socket/start the server. */
 	if ((main_ibuf = client_init(path, cmdflags, flags)) == NULL)
 		exit(1);
 	xfree(path);
+
+	event_init();
 
 	imsg_compose(main_ibuf, msg, PROTOCOL_VERSION, -1, -1, buf, len);
+
+	main_set_signals();
 
 	events = EV_READ;
 	if (main_ibuf->w.queued > 0)
@@ -561,9 +564,56 @@ main(int argc, char **argv)
 	main_exitval = 0;
 	event_dispatch();
 
-	clear_signals();
+	main_clear_signals();
 
 	client_main();	/* doesn't return */
+}
+
+void
+main_set_signals(void)
+{
+	struct sigaction	sigact;
+
+	memset(&sigact, 0, sizeof sigact);
+	sigemptyset(&sigact.sa_mask);
+	sigact.sa_flags = SA_RESTART;
+	sigact.sa_handler = SIG_IGN;
+	if (sigaction(SIGINT, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGPIPE, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR1, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR2, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+
+	signal_set(&main_ev_sigterm, SIGTERM, main_signal, NULL);
+	signal_add(&main_ev_sigterm, NULL);
+}
+
+void
+main_clear_signals(void)
+{
+	struct sigaction	sigact;
+
+	memset(&sigact, 0, sizeof sigact);
+	sigemptyset(&sigact.sa_mask);
+	sigact.sa_flags = SA_RESTART;
+	sigact.sa_handler = SIG_DFL;
+	if (sigaction(SIGINT, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGPIPE, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR1, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR2, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+
+	event_del(&main_ev_sigterm);
 }
 
 /* ARGSUSED */
@@ -573,9 +623,6 @@ main_signal(int sig, unused short events, unused void *data)
 	switch (sig) {
 	case SIGTERM:
 		exit(1);
-	case SIGCHLD:
-		waitpid(WAIT_ANY, NULL, WNOHANG);
-		break;
 	}
 }
 
@@ -654,7 +701,7 @@ main_dispatch(const char *shellcmd)
 			memcpy(&shelldata, imsg.data, sizeof shelldata);
 			shelldata.shell[(sizeof shelldata.shell) - 1] = '\0';
 
-			clear_signals();
+			main_clear_signals();
 
 			shell_exec(shelldata.shell, shellcmd);
 		default:

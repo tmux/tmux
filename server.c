@@ -49,6 +49,9 @@ struct clients	 dead_clients;
 int		 server_fd;
 int		 server_shutdown;
 struct event	 server_ev_accept;
+struct event	 server_ev_sigterm;
+struct event	 server_ev_sigusr1;
+struct event	 server_ev_sigchld;
 struct event	 server_ev_second;
 
 int		 server_create_socket(void);
@@ -131,12 +134,6 @@ server_start(char *path)
 	}
 	close(pair[0]);
 
-	/* event_init() was called by the parent, need to reinit. */
-	if (event_reinit(ev_base) != 0)
-		fatal("event_reinit failed");
-
-	clear_signals();
-
 	/*
 	 * Must daemonise before loading configuration as the PID changes so
 	 * $TMUX would be wrong for sessions created in the config file.
@@ -164,6 +161,8 @@ server_start(char *path)
 		strlcpy(rpathbuf, socket_path, sizeof rpathbuf);
 	log_debug("socket path %s", socket_path);
 	setproctitle("server (%s)", rpathbuf);
+
+	event_init();
 
 	server_fd = server_create_socket();
 	server_client_create(pair[1]);
@@ -203,7 +202,7 @@ server_start(char *path)
 	evtimer_set(&server_ev_second, server_second_callback, NULL);
 	evtimer_add(&server_ev_second, &tv);
 
-	set_signals(server_signal_callback);
+	server_signal_set();
 	server_loop();
 	exit(0);
 }
@@ -340,6 +339,61 @@ server_accept_callback(int fd, short events, unused void *data)
 		return;
 	}
 	server_client_create(newfd);
+}
+
+/* Set up server signal handling. */
+void
+server_signal_set(void)
+{
+	struct sigaction	 sigact;
+
+	memset(&sigact, 0, sizeof sigact);
+	sigemptyset(&sigact.sa_mask);
+	sigact.sa_flags = SA_RESTART;
+	sigact.sa_handler = SIG_IGN;
+	if (sigaction(SIGINT, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGPIPE, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR2, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGHUP, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+
+	signal_set(&server_ev_sigchld, SIGCHLD, server_signal_callback, NULL);
+	signal_add(&server_ev_sigchld, NULL);
+	signal_set(&server_ev_sigterm, SIGTERM, server_signal_callback, NULL);
+	signal_add(&server_ev_sigterm, NULL);
+	signal_set(&server_ev_sigusr1, SIGUSR1, server_signal_callback, NULL);
+	signal_add(&server_ev_sigusr1, NULL);
+}
+
+/* Destroy server signal events. */
+void
+server_signal_clear(void)
+{
+	struct sigaction	 sigact;
+
+	memset(&sigact, 0, sizeof sigact);
+	sigemptyset(&sigact.sa_mask);
+	sigact.sa_flags = SA_RESTART;
+	sigact.sa_handler = SIG_DFL;
+	if (sigaction(SIGINT, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGPIPE, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGUSR2, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+	if (sigaction(SIGHUP, &sigact, NULL) != 0)
+		fatal("sigaction failed");
+
+	signal_del(&server_ev_sigchld);
+	signal_del(&server_ev_sigterm);
+	signal_del(&server_ev_sigusr1);
 }
 
 /* Signal handler. */

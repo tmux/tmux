@@ -149,7 +149,7 @@ job_run(struct job *job)
 	case -1:
 		return (-1);
 	case 0:		/* child */
-		clear_signals();
+		server_signal_clear();
 
 		environ_push(&global_environ);
 
