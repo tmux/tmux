@@ -19,16 +19,15 @@ SRCS=	attributes.c cfg.c client.c clock.c \
 	cmd-previous-layout.c cmd-previous-window.c cmd-refresh-client.c \
 	cmd-rename-session.c cmd-rename-window.c cmd-resize-pane.c \
 	cmd-respawn-window.c cmd-rotate-window.c cmd-save-buffer.c \
-	cmd-select-layout.c cmd-select-pane.c \
-	cmd-select-prompt.c cmd-select-window.c cmd-send-keys.c \
-	cmd-send-prefix.c cmd-server-info.c cmd-set-buffer.c cmd-set-option.c \
-	cmd-set-window-option.c cmd-show-buffer.c cmd-show-messages.c \
-	cmd-show-options.c cmd-show-window-options.c cmd-source-file.c \
-	cmd-split-window.c cmd-start-server.c cmd-string.c cmd-if-shell.c \
+	cmd-select-layout.c cmd-select-pane.c cmd-select-window.c \
+	cmd-send-keys.c cmd-send-prefix.c cmd-server-info.c cmd-set-buffer.c \
+	cmd-set-option.c cmd-set-window-option.c cmd-show-buffer.c \
+	cmd-show-messages.c cmd-show-options.c cmd-show-window-options.c \
+	cmd-source-file.c cmd-split-window.c cmd-start-server.c cmd-string.c \
 	cmd-run-shell.c cmd-suspend-client.c cmd-swap-pane.c cmd-swap-window.c \
 	cmd-switch-client.c cmd-unbind-key.c cmd-unlink-window.c \
 	cmd-set-environment.c cmd-show-environment.c cmd-choose-client.c \
-	cmd-display-message.c cmd-display-panes.c \
+	cmd-display-message.c cmd-display-panes.c cmd-if-shell.c \
 	cmd-pipe-pane.c cmd-capture-pane.c cmd.c \
 	colour.c environ.c grid-view.c grid-utf8.c grid.c input-keys.c \
 	imsg.c imsg-buffer.c input.c key-bindings.c key-string.c \

@@ -1495,7 +1495,6 @@ extern const struct cmd_entry cmd_run_shell_entry;
 extern const struct cmd_entry cmd_save_buffer_entry;
 extern const struct cmd_entry cmd_select_layout_entry;
 extern const struct cmd_entry cmd_select_pane_entry;
-extern const struct cmd_entry cmd_select_prompt_entry;
 extern const struct cmd_entry cmd_select_window_entry;
 extern const struct cmd_entry cmd_send_keys_entry;
 extern const struct cmd_entry cmd_send_prefix_entry;

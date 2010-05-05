@@ -125,7 +125,7 @@ key_bindings_init(void)
 		{ '?', 			  0, &cmd_list_keys_entry },
 		{ 'D',			  0, &cmd_choose_client_entry },
 		{ '[', 			  0, &cmd_copy_mode_entry },
-		{ '\'',			  0, &cmd_select_prompt_entry },
+		{ '\'',			  0, &cmd_command_prompt_entry },
 		{ '\002', /* C-b */	  0, &cmd_send_prefix_entry },
 		{ '\017', /* C-o */	  0, &cmd_rotate_window_entry },
 		{ '\032', /* C-z */	  0, &cmd_suspend_client_entry },

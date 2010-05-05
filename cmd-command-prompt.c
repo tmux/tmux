@@ -81,6 +81,10 @@ cmd_command_prompt_init(struct cmd *self, int key)
 	case 'f':
 		data->template = xstrdup("find-window '%%'");
 		break;
+	case '\'':
+		data->template = xstrdup("select-window -t ':%%'");
+		data->prompts = xstrdup("index");
+		break;
 	}
 }
 
