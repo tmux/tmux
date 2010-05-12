@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.158 2010-04-23 07:38:36 nicm Exp $
+# $Id: Makefile,v 1.159 2010-05-12 19:47:25 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -53,7 +53,7 @@ INSTALLDIR= ${INSTALL} -d
 INSTALLBIN= ${INSTALL} -m 555
 INSTALLMAN= ${INSTALL} -m 444
 
-SRCS!= echo *.c|sed 's|osdep-[a-z0-9]*.c||g'
+SRCS!= echo *.c|LC_ALL=C sed 's|osdep-[a-z0-9]*.c||g'
 .include "config.mk"
 OBJS= ${SRCS:S/.c/.o/}
 
