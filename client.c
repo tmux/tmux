@@ -206,6 +206,11 @@ client_signal(int sig, unused short events, unused void *data)
 	struct sigaction	sigact;
 
 	switch (sig) {
+	case SIGHUP:
+		client_exitmsg = "lost tty";
+		client_exitval = 1;
+		client_write_server(MSG_EXITING, NULL, 0);
+		break;
 	case SIGTERM:
 		client_exitmsg = "terminated";
 		client_exitval = 1;

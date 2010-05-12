@@ -22,6 +22,7 @@
 
 #include "tmux.h"
 
+struct event	ev_sighup;
 struct event	ev_sigchld;
 struct event	ev_sigcont;
 struct event	ev_sigterm;
@@ -45,9 +46,9 @@ set_signals(void(*handler)(int, short, unused void *))
 		fatal("sigaction failed");
 	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
 		fatal("sigaction failed");
-	if (sigaction(SIGHUP, &sigact, NULL) != 0)
-		fatal("sigaction failed");
 
+	signal_set(&ev_sighup, SIGHUP, handler, NULL);
+	signal_add(&ev_sighup, NULL);
 	signal_set(&ev_sigchld, SIGCHLD, handler, NULL);
 	signal_add(&ev_sigchld, NULL);
 	signal_set(&ev_sigcont, SIGCONT, handler, NULL);
@@ -77,9 +78,8 @@ clear_signals(void)
 		fatal("sigaction failed");
 	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
 		fatal("sigaction failed");
-	if (sigaction(SIGHUP, &sigact, NULL) != 0)
-		fatal("sigaction failed");
 
+	event_del(&ev_sighup);
 	event_del(&ev_sigchld);
 	event_del(&ev_sigcont);
 	event_del(&ev_sigterm);
