@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.138 2010-03-15 22:03:38 nicm Exp $ */
+/* $Id: cmd.c,v 1.139 2010-05-14 14:33:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -84,7 +84,6 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_save_buffer_entry,
 	&cmd_select_layout_entry,
 	&cmd_select_pane_entry,
-	&cmd_select_prompt_entry,
 	&cmd_select_window_entry,
 	&cmd_send_keys_entry,
 	&cmd_send_prefix_entry,

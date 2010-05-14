@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.27 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.28 2010-05-14 14:33:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -80,6 +80,10 @@ cmd_command_prompt_init(struct cmd *self, int key)
 		break;
 	case 'f':
 		data->template = xstrdup("find-window '%%'");
+		break;
+	case '\'':
+		data->template = xstrdup("select-window -t ':%%'");
+		data->prompts = xstrdup("index");
 		break;
 	}
 }
