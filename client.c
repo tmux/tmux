@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.91 2010-05-14 14:30:00 tcunha Exp $ */
+/* $Id: client.c,v 1.92 2010-05-14 14:35:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -210,6 +210,11 @@ client_signal(int sig, unused short events, unused void *data)
 	struct sigaction	sigact;
 
 	switch (sig) {
+	case SIGHUP:
+		client_exitmsg = "lost tty";
+		client_exitval = 1;
+		client_write_server(MSG_EXITING, NULL, 0);
+		break;
 	case SIGTERM:
 		client_exitmsg = "terminated";
 		client_exitval = 1;
