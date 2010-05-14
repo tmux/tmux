@@ -155,5 +155,6 @@ For 1.3 (not in order):
 13 fix binding multiple keys, C-M-Left C-M-Up etc
 14 bind commands to key sequences?
 15 socket should be group writable and ownership should be maintained
+16 monitor, bell etc should monitor /all/ panes in the window not just one
 ...
 
