@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.247 2010-05-14 14:16:37 tcunha Exp $
+.\" $Id: tmux.1,v 1.248 2010-05-14 14:19:41 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: April 25 2010 $
+.Dd $Mdocdate: May 2 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -131,10 +131,6 @@ commands which are executed in sequence when the server is first started.
 If a command in the configuration file fails,
 .Nm
 will report an error and exit without executing further commands.
-.It Fl l
-Behave as a login shell.
-This flag currently has no effect and is for compatibility with other shells
-when using tmux as a login shell.
 .It Fl L Ar socket-name
 .Nm
 stores the server socket in a directory under
@@ -155,6 +151,10 @@ If the socket is accidentally removed, the
 signal may be sent to the
 .Nm
 server process to recreate it.
+.It Fl l
+Behave as a login shell.
+This flag currently has no effect and is for compatibility with other shells
+when using tmux as a login shell.
 .It Fl q
 Set the
 .Ic quiet
