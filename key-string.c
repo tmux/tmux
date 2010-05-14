@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.31 2010-04-23 20:33:08 nicm Exp $ */
+/* $Id: key-string.c,v 1.32 2010-05-14 14:21:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -154,7 +154,7 @@ key_string_lookup_string(const char *string)
 		if (modifiers & KEYC_CTRL) {
 			if (key >= 97 && key <= 122)
 				key -= 96;
-			else if (key >= 65 && key <= 90)
+			else if (key >= 64 && key <= 95)
 				key -= 64;
 			else if (key == 32)
 				key = 0;
