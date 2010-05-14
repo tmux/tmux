@@ -416,6 +416,9 @@ main(int argc, char **argv)
 	options_set_number(wo, "window-status-current-bg", 8);
 	options_set_number(wo, "window-status-current-fg", 8);
 	options_set_number(wo, "window-status-fg", 8);
+	options_set_number(wo, "window-status-alert-attr", GRID_ATTR_REVERSE);
+	options_set_number(wo, "window-status-alert-bg", 8);
+	options_set_number(wo, "window-status-alert-fg", 8);
 	options_set_string(wo, "window-status-format", "#I:#W#F");
 	options_set_string(wo, "window-status-current-format", "#I:#W#F");
 	options_set_string(wo, "word-separators", " -_@");
