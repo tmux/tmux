@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.246 2010-04-06 22:02:03 nicm Exp $
+.\" $Id: tmux.1,v 1.247 2010-05-14 14:16:37 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: April 6 2010 $
+.Dd $Mdocdate: April 25 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -784,6 +784,9 @@ bottom along the right.
 See the
 .Em main-pane-width
 window option.
+.It Ic tiled
+Panes are spread out as evenly as possible over the window in both rows and
+columns.
 .El
 .Pp
 Commands related to windows and panes are as follows:

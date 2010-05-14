@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.90 2010-04-05 05:11:43 micahcowan Exp $ */
+/* $Id: key-bindings.c,v 1.91 2010-05-14 14:16:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -151,6 +151,7 @@ key_bindings_init(void)
 		{ '2' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
 		{ '3' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
 		{ '4' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
+		{ '5' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
 		{ KEYC_PPAGE, 		  0, &cmd_copy_mode_entry },
 		{ 'n' | KEYC_ESCAPE, 	  0, &cmd_next_window_entry },
 		{ 'o' | KEYC_ESCAPE,	  0, &cmd_rotate_window_entry },
