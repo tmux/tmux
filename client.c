@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.90 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: client.c,v 1.91 2010-05-14 14:30:00 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -176,35 +176,12 @@ client_update_event(void)
 __dead void
 client_main(void)
 {
-	struct event		ev_sigcont, ev_sigterm, ev_sigwinch;
-	struct sigaction	sigact;
-
 	logfile("client");
 
 	/* Note: event_init() has already been called. */
 
 	/* Set up signals. */
-	memset(&sigact, 0, sizeof sigact);
-	sigemptyset(&sigact.sa_mask);
-	sigact.sa_flags = SA_RESTART;
-	sigact.sa_handler = SIG_IGN;
-	if (sigaction(SIGINT, &sigact, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGPIPE, &sigact, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGUSR1, &sigact, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGUSR2, &sigact, NULL) != 0)
-		fatal("sigaction failed");
-	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
-		fatal("sigaction failed");
-
-	signal_set(&ev_sigcont, SIGCONT, client_signal, NULL);
-	signal_add(&ev_sigcont, NULL);
-	signal_set(&ev_sigterm, SIGTERM, client_signal, NULL);
-	signal_add(&ev_sigterm, NULL);
-	signal_set(&ev_sigwinch, SIGWINCH, client_signal, NULL);
-	signal_add(&ev_sigwinch, NULL);
+	set_signals(client_signal);
 
 	/*
 	 * imsg_read in the first client poll loop (before the terminal has

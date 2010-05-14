@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.555 2010-04-06 21:59:19 nicm Exp $ */
+/* $Id: tmux.h,v 1.556 2010-05-14 14:30:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1252,6 +1252,7 @@ extern struct options global_options;
 extern struct options global_s_options;
 extern struct options global_w_options;
 extern struct environ global_environ;
+extern struct event_base *ev_base;
 extern char	*cfg_file;
 extern int	 debug_level;
 extern int	 be_quiet;
@@ -1582,8 +1583,6 @@ const char *key_string_lookup_key(int);
 extern struct clients clients;
 extern struct clients dead_clients;
 int	 server_start(char *);
-void	 server_signal_set(void);
-void	 server_signal_clear(void);
 void	 server_update_socket(void);
 
 /* server-client.c */
@@ -1898,6 +1897,10 @@ void		 window_choose_ready(struct window_pane *,
 /* names.c */
 void		 queue_window_name(struct window *);
 char		*default_window_name(struct window *);
+
+/* signal.c */
+void set_signals(void(*handler)(int, short, unused void *));
+void clear_signals(void);
 
 /* session.c */
 extern struct sessions sessions;
