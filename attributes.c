@@ -28,7 +28,7 @@ attributes_tostring(u_char attr)
 	static char	buf[128];
 
 	if (attr == 0)
-		return ("default");
+		return ("none");
 
 	buf[0] = '\0';
 	if (attr & GRID_ATTR_BRIGHT)
@@ -63,7 +63,7 @@ attributes_fromstring(const char *str)
 	if (strchr(delimiters, str[strlen(str) - 1]) != NULL)
 		return (-1);
 
-	if (strcasecmp(str, "default") == 0)
+	if (strcasecmp(str, "default") == 0 || strcasecmp(str, "none") == 0)
 		return (0);
 
 	attr = 0;
