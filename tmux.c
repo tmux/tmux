@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.205 2010-04-22 21:48:49 tcunha Exp $ */
+/* $Id: tmux.c,v 1.206 2010-05-14 14:18:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -358,8 +358,8 @@ main(int argc, char **argv)
 	options_set_number(so, "message-fg", 0);
 	options_set_number(so, "message-limit", 20);
 	options_set_number(so, "mouse-select-pane", 0);
-	options_set_number(so, "pane-active-border-bg", 2);
-	options_set_number(so, "pane-active-border-fg", 8);
+	options_set_number(so, "pane-active-border-bg", 8);
+	options_set_number(so, "pane-active-border-fg", 2);
 	options_set_number(so, "pane-border-bg", 8);
 	options_set_number(so, "pane-border-fg", 8);
 	options_set_number(so, "repeat-time", 500);
