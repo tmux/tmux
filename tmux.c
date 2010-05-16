@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.207 2010-05-14 14:30:01 tcunha Exp $ */
+/* $Id: tmux.c,v 1.208 2010-05-16 17:50:31 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -540,14 +540,6 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	ev_base = event_init();
-	set_signals(main_signal);
-
-	/* Initialise the client socket/start the server. */
-	if ((main_ibuf = client_init(path, cmdflags, flags)) == NULL)
-		exit(1);
-	xfree(path);
-
 #ifdef HAVE_BROKEN_KQUEUE
 	if (setenv("EVENT_NOKQUEUE", "1", 1) != 0)
 		fatal("setenv failed");
@@ -556,12 +548,19 @@ main(int argc, char **argv)
 	if (setenv("EVENT_NOPOLL", "1", 1) != 0)
 		fatal("setenv failed");
 #endif
+	ev_base = event_init();
 #ifdef HAVE_BROKEN_KQUEUE
 	unsetenv("EVENT_NOKQUEUE");
 #endif
 #ifdef HAVE_BROKEN_POLL
 	unsetenv("EVENT_NOPOLL");
 #endif
+	set_signals(main_signal);
+
+	/* Initialise the client socket/start the server. */
+	if ((main_ibuf = client_init(path, cmdflags, flags)) == NULL)
+		exit(1);
+	xfree(path);
 
 	imsg_compose(main_ibuf, msg, PROTOCOL_VERSION, -1, -1, buf, len);
 
