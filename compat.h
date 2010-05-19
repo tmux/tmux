@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.21 2010-05-19 21:31:37 nicm Exp $ */
+/* $Id: compat.h,v 1.22 2010-05-19 21:40:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -84,12 +84,29 @@ typedef uint64_t u_int64_t;
 #endif
 
 #ifdef HAVE_BROKEN_CMSG_FIRSTHDR
-/* Broken on OS X. */
+/* CMSG_FIRSTHDR broken on OS X. */
 #undef CMSG_FIRSTHDR
 #define CMSG_FIRSTHDR(mhdr) \
-        ((mhdr)->msg_controllen >= sizeof(struct cmsghdr) ? \
-	    (struct cmsghdr *)(mhdr)->msg_control : \
+	((mhdr)->msg_controllen >= sizeof(struct cmsghdr) ? \
+	    (struct cmsghdr *)(mhdr)->msg_control :	    \
 	    (struct cmsghdr *)NULL)
+#endif
+
+/* CMSG_ALIGN, CMSG_SPACE, CMSG_LEN missing from Solaris 9. */
+#ifndef CMSG_ALIGN
+#ifdef __sun
+#define CMSG_ALIGN _CMSG_DATA_ALIGN
+#else
+#define CMSG_ALIGN(len) (((len) + sizeof(long) - 1) & ~(sizeof(long) - 1))
+#endif
+#endif
+
+#ifndef CMSG_SPACE
+#define CMSG_SPACE(len) (CMSG_ALIGN(sizeof(struct cmsghdr)) + CMSG_ALIGN(len))
+#endif
+
+#ifndef CMSG_LEN
+#define CMSG_LEN(len) (CMSG_ALIGN(sizeof(struct cmsghdr)) + (len))
 #endif
 
 #ifndef INFTIM
@@ -135,7 +152,7 @@ typedef uint64_t u_int64_t;
 #endif
 
 #ifndef HAVE_BZERO
-#define bzero(buf, len) memset((buf), 0, (len));
+#define bzero(buf, len) memset(buf, 0, len);
 #endif
 
 #ifndef HAVE_STRCASESTR
