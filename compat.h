@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.22 2010-05-19 21:40:49 nicm Exp $ */
+/* $Id: compat.h,v 1.23 2010-05-19 21:49:57 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -42,7 +42,7 @@ typedef uint64_t u_int64_t;
 #else
 #include "compat/tree.h"
 #endif
- 
+
 #ifdef HAVE_BITSTRING_H
 #include <bitstring.h>
 #else

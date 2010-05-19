@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.126 2010-05-12 19:47:25 nicm Exp $
+# $Id: GNUmakefile,v 1.127 2010-05-19 21:49:57 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -28,7 +28,7 @@ LIBS+=
 
 # Sun CC 
 ifneq ($(shell ($(CC) -V 2>&1|awk '/Sun C/' || true)), )
-	CFLAGS+=-erroff=E_EMPTY_DECLARATION
+	CFLAGS+= -erroff=E_EMPTY_DECLARATION
 	FDEBUG=
 endif
 
