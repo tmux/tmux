@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.50 2010-04-23 07:29:39 nicm Exp $
+# $Id: configure,v 1.51 2010-05-19 21:31:38 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -70,6 +70,7 @@ case $TMUX_PLATFORM in
 #define HAVE_PATHS_H
 #define HAVE_PROGNAME
 #define HAVE_QUEUE_H
+#define HAVE_SETENV
 #define HAVE_SETPROCTITLE
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
@@ -98,6 +99,7 @@ EOF
 #define HAVE_PATHS_H
 #define HAVE_PROGNAME
 #define HAVE_PTY_H
+#define HAVE_SETENV
 #define HAVE_STRCASESTR
 #define HAVE_STRSEP
 #define HAVE_U_INT
@@ -122,6 +124,7 @@ EOF
 	cat <<EOF >>$CONFIG_H
 #define HAVE_BZERO
 #define HAVE_DAEMON
+#define HAVE_SETENV
 EOF
 	cat <<EOF >>$CONFIG_MK
 LIBS+= -lcurses -levent
@@ -158,13 +161,15 @@ SRCS+= osdep-sunos.c \
 	compat/fgetln.c \
 	compat/forkpty-sunos.c \
 	compat/getopt.c \
+	compat/setenv.c \
 	compat/strcasestr.c \
 	compat/strsep.c \
 	compat/strtonum.c \
 	compat/vis.c \
 	compat/unvis.c \
 	compat/imsg-buffer.c \
-	compat/imsg.c
+	compat/imsg.c \
+	compat/setenv.c
 EOF
 	;;
 # ------------------------------------------------------------------------------
@@ -181,6 +186,7 @@ EOF
 #define HAVE_GETOPT
 #define HAVE_PATHS_H
 #define HAVE_PROGNAME
+#define HAVE_SETENV
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
@@ -213,6 +219,7 @@ EOF
 #define HAVE_LIBUTIL_H
 #define HAVE_PATHS_H
 #define HAVE_PROGNAME
+#define HAVE_SETENV
 #define HAVE_SETPROCTITLE
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
@@ -242,6 +249,7 @@ EOF
 #define HAVE_PATHS_H
 #define HAVE_PROGNAME
 #define HAVE_SETPROCTITLE
+#define HAVE_SETENV
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY

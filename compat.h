@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.20 2009-11-08 22:51:34 tcunha Exp $ */
+/* $Id: compat.h,v 1.21 2010-05-19 21:31:37 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -175,13 +175,19 @@ pid_t		 forkpty(int *, char *, struct termios *, struct winsize *);
 
 #ifndef HAVE_ASPRINTF
 /* asprintf.c */
-int	asprintf(char **, const char *, ...);
-int	vasprintf(char **, const char *, va_list);
+int		 asprintf(char **, const char *, ...);
+int		 vasprintf(char **, const char *, va_list);
 #endif
 
 #ifndef HAVE_FGETLN
 /* fgetln.c */
-char   *fgetln(FILE *, size_t *);
+char		*fgetln(FILE *, size_t *);
+#endif
+
+#ifndef HAVE_SETENV
+/* setenv.c */
+int		 setenv(char *, char *, int);
+int		 unsetenv(char *);
 #endif
 
 #ifndef HAVE_GETOPT
