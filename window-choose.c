@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.29 2010-02-02 23:55:21 tcunha Exp $ */
+/* $Id: window-choose.c,v 1.30 2010-05-22 21:56:04 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,9 +25,9 @@
 struct screen *window_choose_init(struct window_pane *);
 void	window_choose_free(struct window_pane *);
 void	window_choose_resize(struct window_pane *, u_int, u_int);
-void	window_choose_key(struct window_pane *, struct client *, int);
+void	window_choose_key(struct window_pane *, struct session *, int);
 void	window_choose_mouse(
-	    struct window_pane *, struct client *, struct mouse_event *);
+	    struct window_pane *, struct session *, struct mouse_event *);
 
 void	window_choose_redraw_screen(struct window_pane *);
 void	window_choose_write_line(
@@ -171,7 +171,7 @@ window_choose_resize(struct window_pane *wp, u_int sx, u_int sy)
 
 /* ARGSUSED */
 void
-window_choose_key(struct window_pane *wp, unused struct client *c, int key)
+window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -304,7 +304,7 @@ window_choose_key(struct window_pane *wp, unused struct client *c, int key)
 /* ARGSUSED */
 void
 window_choose_mouse(
-    struct window_pane *wp, unused struct client *c, struct mouse_event *m)
+    struct window_pane *wp, unused struct session *sess, struct mouse_event *m)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;

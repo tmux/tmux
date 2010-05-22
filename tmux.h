@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.557 2010-05-14 14:33:39 tcunha Exp $ */
+/* $Id: tmux.h,v 1.558 2010-05-22 21:56:04 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -759,16 +759,16 @@ struct input_ctx {
  * Window mode. Windows can be in several modes and this is used to call the
  * right function to handle input and output.
  */
-struct client;
+struct session;
 struct window;
 struct mouse_event;
 struct window_mode {
 	struct screen *(*init)(struct window_pane *);
 	void	(*free)(struct window_pane *);
 	void	(*resize)(struct window_pane *, u_int, u_int);
-	void	(*key)(struct window_pane *, struct client *, int);
+	void	(*key)(struct window_pane *, struct session *, int);
 	void	(*mouse)(struct window_pane *,
-		    struct client *, struct mouse_event *);
+		    struct session *, struct mouse_event *);
 	void	(*timer)(struct window_pane *);
 };
 
@@ -1827,9 +1827,9 @@ void		 window_pane_alternate_off(
 int		 window_pane_set_mode(
 		     struct window_pane *, const struct window_mode *);
 void		 window_pane_reset_mode(struct window_pane *);
-void		 window_pane_key(struct window_pane *, struct client *, int);
+void		 window_pane_key(struct window_pane *, struct session *, int);
 void		 window_pane_mouse(struct window_pane *,
-		     struct client *, struct mouse_event *);
+		     struct session *, struct mouse_event *);
 int		 window_pane_visible(struct window_pane *);
 char		*window_pane_search(
 		     struct window_pane *, const char *, u_int *);

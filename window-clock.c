@@ -1,4 +1,4 @@
-/* $Id: window-clock.c,v 1.11 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: window-clock.c,v 1.12 2010-05-22 21:56:04 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,7 +26,7 @@
 struct screen *window_clock_init(struct window_pane *);
 void	window_clock_free(struct window_pane *);
 void	window_clock_resize(struct window_pane *, u_int, u_int);
-void	window_clock_key(struct window_pane *, struct client *, int);
+void	window_clock_key(struct window_pane *, struct session *, int);
 void	window_clock_timer(struct window_pane *);
 
 void	window_clock_draw_screen(struct window_pane *);
@@ -85,7 +85,7 @@ window_clock_resize(struct window_pane *wp, u_int sx, u_int sy)
 /* ARGSUSED */
 void
 window_clock_key(
-    struct window_pane *wp, unused struct client *c, unused int key)
+    struct window_pane *wp, unused struct session *sess, unused int key)
 {
 	window_pane_reset_mode(wp);
 }

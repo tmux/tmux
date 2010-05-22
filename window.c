@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.131 2010-05-14 14:30:01 tcunha Exp $ */
+/* $Id: window.c,v 1.132 2010-05-22 21:56:04 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -728,7 +728,7 @@ window_pane_reset_mode(struct window_pane *wp)
 }
 
 void
-window_pane_key(struct window_pane *wp, struct client *c, int key)
+window_pane_key(struct window_pane *wp, struct session *sess, int key)
 {
 	struct window_pane	*wp2;
 
@@ -737,7 +737,7 @@ window_pane_key(struct window_pane *wp, struct client *c, int key)
 
 	if (wp->mode != NULL) {
 		if (wp->mode->key != NULL)
-			wp->mode->key(wp, c, key);
+			wp->mode->key(wp, sess, key);
 		return;
 	}
 
@@ -756,7 +756,7 @@ window_pane_key(struct window_pane *wp, struct client *c, int key)
 
 void
 window_pane_mouse(
-    struct window_pane *wp, struct client *c, struct mouse_event *m)
+    struct window_pane *wp, struct session *sess, struct mouse_event *m)
 {
 	if (!window_pane_visible(wp))
 		return;
@@ -770,7 +770,7 @@ window_pane_mouse(
 
 	if (wp->mode != NULL) {
 		if (wp->mode->mouse != NULL)
-			wp->mode->mouse(wp, c, m);
+			wp->mode->mouse(wp, sess, m);
 	} else if (wp->fd != -1)
 		input_mouse(wp, m);
 }
