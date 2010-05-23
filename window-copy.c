@@ -26,11 +26,11 @@
 struct screen *window_copy_init(struct window_pane *);
 void	window_copy_free(struct window_pane *);
 void	window_copy_resize(struct window_pane *, u_int, u_int);
-void	window_copy_key(struct window_pane *, struct client *, int);
+void	window_copy_key(struct window_pane *, struct session *, int);
 int	window_copy_key_input(struct window_pane *, int);
 int	window_copy_key_numeric_prefix(struct window_pane *, int);
 void	window_copy_mouse(
-	    struct window_pane *, struct client *, struct mouse_event *);
+	    struct window_pane *, struct session *, struct mouse_event *);
 
 void	window_copy_redraw_lines(struct window_pane *, u_int, u_int);
 void	window_copy_redraw_screen(struct window_pane *);
@@ -52,7 +52,7 @@ void	window_copy_goto_line(struct window_pane *, const char *);
 void	window_copy_update_cursor(struct window_pane *, u_int, u_int);
 void	window_copy_start_selection(struct window_pane *);
 int	window_copy_update_selection(struct window_pane *);
-void	window_copy_copy_selection(struct window_pane *, struct client *);
+void	window_copy_copy_selection(struct window_pane *, struct session *);
 void	window_copy_clear_selection(struct window_pane *);
 void	window_copy_copy_line(
 	    struct window_pane *, char **, size_t *, u_int, u_int, u_int);
@@ -340,8 +340,6 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 		data->cy = sy - 1;
 	if (data->cx > sx)
 		data->cx = sx;
-	if (data->oy > screen_hsize(data->backing))
-		data->oy = screen_hsize(data->backing);
 
 	window_copy_clear_selection(wp);
 
@@ -353,7 +351,7 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 }
 
 void
-window_copy_key(struct window_pane *wp, struct client *c, int key)
+window_copy_key(struct window_pane *wp, struct session *sess, int key)
 {
 	const char			*word_separators;
 	struct window_copy_mode_data	*data = wp->modedata;
@@ -503,8 +501,8 @@ window_copy_key(struct window_pane *wp, struct client *c, int key)
 		window_copy_redraw_screen(wp);
 		break;
 	case MODEKEYCOPY_COPYSELECTION:
-		if (c != NULL && c->session != NULL) {
-			window_copy_copy_selection(wp, c);
+		if (sess != NULL) {
+			window_copy_copy_selection(wp, sess);
 			window_pane_reset_mode(wp);
 			return;
 		}
@@ -758,7 +756,7 @@ window_copy_key_numeric_prefix(struct window_pane *wp, int key)
 /* ARGSUSED */
 void
 window_copy_mouse(
-    struct window_pane *wp, unused struct client *c, struct mouse_event *m)
+    struct window_pane *wp, unused struct session *sess, struct mouse_event *m)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -1169,7 +1167,7 @@ window_copy_update_selection(struct window_pane *wp)
 }
 
 void
-window_copy_copy_selection(struct window_pane *wp, struct client *c)
+window_copy_copy_selection(struct window_pane *wp, struct session *sess)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -1264,8 +1262,8 @@ window_copy_copy_selection(struct window_pane *wp, struct client *c)
 	off--;	/* remove final \n */
 
 	/* Add the buffer to the stack. */
-	limit = options_get_number(&c->session->options, "buffer-limit");
-	paste_add(&c->session->buffers, buf, off, limit);
+	limit = options_get_number(&sess->options, "buffer-limit");
+	paste_add(&sess->buffers, buf, off, limit);
 }
 
 void

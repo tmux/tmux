@@ -300,7 +300,7 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 			server_redraw_window_borders(w);
 			wp = w->active;
 		}
-		window_pane_mouse(wp, c, mouse);
+		window_pane_mouse(wp, c->session, mouse);
 		return;
 	}
 
@@ -322,7 +322,7 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 			/* Try as a non-prefix key binding. */
 			if ((bd = key_bindings_lookup(key)) == NULL) {
 				if (!(c->flags & CLIENT_READONLY))
-					window_pane_key(wp, c, key);
+					window_pane_key(wp, c->session, key);
 			} else
 				key_bindings_dispatch(bd, c);
 		}
@@ -338,7 +338,7 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 			if (isprefix)
 				c->flags |= CLIENT_PREFIX;
 			else if (!(c->flags & CLIENT_READONLY))
-				window_pane_key(wp, c, key);
+				window_pane_key(wp, c->session, key);
 		}
 		return;
 	}
@@ -349,7 +349,7 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 		if (isprefix)
 			c->flags |= CLIENT_PREFIX;
 		else if (!(c->flags & CLIENT_READONLY))
-			window_pane_key(wp, c, key);
+			window_pane_key(wp, c->session, key);
 		return;
 	}
 

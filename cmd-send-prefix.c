@@ -49,7 +49,7 @@ cmd_send_prefix_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 
 	keylist = options_get_data(&s->options, "prefix");
-	window_pane_key(wp, ctx->curclient, ARRAY_FIRST(keylist));
+	window_pane_key(wp, s, ARRAY_FIRST(keylist));
 
 	return (0);
 }
