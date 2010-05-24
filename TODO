@@ -134,7 +134,9 @@
 - way to define bell etc colours in status line
 - find-window across sessions - other ways to make session handling easier?
 - ' and " should be parsed the same (eg "\e" vs '\e') in config and command
-  prompt?x
+  prompt?
+- command to toggle selection not to move it in copy-mode
+- pass pipe-pane through status_replace
 
 For 1.3 (not in order):
 
