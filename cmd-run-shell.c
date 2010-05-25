@@ -82,6 +82,11 @@ cmd_run_shell_callback(struct job *job)
 	int				 retcode;
 	u_int				 lines;
 
+	if (ctx->cmdclient != NULL && ctx->cmdclient->flags & CLIENT_DEAD)
+		return;
+	if (ctx->curclient != NULL && ctx->curclient->flags & CLIENT_DEAD)
+		return;
+
 	lines = 0;
 	do {
 		if ((line = evbuffer_readline(job->event->input)) != NULL) {
