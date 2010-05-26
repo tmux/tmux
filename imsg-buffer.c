@@ -28,16 +28,16 @@
 
 #include "imsg.h"
 
-int	buf_realloc(struct buf *, size_t);
-void	buf_enqueue(struct msgbuf *, struct buf *);
-void	buf_dequeue(struct msgbuf *, struct buf *);
+int	ibuf_realloc(struct ibuf *, size_t);
+void	ibuf_enqueue(struct msgbuf *, struct ibuf *);
+void	ibuf_dequeue(struct msgbuf *, struct ibuf *);
 
-struct buf *
-buf_open(size_t len)
+struct ibuf *
+ibuf_open(size_t len)
 {
-	struct buf	*buf;
+	struct ibuf	*buf;
 
-	if ((buf = calloc(1, sizeof(struct buf))) == NULL)
+	if ((buf = calloc(1, sizeof(struct ibuf))) == NULL)
 		return (NULL);
 	if ((buf->buf = malloc(len)) == NULL) {
 		free(buf);
@@ -49,15 +49,15 @@ buf_open(size_t len)
 	return (buf);
 }
 
-struct buf *
-buf_dynamic(size_t len, size_t max)
+struct ibuf *
+ibuf_dynamic(size_t len, size_t max)
 {
-	struct buf	*buf;
+	struct ibuf	*buf;
 
 	if (max < len)
 		return (NULL);
 
-	if ((buf = buf_open(len)) == NULL)
+	if ((buf = ibuf_open(len)) == NULL)
 		return (NULL);
 
 	if (max > 0)
@@ -67,7 +67,7 @@ buf_dynamic(size_t len, size_t max)
 }
 
 int
-buf_realloc(struct buf *buf, size_t len)
+ibuf_realloc(struct ibuf *buf, size_t len)
 {
 	u_char	*b;
 
@@ -87,10 +87,10 @@ buf_realloc(struct buf *buf, size_t len)
 }
 
 int
-buf_add(struct buf *buf, const void *data, size_t len)
+ibuf_add(struct ibuf *buf, const void *data, size_t len)
 {
 	if (buf->wpos + len > buf->size)
-		if (buf_realloc(buf, len) == -1)
+		if (ibuf_realloc(buf, len) == -1)
 			return (-1);
 
 	memcpy(buf->buf + buf->wpos, data, len);
@@ -99,12 +99,12 @@ buf_add(struct buf *buf, const void *data, size_t len)
 }
 
 void *
-buf_reserve(struct buf *buf, size_t len)
+ibuf_reserve(struct ibuf *buf, size_t len)
 {
 	void	*b;
 
 	if (buf->wpos + len > buf->size)
-		if (buf_realloc(buf, len) == -1)
+		if (ibuf_realloc(buf, len) == -1)
 			return (NULL);
 
 	b = buf->buf + buf->wpos;
@@ -113,7 +113,7 @@ buf_reserve(struct buf *buf, size_t len)
 }
 
 void *
-buf_seek(struct buf *buf, size_t pos, size_t len)
+ibuf_seek(struct ibuf *buf, size_t pos, size_t len)
 {
 	/* only allowed to seek in already written parts */
 	if (pos + len > buf->wpos)
@@ -123,28 +123,28 @@ buf_seek(struct buf *buf, size_t pos, size_t len)
 }
 
 size_t
-buf_size(struct buf *buf)
+ibuf_size(struct ibuf *buf)
 {
 	return (buf->wpos);
 }
 
 size_t
-buf_left(struct buf *buf)
+ibuf_left(struct ibuf *buf)
 {
 	return (buf->max - buf->wpos);
 }
 
 void
-buf_close(struct msgbuf *msgbuf, struct buf *buf)
+ibuf_close(struct msgbuf *msgbuf, struct ibuf *buf)
 {
-	buf_enqueue(msgbuf, buf);
+	ibuf_enqueue(msgbuf, buf);
 }
 
 int
-buf_write(struct msgbuf *msgbuf)
+ibuf_write(struct msgbuf *msgbuf)
 {
 	struct iovec	 iov[IOV_MAX];
-	struct buf	*buf;
+	struct ibuf	*buf;
 	unsigned int	 i = 0;
 	ssize_t	n;
 
@@ -176,7 +176,7 @@ buf_write(struct msgbuf *msgbuf)
 }
 
 void
-buf_free(struct buf *buf)
+ibuf_free(struct ibuf *buf)
 {
 	free(buf->buf);
 	free(buf);
@@ -193,14 +193,14 @@ msgbuf_init(struct msgbuf *msgbuf)
 void
 msgbuf_drain(struct msgbuf *msgbuf, size_t n)
 {
-	struct buf	*buf, *next;
+	struct ibuf	*buf, *next;
 
 	for (buf = TAILQ_FIRST(&msgbuf->bufs); buf != NULL && n > 0;
 	    buf = next) {
 		next = TAILQ_NEXT(buf, entry);
 		if (buf->rpos + n >= buf->wpos) {
 			n -= buf->wpos - buf->rpos;
-			buf_dequeue(msgbuf, buf);
+			ibuf_dequeue(msgbuf, buf);
 		} else {
 			buf->rpos += n;
 			n = 0;
@@ -211,17 +211,17 @@ msgbuf_drain(struct msgbuf *msgbuf, size_t n)
 void
 msgbuf_clear(struct msgbuf *msgbuf)
 {
-	struct buf	*buf;
+	struct ibuf	*buf;
 
 	while ((buf = TAILQ_FIRST(&msgbuf->bufs)) != NULL)
-		buf_dequeue(msgbuf, buf);
+		ibuf_dequeue(msgbuf, buf);
 }
 
 int
 msgbuf_write(struct msgbuf *msgbuf)
 {
 	struct iovec	 iov[IOV_MAX];
-	struct buf	*buf;
+	struct ibuf	*buf;
 	unsigned int	 i = 0;
 	ssize_t		 n;
 	struct msghdr	 msg;
@@ -284,14 +284,14 @@ msgbuf_write(struct msgbuf *msgbuf)
 }
 
 void
-buf_enqueue(struct msgbuf *msgbuf, struct buf *buf)
+ibuf_enqueue(struct msgbuf *msgbuf, struct ibuf *buf)
 {
 	TAILQ_INSERT_TAIL(&msgbuf->bufs, buf, entry);
 	msgbuf->queued++;
 }
 
 void
-buf_dequeue(struct msgbuf *msgbuf, struct buf *buf)
+ibuf_dequeue(struct msgbuf *msgbuf, struct ibuf *buf)
 {
 	TAILQ_REMOVE(&msgbuf->bufs, buf, entry);
 
@@ -299,5 +299,5 @@ buf_dequeue(struct msgbuf *msgbuf, struct buf *buf)
 		close(buf->fd);
 
 	msgbuf->queued--;
-	buf_free(buf);
+	ibuf_free(buf);
 }
