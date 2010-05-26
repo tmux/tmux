@@ -30,6 +30,7 @@
 #include <bitstring.h>
 #include <event.h>
 #include <getopt.h>
+#include <imsg.h>
 #include <limits.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -38,7 +39,6 @@
 #include <termios.h>
 
 #include "array.h"
-#include "imsg.h"
 
 extern char    *__progname;
 extern char   **environ;
