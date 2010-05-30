@@ -213,32 +213,108 @@ prefix key,
 .Ql C-b
 (Ctrl-b) by default, followed by a command key.
 .Pp
-Some of the default key bindings are:
+The default key bindings are:
 .Pp
-.Bl -tag -width Ds -offset indent -compact
+.Bl -tag -width "XXXXXXXXXX" -offset indent -compact
+.It C-b
+Send the prefix key (C-b) through to the application.
+.It C-o
+Rotate the panes in the current window forwards.
+.It C-z
+Suspend the
+.Nm
+client.
+.It !
+Break the current pane out of the window.
+.It \&"
+Split the current pane into two, top and bottom.
+.It #
+List all paste buffers.
+.It %
+Split the current pane into two, left and right.
+.It &
+Kill the current window.
+.It '
+Prompt for a window index to select.
+.It ,
+Rename the current window.
+.It -
+Delete the most recently copied buffer of text.
+.It .
+Prompt for an index to move the current window.
+.It 0 to 9
+Select windows 0 to 9.
+.It :
+Enter the
+.Nm
+command prompt.
+.It \&?
+List all key bindings.
+.It D
+Choose a client to detach.
+.It [
+Enter copy mode to copy text or view the history.
+.It ]
+Paste the most recently copied buffer of text.
 .It c
 Create a new window.
 .It d
 Detach the current client.
+.It f
+Prompt to search for text in open windows.
+.It i
+Display some information about the current window.
 .It l
 Move to the previously selected window.
 .It n
 Change to the next window.
+.It o
+Select the next pane in the current window.
 .It p
 Change to the previous window.
-.It &
-Kill the current window.
-.It ,
-Rename the current window.
-.It \&?
-List all key bindings.
+.It q
+Briefly display pane indexes.
+.It r
+Force redraw of the attached client.
+.It s
+Select a new session for the attached client interactively.
+.It t
+Show the time.
+.It w
+Choose the current window interactively.
+.It x
+Kill the current pane.
+.It {
+Swap the current pane with the previous pane.
+.It }
+Swap the current pane with the next pane.
+.It ~
+Show previous messages from
+.Nm ,
+if any.
+.It Page Up
+Enter copy mode and scroll one page up.
+.It Up, Down
+.It Left, Right
+Change to the pane above, below, to the left, or to the right of the current
+pane.
+.It M-1 to M-5
+Arrange panes in one of the five preset layouts: even-horizontal,
+even-vertical, main-horizontal, main-vertical, or tiled.
+.It M-n
+Move to the next window with a bell or activity marker.
+.It M-o
+Rotate the panes in the current window backwards.
+.It M-p
+Move to the previous window with a bell or activity marker.
+.It C-Up, C-Down
+.It C-Left, C-Right
+Resize the current pane in steps of one cell.
+.It M-Up, M-Down
+.It M-Left, M-Right
+Resize the current pane in steps of five cells.
 .El
 .Pp
-A complete list may be obtained with the
-.Ic list-keys
-command (bound to
-.Ql \&?
-by default).
 Key bindings may be changed with the
 .Ic bind-key
 and
