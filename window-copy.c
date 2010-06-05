@@ -1427,7 +1427,17 @@ void
 window_copy_cursor_start_of_line(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*back_s = data->backing;
+	struct grid			*gd = back_s->grid;
+	u_int				 py;
 
+	if (data->cx == 0) {
+		py = screen_hsize(back_s) + data->cy - data->oy;
+		while (py > 0 && gd->linedata[py-1].flags & GRID_LINE_WRAPPED) {
+			window_copy_cursor_up(wp, 0);
+			py = screen_hsize(back_s) + data->cy - data->oy;
+		}
+	}
 	window_copy_update_cursor(wp, 0, data->cy);
 	if (window_copy_update_selection(wp))
 		window_copy_redraw_lines(wp, data->cy, 1);
