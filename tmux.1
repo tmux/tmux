@@ -1124,6 +1124,11 @@ A pane may only be piped to one command at a time, any existing pipe is
 closed before
 .Ar shell-command
 is executed.
+The
+.Ar shell-command
+string may contain the special character sequences supported by the
+.Ic status-left
+command.
 If no
 .Ar shell-command
 is given, the current pipe (if any) is closed.
@@ -1133,7 +1138,7 @@ The
 option only opens a new pipe if no previous pipe exists, allowing a pipe to
 be toggled with a single key, for example:
 .Bd -literal -offset indent
-bind-key C-p pipe-pane -o 'cat >>~/output'
+bind-key C-p pipe-pane -o 'cat >>~/output.#I-#P'
 .Ed
 .It Xo Ic previous-window
 .Op Fl a
