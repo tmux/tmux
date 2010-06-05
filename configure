@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.51 2010-05-19 21:31:38 nicm Exp $
+# $Id: configure,v 1.52 2010-06-05 18:14:29 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -168,8 +168,7 @@ SRCS+= osdep-sunos.c \
 	compat/vis.c \
 	compat/unvis.c \
 	compat/imsg-buffer.c \
-	compat/imsg.c \
-	compat/setenv.c
+	compat/imsg.c
 EOF
 	;;
 # ------------------------------------------------------------------------------
