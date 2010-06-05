@@ -47,7 +47,7 @@
 	}								\
 } while (0)
 
-#define ARRAY_EMPTY(a) ((a) == NULL || (a)->num == 0)
+#define ARRAY_EMPTY(a) (((void *) (a)) == NULL || (a)->num == 0)
 #define ARRAY_LENGTH(a) ((a)->num)
 #define ARRAY_DATA(a) ((a)->list)
 

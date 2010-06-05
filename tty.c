@@ -1090,7 +1090,7 @@ tty_cursor(struct tty *tty, u_int cx, u_int cy)
 		 * Use HPA if change is larger than absolute, otherwise move
 		 * the cursor with CUB/CUF.
 		 */
-		if (abs(change) > cx && tty_term_has(term, TTYC_HPA)) {
+		if ((u_int) abs(change) > cx && tty_term_has(term, TTYC_HPA)) {
 			tty_putcode1(tty, TTYC_HPA, cx);
 			goto out;
 		} else if (change > 0 && tty_term_has(term, TTYC_CUB)) {
@@ -1126,7 +1126,7 @@ tty_cursor(struct tty *tty, u_int cx, u_int cy)
 		 * Try to use VPA if change is larger than absolute or if this
 		 * change would cross the scroll region, otherwise use CUU/CUD.
 		 */
-		if (abs(change) > cy ||
+		if ((u_int) abs(change) > cy ||
 		    (change < 0 && cy - change > tty->rlower) ||
 		    (change > 0 && cy - change < tty->rupper)) {
 			    if (tty_term_has(term, TTYC_VPA)) {
