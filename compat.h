@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.23 2010-05-19 21:49:57 nicm Exp $ */
+/* $Id: compat.h,v 1.24 2010-06-05 16:29:40 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -203,8 +203,8 @@ char		*fgetln(FILE *, size_t *);
 
 #ifndef HAVE_SETENV
 /* setenv.c */
-int		 setenv(char *, char *, int);
-int		 unsetenv(char *);
+int		 setenv(const char *, const char *, int);
+int		 unsetenv(const char *);
 #endif
 
 #ifndef HAVE_GETOPT
