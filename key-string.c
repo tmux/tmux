@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.32 2010-05-14 14:21:07 tcunha Exp $ */
+/* $Id: key-string.c,v 1.33 2010-06-05 06:27:19 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -149,29 +149,28 @@ key_string_lookup_string(const char *string)
 		key = (u_char) string[0];
 		if (key < 32 || key > 126)
 			return (KEYC_NONE);
-
-		/* Convert the standard control keys. */
-		if (modifiers & KEYC_CTRL) {
-			if (key >= 97 && key <= 122)
-				key -= 96;
-			else if (key >= 64 && key <= 95)
-				key -= 64;
-			else if (key == 32)
-				key = 0;
-			else if (key == 63)
-				key = KEYC_BSPACE;
-			else
-				return (KEYC_NONE);
-			modifiers &= ~KEYC_CTRL;
-		}
-
-		return (key | modifiers);
+	} else {
+		/* Otherwise look the key up in the table. */
+		key = key_string_search_table(string);
+		if (key == KEYC_NONE)
+			return (KEYC_NONE);
 	}
 
-	/* Otherwise look the key up in the table. */
-	key = key_string_search_table(string);
-	if (key == KEYC_NONE)
-		return (KEYC_NONE);
+	/* Convert the standard control keys. */
+	if (key < KEYC_BASE && (modifiers & KEYC_CTRL)) {
+		if (key >= 97 && key <= 122)
+			key -= 96;
+		else if (key >= 64 && key <= 95)
+			key -= 64;
+		else if (key == 32)
+			key = 0;
+		else if (key == 63)
+			key = KEYC_BSPACE;
+		else
+			return (KEYC_NONE);
+		modifiers &= ~KEYC_CTRL;
+	}
+
 	return (key | modifiers);
 }
 
