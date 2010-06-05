@@ -1,4 +1,4 @@
-/* $Id: setenv.c,v 1.1 2010-05-19 21:31:39 nicm Exp $ */
+/* $Id: setenv.c,v 1.2 2010-06-05 18:20:48 nicm Exp $ */
 
 /*
  * Copyright (c) 2010 Dagobert Michelsen
@@ -25,10 +25,10 @@
 int
 setenv(const char *name, const char *value, unused int overwrite)
 {
-	char	buf[1024];
+	char	*newval;
 
-	snprintf(buf, sizeof(buf), "%s=%s", name, value);
-	return (putenv(buf));
+	xasprintf(&newval, "%s=%s", name, value);
+	return (putenv(newval));
 }
 
 int
