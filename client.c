@@ -176,6 +176,13 @@ client_main(void)
 	set_signals(client_signal);
 
 	/*
+	 * Send a resize message immediately in case the terminal size has
+	 * changed between the identify message to the server and the MSG_READY
+	 * telling us to move into the client code.
+	 */
+	 client_write_server(MSG_RESIZE, NULL, 0);
+
+	/*
 	 * imsg_read in the first client poll loop (before the terminal has
 	 * been initialised) may have read messages into the buffer after the
 	 * MSG_READY switched to here. Process anything outstanding now to
