@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.118 2010-06-05 07:48:35 micahcowan Exp $ */
+/* $Id: window-copy.c,v 1.119 2010-06-05 20:29:11 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -367,7 +367,7 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 	if (data->inputtype == WINDOW_COPY_JUMPFORWARD
 	    || data->inputtype == WINDOW_COPY_JUMPBACK) {
 		/* Ignore keys with modifiers. */
-		if ((key & 0xff00) == 0) {
+		if ((key & KEYC_MASK_MOD) == 0) {
 			data->jumpchar = key;
 			if (data->inputtype == WINDOW_COPY_JUMPFORWARD) {
 				for (; np != 0; np--)
@@ -627,7 +627,7 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 		*data->inputstr = '\0';
 		goto input_on;
 	case MODEKEYCOPY_STARTNUMBERPREFIX:
-		key &= 0xff;
+		key &= KEYC_MASK_KEY;
 		if (key >= '0' && key <= '9') {
 			data->inputtype = WINDOW_COPY_NUMERICPREFIX;
 			data->numprefix = 0;
@@ -741,7 +741,7 @@ window_copy_key_numeric_prefix(struct window_pane *wp, int key)
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 
-	key &= 0xff;
+	key &= KEYC_MASK_KEY;
 	if (key < '0' || key > '9')
 		return 1;
 

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.558 2010-05-22 21:56:04 micahcowan Exp $ */
+/* $Id: tmux.h,v 1.559 2010-06-05 20:29:11 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -109,6 +109,10 @@ extern char   **environ;
 #define KEYC_CTRL 0x4000
 #define KEYC_SHIFT 0x8000
 #define KEYC_PREFIX 0x10000
+
+/* Mask to obtain key w/o modifiers */
+#define KEYC_MASK_MOD (KEYC_ESCAPE|KEYC_CTRL|KEYC_SHIFT|KEYC_PREFIX)
+#define KEYC_MASK_KEY (~KEYC_MASK_MOD)
 
 /* Other key codes. */
 enum key_code {
