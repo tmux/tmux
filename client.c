@@ -17,7 +17,6 @@
  */
 
 #include <sys/types.h>
-#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/un.h>
@@ -115,12 +114,9 @@ void
 client_send_identify(int flags)
 {
 	struct msg_identify_data	data;
-	struct winsize			ws;
 	char			       *term;
 	int				fd;
 
-	if (ioctl(STDIN_FILENO, TIOCGWINSZ, &ws) == -1)
-		fatal("ioctl(TIOCGWINSZ)");
 	data.flags = flags;
 
 	if (getcwd(data.cwd, sizeof data.cwd) == NULL)
