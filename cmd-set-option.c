@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.96 2010-02-26 13:31:39 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.97 2010-06-05 23:56:29 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -157,6 +157,9 @@ const struct set_option_entry set_window_option_table[] = {
 	{ "remain-on-exit", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "synchronize-panes", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "utf8", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "window-status-alert-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
+	{ "window-status-alert-bg", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "window-status-alert-fg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "window-status-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },
 	{ "window-status-bg", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "window-status-current-attr", SET_OPTION_ATTRIBUTES, 0, 0, NULL },

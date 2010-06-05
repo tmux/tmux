@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.147 2010-04-06 21:45:36 nicm Exp $ */
+/* $Id: status.c,v 1.148 2010-06-05 23:56:29 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -595,8 +595,17 @@ status_print(
 
 	if (session_alert_has(s, wl, WINDOW_ACTIVITY) ||
 	    session_alert_has(s, wl, WINDOW_BELL) ||
-	    session_alert_has(s, wl, WINDOW_CONTENT))
-		gc->attr ^= GRID_ATTR_REVERSE;
+	    session_alert_has(s, wl, WINDOW_CONTENT)) {
+		fg = options_get_number(oo, "window-status-alert-fg");
+		if (fg != 8)
+			colour_set_fg(gc, fg);
+		bg = options_get_number(oo, "window-status-alert-bg");
+		if (bg != 8)
+			colour_set_bg(gc, bg);
+		attr = options_get_number(oo, "window-status-alert-attr");
+		if (attr != 0)
+			gc->attr = attr;
+	}
 
 	text = status_replace(c, wl, fmt, t, 1);
 	return (text);
