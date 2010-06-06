@@ -1,4 +1,4 @@
-/* $Id: array.h,v 1.10 2010-02-08 18:29:32 tcunha Exp $ */
+/* $Id: array.h,v 1.11 2010-06-06 00:27:08 tcunha Exp $ */
 
 /*
  * Copyright (c) 2006 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,7 @@
 	}								\
 } while (0)
 
-#define ARRAY_EMPTY(a) ((a) == NULL || (a)->num == 0)
+#define ARRAY_EMPTY(a) (((void *) (a)) == NULL || (a)->num == 0)
 #define ARRAY_LENGTH(a) ((a)->num)
 #define ARRAY_DATA(a) ((a)->list)
 
