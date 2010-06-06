@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.256 2010-06-06 00:28:00 tcunha Exp $
+.\" $Id: tmux.1,v 1.257 2010-06-06 00:31:32 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -554,17 +554,15 @@ List the syntax of all commands supported by
 .It Ic list-sessions
 .D1 (alias: Ic ls )
 List all sessions managed by the server.
-.It Xo Ic lock-client
-.Op Fl t Ar target-client
-.Xc
+.It Ic lock-client Op Fl t Ar target-client
+.D1 (alias: Ic lockc )
 Lock
 .Ar target-client ,
 see the
 .Ic lock-server
 command.
-.It Xo Ic lock-session
-.Op Fl t Ar target-session
-.Xc
+.It Ic lock-session Op Fl t Ar target-session
+.D1 (alias: Ic locks )
 Lock all clients attached to
 .Ar target-session .
 .It Xo Ic new-session
@@ -1039,7 +1037,7 @@ List the panes in the current window or in
 List windows in the current session or in
 .Ar target-session .
 .It Xo Ic move-window
-.Op Fl d
+.Op Fl dk
 .Op Fl s Ar src-window
 .Op Fl t Ar dst-window
 .Xc
