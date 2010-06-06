@@ -111,6 +111,10 @@ extern char   **environ;
 #define KEYC_SHIFT 0x8000
 #define KEYC_PREFIX 0x10000
 
+/* Mask to obtain key w/o modifiers */
+#define KEYC_MASK_MOD (KEYC_ESCAPE|KEYC_CTRL|KEYC_SHIFT|KEYC_PREFIX)
+#define KEYC_MASK_KEY (~KEYC_MASK_MOD)
+
 /* Other key codes. */
 enum key_code {
 	/* Mouse key. */
