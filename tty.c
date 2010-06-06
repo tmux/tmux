@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.189 2010-03-08 14:53:49 tcunha Exp $ */
+/* $Id: tty.c,v 1.190 2010-06-06 00:23:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -402,11 +402,18 @@ tty_update_mode(struct tty *tty, int mode)
 		else
 			tty_putcode(tty, TTYC_CIVIS);
 	}
-	if (changed & MODE_MOUSE) {
-		if (mode & MODE_MOUSE)
-			tty_puts(tty, "\033[?1000h");
-		else
-			tty_puts(tty, "\033[?1000l");
+	if (changed & (MODE_MOUSE|MODE_MOUSEMOTION)) {
+		if (mode & MODE_MOUSE) {
+			if (mode & MODE_MOUSEMOTION)
+				tty_puts(tty, "\033[?1003h");
+			else
+				tty_puts(tty, "\033[?1000h");
+		} else {
+			if (mode & MODE_MOUSEMOTION)
+				tty_puts(tty, "\033[?1003l");
+			else
+				tty_puts(tty, "\033[?1000l");
+		}
 	}
 	if (changed & MODE_KKEYPAD) {
 		if (mode & MODE_KKEYPAD)

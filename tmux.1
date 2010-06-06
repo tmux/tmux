@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.254 2010-06-06 00:21:36 tcunha Exp $
+.\" $Id: tmux.1,v 1.255 2010-06-06 00:23:44 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: May 30 2010 $
+.Dd $Mdocdate: May 31 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2078,10 +2078,8 @@ Key bindings default to emacs.
 .Op Ic on | off
 .Xc
 Mouse state in modes.
-If on,
-.Nm
-will respond to mouse clicks by moving the cursor in copy mode or selecting an
-option in choice mode.
+If on, the mouse may be used to copy a selection by dragging in copy mode, or
+to select an option in choice mode.
 .Pp
 .It Xo Ic monitor-activity
 .Op Ic on | off

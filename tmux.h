@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.559 2010-06-05 20:29:11 micahcowan Exp $ */
+/* $Id: tmux.h,v 1.560 2010-06-06 00:23:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -544,7 +544,8 @@ struct mode_key_table {
 #define MODE_KCURSOR 0x4
 #define MODE_KKEYPAD 0x8	/* set = application, clear = number */
 #define MODE_MOUSE 0x10
-#define MODE_WRAP 0x20		/* whether lines wrap */
+#define MODE_MOUSEMOTION 0x20
+#define MODE_WRAP 0x40		/* whether lines wrap */
 
 /*
  * A single UTF-8 character.
@@ -1089,7 +1090,7 @@ struct client {
 
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_PREFIX 0x2
-#define CLIENT_MOUSE 0x4
+/* 0x4 unused */
 #define CLIENT_REDRAW 0x8
 #define CLIENT_STATUS 0x10
 #define CLIENT_REPEAT 0x20	/* allow command to repeat within repeat time */

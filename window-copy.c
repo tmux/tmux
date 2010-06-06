@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.119 2010-06-05 20:29:11 micahcowan Exp $ */
+/* $Id: window-copy.c,v 1.120 2010-06-06 00:23:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -760,17 +760,61 @@ window_copy_mouse(
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
+	u_int				 i;
 
-	if ((m->b & 3) == 3)
-		return;
+	/*
+	 * xterm mouse mode is fairly silly. Buttons are in the bottom two
+	 * bits: 0 button 1; 1 button 2; 2 button 3; 3 buttons released.
+	 *
+	 * Bit 3 is shift; bit 4 is meta; bit 5 control.
+	 *
+	 * Bit 6 is added for mouse buttons 4 and 5.
+	 */
+
 	if (m->x >= screen_size_x(s))
 		return;
 	if (m->y >= screen_size_y(s))
 		return;
 
-	window_copy_update_cursor(wp, m->x, m->y);
-	if (window_copy_update_selection(wp))
+	/* If mouse wheel (buttons 4 and 5), scroll. */
+	if ((m->b & 64) == 64) {
+		if ((m->b & 3) == 0) {
+			for (i = 0; i < 5; i++)
+				window_copy_cursor_up(wp, 0);
+		} else if ((m->b & 3) == 1) {
+			for (i = 0; i < 5; i++)
+				window_copy_cursor_down(wp, 0);
+		}
+		return;
+	}
+
+	/*
+	 * If already reading motion, move the cursor while buttons are still
+	 * pressed, or stop the selection on their release.
+	 */
+	if (s->mode & MODE_MOUSEMOTION) {
+		if ((m->b & 3) != 3) {
+			window_copy_update_cursor(wp, m->x, m->y);
+			if (window_copy_update_selection(wp))
+				window_copy_redraw_screen(wp);
+		} else {
+			s->mode &= ~MODE_MOUSEMOTION;
+			if (sess != NULL) {
+				window_copy_copy_selection(wp, sess);
+				window_pane_reset_mode(wp);
+			}
+		}
+		return;
+	}
+
+	/* Otherwise i other buttons pressed, start selection and motion. */
+	if ((m->b & 3) != 3) {
+		s->mode |= MODE_MOUSEMOTION;
+
+		window_copy_update_cursor(wp, m->x, m->y);
+		window_copy_start_selection(wp);
 		window_copy_redraw_screen(wp);
+	}
 }
 
 void
