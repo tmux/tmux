@@ -1,4 +1,4 @@
-/* $Id: cmd-run-shell.c,v 1.6 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-run-shell.c,v 1.7 2010-06-06 00:04:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -81,6 +81,11 @@ cmd_run_shell_callback(struct job *job)
 	size_t				 size;
 	int				 retcode;
 	u_int				 lines;
+
+	if (ctx->cmdclient != NULL && ctx->cmdclient->flags & CLIENT_DEAD)
+		return;
+	if (ctx->curclient != NULL && ctx->curclient->flags & CLIENT_DEAD)
+		return;
 
 	lines = 0;
 	do {
