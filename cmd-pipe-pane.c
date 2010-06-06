@@ -1,4 +1,4 @@
-/* $Id: cmd-pipe-pane.c,v 1.11 2010-05-14 14:30:01 tcunha Exp $ */
+/* $Id: cmd-pipe-pane.c,v 1.12 2010-06-06 00:28:00 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -49,8 +50,13 @@ int
 cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
+	struct client		*c;
 	struct window_pane	*wp;
+	char			*command;
 	int			 old_fd, pipe_fd[2], null_fd, mode;
+
+	if ((c = cmd_find_client(ctx, data->target)) == NULL)
+		return (-1);
 
 	if (cmd_find_pane(ctx, data->target, NULL, &wp) == NULL)
 		return (-1);
@@ -105,7 +111,8 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (null_fd != STDOUT_FILENO && null_fd != STDERR_FILENO)
 			close(null_fd);
 
-		execl(_PATH_BSHELL, "sh", "-c", data->arg, (char *) NULL);
+		command = status_replace(c, NULL, data->arg, time(NULL), 0);
+		execl(_PATH_BSHELL, "sh", "-c", command, (char *) NULL);
 		_exit(1);
 	default:
 		/* Parent process. */

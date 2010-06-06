@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.255 2010-06-06 00:23:44 tcunha Exp $
+.\" $Id: tmux.1,v 1.256 2010-06-06 00:28:00 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: May 31 2010 $
+.Dd $Mdocdate: June 5 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1124,6 +1124,11 @@ A pane may only be piped to one command at a time, any existing pipe is
 closed before
 .Ar shell-command
 is executed.
+The
+.Ar shell-command
+string may contain the special character sequences supported by the
+.Ic status-left
+command.
 If no
 .Ar shell-command
 is given, the current pipe (if any) is closed.
@@ -1133,7 +1138,7 @@ The
 option only opens a new pipe if no previous pipe exists, allowing a pipe to
 be toggled with a single key, for example:
 .Bd -literal -offset indent
-bind-key C-p pipe-pane -o 'cat >>~/output'
+bind-key C-p pipe-pane -o 'cat >>~/output.#I-#P'
 .Ed
 .It Xo Ic previous-window
 .Op Fl a
