@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.52 2010-06-05 18:14:29 nicm Exp $
+# $Id: configure,v 1.53 2010-06-06 13:00:47 tcunha Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -67,6 +67,7 @@ case $TMUX_PLATFORM in
 #define HAVE_FGETLN
 #define HAVE_FORKPTY
 #define HAVE_GETOPT
+#define HAVE_IMSG
 #define HAVE_PATHS_H
 #define HAVE_PROGNAME
 #define HAVE_QUEUE_H
@@ -84,9 +85,7 @@ case $TMUX_PLATFORM in
 EOF
 	cat <<EOF >>$CONFIG_MK
 LIBS+= -lcurses -lutil -levent
-SRCS+= osdep-openbsd.c \
-	compat/imsg-buffer.c \
-	compat/imsg.c
+SRCS+= osdep-openbsd.c
 EOF
 	;;
 # ------------------------------------------------------------------------------

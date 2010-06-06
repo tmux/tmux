@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.24 2010-06-05 16:29:40 nicm Exp $ */
+/* $Id: compat.h,v 1.25 2010-06-06 13:00:46 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -81,6 +81,8 @@ typedef uint64_t u_int64_t;
 
 #ifndef HAVE_IMSG
 #include "compat/imsg.h"
+#else
+#include <imsg.h>
 #endif
 
 #ifdef HAVE_BROKEN_CMSG_FIRSTHDR
