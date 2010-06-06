@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.26 2010-02-08 18:29:32 tcunha Exp $ */
+/* $Id: cfg.c,v 1.27 2010-06-06 00:04:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -69,7 +69,7 @@ cfg_add_cause(struct causelist *causes, const char *fmt, ...)
 
 /*
  * Load configuration file. Returns -1 for an error with a list of messages in
- * causes. Note that causes and ncauses must be initialised by the caller!
+ * causes. Note that causes must be initialised by the caller!
  */
 int
 load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
