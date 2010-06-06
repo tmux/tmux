@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.32 2010-05-22 21:56:04 micahcowan Exp $ */
+/* $Id: server-client.c,v 1.33 2010-06-06 00:30:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -560,9 +560,10 @@ server_client_msg_dispatch(struct client *c)
 			if (datalen != 0)
 				fatalx("bad MSG_RESIZE size");
 
-			tty_resize(&c->tty);
-			recalculate_sizes();
-			server_redraw_client(c);
+			if (tty_resize(&c->tty)) {
+				recalculate_sizes();
+				server_redraw_client(c);
+			}
 			break;
 		case MSG_EXITING:
 			if (datalen != 0)

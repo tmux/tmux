@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.560 2010-06-06 00:23:44 tcunha Exp $ */
+/* $Id: tmux.h,v 1.561 2010-06-06 00:30:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1354,7 +1354,7 @@ void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
 void	tty_pututf8(struct tty *, const struct grid_utf8 *);
 void	tty_init(struct tty *, int, char *);
-void	tty_resize(struct tty *);
+int	tty_resize(struct tty *);
 void	tty_start_tty(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);

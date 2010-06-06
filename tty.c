@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.191 2010-06-06 00:27:08 tcunha Exp $ */
+/* $Id: tty.c,v 1.192 2010-06-06 00:30:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -73,34 +73,55 @@ tty_init(struct tty *tty, int fd, char *term)
 	tty->term_flags = 0;
 }
 
-void
+int
 tty_resize(struct tty *tty)
 {
 	struct winsize	ws;
+	u_int		sx, sy;
 
 	if (ioctl(tty->fd, TIOCGWINSZ, &ws) != -1) {
-		tty->sx = ws.ws_col;
-		tty->sy = ws.ws_row;
+		sx = ws.ws_col;
+		if (sx == 0)
+			sx = 80;
+		sy = ws.ws_row;
+		if (sy == 0)
+			sy = 24;
+	} else {
+		sx = 80;
+		sy = 24;
 	}
-	if (tty->sx == 0)
-		tty->sx = 80;
-	if (tty->sy == 0)
-		tty->sy = 24;
+	if (sx == tty->sx && sy == tty->sy)
+		return (0);
+	tty->sx = sx;
+	tty->sy = sy;
 
 	tty->cx = UINT_MAX;
 	tty->cy = UINT_MAX;
 
 	tty->rupper = UINT_MAX;
 	tty->rlower = UINT_MAX;
+
+	/*
+	 * If the terminal has been started, reset the actual scroll region and
+	 * cursor position, as this may not have happened.
+	 */
+	if (tty->flags & TTY_STARTED) {
+		tty_cursor(tty, 0, 0);
+		tty_region(tty, 0, tty->sy - 1);
+	}
+
+	return (1);
 }
 
 int
 tty_open(struct tty *tty, const char *overrides, char **cause)
 {
+	char	out[64];
 	int	fd;
 
 	if (debug_level > 3) {
-		fd = open("tmux.out", O_WRONLY|O_CREAT|O_TRUNC, 0644);
+		xsnprintf(out, sizeof out, "tmux-out-%ld.log", (long) getpid());
+		fd = open(out, O_WRONLY|O_CREAT|O_TRUNC, 0644);
 		if (fd != -1 && fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 			fatal("fcntl failed");
 		tty->log_fd = fd;
