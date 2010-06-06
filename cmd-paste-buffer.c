@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.27 2010-06-06 00:01:36 tcunha Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.28 2010-06-06 00:03:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,7 +20,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <vis.h>
 
 #include "tmux.h"
 
