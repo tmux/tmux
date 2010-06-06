@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.251 2010-06-05 23:56:29 tcunha Exp $
+.\" $Id: tmux.1,v 1.252 2010-06-06 00:01:36 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: May 14 2010 $
+.Dd $Mdocdate: May 19 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2387,6 +2387,7 @@ Load the contents of the specified paste buffer from
 .It Xo Ic paste-buffer
 .Op Fl dr
 .Op Fl b Ar buffer-index
+.Op Fl s Ar separator
 .Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic pasteb )
@@ -2396,10 +2397,13 @@ With
 .Fl d ,
 also delete the paste buffer from the stack.
 When output, any linefeed (LF) characters in the paste buffer are replaced with
-carriage returns (CR).
-This translation may be disabled with the
-.Fl r
+a separator, by default carriage return (CR).
+A custom separator may be specified using the
+.Fl s
 flag.
+The
+.Fl r
+flag means to do no replacement (equivalent to a separator of LF).
 .It Xo Ic save-buffer
 .Op Fl a
 .Op Fl b Ar buffer-index
