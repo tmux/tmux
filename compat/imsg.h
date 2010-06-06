@@ -1,5 +1,5 @@
-/* $Id: imsg.h,v 1.4 2009-09-15 23:59:40 tcunha Exp $ */
-/*	$OpenBSD: imsg.h,v 1.2 2009/09/15 18:12:51 jacekm Exp $	*/
+/* $Id: imsg.h,v 1.5 2010-06-06 00:08:28 tcunha Exp $ */
+/*	$OpenBSD: imsg.h,v 1.4 2010/05/26 13:56:07 nicm Exp $	*/
 
 /*
  * Copyright (c) 2006, 2007 Pierre-Yves Ritschard <pyr@openbsd.org>
@@ -21,12 +21,12 @@
 
 #include "tmux.h"
 
-#define READ_BUF_SIZE		65535
+#define IBUF_READ_SIZE		65535
 #define IMSG_HEADER_SIZE	sizeof(struct imsg_hdr)
 #define MAX_IMSGSIZE		16384
 
-struct buf {
-	TAILQ_ENTRY(buf)	 entry;
+struct ibuf {
+	TAILQ_ENTRY(ibuf)	 entry;
 	u_char			*buf;
 	size_t			 size;
 	size_t			 max;
@@ -36,13 +36,13 @@ struct buf {
 };
 
 struct msgbuf {
-	TAILQ_HEAD(, buf)	 bufs;
+	TAILQ_HEAD(, ibuf)	 bufs;
 	u_int32_t		 queued;
 	int			 fd;
 };
 
-struct buf_read {
-	u_char			 buf[READ_BUF_SIZE];
+struct ibuf_read {
+	u_char			 buf[IBUF_READ_SIZE];
 	u_char			*rptr;
 	size_t			 wpos;
 };
@@ -54,7 +54,7 @@ struct imsg_fd {
 
 struct imsgbuf {
 	TAILQ_HEAD(, imsg_fd)	 fds;
-	struct buf_read		 r;
+	struct ibuf_read	 r;
 	struct msgbuf		 w;
 	int			 fd;
 	pid_t			 pid;
@@ -78,16 +78,16 @@ struct imsg {
 
 
 /* buffer.c */
-struct buf	*buf_open(size_t);
-struct buf	*buf_dynamic(size_t, size_t);
-int		 buf_add(struct buf *, const void *, size_t);
-void		*buf_reserve(struct buf *, size_t);
-void		*buf_seek(struct buf *, size_t, size_t);
-size_t		 buf_size(struct buf *);
-size_t		 buf_left(struct buf *);
-void		 buf_close(struct msgbuf *, struct buf *);
-int		 buf_write(struct msgbuf *);
-void		 buf_free(struct buf *);
+struct ibuf	*ibuf_open(size_t);
+struct ibuf	*ibuf_dynamic(size_t, size_t);
+int		 ibuf_add(struct ibuf *, const void *, size_t);
+void		*ibuf_reserve(struct ibuf *, size_t);
+void		*ibuf_seek(struct ibuf *, size_t, size_t);
+size_t		 ibuf_size(struct ibuf *);
+size_t		 ibuf_left(struct ibuf *);
+void		 ibuf_close(struct msgbuf *, struct ibuf *);
+int		 ibuf_write(struct msgbuf *);
+void		 ibuf_free(struct ibuf *);
 void		 msgbuf_init(struct msgbuf *);
 void		 msgbuf_clear(struct msgbuf *);
 int		 msgbuf_write(struct msgbuf *);
@@ -101,10 +101,10 @@ int	 imsg_compose(struct imsgbuf *, u_int32_t, u_int32_t, pid_t,
 	    int, void *, u_int16_t);
 int	 imsg_composev(struct imsgbuf *, u_int32_t, u_int32_t,  pid_t,
 	    int, const struct iovec *, int);
-struct buf *imsg_create(struct imsgbuf *, u_int32_t, u_int32_t, pid_t,
+struct ibuf *imsg_create(struct imsgbuf *, u_int32_t, u_int32_t, pid_t,
 	    u_int16_t);
-int	 imsg_add(struct buf *, void *, u_int16_t);
-void	 imsg_close(struct imsgbuf *, struct buf *);
+int	 imsg_add(struct ibuf *, void *, u_int16_t);
+void	 imsg_close(struct imsgbuf *, struct ibuf *);
 void	 imsg_free(struct imsg *);
 int	 imsg_flush(struct imsgbuf *);
 void	 imsg_clear(struct imsgbuf *);

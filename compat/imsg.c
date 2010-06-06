@@ -1,5 +1,5 @@
-/* $Id: imsg.c,v 1.4 2010-04-12 21:45:18 tcunha Exp $ */
-/*	$OpenBSD: imsg.c,v 1.2 2010/04/07 18:09:39 nicm Exp $	*/
+/* $Id: imsg.c,v 1.5 2010-06-06 00:08:28 tcunha Exp $ */
+/*	$OpenBSD: imsg.c,v 1.3 2010/05/26 13:56:07 nicm Exp $	*/
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -135,7 +135,7 @@ int
 imsg_compose(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
     pid_t pid, int fd, void *data, u_int16_t datalen)
 {
-	struct buf	*wbuf;
+	struct ibuf	*wbuf;
 
 	if ((wbuf = imsg_create(ibuf, type, peerid, pid, datalen)) == NULL)
 		return (-1);
@@ -154,7 +154,7 @@ int
 imsg_composev(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
     pid_t pid, int fd, const struct iovec *iov, int iovcnt)
 {
-	struct buf	*wbuf;
+	struct ibuf	*wbuf;
 	int		 i, datalen = 0;
 
 	for (i = 0; i < iovcnt; i++)
@@ -175,11 +175,11 @@ imsg_composev(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
 }
 
 /* ARGSUSED */
-struct buf *
+struct ibuf *
 imsg_create(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
     pid_t pid, u_int16_t datalen)
 {
-	struct buf	*wbuf;
+	struct ibuf	*wbuf;
 	struct imsg_hdr	 hdr;
 
 	datalen += IMSG_HEADER_SIZE;
@@ -193,7 +193,7 @@ imsg_create(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
 	hdr.peerid = peerid;
 	if ((hdr.pid = pid) == 0)
 		hdr.pid = ibuf->pid;
-	if ((wbuf = buf_dynamic(datalen, MAX_IMSGSIZE)) == NULL) {
+	if ((wbuf = ibuf_dynamic(datalen, MAX_IMSGSIZE)) == NULL) {
 		return (NULL);
 	}
 	if (imsg_add(wbuf, &hdr, sizeof(hdr)) == -1)
@@ -203,18 +203,18 @@ imsg_create(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
 }
 
 int
-imsg_add(struct buf *msg, void *data, u_int16_t datalen)
+imsg_add(struct ibuf *msg, void *data, u_int16_t datalen)
 {
 	if (datalen)
-		if (buf_add(msg, data, datalen) == -1) {
-			buf_free(msg);
+		if (ibuf_add(msg, data, datalen) == -1) {
+			ibuf_free(msg);
 			return (-1);
 		}
 	return (datalen);
 }
 
 void
-imsg_close(struct imsgbuf *ibuf, struct buf *msg)
+imsg_close(struct imsgbuf *ibuf, struct ibuf *msg)
 {
 	struct imsg_hdr	*hdr;
 
@@ -226,7 +226,7 @@ imsg_close(struct imsgbuf *ibuf, struct buf *msg)
 
 	hdr->len = (u_int16_t)msg->wpos;
 
-	buf_close(&ibuf->w, msg);
+	ibuf_close(&ibuf->w, msg);
 }
 
 void
