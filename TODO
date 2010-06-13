@@ -160,5 +160,6 @@ For 1.3 (not in order):
 16 monitor, bell etc should monitor /all/ panes in the window not just one
 17 wd should be updated on attach etc. maybe lose default-path and use PWD
 18 a history of commands that can be reversed (reverse member of each command, and a buffer)
+19 info() when changing to same window
 ...
 
