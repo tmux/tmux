@@ -1138,6 +1138,11 @@ be toggled with a single key, for example:
 .Bd -literal -offset indent
 bind-key C-p pipe-pane -o 'cat >>~/output.#I-#P'
 .Ed
+.It Xo Ic previous-layout
+.Op Fl t Ar target-window
+.Xc
+.D1 (alias: Ic prevl )
+Move to the previous layout in the session.
 .It Xo Ic previous-window
 .Op Fl a
 .Op Fl t Ar target-session
@@ -1201,7 +1206,7 @@ or downward (numerically higher).
 .Op Fl t Ar target-window
 .Op Ar layout-name
 .Xc
-.D1 (alias: selectl )
+.D1 (alias: Ic selectl )
 Choose a specific layout for a window.
 If
 .Ar layout-name
@@ -1235,7 +1240,7 @@ Select the window at
 .Op Fl t Ar target-pane
 .Op Ar shell-command
 .Xc
-.D1 (alias: splitw )
+.D1 (alias: Ic splitw )
 Create a new pane by splitting
 .Ar target-pane :
 .Fl h
