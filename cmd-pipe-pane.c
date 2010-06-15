@@ -1,4 +1,4 @@
-/* $Id: cmd-pipe-pane.c,v 1.12 2010-06-06 00:28:00 tcunha Exp $ */
+/* $Id: cmd-pipe-pane.c,v 1.13 2010-06-15 20:25:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,7 +55,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*command;
 	int			 old_fd, pipe_fd[2], null_fd, mode;
 
-	if ((c = cmd_find_client(ctx, data->target)) == NULL)
+	if ((c = cmd_find_client(ctx, NULL)) == NULL)
 		return (-1);
 
 	if (cmd_find_pane(ctx, data->target, NULL, &wp) == NULL)
