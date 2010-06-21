@@ -32,8 +32,8 @@ struct sessions	sessions;
 struct sessions dead_sessions;
 struct session_groups session_groups;
 
-struct winlink *session_next_activity(struct session *, struct winlink *);
-struct winlink *session_previous_activity(struct session *, struct winlink *);
+struct winlink *session_next_alert(struct session *, struct winlink *);
+struct winlink *session_previous_alert(struct session *, struct winlink *);
 
 void
 session_alert_cancel(struct session *s, struct winlink *wl)
@@ -310,7 +310,7 @@ session_has(struct session *s, struct window *w)
 }
 
 struct winlink *
-session_next_activity(struct session *s, struct winlink *wl)
+session_next_alert(struct session *s, struct winlink *wl)
 {
 	while (wl != NULL) {
 		if (session_alert_has(s, wl, WINDOW_BELL))
@@ -326,7 +326,7 @@ session_next_activity(struct session *s, struct winlink *wl)
 
 /* Move session to next window. */
 int
-session_next(struct session *s, int activity)
+session_next(struct session *s, int alert)
 {
 	struct winlink	*wl;
 
@@ -334,11 +334,11 @@ session_next(struct session *s, int activity)
 		return (-1);
 
 	wl = winlink_next(s->curw);
-	if (activity)
-		wl = session_next_activity(s, wl);
+	if (alert)
+		wl = session_next_alert(s, wl);
 	if (wl == NULL) {
 		wl = RB_MIN(winlinks, &s->windows);
-		if (activity && ((wl = session_next_activity(s, wl)) == NULL))
+		if (alert && ((wl = session_next_alert(s, wl)) == NULL))
 			return (-1);
 	}
 	if (wl == s->curw)
@@ -351,7 +351,7 @@ session_next(struct session *s, int activity)
 }
 
 struct winlink *
-session_previous_activity(struct session *s, struct winlink *wl)
+session_previous_alert(struct session *s, struct winlink *wl)
 {
 	while (wl != NULL) {
 		if (session_alert_has(s, wl, WINDOW_BELL))
@@ -367,7 +367,7 @@ session_previous_activity(struct session *s, struct winlink *wl)
 
 /* Move session to previous window. */
 int
-session_previous(struct session *s, int activity)
+session_previous(struct session *s, int alert)
 {
 	struct winlink	*wl;
 
@@ -375,11 +375,11 @@ session_previous(struct session *s, int activity)
 		return (-1);
 
 	wl = winlink_previous(s->curw);
-	if (activity)
-		wl = session_previous_activity(s, wl);
+	if (alert)
+		wl = session_previous_alert(s, wl);
 	if (wl == NULL) {
 		wl = RB_MAX(winlinks, &s->windows);
-		if (activity && (wl = session_previous_activity(s, wl)) == NULL)
+		if (alert && (wl = session_previous_alert(s, wl)) == NULL)
 			return (-1);
 	}
 	if (wl == s->curw)
