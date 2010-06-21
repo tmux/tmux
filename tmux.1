@@ -428,6 +428,18 @@ One of the strings
 .Em bottom-right
 may be used instead of a pane index.
 .Pp
+The special characters
+.Ql +
+and
+.Ql -
+may be followed by an offset, for example:
+.Bd -literal -offset indent
+select-window -t:+2
+.Ed
+.Pp
+When dealing with a session that doesn't contain sequential window indexes,
+they will be correctly skipped.
+.Pp
 .Ar shell-command
 arguments are
 .Xr sh 1

@@ -538,7 +538,7 @@ cmd_lookup_session(const char *name, int *ambiguous)
 /*
  * Lookup a window or return -1 if not found or ambigious. First try as an
  * index and if invalid, use fnmatch or leading prefix. Return NULL but fill in
- * idx if the window index is a valid number but there is now window with that
+ * idx if the window index is a valid number but there is no window with that
  * index.
  */
 struct winlink *
@@ -660,6 +660,7 @@ cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 	const char	*winptr;
 	char		*sessptr = NULL;
 	int		 ambiguous = 0;
+	int		 n = 1;
 
 	/*
 	 * Find the current session. There must always be a current session, if
@@ -705,11 +706,21 @@ cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 		wl = s->curw;
 	else if (winptr[0] == '!' && winptr[1] == '\0')
 		wl = TAILQ_FIRST(&s->lastw);
-	else if (winptr[0] == '+' && winptr[1] == '\0')
-		wl = winlink_next(s->curw);
-	else if (winptr[0] == '-' && winptr[1] == '\0')
-		wl = winlink_previous(s->curw);
-	else
+	else if (winptr[0] == '+' || winptr[0] == '-') {
+		if (winptr[1] != '\0')
+			n = strtonum(winptr + 1, 1, INT_MAX, NULL);
+		if (n == 0)
+			wl = cmd_lookup_window(s, winptr, &ambiguous);
+		else {
+			if (winptr[0] == '+')
+				wl = winlink_next_by_number(s->curw, n);
+			else
+				wl = winlink_previous_by_number(s->curw, n);
+			/* Search by name before giving up. */
+			if (wl == NULL)
+				wl = cmd_lookup_window(s, winptr, &ambiguous);
+		}
+	} else
 		wl = cmd_lookup_window(s, winptr, &ambiguous);
 	if (wl == NULL)
 		goto not_found;
@@ -726,24 +737,40 @@ no_colon:
 	if (arg[0] == '!' && arg[1] == '\0') {
 		if ((wl = TAILQ_FIRST(&s->lastw)) == NULL)
 			goto not_found;
-	} else if (arg[0] == '+' && arg[1] == '\0') {
-		if ((wl = winlink_next(s->curw)) == NULL)
-			goto not_found;
-	} else if (arg[0] == '-' && arg[1] == '\0') {
-		if ((wl = winlink_previous(s->curw)) == NULL)
-			goto not_found;
-	} else if ((wl = cmd_lookup_window(s, arg, &ambiguous)) == NULL) {
-		if (ambiguous)
-			goto not_found;
-		if ((s = cmd_lookup_session(arg, &ambiguous)) == NULL)
-			goto no_session;
-		wl = s->curw;
-	}
+	} else if (arg[0] == '+' || arg[0] == '-') {
+		if (arg[1] != '\0')
+			n = strtonum(arg + 1, 1, INT_MAX, NULL);
+		if (n == 0)
+			wl = cmd_lookup_window(s, arg, &ambiguous);
+		else {
+			if (arg[0] == '+')
+				wl = winlink_next_by_number(s->curw, n);
+			else
+				wl = winlink_previous_by_number(s->curw, n);
+			/* Search by name before giving up. */
+			if (wl == NULL)
+				wl = cmd_lookup_window(s, arg, &ambiguous);
+		}
+		if (wl == NULL)
+			goto lookup_session;
+	} else if ((wl = cmd_lookup_window(s, arg, &ambiguous)) == NULL)
+		goto lookup_session;
 
 	if (sp != NULL)
 		*sp = s;
 
 	return (wl);
+
+lookup_session:
+	if (ambiguous)
+		goto not_found;
+	if ((s = cmd_lookup_session(arg, &ambiguous)) == NULL)
+		goto no_session;
+
+	if (sp != NULL)
+		*sp = s;
+
+	return (s->curw);
 
 no_session:
 	if (ambiguous)
@@ -778,6 +805,7 @@ cmd_find_index(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 	const char	*winptr;
 	char		*sessptr = NULL;
 	int		 idx, ambiguous = 0;
+	int		 n = 1;
 
 	/*
 	 * Find the current session. There must always be a current session, if
@@ -825,20 +853,23 @@ cmd_find_index(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 		if ((wl = TAILQ_FIRST(&s->lastw)) == NULL)
 			goto not_found;
 		idx = wl->idx;
-	} else if (winptr[0] == '+' && winptr[1] == '\0') {
-		if (s->curw->idx == INT_MAX)
-			goto not_found;
-		idx = s->curw->idx + 1;
-	} else if (winptr[0] == '-' && winptr[1] == '\0') {
-		if (s->curw->idx == 0)
-			goto not_found;
-		idx = s->curw->idx - 1;
-	} else if ((idx = cmd_lookup_index(s, winptr, &ambiguous)) == -1) {
-		if (ambiguous)
-			goto not_found;
-		ctx->error(ctx, "invalid index: %s", arg);
-		idx = -2;
-	}
+	} else if (winptr[0] == '+' || winptr[0] == '-') {
+		if (winptr[1] != '\0')
+			n = strtonum(winptr + 1, 1, INT_MAX, NULL);
+		if (winptr[0] == '+' && s->curw->idx == INT_MAX)
+			idx = cmd_lookup_index(s, winptr, &ambiguous);
+		else if (winptr[0] == '-' && s->curw->idx == 0)
+			idx = cmd_lookup_index(s, winptr, &ambiguous);
+		else if (n == 0)
+			idx = cmd_lookup_index(s, winptr, &ambiguous);
+		else if (winptr[0] == '+')
+			idx = s->curw->idx + n;
+		else
+			idx = s->curw->idx - n;
+		if (idx < 0)
+			goto invalid_index;
+	} else if ((idx = cmd_lookup_index(s, winptr, &ambiguous)) == -1)
+		goto invalid_index;
 
 	if (sessptr != NULL)
 		xfree(sessptr);
@@ -853,32 +884,54 @@ no_colon:
 		if ((wl = TAILQ_FIRST(&s->lastw)) == NULL)
 			goto not_found;
 		idx = wl->idx;
-	} else if (arg[0] == '+' && arg[1] == '\0') {
-		if (s->curw->idx == INT_MAX)
-			goto not_found;
-		idx = s->curw->idx + 1;
-	} else if (arg[0] == '-' && arg[1] == '\0') {
-		if (s->curw->idx == 0)
-			goto not_found;
-		idx = s->curw->idx - 1;
-	} else if ((idx = cmd_lookup_index(s, arg, &ambiguous)) == -1) {
-		if (ambiguous)
-			goto not_found;
-		if ((s = cmd_lookup_session(arg, &ambiguous)) == NULL)
-			goto no_session;
-		idx = -1;
-	}
+	} else if (arg[0] == '+' || arg[0] == '-') {
+		if (arg[1] != '\0')
+			n = strtonum(arg + 1, 1, INT_MAX, NULL);
+		if (arg[0] == '+' && s->curw->idx == INT_MAX)
+			idx = cmd_lookup_index(s, arg, &ambiguous);
+		else if (arg[0] == '-' && s->curw->idx == 0)
+			idx = cmd_lookup_index(s, arg, &ambiguous);
+		else if (n == 0)
+			idx = cmd_lookup_index(s, arg, &ambiguous);
+		else if (arg[0] == '+')
+			idx = s->curw->idx + n;
+		else
+			idx = s->curw->idx - n;
+		if (idx < 0)
+			goto lookup_session;
+	} else if ((idx = cmd_lookup_index(s, arg, &ambiguous)) == -1)
+		goto lookup_session;
 
 	if (sp != NULL)
 		*sp = s;
 
 	return (idx);
 
+lookup_session:
+	if (ambiguous)
+		goto not_found;
+	if ((s = cmd_lookup_session(arg, &ambiguous)) == NULL)
+		goto no_session;
+
+	if (sp != NULL)
+		*sp = s;
+
+	return (-1);
+
 no_session:
 	if (ambiguous)
 		ctx->error(ctx, "multiple sessions: %s", arg);
 	else
 		ctx->error(ctx, "session not found: %s", arg);
+	if (sessptr != NULL)
+		xfree(sessptr);
+	return (-2);
+
+invalid_index:
+	if (ambiguous)
+		goto not_found;
+	ctx->error(ctx, "invalid index: %s", arg);
+
 	if (sessptr != NULL)
 		xfree(sessptr);
 	return (-2);
@@ -907,7 +960,7 @@ cmd_find_pane(struct cmd_ctx *ctx,
 	struct layout_cell	*lc;
 	const char		*period, *errstr;
 	char			*winptr, *paneptr;
-	u_int			 idx;
+	u_int			 idx, n = 1;
 
 	/* Get the current session. */
 	if ((s = cmd_current_session(ctx)) == NULL) {
@@ -939,7 +992,27 @@ cmd_find_pane(struct cmd_ctx *ctx,
 	paneptr = winptr + (period - arg) + 1;
 	if (*paneptr == '\0')
 		*wpp = wl->window->active;
-	else {
+	else if (paneptr[0] == '+' || paneptr[0] == '-') {
+		if (paneptr[1] != '\0')
+			n = strtonum(paneptr + 1, 1, INT_MAX, NULL);
+		idx = window_pane_index(wl->window, wl->window->active);
+		if (paneptr[0] == '+' && idx == INT_MAX)
+			*wpp = TAILQ_FIRST(&wl->window->panes);
+		else if (paneptr[0] == '-' && idx == 0)
+			*wpp = TAILQ_LAST(&wl->window->panes, window_panes);
+		else if (n == 0)
+			*wpp = wl->window->active;
+		else if (paneptr[0] == '+')
+			*wpp = window_pane_at_index(wl->window, idx + n);
+		else
+			*wpp = window_pane_at_index(wl->window, idx - n);
+		if (paneptr[0] == '+' && *wpp == NULL)
+			*wpp = TAILQ_FIRST(&wl->window->panes);
+		else if (paneptr[0] == '-' && *wpp == NULL)
+			*wpp = TAILQ_LAST(&wl->window->panes, window_panes);
+		else if (*wpp == NULL)
+			goto error;
+	} else {
 		idx = strtonum(paneptr, 0, INT_MAX, &errstr);
 		if (errstr != NULL)
 			goto lookup_string;
@@ -952,20 +1025,6 @@ cmd_find_pane(struct cmd_ctx *ctx,
 	return (wl);
 
 lookup_string:
-	/* Try as next or previous pane. */
-	if (paneptr[0] == '+' && paneptr[1] == '\0') {
-		*wpp = TAILQ_NEXT(wl->window->active, entry);
-		if (*wpp == NULL)
-			*wpp = TAILQ_FIRST(&wl->window->panes);
-		return (wl);
-	}
-	if (paneptr[0] == '-' && paneptr[1] == '\0') {
-		*wpp = TAILQ_PREV(wl->window->active, window_panes, entry);
-		if (*wpp == NULL)
-			*wpp = TAILQ_LAST(&wl->window->panes, window_panes);
-		return (wl);
-	}
-
 	/* Try pane string description. */
 	if ((lc = layout_find_string(wl->window, paneptr)) == NULL) {
 		ctx->error(ctx, "can't find pane: %s", paneptr);

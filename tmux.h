@@ -1799,6 +1799,8 @@ struct winlink	*winlink_add(struct winlinks *, struct window *, int);
 void		 winlink_remove(struct winlinks *, struct winlink *);
 struct winlink	*winlink_next(struct winlink *);
 struct winlink	*winlink_previous(struct winlink *);
+struct winlink	*winlink_next_by_number(struct winlink *, int);
+struct winlink	*winlink_previous_by_number(struct winlink *, int);
 void		 winlink_stack_push(struct winlink_stack *, struct winlink *);
 void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 int		 window_index(struct window *, u_int *);

@@ -172,6 +172,28 @@ winlink_previous(struct winlink *wl)
 	return (RB_PREV(winlinks, wwl, wl));
 }
 
+struct winlink *
+winlink_next_by_number(struct winlink *wl, int n)
+{
+	for (; n > 0; n--) {
+		if ((wl = RB_NEXT(winlinks, wwl, wl)) == NULL)
+			break;
+	}
+
+	return (wl);
+}
+
+struct winlink *
+winlink_previous_by_number(struct winlink *wl, int n)
+{
+	for (; n > 0; n--) {
+		if ((wl = RB_PREV(winlinks, wwl, wl)) == NULL)
+			break;
+	}
+
+	return (wl);
+}
+
 void
 winlink_stack_push(struct winlink_stack *stack, struct winlink *wl)
 {
