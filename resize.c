@@ -105,7 +105,7 @@ recalculate_sizes(void)
 			if (flag)
 				has = s->curw->window == w;
 			else
-				has = session_has(s, w);
+				has = session_has(s, w) != NULL;
 			if (has) {
 				if (s->sx < ssx)
 					ssx = s->sx;

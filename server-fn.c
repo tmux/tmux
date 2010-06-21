@@ -184,7 +184,7 @@ server_status_window(struct window *w)
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
-		if (s != NULL && session_has(s, w))
+		if (s != NULL && session_has(s, w) != NULL)
 			server_status_session(s);
 	}
 }
@@ -249,7 +249,7 @@ server_kill_window(struct window *w)
 
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s = ARRAY_ITEM(&sessions, i);
-		if (s == NULL || !session_has(s, w))
+		if (s == NULL || session_has(s, w) == NULL)
 			continue;
 		while ((wl = winlink_find_by_window(&s->windows, w)) != NULL) {
 			if (session_detach(s, wl)) {
@@ -286,7 +286,7 @@ server_link_window(struct session *src, struct winlink *srcwl,
 			 * Can't use session_detach as it will destroy session
 			 * if this makes it empty.
 			 */
-			session_alert_cancel(dst, dstwl);
+			dstwl->flags &= ~WINLINK_ALERTFLAGS;
 			winlink_stack_remove(&dst->lastw, dstwl);
 			winlink_remove(&dst->windows, dstwl);
 

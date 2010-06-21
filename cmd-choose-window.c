@@ -81,11 +81,11 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		idx++;
 
 		flag = ' ';
-		if (session_alert_has(s, wm, WINDOW_ACTIVITY))
+		if (wm->flags & WINLINK_ACTIVITY)
 			flag = '#';
-		else if (session_alert_has(s, wm, WINDOW_BELL))
+		else if (wm->flags & WINLINK_BELL)
 			flag = '!';
-		else if (session_alert_has(s, wm, WINDOW_CONTENT))
+		else if (wm->flags & WINLINK_CONTENT)
 			flag = '+';
 		else if (wm == s->curw)
 			flag = '*';
