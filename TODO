@@ -142,7 +142,6 @@ For 1.3 (not in order):
 
 3 why are alerts per-winlink? try per window?
 4 audit of escape sequence support vs xterm
-5 double C-a should walk back over wrapped lines like C-e
 6 rectangle copy: when selecting leftward, cursor should be inside block per
   emacs key to rotate corner at which cursor is
 8 stdin fd should be passed up to parent so load-buffer and others could use it
@@ -154,9 +153,7 @@ For 1.3 (not in order):
 11 documentation improvements - rlpowell's tutorial
                               - build instructions
 12 better configure? with-libevent
-13 fix binding multiple keys, C-M-Left C-M-Up etc
 14 bind commands to key sequences?
-15 socket should be group writable and ownership should be maintained
 16 monitor, bell etc should monitor /all/ panes in the window not just one
 17 wd should be updated on attach etc. maybe lose default-path and use PWD
 18 a history of commands that can be reversed (reverse member of each command, and a buffer)
