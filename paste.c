@@ -1,4 +1,4 @@
-/* $Id: paste.c,v 1.14 2010-06-22 23:35:20 tcunha Exp $ */
+/* $Id: paste.c,v 1.15 2010-06-22 23:36:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,7 +20,6 @@
 #include <sys/time.h>
 
 #include <string.h>
-#include <vis.h>
 
 #include "tmux.h"
 
