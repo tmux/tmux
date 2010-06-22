@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.563 2010-06-22 23:29:05 tcunha Exp $ */
+/* $Id: tmux.h,v 1.564 2010-06-22 23:35:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1405,6 +1405,7 @@ int		 paste_free_top(struct paste_stack *);
 int		 paste_free_index(struct paste_stack *, u_int);
 void		 paste_add(struct paste_stack *, char *, size_t, u_int);
 int		 paste_replace(struct paste_stack *, u_int, char *, size_t);
+char		*paste_print(struct paste_buffer *, size_t);
 
 /* clock.c */
 extern const char clock_table[14][5][5];
@@ -1441,6 +1442,7 @@ extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
 extern const struct cmd_entry cmd_break_pane_entry;
 extern const struct cmd_entry cmd_capture_pane_entry;
+extern const struct cmd_entry cmd_choose_buffer_entry;
 extern const struct cmd_entry cmd_choose_client_entry;
 extern const struct cmd_entry cmd_choose_session_entry;
 extern const struct cmd_entry cmd_choose_window_entry;

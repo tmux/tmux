@@ -1,4 +1,4 @@
-/* $Id: cmd-list-buffers.c,v 1.15 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: cmd-list-buffers.c,v 1.16 2010-06-22 23:35:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,32 +46,17 @@ cmd_list_buffers_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session		*s;
 	struct paste_buffer	*pb;
 	u_int			 idx;
-	char			 tmp[51 * 4 + 1];
-	size_t			 size, len;
+	char			*tmp;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
 
 	idx = 0;
 	while ((pb = paste_walk_stack(&s->buffers, &idx)) != NULL) {
-		size = pb->size;
-
-		/* Translate the first 50 characters. */
-		len = size;
-		if (len > 50)
-			len = 50;
-		strvisx(tmp, pb->data, len, VIS_OCTAL|VIS_TAB|VIS_NL);
-
-		/*
-		 * If the first 50 characters were encoded as a longer string,
-		 * or there is definitely more data, add "...".
-		 */
-		if (size > 50 || strlen(tmp) > 50) {
-			tmp[50 - 3] = '\0';
-			strlcat(tmp, "...", sizeof tmp);
-		}
-
-		ctx->print(ctx, "%u: %zu bytes: \"%s\"", idx - 1, size, tmp);
+		tmp = paste_print(pb, 50);
+		ctx->print(ctx,
+		    "%u: %zu bytes: \"%s\"", idx - 1, pb->size, tmp);
+		xfree(tmp);
 	}
 
 	return (0);

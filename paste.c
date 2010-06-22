@@ -1,4 +1,4 @@
-/* $Id: paste.c,v 1.13 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: paste.c,v 1.14 2010-06-22 23:35:20 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,6 +20,7 @@
 #include <sys/time.h>
 
 #include <string.h>
+#include <vis.h>
 
 #include "tmux.h"
 
@@ -155,4 +156,28 @@ paste_replace(struct paste_stack *ps, u_int idx, char *data, size_t size)
 	pb->size = size;
 
 	return (0);
+}
+
+/* Convert a buffer into a visible string. */
+char *
+paste_print(struct paste_buffer *pb, size_t width)
+{
+	char	*buf;
+	size_t	 len, used;
+
+	if (width < 3)
+		width = 3;
+	buf = xmalloc(width * 4 + 1);
+
+	len = pb->size;
+	if (len > width)
+		len = width;
+
+	used = strvisx(buf, pb->data, len, VIS_OCTAL|VIS_TAB|VIS_NL);
+	if (pb->size > width || used > width) {
+		buf[width - 3] = '\0';
+		strlcat(buf, "...", width);
+	}
+
+	return (buf);
 }
