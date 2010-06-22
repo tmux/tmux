@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.258 2010-06-15 20:24:52 tcunha Exp $
+.\" $Id: tmux.1,v 1.259 2010-06-22 23:29:05 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: June 14 2010 $
+.Dd $Mdocdate: June 21 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -427,6 +427,18 @@ One of the strings
 .Em bottom-left or
 .Em bottom-right
 may be used instead of a pane index.
+.Pp
+The special characters
+.Ql +
+and
+.Ql -
+may be followed by an offset, for example:
+.Bd -literal -offset indent
+select-window -t:+2
+.Ed
+.Pp
+When dealing with a session that doesn't contain sequential window indexes,
+they will be correctly skipped.
 .Pp
 .Ar shell-command
 arguments are
