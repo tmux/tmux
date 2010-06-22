@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.561 2010-06-06 00:30:34 tcunha Exp $ */
+/* $Id: tmux.h,v 1.562 2010-06-22 23:26:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -842,8 +842,7 @@ struct window {
 #define WINDOW_BELL 0x1
 #define WINDOW_HIDDEN 0x2
 #define WINDOW_ACTIVITY 0x4
-#define WINDOW_CONTENT 0x8
-#define WINDOW_REDRAW 0x10
+#define WINDOW_REDRAW 0x8
 
 	struct options	 options;
 
@@ -859,6 +858,12 @@ struct winlink {
 	size_t		 status_width;
 	struct grid_cell status_cell;
 	char		*status_text;
+
+	int              flags;
+#define WINLINK_BELL 0x1
+#define WINLINK_ACTIVITY 0x2
+#define WINLINK_CONTENT 0x4
+#define WINLINK_ALERTFLAGS (WINLINK_BELL|WINLINK_ACTIVITY|WINLINK_CONTENT)
 
 	RB_ENTRY(winlink) entry;
 	TAILQ_ENTRY(winlink) sentry;
@@ -911,13 +916,6 @@ struct environ_entry {
 RB_HEAD(environ, environ_entry);
 
 /* Client session. */
-struct session_alert {
-	struct winlink	*wl;
-	int		 type;
-
-	SLIST_ENTRY(session_alert) entry;
-};
-
 struct session_group {
 	TAILQ_HEAD(, session) sessions;
 
@@ -941,8 +939,6 @@ struct session {
 	struct options	 options;
 
 	struct paste_stack buffers;
-
-	SLIST_HEAD(, session_alert) alerts;
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
 #define SESSION_DEAD 0x2
@@ -1910,10 +1906,6 @@ void clear_signals(void);
 extern struct sessions sessions;
 extern struct sessions dead_sessions;
 extern struct session_groups session_groups;
-void	 session_alert_add(struct session *, struct window *, int);
-void	 session_alert_cancel(struct session *, struct winlink *);
-int	 session_alert_has(struct session *, struct winlink *, int);
-int	 session_alert_has_window(struct session *, struct window *, int);
 struct session	*session_find(const char *);
 struct session	*session_create(const char *, const char *, const char *,
 		     struct environ *, struct termios *, int, u_int, u_int,
@@ -1925,7 +1917,7 @@ struct winlink	*session_new(struct session *,
 struct winlink	*session_attach(
 		     struct session *, struct window *, int, char **);
 int		 session_detach(struct session *, struct winlink *);
-int		 session_has(struct session *, struct window *);
+struct winlink*	 session_has(struct session *, struct window *);
 int		 session_next(struct session *, int);
 int		 session_previous(struct session *, int);
 int		 session_select(struct session *, int);

@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-window.c,v 1.21 2010-04-22 21:51:27 tcunha Exp $ */
+/* $Id: cmd-choose-window.c,v 1.22 2010-06-22 23:26:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -81,11 +81,11 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		idx++;
 
 		flag = ' ';
-		if (session_alert_has(s, wm, WINDOW_ACTIVITY))
+		if (wm->flags & WINLINK_ACTIVITY)
 			flag = '#';
-		else if (session_alert_has(s, wm, WINDOW_BELL))
+		else if (wm->flags & WINLINK_BELL)
 			flag = '!';
-		else if (session_alert_has(s, wm, WINDOW_CONTENT))
+		else if (wm->flags & WINLINK_CONTENT)
 			flag = '+';
 		else if (wm == s->curw)
 			flag = '*';

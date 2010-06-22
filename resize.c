@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.24 2009-09-25 17:47:42 tcunha Exp $ */
+/* $Id: resize.c,v 1.25 2010-06-22 23:26:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -105,7 +105,7 @@ recalculate_sizes(void)
 			if (flag)
 				has = s->curw->window == w;
 			else
-				has = session_has(s, w);
+				has = session_has(s, w) != NULL;
 			if (has) {
 				if (s->sx < ssx)
 					ssx = s->sx;

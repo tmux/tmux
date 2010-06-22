@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.148 2010-06-05 23:56:29 tcunha Exp $ */
+/* $Id: status.c,v 1.149 2010-06-22 23:26:18 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -248,25 +248,15 @@ status_redraw(struct client *c)
 	 */
 	offset = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		if (larrow == 1 && offset < wlstart) {
-			if (session_alert_has(s, wl, WINDOW_ACTIVITY))
-				larrow = -1;
-			else if (session_alert_has(s, wl, WINDOW_BELL))
-				larrow = -1;
-			else if (session_alert_has(s, wl, WINDOW_CONTENT))
-				larrow = -1;
-		}
+		if (wl->flags & WINLINK_ALERTFLAGS &&
+		    larrow == 1 && offset < wlstart)
+			larrow = -1;
 
 		offset += wl->status_width;
 
-		if (rarrow == 1 && offset > wlstart + wlwidth) {
-			if (session_alert_has(s, wl, WINDOW_ACTIVITY))
-				rarrow = -1;
-			else if (session_alert_has(s, wl, WINDOW_BELL))
-				rarrow = -1;
-			else if (session_alert_has(s, wl, WINDOW_CONTENT))
-				rarrow = -1;
-		}
+		if (wl->flags & WINLINK_ALERTFLAGS &&
+		    rarrow == 1 && offset > wlstart + wlwidth)
+			rarrow = -1;
 	}
 
 draw:
@@ -399,11 +389,11 @@ status_replace1(struct client *c,struct winlink *wl,
 		goto do_replace;
 	case 'F':
 		tmp[0] = ' ';
-		if (session_alert_has(s, wl, WINDOW_CONTENT))
+		if (wl->flags & WINLINK_CONTENT)
 			tmp[0] = '+';
-		else if (session_alert_has(s, wl, WINDOW_BELL))
+		else if (wl->flags & WINLINK_BELL)
 			tmp[0] = '!';
-		else if (session_alert_has(s, wl, WINDOW_ACTIVITY))
+		else if (wl->flags & WINLINK_ACTIVITY)
 			tmp[0] = '#';
 		else if (wl == s->curw)
 			tmp[0] = '*';
@@ -593,9 +583,7 @@ status_print(
 		fmt = options_get_string(oo, "window-status-current-format");
 	}
 
-	if (session_alert_has(s, wl, WINDOW_ACTIVITY) ||
-	    session_alert_has(s, wl, WINDOW_BELL) ||
-	    session_alert_has(s, wl, WINDOW_CONTENT)) {
+	if (wl->flags & WINLINK_ALERTFLAGS) {
 		fg = options_get_number(oo, "window-status-alert-fg");
 		if (fg != 8)
 			colour_set_fg(gc, fg);
