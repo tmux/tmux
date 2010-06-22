@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.241 2010-05-16 17:50:31 nicm Exp $ */
+/* $Id: server.c,v 1.242 2010-06-22 23:21:39 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -85,7 +85,7 @@ server_create_socket(void)
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		fatal("socket failed");
 
-	mask = umask(S_IXUSR|S_IRWXG|S_IRWXO);
+	mask = umask(S_IXUSR|S_IXGRP|S_IRWXO);
 	if (bind(fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1)
 		fatal("bind failed");
 	umask(mask);
@@ -314,9 +314,9 @@ server_update_socket(void)
 	if (n != last) {
 		last = n;
 		if (n != 0)
-			chmod(socket_path, S_IRWXU);
+			chmod(socket_path, S_IRWXU|S_IRWXG);
 		else
-			chmod(socket_path, S_IRUSR|S_IWUSR);
+			chmod(socket_path, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
 	}
 }
 
