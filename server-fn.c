@@ -371,6 +371,7 @@ server_destroy_session(struct session *s)
 		c->session = NULL;
 		server_write_client(c, MSG_EXIT, NULL, 0);
 	}
+	recalculate_sizes();
 }
 
 void
