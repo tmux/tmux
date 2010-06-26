@@ -1161,7 +1161,10 @@ struct cmd {
 
 	TAILQ_ENTRY(cmd) qentry;
 };
-TAILQ_HEAD(cmd_list, cmd);
+struct cmd_list {
+	int		 references;
+	TAILQ_HEAD(, cmd) list;
+};
 
 struct cmd_entry {
 	const char	*name;

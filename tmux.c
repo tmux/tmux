@@ -517,7 +517,7 @@ main(int argc, char **argv)
 			exit(1);
 		}
 		cmdflags &= ~CMD_STARTSERVER;
-		TAILQ_FOREACH(cmd, cmdlist, qentry) {
+		TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
 			if (cmd->entry->flags & CMD_STARTSERVER)
 				cmdflags |= CMD_STARTSERVER;
 			if (cmd->entry->flags & CMD_SENDENVIRON)
