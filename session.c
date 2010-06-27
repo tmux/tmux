@@ -68,6 +68,8 @@ session_create(const char *name, const char *cmd, const char *cwd,
 		fatal("gettimeofday failed");
 	memcpy(&s->activity_time, &s->creation_time, sizeof s->activity_time);
 
+	s->cwd = xstrdup(cwd);
+
 	s->curw = NULL;
 	TAILQ_INIT(&s->lastw);
 	RB_INIT(&s->windows);
@@ -142,6 +144,7 @@ session_destroy(struct session *s)
 	while (!RB_EMPTY(&s->windows))
 		winlink_remove(&s->windows, RB_ROOT(&s->windows));
 
+	xfree(s->cwd);
 	xfree(s->name);
 
 	for (i = 0; i < ARRAY_LENGTH(&dead_sessions); i++) {

@@ -926,6 +926,7 @@ TAILQ_HEAD(session_groups, session_group);
 
 struct session {
 	char		*name;
+	char		*cwd;
 
 	struct timeval	 creation_time;
 	struct timeval	 activity_time;

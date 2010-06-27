@@ -170,10 +170,13 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	cmd = data->cmd;
 	if (cmd == NULL)
 		cmd = options_get_string(&s->options, "default-command");
-	if (ctx->cmdclient == NULL || ctx->cmdclient->cwd == NULL)
-		cwd = options_get_string(&s->options, "default-path");
-	else
-		cwd = ctx->cmdclient->cwd;
+	cwd = options_get_string(&s->options, "default-path");
+	if (*cwd == '\0') {
+		if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
+			cwd = ctx->cmdclient->cwd;
+		else
+			cwd = s->cwd;
+	}
 
 	type = LAYOUT_TOPBOTTOM;
 	if (data->flag_horizontal)
