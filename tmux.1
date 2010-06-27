@@ -1557,6 +1557,11 @@ Available window options are listed under
 .Pp
 Available server options are:
 .Bl -tag -width Ds
+.It Ic detach-on-destroy
+If on (the default), the client is detached when the session it is attached to
+is destroyed.
+If off, the client is switched to the most recently active of the remaining
+sessions.
 .It Ic escape-time
 Set the time in milliseconds for which
 .Nm
