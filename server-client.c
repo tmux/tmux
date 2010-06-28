@@ -69,6 +69,10 @@ server_client_create(int fd)
 
 	ARRAY_INIT(&c->prompt_hdata);
 
+	c->stdin_file = NULL;
+	c->stdout_file = NULL;
+	c->stderr_file = NULL;
+
 	c->tty.fd = -1;
 	c->title = NULL;
 
@@ -117,6 +121,13 @@ server_client_lost(struct client *c)
 	 */
 	if (c->flags & CLIENT_TERMINAL)
 		tty_free(&c->tty);
+
+	if (c->stdin_file != NULL)
+		fclose(c->stdin_file);
+	if (c->stdout_file != NULL)
+		fclose(c->stdout_file);
+	if (c->stderr_file != NULL)
+		fclose(c->stderr_file);
 
 	screen_free(&c->status);
 	job_tree_free(&c->status_jobs);
@@ -555,7 +566,30 @@ server_client_msg_dispatch(struct client *c)
 				fatalx("MSG_IDENTIFY missing fd");
 			memcpy(&identifydata, imsg.data, sizeof identifydata);
 
+			c->stdin_file = fdopen(imsg.fd, "r");
+			if (c->stdin_file == NULL)
+				fatal("fdopen(stdin) failed");
 			server_client_msg_identify(c, &identifydata, imsg.fd);
+			break;
+		case MSG_STDOUT:
+			if (datalen != 0)
+				fatalx("bad MSG_STDOUT size");
+			if (imsg.fd == -1)
+				fatalx("MSG_STDOUT missing fd");
+
+			c->stdout_file = fdopen(imsg.fd, "w");
+			if (c->stdout_file == NULL)
+				fatal("fdopen(stdout) failed");
+			break;
+		case MSG_STDERR:
+			if (datalen != 0)
+				fatalx("bad MSG_STDERR size");
+			if (imsg.fd == -1)
+				fatalx("MSG_STDERR missing fd");
+
+			c->stderr_file = fdopen(imsg.fd, "w");
+			if (c->stderr_file == NULL)
+				fatal("fdopen(stderr) failed");
 			break;
 		case MSG_RESIZE:
 			if (datalen != 0)
@@ -622,45 +656,45 @@ server_client_msg_dispatch(struct client *c)
 void printflike2
 server_client_msg_error(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	struct msg_print_data	data;
-	va_list			ap;
+	va_list	ap;
 
 	va_start(ap, fmt);
-	xvsnprintf(data.msg, sizeof data.msg, fmt, ap);
+	vfprintf(ctx->cmdclient->stderr_file, fmt, ap);
 	va_end(ap);
 
-	server_write_client(ctx->cmdclient, MSG_ERROR, &data, sizeof data);
+	fputc('\n', ctx->cmdclient->stderr_file);
+	fflush(ctx->cmdclient->stderr_file);
 }
 
 /* Callback to send print message to client. */
 void printflike2
 server_client_msg_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	struct msg_print_data	data;
-	va_list			ap;
+	va_list	ap;
 
 	va_start(ap, fmt);
-	xvsnprintf(data.msg, sizeof data.msg, fmt, ap);
+	vfprintf(ctx->cmdclient->stdout_file, fmt, ap);
 	va_end(ap);
 
-	server_write_client(ctx->cmdclient, MSG_PRINT, &data, sizeof data);
+	fputc('\n', ctx->cmdclient->stdout_file);
+	fflush(ctx->cmdclient->stdout_file);
 }
 
 /* Callback to send print message to client, if not quiet. */
 void printflike2
 server_client_msg_info(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	struct msg_print_data	data;
-	va_list			ap;
+	va_list	ap;
 
 	if (options_get_number(&global_options, "quiet"))
 		return;
 
 	va_start(ap, fmt);
-	xvsnprintf(data.msg, sizeof data.msg, fmt, ap);
+	vfprintf(ctx->cmdclient->stdout_file, fmt, ap);
 	va_end(ap);
 
-	server_write_client(ctx->cmdclient, MSG_PRINT, &data, sizeof data);
+	fputc('\n', ctx->cmdclient->stderr_file);
+	fflush(ctx->cmdclient->stdout_file);
 }
 
 /* Handle command message. */
@@ -717,13 +751,19 @@ void
 server_client_msg_identify(
     struct client *c, struct msg_identify_data *data, int fd)
 {
+	int	tty_fd;
+
 	c->cwd = NULL;
 	data->cwd[(sizeof data->cwd) - 1] = '\0';
 	if (*data->cwd != '\0')
 		c->cwd = xstrdup(data->cwd);
 
+	if (!isatty(fd))
+	    return;
+	if ((tty_fd = dup(fd)) == -1)
+		fatal("dup failed");
 	data->term[(sizeof data->term) - 1] = '\0';
-	tty_init(&c->tty, fd, data->term);
+	tty_init(&c->tty, tty_fd, data->term);
 	if (data->flags & IDENTIFY_UTF8)
 		c->tty.flags |= TTY_UTF8;
 	if (data->flags & IDENTIFY_256COLOURS)

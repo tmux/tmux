@@ -596,7 +596,6 @@ main_dispatch(const char *shellcmd)
 {
 	struct imsg		imsg;
 	ssize_t			n, datalen;
-	struct msg_print_data	printdata;
 	struct msg_shell_data	shelldata;
 
 	if ((n = imsg_read(main_ibuf)) == -1 || n == 0)
@@ -616,17 +615,6 @@ main_dispatch(const char *shellcmd)
 				fatalx("bad MSG_EXIT size");
 
 			exit(main_exitval);
-		case MSG_ERROR:
-		case MSG_PRINT:
-			if (datalen != sizeof printdata)
-				fatalx("bad MSG_PRINT size");
-			memcpy(&printdata, imsg.data, sizeof printdata);
-			printdata.msg[(sizeof printdata.msg) - 1] = '\0';
-
-			log_info("%s", printdata.msg);
-			if (imsg.hdr.type == MSG_ERROR)
-				main_exitval = 1;
-			break;
 		case MSG_READY:
 			if (datalen != 0)
 				fatalx("bad MSG_READY size");

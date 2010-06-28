@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION 5
+#define PROTOCOL_VERSION 6
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -68,7 +68,6 @@ extern char   **environ;
  */
 #define COMMAND_LENGTH 2048	/* packed argv size */
 #define TERMINAL_LENGTH 128	/* length of TERM environment variable */
-#define PRINT_LENGTH 512	/* printed error/message size */
 #define ENVIRON_LENGTH 1024	/* environment variable length */
 
 /*
@@ -373,7 +372,9 @@ enum msgtype {
 	MSG_ENVIRON,
 	MSG_UNLOCK,
 	MSG_LOCK,
-	MSG_SHELL
+	MSG_SHELL,
+	MSG_STDERR,
+	MSG_STDOUT,
 };
 
 /*
@@ -381,10 +382,6 @@ enum msgtype {
  *
  * Don't forget to bump PROTOCOL_VERSION if any of these change!
  */
-struct msg_print_data {
-	char		msg[PRINT_LENGTH];
-};
-
 struct msg_command_data {
 	pid_t		pid;			/* pid from $TMUX or -1 */
 	u_int		idx;			/* index from $TMUX */
@@ -1080,6 +1077,10 @@ struct client {
 	char		*cwd;
 
 	struct tty	 tty;
+	FILE		*stdin_file;
+	FILE		*stdout_file;
+	FILE		*stderr_file;
+
 	struct event	 repeat_timer;
 
 	struct timeval	 status_timer;

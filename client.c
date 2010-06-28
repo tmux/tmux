@@ -96,8 +96,7 @@ server_started:
 
 	if (cmdflags & CMD_SENDENVIRON)
 		client_send_environ();
-	if (isatty(STDIN_FILENO))
-		client_send_identify(flags);
+	client_send_identify(flags);
 
 	return (&client_ibuf);
 
@@ -131,6 +130,14 @@ client_send_identify(int flags)
 		fatal("dup failed");
 	imsg_compose(&client_ibuf,
 	    MSG_IDENTIFY, PROTOCOL_VERSION, -1, fd, &data, sizeof data);
+
+	if ((fd = dup(STDOUT_FILENO)) == -1)
+		fatal("dup failed");
+	imsg_compose(&client_ibuf, MSG_STDOUT, PROTOCOL_VERSION, -1, fd, NULL, 0);
+
+	if ((fd = dup(STDERR_FILENO)) == -1)
+		fatal("dup failed");
+	imsg_compose(&client_ibuf, MSG_STDERR, PROTOCOL_VERSION, -1, fd, NULL, 0);
 }
 
 void

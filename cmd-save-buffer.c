@@ -48,7 +48,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session		*s;
 	struct paste_buffer	*pb;
 	mode_t			mask;
-	FILE			*f;
+	FILE			*f, *close_f;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
@@ -65,15 +65,25 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	mask = umask(S_IRWXG | S_IRWXO);
-	if (cmd_check_flag(data->chflags, 'a'))
-		f = fopen(data->arg, "ab");
-	else
-		f = fopen(data->arg, "wb");
-	umask(mask);
-	if (f == NULL) {
-		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
-		return (-1);
+	if (strcmp(data->arg, "-") == 0) {
+		if (ctx->cmdclient == NULL) {
+			ctx->error(ctx, "%s: can't write to stdout", data->arg);
+			return (-1);
+		}
+		f = ctx->cmdclient->stdout_file;
+		close_f = NULL;
+	} else {
+		mask = umask(S_IRWXG | S_IRWXO);
+		if (cmd_check_flag(data->chflags, 'a'))
+			f = fopen(data->arg, "ab");
+		else
+			f = fopen(data->arg, "wb");
+		umask(mask);
+		if (f == NULL) {
+			ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
+			return (-1);
+		}
+		close_f = f;
 	}
 
 	if (fwrite(pb->data, 1, pb->size, f) != pb->size) {
@@ -82,7 +92,8 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	    	return (-1);
 	}
 
-	fclose(f);
+	if (close_f != NULL)
+		fclose(close_f);
 
 	return (0);
 }
