@@ -762,26 +762,17 @@ window_copy_mouse(
 	struct screen			*s = &data->screen;
 	u_int				 i;
 
-	/*
-	 * xterm mouse mode is fairly silly. Buttons are in the bottom two
-	 * bits: 0 button 1; 1 button 2; 2 button 3; 3 buttons released.
-	 *
-	 * Bit 3 is shift; bit 4 is meta; bit 5 control.
-	 *
-	 * Bit 6 is added for mouse buttons 4 and 5.
-	 */
-
 	if (m->x >= screen_size_x(s))
 		return;
 	if (m->y >= screen_size_y(s))
 		return;
 
 	/* If mouse wheel (buttons 4 and 5), scroll. */
-	if ((m->b & 64) == 64) {
-		if ((m->b & 3) == 0) {
+	if ((m->b & MOUSE_45)) {
+		if ((m->b & MOUSE_BUTTON) == MOUSE_1) {
 			for (i = 0; i < 5; i++)
 				window_copy_cursor_up(wp, 0);
-		} else if ((m->b & 3) == 1) {
+		} else if ((m->b & MOUSE_BUTTON) == MOUSE_2) {
 			for (i = 0; i < 5; i++)
 				window_copy_cursor_down(wp, 0);
 		}
@@ -793,7 +784,7 @@ window_copy_mouse(
 	 * pressed, or stop the selection on their release.
 	 */
 	if (s->mode & MODE_MOUSEMOTION) {
-		if ((m->b & 3) != 3) {
+		if ((m->b & MOUSE_BUTTON) != MOUSE_UP) {
 			window_copy_update_cursor(wp, m->x, m->y);
 			if (window_copy_update_selection(wp))
 				window_copy_redraw_screen(wp);
@@ -808,7 +799,7 @@ window_copy_mouse(
 	}
 
 	/* Otherwise i other buttons pressed, start selection and motion. */
-	if ((m->b & 3) != 3) {
+	if ((m->b & MOUSE_BUTTON) != MOUSE_UP) {
 		s->mode |= MODE_MOUSEMOTION;
 
 		window_copy_update_cursor(wp, m->x, m->y);
