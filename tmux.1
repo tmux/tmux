@@ -877,6 +877,24 @@ Panes are spread out as evenly as possible over the window in both rows and
 columns.
 .El
 .Pp
+In addition,
+.Ic select-layout
+may be used to apply a previously used layout - the
+.Ic list-windows
+command displays the layout of each window in a form suitable for use with
+.Ic select-layout .
+For example:
+.Bd -literal -offset indent
+$ tmux list-windows
+0: ksh [159x48]
+    layout: bb62,159x48,0,0{79x48,0,0,79x48,80,0}
+$ tmux select-layout bb62,159x48,0,0{79x48,0,0,79x48,80,0}
+.Ed
+.Nm
+automatically adjusts the size of the layout for the current window size.
+Note that a layout cannot be applied to a window with more panes than that
+from which the layout was originally defined.
+.Pp
 Commands related to windows and panes are as follows:
 .Bl -tag -width Ds
 .It Xo Ic break-pane
@@ -1224,7 +1242,7 @@ or downward (numerically higher).
 Choose a specific layout for a window.
 If
 .Ar layout-name
-is not given, the last layout used (if any) is reapplied.
+is not given, the last preset layout used (if any) is reapplied.
 .It Xo Ic select-pane
 .Op Fl DLRU
 .Op Fl t Ar target-pane

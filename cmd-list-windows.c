@@ -45,6 +45,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_target_data	*data = self->data;
 	struct session		*s;
 	struct winlink		*wl;
+	char			*layout;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
@@ -52,6 +53,9 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		ctx->print(ctx, "%d: %s [%ux%u]",
 		    wl->idx, wl->window->name, wl->window->sx, wl->window->sy);
+		layout = layout_dump(wl->window);
+		ctx->print(ctx, "    layout: %s", layout);
+		xfree(layout);
 	}
 
 	return (0);

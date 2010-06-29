@@ -1850,9 +1850,11 @@ struct window_pane *window_pane_find_left(struct window_pane *);
 struct window_pane *window_pane_find_right(struct window_pane *);
 
 /* layout.c */
+u_int		 layout_count_cells(struct layout_cell *);
 struct layout_cell *layout_create_cell(struct layout_cell *);
 void		 layout_free_cell(struct layout_cell *);
 void		 layout_print_cell(struct layout_cell *, const char *, u_int);
+void		 layout_destroy_cell(struct layout_cell *, struct layout_cell **);
 void		 layout_set_size(
 		     struct layout_cell *, u_int, u_int, u_int, u_int);
 void		 layout_make_leaf(
@@ -1873,6 +1875,10 @@ struct layout_cell *layout_split_pane(
 		     struct window_pane *, enum layout_type, int);
 void		 layout_close_pane(struct window_pane *);
 
+/* layout-custom.c */
+char		*layout_dump(struct window *);
+int		 layout_parse(struct window *, const char *);
+
 /* layout-set.c */
 const char	*layout_set_name(u_int);
 int		 layout_set_lookup(const char *);
@@ -1883,6 +1889,7 @@ void		 layout_set_active_changed(struct window *);
 
 /* layout-string.c */
 struct layout_cell *layout_find_string(struct window *, const char *);
+struct layout_cell *layout_find_bottomright(struct layout_cell *);
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;

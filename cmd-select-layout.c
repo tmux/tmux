@@ -79,13 +79,16 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 		layout = wl->window->lastlayout;
 		if (layout == -1)
 			return (0);
-	} else if ((layout = layout_set_lookup(data->arg)) == -1) {
-		ctx->error(ctx, "unknown layout or ambiguous: %s", data->arg);
-		return (-1);
+	} else if ((layout = layout_set_lookup(data->arg)) != -1) {
+		layout = layout_set_select(wl->window, layout);
+		ctx->info(ctx, "arranging in: %s", layout_set_name(layout));
+	} else {
+		if (layout_parse(wl->window, data->arg) == -1) {
+			ctx->error(ctx, "can't set layout: %s", data->arg);
+			return (-1);
+		}
+		ctx->info(ctx, "arranging in: %s", data->arg);
 	}
-
-	layout = layout_set_select(wl->window, layout);
-	ctx->info(ctx, "arranging in: %s", layout_set_name(layout));
 
 	return (0);
 }

@@ -36,7 +36,6 @@ struct layout_cell *layout_find_right(struct layout_cell *);
 struct layout_cell *layout_find_topleft(struct layout_cell *);
 struct layout_cell *layout_find_topright(struct layout_cell *);
 struct layout_cell *layout_find_bottomleft(struct layout_cell *);
-struct layout_cell *layout_find_bottomright(struct layout_cell *);
 
 /* Find the cell; returns NULL if string not understood. */
 struct layout_cell *
