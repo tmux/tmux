@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.210 2010-07-02 02:43:01 tcunha Exp $ */
+/* $Id: tmux.c,v 1.211 2010-07-02 02:45:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -344,8 +344,9 @@ main(int argc, char **argv)
 	options_set_string(so, "default-command", "%s", "");
 	options_set_string(so, "default-shell", "%s", getshell());
 	options_set_string(so, "default-terminal", "screen");
-	options_set_number(so, "display-panes-colour", 4);
+	options_set_number(so, "detach-on-destroy", 1);
 	options_set_number(so, "display-panes-active-colour", 1);
+	options_set_number(so, "display-panes-colour", 4);
 	options_set_number(so, "display-panes-time", 1000);
 	options_set_number(so, "display-time", 750);
 	options_set_number(so, "history-limit", 2000);

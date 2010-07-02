@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.260 2010-06-22 23:35:20 tcunha Exp $
+.\" $Id: tmux.1,v 1.261 2010-07-02 02:45:52 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: June 21 2010 $
+.Dd $Mdocdate: June 27 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1557,6 +1557,11 @@ Available window options are listed under
 .Pp
 Available server options are:
 .Bl -tag -width Ds
+.It Ic detach-on-destroy
+If on (the default), the client is detached when the session it is attached to
+is destroyed.
+If off, the client is switched to the most recently active of the remaining
+sessions.
 .It Ic escape-time
 Set the time in milliseconds for which
 .Nm

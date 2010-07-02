@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.107 2010-07-02 02:43:50 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.108 2010-07-02 02:45:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,8 @@
 
 #include "tmux.h"
 
-void	server_callback_identify(int, short, void *);
+struct session *server_next_session(struct session *);
+void		server_callback_identify(int, short, void *);
 
 void
 server_fill_environ(struct session *s, struct environ *env)
@@ -358,18 +359,47 @@ server_destroy_session_group(struct session *s)
 	}
 }
 
+struct session *
+server_next_session(struct session *s)
+{
+	struct session *s_loop, *s_out;
+	u_int		i;
+
+	s_out = NULL;
+	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+		s_loop = ARRAY_ITEM(&sessions, i);
+		if (s_loop == s)
+			continue;
+		if (s_out == NULL ||
+		    timercmp(&s_loop->activity_time, &s_out->activity_time, <))
+			s_out = s_loop;
+	}
+	return (s_out);
+}
+
 void
 server_destroy_session(struct session *s)
 {
 	struct client	*c;
+	struct session	*s_new;
 	u_int		 i;
+
+	if (!options_get_number(&s->options, "detach-on-destroy"))
+		s_new = server_next_session(s);
+	else
+		s_new = NULL;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (c == NULL || c->session != s)
 			continue;
-		c->session = NULL;
-		server_write_client(c, MSG_EXIT, NULL, 0);
+		if (s_new == NULL) {
+			c->session = NULL;
+			server_write_client(c, MSG_EXIT, NULL, 0);
+		} else {
+			c->session = s_new;
+			server_redraw_client(c);
+		}
 	}
 	recalculate_sizes();
 }
