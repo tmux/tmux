@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.568 2010-07-02 02:54:52 tcunha Exp $ */
+/* $Id: tmux.h,v 1.569 2010-07-02 02:56:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1049,9 +1049,23 @@ struct tty_ctx {
 	u_int		 last_width;
 };
 
+/*
+ * xterm mouse mode is fairly silly. Buttons are in the bottom two
+ * bits: 0 button 1; 1 button 2; 2 button 3; 3 buttons released.
+ *
+ * Bit 3 is shift; bit 4 is meta; bit 5 control.
+ *
+ * Bit 6 is added for mouse buttons 4 and 5.
+ */
 /* Mouse input. */
 struct mouse_event {
 	u_char	b;
+#define MOUSE_1 0
+#define MOUSE_2 1
+#define MOUSE_3 2
+#define MOUSE_UP 3
+#define MOUSE_BUTTON 3
+#define MOUSE_45 64
 	u_char	x;
 	u_char	y;
 };
