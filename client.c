@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.94 2010-06-06 00:30:34 tcunha Exp $ */
+/* $Id: client.c,v 1.95 2010-07-02 02:52:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -100,8 +100,7 @@ server_started:
 
 	if (cmdflags & CMD_SENDENVIRON)
 		client_send_environ();
-	if (isatty(STDIN_FILENO))
-		client_send_identify(flags);
+	client_send_identify(flags);
 
 	return (&client_ibuf);
 
@@ -135,6 +134,14 @@ client_send_identify(int flags)
 		fatal("dup failed");
 	imsg_compose(&client_ibuf,
 	    MSG_IDENTIFY, PROTOCOL_VERSION, -1, fd, &data, sizeof data);
+
+	if ((fd = dup(STDOUT_FILENO)) == -1)
+		fatal("dup failed");
+	imsg_compose(&client_ibuf, MSG_STDOUT, PROTOCOL_VERSION, -1, fd, NULL, 0);
+
+	if ((fd = dup(STDERR_FILENO)) == -1)
+		fatal("dup failed");
+	imsg_compose(&client_ibuf, MSG_STDERR, PROTOCOL_VERSION, -1, fd, NULL, 0);
 }
 
 void

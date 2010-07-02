@@ -1,4 +1,4 @@
-/* $Id: cmd-load-buffer.c,v 1.15 2010-02-26 13:30:07 tcunha Exp $ */
+/* $Id: cmd-load-buffer.c,v 1.16 2010-07-02 02:52:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -16,10 +16,13 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <sys/types.h>
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -45,7 +48,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
 	struct session		*s;
-	FILE			*f;
+	FILE			*f, *close_f;
 	char		      	*pdata, *new_pdata;
 	size_t			 psize;
 	u_int			 limit;
@@ -54,9 +57,23 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
 
-	if ((f = fopen(data->arg, "rb")) == NULL) {
-		ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
-		return (-1);
+	if (strcmp(data->arg, "-") == 0 ) {
+		if (ctx->cmdclient == NULL) {
+			ctx->error(ctx, "%s: can't read from stdin", data->arg);
+			return (-1);
+		}
+		f = ctx->cmdclient->stdin_file;
+		if (isatty(fileno(ctx->cmdclient->stdin_file))) {
+			ctx->error(ctx, "%s: stdin is a tty", data->arg);
+			return (-1);
+		}
+		close_f = NULL;
+	} else {
+		if ((f = fopen(data->arg, "rb")) == NULL) {
+			ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
+			return (-1);
+		}
+		close_f = f;
 	}
 
 	pdata = NULL;
@@ -77,7 +94,8 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (pdata != NULL)
 		pdata[psize] = '\0';
 
-	fclose(f);
+	if (close_f != NULL)
+		fclose(close_f);
 
 	limit = options_get_number(&s->options, "buffer-limit");
 	if (data->buffer == -1) {
@@ -94,6 +112,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 error:
 	if (pdata != NULL)
 		xfree(pdata);
-	fclose(f);
+	if (close_f != NULL)
+		fclose(close_f);
 	return (-1);
 }
