@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.106 2010-06-22 23:26:18 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.107 2010-07-02 02:43:50 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -371,6 +371,7 @@ server_destroy_session(struct session *s)
 		c->session = NULL;
 		server_write_client(c, MSG_EXIT, NULL, 0);
 	}
+	recalculate_sizes();
 }
 
 void
