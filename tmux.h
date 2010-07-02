@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.565 2010-07-02 02:43:01 tcunha Exp $ */
+/* $Id: tmux.h,v 1.566 2010-07-02 02:49:19 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -925,6 +925,7 @@ TAILQ_HEAD(session_groups, session_group);
 
 struct session {
 	char		*name;
+	char		*cwd;
 
 	struct timeval	 creation_time;
 	struct timeval	 activity_time;

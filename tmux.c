@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.211 2010-07-02 02:45:52 tcunha Exp $ */
+/* $Id: tmux.c,v 1.212 2010-07-02 02:49:19 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -242,7 +242,7 @@ main(int argc, char **argv)
 	struct env_data		 envdata;
 	struct msg_command_data	 cmddata;
 	char			*s, *shellcmd, *path, *label, *home, *cause;
-	char			 cwd[MAXPATHLEN], **var;
+	char		       **var;
 	void			*buf;
 	size_t			 len;
 	int	 		 opt, flags, quiet = 0, cmdflags = 0;
@@ -342,6 +342,7 @@ main(int argc, char **argv)
 	options_set_number(so, "bell-action", BELL_ANY);
 	options_set_number(so, "buffer-limit", 9);
 	options_set_string(so, "default-command", "%s", "");
+	options_set_string(so, "default-path", "%s", "");
 	options_set_string(so, "default-shell", "%s", getshell());
 	options_set_string(so, "default-terminal", "screen");
 	options_set_number(so, "detach-on-destroy", 1);
@@ -437,15 +438,6 @@ main(int argc, char **argv)
 		options_set_number(so, "status-utf8", 0);
 		options_set_number(wo, "utf8", 0);
 	}
-
-	if (getcwd(cwd, sizeof cwd) == NULL) {
-		pw = getpwuid(getuid());
-		if (pw->pw_dir != NULL && *pw->pw_dir != '\0')
-			strlcpy(cwd, pw->pw_dir, sizeof cwd);
-		else
-			strlcpy(cwd, "/", sizeof cwd);
-	}
-	options_set_string(so, "default-path", "%s", cwd);
 
 	if (cfg_file == NULL) {
 		home = getenv("HOME");

@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.77 2010-04-05 05:11:43 micahcowan Exp $ */
+/* $Id: cmd-new-session.c,v 1.78 2010-07-02 02:49:19 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,8 +18,10 @@
 
 #include <sys/types.h>
 
+#include <pwd.h>
 #include <string.h>
 #include <termios.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -125,8 +127,9 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_pane		*wp;
 	struct environ			 env;
 	struct termios			 tio, *tiop;
-	const char			*update;
-	char				*overrides, *cmd, *cwd, *cause;
+	struct passwd			*pw;
+	const char			*update, *cwd;
+	char				*overrides, *cmd, *cause;
 	int				 detached, idx;
 	u_int				 sx, sy, i;
 
@@ -198,8 +201,13 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	/* Get the new session working directory. */
 	if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
 		cwd = ctx->cmdclient->cwd;
-	else
-		cwd = options_get_string(&global_s_options, "default-path");
+	else {
+		pw = getpwuid(getuid());
+		if (pw->pw_dir != NULL && *pw->pw_dir != '\0')
+			cwd = pw->pw_dir;
+		else
+			cwd = "/";
+	}
 
 	/* Find new session size. */
 	if (detached) {
