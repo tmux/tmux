@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.28 2010-01-25 17:12:44 tcunha Exp $ */
+/* $Id: cmd-bind-key.c,v 1.29 2010-07-02 02:43:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -130,7 +130,7 @@ cmd_bind_key_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 		return (cmd_bind_key_table(self, ctx));
 
 	key_bindings_add(data->key, data->can_repeat, data->cmdlist);
-	data->cmdlist = NULL;	/* avoid free */
+	data->cmdlist->references++;
 
 	return (0);
 }
@@ -192,8 +192,17 @@ cmd_bind_key_print(struct cmd *self, char *buf, size_t len)
 	off += xsnprintf(buf, len, "%s", self->entry->name);
 	if (data == NULL)
 		return (off);
+
+	if (off < len && data->command_key)
+		off += xsnprintf(buf + off, len - off, " -c");
+	if (off < len && !(data->key & KEYC_PREFIX))
+		off += xsnprintf(buf + off, len - off, " -n");
+	if (off < len && data->can_repeat)
+		off += xsnprintf(buf + off, len - off, " -r");
+	if (off < len && data->tablename != NULL)
+		off += cmd_prarg(buf + off, len - off, " -t ", data->tablename);
 	if (off < len) {
-		skey = key_string_lookup_key(data->key);
+		skey = key_string_lookup_key(data->key & ~KEYC_PREFIX);
 		off += xsnprintf(buf + off, len - off, " %s ", skey);
 	}
 	if (off < len)

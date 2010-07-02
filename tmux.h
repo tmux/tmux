@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.564 2010-06-22 23:35:20 tcunha Exp $ */
+/* $Id: tmux.h,v 1.565 2010-07-02 02:43:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1160,7 +1160,10 @@ struct cmd {
 
 	TAILQ_ENTRY(cmd) qentry;
 };
-TAILQ_HEAD(cmd_list, cmd);
+struct cmd_list {
+	int		 references;
+	TAILQ_HEAD(, cmd) list;
+};
 
 struct cmd_entry {
 	const char	*name;

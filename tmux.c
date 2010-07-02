@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.209 2010-06-05 23:56:29 tcunha Exp $ */
+/* $Id: tmux.c,v 1.210 2010-07-02 02:43:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -520,7 +520,7 @@ main(int argc, char **argv)
 			exit(1);
 		}
 		cmdflags &= ~CMD_STARTSERVER;
-		TAILQ_FOREACH(cmd, cmdlist, qentry) {
+		TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
 			if (cmd->entry->flags & CMD_STARTSERVER)
 				cmdflags |= CMD_STARTSERVER;
 			if (cmd->entry->flags & CMD_SENDENVIRON)

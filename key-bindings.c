@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.93 2010-06-22 23:35:20 tcunha Exp $ */
+/* $Id: key-bindings.c,v 1.94 2010-07-02 02:43:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -178,14 +178,15 @@ key_bindings_init(void)
 
 	for (i = 0; i < nitems(table); i++) {
 		cmdlist = xmalloc(sizeof *cmdlist);
-		TAILQ_INIT(cmdlist);
+		TAILQ_INIT(&cmdlist->list);
+		cmdlist->references = 1;
 
 		cmd = xmalloc(sizeof *cmd);
 		cmd->entry = table[i].entry;
 		cmd->data = NULL;
 		if (cmd->entry->init != NULL)
 			cmd->entry->init(cmd, table[i].key);
-		TAILQ_INSERT_HEAD(cmdlist, cmd, qentry);
+		TAILQ_INSERT_HEAD(&cmdlist->list, cmd, qentry);
 
 		key_bindings_add(
 		    table[i].key | KEYC_PREFIX, table[i].can_repeat, cmdlist);
@@ -259,7 +260,7 @@ key_bindings_dispatch(struct key_binding *bd, struct client *c)
 	ctx.cmdclient = NULL;
 
 	readonly = 1;
-	TAILQ_FOREACH(cmd, bd->cmdlist, qentry) {
+	TAILQ_FOREACH(cmd, &bd->cmdlist->list, qentry) {
 		if (!(cmd->entry->flags & CMD_READONLY))
 			readonly = 0;
 	}

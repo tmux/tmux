@@ -1,4 +1,4 @@
-/* $Id: cmd-list.c,v 1.8 2010-03-18 21:06:40 nicm Exp $ */
+/* $Id: cmd-list.c,v 1.9 2010-07-02 02:43:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,7 +32,8 @@ cmd_list_parse(int argc, char **argv, char **cause)
 	char	       **new_argv;
 
 	cmdlist = xmalloc(sizeof *cmdlist);
-	TAILQ_INIT(cmdlist);
+	cmdlist->references = 1;
+	TAILQ_INIT(&cmdlist->list);
 
 	lastsplit = 0;
 	for (i = 0; i < argc; i++) {
@@ -54,7 +55,7 @@ cmd_list_parse(int argc, char **argv, char **cause)
 		cmd = cmd_parse(new_argc, new_argv, cause);
 		if (cmd == NULL)
 			goto bad;
-		TAILQ_INSERT_TAIL(cmdlist, cmd, qentry);
+		TAILQ_INSERT_TAIL(&cmdlist->list, cmd, qentry);
 
 		lastsplit = i + 1;
 	}
@@ -63,7 +64,7 @@ cmd_list_parse(int argc, char **argv, char **cause)
 		cmd = cmd_parse(argc - lastsplit, argv + lastsplit, cause);
 		if (cmd == NULL)
 			goto bad;
-		TAILQ_INSERT_TAIL(cmdlist, cmd, qentry);
+		TAILQ_INSERT_TAIL(&cmdlist->list, cmd, qentry);
 	}
 
 	return (cmdlist);
@@ -80,7 +81,7 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 	int		 n, retval;
 
 	retval = 0;
-	TAILQ_FOREACH(cmd, cmdlist, qentry) {
+	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
 		if ((n = cmd_exec(cmd, ctx)) == -1)
 			return (-1);
 
@@ -114,9 +115,12 @@ cmd_list_free(struct cmd_list *cmdlist)
 {
 	struct cmd	*cmd;
 
-	while (!TAILQ_EMPTY(cmdlist)) {
-		cmd = TAILQ_FIRST(cmdlist);
-		TAILQ_REMOVE(cmdlist, cmd, qentry);
+	if (--cmdlist->references != 0)
+		return;
+
+	while (!TAILQ_EMPTY(&cmdlist->list)) {
+		cmd = TAILQ_FIRST(&cmdlist->list);
+		TAILQ_REMOVE(&cmdlist->list, cmd, qentry);
 		cmd_free(cmd);
 	}
 	xfree(cmdlist);
@@ -129,7 +133,7 @@ cmd_list_print(struct cmd_list *cmdlist, char *buf, size_t len)
 	size_t		 off;
 
 	off = 0;
-	TAILQ_FOREACH(cmd, cmdlist, qentry) {
+	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
 		if (off >= len)
 			break;
 		off += cmd_print(cmd, buf + off, len - off);
