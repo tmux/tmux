@@ -1,4 +1,4 @@
-/* $Id: layout.c,v 1.18 2010-01-08 16:31:35 tcunha Exp $ */
+/* $Id: layout.c,v 1.19 2010-07-02 02:54:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -218,6 +218,27 @@ layout_fix_panes(struct window *w, u_int wsx, u_int wsy)
 	}
 }
 
+/* Count the number of available cells in a layout. */
+u_int
+layout_count_cells(struct layout_cell *lc)
+{
+	struct layout_cell	*lcchild;
+	u_int			 n;
+
+	switch (lc->type) {
+	case LAYOUT_WINDOWPANE:
+		return (1);
+	case LAYOUT_LEFTRIGHT:
+	case LAYOUT_TOPBOTTOM:
+		n = 0;
+		TAILQ_FOREACH(lcchild, &lc->cells, entry)
+			n += layout_count_cells(lcchild);
+		return (n);
+	default:
+		fatalx("bad layout type");
+	}
+}
+
 /* Calculate how much size is available to be removed from a cell. */
 u_int
 layout_resize_check(struct layout_cell *lc, enum layout_type type)
@@ -299,6 +320,56 @@ layout_resize_adjust(struct layout_cell *lc, enum layout_type type, int change)
 				change++;
 			}
 		}
+	}
+}
+
+/* Destroy a cell and redistribute the space. */
+void
+layout_destroy_cell(struct layout_cell *lc, struct layout_cell **lcroot)
+{
+	struct layout_cell     *lcother, *lcparent;
+
+	/*
+	 * If no parent, this is the last pane so window close is imminent and
+	 * there is no need to resize anything.
+	 */
+	lcparent = lc->parent;
+	if (lcparent == NULL) {
+		layout_free_cell(lc);
+		*lcroot = NULL;
+		return;
+	}
+
+	/* Merge the space into the previous or next cell. */
+	if (lc == TAILQ_FIRST(&lcparent->cells))
+		lcother = TAILQ_NEXT(lc, entry);
+	else
+		lcother = TAILQ_PREV(lc, layout_cells, entry);
+	if (lcparent->type == LAYOUT_LEFTRIGHT)
+		layout_resize_adjust(lcother, lcparent->type, lc->sx + 1);
+	else
+		layout_resize_adjust(lcother, lcparent->type, lc->sy + 1);
+
+	/* Remove this from the parent's list. */
+	TAILQ_REMOVE(&lcparent->cells, lc, entry);
+	layout_free_cell(lc);
+
+	/*
+	 * If the parent now has one cell, remove the parent from the tree and
+	 * replace it by that cell.
+	 */
+	lc = TAILQ_FIRST(&lcparent->cells);
+	if (TAILQ_NEXT(lc, entry) == NULL) {
+		TAILQ_REMOVE(&lcparent->cells, lc, entry);
+
+		lc->parent = lcparent->parent;
+		if (lc->parent == NULL) {
+			lc->xoff = 0; lc->yoff = 0;
+			*lcroot = lc;
+		} else
+			TAILQ_REPLACE(&lc->parent->cells, lcparent, lc, entry);
+
+		layout_free_cell(lcparent);
 	}
 }
 
@@ -597,59 +668,16 @@ layout_split_pane(struct window_pane *wp, enum layout_type type, int size)
 	return (lcnew);
 }
 
-/* Destroy the layout associated with a pane and redistribute the space. */
+/* Destroy the cell associated with a pane. */
 void
 layout_close_pane(struct window_pane *wp)
 {
-	struct layout_cell     *lc, *lcother, *lcparent;
-
-	lc = wp->layout_cell;
-	lcparent = lc->parent;
-
-	/*
-	 * If no parent, this is the last pane so window close is imminent and
-	 * there is no need to resize anything.
-	 */
-	if (lcparent == NULL) {
-		layout_free_cell(lc);
-		wp->window->layout_root = NULL;
-		return;
-	}
-
-	/* Merge the space into the previous or next cell. */
-	if (lc == TAILQ_FIRST(&lcparent->cells))
-		lcother = TAILQ_NEXT(lc, entry);
-	else
-		lcother = TAILQ_PREV(lc, layout_cells, entry);
-	if (lcparent->type == LAYOUT_LEFTRIGHT)
-		layout_resize_adjust(lcother, lcparent->type, lc->sx + 1);
-	else
-		layout_resize_adjust(lcother, lcparent->type, lc->sy + 1);
-
-	/* Remove this from the parent's list. */
-	TAILQ_REMOVE(&lcparent->cells, lc, entry);
-	layout_free_cell(lc);
-
-	/*
-	 * If the parent now has one cell, remove the parent from the tree and
-	 * replace it by that cell.
-	 */
-	lc = TAILQ_FIRST(&lcparent->cells);
-	if (TAILQ_NEXT(lc, entry) == NULL) {
-		TAILQ_REMOVE(&lcparent->cells, lc, entry);
-
-		lc->parent = lcparent->parent;
-		if (lc->parent == NULL) {
-			lc->xoff = 0; lc->yoff = 0;
-			wp->window->layout_root = lc;
-		} else
-			TAILQ_REPLACE(&lc->parent->cells, lcparent, lc, entry);
-
-		layout_free_cell(lcparent);
-	}
+	/* Remove the cell. */
+	layout_destroy_cell(wp->layout_cell, &wp->window->layout_root);
 
 	/* Fix pane offsets and sizes. */
-	layout_fix_offsets(wp->window->layout_root);
-	layout_fix_panes(wp->window, wp->window->sx, wp->window->sy);
+	if (wp->window->layout_root != NULL) {
+		layout_fix_offsets(wp->window->layout_root);
+		layout_fix_panes(wp->window, wp->window->sx, wp->window->sy);
+	}
 }
-

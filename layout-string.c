@@ -1,4 +1,4 @@
-/* $Id: layout-string.c,v 1.3 2010-01-08 16:28:04 tcunha Exp $ */
+/* $Id: layout-string.c,v 1.4 2010-07-02 02:54:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,7 +36,6 @@ struct layout_cell *layout_find_right(struct layout_cell *);
 struct layout_cell *layout_find_topleft(struct layout_cell *);
 struct layout_cell *layout_find_topright(struct layout_cell *);
 struct layout_cell *layout_find_bottomleft(struct layout_cell *);
-struct layout_cell *layout_find_bottomright(struct layout_cell *);
 
 /* Find the cell; returns NULL if string not understood. */
 struct layout_cell *

@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.42 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-list-windows.c,v 1.43 2010-07-02 02:54:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,6 +45,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_target_data	*data = self->data;
 	struct session		*s;
 	struct winlink		*wl;
+	char			*layout;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
@@ -52,6 +53,9 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		ctx->print(ctx, "%d: %s [%ux%u]",
 		    wl->idx, wl->window->name, wl->window->sx, wl->window->sy);
+		layout = layout_dump(wl->window);
+		ctx->print(ctx, "    layout: %s", layout);
+		xfree(layout);
 	}
 
 	return (0);
