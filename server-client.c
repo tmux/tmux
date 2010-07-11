@@ -664,6 +664,8 @@ server_client_msg_error(struct cmd_ctx *ctx, const char *fmt, ...)
 
 	fputc('\n', ctx->cmdclient->stderr_file);
 	fflush(ctx->cmdclient->stderr_file);
+
+	ctx->cmdclient->retcode = 1;
 }
 
 /* Callback to send print message to client. */
@@ -701,10 +703,11 @@ server_client_msg_info(struct cmd_ctx *ctx, const char *fmt, ...)
 void
 server_client_msg_command(struct client *c, struct msg_command_data *data)
 {
-	struct cmd_ctx	 ctx;
-	struct cmd_list	*cmdlist = NULL;
-	int		 argc;
-	char	       **argv, *cause;
+	struct cmd_ctx	 	ctx;
+	struct cmd_list	       *cmdlist = NULL;
+	struct msg_exit_data	exitdata;
+	int			argc;
+	char		      **argv, *cause;
 
 	ctx.error = server_client_msg_error;
 	ctx.print = server_client_msg_print;
@@ -735,15 +738,18 @@ server_client_msg_command(struct client *c, struct msg_command_data *data)
 	}
 	cmd_free_argv(argc, argv);
 
-	if (cmd_list_exec(cmdlist, &ctx) != 1)
-		server_write_client(c, MSG_EXIT, NULL, 0);
+	if (cmd_list_exec(cmdlist, &ctx) != 1) {
+		exitdata.retcode = c->retcode;
+		server_write_client(c, MSG_EXIT, &exitdata, sizeof exitdata);
+	}
 	cmd_list_free(cmdlist);
 	return;
 
 error:
 	if (cmdlist != NULL)
 		cmd_list_free(cmdlist);
-	server_write_client(c, MSG_EXIT, NULL, 0);
+	exitdata.retcode = c->retcode;
+	server_write_client(c, MSG_EXIT, &exitdata, sizeof exitdata);
 }
 
 /* Handle identify message. */

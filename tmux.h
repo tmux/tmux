@@ -413,6 +413,10 @@ struct msg_shell_data {
 	char		shell[MAXPATHLEN];
 };
 
+struct msg_exit_data {
+	int		retcode;
+};
+
 /* Mode key commands. */
 enum mode_key_cmd {
 	MODEKEY_NONE,
@@ -1081,6 +1085,7 @@ struct message_entry {
 struct client {
 	struct imsgbuf	 ibuf;
 	struct event	 event;
+	int		 retcode;
 
 	struct timeval	 creation_time;
 	struct timeval	 activity_time;

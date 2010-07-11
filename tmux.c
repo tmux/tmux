@@ -61,7 +61,6 @@ char 		*makesockpath(const char *);
 __dead void	 shell_exec(const char *, const char *);
 
 struct imsgbuf	*main_ibuf;
-int	         main_exitval;
 
 void		 main_signal(int, short, unused void *);
 void		 main_callback(int, short, void *);
@@ -548,7 +547,6 @@ main(int argc, char **argv)
 		events |= EV_WRITE;
 	event_once(main_ibuf->fd, events, main_callback, shellcmd, NULL);
 
-	main_exitval = 0;
 	event_dispatch();
 
 	clear_signals();
@@ -597,6 +595,7 @@ main_dispatch(const char *shellcmd)
 	struct imsg		imsg;
 	ssize_t			n, datalen;
 	struct msg_shell_data	shelldata;
+	struct msg_exit_data	exitdata;
 
 	if ((n = imsg_read(main_ibuf)) == -1 || n == 0)
 		fatalx("imsg_read failed");
@@ -611,10 +610,13 @@ main_dispatch(const char *shellcmd)
 		switch (imsg.hdr.type) {
 		case MSG_EXIT:
 		case MSG_SHUTDOWN:
-			if (datalen != 0)
-				fatalx("bad MSG_EXIT size");
-
-			exit(main_exitval);
+			if (datalen != sizeof exitdata) {
+				if (datalen != 0)
+					fatalx("bad MSG_EXIT size");
+				exit(0);
+			}
+			memcpy(&exitdata, imsg.data, sizeof exitdata);
+			exit(exitdata.retcode);
 		case MSG_READY:
 			if (datalen != 0)
 				fatalx("bad MSG_READY size");
