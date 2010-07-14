@@ -1825,8 +1825,10 @@ struct winlink	*winlink_add(struct winlinks *, struct window *, int);
 void		 winlink_remove(struct winlinks *, struct winlink *);
 struct winlink	*winlink_next(struct winlink *);
 struct winlink	*winlink_previous(struct winlink *);
-struct winlink	*winlink_next_by_number(struct winlink *, int);
-struct winlink	*winlink_previous_by_number(struct winlink *, int);
+struct winlink	*winlink_next_by_number(struct winlink *, struct session *,
+		     int);
+struct winlink	*winlink_previous_by_number(struct winlink *, struct session *,
+		     int);
 void		 winlink_stack_push(struct winlink_stack *, struct winlink *);
 void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 int		 window_index(struct window *, u_int *);
@@ -1841,6 +1843,10 @@ struct window_pane *window_add_pane(struct window *, u_int);
 void		 window_resize(struct window *, u_int, u_int);
 void		 window_remove_pane(struct window *, struct window_pane *);
 struct window_pane *window_pane_at_index(struct window *, u_int);
+struct window_pane *window_pane_next_by_number(struct window *,
+		        struct window_pane *, u_int);
+struct window_pane *window_pane_previous_by_number(struct window *,
+		        struct window_pane *, u_int);
 u_int		 window_pane_index(struct window *, struct window_pane *);
 u_int		 window_count_panes(struct window *);
 void		 window_destroy_panes(struct window *);

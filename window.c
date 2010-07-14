@@ -173,22 +173,22 @@ winlink_previous(struct winlink *wl)
 }
 
 struct winlink *
-winlink_next_by_number(struct winlink *wl, int n)
+winlink_next_by_number(struct winlink *wl, struct session *s, int n)
 {
 	for (; n > 0; n--) {
 		if ((wl = RB_NEXT(winlinks, wwl, wl)) == NULL)
-			break;
+			wl = RB_MIN(winlinks, &s->windows);
 	}
 
 	return (wl);
 }
 
 struct winlink *
-winlink_previous_by_number(struct winlink *wl, int n)
+winlink_previous_by_number(struct winlink *wl, struct session *s, int n)
 {
 	for (; n > 0; n--) {
 		if ((wl = RB_PREV(winlinks, wwl, wl)) == NULL)
-			break;
+			wl = RB_MAX(winlinks, &s->windows);
 	}
 
 	return (wl);
@@ -389,6 +389,29 @@ window_pane_at_index(struct window *w, u_int idx)
 		n++;
 	}
 	return (NULL);
+}
+
+struct window_pane *
+window_pane_next_by_number(struct window *w, struct window_pane *wp, u_int n)
+{
+	for (; n > 0; n--) {
+		if ((wp = TAILQ_NEXT(wp, entry)) == NULL)
+			wp = TAILQ_FIRST(&w->panes);
+	}
+
+	return (wp);
+}
+
+struct window_pane *
+window_pane_previous_by_number(struct window *w, struct window_pane *wp,
+    u_int n)
+{
+	for (; n > 0; n--) {
+		if ((wp = TAILQ_PREV(wp, window_panes, entry)) == NULL)
+			wp = TAILQ_LAST(&w->panes, window_panes);
+	}
+
+	return (wp);
 }
 
 u_int
