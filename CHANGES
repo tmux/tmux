@@ -1,3 +1,49 @@
+CHANGES FROM 1.2 TO 1.3, 18 July 2010
+
+* New input parser.
+* Flags to move through panes -UDLR added to select-pane.
+* Commands up-pane, and down-pane removed, since equivalent behaviour is now
+  available through the target flag (-t:+ and -t:-).
+* Jump-forward/backward in copy move (based on vi's F, and f commands).
+* Make paste-buffer accept a pane as a target.
+* Flag -a added to new-window to insert a window after an existing one, moving
+  windows up if necessary.
+* Merge more mode into copy mode.
+* Run job commands explicitly in the global environment (which can be modified
+  with setenv -g), rather than with the environment tmux started with.
+* Use the machine's hostname as the default title, instead of an empty string.
+* Prevent double free if the window option remain-on-exit is set. 
+* Key string conversions rewritten.
+* Mark zombie windows as dead in the choose-window list.
+* Tiled layout added.
+* Signal handling reworked.
+* Reset SIGCHLD after fork to fix problems with some shells.
+* Select-prompt command removed. Therefore, bound ' to command-prompt -p index
+  "select-window -t:%%" by default.
+* Catch SIGHUP and terminate if running as a client, thus avoiding clients from
+  being left hanging around when, for instance, a SSH session is disconnected.
+* Solaris 9 fixes (such as adding compat {get,set}env(3) code).
+* Accept none instead of default for attributes.
+* Window options window-status-alert-{alert,bg,fg} added.
+* Flag -s added to the paste-buffer command to specify a custom separator.
+* Allow dragging to make a selection in copy mode if the mode-mouse option is
+  set.
+* Support the mouse scroll wheel.
+* Make pipe-pane accept special character sequences (eg #I).
+* Fix problems with window sizing when starting tmux from .xinitrc.
+* Give tmux sockets (but not the containing folder) group permissions.
+* Extend the target flags (ie -t) to accept an offset (for example -t:+2), and
+  make it wrap windows, and panes.
+* New command choose-buffer added.
+* New server option detach-on-destroy to set what happens to a client when the
+  session it is attached to is destroyed. If on (default), the client is
+  detached. Otherwise, the client is switched to the most recently active of
+  the remaining sessions.
+* The commands load-buffer, and save-buffer now accept a dash (-) as the file
+  to read from stdin, or write to stdout.
+* Custom layouts added.
+* Additional code reduction, bug fixes, and manpage enhancements.
+
 CHANGES FROM 1.1 TO 1.2, 10 March 2010
 
 * Switch to libevent.
@@ -1467,7 +1513,7 @@ The list of older changes is below.
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.302 2010-03-10 15:18:11 tcunha Exp $
+$Id: CHANGES,v 1.303 2010-07-18 13:40:59 tcunha Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
