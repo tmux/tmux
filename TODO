@@ -15,7 +15,6 @@
   session not being watched?
 - next prev word etc in command prompt
 - many more info() displays for various things
-- input.c is too complicated. simplify?
 - use a better termcap internally instead of screen, perhaps xterm
 - fix rxvt cursor fg issue (text under cursor can have non-white fg)
 - should be able to move to a hidden pane and it would be moved into view. pane
@@ -90,8 +89,6 @@
 	 message display
 	 copy and paste cursor and wide characters
 	 ...?
-- option so that when session is destroyed, attach client to another session
-  rather than exiting
 - session history for client and last-session command
 - option to change status line colour when current window is in a mode?
 - option to move copy mode indicator into status line
@@ -104,7 +101,6 @@
 - sort out inheriting config from shell on new sessions/windows:
         should pick up default-path/termios/etc from client if possible,
 	else leave empty/default
-- define custom layouts
 - link panes into multiple windows
 - -h option to capture-pane to capture the history as well
 - bells should be passed between sessions with visual-bell etc
@@ -125,18 +121,13 @@
 - command to show status line information briefly when it is off
 - some way to pad # stuff with spaces, #!2T maybe
 - FreeBSD console problems
-- + and - should be more powerful:
-	- wrap for windows like panes
-	- +2 -2 etc to move by two
 - a binding to "scroll down and exit at bottom" copy mode
 - some way to pass keystrokes in copy mode through to underlying window
 - last window update time and # replacement for it for display-message
-- way to define bell etc colours in status line
 - find-window across sessions - other ways to make session handling easier?
 - ' and " should be parsed the same (eg "\e" vs '\e') in config and command
   prompt?
 - command to toggle selection not to move it in copy-mode
-- pass pipe-pane through status_replace
 
 For 1.3 (not in order):
 
@@ -144,8 +135,6 @@ For 1.3 (not in order):
 4 audit of escape sequence support vs xterm
 6 rectangle copy: when selecting leftward, cursor should be inside block per
   emacs key to rotate corner at which cursor is
-8 stdin fd should be passed up to parent so load-buffer and others could use it
-  for nonattaching clients
 9 something for -t "last window in session" so a session can be used as a stack
 10 synchronous commands - client sends cmd and blocks, neww/splitw saves client
    ptr then when program inside died, sends MSG_SOMETHING with wait status to
