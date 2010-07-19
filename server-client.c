@@ -695,7 +695,7 @@ server_client_msg_info(struct cmd_ctx *ctx, const char *fmt, ...)
 	vfprintf(ctx->cmdclient->stdout_file, fmt, ap);
 	va_end(ap);
 
-	fputc('\n', ctx->cmdclient->stderr_file);
+	fputc('\n', ctx->cmdclient->stdout_file);
 	fflush(ctx->cmdclient->stdout_file);
 }
 
