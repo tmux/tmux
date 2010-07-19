@@ -1,4 +1,4 @@
-# $Id: dist.mk,v 1.9 2010-07-18 13:36:52 tcunha Exp $
+# $Id: dist.mk,v 1.10 2010-07-19 13:57:22 tcunha Exp $
 
 VERSION= 1.3
 
@@ -20,7 +20,7 @@ dist:
 
 upload-index.html: update-index.html
 		scp www/index.html www/main.css www/images/*.png \
-		        nicm,tmux@web.sf.net:/home/groups/t/tm/tmux/htdocs
+		        ${USER},tmux@web.sf.net:/home/groups/t/tm/tmux/htdocs
 		rm -f www/index.html www/images/small-*
 
 update-index.html:
