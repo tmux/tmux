@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.101 2010-04-06 22:01:32 nicm Exp $ */
+/* $Id: screen.c,v 1.102 2010-07-19 18:31:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <netdb.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
