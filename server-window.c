@@ -1,4 +1,4 @@
-/* $Id: server-window.c,v 1.15 2010-06-22 23:26:18 tcunha Exp $ */
+/* $Id: server-window.c,v 1.16 2010-07-20 17:36:41 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -109,10 +109,8 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 
 	if (!(w->flags & WINDOW_BELL) || wl->flags & WINLINK_BELL)
 		return (0);
-	if (s->curw == wl)
-		return (0);
-
-	wl->flags |= WINLINK_BELL;
+	if (s->curw != wl)
+		wl->flags |= WINLINK_BELL;
 
 	action = options_get_number(&s->options, "bell-action");
 	switch (action) {
