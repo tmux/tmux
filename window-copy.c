@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.121 2010-07-02 02:56:07 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.122 2010-07-22 19:51:48 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -171,7 +171,8 @@ window_copy_init(struct window_pane *wp)
 	data->searchstr = NULL;
 
 	wp->flags |= PANE_FREEZE;
-	bufferevent_disable(wp->event, EV_READ|EV_WRITE);
+	if (wp->fd != -1)
+		bufferevent_disable(wp->event, EV_READ|EV_WRITE);
 
 	data->jumptype = WINDOW_COPY_OFF;
 	data->jumpchar = '\0';
@@ -234,7 +235,8 @@ window_copy_free(struct window_pane *wp)
 	struct window_copy_mode_data	*data = wp->modedata;
 
 	wp->flags &= ~PANE_FREEZE;
-	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
+	if (wp->fd != -1)
+		bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 
 	if (data->searchstr != NULL)
 		xfree(data->searchstr);
