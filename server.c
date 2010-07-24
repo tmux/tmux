@@ -139,8 +139,11 @@ server_start(char *path)
 		fatal("daemon failed");
 
 	/* event_init() was called in our parent, need to reinit. */
+	if (setenv("EVENT_NOKQUEUE", "1", 1) != 0)
+		fatal("setenv");
 	if (event_reinit(ev_base) != 0)
 		fatal("event_reinit failed");
+	unsetenv("EVENT_NOKQUEUE");
 	clear_signals();
 
 	logfile("server");
