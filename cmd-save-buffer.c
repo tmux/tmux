@@ -47,8 +47,8 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_buffer_data	*data = self->data;
 	struct session		*s;
 	struct paste_buffer	*pb;
-	mode_t			mask;
-	FILE			*f, *close_f;
+	mode_t			 mask;
+	FILE			*f;
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
@@ -70,8 +70,8 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 			ctx->error(ctx, "%s: can't write to stdout", data->arg);
 			return (-1);
 		}
-		f = ctx->cmdclient->stdout_file;
-		close_f = NULL;
+		bufferevent_write(
+		    ctx->cmdclient->stdout_event, pb->data, pb->size);
 	} else {
 		mask = umask(S_IRWXG | S_IRWXO);
 		if (cmd_check_flag(data->chflags, 'a'))
@@ -83,17 +83,13 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 			ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
 			return (-1);
 		}
-		close_f = f;
+		if (fwrite(pb->data, 1, pb->size, f) != pb->size) {
+			ctx->error(ctx, "%s: fwrite error", data->arg);
+			fclose(f);
+			return (-1);
+		}
+		fclose(f);
 	}
-
-	if (fwrite(pb->data, 1, pb->size, f) != pb->size) {
-	    	ctx->error(ctx, "%s: fwrite error", data->arg);
-	    	fclose(f);
-	    	return (-1);
-	}
-
-	if (close_f != NULL)
-		fclose(close_f);
 
 	return (0);
 }
