@@ -1,7 +1,7 @@
 " Vim syntax file
 " Language: tmux(1) configuration file
 " Maintainer: Tiago Cunha <me@tiagocunha.org>
-" Last Change: $Date: 2010-07-02 02:46:39 $
+" Last Change: $Date: 2010-07-27 18:29:07 $
 " License: This file is placed in the public domain.
 
 if version < 600
@@ -31,9 +31,9 @@ syn keyword tmuxCmds command-prompt setb set-buffer showb show-buffer lsb
 syn keyword tmuxCmds list-buffers deleteb delete-buffer lscm list-commands
 syn keyword tmuxCmds movew move-window respawnw respawn-window
 syn keyword tmuxCmds source[-file] info server-info clock-mode lock[-server]
-syn keyword tmuxCmds saveb save-buffer downp down-pane killp
+syn keyword tmuxCmds saveb save-buffer killp
 syn keyword tmuxCmds kill-pane resizep resize-pane selectp select-pane swapp
-syn keyword tmuxCmds swap-pane splitw split-window upp up-pane choose-session
+syn keyword tmuxCmds swap-pane splitw split-window choose-session
 syn keyword tmuxCmds choose-window loadb load-buffer copyb copy-buffer suspendc
 syn keyword tmuxCmds suspend-client findw find-window breakp break-pane nextl
 syn keyword tmuxCmds next-layout rotatew rotate-window confirm[-before]
@@ -72,7 +72,8 @@ syn keyword tmuxOptsSetw main-pane-width main-pane-height monitor-content
 syn keyword tmuxOptsSetw window-status-current-attr window-status-current-bg
 syn keyword tmuxOptsSetw window-status-current-fg mode-mouse synchronize-panes
 syn keyword tmuxOptsSetw window-status-format window-status-current-format
-syn keyword tmuxOptsSetw word-separators
+syn keyword tmuxOptsSetw word-separators window-status-alert-alert
+syn keyword tmuxOptsSetw window-status-alert-bg window-status-alert-fg
 
 syn keyword tmuxTodo FIXME NOTE TODO XXX contained
 
