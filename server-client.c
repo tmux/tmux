@@ -648,9 +648,11 @@ server_client_msg_dispatch(struct client *c)
 				fatalx("MSG_IDENTIFY missing fd");
 			memcpy(&identifydata, imsg.data, sizeof identifydata);
 
-			c->stdin_fd = imsg.fd;
-			c->stdin_event = bufferevent_new(imsg.fd, NULL, NULL,
-			    server_client_in_callback, c);
+			c->stdin_fd = dup(imsg.fd);
+			if (c->stdin_fd == -1)
+				fatal("dup failed");
+			c->stdin_event = bufferevent_new(c->stdin_fd,
+			    NULL, NULL, server_client_in_callback, c);
 			if (c->stdin_event == NULL)
 				fatalx("failed to create stdin event");
 
@@ -668,14 +670,14 @@ server_client_msg_dispatch(struct client *c)
 				fatalx("MSG_STDOUT missing fd");
 
 			c->stdout_fd = imsg.fd;
-			c->stdout_event = bufferevent_new(imsg.fd, NULL, NULL,
-			    server_client_out_callback, c);
+			c->stdout_event = bufferevent_new(c->stdout_fd,
+			    NULL, NULL, server_client_out_callback, c);
 			if (c->stdout_event == NULL)
 				fatalx("failed to create stdout event");
 
-			if ((mode = fcntl(imsg.fd, F_GETFL)) != -1)
-				fcntl(imsg.fd, F_SETFL, mode|O_NONBLOCK);
-			if (fcntl(imsg.fd, F_SETFD, FD_CLOEXEC) == -1)
+			if ((mode = fcntl(c->stdout_fd, F_GETFL)) != -1)
+				fcntl(c->stdout_fd, F_SETFL, mode|O_NONBLOCK);
+			if (fcntl(c->stdout_fd, F_SETFD, FD_CLOEXEC) == -1)
 				fatal("fcntl failed");
 			break;
 		case MSG_STDERR:
@@ -685,14 +687,14 @@ server_client_msg_dispatch(struct client *c)
 				fatalx("MSG_STDERR missing fd");
 
 			c->stderr_fd = imsg.fd;
-			c->stderr_event = bufferevent_new(imsg.fd, NULL, NULL,
-			    server_client_err_callback, c);
+			c->stderr_event = bufferevent_new(c->stderr_fd,
+			    NULL, NULL, server_client_err_callback, c);
 			if (c->stderr_event == NULL)
 				fatalx("failed to create stderr event");
 
-			if ((mode = fcntl(imsg.fd, F_GETFL)) != -1)
-				fcntl(imsg.fd, F_SETFL, mode|O_NONBLOCK);
-			if (fcntl(imsg.fd, F_SETFD, FD_CLOEXEC) == -1)
+			if ((mode = fcntl(c->stderr_fd, F_GETFL)) != -1)
+				fcntl(c->stderr_fd, F_SETFL, mode|O_NONBLOCK);
+			if (fcntl(c->stderr_fd, F_SETFD, FD_CLOEXEC) == -1)
 				fatal("fcntl failed");
 			break;
 		case MSG_RESIZE:
