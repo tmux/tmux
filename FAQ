@@ -239,4 +239,20 @@ set -g terminal-overrides "xterm*:kLFT5=\eOD:kRIT5=\eOC:kUP5=\eOA:kDN5=\eOB:smkx
 
 Note that this will only work in tmux 1.2 and above.
 
-$Id: FAQ,v 1.36 2010-02-04 21:01:59 nicm Exp $
+* How can I blank the tmux window?
+
+GNU screen has a feature whereby it will blank the screen after a period of
+inactivity. To do the same thing in tmux, use the lock-command setting, for
+example (with GNU bash):
+
+set -g lock-command 'tput civis && read -s -n1'
+
+This will remove the cursor and tell the shell to quit once a key has been
+pressed. For zsh, use "read -s -k1".
+
+In addition, it's possible to have both blanking and locking (for instance via
+lock(1) or vlock(1)) by using the following:
+
+bind x set lock-command '/usr/bin/vlock' \; lock-client \; set lock-command 'tput civis && read -s -n1'
+ 
+$Id: FAQ,v 1.37 2010-07-31 11:46:28 nicm Exp $
