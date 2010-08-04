@@ -532,10 +532,7 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	if (setenv("EVENT_NOKQUEUE", "1", 1) != 0)
-		fatal("setenv");
 	ev_base = event_init();
-	unsetenv("EVENT_NOKQUEUE");
 	set_signals(main_signal);
 
 	/* Initialise the client socket/start the server. */
