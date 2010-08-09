@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.571 2010-07-17 14:38:13 tcunha Exp $ */
+/* $Id: tmux.h,v 1.572 2010-08-09 21:44:25 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1095,9 +1095,17 @@ struct client {
 	char		*cwd;
 
 	struct tty	 tty;
-	FILE		*stdin_file;
-	FILE		*stdout_file;
-	FILE		*stderr_file;
+
+	int		 stdin_fd;
+	void		*stdin_data;
+	void		(*stdin_callback)(struct client *, void *);
+	struct bufferevent *stdin_event;
+
+	int		 stdout_fd;
+	struct bufferevent *stdout_event;
+
+	int		 stderr_fd;
+	struct bufferevent *stderr_event;
 
 	struct event	 repeat_timer;
 
@@ -1107,7 +1115,7 @@ struct client {
 
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_PREFIX 0x2
-/* 0x4 unused */
+#define CLIENT_EXIT 0x4
 #define CLIENT_REDRAW 0x8
 #define CLIENT_STATUS 0x10
 #define CLIENT_REPEAT 0x20	/* allow command to repeat within repeat time */

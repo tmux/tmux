@@ -1,4 +1,4 @@
-/* $Id: cmd-run-shell.c,v 1.8 2010-07-17 14:36:40 tcunha Exp $ */
+/* $Id: cmd-run-shell.c,v 1.9 2010-08-09 21:44:25 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -131,13 +131,10 @@ cmd_run_shell_free(void *data)
 {
 	struct cmd_run_shell_data	*cdata = data;
 	struct cmd_ctx			*ctx = &cdata->ctx;
-	struct msg_exit_data		 exitdata;
 
 	if (ctx->cmdclient != NULL) {
 		ctx->cmdclient->references--;
-		exitdata.retcode = ctx->cmdclient->retcode;
-		server_write_client(
-		    ctx->cmdclient, MSG_EXIT, &exitdata, sizeof exitdata);
+		ctx->cmdclient->flags |= CLIENT_EXIT;
 	}
 	if (ctx->curclient != NULL)
 		ctx->curclient->references--;
