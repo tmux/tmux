@@ -492,6 +492,50 @@ server_client_check_exit(struct client *c)
 	c->flags &= ~CLIENT_EXIT;
 }
 
+/*
+ * Check if the client should backoff. During backoff, data from external
+ * programs is not written to the terminal. When the existing data drains, the
+ * client is redrawn.
+ *
+ * There are two backoff phases - both the tty and client have backoff flags -
+ * the first to allow existing data to drain and the latter to ensure backoff
+ * is disabled until the redraw has finished and prevent the redraw triggering
+ * another backoff.
+ */
+void
+server_client_check_backoff(struct client *c)
+{
+	struct tty	*tty = &c->tty;
+	size_t		 used;
+
+	used = EVBUFFER_LENGTH(tty->event->output);
+
+	/*
+	 * If in the second backoff phase (redrawing), don't check backoff
+	 * until the redraw has completed (or enough of it to drop below the
+	 * backoff threshold).
+	 */
+	if (c->flags & CLIENT_BACKOFF) {
+		if (used > BACKOFF_THRESHOLD)
+			return;
+		c->flags &= ~CLIENT_BACKOFF;
+		return;
+	}
+
+	/* Once drained, allow data through again and schedule redraw. */
+	if (tty->flags & TTY_BACKOFF) {
+		if (used != 0)
+			return;
+		tty->flags &= ~TTY_BACKOFF;
+		c->flags |= (CLIENT_BACKOFF|CLIENT_REDRAWWINDOW|CLIENT_STATUS);
+		return;
+	}
+
+	/* If too much data, start backoff. */
+	if (used > BACKOFF_THRESHOLD)
+		tty->flags |= TTY_BACKOFF;
+}
+
 /* Check for client redraws. */
 void
 server_client_check_redraw(struct client *c)
@@ -520,6 +564,10 @@ server_client_check_redraw(struct client *c)
 	if (c->flags & CLIENT_REDRAW) {
 		screen_redraw_screen(c, 0, 0);
 		c->flags &= ~(CLIENT_STATUS|CLIENT_BORDERS);
+	} else if (c->flags & CLIENT_REDRAWWINDOW) {
+		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry)
+			screen_redraw_pane(c, wp);
+		c->flags &= ~CLIENT_REDRAWWINDOW;
 	} else {
 		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
 			if (wp->flags & PANE_REDRAW)

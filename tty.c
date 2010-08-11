@@ -578,7 +578,9 @@ tty_write(void (*cmdfn)(
 			continue;
 
 		if (c->session->curw->window == wp->window) {
-			if (c->tty.flags & TTY_FREEZE || c->tty.term == NULL)
+			if (c->tty.term == NULL)
+				continue;
+			if (c->tty.flags & (TTY_FREEZE|TTY_BACKOFF))
 				continue;
 			cmdfn(&c->tty, ctx);
 		}

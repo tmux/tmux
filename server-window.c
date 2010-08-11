@@ -29,31 +29,6 @@ int	server_window_check_activity(struct session *, struct winlink *);
 int	server_window_check_content(
 	    struct session *, struct winlink *, struct window_pane *);
 
-/* Check if this window should suspend reading. */
-int
-server_window_backoff(struct window_pane *wp)
-{
-	struct client	*c;
-	u_int		 i;
-
-	if (!window_pane_visible(wp))
-		return (0);
-
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if ((c->flags & (CLIENT_SUSPENDED|CLIENT_DEAD)) != 0)
-			continue;
-		if (c->session->curw->window != wp->window)
-			continue;
-
-		if (EVBUFFER_LENGTH(c->tty.event->output) > BACKOFF_THRESHOLD)
-			return (1);
-	}
-	return (0);
-}
-
 /* Window functions that need to happen every loop. */
 void
 server_window_loop(void)
@@ -68,17 +43,6 @@ server_window_loop(void)
 		w = ARRAY_ITEM(&windows, i);
 		if (w == NULL)
 			continue;
-
-		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->fd == -1)
-				continue;
-			if (!(wp->flags & PANE_FREEZE)) {
-				if (server_window_backoff(wp))
-					bufferevent_disable(wp->event, EV_READ);
-				else
-					bufferevent_enable(wp->event, EV_READ);
-			}
-		}
 
 		for (j = 0; j < ARRAY_LENGTH(&sessions); j++) {
 			s = ARRAY_ITEM(&sessions, j);
