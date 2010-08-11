@@ -45,6 +45,11 @@ cmd_rename_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_target_data	*data = self->data;
 	struct session		*s;
 
+	if (data->arg != NULL && session_find(data->arg) != NULL) {
+		ctx->error(ctx, "duplicate session: %s", data->arg);
+		return (-1);
+	}
+
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
 
