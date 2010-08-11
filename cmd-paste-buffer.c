@@ -46,7 +46,7 @@ size_t	cmd_paste_buffer_print(struct cmd *, char *, size_t);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", "pasteb",
-	"[-dr] [-s separator] [-b buffer-index] [-t target-window]",
+	"[-dr] [-s separator] [-b buffer-index] [-t target-pane]",
 	0, "",
 	cmd_paste_buffer_init,
 	cmd_paste_buffer_parse,
