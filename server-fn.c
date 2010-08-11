@@ -281,7 +281,7 @@ server_link_window(struct session *src, struct winlink *srcwl,
 		dstwl = winlink_find_by_index(&dst->windows, dstidx);
 	if (dstwl != NULL) {
 		if (dstwl->window == srcwl->window)
-			return (0);
+			return (-1);
 		if (killflag) {
 			/*
 			 * Can't use session_detach as it will destroy session
