@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.28 2010-06-06 00:03:02 tcunha Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.29 2010-08-11 22:17:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -45,7 +45,7 @@ size_t	cmd_paste_buffer_print(struct cmd *, char *, size_t);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", "pasteb",
-	"[-dr] [-s separator] [-b buffer-index] [-t target-window]",
+	"[-dr] [-s separator] [-b buffer-index] [-t target-pane]",
 	0, "",
 	cmd_paste_buffer_init,
 	cmd_paste_buffer_parse,

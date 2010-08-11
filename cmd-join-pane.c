@@ -1,4 +1,4 @@
-/* $Id: cmd-join-pane.c,v 1.4 2010-04-09 07:09:37 micahcowan Exp $ */
+/* $Id: cmd-join-pane.c,v 1.5 2010-08-11 22:17:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,7 +44,7 @@ struct cmd_join_pane_data {
 
 const struct cmd_entry cmd_join_pane_entry = {
 	"join-pane", "joinp",
-	"[-dhv] [-p percentage|-l size] [-s src-pane] [-t dst-pane] [command]",
+	"[-dhv] [-p percentage|-l size] [-s src-pane] [-t dst-pane]",
 	0, "",
 	cmd_join_pane_init,
 	cmd_join_pane_parse,
