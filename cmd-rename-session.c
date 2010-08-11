@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-session.c,v 1.19 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-rename-session.c,v 1.20 2010-08-11 22:19:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -44,6 +44,11 @@ cmd_rename_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data	*data = self->data;
 	struct session		*s;
+
+	if (data->arg != NULL && session_find(data->arg) != NULL) {
+		ctx->error(ctx, "duplicate session: %s", data->arg);
+		return (-1);
+	}
 
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
