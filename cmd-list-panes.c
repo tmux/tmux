@@ -65,8 +65,9 @@ cmd_list_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 		size += gd->hsize * sizeof *gd->linedata;
 
-		ctx->print(ctx, "%u: [%ux%u] [history %u/%u, %llu bytes]",
-		    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size);
+		ctx->print(ctx, "%u: [%ux%u] [history %u/%u, %llu bytes]%s",
+		    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size,
+		    wp == wp->window->active ? " (active)" : "");
 		n++;
 	}
 
