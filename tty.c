@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.192 2010-06-06 00:30:34 tcunha Exp $ */
+/* $Id: tty.c,v 1.193 2010-08-11 22:16:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -578,7 +578,9 @@ tty_write(void (*cmdfn)(
 			continue;
 
 		if (c->session->curw->window == wp->window) {
-			if (c->tty.flags & TTY_FREEZE || c->tty.term == NULL)
+			if (c->tty.term == NULL)
+				continue;
+			if (c->tty.flags & (TTY_FREEZE|TTY_BACKOFF))
 				continue;
 			cmdfn(&c->tty, ctx);
 		}

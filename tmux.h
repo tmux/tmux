@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.572 2010-08-09 21:44:25 tcunha Exp $ */
+/* $Id: tmux.h,v 1.573 2010-08-11 22:16:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -58,8 +58,8 @@ extern char   **environ;
 /* Automatic name refresh interval, in milliseconds. */
 #define NAME_INTERVAL 500
 
-/* Maximum data to buffer for output before suspending reading from panes. */
-#define BACKOFF_THRESHOLD 1024
+/* Maximum data to buffer for output before suspending writing to a tty. */
+#define BACKOFF_THRESHOLD 16384
 
 /*
  * Maximum sizes of strings in message data. Don't forget to bump
@@ -1016,6 +1016,7 @@ struct tty {
 #define TTY_UTF8 0x8
 #define TTY_STARTED 0x10
 #define TTY_OPENED 0x20
+#define TTY_BACKOFF 0x40
 	int		 flags;
 
 	int		 term_flags;
@@ -1125,6 +1126,8 @@ struct client {
 #define CLIENT_DEAD 0x200
 #define CLIENT_BORDERS 0x400
 #define CLIENT_READONLY 0x800
+#define CLIENT_BACKOFF 0x1000
+#define CLIENT_REDRAWWINDOW 0x2000
 	int		 flags;
 
 	struct event	 identify_timer;
