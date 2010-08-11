@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.109 2010-08-09 21:44:25 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.110 2010-08-11 22:16:43 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -281,7 +281,7 @@ server_link_window(struct session *src, struct winlink *srcwl,
 		dstwl = winlink_find_by_index(&dst->windows, dstidx);
 	if (dstwl != NULL) {
 		if (dstwl->window == srcwl->window)
-			return (0);
+			return (-1);
 		if (killflag) {
 			/*
 			 * Can't use session_detach as it will destroy session
