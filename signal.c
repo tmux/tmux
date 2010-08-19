@@ -62,7 +62,7 @@ set_signals(void(*handler)(int, short, unused void *))
 }
 
 void
-clear_signals(void)
+clear_signals(int after_fork)
 {
 	struct sigaction	sigact;
 
@@ -79,10 +79,25 @@ clear_signals(void)
 	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
 		fatal("sigaction failed");
 
-	event_del(&ev_sighup);
-	event_del(&ev_sigchld);
-	event_del(&ev_sigcont);
-	event_del(&ev_sigterm);
-	event_del(&ev_sigusr1);
-	event_del(&ev_sigwinch);
+	if (after_fork) {
+		if (sigaction(SIGHUP, &sigact, NULL) != 0)
+			fatal("sigaction failed");
+		if (sigaction(SIGCHLD, &sigact, NULL) != 0)
+			fatal("sigaction failed");
+		if (sigaction(SIGCONT, &sigact, NULL) != 0)
+			fatal("sigaction failed");
+		if (sigaction(SIGTERM, &sigact, NULL) != 0)
+			fatal("sigaction failed");
+		if (sigaction(SIGUSR1, &sigact, NULL) != 0)
+			fatal("sigaction failed");
+		if (sigaction(SIGWINCH, &sigact, NULL) != 0)
+			fatal("sigaction failed");
+	} else {
+		event_del(&ev_sighup);
+		event_del(&ev_sigchld);
+		event_del(&ev_sigcont);
+		event_del(&ev_sigterm);
+		event_del(&ev_sigusr1);
+		event_del(&ev_sigwinch);
+	}
 }

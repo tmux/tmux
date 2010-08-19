@@ -141,7 +141,7 @@ server_start(char *path)
 	/* event_init() was called in our parent, need to reinit. */
 	if (event_reinit(ev_base) != 0)
 		fatal("event_reinit failed");
-	clear_signals();
+	clear_signals(0);
 
 	logfile("server");
 	log_debug("server started, pid %ld", (long) getpid());

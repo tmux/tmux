@@ -1952,8 +1952,8 @@ void		 queue_window_name(struct window *);
 char		*default_window_name(struct window *);
 
 /* signal.c */
-void set_signals(void(*handler)(int, short, unused void *));
-void clear_signals(void);
+void set_signals(void(*)(int, short, void *));
+void clear_signals(int);
 
 /* session.c */
 extern struct sessions sessions;

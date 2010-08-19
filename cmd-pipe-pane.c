@@ -97,7 +97,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	case 0:
 		/* Child process. */
 		close(pipe_fd[0]);
-		clear_signals();
+		clear_signals(1);
 
 		if (dup2(pipe_fd[1], STDIN_FILENO) == -1)
 			_exit(1);
