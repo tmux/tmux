@@ -129,8 +129,10 @@
   prompt?
 - command to toggle selection not to move it in copy-mode
 
-For 1.3 (not in order):
+For 1.4 (not in order):
 
+1 select-layout w/o argument should reapply current layout
+2 support UTF-8 line drawing characters for ACS to workaround putty idiocy
 3 why are alerts per-winlink? try per window?
 4 audit of escape sequence support vs xterm
 6 rectangle copy: when selecting leftward, cursor should be inside block per
@@ -149,4 +151,3 @@ For 1.3 (not in order):
 19 info() when changing to same window
 20 don't pass UTF-8 through vis for titles
 ...
-
