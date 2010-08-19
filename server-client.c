@@ -696,17 +696,15 @@ server_client_msg_dispatch(struct client *c)
 				fatalx("MSG_IDENTIFY missing fd");
 			memcpy(&identifydata, imsg.data, sizeof identifydata);
 
-			c->stdin_fd = dup(imsg.fd);
-			if (c->stdin_fd == -1)
-				fatal("dup failed");
+			c->stdin_fd = imsg.fd;
 			c->stdin_event = bufferevent_new(c->stdin_fd,
 			    NULL, NULL, server_client_in_callback, c);
 			if (c->stdin_event == NULL)
 				fatalx("failed to create stdin event");
 
-			if ((mode = fcntl(imsg.fd, F_GETFL)) != -1)
-				fcntl(imsg.fd, F_SETFL, mode|O_NONBLOCK);
-			if (fcntl(imsg.fd, F_SETFD, FD_CLOEXEC) == -1)
+			if ((mode = fcntl(c->stdin_fd, F_GETFL)) != -1)
+				fcntl(c->stdin_fd, F_SETFL, mode|O_NONBLOCK);
+			if (fcntl(c->stdin_fd, F_SETFD, FD_CLOEXEC) == -1)
 				fatal("fcntl failed");
 
 			server_client_msg_identify(c, &identifydata, imsg.fd);
