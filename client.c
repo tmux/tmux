@@ -297,7 +297,8 @@ client_dispatch(void)
 			client_exitmsg = "detached";
 			break;
 		case MSG_EXIT:
-			if (datalen != 0)
+			if (datalen != 0 &&
+			    datalen != sizeof (struct msg_exit_data))
 				fatalx("bad MSG_EXIT size");
 
 			client_write_server(MSG_EXITING, NULL, 0);
