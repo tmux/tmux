@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.573 2010-08-11 22:16:03 tcunha Exp $ */
+/* $Id: tmux.h,v 1.574 2010-08-29 14:42:11 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1951,8 +1951,8 @@ void		 queue_window_name(struct window *);
 char		*default_window_name(struct window *);
 
 /* signal.c */
-void set_signals(void(*handler)(int, short, unused void *));
-void clear_signals(void);
+void set_signals(void(*)(int, short, void *));
+void clear_signals(int);
 
 /* session.c */
 extern struct sessions sessions;

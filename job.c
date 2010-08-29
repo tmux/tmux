@@ -1,4 +1,4 @@
-/* $Id: job.c,v 1.17 2010-05-14 14:30:01 tcunha Exp $ */
+/* $Id: job.c,v 1.18 2010-08-29 14:42:11 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -148,7 +148,7 @@ job_run(struct job *job)
 	case -1:
 		return (-1);
 	case 0:		/* child */
-		clear_signals();
+		clear_signals(1);
 
 		environ_push(&global_environ);
 

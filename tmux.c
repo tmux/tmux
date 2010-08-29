@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.214 2010-07-17 14:36:41 tcunha Exp $ */
+/* $Id: tmux.c,v 1.215 2010-08-29 14:42:11 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -566,7 +566,7 @@ main(int argc, char **argv)
 
 	event_dispatch();
 
-	clear_signals();
+	clear_signals(0);
 
 	client_main();	/* doesn't return */
 }
@@ -653,7 +653,7 @@ main_dispatch(const char *shellcmd)
 			memcpy(&shelldata, imsg.data, sizeof shelldata);
 			shelldata.shell[(sizeof shelldata.shell) - 1] = '\0';
 
-			clear_signals();
+			clear_signals(0);
 
 			shell_exec(shelldata.shell, shellcmd);
 		default:

@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.134 2010-07-17 14:38:13 tcunha Exp $ */
+/* $Id: window.c,v 1.135 2010-08-29 14:42:11 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -572,7 +572,7 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 
 		environ_push(env);
 
-		clear_signals();
+		clear_signals(1);
 		log_close();
 
 		if (*wp->cmd != '\0') {
