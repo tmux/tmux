@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.96 2010-08-29 14:43:45 tcunha Exp $ */
+/* $Id: client.c,v 1.97 2010-08-29 14:44:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -97,6 +97,7 @@ server_started:
 	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
 	imsg_init(&client_ibuf, fd);
+	event_set(&client_event, fd, EV_READ, client_callback, NULL);
 
 	if (cmdflags & CMD_SENDENVIRON)
 		client_send_environ();
