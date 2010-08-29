@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.95 2010-07-02 02:52:13 tcunha Exp $ */
+/* $Id: client.c,v 1.96 2010-08-29 14:43:45 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -301,7 +301,8 @@ client_dispatch(void)
 			client_exitmsg = "detached";
 			break;
 		case MSG_EXIT:
-			if (datalen != 0)
+			if (datalen != 0 &&
+			    datalen != sizeof (struct msg_exit_data))
 				fatalx("bad MSG_EXIT size");
 
 			client_write_server(MSG_EXITING, NULL, 0);
