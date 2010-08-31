@@ -135,6 +135,8 @@ For 1.4 (not in order):
 2 support UTF-8 line drawing characters for ACS to workaround putty idiocy
 3 why are alerts per-winlink? try per window?
 4 audit of escape sequence support vs xterm
+5 support binding keys to mouse (mouse-select-pane -> mouse-keys or something,
+  mouse click == select-pane -t %%, mouse scroll up == copy-mode)
 6 rectangle copy: when selecting leftward, cursor should be inside block per
   emacs key to rotate corner at which cursor is
 9 something for -t "last window in session" so a session can be used as a stack
