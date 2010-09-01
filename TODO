@@ -128,6 +128,7 @@
 - ' and " should be parsed the same (eg "\e" vs '\e') in config and command
   prompt?
 - command to toggle selection not to move it in copy-mode
+- some way to create transient sessions which die when disconnected (option?)
 
 For 1.4 (not in order):
 
@@ -152,4 +153,5 @@ For 1.4 (not in order):
 18 a history of commands that can be reversed (reverse member of each command, and a buffer)
 19 info() when changing to same window
 20 don't pass UTF-8 through vis for titles
+21 clearing screen should push lines into history
 ...
