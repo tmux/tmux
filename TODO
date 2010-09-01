@@ -140,6 +140,7 @@ For 1.4 (not in order):
   mouse click == select-pane -t %%, mouse scroll up == copy-mode)
 6 rectangle copy: when selecting leftward, cursor should be inside block per
   emacs key to rotate corner at which cursor is
+7 last-pane command ***
 9 something for -t "last window in session" so a session can be used as a stack
 10 synchronous commands - client sends cmd and blocks, neww/splitw saves client
    ptr then when program inside died, sends MSG_SOMETHING with wait status to
