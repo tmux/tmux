@@ -293,6 +293,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 */
 	if (strcmp(entry->name, "status-left") == 0 ||
 	    strcmp(entry->name, "status-right") == 0 ||
+	    strcmp(entry->name, "status") == 0 ||
 	    strcmp(entry->name, "set-titles-string") == 0 ||
 	    strcmp(entry->name, "window-status-format") == 0) {
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
