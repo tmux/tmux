@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.574 2010-08-29 14:42:11 tcunha Exp $ */
+/* $Id: tmux.h,v 1.575 2010-09-07 19:32:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,6 @@
 #include <limits.h>
 #include <signal.h>
 #include <stdarg.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <termios.h>
 

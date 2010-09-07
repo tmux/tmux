@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.53 2010-06-06 13:00:47 tcunha Exp $
+# $Id: configure,v 1.54 2010-09-07 19:32:58 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -45,6 +45,7 @@ cat <<EOF >>$CONFIG_H
 #undef HAVE_PTY_H
 #undef HAVE_QUEUE_H
 #undef HAVE_SETPROCTITLE
+#undef HAVE_STDINT_H
 #undef HAVE_STRCASESTR
 #undef HAVE_STRLCAT
 #undef HAVE_STRLCPY
@@ -73,6 +74,7 @@ case $TMUX_PLATFORM in
 #define HAVE_QUEUE_H
 #define HAVE_SETENV
 #define HAVE_SETPROCTITLE
+#define HAVE_STDINT_H
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
@@ -99,6 +101,7 @@ EOF
 #define HAVE_PROGNAME
 #define HAVE_PTY_H
 #define HAVE_SETENV
+#define HAVE_STDINT_H
 #define HAVE_STRCASESTR
 #define HAVE_STRSEP
 #define HAVE_U_INT
@@ -124,6 +127,7 @@ EOF
 #define HAVE_BZERO
 #define HAVE_DAEMON
 #define HAVE_SETENV
+#define HAVE_STDINT_H
 EOF
 	cat <<EOF >>$CONFIG_MK
 LIBS+= -lcurses -levent
@@ -184,6 +188,7 @@ EOF
 #define HAVE_GETOPT
 #define HAVE_PATHS_H
 #define HAVE_PROGNAME
+#define HAVE_STDINT_H
 #define HAVE_SETENV
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
@@ -219,6 +224,7 @@ EOF
 #define HAVE_PROGNAME
 #define HAVE_SETENV
 #define HAVE_SETPROCTITLE
+#define HAVE_STDINT_H
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
@@ -248,6 +254,7 @@ EOF
 #define HAVE_PROGNAME
 #define HAVE_SETPROCTITLE
 #define HAVE_SETENV
+#define HAVE_STDINT_H
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY

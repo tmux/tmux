@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.136 2010-08-29 14:46:13 tcunha Exp $ */
+/* $Id: window.c,v 1.137 2010-09-07 19:32:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,7 +24,6 @@
 #include <fnmatch.h>
 #include <pwd.h>
 #include <signal.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>

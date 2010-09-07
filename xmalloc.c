@@ -1,4 +1,4 @@
-/* $Id: xmalloc.c,v 1.12 2009-10-28 23:12:38 tcunha Exp $ */
+/* $Id: xmalloc.c,v 1.13 2010-09-07 19:32:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2004 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -20,7 +20,6 @@
 
 #include <errno.h>
 #include <libgen.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 

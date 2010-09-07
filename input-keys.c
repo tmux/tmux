@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.44 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: input-keys.c,v 1.45 2010-09-07 19:32:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
