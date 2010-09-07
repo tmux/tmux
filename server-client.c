@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.40 2010-08-29 14:39:45 tcunha Exp $ */
+/* $Id: server-client.c,v 1.41 2010-09-07 13:19:53 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,6 +29,7 @@
 void	server_client_handle_key(int, struct mouse_event *, void *);
 void	server_client_repeat_timer(int, short, void *);
 void	server_client_check_exit(struct client *);
+void	server_client_check_backoff(struct client *);
 void	server_client_check_redraw(struct client *);
 void	server_client_set_title(struct client *);
 void	server_client_reset_state(struct client *);
