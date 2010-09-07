@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.98 2010-07-02 02:45:52 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.99 2010-09-07 13:20:28 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -293,6 +293,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 */
 	if (strcmp(entry->name, "status-left") == 0 ||
 	    strcmp(entry->name, "status-right") == 0 ||
+	    strcmp(entry->name, "status") == 0 ||
 	    strcmp(entry->name, "set-titles-string") == 0 ||
 	    strcmp(entry->name, "window-status-format") == 0) {
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
