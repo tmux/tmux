@@ -169,6 +169,48 @@ session_index(struct session *s, u_int *i)
 	return (-1);
 }
 
+/* Find the next usable session. */
+struct session *
+session_next_session(struct session *s)
+{
+	struct session *s2;
+	u_int		i;
+
+	if (ARRAY_LENGTH(&sessions) == 0 || session_index(s, &i) != 0)
+		return (NULL);
+
+	do {
+		if (i == ARRAY_LENGTH(&sessions) - 1)
+			i = 0;
+		else
+			i++;
+		s2 = ARRAY_ITEM(&sessions, i);
+	} while (s2 == NULL || s2->flags & SESSION_DEAD);
+
+	return (s2);
+}
+
+/* Find the previous usable session. */
+struct session *
+session_previous_session(struct session *s)
+{
+	struct session *s2;
+	u_int		i;
+
+	if (ARRAY_LENGTH(&sessions) == 0 || session_index(s, &i) != 0)
+		return (NULL);
+
+	do {
+		if (i == 0)
+			i = ARRAY_LENGTH(&sessions) - 1;
+		else
+			i--;
+		s2 = ARRAY_ITEM(&sessions, i);
+	} while (s2 == NULL || s2->flags & SESSION_DEAD);
+
+	return (s2);
+}
+
 /* Create a new window on a session. */
 struct winlink *
 session_new(struct session *s,

@@ -1965,6 +1965,8 @@ struct session	*session_create(const char *, const char *, const char *,
 		     char **);
 void		 session_destroy(struct session *);
 int		 session_index(struct session *, u_int *);
+struct session	*session_next_session(struct session *);
+struct session	*session_previous_session(struct session *);
 struct winlink	*session_new(struct session *,
 		     const char *, const char *, const char *, int, char **);
 struct winlink	*session_attach(

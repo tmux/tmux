@@ -108,6 +108,8 @@ key_bindings_init(void)
 		{ '#', 			  0, &cmd_list_buffers_entry },
 		{ '%', 			  0, &cmd_split_window_entry },
 		{ '&', 			  0, &cmd_confirm_before_entry },
+		{ '(',                    0, &cmd_switch_client_entry },
+		{ ')',                    0, &cmd_switch_client_entry },
 		{ ',', 			  0, &cmd_command_prompt_entry },
 		{ '-', 			  0, &cmd_delete_buffer_entry },
 		{ '.', 			  0, &cmd_command_prompt_entry },

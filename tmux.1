@@ -660,6 +660,7 @@ Suspend a client by sending
 .Dv SIGTSTP
 (tty stop).
 .It Xo Ic switch-client
+.Op Fl np
 .Op Fl c Ar target-client
 .Op Fl t Ar target-session
 .Xc
@@ -668,6 +669,11 @@ Switch the current session for client
 .Ar target-client
 to
 .Ar target-session .
+If
+.Fl n
+or
+.Fl p
+is used, the client is moved to the next or previous session respectively.
 .El
 .Sh WINDOWS AND PANES
 A
