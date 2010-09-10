@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.122 2010-07-22 19:51:48 micahcowan Exp $ */
+/* $Id: window-copy.c,v 1.123 2010-09-10 13:34:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1055,6 +1055,8 @@ window_copy_write_line(
 	if (py == 0) {
 		size = xsnprintf(hdr, sizeof hdr,
 		    "[%u/%u]", data->oy, screen_hsize(data->backing));
+		if (size > screen_size_x(s))
+			size = screen_size_x(s);
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
 		screen_write_puts(ctx, &gc, "%s", hdr);
 	} else if (py == last && data->inputtype != WINDOW_COPY_OFF) {
