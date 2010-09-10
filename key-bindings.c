@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.94 2010-07-02 02:43:01 tcunha Exp $ */
+/* $Id: key-bindings.c,v 1.95 2010-09-10 13:36:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -108,6 +108,8 @@ key_bindings_init(void)
 		{ '#', 			  0, &cmd_list_buffers_entry },
 		{ '%', 			  0, &cmd_split_window_entry },
 		{ '&', 			  0, &cmd_confirm_before_entry },
+		{ '(',                    0, &cmd_switch_client_entry },
+		{ ')',                    0, &cmd_switch_client_entry },
 		{ ',', 			  0, &cmd_command_prompt_entry },
 		{ '-', 			  0, &cmd_delete_buffer_entry },
 		{ '.', 			  0, &cmd_command_prompt_entry },

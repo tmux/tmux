@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.264 2010-07-17 14:39:01 tcunha Exp $
+.\" $Id: tmux.1,v 1.265 2010-09-10 13:36:17 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 15 2010 $
+.Dd $Mdocdate: September 8 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -660,6 +660,7 @@ Suspend a client by sending
 .Dv SIGTSTP
 (tty stop).
 .It Xo Ic switch-client
+.Op Fl np
 .Op Fl c Ar target-client
 .Op Fl t Ar target-session
 .Xc
@@ -668,6 +669,11 @@ Switch the current session for client
 .Ar target-client
 to
 .Ar target-session .
+If
+.Fl n
+or
+.Fl p
+is used, the client is moved to the next or previous session respectively.
 .El
 .Sh WINDOWS AND PANES
 A

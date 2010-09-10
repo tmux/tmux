@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.575 2010-09-07 19:32:58 nicm Exp $ */
+/* $Id: tmux.h,v 1.576 2010-09-10 13:36:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1963,6 +1963,8 @@ struct session	*session_create(const char *, const char *, const char *,
 		     char **);
 void		 session_destroy(struct session *);
 int		 session_index(struct session *, u_int *);
+struct session	*session_next_session(struct session *);
+struct session	*session_previous_session(struct session *);
 struct winlink	*session_new(struct session *,
 		     const char *, const char *, const char *, int, char **);
 struct winlink	*session_attach(

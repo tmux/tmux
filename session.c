@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.77 2010-07-02 02:49:19 tcunha Exp $ */
+/* $Id: session.c,v 1.78 2010-09-10 13:36:17 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -166,6 +166,48 @@ session_index(struct session *s, u_int *i)
 			return (0);
 	}
 	return (-1);
+}
+
+/* Find the next usable session. */
+struct session *
+session_next_session(struct session *s)
+{
+	struct session *s2;
+	u_int		i;
+
+	if (ARRAY_LENGTH(&sessions) == 0 || session_index(s, &i) != 0)
+		return (NULL);
+
+	do {
+		if (i == ARRAY_LENGTH(&sessions) - 1)
+			i = 0;
+		else
+			i++;
+		s2 = ARRAY_ITEM(&sessions, i);
+	} while (s2 == NULL || s2->flags & SESSION_DEAD);
+
+	return (s2);
+}
+
+/* Find the previous usable session. */
+struct session *
+session_previous_session(struct session *s)
+{
+	struct session *s2;
+	u_int		i;
+
+	if (ARRAY_LENGTH(&sessions) == 0 || session_index(s, &i) != 0)
+		return (NULL);
+
+	do {
+		if (i == 0)
+			i = ARRAY_LENGTH(&sessions) - 1;
+		else
+			i--;
+		s2 = ARRAY_ITEM(&sessions, i);
+	} while (s2 == NULL || s2->flags & SESSION_DEAD);
+
+	return (s2);
 }
 
 /* Create a new window on a session. */
