@@ -249,7 +249,8 @@ tty_term_override(struct tty_term *term, const char *overrides)
 			} else if (entstr[strlen(entstr) - 1] == '@') {
 				entstr[strlen(entstr) - 1] = '\0';
 				removeflag = 1;
-			}
+			} else
+				continue;
 
 			for (i = 0; i < NTTYCODE; i++) {
 				ent = &tty_term_codes[i];
