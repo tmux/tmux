@@ -47,7 +47,7 @@ void	tty_cell(struct tty *,
 	    const struct grid_cell *, const struct grid_utf8 *);
 
 #define tty_use_acs(tty) \
-	(tty_term_has(tty, TTYC_ACSC) && !((tty)->flags & TTY_UTF8))
+	(tty_term_has(tty->term, TTYC_ACSC) && !((tty)->flags & TTY_UTF8))
 
 void
 tty_init(struct tty *tty, int fd, char *term)
