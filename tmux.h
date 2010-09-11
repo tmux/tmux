@@ -972,6 +972,8 @@ struct tty_term {
 	char		*name;
 	u_int		 references;
 
+	char		 acs[UCHAR_MAX + 1][2];
+
 	struct tty_code	 codes[NTTYCODE];
 
 #define TERM_256COLOURS 0x1
@@ -1008,8 +1010,6 @@ struct tty {
 	struct termios	 tio;
 
 	struct grid_cell cell;
-
-	u_char		 acs[UCHAR_MAX + 1];
 
 #define TTY_NOCURSOR 0x1
 #define TTY_FREEZE 0x2
@@ -1372,7 +1372,6 @@ void	environ_push(struct environ *);
 
 /* tty.c */
 void	tty_raw(struct tty *, const char *);
-u_char	tty_get_acs(struct tty *, u_char);
 void	tty_attributes(struct tty *, const struct grid_cell *);
 void	tty_reset(struct tty *);
 void	tty_region_pane(struct tty *, const struct tty_ctx *, u_int, u_int);
@@ -1425,6 +1424,9 @@ const char	*tty_term_string2(
 		     struct tty_term *, enum tty_code_code, int, int);
 int		 tty_term_number(struct tty_term *, enum tty_code_code);
 int		 tty_term_flag(struct tty_term *, enum tty_code_code);
+
+/* tty-acs.c */
+const char	*tty_acs_get(struct tty *, u_char);
 
 /* tty-keys.c */
 void	tty_keys_init(struct tty *);
