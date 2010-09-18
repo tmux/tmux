@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.41 2009-12-18 07:42:30 nicm Exp $ */
+/* $Id: tty-term.c,v 1.42 2010-09-18 15:41:50 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -252,7 +252,8 @@ tty_term_override(struct tty_term *term, const char *overrides)
 			} else if (entstr[strlen(entstr) - 1] == '@') {
 				entstr[strlen(entstr) - 1] = '\0';
 				removeflag = 1;
-			}
+			} else
+				continue;
 
 			for (i = 0; i < NTTYCODE; i++) {
 				ent = &tty_term_codes[i];
