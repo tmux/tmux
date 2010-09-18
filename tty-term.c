@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.42 2010-09-18 15:41:50 tcunha Exp $ */
+/* $Id: tty-term.c,v 1.43 2010-09-18 15:43:53 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -305,6 +305,7 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 	u_int				 i;
 	int		 		 n, error;
 	char				*s;
+	const char                      *acs;
 
 	SLIST_FOREACH(term, &tty_terms, entry) {
 		if (strcmp(term->name, name) == 0) {
@@ -318,7 +319,7 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 	term->name = xstrdup(name);
 	term->references = 1;
 	term->flags = 0;
-	memset(&term->codes, 0, sizeof term->codes);
+	memset(term->codes, 0, sizeof term->codes);
 	SLIST_INSERT_HEAD(&tty_terms, term, entry);
 
 	/* Set up curses terminal. */
@@ -415,6 +416,15 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 	 */
 	if (!tty_term_flag(term, TTYC_XENL))
 		term->flags |= TERM_EARLYWRAP;
+
+	/* Generate ACS table. If none is present, use nearest ASCII. */
+	memset(term->acs, 0, sizeof term->acs);
+	if (tty_term_has(term, TTYC_ACSC))
+		acs = tty_term_string(term, TTYC_ACSC);
+	else
+		acs = "a#j+k+l+m+n+o-p-q-r-s-t+u+v+w+x|y<z>~.";
+	for (; acs[0] != '\0' && acs[1] != '\0'; acs += 2)
+		term->acs[(u_char) acs[0]][0] = acs[1];
 
 	return (term);
 
