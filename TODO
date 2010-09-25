@@ -132,8 +132,6 @@
 
 For 1.4 (not in order):
 
-1 select-layout w/o argument should reapply current layout
-2 support UTF-8 line drawing characters for ACS to workaround putty idiocy
 3 why are alerts per-winlink? try per window?
 4 audit of escape sequence support vs xterm
 5 support binding keys to mouse (mouse-select-pane -> mouse-keys or something,
@@ -150,7 +148,6 @@ For 1.4 (not in order):
 12 better configure? with-libevent
 14 bind commands to key sequences?
 16 monitor, bell etc should monitor /all/ panes in the window not just one
-17 wd should be updated on attach etc. maybe lose default-path and use PWD
 18 a history of commands that can be reversed (reverse member of each command, and a buffer)
 19 info() when changing to same window
 20 don't pass UTF-8 through vis for titles
