@@ -75,6 +75,7 @@ const char *set_option_bell_action_list[] = {
 
 const struct set_option_entry set_option_table[] = {
 	{ "escape-time", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
+	{ "exit-unattached", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "quiet", SET_OPTION_FLAG, 0, 0, NULL },
 	{ NULL, 0, 0, 0, NULL }
 };
@@ -87,6 +88,7 @@ const struct set_option_entry set_session_option_table[] = {
 	{ "default-path", SET_OPTION_STRING, 0, 0, NULL },
 	{ "default-shell", SET_OPTION_STRING, 0, 0, NULL },
 	{ "default-terminal", SET_OPTION_STRING, 0, 0, NULL },
+	{ "destroy-unattached", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "detach-on-destroy", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "display-panes-colour", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "display-panes-active-colour", SET_OPTION_COLOUR, 0, 0, NULL },

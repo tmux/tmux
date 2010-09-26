@@ -222,15 +222,17 @@ server_loop(void)
 	}
 }
 
-/* Check if the server should be shutting down (no more clients or windows). */
+/* Check if the server should be shutting down (no more clients or sessions). */
 int
 server_should_shutdown(void)
 {
 	u_int	i;
 
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		if (ARRAY_ITEM(&sessions, i) != NULL)
-			return (0);
+	if (!options_get_number(&global_options, "exit-unattached")) {
+		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
+			if (ARRAY_ITEM(&sessions, i) != NULL)
+				return (0);
+		}
 	}
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		if (ARRAY_ITEM(&clients, i) != NULL)

@@ -152,6 +152,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	c->session = s;
 
 	recalculate_sizes();
+	server_check_unattached();
 	server_redraw_client(c);
 
 	return (0);
