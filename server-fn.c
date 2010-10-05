@@ -368,7 +368,7 @@ server_next_session(struct session *s)
 	s_out = NULL;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
 		s_loop = ARRAY_ITEM(&sessions, i);
-		if (s_loop == s)
+		if (s_loop == NULL || s_loop == s)
 			continue;
 		if (s_out == NULL ||
 		    timercmp(&s_loop->activity_time, &s_out->activity_time, <))
