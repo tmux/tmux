@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.243 2010-08-29 14:42:11 tcunha Exp $ */
+/* $Id: server.c,v 1.244 2010-10-09 14:26:29 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -300,7 +300,8 @@ server_update_socket(void)
 	struct session	*s;
 	u_int		 i;
 	static int	 last = -1;
-	int		 n;
+	int		 n, mode;
+	struct stat      sb;
 
 	n = 0;
 	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
@@ -313,10 +314,20 @@ server_update_socket(void)
 
 	if (n != last) {
 		last = n;
-		if (n != 0)
-			chmod(socket_path, S_IRWXU|S_IRWXG);
-		else
-			chmod(socket_path, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP);
+
+		if (stat(socket_path, &sb) != 0)
+			return;
+		mode = sb.st_mode;
+		if (n != 0) {
+			if (mode & S_IRUSR)
+				mode |= S_IXUSR;
+			if (mode & S_IRGRP)
+				mode |= S_IXGRP;
+			if (mode & S_IROTH)
+				mode |= S_IXOTH;
+		} else
+			mode &= ~(S_IXUSR|S_IXGRP|S_IXOTH);
+		chmod(socket_path, mode);
 	}
 }
 
