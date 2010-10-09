@@ -1,4 +1,4 @@
-/* $Id: cmd-switch-client.c,v 1.20 2010-09-10 13:36:17 tcunha Exp $ */
+/* $Id: cmd-switch-client.c,v 1.21 2010-10-09 14:29:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -152,6 +152,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	c->session = s;
 
 	recalculate_sizes();
+	server_check_unattached();
 	server_redraw_client(c);
 
 	return (0);

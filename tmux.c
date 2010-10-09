@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.215 2010-08-29 14:42:11 tcunha Exp $ */
+/* $Id: tmux.c,v 1.216 2010-10-09 14:29:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -334,6 +334,7 @@ main(int argc, char **argv)
 	oo = &global_options;
 	options_set_number(oo, "quiet", quiet);
 	options_set_number(oo, "escape-time", 500);
+	options_set_number(oo, "exit-unattached", 0);
 
 	options_init(&global_s_options, NULL);
 	so = &global_s_options;
@@ -344,6 +345,7 @@ main(int argc, char **argv)
 	options_set_string(so, "default-path", "%s", "");
 	options_set_string(so, "default-shell", "%s", getshell());
 	options_set_string(so, "default-terminal", "screen");
+	options_set_number(so, "destroy-unattached", 0);
 	options_set_number(so, "detach-on-destroy", 1);
 	options_set_number(so, "display-panes-active-colour", 1);
 	options_set_number(so, "display-panes-colour", 4);
