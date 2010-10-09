@@ -280,8 +280,10 @@ server_link_window(struct session *src, struct winlink *srcwl,
 	if (dstidx != -1)
 		dstwl = winlink_find_by_index(&dst->windows, dstidx);
 	if (dstwl != NULL) {
-		if (dstwl->window == srcwl->window)
+		if (dstwl->window == srcwl->window) {
+			xasprintf(cause, "same index: %d", dstidx);
 			return (-1);
+		}
 		if (killflag) {
 			/*
 			 * Can't use session_detach as it will destroy session
