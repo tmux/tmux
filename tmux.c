@@ -61,6 +61,7 @@ char 		*makesockpath(const char *);
 __dead void	 shell_exec(const char *, const char *);
 
 struct imsgbuf	*main_ibuf;
+struct event	 main_event;
 
 void		 main_signal(int, short, unused void *);
 void		 main_callback(int, short, void *);
@@ -547,12 +548,14 @@ main(int argc, char **argv)
 	events = EV_READ;
 	if (main_ibuf->w.queued > 0)
 		events |= EV_WRITE;
-	event_once(main_ibuf->fd, events, main_callback, shellcmd, NULL);
+	event_set(&main_event, main_ibuf->fd, events, main_callback, shellcmd);
+	event_add(&main_event, NULL);
 
 	event_dispatch();
 
-	clear_signals(0);
+	event_del(&main_event);
 
+	clear_signals(0);
 	client_main();	/* doesn't return */
 }
 
@@ -585,10 +588,12 @@ main_callback(unused int fd, short events, void *data)
 			fatalx("msgbuf_write failed");
 	}
 
+	event_del(&main_event);
 	events = EV_READ;
 	if (main_ibuf->w.queued > 0)
 		events |= EV_WRITE;
-	event_once(main_ibuf->fd, events, main_callback, shellcmd, NULL);
+	event_set(&main_event, main_ibuf->fd, events, main_callback, shellcmd);
+	event_add(&main_event, NULL);
 }
 
 void
