@@ -340,15 +340,11 @@ cmd_current_session(struct cmd_ctx *ctx)
 	}
 
 	/* Use the session from the TMUX environment variable. */
-	if (data != NULL && data->pid != -1) {
-		if (data->pid != getpid())
-			return (NULL);
-		if (data->idx > ARRAY_LENGTH(&sessions))
-			return (NULL);
-		if ((s = ARRAY_ITEM(&sessions, data->idx)) == NULL)
-			return (NULL);
+	if (data != NULL &&
+	    data->pid == getpid() &&
+	    data->idx <= ARRAY_LENGTH(&sessions) &&
+	    (s = ARRAY_ITEM(&sessions, data->idx)) != NULL)
 		return (s);
-	}
 
 	return (cmd_choose_session(&sessions));
 }
