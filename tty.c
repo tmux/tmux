@@ -61,9 +61,6 @@ tty_init(struct tty *tty, int fd, char *term)
 		tty->termname = xstrdup("unknown");
 	else
 		tty->termname = xstrdup(term);
-
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
-		fatal("fcntl failed");
 	tty->fd = fd;
 
 	if ((path = ttyname(fd)) == NULL)

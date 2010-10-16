@@ -223,6 +223,8 @@ shell_exec(const char *shell, const char *shellcmd)
 		xasprintf(&argv0, "%s", shellname);
 	setenv("SHELL", shell, 1);
 
+	closefrom(STDERR_FILENO + 1);
+
 	execl(shell, argv0, "-c", shellcmd, (char *) NULL);
 	fatal("execl failed");
 }

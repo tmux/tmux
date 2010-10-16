@@ -112,6 +112,8 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (null_fd != STDOUT_FILENO && null_fd != STDERR_FILENO)
 			close(null_fd);
 
+		closefrom(STDERR_FILENO + 1);
+
 		command = status_replace(c, NULL, data->arg, time(NULL), 0);
 		execl(_PATH_BSHELL, "sh", "-c", command, (char *) NULL);
 		_exit(1);
@@ -129,8 +131,6 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if ((mode = fcntl(wp->pipe_fd, F_GETFL)) == -1)
 			fatal("fcntl failed");
 		if (fcntl(wp->pipe_fd, F_SETFL, mode|O_NONBLOCK) == -1)
-			fatal("fcntl failed");
-		if (fcntl(wp->pipe_fd, F_SETFD, FD_CLOEXEC) == -1)
 			fatal("fcntl failed");
 		return (0);
 	}

@@ -60,8 +60,6 @@ server_client_create(int fd)
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
-		fatal("fcntl failed");
 
 	c = xcalloc(1, sizeof *c);
 	c->references = 0;
@@ -706,8 +704,6 @@ server_client_msg_dispatch(struct client *c)
 
 			if ((mode = fcntl(c->stdin_fd, F_GETFL)) != -1)
 				fcntl(c->stdin_fd, F_SETFL, mode|O_NONBLOCK);
-			if (fcntl(c->stdin_fd, F_SETFD, FD_CLOEXEC) == -1)
-				fatal("fcntl failed");
 
 			server_client_msg_identify(c, &identifydata, imsg.fd);
 			break;
@@ -725,8 +721,6 @@ server_client_msg_dispatch(struct client *c)
 
 			if ((mode = fcntl(c->stdout_fd, F_GETFL)) != -1)
 				fcntl(c->stdout_fd, F_SETFL, mode|O_NONBLOCK);
-			if (fcntl(c->stdout_fd, F_SETFD, FD_CLOEXEC) == -1)
-				fatal("fcntl failed");
 			break;
 		case MSG_STDERR:
 			if (datalen != 0)
@@ -742,8 +736,6 @@ server_client_msg_dispatch(struct client *c)
 
 			if ((mode = fcntl(c->stderr_fd, F_GETFL)) != -1)
 				fcntl(c->stderr_fd, F_SETFL, mode|O_NONBLOCK);
-			if (fcntl(c->stderr_fd, F_SETFD, FD_CLOEXEC) == -1)
-				fatal("fcntl failed");
 			break;
 		case MSG_RESIZE:
 			if (datalen != 0)

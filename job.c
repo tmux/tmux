@@ -169,6 +169,8 @@ job_run(struct job *job)
 		if (nullfd != STDIN_FILENO && nullfd != STDERR_FILENO)
 			close(nullfd);
 
+		closefrom(STDERR_FILENO + 1);
+
 		execl(_PATH_BSHELL, "sh", "-c", job->cmd, (char *) NULL);
 		fatal("execl failed");
 	default:	/* parent */
@@ -178,8 +180,6 @@ job_run(struct job *job)
 		if ((mode = fcntl(job->fd, F_GETFL)) == -1)
 			fatal("fcntl failed");
 		if (fcntl(job->fd, F_SETFL, mode|O_NONBLOCK) == -1)
-			fatal("fcntl failed");
-		if (fcntl(job->fd, F_SETFD, FD_CLOEXEC) == -1)
 			fatal("fcntl failed");
 
 		if (job->event != NULL)

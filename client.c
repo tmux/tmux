@@ -90,8 +90,6 @@ server_started:
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
 		fatal("fcntl failed");
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
-		fatal("fcntl failed");
 	imsg_init(&client_ibuf, fd);
 	event_set(&client_event, fd, EV_READ, client_callback, NULL);
 
