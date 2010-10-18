@@ -167,6 +167,8 @@ the ctrl (bit 5 set, for example ^[[5~ to ^[[5^) modifier in non-xterm(1) mode;
 it may be possible to configure vim to accept these, an example of how to do so
 would be welcome.
 
+vim users may also want to set the "ttyfast" option inside tmux.
+
 * Why doesn't elinks set the window title inside tmux?
 
 There isn't a way to detect if a terminal supports setting the window title, so
@@ -255,4 +257,4 @@ lock(1) or vlock(1)) by using the following:
 
 bind x set lock-command '/usr/bin/vlock' \; lock-client \; set lock-command 'tput civis && read -s -n1'
  
-$Id: FAQ,v 1.37 2010-07-31 11:46:28 nicm Exp $
+$Id: FAQ,v 1.38 2010-10-18 19:01:07 nicm Exp $
