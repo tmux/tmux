@@ -80,6 +80,11 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 			if (used >= sizeof tmp)
 				continue;
 		}
+		if (bd->can_repeat) {
+			used = strlcat(tmp, "(repeat) ", sizeof tmp);
+			if (used >= sizeof tmp)
+				continue;
+		}
 		cmd_list_print(bd->cmdlist, tmp + used, (sizeof tmp) - used);
 		ctx->print(ctx, "%s", tmp);
 	}
