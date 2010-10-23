@@ -12,29 +12,99 @@ tmux frequently asked questions
 * and derivatives.                                                           *
 ******************************************************************************
 
-* How is tmux different from GNU screen? What else does it offer?
+* How is tmux different from GNU screen?
 
-tmux offers several advantages over screen:
+tmux and GNU screen have many similarities. Some of the main differences I am
+aware of are (bearing in mind I haven't used screen for a few years now):
 
-- a clearly-defined client-server model: windows are independent entities which
-  may be attached simultaneously to multiple sessions and viewed from multiple
-  clients (terminals), as well as moved freely between sessions within the same
-  tmux server;
-- a consistent, well-documented command interface, with the same syntax
-  whether used interactively, as a key binding, or from the shell;
-- easily scriptable from the shell;
-- multiple paste buffers;
-- choice of vi or emacs key layouts;
-- an option to limit the window size;
-- a more usable status line syntax, with the ability to display the first line
-  of output of a specific command;
-- a cleaner, modern, easily extended, BSD-licensed codebase.
+- tmux uses a client-server model. Each server has single Unix domain socket in
+  /tmp and within one server there are multiple sessions which may be attached
+  to multiple clients (terminals).
 
-There are still a few features screen includes that tmux omits:
+  This has advantages, notably: windows may be linked simultaneously to
+  multiple sessions; windows may be moved freely between sessions; and a client
+  may be switched between sessions easily (C-b D). There is one major
+  disadvantage: if the server crashes, game over, all sessions die. In
+  practice, however, tmux is quite stable and gets more so as people report any
+  bugs they hit :-).
 
-- builtin serial and telnet support; this is bloat and is unlikely to be added
-  to tmux;
-- wider platform support, for example IRIX and HP-UX, and for odd terminals.
+  This model is different from screen, where typically each new screen instance
+  is independent. tmux supports the same behaviour by using multiple servers
+  with the -L option but it is not typically recommended.
+
+- Different command interfaces. One of the goals of tmux is that the shell
+  should be easily usable as a scripting language - almost all tmux commands
+  can be used from the shell and behave identically whether used from the
+  shell, from a key binding or from the command prompt. Personally I also find
+  tmux's command interface much more consistent and clearer, but this is
+  subjective.
+
+- tmux calls window names (what you see in the status line) "names", screen
+  calls them "titles".
+
+- tmux has a multiple paste buffers. Not a major one but comes in handy quite a
+  lot.
+
+- tmux supports automatically renaming windows to the running application
+  without gross hacks using escape sequences. Its even on by default.
+
+- tmux has a choice of vi or emacs key layouts. Again, not major, but I use
+  emacs so if tmux did support only one key set it would be emacs and then all
+  the vi users would get humpy. Key bindings may be completely reconfigured in
+  any case.
+
+- tmux has an option to limit the window size.
+
+- tmux has search in windows (C-b f).
+
+- The window split (pane) model is different. tmux has two objects, windows and
+  panes; screen has just windows. This difference has several implications:
+
+  * In screen you can have a window appear in several layouts, in tmux a pane
+  can only be in one window (fixing this is a big todo item but quite
+  invasive).
+
+  * tmux layouts are immutable and do not get changed unless you modify them.
+
+  * In tmux, all panes are closed when you kill a window.
+
+  * tmux panes do not have individual names, titles and so on.
+
+  I think tmux's model is much easier to manage and navigate within a window,
+  but breaking panes off from and joining them to windows is more clumsy.
+
+  tmux also has support for preset pane layouts.
+
+- tmux's status line syntax is more readable and easier to use. I think it'd be
+  hard for anyone to argue with this. tmux doesn't support running a command
+  constantly and always using the last line of its output, commands must be run
+  again each time.
+
+- tmux has modern, easily extended code. Again hard to argue screen is better
+  if you have looked at the code.
+
+- tmux depends on libevent. I don't see this as a disadvantage: libevent is
+  small and portable, and on modern systems with current package management
+  systems dependencies are not an issue. libevent brings advantages in code
+  simplicity and performance.
+
+- screen allows the window to be bigger than the terminal and can pan around
+  it. tmux limits the size to the largest attached client. This is a big todo
+  item for tmux but it is not trivial.
+
+- screen has builtin serial and telnet support; this is bloat and is unlikely
+  to be added to tmux.
+
+- screen has support for updating utmp. Nobody has really come up with a clean,
+  portable way to do this without making tmux setuid or setgid yet.
+
+- Environment handling is different.
+
+- tmux tends to be more demanding on the terminal so tends to show up terminal
+  and application bugs which screen does not.
+
+- screen has wider platform support, for example IRIX and HP-UX, and for odd
+  terminals.
 
 * I found a bug! What do I do?
 
@@ -257,4 +327,4 @@ lock(1) or vlock(1)) by using the following:
 
 bind x set lock-command '/usr/bin/vlock' \; lock-client \; set lock-command 'tput civis && read -s -n1'
  
-$Id: FAQ,v 1.38 2010-10-18 19:01:07 nicm Exp $
+$Id: FAQ,v 1.39 2010-10-23 14:09:29 nicm Exp $
