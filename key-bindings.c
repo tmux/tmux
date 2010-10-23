@@ -124,6 +124,7 @@ key_bindings_init(void)
 		{ '8', 			  0, &cmd_select_window_entry },
 		{ '9', 			  0, &cmd_select_window_entry },
 		{ ':', 			  0, &cmd_command_prompt_entry },
+		{ ';', 			  0, &cmd_last_pane_entry },
 		{ '=', 			  0, &cmd_choose_buffer_entry },
 		{ '?', 			  0, &cmd_list_keys_entry },
 		{ 'D',			  0, &cmd_choose_client_entry },

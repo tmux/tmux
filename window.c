@@ -325,6 +325,7 @@ window_resize(struct window *w, u_int sx, u_int sy)
 void
 window_set_active_pane(struct window *w, struct window_pane *wp)
 {
+	w->last = w->active;
 	w->active = wp;
 	while (!window_pane_visible(w->active)) {
 		w->active = TAILQ_PREV(w->active, window_panes, entry);
@@ -369,10 +370,15 @@ void
 window_remove_pane(struct window *w, struct window_pane *wp)
 {
 	if (wp == w->active) {
-		w->active = TAILQ_PREV(wp, window_panes, entry);
-		if (w->active == NULL)
-			w->active = TAILQ_NEXT(wp, entry);
-	}
+		w->active = w->last;
+		w->last = NULL;
+		if (w->active == NULL) {
+			w->active = TAILQ_PREV(wp, window_panes, entry);
+			if (w->active == NULL)
+				w->active = TAILQ_NEXT(wp, entry);
+		}
+	} else if (wp == w->last)
+		w->last = NULL;
 
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	window_pane_destroy(wp);

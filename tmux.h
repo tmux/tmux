@@ -832,6 +832,7 @@ struct window {
 	struct event	 name_timer;
 
 	struct window_pane *active;
+	struct window_pane *last;
 	struct window_panes panes;
 
 	int		 lastlayout;
@@ -1507,6 +1508,7 @@ extern const struct cmd_entry cmd_kill_pane_entry;
 extern const struct cmd_entry cmd_kill_server_entry;
 extern const struct cmd_entry cmd_kill_session_entry;
 extern const struct cmd_entry cmd_kill_window_entry;
+extern const struct cmd_entry cmd_last_pane_entry;
 extern const struct cmd_entry cmd_last_window_entry;
 extern const struct cmd_entry cmd_link_window_entry;
 extern const struct cmd_entry cmd_list_buffers_entry;
