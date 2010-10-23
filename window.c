@@ -368,9 +368,11 @@ window_add_pane(struct window *w, u_int hlimit)
 void
 window_remove_pane(struct window *w, struct window_pane *wp)
 {
-	w->active = TAILQ_PREV(wp, window_panes, entry);
-	if (w->active == NULL)
-		w->active = TAILQ_NEXT(wp, entry);
+	if (wp == w->active) {
+		w->active = TAILQ_PREV(wp, window_panes, entry);
+		if (w->active == NULL)
+			w->active = TAILQ_NEXT(wp, entry);
+	}
 
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	window_pane_destroy(wp);
