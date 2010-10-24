@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.142 2010-07-17 14:38:13 tcunha Exp $ */
+/* $Id: cmd.c,v 1.143 2010-10-24 00:32:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -339,15 +339,11 @@ cmd_current_session(struct cmd_ctx *ctx)
 	}
 
 	/* Use the session from the TMUX environment variable. */
-	if (data != NULL && data->pid != -1) {
-		if (data->pid != getpid())
-			return (NULL);
-		if (data->idx > ARRAY_LENGTH(&sessions))
-			return (NULL);
-		if ((s = ARRAY_ITEM(&sessions, data->idx)) == NULL)
-			return (NULL);
+	if (data != NULL &&
+	    data->pid == getpid() &&
+	    data->idx <= ARRAY_LENGTH(&sessions) &&
+	    (s = ARRAY_ITEM(&sessions, data->idx)) != NULL)
 		return (s);
-	}
 
 	return (cmd_choose_session(&sessions));
 }
