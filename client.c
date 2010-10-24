@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.99 2010-10-24 01:31:08 tcunha Exp $ */
+/* $Id: client.c,v 1.100 2010-10-24 19:54:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -157,7 +157,9 @@ client_main(int argc, char **argv, int flags)
 	}
 
 	/* Set process title, log and signals now this is the client. */
+#ifdef HAVE_SETPROCTITLE
 	setproctitle("client (%s)", socket_path);
+#endif
 	logfile("client");
 
 	/* Create imsg. */

@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.247 2010-10-24 01:31:08 tcunha Exp $ */
+/* $Id: server.c,v 1.248 2010-10-24 19:54:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -155,7 +155,9 @@ server_start(void)
 
 	start_time = time(NULL);
 	log_debug("socket path %s", socket_path);
+#ifdef HAVE_SETPROCTITLE
 	setproctitle("server (%s)", socket_path);
+#endif
 
 	server_fd = server_create_socket();
 	server_client_create(pair[1]);

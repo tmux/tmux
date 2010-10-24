@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.220 2010-10-24 01:31:08 tcunha Exp $ */
+/* $Id: tmux.c,v 1.221 2010-10-24 19:54:41 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -471,8 +471,10 @@ main(int argc, char **argv)
 		strlcpy(socket_path, path, sizeof socket_path);
 	xfree(path);
 
+#ifdef HAVE_SETPROCTITLE
 	/* Set process title. */
 	setproctitle("%s (%s)", __progname, socket_path);
+#endif
 
 	/* Pass control to the client. */
 #ifdef HAVE_BROKEN_KQUEUE
