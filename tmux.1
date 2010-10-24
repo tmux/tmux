@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.267 2010-10-09 14:29:32 tcunha Exp $
+.\" $Id: tmux.1,v 1.268 2010-10-24 00:29:57 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 26 2010 $
+.Dd $Mdocdate: October 14 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2082,7 +2082,8 @@ will attempt - on supported platforms - to rename the window to reflect the
 command currently running in it.
 This flag is automatically disabled for an individual window when a name
 is specified at creation with
-.Ic new-window or
+.Ic new-window
+or
 .Ic new-session ,
 or later with
 .Ic rename-window .
