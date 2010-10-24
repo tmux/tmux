@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.137 2010-09-07 19:32:58 nicm Exp $ */
+/* $Id: window.c,v 1.138 2010-10-24 00:45:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -570,6 +570,8 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 		if (tcsetattr(STDIN_FILENO, TCSANOW, &tio2) != 0)
 			fatal("tcgetattr failed");
 
+		closefrom(STDERR_FILENO + 1);
+
 		environ_push(env);
 
 		clear_signals(1);
@@ -599,8 +601,6 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 	if ((mode = fcntl(wp->fd, F_GETFL)) == -1)
 		fatal("fcntl failed");
 	if (fcntl(wp->fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failed");
-	if (fcntl(wp->fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
 	wp->event = bufferevent_new(wp->fd,
 	    window_pane_read_callback, NULL, window_pane_error_callback, wp);

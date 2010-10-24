@@ -1,4 +1,4 @@
-/* $Id: job.c,v 1.18 2010-08-29 14:42:11 tcunha Exp $ */
+/* $Id: job.c,v 1.19 2010-10-24 00:45:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -168,6 +168,8 @@ job_run(struct job *job)
 		if (nullfd != STDIN_FILENO && nullfd != STDERR_FILENO)
 			close(nullfd);
 
+		closefrom(STDERR_FILENO + 1);
+
 		execl(_PATH_BSHELL, "sh", "-c", job->cmd, (char *) NULL);
 		fatal("execl failed");
 	default:	/* parent */
@@ -177,8 +179,6 @@ job_run(struct job *job)
 		if ((mode = fcntl(job->fd, F_GETFL)) == -1)
 			fatal("fcntl failed");
 		if (fcntl(job->fd, F_SETFL, mode|O_NONBLOCK) == -1)
-			fatal("fcntl failed");
-		if (fcntl(job->fd, F_SETFD, FD_CLOEXEC) == -1)
 			fatal("fcntl failed");
 
 		if (job->event != NULL)

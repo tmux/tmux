@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.245 2010-10-09 14:29:32 tcunha Exp $ */
+/* $Id: server.c,v 1.246 2010-10-24 00:45:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -96,8 +96,6 @@ server_create_socket(void)
 	if ((mode = fcntl(fd, F_GETFL)) == -1)
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failed");
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
 
 	server_update_socket();

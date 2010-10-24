@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.195 2010-09-18 15:45:03 tcunha Exp $ */
+/* $Id: tty.c,v 1.196 2010-10-24 00:45:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,9 +61,6 @@ tty_init(struct tty *tty, int fd, char *term)
 		tty->termname = xstrdup("unknown");
 	else
 		tty->termname = xstrdup(term);
-
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
-		fatal("fcntl failed");
 	tty->fd = fd;
 
 	if ((path = ttyname(fd)) == NULL)

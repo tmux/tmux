@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.217 2010-10-24 00:31:57 tcunha Exp $ */
+/* $Id: tmux.c,v 1.218 2010-10-24 00:45:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -225,6 +225,8 @@ shell_exec(const char *shell, const char *shellcmd)
 	else
 		xasprintf(&argv0, "%s", shellname);
 	setenv("SHELL", shell, 1);
+
+	closefrom(STDERR_FILENO + 1);
 
 	execl(shell, argv0, "-c", shellcmd, (char *) NULL);
 	fatal("execl failed");

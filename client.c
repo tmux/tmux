@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.97 2010-08-29 14:44:55 tcunha Exp $ */
+/* $Id: client.c,v 1.98 2010-10-24 00:45:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -93,8 +93,6 @@ server_started:
 	if ((mode = fcntl(fd, F_GETFL)) == -1)
 		fatal("fcntl failed");
 	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failed");
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
 		fatal("fcntl failed");
 	imsg_init(&client_ibuf, fd);
 	event_set(&client_event, fd, EV_READ, client_callback, NULL);
