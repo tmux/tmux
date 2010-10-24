@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.579 2010-10-09 14:30:26 tcunha Exp $ */
+/* $Id: tmux.h,v 1.580 2010-10-24 01:31:08 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1289,15 +1289,19 @@ extern struct options global_w_options;
 extern struct environ global_environ;
 extern struct event_base *ev_base;
 extern char	*cfg_file;
+extern char	*shell_cmd;
 extern int	 debug_level;
-extern int	 be_quiet;
 extern time_t	 start_time;
-extern char	*socket_path;
+extern char	 socket_path[MAXPATHLEN];
 extern int	 login_shell;
+extern char	*environ_path;
+extern pid_t	 environ_pid;
+extern u_int	 environ_idx;
 void		 logfile(const char *);
 const char	*getshell(void);
 int		 checkshell(const char *);
 int		 areshell(const char *);
+__dead void	 shell_exec(const char *, const char *);
 
 /* cfg.c */
 extern int       cfg_finished;
@@ -1596,8 +1600,7 @@ void	cmd_buffer_free(struct cmd *);
 size_t	cmd_buffer_print(struct cmd *, char *, size_t);
 
 /* client.c */
-struct imsgbuf *client_init(char *, int, int);
-__dead void	client_main(void);
+int	client_main(int, char **, int);
 
 /* key-bindings.c */
 extern struct key_bindings key_bindings;
@@ -1620,7 +1623,7 @@ const char *key_string_lookup_key(int);
 /* server.c */
 extern struct clients clients;
 extern struct clients dead_clients;
-int	 server_start(char *);
+int	 server_start(void);
 void	 server_update_socket(void);
 
 /* server-client.c */
