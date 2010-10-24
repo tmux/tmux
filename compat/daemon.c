@@ -32,10 +32,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 
-#ifdef HAVE_PATHS_H
-#include <paths.h>
-#endif
-
 #include "tmux.h"
 
 int
