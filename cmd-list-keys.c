@@ -1,4 +1,4 @@
-/* $Id: cmd-list-keys.c,v 1.24 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: cmd-list-keys.c,v 1.25 2010-10-24 01:31:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -77,6 +77,11 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		if (!(bd->key & KEYC_PREFIX)) {
 			used = strlcat(tmp, "(no prefix) ", sizeof tmp);
+			if (used >= sizeof tmp)
+				continue;
+		}
+		if (bd->can_repeat) {
+			used = strlcat(tmp, "(repeat) ", sizeof tmp);
 			if (used >= sizeof tmp)
 				continue;
 		}
