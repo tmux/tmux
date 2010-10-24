@@ -1,4 +1,4 @@
-/* $Id: xterm-keys.c,v 1.6 2010-09-07 13:21:18 tcunha Exp $ */
+/* $Id: xterm-keys.c,v 1.7 2010-10-24 00:30:51 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -128,6 +128,8 @@ xterm_keys_modifiers(const char *template, const char *buf, size_t len)
 		modifiers |= KEYC_ESCAPE;
 	if (param & 4)
 		modifiers |= KEYC_CTRL;
+	if (param & 8)
+		modifiers |= KEYC_ESCAPE;
 	return (modifiers);
 }
 
@@ -172,6 +174,8 @@ xterm_keys_lookup(int key)
 		modifiers += 2;
 	if (key & KEYC_CTRL)
 		modifiers += 4;
+	if (key & KEYC_ESCAPE)
+		modifiers += 8;
 
 	/*
 	 * If the key has no modifiers, return NULL and let it fall through to
