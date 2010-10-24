@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.138 2010-10-24 00:45:57 tcunha Exp $ */
+/* $Id: window.c,v 1.139 2010-10-24 01:32:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -365,9 +365,11 @@ window_add_pane(struct window *w, u_int hlimit)
 void
 window_remove_pane(struct window *w, struct window_pane *wp)
 {
-	w->active = TAILQ_PREV(wp, window_panes, entry);
-	if (w->active == NULL)
-		w->active = TAILQ_NEXT(wp, entry);
+	if (wp == w->active) {
+		w->active = TAILQ_PREV(wp, window_panes, entry);
+		if (w->active == NULL)
+			w->active = TAILQ_NEXT(wp, entry);
+	}
 
 	TAILQ_REMOVE(&w->panes, wp, entry);
 	window_pane_destroy(wp);
