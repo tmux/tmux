@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.268 2010-10-24 00:29:57 tcunha Exp $
+.\" $Id: tmux.1,v 1.269 2010-10-24 01:34:30 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 14 2010 $
+.Dd $Mdocdate: October 23 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -248,6 +248,8 @@ Select windows 0 to 9.
 Enter the
 .Nm
 command prompt.
+.It ;
+Move to the previously active pane.
 .It =
 Choose which buffer to paste interactively from a list.
 .It \&?
@@ -1037,6 +1039,9 @@ option kills all but the pane given with
 Kill the current window or the window at
 .Ar target-window ,
 removing it from any sessions to which it is linked.
+.It Ic last-pane Op Fl t Ar target-window
+.D1 (alias: Ic lastp )
+Select the last (previously selected) pane.
 .It Ic last-window Op Fl t Ar target-session
 .D1 (alias: Ic last )
 Select the last (previously selected) window.

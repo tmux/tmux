@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.580 2010-10-24 01:31:08 tcunha Exp $ */
+/* $Id: tmux.h,v 1.581 2010-10-24 01:34:30 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -830,6 +830,7 @@ struct window {
 	struct event	 name_timer;
 
 	struct window_pane *active;
+	struct window_pane *last;
 	struct window_panes panes;
 
 	int		 lastlayout;
@@ -1505,6 +1506,7 @@ extern const struct cmd_entry cmd_kill_pane_entry;
 extern const struct cmd_entry cmd_kill_server_entry;
 extern const struct cmd_entry cmd_kill_session_entry;
 extern const struct cmd_entry cmd_kill_window_entry;
+extern const struct cmd_entry cmd_last_pane_entry;
 extern const struct cmd_entry cmd_last_window_entry;
 extern const struct cmd_entry cmd_link_window_entry;
 extern const struct cmd_entry cmd_list_buffers_entry;
