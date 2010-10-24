@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.43 2010-10-24 00:45:57 tcunha Exp $ */
+/* $Id: server-client.c,v 1.44 2010-10-24 00:50:11 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -22,7 +22,6 @@
 #include <fcntl.h>
 #include <string.h>
 #include <time.h>
-#include <paths.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -939,7 +938,7 @@ server_client_msg_shell(struct client *c)
 	server_write_client(c, MSG_SHELL, &data, sizeof data);
 	c->flags |= CLIENT_BAD;	/* it will die after exec */
 }
-/* $Id: server-client.c,v 1.43 2010-10-24 00:45:57 tcunha Exp $ */
+/* $Id: server-client.c,v 1.44 2010-10-24 00:50:11 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
