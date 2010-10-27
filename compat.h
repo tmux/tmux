@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.28 2010-10-27 21:33:15 nicm Exp $ */
+/* $Id: compat.h,v 1.29 2010-10-27 21:34:59 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -15,6 +15,9 @@
  * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
+#ifndef COMPAT_H
+#define COMPAT_H
 
 #ifndef __GNUC__
 #define __attribute__(a)
@@ -58,10 +61,6 @@ typedef uint64_t u_int64_t;
 #include <bitstring.h>
 #else
 #include "compat/bitstring.h"
-#endif
-
-#ifdef HAVE_GETOPT
-#include <getopt.h>
 #endif
 
 #ifdef HAVE_CRYPT_H
@@ -227,7 +226,9 @@ int		 setenv(const char *, const char *, int);
 int		 unsetenv(const char *);
 #endif
 
-#ifndef HAVE_GETOPT
+#ifdef HAVE_GETOPT
+#include <getopt.h>
+#else
 /* getopt.c */
 extern int	BSDopterr;
 extern int	BSDoptind;
@@ -242,3 +243,5 @@ int	BSDgetopt(int, char *const *, const char *);
 #define optreset           BSDoptreset
 #define optarg             BSDoptarg
 #endif
+
+#endif /* COMPAT_H */
