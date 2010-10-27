@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.26 2010-09-07 19:32:58 nicm Exp $ */
+/* $Id: compat.h,v 1.27 2010-10-27 20:21:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -161,6 +161,14 @@ typedef uint64_t u_int64_t;
 
 #ifndef HAVE_BZERO
 #define bzero(buf, len) memset(buf, 0, len);
+#endif
+
+#ifndef HAVE_CLOSEFROM
+/* closefrom.c */
+#define HAVE_FCNTL_H
+#define HAVE_DIRENT_H
+#define HAVE_SYSCONF
+void	closefrom(int);
 #endif
 
 #ifndef HAVE_STRCASESTR

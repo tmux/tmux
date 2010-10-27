@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.54 2010-09-07 19:32:58 nicm Exp $
+# $Id: configure,v 1.55 2010-10-27 20:21:00 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -33,14 +33,18 @@ cat <<EOF >>$CONFIG_H
 #undef HAVE_BROKEN_KQUEUE
 #undef HAVE_BROKEN_POLL
 #undef HAVE_BZERO
+#undef HAVE_CLOSEFROM
 #undef HAVE_CRYPT_H
 #undef HAVE_DAEMON
+#undef HAVE_DIRFD
+#undef HAVE_FCNTL_CLOSEM
 #undef HAVE_FGETLN
 #undef HAVE_FORKPTY
 #undef HAVE_GETOPT
 #undef HAVE_IMSG
 #undef HAVE_LIBUTIL_H
 #undef HAVE_PATHS_H
+#undef HAVE_PROC_PID
 #undef HAVE_PROGNAME
 #undef HAVE_PTY_H
 #undef HAVE_QUEUE_H
@@ -64,6 +68,7 @@ case $TMUX_PLATFORM in
 #define HAVE_ASPRINTF
 #define HAVE_BITSTRING_H
 #define HAVE_BZERO
+#define HAVE_CLOSEFROM
 #define HAVE_DAEMON
 #define HAVE_FGETLN
 #define HAVE_FORKPTY
@@ -96,8 +101,10 @@ EOF
 #define HAVE_ASPRINTF
 #define HAVE_BZERO
 #define HAVE_DAEMON
+#define HAVE_DIRFD
 #define HAVE_FORKPTY
 #define HAVE_PATHS_H
+#define HAVE_PROC_PID
 #define HAVE_PROGNAME
 #define HAVE_PTY_H
 #define HAVE_SETENV
@@ -110,11 +117,12 @@ EOF
 CFLAGS+= -std=c99 -D_GNU_SOURCE -D_POSIX_SOURCE
 LIBS+= -lncurses -lcrypt -lutil -levent -lrt
 SRCS+= osdep-linux.c \
+	compat/closefrom.c \
 	compat/fgetln.c \
 	compat/strlcat.c \
 	compat/strlcpy.c \
 	compat/strtonum.c \
-        compat/getopt.c \
+	compat/getopt.c \
 	compat/vis.c \
 	compat/unvis.c \
 	compat/imsg-buffer.c \
@@ -133,6 +141,7 @@ EOF
 LIBS+= -lcurses -levent
 SRCS+= osdep-unknown.c \
 	compat/asprintf.c \
+	compat/closefrom.c \
 	compat/daemon.c \
 	compat/forkpty-aix.c \
 	compat/strcasestr.c \
@@ -151,6 +160,7 @@ EOF
 # ------------------------------------------------------------------------------
     SunOS)
 	cat <<EOF >>$CONFIG_H
+#define HAVE_CLOSEFROM
 #define HAVE_CRYPT_H
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
@@ -183,13 +193,15 @@ EOF
 #define HAVE_BROKEN_POLL
 #define HAVE_BZERO
 #define HAVE_DAEMON
+#define HAVE_DIRFD
 #define HAVE_FGETLN
 #define HAVE_FORKPTY
 #define HAVE_GETOPT
 #define HAVE_PATHS_H
+#define HAVE_PROC_PID
 #define HAVE_PROGNAME
-#define HAVE_STDINT_H
 #define HAVE_SETENV
+#define HAVE_STDINT_H
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
@@ -202,6 +214,7 @@ CPPFLAGS+= -I/opt/local/include
 LDFLAGS+= -L/opt/local/lib
 LIBS+= -lcurses -levent
 SRCS+= osdep-darwin.c \
+	compat/closefrom.c \
 	compat/strtonum.c \
 	compat/vis.c \
 	compat/unvis.c \
@@ -215,6 +228,7 @@ EOF
 #define HAVE_ASPRINTF
 #define HAVE_BROKEN_KQUEUE
 #define HAVE_BZERO
+#define HAVE_CLOSEFROM
 #define HAVE_DAEMON
 #define HAVE_FGETLN
 #define HAVE_FORKPTY
@@ -228,8 +242,8 @@ EOF
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
-#define HAVE_STRTONUM
 #define HAVE_STRSEP
+#define HAVE_STRTONUM
 #define HAVE_U_INT
 EOF
 	cat <<EOF >>$CONFIG_MK
@@ -246,14 +260,15 @@ EOF
 	cat <<EOF >>$CONFIG_H
 #define HAVE_ASPRINTF
 #define HAVE_BZERO
+#define HAVE_CLOSEFROM
 #define HAVE_DAEMON
 #define HAVE_FGETLN
 #define HAVE_FORKPTY
 #define HAVE_GETOPT
 #define HAVE_PATHS_H
 #define HAVE_PROGNAME
-#define HAVE_SETPROCTITLE
 #define HAVE_SETENV
+#define HAVE_SETPROCTITLE
 #define HAVE_STDINT_H
 #define HAVE_STRCASESTR
 #define HAVE_STRLCAT
