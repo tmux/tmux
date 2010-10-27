@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.55 2010-10-27 20:21:00 nicm Exp $
+# $Id: configure,v 1.56 2010-10-27 21:40:03 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -34,7 +34,6 @@ cat <<EOF >>$CONFIG_H
 #undef HAVE_BROKEN_POLL
 #undef HAVE_BZERO
 #undef HAVE_CLOSEFROM
-#undef HAVE_CRYPT_H
 #undef HAVE_DAEMON
 #undef HAVE_DIRFD
 #undef HAVE_FCNTL_CLOSEM
@@ -115,7 +114,7 @@ EOF
 EOF
 	cat <<EOF >>$CONFIG_MK
 CFLAGS+= -std=c99 -D_GNU_SOURCE -D_POSIX_SOURCE
-LIBS+= -lncurses -lcrypt -lutil -levent -lrt
+LIBS+= -lncurses -lutil -levent
 SRCS+= osdep-linux.c \
 	compat/closefrom.c \
 	compat/fgetln.c \
@@ -161,7 +160,6 @@ EOF
     SunOS)
 	cat <<EOF >>$CONFIG_H
 #define HAVE_CLOSEFROM
-#define HAVE_CRYPT_H
 #define HAVE_STRLCAT
 #define HAVE_STRLCPY
 EOF
@@ -247,7 +245,7 @@ EOF
 #define HAVE_U_INT
 EOF
 	cat <<EOF >>$CONFIG_MK
-LIBS+= -lcurses -lcrypt -lutil -levent
+LIBS+= -lcurses -lutil -levent
 SRCS+= osdep-freebsd.c \
 	compat/vis.c \
 	compat/unvis.c \
@@ -293,7 +291,7 @@ EOF
 EOF
 	fi
 	cat <<EOF >>$CONFIG_MK
-LIBS+= -lcrypt -lutil -levent
+LIBS+= -lutil -levent
 SRCS+= osdep-netbsd.c \
 	compat/strtonum.c \
 	compat/vis.c \

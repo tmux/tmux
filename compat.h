@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.29 2010-10-27 21:34:59 nicm Exp $ */
+/* $Id: compat.h,v 1.30 2010-10-27 21:40:03 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,10 +61,6 @@ typedef uint64_t u_int64_t;
 #include <bitstring.h>
 #else
 #include "compat/bitstring.h"
-#endif
-
-#ifdef HAVE_CRYPT_H
-#include <crypt.h>
 #endif
 
 #ifdef HAVE_PATHS_H
