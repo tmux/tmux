@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.27 2010-10-27 20:21:00 nicm Exp $ */
+/* $Id: compat.h,v 1.28 2010-10-27 21:33:15 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -15,6 +15,17 @@
  * IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
+#ifndef __GNUC__
+#define __attribute__(a)
+#endif
+
+#ifndef __dead
+#define __dead __attribute__ ((__noreturn__))
+#endif
+#ifndef __packed
+#define __packed __attribute__ ((__packed__))
+#endif
 
 #ifndef HAVE_U_INT
 typedef uint8_t u_int8_t;
@@ -79,10 +90,10 @@ typedef uint64_t u_int64_t;
 #include "compat/vis.h"
 #endif
 
-#ifndef HAVE_IMSG
-#include "compat/imsg.h"
-#else
+#ifdef HAVE_IMSG
 #include <imsg.h>
+#else
+#include "compat/imsg.h"
 #endif
 
 #ifdef HAVE_STDINT_H
@@ -127,13 +138,6 @@ typedef uint64_t u_int64_t;
 
 #ifndef SUN_LEN
 #define SUN_LEN(sun) (sizeof (sun)->sun_path)
-#endif
-
-#ifndef __dead
-#define __dead __attribute__ ((__noreturn__))
-#endif
-#ifndef __packed
-#define __packed __attribute__ ((__packed__))
 #endif
 
 #ifndef timercmp
