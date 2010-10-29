@@ -166,6 +166,22 @@ cmd_unpack_argv(char *buf, size_t len, int argc, char ***argv)
 	return (0);
 }
 
+char **
+cmd_copy_argv(int argc, char **argv)
+{
+	char	**new_argv;
+	int	  i;
+
+	if (argc == 0)
+		return (NULL);
+	new_argv = xcalloc(argc, sizeof *new_argv);
+	for (i = 0; i < argc; i++) {
+		if (argv[i] != NULL)
+			new_argv[i] = xstrdup(argv[i]);
+	}
+	return (new_argv);
+}
+
 void
 cmd_free_argv(int argc, char **argv)
 {

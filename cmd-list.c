@@ -29,7 +29,9 @@ cmd_list_parse(int argc, char **argv, char **cause)
 	struct cmd	*cmd;
 	int		 i, lastsplit;
 	size_t		 arglen, new_argc;
-	char	       **new_argv;
+	char	       **copy_argv, **new_argv;
+
+	copy_argv = cmd_copy_argv(argc, argv);
 
 	cmdlist = xmalloc(sizeof *cmdlist);
 	cmdlist->references = 1;
@@ -37,18 +39,18 @@ cmd_list_parse(int argc, char **argv, char **cause)
 
 	lastsplit = 0;
 	for (i = 0; i < argc; i++) {
-		arglen = strlen(argv[i]);
-		if (arglen == 0 || argv[i][arglen - 1] != ';')
+		arglen = strlen(copy_argv[i]);
+		if (arglen == 0 || copy_argv[i][arglen - 1] != ';')
 			continue;
-		argv[i][arglen - 1] = '\0';
+		copy_argv[i][arglen - 1] = '\0';
 
-		if (arglen > 1 && argv[i][arglen - 2] == '\\') {
-			argv[i][arglen - 2] = ';';
+		if (arglen > 1 && copy_argv[i][arglen - 2] == '\\') {
+			copy_argv[i][arglen - 2] = ';';
 			continue;
 		}
 
 		new_argc = i - lastsplit;
-		new_argv = argv + lastsplit;
+		new_argv = copy_argv + lastsplit;
 		if (arglen != 1)
 			new_argc++;
 
@@ -61,16 +63,18 @@ cmd_list_parse(int argc, char **argv, char **cause)
 	}
 
 	if (lastsplit != argc) {
-		cmd = cmd_parse(argc - lastsplit, argv + lastsplit, cause);
+		cmd = cmd_parse(argc - lastsplit, copy_argv + lastsplit, cause);
 		if (cmd == NULL)
 			goto bad;
 		TAILQ_INSERT_TAIL(&cmdlist->list, cmd, qentry);
 	}
 
+	cmd_free_argv(argc, copy_argv);
 	return (cmdlist);
 
 bad:
 	cmd_list_free(cmdlist);
+	cmd_free_argv(argc, copy_argv);
 	return (NULL);
 }
 
