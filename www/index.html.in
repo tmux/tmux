@@ -48,7 +48,7 @@ as GNU screen. Major features include:</p>
 <li>A powerful, consistent, well-documented and easily scriptable command
 interface.</li>
 <li>A window may be split horizontally and vertically into panes.</li>
-<li>Panes can be freely moved and resized, or arranged into one of four preset
+<li>Panes can be freely moved and resized, or arranged into preset
 layouts. </li>
 <li>Support for UTF-8 and 256-colour terminals.</li>
 <li>Copy and paste with multiple buffers.</li>
