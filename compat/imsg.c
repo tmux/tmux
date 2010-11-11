@@ -1,4 +1,4 @@
-/* $Id: imsg.c,v 1.5 2010-06-06 00:08:28 tcunha Exp $ */
+/* $Id: imsg.c,v 1.6 2010-11-11 20:41:08 nicm Exp $ */
 /*	$OpenBSD: imsg.c,v 1.3 2010/05/26 13:56:07 nicm Exp $	*/
 
 /*
@@ -111,7 +111,7 @@ imsg_get(struct imsgbuf *ibuf, struct imsg *imsg)
 		return (0);
 	datalen = imsg->hdr.len - IMSG_HEADER_SIZE;
 	ibuf->r.rptr = ibuf->r.buf + IMSG_HEADER_SIZE;
-	if ((imsg->data = malloc(datalen)) == NULL)
+	if (datalen != 0 && (imsg->data = malloc(datalen + 1)) == NULL)
 		return (-1);
 
 	if (imsg->hdr.flags & IMSGF_HASFD)
