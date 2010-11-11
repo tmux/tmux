@@ -1308,7 +1308,7 @@ __dead void	 shell_exec(const char *, const char *);
 
 /* cfg.c */
 extern int       cfg_finished;
-struct causelist cfg_causes;
+extern struct causelist cfg_causes;
 void printflike2 cfg_add_cause(struct causelist *, const char *, ...);
 int		 load_cfg(const char *, struct cmd_ctx *, struct causelist *);
 
