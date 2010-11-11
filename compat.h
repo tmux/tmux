@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.30 2010-10-27 21:40:03 nicm Exp $ */
+/* $Id: compat.h,v 1.31 2010-11-11 20:45:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -159,6 +159,7 @@ typedef uint64_t u_int64_t;
 #endif
 
 #ifndef HAVE_BZERO
+#undef bzero
 #define bzero(buf, len) memset(buf, 0, len);
 #endif
 
@@ -202,6 +203,7 @@ int	 	 daemon(int, int);
 
 #ifndef HAVE_FORKPTY
 /* forkpty.c */
+#include <sys/ioctl.h>
 pid_t		 forkpty(int *, char *, struct termios *, struct winsize *);
 #endif
 

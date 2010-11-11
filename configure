@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: configure,v 1.57 2010-11-11 20:37:53 nicm Exp $
+# $Id: configure,v 1.58 2010-11-11 20:45:49 nicm Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -131,7 +131,6 @@ EOF
 # ------------------------------------------------------------------------------
     AIX)
 	cat <<EOF >>$CONFIG_H
-#define HAVE_BZERO
 #define HAVE_SETENV
 #define HAVE_STDINT_H
 EOF
