@@ -1479,7 +1479,7 @@ All arguments are sent sequentially from first to last.
 Send the prefix key to a window as if it was pressed.
 If multiple prefix keys are configured, only the first is sent.
 .It Xo Ic unbind-key
-.Op Fl cn
+.Op Fl acn
 .Op Fl t Ar key-table
 .Ar key
 .Xc
@@ -1493,6 +1493,9 @@ the primary key bindings are modified; in this case, if
 is specified, the command bound to
 .Ar key
 without a prefix (if any) is removed.
+If
+.Fl a
+is present, all key bindings are removed.
 .Pp
 If
 .Fl t

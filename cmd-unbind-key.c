@@ -33,13 +33,14 @@ int	cmd_unbind_key_table(struct cmd *, struct cmd_ctx *);
 struct cmd_unbind_key_data {
 	int	key;
 
+	int	flag_all;
 	int	command_key;
 	char   *tablename;
 };
 
 const struct cmd_entry cmd_unbind_key_entry = {
 	"unbind-key", "unbind",
-	"[-cn] [-t key-table] key",
+	"[-acn] [-t key-table] key",
 	0, "",
 	NULL,
 	cmd_unbind_key_parse,
@@ -55,11 +56,15 @@ cmd_unbind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 	int				 opt, no_prefix = 0;
 
 	self->data = data = xmalloc(sizeof *data);
+	data->flag_all = 0;
 	data->command_key = 0;
 	data->tablename = NULL;
 
-	while ((opt = getopt(argc, argv, "cnt:")) != -1) {
+	while ((opt = getopt(argc, argv, "acnt:")) != -1) {
 		switch (opt) {
+		case 'a':
+			data->flag_all = 1;
+			break;
 		case 'c':
 			data->command_key = 1;
 			break;
@@ -76,15 +81,20 @@ cmd_unbind_key_parse(struct cmd *self, int argc, char **argv, char **cause)
 	}
 	argc -= optind;
 	argv += optind;
-	if (argc != 1)
+	if (data->flag_all && (argc != 0 || data->tablename))
+		goto usage;
+	if (!data->flag_all && argc != 1)
 		goto usage;
 
-	if ((data->key = key_string_lookup_string(argv[0])) == KEYC_NONE) {
-		xasprintf(cause, "unknown key: %s", argv[0]);
-		goto error;
+	if (!data->flag_all) {
+		data->key = key_string_lookup_string(argv[0]);
+		if (data->key == KEYC_NONE) {
+			xasprintf(cause, "unknown key: %s", argv[0]);
+			goto error;
+		}
+		if (!no_prefix)
+			data->key |= KEYC_PREFIX;
 	}
-	if (!no_prefix)
-		data->key |= KEYC_PREFIX;
 
 	return (0);
 
@@ -100,13 +110,23 @@ int
 cmd_unbind_key_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 {
 	struct cmd_unbind_key_data	*data = self->data;
+	struct key_binding		*bd;
 
 	if (data == NULL)
 		return (0);
-	if (data->tablename != NULL)
-		return (cmd_unbind_key_table(self, ctx));
+	if (data->flag_all) {
+		while (!SPLAY_EMPTY(&key_bindings)) {
+			bd = SPLAY_ROOT(&key_bindings);
+			SPLAY_REMOVE(key_bindings, &key_bindings, bd);
+			cmd_list_free(bd->cmdlist);
+			xfree(bd);
+		}
+	} else {
+		if (data->tablename != NULL)
+			return (cmd_unbind_key_table(self, ctx));
 
-	key_bindings_remove(data->key);
+		key_bindings_remove(data->key);
+	}
 
 	return (0);
 }
