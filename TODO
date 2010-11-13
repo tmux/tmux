@@ -152,4 +152,6 @@ For 1.4 (not in order):
 19 info() when changing to same window
 20 don't pass UTF-8 through vis for titles
 21 clearing screen should push lines into history
+22 add a unique ever-increasing pane id to each pane, export it in $TMUX_PANE
+   (as %1, %2 etc) and allow it to be used as a target
 ...
