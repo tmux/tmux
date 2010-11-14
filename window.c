@@ -325,6 +325,8 @@ window_resize(struct window *w, u_int sx, u_int sy)
 void
 window_set_active_pane(struct window *w, struct window_pane *wp)
 {
+	if (wp == w->active)
+		return;
 	w->last = w->active;
 	w->active = wp;
 	while (!window_pane_visible(w->active)) {
@@ -342,7 +344,7 @@ window_set_active_at(struct window *w, u_int x, u_int y)
 	struct window_pane	*wp;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (!window_pane_visible(wp))
+		if (wp == w->active || !window_pane_visible(wp))
 			continue;
 		if (x < wp->xoff || x >= wp->xoff + wp->sx)
 			continue;
