@@ -154,4 +154,5 @@ For 1.4 (not in order):
 21 clearing screen should push lines into history
 22 add a unique ever-increasing pane id to each pane, export it in $TMUX_PANE
    (as %1, %2 etc) and allow it to be used as a target
+23 way to add dest for break-pane; maybe some easier way to unbreak-pane
 ...
