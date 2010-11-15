@@ -51,10 +51,10 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		ctx->print(ctx, "%d: %s [%ux%u]",
-		    wl->idx, wl->window->name, wl->window->sx, wl->window->sy);
 		layout = layout_dump(wl->window);
-		ctx->print(ctx, "    layout: %s", layout);
+		ctx->print(ctx, "%d: %s [%ux%u] [layout %s]%s",
+		    wl->idx, wl->window->name, wl->window->sx, wl->window->sy,
+		    layout, wl == s->curw ? " (active)" : "");
 		xfree(layout);
 	}
 
