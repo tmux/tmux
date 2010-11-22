@@ -113,11 +113,8 @@ recalculate_sizes(void)
 					ssy = s->sy;
 			}
 		}
-		if (ssx == UINT_MAX || ssy == UINT_MAX) {
-			w->flags |= WINDOW_HIDDEN;
+		if (ssx == UINT_MAX || ssy == UINT_MAX)
 			continue;
-		}
-		w->flags &= ~WINDOW_HIDDEN;
 
 		limit = options_get_number(&w->options, "force-width");
 		if (limit != 0 && ssx > limit)
