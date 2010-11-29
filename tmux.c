@@ -231,13 +231,13 @@ main(int argc, char **argv)
 	struct options	*oo, *so, *wo;
 	struct keylist	*keylist;
 	char		*s, *path, *label, *home, **var;
-	int	 	 opt, flags, quiet = 0;
+	int	 	 opt, flags, quiet, keys;
 
 #ifdef DEBUG
 	malloc_options = (char *) "AFGJPX";
 #endif
 
-	flags = 0;
+	quiet = flags = 0;
 	label = path = NULL;
 	login_shell = (**argv == '-');
 	while ((opt = getopt(argc, argv, "28c:df:lL:qS:uUv")) != -1) {
@@ -359,7 +359,6 @@ main(int argc, char **argv)
 	options_set_number(so, "status-fg", 0);
 	options_set_number(so, "status-interval", 15);
 	options_set_number(so, "status-justify", 0);
-	options_set_number(so, "status-keys", MODEKEY_EMACS);
 	options_set_string(so, "status-left", "[#S]");
 	options_set_number(so, "status-left-attr", 0);
 	options_set_number(so, "status-left-bg", 8);
@@ -400,7 +399,6 @@ main(int argc, char **argv)
 	options_set_number(wo, "mode-attr", 0);
 	options_set_number(wo, "mode-bg", 3);
 	options_set_number(wo, "mode-fg", 0);
-	options_set_number(wo, "mode-keys", MODEKEY_EMACS);
 	options_set_number(wo, "mode-mouse", 0);
 	options_set_number(wo, "monitor-activity", 0);
 	options_set_string(wo, "monitor-content", "%s", "");
@@ -427,6 +425,16 @@ main(int argc, char **argv)
 		options_set_number(so, "status-utf8", 0);
 		options_set_number(wo, "utf8", 0);
 	}
+
+	keys = MODEKEY_EMACS;
+	if ((s = getenv("VISUAL")) != NULL || (s = getenv("EDITOR")) != NULL) {
+		if (strrchr(s, '/') != NULL)
+			s = strrchr(s, '/') + 1;
+		if (strstr(s, "vi") != NULL)
+			keys = MODEKEY_VI;
+	}
+	options_set_number(so, "status-keys", keys);
+	options_set_number(wo, "mode-keys", keys);
 
 	/* Locate the configuration file. */
 	if (cfg_file == NULL) {
