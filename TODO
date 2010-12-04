@@ -156,4 +156,8 @@ For 1.4 (not in order):
    (as %1, %2 etc) and allow it to be used as a target
 23 way to add dest for break-pane; maybe some easier way to unbreak-pane
 24 case insensitive searching
+25 dynamically generated jobs (eg "date ...") do not work well because
+   their entries are never collected, should either store status jobs in
+   a different tree or flush all unused persist jobs every update rather
+   than just updating them
 ...
