@@ -1,4 +1,4 @@
-/* $Id: resize.c,v 1.25 2010-06-22 23:26:18 tcunha Exp $ */
+/* $Id: resize.c,v 1.26 2010-12-06 21:57:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -113,11 +113,8 @@ recalculate_sizes(void)
 					ssy = s->sy;
 			}
 		}
-		if (ssx == UINT_MAX || ssy == UINT_MAX) {
-			w->flags |= WINDOW_HIDDEN;
+		if (ssx == UINT_MAX || ssy == UINT_MAX)
 			continue;
-		}
-		w->flags &= ~WINDOW_HIDDEN;
 
 		limit = options_get_number(&w->options, "force-width");
 		if (limit != 0 && ssx > limit)

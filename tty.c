@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.196 2010-10-24 00:45:57 tcunha Exp $ */
+/* $Id: tty.c,v 1.197 2010-12-06 21:57:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -547,7 +547,7 @@ tty_write(void (*cmdfn)(
 
 	if (wp->window->flags & WINDOW_REDRAW || wp->flags & PANE_REDRAW)
 		return;
-	if (wp->window->flags & WINDOW_HIDDEN || !window_pane_visible(wp))
+	if (!window_pane_visible(wp))
 		return;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
