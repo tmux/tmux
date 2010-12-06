@@ -136,6 +136,7 @@ const struct set_option_entry set_session_option_table[] = {
 	{ "visual-activity", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "visual-bell", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "visual-content", SET_OPTION_FLAG, 0, 0, NULL },
+	{ "visual-silence", SET_OPTION_FLAG, 0, 0, NULL },
 	{ NULL, 0, 0, 0, NULL }
 };
 
@@ -157,6 +158,7 @@ const struct set_option_entry set_window_option_table[] = {
 	{ "mode-mouse", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "monitor-activity", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "monitor-content", SET_OPTION_STRING, 0, 0, NULL },
+	{ "monitor-silence",SET_OPTION_NUMBER, 0, INT_MAX, NULL},
 	{ "remain-on-exit", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "synchronize-panes", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "utf8", SET_OPTION_FLAG, 0, 0, NULL },

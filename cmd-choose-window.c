@@ -87,6 +87,8 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			flag = '!';
 		else if (wm->flags & WINLINK_CONTENT)
 			flag = '+';
+		else if (wm->flags & WINLINK_SILENCE)
+			flag = '~';
 		else if (wm == s->curw)
 			flag = '*';
 		else if (wm == TAILQ_FIRST(&s->lastw))

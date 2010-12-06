@@ -26,6 +26,7 @@
 int	server_window_backoff(struct window_pane *);
 int	server_window_check_bell(struct session *, struct winlink *);
 int	server_window_check_activity(struct session *, struct winlink *);
+int	server_window_check_silence(struct session *, struct winlink *);
 int	server_window_check_content(
 	    struct session *, struct winlink *, struct window_pane *);
 
@@ -53,7 +54,8 @@ server_window_loop(void)
 				continue;
 
 			if (server_window_check_bell(s, wl) ||
-			    server_window_check_activity(s, wl))
+			    server_window_check_activity(s, wl) ||
+			    server_window_check_silence(s, wl))
 				server_status_session(s);
 			TAILQ_FOREACH(wp, &w->panes, entry)
 				server_window_check_content(s, wl, wp);
@@ -144,6 +146,55 @@ server_window_check_activity(struct session *s, struct winlink *wl)
 			if (c == NULL || c->session != s)
 				continue;
 			status_message_set(c, "Activity in window %u",
+			    winlink_find_by_window(&s->windows, w)->idx);
+		}
+	}
+
+	return (1);
+}
+
+/* Check for silence in window. */
+int
+server_window_check_silence(struct session *s, struct winlink *wl)
+{
+	struct client	*c;
+	struct window	*w = wl->window;
+	struct timeval	 timer;
+	u_int		 i;
+	int		 silence_interval, timer_difference;
+
+	if (!(w->flags & WINDOW_SILENCE) || wl->flags & WINLINK_SILENCE)
+		return (0);
+
+	if (s->curw == wl) {
+		/*
+		 * Reset the timer for this window if we've focused it.  We
+		 * don't want the timer tripping as soon as we've switched away
+		 * from this window.
+		 */
+		if (gettimeofday(&w->silence_timer, NULL) != 0)
+			fatal("gettimeofday failed.");
+
+		return (0);
+	}
+
+	silence_interval = options_get_number(&w->options, "monitor-silence");
+	if (silence_interval == 0)
+		return (0);
+
+	if (gettimeofday(&timer, NULL) != 0)
+		fatal("gettimeofday");
+	timer_difference = timer.tv_sec - w->silence_timer.tv_sec;
+	if (timer_difference <= silence_interval)
+		return (0);
+	wl->flags |= WINLINK_SILENCE;
+
+	if (options_get_number(&s->options, "visual-silence")) {
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			c = ARRAY_ITEM(&clients, i);
+			if (c == NULL || c->session != s)
+				continue;
+			status_message_set(c, "Silence in window %u",
 			    winlink_find_by_window(&s->windows, w)->idx);
 		}
 	}

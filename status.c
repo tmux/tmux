@@ -395,6 +395,8 @@ status_replace1(struct client *c,struct winlink *wl,
 			tmp[0] = '!';
 		else if (wl->flags & WINLINK_ACTIVITY)
 			tmp[0] = '#';
+		else if (wl->flags & WINLINK_SILENCE)
+			tmp[0] = '~';
 		else if (wl == s->curw)
 			tmp[0] = '*';
 		else if (wl == TAILQ_FIRST(&s->lastw))
