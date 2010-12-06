@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.581 2010-10-24 01:34:30 tcunha Exp $ */
+/* $Id: tmux.h,v 1.582 2010-12-06 21:48:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1462,6 +1462,7 @@ const char	*cmd_set_option_print(
 /* cmd.c */
 int		 cmd_pack_argv(int, char **, char *, size_t);
 int		 cmd_unpack_argv(char *, size_t, int, char ***);
+char	       **cmd_copy_argv(int, char **);
 void		 cmd_free_argv(int, char **);
 struct cmd	*cmd_parse(int, char **, char **);
 int		 cmd_exec(struct cmd *, struct cmd_ctx *);

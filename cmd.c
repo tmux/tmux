@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.144 2010-10-24 01:34:30 tcunha Exp $ */
+/* $Id: cmd.c,v 1.145 2010-12-06 21:48:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -163,6 +163,22 @@ cmd_unpack_argv(char *buf, size_t len, int argc, char ***argv)
 	}
 
 	return (0);
+}
+
+char **
+cmd_copy_argv(int argc, char **argv)
+{
+	char	**new_argv;
+	int	  i;
+
+	if (argc == 0)
+		return (NULL);
+	new_argv = xcalloc(argc, sizeof *new_argv);
+	for (i = 0; i < argc; i++) {
+		if (argv[i] != NULL)
+			new_argv[i] = xstrdup(argv[i]);
+	}
+	return (new_argv);
 }
 
 void
