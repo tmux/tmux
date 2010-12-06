@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.43 2010-07-02 02:54:52 tcunha Exp $ */
+/* $Id: cmd-list-windows.c,v 1.44 2010-12-06 21:56:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -51,10 +51,10 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		ctx->print(ctx, "%d: %s [%ux%u]",
-		    wl->idx, wl->window->name, wl->window->sx, wl->window->sy);
 		layout = layout_dump(wl->window);
-		ctx->print(ctx, "    layout: %s", layout);
+		ctx->print(ctx, "%d: %s [%ux%u] [layout %s]%s",
+		    wl->idx, wl->window->name, wl->window->sx, wl->window->sy,
+		    layout, wl == s->curw ? " (active)" : "");
 		xfree(layout);
 	}
 
