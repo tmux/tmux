@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.270 2010-12-06 21:49:57 nicm Exp $
+.\" $Id: tmux.1,v 1.271 2010-12-06 21:51:02 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: November 1 2010 $
+.Dd $Mdocdate: November 11 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1479,7 +1479,7 @@ All arguments are sent sequentially from first to last.
 Send the prefix key to a window as if it was pressed.
 If multiple prefix keys are configured, only the first is sent.
 .It Xo Ic unbind-key
-.Op Fl cn
+.Op Fl acn
 .Op Fl t Ar key-table
 .Ar key
 .Xc
@@ -1493,6 +1493,9 @@ the primary key bindings are modified; in this case, if
 is specified, the command bound to
 .Ar key
 without a prefix (if any) is removed.
+If
+.Fl a
+is present, all key bindings are removed.
 .Pp
 If
 .Fl t
