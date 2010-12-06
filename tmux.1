@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.269 2010-10-24 01:34:30 tcunha Exp $
+.\" $Id: tmux.1,v 1.270 2010-12-06 21:49:57 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: October 23 2010 $
+.Dd $Mdocdate: November 1 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -509,7 +509,7 @@ when they are created with the
 command, or later with the
 .Ic attach-session
 command.
-Each session has one of more windows
+Each session has one or more windows
 .Em linked
 into it.
 Windows may be linked to multiple sessions and are made up of one or
