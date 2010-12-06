@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.221 2010-10-24 19:54:41 nicm Exp $ */
+/* $Id: tmux.c,v 1.222 2010-12-06 21:53:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -375,8 +375,11 @@ main(int argc, char **argv)
 	options_set_number(so, "status-right-length", 40);
 	options_set_string(so, "terminal-overrides",
 	    "*88col*:colors=88,*256col*:colors=256");
-	options_set_string(so, "update-environment", "DISPLAY "
-	    "WINDOWID SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION");
+	options_set_string(so, "update-environment",
+	    "DISPLAY "
+	    "SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION "
+	    "WINDOWID "
+	    "XAUTHORITY");
 	options_set_number(so, "visual-activity", 0);
 	options_set_number(so, "visual-bell", 0);
 	options_set_number(so, "visual-content", 0);
