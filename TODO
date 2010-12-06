@@ -165,5 +165,6 @@ For 1.4 (not in order):
 28 "monitor for silence" option
 29 support "xterm2" mouse mode
 30 respawn-pane command
+31 configurable borders and empty space filler for when panes < window
 ...
 
