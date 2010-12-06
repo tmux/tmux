@@ -326,5 +326,30 @@ In addition, it's possible to have both blanking and locking (for instance via
 lock(1) or vlock(1)) by using the following:
 
 bind x set lock-command '/usr/bin/vlock' \; lock-client \; set lock-command 'tput civis && read -s -n1'
+
+* How can I open a new window in the same directory as the current window?
+
+One option is to just run "TMUX= tmux" in the window. However, this only works if no
+command is running, so that you can input the command.
+
+A workaround is to let tmux know about the current path through an environment
+variable. To do so, use the following command:
+
+    [ -n "$TMUX" ] && tmux setenv TMUXPWD_$(tmux display -p "#I") $PWD
+
+Which sets TMUXPWD_i (where i is the number of the current window) to the path
+of the current directory. This command can be added to PS1, for example:
+
+    PS1='$([ -n "$TMUX" ] && tmux setenv TMUXPWD_$(tmux display -p "#I") $PWD)\h$ '
+
+When a new window is created, the shell should be asked to change
+directory. You can define a new binding (for example, if using GNU bash):
+
+    bind-key C-c run-shell 'tmux neww "cd $(tmux display -p "\$TMUXPWD_#I"); exec bash"'
+
+This solution will work even if a command is currently running in the terminal,
+but it will not work from a window that has just been swapped with another
+because TMUXPWD_i will not be updated after a swap. However, once a new prompt
+is displayed, TMUXPWD_i is updated properly.
  
-$Id: FAQ,v 1.39 2010-10-23 14:09:29 nicm Exp $
+$Id: FAQ,v 1.40 2010-12-06 17:00:34 nicm Exp $
