@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.582 2010-12-06 21:48:56 nicm Exp $ */
+/* $Id: tmux.h,v 1.583 2010-12-06 21:50:24 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1306,7 +1306,7 @@ __dead void	 shell_exec(const char *, const char *);
 
 /* cfg.c */
 extern int       cfg_finished;
-struct causelist cfg_causes;
+extern struct causelist cfg_causes;
 void printflike2 cfg_add_cause(struct causelist *, const char *, ...);
 int		 load_cfg(const char *, struct cmd_ctx *, struct causelist *);
 
