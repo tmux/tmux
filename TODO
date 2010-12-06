@@ -160,4 +160,8 @@ For 1.4 (not in order):
    their entries are never collected, should either store status jobs in
    a different tree or flush all unused persist jobs every update rather
    than just updating them
+26 pane-index option like base-index
+27 option to move status line to top
+28 "monitor for silence" option
 ...
+
