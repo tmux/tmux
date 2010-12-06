@@ -163,5 +163,6 @@ For 1.4 (not in order):
 26 pane-index option like base-index
 27 option to move status line to top
 28 "monitor for silence" option
+29 support "xterm2" mouse mode
 ...
 
