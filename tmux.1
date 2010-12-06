@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.272 2010-12-06 21:55:42 nicm Exp $
+.\" $Id: tmux.1,v 1.273 2010-12-06 21:59:42 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: November 14 2010 $
+.Dd $Mdocdate: November 29 2010 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1852,7 +1852,12 @@ or right justified.
 .Xc
 Use vi or emacs-style
 key bindings in the status line, for example at the command prompt.
-Defaults to emacs.
+The default is emacs, unless the
+.Ev VISUAL
+or
+.Ev EDITOR
+environment variables are set and contain the string
+.Ql vi .
 .It Ic status-left Ar string
 Display
 .Ar string
@@ -2140,7 +2145,14 @@ Set window modes foreground colour.
 .Op Ic vi | emacs
 .Xc
 Use vi or emacs-style key bindings in copy and choice modes.
-Key bindings default to emacs.
+As with the
+.Ic status-keys
+option, the default is emacs, unless
+.Ev VISUAL
+or
+.Ev EDITOR
+contains
+.Ql vi .
 .Pp
 .It Xo Ic mode-mouse
 .Op Ic on | off
