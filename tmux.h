@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.584 2010-12-06 21:57:56 nicm Exp $ */
+/* $Id: tmux.h,v 1.585 2010-12-06 22:52:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -828,6 +828,7 @@ TAILQ_HEAD(window_panes, window_pane);
 struct window {
 	char		*name;
 	struct event	 name_timer;
+	struct timeval   silence_timer;
 
 	struct window_pane *active;
 	struct window_pane *last;
@@ -843,6 +844,7 @@ struct window {
 #define WINDOW_BELL 0x1
 #define WINDOW_ACTIVITY 0x2
 #define WINDOW_REDRAW 0x4
+#define WINDOW_SILENCE 0x8
 
 	struct options	 options;
 
@@ -863,7 +865,9 @@ struct winlink {
 #define WINLINK_BELL 0x1
 #define WINLINK_ACTIVITY 0x2
 #define WINLINK_CONTENT 0x4
-#define WINLINK_ALERTFLAGS (WINLINK_BELL|WINLINK_ACTIVITY|WINLINK_CONTENT)
+#define WINLINK_SILENCE 0x8
+#define WINLINK_ALERTFLAGS \
+    (WINLINK_BELL|WINLINK_ACTIVITY|WINLINK_CONTENT|WINLINK_SILENCE)
 
 	RB_ENTRY(winlink) entry;
 	TAILQ_ENTRY(winlink) sentry;

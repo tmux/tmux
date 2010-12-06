@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.149 2010-06-22 23:26:18 tcunha Exp $ */
+/* $Id: status.c,v 1.150 2010-12-06 22:52:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -395,6 +395,8 @@ status_replace1(struct client *c,struct winlink *wl,
 			tmp[0] = '!';
 		else if (wl->flags & WINLINK_ACTIVITY)
 			tmp[0] = '#';
+		else if (wl->flags & WINLINK_SILENCE)
+			tmp[0] = '~';
 		else if (wl == s->curw)
 			tmp[0] = '*';
 		else if (wl == TAILQ_FIRST(&s->lastw))

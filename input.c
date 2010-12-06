@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.109 2010-04-18 15:11:47 tcunha Exp $ */
+/* $Id: input.c,v 1.110 2010-12-06 22:52:21 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -681,7 +681,9 @@ input_parse(struct window_pane *wp)
 
 	if (EVBUFFER_LENGTH(evb) == 0)
 		return;
+
 	wp->window->flags |= WINDOW_ACTIVITY;
+	wp->window->flags &= ~WINDOW_SILENCE;
 
 	/*
 	 * Open the screen. Use NULL wp if there is a mode set as don't want to

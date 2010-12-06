@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.273 2010-12-06 21:59:42 nicm Exp $
+.\" $Id: tmux.1,v 1.274 2010-12-06 22:52:21 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -2053,6 +2053,12 @@ display a message when content is present in a window
 for which the
 .Ic monitor-content
 window option is enabled.
+.It Xo Ic visual-silence
+.Op Ic on | off
+.Xc
+If
+.Ic monitor-silence
+is enabled, prints a message after the interval has expired on a given window.
 .El
 .It Xo Ic set-window-option
 .Op Fl agu
@@ -2174,6 +2180,16 @@ When
 pattern
 .Ar match-string
 appears in the window, it is highlighted in the status line.
+.Pp
+.It Xo Ic monitor-silence
+.Op Ic interval
+.Xc
+Monitor for silence (no activity) in the window within
+.Ic interval
+seconds.
+Windows that have been silent for the interval are highlighted in the
+status line.
+An interval of zero disables the monitoring.
 .Pp
 .It Xo Ic remain-on-exit
 .Op Ic on | off
@@ -2386,6 +2402,7 @@ The flag is one of the following symbols appended to the window name:
 .It Li "#" Ta "Window is monitored and activity has been detected."
 .It Li "!" Ta "A bell has occurred in the window."
 .It Li "+" Ta "Window is monitored for content and it has appeared."
+.It Li "~" Ta "The window has been silent for the monitor-silence interval."
 .El
 .Pp
 The # symbol relates to the
