@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.224 2010-12-06 22:52:21 nicm Exp $ */
+/* $Id: tmux.c,v 1.225 2010-12-07 20:23:21 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -399,7 +399,7 @@ main(int argc, char **argv)
 	options_set_number(wo, "force-height", 0);
 	options_set_number(wo, "force-width", 0);
 	options_set_number(wo, "main-pane-height", 24);
-	options_set_number(wo, "main-pane-width", 81);
+	options_set_number(wo, "main-pane-width", 80);
 	options_set_number(wo, "mode-attr", 0);
 	options_set_number(wo, "mode-bg", 3);
 	options_set_number(wo, "mode-fg", 0);
