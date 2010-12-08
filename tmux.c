@@ -396,7 +396,7 @@ main(int argc, char **argv)
 	options_set_number(wo, "force-height", 0);
 	options_set_number(wo, "force-width", 0);
 	options_set_number(wo, "main-pane-height", 24);
-	options_set_number(wo, "main-pane-width", 81);
+	options_set_number(wo, "main-pane-width", 80);
 	options_set_number(wo, "mode-attr", 0);
 	options_set_number(wo, "mode-bg", 3);
 	options_set_number(wo, "mode-fg", 0);
