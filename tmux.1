@@ -2319,9 +2319,9 @@ copies the environment into the
 .Em global environment ;
 in addition, each session has a
 .Em session environment .
-When a window is created, the session and global environments are merged with
-the session environment overriding any variable present in both.
-This is the initial environment passed to the new process.
+When a window is created, the session and global environments are merged.
+If a variable exists in both, the value from the session environment is used.
+The result is the initial environment passed to the new process.
 .Pp
 The
 .Ic update-environment
