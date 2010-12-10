@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.225 2010-12-07 20:23:21 micahcowan Exp $ */
+/* $Id: tmux.c,v 1.226 2010-12-10 21:19:13 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -62,8 +62,8 @@ __dead void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-28lquv] [-c shell-command] [-f file] [-L socket-name]\n"
-	    "            [-S socket-path] [command [flags]]\n",
+	    "usage: %s [-28lquvV] [-c shell-command] [-f file] "
+	    "            [-L socket-name][-S socket-path] [command [flags]]\n",
 	    __progname);
 	exit(1);
 }
@@ -243,7 +243,7 @@ main(int argc, char **argv)
 	quiet = flags = 0;
 	label = path = NULL;
 	login_shell = (**argv == '-');
-	while ((opt = getopt(argc, argv, "28c:df:lL:qS:uUv")) != -1) {
+	while ((opt = getopt(argc, argv, "28c:df:lL:qS:uUvV")) != -1) {
 		switch (opt) {
 		case '2':
 			flags |= IDENTIFY_256COLOURS;
@@ -258,6 +258,9 @@ main(int argc, char **argv)
 				xfree(shell_cmd);
 			shell_cmd = xstrdup(optarg);
 			break;
+		case 'V':
+			printf("%s %s\n", __progname, BUILD);
+			exit(0);
 		case 'f':
 			if (cfg_file != NULL)
 				xfree(cfg_file);

@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.275 2010-12-10 21:05:22 nicm Exp $
+.\" $Id: tmux.1,v 1.276 2010-12-10 21:19:13 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 28lquv
+.Op Fl 28lquvV
 .Op Fl c Ar shell-command
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
@@ -198,6 +198,10 @@ and
 files in the current directory, where
 .Em PID
 is the PID of the server or client process.
+.It Fl V
+Report the
+.Nm
+version.
 .It Ar command Op Ar flags
 This specifies one of a set of commands used to control
 .Nm ,
