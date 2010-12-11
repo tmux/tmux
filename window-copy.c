@@ -1267,8 +1267,8 @@ window_copy_copy_selection(struct window_pane *wp, struct session *sess)
 			/* Cursor is on the left. */
 			lastex = data->selx + 1;
 			restex = data->selx + 1;
-			firstsx = data->cx + 1;
-			restsx = data->cx + 1;
+			firstsx = data->cx;
+			restsx = data->cx;
 		}
 	} else {
 		/*
