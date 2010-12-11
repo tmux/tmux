@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.96 2010-10-24 01:34:30 tcunha Exp $ */
+/* $Id: key-bindings.c,v 1.97 2010-12-11 18:42:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -128,6 +128,7 @@ key_bindings_init(void)
 		{ '=', 			  0, &cmd_choose_buffer_entry },
 		{ '?', 			  0, &cmd_list_keys_entry },
 		{ 'D',			  0, &cmd_choose_client_entry },
+		{ 'L',			  0, &cmd_switch_client_entry },
 		{ '[', 			  0, &cmd_copy_mode_entry },
 		{ '\'',			  0, &cmd_command_prompt_entry },
 		{ '\002', /* C-b */	  0, &cmd_send_prefix_entry },

@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.113 2010-10-09 14:31:50 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.114 2010-12-11 18:42:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -399,6 +399,7 @@ server_destroy_session(struct session *s)
 			c->session = NULL;
 			c->flags |= CLIENT_EXIT;
 		} else {
+			c->last_session = UINT_MAX;
 			c->session = s_new;
 			server_redraw_client(c);
 		}

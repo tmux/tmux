@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.46 2010-12-11 16:15:02 nicm Exp $ */
+/* $Id: server-client.c,v 1.47 2010-12-11 18:42:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -77,6 +77,7 @@ server_client_create(int fd)
 	c->title = NULL;
 
 	c->session = NULL;
+	c->last_session = UINT_MAX;
 	c->tty.sx = 80;
 	c->tty.sy = 24;
 

@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.276 2010-12-10 21:19:13 nicm Exp $
+.\" $Id: tmux.1,v 1.277 2010-12-11 18:42:20 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -286,6 +286,8 @@ Briefly display pane indexes.
 Force redraw of the attached client.
 .It s
 Select a new session for the attached client interactively.
+.It L
+Switch the attached client back to the last session.
 .It t
 Show the time.
 .It w
@@ -666,7 +668,7 @@ Suspend a client by sending
 .Dv SIGTSTP
 (tty stop).
 .It Xo Ic switch-client
-.Op Fl np
+.Op Fl lnp
 .Op Fl c Ar target-client
 .Op Fl t Ar target-session
 .Xc
@@ -676,10 +678,12 @@ Switch the current session for client
 to
 .Ar target-session .
 If
+.Fl l,
 .Fl n
 or
 .Fl p
-is used, the client is moved to the next or previous session respectively.
+is used, the client is moved to the last, next or previous session
+respectively.
 .El
 .Sh WINDOWS AND PANES
 A

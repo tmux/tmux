@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.586 2010-12-11 16:15:02 nicm Exp $ */
+/* $Id: tmux.h,v 1.587 2010-12-11 18:42:20 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1153,6 +1153,7 @@ struct client {
 	struct mode_key_data prompt_mdata;
 
 	struct session	*session;
+	u_int            last_session;
 
 	int		 references;
 };
