@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.124 2010-09-18 15:41:18 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.125 2010-12-11 17:57:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1267,8 +1267,8 @@ window_copy_copy_selection(struct window_pane *wp, struct session *sess)
 			/* Cursor is on the left. */
 			lastex = data->selx + 1;
 			restex = data->selx + 1;
-			firstsx = data->cx + 1;
-			restsx = data->cx + 1;
+			firstsx = data->cx;
+			restsx = data->cx;
 		}
 	} else {
 		/*

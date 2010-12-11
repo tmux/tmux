@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.102 2010-07-19 18:31:42 nicm Exp $ */
+/* $Id: screen.c,v 1.103 2010-12-11 17:57:28 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -287,7 +287,7 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 		 */
 		if (sel->ex < sel->sx) {
 			/* Cursor (ex) is on the left. */
-			if (px <= sel->ex)
+			if (px < sel->ex)
 				return (0);
 
 			if (px > sel->sx)
@@ -297,7 +297,7 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 			if (px < sel->sx)
 				return (0);
 
-			if (px >= sel->ex)
+			if (px > sel->ex)
 				return (0);
 		}
 	} else {
