@@ -399,6 +399,7 @@ server_destroy_session(struct session *s)
 			c->session = NULL;
 			c->flags |= CLIENT_EXIT;
 		} else {
+			c->last_session = UINT_MAX;
 			c->session = s_new;
 			server_redraw_client(c);
 		}

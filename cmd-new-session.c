@@ -279,9 +279,17 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (!detached) {
 		if (ctx->cmdclient != NULL) {
 			server_write_client(ctx->cmdclient, MSG_READY, NULL, 0);
+			if (ctx->cmdclient->session != NULL) {
+				session_index(ctx->cmdclient->session,
+				    &ctx->cmdclient->last_session);
+			}
 			ctx->cmdclient->session = s;
 			server_redraw_client(ctx->cmdclient);
 		} else {
+			if (ctx->curclient->session != NULL) {
+				session_index(ctx->curclient->session,
+				    &ctx->curclient->last_session);
+			}
 			ctx->curclient->session = s;
 			server_redraw_client(ctx->curclient);
 		}

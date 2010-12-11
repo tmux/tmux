@@ -78,6 +78,7 @@ server_client_create(int fd)
 	c->title = NULL;
 
 	c->session = NULL;
+	c->last_session = UINT_MAX;
 	c->tty.sx = 80;
 	c->tty.sy = 24;
 

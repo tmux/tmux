@@ -1155,6 +1155,7 @@ struct client {
 	struct mode_key_data prompt_mdata;
 
 	struct session	*session;
+	u_int            last_session;
 
 	int		 references;
 };
