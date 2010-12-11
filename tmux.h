@@ -1147,12 +1147,10 @@ struct client {
 	int		 (*prompt_callbackfn)(void *, const char *);
 	void		 (*prompt_freefn)(void *);
 	void		*prompt_data;
+	u_int            prompt_hindex;
 
 #define PROMPT_SINGLE 0x1
 	int		 prompt_flags;
-
-	u_int		 prompt_hindex;
-	ARRAY_DECL(, char *) prompt_hdata;
 
 	struct mode_key_data prompt_mdata;
 

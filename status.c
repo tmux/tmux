@@ -41,8 +41,13 @@ void	status_replace1(struct client *,
 	    struct winlink *, char **, char **, char *, size_t, int);
 void	status_message_callback(int, short, void *);
 
-void	status_prompt_add_history(struct client *);
+const char *status_prompt_up_history(u_int *);
+const char *status_prompt_down_history(u_int *);
+void	status_prompt_add_history(const char *);
 char   *status_prompt_complete(const char *);
+
+/* Status prompt history. */
+ARRAY_DECL(, char *) status_prompt_history = ARRAY_INITIALIZER;
 
 /* Retrieve options for left string. */
 char *
@@ -972,29 +977,20 @@ status_prompt_key(struct client *c, int key)
 		}
 		break;
 	case MODEKEYEDIT_HISTORYUP:
-		if (ARRAY_LENGTH(&c->prompt_hdata) == 0)
+		s = status_prompt_up_history(&c->prompt_hindex);
+		if (s == NULL)
 			break;
 	       	xfree(c->prompt_buffer);
-
-		c->prompt_buffer = xstrdup(ARRAY_ITEM(&c->prompt_hdata,
-		    ARRAY_LENGTH(&c->prompt_hdata) - 1 - c->prompt_hindex));
-		if (c->prompt_hindex != ARRAY_LENGTH(&c->prompt_hdata) - 1)
-			c->prompt_hindex++;
-
+		c->prompt_buffer = xstrdup(s);
 		c->prompt_index = strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
 		break;
 	case MODEKEYEDIT_HISTORYDOWN:
+		s = status_prompt_down_history(&c->prompt_hindex);
+		if (s == NULL)
+			break;
 		xfree(c->prompt_buffer);
-
-		if (c->prompt_hindex != 0) {
-			c->prompt_hindex--;
-			c->prompt_buffer = xstrdup(ARRAY_ITEM(
-			    &c->prompt_hdata, ARRAY_LENGTH(
-			    &c->prompt_hdata) - 1 - c->prompt_hindex));
-		} else
-			c->prompt_buffer = xstrdup("");
-
+		c->prompt_buffer = xstrdup(s);
 		c->prompt_index = strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
 		break;
@@ -1036,7 +1032,7 @@ status_prompt_key(struct client *c, int key)
 		break;
 	case MODEKEYEDIT_ENTER:
 		if (*c->prompt_buffer != '\0')
-			status_prompt_add_history(c);
+			status_prompt_add_history(c->prompt_buffer);
 		if (c->prompt_callbackfn(c->prompt_data, c->prompt_buffer) == 0)
 			status_prompt_clear(c);
 		break;
@@ -1072,20 +1068,56 @@ status_prompt_key(struct client *c, int key)
 	}
 }
 
+/* Get previous line from the history. */
+const char *
+status_prompt_up_history(u_int *idx)
+{
+	u_int size;
+
+	/*
+	 * History runs from 0 to size - 1.
+	 *
+	 * Index is from 0 to size. Zero is empty.
+	 */
+
+	size = ARRAY_LENGTH(&status_prompt_history);
+	if (size == 0 || *idx == size)
+		return (NULL);
+	(*idx)++;
+	return (ARRAY_ITEM(&status_prompt_history, size - *idx));
+}
+
+/* Get next line from the history. */
+const char *
+status_prompt_down_history(u_int *idx)
+{
+	u_int size;
+
+	size = ARRAY_LENGTH(&status_prompt_history);
+	if (size == 0 || *idx == 0)
+		return ("");
+	(*idx)--;
+	if (*idx == 0)
+		return ("");
+	return (ARRAY_ITEM(&status_prompt_history, size - *idx));
+}
+
 /* Add line to the history. */
 void
-status_prompt_add_history(struct client *c)
+status_prompt_add_history(const char *line)
 {
-	if (ARRAY_LENGTH(&c->prompt_hdata) > 0 &&
-	    strcmp(ARRAY_LAST(&c->prompt_hdata), c->prompt_buffer) == 0)
+	u_int size;
+
+	size = ARRAY_LENGTH(&status_prompt_history);
+	if (size > 0 && strcmp(ARRAY_LAST(&status_prompt_history), line) == 0)
 		return;
 
-	if (ARRAY_LENGTH(&c->prompt_hdata) == PROMPT_HISTORY) {
-		xfree(ARRAY_FIRST(&c->prompt_hdata));
-		ARRAY_REMOVE(&c->prompt_hdata, 0);
+	if (size == PROMPT_HISTORY) {
+		xfree(ARRAY_FIRST(&status_prompt_history));
+		ARRAY_REMOVE(&status_prompt_history, 0);
 	}
 
-	ARRAY_ADD(&c->prompt_hdata, xstrdup(c->prompt_buffer));
+	ARRAY_ADD(&status_prompt_history, xstrdup(line));
 }
 
 /* Complete word. */

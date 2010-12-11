@@ -70,8 +70,6 @@ server_client_create(int fd)
 		fatal("gettimeofday failed");
 	memcpy(&c->activity_time, &c->creation_time, sizeof c->activity_time);
 
-	ARRAY_INIT(&c->prompt_hdata);
-
 	c->stdin_event = NULL;
 	c->stdout_event = NULL;
 	c->stderr_event = NULL;
@@ -161,9 +159,6 @@ server_client_lost(struct client *c)
 		xfree(c->prompt_string);
 	if (c->prompt_buffer != NULL)
 		xfree(c->prompt_buffer);
-	for (i = 0; i < ARRAY_LENGTH(&c->prompt_hdata); i++)
-		xfree(ARRAY_ITEM(&c->prompt_hdata, i));
-	ARRAY_FREE(&c->prompt_hdata);
 
 	if (c->cwd != NULL)
 		xfree(c->cwd);
