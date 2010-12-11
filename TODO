@@ -1,4 +1,3 @@
-- window creation/idle time
 - better errors when creating new windows/sessions (how?)
 - implicitly add exec to the commands for new windows (switch to disable it)?
 - it would be nice to have multichar commands eg C-b K K
@@ -7,26 +6,18 @@
 	bring back detach-session to detach all clients on a session?
 - allow fnmatch for -c, so that you can, eg, detach all clients
 - garbage collect window history (100 lines at a time?) if it hasn't been used
-  in $x time (need window creation/use times)
+  in $x time
 - lift SHRT_MAX limits for history?
 - flags to centre screen in window
-- better terminal emulation
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
 - next prev word etc in command prompt
-- many more info() displays for various things
 - use a better termcap internally instead of screen, perhaps xterm
-- fix rxvt cursor fg issue (text under cursor can have non-white fg)
 - should be able to move to a hidden pane and it would be moved into view. pane
   number in status line/top-right would be cool for this
 - support other mouse modes (highlight etc) and use it in copy mode
 - set-remain-on-exit is a bit of a hack, some way to do it generically?
-- set-option should be set-session-option and should be overall global options
-      also quiet, utf8 and maybe other flags?
-  -g is a bit unexpected in conf file
 - clear window title on exit
-- the output code (tty.c) could do with optimisation depending on term
-  capabilities
 - would be nice to be able to use "--" to mark start of command w/ neww etc
   to avoid quoting
 - make command sequences more usable: don't require space after ;, handle
@@ -37,11 +28,7 @@
   "new-session" if-shell "[ -e $HOME/.tmux-session.conf ]" source-file
   $HOME/.tmux-session.conf
 - get it passing all the vttest tests that don't require resizing the terminal
-- esc seq to set window name and title should be documented, and name variant
-  should clear automatic-rename
 - way to set socket path from config file
-- XXX once env stuff is in, default-path and VISUAL/EDITOR should be picked up
-  when session is started
 - what about utmp etc? can tmux update it like screen? setgid?
 - warts on current naming:
   	- display-time but message-fg/bg/attr
@@ -49,46 +36,30 @@
 	- server-info
 	- up-pane/down-pane/swap-pane -U/swap-pane -D vs next-*/previous-*
 	- split-window -> split-pane??
-- tidy up and prioritise todo list ;-)
-- neww and attach can create a session if none exists?
-       would work fine with config file since
 - a way for force-width/height to apply to only one pane (how?)
 - command to list what is actually running in each window with command line,
   pid (need some adaption of the osdep code)
 - support for bce
-- it would be nice if the start/end line keys in copy mode were aware of
-  wrapped lines
 - some way to force a screen to use the entire terminal even if it is forced
   to be smaller by other clients. pan smaller terminal? (like screen F)
-		-- idea of a "view" onto a window, need base x/y offsets
-		   for redraw
+	-- idea of a "view" onto a window, need base x/y offsets for redraw
 - handle resize better in copy mode
 - way to copy stuff that is off screen due to resize
 - commands should be able to succeed or fail and have || or && for command
   lists
-- support the mouse wheel to scroll through history
 - some way to KEEP a command running continually and just use its LAST line of
   output
 - bind commands to mouse buttons
 - UTF-8 to a non-UTF-8 terminal should not be able to balls up
   the terminal - www/ruby-addressable; make regress
-- copy mode needs a tidy/cleanup
-- ability to save history (to buffer?)
 - multiple keys could be done with tables, ie have prefixes go and instead
 	bind -n ^A prefix-table "default"
   where prefix-table sets command lookup table and sets prefix flag, then next
   key is looked up in that table
-- UTF-8 should be a pointer into a combined string buffer
-- check irssi (term_charset) works with UTF-8
 - support esc-esc to quit in modes
 - fix ctrl+F1-F4 output. to what?
 - look into xterm clearing its selection when scrolling etc
-- better utf8 support:
-  	 window names
-	 prompt input
-	 message display
-	 copy and paste cursor and wide characters
-	 ...?
+- better utf8 support: window names, prompt input, message display
 - session history for client and last-session command
 - option to change status line colour when current window is in a mode?
 - option to move copy mode indicator into status line
@@ -96,7 +67,6 @@
 - selection behaviour closer to vi in vi mode
 - live update: server started with -U connects to server, requests sessions and
   windows, receives fds
-- convert status line history to be server global (anything else?)
 - command to show a tree of sessions-windows-panes (active marked with *)
 - sort out inheriting config from shell on new sessions/windows:
         should pick up default-path/termios/etc from client if possible,
@@ -110,7 +80,7 @@
 - better session sharing: create-socket command to create socket somewhere (-r
   flag for readonly)
 - allow buffer to be specified when copying in copy mode
-- multiline status line
+- multiline status line (no?)
 - flag for absolute pane size to resize-pane
 - sanity check input to socket
 - select-buffer command
@@ -128,43 +98,33 @@
 - ' and " should be parsed the same (eg "\e" vs '\e') in config and command
   prompt?
 - command to toggle selection not to move it in copy-mode
-- some way to create transient sessions which die when disconnected (option?)
-
-For 1.4 (not in order):
-
-3 why are alerts per-winlink? try per window?
-4 audit of escape sequence support vs xterm
-5 support binding keys to mouse (mouse-select-pane -> mouse-keys or something,
+- why are alerts per-winlink? try per window?
+- audit of escape sequence support vs xterm
+- support binding keys to mouse (mouse-select-pane -> mouse-keys or something,
   mouse click == select-pane -t %%, mouse scroll up == copy-mode)
-6 rectangle copy: when selecting leftward, cursor should be inside block per
-  emacs key to rotate corner at which cursor is
-7 last-pane command ***
-9 something for -t "last window in session" so a session can be used as a stack
-10 synchronous commands - client sends cmd and blocks, neww/splitw saves client
-   ptr then when program inside died, sends MSG_SOMETHING with wait status to
-   client
-11 documentation improvements - rlpowell's tutorial
-                              - build instructions
-12 better configure? with-libevent
-14 bind commands to key sequences?
-16 monitor, bell etc should monitor /all/ panes in the window not just one
-18 a history of commands that can be reversed (reverse member of each command, and a buffer)
-19 info() when changing to same window
-20 don't pass UTF-8 through vis for titles
-21 clearing screen should push lines into history
-22 add a unique ever-increasing pane id to each pane, export it in $TMUX_PANE
+- something for -t "last window in session" so a session can be used as a stack
+- synchronous commands - client sends cmd and blocks, neww/splitw saves client
+  ptr then when program inside died, sends MSG_SOMETHING with wait status to
+  client
+- documentation improvements - rlpowell's tutorial - build instructions
+- better configure? with-libevent
+- bind commands to key sequences?
+- monitor, bell etc should monitor /all/ panes in the window not just one
+- a history of commands that can be reversed (reverse member of each command,
+  and a buffer) info() when changing to same window
+- don't pass UTF-8 through vis for titles
+- clearing screen should push lines into history
+- add a unique ever-increasing pane id to each pane, export it in $TMUX_PANE
    (as %1, %2 etc) and allow it to be used as a target
-23 way to add dest for break-pane; maybe some easier way to unbreak-pane
-24 case insensitive searching
-25 dynamically generated jobs (eg "date ...") do not work well because
-   their entries are never collected, should either store status jobs in
-   a different tree or flush all unused persist jobs every update rather
-   than just updating them
-26 pane-index option like base-index
-27 option to move status line to top
-28 "monitor for silence" option
-29 support "xterm2" mouse mode
-30 respawn-pane command
-31 configurable borders and empty space filler for when panes < window
-...
+- way to add dest for break-pane; maybe some easier way to unbreak-pane
+- case insensitive searching
+- dynamically generated jobs (eg "date ...") do not work well because
+  their entries are never collected, should either store status jobs in
+  a different tree or flush all unused persist jobs every update rather
+  than just updating them
+- pane-index option like base-index
+- option to move status line to top
+- support "xterm2" mouse mode
+- respawn-pane command
+- configurable borders and empty space filler for when panes < window?
 
