@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.31 2010-02-26 13:27:38 tcunha Exp $ */
+/* $Id: cmd-string.c,v 1.32 2010-12-13 22:53:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -247,9 +247,10 @@ error:
 char *
 cmd_string_variable(const char *s, size_t *p)
 {
-	int	ch, fch;
-	char   *buf, *t;
-	size_t	len;
+	int			ch, fch;
+	char		       *buf, *t;
+	size_t			len;
+	struct environ_entry   *envent;
 
 #define cmd_string_first(ch) ((ch) == '_' || \
 	((ch) >= 'a' && (ch) <= 'z') || ((ch) >= 'A' && (ch) <= 'Z'))
@@ -301,12 +302,11 @@ cmd_string_variable(const char *s, size_t *p)
 	buf = xrealloc(buf, 1, len + 1);
 	buf[len] = '\0';
 
-	if ((t = getenv(buf)) == NULL) {
-		xfree(buf);
-		return (xstrdup(""));
-	}
+	envent = environ_find(&global_environ, buf);
 	xfree(buf);
-	return (xstrdup(t));
+	if (envent == NULL)
+		return (xstrdup(""));
+	return (xstrdup(envent->value));
 
 error:
 	if (buf != NULL)
@@ -317,15 +317,17 @@ error:
 char *
 cmd_string_expand_tilde(const char *s, size_t *p)
 {
-	struct passwd	*pw;
-	char		*home, *path, *username;
+	struct passwd		*pw;
+	struct environ_entry	*envent;
+	char			*home, *path, *username;
 
 	home = NULL;
 	if (cmd_string_getc(s, p) == '/') {
-		if ((home = getenv("HOME")) == NULL || *home == '\0') {
-			if ((pw = getpwuid(getuid())) != NULL)
-				home = pw->pw_dir;
-		}
+		envent = environ_find(&global_environ, "HOME");
+		if (envent != NULL && *envent->value != '\0')
+			home = envent->value;
+		else if ((pw = getpwuid(getuid())) != NULL)
+			home = pw->pw_dir;
 	} else {
 		cmd_string_ungetc(p);
 		if ((username = cmd_string_string(s, p, '/', 0)) == NULL)
