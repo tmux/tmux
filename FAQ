@@ -351,5 +351,25 @@ This solution will work even if a command is currently running in the terminal,
 but it will not work from a window that has just been swapped with another
 because TMUXPWD_i will not be updated after a swap. However, once a new prompt
 is displayed, TMUXPWD_i is updated properly.
+
+* tmux doesn't start with "daemon failed"
+
+tmux shows something similar to this when started:
+
+    fatal: server_start: daemon failed: No such file or directory
+    fatal: main_dispatch: imsg_read failed
+
+A possible reason is that /dev/null is not a character device or is otherwise
+inaccessible.
+
+Check with:
+
+    file /dev/null
+    ls -l /dev/null
+
+If it is not a character device or has incorrect permissions, it can typically
+be recreated with:
+
+    cd /dev && rm null && ./MAKEDEV null
  
-$Id: FAQ,v 1.40 2010-12-06 17:00:34 nicm Exp $
+$Id: FAQ,v 1.41 2010-12-15 23:31:30 nicm Exp $
