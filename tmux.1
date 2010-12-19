@@ -2195,6 +2195,25 @@ Windows that have been silent for the interval are highlighted in the
 status line.
 An interval of zero disables the monitoring.
 .Pp
+.It Ic other-pane-height Ar height
+Set the height of the other panes (not the main pane) in the
+.Ic main-horizontal
+layout.
+If this option is set to 0 (the default), it will have no effect.
+If both the
+.Ic main-pane-height
+and
+.Ic other-pane-height
+options are set, the main pane will grow taller to make the other panes the
+specified height, but will never shrink to do so.
+.Pp
+.It Ic other-pane-width Ar width
+Like
+.Ic other-pane-height ,
+but set the width of other panes in the
+.Ic main-vertical
+layout.
+.Pp
 .It Xo Ic remain-on-exit
 .Op Ic on | off
 .Xc
