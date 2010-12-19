@@ -55,7 +55,7 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink			*wl;
 	struct session			*s;
 	struct session_group		*sg;
-	u_int			 	 i, idx, cur;
+	u_int			 	 i, idx, sgidx, cur;
 	char				 tmp[64];
 
 	if (ctx->curclient == NULL) {
@@ -82,8 +82,8 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (sg == NULL)
 			*tmp = '\0';
 		else {
-			idx = session_group_index(sg);
-			xsnprintf(tmp, sizeof tmp, " (group %u)", idx);
+			sgidx = session_group_index(sg);
+			xsnprintf(tmp, sizeof tmp, " (group %u)", sgidx);
 		}
 
 		window_choose_add(wl->window->active, i,
