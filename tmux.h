@@ -948,7 +948,6 @@ struct session {
 	struct paste_stack buffers;
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
-#define SESSION_DEAD 0x2
 	int		 flags;
 
 	struct termios	*tio;

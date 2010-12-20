@@ -167,7 +167,6 @@ session_destroy(struct session *s)
 	}
 	if (i == ARRAY_LENGTH(&dead_sessions))
 		ARRAY_ADD(&dead_sessions, s);
-	s->flags |= SESSION_DEAD;
 }
 
 /* Find session index. */
@@ -188,7 +187,7 @@ session_next_session(struct session *s)
 	struct session *s2;
 	u_int		i;
 
-	if (ARRAY_LENGTH(&sessions) == 0 || session_index(s, &i) != 0)
+	if (ARRAY_LENGTH(&sessions) == 0 || !session_alive(s))
 		return (NULL);
 
 	do {
@@ -197,7 +196,7 @@ session_next_session(struct session *s)
 		else
 			i++;
 		s2 = ARRAY_ITEM(&sessions, i);
-	} while (s2 == NULL || s2->flags & SESSION_DEAD);
+	} while (s2 == NULL);
 
 	return (s2);
 }
@@ -209,7 +208,7 @@ session_previous_session(struct session *s)
 	struct session *s2;
 	u_int		i;
 
-	if (ARRAY_LENGTH(&sessions) == 0 || session_index(s, &i) != 0)
+	if (ARRAY_LENGTH(&sessions) == 0 || !session_alive(s))
 		return (NULL);
 
 	do {
@@ -218,7 +217,7 @@ session_previous_session(struct session *s)
 		else
 			i--;
 		s2 = ARRAY_ITEM(&sessions, i);
-	} while (s2 == NULL || s2->flags & SESSION_DEAD);
+	} while (s2 == NULL);
 
 	return (s2);
 }
