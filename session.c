@@ -187,9 +187,10 @@ session_next_session(struct session *s)
 	struct session *s2;
 	u_int		i;
 
-	if (ARRAY_LENGTH(&sessions) == 0 || !session_alive(s))
+	if (ARRAY_LENGTH(&sessions) == 0 || session_index(s, &i) != 0)
 		return (NULL);
 
+	i = 0;
 	do {
 		if (i == ARRAY_LENGTH(&sessions) - 1)
 			i = 0;
@@ -208,7 +209,7 @@ session_previous_session(struct session *s)
 	struct session *s2;
 	u_int		i;
 
-	if (ARRAY_LENGTH(&sessions) == 0 || !session_alive(s))
+	if (ARRAY_LENGTH(&sessions) == 0 || session_index(s, &i) != 0)
 		return (NULL);
 
 	do {
