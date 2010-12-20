@@ -1968,6 +1968,7 @@ void clear_signals(int);
 extern struct sessions sessions;
 extern struct sessions dead_sessions;
 extern struct session_groups session_groups;
+int		 session_alive(struct session *);
 struct session	*session_find(const char *);
 struct session	*session_create(const char *, const char *, const char *,
 		     struct environ *, struct termios *, int, u_int, u_int,

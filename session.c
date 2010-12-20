@@ -35,6 +35,18 @@ struct session_groups session_groups;
 struct winlink *session_next_alert(struct winlink *);
 struct winlink *session_previous_alert(struct winlink *);
 
+/*
+ * Find if session is still alive. This is true if it is still on the global
+ * sessions list.
+ */
+int
+session_alive(struct session *s)
+{
+	u_int	idx;
+
+	return (session_index(s, &idx) == 0);
+}
+
 /* Find session by name. */
 struct session *
 session_find(const char *name)
