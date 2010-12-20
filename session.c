@@ -190,7 +190,6 @@ session_next_session(struct session *s)
 	if (ARRAY_LENGTH(&sessions) == 0 || session_index(s, &i) != 0)
 		return (NULL);
 
-	i = 0;
 	do {
 		if (i == ARRAY_LENGTH(&sessions) - 1)
 			i = 0;
