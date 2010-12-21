@@ -47,7 +47,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*overrides, *cause;
 	u_int			 i;
 
-	if (ARRAY_LENGTH(&sessions) == 0) {
+	if (RB_EMPTY(&sessions)) {
 		ctx->error(ctx, "no sessions");
 		return (-1);
 	}

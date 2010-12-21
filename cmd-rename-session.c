@@ -53,8 +53,10 @@ cmd_rename_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((s = cmd_find_session(ctx, data->target)) == NULL)
 		return (-1);
 
+	RB_REMOVE(sessions, &sessions, s);
 	xfree(s->name);
 	s->name = xstrdup(data->arg);
+	RB_INSERT(sessions, &sessions, s);
 
 	server_status_session(s);
 

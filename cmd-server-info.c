@@ -81,8 +81,6 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	else
 		ctx->print(ctx, "configuration file not specified");
 	ctx->print(ctx, "protocol version is %d", PROTOCOL_VERSION);
-	ctx->print(ctx, "%u clients, %u sessions",
-	    ARRAY_LENGTH(&clients), ARRAY_LENGTH(&sessions));
 	ctx->print(ctx, "%s", "");
 
 	ctx->print(ctx, "Clients:");
@@ -101,19 +99,14 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 
 	ctx->print(ctx, "Sessions: [%zu/%zu]",
 	    sizeof (struct grid_cell), sizeof (struct grid_utf8));
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		s = ARRAY_ITEM(&sessions, i);
-		if (s == NULL)
-			continue;
-
+	RB_FOREACH(s, sessions, &sessions) {
 		t = s->creation_time.tv_sec;
 		tim = ctime(&t);
 		*strchr(tim, '\n') = '\0';
 
 		ctx->print(ctx, "%2u: %s: %u windows (created %s) [%ux%u] "
-		    "[flags=0x%x, references=%u]", i, s->name,
-		    winlink_count(&s->windows), tim, s->sx, s->sy, s->flags,
-		    s->references);
+		    "[flags=0x%x]", s->idx, s->name,
+		    winlink_count(&s->windows), tim, s->sx, s->sy, s->flags);
 		RB_FOREACH(wl, winlinks, &s->windows) {
 			w = wl->window;
 			ctx->print(ctx, "%4u: %s [%ux%u] [flags=0x%x, "

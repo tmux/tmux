@@ -147,8 +147,8 @@ server_start(void)
 	ARRAY_INIT(&windows);
 	ARRAY_INIT(&clients);
 	ARRAY_INIT(&dead_clients);
-	ARRAY_INIT(&sessions);
-	ARRAY_INIT(&dead_sessions);
+	RB_INIT(&sessions);
+	RB_INIT(&dead_sessions);
 	TAILQ_INIT(&session_groups);
 	mode_key_init_trees();
 	key_bindings_init();
@@ -174,8 +174,8 @@ server_start(void)
 	 * If there is a session already, put the current window and pane into
 	 * more mode.
 	 */
-	if (!ARRAY_EMPTY(&sessions) && !ARRAY_EMPTY(&cfg_causes)) {
-		wp = ARRAY_FIRST(&sessions)->curw->window->active;
+	if (!RB_EMPTY(&sessions) && !ARRAY_EMPTY(&cfg_causes)) {
+		wp = RB_MIN(sessions, &sessions)->curw->window->active;
 		window_pane_set_mode(wp, &window_copy_mode);
 		window_copy_init_for_output(wp);
 		for (i = 0; i < ARRAY_LENGTH(&cfg_causes); i++) {
@@ -223,10 +223,8 @@ server_should_shutdown(void)
 	u_int	i;
 
 	if (!options_get_number(&global_options, "exit-unattached")) {
-		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-			if (ARRAY_ITEM(&sessions, i) != NULL)
-				return (0);
-		}
+		if (!RB_EMPTY(&sessions))
+			return (0);
 	}
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		if (ARRAY_ITEM(&clients, i) != NULL)
@@ -240,7 +238,7 @@ void
 server_send_shutdown(void)
 {
 	struct client	*c;
-	struct session	*s;
+	struct session	*s, *next_s;
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
@@ -254,9 +252,11 @@ server_send_shutdown(void)
 		}
 	}
 
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		if ((s = ARRAY_ITEM(&sessions, i)) != NULL)
-			session_destroy(s);
+	s = RB_MIN(sessions, &sessions);
+	while (s != NULL) {
+		next_s = RB_NEXT(sessions, &sessions, s);
+		session_destroy(s);
+		s = next_s;
 	}
 }
 
@@ -264,16 +264,19 @@ server_send_shutdown(void)
 void
 server_clean_dead(void)
 {
-	struct session	*s;
+	struct session	*s, *next_s;
 	struct client	*c;
 	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&dead_sessions); i++) {
-		s = ARRAY_ITEM(&dead_sessions, i);
-		if (s == NULL || s->references != 0)
-			continue;
-		ARRAY_SET(&dead_sessions, i, NULL);
-		xfree(s);
+	s = RB_MIN(sessions, &dead_sessions);
+	while (s != NULL) {
+		next_s = RB_NEXT(sessions, &dead_sessions, s);
+		if (s->references == 0) {
+			RB_REMOVE(sessions, &dead_sessions, s);
+			xfree(s->name);
+			xfree(s);
+		}
+		s = next_s;
 	}
 
 	for (i = 0; i < ARRAY_LENGTH(&dead_clients); i++) {
@@ -290,15 +293,13 @@ void
 server_update_socket(void)
 {
 	struct session	*s;
-	u_int		 i;
 	static int	 last = -1;
 	int		 n, mode;
 	struct stat      sb;
 
 	n = 0;
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		s = ARRAY_ITEM(&sessions, i);
-		if (s != NULL && !(s->flags & SESSION_UNATTACHED)) {
+	RB_FOREACH(s, sessions, &sessions) {
+		if (!(s->flags & SESSION_UNATTACHED)) {
 			n++;
 			break;
 		}
@@ -485,15 +486,11 @@ void
 server_lock_server(void)
 {
 	struct session  *s;
-	u_int            i;
 	int		 timeout;
 	time_t           t;
 
 	t = time(NULL);
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
-			continue;
-
+	RB_FOREACH(s, sessions, &sessions) {
 		if (s->flags & SESSION_UNATTACHED) {
 			if (gettimeofday(&s->activity_time, NULL) != 0)
 				fatal("gettimeofday failed");
@@ -514,15 +511,11 @@ void
 server_lock_sessions(void)
 {
 	struct session  *s;
-	u_int		 i;
 	int		 timeout;
 	time_t		 t;
 
 	t = time(NULL);
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
-			continue;
-
+	RB_FOREACH(s, sessions, &sessions) {
 		if (s->flags & SESSION_UNATTACHED) {
 			if (gettimeofday(&s->activity_time, NULL) != 0)
 				fatal("gettimeofday failed");

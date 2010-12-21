@@ -46,14 +46,10 @@ cmd_list_sessions_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	struct session		*s;
 	struct session_group	*sg;
 	char			*tim, tmp[64];
-	u_int			 i, idx;
+	u_int			 idx;
 	time_t			 t;
 
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		s = ARRAY_ITEM(&sessions, i);
-		if (s == NULL)
-			continue;
-
+	RB_FOREACH(s, sessions, &sessions) {
 		sg = session_group_find(s);
 		if (sg == NULL)
 			*tmp = '\0';

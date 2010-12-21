@@ -52,11 +52,7 @@ recalculate_sizes(void)
 	u_int		 	 i, j, ssx, ssy, has, limit;
 	int		 	 flag;
 
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		s = ARRAY_ITEM(&sessions, i);
-		if (s == NULL)
-			continue;
-
+	RB_FOREACH(s, sessions, &sessions) {
 		ssx = ssy = UINT_MAX;
 		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
 			c = ARRAY_ITEM(&clients, j);
@@ -98,9 +94,8 @@ recalculate_sizes(void)
 		flag = options_get_number(&w->options, "aggressive-resize");
 
 		ssx = ssy = UINT_MAX;
-		for (j = 0; j < ARRAY_LENGTH(&sessions); j++) {
-			s = ARRAY_ITEM(&sessions, j);
-			if (s == NULL || s->flags & SESSION_UNATTACHED)
+		RB_FOREACH(s, sessions, &sessions) {
+			if (s->flags & SESSION_UNATTACHED)
 				continue;
 			if (flag)
 				has = s->curw->window == w;

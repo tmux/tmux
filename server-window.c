@@ -38,17 +38,14 @@ server_window_loop(void)
 	struct winlink		*wl;
 	struct window_pane	*wp;
 	struct session		*s;
-	u_int		 	 i, j;
+	u_int		 	 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);
 		if (w == NULL)
 			continue;
 
-		for (j = 0; j < ARRAY_LENGTH(&sessions); j++) {
-			s = ARRAY_ITEM(&sessions, j);
-			if (s == NULL)
-				continue;
+		RB_FOREACH(s, sessions, &sessions) {
 			wl = session_has(s, w);
 			if (wl == NULL)
 				continue;

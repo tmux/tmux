@@ -930,6 +930,8 @@ struct session_group {
 TAILQ_HEAD(session_groups, session_group);
 
 struct session {
+	u_int		 idx;
+
 	char		*name;
 	char		*cwd;
 
@@ -957,8 +959,10 @@ struct session {
 	int		 references;
 
 	TAILQ_ENTRY(session) gentry;
+	RB_ENTRY(session)    entry;
 };
-ARRAY_DECL(sessions, struct session *);
+RB_HEAD(sessions, session);
+ARRAY_DECL(sessionslist, struct session *);
 
 /* TTY information. */
 struct tty_key {
@@ -1967,13 +1971,15 @@ void clear_signals(int);
 extern struct sessions sessions;
 extern struct sessions dead_sessions;
 extern struct session_groups session_groups;
+int	session_cmp(struct session *, struct session *);
+RB_PROTOTYPE(sessions, session, entry, session_cmp);
 int		 session_alive(struct session *);
 struct session	*session_find(const char *);
+struct session	*session_find_by_index(u_int);
 struct session	*session_create(const char *, const char *, const char *,
 		     struct environ *, struct termios *, int, u_int, u_int,
 		     char **);
 void		 session_destroy(struct session *);
-int		 session_index(struct session *, u_int *);
 struct session	*session_next_session(struct session *);
 struct session	*session_previous_session(struct session *);
 struct winlink	*session_new(struct session *,

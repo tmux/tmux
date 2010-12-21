@@ -112,7 +112,8 @@ const struct cmd_entry *cmd_table[] = {
 	NULL
 };
 
-struct session	*cmd_choose_session(struct sessions *);
+struct session	*cmd_choose_session_list(struct sessionslist *);
+struct session	*cmd_choose_session(void);
 struct client	*cmd_choose_client(struct clients *);
 struct client	*cmd_lookup_client(const char *);
 struct session	*cmd_lookup_session(const char *, int *);
@@ -316,10 +317,9 @@ cmd_current_session(struct cmd_ctx *ctx)
 	struct msg_command_data	*data = ctx->msgdata;
 	struct client		*c = ctx->cmdclient;
 	struct session		*s;
-	struct sessions		 ss;
+	struct sessionslist	 ss;
 	struct winlink		*wl;
 	struct window_pane	*wp;
-	u_int			 i;
 	int			 found;
 
 	if (ctx->curclient != NULL && ctx->curclient->session != NULL)
@@ -332,9 +332,7 @@ cmd_current_session(struct cmd_ctx *ctx)
 	 */
 	if (c != NULL && c->tty.path != NULL) {
 		ARRAY_INIT(&ss);
-		for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-			if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
-				continue;
+		RB_FOREACH(s, sessions, &sessions) {
 			found = 0;
 			RB_FOREACH(wl, winlinks, &s->windows) {
 				TAILQ_FOREACH(wp, &wl->window->panes, entry) {
@@ -350,25 +348,43 @@ cmd_current_session(struct cmd_ctx *ctx)
 				ARRAY_ADD(&ss, s);
 		}
 
-		s = cmd_choose_session(&ss);
+		s = cmd_choose_session_list(&ss);
 		ARRAY_FREE(&ss);
 		if (s != NULL)
 			return (s);
 	}
 
 	/* Use the session from the TMUX environment variable. */
-	if (data != NULL &&
-	    data->pid == getpid() &&
-	    data->idx <= ARRAY_LENGTH(&sessions) &&
-	    (s = ARRAY_ITEM(&sessions, data->idx)) != NULL)
-		return (s);
+	if (data != NULL && data->pid == getpid()) {
+		s = session_find_by_index(data->idx);
+		if (s != NULL)
+			return (s);
+	}
 
-	return (cmd_choose_session(&sessions));
+	return (cmd_choose_session());
+}
+
+/* Find the most recently used session. */
+struct session *
+cmd_choose_session(void)
+{
+	struct session	*s, *sbest;
+	struct timeval	*tv = NULL;
+
+	sbest = NULL;
+	RB_FOREACH(s, sessions, &sessions) {
+		if (tv == NULL || timercmp(&s->activity_time, tv, >)) {
+			sbest = s;
+			tv = &s->activity_time;
+		}
+	}
+
+	return (sbest);
 }
 
 /* Find the most recently used session from a list. */
 struct session *
-cmd_choose_session(struct sessions *ss)
+cmd_choose_session_list(struct sessionslist *ss)
 {
 	struct session	*s, *sbest;
 	struct timeval	*tv = NULL;
@@ -516,7 +532,6 @@ struct session *
 cmd_lookup_session(const char *name, int *ambiguous)
 {
 	struct session	*s, *sfound;
-	u_int		 i;
 
 	*ambiguous = 0;
 
@@ -525,21 +540,15 @@ cmd_lookup_session(const char *name, int *ambiguous)
 	 * be unique so an exact match can't be ambigious and can just be
 	 * returned.
 	 */
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
-			continue;
-		if (strcmp(name, s->name) == 0)
-			return (s);
-	}
+	if ((s = session_find(name)) != NULL)
+		return (s);
 
 	/*
 	 * Otherwise look for partial matches, returning early if it is found to
 	 * be ambiguous.
 	 */
 	sfound = NULL;
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		if ((s = ARRAY_ITEM(&sessions, i)) == NULL)
-			continue;
+	RB_FOREACH(s, sessions, &sessions) {
 		if (strncmp(name, s->name, strlen(name)) == 0 ||
 		    fnmatch(name, s->name, 0) == 0) {
 			if (sfound != NULL) {
