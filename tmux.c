@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.226 2010-12-10 21:19:13 nicm Exp $ */
+/* $Id: tmux.c,v 1.227 2010-12-22 15:23:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -410,6 +410,8 @@ main(int argc, char **argv)
 	options_set_number(wo, "monitor-activity", 0);
 	options_set_string(wo, "monitor-content", "%s", "");
 	options_set_number(wo, "monitor-silence", 0);
+	options_set_number(wo, "other-pane-height", 0);
+	options_set_number(wo, "other-pane-width", 0);
 	options_set_number(wo, "window-status-attr", 0);
 	options_set_number(wo, "window-status-bg", 8);
 	options_set_number(wo, "window-status-current-attr", 0);

@@ -1,4 +1,4 @@
-/* $Id: layout-set.c,v 1.7 2010-12-07 20:23:21 micahcowan Exp $ */
+/* $Id: layout-set.c,v 1.8 2010-12-22 15:23:59 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -231,8 +231,8 @@ layout_set_main_h(struct window *w)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lc, *lcmain, *lcrow, *lcchild;
-	u_int			 n, mainheight, width, height, used;
-	u_int			 i, j, columns, rows, totalrows;
+	u_int			 n, mainheight, otherheight, width, height;
+	u_int			 used, i, j, columns, rows, totalrows;
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -252,6 +252,16 @@ layout_set_main_h(struct window *w)
 
 	/* Get the main pane height and add one for separator line. */
 	mainheight = options_get_number(&w->options, "main-pane-height") + 1;
+
+	/* Get the optional other pane height and add one for separator line. */
+	otherheight = options_get_number(&w->options, "other-pane-height") + 1;
+
+	/*
+	 * If an other pane height was specified, honour it so long as it
+	 * doesn't shrink the main height to less than the main-pane-height
+	 */
+	if (otherheight > 1 && w->sx - otherheight > mainheight)
+		mainheight = w->sx - otherheight;
 	if (mainheight < PANE_MINIMUM + 1)
 		mainheight = PANE_MINIMUM + 1;
 
@@ -342,8 +352,8 @@ layout_set_main_v(struct window *w)
 {
 	struct window_pane	*wp;
 	struct layout_cell	*lc, *lcmain, *lccolumn, *lcchild;
-	u_int			 n, mainwidth, width, height, used;
-	u_int			 i, j, columns, rows, totalcolumns;
+	u_int			 n, mainwidth, otherwidth, width, height;
+	u_int			 used, i, j, columns, rows, totalcolumns;
 
 	layout_print_cell(w->layout_root, __func__, 1);
 
@@ -363,6 +373,16 @@ layout_set_main_v(struct window *w)
 
 	/* Get the main pane width and add one for separator line. */
 	mainwidth = options_get_number(&w->options, "main-pane-width") + 1;
+
+	/* Get the optional other pane width and add one for separator line. */
+	otherwidth = options_get_number(&w->options, "other-pane-width") + 1;
+
+	/*
+	 * If an other pane width was specified, honour it so long as it
+	 * doesn't shrink the main width to less than the main-pane-width
+	 */
+	if (otherwidth > 1 && w->sx - otherwidth > mainwidth)
+		mainwidth = w->sx - otherwidth;
 	if (mainwidth < PANE_MINIMUM + 1)
 		mainwidth = PANE_MINIMUM + 1;
 
