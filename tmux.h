@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.589 2010-12-22 15:31:00 tcunha Exp $ */
+/* $Id: tmux.h,v 1.590 2010-12-22 15:31:56 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -946,7 +946,6 @@ struct session {
 	struct paste_stack buffers;
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
-#define SESSION_DEAD 0x2
 	int		 flags;
 
 	struct termios	*tio;
