@@ -1,4 +1,4 @@
-/* $Id: cmd-find-window.c,v 1.14 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-find-window.c,v 1.15 2010-12-22 15:28:50 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,6 +30,7 @@
 int	cmd_find_window_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_find_window_callback(void *, int);
+void	cmd_find_window_free(void *);
 
 const struct cmd_entry cmd_find_window_entry = {
 	"find-window", "findw",
@@ -43,7 +44,7 @@ const struct cmd_entry cmd_find_window_entry = {
 };
 
 struct cmd_find_window_data {
-	u_int	session;
+	struct session	*session;
 };
 
 int
@@ -134,11 +135,11 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	cdata = xmalloc(sizeof *cdata);
-	if (session_index(s, &cdata->session) != 0)
-		fatalx("session not found");
+	cdata->session = s;
+	cdata->session->references++;
 
-	window_choose_ready(
-	    wl->window->active, 0, cmd_find_window_callback, xfree, cdata);
+	window_choose_ready(wl->window->active,
+	    0, cmd_find_window_callback, cmd_find_window_free, cdata);
 
 out:
 	ARRAY_FREE(&list_idx);
@@ -151,12 +152,24 @@ void
 cmd_find_window_callback(void *data, int idx)
 {
 	struct cmd_find_window_data	*cdata = data;
-	struct session			*s;
+	struct session			*s = cdata->session;
 
-	if (idx != -1 && cdata->session <= ARRAY_LENGTH(&sessions) - 1) {
-		s = ARRAY_ITEM(&sessions, cdata->session);
-		if (s != NULL && session_select(s, idx) == 0)
-			server_redraw_session(s);
+	if (idx == -1)
+		return;
+	if (!session_alive(s))
+		return;
+
+	if (session_select(s, idx) == 0) {
+		server_redraw_session(s);
 		recalculate_sizes();
 	}
+}
+
+void
+cmd_find_window_free(void *data)
+{
+	struct cmd_find_window_data	*cdata = data;
+
+	cdata->session->references--;
+	xfree(cdata);
 }

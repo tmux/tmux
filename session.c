@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.78 2010-09-10 13:36:17 tcunha Exp $ */
+/* $Id: session.c,v 1.79 2010-12-22 15:28:50 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,6 +33,18 @@ struct session_groups session_groups;
 
 struct winlink *session_next_alert(struct winlink *);
 struct winlink *session_previous_alert(struct winlink *);
+
+/*
+ * Find if session is still alive. This is true if it is still on the global
+ * sessions list.
+ */
+int
+session_alive(struct session *s)
+{
+	u_int	idx;
+
+	return (session_index(s, &idx) == 0);
+}
 
 /* Find session by name. */
 struct session *

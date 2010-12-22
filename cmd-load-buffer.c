@@ -1,4 +1,4 @@
-/* $Id: cmd-load-buffer.c,v 1.17 2010-08-09 21:44:25 tcunha Exp $ */
+/* $Id: cmd-load-buffer.c,v 1.18 2010-12-22 15:28:50 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -81,6 +81,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		cdata = xmalloc(sizeof *cdata);
 		cdata->session = s;
+		cdata->session->references++;
 		cdata->buffer = data->buffer;
 		c->stdin_data = cdata;
 		c->stdin_callback = cmd_load_buffer_callback;
@@ -144,7 +145,6 @@ cmd_load_buffer_callback(struct client *c, void *data)
 	char				*pdata;
 	size_t				 psize;
 	u_int				 limit;
-	int				 idx;
 
 	/*
 	 * Event callback has already checked client is not dead and reduced
@@ -153,7 +153,7 @@ cmd_load_buffer_callback(struct client *c, void *data)
 	c->flags |= CLIENT_EXIT;
 
 	/* Does the target session still exist? */
-	if (session_index(s, &idx) != 0)
+	if (!session_alive(s))
 		goto out;
 
 	psize = EVBUFFER_LENGTH(c->stdin_event->input);
@@ -180,5 +180,6 @@ cmd_load_buffer_callback(struct client *c, void *data)
 	}
 
 out:
+	cdata->session->references--;
 	xfree(cdata);
 }
