@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.81 2010-12-22 15:32:40 tcunha Exp $ */
+/* $Id: session.c,v 1.82 2010-12-22 15:33:14 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -189,7 +189,6 @@ session_next_session(struct session *s)
 	if (ARRAY_LENGTH(&sessions) == 0 || session_index(s, &i) != 0)
 		return (NULL);
 
-	i = 0;
 	do {
 		if (i == ARRAY_LENGTH(&sessions) - 1)
 			i = 0;
