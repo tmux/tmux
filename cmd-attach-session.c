@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.36 2010-02-08 18:27:34 tcunha Exp $ */
+/* $Id: cmd-attach-session.c,v 1.37 2010-12-22 15:36:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*overrides, *cause;
 	u_int			 i;
 
-	if (ARRAY_LENGTH(&sessions) == 0) {
+	if (RB_EMPTY(&sessions)) {
 		ctx->error(ctx, "no sessions");
 		return (-1);
 	}

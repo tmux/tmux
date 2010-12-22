@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-session.c,v 1.16 2010-12-22 15:25:07 tcunha Exp $ */
+/* $Id: cmd-choose-session.c,v 1.17 2010-12-22 15:36:44 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,7 +55,7 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink			*wl;
 	struct session			*s;
 	struct session_group		*sg;
-	u_int			 	 i, idx, sgidx, cur;
+	u_int			 	 idx, sgidx, cur;
 	char				 tmp[64];
 
 	if (ctx->curclient == NULL) {
@@ -70,10 +70,7 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (0);
 
 	cur = idx = 0;
-	for (i = 0; i < ARRAY_LENGTH(&sessions); i++) {
-		s = ARRAY_ITEM(&sessions, i);
-		if (s == NULL)
-			continue;
+	RB_FOREACH(s, sessions, &sessions) {
 		if (s == ctx->curclient->session)
 			cur = idx;
 		idx++;
@@ -86,7 +83,7 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 			xsnprintf(tmp, sizeof tmp, " (group %u)", sgidx);
 		}
 
-		window_choose_add(wl->window->active, i,
+		window_choose_add(wl->window->active, s->idx,
 		    "%s: %u windows [%ux%u]%s%s", s->name,
 		    winlink_count(&s->windows), s->sx, s->sy,
 		    tmp, s->flags & SESSION_UNATTACHED ? "" : " (attached)");
@@ -120,9 +117,7 @@ cmd_choose_session_callback(void *data, int idx)
 	if (cdata->client->flags & CLIENT_DEAD)
 		return;
 
-	if ((u_int) idx > ARRAY_LENGTH(&sessions) - 1)
-		return;
-	s = ARRAY_ITEM(&sessions, idx);
+	s = session_find_by_index(idx);
 	if (s == NULL)
 		return;
 	template = cmd_template_replace(cdata->template, s->name, 1);
