@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-session.c,v 1.15 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-choose-session.c,v 1.16 2010-12-22 15:25:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -55,7 +55,7 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink			*wl;
 	struct session			*s;
 	struct session_group		*sg;
-	u_int			 	 i, idx, cur;
+	u_int			 	 i, idx, sgidx, cur;
 	char				 tmp[64];
 
 	if (ctx->curclient == NULL) {
@@ -82,8 +82,8 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (sg == NULL)
 			*tmp = '\0';
 		else {
-			idx = session_group_index(sg);
-			xsnprintf(tmp, sizeof tmp, " (group %u)", idx);
+			sgidx = session_group_index(sg);
+			xsnprintf(tmp, sizeof tmp, " (group %u)", sgidx);
 		}
 
 		window_choose_add(wl->window->active, i,
