@@ -239,10 +239,14 @@ server_lock_client(struct client *c)
 void
 server_kill_window(struct window *w)
 {
-	struct session	*s;
+	struct session	*s, *next_s;
 	struct winlink	*wl;
 
-	RB_FOREACH(s, sessions, &sessions) {
+	next_s = RB_MIN(sessions, &sessions);
+	while (next_s != NULL) {
+		s = next_s;
+		next_s = RB_NEXT(sessions, &sessions, s);
+
 		if (session_has(s, w) == NULL)
 			continue;
 		while ((wl = winlink_find_by_window(&s->windows, w)) != NULL) {
