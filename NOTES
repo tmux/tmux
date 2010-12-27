@@ -25,33 +25,10 @@ windows into several simultaneously displayed panes; and to bind and unbind
 command keys (invoked preceded by a prefix key, by default ctrl-b). Please see
 the tmux(1) man page for further information.
 
-The following is a summary of major features implemented in this version:
-
-- Basic multiplexing, window switching, attaching and detaching.
-- Window listing and renaming.
-- Key binding.
-- Handling of client terminal resize.
-- Terminal emulation sufficient to handle most curses applications.
-- A optional status line (enabled by default).
-- Window history and copy and paste.
-- Support for VT100 line drawing characters.
-- A large command set.
-- Vertical window splitting and layout.
-- Automatic server locking on inactivity by running an external command.
-- A configuration file.
-- UTF-8 support.
-
 A more extensive, but rough, todo list is included in the TODO file.
 
 tmux also depends on several features of the client terminal (TERM), if these
 are missing it may refuse to run, or not behave correctly.
-
-tmux supports UTF-8. To use it, the utf8 option must be set on each window;
-this may be turned on for all windows by setting it as a global option, see
-tmux(1) and the FAQ file. As of 0.9, tmux attempts to autodetect a
-UTF-8 capable terminal by checking the LC_ALL, LC_CTYPE and LANG environment
-variables. list-clients may be used to check if this is detected correctly; if
-not, the -u command-line flag may be specified.
 
 A Vim syntax file is available in the examples directory. To install it:
 
@@ -86,4 +63,4 @@ start. Please contact me with any queries.
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.53 2010-03-10 15:18:11 tcunha Exp $
+$Id: NOTES,v 1.54 2010-12-27 21:36:37 tcunha Exp $
