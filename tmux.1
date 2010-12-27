@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.278 2010-12-22 15:23:59 tcunha Exp $
+.\" $Id: tmux.1,v 1.279 2010-12-27 21:13:59 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -906,6 +906,7 @@ $ tmux list-windows
     layout: bb62,159x48,0,0{79x48,0,0,79x48,80,0}
 $ tmux select-layout bb62,159x48,0,0{79x48,0,0,79x48,80,0}
 .Ed
+.Pp
 .Nm
 automatically adjusts the size of the layout for the current window size.
 Note that a layout cannot be applied to a window with more panes than that
@@ -1645,6 +1646,11 @@ The default is an empty string, which instructs
 to create a login shell using the value of the
 .Ic default-shell
 option.
+.It Ic default-path Ar path
+Set the default working directory for processes created from keys, or
+interactively from the prompt.
+The default is empty, which means to use the working directory of the shell
+from which the server was started if it is available or the user's home if not.
 .It Ic default-shell Ar path
 Specify the default shell.
 This is used as the login shell for new windows when the
@@ -1661,11 +1667,6 @@ or
 This option should be configured when
 .Nm
 is used as a login shell.
-.It Ic default-path Ar path
-Set the default working directory for processes created from keys, or
-interactively from the prompt.
-The default is empty, which means to use the working directory of the shell
-from which the server was started if it is available or the user's home if not.
 .It Ic default-terminal Ar terminal
 Set the default terminal for new windows created in this session - the
 default value of the
@@ -1782,12 +1783,12 @@ If on,
 captures the mouse and when a window is split into multiple panes the mouse may
 be used to select the current pane.
 The mouse click is also passed through to the application as normal.
-.It Ic pane-border-fg Ar colour
-.It Ic pane-border-bg Ar colour
-Set the pane border colour for panes aside from the active pane.
-.It Ic pane-active-border-fg Ar colour
 .It Ic pane-active-border-bg Ar colour
+.It Ic pane-active-border-fg Ar colour
 Set the pane border colour for the currently active pane.
+.It Ic pane-border-bg Ar colour
+.It Ic pane-border-fg Ar colour
+Set the pane border colour for panes aside from the active pane.
 .It Ic prefix Ar keys
 Set the keys accepted as a prefix key.
 .Ar keys
@@ -1942,10 +1943,10 @@ is not interpreted, to enable UTF-8, use the
 option.
 .It Ic status-left-attr Ar attributes
 Set the attribute of the left part of the status line.
-.It Ic status-left-fg Ar colour
-Set the foreground colour of the left part of the status line.
 .It Ic status-left-bg Ar colour
 Set the background colour of the left part of the status line.
+.It Ic status-left-fg Ar colour
+Set the foreground colour of the left part of the status line.
 .It Ic status-left-length Ar length
 Set the maximum
 .Ar length
@@ -1967,16 +1968,15 @@ character pairs are replaced, and UTF-8 is dependent on the
 option.
 .It Ic status-right-attr Ar attributes
 Set the attribute of the right part of the status line.
-.It Ic status-right-fg Ar colour
-Set the foreground colour of the right part of the status line.
 .It Ic status-right-bg Ar colour
 Set the background colour of the right part of the status line.
+.It Ic status-right-fg Ar colour
+Set the foreground colour of the right part of the status line.
 .It Ic status-right-length Ar length
 Set the maximum
 .Ar length
 of the right component of the status bar.
 The default is 40.
-.Pp
 .It Xo Ic status-utf8
 .Op Ic on | off
 .Xc
@@ -2100,6 +2100,19 @@ this option is good for full-screen programs which support
 .Dv SIGWINCH
 and poor for interactive programs such as shells.
 .Pp
+.It Xo Ic alternate-screen
+.Op Ic on | off
+.Xc
+This option configures whether programs running inside
+.Nm
+may use the terminal alternate screen feature, which allows the
+.Em smcup
+and
+.Em rmcup
+.Xr terminfo 5
+capabilities to be issued to preserve the existing window content on start and
+restore it on exit.
+.Pp
 .It Xo Ic automatic-rename
 .Op Ic on | off
 .Xc
@@ -2138,8 +2151,8 @@ or
 .Ar height .
 A value of zero restores the default unlimited setting.
 .Pp
-.It Ic main-pane-width Ar width
 .It Ic main-pane-height Ar height
+.It Ic main-pane-width Ar width
 Set the width or height of the main (left or top) pane in the
 .Ic main-horizontal
 or
@@ -2232,19 +2245,6 @@ command.
 .Xc
 Duplicate input to any pane to all other panes in the same window (only
 for panes that are not in any special mode).
-.Pp
-.It Xo Ic alternate-screen
-.Op Ic on | off
-.Xc
-This option configures whether programs running inside
-.Nm
-may use the terminal alternate screen feature, which allows the
-.Em smcup
-and
-.Em rmcup
-.Xr terminfo 5
-capabilities to be issued to preserve the existing window content on start and
-restore it on exit.
 .Pp
 .It Xo Ic utf8
 .Op Ic on | off
