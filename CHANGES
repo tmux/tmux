@@ -1,3 +1,44 @@
+CHANGES FROM 1.3 TO 1.4, 27 December 2010
+
+* Window bell reporting fixed.
+* Show which pane is active in the list-panes output.
+* Backoff reworked.
+* Prevent the server from dying when switching into copy mode when already
+  in a different mode.
+* Reset running jobs when the status line is enabled or disabled.
+* Simplify xterm modifier detection.
+* Avoid crashing in copy mode if the screen size is too small for the
+  indicator.
+* Flags -n and -p added to switch-client.
+* Use UTF-8 line drawing characters on UTF-8 terminals, thus fixing some
+  terminals (eg putty) which disable the vt100 ACS mode switching sequences
+  in UTF-8 mode. On terminals without ACS, use ASCII equivalents.
+* New server option exit-unattached added.
+* New session option destroy-unattached added.
+* Fall back on normal session choice method if $TMUX exists but is invalid
+  rather than rejecting.
+* Mark repeating keys with "(repeat)" in the key list.
+* When removing a pane, don't change the active pane unless the active pane
+  is actually the one being removed.
+* New command last-pane added.
+* AIX fixes.
+* Flag -a added to unbind-key.
+* Add XAUTHORITY to update-environment.
+* More info regarding window and pane flags is now shown in list-*.
+* If VISUAL or EDITOR contains "vi" configure mode-keys and status-key to vi.
+* New window option monitor-silence and session option visual-silence added.
+* In the built-in layouts distribute the panes more evenly.
+* Set the default value of main-pane-width to 80 instead of 81.
+* Command-line flag -V added.
+* Instead of keeping a per-client prompt history make it global.
+* Fix rectangle copy to behave like emacs (the cursor is not part of the
+  selection on the right edge but on the left it is).
+* Flag -l added to switch-client.
+* Retrieve environment variables from the global environment rather than
+  getenv(3), thus allowing them to be updated during the configuration file.
+* New window options other-pane-{height,width} added.
+* More minor bugs fixed and manpage improvements.
+
 CHANGES FROM 1.2 TO 1.3, 18 July 2010
 
 * New input parser.
@@ -1513,7 +1554,7 @@ The list of older changes is below.
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.303 2010-07-18 13:40:59 tcunha Exp $
+$Id: CHANGES,v 1.304 2010-12-27 21:37:42 tcunha Exp $
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms
