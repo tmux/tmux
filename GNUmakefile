@@ -1,4 +1,4 @@
-# $Id: GNUmakefile,v 1.130 2010-12-27 21:32:16 tcunha Exp $
+# $Id: GNUmakefile,v 1.131 2010-12-27 22:13:35 tcunha Exp $
 #
 # Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
 #
@@ -17,9 +17,9 @@
 
 .PHONY: clean
 
-VERSION= 1.4
+VERSION= 1.5
 
-#FDEBUG= 1
+FDEBUG= 1
 
 CC?= cc
 CFLAGS+= -DBUILD="\"$(VERSION)\""
