@@ -127,7 +127,7 @@ window_choose_init(struct window_pane *wp)
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	s->mode &= ~MODE_CURSOR;
 	if (options_get_number(&wp->window->options, "mode-mouse"))
-		s->mode |= MODE_MOUSE;
+		s->mode |= MODE_MOUSE_STANDARD;
 
 	keys = options_get_number(&wp->window->options, "mode-keys");
 	if (keys == MODEKEY_EMACS)
