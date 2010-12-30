@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.27 2010-06-06 00:04:18 tcunha Exp $ */
+/* $Id: cfg.c,v 1.28 2010-12-30 22:26:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -80,6 +80,7 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 	size_t		 len;
 	struct cmd_list	*cmdlist;
 	struct cmd_ctx	 ctx;
+	int		 retval;
 
 	if ((f = fopen(path, "rb")) == NULL) {
 		cfg_add_cause(causes, "%s: %s", path, strerror(errno));
@@ -88,6 +89,7 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 	n = 0;
 
 	line = NULL;
+	retval = 0;
 	while ((buf = fgetln(f, &len))) {
 		if (buf[len - 1] == '\n')
 			buf[len - 1] = '\0';
@@ -125,19 +127,17 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		ctx.info = cfg_print;
 
 		cfg_cause = NULL;
-		cmd_list_exec(cmdlist, &ctx);
+		if (cmd_list_exec(cmdlist, &ctx) == 1)
+			retval = 1;
 		cmd_list_free(cmdlist);
 		if (cfg_cause != NULL) {
 			cfg_add_cause(causes, "%s: %d: %s", path, n, cfg_cause);
 			xfree(cfg_cause);
-			continue;
 		}
 	}
 	if (line != NULL)
 		xfree(line);
 	fclose(f);
 
-	if (ARRAY_LENGTH(causes) != 0)
-		return (-1);
-	return (0);
+	return (retval);
 }

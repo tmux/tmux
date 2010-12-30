@@ -1,4 +1,4 @@
-/* $Id: cmd-source-file.c,v 1.13 2010-02-08 18:29:32 tcunha Exp $ */
+/* $Id: cmd-source-file.c,v 1.14 2010-12-30 22:26:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Tiago Cunha <me@tiagocunha.org>
@@ -91,19 +91,35 @@ cmd_source_file_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_source_file_data	*data = self->data;
 	struct causelist		 causes;
 	char				*cause;
+	struct window_pane		*wp;
+	int				 retval;
 	u_int				 i;
 
 	ARRAY_INIT(&causes);
-	if (load_cfg(data->path, ctx, &causes) != 0) {
+
+	retval = load_cfg(data->path, ctx, &causes);
+	if (ARRAY_EMPTY(&causes))
+		return (retval);
+
+	if (retval == 1 && !RB_EMPTY(&sessions) && ctx->cmdclient != NULL) {
+		wp = RB_MIN(sessions, &sessions)->curw->window->active;
+		window_pane_set_mode(wp, &window_copy_mode);
+		window_copy_init_for_output(wp);
+		for (i = 0; i < ARRAY_LENGTH(&causes); i++) {
+			cause = ARRAY_ITEM(&causes, i);
+			window_copy_add(wp, "%s", cause);
+			xfree(cause);
+		}
+	} else {
 		for (i = 0; i < ARRAY_LENGTH(&causes); i++) {
 			cause = ARRAY_ITEM(&causes, i);
 			ctx->print(ctx, "%s", cause);
 			xfree(cause);
 		}
-		ARRAY_FREE(&causes);
 	}
+	ARRAY_FREE(&causes);
 
-	return (0);
+	return (retval);
 }
 
 void
