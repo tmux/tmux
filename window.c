@@ -463,6 +463,32 @@ window_destroy_panes(struct window *w)
 	}
 }
 
+/* Return list of printable window flag symbols. No flags is just a space. */
+char *
+window_printable_flags(struct session *s, struct winlink *wl)
+{
+	char	flags[BUFSIZ];
+	int	pos;
+
+	pos = 0;
+	if (wl->flags & WINLINK_ACTIVITY)
+		flags[pos++] = '#';
+	if (wl->flags & WINLINK_BELL)
+		flags[pos++] = '!';
+	if (wl->flags & WINLINK_CONTENT)
+		flags[pos++] = '+';
+	if (wl->flags & WINLINK_SILENCE)
+		flags[pos++] = '~';
+	if (wl == s->curw)
+		flags[pos++] = '*';
+	if (wl == TAILQ_FIRST(&s->lastw))
+		flags[pos++] = '-';
+	if (pos == 0)
+		flags[pos++] = ' ';
+	flags[pos] = '\0';
+	return (xstrdup(flags));
+}
+
 struct window_pane *
 window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 {
