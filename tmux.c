@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.228 2010-12-27 21:22:24 tcunha Exp $ */
+/* $Id: tmux.c,v 1.229 2010-12-30 20:41:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -495,20 +495,6 @@ main(int argc, char **argv)
 #endif
 
 	/* Pass control to the client. */
-#ifdef HAVE_BROKEN_KQUEUE
-	if (setenv("EVENT_NOKQUEUE", "1", 1) != 0)
-		fatal("setenv failed");
-#endif
-#ifdef HAVE_BROKEN_POLL
-	if (setenv("EVENT_NOPOLL", "1", 1) != 0)
-		fatal("setenv failed");
-#endif
-	ev_base = event_init();
-#ifdef HAVE_BROKEN_KQUEUE
-	unsetenv("EVENT_NOKQUEUE");
-#endif
-#ifdef HAVE_BROKEN_POLL
-	unsetenv("EVENT_NOPOLL");
-#endif
+	ev_base = osdep_event_init();
 	exit(client_main(argc, argv, flags));
 }

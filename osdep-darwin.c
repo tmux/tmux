@@ -1,4 +1,4 @@
-/* $Id: osdep-darwin.c,v 1.11 2009-05-04 17:58:27 nicm Exp $ */
+/* $Id: osdep-darwin.c,v 1.12 2010-12-30 20:41:07 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Joshua Elsasser <josh@elsasser.org>
@@ -19,11 +19,13 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 
+#include <event.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-char	*osdep_get_name(int, char *);
+char			*osdep_get_name(int, char *);
+struct event_base	*osdep_event_init(void);
 
 #define unused __attribute__ ((unused))
 
@@ -31,7 +33,7 @@ char *
 osdep_get_name(int fd, unused char *tty)
 {
 	int	mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, 0 };
-        size_t	size;
+	size_t	size;
 	struct kinfo_proc kp;
 
 	if ((mib[3] = tcgetpgrp(fd)) == -1)
@@ -44,4 +46,16 @@ osdep_get_name(int fd, unused char *tty)
 		return (NULL);
 
 	return (strdup(kp.kp_proc.p_comm));
+}
+
+struct event_base *
+osdep_event_init(void)
+{
+	/*
+	 * On OS X, kqueue and poll are both completely broken and don't
+	 * work on anything except socket file descriptors (yes, really).
+	 */
+	setenv("EVENT_NOKQUEUE", "1", 1);
+	setenv("EVENT_NOPOLL", "1", 1);
+	return (event_init());
 }

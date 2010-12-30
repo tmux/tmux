@@ -1,4 +1,4 @@
-/* $Id: osdep-freebsd.c,v 1.19 2009-08-09 18:00:45 tcunha Exp $ */
+/* $Id: osdep-freebsd.c,v 1.20 2010-12-30 20:41:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -24,6 +24,7 @@
 
 #include <err.h>
 #include <errno.h>
+#include <event.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +32,7 @@
 
 struct kinfo_proc	*cmp_procs(struct kinfo_proc *, struct kinfo_proc *);
 char			*osdep_get_name(int, char *);
+struct event_base	*osdep_event_init(void);
 
 #ifndef nitems
 #define nitems(_a) (sizeof((_a)) / sizeof((_a)[0]))
@@ -126,4 +128,15 @@ retry:
 error:
 	free(buf);
 	return (NULL);
+}
+
+struct event_base *
+osdep_event_init(void)
+{
+	/*
+	 * On some versions of FreeBSD, kqueue doesn't work properly on tty
+	 * file descriptors. This is fixed in recent FreeBSD versions.
+	 */
+	setenv("EVENT_NOKQUEUE", "1", 1);
+	return (event_init());
 }

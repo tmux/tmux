@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.591 2010-12-22 15:36:44 tcunha Exp $ */
+/* $Id: tmux.h,v 1.592 2010-12-30 20:41:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -2004,7 +2004,8 @@ int	utf8_open(struct utf8_data *, u_char);
 int	utf8_append(struct utf8_data *, u_char);
 
 /* osdep-*.c */
-char   *osdep_get_name(int, char *);
+char		*osdep_get_name(int, char *);
+struct event_base *osdep_event_init(void);
 
 /* log.c */
 void		 log_open_tty(int);

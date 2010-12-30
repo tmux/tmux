@@ -1,4 +1,4 @@
-/* $Id: osdep-unknown.c,v 1.5 2009-04-29 23:07:35 nicm Exp $ */
+/* $Id: osdep-unknown.c,v 1.6 2010-12-30 20:41:08 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,10 +18,18 @@
 
 #include <sys/types.h>
 
+#include <event.h>
+
 #include "tmux.h"
 
 char *
 osdep_get_name(unused int fd, unused char *tty)
 {
 	return (NULL);
+}
+
+struct event_base *
+osdep_event_init(void)
+{
+	return (event_init());
 }
