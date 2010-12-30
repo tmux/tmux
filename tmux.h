@@ -952,8 +952,6 @@ struct session {
 
 	struct options	 options;
 
-	struct paste_stack buffers;
-
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
 	int		 flags;
 
@@ -1256,7 +1254,6 @@ struct cmd_srcdst_data {
 struct cmd_buffer_data {
 	uint64_t chflags;
 
-	char	*target;
 	int	 buffer;
 
 	char	*arg;
@@ -1449,8 +1446,6 @@ void	tty_keys_free(struct tty *);
 int	tty_keys_next(struct tty *);
 
 /* paste.c */
-void		 paste_init_stack(struct paste_stack *);
-void		 paste_free_stack(struct paste_stack *);
 struct paste_buffer *paste_walk_stack(struct paste_stack *, uint *);
 struct paste_buffer *paste_get_top(struct paste_stack *);
 struct paste_buffer *paste_get_index(struct paste_stack *, u_int);
@@ -1504,7 +1499,6 @@ extern const struct cmd_entry cmd_clear_history_entry;
 extern const struct cmd_entry cmd_clock_mode_entry;
 extern const struct cmd_entry cmd_command_prompt_entry;
 extern const struct cmd_entry cmd_confirm_before_entry;
-extern const struct cmd_entry cmd_copy_buffer_entry;
 extern const struct cmd_entry cmd_copy_mode_entry;
 extern const struct cmd_entry cmd_delete_buffer_entry;
 extern const struct cmd_entry cmd_detach_client_entry;
@@ -1607,8 +1601,8 @@ void	cmd_srcdst_free(struct cmd *);
 size_t	cmd_srcdst_print(struct cmd *, char *, size_t);
 #define CMD_BUFFER_PANE_USAGE "[-b buffer-index] [-t target-pane]"
 #define CMD_BUFFER_WINDOW_USAGE "[-b buffer-index] [-t target-window]"
-#define CMD_BUFFER_SESSION_USAGE "[-b buffer-index] [-t target-session]"
 #define CMD_BUFFER_CLIENT_USAGE "[-b buffer-index] [-t target-client]"
+#define CMD_BUFFER_USAGE "[-b buffer-index]"
 void	cmd_buffer_init(struct cmd *, int);
 int	cmd_buffer_parse(struct cmd *, int, char **, char **);
 void	cmd_buffer_free(struct cmd *);
@@ -1638,6 +1632,7 @@ const char *key_string_lookup_key(int);
 /* server.c */
 extern struct clients clients;
 extern struct clients dead_clients;
+extern struct paste_stack global_buffers;
 int	 server_start(void);
 void	 server_update_socket(void);
 

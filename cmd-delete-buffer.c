@@ -30,7 +30,7 @@ int	cmd_delete_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_delete_buffer_entry = {
 	"delete-buffer", "deleteb",
-	CMD_BUFFER_SESSION_USAGE,
+	CMD_BUFFER_USAGE,
 	0, "",
 	cmd_buffer_init,
 	cmd_buffer_parse,
@@ -43,14 +43,10 @@ int
 cmd_delete_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
-	struct session		*s;
-
-	if ((s = cmd_find_session(ctx, data->target)) == NULL)
-		return (-1);
 
 	if (data->buffer == -1)
-		paste_free_top(&s->buffers);
-	else if (paste_free_index(&s->buffers, data->buffer) != 0) {
+		paste_free_top(&global_buffers);
+	else if (paste_free_index(&global_buffers, data->buffer) != 0) {
 		ctx->error(ctx, "no buffer %d", data->buffer);
 		return (-1);
 	}

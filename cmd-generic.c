@@ -332,7 +332,6 @@ cmd_buffer_init(struct cmd *self, unused int key)
 
 	self->data = data = xmalloc(sizeof *data);
 	data->chflags = 0;
-	data->target = NULL;
 	data->buffer = -1;
 	data->arg = NULL;
 	data->arg2 = NULL;
@@ -349,7 +348,7 @@ cmd_buffer_parse(struct cmd *self, int argc, char **argv, char **cause)
 	cmd_buffer_init(self, 0);
 	data = self->data;
 
-	while ((opt = cmd_getopt(argc, argv, "b:t:", entry->chflags)) != -1) {
+	while ((opt = cmd_getopt(argc, argv, "b:", entry->chflags)) != -1) {
 		if (cmd_parse_flags(opt, entry->chflags, &data->chflags) == 0)
 			continue;
 		switch (opt) {
@@ -362,10 +361,6 @@ cmd_buffer_parse(struct cmd *self, int argc, char **argv, char **cause)
 				}
 				data->buffer = n;
 			}
-			break;
-		case 't':
-			if (data->target == NULL)
-				data->target = xstrdup(optarg);
 			break;
 		default:
 			goto usage;
@@ -392,8 +387,6 @@ cmd_buffer_free(struct cmd *self)
 {
 	struct cmd_buffer_data	*data = self->data;
 
-	if (data->target != NULL)
-		xfree(data->target);
 	if (data->arg != NULL)
 		xfree(data->arg);
 	if (data->arg2 != NULL)
@@ -413,8 +406,6 @@ cmd_buffer_print(struct cmd *self, char *buf, size_t len)
 	off += cmd_print_flags(buf, len, off, data->chflags);
 	if (off < len && data->buffer != -1)
 		off += xsnprintf(buf + off, len - off, " -b %d", data->buffer);
-	if (off < len && data->target != NULL)
-		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
 	if (off < len && data->arg != NULL)
 		off += cmd_prarg(buf + off, len - off, " ", data->arg);
 	if (off < len && data->arg2 != NULL)
