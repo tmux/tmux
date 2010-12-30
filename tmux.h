@@ -1599,9 +1599,6 @@ void	cmd_srcdst_init(struct cmd *, int);
 int	cmd_srcdst_parse(struct cmd *, int, char **, char **);
 void	cmd_srcdst_free(struct cmd *);
 size_t	cmd_srcdst_print(struct cmd *, char *, size_t);
-#define CMD_BUFFER_PANE_USAGE "[-b buffer-index] [-t target-pane]"
-#define CMD_BUFFER_WINDOW_USAGE "[-b buffer-index] [-t target-window]"
-#define CMD_BUFFER_CLIENT_USAGE "[-b buffer-index] [-t target-client]"
 #define CMD_BUFFER_USAGE "[-b buffer-index]"
 void	cmd_buffer_init(struct cmd *, int);
 int	cmd_buffer_parse(struct cmd *, int, char **, char **);
