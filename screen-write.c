@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.90 2010-06-16 18:09:23 micahcowan Exp $ */
+/* $Id: screen-write.c,v 1.91 2010-12-30 22:27:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -829,16 +829,23 @@ screen_write_insertmode(struct screen_write_ctx *ctx, int state)
 		s->mode &= ~MODE_INSERT;
 }
 
-/* Set mouse mode.  */
+/* Set mouse mode off. */
 void
-screen_write_mousemode(struct screen_write_ctx *ctx, int state)
+screen_write_mousemode_off(struct screen_write_ctx *ctx)
 {
 	struct screen	*s = ctx->s;
 
-	if (state)
-		s->mode |= MODE_MOUSE;
-	else
-		s->mode &= ~MODE_MOUSE;
+	s->mode &= ~ALL_MOUSE_MODES;
+}
+
+/* Set mouse mode on. */
+void
+screen_write_mousemode_on(struct screen_write_ctx *ctx, int mode)
+{
+	struct screen	*s = ctx->s;
+
+	s->mode &= ~ALL_MOUSE_MODES;
+	s->mode |= mode;
 }
 
 /* Line feed. */

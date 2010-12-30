@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.48 2010-12-22 15:31:00 tcunha Exp $ */
+/* $Id: server-client.c,v 1.49 2010-12-30 22:27:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -449,7 +449,7 @@ server_client_reset_state(struct client *c)
 	mode = s->mode;
 	if (TAILQ_NEXT(TAILQ_FIRST(&w->panes), entry) != NULL &&
 	    options_get_number(oo, "mouse-select-pane"))
-		mode |= MODE_MOUSE;
+		mode |= MODE_MOUSE_STANDARD;
 	tty_update_mode(&c->tty, mode);
 	tty_reset(&c->tty);
 }

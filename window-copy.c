@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.125 2010-12-11 17:57:28 nicm Exp $ */
+/* $Id: window-copy.c,v 1.126 2010-12-30 22:27:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -180,7 +180,7 @@ window_copy_init(struct window_pane *wp)
 	s = &data->screen;
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	if (options_get_number(&wp->window->options, "mode-mouse"))
-		s->mode |= MODE_MOUSE;
+		s->mode |= MODE_MOUSE_STANDARD;
 
 	keys = options_get_number(&wp->window->options, "mode-keys");
 	if (keys == MODEKEY_EMACS)
@@ -787,13 +787,14 @@ window_copy_mouse(
 	 * If already reading motion, move the cursor while buttons are still
 	 * pressed, or stop the selection on their release.
 	 */
-	if (s->mode & MODE_MOUSEMOTION) {
+	if (s->mode & MODE_MOUSE_ANY) {
 		if ((m->b & MOUSE_BUTTON) != MOUSE_UP) {
 			window_copy_update_cursor(wp, m->x, m->y);
 			if (window_copy_update_selection(wp))
 				window_copy_redraw_screen(wp);
 		} else {
-			s->mode &= ~MODE_MOUSEMOTION;
+			s->mode &= ~MODE_MOUSE_ANY;
+			s->mode |= MODE_MOUSE_STANDARD;
 			if (sess != NULL) {
 				window_copy_copy_selection(wp, sess);
 				window_pane_reset_mode(wp);
@@ -802,9 +803,10 @@ window_copy_mouse(
 		return;
 	}
 
-	/* Otherwise i other buttons pressed, start selection and motion. */
+	/* Otherwise if other buttons pressed, start selection and motion. */
 	if ((m->b & MOUSE_BUTTON) != MOUSE_UP) {
-		s->mode |= MODE_MOUSEMOTION;
+		s->mode &= ~MODE_MOUSE_STANDARD;
+		s->mode |= MODE_MOUSE_ANY;
 
 		window_copy_update_cursor(wp, m->x, m->y);
 		window_copy_start_selection(wp);

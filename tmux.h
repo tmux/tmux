@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.592 2010-12-30 20:41:08 nicm Exp $ */
+/* $Id: tmux.h,v 1.593 2010-12-30 22:27:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -543,9 +543,14 @@ struct mode_key_table {
 #define MODE_INSERT 0x2
 #define MODE_KCURSOR 0x4
 #define MODE_KKEYPAD 0x8	/* set = application, clear = number */
-#define MODE_MOUSE 0x10
-#define MODE_MOUSEMOTION 0x20
-#define MODE_WRAP 0x40		/* whether lines wrap */
+#define MODE_WRAP 0x10		/* whether lines wrap */
+#define MODE_MOUSE_STANDARD 0x20
+#define MODE_MOUSE_HIGHLIGHT 0x40
+#define MODE_MOUSE_BUTTON 0x80
+#define MODE_MOUSE_ANY 0x100
+
+#define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD| \
+    MODE_MOUSE_HIGHLIGHT|MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)
 
 /*
  * A single UTF-8 character.
@@ -1806,7 +1811,8 @@ void	 screen_write_cursormode(struct screen_write_ctx *, int);
 void	 screen_write_reverseindex(struct screen_write_ctx *);
 void	 screen_write_scrollregion(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_insertmode(struct screen_write_ctx *, int);
-void	 screen_write_mousemode(struct screen_write_ctx *, int);
+void	 screen_write_mousemode_on(struct screen_write_ctx *, int);
+void	 screen_write_mousemode_off(struct screen_write_ctx *);
 void	 screen_write_linefeed(struct screen_write_ctx *, int);
 void	 screen_write_linefeedscreen(struct screen_write_ctx *, int);
 void	 screen_write_carriagereturn(struct screen_write_ctx *);
