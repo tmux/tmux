@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.21 2010-12-30 20:41:08 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.22 2010-12-30 20:42:39 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -34,7 +34,6 @@
 	((p)->p_stat == SRUN || (p)->p_stat == SIDL || (p)->p_stat == SONPROC)
 #define is_stopped(p) \
 	((p)->p_stat == SSTOP || (p)->p_stat == SZOMB || (p)->p_stat == SDEAD)
-
 
 struct kinfo_proc2	*cmp_procs(struct kinfo_proc2 *, struct kinfo_proc2 *);
 char			*osdep_get_name(int, char *);
