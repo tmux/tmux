@@ -1,4 +1,4 @@
-/* $Id: cmd-load-buffer.c,v 1.18 2010-12-22 15:28:50 tcunha Exp $ */
+/* $Id: cmd-load-buffer.c,v 1.19 2010-12-30 22:39:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -35,7 +35,7 @@ void	cmd_load_buffer_callback(struct client *, void *);
 
 const struct cmd_entry cmd_load_buffer_entry = {
 	"load-buffer", "loadb",
-	CMD_BUFFER_SESSION_USAGE " path",
+	CMD_BUFFER_USAGE " path",
 	CMD_ARG1, "",
 	cmd_buffer_init,
 	cmd_buffer_parse,
@@ -44,26 +44,16 @@ const struct cmd_entry cmd_load_buffer_entry = {
 	cmd_buffer_print
 };
 
-struct cmd_load_buffer_cdata {
-	struct session	*session;
-	int		 buffer;
-};
-
 int
 cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_buffer_data		*data = self->data;
-	struct cmd_load_buffer_cdata	*cdata;
-	struct session			*s;
-	struct client			*c = ctx->cmdclient;
-	FILE				*f;
-	char		      		*pdata, *new_pdata;
-	size_t				 psize;
-	u_int				 limit;
-	int				 ch;
-
-	if ((s = cmd_find_session(ctx, data->target)) == NULL)
-		return (-1);
+	struct cmd_buffer_data	*data = self->data;
+	struct client		*c = ctx->cmdclient;
+	FILE			*f;
+	char		      	*pdata, *new_pdata;
+	size_t			 psize;
+	u_int			 limit;
+	int			 ch;
 
 	if (strcmp(data->arg, "-") == 0) {
 		if (c == NULL) {
@@ -79,11 +69,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 			return (-1);
 		}
 
-		cdata = xmalloc(sizeof *cdata);
-		cdata->session = s;
-		cdata->session->references++;
-		cdata->buffer = data->buffer;
-		c->stdin_data = cdata;
+		c->stdin_data = &data->buffer;
 		c->stdin_callback = cmd_load_buffer_callback;
 
 		c->references++;
@@ -115,14 +101,13 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		pdata[psize] = '\0';
 
 	fclose(f);
-	f = NULL;
 
-	limit = options_get_number(&s->options, "buffer-limit");
+	limit = options_get_number(&global_options, "buffer-limit");
 	if (data->buffer == -1) {
-		paste_add(&s->buffers, pdata, psize, limit);
+		paste_add(&global_buffers, pdata, psize, limit);
 		return (0);
 	}
-	if (paste_replace(&s->buffers, data->buffer, pdata, psize) != 0) {
+	if (paste_replace(&global_buffers, data->buffer, pdata, psize) != 0) {
 		ctx->error(ctx, "no buffer %d", data->buffer);
 		return (-1);
 	}
@@ -140,11 +125,10 @@ error:
 void
 cmd_load_buffer_callback(struct client *c, void *data)
 {
-	struct cmd_load_buffer_cdata	*cdata = data;
-	struct session			*s = cdata->session;
-	char				*pdata;
-	size_t				 psize;
-	u_int				 limit;
+	char	*pdata;
+	size_t	 psize;
+	u_int	 limit;
+	int	*buffer = data;
 
 	/*
 	 * Event callback has already checked client is not dead and reduced
@@ -152,34 +136,23 @@ cmd_load_buffer_callback(struct client *c, void *data)
 	 */
 	c->flags |= CLIENT_EXIT;
 
-	/* Does the target session still exist? */
-	if (!session_alive(s))
-		goto out;
-
 	psize = EVBUFFER_LENGTH(c->stdin_event->input);
 	if (psize == 0)
-		goto out;
+		return;
 
 	pdata = malloc(psize + 1);
 	if (pdata == NULL)
-		goto out;
+		return;
 	bufferevent_read(c->stdin_event, pdata, psize);
 	pdata[psize] = '\0';
 
-	limit = options_get_number(&s->options, "buffer-limit");
-	if (cdata->buffer == -1) {
-		paste_add(&s->buffers, pdata, psize, limit);
-		goto out;
-	}
-	if (paste_replace(&s->buffers, cdata->buffer, pdata, psize) != 0) {
+	limit = options_get_number(&global_options, "buffer-limit");
+	if (*buffer == -1)
+		paste_add(&global_buffers, pdata, psize, limit);
+	else if (paste_replace(&global_buffers, *buffer, pdata, psize) != 0) {
 		/* No context so can't use server_client_msg_error. */
 		evbuffer_add_printf(
-		    c->stderr_event->output, "no buffer %d\n", cdata->buffer);
+		    c->stderr_event->output, "no buffer %d\n", *buffer);
 		bufferevent_enable(c->stderr_event, EV_WRITE);
-		goto out;
 	}
-
-out:
-	cdata->session->references--;
-	xfree(cdata);
 }

@@ -1,4 +1,4 @@
-/* $Id: cmd-save-buffer.c,v 1.12 2010-08-09 21:44:25 tcunha Exp $ */
+/* $Id: cmd-save-buffer.c,v 1.13 2010-12-30 22:39:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -32,7 +32,7 @@ int	cmd_save_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_save_buffer_entry = {
 	"save-buffer", "saveb",
-	"[-a] " CMD_BUFFER_SESSION_USAGE " path",
+	"[-a] " CMD_BUFFER_USAGE " path",
 	CMD_ARG1, "a",
 	cmd_buffer_init,
 	cmd_buffer_parse,
@@ -45,21 +45,18 @@ int
 cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
-	struct session		*s;
 	struct paste_buffer	*pb;
 	mode_t			 mask;
 	FILE			*f;
 
-	if ((s = cmd_find_session(ctx, data->target)) == NULL)
-		return (-1);
-
 	if (data->buffer == -1) {
-		if ((pb = paste_get_top(&s->buffers)) == NULL) {
+		if ((pb = paste_get_top(&global_buffers)) == NULL) {
 			ctx->error(ctx, "no buffers");
 			return (-1);
 		}
 	} else {
-		if ((pb = paste_get_index(&s->buffers, data->buffer)) == NULL) {
+		pb = paste_get_index(&global_buffers, data->buffer);
+		if (pb == NULL) {
 			ctx->error(ctx, "no buffer %d", data->buffer);
 			return (-1);
 		}

@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.229 2010-12-30 20:41:08 nicm Exp $ */
+/* $Id: tmux.c,v 1.230 2010-12-30 22:39:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -326,12 +326,12 @@ main(int argc, char **argv)
 	options_set_number(oo, "quiet", quiet);
 	options_set_number(oo, "escape-time", 500);
 	options_set_number(oo, "exit-unattached", 0);
+	options_set_number(oo, "buffer-limit", 9);
 
 	options_init(&global_s_options, NULL);
 	so = &global_s_options;
 	options_set_number(so, "base-index", 0);
 	options_set_number(so, "bell-action", BELL_ANY);
-	options_set_number(so, "buffer-limit", 9);
 	options_set_string(so, "default-command", "%s", "");
 	options_set_string(so, "default-path", "%s", "");
 	options_set_string(so, "default-shell", "%s", getshell());

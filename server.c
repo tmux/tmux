@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.249 2010-12-22 15:36:44 tcunha Exp $ */
+/* $Id: server.c,v 1.250 2010-12-30 22:39:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -49,6 +49,8 @@ int		 server_fd;
 int		 server_shutdown;
 struct event	 server_ev_accept;
 struct event	 server_ev_second;
+
+struct paste_stack global_buffers;
 
 int		 server_create_socket(void);
 void		 server_loop(void);
@@ -149,6 +151,7 @@ server_start(void)
 	RB_INIT(&sessions);
 	RB_INIT(&dead_sessions);
 	TAILQ_INIT(&session_groups);
+	ARRAY_INIT(&global_buffers);
 	mode_key_init_trees();
 	key_bindings_init();
 	utf8_build();

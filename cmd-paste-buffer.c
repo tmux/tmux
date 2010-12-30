@@ -1,4 +1,4 @@
-/* $Id: cmd-paste-buffer.c,v 1.29 2010-08-11 22:17:32 tcunha Exp $ */
+/* $Id: cmd-paste-buffer.c,v 1.30 2010-12-30 22:39:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -135,9 +135,10 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 
 	if (data->buffer == -1)
-		pb = paste_get_top(&s->buffers);
+		pb = paste_get_top(&global_buffers);
 	else {
-		if ((pb = paste_get_index(&s->buffers, data->buffer)) == NULL) {
+		pb = paste_get_index(&global_buffers, data->buffer);
+		if (pb == NULL) {
 			ctx->error(ctx, "no buffer %d", data->buffer);
 			return (-1);
 		}
@@ -149,9 +150,9 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	/* Delete the buffer if -d. */
 	if (data->flag_delete) {
 		if (data->buffer == -1)
-			paste_free_top(&s->buffers);
+			paste_free_top(&global_buffers);
 		else
-			paste_free_index(&s->buffers, data->buffer);
+			paste_free_index(&global_buffers, data->buffer);
 	}
 
 	return (0);

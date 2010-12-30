@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.280 2010-12-27 21:17:25 tcunha Exp $
+.\" $Id: tmux.1,v 1.281 2010-12-30 22:39:49 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -1598,6 +1598,10 @@ Available window options are listed under
 .Pp
 Available server options are:
 .Bl -tag -width Ds
+.It Ic buffer-limit Ar number
+Set the number of buffers; as new buffers are added to the top of the stack,
+old ones are removed from the bottom if necessary to maintain this maximum
+length.
 .It Ic escape-time
 Set the time in milliseconds for which
 .Nm
@@ -1630,10 +1634,6 @@ window of that session,
 means all bells are ignored and
 .Ic current
 means only bell in windows other than the current window are ignored.
-.It Ic buffer-limit Ar number
-Set the number of buffers kept for each session; as new buffers are added to
-the top of the stack, old ones are removed from the bottom if necessary to
-maintain this maximum length.
 .It Ic default-command Ar shell-command
 Set the command used for new windows (if not specified when the window is
 created) to
@@ -2571,29 +2571,16 @@ This command works only from inside
 .It Ic clear-history Op Fl t Ar target-pane
 .D1 (alias: Ic clearhist )
 Remove and free the history for the specified pane.
-.It Xo Ic copy-buffer
-.Op Fl a Ar src-index
-.Op Fl b Ar dst-index
-.Op Fl s Ar src-session
-.Op Fl t Ar dst-session
-.Xc
-.D1 (alias: Ic copyb )
-Copy a session paste buffer to another session.
-If no sessions are specified, the current one is used instead.
-.It Xo Ic delete-buffer
-.Op Fl b Ar buffer-index
-.Op Fl t Ar target-session
-.Xc
+.It Ic delete-buffer Op Fl b Ar buffer-index
 .D1 (alias: Ic deleteb )
 Delete the buffer at
 .Ar buffer-index ,
 or the top buffer if not specified.
-.It Ic list-buffers Op Fl t Ar target-session
+.It Ic list-buffers
 .D1 (alias: Ic lsb )
-List the buffers in the given session.
-.It Xo Ic load-buffer
+List the global buffers.
+.It Xo Ic load-buffer 
 .Op Fl b Ar buffer-index
-.Op Fl t Ar target-session
 .Ar path
 .Xc
 .D1 (alias: Ic loadb )
@@ -2622,7 +2609,6 @@ flag means to do no replacement (equivalent to a separator of LF).
 .It Xo Ic save-buffer
 .Op Fl a
 .Op Fl b Ar buffer-index
-.Op Fl t Ar target-session
 .Ar path
 .Xc
 .D1 (alias: Ic saveb )
@@ -2633,7 +2619,6 @@ The
 option appends to rather than overwriting the file.
 .It Xo Ic set-buffer
 .Op Fl b Ar buffer-index
-.Op Fl t Ar target-session
 .Ar data
 .Xc
 .D1 (alias: Ic setb )
@@ -2641,7 +2626,6 @@ Set the contents of the specified buffer to
 .Ar data .
 .It Xo Ic show-buffer
 .Op Fl b Ar buffer-index
-.Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic showb )
 Display the contents of the specified buffer.

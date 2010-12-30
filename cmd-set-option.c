@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.102 2010-12-22 15:23:59 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.103 2010-12-30 22:39:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,6 +74,7 @@ const char *set_option_bell_action_list[] = {
 };
 
 const struct set_option_entry set_option_table[] = {
+	{ "buffer-limit", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "escape-time", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "exit-unattached", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "quiet", SET_OPTION_FLAG, 0, 0, NULL },
@@ -83,15 +84,14 @@ const struct set_option_entry set_option_table[] = {
 const struct set_option_entry set_session_option_table[] = {
 	{ "base-index", SET_OPTION_NUMBER, 0, INT_MAX, NULL },
 	{ "bell-action", SET_OPTION_CHOICE, 0, 0, set_option_bell_action_list },
-	{ "buffer-limit", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "default-command", SET_OPTION_STRING, 0, 0, NULL },
 	{ "default-path", SET_OPTION_STRING, 0, 0, NULL },
 	{ "default-shell", SET_OPTION_STRING, 0, 0, NULL },
 	{ "default-terminal", SET_OPTION_STRING, 0, 0, NULL },
 	{ "destroy-unattached", SET_OPTION_FLAG, 0, 0, NULL },
 	{ "detach-on-destroy", SET_OPTION_FLAG, 0, 0, NULL },
-	{ "display-panes-colour", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "display-panes-active-colour", SET_OPTION_COLOUR, 0, 0, NULL },
+	{ "display-panes-colour", SET_OPTION_COLOUR, 0, 0, NULL },
 	{ "display-panes-time", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "display-time", SET_OPTION_NUMBER, 1, INT_MAX, NULL },
 	{ "history-limit", SET_OPTION_NUMBER, 0, INT_MAX, NULL },

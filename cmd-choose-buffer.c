@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-buffer.c,v 1.1 2010-06-22 23:35:20 tcunha Exp $ */
+/* $Id: cmd-choose-buffer.c,v 1.2 2010-12-30 22:39:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -67,14 +67,14 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
 
-	if (paste_get_top(&s->buffers) == NULL)
+	if (paste_get_top(&global_buffers) == NULL)
 		return (0);
 
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
 		return (0);
 
 	idx = 0;
-	while ((pb = paste_walk_stack(&s->buffers, &idx)) != NULL) {
+	while ((pb = paste_walk_stack(&global_buffers, &idx)) != NULL) {
 		tmp = paste_print(pb, 50);
 		window_choose_add(wl->window->active, idx - 1,
 		    "%u: %zu bytes: \"%s\"", idx - 1, pb->size, tmp);

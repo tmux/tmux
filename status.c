@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.151 2010-12-11 16:15:02 nicm Exp $ */
+/* $Id: status.c,v 1.152 2010-12-30 22:39:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -996,7 +996,7 @@ status_prompt_key(struct client *c, int key)
 		c->flags |= CLIENT_STATUS;
 		break;
 	case MODEKEYEDIT_PASTE:
-		if ((pb = paste_get_top(&c->session->buffers)) == NULL)
+		if ((pb = paste_get_top(&global_buffers)) == NULL)
 			break;
 		for (n = 0; n < pb->size; n++) {
 			ch = (u_char) pb->data[n];

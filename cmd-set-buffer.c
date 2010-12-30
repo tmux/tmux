@@ -1,4 +1,4 @@
-/* $Id: cmd-set-buffer.c,v 1.12 2009-11-28 14:54:12 tcunha Exp $ */
+/* $Id: cmd-set-buffer.c,v 1.13 2010-12-30 22:39:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,7 +30,7 @@ int	cmd_set_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_set_buffer_entry = {
 	"set-buffer", "setb",
-	CMD_BUFFER_SESSION_USAGE " data",
+	CMD_BUFFER_USAGE " data",
 	CMD_ARG1, "",
 	cmd_buffer_init,
 	cmd_buffer_parse,
@@ -43,23 +43,20 @@ int
 cmd_set_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_buffer_data	*data = self->data;
-	struct session		*s;
 	u_int			 limit;
 	char			*pdata;
 	size_t			 psize;
 
-	if ((s = cmd_find_session(ctx, data->target)) == NULL)
-		return (-1);
-	limit = options_get_number(&s->options, "buffer-limit");
+	limit = options_get_number(&global_options, "buffer-limit");
 
 	pdata = xstrdup(data->arg);
 	psize = strlen(pdata);
 
 	if (data->buffer == -1) {
-		paste_add(&s->buffers, pdata, psize, limit);
+		paste_add(&global_buffers, pdata, psize, limit);
 		return (0);
 	}
-	if (paste_replace(&s->buffers, data->buffer, pdata, psize) != 0) {
+	if (paste_replace(&global_buffers, data->buffer, pdata, psize) != 0) {
 		ctx->error(ctx, "no buffer %d", data->buffer);
 		xfree(pdata);
 		return (-1);

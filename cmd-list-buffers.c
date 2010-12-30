@@ -1,4 +1,4 @@
-/* $Id: cmd-list-buffers.c,v 1.16 2010-06-22 23:35:20 tcunha Exp $ */
+/* $Id: cmd-list-buffers.c,v 1.17 2010-12-30 22:39:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,29 +30,25 @@ int	cmd_list_buffers_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_buffers_entry = {
 	"list-buffers", "lsb",
-	CMD_TARGET_SESSION_USAGE,
+	"",
 	0, "",
-	cmd_target_init,
-	cmd_target_parse,
+	NULL,
+	NULL,
 	cmd_list_buffers_exec,
-	cmd_target_free,
-	cmd_target_print
+	NULL,
+	NULL	
 };
 
+/* ARGSUSED */
 int
-cmd_list_buffers_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_list_buffers_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct session		*s;
 	struct paste_buffer	*pb;
 	u_int			 idx;
 	char			*tmp;
 
-	if ((s = cmd_find_session(ctx, data->target)) == NULL)
-		return (-1);
-
 	idx = 0;
-	while ((pb = paste_walk_stack(&s->buffers, &idx)) != NULL) {
+	while ((pb = paste_walk_stack(&global_buffers, &idx)) != NULL) {
 		tmp = paste_print(pb, 50);
 		ctx->print(ctx,
 		    "%u: %zu bytes: \"%s\"", idx - 1, pb->size, tmp);

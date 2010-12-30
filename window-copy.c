@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.126 2010-12-30 22:27:38 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.127 2010-12-30 22:39:49 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,7 +52,7 @@ void	window_copy_goto_line(struct window_pane *, const char *);
 void	window_copy_update_cursor(struct window_pane *, u_int, u_int);
 void	window_copy_start_selection(struct window_pane *);
 int	window_copy_update_selection(struct window_pane *);
-void	window_copy_copy_selection(struct window_pane *, struct session *);
+void	window_copy_copy_selection(struct window_pane *);
 void	window_copy_clear_selection(struct window_pane *);
 void	window_copy_copy_line(
 	    struct window_pane *, char **, size_t *, u_int, u_int, u_int);
@@ -506,7 +506,7 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 		break;
 	case MODEKEYCOPY_COPYSELECTION:
 		if (sess != NULL) {
-			window_copy_copy_selection(wp, sess);
+			window_copy_copy_selection(wp);
 			window_pane_reset_mode(wp);
 			return;
 		}
@@ -796,7 +796,7 @@ window_copy_mouse(
 			s->mode &= ~MODE_MOUSE_ANY;
 			s->mode |= MODE_MOUSE_STANDARD;
 			if (sess != NULL) {
-				window_copy_copy_selection(wp, sess);
+				window_copy_copy_selection(wp);
 				window_pane_reset_mode(wp);
 			}
 		}
@@ -1210,7 +1210,7 @@ window_copy_update_selection(struct window_pane *wp)
 }
 
 void
-window_copy_copy_selection(struct window_pane *wp, struct session *sess)
+window_copy_copy_selection(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -1305,8 +1305,8 @@ window_copy_copy_selection(struct window_pane *wp, struct session *sess)
 	off--;	/* remove final \n */
 
 	/* Add the buffer to the stack. */
-	limit = options_get_number(&sess->options, "buffer-limit");
-	paste_add(&sess->buffers, buf, off, limit);
+	limit = options_get_number(&global_options, "buffer-limit");
+	paste_add(&global_buffers, buf, off, limit);
 }
 
 void
