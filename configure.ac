@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.1 2010-12-31 22:12:33 nicm Exp $
+# $Id: configure.ac,v 1.2 2010-12-31 22:18:35 nicm Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -34,10 +34,10 @@ AC_CHECK_HEADERS([ \
 ])
 
 # Is this a debug build?
+found_debug=yes
 AC_ARG_ENABLE(debug,
 	 AC_HELP_STRING(--enable-debug, create a debug build),
-	 found_debug=yes,
-	 found_debug=no)
+	 found_debug=$enable_debug)
 AM_CONDITIONAL(IS_DEBUG, test "x$found_debug" = xyes)
 
 # Is this gcc?
