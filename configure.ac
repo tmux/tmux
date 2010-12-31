@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.3 2010-12-31 22:31:45 nicm Exp $
+# $Id: configure.ac,v 1.4 2010-12-31 22:33:44 nicm Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -75,14 +75,17 @@ AM_CONDITIONAL(IS_SUNCC, test "x$found_suncc" = xyes)
 
 # Is this glibc?
 AC_MSG_CHECKING(for glibc)
-AC_EGREP_CPP(yes, [
-	#include <features.h>
-	#ifdef __GLIBC__
-	yes
-	#endif
+AC_EGREP_CPP(
+	yes,
+	[
+		#include <features.h>
+		#ifdef __GLIBC__
+		yes
+		#endif
 	],
 	found_glibc=yes,
-	found_glibc=no)
+	found_glibc=no
+)
 AM_CONDITIONAL(IS_GLIBC, test "x$found_glibc" = xyes)
 AC_MSG_RESULT($found_glibc)
 
@@ -221,8 +224,8 @@ AC_COMPILE_IFELSE(
 		#else
 		#include <inttypes.h>
 		#endif	
-		int main(void) {
-		u_int8_t u8; u_int16_t u16; u_int32_t u32; u_int64_t u64; }
+		int main(void)
+		{ u_int8_t u8; u_int16_t u16; u_int32_t u32; u_int64_t u64; }
 	],
 	[AC_DEFINE(HAVE_BSD_TYPES) AC_MSG_RESULT(yes)],
 	AC_MSG_RESULT(no)
