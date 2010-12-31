@@ -1,4 +1,4 @@
-/* $Id: compat.h,v 1.31 2010-11-11 20:45:49 nicm Exp $ */
+/* $Id: compat.h,v 1.32 2010-12-31 22:12:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,7 +30,7 @@
 #define __packed __attribute__ ((__packed__))
 #endif
 
-#ifndef HAVE_U_INT
+#ifndef HAVE_BSD_TYPES
 typedef uint8_t u_int8_t;
 typedef uint16_t u_int16_t;
 typedef uint32_t u_int32_t;
@@ -97,8 +97,7 @@ typedef uint64_t u_int64_t;
 #include <inttypes.h>
 #endif
 
-#ifdef HAVE_BROKEN_CMSG_FIRSTHDR
-/* CMSG_FIRSTHDR broken on OS X. */
+#ifdef BROKEN_CMSG_FIRSTHDR
 #undef CMSG_FIRSTHDR
 #define CMSG_FIRSTHDR(mhdr) \
 	((mhdr)->msg_controllen >= sizeof(struct cmsghdr) ? \
@@ -106,9 +105,8 @@ typedef uint64_t u_int64_t;
 	    (struct cmsghdr *)NULL)
 #endif
 
-/* CMSG_ALIGN, CMSG_SPACE, CMSG_LEN missing from Solaris 9. */
 #ifndef CMSG_ALIGN
-#ifdef __sun
+#ifdef _CMSG_DATA_ALIGN
 #define CMSG_ALIGN _CMSG_DATA_ALIGN
 #else
 #define CMSG_ALIGN(len) (((len) + sizeof(long) - 1) & ~(sizeof(long) - 1))
@@ -165,9 +163,6 @@ typedef uint64_t u_int64_t;
 
 #ifndef HAVE_CLOSEFROM
 /* closefrom.c */
-#define HAVE_FCNTL_H
-#define HAVE_DIRENT_H
-#define HAVE_SYSCONF
 void	closefrom(int);
 #endif
 

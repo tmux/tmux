@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.230 2010-12-30 22:39:49 tcunha Exp $ */
+/* $Id: tmux.c,v 1.231 2010-12-31 22:12:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,7 +54,7 @@ __dead void	 usage(void);
 void	 	 parseenvironment(void);
 char 		*makesocketpath(const char *);
 
-#ifndef HAVE_PROGNAME
+#ifndef HAVE___PROGNAME
 char      *__progname = (char *) "tmux";
 #endif
 
@@ -259,7 +259,7 @@ main(int argc, char **argv)
 			shell_cmd = xstrdup(optarg);
 			break;
 		case 'V':
-			printf("%s %s\n", __progname, BUILD);
+			printf("%s %s\n", __progname, VERSION);
 			exit(0);
 		case 'f':
 			if (cfg_file != NULL)

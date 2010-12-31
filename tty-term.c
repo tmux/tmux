@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.43 2010-09-18 15:43:53 tcunha Exp $ */
+/* $Id: tty-term.c,v 1.44 2010-12-31 22:12:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,10 +18,10 @@
 
 #include <sys/types.h>
 
-#ifdef HAVE_BROKEN_CURSES_H
-#include <ncurses.h>
-#else
+#ifdef HAVE_CURSES_H
 #include <curses.h>
+#else
+#include <ncurses.h>
 #endif
 #include <fnmatch.h>
 #include <stdlib.h>

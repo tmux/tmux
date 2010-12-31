@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.595 2010-12-31 01:59:47 tcunha Exp $ */
+/* $Id: tmux.h,v 1.596 2010-12-31 22:12:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,8 +18,6 @@
 
 #ifndef TMUX_H
 #define TMUX_H
-
-#include "config.h"
 
 #define PROTOCOL_VERSION 6
 
