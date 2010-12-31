@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.2 2010-12-31 22:18:35 nicm Exp $
+# $Id: configure.ac,v 1.3 2010-12-31 22:31:45 nicm Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -14,53 +14,63 @@ AM_PROG_CC_C_O
 AC_PROG_INSTALL
 
 # Check for various headers. Alternatives included from compat.h.
-AC_CHECK_HEADERS([ \
-	bitstring.h \
-	curses.h \
-	dirent.h \
-	fcntl.h \
-	inttypes.h \
-	libutil.h \
-	ncurses.h \
-	ndir.h \
-	paths.h \
-	pty.h \
-	stdint.h \
-	sys/dir.h \
-	sys/ndir.h \
-	sys/tree.h \
-	term.h \
-	util.h \
-])
+AC_CHECK_HEADERS(
+	[ \
+		bitstring.h \
+		curses.h \
+		dirent.h \
+		fcntl.h \
+		inttypes.h \
+		libutil.h \
+		ncurses.h \
+		ndir.h \
+		paths.h \
+		pty.h \
+		stdint.h \
+		sys/dir.h \
+		sys/ndir.h \
+		sys/tree.h \
+		term.h \
+		util.h \
+	]
+)
 
 # Is this a debug build?
 found_debug=yes
-AC_ARG_ENABLE(debug,
-	 AC_HELP_STRING(--enable-debug, create a debug build),
-	 found_debug=$enable_debug)
+AC_ARG_ENABLE(
+	debug,
+	AC_HELP_STRING(--enable-debug, create a debug build),
+	found_debug=$enable_debug
+)
 AM_CONDITIONAL(IS_DEBUG, test "x$found_debug" = xyes)
 
 # Is this gcc?
 AM_CONDITIONAL(IS_GCC, test "x$GCC" = xyes)
 AC_MSG_CHECKING(for gcc that whines about -I)
-AC_EGREP_CPP(yes, [
-	#if __GNUC__ > 3
-	yes
-	#endif
+AC_EGREP_CPP(
+	yes,
+	[
+		#if __GNUC__ > 3
+		yes
+		#endif
 	],
 	found_gcc4=yes,
-	found_gcc4=no)
+	found_gcc4=no
+)
 AM_CONDITIONAL(IS_GCC4, test "x$found_gcc4" = xyes)
 AC_MSG_RESULT($found_gcc4)
 
 # Is this Sun CC?
-AC_EGREP_CPP(yes, [
-	#ifdef __SUNPRO_C
-	yes
-	#endif
+AC_EGREP_CPP(
+	yes,
+	[
+		#ifdef __SUNPRO_C
+		yes
+		#endif
 	],
 	found_suncc=yes,
-	found_suncc=no)
+	found_suncc=no
+)
 AM_CONDITIONAL(IS_SUNCC, test "x$found_suncc" = xyes)
 
 # Is this glibc?
@@ -193,48 +203,58 @@ fi
 AM_CONDITIONAL(NO_GETOPT, [test "x$found_getopt" = xno])
 
 # Check for some functions that are replaced or omitted.
-AC_CHECK_FUNCS([ \
-	bzero \
-	setproctitle \
-	sysconf \
-])
+AC_CHECK_FUNCS(
+	[ \
+		bzero \
+		setproctitle \
+		sysconf \
+	]
+)
 
 # Check for BSD-style integer types.
 AC_MSG_CHECKING(for BSD-style unsigned types)
-AC_COMPILE_IFELSE([
-	#include <sys/types.h>
-	#ifdef HAVE_STDINT_H
-	#include <stdint.h>
-	#else
-	#include <inttypes.h>
-	#endif	
-	int main(void) {
-	u_int8_t u8; u_int16_t u16; u_int32_t u32; u_int64_t u64; }
+AC_COMPILE_IFELSE(
+	[
+		#include <sys/types.h>
+		#ifdef HAVE_STDINT_H
+		#include <stdint.h>
+		#else
+		#include <inttypes.h>
+		#endif	
+		int main(void) {
+		u_int8_t u8; u_int16_t u16; u_int32_t u32; u_int64_t u64; }
 	],
 	[AC_DEFINE(HAVE_BSD_TYPES) AC_MSG_RESULT(yes)],
-	AC_MSG_RESULT(no))
+	AC_MSG_RESULT(no)
+)
 
 # Look for a suitable queue.h.
-AC_CHECK_DECL(TAILQ_PREV,
+AC_CHECK_DECL(
+	TAILQ_PREV,
 	found_queue_h=yes,
 	found_queue_h=no,
-	[#include <sys/queue.h>])
-AC_CHECK_DECL(TAILQ_REPLACE,
+	[#include <sys/queue.h>]
+)
+AC_CHECK_DECL(
+	TAILQ_REPLACE,
 	,
 	found_queue_h=no,
-	[#include <sys/queue.h>])
+	[#include <sys/queue.h>]
+)
 if test "x$found_queue_h" = xyes; then
 	AC_DEFINE(HAVE_QUEUE_H)
 fi
 
 # Look for __progname.
 AC_MSG_CHECKING(for __progname)
-AC_COMPILE_IFELSE([
-	extern char *__progname;
-	int main(void) { const char *cp = __progname; }
+AC_COMPILE_IFELSE(
+	[
+		extern char *__progname;
+		int main(void) { const char *cp = __progname; }
 	],
 	[AC_DEFINE(HAVE___PROGNAME) AC_MSG_RESULT(yes)],
-	AC_MSG_RESULT(no))
+	AC_MSG_RESULT(no)
+)
 
 # Look for fcntl(F_CLOSEM).
 AC_CHECK_DECL(F_CLOSEM,
@@ -263,34 +283,34 @@ fi
 AC_MSG_CHECKING(platform)
 case "$host_os" in
 	*darwin*)
-	AC_MSG_RESULT(darwin)
-	AC_DEFINE(BROKEN_CMSG_FIRSTHDR)
-	PLATFORM=darwin
-	;;
+		AC_MSG_RESULT(darwin)
+		AC_DEFINE(BROKEN_CMSG_FIRSTHDR)
+		PLATFORM=darwin
+		;;
 	*linux*)
-	AC_MSG_RESULT(linux)
-	PLATFORM=linux
-	;;
+		AC_MSG_RESULT(linux)
+		PLATFORM=linux
+		;;
 	*freebsd*|*dragonfly*)
-	AC_MSG_RESULT(freebsd)
-	PLATFORM=freebsd
-	;;
+		AC_MSG_RESULT(freebsd)
+		PLATFORM=freebsd
+		;;
 	*netbsd*)
-	AC_MSG_RESULT(netbsd)
-	PLATFORM=netbsd
-	;;
+		AC_MSG_RESULT(netbsd)
+		PLATFORM=netbsd
+		;;
 	*openbsd*)
-	AC_MSG_RESULT(openbsd)
-	PLATFORM=openbsd
-	;;
+		AC_MSG_RESULT(openbsd)
+		PLATFORM=openbsd
+		;;
 	*sunos*)
-	AC_MSG_RESULT(sunos)
-	PLATFORM=sunos
-	;;
+		AC_MSG_RESULT(sunos)
+		PLATFORM=sunos
+		;;
 	*)
-	AC_MSG_RESULT(unknown)
-	PLATFORM=unknown
-	;;	
+		AC_MSG_RESULT(unknown)
+		PLATFORM=unknown
+		;;	
 esac
 AC_SUBST(PLATFORM)
 AM_CONDITIONAL(IS_DARWIN, test "x$PLATFORM" = xdarwin)
