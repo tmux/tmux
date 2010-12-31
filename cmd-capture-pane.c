@@ -1,4 +1,4 @@
-/* $Id: cmd-capture-pane.c,v 1.4 2010-12-30 22:39:49 tcunha Exp $ */
+/* $Id: cmd-capture-pane.c,v 1.5 2010-12-31 01:59:47 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Jonathan Alvarado <radobobo@users.sourceforge.net>
@@ -40,7 +40,7 @@ struct cmd_capture_pane_data {
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
-	CMD_BUFFER_PANE_USAGE,
+	"[-b buffer-index] [-t target-pane]",
 	0, "",
 	cmd_capture_pane_init,
 	cmd_capture_pane_parse,
