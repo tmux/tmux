@@ -76,7 +76,6 @@
 - multiline status line (no?)
 - flag for absolute pane size to resize-pane
 - sanity check input to socket
-- select-buffer command
 - support title stack, both internally and externally
 	http://docs.freebsd.org/cgi/getmsg.cgi?fetch=1149299+0+archive/2010/freebsd-questions/20100207.freebsd-questions
 - command to show status line information briefly when it is off
