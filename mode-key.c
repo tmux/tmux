@@ -40,7 +40,7 @@
  */
 
 /* Edit keys command strings. */
-struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
+const struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 	{ MODEKEYEDIT_BACKSPACE, "backspace" },
 	{ MODEKEYEDIT_CANCEL, "cancel" },
 	{ MODEKEYEDIT_COMPLETE, "complete" },
@@ -63,7 +63,7 @@ struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 };
 
 /* Choice keys command strings. */
-struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
+const struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
 	{ MODEKEYCHOICE_CANCEL, "cancel" },
 	{ MODEKEYCHOICE_CHOOSE, "choose" },
 	{ MODEKEYCHOICE_DOWN, "down" },
@@ -77,7 +77,7 @@ struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
 };
 
 /* Copy keys command strings. */
-struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
+const struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_BACKTOINDENTATION, "back-to-indentation" },
 	{ MODEKEYCOPY_BOTTOMLINE, "bottom-line" },
 	{ MODEKEYCOPY_CANCEL, "cancel" },
@@ -384,7 +384,7 @@ mode_key_cmp(struct mode_key_binding *mbind1, struct mode_key_binding *mbind2)
 }
 
 const char *
-mode_key_tostring(struct mode_key_cmdstr *cmdstr, enum mode_key_cmd cmd)
+mode_key_tostring(const struct mode_key_cmdstr *cmdstr, enum mode_key_cmd cmd)
 {
 	for (; cmdstr->name != NULL; cmdstr++) {
 		if (cmdstr->cmd == cmd)
@@ -394,7 +394,7 @@ mode_key_tostring(struct mode_key_cmdstr *cmdstr, enum mode_key_cmd cmd)
 }
 
 enum mode_key_cmd
-mode_key_fromstring(struct mode_key_cmdstr *cmdstr, const char *name)
+mode_key_fromstring(const struct mode_key_cmdstr *cmdstr, const char *name)
 {
 	for (; cmdstr->name != NULL; cmdstr++) {
 		if (strcasecmp(cmdstr->name, name) == 0)
