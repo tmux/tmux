@@ -36,6 +36,8 @@ windows), each running a separate program, to be created, accessed, and
 controlled from a single screen. tmux may be detached from a screen and
 continue running in the background, then later reattached.</p>
 
+<p>The latest version is <a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">tmux %%VERSION%%</a>.</p>
+
 <p>tmux uses a client-server model. The server holds multiple sessions and each
 window is a independent entity which may be freely linked to multiple sessions,
 moved between sessions and otherwise manipulated. Each session may be attached
