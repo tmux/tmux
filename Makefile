@@ -32,7 +32,7 @@ SRCS=	attributes.c cfg.c client.c clock.c \
 	colour.c environ.c grid-view.c grid-utf8.c grid.c input-keys.c \
 	input.c key-bindings.c key-string.c \
 	layout-custom.c layout-set.c layout-string.c layout.c log.c job.c \
-	mode-key.c names.c options.c paste.c procname.c \
+	mode-key.c names.c options.c options-table.c paste.c procname.c \
 	resize.c screen-redraw.c screen-write.c screen.c session.c status.c \
 	signal.c server-fn.c server.c server-client.c server-window.c \
 	tmux.c tty-acs.c tty-keys.c tty-term.c tty.c utf8.c \

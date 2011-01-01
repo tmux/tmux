@@ -1112,12 +1112,12 @@ status_prompt_add_history(const char *line)
 char *
 status_prompt_complete(const char *s)
 {
-	const struct cmd_entry 	      **cmdent;
-	const struct set_option_entry  *entry;
-	ARRAY_DECL(, const char *)	list;
-	char			       *prefix, *s2;
-	u_int				i;
-	size_t			 	j;
+	const struct cmd_entry 	  	       **cmdent;
+	const struct options_table_entry	*oe;
+	ARRAY_DECL(, const char *)		 list;
+	char					*prefix, *s2;
+	u_int					 i;
+	size_t				 	 j;
 
 	if (*s == '\0')
 		return (NULL);
@@ -1128,17 +1128,17 @@ status_prompt_complete(const char *s)
 		if (strncmp((*cmdent)->name, s, strlen(s)) == 0)
 			ARRAY_ADD(&list, (*cmdent)->name);
 	}
-	for (entry = set_option_table; entry->name != NULL; entry++) {
-		if (strncmp(entry->name, s, strlen(s)) == 0)
-			ARRAY_ADD(&list, entry->name);
+	for (oe = server_options_table; oe->name != NULL; oe++) {
+		if (strncmp(oe->name, s, strlen(s)) == 0)
+			ARRAY_ADD(&list, oe->name);
 	}
-	for (entry = set_session_option_table; entry->name != NULL; entry++) {
-		if (strncmp(entry->name, s, strlen(s)) == 0)
-			ARRAY_ADD(&list, entry->name);
+	for (oe = session_options_table; oe->name != NULL; oe++) {
+		if (strncmp(oe->name, s, strlen(s)) == 0)
+			ARRAY_ADD(&list, oe->name);
 	}
-	for (entry = set_window_option_table; entry->name != NULL; entry++) {
-		if (strncmp(entry->name, s, strlen(s)) == 0)
-			ARRAY_ADD(&list, entry->name);
+	for (oe = window_options_table; oe->name != NULL; oe++) {
+		if (strncmp(oe->name, s, strlen(s)) == 0)
+			ARRAY_ADD(&list, oe->name);
 	}
 
 	/* If none, bail now. */
