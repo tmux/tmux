@@ -123,3 +123,5 @@
   key is looked up in that table
 - pass shell commands as argv rather than strings, allow them to be specified
   in commands without quotes
+- combine all options into 1 table (inc defaults) - can use C99 .foo = blah
+  syntax
