@@ -25,7 +25,7 @@
 int	key_string_search_table(const char *);
 int	key_string_get_modifiers(const char **);
 
-struct {
+const struct {
 	const char     *string;
 	int	 	key;
 } key_string_table[] = {
