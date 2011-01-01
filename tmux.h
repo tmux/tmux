@@ -1426,7 +1426,7 @@ void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;
-extern struct tty_term_code_entry tty_term_codes[NTTYCODE];
+extern const struct tty_term_code_entry tty_term_codes[NTTYCODE];
 struct tty_term *tty_term_find(char *, int, const char *, char **);
 void		 tty_term_free(struct tty_term *);
 int		 tty_term_has(struct tty_term *, enum tty_code_code);
