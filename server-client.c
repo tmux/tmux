@@ -761,11 +761,8 @@ server_client_msg_dispatch(struct client *c)
 
 			if (gettimeofday(&c->activity_time, NULL) != 0)
 				fatal("gettimeofday");
-			if (c->session != NULL) {
-				memcpy(&c->session->activity_time,
-				    &c->activity_time,
-				    sizeof c->session->activity_time);
-			}
+			if (c->session != NULL)
+				session_update_activity(c->session);
 
 			tty_start_tty(&c->tty);
 			server_redraw_client(c);

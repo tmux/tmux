@@ -173,6 +173,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (c->session != NULL)
 		c->last_session = c->session;
 	c->session = s;
+	session_update_activity(s);
 
 	recalculate_sizes();
 	server_check_unattached();
