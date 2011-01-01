@@ -121,3 +121,5 @@
 	bind -n ^A prefix-table "default"
   where prefix-table sets command lookup table and sets prefix flag, then next
   key is looked up in that table
+- pass shell commands as argv rather than strings, allow them to be specified
+  in commands without quotes
