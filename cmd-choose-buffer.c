@@ -52,7 +52,6 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data		*data = self->data;
 	struct cmd_choose_buffer_data	*cdata;
-	struct session			*s;
 	struct winlink			*wl;
 	struct paste_buffer		*pb;
 	u_int				 idx;
@@ -62,7 +61,6 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "must be run interactively");
 		return (-1);
 	}
-	s = ctx->curclient->session;
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
