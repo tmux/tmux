@@ -1,6 +1,4 @@
-- better errors when creating new windows/sessions (how?)
 - implicitly add exec to the commands for new windows (switch to disable it)?
-- it would be nice to have multichar commands eg C-b K K
 - commands:
  	extend list-clients to list clients attached to a session (-a for all?)
 	bring back detach-session to detach all clients on a session?
@@ -49,13 +47,8 @@
   lists
 - some way to KEEP a command running continually and just use its LAST line of
   output
-- bind commands to mouse buttons
 - UTF-8 to a non-UTF-8 terminal should not be able to balls up
   the terminal - www/ruby-addressable; make regress
-- multiple keys could be done with tables, ie have prefixes go and instead
-	bind -n ^A prefix-table "default"
-  where prefix-table sets command lookup table and sets prefix flag, then next
-  key is looked up in that table
 - support esc-esc to quit in modes
 - fix ctrl+F1-F4 output. to what?
 - look into xterm clearing its selection when scrolling etc
@@ -105,7 +98,6 @@
   ptr then when program inside died, sends MSG_SOMETHING with wait status to
   client
 - documentation improvements - rlpowell's tutorial - build instructions
-- better configure? with-libevent
 - bind commands to key sequences?
 - monitor, bell etc should monitor /all/ panes in the window not just one
 - a history of commands that can be reversed (reverse member of each command,
@@ -122,8 +114,11 @@
   than just updating them
 - pane-index option like base-index
 - option to move status line to top
-- support "xterm2" mouse mode
 - respawn-pane command
 - configurable borders and empty space filler for when panes < window?
 - mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets the
   flag on w/o checking the others before calling tty_update_mode)
+- multiple keys could be done with tables, ie have prefixes go and instead
+	bind -n ^A prefix-table "default"
+  where prefix-table sets command lookup table and sets prefix flag, then next
+  key is looked up in that table
