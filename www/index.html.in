@@ -63,7 +63,7 @@ development.</li>
 system. The portable version is hosted on <a href="http://sf.net/projects/tmux">
 SourceForge</a> and runs on Linux, FreeBSD, NetBSD, Solaris and AIX.</p>
 
-<p>tmux depends on <a href="http://www.monkey.org/~provos/libevent/">libevent 1.4</a> and a
+<p>tmux depends on <a href="http://www.monkey.org/~provos/libevent/">libevent 1.4 or 2.0</a> and a
 terminfo implementation (normally <a href="http://invisible-island.net/ncurses/">ncurses</a>).</p>
 
                 <div id="screenshots">
