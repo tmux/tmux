@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.4 2010-12-31 22:33:44 nicm Exp $
+# $Id: configure.ac,v 1.5 2011-01-02 15:45:43 nicm Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -90,10 +90,17 @@ AM_CONDITIONAL(IS_GLIBC, test "x$found_glibc" = xyes)
 AC_MSG_RESULT($found_glibc)
 
 # Look for libevent.
-AC_SEARCH_LIBS(event_init, event)
+AC_SEARCH_LIBS(event_init, event, found_libevent=yes, found_libevent=no)
+if test "x$found_libevent" = xno; then
+    AC_MSG_ERROR("libevent not found")
+fi
 
 # Look for curses.
-AC_SEARCH_LIBS(setupterm, [terminfo curses ncurses])
+AC_SEARCH_LIBS(setupterm, [terminfo curses ncurses], found_curses=yes,
+               found_curses = no)
+if test "x$found_curses" = xno; then
+    AC_MSG_ERROR("curses not found")
+fi
 
 # Look for networking libraries.
 AC_SEARCH_LIBS([inet_ntoa], [nsl])
