@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.5 2011-01-02 15:45:43 nicm Exp $
+# $Id: configure.ac,v 1.6 2011-01-02 15:49:31 nicm Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -96,8 +96,12 @@ if test "x$found_libevent" = xno; then
 fi
 
 # Look for curses.
-AC_SEARCH_LIBS(setupterm, [terminfo curses ncurses], found_curses=yes,
-               found_curses = no)
+AC_SEARCH_LIBS(
+	setupterm,
+	[terminfo curses ncurses],
+	found_curses=yes,
+	found_curses=no
+)
 if test "x$found_curses" = xno; then
     AC_MSG_ERROR("curses not found")
 fi
