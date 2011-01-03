@@ -1,4 +1,4 @@
-/* $Id: cmd-suspend-client.c,v 1.5 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-suspend-client.c,v 1.6 2011-01-03 23:33:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,14 +29,9 @@
 
 int	cmd_suspend_client_exec(struct cmd *, struct cmd_ctx *);
 
-struct cmd_suspend_client_data {
-	char	*name;
-	char	*target;
-};
-
 const struct cmd_entry cmd_suspend_client_entry = {
 	"suspend-client", "suspendc",
-	"[-c target-client]",
+	CMD_TARGET_CLIENT_USAGE,
 	0, "",
 	cmd_target_init,
 	cmd_target_parse,
