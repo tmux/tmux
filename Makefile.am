@@ -1,11 +1,13 @@
-# $Id: Makefile.am,v 1.1 2010-12-31 22:12:33 nicm Exp $
+# $Id: Makefile.am,v 1.2 2011-01-03 23:40:21 nicm Exp $
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
 dist_man1_MANS = tmux.1
 
 # Distribution tarball options.
-EXTRA_DIST = CHANGES FAQ NOTES TODO examples compat array.h compat.h tmux.h
+EXTRA_DIST = \
+	CHANGES FAQ NOTES TODO examples compat \
+	array.h compat.h tmux.h osdep-*.c
 dist-hook:
 	find $(distdir) -name CVS -type d|xargs rm -Rf
 
@@ -155,7 +157,6 @@ dist_tmux_SOURCES = \
 	mode-key.c \
 	names.c \
 	options.c \
-	osdep-@PLATFORM@.c \
 	paste.c \
 	resize.c \
 	screen-redraw.c \
@@ -180,7 +181,7 @@ dist_tmux_SOURCES = \
 	window.c \
 	xmalloc.c \
 	xterm-keys.c
-nodist_tmux_SOURCES =
+nodist_tmux_SOURCES = osdep-@PLATFORM@.c
 
 # Pile in all the compat/ stuff that is needed.
 if NO_FORKPTY
