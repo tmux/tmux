@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.2 2011-01-03 23:40:21 nicm Exp $
+# $Id: Makefile.am,v 1.3 2011-01-03 23:54:51 tcunha Exp $
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
@@ -156,6 +156,7 @@ dist_tmux_SOURCES = \
 	log.c \
 	mode-key.c \
 	names.c \
+	options-table.c \
 	options.c \
 	paste.c \
 	resize.c \
