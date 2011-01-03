@@ -1,4 +1,4 @@
-/* $Id: cmd-show-options.c,v 1.21 2009-12-10 16:59:02 tcunha Exp $ */
+/* $Id: cmd-show-options.c,v 1.22 2011-01-03 23:52:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -43,20 +43,19 @@ const struct cmd_entry cmd_show_options_entry = {
 int
 cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data		*data = self->data;
-	const struct set_option_entry	*table;
-	struct session			*s;
-	struct winlink			*wl;
-	struct options			*oo;
-	struct options_entry		*o;
-	const struct set_option_entry   *entry;
-	const char			*optval;
+	struct cmd_target_data			*data = self->data;
+	const struct options_table_entry	*table, *oe;
+	struct session				*s;
+	struct winlink				*wl;
+	struct options				*oo;
+	struct options_entry			*o;
+	const char				*optval;
 
 	if (cmd_check_flag(data->chflags, 's')) {
 		oo = &global_options;
-		table = set_option_table;
+		table = server_options_table;
 	} else if (cmd_check_flag(data->chflags, 'w')) {
-		table = set_window_option_table;
+		table = window_options_table;
 		if (cmd_check_flag(data->chflags, 'g'))
 			oo = &global_w_options;
 		else {
@@ -66,7 +65,7 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 			oo = &wl->window->options;
 		}
 	} else {
-		table = set_session_option_table;
+		table = session_options_table;
 		if (cmd_check_flag(data->chflags, 'g'))
 			oo = &global_s_options;
 		else {
@@ -77,11 +76,11 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	for (entry = table; entry->name != NULL; entry++) {
-		if ((o = options_find1(oo, entry->name)) == NULL)
+	for (oe = table; oe->name != NULL; oe++) {
+		if ((o = options_find1(oo, oe->name)) == NULL)
 			continue;
-		optval = cmd_set_option_print(entry, o);
-		ctx->print(ctx, "%s %s", entry->name, optval);
+		optval = options_table_print_entry(oe, o);
+		ctx->print(ctx, "%s %s", oe->name, optval);
 	}
 
 	return (0);

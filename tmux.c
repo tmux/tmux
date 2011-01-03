@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.231 2010-12-31 22:12:33 nicm Exp $ */
+/* $Id: tmux.c,v 1.232 2011-01-03 23:52:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -231,7 +231,6 @@ int
 main(int argc, char **argv)
 {
 	struct passwd	*pw;
-	struct options	*oo, *so, *wo;
 	struct keylist	*keylist;
 	char		*s, *path, *label, *home, **var;
 	int	 	 opt, flags, quiet, keys;
@@ -322,129 +321,39 @@ main(int argc, char **argv)
 		environ_put(&global_environ, *var);
 
 	options_init(&global_options, NULL);
-	oo = &global_options;
-	options_set_number(oo, "quiet", quiet);
-	options_set_number(oo, "escape-time", 500);
-	options_set_number(oo, "exit-unattached", 0);
-	options_set_number(oo, "buffer-limit", 9);
+	options_table_populate_tree(server_options_table, &global_options);
+	options_set_number(&global_options, "quiet", quiet);
 
 	options_init(&global_s_options, NULL);
-	so = &global_s_options;
-	options_set_number(so, "base-index", 0);
-	options_set_number(so, "bell-action", BELL_ANY);
-	options_set_string(so, "default-command", "%s", "");
-	options_set_string(so, "default-path", "%s", "");
-	options_set_string(so, "default-shell", "%s", getshell());
-	options_set_string(so, "default-terminal", "screen");
-	options_set_number(so, "destroy-unattached", 0);
-	options_set_number(so, "detach-on-destroy", 1);
-	options_set_number(so, "display-panes-active-colour", 1);
-	options_set_number(so, "display-panes-colour", 4);
-	options_set_number(so, "display-panes-time", 1000);
-	options_set_number(so, "display-time", 750);
-	options_set_number(so, "history-limit", 2000);
-	options_set_number(so, "lock-after-time", 0);
-	options_set_string(so, "lock-command", "lock -np");
-	options_set_number(so, "lock-server", 1);
-	options_set_number(so, "message-attr", 0);
-	options_set_number(so, "message-bg", 3);
-	options_set_number(so, "message-fg", 0);
-	options_set_number(so, "message-limit", 20);
-	options_set_number(so, "mouse-select-pane", 0);
-	options_set_number(so, "pane-active-border-bg", 8);
-	options_set_number(so, "pane-active-border-fg", 2);
-	options_set_number(so, "pane-border-bg", 8);
-	options_set_number(so, "pane-border-fg", 8);
-	options_set_number(so, "repeat-time", 500);
-	options_set_number(so, "set-remain-on-exit", 0);
-	options_set_number(so, "set-titles", 0);
-	options_set_string(so, "set-titles-string", "#S:#I:#W - \"#T\"");
-	options_set_number(so, "status", 1);
-	options_set_number(so, "status-attr", 0);
-	options_set_number(so, "status-bg", 2);
-	options_set_number(so, "status-fg", 0);
-	options_set_number(so, "status-interval", 15);
-	options_set_number(so, "status-justify", 0);
-	options_set_string(so, "status-left", "[#S]");
-	options_set_number(so, "status-left-attr", 0);
-	options_set_number(so, "status-left-bg", 8);
-	options_set_number(so, "status-left-fg", 8);
-	options_set_number(so, "status-left-length", 10);
-	options_set_string(so, "status-right", "\"#22T\" %%H:%%M %%d-%%b-%%y");
-	options_set_number(so, "status-right-attr", 0);
-	options_set_number(so, "status-right-bg", 8);
-	options_set_number(so, "status-right-fg", 8);
-	options_set_number(so, "status-right-length", 40);
-	options_set_string(so, "terminal-overrides",
-	    "*88col*:colors=88,*256col*:colors=256");
-	options_set_string(so, "update-environment",
-	    "DISPLAY "
-	    "SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID SSH_CONNECTION "
-	    "WINDOWID "
-	    "XAUTHORITY");
-	options_set_number(so, "visual-activity", 0);
-	options_set_number(so, "visual-bell", 0);
-	options_set_number(so, "visual-content", 0);
-	options_set_number(so, "visual-silence", 0);
+	options_table_populate_tree(session_options_table, &global_s_options);
+	options_set_string(&global_s_options, "default-shell", "%s", getshell());
 
+	options_init(&global_w_options, NULL);
+	options_table_populate_tree(window_options_table, &global_w_options);
+
+	/* Set the prefix option (its a list, so not in the table). */
 	keylist = xmalloc(sizeof *keylist);
 	ARRAY_INIT(keylist);
 	ARRAY_ADD(keylist, '\002');
-	options_set_data(so, "prefix", keylist, xfree);
+	options_set_data(&global_s_options, "prefix", keylist, xfree);
 
-	options_init(&global_w_options, NULL);
-	wo = &global_w_options;
-	options_set_number(wo, "aggressive-resize", 0);
-	options_set_number(wo, "alternate-screen", 1);
-	options_set_number(wo, "automatic-rename", 1);
-	options_set_number(wo, "clock-mode-colour", 4);
-	options_set_number(wo, "clock-mode-style", 1);
-	options_set_number(wo, "force-height", 0);
-	options_set_number(wo, "force-width", 0);
-	options_set_number(wo, "main-pane-height", 24);
-	options_set_number(wo, "main-pane-width", 80);
-	options_set_number(wo, "mode-attr", 0);
-	options_set_number(wo, "mode-bg", 3);
-	options_set_number(wo, "mode-fg", 0);
-	options_set_number(wo, "mode-mouse", 0);
-	options_set_number(wo, "monitor-activity", 0);
-	options_set_string(wo, "monitor-content", "%s", "");
-	options_set_number(wo, "monitor-silence", 0);
-	options_set_number(wo, "other-pane-height", 0);
-	options_set_number(wo, "other-pane-width", 0);
-	options_set_number(wo, "window-status-attr", 0);
-	options_set_number(wo, "window-status-bg", 8);
-	options_set_number(wo, "window-status-current-attr", 0);
-	options_set_number(wo, "window-status-current-bg", 8);
-	options_set_number(wo, "window-status-current-fg", 8);
-	options_set_number(wo, "window-status-fg", 8);
-	options_set_number(wo, "window-status-alert-attr", GRID_ATTR_REVERSE);
-	options_set_number(wo, "window-status-alert-bg", 8);
-	options_set_number(wo, "window-status-alert-fg", 8);
-	options_set_string(wo, "window-status-format", "#I:#W#F");
-	options_set_string(wo, "window-status-current-format", "#I:#W#F");
-	options_set_string(wo, "word-separators", " -_@");
-	options_set_number(wo, "xterm-keys", 0);
-	options_set_number(wo, "remain-on-exit", 0);
-	options_set_number(wo, "synchronize-panes", 0);
-
+	/* Enable UTF-8 if the first client is on UTF-8 terminal. */
 	if (flags & IDENTIFY_UTF8) {
-		options_set_number(so, "status-utf8", 1);
-		options_set_number(wo, "utf8", 1);
-	} else {
-		options_set_number(so, "status-utf8", 0);
-		options_set_number(wo, "utf8", 0);
+		options_set_number(&global_s_options, "status-utf8", 1);
+		options_set_number(&global_w_options, "utf8", 1);
 	}
 
-	keys = MODEKEY_EMACS;
+	/* Override keys to vi if VISUAL or EDITOR are set. */
 	if ((s = getenv("VISUAL")) != NULL || (s = getenv("EDITOR")) != NULL) {
 		if (strrchr(s, '/') != NULL)
 			s = strrchr(s, '/') + 1;
 		if (strstr(s, "vi") != NULL)
 			keys = MODEKEY_VI;
+		else
+			keys = MODEKEY_EMACS;
+		options_set_number(&global_s_options, "status-keys", keys);
+		options_set_number(&global_w_options, "mode-keys", keys);
 	}
-	options_set_number(so, "status-keys", keys);
-	options_set_number(wo, "mode-keys", keys);
 
 	/* Locate the configuration file. */
 	if (cfg_file == NULL) {
