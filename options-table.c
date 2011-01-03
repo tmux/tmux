@@ -1,4 +1,4 @@
-/* $Id: options-table.c,v 1.1 2011-01-03 23:52:38 tcunha Exp $ */
+/* $Id: options-table.c,v 1.2 2011-01-03 23:55:30 tcunha Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,7 +19,6 @@
 #include <sys/types.h>
 
 #include <string.h>
-#include <paths.h>
 
 #include "tmux.h"
 
