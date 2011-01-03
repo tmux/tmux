@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.283 2010-12-31 02:00:30 tcunha Exp $
+.\" $Id: tmux.1,v 1.284 2011-01-03 23:29:09 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -1101,7 +1101,7 @@ except the window at
 is moved to
 .Ar dst-window .
 .It Xo Ic new-window
-.Op Fl adk
+.Op Fl adkP
 .Op Fl n Ar window-name
 .Op Fl t Ar target-window
 .Op Ar shell-command
@@ -1149,6 +1149,10 @@ New windows will automatically have
 .Dq TERM=screen
 added to their environment, but care must be taken not to reset this in shell
 start-up files.
+.Pp
+The
+.Fl P
+option prints the location of the new window after it has been created.
 .It Ic next-layout Op Fl t Ar target-window
 .D1 (alias: Ic nextl )
 Move a window to the next layout and rearrange the panes to fit.
@@ -1285,7 +1289,7 @@ target pane is used.
 Select the window at
 .Ar target-window .
 .It Xo Ic split-window
-.Op Fl dhv
+.Op Fl dhvP
 .Oo Fl l
 .Ar size |
 .Fl p Ar percentage Oc

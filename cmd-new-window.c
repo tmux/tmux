@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.47 2010-07-02 02:49:19 tcunha Exp $ */
+/* $Id: cmd-new-window.c,v 1.48 2011-01-03 23:29:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,11 +39,12 @@ struct cmd_new_window_data {
 	int	 flag_insert_after;
 	int	 flag_detached;
 	int	 flag_kill;
+	int      flag_print;
 };
 
 const struct cmd_entry cmd_new_window_entry = {
 	"new-window", "neww",
-	"[-adk] [-n window-name] [-t target-window] [command]",
+	"[-adkP] [-n window-name] [-t target-window] [command]",
 	0, "",
 	cmd_new_window_init,
 	cmd_new_window_parse,
@@ -65,6 +66,7 @@ cmd_new_window_init(struct cmd *self, unused int arg)
 	data->flag_insert_after = 0;
 	data->flag_detached = 0;
 	data->flag_kill = 0;
+	data->flag_print = 0;
 }
 
 int
@@ -76,7 +78,7 @@ cmd_new_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, "adkt:n:")) != -1) {
+	while ((opt = getopt(argc, argv, "adkt:n:P")) != -1) {
 		switch (opt) {
 		case 'a':
 			data->flag_insert_after = 1;
@@ -94,6 +96,9 @@ cmd_new_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 		case 'n':
 			if (data->name == NULL)
 				data->name = xstrdup(optarg);
+			break;
+		case 'P':
+			data->flag_print = 1;
 			break;
 		default:
 			goto usage;
@@ -198,6 +203,8 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	} else
 		server_status_session_group(s);
 
+	if (data->flag_print)
+		ctx->print(ctx, "%s:%u", s->name, wl->idx);
 	return (0);
 }
 
@@ -226,6 +233,8 @@ cmd_new_window_print(struct cmd *self, char *buf, size_t len)
 		return (off);
 	if (off < len && data->flag_detached)
 		off += xsnprintf(buf + off, len - off, " -d");
+	if (off < len && data->flag_print)
+		off += xsnprintf(buf + off, len - off, " -P");
 	if (off < len && data->target != NULL)
 		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
 	if (off < len && data->name != NULL)

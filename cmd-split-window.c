@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.35 2010-07-02 02:49:19 tcunha Exp $ */
+/* $Id: cmd-split-window.c,v 1.36 2011-01-03 23:29:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -38,13 +38,14 @@ struct cmd_split_window_data {
 	char	*cmd;
 	int	 flag_detached;
 	int	 flag_horizontal;
+	int	 flag_print;
 	int	 percentage;
 	int	 size;
 };
 
 const struct cmd_entry cmd_split_window_entry = {
 	"split-window", "splitw",
-	"[-dhv] [-p percentage|-l size] [-t target-pane] [command]",
+	"[-dhvP] [-p percentage|-l size] [-t target-pane] [command]",
 	0, "",
 	cmd_split_window_init,
 	cmd_split_window_parse,
@@ -63,6 +64,7 @@ cmd_split_window_init(struct cmd *self, int key)
 	data->cmd = NULL;
 	data->flag_detached = 0;
 	data->flag_horizontal = 0;
+	data->flag_print = 0;
 	data->percentage = -1;
 	data->size = -1;
 
@@ -86,7 +88,7 @@ cmd_split_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 	self->entry->init(self, KEYC_NONE);
 	data = self->data;
 
-	while ((opt = getopt(argc, argv, "dhl:p:t:v")) != -1) {
+	while ((opt = getopt(argc, argv, "dhl:p:Pt:v")) != -1) {
 		switch (opt) {
 		case 'd':
 			data->flag_detached = 1;
@@ -115,6 +117,9 @@ cmd_split_window_parse(struct cmd *self, int argc, char **argv, char **cause)
 				xasprintf(cause, "percentage %s", errstr);
 				goto error;
 			}
+			break;
+		case 'P':
+			data->flag_print = 1;
 			break;
 		case 'v':
 			data->flag_horizontal = 0;
@@ -152,7 +157,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct environ			 env;
 	char		 		*cmd, *cwd, *cause;
 	const char			*shell;
-	u_int				 hlimit;
+	u_int				 hlimit, paneidx;
 	int				 size;
 	enum layout_type		 type;
 	struct layout_cell		*lc;
@@ -216,6 +221,11 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		server_status_session(s);
 
 	environ_free(&env);
+
+	if (data->flag_print) {
+		paneidx = window_pane_index(wl->window, new_wp);
+		ctx->print(ctx, "%s:%u.%u", s->name, wl->idx, paneidx);
+	}
 	return (0);
 
 error:
@@ -252,6 +262,8 @@ cmd_split_window_print(struct cmd *self, char *buf, size_t len)
 		off += xsnprintf(buf + off, len - off, " -d");
 	if (off < len && data->flag_horizontal)
 		off += xsnprintf(buf + off, len - off, " -h");
+	if (off < len && data->flag_print)
+		off += xsnprintf(buf + off, len - off, " -P");
 	if (off < len && data->size > 0)
 		off += xsnprintf(buf + off, len - off, " -l %d", data->size);
 	if (off < len && data->percentage > 0) {
