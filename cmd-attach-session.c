@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.37 2010-12-22 15:36:44 tcunha Exp $ */
+/* $Id: cmd-attach-session.c,v 1.38 2011-01-03 23:27:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -74,6 +74,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 
 		ctx->curclient->session = s;
+		session_update_activity(s);
 		server_redraw_client(ctx->curclient);
 	} else {
 		if (!(ctx->cmdclient->flags & CLIENT_TERMINAL)) {
@@ -96,6 +97,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 			server_write_session(s, MSG_DETACH, NULL, 0);
 
 		ctx->cmdclient->session = s;
+		session_update_activity(s);
 		server_write_client(ctx->cmdclient, MSG_READY, NULL, 0);
 
 		update = options_get_string(&s->options, "update-environment");

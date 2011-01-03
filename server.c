@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.250 2010-12-30 22:39:49 tcunha Exp $ */
+/* $Id: server.c,v 1.251 2011-01-03 23:27:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -495,12 +495,8 @@ server_lock_server(void)
 
 	t = time(NULL);
 	RB_FOREACH(s, sessions, &sessions) {
-		if (s->flags & SESSION_UNATTACHED) {
-			if (gettimeofday(&s->activity_time, NULL) != 0)
-				fatal("gettimeofday failed");
+		if (s->flags & SESSION_UNATTACHED)
 			continue;
-		}
-
 		timeout = options_get_number(&s->options, "lock-after-time");
 		if (timeout <= 0 || t <= s->activity_time.tv_sec + timeout)
 			return;	/* not timed out */
@@ -520,12 +516,8 @@ server_lock_sessions(void)
 
 	t = time(NULL);
 	RB_FOREACH(s, sessions, &sessions) {
-		if (s->flags & SESSION_UNATTACHED) {
-			if (gettimeofday(&s->activity_time, NULL) != 0)
-				fatal("gettimeofday failed");
+		if (s->flags & SESSION_UNATTACHED)
 			continue;
-		}
-
 		timeout = options_get_number(&s->options, "lock-after-time");
 		if (timeout > 0 && t > s->activity_time.tv_sec + timeout) {
 			server_lock_session(s);
