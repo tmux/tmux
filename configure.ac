@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.6 2011-01-02 15:49:31 nicm Exp $
+# $Id: configure.ac,v 1.7 2011-01-03 23:43:35 nicm Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -271,9 +271,12 @@ AC_COMPILE_IFELSE(
 )
 
 # Look for fcntl(F_CLOSEM).
-AC_CHECK_DECL(F_CLOSEM,
-	AC_DEFINE(HAVE_FCNTL_CLOSEM), ,
-	[#include <fcntl.h>])
+AC_CHECK_DECL(
+	F_CLOSEM,
+	AC_DEFINE(HAVE_FCNTL_CLOSEM),
+	,
+	[#include <fcntl.h>]
+)
 
 # Look for /proc/$$.
 AC_MSG_CHECKING(for /proc/\$\$)
