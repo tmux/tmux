@@ -1,4 +1,4 @@
-/* $Id: xterm-keys.c,v 1.7 2010-10-24 00:30:51 tcunha Exp $ */
+/* $Id: xterm-keys.c,v 1.8 2011-01-03 23:32:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,7 +48,7 @@ struct xterm_keys_entry {
 	const char	*template;
 };
 
-struct xterm_keys_entry xterm_keys_table[] = {
+const struct xterm_keys_entry xterm_keys_table[] = {
 	{ KEYC_F1,	"\033[1;_P" },
 	{ KEYC_F1,	"\033O_P" },
 	{ KEYC_F2,	"\033[1;_Q" },
@@ -140,8 +140,8 @@ xterm_keys_modifiers(const char *template, const char *buf, size_t len)
 int
 xterm_keys_find(const char *buf, size_t len, size_t *size, int *key)
 {
-	struct xterm_keys_entry	*entry;
-	u_int			 i;
+	const struct xterm_keys_entry	*entry;
+	u_int				 i;
 
 	for (i = 0; i < nitems(xterm_keys_table); i++) {
 		entry = &xterm_keys_table[i];
@@ -162,10 +162,10 @@ xterm_keys_find(const char *buf, size_t len, size_t *size, int *key)
 char *
 xterm_keys_lookup(int key)
 {
-	struct xterm_keys_entry	*entry;
-	u_int			 i;
-	int			 modifiers;
-	char			*out;
+	const struct xterm_keys_entry	*entry;
+	u_int				 i;
+	int				 modifiers;
+	char				*out;
 
 	modifiers = 1;
 	if (key & KEYC_SHIFT)

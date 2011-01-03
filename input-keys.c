@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.46 2010-12-30 22:27:38 tcunha Exp $ */
+/* $Id: input-keys.c,v 1.47 2011-01-03 23:32:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -39,7 +39,7 @@ struct input_key_ent {
 #define INPUTKEY_CURSOR 0x2	/* cursor key */
 };
 
-struct input_key_ent input_keys[] = {
+const struct input_key_ent input_keys[] = {
 	/* Backspace key. */
 	{ KEYC_BSPACE,		"\177",		0 },
 
@@ -136,11 +136,11 @@ struct input_key_ent input_keys[] = {
 void
 input_key(struct window_pane *wp, int key)
 {
-	struct input_key_ent   *ike;
-	u_int			i;
-	size_t			dlen;
-	char		       *out;
-	u_char			ch;
+	const struct input_key_ent     *ike;
+	u_int				i;
+	size_t				dlen;
+	char			       *out;
+	u_char				ch;
 
 	log_debug2("writing key 0x%x", key);
 

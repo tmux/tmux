@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.34 2010-06-05 20:29:11 micahcowan Exp $ */
+/* $Id: key-string.c,v 1.35 2011-01-03 23:32:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -25,7 +25,7 @@
 int	key_string_search_table(const char *);
 int	key_string_get_modifiers(const char **);
 
-struct {
+const struct {
 	const char     *string;
 	int	 	key;
 } key_string_table[] = {
