@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-buffer.c,v 1.2 2010-12-30 22:39:49 tcunha Exp $ */
+/* $Id: cmd-choose-buffer.c,v 1.3 2011-01-03 23:26:14 tcunha Exp $ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,7 +52,6 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct cmd_target_data		*data = self->data;
 	struct cmd_choose_buffer_data	*cdata;
-	struct session			*s;
 	struct winlink			*wl;
 	struct paste_buffer		*pb;
 	u_int				 idx;
@@ -62,7 +61,6 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "must be run interactively");
 		return (-1);
 	}
-	s = ctx->curclient->session;
 
 	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
 		return (-1);
