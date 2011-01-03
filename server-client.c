@@ -451,6 +451,21 @@ server_client_reset_state(struct client *c)
 	if (TAILQ_NEXT(TAILQ_FIRST(&w->panes), entry) != NULL &&
 	    options_get_number(oo, "mouse-select-pane"))
 		mode |= MODE_MOUSE_STANDARD;
+
+	/*
+	 * Set UTF-8 mouse input if required. If the terminal is UTF-8, the
+	 * user has set mouse-utf8 and any mouse mode is in effect, turn on
+	 * UTF-8 mouse input. If the receiving terminal hasn't requested it
+	 * (that is, it isn't in s->mode), then it'll be converted in
+	 * input_mouse.
+	 */
+	if ((c->tty.flags & TTY_UTF8) &&
+	    (mode & ALL_MOUSE_MODES) && options_get_number(oo, "mouse-utf8"))
+		mode |= MODE_MOUSE_UTF8;
+	else
+		mode &= ~MODE_MOUSE_UTF8;
+
+	/* Set the terminal mode and reset attributes. */
 	tty_update_mode(&c->tty, mode);
 	tty_reset(&c->tty);
 }

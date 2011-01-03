@@ -829,6 +829,18 @@ screen_write_insertmode(struct screen_write_ctx *ctx, int state)
 		s->mode &= ~MODE_INSERT;
 }
 
+/* Set UTF-8 mouse mode.  */
+void
+screen_write_utf8mousemode(struct screen_write_ctx *ctx, int state)
+{
+	struct screen	*s = ctx->s;
+
+	if (state)
+		s->mode |= MODE_MOUSE_UTF8;
+	else
+		s->mode &= ~MODE_MOUSE_UTF8;
+}
+
 /* Set mouse mode off. */
 void
 screen_write_mousemode_off(struct screen_write_ctx *ctx)

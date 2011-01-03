@@ -198,6 +198,11 @@ const struct options_table_entry session_options_table[] = {
 	  .default_num = 0
 	},
 
+	{ .name = "mouse-utf8",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .default_num = 0
+	},
+
 	{ .name = "pane-active-border-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .default_num = 8

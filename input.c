@@ -1161,6 +1161,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case 1003:
 			screen_write_mousemode_off(&ictx->ctx);
 			break;
+		case 1005:
+			screen_write_utf8mousemode(&ictx->ctx, 0);
+			break;
 		case 1049:
 			window_pane_alternate_off(wp, &ictx->cell);
 			break;
@@ -1208,6 +1211,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 			break;
 		case 1003:
 			screen_write_mousemode_on(&ictx->ctx, MODE_MOUSE_ANY);
+			break;
+		case 1005:
+			screen_write_utf8mousemode(&ictx->ctx, 1);
 			break;
 		case 1049:
 			window_pane_alternate_on(wp, &ictx->cell);

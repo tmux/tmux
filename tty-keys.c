@@ -38,7 +38,7 @@ struct tty_key *tty_keys_find1(
 		    struct tty_key *, const char *, size_t, size_t *);
 struct tty_key *tty_keys_find(struct tty *, const char *, size_t, size_t *);
 void		tty_keys_callback(int, short, void *);
-int		tty_keys_mouse(
+int		tty_keys_mouse(struct tty *,
 		    const char *, size_t, size_t *, struct mouse_event *);
 
 struct tty_key_ent {
@@ -462,7 +462,7 @@ tty_keys_next(struct tty *tty)
 	}
 
 	/* Is this a mouse key press? */
-	switch (tty_keys_mouse(buf, len, &size, &mouse)) {
+	switch (tty_keys_mouse(tty, buf, len, &size, &mouse)) {
 	case 0:		/* yes */
 		evbuffer_drain(tty->event->input, size);
 		key = KEYC_MOUSE;
@@ -584,44 +584,74 @@ tty_keys_callback(unused int fd, unused short events, void *data)
  * (probably a mouse sequence but need more data).
  */
 int
-tty_keys_mouse(const char *buf, size_t len, size_t *size, struct mouse_event *m)
+tty_keys_mouse(struct tty *tty,
+    const char *buf, size_t len, size_t *size, struct mouse_event *m)
 {
+	struct utf8_data	utf8data;
+	u_int			i, value;
+
 	/*
-	 * Mouse sequences are \033[M followed by three characters indicating
-	 * buttons, X and Y, all based at 32 with 1,1 top-left.
+	 * Standard mouse sequences are \033[M followed by three characters
+	 * indicating buttons, X and Y, all based at 32 with 1,1 top-left.
+	 *
+	 * UTF-8 mouse sequences are similar but the three are expressed as
+	 * UTF-8 characters.
 	 */
 
 	*size = 0;
 
+	/* First three bytes are always \033[M. */
 	if (buf[0] != '\033')
 		return (-1);
 	if (len == 1)
 		return (1);
-
 	if (buf[1] != '[')
 		return (-1);
 	if (len == 2)
 		return (1);
-
 	if (buf[2] != 'M')
 		return (-1);
 	if (len == 3)
 		return (1);
 
-	if (len < 6)
-		return (1);
-	*size = 6;
+	/* Read the three inputs. */
+	*size = 3;
+	for (i = 0; i < 3; i++) {
+		if (len < *size)
+			return (1);
 
-	log_debug(
-	    "mouse input: %.6s (%hhu,%hhu/%hhu)", buf, buf[4], buf[5], buf[3]);
+		if (tty->mode & MODE_MOUSE_UTF8) {
+			if (utf8_open(&utf8data, buf[*size])) {
+				if (utf8data.size != 2)
+					return (-1);
+				(*size)++;
+				if (len < *size)
+					return (1);
+				utf8_append(&utf8data, buf[*size]);
+				value = utf8_combine(&utf8data);
+			} else
+				value = buf[*size];
+			(*size)++;
+		} else {
+			value = buf[*size];
+			(*size)++;
+		}
 
-	m->b = buf[3];
-	m->x = buf[4];
-	m->y = buf[5];
+		if (i == 0)
+			m->b = value;
+		else if (i == 1)
+			m->x = value;
+		else
+			m->y = value;
+	}
+	log_debug("mouse input: %.*s", (int) *size, buf);
+
+	/* Check and return the mouse input. */
 	if (m->b < 32 || m->x < 33 || m->y < 33)
 		return (-1);
 	m->b -= 32;
 	m->x -= 33;
 	m->y -= 33;
+	log_debug("mouse position: x=%u y=%u b=%u", m->x, m->y, m->b);
 	return (0);
 }

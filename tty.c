@@ -405,6 +405,8 @@ tty_update_mode(struct tty *tty, int mode)
 	}
 	if (changed & ALL_MOUSE_MODES) {
 		if (mode & ALL_MOUSE_MODES) {
+			if (mode & MODE_MOUSE_UTF8)
+				tty_puts(tty, "\033[?1005h");
 			if (mode & MODE_MOUSE_STANDARD)
 				tty_puts(tty, "\033[?1000h");
 			else if (mode & MODE_MOUSE_HIGHLIGHT)
@@ -422,6 +424,8 @@ tty_update_mode(struct tty *tty, int mode)
 				tty_puts(tty, "\033[?1002l");
 			else if (tty->mode & MODE_MOUSE_ANY)
 				tty_puts(tty, "\033[?1003l");
+			if (tty->mode & MODE_MOUSE_UTF8)
+				tty_puts(tty, "\033[?1005l");
 		}
 	}
 	if (changed & MODE_KKEYPAD) {
