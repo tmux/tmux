@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.598 2011-01-03 23:30:43 tcunha Exp $ */
+/* $Id: tmux.h,v 1.599 2011-01-03 23:31:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -530,10 +530,10 @@ struct mode_key_cmdstr {
 
 /* Named mode key table description. */
 struct mode_key_table {
-	const char		*name;
-	struct mode_key_cmdstr	*cmdstr;
-	struct mode_key_tree	*tree;
-	const struct mode_key_entry *table;	/* default entries */
+	const char			*name;
+	const struct mode_key_cmdstr	*cmdstr;
+	struct mode_key_tree		*tree;
+	const struct mode_key_entry	*table;	/* default entries */
 };
 
 /* Modes. */
@@ -1325,8 +1325,10 @@ extern struct mode_key_tree mode_key_tree_emacs_choice;
 extern struct mode_key_tree mode_key_tree_emacs_copy;
 int	mode_key_cmp(struct mode_key_binding *, struct mode_key_binding *);
 SPLAY_PROTOTYPE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
-const char *mode_key_tostring(struct mode_key_cmdstr *r, enum mode_key_cmd);
-enum mode_key_cmd mode_key_fromstring(struct mode_key_cmdstr *, const char *);
+const char *mode_key_tostring(const struct mode_key_cmdstr *,
+	    enum mode_key_cmd);
+enum mode_key_cmd mode_key_fromstring(const struct mode_key_cmdstr *,
+	    const char *);
 const struct mode_key_table *mode_key_findtable(const char *);
 void	mode_key_init_trees(void);
 void	mode_key_init(struct mode_key_data *, struct mode_key_tree *);
