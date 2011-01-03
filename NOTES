@@ -9,8 +9,7 @@ run on Solaris and AIX (although they haven't been tested in a while). It is
 usable, although there remain a number of missing features and some remaining
 bugs are expected.
 
-Since the 1.2 release that tmux depends on libevent. Download the stable
-version from:
+Since the 1.2 release that tmux depends on libevent. Download it from:
 
 	http://www.monkey.org/~provos/libevent/
 
@@ -63,4 +62,4 @@ start. Please contact me with any queries.
 
 -- Nicholas Marriott <nicm@users.sf.net>
 
-$Id: NOTES,v 1.54 2010-12-27 21:36:37 tcunha Exp $
+$Id: NOTES,v 1.55 2011-01-03 23:58:10 tcunha Exp $
