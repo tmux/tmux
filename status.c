@@ -456,7 +456,7 @@ status_replace(struct client *c,
 			break;
 		ch = *iptr++;
 
-		if (ch != '#') {
+		if (ch != '#' || *iptr == '\0') {
 			*optr++ = ch;
 			continue;
 		}
