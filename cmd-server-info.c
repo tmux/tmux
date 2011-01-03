@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.39 2010-12-31 22:12:33 nicm Exp $ */
+/* $Id: cmd-server-info.c,v 1.40 2011-01-03 23:30:43 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,24 +47,24 @@ const struct cmd_entry cmd_server_info_entry = {
 int
 cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct tty_term			*term;
-	struct client			*c;
-	struct session			*s;
-	struct winlink			*wl;
-	struct window			*w;
-	struct window_pane		*wp;
-	struct tty_code			*code;
-	struct tty_term_code_entry	*ent;
-	struct utsname			 un;
-	struct job			*job;
-	struct grid			*gd;
-	struct grid_line		*gl;
-	u_int		 		 i, j, k;
-	char				 out[80];
-	char				*tim;
-	time_t		 		 t;
-	u_int				 lines, ulines;
-	size_t				 size, usize;
+	struct tty_term				*term;
+	struct client				*c;
+	struct session				*s;
+	struct winlink				*wl;
+	struct window				*w;
+	struct window_pane			*wp;
+	struct tty_code				*code;
+	const struct tty_term_code_entry	*ent;
+	struct utsname				 un;
+	struct job				*job;
+	struct grid				*gd;
+	struct grid_line			*gl;
+	u_int		 			 i, j, k;
+	char					 out[80];
+	char					*tim;
+	time_t		 			 t;
+	u_int					 lines, ulines;
+	size_t					 size, usize;
 
 	tim = ctime(&start_time);
 	*strchr(tim, '\n') = '\0';

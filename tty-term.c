@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.44 2010-12-31 22:12:33 nicm Exp $ */
+/* $Id: tty-term.c,v 1.45 2011-01-03 23:30:43 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,7 +35,7 @@ char	*tty_term_strip(const char *);
 
 struct tty_terms tty_terms = SLIST_HEAD_INITIALIZER(tty_terms);
 
-struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
+const struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_ACSC, TTYCODE_STRING, "acsc" },
 	{ TTYC_AX, TTYCODE_FLAG, "AX" },
 	{ TTYC_BEL, TTYCODE_STRING, "bel" },
@@ -217,13 +217,14 @@ tty_term_strip(const char *s)
 void
 tty_term_override(struct tty_term *term, const char *overrides)
 {
-	struct tty_term_code_entry	*ent;
-	struct tty_code			*code;
-	char				*termnext, *termstr, *entnext, *entstr;
-	char				*s, *ptr, *val;
-	const char			*errstr;
-	u_int				 i;
-	int				 n, removeflag;
+	const struct tty_term_code_entry	*ent;
+	struct tty_code				*code;
+	char					*termnext, *termstr;
+	char					*entnext, *entstr;
+	char					*s, *ptr, *val;
+	const char				*errstr;
+	u_int					 i;
+	int					 n, removeflag;
 
 	s = xstrdup(overrides);
 
@@ -299,13 +300,13 @@ tty_term_override(struct tty_term *term, const char *overrides)
 struct tty_term *
 tty_term_find(char *name, int fd, const char *overrides, char **cause)
 {
-	struct tty_term			*term;
-	struct tty_term_code_entry	*ent;
-	struct tty_code			*code;
-	u_int				 i;
-	int		 		 n, error;
-	char				*s;
-	const char                      *acs;
+	struct tty_term				*term;
+	const struct tty_term_code_entry	*ent;
+	struct tty_code				*code;
+	u_int					 i;
+	int		 			 n, error;
+	char					*s;
+	const char				*acs;
 
 	SLIST_FOREACH(term, &tty_terms, entry) {
 		if (strcmp(term->name, name) == 0) {
