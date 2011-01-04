@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.7 2011-01-03 23:43:35 nicm Exp $
+# $Id: configure.ac,v 1.8 2011-01-04 09:43:14 nicm Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -43,6 +43,14 @@ AC_ARG_ENABLE(
 	found_debug=$enable_debug
 )
 AM_CONDITIONAL(IS_DEBUG, test "x$found_debug" = xyes)
+
+# Is this a static build?
+AC_ARG_ENABLE(
+       static,
+       AC_HELP_STRING(--enable-static, create a static build),
+       [found_static=]
+)
+AM_CONDITIONAL(IS_STATIC, test "x" = xyes)
 
 # Is this gcc?
 AM_CONDITIONAL(IS_GCC, test "x$GCC" = xyes)
@@ -89,6 +97,9 @@ AC_EGREP_CPP(
 AM_CONDITIONAL(IS_GLIBC, test "x$found_glibc" = xyes)
 AC_MSG_RESULT($found_glibc)
 
+# Look for clock_gettime. Must come before event_init.
+AC_CHECK_LIB(rt, clock_gettime)
+
 # Look for libevent.
 AC_SEARCH_LIBS(event_init, event, found_libevent=yes, found_libevent=no)
 if test "x$found_libevent" = xno; then
@@ -107,8 +118,8 @@ if test "x$found_curses" = xno; then
 fi
 
 # Look for networking libraries.
-AC_SEARCH_LIBS([inet_ntoa], [nsl])
-AC_SEARCH_LIBS([socket], [socket])
+AC_SEARCH_LIBS(inet_ntoa, nsl)
+AC_SEARCH_LIBS(socket, socket)
 
 # Look for imsg in libutil. compat/imsg.c is linked by Makefile.am if missing.
 AC_SEARCH_LIBS(imsg_init, util, found_imsg_init=yes, found_imsg_init=no)

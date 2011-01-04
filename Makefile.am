@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.3 2011-01-03 23:54:51 tcunha Exp $
+# $Id: Makefile.am,v 1.4 2011-01-04 09:43:14 nicm Exp $
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
@@ -37,6 +37,11 @@ endif
 else
 CPPFLAGS += -I. -I- -I/usr/local/include
 endif
+endif
+
+# Set flags for static.
+if IS_STATIC
+LDFLAGS+= -static
 endif
 
 # Set flags for Solaris.
