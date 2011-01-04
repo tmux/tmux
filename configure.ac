@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.8 2011-01-04 09:43:14 nicm Exp $
+# $Id: configure.ac,v 1.9 2011-01-04 09:48:10 nicm Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -48,7 +48,7 @@ AM_CONDITIONAL(IS_DEBUG, test "x$found_debug" = xyes)
 AC_ARG_ENABLE(
        static,
        AC_HELP_STRING(--enable-static, create a static build),
-       [found_static=]
+       [found_static=$enable_static]
 )
 AM_CONDITIONAL(IS_STATIC, test "x" = xyes)
 
