@@ -27,30 +27,21 @@
  * Prompt for command in client.
  */
 
-void	 cmd_command_prompt_init(struct cmd *, int);
-int	 cmd_command_prompt_parse(struct cmd *, int, char **, char **);
-int	 cmd_command_prompt_exec(struct cmd *, struct cmd_ctx *);
-void	 cmd_command_prompt_free(struct cmd *);
-size_t	 cmd_command_prompt_print(struct cmd *, char *, size_t);
+void	cmd_command_prompt_key_binding(struct cmd *, int);
+int	cmd_command_prompt_check(struct args *);
+int	cmd_command_prompt_exec(struct cmd *, struct cmd_ctx *);
 
-int	 cmd_command_prompt_callback(void *, const char *);
-void	 cmd_command_prompt_cfree(void *);
+int	cmd_command_prompt_callback(void *, const char *);
+void	cmd_command_prompt_free(void *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
 	"command-prompt", NULL,
+	"p:t:", 0, 0,
 	CMD_TARGET_CLIENT_USAGE " [-p prompts] [template]",
-	0, "",
-	cmd_command_prompt_init,
-	cmd_command_prompt_parse,
-	cmd_command_prompt_exec,
-	cmd_command_prompt_free,
-	cmd_command_prompt_print
-};
-
-struct cmd_command_prompt_data {
-	char	*prompts;
-	char	*target;
-	char	*template;
+	0,
+	cmd_command_prompt_key_binding,
+	NULL,
+	cmd_command_prompt_exec
 };
 
 struct cmd_command_prompt_cdata {
@@ -62,82 +53,39 @@ struct cmd_command_prompt_cdata {
 };
 
 void
-cmd_command_prompt_init(struct cmd *self, int key)
+cmd_command_prompt_key_binding(struct cmd *self, int key)
 {
-	struct cmd_command_prompt_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	data->prompts = NULL;
-	data->target = NULL;
-	data->template = NULL;
-
 	switch (key) {
 	case ',':
-		data->template = xstrdup("rename-window '%%'");
+		self->args = args_create(1, "rename-window '%%'");
 		break;
 	case '.':
-		data->template = xstrdup("move-window -t '%%'");
+		self->args = args_create(1, "move-window -t '%%'");
 		break;
 	case 'f':
-		data->template = xstrdup("find-window '%%'");
+		self->args = args_create(1, "find-window '%%'");
 		break;
 	case '\'':
-		data->template = xstrdup("select-window -t ':%%'");
-		data->prompts = xstrdup("index");
+		self->args = args_create(1, "select-window -t ':%%'");
+		args_set(self->args, 'p', "index");
+		break;
+	default:
+		self->args = args_create(0);
 		break;
 	}
-}
-
-int
-cmd_command_prompt_parse(struct cmd *self, int argc, char **argv, char **cause)
-{
-	struct cmd_command_prompt_data	*data;
-	int				 opt;
-
-	self->entry->init(self, KEYC_NONE);
-	data = self->data;
-
-	while ((opt = getopt(argc, argv, "p:t:")) != -1) {
-		switch (opt) {
-		case 'p':
-			if (data->prompts == NULL)
-				data->prompts = xstrdup(optarg);
-			break;
-		case 't':
-			if (data->target == NULL)
-				data->target = xstrdup(optarg);
-			break;
-		default:
-			goto usage;
-		}
-	}
-	argc -= optind;
-	argv += optind;
-	if (argc != 0 && argc != 1)
-		goto usage;
-
-	if (argc == 1)
-		data->template = xstrdup(argv[0]);
-
-	return (0);
-
-usage:
-	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
-
-	self->entry->free(self);
-	return (-1);
 }
 
 int
 cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_command_prompt_data	*data = self->data;
+	struct args			*args = self->args;
+	const char			*prompts;
 	struct cmd_command_prompt_cdata	*cdata;
 	struct client			*c;
 	char				*prompt, *ptr;
 	size_t				 n;
 
-	if ((c = cmd_find_client(ctx, data->target)) == NULL)
+	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
 		return (-1);
 
 	if (c->prompt_string != NULL)
@@ -150,61 +98,31 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 	cdata->prompts = NULL;
 	cdata->template = NULL;
 
-	if (data->template != NULL)
-		cdata->template = xstrdup(data->template);
+	if (args->argc != 0)
+		cdata->template = xstrdup(args->argv[0]);
 	else
 		cdata->template = xstrdup("%1");
-	if (data->prompts != NULL)
-		cdata->prompts = xstrdup(data->prompts);
-	else if (data->template != NULL) {
-		n = strcspn(data->template, " ,");
-		xasprintf(&cdata->prompts, "(%.*s) ", (int) n, data->template);
+
+	prompts = args_get(args, 'p');
+	if (prompts != NULL)
+		cdata->prompts = xstrdup(prompts);
+	else if (args->argc != 0) {
+		n = strcspn(cdata->template, " ,");
+		xasprintf(&cdata->prompts, "(%.*s) ", (int) n, cdata->template);
 	} else
 		cdata->prompts = xstrdup(":");
 
 	cdata->next_prompt = cdata->prompts;
 	ptr = strsep(&cdata->next_prompt, ",");
-	if (data->prompts == NULL)
+	if (prompts == NULL)
 		prompt = xstrdup(ptr);
 	else
 		xasprintf(&prompt, "%s ", ptr);
 	status_prompt_set(c, prompt, cmd_command_prompt_callback,
-	    cmd_command_prompt_cfree, cdata, 0);
+	    cmd_command_prompt_free, cdata, 0);
 	xfree(prompt);
 
 	return (0);
-}
-
-void
-cmd_command_prompt_free(struct cmd *self)
-{
-	struct cmd_command_prompt_data	*data = self->data;
-
-	if (data->prompts != NULL)
-		xfree(data->prompts);
-	if (data->target != NULL)
-		xfree(data->target);
-	if (data->template != NULL)
-		xfree(data->template);
-	xfree(data);
-}
-
-size_t
-cmd_command_prompt_print(struct cmd *self, char *buf, size_t len)
-{
-	struct cmd_command_prompt_data	*data = self->data;
-	size_t				 off = 0;
-
-	off += xsnprintf(buf, len, "%s", self->entry->name);
-	if (data == NULL)
-		return (off);
-	if (off < len && data->prompts != NULL)
-		off += cmd_prarg(buf + off, len - off, " -p ", data->prompts);
-	if (off < len && data->target != NULL)
-		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
-	if (off < len && data->template != NULL)
-		off += cmd_prarg(buf + off, len - off, " ", data->template);
-	return (off);
 }
 
 int
@@ -258,7 +176,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 }
 
 void
-cmd_command_prompt_cfree(void *data)
+cmd_command_prompt_free(void *data)
 {
 	struct cmd_command_prompt_cdata	*cdata = data;
 

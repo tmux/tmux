@@ -32,56 +32,66 @@ int	cmd_save_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_save_buffer_entry = {
 	"save-buffer", "saveb",
-	"[-a] " CMD_BUFFER_USAGE " path",
-	CMD_ARG1, "a",
-	cmd_buffer_init,
-	cmd_buffer_parse,
-	cmd_save_buffer_exec,
-	cmd_buffer_free,
-	cmd_buffer_print
+	"ab:", 1, 1,
+	"[-a] " CMD_BUFFER_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_save_buffer_exec
 };
 
 int
 cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_buffer_data	*data = self->data;
+	struct args		*args = self->args;
+	struct client		*c = ctx->cmdclient;
 	struct paste_buffer	*pb;
+	const char		*path;
+	char			*cause;
+	int			 buffer;
 	mode_t			 mask;
 	FILE			*f;
 
-	if (data->buffer == -1) {
+	if (!args_has(args, 'b')) {
 		if ((pb = paste_get_top(&global_buffers)) == NULL) {
 			ctx->error(ctx, "no buffers");
 			return (-1);
 		}
 	} else {
-		pb = paste_get_index(&global_buffers, data->buffer);
+		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
+		if (cause != NULL) {
+			ctx->error(ctx, "buffer %s", cause);
+			xfree(cause);
+			return (-1);
+		}
+
+		pb = paste_get_index(&global_buffers, buffer);
 		if (pb == NULL) {
-			ctx->error(ctx, "no buffer %d", data->buffer);
+			ctx->error(ctx, "no buffer %d", buffer);
 			return (-1);
 		}
 	}
 
-	if (strcmp(data->arg, "-") == 0) {
-		if (ctx->cmdclient == NULL) {
-			ctx->error(ctx, "%s: can't write to stdout", data->arg);
+	path = args->argv[0];
+	if (strcmp(path, "-") == 0) {
+		if (c == NULL) {
+			ctx->error(ctx, "%s: can't write to stdout", path);
 			return (-1);
 		}
-		bufferevent_write(
-		    ctx->cmdclient->stdout_event, pb->data, pb->size);
+		bufferevent_write(c->stdout_event, pb->data, pb->size);
 	} else {
 		mask = umask(S_IRWXG | S_IRWXO);
-		if (cmd_check_flag(data->chflags, 'a'))
-			f = fopen(data->arg, "ab");
+		if (args_has(self->args, 'a'))
+			f = fopen(path, "ab");
 		else
-			f = fopen(data->arg, "wb");
+			f = fopen(path, "wb");
 		umask(mask);
 		if (f == NULL) {
-			ctx->error(ctx, "%s: %s", data->arg, strerror(errno));
+			ctx->error(ctx, "%s: %s", path, strerror(errno));
 			return (-1);
 		}
 		if (fwrite(pb->data, 1, pb->size, f) != pb->size) {
-			ctx->error(ctx, "%s: fwrite error", data->arg);
+			ctx->error(ctx, "%s: fwrite error", path);
 			fclose(f);
 			return (-1);
 		}

@@ -35,13 +35,12 @@ void	cmd_run_shell_free(void *);
 
 const struct cmd_entry cmd_run_shell_entry = {
 	"run-shell", "run",
+	"", 1, 1,
 	"command",
-	CMD_ARG1, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_run_shell_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_run_shell_exec
 };
 
 struct cmd_run_shell_data {
@@ -52,12 +51,12 @@ struct cmd_run_shell_data {
 int
 cmd_run_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data		*data = self->data;
+	struct args			*args = self->args;
 	struct cmd_run_shell_data	*cdata;
 	struct job			*job;
 
 	cdata = xmalloc(sizeof *cdata);
-	cdata->cmd = xstrdup(data->arg);
+	cdata->cmd = xstrdup(args->argv[0]);
 	memcpy(&cdata->ctx, ctx, sizeof cdata->ctx);
 
 	if (ctx->cmdclient != NULL)
@@ -66,7 +65,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->curclient->references++;
 
 	job = job_add(NULL, 0, NULL,
-	    data->arg, cmd_run_shell_callback, cmd_run_shell_free, cdata);
+	    args->argv[0], cmd_run_shell_callback, cmd_run_shell_free, cdata);
 	job_run(job);
 
 	return (1);	/* don't let client exit */

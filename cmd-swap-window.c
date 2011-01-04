@@ -30,27 +30,29 @@ int	cmd_swap_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_swap_window_entry = {
 	"swap-window", "swapw",
+	"ds:t:", 0, 0,
 	"[-d] " CMD_SRCDST_WINDOW_USAGE,
-	0, "d",
-	cmd_srcdst_init,
-	cmd_srcdst_parse,
-	cmd_swap_window_exec,
-	cmd_srcdst_free,
-	cmd_srcdst_print
+	0,
+	NULL,
+	NULL,
+	cmd_swap_window_exec
 };
 
 int
 cmd_swap_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_srcdst_data	*data = self->data;
+	struct args		*args = self->args;
+	const char		*target_src, *target_dst;
 	struct session		*src, *dst;
 	struct session_group	*sg_src, *sg_dst;
 	struct winlink		*wl_src, *wl_dst;
 	struct window		*w;
 
-	if ((wl_src = cmd_find_window(ctx, data->src, &src)) == NULL)
+	target_src = args_get(args, 's');
+	if ((wl_src = cmd_find_window(ctx, target_src, &src)) == NULL)
 		return (-1);
-	if ((wl_dst = cmd_find_window(ctx, data->dst, &dst)) == NULL)
+	target_dst = args_get(args, 't');
+	if ((wl_dst = cmd_find_window(ctx, target_dst, &dst)) == NULL)
 		return (-1);
 
 	sg_src = session_group_find(src);
@@ -68,7 +70,7 @@ cmd_swap_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	wl_dst->window = wl_src->window;
 	wl_src->window = w;
 
-	if (!cmd_check_flag(data->chflags, 'd')) {
+	if (!args_has(self->args, 'd')) {
 		session_select(dst, wl_dst->idx);
 		if (src != dst)
 			session_select(src, wl_src->idx);

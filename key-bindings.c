@@ -187,9 +187,10 @@ key_bindings_init(void)
 
 		cmd = xmalloc(sizeof *cmd);
 		cmd->entry = table[i].entry;
-		cmd->data = NULL;
-		if (cmd->entry->init != NULL)
-			cmd->entry->init(cmd, table[i].key);
+		if (cmd->entry->key_binding != NULL)
+			cmd->entry->key_binding(cmd, table[i].key);
+		else
+			cmd->args = args_create(0);
 		TAILQ_INSERT_HEAD(&cmdlist->list, cmd, qentry);
 
 		key_bindings_add(

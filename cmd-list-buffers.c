@@ -30,13 +30,12 @@ int	cmd_list_buffers_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_buffers_entry = {
 	"list-buffers", "lsb",
+	"", 0, 0,
 	"",
-	0, "",
+	0,
 	NULL,
 	NULL,
-	cmd_list_buffers_exec,
-	NULL,
-	NULL	
+	cmd_list_buffers_exec
 };
 
 /* ARGSUSED */

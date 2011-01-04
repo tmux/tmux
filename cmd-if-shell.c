@@ -35,13 +35,12 @@ void	cmd_if_shell_free(void *);
 
 const struct cmd_entry cmd_if_shell_entry = {
 	"if-shell", "if",
+	"", 2, 2,
 	"shell-command command",
-	CMD_ARG2, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_if_shell_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_if_shell_exec
 };
 
 struct cmd_if_shell_data {
@@ -52,12 +51,12 @@ struct cmd_if_shell_data {
 int
 cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data		*data = self->data;
+	struct args			*args = self->args;
 	struct cmd_if_shell_data	*cdata;
 	struct job			*job;
 
 	cdata = xmalloc(sizeof *cdata);
-	cdata->cmd = xstrdup(data->arg2);
+	cdata->cmd = xstrdup(args->argv[1]);
 	memcpy(&cdata->ctx, ctx, sizeof cdata->ctx);
 
 	if (ctx->cmdclient != NULL)
@@ -66,7 +65,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->curclient->references++;
 
 	job = job_add(NULL, 0, NULL,
-	    data->arg, cmd_if_shell_callback, cmd_if_shell_free, cdata);
+	    args->argv[0], cmd_if_shell_callback, cmd_if_shell_free, cdata);
 	job_run(job);
 
 	return (1);	/* don't let client exit */

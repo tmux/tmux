@@ -24,44 +24,39 @@
  * Move to next window.
  */
 
-void	cmd_next_window_init(struct cmd *, int);
+void	cmd_next_window_key_binding(struct cmd *, int);
 int	cmd_next_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_next_window_entry = {
 	"next-window", "next",
+	"at:", 0, 0,
 	"[-a] " CMD_TARGET_SESSION_USAGE,
-	0, "a",
-	cmd_next_window_init,
-	cmd_target_parse,
-	cmd_next_window_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	cmd_next_window_key_binding,
+	NULL,
+	cmd_next_window_exec
 };
 
 void
-cmd_next_window_init(struct cmd *self, int key)
+cmd_next_window_key_binding(struct cmd *self, int key)
 {
-	struct cmd_target_data	*data;
-
-	cmd_target_init(self, key);
-	data = self->data;
-
+	self->args = args_create(0);
 	if (key == ('n' | KEYC_ESCAPE))
-		cmd_set_flag(&data->chflags, 'a');
+		args_set(self->args, 'a', NULL);
 }
 
 int
 cmd_next_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct session		*s;
-	int			 activity;
+	struct args	*args = self->args;
+	struct session	*s;
+	int		 activity;
 
-	if ((s = cmd_find_session(ctx, data->target)) == NULL)
+	if ((s = cmd_find_session(ctx, args_get(args, 't'))) == NULL)
 		return (-1);
 
 	activity = 0;
-	if (cmd_check_flag(data->chflags, 'a'))
+	if (args_has(self->args, 'a'))
 		activity = 1;
 
 	if (session_next(s, activity) == 0)

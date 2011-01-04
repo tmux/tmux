@@ -167,7 +167,7 @@ cmd_unpack_argv(char *buf, size_t len, int argc, char ***argv)
 }
 
 char **
-cmd_copy_argv(int argc, char **argv)
+cmd_copy_argv(int argc, char *const *argv)
 {
 	char	**new_argv;
 	int	  i;
@@ -201,8 +201,9 @@ cmd_parse(int argc, char **argv, char **cause)
 {
 	const struct cmd_entry **entryp, *entry;
 	struct cmd		*cmd;
+	struct args		*args;
 	char			 s[BUFSIZ];
-	int			 opt, ambiguous = 0;
+	int			 ambiguous = 0;
 
 	*cause = NULL;
 	if (argc == 0) {
@@ -236,30 +237,19 @@ cmd_parse(int argc, char **argv, char **cause)
 		return (NULL);
 	}
 
-	optreset = 1;
-	optind = 1;
-	if (entry->parse == NULL) {
-		while ((opt = getopt(argc, argv, "")) != -1) {
-			switch (opt) {
-			default:
-				goto usage;
-			}
-		}
-		argc -= optind;
-		argv += optind;
-		if (argc != 0)
-			goto usage;
-	}
+	args = args_parse(entry->args_template, argc, argv);
+	if (args == NULL)
+		goto usage;
+	if (entry->args_lower != -1 && args->argc < entry->args_lower)
+		goto usage;
+	if (entry->args_upper != -1 && args->argc > entry->args_upper)
+		goto usage;
+	if (entry->check != NULL && entry->check(args) != 0)
+		goto usage;
 
 	cmd = xmalloc(sizeof *cmd);
 	cmd->entry = entry;
-	cmd->data = NULL;
-	if (entry->parse != NULL) {
-		if (entry->parse(cmd, argc, argv, cause) != 0) {
-			xfree(cmd);
-			return (NULL);
-		}
-	}
+	cmd->args = args;
 	return (cmd);
 
 ambiguous:
@@ -277,6 +267,8 @@ ambiguous:
 	return (NULL);
 
 usage:
+	if (args != NULL)
+		args_free(args);
 	xasprintf(cause, "usage: %s %s", entry->name, entry->usage);
 	return (NULL);
 }
@@ -290,17 +282,27 @@ cmd_exec(struct cmd *cmd, struct cmd_ctx *ctx)
 void
 cmd_free(struct cmd *cmd)
 {
-	if (cmd->data != NULL && cmd->entry->free != NULL)
-		cmd->entry->free(cmd);
+	if (cmd->args != NULL)
+		args_free(cmd->args);
 	xfree(cmd);
 }
 
 size_t
 cmd_print(struct cmd *cmd, char *buf, size_t len)
 {
-	if (cmd->entry->print == NULL)
-		return (xsnprintf(buf, len, "%s", cmd->entry->name));
-	return (cmd->entry->print(cmd, buf, len));
+	size_t	off, used;
+
+	off = xsnprintf(buf, len, "%s ", cmd->entry->name);
+	if (off < len) {
+		used = args_print(cmd->args, buf + off, len - off);
+		if (used == 0)
+			buf[off - 1] = '\0';
+		else {
+			off += used;
+			buf[off] = '\0';
+		}
+	}
+	return (off);
 }
 
 /*

@@ -26,84 +26,90 @@
  * Increase or decrease pane size.
  */
 
-void	cmd_resize_pane_init(struct cmd *, int);
+void	cmd_resize_pane_key_binding(struct cmd *, int);
 int	cmd_resize_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_resize_pane_entry = {
 	"resize-pane", "resizep",
+	"DLRt:U", 0, 1,
 	"[-DLRU] " CMD_TARGET_PANE_USAGE " [adjustment]",
-	CMD_ARG01, "DLRU",
-	cmd_resize_pane_init,
-	cmd_target_parse,
-	cmd_resize_pane_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	cmd_resize_pane_key_binding,
+	NULL,
+	cmd_resize_pane_exec
 };
 
 void
-cmd_resize_pane_init(struct cmd *self, int key)
+cmd_resize_pane_key_binding(struct cmd *self, int key)
 {
-	struct cmd_target_data	*data;
-
-	cmd_target_init(self, key);
-	data = self->data;
-
-	if (key == (KEYC_UP | KEYC_CTRL))
-		cmd_set_flag(&data->chflags, 'U');
-	if (key == (KEYC_DOWN | KEYC_CTRL))
-		cmd_set_flag(&data->chflags, 'D');
-	if (key == (KEYC_LEFT | KEYC_CTRL))
-		cmd_set_flag(&data->chflags, 'L');
-	if (key == (KEYC_RIGHT | KEYC_CTRL))
-		cmd_set_flag(&data->chflags, 'R');
-
-	if (key == (KEYC_UP | KEYC_ESCAPE)) {
-		cmd_set_flag(&data->chflags, 'U');
-		data->arg = xstrdup("5");
-	}
-	if (key == (KEYC_DOWN | KEYC_ESCAPE)) {
-		cmd_set_flag(&data->chflags, 'D');
-		data->arg = xstrdup("5");
-	}
-	if (key == (KEYC_LEFT | KEYC_ESCAPE)) {
-		cmd_set_flag(&data->chflags, 'L');
-		data->arg = xstrdup("5");
-	}
-	if (key == (KEYC_RIGHT | KEYC_ESCAPE)) {
-		cmd_set_flag(&data->chflags, 'R');
-		data->arg = xstrdup("5");
+	switch (key) {
+	case KEYC_UP | KEYC_CTRL:
+		self->args = args_create(0);
+		args_set(self->args, 'U', NULL);
+		break;
+	case KEYC_DOWN | KEYC_CTRL:
+		self->args = args_create(0);
+		args_set(self->args, 'D', NULL);
+		break;
+	case KEYC_LEFT | KEYC_CTRL:
+		self->args = args_create(0);
+		args_set(self->args, 'L', NULL);
+		break;
+	case KEYC_RIGHT | KEYC_CTRL:
+		self->args = args_create(0);
+		args_set(self->args, 'R', NULL);
+		break;
+	case KEYC_UP | KEYC_ESCAPE:
+		self->args = args_create(1, "5");
+		args_set(self->args, 'U', NULL);
+		break;
+	case KEYC_DOWN | KEYC_ESCAPE:
+		self->args = args_create(1, "5");
+		args_set(self->args, 'D', NULL);
+		break;
+	case KEYC_LEFT | KEYC_ESCAPE:
+		self->args = args_create(1, "5");
+		args_set(self->args, 'L', NULL);
+		break;
+	case KEYC_RIGHT | KEYC_ESCAPE:
+		self->args = args_create(1, "5");
+		args_set(self->args, 'R', NULL);
+		break;
+	default:
+		self->args = args_create(0);
+		break;
 	}
 }
 
 int
 cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
+	struct args		*args = self->args;
 	struct winlink		*wl;
 	const char	       	*errstr;
 	struct window_pane	*wp;
 	u_int			 adjust;
 
-	if ((wl = cmd_find_pane(ctx, data->target, NULL, &wp)) == NULL)
+	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp)) == NULL)
 		return (-1);
 
-	if (data->arg == NULL)
+	if (args->argc == 0)
 		adjust = 1;
 	else {
-		adjust = strtonum(data->arg, 1, INT_MAX, &errstr);
+		adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
-			ctx->error(ctx, "adjustment %s: %s", errstr, data->arg);
+			ctx->error(ctx, "adjustment %s", errstr);
 			return (-1);
 		}
 	}
 
-	if (cmd_check_flag(data->chflags, 'L'))
+	if (args_has(self->args, 'L'))
 		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, -adjust);
-	else if (cmd_check_flag(data->chflags, 'R'))
+	else if (args_has(self->args, 'R'))
 		layout_resize_pane(wp, LAYOUT_LEFTRIGHT, adjust);
-	else if (cmd_check_flag(data->chflags, 'U'))
+	else if (args_has(self->args, 'U'))
 		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, -adjust);
-	else if (cmd_check_flag(data->chflags, 'D'))
+	else if (args_has(self->args, 'D'))
 		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, adjust);
 	server_redraw_window(wl->window);
 

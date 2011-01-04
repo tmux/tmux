@@ -28,22 +28,21 @@ int	cmd_last_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_last_window_entry = {
 	"last-window", "last",
+	"t:", 0, 0,
 	CMD_TARGET_SESSION_USAGE,
-	0, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_last_window_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_last_window_exec
 };
 
 int
 cmd_last_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct session		*s;
+	struct args	*args = self->args;
+	struct session	*s;
 
-	if ((s = cmd_find_session(ctx, data->target)) == NULL)
+	if ((s = cmd_find_session(ctx, args_get(args, 't'))) == NULL)
 		return (-1);
 
 	if (session_last(s) == 0)

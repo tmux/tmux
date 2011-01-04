@@ -26,128 +26,40 @@
  * Send keys to client.
  */
 
-int	cmd_send_keys_parse(struct cmd *, int, char **, char **);
 int	cmd_send_keys_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_send_keys_free(struct cmd *);
-size_t	cmd_send_keys_print(struct cmd *, char *, size_t);
-
-struct cmd_send_keys_data {
-	char	*target;
-	u_int	 nkeys;
-	int	*keys;
-};
 
 const struct cmd_entry cmd_send_keys_entry = {
 	"send-keys", "send",
+	"t:", 0, -1,
 	"[-t target-pane] key ...",
-	0, "",
+	0,
 	NULL,
-	cmd_send_keys_parse,
-	cmd_send_keys_exec,
-	cmd_send_keys_free,
-	cmd_send_keys_print
+	NULL,
+	cmd_send_keys_exec
 };
-
-int
-cmd_send_keys_parse(struct cmd *self, int argc, char **argv, char **cause)
-{
-	struct cmd_send_keys_data	*data;
-	int				 opt, key;
-	char				*s;
-
-	self->data = data = xmalloc(sizeof *data);
-	data->target = NULL;
-	data->nkeys = 0;
-	data->keys = NULL;
-
-	while ((opt = getopt(argc, argv, "t:")) != -1) {
-		switch (opt) {
-		case 't':
-			if (data->target == NULL)
-				data->target = xstrdup(optarg);
-			break;
-		default:
-			goto usage;
-		}
-	}
-	argc -= optind;
-	argv += optind;
-	if (argc == 0)
-		goto usage;
-
-	while (argc-- != 0) {
-		if ((key = key_string_lookup_string(*argv)) != KEYC_NONE) {
-			data->keys = xrealloc(
-			    data->keys, data->nkeys + 1, sizeof *data->keys);
-			data->keys[data->nkeys++] = key;
-		} else {
-			for (s = *argv; *s != '\0'; s++) {
-				data->keys = xrealloc(data->keys,
-				    data->nkeys + 1, sizeof *data->keys);
-				data->keys[data->nkeys++] = *s;
-			}
-		}
-
-		argv++;
-	}
-
-	return (0);
-
-usage:
-	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
-
-	self->entry->free(self);
-	return (-1);
-}
 
 int
 cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_send_keys_data	*data = self->data;
-	struct window_pane		*wp;
-	struct session			*s;
-	u_int				 i;
+	struct args		*args = self->args;
+	struct window_pane	*wp;
+	struct session		*s;
+	const char		*str;
+	int			 i, key;
 
-	if (data == NULL)
+	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
 		return (-1);
 
-	if (cmd_find_pane(ctx, data->target, &s, &wp) == NULL)
-		return (-1);
+	for (i = 0; i < args->argc; i++) {
+		str = args->argv[i];
 
-	for (i = 0; i < data->nkeys; i++)
-		window_pane_key(wp, s, data->keys[i]);
+		if ((key = key_string_lookup_string(str)) != KEYC_NONE) {
+			    window_pane_key(wp, s, key);
+		} else {
+			for (; *str != '\0'; str++)
+			    window_pane_key(wp, s, *str);
+		}
+	}
 
 	return (0);
-}
-
-void
-cmd_send_keys_free(struct cmd *self)
-{
-	struct cmd_send_keys_data	*data = self->data;
-
-	if (data->target != NULL)
-		xfree(data->target);
-	xfree(data);
-}
-
-size_t
-cmd_send_keys_print(struct cmd *self, char *buf, size_t len)
-{
-	struct cmd_send_keys_data	*data = self->data;
-	size_t				 off = 0;
-	u_int				 i;
-
-	off += xsnprintf(buf, len, "%s", self->entry->name);
-	if (data == NULL)
-		return (off);
-	if (off < len && data->target != NULL)
-		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
-
-	for (i = 0; i < data->nkeys; i++) {
-		if (off >= len)
-			break;
-		off += xsnprintf(buf + off,
-		    len - off, " %s", key_string_lookup_key(data->keys[i]));
-	}
-	return (off);
 }

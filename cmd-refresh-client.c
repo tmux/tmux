@@ -28,22 +28,21 @@ int	cmd_refresh_client_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_refresh_client_entry = {
 	"refresh-client", "refresh",
+	"t:", 0, 0,
 	CMD_TARGET_CLIENT_USAGE,
-	0, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_refresh_client_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_refresh_client_exec
 };
 
 int
 cmd_refresh_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct client		*c;
+	struct args	*args = self->args;
+	struct client	*c;
 
-	if ((c = cmd_find_client(ctx, data->target)) == NULL)
+	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
 		return (-1);
 
 	server_redraw_client(c);

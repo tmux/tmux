@@ -30,31 +30,30 @@ int	cmd_move_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_move_window_entry = {
 	"move-window", "movew",
+	"dks:t:", 0, 0,
 	"[-dk] " CMD_SRCDST_WINDOW_USAGE,
-	0, "dk",
-	cmd_srcdst_init,
-	cmd_srcdst_parse,
-	cmd_move_window_exec,
-	cmd_srcdst_free,
-	cmd_srcdst_print
+	0,
+	NULL,
+	NULL,
+	cmd_move_window_exec
 };
 
 int
 cmd_move_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_srcdst_data	*data = self->data;
-	struct session		*src, *dst;
-	struct winlink		*wl;
-	char			*cause;
-	int			 idx, kflag, dflag;
+	struct args	*args = self->args;
+	struct session	*src, *dst;
+	struct winlink	*wl;
+	char		*cause;
+	int		 idx, kflag, dflag;
 
-	if ((wl = cmd_find_window(ctx, data->src, &src)) == NULL)
+	if ((wl = cmd_find_window(ctx, args_get(args, 's'), &src)) == NULL)
 		return (-1);
-	if ((idx = cmd_find_index(ctx, data->dst, &dst)) == -2)
+	if ((idx = cmd_find_index(ctx, args_get(args, 't'), &dst)) == -2)
 		return (-1);
 
-	kflag = cmd_check_flag(data->chflags, 'k');
-	dflag = cmd_check_flag(data->chflags, 'd');
+	kflag = args_has(self->args, 'k');
+	dflag = args_has(self->args, 'd');
 	if (server_link_window(src, wl, dst, idx, kflag, !dflag, &cause) != 0) {
 		ctx->error(ctx, "can't move window: %s", cause);
 		xfree(cause);

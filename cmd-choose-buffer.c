@@ -33,24 +33,23 @@ void	cmd_choose_buffer_free(void *);
 
 const struct cmd_entry cmd_choose_buffer_entry = {
 	"choose-buffer", NULL,
+	"t:", 0, 1,
 	CMD_TARGET_WINDOW_USAGE " [template]",
-	CMD_ARG01, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_choose_buffer_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_choose_buffer_exec
 };
 
 struct cmd_choose_buffer_data {
-	struct client	*client;
-	char   		*template;
+	struct client   *client;
+	char            *template;
 };
 
 int
 cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data		*data = self->data;
+	struct args			*args = self->args;
 	struct cmd_choose_buffer_data	*cdata;
 	struct winlink			*wl;
 	struct paste_buffer		*pb;
@@ -62,7 +61,7 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
+	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (-1);
 
 	if (paste_get_top(&global_buffers) == NULL)
@@ -80,8 +79,8 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	cdata = xmalloc(sizeof *cdata);
-	if (data->arg != NULL)
-		cdata->template = xstrdup(data->arg);
+	if (args->argc != 0)
+		cdata->template = xstrdup(args->argv[0]);
 	else
 		cdata->template = xstrdup("paste-buffer -b '%%'");
 	cdata->client = ctx->curclient;

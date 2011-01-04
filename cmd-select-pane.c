@@ -24,62 +24,57 @@
  * Select pane.
  */
 
-void	cmd_select_pane_init(struct cmd *, int);
+void	cmd_select_pane_key_binding(struct cmd *, int);
 int	cmd_select_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_select_pane_entry = {
 	"select-pane", "selectp",
+	"DLRt:U", 0, 0,
 	"[-DLRU] " CMD_TARGET_PANE_USAGE,
-	0, "DLRU",
-	cmd_select_pane_init,
-	cmd_target_parse,
-	cmd_select_pane_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	cmd_select_pane_key_binding,
+	NULL,
+	cmd_select_pane_exec
 };
 
 void
-cmd_select_pane_init(struct cmd *self, int key)
+cmd_select_pane_key_binding(struct cmd *self, int key)
 {
-	struct cmd_target_data	*data;
-
-	cmd_target_init(self, key);
-	data = self->data;
-
+	self->args = args_create(0);
 	if (key == KEYC_UP)
-		cmd_set_flag(&data->chflags, 'U');
+		args_set(self->args, 'U', NULL);
 	if (key == KEYC_DOWN)
-		cmd_set_flag(&data->chflags, 'D');
+		args_set(self->args, 'D', NULL);
 	if (key == KEYC_LEFT)
-		cmd_set_flag(&data->chflags, 'L');
+		args_set(self->args, 'L', NULL);
 	if (key == KEYC_RIGHT)
-		cmd_set_flag(&data->chflags, 'R');
+		args_set(self->args, 'R', NULL);
 	if (key == 'o')
-		data->target = xstrdup(":.+");
+		args_set(self->args, 't', ":.+");
 }
 
 int
 cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
+	struct args		*args = self->args;
 	struct winlink		*wl;
 	struct window_pane	*wp;
 
-	if ((wl = cmd_find_pane(ctx, data->target, NULL, &wp)) == NULL)
+	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp)) == NULL)
 		return (-1);
 
 	if (!window_pane_visible(wp)) {
-		ctx->error(ctx, "pane not visible: %s", data->target);
+		ctx->error(ctx, "pane not visible");
 		return (-1);
 	}
 
-	if (cmd_check_flag(data->chflags, 'L'))
+	if (args_has(self->args, 'L'))
 		wp = window_pane_find_left(wp);
-	else if (cmd_check_flag(data->chflags, 'R'))
+	else if (args_has(self->args, 'R'))
 		wp = window_pane_find_right(wp);
-	else if (cmd_check_flag(data->chflags, 'U'))
+	else if (args_has(self->args, 'U'))
 		wp = window_pane_find_up(wp);
-	else if (cmd_check_flag(data->chflags, 'D'))
+	else if (args_has(self->args, 'D'))
 		wp = window_pane_find_down(wp);
 	if (wp == NULL) {
 		ctx->error(ctx, "pane not found");

@@ -28,13 +28,12 @@ int	cmd_list_commands_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_commands_entry = {
 	"list-commands", "lscm",
+	"", 0, 0,
 	"",
-	0, "",
+	0,
 	NULL,
 	NULL,
-	cmd_list_commands_exec,
-	NULL,
-	NULL
+	cmd_list_commands_exec
 };
 
 /* ARGSUSED */

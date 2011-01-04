@@ -30,23 +30,22 @@ int	cmd_kill_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_kill_pane_entry = {
 	"kill-pane", "killp",
+	"at:", 0, 0,
 	"[-a] " CMD_TARGET_PANE_USAGE,
-	0, "a",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_kill_pane_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_kill_pane_exec
 };
 
 int
 cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
+	struct args		*args = self->args;
 	struct winlink		*wl;
 	struct window_pane	*loopwp, *nextwp, *wp;
 
-	if ((wl = cmd_find_pane(ctx, data->target, NULL, &wp)) == NULL)
+	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp)) == NULL)
 		return (-1);
 
 	if (window_count_panes(wl->window) == 1) {
@@ -56,7 +55,7 @@ cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (0);
 	}
 
-	if (cmd_check_flag(data->chflags, 'a')) {
+	if (args_has(self->args, 'a')) {
 		loopwp = TAILQ_FIRST(&wl->window->panes);
 		while (loopwp != NULL) {
 			nextwp = TAILQ_NEXT(loopwp, entry);

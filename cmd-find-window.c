@@ -34,13 +34,12 @@ void	cmd_find_window_free(void *);
 
 const struct cmd_entry cmd_find_window_entry = {
 	"find-window", "findw",
+	"t:", 1, 1,
 	CMD_TARGET_WINDOW_USAGE " match-string",
-	CMD_ARG1, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_find_window_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_find_window_exec
 };
 
 struct cmd_find_window_data {
@@ -50,7 +49,7 @@ struct cmd_find_window_data {
 int
 cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data		*data = self->data;
+	struct args			*args = self->args;
 	struct cmd_find_window_data	*cdata;
 	struct session			*s;
 	struct winlink			*wl, *wm;
@@ -58,7 +57,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_pane		*wp;
 	ARRAY_DECL(, u_int)	 	 list_idx;
 	ARRAY_DECL(, char *)	 	 list_ctx;
-	char				*sres, *sctx, *searchstr;
+	char				*str, *sres, *sctx, *searchstr;
 	u_int				 i, line;
 
 	if (ctx->curclient == NULL) {
@@ -67,13 +66,15 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	s = ctx->curclient->session;
 
-	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
+	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (-1);
+
+	str = args->argv[0];
 
 	ARRAY_INIT(&list_idx);
 	ARRAY_INIT(&list_ctx);
 
-	xasprintf(&searchstr, "*%s*", data->arg);
+	xasprintf(&searchstr, "*%s*", str);
 	RB_FOREACH(wm, winlinks, &s->windows) {
 		i = 0;
 		TAILQ_FOREACH(wp, &wm->window->panes, entry) {
@@ -82,7 +83,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			if (fnmatch(searchstr, wm->window->name, 0) == 0)
 				sctx = xstrdup("");
 			else {
-				sres = window_pane_search(wp, data->arg, &line);
+				sres = window_pane_search(wp, str, &line);
 				if (sres == NULL &&
 				    fnmatch(searchstr, wp->base.title, 0) != 0)
 					continue;
@@ -106,7 +107,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	xfree(searchstr);
 
 	if (ARRAY_LENGTH(&list_idx) == 0) {
-		ctx->error(ctx, "no windows matching: %s", data->arg);
+		ctx->error(ctx, "no windows matching: %s", str);
 		ARRAY_FREE(&list_idx);
 		ARRAY_FREE(&list_ctx);
 		return (-1);

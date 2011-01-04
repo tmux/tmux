@@ -27,138 +27,58 @@
  * Switch client to a different session.
  */
 
-void	cmd_switch_client_init(struct cmd *, int);
-int	cmd_switch_client_parse(struct cmd *, int, char **, char **);
+void	cmd_switch_client_key_binding(struct cmd *, int);
 int	cmd_switch_client_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_switch_client_free(struct cmd *);
-size_t	cmd_switch_client_print(struct cmd *, char *, size_t);
-
-struct cmd_switch_client_data {
-	char	*name;
-	char	*target;
-	int      flag_last;
-	int	 flag_next;
-	int	 flag_previous;
-};
 
 const struct cmd_entry cmd_switch_client_entry = {
 	"switch-client", "switchc",
+	"lc:npt:", 0, 0,
 	"[-lnp] [-c target-client] [-t target-session]",
-	0, "",
-	cmd_switch_client_init,
-	cmd_switch_client_parse,
-	cmd_switch_client_exec,
-	cmd_switch_client_free,
-	cmd_switch_client_print
+	0,
+	cmd_switch_client_key_binding,
+	NULL,
+	cmd_switch_client_exec
 };
 
 void
-cmd_switch_client_init(struct cmd *self, int key)
+cmd_switch_client_key_binding(struct cmd *self, int key)
 {
-	struct cmd_switch_client_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	data->name = NULL;
-	data->target = NULL;
-	data->flag_last = 0;
-	data->flag_next = 0;
-	data->flag_previous = 0;
-
+	self->args = args_create(0);
 	switch (key) {
 	case '(':
-		data->flag_previous = 1;
+		args_set(self->args, 'p', NULL);
 		break;
 	case ')':
-		data->flag_next = 1;
+		args_set(self->args, 'n', NULL);
 		break;
 	case 'L':
-		data->flag_last = 1;
+		args_set(self->args, 'l', NULL);
 		break;
 	}
-}
-
-int
-cmd_switch_client_parse(struct cmd *self, int argc, char **argv, char **cause)
-{
-	struct cmd_switch_client_data	*data;
-	int				 opt;
-
-	self->entry->init(self, KEYC_NONE);
-	data = self->data;
-
-	while ((opt = getopt(argc, argv, "c:lnpt:")) != -1) {
-		switch (opt) {
-		case 'c':
-			if (data->name == NULL)
-				data->name = xstrdup(optarg);
-			break;
-		case 'l':
-			if (data->flag_next || data->flag_previous ||
-			    data->target != NULL)
-				goto usage;
-			data->flag_last = 1;
-			break;
-		case 'n':
-			if (data->flag_previous || data->flag_last ||
-			    data->target != NULL)
-				goto usage;
-			data->flag_next = 1;
-			break;
-		case 'p':
-			if (data->flag_next || data->flag_last ||
-			    data->target != NULL)
-				goto usage;
-			data->flag_next = 1;
-			break;
-		case 't':
-			if (data->flag_next || data->flag_previous)
-				goto usage;
-			if (data->target == NULL)
-				data->target = xstrdup(optarg);
-			break;
-		default:
-			goto usage;
-		}
-	}
-	argc -= optind;
-	argv += optind;
-	if (argc != 0)
-		goto usage;
-
-	return (0);
-
-usage:
-	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
-
-	self->entry->free(self);
-	return (-1);
 }
 
 int
 cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_switch_client_data	*data = self->data;
-	struct client			*c;
-	struct session			*s;
+	struct args	*args = self->args;
+	struct client	*c;
+	struct session	*s;
 
-	if (data == NULL)
-		return (0);
-
-	if ((c = cmd_find_client(ctx, data->name)) == NULL)
+	if ((c = cmd_find_client(ctx, args_get(args, 'c'))) == NULL)
 		return (-1);
 
 	s = NULL;
-	if (data->flag_next) {
+	if (args_has(args, 'n')) {
 		if ((s = session_next_session(c->session)) == NULL) {
 			ctx->error(ctx, "can't find next session");
 			return (-1);
 		}
-	} else if (data->flag_previous) {
+	} else if (args_has(args, 'p')) {
 		if ((s = session_previous_session(c->session)) == NULL) {
 			ctx->error(ctx, "can't find previous session");
 			return (-1);
 		}
-	} else if (data->flag_last) {
+	} else if (args_has(args, 'l')) {
 		if (c->last_session != NULL && session_alive(c->last_session))
 			s = c->last_session;
 		if (s == NULL) {
@@ -166,7 +86,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 			return (-1);
 		}
 	} else
-		s = cmd_find_session(ctx, data->target);
+		s = cmd_find_session(ctx, args_get(args, 't'));
 	if (s == NULL)
 		return (-1);
 
@@ -180,38 +100,4 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	server_redraw_client(c);
 
 	return (0);
-}
-
-void
-cmd_switch_client_free(struct cmd *self)
-{
-	struct cmd_switch_client_data	*data = self->data;
-
-	if (data->name != NULL)
-		xfree(data->name);
-	if (data->target != NULL)
-		xfree(data->target);
-	xfree(data);
-}
-
-size_t
-cmd_switch_client_print(struct cmd *self, char *buf, size_t len)
-{
-	struct cmd_switch_client_data	*data = self->data;
-	size_t				 off = 0;
-
-	off += xsnprintf(buf, len, "%s", self->entry->name);
-	if (data == NULL)
-		return (off);
-	if (off < len && data->flag_last)
-		off += xsnprintf(buf + off, len - off, "%s", " -l");
-	if (off < len && data->flag_next)
-		off += xsnprintf(buf + off, len - off, "%s", " -n");
-	if (off < len && data->flag_previous)
-		off += xsnprintf(buf + off, len - off, "%s", " -p");
-	if (off < len && data->name != NULL)
-		off += cmd_prarg(buf + off, len - off, " -c ", data->name);
-	if (off < len && data->target != NULL)
-		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
-	return (off);
 }

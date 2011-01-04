@@ -24,80 +24,31 @@
  * Sources a configuration file.
  */
 
-int	cmd_source_file_parse(struct cmd *, int, char **, char **);
 int	cmd_source_file_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_source_file_free(struct cmd *);
-void	cmd_source_file_init(struct cmd *, int);
-size_t	cmd_source_file_print(struct cmd *, char *, size_t);
-
-struct cmd_source_file_data {
-	char *path;
-};
 
 const struct cmd_entry cmd_source_file_entry = {
 	"source-file", "source",
+	"", 1, 1,
 	"path",
-	0, "",
-	cmd_source_file_init,
-	cmd_source_file_parse,
-	cmd_source_file_exec,
-	cmd_source_file_free,
-	cmd_source_file_print
+	0,
+	NULL,
+	NULL,
+	cmd_source_file_exec
 };
-
-/* ARGSUSED */
-void
-cmd_source_file_init(struct cmd *self, unused int arg)
-{
-	struct cmd_source_file_data	*data;
-
-	self->data = data = xmalloc(sizeof *data);
-	data->path = NULL;
-}
-
-int
-cmd_source_file_parse(struct cmd *self, int argc, char **argv, char **cause)
-{
-	struct cmd_source_file_data	*data;
-	int				 opt;
-
-	self->entry->init(self, KEYC_NONE);
-	data = self->data;
-
-	while ((opt = getopt(argc, argv, "")) != -1) {
-		switch (opt) {
-		default:
-			goto usage;
-		}
-	}
-	argc -= optind;
-	argv += optind;
-	if (argc != 1)
-		goto usage;
-
-	data->path = xstrdup(argv[0]);
-	return (0);
-
-usage:
-	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
-
-	self->entry->free(self);
-	return (-1);
-}
 
 int
 cmd_source_file_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_source_file_data	*data = self->data;
-	struct causelist		 causes;
-	char				*cause;
-	struct window_pane		*wp;
-	int				 retval;
-	u_int				 i;
+	struct args		*args = self->args;
+	struct causelist	 causes;
+	char			*cause;
+	struct window_pane	*wp;
+	int			 retval;
+	u_int			 i;
 
 	ARRAY_INIT(&causes);
 
-	retval = load_cfg(data->path, ctx, &causes);
+	retval = load_cfg(args->argv[0], ctx, &causes);
 	if (ARRAY_EMPTY(&causes))
 		return (retval);
 
@@ -120,28 +71,4 @@ cmd_source_file_exec(struct cmd *self, struct cmd_ctx *ctx)
 	ARRAY_FREE(&causes);
 
 	return (retval);
-}
-
-void
-cmd_source_file_free(struct cmd *self)
-{
-	struct cmd_source_file_data	*data = self->data;
-
-	if (data->path != NULL)
-		xfree(data->path);
-	xfree(data);
-}
-
-size_t
-cmd_source_file_print(struct cmd *self, char *buf, size_t len)
-{
-	struct cmd_source_file_data	*data = self->data;
-	size_t				off = 0;
-
-	off += xsnprintf(buf, len, "%s", self->entry->name);
-	if (data == NULL)
-		return (off);
-	if (off < len && data->path != NULL)
-		off += cmd_prarg(buf + off, len - off, " ", data->path);
-	return (off);
 }

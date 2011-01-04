@@ -30,33 +30,32 @@ int	cmd_display_message_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_display_message_entry = {
 	"display-message", "display",
+	"pt:", 0, 1,
 	"[-p] " CMD_TARGET_CLIENT_USAGE " [message]",
-	CMD_ARG01, "p",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_display_message_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_display_message_exec
 };
 
 int
 cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
+	struct args		*args = self->args;
 	struct client		*c;
 	const char		*template;
 	char			*msg;
 
-	if ((c = cmd_find_client(ctx, data->target)) == NULL)
+	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
 		return (-1);
 
-	if (data->arg == NULL)
+	if (args->argc == 0)
 		template = "[#S] #I:#W, current pane #P - (%H:%M %d-%b-%y)";
 	else
-		template = data->arg;
+		template = args->argv[0];
 
 	msg = status_replace(c, NULL, template, time(NULL), 0);
-	if (cmd_check_flag(data->chflags, 'p'))
+	if (args_has(self->args, 'p'))
 		ctx->print(ctx, "%s", msg);
 	else
 		status_message_set(c, "%s", msg);

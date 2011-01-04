@@ -28,13 +28,12 @@ int	cmd_start_server_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_start_server_entry = {
 	"start-server", "start",
+	"", 0, 0,
 	"",
-	CMD_STARTSERVER, "",
+	CMD_STARTSERVER,
 	NULL,
 	NULL,
-	cmd_start_server_exec,
-	NULL,
-	NULL
+	cmd_start_server_exec
 };
 
 /* ARGSUSED */

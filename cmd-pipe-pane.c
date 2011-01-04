@@ -38,19 +38,18 @@ void	cmd_pipe_pane_error_callback(struct bufferevent *, short, void *);
 
 const struct cmd_entry cmd_pipe_pane_entry = {
 	"pipe-pane", "pipep",
+	"ot:", 0, 1,
 	CMD_TARGET_PANE_USAGE "[-o] [command]",
-	CMD_ARG01, "o",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_pipe_pane_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_pipe_pane_exec
 };
 
 int
 cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
+	struct args		*args = self->args;
 	struct client		*c;
 	struct window_pane	*wp;
 	char			*command;
@@ -59,7 +58,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((c = cmd_find_client(ctx, NULL)) == NULL)
 		return (-1);
 
-	if (cmd_find_pane(ctx, data->target, NULL, &wp) == NULL)
+	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
 		return (-1);
 
 	/* Destroy the old pipe. */
@@ -71,7 +70,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	/* If no pipe command, that is enough. */
-	if (data->arg == NULL || *data->arg == '\0')
+	if (args->argc == 0 || *args->argv[0] == '\0')
 		return (0);
 
 	/*
@@ -80,7 +79,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 *
 	 *	bind ^p pipep -o 'cat >>~/output'
 	 */
-	if (cmd_check_flag(data->chflags, 'o') && old_fd != -1)
+	if (args_has(self->args, 'o') && old_fd != -1)
 		return (0);
 
 	/* Open the new pipe. */
@@ -114,7 +113,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		closefrom(STDERR_FILENO + 1);
 
-		command = status_replace(c, NULL, data->arg, time(NULL), 0);
+		command = status_replace(c, NULL, args->argv[0], time(NULL), 0);
 		execl(_PATH_BSHELL, "sh", "-c", command, (char *) NULL);
 		_exit(1);
 	default:
