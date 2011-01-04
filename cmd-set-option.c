@@ -115,7 +115,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "invalid option");
 		return (-1);
 	}
-	if (args->argc < 1)
+	if (args->argc < 2)
 		valstr = NULL;
 	else
 		valstr = args->argv[1];
