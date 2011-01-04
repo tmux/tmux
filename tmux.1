@@ -1255,6 +1255,7 @@ lower) with
 .Fl U
 or downward (numerically higher).
 .It Xo Ic select-layout
+.Op Fl np
 .Op Fl t Ar target-window
 .Op Ar layout-name
 .Xc
@@ -1263,8 +1264,16 @@ Choose a specific layout for a window.
 If
 .Ar layout-name
 is not given, the last preset layout used (if any) is reapplied.
+.Fl n
+and
+.Fl p
+are equivalent to the
+.Ic next-layout
+and
+.Ic previous-layout
+commands.
 .It Xo Ic select-pane
-.Op Fl DLRU
+.Op Fl lDLRU
 .Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic selectp )
@@ -1280,10 +1289,27 @@ or
 .Fl U
 is used, respectively the pane below, to the left, to the right, or above the
 target pane is used.
-.It Ic select-window Op Fl t Ar target-window
+.Fl l
+is the same as using the
+.Ic last-pane
+command.
+.It Xo Ic select-window
+.Op Fl lnp
+.Op Fl t Ar target-window
+.Xc
 .D1 (alias: Ic selectw )
 Select the window at
 .Ar target-window .
+.Fl l ,
+.Fl n
+and
+.Fl p
+are equivalent to the
+.Ic last-window ,
+.Ic next-window
+and
+.Ic previous-window
+commands.
 .It Xo Ic split-window
 .Op Fl dhvP
 .Oo Fl l

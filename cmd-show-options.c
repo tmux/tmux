@@ -39,6 +39,16 @@ const struct cmd_entry cmd_show_options_entry = {
 	cmd_show_options_exec
 };
 
+const struct cmd_entry cmd_show_window_options_entry = {
+	"show-window-options", "showw",
+	"gt:", 0, 0,
+	"[-g] " CMD_TARGET_WINDOW_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_show_options_exec
+};
+
 int
 cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
@@ -53,7 +63,8 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args_has(self->args, 's')) {
 		oo = &global_options;
 		table = server_options_table;
-	} else if (args_has(self->args, 'w')) {
+	} else if (args_has(self->args, 'w') ||
+	    self->entry == &cmd_show_window_options_entry) {
 		table = window_options_table;
 		if (args_has(self->args, 'g'))
 			oo = &global_w_options;
