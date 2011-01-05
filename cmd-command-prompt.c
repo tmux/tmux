@@ -36,7 +36,7 @@ void	cmd_command_prompt_free(void *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
 	"command-prompt", NULL,
-	"p:t:", 0, 0,
+	"p:t:", 0, 1,
 	CMD_TARGET_CLIENT_USAGE " [-p prompts] [template]",
 	0,
 	cmd_command_prompt_key_binding,
