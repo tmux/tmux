@@ -1,4 +1,4 @@
-/* $Id: cmd-select-layout.c,v 1.13 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: cmd-select-layout.c,v 1.14 2011-01-07 15:02:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,10 +29,30 @@ int	cmd_select_layout_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_select_layout_entry = {
 	"select-layout", "selectl",
-	"t:", 0, 1,
-	CMD_TARGET_WINDOW_USAGE " [layout-name]",
+	"npt:", 0, 1,
+	"[-np] " CMD_TARGET_WINDOW_USAGE " [layout-name]",
 	0,
 	cmd_select_layout_key_binding,
+	NULL,
+	cmd_select_layout_exec
+};
+
+const struct cmd_entry cmd_next_layout_entry = {
+	"next-layout", "nextl",
+	"t:", 0, 0,
+	CMD_TARGET_WINDOW_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_select_layout_exec
+};
+
+const struct cmd_entry cmd_previous_layout_entry = {
+	"previous-layout", "prevl",
+	"t:", 0, 0,
+	CMD_TARGET_WINDOW_USAGE,
+	0,
+	NULL,
 	NULL,
 	cmd_select_layout_exec
 };
@@ -68,10 +88,26 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct args	*args = self->args;
 	struct winlink	*wl;
 	const char	*layoutname;
-	int		 layout;
+	int		 next, previous, layout;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (-1);
+
+	next = self->entry == &cmd_next_layout_entry;
+	if (args_has(self->args, 'n'))
+		next = 1;
+	previous = self->entry == &cmd_previous_layout_entry;
+	if (args_has(self->args, 'p'))
+		previous = 1;
+
+	if (next || previous) {
+		if (next)
+			layout = layout_set_next(wl->window);
+		else
+			layout = layout_set_previous(wl->window);
+		ctx->info(ctx, "arranging in: %s", layout_set_name(layout));
+		return (0);
+	}
 
 	if (args->argc == 0)
 		layout = wl->window->lastlayout;
