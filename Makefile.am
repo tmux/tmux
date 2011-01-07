@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.5 2011-01-07 14:46:13 tcunha Exp $
+# $Id: Makefile.am,v 1.6 2011-01-07 14:50:54 tcunha Exp $
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
@@ -79,7 +79,6 @@ dist_tmux_SOURCES = \
 	cmd-display-message.c \
 	cmd-display-panes.c \
 	cmd-find-window.c \
-	cmd-generic.c \
 	cmd-has-session.c \
 	cmd-if-shell.c \
 	cmd-join-pane.c \
