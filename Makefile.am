@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.6 2011-01-07 14:50:54 tcunha Exp $
+# $Id: Makefile.am,v 1.7 2011-01-07 15:04:24 tcunha Exp $
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
@@ -86,8 +86,6 @@ dist_tmux_SOURCES = \
 	cmd-kill-server.c \
 	cmd-kill-session.c \
 	cmd-kill-window.c \
-	cmd-last-pane.c \
-	cmd-last-window.c \
 	cmd-link-window.c \
 	cmd-list-buffers.c \
 	cmd-list-clients.c \
@@ -98,18 +96,12 @@ dist_tmux_SOURCES = \
 	cmd-list-windows.c \
 	cmd-list.c \
 	cmd-load-buffer.c \
-	cmd-lock-client.c \
 	cmd-lock-server.c \
-	cmd-lock-session.c \
 	cmd-move-window.c \
 	cmd-new-session.c \
 	cmd-new-window.c \
-	cmd-next-layout.c \
-	cmd-next-window.c \
 	cmd-paste-buffer.c \
 	cmd-pipe-pane.c \
-	cmd-previous-layout.c \
-	cmd-previous-window.c \
 	cmd-refresh-client.c \
 	cmd-rename-session.c \
 	cmd-rename-window.c \
@@ -127,12 +119,10 @@ dist_tmux_SOURCES = \
 	cmd-set-buffer.c \
 	cmd-set-environment.c \
 	cmd-set-option.c \
-	cmd-set-window-option.c \
 	cmd-show-buffer.c \
 	cmd-show-environment.c \
 	cmd-show-messages.c \
 	cmd-show-options.c \
-	cmd-show-window-options.c \
 	cmd-source-file.c \
 	cmd-split-window.c \
 	cmd-start-server.c \
