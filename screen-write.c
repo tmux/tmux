@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.91 2010-12-30 22:27:38 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.92 2011-01-07 14:34:45 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -827,6 +827,18 @@ screen_write_insertmode(struct screen_write_ctx *ctx, int state)
 		s->mode |= MODE_INSERT;
 	else
 		s->mode &= ~MODE_INSERT;
+}
+
+/* Set UTF-8 mouse mode.  */
+void
+screen_write_utf8mousemode(struct screen_write_ctx *ctx, int state)
+{
+	struct screen	*s = ctx->s;
+
+	if (state)
+		s->mode |= MODE_MOUSE_UTF8;
+	else
+		s->mode &= ~MODE_MOUSE_UTF8;
 }
 
 /* Set mouse mode off. */

@@ -1,4 +1,4 @@
-/* $Id: options-table.c,v 1.2 2011-01-03 23:55:30 tcunha Exp $ */
+/* $Id: options-table.c,v 1.3 2011-01-07 14:34:45 tcunha Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -193,6 +193,11 @@ const struct options_table_entry session_options_table[] = {
 	},
 
 	{ .name = "mouse-select-pane",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .default_num = 0
+	},
+
+	{ .name = "mouse-utf8",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .default_num = 0
 	},

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.600 2011-01-03 23:52:38 tcunha Exp $ */
+/* $Id: tmux.h,v 1.601 2011-01-07 14:34:45 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -546,6 +546,7 @@ struct mode_key_table {
 #define MODE_MOUSE_HIGHLIGHT 0x40
 #define MODE_MOUSE_BUTTON 0x80
 #define MODE_MOUSE_ANY 0x100
+#define MODE_MOUSE_UTF8 0x200
 
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD| \
     MODE_MOUSE_HIGHLIGHT|MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)
@@ -1071,15 +1072,15 @@ struct tty_ctx {
  */
 /* Mouse input. */
 struct mouse_event {
-	u_char	b;
+	u_int	b;
 #define MOUSE_1 0
 #define MOUSE_2 1
 #define MOUSE_3 2
 #define MOUSE_UP 3
 #define MOUSE_BUTTON 3
 #define MOUSE_45 64
-	u_char	x;
-	u_char	y;
+	u_int	x;
+	u_int	y;
 };
 
 /* Saved message entry. */
@@ -1813,6 +1814,7 @@ void	 screen_write_cursormode(struct screen_write_ctx *, int);
 void	 screen_write_reverseindex(struct screen_write_ctx *);
 void	 screen_write_scrollregion(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_insertmode(struct screen_write_ctx *, int);
+void	 screen_write_utf8mousemode(struct screen_write_ctx *, int);
 void	 screen_write_mousemode_on(struct screen_write_ctx *, int);
 void	 screen_write_mousemode_off(struct screen_write_ctx *);
 void	 screen_write_linefeed(struct screen_write_ctx *, int);
@@ -2011,6 +2013,8 @@ void		 session_group_synchronize1(struct session *, struct session *);
 void	utf8_build(void);
 int	utf8_open(struct utf8_data *, u_char);
 int	utf8_append(struct utf8_data *, u_char);
+u_int	utf8_combine(const struct utf8_data *);
+u_int	utf8_split2(u_int, u_char *);
 
 /* osdep-*.c */
 char		*osdep_get_name(int, char *);

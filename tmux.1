@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.285 2011-01-03 23:33:12 tcunha Exp $
+.\" $Id: tmux.1,v 1.286 2011-01-07 14:34:45 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -1810,6 +1810,10 @@ flag to
 Repeat is enabled for the default keys bound to the
 .Ic resize-pane
 command.
+.It Xo Ic mouse-utf8
+.Op Ic on | off
+.Xc
+If enabled, request mouse input as UTF-8 on UTF-8 terminals.
 .It Xo Ic set-remain-on-exit
 .Op Ic on | off
 .Xc

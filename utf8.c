@@ -1,4 +1,4 @@
-/* $Id: utf8.c,v 1.11 2009-10-23 17:21:34 tcunha Exp $ */
+/* $Id: utf8.c,v 1.12 2011-01-07 14:34:45 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -316,6 +316,19 @@ utf8_combine(const struct utf8_data *utf8data)
 		break;
 	}
 	return (value);
+}
+
+/* Split a two-byte UTF-8 character. */
+u_int
+utf8_split2(u_int uc, u_char *ptr)
+{
+	if (uc > 0x7f) {
+		ptr[0] = (uc >> 6) | 0xc0;
+		ptr[1] = (uc & 0x3f) | 0x80;
+		return (2);
+	}
+	ptr[0] = uc;
+	return (1);
 }
 
 /* Lookup width of UTF-8 data in tree. */
