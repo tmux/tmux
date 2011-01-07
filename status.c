@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.153 2011-01-03 23:52:38 tcunha Exp $ */
+/* $Id: status.c,v 1.154 2011-01-07 14:32:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -469,7 +469,7 @@ status_replace(struct client *c,
 			break;
 		ch = *iptr++;
 
-		if (ch != '#') {
+		if (ch != '#' || *iptr == '\0') {
 			*optr++ = ch;
 			continue;
 		}
