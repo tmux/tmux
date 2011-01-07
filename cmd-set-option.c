@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.105 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: cmd-set-option.c,v 1.106 2011-01-07 14:51:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -115,7 +115,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "invalid option");
 		return (-1);
 	}
-	if (args->argc < 1)
+	if (args->argc < 2)
 		valstr = NULL;
 	else
 		valstr = args->argv[1];
