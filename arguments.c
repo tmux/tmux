@@ -1,4 +1,4 @@
-/* $Id: arguments.c,v 1.1 2011-01-07 14:45:33 tcunha Exp $ */
+/* $Id: arguments.c,v 1.2 2011-01-07 14:46:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -18,7 +18,6 @@
 
 #include <sys/types.h>
 
-#include <bitstring.h>
 #include <stdlib.h>
 #include <string.h>
 
