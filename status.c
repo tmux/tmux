@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.154 2011-01-07 14:32:26 tcunha Exp $ */
+/* $Id: status.c,v 1.155 2011-01-07 16:55:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -393,21 +393,8 @@ status_replace1(struct client *c,struct winlink *wl,
 		ptr = wl->window->name;
 		goto do_replace;
 	case 'F':
-		tmp[0] = ' ';
-		if (wl->flags & WINLINK_CONTENT)
-			tmp[0] = '+';
-		else if (wl->flags & WINLINK_BELL)
-			tmp[0] = '!';
-		else if (wl->flags & WINLINK_ACTIVITY)
-			tmp[0] = '#';
-		else if (wl->flags & WINLINK_SILENCE)
-			tmp[0] = '~';
-		else if (wl == s->curw)
-			tmp[0] = '*';
-		else if (wl == TAILQ_FIRST(&s->lastw))
-			tmp[0] = '-';
-		tmp[1] = '\0';
-		ptr = tmp;
+		ptr = window_printable_flags(s, wl);
+		freeptr = ptr;
 		goto do_replace;
 	case '[':
 		/*

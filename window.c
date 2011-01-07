@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.142 2010-12-06 22:52:21 nicm Exp $ */
+/* $Id: window.c,v 1.143 2011-01-07 16:55:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -458,6 +458,32 @@ window_destroy_panes(struct window *w)
 		TAILQ_REMOVE(&w->panes, wp, entry);
 		window_pane_destroy(wp);
 	}
+}
+
+/* Return list of printable window flag symbols. No flags is just a space. */
+char *
+window_printable_flags(struct session *s, struct winlink *wl)
+{
+	char	flags[BUFSIZ];
+	int	pos;
+
+	pos = 0;
+	if (wl->flags & WINLINK_ACTIVITY)
+		flags[pos++] = '#';
+	if (wl->flags & WINLINK_BELL)
+		flags[pos++] = '!';
+	if (wl->flags & WINLINK_CONTENT)
+		flags[pos++] = '+';
+	if (wl->flags & WINLINK_SILENCE)
+		flags[pos++] = '~';
+	if (wl == s->curw)
+		flags[pos++] = '*';
+	if (wl == TAILQ_FIRST(&s->lastw))
+		flags[pos++] = '-';
+	if (pos == 0)
+		flags[pos++] = ' ';
+	flags[pos] = '\0';
+	return (xstrdup(flags));
 }
 
 struct window_pane *

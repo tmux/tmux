@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.602 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: tmux.h,v 1.603 2011-01-07 16:55:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1873,6 +1873,8 @@ void		 window_pane_mouse(struct window_pane *,
 int		 window_pane_visible(struct window_pane *);
 char		*window_pane_search(
 		     struct window_pane *, const char *, u_int *);
+char		*window_printable_flags(struct session *, struct winlink *);
+
 struct window_pane *window_pane_find_up(struct window_pane *);
 struct window_pane *window_pane_find_down(struct window_pane *);
 struct window_pane *window_pane_find_left(struct window_pane *);

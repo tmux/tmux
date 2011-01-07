@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-window.c,v 1.25 2011-01-07 14:45:33 tcunha Exp $ */
+/* $Id: cmd-choose-window.c,v 1.26 2011-01-07 16:55:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -56,7 +56,7 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink			*wl, *wm;
 	struct window			*w;
 	u_int			 	 idx, cur;
-	char				 flag, *title;
+	char				*flags, *title;
 	const char			*left, *right;
 
 	if (ctx->curclient == NULL) {
@@ -79,20 +79,7 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			cur = idx;
 		idx++;
 
-		flag = ' ';
-		if (wm->flags & WINLINK_ACTIVITY)
-			flag = '#';
-		else if (wm->flags & WINLINK_BELL)
-			flag = '!';
-		else if (wm->flags & WINLINK_CONTENT)
-			flag = '+';
-		else if (wm->flags & WINLINK_SILENCE)
-			flag = '~';
-		else if (wm == s->curw)
-			flag = '*';
-		else if (wm == TAILQ_FIRST(&s->lastw))
-			flag = '-';
-
+		flags = window_printable_flags(s, wm);
 		title = w->active->screen->title;
 		if (wm == wl)
 			title = w->active->base.title;
@@ -102,10 +89,12 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			left = right = "";
 
 		window_choose_add(wl->window->active,
-		    wm->idx, "%3d: %s%c [%ux%u] (%u panes%s)%s%s%s",
-		    wm->idx, w->name, flag, w->sx, w->sy, window_count_panes(w),
+		    wm->idx, "%3d: %s%s [%ux%u] (%u panes%s)%s%s%s",
+		    wm->idx, w->name, flags, w->sx, w->sy, window_count_panes(w),
 		    w->active->fd == -1 ? ", dead" : "",
 		    left, title, right);
+
+		xfree(flags);
 	}
 
 	cdata = xmalloc(sizeof *cdata);
