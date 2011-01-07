@@ -125,3 +125,5 @@
   in commands without quotes
 - combine all options into 1 table (inc defaults) - can use C99 .foo = blah
   syntax
+- a command to choose from a generic list, so you can do eg
+  choose-list -l Abc,Moo,Blah "run-shell 'sh /my/choose/script %%'"
