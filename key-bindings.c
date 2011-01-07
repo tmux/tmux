@@ -1,4 +1,4 @@
-/* $Id: key-bindings.c,v 1.97 2010-12-11 18:42:20 nicm Exp $ */
+/* $Id: key-bindings.c,v 1.98 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -187,9 +187,10 @@ key_bindings_init(void)
 
 		cmd = xmalloc(sizeof *cmd);
 		cmd->entry = table[i].entry;
-		cmd->data = NULL;
-		if (cmd->entry->init != NULL)
-			cmd->entry->init(cmd, table[i].key);
+		if (cmd->entry->key_binding != NULL)
+			cmd->entry->key_binding(cmd, table[i].key);
+		else
+			cmd->args = args_create(0);
 		TAILQ_INSERT_HEAD(&cmdlist->list, cmd, qentry);
 
 		key_bindings_add(

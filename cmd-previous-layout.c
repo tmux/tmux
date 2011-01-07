@@ -1,4 +1,4 @@
-/* $Id: cmd-previous-layout.c,v 1.6 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: cmd-previous-layout.c,v 1.7 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,23 +28,22 @@ int	cmd_previous_layout_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_previous_layout_entry = {
 	"previous-layout", "prevl",
+	"t:", 0, 0,
 	CMD_TARGET_WINDOW_USAGE,
-	0, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_previous_layout_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_previous_layout_exec
 };
 
 int
 cmd_previous_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct winlink		*wl;
-	u_int			 layout;
+	struct args	*args = self->args;
+	struct winlink	*wl;
+	u_int		 layout;
 
-	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
+	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (-1);
 
 	layout = layout_set_previous(wl->window);

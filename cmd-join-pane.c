@@ -1,4 +1,4 @@
-/* $Id: cmd-join-pane.c,v 1.5 2010-08-11 22:17:32 tcunha Exp $ */
+/* $Id: cmd-join-pane.c,v 1.6 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -27,139 +27,54 @@
  * Join a pane into another (like split/swap/kill).
  */
 
-int	cmd_join_pane_parse(struct cmd *, int, char **, char **);
+void	cmd_join_pane_key_binding(struct cmd *, int);
 int	cmd_join_pane_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_join_pane_free(struct cmd *);
-void	cmd_join_pane_init(struct cmd *, int);
-size_t	cmd_join_pane_print(struct cmd *, char *, size_t);
-
-struct cmd_join_pane_data {
-	char	*src;
-	char	*dst;
-	int	 flag_detached;
-	int	 flag_horizontal;
-	int	 percentage;
-	int	 size;
-};
 
 const struct cmd_entry cmd_join_pane_entry = {
 	"join-pane", "joinp",
+	"dhvp:l:s:t:", 0, 0,
 	"[-dhv] [-p percentage|-l size] [-s src-pane] [-t dst-pane]",
-	0, "",
-	cmd_join_pane_init,
-	cmd_join_pane_parse,
-	cmd_join_pane_exec,
-	cmd_join_pane_free,
-	cmd_join_pane_print
+	0,
+	cmd_join_pane_key_binding,
+	NULL,
+	cmd_join_pane_exec
 };
 
 void
-cmd_join_pane_init(struct cmd *self, int key)
+cmd_join_pane_key_binding(struct cmd *self, int key)
 {
-	struct cmd_join_pane_data	 *data;
-
-	self->data = data = xmalloc(sizeof *data);
-	data->src = NULL;
-	data->dst = NULL;
-	data->flag_detached = 0;
-	data->flag_horizontal = 0;
-	data->percentage = -1;
-	data->size = -1;
-
 	switch (key) {
 	case '%':
-		data->flag_horizontal = 1;
+		self->args = args_create(0);
+		args_set(self->args, 'h', NULL);
 		break;
-	case '"':
-		data->flag_horizontal = 0;
+	default:
+		self->args = args_create(0);
 		break;
 	}
-}
-
-int
-cmd_join_pane_parse(struct cmd *self, int argc, char **argv, char **cause)
-{
-	struct cmd_join_pane_data	*data;
-	int				 opt;
-	const char			*errstr;
-
-	self->entry->init(self, KEYC_NONE);
-	data = self->data;
-
-	while ((opt = getopt(argc, argv, "dhl:p:s:t:v")) != -1) {
-		switch (opt) {
-		case 'd':
-			data->flag_detached = 1;
-			break;
-		case 'h':
-			data->flag_horizontal = 1;
-			break;
-		case 's':
-			if (data->src == NULL)
-				data->src = xstrdup(optarg);
-			break;
-		case 't':
-			if (data->dst == NULL)
-				data->dst = xstrdup(optarg);
-			break;
-		case 'l':
-			if (data->percentage != -1 || data->size != -1)
-				break;
-			data->size = strtonum(optarg, 1, INT_MAX, &errstr);
-			if (errstr != NULL) {
-				xasprintf(cause, "size %s", errstr);
-				goto error;
-			}
-			break;
-		case 'p':
-			if (data->size != -1 || data->percentage != -1)
-				break;
-			data->percentage = strtonum(optarg, 1, 100, &errstr);
-			if (errstr != NULL) {
-				xasprintf(cause, "percentage %s", errstr);
-				goto error;
-			}
-			break;
-		case 'v':
-			data->flag_horizontal = 0;
-			break;
-		default:
-			goto usage;
-		}
-	}
-	argc -= optind;
-	argv += optind;
-	if (argc != 0)
-		goto usage;
-
-	return (0);
-
-usage:
-	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
-
-error:
-	self->entry->free(self);
-	return (-1);
 }
 
 int
 cmd_join_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_join_pane_data	*data = self->data;
-	struct session			*dst_s;
-	struct winlink			*src_wl, *dst_wl;
-	struct window			*src_w, *dst_w;
-	struct window_pane		*src_wp, *dst_wp;
-	int				 size, dst_idx;
-	enum layout_type		 type;
-	struct layout_cell		*lc;
+	struct args		*args = self->args;
+	struct session		*dst_s;
+	struct winlink		*src_wl, *dst_wl;
+	struct window		*src_w, *dst_w;
+	struct window_pane	*src_wp, *dst_wp;
+	char			*cause;
+	int			 size, percentage, dst_idx;
+	enum layout_type	 type;
+	struct layout_cell	*lc;
 
-	if ((dst_wl = cmd_find_pane(ctx, data->dst, &dst_s, &dst_wp)) == NULL)
+	dst_wl = cmd_find_pane(ctx, args_get(args, 't'), &dst_s, &dst_wp);
+	if (dst_wl == NULL)
 		return (-1);
 	dst_w = dst_wl->window;
 	dst_idx = dst_wl->idx;
 
-	if ((src_wl = cmd_find_pane(ctx, data->src, NULL, &src_wp)) == NULL)
+	src_wl = cmd_find_pane(ctx, args_get(args, 's'), NULL, &src_wp);
+	if (src_wl == NULL)
 		return (-1);
 	src_w = src_wl->window;
 
@@ -169,17 +84,28 @@ cmd_join_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	type = LAYOUT_TOPBOTTOM;
-	if (data->flag_horizontal)
+	if (args_has(args, 'h'))
 		type = LAYOUT_LEFTRIGHT;
 
 	size = -1;
-	if (data->size != -1)
-		size = data->size;
-	else if (data->percentage != -1) {
+	if (args_has(args, 's')) {
+		size = args_strtonum(args, 's', 0, INT_MAX, &cause);
+		if (cause != NULL) {
+			ctx->error(ctx, "size %s", cause);
+			xfree(cause);
+			return (-1);
+		}
+	} else if (args_has(args, 'p')) {
+		percentage = args_strtonum(args, 'p', 0, INT_MAX, &cause);
+		if (cause != NULL) {
+			ctx->error(ctx, "percentage %s", cause);
+			xfree(cause);
+			return (-1);
+		}
 		if (type == LAYOUT_TOPBOTTOM)
-			size = (dst_wp->sy * data->percentage) / 100;
+			size = (dst_wp->sy * percentage) / 100;
 		else
-			size = (dst_wp->sx * data->percentage) / 100;
+			size = (dst_wp->sx * percentage) / 100;
 	}
 
 	if ((lc = layout_split_pane(dst_wp, type, size)) == NULL) {
@@ -208,7 +134,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	server_redraw_window(src_w);
 	server_redraw_window(dst_w);
 
-	if (!data->flag_detached) {
+	if (!args_has(args, 'd')) {
 		window_set_active_pane(dst_w, src_wp);
 		session_select(dst_s, dst_idx);
 		server_redraw_session(dst_s);
@@ -216,42 +142,4 @@ cmd_join_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		server_status_session(dst_s);
 
 	return (0);
-}
-
-void
-cmd_join_pane_free(struct cmd *self)
-{
-	struct cmd_join_pane_data	*data = self->data;
-
-	if (data->src != NULL)
-		xfree(data->src);
-	if (data->dst != NULL)
-		xfree(data->dst);
-	xfree(data);
-}
-
-size_t
-cmd_join_pane_print(struct cmd *self, char *buf, size_t len)
-{
-	struct cmd_join_pane_data	*data = self->data;
-	size_t				 off = 0;
-
-	off += xsnprintf(buf, len, "%s", self->entry->name);
-	if (data == NULL)
-		return (off);
-	if (off < len && data->flag_detached)
-		off += xsnprintf(buf + off, len - off, " -d");
-	if (off < len && data->flag_horizontal)
-		off += xsnprintf(buf + off, len - off, " -h");
-	if (off < len && data->size > 0)
-		off += xsnprintf(buf + off, len - off, " -l %d", data->size);
-	if (off < len && data->percentage > 0) {
-		off += xsnprintf(
-		    buf + off, len - off, " -p %d", data->percentage);
-	}
-	if (off < len && data->src != NULL)
-		off += cmd_prarg(buf + off, len - off, " -s ", data->src);
-	if (off < len && data->dst != NULL)
-		off += cmd_prarg(buf + off, len - off, " -t ", data->dst);
-	return (off);
 }

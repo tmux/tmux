@@ -1,4 +1,4 @@
-/* $Id: cmd-new-window.c,v 1.48 2011-01-03 23:29:09 tcunha Exp $ */
+/* $Id: cmd-new-window.c,v 1.49 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,115 +26,30 @@
  * Create a new window.
  */
 
-int	cmd_new_window_parse(struct cmd *, int, char **, char **);
 int	cmd_new_window_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_new_window_free(struct cmd *);
-void	cmd_new_window_init(struct cmd *, int);
-size_t	cmd_new_window_print(struct cmd *, char *, size_t);
-
-struct cmd_new_window_data {
-	char	*target;
-	char	*name;
-	char	*cmd;
-	int	 flag_insert_after;
-	int	 flag_detached;
-	int	 flag_kill;
-	int      flag_print;
-};
 
 const struct cmd_entry cmd_new_window_entry = {
 	"new-window", "neww",
-	"[-adkP] [-n window-name] [-t target-window] [command]",
-	0, "",
-	cmd_new_window_init,
-	cmd_new_window_parse,
-	cmd_new_window_exec,
-	cmd_new_window_free,
-	cmd_new_window_print
+	"adkn:Pt:", 0, 1,
+	"[-adk] [-n window-name] [-t target-window] [command]",
+	0,
+	NULL,
+	NULL,
+	cmd_new_window_exec
 };
-
-/* ARGSUSED */
-void
-cmd_new_window_init(struct cmd *self, unused int arg)
-{
-	struct cmd_new_window_data	 *data;
-
-	self->data = data = xmalloc(sizeof *data);
-	data->target = NULL;
-	data->name = NULL;
-	data->cmd = NULL;
-	data->flag_insert_after = 0;
-	data->flag_detached = 0;
-	data->flag_kill = 0;
-	data->flag_print = 0;
-}
-
-int
-cmd_new_window_parse(struct cmd *self, int argc, char **argv, char **cause)
-{
-	struct cmd_new_window_data	*data;
-	int				 opt;
-
-	self->entry->init(self, KEYC_NONE);
-	data = self->data;
-
-	while ((opt = getopt(argc, argv, "adkt:n:P")) != -1) {
-		switch (opt) {
-		case 'a':
-			data->flag_insert_after = 1;
-			break;
-		case 'd':
-			data->flag_detached = 1;
-			break;
-		case 'k':
-			data->flag_kill = 1;
-			break;
-		case 't':
-			if (data->target == NULL)
-				data->target = xstrdup(optarg);
-			break;
-		case 'n':
-			if (data->name == NULL)
-				data->name = xstrdup(optarg);
-			break;
-		case 'P':
-			data->flag_print = 1;
-			break;
-		default:
-			goto usage;
-		}
-	}
-	argc -= optind;
-	argv += optind;
-	if (argc != 0 && argc != 1)
-		goto usage;
-
-	if (argc == 1)
-		data->cmd = xstrdup(argv[0]);
-
-	return (0);
-
-usage:
-	xasprintf(cause, "usage: %s %s", self->entry->name, self->entry->usage);
-
-	self->entry->free(self);
-	return (-1);
-}
 
 int
 cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_new_window_data	*data = self->data;
-	struct session			*s;
-	struct winlink			*wl;
-	char				*cmd, *cwd, *cause;
-	int				 idx, last;
+	struct args	*args = self->args;
+	struct session	*s;
+	struct winlink	*wl;
+	char		*cmd, *cwd, *cause;
+	int		 idx, last, detached;
 
-	if (data == NULL)
-		return (0);
-
-	if (data->flag_insert_after) {
-		if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
+	if (args_has(args, 'a')) {
+		wl = cmd_find_window(ctx, args_get(args, 't'), &s);
+		if (wl == NULL)
 			return (-1);
 		idx = wl->idx + 1;
 
@@ -155,14 +70,15 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			server_unlink_window(s, wl);
 		}
 	} else {
-		if ((idx = cmd_find_index(ctx, data->target, &s)) == -2)
+		if ((idx = cmd_find_index(ctx, args_get(args, 't'), &s)) == -2)
 			return (-1);
 	}
+	detached = args_has(args, 'd');
 
 	wl = NULL;
 	if (idx != -1)
 		wl = winlink_find_by_index(&s->windows, idx);
-	if (wl != NULL && data->flag_kill) {
+	if (wl != NULL && args_has(args, 'k')) {
 		/*
 		 * Can't use session_detach as it will destroy session if this
 		 * makes it empty.
@@ -173,14 +89,15 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		/* Force select/redraw if current. */
 		if (wl == s->curw) {
-			data->flag_detached = 0;
+			detached = 0;
 			s->curw = NULL;
 		}
 	}
 
-	cmd = data->cmd;
-	if (cmd == NULL)
+	if (args->argc == 0)
 		cmd = options_get_string(&s->options, "default-command");
+	else
+		cmd = args->argv[0];
 	cwd = options_get_string(&s->options, "default-path");
 	if (*cwd == '\0') {
 		if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
@@ -191,55 +108,19 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (idx == -1)
 		idx = -1 - options_get_number(&s->options, "base-index");
-	wl = session_new(s, data->name, cmd, cwd, idx, &cause);
+	wl = session_new(s, args_get(args, 'n'), cmd, cwd, idx, &cause);
 	if (wl == NULL) {
 		ctx->error(ctx, "create window failed: %s", cause);
 		xfree(cause);
 		return (-1);
 	}
-	if (!data->flag_detached) {
+	if (!detached) {
 		session_select(s, wl->idx);
 		server_redraw_session_group(s);
 	} else
 		server_status_session_group(s);
 
-	if (data->flag_print)
+	if (args_has(args, 'P'))
 		ctx->print(ctx, "%s:%u", s->name, wl->idx);
 	return (0);
-}
-
-void
-cmd_new_window_free(struct cmd *self)
-{
-	struct cmd_new_window_data	*data = self->data;
-
-	if (data->target != NULL)
-		xfree(data->target);
-	if (data->name != NULL)
-		xfree(data->name);
-	if (data->cmd != NULL)
-		xfree(data->cmd);
-	xfree(data);
-}
-
-size_t
-cmd_new_window_print(struct cmd *self, char *buf, size_t len)
-{
-	struct cmd_new_window_data	*data = self->data;
-	size_t				 off = 0;
-
-	off += xsnprintf(buf, len, "%s", self->entry->name);
-	if (data == NULL)
-		return (off);
-	if (off < len && data->flag_detached)
-		off += xsnprintf(buf + off, len - off, " -d");
-	if (off < len && data->flag_print)
-		off += xsnprintf(buf + off, len - off, " -P");
-	if (off < len && data->target != NULL)
-		off += cmd_prarg(buf + off, len - off, " -t ", data->target);
-	if (off < len && data->name != NULL)
-		off += cmd_prarg(buf + off, len - off, " -n ", data->name);
-	if (off < len && data->cmd != NULL)
-		off += cmd_prarg(buf + off, len - off, " ", data->cmd);
-	return (off);
 }

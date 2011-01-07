@@ -1,4 +1,4 @@
-/* $Id: cmd-show-buffer.c,v 1.13 2010-12-30 22:39:49 tcunha Exp $ */
+/* $Id: cmd-show-buffer.c,v 1.14 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,37 +28,44 @@ int	cmd_show_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_buffer_entry = {
 	"show-buffer", "showb",
+	"b:", 0, 0,
 	CMD_BUFFER_USAGE,
-	0, "",
-	cmd_buffer_init,
-	cmd_buffer_parse,
-	cmd_show_buffer_exec,
-	cmd_buffer_free,
-	cmd_buffer_print
+	0,
+	NULL,
+	NULL,
+	cmd_show_buffer_exec
 };
 
 int
 cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_buffer_data	*data = self->data;
+	struct args		*args = self->args;
 	struct session		*s;
 	struct paste_buffer	*pb;
-	char			*in, *buf, *ptr;
+	int			 buffer;
+	char			*in, *buf, *ptr, *cause;
 	size_t			 size, len;
 	u_int			 width;
 
 	if ((s = cmd_find_session(ctx, NULL)) == NULL)
 		return (-1);
 
-	if (data->buffer == -1) {
+	if (!args_has(args, 'b')) {
 		if ((pb = paste_get_top(&global_buffers)) == NULL) {
 			ctx->error(ctx, "no buffers");
 			return (-1);
 		}
 	} else {
-		pb = paste_get_index(&global_buffers, data->buffer);
+		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
+		if (cause != NULL) {
+			ctx->error(ctx, "buffer %s", cause);
+			xfree(cause);
+			return (-1);
+		}
+
+		pb = paste_get_index(&global_buffers, buffer);
 		if (pb == NULL) {
-			ctx->error(ctx, "no buffer %d", data->buffer);
+			ctx->error(ctx, "no buffer %d", buffer);
 			return (-1);
 		}
 	}

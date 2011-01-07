@@ -1,4 +1,4 @@
-/* $Id: cmd-set-window-option.c,v 1.43 2009-12-04 22:11:23 tcunha Exp $ */
+/* $Id: cmd-set-window-option.c,v 1.44 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,20 +28,19 @@ int	cmd_set_window_option_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_set_window_option_entry = {
 	"set-window-option", "setw",
+	"agt:u", 1, 2,
 	"[-agu] " CMD_TARGET_WINDOW_USAGE " option [value]",
-	CMD_ARG12, "agu",
+	0,
 	NULL,
-	cmd_target_parse,
-	cmd_set_window_option_exec,
-	cmd_target_free,
-	cmd_target_print
+	NULL,
+	cmd_set_window_option_exec
 };
 
 int
 cmd_set_window_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data		*data = self->data;
+	struct args	*args = self->args;
 
-	cmd_set_flag(&data->chflags, 'w');
+	args_set(args, 'w', NULL);
 	return (cmd_set_option_entry.exec(self, ctx));
 }

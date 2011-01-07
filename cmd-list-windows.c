@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.44 2010-12-06 21:56:32 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.45 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,24 +30,23 @@ int	cmd_list_windows_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_windows_entry = {
 	"list-windows", "lsw",
+	"t:", 0, 0,
 	CMD_TARGET_SESSION_USAGE,
-	0, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_list_windows_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_list_windows_exec
 };
 
 int
 cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct session		*s;
-	struct winlink		*wl;
-	char			*layout;
+	struct args	*args = self->args;
+	struct session	*s;
+	struct winlink	*wl;
+	char		*layout;
 
-	if ((s = cmd_find_session(ctx, data->target)) == NULL)
+	if ((s = cmd_find_session(ctx, args_get(args, 't'))) == NULL)
 		return (-1);
 
 	RB_FOREACH(wl, winlinks, &s->windows) {

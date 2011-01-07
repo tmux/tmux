@@ -1,4 +1,4 @@
-/* $Id: cmd-lock-session.c,v 1.2 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-lock-session.c,v 1.3 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,22 +28,21 @@ int	cmd_lock_session_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_lock_session_entry = {
 	"lock-session", "locks",
+	"t:", 0, 0,
 	CMD_TARGET_SESSION_USAGE,
-	0, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_lock_session_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_lock_session_exec
 };
 
 int
 cmd_lock_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct session		*s;
+	struct args	*args = self->args;
+	struct session	*s;
 
-	if ((s = cmd_find_session(ctx, data->target)) == NULL)
+	if ((s = cmd_find_session(ctx, args_get(args, 't'))) == NULL)
 		return (-1);
 
 	server_lock_session(s);

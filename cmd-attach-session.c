@@ -1,4 +1,4 @@
-/* $Id: cmd-attach-session.c,v 1.38 2011-01-03 23:27:54 tcunha Exp $ */
+/* $Id: cmd-attach-session.c,v 1.39 2011-01-07 14:45:33 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,37 +28,37 @@ int	cmd_attach_session_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_attach_session_entry = {
 	"attach-session", "attach",
+	"drt:", 0, 0,
 	"[-dr] " CMD_TARGET_SESSION_USAGE,
-	CMD_CANTNEST|CMD_STARTSERVER|CMD_SENDENVIRON, "dr",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_attach_session_exec,
-	cmd_target_free,
-	cmd_target_print
+	CMD_CANTNEST|CMD_STARTSERVER|CMD_SENDENVIRON,
+	NULL,
+	NULL,
+	cmd_attach_session_exec
 };
 
 int
 cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct session		*s;
-	struct client		*c;
-	const char		*update;
-	char			*overrides, *cause;
-	u_int			 i;
+	struct args	*args = self->args;
+	struct session	*s;
+	struct client	*c;
+	const char	*update;
+	char		*overrides, *cause;
+	u_int		 i;
 
 	if (RB_EMPTY(&sessions)) {
 		ctx->error(ctx, "no sessions");
 		return (-1);
 	}
-	if ((s = cmd_find_session(ctx, data->target)) == NULL)
+
+	if ((s = cmd_find_session(ctx, args_get(args, 't'))) == NULL)
 		return (-1);
 
 	if (ctx->cmdclient == NULL && ctx->curclient == NULL)
 		return (0);
 
 	if (ctx->cmdclient == NULL) {
-		if (cmd_check_flag(data->chflags, 'd')) {
+		if (args_has(self->args, 'd')) {
 			/*
 			 * Can't use server_write_session in case attaching to
 			 * the same session as currently attached to.
@@ -90,10 +90,10 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 			return (-1);
 		}
 
-		if (cmd_check_flag(data->chflags, 'r'))
+		if (args_has(self->args, 'r'))
 			ctx->cmdclient->flags |= CLIENT_READONLY;
 
-		if (cmd_check_flag(data->chflags, 'd'))
+		if (args_has(self->args, 'd'))
 			server_write_session(s, MSG_DETACH, NULL, 0);
 
 		ctx->cmdclient->session = s;

@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-server.c,v 1.11 2009-11-28 14:50:36 tcunha Exp $ */
+/* $Id: cmd-kill-server.c,v 1.12 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,13 +31,12 @@ int	cmd_kill_server_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_kill_server_entry = {
 	"kill-server", NULL,
+	"", 0, 0,
 	"",
-	0, "",
+	0,
 	NULL,
 	NULL,
-	cmd_kill_server_exec,
-	NULL,
-	NULL
+	cmd_kill_server_exec
 };
 
 /* ARGSUSED */

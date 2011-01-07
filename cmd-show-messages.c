@@ -1,4 +1,4 @@
-/* $Id: cmd-show-messages.c,v 1.2 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: cmd-show-messages.c,v 1.3 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,25 +31,24 @@ int	cmd_show_messages_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_messages_entry = {
 	"show-messages", "showmsgs",
+	"t:", 0, 0,
 	CMD_TARGET_CLIENT_USAGE,
-	0, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_show_messages_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_show_messages_exec
 };
 
 int
 cmd_show_messages_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data		*data = self->data;
-	struct client			*c;
-	struct message_entry		*msg;
-	char				*tim;
-	u_int				 i;
+	struct args		*args = self->args;
+	struct client		*c;
+	struct message_entry	*msg;
+	char			*tim;
+	u_int			 i;
 
-	if ((c = cmd_find_client(ctx, data->target)) == NULL)
+	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
 		return (-1);
 
 	for (i = 0; i < ARRAY_LENGTH(&c->message_log); i++) {

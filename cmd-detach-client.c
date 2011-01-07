@@ -1,4 +1,4 @@
-/* $Id: cmd-detach-client.c,v 1.11 2010-02-08 18:27:34 tcunha Exp $ */
+/* $Id: cmd-detach-client.c,v 1.12 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,22 +28,21 @@ int	cmd_detach_client_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_detach_client_entry = {
 	"detach-client", "detach",
+	"t:", 0, 0,
 	CMD_TARGET_CLIENT_USAGE,
-	CMD_READONLY, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_detach_client_exec,
-	cmd_target_free,
-	cmd_target_print
+	CMD_READONLY,
+	NULL,
+	NULL,
+	cmd_detach_client_exec
 };
 
 int
 cmd_detach_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct client		*c;
+	struct args	*args = self->args;
+	struct client	*c;
 
-	if ((c = cmd_find_client(ctx, data->target)) == NULL)
+	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
 		return (-1);
 
 	server_write_client(c, MSG_DETACH, NULL, 0);

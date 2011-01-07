@@ -1,4 +1,4 @@
-/* $Id: cmd-break-pane.c,v 1.11 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: cmd-break-pane.c,v 1.12 2011-01-07 14:45:33 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,19 +30,18 @@ int	cmd_break_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_break_pane_entry = {
 	"break-pane", "breakp",
-	CMD_TARGET_PANE_USAGE " [-d]",
-	0, "d",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_break_pane_exec,
-	cmd_target_free,
-	cmd_target_print
+	"dt:", 0, 0,
+	"[-d] " CMD_TARGET_PANE_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_break_pane_exec
 };
 
 int
 cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
+	struct args		*args = self->args;
 	struct winlink		*wl;
 	struct session		*s;
 	struct window_pane	*wp;
@@ -50,7 +49,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*cause;
 	int			 base_idx;
 
-	if ((wl = cmd_find_pane(ctx, data->target, &s, &wp)) == NULL)
+	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
 		return (-1);
 
 	if (window_count_panes(wl->window) == 1) {
@@ -74,7 +73,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	base_idx = options_get_number(&s->options, "base-index");
 	wl = session_attach(s, w, -1 - base_idx, &cause); /* can't fail */
-	if (!cmd_check_flag(data->chflags, 'd'))
+	if (!args_has(self->args, 'd'))
 		session_select(s, wl->idx);
 
 	server_redraw_session(s);

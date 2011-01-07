@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.36 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-link-window.c,v 1.37 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,31 +30,30 @@ int	cmd_link_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_link_window_entry = {
 	"link-window", "linkw",
+	"dks:t:", 0, 0,
 	"[-dk] " CMD_SRCDST_WINDOW_USAGE,
-	0, "dk",
-	cmd_srcdst_init,
-	cmd_srcdst_parse,
-	cmd_link_window_exec,
-	cmd_srcdst_free,
-	cmd_srcdst_print
+	0,
+	NULL,
+	NULL,
+	cmd_link_window_exec
 };
 
 int
 cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_srcdst_data	*data = self->data;
-	struct session		*src, *dst;
-	struct winlink		*wl;
-	char			*cause;
-	int			 idx, kflag, dflag;
+	struct args	*args = self->args;
+	struct session	*src, *dst;
+	struct winlink	*wl;
+	char		*cause;
+	int		 idx, kflag, dflag;
 
-	if ((wl = cmd_find_window(ctx, data->src, &src)) == NULL)
+	if ((wl = cmd_find_window(ctx, args_get(args, 's'), &src)) == NULL)
 		return (-1);
-	if ((idx = cmd_find_index(ctx, data->dst, &dst)) == -2)
+	if ((idx = cmd_find_index(ctx, args_get(args, 't'), &dst)) == -2)
 		return (-1);
 
-	kflag = cmd_check_flag(data->chflags, 'k');
-	dflag = cmd_check_flag(data->chflags, 'd');
+	kflag = args_has(self->args, 'k');
+	dflag = args_has(self->args, 'd');
 	if (server_link_window(src, wl, dst, idx, kflag, !dflag, &cause) != 0) {
 		ctx->error(ctx, "can't link window: %s", cause);
 		xfree(cause);

@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-session.c,v 1.17 2010-12-22 15:36:44 tcunha Exp $ */
+/* $Id: cmd-choose-session.c,v 1.18 2011-01-07 14:45:33 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -33,13 +33,12 @@ void	cmd_choose_session_free(void *);
 
 const struct cmd_entry cmd_choose_session_entry = {
 	"choose-session", NULL,
+	"t:", 0, 1,
 	CMD_TARGET_WINDOW_USAGE " [template]",
-	CMD_ARG01, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_choose_session_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_choose_session_exec
 };
 
 struct cmd_choose_session_data {
@@ -50,7 +49,7 @@ struct cmd_choose_session_data {
 int
 cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data		*data = self->data;
+	struct args			*args = self->args;
 	struct cmd_choose_session_data	*cdata;
 	struct winlink			*wl;
 	struct session			*s;
@@ -63,7 +62,7 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
+	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (-1);
 
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
@@ -90,8 +89,8 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	cdata = xmalloc(sizeof *cdata);
-	if (data->arg != NULL)
-		cdata->template = xstrdup(data->arg);
+	if (args->argc != 0)
+		cdata->template = xstrdup(args->argv[0]);
 	else
 		cdata->template = xstrdup("switch-client -t '%%'");
 	cdata->client = ctx->curclient;

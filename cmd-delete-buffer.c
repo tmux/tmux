@@ -1,4 +1,4 @@
-/* $Id: cmd-delete-buffer.c,v 1.9 2010-12-30 22:39:49 tcunha Exp $ */
+/* $Id: cmd-delete-buffer.c,v 1.10 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,24 +30,35 @@ int	cmd_delete_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_delete_buffer_entry = {
 	"delete-buffer", "deleteb",
+	"b:", 0, 0,
 	CMD_BUFFER_USAGE,
-	0, "",
-	cmd_buffer_init,
-	cmd_buffer_parse,
-	cmd_delete_buffer_exec,
-	cmd_buffer_free,
-	cmd_buffer_print
+	0,
+	NULL,
+	NULL,
+	cmd_delete_buffer_exec
 };
 
 int
 cmd_delete_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_buffer_data	*data = self->data;
+	struct args	*args = self->args;
+	char		*cause;
+	int		 buffer;
 
-	if (data->buffer == -1)
+	if (!args_has(args, 'b')) {
 		paste_free_top(&global_buffers);
-	else if (paste_free_index(&global_buffers, data->buffer) != 0) {
-		ctx->error(ctx, "no buffer %d", data->buffer);
+		return (0);
+	}
+
+	buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
+	if (cause != NULL) {
+		ctx->error(ctx, "buffer %s", cause);
+		xfree(cause);
+		return (-1);
+	}
+
+	if (paste_free_index(&global_buffers, buffer) != 0) {
+		ctx->error(ctx, "no buffer %d", buffer);
 		return (-1);
 	}
 

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.601 2011-01-07 14:34:45 tcunha Exp $ */
+/* $Id: tmux.h,v 1.602 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1164,6 +1164,15 @@ struct client {
 };
 ARRAY_DECL(clients, struct client *);
 
+/* Parsed arguments. */
+struct args {
+	bitstr_t	*flags;
+	char		*values[SCHAR_MAX]; /* XXX This is awfully big. */
+
+	int		 argc;
+	char	       **argv;
+};
+
 /* Key/command line command. */
 struct cmd_ctx {
 	/*
@@ -1194,67 +1203,35 @@ struct cmd_ctx {
 };
 
 struct cmd {
-	const struct cmd_entry *entry;
-	void		*data;
+	const struct cmd_entry	*entry;
+	struct args		*args;
 
-	TAILQ_ENTRY(cmd) qentry;
+	TAILQ_ENTRY(cmd)	 qentry;
 };
 struct cmd_list {
-	int		 references;
-	TAILQ_HEAD(, cmd) list;
+	int		 	 references;
+	TAILQ_HEAD(, cmd) 	 list;
 };
 
 struct cmd_entry {
 	const char	*name;
 	const char	*alias;
+
+	const char	*args_template;
+	int		 args_lower;
+	int		 args_upper;
+
 	const char	*usage;
 
 #define CMD_STARTSERVER 0x1
 #define CMD_CANTNEST 0x2
 #define CMD_SENDENVIRON 0x4
-#define CMD_ARG1 0x8
-#define CMD_ARG01 0x10
-#define CMD_ARG2 0x20
-#define CMD_ARG12 0x40
-#define CMD_READONLY 0x80
+#define CMD_READONLY 0x8
 	int		 flags;
 
-	const char	*chflags;
-
-	void		 (*init)(struct cmd *, int);
-	int		 (*parse)(struct cmd *, int, char **, char **);
+	void		 (*key_binding)(struct cmd *, int);
+	int		 (*check)(struct args *);
 	int		 (*exec)(struct cmd *, struct cmd_ctx *);
-	void		 (*free)(struct cmd *);
-	size_t		 (*print)(struct cmd *, char *, size_t);
-};
-
-/* Generic command data. */
-struct cmd_target_data {
-	uint64_t chflags;
-
-	char	*target;
-
-	char	*arg;
-	char	*arg2;
-};
-
-struct cmd_srcdst_data {
-	uint64_t chflags;
-
-	char	*src;
-	char	*dst;
-
-	char	*arg;
-	char	*arg2;
-};
-
-struct cmd_buffer_data {
-	uint64_t chflags;
-
-	int	 buffer;
-
-	char	*arg;
-	char	*arg2;
 };
 
 /* Key binding. */
@@ -1296,6 +1273,17 @@ struct options_table_entry {
 
 /* List of configuration causes. */
 ARRAY_DECL(causelist, char *);
+
+/* Common command usages. */
+#define CMD_TARGET_PANE_USAGE "[-t target-pane]"
+#define CMD_TARGET_WINDOW_USAGE "[-t target-window]"
+#define CMD_TARGET_SESSION_USAGE "[-t target-session]"
+#define CMD_TARGET_CLIENT_USAGE "[-t target-client]"
+#define CMD_SRCDST_PANE_USAGE "[-s src-pane] [-t dst-pane]"
+#define CMD_SRCDST_WINDOW_USAGE "[-s src-window] [-t dst-window]"
+#define CMD_SRCDST_SESSION_USAGE "[-s src-session] [-t dst-session]"
+#define CMD_SRCDST_CLIENT_USAGE "[-s src-client] [-t dst-client]"
+#define CMD_BUFFER_USAGE "[-b buffer-index]"
 
 /* tmux.c */
 extern struct options global_options;
@@ -1475,10 +1463,21 @@ char		*paste_print(struct paste_buffer *, size_t);
 extern const char clock_table[14][5][5];
 void		 clock_draw(struct screen_write_ctx *, int, int);
 
+/* arguments.c */
+struct args	*args_create(int, ...);
+struct args	*args_parse(const char *, int, char **);
+void		 args_free(struct args *);
+size_t		 args_print(struct args *, char *, size_t);
+int		 args_has(struct args *, u_char);
+void		 args_set(struct args *, u_char, const char *);
+const char	*args_get(struct args *, u_char);
+long long	 args_strtonum(
+		    struct args *, u_char, long long, long long, char **);
+
 /* cmd.c */
 int		 cmd_pack_argv(int, char **, char *, size_t);
 int		 cmd_unpack_argv(char *, size_t, int, char ***);
-char	       **cmd_copy_argv(int, char **);
+char	       **cmd_copy_argv(int, char *const *);
 void		 cmd_free_argv(int, char **);
 struct cmd	*cmd_parse(int, char **, char **);
 int		 cmd_exec(struct cmd *, struct cmd_ctx *);
@@ -1587,32 +1586,6 @@ size_t		 cmd_list_print(struct cmd_list *, char *, size_t);
 
 /* cmd-string.c */
 int	cmd_string_parse(const char *, struct cmd_list **, char **);
-
-/* cmd-generic.c */
-size_t	cmd_prarg(char *, size_t, const char *, char *);
-int	cmd_check_flag(uint64_t, int);
-void	cmd_set_flag(uint64_t *, int);
-#define CMD_TARGET_PANE_USAGE "[-t target-pane]"
-#define CMD_TARGET_WINDOW_USAGE "[-t target-window]"
-#define CMD_TARGET_SESSION_USAGE "[-t target-session]"
-#define CMD_TARGET_CLIENT_USAGE "[-t target-client]"
-void	cmd_target_init(struct cmd *, int);
-int	cmd_target_parse(struct cmd *, int, char **, char **);
-void	cmd_target_free(struct cmd *);
-size_t	cmd_target_print(struct cmd *, char *, size_t);
-#define CMD_SRCDST_PANE_USAGE "[-s src-pane] [-t dst-pane]"
-#define CMD_SRCDST_WINDOW_USAGE "[-s src-window] [-t dst-window]"
-#define CMD_SRCDST_SESSION_USAGE "[-s src-session] [-t dst-session]"
-#define CMD_SRCDST_CLIENT_USAGE "[-s src-client] [-t dst-client]"
-void	cmd_srcdst_init(struct cmd *, int);
-int	cmd_srcdst_parse(struct cmd *, int, char **, char **);
-void	cmd_srcdst_free(struct cmd *);
-size_t	cmd_srcdst_print(struct cmd *, char *, size_t);
-#define CMD_BUFFER_USAGE "[-b buffer-index]"
-void	cmd_buffer_init(struct cmd *, int);
-int	cmd_buffer_parse(struct cmd *, int, char **, char **);
-void	cmd_buffer_free(struct cmd *);
-size_t	cmd_buffer_print(struct cmd *, char *, size_t);
 
 /* client.c */
 int	client_main(int, char **, int);

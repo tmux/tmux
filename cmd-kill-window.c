@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-window.c,v 1.21 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-kill-window.c,v 1.22 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,22 +28,21 @@ int	cmd_kill_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_kill_window_entry = {
 	"kill-window", "killw",
+	"t:", 0, 0,
 	CMD_TARGET_WINDOW_USAGE,
-	0, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_kill_window_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_kill_window_exec
 };
 
 int
 cmd_kill_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct winlink		*wl;
+	struct args	*args = self->args;
+	struct winlink	*wl;
 
-	if ((wl = cmd_find_window(ctx, data->target, NULL)) == NULL)
+	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (-1);
 
 	server_kill_window(wl->window);

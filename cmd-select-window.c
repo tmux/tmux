@@ -1,4 +1,4 @@
-/* $Id: cmd-select-window.c,v 1.24 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-select-window.c,v 1.25 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,39 +26,38 @@
  * Select window by index.
  */
 
-void	cmd_select_window_init(struct cmd *, int);
+void	cmd_select_window_key_binding(struct cmd *, int);
 int	cmd_select_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_select_window_entry = {
 	"select-window", "selectw",
+	"t:", 0, 0,
 	CMD_TARGET_WINDOW_USAGE,
-	0, "",
-	cmd_select_window_init,
-	cmd_target_parse,
-	cmd_select_window_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	cmd_select_window_key_binding,
+	NULL,
+	cmd_select_window_exec
 };
 
 void
-cmd_select_window_init(struct cmd *self, int key)
+cmd_select_window_key_binding(struct cmd *self, int key)
 {
-	struct cmd_target_data	*data;
+	char	tmp[16];
 
-	cmd_target_init(self, key);
-	data = self->data;
+	xsnprintf(tmp, sizeof tmp, ":%d", key - '0');
 
-	xasprintf(&data->target, ":%d", key - '0');
+	self->args = args_create(0);
+	args_set(self->args, 't', tmp);
 }
 
 int
 cmd_select_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct winlink		*wl;
-	struct session		*s;
+	struct args	*args = self->args;
+	struct winlink	*wl;
+	struct session	*s;
 
-	if ((wl = cmd_find_window(ctx, data->target, &s)) == NULL)
+	if ((wl = cmd_find_window(ctx, args_get(args, 't'), &s)) == NULL)
 		return (-1);
 
 	if (session_select(s, wl->idx) == 0)

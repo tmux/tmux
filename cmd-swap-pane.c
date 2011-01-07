@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-pane.c,v 1.15 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id: cmd-swap-pane.c,v 1.16 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -26,66 +26,58 @@
  * Swap two panes.
  */
 
-void	cmd_swap_pane_init(struct cmd *, int);
+void	cmd_swap_pane_key_binding(struct cmd *, int);
 int	cmd_swap_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_swap_pane_entry = {
 	"swap-pane", "swapp",
+	"dDs:t:U", 0, 0,
 	"[-dDU] " CMD_SRCDST_PANE_USAGE,
-	0, "dDU",
-	cmd_swap_pane_init,
-	cmd_srcdst_parse,
-	cmd_swap_pane_exec,
-	cmd_srcdst_free,
-	cmd_srcdst_print
+	0,
+	cmd_swap_pane_key_binding,
+	NULL,
+	cmd_swap_pane_exec
 };
 
 void
-cmd_swap_pane_init(struct cmd *self, int key)
+cmd_swap_pane_key_binding(struct cmd *self, int key)
 {
-	struct cmd_target_data	*data;
-
-	cmd_srcdst_init(self, key);
-	data = self->data;
-
+	self->args = args_create(0);
 	if (key == '{')
-		cmd_set_flag(&data->chflags, 'U');
+		args_set(self->args, 'U', NULL);
 	else if (key == '}')
-		cmd_set_flag(&data->chflags, 'D');
+		args_set(self->args, 'D', NULL);
 }
-
 
 int
 cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_srcdst_data	*data = self->data;
+	struct args		*args = self->args;
 	struct winlink		*src_wl, *dst_wl;
 	struct window		*src_w, *dst_w;
 	struct window_pane	*tmp_wp, *src_wp, *dst_wp;
 	struct layout_cell	*src_lc, *dst_lc;
 	u_int			 sx, sy, xoff, yoff;
 
-	if (data == NULL)
-		return (0);
-
-	if ((dst_wl = cmd_find_pane(ctx, data->dst, NULL, &dst_wp)) == NULL)
+	dst_wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &dst_wp);
+	if (dst_wl == NULL)
 		return (-1);
 	dst_w = dst_wl->window;
 
-	if (data->src == NULL) {
+	if (!args_has(args, 's')) {
 		src_w = dst_w;
-		if (cmd_check_flag(data->chflags, 'D')) {
+		if (args_has(self->args, 'D')) {
 			src_wp = TAILQ_NEXT(dst_wp, entry);
 			if (src_wp == NULL)
 				src_wp = TAILQ_FIRST(&dst_w->panes);
-		} else if (cmd_check_flag(data->chflags, 'U')) {
+		} else if (args_has(self->args, 'U')) {
 			src_wp = TAILQ_PREV(dst_wp, window_panes, entry);
 			if (src_wp == NULL)
 				src_wp = TAILQ_LAST(&dst_w->panes, window_panes);
 		} else
 			return (0);
 	} else {
-		src_wl = cmd_find_pane(ctx, data->src, NULL, &src_wp);
+		src_wl = cmd_find_pane(ctx, args_get(args, 's'), NULL, &src_wp);
 		if (src_wl == NULL)
 			return (-1);
 		src_w = src_wl->window;
@@ -121,7 +113,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	dst_wp->xoff = xoff; dst_wp->yoff = yoff;
 	window_pane_resize(dst_wp, sx, sy);
 
-	if (!cmd_check_flag(data->chflags, 'd')) {
+	if (!args_has(self->args, 'd')) {
 		if (src_w != dst_w) {
 			window_set_active_pane(src_w, dst_wp);
 			window_set_active_pane(dst_w, src_wp);

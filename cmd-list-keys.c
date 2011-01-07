@@ -1,4 +1,4 @@
-/* $Id: cmd-list-keys.c,v 1.25 2010-10-24 01:31:57 tcunha Exp $ */
+/* $Id: cmd-list-keys.c,v 1.26 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -32,26 +32,25 @@ int	cmd_list_keys_table(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_keys_entry = {
 	"list-keys", "lsk",
+	"t:", 0, 0,
 	"[-t key-table]",
-	0, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_list_keys_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_list_keys_exec
 };
 
 int
 cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
+	struct args		*args = self->args;
 	struct key_binding	*bd;
 	const char		*key;
 	char			 tmp[BUFSIZ];
 	size_t			 used;
 	int			 width, keywidth;
 
-	if (data->target != NULL)
+	if (args_has(args, 't'))
 		return (cmd_list_keys_table(self, ctx));
 
 	width = 0;
@@ -95,14 +94,16 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 int
 cmd_list_keys_table(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data		*data = self->data;
+	struct args			*args = self->args;
+	const char			*tablename;
 	const struct mode_key_table	*mtab;
 	struct mode_key_binding		*mbind;
 	const char			*key, *cmdstr, *mode;
 	int			 	 width, keywidth;
 
-	if ((mtab = mode_key_findtable(data->target)) == NULL) {
-		ctx->error(ctx, "unknown key table: %s", data->target);
+	tablename = args_get(args, 't');
+	if ((mtab = mode_key_findtable(tablename)) == NULL) {
+		ctx->error(ctx, "unknown key table: %s", tablename);
 		return (-1);
 	}
 

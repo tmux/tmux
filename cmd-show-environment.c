@@ -1,4 +1,4 @@
-/* $Id: cmd-show-environment.c,v 1.2 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-show-environment.c,v 1.3 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,27 +31,26 @@ int	cmd_show_environment_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_environment_entry = {
 	"show-environment", "showenv",
+	"gt:", 0, 0,
 	"[-g] " CMD_TARGET_SESSION_USAGE,
-	0, "g",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_show_environment_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_show_environment_exec
 };
 
 int
 cmd_show_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data		*data = self->data;
-	struct session			*s;
-	struct environ			*env;
-	struct environ_entry		*envent;
+	struct args		*args = self->args;
+	struct session		*s;
+	struct environ		*env;
+	struct environ_entry	*envent;
 
-	if (cmd_check_flag(data->chflags, 'g'))
+	if (args_has(self->args, 'g'))
 		env = &global_environ;
 	else {
-		if ((s = cmd_find_session(ctx, data->target)) == NULL)
+		if ((s = cmd_find_session(ctx, args_get(args, 't'))) == NULL)
 			return (-1);
 		env = &s->environ;
 	}

@@ -1,4 +1,4 @@
-/* $Id: cmd-rename-session.c,v 1.21 2010-12-22 15:36:44 tcunha Exp $ */
+/* $Id: cmd-rename-session.c,v 1.22 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,32 +30,33 @@ int	cmd_rename_session_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_rename_session_entry = {
 	"rename-session", "rename",
+	"t:", 1, 1,
 	CMD_TARGET_SESSION_USAGE " new-name",
-	CMD_ARG1, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_rename_session_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_rename_session_exec
 };
 
 int
 cmd_rename_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
-	struct session		*s;
+	struct args	*args = self->args;
+	struct session	*s;
+	const char	*newname;
 
-	if (data->arg != NULL && session_find(data->arg) != NULL) {
-		ctx->error(ctx, "duplicate session: %s", data->arg);
+	newname = args->argv[0];
+	if (session_find(newname) != NULL) {
+		ctx->error(ctx, "duplicate session: %s", newname);
 		return (-1);
 	}
 
-	if ((s = cmd_find_session(ctx, data->target)) == NULL)
+	if ((s = cmd_find_session(ctx, args_get(args, 't'))) == NULL)
 		return (-1);
 
 	RB_REMOVE(sessions, &sessions, s);
 	xfree(s->name);
-	s->name = xstrdup(data->arg);
+	s->name = xstrdup(newname);
 	RB_INSERT(sessions, &sessions, s);
 
 	server_status_session(s);

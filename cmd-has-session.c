@@ -1,4 +1,4 @@
-/* $Id: cmd-has-session.c,v 1.15 2009-11-14 17:56:39 tcunha Exp $ */
+/* $Id: cmd-has-session.c,v 1.16 2011-01-07 14:45:34 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,21 +28,20 @@ int	cmd_has_session_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_has_session_entry = {
 	"has-session", "has",
+	"t:", 0, 0,
 	CMD_TARGET_SESSION_USAGE,
-	0, "",
-	cmd_target_init,
-	cmd_target_parse,
-	cmd_has_session_exec,
-	cmd_target_free,
-	cmd_target_print
+	0,
+	NULL,
+	NULL,
+	cmd_has_session_exec
 };
 
 int
 cmd_has_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct cmd_target_data	*data = self->data;
+	struct args	*args = self->args;
 
-	if (cmd_find_session(ctx, data->target) == NULL)
+	if (cmd_find_session(ctx, args_get(args, 't')) == NULL)
 		return (-1);
 
 	return (0);
