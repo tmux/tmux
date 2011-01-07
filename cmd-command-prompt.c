@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.29 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.30 2011-01-07 15:04:51 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -36,7 +36,7 @@ void	cmd_command_prompt_free(void *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
 	"command-prompt", NULL,
-	"p:t:", 0, 0,
+	"p:t:", 0, 1,
 	CMD_TARGET_CLIENT_USAGE " [-p prompts] [template]",
 	0,
 	cmd_command_prompt_key_binding,
