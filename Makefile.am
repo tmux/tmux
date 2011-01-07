@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.7 2011-01-07 15:04:24 tcunha Exp $
+# $Id: Makefile.am,v 1.8 2011-01-07 15:09:04 tcunha Exp $
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
@@ -9,6 +9,7 @@ EXTRA_DIST = \
 	CHANGES FAQ NOTES TODO examples compat \
 	array.h compat.h tmux.h osdep-*.c
 dist-hook:
+	grep "^#found_debug=" configure
 	find $(distdir) -name CVS -type d|xargs rm -Rf
 
 # glibc as usual does things ass-backwards and hides useful things by default,
@@ -222,3 +223,18 @@ endif
 if NO_STRTONUM
 nodist_tmux_SOURCES += compat/strtonum.c
 endif
+
+# Update SF web site.
+upload-index.html: update-index.html
+	scp www/index.html www/main.css www/images/*.png \
+		${USER},tmux@web.sf.net:/home/groups/t/tm/tmux/htdocs
+	rm -f www/index.html www/images/small-*
+
+update-index.html:
+	(cd www/images && \
+		rm -f small-* && \
+		for i in *.png; do \
+			convert "$$i" -resize 200x150 "small-$$i"; \
+		done \
+	)
+	sed "s/%%VERSION%%/${VERSION}/g" www/index.html.in >www/index.html
