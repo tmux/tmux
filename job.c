@@ -137,7 +137,7 @@ job_free(struct job *job)
 int
 job_run(struct job *job)
 {
-	int	nullfd, out[2], mode;
+	int	nullfd, out[2];
 
 	if (job->fd != -1 || job->pid != -1)
 		return (0);
@@ -177,10 +177,7 @@ job_run(struct job *job)
 		close(out[1]);
 
 		job->fd = out[0];
-		if ((mode = fcntl(job->fd, F_GETFL)) == -1)
-			fatal("fcntl failed");
-		if (fcntl(job->fd, F_SETFL, mode|O_NONBLOCK) == -1)
-			fatal("fcntl failed");
+		setblocking(job->fd, 0);
 
 		if (job->event != NULL)
 			bufferevent_free(job->event);

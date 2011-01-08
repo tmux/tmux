@@ -53,7 +53,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct client		*c;
 	struct window_pane	*wp;
 	char			*command;
-	int			 old_fd, pipe_fd[2], null_fd, mode;
+	int			 old_fd, pipe_fd[2], null_fd;
 
 	if ((c = cmd_find_client(ctx, NULL)) == NULL)
 		return (-1);
@@ -127,10 +127,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		    NULL, NULL, cmd_pipe_pane_error_callback, wp);
 		bufferevent_enable(wp->pipe_event, EV_WRITE);
 
-		if ((mode = fcntl(wp->pipe_fd, F_GETFL)) == -1)
-			fatal("fcntl failed");
-		if (fcntl(wp->pipe_fd, F_SETFL, mode|O_NONBLOCK) == -1)
-			fatal("fcntl failed");
+		setblocking(wp->pipe_fd, 0);
 		return (0);
 	}
 }

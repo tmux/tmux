@@ -74,7 +74,7 @@ server_create_socket(void)
 	struct sockaddr_un	sa;
 	size_t			size;
 	mode_t			mask;
-	int			fd, mode;
+	int			fd;
 
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
@@ -95,11 +95,7 @@ server_create_socket(void)
 
 	if (listen(fd, 16) == -1)
 		fatal("listen failed");
-
-	if ((mode = fcntl(fd, F_GETFL)) == -1)
-		fatal("fcntl failed");
-	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failed");
+	setblocking(fd, 0);
 
 	server_update_socket();
 

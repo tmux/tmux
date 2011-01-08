@@ -563,7 +563,6 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
     const char *cwd, struct environ *env, struct termios *tio, char **cause)
 {
 	struct winsize	 ws;
-	int		 mode;
 	char		*argv0;
 	const char	*ptr;
 	struct termios	 tio2;
@@ -637,10 +636,8 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 		fatal("execl failed");
 	}
 
-	if ((mode = fcntl(wp->fd, F_GETFL)) == -1)
-		fatal("fcntl failed");
-	if (fcntl(wp->fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failed");
+	setblocking(wp->fd, 0);
+
 	wp->event = bufferevent_new(wp->fd,
 	    window_pane_read_callback, NULL, window_pane_error_callback, wp);
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
