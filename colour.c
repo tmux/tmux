@@ -18,6 +18,8 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -28,6 +30,101 @@
  * of the 256 colour palette.
  */
 
+/* An RGB colour. */
+struct colour_rgb {
+	u_char	r;
+	u_char	g;
+	u_char	b;
+};
+
+/* 256 colour RGB table, generated on first use. */
+struct colour_rgb *colour_rgb_256;
+
+void	colour_rgb_generate256(void);
+double	colour_rgb_distance(struct colour_rgb *, struct colour_rgb *);
+int	colour_rgb_find(struct colour_rgb *);
+
+/* Generate 256 colour RGB table. */
+void
+colour_rgb_generate256(void)
+{
+	struct colour_rgb	*rgb;
+	u_int			 i, r, g, b;
+
+	/*
+	 * Allocate the table. The first 16 colours are often changed by users
+	 * and terminals so don't include them.
+	 */
+	colour_rgb_256 = xcalloc(240, sizeof *colour_rgb_256);
+
+	/* Add the colours first. */
+	r = g = b = 0;
+	for (i = 240; i > 24; i--) {
+		rgb = &colour_rgb_256[240 - i];
+
+		if (r != 0)
+			rgb->r = (r * 40) + 55;
+		if (g != 0)
+			rgb->g = (g * 40) + 55;
+		if (b != 0)
+			rgb->b = (b * 40) + 55;
+
+		b++;
+		if (b > 5) {
+			b = 0;
+			g++;
+		}
+		if (g > 5) {
+			g = 0;
+			r++;
+		}
+	}
+
+	/* Then add the greys. */
+	for (i = 24; i > 0; i--) {
+		rgb = &colour_rgb_256[240 - i];
+
+		rgb->r = 8 + (24 - i) * 10;
+		rgb->g = 8 + (24 - i) * 10;
+		rgb->b = 8 + (24 - i) * 10;
+	}
+}
+
+/* Get colour RGB distance. */
+double
+colour_rgb_distance(struct colour_rgb *rgb1, struct colour_rgb *rgb2)
+{
+	int	r, g, b;
+
+	r = rgb1->r - rgb2->r;
+	g = rgb1->g - rgb2->g;
+	b = rgb1->b - rgb2->b;
+	return (sqrt(r * r + g * g + b * b));
+}
+
+/* Work out the nearest colour from the 256 colour set. */
+int
+colour_rgb_find(struct colour_rgb *rgb)
+{
+	double	distance, lowest;
+	u_int	colour, i;
+
+	if (colour_rgb_256 == NULL)
+		colour_rgb_generate256();
+
+	colour = 16;
+	lowest = INFINITY;
+	for (i = 0; i < 240; i++) {
+		distance = colour_rgb_distance(&colour_rgb_256[i], rgb);
+		if (distance < lowest) {
+			lowest = distance;
+			colour = 16 + i;
+		}
+	}
+	return (colour);
+}
+
+/* Set grid cell foreground colour. */
 void
 colour_set_fg(struct grid_cell *gc, int c)
 {
@@ -36,6 +133,7 @@ colour_set_fg(struct grid_cell *gc, int c)
 	gc->fg = c;
 }
 
+/* Set grid cell background colour. */
 void
 colour_set_bg(struct grid_cell *gc, int c)
 {
@@ -44,6 +142,7 @@ colour_set_bg(struct grid_cell *gc, int c)
 	gc->bg = c;
 }
 
+/* Convert colour to a string. */
 const char *
 colour_tostring(int c)
 {
@@ -77,11 +176,25 @@ colour_tostring(int c)
 	return (NULL);
 }
 
+/* Convert colour from string. */
 int
 colour_fromstring(const char *s)
 {
-	const char	*errstr;
-	int		 n;
+	const char		*errstr;
+	const char		*cp;
+	struct colour_rgb	 rgb;
+	int			 n;
+
+	if (*s == '#' && strlen(s) == 7) {
+		for (cp = s + 1; isxdigit((u_char) *cp); cp++)
+			;
+		if (*cp != '\0')
+			return (-1);
+		n = sscanf(s + 1, "%2hhx%2hhx%2hhx", &rgb.r, &rgb.g, &rgb.b);
+		if (n != 3)
+			return (-1);
+		return (colour_rgb_find(&rgb) | 0x100);
+	}
 
 	if (strncasecmp(s, "colour", (sizeof "colour") - 1) == 0) {
 		n = strtonum(s + (sizeof "colour") - 1, 0, 255, &errstr);
@@ -111,6 +224,7 @@ colour_fromstring(const char *s)
 	return (-1);
 }
 
+/* Convert 256 colour palette to 16. */
 u_char
 colour_256to16(u_char c)
 {
@@ -136,6 +250,7 @@ colour_256to16(u_char c)
 	return (table[c]);
 }
 
+/* Convert 256 colour palette to 88. */
 u_char
 colour_256to88(u_char c)
 {
