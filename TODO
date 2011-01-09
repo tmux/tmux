@@ -127,3 +127,4 @@
   syntax
 - a command to choose from a generic list, so you can do eg
   choose-list -l Abc,Moo,Blah "run-shell 'sh /my/choose/script %%'"
+- else part for if-shell
