@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.11 2011-01-10 22:00:47 nicm Exp $
+# $Id: configure.ac,v 1.12 2011-01-10 22:12:31 nicm Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -282,10 +282,16 @@ fi
 
 # Look for __progname.
 AC_MSG_CHECKING(for __progname)
-AC_COMPILE_IFELSE(
+AC_LINK_IFELSE(
 	[
+		#include <stdio.h>
+		#include <stdlib.h>
 		extern char *__progname;
-		int main(void) { const char *cp = __progname; }
+		int main(void) {
+			const char *cp = __progname;
+			printf("%s\n", cp);
+			exit(0);
+		}
 	],
 	[AC_DEFINE(HAVE___PROGNAME) AC_MSG_RESULT(yes)],
 	AC_MSG_RESULT(no)
