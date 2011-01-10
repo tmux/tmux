@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.9 2011-01-04 09:48:10 nicm Exp $
+# $Id: configure.ac,v 1.10 2011-01-10 21:51:56 nicm Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -215,14 +215,24 @@ AM_CONDITIONAL(NO_VIS, [test "x$found_strnvis" = xno])
 # Look for getopt. glibc's getopt does not enforce argument order and the ways
 # of making it do so are stupid, so just use our own instead.
 AC_CHECK_FUNC(getopt, found_getopt=yes, found_getopt=no)
-if test "x$found_getopt" != xno; then
-	AC_MSG_CHECKING(if system getopt should be avoided)
-	if test "x$found_glibc" = xyes; then
-		found_getopt=no
-		AC_MSG_RESULT(yes)
-	else
-		AC_MSG_RESULT(no)
-		AC_DEFINE(HAVE_GETOPT)
+if test "x$found_getopt" != xno; then	
+	AC_CHECK_DECLS(
+		[optarg, optind, optreset],
+		,
+		found_getopt=no,
+		[
+			#include <unistd.h>
+		]
+	)	
+	if test "x$found_getopt" != xno; then	
+		AC_MSG_CHECKING(if system getopt should be avoided)
+		if test "x$found_glibc" = xyes; then
+			found_getopt=no
+			AC_MSG_RESULT(yes)
+		else
+			AC_MSG_RESULT(no)
+			AC_DEFINE(HAVE_GETOPT)
+		fi
 	fi
 fi
 AM_CONDITIONAL(NO_GETOPT, [test "x$found_getopt" = xno])
