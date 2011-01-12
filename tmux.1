@@ -134,7 +134,10 @@ will report an error and exit without executing further commands.
 .It Fl L Ar socket-name
 .Nm
 stores the server socket in a directory under
-.Pa /tmp ;
+.Pa /tmp
+(or
+.Ev TMPDIR
+if set);
 the default socket is named
 .Em default .
 This option allows a different socket name to be specified, allowing several
