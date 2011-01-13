@@ -181,7 +181,7 @@ session_next_session(struct session *s)
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	s2 = RB_NEXT(sessions, &sessions, s2);
+	s2 = RB_NEXT(sessions, &sessions, s);
 	if (s2 == NULL)
 		s2 = RB_MIN(sessions, &sessions);
 	if (s2 == s)
@@ -198,7 +198,7 @@ session_previous_session(struct session *s)
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	s2 = RB_PREV(sessions, &sessions, s2);
+	s2 = RB_PREV(sessions, &sessions, s);
 	if (s2 == NULL)
 		s2 = RB_MAX(sessions, &sessions);
 	if (s2 == s)
