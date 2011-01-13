@@ -181,12 +181,9 @@ session_next_session(struct session *s)
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	s2 = s;
-	do {
-		s2 = RB_NEXT(sessions, &sessions, s2);
-		if (s2 == NULL)
-			s2 = RB_MIN(sessions, &sessions);
-	} while (s2 != s);
+	s2 = RB_NEXT(sessions, &sessions, s2);
+	if (s2 == NULL)
+		s2 = RB_MIN(sessions, &sessions);
 	if (s2 == s)
 		return (NULL);
 	return (s2);
@@ -201,12 +198,9 @@ session_previous_session(struct session *s)
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	s2 = s;
-	do {
-		s2 = RB_PREV(sessions, &sessions, s2);
-		if (s2 == NULL)
-			s2 = RB_MAX(sessions, &sessions);
-	} while (s2 != s);
+	s2 = RB_PREV(sessions, &sessions, s2);
+	if (s2 == NULL)
+		s2 = RB_MAX(sessions, &sessions);
 	if (s2 == s)
 		return (NULL);
 	return (s2);
