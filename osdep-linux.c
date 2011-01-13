@@ -1,4 +1,4 @@
-/* $Id: osdep-linux.c,v 1.7 2010-12-30 20:41:08 nicm Exp $ */
+/* $Id: osdep-linux.c,v 1.8 2011-01-13 19:58:47 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -65,7 +65,12 @@ osdep_event_init(void)
 {
 	/*
 	 * On Linux, epoll doesn't work on /dev/null (yes, really).
+	 *
+	 * This has been commented because libevent versions up until the very
+	 * latest (1.4 git or 2.0.10) do not handle signals properly when using
+	 * poll or select, causing hangs.
+	 * 
 	 */
-	setenv("EVENT_NOEPOLL", "1", 1);
+	/* setenv("EVENT_NOEPOLL", "1", 1); */
 	return (event_init());
 }

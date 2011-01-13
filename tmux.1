@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.287 2011-01-07 15:02:38 tcunha Exp $
+.\" $Id: tmux.1,v 1.288 2011-01-13 19:58:47 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -2144,8 +2144,11 @@ may use the terminal alternate screen feature, which allows the
 and
 .Em rmcup
 .Xr terminfo 5
-capabilities to be issued to preserve the existing window content on start and
-restore it on exit.
+capabilities.
+The alternate screen feature preserves the contents of the window when an
+interactive application starts and restores it on exit, so that any output
+visible before the application starts reappears unchanged after it exits.
+The default is on.
 .Pp
 .It Xo Ic automatic-rename
 .Op Ic on | off
