@@ -150,7 +150,7 @@ const struct options_table_entry session_options_table[] = {
 	{ .name = "history-limit",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .minimum = 0,
-	  .maximum = SHRT_MAX,
+	  .maximum = INT_MAX,
 	  .default_num = 2000
 	},
 
