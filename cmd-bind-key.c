@@ -45,7 +45,7 @@ int
 cmd_bind_key_check(struct args *args)
 {
 	if (args_has(args, 't')) {
-		if (args->argc != 1)
+		if (args->argc != 2)
 			return (-1);
 	} else {
 		if (args->argc < 2)
@@ -99,9 +99,9 @@ cmd_bind_key_table(struct cmd *self, struct cmd_ctx *ctx, int key)
 		return (-1);
 	}
 
-	cmd = mode_key_fromstring(mtab->cmdstr, args->argv[0]);
+	cmd = mode_key_fromstring(mtab->cmdstr, args->argv[1]);
 	if (cmd == MODEKEY_NONE) {
-		ctx->error(ctx, "unknown command: %s", args->argv[0]);
+		ctx->error(ctx, "unknown command: %s", args->argv[1]);
 		return (-1);
 	}
 
