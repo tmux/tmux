@@ -1201,10 +1201,6 @@ input_csi_dispatch(struct input_ctx *ictx)
 			screen_write_mousemode_on(
 			    &ictx->ctx, MODE_MOUSE_STANDARD);
 			break;
-		case 1001:
-			screen_write_mousemode_on(
-			    &ictx->ctx, MODE_MOUSE_HIGHLIGHT);
-			break;
 		case 1002:
 			screen_write_mousemode_on(
 			    &ictx->ctx, MODE_MOUSE_BUTTON);
