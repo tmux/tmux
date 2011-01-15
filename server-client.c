@@ -449,9 +449,14 @@ server_client_reset_state(struct client *c)
 	else
 		tty_cursor(&c->tty, wp->xoff + s->cx, wp->yoff + s->cy);
 
+	/*
+	 * Any mode will do for mouse-select-pane, but set standard mode if
+	 * none.
+	 */
 	mode = s->mode;
 	if (TAILQ_NEXT(TAILQ_FIRST(&w->panes), entry) != NULL &&
-	    options_get_number(oo, "mouse-select-pane"))
+	    options_get_number(oo, "mouse-select-pane") &&
+	    (mode & ALL_MOUSE_MODES) == 0)
 		mode |= MODE_MOUSE_STANDARD;
 
 	/*
