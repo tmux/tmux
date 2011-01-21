@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.8 2011-01-07 15:09:04 tcunha Exp $
+# $Id: Makefile.am,v 1.9 2011-01-21 20:35:20 nicm Exp $
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
@@ -11,6 +11,9 @@ EXTRA_DIST = \
 dist-hook:
 	grep "^#found_debug=" configure
 	find $(distdir) -name CVS -type d|xargs rm -Rf
+
+# Preprocessor flags.
+CPPFLAGS += @XOPEN_DEFINES@
 
 # glibc as usual does things ass-backwards and hides useful things by default,
 # so everyone has to add this.

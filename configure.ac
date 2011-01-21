@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.12 2011-01-10 22:12:31 nicm Exp $
+# $Id: configure.ac,v 1.13 2011-01-21 20:35:20 nicm Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -120,6 +120,47 @@ fi
 # Look for networking libraries.
 AC_SEARCH_LIBS(inet_ntoa, nsl)
 AC_SEARCH_LIBS(socket, socket)
+AC_CHECK_LIB(xnet, socket)
+
+# Check for CMSG_DATA. Some platforms require _XOPEN_SOURCE_EXTENDED (for
+# example see xopen_networking(7) on HP-UX).
+XOPEN_DEFINES=
+AC_MSG_CHECKING(for CMSG_DATA)
+AC_EGREP_CPP(
+	yes,
+	[
+		#include <sys/socket.h>
+		#ifdef CMSG_DATA
+		yes
+		#endif
+	],
+	found_cmsg_data=yes,
+	found_cmsg_data=no
+)
+AC_MSG_RESULT($found_cmsg_data)
+if test "x$found_cmsg_data" = xno; then
+	AC_MSG_CHECKING(if CMSG_DATA needs _XOPEN_SOURCE_EXTENDED)
+	AC_EGREP_CPP(
+		yes,
+		[
+			#define _XOPEN_SOURCE 1
+			#define _XOPEN_SOURCE_EXTENDED 1
+			#include <sys/socket.h>
+			#ifdef CMSG_DATA
+			yes
+			#endif
+		],
+		found_cmsg_data=yes,
+		found_cmsg_data=no
+	)
+	AC_MSG_RESULT($found_cmsg_data)
+	if test "x$found_cmsg_data" = xyes; then
+		XOPEN_DEFINES="-D_XOPEN_SOURCE -D_XOPEN_SOURCE_EXTENDED"
+	else
+    		AC_MSG_ERROR("CMSG_DATA not found")
+	fi
+fi
+AC_SUBST(XOPEN_DEFINES)
 
 # Look for imsg in libutil. compat/imsg.c is linked by Makefile.am if missing.
 AC_SEARCH_LIBS(imsg_init, util, found_imsg_init=yes, found_imsg_init=no)
@@ -355,6 +396,10 @@ case "$host_os" in
 		AC_MSG_RESULT(sunos)
 		PLATFORM=sunos
 		;;
+	*hpux*)
+		AC_MSG_RESULT(hpux)
+		PLATFORM=hpux
+		;;
 	*)
 		AC_MSG_RESULT(unknown)
 		PLATFORM=unknown
@@ -368,6 +413,7 @@ AM_CONDITIONAL(IS_FREEBSD, test "x$PLATFORM" = xfreebsd)
 AM_CONDITIONAL(IS_NETBSD, test "x$PLATFORM" = xnetbsd)
 AM_CONDITIONAL(IS_OPENBSD, test "x$PLATFORM" = xopenbsd)
 AM_CONDITIONAL(IS_SUNOS, test "x$PLATFORM" = xsunos)
+AM_CONDITIONAL(IS_HPUX, test "x$PLATFORM" = xhpux)
 AM_CONDITIONAL(IS_UNKNOWN, test "x$PLATFORM" = xunknown)
 
 # autoconf should create a Makefile. A shock!
