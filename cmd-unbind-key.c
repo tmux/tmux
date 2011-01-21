@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.24 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: cmd-unbind-key.c,v 1.25 2011-01-21 23:46:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -31,7 +31,7 @@ int	cmd_unbind_key_table(struct cmd *, struct cmd_ctx *, int);
 
 const struct cmd_entry cmd_unbind_key_entry = {
 	"unbind-key", "unbind",
-	"acnt:", 1, 1,
+	"acnt:", 0, 1,
 	"[-acn] [-t key-table] key",
 	0,
 	NULL,
@@ -43,6 +43,8 @@ int
 cmd_unbind_key_check(struct args *args)
 {
 	if (args_has(args, 'a') && (args->argc != 0 || args_has(args, 't')))
+	    return (-1);
+	if (!args_has(args, 'a') && args->argc != 1)
 		return (-1);
 	return (0);
 }
