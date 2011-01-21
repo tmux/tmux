@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.82 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.83 2011-01-21 23:55:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <pwd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
@@ -34,8 +35,9 @@ int	cmd_new_session_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_new_session_entry = {
 	"new-session", "new",
-	"dn:s:t:", 0, 1,
-	"[-d] [-n window-name] [-s session-name] [-t target-session] [command]",
+	"dn:s:t:x:y:", 0, 1,
+	"[-d] [-n window-name] [-s session-name] [-t target-session] "
+	"[-x width] [-y height] [command]",
 	CMD_STARTSERVER|CMD_CANTNEST|CMD_SENDENVIRON,
 	NULL,
 	cmd_new_session_check,
@@ -46,6 +48,9 @@ int
 cmd_new_session_check(struct args *args)
 {
 	if (args_has(args, 't') && (args->argc != 0 || args_has(args, 'n')))
+		return (-1);
+	if (!args_has(args, 'd') &&
+	    (args_has(args, 'x') || args_has(args, 'y')))
 		return (-1);
 	return (0);
 }
@@ -60,7 +65,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct environ		 env;
 	struct termios		 tio, *tiop;
 	struct passwd		*pw;
-	const char		*newname, *target, *update, *cwd;
+	const char		*newname, *target, *update, *cwd, *errstr;
 	char			*overrides, *cmd, *cause;
 	int			 detached, idx;
 	u_int			 sx, sy, i;
@@ -149,6 +154,22 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (detached) {
 		sx = 80;
 		sy = 24;
+		if (args_has(args, 'x')) {
+			sx = strtonum(
+			    args_get(args, 'x'), 1, USHRT_MAX, &errstr);
+			if (errstr != NULL) {
+				ctx->error(ctx, "width %s", errstr);
+				return (-1);
+			}
+		}
+		if (args_has(args, 'y')) {
+			sy = strtonum(
+			    args_get(args, 'y'), 1, USHRT_MAX, &errstr);
+			if (errstr != NULL) {
+				ctx->error(ctx, "height %s", errstr);
+				return (-1);
+			}
+		}
 	} else if (ctx->cmdclient != NULL) {
 		sx = ctx->cmdclient->tty.sx;
 		sy = ctx->cmdclient->tty.sy;
