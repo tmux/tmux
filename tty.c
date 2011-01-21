@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.201 2011-01-21 23:56:11 tcunha Exp $ */
+/* $Id: tty.c,v 1.202 2011-01-21 23:56:53 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -401,19 +401,19 @@ tty_update_mode(struct tty *tty, int mode)
 		if (mode & ALL_MOUSE_MODES) {
 			if (mode & MODE_MOUSE_UTF8)
 				tty_puts(tty, "\033[?1005h");
-			if (mode & MODE_MOUSE_STANDARD)
-				tty_puts(tty, "\033[?1000h");
+			if (mode & MODE_MOUSE_ANY)
+				tty_puts(tty, "\033[?1003h");
 			else if (mode & MODE_MOUSE_BUTTON)
 				tty_puts(tty, "\033[?1002h");
-			else if (mode & MODE_MOUSE_ANY)
-				tty_puts(tty, "\033[?1003h");
+			else if (mode & MODE_MOUSE_STANDARD)
+				tty_puts(tty, "\033[?1000h");
 		} else {
-			if (tty->mode & MODE_MOUSE_STANDARD)
-				tty_puts(tty, "\033[?1000l");
+			if (tty->mode & MODE_MOUSE_ANY)
+				tty_puts(tty, "\033[?1003l");
 			else if (tty->mode & MODE_MOUSE_BUTTON)
 				tty_puts(tty, "\033[?1002l");
-			else if (tty->mode & MODE_MOUSE_ANY)
-				tty_puts(tty, "\033[?1003l");
+			else if (tty->mode & MODE_MOUSE_STANDARD)
+				tty_puts(tty, "\033[?1000l");
 			if (tty->mode & MODE_MOUSE_UTF8)
 				tty_puts(tty, "\033[?1005l");
 		}
