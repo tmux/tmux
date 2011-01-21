@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.86 2011-01-21 23:52:36 tcunha Exp $ */
+/* $Id: session.c,v 1.87 2011-01-21 23:53:01 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -180,7 +180,7 @@ session_next_session(struct session *s)
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	s2 = RB_NEXT(sessions, &sessions, s2);
+	s2 = RB_NEXT(sessions, &sessions, s);
 	if (s2 == NULL)
 		s2 = RB_MIN(sessions, &sessions);
 	if (s2 == s)
@@ -197,7 +197,7 @@ session_previous_session(struct session *s)
 	if (RB_EMPTY(&sessions) || !session_alive(s))
 		return (NULL);
 
-	s2 = RB_PREV(sessions, &sessions, s2);
+	s2 = RB_PREV(sessions, &sessions, s);
 	if (s2 == NULL)
 		s2 = RB_MAX(sessions, &sessions);
 	if (s2 == s)
