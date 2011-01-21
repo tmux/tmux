@@ -1,4 +1,4 @@
-/* $Id: asprintf.c,v 1.5 2011-01-07 00:35:13 nicm Exp $ */
+/* $Id: asprintf.c,v 1.6 2011-01-21 20:03:18 nicm Exp $ */
 
 /*
  * Copyright (c) 2006 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -40,28 +40,6 @@ asprintf(char **ret, const char *format, ...)
 	return (n);
 }
 
-#ifndef BROKEN_VSNPRINTF
-int
-vasprintf(char **ret, const char *format, va_list ap)
-{
-	int	 n;
-
-	if ((n = vsnprintf(NULL, 0, format, ap)) < 0)
-		goto error;
-
-	*ret = xmalloc(n + 1);
-	if ((n = vsnprintf(*ret, n + 1, format, ap)) < 0) {
-		xfree(*ret);
-		goto error;
-	}
-
-	return (n);
-
-error:
-	*ret = NULL;
-	return (-1);
-}
-#else
 int
 vasprintf(char **ret, const char *fmt, va_list ap)
 {
@@ -90,4 +68,3 @@ vasprintf(char **ret, const char *fmt, va_list ap)
 		len *= 2;
 	}
 }
-#endif
