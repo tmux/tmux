@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.292 2011-01-21 23:45:34 tcunha Exp $
+.\" $Id: tmux.1,v 1.293 2011-01-21 23:46:50 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -134,7 +134,10 @@ will report an error and exit without executing further commands.
 .It Fl L Ar socket-name
 .Nm
 stores the server socket in a directory under
-.Pa /tmp ;
+.Pa /tmp
+(or
+.Ev TMPDIR
+if set);
 the default socket is named
 .Em default .
 This option allows a different socket name to be specified, allowing several
