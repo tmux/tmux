@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.603 2011-01-07 16:55:40 tcunha Exp $ */
+/* $Id: tmux.h,v 1.604 2011-01-21 23:44:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1304,6 +1304,7 @@ void		 logfile(const char *);
 const char	*getshell(void);
 int		 checkshell(const char *);
 int		 areshell(const char *);
+void		 setblocking(int, int);
 __dead void	 shell_exec(const char *, const char *);
 
 /* cfg.c */

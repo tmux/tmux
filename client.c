@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.100 2010-10-24 19:54:41 nicm Exp $ */
+/* $Id: client.c,v 1.101 2011-01-21 23:44:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,7 +54,7 @@ client_connect(char *path, int start_server)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
-	int			fd, mode;
+	int			fd;
 
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
@@ -84,10 +84,7 @@ client_connect(char *path, int start_server)
 		}
 	}
 
-	if ((mode = fcntl(fd, F_GETFL)) == -1)
-		fatal("fcntl failed");
-	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failed");
+	setblocking(fd, 0);
 	return (fd);
 
 failed:

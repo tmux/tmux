@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.251 2011-01-03 23:27:54 tcunha Exp $ */
+/* $Id: server.c,v 1.252 2011-01-21 23:44:13 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -73,7 +73,7 @@ server_create_socket(void)
 	struct sockaddr_un	sa;
 	size_t			size;
 	mode_t			mask;
-	int			fd, mode;
+	int			fd;
 
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
@@ -94,11 +94,7 @@ server_create_socket(void)
 
 	if (listen(fd, 16) == -1)
 		fatal("listen failed");
-
-	if ((mode = fcntl(fd, F_GETFL)) == -1)
-		fatal("fcntl failed");
-	if (fcntl(fd, F_SETFL, mode|O_NONBLOCK) == -1)
-		fatal("fcntl failed");
+	setblocking(fd, 0);
 
 	server_update_socket();
 
