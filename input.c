@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.113 2011-01-07 14:34:45 tcunha Exp $ */
+/* $Id: input.c,v 1.114 2011-01-21 23:56:11 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1200,10 +1200,6 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case 1000:
 			screen_write_mousemode_on(
 			    &ictx->ctx, MODE_MOUSE_STANDARD);
-			break;
-		case 1001:
-			screen_write_mousemode_on(
-			    &ictx->ctx, MODE_MOUSE_HIGHLIGHT);
 			break;
 		case 1002:
 			screen_write_mousemode_on(

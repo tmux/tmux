@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.604 2011-01-21 23:44:13 tcunha Exp $ */
+/* $Id: tmux.h,v 1.605 2011-01-21 23:56:11 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -543,13 +543,11 @@ struct mode_key_table {
 #define MODE_KKEYPAD 0x8	/* set = application, clear = number */
 #define MODE_WRAP 0x10		/* whether lines wrap */
 #define MODE_MOUSE_STANDARD 0x20
-#define MODE_MOUSE_HIGHLIGHT 0x40
-#define MODE_MOUSE_BUTTON 0x80
-#define MODE_MOUSE_ANY 0x100
-#define MODE_MOUSE_UTF8 0x200
+#define MODE_MOUSE_BUTTON 0x40
+#define MODE_MOUSE_ANY 0x80
+#define MODE_MOUSE_UTF8 0x100
 
-#define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD| \
-    MODE_MOUSE_HIGHLIGHT|MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)
+#define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)
 
 /*
  * A single UTF-8 character.
