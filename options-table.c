@@ -1,4 +1,4 @@
-/* $Id: options-table.c,v 1.3 2011-01-07 14:34:45 tcunha Exp $ */
+/* $Id: options-table.c,v 1.4 2011-01-21 23:54:19 tcunha Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -149,7 +149,7 @@ const struct options_table_entry session_options_table[] = {
 	{ .name = "history-limit",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .minimum = 0,
-	  .maximum = SHRT_MAX,
+	  .maximum = INT_MAX,
 	  .default_num = 2000
 	},
 
