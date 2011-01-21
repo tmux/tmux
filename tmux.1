@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.289 2011-01-13 19:59:48 nicm Exp $
+.\" $Id: tmux.1,v 1.290 2011-01-21 23:42:14 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -1797,8 +1797,11 @@ is one of:
 .Ic colour0
 to
 .Ic colour255
-from the 256-colour palette, or
-.Ic default .
+from the 256-colour set,
+.Ic default ,
+or a hexadecimal RGB string such as
+.Ql #ffffff ,
+which chooses the closest match from the default 256-colour set.
 .It Ic message-fg Ar colour
 Set status line message foreground colour.
 .It Ic message-limit Ar number
