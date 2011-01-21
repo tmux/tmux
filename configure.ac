@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.13 2011-01-21 20:35:20 nicm Exp $
+# $Id: configure.ac,v 1.14 2011-01-21 23:40:30 tcunha Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -121,6 +121,9 @@ fi
 AC_SEARCH_LIBS(inet_ntoa, nsl)
 AC_SEARCH_LIBS(socket, socket)
 AC_CHECK_LIB(xnet, socket)
+
+# Look for sqrt.
+AC_SEARCH_LIBS(sqrt, m)
 
 # Check for CMSG_DATA. Some platforms require _XOPEN_SOURCE_EXTENDED (for
 # example see xopen_networking(7) on HP-UX).
