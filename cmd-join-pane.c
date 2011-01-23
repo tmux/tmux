@@ -1,4 +1,4 @@
-/* $Id: cmd-join-pane.c,v 1.7 2011-01-23 15:47:31 nicm Exp $ */
+/* $Id: cmd-join-pane.c,v 1.8 2011-01-23 15:49:32 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -96,7 +96,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 			return (-1);
 		}
 	} else if (args_has(args, 'p')) {
-		percentage = args_strtonum(args, 'p', 0, INT_MAX, &cause);
+		percentage = args_strtonum(args, 'p', 0, 100, &cause);
 		if (cause != NULL) {
 			ctx->error(ctx, "percentage %s", cause);
 			xfree(cause);
