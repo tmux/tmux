@@ -97,7 +97,7 @@ cmd_join_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 			return (-1);
 		}
 	} else if (args_has(args, 'p')) {
-		percentage = args_strtonum(args, 'p', 0, INT_MAX, &cause);
+		percentage = args_strtonum(args, 'p', 0, 100, &cause);
 		if (cause != NULL) {
 			ctx->error(ctx, "percentage %s", cause);
 			xfree(cause);
