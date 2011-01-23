@@ -356,7 +356,7 @@ cmd_current_session(struct cmd_ctx *ctx)
 	}
 
 	/* Use the session from the TMUX environment variable. */
-	if (data != NULL && data->pid == getpid()) {
+	if (data != NULL && data->pid == getpid() && data->idx != -1) {
 		s = session_find_by_index(data->idx);
 		if (s != NULL)
 			return (s);
