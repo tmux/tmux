@@ -212,9 +212,15 @@ session_new(struct session *s,
     const char *name, const char *cmd, const char *cwd, int idx, char **cause)
 {
 	struct window	*w;
+	struct winlink	*wl;
 	struct environ	 env;
 	const char	*shell;
 	u_int		 hlimit;
+
+	if ((wl = winlink_add(&s->windows, idx)) == NULL) {
+		xasprintf(cause, "index in use: %d", idx);
+		return (NULL);
+	}
 
 	environ_init(&env);
 	environ_copy(&global_environ, &env);
@@ -229,15 +235,18 @@ session_new(struct session *s,
 	w = window_create(
 	    name, cmd, shell, cwd, &env, s->tio, s->sx, s->sy, hlimit, cause);
 	if (w == NULL) {
+		winlink_remove(&s->windows, wl);
 		environ_free(&env);
 		return (NULL);
 	}
+	winlink_set_window(wl, w);
 	environ_free(&env);
 
 	if (options_get_number(&s->options, "set-remain-on-exit"))
 		options_set_number(&w->options, "remain-on-exit", 1);
 
-	return (session_attach(s, w, idx, cause));
+	session_group_synchronize_from(s);
+	return (wl);
 }
 
 /* Attach a window to a session. */
@@ -246,8 +255,12 @@ session_attach(struct session *s, struct window *w, int idx, char **cause)
 {
 	struct winlink	*wl;
 
-	if ((wl = winlink_add(&s->windows, w, idx)) == NULL)
+	if ((wl = winlink_add(&s->windows, idx)) == NULL) {
 		xasprintf(cause, "index in use: %d", idx);
+		return (NULL);
+	}
+	winlink_set_window(wl, w);
+
 	session_group_synchronize_from(s);
 	return (wl);
 }
@@ -526,7 +539,8 @@ session_group_synchronize1(struct session *target, struct session *s)
 
 	/* Link all the windows from the target. */
 	RB_FOREACH(wl, winlinks, ww) {
-		wl2 = winlink_add(&s->windows, wl->window, wl->idx);
+		wl2 = winlink_add(&s->windows, wl->idx);
+		winlink_set_window(wl2, wl->window);
 		wl2->flags |= wl->flags & WINLINK_ALERTFLAGS;
 	}
 

@@ -123,7 +123,7 @@ winlink_count(struct winlinks *wwl)
 }
 
 struct winlink *
-winlink_add(struct winlinks *wwl, struct window *w, int idx)
+winlink_add(struct winlinks *wwl, int idx)
 {
 	struct winlink	*wl;
 
@@ -135,12 +135,16 @@ winlink_add(struct winlinks *wwl, struct window *w, int idx)
 
 	wl = xcalloc(1, sizeof *wl);
 	wl->idx = idx;
-	wl->window = w;
 	RB_INSERT(winlinks, wwl, wl);
 
-	w->references++;
-
 	return (wl);
+}
+
+void
+winlink_set_window(struct winlink *wl, struct window *w)
+{
+	wl->window = w;
+	w->references++;
 }
 
 void
@@ -153,11 +157,13 @@ winlink_remove(struct winlinks *wwl, struct winlink *wl)
 		xfree(wl->status_text);
 	xfree(wl);
 
-	if (w->references == 0)
-		fatal("bad reference count");
-	w->references--;
-	if (w->references == 0)
-		window_destroy(w);
+	if (w != NULL) {
+		if (w->references == 0)
+			fatal("bad reference count");
+		w->references--;
+		if (w->references == 0)
+			window_destroy(w);
+	}
 }
 
 struct winlink *
