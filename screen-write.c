@@ -931,9 +931,14 @@ screen_write_clearendofscreen(struct screen_write_ctx *ctx)
 	sx = screen_size_x(s);
 	sy = screen_size_y(s);
 
-	if (s->cx <= sx - 1)
-		grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1);
-	grid_view_clear(s->grid, 0, s->cy + 1, sx, sy - (s->cy + 1));
+	/* Scroll into history if it is enabled and clearing entire screen. */
+	if (s->cy == 0 && s->grid->flags & GRID_HISTORY)
+		grid_view_clear_history(s->grid);
+	else {
+		if (s->cx <= sx - 1)
+			grid_view_clear(s->grid, s->cx, s->cy, sx - s->cx, 1);
+		grid_view_clear(s->grid, 0, s->cy + 1, sx, sy - (s->cy + 1));
+	}
 
 	tty_write(tty_cmd_clearendofscreen, &ttyctx);
 }
@@ -969,7 +974,13 @@ screen_write_clearscreen(struct screen_write_ctx *ctx)
 
 	screen_write_initctx(ctx, &ttyctx, 0);
 
-	grid_view_clear(s->grid, 0, 0, screen_size_x(s), screen_size_y(s));
+	/* Scroll into history if it is enabled. */
+	if (s->grid->flags & GRID_HISTORY)
+		grid_view_clear_history(s->grid);
+	else {
+		grid_view_clear(
+		    s->grid, 0, 0, screen_size_x(s), screen_size_y(s));
+	}
 
 	tty_write(tty_cmd_clearscreen, &ttyctx);
 }

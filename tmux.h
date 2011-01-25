@@ -1741,6 +1741,7 @@ const struct grid_utf8 *grid_view_peek_utf8(struct grid *, u_int, u_int);
 struct grid_utf8 *grid_view_get_utf8(struct grid *, u_int, u_int);
 void	 grid_view_set_utf8(
 	     struct grid *, u_int, u_int, const struct grid_utf8 *);
+void	 grid_view_clear_history(struct grid *);
 void	 grid_view_clear(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_view_scroll_region_up(struct grid *, u_int, u_int);
 void	 grid_view_scroll_region_down(struct grid *, u_int, u_int);

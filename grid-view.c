@@ -74,6 +74,30 @@ grid_view_set_utf8(
 	grid_set_utf8(gd, grid_view_x(gd, px), grid_view_y(gd, py), gu);
 }
 
+/* Clear into history. */
+void
+grid_view_clear_history(struct grid *gd)
+{
+	struct grid_line	*gl;
+	u_int			 yy, last;
+
+	GRID_DEBUG(gd, "");
+
+	/* Find the last used line. */
+	last = 0;
+	for (yy = 0; yy < gd->sy; yy++) {
+		gl = &gd->linedata[grid_view_y(gd, yy)];
+		if (gl->cellsize != 0 || gl->utf8size != 0)
+			last = yy + 1;
+	}
+	if (last == 0)
+		return;
+
+	/* Scroll the lines into the history. */
+	for (yy = 0; yy < last; yy++)
+		grid_scroll_history(gd);
+}
+
 /* Clear area. */
 void
 grid_view_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny)
