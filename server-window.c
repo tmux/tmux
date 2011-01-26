@@ -23,7 +23,6 @@
 
 #include "tmux.h"
 
-int	server_window_backoff(struct window_pane *);
 int	server_window_check_bell(struct session *, struct winlink *);
 int	server_window_check_activity(struct session *, struct winlink *);
 int	server_window_check_silence(struct session *, struct winlink *);
