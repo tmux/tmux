@@ -1,11 +1,9 @@
 - implicitly add exec to the commands for new windows (switch to disable it)?
-- commands:
- 	extend list-clients to list clients attached to a session (-a for all?)
-	bring back detach-session to detach all clients on a session?
+- extend list-clients to list clients attached to a session (-a for all?)
+- bring back detach-session to detach all clients on a session?
 - allow fnmatch for -c, so that you can, eg, detach all clients
 - garbage collect window history (100 lines at a time?) if it hasn't been used
   in $x time
-- lift SHRT_MAX limits for history?
 - flags to centre screen in window
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
@@ -51,7 +49,6 @@
   the terminal - www/ruby-addressable; make regress
 - support esc-esc to quit in modes
 - fix ctrl+F1-F4 output. to what?
-- look into xterm clearing its selection when scrolling etc
 - better utf8 support: window names, prompt input, message display
 - session history for client and last-session command
 - option to change status line colour when current window is in a mode?
@@ -80,7 +77,6 @@
 	http://docs.freebsd.org/cgi/getmsg.cgi?fetch=1149299+0+archive/2010/freebsd-questions/20100207.freebsd-questions
 - command to show status line information briefly when it is off
 - some way to pad # stuff with spaces, #!2T maybe
-- FreeBSD console problems
 - a binding to "scroll down and exit at bottom" copy mode
 - some way to pass keystrokes in copy mode through to underlying window
 - last window update time and # replacement for it for display-message
@@ -102,15 +98,10 @@
 - a history of commands that can be reversed (reverse member of each command,
   and a buffer) info() when changing to same window
 - don't pass UTF-8 through vis for titles
-- clearing screen should push lines into history
 - add a unique ever-increasing pane id to each pane, export it in $TMUX_PANE
    (as %1, %2 etc) and allow it to be used as a target
 - way to add dest for break-pane; maybe some easier way to unbreak-pane
 - case insensitive searching
-- dynamically generated jobs (eg "date ...") do not work well because
-  their entries are never collected, should either store status jobs in
-  a different tree or flush all unused persist jobs every update rather
-  than just updating them
 - pane-index option like base-index
 - option to move status line to top
 - respawn-pane command
