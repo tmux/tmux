@@ -142,7 +142,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	ctx->print(ctx, "%s", "");
 
 	ctx->print(ctx, "Terminals:");
-	SLIST_FOREACH(term, &tty_terms, entry) {
+	LIST_FOREACH(term, &tty_terms, entry) {
 		ctx->print(ctx, "%s [references=%u, flags=0x%x]:",
 		    term->name, term->references, term->flags);
 		for (i = 0; i < NTTYCODE; i++) {
@@ -174,7 +174,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	ctx->print(ctx, "%s", "");
 
 	ctx->print(ctx, "Jobs:");
-	SLIST_FOREACH(job, &all_jobs, lentry) {
+	LIST_FOREACH(job, &all_jobs, lentry) {
 		ctx->print(ctx, "%s [fd=%d, pid=%d, status=%d, flags=0x%x]",
 		    job->cmd, job->fd, job->pid, job->status, job->flags);
 	}

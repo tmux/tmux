@@ -415,7 +415,7 @@ server_child_exited(pid_t pid, int status)
 		}
 	}
 
-	SLIST_FOREACH(job, &all_jobs, lentry) {
+	LIST_FOREACH(job, &all_jobs, lentry) {
 		if (pid == job->pid) {
 			job_died(job, status);	/* might free job */
 			break;

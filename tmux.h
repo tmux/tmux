@@ -684,10 +684,10 @@ struct job {
 #define JOB_PERSIST 0x1	/* don't free after callback */
 
 	RB_ENTRY(job)	 entry;
-	SLIST_ENTRY(job) lentry;
+	LIST_ENTRY(job)	 lentry;
 };
 RB_HEAD(jobs, job);
-SLIST_HEAD(joblist, job);
+LIST_HEAD(joblist, job);
 
 /* Screen selection. */
 struct screen_sel {
@@ -990,9 +990,9 @@ struct tty_term {
 #define TERM_EARLYWRAP 0x4
 	int		 flags;
 
-	SLIST_ENTRY(tty_term) entry;
+	LIST_ENTRY(tty_term) entry;
 };
-SLIST_HEAD(tty_terms, tty_term);
+LIST_HEAD(tty_terms, tty_term);
 
 struct tty {
 	char		*path;
