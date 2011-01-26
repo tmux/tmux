@@ -31,129 +31,32 @@
  * output.
  */
 
+void	job_callback(struct bufferevent *, short, void *);
+
 /* All jobs list. */
 struct joblist	all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
 
-RB_GENERATE(jobs, job, entry, job_cmp);
-
-void	job_callback(struct bufferevent *, short, void *);
-
-int
-job_cmp(struct job *job1, struct job *job2)
-{
-	return (strcmp(job1->cmd, job2->cmd));
-}
-
-/* Initialise job tree. */
-void
-job_tree_init(struct jobs *jobs)
-{
-	RB_INIT(jobs);
-}
-
-/* Destroy a job tree. */
-void
-job_tree_free(struct jobs *jobs)
-{
-	struct job	*job;
-
-	while (!RB_EMPTY(jobs)) {
-		job = RB_ROOT(jobs);
-		RB_REMOVE(jobs, jobs, job);
-		job_free(job);
-	}
-}
-
-/* Find a job and return it. */
+/* Start a job running, if it isn't already. */
 struct job *
-job_get(struct jobs *jobs, const char *cmd)
-{
-	struct job	job;
-
-	job.cmd = (char *) cmd;
-	return (RB_FIND(jobs, jobs, &job));
-}
-
-/* Add a job. */
-struct job *
-job_add(struct jobs *jobs, int flags, struct client *c, const char *cmd,
+job_run(const char *cmd,
     void (*callbackfn)(struct job *), void (*freefn)(void *), void *data)
 {
 	struct job	*job;
-
-	job = xmalloc(sizeof *job);
-	job->cmd = xstrdup(cmd);
-	job->pid = -1;
-	job->status = 0;
-
-	job->client = c;
-
-	job->fd = -1;
-	job->event = NULL;
-
-	job->callbackfn = callbackfn;
-	job->freefn = freefn;
-	job->data = data;
-
-	job->flags = flags;
-
-	if (jobs != NULL)
-		RB_INSERT(jobs, jobs, job);
-	LIST_INSERT_HEAD(&all_jobs, job, lentry);
-
-	return (job);
-}
-
-/* Remove job from tree and free. */
-void
-job_remove(struct jobs *jobs, struct job *job)
-{
-	if (jobs != NULL)
-		RB_REMOVE(jobs, jobs, job);
-	job_free(job);
-}
-
-/* Kill and free an individual job. */
-void
-job_free(struct job *job)
-{
-	job_kill(job);
-
-	LIST_REMOVE(job, lentry);
-	xfree(job->cmd);
-
-	if (job->freefn != NULL && job->data != NULL)
-		job->freefn(job->data);
-
-	if (job->fd != -1)
-		close(job->fd);
-	if (job->event != NULL)
-		bufferevent_free(job->event);
-
-	xfree(job);
-}
-
-/* Start a job running, if it isn't already. */
-int
-job_run(struct job *job)
-{
-	struct environ	env;
-	int		nullfd, out[2];
-
-	if (job->fd != -1 || job->pid != -1)
-		return (0);
+	struct environ	 env;
+	pid_t		 pid;
+	int		 nullfd, out[2];
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, out) != 0)
-		return (-1);
+		return (NULL);
 
 	environ_init(&env);
 	environ_copy(&global_environ, &env);
 	server_fill_environ(NULL, &env);
 
-	switch (job->pid = fork()) {
+	switch (pid = fork()) {
 	case -1:
 		environ_free(&env);
-		return (-1);
+		return (NULL);
 	case 0:		/* child */
 		clear_signals(1);
 
@@ -178,23 +81,55 @@ job_run(struct job *job)
 
 		closefrom(STDERR_FILENO + 1);
 
-		execl(_PATH_BSHELL, "sh", "-c", job->cmd, (char *) NULL);
+		execl(_PATH_BSHELL, "sh", "-c", cmd, (char *) NULL);
 		fatal("execl failed");
-	default:	/* parent */
-		environ_free(&env);
-		close(out[1]);
-
-		job->fd = out[0];
-		setblocking(job->fd, 0);
-
-		if (job->event != NULL)
-			bufferevent_free(job->event);
-		job->event =
-		    bufferevent_new(job->fd, NULL, NULL, job_callback, job);
-		bufferevent_enable(job->event, EV_READ);
-
-		return (0);
 	}
+
+	/* parent */
+	environ_free(&env);
+	close(out[1]);
+
+	job = xmalloc(sizeof *job);
+	job->cmd = xstrdup(cmd);
+	job->pid = pid;
+	job->status = 0;
+
+	LIST_INSERT_HEAD(&all_jobs, job, lentry);
+
+	job->callbackfn = callbackfn;
+	job->freefn = freefn;
+	job->data = data;
+
+	job->fd = out[0];
+	setblocking(job->fd, 0);
+
+	job->event = bufferevent_new(job->fd, NULL, NULL, job_callback, job);
+	bufferevent_enable(job->event, EV_READ);
+
+	log_debug("run job %p: %s, pid %ld", job, job->cmd, (long) job->pid);
+	return (job);
+}
+
+/* Kill and free an individual job. */
+void
+job_free(struct job *job)
+{
+	log_debug("free job %p: %s", job, job->cmd);
+
+	LIST_REMOVE(job, lentry);
+	xfree(job->cmd);
+
+	if (job->freefn != NULL && job->data != NULL)
+		job->freefn(job->data);
+
+	if (job->pid != -1)
+		kill(job->pid, SIGTERM);
+	if (job->fd != -1)
+		close(job->fd);
+	if (job->event != NULL)
+		bufferevent_free(job->event);
+
+	xfree(job);
 }
 
 /* Job buffer error callback. */
@@ -204,15 +139,16 @@ job_callback(unused struct bufferevent *bufev, unused short events, void *data)
 {
 	struct job	*job = data;
 
-	bufferevent_disable(job->event, EV_READ);
-	close(job->fd);
-	job->fd = -1;
+	log_debug("job error %p: %s, pid %ld", job, job->cmd, (long) job->pid);
 
 	if (job->pid == -1) {
 		if (job->callbackfn != NULL)
 			job->callbackfn(job);
-		if ((!job->flags & JOB_PERSIST))
-			job_free(job);
+		job_free(job);
+	} else {
+		bufferevent_disable(job->event, EV_READ);
+		close(job->fd);
+		job->fd = -1;
 	}
 }
 
@@ -220,23 +156,14 @@ job_callback(unused struct bufferevent *bufev, unused short events, void *data)
 void
 job_died(struct job *job, int status)
 {
+	log_debug("job died %p: %s, pid %ld", job, job->cmd, (long) job->pid);
+
 	job->status = status;
-	job->pid = -1;
 
 	if (job->fd == -1) {
 		if (job->callbackfn != NULL)
 			job->callbackfn(job);
-		if ((!job->flags & JOB_PERSIST))
-			job_free(job);
-	}
-}
-
-/* Kill a job. */
-void
-job_kill(struct job *job)
-{
-	if (job->pid == -1)
-		return;
-	kill(job->pid, SIGTERM);
-	job->pid = -1;
+		job_free(job);
+	} else
+		job->pid = -1;
 }

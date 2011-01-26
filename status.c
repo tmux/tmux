@@ -33,7 +33,8 @@ char   *status_redraw_get_left(
 	    struct client *, time_t, int, struct grid_cell *, size_t *);
 char   *status_redraw_get_right(
 	    struct client *, time_t, int, struct grid_cell *, size_t *);
-char   *status_job(struct client *, char **);
+char   *status_find_job(struct client *, char **);
+void	status_job_free(void *);
 void	status_job_callback(struct job *);
 char   *status_print(
 	    struct client *, struct winlink *, time_t, struct grid_cell *);
@@ -48,6 +49,16 @@ char   *status_prompt_complete(const char *);
 
 /* Status prompt history. */
 ARRAY_DECL(, char *) status_prompt_history = ARRAY_INITIALIZER;
+
+/* Status output tree. */
+RB_GENERATE(status_out_tree, status_out, entry, status_out_cmp);
+
+/* Output tree comparison function. */
+int
+status_out_cmp(struct status_out *so1, struct status_out *so2)
+{
+	return (strcmp(so1->cmd, so2->cmd));
+}
 
 /* Retrieve options for left string. */
 char *
@@ -365,9 +376,8 @@ status_replace1(struct client *c,struct winlink *wl,
 			ch = ')';
 			goto skip_to;
 		}
-		if ((ptr = status_job(c, iptr)) == NULL)
+		if ((ptr = status_find_job(c, iptr)) == NULL)
 			return;
-		freeptr = ptr;
 		goto do_replace;
 	case 'H':
 		if (gethostname(tmp, sizeof tmp) != 0)
@@ -469,12 +479,12 @@ status_replace(struct client *c,
 
 /* Figure out job name and get its result, starting it off if necessary. */
 char *
-status_job(struct client *c, char **iptr)
+status_find_job(struct client *c, char **iptr)
 {
-	struct job	*job;
-	char   		*cmd;
-	int		 lastesc;
-	size_t		 len;
+	struct status_out	*so, so_find;
+	char   			*cmd;
+	int			 lastesc;
+	size_t			 len;
 
 	if (**iptr == '\0')
 		return (NULL);
@@ -504,24 +514,88 @@ status_job(struct client *c, char **iptr)
 	(*iptr)++;			/* skip final ) */
 	cmd[len] = '\0';
 
-	job = job_get(&c->status_jobs, cmd);
-	if (job == NULL) {
-		job = job_add(&c->status_jobs,
-		    JOB_PERSIST, c, cmd, status_job_callback, xfree, NULL);
-		job_run(job);
+	/* First try in the new tree. */
+	so_find.cmd = cmd;
+	so = RB_FIND(status_out_tree, &c->status_new, &so_find);
+	if (so != NULL && so->out != NULL)
+		return (so->out);
+
+	/* If not found at all, start the job and add to the tree. */
+	if (so == NULL) {
+		job_run(cmd, status_job_callback, status_job_free, c);
+		c->references++;
+
+		so = xmalloc(sizeof *so);
+		so->cmd = xstrdup(cmd);
+		so->out = NULL;
+		RB_INSERT(status_out_tree, &c->status_new, so);
 	}
+
+	/* Lookup in the old tree. */
+	so_find.cmd = cmd;
+	so = RB_FIND(status_out_tree, &c->status_old, &so_find);
 	xfree(cmd);
-	if (job->data == NULL)
-		return (xstrdup(""));
-	return (xstrdup(job->data));
+	if (so != NULL)
+		return (so->out);
+	return (NULL);
+}
+
+/* Free job tree. */
+void
+status_free_jobs(struct status_out_tree *sotree)
+{
+	struct status_out	*so, *so_next;
+
+	so_next = RB_MIN(status_out_tree, sotree);
+	while (so_next != NULL) {
+		so = so_next;
+		so_next = RB_NEXT(status_out_tree, sotree, so);
+
+		RB_REMOVE(status_out_tree, sotree, so);
+		if (so->out != NULL)
+			xfree(so->out);
+		xfree(so->cmd);
+		xfree(so);
+	}
+}
+
+/* Update jobs on status interval. */
+void
+status_update_jobs(struct client *c)
+{
+	/* Free the old tree. */
+	status_free_jobs(&c->status_old);
+
+	/* Move the new to old. */
+	memcpy(&c->status_old, &c->status_new, sizeof c->status_old);
+	RB_INIT(&c->status_new);
+}
+
+/* Free status job. */
+void
+status_job_free(void *data)
+{
+	struct client	*c = data;
+
+	c->references--;
 }
 
 /* Job has finished: save its result. */
 void
 status_job_callback(struct job *job)
 {
-	char	*line, *buf;
-	size_t	 len;
+	struct client		*c = job->data;
+	struct status_out	*so, so_find;
+	char			*line, *buf;
+	size_t			 len;
+
+	if (c->flags & CLIENT_DEAD)
+		return;
+
+	so_find.cmd = job->cmd;
+	so = RB_FIND(status_out_tree, &c->status_new, &so_find);
+	if (so == NULL || so->out != NULL)
+		return;
 
 	buf = NULL;
 	if ((line = evbuffer_readline(job->event->input)) == NULL) {
@@ -530,17 +604,11 @@ status_job_callback(struct job *job)
 		if (len != 0)
 			memcpy(buf, EVBUFFER_DATA(job->event->input), len);
 		buf[len] = '\0';
-	}
+	} else
+		buf = xstrdup(line);
 
-	if (job->data != NULL)
-		xfree(job->data);
-	else
-		server_redraw_client(job->client);
-
-	if (line == NULL)
-		job->data = buf;
-	else
-		job->data = xstrdup(line);
+	so->out = buf;
+	server_redraw_client(c);
 }
 
 /* Return winlink status line entry and adjust gc as necessary. */

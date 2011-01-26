@@ -87,11 +87,8 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink				*wl;
 	struct client				*c;
 	struct options				*oo;
-	struct jobs				*jobs;
-	struct job				*job, *nextjob;
 	const char				*optstr, *valstr;
 	u_int					 i;
-	int					 try_again;
 
 	/* Work out the options tree and table to use. */
 	if (args_has(self->args, 's')) {
@@ -181,24 +178,8 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	    strcmp(oe->name, "window-status-format") == 0) {
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 			c = ARRAY_ITEM(&clients, i);
-			if (c == NULL || c->session == NULL)
-				continue;
-
-			jobs = &c->status_jobs;
-			do {
-				try_again = 0;
-				job = RB_ROOT(jobs);
-				while (job != NULL) {
-					nextjob = RB_NEXT(jobs, jobs, job);
-					if (job->flags & JOB_PERSIST) {
-						job_remove(jobs, job);
-						try_again = 1;
-						break;
-					}
-					job = nextjob;
-				}
-			} while (try_again);
-			server_redraw_client(c);
+			if (c != NULL && c->session != NULL)
+				server_redraw_client(c);
 		}
 	}
 
