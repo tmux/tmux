@@ -183,11 +183,12 @@ args_has(struct args *args, u_char ch)
 void
 args_set(struct args *args, u_char ch, const char *value)
 {
-	if (value != NULL) {
-		if (args->values[ch] != NULL)
-			xfree(args->values[ch]);
+	if (args->values[ch] != NULL)
+		xfree(args->values[ch]);
+	if (value != NULL)
 		args->values[ch] = xstrdup(value);
-	}
+	else
+		args->values[ch] = NULL;
 	bit_set(args->flags, ch);
 }
 
