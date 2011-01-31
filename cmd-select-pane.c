@@ -79,7 +79,11 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 			ctx->error(ctx, "no last pane");
 			return (-1);
 		}
+
 		window_set_active_pane(wl->window, wl->window->last);
+		server_status_window(wl->window);
+		server_redraw_window_borders(wl->window);
+
 		return (0);
 	}
 
