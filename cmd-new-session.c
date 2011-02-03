@@ -49,9 +49,6 @@ cmd_new_session_check(struct args *args)
 {
 	if (args_has(args, 't') && (args->argc != 0 || args_has(args, 'n')))
 		return (-1);
-	if (!args_has(args, 'd') &&
-	    (args_has(args, 'x') || args_has(args, 'y')))
-		return (-1);
 	return (0);
 }
 
