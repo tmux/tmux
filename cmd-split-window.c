@@ -91,8 +91,8 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		type = LAYOUT_LEFTRIGHT;
 
 	size = -1;
-	if (args_has(args, 's')) {
-		size = args_strtonum(args, 's', 0, INT_MAX, &cause);
+	if (args_has(args, 'l')) {
+		size = args_strtonum(args, 'l', 0, INT_MAX, &cause);
 		if (cause != NULL) {
 			ctx->error(ctx, "size %s", cause);
 			xfree(cause);
