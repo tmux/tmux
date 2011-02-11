@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.14 2011-01-21 23:40:30 tcunha Exp $
+# $Id: configure.ac,v 1.15 2011-02-11 23:31:15 nicm Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -396,6 +396,10 @@ case "$host_os" in
 		PLATFORM=openbsd
 		;;
 	*sunos*)
+		AC_MSG_RESULT(sunos)
+		PLATFORM=sunos
+		;;
+	*solaris*)
 		AC_MSG_RESULT(sunos)
 		PLATFORM=sunos
 		;;
