@@ -93,7 +93,10 @@
   ptr then when program inside died, sends MSG_SOMETHING with wait status to
   client
 - documentation improvements - rlpowell's tutorial - build instructions
-- bind commands to key sequences?
+- bind commands to key sequences? -- make it so ALL keys go through a table,
+  first an implicit table in which C-b is the only default binding to a
+  command that says "next key from $othertable" and so on. means -n can
+  go away as well
 - monitor, bell etc should monitor /all/ panes in the window not just one
 - a history of commands that can be reversed (reverse member of each command,
   and a buffer) info() when changing to same window
