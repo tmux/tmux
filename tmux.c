@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.235 2011-01-21 23:46:50 tcunha Exp $ */
+/* $Id: tmux.c,v 1.236 2011-02-14 23:11:33 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,8 +47,8 @@ time_t		 start_time;
 char		 socket_path[MAXPATHLEN];
 int		 login_shell;
 char		*environ_path;
-pid_t		 environ_pid;
-u_int		 environ_idx;
+pid_t		 environ_pid = -1;
+int		 environ_idx = -1;
 
 __dead void	 usage(void);
 void	 	 parseenvironment(void);
@@ -128,45 +128,18 @@ areshell(const char *shell)
 void
 parseenvironment(void)
 {
-	char		*env, *path_pid, *pid_idx, buf[256];
-	size_t		 len;
-	const char	*errstr;
-	long long	 ll;
+	char	*env, path[256];
+	long	 pid;
+	int	 idx;
 
-	environ_pid = -1;
 	if ((env = getenv("TMUX")) == NULL)
 		return;
 
-	if ((path_pid = strchr(env, ',')) == NULL || path_pid == env)
+	if (sscanf(env, "%255s,%ld,%d", path, &pid, &idx) != 3)
 		return;
-	if ((pid_idx = strchr(path_pid + 1, ',')) == NULL)
-		return;
-	if ((pid_idx == path_pid + 1 || pid_idx[1] == '\0'))
-		return;
-
-	/* path */
-	len = path_pid - env;
-	environ_path = xmalloc(len + 1);
-	memcpy(environ_path, env, len);
-	environ_path[len] = '\0';
-
-	/* pid */
-	len = pid_idx - path_pid - 1;
-	if (len > (sizeof buf) - 1)
-		return;
-	memcpy(buf, path_pid + 1, len);
-	buf[len] = '\0';
-
-	ll = strtonum(buf, 0, LONG_MAX, &errstr);
-	if (errstr != NULL)
-		return;
-	environ_pid = ll;
-
-	/* idx */
-	ll = strtonum(pid_idx + 1, 0, UINT_MAX, &errstr);
-	if (errstr != NULL)
-		return;
-	environ_idx = ll;
+	environ_path = xstrdup(path);
+	environ_pid = pid;
+	environ_idx = idx;
 }
 
 char *

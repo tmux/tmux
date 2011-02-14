@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.605 2011-01-21 23:56:11 tcunha Exp $ */
+/* $Id: tmux.h,v 1.606 2011-02-14 23:11:33 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -379,8 +379,8 @@ enum msgtype {
  * Don't forget to bump PROTOCOL_VERSION if any of these change!
  */
 struct msg_command_data {
-	pid_t		pid;			/* pid from $TMUX or -1 */
-	u_int		idx;			/* index from $TMUX */
+	pid_t		pid;	/* PID from $TMUX or -1 */
+	int		idx;	/* index from $TMUX or -1 */
 
 	int		argc;
 	char		argv[COMMAND_LENGTH];
@@ -1297,7 +1297,7 @@ extern char	 socket_path[MAXPATHLEN];
 extern int	 login_shell;
 extern char	*environ_path;
 extern pid_t	 environ_pid;
-extern u_int	 environ_idx;
+extern int	 environ_idx;
 void		 logfile(const char *);
 const char	*getshell(void);
 int		 checkshell(const char *);

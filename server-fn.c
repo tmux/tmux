@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.118 2011-01-03 23:27:54 tcunha Exp $ */
+/* $Id: server-fn.c,v 1.119 2011-02-14 23:11:33 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,14 +30,20 @@ void		server_callback_identify(int, short, void *);
 void
 server_fill_environ(struct session *s, struct environ *env)
 {
-	char	tmuxvar[MAXPATHLEN], *term;
+	char	var[MAXPATHLEN], *term;
+	u_int	idx;
+	long	pid;
 
-	xsnprintf(tmuxvar, sizeof tmuxvar,
-	    "%s,%ld,%u", socket_path, (long) getpid(), s->idx);
-	environ_set(env, "TMUX", tmuxvar);
+	if (s != NULL) {
+		term = options_get_string(&s->options, "default-terminal");
+		environ_set(env, "TERM", term);
 
-	term = options_get_string(&s->options, "default-terminal");
-	environ_set(env, "TERM", term);
+		idx = s->idx;
+	} else
+		idx = -1;
+	pid = getpid();
+	xsnprintf(var, sizeof var, "%s,%ld,%d", socket_path, pid, idx);
+	environ_set(env, "TMUX", var);
 }
 
 void

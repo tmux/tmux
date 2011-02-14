@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.148 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: cmd.c,v 1.149 2011-02-14 23:11:33 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -355,7 +355,7 @@ cmd_current_session(struct cmd_ctx *ctx)
 	}
 
 	/* Use the session from the TMUX environment variable. */
-	if (data != NULL && data->pid == getpid()) {
+	if (data != NULL && data->pid == getpid() && data->idx != -1) {
 		s = session_find_by_index(data->idx);
 		if (s != NULL)
 			return (s);
