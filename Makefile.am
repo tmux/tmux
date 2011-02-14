@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.9 2011-01-21 20:35:20 nicm Exp $
+# $Id: Makefile.am,v 1.10 2011-02-14 20:39:40 nicm Exp $
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
@@ -45,17 +45,17 @@ endif
 
 # Set flags for static.
 if IS_STATIC
-LDFLAGS+= -static
+LDFLAGS += -static
 endif
 
 # Set flags for Solaris.
 if IS_SUNOS
-CPPFLAGS+= -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
+CPPFLAGS += -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
 endif
 
 # Set flags for Sun CC.
 if IS_SUNCC
-CFLAGS+= -erroff=E_EMPTY_DECLARATION
+CFLAGS += -erroff=E_EMPTY_DECLARATION
 endif
 
 # List of sources.
