@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.202 2011-01-21 23:56:53 tcunha Exp $ */
+/* $Id: tty.c,v 1.203 2011-02-15 15:24:00 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -166,15 +166,13 @@ tty_start_tty(struct tty *tty)
 {
 	struct termios	 tio;
 
-	if (tty->fd == -1)
+	if (tty->fd == -1 || tcgetattr(tty->fd, &tty->tio) != 0)
 		return;
 
 	setblocking(tty->fd, 0);
 
 	bufferevent_enable(tty->event, EV_READ|EV_WRITE);
 
-	if (tcgetattr(tty->fd, &tty->tio) != 0)
-		fatal("tcgetattr failed");
 	memcpy(&tio, &tty->tio, sizeof tio);
 	tio.c_iflag &= ~(IXON|IXOFF|ICRNL|INLCR|IGNCR|IMAXBEL|ISTRIP);
 	tio.c_iflag |= IGNBRK;
@@ -183,9 +181,8 @@ tty_start_tty(struct tty *tty)
 	    ECHOPRT|ECHOKE|ECHOCTL|ISIG);
 	tio.c_cc[VMIN] = 1;
 	tio.c_cc[VTIME] = 0;
-	if (tcsetattr(tty->fd, TCSANOW, &tio) != 0)
-		fatal("tcsetattr failed");
-	tcflush(tty->fd, TCIOFLUSH);
+	if (tcsetattr(tty->fd, TCSANOW, &tio) == 0)
+		tcflush(tty->fd, TCIOFLUSH);
 
 	tty_putcode(tty, TTYC_SMCUP);
 
