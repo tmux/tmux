@@ -1,4 +1,4 @@
-/* $Id: server-window.c,v 1.19 2010-12-22 15:36:44 tcunha Exp $ */
+/* $Id: server-window.c,v 1.20 2011-02-15 15:20:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -23,7 +23,6 @@
 
 #include "tmux.h"
 
-int	server_window_backoff(struct window_pane *);
 int	server_window_check_bell(struct session *, struct winlink *);
 int	server_window_check_activity(struct session *, struct winlink *);
 int	server_window_check_silence(struct session *, struct winlink *);
