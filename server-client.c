@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.53 2011-01-21 23:56:53 tcunha Exp $ */
+/* $Id: server-client.c,v 1.54 2011-02-15 15:20:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -78,7 +78,8 @@ server_client_create(int fd)
 	c->tty.sy = 24;
 
 	screen_init(&c->status, c->tty.sx, 1, 0);
-	job_tree_init(&c->status_jobs);
+	RB_INIT(&c->status_new);
+	RB_INIT(&c->status_old);
 
 	c->message_string = NULL;
 	ARRAY_INIT(&c->message_log);
@@ -138,8 +139,9 @@ server_client_lost(struct client *c)
 	if (c->stderr_event != NULL)
 		bufferevent_free(c->stderr_event);
 
+	status_free_jobs(&c->status_new);
+	status_free_jobs(&c->status_old);
 	screen_free(&c->status);
-	job_tree_free(&c->status_jobs);
 
 	if (c->title != NULL)
 		xfree(c->title);
@@ -220,7 +222,6 @@ server_client_status_timer(void)
 {
 	struct client	*c;
 	struct session	*s;
-	struct job	*job;
 	struct timeval	 tv;
 	u_int		 i;
 	int		 interval;
@@ -249,8 +250,7 @@ server_client_status_timer(void)
 
 		difference = tv.tv_sec - c->status_timer.tv_sec;
 		if (difference >= interval) {
-			RB_FOREACH(job, jobs, &c->status_jobs)
-				job_run(job);
+			status_update_jobs(c);
 			c->flags |= CLIENT_STATUS;
 		}
 	}

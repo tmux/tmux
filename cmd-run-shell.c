@@ -1,4 +1,4 @@
-/* $Id: cmd-run-shell.c,v 1.10 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: cmd-run-shell.c,v 1.11 2011-02-15 15:20:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -53,7 +53,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
 	struct cmd_run_shell_data	*cdata;
-	struct job			*job;
+	const char			*shellcmd = args->argv[0];
 
 	cdata = xmalloc(sizeof *cdata);
 	cdata->cmd = xstrdup(args->argv[0]);
@@ -64,9 +64,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (ctx->curclient != NULL)
 		ctx->curclient->references++;
 
-	job = job_add(NULL, 0, NULL,
-	    args->argv[0], cmd_run_shell_callback, cmd_run_shell_free, cdata);
-	job_run(job);
+	job_run(shellcmd, cmd_run_shell_callback, cmd_run_shell_free, cdata);
 
 	return (1);	/* don't let client exit */
 }

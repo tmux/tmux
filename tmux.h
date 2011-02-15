@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.609 2011-02-15 15:12:28 tcunha Exp $ */
+/* $Id: tmux.h,v 1.610 2011-02-15 15:20:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -667,8 +667,6 @@ struct job {
 	pid_t		 pid;
 	int		 status;
 
-	struct client	*client;
-
 	int		 fd;
 	struct bufferevent *event;
 
@@ -676,13 +674,8 @@ struct job {
 	void		(*freefn)(void *);
 	void		*data;
 
-	int		 flags;
-#define JOB_PERSIST 0x1	/* don't free after callback */
-
-	RB_ENTRY(job)	 entry;
 	LIST_ENTRY(job)	 lentry;
 };
-RB_HEAD(jobs, job);
 LIST_HEAD(joblist, job);
 
 /* Screen selection. */
@@ -1087,6 +1080,15 @@ struct message_entry {
 	time_t	msg_time;
 };
 
+/* Status output data from a job. */
+struct status_out {
+	char   *cmd;
+	char   *out;
+
+	RB_ENTRY(status_out) entry;
+};
+RB_HEAD(status_out_tree, status_out);
+
 /* Client connection. */
 struct client {
 	struct imsgbuf	 ibuf;
@@ -1116,8 +1118,9 @@ struct client {
 
 	struct event	 repeat_timer;
 
+	struct status_out_tree status_old;
+	struct status_out_tree status_new;
 	struct timeval	 status_timer;
-	struct jobs	 status_jobs;
 	struct screen	 status;
 
 #define CLIENT_TERMINAL 0x1
@@ -1359,18 +1362,10 @@ const char *options_table_print_entry(
 
 /* job.c */
 extern struct joblist all_jobs;
-int	job_cmp(struct job *, struct job *);
-RB_PROTOTYPE(jobs, job, entry, job_cmp);
-void	job_tree_init(struct jobs *);
-void	job_tree_free(struct jobs *);
-struct job *job_get(struct jobs *, const char *);
-struct job *job_add(struct jobs *, int, struct client *,
+struct job *job_run(
 	    const char *, void (*)(struct job *), void (*)(void *), void *);
-void	job_remove(struct jobs *, struct job *);
 void	job_free(struct job *);
-int	job_run(struct job *);
 void	job_died(struct job *, int);
-void	job_kill(struct job *);
 
 /* environ.c */
 int	environ_cmp(struct environ_entry *, struct environ_entry *);
@@ -1656,6 +1651,10 @@ void	 server_clear_identify(struct client *);
 void	 server_update_event(struct client *);
 
 /* status.c */
+int	 status_out_cmp(struct status_out *, struct status_out *);
+RB_PROTOTYPE(status_out_tree, status_out, entry, status_out_cmp);
+void	 status_free_jobs(struct status_out_tree *);
+void	 status_update_jobs(struct client *);
 int	 status_redraw(struct client *);
 char	*status_replace(
 	     struct client *, struct winlink *, const char *, time_t, int);

@@ -1,4 +1,4 @@
-/* $Id: cmd-server-info.c,v 1.43 2011-02-15 15:12:28 tcunha Exp $ */
+/* $Id: cmd-server-info.c,v 1.44 2011-02-15 15:20:03 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -175,8 +175,8 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 
 	ctx->print(ctx, "Jobs:");
 	LIST_FOREACH(job, &all_jobs, lentry) {
-		ctx->print(ctx, "%s [fd=%d, pid=%d, status=%d, flags=0x%x]",
-		    job->cmd, job->fd, job->pid, job->status, job->flags);
+		ctx->print(ctx, "%s [fd=%d, pid=%d, status=%d]",
+		    job->cmd, job->fd, job->pid, job->status);
 	}
 
 	return (0);
