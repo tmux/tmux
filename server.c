@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.252 2011-01-21 23:44:13 tcunha Exp $ */
+/* $Id: server.c,v 1.253 2011-02-15 15:12:28 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -416,7 +416,7 @@ server_child_exited(pid_t pid, int status)
 		}
 	}
 
-	SLIST_FOREACH(job, &all_jobs, lentry) {
+	LIST_FOREACH(job, &all_jobs, lentry) {
 		if (pid == job->pid) {
 			job_died(job, status);	/* might free job */
 			break;
