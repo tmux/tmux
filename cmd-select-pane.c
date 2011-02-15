@@ -1,4 +1,4 @@
-/* $Id: cmd-select-pane.c,v 1.15 2011-01-07 15:02:38 tcunha Exp $ */
+/* $Id: cmd-select-pane.c,v 1.16 2011-02-15 15:25:12 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -79,7 +79,11 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 			ctx->error(ctx, "no last pane");
 			return (-1);
 		}
+
 		window_set_active_pane(wl->window, wl->window->last);
+		server_status_window(wl->window);
+		server_redraw_window_borders(wl->window);
+
 		return (0);
 	}
 
