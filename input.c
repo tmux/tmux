@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.114 2011-01-21 23:56:11 tcunha Exp $ */
+/* $Id: input.c,v 1.115 2011-02-15 15:21:14 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -812,6 +812,9 @@ input_clear(struct input_ctx *ictx)
 	*ictx->param_buf = '\0';
 	ictx->param_len = 0;
 
+	*ictx->input_buf = '\0';
+	ictx->input_len = 0;
+
 	ictx->flags &= ~INPUT_DISCARD;
 }
 
@@ -1394,7 +1397,7 @@ input_enter_dcs(struct input_ctx *ictx)
 {
 	log_debug("%s", __func__);
 
-	ictx->input_len = 0;
+	input_clear(ictx);
 }
 
 /* DCS terminator (ST) received. */
@@ -1410,7 +1413,7 @@ input_enter_osc(struct input_ctx *ictx)
 {
 	log_debug("%s", __func__);
 
-	ictx->input_len = 0;
+	input_clear(ictx);
 }
 
 /* OSC terminator (ST) received. */
@@ -1436,7 +1439,7 @@ input_enter_apc(struct input_ctx *ictx)
 {
 	log_debug("%s", __func__);
 
-	ictx->input_len = 0;
+	input_clear(ictx);
 }
 
 /* APC terminator (ST) received. */
@@ -1457,7 +1460,7 @@ input_enter_rename(struct input_ctx *ictx)
 {
 	log_debug("%s", __func__);
 
-	ictx->input_len = 0;
+	input_clear(ictx);
 }
 
 /* Rename terminator (ST) received. */
