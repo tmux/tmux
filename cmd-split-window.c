@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.37 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: cmd-split-window.c,v 1.38 2011-02-15 15:26:54 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -90,8 +90,8 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		type = LAYOUT_LEFTRIGHT;
 
 	size = -1;
-	if (args_has(args, 's')) {
-		size = args_strtonum(args, 's', 0, INT_MAX, &cause);
+	if (args_has(args, 'l')) {
+		size = args_strtonum(args, 'l', 0, INT_MAX, &cause);
 		if (cause != NULL) {
 			ctx->error(ctx, "size %s", cause);
 			xfree(cause);
