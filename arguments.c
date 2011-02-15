@@ -1,4 +1,4 @@
-/* $Id: arguments.c,v 1.2 2011-01-07 14:46:57 tcunha Exp $ */
+/* $Id: arguments.c,v 1.3 2011-02-15 15:24:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -182,11 +182,12 @@ args_has(struct args *args, u_char ch)
 void
 args_set(struct args *args, u_char ch, const char *value)
 {
-	if (value != NULL) {
-		if (args->values[ch] != NULL)
-			xfree(args->values[ch]);
+	if (args->values[ch] != NULL)
+		xfree(args->values[ch]);
+	if (value != NULL)
 		args->values[ch] = xstrdup(value);
-	}
+	else
+		args->values[ch] = NULL;
 	bit_set(args->flags, ch);
 }
 
