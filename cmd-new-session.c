@@ -1,4 +1,4 @@
-/* $Id: cmd-new-session.c,v 1.83 2011-01-21 23:55:26 tcunha Exp $ */
+/* $Id: cmd-new-session.c,v 1.84 2011-02-15 15:25:48 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -48,9 +48,6 @@ int
 cmd_new_session_check(struct args *args)
 {
 	if (args_has(args, 't') && (args->argc != 0 || args_has(args, 'n')))
-		return (-1);
-	if (!args_has(args, 'd') &&
-	    (args_has(args, 'x') || args_has(args, 'y')))
 		return (-1);
 	return (0);
 }
