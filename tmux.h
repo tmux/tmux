@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.606 2011-02-14 23:11:33 tcunha Exp $ */
+/* $Id: tmux.h,v 1.607 2011-02-15 15:09:52 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1824,7 +1824,8 @@ struct winlink	*winlink_find_by_index(struct winlinks *, int);
 struct winlink	*winlink_find_by_window(struct winlinks *, struct window *);
 int		 winlink_next_index(struct winlinks *, int);
 u_int		 winlink_count(struct winlinks *);
-struct winlink	*winlink_add(struct winlinks *, struct window *, int);
+struct winlink	*winlink_add(struct winlinks *, int);
+void		 winlink_set_window(struct winlink *, struct window *);
 void		 winlink_remove(struct winlinks *, struct winlink *);
 struct winlink	*winlink_next(struct winlink *);
 struct winlink	*winlink_previous(struct winlink *);
