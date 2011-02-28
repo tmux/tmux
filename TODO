@@ -122,3 +122,7 @@
 - a command to choose from a generic list, so you can do eg
   choose-list -l Abc,Moo,Blah "run-shell 'sh /my/choose/script %%'"
 - else part for if-shell
+- make display-message take a target pane rather than using active
+- add general internal format for lists (key=value) and a way to output them in
+  different representations, use for list-windows, etc etc. see message id
+  20110221205346.GA1580@yelena.nicm.ath.cx
