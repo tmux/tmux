@@ -1277,7 +1277,7 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 					gc->fg = 8;
 				} else if (n == 48) {
 					gc->flags &= ~GRID_FLAG_BG256;
-					gc->fg = 8;
+					gc->bg = 8;
 				}
 
 			} else {
