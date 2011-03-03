@@ -550,10 +550,17 @@ If no server is started,
 .Ic attach-session
 will attempt to start it; this will fail unless sessions are created in the
 configuration file.
-.It Ic detach-client Op Fl t Ar target-client
+.It Xo Ic detach-client
+.Op Fl P
+.Op Fl t Ar target-client
+.Xc
 .D1 (alias: Ic detach )
 Detach the current client if bound to a key, or the specified client with
 .Fl t .
+If
+.Fl P
+is given, send SIGHUP to the parent process of the client, typically causing it
+to exit.
 .It Ic has-session Op Fl t Ar target-session
 .D1 (alias: Ic has )
 Report an error and exit with 1 if the specified session does not exist.

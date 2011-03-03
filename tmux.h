@@ -375,6 +375,7 @@ enum msgtype {
 	MSG_SHELL,
 	MSG_STDERR,
 	MSG_STDOUT,
+	MSG_DETACHKILL
 };
 
 /*
