@@ -630,10 +630,10 @@ tty_keys_mouse(struct tty *tty,
 				utf8_append(&utf8data, buf[*size]);
 				value = utf8_combine(&utf8data);
 			} else
-				value = buf[*size];
+				value = (unsigned char)buf[*size];
 			(*size)++;
 		} else {
-			value = buf[*size];
+			value = (unsigned char)buf[*size];
 			(*size)++;
 		}
 

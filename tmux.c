@@ -132,7 +132,7 @@ parseenvironment(void)
 	if ((env = getenv("TMUX")) == NULL)
 		return;
 
-	if (sscanf(env, "%255s,%ld,%d", path, &pid, &idx) != 3)
+	if (sscanf(env, "%255[^,],%ld,%d", path, &pid, &idx) != 3)
 		return;
 	environ_path = xstrdup(path);
 	environ_pid = pid;
