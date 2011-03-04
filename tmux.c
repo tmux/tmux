@@ -1,4 +1,4 @@
-/* $Id: tmux.c,v 1.236 2011-02-14 23:11:33 tcunha Exp $ */
+/* $Id: tmux.c,v 1.237 2011-03-04 23:13:56 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -135,7 +135,7 @@ parseenvironment(void)
 	if ((env = getenv("TMUX")) == NULL)
 		return;
 
-	if (sscanf(env, "%255s,%ld,%d", path, &pid, &idx) != 3)
+	if (sscanf(env, "%255[^,],%ld,%d", path, &pid, &idx) != 3)
 		return;
 	environ_path = xstrdup(path);
 	environ_pid = pid;
