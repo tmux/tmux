@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.59 2011-01-07 14:34:45 tcunha Exp $ */
+/* $Id: tty-keys.c,v 1.60 2011-03-04 20:36:59 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -630,10 +630,10 @@ tty_keys_mouse(struct tty *tty,
 				utf8_append(&utf8data, buf[*size]);
 				value = utf8_combine(&utf8data);
 			} else
-				value = buf[*size];
+				value = (unsigned char)buf[*size];
 			(*size)++;
 		} else {
-			value = buf[*size];
+			value = (unsigned char)buf[*size];
 			(*size)++;
 		}
 
