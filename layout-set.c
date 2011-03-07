@@ -519,7 +519,7 @@ layout_set_tiled(struct window *w)
 		TAILQ_INSERT_TAIL(&lc->cells, lcrow, entry);
 
 		/* If only one column, just use the row directly. */
-		if (n - (j * columns) == 1) {
+		if (n - (j * columns) == 1 || columns == 1) {
 			layout_make_leaf(lcrow, wp);
 			wp = TAILQ_NEXT(wp, entry);
 			continue;
