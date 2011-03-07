@@ -932,6 +932,16 @@ tty_cmd_utf8character(struct tty *tty, const struct tty_ctx *ctx)
 }
 
 void
+tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
+{
+	u_int	 i;
+	u_char	*str = ctx->ptr;
+
+	for (i = 0; i < ctx->num; i++)
+		tty_putc(tty, str[i]);
+}
+
+void
 tty_cell(
     struct tty *tty, const struct grid_cell *gc, const struct grid_utf8 *gu)
 {
