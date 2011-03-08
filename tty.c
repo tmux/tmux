@@ -454,7 +454,7 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 	 * without this, the entire pane ends up being redrawn many times which
 	 * can be much more data.
 	 */
-	if (ctx->orupper - ctx->orlower >= screen_size_y(s) / 2) {
+	if (ctx->orlower - ctx->orupper >= screen_size_y(s) / 2) {
 		wp->flags |= PANE_REDRAW;
 		return;
 	}
