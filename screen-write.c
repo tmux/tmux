@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.93 2011-02-15 15:10:47 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.94 2011-03-19 23:30:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1190,4 +1190,16 @@ screen_write_overwrite(struct screen_write_ctx *ctx, u_int width)
 			break;
 		grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
 	}
+}
+
+void
+screen_write_rawstring(struct screen_write_ctx *ctx, u_char *str, u_int len)
+{
+	struct tty_ctx		 ttyctx;
+
+	screen_write_initctx(ctx, &ttyctx, 0);
+	ttyctx.ptr = str;
+	ttyctx.num = len;
+
+	tty_write(tty_cmd_rawstring, &ttyctx);
 }

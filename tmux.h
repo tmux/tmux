@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.611 2011-03-19 23:27:35 tcunha Exp $ */
+/* $Id: tmux.h,v 1.612 2011-03-19 23:30:37 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1422,6 +1422,7 @@ void	tty_cmd_insertline(struct tty *, const struct tty_ctx *);
 void	tty_cmd_linefeed(struct tty *, const struct tty_ctx *);
 void	tty_cmd_utf8character(struct tty *, const struct tty_ctx *);
 void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
+void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;
@@ -1800,6 +1801,7 @@ void	 screen_write_clearstartofscreen(struct screen_write_ctx *);
 void	 screen_write_clearscreen(struct screen_write_ctx *);
 void	 screen_write_cell(struct screen_write_ctx *,
 	     const struct grid_cell *, const struct utf8_data *);
+void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);
 
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *, int, int);
