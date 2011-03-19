@@ -1,4 +1,4 @@
-/* $Id: layout-set.c,v 1.8 2010-12-22 15:23:59 tcunha Exp $ */
+/* $Id: layout-set.c,v 1.9 2011-03-19 23:31:08 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -519,7 +519,7 @@ layout_set_tiled(struct window *w)
 		TAILQ_INSERT_TAIL(&lc->cells, lcrow, entry);
 
 		/* If only one column, just use the row directly. */
-		if (n - (j * columns) == 1) {
+		if (n - (j * columns) == 1 || columns == 1) {
 			layout_make_leaf(lcrow, wp);
 			wp = TAILQ_NEXT(wp, entry);
 			continue;
