@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.610 2011-02-15 15:20:03 tcunha Exp $ */
+/* $Id: tmux.h,v 1.611 2011-03-19 23:27:35 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -371,6 +371,7 @@ enum msgtype {
 	MSG_SHELL,
 	MSG_STDERR,
 	MSG_STDOUT,
+	MSG_DETACHKILL
 };
 
 /*
