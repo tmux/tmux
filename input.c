@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.115 2011-02-15 15:21:14 tcunha Exp $ */
+/* $Id: input.c,v 1.116 2011-03-19 23:28:30 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1277,7 +1277,7 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 					gc->fg = 8;
 				} else if (n == 48) {
 					gc->flags &= ~GRID_FLAG_BG256;
-					gc->fg = 8;
+					gc->bg = 8;
 				}
 
 			} else {
