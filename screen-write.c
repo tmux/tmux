@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.94 2011-03-19 23:30:37 tcunha Exp $ */
+/* $Id: screen-write.c,v 1.95 2011-03-24 17:03:29 micahcowan Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1012,8 +1012,10 @@ screen_write_cell(struct screen_write_ctx *ctx,
 	 * If this is a wide character and there is no room on the screen, for
 	 * the entire character, don't print it.
 	 */
-	if (width > 1 && (width > screen_size_x(s) ||
-	    (s->cx != screen_size_x(s) && s->cx > screen_size_x(s) - width)))
+	if (!(s->mode & MODE_WRAP)
+	    && (width > 1 && (width > screen_size_x(s) ||
+		(s->cx != screen_size_x(s)
+		 && s->cx > screen_size_x(s) - width))))
 		return;
 
 	/*
@@ -1045,8 +1047,8 @@ screen_write_cell(struct screen_write_ctx *ctx,
 	}
 
 	/* Sanity checks. */
-	if (((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - 1)
-	    || s->cy > screen_size_y(s) - 1)
+	if (((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - width)
+	    || s->cy > screen_size_y(s) - width)
 		return;
 
 	/* Handle overwriting of UTF-8 characters. */
