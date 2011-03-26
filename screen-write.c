@@ -1012,8 +1012,10 @@ screen_write_cell(struct screen_write_ctx *ctx,
 	 * If this is a wide character and there is no room on the screen, for
 	 * the entire character, don't print it.
 	 */
-	if (width > 1 && (width > screen_size_x(s) ||
-	    (s->cx != screen_size_x(s) && s->cx > screen_size_x(s) - width)))
+	if (!(s->mode & MODE_WRAP)
+	    && (width > 1 && (width > screen_size_x(s) ||
+		(s->cx != screen_size_x(s)
+		 && s->cx > screen_size_x(s) - width))))
 		return;
 
 	/*
@@ -1045,8 +1047,8 @@ screen_write_cell(struct screen_write_ctx *ctx,
 	}
 
 	/* Sanity checks. */
-	if (((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - 1)
-	    || s->cy > screen_size_y(s) - 1)
+	if (((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - width)
+	    || s->cy > screen_size_y(s) - width)
 		return;
 
 	/* Handle overwriting of UTF-8 characters. */

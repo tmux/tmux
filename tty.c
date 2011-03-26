@@ -892,11 +892,19 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
 	u_int			 cx;
+	u_int			 width;
+	const struct grid_cell	*gc = ctx->cell;
+	const struct grid_utf8	*gu = ctx->utf8;
+
+	if (gc->flags & GRID_FLAG_UTF8)
+		width = gu->width;
+	else
+		width = 1;
 
 	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 
 	/* Is the cursor in the very last position? */
-	if (ctx->ocx > wp->sx - ctx->last_width) {
+	if (ctx->ocx > wp->sx - width) {
 		if (wp->xoff != 0 || wp->sx != tty->sx) {
 			/*
 			 * The pane doesn't fill the entire line, the linefeed
@@ -906,10 +914,10 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 		} else if (tty->cx < tty->sx) {
 			/*
 			 * The cursor isn't in the last position already, so
-			 * move as far left as possinble and redraw the last
+			 * move as far left as possible and redraw the last
 			 * cell to move into the last position.
 			 */
-			cx = screen_size_x(s) - ctx->last_width;
+			cx = screen_size_x(s) - width;
 			tty_cursor_pane(tty, ctx, cx, ctx->ocy);
 			tty_cell(tty, &ctx->last_cell, &ctx->last_utf8);
 		}
