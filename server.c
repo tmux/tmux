@@ -143,6 +143,7 @@ server_start(void)
 	log_debug("server started, pid %ld", (long) getpid());
 
 	ARRAY_INIT(&windows);
+	RB_INIT(&all_window_panes);
 	ARRAY_INIT(&clients);
 	ARRAY_INIT(&dead_clients);
 	RB_INIT(&sessions);

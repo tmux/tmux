@@ -449,6 +449,17 @@ select-window -t:+2
 When dealing with a session that doesn't contain sequential window indexes,
 they will be correctly skipped.
 .Pp
+.Nm
+also gives each pane created in a server an identifier consisting of a
+.Ql %
+and a number, starting from zero.
+A pane's identifier is unique for the life of the
+.Nm
+server and is passed to the child process of the pane in the
+.Ev TMUX_PANE
+environment variable.
+It may be used alone to target a pane or the window containing it.
+.Pp
 .Ar shell-command
 arguments are
 .Xr sh 1
