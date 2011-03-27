@@ -101,8 +101,6 @@
 - a history of commands that can be reversed (reverse member of each command,
   and a buffer) info() when changing to same window
 - don't pass UTF-8 through vis for titles
-- add a unique ever-increasing pane id to each pane, export it in $TMUX_PANE
-   (as %1, %2 etc) and allow it to be used as a target
 - way to add dest for break-pane; maybe some easier way to unbreak-pane
 - case insensitive searching
 - pane-index option like base-index
@@ -117,8 +115,6 @@
   key is looked up in that table
 - pass shell commands as argv rather than strings, allow them to be specified
   in commands without quotes
-- combine all options into 1 table (inc defaults) - can use C99 .foo = blah
-  syntax
 - a command to choose from a generic list, so you can do eg
   choose-list -l Abc,Moo,Blah "run-shell 'sh /my/choose/script %%'"
 - else part for if-shell
