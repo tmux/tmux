@@ -28,10 +28,14 @@
 
 int	cmd_list_panes_exec(struct cmd *, struct cmd_ctx *);
 
+void	cmd_list_panes_server(struct cmd_ctx *);
+void	cmd_list_panes_session(struct session *, struct cmd_ctx *);
+void	cmd_list_panes_window(struct winlink *, struct cmd_ctx *);
+
 const struct cmd_entry cmd_list_panes_entry = {
 	"list-panes", "lsp",
-	"t:", 0, 0,
-	CMD_TARGET_WINDOW_USAGE,
+	"ast:", 0, 0,
+	"[-as] [-t target]",
 	0,
 	NULL,
 	NULL,
@@ -41,16 +45,53 @@ const struct cmd_entry cmd_list_panes_entry = {
 int
 cmd_list_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args		*args = self->args;
-	struct winlink		*wl;
+	struct args	*args = self->args;
+	struct session	*s;
+	struct winlink	*wl;
+
+	if (args_has(args, 'a'))
+		cmd_list_panes_server(ctx);
+	else if (args_has(args, 's')) {
+		s = cmd_find_session(ctx, args_get(args, 't'));
+		if (s == NULL)
+			return (-1);
+		cmd_list_panes_session(s, ctx);
+	} else {
+		wl = cmd_find_window(ctx, args_get(args, 't'), NULL);
+		if (wl == NULL)
+			return (-1);
+		cmd_list_panes_window(wl, ctx);
+	}
+
+	return (0);
+}
+
+void
+cmd_list_panes_server(struct cmd_ctx *ctx)
+{
+	struct session	*s;
+
+	RB_FOREACH(s, sessions, &sessions)
+		cmd_list_panes_session(s, ctx);
+}
+
+void
+cmd_list_panes_session(struct session *s, struct cmd_ctx *ctx)
+{
+	struct winlink	*wl;
+
+	RB_FOREACH(wl, winlinks, &s->windows)
+		cmd_list_panes_window(wl, ctx);
+}
+
+void
+cmd_list_panes_window(struct winlink *wl, struct cmd_ctx *ctx)
+{
 	struct window_pane	*wp;
 	struct grid		*gd;
 	struct grid_line	*gl;
 	u_int			 i, n;
 	unsigned long long	 size;
-
-	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
-		return (-1);
 
 	n = 0;
 	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
@@ -64,12 +105,11 @@ cmd_list_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 		size += gd->hsize * sizeof *gd->linedata;
 
-		ctx->print(ctx, "%u: [%ux%u] [history %u/%u, %llu bytes] %%%u%s%s",
+		ctx->print(ctx,
+		    "%u: [%ux%u] [history %u/%u, %llu bytes] %%%u%s%s",
 		    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size, wp->id,
 		    wp == wp->window->active ? " (active)" : "",
 		    wp->fd == -1 ? " (dead)" : "");
 		n++;
 	}
-
-	return (0);
 }

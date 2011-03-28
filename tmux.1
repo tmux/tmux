@@ -1115,13 +1115,33 @@ exists, it is killed, otherwise an error is generated.
 If
 .Fl d
 is given, the newly linked window is not selected.
-.It Ic list-panes Op Fl t Ar target-window
+.It Xo Ic list-panes
+.Op Fl as
+.Op Fl t Ar target
+.Xc
 .D1 (alias: Ic lsp )
-List the panes in the current window or in
-.Ar target-window .
-.It Ic list-windows Op Fl t Ar target-session
+If
+.Fl a
+is given,
+.Ar target
+is ignored and all panes on the server are listed.
+If
+.Fl s
+is given,
+.Ar target
+is a session (or the current session).
+If neither is given,
+.Ar target
+is a window (or the current window).
+.It Xo Ic list-windows
+.Op Fl a
+.Op Fl t Ar target-session
+.Xc
 .D1 (alias: Ic lsw )
-List windows in the current session or in
+If
+.Fl a
+is given, list all windows on the server.
+Otherwise, list windows in the current session or in
 .Ar target-session .
 .It Xo Ic move-window
 .Op Fl dk
