@@ -123,3 +123,4 @@
   different representations, use for list-windows, etc etc. see message id
   20110221205346.GA1580@yelena.nicm.ath.cx
 - numeric prefix in copy mode should be paste buffer for C-w
+- named buffers and allow gaps in the stack
