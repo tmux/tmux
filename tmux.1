@@ -953,11 +953,20 @@ If
 is given, the new window does not become the current window.
 .It Xo Ic capture-pane
 .Op Fl b Ar buffer-index
+.Op Fl E Ar end-line
+.Op Fl S Ar start-line
 .Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic capturep )
 Capture the contents of a pane to the specified buffer, or a new buffer if none
 is specified.
+.Pp
+.Fl S
+and
+.Fl E
+specify the starting and ending line numbers, zero is the first line of the
+visible pane and negative numbers are lines in the history.
+The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose-client
 .Op Fl t Ar target-window
