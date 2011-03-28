@@ -368,8 +368,8 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 	if (np == 0)
 		np = 1;
 
-	if (data->inputtype == WINDOW_COPY_JUMPFORWARD
-	    || data->inputtype == WINDOW_COPY_JUMPBACK) {
+	if (data->inputtype == WINDOW_COPY_JUMPFORWARD ||
+	    data->inputtype == WINDOW_COPY_JUMPBACK) {
 		/* Ignore keys with modifiers. */
 		if ((key & KEYC_MASK_MOD) == 0) {
 			data->jumpchar = key;
@@ -385,7 +385,7 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 		data->inputtype = WINDOW_COPY_OFF;
 		window_copy_redraw_lines(wp, screen_size_y(s) - 1, 1);
 		return;
-	} if (data->inputtype == WINDOW_COPY_NUMERICPREFIX) {
+	} else if (data->inputtype == WINDOW_COPY_NUMERICPREFIX) {
 		if (window_copy_key_numeric_prefix(wp, key) == 0)
 			return;
 		data->inputtype = WINDOW_COPY_OFF;
@@ -1617,7 +1617,7 @@ window_copy_cursor_jump(struct window_pane *wp)
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*back_s = data->backing;
 	const struct grid_cell		*gc;
-	uint				 px, py, xx;
+	u_int				 px, py, xx;
 
 	px = data->cx + 1;
 	py = screen_hsize(back_s) + data->cy - data->oy;
@@ -1643,7 +1643,7 @@ window_copy_cursor_jump_back(struct window_pane *wp)
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*back_s = data->backing;
 	const struct grid_cell		*gc;
-	uint				 px, py;
+	u_int				 px, py;
 
 	px = data->cx;
 	py = screen_hsize(back_s) + data->cy - data->oy;

@@ -31,7 +31,7 @@
 
 /* Return each item of the stack in turn. */
 struct paste_buffer *
-paste_walk_stack(struct paste_stack *ps, uint *idx)
+paste_walk_stack(struct paste_stack *ps, u_int *idx)
 {
 	struct paste_buffer	*pb;
 
