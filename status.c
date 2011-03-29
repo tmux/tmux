@@ -38,8 +38,8 @@ void	status_job_free(void *);
 void	status_job_callback(struct job *);
 char   *status_print(
 	    struct client *, struct winlink *, time_t, struct grid_cell *);
-void	status_replace1(struct client *,
-	    struct winlink *, char **, char **, char *, size_t, int);
+void	status_replace1(struct client *, struct session *, struct winlink *,
+	    struct window_pane *, char **, char **, char *, size_t, int);
 void	status_message_callback(int, short, void *);
 
 const char *status_prompt_up_history(u_int *);
@@ -80,8 +80,8 @@ status_redraw_get_left(struct client *c,
 	if (attr != 0)
 		gc->attr = attr;
 
-	left = status_replace(
-	    c, NULL, options_get_string(&s->options, "status-left"), t, 1);
+	left = status_replace(c, NULL,
+	    NULL, NULL, options_get_string(&s->options, "status-left"), t, 1);
 
 	*size = options_get_number(&s->options, "status-left-length");
 	leftlen = screen_write_cstrlen(utf8flag, "%s", left);
@@ -110,8 +110,8 @@ status_redraw_get_right(struct client *c,
 	if (attr != 0)
 		gc->attr = attr;
 
-	right = status_replace(
-	    c, NULL, options_get_string(&s->options, "status-right"), t, 1);
+	right = status_replace(c, NULL,
+	    NULL, NULL, options_get_string(&s->options, "status-right"), t, 1);
 
 	*size = options_get_number(&s->options, "status-right-length");
 	rightlen = screen_write_cstrlen(utf8flag, "%s", right);
@@ -347,16 +347,20 @@ out:
 
 /* Replace a single special sequence (prefixed by #). */
 void
-status_replace1(struct client *c,struct winlink *wl,
-    char **iptr, char **optr, char *out, size_t outsize, int jobsflag)
+status_replace1(struct client *c, struct session *s, struct winlink *wl,
+    struct window_pane *wp, char **iptr, char **optr, char *out,
+    size_t outsize, int jobsflag)
 {
-	struct session *s = c->session;
-	char		ch, tmp[256], *ptr, *endptr, *freeptr;
-	size_t		ptrlen;
-	long		limit;
+	char	ch, tmp[256], *ptr, *endptr, *freeptr;
+	size_t	ptrlen;
+	long	limit;
 
+	if (s == NULL)
+		s = c->session;
 	if (wl == NULL)
 		wl = s->curw;
+	if (wp == NULL)
+		wp = wl->window->active;
 
 	errno = 0;
 	limit = strtol(*iptr, &endptr, 10);
@@ -379,6 +383,10 @@ status_replace1(struct client *c,struct winlink *wl,
 		if ((ptr = status_find_job(c, iptr)) == NULL)
 			return;
 		goto do_replace;
+	case 'D':
+		xsnprintf(tmp, sizeof tmp, "%%%u", wp->id);
+		ptr = tmp;
+		goto do_replace;
 	case 'H':
 		if (gethostname(tmp, sizeof tmp) != 0)
 			fatal("gethostname failed");
@@ -389,15 +397,15 @@ status_replace1(struct client *c,struct winlink *wl,
 		ptr = tmp;
 		goto do_replace;
 	case 'P':
-		xsnprintf(tmp, sizeof tmp, "%u",
-		    window_pane_index(wl->window, wl->window->active));
+		xsnprintf(
+		    tmp, sizeof tmp, "%u", window_pane_index(wl->window, wp));
 		ptr = tmp;
 		goto do_replace;
 	case 'S':
 		ptr = s->name;
 		goto do_replace;
 	case 'T':
-		ptr = wl->window->active->base.title;
+		ptr = wp->base.title;
 		goto do_replace;
 	case 'W':
 		ptr = wl->window->name;
@@ -449,8 +457,8 @@ skip_to:
 
 /* Replace special sequences in fmt. */
 char *
-status_replace(struct client *c,
-    struct winlink *wl, const char *fmt, time_t t, int jobsflag)
+status_replace(struct client *c, struct session *s, struct winlink *wl,
+    struct window_pane *wp, const char *fmt, time_t t, int jobsflag)
 {
 	static char	out[BUFSIZ];
 	char		in[BUFSIZ], ch, *iptr, *optr;
@@ -470,7 +478,8 @@ status_replace(struct client *c,
 			*optr++ = ch;
 			continue;
 		}
-		status_replace1(c, wl, &iptr, &optr, out, sizeof out, jobsflag);
+		status_replace1(
+		    c, s, wl, wp, &iptr, &optr, out, sizeof out, jobsflag);
 	}
 	*optr = '\0';
 
@@ -657,7 +666,7 @@ status_print(
 			gc->attr = attr;
 	}
 
-	text = status_replace(c, wl, fmt, t, 1);
+	text = status_replace(c, NULL, wl, NULL, fmt, t, 1);
 	return (text);
 }
 

@@ -113,7 +113,8 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		closefrom(STDERR_FILENO + 1);
 
-		command = status_replace(c, NULL, args->argv[0], time(NULL), 0);
+		command = status_replace(
+		    c, NULL, NULL, NULL, args->argv[0], time(NULL), 0);
 		execl(_PATH_BSHELL, "sh", "-c", command, (char *) NULL);
 		_exit(1);
 	default:

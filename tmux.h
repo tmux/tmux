@@ -1666,8 +1666,8 @@ RB_PROTOTYPE(status_out_tree, status_out, entry, status_out_cmp);
 void	 status_free_jobs(struct status_out_tree *);
 void	 status_update_jobs(struct client *);
 int	 status_redraw(struct client *);
-char	*status_replace(
-	     struct client *, struct winlink *, const char *, time_t, int);
+char	*status_replace(struct client *, struct session *,
+	     struct winlink *, struct window_pane *, const char *, time_t, int);
 void printflike2 status_message_set(struct client *, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
