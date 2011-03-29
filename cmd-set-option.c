@@ -166,11 +166,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			server_redraw_client(c);
 	}
 
-	/*
-	 * Special-case: kill all persistent jobs if status-left, status-right
-	 * or set-titles-string have changed. Persistent jobs are only used by
-	 * the status line at the moment so this works XXX.
-	 */
+	/* Force redraw when some special cases change. */
 	if (strcmp(oe->name, "status-left") == 0 ||
 	    strcmp(oe->name, "status-right") == 0 ||
 	    strcmp(oe->name, "status") == 0 ||
