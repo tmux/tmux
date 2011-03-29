@@ -166,19 +166,6 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			server_redraw_client(c);
 	}
 
-	/* Force redraw when some special cases change. */
-	if (strcmp(oe->name, "status-left") == 0 ||
-	    strcmp(oe->name, "status-right") == 0 ||
-	    strcmp(oe->name, "status") == 0 ||
-	    strcmp(oe->name, "set-titles-string") == 0 ||
-	    strcmp(oe->name, "window-status-format") == 0) {
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c != NULL && c->session != NULL)
-				server_redraw_client(c);
-		}
-	}
-
 	return (0);
 }
 
