@@ -123,6 +123,7 @@ const struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 const struct mode_key_entry mode_key_vi_edit[] = {
 	{ '\003' /* C-c */,	0, MODEKEYEDIT_CANCEL },
 	{ '\010' /* C-h */, 	0, MODEKEYEDIT_BACKSPACE },
+	{ '\025' /* C-u	*/,	0, MODEKEYEDIT_DELETELINE },
 	{ '\011' /* Tab */,	0, MODEKEYEDIT_COMPLETE },
 	{ '\033' /* Escape */,	0, MODEKEYEDIT_SWITCHMODE },
 	{ '\r',			0, MODEKEYEDIT_ENTER },
