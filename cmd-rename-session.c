@@ -51,7 +51,7 @@ cmd_rename_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if ((s = cmd_find_session(ctx, args_get(args, 't'))) == NULL)
+	if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
 		return (-1);
 
 	RB_REMOVE(sessions, &sessions, s);

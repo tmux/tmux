@@ -49,7 +49,7 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	size_t			 size, len;
 	u_int			 width;
 
-	if ((s = cmd_find_session(ctx, NULL)) == NULL)
+	if ((s = cmd_find_session(ctx, NULL, 0)) == NULL)
 		return (-1);
 
 	if (!args_has(args, 'b')) {

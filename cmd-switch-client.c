@@ -86,7 +86,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 			return (-1);
 		}
 	} else
-		s = cmd_find_session(ctx, args_get(args, 't'));
+		s = cmd_find_session(ctx, args_get(args, 't'), 0);
 	if (s == NULL)
 		return (-1);
 

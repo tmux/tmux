@@ -52,7 +52,7 @@ cmd_list_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args_has(args, 'a'))
 		cmd_list_panes_server(ctx);
 	else if (args_has(args, 's')) {
-		s = cmd_find_session(ctx, args_get(args, 't'));
+		s = cmd_find_session(ctx, args_get(args, 't'), 0);
 		if (s == NULL)
 			return (-1);
 		cmd_list_panes_session(s, ctx);

@@ -79,7 +79,7 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (args_has(self->args, 'g'))
 			oo = &global_s_options;
 		else {
-			s = cmd_find_session(ctx, args_get(args, 't'));
+			s = cmd_find_session(ctx, args_get(args, 't'), 0);
 			if (s == NULL)
 				return (-1);
 			oo = &s->options;

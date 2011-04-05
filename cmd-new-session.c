@@ -75,7 +75,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	target = args_get(args, 't');
 	if (target != NULL) {
-		groupwith = cmd_find_session(ctx, target);
+		groupwith = cmd_find_session(ctx, target, 0);
 		if (groupwith == NULL)
 			return (-1);
 	} else

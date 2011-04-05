@@ -50,7 +50,7 @@ cmd_show_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args_has(self->args, 'g'))
 		env = &global_environ;
 	else {
-		if ((s = cmd_find_session(ctx, args_get(args, 't'))) == NULL)
+		if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
 			return (-1);
 		env = &s->environ;
 	}

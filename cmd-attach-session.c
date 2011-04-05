@@ -51,7 +51,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	if ((s = cmd_find_session(ctx, args_get(args, 't'))) == NULL)
+	if ((s = cmd_find_session(ctx, args_get(args, 't'), 1)) == NULL)
 		return (-1);
 
 	if (ctx->cmdclient == NULL && ctx->curclient == NULL)

@@ -45,7 +45,7 @@ cmd_kill_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct args	*args = self->args;
 	struct session	*s;
 
-	if ((s = cmd_find_session(ctx, args_get(args, 't'))) == NULL)
+	if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
 		return (-1);
 
 	server_destroy_session(s);

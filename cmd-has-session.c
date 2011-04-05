@@ -41,7 +41,7 @@ cmd_has_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
 
-	if (cmd_find_session(ctx, args_get(args, 't')) == NULL)
+	if (cmd_find_session(ctx, args_get(args, 't'), 0) == NULL)
 		return (-1);
 
 	return (0);

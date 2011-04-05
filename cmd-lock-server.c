@@ -71,7 +71,7 @@ cmd_lock_server_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 	if (self->entry == &cmd_lock_server_entry)
 		server_lock();
 	else if (self->entry == &cmd_lock_session_entry) {
-		if ((s = cmd_find_session(ctx, args_get(args, 't'))) == NULL)
+		if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
 			return (-1);
 		server_lock_session(s);
 	} else {
