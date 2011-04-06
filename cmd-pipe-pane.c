@@ -1,4 +1,4 @@
-/* $Id: cmd-pipe-pane.c,v 1.17 2011-01-21 23:44:13 tcunha Exp $ */
+/* $Id: cmd-pipe-pane.c,v 1.18 2011-04-06 22:21:02 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -112,7 +112,8 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		closefrom(STDERR_FILENO + 1);
 
-		command = status_replace(c, NULL, args->argv[0], time(NULL), 0);
+		command = status_replace(
+		    c, NULL, NULL, NULL, args->argv[0], time(NULL), 0);
 		execl(_PATH_BSHELL, "sh", "-c", command, (char *) NULL);
 		_exit(1);
 	default:

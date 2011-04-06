@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.299 2011-04-06 22:20:16 nicm Exp $
+.\" $Id: tmux.1,v 1.300 2011-04-06 22:21:02 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -2615,7 +2615,8 @@ This command works only from inside
 .Nm .
 .It Xo Ic display-message
 .Op Fl p
-.Op Fl t Ar target-client
+.Op Fl c Ar target-client
+.Op Fl t Ar target-pane
 .Op Ar message
 .Xc
 .D1 (alias: Ic display )
@@ -2629,7 +2630,12 @@ The format of
 .Ar message
 is as for
 .Ic status-left ,
-with the exception that #() are not handled.
+with the exception that #() are not handled; information is taken from
+.Ar target-pane
+if
+.Fl t
+is given, otherwise the active pane for the session attached to
+.Ar target-client .
 .El
 .Sh BUFFERS
 .Nm
