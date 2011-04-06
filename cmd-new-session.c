@@ -68,9 +68,15 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int			 sx, sy, i;
 
 	newname = args_get(args, 's');
-	if (newname != NULL && session_find(newname) != NULL) {
-		ctx->error(ctx, "duplicate session: %s", newname);
-		return (-1);
+	if (newname != NULL) {
+		if (!session_check_name(newname)) {
+			ctx->error(ctx, "bad session name: %s", newname);
+			return (-1);
+		}
+		if (session_find(newname) != NULL) {
+			ctx->error(ctx, "duplicate session: %s", newname);
+			return (-1);
+		}
 	}
 
 	target = args_get(args, 't');

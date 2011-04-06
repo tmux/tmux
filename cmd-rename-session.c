@@ -46,6 +46,10 @@ cmd_rename_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const char	*newname;
 
 	newname = args->argv[0];
+	if (!session_check_name(newname)) {
+		ctx->error(ctx, "bad session name: %s", newname);
+		return (-1);
+	}
 	if (session_find(newname) != NULL) {
 		ctx->error(ctx, "duplicate session: %s", newname);
 		return (-1);

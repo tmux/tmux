@@ -1978,6 +1978,7 @@ struct session	*session_create(const char *, const char *, const char *,
 		     struct environ *, struct termios *, int, u_int, u_int,
 		     char **);
 void		 session_destroy(struct session *);
+int		 session_check_name(const char *);
 void		 session_update_activity(struct session *);
 struct session	*session_next_session(struct session *);
 struct session	*session_previous_session(struct session *);

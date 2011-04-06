@@ -164,6 +164,13 @@ session_destroy(struct session *s)
 	RB_INSERT(sessions, &dead_sessions, s);
 }
 
+/* Check a session name is valid: not empty and no colons. */
+int
+session_check_name(const char *name)
+{
+	return (*name != '\0' && strchr(name, ':') == NULL);
+}
+
 /* Update session active time. */
 void
 session_update_activity(struct session *s)
