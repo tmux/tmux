@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.88 2011-02-15 15:09:52 tcunha Exp $ */
+/* $Id: session.c,v 1.89 2011-04-06 22:29:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -161,6 +161,13 @@ session_destroy(struct session *s)
 	xfree(s->cwd);
 
 	RB_INSERT(sessions, &dead_sessions, s);
+}
+
+/* Check a session name is valid: not empty and no colons. */
+int
+session_check_name(const char *name)
+{
+	return (*name != '\0' && strchr(name, ':') == NULL);
 }
 
 /* Update session active time. */

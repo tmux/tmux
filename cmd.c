@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.151 2011-04-06 22:24:01 nicm Exp $ */
+/* $Id: cmd.c,v 1.152 2011-04-06 22:29:26 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -724,6 +724,12 @@ cmd_find_session(struct cmd_ctx *ctx, const char *arg, int prefer_unattached)
 	if (arglen != 0 && tmparg[arglen - 1] == ':')
 		tmparg[arglen - 1] = '\0';
 
+	/* An empty session name is the current session. */
+	if (*tmparg == '\0') {
+		xfree (tmparg);
+		return (cmd_current_session(ctx, prefer_unattached));
+	}
+
 	/* Find the session, if any. */
 	s = cmd_lookup_session(tmparg, &ambiguous);
 
@@ -839,7 +845,7 @@ no_colon:
 lookup_session:
 	if (ambiguous)
 		goto not_found;
-	if ((s = cmd_lookup_session(arg, &ambiguous)) == NULL)
+	if (*arg != '\0' && (s = cmd_lookup_session(arg, &ambiguous)) == NULL)
 		goto no_session;
 
 	if (sp != NULL)
@@ -980,7 +986,7 @@ no_colon:
 lookup_session:
 	if (ambiguous)
 		goto not_found;
-	if ((s = cmd_lookup_session(arg, &ambiguous)) == NULL)
+	if (*arg != '\0' && (s = cmd_lookup_session(arg, &ambiguous)) == NULL)
 		goto no_session;
 
 	if (sp != NULL)
