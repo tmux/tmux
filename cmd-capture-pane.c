@@ -1,4 +1,4 @@
-/* $Id: cmd-capture-pane.c,v 1.6 2011-01-07 14:45:33 tcunha Exp $ */
+/* $Id: cmd-capture-pane.c,v 1.7 2011-04-06 22:19:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Jonathan Alvarado <radobobo@users.sourceforge.net>
@@ -31,8 +31,8 @@ int	cmd_capture_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
-	"b:t:", 0, 0,
-	"[-b buffer-index] [-t target-pane]",
+	"b:E:S:t:", 0, 0,
+	"[-b buffer-index] [-E end-line] [-S start-line] [-t target-pane]",
 	0,
 	NULL,
 	NULL,
@@ -46,19 +46,47 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_pane	*wp;
 	char 			*buf, *line, *cause;
 	struct screen		*s;
-	int			 buffer;
-	u_int			 i, limit;
+	struct grid		*gd;
+	int			 buffer, n;
+	u_int			 i, limit, top, bottom, tmp;
 	size_t         		 len, linelen;
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
 		return (-1);
 	s = &wp->base;
+	gd = s->grid;
 
 	buf = NULL;
 	len = 0;
 
-	for (i = 0; i < screen_size_y(s); i++) {
-	       line = grid_view_string_cells(s->grid, 0, i, screen_size_x(s));
+	n = args_strtonum(args, 'S', SHRT_MIN, SHRT_MAX, &cause);
+	if (cause != NULL)
+		top = gd->hsize;
+	else if (n < 0 && (u_int) -n > gd->hsize)
+		top = 0;
+	else
+		top = gd->hsize + n;
+	if (top > gd->hsize + gd->sy - 1)
+		top = gd->hsize + gd->sy - 1;
+
+	n = args_strtonum(args, 'E', SHRT_MIN, SHRT_MAX, &cause);
+	if (cause != NULL)
+		bottom = gd->hsize + gd->sy - 1;
+	else if (n < 0 && (u_int) -n > gd->hsize)
+		bottom = 0;
+	else
+		bottom = gd->hsize + n;
+	if (bottom > gd->hsize + gd->sy - 1)
+		bottom = gd->hsize + gd->sy - 1;
+
+	if (bottom < top) {
+		tmp = bottom;
+		bottom = top;
+		top = tmp;
+	}
+
+	for (i = top; i <= bottom; i++) {
+	       line = grid_string_cells(s->grid, 0, i, screen_size_x(s));
 	       linelen = strlen(line);
 
 	       buf = xrealloc(buf, 1, len + linelen + 1);
