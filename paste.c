@@ -1,4 +1,4 @@
-/* $Id: paste.c,v 1.16 2010-12-30 22:39:49 tcunha Exp $ */
+/* $Id: paste.c,v 1.17 2011-04-06 22:18:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -30,7 +30,7 @@
 
 /* Return each item of the stack in turn. */
 struct paste_buffer *
-paste_walk_stack(struct paste_stack *ps, uint *idx)
+paste_walk_stack(struct paste_stack *ps, u_int *idx)
 {
 	struct paste_buffer	*pb;
 
