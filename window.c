@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.145 2011-02-15 15:09:52 tcunha Exp $ */
+/* $Id: window.c,v 1.146 2011-04-06 22:16:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -53,6 +53,10 @@
 /* Global window list. */
 struct windows windows;
 
+/* Global panes tree. */
+struct window_pane_tree all_window_panes;
+u_int	next_window_pane;
+
 void	window_pane_read_callback(struct bufferevent *, void *);
 void	window_pane_error_callback(struct bufferevent *, short, void *);
 
@@ -62,6 +66,14 @@ int
 winlink_cmp(struct winlink *wl1, struct winlink *wl2)
 {
 	return (wl1->idx - wl2->idx);
+}
+
+RB_GENERATE(window_pane_tree, window_pane, tree_entry, window_pane_cmp);
+
+int
+window_pane_cmp(struct window_pane *wp1, struct window_pane *wp2)
+{
+	return (wp1->id - wp2->id);
 }
 
 struct winlink *
@@ -492,6 +504,16 @@ window_printable_flags(struct session *s, struct winlink *wl)
 	return (xstrdup(flags));
 }
 
+/* Find pane in global tree by id. */
+struct window_pane *
+window_pane_find_by_id(u_int id)
+{
+	struct window_pane	wp;
+
+	wp.id = id;
+	return (RB_FIND(window_pane_tree, &all_window_panes, &wp));
+}
+
 struct window_pane *
 window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 {
@@ -499,6 +521,9 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	wp = xcalloc(1, sizeof *wp);
 	wp->window = w;
+
+	wp->id = next_window_pane++;
+	RB_INSERT(window_pane_tree, &all_window_panes, wp);
 
 	wp->cmd = NULL;
 	wp->shell = NULL;
@@ -552,6 +577,8 @@ window_pane_destroy(struct window_pane *wp)
 		bufferevent_free(wp->pipe_event);
 	}
 
+	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
+
 	if (wp->cwd != NULL)
 		xfree(wp->cwd);
 	if (wp->shell != NULL)
@@ -566,7 +593,7 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
     const char *cwd, struct environ *env, struct termios *tio, char **cause)
 {
 	struct winsize	 ws;
-	char		*argv0;
+	char		*argv0, paneid[16];
 	const char	*ptr;
 	struct termios	 tio2;
 
@@ -613,6 +640,8 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 
 		closefrom(STDERR_FILENO + 1);
 
+		xsnprintf(paneid, sizeof paneid, "%%%u", wp->id);
+		environ_set(env, "TMUX_PANE", paneid);
 		environ_push(env);
 
 		clear_signals(1);

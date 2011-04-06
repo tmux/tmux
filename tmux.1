@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.296 2011-03-19 23:27:35 tcunha Exp $
+.\" $Id: tmux.1,v 1.297 2011-04-06 22:16:33 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -452,6 +452,17 @@ select-window -t:+2
 .Pp
 When dealing with a session that doesn't contain sequential window indexes,
 they will be correctly skipped.
+.Pp
+.Nm
+also gives each pane created in a server an identifier consisting of a
+.Ql %
+and a number, starting from zero.
+A pane's identifier is unique for the life of the
+.Nm
+server and is passed to the child process of the pane in the
+.Ev TMUX_PANE
+environment variable.
+It may be used alone to target a pane or the window containing it.
 .Pp
 .Ar shell-command
 arguments are

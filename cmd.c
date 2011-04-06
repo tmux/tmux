@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.149 2011-02-14 23:11:33 tcunha Exp $ */
+/* $Id: cmd.c,v 1.150 2011-04-06 22:16:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -117,9 +117,12 @@ struct client	*cmd_lookup_client(const char *);
 struct session	*cmd_lookup_session(const char *, int *);
 struct winlink	*cmd_lookup_window(struct session *, const char *, int *);
 int		 cmd_lookup_index(struct session *, const char *, int *);
+struct window_pane *cmd_lookup_paneid(const char *);
+struct session	*cmd_pane_session(struct cmd_ctx *,
+		    struct window_pane *, struct winlink **);
 struct winlink	*cmd_find_window_offset(const char *, struct session *, int *);
 int		 cmd_find_index_offset(const char *, struct session *, int *);
-struct window_pane	*cmd_find_pane_offset(const char *, struct winlink *);
+struct window_pane *cmd_find_pane_offset(const char *, struct winlink *);
 
 int
 cmd_pack_argv(int argc, char **argv, char *buf, size_t len)
@@ -638,20 +641,77 @@ cmd_lookup_index(struct session *s, const char *name, int *ambiguous)
 	return (-1);
 }
 
+/*
+ * Lookup pane id. An initial % means a pane id. sp must already point to the
+ * current session.
+ */
+struct window_pane *
+cmd_lookup_paneid(const char *arg)
+{
+	const char	*errstr;
+	u_int		 paneid;
+
+	if (*arg != '%')
+		return (NULL);
+
+	paneid = strtonum(arg + 1, 0, UINT_MAX, &errstr);
+	if (errstr != NULL)
+		return (NULL);
+	return (window_pane_find_by_id(paneid));
+}
+
+/* Find session and winlink for pane. */
+struct session *
+cmd_pane_session(struct cmd_ctx *ctx, struct window_pane *wp,
+    struct winlink **wlp)
+{
+	struct session		*s;
+	struct sessionslist	 ss;
+	struct winlink		*wl;
+
+	/* If this pane is in the current session, return that winlink. */
+	s = cmd_current_session(ctx);
+	if (s != NULL) {
+		wl = winlink_find_by_window(&s->windows, wp->window);
+		if (wl != NULL) {
+			if (wlp != NULL)
+				*wlp = wl;
+			return (s);
+		}
+	}
+
+	/* Otherwise choose from all sessions with this pane. */
+	ARRAY_INIT(&ss);
+	RB_FOREACH(s, sessions, &sessions) {
+		if (winlink_find_by_window(&s->windows, wp->window) != NULL)
+			ARRAY_ADD(&ss, s);
+	}
+	s = cmd_choose_session_list(&ss);
+	ARRAY_FREE(&ss);
+	if (wlp != NULL)
+		*wlp = winlink_find_by_window(&s->windows, wp->window);
+	return (s);
+}
+
 /* Find the target session or report an error and return NULL. */
 struct session *
 cmd_find_session(struct cmd_ctx *ctx, const char *arg)
 {
-	struct session	*s;
-	struct client	*c;
-	char		*tmparg;
-	size_t		 arglen;
-	int		 ambiguous;
+	struct session		*s;
+	struct window_pane	*wp;
+	struct client		*c;
+	char			*tmparg;
+	size_t			 arglen;
+	int			 ambiguous;
 
 	/* A NULL argument means the current session. */
 	if (arg == NULL)
 		return (cmd_current_session(ctx));
 	tmparg = xstrdup(arg);
+
+	/* Lookup as pane id. */
+	if ((wp = cmd_lookup_paneid(arg)) != NULL)
+		return (cmd_pane_session(ctx, wp, NULL));
 
 	/* Trim a single trailing colon if any. */
 	arglen = strlen(tmparg);
@@ -681,11 +741,12 @@ cmd_find_session(struct cmd_ctx *ctx, const char *arg)
 struct winlink *
 cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 {
-	struct session	*s;
-	struct winlink	*wl;
-	const char	*winptr;
-	char		*sessptr = NULL;
-	int		 ambiguous = 0;
+	struct session		*s;
+	struct winlink		*wl;
+	struct window_pane	*wp;
+	const char		*winptr;
+	char			*sessptr = NULL;
+	int			 ambiguous = 0;
 
 	/*
 	 * Find the current session. There must always be a current session, if
@@ -701,6 +762,14 @@ cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 		if (sp != NULL)
 			*sp = s;
 		return (s->curw);
+	}
+
+	/* Lookup as pane id. */
+	if ((wp = cmd_lookup_paneid(arg)) != NULL) {
+		s = cmd_pane_session(ctx, wp, &wl);
+		if (sp != NULL)
+			*sp = s;
+		return (wl);
 	}
 
 	/* Time to look at the argument. If it is empty, that is an error. */
@@ -995,6 +1064,14 @@ cmd_find_pane(struct cmd_ctx *ctx,
 	if (arg == NULL) {
 		*wpp = s->curw->window->active;
 		return (s->curw);
+	}
+
+	/* Lookup as pane id. */
+	if ((*wpp = cmd_lookup_paneid(arg)) != NULL) {
+		s = cmd_pane_session(ctx, *wpp, &wl);
+		if (sp != NULL)
+			*sp = s;
+		return (wl);
 	}
 
 	/* Look for a separating period. */

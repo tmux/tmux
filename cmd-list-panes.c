@@ -1,4 +1,4 @@
-/* $Id: cmd-list-panes.c,v 1.7 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: cmd-list-panes.c,v 1.8 2011-04-06 22:16:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -64,8 +64,8 @@ cmd_list_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 		size += gd->hsize * sizeof *gd->linedata;
 
-		ctx->print(ctx, "%u: [%ux%u] [history %u/%u, %llu bytes]%s%s",
-		    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size,
+		ctx->print(ctx, "%u: [%ux%u] [history %u/%u, %llu bytes] %%%u%s%s",
+		    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size, wp->id,
 		    wp == wp->window->active ? " (active)" : "",
 		    wp->fd == -1 ? " (dead)" : "");
 		n++;

@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.612 2011-03-19 23:30:37 tcunha Exp $ */
+/* $Id: tmux.h,v 1.613 2011-04-06 22:16:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -775,6 +775,8 @@ struct window_mode {
 
 /* Child window structure. */
 struct window_pane {
+	u_int		 id;
+
 	struct window	*window;
 	struct layout_cell *layout_cell;
 
@@ -817,8 +819,10 @@ struct window_pane {
 	void		*modedata;
 
 	TAILQ_ENTRY(window_pane) entry;
+	RB_ENTRY(window_pane) tree_entry;
 };
 TAILQ_HEAD(window_panes, window_pane);
+RB_HEAD(window_pane_tree, window_pane);
 
 /* Window structure. */
 struct window {
@@ -1821,8 +1825,11 @@ int	 screen_check_selection(struct screen *, u_int, u_int);
 
 /* window.c */
 extern struct windows windows;
+extern struct window_pane_tree all_window_panes;
 int		 winlink_cmp(struct winlink *, struct winlink *);
 RB_PROTOTYPE(winlinks, winlink, entry, winlink_cmp);
+int		 window_pane_cmp(struct window_pane *, struct window_pane *);
+RB_PROTOTYPE(window_pane_tree, window_pane, tree_entry, window_pane_cmp);
 struct winlink	*winlink_find_by_index(struct winlinks *, int);
 struct winlink	*winlink_find_by_window(struct winlinks *, struct window *);
 int		 winlink_next_index(struct winlinks *, int);
@@ -1857,6 +1864,7 @@ struct window_pane *window_pane_previous_by_number(struct window *,
 u_int		 window_pane_index(struct window *, struct window_pane *);
 u_int		 window_count_panes(struct window *);
 void		 window_destroy_panes(struct window *);
+struct window_pane *window_pane_find_by_id(u_int);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *, const char *,

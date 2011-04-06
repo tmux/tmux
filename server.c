@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.253 2011-02-15 15:12:28 tcunha Exp $ */
+/* $Id: server.c,v 1.254 2011-04-06 22:16:33 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -142,6 +142,7 @@ server_start(void)
 	log_debug("server started, pid %ld", (long) getpid());
 
 	ARRAY_INIT(&windows);
+	RB_INIT(&all_window_panes);
 	ARRAY_INIT(&clients);
 	ARRAY_INIT(&dead_clients);
 	RB_INIT(&sessions);
