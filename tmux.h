@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.616 2011-04-06 22:21:02 nicm Exp $ */
+/* $Id: tmux.h,v 1.617 2011-04-06 22:24:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1483,10 +1483,10 @@ struct cmd	*cmd_parse(int, char **, char **);
 int		 cmd_exec(struct cmd *, struct cmd_ctx *);
 void		 cmd_free(struct cmd *);
 size_t		 cmd_print(struct cmd *, char *, size_t);
-struct session	*cmd_current_session(struct cmd_ctx *);
+struct session	*cmd_current_session(struct cmd_ctx *, int);
 struct client	*cmd_current_client(struct cmd_ctx *);
 struct client	*cmd_find_client(struct cmd_ctx *, const char *);
-struct session	*cmd_find_session(struct cmd_ctx *, const char *);
+struct session	*cmd_find_session(struct cmd_ctx *, const char *, int);
 struct winlink	*cmd_find_window(
 		     struct cmd_ctx *, const char *, struct session **);
 int		 cmd_find_index(

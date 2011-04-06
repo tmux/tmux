@@ -1,4 +1,4 @@
-/* $Id: cmd-list-panes.c,v 1.9 2011-04-06 22:20:16 nicm Exp $ */
+/* $Id: cmd-list-panes.c,v 1.10 2011-04-06 22:24:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -52,7 +52,7 @@ cmd_list_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args_has(args, 'a'))
 		cmd_list_panes_server(ctx);
 	else if (args_has(args, 's')) {
-		s = cmd_find_session(ctx, args_get(args, 't'));
+		s = cmd_find_session(ctx, args_get(args, 't'), 0);
 		if (s == NULL)
 			return (-1);
 		cmd_list_panes_session(s, ctx);

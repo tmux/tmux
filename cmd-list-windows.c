@@ -1,4 +1,4 @@
-/* $Id: cmd-list-windows.c,v 1.46 2011-04-06 22:20:16 nicm Exp $ */
+/* $Id: cmd-list-windows.c,v 1.47 2011-04-06 22:24:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -50,7 +50,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args_has(args, 'a'))
 		cmd_list_windows_server(ctx);
 	else {
-		s = cmd_find_session(ctx, args_get(args, 't'));
+		s = cmd_find_session(ctx, args_get(args, 't'), 0);
 		if (s == NULL)
 			return (-1);
 		cmd_list_windows_session(s, ctx);

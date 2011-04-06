@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.301 2011-04-06 22:23:14 nicm Exp $
+.\" $Id: tmux.1,v 1.302 2011-04-06 22:24:01 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -566,6 +566,17 @@ If no server is started,
 .Ic attach-session
 will attempt to start it; this will fail unless sessions are created in the
 configuration file.
+.Pp
+The
+.Ar target-session
+rules for
+.Ic attach-session
+are slightly adjusted: if
+.Nm
+needs to select the most recently used session, it will prefer the most
+recently used
+.Em unattached
+session.
 .It Xo Ic detach-client
 .Op Fl P
 .Op Fl t Ar target-client

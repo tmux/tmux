@@ -1,4 +1,4 @@
-/* $Id: cmd-switch-client.c,v 1.25 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: cmd-switch-client.c,v 1.26 2011-04-06 22:24:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -86,7 +86,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 			return (-1);
 		}
 	} else
-		s = cmd_find_session(ctx, args_get(args, 't'));
+		s = cmd_find_session(ctx, args_get(args, 't'), 0);
 	if (s == NULL)
 		return (-1);
 

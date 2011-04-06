@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.111 2011-04-06 22:22:49 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.112 2011-04-06 22:24:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -164,7 +164,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (args_has(self->args, 'g'))
 			oo = &global_s_options;
 		else {
-			s = cmd_find_session(ctx, args_get(args, 't'));
+			s = cmd_find_session(ctx, args_get(args, 't'), 0);
 			if (s == NULL)
 				return (-1);
 			oo = &s->options;

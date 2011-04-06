@@ -1,4 +1,4 @@
-/* $Id: cmd-show-buffer.c,v 1.14 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: cmd-show-buffer.c,v 1.15 2011-04-06 22:24:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,7 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	size_t			 size, len;
 	u_int			 width;
 
-	if ((s = cmd_find_session(ctx, NULL)) == NULL)
+	if ((s = cmd_find_session(ctx, NULL, 0)) == NULL)
 		return (-1);
 
 	if (!args_has(args, 'b')) {

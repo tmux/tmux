@@ -1,4 +1,4 @@
-/* $Id: cmd.c,v 1.150 2011-04-06 22:16:33 nicm Exp $ */
+/* $Id: cmd.c,v 1.151 2011-04-06 22:24:01 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -111,7 +111,7 @@ const struct cmd_entry *cmd_table[] = {
 };
 
 struct session	*cmd_choose_session_list(struct sessionslist *);
-struct session	*cmd_choose_session(void);
+struct session	*cmd_choose_session(int);
 struct client	*cmd_choose_client(struct clients *);
 struct client	*cmd_lookup_client(const char *);
 struct session	*cmd_lookup_session(const char *, int *);
@@ -315,7 +315,7 @@ cmd_print(struct cmd *cmd, char *buf, size_t len)
  * session from all sessions.
  */
 struct session *
-cmd_current_session(struct cmd_ctx *ctx)
+cmd_current_session(struct cmd_ctx *ctx, int prefer_unattached)
 {
 	struct msg_command_data	*data = ctx->msgdata;
 	struct client		*c = ctx->cmdclient;
@@ -364,19 +364,25 @@ cmd_current_session(struct cmd_ctx *ctx)
 			return (s);
 	}
 
-	return (cmd_choose_session());
+	return (cmd_choose_session(prefer_unattached));
 }
 
-/* Find the most recently used session. */
+/*
+ * Find the most recently used session, preferring unattached if the flag is
+ * set.
+ */
 struct session *
-cmd_choose_session(void)
+cmd_choose_session(int prefer_unattached)
 {
 	struct session	*s, *sbest;
 	struct timeval	*tv = NULL;
 
 	sbest = NULL;
 	RB_FOREACH(s, sessions, &sessions) {
-		if (tv == NULL || timercmp(&s->activity_time, tv, >)) {
+		if (tv == NULL || timercmp(&s->activity_time, tv, >) ||
+		    (prefer_unattached &&
+		    !(sbest->flags & SESSION_UNATTACHED) &&
+		    (s->flags & SESSION_UNATTACHED))) {
 			sbest = s;
 			tv = &s->activity_time;
 		}
@@ -427,7 +433,7 @@ cmd_current_client(struct cmd_ctx *ctx)
 	 * No current client set. Find the current session and return the
 	 * newest of its clients.
 	 */
-	s = cmd_current_session(ctx);
+	s = cmd_current_session(ctx, 0);
 	if (s != NULL && !(s->flags & SESSION_UNATTACHED)) {
 		ARRAY_INIT(&cc);
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
@@ -670,7 +676,7 @@ cmd_pane_session(struct cmd_ctx *ctx, struct window_pane *wp,
 	struct winlink		*wl;
 
 	/* If this pane is in the current session, return that winlink. */
-	s = cmd_current_session(ctx);
+	s = cmd_current_session(ctx, 0);
 	if (s != NULL) {
 		wl = winlink_find_by_window(&s->windows, wp->window);
 		if (wl != NULL) {
@@ -695,7 +701,7 @@ cmd_pane_session(struct cmd_ctx *ctx, struct window_pane *wp,
 
 /* Find the target session or report an error and return NULL. */
 struct session *
-cmd_find_session(struct cmd_ctx *ctx, const char *arg)
+cmd_find_session(struct cmd_ctx *ctx, const char *arg, int prefer_unattached)
 {
 	struct session		*s;
 	struct window_pane	*wp;
@@ -706,7 +712,7 @@ cmd_find_session(struct cmd_ctx *ctx, const char *arg)
 
 	/* A NULL argument means the current session. */
 	if (arg == NULL)
-		return (cmd_current_session(ctx));
+		return (cmd_current_session(ctx, prefer_unattached));
 	tmparg = xstrdup(arg);
 
 	/* Lookup as pane id. */
@@ -752,7 +758,7 @@ cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 	 * Find the current session. There must always be a current session, if
 	 * it can't be found, report an error.
 	 */
-	if ((s = cmd_current_session(ctx)) == NULL) {
+	if ((s = cmd_current_session(ctx, 0)) == NULL) {
 		ctx->error(ctx, "can't establish current session");
 		return (NULL);
 	}
@@ -899,7 +905,7 @@ cmd_find_index(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 	 * Find the current session. There must always be a current session, if
 	 * it can't be found, report an error.
 	 */
-	if ((s = cmd_current_session(ctx)) == NULL) {
+	if ((s = cmd_current_session(ctx, 0)) == NULL) {
 		ctx->error(ctx, "can't establish current session");
 		return (-2);
 	}
@@ -1053,7 +1059,7 @@ cmd_find_pane(struct cmd_ctx *ctx,
 	u_int			 idx;
 
 	/* Get the current session. */
-	if ((s = cmd_current_session(ctx)) == NULL) {
+	if ((s = cmd_current_session(ctx, 0)) == NULL) {
 		ctx->error(ctx, "can't establish current session");
 		return (NULL);
 	}
