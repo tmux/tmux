@@ -124,3 +124,5 @@
   20110221205346.GA1580@yelena.nicm.ath.cx
 - numeric prefix in copy mode should be paste buffer for C-w
 - named buffers and allow gaps in the stack
+- npage/ppage/dc/ic should have aliases for more typical names
+- support fsl and tsl as start/end title (like vim)
