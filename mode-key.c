@@ -1,4 +1,4 @@
-/* $Id: mode-key.c,v 1.47 2011-01-03 23:31:26 tcunha Exp $ */
+/* $Id: mode-key.c,v 1.48 2011-04-06 22:23:30 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -123,6 +123,7 @@ const struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 const struct mode_key_entry mode_key_vi_edit[] = {
 	{ '\003' /* C-c */,	0, MODEKEYEDIT_CANCEL },
 	{ '\010' /* C-h */, 	0, MODEKEYEDIT_BACKSPACE },
+	{ '\025' /* C-u	*/,	0, MODEKEYEDIT_DELETELINE },
 	{ '\011' /* Tab */,	0, MODEKEYEDIT_COMPLETE },
 	{ '\033' /* Escape */,	0, MODEKEYEDIT_SWITCHMODE },
 	{ '\r',			0, MODEKEYEDIT_ENTER },
