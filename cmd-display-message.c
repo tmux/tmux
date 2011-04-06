@@ -52,7 +52,7 @@ cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((c = cmd_find_client(ctx, args_get(args, 'c'))) == NULL)
 		return (-1);
 
-	if (args_has(args, 't') != NULL) {
+	if (args_has(args, 't') != 0) {
 		wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp);
 		if (wl == NULL)
 			return (-1);
