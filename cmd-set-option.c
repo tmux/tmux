@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.110 2011-04-06 22:22:25 nicm Exp $ */
+/* $Id: cmd-set-option.c,v 1.111 2011-04-06 22:22:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,6 +28,9 @@
  */
 
 int	cmd_set_option_exec(struct cmd *, struct cmd_ctx *);
+
+int	cmd_set_option_find(const char *, const struct options_table_entry **,
+	    const struct options_table_entry **);
 
 int	cmd_set_option_unset(struct cmd *, struct cmd_ctx *,
 	    const struct options_table_entry *, struct options *,
@@ -78,44 +81,50 @@ const struct cmd_entry cmd_set_window_option_entry = {
 	cmd_set_option_exec
 };
 
+/* Look for an option in all three tables. */
+int
+cmd_set_option_find(
+    const char *optstr, const struct options_table_entry **table,
+    const struct options_table_entry **oe)
+{
+	static const struct options_table_entry	*tables[] = {
+		server_options_table,
+		window_options_table,
+		session_options_table
+	};
+	const struct options_table_entry	*oe_loop;
+	u_int					 i;
+
+	for (i = 0; i < nitems(tables); i++) {
+		for (oe_loop = tables[i]; oe_loop->name != NULL; oe_loop++) {
+			if (strncmp(oe_loop->name, optstr, strlen(optstr)) != 0)
+				continue;
+
+			/* If already found, ambiguous. */
+			if (*oe != NULL)
+				return (-1);
+			*oe = oe_loop;
+			*table = tables[i];
+
+			/* Bail now if an exact match. */
+			if (strcmp((*oe)->name, optstr) == 0)
+				break;
+		}
+	}
+	return (0);
+}
+
 int
 cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args				*args = self->args;
-	const struct options_table_entry	*table, *oe, *oe_loop;
+	const struct options_table_entry	*table, *oe;
 	struct session				*s;
 	struct winlink				*wl;
 	struct client				*c;
 	struct options				*oo;
 	const char				*optstr, *valstr;
 	u_int					 i;
-
-	/* Work out the options tree and table to use. */
-	if (args_has(self->args, 's')) {
-		oo = &global_options;
-		table = server_options_table;
-	} else if (args_has(self->args, 'w') ||
-	    self->entry == &cmd_set_window_option_entry) {
-		table = window_options_table;
-		if (args_has(self->args, 'g'))
-			oo = &global_w_options;
-		else {
-			wl = cmd_find_window(ctx, args_get(args, 't'), NULL);
-			if (wl == NULL)
-				return (-1);
-			oo = &wl->window->options;
-		}
-	} else {
-		table = session_options_table;
-		if (args_has(self->args, 'g'))
-			oo = &global_s_options;
-		else {
-			s = cmd_find_session(ctx, args_get(args, 't'));
-			if (s == NULL)
-				return (-1);
-			oo = &s->options;
-		}
-	}
 
 	/* Get the option name and value. */
 	optstr = args->argv[0];
@@ -128,24 +137,40 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		valstr = args->argv[1];
 
-	/* Find the option table entry. */
-	oe = NULL;
-	for (oe_loop = table; oe_loop->name != NULL; oe_loop++) {
-		if (strncmp(oe_loop->name, optstr, strlen(optstr)) != 0)
-			continue;
-
-		if (oe != NULL) {
-			ctx->error(ctx, "ambiguous option: %s", optstr);
-			return (-1);
-		}
-		oe = oe_loop;
-
-		/* Bail now if an exact match. */
-		if (strcmp(oe->name, optstr) == 0)
-			break;
+	/* Find the option entry, try each table. */
+	table = oe = NULL;
+	if (cmd_set_option_find(optstr, &table, &oe) != 0) {
+		ctx->error(ctx, "ambiguous option: %s", optstr);
+		return (-1);
 	}
 	if (oe == NULL) {
 		ctx->error(ctx, "unknown option: %s", optstr);
+		return (-1);
+	}
+
+	/* Work out the tree from the table. */
+	if (table == server_options_table)
+		oo = &global_options;
+	else if (table == window_options_table) {
+		if (args_has(self->args, 'g'))
+			oo = &global_w_options;
+		else {
+			wl = cmd_find_window(ctx, args_get(args, 't'), NULL);
+			if (wl == NULL)
+				return (-1);
+			oo = &wl->window->options;
+		}
+	} else if (table == session_options_table) {
+		if (args_has(self->args, 'g'))
+			oo = &global_s_options;
+		else {
+			s = cmd_find_session(ctx, args_get(args, 't'));
+			if (s == NULL)
+				return (-1);
+			oo = &s->options;
+		}
+	} else {
+		ctx->error(ctx, "unknown table");
 		return (-1);
 	}
 
