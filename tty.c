@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.206 2011-03-24 17:03:29 micahcowan Exp $ */
+/* $Id: tty.c,v 1.207 2011-04-06 22:18:05 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -230,6 +230,8 @@ tty_stop_tty(struct tty *tty)
 	if (tcsetattr(tty->fd, TCSANOW, &tty->tio) == -1)
 		return;
 
+	setblocking(tty->fd, 1);
+
 	tty_raw(tty, tty_term_string2(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
 	if (tty_use_acs(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
@@ -242,8 +244,6 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?1000l");
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
-
-	setblocking(tty->fd, 1);
 }
 
 void
