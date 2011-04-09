@@ -1218,7 +1218,12 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc)
 	if (changed & GRID_ATTR_DIM)
 		tty_putcode(tty, TTYC_DIM);
 	if (changed & GRID_ATTR_ITALICS)
-		tty_putcode(tty, TTYC_SMSO);
+	{
+		if (tty_term_has(tty->term, TTYC_SITM))
+			tty_putcode(tty, TTYC_SITM);
+		else
+			tty_putcode(tty, TTYC_SMSO);
+	}
 	if (changed & GRID_ATTR_UNDERSCORE)
 		tty_putcode(tty, TTYC_SMUL);
 	if (changed & GRID_ATTR_BLINK)
