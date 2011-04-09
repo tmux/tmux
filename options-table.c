@@ -55,7 +55,7 @@ const struct options_table_entry server_options_table[] = {
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .minimum = 1,
 	  .maximum = INT_MAX,
-	  .default_num = 9
+	  .default_num = 20
 	},
 
 	{ .name = "escape-time",
