@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.15 2011-02-11 23:31:15 nicm Exp $
+# $Id: configure.ac,v 1.16 2011-04-09 07:48:58 nicm Exp $
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)
@@ -101,7 +101,7 @@ AC_MSG_RESULT($found_glibc)
 AC_CHECK_LIB(rt, clock_gettime)
 
 # Look for libevent.
-AC_SEARCH_LIBS(event_init, event, found_libevent=yes, found_libevent=no)
+AC_SEARCH_LIBS(event_init, [event event-1.4 event2], found_libevent=yes, found_libevent=no)
 if test "x$found_libevent" = xno; then
     AC_MSG_ERROR("libevent not found")
 fi

@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.46 2011-02-15 15:12:28 tcunha Exp $ */
+/* $Id: tty-term.c,v 1.47 2011-04-09 07:48:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -181,6 +181,7 @@ const struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_SMKX, TTYCODE_STRING, "smkx" },
 	{ TTYC_SMSO, TTYCODE_STRING, "smso" },
 	{ TTYC_SMUL, TTYCODE_STRING, "smul" },
+	{ TTYC_SITM, TTYCODE_STRING, "sitm" },
 	{ TTYC_VPA, TTYCODE_STRING, "vpa" },
 	{ TTYC_XENL, TTYCODE_FLAG, "xenl" },
 };
