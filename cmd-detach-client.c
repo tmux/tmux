@@ -29,7 +29,7 @@ int	cmd_detach_client_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_detach_client_entry = {
 	"detach-client", "detach",
 	"s:t:P", 0, 0,
-	"[-P] " CMD_TARGET_CLIENT_USAGE,
+	"[-P] [-s target-session] " CMD_TARGET_CLIENT_USAGE,
 	CMD_READONLY,
 	NULL,
 	NULL,
