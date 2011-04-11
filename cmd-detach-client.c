@@ -1,4 +1,4 @@
-/* $Id: cmd-detach-client.c,v 1.13 2011-03-19 23:27:35 tcunha Exp $ */
+/* $Id: cmd-detach-client.c,v 1.14 2011-04-11 06:44:56 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,7 +28,7 @@ int	cmd_detach_client_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_detach_client_entry = {
 	"detach-client", "detach",
-	"t:P", 0, 0,
+	"s:t:P", 0, 0,
 	"[-P] " CMD_TARGET_CLIENT_USAGE,
 	CMD_READONLY,
 	NULL,
@@ -41,14 +41,32 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
 	struct client	*c;
-
-	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
-		return (-1);
+	struct session 	*s;
+	enum msgtype     msgtype;
+	u_int 		 i;
 
 	if (args_has(args, 'P'))
-		server_write_client(c, MSG_DETACHKILL, NULL, 0);
+		msgtype = MSG_DETACHKILL;
 	else
-		server_write_client(c, MSG_DETACH, NULL, 0);
+		msgtype = MSG_DETACH;
+
+	if (args_has(args, 's')) {
+		s = cmd_find_session(ctx, args_get(args, 's'), 0);
+		if (s == NULL)
+			return (-1);
+
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			c = ARRAY_ITEM(&clients, i);
+			if (c != NULL && c->session == s)
+				server_write_client(c, msgtype, NULL, 0);
+		}
+	} else {
+		c = cmd_find_client(ctx, args_get(args, 't'));
+		if (c == NULL)
+			return (-1);
+
+		server_write_client(c, msgtype, NULL, 0);
+	}
 
 	return (0);
 }
