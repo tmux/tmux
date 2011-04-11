@@ -39,7 +39,7 @@ continue running in the background, then later reattached.</p>
 <p>The latest version is <a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">tmux %%VERSION%%</a>.</p>
 
 <p>tmux uses a client-server model. The server holds multiple sessions and each
-window is a independent entity which may be freely linked to multiple sessions,
+window is an independent entity which may be freely linked to multiple sessions,
 moved between sessions and otherwise manipulated. Each session may be attached
 to (display and accept keyboard input from) multiple clients.</p>
 
