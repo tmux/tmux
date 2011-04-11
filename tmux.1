@@ -576,10 +576,13 @@ session.
 .It Xo Ic detach-client
 .Op Fl P
 .Op Fl t Ar target-client
+.Op Fl s Ar target-session
 .Xc
 .D1 (alias: Ic detach )
-Detach the current client if bound to a key, or the specified client with
-.Fl t .
+Detach the current client if bound to a key, the client specified with
+.Fl t ,
+or all clients currently attached to to the session specified by
+.Fl s .
 If
 .Fl P
 is given, send SIGHUP to the parent process of the client, typically causing it
