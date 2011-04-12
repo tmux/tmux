@@ -126,3 +126,6 @@
 - named buffers and allow gaps in the stack
 - npage/ppage/dc/ic should have aliases for more typical names
 - support fsl and tsl as start/end title (like vim)
+- get rid of separate UTF-8 cell stuff: add 1 byte to cell and store BMP as
+  uint16_t+3 bits of flags. anything <=0xffff is Unicode, higher are used to
+  build tree of combined characters/non-BMP (LRU dropped when full)
