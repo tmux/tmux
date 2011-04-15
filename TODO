@@ -129,3 +129,4 @@
 - get rid of separate UTF-8 cell stuff: add 1 byte to cell and store BMP as
   uint16_t+3 bits of flags. anything <=0xffff is Unicode, higher are used to
   build tree of combined characters/non-BMP (LRU dropped when full)
+- entry in FAQ about what to do when someone does mkdir /tmp/tmux-1000
