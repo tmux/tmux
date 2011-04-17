@@ -1048,7 +1048,7 @@ screen_write_cell(struct screen_write_ctx *ctx,
 
 	/* Sanity checks. */
 	if (((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - width)
-	    || s->cy > screen_size_y(s) - width)
+	    || s->cy > screen_size_y(s) - 1)
 		return;
 
 	/* Handle overwriting of UTF-8 characters. */
