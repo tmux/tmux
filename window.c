@@ -884,7 +884,8 @@ window_pane_mouse(
 	m->y -= wp->yoff;
 
 	if (wp->mode != NULL) {
-		if (wp->mode->mouse != NULL)
+		if (wp->mode->mouse != NULL &&
+		    options_get_number(&wp->window->options, "mode-mouse"))
 			wp->mode->mouse(wp, sess, m);
 	} else if (wp->fd != -1)
 		input_mouse(wp, m);
