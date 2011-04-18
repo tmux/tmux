@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.304 2011-04-11 06:44:56 nicm Exp $
+.\" $Id: tmux.1,v 1.305 2011-04-18 21:05:24 nicm Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: April 5 2011 $
+.Dd $Mdocdate: April 18 2011 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -579,8 +579,8 @@ recently used
 session.
 .It Xo Ic detach-client
 .Op Fl P
-.Op Fl t Ar target-client
 .Op Fl s Ar target-session
+.Op Fl t Ar target-client
 .Xc
 .D1 (alias: Ic detach )
 Detach the current client if bound to a key, the client specified with
@@ -602,9 +602,12 @@ server and clients and destroy all sessions.
 .It Ic kill-session Op Fl t Ar target-session
 Destroy the given session, closing any windows linked to it and no other
 sessions, and detaching all clients attached to it.
-.It Ic list-clients
+.It Ic list-clients Op Fl t Ar target-session
 .D1 (alias: Ic lsc )
 List all clients attached to the server.
+If
+.Ar target-session
+is specified, list only clients connected to that session.
 .It Ic list-commands
 .D1 (alias: Ic lscm )
 List the syntax of all commands supported by
@@ -1897,6 +1900,11 @@ If on,
 captures the mouse and when a window is split into multiple panes the mouse may
 be used to select the current pane.
 The mouse click is also passed through to the application as normal.
+.It Xo Ic mouse-select-window
+.Op Ic on | off
+.Xc
+If on, clicking the mouse on a window name in the status line will select that
+window.
 .It Ic pane-active-border-bg Ar colour
 .It Ic pane-active-border-fg Ar colour
 Set the pane border colour for the currently active pane.
