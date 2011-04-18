@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.619 2011-04-09 07:48:58 nicm Exp $ */
+/* $Id: tmux.h,v 1.620 2011-04-18 21:07:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -953,6 +953,8 @@ struct session {
 
 	struct environ	 environ;
 
+	int		 wlmouse;
+
 	int		 references;
 
 	TAILQ_ENTRY(session) gentry;
@@ -1662,6 +1664,7 @@ int	 status_out_cmp(struct status_out *, struct status_out *);
 RB_PROTOTYPE(status_out_tree, status_out, entry, status_out_cmp);
 void	 status_free_jobs(struct status_out_tree *);
 void	 status_update_jobs(struct client *);
+void	 status_set_window_at(struct client *, u_int);
 int	 status_redraw(struct client *);
 char	*status_replace(struct client *, struct session *,
 	     struct winlink *, struct window_pane *, const char *, time_t, int);

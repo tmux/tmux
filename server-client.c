@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.55 2011-04-06 22:21:02 nicm Exp $ */
+/* $Id: server-client.c,v 1.56 2011-04-18 21:07:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -318,6 +318,12 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 			server_redraw_window_borders(w);
 			wp = w->active;
 		}
+		if (mouse->y + 1 == c->tty.sy && mouse->b == MOUSE_UP &&
+		    options_get_number(oo, "mouse-select-window") &&
+		    options_get_number(oo, "status")) {
+			status_set_window_at(c, mouse->x);
+			return;
+		}
 		window_pane_mouse(wp, c->session, mouse);
 		return;
 	}
@@ -455,6 +461,10 @@ server_client_reset_state(struct client *c)
 	mode = s->mode;
 	if (TAILQ_NEXT(TAILQ_FIRST(&w->panes), entry) != NULL &&
 	    options_get_number(oo, "mouse-select-pane") &&
+	    (mode & ALL_MOUSE_MODES) == 0)
+		mode |= MODE_MOUSE_STANDARD;
+
+	if (options_get_number(oo, "mouse-select-window") &&
 	    (mode & ALL_MOUSE_MODES) == 0)
 		mode |= MODE_MOUSE_STANDARD;
 

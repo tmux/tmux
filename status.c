@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.157 2011-04-06 22:21:02 nicm Exp $ */
+/* $Id: status.c,v 1.158 2011-04-18 21:07:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -118,6 +118,23 @@ status_redraw_get_right(struct client *c,
 	if (rightlen < *size)
 		*size = rightlen;
 	return (right);
+}
+
+/* Set window at window list position. */
+void
+status_set_window_at(struct client *c, u_int x)
+{
+	struct session	*s = c->session;
+	struct winlink	*wl;
+
+	x += s->wlmouse;
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if (x < wl->status_width &&
+			session_select(s, wl->idx) == 0) {
+			server_redraw_session(s);
+		}
+		x -= wl->status_width + 1;
+	}
 }
 
 /* Draw status for client on the last lines of given context. */
@@ -325,6 +342,7 @@ draw:
 		wloffset++;
 
 	/* Copy the window list. */
+	s->wlmouse = -wloffset + wlstart;
 	screen_write_cursormove(&ctx, wloffset, 0);
 	screen_write_copy(&ctx, &window_list, wlstart, 0, wlwidth, 1);
 	screen_free(&window_list);

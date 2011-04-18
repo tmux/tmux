@@ -1,4 +1,4 @@
-/* $Id: options-table.c,v 1.6 2011-04-18 21:03:42 nicm Exp $ */
+/* $Id: options-table.c,v 1.7 2011-04-18 21:07:58 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -193,6 +193,11 @@ const struct options_table_entry session_options_table[] = {
 	},
 
 	{ .name = "mouse-select-pane",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .default_num = 0
+	},
+
+	{ .name = "mouse-select-window",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .default_num = 0
 	},
