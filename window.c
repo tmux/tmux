@@ -1,4 +1,4 @@
-/* $Id: window.c,v 1.146 2011-04-06 22:16:33 nicm Exp $ */
+/* $Id: window.c,v 1.147 2011-04-18 22:03:55 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -890,7 +890,8 @@ window_pane_mouse(
 	m->y -= wp->yoff;
 
 	if (wp->mode != NULL) {
-		if (wp->mode->mouse != NULL)
+		if (wp->mode->mouse != NULL &&
+		    options_get_number(&wp->window->options, "mode-mouse"))
 			wp->mode->mouse(wp, sess, m);
 	} else if (wp->fd != -1)
 		input_mouse(wp, m);
