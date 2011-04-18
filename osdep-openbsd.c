@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.22 2010-12-30 20:42:39 nicm Exp $ */
+/* $Id: osdep-openbsd.c,v 1.23 2011-04-18 21:03:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -35,12 +35,12 @@
 #define is_stopped(p) \
 	((p)->p_stat == SSTOP || (p)->p_stat == SZOMB || (p)->p_stat == SDEAD)
 
-struct kinfo_proc2	*cmp_procs(struct kinfo_proc2 *, struct kinfo_proc2 *);
+struct kinfo_proc	*cmp_procs(struct kinfo_proc *, struct kinfo_proc *);
 char			*osdep_get_name(int, char *);
 struct event_base	*osdep_event_init(void);
 
-struct kinfo_proc2 *
-cmp_procs(struct kinfo_proc2 *p1, struct kinfo_proc2 *p2)
+struct kinfo_proc *
+cmp_procs(struct kinfo_proc *p1, struct kinfo_proc *p2)
 {
 	if (is_runnable(p1) && !is_runnable(p2))
 		return (p1);
@@ -80,11 +80,11 @@ cmp_procs(struct kinfo_proc2 *p1, struct kinfo_proc2 *p2)
 char *
 osdep_get_name(int fd, char *tty)
 {
-	int		 mib[6] = { CTL_KERN, KERN_PROC2, KERN_PROC_PGRP, 0,
-				    sizeof(struct kinfo_proc2), 0 };
+	int		 mib[6] = { CTL_KERN, KERN_PROC, KERN_PROC_PGRP, 0,
+				    sizeof(struct kinfo_proc), 0 };
 	struct stat	 sb;
 	size_t		 len;
-	struct kinfo_proc2 *buf, *newbuf, *bestp;
+	struct kinfo_proc *buf, *newbuf, *bestp;
 	u_int		 i;
 	char		*name;
 
@@ -104,7 +104,7 @@ retry:
 		goto error;
 	buf = newbuf;
 
-	mib[5] = (int)(len / sizeof(struct kinfo_proc2));
+	mib[5] = (int)(len / sizeof(struct kinfo_proc));
 	if (sysctl(mib, nitems(mib), buf, &len, NULL, 0) == -1) {
 		if (errno == ENOMEM)
 			goto retry;
@@ -112,7 +112,7 @@ retry:
 	}
 
 	bestp = NULL;
-	for (i = 0; i < len / sizeof (struct kinfo_proc2); i++) {
+	for (i = 0; i < len / sizeof (struct kinfo_proc); i++) {
 		if ((dev_t)buf[i].p_tdev != sb.st_rdev)
 			continue;
 		if (bestp == NULL)

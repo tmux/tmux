@@ -1,4 +1,4 @@
-/* $OpenBSD: options-table.c,v 1.4 2011/04/09 20:00:29 nicm Exp $ */
+/* $Id: options-table.c,v 1.6 2011-04-18 21:03:42 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicm@users.sourceforge.net>
