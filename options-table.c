@@ -1,4 +1,4 @@
-/* $Id: options-table.c,v 1.4 2011-01-21 23:54:19 tcunha Exp $ */
+/* $OpenBSD: options-table.c,v 1.4 2011/04/09 20:00:29 nicm Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -54,7 +54,7 @@ const struct options_table_entry server_options_table[] = {
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .minimum = 1,
 	  .maximum = INT_MAX,
-	  .default_num = 9
+	  .default_num = 20
 	},
 
 	{ .name = "escape-time",
