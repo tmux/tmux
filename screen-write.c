@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.95 2011-03-24 17:03:29 micahcowan Exp $ */
+/* $Id: screen-write.c,v 1.96 2011-04-18 21:06:49 nicm Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1048,7 +1048,7 @@ screen_write_cell(struct screen_write_ctx *ctx,
 
 	/* Sanity checks. */
 	if (((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - width)
-	    || s->cy > screen_size_y(s) - width)
+	    || s->cy > screen_size_y(s) - 1)
 		return;
 
 	/* Handle overwriting of UTF-8 characters. */
