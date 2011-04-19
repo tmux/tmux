@@ -130,3 +130,4 @@
   uint16_t+3 bits of flags. anything <=0xffff is Unicode, higher are used to
   build tree of combined characters/non-BMP (LRU dropped when full)
 - entry in FAQ about what to do when someone does mkdir /tmp/tmux-1000
+- show size under pane number in display-panes mode
