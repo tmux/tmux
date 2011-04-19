@@ -760,11 +760,11 @@ window_copy_key_numeric_prefix(struct window_pane *wp, int key)
 /* ARGSUSED */
 void
 window_copy_mouse(
-    struct window_pane *wp, unused struct session *sess, struct mouse_event *m)
+    struct window_pane *wp, struct session *sess, struct mouse_event *m)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	u_int				 i;
+	u_int				 i, old_cy;
 
 	if (m->x >= screen_size_x(s))
 		return;
@@ -777,8 +777,11 @@ window_copy_mouse(
 			for (i = 0; i < 5; i++)
 				window_copy_cursor_up(wp, 0);
 		} else if ((m->b & MOUSE_BUTTON) == MOUSE_2) {
+			old_cy = data->cy;
 			for (i = 0; i < 5; i++)
 				window_copy_cursor_down(wp, 0);
+			if (old_cy == data->cy)
+				goto reset_mode;
 		}
 		return;
 	}
@@ -792,15 +795,9 @@ window_copy_mouse(
 			window_copy_update_cursor(wp, m->x, m->y);
 			if (window_copy_update_selection(wp))
 				window_copy_redraw_screen(wp);
-		} else {
-			s->mode &= ~MODE_MOUSE_ANY;
-			s->mode |= MODE_MOUSE_STANDARD;
-			if (sess != NULL) {
-				window_copy_copy_selection(wp);
-				window_pane_reset_mode(wp);
-			}
+			return;
 		}
-		return;
+		goto reset_mode;
 	}
 
 	/* Otherwise if other buttons pressed, start selection and motion. */
@@ -811,6 +808,16 @@ window_copy_mouse(
 		window_copy_update_cursor(wp, m->x, m->y);
 		window_copy_start_selection(wp);
 		window_copy_redraw_screen(wp);
+	}
+
+	return;
+
+reset_mode:
+	s->mode &= ~MODE_MOUSE_ANY;
+	s->mode |= MODE_MOUSE_STANDARD;
+	if (sess != NULL) {
+		window_copy_copy_selection(wp);
+		window_pane_reset_mode(wp);
 	}
 }
 
