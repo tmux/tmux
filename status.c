@@ -410,6 +410,13 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 			fatal("gethostname failed");
 		ptr = tmp;
 		goto do_replace;
+	case 'h':
+		if (gethostname(tmp, sizeof tmp) != 0)
+			fatal("gethostname failed");
+		if ((ptr = strchr(tmp, '.')) != NULL)
+			*ptr = '\0';
+		ptr = tmp;
+		goto do_replace;
 	case 'I':
 		xsnprintf(tmp, sizeof tmp, "%d", wl->idx);
 		ptr = tmp;
