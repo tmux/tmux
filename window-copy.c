@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.129 2011-04-25 20:33:42 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.130 2011-04-25 20:34:26 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1225,6 +1225,7 @@ window_copy_copy_selection(struct window_pane *wp)
 	size_t				 off;
 	u_int				 i, xx, yy, sx, sy, ex, ey, limit;
 	u_int				 firstsx, lastex, restex, restsx;
+	int				 keys;
 
 	if (!s->sel.flag)
 		return;
@@ -1261,6 +1262,14 @@ window_copy_copy_selection(struct window_pane *wp)
 	 * end (restex) of all other lines.
 	 */
 	xx = screen_size_x(s);
+
+	/*
+	 * Behave according to mode-keys. If it is emacs, copy like emacs,
+	 * keeping the top-left-most character, and dropping the
+	 * bottom-right-most, regardless of copy direction. If it is vi, also
+	 * keep bottom-right-most character.
+	 */
+	keys = options_get_number(&wp->window->options, "mode-keys");
 	if (data->rectflag) {
 		/*
 		 * Need to ignore the column with the cursor in it, which for
@@ -1268,8 +1277,14 @@ window_copy_copy_selection(struct window_pane *wp)
 		 */
 		if (data->selx < data->cx) {
 			/* Selection start is on the left. */
-			lastex = data->cx;
-			restex = data->cx;
+			if (keys == MODEKEY_EMACS) {
+				lastex = data->cx;
+				restex = data->cx;
+			}
+			else {
+				lastex = data->cx + 1;
+				restex = data->cx + 1;
+			}
 			firstsx = data->selx;
 			restsx = data->selx;
 		} else {
@@ -1280,11 +1295,10 @@ window_copy_copy_selection(struct window_pane *wp)
 			restsx = data->cx;
 		}
 	} else {
-		/*
-		 * Like emacs, keep the top-left-most character, and drop the
-		 * bottom-right-most, regardless of copy direction.
-		 */
-		lastex = ex;
+		if (keys == MODEKEY_EMACS)
+			lastex = ex;
+		else	
+			lastex = ex + 1;
 		restex = xx;
 		firstsx = sx;
 		restsx = 0;
