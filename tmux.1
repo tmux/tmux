@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.309 2011-04-25 20:33:42 tcunha Exp $
+.\" $Id: tmux.1,v 1.310 2011-04-25 20:35:22 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: April 19 2011 $
+.Dd $Mdocdate: April 24 2011 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2009,6 +2009,7 @@ may contain any of the following special character sequences:
 .It Li "#(shell-command)" Ta "First line of the command's output"
 .It Li "#[attributes]" Ta "Colour or attribute change"
 .It Li "#H" Ta "Hostname of local host"
+.It Li "#h" Ta "Hostname of local host without the domain name"
 .It Li "#F" Ta "Current window flag"
 .It Li "#I" Ta "Current window index"
 .It Li "#P" Ta "Current pane index"

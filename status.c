@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.158 2011-04-18 21:07:58 nicm Exp $ */
+/* $Id: status.c,v 1.159 2011-04-25 20:35:22 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -408,6 +408,13 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 	case 'H':
 		if (gethostname(tmp, sizeof tmp) != 0)
 			fatal("gethostname failed");
+		ptr = tmp;
+		goto do_replace;
+	case 'h':
+		if (gethostname(tmp, sizeof tmp) != 0)
+			fatal("gethostname failed");
+		if ((ptr = strchr(tmp, '.')) != NULL)
+			*ptr = '\0';
 		ptr = tmp;
 		goto do_replace;
 	case 'I':
