@@ -642,7 +642,7 @@ status_job_callback(struct job *job)
 		buf = xstrdup(line);
 
 	so->out = buf;
-	server_redraw_client(c);
+	server_status_client(c);
 }
 
 /* Return winlink status line entry and adjust gc as necessary. */
