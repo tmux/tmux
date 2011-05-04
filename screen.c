@@ -96,7 +96,7 @@ screen_set_title(struct screen *s, const char *title)
 {
 	char	tmp[BUFSIZ];
 
-	strnvis(tmp, title, sizeof tmp, VIS_OCTAL|VIS_TAB|VIS_NL);
+	strlcpy(tmp, title, sizeof tmp);
 
 	xfree(s->title);
 	s->title = xstrdup(tmp);
