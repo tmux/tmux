@@ -325,11 +325,24 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 			server_redraw_window_borders(w);
 			wp = w->active;
 		}
-		if (mouse->y + 1 == c->tty.sy && mouse->b == MOUSE_UP &&
+		if (mouse->y + 1 == c->tty.sy &&
 		    options_get_number(oo, "mouse-select-window") &&
 		    options_get_number(oo, "status")) {
-			status_set_window_at(c, mouse->x);
-			return;
+			if (mouse->b == MOUSE_UP) {
+				status_set_window_at(c, mouse->x);
+				return;
+			}
+			if (mouse->b & MOUSE_45) {
+				if ((mouse->b & MOUSE_BUTTON) == MOUSE_1) {
+					session_previous(c->session, 0);
+					server_redraw_session(s);
+				}
+				if ((mouse->b & MOUSE_BUTTON) == MOUSE_2) {
+					session_next(c->session, 0);
+					server_redraw_session(s);
+				}
+				return;
+			}
 		}
 		window_pane_mouse(wp, c->session, mouse);
 		return;
