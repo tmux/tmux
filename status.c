@@ -1,4 +1,4 @@
-/* $Id: status.c,v 1.159 2011-04-25 20:35:22 tcunha Exp $ */
+/* $Id: status.c,v 1.160 2011-05-05 10:02:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -642,7 +642,7 @@ status_job_callback(struct job *job)
 		buf = xstrdup(line);
 
 	so->out = buf;
-	server_redraw_client(c);
+	server_status_client(c);
 }
 
 /* Return winlink status line entry and adjust gc as necessary. */
