@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.103 2010-12-11 17:57:28 nicm Exp $ */
+/* $Id: screen.c,v 1.104 2011-05-05 10:10:57 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -96,7 +96,7 @@ screen_set_title(struct screen *s, const char *title)
 {
 	char	tmp[BUFSIZ];
 
-	strnvis(tmp, title, sizeof tmp, VIS_OCTAL|VIS_TAB|VIS_NL);
+	strlcpy(tmp, title, sizeof tmp);
 
 	xfree(s->title);
 	s->title = xstrdup(tmp);
