@@ -57,12 +57,18 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 
-	TAILQ_REMOVE(&wl->window->panes, wp, entry);
-	if (wl->window->active == wp) {
-		wl->window->active = TAILQ_PREV(wp, window_panes, entry);
-		if (wl->window->active == NULL)
-			wl->window->active = TAILQ_NEXT(wp, entry);
-	}
+	w = wl->window;
+	TAILQ_REMOVE(&w->panes, wp, entry);
+	if (wp == w->active) {
+		w->active = w->last;
+		w->last = NULL;
+		if (w->active == NULL) {
+			w->active = TAILQ_PREV(wp, window_panes, entry);
+			if (w->active == NULL)
+				w->active = TAILQ_NEXT(wp, entry);
+		}
+	} else if (wp == w->last)
+		w->last = NULL;
 	layout_close_pane(wp);
 
 	w = wp->window = window_create1(s->sx, s->sy);
