@@ -355,7 +355,7 @@ const struct options_table_entry session_options_table[] = {
 
 	{ .name = "terminal-overrides",
 	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = "*88col*:colors=88,*256col*:colors=256"
+	  .default_str = "*88col*:colors=88,*256col*:colors=256,xterm*:XT"
 	},
 
 	{ .name = "update-environment",

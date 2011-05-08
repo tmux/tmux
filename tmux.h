@@ -205,6 +205,7 @@ enum tty_code_code {
 	TTYC_EL,	/* clr_eol, ce */
 	TTYC_EL1,	/* clr_bol, cb */
 	TTYC_ENACS,	/* ena_acs, eA */
+	TTYC_FSL,	/* from_status_line, fsl */
 	TTYC_HOME,	/* cursor_home, ho */
 	TTYC_HPA,	/* column_address, ch */
 	TTYC_ICH,	/* parm_ich, IC */
@@ -317,17 +318,19 @@ enum tty_code_code {
 	TTYC_SETAB,	/* set_a_background, AB */
 	TTYC_SETAF,	/* set_a_foreground, AF */
 	TTYC_SGR0,	/* exit_attribute_mode, me */
+	TTYC_SITM,	/* enter_italics_mode, it */
 	TTYC_SMACS,	/* enter_alt_charset_mode, as */
 	TTYC_SMCUP,	/* enter_ca_mode, ti */
 	TTYC_SMIR,	/* enter_insert_mode, im */
 	TTYC_SMKX,	/* keypad_xmit, ks */
 	TTYC_SMSO,	/* enter_standout_mode, so */
 	TTYC_SMUL,	/* enter_underline_mode, us */
-	TTYC_SITM,	/* enter_italics_mode, it */
+	TTYC_TSL,	/* to_status_line, tsl */
 	TTYC_VPA,	/* row_address, cv */
 	TTYC_XENL,	/* eat_newline_glitch, xn */
+	TTYC_XT,	/* xterm(1)-compatible title, XT */
 };
-#define NTTYCODE (TTYC_XENL + 1)
+#define NTTYCODE (TTYC_XT + 1)
 
 /* Termcap types. */
 enum tty_code_type {
