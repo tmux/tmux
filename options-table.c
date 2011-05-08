@@ -193,6 +193,11 @@ const struct options_table_entry session_options_table[] = {
 	  .default_num = 20
 	},
 
+	{ .name = "mouse-resize-pane",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .default_num = 0
+	},
+
 	{ .name = "mouse-select-pane",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .default_num = 0

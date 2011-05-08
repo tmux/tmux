@@ -485,6 +485,53 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
 	layout_fix_panes(wp->window, wp->window->sx, wp->window->sy);
 }
 
+void
+layout_resize_pane_mouse(struct client *c, struct mouse_event *mouse)
+{
+	struct window		*w;
+	struct window_pane	*wp;
+	int		      	 pane_border;
+
+	w = c->session->curw->window;
+
+	pane_border = 0;
+	if ((c->last_mouse.b & MOUSE_BUTTON) != MOUSE_UP &&
+		(c->last_mouse.b & MOUSE_RESIZE_PANE)) {
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (wp->xoff + wp->sx == c->last_mouse.x &&
+				wp->yoff <= 1 + c->last_mouse.y &&
+				wp->yoff + wp->sy >= c->last_mouse.y) {
+				layout_resize_pane(wp, LAYOUT_LEFTRIGHT,
+								   mouse->x - c->last_mouse.x);
+				pane_border = 1;
+			}
+			if (wp->yoff + wp->sy == c->last_mouse.y &&
+				wp->xoff <= 1 + c->last_mouse.x &&
+				wp->xoff + wp->sx >= c->last_mouse.x) {
+				layout_resize_pane(wp, LAYOUT_TOPBOTTOM,
+								   mouse->y - c->last_mouse.y);
+				pane_border = 1;
+			}
+		}
+		if (pane_border)
+			server_redraw_window(w);
+	} else if (mouse->b != MOUSE_UP &&
+			   mouse->b == (mouse->b & MOUSE_BUTTON)) {
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if ((wp->xoff + wp->sx == mouse->x &&
+				 wp->yoff <= 1 + mouse->y &&
+				 wp->yoff + wp->sy >= mouse->y) ||
+				(wp->yoff + wp->sy == mouse->y &&
+				 wp->xoff <= 1 + mouse->x &&
+				 wp->xoff + wp->sx >= mouse->x)) {
+				pane_border = 1;
+			}
+		}
+	}
+	if (pane_border)
+		mouse->b |= MOUSE_RESIZE_PANE;
+}
+
 int
 layout_resize_pane_grow(
     struct layout_cell *lc, enum layout_type type, int needed)
