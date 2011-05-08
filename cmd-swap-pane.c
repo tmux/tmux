@@ -129,6 +129,12 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (dst_w->active == dst_wp)
 			window_set_active_pane(dst_w, src_wp);
 	}
+	if (src_w != dst_w) {
+		if (src_w->last == src_wp)
+			src_w->last = NULL;
+		if (dst_w->last == dst_wp)
+			dst_w->last = NULL;
+	}
 	server_redraw_window(src_w);
 	server_redraw_window(dst_w);
 
