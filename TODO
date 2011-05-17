@@ -1,4 +1,4 @@
-- implicitly add exec to the commands for new windows (switch to disable it)?
+ - implicitly add exec to the commands for new windows (switch to disable it)?
 - extend list-clients to list clients attached to a session (-a for all?)
 - bring back detach-session to detach all clients on a session?
 - allow fnmatch for -c, so that you can, eg, detach all clients
@@ -132,3 +132,6 @@
 - entry in FAQ about what to do when someone does mkdir /tmp/tmux-1000
 - show size under pane number in display-panes mode
 - command-prompt should be passed through status_replace
+- monitor-activity is broken in several ways with multiple clients
+- monitor-activity should be more powerful (eg set a region)
+- maybe a way to put pane names instead of window names in status line
