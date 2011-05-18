@@ -1,4 +1,4 @@
-/* $Id: cmd-capture-pane.c,v 1.7 2011-04-06 22:19:42 nicm Exp $ */
+/* $Id: cmd-capture-pane.c,v 1.8 2011-05-18 20:31:00 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Jonathan Alvarado <radobobo@users.sourceforge.net>
@@ -60,9 +60,10 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	len = 0;
 
 	n = args_strtonum(args, 'S', SHRT_MIN, SHRT_MAX, &cause);
-	if (cause != NULL)
+	if (cause != NULL) {
 		top = gd->hsize;
-	else if (n < 0 && (u_int) -n > gd->hsize)
+		xfree(cause);
+	} else if (n < 0 && (u_int) -n > gd->hsize)
 		top = 0;
 	else
 		top = gd->hsize + n;
@@ -70,9 +71,10 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		top = gd->hsize + gd->sy - 1;
 
 	n = args_strtonum(args, 'E', SHRT_MIN, SHRT_MAX, &cause);
-	if (cause != NULL)
+	if (cause != NULL) {
 		bottom = gd->hsize + gd->sy - 1;
-	else if (n < 0 && (u_int) -n > gd->hsize)
+		xfree(cause);
+	} else if (n < 0 && (u_int) -n > gd->hsize)
 		bottom = 0;
 	else
 		bottom = gd->hsize + n;
