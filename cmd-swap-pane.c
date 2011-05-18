@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-pane.c,v 1.16 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: cmd-swap-pane.c,v 1.17 2011-05-18 20:32:04 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -128,6 +128,12 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 			window_set_active_pane(src_w, dst_wp);
 		if (dst_w->active == dst_wp)
 			window_set_active_pane(dst_w, src_wp);
+	}
+	if (src_w != dst_w) {
+		if (src_w->last == src_wp)
+			src_w->last = NULL;
+		if (dst_w->last == dst_wp)
+			dst_w->last = NULL;
 	}
 	server_redraw_window(src_w);
 	server_redraw_window(dst_w);
