@@ -135,3 +135,5 @@
 - monitor-activity is broken in several ways with multiple clients
 - monitor-activity should be more powerful (eg set a region)
 - maybe a way to put pane names instead of window names in status line
+- when client is locked data still appears to be buffered for it (it shouldn't
+  be) so a load is sent after unlock. this is bad, needs fixed. SF 3297114
