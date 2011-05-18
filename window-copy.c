@@ -1345,6 +1345,9 @@ window_copy_copy_selection(struct window_pane *wp)
 	}
 	off--;	/* remove final \n */
 
+	if (options_get_number(&global_options, "set-clipboard"))
+		screen_write_setselection(&wp->ictx.ctx, buf, off);
+
 	/* Add the buffer to the stack. */
 	limit = options_get_number(&global_options, "buffer-limit");
 	paste_add(&global_buffers, buf, off, limit);

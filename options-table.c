@@ -75,6 +75,11 @@ const struct options_table_entry server_options_table[] = {
 	  .default_num = 0 /* overridden in main() */
 	},
 
+	{ .name = "set-clipboard",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .default_num = 1
+	},
+
 	{ .name = NULL }
 };
 
@@ -360,7 +365,8 @@ const struct options_table_entry session_options_table[] = {
 
 	{ .name = "terminal-overrides",
 	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = "*88col*:colors=88,*256col*:colors=256,xterm*:XT"
+	  .default_str = "*88col*:colors=88,*256col*:colors=256"
+	  		 ",xterm*:XT:Ms=\\E]52;%p1%s;%p2%s\\007"
 	},
 
 	{ .name = "update-environment",
