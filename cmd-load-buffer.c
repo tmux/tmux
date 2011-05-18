@@ -1,4 +1,4 @@
-/* $Id: cmd-load-buffer.c,v 1.20 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id: cmd-load-buffer.c,v 1.21 2011-05-18 20:33:55 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>
@@ -154,7 +154,7 @@ cmd_load_buffer_callback(struct client *c, void *data)
 
 	psize = EVBUFFER_LENGTH(c->stdin_event->input);
 	if (psize == 0 || (pdata = malloc(psize + 1)) == NULL) {
-		free(data);
+		xfree(data);
 		return;
 	}
 	bufferevent_read(c->stdin_event, pdata, psize);
@@ -170,5 +170,5 @@ cmd_load_buffer_callback(struct client *c, void *data)
 		bufferevent_enable(c->stderr_event, EV_WRITE);
 	}
 
-	free (data);
+	xfree(data);
 }
