@@ -154,7 +154,7 @@ cmd_load_buffer_callback(struct client *c, void *data)
 
 	psize = EVBUFFER_LENGTH(c->stdin_event->input);
 	if (psize == 0 || (pdata = malloc(psize + 1)) == NULL) {
-		free(data);
+		xfree(data);
 		return;
 	}
 	bufferevent_read(c->stdin_event, pdata, psize);
@@ -170,5 +170,5 @@ cmd_load_buffer_callback(struct client *c, void *data)
 		bufferevent_enable(c->stderr_event, EV_WRITE);
 	}
 
-	free (data);
+	xfree(data);
 }
