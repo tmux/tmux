@@ -1,4 +1,4 @@
-/* $Id: window-copy.c,v 1.131 2011-05-18 20:33:24 tcunha Exp $ */
+/* $Id: window-copy.c,v 1.132 2011-05-18 20:35:36 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -499,6 +499,26 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 	case MODEKEYCOPY_STARTSELECTION:
 		window_copy_start_selection(wp);
 		window_copy_redraw_screen(wp);
+		break;
+	case MODEKEYCOPY_COPYLINE:
+	case MODEKEYCOPY_SELECTLINE:
+		window_copy_cursor_start_of_line(wp);
+		/* FALLTHROUGH */
+	case MODEKEYCOPY_COPYENDOFLINE:
+		window_copy_start_selection(wp);
+		for (; np > 1; np--)
+			window_copy_cursor_down(wp, 0);
+		window_copy_cursor_end_of_line(wp);
+		window_copy_redraw_screen(wp);
+
+		/* If a copy command then copy the selection and exit. */
+		if (sess != NULL &&
+		    (cmd == MODEKEYCOPY_COPYLINE ||
+		    cmd == MODEKEYCOPY_COPYENDOFLINE)) {
+			window_copy_copy_selection(wp);
+			window_pane_reset_mode(wp);
+			return;
+		}
 		break;
 	case MODEKEYCOPY_CLEARSELECTION:
 		window_copy_clear_selection(wp);
