@@ -1,4 +1,4 @@
-/* $Id: options-table.c,v 1.7 2011-04-18 21:07:58 nicm Exp $ */
+/* $Id: options-table.c,v 1.8 2011-05-18 20:28:40 tcunha Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -354,7 +354,7 @@ const struct options_table_entry session_options_table[] = {
 
 	{ .name = "terminal-overrides",
 	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = "*88col*:colors=88,*256col*:colors=256"
+	  .default_str = "*88col*:colors=88,*256col*:colors=256,xterm*:XT"
 	},
 
 	{ .name = "update-environment",

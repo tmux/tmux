@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.310 2011-04-25 20:35:22 tcunha Exp $
+.\" $Id: tmux.1,v 1.311 2011-05-18 20:28:40 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: April 24 2011 $
+.Dd $Mdocdate: May 8 2011 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2149,7 +2149,7 @@ The default value forcibly corrects the
 .Ql colors
 entry for terminals which support 88 or 256 colours:
 .Bd -literal -offset indent
-"*88col*:colors=88,*256col*:colors=256"
+"*88col*:colors=88,*256col*:colors=256,xterm*:XT"
 .Ed
 .It Ic update-environment Ar variables
 Set a space-separated string containing a list of environment variables to be

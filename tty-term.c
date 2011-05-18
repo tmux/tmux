@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.47 2011-04-09 07:48:58 nicm Exp $ */
+/* $Id: tty-term.c,v 1.48 2011-05-18 20:28:43 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -63,6 +63,7 @@ const struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_EL, TTYCODE_STRING, "el" },
 	{ TTYC_EL1, TTYCODE_STRING, "el1" },
 	{ TTYC_ENACS, TTYCODE_STRING, "enacs" },
+	{ TTYC_FSL, TTYCODE_STRING, "fsl" },
 	{ TTYC_HOME, TTYCODE_STRING, "home" },
 	{ TTYC_HPA, TTYCODE_STRING, "hpa" },
 	{ TTYC_ICH, TTYCODE_STRING, "ich" },
@@ -175,15 +176,17 @@ const struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_SETAB, TTYCODE_STRING, "setab" },
 	{ TTYC_SETAF, TTYCODE_STRING, "setaf" },
 	{ TTYC_SGR0, TTYCODE_STRING, "sgr0" },
+	{ TTYC_SITM, TTYCODE_STRING, "sitm" },
 	{ TTYC_SMACS, TTYCODE_STRING, "smacs" },
 	{ TTYC_SMCUP, TTYCODE_STRING, "smcup" },
 	{ TTYC_SMIR, TTYCODE_STRING, "smir" },
 	{ TTYC_SMKX, TTYCODE_STRING, "smkx" },
 	{ TTYC_SMSO, TTYCODE_STRING, "smso" },
 	{ TTYC_SMUL, TTYCODE_STRING, "smul" },
-	{ TTYC_SITM, TTYCODE_STRING, "sitm" },
+	{ TTYC_TSL, TTYCODE_STRING, "tsl" },
 	{ TTYC_VPA, TTYCODE_STRING, "vpa" },
 	{ TTYC_XENL, TTYCODE_FLAG, "xenl" },
+	{ TTYC_XT, TTYCODE_FLAG, "XT" },
 };
 
 char *
@@ -255,7 +258,7 @@ tty_term_override(struct tty_term *term, const char *overrides)
 				entstr[strlen(entstr) - 1] = '\0';
 				removeflag = 1;
 			} else
-				continue;
+				val = xstrdup("");
 
 			for (i = 0; i < NTTYCODE; i++) {
 				ent = &tty_term_codes[i];
@@ -427,6 +430,18 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 		acs = "a#j+k+l+m+n+o-p-q-r-s-t+u+v+w+x|y<z>~.";
 	for (; acs[0] != '\0' && acs[1] != '\0'; acs += 2)
 		term->acs[(u_char) acs[0]][0] = acs[1];
+
+	/* On terminals with xterm titles (XT), fill in tsl and fsl. */
+	if (tty_term_flag(term, TTYC_XT) &&
+	    !tty_term_has(term, TTYC_TSL) &&
+	    !tty_term_has(term, TTYC_FSL)) {
+		code = &term->codes[TTYC_TSL];
+		code->value.string = xstrdup("\033]0;");
+		code->type = TTYCODE_STRING;
+		code = &term->codes[TTYC_FSL];
+		code->value.string = xstrdup("\007");
+		code->type = TTYCODE_STRING;
+	}
 
 	return (term);
 

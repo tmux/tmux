@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.208 2011-04-09 07:48:58 nicm Exp $ */
+/* $Id: tty.c,v 1.209 2011-05-18 20:28:43 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -369,14 +369,13 @@ tty_pututf8(struct tty *tty, const struct grid_utf8 *gu)
 void
 tty_set_title(struct tty *tty, const char *title)
 {
-	if (strstr(tty->termname, "xterm") == NULL &&
-	    strstr(tty->termname, "rxvt") == NULL &&
-	    strcmp(tty->termname, "screen") != 0)
+	if (!tty_term_has(tty->term, TTYC_TSL) ||
+	    !tty_term_has(tty->term, TTYC_FSL))
 		return;
 
-	tty_puts(tty, "\033]0;");
+	tty_putcode(tty, TTYC_TSL);
 	tty_puts(tty, title);
-	tty_putc(tty, '\007');
+	tty_putcode(tty, TTYC_FSL);
 }
 
 void
