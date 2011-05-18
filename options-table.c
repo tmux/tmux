@@ -1,4 +1,4 @@
-/* $Id: options-table.c,v 1.8 2011-05-18 20:28:40 tcunha Exp $ */
+/* $Id: options-table.c,v 1.9 2011-05-18 20:30:14 tcunha Exp $ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -190,6 +190,11 @@ const struct options_table_entry session_options_table[] = {
 	  .minimum = 0,
 	  .maximum = INT_MAX,
 	  .default_num = 20
+	},
+
+	{ .name = "mouse-resize-pane",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .default_num = 0
 	},
 
 	{ .name = "mouse-select-pane",

@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.311 2011-05-18 20:28:40 tcunha Exp $
+.\" $Id: tmux.1,v 1.312 2011-05-18 20:30:14 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -1892,6 +1892,12 @@ Set status line message foreground colour.
 Set the number of error or information messages to save in the message log for
 each client.
 The default is 20.
+.It Xo Ic mouse-resize-pane
+.Op Ic on | off
+.Xc
+If on,
+.Nm
+captures the mouse and allows panes to be resized by dragging on their borders.
 .It Xo Ic mouse-select-pane
 .Op Ic on | off
 .Xc

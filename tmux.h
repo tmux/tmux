@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.622 2011-05-18 20:28:41 tcunha Exp $ */
+/* $Id: tmux.h,v 1.623 2011-05-18 20:30:14 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1082,6 +1082,7 @@ struct mouse_event {
 #define MOUSE_BUTTON 3
 #define MOUSE_DRAG 32
 #define MOUSE_45 64
+#define MOUSE_RESIZE_PANE 128 /* marker for resizing */
 	u_int	x;
 	u_int	y;
 };
@@ -1172,6 +1173,8 @@ struct client {
 
 	struct session	*session;
 	struct session	*last_session;
+
+	struct mouse_event last_mouse;
 
 	int		 references;
 };
@@ -1921,6 +1924,8 @@ void		 layout_free(struct window *);
 void		 layout_resize(struct window *, u_int, u_int);
 void		 layout_resize_pane(
 		     struct window_pane *, enum layout_type, int);
+void		 layout_resize_pane_mouse(
+		     struct client *c, struct mouse_event *mouse);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(
 		     struct window_pane *, enum layout_type, int);
