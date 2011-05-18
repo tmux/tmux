@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.60 2011-05-18 20:30:14 tcunha Exp $ */
+/* $Id: server-client.c,v 1.61 2011-05-18 20:31:32 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -330,7 +330,8 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 		if (mouse->y + 1 == c->tty.sy &&
 		    options_get_number(oo, "mouse-select-window") &&
 		    options_get_number(oo, "status")) {
-			if (mouse->b == MOUSE_UP) {
+			if (mouse->b == MOUSE_UP &&
+			    c->last_mouse.b != MOUSE_UP) {
 				status_set_window_at(c, mouse->x);
 				return;
 			}
