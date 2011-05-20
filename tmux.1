@@ -2832,6 +2832,15 @@ See the
 option above and the
 .Xr xterm 1
 man page.
+.It Em Cc, Cr
+The first takes one string argument and is used to set the cursor colour;
+the second takes no arguments and restores the default cursor colour.
+If they present, a sequence such as this may be used to change the
+cursor colour from inside
+.Nm :
+.Bd -literal -offset indent
+$ printf '\e033]12;red\e033\e\e'
+.Ed
 .El
 .Sh FILES
 .Bl -tag -width "/etc/tmux.confXXX" -compact

@@ -69,6 +69,7 @@ tty_init(struct tty *tty, int fd, char *term)
 	if ((path = ttyname(fd)) == NULL)
 		fatalx("ttyname failed");
 	tty->path = xstrdup(path);
+	tty->ccolour = xstrdup("");
 
 	tty->flags = 0;
 	tty->term_flags = 0;
@@ -210,6 +211,8 @@ tty_start_tty(struct tty *tty)
 	tty->mode = MODE_CURSOR;
 
 	tty->flags |= TTY_STARTED;
+
+	tty_force_cursor_colour(tty, "");
 }
 
 void
@@ -241,6 +244,7 @@ tty_stop_tty(struct tty *tty)
 	tty_raw(tty, tty_term_string(tty->term, TTYC_SGR0));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
+	tty_raw(tty, tty_term_string(tty->term, TTYC_CR));
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
 	if (tty_term_has(tty->term, TTYC_KMOUS))
@@ -280,6 +284,7 @@ tty_free(struct tty *tty)
 {
 	tty_close(tty);
 
+	xfree(tty->ccolour);
 	if (tty->path != NULL)
 		xfree(tty->path);
 	if (tty->termname != NULL)
@@ -312,6 +317,13 @@ tty_putcode2(struct tty *tty, enum tty_code_code code, int a, int b)
 	if (a < 0 || b < 0)
 		return;
 	tty_puts(tty, tty_term_string2(tty->term, code, a, b));
+}
+
+void
+tty_putcode_ptr1(struct tty *tty, enum tty_code_code code, const void *a)
+{
+	if (a != NULL)
+		tty_puts(tty, tty_term_ptr1(tty->term, code, a));
 }
 
 void
@@ -389,9 +401,23 @@ tty_set_title(struct tty *tty, const char *title)
 }
 
 void
-tty_update_mode(struct tty *tty, int mode)
+tty_force_cursor_colour(struct tty *tty, const char *ccolour)
+{
+	if (*ccolour == '\0')
+		tty_putcode(tty, TTYC_CR);
+	else
+		tty_putcode_ptr1(tty, TTYC_CC, ccolour);
+	xfree(tty->ccolour);
+	tty->ccolour = xstrdup(ccolour);
+}
+
+void
+tty_update_mode(struct tty *tty, int mode, struct screen *s)
 {
 	int	changed;
+
+	if (strcmp(s->ccolour, tty->ccolour))
+		tty_force_cursor_colour(tty, s->ccolour);
 
 	if (tty->flags & TTY_NOCURSOR)
 		mode &= ~MODE_CURSOR;
@@ -486,7 +512,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 	const struct grid_utf8	*gu;
 	u_int			 i, sx;
 
-	tty_update_mode(tty, tty->mode & ~MODE_CURSOR);
+	tty_update_mode(tty, tty->mode & ~MODE_CURSOR, s);
 
 	sx = screen_size_x(s);
 	if (sx > s->grid->linedata[s->grid->hsize + py].cellsize)
@@ -526,7 +552,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 	}
 
 	if (sx >= tty->sx) {
-		tty_update_mode(tty, tty->mode);
+		tty_update_mode(tty, tty->mode, s);
 		return;
 	}
 	tty_reset(tty);
@@ -538,7 +564,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 		for (i = sx; i < screen_size_x(s); i++)
 			tty_putc(tty, ' ');
 	}
-	tty_update_mode(tty, tty->mode);
+	tty_update_mode(tty, tty->mode, s);
 }
 
 void

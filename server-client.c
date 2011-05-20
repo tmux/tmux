@@ -521,7 +521,7 @@ server_client_reset_state(struct client *c)
 		mode &= ~MODE_MOUSE_UTF8;
 
 	/* Set the terminal mode and reset attributes. */
-	tty_update_mode(&c->tty, mode);
+	tty_update_mode(&c->tty, mode, s);
 	tty_reset(&c->tty);
 }
 

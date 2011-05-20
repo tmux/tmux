@@ -38,10 +38,12 @@ const struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_BEL, TTYCODE_STRING, "bel" },
 	{ TTYC_BLINK, TTYCODE_STRING, "blink" },
 	{ TTYC_BOLD, TTYCODE_STRING, "bold" },
+	{ TTYC_CC, TTYCODE_STRING, "Cc" },
 	{ TTYC_CIVIS, TTYCODE_STRING, "civis" },
 	{ TTYC_CLEAR, TTYCODE_STRING, "clear" },
 	{ TTYC_CNORM, TTYCODE_STRING, "cnorm" },
 	{ TTYC_COLORS, TTYCODE_NUMBER, "colors" },
+	{ TTYC_CR, TTYCODE_STRING, "Cr" },
 	{ TTYC_CSR, TTYCODE_STRING, "csr" },
 	{ TTYC_CUB, TTYCODE_STRING, "cub" },
 	{ TTYC_CUB1, TTYCODE_STRING, "cub1" },
@@ -491,6 +493,12 @@ const char *
 tty_term_string2(struct tty_term *term, enum tty_code_code code, int a, int b)
 {
 	return (tparm((char *) tty_term_string(term, code), a, b));
+}
+
+const char *
+tty_term_ptr1(struct tty_term *term, enum tty_code_code code, const void *a)
+{
+	return (tparm((char *) tty_term_string(term, code), a));
 }
 
 const char *

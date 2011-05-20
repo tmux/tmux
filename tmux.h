@@ -183,10 +183,12 @@ enum tty_code_code {
 	TTYC_BEL,	/* bell, bl */
 	TTYC_BLINK,	/* enter_blink_mode, mb */
 	TTYC_BOLD,	/* enter_bold_mode, md */
+	TTYC_CC,	/* set colour cursor, Cc */
 	TTYC_CIVIS,	/* cursor_invisible, vi */
 	TTYC_CLEAR,	/* clear_screen, cl */
 	TTYC_CNORM,	/* cursor_normal, ve */
 	TTYC_COLORS,	/* max_colors, Co */
+	TTYC_CR,	/* restore cursor colour, Cr */
 	TTYC_CSR,	/* change_scroll_region, cs */
 	TTYC_CUB,	/* parm_left_cursor, LE */
 	TTYC_CUB1,	/* cursor_left, le */
@@ -714,6 +716,8 @@ struct screen {
 	u_int		 cx;		/* cursor x */
 	u_int		 cy;		/* cursor y */
 
+	char		*ccolour;	/* cursor colour string */
+
 	u_int		 rupper;	/* scroll region top */
 	u_int		 rlower;	/* scroll region bottom */
 
@@ -1010,6 +1014,7 @@ struct tty {
 
 	u_int		 cx;
 	u_int		 cy;
+	char		*ccolour;
 
 	int		 mode;
 
@@ -1414,6 +1419,7 @@ void	tty_cursor(struct tty *, u_int, u_int);
 void	tty_putcode(struct tty *, enum tty_code_code);
 void	tty_putcode1(struct tty *, enum tty_code_code, int);
 void	tty_putcode2(struct tty *, enum tty_code_code, int, int);
+void	tty_putcode_ptr1(struct tty *, enum tty_code_code, const void *);
 void	tty_putcode_ptr2(struct tty *, enum tty_code_code, const void *, const void *);
 void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
@@ -1423,7 +1429,8 @@ int	tty_resize(struct tty *);
 void	tty_start_tty(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
-void	tty_update_mode(struct tty *, int);
+void	tty_update_mode(struct tty *, int, struct screen *);
+void	tty_force_cursor_colour(struct tty *, const char *);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int);
 int	tty_open(struct tty *, const char *, char **);
 void	tty_close(struct tty *);
@@ -1459,6 +1466,8 @@ const char	*tty_term_string(struct tty_term *, enum tty_code_code);
 const char	*tty_term_string1(struct tty_term *, enum tty_code_code, int);
 const char	*tty_term_string2(
 		     struct tty_term *, enum tty_code_code, int, int);
+const char	*tty_term_ptr1(
+		     struct tty_term *, enum tty_code_code, const void *);
 const char	*tty_term_ptr2(
 		     struct tty_term *, enum tty_code_code, const void *, const void *);
 int		 tty_term_number(struct tty_term *, enum tty_code_code);
@@ -1841,6 +1850,7 @@ void	 screen_init(struct screen *, u_int, u_int, u_int);
 void	 screen_reinit(struct screen *);
 void	 screen_free(struct screen *);
 void	 screen_reset_tabs(struct screen *);
+void	 screen_set_cursor_colour(struct screen *, const char *);
 void	 screen_set_title(struct screen *, const char *);
 void	 screen_resize(struct screen *, u_int, u_int);
 void	 screen_set_selection(struct screen *,

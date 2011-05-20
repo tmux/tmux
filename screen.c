@@ -40,6 +40,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	else
 		s->title = xstrdup("");
 
+	s->ccolour = xstrdup("");
 	s->tabs = NULL;
 
 	screen_reinit(s);
@@ -71,6 +72,7 @@ screen_free(struct screen *s)
 	if (s->tabs != NULL)
 		xfree(s->tabs);
 	xfree(s->title);
+	xfree(s->ccolour);
 	grid_destroy(s->grid);
 }
 
@@ -87,6 +89,14 @@ screen_reset_tabs(struct screen *s)
 		fatal("bit_alloc failed");
 	for (i = 8; i < screen_size_x(s); i += 8)
 		bit_set(s->tabs, i);
+}
+
+/* Set screen cursor colour. */
+void
+screen_set_cursor_colour(struct screen *s, const char *colour_string)
+{
+	xfree(s->ccolour);
+	s->ccolour = xstrdup(colour_string);
 }
 
 /* Set screen title. */
