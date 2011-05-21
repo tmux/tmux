@@ -2830,6 +2830,29 @@ Show server information and terminal details.
 understands some extensions to
 .Xr terminfo 5 :
 .Bl -tag -width Ds
+.It Em Cc , Cr
+Set the cursor color.
+The first takes a single string argument and is used to set the colour;
+the second takes no arguments and restores the default cursor colour.
+If set, a sequence such as this may be used
+to change the cursor colour from inside
+.Nm :
+.Bd -literal -offset indent
+$ printf '\e033]12;red\e033\e\e'
+.Ed
+.It Em Cs , Csr
+Change the cursor style.
+If set, a sequence such as this may be used
+to change the cursor to an underline:
+.Bd -literal -offset indent
+$ printf '\e033[4 q'
+.Ed
+.Pp
+If
+.Em Csr
+is set, it will be used to reset the cursor style instead
+of
+.Em Cs .
 .It Em \&Ms
 This sequence can be used by
 .Nm
@@ -2839,28 +2862,6 @@ See the
 option above and the
 .Xr xterm 1
 man page.
-.It Em Cs, Csr
-Change the cursor style.
-If set allows a sequence such as:
-.Bd -literal -offset indent
-$ printf '\e033[4 q'
-.Ed
-.Pp
-To change the cursor to an underline.
-If
-.Em Csr
-is set, it will be used to reset the cursor style instead
-of
-.Em Cs .
-.It Em Cc, Cr
-The first takes one string argument and is used to set the cursor colour;
-the second takes no arguments and restores the default cursor colour.
-If they present, a sequence such as this may be used to change the
-cursor colour from inside
-.Nm :
-.Bd -literal -offset indent
-$ printf '\e033]12;red\e033\e\e'
-.Ed
 .El
 .Sh FILES
 .Bl -tag -width "/etc/tmux.confXXX" -compact
