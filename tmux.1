@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.316 2011-05-22 16:26:09 tcunha Exp $
+.\" $Id: tmux.1,v 1.317 2011-05-22 16:26:38 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -1259,7 +1259,7 @@ The
 .Ar shell-command
 string may contain the special character sequences supported by the
 .Ic status-left
-command.
+option.
 If no
 .Ar shell-command
 is given, the current pipe (if any) is closed.
@@ -2628,6 +2628,7 @@ Open the command prompt in a client.
 This may be used from inside
 .Nm
 to execute commands interactively.
+.Pp
 If
 .Ar template
 is specified, it is used as the command.
@@ -2641,6 +2642,12 @@ a single prompt is displayed, constructed from
 if it is present, or
 .Ql \&:
 if not.
+The
+.Ar prompts
+may contain the special character sequences supported by the
+.Ic status-left
+option.
+.Pp
 Before the command is executed, the first occurrence of the string
 .Ql %%
 and all occurrences of

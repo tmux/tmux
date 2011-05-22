@@ -1,4 +1,4 @@
-/* $Id: cmd-command-prompt.c,v 1.30 2011-01-07 15:04:51 tcunha Exp $ */
+/* $Id: cmd-command-prompt.c,v 1.31 2011-05-22 16:26:38 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -82,7 +82,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const char			*prompts;
 	struct cmd_command_prompt_cdata	*cdata;
 	struct client			*c;
-	char				*prompt, *ptr;
+	char				*prompt, *prompt_replaced, *ptr;
 	size_t				 n;
 
 	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
@@ -116,8 +116,12 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 	ptr = strsep(&cdata->next_prompt, ",");
 	if (prompts == NULL)
 		prompt = xstrdup(ptr);
-	else
-		xasprintf(&prompt, "%s ", ptr);
+	else {
+		prompt_replaced = status_replace(c, NULL, NULL, NULL, ptr,
+		    time(NULL), 0);
+		xasprintf(&prompt, "%s ", prompt_replaced);
+		xfree(prompt_replaced);
+	}
 	status_prompt_set(c, prompt, cmd_command_prompt_callback,
 	    cmd_command_prompt_free, cdata, 0);
 	xfree(prompt);
@@ -133,6 +137,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 	struct cmd_list			*cmdlist;
 	struct cmd_ctx			 ctx;
 	char				*cause, *newtempl, *prompt, *ptr;
+	char				*prompt_replaced;
 
 	if (s == NULL)
 		return (0);
@@ -142,8 +147,12 @@ cmd_command_prompt_callback(void *data, const char *s)
 	cdata->template = newtempl;
 
 	if ((ptr = strsep(&cdata->next_prompt, ",")) != NULL) {
-		xasprintf(&prompt, "%s ", ptr);
+		prompt_replaced = status_replace(c, NULL, NULL, NULL, ptr,
+		    time(NULL), 0);
+		xasprintf(&prompt, "%s ", prompt_replaced);
 		status_prompt_update(c, prompt);
+
+		xfree(prompt_replaced);
 		xfree(prompt);
 		cdata->idx++;
 		return (1);
