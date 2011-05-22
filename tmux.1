@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.315 2011-05-22 16:25:02 tcunha Exp $
+.\" $Id: tmux.1,v 1.316 2011-05-22 16:26:09 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -2836,6 +2836,19 @@ See the
 option above and the
 .Xr xterm 1
 man page.
+.It Em Cs, Csr
+Change the cursor style.
+If set allows a sequence such as:
+.Bd -literal -offset indent
+$ printf '\e033[4 q'
+.Ed
+.Pp
+To change the cursor to an underline.
+If
+.Em Csr
+is set, it will be used to reset the cursor style instead
+of
+.Em Cs .
 .It Em Cc, Cr
 The first takes one string argument and is used to set the cursor colour;
 the second takes no arguments and restores the default cursor colour.

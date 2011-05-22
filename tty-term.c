@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.50 2011-05-22 16:25:02 tcunha Exp $ */
+/* $Id: tty-term.c,v 1.51 2011-05-22 16:26:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -47,7 +47,9 @@ const struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_CNORM, TTYCODE_STRING, "cnorm" },
 	{ TTYC_COLORS, TTYCODE_NUMBER, "colors" },
 	{ TTYC_CR, TTYCODE_STRING, "Cr" },
+	{ TTYC_CS1, TTYCODE_STRING, "Cs" },
 	{ TTYC_CSR, TTYCODE_STRING, "csr" },
+	{ TTYC_CSR1, TTYCODE_STRING, "Csr" },
 	{ TTYC_CUB, TTYCODE_STRING, "cub" },
 	{ TTYC_CUB1, TTYCODE_STRING, "cub1" },
 	{ TTYC_CUD, TTYCODE_STRING, "cud" },

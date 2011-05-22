@@ -1,4 +1,4 @@
-/* $Id: input.c,v 1.118 2011-05-22 16:25:02 tcunha Exp $ */
+/* $Id: input.c,v 1.119 2011-05-22 16:26:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -126,6 +126,7 @@ enum input_csi_type {
 	INPUT_CSI_CUU,
 	INPUT_CSI_DA,
 	INPUT_CSI_DCH,
+	INPUT_CSI_DECSCUSR,
 	INPUT_CSI_DECSTBM,
 	INPUT_CSI_DL,
 	INPUT_CSI_DSR,
@@ -168,6 +169,7 @@ const struct input_table_entry input_csi_table[] = {
 	{ 'l', "?", INPUT_CSI_RM_PRIVATE },
 	{ 'm', "",  INPUT_CSI_SGR },
 	{ 'n', "",  INPUT_CSI_DSR },
+	{ 'q', " ", INPUT_CSI_DECSCUSR },
 	{ 'r', "",  INPUT_CSI_DECSTBM },
 };
 
@@ -1258,6 +1260,10 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_VPA:
 		n = input_get(ictx, 0, 1, 1);
 		screen_write_cursormove(sctx, s->cx, n - 1);
+		break;
+	case INPUT_CSI_DECSCUSR:
+		n = input_get(ictx, 0, 0, 0);
+		screen_set_cursor_style(s, n);
 		break;
 	}
 

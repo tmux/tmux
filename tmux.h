@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.626 2011-05-22 16:25:02 tcunha Exp $ */
+/* $Id: tmux.h,v 1.627 2011-05-22 16:26:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -185,7 +185,9 @@ enum tty_code_code {
 	TTYC_CNORM,	/* cursor_normal, ve */
 	TTYC_COLORS,	/* max_colors, Co */
 	TTYC_CR,	/* restore cursor colour, Cr */
+	TTYC_CS1,	/* set cursor style, Cs */
 	TTYC_CSR,	/* change_scroll_region, cs */
+	TTYC_CSR1,	/* reset cursor style, Csr */
 	TTYC_CUB,	/* parm_left_cursor, LE */
 	TTYC_CUB1,	/* cursor_left, le */
 	TTYC_CUD,	/* parm_down_cursor, DO */
@@ -712,6 +714,7 @@ struct screen {
 	u_int		 cx;		/* cursor x */
 	u_int		 cy;		/* cursor y */
 
+	u_int		 cstyle;	/* cursor style */
 	char		*ccolour;	/* cursor colour string */
 
 	u_int		 rupper;	/* scroll region top */
@@ -1010,6 +1013,7 @@ struct tty {
 
 	u_int		 cx;
 	u_int		 cy;
+	u_int		 cstyle;
 	char		*ccolour;
 
 	int		 mode;
@@ -1846,6 +1850,7 @@ void	 screen_init(struct screen *, u_int, u_int, u_int);
 void	 screen_reinit(struct screen *);
 void	 screen_free(struct screen *);
 void	 screen_reset_tabs(struct screen *);
+void	 screen_set_cursor_style(struct screen *, u_int);
 void	 screen_set_cursor_colour(struct screen *, const char *);
 void	 screen_set_title(struct screen *, const char *);
 void	 screen_resize(struct screen *, u_int, u_int);

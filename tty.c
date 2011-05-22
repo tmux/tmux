@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.211 2011-05-22 16:25:02 tcunha Exp $ */
+/* $Id: tty.c,v 1.212 2011-05-22 16:26:09 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -69,6 +69,7 @@ tty_init(struct tty *tty, int fd, char *term)
 	if ((path = ttyname(fd)) == NULL)
 		fatalx("ttyname failed");
 	tty->path = xstrdup(path);
+	tty->cstyle = 0;
 	tty->ccolour = xstrdup("");
 
 	tty->flags = 0;
@@ -244,6 +245,12 @@ tty_stop_tty(struct tty *tty)
 	tty_raw(tty, tty_term_string(tty->term, TTYC_SGR0));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMKX));
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CLEAR));
+	if (tty_term_has(tty->term, TTYC_CS1) && tty->cstyle != 0) {
+		if (tty_term_has(tty->term, TTYC_CSR1))
+			tty_raw(tty, tty_term_string(tty->term, TTYC_CSR1));
+		else if (tty_term_has(tty->term, TTYC_CS1))
+			tty_raw(tty, tty_term_string1(tty->term, TTYC_CS1, 0));
+	}
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CR));
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
@@ -428,6 +435,16 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 			tty_putcode(tty, TTYC_CNORM);
 		else
 			tty_putcode(tty, TTYC_CIVIS);
+	}
+	if (tty->cstyle != s->cstyle) {
+		if (tty_term_has(tty->term, TTYC_CS1)) {
+			if (s->cstyle == 0 &&
+			    tty_term_has(tty->term, TTYC_CSR1))
+				tty_putcode(tty, TTYC_CSR1);
+			else
+				tty_putcode1(tty, TTYC_CS1, s->cstyle);
+		}
+		tty->cstyle = s->cstyle;
 	}
 	if (changed & ALL_MOUSE_MODES) {
 		if (mode & ALL_MOUSE_MODES) {
