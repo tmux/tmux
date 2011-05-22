@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.61 2011-05-18 20:31:32 tcunha Exp $ */
+/* $Id: server-client.c,v 1.62 2011-05-22 16:25:02 tcunha Exp $ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -520,7 +520,7 @@ server_client_reset_state(struct client *c)
 		mode &= ~MODE_MOUSE_UTF8;
 
 	/* Set the terminal mode and reset attributes. */
-	tty_update_mode(&c->tty, mode);
+	tty_update_mode(&c->tty, mode, s);
 	tty_reset(&c->tty);
 }
 

@@ -1,4 +1,4 @@
-.\" $Id: tmux.1,v 1.314 2011-05-22 16:23:07 tcunha Exp $
+.\" $Id: tmux.1,v 1.315 2011-05-22 16:25:02 tcunha Exp $
 .\"
 .\" Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
 .\"
@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: May 18 2011 $
+.Dd $Mdocdate: May 20 2011 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2836,6 +2836,15 @@ See the
 option above and the
 .Xr xterm 1
 man page.
+.It Em Cc, Cr
+The first takes one string argument and is used to set the cursor colour;
+the second takes no arguments and restores the default cursor colour.
+If they present, a sequence such as this may be used to change the
+cursor colour from inside
+.Nm :
+.Bd -literal -offset indent
+$ printf '\e033]12;red\e033\e\e'
+.Ed
 .El
 .Sh FILES
 .Bl -tag -width "/etc/tmux.confXXX" -compact
