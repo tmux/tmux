@@ -142,6 +142,6 @@
 - lsk/show etc should be able to output in a form suitable to put in config
   file etc
 
-** We need a tmux terminfo entry to document the extensions we are using in
-   upstream terminfo. Must NOT change (only add or remove) anything from
-   TERM=screen so we can fallback!
+* We need a tmux terminfo entry to document the extensions we are using in
+  upstream terminfo. Must NOT change (only add or remove) anything from
+  TERM=screen so we can fallback!
