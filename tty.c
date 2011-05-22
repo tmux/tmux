@@ -1,4 +1,4 @@
-/* $Id: tty.c,v 1.209 2011-05-18 20:28:43 tcunha Exp $ */
+/* $Id: tty.c,v 1.210 2011-05-22 16:23:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -19,8 +19,11 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
+#include <netinet/in.h>
+
 #include <errno.h>
 #include <fcntl.h>
+#include <resolv.h>
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
@@ -309,6 +312,13 @@ tty_putcode2(struct tty *tty, enum tty_code_code code, int a, int b)
 	if (a < 0 || b < 0)
 		return;
 	tty_puts(tty, tty_term_string2(tty->term, code, a, b));
+}
+
+void
+tty_putcode_ptr2(struct tty *tty, enum tty_code_code code, const void *a, const void *b)
+{
+	if (a != NULL && b != NULL)
+		tty_puts(tty, tty_term_ptr2(tty->term, code, a, b));
 }
 
 void
@@ -936,6 +946,24 @@ tty_cmd_utf8character(struct tty *tty, const struct tty_ctx *ctx)
 	 * whole line.
 	 */
 	tty_draw_line(tty, wp->screen, ctx->ocy, wp->xoff, wp->yoff);
+}
+
+void
+tty_cmd_setselection(struct tty *tty, const struct tty_ctx *ctx)
+{
+	char	*buf;
+	size_t	 off;
+
+	if (!tty_term_has(tty->term, TTYC_MS))
+		return;
+
+	off = 4 * ((ctx->num + 2) / 3) + 1; /* storage for base64 */
+	buf = xmalloc(off);
+
+	b64_ntop(ctx->ptr, ctx->num, buf, off);
+	tty_putcode_ptr2(tty, TTYC_MS, "", buf);
+
+	xfree(buf);
 }
 
 void

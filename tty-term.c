@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.48 2011-05-18 20:28:43 tcunha Exp $ */
+/* $Id: tty-term.c,v 1.49 2011-05-22 16:23:07 tcunha Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -166,6 +166,7 @@ const struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_KUP5, TTYCODE_STRING, "kUP5" },
 	{ TTYC_KUP6, TTYCODE_STRING, "kUP6" },
 	{ TTYC_KUP7, TTYCODE_STRING, "kUP7" },
+	{ TTYC_MS, TTYCODE_STRING, "Ms" },
 	{ TTYC_OP, TTYCODE_STRING, "op" },
 	{ TTYC_REV, TTYCODE_STRING, "rev" },
 	{ TTYC_RI, TTYCODE_STRING, "ri" },
@@ -493,6 +494,12 @@ tty_term_string1(struct tty_term *term, enum tty_code_code code, int a)
 
 const char *
 tty_term_string2(struct tty_term *term, enum tty_code_code code, int a, int b)
+{
+	return (tparm((char *) tty_term_string(term, code), a, b));
+}
+
+const char *
+tty_term_ptr2(struct tty_term *term, enum tty_code_code code, const void *a, const void *b)
 {
 	return (tparm((char *) tty_term_string(term, code), a, b, 0, 0, 0, 0, 0, 0, 0));
 }
