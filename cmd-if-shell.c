@@ -88,11 +88,7 @@ cmd_if_shell_callback(struct job *job)
 		return;
 	}
 
-	if (cmd_list_exec(cmdlist, ctx) < 0) {
-		cmd_list_free(cmdlist);
-		return;
-	}
-
+	cmd_list_exec(cmdlist, ctx);
 	cmd_list_free(cmdlist);
 }
 
