@@ -61,6 +61,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (cause != NULL) {
 		ctx->error(ctx, "buffer %s", cause);
 		xfree(cause);
+		xfree(pdata);
 		return (-1);
 	}
 
