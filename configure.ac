@@ -118,6 +118,8 @@ if test "x$found_curses" = xno; then
 fi
 
 # Look for networking libraries.
+AC_SEARCH_LIBS(b64_ntop, resolv)
+AC_SEARCH_LIBS(__b64_ntop, resolv)
 AC_SEARCH_LIBS(inet_ntoa, nsl)
 AC_SEARCH_LIBS(socket, socket)
 AC_CHECK_LIB(xnet, socket)
