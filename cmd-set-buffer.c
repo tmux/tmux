@@ -1,4 +1,4 @@
-/* $Id: cmd-set-buffer.c,v 1.14 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -61,6 +61,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (cause != NULL) {
 		ctx->error(ctx, "buffer %s", cause);
 		xfree(cause);
+		xfree(pdata);
 		return (-1);
 	}
 
