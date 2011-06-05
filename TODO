@@ -150,6 +150,7 @@
 - wait-pane command or another way to make it synchronous/wait for command to
   finish
 - way to get command window started with (part of format stuff?)
+- last-pane across sessions
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!
