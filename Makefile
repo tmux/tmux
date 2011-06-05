@@ -16,7 +16,7 @@ SRCS=	arguments.c attributes.c cfg.c client.c clock.c \
 	cmd-lock-server.c \
 	cmd-move-window.c cmd-new-session.c cmd-new-window.c \
 	cmd-paste-buffer.c \
-	cmd-refresh-client.c \
+	cmd-refresh-client.c cmd-respawn-pane.c \
 	cmd-rename-session.c cmd-rename-window.c cmd-resize-pane.c \
 	cmd-respawn-window.c cmd-rotate-window.c cmd-save-buffer.c \
 	cmd-select-layout.c cmd-select-pane.c cmd-select-window.c \
