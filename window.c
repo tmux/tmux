@@ -356,21 +356,65 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 	}
 }
 
+struct window_pane *
+window_get_active_at(struct window *w, u_int x, u_int y)
+{
+	struct window_pane	*wp;
+
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		if (!window_pane_visible(wp))
+			continue;
+		if (x < wp->xoff || x > wp->xoff + wp->sx)
+			continue;
+		if (y < wp->yoff || y > wp->yoff + wp->sy)
+			continue;
+		return (wp);
+	}
+	return (NULL);
+}
+
 void
 window_set_active_at(struct window *w, u_int x, u_int y)
 {
 	struct window_pane	*wp;
 
-	TAILQ_FOREACH(wp, &w->panes, entry) {
-		if (wp == w->active || !window_pane_visible(wp))
-			continue;
-		if (x < wp->xoff || x >= wp->xoff + wp->sx)
-			continue;
-		if (y < wp->yoff || y >= wp->yoff + wp->sy)
-			continue;
+	wp = window_get_active_at(w, x, y);
+	if (wp != NULL && wp != w->active)
 		window_set_active_pane(w, wp);
-		break;
-	}
+}
+
+struct window_pane *
+window_find_string(struct window *w, const char *s)
+{
+	u_int	x, y;
+
+	x = w->sx / 2;
+	y = w->sy / 2;
+
+	if (strcasecmp(s, "top") == 0)
+		y = 0;
+	else if (strcasecmp(s, "bottom") == 0)
+		y = w->sy - 1;
+	else if (strcasecmp(s, "left") == 0)
+		x = 0;
+	else if (strcasecmp(s, "right") == 0)
+		x = w->sx - 1;
+	else if (strcasecmp(s, "top-left") == 0) {
+		x = 0;
+		y = 0;
+	} else if (strcasecmp(s, "top-right") == 0) {
+		x = w->sx - 1;
+		y = 0;
+	} else if (strcasecmp(s, "bottom-left") == 0) {
+		x = 0;
+		y = w->sy - 1;
+	} else if (strcasecmp(s, "bottom-right") == 0) {
+		x = w->sx - 1;
+		y = w->sy - 1;
+	} else
+		return (NULL);
+
+	return (window_get_active_at(w, x, y));
 }
 
 struct window_pane *

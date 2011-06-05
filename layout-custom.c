@@ -23,10 +23,21 @@
 
 #include "tmux.h"
 
+struct layout_cell     *layout_find_bottomright(struct layout_cell *);
 u_short			layout_checksum(const char *);
 int			layout_append(struct layout_cell *, char *, size_t);
 struct layout_cell     *layout_construct(struct layout_cell *, const char **);
 void			layout_assign(struct window_pane **, struct layout_cell *);
+
+/* Find the bottom-right cell. */
+struct layout_cell *
+layout_find_bottomright(struct layout_cell *lc)
+{
+	if (lc->type == LAYOUT_WINDOWPANE)
+		return (lc);
+	lc = TAILQ_LAST(&lc->cells, layout_cells);
+	return (layout_find_bottomright(lc));
+}
 
 /* Calculate layout checksum. */
 u_short
