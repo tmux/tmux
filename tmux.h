@@ -1,4 +1,4 @@
-/* $Id: tmux.h,v 1.627 2011-05-22 16:26:09 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -1887,7 +1887,9 @@ struct window	*window_create(const char *, const char *, const char *,
 		     const char *, struct environ *, struct termios *,
 		     u_int, u_int, u_int, char **);
 void		 window_destroy(struct window *);
+struct window_pane *window_get_active_at(struct window *, u_int, u_int);
 void		 window_set_active_at(struct window *, u_int, u_int);
+struct window_pane *window_find_string(struct window *, const char *);
 void		 window_set_active_pane(struct window *, struct window_pane *);
 struct window_pane *window_add_pane(struct window *, u_int);
 void		 window_resize(struct window *, u_int, u_int);
@@ -1966,10 +1968,6 @@ u_int		 layout_set_select(struct window *, u_int);
 u_int		 layout_set_next(struct window *);
 u_int		 layout_set_previous(struct window *);
 void		 layout_set_active_changed(struct window *);
-
-/* layout-string.c */
-struct layout_cell *layout_find_string(struct window *, const char *);
-struct layout_cell *layout_find_bottomright(struct layout_cell *);
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;
