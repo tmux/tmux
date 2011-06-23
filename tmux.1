@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: May 30 2011 $
+.Dd $Mdocdate: June 5 2011 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -1311,6 +1311,21 @@ and to the right with
 The
 .Ar adjustment
 is given in lines or cells (the default is 1).
+.It Xo Ic respawn-pane
+.Op Fl k
+.Op Fl t Ar target-pane
+.Op Ar shell-command
+.Xc
+.D1 (alias: Ic respawnp )
+Reactivate a pane in which the command has exited (see the
+.Ic remain-on-exit
+window option).
+If
+.Ar shell-command
+is not given, the command used when the pane was created is executed.
+The pane must be already inactive, unless
+.Fl k
+is given, in which case any existing command is killed.
 .It Xo Ic respawn-window
 .Op Fl k
 .Op Fl t Ar target-window
