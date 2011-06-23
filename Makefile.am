@@ -150,7 +150,6 @@ dist_tmux_SOURCES = \
 	key-string.c \
 	layout-custom.c \
 	layout-set.c \
-	layout-string.c \
 	layout.c \
 	log.c \
 	mode-key.c \
