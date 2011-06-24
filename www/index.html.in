@@ -16,7 +16,7 @@
                 <li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/CHANGES">Changelog</a></li>
                 <li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/FAQ">FAQ</a></li>
 		<li><a href="http://www.openbsd.org/faq/faq7.html#tmux">tmux in the OpenBSD FAQ</a></li>
-		<li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/tmux/examples/">Examples</a></li>
+		<li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/examples/">Examples</a></li>
                 <li>&nbsp;</li>
                 <li class="menu-headings">Source Code</li>
 		<li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/">SourceForge</a></li>
