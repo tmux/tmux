@@ -499,13 +499,13 @@ tty_term_string1(struct tty_term *term, enum tty_code_code code, int a)
 const char *
 tty_term_string2(struct tty_term *term, enum tty_code_code code, int a, int b)
 {
-	return (tparm((char *) tty_term_string(term, code), a, b));
+	return (tparm((char *) tty_term_string(term, code), a, b, 0, 0, 0, 0, 0, 0, 0));
 }
 
 const char *
 tty_term_ptr1(struct tty_term *term, enum tty_code_code code, const void *a)
 {
-	return (tparm((char *) tty_term_string(term, code), a));
+	return (tparm((char *) tty_term_string(term, code), a, 0, 0, 0, 0, 0, 0, 0, 0));
 }
 
 const char *
