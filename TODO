@@ -149,6 +149,7 @@
   finish
 - way to get command window was started with (part of format stuff?)
 - last-pane across sessions
+- lsw -a and lsp -a should include session or session:window to be useful
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!
