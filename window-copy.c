@@ -170,7 +170,6 @@ window_copy_init(struct window_pane *wp)
 	data->searchtype = WINDOW_COPY_OFF;
 	data->searchstr = NULL;
 
-	wp->flags |= PANE_FREEZE;
 	if (wp->fd != -1)
 		bufferevent_disable(wp->event, EV_READ|EV_WRITE);
 
@@ -234,7 +233,6 @@ window_copy_free(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 
-	wp->flags &= ~PANE_FREEZE;
 	if (wp->fd != -1)
 		bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 
