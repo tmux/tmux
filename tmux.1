@@ -2631,6 +2631,7 @@ session option.
 Commands related to the status line are as follows:
 .Bl -tag -width Ds
 .It Xo Ic command-prompt
+.Op Fl I Ar inputs
 .Op Fl p Ar prompts
 .Op Fl t Ar target-client
 .Op Ar template
@@ -2643,6 +2644,9 @@ to execute commands interactively.
 If
 .Ar template
 is specified, it is used as the command.
+If present,
+.Fl I
+is a comma-separated list of the initial text for each prompt.
 If
 .Fl p
 is given,
@@ -2653,7 +2657,10 @@ a single prompt is displayed, constructed from
 if it is present, or
 .Ql \&:
 if not.
-The
+.Pp
+Both
+.Ar inputs
+and
 .Ar prompts
 may contain the special character sequences supported by the
 .Ic status-left

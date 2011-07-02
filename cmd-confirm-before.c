@@ -87,9 +87,8 @@ cmd_confirm_before_exec(struct cmd *self, struct cmd_ctx *ctx)
 	cdata = xmalloc(sizeof *cdata);
 	cdata->cmd = xstrdup(args->argv[0]);
 	cdata->c = c;
-	status_prompt_set(cdata->c, buf,
-	    cmd_confirm_before_callback, cmd_confirm_before_free, cdata,
-	    PROMPT_SINGLE);
+	status_prompt_set(cdata->c, buf, NULL, cmd_confirm_before_callback,
+	    cmd_confirm_before_free, cdata, PROMPT_SINGLE);
 
 	xfree(buf);
 	return (1);
