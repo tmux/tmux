@@ -98,6 +98,11 @@ const struct options_table_entry session_options_table[] = {
 	  .default_num = BELL_ANY
 	},
 
+	{ .name = "bell-on-alert",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .default_num = 0
+	},
+
 	{ .name = "default-command",
 	  .type = OPTIONS_TABLE_STRING,
 	  .default_str = ""
