@@ -104,7 +104,6 @@
 - case insensitive searching
 - pane-index option like base-index
 - option to move status line to top
-- respawn-pane command
 - configurable borders and empty space filler for when panes < window?
 - mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets the
   flag on w/o checking the others before calling tty_update_mode)
