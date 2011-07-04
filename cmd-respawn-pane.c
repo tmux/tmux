@@ -68,10 +68,7 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	server_fill_environ(s, &env);
 
 	window_pane_reset_mode(wp);
-	screen_free(&wp->base);
-	hlimit = options_get_number(&s->options, "history-limit");
-	screen_init(&wp->base, wp->sx, wp->sy, hlimit);
-	wp->screen = &wp->base;
+	screen_reinit(&wp->base);
 	input_init(wp);
 
 	if (args->argc != 0)

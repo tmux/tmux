@@ -87,7 +87,9 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 	}
 	layout_init(w);
+	window_pane_reset_mode(wp);
 	screen_reinit(&wp->base);
+	input_init(wp);
 	window_set_active_pane(w, wp);
 
 	recalculate_sizes();
