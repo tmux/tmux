@@ -29,7 +29,7 @@
 int	cmd_list_windows_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_list_windows_server(struct cmd_ctx *);
-void	cmd_list_windows_session(struct session *, struct cmd_ctx *);
+void	cmd_list_windows_session(struct session *, struct cmd_ctx *, int);
 
 const struct cmd_entry cmd_list_windows_entry = {
 	"list-windows", "lsw",
@@ -53,7 +53,7 @@ cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
 		s = cmd_find_session(ctx, args_get(args, 't'), 0);
 		if (s == NULL)
 			return (-1);
-		cmd_list_windows_session(s, ctx);
+		cmd_list_windows_session(s, ctx, 0);
 	}
 
 	return (0);
@@ -65,20 +65,28 @@ cmd_list_windows_server(struct cmd_ctx *ctx)
 	struct session	*s;
 
 	RB_FOREACH(s, sessions, &sessions)
-		cmd_list_windows_session(s, ctx);
+		cmd_list_windows_session(s, ctx, 1);
 }
 
 void
-cmd_list_windows_session(struct session *s, struct cmd_ctx *ctx)
+cmd_list_windows_session(struct session *s, struct cmd_ctx *ctx, int type)
 {
 	struct winlink	*wl;
 	char		*layout;
 
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		layout = layout_dump(wl->window);
-		ctx->print(ctx, "%d: %s [%ux%u] [layout %s]%s",
-		    wl->idx, wl->window->name, wl->window->sx, wl->window->sy,
-		    layout, wl == s->curw ? " (active)" : "");
+		if (type) {
+			ctx->print(ctx, "%s:%d: %s [%ux%u] [layout %s]%s",
+			    s->name, wl->idx, wl->window->name, wl->window->sx,
+			    wl->window->sy, layout,
+			    wl == s->curw ? " (active)" : "");
+		} else {
+			ctx->print(ctx, "%d: %s [%ux%u] [layout %s]%s",
+			    wl->idx, wl->window->name, wl->window->sx,
+			    wl->window->sy, layout,
+			    wl == s->curw ? " (active)" : "");
+		}
 		xfree(layout);
 	}
 }
