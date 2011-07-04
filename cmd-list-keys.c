@@ -1,4 +1,4 @@
-/* $Id: cmd-list-keys.c,v 1.26 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,7 +46,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct args		*args = self->args;
 	struct key_binding	*bd;
 	const char		*key;
-	char			 tmp[BUFSIZ];
+	char			 tmp[BUFSIZ], flags[8];
 	size_t			 used;
 	int			 width, keywidth;
 
@@ -59,9 +59,14 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (key == NULL)
 			continue;
 
-		keywidth = strlen(key) + 1;
-		if (!(bd->key & KEYC_PREFIX))
-			keywidth += 2;
+		keywidth = strlen(key);
+		if (!(bd->key & KEYC_PREFIX)) {
+			if (bd->can_repeat)
+				keywidth += 4;
+			else
+				keywidth += 3;
+		} else if (bd->can_repeat)
+			keywidth += 3;
 		if (keywidth > width)
 			width = keywidth;
 	}
@@ -70,22 +75,22 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 		key = key_string_lookup_key(bd->key & ~KEYC_PREFIX);
 		if (key == NULL)
 			continue;
-		used = xsnprintf(tmp, sizeof tmp, "%*s: ", width, key);
+
+		if (!(bd->key & KEYC_PREFIX)) {
+			if (bd->can_repeat)
+				xsnprintf(flags, sizeof flags, "-rn ");
+			else
+				xsnprintf(flags, sizeof flags, "-n ");
+		} else if (bd->can_repeat)
+			xsnprintf(flags, sizeof flags, "-r ");
+
+		used = xsnprintf(tmp, sizeof tmp, "%s%*s ",
+		    flags, (int) (width - strlen(flags)), key);
 		if (used >= sizeof tmp)
 			continue;
 
-		if (!(bd->key & KEYC_PREFIX)) {
-			used = strlcat(tmp, "(no prefix) ", sizeof tmp);
-			if (used >= sizeof tmp)
-				continue;
-		}
-		if (bd->can_repeat) {
-			used = strlcat(tmp, "(repeat) ", sizeof tmp);
-			if (used >= sizeof tmp)
-				continue;
-		}
 		cmd_list_print(bd->cmdlist, tmp + used, (sizeof tmp) - used);
-		ctx->print(ctx, "%s", tmp);
+		ctx->print(ctx, "bind-key %s", tmp);
 	}
 
 	return (0);
@@ -99,7 +104,7 @@ cmd_list_keys_table(struct cmd *self, struct cmd_ctx *ctx)
 	const struct mode_key_table	*mtab;
 	struct mode_key_binding		*mbind;
 	const char			*key, *cmdstr, *mode;
-	int			 	 width, keywidth;
+	int			 	 width, keywidth, any_mode;
 
 	tablename = args_get(args, 't');
 	if ((mtab = mode_key_findtable(tablename)) == NULL) {
@@ -108,12 +113,16 @@ cmd_list_keys_table(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	width = 0;
+	any_mode = 0;
 	SPLAY_FOREACH(mbind, mode_key_tree, mtab->tree) {
 		key = key_string_lookup_key(mbind->key);
 		if (key == NULL)
 			continue;
 
-		keywidth = strlen(key) + 1;
+		if (mbind->mode != 0)
+			any_mode = 1;
+
+		keywidth = strlen(key);
 		if (keywidth > width)
 			width = keywidth;
 	}
@@ -125,10 +134,13 @@ cmd_list_keys_table(struct cmd *self, struct cmd_ctx *ctx)
 
 		mode = "";
 		if (mbind->mode != 0)
-			mode = "(command mode) ";
+			mode = "c";
 		cmdstr = mode_key_tostring(mtab->cmdstr, mbind->cmd);
-		if (cmdstr != NULL)
-			ctx->print(ctx, "%*s: %s%s", width, key, mode, cmdstr);
+		if (cmdstr != NULL) {
+			ctx->print(ctx, "bind-key -%st %s%s %*s %s",
+			    mode, any_mode && *mode == '\0' ? " " : "",
+			    mtab->name, (int) width, key, cmdstr);
+		}
 	}
 
 	return (0);
