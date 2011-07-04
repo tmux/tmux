@@ -1,4 +1,4 @@
-/* $Id: server-window.c,v 1.20 2011-02-15 15:20:38 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -28,6 +28,7 @@ int	server_window_check_activity(struct session *, struct winlink *);
 int	server_window_check_silence(struct session *, struct winlink *);
 int	server_window_check_content(
 	    struct session *, struct winlink *, struct window_pane *);
+void	ring_bell(struct session *);
 
 /* Window functions that need to happen every loop. */
 void
@@ -134,6 +135,8 @@ server_window_check_activity(struct session *s, struct winlink *wl)
 	if (!options_get_number(&w->options, "monitor-activity"))
 		return (0);
 
+	if (options_get_number(&s->options, "bell-on-alert"))
+		ring_bell(s);
 	wl->flags |= WINLINK_ACTIVITY;
 
 	if (options_get_number(&s->options, "visual-activity")) {
@@ -183,6 +186,9 @@ server_window_check_silence(struct session *s, struct winlink *wl)
 	timer_difference = timer.tv_sec - w->silence_timer.tv_sec;
 	if (timer_difference <= silence_interval)
 		return (0);
+
+	if (options_get_number(&s->options, "bell-on-alert"))
+		ring_bell(s);
 	wl->flags |= WINLINK_SILENCE;
 
 	if (options_get_number(&s->options, "visual-silence")) {
@@ -221,6 +227,8 @@ server_window_check_content(
 		return (0);
 	xfree(found);
 
+	if (options_get_number(&s->options, "bell-on-alert"))
+		ring_bell(s);
 	wl->flags |= WINLINK_CONTENT;
 
 	if (options_get_number(&s->options, "visual-content")) {
@@ -234,4 +242,18 @@ server_window_check_content(
 	}
 
 	return (1);
+}
+
+/* Ring terminal bell. */
+void
+ring_bell(struct session *s)
+{
+	struct client	*c;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL && c->session == s)
+			tty_putcode(&c->tty, TTYC_BEL);
+	}
 }
