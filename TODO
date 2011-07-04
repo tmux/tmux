@@ -1,5 +1,4 @@
- - implicitly add exec to the commands for new windows (switch to disable it)?
-- extend list-clients to list clients attached to a session (-a for all?)
+- implicitly add exec to the commands for new windows (switch to disable it)?
 - bring back detach-session to detach all clients on a session?
 - allow fnmatch for -c, so that you can, eg, detach all clients
 - garbage collect window history (100 lines at a time?) if it hasn't been used
@@ -137,11 +136,6 @@
 - maybe a way to put pane names instead of window names in status line
 - when client is locked data still appears to be buffered for it (it shouldn't
   be) so a load is sent after unlock. this is bad, needs fixed. SF 3297114
-- respawn-window doesn't fix it if the terminal is stuck waiting for end of
-  OSC DCS etc
-- option to specify initial text in command-prompt buffer (-T or
-  something). can be passed through status_replace so can be used
-  to start off with current window name when renaming
 - Support for borderless panes
 - run-shell/if-shell should support status_replace stuff
 - custom prompts for confirm-before
