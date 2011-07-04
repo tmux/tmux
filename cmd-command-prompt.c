@@ -59,8 +59,13 @@ void
 cmd_command_prompt_key_binding(struct cmd *self, int key)
 {
 	switch (key) {
+	case '$':
+		self->args = args_create(1, "rename-session '%%'");
+		args_set(self->args, 'I', "#S");
+		break;
 	case ',':
 		self->args = args_create(1, "rename-window '%%'");
+		args_set(self->args, 'I', "#W");
 		break;
 	case '.':
 		self->args = args_create(1, "move-window -t '%%'");
