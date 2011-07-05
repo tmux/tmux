@@ -1,4 +1,4 @@
-/* $Id: cmd-list-panes.c,v 1.10 2011-04-06 22:24:00 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -29,8 +29,9 @@
 int	cmd_list_panes_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_list_panes_server(struct cmd_ctx *);
-void	cmd_list_panes_session(struct session *, struct cmd_ctx *);
-void	cmd_list_panes_window(struct winlink *, struct cmd_ctx *);
+void	cmd_list_panes_session(struct session *, struct cmd_ctx *, int);
+void	cmd_list_panes_window(
+	    struct session *, struct winlink *, struct cmd_ctx *, int);
 
 const struct cmd_entry cmd_list_panes_entry = {
 	"list-panes", "lsp",
@@ -55,12 +56,12 @@ cmd_list_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 		s = cmd_find_session(ctx, args_get(args, 't'), 0);
 		if (s == NULL)
 			return (-1);
-		cmd_list_panes_session(s, ctx);
+		cmd_list_panes_session(s, ctx, 1);
 	} else {
-		wl = cmd_find_window(ctx, args_get(args, 't'), NULL);
+		wl = cmd_find_window(ctx, args_get(args, 't'), &s);
 		if (wl == NULL)
 			return (-1);
-		cmd_list_panes_window(wl, ctx);
+		cmd_list_panes_window(s, wl, ctx, 0);
 	}
 
 	return (0);
@@ -72,20 +73,21 @@ cmd_list_panes_server(struct cmd_ctx *ctx)
 	struct session	*s;
 
 	RB_FOREACH(s, sessions, &sessions)
-		cmd_list_panes_session(s, ctx);
+		cmd_list_panes_session(s, ctx, 2);
 }
 
 void
-cmd_list_panes_session(struct session *s, struct cmd_ctx *ctx)
+cmd_list_panes_session(struct session *s, struct cmd_ctx *ctx, int type)
 {
 	struct winlink	*wl;
 
 	RB_FOREACH(wl, winlinks, &s->windows)
-		cmd_list_panes_window(wl, ctx);
+		cmd_list_panes_window(s, wl, ctx, type);
 }
 
 void
-cmd_list_panes_window(struct winlink *wl, struct cmd_ctx *ctx)
+cmd_list_panes_window(
+    struct session *s, struct winlink *wl, struct cmd_ctx *ctx, int type)
 {
 	struct window_pane	*wp;
 	struct grid		*gd;
@@ -105,11 +107,31 @@ cmd_list_panes_window(struct winlink *wl, struct cmd_ctx *ctx)
 		}
 		size += gd->hsize * sizeof *gd->linedata;
 
-		ctx->print(ctx,
-		    "%u: [%ux%u] [history %u/%u, %llu bytes] %%%u%s%s",
-		    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size, wp->id,
-		    wp == wp->window->active ? " (active)" : "",
-		    wp->fd == -1 ? " (dead)" : "");
+		switch (type) {
+		case 0:
+			ctx->print(ctx,
+			    "%u: [%ux%u] [history %u/%u, %llu bytes] %%%u%s%s",
+			    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size,
+			    wp->id, wp == wp->window->active ? " (active)" : "",
+			    wp->fd == -1 ? " (dead)" : "");
+			break;
+		case 1:
+			ctx->print(ctx,
+			    "%d.%u: [%ux%u] [history %u/%u, %llu bytes] "
+			    "%%%u%s%s", wl->idx,
+			    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size,
+			    wp->id, wp == wp->window->active ? " (active)" : "",
+			    wp->fd == -1 ? " (dead)" : "");
+			break;
+		case 2:
+			ctx->print(ctx,
+			    "%s:%d.%u: [%ux%u] [history %u/%u, %llu bytes] "
+			    "%%%u%s%s", s->name, wl->idx,
+			    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size,
+			    wp->id, wp == wp->window->active ? " (active)" : "",
+			    wp->fd == -1 ? " (dead)" : "");
+			break;
+		}
 		n++;
 	}
 }
