@@ -555,7 +555,7 @@ const struct input_transition input_state_dcs_escape_table[] = {
 	{ -1, -1, NULL, NULL }
 };
 
-/* device_ignore state table. */
+/* dcs_ignore state table. */
 const struct input_transition input_state_dcs_ignore_table[] = {
 	INPUT_STATE_ANYWHERE,
 
@@ -791,7 +791,7 @@ input_split(struct input_ctx *ictx)
 	return (0);
 }
 
-/* Get an argument or return default value..*/
+/* Get an argument or return default value. */
 int
 input_get(struct input_ctx *ictx, u_int validx, int minval, int defval)
 {
