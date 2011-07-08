@@ -824,12 +824,13 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 	status_message_clear(c);
 	status_prompt_clear(c);
 
-	c->prompt_string = xstrdup(msg);
+	c->prompt_string = status_replace(c, NULL, NULL, NULL, msg,
+	    time(NULL), 0);
 
-	if (input != NULL)
-		c->prompt_buffer = xstrdup(input);
-	else
-		c->prompt_buffer = xstrdup("");
+	if (input == NULL)
+		input = "";
+	c->prompt_buffer = status_replace(c, NULL, NULL, NULL, input,
+	    time(NULL), 0);
 	c->prompt_index = strlen(c->prompt_buffer);
 
 	c->prompt_callbackfn = callbackfn;
@@ -877,13 +878,14 @@ void
 status_prompt_update(struct client *c, const char *msg, const char *input)
 {
 	xfree(c->prompt_string);
-	c->prompt_string = xstrdup(msg);
+	c->prompt_string = status_replace(c, NULL, NULL, NULL, msg,
+	    time(NULL), 0);
 
 	xfree(c->prompt_buffer);
-	if (input != NULL)
-		c->prompt_buffer = xstrdup(input);
-	else
-		c->prompt_buffer = xstrdup("");
+	if (input == NULL)
+		input = "";
+	c->prompt_buffer = status_replace(c, NULL, NULL, NULL, input,
+	    time(NULL), 0);
 	c->prompt_index = strlen(c->prompt_buffer);
 
 	c->prompt_hindex = 0;

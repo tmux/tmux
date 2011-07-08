@@ -33,8 +33,8 @@ void	cmd_confirm_before_free(void *);
 
 const struct cmd_entry cmd_confirm_before_entry = {
 	"confirm-before", "confirm",
-	"t:", 1, 1,
-	CMD_TARGET_CLIENT_USAGE " command",
+	"p:t:", 1, 1,
+	"[-p prompt] " CMD_TARGET_CLIENT_USAGE " command",
 	0,
 	cmd_confirm_before_key_binding,
 	NULL,
@@ -52,9 +52,11 @@ cmd_confirm_before_key_binding(struct cmd *self, int key)
 	switch (key) {
 	case '&':
 		self->args = args_create(1, "kill-window");
+		args_set(self->args, 'p', "kill-window #W? (y/n)");
 		break;
 	case 'x':
 		self->args = args_create(1, "kill-pane");
+		args_set(self->args, 'p', "kill-pane #P? (y/n)");
 		break;
 	default:
 		self->args = args_create(0);
@@ -68,7 +70,8 @@ cmd_confirm_before_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct args			*args = self->args;
 	struct cmd_confirm_before_data	*cdata;
 	struct client			*c;
-	char				*buf, *cmd, *ptr;
+	char				*cmd, *copy, *new_prompt, *ptr;
+	const char			*prompt;
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
@@ -78,19 +81,23 @@ cmd_confirm_before_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
 		return (-1);
 
-	ptr = xstrdup(args->argv[0]);
-	if ((cmd = strtok(ptr, " \t")) == NULL)
-		cmd = ptr;
-	xasprintf(&buf, "Confirm '%s'? (y/n) ", cmd);
-	xfree(ptr);
+	if ((prompt = args_get(args, 'p')) != NULL)
+		xasprintf(&new_prompt, "%s ", prompt);
+	else {
+		ptr = copy = xstrdup(args->argv[0]);
+		cmd = strsep(&ptr, " \t");
+		xasprintf(&new_prompt, "Confirm '%s'? (y/n) ", cmd);
+		xfree(copy);
+	}
 
 	cdata = xmalloc(sizeof *cdata);
 	cdata->cmd = xstrdup(args->argv[0]);
 	cdata->c = c;
-	status_prompt_set(cdata->c, buf, NULL, cmd_confirm_before_callback,
-	    cmd_confirm_before_free, cdata, PROMPT_SINGLE);
+	status_prompt_set(cdata->c, new_prompt, NULL,
+	    cmd_confirm_before_callback, cmd_confirm_before_free, cdata,
+	    PROMPT_SINGLE);
 
-	xfree(buf);
+	xfree(new_prompt);
 	return (1);
 }
 

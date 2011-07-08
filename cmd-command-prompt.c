@@ -90,8 +90,7 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const char			*inputs, *prompts;
 	struct cmd_command_prompt_cdata	*cdata;
 	struct client			*c;
-	char				*input = NULL;
-	char				*prompt, *prompt_replaced, *ptr;
+	char				*prompt, *ptr, *input = NULL;
 	size_t				 n;
 
 	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
@@ -127,28 +126,18 @@ cmd_command_prompt_exec(struct cmd *self, struct cmd_ctx *ctx)
 	ptr = strsep(&cdata->next_prompt, ",");
 	if (prompts == NULL)
 		prompt = xstrdup(ptr);
-	else {
-		prompt_replaced = status_replace(c, NULL, NULL, NULL, ptr,
-		    time(NULL), 0);
-		xasprintf(&prompt, "%s ", prompt_replaced);
-		xfree(prompt_replaced);
-	}
+	else
+		xasprintf(&prompt, "%s ", ptr);
 
 	/* Get initial prompt input. */
 	if ((inputs = args_get(args, 'I')) != NULL) {
 		cdata->inputs = xstrdup(inputs);
 		cdata->next_input = cdata->inputs;
-		ptr = strsep(&cdata->next_input, ",");
-
-		input = status_replace(c, NULL, NULL, NULL, ptr, time(NULL),
-		    0);
+		input = strsep(&cdata->next_input, ",");
 	}
 
 	status_prompt_set(c, prompt, input, cmd_command_prompt_callback,
 	    cmd_command_prompt_free, cdata, 0);
-
-	if (input != NULL)
-		xfree(input);
 	xfree(prompt);
 
 	return (0);
@@ -161,8 +150,8 @@ cmd_command_prompt_callback(void *data, const char *s)
 	struct client			*c = cdata->c;
 	struct cmd_list			*cmdlist;
 	struct cmd_ctx			 ctx;
-	char				*cause, *new_template, *prompt;
-	char				*prompt_replaced, *ptr, *input = NULL;
+	char				*cause, *new_template, *prompt, *ptr;
+	char				*input = NULL;
 
 	if (s == NULL)
 		return (0);
@@ -176,23 +165,11 @@ cmd_command_prompt_callback(void *data, const char *s)
 	 * and update the prompt data.
 	 */
 	if ((ptr = strsep(&cdata->next_prompt, ",")) != NULL) {
-		prompt_replaced = status_replace(c, NULL, NULL, NULL, ptr,
-		    time(NULL), 0);
-		xasprintf(&prompt, "%s ", prompt_replaced);
-
-		/* Find next input and expand special sequences. */
-		if ((ptr = strsep(&cdata->next_input, ",")) != NULL) {
-			input = status_replace(c, NULL, NULL, NULL, ptr,
-			    time(NULL), 0);
-		}
-
+		xasprintf(&prompt, "%s ", ptr);
+		input = strsep(&cdata->next_input, ",");
 		status_prompt_update(c, prompt, input);
 
-		if (input != NULL)
-			xfree(input);
-		xfree(prompt_replaced);
 		xfree(prompt);
-
 		cdata->idx++;
 		return (1);
 	}
