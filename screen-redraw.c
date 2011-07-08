@@ -1,4 +1,4 @@
-/* $Id: screen-redraw.c,v 1.53 2010-09-18 15:43:53 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -175,6 +175,10 @@ screen_redraw_screen(struct client *c, int status_only, int borders_only)
 	struct grid_cell	 active_gc, other_gc;
 	u_int		 	 i, j, type;
 	int		 	 status, fg, bg;
+
+	/* Suspended clients should not be updated. */
+	if (c->flags & CLIENT_SUSPENDED)
+		return;
 
 	/* Get status line, er, status. */
 	if (c->message_string != NULL || c->prompt_string != NULL)

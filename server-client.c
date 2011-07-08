@@ -1,4 +1,4 @@
-/* $Id: server-client.c,v 1.62 2011-05-22 16:25:02 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -472,6 +472,9 @@ server_client_reset_state(struct client *c)
 	struct options		*oo = &c->session->options;
 	struct options		*wo = &w->options;
 	int			 status, mode;
+
+	if (c->flags & CLIENT_SUSPENDED)
+		return;
 
 	tty_region(&c->tty, 0, c->tty.sy - 1);
 
