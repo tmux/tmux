@@ -474,6 +474,9 @@ server_client_reset_state(struct client *c)
 	struct options		*wo = &w->options;
 	int			 status, mode;
 
+	if (c->flags & CLIENT_SUSPENDED)
+		return;
+
 	tty_region(&c->tty, 0, c->tty.sy - 1);
 
 	status = options_get_number(oo, "status");

@@ -176,6 +176,10 @@ screen_redraw_screen(struct client *c, int status_only, int borders_only)
 	u_int		 	 i, j, type;
 	int		 	 status, fg, bg;
 
+	/* Suspended clients should not be updated. */
+	if (c->flags & CLIENT_SUSPENDED)
+		return;
+
 	/* Get status line, er, status. */
 	if (c->message_string != NULL || c->prompt_string != NULL)
 		status = 1;
