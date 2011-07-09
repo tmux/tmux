@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-pane.c,v 1.2 2011/07/04 13:35:37 nicm Exp $ */
+/* $Id: cmd-respawn-pane.c,v 1.3 2011/07/09 01:37:00 nicm Exp $ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>
@@ -46,7 +46,6 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink		*wl;
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int			 hlimit;
 	struct session		*s;
 	struct environ		 env;
 	const char		*cmd;
