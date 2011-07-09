@@ -46,7 +46,6 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink		*wl;
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int			 hlimit;
 	struct session		*s;
 	struct environ		 env;
 	const char		*cmd;
