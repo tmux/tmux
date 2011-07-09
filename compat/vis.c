@@ -1,3 +1,4 @@
+/* $Id$ */
 /*	$OpenBSD: vis.c,v 1.19 2005/09/01 17:15:49 millert Exp $ */
 /*-
  * Copyright (c) 1989, 1993
