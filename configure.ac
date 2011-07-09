@@ -8,6 +8,10 @@ AM_INIT_AUTOMAKE([foreign])
 
 AC_CANONICAL_HOST
 
+# When CFLAGS isn't set at this stage and gcc is detected by the macro below,
+# autoconf will automatically use CFLAGS="-O2 -g". Prevent that by using an
+# empty default.
+: ${CFLAGS=""}
 # Set up the compiler in two different ways and say yes we may want to install.
 AC_PROG_CC
 AM_PROG_CC_C_O
