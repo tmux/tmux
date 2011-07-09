@@ -1,4 +1,4 @@
-# $Id: fix-ids.sh,v 1.3 2009-07-01 19:03:34 nicm Exp $
+# $Id$
 
 for i in *.[ch] tmux.1; do
     (head -1 $i|grep '$OpenBSD' >/dev/null) || continue

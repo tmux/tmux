@@ -1,4 +1,4 @@
-/* $Id: cmd-clock-mode.c,v 1.8 2011-01-07 14:45:33 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

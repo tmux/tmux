@@ -1554,7 +1554,7 @@ The list of older changes is below.
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
 
-$Id: CHANGES,v 1.304 2010-12-27 21:37:42 tcunha Exp $
+$Id$
 
  LocalWords:  showw utf UTF fulvio ciriaco joshe OSC APC gettime abc DEF OA clr
  LocalWords:  rivo nurges lscm Erdely eol smysession mysession ek dstname RB ms

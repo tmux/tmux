@@ -1,4 +1,4 @@
-/* $Id: cmd-capture-pane.c,v 1.8 2011-05-18 20:31:00 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Jonathan Alvarado <radobobo@users.sourceforge.net>

@@ -1,4 +1,4 @@
-/* $Id: layout-set.c,v 1.9 2011-03-19 23:31:08 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

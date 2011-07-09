@@ -1,4 +1,4 @@
-/* $Id: asprintf.c,v 1.7 2011-03-04 23:39:41 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2006 Nicholas Marriott <nicm@users.sourceforge.net>

@@ -1,4 +1,4 @@
-/* $Id: job.c,v 1.23 2011-02-15 15:20:03 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

@@ -1,4 +1,4 @@
-/* $Id: session.c,v 1.89 2011-04-06 22:29:26 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

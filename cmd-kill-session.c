@@ -1,4 +1,4 @@
-/* $Id: cmd-kill-session.c,v 1.20 2011-04-06 22:24:00 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

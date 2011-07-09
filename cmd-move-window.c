@@ -1,4 +1,4 @@
-/* $Id: cmd-move-window.c,v 1.14 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>

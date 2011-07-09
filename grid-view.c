@@ -1,4 +1,4 @@
-/* $Id: grid-view.c,v 1.21 2011-02-15 15:10:47 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>

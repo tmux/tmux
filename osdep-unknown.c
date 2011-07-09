@@ -1,4 +1,4 @@
-/* $Id: osdep-unknown.c,v 1.6 2010-12-30 20:41:08 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

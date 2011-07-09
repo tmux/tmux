@@ -1,4 +1,4 @@
-/* $Id: cmd-load-buffer.c,v 1.21 2011-05-18 20:33:55 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>

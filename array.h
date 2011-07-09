@@ -1,4 +1,4 @@
-/* $Id: array.h,v 1.11 2010-06-06 00:27:08 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2006 Nicholas Marriott <nicm@users.sourceforge.net>

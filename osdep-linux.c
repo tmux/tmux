@@ -1,4 +1,4 @@
-/* $Id: osdep-linux.c,v 1.8 2011-01-13 19:58:47 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

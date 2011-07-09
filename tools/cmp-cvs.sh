@@ -1,4 +1,4 @@
-# $Id: cmp-cvs.sh,v 1.2 2009-06-25 16:54:21 nicm Exp $
+# $Id$
 
 rm diff.out
 touch diff.out

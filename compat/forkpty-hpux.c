@@ -1,4 +1,4 @@
-/* $Id: forkpty-hpux.c,v 1.1 2011-01-21 20:35:20 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>

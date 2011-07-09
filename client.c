@@ -1,4 +1,4 @@
-/* $Id: client.c,v 1.102 2011-03-19 23:27:35 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

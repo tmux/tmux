@@ -1,4 +1,4 @@
-/* $Id: arguments.c,v 1.3 2011-02-15 15:24:40 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicm@users.sourceforge.net>

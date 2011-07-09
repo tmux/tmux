@@ -1,4 +1,4 @@
-/* $Id: cmd-run-shell.c,v 1.11 2011-02-15 15:20:03 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>

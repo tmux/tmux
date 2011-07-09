@@ -1,4 +1,4 @@
-/* $Id: cmd-detach-client.c,v 1.15 2011-04-18 21:06:25 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

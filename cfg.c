@@ -1,4 +1,4 @@
-/* $Id: cfg.c,v 1.28 2010-12-30 22:26:07 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>

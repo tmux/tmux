@@ -1,4 +1,4 @@
-/* $Id: osdep-aix.c,v 1.1 2011-01-10 22:00:47 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2011 Nicholas Marriott <nicm@users.sourceforge.net>

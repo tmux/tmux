@@ -1,4 +1,4 @@
-/* $Id: cmd-link-window.c,v 1.37 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

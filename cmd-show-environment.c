@@ -1,4 +1,4 @@
-/* $Id: cmd-show-environment.c,v 1.4 2011-04-06 22:24:01 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

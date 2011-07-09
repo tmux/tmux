@@ -1,4 +1,4 @@
-/* $Id: cmd-unbind-key.c,v 1.25 2011-01-21 23:46:09 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

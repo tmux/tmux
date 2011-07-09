@@ -1,4 +1,4 @@
-/* $Id: tty-keys.c,v 1.60 2011-03-04 20:36:59 micahcowan Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

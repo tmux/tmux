@@ -1,4 +1,4 @@
-/* $Id: fgetln.c,v 1.5 2009-04-29 22:45:32 nicm Exp $ */
+/* $Id$ */
 /*	$NetBSD: fgetln.c,v 1.3 2007/08/07 02:06:58 lukem Exp $	*/
 
 /*-

@@ -1,4 +1,4 @@
-/* $Id: grid-utf8.c,v 1.2 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

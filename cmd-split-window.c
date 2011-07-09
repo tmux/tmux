@@ -1,4 +1,4 @@
-/* $Id: cmd-split-window.c,v 1.38 2011-02-15 15:26:54 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

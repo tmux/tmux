@@ -1,4 +1,4 @@
-/* $Id: cmd-find-window.c,v 1.16 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

@@ -1,4 +1,4 @@
-/* $Id: options.c,v 1.9 2009-09-22 14:22:20 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>

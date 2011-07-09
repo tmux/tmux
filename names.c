@@ -1,4 +1,4 @@
-/* $Id: names.c,v 1.21 2009-12-04 22:14:47 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

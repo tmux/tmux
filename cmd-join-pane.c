@@ -1,4 +1,4 @@
-/* $Id: cmd-join-pane.c,v 1.8 2011-01-23 15:49:32 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

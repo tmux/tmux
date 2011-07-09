@@ -1,4 +1,4 @@
-/* $Id: strtonum.c,v 1.1 2007-10-31 14:26:26 nicm Exp $ */
+/* $Id$ */
 /*	$OpenBSD: strtonum.c,v 1.6 2004/08/03 19:38:01 millert Exp $	*/
 
 /*

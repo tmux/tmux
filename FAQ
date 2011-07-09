@@ -411,4 +411,4 @@ capable font enabled, for example, add to ~/.Xdefaults:
 
 	urxvt.italicFont: xft:Bitstream Vera Sans Mono:italic:autohint=true
  
-$Id: FAQ,v 1.43 2011-05-18 17:47:33 nicm Exp $
+$Id$

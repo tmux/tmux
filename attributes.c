@@ -1,4 +1,4 @@
-/* $Id: attributes.c,v 1.4 2010-06-05 23:54:51 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Joshua Elsasser <josh@elsasser.org>

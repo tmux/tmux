@@ -1,4 +1,4 @@
-/* $Id: server.c,v 1.254 2011-04-06 22:16:33 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

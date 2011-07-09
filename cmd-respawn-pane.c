@@ -1,4 +1,4 @@
-/* $Id: cmd-respawn-pane.c,v 1.3 2011/07/09 01:37:00 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>

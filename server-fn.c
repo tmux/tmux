@@ -1,4 +1,4 @@
-/* $Id: server-fn.c,v 1.119 2011-02-14 23:11:33 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

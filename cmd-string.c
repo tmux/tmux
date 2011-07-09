@@ -1,4 +1,4 @@
-/* $Id: cmd-string.c,v 1.32 2010-12-13 22:53:56 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>

@@ -1,4 +1,4 @@
-/* $Id: environ.c,v 1.4 2010-04-06 21:59:19 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

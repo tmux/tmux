@@ -1,4 +1,4 @@
-/* $Id: cmd-display-message.c,v 1.10 2011-04-06 22:24:20 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Tiago Cunha <me@tiagocunha.org>

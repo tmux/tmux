@@ -1,4 +1,4 @@
-/* $Id: cmd-list-clients.c,v 1.22 2011-04-18 21:07:11 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

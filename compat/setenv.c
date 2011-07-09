@@ -1,4 +1,4 @@
-/* $Id: setenv.c,v 1.2 2010-06-05 18:20:48 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2010 Dagobert Michelsen

@@ -1,4 +1,4 @@
-/* $Id: vis.h,v 1.5 2009-07-01 23:22:46 nicm Exp $ */
+/* $Id$ */
 /*	$OpenBSD: vis.h,v 1.11 2005/08/09 19:38:31 millert Exp $	*/
 /*	$NetBSD: vis.h,v 1.4 1994/10/26 00:56:41 cgd Exp $	*/
 

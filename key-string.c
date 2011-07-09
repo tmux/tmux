@@ -1,4 +1,4 @@
-/* $Id: key-string.c,v 1.36 2011-01-22 22:31:09 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

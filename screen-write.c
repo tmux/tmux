@@ -1,4 +1,4 @@
-/* $Id: screen-write.c,v 1.97 2011-05-22 16:23:07 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

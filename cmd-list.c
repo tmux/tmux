@@ -1,4 +1,4 @@
-/* $Id: cmd-list.c,v 1.10 2010-12-06 21:48:56 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

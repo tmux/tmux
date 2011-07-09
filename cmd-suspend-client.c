@@ -1,4 +1,4 @@
-/* $Id: cmd-suspend-client.c,v 1.7 2011-01-07 14:45:34 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

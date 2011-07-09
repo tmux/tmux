@@ -1,4 +1,4 @@
-/* $Id: window-choose.c,v 1.31 2010-12-30 22:27:38 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

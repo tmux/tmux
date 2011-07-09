@@ -1,4 +1,4 @@
-/* $Id: tty-term.c,v 1.51 2011-05-22 16:26:09 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>

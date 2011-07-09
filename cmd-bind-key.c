@@ -1,4 +1,4 @@
-/* $Id: cmd-bind-key.c,v 1.31 2011-01-22 00:00:23 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

@@ -1,4 +1,4 @@
-/* $Id: cmd-select-layout.c,v 1.14 2011-01-07 15:02:38 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

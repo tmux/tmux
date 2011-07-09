@@ -1,4 +1,4 @@
-/* $Id: signal.c,v 1.3 2010-08-29 14:42:11 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

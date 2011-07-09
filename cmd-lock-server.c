@@ -1,4 +1,4 @@
-/* $Id: cmd-lock-server.c,v 1.12 2011-04-06 22:24:00 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>

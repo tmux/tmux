@@ -1,4 +1,4 @@
-/* $Id: osdep-darwin.c,v 1.12 2010-12-30 20:41:07 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Joshua Elsasser <josh@elsasser.org>

@@ -1,4 +1,4 @@
-/* $Id: closefrom.c,v 1.1 2010-10-27 20:21:01 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2004-2005 Todd C. Miller <Todd.Miller@courtesan.com>

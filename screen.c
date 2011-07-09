@@ -1,4 +1,4 @@
-/* $Id: screen.c,v 1.106 2011-05-22 16:26:09 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

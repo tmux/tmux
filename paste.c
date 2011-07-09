@@ -1,4 +1,4 @@
-/* $Id: paste.c,v 1.17 2011-04-06 22:18:56 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

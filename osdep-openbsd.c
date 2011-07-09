@@ -1,4 +1,4 @@
-/* $Id: osdep-openbsd.c,v 1.23 2011-04-18 21:03:42 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

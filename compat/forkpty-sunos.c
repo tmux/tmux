@@ -1,4 +1,4 @@
-/* $Id: forkpty-sunos.c,v 1.10 2011-01-10 22:45:10 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>

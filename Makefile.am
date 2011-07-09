@@ -1,4 +1,4 @@
-# $Id: Makefile.am,v 1.10 2011-02-14 20:39:40 nicm Exp $
+# $Id$
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux

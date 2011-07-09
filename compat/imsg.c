@@ -1,4 +1,4 @@
-/* $Id: imsg.c,v 1.7 2010-11-13 16:29:05 nicm Exp $ */
+/* $Id$ */
 /*	$OpenBSD: imsg.c,v 1.3 2010/05/26 13:56:07 nicm Exp $	*/
 
 /*

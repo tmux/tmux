@@ -1,4 +1,4 @@
-/* $Id: cmd-swap-pane.c,v 1.17 2011-05-18 20:32:04 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

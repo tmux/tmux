@@ -1,5 +1,5 @@
 #!/bin/sh
-# $Id: autogen.sh,v 1.2 2010-12-31 22:13:48 nicm Exp $
+# $Id$
 
 [ -z "$AUTOMAKE_VERSION" ] && export AUTOMAKE_VERSION=1.10
 [ -z "$AUTOCONF_VERSION" ] && export AUTOCONF_VERSION=2.65

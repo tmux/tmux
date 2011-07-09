@@ -1,4 +1,4 @@
-/* $Id: input-keys.c,v 1.49 2011-04-25 20:33:42 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

@@ -1,4 +1,4 @@
-/* $Id: cmd-set-option.c,v 1.112 2011-04-06 22:24:01 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2007 Nicholas Marriott <nicm@users.sourceforge.net>

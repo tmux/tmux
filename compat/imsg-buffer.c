@@ -1,4 +1,4 @@
-/* $Id: imsg-buffer.c,v 1.5 2010-06-06 00:08:28 tcunha Exp $ */
+/* $Id$ */
 /*	$OpenBSD: imsg-buffer.c,v 1.3 2010/05/26 13:56:07 nicm Exp $	*/
 
 /*

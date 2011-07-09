@@ -1,4 +1,4 @@
-/* $Id: tty-acs.c,v 1.1 2010-09-18 15:43:53 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2010 Nicholas Marriott <nicm@users.sourceforge.net>

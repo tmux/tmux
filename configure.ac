@@ -1,4 +1,4 @@
-# $Id: configure.ac,v 1.16 2011-04-09 07:48:58 nicm Exp $
+# $Id$
 
 # Miscellaneous autofoo bullshit.
 AC_INIT(tmux, 1.5)

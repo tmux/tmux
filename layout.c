@@ -1,4 +1,4 @@
-/* $Id: layout.c,v 1.20 2011-05-18 20:30:14 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>

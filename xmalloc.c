@@ -1,4 +1,4 @@
-/* $Id: xmalloc.c,v 1.13 2010-09-07 19:32:58 nicm Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2004 Nicholas Marriott <nicm@users.sourceforge.net>

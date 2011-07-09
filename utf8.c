@@ -1,4 +1,4 @@
-/* $Id: utf8.c,v 1.12 2011-01-07 14:34:45 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2008 Nicholas Marriott <nicm@users.sourceforge.net>

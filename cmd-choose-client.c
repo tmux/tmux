@@ -1,4 +1,4 @@
-/* $Id: cmd-choose-client.c,v 1.5 2011-01-07 14:45:33 tcunha Exp $ */
+/* $Id$ */
 
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
