@@ -40,7 +40,7 @@ args_create(int argc, ...)
 	if (argc == 0)
 		args->argv = NULL;
 	else
-		args->argv = xcalloc(argc, sizeof **args->argv);
+		args->argv = xcalloc(argc, sizeof *args->argv);
 
 	va_start(ap, argc);
 	for (i = 0; i < argc; i++)
