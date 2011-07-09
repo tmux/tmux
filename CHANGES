@@ -1,3 +1,88 @@
+CHANGES FROM 1.4 TO 1.5, 09 July 2011
+
+* Support xterm mouse modes 1002 and 1003.
+* Change from a per-session stack of buffers to one global stack. This renders
+  copy-buffer useless and makes buffer-limit now a server option.
+* Fix most-recently-used choice by avoiding reset the activity timer for
+  unattached sessions every second.
+* Add a -P option to new-window and split-window to print the new window or
+  pane index in target form (useful to pass it into other commands).
+* Handle a # at the end of a replacement string (such as status-left)
+  correctly.
+* Support for UTF-8 mouse input (\033[1005h) which was added in xterm 262.
+  If the new mouse-utf8 option is on, UTF-8 mouse input is enabled for all
+  UTF-8 terminals. The option defaults to on if LANG etc are set in the same
+  manner as the utf8 option.
+* Support for HP-UX.
+* Accept colours of the hex form #ffffff and translate to the nearest from the
+  xterm(1) 256-colour set.
+* Clear the non-blocking IO flag (O_NONBLOCK) on the stdio file descriptors
+  before closing them (fixes things like "tmux ls && cat").
+* Use TMPDIR if set.
+* Fix next and previous session functions to actually work.
+* Support -x and -y for new-session to specify the initial size of the window
+  if created detached with -d.
+* Make bind-key accept characters with the top-bit-set and print them as octal.
+* Set $TMUX without the session when background jobs are run.
+* Simplify the way jobs work and drop the persist type, so all jobs are
+  fire-and-forget.
+* Accept tcgetattr/tcsetattr(3) failure, fixes problems with fatal() if the
+  terminal disappears while locked.
+* Add a -P option to detach to HUP the client's parent process (usually causing
+  it to exit as well).
+* Support passing through escape sequences to the underlying terminal by using
+  DCS with a "tmux;" prefix.
+* Prevent tiled producing a corrupt layout when only one column is needed.
+* Give each pane created in a tmux server a unique id (starting from 0), put it
+  in the TMUX_PANE environment variable and accept it as a target.
+* Allow a start and end line to be specified for capture-pane which may be
+  negative to capture part of the history.
+* Add -a and -s options to lsp to list all panes in the server or session
+  respectively. Likewise add -s to lsw.
+* Change -t on display-message to be target-pane for the #[A-Z] replacements
+  and add -c as target-client.
+* The attach-session command now prefers the most recently used unattached
+  session.
+* Add -s option to detach-client to detach all clients attached to a session.
+* Add -t to list-clients.
+* Change window with mouse wheel over status line if mouse-select-window is on.
+* When mode-mouse is on, automatically enter copy mode when the mouse is
+  dragged or the mouse wheel is used. Also exit copy mode when the mouse wheel
+  is scrolled off the bottom.
+* Provide #h character pair for short hostname (no domain).
+* Don't use strnvis(3) for the title as it breaks UTF-8.
+* Use the tsl and fsl terminfo(5) capabilities to update terminal title and
+  automatically fill them in on terminals with the XT capability (which means
+  their title setting is xterm-compatible).
+* Add a new option, mouse-resize-pane. When on, panes may be resized by
+  dragging their borders.
+* Fix crash by resetting last pane on {break,swap}-pane across windows.
+* Add three new copy-mode commands - select-line, copy-line, copy-end-of-line.
+* Support setting the xterm clipboard when copying from copy mode using the
+  xterm escape sequence for the purpose (if xterm is configured to allow it).
+* Support xterm(1) cursor colour change sequences through terminfo(5) Cc
+  (set) and Cr (reset) extensions.
+* Support DECSCUSR sequence to set the cursor style with two new terminfo(5)
+  extensions, Cs and Csr.
+* Make the command-prompt custom prompts recognize the status-left option
+  character pairs.
+* Add a respawn-pane command.
+* Add a couple of extra xterm-style keys that gnome terminal provides.
+* Allow the initial context on prompts to be set with the new -I option to
+  command-prompt. Include the current window and session name in the prompt
+  when renaming and add a new key binding ($) for rename session.
+* Option bell-on-alert added to trigger the terminal bell when there is an
+  alert.
+* Change the list-keys format so that it shows the keys using actual tmux
+  commands which should be able to be directly copied into the config file.
+* Show full targets for lsp/lsw -a.
+* Make confirm-before prompt customizable with -p option like command-prompt
+  and add the character pairs #W and #P to the default kill-{pane,window}
+  prompts.
+* Avoid sending data to suspended/locked clients.
+* Small memory leaks in error paths plugged.
+* Vi mode improvements.
+
 CHANGES FROM 1.3 TO 1.4, 27 December 2010
 
 * Window bell reporting fixed.
