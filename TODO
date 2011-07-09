@@ -61,7 +61,6 @@
         should pick up default-path/termios/etc from client if possible,
 	else leave empty/default
 - link panes into multiple windows
-- -h option to capture-pane to capture the history as well
 - bells should be passed between sessions with visual-bell etc
 - use screen-256color when started on 256 colour terminal??
 - if-shell/run-shell should block further command execution in the same command
@@ -99,7 +98,6 @@
 - monitor, bell etc should monitor /all/ panes in the window not just one
 - a history of commands that can be reversed (reverse member of each command,
   and a buffer) info() when changing to same window
-- don't pass UTF-8 through vis for titles
 - way to add dest for break-pane; maybe some easier way to unbreak-pane
 - case insensitive searching
 - pane-index option like base-index
@@ -116,28 +114,22 @@
 - a command to choose from a generic list, so you can do eg
   choose-list -l Abc,Moo,Blah "run-shell 'sh /my/choose/script %%'"
 - else part for if-shell
-- make display-message take a target pane rather than using active
 - add general internal format for lists (key=value) and a way to output them in
   different representations, use for list-windows, etc etc. see message id
   20110221205346.GA1580@yelena.nicm.ath.cx
 - numeric prefix in copy mode should be paste buffer for C-w
 - named buffers and allow gaps in the stack
 - npage/ppage/dc/ic should have aliases for more typical names
-- support fsl and tsl as start/end title (like vim)
 - get rid of separate UTF-8 cell stuff: add 1 byte to cell and store BMP as
   uint16_t+3 bits of flags. anything <=0xffff is Unicode, higher are used to
   build tree of combined characters/non-BMP (LRU dropped when full)
 - entry in FAQ about what to do when someone does mkdir /tmp/tmux-1000
 - show size under pane number in display-panes mode
-- command-prompt should be passed through status_replace
 - monitor-activity is broken in several ways with multiple clients
 - monitor-activity should be more powerful (eg set a region)
 - maybe a way to put pane names instead of window names in status line
-- when client is locked data still appears to be buffered for it (it shouldn't
-  be) so a load is sent after unlock. this is bad, needs fixed. SF 3297114
 - Support for borderless panes
 - run-shell/if-shell should support status_replace stuff
-- custom prompts for confirm-before
 - wait-pane command or another way to make it synchronous/wait for command to
   finish
 - way to get command window was started with (part of format stuff?)
