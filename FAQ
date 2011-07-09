@@ -103,8 +103,7 @@ aware of are (bearing in mind I haven't used screen for a few years now):
 - tmux tends to be more demanding on the terminal so tends to show up terminal
   and application bugs which screen does not.
 
-- screen has wider platform support, for example IRIX and HP-UX, and for odd
-  terminals.
+- screen has wider platform support, for example IRIX, and for odd terminals.
 
 * I found a bug! What do I do?
 
