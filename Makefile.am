@@ -10,7 +10,7 @@ EXTRA_DIST = \
 	array.h compat.h tmux.h osdep-*.c
 dist-hook:
 	grep "^#found_debug=" configure
-	find $(distdir) -name CVS -type d|xargs rm -Rf
+	find $(distdir) -name .svn -type d|xargs rm -Rf
 
 # Preprocessor flags.
 CPPFLAGS += @XOPEN_DEFINES@
