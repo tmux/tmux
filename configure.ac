@@ -102,7 +102,7 @@ AM_CONDITIONAL(IS_GLIBC, test "x$found_glibc" = xyes)
 AC_MSG_RESULT($found_glibc)
 
 # Look for clock_gettime. Must come before event_init.
-AC_CHECK_LIB(rt, clock_gettime)
+AC_SEARCH_LIBS(clock_gettime, rt)
 
 # Look for libevent.
 AC_SEARCH_LIBS(event_init, [event event-1.4 event2], found_libevent=yes, found_libevent=no)
