@@ -196,7 +196,7 @@ size_t	 	 strlcat(char *, const char *, size_t);
 int	 	 daemon(int, int);
 #endif
 
-#ifndef HAVE_B64NTOP
+#ifndef HAVE_B64_NTOP
 /* b64_ntop.c */
 int		 b64_ntop(const char *, size_t, char *, size_t);
 #endif
