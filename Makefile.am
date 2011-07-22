@@ -226,6 +226,9 @@ endif
 if NO_STRTONUM
 nodist_tmux_SOURCES += compat/strtonum.c
 endif
+if NO_B64_NTOP
+nodist_tmux_SOURCES += compat/b64_ntop.c
+endif
 
 # Update SF web site.
 upload-index.html: update-index.html

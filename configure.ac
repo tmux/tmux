@@ -105,9 +105,14 @@ AC_MSG_RESULT($found_glibc)
 AC_SEARCH_LIBS(clock_gettime, rt)
 
 # Look for libevent.
-AC_SEARCH_LIBS(event_init, [event event-1.4 event2], found_libevent=yes, found_libevent=no)
+AC_SEARCH_LIBS(
+	event_init,
+	[event event-1.4 event2],
+	found_libevent=yes,
+	found_libevent=no
+)
 if test "x$found_libevent" = xno; then
-    AC_MSG_ERROR("libevent not found")
+	AC_MSG_ERROR("libevent not found")
 fi
 
 # Look for curses.
@@ -122,8 +127,14 @@ if test "x$found_curses" = xno; then
 fi
 
 # Look for networking libraries.
-AC_SEARCH_LIBS(b64_ntop, resolv)
-AC_SEARCH_LIBS(__b64_ntop, resolv)
+AC_SEARCH_LIBS(b64_ntop, resolv, found_b64_ntop=yes, found_b64_ntop=no)
+AC_SEARCH_LIBS(__b64_ntop, resolv, found___b64_ntop=yes, found___b64_ntop=no)
+if test "x$found_b64_ntop" = xyes -o "x$found___b64_ntop" = xyes; then
+	AC_DEFINE(HAVE_B64_NTOP)
+fi
+AM_CONDITIONAL(
+	NO_B64_NTOP,
+	[test "x$found_b64_ntop" = xno -a "x$found___b64_ntop" = xno])
 AC_SEARCH_LIBS(inet_ntoa, nsl)
 AC_SEARCH_LIBS(socket, socket)
 AC_CHECK_LIB(xnet, socket)
