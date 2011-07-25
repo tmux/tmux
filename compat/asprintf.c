@@ -44,12 +44,15 @@ int
 vasprintf(char **ret, const char *fmt, va_list ap)
 {
 	int	 n;
+	va_list  ap2;
+
+	va_copy(ap2, ap);
 
 	if ((n = vsnprintf(NULL, 0, fmt, ap)) < 0)
 		goto error;
 
 	*ret = xmalloc(n + 1);
-	if ((n = vsnprintf(*ret, n + 1, fmt, ap)) < 0) {
+	if ((n = vsnprintf(*ret, n + 1, fmt, ap2)) < 0) {
 		xfree(*ret);
 		goto error;
 	}
