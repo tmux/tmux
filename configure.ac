@@ -12,6 +12,7 @@ AC_CANONICAL_HOST
 # autoconf will automatically use CFLAGS="-O2 -g". Prevent that by using an
 # empty default.
 : ${CFLAGS=""}
+
 # Set up the compiler in two different ways and say yes we may want to install.
 AC_PROG_CC
 AM_PROG_CC_C_O
@@ -52,9 +53,8 @@ AM_CONDITIONAL(IS_DEBUG, test "x$found_debug" = xyes)
 AC_ARG_ENABLE(
        static,
        AC_HELP_STRING(--enable-static, create a static build),
-       [found_static=$enable_static]
+       [LDFLAGS="$LDFLAGS -static"]
 )
-AM_CONDITIONAL(IS_STATIC, test "x" = xyes)
 
 # Is this gcc?
 AM_CONDITIONAL(IS_GCC, test "x$GCC" = xyes)
@@ -126,15 +126,44 @@ if test "x$found_curses" = xno; then
     AC_MSG_ERROR("curses not found")
 fi
 
-# Look for networking libraries.
-AC_SEARCH_LIBS(b64_ntop, resolv, found_b64_ntop=yes, found_b64_ntop=no)
-AC_SEARCH_LIBS(__b64_ntop, resolv, found___b64_ntop=yes, found___b64_ntop=no)
-if test "x$found_b64_ntop" = xyes -o "x$found___b64_ntop" = xyes; then
-	AC_DEFINE(HAVE_B64_NTOP)
+# Check for b64_ntop.
+AC_MSG_CHECKING(for b64_ntop)
+AC_TRY_LINK(
+	[
+		#include <sys/types.h>
+		#include <netinet/in.h>
+		#include <resolv.h>
+	],
+	[b64_ntop(NULL, 0, NULL, 0);],
+	found_b64_ntop=yes,
+	found_b64_ntop=no
+)
+if test "x$found_b64_ntop" = xno; then
+	AC_MSG_RESULT(no)
+
+	AC_MSG_CHECKING(for b64_ntop with -lresolv)
+	LIBS="$LIBS -lresolv"
+	AC_TRY_LINK(
+		[
+			#include <sys/types.h>
+			#include <netinet/in.h>
+			#include <resolv.h>
+		],
+		[b64_ntop(NULL, 0, NULL, 0);],
+		found_b64_ntop=yes,
+		found_b64_ntop=no
+	)
+	if test "x$found_b64_ntop" = xno; then
+		AC_MSG_RESULT(no)
+	fi
 fi
-AM_CONDITIONAL(
-	NO_B64_NTOP,
-	[test "x$found_b64_ntop" = xno -a "x$found___b64_ntop" = xno])
+if test "x$found_b64_ntop" = xyes; then
+	AC_DEFINE(HAVE_B64_NTOP)
+	AC_MSG_RESULT(yes)
+fi
+AM_CONDITIONAL(NO_B64_NTOP, [test "x$found_b64_ntop" = xno])
+
+# Look for networking libraries.
 AC_SEARCH_LIBS(inet_ntoa, nsl)
 AC_SEARCH_LIBS(socket, socket)
 AC_CHECK_LIB(xnet, socket)

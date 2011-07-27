@@ -43,11 +43,6 @@ CPPFLAGS += -I. -I- -I/usr/local/include
 endif
 endif
 
-# Set flags for static.
-if IS_STATIC
-LDFLAGS += -static
-endif
-
 # Set flags for Solaris.
 if IS_SUNOS
 CPPFLAGS += -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
