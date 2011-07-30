@@ -2358,12 +2358,17 @@ contains
 .Ql vi .
 .Pp
 .It Xo Ic mode-mouse
-.Op Ic on | off
+.Op Ic on | off | copy-mode
 .Xc
 Mouse state in modes.
 If on, the mouse may be used to enter copy mode and copy a selection by
 dragging, to enter copy mode and scroll with the mouse wheel, or to select an
 option in choice mode.
+If set to
+.Em
+copy-mode ,
+the mouse behaves as set to on, but cannot be used to enter copy
+mode.
 .Pp
 .It Xo Ic monitor-activity
 .Op Ic on | off

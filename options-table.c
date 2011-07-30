@@ -36,6 +36,9 @@
 const char *options_table_mode_keys_list[] = {
 	"emacs", "vi", NULL
 };
+const char *options_table_mode_mouse_list[] = {
+	"off", "on", "copy-mode", NULL
+};
 const char *options_table_clock_mode_style_list[] = {
 	"12", "24", NULL
 };
@@ -484,7 +487,8 @@ const struct options_table_entry window_options_table[] = {
 	},
 
 	{ .name = "mode-mouse",
-	  .type = OPTIONS_TABLE_FLAG,
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .choices = options_table_mode_mouse_list,
 	  .default_num = 0
 	},
 
