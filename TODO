@@ -137,6 +137,7 @@
 - attach should take a pane and select it as well as attaching
 - support for E3, screen-devel
   <1311003510-28900-1-git-send-email-mlichvar@redhat.com>
+- should default-path be a window option?
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!
