@@ -139,6 +139,7 @@
   <1311003510-28900-1-git-send-email-mlichvar@redhat.com>
 - should default-path be a window option?
 - option to put status line at top (why?)
+- ignore $SHELL if it is not a full path or does not exist
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!
