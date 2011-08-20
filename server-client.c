@@ -171,6 +171,8 @@ server_client_lost(struct client *c)
 	if (c->cwd != NULL)
 		xfree(c->cwd);
 
+	environ_free(&c->environ);
+
 	close(c->ibuf.fd);
 	imsg_clear(&c->ibuf);
 	event_del(&c->event);

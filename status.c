@@ -551,8 +551,10 @@ status_find_job(struct client *c, char **iptr)
 	/* First try in the new tree. */
 	so_find.cmd = cmd;
 	so = RB_FIND(status_out_tree, &c->status_new, &so_find);
-	if (so != NULL && so->out != NULL)
+	if (so != NULL && so->out != NULL) {
+		xfree(cmd);
 		return (so->out);
+	}
 
 	/* If not found at all, start the job and add to the tree. */
 	if (so == NULL) {
