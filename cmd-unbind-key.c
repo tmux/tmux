@@ -59,9 +59,7 @@ cmd_unbind_key_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 	if (args_has(args, 'a')) {
 		while (!SPLAY_EMPTY(&key_bindings)) {
 			bd = SPLAY_ROOT(&key_bindings);
-			SPLAY_REMOVE(key_bindings, &key_bindings, bd);
-			cmd_list_free(bd->cmdlist);
-			xfree(bd);
+			key_bindings_remove(bd->key);
 		}
 		return (0);
 	}
