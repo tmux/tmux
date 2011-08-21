@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: July 30 2011 $
+.Dd $Mdocdate: August 16 2011 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -562,7 +562,9 @@ is specified, any other clients attached to the session are detached.
 .Fl r
 signifies the client is read-only (only keys bound to the
 .Ic detach-client
-command have any effect)
+or
+.Ic switch-client
+commands have any effect)
 .Pp
 If no server is started,
 .Ic attach-session
@@ -718,7 +720,7 @@ Suspend a client by sending
 .Dv SIGTSTP
 (tty stop).
 .It Xo Ic switch-client
-.Op Fl lnp
+.Op Fl lnpr
 .Op Fl c Ar target-client
 .Op Fl t Ar target-session
 .Xc
@@ -734,6 +736,10 @@ or
 .Fl p
 is used, the client is moved to the last, next or previous session
 respectively.
+.Fl r
+toggles whether a client is read-only (see the
+.Ic attach-session
+command).
 .El
 .Sh WINDOWS AND PANES
 A
