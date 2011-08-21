@@ -118,11 +118,18 @@ session_create(const char *name, const char *cmd, const char *cwd,
 	s->sx = sx;
 	s->sy = sy;
 
-	s->idx = next_session++;
-	if (name != NULL)
+	if (name != NULL) {
 		s->name = xstrdup(name);
-	else
-		xasprintf(&s->name, "%u", s->idx);
+		s->idx = next_session++;
+	} else {
+		s->name = NULL;
+		do {
+			s->idx = next_session++;
+			if (s->name != NULL)
+				xfree (s->name);
+			xasprintf(&s->name, "%u", s->idx);
+		} while (RB_FIND(sessions, &sessions, s) != NULL);
+	}
 	RB_INSERT(sessions, &sessions, s);
 
 	if (cmd != NULL) {
