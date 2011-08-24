@@ -491,7 +491,8 @@ $ tmux bind-key F1 set-window-option force-width 81
 Multiple commands may be specified together as part of a
 .Em command sequence .
 Each command should be separated by spaces and a semicolon;
-commands are executed sequentially from left to right.
+commands are executed sequentially from left to right and
+lines ending with a backslash continue on to the next line.
 A literal semicolon may be included by escaping it with a backslash (for
 example, when specifying a command sequence to
 .Ic bind-key ) .
@@ -507,6 +508,9 @@ rename-session -tfirst newname
 set-window-option -t:0 monitor-activity on
 
 new-window ; split-window -d
+
+bind-key R source-file ~/.tmux.conf \e; \e
+	display-message "source-file done"
 .Ed
 .Pp
 Or from
