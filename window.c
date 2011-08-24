@@ -454,7 +454,7 @@ window_pane_at_index(struct window *w, u_int idx)
 	struct window_pane	*wp;
 	u_int			 n;
 
-	n = 0;
+	n = options_get_number(&w->options, "pane-base-index");
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (n == idx)
 			return (wp);
@@ -492,7 +492,7 @@ window_pane_index(struct window *w, struct window_pane *wp)
 	struct window_pane	*wq;
 	u_int			 n;
 
-	n = 0;
+	n = options_get_number(&w->options, "pane-base-index");
 	TAILQ_FOREACH(wq, &w->panes, entry) {
 		if (wp == wq)
 			break;
