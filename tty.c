@@ -1546,3 +1546,9 @@ tty_try_88(struct tty *tty, u_char colour, const char *type)
 	tty_puts(tty, s);
 	return (0);
 }
+
+void
+tty_bell(struct tty *tty)
+{
+	tty_putcode(tty, TTYC_BEL);
+}
