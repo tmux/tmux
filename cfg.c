@@ -92,22 +92,37 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 	retval = 0;
 	while ((buf = fgetln(f, &len))) {
 		if (buf[len - 1] == '\n')
-			buf[len - 1] = '\0';
+			len--;
+
+		if (line != NULL)
+			line = xrealloc(line, 1, strlen(line) + len + 1);
 		else {
-			line = xrealloc(line, 1, len + 1);
-			memcpy(line, buf, len);
-			line[len] = '\0';
-			buf = line;
+			line = xmalloc(len + 1);
+			*line = '\0';
 		}
+
+		/* Append buffer to line. strncat will terminate. */
+		strncat(line, buf, len);
 		n++;
 
+		/* Continuation: get next line? */
+		len = strlen(line);
+		if (len > 0 && line[len - 1] == '\\') {
+			line[len - 1] = '\0';
+			continue;
+		}
+		buf = line;
+		line = NULL;
+
 		if (cmd_string_parse(buf, &cmdlist, &cause) != 0) {
+			xfree(buf);
 			if (cause == NULL)
 				continue;
 			cfg_add_cause(causes, "%s: %u: %s", path, n, cause);
 			xfree(cause);
 			continue;
-		}
+		} else
+			xfree(buf);
 		if (cmdlist == NULL)
 			continue;
 		cfg_cause = NULL;
@@ -131,12 +146,16 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 			retval = 1;
 		cmd_list_free(cmdlist);
 		if (cfg_cause != NULL) {
-			cfg_add_cause(causes, "%s: %d: %s", path, n, cfg_cause);
+			cfg_add_cause(
+			    causes, "%s: %d: %s", path, n, cfg_cause);
 			xfree(cfg_cause);
 		}
 	}
-	if (line != NULL)
+	if (line != NULL) {
+		cfg_add_cause(causes,
+		    "%s: %d: line continuation at end of file", path, n);
 		xfree(line);
+	}
 	fclose(f);
 
 	return (retval);
