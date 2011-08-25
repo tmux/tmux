@@ -86,7 +86,7 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 			if (c == NULL || c->session != s)
 				continue;
 			if (!visual) {
-				tty_putcode(&c->tty, TTYC_BEL);
+				tty_bell(&c->tty);
 				continue;
 			}
 			if (c->session->curw->window == w) {
@@ -108,7 +108,7 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 			if (c->session->curw->window != w)
 				continue;
 			if (!visual) {
-				tty_putcode(&c->tty, TTYC_BEL);
+				tty_bell(&c->tty);
 				continue;
 			}
 			status_message_set(c, "Bell in current window");
@@ -254,6 +254,6 @@ ring_bell(struct session *s)
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (c != NULL && c->session == s)
-			tty_putcode(&c->tty, TTYC_BEL);
+			tty_bell(&c->tty);
 	}
 }
