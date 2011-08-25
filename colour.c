@@ -19,7 +19,6 @@
 #include <sys/types.h>
 
 #include <ctype.h>
-#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -41,7 +40,7 @@ struct colour_rgb {
 struct colour_rgb *colour_rgb_256;
 
 void	colour_rgb_generate256(void);
-double	colour_rgb_distance(struct colour_rgb *, struct colour_rgb *);
+u_int	colour_rgb_distance(struct colour_rgb *, struct colour_rgb *);
 int	colour_rgb_find(struct colour_rgb *);
 
 /* Generate 256 colour RGB table. */
@@ -91,7 +90,7 @@ colour_rgb_generate256(void)
 }
 
 /* Get colour RGB distance. */
-double
+u_int
 colour_rgb_distance(struct colour_rgb *rgb1, struct colour_rgb *rgb2)
 {
 	int	r, g, b;
@@ -99,21 +98,20 @@ colour_rgb_distance(struct colour_rgb *rgb1, struct colour_rgb *rgb2)
 	r = rgb1->r - rgb2->r;
 	g = rgb1->g - rgb2->g;
 	b = rgb1->b - rgb2->b;
-	return (sqrt(r * r + g * g + b * b));
+	return (r * r + g * g + b * b);
 }
 
 /* Work out the nearest colour from the 256 colour set. */
 int
 colour_rgb_find(struct colour_rgb *rgb)
 {
-	double	distance, lowest;
-	u_int	colour, i;
+	u_int	distance, lowest, colour, i;
 
 	if (colour_rgb_256 == NULL)
 		colour_rgb_generate256();
 
 	colour = 16;
-	lowest = INFINITY;
+	lowest = UINT_MAX;
 	for (i = 0; i < 240; i++) {
 		distance = colour_rgb_distance(&colour_rgb_256[i], rgb);
 		if (distance < lowest) {
