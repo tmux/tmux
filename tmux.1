@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: August 16 2011 $
+.Dd $Mdocdate: August 24 2011 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2421,6 +2421,11 @@ Like
 but set the width of other panes in the
 .Ic main-vertical
 layout.
+.Pp
+.It Ic pane-base-index Ar index
+Like
+.Ic base-index ,
+but set the starting index for pane numbers.
 .Pp
 .It Xo Ic remain-on-exit
 .Op Ic on | off
