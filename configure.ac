@@ -168,9 +168,6 @@ AC_SEARCH_LIBS(inet_ntoa, nsl)
 AC_SEARCH_LIBS(socket, socket)
 AC_CHECK_LIB(xnet, socket)
 
-# Look for sqrt.
-AC_SEARCH_LIBS(sqrt, m)
-
 # Check for CMSG_DATA. Some platforms require _XOPEN_SOURCE_EXTENDED (for
 # example see xopen_networking(7) on HP-UX).
 XOPEN_DEFINES=
