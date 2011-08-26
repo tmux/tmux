@@ -617,6 +617,7 @@ is specified, list only clients connected to that session.
 List the syntax of all commands supported by
 .Nm .
 .It Ic list-sessions
+.Op Fl F Ar format
 .D1 (alias: Ic ls )
 List all sessions managed by the server.
 .It Ic lock-client Op Fl t Ar target-client
@@ -626,6 +627,11 @@ Lock
 see the
 .Ic lock-server
 command.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 .It Ic lock-session Op Fl t Ar target-session
 .D1 (alias: Ic locks )
 Lock all clients attached to
@@ -1147,6 +1153,7 @@ If
 is given, the newly linked window is not selected.
 .It Xo Ic list-panes
 .Op Fl as
+.Op Fl F Ar format
 .Op Fl t Ar target
 .Xc
 .D1 (alias: Ic lsp )
@@ -1165,6 +1172,7 @@ If neither is given,
 is a window (or the current window).
 .It Xo Ic list-windows
 .Op Fl a
+.Op Fl F Ar format
 .Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic lsw )
@@ -1173,6 +1181,11 @@ If
 is given, list all windows on the server.
 Otherwise, list windows in the current session or in
 .Ar target-session .
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 .It Xo Ic move-window
 .Op Fl dk
 .Op Fl s Ar src-window
@@ -2535,6 +2548,70 @@ or the global window options if
 .Fl g
 is used.
 .El
+.Sh FORMATS
+The
+.Ic list-sessions ,
+.Ic list-windows
+and
+.Ic list-panes
+commands accept the
+.Fl F
+flag with a
+.Ar format
+argument.
+This is a string which controls the output format of the command.
+Special character sequences are replaced as documented under the
+.Ic status-left
+option and an additional long form is accepted.
+Replacement variables are enclosed in
+.Ql #{
+and
+.Ql } ,
+for example
+.Ql #{session_name}
+is equivalent to
+.Ql #S .
+Conditionals are also accepted by prefixing with
+.Ql ?
+and separating two alternatives with a comma;
+if the specified variable exists and is not zero, the first alternative
+is chosen, otherwise the second is used. For example
+.Ql #{?session_attached,attached,not attached}
+will include the string
+.Ql attached
+if the session is attached and the string
+.Ql not attached
+if it is unattached.
+.Pp
+The following variables are available, where appropriate:
+.Bl -column "session_created_string" "Replaced with" -offset indent
+.It Sy "Variable name" Ta Sy "Replaced with"
+.It Li "host" Ta "Hostname of local host"
+.It Li "line" Ta "Line number in the list"
+.It Li "pane_active" Ta "1 if active pane"
+.It Li "pane_dead" Ta "1 if pane is dead"
+.It Li "pane_height" Ta "Height of pane"
+.It Li "pane_id" Ta "Unique pane id"
+.It Li "pane_title" Ta "Title of pane"
+.It Li "pane_width" Ta "Width of pane"
+.It Li "session_attached" Ta "1 if session attached"
+.It Li "session_created" Ta "Integer time session created"
+.It Li "session_created_string" Ta "String time session created"
+.It Li "session_group" Ta "Number of session group"
+.It Li "session_grouped" Ta "1 if session in a group"
+.It Li "session_height" Ta "Height of session"
+.It Li "session_name" Ta "Name of session"
+.It Li "session_width" Ta "Width of session"
+.It Li "session_windows" Ta "Number of windows in session"
+.It Li "window_active" Ta "1 if window active"
+.It Li "window_flags" Ta "Window flags"
+.It Li "window_height" Ta "Height of window"
+.It Li "window_index" Ta "Index of window"
+.It Li "window_layout" Ta "Window layout description"
+.It Li "window_name" Ta "Name of window"
+.It Li "window_width" Ta "Width of window"
+.El
+.Pp
 .Sh ENVIRONMENT
 When the server is started,
 .Nm

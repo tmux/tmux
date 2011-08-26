@@ -28,15 +28,16 @@
 
 int	cmd_list_panes_exec(struct cmd *, struct cmd_ctx *);
 
-void	cmd_list_panes_server(struct cmd_ctx *);
-void	cmd_list_panes_session(struct session *, struct cmd_ctx *, int);
-void	cmd_list_panes_window(
+void	cmd_list_panes_server(struct cmd *, struct cmd_ctx *);
+void	cmd_list_panes_session(
+	    struct cmd *, struct session *, struct cmd_ctx *, int);
+void	cmd_list_panes_window(struct cmd *,
 	    struct session *, struct winlink *, struct cmd_ctx *, int);
 
 const struct cmd_entry cmd_list_panes_entry = {
 	"list-panes", "lsp",
-	"ast:", 0, 0,
-	"[-as] [-t target]",
+	"asF:t:", 0, 0,
+	"[-as] [-F format] [-t target]",
 	0,
 	NULL,
 	NULL,
@@ -51,87 +52,92 @@ cmd_list_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink	*wl;
 
 	if (args_has(args, 'a'))
-		cmd_list_panes_server(ctx);
+		cmd_list_panes_server(self, ctx);
 	else if (args_has(args, 's')) {
 		s = cmd_find_session(ctx, args_get(args, 't'), 0);
 		if (s == NULL)
 			return (-1);
-		cmd_list_panes_session(s, ctx, 1);
+		cmd_list_panes_session(self, s, ctx, 1);
 	} else {
 		wl = cmd_find_window(ctx, args_get(args, 't'), &s);
 		if (wl == NULL)
 			return (-1);
-		cmd_list_panes_window(s, wl, ctx, 0);
+		cmd_list_panes_window(self, s, wl, ctx, 0);
 	}
 
 	return (0);
 }
 
 void
-cmd_list_panes_server(struct cmd_ctx *ctx)
+cmd_list_panes_server(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct session	*s;
 
 	RB_FOREACH(s, sessions, &sessions)
-		cmd_list_panes_session(s, ctx, 2);
+		cmd_list_panes_session(self, s, ctx, 2);
 }
 
 void
-cmd_list_panes_session(struct session *s, struct cmd_ctx *ctx, int type)
+cmd_list_panes_session(
+    struct cmd *self, struct session *s, struct cmd_ctx *ctx, int type)
 {
 	struct winlink	*wl;
 
 	RB_FOREACH(wl, winlinks, &s->windows)
-		cmd_list_panes_window(s, wl, ctx, type);
+		cmd_list_panes_window(self, s, wl, ctx, type);
 }
 
 void
-cmd_list_panes_window(
+cmd_list_panes_window(struct cmd *self,
     struct session *s, struct winlink *wl, struct cmd_ctx *ctx, int type)
 {
+	struct args		*args = self->args;
 	struct window_pane	*wp;
-	struct grid		*gd;
-	struct grid_line	*gl;
-	u_int			 i, n;
-	unsigned long long	 size;
+	u_int			 n;
+	struct format_tree	*ft;
+	const char		*template;
+	char			*line;
+
+	template = args_get(args, 'F');
+	if (template == NULL) {
+		switch (type) {
+		case 0:
+			template = "#{line}: "
+			    "[#{pane_width}x#{pane_height}] [history "
+			    "#{history_size}/#{history_limit}, "
+			    "#{history_bytes} bytes] #{pane_id}"
+			    "#{?pane_active, (active),}#{?pane_dead, (dead),}";
+			break;
+		case 1:
+			template = "#{window_index}.#{line}: "
+			    "[#{pane_width}x#{pane_height}] [history "
+			    "#{history_size}/#{history_limit}, "
+			    "#{history_bytes} bytes] #{pane_id}"
+			    "#{?pane_active, (active),}#{?pane_dead, (dead),}";
+			break;
+		case 2:
+			template = "#{session_name}:#{window_index}.#{line}: "
+			    "[#{pane_width}x#{pane_height}] [history "
+			    "#{history_size}/#{history_limit}, "
+			    "#{history_bytes} bytes] #{pane_id}"
+			    "#{?pane_active, (active),}#{?pane_dead, (dead),}";
+			break;
+		}
+	}
 
 	n = 0;
 	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
-		gd = wp->base.grid;
+		ft = format_create();
+		format_add(ft, "line", "%u", n);
+		format_session(ft, s);
+		format_winlink(ft, s, wl);
+		format_window_pane(ft, wp);
 
-		size = 0;
-		for (i = 0; i < gd->hsize; i++) {
-			gl = &gd->linedata[i];
-			size += gl->cellsize * sizeof *gl->celldata;
-			size += gl->utf8size * sizeof *gl->utf8data;
-		}
-		size += gd->hsize * sizeof *gd->linedata;
+		line = format_expand(ft, template);
+		ctx->print(ctx, "%s", line);
+		xfree(line);
 
-		switch (type) {
-		case 0:
-			ctx->print(ctx,
-			    "%u: [%ux%u] [history %u/%u, %llu bytes] %%%u%s%s",
-			    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size,
-			    wp->id, wp == wp->window->active ? " (active)" : "",
-			    wp->fd == -1 ? " (dead)" : "");
-			break;
-		case 1:
-			ctx->print(ctx,
-			    "%d.%u: [%ux%u] [history %u/%u, %llu bytes] "
-			    "%%%u%s%s", wl->idx,
-			    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size,
-			    wp->id, wp == wp->window->active ? " (active)" : "",
-			    wp->fd == -1 ? " (dead)" : "");
-			break;
-		case 2:
-			ctx->print(ctx,
-			    "%s:%d.%u: [%ux%u] [history %u/%u, %llu bytes] "
-			    "%%%u%s%s", s->name, wl->idx,
-			    n, wp->sx, wp->sy, gd->hsize, gd->hlimit, size,
-			    wp->id, wp == wp->window->active ? " (active)" : "",
-			    wp->fd == -1 ? " (dead)" : "");
-			break;
-		}
+		format_free(ft);
 		n++;
 	}
 }
