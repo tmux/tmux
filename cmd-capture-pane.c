@@ -109,6 +109,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 	if (cause != NULL) {
 		ctx->error(ctx, "buffer %s", cause);
+		xfree(buf);
 		xfree(cause);
 		return (-1);
 	}
