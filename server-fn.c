@@ -329,16 +329,32 @@ server_unlink_window(struct session *s, struct winlink *wl)
 void
 server_destroy_pane(struct window_pane *wp)
 {
-	struct window	*w = wp->window;
+	struct window		*w = wp->window;
+	int			 old_fd;
+	struct screen_write_ctx	 ctx;
+	struct grid_cell	 gc;
 
+	old_fd = wp->fd;
 	if (wp->fd != -1) {
 		close(wp->fd);
 		bufferevent_free(wp->event);
 		wp->fd = -1;
 	}
 
-	if (options_get_number(&w->options, "remain-on-exit"))
+	if (options_get_number(&w->options, "remain-on-exit")) {
+		if (old_fd == -1)
+			return;
+		screen_write_start(&ctx, wp, &wp->base);
+		screen_write_scrollregion(&ctx, 0, screen_size_y(ctx.s) - 1);
+		screen_write_cursormove(&ctx, 0, screen_size_y(ctx.s) - 1);
+		screen_write_linefeed(&ctx, 1);
+		memcpy(&gc, &grid_default_cell, sizeof gc);
+		gc.attr |= GRID_ATTR_BRIGHT;
+		screen_write_puts(&ctx, &gc, "Pane is dead");
+		screen_write_stop(&ctx);
+		wp->flags |= PANE_REDRAW;
 		return;
+	}
 
 	layout_close_pane(wp);
 	window_remove_pane(w, wp);
