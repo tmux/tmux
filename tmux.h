@@ -1299,6 +1299,15 @@ struct options_table_entry {
 	long long		default_num;
 };
 
+/* Tree of format entries. */
+struct format_entry {
+	char		       *key;
+	char		       *value;
+
+	RB_ENTRY(format_entry)	entry;
+};
+RB_HEAD(format_tree, format_entry);
+
 /* List of configuration causes. */
 ARRAY_DECL(causelist, char *);
 
@@ -1340,6 +1349,20 @@ extern int       cfg_finished;
 extern struct causelist cfg_causes;
 void printflike2 cfg_add_cause(struct causelist *, const char *, ...);
 int		 load_cfg(const char *, struct cmd_ctx *, struct causelist *);
+
+/* format.c */
+int		 format_cmp(struct format_entry *, struct format_entry *);
+RB_PROTOTYPE(format_tree, format_entry, entry, format_cmp);
+struct format_tree *format_create(void);
+void		 format_free(struct format_tree *);
+void		 format_add(
+		     struct format_tree *, const char *, const char *, ...);
+const char	*format_find(struct format_tree *, const char *);
+char		*format_expand(struct format_tree *, const char *);
+void		 format_session(struct format_tree *, struct session *);
+void		 format_winlink(
+		     struct format_tree *, struct session *, struct winlink *);
+void		 format_window_pane(struct format_tree *, struct window_pane *);
 
 /* mode-key.c */
 extern const struct mode_key_table mode_key_tables[];
