@@ -2576,10 +2576,11 @@ for example
 is equivalent to
 .Ql #S .
 Conditionals are also accepted by prefixing with
-.Ql ?
+.Ql \&?
 and separating two alternatives with a comma;
 if the specified variable exists and is not zero, the first alternative
-is chosen, otherwise the second is used. For example
+is chosen, otherwise the second is used.
+For example
 .Ql #{?session_attached,attached,not attached}
 will include the string
 .Ql attached
@@ -2615,7 +2616,6 @@ The following variables are available, where appropriate:
 .It Li "window_name" Ta "Name of window"
 .It Li "window_width" Ta "Width of window"
 .El
-.Pp
 .Sh ENVIRONMENT
 When the server is started,
 .Nm
