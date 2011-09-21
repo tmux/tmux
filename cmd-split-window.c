@@ -57,7 +57,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window		*w;
 	struct window_pane	*wp, *new_wp = NULL;
 	struct environ		 env;
-	char		 	*cmd, *cwd, *cause;
+	char		 	*cmd, *cwd, *cause, *new_cause;
 	const char		*shell;
 	u_int			 hlimit, paneidx;
 	int			 size, percentage;
@@ -93,16 +93,18 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args_has(args, 'l')) {
 		size = args_strtonum(args, 'l', 0, INT_MAX, &cause);
 		if (cause != NULL) {
-			ctx->error(ctx, "size %s", cause);
+			xasprintf(&new_cause, "size %s", cause);
 			xfree(cause);
-			return (-1);
+			cause = new_cause;
+			goto error;
 		}
 	} else if (args_has(args, 'p')) {
 		percentage = args_strtonum(args, 'p', 0, INT_MAX, &cause);
 		if (cause != NULL) {
-			ctx->error(ctx, "percentage %s", cause);
+			xasprintf(&new_cause, "percentage %s", cause);
 			xfree(cause);
-			return (-1);
+			cause = new_cause;
+			goto error;
 		}
 		if (type == LAYOUT_TOPBOTTOM)
 			size = (wp->sy * percentage) / 100;
