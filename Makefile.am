@@ -136,6 +136,7 @@ dist_tmux_SOURCES = \
 	cmd.c \
 	colour.c \
 	environ.c \
+	format.c \
 	grid-utf8.c \
 	grid-view.c \
 	grid.c \
