@@ -142,6 +142,8 @@
 - ignore $SHELL if it is not a full path or does not exist
 - panes should have names like windows
 - command-prompt doesn't work if made read-only. why?
+- option to quote format eg #{session_name:quoted}
+- formats need to be used for much much more stuff!
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!
