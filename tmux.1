@@ -616,10 +616,14 @@ is specified, list only clients connected to that session.
 .D1 (alias: Ic lscm )
 List the syntax of all commands supported by
 .Nm .
-.It Ic list-sessions
-.Op Fl F Ar format
+.It Ic list-sessions Op Fl F Ar format
 .D1 (alias: Ic ls )
 List all sessions managed by the server.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 .It Ic lock-client Op Fl t Ar target-client
 .D1 (alias: Ic lockc )
 Lock
@@ -627,11 +631,6 @@ Lock
 see the
 .Ic lock-server
 command.
-For the meaning of the
-.Fl F
-flag, see the
-.Sx FORMATS
-section.
 .It Ic lock-session Op Fl t Ar target-session
 .D1 (alias: Ic locks )
 Lock all clients attached to
@@ -1170,6 +1169,11 @@ is a session (or the current session).
 If neither is given,
 .Ar target
 is a window (or the current window).
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 .It Xo Ic list-windows
 .Op Fl a
 .Op Fl F Ar format
