@@ -328,6 +328,7 @@ AM_CONDITIONAL(NO_GETOPT, [test "x$found_getopt" = xno])
 AC_CHECK_FUNCS(
 	[ \
 		bzero \
+		dirfd \
 		setproctitle \
 		sysconf \
 	]
@@ -396,15 +397,6 @@ AC_CHECK_DECL(
 AC_MSG_CHECKING(for /proc/\$\$)
 if test -d /proc/$$; then
 	AC_DEFINE(HAVE_PROC_PID)
-	AC_MSG_RESULT(yes)
-else
-	AC_MSG_RESULT(no)
-fi
-
-# Look for /proc/$$/fd.
-AC_MSG_CHECKING(for /proc/\$\$/fd)
-if test -d /proc/$$/fd; then
-	AC_DEFINE(HAVE_DIRFD)
 	AC_MSG_RESULT(yes)
 else
 	AC_MSG_RESULT(no)
