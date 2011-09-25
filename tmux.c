@@ -98,7 +98,9 @@ getshell(void)
 int
 checkshell(const char *shell)
 {
-	if (shell == NULL || *shell == '\0' || areshell(shell))
+	if (shell == NULL || *shell == '\0' || *shell != '/')
+		return (0);
+	if (areshell(shell))
 		return (0);
 	if (access(shell, X_OK) != 0)
 		return (0);
