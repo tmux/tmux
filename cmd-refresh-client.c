@@ -28,8 +28,8 @@ int	cmd_refresh_client_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_refresh_client_entry = {
 	"refresh-client", "refresh",
-	"t:", 0, 0,
-	CMD_TARGET_CLIENT_USAGE,
+	"St:", 0, 0,
+	"[-S] " CMD_TARGET_CLIENT_USAGE,
 	0,
 	NULL,
 	NULL,
@@ -45,7 +45,11 @@ cmd_refresh_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
 		return (-1);
 
-	server_redraw_client(c);
+	if (args_has(args, 'S')) {
+		status_update_jobs(c);
+		server_status_client(c);
+	} else
+		server_redraw_client(c);
 
 	return (0);
 }

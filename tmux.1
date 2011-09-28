@@ -686,11 +686,17 @@ or
 are invalid if
 .Fl t
 is used.
-.It Ic refresh-client Op Fl t Ar target-client
+.It Xo Ic refresh-client
+.Op Fl S
+.Op Fl t Ar target-client
+.Xc
 .D1 (alias: Ic refresh )
 Refresh the current client if bound to a key, or a single client if one is given
 with
 .Fl t .
+If
+.Fl S
+is specified, only update the client's status bar.
 .It Xo Ic rename-session
 .Op Fl t Ar target-session
 .Ar new-name
