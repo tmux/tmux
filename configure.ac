@@ -414,11 +414,15 @@ case "$host_os" in
 		AC_DEFINE(BROKEN_CMSG_FIRSTHDR)
 		PLATFORM=darwin
 		;;
+	*dragonfly*)
+		AC_MSG_RESULT(dragonfly)
+		PLATFORM=dragonfly
+		;;
 	*linux*)
 		AC_MSG_RESULT(linux)
 		PLATFORM=linux
 		;;
-	*freebsd*|*dragonfly*)
+	*freebsd*)
 		AC_MSG_RESULT(freebsd)
 		PLATFORM=freebsd
 		;;
@@ -450,6 +454,7 @@ esac
 AC_SUBST(PLATFORM)
 AM_CONDITIONAL(IS_AIX, test "x$PLATFORM" = xaix)
 AM_CONDITIONAL(IS_DARWIN, test "x$PLATFORM" = xdarwin)
+AM_CONDITIONAL(IS_DRAGONFLY, test "x$PLATFORM" = xdragonfly)
 AM_CONDITIONAL(IS_LINUX, test "x$PLATFORM" = xlinux)
 AM_CONDITIONAL(IS_FREEBSD, test "x$PLATFORM" = xfreebsd)
 AM_CONDITIONAL(IS_NETBSD, test "x$PLATFORM" = xnetbsd)
