@@ -132,14 +132,12 @@
 - run-shell/if-shell should support status_replace stuff
 - wait-pane command or another way to make it synchronous/wait for command to
   finish
-- way to get command window was started with (part of format stuff?)
 - last-pane across sessions
 - attach should take a pane and select it as well as attaching
 - support for E3, screen-devel
   <1311003510-28900-1-git-send-email-mlichvar@redhat.com>
 - should default-path be a window option?
 - option to put status line at top (why?)
-- ignore $SHELL if it is not a full path or does not exist
 - panes should have names like windows
 - command-prompt doesn't work if made read-only. why?
 - option to quote format eg #{session_name:quoted}
