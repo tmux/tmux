@@ -14,7 +14,7 @@
 .\" IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING
 .\" OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 .\"
-.Dd $Mdocdate: September 28 2011 $
+.Dd $Mdocdate: October 2 2011 $
 .Dt TMUX 1
 .Os
 .Sh NAME
@@ -2607,7 +2607,11 @@ The following variables are available, where appropriate:
 .It Li "pane_dead" Ta "1 if pane is dead"
 .It Li "pane_height" Ta "Height of pane"
 .It Li "pane_id" Ta "Unique pane id"
+.It Li "pane_pid" Ta "PID of first process in pane"
+.It Li "pane_start_command" Ta "Command pane started with"
+.It Li "pane_start_path" Ta "Path pane started with"
 .It Li "pane_title" Ta "Title of pane"
+.It Li "pane_tty" Ta "Pseudo terminal of pane"
 .It Li "pane_width" Ta "Width of pane"
 .It Li "session_attached" Ta "1 if session attached"
 .It Li "session_created" Ta "Integer time session created"
