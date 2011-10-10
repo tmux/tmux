@@ -3,33 +3,33 @@
     "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xml:lang="en" lang="en" xmlns="http://www.w3.org/1999/xhtml">
     <head>
-        <title>tmux</title>
-        <link rel="stylesheet" type="text/css" media="screen" href="main.css"/>
+	<title>tmux</title>
+	<link rel="stylesheet" type="text/css" media="screen" href="main.css"/>
     </head>
     <body>
-        <div id="body-wrapper">
-            <div id="left-menu-container">
-                <p id="upper-left-title">tmux</p>
-                <ul id="left-menu">
-                <li><a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">Download</a></li>
-                <li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/NOTES">Release Notes</a></li>
-                <li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/CHANGES">Changelog</a></li>
-                <li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/FAQ">FAQ</a></li>
+	<div id="body-wrapper">
+	    <div id="left-menu-container">
+		<p id="upper-left-title">tmux</p>
+		<ul id="left-menu">
+		<li><a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">Download</a></li>
+		<li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/NOTES">Release Notes</a></li>
+		<li><a href="http://www.openbsd.org/cgi-bin/man.cgi?query=tmux&sektion=1">Manual Page</a></li>
+		<li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/FAQ">FAQ</a></li>
 		<li><a href="http://www.openbsd.org/faq/faq7.html#tmux">tmux in the OpenBSD FAQ</a></li>
 		<li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/examples/">Examples</a></li>
-                <li>&nbsp;</li>
-                <li class="menu-headings">Source Code</li>
+		<li>&nbsp;</li>
+		<li class="menu-headings">Source Code</li>
 		<li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/">SourceForge</a></li>
 		<li><a href="http://www.openbsd.org/cgi-bin/cvsweb/src/usr.bin/tmux/">OpenBSD</a></li>
-                <li>&nbsp;</li>
-                <li class="menu-headings">Support</li>
-                <li><a href="https://lists.sourceforge.net/lists/listinfo/tmux-users">tmux-users</a></li>
-                <li><a href="https://lists.sourceforge.net/lists/listinfo/tmux-cvs">tmux-cvs</a></li>
-                <li>IRC: #tmux on Freenode</li>
-                <li><a href="http://sf.net/projects/tmux">SourceForge Project Page</a></li>
-                </ul>
-            </div>
-            <div id="main-content-wrapper">
+		<li>&nbsp;</li>
+		<li class="menu-headings">Support</li>
+		<li><a href="https://lists.sourceforge.net/lists/listinfo/tmux-users">tmux-users</a></li>
+		<li><a href="https://lists.sourceforge.net/lists/listinfo/tmux-cvs">tmux-cvs</a></li>
+		<li>IRC: #tmux on Freenode</li>
+		<li><a href="http://sf.net/projects/tmux">SourceForge Project Page</a></li>
+		</ul>
+	    </div>
+	    <div id="main-content-wrapper">
 
 <p>tmux is a terminal multiplexer: it enables a number of terminals (or
 windows), each running a separate program, to be created, accessed, and
@@ -74,13 +74,12 @@ terminfo implementation (normally <a href="http://invisible-island.net/ncurses/"
 <a href="https://github.com/lmartinking/tmux-applets">tmux-applets</a> and
 <a href="https://github.com/remiprev/teamocil">teamocil</a>.</p>
 
-                <div id="screenshots">
-                    <a href="tmux3.png"><img src="small-tmux3.png" alt="Screenshot"/></a>
-                    <a href="tmux4.png"><img src="small-tmux4.png" alt="Screenshot"/></a>
-                    <a href="tmux5.png"><img src="small-tmux5.png" alt="Screenshot"/></a>
-                </div>
-            </div>
+		<div id="screenshots">
+		    <a href="tmux3.png"><img src="small-tmux3.png" alt="Screenshot"/></a>
+		    <a href="tmux4.png"><img src="small-tmux4.png" alt="Screenshot"/></a>
+		    <a href="tmux5.png"><img src="small-tmux5.png" alt="Screenshot"/></a>
+		</div>
+	    </div>
        </div>
     </body>
 </html>
-
