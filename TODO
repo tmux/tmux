@@ -147,6 +147,7 @@
 - fetch full command line on !Linux, and add option to strip prefixes
   such as "sh " "/bin/sh " etc etc
 - loadb and saveb should accept relative path (use client cwd)
+- new -d should read dimensions from client, also should we bump default 80x24
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!
