@@ -1126,6 +1126,17 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case 2:
 			screen_write_clearscreen(sctx);
 			break;
+		case 3:
+			switch (input_get(ictx, 1, 0, 0)) {
+			case 0:
+				/*
+				 * Linux console extension to clear history
+				 * (for example before locking the screen).
+				 */
+				screen_write_clearhistory(sctx);
+				break;
+			}
+			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
 			break;

@@ -206,6 +206,7 @@ enum tty_code_code {
 	TTYC_DIM,	/* enter_dim_mode, mh */
 	TTYC_DL,	/* parm_delete_line, DL */
 	TTYC_DL1,	/* delete_line, dl */
+	TTYC_E3,
 	TTYC_EL,	/* clr_eol, ce */
 	TTYC_EL1,	/* clr_bol, cb */
 	TTYC_ENACS,	/* ena_acs, eA */
@@ -1866,6 +1867,7 @@ void	 screen_write_kkeypadmode(struct screen_write_ctx *, int);
 void	 screen_write_clearendofscreen(struct screen_write_ctx *);
 void	 screen_write_clearstartofscreen(struct screen_write_ctx *);
 void	 screen_write_clearscreen(struct screen_write_ctx *);
+void	 screen_write_clearhistory(struct screen_write_ctx *);
 void	 screen_write_cell(struct screen_write_ctx *,
 	     const struct grid_cell *, const struct utf8_data *);
 void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);

@@ -237,6 +237,7 @@ server_lock_client(struct client *c)
 	tty_stop_tty(&c->tty);
 	tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_SMCUP));
 	tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_CLEAR));
+	tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_E3));
 
 	c->flags |= CLIENT_SUSPENDED;
 	server_write_client(c, MSG_LOCK, &lockdata, sizeof lockdata);

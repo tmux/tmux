@@ -985,6 +985,17 @@ screen_write_clearscreen(struct screen_write_ctx *ctx)
 	tty_write(tty_cmd_clearscreen, &ttyctx);
 }
 
+/* Clear entire history. */
+void
+screen_write_clearhistory(struct screen_write_ctx *ctx)
+{
+	struct screen	*s = ctx->s;
+	struct grid	*gd = s->grid;
+
+	grid_move_lines(gd, 0, gd->hsize, gd->sy);
+	gd->hsize = 0;
+}
+
 /* Write cell data. */
 void
 screen_write_cell(struct screen_write_ctx *ctx,
