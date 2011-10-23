@@ -27,7 +27,7 @@
 #include "tmux.h"
 
 /*
- * Loads a session paste buffer from a file.
+ * Loads a paste buffer from a file.
  */
 
 int	cmd_load_buffer_exec(struct cmd *, struct cmd_ctx *);
@@ -125,6 +125,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	if (paste_replace(&global_buffers, buffer, pdata, psize) != 0) {
 		ctx->error(ctx, "no buffer %d", buffer);
+		xfree(pdata);
 		return (-1);
 	}
 

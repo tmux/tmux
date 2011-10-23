@@ -25,7 +25,7 @@
 #include "tmux.h"
 
 /*
- * Saves a session paste buffer to a file.
+ * Saves a paste buffer to a file.
  */
 
 int	cmd_save_buffer_exec(struct cmd *, struct cmd_ctx *);

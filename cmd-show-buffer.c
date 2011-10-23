@@ -23,7 +23,7 @@
 #include "tmux.h"
 
 /*
- * Show a session paste buffer.
+ * Show a paste buffer.
  */
 
 int	cmd_show_buffer_exec(struct cmd *, struct cmd_ctx *);
