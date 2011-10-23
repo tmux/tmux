@@ -1360,6 +1360,7 @@ void		 format_add(
 const char	*format_find(struct format_tree *, const char *);
 char		*format_expand(struct format_tree *, const char *);
 void		 format_session(struct format_tree *, struct session *);
+void		 format_client(struct format_tree *, struct client *);
 void		 format_winlink(
 		     struct format_tree *, struct session *, struct winlink *);
 void		 format_window_pane(struct format_tree *, struct window_pane *);

@@ -31,8 +31,8 @@ int	cmd_list_clients_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_clients_entry = {
 	"list-clients", "lsc",
-	"t:", 0, 0,
-	CMD_TARGET_SESSION_USAGE,
+	"F:t:", 0, 0,
+	"[-F format] " CMD_TARGET_SESSION_USAGE,
 	CMD_READONLY,
 	NULL,
 	NULL,
@@ -43,11 +43,13 @@ const struct cmd_entry cmd_list_clients_entry = {
 int
 cmd_list_clients_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	struct args 	*args = self->args;
-	struct client	*c;
-	struct session  *s;
-	u_int		 i;
-	const char	*s_utf8;
+	struct args 		*args = self->args;
+	struct client		*c;
+	struct session		*s;
+	struct format_tree	*ft;
+	const char		*template;
+	u_int			 i;
+	char			*line;
 
 	if (args_has(args, 't')) {
 		s = cmd_find_session(ctx, args_get(args, 't'), 0);
@@ -56,22 +58,32 @@ cmd_list_clients_exec(struct cmd *self, struct cmd_ctx *ctx)
 	} else
 		s = NULL;
 
+	template = args_get(args, 'F');
+	if (template == NULL) {
+		template = "#{client_tty}: #{session_name} "
+		    "[#{client_width}x#{client_height} #{client_termname}]"
+		    "#{?client_utf8, (utf8),}"
+		    "#{?client_readonly, (ro),}";
+	}
+
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (c == NULL || c->session == NULL)
 			continue;
 
-		if (c->tty.flags & TTY_UTF8)
-			s_utf8 = " (utf8)";
-		else
-			s_utf8 = "";
-
 		if (s != NULL && s != c->session)
 			continue;
-		ctx->print(ctx, "%s: %s [%ux%u %s]%s%s", c->tty.path,
-		    c->session->name, c->tty.sx, c->tty.sy,
-		    c->tty.termname, s_utf8,
-		    c->flags & CLIENT_READONLY ? " (ro)" : "");
+
+		ft = format_create();
+		format_add(ft, "line", "%u", i);
+		format_session(ft, c->session);
+		format_client(ft, c);
+
+		line = format_expand(ft, template);
+		ctx->print(ctx, "%s", line);
+		xfree(line);
+
+		format_free(ft);
 	}
 
 	return (0);
