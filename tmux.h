@@ -1345,6 +1345,7 @@ void		 logfile(const char *);
 const char	*getshell(void);
 int		 checkshell(const char *);
 int		 areshell(const char *);
+const char*	 get_full_path(const char *, const char *);
 void		 setblocking(int, int);
 __dead void	 shell_exec(const char *, const char *);
 
