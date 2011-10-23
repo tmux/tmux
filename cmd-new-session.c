@@ -154,9 +154,17 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	/* Find new session size. */
-	if (detached) {
+	if (ctx->cmdclient != NULL) {
+		sx = ctx->cmdclient->tty.sx;
+		sy = ctx->cmdclient->tty.sy;
+	} else if (ctx->curclient != NULL) {
+		sx = ctx->curclient->tty.sx;
+		sy = ctx->curclient->tty.sy;
+	} else {
 		sx = 80;
 		sy = 24;
+	}
+	if (detached) {
 		if (args_has(args, 'x')) {
 			sx = strtonum(
 			    args_get(args, 'x'), 1, USHRT_MAX, &errstr);
@@ -173,12 +181,6 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 				return (-1);
 			}
 		}
-	} else if (ctx->cmdclient != NULL) {
-		sx = ctx->cmdclient->tty.sx;
-		sy = ctx->cmdclient->tty.sy;
-	} else {
-		sx = ctx->curclient->tty.sx;
-		sy = ctx->curclient->tty.sy;
 	}
 	if (sy > 0 && options_get_number(&global_s_options, "status"))
 		sy--;
