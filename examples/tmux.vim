@@ -77,7 +77,7 @@ syn keyword tmuxOptsSetw window-status-alert-bg window-status-alert-fg
 
 syn keyword tmuxTodo FIXME NOTE TODO XXX contained
 
-syn match tmuxKey		/\(C-\|M-\|\^\)\p/	display
+syn match tmuxKey		/\(C-\|M-\|\^\)\+\S\+/	display
 syn match tmuxNumber 		/\d\+/			display
 syn match tmuxOptions		/\s-\a\+/		display
 syn match tmuxVariable		/\w\+=/			display
