@@ -606,9 +606,16 @@ server and clients and destroy all sessions.
 .It Ic kill-session Op Fl t Ar target-session
 Destroy the given session, closing any windows linked to it and no other
 sessions, and detaching all clients attached to it.
-.It Ic list-clients Op Fl t Ar target-session
+.It Xo Ic list-clients
+.Op Fl F Ar format
+.Op Fl t Ar target-session
+.Xc
 .D1 (alias: Ic lsc )
 List all clients attached to the server.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS section.
 If
 .Ar target-session
 is specified, list only clients connected to that session.
@@ -2560,6 +2567,7 @@ is used.
 .El
 .Sh FORMATS
 The
+.Ic list-clients ,
 .Ic list-sessions ,
 .Ic list-windows
 and
@@ -2597,6 +2605,17 @@ if it is unattached.
 The following variables are available, where appropriate:
 .Bl -column "session_created_string" "Replaced with" -offset indent
 .It Sy "Variable name" Ta Sy "Replaced with"
+.It Li "client_activity" Ta "Integer time client last had activity"
+.It Li "client_activity_string" Ta "String time client last had activity"
+.It Li "client_created" Ta "Integer time client created"
+.It Li "client_created_string" Ta "String time client created"
+.It Li "client_cwd" Ta "Working directory of client"
+.It Li "client_height" Ta "Height of client"
+.It Li "client_readonly" Ta "1 if client is readonly"
+.It Li "client_termname" Ta "Terminal name of client"
+.It Li "client_tty" Ta "Pseudo terminal of client"
+.It Li "client_utf8" Ta "1 if client supports utf8"
+.It Li "client_width" Ta "Width of client"
 .It Li "host" Ta "Hostname of local host"
 .It Li "line" Ta "Line number in the list"
 .It Li "pane_active" Ta "1 if active pane"

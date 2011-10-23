@@ -295,6 +295,42 @@ format_session(struct format_tree *ft, struct session *s)
 		format_add(ft, "session_attached", "%d", 1);
 }
 
+/* Set default format keys for a client. */
+void
+format_client(struct format_tree *ft, struct client *c)
+{
+	char	*tim;
+	time_t	 t;
+
+	format_add(ft, "client_cwd", "%s", c->cwd);
+	format_add(ft, "client_height", "%u", c->tty.sx);
+	format_add(ft, "client_width", "%u", c->tty.sy);
+	format_add(ft, "client_tty", "%s", c->tty.path);
+	format_add(ft, "client_termname", "%s", c->tty.termname);
+
+	t = c->creation_time.tv_sec;
+	format_add(ft, "client_created", "%ld", (long) t);
+	tim = ctime(&t);
+	*strchr(tim, '\n') = '\0';
+	format_add(ft, "client_created_string", "%s", tim);
+
+	t = c->activity_time.tv_sec;
+	format_add(ft, "client_activity", "%ld", (long) t);
+	tim = ctime(&t);
+	*strchr(tim, '\n') = '\0';
+	format_add(ft, "client_activity_string", "%s", tim);
+
+	if (c->tty.flags & TTY_UTF8)
+		format_add(ft, "client_utf8", "%d", 1);
+	else
+		format_add(ft, "client_utf8", "%d", 0);
+
+	if (c->flags & CLIENT_READONLY)
+		format_add(ft, "client_readonly", "%d", 1);
+	else
+		format_add(ft, "client_readonly", "%d", 0);
+}
+
 /* Set default format keys for a winlink. */
 void
 format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
