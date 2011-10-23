@@ -100,7 +100,6 @@
   and a buffer) info() when changing to same window
 - way to add dest for break-pane; maybe some easier way to unbreak-pane
 - case insensitive searching
-- pane-index option like base-index
 - option to move status line to top
 - configurable borders and empty space filler for when panes < window?
 - mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets the
@@ -113,10 +112,6 @@
   in commands without quotes
 - a command to choose from a generic list, so you can do eg
   choose-list -l Abc,Moo,Blah "run-shell 'sh /my/choose/script %%'"
-- else part for if-shell
-- add general internal format for lists (key=value) and a way to output them in
-  different representations, use for list-windows, etc etc. see message id
-  20110221205346.GA1580@yelena.nicm.ath.cx
 - numeric prefix in copy mode should be paste buffer for C-w
 - named buffers and allow gaps in the stack
 - npage/ppage/dc/ic should have aliases for more typical names
@@ -128,14 +123,12 @@
 - monitor-activity is broken in several ways with multiple clients
 - monitor-activity should be more powerful (eg set a region)
 - maybe a way to put pane names instead of window names in status line
-- Support for borderless panes
+- support for borderless panes
 - run-shell/if-shell should support status_replace stuff
 - wait-pane command or another way to make it synchronous/wait for command to
   finish
 - last-pane across sessions
 - attach should take a pane and select it as well as attaching
-- support for E3, screen-devel
-  <1311003510-28900-1-git-send-email-mlichvar@redhat.com>
 - should default-path be a window option?
 - option to put status line at top (why?)
 - panes should have names like windows
