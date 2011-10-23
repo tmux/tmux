@@ -127,6 +127,22 @@ areshell(const char *shell)
 	return (0);
 }
 
+const char*
+get_full_path(const char *wd, const char *path)
+{
+	static char	newpath[MAXPATHLEN];
+	char		oldpath[MAXPATHLEN];
+
+	if (getcwd(oldpath, sizeof oldpath) == NULL)
+		return (NULL);
+	if (chdir(wd) != 0)
+		return (NULL);
+	if (realpath(path, newpath) != 0)
+		return (NULL);
+	chdir(oldpath);
+	return (newpath);
+}
+
 void
 parseenvironment(void)
 {
