@@ -105,11 +105,22 @@ AC_MSG_RESULT($found_glibc)
 AC_SEARCH_LIBS(clock_gettime, rt)
 
 # Look for libevent.
-AC_SEARCH_LIBS(
-	event_init,
-	[event event-1.4 event2],
-	found_libevent=yes,
-	found_libevent=no
+PKG_CHECK_MODULES(
+	LIBEVENT,
+	libevent,
+	[
+		CPPFLAGS="$LIBEVENT_CFLAGS $CPPFLAGS"
+		LIBS="$LIBEVENT_LIBS $LIBS"
+		found_libevent=yes
+	],
+	[
+		AC_SEARCH_LIBS(
+			event_init,
+			[event event-1.4 event2],
+			found_libevent=yes,
+			found_libevent=no
+		)
+	]
 )
 if test "x$found_libevent" = xno; then
 	AC_MSG_ERROR("libevent not found")
