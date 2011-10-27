@@ -39,7 +39,7 @@ void	cmd_pipe_pane_error_callback(struct bufferevent *, short, void *);
 const struct cmd_entry cmd_pipe_pane_entry = {
 	"pipe-pane", "pipep",
 	"ot:", 0, 1,
-	CMD_TARGET_PANE_USAGE "[-o] [command]",
+	"[-o] " CMD_TARGET_PANE_USAGE " [command]",
 	0,
 	NULL,
 	NULL,
