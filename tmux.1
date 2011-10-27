@@ -2971,13 +2971,15 @@ Miscellaneous commands are as follows:
 .Bl -tag -width Ds
 .It Ic clock-mode Op Fl t Ar target-pane
 Display a large clock.
-.It Ic if-shell Ar shell-command command
+.It Ic if-shell Ar shell-command command Op Ar command
 .D1 (alias: Ic if )
-Execute
+Execute the first
 .Ar command
 if
 .Ar shell-command
-returns success.
+returns success or the second
+.Ar command
+otherwise.
 .It Ic lock-server
 .D1 (alias: Ic lock )
 Lock each client individually by running the command specified by the
