@@ -52,7 +52,7 @@ void	window_copy_goto_line(struct window_pane *, const char *);
 void	window_copy_update_cursor(struct window_pane *, u_int, u_int);
 void	window_copy_start_selection(struct window_pane *);
 int	window_copy_update_selection(struct window_pane *);
-void	window_copy_copy_selection(struct window_pane *);
+void	window_copy_copy_selection(struct window_pane *, int);
 void	window_copy_clear_selection(struct window_pane *);
 void	window_copy_copy_line(
 	    struct window_pane *, char **, size_t *, u_int, u_int, u_int);
@@ -134,7 +134,7 @@ struct window_copy_mode_data {
 	const char     *inputprompt;
 	char   	       *inputstr;
 
-	u_int		numprefix;
+	int		numprefix;
 
 	enum window_copy_input_type searchtype;
 	char	       *searchstr;
@@ -165,7 +165,7 @@ window_copy_init(struct window_pane *wp)
 	data->inputtype = WINDOW_COPY_OFF;
 	data->inputprompt = NULL;
 	data->inputstr = xstrdup("");
-	data->numprefix = 0;
+	data->numprefix = -1;
 
 	data->searchtype = WINDOW_COPY_OFF;
 	data->searchstr = NULL;
@@ -358,12 +358,12 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 	const char			*word_separators;
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	u_int				 n, np;
-	int				 keys;
+	u_int				 n;
+	int				 np, keys;
 	enum mode_key_cmd		 cmd;
 
 	np = data->numprefix;
-	if (np == 0)
+	if (np <= 0)
 		np = 1;
 
 	if (data->inputtype == WINDOW_COPY_JUMPFORWARD ||
@@ -513,7 +513,7 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 		if (sess != NULL &&
 		    (cmd == MODEKEYCOPY_COPYLINE ||
 		    cmd == MODEKEYCOPY_COPYENDOFLINE)) {
-			window_copy_copy_selection(wp);
+			window_copy_copy_selection(wp, -1);
 			window_pane_reset_mode(wp);
 			return;
 		}
@@ -524,7 +524,7 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 		break;
 	case MODEKEYCOPY_COPYSELECTION:
 		if (sess != NULL) {
-			window_copy_copy_selection(wp);
+			window_copy_copy_selection(wp, data->numprefix);
 			window_pane_reset_mode(wp);
 			return;
 		}
@@ -664,7 +664,7 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 		break;
 	}
 
-	data->numprefix = 0;
+	data->numprefix = -1;
 	return;
 
 input_on:
@@ -696,11 +696,11 @@ window_copy_key_input(struct window_pane *wp, int key)
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	size_t				 inputlen;
-	u_int				 np;
+	int				 np;
 
 	switch (mode_key_lookup(&data->mdata, key)) {
 	case MODEKEYEDIT_CANCEL:
-		data->numprefix = 0;
+		data->numprefix = -1;
 		return (-1);
 	case MODEKEYEDIT_BACKSPACE:
 		inputlen = strlen(data->inputstr);
@@ -712,7 +712,7 @@ window_copy_key_input(struct window_pane *wp, int key)
 		break;
 	case MODEKEYEDIT_ENTER:
 		np = data->numprefix;
-		if (np == 0)
+		if (np <= 0)
 			np = 1;
 
 		switch (data->inputtype) {
@@ -738,7 +738,7 @@ window_copy_key_input(struct window_pane *wp, int key)
 			*data->inputstr = '\0';
 			break;
 		}
-		data->numprefix = 0;
+		data->numprefix = -1;
 		return (1);
 	case MODEKEY_OTHER:
 		if (key < 32 || key > 126)
@@ -767,7 +767,7 @@ window_copy_key_numeric_prefix(struct window_pane *wp, int key)
 	if (key < '0' || key > '9')
 		return 1;
 
-	if (data->numprefix >= 100)	/* no more than three digits */
+	if (data->numprefix >= 100) 	/* no more than three digits */
 		return 0;
 	data->numprefix = data->numprefix * 10 + key - '0';
 
@@ -834,7 +834,7 @@ reset_mode:
 	s->mode &= ~MODE_MOUSE_BUTTON;
 	s->mode |= MODE_MOUSE_STANDARD;
 	if (sess != NULL) {
-		window_copy_copy_selection(wp);
+		window_copy_copy_selection(wp, -1);
 		window_pane_reset_mode(wp);
 	}
 }
@@ -1235,7 +1235,7 @@ window_copy_update_selection(struct window_pane *wp)
 }
 
 void
-window_copy_copy_selection(struct window_pane *wp)
+window_copy_copy_selection(struct window_pane *wp, int idx)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -1315,7 +1315,7 @@ window_copy_copy_selection(struct window_pane *wp)
 	} else {
 		if (keys == MODEKEY_EMACS)
 			lastex = ex;
-		else	
+		else
 			lastex = ex + 1;
 		restex = xx;
 		firstsx = sx;
@@ -1347,8 +1347,11 @@ window_copy_copy_selection(struct window_pane *wp)
 		screen_write_setselection(&wp->ictx.ctx, buf, off);
 
 	/* Add the buffer to the stack. */
-	limit = options_get_number(&global_options, "buffer-limit");
-	paste_add(&global_buffers, buf, off, limit);
+	if (idx == -1) {
+		limit = options_get_number(&global_options, "buffer-limit");
+		paste_add(&global_buffers, buf, off, limit);
+	} else
+		paste_replace(&global_buffers, idx, buf, off);
 }
 
 void
