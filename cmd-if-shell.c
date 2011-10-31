@@ -25,10 +25,9 @@
 #include "tmux.h"
 
 /*
- * Executes a tmux command if a shell command returns true.
+ * Executes a tmux command if a shell command returns true or false.
  */
 
-int	cmd_if_shell_check(struct args *);
 int	cmd_if_shell_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_if_shell_callback(struct job *);
@@ -36,11 +35,11 @@ void	cmd_if_shell_free(void *);
 
 const struct cmd_entry cmd_if_shell_entry = {
 	"if-shell", "if",
-	"", 2, 4,
-	"shell-command command [else command]",
+	"", 2, 3,
+	"shell-command command [command]",
 	0,
 	NULL,
-	cmd_if_shell_check,
+	NULL,
 	cmd_if_shell_exec
 };
 
@@ -51,16 +50,6 @@ struct cmd_if_shell_data {
 };
 
 int
-cmd_if_shell_check(struct args *args)
-{
-	if (args->argc == 3)
-		return (-1);
-	if (args->argc == 4 && strcmp(args->argv[2], "else") != 0)
-		return (-1);
-	return (0);
-}
-
-int
 cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
@@ -69,8 +58,8 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	cdata = xmalloc(sizeof *cdata);
 	cdata->cmd_if = xstrdup(args->argv[1]);
-	if (args->argc == 4)
-		cdata->cmd_else = xstrdup(args->argv[3]);
+	if (args->argc == 3)
+		cdata->cmd_else = xstrdup(args->argv[2]);
 	else
 		cdata->cmd_else = NULL;
 	memcpy(&cdata->ctx, ctx, sizeof cdata->ctx);
@@ -91,8 +80,7 @@ cmd_if_shell_callback(struct job *job)
 	struct cmd_if_shell_data	*cdata = job->data;
 	struct cmd_ctx			*ctx = &cdata->ctx;
 	struct cmd_list			*cmdlist;
-	char				*cmd;
-	char				*cause;
+	char				*cause, *cmd;
 
 	if (!WIFEXITED(job->status) || WEXITSTATUS(job->status) != 0) {
 		cmd = cdata->cmd_else;
