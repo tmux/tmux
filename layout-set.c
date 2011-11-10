@@ -260,8 +260,8 @@ layout_set_main_h(struct window *w)
 	 * If an other pane height was specified, honour it so long as it
 	 * doesn't shrink the main height to less than the main-pane-height
 	 */
-	if (otherheight > 1 && w->sx - otherheight > mainheight)
-		mainheight = w->sx - otherheight;
+	if (otherheight > 1 && w->sy - otherheight > mainheight)
+		mainheight = w->sy - otherheight;
 	if (mainheight < PANE_MINIMUM + 1)
 		mainheight = PANE_MINIMUM + 1;
 
