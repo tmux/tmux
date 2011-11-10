@@ -47,11 +47,11 @@ syn keyword tmuxCmds capture-pane joinp join-pane choose-buffer
 syn keyword tmuxOptsSet prefix status status-fg status-bg bell-action
 syn keyword tmuxOptsSet default-command history-limit status-left status-right
 syn keyword tmuxOptsSet status-interval set-titles display-time buffer-limit
-syn keyword tmuxOptsSet status-left-length status-right-length message-fg
-syn keyword tmuxOptsSet message-bg lock-after-time default-path repeat-time
-syn keyword tmuxOptsSet message-attr status-attr status-keys set-remain-on-exit
-syn keyword tmuxOptsSet status-utf8 default-terminal visual-activity
-syn keyword tmuxOptsSet visual-bell visual-content status-justify
+syn keyword tmuxOptsSet status-left-length status-right-length
+syn keyword tmuxOptsSet message-[command-]bg lock-after-time default-path
+syn keyword tmuxOptsSet message-[command-]attr status-attr set-remain-on-exit
+syn keyword tmuxOptsSet status-utf8 default-terminal visual-activity repeat-time
+syn keyword tmuxOptsSet visual-bell visual-content status-justify status-keys
 syn keyword tmuxOptsSet terminal-overrides status-left-attr status-left-bg
 syn keyword tmuxOptsSet status-left-fg status-right-attr status-right-bg
 syn keyword tmuxOptsSet status-right-fg update-environment base-index
@@ -59,7 +59,7 @@ syn keyword tmuxOptsSet display-panes-colour display-panes-time default-shell
 syn keyword tmuxOptsSet set-titles-string lock-command lock-server
 syn keyword tmuxOptsSet mouse-select-pane message-limit quiet escape-time
 syn keyword tmuxOptsSet pane-active-border-bg pane-active-border-fg
-syn keyword tmuxOptsSet pane-border-bg pane-border-fg
+syn keyword tmuxOptsSet pane-border-bg pane-border-fg message-[command-]fg
 syn keyword tmuxOptsSet display-panes-active-colour alternate-screen
 syn keyword tmuxOptsSet detach-on-destroy
 
