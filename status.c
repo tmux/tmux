@@ -919,9 +919,16 @@ status_prompt_redraw(struct client *c)
 	off = 0;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	colour_set_fg(&gc, options_get_number(&s->options, "message-fg"));
-	colour_set_bg(&gc, options_get_number(&s->options, "message-bg"));
-	gc.attr |= options_get_number(&s->options, "message-attr");
+	/* Change colours for command mode. */
+	if (c->prompt_mdata.mode == 1) {
+		colour_set_fg(&gc, options_get_number(&s->options, "message-command-fg"));
+		colour_set_bg(&gc, options_get_number(&s->options, "message-command-bg"));
+		gc.attr |= options_get_number(&s->options, "message-command-attr");
+	} else {
+		colour_set_fg(&gc, options_get_number(&s->options, "message-fg"));
+		colour_set_bg(&gc, options_get_number(&s->options, "message-bg"));
+		gc.attr |= options_get_number(&s->options, "message-attr");
+	}
 
 	screen_write_start(&ctx, NULL, &c->status);
 
@@ -977,7 +984,12 @@ status_prompt_key(struct client *c, int key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
+	case MODEKEYEDIT_SWITCHMODE:
+		c->flags |= CLIENT_STATUS;
+		break;
 	case MODEKEYEDIT_SWITCHMODEAPPEND:
+		c->flags |= CLIENT_STATUS;
+		/* FALLTHROUGH */
 	case MODEKEYEDIT_CURSORRIGHT:
 		if (c->prompt_index < size) {
 			c->prompt_index++;
