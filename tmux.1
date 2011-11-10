@@ -868,6 +868,9 @@ in emacs mode, and
 .Ql 10w
 in vi.
 .Pp
+When copying the selection, the repeat count indicates the buffer index to
+replace, if used.
+.Pp
 Mode key bindings are defined in a set of named tables:
 .Em vi-edit
 and
@@ -1552,10 +1555,8 @@ to
 .Em Home ,
 .Em IC
 (Insert),
-.Em NPage
-(Page Up),
-.Em PPage
-(Page Down),
+.Em NPage/PageDown/PgDn ,
+.Em PPage/PageUp/PgUp ,
 .Em Space ,
 and
 .Em Tab .
