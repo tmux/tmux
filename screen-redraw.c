@@ -264,7 +264,7 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 {
 	struct tty		*tty = &c->tty;
 	struct session		*s = c->session;
-	struct options	        *oo = &s->options;
+	struct options		*oo = &s->options;
 	struct window		*w = wp->window;
 	struct grid_cell	 gc;
 	u_int			 idx, px, py, i, j, xoff, yoff;
@@ -272,7 +272,8 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 	char			 buf[16], *ptr;
 	size_t			 len;
 
-	idx = window_pane_index(w, wp);
+	if (window_pane_index(wp, &idx) != 0)
+		fatalx("index not found");
 	len = xsnprintf(buf, sizeof buf, "%u", idx);
 
 	if (wp->sx < len)

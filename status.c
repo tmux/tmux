@@ -372,6 +372,7 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 	char	ch, tmp[256], *ptr, *endptr, *freeptr;
 	size_t	ptrlen;
 	long	limit;
+	u_int	idx;
 
 	if (s == NULL)
 		s = c->session;
@@ -422,8 +423,10 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 		ptr = tmp;
 		goto do_replace;
 	case 'P':
+		if (window_pane_index(wp, &idx) != 0)
+			fatalx("index not found");
 		xsnprintf(
-		    tmp, sizeof tmp, "%u", window_pane_index(wl->window, wp));
+		    tmp, sizeof tmp, "%u", idx);
 		ptr = tmp;
 		goto do_replace;
 	case 'S':
