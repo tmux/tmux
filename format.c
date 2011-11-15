@@ -361,6 +361,7 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	struct grid_line	*gl;
 	unsigned long long	 size;
 	u_int			 i;
+	u_int			 idx;
 
 	size = 0;
 	for (i = 0; i < gd->hsize; i++) {
@@ -370,9 +371,13 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	}
 	size += gd->hsize * sizeof *gd->linedata;
 
+	if (window_pane_index(wp, &idx) != 0)
+		fatalx("index not found");
+
 	format_add(ft, "pane_width", "%u", wp->sx);
 	format_add(ft, "pane_height", "%u", wp->sy);
 	format_add(ft, "pane_title", "%s", wp->base.title);
+	format_add(ft, "pane_index", "%u", idx);
 	format_add(ft, "history_size", "%u", gd->hsize);
 	format_add(ft, "history_limit", "%u", gd->hlimit);
 	format_add(ft, "history_bytes", "%llu", size);
