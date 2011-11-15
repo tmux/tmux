@@ -141,6 +141,7 @@
   such as "sh " "/bin/sh " etc etc
 - synchronize-windows option
 - possibly support rxvt-unicode extended mouse input (1015)
+- append to buffer in copy mode
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!
