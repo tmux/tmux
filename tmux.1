@@ -837,7 +837,7 @@ and
 characters as word delimiters by default, but this can be adjusted by
 setting the
 .Em word-separators
-window option.
+session option.
 Next word moves to the start of the next word, next word end to the end of the
 next word and previous word to the start of the previous word.
 The three next and previous space keys work similarly but use a space alone as
@@ -2288,6 +2288,12 @@ window option is enabled.
 If
 .Ic monitor-silence
 is enabled, prints a message after the interval has expired on a given window.
+.It Ic word-separators Ar string
+Sets the session's conception of what characters are considered word
+separators, for the purposes of the next and previous word commands in
+copy mode.
+The default is
+.Ql \ -_@ .
 .El
 .It Xo Ic set-window-option
 .Op Fl agu
@@ -2527,13 +2533,6 @@ See the
 option for details of special character sequences available.
 The default is
 .Ql #I:#W#F .
-.Pp
-.It Ic word-separators Ar string
-Sets the window's conception of what characters are considered word
-separators, for the purposes of the next and previous word commands in
-copy mode.
-The default is
-.Ql \ -_@ .
 .Pp
 .It Xo Ic xterm-keys
 .Op Ic on | off

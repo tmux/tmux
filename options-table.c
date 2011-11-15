@@ -421,6 +421,11 @@ const struct options_table_entry session_options_table[] = {
 	  .default_num = 0
 	},
 
+	{ .name = "word-separators",
+	  .type = OPTIONS_TABLE_STRING,
+	  .default_str = " -_@"
+	},
+
 	{ .name = NULL }
 };
 
@@ -613,11 +618,6 @@ const struct options_table_entry window_options_table[] = {
 	{ .name = "window-status-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .default_str = "#I:#W#F"
-	},
-
-	{ .name = "word-separators",
-	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = " -_@"
 	},
 
 	{ .name = "xterm-keys",
