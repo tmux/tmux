@@ -102,21 +102,21 @@ cmd_list_panes_window(struct cmd *self,
 	if (template == NULL) {
 		switch (type) {
 		case 0:
-			template = "#{line}: "
+			template = "#{pane_index}: "
 			    "[#{pane_width}x#{pane_height}] [history "
 			    "#{history_size}/#{history_limit}, "
 			    "#{history_bytes} bytes] #{pane_id}"
 			    "#{?pane_active, (active),}#{?pane_dead, (dead),}";
 			break;
 		case 1:
-			template = "#{window_index}.#{line}: "
+			template = "#{window_index}.#{pane_index}: "
 			    "[#{pane_width}x#{pane_height}] [history "
 			    "#{history_size}/#{history_limit}, "
 			    "#{history_bytes} bytes] #{pane_id}"
 			    "#{?pane_active, (active),}#{?pane_dead, (dead),}";
 			break;
 		case 2:
-			template = "#{session_name}:#{window_index}.#{line}: "
+			template = "#{session_name}:#{window_index}.#{pane_index}: "
 			    "[#{pane_width}x#{pane_height}] [history "
 			    "#{history_size}/#{history_limit}, "
 			    "#{history_bytes} bytes] #{pane_id}"
