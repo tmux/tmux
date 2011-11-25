@@ -973,9 +973,12 @@ status_prompt_redraw(struct client *c)
 void
 status_prompt_key(struct client *c, int key)
 {
+	struct session		*sess = c->session;
+	struct options		*oo = &sess->options;
 	struct paste_buffer	*pb;
-	char   			*s, *first, *last, word[64], swapc;
-	const char              *histstr;
+	char			*s, *first, *last, word[64], swapc;
+	const char		*histstr;
+	const char		*wsep;
 	u_char			 ch;
 	size_t			 size, n, off, idx;
 
@@ -1092,11 +1095,103 @@ status_prompt_key(struct client *c, int key)
 			c->flags |= CLIENT_STATUS;
 		}
 		break;
+	case MODEKEYEDIT_DELETEWORD:
+		wsep = options_get_string(oo, "word-separators");
+		idx = c->prompt_index;
+
+		/* Find a non-separator. */
+		while (idx != 0) {
+			idx--;
+			if (!strchr(wsep, c->prompt_buffer[idx]))
+				break;
+		}
+
+		/* Find the separator at the beginning of the word. */
+		while (idx != 0) {
+			idx--;
+			if (strchr(wsep, c->prompt_buffer[idx])) {
+				/* Go back to the word. */
+				idx++;
+				break;
+			}
+		}
+
+		memmove(c->prompt_buffer + idx,
+		    c->prompt_buffer + c->prompt_index,
+		    size + 1 - c->prompt_index);
+		memset(c->prompt_buffer + size - (c->prompt_index - idx),
+		    '\0', c->prompt_index - idx);
+		c->prompt_index = idx;
+		c->flags |= CLIENT_STATUS;
+		break;
+	case MODEKEYEDIT_NEXTWORD:
+		wsep = options_get_string(oo, "word-separators");
+
+		/* Find a separator. */
+		while (c->prompt_index != size) {
+			c->prompt_index++;
+			if (strchr(wsep, c->prompt_buffer[c->prompt_index]))
+				break;
+		}
+
+		/* Find the word right after the separation. */
+		while (c->prompt_index != size) {
+			c->prompt_index++;
+			if (!strchr(wsep, c->prompt_buffer[c->prompt_index]))
+				break;
+		}
+
+		c->flags |= CLIENT_STATUS;
+		break;
+	case MODEKEYEDIT_NEXTWORDEND:
+		wsep = options_get_string(oo, "word-separators");
+
+		/* Find a word. */
+		while (c->prompt_index != size) {
+			c->prompt_index++;
+			if (!strchr(wsep, c->prompt_buffer[c->prompt_index]))
+				break;
+		}
+
+		/* Find the separator at the end of the word. */
+		while (c->prompt_index != size) {
+			c->prompt_index++;
+			if (strchr(wsep, c->prompt_buffer[c->prompt_index])) {
+				/* Go back to the word. */
+				c->prompt_index--;
+				break;
+			}
+		}
+
+		c->flags |= CLIENT_STATUS;
+		break;
+	case MODEKEYEDIT_PREVIOUSWORD:
+		wsep = options_get_string(oo, "word-separators");
+
+		/* Find a non-separator. */
+		while (c->prompt_index != 0) {
+			c->prompt_index--;
+			if (!strchr(wsep, c->prompt_buffer[c->prompt_index]))
+				break;
+		}
+
+		/* Find the separator at the beginning of the word. */
+		while (c->prompt_index != 0) {
+			c->prompt_index--;
+			if (strchr(wsep, c->prompt_buffer[c->prompt_index])) {
+				/* Go back to the word. */
+				c->prompt_index++;
+				break;
+			}
+		}
+
+		c->flags |= CLIENT_STATUS;
+		break;
 	case MODEKEYEDIT_HISTORYUP:
 		histstr = status_prompt_up_history(&c->prompt_hindex);
 		if (histstr == NULL)
 			break;
-	       	xfree(c->prompt_buffer);
+		xfree(c->prompt_buffer);
 		c->prompt_buffer = xstrdup(histstr);
 		c->prompt_index = strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
