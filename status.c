@@ -1156,11 +1156,8 @@ status_prompt_key(struct client *c, int key)
 		/* Find the separator at the end of the word. */
 		while (c->prompt_index != size) {
 			c->prompt_index++;
-			if (strchr(wsep, c->prompt_buffer[c->prompt_index])) {
-				/* Go back to the word. */
-				c->prompt_index--;
+			if (strchr(wsep, c->prompt_buffer[c->prompt_index]))
 				break;
-			}
 		}
 
 		c->flags |= CLIENT_STATUS;
