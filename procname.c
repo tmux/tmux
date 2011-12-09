@@ -35,7 +35,8 @@
 	((p)->p_stat == SSTOP || (p)->p_stat == SZOMB || (p)->p_stat == SDEAD)
 
 struct kinfo_proc	*cmp_procs(struct kinfo_proc *, struct kinfo_proc *);
-char		*get_proc_name(int, char *);
+char			*get_proc_name(int, char *);
+char			*get_proc_cwd(pid_t);
 
 struct kinfo_proc *
 cmp_procs(struct kinfo_proc *p1, struct kinfo_proc *p2)
@@ -129,4 +130,16 @@ retry:
 error:
 	free(buf);
 	return (NULL);
+}
+
+char*
+get_proc_cwd(pid_t pid)
+{
+	int		name[] = { CTL_KERN, KERN_PROC_CWD, (int)pid };
+	static char	path[MAXPATHLEN];
+	size_t		pathlen = sizeof path;
+
+	if (sysctl(name, 3, path, &pathlen, NULL, 0) != 0)
+		return (NULL);
+	return (path);
 }

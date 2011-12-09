@@ -1841,10 +1841,10 @@ to create a login shell using the value of the
 .Ic default-shell
 option.
 .It Ic default-path Ar path
-Set the default working directory for processes created from keys, or
-interactively from the prompt.
-The default is empty, which means to use the working directory of the shell
-from which the server was started if it is available or the user's home if not.
+Set the default working directory for new panes.
+If empty (the default), the working directory is determined from the process
+running in the active pane, from the command line environment or from the
+working directory where the session was created.
 .It Ic default-shell Ar path
 Specify the default shell.
 This is used as the login shell for new windows when the

@@ -1213,3 +1213,28 @@ cmd_template_replace(char *template, const char *s, int idx)
 
 	return (buf);
 }
+
+/* Return the default path for a new pane. */
+char *
+cmd_get_default_path(struct cmd_ctx *ctx)
+{
+	char			*cwd;
+	struct session		*s;
+	struct window_pane	*wp;
+
+	if ((s = cmd_current_session(ctx, 0)) == NULL)
+		return (NULL);
+
+	cwd = options_get_string(&s->options, "default-path");
+	if (*cwd == '\0') {
+		if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
+			return (ctx->cmdclient->cwd);
+		if (ctx->curclient != NULL) {
+			wp = s->curw->window->active;
+			if ((cwd = get_proc_cwd(wp->pid)) != NULL)
+				return (cwd);
+		}
+		return (s->cwd);
+	}
+	return (cwd);
+}
