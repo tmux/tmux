@@ -37,6 +37,7 @@
 
 struct kinfo_proc	*cmp_procs(struct kinfo_proc *, struct kinfo_proc *);
 char			*osdep_get_name(int, char *);
+char			*osdep_get_cwd(pid_t);
 struct event_base	*osdep_event_init(void);
 
 struct kinfo_proc *
@@ -131,6 +132,18 @@ retry:
 error:
 	free(buf);
 	return (NULL);
+}
+
+char*
+osdep_get_cwd(pid_t pid)
+{
+	int		name[] = { CTL_KERN, KERN_PROC_CWD, (int)pid };
+	static char	path[MAXPATHLEN];
+	size_t		pathlen = sizeof path;
+
+	if (sysctl(name, 3, path, &pathlen, NULL, 0) != 0)
+		return (NULL);
+	return (path);
 }
 
 struct event_base *

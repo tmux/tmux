@@ -60,6 +60,23 @@ osdep_get_name(int fd, unused char *tty)
 	return (buf);
 }
 
+char *
+osdep_get_cwd(pid_t pid)
+{
+	static char	 target[MAXPATHLEN + 1];
+	char		*path;
+	ssize_t		 n;
+
+	xasprintf(&path, "/proc/%d/cwd", pid);
+	n = readlink(path, target, MAXPATHLEN);
+	xfree(path);
+	if (n > 0) {
+		target[n] = '\0';
+		return (target);
+	}
+	return (NULL);
+}
+
 struct event_base *
 osdep_event_init(void)
 {

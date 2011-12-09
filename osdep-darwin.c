@@ -25,6 +25,7 @@
 #include <unistd.h>
 
 char			*osdep_get_name(int, char *);
+char			*osdep_get_cwd(pid_t);
 struct event_base	*osdep_event_init(void);
 
 #define unused __attribute__ ((unused))
@@ -46,6 +47,12 @@ osdep_get_name(int fd, unused char *tty)
 		return (NULL);
 
 	return (strdup(kp.kp_proc.p_comm));
+}
+
+char *
+osdep_get_cwd(pid_t pid)
+{
+	return (NULL);
 }
 
 struct event_base *

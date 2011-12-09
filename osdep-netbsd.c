@@ -34,6 +34,7 @@
 
 struct kinfo_proc2	*cmp_procs(struct kinfo_proc2 *, struct kinfo_proc2 *);
 char			*osdep_get_name(int, char *);
+char			*osdep_get_cwd(pid_t);
 struct event_base	*osdep_event_init(void);
 
 struct kinfo_proc2 *
@@ -120,6 +121,12 @@ retry:
 
 error:
 	free(buf);
+	return (NULL);
+}
+
+char *
+osdep_get_cwd(pid_t pid)
+{
 	return (NULL);
 }
 

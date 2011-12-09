@@ -1558,6 +1558,7 @@ int		 cmd_find_index(
 struct winlink	*cmd_find_pane(struct cmd_ctx *,
 		     const char *, struct session **, struct window_pane **);
 char		*cmd_template_replace(char *, const char *, int);
+char		*cmd_get_default_path(struct cmd_ctx *ctx);
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
@@ -2075,6 +2076,7 @@ u_int	utf8_split2(u_int, u_char *);
 
 /* osdep-*.c */
 char		*osdep_get_name(int, char *);
+char		*osdep_get_cwd(pid_t);
 struct event_base *osdep_event_init(void);
 
 /* log.c */
