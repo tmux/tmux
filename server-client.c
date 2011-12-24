@@ -320,6 +320,8 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 		if (c->flags & CLIENT_READONLY)
 			return;
 		if (options_get_number(oo, "mouse-select-pane") &&
+		    (!(options_get_number(oo, "status") &&
+		       mouse->y + 1 == c->tty.sy)) &&
 		    ((!(mouse->b & MOUSE_DRAG) && mouse->b != MOUSE_UP) ||
 		    wp->mode != &window_copy_mode)) {
 			/*
