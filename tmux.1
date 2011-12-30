@@ -1849,6 +1849,11 @@ Set the default working directory for new panes.
 If empty (the default), the working directory is determined from the process
 running in the active pane, from the command line environment or from the
 working directory where the session was created.
+If
+.Ar path
+is "$HOME" or "~", the value of the
+.Ev HOME
+environment variable is used.
 .It Ic default-shell Ar path
 Specify the default shell.
 This is used as the login shell for new windows when the
