@@ -54,7 +54,6 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (cmd_list_keys_table(self, ctx));
 
 	width = 0;
-	*flags = '\0';
 
 	SPLAY_FOREACH(bd, key_bindings, &key_bindings) {
 		key = key_string_lookup_key(bd->key & ~KEYC_PREFIX);
@@ -78,6 +77,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (key == NULL)
 			continue;
 
+		*flags = '\0';
 		if (!(bd->key & KEYC_PREFIX)) {
 			if (bd->can_repeat)
 				xsnprintf(flags, sizeof flags, "-rn ");
