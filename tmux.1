@@ -2054,7 +2054,14 @@ command to destroy it.
 .It Xo Ic set-titles
 .Op Ic on | off
 .Xc
-Attempt to set the window title using the \ee]2;...\e007 xterm code if
+Attempt to set the client terminal title using the
+.Em tsl
+and
+.Em fsl
+.Xr terminfo 5
+entries if they exist.
+.Nm
+automatically sets these to the \ee]2;...\e007 sequence if
 the terminal appears to be an xterm.
 This option is off by default.
 Note that elinks
@@ -2120,7 +2127,7 @@ may contain any of the following special character sequences:
 .It Li "#I" Ta "Current window index"
 .It Li "#P" Ta "Current pane index"
 .It Li "#S" Ta "Session name"
-.It Li "#T" Ta "Current window title"
+.It Li "#T" Ta "Current pane title"
 .It Li "#W" Ta "Current window name"
 .It Li "##" Ta "A literal" Ql #
 .El
@@ -2139,13 +2146,9 @@ global environment set (see the
 .Sx ENVIRONMENT
 section).
 .Pp
-The window title (#T) is the title set by the program running within the window
-using the OSC title setting sequence, for example:
-.Bd -literal -offset indent
-$ printf '\e033]2;My Title\e033\e\e'
-.Ed
-.Pp
-When a window is first created, its title is the hostname.
+For details on how the names and titles can be set see the 
+.Sx "NAMES AND TITLES"
+section.
 .Pp
 #[attributes] allows a comma-separated list of attributes to be specified,
 these may be
@@ -2369,7 +2372,8 @@ is specified at creation with
 or
 .Ic new-session ,
 or later with
-.Ic rename-window .
+.Ic rename-window ,
+or with a terminal escape sequence.
 It may be switched off globally with:
 .Bd -literal -offset indent
 set-window-option -g automatic-rename off
@@ -2664,6 +2668,62 @@ The following variables are available, where appropriate:
 .It Li "window_name" Ta "Name of window"
 .It Li "window_width" Ta "Width of window"
 .El
+.Sh NAMES AND TITLES
+.Nm
+distinguishes between names and titles.
+Windows and sessions have names, which may be used to specify them in targets
+and are displayed in the status line and various lists: the name is the
+.Nm
+identifier for a window or session.
+Only panes have titles.
+A pane's title is typically set by the program running inside the pane and
+is not modified by
+.Nm .
+It is the same mechanism used to set for example the
+.Xr xterm 1
+window title in an
+.Xr X 7
+window manager.
+Windows themselves do not have titles - a window's title is the title of it's
+active pane.
+.Nm
+itself may set the title of the terminal in which the client is running, see
+the
+.Ic set-titles
+option.
+.Pp
+A session's name is set with the
+.Ic new-session
+and
+.Ic rename-session
+commands.
+A window's name is set with one of:
+.Bl -enum -width Ds
+.It
+A command argument (such as
+.Fl n
+for
+.Ic new-window
+or
+.Ic new-session ) .
+.It
+An escape sequence:
+.Bd -literal -offset indent
+$ printf '\e033kWINDOW_NAME\e033\e\e'
+.Ed
+.It
+Automatic renaming, which sets the name to the active command in the window's
+active pane.
+See the
+.Ic automatic-rename
+option.
+.El
+.Pp
+When a pane is first created, its title is the hostname.
+A pane's title can be set via the OSC title setting sequence, for example:
+.Bd -literal -offset indent
+$ printf '\e033]2;My Title\e033\e\e'
+.Ed
 .Sh ENVIRONMENT
 When the server is started,
 .Nm
@@ -2727,8 +2787,8 @@ terminal.
 By default, the status line is enabled (it may be disabled with the
 .Ic status
 session option) and contains, from left-to-right: the name of the current
-session in square brackets; the window list; the current window title in double
-quotes; and the time and date.
+session in square brackets; the window list; the title of the active pane
+in double quotes; and the time and date.
 .Pp
 The status line is made of three parts: configurable left and right sections
 (which may contain dynamic content such as the time or output from a shell
