@@ -1854,6 +1854,11 @@ If
 is "$HOME" or "~", the value of the
 .Ev HOME
 environment variable is used.
+If
+.Ar path
+is ".", the working directory when
+.Nm
+was started is used.
 .It Ic default-shell Ar path
 Specify the default shell.
 This is used as the login shell for new windows when the
