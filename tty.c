@@ -969,7 +969,10 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 			 * move as far left as possible and redraw the last
 			 * cell to move into the last position.
 			 */
-			cx = screen_size_x(s) - width;
+			if (ctx->last_cell.flags & GRID_FLAG_UTF8)
+				cx = screen_size_x(s) - ctx->last_utf8.width;
+			else
+				cx = screen_size_x(s) - 1;
 			tty_cursor_pane(tty, ctx, cx, ctx->ocy);
 			tty_cell(tty, &ctx->last_cell, &ctx->last_utf8);
 		}
