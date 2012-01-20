@@ -978,7 +978,7 @@ status_prompt_key(struct client *c, int key)
 	struct paste_buffer	*pb;
 	char			*s, *first, *last, word[64], swapc;
 	const char		*histstr;
-	const char		*wsep;
+	const char		*wsep = NULL;
 	u_char			 ch;
 	size_t			 size, n, off, idx;
 
@@ -1124,8 +1124,12 @@ status_prompt_key(struct client *c, int key)
 		c->prompt_index = idx;
 		c->flags |= CLIENT_STATUS;
 		break;
+	case MODEKEYEDIT_NEXTSPACE:
+		wsep = " ";
+		/* FALLTHROUGH */
 	case MODEKEYEDIT_NEXTWORD:
-		wsep = options_get_string(oo, "word-separators");
+		if (wsep == NULL)
+			wsep = options_get_string(oo, "word-separators");
 
 		/* Find a separator. */
 		while (c->prompt_index != size) {
@@ -1143,8 +1147,12 @@ status_prompt_key(struct client *c, int key)
 
 		c->flags |= CLIENT_STATUS;
 		break;
+	case MODEKEYEDIT_NEXTSPACEEND:
+		wsep = " ";
+		/* FALLTHROUGH */
 	case MODEKEYEDIT_NEXTWORDEND:
-		wsep = options_get_string(oo, "word-separators");
+		if (wsep == NULL)
+			wsep = options_get_string(oo, "word-separators");
 
 		/* Find a word. */
 		while (c->prompt_index != size) {
@@ -1162,8 +1170,12 @@ status_prompt_key(struct client *c, int key)
 
 		c->flags |= CLIENT_STATUS;
 		break;
+	case MODEKEYEDIT_PREVIOUSSPACE:
+		wsep = " ";
+		/* FALLTHROUGH */
 	case MODEKEYEDIT_PREVIOUSWORD:
-		wsep = options_get_string(oo, "word-separators");
+		if (wsep == NULL)
+			wsep = options_get_string(oo, "word-separators");
 
 		/* Find a non-separator. */
 		while (c->prompt_index != 0) {
