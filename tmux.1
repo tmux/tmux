@@ -2346,6 +2346,13 @@ this option is good for full-screen programs which support
 .Dv SIGWINCH
 and poor for interactive programs such as shells.
 .Pp
+.It Xo Ic allow-rename
+.Op Ic on | off
+.Xc
+Allow programs to change the window name using a terminal escape
+sequence (\\033k...\\033\\\\).
+The default is on.
+.Pp
 .It Xo Ic alternate-screen
 .Op Ic on | off
 .Xc
