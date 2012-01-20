@@ -2520,15 +2520,32 @@ Instructs
 .Nm
 to expect UTF-8 sequences to appear in this window.
 .Pp
-.It Ic window-status-alert-attr Ar attributes
-Set status line attributes for windows which have an alert (bell, activity
-or content).
+.It Ic window-status-bell-attr Ar attributes
+Set status line attributes for windows which have a bell alert.
 .Pp
-.It Ic window-status-alert-bg Ar colour
-Set status line background colour for windows with an alert.
+.It Ic window-status-bell-bg Ar colour
+Set status line background colour for windows with a bell alert.
 .Pp
-.It Ic window-status-alert-fg Ar colour
-Set status line foreground colour for windows with an alert.
+.It Ic window-status-bell-fg Ar colour
+Set status line foreground colour for windows with a bell alert.
+.Pp
+.It Ic window-status-content-attr Ar attributes
+Set status line attributes for windows which have a content alert.
+.Pp
+.It Ic window-status-content-bg Ar colour
+Set status line background colour for windows with a content alert.
+.Pp
+.It Ic window-status-content-fg Ar colour
+Set status line foreground colour for windows with a content alert.
+.Pp
+.It Ic window-status-activity-attr Ar attributes
+Set status line attributes for windows which have an activity (or silence) alert.
+.Pp
+.It Ic window-status-activity-bg Ar colour
+Set status line background colour for windows with an activity alert.
+.Pp
+.It Ic window-status-activity-fg Ar colour
+Set status line foreground colour for windows with an activity alert.
 .Pp
 .It Ic window-status-attr Ar attributes
 Set status line attributes for a single window.

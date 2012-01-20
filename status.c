@@ -684,14 +684,34 @@ status_print(
 		fmt = options_get_string(oo, "window-status-current-format");
 	}
 
-	if (wl->flags & WINLINK_ALERTFLAGS) {
-		fg = options_get_number(oo, "window-status-alert-fg");
+	if (wl->flags & WINLINK_BELL) {
+		fg = options_get_number(oo, "window-status-bell-fg");
 		if (fg != 8)
 			colour_set_fg(gc, fg);
-		bg = options_get_number(oo, "window-status-alert-bg");
+		bg = options_get_number(oo, "window-status-bell-bg");
 		if (bg != 8)
 			colour_set_bg(gc, bg);
-		attr = options_get_number(oo, "window-status-alert-attr");
+		attr = options_get_number(oo, "window-status-bell-attr");
+		if (attr != 0)
+			gc->attr = attr;
+	} else if (wl->flags & WINLINK_CONTENT) {
+		fg = options_get_number(oo, "window-status-content-fg");
+		if (fg != 8)
+			colour_set_fg(gc, fg);
+		bg = options_get_number(oo, "window-status-content-bg");
+		if (bg != 8)
+			colour_set_bg(gc, bg);
+		attr = options_get_number(oo, "window-status-content-attr");
+		if (attr != 0)
+			gc->attr = attr;
+	} else if (wl->flags & (WINLINK_ACTIVITY|WINLINK_SILENCE)) {
+		fg = options_get_number(oo, "window-status-activity-fg");
+		if (fg != 8)
+			colour_set_fg(gc, fg);
+		bg = options_get_number(oo, "window-status-activity-bg");
+		if (bg != 8)
+			colour_set_bg(gc, bg);
+		attr = options_get_number(oo, "window-status-activity-attr");
 		if (attr != 0)
 			gc->attr = attr;
 	}
