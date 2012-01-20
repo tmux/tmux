@@ -1215,10 +1215,10 @@ cmd_template_replace(char *template, const char *s, int idx)
 }
 
 /* Return the default path for a new pane. */
-char *
+const char *
 cmd_get_default_path(struct cmd_ctx *ctx)
 {
-	char			*cwd;
+	const char		*cwd;
 	struct session		*s;
 	struct window_pane	*wp;
 	struct environ_entry	*envent;

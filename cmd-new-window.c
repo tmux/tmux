@@ -44,7 +44,8 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct args	*args = self->args;
 	struct session	*s;
 	struct winlink	*wl;
-	char		*cmd, *cwd, *cause;
+	const char     	*cmd, *cwd;
+	char		*cause;
 	int		 idx, last, detached;
 
 	if (args_has(args, 'a')) {
