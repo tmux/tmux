@@ -45,7 +45,7 @@ struct options_entry *cmd_set_option_string(struct cmd *, struct cmd_ctx *,
 struct options_entry *cmd_set_option_number(struct cmd *, struct cmd_ctx *,
 	    const struct options_table_entry *, struct options *,
 	    const char *);
-struct options_entry *cmd_set_option_keys(struct cmd *, struct cmd_ctx *,
+struct options_entry *cmd_set_option_key(struct cmd *, struct cmd_ctx *,
 	    const struct options_table_entry *, struct options *,
 	    const char *);
 struct options_entry *cmd_set_option_colour(struct cmd *, struct cmd_ctx *,
@@ -236,8 +236,8 @@ cmd_set_option_set(struct cmd *self, struct cmd_ctx *ctx,
 	case OPTIONS_TABLE_NUMBER:
 		o = cmd_set_option_number(self, ctx, oe, oo, value);
 		break;
-	case OPTIONS_TABLE_KEYS:
-		o = cmd_set_option_keys(self, ctx, oe, oo, value);
+	case OPTIONS_TABLE_KEY:
+		o = cmd_set_option_key(self, ctx, oe, oo, value);
 		break;
 	case OPTIONS_TABLE_COLOUR:
 		o = cmd_set_option_colour(self, ctx, oe, oo, value);
@@ -298,31 +298,19 @@ cmd_set_option_number(unused struct cmd *self, struct cmd_ctx *ctx,
 	return (options_set_number(oo, oe->name, ll));
 }
 
-/* Set a keys option. */
+/* Set a key option. */
 struct options_entry *
-cmd_set_option_keys(unused struct cmd *self, struct cmd_ctx *ctx,
+cmd_set_option_key(unused struct cmd *self, struct cmd_ctx *ctx,
     const struct options_table_entry *oe, struct options *oo, const char *value)
 {
-	struct keylist	*keylist;
-	char		*copy, *ptr, *s;
-	int		 key;
+	int	key;
 
-	keylist = xmalloc(sizeof *keylist);
-	ARRAY_INIT(keylist);
-
-	ptr = copy = xstrdup(value);
-	while ((s = strsep(&ptr, ",")) != NULL) {
-		if ((key = key_string_lookup_string(s)) == KEYC_NONE) {
-			ctx->error(ctx, "unknown key: %s", s);
-			xfree(copy);
-			xfree(keylist);
-			return (NULL);
-		}
-		ARRAY_ADD(keylist, key);
+	if ((key = key_string_lookup_string(value)) == KEYC_NONE) {
+		ctx->error(ctx, "bad key: %s", value);
+		return (NULL);
 	}
-	xfree(copy);
 
-	return (options_set_data(oo, oe->name, keylist, xfree));
+	return (options_set_number(oo, oe->name, key));
 }
 
 /* Set a colour option. */

@@ -673,9 +673,6 @@ struct options_entry {
 
 	char		*str;
 	long long	 num;
-	void		*data;
-
-	void		 (*freefn)(void *);
 
 	SPLAY_ENTRY(options_entry) entry;
 };
@@ -684,9 +681,6 @@ struct options {
 	SPLAY_HEAD(options_tree, options_entry) tree;
 	struct options	*parent;
 };
-
-/* Key list for prefix option. */
-ARRAY_DECL(keylist, int);
 
 /* Scheduled job. */
 struct job {
@@ -1294,7 +1288,7 @@ SPLAY_HEAD(key_bindings, key_binding);
 enum options_table_type {
 	OPTIONS_TABLE_STRING,
 	OPTIONS_TABLE_NUMBER,
-	OPTIONS_TABLE_KEYS,
+	OPTIONS_TABLE_KEY,
 	OPTIONS_TABLE_COLOUR,
 	OPTIONS_TABLE_ATTRIBUTES,
 	OPTIONS_TABLE_FLAG,
@@ -1413,9 +1407,6 @@ char   *options_get_string(struct options *, const char *);
 struct options_entry *options_set_number(
 	    struct options *, const char *, long long);
 long long options_get_number(struct options *, const char *);
-struct options_entry *options_set_data(
-	    struct options *, const char *, void *, void (*)(void *));
-void   *options_get_data(struct options *, const char *);
 
 /* options-table.c */
 extern const struct options_table_entry server_options_table[];

@@ -1652,9 +1652,13 @@ All arguments are sent sequentially from first to last.
 The
 .Fl R
 flag causes the terminal state to be reset.
-.It Ic send-prefix Op Fl t Ar target-pane
-Send the prefix key to a window as if it was pressed.
-If multiple prefix keys are configured, only the first is sent.
+.It Xo Ic send-prefix
+.Op Fl 2
+.Op Fl t Ar target-pane
+.Xc
+Send the prefix key, or with
+.Fl 2
+the secondary prefix key, to a window as if it was pressed.
 .It Xo Ic unbind-key
 .Op Fl acn
 .Op Fl t Ar key-table
@@ -2029,11 +2033,10 @@ Set the pane border colour for the currently active pane.
 .It Ic pane-border-bg Ar colour
 .It Ic pane-border-fg Ar colour
 Set the pane border colour for panes aside from the active pane.
-.It Ic prefix Ar keys
-Set the keys accepted as a prefix key.
-.Ar keys
-is a comma-separated list of key names, each of which individually behave as
-the prefix key.
+.It Ic prefix Ar key
+Set the key accepted as a prefix key.
+.It Ic prefix2 Ar key
+Set a secondary key accepted as a prefix key.
 .It Ic repeat-time Ar time
 Allow multiple commands to be entered without pressing the prefix-key again
 in the specified
