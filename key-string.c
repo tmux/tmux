@@ -188,6 +188,10 @@ key_string_lookup_key(int key)
 
 	*out = '\0';
 
+	/* Handle no key. */
+	if (key == KEYC_NONE)
+		return ("none");
+
 	/*
 	 * Special case: display C-@ as C-Space. Could do this below in
 	 * the (key >= 0 && key <= 32), but this way we let it be found

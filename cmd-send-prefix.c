@@ -28,8 +28,8 @@ int	cmd_send_prefix_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_send_prefix_entry = {
 	"send-prefix", NULL,
-	"t:", 0, 0,
-	CMD_TARGET_PANE_USAGE,
+	"2t:", 0, 0,
+	"[-2] " CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
 	NULL,
@@ -42,13 +42,16 @@ cmd_send_prefix_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct args		*args = self->args;
 	struct session		*s;
 	struct window_pane	*wp;
-	struct keylist		*keylist;
+	int			 key;
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
 		return (-1);
 
-	keylist = options_get_data(&s->options, "prefix");
-	window_pane_key(wp, s, ARRAY_FIRST(keylist));
+	if (args_has(args, '2'))
+		key = options_get_number(&s->options, "prefix2");
+	else
+		key = options_get_number(&s->options, "prefix");
+	window_pane_key(wp, s, key);
 
 	return (0);
 }
