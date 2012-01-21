@@ -978,17 +978,7 @@ input_esc_dispatch(struct input_ctx *ictx)
 		ictx->old_cx = 0;
 		ictx->old_cy = 0;
 
-		screen_reset_tabs(sctx->s);
-
-		screen_write_scrollregion(sctx, 0, screen_size_y(sctx->s) - 1);
-
-		screen_write_insertmode(sctx, 0);
-		screen_write_kcursormode(sctx, 0);
-		screen_write_kkeypadmode(sctx, 0);
-		screen_write_mousemode_off(sctx);
-
-		screen_write_clearscreen(sctx);
-		screen_write_cursormove(sctx, 0, 0);
+		screen_write_reset(sctx->s);
 		break;
 	case INPUT_ESC_IND:
 		screen_write_linefeed(sctx, 0);

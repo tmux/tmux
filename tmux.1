@@ -1638,6 +1638,7 @@ are listed; this may be one of:
 or
 .Em emacs-copy .
 .It Xo Ic send-keys
+.Fl R
 .Op Fl t Ar target-pane
 .Ar key Ar ...
 .Xc
@@ -1652,6 +1653,9 @@ or
 ) to send; if the string is not recognised as a key, it is sent as a series of
 characters.
 All arguments are sent sequentially from first to last.
+The
+.Fl R
+flag causes the terminal state to be reset.
 .It Ic send-prefix Op Fl t Ar target-pane
 Send the prefix key to a window as if it was pressed.
 If multiple prefix keys are configured, only the first is sent.

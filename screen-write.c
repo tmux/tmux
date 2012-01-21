@@ -46,6 +46,24 @@ screen_write_stop(unused struct screen_write_ctx *ctx)
 {
 }
 
+
+/* Reset screen state. */
+void
+screen_write_reset(struct screen_write_ctx *ctx)
+{
+	screen_reset_tabs(ctx->s);
+
+	screen_write_scrollregion(ctx, 0, screen_size_y(ctx->s) - 1);
+
+	screen_write_insertmode(ctx, 0);
+	screen_write_kcursormode(ctx, 0);
+	screen_write_kkeypadmode(ctx, 0);
+	screen_write_mousemode_off(ctx);
+
+	screen_write_clearscreen(ctx);
+	screen_write_cursormove(ctx, 0, 0);
+}
+
 /* Write character. */
 void
 screen_write_putc(

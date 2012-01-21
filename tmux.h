@@ -1828,6 +1828,7 @@ char	*grid_view_string_cells(struct grid *, u_int, u_int, u_int);
 void	 screen_write_start(
 	     struct screen_write_ctx *, struct window_pane *, struct screen *);
 void	 screen_write_stop(struct screen_write_ctx *);
+void	 screen_write_reset(struct screen_write_ctx *);
 size_t printflike2 screen_write_cstrlen(int, const char *, ...);
 void printflike5 screen_write_cnputs(struct screen_write_ctx *,
 	     ssize_t, struct grid_cell *, int, const char *, ...);
