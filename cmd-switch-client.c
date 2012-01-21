@@ -108,6 +108,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	recalculate_sizes();
 	server_check_unattached();
 	server_redraw_client(c);
+	s->curw->flags &= ~WINLINK_ALERTFLAGS;
 
 	return (0);
 }
