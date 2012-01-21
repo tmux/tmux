@@ -1436,7 +1436,7 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 		case 106:
 		case 107:
 			gc->flags &= ~GRID_FLAG_BG256;
-			gc->bg = n;
+			gc->bg = n - 10;
 			break;
 		}
 	}
