@@ -28,7 +28,7 @@
  * a splay tree.
  */
 
-SPLAY_GENERATE(options_tree, options_entry, entry, options_cmp);
+RB_GENERATE(options_tree, options_entry, entry, options_cmp);
 
 int
 options_cmp(struct options_entry *o1, struct options_entry *o2)
@@ -39,7 +39,7 @@ options_cmp(struct options_entry *o1, struct options_entry *o2)
 void
 options_init(struct options *oo, struct options *parent)
 {
-	SPLAY_INIT(&oo->tree);
+	RB_INIT(&oo->tree);
 	oo->parent = parent;
 }
 
@@ -48,9 +48,9 @@ options_free(struct options *oo)
 {
 	struct options_entry	*o;
 
-	while (!SPLAY_EMPTY(&oo->tree)) {
-		o = SPLAY_ROOT(&oo->tree);
-		SPLAY_REMOVE(options_tree, &oo->tree, o);
+	while (!RB_EMPTY(&oo->tree)) {
+		o = RB_ROOT(&oo->tree);
+		RB_REMOVE(options_tree, &oo->tree, o);
 		xfree(o->name);
 		if (o->type == OPTIONS_STRING)
 			xfree(o->str);
@@ -64,7 +64,7 @@ options_find1(struct options *oo, const char *name)
 	struct options_entry	p;
 
 	p.name = (char *) name;
-	return (SPLAY_FIND(options_tree, &oo->tree, &p));
+	return (RB_FIND(options_tree, &oo->tree, &p));
 }
 
 struct options_entry *
@@ -73,12 +73,12 @@ options_find(struct options *oo, const char *name)
 	struct options_entry	*o, p;
 
 	p.name = (char *) name;
-	o = SPLAY_FIND(options_tree, &oo->tree, &p);
+	o = RB_FIND(options_tree, &oo->tree, &p);
 	while (o == NULL) {
 		oo = oo->parent;
 		if (oo == NULL)
 			break;
-		o = SPLAY_FIND(options_tree, &oo->tree, &p);
+		o = RB_FIND(options_tree, &oo->tree, &p);
 	}
 	return (o);
 }
@@ -91,7 +91,7 @@ options_remove(struct options *oo, const char *name)
 	if ((o = options_find1(oo, name)) == NULL)
 		return;
 
-	SPLAY_REMOVE(options_tree, &oo->tree, o);
+	RB_REMOVE(options_tree, &oo->tree, o);
 	xfree(o->name);
 	if (o->type == OPTIONS_STRING)
 		xfree(o->str);
@@ -107,7 +107,7 @@ options_set_string(struct options *oo, const char *name, const char *fmt, ...)
 	if ((o = options_find1(oo, name)) == NULL) {
 		o = xmalloc(sizeof *o);
 		o->name = xstrdup(name);
-		SPLAY_INSERT(options_tree, &oo->tree, o);
+		RB_INSERT(options_tree, &oo->tree, o);
 	} else if (o->type == OPTIONS_STRING)
 		xfree(o->str);
 
@@ -138,7 +138,7 @@ options_set_number(struct options *oo, const char *name, long long value)
 	if ((o = options_find1(oo, name)) == NULL) {
 		o = xmalloc(sizeof *o);
 		o->name = xstrdup(name);
-		SPLAY_INSERT(options_tree, &oo->tree, o);
+		RB_INSERT(options_tree, &oo->tree, o);
 	} else if (o->type == OPTIONS_STRING)
 		xfree(o->str);
 

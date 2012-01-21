@@ -24,7 +24,7 @@
 
 #include "tmux.h"
 
-SPLAY_GENERATE(key_bindings, key_binding, entry, key_bindings_cmp);
+RB_GENERATE(key_bindings, key_binding, entry, key_bindings_cmp);
 
 struct key_bindings	key_bindings;
 struct key_bindings	dead_key_bindings;
@@ -52,7 +52,7 @@ key_bindings_lookup(int key)
 	struct key_binding	bd;
 
 	bd.key = key;
-	return (SPLAY_FIND(key_bindings, &key_bindings, &bd));
+	return (RB_FIND(key_bindings, &key_bindings, &bd));
 }
 
 void
@@ -64,7 +64,7 @@ key_bindings_add(int key, int can_repeat, struct cmd_list *cmdlist)
 
 	bd = xmalloc(sizeof *bd);
 	bd->key = key;
-	SPLAY_INSERT(key_bindings, &key_bindings, bd);
+	RB_INSERT(key_bindings, &key_bindings, bd);
 
 	bd->can_repeat = can_repeat;
 	bd->cmdlist = cmdlist;
@@ -77,8 +77,8 @@ key_bindings_remove(int key)
 
 	if ((bd = key_bindings_lookup(key)) == NULL)
 		return;
-	SPLAY_REMOVE(key_bindings, &key_bindings, bd);
-	SPLAY_INSERT(key_bindings, &dead_key_bindings, bd);
+	RB_REMOVE(key_bindings, &key_bindings, bd);
+	RB_INSERT(key_bindings, &dead_key_bindings, bd);
 }
 
 void
@@ -86,9 +86,9 @@ key_bindings_clean(void)
 {
 	struct key_binding	*bd;
 
-	while (!SPLAY_EMPTY(&dead_key_bindings)) {
-		bd = SPLAY_ROOT(&dead_key_bindings);
-		SPLAY_REMOVE(key_bindings, &dead_key_bindings, bd);
+	while (!RB_EMPTY(&dead_key_bindings)) {
+		bd = RB_ROOT(&dead_key_bindings);
+		RB_REMOVE(key_bindings, &dead_key_bindings, bd);
 		cmd_list_free(bd->cmdlist);
 		xfree(bd);
 	}
@@ -179,7 +179,7 @@ key_bindings_init(void)
 	struct cmd	*cmd;
 	struct cmd_list	*cmdlist;
 
-	SPLAY_INIT(&key_bindings);
+	RB_INIT(&key_bindings);
 
 	for (i = 0; i < nitems(table); i++) {
 		cmdlist = xmalloc(sizeof *cmdlist);

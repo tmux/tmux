@@ -545,9 +545,9 @@ struct mode_key_binding {
 	int			mode;
 	enum mode_key_cmd	cmd;
 
-	SPLAY_ENTRY(mode_key_binding) entry;
+	RB_ENTRY(mode_key_binding) entry;
 };
-SPLAY_HEAD(mode_key_tree, mode_key_binding);
+RB_HEAD(mode_key_tree, mode_key_binding);
 
 /* Command to string mapping. */
 struct mode_key_cmdstr {
@@ -674,11 +674,11 @@ struct options_entry {
 	char		*str;
 	long long	 num;
 
-	SPLAY_ENTRY(options_entry) entry;
+	RB_ENTRY(options_entry) entry;
 };
 
 struct options {
-	SPLAY_HEAD(options_tree, options_entry) tree;
+	RB_HEAD(options_tree, options_entry) tree;
 	struct options	*parent;
 };
 
@@ -1276,9 +1276,9 @@ struct key_binding {
 	struct cmd_list	*cmdlist;
 	int		 can_repeat;
 
-	SPLAY_ENTRY(key_binding) entry;
+	RB_ENTRY(key_binding) entry;
 };
-SPLAY_HEAD(key_bindings, key_binding);
+RB_HEAD(key_bindings, key_binding);
 
 /*
  * Option table entries. The option table is the user-visible part of the
@@ -1383,7 +1383,7 @@ extern struct mode_key_tree mode_key_tree_emacs_edit;
 extern struct mode_key_tree mode_key_tree_emacs_choice;
 extern struct mode_key_tree mode_key_tree_emacs_copy;
 int	mode_key_cmp(struct mode_key_binding *, struct mode_key_binding *);
-SPLAY_PROTOTYPE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
+RB_PROTOTYPE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
 const char *mode_key_tostring(const struct mode_key_cmdstr *,
 	    enum mode_key_cmd);
 enum mode_key_cmd mode_key_fromstring(const struct mode_key_cmdstr *,
@@ -1395,7 +1395,7 @@ enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
 
 /* options.c */
 int	options_cmp(struct options_entry *, struct options_entry *);
-SPLAY_PROTOTYPE(options_tree, options_entry, entry, options_cmp);
+RB_PROTOTYPE(options_tree, options_entry, entry, options_cmp);
 void	options_init(struct options *, struct options *);
 void	options_free(struct options *);
 struct options_entry *options_find1(struct options *, const char *);
@@ -1657,7 +1657,7 @@ int	client_main(int, char **, int);
 /* key-bindings.c */
 extern struct key_bindings key_bindings;
 int	 key_bindings_cmp(struct key_binding *, struct key_binding *);
-SPLAY_PROTOTYPE(key_bindings, key_binding, entry, key_bindings_cmp);
+RB_PROTOTYPE(key_bindings, key_binding, entry, key_bindings_cmp);
 struct key_binding *key_bindings_lookup(int);
 void	 key_bindings_add(int, int, struct cmd_list *);
 void	 key_bindings_remove(int);

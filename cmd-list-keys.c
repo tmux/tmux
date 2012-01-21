@@ -55,7 +55,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	width = 0;
 
-	SPLAY_FOREACH(bd, key_bindings, &key_bindings) {
+	RB_FOREACH(bd, key_bindings, &key_bindings) {
 		key = key_string_lookup_key(bd->key & ~KEYC_PREFIX);
 		if (key == NULL)
 			continue;
@@ -72,7 +72,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 			width = keywidth;
 	}
 
-	SPLAY_FOREACH(bd, key_bindings, &key_bindings) {
+	RB_FOREACH(bd, key_bindings, &key_bindings) {
 		key = key_string_lookup_key(bd->key & ~KEYC_PREFIX);
 		if (key == NULL)
 			continue;
@@ -116,7 +116,7 @@ cmd_list_keys_table(struct cmd *self, struct cmd_ctx *ctx)
 
 	width = 0;
 	any_mode = 0;
-	SPLAY_FOREACH(mbind, mode_key_tree, mtab->tree) {
+	RB_FOREACH(mbind, mode_key_tree, mtab->tree) {
 		key = key_string_lookup_key(mbind->key);
 		if (key == NULL)
 			continue;
@@ -129,7 +129,7 @@ cmd_list_keys_table(struct cmd *self, struct cmd_ctx *ctx)
 			width = keywidth;
 	}
 
-	SPLAY_FOREACH(mbind, mode_key_tree, mtab->tree) {
+	RB_FOREACH(mbind, mode_key_tree, mtab->tree) {
 		key = key_string_lookup_key(mbind->key);
 		if (key == NULL)
 			continue;
