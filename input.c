@@ -978,7 +978,7 @@ input_esc_dispatch(struct input_ctx *ictx)
 		ictx->old_cx = 0;
 		ictx->old_cy = 0;
 
-		screen_write_reset(sctx->s);
+		screen_write_reset(sctx);
 		break;
 	case INPUT_ESC_IND:
 		screen_write_linefeed(sctx, 0);
