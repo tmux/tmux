@@ -1,3 +1,53 @@
+CHANGES FROM 1.5 TO 1.6, 23 January 2012
+
+* Extend the mode-mouse option to add a third choice which means the mouse
+  does not enter copy mode.
+* Add a -r flag to switch-client to toggle the client read-only flag.
+* Add pane-base-index option.
+* Support \ for line continuation in the configuration file.
+* Framework for more powerful formatting of command output and use it for
+  list-{panes,windows,sessions}. This allows more descriptive replacements
+  (such as #{session_name}) and conditionals.
+* Mark dead panes with some text saying they are dead.
+* Reject $SHELL if it is not a full path.
+* Add -S option to refresh-client to redraw status line.
+* Add an else clause for if-shell.
+* Try to resolve relative paths for loadb and saveb (first, using client
+  working directory, if any, then default-path or session working directory).
+* Support for \e[3J to clear the history and send the corresponding
+  terminfo code (E3) before locking.
+* When in copy mode, make repeat count indicate buffer to replace, if used.
+* Add screen*:XT to terminal-overrides for tmux-in-tmux.
+* Status-line message attributes added.
+* Move word-separators to be a session rather than window option.
+* Change the way the working directory for new processes is discovered. If
+  default-path isn't empty, it is used. Otherwise, if a new window is created
+  from the command-line, the working directory of the client is used. If not,
+  platform specific code is used to retrieve the current working directory
+  of the process in the active pane. If that fails, the directory where the
+  session was created is used, instead.
+* Do not change the current pane if both mouse-select-{pane,window} are
+  enabled.
+* Add \033[s and \033[u to save and restore cursor position.
+* Allow $HOME to be used as default-path.
+* Add CNL and CPL escape sequences.
+* Calculate last position correctly for UTF-8 wide characters.
+* Add an option allow-rename to disable the window rename escape sequence.
+* Attributes for each type of status-line alert (ie bell, content and
+  activity) added. Therefore, remove the superfluous options
+  window-status-alert-{attr,bg,fg}.
+* Add a -R flag to send-keys to reset the terminal.
+* Add strings to allow the aixterm bright colours to be used when
+  configuring colours.
+* Drop the ability to have a list of keys in the prefix in favour of two
+  separate options, prefix and prefix2.
+* Flag -2 added to send-prefix to send the secondary prefix key.
+* Show pane size in top right of display panes mode.
+* Some memory leaks plugged.
+* More command-prompt editing improvements.
+* Various manpage improvements.
+* More Vi mode improvements.
+
 CHANGES FROM 1.4 TO 1.5, 09 July 2011
 
 * Support xterm mouse modes 1002 and 1003.
