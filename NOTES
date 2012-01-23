@@ -9,6 +9,13 @@ run on Solaris and AIX (although they haven't been tested in a while). It is
 usable, although there remain a number of missing features and some remaining
 bugs are expected.
 
+If upgrading from 1.5, PLEASE NOTE:
+- The word-separators window option is now a session option.
+- The options used to change the window attributes when an alert occurs were
+  removed. Each kind of alert has its own individual set of options.
+- The ability to have a list of prefix keys was dropped in favour of two
+  separate options, prefix and prefix2.
+
 Since the 1.2 release that tmux depends on libevent. Download it from:
 
 	http://www.monkey.org/~provos/libevent/
