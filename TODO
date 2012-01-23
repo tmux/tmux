@@ -6,7 +6,6 @@
 - flags to centre screen in window
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
-- next prev word etc in command prompt
 - use a better termcap internally instead of screen, perhaps xterm
 - should be able to move to a hidden pane and it would be moved into view. pane
   number in status line/top-right would be cool for this
@@ -67,7 +66,6 @@
   sequence until its shell exits, to allow them to be used from the config file
 - better session sharing: create-socket command to create socket somewhere (-r
   flag for readonly)
-- allow buffer to be specified when copying in copy mode
 - multiline status line (no?)
 - flag for absolute pane size to resize-pane
 - sanity check input to socket
@@ -114,7 +112,6 @@
   choose-list -l Abc,Moo,Blah "run-shell 'sh /my/choose/script %%'"
 - numeric prefix in copy mode should be paste buffer for C-w
 - named buffers and allow gaps in the stack
-- npage/ppage/dc/ic should have aliases for more typical names
 - get rid of separate UTF-8 cell stuff: add 1 byte to cell and store BMP as
   uint16_t+3 bits of flags. anything <=0xffff is Unicode, higher are used to
   build tree of combined characters/non-BMP (LRU dropped when full)
