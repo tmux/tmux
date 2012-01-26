@@ -491,9 +491,10 @@ status_replace(struct client *c, struct session *s, struct winlink *wl,
 {
 	static char	out[BUFSIZ];
 	char		in[BUFSIZ], ch, *iptr, *optr;
+	size_t		len;
 
-	strftime(in, sizeof in, fmt, localtime(&t));
-	in[(sizeof in) - 1] = '\0';
+	len = strftime(in, sizeof in, fmt, localtime(&t));
+	in[len] = '\0';
 
 	iptr = in;
 	optr = out;
