@@ -123,24 +123,24 @@ server_client_lost(struct client *c)
 	if (c->flags & CLIENT_TERMINAL)
 		tty_free(&c->tty);
 
+	if (c->stdin_event != NULL)
+		bufferevent_free(c->stdin_event);
 	if (c->stdin_fd != -1) {
 		setblocking(c->stdin_fd, 1);
 		close(c->stdin_fd);
 	}
-	if (c->stdin_event != NULL)
-		bufferevent_free(c->stdin_event);
+	if (c->stdout_event != NULL)
+		bufferevent_free(c->stdout_event);
 	if (c->stdout_fd != -1) {
 		setblocking(c->stdout_fd, 1);
 		close(c->stdout_fd);
 	}
-	if (c->stdout_event != NULL)
-		bufferevent_free(c->stdout_event);
+	if (c->stderr_event != NULL)
+		bufferevent_free(c->stderr_event);
 	if (c->stderr_fd != -1) {
 		setblocking(c->stderr_fd, 1);
 		close(c->stderr_fd);
 	}
-	if (c->stderr_event != NULL)
-		bufferevent_free(c->stderr_event);
 
 	status_free_jobs(&c->status_new);
 	status_free_jobs(&c->status_old);
