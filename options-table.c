@@ -47,6 +47,9 @@ const char *options_table_status_keys_list[] = {
 const char *options_table_status_justify_list[] = {
 	"left", "centre", "right", NULL
 };
+const char *options_table_status_position_list[] = {
+	"top", "bottom", NULL
+};
 const char *options_table_bell_action_list[] = {
 	"none", "any", "current", NULL
 };
@@ -356,6 +359,12 @@ const struct options_table_entry session_options_table[] = {
 	  .minimum = 0,
 	  .maximum = SHRT_MAX,
 	  .default_num = 10
+	},
+
+	{ .name = "status-position",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .choices = options_table_status_position_list,
+	  .default_num = 1
 	},
 
 	{ .name = "status-right",

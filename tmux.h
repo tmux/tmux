@@ -1074,6 +1074,9 @@ struct tty_ctx {
 	u_int		 orupper;
 	u_int		 orlower;
 
+	u_int		 xoff;
+	u_int		 yoff;
+
 	/* Saved last cell on line. */
 	struct grid_cell last_cell;
 	struct grid_utf8 last_utf8;
@@ -1459,8 +1462,8 @@ void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int);
 int	tty_open(struct tty *, const char *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
-void	tty_write(void (*)(
-	    struct tty *, const struct tty_ctx *), const struct tty_ctx *);
+void	tty_write(
+	    void (*)(struct tty *, const struct tty_ctx *), struct tty_ctx *);
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
 void	tty_cmd_cell(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearendofline(struct tty *, const struct tty_ctx *);
@@ -1718,6 +1721,7 @@ void	 server_update_event(struct client *);
 /* status.c */
 int	 status_out_cmp(struct status_out *, struct status_out *);
 RB_PROTOTYPE(status_out_tree, status_out, entry, status_out_cmp);
+int	 status_at_line(struct client *);
 void	 status_free_jobs(struct status_out_tree *);
 void	 status_update_jobs(struct client *);
 void	 status_set_window_at(struct client *, u_int);

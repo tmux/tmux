@@ -60,6 +60,20 @@ status_out_cmp(struct status_out *so1, struct status_out *so2)
 	return (strcmp(so1->cmd, so2->cmd));
 }
 
+/* Get screen line of status line. -1 means off. */
+int
+status_at_line(struct client *c)
+{
+	struct session	*s = c->session;
+
+	if (!options_get_number(&s->options, "status"))
+		return (-1);
+
+	if (options_get_number(&s->options, "status-position") == 0)
+		return (0);
+	return (c->tty.sy - 1);
+}
+
 /* Retrieve options for left string. */
 char *
 status_redraw_get_left(struct client *c,

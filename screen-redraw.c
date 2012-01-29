@@ -170,25 +170,33 @@ void
 screen_redraw_screen(struct client *c, int status_only, int borders_only)
 {
 	struct window		*w = c->session->curw->window;
+	struct options		*oo = &c->session->options;
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	struct grid_cell	 active_gc, other_gc;
-	u_int		 	 i, j, type;
-	int		 	 status, fg, bg;
+	u_int		 	 i, j, type, top;
+	int		 	 status, spos, fg, bg;
 
 	/* Suspended clients should not be updated. */
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
 
 	/* Get status line, er, status. */
+	spos = options_get_number(oo, "status-position");
 	if (c->message_string != NULL || c->prompt_string != NULL)
 		status = 1;
 	else
-		status = options_get_number(&c->session->options, "status");
+		status = options_get_number(oo, "status");
+	top = 0;
+	if (status && spos == 0)
+		top = 1;
 
 	/* If only drawing status and it is present, don't need the rest. */
 	if (status_only && status) {
-		tty_draw_line(tty, &c->status, 0, 0, tty->sy - 1);
+		if (top)
+			tty_draw_line(tty, &c->status, 0, 0, 0);
+		else
+			tty_draw_line(tty, &c->status, 0, 0, tty->sy - 1);
 		tty_reset(tty);
 		return;
 	}
@@ -198,19 +206,23 @@ screen_redraw_screen(struct client *c, int status_only, int borders_only)
 	memcpy(&active_gc, &grid_default_cell, sizeof active_gc);
 	active_gc.data = other_gc.data = 'x'; /* not space */
 	active_gc.attr = other_gc.attr = GRID_ATTR_CHARSET;
-	fg = options_get_number(&c->session->options, "pane-border-fg");
+	fg = options_get_number(oo, "pane-border-fg");
 	colour_set_fg(&other_gc, fg);
-	bg = options_get_number(&c->session->options, "pane-border-bg");
+	bg = options_get_number(oo, "pane-border-bg");
 	colour_set_bg(&other_gc, bg);
-	fg = options_get_number(&c->session->options, "pane-active-border-fg");
+	fg = options_get_number(oo, "pane-active-border-fg");
 	colour_set_fg(&active_gc, fg);
-	bg = options_get_number(&c->session->options, "pane-active-border-bg");
+	bg = options_get_number(oo, "pane-active-border-bg");
 	colour_set_bg(&active_gc, bg);
 
 	/* Draw background and borders. */
 	for (j = 0; j < tty->sy - status; j++) {
-		if (status_only && j != tty->sy - 1)
-			continue;
+		if (status_only) {
+			if (spos == 1 && j != tty->sy - 1)
+				continue;
+			else if (spos == 0 && j != 0)
+				break;
+		}
 		for (i = 0; i < tty->sx; i++) {
 			type = screen_redraw_check_cell(c, i, j);
 			if (type == CELL_INSIDE)
@@ -219,7 +231,7 @@ screen_redraw_screen(struct client *c, int status_only, int borders_only)
 				tty_attributes(tty, &active_gc);
 			else
 				tty_attributes(tty, &other_gc);
-			tty_cursor(tty, i, j);
+			tty_cursor(tty, i, top + j);
 			tty_putc(tty, CELL_BORDERS[type]);
 		}
 	}
@@ -233,17 +245,26 @@ screen_redraw_screen(struct client *c, int status_only, int borders_only)
 		if (!window_pane_visible(wp))
 			continue;
 		for (i = 0; i < wp->sy; i++) {
-			if (status_only && wp->yoff + i != tty->sy - 1)
-				continue;
-			tty_draw_line(tty, wp->screen, i, wp->xoff, wp->yoff);
+			if (status_only) {
+				if (spos == 1 && wp->yoff + i != tty->sy - 1)
+					continue;
+				else if (spos == 0 && wp->yoff + i != 0)
+					break;
+			}
+			tty_draw_line(
+			    tty, wp->screen, i, wp->xoff, top + wp->yoff);
 		}
 		if (c->flags & CLIENT_IDENTIFY)
 			screen_redraw_draw_number(c, wp);
 	}
 
 	/* Draw the status line. */
-	if (status)
-		tty_draw_line(tty, &c->status, 0, 0, tty->sy - 1);
+	if (status) {
+		if (top)
+			tty_draw_line(tty, &c->status, 0, 0, 0);
+		else
+			tty_draw_line(tty, &c->status, 0, 0, tty->sy - 1);
+	}
 	tty_reset(tty);
 }
 
@@ -251,10 +272,14 @@ screen_redraw_screen(struct client *c, int status_only, int borders_only)
 void
 screen_redraw_pane(struct client *c, struct window_pane *wp)
 {
-	u_int	i;
+	u_int	i, yoff;
+
+	yoff = wp->yoff;
+	if (status_at_line(c) == 0)
+		yoff++;
 
 	for (i = 0; i < wp->sy; i++)
-		tty_draw_line(&c->tty, wp->screen, i, wp->xoff, wp->yoff);
+		tty_draw_line(&c->tty, wp->screen, i, wp->xoff, yoff);
 	tty_reset(&c->tty);
 }
 
