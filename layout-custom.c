@@ -79,8 +79,13 @@ layout_append(struct layout_cell *lc, char *buf, size_t len)
 	if (len == 0)
 		return (-1);
 
-	tmplen = xsnprintf(tmp, sizeof tmp,
-	    "%ux%u,%u,%u", lc->sx, lc->sy, lc->xoff, lc->yoff);
+	if (lc->wp != NULL) {
+		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%u,%u,%u",
+		    lc->sx, lc->sy, lc->xoff, lc->yoff, lc->wp->id);
+	} else {
+		tmplen = xsnprintf(tmp, sizeof tmp, "%ux%u,%u,%u",
+		    lc->sx, lc->sy, lc->xoff, lc->yoff);
+	}
 	if (tmplen > (sizeof tmp) - 1)
 		return (-1);
 	if (strlcat(buf, tmp, len) >= len)
@@ -202,7 +207,8 @@ layout_construct(struct layout_cell *lcparent, const char **layout)
 
 	if (!isdigit((u_char) **layout))
 		return (NULL);
-	if (sscanf(*layout, "%ux%u,%u,%u", &sx, &sy, &xoff, &yoff) != 4)
+	if (sscanf(*layout, "%ux%u,%u,%u,%*u", &sx, &sy, &xoff, &yoff) != 5 &&
+	    sscanf(*layout, "%ux%u,%u,%u", &sx, &sy, &xoff, &yoff) != 4)
 		return (NULL);
 
 	while (isdigit((u_char) **layout))
@@ -222,6 +228,11 @@ layout_construct(struct layout_cell *lcparent, const char **layout)
 	(*layout)++;
 	while (isdigit((u_char) **layout))
 		(*layout)++;
+	if (**layout == ',') {
+		(*layout)++;
+		while (isdigit((u_char) **layout))
+			(*layout)++;
+	}
 
 	lc = layout_create_cell(lcparent);
 	lc->sx = sx;
