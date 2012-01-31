@@ -87,14 +87,14 @@ cmd_list_windows_session(
 			template = "#{window_index}: "
 			    "#{window_name} "
 			    "[#{window_width}x#{window_height}] "
-			    "[layout #{window_layout}] #{window_id} "
+			    "[layout #{window_layout}] #{window_id}"
 			    "#{?window_active, (active),}";
 			break;
 		case 1:
 			template = "#{session_name}:#{window_index}: "
 			    "#{window_name} "
 			    "[#{window_width}x#{window_height}] "
-			    "[layout #{window_layout}] #{window_id} "
+			    "[layout #{window_layout}] #{window_id}"
 			    "#{?window_active, (active),}";
 			break;
 		}
