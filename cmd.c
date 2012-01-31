@@ -21,6 +21,7 @@
 
 #include <fnmatch.h>
 #include <paths.h>
+#include <pwd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -1251,34 +1252,82 @@ cmd_template_replace(char *template, const char *s, int idx)
 	return (buf);
 }
 
-/* Return the default path for a new pane. */
+/*
+ * Return the default path for a new pane, using the given path or the
+ * default-path option if it is NULL. Several special values are accepted: the
+ * empty string or relative path for the current pane's working directory, ~
+ * for the user's home, - for the session working directory, . for the tmux
+ * server's working directory. The default on failure is the session's working
+ * directory.
+ */
 const char *
-cmd_get_default_path(struct cmd_ctx *ctx)
+cmd_get_default_path(struct cmd_ctx *ctx, const char *cwd)
 {
-	const char		*cwd;
 	struct session		*s;
-	struct window_pane	*wp;
 	struct environ_entry	*envent;
+	const char		*root;
+	char			 tmp[MAXPATHLEN];
+	struct passwd		*pw;
+	int			 n;
+	size_t			 skip;
+	static char		 path[MAXPATHLEN];
 
 	if ((s = cmd_current_session(ctx, 0)) == NULL)
 		return (NULL);
 
-	cwd = options_get_string(&s->options, "default-path");
-	if ((cwd[0] == '~' && cwd[1] == '\0') || !strcmp(cwd, "$HOME")) {
-		envent = environ_find(&global_environ, "HOME");
-		if (envent != NULL && *envent->value != '\0')
-			return envent->value;
-		cwd = "";
-	}
-	if (*cwd == '\0') {
-		if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
-			return (ctx->cmdclient->cwd);
-		if (ctx->curclient != NULL) {
-			wp = s->curw->window->active;
-			if ((cwd = get_proc_cwd(wp->pid)) != NULL)
-				return (cwd);
+	if (cwd == NULL)
+		cwd = options_get_string(&s->options, "default-path");
+
+	skip = 1;
+	if (strcmp(cwd, "$HOME") == 0 || strncmp(cwd, "$HOME/", 6) == 0) {
+		/* User's home directory - $HOME. */
+		skip = 5;
+		goto find_home;
+	} else if (cwd[0] == '~' && (cwd[1] == '\0' || cwd[1] == '/')) {
+		/* User's home directory - ~. */
+		goto find_home;
+	} else if (cwd[0] == '-' && (cwd[1] == '\0' || cwd[1] == '/')) {
+		/* Session working directory. */
+		root = s->cwd;
+		goto complete_path;
+	} else if (cwd[0] == '.' && (cwd[1] == '\0' || cwd[1] == '/')){
+		/* Server working directory. */
+		if (getcwd(tmp, sizeof tmp) != NULL) {
+			root = tmp;
+			goto complete_path;
 		}
 		return (s->cwd);
+	} else if (*cwd == '/') {
+		/* Absolute path. */
+		return (cwd);
+	} else {
+		/* Empty or relative path. */
+		if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
+			root = ctx->cmdclient->cwd;
+		else if (ctx->curclient != NULL)
+			root = get_proc_cwd(s->curw->window->active->pid);
+		else
+			return (s->cwd);
+		skip = 0;
+		goto complete_path;
 	}
-	return (cwd);
+
+	return (s->cwd);
+
+find_home:
+	envent = environ_find(&global_environ, "HOME");
+	if (envent != NULL && *envent->value != '\0')
+		root = envent->value;
+	else if ((pw = getpwuid(getuid())) != NULL)
+		root = pw->pw_dir;
+	else
+		return (s->cwd);
+
+complete_path:
+	if (root[skip] == '\0')
+		return (root);
+	n = snprintf(path, sizeof path, "%s/%s", root, cwd + skip);
+	if (n > 0 && (size_t)n < sizeof path)
+		return (path);
+	return (s->cwd);
 }
