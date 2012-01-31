@@ -844,6 +844,7 @@ RB_HEAD(window_pane_tree, window_pane);
 
 /* Window structure. */
 struct window {
+	u_int		 id;
 	char		*name;
 	struct event	 name_timer;
 	struct timeval   silence_timer;
@@ -1901,6 +1902,7 @@ int		 window_pane_cmp(struct window_pane *, struct window_pane *);
 RB_PROTOTYPE(window_pane_tree, window_pane, tree_entry, window_pane_cmp);
 struct winlink	*winlink_find_by_index(struct winlinks *, int);
 struct winlink	*winlink_find_by_window(struct winlinks *, struct window *);
+struct winlink	*winlink_find_by_window_id(struct winlinks *, u_int);
 int		 winlink_next_index(struct winlinks *, int);
 u_int		 winlink_count(struct winlinks *);
 struct winlink	*winlink_add(struct winlinks *, int);
@@ -1915,6 +1917,7 @@ struct winlink	*winlink_previous_by_number(struct winlink *, struct session *,
 void		 winlink_stack_push(struct winlink_stack *, struct winlink *);
 void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 int		 window_index(struct window *, u_int *);
+struct window	*window_find_by_id(u_int);
 struct window	*window_create1(u_int, u_int);
 struct window	*window_create(const char *, const char *, const char *,
 		     const char *, struct environ *, struct termios *,

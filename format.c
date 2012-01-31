@@ -341,6 +341,7 @@ format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 	layout = layout_dump(w);
 	flags = window_printable_flags(s, wl);
 
+	format_add(ft, "window_id", "@%u", w->id);
 	format_add(ft, "window_index", "%d", wl->idx);
 	format_add(ft, "window_name", "%s", w->name);
 	format_add(ft, "window_width", "%u", w->sx);
