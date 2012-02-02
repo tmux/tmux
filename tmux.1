@@ -1228,6 +1228,7 @@ is moved to
 .Ar dst-window .
 .It Xo Ic new-window
 .Op Fl adkP
+.Op Fl c Ar start-directory
 .Op Fl n Ar window-name
 .Op Fl t Ar target-window
 .Op Ar shell-command
@@ -1258,6 +1259,15 @@ If
 is not specified, the value of the
 .Ic default-command
 option is used.
+.Fl c
+specifies the working directory in which the new window is created.
+It may have an absolute path or one of the following values (or a subdirectory):
+.Bl -column "XXXXXXXXXXXX" "XXXXXXXXXXXXXXXXXXXXXXXX" -offset indent
+.It Li "Empty string" Ta "Current pane's directory"
+.It Li "~" Ta "User's home directory"
+.It Li "-" Ta "Where session was started"
+.It Li "." Ta "Where server was started"
+.El
 .Pp
 When the shell command completes, the window closes.
 See the
@@ -1457,6 +1467,7 @@ and
 commands.
 .It Xo Ic split-window
 .Op Fl dhvP
+.Op Fl c Ar start-directory
 .Oo Fl l
 .Ar size |
 .Fl p Ar percentage Oc
