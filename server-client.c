@@ -293,6 +293,8 @@ server_client_check_mouse(
 			}
 			return;
 		}
+		memcpy(&c->last_mouse, mouse, sizeof c->last_mouse);
+		return;
 	}
 
 	/*
