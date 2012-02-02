@@ -1650,7 +1650,7 @@ are listed; this may be one of:
 or
 .Em emacs-copy .
 .It Xo Ic send-keys
-.Fl R
+.Op Fl lR
 .Op Fl t Ar target-pane
 .Ar key Ar ...
 .Xc
@@ -1664,6 +1664,9 @@ or
 .Ql npage
 ) to send; if the string is not recognised as a key, it is sent as a series of
 characters.
+The
+.Fl l
+flag disables key name lookup and sends the keys literally.
 All arguments are sent sequentially from first to last.
 The
 .Fl R
