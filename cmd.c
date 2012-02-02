@@ -1304,7 +1304,7 @@ cmd_get_default_path(struct cmd_ctx *ctx, const char *cwd)
 		if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
 			root = ctx->cmdclient->cwd;
 		else if (ctx->curclient != NULL)
-			root = get_proc_cwd(s->curw->window->active->pid);
+			root = osdep_get_cwd(s->curw->window->active->pid);
 		else
 			return (s->cwd);
 		skip = 0;
