@@ -31,8 +31,8 @@ int	cmd_send_keys_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_send_keys_entry = {
 	"send-keys", "send",
-	"Rt:", 0, -1,
-	"[-R] [-t target-pane] key ...",
+	"lRt:", 0, -1,
+	"[-lR] [-t target-pane] key ...",
 	0,
 	NULL,
 	NULL,
@@ -71,7 +71,8 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 	for (i = 0; i < args->argc; i++) {
 		str = args->argv[i];
 
-		if ((key = key_string_lookup_string(str)) != KEYC_NONE) {
+		if (!args_has(args, 'l') &&
+		    (key = key_string_lookup_string(str)) != KEYC_NONE) {
 			    window_pane_key(wp, s, key);
 		} else {
 			for (; *str != '\0'; str++)
