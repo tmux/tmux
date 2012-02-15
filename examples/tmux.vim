@@ -44,10 +44,10 @@ syn keyword tmuxCmds run[-shell] lockc lock-client locks lock-session lsp
 syn keyword tmuxCmds list-panes pipep pipe-pane showmsgs show-messages capturep
 syn keyword tmuxCmds capture-pane joinp join-pane choose-buffer
 
-syn keyword tmuxOptsSet prefix status status-fg status-bg bell-action
+syn keyword tmuxOptsSet prefix prefix2 status status-fg status-bg bell-action
 syn keyword tmuxOptsSet default-command history-limit status-left status-right
 syn keyword tmuxOptsSet status-interval set-titles display-time buffer-limit
-syn keyword tmuxOptsSet status-left-length status-right-length
+syn keyword tmuxOptsSet status-left-length status-right-length status-position
 syn keyword tmuxOptsSet message-[command-]bg lock-after-time default-path
 syn keyword tmuxOptsSet message-[command-]attr status-attr set-remain-on-exit
 syn keyword tmuxOptsSet status-utf8 default-terminal visual-activity repeat-time
@@ -74,8 +74,12 @@ syn keyword tmuxOptsSetw main-pane-width main-pane-height monitor-content
 syn keyword tmuxOptsSetw window-status-current-attr window-status-current-bg
 syn keyword tmuxOptsSetw window-status-current-fg mode-mouse synchronize-panes
 syn keyword tmuxOptsSetw window-status-format window-status-current-format
-syn keyword tmuxOptsSetw window-status-alert-attr
-syn keyword tmuxOptsSetw window-status-alert-bg window-status-alert-fg
+syn keyword tmuxOptsSetw window-status-activity-attr
+syn keyword tmuxOptsSetw window-status-activity-bg window-status-activity-fg
+syn keyword tmuxOptsSetw window-status-bell-attr
+syn keyword tmuxOptsSetw window-status-bell-bg window-status-bell-fg
+syn keyword tmuxOptsSetw window-status-content-attr
+syn keyword tmuxOptsSetw window-status-content-bg window-status-content-fg
 syn keyword tmuxOptsSetw pane-base-index other-pane-height other-pane-width
 
 syn keyword tmuxTodo FIXME NOTE TODO XXX contained
