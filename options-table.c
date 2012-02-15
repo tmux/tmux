@@ -583,6 +583,21 @@ const struct options_table_entry window_options_table[] = {
 	  .default_num = 0 /* overridden in main() */
 	},
 
+	{ .name = "window-status-activity-attr",
+	  .type = OPTIONS_TABLE_ATTRIBUTES,
+	  .default_num = GRID_ATTR_REVERSE
+	},
+
+	{ .name = "window-status-activity-bg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 8
+	},
+
+	{ .name = "window-status-activity-fg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 8
+	},
+
 	{ .name = "window-status-bell-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
 	  .default_num = GRID_ATTR_REVERSE
@@ -609,21 +624,6 @@ const struct options_table_entry window_options_table[] = {
 	},
 
 	{ .name = "window-status-content-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
-	},
-
-	{ .name = "window-status-activity-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = GRID_ATTR_REVERSE
-	},
-
-	{ .name = "window-status-activity-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
-	},
-
-	{ .name = "window-status-activity-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .default_num = 8
 	},
