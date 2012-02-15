@@ -93,10 +93,8 @@ tty_resize(struct tty *tty)
 		sx = 80;
 		sy = 24;
 	}
-	if (sx == tty->sx && sy == tty->sy)
+	if (!tty_set_size(tty, sx, sy))
 		return (0);
-	tty->sx = sx;
-	tty->sy = sy;
 
 	tty->cx = UINT_MAX;
 	tty->cy = UINT_MAX;
@@ -113,6 +111,15 @@ tty_resize(struct tty *tty)
 		tty_region(tty, 0, tty->sy - 1);
 	}
 
+	return (1);
+}
+
+int
+tty_set_size(struct tty *tty, u_int sx, u_int sy) {
+	if (sx == tty->sx && sy == tty->sy)
+		return (0);
+	tty->sx = sx;
+	tty->sy = sy;
 	return (1);
 }
 
