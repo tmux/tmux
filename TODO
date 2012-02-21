@@ -139,6 +139,7 @@
 - synchronize-windows option
 - possibly support rxvt-unicode extended mouse input (1015)
 - append to buffer in copy mode
+- way to paste w/o trailing whitespace
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!
