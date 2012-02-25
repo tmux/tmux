@@ -31,8 +31,8 @@ int	cmd_show_options_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_options_entry = {
 	"show-options", "show",
-	"gst:w", 0, 0,
-	"[-gsw] [-t target-session|target-window]",
+	"gst:w", 0, 1,
+	"[-gsw] [-t target-session|target-window] [option]",
 	0,
 	NULL,
 	NULL,
@@ -41,8 +41,8 @@ const struct cmd_entry cmd_show_options_entry = {
 
 const struct cmd_entry cmd_show_window_options_entry = {
 	"show-window-options", "showw",
-	"gt:", 0, 0,
-	"[-g] " CMD_TARGET_WINDOW_USAGE,
+	"gt:", 0, 1,
+	"[-g] " CMD_TARGET_WINDOW_USAGE " [option]",
 	0,
 	NULL,
 	NULL,
@@ -86,11 +86,27 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	for (oe = table; oe->name != NULL; oe++) {
+	if (args->argc != 0) {
+		table = oe = NULL;
+		if (options_table_find(args->argv[0], &table, &oe) != 0) {
+			ctx->error(ctx, "ambiguous option: %s", args->argv[0]);
+			return (-1);
+		}
+		if (oe == NULL) {
+			ctx->error(ctx, "unknown option: %s", args->argv[0]);
+			return (-1);
+		}
 		if ((o = options_find1(oo, oe->name)) == NULL)
-			continue;
+			return (0);
 		optval = options_table_print_entry(oe, o);
 		ctx->print(ctx, "%s %s", oe->name, optval);
+	} else {
+		for (oe = table; oe->name != NULL; oe++) {
+			if ((o = options_find1(oo, oe->name)) == NULL)
+				continue;
+			optval = options_table_print_entry(oe, o);
+			ctx->print(ctx, "%s %s", oe->name, optval);
+		}
 	}
 
 	return (0);

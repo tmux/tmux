@@ -569,6 +569,13 @@ const struct options_table_entry window_options_table[] = {
 	  .default_num = 0
 	},
 
+	{ .name = "rate-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .minimum = 0,
+	  .maximum = UINT_MAX,
+	  .default_num = 0
+	},
+
 	{ .name = "remain-on-exit",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .default_num = 0
@@ -731,4 +738,37 @@ options_table_print_entry(
 		break;
 	}
 	return (out);
+}
+
+/* Find an option. */
+int
+options_table_find(
+    const char *optstr, const struct options_table_entry **table,
+    const struct options_table_entry **oe)
+{
+	static const struct options_table_entry	*tables[] = {
+		server_options_table,
+		window_options_table,
+		session_options_table
+	};
+	const struct options_table_entry	*oe_loop;
+	u_int					 i;
+
+	for (i = 0; i < nitems(tables); i++) {
+		for (oe_loop = tables[i]; oe_loop->name != NULL; oe_loop++) {
+			if (strncmp(oe_loop->name, optstr, strlen(optstr)) != 0)
+				continue;
+
+			/* If already found, ambiguous. */
+			if (*oe != NULL)
+				return (-1);
+			*oe = oe_loop;
+			*table = tables[i];
+
+			/* Bail now if an exact match. */
+			if (strcmp((*oe)->name, optstr) == 0)
+				break;
+		}
+	}
+	return (0);
 }

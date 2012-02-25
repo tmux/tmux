@@ -1419,6 +1419,9 @@ void	options_table_populate_tree(
 	    const struct options_table_entry *, struct options *);
 const char *options_table_print_entry(
 	    const struct options_table_entry *, struct options_entry *);
+int	options_table_find(
+	    const char *, const struct options_table_entry **,
+	    const struct options_table_entry **);
 
 /* job.c */
 extern struct joblist all_jobs;
