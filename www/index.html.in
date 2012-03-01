@@ -63,16 +63,17 @@ development.</li>
 
 <p>tmux is part of the <a href="http://www.openbsd.org">OpenBSD</a> base
 system. The portable version is hosted on <a href="http://sf.net/projects/tmux">
-SourceForge</a> and runs on Linux, FreeBSD, NetBSD, Solaris and AIX.</p>
-
-<p>tmux depends on <a href="http://www.monkey.org/~provos/libevent/">libevent 1.4 or 2.0</a> and a
+SourceForge</a> and runs on Linux, FreeBSD, NetBSD, Solaris and AIX.
+It depends on <a href="http://www.monkey.org/~provos/libevent/">libevent 1.4 or 2.0</a> and a
 terminfo implementation (normally <a href="http://invisible-island.net/ncurses/">ncurses</a>).</p>
 
 <p>A few people have written programs which can be used with tmux:
 <a href="https://github.com/dominikh/tmux-ruby">tmux-ruby</a>,
 <a href="https://github.com/aziz/tmuxinator">tmuxinator</a>,
 <a href="https://github.com/lmartinking/tmux-applets">tmux-applets</a> and
-<a href="https://github.com/remiprev/teamocil">teamocil</a>.</p>
+<a href="https://github.com/remiprev/teamocil">teamocil</a>.
+There is a
+<a href="http://pragprog.com/book/bhtmux/tmux">book on tmux</a> by Brian P Hogan.</p>
 
 		<div id="screenshots">
 		    <a href="tmux3.png"><img src="small-tmux3.png" alt="Screenshot"/></a>
