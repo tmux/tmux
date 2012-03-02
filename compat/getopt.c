@@ -52,10 +52,7 @@ char	*BSDoptarg;		/* argument associated with option */
  *	Parse argc/argv argument vector.
  */
 int
-BSDgetopt(nargc, nargv, ostr)
-	int nargc;
-	char * const *nargv;
-	const char *ostr;
+BSDgetopt(int nargc, char *const *nargv, const char *ostr)
 {
 	static char *place = EMSG;		/* option letter processing */
 	char *oli;				/* option letter list index */
