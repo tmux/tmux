@@ -1601,6 +1601,7 @@ extern const struct cmd_entry cmd_load_buffer_entry;
 extern const struct cmd_entry cmd_lock_client_entry;
 extern const struct cmd_entry cmd_lock_server_entry;
 extern const struct cmd_entry cmd_lock_session_entry;
+extern const struct cmd_entry cmd_move_pane_entry;
 extern const struct cmd_entry cmd_move_window_entry;
 extern const struct cmd_entry cmd_new_session_entry;
 extern const struct cmd_entry cmd_new_window_entry;
@@ -1995,7 +1996,7 @@ void		 layout_resize_pane_mouse(
 		     struct client *c, struct mouse_event *mouse);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(
-		     struct window_pane *, enum layout_type, int);
+		     struct window_pane *, enum layout_type, int, int);
 void		 layout_close_pane(struct window_pane *);
 
 /* layout-custom.c */

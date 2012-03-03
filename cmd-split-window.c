@@ -112,7 +112,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 
-	if ((lc = layout_split_pane(wp, type, size)) == NULL) {
+	if ((lc = layout_split_pane(wp, type, size, 0)) == NULL) {
 		cause = xstrdup("pane too small");
 		goto error;
 	}
