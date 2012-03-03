@@ -975,8 +975,6 @@ struct session {
 
 	struct environ	 environ;
 
-	int		 wlmouse;
-
 	int		 references;
 
 	TAILQ_ENTRY(session) gentry;
@@ -1198,6 +1196,8 @@ struct client {
 	struct session	*last_session;
 
 	struct mouse_event last_mouse;
+
+	int		 wlmouse;
 
 	int		 references;
 };
