@@ -1363,7 +1363,7 @@ int		 format_cmp(struct format_entry *, struct format_entry *);
 RB_PROTOTYPE(format_tree, format_entry, entry, format_cmp);
 struct format_tree *format_create(void);
 void		 format_free(struct format_tree *);
-void		 format_add(
+void printflike3 format_add(
 		     struct format_tree *, const char *, const char *, ...);
 const char	*format_find(struct format_tree *, const char *);
 char		*format_expand(struct format_tree *, const char *);
@@ -2017,7 +2017,7 @@ extern const struct window_mode window_clock_mode;
 extern const struct window_mode window_copy_mode;
 void		 window_copy_init_from_pane(struct window_pane *);
 void		 window_copy_init_for_output(struct window_pane *);
-void		 window_copy_add(struct window_pane *, const char *, ...);
+void printflike2 window_copy_add(struct window_pane *, const char *, ...);
 void		 window_copy_vadd(struct window_pane *, const char *, va_list);
 void		 window_copy_pageup(struct window_pane *);
 
