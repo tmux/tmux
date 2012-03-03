@@ -29,9 +29,6 @@
 
 int	cmd_set_option_exec(struct cmd *, struct cmd_ctx *);
 
-int	cmd_set_option_find(const char *, const struct options_table_entry **,
-	    const struct options_table_entry **);
-
 int	cmd_set_option_unset(struct cmd *, struct cmd_ctx *,
 	    const struct options_table_entry *, struct options *,
 	    const char *);
@@ -81,39 +78,6 @@ const struct cmd_entry cmd_set_window_option_entry = {
 	cmd_set_option_exec
 };
 
-/* Look for an option in all three tables. */
-int
-cmd_set_option_find(
-    const char *optstr, const struct options_table_entry **table,
-    const struct options_table_entry **oe)
-{
-	static const struct options_table_entry	*tables[] = {
-		server_options_table,
-		window_options_table,
-		session_options_table
-	};
-	const struct options_table_entry	*oe_loop;
-	u_int					 i;
-
-	for (i = 0; i < nitems(tables); i++) {
-		for (oe_loop = tables[i]; oe_loop->name != NULL; oe_loop++) {
-			if (strncmp(oe_loop->name, optstr, strlen(optstr)) != 0)
-				continue;
-
-			/* If already found, ambiguous. */
-			if (*oe != NULL)
-				return (-1);
-			*oe = oe_loop;
-			*table = tables[i];
-
-			/* Bail now if an exact match. */
-			if (strcmp((*oe)->name, optstr) == 0)
-				break;
-		}
-	}
-	return (0);
-}
-
 int
 cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
@@ -139,7 +103,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	/* Find the option entry, try each table. */
 	table = oe = NULL;
-	if (cmd_set_option_find(optstr, &table, &oe) != 0) {
+	if (options_table_find(optstr, &table, &oe) != 0) {
 		ctx->error(ctx, "ambiguous option: %s", optstr);
 		return (-1);
 	}
