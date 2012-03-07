@@ -141,7 +141,7 @@ status_set_window_at(struct client *c, u_int x)
 	struct session	*s = c->session;
 	struct winlink	*wl;
 
-	x += s->wlmouse;
+	x += c->wlmouse;
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		if (x < wl->status_width &&
 			session_select(s, wl->idx) == 0) {
@@ -356,7 +356,7 @@ draw:
 		wloffset++;
 
 	/* Copy the window list. */
-	s->wlmouse = -wloffset + wlstart;
+	c->wlmouse = -wloffset + wlstart;
 	screen_write_cursormove(&ctx, wloffset, 0);
 	screen_write_copy(&ctx, &window_list, wlstart, 0, wlwidth, 1);
 	screen_free(&window_list);
