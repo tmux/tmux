@@ -133,7 +133,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		cp = format_expand(ft, template);
 		ctx->print(ctx, "%s", cp);
-		free(cp);
+		xfree(cp);
 
 		format_free(ft);
 	}
