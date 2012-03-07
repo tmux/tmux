@@ -137,6 +137,15 @@ int
 key_string_lookup_string(const char *string)
 {
 	int	key, modifiers;
+	u_short	u;
+	int	size;
+
+	/* Is this a hexadecimal value? */
+	if (string[0] == '0' && string[1] == 'x') {
+	        if (sscanf(string + 2, "%hx%n", &u, &size) != 1 || size > 4)
+	                return (KEYC_NONE);
+	        return (u);
+	}
 
 	/* Check for modifiers. */
 	modifiers = 0;
