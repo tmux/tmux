@@ -32,9 +32,9 @@ int	cmd_split_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_split_window_entry = {
 	"split-window", "splitw",
-	"c:dl:hp:Pt:v", 0, 1,
-	"[-dhvP] [-c start-directory] [-p percentage|-l size] [-t target-pane] "
-	"[command]",
+	"c:dF:l:hp:Pt:v", 0, 1,
+	"[-dhvP] [-c start-directory] [-F format] [-p percentage|-l size] "
+	"[-t target-pane] [command]",
 	0,
 	cmd_split_window_key_binding,
 	NULL,
@@ -58,12 +58,16 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window		*w;
 	struct window_pane	*wp, *new_wp = NULL;
 	struct environ		 env;
-	const char	       	*cmd, *cwd, *shell;
+	const char		*cmd, *cwd, *shell;
 	char			*cause, *new_cause;
-	u_int			 hlimit, paneidx;
+	u_int			 hlimit;
 	int			 size, percentage;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
+	const char		*template;
+	struct client		*c;
+	struct format_tree	*ft;
+	char			*cp;
 
 	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
 		return (-1);
@@ -134,9 +138,22 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	environ_free(&env);
 
 	if (args_has(args, 'P')) {
-		if (window_pane_index(new_wp, &paneidx) != 0)
-			fatalx("index not found");
-		ctx->print(ctx, "%s:%u.%u", s->name, wl->idx, paneidx);
+		template = "#{session_name}:#{window_index}.#{pane_index}";
+		if (args_has(args, 'F'))
+			template = args_get(args, 'F');
+
+		ft = format_create();
+		if ((c = cmd_find_client(ctx, NULL)) != NULL)
+		    format_client(ft, c);
+		format_session(ft, s);
+		format_winlink(ft, s, wl);
+		format_window_pane(ft, new_wp);
+
+		cp = format_expand(ft, template);
+		ctx->print(ctx, "%s", cp);
+		free(cp);
+
+		format_free(ft);
 	}
 	return (0);
 
