@@ -480,6 +480,12 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 		else
 			tty_putcode(tty, TTYC_RMKX);
 	}
+	if (changed & MODE_BRACKETPASTE) {
+		if (mode & MODE_BRACKETPASTE)
+			tty_puts(tty, "\033[?2004h");
+		else
+			tty_puts(tty, "\033[?2004l");
+	}
 	tty->mode = mode;
 }
 

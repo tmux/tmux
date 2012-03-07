@@ -29,13 +29,13 @@
 
 int	cmd_paste_buffer_exec(struct cmd *, struct cmd_ctx *);
 
-void	cmd_paste_buffer_filter(
-	    struct window_pane *, const char *, size_t, const char *);
+void	cmd_paste_buffer_filter(struct window_pane *,
+	    const char *, size_t, const char *, int bracket);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", "pasteb",
-	"db:rs:t:", 0, 0,
-	"[-dr] [-s separator] [-b buffer-index] [-t target-pane]",
+	"db:prs:t:", 0, 0,
+	"[-dpr] [-s separator] [-b buffer-index] [-t target-pane]",
 	0,
 	NULL,
 	NULL,
@@ -52,6 +52,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const char		*sepstr;
 	char			*cause;
 	int			 buffer;
+	int			 pflag;
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
 		return (-1);
@@ -85,7 +86,9 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 			else
 				sepstr = "\r";
 		}
-		cmd_paste_buffer_filter(wp, pb->data, pb->size, sepstr);
+		pflag = args_has(args, 'p') &&
+		    (wp->screen->mode & MODE_BRACKETPASTE);
+		cmd_paste_buffer_filter(wp, pb->data, pb->size, sepstr, pflag);
 	}
 
 	/* Delete the buffer if -d. */
@@ -101,12 +104,15 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 /* Add bytes to a buffer and filter '\n' according to separator. */
 void
-cmd_paste_buffer_filter(
-    struct window_pane *wp, const char *data, size_t size, const char *sep)
+cmd_paste_buffer_filter(struct window_pane *wp,
+    const char *data, size_t size, const char *sep, int bracket)
 {
 	const char	*end = data + size;
 	const char	*lf;
 	size_t		 seplen;
+
+	if (bracket)
+		bufferevent_write(wp->event, "\033[200~", 6);
 
 	seplen = strlen(sep);
 	while ((lf = memchr(data, '\n', end - data)) != NULL) {
@@ -118,4 +124,7 @@ cmd_paste_buffer_filter(
 
 	if (end != data)
 		bufferevent_write(wp->event, data, end - data);
+
+	if (bracket)
+		bufferevent_write(wp->event, "\033[201~", 6);
 }

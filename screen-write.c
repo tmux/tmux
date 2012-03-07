@@ -878,6 +878,18 @@ screen_write_mousemode_on(struct screen_write_ctx *ctx, int mode)
 	s->mode |= mode;
 }
 
+/* Set bracketed paste mode. */
+void
+screen_write_bracketpaste(struct screen_write_ctx *ctx, int state)
+{
+	struct screen	*s = ctx->s;
+
+	if (state)
+		s->mode |= MODE_BRACKETPASTE;
+	else
+		s->mode &= ~MODE_BRACKETPASTE;
+}
+
 /* Line feed. */
 void
 screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
