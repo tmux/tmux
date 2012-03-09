@@ -1687,7 +1687,7 @@ const char *key_string_lookup_key(int);
 extern struct clients clients;
 extern struct clients dead_clients;
 extern struct paste_stack global_buffers;
-int	 server_start(void);
+int	 server_start(int, char *);
 void	 server_update_socket(void);
 
 /* server-client.c */

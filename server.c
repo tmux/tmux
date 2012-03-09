@@ -104,7 +104,7 @@ server_create_socket(void)
 
 /* Fork new server. */
 int
-server_start(void)
+server_start(int lockfd, char *lockfile)
 {
 	struct window_pane	*wp;
 	int	 		 pair[2];
@@ -160,6 +160,10 @@ server_start(void)
 
 	server_fd = server_create_socket();
 	server_client_create(pair[1]);
+
+	unlink(lockfile);
+	xfree(lockfile);
+	close(lockfd);
 
 	if (access(SYSTEM_CFG, R_OK) == 0)
 		load_cfg(SYSTEM_CFG, NULL, &cfg_causes);
