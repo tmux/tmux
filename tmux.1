@@ -996,7 +996,8 @@ from which the layout was originally defined.
 Commands related to windows and panes are as follows:
 .Bl -tag -width Ds
 .It Xo Ic break-pane
-.Op Fl d
+.Op Fl dP
+.Op Fl F Ar format
 .Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic breakp )
@@ -1006,6 +1007,13 @@ off from its containing window to make it the only pane in a new window.
 If
 .Fl d
 is given, the new window does not become the current window.
+The
+.Fl P
+option prints information about the new window after it has been created.
+By default, it uses the format
+.Ql #{session_name}:#{window_index}
+but a different format may be specified with
+.Fl F .
 .It Xo Ic capture-pane
 .Op Fl b Ar buffer-index
 .Op Fl E Ar end-line
