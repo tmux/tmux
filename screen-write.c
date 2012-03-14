@@ -1071,9 +1071,6 @@ screen_write_cell(struct screen_write_ctx *ctx,
 		return;
 	}
 
-	/* Initialise the redraw context, saving the last cell. */
-	screen_write_initctx(ctx, &ttyctx, 1);
-
 	/* If in insert mode, make space for the cells. */
 	if (s->mode & MODE_INSERT && s->cx <= screen_size_x(s) - width) {
 		xx = screen_size_x(s) - s->cx - width;
@@ -1086,6 +1083,9 @@ screen_write_cell(struct screen_write_ctx *ctx,
 		screen_write_linefeed(ctx, 1);
 		s->cx = 0;	/* carriage return */
 	}
+
+	/* Initialise the redraw context, saving the last cell. */
+	screen_write_initctx(ctx, &ttyctx, 1);
 
 	/* Sanity checks. */
 	if (((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - width)
