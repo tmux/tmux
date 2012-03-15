@@ -502,6 +502,19 @@ tty_emulate_repeat(
 }
 
 /*
+ * Is the region large enough to be worth redrawing once later rather than
+ * probably several times now? Currently yes if it is more than 50% of the
+ * pane.
+ */
+int
+tty_large_region(unused struct tty *tty, const struct tty_ctx *ctx)
+{
+	struct window_pane	*wp = ctx->wp;
+
+	return (ctx->orlower - ctx->orupper >= screen_size_y(wp->screen) / 2);
+}
+
+/*
  * Redraw scroll region using data from screen (already updated). Used when
  * CSR not supported, or window is a pane that doesn't take up the full
  * width of the terminal.
@@ -514,12 +527,10 @@ tty_redraw_region(struct tty *tty, const struct tty_ctx *ctx)
 	u_int		 	 i;
 
 	/*
-	 * If region is >= 50% of the screen, just schedule a window redraw. In
-	 * most cases, this is likely to be followed by some more scrolling -
-	 * without this, the entire pane ends up being redrawn many times which
-	 * can be much more data.
+	 * If region is large, schedule a window redraw. In most cases this is
+	 * likely to be followed by some more scrolling.
 	 */
-	if (ctx->orlower - ctx->orupper >= screen_size_y(s) / 2) {
+	if (tty_large_region(tty, ctx)) {
 		wp->flags |= PANE_REDRAW;
 		return;
 	}
