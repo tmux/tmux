@@ -1013,6 +1013,7 @@ LIST_HEAD(tty_terms, tty_term);
 
 struct tty {
 	char		*path;
+	u_int		 xterm_version;
 
 	u_int		 sx;
 	u_int		 sy;

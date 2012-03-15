@@ -211,6 +211,9 @@ tty_start_tty(struct tty *tty)
 	if (tty_term_has(tty->term, TTYC_KMOUS))
 		tty_puts(tty, "\033[?1000l");
 
+	if (tty_term_has(tty->term, TTYC_XT))
+		tty_puts(tty, "\033[>c");
+
 	tty->cx = UINT_MAX;
 	tty->cy = UINT_MAX;
 
