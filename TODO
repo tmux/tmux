@@ -132,6 +132,8 @@
 - command-prompt doesn't work if made read-only. why?
 - option to quote format eg #{session_name:quoted}
 - formats need to be used for much much more stuff!
+	choose-*
+	find-window
 - formats need conditions for >0 (for #P)
 - flags to find-window to select what is searched (title, name, content, history)
 - fetch full command line on !Linux, and add option to strip prefixes
