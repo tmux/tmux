@@ -1788,7 +1788,7 @@ command.
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
-.Op Fl agsuw
+.Op Fl agqsuw
 .Op Fl t Ar target-session | Ar target-window
 .Ar option Ar value
 .Xc
@@ -1815,6 +1815,12 @@ The
 flag unsets an option, so a session inherits the option from the global
 options.
 It is not possible to unset a global option.
+.Pp
+The
+.Fl q
+flag suppresses the informational message (as if the
+.Ic quiet
+server option was set).
 .Pp
 Available window options are listed under
 .Ic set-window-option .
@@ -2381,7 +2387,7 @@ The default is
 .Ql \ -_@ .
 .El
 .It Xo Ic set-window-option
-.Op Fl agu
+.Op Fl agqu
 .Op Fl t Ar target-window
 .Ar option Ar value
 .Xc
@@ -2389,7 +2395,8 @@ The default is
 Set a window option.
 The
 .Fl a ,
-.Fl g
+.Fl g ,
+.Fl q
 and
 .Fl u
 flags work similarly to the
