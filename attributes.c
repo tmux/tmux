@@ -26,27 +26,21 @@ const char *
 attributes_tostring(u_char attr)
 {
 	static char	buf[128];
+	size_t		len;
 
 	if (attr == 0)
 		return ("none");
 
-	buf[0] = '\0';
-	if (attr & GRID_ATTR_BRIGHT)
-		strlcat(buf, "bright,", sizeof (buf));
-	if (attr & GRID_ATTR_DIM)
-		strlcat(buf, "dim,", sizeof (buf));
-	if (attr & GRID_ATTR_UNDERSCORE)
-		strlcat(buf, "underscore,", sizeof (buf));
-	if (attr & GRID_ATTR_BLINK)
-		strlcat(buf, "blink,", sizeof (buf));
-	if (attr & GRID_ATTR_REVERSE)
-		strlcat(buf, "reverse,", sizeof (buf));
-	if (attr & GRID_ATTR_HIDDEN)
-		strlcat(buf, "hidden,", sizeof (buf));
-	if (attr & GRID_ATTR_ITALICS)
-		strlcat(buf, "italics,", sizeof (buf));
-	if (*buf != '\0')
-		*(strrchr(buf, ',')) = '\0';
+	len = xsnprintf(buf, sizeof buf, "%s%s%s%s%s%s%s",
+		attr & GRID_ATTR_BRIGHT ? "bright," : "",
+		attr & GRID_ATTR_DIM ? "dim," : "",
+		attr & GRID_ATTR_UNDERSCORE ? "underscore," : "",
+		attr & GRID_ATTR_BLINK ? "blink," : "",
+		attr & GRID_ATTR_REVERSE ? "reverse," : "",
+		attr & GRID_ATTR_HIDDEN ? "hidden," : "",
+		attr & GRID_ATTR_ITALICS ? "italics," : "");
+	if (len > 0)
+		buf[len - 1] = '\0';
 
 	return (buf);
 }
