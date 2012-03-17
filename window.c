@@ -368,6 +368,7 @@ window_set_name(struct window *w, const char *new_name)
 	if (w->name != NULL)
 		xfree(w->name);
 	w->name = xstrdup(new_name);
+	notify_window_renamed(w);
 }
 
 void

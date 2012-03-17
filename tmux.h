@@ -1396,6 +1396,16 @@ void	mode_key_init_trees(void);
 void	mode_key_init(struct mode_key_data *, struct mode_key_tree *);
 enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
 
+/* notify.c */
+void	notify_window_layout_changed(struct window *);
+void	notify_window_unlinked(struct session *, struct window *);
+void	notify_window_linked(struct session *, struct window *);
+void	notify_window_renamed(struct window *);
+void	notify_attached_session_changed(struct client *);
+void	notify_session_renamed(struct session *);
+void	notify_session_created(struct session *);
+void	notify_session_closed(struct session *);
+
 /* options.c */
 int	options_cmp(struct options_entry *, struct options_entry *);
 RB_PROTOTYPE(options_tree, options_entry, entry, options_cmp);

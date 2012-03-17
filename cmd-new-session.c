@@ -244,6 +244,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 			if (old_s != NULL)
 				ctx->cmdclient->last_session = old_s;
 			ctx->cmdclient->session = s;
+			notify_attached_session_changed(ctx->cmdclient);
 			session_update_activity(s);
 			server_redraw_client(ctx->cmdclient);
 		} else {
@@ -251,6 +252,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 			if (old_s != NULL)
 				ctx->curclient->last_session = old_s;
 			ctx->curclient->session = s;
+			notify_attached_session_changed(ctx->curclient);
 			session_update_activity(s);
 			server_redraw_client(ctx->curclient);
 		}

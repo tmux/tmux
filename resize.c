@@ -141,5 +141,6 @@ recalculate_sizes(void)
 		}
 
 		server_redraw_window(w);
+		notify_window_layout_changed(w);
 	}
 }
