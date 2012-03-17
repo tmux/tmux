@@ -453,7 +453,8 @@ server_set_identify(struct client *c)
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
-	evtimer_del(&c->identify_timer);
+	if (event_initialized (&c->identify_timer))
+		evtimer_del(&c->identify_timer);
 	evtimer_set(&c->identify_timer, server_callback_identify, c);
 	evtimer_add(&c->identify_timer, &tv);
 
@@ -491,7 +492,8 @@ server_update_event(struct client *c)
 		events |= EV_READ;
 	if (c->ibuf.w.queued > 0)
 		events |= EV_WRITE;
-	event_del(&c->event);
+	if (event_initialized(&c->event))
+		event_del(&c->event);
 	event_set(&c->event, c->ibuf.fd, events, server_client_callback, c);
 	event_add(&c->event, NULL);
 }

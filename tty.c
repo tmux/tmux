@@ -279,7 +279,8 @@ tty_close(struct tty *tty)
 		tty->log_fd = -1;
 	}
 
-	evtimer_del(&tty->key_timer);
+	if (event_initialized(&tty->key_timer))
+		evtimer_del(&tty->key_timer);
 	tty_stop_tty(tty);
 
 	if (tty->flags & TTY_OPENED) {

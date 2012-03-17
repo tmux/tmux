@@ -153,11 +153,13 @@ server_client_lost(struct client *c)
 
 	evtimer_del(&c->repeat_timer);
 
-	evtimer_del(&c->identify_timer);
+	if (event_initialized(&c->identify_timer))
+		evtimer_del(&c->identify_timer);
 
 	if (c->message_string != NULL)
 		xfree(c->message_string);
-	evtimer_del(&c->message_timer);
+	if (event_initialized (&c->message_timer))
+		evtimer_del(&c->message_timer);
 	for (i = 0; i < ARRAY_LENGTH(&c->message_log); i++) {
 		msg = &ARRAY_ITEM(&c->message_log, i);
 		xfree(msg->msg);
@@ -176,7 +178,8 @@ server_client_lost(struct client *c)
 
 	close(c->ibuf.fd);
 	imsg_clear(&c->ibuf);
-	event_del(&c->event);
+	if (event_initialized(&c->event))
+		event_del(&c->event);
 
 	for (i = 0; i < ARRAY_LENGTH(&dead_clients); i++) {
 		if (ARRAY_ITEM(&dead_clients, i) == NULL) {
