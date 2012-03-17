@@ -175,18 +175,19 @@ tty_error_callback(
 }
 
 void
-tty_start_tty(struct tty *tty)
+tty_init_termios(int fd, struct termios *orig_tio, struct bufferevent *bufev)
 {
 	struct termios	 tio;
 
-	if (tty->fd == -1 || tcgetattr(tty->fd, &tty->tio) != 0)
+	if (fd == -1 || tcgetattr(fd, orig_tio) != 0)
 		return;
 
-	setblocking(tty->fd, 0);
+	setblocking(fd, 0);
 
-	bufferevent_enable(tty->event, EV_READ|EV_WRITE);
+	if (bufev != NULL)
+		bufferevent_enable(bufev, EV_READ|EV_WRITE);
 
-	memcpy(&tio, &tty->tio, sizeof tio);
+	memcpy(&tio, orig_tio, sizeof tio);
 	tio.c_iflag &= ~(IXON|IXOFF|ICRNL|INLCR|IGNCR|IMAXBEL|ISTRIP);
 	tio.c_iflag |= IGNBRK;
 	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET);
@@ -194,8 +195,14 @@ tty_start_tty(struct tty *tty)
 	    ECHOPRT|ECHOKE|ECHOCTL|ISIG);
 	tio.c_cc[VMIN] = 1;
 	tio.c_cc[VTIME] = 0;
-	if (tcsetattr(tty->fd, TCSANOW, &tio) == 0)
-		tcflush(tty->fd, TCIOFLUSH);
+	if (tcsetattr(fd, TCSANOW, &tio) == 0)
+		tcflush(fd, TCIOFLUSH);
+}
+
+void
+tty_start_tty(struct tty *tty)
+{
+	tty_init_termios(tty->fd, &tty->tio, tty->event);
 
 	tty_putcode(tty, TTYC_SMCUP);
 
