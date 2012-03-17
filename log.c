@@ -39,6 +39,7 @@ FILE   *log_file;
 /* Debug level. */
 int	log_level;
 
+void		 log_event_cb(int, const char *);
 void		 log_vwrite(int, const char *, va_list);
 __dead void	 log_vfatal(const char *, va_list);
 
@@ -46,7 +47,7 @@ __dead void	 log_vfatal(const char *, va_list);
 void
 log_event_cb(unused int severity, const char *msg)
 {
-	log_warnx(msg);
+	log_warnx("%s", msg);
 }
 
 /* Open logging to tty. */
