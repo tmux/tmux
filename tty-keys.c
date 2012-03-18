@@ -19,6 +19,8 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+#include <limits.h>
+#include <stdlib.h>
 #include <string.h>
 #include <termios.h>
 #include <unistd.h>
@@ -40,6 +42,7 @@ struct tty_key *tty_keys_find(struct tty *, const char *, size_t, size_t *);
 void		tty_keys_callback(int, short, void *);
 int		tty_keys_mouse(struct tty *,
 		    const char *, size_t, size_t *, struct mouse_event *);
+int		tty_keys_device(struct tty *, const char *, size_t, size_t *);
 
 struct tty_key_ent {
 	enum tty_code_code	code;
@@ -461,6 +464,19 @@ tty_keys_next(struct tty *tty)
 		goto handle_key;
 	}
 
+	/* Is this device attributes response? */
+	switch (tty_keys_device(tty, buf, len, &size)) {
+	case 0:		/* yes */
+		evbuffer_drain(tty->event->input, size);
+		key = KEYC_NONE;
+		goto handle_key;
+	case -1:	/* no, or not valid */
+		break;
+	case 1:		/* partial */
+		goto partial_key;
+	}
+
+
 	/* Is this a mouse key press? */
 	switch (tty_keys_mouse(tty, buf, len, &size, &mouse)) {
 	case 0:		/* yes */
@@ -559,7 +575,8 @@ found_key:
 handle_key:
 	evtimer_del(&tty->key_timer);
 
-	tty->key_callback(key, &mouse, tty->key_data);
+	if (key != KEYC_NONE)
+		tty->key_callback(key, &mouse, tty->key_data);
 
 	tty->flags &= ~TTY_ESCAPE;
 	return (1);
@@ -653,5 +670,64 @@ tty_keys_mouse(struct tty *tty,
 	m->x -= 33;
 	m->y -= 33;
 	log_debug("mouse position: x=%u y=%u b=%u", m->x, m->y, m->b);
+	return (0);
+}
+
+/*
+ * Handle device attributes input. Returns 0 for success, -1 for failure, 1 for
+ * partial.
+ */
+int
+tty_keys_device(struct tty *tty, const char *buf, size_t len, size_t *size)
+{
+	u_int i, a, b;
+	char  tmp[64], *endptr;
+
+	/*
+	 * Secondary device attributes are \033[>a;b;c. We only request
+	 * attributes on xterm, so we only care about the middle values which
+	 * is the xterm version.
+	 */
+
+	*size = 0;
+
+	/* First three bytes are always \033[>. */
+	if (buf[0] != '\033')
+		return (-1);
+	if (len == 1)
+		return (1);
+	if (buf[1] != '[')
+		return (-1);
+	if (len == 2)
+		return (1);
+	if (buf[2] != '>')
+		return (-1);
+	if (len == 3)
+		return (1);
+
+	/* Copy the rest up to a 'c'. */
+	for (i = 0; i < (sizeof tmp) - 1 && buf[3 + i] != 'c'; i++) {
+		if (3 + i == len)
+			return (1);
+		tmp[i] = buf[3 + i];
+	}
+	if (i == (sizeof tmp) - 1)
+		return (-1);
+	tmp[i] = '\0';
+	*size = 4 + i;
+
+	/* Convert version numbers. */
+	a = strtoul(tmp, &endptr, 10);
+	if (*endptr == ';') {
+		b = strtoul(endptr + 1, &endptr, 10);
+		if (*endptr != '\0' && *endptr != ';')
+			b = 0;
+	} else
+		a = b = 0;
+
+	log_debug("received xterm version %u", b);
+	if (tty->xterm_version == 0)
+		tty->xterm_version = b;
+
 	return (0);
 }
