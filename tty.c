@@ -177,7 +177,7 @@ tty_error_callback(
 void
 tty_init_termios(int fd, struct termios *orig_tio, struct bufferevent *bufev)
 {
-	struct termios	 tio;
+	struct termios	tio;
 
 	if (fd == -1 || tcgetattr(fd, orig_tio) != 0)
 		return;
@@ -235,6 +235,27 @@ tty_start_tty(struct tty *tty)
 }
 
 void
+tty_set_version(struct tty *tty, u_int version)
+{
+	if (tty->xterm_version != 0)
+		return;
+	tty->xterm_version = version;
+
+	if (tty->xterm_version > 270) {
+		tty_puts(tty, "\033[65;1\"p");
+
+		tty_putcode(tty, TTYC_RMACS);
+		memcpy(&tty->cell, &grid_default_cell, sizeof tty->cell);
+
+		tty->cx = UINT_MAX;
+		tty->cy = UINT_MAX;
+
+		tty->rupper = UINT_MAX;
+		tty->rlower = UINT_MAX;
+	}
+}
+
+void
 tty_stop_tty(struct tty *tty)
 {
 	struct winsize	ws;
@@ -276,6 +297,9 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?1000l");
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
+
+	if (tty->xterm_version > 270)
+		tty_raw(tty, "\033[61;1\"p");
 }
 
 void
@@ -844,13 +868,28 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
+	char			 tmp[64];
 
 	if (ctx->ocy != ctx->orlower)
 		return;
 
 	if (ctx->xoff != 0 || screen_size_x(s) < tty->sx ||
 	    !tty_term_has(tty->term, TTYC_CSR)) {
-		tty_redraw_region(tty, ctx);
+		if (tty_large_region(tty, ctx))
+			wp->flags |= PANE_REDRAW;
+		else if (tty->xterm_version > 270) {
+			snprintf(tmp, sizeof tmp,
+			    "\033[%u;%u;%u;%u;1;%u;%u;1$v",
+			    ctx->yoff + ctx->orupper + 2,
+			    ctx->xoff + 1,
+			    ctx->yoff + ctx->orlower + 1,
+			    ctx->xoff + screen_size_x(s),
+			    ctx->yoff + ctx->orupper + 1,
+			    ctx->xoff + 1);
+			tty_puts(tty, tmp);
+			tty_cmd_clearline(tty, ctx);
+		} else
+			tty_redraw_region(tty, ctx);
 		return;
 	}
 

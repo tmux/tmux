@@ -728,8 +728,7 @@ tty_keys_device(struct tty *tty, const char *buf, size_t len, size_t *size)
 		a = b = 0;
 
 	log_debug("received xterm version %u", b);
-	if (tty->xterm_version == 0)
-		tty->xterm_version = b;
+	tty_set_version(tty, b);
 
 	return (0);
 }
