@@ -42,6 +42,13 @@ int	log_level;
 void		 log_vwrite(int, const char *, va_list);
 __dead void	 log_vfatal(const char *, va_list);
 
+/* Log callback for libevent. */
+void
+log_event_cb(unused int severity, const char *msg)
+{
+	log_warnx(msg);
+}
+
 /* Open logging to tty. */
 void
 log_open_tty(int level)
@@ -51,6 +58,7 @@ log_open_tty(int level)
 
 	setlinebuf(stderr);
 	setlinebuf(stdout);
+	event_set_log_callback(log_event_cb);
 
 	tzset();
 }
@@ -67,6 +75,7 @@ log_open_file(int level, const char *path)
 	log_level = level;
 
 	setlinebuf(log_file);
+	event_set_log_callback(log_event_cb);
 
 	tzset();
 }
@@ -77,6 +86,8 @@ log_close(void)
 {
 	if (log_type == LOG_TYPE_FILE)
 		fclose(log_file);
+
+	event_set_log_callback(NULL);
 
 	log_type = LOG_TYPE_OFF;
 }
