@@ -39,6 +39,7 @@ int		client_exitval;
 enum msgtype	client_exittype;
 int		client_attached;
 
+int		client_get_lock(char *);
 int		client_connect(char *, int);
 void		client_send_identify(int);
 void		client_send_environ(void);
@@ -49,13 +50,38 @@ void		client_callback(int, short, void *);
 int		client_dispatch_attached(void);
 int		client_dispatch_wait(void *);
 
+/*
+ * Get server create lock. If already held then server start is happening in
+ * another client, so block until the lock is released and return -1 to
+ * retry. Ignore other errors - just continue and start the server without the
+ * lock.
+ */
+int
+client_get_lock(char *lockfile)
+{
+	int lockfd;
+
+	if ((lockfd = open(lockfile, O_WRONLY|O_CREAT, 0600)) == -1)
+		fatal("open failed");
+
+	if (flock(lockfd, LOCK_EX|LOCK_NB) == -1 && errno == EWOULDBLOCK) {
+		while (flock(lockfd, LOCK_EX) == -1 && errno == EINTR)
+			/* nothing */;
+		close(lockfd);
+		return (-1);
+	}
+
+	return (lockfd);
+}
+
 /* Connect client to server. */
 int
 client_connect(char *path, int start_server)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
-	int			fd;
+	int			fd, lockfd;
+	char		       *lockfile;
 
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
@@ -65,24 +91,25 @@ client_connect(char *path, int start_server)
 		return (-1);
 	}
 
+retry:
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		fatal("socket failed");
 
 	if (connect(fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
+		if (errno != ECONNREFUSED && errno != ENOENT)
+			goto failed;
 		if (!start_server)
 			goto failed;
-		switch (errno) {
-		case ECONNREFUSED:
-			if (unlink(path) != 0)
-				goto failed;
-			/* FALLTHROUGH */
-		case ENOENT:
-			if ((fd = server_start()) == -1)
-				goto failed;
-			break;
-		default:
-			goto failed;
-		}
+		close(fd);
+
+		xasprintf(&lockfile, "%s.lock", path);
+		if ((lockfd = client_get_lock(lockfile)) == -1)
+			goto retry;
+		if (unlink(path) != 0 && errno != ENOENT)
+			return (-1);
+		fd = server_start(lockfd, lockfile);
+		xfree(lockfile);
+		close(lockfd);
 	}
 
 	setblocking(fd, 0);
