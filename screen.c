@@ -97,7 +97,7 @@ screen_reset_tabs(struct screen *s)
 void
 screen_set_cursor_style(struct screen *s, u_int style)
 {
-	if (style <= 4)
+	if (style <= 6)
 		s->cstyle = style;
 }
 
