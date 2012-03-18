@@ -60,8 +60,8 @@ struct options_entry *cmd_set_option_choice(struct cmd *, struct cmd_ctx *,
 
 const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set",
-	"agst:uw", 1, 2,
-	"[-agsuw] [-t target-session|target-window] option [value]",
+	"agqst:uw", 1, 2,
+	"[-agsquw] [-t target-session|target-window] option [value]",
 	0,
 	NULL,
 	NULL,
@@ -70,8 +70,8 @@ const struct cmd_entry cmd_set_option_entry = {
 
 const struct cmd_entry cmd_set_window_option_entry = {
 	"set-window-option", "setw",
-	"agt:u", 1, 2,
-	"[-agu] " CMD_TARGET_WINDOW_USAGE " option [value]",
+	"agqt:u", 1, 2,
+	"[-agqu] " CMD_TARGET_WINDOW_USAGE " option [value]",
 	0,
 	NULL,
 	NULL,
@@ -175,7 +175,8 @@ cmd_set_option_unset(struct cmd *self, struct cmd_ctx *ctx,
 	}
 
 	options_remove(oo, oe->name);
-	ctx->info(ctx, "unset option: %s", oe->name);
+	if (!args_has(args, 'q'))
+		ctx->info(ctx, "unset option: %s", oe->name);
 	return (0);
 }
 
@@ -184,6 +185,7 @@ int
 cmd_set_option_set(struct cmd *self, struct cmd_ctx *ctx,
     const struct options_table_entry *oe, struct options *oo, const char *value)
 {
+	struct args		*args = self->args;
 	struct options_entry	*o;
 	const char		*s;
 
@@ -220,7 +222,8 @@ cmd_set_option_set(struct cmd *self, struct cmd_ctx *ctx,
 		return (-1);
 
 	s = options_table_print_entry(oe, o);
-	ctx->info(ctx, "set option: %s -> %s", oe->name, s);
+	if (!args_has(args, 'q'))
+		ctx->info(ctx, "set option: %s -> %s", oe->name, s);
 	return (0);
 }
 
@@ -229,7 +232,7 @@ struct options_entry *
 cmd_set_option_string(struct cmd *self, unused struct cmd_ctx *ctx,
     const struct options_table_entry *oe, struct options *oo, const char *value)
 {
-	struct args	*args = self->args;
+	struct args		*args = self->args;
 	struct options_entry	*o;
 	char			*oldval, *newval;
 
