@@ -64,6 +64,7 @@ cmd_rename_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	RB_INSERT(sessions, &sessions, s);
 
 	server_status_session(s);
+	notify_session_renamed(s);
 
 	return (0);
 }

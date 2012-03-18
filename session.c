@@ -141,6 +141,7 @@ session_create(const char *name, const char *cmd, const char *cwd,
 	}
 
 	log_debug("session %s created", s->name);
+	notify_session_created(s);
 
 	return (s);
 }
@@ -149,9 +150,11 @@ session_create(const char *name, const char *cmd, const char *cwd,
 void
 session_destroy(struct session *s)
 {
+	struct winlink	*wl;
 	log_debug("session %s destroyed", s->name);
 
 	RB_REMOVE(sessions, &sessions, s);
+	notify_session_closed(s);
 
 	if (s->tio != NULL)
 		xfree(s->tio);
@@ -162,8 +165,11 @@ session_destroy(struct session *s)
 
 	while (!TAILQ_EMPTY(&s->lastw))
 		winlink_stack_remove(&s->lastw, TAILQ_FIRST(&s->lastw));
-	while (!RB_EMPTY(&s->windows))
-		winlink_remove(&s->windows, RB_ROOT(&s->windows));
+	while (!RB_EMPTY(&s->windows)) {
+		wl = RB_ROOT(&s->windows);
+		notify_window_unlinked(s, wl->window);
+		winlink_remove(&s->windows, wl);
+	}
 
 	xfree(s->cwd);
 
@@ -253,6 +259,7 @@ session_new(struct session *s,
 		return (NULL);
 	}
 	winlink_set_window(wl, w);
+	notify_window_linked(s, w);
 	environ_free(&env);
 
 	if (options_get_number(&s->options, "set-remain-on-exit"))
@@ -273,6 +280,7 @@ session_attach(struct session *s, struct window *w, int idx, char **cause)
 		return (NULL);
 	}
 	winlink_set_window(wl, w);
+	notify_window_linked(s, w);
 
 	session_group_synchronize_from(s);
 	return (wl);
@@ -287,6 +295,7 @@ session_detach(struct session *s, struct winlink *wl)
 		session_next(s, 0);
 
 	wl->flags &= ~WINLINK_ALERTFLAGS;
+	notify_window_unlinked(s, wl->window);
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_remove(&s->windows, wl);
 	session_group_synchronize_from(s);
@@ -554,6 +563,7 @@ session_group_synchronize1(struct session *target, struct session *s)
 	RB_FOREACH(wl, winlinks, ww) {
 		wl2 = winlink_add(&s->windows, wl->idx);
 		winlink_set_window(wl2, wl->window);
+		notify_window_linked(s, wl2->window);
 		wl2->flags |= wl->flags & WINLINK_ALERTFLAGS;
 	}
 
@@ -575,6 +585,8 @@ session_group_synchronize1(struct session *target, struct session *s)
 	/* Then free the old winlinks list. */
 	while (!RB_EMPTY(&old_windows)) {
 		wl = RB_ROOT(&old_windows);
+		if (winlink_find_by_window_id(&s->windows, wl->window->id) == NULL)
+		    notify_window_unlinked(s, wl->window);
 		winlink_remove(&old_windows, wl);
 	}
 }

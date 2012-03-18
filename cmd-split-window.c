@@ -155,6 +155,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		format_free(ft);
 	}
+	notify_window_layout_changed(w);
 	return (0);
 
 error:
