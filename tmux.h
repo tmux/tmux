@@ -55,9 +55,6 @@ extern char   **environ;
 /* Automatic name refresh interval, in milliseconds. */
 #define NAME_INTERVAL 500
 
-/* Maximum data to buffer for output before suspending writing to a tty. */
-#define BACKOFF_THRESHOLD 16384
-
 /*
  * Maximum sizes of strings in message data. Don't forget to bump
  * PROTOCOL_VERSION if any of these change!
@@ -1044,7 +1041,6 @@ struct tty {
 #define TTY_UTF8 0x8
 #define TTY_STARTED 0x10
 #define TTY_OPENED 0x20
-#define TTY_BACKOFF 0x40
 	int		 flags;
 
 	int		 term_flags;
