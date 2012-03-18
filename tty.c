@@ -43,6 +43,7 @@ void	tty_check_bg(struct tty *, struct grid_cell *);
 void	tty_colours_fg(struct tty *, const struct grid_cell *);
 void	tty_colours_bg(struct tty *, const struct grid_cell *);
 
+int	tty_large_region(struct tty *, const struct tty_ctx *);
 void	tty_redraw_region(struct tty *, const struct tty_ctx *);
 void	tty_emulate_repeat(
 	    struct tty *, enum tty_code_code, enum tty_code_code, u_int);
