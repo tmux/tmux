@@ -145,6 +145,7 @@
 - flag to switch-client to switch all clients
 - history of layouts and undo/redo flags to selectl
 - way to tag a layout as a number/name
+- optimize pane redraws, 20120318184853.GK10965@yelena.nicm.ath.cx
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!
