@@ -123,12 +123,6 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 					    wp, str, &line);
 				}
 
-				/*
-				 * If match_title isn't set we don't want to
-				 * bother checking the title, but that also
-				 * constitutes a failure to match so we still
-				 * want to abort.
-				 */
 				if (sres == NULL &&
 				    (!(match_flags & CMD_FIND_WINDOW_BY_TITLE) ||
 				     fnmatch(searchstr, wp->base.title, 0) != 0))
