@@ -2908,12 +2908,16 @@ new process.
 .It Xo Ic show-environment
 .Op Fl g
 .Op Fl t Ar target-session
+.Op Ar variable
 .Xc
 .D1 (alias: Ic showenv )
 Display the environment for
 .Ar target-session
 or the global environment with
 .Fl g .
+If
+.Ar variable
+is omitted, all variables are shown.
 Variables removed from the environment are prefixed with
 .Ql - .
 .El

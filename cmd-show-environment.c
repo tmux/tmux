@@ -31,8 +31,8 @@ int	cmd_show_environment_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_environment_entry = {
 	"show-environment", "showenv",
-	"gt:", 0, 0,
-	"[-g] " CMD_TARGET_SESSION_USAGE,
+	"gt:", 0, 1,
+	"[-g] " CMD_TARGET_SESSION_USAGE " [name]",
 	0,
 	NULL,
 	NULL,
@@ -53,6 +53,19 @@ cmd_show_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
 			return (-1);
 		env = &s->environ;
+	}
+
+	if (args->argc != 0) {
+		envent = environ_find(env, args->argv[0]);
+		if (envent == NULL) {
+			ctx->error(ctx, "unknown variable: %s", args->argv[0]);
+			return (-1);
+		}
+		if (envent->value != NULL)
+			ctx->print(ctx, "%s=%s", envent->name, envent->value);
+		else
+			ctx->print(ctx, "-%s", envent->name);
+		return (0);
 	}
 
 	RB_FOREACH(envent, environ, env) {
