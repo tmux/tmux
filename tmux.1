@@ -1103,6 +1103,7 @@ to
 .Ql 9
 keys.
 .It Xo Ic find-window
+.Op Fl CNT
 .Op Fl t Ar target-window
 .Ar match-string
 .Xc
@@ -1112,8 +1113,17 @@ Search for the
 pattern
 .Ar match-string
 in window names, titles, and visible content (but not history).
-If only one window is matched, it'll be automatically selected, otherwise a
-choice list is shown.
+The flags control matching behavior:
+.Fl C
+matches only visible window contents,
+.Fl N
+matches only the window name and
+.Fl T
+matches only the window title.
+The default is
+.Fl CNT .
+If only one window is matched, it'll be automatically selected,
+otherwise a choice list is shown.
 This command only works from inside
 .Nm .
 .It Xo Ic join-pane
