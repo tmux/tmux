@@ -467,7 +467,7 @@ const struct options_table_entry window_options_table[] = {
 
 	{ .name = "c0-change-trigger",
 	  .type = OPTIONS_TABLE_NUMBER,
-	  .default_num = 50,
+	  .default_num = 250,
 	  .minimum = 0,
 	  .maximum = USHRT_MAX
 	},
