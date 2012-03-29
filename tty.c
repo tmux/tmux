@@ -661,7 +661,7 @@ tty_write(
 
 	if (wp->window->flags & WINDOW_REDRAW || wp->flags & PANE_REDRAW)
 		return;
-	if (!window_pane_visible(wp))
+	if (!window_pane_visible(wp) || wp->flags & PANE_DROP)
 		return;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {

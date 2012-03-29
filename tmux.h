@@ -807,6 +807,7 @@ struct window_pane {
 
 	int		 flags;
 #define PANE_REDRAW 0x1
+#define PANE_DROP 0x2
 
 	char		*cmd;
 	char		*shell;
@@ -814,6 +815,10 @@ struct window_pane {
 
 	pid_t		 pid;
 	char		 tty[TTY_NAME_MAX];
+
+	u_int		 changes;
+	struct event	 changes_timer;
+	u_int		 changes_redraw;
 
 	int		 fd;
 	struct bufferevent *event;
@@ -1959,6 +1964,7 @@ void		 window_destroy_panes(struct window *);
 struct window_pane *window_pane_find_by_id(u_int);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
+void		 window_pane_timer_start(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *, const char *,
 		     const char *, const char *, struct environ *,
 		     struct termios *, char **);
@@ -1977,7 +1983,6 @@ int		 window_pane_visible(struct window_pane *);
 char		*window_pane_search(
 		     struct window_pane *, const char *, u_int *);
 char		*window_printable_flags(struct session *, struct winlink *);
-
 struct window_pane *window_pane_find_up(struct window_pane *);
 struct window_pane *window_pane_find_down(struct window_pane *);
 struct window_pane *window_pane_find_left(struct window_pane *);

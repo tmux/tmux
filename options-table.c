@@ -464,6 +464,21 @@ const struct options_table_entry window_options_table[] = {
 	  .default_num = 1
 	},
 
+
+	{ .name = "c0-change-trigger",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .default_num = 50,
+	  .minimum = 0,
+	  .maximum = USHRT_MAX
+	},
+
+	{ .name = "c0-change-interval",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .default_num = 100,
+	  .minimum = 1,
+	  .maximum = USHRT_MAX
+	},
+
 	{ .name = "clock-mode-colour",
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .default_num = 4
