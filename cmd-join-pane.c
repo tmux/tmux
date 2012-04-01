@@ -71,7 +71,7 @@ cmd_join_pane_key_binding(struct cmd *self, int key)
 int
 cmd_join_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
-	return join_pane(self, ctx, self->entry == &cmd_join_pane_entry);
+	return (join_pane(self, ctx, self->entry == &cmd_join_pane_entry));
 }
 
 int

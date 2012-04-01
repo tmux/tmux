@@ -75,7 +75,7 @@ cmd_find_window_match_flags(struct args *args)
 	if (match_flags == 0)
 		match_flags = CMD_FIND_WINDOW_ALL;
 
-	return match_flags;
+	return (match_flags);
 }
 
 int
