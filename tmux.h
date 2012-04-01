@@ -1102,14 +1102,11 @@ struct tty_ctx {
 };
 
 /*
- * xterm mouse mode is fairly silly. Buttons are in the bottom two
- * bits: 0 button 1; 1 button 2; 2 button 3; 3 buttons released.
- *
- * Bit 3 is shift; bit 4 is meta; bit 5 control.
- *
- * Bit 6 is added for mouse buttons 4 and 5.
+ * Mouse input. xterm mouse mode is fairly silly. Buttons are in the bottom two
+ * bits: 0 = button 1; 1 = button 2; 2 = button 3; 3 = buttons released. Bits
+ * 3, 4 and 5 are for keys. Bit 6 is set for dragging and 7 for mouse buttons 4
+ * and 5.
  */
-/* Mouse input. */
 struct mouse_event {
 	u_int	b;
 #define MOUSE_1 0
@@ -1117,6 +1114,9 @@ struct mouse_event {
 #define MOUSE_3 2
 #define MOUSE_UP 3
 #define MOUSE_BUTTON 3
+#define MOUSE_SHIFT 4
+#define MOUSE_ESCAPE 8
+#define MOUSE_CTRL 16
 #define MOUSE_DRAG 32
 #define MOUSE_45 64
 #define MOUSE_RESIZE_PANE 128 /* marker for resizing */
