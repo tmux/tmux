@@ -142,6 +142,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 			ARRAY_ADD(&list_idx, wm->idx);
 			ARRAY_ADD(&list_ctx, sctx);
+			break;
 		}
 	}
 	xfree(searchstr);
