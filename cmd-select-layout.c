@@ -113,13 +113,13 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 	layout_list_add(w);
 	if (args_has(self->args, 'U')) {
 		if ((layoutname = layout_list_redo(w)) == NULL) {
-			ctx->error(ctx, "no more layout history");
+			ctx->info(ctx, "no more layout history");
 			return (-1);
 		}
 		goto set_layout;
 	} else if (args_has(self->args, 'u')) {
 		if ((layoutname = layout_list_undo(w)) == NULL) {
-			ctx->error(ctx, "no more layout history");
+			ctx->info(ctx, "no more layout history");
 			return (-1);
 		}
 		goto set_layout;
