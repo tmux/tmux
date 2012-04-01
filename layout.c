@@ -772,7 +772,7 @@ layout_list_add(struct window *w)
 	w->layout_list_size++;
 	w->layout_list_last = ll;
 
-	limit = options_get_number(&w->options, "layout-history");
+	limit = options_get_number(&w->options, "layout-history-limit");
 	while (w->layout_list_size > limit) {
 		ll = TAILQ_LAST(&w->layout_list, last_layouts);
 		if (ll == w->layout_list_last)
