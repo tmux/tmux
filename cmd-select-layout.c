@@ -29,8 +29,8 @@ int	cmd_select_layout_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_select_layout_entry = {
 	"select-layout", "selectl",
-	"npt:", 0, 1,
-	"[-np] " CMD_TARGET_WINDOW_USAGE " [layout-name]",
+	"nprut:", 0, 1,
+	"[-npUu] " CMD_TARGET_WINDOW_USAGE " [layout-name]",
 	0,
 	cmd_select_layout_key_binding,
 	NULL,
@@ -76,6 +76,14 @@ cmd_select_layout_key_binding(struct cmd *self, int key)
 	case '5' | KEYC_ESCAPE:
 		self->args = args_create(1, "tiled");
 		break;
+	case 'u':
+		self->args = args_create(0);
+		args_set(self->args, 'u', NULL);
+		break;
+	case 'U':
+		self->args = args_create(0);
+		args_set(self->args, 'U', NULL);
+		break;
 	default:
 		self->args = args_create(0);
 		break;
@@ -87,11 +95,13 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
 	struct winlink	*wl;
+	struct window	*w;
 	const char	*layoutname;
 	int		 next, previous, layout;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (-1);
+	w = wl->window;
 
 	next = self->entry == &cmd_next_layout_entry;
 	if (args_has(self->args, 'n'))
@@ -99,6 +109,21 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 	previous = self->entry == &cmd_previous_layout_entry;
 	if (args_has(self->args, 'p'))
 		previous = 1;
+
+	layout_list_add(w);
+	if (args_has(self->args, 'U')) {
+		if ((layoutname = layout_list_redo(w)) == NULL) {
+			ctx->error(ctx, "no more layout history");
+			return (-1);
+		}
+		goto set_layout;
+	} else if (args_has(self->args, 'u')) {
+		if ((layoutname = layout_list_undo(w)) == NULL) {
+			ctx->error(ctx, "no more layout history");
+			return (-1);
+		}
+		goto set_layout;
+	}
 
 	if (next || previous) {
 		if (next)
@@ -121,16 +146,16 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (0);
 	}
 
-	if (args->argc != 0) {
-		layoutname = args->argv[0];
-		if (layout_parse(wl->window, layoutname) == -1) {
-			ctx->error(ctx, "can't set layout: %s", layoutname);
-			return (-1);
-		}
-		server_redraw_window(wl->window);
-		ctx->info(ctx, "arranging in: %s", layoutname);
+	if (args->argc == 0)
 		return (0);
-	}
+	layoutname = args->argv[0];
 
+set_layout:
+	if (layout_parse(wl->window, layoutname) == -1) {
+		ctx->error(ctx, "can't set layout: %s", layoutname);
+		return (-1);
+	}
+	server_redraw_window(wl->window);
+	ctx->info(ctx, "arranging in: %s", layoutname);
 	return (0);
 }
