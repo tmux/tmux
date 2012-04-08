@@ -87,6 +87,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink				*wl;
 	struct client				*c;
 	struct options				*oo;
+	struct window				*w;
 	const char				*optstr, *valstr;
 	u_int					 i;
 
@@ -145,6 +146,18 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	} else {
 		if (cmd_set_option_set(self, ctx, oe, oo, valstr) != 0)
 			return (-1);
+	}
+
+	/* Start or stop timers when automatic-rename changed. */
+	if (strcmp (oe->name, "automatic-rename") == 0) {
+		for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+			if ((w = ARRAY_ITEM(&windows, i)) == NULL)
+				continue;
+			if (options_get_number(&w->options, "automatic-rename"))
+				queue_window_name(w);
+			else if (event_initialized(&w->name_timer))
+				evtimer_del(&w->name_timer);
+		}
 	}
 
 	/* Update sizes and redraw. May not need it but meh. */
