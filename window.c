@@ -294,9 +294,9 @@ window_create1(u_int sx, u_int sy)
 	w->sx = sx;
 	w->sy = sy;
 
-	queue_window_name(w);
-
 	options_init(&w->options, &global_w_options);
+	if (options_get_number(&w->options, "automatic-rename"))
+		queue_window_name(w);
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		if (ARRAY_ITEM(&windows, i) == NULL) {
