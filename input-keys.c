@@ -203,7 +203,6 @@ input_mouse(struct window_pane *wp, struct mouse_event *m)
 {
 	char	buf[10];
 	size_t	len;
-	int	value;
 
 	if (wp->screen->mode & ALL_MOUSE_MODES) {
 		if (wp->screen->mode & MODE_MOUSE_UTF8) {
@@ -220,13 +219,15 @@ input_mouse(struct window_pane *wp, struct mouse_event *m)
 			buf[len++] = m->y + 33;
 		}
 		bufferevent_write(wp->event, buf, len);
-	} else if ((m->b & MOUSE_BUTTON) != MOUSE_2) {
-		value = options_get_number(&wp->window->options, "mode-mouse");
-		if (value == 1 &&
-		    window_pane_set_mode(wp, &window_copy_mode) == 0) {
+		return;
+	}
+
+	if (options_get_number(&wp->window->options, "mode-mouse") == 1) {
+		if (window_pane_set_mode(wp, &window_copy_mode) == 0) {
 			window_copy_init_from_pane(wp);
 			if (wp->mode->mouse != NULL)
 				wp->mode->mouse(wp, NULL, m);
 		}
+		return;
 	}
 }
