@@ -1455,7 +1455,7 @@ lower) with
 .Fl U
 or downward (numerically higher).
 .It Xo Ic select-layout
-.Op Fl np
+.Op Fl npUu
 .Op Fl t Ar target-window
 .Op Ar layout-name
 .Xc
@@ -1472,6 +1472,13 @@ are equivalent to the
 and
 .Ic previous-layout
 commands.
+.Pp
+.Fl U
+and
+.Fl u
+step forward and back through previous layouts, up to the maximum set by the
+.Ic layout-history-limit
+option.
 .It Xo Ic select-pane
 .Op Fl lDLRU
 .Op Fl t Ar target-pane
@@ -2512,6 +2519,13 @@ from resizing a window to greater than
 or
 .Ar height .
 A value of zero restores the default unlimited setting.
+.Pp
+.It Ic layout-history-limit Ar limit
+Set the number of previous layouts stored for recovery with
+.Ic select-layout
+.Fl U
+and
+.Fl u .
 .Pp
 .It Ic main-pane-height Ar height
 .It Ic main-pane-width Ar width
