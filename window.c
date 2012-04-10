@@ -112,7 +112,7 @@ winlink_find_by_window_id(struct winlinks *wwl, u_int id)
 		if (wl->window->id == id)
 			return (wl);
 	}
-	return NULL;
+	return (NULL);
 }
 
 int
@@ -270,7 +270,7 @@ window_find_by_id(u_int id)
 		if (w->id == id)
 			return (w);
 	}
-	return NULL;
+	return (NULL);
 }
 
 struct window *
