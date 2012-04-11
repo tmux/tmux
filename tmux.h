@@ -1713,6 +1713,7 @@ extern struct clients dead_clients;
 extern struct paste_stack global_buffers;
 int	 server_start(int, char *);
 void	 server_update_socket(void);
+void	 server_add_accept(int);
 
 /* server-client.c */
 void	 server_client_create(int);
