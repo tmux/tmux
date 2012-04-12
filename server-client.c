@@ -190,6 +190,8 @@ server_client_lost(struct client *c)
 		ARRAY_ADD(&dead_clients, c);
 	c->flags |= CLIENT_DEAD;
 
+	server_add_accept(0); /* may be more file descriptors now */
+
 	recalculate_sizes();
 	server_check_unattached();
 	server_update_socket();

@@ -192,9 +192,7 @@ server_start(int lockfd, char *lockfile)
 	}
 	cfg_finished = 1;
 
-	event_set(&server_ev_accept,
-	    server_fd, EV_READ|EV_PERSIST, server_accept_callback, NULL);
-	event_add(&server_ev_accept, NULL);
+	server_add_accept(0);
 
 	memset(&tv, 0, sizeof tv);
 	tv.tv_sec = 1;
@@ -338,6 +336,7 @@ server_accept_callback(int fd, short events, unused void *data)
 	socklen_t		slen = sizeof sa;
 	int			newfd;
 
+	server_add_accept(0);
 	if (!(events & EV_READ))
 		return;
 
@@ -345,6 +344,11 @@ server_accept_callback(int fd, short events, unused void *data)
 	if (newfd == -1) {
 		if (errno == EAGAIN || errno == EINTR || errno == ECONNABORTED)
 			return;
+		if (errno == ENFILE || errno == EMFILE) {
+			/* Delete and don't try again for 1 second. */
+			server_add_accept(1);
+			return;
+		}
 		fatal("accept failed");
 	}
 	if (server_shutdown) {
@@ -352,6 +356,29 @@ server_accept_callback(int fd, short events, unused void *data)
 		return;
 	}
 	server_client_create(newfd);
+}
+
+/*
+ * Add accept event. If timeout is nonzero, add as a timeout instead of a read
+ * event - used to backoff when running out of file descriptors.
+ */
+void
+server_add_accept(int timeout)
+{
+	struct timeval tv = { timeout, 0 };
+
+	if (event_initialized(&server_ev_accept))
+		event_del(&server_ev_accept);
+
+	if (timeout == 0) {
+		event_set(&server_ev_accept,
+		    server_fd, EV_READ, server_accept_callback, NULL);
+		event_add(&server_ev_accept, NULL);
+	} else {
+		event_set(&server_ev_accept,
+		    server_fd, EV_TIMEOUT, server_accept_callback, NULL);
+		event_add(&server_ev_accept, &tv);
+	}
 }
 
 /* Signal handler. */
@@ -371,9 +398,7 @@ server_signal_callback(int sig, unused short events, unused void *data)
 		event_del(&server_ev_accept);
 		close(server_fd);
 		server_fd = server_create_socket();
-		event_set(&server_ev_accept, server_fd,
-		    EV_READ|EV_PERSIST, server_accept_callback, NULL);
-		event_add(&server_ev_accept, NULL);
+		server_add_accept(0);
 		break;
 	}
 }
