@@ -476,7 +476,6 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
-
 	/* Is this a mouse key press? */
 	switch (tty_keys_mouse(tty, buf, len, &size, &mouse)) {
 	case 0:		/* yes */
@@ -532,10 +531,11 @@ tty_keys_next(struct tty *tty)
 
 partial_key:
 	/*
-	 * Escape but no key string. If have already seen an escape, then the
-	 * timer must have expired, so give up waiting and send the escape.
+	 * Escape but no key string. If have already seen an escape and the
+	 * timer has expired, give up waiting and send the escape.
 	 */
-	if (tty->flags & TTY_ESCAPE) {
+	if ((tty->flags & TTY_ESCAPE) &&
+	    !evtimer_pending(&tty->key_timer, NULL)) {
 		evbuffer_drain(tty->event->input, 1);
 		key = '\033';
 		goto handle_key;
@@ -544,6 +544,10 @@ partial_key:
 	/* Fall through to start the timer. */
 
 start_timer:
+	/* If already waiting for timer, do nothing. */
+	if (evtimer_pending(&tty->key_timer, NULL))
+		return (0);
+
 	/* Start the timer and wait for expiry or more data. */
 	delay = options_get_number(&global_options, "escape-time");
 	tv.tv_sec = delay / 1000;
