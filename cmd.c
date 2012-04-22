@@ -304,11 +304,10 @@ cmd_print(struct cmd *cmd, char *buf, size_t len)
 	if (off < len) {
 		used = args_print(cmd->args, buf + off, len - off);
 		if (used == 0)
-			buf[off - 1] = '\0';
-		else {
+			off--;
+		else
 			off += used;
-			buf[off] = '\0';
-		}
+		buf[off] = '\0';
 	}
 	return (off);
 }
