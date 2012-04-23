@@ -59,6 +59,7 @@ void		client_signal(int, short, void *);
 void		client_callback(int, short, void *);
 int		client_dispatch_attached(void);
 int		client_dispatch_wait(void *);
+const char     *client_exit_message(void);
 
 /*
  * Get server create lock. If already held then server start is happening in
