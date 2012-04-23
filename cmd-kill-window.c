@@ -28,8 +28,8 @@ int	cmd_kill_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_kill_window_entry = {
 	"kill-window", "killw",
-	"t:", 0, 0,
-	CMD_TARGET_WINDOW_USAGE,
+	"at:", 0, 0,
+	"[-a] " CMD_TARGET_WINDOW_USAGE,
 	0,
 	NULL,
 	NULL,
@@ -40,13 +40,19 @@ int
 cmd_kill_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
-	struct winlink	*wl;
+	struct winlink	*wl, *wl2;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (-1);
 
-	server_kill_window(wl->window);
-	recalculate_sizes();
+	if (args_has(args, 'a')) {
+		RB_FOREACH(wl2, winlinks, &ctx->curclient->session->windows) {
+			if (wl != wl2)
+				server_kill_window(wl2->window);
+		}
+	} else
+		server_kill_window(wl->window);
 
+	recalculate_sizes();
 	return (0);
 }

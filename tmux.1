@@ -1157,11 +1157,18 @@ The
 .Fl a
 option kills all but the pane given with
 .Fl t .
-.It Ic kill-window Op Fl t Ar target-window
+.It Xo Ic kill-window
+.Op Fl a
+.Op Fl t Ar target-window
+.Xc
 .D1 (alias: Ic killw )
 Kill the current window or the window at
 .Ar target-window ,
 removing it from any sessions to which it is linked.
+The
+.Fl a
+option kills all but the window given with
+.Fl t .
 .It Ic last-pane Op Fl t Ar target-window
 .D1 (alias: Ic lastp )
 Select the last (previously selected) pane.
