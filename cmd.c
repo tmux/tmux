@@ -1324,8 +1324,10 @@ find_home:
 		return (s->cwd);
 
 complete_path:
-	if (root[skip] == '\0')
-		return (root);
+	if (root[skip] == '\0') {
+		strlcpy(path, root, sizeof path);
+		return (path);
+	}
 	n = snprintf(path, sizeof path, "%s/%s", root, cwd + skip);
 	if (n > 0 && (size_t)n < sizeof path)
 		return (path);
