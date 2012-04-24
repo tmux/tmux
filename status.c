@@ -160,11 +160,12 @@ status_redraw(struct client *c)
 	struct winlink	       *wl;
 	struct screen		old_status, window_list;
 	struct grid_cell	stdgc, lgc, rgc, gc;
+	struct options	       *oo;
 	time_t			t;
-	char		       *left, *right;
+	char		       *left, *right, *sep;
 	u_int			offset, needed;
 	u_int			wlstart, wlwidth, wlavailable, wloffset, wlsize;
-	size_t			llen, rlen;
+	size_t			llen, rlen, seplen;
 	int			larrow, rarrow, utf8flag;
 
 	/* No status line? */
@@ -230,7 +231,11 @@ status_redraw(struct client *c)
 
 		if (wl == s->curw)
 			wloffset = wlwidth;
-		wlwidth += wl->status_width + 1;
+
+		oo = &wl->window->options;
+		sep = options_get_string(oo, "window-status-separator");
+		seplen = screen_write_strlen(utf8flag, "%s", sep);
+		wlwidth += wl->status_width + seplen;
 	}
 
 	/* Create a new screen for the window list. */
@@ -241,7 +246,10 @@ status_redraw(struct client *c)
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		screen_write_cnputs(&ctx,
 		    -1, &wl->status_cell, utf8flag, "%s", wl->status_text);
-		screen_write_putc(&ctx, &stdgc, ' ');
+
+		oo = &wl->window->options;
+		sep = options_get_string(oo, "window-status-separator");
+		screen_write_nputs(&ctx, -1, &stdgc, utf8flag, "%s", sep);
 	}
 	screen_write_stop(&ctx);
 
