@@ -47,9 +47,11 @@
  */
 
 /* Helper functions. */
+struct input_transition;
 int	input_split(struct input_ctx *);
 int	input_get(struct input_ctx *, u_int, int, int);
 void	input_reply(struct input_ctx *, const char *, ...);
+void	input_set_state(struct window_pane *, const struct input_transition *);
 
 /* Transition entry/exit handlers. */
 void	input_clear(struct input_ctx *);
@@ -692,12 +694,34 @@ input_init(struct window_pane *wp)
 
 	ictx->state = &input_state_ground;
 	ictx->flags = 0;
+
+	ictx->since_ground = evbuffer_new();
 }
 
 /* Destroy input parser. */
 void
-input_free(unused struct window_pane *wp)
+input_free(struct window_pane *wp)
 {
+	if (wp != NULL)
+		evbuffer_free(wp->ictx.since_ground);
+}
+
+/* Change input state. */
+void
+input_set_state(struct window_pane *wp, const struct input_transition *itr)
+{
+	struct input_ctx	*ictx = &wp->ictx;
+	struct evbuffer		*ground_evb = ictx->since_ground;
+
+	if (ictx->state->exit != NULL)
+		ictx->state->exit(ictx);
+
+	if (itr->state == &input_state_ground)
+		evbuffer_drain(ground_evb, EVBUFFER_LENGTH(ground_evb));
+
+	ictx->state = itr->state;
+	if (ictx->state->enter != NULL)
+		ictx->state->enter(ictx);
 }
 
 /* Parse input. */
@@ -755,13 +779,12 @@ input_parse(struct window_pane *wp)
 			continue;
 
 		/* And switch state, if necessary. */
-		if (itr->state != NULL) {
-			if (ictx->state->exit != NULL)
-				ictx->state->exit(ictx);
-			ictx->state = itr->state;
-			if (ictx->state->enter != NULL)
-				ictx->state->enter(ictx);
-		}
+		if (itr->state != NULL)
+			input_set_state(wp, itr);
+
+		/* If not in ground state, save input. */
+		if (ictx->state != &input_state_ground)
+			evbuffer_add(ictx->since_ground, &ictx->ch, 1);
 	}
 
 	/* Close the screen. */
