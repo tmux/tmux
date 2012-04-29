@@ -81,7 +81,7 @@ status_redraw_get_left(struct client *c,
 {
 	struct session	*s = c->session;
 	char		*left;
-	u_char		 fg, bg, attr;
+	int		 fg, bg, attr;
 	size_t		 leftlen;
 
 	fg = options_get_number(&s->options, "status-left-fg");
@@ -111,7 +111,7 @@ status_redraw_get_right(struct client *c,
 {
 	struct session	*s = c->session;
 	char		*right;
-	u_char		 fg, bg, attr;
+	int		 fg, bg, attr;
 	size_t		 rightlen;
 
 	fg = options_get_number(&s->options, "status-right-fg");
@@ -683,7 +683,7 @@ status_print(
 	struct session	*s = c->session;
 	const char	*fmt;
 	char   		*text;
-	u_char		 fg, bg, attr;
+	int		 fg, bg, attr;
 
 	fg = options_get_number(oo, "window-status-fg");
 	if (fg != 8)
