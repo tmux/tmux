@@ -274,6 +274,11 @@ const struct options_table_entry session_options_table[] = {
 	  .default_num = KEYC_NONE,
 	},
 
+	{ .name = "renumber-windows",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .default_num = 0
+	},
+
 	{ .name = "repeat-time",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .minimum = 0,
