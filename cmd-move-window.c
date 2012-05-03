@@ -30,8 +30,8 @@ int	cmd_move_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_move_window_entry = {
 	"move-window", "movew",
-	"dks:t:", 0, 0,
-	"[-dk] " CMD_SRCDST_WINDOW_USAGE,
+	"dkrs:t:", 0, 0,
+	"[-dkr] " CMD_SRCDST_WINDOW_USAGE,
 	0,
 	NULL,
 	NULL,
@@ -42,10 +42,21 @@ int
 cmd_move_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
-	struct session	*src, *dst;
+	struct session	*src, *dst, *s;
 	struct winlink	*wl;
 	char		*cause;
 	int		 idx, kflag, dflag;
+
+	if ((s = ctx->curclient->session) == NULL)
+		return (-1);
+
+	if (args_has(args, 'r'))
+	{
+		session_renumber_windows(s);
+		recalculate_sizes();
+
+		return (0);
+	}
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 's'), &src)) == NULL)
 		return (-1);

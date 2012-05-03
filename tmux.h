@@ -2112,6 +2112,7 @@ void		 session_group_remove(struct session *);
 void		 session_group_synchronize_to(struct session *);
 void		 session_group_synchronize_from(struct session *);
 void		 session_group_synchronize1(struct session *, struct session *);
+void		 session_renumber_windows(struct session *);
 
 /* utf8.c */
 void	utf8_build(void);

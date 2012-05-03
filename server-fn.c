@@ -263,6 +263,9 @@ server_kill_window(struct window *w)
 			} else
 				server_redraw_session_group(s);
 		}
+
+		if (options_get_number(&s->options, "renumber-windows"))
+			session_renumber_windows(s);
 	}
 }
 
