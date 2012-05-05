@@ -59,6 +59,9 @@ void	tty_cell(struct tty *,
 #define tty_use_rect(tty) \
 	((tty)->xterm_version > 270)
 
+#define tty_pane_full_width(tty, ctx) \
+	((ctx)->xoff == 0 && screen_size_x((ctx)->wp->screen) >= (tty)->sx)
+
 void
 tty_init(struct tty *tty, int fd, char *term)
 {
@@ -781,10 +784,7 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct window_pane	*wp = ctx->wp;
-	struct screen		*s = wp->screen;
-
-	if (ctx->xoff != 0 || screen_size_x(s) < tty->sx ||
+	if (!tty_pane_full_width(tty, ctx) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    !tty_term_has(tty->term, TTYC_IL1)) {
 		tty_redraw_region(tty, ctx);
@@ -802,10 +802,7 @@ tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_deleteline(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct window_pane	*wp = ctx->wp;
-	struct screen		*s = wp->screen;
-
-	if (ctx->xoff != 0 || screen_size_x(s) < tty->sx ||
+	if (!tty_pane_full_width(tty, ctx) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    !tty_term_has(tty->term, TTYC_DL1)) {
 		tty_redraw_region(tty, ctx);
@@ -831,8 +828,7 @@ tty_cmd_clearline(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_cursor_pane(tty, ctx, 0, ctx->ocy);
 
-	if (ctx->xoff == 0 && screen_size_x(s) >= tty->sx &&
-	    tty_term_has(tty->term, TTYC_EL)) {
+	if (tty_pane_full_width(tty, ctx) && tty_term_has(tty->term, TTYC_EL)) {
 		tty_putcode(tty, TTYC_EL);
 	} else {
 		for (i = 0; i < screen_size_x(s); i++)
@@ -851,8 +847,7 @@ tty_cmd_clearendofline(struct tty *tty, const struct tty_ctx *ctx)
 
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
-	if (ctx->xoff == 0 && screen_size_x(s) >= tty->sx &&
-	    tty_term_has(tty->term, TTYC_EL))
+	if (tty_pane_full_width(tty, ctx) && tty_term_has(tty->term, TTYC_EL))
 		tty_putcode(tty, TTYC_EL);
 	else {
 		for (i = ctx->ocx; i < screen_size_x(s); i++)
@@ -880,13 +875,10 @@ tty_cmd_clearstartofline(struct tty *tty, const struct tty_ctx *ctx)
 void
 tty_cmd_reverseindex(struct tty *tty, const struct tty_ctx *ctx)
 {
-	struct window_pane	*wp = ctx->wp;
-	struct screen		*s = wp->screen;
-
 	if (ctx->ocy != ctx->orupper)
 		return;
 
-	if (ctx->xoff != 0 || screen_size_x(s) < tty->sx ||
+	if (!tty_pane_full_width(tty, ctx) ||
 	    !tty_term_has(tty->term, TTYC_CSR) ||
 	    !tty_term_has(tty->term, TTYC_RI)) {
 		tty_redraw_region(tty, ctx);
@@ -910,7 +902,7 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	if (ctx->ocy != ctx->orlower)
 		return;
 
-	if (ctx->xoff != 0 || screen_size_x(s) < tty->sx ||
+	if (!tty_pane_full_width(tty, ctx) ||
 	    !tty_term_has(tty->term, TTYC_CSR)) {
 		if (tty_large_region(tty, ctx))
 			wp->flags |= PANE_REDRAW;
@@ -952,8 +944,7 @@ tty_cmd_clearendofscreen(struct tty *tty, const struct tty_ctx *ctx)
 	tty_region_pane(tty, ctx, 0, screen_size_y(s) - 1);
 	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
 
-	if (ctx->xoff == 0 && screen_size_x(s) >= tty->sx &&
-	    tty_term_has(tty->term, TTYC_EL)) {
+	if (tty_pane_full_width(tty, ctx) && tty_term_has(tty->term, TTYC_EL)) {
 		tty_putcode(tty, TTYC_EL);
 		if (ctx->ocy != screen_size_y(s) - 1) {
 			tty_cursor_pane(tty, ctx, 0, ctx->ocy + 1);
@@ -988,8 +979,7 @@ tty_cmd_clearstartofscreen(struct tty *tty, const struct tty_ctx *ctx)
 	tty_region_pane(tty, ctx, 0, screen_size_y(s) - 1);
 	tty_cursor_pane(tty, ctx, 0, 0);
 
-	if (ctx->xoff == 0 && screen_size_x(s) >= tty->sx &&
-	    tty_term_has(tty->term, TTYC_EL)) {
+	if (tty_pane_full_width(tty, ctx) && tty_term_has(tty->term, TTYC_EL)) {
 		for (i = 0; i < ctx->ocy; i++) {
 			tty_putcode(tty, TTYC_EL);
 			tty_emulate_repeat(tty, TTYC_CUD, TTYC_CUD1, 1);
@@ -1018,8 +1008,7 @@ tty_cmd_clearscreen(struct tty *tty, const struct tty_ctx *ctx)
 	tty_region_pane(tty, ctx, 0, screen_size_y(s) - 1);
 	tty_cursor_pane(tty, ctx, 0, 0);
 
-	if (ctx->xoff == 0 && screen_size_x(s) >= tty->sx &&
-	    tty_term_has(tty->term, TTYC_EL)) {
+	if (tty_pane_full_width(tty, ctx) && tty_term_has(tty->term, TTYC_EL)) {
 		for (i = 0; i < screen_size_y(s); i++) {
 			tty_putcode(tty, TTYC_EL);
 			if (i != screen_size_y(s) - 1) {
