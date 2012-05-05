@@ -223,7 +223,8 @@ input_mouse(struct window_pane *wp, struct mouse_event *m)
 		return;
 	}
 
-	if (options_get_number(&wp->window->options, "mode-mouse") == 1) {
+	if ((m->b & 3) != 1 &&
+	    options_get_number(&wp->window->options, "mode-mouse") == 1) {
 		if (window_pane_set_mode(wp, &window_copy_mode) == 0) {
 			window_copy_init_from_pane(wp);
 			if (wp->mode->mouse != NULL)
