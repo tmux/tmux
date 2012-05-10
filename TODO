@@ -147,6 +147,8 @@
 - way to tag a layout as a number/name
 - optimize pane redraws, 20120318184853.GK10965@yelena.nicm.ath.cx
 - support multibyte key strings
+- allow commands to be executed when certaing patterns in a screen
+  are clicked on with the mouse
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!
