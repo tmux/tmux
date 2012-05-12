@@ -1719,6 +1719,7 @@ void	 server_add_accept(int);
 
 /* server-client.c */
 void	 server_client_create(int);
+int      server_client_open(struct client *, struct session *, char **);
 void	 server_client_lost(struct client *);
 void	 server_client_callback(int, short, void *);
 void	 server_client_status_timer(void);
