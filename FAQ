@@ -409,5 +409,26 @@ If your urxvt cannot display italics at all, make sure you have an italics
 capable font enabled, for example, add to ~/.Xdefaults:
 
 	urxvt.italicFont: xft:Bitstream Vera Sans Mono:italic:autohint=true
+
+* How can I make tmux use my terminal's scrollback buffer?
+
+Normally, tmux enables the terminal's "alternate screen". Most terminals (such
+as xterm) do not save scrollback for the alternate screen. You might prefer
+tmux to use the normal screen, so it uses your terminal's scrollback
+buffer. This way, you can access the scrollback buffer as usual, for example
+using the mouse wheel - although there is no guarantee output inside tmux will
+always (or ever) be added to the scrollback.
+
+You can make tmux use the normal screen by telling it that your terminal does
+not have an alternate screen. Put the following in ~/.tmux.conf:
+
+        set -g terminal-overrides 'xterm*:smcup@:rmcup@'
+
+Adjust if your $TERM does not start with xterm.
+
+tmux will still emulate the alternate screen for applications run under tmux,
+so you don't really lose anything with this setting. The only disadvantage is
+that when you exit tmux, it will not restore whatever was there before you
+started.
  
 $Id$
