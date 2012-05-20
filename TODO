@@ -98,7 +98,6 @@
   and a buffer) info() when changing to same window
 - way to add dest for break-pane; maybe some easier way to unbreak-pane
 - case insensitive searching
-- option to move status line to top
 - configurable borders and empty space filler for when panes < window?
 - mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets the
   flag on w/o checking the others before calling tty_update_mode)
@@ -116,7 +115,6 @@
   uint16_t+3 bits of flags. anything <=0xffff is Unicode, higher are used to
   build tree of combined characters/non-BMP (LRU dropped when full)
 - entry in FAQ about what to do when someone does mkdir /tmp/tmux-1000
-- show size under pane number in display-panes mode
 - monitor-activity is broken in several ways with multiple clients
 - monitor-activity should be more powerful (eg set a region)
 - maybe a way to put pane names instead of window names in status line
@@ -126,16 +124,10 @@
   finish
 - last-pane across sessions
 - attach should take a pane and select it as well as attaching
-- should default-path be a window option?
-- option to put status line at top (why?)
 - panes should have names like windows
 - command-prompt doesn't work if made read-only. why?
 - option to quote format eg #{session_name:quoted}
-- formats need to be used for much much more stuff!
-	choose-*
-	find-window
 - formats need conditions for >0 (for #P)
-- flags to find-window to select what is searched (title, name, content, history)
 - fetch full command line on !Linux, and add option to strip prefixes
   such as "sh " "/bin/sh " etc etc
 - synchronize-windows option
