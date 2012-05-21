@@ -79,7 +79,8 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 			ctx->error(ctx, "%s: can't write to stdout", path);
 			return (-1);
 		}
-		bufferevent_write(c->stdout_event, pb->data, pb->size);
+		evbuffer_add(c->stdout_data, pb->data, pb->size);
+		server_push_stdout(c);
 	} else {
 		if (c != NULL)
 			wd = c->cwd;
