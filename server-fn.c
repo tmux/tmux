@@ -46,17 +46,21 @@ server_fill_environ(struct session *s, struct environ *env)
 	environ_set(env, "TMUX", var);
 }
 
-void
+int
 server_write_client(
     struct client *c, enum msgtype type, const void *buf, size_t len)
 {
 	struct imsgbuf	*ibuf = &c->ibuf;
+	int              error;
 
 	if (c->flags & CLIENT_BAD)
-		return;
+		return (-1);
 	log_debug("writing %d to client %d", type, c->ibuf.fd);
-	imsg_compose(ibuf, type, PROTOCOL_VERSION, -1, -1, (void *) buf, len);
-	server_update_event(c);
+	error = imsg_compose(ibuf, type, PROTOCOL_VERSION, -1, -1,
+	    (void *) buf, len);
+	if (error == 1)
+		server_update_event(c);
+	return (error == 1 ? 0 : -1);
 }
 
 void
@@ -501,4 +505,72 @@ server_update_event(struct client *c)
 		event_del(&c->event);
 	event_set(&c->event, c->ibuf.fd, events, server_client_callback, c);
 	event_add(&c->event, NULL);
+}
+
+/* Push stdout to client if possible. */
+void
+server_push_stdout(struct client *c)
+{
+	struct msg_stdout_data data;
+	size_t                 size;
+
+	size = EVBUFFER_LENGTH(c->stdout_data);
+	if (size == 0)
+		return;
+	if (size > sizeof data.data)
+		size = sizeof data.data;
+
+	memcpy(data.data, EVBUFFER_DATA(c->stdout_data), size);
+	data.size = size;
+
+	if (server_write_client(c, MSG_STDOUT, &data, sizeof data) == 0)
+		evbuffer_drain(c->stdout_data, size);
+}
+
+/* Push stderr to client if possible. */
+void
+server_push_stderr(struct client *c)
+{
+	struct msg_stderr_data data;
+	size_t                 size;
+
+	size = EVBUFFER_LENGTH(c->stderr_data);
+	if (size == 0)
+		return;
+	if (size > sizeof data.data)
+		size = sizeof data.data;
+
+	memcpy(data.data, EVBUFFER_DATA(c->stderr_data), size);
+	data.size = size;
+
+	if (server_write_client(c, MSG_STDERR, &data, sizeof data) == 0)
+		evbuffer_drain(c->stderr_data, size);
+}
+
+/* Set stdin callback. */
+int
+server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
+    void *), void *cb_data, char **cause)
+{
+	if (c == NULL) {
+		*cause = xstrdup("no client with stdin");
+		return (-1);
+	}
+	if (c->flags & CLIENT_TERMINAL) {
+		*cause = xstrdup("stdin is a tty");
+		return (-1);
+	}
+	if (c->stdin_callback != NULL) {
+		*cause = xstrdup("stdin in use");
+		return (-1);
+	}
+
+	c->stdin_callback_data = cb_data;
+	c->stdin_callback = cb;
+
+	c->references++;
+
+	if (c->stdin_closed)
+		c->stdin_callback (c, 1, c->stdin_callback_data);
+	return (0);
 }

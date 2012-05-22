@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION 6
+#define PROTOCOL_VERSION 7
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -365,7 +365,7 @@ enum msgtype {
 	MSG_EXITED,
 	MSG_EXITING,
 	MSG_IDENTIFY,
-	MSG_PRINT,
+	MSG_STDIN,
 	MSG_READY,
 	MSG_RESIZE,
 	MSG_SHUTDOWN,
@@ -419,6 +419,21 @@ struct msg_shell_data {
 
 struct msg_exit_data {
 	int		retcode;
+};
+
+struct msg_stdin_data {
+	ssize_t	size;
+	char	data[BUFSIZ];
+};
+
+struct msg_stdout_data {
+	ssize_t	size;
+	char	data[BUFSIZ];
+};
+
+struct msg_stderr_data {
+	ssize_t	size;
+	char	data[BUFSIZ];
 };
 
 /* Mode key commands. */
@@ -1157,16 +1172,12 @@ struct client {
 
 	struct tty	 tty;
 
-	int		 stdin_fd;
-	void		*stdin_data;
-	void		(*stdin_callback)(struct client *, void *);
-	struct bufferevent *stdin_event;
-
-	int		 stdout_fd;
-	struct bufferevent *stdout_event;
-
-	int		 stderr_fd;
-	struct bufferevent *stderr_event;
+	void		(*stdin_callback)(struct client *, int, void *);
+	void		*stdin_callback_data;
+	struct evbuffer	*stdin_data;
+	int              stdin_closed;
+	struct evbuffer	*stdout_data;
+	struct evbuffer	*stderr_data;
 
 	struct event	 repeat_timer;
 
@@ -1730,7 +1741,7 @@ void	 server_window_loop(void);
 
 /* server-fn.c */
 void	 server_fill_environ(struct session *, struct environ *);
-void	 server_write_client(
+int	 server_write_client(
 	     struct client *, enum msgtype, const void *, size_t);
 void	 server_write_session(
 	     struct session *, enum msgtype, const void *, size_t);
@@ -1758,6 +1769,10 @@ void	 server_check_unattached (void);
 void	 server_set_identify(struct client *);
 void	 server_clear_identify(struct client *);
 void	 server_update_event(struct client *);
+void	 server_push_stdout(struct client *);
+void	 server_push_stderr(struct client *);
+int	 server_set_stdin_callback(struct client *, void (*)(struct client *,
+	     int, void *), void *, char **);
 
 /* status.c */
 int	 status_out_cmp(struct status_out *, struct status_out *);

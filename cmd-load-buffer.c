@@ -31,7 +31,7 @@
  */
 
 int	cmd_load_buffer_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_load_buffer_callback(struct client *, void *);
+void	cmd_load_buffer_callback(struct client *, int, void *);
 
 const struct cmd_entry cmd_load_buffer_entry = {
 	"load-buffer", "loadb",
@@ -54,8 +54,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char		*pdata, *new_pdata, *cause;
 	size_t		 psize;
 	u_int		 limit;
-	int		 ch, buffer;
-	int		*buffer_ptr;
+	int		 ch, error, buffer, *buffer_ptr;
 
 	if (!args_has(args, 'b'))
 		buffer = -1;
@@ -70,27 +69,16 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	path = args->argv[0];
 	if (strcmp(path, "-") == 0) {
-		if (c == NULL) {
-			ctx->error(ctx, "%s: can't read from stdin", path);
-			return (-1);
-		}
-		if (c->flags & CLIENT_TERMINAL) {
-			ctx->error(ctx, "%s: stdin is a tty", path);
-			return (-1);
-		}
-		if (c->stdin_fd == -1) {
-			ctx->error(ctx, "%s: can't read from stdin", path);
-			return (-1);
-		}
-
 		buffer_ptr = xmalloc(sizeof *buffer_ptr);
 		*buffer_ptr = buffer;
 
-		c->stdin_data = buffer_ptr;
-		c->stdin_callback = cmd_load_buffer_callback;
-
-		c->references++;
-		bufferevent_enable(c->stdin_event, EV_READ);
+		error = server_set_stdin_callback (c, cmd_load_buffer_callback,
+		    buffer_ptr, &cause);
+		if (error != 0) {
+			ctx->error(ctx, "%s: %s", path, cause);
+			xfree(cause);
+			return (-1);
+		}
 		return (1);
 	}
 
@@ -154,35 +142,36 @@ error:
 }
 
 void
-cmd_load_buffer_callback(struct client *c, void *data)
+cmd_load_buffer_callback(struct client *c, int closed, void *data)
 {
 	int	*buffer = data;
 	char	*pdata;
 	size_t	 psize;
 	u_int	 limit;
 
-	/*
-	 * Event callback has already checked client is not dead and reduced
-	 * its reference count. But tell it to exit.
-	 */
+	if (!closed)
+		return;
+	c->stdin_callback = NULL;
+
+	c->references--;
 	c->flags |= CLIENT_EXIT;
 
-	psize = EVBUFFER_LENGTH(c->stdin_event->input);
+	psize = EVBUFFER_LENGTH(c->stdin_data);
 	if (psize == 0 || (pdata = malloc(psize + 1)) == NULL) {
 		xfree(data);
 		return;
 	}
-	bufferevent_read(c->stdin_event, pdata, psize);
+	memcpy(pdata, EVBUFFER_DATA(c->stdin_data), psize);
 	pdata[psize] = '\0';
+	evbuffer_drain(c->stdin_data, psize);
 
 	limit = options_get_number(&global_options, "buffer-limit");
 	if (*buffer == -1)
 		paste_add(&global_buffers, pdata, psize, limit);
 	else if (paste_replace(&global_buffers, *buffer, pdata, psize) != 0) {
 		/* No context so can't use server_client_msg_error. */
-		evbuffer_add_printf(
-		    c->stderr_event->output, "no buffer %d\n", *buffer);
-		bufferevent_enable(c->stderr_event, EV_WRITE);
+		evbuffer_add_printf(c->stderr_data, "no buffer %d\n", *buffer);
+		server_push_stderr(c);
 	}
 
 	xfree(data);
