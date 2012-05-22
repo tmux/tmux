@@ -46,6 +46,12 @@ server_fill_environ(struct session *s, struct environ *env)
 	environ_set(env, "TMUX", var);
 }
 
+void
+server_write_ready(struct client *c)
+{
+	server_write_client(c, MSG_READY, NULL, 0);
+}
+
 int
 server_write_client(
     struct client *c, enum msgtype type, const void *buf, size_t len)

@@ -94,7 +94,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->cmdclient->session = s;
 		notify_attached_session_changed(ctx->cmdclient);
 		session_update_activity(s);
-		server_write_client(ctx->cmdclient, MSG_READY, NULL, 0);
+		server_write_ready(ctx->cmdclient);
 
 		update = options_get_string(&s->options, "update-environment");
 		environ_update(update, &ctx->cmdclient->environ, &s->environ);

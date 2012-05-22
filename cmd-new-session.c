@@ -231,7 +231,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 */
 	if (!detached) {
 		if (ctx->cmdclient != NULL) {
-			server_write_client(ctx->cmdclient, MSG_READY, NULL, 0);
+			server_write_ready(ctx->cmdclient);
 
 			old_s = ctx->cmdclient->session;
 			if (old_s != NULL)
