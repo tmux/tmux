@@ -580,7 +580,7 @@ handle_key:
 		evtimer_del(&tty->key_timer);
 
 	if (key != KEYC_NONE)
-		tty->key_callback(key, &tty->mouse_event, tty->key_data);
+		server_client_handle_key(tty->client, key);
 
 	tty->flags &= ~TTY_ESCAPE;
 	return (1);
@@ -607,7 +607,7 @@ tty_keys_callback(unused int fd, unused short events, void *data)
 int
 tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 {
-	struct mouse_event	*m = &tty->mouse_event;
+	struct mouse_event	*m = &tty->mouse;
 	struct utf8_data	 utf8data;
 	u_int			 i, value;
 

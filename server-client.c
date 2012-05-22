@@ -27,9 +27,8 @@
 
 #include "tmux.h"
 
-void	server_client_check_mouse(struct client *c,
-	    struct window_pane *wp, struct mouse_event *mouse);
-void	server_client_handle_key(int, struct mouse_event *, void *);
+void	server_client_check_mouse(struct client *, struct window_pane *,
+	    struct mouse_event *);
 void	server_client_repeat_timer(int, short, void *);
 void	server_client_check_exit(struct client *);
 void	server_client_check_redraw(struct client *);
@@ -338,9 +337,8 @@ server_client_check_mouse(
 
 /* Handle data key input from client. */
 void
-server_client_handle_key(int key, struct mouse_event *mouse, void *data)
+server_client_handle_key(struct client *c, int key)
 {
-	struct client		*c = data;
 	struct session		*s;
 	struct window		*w;
 	struct window_pane	*wp;
@@ -391,7 +389,7 @@ server_client_handle_key(int key, struct mouse_event *mouse, void *data)
 	if (key == KEYC_MOUSE) {
 		if (c->flags & CLIENT_READONLY)
 			return;
-		server_client_check_mouse(c, wp, mouse);
+		server_client_check_mouse(c, wp, &c->tty.mouse);
 		return;
 	}
 
@@ -899,15 +897,13 @@ server_client_msg_identify(
 	if (!isatty(fd))
 	    return;
 	data->term[(sizeof data->term) - 1] = '\0';
-	tty_init(&c->tty, fd, data->term);
+	tty_init(&c->tty, c, fd, data->term);
 	if (data->flags & IDENTIFY_UTF8)
 		c->tty.flags |= TTY_UTF8;
 	if (data->flags & IDENTIFY_256COLOURS)
 		c->tty.term_flags |= TERM_256COLOURS;
 	else if (data->flags & IDENTIFY_88COLOURS)
 		c->tty.term_flags |= TERM_88COLOURS;
-	c->tty.key_callback = server_client_handle_key;
-	c->tty.key_data = c;
 
 	tty_resize(&c->tty);
 

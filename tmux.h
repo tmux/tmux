@@ -1100,6 +1100,8 @@ struct tty_term {
 LIST_HEAD(tty_terms, tty_term);
 
 struct tty {
+	struct client	*client;
+
 	char		*path;
 	u_int		 xterm_version;
 
@@ -1138,9 +1140,8 @@ struct tty {
 
 	int		 term_flags;
 
-	struct mouse_event mouse_event;
-	void		 (*key_callback)(int, struct mouse_event *, void *);
-	void		*key_data;
+	struct mouse_event mouse;
+
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
 };
@@ -1533,7 +1534,7 @@ void	tty_putcode_ptr2(struct tty *, enum tty_code_code, const void *, const void
 void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
 void	tty_pututf8(struct tty *, const struct grid_utf8 *);
-void	tty_init(struct tty *, int, char *);
+void	tty_init(struct tty *, struct client *, int, char *);
 int	tty_resize(struct tty *);
 int	tty_set_size(struct tty *, u_int, u_int);
 void	tty_start_tty(struct tty *);
@@ -1764,6 +1765,7 @@ void	 server_update_socket(void);
 void	 server_add_accept(int);
 
 /* server-client.c */
+void	 server_client_handle_key(struct client *, int);
 void	 server_client_create(int);
 int      server_client_open(struct client *, struct session *, char **);
 void	 server_client_lost(struct client *);

@@ -64,7 +64,7 @@ void	tty_cell(struct tty *,
 	((ctx)->xoff == 0 && screen_size_x((ctx)->wp->screen) >= (tty)->sx)
 
 void
-tty_init(struct tty *tty, int fd, char *term)
+tty_init(struct tty *tty, struct client *c, int fd, char *term)
 {
 	char	*path;
 
@@ -76,6 +76,7 @@ tty_init(struct tty *tty, int fd, char *term)
 	else
 		tty->termname = xstrdup(term);
 	tty->fd = fd;
+	tty->client = c;
 
 	if ((path = ttyname(fd)) == NULL)
 		fatalx("ttyname failed");
