@@ -754,12 +754,7 @@ tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 	if (tty_term_has(tty->term, TTYC_ICH) ||
 	    tty_term_has(tty->term, TTYC_ICH1))
 		tty_emulate_repeat(tty, TTYC_ICH, TTYC_ICH1, ctx->num);
-	else if (tty_term_has(tty->term, TTYC_SMIR) &&
-	    tty_term_has(tty->term, TTYC_RMIR)) {
-		tty_putcode(tty, TTYC_SMIR);
-		tty_repeat_space(tty, ctx->num);
-		tty_putcode(tty, TTYC_RMIR);
-	} else
+	else
 		tty_draw_line(tty, wp->screen, ctx->ocy, ctx->xoff, ctx->yoff);
 }
 
