@@ -312,7 +312,6 @@ enum tty_code_code {
 	TTYC_RI,	/* scroll_reverse, sr */
 	TTYC_RMACS,	/* exit_alt_charset_mode */
 	TTYC_RMCUP,	/* exit_ca_mode, te */
-	TTYC_RMIR,	/* exit_insert_mode, ei */
 	TTYC_RMKX,	/* keypad_local, ke */
 	TTYC_SETAB,	/* set_a_background, AB */
 	TTYC_SETAF,	/* set_a_foreground, AF */
@@ -320,7 +319,6 @@ enum tty_code_code {
 	TTYC_SITM,	/* enter_italics_mode, it */
 	TTYC_SMACS,	/* enter_alt_charset_mode, as */
 	TTYC_SMCUP,	/* enter_ca_mode, ti */
-	TTYC_SMIR,	/* enter_insert_mode, im */
 	TTYC_SMKX,	/* keypad_xmit, ks */
 	TTYC_SMSO,	/* enter_standout_mode, so */
 	TTYC_SMUL,	/* enter_underline_mode, us */
