@@ -46,8 +46,8 @@ void	cmd_find_window_free(void *);
 
 const struct cmd_entry cmd_find_window_entry = {
 	"find-window", "findw",
-	"CNt:T", 1, 4,
-	"[-CNT] " CMD_TARGET_WINDOW_USAGE " match-string",
+	"F:CNt:T", 1, 4,
+	"[-CNT] [-F format] " CMD_TARGET_WINDOW_USAGE " match-string",
 	0,
 	NULL,
 	NULL,
@@ -85,11 +85,13 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_find_window_data	*cdata;
 	struct session			*s;
 	struct winlink			*wl, *wm;
-	struct window			*w;
 	struct window_pane		*wp;
+	struct format_tree		*ft;
 	ARRAY_DECL(, u_int)	 	 list_idx;
 	ARRAY_DECL(, char *)	 	 list_ctx;
 	char				*str, *sres, *sctx, *searchstr;
+	char				*find_line;
+	const char			*template;
 	u_int				 i, line, match_flags;
 
 	if (ctx->curclient == NULL) {
@@ -100,6 +102,9 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (-1);
+
+	if ((template = args_get(args, 'F')) == NULL)
+		template = DEFAULT_FIND_WINDOW_TEMPLATE;
 
 	match_flags = cmd_find_window_match_flags(args);
 	str = args->argv[0];
@@ -167,13 +172,20 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	for (i = 0; i < ARRAY_LENGTH(&list_idx); i++) {
 		wm = winlink_find_by_index(
 		    &s->windows, ARRAY_ITEM(&list_idx, i));
-		w = wm->window;
 
-		sctx = ARRAY_ITEM(&list_ctx, i);
-		window_choose_add(wl->window->active,
-		    wm->idx, "%3d: %s [%ux%u] (%u panes) %s", wm->idx, w->name,
-		    w->sx, w->sy, window_count_panes(w), sctx);
-		xfree(sctx);
+		ft = format_create();
+		format_add(ft, "line", "%u", i);
+		format_add(ft, "window_find_matches", "%s",
+			ARRAY_ITEM(&list_ctx, i));
+		format_session(ft, s);
+		format_winlink(ft, s, wm);
+
+		find_line = format_expand(ft, template);
+
+		window_choose_add(wl->window->active, wm->idx, "%s", find_line);
+
+		xfree(find_line);
+		format_free(ft);
 	}
 
 	cdata = xmalloc(sizeof *cdata);

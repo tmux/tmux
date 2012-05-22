@@ -349,6 +349,7 @@ format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 	format_add(ft, "window_flags", "%s", flags);
 	format_add(ft, "window_layout", "%s", layout);
 	format_add(ft, "window_active", "%d", wl == s->curw);
+	format_add(ft, "window_panes", "%u", window_count_panes(w));
 
 	xfree(flags);
 	xfree(layout);
@@ -392,4 +393,15 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_current_path", "%s", get_proc_cwd(wp->pid));
 	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
 	format_add(ft, "pane_tty", "%s", wp->tty);
+}
+
+void
+format_paste_buffer(struct format_tree *ft, struct paste_buffer *pb)
+{
+	char	*pb_print = paste_print(pb, 50);
+
+	format_add(ft, "buffer_size", "%zu", pb->size);
+	format_add(ft, "buffer_sample", "%s", pb_print);
+
+	xfree(pb_print);
 }

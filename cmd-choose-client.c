@@ -33,8 +33,8 @@ void	cmd_choose_client_free(void *);
 
 const struct cmd_entry cmd_choose_client_entry = {
 	"choose-client", NULL,
-	"t:", 0, 1,
-	CMD_TARGET_WINDOW_USAGE " [template]",
+	"F:t:", 0, 1,
+	CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
 	0,
 	NULL,
 	NULL,
@@ -51,8 +51,11 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
 	struct cmd_choose_client_data	*cdata;
+	struct format_tree		*ft;
 	struct winlink			*wl;
 	struct client			*c;
+	char				*line;
+	const char			*template;
 	u_int			 	 i, idx, cur;
 
 	if (ctx->curclient == NULL) {
@@ -66,6 +69,9 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
 		return (0);
 
+	if ((template = args_get(args, 'F')) == NULL)
+		template = DEFAULT_CLIENT_TEMPLATE;
+
 	cur = idx = 0;
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
@@ -75,12 +81,16 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 			cur = idx;
 		idx++;
 
-		window_choose_add(wl->window->active, i,
-		    "%s: %s [%ux%u %s]%s%s", c->tty.path,
-		    c->session->name, c->tty.sx, c->tty.sy,
-		    c->tty.termname,
-		    c->tty.flags & TTY_UTF8 ? " (utf8)" : "",
-		    c->flags & CLIENT_READONLY ? " (ro)" : "");
+		ft = format_create();
+		format_add(ft, "line", "%u", i);
+		format_session(ft, c->session);
+		format_client(ft, c);
+
+		line = format_expand(ft, template);
+		window_choose_add(wl->window->active, i, "%s", line);
+		xfree(line);
+
+		format_free(ft);
 	}
 
 	cdata = xmalloc(sizeof *cdata);

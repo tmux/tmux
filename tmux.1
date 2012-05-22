@@ -1033,6 +1033,7 @@ visible pane and negative numbers are lines in the history.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose-client
+.Op Fl F Ar format
 .Op Fl t Ar target-window
 .Op Ar template
 .Xc
@@ -1048,10 +1049,16 @@ and the result executed as a command.
 If
 .Ar template
 is not given, "detach-client -t '%%'" is used.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 This command works only from inside
 .Nm .
 .It Xo
 .Ic choose-session
+.Op Fl F Ar format
 .Op Fl t Ar target-window
 .Op Ar template
 .Xc
@@ -1065,10 +1072,16 @@ and the result executed as a command.
 If
 .Ar template
 is not given, "switch-client -t '%%'" is used.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 This command works only from inside
 .Nm .
 .It Xo
 .Ic choose-window
+.Op Fl F Ar format
 .Op Fl t Ar target-window
 .Op Ar template
 .Xc
@@ -1082,6 +1095,11 @@ and the result executed as a command.
 If
 .Ar template
 is not given, "select-window -t '%%'" is used.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 This command works only from inside
 .Nm .
 .It Ic display-panes Op Fl t Ar target-client
@@ -1101,6 +1119,7 @@ to
 keys.
 .It Xo Ic find-window
 .Op Fl CNT
+.Op Fl F Ar format
 .Op Fl t Ar target-window
 .Ar match-string
 .Xc
@@ -1121,6 +1140,11 @@ The default is
 .Fl CNT .
 If only one window is matched, it'll be automatically selected,
 otherwise a choice list is shown.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 This command only works from inside
 .Nm .
 .It Xo Ic join-pane
@@ -2761,13 +2785,7 @@ or the global window options if
 is used.
 .El
 .Sh FORMATS
-The
-.Ic list-clients ,
-.Ic list-sessions ,
-.Ic list-windows
-and
-.Ic list-panes
-commands accept the
+Certain commands accept the
 .Fl F
 flag with a
 .Ar format
@@ -2800,6 +2818,8 @@ if it is unattached.
 The following variables are available, where appropriate:
 .Bl -column "session_created_string" "Replaced with" -offset indent
 .It Sy "Variable name" Ta Sy "Replaced with"
+.It Li "buffer_sample" Ta "First 50 characters from the specified buffer"
+.It Li "buffer_size" Ta "Size of the specified buffer in bytes"
 .It Li "client_activity" Ta "Integer time client last had activity"
 .It Li "client_activity_string" Ta "String time client last had activity"
 .It Li "client_created" Ta "Integer time client created"
@@ -2834,11 +2854,13 @@ The following variables are available, where appropriate:
 .It Li "session_width" Ta "Width of session"
 .It Li "session_windows" Ta "Number of windows in session"
 .It Li "window_active" Ta "1 if window active"
+.It Li "window_find_matches" Ta "Matched data from the find-window command if available"
 .It Li "window_flags" Ta "Window flags"
 .It Li "window_height" Ta "Height of window"
 .It Li "window_index" Ta "Index of window"
 .It Li "window_layout" Ta "Window layout description"
 .It Li "window_name" Ta "Name of window"
+.It Li "window_panes" Ta "Number of panes in window"
 .It Li "window_width" Ta "Width of window"
 .El
 .Sh NAMES AND TITLES
@@ -3145,6 +3167,7 @@ The buffer commands are as follows:
 .Bl -tag -width Ds
 .It Xo
 .Ic choose-buffer
+.Op Fl F Ar format
 .Op Fl t Ar target-window
 .Op Ar template
 .Xc
@@ -3158,6 +3181,11 @@ and the result executed as a command.
 If
 .Ar template
 is not given, "paste-buffer -b '%%'" is used.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 This command works only from inside
 .Nm .
 .It Ic clear-history Op Fl t Ar target-pane
@@ -3168,9 +3196,16 @@ Remove and free the history for the specified pane.
 Delete the buffer at
 .Ar buffer-index ,
 or the top buffer if not specified.
-.It Ic list-buffers
+.It Xo Ic list-buffers
+.Op Fl F Ar format
+.Xc
 .D1 (alias: Ic lsb )
 List the global buffers.
+For the meaning of the
+.Fl F
+flag, see the
+.Sx FORMATS
+section.
 .It Xo Ic load-buffer
 .Op Fl b Ar buffer-index
 .Ar path
