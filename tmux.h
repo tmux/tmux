@@ -1044,6 +1044,29 @@ struct session {
 RB_HEAD(sessions, session);
 ARRAY_DECL(sessionslist, struct session *);
 
+/*
+ * Mouse input. xterm mouse mode is fairly silly. Buttons are in the bottom two
+ * bits: 0 = button 1; 1 = button 2; 2 = button 3; 3 = buttons released. Bits
+ * 3, 4 and 5 are for keys. Bit 6 is set for dragging and 7 for mouse buttons 4
+ * and 5.
+ */
+struct mouse_event {
+	u_int	b;
+#define MOUSE_1 0
+#define MOUSE_2 1
+#define MOUSE_3 2
+#define MOUSE_UP 3
+#define MOUSE_BUTTON 3
+#define MOUSE_SHIFT 4
+#define MOUSE_ESCAPE 8
+#define MOUSE_CTRL 16
+#define MOUSE_DRAG 32
+#define MOUSE_45 64
+#define MOUSE_RESIZE_PANE 128 /* marker for resizing */
+	u_int	x;
+	u_int	y;
+};
+
 /* TTY information. */
 struct tty_key {
 	char		 ch;
@@ -1111,6 +1134,7 @@ struct tty {
 
 	int		 term_flags;
 
+	struct mouse_event mouse_event;
 	void		 (*key_callback)(int, struct mouse_event *, void *);
 	void		*key_data;
 	struct event	 key_timer;
@@ -1145,29 +1169,6 @@ struct tty_ctx {
 	struct grid_cell last_cell;
 	struct grid_utf8 last_utf8;
 	u_int		 last_width;
-};
-
-/*
- * Mouse input. xterm mouse mode is fairly silly. Buttons are in the bottom two
- * bits: 0 = button 1; 1 = button 2; 2 = button 3; 3 = buttons released. Bits
- * 3, 4 and 5 are for keys. Bit 6 is set for dragging and 7 for mouse buttons 4
- * and 5.
- */
-struct mouse_event {
-	u_int	b;
-#define MOUSE_1 0
-#define MOUSE_2 1
-#define MOUSE_3 2
-#define MOUSE_UP 3
-#define MOUSE_BUTTON 3
-#define MOUSE_SHIFT 4
-#define MOUSE_ESCAPE 8
-#define MOUSE_CTRL 16
-#define MOUSE_DRAG 32
-#define MOUSE_45 64
-#define MOUSE_RESIZE_PANE 128 /* marker for resizing */
-	u_int	x;
-	u_int	y;
 };
 
 /* Saved message entry. */
@@ -1220,7 +1221,7 @@ struct client {
 #define CLIENT_EXIT 0x4
 #define CLIENT_REDRAW 0x8
 #define CLIENT_STATUS 0x10
-#define CLIENT_REPEAT 0x20	/* allow command to repeat within repeat time */
+#define CLIENT_REPEAT 0x20 /* allow command to repeat within repeat time */
 #define CLIENT_SUSPENDED 0x40
 #define CLIENT_BAD 0x80
 #define CLIENT_IDENTIFY 0x100

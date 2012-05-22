@@ -40,8 +40,7 @@ struct tty_key *tty_keys_find1(
 		    struct tty_key *, const char *, size_t, size_t *);
 struct tty_key *tty_keys_find(struct tty *, const char *, size_t, size_t *);
 void		tty_keys_callback(int, short, void *);
-int		tty_keys_mouse(struct tty *,
-		    const char *, size_t, size_t *, struct mouse_event *);
+int		tty_keys_mouse(struct tty *, const char *, size_t, size_t *);
 int		tty_keys_device(struct tty *, const char *, size_t, size_t *);
 
 struct tty_key_ent {
@@ -434,13 +433,12 @@ tty_keys_find1(struct tty_key *tk, const char *buf, size_t len, size_t *size)
 int
 tty_keys_next(struct tty *tty)
 {
-	struct tty_key		*tk;
-	struct timeval		 tv;
-	struct mouse_event	 mouse;
-	const char		*buf;
-	size_t			 len, size;
-	cc_t			 bspace;
-	int			 key, delay;
+	struct tty_key	*tk;
+	struct timeval	 tv;
+	const char	*buf;
+	size_t		 len, size;
+	cc_t		 bspace;
+	int		 key, delay;
 
 	buf = EVBUFFER_DATA(tty->event->input);
 	len = EVBUFFER_LENGTH(tty->event->input);
@@ -477,7 +475,7 @@ tty_keys_next(struct tty *tty)
 	}
 
 	/* Is this a mouse key press? */
-	switch (tty_keys_mouse(tty, buf, len, &size, &mouse)) {
+	switch (tty_keys_mouse(tty, buf, len, &size)) {
 	case 0:		/* yes */
 		evbuffer_drain(tty->event->input, size);
 		key = KEYC_MOUSE;
@@ -582,7 +580,7 @@ handle_key:
 		evtimer_del(&tty->key_timer);
 
 	if (key != KEYC_NONE)
-		tty->key_callback(key, &mouse, tty->key_data);
+		tty->key_callback(key, &tty->mouse_event, tty->key_data);
 
 	tty->flags &= ~TTY_ESCAPE;
 	return (1);
@@ -607,11 +605,11 @@ tty_keys_callback(unused int fd, unused short events, void *data)
  * (probably a mouse sequence but need more data).
  */
 int
-tty_keys_mouse(struct tty *tty,
-    const char *buf, size_t len, size_t *size, struct mouse_event *m)
+tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 {
-	struct utf8_data	utf8data;
-	u_int			i, value;
+	struct mouse_event	*m = &tty->mouse_event;
+	struct utf8_data	 utf8data;
+	u_int			 i, value;
 
 	/*
 	 * Standard mouse sequences are \033[M followed by three characters
