@@ -497,7 +497,8 @@ Multiple commands may be specified together as part of a
 .Em command sequence .
 Each command should be separated by spaces and a semicolon;
 commands are executed sequentially from left to right and
-lines ending with a backslash continue on to the next line.
+lines ending with a backslash continue on to the next line,
+except when escaped by another backslash.
 A literal semicolon may be included by escaping it with a backslash (for
 example, when specifying a command sequence to
 .Ic bind-key ) .
