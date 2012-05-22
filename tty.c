@@ -740,9 +740,8 @@ void
 tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
-	struct screen		*s = wp->screen;
 
-	if (ctx->xoff != 0 || screen_size_x(s) < tty->sx) {
+	if (!tty_pane_full_width(tty, ctx)) {
 		tty_draw_line(tty, wp->screen, ctx->ocy, ctx->xoff, ctx->yoff);
 		return;
 	}
@@ -762,9 +761,8 @@ void
 tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
-	struct screen		*s = wp->screen;
 
-	if (ctx->xoff != 0 || screen_size_x(s) < tty->sx ||
+	if (!tty_pane_full_width(tty, ctx) ||
 	    (!tty_term_has(tty->term, TTYC_DCH) &&
 	    !tty_term_has(tty->term, TTYC_DCH1))) {
 		tty_draw_line(tty, wp->screen, ctx->ocy, ctx->xoff, ctx->yoff);
