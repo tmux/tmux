@@ -33,8 +33,8 @@ void	cmd_choose_session_free(void *);
 
 const struct cmd_entry cmd_choose_session_entry = {
 	"choose-session", NULL,
-	"t:", 0, 1,
-	CMD_TARGET_WINDOW_USAGE " [template]",
+	"F:t:", 0, 1,
+	CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
 	0,
 	NULL,
 	NULL,
@@ -53,9 +53,10 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_choose_session_data	*cdata;
 	struct winlink			*wl;
 	struct session			*s;
-	struct session_group		*sg;
-	u_int			 	 idx, sgidx, cur;
-	char				 tmp[64];
+	struct format_tree		*ft;
+	const char			*template;
+	char				*line;
+	u_int			 	 idx, cur;
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
@@ -68,24 +69,24 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
 		return (0);
 
+	if ((template = args_get(args, 'F')) == NULL)
+		template = DEFAULT_SESSION_TEMPLATE;
+
 	cur = idx = 0;
 	RB_FOREACH(s, sessions, &sessions) {
 		if (s == ctx->curclient->session)
 			cur = idx;
 		idx++;
 
-		sg = session_group_find(s);
-		if (sg == NULL)
-			*tmp = '\0';
-		else {
-			sgidx = session_group_index(sg);
-			xsnprintf(tmp, sizeof tmp, " (group %u)", sgidx);
-		}
+		ft = format_create();
+		format_add(ft, "line", "%u", idx);
+		format_session(ft, s);
 
-		window_choose_add(wl->window->active, s->idx,
-		    "%s: %u windows [%ux%u]%s%s", s->name,
-		    winlink_count(&s->windows), s->sx, s->sy,
-		    tmp, s->flags & SESSION_UNATTACHED ? "" : " (attached)");
+		line = format_expand(ft, template);
+		window_choose_add(wl->window->active, s->idx, "%s", line);
+		xfree(line);
+
+		format_free(ft);
 	}
 
 	cdata = xmalloc(sizeof *cdata);

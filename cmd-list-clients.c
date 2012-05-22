@@ -58,13 +58,8 @@ cmd_list_clients_exec(struct cmd *self, struct cmd_ctx *ctx)
 	} else
 		s = NULL;
 
-	template = args_get(args, 'F');
-	if (template == NULL) {
-		template = "#{client_tty}: #{session_name} "
-		    "[#{client_width}x#{client_height} #{client_termname}]"
-		    "#{?client_utf8, (utf8),}"
-		    "#{?client_readonly, (ro),}";
-	}
+	if ((template = args_get(args, 'F')) == NULL)
+		template = DEFAULT_CLIENT_TEMPLATE;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);

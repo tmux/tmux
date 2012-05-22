@@ -33,8 +33,8 @@ void	cmd_choose_buffer_free(void *);
 
 const struct cmd_entry cmd_choose_buffer_entry = {
 	"choose-buffer", NULL,
-	"t:", 0, 1,
-	CMD_TARGET_WINDOW_USAGE " [template]",
+	"F:t:", 0, 1,
+	CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
 	0,
 	NULL,
 	NULL,
@@ -53,13 +53,18 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_choose_buffer_data	*cdata;
 	struct winlink			*wl;
 	struct paste_buffer		*pb;
+	struct format_tree		*ft;
 	u_int				 idx;
-	char				*tmp;
+	char				*line;
+	const char			*template;
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
 		return (-1);
 	}
+
+	if ((template = args_get(args, 'F')) == NULL)
+		template = DEFAULT_BUFFER_LIST_TEMPLATE;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (-1);
@@ -72,10 +77,15 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	idx = 0;
 	while ((pb = paste_walk_stack(&global_buffers, &idx)) != NULL) {
-		tmp = paste_print(pb, 50);
-		window_choose_add(wl->window->active, idx - 1,
-		    "%u: %zu bytes: \"%s\"", idx - 1, pb->size, tmp);
-		xfree(tmp);
+		ft = format_create();
+		format_add(ft, "line", "%u", idx - 1);
+		format_paste_buffer(ft, pb);
+
+		line = format_expand(ft, template);
+		window_choose_add(wl->window->active, idx - 1, "%s", line);
+
+		xfree(line);
+		format_free(ft);
 	}
 
 	cdata = xmalloc(sizeof *cdata);

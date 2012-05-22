@@ -30,8 +30,8 @@ int	cmd_list_buffers_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_buffers_entry = {
 	"list-buffers", "lsb",
-	"", 0, 0,
-	"",
+	"F:", 0, 0,
+	"[-F format]",
 	0,
 	NULL,
 	NULL,
@@ -42,16 +42,27 @@ const struct cmd_entry cmd_list_buffers_entry = {
 int
 cmd_list_buffers_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
+	struct args		*args = self->args;
 	struct paste_buffer	*pb;
+	struct format_tree	*ft;
 	u_int			 idx;
-	char			*tmp;
+	char			*line;
+	const char		*template;
+
+	if ((template = args_get(args, 'F')) == NULL)
+		template = DEFAULT_BUFFER_LIST_TEMPLATE;
 
 	idx = 0;
 	while ((pb = paste_walk_stack(&global_buffers, &idx)) != NULL) {
-		tmp = paste_print(pb, 50);
-		ctx->print(ctx,
-		    "%u: %zu bytes: \"%s\"", idx - 1, pb->size, tmp);
-		xfree(tmp);
+		ft = format_create();
+		format_add(ft, "line", "%u", idx - 1);
+		format_paste_buffer(ft, pb);
+
+		line = format_expand(ft, template);
+		ctx->print(ctx, "%s", line);
+		xfree(line);
+
+		format_free(ft);
 	}
 
 	return (0);

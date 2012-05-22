@@ -75,7 +75,7 @@ cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args->argc != 0)
 		template = args->argv[0];
 	if (template == NULL)
-		template = "[#S] #I:#W, current pane #P - (%H:%M %d-%b-%y)";
+		template = DEFAULT_DISPLAY_MESSAGE_TEMPLATE;
 
 	ft = format_create();
 	format_client(ft, c);

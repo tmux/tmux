@@ -33,8 +33,8 @@ void	cmd_choose_window_free(void *);
 
 const struct cmd_entry cmd_choose_window_entry = {
 	"choose-window", NULL,
-	"t:", 0, 1,
-	CMD_TARGET_WINDOW_USAGE " [template]",
+	"F:t:", 0, 1,
+	CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
 	0,
 	NULL,
 	NULL,
@@ -54,10 +54,10 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct cmd_choose_window_data	*cdata;
 	struct session			*s;
 	struct winlink			*wl, *wm;
-	struct window			*w;
+	struct format_tree		*ft;
+	const char			*template;
+	char				*line;
 	u_int			 	 idx, cur;
-	char				*flags, *title;
-	const char			*left, *right;
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
@@ -71,30 +71,25 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
 		return (0);
 
+	if ((template = args_get(args, 'F')) == NULL)
+		template = DEFAULT_WINDOW_TEMPLATE;
+
 	cur = idx = 0;
 	RB_FOREACH(wm, winlinks, &s->windows) {
-		w = wm->window;
-
 		if (wm == s->curw)
 			cur = idx;
 		idx++;
 
-		flags = window_printable_flags(s, wm);
-		title = w->active->screen->title;
-		if (wm == wl)
-			title = w->active->base.title;
-		left = " \"";
-		right = "\"";
-		if (*title == '\0')
-			left = right = "";
+		ft = format_create();
+		format_add(ft, "line", "%u", idx);
+		format_session(ft, s);
+		format_winlink(ft, s, wm);
 
-		window_choose_add(wl->window->active,
-		    wm->idx, "%3d: %s%s [%ux%u] (%u panes%s)%s%s%s",
-		    wm->idx, w->name, flags, w->sx, w->sy, window_count_panes(w),
-		    w->active->fd == -1 ? ", dead" : "",
-		    left, title, right);
+		line = format_expand(ft, template);
+		window_choose_add(wl->window->active, idx, "%s", line);
 
-		xfree(flags);
+		xfree(line);
+		format_free(ft);
 	}
 
 	cdata = xmalloc(sizeof *cdata);
