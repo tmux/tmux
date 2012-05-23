@@ -16,7 +16,7 @@ If upgrading from 1.5, PLEASE NOTE:
 - The ability to have a list of prefix keys was dropped in favour of two
   separate options, prefix and prefix2.
 
-Since the 1.2 release that tmux depends on libevent. Download it from:
+Since the 1.2 release tmux depends on libevent. Download it from:
 
 	http://www.monkey.org/~provos/libevent/
 
