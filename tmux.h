@@ -97,8 +97,8 @@ extern char   **environ;
 	"#{line}: #{buffer_size} bytes: \"#{buffer_sample}\""
 #define DEFAULT_CLIENT_TEMPLATE					\
 	"#{client_tty}: #{session_name} "			\
-	"[#client_width}x#{client_height} #{client_termname}]"	\
-	"{?client_utf8, (utf8),} #{?client_readonly, (ro),}"
+	"[#{client_width}x#{client_height} #{client_termname}]"	\
+	"#{?client_utf8, (utf8),} #{?client_readonly, (ro),}"
 #define DEFAULT_DISPLAY_MESSAGE_TEMPLATE			\
 	"[#{session_name}] #{window_index}:"			\
 	"#{window_name}, current pane #{pane_index} "		\
