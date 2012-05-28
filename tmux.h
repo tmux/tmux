@@ -117,9 +117,7 @@ extern char   **environ;
 #define DEFAULT_WINDOW_TEMPLATE					\
 	"#{window_index}: #{window_name}#{window_flags} "	\
 	"(#{window_panes} panes) "				\
-	"[#{window_width}x#{window_height}] "			\
-	"[layout #{window_layout}] #{window_id}"		\
-	"#{?window_active, (active),}"
+	"[#{window_width}x#{window_height}]"
 #define DEFAULT_PANE_INFO_TEMPLATE				\
 	"#{session_name}:#{window_index}.#{pane_index}"
 
