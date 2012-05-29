@@ -41,12 +41,13 @@ cmd_kill_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
 	struct winlink	*wl, *wl2;
+	struct session	*s;
 
-	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
+	if ((wl = cmd_find_window(ctx, args_get(args, 't'), &s)) == NULL)
 		return (-1);
 
 	if (args_has(args, 'a')) {
-		RB_FOREACH(wl2, winlinks, &ctx->curclient->session->windows) {
+		RB_FOREACH(wl2, winlinks, &s->windows) {
 			if (wl != wl2)
 				server_kill_window(wl2->window);
 		}
