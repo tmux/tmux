@@ -72,7 +72,7 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (0);
 
 	if ((template = args_get(args, 'F')) == NULL)
-		template = DEFAULT_WINDOW_TEMPLATE;
+		template = DEFAULT_WINDOW_TEMPLATE " \"#{pane_title}\"";
 
 	cur = idx = 0;
 	RB_FOREACH(wm, winlinks, &s->windows) {
@@ -84,9 +84,10 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		format_add(ft, "line", "%u", idx);
 		format_session(ft, s);
 		format_winlink(ft, s, wm);
+		format_window_pane(ft, wm->window->active);
 
 		line = format_expand(ft, template);
-		window_choose_add(wl->window->active, idx, "%s", line);
+		window_choose_add(wl->window->active, wm->idx, "%s", line);
 
 		xfree(line);
 		format_free(ft);
