@@ -73,7 +73,6 @@ logfile(const char *name)
 {
 	char	*path;
 
-	log_close();
 	if (debug_level > 0) {
 		xasprintf(&path, "tmux-%s-%ld.log", name, (long) getpid());
 		log_open(debug_level, path);
