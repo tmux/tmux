@@ -1858,6 +1858,7 @@ int	 attributes_fromstring(const char *);
 
 /* grid.c */
 extern const struct grid_cell grid_default_cell;
+extern const struct grid_cell grid_marker_cell;
 struct grid *grid_create(u_int, u_int, u_int);
 void	 grid_destroy(struct grid *);
 int	 grid_compare(struct grid *, struct grid *);

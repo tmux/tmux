@@ -202,9 +202,8 @@ screen_redraw_screen(struct client *c, int status_only, int borders_only)
 	}
 
 	/* Set up pane border attributes. */
-	memcpy(&other_gc, &grid_default_cell, sizeof other_gc);
-	memcpy(&active_gc, &grid_default_cell, sizeof active_gc);
-	active_gc.data = other_gc.data = 'x'; /* not space */
+	memcpy(&other_gc, &grid_marker_cell, sizeof other_gc);
+	memcpy(&active_gc, &grid_marker_cell, sizeof active_gc);
 	active_gc.attr = other_gc.attr = GRID_ATTR_CHARSET;
 	fg = options_get_number(oo, "pane-border-fg");
 	colour_set_fg(&other_gc, fg);
@@ -317,8 +316,7 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 	px -= len * 3;
 	py -= 2;
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.data = '_'; /* not space */
+	memcpy(&gc, &grid_marker_cell, sizeof gc);
 	if (w->active == wp)
 		colour_set_bg(&gc, active_colour);
 	else
@@ -345,8 +343,7 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 	tty_cursor(tty, xoff + wp->sx - len, yoff);
 
 draw_text:
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.data = '_'; /* not space */
+	memcpy(&gc, &grid_marker_cell, sizeof gc);
 	if (w->active == wp)
 		colour_set_fg(&gc, active_colour);
 	else

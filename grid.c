@@ -36,6 +36,7 @@
 
 /* Default grid cell data. */
 const struct grid_cell grid_default_cell = { 0, 0, 8, 8, ' ' };
+const struct grid_cell grid_marker_cell = { 0, 0, 8, 8, '_' };
 
 #define grid_put_cell(gd, px, py, gc) do {			\
 	memcpy(&gd->linedata[py].celldata[px], 			\
