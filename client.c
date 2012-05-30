@@ -209,15 +209,15 @@ client_main(int argc, char **argv, int flags)
 	if (shell_cmd == NULL && environ_path != NULL &&
 	    (cmdflags & CMD_CANTNEST) &&
 	    strcmp(socket_path, environ_path) == 0) {
-		log_warnx("sessions should be nested with care. "
-		    "unset $TMUX to force.");
+		fprintf(stderr, "sessions should be nested with care, "
+		    "unset $TMUX to force\n");
 		return (1);
 	}
 
 	/* Initialise the client socket and start the server. */
 	fd = client_connect(socket_path, cmdflags & CMD_STARTSERVER);
 	if (fd == -1) {
-		log_warn("failed to connect to server");
+		fprintf(stderr, "failed to connect to server\n");
 		return (1);
 	}
 
@@ -254,7 +254,7 @@ client_main(int argc, char **argv, int flags)
 		cmddata.argc = argc;
 		if (cmd_pack_argv(
 		    argc, argv, cmddata.argv, sizeof cmddata.argv) != 0) {
-			log_warnx("command too long");
+			fprintf(stderr, "command too long\n");
 			return (1);
 		}
 
@@ -540,7 +540,7 @@ client_dispatch_attached(void)
 			return (0);
 		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
 
-		log_debug("client got %d", imsg.hdr.type);
+		log_debug("got %d from server", imsg.hdr.type);
 		switch (imsg.hdr.type) {
 		case MSG_DETACHKILL:
 		case MSG_DETACH:

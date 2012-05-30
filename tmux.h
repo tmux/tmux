@@ -2178,8 +2178,7 @@ char		*osdep_get_cwd(pid_t);
 struct event_base *osdep_event_init(void);
 
 /* log.c */
-void		 log_open_tty(int);
-void		 log_open_file(int, const char *);
+void		 log_open(int, const char *);
 void		 log_close(void);
 void printflike1 log_warn(const char *, ...);
 void printflike1 log_warnx(const char *, ...);
