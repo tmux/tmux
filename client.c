@@ -169,6 +169,7 @@ client_main(int argc, char **argv, int flags)
 	pid_t			 ppid;
 	enum msgtype		 msg;
 	char			*cause;
+	struct termios		 tio, saved_tio;
 
 	/* Set up the initial command. */
 	cmdflags = 0;
@@ -233,6 +234,23 @@ client_main(int argc, char **argv, int flags)
 	setblocking(STDIN_FILENO, 0);
 	event_set(&client_stdin, STDIN_FILENO, EV_READ|EV_PERSIST,
 	    client_stdin_callback, NULL);
+	if (flags & IDENTIFY_TERMIOS) {
+		if (tcgetattr(STDIN_FILENO, &saved_tio) != 0) {
+			fprintf(stderr, "tcgetattr failed: %s\n",
+			    strerror(errno));
+			return (1);
+		}
+		cfmakeraw(&tio);
+		tio.c_iflag = ICRNL|IXANY;
+		tio.c_oflag = OPOST|ONLCR;
+		tio.c_lflag = NOKERNINFO;
+		tio.c_cflag = CREAD|CS8|HUPCL;
+		tio.c_cc[VMIN] = 1;
+		tio.c_cc[VTIME] = 0;
+		cfsetispeed(&tio, cfgetispeed(&saved_tio));
+		cfsetospeed(&tio, cfgetospeed(&saved_tio));
+		tcsetattr(STDIN_FILENO, TCSANOW, &tio);
+	}
 
 	/* Establish signal handlers. */
 	set_signals(client_signal);
@@ -273,7 +291,8 @@ client_main(int argc, char **argv, int flags)
 		ppid = getppid();
 		if (client_exittype == MSG_DETACHKILL && ppid > 1)
 			kill(ppid, SIGHUP);
-	}
+	} else if (flags & IDENTIFY_TERMIOS)
+		tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
 	setblocking(STDIN_FILENO, 1);
 	return (client_exitval);
 }
@@ -513,6 +532,12 @@ client_dispatch_wait(void *data)
 
 			shell_exec(shelldata.shell, shellcmd);
 			/* NOTREACHED */
+		case MSG_DETACH:
+			client_write_server(MSG_EXITING, NULL, 0);
+			break;
+		case MSG_EXITED:
+			imsg_free(&imsg);
+			return (-1);
 		default:
 			fatalx("unexpected message");
 		}

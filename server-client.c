@@ -108,6 +108,9 @@ server_client_open(struct client *c, struct session *s, char **cause)
 	struct options	*oo = s != NULL ? &s->options : &global_s_options;
 	char		*overrides;
 
+	if (c->flags & CLIENT_CONTROL)
+		return (0);
+
 	if (!(c->flags & CLIENT_TERMINAL)) {
 		*cause = xstrdup ("not a terminal");
 		return (-1);
@@ -893,6 +896,17 @@ server_client_msg_identify(
 	data->cwd[(sizeof data->cwd) - 1] = '\0';
 	if (*data->cwd != '\0')
 		c->cwd = xstrdup(data->cwd);
+
+	if (data->flags & IDENTIFY_CONTROL) {
+		c->stdin_callback = control_callback;
+		c->flags |= (CLIENT_CONTROL|CLIENT_SUSPENDED);
+
+		c->tty.fd = -1;
+		c->tty.log_fd = -1;
+
+		close(fd);
+		return;
+	}
 
 	if (!isatty(fd))
 	    return;

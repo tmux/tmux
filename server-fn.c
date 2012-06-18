@@ -49,6 +49,8 @@ server_fill_environ(struct session *s, struct environ *env)
 void
 server_write_ready(struct client *c)
 {
+	if (c->flags & CLIENT_CONTROL)
+		return;
 	server_write_client(c, MSG_READY, NULL, 0);
 }
 
