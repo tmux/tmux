@@ -207,6 +207,9 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 	va_list	ap;
 	char   *msg;
 
+	if (ctx->curclient->session == NULL)
+		return;
+
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
 	va_end(ap);
@@ -219,9 +222,13 @@ key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
 void printflike2
 key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
 {
-	struct winlink	*wl = ctx->curclient->session->curw;
+	struct winlink	*wl;
 	va_list		 ap;
 
+	if (ctx->curclient->session == NULL)
+		return;
+
+	wl = ctx->curclient->session->curw;
 	if (wl->window->active->mode != &window_copy_mode) {
 		window_pane_reset_mode(wl->window->active);
 		window_pane_set_mode(wl->window->active, &window_copy_mode);
@@ -238,6 +245,9 @@ key_bindings_info(struct cmd_ctx *ctx, const char *fmt, ...)
 {
 	va_list	ap;
 	char   *msg;
+
+	if (ctx->curclient->session == NULL)
+		return;
 
 	if (options_get_number(&global_options, "quiet"))
 		return;
