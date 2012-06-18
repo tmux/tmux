@@ -244,7 +244,7 @@ main(int argc, char **argv)
 	quiet = flags = 0;
 	label = path = NULL;
 	login_shell = (**argv == '-');
-	while ((opt = getopt(argc, argv, "28c:df:lL:qS:uUvV")) != -1) {
+	while ((opt = getopt(argc, argv, "28c:Cdf:lL:qS:uUvV")) != -1) {
 		switch (opt) {
 		case '2':
 			flags |= IDENTIFY_256COLOURS;
@@ -258,6 +258,12 @@ main(int argc, char **argv)
 			if (shell_cmd != NULL)
 				xfree(shell_cmd);
 			shell_cmd = xstrdup(optarg);
+			break;
+		case 'C':
+			if (flags & IDENTIFY_CONTROL)
+				flags |= IDENTIFY_TERMIOS;
+			else
+				flags |= IDENTIFY_CONTROL;
 			break;
 		case 'V':
 			printf("%s %s\n", __progname, VERSION);
