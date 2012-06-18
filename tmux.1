@@ -610,9 +610,14 @@ If it does exist, exit with 0.
 Kill the
 .Nm
 server and clients and destroy all sessions.
-.It Ic kill-session Op Fl t Ar target-session
+.It Ic kill-session
+.Op Fl a
+.Op Fl t Ar target-session
 Destroy the given session, closing any windows linked to it and no other
 sessions, and detaching all clients attached to it.
+If
+.Fl a
+is given, all sessions but the specified one is killed.
 .It Xo Ic list-clients
 .Op Fl F Ar format
 .Op Fl t Ar target-session
