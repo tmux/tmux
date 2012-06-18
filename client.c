@@ -246,7 +246,9 @@ client_main(int argc, char **argv, int flags)
 		cfmakeraw(&tio);
 		tio.c_iflag = ICRNL|IXANY;
 		tio.c_oflag = OPOST|ONLCR;
+#ifdef NOKERNINFO
 		tio.c_lflag = NOKERNINFO;
+#endif
 		tio.c_cflag = CREAD|CS8|HUPCL;
 		tio.c_cc[VMIN] = 1;
 		tio.c_cc[VTIME] = 0;
