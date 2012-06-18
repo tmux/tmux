@@ -76,46 +76,25 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 		return (0);
 	if (s->curw != wl || s->flags & SESSION_UNATTACHED)
 		wl->flags |= WINLINK_BELL;
+	if (s->flags & SESSION_UNATTACHED)
+		return (1);
 
+	visual = options_get_number(&s->options, "visual-bell");
 	action = options_get_number(&s->options, "bell-action");
-	switch (action) {
-	case BELL_ANY:
-		if (s->flags & SESSION_UNATTACHED)
-			break;
-		visual = options_get_number(&s->options, "visual-bell");
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c == NULL || c->session != s)
-				continue;
-			if (!visual) {
-				tty_bell(&c->tty);
-				continue;
-			}
-			if (c->session->curw->window == w) {
-				status_message_set(c, "Bell in current window");
-				continue;
-			}
-			status_message_set(c, "Bell in window %u",
-			    winlink_find_by_window(&s->windows, w)->idx);
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session != s)
+			continue;
+		if (!visual) {
+			tty_bell(&c->tty);
+			continue;
 		}
-		break;
-	case BELL_CURRENT:
-		if (s->flags & SESSION_UNATTACHED)
-			break;
-		visual = options_get_number(&s->options, "visual-bell");
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c == NULL || c->session != s)
-				continue;
-			if (c->session->curw->window != w)
-				continue;
-			if (!visual) {
-				tty_bell(&c->tty);
-				continue;
-			}
+		if (c->session->curw->window == w)
 			status_message_set(c, "Bell in current window");
+		else if (action == BELL_ANY) {
+			status_message_set(c, "Bell in window %u",
+				winlink_find_by_window(&s->windows, w)->idx);
 		}
-		break;
 	}
 
 	return (1);
