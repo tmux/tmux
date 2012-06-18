@@ -135,6 +135,7 @@ dist_tmux_SOURCES = \
 	cmd-unlink-window.c \
 	cmd.c \
 	colour.c \
+	control.c \
 	environ.c \
 	format.c \
 	grid-utf8.c \
