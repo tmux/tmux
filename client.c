@@ -58,6 +58,7 @@ void		client_write_server(enum msgtype, void *, size_t);
 void		client_update_event(void);
 void		client_signal(int, short, void *);
 void		client_stdin_callback(int, short, void *);
+void		client_write(int, const char *, size_t);
 void		client_callback(int, short, void *);
 int		client_dispatch_attached(void);
 int		client_dispatch_wait(void *);
@@ -458,6 +459,24 @@ client_stdin_callback(unused int fd, unused short events, unused void *data1)
 	client_update_event();
 }
 
+/* Force write to file descriptor. */
+void
+client_write(int fd, const char *data, size_t size)
+{
+	ssize_t	used;
+
+	while (size != 0) {
+		used = write(fd, data, size);
+		if (used == -1) {
+			if (errno == EINTR || errno == EAGAIN)
+				continue;
+			break;
+		}
+		data += used;
+		size -= used;
+	}
+}
+
 /* Dispatch imsgs when in wait state (before MSG_READY). */
 int
 client_dispatch_wait(void *data)
@@ -502,14 +521,14 @@ client_dispatch_wait(void *data)
 				fatalx("bad MSG_STDOUT");
 			memcpy(&stdoutdata, imsg.data, sizeof stdoutdata);
 
-			fwrite(stdoutdata.data, stdoutdata.size, 1, stdout);
+			client_write(STDOUT_FILENO, stdoutdata.data, stdoutdata.size);
 			break;
 		case MSG_STDERR:
 			if (datalen != sizeof stderrdata)
 				fatalx("bad MSG_STDERR");
 			memcpy(&stderrdata, imsg.data, sizeof stderrdata);
 
-			fwrite(stderrdata.data, stderrdata.size, 1, stderr);
+			client_write(STDERR_FILENO, stderrdata.data, stderrdata.size);
 			break;
 		case MSG_VERSION:
 			if (datalen != 0)
