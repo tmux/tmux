@@ -1383,7 +1383,7 @@ Move a window to the next layout and rearrange the panes to fit.
 Move to the next window in the session.
 If
 .Fl a
-is used, move to the next window with a bell, activity or content alert.
+is used, move to the next window with an alert.
 .It Xo Ic pipe-pane
 .Op Fl o
 .Op Fl t Ar target-pane
@@ -1426,7 +1426,7 @@ Move to the previous layout in the session.
 Move to the previous window in the session.
 With
 .Fl a ,
-move to the previous window with a bell, activity or content alert.
+move to the previous window with an alert.
 .It Xo Ic rename-window
 .Op Fl t Ar target-window
 .Ar new-name
@@ -1954,7 +1954,7 @@ means only bell in windows other than the current window are ignored.
 .It Xo Ic bell-on-alert
 .Op Ic on | off
 .Xc
-If on, ring the terminal bell when an activity, content or silence alert
+If on, ring the terminal bell when an alert
 occurs.
 .It Ic default-command Ar shell-command
 Set the command used for new windows (if not specified when the window is
