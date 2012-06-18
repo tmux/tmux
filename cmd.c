@@ -1290,7 +1290,7 @@ cmd_get_default_path(struct cmd_ctx *ctx, const char *cwd)
 		/* Session working directory. */
 		root = s->cwd;
 		goto complete_path;
-	} else if (cwd[0] == '.' && (cwd[1] == '\0' || cwd[1] == '/')){
+	} else if (cwd[0] == '.' && (cwd[1] == '\0' || cwd[1] == '/')) {
 		/* Server working directory. */
 		if (getcwd(tmp, sizeof tmp) != NULL) {
 			root = tmp;
@@ -1304,7 +1304,7 @@ cmd_get_default_path(struct cmd_ctx *ctx, const char *cwd)
 		/* Empty or relative path. */
 		if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
 			root = ctx->cmdclient->cwd;
-		else if (ctx->curclient != NULL)
+		else if (ctx->curclient != NULL && s->curw != NULL)
 			root = get_proc_cwd(s->curw->window->active->pid);
 		else
 			return (s->cwd);
