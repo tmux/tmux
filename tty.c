@@ -668,7 +668,6 @@ tty_write(
 	struct window_pane	*wp = ctx->wp;
 	struct client		*c;
 	struct session		*s;
-	struct options		*oo;
 	u_int		 	 i;
 
 	/* wp can be NULL if updating the screen but not the terminal. */
@@ -693,7 +692,6 @@ tty_write(
 				continue;
 			if (c->tty.flags & TTY_FREEZE)
 				continue;
-			oo = &s->options;
 
 			ctx->xoff = wp->xoff;
 			ctx->yoff = wp->yoff;
