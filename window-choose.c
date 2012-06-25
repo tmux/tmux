@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -29,7 +30,8 @@ void	window_choose_key(struct window_pane *, struct session *, int);
 void	window_choose_mouse(
 	    struct window_pane *, struct session *, struct mouse_event *);
 
-void	window_choose_fire_callback(struct window_pane *, int);
+void	window_choose_fire_callback(
+	    struct window_pane *, struct window_choose_data *);
 void	window_choose_redraw_screen(struct window_pane *);
 void	window_choose_write_line(
 	    struct window_pane *, struct screen_write_ctx *, u_int);
@@ -46,11 +48,6 @@ const struct window_mode window_choose_mode = {
 	NULL,
 };
 
-struct window_choose_mode_item {
-	char		       *name;
-	int			idx;
-};
-
 struct window_choose_mode_data {
 	struct screen	        screen;
 
@@ -60,39 +57,30 @@ struct window_choose_mode_data {
 	u_int			top;
 	u_int			selected;
 
-	void 			(*callbackfn)(void *, int);
-	void			(*freefn)(void *);
-	void		       *data;
+	void 			(*callbackfn)(struct window_choose_data *);
+	void			(*freefn)(struct window_choose_data *);
 };
 
 int	window_choose_key_index(struct window_choose_mode_data *, u_int);
 int	window_choose_index_key(struct window_choose_mode_data *, int);
 
 void
-window_choose_vadd(struct window_pane *wp, int idx, const char *fmt, va_list ap)
+window_choose_add(struct window_pane *wp, struct window_choose_data *wcd)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct window_choose_mode_item	*item;
 
 	ARRAY_EXPAND(&data->list, 1);
 	item = &ARRAY_LAST(&data->list);
-	xvasprintf(&item->name, fmt, ap);
-	item->idx = idx;
-}
 
-void printflike3
-window_choose_add(struct window_pane *wp, int idx, const char *fmt, ...)
-{
-	va_list	ap;
-
-	va_start(ap, fmt);
-	window_choose_vadd(wp, idx, fmt, ap);
-	va_end(ap);
+	item->name = format_expand(wcd->ft, wcd->ft_template);
+	item->wcd = wcd;
 }
 
 void
 window_choose_ready(struct window_pane *wp, u_int cur,
-    void (*callbackfn)(void *, int), void (*freefn)(void *), void *cdata)
+    void (*callbackfn)(struct window_choose_data *),
+    void (*freefn)(struct window_choose_data *))
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -103,7 +91,6 @@ window_choose_ready(struct window_pane *wp, u_int cur,
 
 	data->callbackfn = callbackfn;
 	data->freefn = freefn;
-	data->data = cdata;
 
 	window_choose_redraw_screen(wp);
 }
@@ -119,7 +106,6 @@ window_choose_init(struct window_pane *wp)
 
 	data->callbackfn = NULL;
 	data->freefn = NULL;
-	data->data = NULL;
 
 	ARRAY_INIT(&data->list);
 	data->top = 0;
@@ -139,17 +125,36 @@ window_choose_init(struct window_pane *wp)
 	return (s);
 }
 
+struct window_choose_data *
+window_choose_data_create(struct cmd_ctx *ctx)
+{
+	struct window_choose_data	*wcd;
+
+	wcd = xmalloc(sizeof *wcd);
+	wcd->ft = format_create();
+	wcd->ft_template = NULL;
+	wcd->action = NULL;
+	wcd->raw_format = NULL;
+	wcd->client = ctx->curclient;
+	wcd->session = ctx->curclient->session;
+	wcd->idx = -1;
+
+	return (wcd);
+}
+
 void
 window_choose_free(struct window_pane *wp)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
+	struct window_choose_mode_item	*item;
 	u_int				 i;
 
-	if (data->freefn != NULL && data->data != NULL)
-		data->freefn(data->data);
-
-	for (i = 0; i < ARRAY_LENGTH(&data->list); i++)
-		xfree(ARRAY_ITEM(&data->list, i).name);
+	for (i = 0; i < ARRAY_LENGTH(&data->list); i++) {
+		item = &ARRAY_ITEM(&data->list, i);
+		if (data->freefn != NULL && item->wcd != NULL)
+			data->freefn(item->wcd);
+		xfree(item->name);
+	}
 	ARRAY_FREE(&data->list);
 
 	screen_free(&data->screen);
@@ -171,7 +176,8 @@ window_choose_resize(struct window_pane *wp, u_int sx, u_int sy)
 }
 
 void
-window_choose_fire_callback(struct window_pane *wp, int idx)
+window_choose_fire_callback(
+	struct window_pane *wp, struct window_choose_data *wcd)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	const struct window_mode	*oldmode;
@@ -179,7 +185,7 @@ window_choose_fire_callback(struct window_pane *wp, int idx)
 	oldmode = wp->mode;
 	wp->mode = NULL;
 
-	data->callbackfn(data->data, idx);
+	data->callbackfn(wcd);
 
 	wp->mode = oldmode;
 }
@@ -199,12 +205,12 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 
 	switch (mode_key_lookup(&data->mdata, key)) {
 	case MODEKEYCHOICE_CANCEL:
-		window_choose_fire_callback(wp, -1);
+		window_choose_fire_callback(wp, NULL);
 		window_pane_reset_mode(wp);
 		break;
 	case MODEKEYCHOICE_CHOOSE:
 		item = &ARRAY_ITEM(&data->list, data->selected);
-		window_choose_fire_callback(wp, item->idx);
+		window_choose_fire_callback(wp, item->wcd);
 		window_pane_reset_mode(wp);
 		break;
 	case MODEKEYCHOICE_UP:
@@ -310,7 +316,7 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 		data->selected = idx;
 
 		item = &ARRAY_ITEM(&data->list, data->selected);
-		window_choose_fire_callback(wp, item->idx);
+		window_choose_fire_callback(wp, item->wcd);
 		window_pane_reset_mode(wp);
 		break;
 	}
@@ -339,7 +345,7 @@ window_choose_mouse(
 	data->selected = idx;
 
 	item = &ARRAY_ITEM(&data->list, data->selected);
-	window_choose_fire_callback(wp, item->idx);
+	window_choose_fire_callback(wp, item->wcd);
 	window_pane_reset_mode(wp);
 }
 
@@ -469,4 +475,38 @@ window_choose_scroll_down(struct window_pane *wp)
 	if (screen_size_y(&data->screen) > 1)
 		window_choose_write_line(wp, &ctx, screen_size_y(s) - 2);
 	screen_write_stop(&ctx);
+}
+
+void
+window_choose_ctx(struct window_choose_data *cdata)
+{
+	struct cmd_ctx		 ctx;
+	struct cmd_list		*cmdlist;
+	char			*template, *cause;
+
+	template = cmd_template_replace(cdata->action,
+			cdata->raw_format, 1);
+
+	if (cmd_string_parse(template, &cmdlist, &cause) != 0) {
+		if (cause != NULL) {
+			*cause = toupper((u_char) *cause);
+			status_message_set(cdata->client, "%s", cause);
+			xfree(cause);
+		}
+		xfree(template);
+		return;
+	}
+	xfree(template);
+
+	ctx.msgdata = NULL;
+	ctx.curclient = cdata->client;
+
+	ctx.error = key_bindings_error;
+	ctx.print = key_bindings_print;
+	ctx.info = key_bindings_info;
+
+	ctx.cmdclient = NULL;
+
+	cmd_list_exec(cmdlist, &ctx);
+	cmd_list_free(cmdlist);
 }
