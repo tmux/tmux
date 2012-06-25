@@ -48,8 +48,9 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window_choose_data	*cdata;
 	struct winlink			*wl;
 	struct paste_buffer		*pb;
-	u_int				 idx;
+	char				*action, *action_data;
 	const char			*template;
+	u_int				 idx;
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
@@ -68,14 +69,14 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
 		return (0);
 
+	if (args->argc != 0)
+		action = xstrdup(args->argv[0]);
+	else
+		action = xstrdup("paste-buffer -b '%%'");
+
 	idx = 0;
 	while ((pb = paste_walk_stack(&global_buffers, &idx)) != NULL) {
 		cdata = window_choose_data_create(ctx);
-		if (args->argc != 0)
-			cdata->action = xstrdup(args->argv[0]);
-		else
-			cdata->action = xstrdup("paste-buffer -b '%%'");
-
 		cdata->idx = idx - 1;
 		cdata->client->references++;
 
@@ -83,8 +84,13 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		format_add(cdata->ft, "line", "%u", idx - 1);
 		format_paste_buffer(cdata->ft, pb);
 
+		xasprintf(&action_data, "%u", idx - 1);
+		cdata->command = cmd_template_replace(action, action_data, 1);
+		xfree(action_data);
+
 		window_choose_add(wl->window->active, cdata);
 	}
+	xfree(action);
 
 	window_choose_ready(wl->window->active,
 	    0, cmd_choose_buffer_callback, cmd_choose_buffer_free);
@@ -100,7 +106,6 @@ cmd_choose_buffer_callback(struct window_choose_data *cdata)
 	if (cdata->client->flags & CLIENT_DEAD)
 		return;
 
-	xasprintf(&cdata->raw_format, "%u", cdata->idx);
 	window_choose_ctx(cdata);
 }
 
@@ -114,8 +119,7 @@ cmd_choose_buffer_free(struct window_choose_data *data)
 
 	cdata->client->references--;
 
+	xfree(cdata->command);
 	xfree(cdata->ft_template);
-	xfree(cdata->action);
-	xfree(cdata->raw_format);
 	xfree(cdata);
 }

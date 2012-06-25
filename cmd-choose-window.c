@@ -45,10 +45,10 @@ int
 cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
-	struct window_choose_data	*cdata;
 	struct session			*s;
 	struct winlink			*wl, *wm;
 	const char			*template;
+	char				*action;
 	u_int			 	 idx, cur;
 
 	if (ctx->curclient == NULL) {
@@ -66,30 +66,22 @@ cmd_choose_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((template = args_get(args, 'F')) == NULL)
 		template = DEFAULT_WINDOW_TEMPLATE " \"#{pane_title}\"";
 
+	if (args->argc != 0)
+		action = xstrdup(args->argv[0]);
+	else
+		action = xstrdup("select-window -t '%%'");
+
 	cur = idx = 0;
 	RB_FOREACH(wm, winlinks, &s->windows) {
 		if (wm == s->curw)
 			cur = idx;
 		idx++;
 
-		cdata = window_choose_data_create(ctx);
-		if (args->argc != 0)
-			cdata->action = xstrdup(args->argv[0]);
-		else
-			cdata->action = xstrdup("select-window -t '%%'");
-
-		cdata->idx = wm->idx;
-		cdata->client->references++;
-		cdata->session->references++;
-
-		cdata->ft_template = xstrdup(template);
-		format_add(cdata->ft, "line", "%u", idx);
-		format_session(cdata->ft, s);
-		format_winlink(cdata->ft, s, wm);
-		format_window_pane(cdata->ft, wm->window->active);
-
-		window_choose_add(wl->window->active, cdata);
+		window_choose_add_window(wl->window->active, ctx, s, wm,
+		    template, action, idx);
 	}
+	xfree(action);
+
 	window_choose_ready(wl->window->active,
 	    cur, cmd_choose_window_callback, cmd_choose_window_free);
 
@@ -110,7 +102,6 @@ cmd_choose_window_callback(struct window_choose_data *cdata)
 	if (!session_alive(s))
 		return;
 
-	xasprintf(&cdata->raw_format, "%s:%u", s->name, cdata->idx);
 	window_choose_ctx(cdata);
 }
 
@@ -124,7 +115,7 @@ cmd_choose_window_free(struct window_choose_data *cdata)
 	cdata->client->references--;
 
 	xfree(cdata->ft_template);
-	xfree(cdata->action);
+	xfree(cdata->command);
 	format_free(cdata->ft);
 	xfree(cdata);
 }

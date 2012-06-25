@@ -54,6 +54,7 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink			*wl;
 	struct client			*c;
 	const char			*template;
+	char				*action;
 	u_int			 	 i, idx, cur;
 
 	if (ctx->curclient == NULL) {
@@ -70,6 +71,11 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((template = args_get(args, 'F')) == NULL)
 		template = DEFAULT_CLIENT_TEMPLATE;
 
+	if (args->argc != 0)
+		action = xstrdup(args->argv[0]);
+	else
+		action = xstrdup("detach-client -t '%%'");
+
 	cur = idx = 0;
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
@@ -80,11 +86,6 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 		idx++;
 
 		cdata = window_choose_data_create(ctx);
-		if (args->argc != 0)
-			cdata->action = xstrdup(args->argv[0]);
-		else
-			cdata->action = xstrdup("detach-client -t '%%'");
-
 		cdata->idx = i;
 		cdata->client->references++;
 
@@ -93,8 +94,11 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 		format_session(cdata->ft, c->session);
 		format_client(cdata->ft, c);
 
+		cdata->command = cmd_template_replace(action, c->tty.path, 1);
+
 		window_choose_add(wl->window->active, cdata);
 	}
+	xfree(action);
 
 	window_choose_ready(wl->window->active,
 	    cur, cmd_choose_client_callback, cmd_choose_client_free);
@@ -118,7 +122,6 @@ cmd_choose_client_callback(struct window_choose_data *cdata)
 	if (c == NULL || c->session == NULL)
 		return;
 
-	xasprintf(&cdata->raw_format, "%s", c->tty.path);
 	window_choose_ctx(cdata);
 }
 
@@ -131,7 +134,7 @@ cmd_choose_client_free(struct window_choose_data *cdata)
 	cdata->client->references--;
 
 	xfree(cdata->ft_template);
-	xfree(cdata->action);
+	xfree(cdata->command);
 	format_free(cdata->ft);
 	xfree(cdata);
 }

@@ -45,9 +45,9 @@ int
 cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
-	struct window_choose_data	*cdata;
 	struct winlink			*wl;
 	struct session			*s;
+	char				*action;
 	const char			*template;
 	u_int			 	 idx, cur;
 
@@ -65,28 +65,21 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if ((template = args_get(args, 'F')) == NULL)
 		template = DEFAULT_SESSION_TEMPLATE;
 
+	if (args->argc != 0)
+		action = xstrdup(args->argv[0]);
+	else
+		action = xstrdup("switch-client -t '%%'");
+
 	cur = idx = 0;
 	RB_FOREACH(s, sessions, &sessions) {
 		if (s == ctx->curclient->session)
 			cur = idx;
 		idx++;
 
-		cdata = window_choose_data_create(ctx);
-		if (args->argc != 0)
-			cdata->action = xstrdup(args->argv[0]);
-		else
-			cdata->action = xstrdup("switch-client -t '%%'");
-		cdata->idx = s->idx;
-
-		cdata->client->references++;
-		cdata->session->references++;
-
-		cdata->ft_template = xstrdup(template);
-		format_add(cdata->ft, "line", "%u", idx);
-		format_session(cdata->ft, s);
-
-		window_choose_add(wl->window->active, cdata);
+		window_choose_add_session(wl->window->active,
+		    ctx, s, template, action, idx);
 	}
+	xfree(action);
 
 	window_choose_ready(wl->window->active,
 	    cur, cmd_choose_session_callback, cmd_choose_session_free);
@@ -97,18 +90,11 @@ cmd_choose_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 void
 cmd_choose_session_callback(struct window_choose_data *cdata)
 {
-	struct session	*s;
-
 	if (cdata == NULL)
 		return;
 	if (cdata->client->flags & CLIENT_DEAD)
 		return;
 
-	s = session_find_by_index(cdata->idx);
-	if (s == NULL)
-		return;
-
-	cdata->raw_format = xstrdup(s->name);
 	window_choose_ctx(cdata);
 }
 
@@ -121,8 +107,8 @@ cmd_choose_session_free(struct window_choose_data *cdata)
 	cdata->client->references--;
 	cdata->session->references--;
 
+	xfree(cdata->command);
 	xfree(cdata->ft_template);
-	xfree(cdata->action);
 	format_free(cdata->ft);
 	xfree(cdata);
 }

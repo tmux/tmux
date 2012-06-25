@@ -133,8 +133,7 @@ window_choose_data_create(struct cmd_ctx *ctx)
 	wcd = xmalloc(sizeof *wcd);
 	wcd->ft = format_create();
 	wcd->ft_template = NULL;
-	wcd->action = NULL;
-	wcd->raw_format = NULL;
+	wcd->command = NULL;
 	wcd->client = ctx->curclient;
 	wcd->session = ctx->curclient->session;
 	wcd->idx = -1;
@@ -482,21 +481,22 @@ window_choose_ctx(struct window_choose_data *cdata)
 {
 	struct cmd_ctx		 ctx;
 	struct cmd_list		*cmdlist;
-	char			*template, *cause;
+	char			*cause;
 
-	template = cmd_template_replace(cdata->action,
-			cdata->raw_format, 1);
+	/* The command template will have already been replaced.  But if it's
+	 * NULL, bail here.
+	 */
+	if (cdata->command == NULL)
+		return;
 
-	if (cmd_string_parse(template, &cmdlist, &cause) != 0) {
+	if (cmd_string_parse(cdata->command, &cmdlist, &cause) != 0) {
 		if (cause != NULL) {
 			*cause = toupper((u_char) *cause);
 			status_message_set(cdata->client, "%s", cause);
 			xfree(cause);
 		}
-		xfree(template);
 		return;
 	}
-	xfree(template);
 
 	ctx.msgdata = NULL;
 	ctx.curclient = cdata->client;
@@ -509,4 +509,54 @@ window_choose_ctx(struct window_choose_data *cdata)
 
 	cmd_list_exec(cmdlist, &ctx);
 	cmd_list_free(cmdlist);
+}
+
+struct window_choose_data *
+window_choose_add_session(struct window_pane *wp, struct cmd_ctx *ctx,
+	struct session *s, const char *template, char *action, u_int idx)
+{
+	struct window_choose_data	*wcd;
+
+	wcd = window_choose_data_create(ctx);
+	wcd->idx = s->idx;
+	wcd->command = cmd_template_replace(action, s->name, 1);
+	wcd->ft_template = xstrdup(template);
+	format_add(wcd->ft, "line", "%u", idx);
+	format_session(wcd->ft, s);
+
+	wcd->client->references++;
+	wcd->session->references++;
+
+	window_choose_add(wp, wcd);
+
+	return (wcd);
+}
+
+struct window_choose_data *
+window_choose_add_window(struct window_pane *wp, struct cmd_ctx *ctx,
+	struct session *s, struct winlink *wl, const char *template,
+	char *action, u_int idx)
+{
+	struct window_choose_data	*wcd;
+	char				*action_data;
+
+	wcd = window_choose_data_create(ctx);
+
+	xasprintf(&action_data, "%s:%d", s->name, wl->idx);
+	wcd->command = cmd_template_replace(action, action_data, 1);
+	xfree(action_data);
+
+	wcd->idx = wl->idx;
+	wcd->ft_template = xstrdup(template);
+	format_add(wcd->ft, "line", "%u", idx);
+	format_session(wcd->ft, s);
+	format_winlink(wcd->ft, s, wl);
+	format_window_pane(wcd->ft, wl->window->active);
+
+	wcd->client->references++;
+	wcd->session->references++;
+
+	window_choose_add(wp, wcd);
+
+	return (wcd);
 }
