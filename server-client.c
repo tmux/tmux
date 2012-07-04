@@ -344,7 +344,6 @@ server_client_handle_key(struct client *c, int key)
 	struct session		*s;
 	struct window		*w;
 	struct window_pane	*wp;
-	struct options		*oo;
 	struct timeval		 tv;
 	struct key_binding	*bd;
 	int		      	 xtimeout, isprefix;
@@ -363,7 +362,6 @@ server_client_handle_key(struct client *c, int key)
 
 	w = c->session->curw->window;
 	wp = w->active;
-	oo = &c->session->options;
 
 	/* Special case: number keys jump to pane in identify mode. */
 	if (c->flags & CLIENT_IDENTIFY && key >= '0' && key <= '9') {
