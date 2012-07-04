@@ -848,8 +848,7 @@ struct window_choose_data {
 	struct session		*session;
 	struct format_tree	*ft;
 	char		        *ft_template;
-	char			*raw_format;
-	char			*action;
+	char			*command;
 	u_int			 idx;
 };
 
@@ -2131,16 +2130,19 @@ void		 window_copy_pageup(struct window_pane *);
 
 /* window-choose.c */
 extern const struct window_mode window_choose_mode;
-void		 window_choose_vadd(
-		     struct window_pane *, int, const char *, va_list);
 void		 window_choose_add(struct window_pane *,
 			 struct window_choose_data *);
 void		 window_choose_ready(struct window_pane *,
 		     u_int, void (*)(struct window_choose_data *),
 		     void (*)(struct window_choose_data *));
-struct window_choose_data	*window_choose_data_create(
-			struct cmd_ctx *);
+struct window_choose_data	*window_choose_data_create(struct cmd_ctx *);
 void		 window_choose_ctx(struct window_choose_data *);
+struct window_choose_data	*window_choose_add_window(struct window_pane *,
+			struct cmd_ctx *, struct session *, struct winlink *,
+			const char *, char *, u_int);
+struct window_choose_data	*window_choose_add_session(struct window_pane *,
+			struct cmd_ctx *, struct session *, const char *,
+			char *, u_int);
 
 /* names.c */
 void		 queue_window_name(struct window *);
