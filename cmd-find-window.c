@@ -43,7 +43,6 @@ void	cmd_find_window_free(void *);
 	 CMD_FIND_WINDOW_BY_CONTENT |	\
 	 CMD_FIND_WINDOW_BY_NAME)
 
-
 const struct cmd_entry cmd_find_window_entry = {
 	"find-window", "findw",
 	"F:CNt:T", 1, 4,
