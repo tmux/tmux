@@ -1090,6 +1090,68 @@ section.
 This command works only from inside
 .Nm .
 .It Xo
+.Ic choose-tree
+.Op Fl s
+.Op Fl w
+.Op Fl b Ar session-template
+.Op Fl c Ar window-template
+.Op Fl S Ar format
+.Op Fl W Ar format
+.Op Fl t Ar target-window
+.Xc
+Put a window into tree choice mode, where either sessions or windows may be
+selected interactively from a list.
+By default, windows belonging to a session are indented to show their
+relationship to a session.
+.Pp
+Note that the
+.Ic choose-window
+and
+.Ic choose-session
+commands are wrappers around
+.Ic choose-tree .
+.
+.Pp
+If
+.Fl s
+is given, will show sessions.
+If
+.Fl w
+is given, will show windows.
+If
+.Fl b
+is given, will override the default session command.
+Note that
+.Ql %%
+can be used, and will be replaced with the session name.
+The default option if not specified is "switch-client -t '%%'".
+If
+.Fl c
+is given, will override the default window command.
+Note that
+.Ql %%
+can be used, and will be replaced with the session name and window index.
+This command will run
+.Ar session-template
+before it.
+If
+.Fl S
+is given will display the specified format instead of the default session
+format.
+If
+.Fl W
+is given will display the specified format instead of the default window
+format.
+For the meaning of the
+.Fl s
+and
+.Fl w
+options, see the
+.Sx FORMATS
+section.
+This command only works from inside
+.Nm .
+.It Xo
 .Ic choose-window
 .Op Fl F Ar format
 .Op Fl t Ar target-window
