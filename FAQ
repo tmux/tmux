@@ -430,5 +430,16 @@ tmux will still emulate the alternate screen for applications run under tmux,
 so you don't really lose anything with this setting. The only disadvantage is
 that when you exit tmux, it will not restore whatever was there before you
 started.
+
+* How do I see the default configuration?
+
+Show the default session options by starting a new tmux server with no
+configuration file:
+
+        $ tmux -Lfoo -f/dev/null start\; show -g
+
+Or the default window options:
+
+        $ tmux -Lfoo -f/dev/null start\; show -gw
  
 $Id$
