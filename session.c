@@ -353,7 +353,7 @@ session_next(struct session *s, int alert)
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_stack_push(&s->lastw, s->curw);
 	s->curw = wl;
-	wl->flags &= ~WINLINK_ALERTFLAGS;
+	winlink_clear_flags(wl);
 	return (0);
 }
 
@@ -390,7 +390,7 @@ session_previous(struct session *s, int alert)
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_stack_push(&s->lastw, s->curw);
 	s->curw = wl;
-	wl->flags &= ~WINLINK_ALERTFLAGS;
+	winlink_clear_flags(wl);
 	return (0);
 }
 
@@ -408,7 +408,7 @@ session_select(struct session *s, int idx)
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_stack_push(&s->lastw, s->curw);
 	s->curw = wl;
-	wl->flags &= ~WINLINK_ALERTFLAGS;
+	winlink_clear_flags(wl);
 	return (0);
 }
 
@@ -427,7 +427,7 @@ session_last(struct session *s)
 	winlink_stack_remove(&s->lastw, wl);
 	winlink_stack_push(&s->lastw, s->curw);
 	s->curw = wl;
-	wl->flags &= ~WINLINK_ALERTFLAGS;
+	winlink_clear_flags(wl);
 	return (0);
 }
 
