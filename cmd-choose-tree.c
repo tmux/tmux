@@ -41,8 +41,8 @@ void	cmd_choose_tree_free(struct window_choose_data *);
 const struct cmd_entry cmd_choose_tree_entry = {
 	"choose-tree", NULL,
 	"S:W:swb:c:t:", 0, 1,
-	"[-SW] [-s format] [-w format ] [-b session template] " \
-	"[-c window template] " CMD_TARGET_WINDOW_USAGE,
+	"[-sw] [-b session-template] [-c window template] [-S format] " \
+	"[-W format] " CMD_TARGET_WINDOW_USAGE,
 	0,
 	NULL,
 	NULL,
