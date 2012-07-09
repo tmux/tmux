@@ -515,6 +515,9 @@ status_replace(struct client *c, struct session *s, struct winlink *wl,
 	char		in[BUFSIZ], ch, *iptr, *optr;
 	size_t		len;
 
+	if (fmt == NULL)
+		return (xstrdup(""));
+
 	len = strftime(in, sizeof in, fmt, localtime(&t));
 	in[len] = '\0';
 
@@ -877,8 +880,6 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 	c->prompt_string = status_replace(c, NULL, NULL, NULL, msg,
 	    time(NULL), 0);
 
-	if (input == NULL)
-		input = "";
 	c->prompt_buffer = status_replace(c, NULL, NULL, NULL, input,
 	    time(NULL), 0);
 	c->prompt_index = strlen(c->prompt_buffer);
@@ -932,8 +933,6 @@ status_prompt_update(struct client *c, const char *msg, const char *input)
 	    time(NULL), 0);
 
 	xfree(c->prompt_buffer);
-	if (input == NULL)
-		input = "";
 	c->prompt_buffer = status_replace(c, NULL, NULL, NULL, input,
 	    time(NULL), 0);
 	c->prompt_index = strlen(c->prompt_buffer);
