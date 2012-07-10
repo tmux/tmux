@@ -83,14 +83,6 @@ xrealloc(void *oldptr, size_t nmemb, size_t size)
 	return (newptr);
 }
 
-void
-xfree(void *ptr)
-{
-	if (ptr == NULL)
-		fatalx("null pointer");
-	free(ptr);
-}
-
 int printflike2
 xasprintf(char **ret, const char *fmt, ...)
 {

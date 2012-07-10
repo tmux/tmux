@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <ctype.h>
+#include <stdlib.h>
 
 #include "tmux.h"
 
@@ -86,11 +87,11 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		xasprintf(&action_data, "%u", idx - 1);
 		cdata->command = cmd_template_replace(action, action_data, 1);
-		xfree(action_data);
+		free(action_data);
 
 		window_choose_add(wl->window->active, cdata);
 	}
-	xfree(action);
+	free(action);
 
 	window_choose_ready(wl->window->active,
 	    0, cmd_choose_buffer_callback, cmd_choose_buffer_free);
@@ -119,7 +120,7 @@ cmd_choose_buffer_free(struct window_choose_data *data)
 
 	cdata->client->references--;
 
-	xfree(cdata->command);
-	xfree(cdata->ft_template);
-	xfree(cdata);
+	free(cdata->command);
+	free(cdata->ft_template);
+	free(cdata);
 }

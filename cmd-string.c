@@ -87,7 +87,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			buf = xrealloc(buf, 1, len + strlen(t) + 1);
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
-			xfree(t);
+			free(t);
 			break;
 		case '"':
 			if ((t = cmd_string_string(s, &p, '"', 1)) == NULL)
@@ -95,7 +95,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			buf = xrealloc(buf, 1, len + strlen(t) + 1);
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
-			xfree(t);
+			free(t);
 			break;
 		case '$':
 			if ((t = cmd_string_variable(s, &p)) == NULL)
@@ -103,7 +103,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			buf = xrealloc(buf, 1, len + strlen(t) + 1);
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
-			xfree(t);
+			free(t);
 			break;
 		case '#':
 			/* Comment: discard rest of line. */
@@ -152,7 +152,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 				buf = xrealloc(buf, 1, len + strlen(t) + 1);
 				strlcpy(buf + len, t, strlen(t) + 1);
 				len += strlen(t);
-				xfree(t);
+				free(t);
 				break;
 			}
 			/* FALLTHROUGH */
@@ -170,13 +170,12 @@ error:
 	xasprintf(cause, "invalid or unknown command: %s", s);
 
 out:
-	if (buf != NULL)
-		xfree(buf);
+	free(buf);
 
 	if (argv != NULL) {
 		for (i = 0; i < argc; i++)
-			xfree(argv[i]);
-		xfree(argv);
+			free(argv[i]);
+		free(argv);
 	}
 
 	return (rval);
@@ -224,7 +223,7 @@ cmd_string_string(const char *s, size_t *p, char endch, int esc)
 			buf = xrealloc(buf, 1, len + strlen(t) + 1);
 			strlcpy(buf + len, t, strlen(t) + 1);
 			len += strlen(t);
-			xfree(t);
+			free(t);
 			continue;
 		}
 
@@ -239,8 +238,7 @@ cmd_string_string(const char *s, size_t *p, char endch, int esc)
 	return (buf);
 
 error:
-	if (buf != NULL)
-		xfree(buf);
+	free(buf);
 	return (NULL);
 }
 
@@ -303,14 +301,13 @@ cmd_string_variable(const char *s, size_t *p)
 	buf[len] = '\0';
 
 	envent = environ_find(&global_environ, buf);
-	xfree(buf);
+	free(buf);
 	if (envent == NULL)
 		return (xstrdup(""));
 	return (xstrdup(envent->value));
 
 error:
-	if (buf != NULL)
-		xfree(buf);
+	free(buf);
 	return (NULL);
 }
 
@@ -334,7 +331,7 @@ cmd_string_expand_tilde(const char *s, size_t *p)
 			return (NULL);
 		if ((pw = getpwnam(username)) != NULL)
 			home = pw->pw_dir;
-		xfree(username);
+		free(username);
 	}
 	if (home == NULL)
 		return (NULL);

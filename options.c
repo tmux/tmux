@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -51,10 +52,10 @@ options_free(struct options *oo)
 	while (!RB_EMPTY(&oo->tree)) {
 		o = RB_ROOT(&oo->tree);
 		RB_REMOVE(options_tree, &oo->tree, o);
-		xfree(o->name);
+		free(o->name);
 		if (o->type == OPTIONS_STRING)
-			xfree(o->str);
-		xfree(o);
+			free(o->str);
+		free(o);
 	}
 }
 
@@ -92,10 +93,10 @@ options_remove(struct options *oo, const char *name)
 		return;
 
 	RB_REMOVE(options_tree, &oo->tree, o);
-	xfree(o->name);
+	free(o->name);
 	if (o->type == OPTIONS_STRING)
-		xfree(o->str);
-	xfree(o);
+		free(o->str);
+	free(o);
 }
 
 struct options_entry *printflike3
@@ -109,7 +110,7 @@ options_set_string(struct options *oo, const char *name, const char *fmt, ...)
 		o->name = xstrdup(name);
 		RB_INSERT(options_tree, &oo->tree, o);
 	} else if (o->type == OPTIONS_STRING)
-		xfree(o->str);
+		free(o->str);
 
 	va_start(ap, fmt);
 	o->type = OPTIONS_STRING;
@@ -140,7 +141,7 @@ options_set_number(struct options *oo, const char *name, long long value)
 		o->name = xstrdup(name);
 		RB_INSERT(options_tree, &oo->tree, o);
 	} else if (o->type == OPTIONS_STRING)
-		xfree(o->str);
+		free(o->str);
 
 	o->type = OPTIONS_NUMBER;
 	o->num = value;

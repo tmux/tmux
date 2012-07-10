@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <fnmatch.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -134,7 +135,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 					xasprintf(&sctx,
 					    "pane %u line %u: \"%s\"", i - 1,
 					    line + 1, sres);
-					xfree(sres);
+					free(sres);
 				}
 			}
 
@@ -143,7 +144,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			break;
 		}
 	}
-	xfree(searchstr);
+	free(searchstr);
 
 	if (ARRAY_LENGTH(&list_idx) == 0) {
 		ctx->error(ctx, "no windows matching: %s", str);
@@ -217,7 +218,7 @@ cmd_find_window_free(struct window_choose_data *cdata)
 
 	cdata->session->references--;
 
-	xfree(cdata->ft_template);
+	free(cdata->ft_template);
 	format_free(cdata->ft);
-	xfree(cdata);
+	free(cdata);
 }

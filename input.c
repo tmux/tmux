@@ -853,7 +853,7 @@ input_reply(struct input_ctx *ictx, const char *fmt, ...)
 	va_end(ap);
 
 	bufferevent_write(ictx->wp->event, reply, strlen(reply));
-	xfree(reply);
+	free(reply);
 }
 
 /* Clear saved state. */

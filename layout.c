@@ -78,7 +78,7 @@ layout_free_cell(struct layout_cell *lc)
 		break;
 	}
 
-	xfree(lc);
+	free(lc);
 }
 
 void
@@ -781,8 +781,8 @@ layout_list_add(struct window *w)
 		TAILQ_REMOVE(&w->layout_list, ll, entry);
 		w->layout_list_size--;
 
-		xfree(ll->layout);
-		xfree(ll);
+		free(ll->layout);
+		free(ll);
 	}
 }
 

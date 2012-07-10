@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <time.h>
 
 #include "tmux.h"
@@ -93,7 +94,7 @@ cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		status_message_set(c, "%s", msg);
 
-	xfree(msg);
+	free(msg);
 	format_free(ft);
 	return (0);
 }

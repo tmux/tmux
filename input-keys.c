@@ -164,7 +164,7 @@ input_key(struct window_pane *wp, int key)
 	if (options_get_number(&wp->window->options, "xterm-keys")) {
 		if ((out = xterm_keys_lookup(key)) != NULL) {
 			bufferevent_write(wp->event, out, strlen(out));
-			xfree(out);
+			free(out);
 			return;
 		}
 	}

@@ -345,11 +345,11 @@ tty_free(struct tty *tty)
 {
 	tty_close(tty);
 
-	xfree(tty->ccolour);
+	free(tty->ccolour);
 	if (tty->path != NULL)
-		xfree(tty->path);
+		free(tty->path);
 	if (tty->termname != NULL)
-		xfree(tty->termname);
+		free(tty->termname);
 }
 
 void
@@ -468,7 +468,7 @@ tty_force_cursor_colour(struct tty *tty, const char *ccolour)
 		tty_putcode(tty, TTYC_CR);
 	else
 		tty_putcode_ptr1(tty, TTYC_CC, ccolour);
-	xfree(tty->ccolour);
+	free(tty->ccolour);
 	tty->ccolour = xstrdup(ccolour);
 }
 
@@ -1099,7 +1099,7 @@ tty_cmd_setselection(struct tty *tty, const struct tty_ctx *ctx)
 	b64_ntop(ctx->ptr, ctx->num, buf, off);
 	tty_putcode_ptr2(tty, TTYC_MS, "", buf);
 
-	xfree(buf);
+	free(buf);
 }
 
 void

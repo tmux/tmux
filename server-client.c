@@ -23,6 +23,7 @@
 #include <string.h>
 #include <time.h>
 #include <paths.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -151,31 +152,25 @@ server_client_lost(struct client *c)
 	status_free_jobs(&c->status_old);
 	screen_free(&c->status);
 
-	if (c->title != NULL)
-		xfree(c->title);
+	free(c->title);
 
 	evtimer_del(&c->repeat_timer);
 
 	if (event_initialized(&c->identify_timer))
 		evtimer_del(&c->identify_timer);
 
-	if (c->message_string != NULL)
-		xfree(c->message_string);
+	free(c->message_string);
 	if (event_initialized (&c->message_timer))
 		evtimer_del(&c->message_timer);
 	for (i = 0; i < ARRAY_LENGTH(&c->message_log); i++) {
 		msg = &ARRAY_ITEM(&c->message_log, i);
-		xfree(msg->msg);
+		free(msg->msg);
 	}
 	ARRAY_FREE(&c->message_log);
 
-	if (c->prompt_string != NULL)
-		xfree(c->prompt_string);
-	if (c->prompt_buffer != NULL)
-		xfree(c->prompt_buffer);
-
-	if (c->cwd != NULL)
-		xfree(c->cwd);
+	free(c->prompt_string);
+	free(c->prompt_buffer);
+	free(c->cwd);
 
 	environ_free(&c->environ);
 
@@ -662,12 +657,11 @@ server_client_set_title(struct client *c)
 
 	title = status_replace(c, NULL, NULL, NULL, template, time(NULL), 1);
 	if (c->title == NULL || strcmp(title, c->title) != 0) {
-		if (c->title != NULL)
-			xfree(c->title);
+		free(c->title);
 		c->title = xstrdup(title);
 		tty_set_title(&c->tty, c->title);
 	}
-	xfree(title);
+	free(title);
 }
 
 /* Dispatch message from client. */

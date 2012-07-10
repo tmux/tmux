@@ -222,8 +222,7 @@ status_redraw(struct client *c)
 	/* Calculate the total size needed for the window list. */
 	wlstart = wloffset = wlwidth = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		if (wl->status_text != NULL)
-			xfree(wl->status_text);
+		free(wl->status_text);
 		memcpy(&wl->status_cell, &stdgc, sizeof wl->status_cell);
 		wl->status_text = status_print(c, wl, t, &wl->status_cell);
 		wl->status_width =
@@ -372,10 +371,8 @@ draw:
 	screen_write_stop(&ctx);
 
 out:
-	if (left != NULL)
-		xfree(left);
-	if (right != NULL)
-		xfree(right);
+	free(left);
+	free(right);
 
 	if (grid_compare(c->status.grid, old_status.grid) == 0) {
 		screen_free(&old_status);
@@ -491,8 +488,7 @@ do_replace:
 	}
 
 out:
-	if (freeptr != NULL)
-		xfree(freeptr);
+	free(freeptr);
 	return;
 
 skip_to:
@@ -572,7 +568,7 @@ status_find_job(struct client *c, char **iptr)
 		cmd[len++] = **iptr;
 	}
 	if (**iptr == '\0')		/* no terminating ) */ {
-		xfree(cmd);
+		free(cmd);
 		return (NULL);
 	}
 	(*iptr)++;			/* skip final ) */
@@ -582,7 +578,7 @@ status_find_job(struct client *c, char **iptr)
 	so_find.cmd = cmd;
 	so = RB_FIND(status_out_tree, &c->status_new, &so_find);
 	if (so != NULL && so->out != NULL) {
-		xfree(cmd);
+		free(cmd);
 		return (so->out);
 	}
 
@@ -600,7 +596,7 @@ status_find_job(struct client *c, char **iptr)
 	/* Lookup in the old tree. */
 	so_find.cmd = cmd;
 	so = RB_FIND(status_out_tree, &c->status_old, &so_find);
-	xfree(cmd);
+	free(cmd);
 	if (so != NULL)
 		return (so->out);
 	return (NULL);
@@ -618,10 +614,9 @@ status_free_jobs(struct status_out_tree *sotree)
 		so_next = RB_NEXT(status_out_tree, sotree, so);
 
 		RB_REMOVE(status_out_tree, sotree, so);
-		if (so->out != NULL)
-			xfree(so->out);
-		xfree(so->cmd);
-		xfree(so);
+		free(so->out);
+		free(so->cmd);
+		free(so);
 	}
 }
 
@@ -778,7 +773,7 @@ status_message_set(struct client *c, const char *fmt, ...)
 		limit = ARRAY_LENGTH(&c->message_log) - limit;
 		for (i = 0; i < limit; i++) {
 			msg = &ARRAY_FIRST(&c->message_log);
-			xfree(msg->msg);
+			free(msg->msg);
 			ARRAY_REMOVE(&c->message_log, 0);
 		}
 	}
@@ -803,7 +798,7 @@ status_message_clear(struct client *c)
 	if (c->message_string == NULL)
 		return;
 
-	xfree(c->message_string);
+	free(c->message_string);
 	c->message_string = NULL;
 
 	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
@@ -912,10 +907,10 @@ status_prompt_clear(struct client *c)
 	if (c->prompt_freefn != NULL && c->prompt_data != NULL)
 		c->prompt_freefn(c->prompt_data);
 
-	xfree(c->prompt_string);
+	free(c->prompt_string);
 	c->prompt_string = NULL;
 
-	xfree(c->prompt_buffer);
+	free(c->prompt_buffer);
 	c->prompt_buffer = NULL;
 
 	c->tty.flags &= ~(TTY_NOCURSOR|TTY_FREEZE);
@@ -928,11 +923,11 @@ status_prompt_clear(struct client *c)
 void
 status_prompt_update(struct client *c, const char *msg, const char *input)
 {
-	xfree(c->prompt_string);
+	free(c->prompt_string);
 	c->prompt_string = status_replace(c, NULL, NULL, NULL, msg,
 	    time(NULL), 0);
 
-	xfree(c->prompt_buffer);
+	free(c->prompt_buffer);
 	c->prompt_buffer = status_replace(c, NULL, NULL, NULL, input,
 	    time(NULL), 0);
 	c->prompt_index = strlen(c->prompt_buffer);
@@ -1109,7 +1104,7 @@ status_prompt_key(struct client *c, int key)
 		memcpy(first, s, strlen(s));
 
 		c->prompt_index = (first - c->prompt_buffer) + strlen(s);
-		xfree(s);
+		free(s);
 
 		c->flags |= CLIENT_STATUS;
 		break;
@@ -1250,7 +1245,7 @@ status_prompt_key(struct client *c, int key)
 		histstr = status_prompt_up_history(&c->prompt_hindex);
 		if (histstr == NULL)
 			break;
-		xfree(c->prompt_buffer);
+		free(c->prompt_buffer);
 		c->prompt_buffer = xstrdup(histstr);
 		c->prompt_index = strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
@@ -1259,7 +1254,7 @@ status_prompt_key(struct client *c, int key)
 		histstr = status_prompt_down_history(&c->prompt_hindex);
 		if (histstr == NULL)
 			break;
-		xfree(c->prompt_buffer);
+		free(c->prompt_buffer);
 		c->prompt_buffer = xstrdup(histstr);
 		c->prompt_index = strlen(c->prompt_buffer);
 		c->flags |= CLIENT_STATUS;
@@ -1383,7 +1378,7 @@ status_prompt_add_history(const char *line)
 		return;
 
 	if (size == PROMPT_HISTORY) {
-		xfree(ARRAY_FIRST(&status_prompt_history));
+		free(ARRAY_FIRST(&status_prompt_history));
 		ARRAY_REMOVE(&status_prompt_history, 0);
 	}
 

@@ -21,6 +21,7 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -117,14 +118,14 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		line = NULL;
 
 		if (cmd_string_parse(buf, &cmdlist, &cause) != 0) {
-			xfree(buf);
+			free(buf);
 			if (cause == NULL)
 				continue;
 			cfg_add_cause(causes, "%s: %u: %s", path, n, cause);
-			xfree(cause);
+			free(cause);
 			continue;
 		} else
-			xfree(buf);
+			free(buf);
 		if (cmdlist == NULL)
 			continue;
 		cfg_cause = NULL;
@@ -150,13 +151,13 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		if (cfg_cause != NULL) {
 			cfg_add_cause(
 			    causes, "%s: %d: %s", path, n, cfg_cause);
-			xfree(cfg_cause);
+			free(cfg_cause);
 		}
 	}
 	if (line != NULL) {
 		cfg_add_cause(causes,
 		    "%s: %d: line continuation at end of file", path, n);
-		xfree(line);
+		free(line);
 	}
 	fclose(f);
 

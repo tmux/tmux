@@ -20,6 +20,7 @@
 #include <sys/stat.h>
 
 #include <errno.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -62,7 +63,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 		if (cause != NULL) {
 			ctx->error(ctx, "buffer %s", cause);
-			xfree(cause);
+			free(cause);
 			return (-1);
 		}
 

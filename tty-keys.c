@@ -384,7 +384,7 @@ tty_keys_free1(struct tty_key *tk)
 		tty_keys_free1(tk->left);
 	if (tk->right != NULL)
 		tty_keys_free1(tk->right);
-	xfree(tk);
+	free(tk);
 }
 
 /* Lookup a key in the tree. */

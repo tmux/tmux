@@ -56,7 +56,7 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	dflag = args_has(self->args, 'd');
 	if (server_link_window(src, wl, dst, idx, kflag, !dflag, &cause) != 0) {
 		ctx->error(ctx, "can't link window: %s", cause);
-		xfree(cause);
+		free(cause);
 		return (-1);
 	}
 	recalculate_sizes();

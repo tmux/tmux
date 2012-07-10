@@ -20,6 +20,7 @@
 
 #include <netdb.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
@@ -102,12 +103,12 @@ format_free(struct format_tree *ft)
 		fe_next = RB_NEXT(format_tree, ft, fe);
 
 		RB_REMOVE(format_tree, ft, fe);
-		xfree(fe->value);
-		xfree(fe->key);
-		xfree(fe);
+		free(fe->value);
+		free(fe->key);
+		free(fe);
 	}
 
-	xfree (ft);
+	free (ft);
 }
 
 /* Add a key-value pair. */
@@ -195,11 +196,11 @@ format_replace(struct format_tree *ft,
 	memcpy(*buf + *off, value, valuelen);
 	*off += valuelen;
 
-	xfree(copy);
+	free(copy);
 	return (0);
 
 fail:
-	xfree(copy);
+	free(copy);
 	return (-1);
 }
 
@@ -351,8 +352,8 @@ format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 	format_add(ft, "window_active", "%d", wl == s->curw);
 	format_add(ft, "window_panes", "%u", window_count_panes(w));
 
-	xfree(flags);
-	xfree(layout);
+	free(flags);
+	free(layout);
 }
 
 /* Set default format keys for a window pane. */
@@ -403,5 +404,5 @@ format_paste_buffer(struct format_tree *ft, struct paste_buffer *pb)
 	format_add(ft, "buffer_size", "%zu", pb->size);
 	format_add(ft, "buffer_sample", "%s", pb_print);
 
-	xfree(pb_print);
+	free(pb_print);
 }
