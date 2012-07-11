@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -60,14 +61,14 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 	if (cause != NULL) {
 		ctx->error(ctx, "buffer %s", cause);
-		xfree(cause);
-		xfree(pdata);
+		free(cause);
+		free(pdata);
 		return (-1);
 	}
 
 	if (paste_replace(&global_buffers, buffer, pdata, psize) != 0) {
 		ctx->error(ctx, "no buffer %d", buffer);
-		xfree(pdata);
+		free(pdata);
 		return (-1);
 	}
 

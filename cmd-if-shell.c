@@ -20,6 +20,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -91,7 +92,7 @@ cmd_if_shell_callback(struct job *job)
 	if (cmd_string_parse(cmd, &cmdlist, &cause) != 0) {
 		if (cause != NULL) {
 			ctx->error(ctx, "%s", cause);
-			xfree(cause);
+			free(cause);
 		}
 		return;
 	}
@@ -115,8 +116,7 @@ cmd_if_shell_free(void *data)
 	if (ctx->curclient != NULL)
 		ctx->curclient->references--;
 
-	if (cdata->cmd_else != NULL)
-		xfree(cdata->cmd_else);
-	xfree(cdata->cmd_if);
-	xfree(cdata);
+	free(cdata->cmd_else);
+	free(cdata->cmd_if);
+	free(cdata);
 }

@@ -112,7 +112,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	wl = session_new(s, args_get(args, 'n'), cmd, cwd, idx, &cause);
 	if (wl == NULL) {
 		ctx->error(ctx, "create window failed: %s", cause);
-		xfree(cause);
+		free(cause);
 		return (-1);
 	}
 	if (!detached) {
@@ -134,7 +134,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		cp = format_expand(ft, template);
 		ctx->print(ctx, "%s", cp);
-		xfree(cp);
+		free(cp);
 
 		format_free(ft);
 	}

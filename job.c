@@ -20,6 +20,7 @@
 #include <sys/socket.h>
 
 #include <fcntl.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -116,7 +117,7 @@ job_free(struct job *job)
 	log_debug("free job %p: %s", job, job->cmd);
 
 	LIST_REMOVE(job, lentry);
-	xfree(job->cmd);
+	free(job->cmd);
 
 	if (job->freefn != NULL && job->data != NULL)
 		job->freefn(job->data);
@@ -128,7 +129,7 @@ job_free(struct job *job)
 	if (job->fd != -1)
 		close(job->fd);
 
-	xfree(job);
+	free(job);
 }
 
 /* Job buffer error callback. */

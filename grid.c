@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -98,15 +99,13 @@ grid_destroy(struct grid *gd)
 
 	for (yy = 0; yy < gd->hsize + gd->sy; yy++) {
 		gl = &gd->linedata[yy];
-		if (gl->celldata != NULL)
-			xfree(gl->celldata);
-		if (gl->utf8data != NULL)
-			xfree(gl->utf8data);
+		free(gl->celldata);
+		free(gl->utf8data);
 	}
 
-	xfree(gd->linedata);
+	free(gd->linedata);
 
-	xfree(gd);
+	free(gd);
 }
 
 /* Compare grids. */
@@ -373,10 +372,8 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny)
 
 	for (yy = py; yy < py + ny; yy++) {
 		gl = &gd->linedata[yy];
-		if (gl->celldata != NULL)
-			xfree(gl->celldata);
-		if (gl->utf8data != NULL)
-			xfree(gl->utf8data);
+		free(gl->celldata);
+		free(gl->utf8data);
 		memset(gl, 0, sizeof *gl);
 	}
 }

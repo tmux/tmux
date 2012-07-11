@@ -62,7 +62,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 		if (cause != NULL) {
 			ctx->error(ctx, "buffer %s", cause);
-			xfree(cause);
+			free(cause);
 			return (-1);
 		}
 	}
@@ -76,7 +76,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		    buffer_ptr, &cause);
 		if (error != 0) {
 			ctx->error(ctx, "%s: %s", path, cause);
-			xfree(cause);
+			free(cause);
 			return (-1);
 		}
 		return (1);
@@ -127,15 +127,14 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	if (paste_replace(&global_buffers, buffer, pdata, psize) != 0) {
 		ctx->error(ctx, "no buffer %d", buffer);
-		xfree(pdata);
+		free(pdata);
 		return (-1);
 	}
 
 	return (0);
 
 error:
-	if (pdata != NULL)
-		xfree(pdata);
+	free(pdata);
 	if (f != NULL)
 		fclose(f);
 	return (-1);
@@ -158,7 +157,7 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 
 	psize = EVBUFFER_LENGTH(c->stdin_data);
 	if (psize == 0 || (pdata = malloc(psize + 1)) == NULL) {
-		xfree(data);
+		free(data);
 		return;
 	}
 	memcpy(pdata, EVBUFFER_DATA(c->stdin_data), psize);
@@ -174,5 +173,5 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 		server_push_stderr(c);
 	}
 
-	xfree(data);
+	free(data);
 }

@@ -93,7 +93,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		size = args_strtonum(args, 'l', 0, INT_MAX, &cause);
 		if (cause != NULL) {
 			xasprintf(&new_cause, "size %s", cause);
-			xfree(cause);
+			free(cause);
 			cause = new_cause;
 			goto error;
 		}
@@ -101,7 +101,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		percentage = args_strtonum(args, 'p', 0, INT_MAX, &cause);
 		if (cause != NULL) {
 			xasprintf(&new_cause, "percentage %s", cause);
-			xfree(cause);
+			free(cause);
 			cause = new_cause;
 			goto error;
 		}
@@ -150,7 +150,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		cp = format_expand(ft, template);
 		ctx->print(ctx, "%s", cp);
-		xfree(cp);
+		free(cp);
 
 		format_free(ft);
 	}
@@ -162,6 +162,6 @@ error:
 	if (new_wp != NULL)
 		window_remove_pane(w, new_wp);
 	ctx->error(ctx, "create pane failed: %s", cause);
-	xfree(cause);
+	free(cause);
 	return (-1);
 }

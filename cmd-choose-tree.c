@@ -19,6 +19,7 @@
 #include <sys/types.h>
 
 #include <ctype.h>
+#include <stdlib.h>
 
 #include <string.h>
 
@@ -206,7 +207,7 @@ windows_only:
 				ctx, s2, wm, final_win_template,
 				final_win_action, idx_ses);
 
-			xfree(final_win_action);
+			free(final_win_action);
 		}
 		/*
 		 * If we're just drawing windows, don't consider moving on to
@@ -215,8 +216,7 @@ windows_only:
 		if (wflag && !sflag)
 			break;
 	}
-	if (final_win_template != NULL)
-		xfree(final_win_template);
+	free(final_win_template);
 
 	window_choose_ready(wl->window->active, cur_win,
 		cmd_choose_tree_callback, cmd_choose_tree_free);
@@ -242,10 +242,10 @@ cmd_choose_tree_free(struct window_choose_data *cdata)
 	cdata->session->references--;
 	cdata->client->references--;
 
-	xfree(cdata->ft_template);
-	xfree(cdata->command);
+	free(cdata->ft_template);
+	free(cdata->command);
 	format_free(cdata->ft);
-	xfree(cdata);
+	free(cdata);
 
 }
 

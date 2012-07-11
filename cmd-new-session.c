@@ -130,7 +130,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (!detached && ctx->cmdclient != NULL) {
 		if (server_client_open(ctx->cmdclient, NULL, &cause) != 0) {
 			ctx->error(ctx, "open terminal failed: %s", cause);
-			xfree(cause);
+			free(cause);
 			return (-1);
 		}
 	}
@@ -201,7 +201,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	s = session_create(newname, cmd, cwd, &env, tiop, idx, sx, sy, &cause);
 	if (s == NULL) {
 		ctx->error(ctx, "create session failed: %s", cause);
-		xfree(cause);
+		free(cause);
 		return (-1);
 	}
 	environ_free(&env);
@@ -264,7 +264,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		for (i = 0; i < ARRAY_LENGTH(&cfg_causes); i++) {
 			cause = ARRAY_ITEM(&cfg_causes, i);
 			window_copy_add(wp, "%s", cause);
-			xfree(cause);
+			free(cause);
 		}
 		ARRAY_FREE(&cfg_causes);
 	}

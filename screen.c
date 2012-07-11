@@ -71,10 +71,9 @@ screen_reinit(struct screen *s)
 void
 screen_free(struct screen *s)
 {
-	if (s->tabs != NULL)
-		xfree(s->tabs);
-	xfree(s->title);
-	xfree(s->ccolour);
+	free(s->tabs);
+	free(s->title);
+	free(s->ccolour);
 	grid_destroy(s->grid);
 }
 
@@ -84,8 +83,7 @@ screen_reset_tabs(struct screen *s)
 {
 	u_int	i;
 
-	if (s->tabs != NULL)
-		xfree(s->tabs);
+	free(s->tabs);
 
 	if ((s->tabs = bit_alloc(screen_size_x(s))) == NULL)
 		fatal("bit_alloc failed");
@@ -105,7 +103,7 @@ screen_set_cursor_style(struct screen *s, u_int style)
 void
 screen_set_cursor_colour(struct screen *s, const char *colour_string)
 {
-	xfree(s->ccolour);
+	free(s->ccolour);
 	s->ccolour = xstrdup(colour_string);
 }
 
@@ -117,7 +115,7 @@ screen_set_title(struct screen *s, const char *title)
 
 	strlcpy(tmp, title, sizeof tmp);
 
-	xfree(s->title);
+	free(s->title);
 	s->title = xstrdup(tmp);
 }
 

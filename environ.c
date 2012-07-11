@@ -51,10 +51,9 @@ environ_free(struct environ *env)
 	while (!RB_EMPTY(env)) {
 		envent = RB_ROOT(env);
 		RB_REMOVE(environ, env, envent);
-		xfree(envent->name);
-		if (envent->value != NULL)
-			xfree(envent->value);
-		xfree(envent);
+		free(envent->name);
+		free(envent->value);
+		free(envent);
 	}
 }
 
@@ -85,8 +84,7 @@ environ_set(struct environ *env, const char *name, const char *value)
 	struct environ_entry	*envent;
 
 	if ((envent = environ_find(env, name)) != NULL) {
-		if (envent->value != NULL)
-			xfree(envent->value);
+		free(envent->value);
 		if (value != NULL)
 			envent->value = xstrdup(value);
 		else
@@ -117,7 +115,7 @@ environ_put(struct environ *env, const char *var)
 	name[strcspn(name, "=")] = '\0';
 
 	environ_set(env, name, value);
-	xfree(name);
+	free(name);
 }
 
 /* Unset an environment variable. */
@@ -129,10 +127,9 @@ environ_unset(struct environ *env, const char *name)
 	if ((envent = environ_find(env, name)) == NULL)
 		return;
 	RB_REMOVE(environ, env, envent);
-	xfree(envent->name);
-	if (envent->value != NULL)
-		xfree(envent->value);
-	xfree(envent);
+	free(envent->name);
+	free(envent->value);
+	free(envent);
 }
 
 /*
@@ -152,7 +149,7 @@ environ_update(const char *vars, struct environ *srcenv, struct environ *dstenv)
 		else
 			environ_set(dstenv, envent->name, envent->value);
 	}
-	xfree(copyvars);
+	free(copyvars);
 }
 
 /* Push environment into the real environment - use after fork(). */

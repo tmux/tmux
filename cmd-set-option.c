@@ -257,7 +257,7 @@ cmd_set_option_string(struct cmd *self, unused struct cmd_ctx *ctx,
 
 	o = options_set_string(oo, oe->name, "%s", newval);
 
-	xfree(newval);
+	free(newval);
 	return (o);
 }
 

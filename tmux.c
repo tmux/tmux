@@ -76,7 +76,7 @@ logfile(const char *name)
 	if (debug_level > 0) {
 		xasprintf(&path, "tmux-%s-%ld.log", name, (long) getpid());
 		log_open(debug_level, path);
-		xfree(path);
+		free(path);
 	}
 }
 
@@ -255,8 +255,7 @@ main(int argc, char **argv)
 			flags &= ~IDENTIFY_256COLOURS;
 			break;
 		case 'c':
-			if (shell_cmd != NULL)
-				xfree(shell_cmd);
+			free(shell_cmd);
 			shell_cmd = xstrdup(optarg);
 			break;
 		case 'C':
@@ -269,24 +268,21 @@ main(int argc, char **argv)
 			printf("%s %s\n", __progname, VERSION);
 			exit(0);
 		case 'f':
-			if (cfg_file != NULL)
-				xfree(cfg_file);
+			free(cfg_file);
 			cfg_file = xstrdup(optarg);
 			break;
 		case 'l':
 			login_shell = 1;
 			break;
 		case 'L':
-			if (label != NULL)
-				xfree(label);
+			free(label);
 			label = xstrdup(optarg);
 			break;
 		case 'q':
 			quiet = 1;
 			break;
 		case 'S':
-			if (path != NULL)
-				xfree(path);
+			free(path);
 			path = xstrdup(optarg);
 			break;
 		case 'u':
@@ -366,7 +362,7 @@ main(int argc, char **argv)
 		}
 		xasprintf(&cfg_file, "%s/%s", home, DEFAULT_CFG);
 		if (access(cfg_file, R_OK) != 0 && errno == ENOENT) {
-			xfree(cfg_file);
+			free(cfg_file);
 			cfg_file = NULL;
 		}
 	}
@@ -393,11 +389,10 @@ main(int argc, char **argv)
 			}
 		}
 	}
-	if (label != NULL)
-		xfree(label);
+	free(label);
 	if (realpath(path, socket_path) == NULL)
 		strlcpy(socket_path, path, sizeof socket_path);
-	xfree(path);
+	free(path);
 
 #ifdef HAVE_SETPROCTITLE
 	/* Set process title. */

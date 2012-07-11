@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -69,7 +70,7 @@ window_clock_free(struct window_pane *wp)
 	struct window_clock_mode_data	*data = wp->modedata;
 
 	screen_free(&data->screen);
-	xfree(data);
+	free(data);
 }
 
 void

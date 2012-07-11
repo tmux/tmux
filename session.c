@@ -125,8 +125,7 @@ session_create(const char *name, const char *cmd, const char *cwd,
 		s->name = NULL;
 		do {
 			s->idx = next_session++;
-			if (s->name != NULL)
-				xfree (s->name);
+			free (s->name);
 			xasprintf(&s->name, "%u", s->idx);
 		} while (RB_FIND(sessions, &sessions, s) != NULL);
 	}
@@ -156,8 +155,7 @@ session_destroy(struct session *s)
 	RB_REMOVE(sessions, &sessions, s);
 	notify_session_closed(s);
 
-	if (s->tio != NULL)
-		xfree(s->tio);
+	free(s->tio);
 
 	session_group_remove(s);
 	environ_free(&s->environ);
@@ -171,7 +169,7 @@ session_destroy(struct session *s)
 		winlink_remove(&s->windows, wl);
 	}
 
-	xfree(s->cwd);
+	free(s->cwd);
 
 	RB_INSERT(sessions, &dead_sessions, s);
 }
@@ -494,7 +492,7 @@ session_group_remove(struct session *s)
 		TAILQ_REMOVE(&sg->sessions, TAILQ_FIRST(&sg->sessions), gentry);
 	if (TAILQ_EMPTY(&sg->sessions)) {
 		TAILQ_REMOVE(&session_groups, sg, entry);
-		xfree(sg);
+		free(sg);
 	}
 }
 

@@ -81,7 +81,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	w->active = wp;
 	name = default_window_name(w);
 	window_set_name(w, name);
-	xfree(name);
+	free(name);
 	layout_init(w);
 
 	base_idx = options_get_number(&s->options, "base-index");
@@ -106,7 +106,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		cp = format_expand(ft, template);
 		ctx->print(ctx, "%s", cp);
-		xfree(cp);
+		free(cp);
 
 		format_free(ft);
 	}

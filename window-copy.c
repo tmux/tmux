@@ -240,17 +240,16 @@ window_copy_free(struct window_pane *wp)
 	if (wp->fd != -1)
 		bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 
-	if (data->searchstr != NULL)
-		xfree(data->searchstr);
-	xfree(data->inputstr);
+	free(data->searchstr);
+	free(data->inputstr);
 
 	if (data->backing != &wp->base) {
 		screen_free(data->backing);
-		xfree(data->backing);
+		free(data->backing);
 	}
 	screen_free(&data->screen);
 
-	xfree(data);
+	free(data);
 }
 
 void
@@ -1379,7 +1378,7 @@ window_copy_copy_selection(struct window_pane *wp, int idx)
 
 	/* Don't bother if no data. */
 	if (off == 0) {
-		xfree(buf);
+		free(buf);
 		return;
 	}
 	off--;	/* remove final \n */

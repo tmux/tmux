@@ -59,7 +59,7 @@ cmd_rename_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (-1);
 
 	RB_REMOVE(sessions, &sessions, s);
-	xfree(s->name);
+	free(s->name);
 	s->name = xstrdup(newname);
 	RB_INSERT(sessions, &sessions, s);
 

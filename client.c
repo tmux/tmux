@@ -122,7 +122,7 @@ retry:
 		if (unlink(path) != 0 && errno != ENOENT)
 			return (-1);
 		fd = server_start(lockfd, lockfile);
-		xfree(lockfile);
+		free(lockfile);
 		close(lockfd);
 	}
 

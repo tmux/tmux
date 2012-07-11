@@ -62,7 +62,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	n = args_strtonum(args, 'S', INT_MIN, SHRT_MAX, &cause);
 	if (cause != NULL) {
 		top = gd->hsize;
-		xfree(cause);
+		free(cause);
 	} else if (n < 0 && (u_int) -n > gd->hsize)
 		top = 0;
 	else
@@ -73,7 +73,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	n = args_strtonum(args, 'E', INT_MIN, SHRT_MAX, &cause);
 	if (cause != NULL) {
 		bottom = gd->hsize + gd->sy - 1;
-		xfree(cause);
+		free(cause);
 	} else if (n < 0 && (u_int) -n > gd->hsize)
 		bottom = 0;
 	else
@@ -96,7 +96,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	       len += linelen;
 	       buf[len++] = '\n';
 
-	       xfree(line);
+	       free(line);
 	}
 
 	limit = options_get_number(&global_options, "buffer-limit");
@@ -109,14 +109,14 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 	if (cause != NULL) {
 		ctx->error(ctx, "buffer %s", cause);
-		xfree(buf);
-		xfree(cause);
+		free(buf);
+		free(cause);
 		return (-1);
 	}
 
 	if (paste_replace(&global_buffers, buffer, buf, len) != 0) {
 		ctx->error(ctx, "no buffer %d", buffer);
-		xfree(buf);
+		free(buf);
 		return (-1);
 	}
 

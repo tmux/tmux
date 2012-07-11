@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -135,7 +136,7 @@ cmd_list_panes_window(struct cmd *self,
 
 		line = format_expand(ft, template);
 		ctx->print(ctx, "%s", line);
-		xfree(line);
+		free(line);
 
 		format_free(ft);
 		n++;

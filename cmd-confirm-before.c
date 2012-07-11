@@ -17,6 +17,7 @@
  */
 
 #include <ctype.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -87,7 +88,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ptr = copy = xstrdup(args->argv[0]);
 		cmd = strsep(&ptr, " \t");
 		xasprintf(&new_prompt, "Confirm '%s'? (y/n) ", cmd);
-		xfree(copy);
+		free(copy);
 	}
 
 	cdata = xmalloc(sizeof *cdata);
@@ -97,7 +98,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmd_ctx *ctx)
 	    cmd_confirm_before_callback, cmd_confirm_before_free, cdata,
 	    PROMPT_SINGLE);
 
-	xfree(new_prompt);
+	free(new_prompt);
 	return (1);
 }
 
@@ -119,7 +120,7 @@ cmd_confirm_before_callback(void *data, const char *s)
 		if (cause != NULL) {
 			*cause = toupper((u_char) *cause);
 			status_message_set(c, "%s", cause);
-			xfree(cause);
+			free(cause);
 		}
 		return (0);
 	}
@@ -144,7 +145,6 @@ cmd_confirm_before_free(void *data)
 {
 	struct cmd_confirm_before_data	*cdata = data;
 
-	if (cdata->cmd != NULL)
-		xfree(cdata->cmd);
-	xfree(cdata);
+	free(cdata->cmd);
+	free(cdata);
 }

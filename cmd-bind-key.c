@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -74,7 +75,7 @@ cmd_bind_key_exec(struct cmd *self, struct cmd_ctx *ctx)
 	cmdlist = cmd_list_parse(args->argc - 1, args->argv + 1, &cause);
 	if (cmdlist == NULL) {
 		ctx->error(ctx, "%s", cause);
-		xfree(cause);
+		free(cause);
 		return (-1);
 	}
 
