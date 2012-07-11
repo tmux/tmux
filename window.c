@@ -1174,3 +1174,31 @@ window_pane_find_right(struct window_pane *wp)
 	}
 	return (NULL);
 }
+
+/* Clear alert flags for a winlink */
+void
+winlink_clear_flags(struct winlink *wl)
+{
+	struct winlink	*wm;
+	struct session	*s;
+	struct window	*w;
+	u_int		 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
+		if ((w = ARRAY_ITEM(&windows, i)) == NULL)
+			continue;
+
+		RB_FOREACH(s, sessions, &sessions) {
+			if ((wm = session_has(s, w)) == NULL)
+				continue;
+
+			if (wm->window != wl->window)
+				continue;
+			if ((wm->flags & WINLINK_ALERTFLAGS) == 0)
+				continue;
+
+			wm->flags &= ~WINLINK_ALERTFLAGS;
+			server_status_session(s);
+		}
+	}
+}

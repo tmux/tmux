@@ -56,9 +56,6 @@ server_window_loop(void)
 				server_status_session(s);
 			TAILQ_FOREACH(wp, &w->panes, entry)
 				server_window_check_content(s, wl, wp);
-
-			if (!(s->flags & SESSION_UNATTACHED))
-				w->flags &= ~(WINDOW_BELL|WINDOW_ACTIVITY);
 		}
 	}
 }
@@ -78,6 +75,8 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 		wl->flags |= WINLINK_BELL;
 	if (s->flags & SESSION_UNATTACHED)
 		return (1);
+	if (s->curw->window == wl->window)
+		w->flags &= ~WINDOW_BELL;
 
 	visual = options_get_number(&s->options, "visual-bell");
 	action = options_get_number(&s->options, "bell-action");
@@ -107,6 +106,9 @@ server_window_check_activity(struct session *s, struct winlink *wl)
 	struct client	*c;
 	struct window	*w = wl->window;
 	u_int		 i;
+
+	if (s->curw->window == wl->window)
+		w->flags &= ~WINDOW_ACTIVITY;
 
 	if (!(w->flags & WINDOW_ACTIVITY) || wl->flags & WINLINK_ACTIVITY)
 		return (0);
@@ -196,6 +198,9 @@ server_window_check_content(
 	char		*found, *ptr;
 
 	/* Activity flag must be set for new content. */
+	if (s->curw->window == w)
+		w->flags &= ~WINDOW_ACTIVITY;
+
 	if (!(w->flags & WINDOW_ACTIVITY) || wl->flags & WINLINK_CONTENT)
 		return (0);
 	if (s->curw == wl && !(s->flags & SESSION_UNATTACHED))
