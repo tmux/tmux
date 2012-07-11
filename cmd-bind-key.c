@@ -27,10 +27,10 @@
  * Bind a key to a command, this recurses through cmd_*.
  */
 
-int	cmd_bind_key_check(struct args *);
-int	cmd_bind_key_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_bind_key_check(struct args *);
+enum cmd_retval	 cmd_bind_key_exec(struct cmd *, struct cmd_ctx *);
 
-int	cmd_bind_key_table(struct cmd *, struct cmd_ctx *, int);
+enum cmd_retval	 cmd_bind_key_table(struct cmd *, struct cmd_ctx *, int);
 
 const struct cmd_entry cmd_bind_key_entry = {
 	"bind-key", "bind",
@@ -42,20 +42,20 @@ const struct cmd_entry cmd_bind_key_entry = {
 	cmd_bind_key_exec
 };
 
-int
+enum cmd_retval
 cmd_bind_key_check(struct args *args)
 {
 	if (args_has(args, 't')) {
 		if (args->argc != 2)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 	} else {
 		if (args->argc < 2)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 	}
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }
 
-int
+enum cmd_retval
 cmd_bind_key_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
@@ -66,7 +66,7 @@ cmd_bind_key_exec(struct cmd *self, struct cmd_ctx *ctx)
 	key = key_string_lookup_string(args->argv[0]);
 	if (key == KEYC_NONE) {
 		ctx->error(ctx, "unknown key: %s", args->argv[0]);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	if (args_has(args, 't'))
@@ -76,16 +76,16 @@ cmd_bind_key_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (cmdlist == NULL) {
 		ctx->error(ctx, "%s", cause);
 		free(cause);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	if (!args_has(args, 'n'))
 	    key |= KEYC_PREFIX;
 	key_bindings_add(key, args_has(args, 'r'), cmdlist);
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }
 
-int
+enum cmd_retval
 cmd_bind_key_table(struct cmd *self, struct cmd_ctx *ctx, int key)
 {
 	struct args			*args = self->args;
@@ -97,25 +97,25 @@ cmd_bind_key_table(struct cmd *self, struct cmd_ctx *ctx, int key)
 	tablename = args_get(args, 't');
 	if ((mtab = mode_key_findtable(tablename)) == NULL) {
 		ctx->error(ctx, "unknown key table: %s", tablename);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	cmd = mode_key_fromstring(mtab->cmdstr, args->argv[1]);
 	if (cmd == MODEKEY_NONE) {
 		ctx->error(ctx, "unknown command: %s", args->argv[1]);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	mtmp.key = key;
 	mtmp.mode = !!args_has(args, 'c');
 	if ((mbind = RB_FIND(mode_key_tree, mtab->tree, &mtmp)) != NULL) {
 		mbind->cmd = cmd;
-		return (0);
+		return (CMD_RETURN_NORMAL);
 	}
 	mbind = xmalloc(sizeof *mbind);
 	mbind->key = mtmp.key;
 	mbind->mode = mtmp.mode;
 	mbind->cmd = cmd;
 	RB_INSERT(mode_key_tree, mtab->tree, mbind);
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

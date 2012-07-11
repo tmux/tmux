@@ -1327,6 +1327,13 @@ struct cmd_list {
 	TAILQ_HEAD(, cmd) 	 list;
 };
 
+enum cmd_retval {
+	CMD_RETURN_ERROR = -1,
+	CMD_RETURN_NORMAL = 0,
+	CMD_RETURN_YIELD,
+	CMD_RETURN_ATTACH
+};
+
 struct cmd_entry {
 	const char	*name;
 	const char	*alias;
@@ -1345,7 +1352,7 @@ struct cmd_entry {
 
 	void		 (*key_binding)(struct cmd *, int);
 	int		 (*check)(struct args *);
-	int		 (*exec)(struct cmd *, struct cmd_ctx *);
+	enum cmd_retval	 (*exec)(struct cmd *, struct cmd_ctx *);
 };
 
 /* Key binding. */
@@ -1637,7 +1644,7 @@ int		 cmd_unpack_argv(char *, size_t, int, char ***);
 char	       **cmd_copy_argv(int, char *const *);
 void		 cmd_free_argv(int, char **);
 struct cmd	*cmd_parse(int, char **, char **);
-int		 cmd_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_exec(struct cmd *, struct cmd_ctx *);
 void		 cmd_free(struct cmd *);
 size_t		 cmd_print(struct cmd *, char *, size_t);
 struct session	*cmd_current_session(struct cmd_ctx *, int);
@@ -1741,7 +1748,7 @@ extern const struct cmd_entry cmd_up_pane_entry;
 
 /* cmd-list.c */
 struct cmd_list	*cmd_list_parse(int, char **, char **);
-int		 cmd_list_exec(struct cmd_list *, struct cmd_ctx *);
+enum cmd_retval	 cmd_list_exec(struct cmd_list *, struct cmd_ctx *);
 void		 cmd_list_free(struct cmd_list *);
 size_t		 cmd_list_print(struct cmd_list *, char *, size_t);
 

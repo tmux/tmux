@@ -28,7 +28,7 @@
  * Lock commands.
  */
 
-int	cmd_lock_server_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_lock_server_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_lock_server_entry = {
 	"lock-server", "lock",
@@ -61,7 +61,7 @@ const struct cmd_entry cmd_lock_client_entry = {
 };
 
 /* ARGSUSED */
-int
+enum cmd_retval
 cmd_lock_server_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
@@ -72,14 +72,14 @@ cmd_lock_server_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 		server_lock();
 	else if (self->entry == &cmd_lock_session_entry) {
 		if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		server_lock_session(s);
 	} else {
 		if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		server_lock_client(c);
 	}
 	recalculate_sizes();
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

@@ -28,7 +28,7 @@
  * Find window containing text.
  */
 
-int	cmd_find_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_find_window_exec(struct cmd *, struct cmd_ctx *);
 
 u_int	cmd_find_window_match_flags(struct args *);
 void	cmd_find_window_callback(struct window_choose_data *);
@@ -74,7 +74,7 @@ cmd_find_window_match_flags(struct args *args)
 	return (match_flags);
 }
 
-int
+enum cmd_retval
 cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
@@ -90,12 +90,12 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 	s = ctx->curclient->session;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = DEFAULT_FIND_WINDOW_TEMPLATE;
@@ -150,7 +150,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "no windows matching: %s", str);
 		ARRAY_FREE(&list_idx);
 		ARRAY_FREE(&list_ctx);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	if (ARRAY_LENGTH(&list_idx) == 1) {
@@ -189,7 +189,7 @@ out:
 	ARRAY_FREE(&list_idx);
 	ARRAY_FREE(&list_ctx);
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }
 
 void

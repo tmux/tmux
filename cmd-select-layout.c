@@ -24,8 +24,8 @@
  * Switch window to selected layout.
  */
 
-void	cmd_select_layout_key_binding(struct cmd *, int);
-int	cmd_select_layout_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_select_layout_key_binding(struct cmd *, int);
+enum cmd_retval	 cmd_select_layout_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_select_layout_entry = {
 	"select-layout", "selectl",
@@ -90,7 +90,7 @@ cmd_select_layout_key_binding(struct cmd *self, int key)
 	}
 }
 
-int
+enum cmd_retval
 cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
@@ -100,7 +100,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 	int		 next, previous, layout;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	w = wl->window;
 
 	next = self->entry == &cmd_next_layout_entry;
@@ -114,13 +114,13 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args_has(self->args, 'U')) {
 		if ((layoutname = layout_list_redo(w)) == NULL) {
 			ctx->info(ctx, "no more layout history");
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 		goto set_layout;
 	} else if (args_has(self->args, 'u')) {
 		if ((layoutname = layout_list_undo(w)) == NULL) {
 			ctx->info(ctx, "no more layout history");
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 		goto set_layout;
 	}
@@ -132,7 +132,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 			layout = layout_set_previous(wl->window);
 		server_redraw_window(wl->window);
 		ctx->info(ctx, "arranging in: %s", layout_set_name(layout));
-		return (0);
+		return (CMD_RETURN_NORMAL);
 	}
 
 	if (args->argc == 0)
@@ -143,19 +143,19 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 		layout = layout_set_select(wl->window, layout);
 		server_redraw_window(wl->window);
 		ctx->info(ctx, "arranging in: %s", layout_set_name(layout));
-		return (0);
+		return (CMD_RETURN_NORMAL);
 	}
 
 	if (args->argc == 0)
-		return (0);
+		return (CMD_RETURN_NORMAL);
 	layoutname = args->argv[0];
 
 set_layout:
 	if (layout_parse(wl->window, layoutname) == -1) {
 		ctx->error(ctx, "can't set layout: %s", layoutname);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 	server_redraw_window(wl->window);
 	ctx->info(ctx, "arranging in: %s", layoutname);
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

@@ -26,11 +26,11 @@
  * Asks for confirmation before executing a command.
  */
 
-void	cmd_confirm_before_key_binding(struct cmd *, int);
-int	cmd_confirm_before_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_confirm_before_key_binding(struct cmd *, int);
+enum cmd_retval	 cmd_confirm_before_exec(struct cmd *, struct cmd_ctx *);
 
-int	cmd_confirm_before_callback(void *, const char *);
-void	cmd_confirm_before_free(void *);
+int		 cmd_confirm_before_callback(void *, const char *);
+void		 cmd_confirm_before_free(void *);
 
 const struct cmd_entry cmd_confirm_before_entry = {
 	"confirm-before", "confirm",
@@ -65,7 +65,7 @@ cmd_confirm_before_key_binding(struct cmd *self, int key)
 	}
 }
 
-int
+enum cmd_retval
 cmd_confirm_before_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
@@ -76,11 +76,11 @@ cmd_confirm_before_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if ((prompt = args_get(args, 'p')) != NULL)
 		xasprintf(&new_prompt, "%s ", prompt);
@@ -99,7 +99,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmd_ctx *ctx)
 	    PROMPT_SINGLE);
 
 	free(new_prompt);
-	return (1);
+	return (CMD_RETURN_YIELD);
 }
 
 int

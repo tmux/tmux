@@ -26,8 +26,8 @@
  * Swap two panes.
  */
 
-void	cmd_swap_pane_key_binding(struct cmd *, int);
-int	cmd_swap_pane_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_swap_pane_key_binding(struct cmd *, int);
+enum cmd_retval	 cmd_swap_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_swap_pane_entry = {
 	"swap-pane", "swapp",
@@ -49,7 +49,7 @@ cmd_swap_pane_key_binding(struct cmd *self, int key)
 		args_set(self->args, 'D', NULL);
 }
 
-int
+enum cmd_retval
 cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -61,7 +61,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	dst_wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &dst_wp);
 	if (dst_wl == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	dst_w = dst_wl->window;
 
 	if (!args_has(args, 's')) {
@@ -75,16 +75,16 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 			if (src_wp == NULL)
 				src_wp = TAILQ_LAST(&dst_w->panes, window_panes);
 		} else
-			return (0);
+			return (CMD_RETURN_NORMAL);
 	} else {
 		src_wl = cmd_find_pane(ctx, args_get(args, 's'), NULL, &src_wp);
 		if (src_wl == NULL)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		src_w = src_wl->window;
 	}
 
 	if (src_wp == dst_wp)
-		return (0);
+		return (CMD_RETURN_NORMAL);
 
 	tmp_wp = TAILQ_PREV(dst_wp, window_panes, entry);
 	TAILQ_REMOVE(&dst_w->panes, dst_wp, entry);
@@ -138,5 +138,5 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	server_redraw_window(src_w);
 	server_redraw_window(dst_w);
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

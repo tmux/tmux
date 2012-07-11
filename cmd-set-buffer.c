@@ -27,7 +27,7 @@
  * Add or set a paste buffer.
  */
 
-int	cmd_set_buffer_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_set_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_set_buffer_entry = {
 	"set-buffer", "setb",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_set_buffer_entry = {
 	cmd_set_buffer_exec
 };
 
-int
+enum cmd_retval
 cmd_set_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
@@ -55,7 +55,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (!args_has(args, 'b')) {
 		paste_add(&global_buffers, pdata, psize, limit);
-		return (0);
+		return (CMD_RETURN_NORMAL);
 	}
 
 	buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
@@ -63,14 +63,14 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "buffer %s", cause);
 		free(cause);
 		free(pdata);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	if (paste_replace(&global_buffers, buffer, pdata, psize) != 0) {
 		ctx->error(ctx, "no buffer %d", buffer);
 		free(pdata);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

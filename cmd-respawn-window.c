@@ -27,7 +27,7 @@
  * Respawn a window (restart the command). Kill existing if -k given.
  */
 
-int	cmd_respawn_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_respawn_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_respawn_window_entry = {
 	"respawn-window", "respawnw",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_respawn_window_entry = {
 	cmd_respawn_window_exec
 };
 
-int
+enum cmd_retval
 cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -52,7 +52,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char		 	*cause;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), &s)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	w = wl->window;
 
 	if (!args_has(self->args, 'k')) {
@@ -61,7 +61,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 				continue;
 			ctx->error(ctx,
 			    "window still active: %s:%d", s->name, wl->idx);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	}
 
@@ -85,7 +85,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		free(cause);
 		environ_free(&env);
 		server_destroy_pane(wp);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 	layout_init(w);
 	window_pane_reset_mode(wp);
@@ -97,5 +97,5 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	server_redraw_window(w);
 
 	environ_free(&env);
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

@@ -867,8 +867,16 @@ server_client_msg_command(struct client *c, struct msg_command_data *data)
 	}
 	cmd_free_argv(argc, argv);
 
-	if (cmd_list_exec(cmdlist, &ctx) != 1)
+	switch (cmd_list_exec(cmdlist, &ctx))
+	{
+	case CMD_RETURN_ERROR:
+	case CMD_RETURN_NORMAL:
 		c->flags |= CLIENT_EXIT;
+		break;
+	case CMD_RETURN_ATTACH:
+	case CMD_RETURN_YIELD:
+		break;
+	}
 	cmd_list_free(cmdlist);
 	return;
 

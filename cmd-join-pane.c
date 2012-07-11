@@ -28,10 +28,10 @@
  * Join or move a pane into another (like split/swap/kill).
  */
 
-void	cmd_join_pane_key_binding(struct cmd *, int);
-int	cmd_join_pane_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_join_pane_key_binding(struct cmd *, int);
+enum cmd_retval	 cmd_join_pane_exec(struct cmd *, struct cmd_ctx *);
 
-int	join_pane(struct cmd *, struct cmd_ctx *, int);
+enum cmd_retval	 join_pane(struct cmd *, struct cmd_ctx *, int);
 
 const struct cmd_entry cmd_join_pane_entry = {
 	"join-pane", "joinp",
@@ -67,13 +67,13 @@ cmd_join_pane_key_binding(struct cmd *self, int key)
 	}
 }
 
-int
+enum cmd_retval
 cmd_join_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	return (join_pane(self, ctx, self->entry == &cmd_join_pane_entry));
 }
 
-int
+enum cmd_retval
 join_pane(struct cmd *self, struct cmd_ctx *ctx, int not_same_window)
 {
 	struct args		*args = self->args;
@@ -88,22 +88,22 @@ join_pane(struct cmd *self, struct cmd_ctx *ctx, int not_same_window)
 
 	dst_wl = cmd_find_pane(ctx, args_get(args, 't'), &dst_s, &dst_wp);
 	if (dst_wl == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	dst_w = dst_wl->window;
 	dst_idx = dst_wl->idx;
 
 	src_wl = cmd_find_pane(ctx, args_get(args, 's'), NULL, &src_wp);
 	if (src_wl == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	src_w = src_wl->window;
 
 	if (not_same_window && src_w == dst_w) {
 		ctx->error(ctx, "can't join a pane to its own window");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 	if (!not_same_window && src_wp == dst_wp) {
 		ctx->error(ctx, "source and target panes must be different");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	type = LAYOUT_TOPBOTTOM;
@@ -116,14 +116,14 @@ join_pane(struct cmd *self, struct cmd_ctx *ctx, int not_same_window)
 		if (cause != NULL) {
 			ctx->error(ctx, "size %s", cause);
 			free(cause);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	} else if (args_has(args, 'p')) {
 		percentage = args_strtonum(args, 'p', 0, 100, &cause);
 		if (cause != NULL) {
 			ctx->error(ctx, "percentage %s", cause);
 			free(cause);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 		if (type == LAYOUT_TOPBOTTOM)
 			size = (dst_wp->sy * percentage) / 100;
@@ -133,7 +133,7 @@ join_pane(struct cmd *self, struct cmd_ctx *ctx, int not_same_window)
 	lc = layout_split_pane(dst_wp, type, size, args_has(args, 'b'));
 	if (lc == NULL) {
 		ctx->error(ctx, "create pane failed: pane too small");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	layout_close_pane(src_wp);
@@ -167,5 +167,5 @@ join_pane(struct cmd *self, struct cmd_ctx *ctx, int not_same_window)
 		server_status_session(dst_s);
 
 	notify_window_layout_changed(dst_w);
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

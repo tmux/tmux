@@ -26,8 +26,8 @@
  * Increase or decrease pane size.
  */
 
-void	cmd_resize_pane_key_binding(struct cmd *, int);
-int	cmd_resize_pane_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_resize_pane_key_binding(struct cmd *, int);
+enum cmd_retval	 cmd_resize_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_resize_pane_entry = {
 	"resize-pane", "resizep",
@@ -81,7 +81,7 @@ cmd_resize_pane_key_binding(struct cmd *self, int key)
 	}
 }
 
-int
+enum cmd_retval
 cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -91,7 +91,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int			 adjust;
 
 	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (args->argc == 0)
 		adjust = 1;
@@ -99,7 +99,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
 			ctx->error(ctx, "adjustment %s", errstr);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	}
 
@@ -114,5 +114,5 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		layout_resize_pane(wp, LAYOUT_TOPBOTTOM, adjust);
 	server_redraw_window(wl->window);
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

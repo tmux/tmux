@@ -27,7 +27,7 @@
  * Set an option.
  */
 
-int	cmd_set_option_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_set_option_exec(struct cmd *, struct cmd_ctx *);
 
 int	cmd_set_option_unset(struct cmd *, struct cmd_ctx *,
 	    const struct options_table_entry *, struct options *,
@@ -78,7 +78,7 @@ const struct cmd_entry cmd_set_window_option_entry = {
 	cmd_set_option_exec
 };
 
-int
+enum cmd_retval
 cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args				*args = self->args;
@@ -95,7 +95,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	optstr = args->argv[0];
 	if (*optstr == '\0') {
 		ctx->error(ctx, "invalid option");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 	if (args->argc < 2)
 		valstr = NULL;
@@ -106,11 +106,11 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	table = oe = NULL;
 	if (options_table_find(optstr, &table, &oe) != 0) {
 		ctx->error(ctx, "ambiguous option: %s", optstr);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 	if (oe == NULL) {
 		ctx->error(ctx, "unknown option: %s", optstr);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	/* Work out the tree from the table. */
@@ -122,7 +122,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		else {
 			wl = cmd_find_window(ctx, args_get(args, 't'), NULL);
 			if (wl == NULL)
-				return (-1);
+				return (CMD_RETURN_ERROR);
 			oo = &wl->window->options;
 		}
 	} else if (table == session_options_table) {
@@ -131,21 +131,21 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 		else {
 			s = cmd_find_session(ctx, args_get(args, 't'), 0);
 			if (s == NULL)
-				return (-1);
+				return (CMD_RETURN_ERROR);
 			oo = &s->options;
 		}
 	} else {
 		ctx->error(ctx, "unknown table");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	/* Unset or set the option. */
 	if (args_has(args, 'u')) {
 		if (cmd_set_option_unset(self, ctx, oe, oo, valstr) != 0)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 	} else {
 		if (cmd_set_option_set(self, ctx, oe, oo, valstr) != 0)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 	}
 
 	/* Start or stop timers when automatic-rename changed. */
@@ -168,7 +168,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 			server_redraw_client(c);
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }
 
 /* Unset an option. */

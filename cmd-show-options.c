@@ -27,7 +27,7 @@
  * Show options.
  */
 
-int	cmd_show_options_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_show_options_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_options_entry = {
 	"show-options", "show",
@@ -49,7 +49,7 @@ const struct cmd_entry cmd_show_window_options_entry = {
 	cmd_show_options_exec
 };
 
-int
+enum cmd_retval
 cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args				*args = self->args;
@@ -71,7 +71,7 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 		else {
 			wl = cmd_find_window(ctx, args_get(args, 't'), NULL);
 			if (wl == NULL)
-				return (-1);
+				return (CMD_RETURN_ERROR);
 			oo = &wl->window->options;
 		}
 	} else {
@@ -81,7 +81,7 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 		else {
 			s = cmd_find_session(ctx, args_get(args, 't'), 0);
 			if (s == NULL)
-				return (-1);
+				return (CMD_RETURN_ERROR);
 			oo = &s->options;
 		}
 	}
@@ -90,14 +90,14 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 		table = oe = NULL;
 		if (options_table_find(args->argv[0], &table, &oe) != 0) {
 			ctx->error(ctx, "ambiguous option: %s", args->argv[0]);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 		if (oe == NULL) {
 			ctx->error(ctx, "unknown option: %s", args->argv[0]);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 		if ((o = options_find1(oo, oe->name)) == NULL)
-			return (0);
+			return (CMD_RETURN_NORMAL);
 		optval = options_table_print_entry(oe, o);
 		ctx->print(ctx, "%s %s", oe->name, optval);
 	} else {
@@ -109,5 +109,5 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

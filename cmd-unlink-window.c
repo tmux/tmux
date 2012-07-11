@@ -24,7 +24,7 @@
  * Unlink a window, unless it would be destroyed by doing so (only one link).
  */
 
-int	cmd_unlink_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_unlink_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_unlink_window_entry = {
 	"unlink-window", "unlinkw",
@@ -36,7 +36,7 @@ const struct cmd_entry cmd_unlink_window_entry = {
 	cmd_unlink_window_exec
 };
 
-int
+enum cmd_retval
 cmd_unlink_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -47,7 +47,7 @@ cmd_unlink_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int			 references;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), &s)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	w = wl->window;
 
 	sg = session_group_find(s);
@@ -60,11 +60,11 @@ cmd_unlink_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (!args_has(self->args, 'k') && w->references == references) {
 		ctx->error(ctx, "window is only linked to one session");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	server_unlink_window(s, wl);
 	recalculate_sizes();
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }
