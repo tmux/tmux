@@ -31,7 +31,7 @@
  * Show various information about server.
  */
 
-int	cmd_server_info_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_server_info_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_server_info_entry = {
 	"server-info", "info",
@@ -44,7 +44,7 @@ const struct cmd_entry cmd_server_info_entry = {
 };
 
 /* ARGSUSED */
-int
+enum cmd_retval
 cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct tty_term				*term;
@@ -179,5 +179,5 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		    job->cmd, job->fd, job->pid, job->status);
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

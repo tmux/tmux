@@ -29,7 +29,7 @@
  * Saves a paste buffer to a file.
  */
 
-int	cmd_save_buffer_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_save_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_save_buffer_entry = {
 	"save-buffer", "saveb",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_save_buffer_entry = {
 	cmd_save_buffer_exec
 };
 
-int
+enum cmd_retval
 cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -57,20 +57,20 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (!args_has(args, 'b')) {
 		if ((pb = paste_get_top(&global_buffers)) == NULL) {
 			ctx->error(ctx, "no buffers");
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	} else {
 		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 		if (cause != NULL) {
 			ctx->error(ctx, "buffer %s", cause);
 			free(cause);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 
 		pb = paste_get_index(&global_buffers, buffer);
 		if (pb == NULL) {
 			ctx->error(ctx, "no buffer %d", buffer);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	}
 
@@ -78,7 +78,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (strcmp(path, "-") == 0) {
 		if (c == NULL) {
 			ctx->error(ctx, "%s: can't write to stdout", path);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 		evbuffer_add(c->stdout_data, pb->data, pb->size);
 		server_push_stdout(c);
@@ -105,15 +105,15 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		umask(mask);
 		if (f == NULL) {
 			ctx->error(ctx, "%s: %s", path, strerror(errno));
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 		if (fwrite(pb->data, 1, pb->size, f) != pb->size) {
 			ctx->error(ctx, "%s: fwrite error", path);
 			fclose(f);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 		fclose(f);
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

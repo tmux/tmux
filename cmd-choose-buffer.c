@@ -27,7 +27,7 @@
  * Enter choice mode to choose a buffer.
  */
 
-int	cmd_choose_buffer_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_choose_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_choose_buffer_callback(struct window_choose_data *);
 void	cmd_choose_buffer_free(struct window_choose_data *);
@@ -42,7 +42,7 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 	cmd_choose_buffer_exec
 };
 
-int
+enum cmd_retval
 cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
@@ -55,20 +55,20 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = DEFAULT_BUFFER_LIST_TEMPLATE;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (paste_get_top(&global_buffers) == NULL)
-		return (0);
+		return (CMD_RETURN_NORMAL);
 
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
-		return (0);
+		return (CMD_RETURN_NORMAL);
 
 	if (args->argc != 0)
 		action = xstrdup(args->argv[0]);
@@ -96,7 +96,7 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	window_choose_ready(wl->window->active,
 	    0, cmd_choose_buffer_callback, cmd_choose_buffer_free);
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }
 
 void

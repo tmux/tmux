@@ -27,7 +27,7 @@
  * Show a paste buffer.
  */
 
-int	cmd_show_buffer_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_show_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_buffer_entry = {
 	"show-buffer", "showb",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_show_buffer_entry = {
 	cmd_show_buffer_exec
 };
 
-int
+enum cmd_retval
 cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -51,25 +51,25 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int			 width;
 
 	if ((s = cmd_find_session(ctx, NULL, 0)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (!args_has(args, 'b')) {
 		if ((pb = paste_get_top(&global_buffers)) == NULL) {
 			ctx->error(ctx, "no buffers");
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	} else {
 		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 		if (cause != NULL) {
 			ctx->error(ctx, "buffer %s", cause);
 			free(cause);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 
 		pb = paste_get_index(&global_buffers, buffer);
 		if (pb == NULL) {
 			ctx->error(ctx, "no buffer %d", buffer);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	}
 
@@ -108,5 +108,5 @@ cmd_show_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	free(in);
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

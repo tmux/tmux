@@ -26,7 +26,7 @@
  * Attach existing session to the current terminal.
  */
 
-int	cmd_attach_session_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	cmd_attach_session_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_attach_session_entry = {
 	"attach-session", "attach",
@@ -38,7 +38,7 @@ const struct cmd_entry cmd_attach_session_entry = {
 	cmd_attach_session_exec
 };
 
-int
+enum cmd_retval
 cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
@@ -50,14 +50,14 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (RB_EMPTY(&sessions)) {
 		ctx->error(ctx, "no sessions");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	if ((s = cmd_find_session(ctx, args_get(args, 't'), 1)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (ctx->cmdclient == NULL && ctx->curclient == NULL)
-		return (0);
+		return (CMD_RETURN_NORMAL);
 
 	if (ctx->cmdclient == NULL) {
 		if (args_has(self->args, 'd')) {
@@ -84,7 +84,7 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (server_client_open(ctx->cmdclient, s, &cause) != 0) {
 			ctx->error(ctx, "open terminal failed: %s", cause);
 			free(cause);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 
 		if (args_has(self->args, 'r'))
@@ -107,5 +107,5 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	recalculate_sizes();
 	server_update_socket();
 
-	return (1);	/* 1 means don't tell command client to exit */
+	return (CMD_RETURN_ATTACH);
 }

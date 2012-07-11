@@ -32,7 +32,7 @@
  * Open pipe to redirect pane output. If already open, close first.
  */
 
-int	cmd_pipe_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_pipe_pane_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_pipe_pane_error_callback(struct bufferevent *, short, void *);
 
@@ -46,7 +46,7 @@ const struct cmd_entry cmd_pipe_pane_entry = {
 	cmd_pipe_pane_exec
 };
 
-int
+enum cmd_retval
 cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -56,7 +56,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	int			 old_fd, pipe_fd[2], null_fd;
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	c = cmd_find_client(ctx, NULL);
 
 	/* Destroy the old pipe. */
@@ -69,7 +69,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	/* If no pipe command, that is enough. */
 	if (args->argc == 0 || *args->argv[0] == '\0')
-		return (0);
+		return (CMD_RETURN_NORMAL);
 
 	/*
 	 * With -o, only open the new pipe if there was no previous one. This
@@ -78,19 +78,19 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 *	bind ^p pipep -o 'cat >>~/output'
 	 */
 	if (args_has(self->args, 'o') && old_fd != -1)
-		return (0);
+		return (CMD_RETURN_NORMAL);
 
 	/* Open the new pipe. */
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pipe_fd) != 0) {
 		ctx->error(ctx, "socketpair error: %s", strerror(errno));
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	/* Fork the child. */
 	switch (fork()) {
 	case -1:
 		ctx->error(ctx, "fork error: %s", strerror(errno));
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	case 0:
 		/* Child process. */
 		close(pipe_fd[0]);
@@ -127,7 +127,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		bufferevent_enable(wp->pipe_event, EV_WRITE);
 
 		setblocking(wp->pipe_fd, 0);
-		return (0);
+		return (CMD_RETURN_NORMAL);
 	}
 }
 

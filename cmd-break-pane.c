@@ -26,7 +26,7 @@
  * Break pane off into a window.
  */
 
-int	cmd_break_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_break_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_break_pane_entry = {
 	"break-pane", "breakp",
@@ -38,7 +38,7 @@ const struct cmd_entry cmd_break_pane_entry = {
 	cmd_break_pane_exec
 };
 
-int
+enum cmd_retval
 cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -55,11 +55,11 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*cp;
 
 	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (window_count_panes(wl->window) == 1) {
 		ctx->error(ctx, "can't break with only one pane");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	w = wl->window;
@@ -110,5 +110,5 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		format_free(ft);
 	}
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

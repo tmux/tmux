@@ -27,7 +27,7 @@
  * Write the entire contents of a pane to a buffer.
  */
 
-int	cmd_capture_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	cmd_capture_pane_exec
 };
 
-int
+enum cmd_retval
 cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -52,7 +52,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	size_t         		 len, linelen;
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	s = &wp->base;
 	gd = s->grid;
 
@@ -103,7 +103,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (!args_has(args, 'b')) {
 		paste_add(&global_buffers, buf, len, limit);
-		return (0);
+		return (CMD_RETURN_NORMAL);
 	}
 
 	buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
@@ -111,14 +111,14 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "buffer %s", cause);
 		free(buf);
 		free(cause);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	if (paste_replace(&global_buffers, buffer, buf, len) != 0) {
 		ctx->error(ctx, "no buffer %d", buffer);
 		free(buf);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

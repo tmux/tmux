@@ -41,7 +41,7 @@ const struct cmd_entry cmd_list_clients_entry = {
 };
 
 /* ARGSUSED */
-int
+enum cmd_retval
 cmd_list_clients_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args 		*args = self->args;
@@ -55,7 +55,7 @@ cmd_list_clients_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args_has(args, 't')) {
 		s = cmd_find_session(ctx, args_get(args, 't'), 0);
 		if (s == NULL)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 	} else
 		s = NULL;
 
@@ -82,5 +82,5 @@ cmd_list_clients_exec(struct cmd *self, struct cmd_ctx *ctx)
 		format_free(ft);
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

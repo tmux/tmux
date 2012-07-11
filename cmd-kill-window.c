@@ -24,7 +24,7 @@
  * Destroy window.
  */
 
-int	cmd_kill_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_kill_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_kill_window_entry = {
 	"kill-window", "killw",
@@ -36,7 +36,7 @@ const struct cmd_entry cmd_kill_window_entry = {
 	cmd_kill_window_exec
 };
 
-int
+enum cmd_retval
 cmd_kill_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
@@ -44,7 +44,7 @@ cmd_kill_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session	*s;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), &s)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'a')) {
 		RB_FOREACH_SAFE(wl2, winlinks, &s->windows, wl3) {
@@ -55,5 +55,5 @@ cmd_kill_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		server_kill_window(wl->window);
 
 	recalculate_sizes();
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

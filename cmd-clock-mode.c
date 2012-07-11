@@ -24,7 +24,7 @@
  * Enter clock mode.
  */
 
-int	cmd_clock_mode_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_clock_mode_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_clock_mode_entry = {
 	"clock-mode", NULL,
@@ -36,16 +36,16 @@ const struct cmd_entry cmd_clock_mode_entry = {
 	cmd_clock_mode_exec
 };
 
-int
+enum cmd_retval
 cmd_clock_mode_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
 	struct window_pane	*wp;
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	window_pane_set_mode(wp, &window_clock_mode);
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

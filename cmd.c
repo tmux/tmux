@@ -280,7 +280,7 @@ usage:
 	return (NULL);
 }
 
-int
+enum cmd_retval
 cmd_exec(struct cmd *cmd, struct cmd_ctx *ctx)
 {
 	return (cmd->entry->exec(cmd, ctx));

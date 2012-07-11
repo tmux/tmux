@@ -27,8 +27,8 @@
  * Switch client to a different session.
  */
 
-void	cmd_switch_client_key_binding(struct cmd *, int);
-int	cmd_switch_client_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_switch_client_key_binding(struct cmd *, int);
+enum cmd_retval	 cmd_switch_client_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_switch_client_entry = {
 	"switch-client", "switchc",
@@ -57,7 +57,7 @@ cmd_switch_client_key_binding(struct cmd *self, int key)
 	}
 }
 
-int
+enum cmd_retval
 cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
@@ -65,7 +65,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session	*s;
 
 	if ((c = cmd_find_client(ctx, args_get(args, 'c'))) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'r')) {
 		if (c->flags & CLIENT_READONLY) {
@@ -81,24 +81,24 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args_has(args, 'n')) {
 		if ((s = session_next_session(c->session)) == NULL) {
 			ctx->error(ctx, "can't find next session");
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	} else if (args_has(args, 'p')) {
 		if ((s = session_previous_session(c->session)) == NULL) {
 			ctx->error(ctx, "can't find previous session");
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	} else if (args_has(args, 'l')) {
 		if (c->last_session != NULL && session_alive(c->last_session))
 			s = c->last_session;
 		if (s == NULL) {
 			ctx->error(ctx, "can't find last session");
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	} else
 		s = cmd_find_session(ctx, args_get(args, 't'), 0);
 	if (s == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (c->session != NULL)
 		c->last_session = c->session;
@@ -110,5 +110,5 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	server_redraw_client(c);
 	s->curw->flags &= ~WINLINK_ALERTFLAGS;
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

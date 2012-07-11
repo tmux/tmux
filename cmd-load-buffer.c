@@ -30,8 +30,8 @@
  * Loads a paste buffer from a file.
  */
 
-int	cmd_load_buffer_exec(struct cmd *, struct cmd_ctx *);
-void	cmd_load_buffer_callback(struct client *, int, void *);
+enum cmd_retval	 cmd_load_buffer_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_load_buffer_callback(struct client *, int, void *);
 
 const struct cmd_entry cmd_load_buffer_entry = {
 	"load-buffer", "loadb",
@@ -43,7 +43,7 @@ const struct cmd_entry cmd_load_buffer_entry = {
 	cmd_load_buffer_exec
 };
 
-int
+enum cmd_retval
 cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
@@ -63,7 +63,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (cause != NULL) {
 			ctx->error(ctx, "buffer %s", cause);
 			free(cause);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	}
 
@@ -77,9 +77,9 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (error != 0) {
 			ctx->error(ctx, "%s: %s", path, cause);
 			free(cause);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
-		return (1);
+		return (CMD_RETURN_YIELD);
 	}
 
 	if (c != NULL)
@@ -97,7 +97,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	if ((f = fopen(path, "rb")) == NULL) {
 		ctx->error(ctx, "%s: %s", path, strerror(errno));
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	pdata = NULL;
@@ -123,21 +123,21 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	limit = options_get_number(&global_options, "buffer-limit");
 	if (buffer == -1) {
 		paste_add(&global_buffers, pdata, psize, limit);
-		return (0);
+		return (CMD_RETURN_NORMAL);
 	}
 	if (paste_replace(&global_buffers, buffer, pdata, psize) != 0) {
 		ctx->error(ctx, "no buffer %d", buffer);
 		free(pdata);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 
 error:
 	free(pdata);
 	if (f != NULL)
 		fclose(f);
-	return (-1);
+	return (CMD_RETURN_ERROR);
 }
 
 void

@@ -24,8 +24,8 @@
  * Select pane.
  */
 
-void	cmd_select_pane_key_binding(struct cmd *, int);
-int	cmd_select_pane_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_select_pane_key_binding(struct cmd *, int);
+enum cmd_retval	 cmd_select_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_select_pane_entry = {
 	"select-pane", "selectp",
@@ -63,7 +63,7 @@ cmd_select_pane_key_binding(struct cmd *self, int key)
 		args_set(self->args, 't', ":.+");
 }
 
-int
+enum cmd_retval
 cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -73,26 +73,26 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (self->entry == &cmd_last_pane_entry || args_has(args, 'l')) {
 		wl = cmd_find_window(ctx, args_get(args, 't'), NULL);
 		if (wl == NULL)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 
 		if (wl->window->last == NULL) {
 			ctx->error(ctx, "no last pane");
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 
 		window_set_active_pane(wl->window, wl->window->last);
 		server_status_window(wl->window);
 		server_redraw_window_borders(wl->window);
 
-		return (0);
+		return (CMD_RETURN_NORMAL);
 	}
 
 	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (!window_pane_visible(wp)) {
 		ctx->error(ctx, "pane not visible");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	if (args_has(self->args, 'L'))
@@ -105,12 +105,12 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		wp = window_pane_find_down(wp);
 	if (wp == NULL) {
 		ctx->error(ctx, "pane not found");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	window_set_active_pane(wl->window, wp);
 	server_status_window(wl->window);
 	server_redraw_window_borders(wl->window);
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

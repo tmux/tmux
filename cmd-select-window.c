@@ -26,8 +26,8 @@
  * Select window by index.
  */
 
-void	cmd_select_window_key_binding(struct cmd *, int);
-int	cmd_select_window_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_select_window_key_binding(struct cmd *, int);
+enum cmd_retval	 cmd_select_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_select_window_entry = {
 	"select-window", "selectw",
@@ -83,7 +83,7 @@ cmd_select_window_key_binding(struct cmd *self, int key)
 		args_set(self->args, 'a', NULL);
 }
 
-int
+enum cmd_retval
 cmd_select_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
@@ -104,23 +104,23 @@ cmd_select_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (next || previous || last) {
 		s = cmd_find_session(ctx, args_get(args, 't'), 0);
 		if (s == NULL)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 
 		activity = args_has(self->args, 'a');
 		if (next) {
 			if (session_next(s, activity) != 0) {
 				ctx->error(ctx, "no next window");
-				return (-1);
+				return (CMD_RETURN_ERROR);
 			}
 		} else if (previous) {
 			if (session_previous(s, activity) != 0) {
 				ctx->error(ctx, "no previous window");
-				return (-1);
+				return (CMD_RETURN_ERROR);
 			}
 		} else {
 			if (session_last(s) != 0) {
 				ctx->error(ctx, "no last window");
-				return (-1);
+				return (CMD_RETURN_ERROR);
 			}
 		}
 
@@ -128,12 +128,12 @@ cmd_select_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	} else {
 		wl = cmd_find_window(ctx, args_get(args, 't'), &s);
 		if (wl == NULL)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 
 		if (session_select(s, wl->idx) == 0)
 			server_redraw_session(s);
 	}
 	recalculate_sizes();
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

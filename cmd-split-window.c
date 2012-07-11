@@ -28,8 +28,8 @@
  * Split a window (add a new pane).
  */
 
-void	cmd_split_window_key_binding(struct cmd *, int);
-int	cmd_split_window_exec(struct cmd *, struct cmd_ctx *);
+void		 cmd_split_window_key_binding(struct cmd *, int);
+enum cmd_retval	 cmd_split_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_split_window_entry = {
 	"split-window", "splitw",
@@ -50,7 +50,7 @@ cmd_split_window_key_binding(struct cmd *self, int key)
 		args_set(self->args, 'h', NULL);
 }
 
-int
+enum cmd_retval
 cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -71,7 +71,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*cp;
 
 	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	w = wl->window;
 
 	environ_init(&env);
@@ -156,7 +156,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		format_free(ft);
 	}
 	notify_window_layout_changed(w);
-	return (0);
+	return (CMD_RETURN_NORMAL);
 
 error:
 	environ_free(&env);
@@ -164,5 +164,5 @@ error:
 		window_remove_pane(w, new_wp);
 	ctx->error(ctx, "create pane failed: %s", cause);
 	free(cause);
-	return (-1);
+	return (CMD_RETURN_ERROR);
 }

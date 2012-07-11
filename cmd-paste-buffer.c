@@ -28,7 +28,7 @@
  * Paste paste buffer if present.
  */
 
-int	cmd_paste_buffer_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_paste_buffer_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_paste_buffer_filter(struct window_pane *,
 	    const char *, size_t, const char *, int bracket);
@@ -43,7 +43,7 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 	cmd_paste_buffer_exec
 };
 
-int
+enum cmd_retval
 cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -56,7 +56,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	int			 pflag;
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (!args_has(args, 'b'))
 		buffer = -1;
@@ -65,7 +65,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (cause != NULL) {
 			ctx->error(ctx, "buffer %s", cause);
 			free(cause);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	}
 
@@ -75,7 +75,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		pb = paste_get_index(&global_buffers, buffer);
 		if (pb == NULL) {
 			ctx->error(ctx, "no buffer %d", buffer);
-			return (-1);
+			return (CMD_RETURN_ERROR);
 		}
 	}
 
@@ -100,7 +100,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 			paste_free_index(&global_buffers, buffer);
 	}
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }
 
 /* Add bytes to a buffer and filter '\n' according to separator. */

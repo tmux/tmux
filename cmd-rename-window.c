@@ -26,7 +26,7 @@
  * Rename a window.
  */
 
-int	cmd_rename_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_rename_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_rename_window_entry = {
 	"rename-window", "renamew",
@@ -38,7 +38,7 @@ const struct cmd_entry cmd_rename_window_entry = {
 	cmd_rename_window_exec
 };
 
-int
+enum cmd_retval
 cmd_rename_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
@@ -46,12 +46,12 @@ cmd_rename_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct winlink	*wl;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), &s)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	window_set_name(wl->window, args->argv[0]);
 	options_set_number(&wl->window->options, "automatic-rename", 0);
 
 	server_status_window(wl->window);
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

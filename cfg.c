@@ -81,7 +81,7 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 	size_t		 len;
 	struct cmd_list	*cmdlist;
 	struct cmd_ctx	 ctx;
-	int		 retval;
+	enum cmd_retval	 retval;
 
 	if ((f = fopen(path, "rb")) == NULL) {
 		cfg_add_cause(causes, "%s: %s", path, strerror(errno));
@@ -90,7 +90,7 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 	n = 0;
 
 	line = NULL;
-	retval = 0;
+	retval = CMD_RETURN_NORMAL;
 	while ((buf = fgetln(f, &len))) {
 		if (buf[len - 1] == '\n')
 			len--;
@@ -145,8 +145,18 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		ctx.info = cfg_print;
 
 		cfg_cause = NULL;
-		if (cmd_list_exec(cmdlist, &ctx) == 1)
-			retval = 1;
+		switch (cmd_list_exec(cmdlist, &ctx)) {
+		case CMD_RETURN_YIELD:
+			if (retval != CMD_RETURN_ATTACH)
+				retval = CMD_RETURN_YIELD;
+			break;
+		case CMD_RETURN_ATTACH:
+			retval = CMD_RETURN_ATTACH;
+			break;
+		case CMD_RETURN_ERROR:
+		case CMD_RETURN_NORMAL:
+			break;
+		}
 		cmd_list_free(cmdlist);
 		if (cfg_cause != NULL) {
 			cfg_add_cause(

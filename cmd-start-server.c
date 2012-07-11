@@ -24,7 +24,7 @@
  * Start the server and do nothing else.
  */
 
-int	cmd_start_server_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_start_server_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_start_server_entry = {
 	"start-server", "start",
@@ -37,8 +37,8 @@ const struct cmd_entry cmd_start_server_entry = {
 };
 
 /* ARGSUSED */
-int
+enum cmd_retval
 cmd_start_server_exec(unused struct cmd *self, unused struct cmd_ctx *ctx)
 {
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

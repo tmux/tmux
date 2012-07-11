@@ -26,7 +26,7 @@
  * Move a window.
  */
 
-int	cmd_move_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_move_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_move_window_entry = {
 	"move-window", "movew",
@@ -38,7 +38,7 @@ const struct cmd_entry cmd_move_window_entry = {
 	cmd_move_window_exec
 };
 
-int
+enum cmd_retval
 cmd_move_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
@@ -49,28 +49,28 @@ cmd_move_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (args_has(args, 'r')) {
 		if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
-			return (-1);
+			return (CMD_RETURN_ERROR);
 
 		session_renumber_windows(s);
 		recalculate_sizes();
 
-		return (0);
+		return (CMD_RETURN_NORMAL);
 	}
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 's'), &src)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	if ((idx = cmd_find_index(ctx, args_get(args, 't'), &dst)) == -2)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	kflag = args_has(self->args, 'k');
 	dflag = args_has(self->args, 'd');
 	if (server_link_window(src, wl, dst, idx, kflag, !dflag, &cause) != 0) {
 		ctx->error(ctx, "can't move window: %s", cause);
 		free(cause);
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 	server_unlink_window(src, wl);
 	recalculate_sizes();
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }

@@ -70,7 +70,7 @@ const struct cmd_entry cmd_choose_window_entry = {
 	cmd_choose_tree_exec
 };
 
-int
+enum cmd_retval
 cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
@@ -89,17 +89,17 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (ctx->curclient == NULL) {
 		ctx->error(ctx, "must be run interactively");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	s = ctx->curclient->session;
 	tty = &ctx->curclient->tty;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
-		return (0);
+		return (CMD_RETURN_NORMAL);
 
 	/* Sort out which command this is. */
 	wflag = sflag = 0;
@@ -221,7 +221,7 @@ windows_only:
 	window_choose_ready(wl->window->active, cur_win,
 		cmd_choose_tree_callback, cmd_choose_tree_free);
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }
 
 void
@@ -248,4 +248,3 @@ cmd_choose_tree_free(struct window_choose_data *cdata)
 	free(cdata);
 
 }
-

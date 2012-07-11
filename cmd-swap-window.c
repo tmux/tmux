@@ -38,7 +38,7 @@ const struct cmd_entry cmd_swap_window_entry = {
 	cmd_swap_window_exec
 };
 
-int
+enum cmd_retval
 cmd_swap_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
@@ -50,21 +50,21 @@ cmd_swap_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	target_src = args_get(args, 's');
 	if ((wl_src = cmd_find_window(ctx, target_src, &src)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	target_dst = args_get(args, 't');
 	if ((wl_dst = cmd_find_window(ctx, target_dst, &dst)) == NULL)
-		return (-1);
+		return (CMD_RETURN_ERROR);
 
 	sg_src = session_group_find(src);
 	sg_dst = session_group_find(dst);
 	if (src != dst &&
 	    sg_src != NULL && sg_dst != NULL && sg_src == sg_dst) {
 		ctx->error(ctx, "can't move window, sessions are grouped");
-		return (-1);
+		return (CMD_RETURN_ERROR);
 	}
 
 	if (wl_dst->window == wl_src->window)
-		return (0);
+		return (CMD_RETURN_NORMAL);
 
 	w = wl_dst->window;
 	wl_dst->window = wl_src->window;
@@ -83,5 +83,5 @@ cmd_swap_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	recalculate_sizes();
 
-	return (0);
+	return (CMD_RETURN_NORMAL);
 }
