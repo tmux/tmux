@@ -66,8 +66,7 @@ dist_tmux_SOURCES = \
 	cmd-capture-pane.c \
 	cmd-choose-buffer.c \
 	cmd-choose-client.c \
-	cmd-choose-session.c \
-	cmd-choose-window.c \
+	cmd-choose-tree.c \
 	cmd-clear-history.c \
 	cmd-clock-mode.c \
 	cmd-command-prompt.c \
