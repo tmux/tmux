@@ -142,6 +142,8 @@
 - allow commands to be executed when certaing patterns in a screen
   are clicked on with the mouse
 - flag to make next/previous commands skip a window
+- way to do tmux command/run-shell from mode keys
+- send command to all windows
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!
