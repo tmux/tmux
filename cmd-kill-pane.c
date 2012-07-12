@@ -43,7 +43,7 @@ cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
-	struct window_pane	*loopwp, *nextwp, *wp;
+	struct window_pane	*loopwp, *tmpwp, *wp;
 
 	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
@@ -56,14 +56,11 @@ cmd_kill_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	if (args_has(self->args, 'a')) {
-		loopwp = TAILQ_FIRST(&wl->window->panes);
-		while (loopwp != NULL) {
-			nextwp = TAILQ_NEXT(loopwp, entry);
-			if (loopwp != wp) {
-				layout_close_pane(loopwp);
-				window_remove_pane(wl->window, loopwp);
-			}
-			loopwp = nextwp;
+		TAILQ_FOREACH_SAFE(loopwp, &wl->window->panes, entry, tmpwp) {
+			if (loopwp == wp)
+				continue;
+			layout_close_pane(loopwp);
+			window_remove_pane(wl->window, loopwp);
 		}
 	} else {
 		layout_close_pane(wp);
