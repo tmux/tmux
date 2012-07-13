@@ -91,6 +91,8 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 	if (c != NULL && c->session != NULL)
 		guards = c->flags & CLIENT_CONTROL;
 
+	notify_disable();
+
 	retval = 0;
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
 		if (guards)
@@ -128,6 +130,8 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 			break;
 		}
 	}
+
+	notify_enable();
 	return (retval);
 }
 
