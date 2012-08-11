@@ -34,7 +34,7 @@
  * Enter choice mode to choose a session and/or window.
  */
 
-int	cmd_choose_tree_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	cmd_choose_tree_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_choose_tree_callback(struct window_choose_data *);
 void	cmd_choose_tree_free(struct window_choose_data *);
