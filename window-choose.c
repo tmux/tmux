@@ -80,7 +80,6 @@ window_choose_add(struct window_pane *wp, struct window_choose_data *wcd)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct window_choose_mode_item	*item;
-	int				 width;
 	char				 tmp[10];
 
 	ARRAY_EXPAND(&data->list, 1);
@@ -90,9 +89,7 @@ window_choose_add(struct window_pane *wp, struct window_choose_data *wcd)
 	item->wcd = wcd;
 	item->pos = ARRAY_LENGTH(&data->list) - 1;
 
-	width = snprintf (tmp, sizeof tmp, "%u", item->pos);
-	if (width > data->width)
-		data->width = width;
+	data->width = snprintf (tmp, sizeof tmp , "%u", item->pos);
 }
 
 void
