@@ -74,6 +74,7 @@ const struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 
 /* Choice keys command strings. */
 const struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
+	{ MODEKEYCHOICE_BACKSPACE, "backspace" },
 	{ MODEKEYCHOICE_CANCEL, "cancel" },
 	{ MODEKEYCHOICE_CHOOSE, "choose" },
 	{ MODEKEYCHOICE_DOWN, "down" },
@@ -81,6 +82,7 @@ const struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
 	{ MODEKEYCHOICE_PAGEUP, "page-up" },
 	{ MODEKEYCHOICE_SCROLLDOWN, "scroll-down" },
 	{ MODEKEYCHOICE_SCROLLUP, "scroll-up" },
+	{ MODEKEYCHOICE_STARTNUMBERPREFIX, "start-number-prefix" },
 	{ MODEKEYCHOICE_UP, "up" },
 
 	{ 0, NULL }
@@ -190,6 +192,16 @@ struct mode_key_tree mode_key_tree_vi_edit;
 
 /* vi choice selection keys. */
 const struct mode_key_entry mode_key_vi_choice[] = {
+	{ '0',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '1',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '2',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '3',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '4',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '5',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '6',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '7',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '8',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '9',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
 	{ '\002' /* C-b */,     0, MODEKEYCHOICE_PAGEUP },
 	{ '\003' /* C-c */,	0, MODEKEYCHOICE_CANCEL },
 	{ '\005' /* C-e */,     0, MODEKEYCHOICE_SCROLLDOWN },
@@ -199,6 +211,7 @@ const struct mode_key_entry mode_key_vi_choice[] = {
 	{ 'j',			0, MODEKEYCHOICE_DOWN },
 	{ 'k',			0, MODEKEYCHOICE_UP },
 	{ 'q',			0, MODEKEYCHOICE_CANCEL },
+	{ KEYC_BSPACE,		0, MODEKEYCHOICE_BACKSPACE },
 	{ KEYC_DOWN | KEYC_CTRL,0, MODEKEYCHOICE_SCROLLDOWN },
 	{ KEYC_DOWN,		0, MODEKEYCHOICE_DOWN },
 	{ KEYC_NPAGE,		0, MODEKEYCHOICE_PAGEDOWN },
@@ -317,6 +330,16 @@ struct mode_key_tree mode_key_tree_emacs_edit;
 
 /* emacs choice selection keys. */
 const struct mode_key_entry mode_key_emacs_choice[] = {
+	{ '0',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '1',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '2',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '3',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '4',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '5',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '6',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '7',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '8',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
+	{ '9',			0, MODEKEYCHOICE_STARTNUMBERPREFIX },
 	{ '\003' /* C-c */,	0, MODEKEYCHOICE_CANCEL },
 	{ '\016' /* C-n */,	0, MODEKEYCHOICE_DOWN },
 	{ '\020' /* C-p */,	0, MODEKEYCHOICE_UP },
@@ -325,6 +348,7 @@ const struct mode_key_entry mode_key_emacs_choice[] = {
 	{ '\r',			0, MODEKEYCHOICE_CHOOSE },
 	{ 'q',			0, MODEKEYCHOICE_CANCEL },
 	{ 'v' | KEYC_ESCAPE,	0, MODEKEYCHOICE_PAGEUP },
+	{ KEYC_BSPACE,		0, MODEKEYCHOICE_BACKSPACE },
 	{ KEYC_DOWN | KEYC_CTRL,0, MODEKEYCHOICE_SCROLLDOWN },
 	{ KEYC_DOWN,		0, MODEKEYCHOICE_DOWN },
 	{ KEYC_NPAGE,		0, MODEKEYCHOICE_PAGEDOWN },

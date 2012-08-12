@@ -1115,10 +1115,7 @@ window_copy_write_line(
 	char				 hdr[32];
 	size_t	 			 last, xoff = 0, size = 0;
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	colour_set_fg(&gc, options_get_number(oo, "mode-fg"));
-	colour_set_bg(&gc, options_get_number(oo, "mode-bg"));
-	gc.attr |= options_get_number(oo, "mode-attr");
+	window_mode_attrs(&gc, oo);
 
 	last = screen_size_y(s) - 1;
 	if (py == 0) {
@@ -1232,10 +1229,7 @@ window_copy_update_selection(struct window_pane *wp)
 		return (0);
 
 	/* Set colours. */
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	colour_set_fg(&gc, options_get_number(oo, "mode-fg"));
-	colour_set_bg(&gc, options_get_number(oo, "mode-bg"));
-	gc.attr |= options_get_number(oo, "mode-attr");
+	window_mode_attrs(&gc, oo);
 
 	/* Find top of screen. */
 	ty = screen_hsize(data->backing) - data->oy;
