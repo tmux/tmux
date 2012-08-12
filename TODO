@@ -144,6 +144,7 @@
 - flag to make next/previous commands skip a window
 - way to do tmux command/run-shell from mode keys
 - send command to all windows
+- choose-pane command
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!
