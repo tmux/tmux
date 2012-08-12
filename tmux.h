@@ -1480,6 +1480,8 @@ void	mode_key_init(struct mode_key_data *, struct mode_key_tree *);
 enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
 
 /* notify.c */
+void	notify_enable(void);
+void	notify_disable(void);
 void	notify_window_layout_changed(struct window *);
 void	notify_window_unlinked(struct session *, struct window *);
 void	notify_window_linked(struct session *, struct window *);
@@ -2158,11 +2160,11 @@ void		 queue_window_name(struct window *);
 char		*default_window_name(struct window *);
 
 /* signal.c */
-void set_signals(void(*)(int, short, void *));
-void clear_signals(int);
+void	set_signals(void(*)(int, short, void *));
+void	clear_signals(int);
 
 /* control.c */
-void control_callback(struct client *, int, void*);
+void	control_callback(struct client *, int, void*);
 
 /* session.c */
 extern struct sessions sessions;
