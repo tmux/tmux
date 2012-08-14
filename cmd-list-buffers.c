@@ -51,7 +51,7 @@ cmd_list_buffers_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	const char		*template;
 
 	if ((template = args_get(args, 'F')) == NULL)
-		template = DEFAULT_BUFFER_LIST_TEMPLATE;
+		template = LIST_BUFFERS_TEMPLATE;
 
 	idx = 0;
 	while ((pb = paste_walk_stack(&global_buffers, &idx)) != NULL) {

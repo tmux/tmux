@@ -140,7 +140,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
-			template = DEFAULT_PANE_INFO_TEMPLATE;
+			template = SPLIT_WINDOW_TEMPLATE;
 
 		ft = format_create();
 		if ((c = cmd_find_client(ctx, NULL)) != NULL)
