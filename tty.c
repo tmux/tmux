@@ -667,7 +667,6 @@ tty_write(
 {
 	struct window_pane	*wp = ctx->wp;
 	struct client		*c;
-	struct session		*s;
 	u_int		 	 i;
 
 	/* wp can be NULL if updating the screen but not the terminal. */
@@ -681,25 +680,19 @@ tty_write(
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
+		if (c == NULL || c->session == NULL || c->tty.term == NULL)
 			continue;
-		if (c->flags & CLIENT_SUSPENDED)
+		if (c->flags & (CLIENT_SUSPENDED|TTY_FREEZE))
 			continue;
-		s = c->session;
+		if (c->session->curw->window != wp->window)
+			continue;
 
-		if (s->curw->window == wp->window) {
-			if (c->tty.term == NULL)
-				continue;
-			if (c->tty.flags & TTY_FREEZE)
-				continue;
+		ctx->xoff = wp->xoff;
+		ctx->yoff = wp->yoff;
+		if (status_at_line(c) == 0)
+			ctx->yoff++;
 
-			ctx->xoff = wp->xoff;
-			ctx->yoff = wp->yoff;
-			if (status_at_line(c) == 0)
-				ctx->yoff++;
-
-			cmdfn(&c->tty, ctx);
-		}
+		cmdfn(&c->tty, ctx);
 	}
 }
 
