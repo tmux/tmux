@@ -2130,6 +2130,7 @@ struct window_pane *window_pane_find_down(struct window_pane *);
 struct window_pane *window_pane_find_left(struct window_pane *);
 struct window_pane *window_pane_find_right(struct window_pane *);
 void		 window_set_name(struct window *, const char *);
+void		 window_remove_ref(struct window *);
 void		 winlink_clear_flags(struct winlink *);
 void		 window_mode_attrs(struct grid_cell *, struct options *);
 

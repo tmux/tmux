@@ -125,7 +125,8 @@ notify_drain(void)
 		if (ne->session != NULL)
 			ne->session->references--;
 		if (ne->window != NULL)
-			ne->window->references--;
+			window_remove_ref(ne->window);
+
 		TAILQ_REMOVE(&notify_queue, ne, entry);
 		free(ne);
 	}
