@@ -71,7 +71,8 @@ struct window_choose_mode_data {
 	void			(*freefn)(struct window_choose_data *);
 };
 
-int	window_choose_index_key(int);
+int     window_choose_key_index(struct window_choose_mode_data *, u_int);
+int     window_choose_index_key(struct window_choose_mode_data *, int);
 void	window_choose_prompt_input(enum window_choose_input_type,
 	    const char *, struct window_pane *, int);
 
@@ -89,7 +90,7 @@ window_choose_add(struct window_pane *wp, struct window_choose_data *wcd)
 	item->wcd = wcd;
 	item->pos = ARRAY_LENGTH(&data->list) - 1;
 
-	data->width = snprintf (tmp, sizeof tmp , "%u", item->pos);
+	data->width = xsnprintf (tmp, sizeof tmp , "%u", item->pos);
 }
 
 void
@@ -241,27 +242,48 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 
 	items = ARRAY_LENGTH(&data->list);
 
+	if (data->input_type == WINDOW_CHOOSE_GOTO_ITEM) {
+		switch (mode_key_lookup(&data->mdata, key)) {
+		case MODEKEYCHOICE_CANCEL:
+			data->input_type = WINDOW_CHOOSE_NORMAL;
+			window_choose_redraw_screen(wp);
+			break;
+		case MODEKEYCHOICE_CHOOSE:
+			n = strtonum(data->input_str, 0, INT_MAX, NULL);
+			if (n > items - 1) {
+				data->input_type = WINDOW_CHOOSE_NORMAL;
+				window_choose_redraw_screen(wp);
+				break;
+			}
+			item = &ARRAY_ITEM(&data->list, n);
+			window_choose_fire_callback(wp, item->wcd);
+			window_pane_reset_mode(wp);
+			break;
+		case MODEKEYCHOICE_BACKSPACE:
+			input_len = strlen(data->input_str);
+			if (input_len > 0)
+				data->input_str[input_len - 1] = '\0';
+			window_choose_redraw_screen(wp);
+			break;
+		default:
+			if (key < '0' || key > '9')
+				break;
+			window_choose_prompt_input(WINDOW_CHOOSE_GOTO_ITEM,
+			    "Goto Item", wp, key);
+			break;
+		}
+		return;
+	}
+
 	switch (mode_key_lookup(&data->mdata, key)) {
 	case MODEKEYCHOICE_CANCEL:
 		window_choose_fire_callback(wp, NULL);
 		window_pane_reset_mode(wp);
 		break;
 	case MODEKEYCHOICE_CHOOSE:
-		switch (data->input_type) {
-		case WINDOW_CHOOSE_NORMAL:
-			item = &ARRAY_ITEM(&data->list, data->selected);
-			window_choose_fire_callback(wp, item->wcd);
-			window_pane_reset_mode(wp);
-			break;
-		case WINDOW_CHOOSE_GOTO_ITEM:
-			n = strtonum(data->input_str, 0, INT_MAX, NULL);
-			if (n > items - 1)
-				break;
-			item = &ARRAY_ITEM(&data->list, n);
-			window_choose_fire_callback(wp, item->wcd);
-			window_pane_reset_mode(wp);
-			break;
-		}
+		item = &ARRAY_ITEM(&data->list, data->selected);
+		window_choose_fire_callback(wp, item->wcd);
+		window_pane_reset_mode(wp);
 		break;
 	case MODEKEYCHOICE_UP:
 		if (items == 0)
@@ -366,29 +388,21 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 		window_choose_redraw_screen(wp);
 		break;
 	case MODEKEYCHOICE_STARTNUMBERPREFIX:
-		if (key < '0' && key > '9')
+		key &= KEYC_MASK_KEY;
+		if (key < '0' || key > '9')
 			break;
-
-		/*
-		 * If there's less than ten items (0-9) then pressing a number
-		 * will automatically select that item; otherwise, prompt for
-		 * the item to go to.
-		 */
-		if (ARRAY_LENGTH(&data->list) - 1 <= 9) {
-			idx = window_choose_index_key(key);
-			if (idx < 0 || (u_int) idx >= ARRAY_LENGTH(&data->list))
-				break;
-			data->selected = idx;
-
-			item = &ARRAY_ITEM(&data->list, data->selected);
-			window_choose_fire_callback(wp, item->wcd);
-			window_pane_reset_mode(wp);
-		} else {
-			window_choose_prompt_input(
-			    WINDOW_CHOOSE_GOTO_ITEM, "Goto item", wp, key);
-		}
+		window_choose_prompt_input(WINDOW_CHOOSE_GOTO_ITEM,
+		    "Goto Item", wp, key);
 		break;
 	default:
+		idx = window_choose_index_key(data, key);
+		if (idx < 0 || (u_int) idx >= ARRAY_LENGTH(&data->list))
+			break;
+		data->selected = idx;
+
+		item = &ARRAY_ITEM(&data->list, data->selected);
+		window_choose_fire_callback(wp, item->wcd);
+		window_pane_reset_mode(wp);
 		break;
 	}
 }
@@ -430,8 +444,8 @@ window_choose_write_line(
 	struct screen			*s = &data->screen;
 	struct grid_cell		 gc;
 	size_t				 last, xoff = 0;
-	char				 hdr[32];
-	int				 utf8flag;
+	char				 hdr[32], label[32];
+	int				 utf8flag, key;
 
 	if (data->callbackfn == NULL)
 		fatalx("called before callback assigned");
@@ -448,10 +462,14 @@ window_choose_write_line(
 		if (item->wcd->wl != NULL &&
 		    item->wcd->wl->flags & WINLINK_ALERTFLAGS)
 			gc.attr |= GRID_ATTR_BRIGHT;
-		screen_write_nputs(ctx, screen_size_x(s) - 1,
-		    &gc, utf8flag, "(%*d) %s", data->width,
-		    item->pos, item->name);
 
+		key = window_choose_key_index(data, data->top + py);
+		if (key != -1)
+			xsnprintf (label, sizeof label, "(%c)", key);
+		else
+			xsnprintf (label, sizeof label, "(%d)", item->pos);
+		screen_write_nputs(ctx, screen_size_x(s) - 1, &gc, utf8flag,
+		    "%*s %s", data->width + 2, label, item->name);
 	}
 	while (s->cx < screen_size_x(s))
 		screen_write_putc(ctx, &gc, ' ');
@@ -470,13 +488,38 @@ window_choose_write_line(
 }
 
 int
-window_choose_index_key(int key)
+window_choose_key_index(struct window_choose_mode_data *data, u_int idx)
 {
-	static const char	keys[] = "0123456789";
+	static const char	keys[] = "0123456789"
+	                                 "abcdefghijklmnopqrstuvwxyz"
+	                                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	const char	       *ptr;
+	int			mkey;
+
+	for (ptr = keys; *ptr != '\0'; ptr++) {
+		mkey = mode_key_lookup(&data->mdata, *ptr);
+		if (mkey != MODEKEY_NONE && mkey != MODEKEY_OTHER)
+			continue;
+		if (idx-- == 0)
+			return (*ptr);
+	}
+	return (-1);
+}
+
+int
+window_choose_index_key(struct window_choose_mode_data *data, int key)
+{
+	static const char	keys[] = "0123456789"
+	                                 "abcdefghijklmnopqrstuvwxyz"
+	                                 "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	const char	       *ptr;
+	int			mkey;
 	u_int			idx = 0;
 
 	for (ptr = keys; *ptr != '\0'; ptr++) {
+		mkey = mode_key_lookup(&data->mdata, *ptr);
+		if (mkey != MODEKEY_NONE && mkey != MODEKEY_OTHER)
+			continue;
 		if (key == *ptr)
 			return (idx);
 		idx++;
