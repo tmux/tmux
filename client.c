@@ -189,7 +189,7 @@ client_main(int argc, char **argv, int flags)
 		 * flag.
 		 */
 		if ((cmdlist = cmd_list_parse(argc, argv, &cause)) == NULL) {
-			log_warnx("%s", cause);
+			fprintf(stderr, "%s\n", cause);
 			return (1);
 		}
 		cmdflags &= ~CMD_STARTSERVER;
