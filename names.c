@@ -50,6 +50,9 @@ window_name_callback(unused int fd, unused short events, void *data)
 	struct window	*w = data;
 	char		*name, *wname;
 
+	if (w->active == NULL)
+		return;
+
 	if (!options_get_number(&w->options, "automatic-rename")) {
 		if (event_initialized(&w->name_timer))
 			event_del(&w->name_timer);
