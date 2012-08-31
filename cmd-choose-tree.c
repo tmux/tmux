@@ -27,8 +27,6 @@
 
 #define CMD_CHOOSE_TREE_WINDOW_ACTION "select-window -t '%%'"
 #define CMD_CHOOSE_TREE_SESSION_ACTION "switch-client -t '%%'"
-#define CMD_CHOOSE_TREE_WINDOW_TEMPLATE \
-    DEFAULT_WINDOW_TEMPLATE " \"#{pane_title}\""
 
 /*
  * Enter choice mode to choose a session and/or window.
@@ -104,7 +102,7 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (self->entry == &cmd_choose_session_entry) {
 		sflag = 1;
 		if ((ses_template = args_get(args, 'F')) == NULL)
-			ses_template = DEFAULT_SESSION_TEMPLATE;
+			ses_template = CHOOSE_TREE_SESSION_TEMPLATE;
 
 		if (args->argc != 0)
 			ses_action = args->argv[0];
@@ -113,7 +111,7 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
 	} else if (self->entry == &cmd_choose_window_entry) {
 		wflag = 1;
 		if ((win_template = args_get(args, 'F')) == NULL)
-			win_template = CMD_CHOOSE_TREE_WINDOW_TEMPLATE;
+			win_template = CHOOSE_TREE_WINDOW_TEMPLATE;
 
 		if (args->argc != 0)
 			win_action = args->argv[0];
@@ -130,10 +128,10 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
 			win_action = CMD_CHOOSE_TREE_WINDOW_ACTION;
 
 		if ((ses_template = args_get(args, 'S')) == NULL)
-			ses_template = DEFAULT_SESSION_TEMPLATE;
+			ses_template = CHOOSE_TREE_SESSION_TEMPLATE;
 
 		if ((win_template = args_get(args, 'W')) == NULL)
-			win_template = CMD_CHOOSE_TREE_WINDOW_TEMPLATE;
+			win_template = CHOOSE_TREE_WINDOW_TEMPLATE;
 	}
 
 	/*

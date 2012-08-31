@@ -85,12 +85,10 @@ cmd_list_windows_session(
 	if (template == NULL) {
 		switch (type) {
 		case 0:
-			template = DEFAULT_WINDOW_TEMPLATE \
-				" [layout #{window_layout}] #{window_id}" \
-				"#{?window_active, (active),}";
+			template = LIST_WINDOWS_TEMPLATE;
 			break;
 		case 1:
-			template = "#{session_name}:" DEFAULT_WINDOW_TEMPLATE;
+			template = LIST_WINDOWS_WITH_SESSION_TEMPLATE;
 			break;
 		}
 	}

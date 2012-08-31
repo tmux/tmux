@@ -70,7 +70,7 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (CMD_RETURN_NORMAL);
 
 	if ((template = args_get(args, 'F')) == NULL)
-		template = DEFAULT_CLIENT_TEMPLATE;
+		template = CHOOSE_CLIENT_TEMPLATE;
 
 	if (args->argc != 0)
 		action = xstrdup(args->argv[0]);

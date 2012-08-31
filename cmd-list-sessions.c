@@ -51,7 +51,7 @@ cmd_list_sessions_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*line;
 
 	if ((template = args_get(args, 'F')) == NULL)
-		template = DEFAULT_SESSION_TEMPLATE;
+		template = LIST_SESSIONS_TEMPLATE;
 
 	n = 0;
 	RB_FOREACH(s, sessions, &sessions) {
