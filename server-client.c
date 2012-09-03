@@ -603,6 +603,9 @@ server_client_check_redraw(struct client *c)
 	struct window_pane	*wp;
 	int		 	 flags, redraw;
 
+	if (c->flags & CLIENT_SUSPENDED)
+		return;
+
 	flags = c->tty.flags & TTY_FREEZE;
 	c->tty.flags &= ~TTY_FREEZE;
 
@@ -900,6 +903,7 @@ server_client_msg_identify(
 	if (data->flags & IDENTIFY_CONTROL) {
 		c->stdin_callback = control_callback;
 		c->flags |= (CLIENT_CONTROL|CLIENT_SUSPENDED);
+		server_write_client(c, MSG_STDIN, NULL, 0);
 
 		c->tty.fd = -1;
 		c->tty.log_fd = -1;

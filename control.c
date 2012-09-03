@@ -28,7 +28,6 @@
 void printflike2 control_msg_error(struct cmd_ctx *, const char *, ...);
 void printflike2 control_msg_print(struct cmd_ctx *, const char *, ...);
 void printflike2 control_msg_info(struct cmd_ctx *, const char *, ...);
-void printflike2 control_write(struct client *, const char *, ...);
 
 /* Command error callback. */
 void printflike2

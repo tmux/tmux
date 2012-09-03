@@ -81,6 +81,7 @@ SRCS=	arguments.c \
 	cmd.c \
 	colour.c \
 	control.c \
+	control-notify.c \
 	environ.c \
 	format.c \
 	grid-utf8.c \
