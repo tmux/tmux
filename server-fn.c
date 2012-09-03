@@ -581,5 +581,8 @@ server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
 
 	if (c->stdin_closed)
 		c->stdin_callback (c, 1, c->stdin_callback_data);
+
+	server_write_client(c, MSG_STDIN, NULL, 0);
+
 	return (0);
 }
