@@ -51,8 +51,8 @@ cmd_choose_list_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
 	struct winlink			*wl;
-	const char			*lists;
-	char				*template, *list, *copy, *lists1;
+	const char			*list1;
+	char				*template, *item, *copy, *list;
 	u_int				 idx;
 
 	if (ctx->curclient == NULL) {
@@ -60,7 +60,7 @@ cmd_choose_list_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if ((lists = args_get(args, 'l')) == NULL)
+	if ((list1 = args_get(args, 'l')) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
@@ -74,13 +74,13 @@ cmd_choose_list_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		template = xstrdup(CMD_CHOOSE_LIST_DEFAULT_TEMPLATE);
 
-	copy = lists1 = xstrdup(lists);
+	copy = list = xstrdup(list1);
 	idx = 0;
-	while ((list = strsep(&lists1, ",")) != NULL)
+	while ((item = strsep(&list, ",")) != NULL)
 	{
-		if (*list == '\0') /* no empty entries */
+		if (*item == '\0') /* no empty entries */
 			continue;
-		window_choose_add_item(wl->window->active, ctx, wl, list,
+		window_choose_add_item(wl->window->active, ctx, wl, item,
 		    template, idx);
 		idx++;
 	}
