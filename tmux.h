@@ -897,6 +897,7 @@ struct window_choose_data {
 	char		        *ft_template;
 	char			*command;
 	u_int			 idx;
+	int			 pane_id;
 };
 
 struct window_choose_mode_item {
