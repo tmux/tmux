@@ -212,7 +212,8 @@ windows_only:
 
 			window_choose_add_window(wl->window->active,
 			    ctx, s2, wm, cur_win_template,
-			    final_win_action, idx_ses);
+			    final_win_action,
+			    (wflag && !sflag) ? win_ses : idx_ses);
 
 			free(final_win_action);
 		}
