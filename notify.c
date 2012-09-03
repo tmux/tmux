@@ -94,28 +94,28 @@ notify_drain(void)
 	TAILQ_FOREACH_SAFE(ne, &notify_queue, entry, ne1) {
 		switch (ne->type) {
 		case NOTIFY_WINDOW_LAYOUT_CHANGED:
-			/* control_notify_window_layout_changed(ne->window); */
+			control_notify_window_layout_changed(ne->window);
 			break;
 		case NOTIFY_WINDOW_UNLINKED:
-			/* control_notify_window_unlinked(ne->session, ne->window); */
+			control_notify_window_unlinked(ne->session, ne->window);
 			break;
 		case NOTIFY_WINDOW_LINKED:
-			/* control_notify_window_linked(ne->session, ne->window); */
+			control_notify_window_linked(ne->session, ne->window);
 			break;
 		case NOTIFY_WINDOW_RENAMED:
-			/* control_notify_window_renamed(ne->window); */
+			control_notify_window_renamed(ne->window);
 			break;
 		case NOTIFY_ATTACHED_SESSION_CHANGED:
-			/* control_notify_attached_session_changed(ne->client, ne->session); */
+			control_notify_attached_session_changed(ne->client);
 			break;
 		case NOTIFY_SESSION_RENAMED:
-			/* control_notify_session_renamed(ne->session); */
+			control_notify_session_renamed(ne->session);
 			break;
 		case NOTIFY_SESSION_CREATED:
-			/* control_notify_session_created(ne->session); */
+			control_notify_session_created(ne->session);
 			break;
 		case NOTIFY_SESSION_CLOSED:
-			/* control_notify_session_close(ne->session); */
+			control_notify_session_close(ne->session);
 			break;
 		}
 
