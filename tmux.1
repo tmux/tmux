@@ -1071,6 +1071,33 @@ section.
 This command works only from inside
 .Nm .
 .It Xo
+.Ic choose-list
+.Op Fl l Ar items
+.Op Fl t Ar target-window
+.Op Ar template
+.Xc
+Put a window into list choice mode, allowing
+.Ar items
+to be selected.
+.Ar items
+can be a comma-separated list to display more than one item.
+If an item has spaces, that entry must be quoted.
+After an item is chosen,
+.Ql %%
+is replaced by the chosen item in the
+.Ar template
+and the result is executed as a command.
+If
+.Ar template
+is not given, "run-shell '%%'" is used.
+.Ar items
+also accepts format specifiers.
+For the meaning of this see the
+.Sx FORMATS
+section.
+This command works only from inside
+.Nm .
+.It Xo
 .Ic choose-session
 .Op Fl F Ar format
 .Op Fl t Ar target-window

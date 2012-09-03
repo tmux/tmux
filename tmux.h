@@ -1712,6 +1712,7 @@ extern const struct cmd_entry cmd_break_pane_entry;
 extern const struct cmd_entry cmd_capture_pane_entry;
 extern const struct cmd_entry cmd_choose_buffer_entry;
 extern const struct cmd_entry cmd_choose_client_entry;
+extern const struct cmd_entry cmd_choose_list_entry;
 extern const struct cmd_entry cmd_choose_session_entry;
 extern const struct cmd_entry cmd_choose_tree_entry;
 extern const struct cmd_entry cmd_choose_window_entry;
@@ -2199,6 +2200,9 @@ struct window_choose_data	*window_choose_add_window(struct window_pane *,
 			const char *, char *, u_int);
 struct window_choose_data	*window_choose_add_session(struct window_pane *,
 			struct cmd_ctx *, struct session *, const char *,
+			char *, u_int);
+struct window_choose_data	*window_choose_add_item(struct window_pane *,
+			struct cmd_ctx *, struct winlink *, const char *,
 			char *, u_int);
 
 /* names.c */

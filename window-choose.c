@@ -637,6 +637,38 @@ window_choose_add_session(struct window_pane *wp, struct cmd_ctx *ctx,
 }
 
 struct window_choose_data *
+window_choose_add_item(struct window_pane *wp, struct cmd_ctx *ctx,
+    struct winlink *wl, const char *template, char *action, u_int idx)
+{
+	struct window_choose_data	*wcd;
+	char				*action_data;
+
+	wcd = window_choose_data_create(ctx);
+	wcd->idx = wl->idx;
+	wcd->ft_template = xstrdup(template);
+	format_add(wcd->ft, "line", "%u", idx);
+	format_session(wcd->ft, wcd->session);
+	format_winlink(wcd->ft, wcd->session, wl);
+	format_window_pane(wcd->ft, wl->window->active);
+
+	wcd->client->references++;
+	wcd->session->references++;
+
+	window_choose_add(wp, wcd);
+
+	/*
+	 * Interpolate action_data here, since the data we pass back is the
+	 * expanded template itself.
+	 */
+	xasprintf(&action_data, "%s", format_expand(wcd->ft, wcd->ft_template));
+	wcd->command = cmd_template_replace(action, action_data, 1);
+	free(action_data);
+
+	return (wcd);
+
+}
+
+struct window_choose_data *
 window_choose_add_window(struct window_pane *wp, struct cmd_ctx *ctx,
     struct session *s, struct winlink *wl, const char *template,
     char *action, u_int idx)
