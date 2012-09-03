@@ -281,7 +281,6 @@ client_main(int argc, char **argv, int flags)
 
 	/* Set the event and dispatch. */
 	client_update_event();
-	event_add (&client_stdin, NULL);
 	event_dispatch();
 
 	/* Print the exit message, if any, and exit. */
@@ -515,6 +514,12 @@ client_dispatch_wait(void *data)
 
 			event_del(&client_stdin);
 			client_attached = 1;
+			break;
+		case MSG_STDIN:
+			if (datalen != 0)
+				fatalx("bad MSG_STDIN size");
+
+			event_add(&client_stdin, NULL);
 			break;
 		case MSG_STDOUT:
 			if (datalen != sizeof stdoutdata)
