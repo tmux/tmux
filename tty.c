@@ -44,10 +44,6 @@ void	tty_colours_fg(struct tty *, const struct grid_cell *);
 void	tty_colours_bg(struct tty *, const struct grid_cell *);
 
 int	tty_large_region(struct tty *, const struct tty_ctx *);
-void	tty_cra_pane(struct tty *,
-    const struct tty_ctx *, u_int, u_int, u_int, u_int, u_int, u_int);
-void	tty_era_pane(struct tty *,
-    const struct tty_ctx *, u_int, u_int, u_int, u_int);
 void	tty_redraw_region(struct tty *, const struct tty_ctx *);
 void	tty_emulate_repeat(
 	    struct tty *, enum tty_code_code, enum tty_code_code, u_int);
@@ -57,8 +53,6 @@ void	tty_cell(struct tty *,
 
 #define tty_use_acs(tty) \
 	(tty_term_has((tty)->term, TTYC_ACSC) && !((tty)->flags & TTY_UTF8))
-#define tty_use_rect(tty) \
-	((tty)->xterm_version > 270)
 
 #define tty_pane_full_width(tty, ctx) \
 	((ctx)->xoff == 0 && screen_size_x((ctx)->wp->screen) >= (tty)->sx)
@@ -251,19 +245,6 @@ tty_set_version(struct tty *tty, u_int version)
 	if (tty->xterm_version != 0)
 		return;
 	tty->xterm_version = version;
-
-	if (tty->xterm_version > 270) {
-		tty_puts(tty, "\033[65;1\"p");
-
-		tty_putcode(tty, TTYC_RMACS);
-		memcpy(&tty->cell, &grid_default_cell, sizeof tty->cell);
-
-		tty->cx = UINT_MAX;
-		tty->cy = UINT_MAX;
-
-		tty->rupper = UINT_MAX;
-		tty->rlower = UINT_MAX;
-	}
 }
 
 void
@@ -697,38 +678,6 @@ tty_write(
 }
 
 void
-tty_cra_pane(struct tty *tty, const struct tty_ctx *ctx,
-    u_int t, u_int l, u_int b, u_int r, u_int tt, u_int tl)
-{
-	char	 tmp[64];
-
-	snprintf(tmp, sizeof tmp,
-		 "\033[%u;%u;%u;%u;1;%u;%u;1$v",
-		 ctx->yoff + t + 1,
-		 ctx->xoff + l + 1,
-		 ctx->yoff + b + 1,
-		 ctx->xoff + r + 1,
-		 ctx->yoff + tt + 1,
-		 ctx->xoff + tl + 1);
-	tty_puts(tty, tmp);
-}
-
-void
-tty_era_pane(struct tty *tty, const struct tty_ctx *ctx,
-    u_int t, u_int l, u_int b, u_int r)
-{
-	char	 tmp[64];
-
-	snprintf(tmp, sizeof tmp,
-		 "\033[%u;%u;%u;%u$z",
-		 ctx->yoff + t + 1,
-		 ctx->xoff + l + 1,
-		 ctx->yoff + b + 1,
-		 ctx->xoff + r + 1);
-	tty_puts(tty, tmp);
-}
-
-void
 tty_cmd_insertcharacter(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
@@ -877,7 +826,6 @@ void
 tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
-	struct screen		*s = wp->screen;
 
 	if (ctx->ocy != ctx->orlower)
 		return;
@@ -886,12 +834,7 @@ tty_cmd_linefeed(struct tty *tty, const struct tty_ctx *ctx)
 	    !tty_term_has(tty->term, TTYC_CSR)) {
 		if (tty_large_region(tty, ctx))
 			wp->flags |= PANE_REDRAW;
-		else if (tty_use_rect(tty)) {
-			tty_cra_pane (tty, ctx, ctx->orupper + 1, 0,
-			    ctx->orlower, screen_size_x(s) - 1,
-			    ctx->orupper, 0);
-			tty_cmd_clearline(tty, ctx);
-		} else
+		else
 			tty_redraw_region(tty, ctx);
 		return;
 	}
