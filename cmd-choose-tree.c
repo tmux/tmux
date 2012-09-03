@@ -74,7 +74,6 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct args			*args = self->args;
 	struct winlink			*wl, *wm;
 	struct session			*s, *s2;
-	struct tty			*tty;
 	struct window_choose_data	*wcd = NULL;
 	const char			*ses_template, *win_template;
 	char				*final_win_action, *cur_win_template;
@@ -93,7 +92,6 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	s = ctx->curclient->session;
-	tty = &ctx->curclient->tty;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (CMD_RETURN_ERROR);
