@@ -12,14 +12,14 @@
 		<p id="upper-left-title">tmux</p>
 		<ul id="left-menu">
 		<li><a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">Download</a></li>
-		<li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/NOTES">Release Notes</a></li>
+		<li><a href="http://tmux.git.sourceforge.net/git/gitweb.cgi?p=tmux/tmux;a=blob;f=NOTES">Release Notes</a></li>
 		<li><a href="http://www.openbsd.org/cgi-bin/man.cgi?query=tmux&sektion=1">Manual Page</a></li>
-		<li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/FAQ">FAQ</a></li>
+		<li><a href="http://tmux.git.sourceforge.net/git/gitweb.cgi?p=tmux/tmux;a=blob;f=FAQ">FAQ</a></li>
 		<li><a href="http://www.openbsd.org/faq/faq7.html#tmux">tmux in the OpenBSD FAQ</a></li>
-		<li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/examples/">Examples</a></li>
+		<li><a href="http://tmux.git.sourceforge.net/git/gitweb.cgi?p=tmux/tmux;a=tree;f=examples">Examples</a></li>
 		<li>&nbsp;</li>
 		<li class="menu-headings">Source Code</li>
-		<li><a href="http://tmux.svn.sourceforge.net/viewvc/tmux/trunk/">SourceForge</a></li>
+		<li><a href="http://tmux.git.sourceforge.net/git/gitweb.cgi?p=tmux/tmux;a=tree">SourceForge</a></li>
 		<li><a href="http://www.openbsd.org/cgi-bin/cvsweb/src/usr.bin/tmux/">OpenBSD</a></li>
 		<li>&nbsp;</li>
 		<li class="menu-headings">Support</li>
