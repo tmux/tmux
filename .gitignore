@@ -7,3 +7,6 @@ config.log
 config.status
 etc/
 tmux
+Makefile
+Makefile.in
+configure
