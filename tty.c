@@ -1046,6 +1046,12 @@ tty_cmd_rawstring(struct tty *tty, const struct tty_ctx *ctx)
 
 	for (i = 0; i < ctx->num; i++)
 		tty_putc(tty, str[i]);
+
+	tty->cx = tty->cy = UINT_MAX;
+	tty->rupper = tty->rlower = UINT_MAX;
+
+	tty_reset(tty);
+	tty_cursor(tty, 0, 0);
 }
 
 void

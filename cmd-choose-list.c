@@ -86,6 +86,12 @@ cmd_choose_list_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	free(copy);
 
+	if (idx == 0) {
+		free(template);
+		window_pane_reset_mode(wl->window->active);
+		return (CMD_RETURN_ERROR);
+	}
+
 	window_choose_ready(wl->window->active, 0, cmd_choose_list_callback,
 	    cmd_choose_list_free);
 
