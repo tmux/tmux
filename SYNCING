@@ -99,7 +99,7 @@ line, as in:
 
 % cd /path/to/tmux
 % git config --add remote.origin.fetch '+refs/replace/*:refs/replace/*'
-% git fetch origin --all
+% git fetch origin
 
 Performing the Sync
 ===================
@@ -137,6 +137,6 @@ And if happy:
 RELEASE TMUX FOR NEXT VERSION
 =============================
 
-TODO:  git tag, CHANGES, etc.
+TODO:  git tag, CHANGES, etc., hosting of tarball.
 
 [1] http://tmux.git.sourceforge.net/git/gitweb-index.cgi
