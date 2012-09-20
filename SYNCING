@@ -132,11 +132,44 @@ And if happy:
 
 % git push origin master
 
--- Thomas Adam
-
-RELEASE TMUX FOR NEXT VERSION
+Release tmux for next version
 =============================
 
-TODO:  git tag, CHANGES, etc.
+1. Comment the "found_debug=yes" line in configure.ac, since releases
+   don't have debugging enabled, otherwise make(1) aborts when
+   preparing the distribution.
+
+2. Update and commit NOTES and CHANGES.  The former should be checked for
+   anything outdated and updated with a list of things that might break
+   upgrades and the latter should mention all the major changes since
+   the last version.
+
+3. Tag with:
+
+   % git tag -a 1.X
+
+   Where "1.X" is the next version.
+
+   Push the tag out with:
+
+   % git push --tags
+
+4. Build the tarball with make dist.  Now that it's using autoconf there
+   shouldn't be any weird files (such as the original and rejection files
+   from patch(1)) but it doesn't hurt taking a quick look at it.
+
+5. Split the release changes into a new file.  This should be named
+   tmux-$VERSION-readme to make sourceforge show it automagically in specific
+   parts of the project page.
+
+6. Upload the tarball and the above file. Make the tarball the default
+   download by selecting all operating systems under the file details.
+
+7. Run make update-index.html upload-index.html to replace %%VERSION%%.
+
+8. Bump version in configure.ac and uncomment "found_debug=yes" to create
+   a debug build by default.
+
+9. Update freshmeat.
 
 [1] http://tmux.git.sourceforge.net/git/gitweb-index.cgi
