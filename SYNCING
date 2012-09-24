@@ -113,11 +113,9 @@ portable:
 
 % git log master..obsd-master
 
-From there, the merge should be a fast-forward, using the OURS strategy to
-tell git that conflicts coming from OpenBSD respect the existing code in
-tmux where those conflicts wouldn't arise.  Hence:
+From there, merge the result in, fixing up any conflicts which might arise.
 
-% git merge -s ours obsd-master
+% git merge obsd-master
 
 Then ensure things look correct by BULDING the result of that sync:
 
