@@ -2221,6 +2221,7 @@ void	clear_signals(int);
 /* control.c */
 void	control_callback(struct client *, int, void*);
 void printflike2 control_write(struct client *, const char *, ...);
+void	control_write_buffer(struct client *, struct evbuffer *);
 
 /* control-notify.c */
 void	control_notify_window_layout_changed(struct window *);

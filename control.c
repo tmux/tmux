@@ -79,6 +79,15 @@ control_write(struct client *c, const char *fmt, ...)
 	server_push_stdout(c);
 }
 
+/* Write a buffer, adding a terminal newline. Empties buffer. */
+void
+control_write_buffer(struct client *c, struct evbuffer *buffer)
+{
+	evbuffer_add_buffer(c->stdout_data, buffer);
+	evbuffer_add(c->stdout_data, "\n", 1);
+	server_push_stdout(c);
+}
+
 /* Control input callback. Read lines and fire commands. */
 void
 control_callback(struct client *c, int closed, unused void *data)
