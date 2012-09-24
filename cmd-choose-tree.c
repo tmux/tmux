@@ -149,8 +149,10 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
 	 * without any padding.
 	 */
 	if (wflag && sflag) {
-		xasprintf(&final_win_template_middle, " |-> %s", win_template);
-		xasprintf(&final_win_template_last, " \\-> %s", win_template);
+		xasprintf(&final_win_template_middle,
+		    " \001tq\001> %s", win_template);
+		xasprintf(&final_win_template_last,
+		    " \001mq\001> %s", win_template);
 	} else if (wflag) {
 		final_win_template_middle = xstrdup(win_template);
 		final_win_template_last = xstrdup(win_template);
