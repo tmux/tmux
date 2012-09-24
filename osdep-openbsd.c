@@ -37,7 +37,7 @@
 
 struct kinfo_proc	*cmp_procs(struct kinfo_proc *, struct kinfo_proc *);
 char			*osdep_get_name(int, char *);
-char			*osdep_get_cwd(pid_t);
+char			*osdep_get_cwd(int);
 struct event_base	*osdep_event_init(void);
 
 struct kinfo_proc *
@@ -135,12 +135,14 @@ error:
 }
 
 char*
-osdep_get_cwd(pid_t pid)
+osdep_get_cwd(int fd)
 {
-	int		name[] = { CTL_KERN, KERN_PROC_CWD, (int)pid };
+	int		name[] = { CTL_KERN, KERN_PROC_CWD, 0 };
 	static char	path[MAXPATHLEN];
 	size_t		pathlen = sizeof path;
 
+	if ((name[2] = tcgetpgrp(fd)) == -1)
+		return (NULL);
 	if (sysctl(name, 3, path, &pathlen, NULL, 0) != 0)
 		return (NULL);
 	return (path);

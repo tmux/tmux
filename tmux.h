@@ -2273,7 +2273,7 @@ u_int	utf8_split2(u_int, u_char *);
 
 /* osdep-*.c */
 char		*osdep_get_name(int, char *);
-char		*osdep_get_cwd(pid_t);
+char		*osdep_get_cwd(int);
 struct event_base *osdep_event_init(void);
 
 /* log.c */

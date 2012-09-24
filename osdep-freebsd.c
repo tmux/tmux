@@ -33,7 +33,7 @@
 
 struct kinfo_proc	*cmp_procs(struct kinfo_proc *, struct kinfo_proc *);
 char			*osdep_get_name(int, char *);
-char			*osdep_get_cwd(pid_t);
+char			*osdep_get_cwd(int);
 struct event_base	*osdep_event_init(void);
 
 #ifndef nitems
@@ -133,13 +133,17 @@ error:
 }
 
 char *
-osdep_get_cwd(pid_t pid)
+osdep_get_cwd(int fd)
 {
 	static char		 wd[PATH_MAX];
 	struct kinfo_file	*info = NULL;
+	pid_t			 pgrp;
 	int			 nrecords, i;
 
-	if ((info = kinfo_getfile(pid, &nrecords)) == NULL)
+	if ((pgrp = tcgetpgrp(fd)) == -1)
+		return (NULL);
+
+	if ((info = kinfo_getfile(pgrp, &nrecords)) == NULL)
 		return (NULL);
 
 	for (i = 0; i < nrecords; i++) {

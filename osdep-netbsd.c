@@ -34,7 +34,7 @@
 
 struct kinfo_proc2	*cmp_procs(struct kinfo_proc2 *, struct kinfo_proc2 *);
 char			*osdep_get_name(int, char *);
-char			*osdep_get_cwd(pid_t);
+char			*osdep_get_cwd(int);
 struct event_base	*osdep_event_init(void);
 
 struct kinfo_proc2 *
@@ -125,7 +125,7 @@ error:
 }
 
 char *
-osdep_get_cwd(pid_t pid)
+osdep_get_cwd(int fd)
 {
 	return (NULL);
 }

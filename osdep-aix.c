@@ -29,7 +29,7 @@ osdep_get_name(unused int fd, unused char *tty)
 }
 
 char *
-osdep_get_cwd(pid_t pid)
+osdep_get_cwd(unused int fd)
 {
 	return (NULL);
 }
