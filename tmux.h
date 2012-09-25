@@ -1527,6 +1527,7 @@ enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
 /* notify.c */
 void	notify_enable(void);
 void	notify_disable(void);
+void	notify_input(struct window_pane *, struct evbuffer *);
 void	notify_window_layout_changed(struct window *);
 void	notify_window_unlinked(struct session *, struct window *);
 void	notify_window_linked(struct session *, struct window *);
@@ -2220,6 +2221,8 @@ void printflike2 control_write(struct client *, const char *, ...);
 void	control_write_buffer(struct client *, struct evbuffer *);
 
 /* control-notify.c */
+void	control_notify_input(struct client *, struct window_pane *,
+	    struct evbuffer *);
 void	control_notify_window_layout_changed(struct window *);
 void	control_notify_window_unlinked(struct session *, struct window *);
 void	control_notify_window_linked(struct session *, struct window *);

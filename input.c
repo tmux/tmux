@@ -752,6 +752,7 @@ input_parse(struct window_pane *wp)
 
 	buf = EVBUFFER_DATA(evb);
 	len = EVBUFFER_LENGTH(evb);
+	notify_input(wp, evb);
 	off = 0;
 
 	/* Parse the input. */
