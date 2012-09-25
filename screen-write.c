@@ -210,8 +210,12 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			if (maxlen > 0 && size + 1 > (size_t) maxlen)
 				break;
 
-			size++;
-			screen_write_putc(ctx, gc, *ptr);
+			if (*ptr == '\001')
+				gc->attr ^= GRID_ATTR_CHARSET;
+			else {
+				size++;
+				screen_write_putc(ctx, gc, *ptr);
+			}
 			ptr++;
 		}
 	}
