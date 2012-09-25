@@ -133,6 +133,26 @@ notify_drain(void)
 }
 
 void
+notify_input(struct window_pane *wp, struct evbuffer *input)
+{
+	struct client	*c;
+	u_int		 i;
+
+	/*
+	 * notify_input() is not queued and only does anything when
+	 * notifications are enabled.
+	 */
+	if (!notify_enabled)
+		return;
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL && (c->flags & CLIENT_CONTROL))
+			control_notify_input(c, wp, input);
+	}
+}
+
+void
 notify_window_layout_changed(struct window *w)
 {
 	notify_add(NOTIFY_WINDOW_LAYOUT_CHANGED, NULL, NULL, w);
