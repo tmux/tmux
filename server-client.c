@@ -911,8 +911,10 @@ server_client_msg_identify(
 		return;
 	}
 
-	if (!isatty(fd))
-	    return;
+	if (!isatty(fd)) {
+		close(fd);
+		return;
+	}
 	data->term[(sizeof data->term) - 1] = '\0';
 	tty_init(&c->tty, c, fd, data->term);
 	if (data->flags & IDENTIFY_UTF8)
