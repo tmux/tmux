@@ -42,6 +42,7 @@ syn keyword tmuxCmds
 	\ list-buffers loadb load-buffer pasteb paste-buffer saveb save-buffer
 	\ setb set-buffer showb show-buffer
 	\ clock-mode if[-shell] lock[-server] run[-shell] [server-]info
+	\ choose-list
 
 syn keyword tmuxOptsSet
 	\ buffer-limit escape-time exit-unattached exit-unattached quiet
