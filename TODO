@@ -55,7 +55,6 @@
 - selection behaviour closer to vi in vi mode
 - live update: server started with -U connects to server, requests sessions and
   windows, receives fds
-- command to show a tree of sessions-windows-panes (active marked with *)
 - sort out inheriting config from shell on new sessions/windows:
         should pick up default-path/termios/etc from client if possible,
 	else leave empty/default
@@ -80,7 +79,6 @@
 - ' and " should be parsed the same (eg "\e" vs '\e') in config and command
   prompt?
 - command to toggle selection not to move it in copy-mode
-- why are alerts per-winlink? try per window?
 - audit of escape sequence support vs xterm
 - support binding keys to mouse (mouse-select-pane -> mouse-keys or something,
   mouse click == select-pane -t %%, mouse scroll up == copy-mode)
@@ -107,8 +105,6 @@
   key is looked up in that table
 - pass shell commands as argv rather than strings, allow them to be specified
   in commands without quotes
-- a command to choose from a generic list, so you can do eg
-  choose-list -l Abc,Moo,Blah "run-shell 'sh /my/choose/script %%'"
 - numeric prefix in copy mode should be paste buffer for C-w
 - named buffers and allow gaps in the stack
 - get rid of separate UTF-8 cell stuff: add 1 byte to cell and store BMP as
