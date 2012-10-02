@@ -552,6 +552,11 @@ enum mode_key_cmd {
 	MODEKEYCHOICE_SCROLLDOWN,
 	MODEKEYCHOICE_SCROLLUP,
 	MODEKEYCHOICE_STARTNUMBERPREFIX,
+	MODEKEYCHOICE_TREE_COLLAPSE,
+	MODEKEYCHOICE_TREE_COLLAPSE_ALL,
+	MODEKEYCHOICE_TREE_EXPAND,
+	MODEKEYCHOICE_TREE_EXPAND_ALL,
+	MODEKEYCHOICE_TREE_TOGGLE,
 	MODEKEYCHOICE_UP,
 
 	/* Copy keys. */
@@ -891,12 +896,16 @@ struct window_mode {
 /* Structures for choose mode. */
 struct window_choose_data {
 	struct client		*client;
-	struct session		*session;
+	struct session		*session; /* Session of current client. */
+	struct session		*tree_session; /* Session of items in tree. */
 	struct format_tree	*ft;
 	struct winlink		*wl;
 	char		        *ft_template;
 	char			*command;
 	u_int			 idx;
+	int			 type;
+#define TREE_WINDOW 0x1
+#define TREE_SESSION 0x2
 	int			 pane_id;
 };
 
@@ -904,6 +913,8 @@ struct window_choose_mode_item {
 	struct window_choose_data	*wcd;
 	char				*name;
 	int				 pos;
+	int				 state;
+#define TREE_EXPANDED 0x1
 };
 
 /* Child window structure. */
