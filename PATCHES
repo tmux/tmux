@@ -1,0 +1,153 @@
+Submitting Patches
+==================
+
+Repository Overview
+===================
+
+The portable version of tmux uses git [1], a distributed revision control system.  This
+document is not intended to explain the git internals, for that there's
+already a wealth of documentation on the Internet.
+
+The main portable tmux git repository [2] has one branch reflecting on-going
+development:  "master".  Release points of tmux are tagged and are available
+as git tags.
+
+When submitting a patch, the feature should be made on top of the
+master branch.
+
+Preamble
+========
+
+If you've never used git before, git tracks meta-data about the committer
+and the author, as part of a commit, hence:
+
+$ git config [--global] user.name "Your name"
+$ git config [--global] user.email "you@example.com"
+
+Note that, if you already have this in the global ~/.gitconfig option, then
+this will be used.  Setting this per-repository would involve not using the
+"--global" flag above.   If you wish to use the same credentials always,
+pass the "--global" option, as shown.
+
+This is a one-off operation once the repository has been cloned, assuming
+this information has ever been set before.
+
+Coding style
+============
+
+Since tmux is inherently an OpenBSD project, please see the OpenBSD style(9)
+guide:
+
+http://www.openbsd.org/cgi-bin/man.cgi?query=style&apropos=0&sektion=0&manpath=OpenBSD+Current&arch=i386&format=html
+
+It is expected that patches to tmux honour this guideline.
+
+Use of topic branches
+=====================
+
+Git's use of branches makes it very easy to separate out different topics
+from one another -- hence, for any feature or patch developed, they should
+be done in their own topic branch, which is branched from the current HEAD
+of origin/master.  Hence:
+
+$ git checkout master
+$ git pull
+$ git checkout my-new-feature
+
+Which at this point on means that you're on the "my-new-feature" branch, and
+can then hack away.  When you've got a series of changes, it's best to
+consider how to commit them.  Blindly doing:
+
+$ git commit -a
+
+which would commit all changes, won't make for a easy patch review, and will
+likely just pollute the main git history with unnecessary noise.  Not to
+mention, if a bug is discovered, finding it in amongst a huge code commit
+like that would be rather annoying.  So instead, stage all the changes
+you're doing logically together -- break up the feature into four or five
+patches, or how ever many made sense.
+
+For example, if you were writing a new feature, you might have:
+
+* A patch to include any new header files.
+* A patch for any new function prototypes.
+* A patch per new function as it's written (or more, depending on the
+  complexity).
+
+This is nothing more than doing a:
+
+$ git add foo.h
+$ git commit
+
+[Write commit message]
+
+... do some more hacking.
+
+$ git add main.c
+$ git add utilities.c
+$ git commit 
+
+Working out what's changed
+==========================
+
+Once you're happy with the commits on the "my-new-feature" branch, you'll
+obviously want to check that they still work on top of any new code that
+might have been committed to the master* branch since you creates the
+"my-new-feature" branch.  This is important as you'll be basing your patches
+against that.  Hence:
+
+$ git checkout master
+$ git pull
+$ git checkout my-new-feature
+
+(Note:  It's conceivable here that the "my-new-feature" branch might undergo
+rebasing against origin/master -- although that's not being mentioned
+here in the general case, but would equally be acceptable.)
+
+Compiling/Testing patches
+=========================
+
+Before you send patches to the mailing list, please ensure that you compile
+tmux, as in the following:
+
+$ make clean && ./autogen.sh && ./configure && make
+
+This not only compiles with "-g" (for debug symbols), but also runs
+some sanity check to ensure you've not missed anything.  If you have, fix up
+any warnings or errors, and repeat the above command until it's clean.
+
+Generating patches to send to the mailing list
+==============================================
+
+So, you've been working hard on your new feature, all your changes are sat
+in a local topic branch; "my-new-feature", and you want to submit them to
+the list.  You've already updated your copy of the master branch, and
+your "my-new-feature" branch is checked-out, hence:
+
+$ git format-patch -M -n --cover-letter -o patch_store master
+
+Which will place a series of numbered commits in a directory called
+"patch_store".  These can then be sent to the list [3] using the 
+"git send-email" command.
+
+Note that if this is more a bug-fix, or a single patch, it's not always
+necessary to generate a cover-letter -- so that option to "git format-patch"
+can be elided if necessary, but it doesn't really matter.
+
+External hosting and pull-requests
+==================================
+
+Alternatively, if using a hosted Git service [4], then it's acceptable
+that a pull-request can be issued on a branch against a repository.
+
+Note that Thomas Adam has a Github repository [5] for tmux which is kept in
+sync with the tmux repo on sourceforge.
+
+References
+==========
+
+[1] http://git-scm.com
+[2] https://sourceforge.net/scm/?type=git&group_id=200378
+[3] tmux-users@lists.sourceforge.net
+[4] http://repo.or.cz -- or -- http://github.com
+[5] https://github.com/ThomasAdam/tmux
