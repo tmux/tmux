@@ -1,3 +1,19 @@
+NOTES
+=====
+
+This file describes rough notes regarding ideas for potential future tmux
+development.  It's not necessarily guaranteed that items in this TODO file
+will ever get implemented.
+
+It is asked therefore, that anyone thinking of undertaking a task in this
+TODO file, email tmux-users@lists.sf.net to discuss the feature.
+
+Thie file is split up between tmux user interface (UI) issues, and terminal
+compatibility issues.
+
+TMUX UI ISSUES
+==============
+
 - implicitly add exec to the commands for new windows (switch to disable it)?
 - bring back detach-session to detach all clients on a session?
 - allow fnmatch for -c, so that you can, eg, detach all clients
@@ -6,12 +22,10 @@
 - flags to centre screen in window
 - activity/bell should be per-window not per-link? what if it is cur win in
   session not being watched?
-- use a better termcap internally instead of screen, perhaps xterm
 - should be able to move to a hidden pane and it would be moved into view. pane
   number in status line/top-right would be cool for this
 - support other mouse modes (highlight etc) and use it in copy mode
 - set-remain-on-exit is a bit of a hack, some way to do it generically?
-- clear window title on exit
 - would be nice to be able to use "--" to mark start of command w/ neww etc
   to avoid quoting
 - make command sequences more usable: don't require space after ;, handle
@@ -21,7 +35,6 @@
 - hooks to which commands may be attached, for example: tmux add-hook
   "new-session" if-shell "[ -e $HOME/.tmux-session.conf ]" source-file
   $HOME/.tmux-session.conf
-- get it passing all the vttest tests that don't require resizing the terminal
 - way to set socket path from config file
 - what about utmp etc? can tmux update it like screen? setgid?
 - warts on current naming:
@@ -33,7 +46,6 @@
 - a way for force-width/height to apply to only one pane (how?)
 - command to list what is actually running in each window with command line,
   pid (need some adaption of the osdep code)
-- support for bce
 - some way to force a screen to use the entire terminal even if it is forced
   to be smaller by other clients. pan smaller terminal? (like screen F)
 	-- idea of a "view" onto a window, need base x/y offsets for redraw
@@ -60,8 +72,6 @@
 	else leave empty/default
 - link panes into multiple windows
 - bells should be passed between sessions with visual-bell etc
-- use screen-256color when started on 256 colour terminal??
-- if-shell/run-shell should block further command execution in the same command
   sequence until its shell exits, to allow them to be used from the config file
 - better session sharing: create-socket command to create socket somewhere (-r
   flag for readonly)
@@ -86,7 +96,6 @@
 - synchronous commands - client sends cmd and blocks, neww/splitw saves client
   ptr then when program inside died, sends MSG_SOMETHING with wait status to
   client
-- documentation improvements - rlpowell's tutorial - build instructions
 - bind commands to key sequences? -- make it so ALL keys go through a table,
   first an implicit table in which C-b is the only default binding to a
   command that says "next key from $othertable" and so on. means -n can
@@ -127,7 +136,6 @@
 - fetch full command line on !Linux, and add option to strip prefixes
   such as "sh " "/bin/sh " etc etc
 - synchronize-windows option
-- possibly support rxvt-unicode extended mouse input (1015)
 - append to buffer in copy mode
 - way to paste w/o trailing whitespace
 - flag to switch-client to switch all clients
@@ -145,6 +153,17 @@
 - choose-mode and copy-mode are very similar.  Perhaps make choose-mode a
   subset of copy-mode in that it inherits key-bindings and other traits but
   not all.
+
+TERMINAL ISSUES
+================
+
+- use a better termcap internally instead of screen, perhaps xterm
+- clear window title on exit (see using xterm title stack)
+- get it passing all the vttest tests that don't require resizing the terminal
+- support for bce
+- use screen-256color when started on 256 colour terminal??
+- if-shell/run-shell should block further command execution in the same command
+- possibly support rxvt-unicode extended mouse input (1015)
 - wrap/no wrap esc seq DEC CSI ? 7 h/l
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
