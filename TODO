@@ -8,6 +8,8 @@ will ever get implemented.
 It is asked therefore, that anyone thinking of undertaking a task in this
 TODO file, email tmux-users@lists.sf.net to discuss the feature.
 
+In terms of submitting patches, see the PATCHES file.
+
 Thie file is split up between tmux user interface (UI) issues, and terminal
 compatibility issues.
 
