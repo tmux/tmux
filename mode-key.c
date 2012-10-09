@@ -83,7 +83,9 @@ const struct mode_key_cmdstr mode_key_cmdstr_choice[] = {
 	{ MODEKEYCHOICE_SCROLLDOWN, "scroll-down" },
 	{ MODEKEYCHOICE_SCROLLUP, "scroll-up" },
 	{ MODEKEYCHOICE_STARTNUMBERPREFIX, "start-number-prefix" },
+	{ MODEKEYCHOICE_TREE_COLLAPSE, "tree-collapse" },
 	{ MODEKEYCHOICE_TREE_COLLAPSE_ALL, "tree-collapse-all" },
+	{ MODEKEYCHOICE_TREE_EXPAND, "tree-expand" },
 	{ MODEKEYCHOICE_TREE_EXPAND_ALL, "tree-expand-all" },
 	{ MODEKEYCHOICE_TREE_TOGGLE, "tree-toggle" },
 	{ MODEKEYCHOICE_UP, "up" },
@@ -222,6 +224,8 @@ const struct mode_key_entry mode_key_vi_choice[] = {
 	{ KEYC_UP | KEYC_CTRL,	    0, MODEKEYCHOICE_SCROLLUP },
 	{ KEYC_UP,		    0, MODEKEYCHOICE_UP },
 	{ ' ',			    0, MODEKEYCHOICE_TREE_TOGGLE },
+	{ KEYC_LEFT,                0, MODEKEYCHOICE_TREE_COLLAPSE },
+	{ KEYC_RIGHT,               0, MODEKEYCHOICE_TREE_EXPAND },
 	{ KEYC_LEFT | KEYC_CTRL,    0, MODEKEYCHOICE_TREE_COLLAPSE_ALL },
 	{ KEYC_RIGHT | KEYC_CTRL,   0, MODEKEYCHOICE_TREE_EXPAND_ALL },
 
