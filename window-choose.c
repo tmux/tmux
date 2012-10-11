@@ -181,8 +181,8 @@ window_choose_free(struct window_pane *wp)
 	struct window_choose_mode_item	*item;
 	u_int				 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&data->list); i++) {
-		item = &ARRAY_ITEM(&data->list, i);
+	for (i = 0; i < ARRAY_LENGTH(&data->old_list); i++) {
+		item = &ARRAY_ITEM(&data->old_list, i);
 		if (data->freefn != NULL && item->wcd != NULL)
 			data->freefn(item->wcd);
 		free(item->name);
@@ -289,6 +289,7 @@ window_choose_collapse(struct window_pane *wp, struct session *s)
 	if (!ARRAY_EMPTY(&list_copy)) {
 		ARRAY_FREE(&data->list);
 		ARRAY_CONCAT(&data->list, &list_copy);
+		ARRAY_FREE(&list_copy);
 	}
 }
 
@@ -296,11 +297,11 @@ void
 window_choose_collapse_all(struct window_pane *wp)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
-	struct window_choose_mode_item	*item, *chosen;
-	struct session			*s;
+	struct window_choose_mode_item	*item;
+	struct session			*s, *chosen;
 	u_int				 i;
 
-	chosen = &ARRAY_ITEM(&data->list, data->selected);
+	chosen = ARRAY_ITEM(&data->list, data->selected).wcd->session;
 
 	RB_FOREACH(s, sessions, &sessions)
 		window_choose_collapse(wp, s);
@@ -309,7 +310,7 @@ window_choose_collapse_all(struct window_pane *wp)
 	for (i = 0; i < ARRAY_LENGTH(&data->list); i++) {
 		item = &ARRAY_ITEM(&data->list, i);
 
-		if (chosen->wcd->session != item->wcd->tree_session)
+		if (chosen != item->wcd->tree_session)
 			continue;
 
 		if (item->wcd->type & TREE_SESSION)
