@@ -1,3 +1,63 @@
+CHANGES FROM 1.6 to 1.7, 13 October 2012
+
+* tmux configuration files now support line-continuation with a "\" at the
+  end of a line.
+* New option status-position to move the status line to the top or bottom of
+  the screen.
+* Enforce history-limit option when clearing the screen.
+* Give each window a unique id, like panes but prefixed with @.
+* Add pane id to each pane in layout description (while still accepting
+  the old form).
+* Provide defined ways to set the various default-path possibilities: ~
+  for home directory, . for server start directory, - for session start
+  directory and empty for the pane's working directory (the default). All
+  can also be used as part of a relative path (eg -/foo). Also provide -c
+  flags to neww and splitw to override default-path setting.
+* Add -l flag to send-keys to send input literally (without translating
+  key names).
+* Allow a single option to be specified to show-options to show just that
+  option.
+* New command "move-pane" (like join-pane but allows the same window).
+* join-pane and move-pane commands learn "-b" option to place the pane to
+  the left or above.
+* Support for bracketed-paste mode.
+* Allow send-keys command to accept hex values.
+* Add locking around "start-server" to avoid race-conditions.
+* break-pane learns -P/-F arguments for display formatting.
+* set-option learns "-q" to make it quiet, and not print out anything.
+* copy mode learns "wrap-search" option.
+* Add a simple form of output rate limiting by counting the number of
+  certain C0 sequences (linefeeds, backspaces, carriage returns) and if it
+  exceeds a threshold (current default 250/millisecond), start to redraw
+  the pane every 100 milliseconds instead of making each change as it
+  comes. Two configuration options - c0-change-trigger and
+  c0-change-interval.
+* find-window learns new flags:  "-C", "-N", "-T" to match against either or
+  all of a window's content, name, or title.  Defaults to all three options
+  if none specified.
+* find-window automatically selects the appropriate pane for the found
+  matches.
+* show-environment can now accept one option to show that environment value.
+* Exit mouse mode when end-of-screen reached when scrolling with the mouse
+  wheel.
+* select-layout learns -u and -U for layout history stacks.
+* kill-window, detach-client, kill-session all  learn "-a" option for
+  killing all but the current thing specified.
+* move-window learns "-r" option to renumber window sequentially in a
+  session.
+* New session option "renumber-windows" to automatically renumber windows in
+  a session when a window is closed.  (see "move-window -r").
+* Only enter copy-mode on scroll up.
+* choose-* and list-* commands all use "-F" for format specifiers.
+* When spawning external commands, the value from the "default-shell" option
+  is now used, rather than assuming /bin/sh.
+* New choose-tree command to render window/sessions as a tree for selection.
+* display-message learns new format options.
+* For linked-windows across sessions, all flags for that window are now
+  cleared across sessions.
+* Lots and lots of bug fixes, fixing memory-leaks, etc.
+* Various manpage improvements.
+
 CHANGES FROM 1.5 TO 1.6, 23 January 2012
 
 * Extend the mode-mouse option to add a third choice which means the mouse
