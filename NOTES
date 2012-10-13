@@ -7,13 +7,6 @@ simple, modern, BSD-licensed alternative to programs such as GNU screen.
 This release runs on OpenBSD, FreeBSD, NetBSD, Linux and OS X and may still
 run on Solaris and AIX (although they haven't been tested in a while).
 
-If upgrading from 1.5, PLEASE NOTE:
-- The word-separators window option is now a session option.
-- The options used to change the window attributes when an alert occurs were
-  removed. Each kind of alert has its own individual set of options.
-- The ability to have a list of prefix keys was dropped in favour of two
-  separate options, prefix and prefix2.
-
 Since the 1.2 release tmux depends on libevent. Download it from:
 
 	http://www.monkey.org/~provos/libevent/
