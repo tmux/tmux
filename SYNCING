@@ -41,7 +41,7 @@ This involves having both tmux and tmux-openbsd cloned, as in:
 % git clone ssh://${USER}@tmux.git.sf.net/gitroot/tmux/tmux
 % git clone ssh://${USER}@tmux.git.sf.net/gitroot/tmux/tmux-openbsd
 
-Note that you do not need additoinal checkouts to manage the sync -- an
+Note that you do not need additional checkouts to manage the sync -- an
 existing clone of either repositories will suffice.  So if you already have
 these checkouts existing, skip that.
 
@@ -150,7 +150,7 @@ Release tmux for next version
 
    Push the tag out with:
 
-   % git push --tags
+   % git push 1.X
 
 4. Build the tarball with make dist.  Now that it's using autoconf there
    shouldn't be any weird files (such as the original and rejection files
