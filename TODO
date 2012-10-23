@@ -153,6 +153,7 @@ TMUX UI ISSUES
 - choose-mode and copy-mode are very similar.  Perhaps make choose-mode a
   subset of copy-mode in that it inherits key-bindings and other traits but
   not all.
+- add -c for new-session like new-window
 
 TERMINAL ISSUES
 ================
