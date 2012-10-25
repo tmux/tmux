@@ -1193,7 +1193,7 @@ winlink_clear_flags(struct winlink *wl)
 void
 window_mode_attrs(struct grid_cell *gc, struct options *oo)
 {
-	memcpy(gc, &grid_default_cell, sizeof gc);
+	memcpy(gc, &grid_default_cell, sizeof *gc);
 	colour_set_fg(gc, options_get_number(oo, "mode-fg"));
 	colour_set_bg(gc, options_get_number(oo, "mode-bg"));
 	gc->attr |= options_get_number(oo, "mode-attr");
