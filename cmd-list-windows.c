@@ -99,6 +99,7 @@ cmd_list_windows_session(
 		format_add(ft, "line", "%u", n);
 		format_session(ft, s);
 		format_winlink(ft, s, wl);
+		format_window_pane(ft, wl->window->active);
 
 		line = format_expand(ft, template);
 		ctx->print(ctx, "%s", line);
