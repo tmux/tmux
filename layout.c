@@ -488,50 +488,51 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
 }
 
 void
-layout_resize_pane_mouse(struct client *c, struct mouse_event *mouse)
+layout_resize_pane_mouse(struct client *c)
 {
 	struct window		*w;
 	struct window_pane	*wp;
+	struct mouse_event	*m = &c->tty.mouse;
 	int		      	 pane_border;
 
 	w = c->session->curw->window;
 
 	pane_border = 0;
-	if ((c->last_mouse.b & MOUSE_BUTTON) != MOUSE_UP &&
-	    (c->last_mouse.b & MOUSE_RESIZE_PANE)) {
+	if (m->event & MOUSE_EVENT_DRAG && m->flags & MOUSE_RESIZE_PANE) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if (wp->xoff + wp->sx == c->last_mouse.x &&
-			    wp->yoff <= 1 + c->last_mouse.y &&
-			    wp->yoff + wp->sy >= c->last_mouse.y) {
+			if (wp->xoff + wp->sx == m->lx &&
+			    wp->yoff <= 1 + m->ly &&
+			    wp->yoff + wp->sy >= m->ly) {
 				layout_resize_pane(wp, LAYOUT_LEFTRIGHT,
-				    mouse->x - c->last_mouse.x);
+				    m->x - m->lx);
 				pane_border = 1;
 			}
-			if (wp->yoff + wp->sy == c->last_mouse.y &&
-			    wp->xoff <= 1 + c->last_mouse.x &&
-			    wp->xoff + wp->sx >= c->last_mouse.x) {
+			if (wp->yoff + wp->sy == m->ly &&
+			    wp->xoff <= 1 + m->lx &&
+			    wp->xoff + wp->sx >= m->lx) {
 				layout_resize_pane(wp, LAYOUT_TOPBOTTOM,
-				    mouse->y - c->last_mouse.y);
+				    m->y - m->ly);
 				pane_border = 1;
 			}
 		}
 		if (pane_border)
 			server_redraw_window(w);
-	} else if (mouse->b != MOUSE_UP &&
-	    mouse->b == (mouse->b & MOUSE_BUTTON)) {
+	} else if (~m->event & MOUSE_EVENT_UP) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
-			if ((wp->xoff + wp->sx == mouse->x &&
-			    wp->yoff <= 1 + mouse->y &&
-			    wp->yoff + wp->sy >= mouse->y) ||
-			    (wp->yoff + wp->sy == mouse->y &&
-			    wp->xoff <= 1 + mouse->x &&
-			    wp->xoff + wp->sx >= mouse->x)) {
+			if ((wp->xoff + wp->sx == m->x &&
+			    wp->yoff <= 1 + m->y &&
+			    wp->yoff + wp->sy >= m->y) ||
+			    (wp->yoff + wp->sy == m->y &&
+			    wp->xoff <= 1 + m->x &&
+			    wp->xoff + wp->sx >= m->x)) {
 				pane_border = 1;
 			}
 		}
 	}
 	if (pane_border)
-		mouse->b |= MOUSE_RESIZE_PANE;
+		m->flags |= MOUSE_RESIZE_PANE;
+	else
+		m->flags &= ~MOUSE_RESIZE_PANE;
 }
 
 int

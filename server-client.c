@@ -28,8 +28,7 @@
 
 #include "tmux.h"
 
-void	server_client_check_mouse(struct client *, struct window_pane *,
-	    struct mouse_event *);
+void	server_client_check_mouse(struct client *, struct window_pane *);
 void	server_client_repeat_timer(int, short, void *);
 void	server_client_check_exit(struct client *);
 void	server_client_check_redraw(struct client *);
@@ -87,8 +86,12 @@ server_client_create(int fd)
 	c->prompt_buffer = NULL;
 	c->prompt_index = 0;
 
-	c->last_mouse.b = MOUSE_UP;
-	c->last_mouse.x = c->last_mouse.y = -1;
+	c->tty.mouse.xb = c->tty.mouse.button = 3;
+	c->tty.mouse.x = c->tty.mouse.y = -1;
+	c->tty.mouse.lx = c->tty.mouse.ly = -1;
+	c->tty.mouse.sx = c->tty.mouse.sy = -1;
+	c->tty.mouse.event = MOUSE_EVENT_UP;
+	c->tty.mouse.flags = 0;
 
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
 
@@ -271,37 +274,28 @@ server_client_status_timer(void)
 
 /* Check for mouse keys. */
 void
-server_client_check_mouse(
-    struct client *c, struct window_pane *wp, struct mouse_event *mouse)
+server_client_check_mouse(struct client *c, struct window_pane *wp)
 {
-	struct session	*s = c->session;
-	struct options	*oo = &s->options;
-	int		 statusat;
+	struct session		*s = c->session;
+	struct options		*oo = &s->options;
+	struct mouse_event	*m = &c->tty.mouse;
+	int			 statusat;
 
 	statusat = status_at_line(c);
 
 	/* Is this a window selection click on the status line? */
-	if (statusat != -1 && mouse->y == (u_int)statusat &&
+	if (statusat != -1 && m->y == (u_int)statusat &&
 	    options_get_number(oo, "mouse-select-window")) {
-		if (mouse->b == MOUSE_UP && c->last_mouse.b != MOUSE_UP) {
-			status_set_window_at(c, mouse->x);
-			recalculate_sizes();
-			return;
-		}
-		if (mouse->b & MOUSE_45) {
-			if ((mouse->b & MOUSE_BUTTON) == MOUSE_1) {
+		if (m->event & MOUSE_EVENT_CLICK) {
+			status_set_window_at(c, m->x);
+		} else if (m->event == MOUSE_EVENT_WHEEL) {
+			if (m->wheel == MOUSE_WHEEL_UP)
 				session_previous(c->session, 0);
-				server_redraw_session(s);
-				recalculate_sizes();
-			}
-			if ((mouse->b & MOUSE_BUTTON) == MOUSE_2) {
+			else if (m->wheel == MOUSE_WHEEL_DOWN)
 				session_next(c->session, 0);
-				server_redraw_session(s);
-				recalculate_sizes();
-			}
-			return;
+			server_redraw_session(s);
 		}
-		memcpy(&c->last_mouse, mouse, sizeof c->last_mouse);
+		recalculate_sizes();
 		return;
 	}
 
@@ -310,27 +304,25 @@ server_client_check_mouse(
 	 * top and limit if at the bottom. From here on a struct mouse
 	 * represents the offset onto the window itself.
 	 */
-	if (statusat == 0 &&mouse->y > 0)
-		mouse->y--;
-	else if (statusat > 0 && mouse->y >= (u_int)statusat)
-		mouse->y = statusat - 1;
+	if (statusat == 0 && m->y > 0)
+		m->y--;
+	else if (statusat > 0 && m->y >= (u_int)statusat)
+		m->y = statusat - 1;
 
 	/* Is this a pane selection? Allow down only in copy mode. */
 	if (options_get_number(oo, "mouse-select-pane") &&
-	    ((!(mouse->b & MOUSE_DRAG) && mouse->b != MOUSE_UP) ||
-	    wp->mode != &window_copy_mode)) {
-		window_set_active_at(wp->window, mouse->x, mouse->y);
+	    (m->event == MOUSE_EVENT_DOWN || wp->mode != &window_copy_mode)) {
+		window_set_active_at(wp->window, m->x, m->y);
 		server_redraw_window_borders(wp->window);
 		wp = wp->window->active; /* may have changed */
 	}
 
 	/* Check if trying to resize pane. */
 	if (options_get_number(oo, "mouse-resize-pane"))
-		layout_resize_pane_mouse(c, mouse);
+		layout_resize_pane_mouse(c);
 
 	/* Update last and pass through to client. */
-	memcpy(&c->last_mouse, mouse, sizeof c->last_mouse);
-	window_pane_mouse(wp, c->session, mouse);
+	window_pane_mouse(wp, c->session, m);
 }
 
 /* Handle data key input from client. */
@@ -385,7 +377,7 @@ server_client_handle_key(struct client *c, int key)
 	if (key == KEYC_MOUSE) {
 		if (c->flags & CLIENT_READONLY)
 			return;
-		server_client_check_mouse(c, wp, &c->tty.mouse);
+		server_client_check_mouse(c, wp);
 		return;
 	}
 
@@ -524,7 +516,7 @@ server_client_reset_state(struct client *c)
 	 * a smooth appearance.
 	 */
 	mode = s->mode;
-	if ((c->last_mouse.b & MOUSE_RESIZE_PANE) &&
+	if ((c->tty.mouse.flags & MOUSE_RESIZE_PANE) &&
 	    !(mode & (MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)))
 		mode |= MODE_MOUSE_BUTTON;
 

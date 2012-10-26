@@ -611,7 +611,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 {
 	struct mouse_event	*m = &tty->mouse;
 	struct utf8_data	 utf8data;
-	u_int			 i, value;
+	u_int			 i, value, x, y, b;
 
 	/*
 	 * Standard mouse sequences are \033[M followed by three characters
@@ -622,6 +622,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 	 */
 
 	*size = 0;
+	x = y = b  = 0;
 
 	/* First three bytes are always \033[M. */
 	if (buf[0] != '\033')
@@ -661,21 +662,58 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 		}
 
 		if (i == 0)
-			m->b = value;
+			b = value;
 		else if (i == 1)
-			m->x = value;
+			x = value;
 		else
-			m->y = value;
+			y = value;
 	}
 	log_debug("mouse input: %.*s", (int) *size, buf);
 
 	/* Check and return the mouse input. */
-	if (m->b < 32 || m->x < 33 || m->y < 33)
+	if (b < 32 || x < 33 || y < 33)
 		return (-1);
-	m->b -= 32;
-	m->x -= 33;
-	m->y -= 33;
-	log_debug("mouse position: x=%u y=%u b=%u", m->x, m->y, m->b);
+	b -= 32;
+	x -= 33;
+	y -= 33;
+	log_debug("mouse position: x=%u y=%u b=%u", x, y, b);
+
+	/* Fill in mouse structure. */
+	if (~m->event & MOUSE_EVENT_WHEEL) {
+		m->lx = m->x;
+		m->ly = m->y;
+	}
+	m->xb = b;
+	if (b & 64) { /* wheel button */
+		b &= 3;
+		if (b == 0)
+			m->wheel = MOUSE_WHEEL_UP;
+		else if (b == 1)
+			m->wheel = MOUSE_WHEEL_DOWN;
+		m->event = MOUSE_EVENT_WHEEL;
+	} else if ((b & 3) == 3) {
+		if (~m->event & MOUSE_EVENT_DRAG && x == m->x && y == m->y) {
+			m->event = MOUSE_EVENT_CLICK;
+		} else
+			m->event = MOUSE_EVENT_DRAG;
+		m->event |= MOUSE_EVENT_UP;
+	} else {
+		if (b & 32) /* drag motion */
+			m->event = MOUSE_EVENT_DRAG;
+		else {
+			if (m->event & MOUSE_EVENT_UP && x == m->x && y == m->y)
+				m->clicks = (m->clicks + 1) % 3;
+			else
+				m->clicks = 0;
+			m->sx = x;
+			m->sy = y;
+			m->event = MOUSE_EVENT_DOWN;
+		}
+		m->button = (b & 3);
+	}
+	m->x = x;
+	m->y = y;
+
 	return (0);
 }
 

@@ -1119,29 +1119,6 @@ struct session {
 RB_HEAD(sessions, session);
 ARRAY_DECL(sessionslist, struct session *);
 
-/*
- * Mouse input. xterm mouse mode is fairly silly. Buttons are in the bottom two
- * bits: 0 = button 1; 1 = button 2; 2 = button 3; 3 = buttons released. Bits
- * 3, 4 and 5 are for keys. Bit 6 is set for dragging and 7 for mouse buttons 4
- * and 5.
- */
-struct mouse_event {
-	u_int	b;
-#define MOUSE_1 0
-#define MOUSE_2 1
-#define MOUSE_3 2
-#define MOUSE_UP 3
-#define MOUSE_BUTTON 3
-#define MOUSE_SHIFT 4
-#define MOUSE_ESCAPE 8
-#define MOUSE_CTRL 16
-#define MOUSE_DRAG 32
-#define MOUSE_45 64
-#define MOUSE_RESIZE_PANE 128 /* marker for resizing */
-	u_int	x;
-	u_int	y;
-};
-
 /* TTY information. */
 struct tty_key {
 	char		 ch;
@@ -1169,6 +1146,47 @@ struct tty_term {
 	LIST_ENTRY(tty_term) entry;
 };
 LIST_HEAD(tty_terms, tty_term);
+
+/* Mouse wheel states. */
+#define MOUSE_WHEEL_UP 0
+#define MOUSE_WHEEL_DOWN 1
+
+/* Mouse events. */
+#define MOUSE_EVENT_DOWN (1 << 0)
+#define MOUSE_EVENT_DRAG (1 << 1)
+#define MOUSE_EVENT_UP (1 << 2)
+#define MOUSE_EVENT_CLICK (1 << 3)
+#define MOUSE_EVENT_WHEEL (1 << 4)
+
+/* Mouse flags. */
+#define MOUSE_RESIZE_PANE (1 << 0)
+
+/*
+ * Mouse input. When sent by xterm:
+ *
+ * - buttons are in the bottom two bits: 0 = b1; 1 = b2; 2 = b3; 3 = released
+ * - bits 3, 4 and 5 are for keys
+ * - bit 6 is set for dragging
+ * - bit 7 for buttons 4 and 5
+ */
+struct mouse_event {
+	u_int	xb;
+
+	u_int	x;
+	u_int	lx;
+	u_int	sx;
+
+	u_int	y;
+	u_int	ly;
+	u_int	sy;
+
+	u_int	button;
+	u_int	clicks;
+
+	int	wheel;
+	int     event;
+	int     flags;
+};
 
 struct tty {
 	struct client	*client;
@@ -1329,8 +1347,6 @@ struct client {
 
 	struct session	*session;
 	struct session	*last_session;
-
-	struct mouse_event last_mouse;
 
 	int		 wlmouse;
 
@@ -1926,7 +1942,8 @@ void	 input_parse(struct window_pane *);
 
 /* input-key.c */
 void	 input_key(struct window_pane *, int);
-void	 input_mouse(struct window_pane *, struct mouse_event *);
+void	 input_mouse(struct window_pane *, struct session *,
+	     struct mouse_event *);
 
 /* xterm-keys.c */
 char	*xterm_keys_lookup(int);
@@ -2170,8 +2187,7 @@ void		 layout_free(struct window *);
 void		 layout_resize(struct window *, u_int, u_int);
 void		 layout_resize_pane(
 		     struct window_pane *, enum layout_type, int);
-void		 layout_resize_pane_mouse(
-		     struct client *c, struct mouse_event *mouse);
+void		 layout_resize_pane_mouse(struct client *c);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(
 		     struct window_pane *, enum layout_type, int, int);

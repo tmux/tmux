@@ -623,7 +623,7 @@ window_choose_mouse(
 	struct window_choose_mode_item	*item;
 	u_int				 idx;
 
-	if ((m->b & 3) == 3)
+	if (~m->event & MOUSE_EVENT_CLICK)
 		return;
 	if (m->x >= screen_size_x(s))
 		return;
