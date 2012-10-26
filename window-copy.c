@@ -829,11 +829,11 @@ window_copy_mouse(
 		return;
 
 	/* If mouse wheel (buttons 4 and 5), scroll. */
-	if ((m->b & MOUSE_45)) {
-		if ((m->b & MOUSE_BUTTON) == MOUSE_1) {
+	if (m->event == MOUSE_EVENT_WHEEL) {
+		if (m->wheel == MOUSE_WHEEL_UP) {
 			for (i = 0; i < 5; i++)
 				window_copy_cursor_up(wp, 0);
-		} else if ((m->b & MOUSE_BUTTON) == MOUSE_2) {
+		} else if (m->wheel == MOUSE_WHEEL_DOWN) {
 			for (i = 0; i < 5; i++)
 				window_copy_cursor_down(wp, 0);
 			if (data->oy == 0)
@@ -847,7 +847,7 @@ window_copy_mouse(
 	 * pressed, or stop the selection on their release.
 	 */
 	if (s->mode & MODE_MOUSE_BUTTON) {
-		if ((m->b & MOUSE_BUTTON) != MOUSE_UP) {
+		if (~m->event & MOUSE_EVENT_UP) {
 			window_copy_update_cursor(wp, m->x, m->y);
 			if (window_copy_update_selection(wp))
 				window_copy_redraw_screen(wp);
@@ -857,7 +857,7 @@ window_copy_mouse(
 	}
 
 	/* Otherwise if other buttons pressed, start selection and motion. */
-	if ((m->b & MOUSE_BUTTON) != MOUSE_UP) {
+	if (~m->event & MOUSE_EVENT_UP) {
 		s->mode &= ~MODE_MOUSE_STANDARD;
 		s->mode |= MODE_MOUSE_BUTTON;
 

@@ -199,7 +199,7 @@ input_key(struct window_pane *wp, int key)
 
 /* Translate mouse and output. */
 void
-input_mouse(struct window_pane *wp, struct mouse_event *m)
+input_mouse(struct window_pane *wp, struct session *s, struct mouse_event *m)
 {
 	char	buf[10];
 	size_t	len;
@@ -207,14 +207,14 @@ input_mouse(struct window_pane *wp, struct mouse_event *m)
 	if (wp->screen->mode & ALL_MOUSE_MODES) {
 		if (wp->screen->mode & MODE_MOUSE_UTF8) {
 			len = xsnprintf(buf, sizeof buf, "\033[M");
-			len += utf8_split2(m->b + 32, &buf[len]);
+			len += utf8_split2(m->xb + 32, &buf[len]);
 			len += utf8_split2(m->x + 33, &buf[len]);
 			len += utf8_split2(m->y + 33, &buf[len]);
 		} else {
-			if (m->b > 223 || m->x >= 222 || m->y > 222)
+			if (m->xb > 223 || m->x >= 222 || m->y > 222)
 				return;
 			len = xsnprintf(buf, sizeof buf, "\033[M");
-			buf[len++] = m->b + 32;
+			buf[len++] = m->xb + 32;
 			buf[len++] = m->x + 33;
 			buf[len++] = m->y + 33;
 		}
@@ -222,12 +222,12 @@ input_mouse(struct window_pane *wp, struct mouse_event *m)
 		return;
 	}
 
-	if ((m->b & 3) != 1 &&
+	if ((m->xb & 3) != 1 &&
 	    options_get_number(&wp->window->options, "mode-mouse") == 1) {
 		if (window_pane_set_mode(wp, &window_copy_mode) == 0) {
 			window_copy_init_from_pane(wp);
 			if (wp->mode->mouse != NULL)
-				wp->mode->mouse(wp, NULL, m);
+				wp->mode->mouse(wp, s, m);
 		}
 		return;
 	}

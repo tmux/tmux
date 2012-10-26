@@ -1021,7 +1021,7 @@ window_pane_mouse(
 		    options_get_number(&wp->window->options, "mode-mouse"))
 			wp->mode->mouse(wp, sess, m);
 	} else if (wp->fd != -1)
-		input_mouse(wp, m);
+		input_mouse(wp, sess, m);
 }
 
 int
