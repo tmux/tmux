@@ -57,7 +57,7 @@ cmd_set_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (args->argc < 1)
+	if (args->argc < 2)
 		value = NULL;
 	else
 		value = args->argv[1];
