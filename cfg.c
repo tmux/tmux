@@ -173,3 +173,25 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 
 	return (retval);
 }
+
+void
+show_cfg_causes(struct session *s)
+{
+	struct window_pane	*wp;
+	char			*cause;
+	u_int			 i;
+
+	if (s == NULL || ARRAY_EMPTY(&cfg_causes))
+		return;
+
+	wp = s->curw->window->active;
+
+	window_pane_set_mode(wp, &window_copy_mode);
+	window_copy_init_for_output(wp);
+	for (i = 0; i < ARRAY_LENGTH(&cfg_causes); i++) {
+		cause = ARRAY_ITEM(&cfg_causes, i);
+		window_copy_add(wp, "%s", cause);
+		free(cause);
+	}
+	ARRAY_FREE(&cfg_causes);
+}

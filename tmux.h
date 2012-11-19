@@ -1520,6 +1520,7 @@ extern int       cfg_finished;
 extern struct causelist cfg_causes;
 void printflike2 cfg_add_cause(struct causelist *, const char *, ...);
 int		 load_cfg(const char *, struct cmd_ctx *, struct causelist *);
+void		 show_cfg_causes(struct session *);
 
 /* format.c */
 int		 format_cmp(struct format_entry *, struct format_entry *);
