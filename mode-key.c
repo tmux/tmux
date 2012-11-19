@@ -105,6 +105,8 @@ const struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_DOWN, "cursor-down" },
 	{ MODEKEYCOPY_ENDOFLINE, "end-of-line" },
 	{ MODEKEYCOPY_GOTOLINE, "goto-line" },
+	{ MODEKEYCOPY_HALFPAGEDOWN, "halfpage-down" },
+	{ MODEKEYCOPY_HALFPAGEUP, "halfpage-up" },
 	{ MODEKEYCOPY_HISTORYBOTTOM, "history-bottom" },
 	{ MODEKEYCOPY_HISTORYTOP, "history-top" },
 	{ MODEKEYCOPY_JUMP, "jump-forward" },
