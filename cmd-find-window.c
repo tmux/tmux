@@ -193,6 +193,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		    ARRAY_ITEM(&find_list, i).list_ctx);
 		format_session(cdata->ft, s);
 		format_winlink(cdata->ft, s, wm);
+		format_window_pane(cdata->ft, wm->window->active);
 
 		window_choose_add(wl->window->active, cdata);
 	}

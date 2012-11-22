@@ -124,13 +124,19 @@ loads the system configuration file from
 .Pa /etc/tmux.conf ,
 if present, then looks for a user configuration file at
 .Pa ~/.tmux.conf .
+.Pp
 The configuration file is a set of
 .Nm
 commands which are executed in sequence when the server is first started.
-.Pp
-If a command in the configuration file fails,
 .Nm
-will report an error and exit without executing further commands.
+loads configuration files once when the server process has started.
+The
+.Ic source-file
+command may be used to load a file later.
+.Pp
+.Nm
+shows any error messages from commands in configuration files in the first
+session created, and continues to process the rest of the configuration file.
 .It Fl L Ar socket-name
 .Nm
 stores the server socket in a directory under
@@ -2043,7 +2049,7 @@ window of that session,
 .Ic none
 means all bells are ignored and
 .Ic current
-means only bell in windows other than the current window are ignored.
+means only bells in windows other than the current window are ignored.
 .It Xo Ic bell-on-alert
 .Op Ic on | off
 .Xc

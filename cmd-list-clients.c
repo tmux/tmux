@@ -28,7 +28,7 @@
  * List all clients.
  */
 
-int	cmd_list_clients_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	cmd_list_clients_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_list_clients_entry = {
 	"list-clients", "lsc",

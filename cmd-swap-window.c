@@ -26,7 +26,7 @@
  * Swap one window with another.
  */
 
-int	cmd_swap_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	cmd_swap_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_swap_window_entry = {
 	"swap-window", "swapw",
