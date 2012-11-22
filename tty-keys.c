@@ -724,18 +724,17 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 int
 tty_keys_device(struct tty *tty, const char *buf, size_t len, size_t *size)
 {
-	u_int i, a, b;
+	u_int i, class;
 	char  tmp[64], *endptr;
 
 	/*
 	 * Primary device attributes are \033[?a;b and secondary are
-	 * \033[>a;b;c. We only request attributes on xterm, so we only care
-	 * about the middle values which is the xterm version.
+	 * \033[>a;b;c.
 	 */
 
 	*size = 0;
 
-	/* First three bytes are always \033[>. */
+	/* First three bytes are always \033[?. */
 	if (buf[0] != '\033')
 		return (-1);
 	if (len == 1)
@@ -760,22 +759,17 @@ tty_keys_device(struct tty *tty, const char *buf, size_t len, size_t *size)
 	tmp[i] = '\0';
 	*size = 4 + i;
 
-	/* Only secondary is of interest. */
-	if (buf[2] != '>')
+	/* Only primary is of interest. */
+	if (buf[2] != '?')
 		return (0);
 
-	/* Convert version numbers. */
-	a = strtoul(tmp, &endptr, 10);
-	if (*endptr == ';') {
-		b = strtoul(endptr + 1, &endptr, 10);
-		if (*endptr != '\0' && *endptr != ';')
-			b = 0;
-	} else
-		a = b = 0;
+	/* Convert service class. */
+	class = strtoul(tmp, &endptr, 10);
+	if (*endptr != ';')
+		class = 0;
 
-	log_debug("received xterm version %u", b);
-	if (b < 500)
-		tty_set_version(tty, b);
+	log_debug("received service class %u", class);
+	tty_set_class(tty, class);
 
 	return (0);
 }
