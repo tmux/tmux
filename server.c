@@ -105,11 +105,8 @@ server_create_socket(void)
 int
 server_start(int lockfd, char *lockfile)
 {
-	struct window_pane	*wp;
-	int	 		 pair[2];
-	char			*cause;
-	struct timeval		 tv;
-	u_int			 i;
+	int	 	pair[2];
+	struct timeval	tv;
 
 	/* The first client is special and gets a socketpair; create it. */
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
@@ -179,17 +176,9 @@ server_start(int lockfd, char *lockfile)
 	 * If there is a session already, put the current window and pane into
 	 * more mode.
 	 */
-	if (!RB_EMPTY(&sessions) && !ARRAY_EMPTY(&cfg_causes)) {
-		wp = RB_MIN(sessions, &sessions)->curw->window->active;
-		window_pane_set_mode(wp, &window_copy_mode);
-		window_copy_init_for_output(wp);
-		for (i = 0; i < ARRAY_LENGTH(&cfg_causes); i++) {
-			cause = ARRAY_ITEM(&cfg_causes, i);
-			window_copy_add(wp, "%s", cause);
-			free(cause);
-		}
-		ARRAY_FREE(&cfg_causes);
-	}
+	if (!RB_EMPTY(&sessions) && !ARRAY_EMPTY(&cfg_causes))
+		show_cfg_causes(RB_MIN(sessions, &sessions));
+
 	cfg_finished = 1;
 
 	server_add_accept(0);
