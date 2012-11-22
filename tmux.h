@@ -1189,7 +1189,7 @@ struct tty {
 	struct client	*client;
 
 	char		*path;
-	u_int		 xterm_version;
+	u_int		 class;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1633,8 +1633,8 @@ void	tty_pututf8(struct tty *, const struct grid_utf8 *);
 void	tty_init(struct tty *, struct client *, int, char *);
 int	tty_resize(struct tty *);
 int	tty_set_size(struct tty *, u_int, u_int);
+void	tty_set_class(struct tty *, u_int);
 void	tty_start_tty(struct tty *);
-void	tty_set_version(struct tty *, u_int);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);

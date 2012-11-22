@@ -224,7 +224,7 @@ tty_start_tty(struct tty *tty)
 		tty_puts(tty, "\033[?1000l");
 
 	if (tty_term_has(tty->term, TTYC_XT))
-		tty_puts(tty, "\033[>c");
+		tty_puts(tty, "\033[c");
 
 	tty->cx = UINT_MAX;
 	tty->cy = UINT_MAX;
@@ -240,11 +240,11 @@ tty_start_tty(struct tty *tty)
 }
 
 void
-tty_set_version(struct tty *tty, u_int version)
+tty_set_class(struct tty *tty, u_int class)
 {
-	if (tty->xterm_version != 0)
+	if (tty->class != 0)
 		return;
-	tty->xterm_version = version;
+	tty->class = class;
 }
 
 void
@@ -289,9 +289,6 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?1000l");
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
-
-	if (tty->xterm_version > 270)
-		tty_raw(tty, "\033[61;1\"p");
 }
 
 void
