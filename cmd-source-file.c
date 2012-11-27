@@ -42,35 +42,32 @@ enum cmd_retval
 cmd_source_file_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
-	struct causelist	 causes;
-	char			*cause;
-	struct window_pane	*wp;
 	int			 retval;
 	u_int			 i;
+	char			*cause;
 
-	ARRAY_INIT(&causes);
+	retval = load_cfg(args->argv[0], ctx, &cfg_causes);
 
-	retval = load_cfg(args->argv[0], ctx, &causes);
-	if (ARRAY_EMPTY(&causes))
+	/*
+	 * If the context for the cmdclient came from tmux's configuration
+	 * file, then return the status of this command now, regardless of the
+	 * error condition. Any errors from parsing a configuration file at
+	 * startup will be handled for us by the server.
+	 */
+	if (cfg_references > 0 ||
+	    (ctx->curclient == NULL && ctx->cmdclient == NULL))
 		return (retval);
 
-	if (retval == 1 && !RB_EMPTY(&sessions) && ctx->cmdclient != NULL) {
-		wp = RB_MIN(sessions, &sessions)->curw->window->active;
-		window_pane_set_mode(wp, &window_copy_mode);
-		window_copy_init_for_output(wp);
-		for (i = 0; i < ARRAY_LENGTH(&causes); i++) {
-			cause = ARRAY_ITEM(&causes, i);
-			window_copy_add(wp, "%s", cause);
-			free(cause);
-		}
-	} else {
-		for (i = 0; i < ARRAY_LENGTH(&causes); i++) {
-			cause = ARRAY_ITEM(&causes, i);
-			ctx->print(ctx, "%s", cause);
-			free(cause);
-		}
+	/*
+	 * We were called from the command-line in which case print the errors
+	 * gathered here directly.
+	 */
+	for (i = 0; i < ARRAY_LENGTH(&cfg_causes); i++) {
+		cause = ARRAY_ITEM(&cfg_causes, i);
+		ctx->print(ctx, "%s", cause);
+		free(cause);
 	}
-	ARRAY_FREE(&causes);
+	ARRAY_FREE(&cfg_causes);
 
 	return (retval);
 }

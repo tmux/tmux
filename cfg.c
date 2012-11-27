@@ -34,9 +34,10 @@
 void printflike2 cfg_print(struct cmd_ctx *, const char *, ...);
 void printflike2 cfg_error(struct cmd_ctx *, const char *, ...);
 
-char	 	       *cfg_cause;
-int     	 	cfg_finished;
-struct causelist	cfg_causes = ARRAY_INITIALIZER;
+char			*cfg_cause;
+int			 cfg_finished;
+int	 		 cfg_references;
+struct causelist	 cfg_causes;
 
 /* ARGSUSED */
 void printflike2
@@ -88,6 +89,8 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		return (-1);
 	}
 	n = 0;
+
+	cfg_references++;
 
 	line = NULL;
 	retval = CMD_RETURN_NORMAL;
@@ -170,6 +173,8 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		free(line);
 	}
 	fclose(f);
+
+	cfg_references--;
 
 	return (retval);
 }
