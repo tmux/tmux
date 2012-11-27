@@ -30,13 +30,15 @@
  */
 
 enum cmd_retval	 cmd_run_shell_exec(struct cmd *, struct cmd_ctx *);
-void		 cmd_run_shell_callback(struct job *);
-void		 cmd_run_shell_free(void *);
+
+void	cmd_run_shell_callback(struct job *);
+void	cmd_run_shell_free(void *);
+void	cmd_run_shell_print(struct job *, const char *);
 
 const struct cmd_entry cmd_run_shell_entry = {
 	"run-shell", "run",
-	"", 1, 1,
-	"command",
+	"t:", 1, 1,
+	CMD_TARGET_PANE_USAGE " command",
 	0,
 	NULL,
 	NULL,
@@ -46,7 +48,27 @@ const struct cmd_entry cmd_run_shell_entry = {
 struct cmd_run_shell_data {
 	char		*cmd;
 	struct cmd_ctx	 ctx;
+	u_int		 wp_id;
 };
+
+void
+cmd_run_shell_print(struct job *job, const char *msg)
+{
+	struct cmd_run_shell_data	*cdata = job->data;
+	struct cmd_ctx			*ctx = &cdata->ctx;
+	struct window_pane		*wp;
+
+	wp = window_pane_find_by_id(cdata->wp_id);
+	if (wp == NULL) {
+		ctx->print(ctx, "%s", msg);
+		return;
+	}
+
+	if (window_pane_set_mode(wp, &window_copy_mode) == 0)
+		window_copy_init_for_output(wp);
+	if (wp->mode == &window_copy_mode)
+		window_copy_add(wp, "%s", msg);
+}
 
 enum cmd_retval
 cmd_run_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
@@ -54,9 +76,14 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct args			*args = self->args;
 	struct cmd_run_shell_data	*cdata;
 	const char			*shellcmd = args->argv[0];
+	struct window_pane		*wp;
+
+	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
+		return (CMD_RETURN_ERROR);
 
 	cdata = xmalloc(sizeof *cdata);
 	cdata->cmd = xstrdup(args->argv[0]);
+	cdata->wp_id = wp->id;
 	memcpy(&cdata->ctx, ctx, sizeof cdata->ctx);
 
 	if (ctx->cmdclient != NULL)
@@ -87,7 +114,7 @@ cmd_run_shell_callback(struct job *job)
 	lines = 0;
 	do {
 		if ((line = evbuffer_readline(job->event->input)) != NULL) {
-			ctx->print(ctx, "%s", line);
+			cmd_run_shell_print (job, line);
 			lines++;
 		}
 	} while (line != NULL);
@@ -98,7 +125,7 @@ cmd_run_shell_callback(struct job *job)
 		memcpy(line, EVBUFFER_DATA(job->event->input), size);
 		line[size] = '\0';
 
-		ctx->print(ctx, "%s", line);
+		cmd_run_shell_print(job, line);
 		lines++;
 
 		free(line);
@@ -115,10 +142,10 @@ cmd_run_shell_callback(struct job *job)
 		xasprintf(&msg, "'%s' terminated by signal %d", cmd, retcode);
 	}
 	if (msg != NULL) {
-		if (lines != 0)
-			ctx->print(ctx, "%s", msg);
-		else
+		if (lines == 0)
 			ctx->info(ctx, "%s", msg);
+		else
+			cmd_run_shell_print(job, msg);
 		free(msg);
 	}
 }

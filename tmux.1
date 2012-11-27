@@ -3394,12 +3394,18 @@ otherwise.
 Lock each client individually by running the command specified by the
 .Ic lock-command
 option.
-.It Ic run-shell Ar shell-command
+.It Xo Ic run-shell
+.Op Fl t Ar target-pane
+.Ar shell-command
+.Xc
 .D1 (alias: Ic run )
 Execute
 .Ar shell-command
 in the background without creating a window.
-After it finishes, any output to stdout is displayed in copy mode.
+After it finishes, any output to stdout is displayed in copy mode (in the pane
+specified by
+.Fl t
+or the current pane if omitted).
 If the command doesn't return success, the exit status is also displayed.
 .It Ic server-info
 .D1 (alias: Ic info )
