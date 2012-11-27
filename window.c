@@ -867,7 +867,8 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
  * history is not updated
  */
 void
-window_pane_alternate_on(struct window_pane *wp, struct grid_cell *gc)
+window_pane_alternate_on(struct window_pane *wp, struct grid_cell *gc,
+    int cursor)
 {
 	struct screen	*s = &wp->base;
 	u_int		 sx, sy;
@@ -881,8 +882,10 @@ window_pane_alternate_on(struct window_pane *wp, struct grid_cell *gc)
 
 	wp->saved_grid = grid_create(sx, sy, 0);
 	grid_duplicate_lines(wp->saved_grid, 0, s->grid, screen_hsize(s), sy);
-	wp->saved_cx = s->cx;
-	wp->saved_cy = s->cy;
+	if (cursor) {
+		wp->saved_cx = s->cx;
+		wp->saved_cy = s->cy;
+	}
 	memcpy(&wp->saved_cell, gc, sizeof wp->saved_cell);
 
 	grid_view_clear(s->grid, 0, 0, sx, sy);
@@ -894,7 +897,8 @@ window_pane_alternate_on(struct window_pane *wp, struct grid_cell *gc)
 
 /* Exit alternate screen mode and restore the copied grid. */
 void
-window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc)
+window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
+    int cursor)
 {
 	struct screen	*s = &wp->base;
 	u_int		 sx, sy;
@@ -915,10 +919,12 @@ window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc)
 
 	/* Restore the grid, cursor position and cell. */
 	grid_duplicate_lines(s->grid, screen_hsize(s), wp->saved_grid, 0, sy);
-	s->cx = wp->saved_cx;
+	if (cursor)
+		s->cx = wp->saved_cx;
 	if (s->cx > screen_size_x(s) - 1)
 		s->cx = screen_size_x(s) - 1;
-	s->cy = wp->saved_cy;
+	if (cursor)
+		s->cy = wp->saved_cy;
 	if (s->cy > screen_size_y(s) - 1)
 		s->cy = screen_size_y(s) - 1;
 	memcpy(gc, &wp->saved_cell, sizeof *gc);
