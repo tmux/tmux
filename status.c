@@ -705,6 +705,17 @@ status_print(
 			gc->attr = attr;
 		fmt = options_get_string(oo, "window-status-current-format");
 	}
+	if (wl == TAILQ_FIRST(&s->lastw)) {
+		fg = options_get_number(oo, "window-status-last-fg");
+		if (fg != 8)
+			colour_set_fg(gc, fg);
+		bg = options_get_number(oo, "window-status-last-bg");
+		if (bg != 8)
+			colour_set_bg(gc, bg);
+		attr = options_get_number(oo, "window-status-last-attr");
+		if (attr != 0)
+			gc->attr = attr;
+	}
 
 	if (wl->flags & WINLINK_BELL) {
 		fg = options_get_number(oo, "window-status-bell-fg");
