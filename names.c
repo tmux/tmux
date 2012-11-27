@@ -76,7 +76,7 @@ window_name_callback(unused int fd, unused short events, void *data)
 		    name != NULL && name[0] == '-' && name[1] != '\0')
 			wname = parse_window_name(name + 1);
 		else
-				wname = parse_window_name(name);
+			wname = parse_window_name(name);
 		free(name);
 	}
 
