@@ -201,8 +201,9 @@ input_key(struct window_pane *wp, int key)
 void
 input_mouse(struct window_pane *wp, struct session *s, struct mouse_event *m)
 {
-	char	buf[10];
-	size_t	len;
+	char			 buf[10];
+	size_t			 len;
+	struct paste_buffer	*pb;
 
 	if (wp->screen->mode & ALL_MOUSE_MODES) {
 		if (wp->screen->mode & MODE_MOUSE_UTF8) {
@@ -222,13 +223,19 @@ input_mouse(struct window_pane *wp, struct session *s, struct mouse_event *m)
 		return;
 	}
 
-	if ((m->xb & 3) != 1 &&
+	if (m->button == 1 && (m->event & MOUSE_EVENT_CLICK) &&
+	    options_get_number(&wp->window->options, "mode-mouse") == 1) {
+		pb = paste_get_top(&global_buffers);
+		if (pb != NULL) {
+			paste_send_pane(pb, wp, "\r",
+			    wp->screen->mode & MODE_BRACKETPASTE);
+		}
+	} else if ((m->xb & 3) != 1 &&
 	    options_get_number(&wp->window->options, "mode-mouse") == 1) {
 		if (window_pane_set_mode(wp, &window_copy_mode) == 0) {
 			window_copy_init_from_pane(wp);
 			if (wp->mode->mouse != NULL)
 				wp->mode->mouse(wp, s, m);
 		}
-		return;
 	}
 }

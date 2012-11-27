@@ -1255,8 +1255,12 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case 1005:
 			screen_write_utf8mousemode(&ictx->ctx, 0);
 			break;
+		case 47:
+		case 1047:
+			window_pane_alternate_off(wp, &ictx->cell, 0);
+			break;
 		case 1049:
-			window_pane_alternate_off(wp, &ictx->cell);
+			window_pane_alternate_off(wp, &ictx->cell, 1);
 			break;
 		case 2004:
 			screen_write_bracketpaste(&ictx->ctx, 0);
@@ -1310,8 +1314,12 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case 1005:
 			screen_write_utf8mousemode(&ictx->ctx, 1);
 			break;
+		case 47:
+		case 1047:
+			window_pane_alternate_on(wp, &ictx->cell, 0);
+			break;
 		case 1049:
-			window_pane_alternate_on(wp, &ictx->cell);
+			window_pane_alternate_on(wp, &ictx->cell, 1);
 			break;
 		case 2004:
 			screen_write_bracketpaste(&ictx->ctx, 1);
