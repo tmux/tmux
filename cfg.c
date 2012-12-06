@@ -79,7 +79,7 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 	FILE		*f;
 	u_int		 n;
 	char		*buf, *line, *cause;
-	size_t		 len;
+	size_t		 len, newlen;
 	struct cmd_list	*cmdlist;
 	struct cmd_ctx	 ctx;
 	enum cmd_retval	 retval;
@@ -88,31 +88,35 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		cfg_add_cause(causes, "%s: %s", path, strerror(errno));
 		return (CMD_RETURN_ERROR);
 	}
-	n = 0;
 
 	cfg_references++;
 
+	n = 0;
 	line = NULL;
 	retval = CMD_RETURN_NORMAL;
 	while ((buf = fgetln(f, &len))) {
 		if (buf[len - 1] == '\n')
 			len--;
 
-		if (line != NULL)
-			line = xrealloc(line, 1, strlen(line) + len + 1);
-		else {
-			line = xmalloc(len + 1);
+		/* Current line is the continuation of the previous one. */
+		if (line != NULL) {
+			newlen = strlen(line) + len + 1;
+			line = xrealloc(line, 1, newlen);
+		} else {
+			newlen = len + 1;
+			line = xmalloc(newlen);
 			*line = '\0';
 		}
 
-		/* Append buffer to line. strncat will terminate. */
-		strncat(line, buf, len);
+		/* Append current line to the previous. */
+		strlcat(line, buf, newlen);
 		n++;
 
 		/* Continuation: get next line? */
 		len = strlen(line);
 		if (len > 0 && line[len - 1] == '\\') {
 			line[len - 1] = '\0';
+
 			/* Ignore escaped backslash at EOL. */
 			if (len > 1 && line[len - 2] != '\\')
 				continue;
@@ -127,11 +131,10 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 			cfg_add_cause(causes, "%s: %u: %s", path, n, cause);
 			free(cause);
 			continue;
-		} else
-			free(buf);
+		}
+		free(buf);
 		if (cmdlist == NULL)
 			continue;
-		cfg_cause = NULL;
 
 		if (ctxin == NULL) {
 			ctx.msgdata = NULL;
@@ -162,8 +165,7 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		}
 		cmd_list_free(cmdlist);
 		if (cfg_cause != NULL) {
-			cfg_add_cause(
-			    causes, "%s: %d: %s", path, n, cfg_cause);
+			cfg_add_cause(causes, "%s: %d: %s", path, n, cfg_cause);
 			free(cfg_cause);
 		}
 	}
