@@ -31,11 +31,12 @@
  * Parse a command from a string.
  */
 
-int	cmd_string_getc(const char *, size_t *);
-void	cmd_string_ungetc(size_t *);
-char   *cmd_string_string(const char *, size_t *, char, int);
-char   *cmd_string_variable(const char *, size_t *);
-char   *cmd_string_expand_tilde(const char *, size_t *);
+int	 cmd_string_getc(const char *, size_t *);
+void	 cmd_string_ungetc(size_t *);
+void	 cmd_string_copy(char **, char *, size_t *);
+char	*cmd_string_string(const char *, size_t *, char, int);
+char	*cmd_string_variable(const char *, size_t *);
+char	*cmd_string_expand_tilde(const char *, size_t *);
 
 int
 cmd_string_getc(const char *s, size_t *p)
@@ -84,26 +85,17 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 		case '\'':
 			if ((t = cmd_string_string(s, &p, '\'', 0)) == NULL)
 				goto error;
-			buf = xrealloc(buf, 1, len + strlen(t) + 1);
-			strlcpy(buf + len, t, strlen(t) + 1);
-			len += strlen(t);
-			free(t);
+			cmd_string_copy(&buf, t, &len);
 			break;
 		case '"':
 			if ((t = cmd_string_string(s, &p, '"', 1)) == NULL)
 				goto error;
-			buf = xrealloc(buf, 1, len + strlen(t) + 1);
-			strlcpy(buf + len, t, strlen(t) + 1);
-			len += strlen(t);
-			free(t);
+			cmd_string_copy(&buf, t, &len);
 			break;
 		case '$':
 			if ((t = cmd_string_variable(s, &p)) == NULL)
 				goto error;
-			buf = xrealloc(buf, 1, len + strlen(t) + 1);
-			strlcpy(buf + len, t, strlen(t) + 1);
-			len += strlen(t);
-			free(t);
+			cmd_string_copy(&buf, t, &len);
 			break;
 		case '#':
 			/* Comment: discard rest of line. */
@@ -147,12 +139,10 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			goto out;
 		case '~':
 			if (buf == NULL) {
-				if ((t = cmd_string_expand_tilde(s, &p)) == NULL)
+				t = cmd_string_expand_tilde(s, &p);
+				if (t == NULL)
 					goto error;
-				buf = xrealloc(buf, 1, len + strlen(t) + 1);
-				strlcpy(buf + len, t, strlen(t) + 1);
-				len += strlen(t);
-				free(t);
+				cmd_string_copy(&buf, t, &len);
 				break;
 			}
 			/* FALLTHROUGH */
@@ -179,6 +169,20 @@ out:
 	}
 
 	return (rval);
+}
+
+void
+cmd_string_copy(char **dst, char *src, size_t *len)
+{
+	size_t srclen;
+
+	srclen = strlen(src);
+
+	*dst = xrealloc(*dst, 1, *len + srclen + 1);
+	strlcpy(*dst + *len, src, srclen + 1);
+
+	*len += srclen;
+	free(src);
 }
 
 char *
@@ -220,10 +224,7 @@ cmd_string_string(const char *s, size_t *p, char endch, int esc)
 				break;
 			if ((t = cmd_string_variable(s, p)) == NULL)
 				goto error;
-			buf = xrealloc(buf, 1, len + strlen(t) + 1);
-			strlcpy(buf + len, t, strlen(t) + 1);
-			len += strlen(t);
-			free(t);
+			cmd_string_copy(&buf, t, &len);
 			continue;
 		}
 
