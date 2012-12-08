@@ -167,7 +167,7 @@ server_start(int lockfd, char *lockfile)
 		load_cfg(SYSTEM_CFG, NULL, &cfg_causes);
 	else if (errno != ENOENT) {
 		cfg_add_cause(
-		    &cfg_causes, "%s: %s", strerror(errno), SYSTEM_CFG);
+		    &cfg_causes, "%s: %s", SYSTEM_CFG, strerror(errno));
 	}
 	if (cfg_file != NULL)
 		load_cfg(cfg_file, NULL, &cfg_causes);
