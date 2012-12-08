@@ -324,6 +324,9 @@ screen_write_parsestyle(
 			fg = defgc->fg;
 			bg = defgc->bg;
 			attr = defgc->attr;
+			flags &= ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
+			flags |=
+			    defgc->flags & (GRID_FLAG_FG256|GRID_FLAG_BG256);
 		} else if (end > 3 && strncasecmp(tmp + 1, "g=", 2) == 0) {
 			if ((val = colour_fromstring(tmp + 3)) == -1)
 				return;
@@ -335,8 +338,11 @@ screen_write_parsestyle(
 					} else
 						flags &= ~GRID_FLAG_FG256;
 					fg = val;
-				} else
+				} else {
 					fg = defgc->fg;
+					flags &= ~GRID_FLAG_FG256;
+					flags |= defgc->flags & GRID_FLAG_FG256;
+				}
 			} else if (*in == 'b' || *in == 'B') {
 				if (val != 8) {
 					if (val & 0x100) {
@@ -345,8 +351,11 @@ screen_write_parsestyle(
 					} else
 						flags &= ~GRID_FLAG_BG256;
 					bg = val;
-				} else
+				} else {
 					bg = defgc->bg;
+					flags &= ~GRID_FLAG_BG256;
+					flags |= defgc->flags & GRID_FLAG_BG256;
+				}
 			} else
 				return;
 		} else if (end > 2 && strncasecmp(tmp, "no", 2) == 0) {
