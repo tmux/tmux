@@ -105,6 +105,7 @@ TMUX UI ISSUES
   and a buffer) info() when changing to same window
 - way to add dest for break-pane; maybe some easier way to unbreak-pane
 - case insensitive searching
+- incremental searching in copy mode.
 - configurable borders and empty space filler for when panes < window?
 - mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets the
   flag on w/o checking the others before calling tty_update_mode)
