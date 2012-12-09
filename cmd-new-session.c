@@ -36,8 +36,8 @@ enum cmd_retval	 cmd_new_session_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_new_session_entry = {
 	"new-session", "new",
 	"dn:s:t:x:y:", 0, 1,
-	"[-d] [-n window-name] [-s session-name] [-t target-session] "
-	"[-x width] [-y height] [command]",
+	"[-d] [-n window-name] [-s session-name] " CMD_TARGET_SESSION_USAGE
+	" [-x width] [-y height] [command]",
 	CMD_STARTSERVER|CMD_CANTNEST|CMD_SENDENVIRON,
 	NULL,
 	cmd_new_session_check,

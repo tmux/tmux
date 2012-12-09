@@ -32,7 +32,8 @@ enum cmd_retval	 cmd_display_message_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_display_message_entry = {
 	"display-message", "display",
 	"c:pt:F:", 0, 1,
-	"[-p] [-c target-client] [-t target-pane] [-F format] [message]",
+	"[-p] [-c target-client] [-F format] " CMD_TARGET_PANE_USAGE
+	" [message]",
 	0,
 	NULL,
 	NULL,
