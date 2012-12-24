@@ -41,7 +41,7 @@ syn keyword tmuxCmds
 	\ choose-buffer clearhist clear-history deleteb delete-buffer lsb
 	\ list-buffers loadb load-buffer pasteb paste-buffer saveb save-buffer
 	\ setb set-buffer showb show-buffer
-	\ clock-mode if[-shell] lock[-server] run[-shell] [server-]info
+	\ clock-mode if[-shell] lock[-server] run[-shell] server-info info
 	\ choose-list
 
 syn keyword tmuxOptsSet
@@ -49,11 +49,14 @@ syn keyword tmuxOptsSet
 	\ set-clipboard
 	\ base-index bell-action bell-on-alert default-command default-path
 	\ default-shell default-terminal destroy-unattached detach-on-destroy
-	\ display-panes-[active-]colour display-[panes-]time history-limit
-	\ lock-after-time lock-command lock-server message-[command-]attr
-	\ message-[command-]bg message-[command-]fg message-limit
+	\ display-panes-active-colour display-panes-colour display-panes-time
+	\ display-time history-limit
+	\ lock-after-time lock-command lock-server
+	\ message-command-attr message-attr message-command-bg message-bg
+	\ message-command-fg message-fg message-limit
 	\ mouse-resize-pane mouse-select-pane mouse-select-window mouse-utf8
-	\ pane-[active-]border-bg pane-[active-]border-fg prefix prefix2
+	\ pane-active-border-bg pane-border-bg pane-active-border-fg
+	\ pane-border-fg prefix prefix2
 	\ renumber-windows repeat-time set-remain-on-exit set-titles
 	\ set-titles-string status status-attr status-bg status-fg
 	\ status-interval status-justify status-keys status-left
@@ -75,8 +78,9 @@ syn keyword tmuxOptsSetw
 	\ window-status-content-bg window-status-content-fg
 	\ window-status-activity-attr window-status-activity-bg
 	\ window-status-activity-fg window-status-attr
-	\ window-status-[current-]attr window-status-[current-]bg
-	\ window-status-[current-]fg window-status-[current-]format
+	\ window-status-current-attr window-status-attr window-status-current-bg
+	\ window-status-bg window-status-current-fg window-status-fg
+	\ window-status-current-format window-status-format
 	\ window-status-separator xterm-keys wrap-search
 
 syn keyword tmuxTodo FIXME NOTE TODO XXX contained
