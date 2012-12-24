@@ -408,11 +408,15 @@ otherwise the current window in
 is chosen.
 The special character
 .Ql \&!
-uses the last (previously current) window, or
+uses the last (previously current) window,
+.Ql ^
+selects the highest numbered window,
+.Ql $
+selects the lowest numbered window, and
 .Ql +
 and
 .Ql -
-are the next window or the previous window by number.
+select the next window or the previous window by number.
 When the argument does not contain a colon,
 .Nm
 first attempts to parse it as window; if that fails, an attempt is made to
@@ -1126,6 +1130,7 @@ This command works only from inside
 .Ic choose-tree
 .Op Fl s
 .Op Fl w
+.Op Fl u
 .Op Fl b Ar session-template
 .Op Fl c Ar window-template
 .Op Fl S Ar format
@@ -1150,6 +1155,9 @@ is given, will show sessions.
 If
 .Fl w
 is given, will show windows.
+If
+.Fl u
+is given, the tree is uncollapsed by default.
 If
 .Fl b
 is given, will override the default session command.
@@ -1639,7 +1647,7 @@ is the same as using the
 .Ic last-pane
 command.
 .It Xo Ic select-window
-.Op Fl lnp
+.Op Fl lnpT
 .Op Fl t Ar target-window
 .Xc
 .D1 (alias: Ic selectw )
@@ -1655,6 +1663,11 @@ are equivalent to the
 and
 .Ic previous-window
 commands.
+If
+.Fl T
+is given and the selected window is already the current window,
+the command behaves like
+.Ic last-window .
 .It Xo Ic split-window
 .Op Fl dhvP
 .Op Fl c Ar start-directory
