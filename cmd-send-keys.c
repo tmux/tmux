@@ -32,7 +32,7 @@ enum cmd_retval	 cmd_send_keys_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_send_keys_entry = {
 	"send-keys", "send",
 	"lRt:", 0, -1,
-	"[-lR] [-t target-pane] key ...",
+	"[-lR] " CMD_TARGET_PANE_USAGE " key ...",
 	0,
 	NULL,
 	NULL,

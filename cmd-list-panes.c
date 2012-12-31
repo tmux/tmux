@@ -38,7 +38,7 @@ void	cmd_list_panes_window(struct cmd *,
 const struct cmd_entry cmd_list_panes_entry = {
 	"list-panes", "lsp",
 	"asF:t:", 0, 0,
-	"[-as] [-F format] [-t target]",
+	"[-as] [-F format] " CMD_TARGET_WINDOW_USAGE,
 	0,
 	NULL,
 	NULL,

@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -78,8 +79,8 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 {
 	FILE		*f;
 	u_int		 n;
-	char		*buf, *line, *cause;
-	size_t		 len, newlen;
+	char		*buf, *copy, *line, *cause;
+	size_t		 len, oldlen;
 	struct cmd_list	*cmdlist;
 	struct cmd_ctx	 ctx;
 	enum cmd_retval	 retval;
@@ -95,21 +96,23 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 	line = NULL;
 	retval = CMD_RETURN_NORMAL;
 	while ((buf = fgetln(f, &len))) {
+		/* Trim \n. */
 		if (buf[len - 1] == '\n')
 			len--;
+		log_debug ("%s: %s", path, buf);
 
 		/* Current line is the continuation of the previous one. */
 		if (line != NULL) {
-			newlen = strlen(line) + len + 1;
-			line = xrealloc(line, 1, newlen);
+			oldlen = strlen(line);
+			line = xrealloc(line, 1, oldlen + len + 1);
 		} else {
-			newlen = len + 1;
-			line = xmalloc(newlen);
-			*line = '\0';
+			oldlen = 0;
+			line = xmalloc(len + 1);
 		}
 
 		/* Append current line to the previous. */
-		strlcat(line, buf, newlen);
+		memcpy(line + oldlen, buf, len);
+		line[oldlen + len] = '\0';
 		n++;
 
 		/* Continuation: get next line? */
@@ -121,18 +124,25 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 			if (len > 1 && line[len - 2] != '\\')
 				continue;
 		}
-		buf = line;
+		copy = line;
 		line = NULL;
 
+		/* Skip empty lines. */
+		buf = copy;
+		while (isspace((u_char)*buf))
+			buf++;
+		if (*buf == '\0')
+			continue;
+
 		if (cmd_string_parse(buf, &cmdlist, &cause) != 0) {
-			free(buf);
+			free(copy);
 			if (cause == NULL)
 				continue;
 			cfg_add_cause(causes, "%s: %u: %s", path, n, cause);
 			free(cause);
 			continue;
 		}
-		free(buf);
+		free(copy);
 		if (cmdlist == NULL)
 			continue;
 

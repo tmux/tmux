@@ -2239,6 +2239,7 @@ struct window_choose_data	*window_choose_add_session(struct window_pane *,
 struct window_choose_data	*window_choose_add_item(struct window_pane *,
 			struct cmd_ctx *, struct winlink *, const char *,
 			char *, u_int);
+void	window_choose_expand_all(struct window_pane *);
 
 /* names.c */
 void		 queue_window_name(struct window *);

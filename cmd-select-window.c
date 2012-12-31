@@ -31,8 +31,8 @@ enum cmd_retval	 cmd_select_window_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_select_window_entry = {
 	"select-window", "selectw",
-	"lnpt:", 0, 0,
-	"[-lnp] " CMD_TARGET_WINDOW_USAGE,
+	"lnpTt:", 0, 0,
+	"[-lnpT] " CMD_TARGET_WINDOW_USAGE,
 	0,
 	cmd_select_window_key_binding,
 	NULL,
@@ -130,7 +130,17 @@ cmd_select_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		if (wl == NULL)
 			return (CMD_RETURN_ERROR);
 
-		if (session_select(s, wl->idx) == 0)
+		/*
+		 * If -T and select-window is invoked on same window as
+		 * current, switch to previous window.
+		 */
+		if (args_has(self->args, 'T') && wl == s->curw) {
+			if (session_last(s) != 0) {
+				ctx->error(ctx, "no last window");
+				return (-1);
+			}
+			server_redraw_session(s);
+		} else if (session_select(s, wl->idx) == 0)
 			server_redraw_session(s);
 	}
 	recalculate_sizes();

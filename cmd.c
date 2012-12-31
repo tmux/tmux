@@ -862,6 +862,10 @@ cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 		wl = s->curw;
 	else if (winptr[0] == '!' && winptr[1] == '\0')
 		wl = TAILQ_FIRST(&s->lastw);
+	else if (winptr[0] == '^' && winptr[1] == '\0')
+		wl = RB_MIN(winlinks, &s->windows);
+	else if (winptr[0] == '$' && winptr[1] == '\0')
+		wl = RB_MAX(winlinks, &s->windows);
 	else if (winptr[0] == '+' || winptr[0] == '-')
 		wl = cmd_find_window_offset(winptr, s, &ambiguous);
 	else
