@@ -719,6 +719,23 @@ tty_cmd_deletecharacter(struct tty *tty, const struct tty_ctx *ctx)
 }
 
 void
+tty_cmd_clearcharacter(struct tty *tty, const struct tty_ctx *ctx)
+{
+	u_int	i;
+
+	tty_reset(tty);
+
+	tty_cursor_pane(tty, ctx, ctx->ocx, ctx->ocy);
+
+	if (tty_term_has(tty->term, TTYC_ECH))
+		tty_putcode1(tty, TTYC_ECH, ctx->num);
+	else {
+		for (i = 0; i < ctx->num; i++)
+			tty_putc(tty, ' ');
+	}
+}
+
+void
 tty_cmd_insertline(struct tty *tty, const struct tty_ctx *ctx)
 {
 	if (!tty_pane_full_width(tty, ctx) ||

@@ -135,6 +135,7 @@ enum input_csi_type {
 	INPUT_CSI_DECSTBM,
 	INPUT_CSI_DL,
 	INPUT_CSI_DSR,
+	INPUT_CSI_ECH,
 	INPUT_CSI_ED,
 	INPUT_CSI_EL,
 	INPUT_CSI_HPA,
@@ -167,6 +168,7 @@ const struct input_table_entry input_csi_table[] = {
 	{ 'L', "",  INPUT_CSI_IL },
 	{ 'M', "",  INPUT_CSI_DL },
 	{ 'P', "",  INPUT_CSI_DCH },
+	{ 'X', "",  INPUT_CSI_ECH },
 	{ 'Z', "",  INPUT_CSI_CBT },
 	{ 'c', "",  INPUT_CSI_DA },
 	{ 'c', ">", INPUT_CSI_DA_TWO },
@@ -1142,6 +1144,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
 			break;
 		}
+		break;
+	case INPUT_CSI_ECH:
+		screen_write_clearcharacter(sctx, input_get(ictx, 0, 1, 1));
 		break;
 	case INPUT_CSI_DCH:
 		screen_write_deletecharacter(sctx, input_get(ictx, 0, 1, 1));
