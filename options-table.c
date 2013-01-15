@@ -91,6 +91,13 @@ const struct options_table_entry server_options_table[] = {
 
 /* Session options. */
 const struct options_table_entry session_options_table[] = {
+	{ .name = "assume-paste-time",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .minimum = 0,
+	  .maximum = INT_MAX,
+	  .default_num = 1,
+	},
+
 	{ .name = "base-index",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .minimum = 0,

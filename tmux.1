@@ -2044,6 +2044,13 @@ interactive menu when required.
 .Pp
 Available session options are:
 .Bl -tag -width Ds
+.It Ic assume-paste-time Ar milliseconds
+If keys are entered faster than one in
+.Ar milliseconds ,
+they are assumed to have been pasted rather than typed and
+.Nm
+key bindings are not processed.
+The default is one millisecond and zero disables.
 .It Ic base-index Ar index
 Set the base index from which an unused index should be searched when a new
 window is created.

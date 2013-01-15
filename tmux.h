@@ -1095,6 +1095,7 @@ struct session {
 
 	struct timeval	 creation_time;
 	struct timeval	 activity_time;
+	struct timeval	 last_activity_time;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1706,7 +1707,6 @@ int		 paste_replace(struct paste_stack *, u_int, char *, size_t);
 char		*paste_print(struct paste_buffer *, size_t);
 void		 paste_send_pane(struct paste_buffer *, struct window_pane *,
 		     const char *, int);
-
 
 /* clock.c */
 extern const char clock_table[14][5][5];
