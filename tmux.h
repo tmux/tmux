@@ -270,6 +270,7 @@ enum tty_code_code {
 	TTYC_DL,	/* parm_delete_line, DL */
 	TTYC_DL1,	/* delete_line, dl */
 	TTYC_E3,
+	TTYC_ECH,	/* erase_chars, ec */
 	TTYC_EL,	/* clr_eol, ce */
 	TTYC_EL1,	/* clr_bol, cb */
 	TTYC_ENACS,	/* ena_acs, eA */
@@ -969,13 +970,6 @@ struct window_pane {
 TAILQ_HEAD(window_panes, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
 
-/* Window last layout. */
-struct last_layout {
-	char	*layout;
-
-	TAILQ_ENTRY(last_layout) entry;
-};
-
 /* Window structure. */
 struct window {
 	u_int		 id;
@@ -989,9 +983,6 @@ struct window {
 
 	int		 lastlayout;
 	struct layout_cell *layout_root;
-	TAILQ_HEAD(last_layouts, last_layout) layout_list;
-	u_int		 layout_list_size;
-	struct last_layout *layout_list_last;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1091,6 +1082,7 @@ struct session {
 
 	struct timeval	 creation_time;
 	struct timeval	 activity_time;
+	struct timeval	 last_activity_time;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1655,6 +1647,7 @@ void	tty_cmd_clearscreen(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearstartofline(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearstartofscreen(struct tty *, const struct tty_ctx *);
 void	tty_cmd_deletecharacter(struct tty *, const struct tty_ctx *);
+void	tty_cmd_clearcharacter(struct tty *, const struct tty_ctx *);
 void	tty_cmd_deleteline(struct tty *, const struct tty_ctx *);
 void	tty_cmd_erasecharacter(struct tty *, const struct tty_ctx *);
 void	tty_cmd_insertcharacter(struct tty *, const struct tty_ctx *);
@@ -1702,7 +1695,6 @@ int		 paste_replace(struct paste_stack *, u_int, char *, size_t);
 char		*paste_print(struct paste_buffer *, size_t);
 void		 paste_send_pane(struct paste_buffer *, struct window_pane *,
 		     const char *, int);
-
 
 /* clock.c */
 extern const char clock_table[14][5][5];
@@ -2045,6 +2037,7 @@ void	 screen_write_cursorleft(struct screen_write_ctx *, u_int);
 void	 screen_write_alignmenttest(struct screen_write_ctx *);
 void	 screen_write_insertcharacter(struct screen_write_ctx *, u_int);
 void	 screen_write_deletecharacter(struct screen_write_ctx *, u_int);
+void	 screen_write_clearcharacter(struct screen_write_ctx *, u_int);
 void	 screen_write_insertline(struct screen_write_ctx *, u_int);
 void	 screen_write_deleteline(struct screen_write_ctx *, u_int);
 void	 screen_write_clearline(struct screen_write_ctx *);
@@ -2172,8 +2165,7 @@ u_int		 layout_count_cells(struct layout_cell *);
 struct layout_cell *layout_create_cell(struct layout_cell *);
 void		 layout_free_cell(struct layout_cell *);
 void		 layout_print_cell(struct layout_cell *, const char *, u_int);
-void		 layout_destroy_cell(
-		     struct layout_cell *, struct layout_cell **);
+void		 layout_destroy_cell(struct layout_cell *, struct layout_cell **);
 void		 layout_set_size(
 		     struct layout_cell *, u_int, u_int, u_int, u_int);
 void		 layout_make_leaf(
@@ -2194,9 +2186,6 @@ void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(
 		     struct window_pane *, enum layout_type, int, int);
 void		 layout_close_pane(struct window_pane *);
-void		 layout_list_add(struct window *);
-const char	*layout_list_redo(struct window *);
-const char	*layout_list_undo(struct window *);
 
 /* layout-custom.c */
 char		*layout_dump(struct window *);

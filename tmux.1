@@ -1605,7 +1605,7 @@ lower) with
 .Fl U
 or downward (numerically higher).
 .It Xo Ic select-layout
-.Op Fl npUu
+.Op Fl np
 .Op Fl t Ar target-window
 .Op Ar layout-name
 .Xc
@@ -1622,13 +1622,6 @@ are equivalent to the
 and
 .Ic previous-layout
 commands.
-.Pp
-.Fl U
-and
-.Fl u
-step forward and back through previous layouts, up to the maximum set by the
-.Ic layout-history-limit
-option.
 .It Xo Ic select-pane
 .Op Fl lDLRU
 .Op Fl t Ar target-pane
@@ -2048,6 +2041,13 @@ interactive menu when required.
 .Pp
 Available session options are:
 .Bl -tag -width Ds
+.It Ic assume-paste-time Ar milliseconds
+If keys are entered faster than one in
+.Ar milliseconds ,
+they are assumed to have been pasted rather than typed and
+.Nm
+key bindings are not processed.
+The default is one millisecond and zero disables.
 .It Ic base-index Ar index
 Set the base index from which an unused index should be searched when a new
 window is created.
@@ -2673,13 +2673,6 @@ from resizing a window to greater than
 or
 .Ar height .
 A value of zero restores the default unlimited setting.
-.Pp
-.It Ic layout-history-limit Ar limit
-Set the number of previous layouts stored for recovery with
-.Ic select-layout
-.Fl U
-and
-.Fl u .
 .Pp
 .It Ic main-pane-height Ar height
 .It Ic main-pane-width Ar width

@@ -649,6 +649,30 @@ screen_write_deletecharacter(struct screen_write_ctx *ctx, u_int nx)
 	tty_write(tty_cmd_deletecharacter, &ttyctx);
 }
 
+/* Clear nx characters. */
+void
+screen_write_clearcharacter(struct screen_write_ctx *ctx, u_int nx)
+{
+	struct screen	*s = ctx->s;
+	struct tty_ctx	 ttyctx;
+
+	if (nx == 0)
+		nx = 1;
+
+	if (nx > screen_size_x(s) - s->cx)
+		nx = screen_size_x(s) - s->cx;
+	if (nx == 0)
+		return;
+
+	screen_write_initctx(ctx, &ttyctx, 0);
+
+	if (s->cx <= screen_size_x(s) - 1)
+		grid_view_clear(s->grid, s->cx, s->cy, nx, 1);
+
+	ttyctx.num = nx;
+	tty_write(tty_cmd_clearcharacter, &ttyctx);
+}
+
 /* Insert ny lines. */
 void
 screen_write_insertline(struct screen_write_ctx *ctx, u_int ny)
