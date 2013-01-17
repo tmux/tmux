@@ -974,13 +974,6 @@ struct window_pane {
 TAILQ_HEAD(window_panes, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
 
-/* Window last layout. */
-struct last_layout {
-	char	*layout;
-
-	TAILQ_ENTRY(last_layout) entry;
-};
-
 /* Window structure. */
 struct window {
 	u_int		 id;
@@ -994,9 +987,6 @@ struct window {
 
 	int		 lastlayout;
 	struct layout_cell *layout_root;
-	TAILQ_HEAD(last_layouts, last_layout) layout_list;
-	u_int		 layout_list_size;
-	struct last_layout *layout_list_last;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -2179,8 +2169,7 @@ u_int		 layout_count_cells(struct layout_cell *);
 struct layout_cell *layout_create_cell(struct layout_cell *);
 void		 layout_free_cell(struct layout_cell *);
 void		 layout_print_cell(struct layout_cell *, const char *, u_int);
-void		 layout_destroy_cell(
-		     struct layout_cell *, struct layout_cell **);
+void		 layout_destroy_cell(struct layout_cell *, struct layout_cell **);
 void		 layout_set_size(
 		     struct layout_cell *, u_int, u_int, u_int, u_int);
 void		 layout_make_leaf(
@@ -2201,9 +2190,6 @@ void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(
 		     struct window_pane *, enum layout_type, int, int);
 void		 layout_close_pane(struct window_pane *);
-void		 layout_list_add(struct window *);
-const char	*layout_list_redo(struct window *);
-const char	*layout_list_undo(struct window *);
 
 /* layout-custom.c */
 char		*layout_dump(struct window *);
