@@ -12,14 +12,14 @@
 		<p id="upper-left-title">tmux</p>
 		<ul id="left-menu">
 		<li><a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">Download</a></li>
-		<li><a href="http://tmux.git.sourceforge.net/git/gitweb.cgi?p=tmux/tmux;a=blob;f=NOTES">Release Notes</a></li>
+		<li><a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/NOTES">Release Notes</a></li>
 		<li><a href="http://www.openbsd.org/cgi-bin/man.cgi?query=tmux&sektion=1">Manual Page</a></li>
-		<li><a href="http://tmux.git.sourceforge.net/git/gitweb.cgi?p=tmux/tmux;a=blob;f=FAQ">FAQ</a></li>
+		<li><a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/FAQ">FAQ</a></li>
 		<li><a href="http://www.openbsd.org/faq/faq7.html#tmux">tmux in the OpenBSD FAQ</a></li>
-		<li><a href="http://tmux.git.sourceforge.net/git/gitweb.cgi?p=tmux/tmux;a=tree;f=examples">Examples</a></li>
+		<li><a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/examples/">Examples</a></li>
 		<li>&nbsp;</li>
 		<li class="menu-headings">Source Code</li>
-		<li><a href="http://tmux.git.sourceforge.net/git/gitweb.cgi?p=tmux/tmux;a=tree">SourceForge</a></li>
+		<li><a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/">SourceForge</a></li>
 		<li><a href="http://www.openbsd.org/cgi-bin/cvsweb/src/usr.bin/tmux/">OpenBSD</a></li>
 		<li>&nbsp;</li>
 		<li class="menu-headings">Support</li>
@@ -39,7 +39,7 @@ continue running in the background, then later reattached.</p>
 <p>The
 <a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">
 latest release is tmux %%VERSION%%</a> or
-<a href="http://sourceforge.net/scm/?type=git&group_id=200378">
+<a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/">
 get the development version from git.</a></p>
 
 <p>tmux uses a client-server model. The server holds multiple sessions and each
