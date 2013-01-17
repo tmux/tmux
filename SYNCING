@@ -1,10 +1,10 @@
 Preamble
 ========
 
-Tmux on SourceForge has two git repositories [1] "tmux" and "tmux-openbsd".
+Tmux on SourceForge has two git repositories [1] "tmux-code" and "tmux-openbsd".
 Here's a description of them:
 
-* "tmux" is the portable version, the one which contains code for other
+* "tmux-code" is the portable version, the one which contains code for other
   operating systems, and autotools, etc., which isn't found or needed in the
   OpenBSD base system.
 
@@ -16,7 +16,7 @@ running at 15 minute intervals, so a commit made to OpenBSD's tmux CVS
 repository will take that long to appear in this git repository.
 
 It is assumed that the person doing the sync has read/write access to the
-tmux repository on SourceForge already.
+tmux-code repository on SourceForge already.
 
 If you've never used git before, git tracks meta-data about the committer
 and the author, as part of a commit, hence:
@@ -35,7 +35,7 @@ this information has ever been set before.
 Cloning repositories
 ====================
 
-This involves having both tmux and tmux-openbsd cloned, as in:
+This involves having both tmux-code and tmux-openbsd cloned, as in:
 
 % cd /some/where/useful
 % git clone ssh://${USER}@tmux.git.sf.net/gitroot/tmux/tmux
@@ -48,56 +48,56 @@ these checkouts existing, skip that.
 Adding in git-remotes
 =====================
 
-Because the portable "tmux" git repository and the "tmux-openbsd" repository do
+Because the portable "tmux-code" git repository and the "tmux-openbsd" repository do
 not inherently share any history between each other, the history has been
 faked between them.  This "faking of history" is something which has to be
 told to git for the purposes of comparing the "tmux" and "tmux-openbsd"
 repositories for syncing.  To do this, we must reference the clone of the
-"tmux-openbsd" repository from the "tmux" repository, as shown by the
+"tmux-openbsd" repository from the "tmux-code" repository, as shown by the
 following command:
 
-% cd /path/to/tmux
+% cd /path/to/tmux-code
 % git remote add obsd-tmux file:///path/to/tmux-openbsd
 
 So that now, the remote "obsd-tmux" can be used to reference branches and
 commits from the "tmux-openbsd" repository, but from the context of the
-portable "tmux" repository, which makes sense because it's the "tmux"
+portable "tmux-code" repository, which makes sense because it's the "tmux"
 repository which will have the updates applied to them.
 
 Fetching updates
 ================
 
 To ensure the latest commits from "tmux-openbsd" can be found from within
-"tmux", we have to ensure the "master" branch from "tmux-openbsd" is
-up-to-date first, and then reference that update in "tmux", as in:
+"tmux-code", we have to ensure the "master" branch from "tmux-openbsd" is
+up-to-date first, and then reference that update in "tmux-code", as in:
 
 % cd /path/to/tmux-openbsd
 % git checkout master
 % git pull
 
-Then back in "tmux":
+Then back in "tmux-code":
 
-% cd /path/to/tmux
-% git fetch obsd-tmux
+% cd /path/to/tmux-code
+% git fetch obsd-tmux-code
 
 Creating the necessary branches
 ===============================
 
-Now that "tmux" can see commits and branches from "tmux-openbsd" by way of
+Now that "tmux-code" can see commits and branches from "tmux-openbsd" by way of
 the remote name "obsd-tmux", we can now create the master branch from
-"tmux-openbsd" in the "tmux" repository:
+"tmux-openbsd" in the "tmux-code" repository:
 
 % git checkout -b obsd-master obsd-tmux/master
 
 Adding in the fake history points
 ================================= 
 
-To tie both the "master" branch from "tmux" and the "obsd-master" branch
-from "tmux-openbsd" together, the fake history points added to the "tmux"
-repository need to be added.  To do this, we must add an additional refspec
+To tie both the "master" branch from "tmux-code" and the "obsd-master" branch
+from "tmux-openbsd" together, the fake history points added to the
+"tmux-code" repository need to be added.  To do this, we must add an additional refspec
 line, as in:
 
-% cd /path/to/tmux
+% cd /path/to/tmux-code
 % git config --add remote.origin.fetch '+refs/replace/*:refs/replace/*'
 % git fetch origin
 
@@ -108,8 +108,7 @@ Make sure the "master" branch is checked out:
 
 % git checkout master
 
-The following will show commits on OpenBSD not yet synched with tmux
-portable:
+The following will show commits on OpenBSD not yet synched with "tmux-code":
 
 % git log master..obsd-master
 
@@ -170,4 +169,4 @@ Release tmux for next version
 
 9. Update freshmeat.
 
-[1] http://tmux.git.sourceforge.net/git/gitweb-index.cgi
+[1] https://sourceforge.net/p/tmux/_list/git
