@@ -44,7 +44,6 @@ const struct cmd_entry cmd_choose_client_entry = {
 
 struct cmd_choose_client_data {
 	struct client	*client;
-	char   		*template;
 };
 
 enum cmd_retval
