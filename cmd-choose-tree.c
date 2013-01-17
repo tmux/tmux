@@ -219,6 +219,7 @@ windows_only:
 
 			free(final_win_action);
 		}
+
 		/*
 		 * If we're just drawing windows, don't consider moving on to
 		 * other sessions as we only list windows in this session.
@@ -260,5 +261,4 @@ cmd_choose_tree_free(struct window_choose_data *cdata)
 	free(cdata->command);
 	format_free(cdata->ft);
 	free(cdata);
-
 }
