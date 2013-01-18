@@ -36,8 +36,8 @@
  */
 
 /* Default grid cell data. */
-const struct grid_cell grid_default_cell = { 0, 0, 8, 8, ' ' };
-const struct grid_cell grid_marker_cell = { 0, 0, 8, 8, '_' };
+const struct grid_cell grid_default_cell = { 0, 0, 8, 8, (1 << 4) | 1, " " };
+const struct grid_cell grid_marker_cell = { 0, 0, 8, 8, (1 << 4) | 1, "_" };
 
 #define grid_put_cell(gd, px, py, gc) do {			\
 	memcpy(&gd->linedata[py].celldata[px], 			\
@@ -100,7 +100,6 @@ grid_destroy(struct grid *gd)
 	for (yy = 0; yy < gd->hsize + gd->sy; yy++) {
 		gl = &gd->linedata[yy];
 		free(gl->celldata);
-		free(gl->utf8data);
 	}
 
 	free(gd->linedata);
@@ -114,7 +113,6 @@ grid_compare(struct grid *ga, struct grid *gb)
 {
 	struct grid_line	*gla, *glb;
 	struct grid_cell	*gca, *gcb;
-	struct grid_utf8	*gua, *gub;
 	u_int			 xx, yy;
 
 	if (ga->sx != gb->sx || ga->sy != ga->sy)
@@ -129,12 +127,6 @@ grid_compare(struct grid *ga, struct grid *gb)
 			gca = &gla->celldata[xx];
 			gcb = &glb->celldata[xx];
 			if (memcmp(gca, gcb, sizeof (struct grid_cell)) != 0)
-				return (1);
-			if (!(gca->flags & GRID_FLAG_UTF8))
-				continue;
-			gua = &gla->utf8data[xx];
-			gub = &glb->utf8data[xx];
-			if (memcmp(gua, gub, sizeof (struct grid_utf8)) != 0)
 				return (1);
 		}
 	}
@@ -233,20 +225,6 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx)
 	gl->cellsize = sx;
 }
 
-/* Expand line to fit to cell for UTF-8. */
-void
-grid_expand_line_utf8(struct grid *gd, u_int py, u_int sx)
-{
-	struct grid_line	*gl;
-
-	gl = &gd->linedata[py];
-	if (sx <= gl->utf8size)
-		return;
-
-	gl->utf8data = xrealloc(gl->utf8data, sx, sizeof *gl->utf8data);
-	gl->utf8size = sx;
-}
-
 /* Get cell for reading. */
 const struct grid_cell *
 grid_peek_cell(struct grid *gd, u_int px, u_int py)
@@ -280,41 +258,6 @@ grid_set_cell(
 
 	grid_expand_line(gd, py, px + 1);
 	grid_put_cell(gd, px, py, gc);
-}
-
-/* Get UTF-8 for reading. */
-const struct grid_utf8 *
-grid_peek_utf8(struct grid *gd, u_int px, u_int py)
-{
-	if (grid_check_y(gd, py) != 0)
-		return (NULL);
-
-	if (px >= gd->linedata[py].utf8size)
-		return (NULL);
-	return (&gd->linedata[py].utf8data[px]);
-}
-
-/* Get utf8 at relative position (for writing). */
-struct grid_utf8 *
-grid_get_utf8(struct grid *gd, u_int px, u_int py)
-{
-	if (grid_check_y(gd, py) != 0)
-		return (NULL);
-
-	grid_expand_line_utf8(gd, py, px + 1);
-	return (&gd->linedata[py].utf8data[px]);
-}
-
-/* Set utf8 at relative position. */
-void
-grid_set_utf8(
-    struct grid *gd, u_int px, u_int py, const struct grid_utf8 *gc)
-{
-	if (grid_check_y(gd, py) != 0)
-		return;
-
-	grid_expand_line_utf8(gd, py, px + 1);
-	grid_put_utf8(gd, px, py, gc);
 }
 
 /* Clear area. */
@@ -373,7 +316,6 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny)
 	for (yy = py; yy < py + ny; yy++) {
 		gl = &gd->linedata[yy];
 		free(gl->celldata);
-		free(gl->utf8data);
 		memset(gl, 0, sizeof *gl);
 	}
 }
@@ -437,13 +379,6 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 	memmove(
 	    &gl->celldata[dx], &gl->celldata[px], nx * sizeof *gl->celldata);
 
-	if (gl->utf8data != NULL) {
-		grid_expand_line_utf8(gd, py, px + nx);
-		grid_expand_line_utf8(gd, py, dx + nx);
-		memmove(&gl->utf8data[dx],
-		    &gl->utf8data[px], nx * sizeof *gl->utf8data);
-	}
-
 	/* Wipe any cells that have been moved. */
 	for (xx = px; xx < px + nx; xx++) {
 		if (xx >= dx && xx < dx + nx)
@@ -457,9 +392,9 @@ char *
 grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 {
 	const struct grid_cell	*gc;
-	const struct grid_utf8	*gu;
+	struct utf8_data	 ud;
 	char			*buf;
-	size_t			 len, off, size;
+	size_t			 len, off;
 	u_int			 xx;
 
 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u", px, py, nx);
@@ -472,25 +407,15 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 		gc = grid_peek_cell(gd, xx, py);
 		if (gc->flags & GRID_FLAG_PADDING)
 			continue;
+		grid_cell_get(gc, &ud);
 
-		if (gc->flags & GRID_FLAG_UTF8) {
-			gu = grid_peek_utf8(gd, xx, py);
-
-			size = grid_utf8_size(gu);
-			while (len < off + size + 1) {
-				buf = xrealloc(buf, 2, len);
-				len *= 2;
-			}
-
-			off += grid_utf8_copy(gu, buf + off, len - off);
-		} else {
-			while (len < off + 2) {
-				buf = xrealloc(buf, 2, len);
-				len *= 2;
-			}
-
-			buf[off++] = gc->data;
+		while (len < off + ud.size + 1) {
+			buf = xrealloc(buf, 2, len);
+			len *= 2;
 		}
+
+		memcpy(buf + off, ud.data, ud.size);
+		off += ud.size;
 	}
 
 	while (off > 0 && buf[off - 1] == ' ')
@@ -529,12 +454,6 @@ grid_duplicate_lines(
 			    srcl->cellsize, sizeof *dstl->celldata);
 			memcpy(dstl->celldata, srcl->celldata,
 			    srcl->cellsize * sizeof *dstl->celldata);
-		}
-		if (srcl->utf8size != 0) {
-			dstl->utf8data = xcalloc(
-			    srcl->utf8size, sizeof *dstl->utf8data);
-			memcpy(dstl->utf8data, srcl->utf8data,
-			    srcl->utf8size * sizeof *dstl->utf8data);
 		}
 
 		sy++;

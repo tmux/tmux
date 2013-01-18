@@ -669,13 +669,7 @@ struct mode_key_table {
 
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)
 
-/*
- * A single UTF-8 character.
- *
- * The data member in this must be UTF8_SIZE to allow screen_write_copy to
- * reinject stored UTF-8 data back into screen_write_cell after combining (ugh
- * XXX XXX).
- */
+/* A single UTF-8 character. */
 struct utf8_data {
 	u_char	data[UTF8_SIZE];
 
@@ -709,7 +703,6 @@ struct utf8_data {
 #define GRID_FLAG_FG256 0x1
 #define GRID_FLAG_BG256 0x2
 #define GRID_FLAG_PADDING 0x4
-#define GRID_FLAG_UTF8 0x8
 
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
@@ -720,22 +713,15 @@ struct grid_cell {
 	u_char	flags;
 	u_char	fg;
 	u_char	bg;
-	u_char	data;
-} __packed;
 
-/* Grid cell UTF-8 data. Used instead of data in grid_cell for UTF-8 cells. */
-struct grid_utf8 {
-	u_char	width;
-	u_char	data[UTF8_SIZE];
+	u_char	xstate; /* top 4 bits width, bottom 4 bits size */
+	u_char	xdata[UTF8_SIZE];
 } __packed;
 
 /* Grid line. */
 struct grid_line {
 	u_int	cellsize;
 	struct grid_cell *celldata;
-
-	u_int	utf8size;
-	struct grid_utf8 *utf8data;
 
 	int	flags;
 } __packed;
@@ -1233,7 +1219,6 @@ struct tty_ctx {
 	struct window_pane *wp;
 
 	const struct grid_cell *cell;
-	const struct grid_utf8 *utf8;
 
 	u_int		 num;
 	void		*ptr;
@@ -1254,7 +1239,6 @@ struct tty_ctx {
 
 	/* Saved last cell on line. */
 	struct grid_cell last_cell;
-	struct grid_utf8 last_utf8;
 	u_int		 last_width;
 };
 
@@ -1623,10 +1607,11 @@ void	tty_putcode(struct tty *, enum tty_code_code);
 void	tty_putcode1(struct tty *, enum tty_code_code, int);
 void	tty_putcode2(struct tty *, enum tty_code_code, int, int);
 void	tty_putcode_ptr1(struct tty *, enum tty_code_code, const void *);
-void	tty_putcode_ptr2(struct tty *, enum tty_code_code, const void *, const void *);
+void	tty_putcode_ptr2(struct tty *, enum tty_code_code, const void *,
+	    const void *);
 void	tty_puts(struct tty *, const char *);
 void	tty_putc(struct tty *, u_char);
-void	tty_pututf8(struct tty *, const struct grid_utf8 *);
+void	tty_putn(struct tty *, const void *, size_t, u_int);
 void	tty_init(struct tty *, struct client *, int, char *);
 int	tty_resize(struct tty *);
 int	tty_set_size(struct tty *, u_int, u_int);
@@ -1969,13 +1954,9 @@ void	 grid_collect_history(struct grid *);
 void	 grid_scroll_history(struct grid *);
 void	 grid_scroll_history_region(struct grid *, u_int, u_int);
 void	 grid_expand_line(struct grid *, u_int, u_int);
-void	 grid_expand_line_utf8(struct grid *, u_int, u_int);
 const struct grid_cell *grid_peek_cell(struct grid *, u_int, u_int);
 struct grid_cell *grid_get_cell(struct grid *, u_int, u_int);
 void	 grid_set_cell(struct grid *, u_int, u_int, const struct grid_cell *);
-const struct grid_utf8 *grid_peek_utf8(struct grid *, u_int, u_int);
-struct grid_utf8 *grid_get_utf8(struct grid *, u_int, u_int);
-void	 grid_set_utf8(struct grid *, u_int, u_int, const struct grid_utf8 *);
 void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_clear_lines(struct grid *, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
@@ -1984,22 +1965,17 @@ char	*grid_string_cells(struct grid *, u_int, u_int, u_int);
 void	 grid_duplicate_lines(
 	     struct grid *, u_int, struct grid *, u_int, u_int);
 
-/* grid-utf8.c */
-size_t	 grid_utf8_size(const struct grid_utf8 *);
-size_t	 grid_utf8_copy(const struct grid_utf8 *, char *, size_t);
-void	 grid_utf8_set(struct grid_utf8 *, const struct utf8_data *);
-int	 grid_utf8_append(struct grid_utf8 *, const struct utf8_data *);
-int	 grid_utf8_compare(const struct grid_utf8 *, const struct grid_utf8 *);
+/* grid-cell.c */
+u_int	 grid_cell_width(const struct grid_cell *);
+void	 grid_cell_get(const struct grid_cell *, struct utf8_data *);
+void	 grid_cell_set(struct grid_cell *, const struct utf8_data *);
+void	 grid_cell_one(struct grid_cell *, u_char);
 
 /* grid-view.c */
 const struct grid_cell *grid_view_peek_cell(struct grid *, u_int, u_int);
 struct grid_cell *grid_view_get_cell(struct grid *, u_int, u_int);
 void	 grid_view_set_cell(
 	     struct grid *, u_int, u_int, const struct grid_cell *);
-const struct grid_utf8 *grid_view_peek_utf8(struct grid *, u_int, u_int);
-struct grid_utf8 *grid_view_get_utf8(struct grid *, u_int, u_int);
-void	 grid_view_set_utf8(
-	     struct grid *, u_int, u_int, const struct grid_utf8 *);
 void	 grid_view_clear_history(struct grid *);
 void	 grid_view_clear(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_view_scroll_region_up(struct grid *, u_int, u_int);
@@ -2064,8 +2040,7 @@ void	 screen_write_clearendofscreen(struct screen_write_ctx *);
 void	 screen_write_clearstartofscreen(struct screen_write_ctx *);
 void	 screen_write_clearscreen(struct screen_write_ctx *);
 void	 screen_write_clearhistory(struct screen_write_ctx *);
-void	 screen_write_cell(struct screen_write_ctx *,
-	     const struct grid_cell *, const struct utf8_data *);
+void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
 void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);
 void	 screen_write_bracketpaste(struct screen_write_ctx *, int);

@@ -52,28 +52,6 @@ grid_view_set_cell(
 	grid_set_cell(gd, grid_view_x(gd, px), grid_view_y(gd, py), gc);
 }
 
-/* Get UTF-8 for reading. */
-const struct grid_utf8 *
-grid_view_peek_utf8(struct grid *gd, u_int px, u_int py)
-{
-	return (grid_peek_utf8(gd, grid_view_x(gd, px), grid_view_y(gd, py)));
-}
-
-/* Get UTF-8 for writing. */
-struct grid_utf8 *
-grid_view_get_utf8(struct grid *gd, u_int px, u_int py)
-{
-	return (grid_get_utf8(gd, grid_view_x(gd, px), grid_view_y(gd, py)));
-}
-
-/* Set UTF-8. */
-void
-grid_view_set_utf8(
-    struct grid *gd, u_int px, u_int py, const struct grid_utf8 *gu)
-{
-	grid_set_utf8(gd, grid_view_x(gd, px), grid_view_y(gd, py), gu);
-}
-
 /* Clear into history. */
 void
 grid_view_clear_history(struct grid *gd)
@@ -87,7 +65,7 @@ grid_view_clear_history(struct grid *gd)
 	last = 0;
 	for (yy = 0; yy < gd->sy; yy++) {
 		gl = &gd->linedata[grid_view_y(gd, yy)];
-		if (gl->cellsize != 0 || gl->utf8size != 0)
+		if (gl->cellsize != 0)
 			last = yy + 1;
 	}
 	if (last == 0)
