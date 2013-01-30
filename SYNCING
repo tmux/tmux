@@ -13,7 +13,9 @@ Here's a description of them:
 
 Note:  The "tmux-openbsd" repository is actually handled by "git cvsimport"
 running at 15 minute intervals, so a commit made to OpenBSD's tmux CVS
-repository will take that long to appear in this git repository.
+repository will take at least that long to appear in this git repository.
+(It might take longer, depending on the CVS mirror used to import the
+OpenBSD code).
 
 It is assumed that the person doing the sync has read/write access to the
 tmux-code repository on SourceForge already.
@@ -38,8 +40,8 @@ Cloning repositories
 This involves having both tmux-code and tmux-openbsd cloned, as in:
 
 % cd /some/where/useful
-% git clone ssh://${USER}@tmux.git.sf.net/gitroot/tmux/tmux
-% git clone ssh://${USER}@tmux.git.sf.net/gitroot/tmux/tmux-openbsd
+% git clone ssh://${USER}@git.code.sf.net/p/tmux/tmux
+% git clone ssh://${USER}@git.code.sf.net/p/tmux/tmux-openbsd
 
 Note that you do not need additional checkouts to manage the sync -- an
 existing clone of either repositories will suffice.  So if you already have
@@ -48,13 +50,13 @@ these checkouts existing, skip that.
 Adding in git-remotes
 =====================
 
-Because the portable "tmux-code" git repository and the "tmux-openbsd" repository do
-not inherently share any history between each other, the history has been
-faked between them.  This "faking of history" is something which has to be
-told to git for the purposes of comparing the "tmux" and "tmux-openbsd"
-repositories for syncing.  To do this, we must reference the clone of the
-"tmux-openbsd" repository from the "tmux-code" repository, as shown by the
-following command:
+Because the portable "tmux-code" git repository and the "tmux-openbsd"
+repository do not inherently share any history between each other, the
+history has been faked between them.  This "faking of history" is something
+which has to be told to git for the purposes of comparing the "tmux" and
+"tmux-openbsd" repositories for syncing.  To do this, we must reference the
+clone of the "tmux-openbsd" repository from the "tmux-code" repository, as
+shown by the following command:
 
 % cd /path/to/tmux-code
 % git remote add obsd-tmux file:///path/to/tmux-openbsd
@@ -83,8 +85,8 @@ Then back in "tmux-code":
 Creating the necessary branches
 ===============================
 
-Now that "tmux-code" can see commits and branches from "tmux-openbsd" by way of
-the remote name "obsd-tmux", we can now create the master branch from
+Now that "tmux-code" can see commits and branches from "tmux-openbsd" by way
+of the remote name "obsd-tmux", we can now create the master branch from
 "tmux-openbsd" in the "tmux-code" repository:
 
 % git checkout -b obsd-master obsd-tmux/master
@@ -92,10 +94,10 @@ the remote name "obsd-tmux", we can now create the master branch from
 Adding in the fake history points
 ================================= 
 
-To tie both the "master" branch from "tmux-code" and the "obsd-master" branch
-from "tmux-openbsd" together, the fake history points added to the
-"tmux-code" repository need to be added.  To do this, we must add an additional refspec
-line, as in:
+To tie both the "master" branch from "tmux-code" and the "obsd-master"
+branch from "tmux-openbsd" together, the fake history points added to the
+"tmux-code" repository need to be added.  To do this, we must add an
+additional refspec line, as in:
 
 % cd /path/to/tmux-code
 % git config --add remote.origin.fetch '+refs/replace/*:refs/replace/*'
