@@ -67,11 +67,10 @@ screen_write_reset(struct screen_write_ctx *ctx)
 
 /* Write character. */
 void
-screen_write_putc(
-    struct screen_write_ctx *ctx, struct grid_cell *gc, u_char ch)
+screen_write_putc(struct screen_write_ctx *ctx, struct grid_cell *gc, u_char ch)
 {
-	gc->data = ch;
-	screen_write_cell(ctx, gc, NULL);
+	grid_cell_one(gc, ch);
+	screen_write_cell(ctx, gc);
 }
 
 /* Calculate string length, with embedded formatting. */
@@ -203,9 +202,8 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			}
 			size += utf8data.width;
 
-			gc->flags |= GRID_FLAG_UTF8;
-			screen_write_cell(ctx, gc, &utf8data);
-			gc->flags &= ~GRID_FLAG_UTF8;
+			grid_cell_set(gc, &utf8data);
+			screen_write_cell(ctx, gc);
 		} else {
 			if (maxlen > 0 && size + 1 > (size_t) maxlen)
 				break;
@@ -277,9 +275,8 @@ screen_write_cnputs(struct screen_write_ctx *ctx,
 			}
 			size += utf8data.width;
 
-			lgc.flags |= GRID_FLAG_UTF8;
-			screen_write_cell(ctx, &lgc, &utf8data);
-			lgc.flags &= ~GRID_FLAG_UTF8;
+			grid_cell_set(&lgc, &utf8data);
+			screen_write_cell(ctx, &lgc);
 		} else {
 			if (maxlen > 0 && size + 1 > (size_t) maxlen)
 				break;
@@ -385,8 +382,7 @@ screen_write_copy(struct screen_write_ctx *ctx,
 	struct grid		*gd = src->grid;
 	struct grid_line	*gl;
 	const struct grid_cell	*gc;
-	const struct grid_utf8	*gu;
-	struct utf8_data	 utf8data;
+	struct utf8_data	 ud;
 	u_int		 	 xx, yy, cx, cy, ax, bx;
 
 	cx = s->cx;
@@ -414,16 +410,8 @@ screen_write_copy(struct screen_write_ctx *ctx,
 					gc = &grid_default_cell;
 				else
 					gc = &gl->celldata[xx];
-				if (!(gc->flags & GRID_FLAG_UTF8)) {
-					screen_write_cell(ctx, gc, NULL);
-					continue;
-				}
-				/* Reinject the UTF-8 sequence. */
-				gu = &gl->utf8data[xx];
-				utf8data.size = grid_utf8_copy(
-				    gu, utf8data.data, sizeof utf8data.data);
-				utf8data.width = gu->width;
-				screen_write_cell(ctx, gc, &utf8data);
+				grid_cell_get(gc, &ud);
+				screen_write_cell(ctx, gc);
 			}
 			if (px + nx == gd->sx && px + nx > gl->cellsize)
 				screen_write_clearendofline(ctx);
@@ -442,7 +430,6 @@ screen_write_initctx(
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	const struct grid_cell	*gc;
-	const struct grid_utf8	*gu;
 	u_int			 xx;
 
 	ttyctx->wp = ctx->wp;
@@ -465,10 +452,6 @@ screen_write_initctx(
 	}
 	ttyctx->last_width = xx;
 	memcpy(&ttyctx->last_cell, gc, sizeof ttyctx->last_cell);
-	if (gc->flags & GRID_FLAG_UTF8) {
-		gu = grid_view_peek_utf8(gd, screen_size_x(s) - xx, s->cy);
-		memcpy(&ttyctx->last_utf8, gu, sizeof ttyctx->last_utf8);
-	}
 }
 
 /* Cursor up by ny. */
@@ -584,7 +567,7 @@ screen_write_alignmenttest(struct screen_write_ctx *ctx)
 	screen_write_initctx(ctx, &ttyctx, 0);
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	gc.data = 'E';
+	grid_cell_one(&gc, 'E');
 
 	for (yy = 0; yy < screen_size_y(s); yy++) {
 		for (xx = 0; xx < screen_size_x(s); xx++)
@@ -1066,26 +1049,20 @@ screen_write_clearhistory(struct screen_write_ctx *ctx)
 
 /* Write cell data. */
 void
-screen_write_cell(struct screen_write_ctx *ctx,
-    const struct grid_cell *gc, const struct utf8_data *utf8data)
+screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
-	struct grid_utf8	 gu;
 	u_int		 	 width, xx;
 	struct grid_cell 	 tmp_gc, *tmp_gcp;
+	struct utf8_data	 ud;
 	int			 insert = 0;
 
 	/* Ignore padding. */
 	if (gc->flags & GRID_FLAG_PADDING)
 		return;
-
-	/* Find character width. */
-	if (gc->flags & GRID_FLAG_UTF8)
-		width = utf8data->width;
-	else
-		width = 1;
+	width = grid_cell_width(gc);
 
 	/*
 	 * If this is a wide character and there is no room on the screen, for
@@ -1102,7 +1079,8 @@ screen_write_cell(struct screen_write_ctx *ctx,
 	 * there is space.
 	 */
 	if (width == 0) {
-		if (screen_write_combine(ctx, utf8data) == 0) {
+		grid_cell_get(gc, &ud);
+		if (screen_write_combine(ctx, &ud) == 0) {
 			screen_write_initctx(ctx, &ttyctx, 0);
 			tty_write(tty_cmd_utf8character, &ttyctx);
 		}
@@ -1145,11 +1123,6 @@ screen_write_cell(struct screen_write_ctx *ctx,
 
 	/* Set the cell. */
 	grid_view_set_cell(gd, s->cx, s->cy, gc);
-	if (gc->flags & GRID_FLAG_UTF8) {
-		/* Construct UTF-8 and write it. */
-		grid_utf8_set(&gu, utf8data);
-		grid_view_set_utf8(gd, s->cx, s->cy, &gu);
-	}
 
 	/* Move the cursor. */
 	s->cx += width;
@@ -1159,12 +1132,11 @@ screen_write_cell(struct screen_write_ctx *ctx,
 		ttyctx.num = width;
 		tty_write(tty_cmd_insertcharacter, &ttyctx);
 	}
-	ttyctx.utf8 = &gu;
 	if (screen_check_selection(s, s->cx - width, s->cy)) {
 		memcpy(&tmp_gc, &s->sel.cell, sizeof tmp_gc);
-		tmp_gc.data = gc->data;
-		tmp_gc.flags = gc->flags &
-		    ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
+		grid_cell_get(gc, &ud);
+		grid_cell_set(&tmp_gc, &ud);
+		tmp_gc.flags = gc->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
 		tmp_gc.flags |= s->sel.cell.flags &
 		    (GRID_FLAG_FG256|GRID_FLAG_BG256);
 		ttyctx.cell = &tmp_gc;
@@ -1177,49 +1149,33 @@ screen_write_cell(struct screen_write_ctx *ctx,
 
 /* Combine a UTF-8 zero-width character onto the previous. */
 int
-screen_write_combine(
-    struct screen_write_ctx *ctx, const struct utf8_data *utf8data)
+screen_write_combine(struct screen_write_ctx *ctx, const struct utf8_data *ud)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct grid_cell	*gc;
-	struct grid_utf8	*gu, tmp_gu;
-	u_int			 i;
+	struct utf8_data	 ud1;
 
 	/* Can't combine if at 0. */
 	if (s->cx == 0)
 		return (-1);
 
-	/* Empty utf8data is out. */
-	if (utf8data->size == 0)
+	/* Empty data is out. */
+	if (ud->size == 0)
 		fatalx("UTF-8 data empty");
 
-	/* Retrieve the previous cell and convert to UTF-8 if not already. */
+	/* Retrieve the previous cell. */
 	gc = grid_view_get_cell(gd, s->cx - 1, s->cy);
-	if (!(gc->flags & GRID_FLAG_UTF8)) {
-		tmp_gu.data[0] = gc->data;
-		tmp_gu.data[1] = 0xff;
-		tmp_gu.width = 1;
+	grid_cell_get(gc, &ud1);
 
-		grid_view_set_utf8(gd, s->cx - 1, s->cy, &tmp_gu);
-		gc->flags |= GRID_FLAG_UTF8;
-	}
+	/* Check there is enough space. */
+	if (ud1.size + ud->size > sizeof ud1.data)
+		return (-1);
 
-	/* Append the current cell. */
-	gu = grid_view_get_utf8(gd, s->cx - 1, s->cy);
-	if (grid_utf8_append(gu, utf8data) != 0) {
-		/* Failed: scrap this character and replace with underscores. */
-		if (gu->width == 1) {
-			gc->data = '_';
-			gc->flags &= ~GRID_FLAG_UTF8;
-		} else {
-			for (i = 0; i < gu->width && i != sizeof gu->data; i++)
-				gu->data[i] = '_';
-			if (i != sizeof gu->data)
-				gu->data[i] = 0xff;
-			gu->width = i;
-		}
-	}
+	/* Append the data and set the cell. */
+	memcpy(ud1.data + ud1.size, ud->data, ud->size);
+	ud1.size += ud->size;
+	grid_cell_set(gc, &ud1);
 
 	return (0);
 }

@@ -377,14 +377,14 @@ cmd_session_better(struct session *s, struct session *best,
     int prefer_unattached)
 {
 	if (best == NULL)
-		return 1;
+		return (1);
 	if (prefer_unattached) {
 		if (!(best->flags & SESSION_UNATTACHED) &&
 		    (s->flags & SESSION_UNATTACHED))
-			return 1;
+			return (1);
 		else if ((best->flags & SESSION_UNATTACHED) &&
 		    !(s->flags & SESSION_UNATTACHED))
-			return 0;
+			return (0);
 	}
 	return (timercmp(&s->activity_time, &best->activity_time, >));
 }

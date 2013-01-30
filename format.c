@@ -370,7 +370,6 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	for (i = 0; i < gd->hsize; i++) {
 		gl = &gd->linedata[i];
 		size += gl->cellsize * sizeof *gl->celldata;
-		size += gl->utf8size * sizeof *gl->utf8data;
 	}
 	size += gd->hsize * sizeof *gd->linedata;
 

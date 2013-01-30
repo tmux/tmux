@@ -333,12 +333,12 @@ server_client_assume_paste(struct session *s)
 	u_int		t;
 
 	if ((t = options_get_number(&s->options, "assume-paste-time")) == 0)
-		return 0;
+		return (0);
 
 	timersub(&s->activity_time, &s->last_activity_time, &tv);
 	if (tv.tv_sec == 0 && tv.tv_usec < t * 1000)
-		return 1;
-	return 0;
+		return (1);
+	return (0);
 }
 
 /* Handle data key input from client. */

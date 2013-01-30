@@ -58,12 +58,11 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	struct job				*job;
 	struct grid				*gd;
 	struct grid_line			*gl;
-	u_int		 			 i, j, k;
+	u_int		 			 i, j, k, lines;
+	size_t					 size;
 	char					 out[80];
 	char					*tim;
 	time_t		 			 t;
-	u_int					 lines, ulines;
-	size_t					 size, usize;
 
 	tim = ctime(&start_time);
 	*strchr(tim, '\n') = '\0';
@@ -97,8 +96,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 	}
 	ctx->print(ctx, "%s", "");
 
-	ctx->print(ctx, "Sessions: [%zu/%zu]",
-	    sizeof (struct grid_cell), sizeof (struct grid_utf8));
+	ctx->print(ctx, "Sessions: [%zu]", sizeof (struct grid_cell));
 	RB_FOREACH(s, sessions, &sessions) {
 		t = s->creation_time.tv_sec;
 		tim = ctime(&t);
@@ -115,26 +113,20 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 			    w->lastlayout);
 			j = 0;
 			TAILQ_FOREACH(wp, &w->panes, entry) {
-				lines = ulines = size = usize = 0;
+				lines = size = 0;
 				gd = wp->base.grid;
 				for (k = 0; k < gd->hsize + gd->sy; k++) {
 					gl = &gd->linedata[k];
-					if (gl->celldata != NULL) {
-						lines++;
-						size += gl->cellsize *
-						    sizeof *gl->celldata;
-					}
-					if (gl->utf8data != NULL) {
-						ulines++;
-						usize += gl->utf8size *
-						    sizeof *gl->utf8data;
-					}
+					if (gl->celldata == NULL)
+						continue;
+					lines++;
+					size += gl->cellsize *
+					    sizeof *gl->celldata;
 				}
-				ctx->print(ctx, "%6u: %s %lu %d %u/%u, %zu "
-				    "bytes; UTF-8 %u/%u, %zu bytes", j,
+				ctx->print(ctx,
+				    "%6u: %s %lu %d %u/%u, %zu bytes", j,
 				    wp->tty, (u_long) wp->pid, wp->fd, lines,
-				    gd->hsize + gd->sy, size, ulines,
-				    gd->hsize + gd->sy, usize);
+				    gd->hsize + gd->sy, size);
 				j++;
 			}
 		}
