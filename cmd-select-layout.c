@@ -87,13 +87,11 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args	*args = self->args;
 	struct winlink	*wl;
-	struct window	*w;
 	const char	*layoutname;
 	int		 next, previous, layout;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (CMD_RETURN_ERROR);
-	w = wl->window;
 
 	next = self->entry == &cmd_next_layout_entry;
 	if (args_has(self->args, 'n'))

@@ -331,7 +331,7 @@ int
 server_client_assume_paste(struct session *s)
 {
 	struct timeval	tv;
-	u_int		t;
+	int		t;
 
 	if ((t = options_get_number(&s->options, "assume-paste-time")) == 0)
 		return (0);
