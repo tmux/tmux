@@ -335,9 +335,9 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx	 	 ctx;
 
-	screen_resize(s, sx, sy);
+	screen_resize(s, sx, sy, 0);
 	if (data->backing != &wp->base)
-		screen_resize(data->backing, sx, sy);
+		screen_resize(data->backing, sx, sy, 0);
 
 	if (data->cy > sy - 1)
 		data->cy = sy - 1;

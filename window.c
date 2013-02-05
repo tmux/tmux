@@ -853,7 +853,7 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	ws.ws_col = sx;
 	ws.ws_row = sy;
 
-	screen_resize(&wp->base, sx, sy);
+	screen_resize(&wp->base, sx, sy, wp->saved_grid == NULL);
 	if (wp->mode != NULL)
 		wp->mode->resize(wp, sx, sy);
 
@@ -914,7 +914,7 @@ window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
 	 * before copying back.
 	 */
 	if (sy > wp->saved_grid->sy)
-		screen_resize(s, sx, wp->saved_grid->sy);
+		screen_resize(s, sx, wp->saved_grid->sy, 1);
 
 	/* Restore the grid, cursor position and cell. */
 	grid_duplicate_lines(s->grid, screen_hsize(s), wp->saved_grid, 0, sy);
@@ -933,8 +933,8 @@ window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
 	 * the current size.
 	 */
 	wp->base.grid->flags |= GRID_HISTORY;
-	if (sy > wp->saved_grid->sy)
-		screen_resize(s, sx, sy);
+	if (sy > wp->saved_grid->sy || sx != wp->saved_grid->sx)
+		screen_resize(s, sx, sy, 1);
 
 	grid_destroy(wp->saved_grid);
 	wp->saved_grid = NULL;

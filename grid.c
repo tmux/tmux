@@ -460,3 +460,44 @@ grid_duplicate_lines(
 		dy++;
 	}
 }
+
+/*
+ * Reflow lines from src grid into dst grid based on width sx. Returns number
+ * of lines fewer in the visible area, or zero.
+ */
+u_int
+grid_reflow(struct grid *dst, const struct grid *src, u_int sx)
+{
+	u_int			 px, py, line, cell;
+	int			 previous_wrapped;
+	struct grid_line	*gl;
+
+	px = py = 0;
+	previous_wrapped = 1;
+	for (line = 0; line < src->sy + src->hsize; line++) {
+		gl = src->linedata + line;
+		if (!previous_wrapped) {
+			px = 0;
+			py++;
+			if (py >= dst->hsize + dst->sy)
+				grid_scroll_history(dst);
+		}
+		for (cell = 0; cell < gl->cellsize; cell++) {
+			if (px == sx) {
+				dst->linedata[py].flags |= GRID_LINE_WRAPPED;
+				px = 0;
+				py++;
+				if (py >= dst->hsize + dst->sy)
+					grid_scroll_history(dst);
+			}
+			grid_set_cell(dst, px, py, gl->celldata + cell);
+			px++;
+		}
+		previous_wrapped = gl->flags & GRID_LINE_WRAPPED;
+	}
+	py++; /* account for final line, which never wraps */
+
+	if (py > src->sy)
+		return (0);
+	return (src->sy - py);
+}
