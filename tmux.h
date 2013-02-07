@@ -1960,6 +1960,7 @@ void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int);
 void	 grid_duplicate_lines(
 	     struct grid *, u_int, struct grid *, u_int, u_int);
+u_int	 grid_reflow(struct grid *, const struct grid *, u_int);
 
 /* grid-cell.c */
 u_int	 grid_cell_width(const struct grid_cell *);
@@ -2053,11 +2054,12 @@ void	 screen_reset_tabs(struct screen *);
 void	 screen_set_cursor_style(struct screen *, u_int);
 void	 screen_set_cursor_colour(struct screen *, const char *);
 void	 screen_set_title(struct screen *, const char *);
-void	 screen_resize(struct screen *, u_int, u_int);
+void	 screen_resize(struct screen *, u_int, u_int, int);
 void	 screen_set_selection(struct screen *,
 	     u_int, u_int, u_int, u_int, u_int, struct grid_cell *);
 void	 screen_clear_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
+void	 screen_reflow(struct screen *, u_int);
 
 /* window.c */
 extern struct windows windows;
