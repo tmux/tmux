@@ -391,7 +391,7 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 		format_add(ft, "pane_start_command", "%s", wp->cmd);
 	if (wp->cwd != NULL)
 		format_add(ft, "pane_start_path", "%s", wp->cwd);
-	if ((cwd = get_proc_cwd(wp->fd)) != NULL)
+	if ((cwd = osdep_get_cwd(wp->fd)) != NULL)
 		format_add(ft, "pane_current_path", "%s", cwd);
 	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
 	if (wp->tty != NULL)
