@@ -365,6 +365,7 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	unsigned long long	 size;
 	u_int			 i;
 	u_int			 idx;
+	const char		*cwd;
 
 	size = 0;
 	for (i = 0; i < gd->hsize; i++) {
@@ -390,9 +391,11 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 		format_add(ft, "pane_start_command", "%s", wp->cmd);
 	if (wp->cwd != NULL)
 		format_add(ft, "pane_start_path", "%s", wp->cwd);
-	format_add(ft, "pane_current_path", "%s", osdep_get_cwd(wp->fd));
+	if ((cwd = osdep_get_cwd(wp->fd)) != NULL)
+		format_add(ft, "pane_current_path", "%s", cwd);
 	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
-	format_add(ft, "pane_tty", "%s", wp->tty);
+	if (wp->tty != NULL)
+		format_add(ft, "pane_tty", "%s", wp->tty);
 }
 
 void

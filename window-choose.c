@@ -203,7 +203,7 @@ window_choose_resize(struct window_pane *wp, u_int sx, u_int sy)
 	if (data->selected > sy - 1)
 		data->top = data->selected - (sy - 1);
 
-	screen_resize(s, sx, sy);
+	screen_resize(s, sx, sy, 0);
 	window_choose_redraw_screen(wp);
 }
 
