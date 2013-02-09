@@ -155,6 +155,8 @@ TMUX UI ISSUES
   subset of copy-mode in that it inherits key-bindings and other traits but
   not all.
 - add -c for new-session like new-window
+- flag to choose-* for sort order (eg sort windows/sessions/clients by last
+  used time) - perhaps using formats (but what about numeric sort)?
 
 TERMINAL ISSUES
 ================
