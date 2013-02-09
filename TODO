@@ -157,6 +157,10 @@ TMUX UI ISSUES
 - add -c for new-session like new-window
 - flag to choose-* for sort order (eg sort windows/sessions/clients by last
   used time) - perhaps using formats (but what about numeric sort)?
+- instead of separate window and session options, just one master options list
+  with each option having a type (window or session), then options on window,
+  on session, and global. for window options we look window->session->global,
+  and for session we look session->global
 
 TERMINAL ISSUES
 ================
