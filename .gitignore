@@ -1,5 +1,10 @@
 *.o
 *~
+*.diff
+*.patch
+*.core
+core
+tags
 .deps/
 aclocal.m4
 autom4te.cache/
