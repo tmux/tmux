@@ -2370,6 +2370,7 @@ may contain any of the following special character sequences:
 .It Li "#S" Ta "Session name"
 .It Li "#T" Ta "Current pane title"
 .It Li "#W" Ta "Current window name"
+.It Li "'^" Ta "Prefix key if pressed or same length as spaces"
 .It Li "##" Ta "A literal" Ql #
 .El
 .Pp
@@ -2939,6 +2940,7 @@ The following variables are available, where appropriate:
 .It Li "client_created_string" Ta "String time client created"
 .It Li "client_cwd" Ta "Working directory of client"
 .It Li "client_height" Ta "Height of client"
+.It Li "client_prefix" Ta "1 if prefix key has been pressed"
 .It Li "client_readonly" Ta "1 if client is readonly"
 .It Li "client_termname" Ta "Terminal name of client"
 .It Li "client_tty" Ta "Pseudo terminal of client"

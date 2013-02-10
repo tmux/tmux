@@ -322,6 +322,8 @@ format_client(struct format_tree *ft, struct client *c)
 	*strchr(tim, '\n') = '\0';
 	format_add(ft, "client_activity_string", "%s", tim);
 
+	format_add(ft, "client_prefix", "%d", !!(c->flags & CLIENT_PREFIX));
+
 	if (c->tty.flags & TTY_UTF8)
 		format_add(ft, "client_utf8", "%d", 1);
 	else

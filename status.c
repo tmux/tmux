@@ -437,8 +437,7 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 	case 'P':
 		if (window_pane_index(wp, &idx) != 0)
 			fatalx("index not found");
-		xsnprintf(
-		    tmp, sizeof tmp, "%u", idx);
+		xsnprintf(tmp, sizeof tmp, "%u", idx);
 		ptr = tmp;
 		goto do_replace;
 	case 'S':
@@ -539,6 +538,7 @@ status_replace(struct client *c, struct session *s, struct winlink *wl,
 	*optr = '\0';
 
 	ft = format_create();
+	format_client(ft, c);
 	format_session(ft, s);
 	format_winlink(ft, s, wl);
 	format_window_pane(ft, wp);
