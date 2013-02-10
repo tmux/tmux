@@ -101,7 +101,7 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	free(action);
 
 	window_choose_ready(wl->window->active, cur,
-	    cmd_choose_client_callback, NULL);
+	    cmd_choose_client_callback);
 
 	return (CMD_RETURN_NORMAL);
 }

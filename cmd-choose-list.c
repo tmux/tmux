@@ -89,7 +89,7 @@ cmd_choose_list_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (CMD_RETURN_ERROR);
 	}
 
-	window_choose_ready(wl->window->active, 0, NULL, NULL);
+	window_choose_ready(wl->window->active, 0, NULL);
 
 	free(template);
 

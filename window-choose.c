@@ -103,8 +103,7 @@ window_choose_add(struct window_pane *wp, struct window_choose_data *wcd)
 
 void
 window_choose_ready(struct window_pane *wp, u_int cur,
-    void (*callbackfn)(struct window_choose_data *),
-    void (*freefn)(struct window_choose_data *))
+    void (*callbackfn)(struct window_choose_data *))
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -116,7 +115,6 @@ window_choose_ready(struct window_pane *wp, u_int cur,
 	data->callbackfn = callbackfn;
 	if (data->callbackfn == NULL)
 		data->callbackfn = window_choose_default_callback;
-	data->freefn = freefn;
 
 	ARRAY_CONCAT(&data->old_list, &data->list);
 
@@ -256,8 +254,6 @@ window_choose_free(struct window_pane *wp)
 
 	for (i = 0; i < ARRAY_LENGTH(&data->old_list); i++) {
 		item = &ARRAY_ITEM(&data->old_list, i);
-		if (data->freefn != NULL && item->wcd != NULL)
-			data->freefn(item->wcd);
 		window_choose_data_free(item->wcd);
 		free(item->name);
 	}

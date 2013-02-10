@@ -2198,8 +2198,7 @@ extern const struct window_mode window_choose_mode;
 void		 window_choose_add(struct window_pane *,
 			 struct window_choose_data *);
 void		 window_choose_ready(struct window_pane *,
-		     u_int, void (*)(struct window_choose_data *),
-		     void (*)(struct window_choose_data *));
+		     u_int, void (*)(struct window_choose_data *));
 struct window_choose_data	*window_choose_data_create (int,
 		     struct client *, struct session *);
 void	window_choose_data_free(struct window_choose_data *);
