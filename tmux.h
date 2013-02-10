@@ -1966,7 +1966,7 @@ void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int);
 void	 grid_duplicate_lines(
 	     struct grid *, u_int, struct grid *, u_int, u_int);
-u_int	 grid_reflow(struct grid *, const struct grid *, u_int);
+u_int	 grid_reflow(struct grid *, struct grid *, u_int);
 
 /* grid-cell.c */
 u_int	 grid_cell_width(const struct grid_cell *);
