@@ -863,11 +863,10 @@ window_choose_scroll_down(struct window_pane *wp)
 }
 
 struct window_choose_data *
-window_choose_add_session(struct window_pane *wp, struct cmd_ctx *ctx,
+window_choose_add_session(struct window_pane *wp, struct client *c,
     struct session *s, const char *template, char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
-	struct client			*c = ctx->curclient;
 
 	wcd = window_choose_data_create(TREE_SESSION, c, c->session);
 	wcd->idx = s->idx;
@@ -887,11 +886,10 @@ window_choose_add_session(struct window_pane *wp, struct cmd_ctx *ctx,
 }
 
 struct window_choose_data *
-window_choose_add_item(struct window_pane *wp, struct cmd_ctx *ctx,
+window_choose_add_item(struct window_pane *wp, struct client *c,
     struct winlink *wl, const char *template, char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
-	struct client			*c = ctx->curclient;
 	char				*expanded;
 
 	wcd = window_choose_data_create(TREE_OTHER, c, c->session);
@@ -918,12 +916,11 @@ window_choose_add_item(struct window_pane *wp, struct cmd_ctx *ctx,
 }
 
 struct window_choose_data *
-window_choose_add_window(struct window_pane *wp, struct cmd_ctx *ctx,
+window_choose_add_window(struct window_pane *wp, struct client *c,
     struct session *s, struct winlink *wl, const char *template,
     char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
-	struct client			*c = ctx->curclient;
 	char				*expanded;
 
 	wcd = window_choose_data_create(TREE_WINDOW, c, c->session);

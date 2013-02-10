@@ -71,6 +71,7 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct args			*args = self->args;
 	struct winlink			*wl, *wm;
 	struct session			*s, *s2;
+	struct client			*c;
 	struct window_choose_data	*wcd = NULL;
 	const char			*ses_template, *win_template;
 	char				*final_win_action, *cur_win_template;
@@ -83,12 +84,13 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
 	ses_template = win_template = NULL;
 	ses_action = win_action = NULL;
 
-	if (ctx->curclient == NULL) {
-		ctx->error(ctx, "must be run interactively");
+	if ((c = cmd_current_client(ctx)) == NULL) {
+		ctx->error(ctx, "no client available");
 		return (CMD_RETURN_ERROR);
 	}
 
-	s = ctx->curclient->session;
+	if ((s = c->session) == NULL)
+		return (CMD_RETURN_ERROR);
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (CMD_RETURN_ERROR);
@@ -172,7 +174,7 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 
 		wcd = window_choose_add_session(wl->window->active,
-		    ctx, s2, ses_template, (char *)ses_action, idx_ses);
+		    c, s2, ses_template, (char *)ses_action, idx_ses);
 
 		/* If we're just choosing sessions, skip choosing windows. */
 		if (sflag && !wflag) {
@@ -210,7 +212,7 @@ windows_only:
 				cur_win_template = final_win_template_last;
 
 			window_choose_add_window(wl->window->active,
-			    ctx, s2, wm, cur_win_template,
+			    c, s2, wm, cur_win_template,
 			    final_win_action,
 			    (wflag && !sflag) ? win_ses : idx_ses);
 

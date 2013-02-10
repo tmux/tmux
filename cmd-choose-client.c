@@ -57,11 +57,10 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char				*action;
 	u_int			 	 i, idx, cur;
 
-	if (ctx->curclient == NULL) {
-		ctx->error(ctx, "must be run interactively");
+	if ((c = cmd_current_client(ctx)) == NULL) {
+		ctx->error(ctx, "no client available");
 		return (CMD_RETURN_ERROR);
 	}
-	c = ctx->curclient;
 
 	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
 		return (CMD_RETURN_ERROR);
