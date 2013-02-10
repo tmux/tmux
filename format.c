@@ -251,10 +251,11 @@ format_expand(struct format_tree *ft, const char *fmt)
 					continue;
 				}
 			}
-			while (len - off < 2) {
+			while (len - off < 3) {
 				buf = xrealloc(buf, 2, len);
 				len *= 2;
 			}
+			buf[off++] = '#';
 			buf[off++] = ch;
 			continue;
 		}

@@ -393,13 +393,6 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 	long	limit;
 	u_int	idx;
 
-	if (s == NULL)
-		s = c->session;
-	if (wl == NULL)
-		wl = s->curw;
-	if (wp == NULL)
-		wp = wl->window->active;
-
 	errno = 0;
 	limit = strtol(*iptr, &endptr, 10);
 	if ((limit == 0 && errno != EINVAL) ||
@@ -468,6 +461,9 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 		 */
 		ch = ']';
 		goto skip_to;
+	case '{':
+		ptr = (char *) "#{";
+		goto do_replace;
 	case '#':
 		*(*optr)++ = '#';
 		break;
@@ -507,12 +503,20 @@ char *
 status_replace(struct client *c, struct session *s, struct winlink *wl,
     struct window_pane *wp, const char *fmt, time_t t, int jobsflag)
 {
-	static char	out[BUFSIZ];
-	char		in[BUFSIZ], ch, *iptr, *optr;
-	size_t		len;
+	static char		 out[BUFSIZ];
+	char			 in[BUFSIZ], ch, *iptr, *optr;
+	size_t			 len;
+	struct format_tree	*ft;
 
 	if (fmt == NULL)
 		return (xstrdup(""));
+
+	if (s == NULL)
+		s = c->session;
+	if (wl == NULL)
+		wl = s->curw;
+	if (wp == NULL)
+		wp = wl->window->active;
 
 	len = strftime(in, sizeof in, fmt, localtime(&t));
 	in[len] = '\0';
@@ -534,7 +538,11 @@ status_replace(struct client *c, struct session *s, struct winlink *wl,
 	}
 	*optr = '\0';
 
-	return (xstrdup(out));
+	ft = format_create();
+	format_session(ft, s);
+	format_winlink(ft, s, wl);
+	format_window_pane(ft, wp);
+	return (format_expand(ft, out));
 }
 
 /* Figure out job name and get its result, starting it off if necessary. */
