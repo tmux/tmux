@@ -29,9 +29,6 @@
 
 enum cmd_retval	 cmd_choose_buffer_exec(struct cmd *, struct cmd_ctx *);
 
-void	cmd_choose_buffer_callback(struct window_choose_data *);
-void	cmd_choose_buffer_free(struct window_choose_data *);
-
 const struct cmd_entry cmd_choose_buffer_entry = {
 	"choose-buffer", NULL,
 	"F:t:", 0, 1,
@@ -46,6 +43,7 @@ enum cmd_retval
 cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
+	struct client			*c;
 	struct window_choose_data	*cdata;
 	struct winlink			*wl;
 	struct paste_buffer		*pb;
@@ -57,6 +55,7 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		ctx->error(ctx, "must be run interactively");
 		return (CMD_RETURN_ERROR);
 	}
+	c = ctx->curclient;
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = CHOOSE_BUFFER_TEMPLATE;
@@ -77,9 +76,8 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	idx = 0;
 	while ((pb = paste_walk_stack(&global_buffers, &idx)) != NULL) {
-		cdata = window_choose_data_create(ctx);
+		cdata = window_choose_data_create(TREE_OTHER, c, c->session);
 		cdata->idx = idx - 1;
-		cdata->client->references++;
 
 		cdata->ft_template = xstrdup(template);
 		format_add(cdata->ft, "line", "%u", idx - 1);
@@ -93,34 +91,7 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 	free(action);
 
-	window_choose_ready(wl->window->active,
-	    0, cmd_choose_buffer_callback, cmd_choose_buffer_free);
+	window_choose_ready(wl->window->active, 0, NULL, NULL);
 
 	return (CMD_RETURN_NORMAL);
-}
-
-void
-cmd_choose_buffer_callback(struct window_choose_data *cdata)
-{
-	if (cdata == NULL)
-		return;
-	if (cdata->client->flags & CLIENT_DEAD)
-		return;
-
-	window_choose_ctx(cdata);
-}
-
-void
-cmd_choose_buffer_free(struct window_choose_data *data)
-{
-	struct window_choose_data	*cdata = data;
-
-	if (cdata == NULL)
-		return;
-
-	cdata->client->references--;
-
-	free(cdata->command);
-	free(cdata->ft_template);
-	free(cdata);
 }

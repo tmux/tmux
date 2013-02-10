@@ -879,18 +879,24 @@ struct window_mode {
 
 /* Structures for choose mode. */
 struct window_choose_data {
-	struct client		*client;
-	struct session		*session; /* Session of current client. */
-	struct session		*tree_session; /* Session of items in tree. */
-	struct format_tree	*ft;
-	struct winlink		*wl;
-	char		        *ft_template;
-	char			*command;
+	struct client		*start_client;
+	struct session		*start_session;
+
 	u_int			 idx;
 	int			 type;
+#define TREE_OTHER 0x0
 #define TREE_WINDOW 0x1
 #define TREE_SESSION 0x2
+
+	struct session		*tree_session; /* session of items in tree */
+
+	struct winlink		*wl;
 	int			 pane_id;
+
+	char		        *ft_template;
+	struct format_tree	*ft;
+
+	char			*command;
 };
 
 struct window_choose_mode_item {
@@ -2194,8 +2200,10 @@ void		 window_choose_add(struct window_pane *,
 void		 window_choose_ready(struct window_pane *,
 		     u_int, void (*)(struct window_choose_data *),
 		     void (*)(struct window_choose_data *));
-struct window_choose_data	*window_choose_data_create(struct cmd_ctx *);
-void		 window_choose_ctx(struct window_choose_data *);
+struct window_choose_data	*window_choose_data_create (int,
+		     struct client *, struct session *);
+void	window_choose_data_free(struct window_choose_data *);
+void	window_choose_data_run(struct window_choose_data *);
 struct window_choose_data	*window_choose_add_window(struct window_pane *,
 			struct cmd_ctx *, struct session *, struct winlink *,
 			const char *, char *, u_int);
