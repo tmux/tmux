@@ -2869,7 +2869,7 @@ If this option is set, searches will wrap around the end of the pane contents.
 The default is on.
 .El
 .It Xo Ic show-options
-.Op Fl gsw
+.Op Fl gsvw
 .Op Fl t Ar target-session | Ar target-window
 .Op Ar option
 .Xc
@@ -2885,8 +2885,10 @@ otherwise the session options for
 Global session or window options are listed if
 .Fl g
 is used.
+.Fl v
+shows only the option value, not the name.
 .It Xo Ic show-window-options
-.Op Fl g
+.Op Fl gv
 .Op Fl t Ar target-window
 .Op Ar option
 .Xc
@@ -2896,6 +2898,8 @@ List the window options or a single option for
 or the global window options if
 .Fl g
 is used.
+.Fl v
+shows only the option value, not the name.
 .El
 .Sh FORMATS
 Certain commands accept the

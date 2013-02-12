@@ -31,8 +31,8 @@ enum cmd_retval	 cmd_show_options_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_show_options_entry = {
 	"show-options", "show",
-	"gst:w", 0, 1,
-	"[-gsw] [-t target-session|target-window] [option]",
+	"gst:vw", 0, 1,
+	"[-gsvw] [-t target-session|target-window] [option]",
 	0,
 	NULL,
 	NULL,
@@ -41,8 +41,8 @@ const struct cmd_entry cmd_show_options_entry = {
 
 const struct cmd_entry cmd_show_window_options_entry = {
 	"show-window-options", "showw",
-	"gt:", 0, 1,
-	"[-g] " CMD_TARGET_WINDOW_USAGE " [option]",
+	"gvt:", 0, 1,
+	"[-gv] " CMD_TARGET_WINDOW_USAGE " [option]",
 	0,
 	NULL,
 	NULL,
@@ -98,14 +98,22 @@ cmd_show_options_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 		if ((o = options_find1(oo, oe->name)) == NULL)
 			return (CMD_RETURN_NORMAL);
-		optval = options_table_print_entry(oe, o);
-		ctx->print(ctx, "%s %s", oe->name, optval);
+		optval = options_table_print_entry(oe, o,
+		    args_has(self->args, 'v'));
+		if (args_has(self->args, 'v'))
+			ctx->print(ctx, "%s", optval);
+		else
+			ctx->print(ctx, "%s %s", oe->name, optval);
 	} else {
 		for (oe = table; oe->name != NULL; oe++) {
 			if ((o = options_find1(oo, oe->name)) == NULL)
 				continue;
-			optval = options_table_print_entry(oe, o);
-			ctx->print(ctx, "%s %s", oe->name, optval);
+			optval = options_table_print_entry(oe, o,
+			    args_has(self->args, 'v'));
+			if (args_has(self->args, 'v'))
+				ctx->print(ctx, "%s", optval);
+			else
+				ctx->print(ctx, "%s %s", oe->name, optval);
 		}
 	}
 

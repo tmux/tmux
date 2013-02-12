@@ -1568,12 +1568,11 @@ long long options_get_number(struct options *, const char *);
 extern const struct options_table_entry server_options_table[];
 extern const struct options_table_entry session_options_table[];
 extern const struct options_table_entry window_options_table[];
-void	options_table_populate_tree(
-	    const struct options_table_entry *, struct options *);
-const char *options_table_print_entry(
-	    const struct options_table_entry *, struct options_entry *);
-int	options_table_find(
-	    const char *, const struct options_table_entry **,
+void	options_table_populate_tree(const struct options_table_entry *,
+	    struct options *);
+const char *options_table_print_entry(const struct options_table_entry *,
+	    struct options_entry *, int);
+int	options_table_find(const char *, const struct options_table_entry **,
 	    const struct options_table_entry **);
 
 /* job.c */

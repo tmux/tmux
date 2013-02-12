@@ -234,7 +234,7 @@ cmd_set_option_set(struct cmd *self, struct cmd_ctx *ctx,
 	if (o == NULL)
 		return (-1);
 
-	s = options_table_print_entry(oe, o);
+	s = options_table_print_entry(oe, o, 0);
 	if (!args_has(args, 'q'))
 		ctx->info(ctx, "set option: %s -> %s", oe->name, s);
 	return (0);
