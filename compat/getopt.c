@@ -67,6 +67,8 @@ BSDgetopt(int nargc, char *const *nargv, const char *ostr)
 			return (-1);
 		}
 		if (place[1] && *++place == '-') {	/* found "--" */
+			if (place[1])
+				return (BADCH);
 			++BSDoptind;
 			place = EMSG;
 			return (-1);
