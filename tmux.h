@@ -1720,7 +1720,7 @@ int		 cmd_find_index(
 		     struct cmd_ctx *, const char *, struct session **);
 struct winlink	*cmd_find_pane(struct cmd_ctx *,
 		     const char *, struct session **, struct window_pane **);
-char		*cmd_template_replace(char *, const char *, int);
+char		*cmd_template_replace(const char *, const char *, int);
 const char     	*cmd_get_default_path(struct cmd_ctx *, const char *);
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
@@ -2207,7 +2207,7 @@ struct window_choose_data	*window_choose_add_window(struct window_pane *,
 			const char *, char *, u_int);
 struct window_choose_data	*window_choose_add_session(struct window_pane *,
 			struct client *, struct session *, const char *,
-			char *, u_int);
+			const char *, u_int);
 struct window_choose_data	*window_choose_add_item(struct window_pane *,
 			struct client *, struct winlink *, const char *,
 			char *, u_int);

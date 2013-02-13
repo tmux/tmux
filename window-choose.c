@@ -864,7 +864,7 @@ window_choose_scroll_down(struct window_pane *wp)
 
 struct window_choose_data *
 window_choose_add_session(struct window_pane *wp, struct client *c,
-    struct session *s, const char *template, char *action, u_int idx)
+    struct session *s, const char *template, const char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
 
