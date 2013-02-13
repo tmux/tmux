@@ -1154,25 +1154,30 @@ is given, will show sessions.
 If
 .Fl w
 is given, will show windows.
-If
+.Pp
+By default, the tree is collapsed and sessions must be expanded to windows
+with the right arrow key.
+The
 .Fl u
-is given, the tree is uncollapsed by default.
+will start with all all sessions expanded instead.
+.Pp
 If
 .Fl b
 is given, will override the default session command.
 Note that
 .Ql %%
-can be used, and will be replaced with the session name.
+can be used and will be replaced with the session name.
 The default option if not specified is "switch-client -t '%%'".
 If
 .Fl c
 is given, will override the default window command.
-Note that
+Like
+.Fl b ,
 .Ql %%
-can be used, and will be replaced with the session name and window index.
-This command will run
-.Ar session-template
-before it.
+can be used and will be replaced with the session name and window index.
+When a window is chosen from the list, the session command is run before the
+window command.
+.Pp
 If
 .Fl S
 is given will display the specified format instead of the default session
@@ -1188,6 +1193,7 @@ and
 options, see the
 .Sx FORMATS
 section.
+.Pp
 This command works only if at least one client is attached.
 .It Xo
 .Ic choose-window
