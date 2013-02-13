@@ -2204,13 +2204,13 @@ void	window_choose_data_free(struct window_choose_data *);
 void	window_choose_data_run(struct window_choose_data *);
 struct window_choose_data	*window_choose_add_window(struct window_pane *,
 			struct client *, struct session *, struct winlink *,
-			const char *, char *, u_int);
+			const char *, const char *, u_int);
 struct window_choose_data	*window_choose_add_session(struct window_pane *,
 			struct client *, struct session *, const char *,
 			const char *, u_int);
 struct window_choose_data	*window_choose_add_item(struct window_pane *,
 			struct client *, struct winlink *, const char *,
-			char *, u_int);
+			const char *, u_int);
 void	window_choose_expand_all(struct window_pane *);
 
 /* names.c */

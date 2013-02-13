@@ -887,7 +887,7 @@ window_choose_add_session(struct window_pane *wp, struct client *c,
 
 struct window_choose_data *
 window_choose_add_item(struct window_pane *wp, struct client *c,
-    struct winlink *wl, const char *template, char *action, u_int idx)
+    struct winlink *wl, const char *template, const char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
 	char				*expanded;
@@ -918,7 +918,7 @@ window_choose_add_item(struct window_pane *wp, struct client *c,
 struct window_choose_data *
 window_choose_add_window(struct window_pane *wp, struct client *c,
     struct session *s, struct winlink *wl, const char *template,
-    char *action, u_int idx)
+    const char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
 	char				*expanded;
