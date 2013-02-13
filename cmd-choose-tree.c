@@ -203,8 +203,8 @@ windows_only:
 					cur_win = idx_ses;
 			}
 
-			xasprintf(&final_win_action, "%s ; %s", win_action,
-			    wcd ? wcd->command : "");
+			xasprintf(&final_win_action, "%s ; %s",
+			    wcd ? wcd->command : "",  win_action);
 
 			if (win_ses != win_max)
 				cur_win_template = final_win_template_middle;
