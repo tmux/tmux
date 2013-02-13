@@ -1228,7 +1228,7 @@ cmd_template_replace(const char *template, const char *s, int idx)
 	int		 replaced;
 	size_t		 len;
 
-	if (strstr(template, "%") == NULL)
+	if (strchr(template, '%') == NULL)
 		return (xstrdup(template));
 
 	buf = xmalloc(1);
