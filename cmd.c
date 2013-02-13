@@ -1223,10 +1223,10 @@ cmd_find_pane_offset(const char *paneptr, struct winlink *wl)
 char *
 cmd_template_replace(const char *template, const char *s, int idx)
 {
-	char	 ch;
-	char	*buf, *ptr;
-	int	 replaced;
-	size_t	 len;
+	char	 	 ch, *buf;
+	const char	*ptr;
+	int		 replaced;
+	size_t		 len;
 
 	if (strstr(template, "%") == NULL)
 		return (xstrdup(template));
