@@ -1943,6 +1943,19 @@ All window options are documented with the
 .Ic set-window-option
 command.
 .Pp
+.Nm
+also supports user options which are prefixed with a
+.Ql \&@ .
+User options may have any name, so long as it is prefixed with
+.Ql \&@,
+and be set to any string.
+For example
+.Bd -literal -offset indent
+$ tmux setw -q @foo "abc123"
+$ tmux showw -v @foo
+abc123
+.Ed
+.Pp
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
