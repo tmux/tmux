@@ -542,9 +542,9 @@ status_replace(struct client *c, struct session *s, struct winlink *wl,
 	format_session(ft, s);
 	format_winlink(ft, s, wl);
 	format_window_pane(ft, wp);
-    expanded = format_expand(ft, out);
-    format_free(ft);
-    return (expanded);
+	expanded = format_expand(ft, out);
+	format_free(ft);
+	return (expanded);
 }
 
 /* Figure out job name and get its result, starting it off if necessary. */
