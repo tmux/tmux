@@ -1040,14 +1040,22 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .It Xo Ic capture-pane
+.Op Fl p
 .Op Fl b Ar buffer-index
+.Op Fl c Ar target-client
 .Op Fl E Ar end-line
 .Op Fl S Ar start-line
 .Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic capturep )
-Capture the contents of a pane to the specified buffer, or a new buffer if none
-is specified.
+Capture the contents of a pane.
+If
+.Fl p
+is given, the output goes to
+.Ar target-client
+stdout, otherwise to the buffer specified with
+.Fl b
+or a new buffer if omitted.
 .Pp
 .Fl S
 and
