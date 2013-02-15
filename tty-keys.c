@@ -346,7 +346,7 @@ tty_keys_build(struct tty *tty)
 	const char				*s;
 
 	if (tty->key_tree != NULL)
-		tty_keys_free (tty->key_tree);
+		tty_keys_free (tty);
 	tty->key_tree = NULL;
 
 	for (i = 0; i < nitems(tty_default_raw_keys); i++) {
