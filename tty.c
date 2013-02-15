@@ -156,7 +156,7 @@ tty_open(struct tty *tty, const char *overrides, char **cause)
 
 	tty_start_tty(tty);
 
-	tty_keys_init(tty);
+	tty_keys_build(tty);
 
 	return (0);
 }
