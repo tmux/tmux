@@ -149,7 +149,7 @@ tty_open(struct tty *tty, const char *overrides, char **cause)
 	}
 	tty->flags |= TTY_OPENED;
 
-	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_ESCAPE);
+	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_TIMER);
 
 	tty->event = bufferevent_new(
 	    tty->fd, tty_read_callback, NULL, tty_error_callback, tty);

@@ -1202,7 +1202,7 @@ struct tty {
 
 #define TTY_NOCURSOR 0x1
 #define TTY_FREEZE 0x2
-#define TTY_ESCAPE 0x4
+#define TTY_TIMER 0x4
 #define TTY_UTF8 0x8
 #define TTY_STARTED 0x10
 #define TTY_OPENED 0x20
