@@ -413,7 +413,6 @@ const struct mode_key_entry mode_key_emacs_copy[] = {
 	{ '\026' /* C-v */,	    0, MODEKEYCOPY_NEXTPAGE },
 	{ '\027' /* C-w */,	    0, MODEKEYCOPY_COPYSELECTION },
 	{ '\033' /* Escape */,	    0, MODEKEYCOPY_CANCEL },
-	{ 'N',			    0, MODEKEYCOPY_SEARCHREVERSE },
 	{ 'b' | KEYC_ESCAPE,	    0, MODEKEYCOPY_PREVIOUSWORD },
 	{ 'f',			    0, MODEKEYCOPY_JUMP },
 	{ 'f' | KEYC_ESCAPE,	    0, MODEKEYCOPY_NEXTWORDEND },
