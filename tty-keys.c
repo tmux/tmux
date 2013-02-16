@@ -473,7 +473,6 @@ tty_keys_next(struct tty *tty)
 	/* Try to parse a key with an xterm-style modifier. */
 	switch (xterm_keys_find(buf, len, &size, &key)) {
 	case 0:		/* found */
-		key = KEYC_NONE;
 		goto complete_key;
 	case -1:	/* not found */
 		break;
