@@ -360,7 +360,7 @@ tty_keys_build(struct tty *tty)
 		tdkc = &tty_default_code_keys[i];
 
 		s = tty_term_string(tty->term, tdkc->code);
-		if (*s == '\0')
+		if (*s != '\0')
 			tty_keys_add(tty, s, tdkc->key);
 
 	}
