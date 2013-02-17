@@ -355,6 +355,7 @@ server_client_handle_key(struct client *c, int key)
 	/* Check the client is good to accept input. */
 	if ((c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)
 		return;
+
 	if (c->session == NULL)
 		return;
 	s = c->session;
@@ -528,6 +529,9 @@ server_client_reset_state(struct client *c)
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
 
+	if (c->flags & CLIENT_CONTROL)
+		return;
+
 	tty_region(&c->tty, 0, c->tty.sy - 1);
 
 	status = options_get_number(oo, "status");
@@ -625,7 +629,7 @@ server_client_check_redraw(struct client *c)
 	struct window_pane	*wp;
 	int		 	 flags, redraw;
 
-	if (c->flags & CLIENT_SUSPENDED)
+	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 
 	flags = c->tty.flags & TTY_FREEZE;
@@ -755,6 +759,8 @@ server_client_msg_dispatch(struct client *c)
 			if (datalen != 0)
 				fatalx("bad MSG_RESIZE size");
 
+			if (c->flags & CLIENT_CONTROL)
+				break;
 			if (tty_resize(&c->tty)) {
 				recalculate_sizes();
 				server_redraw_client(c);
@@ -924,7 +930,7 @@ server_client_msg_identify(
 
 	if (data->flags & IDENTIFY_CONTROL) {
 		c->stdin_callback = control_callback;
-		c->flags |= (CLIENT_CONTROL|CLIENT_SUSPENDED);
+		c->flags |= CLIENT_CONTROL;
 		server_write_client(c, MSG_STDIN, NULL, 0);
 
 		c->tty.fd = -1;
@@ -949,7 +955,8 @@ server_client_msg_identify(
 
 	tty_resize(&c->tty);
 
-	c->flags |= CLIENT_TERMINAL;
+	if (!(data->flags & IDENTIFY_CONTROL))
+		c->flags |= CLIENT_TERMINAL;
 }
 
 /* Handle shell message. */
