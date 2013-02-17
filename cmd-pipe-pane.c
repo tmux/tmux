@@ -130,7 +130,6 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 }
 
-/* ARGSUSED */
 void
 cmd_pipe_pane_error_callback(
     unused struct bufferevent *bufev, unused short what, void *data)

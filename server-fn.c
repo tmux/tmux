@@ -494,7 +494,6 @@ server_clear_identify(struct client *c)
 	}
 }
 
-/* ARGSUSED */
 void
 server_callback_identify(unused int fd, unused short events, void *data)
 {

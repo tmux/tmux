@@ -43,7 +43,6 @@ queue_window_name(struct window *w)
 	evtimer_add(&w->name_timer, &tv);
 }
 
-/* ARGSUSED */
 void
 window_name_callback(unused int fd, unused short events, void *data)
 {

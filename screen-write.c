@@ -41,7 +41,6 @@ screen_write_start(
 }
 
 /* Finish writing. */
-/* ARGSUSED */
 void
 screen_write_stop(unused struct screen_write_ctx *ctx)
 {

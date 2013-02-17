@@ -803,7 +803,6 @@ window_pane_timer_callback(unused int fd, unused short events, void *data)
 	wp->changes = 0;
 }
 
-/* ARGSUSED */
 void
 window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 {
@@ -830,7 +829,6 @@ window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 		fatal("gettimeofday failed.");
 }
 
-/* ARGSUSED */
 void
 window_pane_error_callback(
     unused struct bufferevent *bufev, unused short what, void *data)

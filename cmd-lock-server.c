@@ -60,7 +60,6 @@ const struct cmd_entry cmd_lock_client_entry = {
 	cmd_lock_server_exec
 };
 
-/* ARGSUSED */
 enum cmd_retval
 cmd_lock_server_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 {

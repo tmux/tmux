@@ -36,7 +36,6 @@ const struct cmd_entry cmd_list_commands_entry = {
 	cmd_list_commands_exec
 };
 
-/* ARGSUSED */
 enum cmd_retval
 cmd_list_commands_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {

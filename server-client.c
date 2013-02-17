@@ -586,7 +586,6 @@ server_client_reset_state(struct client *c)
 }
 
 /* Repeat time callback. */
-/* ARGSUSED */
 void
 server_client_repeat_timer(unused int fd, unused short events, void *data)
 {
