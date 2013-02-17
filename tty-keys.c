@@ -364,8 +364,6 @@ tty_keys_build(struct tty *tty)
 			tty_keys_add(tty, s, tdkc->key);
 
 	}
-
-	tty_keys_add(tty, "abc", 'x');
 }
 
 /* Free the entire key tree. */
