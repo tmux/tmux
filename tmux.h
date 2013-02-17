@@ -2012,6 +2012,8 @@ void	 screen_write_putc(
 void	 screen_write_copy(struct screen_write_ctx *,
 	     struct screen *, u_int, u_int, u_int, u_int);
 void	 screen_write_backspace(struct screen_write_ctx *);
+void	 screen_write_mode_set(struct screen_write_ctx *, int);
+void	 screen_write_mode_clear(struct screen_write_ctx *, int);
 void	 screen_write_cursorup(struct screen_write_ctx *, u_int);
 void	 screen_write_cursordown(struct screen_write_ctx *, u_int);
 void	 screen_write_cursorright(struct screen_write_ctx *, u_int);
@@ -2026,18 +2028,11 @@ void	 screen_write_clearline(struct screen_write_ctx *);
 void	 screen_write_clearendofline(struct screen_write_ctx *);
 void	 screen_write_clearstartofline(struct screen_write_ctx *);
 void	 screen_write_cursormove(struct screen_write_ctx *, u_int, u_int);
-void	 screen_write_cursormode(struct screen_write_ctx *, int);
 void	 screen_write_reverseindex(struct screen_write_ctx *);
 void	 screen_write_scrollregion(struct screen_write_ctx *, u_int, u_int);
-void	 screen_write_insertmode(struct screen_write_ctx *, int);
-void	 screen_write_utf8mousemode(struct screen_write_ctx *, int);
-void	 screen_write_mousemode_on(struct screen_write_ctx *, int);
-void	 screen_write_mousemode_off(struct screen_write_ctx *);
 void	 screen_write_linefeed(struct screen_write_ctx *, int);
 void	 screen_write_linefeedscreen(struct screen_write_ctx *, int);
 void	 screen_write_carriagereturn(struct screen_write_ctx *);
-void	 screen_write_kcursormode(struct screen_write_ctx *, int);
-void	 screen_write_kkeypadmode(struct screen_write_ctx *, int);
 void	 screen_write_clearendofscreen(struct screen_write_ctx *);
 void	 screen_write_clearstartofscreen(struct screen_write_ctx *);
 void	 screen_write_clearscreen(struct screen_write_ctx *);
@@ -2045,7 +2040,6 @@ void	 screen_write_clearhistory(struct screen_write_ctx *);
 void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
 void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);
-void	 screen_write_bracketpaste(struct screen_write_ctx *, int);
 
 /* screen-redraw.c */
 void	 screen_redraw_screen(struct client *, int, int);

@@ -52,14 +52,11 @@ screen_write_stop(unused struct screen_write_ctx *ctx)
 void
 screen_write_reset(struct screen_write_ctx *ctx)
 {
-	screen_reset_tabs(ctx->s);
+	struct screen	*s = ctx->s;
 
-	screen_write_scrollregion(ctx, 0, screen_size_y(ctx->s) - 1);
-
-	screen_write_insertmode(ctx, 0);
-	screen_write_kcursormode(ctx, 0);
-	screen_write_kkeypadmode(ctx, 0);
-	screen_write_mousemode_off(ctx);
+	screen_reset_tabs(s);
+	screen_write_scrollregion(ctx, 0, screen_size_y(s) - 1);
+	s->mode &= ~(MODE_INSERT|MODE_KCURSOR|MODE_KKEYPAD|ALL_MOUSE_MODES);
 
 	screen_write_clearscreen(ctx);
 	screen_write_cursormove(ctx, 0, 0);
@@ -454,6 +451,24 @@ screen_write_initctx(
 	memcpy(&ttyctx->last_cell, gc, sizeof ttyctx->last_cell);
 }
 
+/* Set a mode. */
+void
+screen_write_mode_set(struct screen_write_ctx *ctx, int mode)
+{
+	struct screen	*s = ctx->s;
+
+	s->mode |= mode;
+}
+
+/* Clear a mode. */
+void
+screen_write_mode_clear(struct screen_write_ctx *ctx, int mode)
+{
+	struct screen	*s = ctx->s;
+
+	s->mode &= ~mode;
+}
+
 /* Cursor up by ny. */
 void
 screen_write_cursorup(struct screen_write_ctx *ctx, u_int ny)
@@ -805,18 +820,6 @@ screen_write_cursormove(struct screen_write_ctx *ctx, u_int px, u_int py)
 	s->cy = py;
 }
 
-/* Set cursor mode. */
-void
-screen_write_cursormode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_CURSOR;
-	else
-		s->mode &= ~MODE_CURSOR;
-}
-
 /* Reverse index (up with scroll).  */
 void
 screen_write_reverseindex(struct screen_write_ctx *ctx)
@@ -856,61 +859,6 @@ screen_write_scrollregion(
 	s->rlower = rlower;
 }
 
-/* Set insert mode. */
-void
-screen_write_insertmode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_INSERT;
-	else
-		s->mode &= ~MODE_INSERT;
-}
-
-/* Set UTF-8 mouse mode.  */
-void
-screen_write_utf8mousemode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_MOUSE_UTF8;
-	else
-		s->mode &= ~MODE_MOUSE_UTF8;
-}
-
-/* Set mouse mode off. */
-void
-screen_write_mousemode_off(struct screen_write_ctx *ctx)
-{
-	struct screen	*s = ctx->s;
-
-	s->mode &= ~ALL_MOUSE_MODES;
-}
-
-/* Set mouse mode on. */
-void
-screen_write_mousemode_on(struct screen_write_ctx *ctx, int mode)
-{
-	struct screen	*s = ctx->s;
-
-	s->mode &= ~ALL_MOUSE_MODES;
-	s->mode |= mode;
-}
-
-/* Set bracketed paste mode. */
-void
-screen_write_bracketpaste(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_BRACKETPASTE;
-	else
-		s->mode &= ~MODE_BRACKETPASTE;
-}
-
 /* Line feed. */
 void
 screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
@@ -943,30 +891,6 @@ screen_write_carriagereturn(struct screen_write_ctx *ctx)
 	struct screen	*s = ctx->s;
 
 	s->cx = 0;
-}
-
-/* Set keypad cursor keys mode. */
-void
-screen_write_kcursormode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_KCURSOR;
-	else
-		s->mode &= ~MODE_KCURSOR;
-}
-
-/* Set keypad number keys mode. */
-void
-screen_write_kkeypadmode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_KKEYPAD;
-	else
-		s->mode &= ~MODE_KKEYPAD;
 }
 
 /* Clear to end of screen from cursor. */
