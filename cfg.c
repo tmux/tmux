@@ -73,14 +73,13 @@ cfg_add_cause(struct causelist *causes, const char *fmt, ...)
  * causes. Note that causes must be initialised by the caller!
  */
 enum cmd_retval
-load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
+load_cfg(const char *path, struct cmd_ctx *ctx, struct causelist *causes)
 {
 	FILE		*f;
 	u_int		 n;
 	char		*buf, *copy, *line, *cause;
 	size_t		 len, oldlen;
 	struct cmd_list	*cmdlist;
-	struct cmd_ctx	*ctx;
 	enum cmd_retval	 retval;
 
 	if ((f = fopen(path, "rb")) == NULL) {
@@ -90,20 +89,14 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 
 	cfg_references++;
 
-	ctx = cmd_get_ctx();
-	if (ctxin == NULL) {
-		ctx->msgdata = NULL;
-		ctx->curclient = NULL;
-		ctx->cmdclient = NULL;
-	} else {
-		ctx->msgdata = ctxin->msgdata;
-		ctx->curclient = ctxin->curclient;
-		ctx->cmdclient = ctxin->cmdclient;
+	if (ctx != NULL)
+		cmd_ref_ctx(ctx);
+	else {
+		ctx = cmd_get_ctx();
+		ctx->error = cfg_error;
+		ctx->print = cfg_print;
+		ctx->info = cfg_print;
 	}
-
-	ctx->error = cfg_error;
-	ctx->print = cfg_print;
-	ctx->info = cfg_print;
 
 	n = 0;
 	line = NULL;
