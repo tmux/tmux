@@ -864,24 +864,24 @@ server_client_msg_info(struct cmd_ctx *ctx, const char *fmt, ...)
 void
 server_client_msg_command(struct client *c, struct msg_command_data *data)
 {
-	struct cmd_ctx	 ctx;
+	struct cmd_ctx	*ctx;
 	struct cmd_list	*cmdlist = NULL;
 	int		 argc;
 	char	       **argv, *cause;
 
-	ctx.error = server_client_msg_error;
-	ctx.print = server_client_msg_print;
-	ctx.info = server_client_msg_info;
+	ctx = cmd_get_ctx();
+	ctx->msgdata = data;
+	ctx->curclient = NULL;
+	ctx->cmdclient = c;
 
-	ctx.msgdata = data;
-	ctx.curclient = NULL;
-
-	ctx.cmdclient = c;
+	ctx->error = server_client_msg_error;
+	ctx->print = server_client_msg_print;
+	ctx->info = server_client_msg_info;
 
 	argc = data->argc;
 	data->argv[(sizeof data->argv) - 1] = '\0';
 	if (cmd_unpack_argv(data->argv, sizeof data->argv, argc, &argv) != 0) {
-		server_client_msg_error(&ctx, "command too long");
+		server_client_msg_error(ctx, "command too long");
 		goto error;
 	}
 
@@ -892,13 +892,13 @@ server_client_msg_command(struct client *c, struct msg_command_data *data)
 	}
 
 	if ((cmdlist = cmd_list_parse(argc, argv, &cause)) == NULL) {
-		server_client_msg_error(&ctx, "%s", cause);
+		server_client_msg_error(ctx, "%s", cause);
 		cmd_free_argv(argc, argv);
 		goto error;
 	}
 	cmd_free_argv(argc, argv);
 
-	switch (cmd_list_exec(cmdlist, &ctx))
+	switch (cmd_list_exec(cmdlist, ctx))
 	{
 	case CMD_RETURN_ERROR:
 	case CMD_RETURN_NORMAL:
@@ -909,11 +909,14 @@ server_client_msg_command(struct client *c, struct msg_command_data *data)
 		break;
 	}
 	cmd_list_free(cmdlist);
+	cmd_free_ctx(ctx);
 	return;
 
 error:
 	if (cmdlist != NULL)
 		cmd_list_free(cmdlist);
+	cmd_free_ctx(ctx);
+
 	c->flags |= CLIENT_EXIT;
 }
 

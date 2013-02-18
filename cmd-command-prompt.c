@@ -150,7 +150,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 	struct cmd_command_prompt_cdata	*cdata = data;
 	struct client			*c = cdata->c;
 	struct cmd_list			*cmdlist;
-	struct cmd_ctx			 ctx;
+	struct cmd_ctx			*ctx;
 	char				*cause, *new_template, *prompt, *ptr;
 	char				*input = NULL;
 
@@ -184,17 +184,18 @@ cmd_command_prompt_callback(void *data, const char *s)
 		return (0);
 	}
 
-	ctx.msgdata = NULL;
-	ctx.curclient = c;
+	ctx = cmd_get_ctx();
+	ctx->msgdata = NULL;
+	ctx->curclient = c;
+	ctx->cmdclient = NULL;
 
-	ctx.error = key_bindings_error;
-	ctx.print = key_bindings_print;
-	ctx.info = key_bindings_info;
+	ctx->error = key_bindings_error;
+	ctx->print = key_bindings_print;
+	ctx->info = key_bindings_info;
 
-	ctx.cmdclient = NULL;
-
-	cmd_list_exec(cmdlist, &ctx);
+	cmd_list_exec(cmdlist, ctx);
 	cmd_list_free(cmdlist);
+	cmd_free_ctx(ctx);
 
 	if (c->prompt_callbackfn != (void *) &cmd_command_prompt_callback)
 		return (1);

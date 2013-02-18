@@ -80,7 +80,7 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 	char		*buf, *copy, *line, *cause;
 	size_t		 len, oldlen;
 	struct cmd_list	*cmdlist;
-	struct cmd_ctx	 ctx;
+	struct cmd_ctx	*ctx;
 	enum cmd_retval	 retval;
 
 	if ((f = fopen(path, "rb")) == NULL) {
@@ -89,6 +89,21 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 	}
 
 	cfg_references++;
+
+	ctx = cmd_get_ctx();
+	if (ctxin == NULL) {
+		ctx->msgdata = NULL;
+		ctx->curclient = NULL;
+		ctx->cmdclient = NULL;
+	} else {
+		ctx->msgdata = ctxin->msgdata;
+		ctx->curclient = ctxin->curclient;
+		ctx->cmdclient = ctxin->cmdclient;
+	}
+
+	ctx->error = cfg_error;
+	ctx->print = cfg_print;
+	ctx->info = cfg_print;
 
 	n = 0;
 	line = NULL;
@@ -146,22 +161,8 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		if (cmdlist == NULL)
 			continue;
 
-		if (ctxin == NULL) {
-			ctx.msgdata = NULL;
-			ctx.curclient = NULL;
-			ctx.cmdclient = NULL;
-		} else {
-			ctx.msgdata = ctxin->msgdata;
-			ctx.curclient = ctxin->curclient;
-			ctx.cmdclient = ctxin->cmdclient;
-		}
-
-		ctx.error = cfg_error;
-		ctx.print = cfg_print;
-		ctx.info = cfg_print;
-
 		cfg_cause = NULL;
-		switch (cmd_list_exec(cmdlist, &ctx)) {
+		switch (cmd_list_exec(cmdlist, ctx)) {
 		case CMD_RETURN_YIELD:
 			if (retval != CMD_RETURN_ATTACH)
 				retval = CMD_RETURN_YIELD;
@@ -185,6 +186,8 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		free(line);
 	}
 	fclose(f);
+
+	cmd_free_ctx(ctx);
 
 	cfg_references--;
 

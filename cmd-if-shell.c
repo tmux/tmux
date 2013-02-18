@@ -47,7 +47,7 @@ const struct cmd_entry cmd_if_shell_entry = {
 struct cmd_if_shell_data {
 	char		*cmd_if;
 	char		*cmd_else;
-	struct cmd_ctx	 ctx;
+	struct cmd_ctx	*ctx;
 };
 
 enum cmd_retval
@@ -63,12 +63,9 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 		cdata->cmd_else = xstrdup(args->argv[2]);
 	else
 		cdata->cmd_else = NULL;
-	memcpy(&cdata->ctx, ctx, sizeof cdata->ctx);
 
-	if (ctx->cmdclient != NULL)
-		ctx->cmdclient->references++;
-	if (ctx->curclient != NULL)
-		ctx->curclient->references++;
+	cdata->ctx = ctx;
+	cmd_ref_ctx(ctx);
 
 	job_run(shellcmd, cmd_if_shell_callback, cmd_if_shell_free, cdata);
 
@@ -79,7 +76,7 @@ void
 cmd_if_shell_callback(struct job *job)
 {
 	struct cmd_if_shell_data	*cdata = job->data;
-	struct cmd_ctx			*ctx = &cdata->ctx;
+	struct cmd_ctx			*ctx = cdata->ctx;
 	struct cmd_list			*cmdlist;
 	char				*cause, *cmd;
 
@@ -105,14 +102,11 @@ void
 cmd_if_shell_free(void *data)
 {
 	struct cmd_if_shell_data	*cdata = data;
-	struct cmd_ctx			*ctx = &cdata->ctx;
+	struct cmd_ctx			*ctx = cdata->ctx;
 
-	if (ctx->cmdclient != NULL) {
-		ctx->cmdclient->references--;
+	if (ctx->cmdclient != NULL)
 		ctx->cmdclient->flags |= CLIENT_EXIT;
-	}
-	if (ctx->curclient != NULL)
-		ctx->curclient->references--;
+	cmd_free_ctx(ctx);
 
 	free(cdata->cmd_else);
 	free(cdata->cmd_if);

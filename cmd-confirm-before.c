@@ -108,7 +108,7 @@ cmd_confirm_before_callback(void *data, const char *s)
 	struct cmd_confirm_before_data	*cdata = data;
 	struct client			*c = cdata->c;
 	struct cmd_list			*cmdlist;
-	struct cmd_ctx	 	 	 ctx;
+	struct cmd_ctx	 	 	*ctx;
 	char				*cause;
 
 	if (s == NULL || *s == '\0')
@@ -125,17 +125,18 @@ cmd_confirm_before_callback(void *data, const char *s)
 		return (0);
 	}
 
-	ctx.msgdata = NULL;
-	ctx.curclient = c;
+	ctx = cmd_get_ctx();
+	ctx->msgdata = NULL;
+	ctx->curclient = c;
+	ctx->cmdclient = NULL;
 
-	ctx.error = key_bindings_error;
-	ctx.print = key_bindings_print;
-	ctx.info = key_bindings_info;
+	ctx->error = key_bindings_error;
+	ctx->print = key_bindings_print;
+	ctx->info = key_bindings_info;
 
-	ctx.cmdclient = NULL;
-
-	cmd_list_exec(cmdlist, &ctx);
+	cmd_list_exec(cmdlist, ctx);
 	cmd_list_free(cmdlist);
+	cmd_free_ctx(ctx);
 
 	return (0);
 }
