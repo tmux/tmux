@@ -267,10 +267,7 @@ key_bindings_dispatch(struct key_binding *bd, struct client *c)
 	int		 readonly;
 
 	ctx = cmd_get_ctx();
-	ctx->msgdata = NULL;
-	ctx->cmdclient = NULL;
 	ctx->curclient = c;
-
 	ctx->error = key_bindings_error;
 	ctx->print = key_bindings_print;
 	ctx->info = key_bindings_info;

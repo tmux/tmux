@@ -871,9 +871,7 @@ server_client_msg_command(struct client *c, struct msg_command_data *data)
 
 	ctx = cmd_get_ctx();
 	ctx->msgdata = data;
-	ctx->curclient = NULL;
 	ctx->cmdclient = c;
-
 	ctx->error = server_client_msg_error;
 	ctx->print = server_client_msg_print;
 	ctx->info = server_client_msg_info;

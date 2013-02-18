@@ -109,10 +109,7 @@ control_callback(struct client *c, int closed, unused void *data)
 		}
 
 		ctx = cmd_get_ctx();
-		ctx->msgdata = NULL;
-		ctx->cmdclient = NULL;
 		ctx->curclient = c;
-
 		ctx->error = control_msg_error;
 		ctx->print = control_msg_print;
 		ctx->info = control_msg_info;
