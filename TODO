@@ -171,7 +171,6 @@ TERMINAL ISSUES
 - support for bce
 - use screen-256color when started on 256 colour terminal??
 - if-shell/run-shell should block further command execution in the same command
-- wrap/no wrap esc seq DEC CSI ? 7 h/l
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!

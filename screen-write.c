@@ -979,10 +979,10 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
-	u_int		 	 width, xx;
+	u_int		 	 width, xx, last;
 	struct grid_cell 	 tmp_gc, *tmp_gcp;
 	struct utf8_data	 ud;
-	int			 insert = 0;
+	int			 insert;
 
 	/* Ignore padding. */
 	if (gc->flags & GRID_FLAG_PADDING)
@@ -1020,7 +1020,8 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		xx = screen_size_x(s) - s->cx - width;
 		grid_move_cells(s->grid, s->cx + width, s->cx, s->cy, xx);
 		insert = 1;
-	}
+	} else
+		insert = 0;
 
 	/* Check this will fit on the current line and wrap if not. */
 	if ((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - width) {
@@ -1028,9 +1029,8 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		s->cx = 0;	/* carriage return */
 	}
 
-	/* Sanity checks. */
-	if (((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - width)
-	    || s->cy > screen_size_y(s) - 1)
+	/* Sanity check cursor position. */
+	if (s->cx > screen_size_x(s) - width || s->cy > screen_size_y(s) - 1)
 		return;
 
 	/* Handle overwriting of UTF-8 characters. */
@@ -1049,8 +1049,15 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	/* Set the cell. */
 	grid_view_set_cell(gd, s->cx, s->cy, gc);
 
-	/* Move the cursor. */
-	s->cx += width;
+	/*
+	 * Move the cursor. If not wrapping, stick at the last character and
+	 * replace it.
+	 */
+	last = !!(s->mode & MODE_WRAP);
+	if (s->cx <= screen_size_x(s) - last - width)
+		s->cx += width;
+	else
+		s->cx = screen_size_x(s) - last;
 
 	/* Draw to the screen if necessary. */
 	if (insert) {

@@ -1248,6 +1248,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 			screen_write_cursormove(&ictx->ctx, 0, 0);
 			screen_write_clearscreen(&ictx->ctx);
 			break;
+		case 7:		/* DECAWM */
+			screen_write_mode_clear(&ictx->ctx, MODE_WRAP);
+			break;
 		case 25:	/* TCEM */
 			screen_write_mode_clear(&ictx->ctx, MODE_CURSOR);
 			break;
@@ -1304,6 +1307,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case 3:		/* DECCOLM */
 			screen_write_cursormove(&ictx->ctx, 0, 0);
 			screen_write_clearscreen(&ictx->ctx);
+			break;
+		case 7:		/* DECAWM */
+			screen_write_mode_set(&ictx->ctx, MODE_WRAP);
 			break;
 		case 25:	/* TCEM */
 			screen_write_mode_set(&ictx->ctx, MODE_CURSOR);
