@@ -201,12 +201,25 @@ input_key(struct window_pane *wp, int key)
 void
 input_mouse(struct window_pane *wp, struct session *s, struct mouse_event *m)
 {
-	char			 buf[10];
+	char			 buf[40];
 	size_t			 len;
 	struct paste_buffer	*pb;
 
 	if (wp->screen->mode & ALL_MOUSE_MODES) {
-		if (wp->screen->mode & MODE_MOUSE_UTF8) {
+		/*
+		 * Use the SGR (1006) extension only if the application
+		 * requested it and the underlying terminal also sent the event
+		 * in this format (this is because an old style mouse release
+		 * event cannot be converted into the new SGR format, since the
+		 * released button is unknown). Otherwise pretend that tmux
+		 * doesn't speak this extension, and fall back to the UTF-8
+		 * (1005) extension if the application requested, or to the
+		 * legacy format.
+		 */
+		if (m->sgr && (wp->screen->mode & MODE_MOUSE_SGR)) {
+			len = xsnprintf(buf, sizeof buf, "\033[<%d;%d;%d%c",
+			    m->sgr_xb, m->x + 1, m->y + 1, m->sgr_rel ? 'm' : 'M');
+		} else if (wp->screen->mode & MODE_MOUSE_UTF8) {
 			len = xsnprintf(buf, sizeof buf, "\033[M");
 			len += utf8_split2(m->xb + 32, &buf[len]);
 			len += utf8_split2(m->x + 33, &buf[len]);

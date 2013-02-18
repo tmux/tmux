@@ -587,20 +587,26 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 {
 	struct mouse_event	*m = &tty->mouse;
 	struct utf8_data	 utf8data;
-	u_int			 i, value, x, y, b;
+	u_int			 i, value, x, y, b, sgr, sgr_b, sgr_rel;
+	unsigned char		 c;
 
 	/*
 	 * Standard mouse sequences are \033[M followed by three characters
-	 * indicating buttons, X and Y, all based at 32 with 1,1 top-left.
+	 * indicating button, X and Y, all based at 32 with 1,1 top-left.
 	 *
 	 * UTF-8 mouse sequences are similar but the three are expressed as
 	 * UTF-8 characters.
+	 *
+	 * SGR extended mouse sequences are \033[< followed by three numbers in
+	 * decimal and separated by semicolons indicating button, X and Y. A
+	 * trailing 'M' is click or scroll and trailing 'm' release. All are
+	 * based at 0 with 1,1 top-left.
 	 */
 
 	*size = 0;
-	x = y = b  = 0;
+	x = y = b = sgr = sgr_b = sgr_rel = 0;
 
-	/* First three bytes are always \033[M. */
+	/* First two bytes are always \033[. */
 	if (buf[0] != '\033')
 		return (-1);
 	if (len == 1)
@@ -609,50 +615,99 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 		return (-1);
 	if (len == 2)
 		return (1);
-	if (buf[2] != 'M')
-		return (-1);
-	if (len == 3)
-		return (1);
 
-	/* Read the three inputs. */
-	*size = 3;
-	for (i = 0; i < 3; i++) {
-		if (len < *size)
-			return (1);
+	/*
+	 * Third byte is M in old standard and UTF-8 extension, < in SGR
+	 * extension.
+	 */
+	if (buf[2] == 'M') {
+		/* Read the three inputs. */
+		*size = 3;
+		for (i = 0; i < 3; i++) {
+			if (len <= *size)
+				return (1);
 
-		if (tty->mode & MODE_MOUSE_UTF8) {
-			if (utf8_open(&utf8data, buf[*size])) {
-				if (utf8data.size != 2)
-					return (-1);
+			if (tty->mode & MODE_MOUSE_UTF8) {
+				if (utf8_open(&utf8data, buf[*size])) {
+					if (utf8data.size != 2)
+						return (-1);
+					(*size)++;
+					if (len <= *size)
+						return (1);
+					utf8_append(&utf8data, buf[*size]);
+					value = utf8_combine(&utf8data);
+				} else
+					value = (u_char) buf[*size];
 				(*size)++;
-				if (len < *size)
-					return (1);
-				utf8_append(&utf8data, buf[*size]);
-				value = utf8_combine(&utf8data);
-			} else
-				value = (unsigned char)buf[*size];
-			(*size)++;
-		} else {
-			value = (unsigned char)buf[*size];
-			(*size)++;
+			} else {
+				value = (u_char) buf[*size];
+				(*size)++;
+			}
+
+			if (i == 0)
+				b = value;
+			else if (i == 1)
+				x = value;
+			else
+				y = value;
 		}
+		log_debug("mouse input: %.*s", (int) *size, buf);
 
-		if (i == 0)
-			b = value;
-		else if (i == 1)
-			x = value;
-		else
-			y = value;
-	}
-	log_debug("mouse input: %.*s", (int) *size, buf);
+		/* Check and return the mouse input. */
+		if (b < 32 || x < 33 || y < 33)
+			return (-1);
+		b -= 32;
+		x -= 33;
+		y -= 33;
+	} else if (buf[2] == '<') {
+		/* Read the three inputs. */
+		*size = 3;
+		while (1) {
+			if (len <= *size)
+				return (1);
+			c = (u_char)buf[(*size)++];
+			if (c == ';')
+				break;
+			if (c < '0' || c > '9')
+				return (-1);
+			sgr_b = 10 * sgr_b + (c - '0');
+		}
+		while (1) {
+			if (len <= *size)
+				return (1);
+			c = (u_char)buf[(*size)++];
+			if (c == ';')
+				break;
+			if (c < '0' || c > '9')
+				return (-1);
+			x = 10 * x + (c - '0');
+		}
+		while (1) {
+			if (len <= *size)
+				return (1);
+			c = (u_char) buf[(*size)++];
+			if (c == 'M' || c == 'm')
+				break;
+			if (c < '0' || c > '9')
+				return (-1);
+			y = 10 * y + (c - '0');
+		}
+		log_debug("mouse input (sgr): %.*s", (int) *size, buf);
 
-	/* Check and return the mouse input. */
-	if (b < 32 || x < 33 || y < 33)
+		/* Check and return the mouse input. */
+		if (x < 1 || y < 1)
+			return (-1);
+		x--;
+		y--;
+		sgr = 1;
+		sgr_rel = (c == 'm');
+
+		/* Figure out what b would be in old format. */
+		b = sgr_b;
+		if (sgr_rel)
+			b |= 3;
+	} else
 		return (-1);
-	b -= 32;
-	x -= 33;
-	y -= 33;
-	log_debug("mouse position: x=%u y=%u b=%u", x, y, b);
 
 	/* Fill in mouse structure. */
 	if (~m->event & MOUSE_EVENT_WHEEL) {
@@ -660,6 +715,9 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 		m->ly = m->y;
 	}
 	m->xb = b;
+	m->sgr = sgr;
+	m->sgr_xb = sgr_b;
+	m->sgr_rel = sgr_rel;
 	if (b & 64) { /* wheel button */
 		b &= 3;
 		if (b == 0)

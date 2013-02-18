@@ -661,7 +661,8 @@ struct mode_key_table {
 #define MODE_MOUSE_BUTTON 0x40
 #define MODE_MOUSE_ANY 0x80
 #define MODE_MOUSE_UTF8 0x100
-#define MODE_BRACKETPASTE 0x200
+#define MODE_MOUSE_SGR 0x200
+#define MODE_BRACKETPASTE 0x400
 
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)
 
@@ -1149,6 +1150,9 @@ LIST_HEAD(tty_terms, tty_term);
  * - bits 3, 4 and 5 are for keys
  * - bit 6 is set for dragging
  * - bit 7 for buttons 4 and 5
+ *
+ * With the SGR 1006 extension the released button becomes known. Store these
+ * in separate fields and store the value converted to the old format in xb.
  */
 struct mouse_event {
 	u_int	xb;
@@ -1160,6 +1164,10 @@ struct mouse_event {
 	u_int	y;
 	u_int	ly;
 	u_int	sy;
+
+	u_int   sgr;		/* whether the input arrived in SGR format */
+	u_int   sgr_xb;		/* only for SGR: the unmangled button */
+	u_int   sgr_rel;	/* only for SGR: whether it is a release event */
 
 	u_int	button;
 	u_int	clicks;

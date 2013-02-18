@@ -218,7 +218,7 @@ tty_start_tty(struct tty *tty)
 
 	tty_putcode(tty, TTYC_CNORM);
 	if (tty_term_has(tty->term, TTYC_KMOUS))
-		tty_puts(tty, "\033[?1000l");
+		tty_puts(tty, "\033[?1000l\033[?1006l\033[?1005l");
 
 	if (tty_term_has(tty->term, TTYC_XT))
 		tty_puts(tty, "\033[c\033[>4;1m");
@@ -281,7 +281,7 @@ tty_stop_tty(struct tty *tty)
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
 	if (tty_term_has(tty->term, TTYC_KMOUS))
-		tty_raw(tty, "\033[?1000l");
+		tty_raw(tty, "\033[?1000l\033[?1006l\033[?1005l");
 
 	if (tty_term_has(tty->term, TTYC_XT))
 		tty_puts(tty, "\033[>4m");
@@ -491,8 +491,17 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 	}
 	if (changed & ALL_MOUSE_MODES) {
 		if (mode & ALL_MOUSE_MODES) {
+			/*
+			 * Enable the UTF-8 (1005) extension if configured to.
+			 * Enable the SGR (1006) extension unconditionally, as
+			 * this is safe from misinterpretation. Do it in this
+			 * order, because in some terminals it's the last one
+			 * that takes effect and SGR is the preferred one.
+			 */
 			if (mode & MODE_MOUSE_UTF8)
 				tty_puts(tty, "\033[?1005h");
+			tty_puts(tty, "\033[?1006h");
+
 			if (mode & MODE_MOUSE_ANY)
 				tty_puts(tty, "\033[?1003h");
 			else if (mode & MODE_MOUSE_BUTTON)
@@ -506,6 +515,8 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 				tty_puts(tty, "\033[?1002l");
 			else if (tty->mode & MODE_MOUSE_STANDARD)
 				tty_puts(tty, "\033[?1000l");
+
+			tty_puts(tty, "\033[?1006l");
 			if (tty->mode & MODE_MOUSE_UTF8)
 				tty_puts(tty, "\033[?1005l");
 		}
