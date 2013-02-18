@@ -753,7 +753,7 @@ window_choose_write_line(
 		    (item->wcd->type & TREE_SESSION) ?
 		    (item->state & TREE_EXPANDED ? "-" : "+") : "", item->name);
 	}
-	while (s->cx < screen_size_x(s))
+	while (s->cx < screen_size_x(s) - 1)
 		screen_write_putc(ctx, &gc, ' ');
 
 	if (data->input_type != WINDOW_CHOOSE_NORMAL) {
