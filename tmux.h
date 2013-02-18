@@ -1167,7 +1167,7 @@ struct mouse_event {
 
 	u_int   sgr;		/* whether the input arrived in SGR format */
 	u_int   sgr_xb;		/* only for SGR: the unmangled button */
-	u_int   sgr_rel;	/* only for SGR: whether it is a release event */
+	u_int   sgr_rel;	/* only for SGR: if it is a release event */
 
 	u_int	button;
 	u_int	clicks;
@@ -2163,9 +2163,11 @@ void		 layout_resize_adjust(
 void		 layout_init(struct window *);
 void		 layout_free(struct window *);
 void		 layout_resize(struct window *, u_int, u_int);
-void		 layout_resize_pane(
-		     struct window_pane *, enum layout_type, int);
-void		 layout_resize_pane_mouse(struct client *c);
+void		 layout_resize_pane(struct window_pane *, enum layout_type,
+		     int);
+void		 layout_resize_pane_to(struct window_pane *, enum layout_type,
+		     u_int);
+void		 layout_resize_pane_mouse(struct client *);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
 struct layout_cell *layout_split_pane(
 		     struct window_pane *, enum layout_type, int, int);
