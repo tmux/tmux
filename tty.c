@@ -489,7 +489,7 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 		}
 		tty->cstyle = s->cstyle;
 	}
-	if (changed & ALL_MOUSE_MODES) {
+	if (changed & (ALL_MOUSE_MODES|MODE_MOUSE_UTF8)) {
 		if (mode & ALL_MOUSE_MODES) {
 			/*
 			 * Enable the UTF-8 (1005) extension if configured to.
@@ -500,6 +500,8 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 			 */
 			if (mode & MODE_MOUSE_UTF8)
 				tty_puts(tty, "\033[?1005h");
+			else
+				tty_puts(tty, "\033[?1005l");
 			tty_puts(tty, "\033[?1006h");
 
 			if (mode & MODE_MOUSE_ANY)
