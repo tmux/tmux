@@ -6,7 +6,7 @@ dist_man1_MANS = tmux.1
 
 # Distribution tarball options.
 EXTRA_DIST = \
-	CHANGES FAQ NOTES TODO examples compat \
+	CHANGES FAQ README TODO examples compat \
 	array.h compat.h tmux.h osdep-*.c
 dist-hook:
 	grep "^#found_debug=" configure
