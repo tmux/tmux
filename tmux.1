@@ -854,7 +854,7 @@ The following keys are supported as appropriate for the mode:
 .It Li "Start of line" Ta "0" Ta "C-a"
 .It Li "Start selection" Ta "Space" Ta "C-Space"
 .It Li "Top of history" Ta "g" Ta "M->"
-.It Li "Transpose chars" Ta "" Ta "C-t"
+.It Li "Transpose characters" Ta "" Ta "C-t"
 .El
 .Pp
 The next and previous word keys use space and the
@@ -916,6 +916,17 @@ command and keys modified or removed with
 .Ic bind-key
 and
 .Ic unbind-key .
+One command in accepts an argument,
+.Ic copy-pipe ,
+which copies the selection and pipes it to a command.
+For example the following will bind
+.Ql C-q
+to copy the selection into
+.Pa /tmp
+as well as the paste buffer:
+.Bd -literal -offset indent
+bind-key -temacs-copy C-q copy-pipe "cat >/tmp/out"
+.Ed
 .Pp
 The paste buffer key pastes the first line from the top paste buffer on the
 stack.

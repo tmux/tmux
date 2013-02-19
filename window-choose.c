@@ -492,7 +492,7 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 	items = ARRAY_LENGTH(&data->list);
 
 	if (data->input_type == WINDOW_CHOOSE_GOTO_ITEM) {
-		switch (mode_key_lookup(&data->mdata, key)) {
+		switch (mode_key_lookup(&data->mdata, key, NULL)) {
 		case MODEKEYCHOICE_CANCEL:
 			data->input_type = WINDOW_CHOOSE_NORMAL;
 			window_choose_redraw_screen(wp);
@@ -523,7 +523,7 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 		return;
 	}
 
-	switch (mode_key_lookup(&data->mdata, key)) {
+	switch (mode_key_lookup(&data->mdata, key, NULL)) {
 	case MODEKEYCHOICE_CANCEL:
 		window_choose_fire_callback(wp, NULL);
 		break;
@@ -777,7 +777,7 @@ window_choose_key_index(struct window_choose_mode_data *data, u_int idx)
 	int			mkey;
 
 	for (ptr = keys; *ptr != '\0'; ptr++) {
-		mkey = mode_key_lookup(&data->mdata, *ptr);
+		mkey = mode_key_lookup(&data->mdata, *ptr, NULL);
 		if (mkey != MODEKEY_NONE && mkey != MODEKEY_OTHER)
 			continue;
 		if (idx-- == 0)
@@ -797,7 +797,7 @@ window_choose_index_key(struct window_choose_mode_data *data, int key)
 	u_int			idx = 0;
 
 	for (ptr = keys; *ptr != '\0'; ptr++) {
-		mkey = mode_key_lookup(&data->mdata, *ptr);
+		mkey = mode_key_lookup(&data->mdata, *ptr, NULL);
 		if (mkey != MODEKEY_NONE && mkey != MODEKEY_OTHER)
 			continue;
 		if (key == *ptr)
