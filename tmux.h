@@ -1973,7 +1973,8 @@ void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_clear_lines(struct grid *, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
-char	*grid_string_cells(struct grid *, u_int, u_int, u_int);
+char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
+	     struct grid_cell **, int);
 void	 grid_duplicate_lines(
 	     struct grid *, u_int, struct grid *, u_int, u_int);
 u_int	 grid_reflow(struct grid *, struct grid *, u_int);
