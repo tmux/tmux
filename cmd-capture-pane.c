@@ -31,9 +31,8 @@ enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
-	"b:c:E:pS:t:", 0, 0,
-	"[-p] [-c target-client] [-b buffer-index] [-E end-line] "
-	"[-S start-line] "
+	"b:E:pS:t:", 0, 0,
+	"[-p] [-b buffer-index] [-E end-line] [-S start-line]"
 	CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
@@ -45,7 +44,7 @@ enum cmd_retval
 cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
-	struct client		*c;
+	struct client		*c = ctx->cmdclient;
 	struct window_pane	*wp;
 	char 			*buf, *line, *cause;
 	struct screen		*s;
@@ -53,9 +52,6 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	int			 buffer, n;
 	u_int			 i, limit, top, bottom, tmp;
 	size_t         		 len, linelen;
-
-	if ((c = cmd_find_client(ctx, args_get(args, 'c'))) == NULL)
-		return (CMD_RETURN_ERROR);
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
