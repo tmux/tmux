@@ -676,7 +676,7 @@ status_job_callback(struct job *job)
 			memcpy(buf, EVBUFFER_DATA(job->event->input), len);
 		buf[len] = '\0';
 	} else
-		buf = xstrdup(line);
+		buf = line;
 
 	so->out = buf;
 	server_status_client(c);

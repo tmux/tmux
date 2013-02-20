@@ -112,6 +112,7 @@ cmd_run_shell_callback(struct job *job)
 	do {
 		if ((line = evbuffer_readline(job->event->input)) != NULL) {
 			cmd_run_shell_print (job, line);
+			free(line);
 			lines++;
 		}
 	} while (line != NULL);
