@@ -44,7 +44,7 @@ enum cmd_retval
 cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
-	struct client		*c = ctx->cmdclient;
+	struct client		*c;
 	struct window_pane	*wp;
 	char			*buf, *line, *cause;
 	struct screen		*s;
@@ -106,6 +106,9 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	if (args_has(args, 'p')) {
+		c = ctx->curclient;
+		if (c == NULL || !(c->flags & CLIENT_CONTROL))
+			c = ctx->cmdclient;
 		if (c == NULL) {
 			ctx->error(ctx, "can't write to stdout");
 			return (CMD_RETURN_ERROR);
