@@ -108,8 +108,7 @@ control_callback(struct client *c, int closed, unused void *data)
 			break;
 		}
 
-		ctx = cmd_get_ctx();
-		ctx->curclient = c;
+		ctx = cmd_get_ctx(NULL, c);
 		ctx->error = control_msg_error;
 		ctx->print = control_msg_print;
 		ctx->info = control_msg_info;
