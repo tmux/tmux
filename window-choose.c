@@ -220,8 +220,7 @@ window_choose_data_run(struct window_choose_data *cdata)
 		return;
 	}
 
-	ctx = cmd_get_ctx();
-	ctx->curclient = cdata->start_client;
+	ctx = cmd_get_ctx(NULL, cdata->start_client);
 	ctx->error = key_bindings_error;
 	ctx->print = key_bindings_print;
 	ctx->info = key_bindings_info;

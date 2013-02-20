@@ -869,9 +869,8 @@ server_client_msg_command(struct client *c, struct msg_command_data *data)
 	int		 argc;
 	char	       **argv, *cause;
 
-	ctx = cmd_get_ctx();
+	ctx = cmd_get_ctx(c, NULL);
 	ctx->msgdata = data;
-	ctx->cmdclient = c;
 	ctx->error = server_client_msg_error;
 	ctx->print = server_client_msg_print;
 	ctx->info = server_client_msg_info;
