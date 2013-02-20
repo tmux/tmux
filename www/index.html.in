@@ -34,15 +34,19 @@ the manual</a>.</p>
 <p><b><a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">
 Download tmux %%VERSION%%</a></b> or
 <a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/">
-get the development version.</a></p>
-
-<p>tmux is hosted on
+get the development version.</a>
+tmux is hosted on
 <a href="http://sf.net/projects/tmux">SourceForge</a>
 and needs
 <a href="http://www.monkey.org/~provos/libevent/">libevent</a>
 and
 <a href="http://invisible-island.net/ncurses/">ncurses</a>
 .</p>
+
+<p>For support contact the
+<a href="mailto:tmux-users@lists.sf.net">tmux-users@lists.sf.net</a>
+mailing list or IRC channel
+<a href="irc://irc.freenode.net/tmux">#tmux on freenode</a>.</p>
 
 <p>There are some programs to use with tmux
 <a href="https://github.com/search?q=tmux&type=Repositories&ref=simplesearch">
