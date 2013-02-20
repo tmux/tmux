@@ -93,7 +93,6 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	server_status_session_group(s);
 
 	if (args_has(args, 'P')) {
-
 		if ((template = args_get(args, 'F')) == NULL)
 			template = BREAK_PANE_TEMPLATE;
 
