@@ -138,7 +138,7 @@ Release tmux for next version
    don't have debugging enabled, otherwise make(1) aborts when
    preparing the distribution.
 
-2. Update and commit NOTES and CHANGES.  The former should be checked for
+2. Update and commit README and CHANGES.  The former should be checked for
    anything outdated and updated with a list of things that might break
    upgrades and the latter should mention all the major changes since
    the last version.

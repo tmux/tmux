@@ -3,6 +3,20 @@
 " Maintainer: Tiago Cunha <tcunha@users.sourceforge.net>
 " Last Change: $Date: 2010-07-27 18:29:07 $
 " License: This file is placed in the public domain.
+"
+" To install this file:
+"
+" - Drop the file in the syntax directory into runtimepath (such as
+"  ~/.vim/syntax/tmux.vim).
+" - Make the filetype recognisable by adding the following to filetype.vim
+"   (~/.vim/filetype.vim):
+"
+"	augroup filetypedetect
+"		au BufNewFile,BufRead .tmux.conf*,tmux.conf* setf tmux
+"	augroup END
+"
+" - Switch on syntax highlighting by adding "syntax enable" to .vimrc.
+"
 
 if version < 600
 	syntax clear
