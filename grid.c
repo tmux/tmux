@@ -77,7 +77,7 @@ void	grid_reflow_move(struct grid *, u_int *, struct grid_line *);
 size_t	grid_string_cells_fg(const struct grid_cell *, int *);
 size_t	grid_string_cells_bg(const struct grid_cell *, int *);
 void	grid_string_cells_code(const struct grid_cell *,
-	    const struct grid_cell *, char *, size_t);
+	    const struct grid_cell *, char *, size_t, int);
 
 /* Create a new grid. */
 struct grid *
@@ -232,6 +232,15 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx)
 	for (xx = gl->cellsize; xx < sx; xx++)
 		grid_put_cell(gd, xx, py, &grid_default_cell);
 	gl->cellsize = sx;
+}
+
+/* Peek at grid line. */
+const struct grid_line *
+grid_peek_line(struct grid *gd, u_int py)
+{
+	if (grid_check_y(gd, py) != 0)
+		return (NULL);
+	return (&gd->linedata[py]);
 }
 
 /* Get cell for reading. */
@@ -485,7 +494,7 @@ grid_string_cells_bg(const struct grid_cell *gc, int *values)
  */
 void
 grid_string_cells_code(const struct grid_cell *lastgc,
-    const struct grid_cell *gc, char *buf, size_t len)
+    const struct grid_cell *gc, char *buf, size_t len, int escape_c0)
 {
 	int	oldc[16], newc[16], s[32];
 	size_t	noldc, nnewc, n, i;
@@ -542,7 +551,10 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 	/* If there are any parameters, append an SGR code. */
 	*buf = '\0';
 	if (n > 0) {
-		strlcat(buf, "\033[", len);
+		if (escape_c0)
+			strlcat(buf, "\\033[", len);
+		else
+			strlcat(buf, "\033[", len);
 		for (i = 0; i < n; i++) {
 			if (i + 1 < n)
 				xsnprintf(tmp, sizeof tmp, "%d;", s[i]);
@@ -554,22 +566,31 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 	}
 
 	/* Append shift in/shift out if needed. */
-	if ((attr & GRID_ATTR_CHARSET) && !(lastattr & GRID_ATTR_CHARSET))
-		strlcat(buf, "\016", len);  /* SO */
-	if (!(attr & GRID_ATTR_CHARSET) && (lastattr & GRID_ATTR_CHARSET))
-		strlcat(buf, "\017", len);  /* SI */
+	if ((attr & GRID_ATTR_CHARSET) && !(lastattr & GRID_ATTR_CHARSET)) {
+		if (escape_c0)
+			strlcat(buf, "\\016", len);  /* SO */
+		else
+			strlcat(buf, "\016", len);  /* SO */
+	}
+	if (!(attr & GRID_ATTR_CHARSET) && (lastattr & GRID_ATTR_CHARSET)) {
+		if (escape_c0)
+			strlcat(buf, "\\017", len);  /* SI */
+		else
+			strlcat(buf, "\017", len);  /* SI */
+	}
 }
 
 /* Convert cells into a string. */
 char *
 grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
-    struct grid_cell **lastgc, int with_codes)
+    struct grid_cell **lastgc, int with_codes, int escape_c0)
 {
 	const struct grid_cell	*gc;
 	static struct grid_cell	 lastgc1;
 	struct utf8_data	 ud;
+	const char*		 data;
 	char			*buf, code[128];
-	size_t			 len, off, codelen;
+	size_t			 len, off, size, codelen;
 	u_int			 xx;
 
 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u", px, py, nx);
@@ -590,13 +611,21 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		grid_cell_get(gc, &ud);
 
 		if (with_codes) {
-			grid_string_cells_code(*lastgc, gc, code, sizeof code);
+			grid_string_cells_code(*lastgc, gc, code, sizeof code,
+			    escape_c0);
 			codelen = strlen(code);
 			memcpy(*lastgc, gc, sizeof *gc);
 		} else
 			codelen = 0;
 
-		while (len < off + ud.size + codelen + 1) {
+		data = ud.data;
+		size = ud.size;
+		if (escape_c0 && size == 1 && *data == '\\') {
+			data = "\\";
+			size = 2;
+		}
+
+		while (len < off + size + codelen + 1) {
 			buf = xrealloc(buf, 2, len);
 			len *= 2;
 		}
@@ -605,13 +634,14 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 			memcpy(buf + off, code, codelen);
 			off += codelen;
 		}
-		memcpy(buf + off, ud.data, ud.size);
-		off += ud.size;
+		memcpy(buf + off, data, size);
+		off += size;
 	}
 
 	while (off > 0 && buf[off - 1] == ' ')
 		off--;
 	buf[off] = '\0';
+
 	return (buf);
 }
 

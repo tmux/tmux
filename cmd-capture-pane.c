@@ -31,8 +31,8 @@ enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
-	"eb:E:pS:t:", 0, 0,
-	"[-ep] [-b buffer-index] [-E end-line] [-S start-line]"
+	"b:CeE:JpS:t:", 0, 0,
+	"[-CeJp] [-b buffer-index] [-E end-line] [-S start-line]"
 	CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
@@ -49,10 +49,11 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*buf, *line, *cause;
 	struct screen		*s;
 	struct grid		*gd;
-	int			 buffer, n, with_codes;
+	int			 buffer, n, with_codes, escape_c0, join_lines;
 	u_int			 i, limit, top, bottom, tmp;
 	size_t			 len, linelen;
 	struct grid_cell	*gc;
+	const struct grid_line	*gl;
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
@@ -90,17 +91,23 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		top = tmp;
 	}
 
-	gc = NULL;
 	with_codes = args_has(args, 'e');
+	escape_c0 = args_has(args, 'C');
+	join_lines = args_has(args, 'J');
+
+	gc = NULL;
 	for (i = top; i <= bottom; i++) {
 		line = grid_string_cells(s->grid, 0, i, screen_size_x(s),
-		    &gc, with_codes);
+		    &gc, with_codes, escape_c0);
 		linelen = strlen(line);
 
 		buf = xrealloc(buf, 1, len + linelen + 1);
 		memcpy(buf + len, line, linelen);
 		len += linelen;
-		buf[len++] = '\n';
+
+		gl = grid_peek_line(s->grid, i);
+		if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
+			buf[len++] = '\n';
 
 		free(line);
 	}

@@ -1067,7 +1067,12 @@ is given, the output goes to stdout, otherwise to the buffer specified with
 or a new buffer if omitted.
 If
 .Fl e
-is given, the output includes escape sequences for text and background attributes.
+is given, the output includes escape sequences for text and background
+attributes.
+.Fl C
+also escapes non-printable characters as octal \\xxx.
+.Fl J
+joins wrapped lines.
 .Pp
 .Fl S
 and
