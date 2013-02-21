@@ -161,6 +161,8 @@ TMUX UI ISSUES
   with each option having a type (window or session), then options on window,
   on session, and global. for window options we look window->session->global,
   and for session we look session->global
+- maybe keep last layout + size around and if size reverts just put it back
+- way to set hints/limits about pane size for resizing
 
 TERMINAL ISSUES
 ================
