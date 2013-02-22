@@ -27,6 +27,7 @@
 
 #include "tmux.h"
 
+void	server_client_check_focus(struct window_pane *);
 void	server_client_check_mouse(struct client *, struct window_pane *);
 void	server_client_repeat_timer(int, short, void *);
 void	server_client_check_exit(struct client *);
@@ -494,7 +495,7 @@ server_client_loop(void)
 
 	/*
 	 * Any windows will have been redrawn as part of clients, so clear
-	 * their flags now.
+	 * their flags now. Also check and update pane focus.
 	 */
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);
@@ -502,9 +503,52 @@ server_client_loop(void)
 			continue;
 
 		w->flags &= ~WINDOW_REDRAW;
-		TAILQ_FOREACH(wp, &w->panes, entry)
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			server_client_check_focus(wp);
 			wp->flags &= ~PANE_REDRAW;
+		}
 	}
+}
+
+/* Check whether pane should be focused. */
+void
+server_client_check_focus(struct window_pane *wp)
+{
+	struct session	*s;
+
+	/* If we don't care about focus, forget it. */
+	if (!(wp->base.mode & MODE_FOCUSON))
+		return;
+
+	/* If we're not the active pane in our window, we're not focused. */
+	if (wp->window->active != wp)
+		goto not_focused;
+
+	/* If we're in a mode, we're not focused. */
+	if (wp->screen != &wp->base)
+		goto not_focused;
+
+	/*
+	 * If our window is the current window in any attached sessions, we're
+	 * focused.
+	 */
+	RB_FOREACH(s, sessions, &sessions) {
+		if (s->flags & SESSION_UNATTACHED)
+			continue;
+		if (s->curw->window == wp->window)
+			goto focused;
+	}
+
+not_focused:
+	if (wp->flags & PANE_FOCUSED)
+		bufferevent_write(wp->event, "\033[O", 3);
+	wp->flags &= ~PANE_FOCUSED;
+	return;
+
+focused:
+	if (!(wp->flags & PANE_FOCUSED))
+		bufferevent_write(wp->event, "\033[I", 3);
+	wp->flags |= PANE_FOCUSED;
 }
 
 /*
