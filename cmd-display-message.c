@@ -55,8 +55,6 @@ cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 	time_t			 t;
 	size_t			 len;
 
-	c = cmd_find_client(ctx, args_get(args, 'c'));
-
 	if (args_has(args, 't')) {
 		wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp);
 		if (wl == NULL)
@@ -79,7 +77,7 @@ cmd_display_message_exec(struct cmd *self, struct cmd_ctx *ctx)
 		template = DISPLAY_MESSAGE_TEMPLATE;
 
 	ft = format_create();
-	if (c != NULL)
+	if ((c = cmd_find_client(ctx, args_get(args, 'c'), 1)) != NULL)
 		format_client(ft, c);
 	format_session(ft, s);
 	format_winlink(ft, s, wl);

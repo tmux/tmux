@@ -56,7 +56,7 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
-	c = cmd_find_client(ctx, NULL);
+	c = cmd_find_client(ctx, NULL, 1);
 
 	/* Destroy the old pipe. */
 	old_fd = wp->pipe_fd;

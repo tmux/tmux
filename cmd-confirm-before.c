@@ -79,7 +79,7 @@ cmd_confirm_before_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
+	if ((c = cmd_find_client(ctx, args_get(args, 't'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if ((prompt = args_get(args, 'p')) != NULL)

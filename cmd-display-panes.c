@@ -42,7 +42,7 @@ cmd_display_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct args	*args = self->args;
 	struct client	*c;
 
-	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
+	if ((c = cmd_find_client(ctx, args_get(args, 't'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	server_set_identify(c);

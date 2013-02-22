@@ -1728,7 +1728,7 @@ struct cmd	*cmd_parse(int, char **, char **);
 size_t		 cmd_print(struct cmd *, char *, size_t);
 struct session	*cmd_current_session(struct cmd_ctx *, int);
 struct client	*cmd_current_client(struct cmd_ctx *);
-struct client	*cmd_find_client(struct cmd_ctx *, const char *);
+struct client	*cmd_find_client(struct cmd_ctx *, const char *, int);
 struct session	*cmd_find_session(struct cmd_ctx *, const char *, int);
 struct winlink	*cmd_find_window(
 		     struct cmd_ctx *, const char *, struct session **);
