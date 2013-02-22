@@ -855,32 +855,16 @@ window_pane_error_callback(
 void
 window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
-	struct winsize	ws;
-
 	if (sx == wp->sx && sy == wp->sy)
 		return;
 	wp->sx = sx;
 	wp->sy = sy;
 
-	memset(&ws, 0, sizeof ws);
-	ws.ws_col = sx;
-	ws.ws_row = sy;
-
 	screen_resize(&wp->base, sx, sy, wp->saved_grid == NULL);
 	if (wp->mode != NULL)
 		wp->mode->resize(wp, sx, sy);
 
-	if (wp->fd != -1 && ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
-#ifdef __sun
-		/*
-		 * Some versions of Solaris apparently can return an error when
-		 * resizing; don't know why this happens, can't reproduce on
-		 * other platforms and ignoring it doesn't seem to cause any
-		 * issues.
-		 */
-		if (errno != EINVAL)
-#endif
-		fatal("ioctl failed");
+	wp->flags |= PANE_RESIZE;
 }
 
 /*
