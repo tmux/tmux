@@ -307,24 +307,36 @@ window_create1(u_int sx, u_int sy)
 struct window *
 window_create(const char *name, const char *cmd, const char *shell,
     const char *cwd, struct environ *env, struct termios *tio,
-    u_int sx, u_int sy, u_int hlimit,char **cause)
+    u_int sx, u_int sy, u_int hlimit, char **cause)
 {
 	struct window		*w;
 	struct window_pane	*wp;
+	const char		*prefix;
+	char			*cmd1;
 
 	w = window_create1(sx, sy);
 	wp = window_add_pane(w, hlimit);
 	layout_init(w);
-	if (window_pane_spawn(wp, cmd, shell, cwd, env, tio, cause) != 0) {
+
+	if (*cmd != '\0') {
+		prefix = options_get_string(&w->options, "command-prefix");
+		xasprintf(&cmd1, "%s%s", prefix, cmd);
+	} else
+		cmd1 = xstrdup("");
+	if (window_pane_spawn(wp, cmd1, shell, cwd, env, tio, cause) != 0) {
 		window_destroy(w);
+		free(cmd1);
 		return (NULL);
 	}
+	free(cmd1);
+
 	w->active = TAILQ_FIRST(&w->panes);
 	if (name != NULL) {
 		w->name = xstrdup(name);
 		options_set_number(&w->options, "automatic-rename", 0);
 	} else
 		w->name = default_window_name(w);
+
 	return (w);
 }
 
@@ -700,6 +712,8 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 		free(wp->cwd);
 		wp->cwd = xstrdup(cwd);
 	}
+
+	log_debug("spawn: %s -- %s", wp->shell, wp->cmd);
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = screen_size_x(&wp->base);
