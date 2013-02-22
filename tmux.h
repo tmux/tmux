@@ -928,6 +928,7 @@ struct window_pane {
 #define PANE_REDRAW 0x1
 #define PANE_DROP 0x2
 #define PANE_FOCUSED 0x4
+#define PANE_RESIZE 0x8
 
 	char		*cmd;
 	char		*shell;
