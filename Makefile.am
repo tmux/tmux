@@ -26,13 +26,15 @@ endif
 if IS_GCC
 CFLAGS += -std=c99
 if IS_DEBUG
-CFLAGS += -g -ggdb -O0
+CFLAGS += -O0 -g
 CFLAGS += -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 CFLAGS += -Wundef -Wbad-function-cast -Winline -Wcast-align
 CFLAGS += -Wdeclaration-after-statement
 CPPFLAGS += -DDEBUG
+else
+CFLAGS += -O2
 endif
 if IS_GCC4
 CPPFLAGS += -iquote. -I/usr/local/include
