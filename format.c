@@ -32,8 +32,9 @@
  * string.
  */
 
-int	format_replace(struct format_tree *,
-	    const char *, size_t, char **, size_t *, size_t *);
+int	format_replace(struct format_tree *, const char *, size_t, char **,
+	    size_t *, size_t *);
+void	format_window_pane_tabs(struct format_tree *, struct window_pane *);
 
 /* Format key-value replacement entry. */
 RB_GENERATE(format_tree, format_entry, entry, format_cmp);
@@ -367,6 +368,28 @@ format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 	free(layout);
 }
 
+/* Add window pane tabs. */
+void
+format_window_pane_tabs(struct format_tree *ft, struct window_pane *wp)
+{
+	struct evbuffer	*buffer;
+	u_int		 i;
+
+	buffer = evbuffer_new();
+	for (i = 0; i < wp->base.grid->sx; i++) {
+		if (!bit_test(wp->base.tabs, i))
+			continue;
+
+		if (EVBUFFER_LENGTH(buffer) > 0)
+			evbuffer_add(buffer, ",", 1);
+		evbuffer_add_printf(buffer, "%d", i);
+	}
+
+	format_add(ft, "pane_tabs", "%.*s", (int) EVBUFFER_LENGTH(buffer),
+	    EVBUFFER_DATA(buffer));
+	evbuffer_free(buffer);
+}
+
 /* Set default format keys for a window pane. */
 void
 format_window_pane(struct format_tree *ft, struct window_pane *wp)
@@ -444,8 +467,11 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	    !!(wp->base.mode & MODE_MOUSE_ANY));
 	format_add(ft, "mouse_utf8_flag", "%d",
 	    !!(wp->base.mode & MODE_MOUSE_UTF8));
+
+	format_window_pane_tabs(ft, wp);
 }
 
+/* Set default format keys for paste buffer. */
 void
 format_paste_buffer(struct format_tree *ft, struct paste_buffer *pb)
 {
