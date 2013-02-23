@@ -516,15 +516,19 @@ cmd_choose_client(struct clients *cc)
 
 /* Find the target client or report an error and return NULL. */
 struct client *
-cmd_find_client(struct cmd_ctx *ctx, const char *arg)
+cmd_find_client(struct cmd_ctx *ctx, const char *arg, int quiet)
 {
 	struct client	*c;
 	char		*tmparg;
 	size_t		 arglen;
 
 	/* A NULL argument means the current client. */
-	if (arg == NULL)
-		return (cmd_current_client(ctx));
+	if (arg == NULL) {
+		c = cmd_current_client(ctx);
+		if (c == NULL && !quiet)
+			ctx->error(ctx, "no clients");
+		return (c);
+	}
 	tmparg = xstrdup(arg);
 
 	/* Trim a single trailing colon if any. */
@@ -536,7 +540,7 @@ cmd_find_client(struct cmd_ctx *ctx, const char *arg)
 	c = cmd_lookup_client(tmparg);
 
 	/* If no client found, report an error. */
-	if (c == NULL)
+	if (c == NULL && !quiet)
 		ctx->error(ctx, "client not found: %s", tmparg);
 
 	free(tmparg);

@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/ioctl.h>
 
 #include <event.h>
 #include <fcntl.h>
@@ -94,6 +95,8 @@ server_client_create(int fd)
 	c->tty.mouse.sx = c->tty.mouse.sy = -1;
 	c->tty.mouse.event = MOUSE_EVENT_UP;
 	c->tty.mouse.flags = 0;
+
+	c->flags |= CLIENT_FOCUSED;
 
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
 
@@ -545,7 +548,8 @@ server_client_check_resize(struct window_pane *wp)
 void
 server_client_check_focus(struct window_pane *wp)
 {
-	struct session	*s;
+	u_int		 i;
+	struct client	*c;
 
 	/* If we don't care about focus, forget it. */
 	if (!(wp->base.mode & MODE_FOCUSON))
@@ -560,13 +564,20 @@ server_client_check_focus(struct window_pane *wp)
 		goto not_focused;
 
 	/*
-	 * If our window is the current window in any attached sessions, we're
-	 * focused.
+	 * If our window is the current window in any focused clients with an
+	 * attached session, we're focused.
 	 */
-	RB_FOREACH(s, sessions, &sessions) {
-		if (s->flags & SESSION_UNATTACHED)
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
 			continue;
-		if (s->curw->window == wp->window)
+
+		if (!(c->flags & CLIENT_FOCUSED))
+			continue;
+		if (c->session->flags & SESSION_UNATTACHED)
+			continue;
+
+		if (c->session->curw->window == wp->window)
 			goto focused;
 	}
 

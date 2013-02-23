@@ -64,7 +64,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct client	*c;
 	struct session	*s;
 
-	if ((c = cmd_find_client(ctx, args_get(args, 'c'))) == NULL)
+	if ((c = cmd_find_client(ctx, args_get(args, 'c'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'r')) {

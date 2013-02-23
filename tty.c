@@ -221,7 +221,7 @@ tty_start_tty(struct tty *tty)
 		tty_puts(tty, "\033[?1000l\033[?1006l\033[?1005l");
 
 	if (tty_term_has(tty->term, TTYC_XT))
-		tty_puts(tty, "\033[c\033[>4;1m\033[?1004l");
+		tty_puts(tty, "\033[c\033[>4;1m\033[?1004h");
 
 	tty->cx = UINT_MAX;
 	tty->cy = UINT_MAX;
@@ -284,7 +284,7 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?1000l\033[?1006l\033[?1005l");
 
 	if (tty_term_has(tty->term, TTYC_XT))
-		tty_raw(tty, "\033[>4m");
+		tty_raw(tty, "\033[>4m\033[?1004l");
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
 
