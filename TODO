@@ -30,40 +30,30 @@ TMUX UI ISSUES
   to avoid quoting
 - make command sequences more usable: don't require space after ;, handle
   errors better
-- attach should have a flag to create session if it doesn't exist
 - choice and more mode would be better per client than per window?
 - hooks to which commands may be attached, for example: tmux add-hook
   "new-session" if-shell "[ -e $HOME/.tmux-session.conf ]" source-file
   $HOME/.tmux-session.conf
 - way to set socket path from config file
-- what about utmp etc? can tmux update it like screen? setgid?
 - warts on current naming:
   	- display-time but message-fg/bg/attr
 	- list-* vs show-*
 	- server-info
 	- up-pane/down-pane/swap-pane -U/swap-pane -D vs next-*/previous-*
 	- split-window -> split-pane??
-- a way for force-width/height to apply to only one pane (how?)
-- command to list what is actually running in each window with command line,
-  pid (need some adaption of the osdep code)
 - some way to force a screen to use the entire terminal even if it is forced
   to be smaller by other clients. pan smaller terminal? (like screen F)
 	-- idea of a "view" onto a window, need base x/y offsets for redraw
-- handle resize better in copy mode
-- way to copy stuff that is off screen due to resize
 - commands should be able to succeed or fail and have || or && for command
   lists
-- some way to KEEP a command running continually and just use its LAST line of
+- some way to keep a command running continually and just use its last line of
   output
 - UTF-8 to a non-UTF-8 terminal should not be able to balls up
   the terminal - www/ruby-addressable; make regress
 - support esc-esc to quit in modes
 - fix ctrl+F1-F4 output. to what?
 - better utf8 support: window names, prompt input, message display
-- session history for client and last-session command
-- option to change status line colour when current window is in a mode?
 - option to move copy mode indicator into status line
-- list-buffer/show-buffer should display UTF-8
 - selection behaviour closer to vi in vi mode
 - live update: server started with -U connects to server, requests sessions and
   windows, receives fds
@@ -76,14 +66,11 @@ TMUX UI ISSUES
 - better session sharing: create-socket command to create socket somewhere (-r
   flag for readonly)
 - multiline status line (no?)
-- flag for absolute pane size to resize-pane
-- sanity check input to socket
 - support title stack, both internally and externally
 	http://docs.freebsd.org/cgi/getmsg.cgi?fetch=1149299+0+archive/2010/freebsd-questions/20100207.freebsd-questions
-- command to show status line information briefly when it is off
 - some way to pad # stuff with spaces, #!2T maybe
 - a binding to "scroll down and exit at bottom" copy mode
-- some way to pass keystrokes in copy mode through to underlying window
+- some way to pass keystrokes in copy mode through to underlying window. why?
 - last window update time and # replacement for it for display-message
 - find-window across sessions - other ways to make session handling easier?
 - ' and " should be parsed the same (eg "\e" vs '\e') in config and command
@@ -92,44 +79,29 @@ TMUX UI ISSUES
 - audit of escape sequence support vs xterm
 - support binding keys to mouse (mouse-select-pane -> mouse-keys or something,
   mouse click == select-pane -t %%, mouse scroll up == copy-mode)
-- something for -t "last window in session" so a session can be used as a stack
-- synchronous commands - client sends cmd and blocks, neww/splitw saves client
-  ptr then when program inside died, sends MSG_SOMETHING with wait status to
-  client
 - bind commands to key sequences? -- make it so ALL keys go through a table,
   first an implicit table in which C-b is the only default binding to a
   command that says "next key from $othertable" and so on. means -n can
   go away as well
 - monitor, bell etc should monitor /all/ panes in the window not just one
 - a history of commands that can be reversed (reverse member of each command,
-  and a buffer) info() when changing to same window
+  and a buffer)
+- info() when changing to same window
 - way to add dest for break-pane; maybe some easier way to unbreak-pane
 - case insensitive searching
 - incremental searching in copy mode.
 - configurable borders and empty space filler for when panes < window?
 - mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets the
   flag on w/o checking the others before calling tty_update_mode)
-- multiple keys could be done with tables, ie have prefixes go and instead
-	bind -n ^A prefix-table "default"
-  where prefix-table sets command lookup table and sets prefix flag, then next
-  key is looked up in that table
 - pass shell commands as argv rather than strings, allow them to be specified
   in commands without quotes
-- numeric prefix in copy mode should be paste buffer for C-w
 - named buffers and allow gaps in the stack
-- get rid of separate UTF-8 cell stuff: add 1 byte to cell and store BMP as
-  uint16_t+3 bits of flags. anything <=0xffff is Unicode, higher are used to
-  build tree of combined characters/non-BMP (LRU dropped when full)
-- entry in FAQ about what to do when someone does mkdir /tmp/tmux-1000
 - monitor-activity is broken in several ways with multiple clients
 - monitor-activity should be more powerful (eg set a region)
 - maybe a way to put pane names instead of window names in status line
 - support for borderless panes
-- run-shell/if-shell should support status_replace stuff
-- wait-pane command or another way to make it synchronous/wait for command to
-  finish
+- wait-for command 20130222153957.GY6782@yelena.nicm.ath.cx
 - last-pane across sessions
-- attach should take a pane and select it as well as attaching
 - panes should have names like windows
 - command-prompt doesn't work if made read-only. why?
 - option to quote format eg #{session_name:quoted}
@@ -144,16 +116,14 @@ TMUX UI ISSUES
 - way to tag a layout as a number/name
 - optimize pane redraws, 20120318184853.GK10965@yelena.nicm.ath.cx
 - support multibyte key strings
-- allow commands to be executed when certaing patterns in a screen
+- allow commands to be executed when certain patterns in a screen
   are clicked on with the mouse
 - flag to make next/previous commands skip a window
 - way to do tmux command/run-shell from mode keys
 - send command to all windows
-- choose-pane command
-	- Augment choose-tree to do this?  TA to investigate.
-- choose-mode and copy-mode are very similar.  Perhaps make choose-mode a
-  subset of copy-mode in that it inherits key-bindings and other traits but
-  not all.
+- choose-pane command (augment choose-tree to do this?)
+- choose-mode and copy-mode are very similar. Perhaps make choose-mode a subset
+  of copy-mode in that it inherits key-bindings and other traits but not all
 - add -c for new-session like new-window
 - flag to choose-* for sort order (eg sort windows/sessions/clients by last
   used time) - perhaps using formats (but what about numeric sort)?
@@ -163,6 +133,14 @@ TMUX UI ISSUES
   and for session we look session->global
 - maybe keep last layout + size around and if size reverts just put it back
 - way to set hints/limits about pane size for resizing
+- revamp layouts: they are too complicated, should be more closely integrated,
+  should support hints, layout sets should just be a special case of custom
+  layouts, and we should support panes that are not attached to a cell at
+  all. this could be the time to introduce panelink to replace layout_cell
+- run-shell/if-shell should support formats
+- attach should take a pane and select it as well as attaching
+- attach should have a flag to create session if it doesn't exist. or better
+  new a flag to attach it
 
 TERMINAL ISSUES
 ================
@@ -171,8 +149,7 @@ TERMINAL ISSUES
 - clear window title on exit (see using xterm title stack)
 - get it passing all the vttest tests that don't require resizing the terminal
 - support for bce
-- use screen-256color when started on 256 colour terminal??
-- if-shell/run-shell should block further command execution in the same command
+- use screen-256color when started on 256 colour terminal?
 * We need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo. Must NOT change (only add or remove) anything from
   TERM=screen so we can fallback!
