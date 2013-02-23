@@ -30,7 +30,7 @@
 enum cmd_retval	cmd_set_option_exec(struct cmd *, struct cmd_q *);
 
 enum cmd_retval	cmd_set_option_user(struct cmd *, struct cmd_q *,
-		    const char *, const char *);
+	    const char *, const char *);
 
 int	cmd_set_option_unset(struct cmd *, struct cmd_q *,
 	    const struct options_table_entry *, struct options *,
@@ -63,8 +63,8 @@ struct options_entry *cmd_set_option_choice(struct cmd *, struct cmd_q *,
 
 const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set",
-	"agqst:uw", 1, 2,
-	"[-agsquw] [-t target-session|target-window] option [value]",
+	"agoqst:uw", 1, 2,
+	"[-agosquw] [-t target-session|target-window] option [value]",
 	0,
 	NULL,
 	NULL,
@@ -73,8 +73,8 @@ const struct cmd_entry cmd_set_option_entry = {
 
 const struct cmd_entry cmd_set_window_option_entry = {
 	"set-window-option", "setw",
-	"agqt:u", 1, 2,
-	"[-agqu] " CMD_TARGET_WINDOW_USAGE " option [value]",
+	"agoqt:u", 1, 2,
+	"[-agoqu] " CMD_TARGET_WINDOW_USAGE " option [value]",
 	0,
 	NULL,
 	NULL,
@@ -151,6 +151,11 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 		if (cmd_set_option_unset(self, cmdq, oe, oo, valstr) != 0)
 			return (CMD_RETURN_ERROR);
 	} else {
+		if (args_has(args, 'o') && options_find1(oo, optstr) != NULL) {
+			if (!args_has(args, 'q'))
+				cmdq_print(cmdq, "already set: %s", optstr);
+			return (CMD_RETURN_NORMAL);
+		}
 		if (cmd_set_option_set(self, cmdq, oe, oo, valstr) != 0)
 			return (CMD_RETURN_ERROR);
 	}
@@ -226,6 +231,11 @@ cmd_set_option_user(struct cmd *self, struct cmd_q *cmdq, const char* optstr,
 		if (valstr == NULL) {
 			cmdq_error(cmdq, "empty value");
 			return (CMD_RETURN_ERROR);
+		}
+		if (args_has(args, 'o') && options_find1(oo, optstr) != NULL) {
+			if (!args_has(args, 'q'))
+				cmdq_print(cmdq, "already set: %s", optstr);
+			return (CMD_RETURN_NORMAL);
 		}
 		options_set_string(oo, optstr, "%s", valstr);
 		if (!args_has(args, 'q')) {

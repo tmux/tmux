@@ -1996,7 +1996,7 @@ abc123
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
-.Op Fl agqsuw
+.Op Fl agoqsuw
 .Op Fl t Ar target-session | Ar target-window
 .Ar option Ar value
 .Xc
@@ -2023,6 +2023,10 @@ The
 flag unsets an option, so a session inherits the option from the global
 options.
 It is not possible to unset a global option.
+.Pp
+The
+.Fl o
+flag prevents setting an option that is already set.
 .Pp
 The
 .Fl q
