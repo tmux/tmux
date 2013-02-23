@@ -105,8 +105,9 @@ server_create_socket(void)
 int
 server_start(int lockfd, char *lockfile)
 {
-	int	 	pair[2];
-	struct timeval	tv;
+	int	 	 pair[2];
+	struct timeval	 tv;
+	char		*cause;
 
 	/* The first client is special and gets a socketpair; create it. */
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
@@ -163,23 +164,28 @@ server_start(int lockfd, char *lockfile)
 	free(lockfile);
 	close(lockfd);
 
-	if (access(SYSTEM_CFG, R_OK) == 0)
-		load_cfg(SYSTEM_CFG, NULL, &cfg_causes);
-	else if (errno != ENOENT) {
-		cfg_add_cause(
-		    &cfg_causes, "%s: %s", SYSTEM_CFG, strerror(errno));
+	cfg_cmd_q = cmdq_new(NULL);
+	cfg_cmd_q->emptyfn = cfg_default_done;
+	cfg_finished = 0;
+	cfg_references = 1;
+	ARRAY_INIT(&cfg_causes);
+
+	if (access(SYSTEM_CFG, R_OK) == 0) {
+		if (load_cfg(SYSTEM_CFG, cfg_cmd_q, &cause) == -1) {
+			xasprintf(&cause, "%s: %s", SYSTEM_CFG, cause);
+			ARRAY_ADD(&cfg_causes, cause);
+		}
+	} else if (errno != ENOENT) {
+		xasprintf(&cause, "%s: %s", SYSTEM_CFG, strerror(errno));
+		ARRAY_ADD(&cfg_causes, cause);
 	}
-	if (cfg_file != NULL)
-		load_cfg(cfg_file, NULL, &cfg_causes);
-
-	/*
-	 * If there is a session already, put the current window and pane into
-	 * more mode.
-	 */
-	if (!RB_EMPTY(&sessions) && !ARRAY_EMPTY(&cfg_causes))
-		show_cfg_causes(RB_MIN(sessions, &sessions));
-
-	cfg_finished = 1;
+	if (cfg_file != NULL) {
+		if (load_cfg(cfg_file, cfg_cmd_q, &cause) == -1) {
+			xasprintf(&cause, "%s: %s", cfg_file, cause);
+			ARRAY_ADD(&cfg_causes, cause);
+		}
+	}
+	cmdq_continue(cfg_cmd_q);
 
 	server_add_accept(0);
 

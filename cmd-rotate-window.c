@@ -25,7 +25,7 @@
  */
 
 void		 cmd_rotate_window_key_binding(struct cmd *, int);
-enum cmd_retval	 cmd_rotate_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_rotate_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_rotate_window_entry = {
 	"rotate-window", "rotatew",
@@ -46,7 +46,7 @@ cmd_rotate_window_key_binding(struct cmd *self, int key)
 }
 
 enum cmd_retval
-cmd_rotate_window_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_rotate_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
@@ -55,7 +55,7 @@ cmd_rotate_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct layout_cell	*lc;
 	u_int			 sx, sy, xoff, yoff;
 
-	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
+	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), NULL)) == NULL)
 		return (CMD_RETURN_ERROR);
 	w = wl->window;
 

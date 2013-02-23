@@ -27,80 +27,27 @@
 
 #include "tmux.h"
 
-/*
- * Config file parser. Pretty quick and simple, each line is parsed into a
- * argv array and executed as a command.
- */
-
-void printflike2 cfg_print(struct cmd_ctx *, const char *, ...);
-void printflike2 cfg_error(struct cmd_ctx *, const char *, ...);
-
-char			*cfg_cause;
+struct cmd_q		*cfg_cmd_q;
 int			 cfg_finished;
-int	 		 cfg_references;
+int			 cfg_references;
 struct causelist	 cfg_causes;
 
-void printflike2
-cfg_print(unused struct cmd_ctx *ctx, unused const char *fmt, ...)
-{
-}
-
-void printflike2
-cfg_error(unused struct cmd_ctx *ctx, const char *fmt, ...)
-{
-	va_list	ap;
-
-	va_start(ap, fmt);
-	xvasprintf(&cfg_cause, fmt, ap);
-	va_end(ap);
-}
-
-void printflike2
-cfg_add_cause(struct causelist *causes, const char *fmt, ...)
-{
-	char	*cause;
-	va_list	 ap;
-
-	va_start(ap, fmt);
-	xvasprintf(&cause, fmt, ap);
-	va_end(ap);
-
-	ARRAY_ADD(causes, cause);
-}
-
-/*
- * Load configuration file. Returns -1 for an error with a list of messages in
- * causes. Note that causes must be initialised by the caller!
- */
-enum cmd_retval
-load_cfg(const char *path, struct cmd_ctx *ctx, struct causelist *causes)
+int
+load_cfg(const char *path, struct cmd_q *cmdq, char **cause)
 {
 	FILE		*f;
-	u_int		 n;
-	char		*buf, *copy, *line, *cause;
+	u_int		 n, found;
+	char		*buf, *copy, *line, *cause1, *msg;
 	size_t		 len, oldlen;
 	struct cmd_list	*cmdlist;
-	enum cmd_retval	 retval;
 
 	if ((f = fopen(path, "rb")) == NULL) {
-		cfg_add_cause(causes, "%s: %s", path, strerror(errno));
-		return (CMD_RETURN_ERROR);
+		xasprintf(cause, "%s: %s", path, strerror(errno));
+		return (-1);
 	}
 
-	cfg_references++;
-
-	if (ctx != NULL)
-		cmd_ref_ctx(ctx);
-	else {
-		ctx = cmd_get_ctx(NULL, NULL);
-		ctx->error = cfg_error;
-		ctx->print = cfg_print;
-		ctx->info = cfg_print;
-	}
-
-	n = 0;
+	n = found = 0;
 	line = NULL;
-	retval = CMD_RETURN_NORMAL;
 	while ((buf = fgetln(f, &len))) {
 		/* Trim \n. */
 		if (buf[len - 1] == '\n')
@@ -142,53 +89,47 @@ load_cfg(const char *path, struct cmd_ctx *ctx, struct causelist *causes)
 			continue;
 		}
 
-		if (cmd_string_parse(buf, &cmdlist, &cause) != 0) {
+		/* Parse and run the command. */
+		if (cmd_string_parse(buf, &cmdlist, path, n, &cause1) != 0) {
 			free(copy);
-			if (cause == NULL)
+			if (cause1 == NULL)
 				continue;
-			cfg_add_cause(causes, "%s: %u: %s", path, n, cause);
-			free(cause);
+			xasprintf(&msg, "%s:%u: %s", path, n, cause1);
+			ARRAY_ADD(&cfg_causes, msg);
+			free(cause1);
 			continue;
 		}
 		free(copy);
+
 		if (cmdlist == NULL)
 			continue;
-
-		cfg_cause = NULL;
-		switch (cmd_list_exec(cmdlist, ctx)) {
-		case CMD_RETURN_YIELD:
-			if (retval != CMD_RETURN_ATTACH)
-				retval = CMD_RETURN_YIELD;
-			break;
-		case CMD_RETURN_ATTACH:
-			retval = CMD_RETURN_ATTACH;
-			break;
-		case CMD_RETURN_ERROR:
-		case CMD_RETURN_NORMAL:
-			break;
-		}
+		cmdq_append(cmdq, cmdlist);
 		cmd_list_free(cmdlist);
-		if (cfg_cause != NULL) {
-			cfg_add_cause(causes, "%s: %d: %s", path, n, cfg_cause);
-			free(cfg_cause);
-		}
+		found++;
 	}
-	if (line != NULL) {
-		cfg_add_cause(causes,
-		    "%s: %d: line continuation at end of file", path, n);
+	if (line != NULL)
 		free(line);
-	}
 	fclose(f);
 
-	cmd_free_ctx(ctx);
-
-	cfg_references--;
-
-	return (retval);
+	return (found);
 }
 
 void
-show_cfg_causes(struct session *s)
+cfg_default_done(unused struct cmd_q *cmdq)
+{
+	if (--cfg_references != 0)
+		return;
+	cfg_finished = 1;
+
+	if (!RB_EMPTY(&sessions))
+		cfg_show_causes(RB_MIN(sessions, &sessions));
+
+	cmdq_free(cfg_cmd_q);
+	cfg_cmd_q = NULL;
+}
+
+void
+cfg_show_causes(struct session *s)
 {
 	struct window_pane	*wp;
 	char			*cause;
@@ -196,7 +137,6 @@ show_cfg_causes(struct session *s)
 
 	if (s == NULL || ARRAY_EMPTY(&cfg_causes))
 		return;
-
 	wp = s->curw->window->active;
 
 	window_pane_set_mode(wp, &window_copy_mode);

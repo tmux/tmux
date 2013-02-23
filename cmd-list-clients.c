@@ -28,7 +28,7 @@
  * List all clients.
  */
 
-enum cmd_retval	cmd_list_clients_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	cmd_list_clients_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_list_clients_entry = {
 	"list-clients", "lsc",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_list_clients_entry = {
 };
 
 enum cmd_retval
-cmd_list_clients_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_list_clients_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args 		*args = self->args;
 	struct client		*c;
@@ -52,7 +52,7 @@ cmd_list_clients_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*line;
 
 	if (args_has(args, 't')) {
-		s = cmd_find_session(ctx, args_get(args, 't'), 0);
+		s = cmd_find_session(cmdq, args_get(args, 't'), 0);
 		if (s == NULL)
 			return (CMD_RETURN_ERROR);
 	} else
@@ -75,7 +75,7 @@ cmd_list_clients_exec(struct cmd *self, struct cmd_ctx *ctx)
 		format_client(ft, c);
 
 		line = format_expand(ft, template);
-		ctx->print(ctx, "%s", line);
+		cmdq_print(cmdq, "%s", line);
 		free(line);
 
 		format_free(ft);

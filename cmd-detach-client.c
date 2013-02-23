@@ -24,7 +24,7 @@
  * Detach a client.
  */
 
-enum cmd_retval	 cmd_detach_client_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_detach_client_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_detach_client_entry = {
 	"detach-client", "detach",
@@ -37,7 +37,7 @@ const struct cmd_entry cmd_detach_client_entry = {
 };
 
 enum cmd_retval
-cmd_detach_client_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_detach_client_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 	struct client	*c, *c2;
@@ -51,7 +51,7 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 		msgtype = MSG_DETACH;
 
 	if (args_has(args, 's')) {
-		s = cmd_find_session(ctx, args_get(args, 's'), 0);
+		s = cmd_find_session(cmdq, args_get(args, 's'), 0);
 		if (s == NULL)
 			return (CMD_RETURN_ERROR);
 
@@ -61,7 +61,7 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 				server_write_client(c, msgtype, NULL, 0);
 		}
 	} else {
-		c = cmd_find_client(ctx, args_get(args, 't'), 0);
+		c = cmd_find_client(cmdq, args_get(args, 't'), 0);
 		if (c == NULL)
 			return (CMD_RETURN_ERROR);
 
@@ -76,5 +76,5 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 			server_write_client(c, msgtype, NULL, 0);
 	}
 
-	return (CMD_RETURN_NORMAL);
+	return (CMD_RETURN_STOP);
 }

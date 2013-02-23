@@ -126,47 +126,11 @@ int		 cmd_lookup_index(struct session *, const char *, int *);
 struct window_pane *cmd_lookup_paneid(const char *);
 struct winlink	*cmd_lookup_winlink_windowid(struct session *, const char *);
 struct window	*cmd_lookup_windowid(const char *);
-struct session	*cmd_window_session(struct cmd_ctx *,
-		    struct window *, struct winlink **);
+struct session	*cmd_window_session(struct cmd_q *, struct window *,
+		    struct winlink **);
 struct winlink	*cmd_find_window_offset(const char *, struct session *, int *);
 int		 cmd_find_index_offset(const char *, struct session *, int *);
 struct window_pane *cmd_find_pane_offset(const char *, struct winlink *);
-
-struct cmd_ctx *
-cmd_get_ctx(struct client *cmdclient, struct client *curclient)
-{
-	struct cmd_ctx	*ctx;
-
-	ctx = xcalloc(1, sizeof *ctx);
-	ctx->references = 0;
-
-	ctx->cmdclient = cmdclient;
-	ctx->curclient = curclient;
-
-	cmd_ref_ctx(ctx);
-	return (ctx);
-}
-
-void
-cmd_free_ctx(struct cmd_ctx *ctx)
-{
-	if (ctx->cmdclient != NULL)
-		ctx->cmdclient->references--;
-	if (ctx->curclient != NULL)
-		ctx->curclient->references--;
-	if (--ctx->references == 0)
-		free(ctx);
-}
-
-void
-cmd_ref_ctx(struct cmd_ctx *ctx)
-{
-	ctx->references++;
-	if (ctx->cmdclient != NULL)
-		ctx->cmdclient->references++;
-	if (ctx->curclient != NULL)
-		ctx->curclient->references++;
-}
 
 int
 cmd_pack_argv(int argc, char **argv, char *buf, size_t len)
@@ -241,7 +205,7 @@ cmd_free_argv(int argc, char **argv)
 }
 
 struct cmd *
-cmd_parse(int argc, char **argv, char **cause)
+cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 {
 	const struct cmd_entry **entryp, *entry;
 	struct cmd		*cmd;
@@ -291,9 +255,14 @@ cmd_parse(int argc, char **argv, char **cause)
 	if (entry->check != NULL && entry->check(args) != 0)
 		goto usage;
 
-	cmd = xmalloc(sizeof *cmd);
+	cmd = xcalloc(1, sizeof *cmd);
 	cmd->entry = entry;
 	cmd->args = args;
+
+	if (file != NULL)
+		cmd->file = xstrdup(file);
+	cmd->line = line;
+
 	return (cmd);
 
 ambiguous:
@@ -342,31 +311,33 @@ cmd_print(struct cmd *cmd, char *buf, size_t len)
  * session from all sessions.
  */
 struct session *
-cmd_current_session(struct cmd_ctx *ctx, int prefer_unattached)
+cmd_current_session(struct cmd_q *cmdq, int prefer_unattached)
 {
-	struct msg_command_data	*data = ctx->msgdata;
-	struct client		*c = ctx->cmdclient;
+	struct msg_command_data	*data = cmdq->msgdata;
+	struct client		*c = cmdq->client;
 	struct session		*s;
 	struct sessionslist	 ss;
 	struct winlink		*wl;
 	struct window_pane	*wp;
+	const char		*path;
 	int			 found;
 
-	if (ctx->curclient != NULL && ctx->curclient->session != NULL)
-		return (ctx->curclient->session);
+	if (c != NULL && c->session != NULL)
+		return (c->session);
 
 	/*
 	 * If the name of the calling client's pty is know, build a list of the
 	 * sessions that contain it and if any choose either the first or the
 	 * newest.
 	 */
-	if (c != NULL && c->tty.path != NULL) {
+	path = c == NULL ? NULL : c->tty.path;
+	if (path != NULL) {
 		ARRAY_INIT(&ss);
 		RB_FOREACH(s, sessions, &sessions) {
 			found = 0;
 			RB_FOREACH(wl, winlinks, &s->windows) {
 				TAILQ_FOREACH(wp, &wl->window->panes, entry) {
-					if (strcmp(wp->tty, c->tty.path) == 0) {
+					if (strcmp(wp->tty, path) == 0) {
 						found = 1;
 						break;
 					}
@@ -457,21 +428,21 @@ cmd_choose_session_list(struct sessionslist *ss)
  * then of all clients.
  */
 struct client *
-cmd_current_client(struct cmd_ctx *ctx)
+cmd_current_client(struct cmd_q *cmdq)
 {
 	struct session		*s;
 	struct client		*c;
 	struct clients		 cc;
 	u_int			 i;
 
-	if (ctx->curclient != NULL)
-		return (ctx->curclient);
+	if (cmdq->client != NULL && cmdq->client->session != NULL)
+		return (cmdq->client);
 
 	/*
 	 * No current client set. Find the current session and return the
 	 * newest of its clients.
 	 */
-	s = cmd_current_session(ctx, 0);
+	s = cmd_current_session(cmdq, 0);
 	if (s != NULL && !(s->flags & SESSION_UNATTACHED)) {
 		ARRAY_INIT(&cc);
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
@@ -516,7 +487,7 @@ cmd_choose_client(struct clients *cc)
 
 /* Find the target client or report an error and return NULL. */
 struct client *
-cmd_find_client(struct cmd_ctx *ctx, const char *arg, int quiet)
+cmd_find_client(struct cmd_q *cmdq, const char *arg, int quiet)
 {
 	struct client	*c;
 	char		*tmparg;
@@ -524,9 +495,9 @@ cmd_find_client(struct cmd_ctx *ctx, const char *arg, int quiet)
 
 	/* A NULL argument means the current client. */
 	if (arg == NULL) {
-		c = cmd_current_client(ctx);
+		c = cmd_current_client(cmdq);
 		if (c == NULL && !quiet)
-			ctx->error(ctx, "no clients");
+			cmdq_error(cmdq, "no clients");
 		return (c);
 	}
 	tmparg = xstrdup(arg);
@@ -541,7 +512,7 @@ cmd_find_client(struct cmd_ctx *ctx, const char *arg, int quiet)
 
 	/* If no client found, report an error. */
 	if (c == NULL && !quiet)
-		ctx->error(ctx, "client not found: %s", tmparg);
+		cmdq_error(cmdq, "client not found: %s", tmparg);
 
 	free(tmparg);
 	return (c);
@@ -743,14 +714,14 @@ cmd_lookup_windowid(const char *arg)
 
 /* Find session and winlink for window. */
 struct session *
-cmd_window_session(struct cmd_ctx *ctx, struct window *w, struct winlink **wlp)
+cmd_window_session(struct cmd_q *cmdq, struct window *w, struct winlink **wlp)
 {
 	struct session		*s;
 	struct sessionslist	 ss;
 	struct winlink		*wl;
 
 	/* If this window is in the current session, return that winlink. */
-	s = cmd_current_session(ctx, 0);
+	s = cmd_current_session(cmdq, 0);
 	if (s != NULL) {
 		wl = winlink_find_by_window(&s->windows, w);
 		if (wl != NULL) {
@@ -775,7 +746,7 @@ cmd_window_session(struct cmd_ctx *ctx, struct window *w, struct winlink **wlp)
 
 /* Find the target session or report an error and return NULL. */
 struct session *
-cmd_find_session(struct cmd_ctx *ctx, const char *arg, int prefer_unattached)
+cmd_find_session(struct cmd_q *cmdq, const char *arg, int prefer_unattached)
 {
 	struct session		*s;
 	struct window_pane	*wp;
@@ -787,13 +758,13 @@ cmd_find_session(struct cmd_ctx *ctx, const char *arg, int prefer_unattached)
 
 	/* A NULL argument means the current session. */
 	if (arg == NULL)
-		return (cmd_current_session(ctx, prefer_unattached));
+		return (cmd_current_session(cmdq, prefer_unattached));
 
 	/* Lookup as pane id or window id. */
 	if ((wp = cmd_lookup_paneid(arg)) != NULL)
-		return (cmd_window_session(ctx, wp->window, NULL));
+		return (cmd_window_session(cmdq, wp->window, NULL));
 	if ((w = cmd_lookup_windowid(arg)) != NULL)
-		return (cmd_window_session(ctx, w, NULL));
+		return (cmd_window_session(cmdq, w, NULL));
 
 	/* Trim a single trailing colon if any. */
 	tmparg = xstrdup(arg);
@@ -804,7 +775,7 @@ cmd_find_session(struct cmd_ctx *ctx, const char *arg, int prefer_unattached)
 	/* An empty session name is the current session. */
 	if (*tmparg == '\0') {
 		free(tmparg);
-		return (cmd_current_session(ctx, prefer_unattached));
+		return (cmd_current_session(cmdq, prefer_unattached));
 	}
 
 	/* Find the session, if any. */
@@ -817,9 +788,9 @@ cmd_find_session(struct cmd_ctx *ctx, const char *arg, int prefer_unattached)
 	/* If no session found, report an error. */
 	if (s == NULL) {
 		if (ambiguous)
-			ctx->error(ctx, "more than one session: %s", tmparg);
+			cmdq_error(cmdq, "more than one session: %s", tmparg);
 		else
-			ctx->error(ctx, "session not found: %s", tmparg);
+			cmdq_error(cmdq, "session not found: %s", tmparg);
 	}
 
 	free(tmparg);
@@ -828,7 +799,7 @@ cmd_find_session(struct cmd_ctx *ctx, const char *arg, int prefer_unattached)
 
 /* Find the target session and window or report an error and return NULL. */
 struct winlink *
-cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)
+cmd_find_window(struct cmd_q *cmdq, const char *arg, struct session **sp)
 {
 	struct session		*s;
 	struct winlink		*wl;
@@ -841,8 +812,8 @@ cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 	 * Find the current session. There must always be a current session, if
 	 * it can't be found, report an error.
 	 */
-	if ((s = cmd_current_session(ctx, 0)) == NULL) {
-		ctx->error(ctx, "can't establish current session");
+	if ((s = cmd_current_session(cmdq, 0)) == NULL) {
+		cmdq_error(cmdq, "can't establish current session");
 		return (NULL);
 	}
 
@@ -855,7 +826,7 @@ cmd_find_window(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 
 	/* Lookup as pane id. */
 	if ((wp = cmd_lookup_paneid(arg)) != NULL) {
-		s = cmd_window_session(ctx, wp->window, &wl);
+		s = cmd_window_session(cmdq, wp->window, &wl);
 		if (sp != NULL)
 			*sp = s;
 		return (wl);
@@ -936,17 +907,17 @@ lookup_session:
 
 no_session:
 	if (ambiguous)
-		ctx->error(ctx, "multiple sessions: %s", arg);
+		cmdq_error(cmdq, "multiple sessions: %s", arg);
 	else
-		ctx->error(ctx, "session not found: %s", arg);
+		cmdq_error(cmdq, "session not found: %s", arg);
 	free(sessptr);
 	return (NULL);
 
 not_found:
 	if (ambiguous)
-		ctx->error(ctx, "multiple windows: %s", arg);
+		cmdq_error(cmdq, "multiple windows: %s", arg);
 	else
-		ctx->error(ctx, "window not found: %s", arg);
+		cmdq_error(cmdq, "window not found: %s", arg);
 	free(sessptr);
 	return (NULL);
 }
@@ -978,7 +949,7 @@ cmd_find_window_offset(const char *winptr, struct session *s, int *ambiguous)
  * example if it is going to be created).
  */
 int
-cmd_find_index(struct cmd_ctx *ctx, const char *arg, struct session **sp)
+cmd_find_index(struct cmd_q *cmdq, const char *arg, struct session **sp)
 {
 	struct session	*s;
 	struct winlink	*wl;
@@ -990,8 +961,8 @@ cmd_find_index(struct cmd_ctx *ctx, const char *arg, struct session **sp)
 	 * Find the current session. There must always be a current session, if
 	 * it can't be found, report an error.
 	 */
-	if ((s = cmd_current_session(ctx, 0)) == NULL) {
-		ctx->error(ctx, "can't establish current session");
+	if ((s = cmd_current_session(cmdq, 0)) == NULL) {
+		cmdq_error(cmdq, "can't establish current session");
 		return (-2);
 	}
 
@@ -1074,25 +1045,25 @@ lookup_session:
 
 no_session:
 	if (ambiguous)
-		ctx->error(ctx, "multiple sessions: %s", arg);
+		cmdq_error(cmdq, "multiple sessions: %s", arg);
 	else
-		ctx->error(ctx, "session not found: %s", arg);
+		cmdq_error(cmdq, "session not found: %s", arg);
 	free(sessptr);
 	return (-2);
 
 invalid_index:
 	if (ambiguous)
 		goto not_found;
-	ctx->error(ctx, "invalid index: %s", arg);
+	cmdq_error(cmdq, "invalid index: %s", arg);
 
 	free(sessptr);
 	return (-2);
 
 not_found:
 	if (ambiguous)
-		ctx->error(ctx, "multiple windows: %s", arg);
+		cmdq_error(cmdq, "multiple windows: %s", arg);
 	else
-		ctx->error(ctx, "window not found: %s", arg);
+		cmdq_error(cmdq, "window not found: %s", arg);
 	free(sessptr);
 	return (-2);
 }
@@ -1129,7 +1100,7 @@ cmd_find_index_offset(const char *winptr, struct session *s, int *ambiguous)
  * such as mysession:mywindow.0.
  */
 struct winlink *
-cmd_find_pane(struct cmd_ctx *ctx,
+cmd_find_pane(struct cmd_q *cmdq,
     const char *arg, struct session **sp, struct window_pane **wpp)
 {
 	struct session	*s;
@@ -1139,8 +1110,8 @@ cmd_find_pane(struct cmd_ctx *ctx,
 	u_int		 idx;
 
 	/* Get the current session. */
-	if ((s = cmd_current_session(ctx, 0)) == NULL) {
-		ctx->error(ctx, "can't establish current session");
+	if ((s = cmd_current_session(cmdq, 0)) == NULL) {
+		cmdq_error(cmdq, "can't establish current session");
 		return (NULL);
 	}
 	if (sp != NULL)
@@ -1154,7 +1125,7 @@ cmd_find_pane(struct cmd_ctx *ctx,
 
 	/* Lookup as pane id. */
 	if ((*wpp = cmd_lookup_paneid(arg)) != NULL) {
-		s = cmd_window_session(ctx, (*wpp)->window, &wl);
+		s = cmd_window_session(cmdq, (*wpp)->window, &wl);
 		if (sp != NULL)
 			*sp = s;
 		return (wl);
@@ -1169,7 +1140,7 @@ cmd_find_pane(struct cmd_ctx *ctx,
 	winptr[period - arg] = '\0';
 	if (*winptr == '\0')
 		wl = s->curw;
-	else if ((wl = cmd_find_window(ctx, winptr, sp)) == NULL)
+	else if ((wl = cmd_find_window(cmdq, winptr, sp)) == NULL)
 		goto error;
 
 	/* Find the pane section and look it up. */
@@ -1193,7 +1164,7 @@ cmd_find_pane(struct cmd_ctx *ctx,
 lookup_string:
 	/* Try pane string description. */
 	if ((*wpp = window_find_string(wl->window, paneptr)) == NULL) {
-		ctx->error(ctx, "can't find pane: %s", paneptr);
+		cmdq_error(cmdq, "can't find pane: %s", paneptr);
 		goto error;
 	}
 
@@ -1218,7 +1189,7 @@ lookup_window:
 		return (s->curw);
 
 	/* Try as a window and use the active pane. */
-	if ((wl = cmd_find_window(ctx, arg, sp)) != NULL)
+	if ((wl = cmd_find_window(cmdq, arg, sp)) != NULL)
 		*wpp = wl->window->active;
 	return (wl);
 
@@ -1296,8 +1267,9 @@ cmd_template_replace(const char *template, const char *s, int idx)
  * directory.
  */
 const char *
-cmd_get_default_path(struct cmd_ctx *ctx, const char *cwd)
+cmd_get_default_path(struct cmd_q *cmdq, const char *cwd)
 {
+	struct client		*c = cmdq->client;
 	struct session		*s;
 	struct environ_entry	*envent;
 	const char		*root;
@@ -1307,7 +1279,7 @@ cmd_get_default_path(struct cmd_ctx *ctx, const char *cwd)
 	size_t			 skip;
 	static char		 path[MAXPATHLEN];
 
-	if ((s = cmd_current_session(ctx, 0)) == NULL)
+	if ((s = cmd_current_session(cmdq, 0)) == NULL)
 		return (NULL);
 
 	if (cwd == NULL)
@@ -1337,9 +1309,9 @@ cmd_get_default_path(struct cmd_ctx *ctx, const char *cwd)
 		return (cwd);
 	} else {
 		/* Empty or relative path. */
-		if (ctx->cmdclient != NULL && ctx->cmdclient->cwd != NULL)
-			root = ctx->cmdclient->cwd;
-		else if (ctx->curclient != NULL && s->curw != NULL)
+		if (c != NULL && c->session == NULL && c->cwd != NULL)
+			root = c->cwd;
+		else if (s->curw != NULL)
 			root = osdep_get_cwd(s->curw->window->active->fd);
 		else
 			return (s->cwd);

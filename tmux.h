@@ -428,6 +428,9 @@ struct tty_term_code_entry {
 	const char	       *name;
 };
 
+/* List of error causes. */
+ARRAY_DECL(causelist, char *);
+
 /* Message codes. */
 enum msgtype {
 	MSG_COMMAND,
@@ -772,6 +775,9 @@ struct job {
 
 	int		 fd;
 	struct bufferevent *event;
+
+	struct bufferevent *out;
+	int		outdone;
 
 	void		(*callbackfn)(struct job *);
 	void		(*freefn)(void *);
@@ -1346,6 +1352,7 @@ struct client {
 
 	int		 wlmouse;
 
+	struct cmd_q	*cmdq;
 	int		 references;
 };
 ARRAY_DECL(clients, struct client *);
@@ -1359,40 +1366,13 @@ struct args {
 	char	       **argv;
 };
 
-/* Key/command line command. */
-struct cmd_ctx {
-	/*
-	 * curclient is the client where this command was executed if inside
-	 * tmux. This is NULL if the command came from the command-line.
-	 *
-	 * cmdclient is the client which sent the MSG_COMMAND to the server, if
-	 * any. This is NULL unless the command came from the command-line.
-	 *
-	 * cmdclient and curclient may both be NULL if the command is in the
-	 * configuration file.
-	 */
-	struct client		*curclient;
-	struct client		*cmdclient;
-
-	int			 references;
-
-	struct msg_command_data	*msgdata;
-
-	/* gcc2 doesn't understand attributes on function pointers... */
-#if defined(__GNUC__) && __GNUC__ >= 3
-	void printflike2 (*print)(struct cmd_ctx *, const char *, ...);
-	void printflike2 (*info)(struct cmd_ctx *, const char *, ...);
-	void printflike2 (*error)(struct cmd_ctx *, const char *, ...);
-#else
-	void (*print)(struct cmd_ctx *, const char *, ...);
-	void (*info)(struct cmd_ctx *, const char *, ...);
-	void (*error)(struct cmd_ctx *, const char *, ...);
-#endif
-};
-
+/* Command and list of commands. */
 struct cmd {
 	const struct cmd_entry	*entry;
 	struct args		*args;
+
+	char			*file;
+	u_int			 line;
 
 	TAILQ_ENTRY(cmd)	 qentry;
 };
@@ -1401,13 +1381,40 @@ struct cmd_list {
 	TAILQ_HEAD(, cmd) 	 list;
 };
 
+/* Command return values. */
 enum cmd_retval {
 	CMD_RETURN_ERROR = -1,
 	CMD_RETURN_NORMAL = 0,
-	CMD_RETURN_YIELD,
-	CMD_RETURN_ATTACH
+	CMD_RETURN_WAIT,
+	CMD_RETURN_STOP
 };
 
+/* Command queue entry. */
+struct cmd_q_item {
+	struct cmd_list		*cmdlist;
+	TAILQ_ENTRY(cmd_q_item)	 qentry;
+};
+TAILQ_HEAD(cmd_q_items, cmd_q_item);
+
+/* Command queue. */
+struct cmd_q {
+	int			 references;
+	int			 dead;
+
+	struct client		*client;
+	int			 client_exit;
+
+	struct cmd_q_items	 queue;
+	struct cmd_q_item	*item;
+	struct cmd		*cmd;
+
+	void			 (*emptyfn)(struct cmd_q *);
+	void			*data;
+
+	struct msg_command_data	*msgdata;
+};
+
+/* Command definition. */
 struct cmd_entry {
 	const char	*name;
 	const char	*alias;
@@ -1426,7 +1433,7 @@ struct cmd_entry {
 
 	void		 (*key_binding)(struct cmd *, int);
 	int		 (*check)(struct args *);
-	enum cmd_retval	 (*exec)(struct cmd *, struct cmd_ctx *);
+	enum cmd_retval	 (*exec)(struct cmd *, struct cmd_q *);
 };
 
 /* Key binding. */
@@ -1475,9 +1482,6 @@ struct format_entry {
 };
 RB_HEAD(format_tree, format_entry);
 
-/* List of configuration causes. */
-ARRAY_DECL(causelist, char *);
-
 /* Common command usages. */
 #define CMD_TARGET_PANE_USAGE "[-t target-pane]"
 #define CMD_TARGET_WINDOW_USAGE "[-t target-window]"
@@ -1513,12 +1517,13 @@ void		 setblocking(int, int);
 __dead void	 shell_exec(const char *, const char *);
 
 /* cfg.c */
-extern int       cfg_finished;
-extern int       cfg_references;
+extern struct cmd_q *cfg_cmd_q;
+extern int cfg_finished;
+extern int cfg_references;
 extern struct causelist cfg_causes;
-void printflike2 cfg_add_cause(struct causelist *, const char *, ...);
-enum cmd_retval	 load_cfg(const char *, struct cmd_ctx *, struct causelist *);
-void		 show_cfg_causes(struct session *);
+int		 load_cfg(const char *, struct cmd_q *, char **);
+void		 cfg_default_done(struct cmd_q *);
+void		 cfg_show_causes(struct session *);
 
 /* format.c */
 int		 format_cmp(struct format_entry *, struct format_entry *);
@@ -1721,27 +1726,24 @@ long long	 args_strtonum(
 		    struct args *, u_char, long long, long long, char **);
 
 /* cmd.c */
-struct cmd_ctx	*cmd_get_ctx(struct client *, struct client *);
-void		 cmd_free_ctx(struct cmd_ctx *);
-void		 cmd_ref_ctx(struct cmd_ctx *);
 int		 cmd_pack_argv(int, char **, char *, size_t);
 int		 cmd_unpack_argv(char *, size_t, int, char ***);
 char	       **cmd_copy_argv(int, char *const *);
 void		 cmd_free_argv(int, char **);
-struct cmd	*cmd_parse(int, char **, char **);
+struct cmd	*cmd_parse(int, char **, const char *, u_int, char **);
 size_t		 cmd_print(struct cmd *, char *, size_t);
-struct session	*cmd_current_session(struct cmd_ctx *, int);
-struct client	*cmd_current_client(struct cmd_ctx *);
-struct client	*cmd_find_client(struct cmd_ctx *, const char *, int);
-struct session	*cmd_find_session(struct cmd_ctx *, const char *, int);
-struct winlink	*cmd_find_window(
-		     struct cmd_ctx *, const char *, struct session **);
-int		 cmd_find_index(
-		     struct cmd_ctx *, const char *, struct session **);
-struct winlink	*cmd_find_pane(struct cmd_ctx *,
-		     const char *, struct session **, struct window_pane **);
+struct session	*cmd_current_session(struct cmd_q *, int);
+struct client	*cmd_current_client(struct cmd_q *);
+struct client	*cmd_find_client(struct cmd_q *, const char *, int);
+struct session	*cmd_find_session(struct cmd_q *, const char *, int);
+struct winlink	*cmd_find_window(struct cmd_q *, const char *,
+		     struct session **);
+int		 cmd_find_index(struct cmd_q *, const char *,
+		     struct session **);
+struct winlink	*cmd_find_pane(struct cmd_q *, const char *, struct session **,
+		     struct window_pane **);
 char		*cmd_template_replace(const char *, const char *, int);
-const char     	*cmd_get_default_path(struct cmd_ctx *, const char *);
+const char     	*cmd_get_default_path(struct cmd_q *, const char *);
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
@@ -1831,13 +1833,24 @@ extern const struct cmd_entry cmd_unlink_window_entry;
 extern const struct cmd_entry cmd_up_pane_entry;
 
 /* cmd-list.c */
-struct cmd_list	*cmd_list_parse(int, char **, char **);
-enum cmd_retval	 cmd_list_exec(struct cmd_list *, struct cmd_ctx *);
+struct cmd_list	*cmd_list_parse(int, char **, const char *, u_int, char **);
 void		 cmd_list_free(struct cmd_list *);
 size_t		 cmd_list_print(struct cmd_list *, char *, size_t);
 
+/* cmd-queue.c */
+struct cmd_q	*cmdq_new(struct client *);
+int		 cmdq_free(struct cmd_q *);
+void printflike2 cmdq_print(struct cmd_q *, const char *, ...);
+void printflike2 cmdq_info(struct cmd_q *, const char *, ...);
+void printflike2 cmdq_error(struct cmd_q *, const char *, ...);
+void		 cmdq_run(struct cmd_q *, struct cmd_list *);
+void		 cmdq_append(struct cmd_q *, struct cmd_list *);
+int		 cmdq_continue(struct cmd_q *);
+void		 cmdq_flush(struct cmd_q *);
+
 /* cmd-string.c */
-int	cmd_string_parse(const char *, struct cmd_list **, char **);
+int	cmd_string_parse(const char *, struct cmd_list **, const char *,
+	    u_int, char **);
 
 /* client.c */
 int	client_main(int, char **, int);
@@ -1852,9 +1865,6 @@ void	 key_bindings_remove(int);
 void	 key_bindings_clean(void);
 void	 key_bindings_init(void);
 void	 key_bindings_dispatch(struct key_binding *, struct client *);
-void printflike2 key_bindings_error(struct cmd_ctx *, const char *, ...);
-void printflike2 key_bindings_print(struct cmd_ctx *, const char *, ...);
-void printflike2 key_bindings_info(struct cmd_ctx *, const char *, ...);
 
 /* key-string.c */
 int	 key_string_lookup_string(const char *);

@@ -27,7 +27,7 @@
  * Respawn a window (restart the command). Kill existing if -k given.
  */
 
-enum cmd_retval	 cmd_respawn_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_respawn_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_respawn_window_entry = {
 	"respawn-window", "respawnw",
@@ -40,7 +40,7 @@ const struct cmd_entry cmd_respawn_window_entry = {
 };
 
 enum cmd_retval
-cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
@@ -51,7 +51,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const char		*cmd;
 	char		 	*cause;
 
-	if ((wl = cmd_find_window(ctx, args_get(args, 't'), &s)) == NULL)
+	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), &s)) == NULL)
 		return (CMD_RETURN_ERROR);
 	w = wl->window;
 
@@ -59,7 +59,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->fd == -1)
 				continue;
-			ctx->error(ctx,
+			cmdq_error(cmdq,
 			    "window still active: %s:%d", s->name, wl->idx);
 			return (CMD_RETURN_ERROR);
 		}
@@ -81,7 +81,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		cmd = NULL;
 	if (window_pane_spawn(wp, cmd, NULL, NULL, &env, s->tio, &cause) != 0) {
-		ctx->error(ctx, "respawn window failed: %s", cause);
+		cmdq_error(cmdq, "respawn window failed: %s", cause);
 		free(cause);
 		environ_free(&env);
 		server_destroy_pane(wp);

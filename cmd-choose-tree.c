@@ -32,7 +32,7 @@
  * Enter choice mode to choose a session and/or window.
  */
 
-enum cmd_retval	cmd_choose_tree_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	cmd_choose_tree_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_choose_tree_entry = {
 	"choose-tree", NULL,
@@ -66,7 +66,7 @@ const struct cmd_entry cmd_choose_window_entry = {
 };
 
 enum cmd_retval
-cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_choose_tree_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
 	struct winlink			*wl, *wm;
@@ -84,15 +84,15 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
 	ses_template = win_template = NULL;
 	ses_action = win_action = NULL;
 
-	if ((c = cmd_current_client(ctx)) == NULL) {
-		ctx->error(ctx, "no client available");
+	if ((c = cmd_current_client(cmdq)) == NULL) {
+		cmdq_error(cmdq, "no client available");
 		return (CMD_RETURN_ERROR);
 	}
 
 	if ((s = c->session) == NULL)
 		return (CMD_RETURN_ERROR);
 
-	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
+	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), NULL)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)

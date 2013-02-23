@@ -200,9 +200,8 @@ window_choose_data_free(struct window_choose_data *wcd)
 void
 window_choose_data_run(struct window_choose_data *cdata)
 {
-	struct cmd_ctx		*ctx;
-	struct cmd_list		*cmdlist;
-	char			*cause;
+	struct cmd_list	*cmdlist;
+	char		*cause;
 
 	/*
 	 * The command template will have already been replaced. But if it's
@@ -211,7 +210,7 @@ window_choose_data_run(struct window_choose_data *cdata)
 	if (cdata->command == NULL)
 		return;
 
-	if (cmd_string_parse(cdata->command, &cmdlist, &cause) != 0) {
+	if (cmd_string_parse(cdata->command, &cmdlist, NULL, 0, &cause) != 0) {
 		if (cause != NULL) {
 			*cause = toupper((u_char) *cause);
 			status_message_set(cdata->start_client, "%s", cause);
@@ -220,14 +219,8 @@ window_choose_data_run(struct window_choose_data *cdata)
 		return;
 	}
 
-	ctx = cmd_get_ctx(NULL, cdata->start_client);
-	ctx->error = key_bindings_error;
-	ctx->print = key_bindings_print;
-	ctx->info = key_bindings_info;
-
-	cmd_list_exec(cmdlist, ctx);
+	cmdq_run(cdata->start_client->cmdq, cmdlist);
 	cmd_list_free(cmdlist);
-	cmd_free_ctx(ctx);
 }
 
 void

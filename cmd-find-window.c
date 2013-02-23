@@ -28,7 +28,7 @@
  * Find window containing text.
  */
 
-enum cmd_retval	 cmd_find_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_find_window_exec(struct cmd *, struct cmd_q *);
 
 void	cmd_find_window_callback(struct window_choose_data *);
 
@@ -127,7 +127,7 @@ cmd_find_window_match(struct cmd_find_window_data_list *find_list,
 }
 
 enum cmd_retval
-cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_find_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
 	struct client			*c;
@@ -139,13 +139,13 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const char			*template;
 	u_int				 i, match_flags;
 
-	if ((c = cmd_current_client(ctx)) == NULL) {
-		ctx->error(ctx, "no client available");
+	if ((c = cmd_current_client(cmdq)) == NULL) {
+		cmdq_error(cmdq, "no client available");
 		return (CMD_RETURN_ERROR);
 	}
 	s = c->session;
 
-	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
+	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), NULL)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if ((template = args_get(args, 'F')) == NULL)
@@ -162,7 +162,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	free(searchstr);
 
 	if (ARRAY_LENGTH(&find_list) == 0) {
-		ctx->error(ctx, "no windows matching: %s", str);
+		cmdq_error(cmdq, "no windows matching: %s", str);
 		ARRAY_FREE(&find_list);
 		return (CMD_RETURN_ERROR);
 	}

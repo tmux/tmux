@@ -29,15 +29,16 @@
  * Executes a tmux command if a shell command returns true or false.
  */
 
-enum cmd_retval	 cmd_if_shell_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_if_shell_exec(struct cmd *, struct cmd_q *);
 
 void	cmd_if_shell_callback(struct job *);
+void	cmd_if_shell_done(struct cmd_q *);
 void	cmd_if_shell_free(void *);
 
 const struct cmd_entry cmd_if_shell_entry = {
 	"if-shell", "if",
-	"", 2, 3,
-	"shell-command command [command]",
+	"b", 2, 3,
+	"[-b] shell-command command [command]",
 	0,
 	NULL,
 	NULL,
@@ -47,11 +48,13 @@ const struct cmd_entry cmd_if_shell_entry = {
 struct cmd_if_shell_data {
 	char		*cmd_if;
 	char		*cmd_else;
-	struct cmd_ctx	*ctx;
+	struct cmd_q	*cmdq;
+	int		 bflag;
+	int		 started;
 };
 
 enum cmd_retval
-cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
 	struct cmd_if_shell_data	*cdata;
@@ -63,50 +66,82 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 		cdata->cmd_else = xstrdup(args->argv[2]);
 	else
 		cdata->cmd_else = NULL;
+	cdata->bflag = args_has(args, 'b');
 
-	cdata->ctx = ctx;
-	cmd_ref_ctx(ctx);
+	cdata->started = 0;
+	cdata->cmdq = cmdq;
+	cmdq->references++;
 
 	job_run(shellcmd, cmd_if_shell_callback, cmd_if_shell_free, cdata);
 
-	return (CMD_RETURN_YIELD);	/* don't let client exit */
+	if (cdata->bflag)
+		return (CMD_RETURN_NORMAL);
+	return (CMD_RETURN_WAIT);
 }
 
 void
 cmd_if_shell_callback(struct job *job)
 {
 	struct cmd_if_shell_data	*cdata = job->data;
-	struct cmd_ctx			*ctx = cdata->ctx;
+	struct cmd_q			*cmdq = cdata->cmdq, *cmdq1;
 	struct cmd_list			*cmdlist;
 	char				*cause, *cmd;
 
-	if (!WIFEXITED(job->status) || WEXITSTATUS(job->status) != 0) {
+	if (cmdq->dead)
+		return;
+
+	if (!WIFEXITED(job->status) || WEXITSTATUS(job->status) != 0)
 		cmd = cdata->cmd_else;
-		if (cmd == NULL)
-			return;
-	} else
+	else
 		cmd = cdata->cmd_if;
-	if (cmd_string_parse(cmd, &cmdlist, &cause) != 0) {
+	if (cmd == NULL)
+		return;
+
+	if (cmd_string_parse(cmd, &cmdlist, NULL, 0, &cause) != 0) {
 		if (cause != NULL) {
-			ctx->error(ctx, "%s", cause);
+			cmdq_error(cmdq, "%s", cause);
 			free(cause);
 		}
 		return;
 	}
 
-	cmd_list_exec(cmdlist, ctx);
+	cdata->started = 1;
+
+	cmdq1 = cmdq_new(cmdq->client);
+	cmdq1->emptyfn = cmd_if_shell_done;
+	cmdq1->data = cdata;
+
+	cmdq_run(cmdq1, cmdlist);
 	cmd_list_free(cmdlist);
+}
+
+void
+cmd_if_shell_done(struct cmd_q *cmdq1)
+{
+	struct cmd_if_shell_data	*cdata = cmdq1->data;
+	struct cmd_q			*cmdq = cdata->cmdq;
+
+	if (!cmdq_free(cmdq) && !cdata->bflag)
+		cmdq_continue(cmdq);
+
+	cmdq_free(cmdq1);
+
+	free(cdata->cmd_else);
+	free(cdata->cmd_if);
+	free(cdata);
 }
 
 void
 cmd_if_shell_free(void *data)
 {
 	struct cmd_if_shell_data	*cdata = data;
-	struct cmd_ctx			*ctx = cdata->ctx;
+	struct cmd_q			*cmdq = cdata->cmdq;
 
-	if (ctx->cmdclient != NULL)
-		ctx->cmdclient->flags |= CLIENT_EXIT;
-	cmd_free_ctx(ctx);
+	if (cdata->started)
+		return;
+
+	if (!cmdq_free(cmdq) && !cdata->bflag)
+		cmdq_continue(cmdq);
 
 	free(cdata->cmd_else);
 	free(cdata->cmd_if);

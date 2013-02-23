@@ -188,7 +188,8 @@ client_main(int argc, char **argv, int flags)
 		 * later in server) but it is necessary to get the start server
 		 * flag.
 		 */
-		if ((cmdlist = cmd_list_parse(argc, argv, &cause)) == NULL) {
+		cmdlist = cmd_list_parse(argc, argv, NULL, 0, &cause);
+		if (cmdlist == NULL) {
 			fprintf(stderr, "%s\n", cause);
 			return (1);
 		}
