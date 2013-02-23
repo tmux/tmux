@@ -163,6 +163,10 @@ TMUX UI ISSUES
   and for session we look session->global
 - maybe keep last layout + size around and if size reverts just put it back
 - way to set hints/limits about pane size for resizing
+- revamp layouts: they are too complicated, should be more closely integrated,
+  should support hints, layout sets should just be a special case of custom
+  layouts, and we should support panes that are not attached to a cell at
+  all. this could be the time to introduce panelink to replace layout_cell
 
 TERMINAL ISSUES
 ================
