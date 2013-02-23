@@ -36,8 +36,8 @@ void	cmd_if_shell_free(void *);
 
 const struct cmd_entry cmd_if_shell_entry = {
 	"if-shell", "if",
-	"", 2, 3,
-	"shell-command command [command]",
+	"t:", 2, 3,
+	CMD_TARGET_PANE_USAGE " shell-command command [command]",
 	0,
 	NULL,
 	NULL,
@@ -55,7 +55,22 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
 	struct cmd_if_shell_data	*cdata;
-	const char			*shellcmd = args->argv[0];
+	const char			*shellcmd;
+	struct session			*s;
+	struct winlink			*wl;
+	struct window_pane		*wp;
+	struct format_tree		*ft;
+
+	wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp);
+	if (wl == NULL)
+		return (CMD_RETURN_ERROR);
+
+	ft = format_create();
+	format_session(ft, s);
+	format_winlink(ft, s, wl);
+	format_window_pane(ft, wp);
+	shellcmd = format_expand(ft, args->argv[0]);
+	format_free(ft);
 
 	cdata = xmalloc(sizeof *cdata);
 	cdata->cmd_if = xstrdup(args->argv[1]);
@@ -68,6 +83,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 	cmd_ref_ctx(ctx);
 
 	job_run(shellcmd, cmd_if_shell_callback, cmd_if_shell_free, cdata);
+	free(shellcmd);
 
 	return (CMD_RETURN_YIELD);	/* don't let client exit */
 }
