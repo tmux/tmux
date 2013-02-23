@@ -75,14 +75,25 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
 	struct cmd_run_shell_data	*cdata;
-	const char			*shellcmd = args->argv[0];
+	char				*shellcmd;
+	struct session			*s;
+	struct winlink			*wl;
 	struct window_pane		*wp;
+	struct format_tree		*ft;
 
-	if (cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp) == NULL)
+	wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp);
+	if (wl == NULL)
 		return (CMD_RETURN_ERROR);
 
+	ft = format_create();
+	format_session(ft, s);
+	format_winlink(ft, s, wl);
+	format_window_pane(ft, wp);
+	shellcmd = format_expand(ft, args->argv[0]);
+	format_free(ft);
+
 	cdata = xmalloc(sizeof *cdata);
-	cdata->cmd = xstrdup(args->argv[0]);
+	cdata->cmd = shellcmd;
 	cdata->bflag = args_has(args, 'b');
 	cdata->wp_id = wp->id;
 

@@ -41,7 +41,7 @@ directory.
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
 
-tmux mailing lists are available. The visit:
+tmux mailing lists are available. Visit:
 
 	https://sourceforge.net/mail/?group_id=200378
 
