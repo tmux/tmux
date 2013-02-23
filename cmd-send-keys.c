@@ -39,6 +39,16 @@ const struct cmd_entry cmd_send_keys_entry = {
 	cmd_send_keys_exec
 };
 
+const struct cmd_entry cmd_send_prefix_entry = {
+	"send-prefix", NULL,
+	"2t:", 0, 0,
+	"[-2] " CMD_TARGET_PANE_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_send_keys_exec
+};
+
 enum cmd_retval
 cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
@@ -51,6 +61,15 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
+
+	if (self->entry == &cmd_send_prefix_entry) {
+		if (args_has(args, '2'))
+			key = options_get_number(&s->options, "prefix2");
+		else
+			key = options_get_number(&s->options, "prefix");
+		window_pane_key(wp, s, key);
+		return (CMD_RETURN_NORMAL);
+	}
 
 	if (args_has(args, 'R')) {
 		ictx = &wp->ictx;

@@ -117,7 +117,6 @@ dist_tmux_SOURCES = \
 	cmd-select-pane.c \
 	cmd-select-window.c \
 	cmd-send-keys.c \
-	cmd-send-prefix.c \
 	cmd-server-info.c \
 	cmd-set-buffer.c \
 	cmd-set-environment.c \
