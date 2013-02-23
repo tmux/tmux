@@ -41,6 +41,16 @@ const struct cmd_entry cmd_save_buffer_entry = {
 	cmd_save_buffer_exec
 };
 
+const struct cmd_entry cmd_show_buffer_entry = {
+	"show-buffer", "showb",
+	"b:", 0, 0,
+	CMD_BUFFER_USAGE,
+	0,
+	NULL,
+	NULL,
+	cmd_save_buffer_exec
+};
+
 enum cmd_retval
 cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
@@ -49,10 +59,13 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct session          *s;
 	struct paste_buffer	*pb;
 	const char		*path, *newpath, *wd;
-	char			*cause;
+	char			*cause, *start, *end;
+	size_t			 size, used;
 	int			 buffer;
 	mode_t			 mask;
 	FILE			*f;
+	char			*msg;
+	size_t			 msglen;
 
 	if (!args_has(args, 'b')) {
 		if ((pb = paste_get_top(&global_buffers)) == NULL) {
@@ -74,50 +87,88 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 	}
 
-	path = args->argv[0];
+	if (self->entry == &cmd_show_buffer_entry)
+		path = "-";
+	else
+		path = args->argv[0];
 	if (strcmp(path, "-") == 0) {
-		c = ctx->curclient;
-		if (c == NULL || !(c->flags & CLIENT_CONTROL))
-			c = ctx->cmdclient;
-		if (c == NULL) {
-			ctx->error(ctx, "can't write to stdout");
-			return (CMD_RETURN_ERROR);
-		}
-		evbuffer_add(c->stdout_data, pb->data, pb->size);
-		server_push_stdout(c);
-	} else {
 		c = ctx->cmdclient;
 		if (c != NULL)
-			wd = c->cwd;
-		else if ((s = cmd_current_session(ctx, 0)) != NULL) {
-			wd = options_get_string(&s->options, "default-path");
-			if (*wd == '\0')
-				wd = s->cwd;
-		} else
-			wd = NULL;
-		if (wd != NULL && *wd != '\0') {
-			newpath = get_full_path(wd, path);
-			if (newpath != NULL)
-				path = newpath;
-		}
-
-		mask = umask(S_IRWXG | S_IRWXO);
-		if (args_has(self->args, 'a'))
-			f = fopen(path, "ab");
-		else
-			f = fopen(path, "wb");
-		umask(mask);
-		if (f == NULL) {
-			ctx->error(ctx, "%s: %s", path, strerror(errno));
-			return (CMD_RETURN_ERROR);
-		}
-		if (fwrite(pb->data, 1, pb->size, f) != pb->size) {
-			ctx->error(ctx, "%s: fwrite error", path);
-			fclose(f);
-			return (CMD_RETURN_ERROR);
-		}
-		fclose(f);
+			goto do_stdout;
+		c = ctx->curclient;
+		if (c->flags & CLIENT_CONTROL)
+			goto do_stdout;
+		if (c != NULL)
+			goto do_print;
+		ctx->error(ctx, "can't write to stdout");
+		return (CMD_RETURN_ERROR);
 	}
 
+	c = ctx->cmdclient;
+	if (c != NULL)
+		wd = c->cwd;
+	else if ((s = cmd_current_session(ctx, 0)) != NULL) {
+		wd = options_get_string(&s->options, "default-path");
+		if (*wd == '\0')
+			wd = s->cwd;
+	} else
+		wd = NULL;
+	if (wd != NULL && *wd != '\0') {
+		newpath = get_full_path(wd, path);
+		if (newpath != NULL)
+			path = newpath;
+	}
+
+	mask = umask(S_IRWXG | S_IRWXO);
+	if (args_has(self->args, 'a'))
+		f = fopen(path, "ab");
+	else
+		f = fopen(path, "wb");
+	umask(mask);
+	if (f == NULL) {
+		ctx->error(ctx, "%s: %s", path, strerror(errno));
+		return (CMD_RETURN_ERROR);
+	}
+	if (fwrite(pb->data, 1, pb->size, f) != pb->size) {
+		ctx->error(ctx, "%s: fwrite error", path);
+		fclose(f);
+		return (CMD_RETURN_ERROR);
+	}
+	fclose(f);
+
+	return (CMD_RETURN_NORMAL);
+
+do_stdout:
+	evbuffer_add(c->stdout_data, pb->data, pb->size);
+	server_push_stdout(c);
+	return (CMD_RETURN_NORMAL);
+
+do_print:
+	if (pb->size > (INT_MAX / 4) - 1) {
+		ctx->error(ctx, "buffer too big");
+		return (CMD_RETURN_ERROR);
+	}
+	msg = NULL;
+	msglen = 0;
+
+	used = 0;
+	while (used != pb->size) {
+		start = pb->data + used;
+		end = memchr(start, '\n', pb->size - used);
+		if (end != NULL)
+			size = end - start;
+		else
+			size = pb->size - used;
+
+		msglen = size * 4 + 1;
+		msg = xrealloc(msg, 1, msglen);
+
+		strvisx(msg, start, size, VIS_OCTAL|VIS_TAB);
+		ctx->print(ctx, "%s", msg);
+
+		used += size + (end != NULL);
+	}
+
+	free(msg);
 	return (CMD_RETURN_NORMAL);
 }
