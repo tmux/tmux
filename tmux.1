@@ -1066,8 +1066,7 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .It Xo Ic capture-pane
-.Op Fl e
-.Op Fl p
+.Op Fl aep
 .Op Fl b Ar buffer-index
 .Op Fl E Ar end-line
 .Op Fl S Ar start-line
@@ -1080,6 +1079,9 @@ If
 is given, the output goes to stdout, otherwise to the buffer specified with
 .Fl b
 or a new buffer if omitted.
+If
+.Fl a
+is given, the alternate screen is used, and the history is not accessible.
 If
 .Fl e
 is given, the output includes escape sequences for text and background

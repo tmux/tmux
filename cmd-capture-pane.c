@@ -31,8 +31,8 @@ enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
-	"b:CeE:JpS:t:", 0, 0,
-	"[-CeJp] [-b buffer-index] [-E end-line] [-S start-line]"
+	"ab:CeE:JpS:t:", 0, 0,
+	"[-aCeJp] [-b buffer-index] [-E end-line] [-S start-line]"
 	CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
@@ -50,15 +50,27 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct screen		*s;
 	struct grid		*gd;
 	int			 buffer, n, with_codes, escape_c0, join_lines;
-	u_int			 i, limit, top, bottom, tmp;
+	u_int			 i, limit, top, bottom, tmp, sx;
 	size_t			 len, linelen;
 	struct grid_cell	*gc;
 	const struct grid_line	*gl;
 
 	if (cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
-	s = &wp->base;
-	gd = s->grid;
+
+	if (args_has(args, 'a')) {
+		s = NULL;
+		gd = wp->saved_grid;
+		sx = screen_size_x(&wp->base);
+		if (gd == NULL) {
+			cmdq_error(cmdq, "no alternate screen");
+			return (CMD_RETURN_ERROR);
+		}
+	} else {
+		s = &wp->base;
+		sx = screen_size_x(s);
+		gd = s->grid;
+	}
 
 	buf = NULL;
 	len = 0;
@@ -97,15 +109,15 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	gc = NULL;
 	for (i = top; i <= bottom; i++) {
-		line = grid_string_cells(s->grid, 0, i, screen_size_x(s),
-		    &gc, with_codes, escape_c0);
+		line = grid_string_cells(gd, 0, i, sx, &gc, with_codes,
+		    escape_c0);
 		linelen = strlen(line);
 
 		buf = xrealloc(buf, 1, len + linelen + 1);
 		memcpy(buf + len, line, linelen);
 		len += linelen;
 
-		gl = grid_peek_line(s->grid, i);
+		gl = grid_peek_line(gd, i);
 		if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
 			buf[len++] = '\n';
 
