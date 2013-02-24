@@ -90,6 +90,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
 
+	server_unzoom_window(wp->window);
 	if (!window_pane_visible(wp)) {
 		cmdq_error(cmdq, "pane not visible");
 		return (CMD_RETURN_ERROR);

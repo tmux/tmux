@@ -72,6 +72,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
 	w = wl->window;
+	server_unzoom_window(w);
 
 	environ_init(&env);
 	environ_copy(&global_environ, &env);

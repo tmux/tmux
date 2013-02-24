@@ -31,8 +31,8 @@ enum cmd_retval	 cmd_resize_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_resize_pane_entry = {
 	"resize-pane", "resizep",
-	"DLRt:Ux:y:", 0, 1,
-	"[-DLRU] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " [adjustment]",
+	"DLRt:Ux:y:Z", 0, 1,
+	"[-DLRUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " [adjustment]",
 	0,
 	cmd_resize_pane_key_binding,
 	NULL,
@@ -75,6 +75,10 @@ cmd_resize_pane_key_binding(struct cmd *self, int key)
 		self->args = args_create(1, "5");
 		args_set(self->args, 'R', NULL);
 		break;
+	case 'z':
+		self->args = args_create(0);
+		args_set(self->args, 'Z', NULL);
+		break;
 	default:
 		self->args = args_create(0);
 		break;
@@ -86,6 +90,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
+	struct window		*w;
 	const char	       	*errstr;
 	char			*cause;
 	struct window_pane	*wp;
@@ -94,6 +99,18 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
+	w = wl->window;
+
+	if (args_has(args, 'Z')) {
+		if (w->flags & WINDOW_ZOOMED)
+			window_unzoom(w);
+		else
+			window_zoom(wp);
+		server_redraw_window(w);
+		server_status_window(w);
+		return (CMD_RETURN_NORMAL);
+	}
+	server_unzoom_window(w);
 
 	if (args->argc == 0)
 		adjust = 1;

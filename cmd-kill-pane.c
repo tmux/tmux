@@ -47,6 +47,7 @@ cmd_kill_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
+	server_unzoom_window(wl->window);
 
 	if (window_count_panes(wl->window) == 1) {
 		/* Only one pane, kill the window. */

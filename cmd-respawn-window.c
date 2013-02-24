@@ -87,7 +87,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		server_destroy_pane(wp);
 		return (CMD_RETURN_ERROR);
 	}
-	layout_init(w);
+	layout_init(w, wp);
 	window_pane_reset_mode(wp);
 	screen_reinit(&wp->base);
 	input_init(wp);
