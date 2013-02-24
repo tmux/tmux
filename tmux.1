@@ -670,7 +670,7 @@ command.
 Lock all clients attached to
 .Ar target-session .
 .It Xo Ic new-session
-.Op Fl d
+.Op Fl AdD
 .Op Fl n Ar window-name
 .Op Fl s Ar session-name
 .Op Fl t Ar target-session
@@ -700,6 +700,21 @@ specify the size of the initial window (80 by 24 if not given).
 If run from a terminal, any
 .Xr termios 4
 special characters are saved and used for new windows in the new session.
+.Pp
+The
+.Fl A
+flag makes
+.Ic new-session
+behave like
+.Ic attach-session
+if
+.Ar session-name
+already exists; in the case,
+.Fl D
+behaves like
+.Fl d
+to
+.Ic attach-session .
 .Pp
 If
 .Fl t

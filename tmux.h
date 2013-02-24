@@ -1836,6 +1836,9 @@ extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
 extern const struct cmd_entry cmd_up_pane_entry;
 
+/* cmd-attach-session.c */
+enum cmd_retval	 cmd_attach_session(struct cmd_q *, const char*, int, int);
+
 /* cmd-list.c */
 struct cmd_list	*cmd_list_parse(int, char **, const char *, u_int, char **);
 void		 cmd_list_free(struct cmd_list *);
