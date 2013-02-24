@@ -621,7 +621,7 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		data = ud.data;
 		size = ud.size;
 		if (escape_c0 && size == 1 && *data == '\\') {
-			data = "\\";
+			data = "\\\\";
 			size = 2;
 		}
 
