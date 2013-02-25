@@ -101,7 +101,6 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 	cmdq->references++;
 
 	job_run(shellcmd, cmd_run_shell_callback, cmd_run_shell_free, cdata);
-	free(shellcmd);
 
 	if (cdata->bflag)
 		return (CMD_RETURN_NORMAL);
