@@ -79,7 +79,7 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_q *cmdq)
 	cur = idx = 0;
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c1 = ARRAY_ITEM(&clients, i);
-		if (c1 == NULL || c1->session == NULL)
+		if (c1 == NULL || c1->session == NULL || c1->tty.path == NULL)
 			continue;
 		if (c1 == cmdq->client)
 			cur = idx;
