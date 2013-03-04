@@ -296,8 +296,16 @@ client_main(int argc, char **argv, int flags)
 		ppid = getppid();
 		if (client_exittype == MSG_DETACHKILL && ppid > 1)
 			kill(ppid, SIGHUP);
-	} else if (flags & IDENTIFY_TERMIOS)
+	} else if (flags & IDENTIFY_TERMIOS) {
+		if (flags & IDENTIFY_CONTROL) {
+			if (client_exitreason != CLIENT_EXIT_NONE)
+			    printf("%%exit %s\n", client_exit_message());
+			else
+			    printf("%%exit\n");
+			printf("\033\\");
+		}
 		tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
+	}
 	setblocking(STDIN_FILENO, 1);
 	return (client_exitval);
 }
