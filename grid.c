@@ -583,7 +583,7 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 /* Convert cells into a string. */
 char *
 grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
-    struct grid_cell **lastgc, int with_codes, int escape_c0)
+    struct grid_cell **lastgc, int with_codes, int escape_c0, int trim)
 {
 	const struct grid_cell	*gc;
 	static struct grid_cell	 lastgc1;
@@ -638,8 +638,10 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		off += size;
 	}
 
-	while (off > 0 && buf[off - 1] == ' ')
-		off--;
+        if (trim) {
+		while (off > 0 && buf[off - 1] == ' ')
+			off--;
+        }
 	buf[off] = '\0';
 
 	return (buf);
