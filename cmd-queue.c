@@ -207,8 +207,12 @@ cmdq_continue(struct cmd_q *cmdq)
 			if (guards)
 				cmdq_print(cmdq, "%%begin");
 			retval = cmdq->cmd->entry->exec(cmdq->cmd, cmdq);
-			if (guards)
-				cmdq_print(cmdq, "%%end");
+			if (guards) {
+				if (retval == CMD_RETURN_ERROR)
+					cmdq_print(cmdq, "%%error");
+				else
+					cmdq_print(cmdq, "%%end");
+			}
 
 			if (retval == CMD_RETURN_ERROR)
 				break;
