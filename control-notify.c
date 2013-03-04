@@ -104,10 +104,7 @@ control_notify_window_unlinked(unused struct session *s, struct window *w)
 			continue;
 		cs = c->session;
 
-		if (winlink_find_by_window_id(&cs->windows, w->id) != NULL)
-			control_write(c, "%%window-close %u", w->id);
-		else
-			control_write(c, "%%unlinked-window-close %u", w->id);
+		control_write(c, "%%window-close %u", w->id);
 	}
 }
 
@@ -144,13 +141,7 @@ control_notify_window_renamed(struct window *w)
 			continue;
 		s = c->session;
 
-		if (winlink_find_by_window_id(&s->windows, w->id) != NULL) {
-			control_write(c, "%%window-renamed %u %s",
-			    w->id, w->name);
-		} else {
-			control_write(c, "%%unlinked-window-renamed %u %s",
-			    w->id, w->name);
-		}
+                control_write(c, "%%window-renamed %u %s", w->id, w->name);
 	}
 }
 
