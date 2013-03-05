@@ -183,6 +183,7 @@ cmdq_continue(struct cmd_q *cmdq)
 	struct cmd_q_item	*next;
 	enum cmd_retval		 retval;
 	int			 guards, empty;
+	char			 s[1024];
 
 	guards = 0;
 	if (c != NULL && c->session != NULL)
@@ -204,6 +205,10 @@ cmdq_continue(struct cmd_q *cmdq)
 		next = TAILQ_NEXT(cmdq->item, qentry);
 
 		while (cmdq->cmd != NULL) {
+			cmd_print(cmdq->cmd, s, sizeof s);
+			log_debug("cmdq %p: %s (client %d)", cmdq, s,
+			    cmdq->client != NULL ? cmdq->client->ibuf.fd : -1);
+
 			if (guards)
 				cmdq_print(cmdq, "%%begin");
 			retval = cmdq->cmd->entry->exec(cmdq->cmd, cmdq);
