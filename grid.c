@@ -595,7 +595,7 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 
 	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u", px, py, nx);
 
-	if (*lastgc == NULL) {
+	if (lastgc != NULL && *lastgc == NULL) {
 		memcpy(&lastgc1, &grid_default_cell, sizeof lastgc1);
 		*lastgc = &lastgc1;
 	}
