@@ -3553,6 +3553,19 @@ If the command doesn't return success, the exit status is also displayed.
 .It Ic server-info
 .D1 (alias: Ic info )
 Show server information and terminal details.
+.It Xo Ic wait-for
+.Fl S
+.Ar channel
+.Xc
+.D1 (alias: Ic wait )
+When used without
+.Fl S ,
+prevents the client from exiting until woken using
+.Ic wait-for
+.Fl S
+with the same channel.
+This command only works from outside
+.Nm .
 .El
 .Sh TERMINFO EXTENSIONS
 .Nm

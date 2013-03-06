@@ -112,6 +112,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_switch_client_entry,
 	&cmd_unbind_key_entry,
 	&cmd_unlink_window_entry,
+	&cmd_wait_for_entry,
 	NULL
 };
 
