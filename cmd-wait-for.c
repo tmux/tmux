@@ -32,8 +32,8 @@ enum cmd_retval cmd_wait_for_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_wait_for_entry = {
 	"wait-for", "wait",
-	"S", 1, 1,
-	"[-S] channel",
+	"LSU", 1, 1,
+	"[-LSU] channel",
 	0,
 	NULL,
 	NULL,
@@ -42,7 +42,10 @@ const struct cmd_entry cmd_wait_for_entry = {
 
 struct wait_channel {
 	const char	       *name;
+	int			locked;
+
 	TAILQ_HEAD(, cmd_q)	waiters;
+	TAILQ_HEAD(, cmd_q)	lockers;
 
 	RB_ENTRY(wait_channel)	entry;
 };
@@ -63,6 +66,10 @@ enum cmd_retval	cmd_wait_for_signal(struct cmd_q *, const char *,
 		    struct wait_channel *);
 enum cmd_retval	cmd_wait_for_wait(struct cmd_q *, const char *,
 		    struct wait_channel *);
+enum cmd_retval	cmd_wait_for_lock(struct cmd_q *, const char *,
+		    struct wait_channel *);
+enum cmd_retval	cmd_wait_for_unlock(struct cmd_q *, const char *,
+		    struct wait_channel *);
 
 enum cmd_retval
 cmd_wait_for_exec(struct cmd *self, struct cmd_q *cmdq)
@@ -76,6 +83,10 @@ cmd_wait_for_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (args_has(args, 'S'))
 		return (cmd_wait_for_signal(cmdq, name, wc));
+	if (args_has(args, 'L'))
+		return (cmd_wait_for_lock(cmdq, name, wc));
+	if (args_has(args, 'U'))
+		return (cmd_wait_for_unlock(cmdq, name, wc));
 	return (cmd_wait_for_wait(cmdq, name, wc));
 }
 
@@ -95,9 +106,12 @@ cmd_wait_for_signal(struct cmd_q *cmdq, const char *name,
 		if (!cmdq_free(wq))
 			cmdq_continue(wq);
 	}
-	RB_REMOVE(wait_channels, &wait_channels, wc);
-	free((void*) wc->name);
-	free(wc);
+
+	if (!wc->locked) {
+		RB_REMOVE(wait_channels, &wait_channels, wc);
+		free((void*) wc->name);
+		free(wc);
+	}
 
 	return (CMD_RETURN_NORMAL);
 }
@@ -114,11 +128,70 @@ cmd_wait_for_wait(struct cmd_q *cmdq, const char *name,
 	if (wc == NULL) {
 		wc = xmalloc(sizeof *wc);
 		wc->name = xstrdup(name);
+		wc->locked = 0;
 		TAILQ_INIT(&wc->waiters);
+		TAILQ_INIT(&wc->lockers);
 		RB_INSERT(wait_channels, &wait_channels, wc);
 	}
+
 	TAILQ_INSERT_TAIL(&wc->waiters, cmdq, waitentry);
 	cmdq->references++;
 
 	return (CMD_RETURN_WAIT);
 }
+
+enum cmd_retval
+cmd_wait_for_lock(struct cmd_q *cmdq, const char *name,
+    struct wait_channel *wc)
+{
+	if (cmdq->client == NULL || cmdq->client->session != NULL) {
+		cmdq_error(cmdq, "not able to lock");
+		return (CMD_RETURN_ERROR);
+	}
+
+	if (wc == NULL) {
+		wc = xmalloc(sizeof *wc);
+		wc->name = xstrdup(name);
+		wc->locked = 0;
+		TAILQ_INIT(&wc->waiters);
+		TAILQ_INIT(&wc->lockers);
+		RB_INSERT(wait_channels, &wait_channels, wc);
+	}
+
+	if (wc->locked) {
+		TAILQ_INSERT_TAIL(&wc->lockers, cmdq, waitentry);
+		cmdq->references++;
+		return (CMD_RETURN_WAIT);
+	}
+	wc->locked = 1;
+
+	return (CMD_RETURN_NORMAL);
+}
+
+enum cmd_retval
+cmd_wait_for_unlock(struct cmd_q *cmdq, const char *name,
+    struct wait_channel *wc)
+{
+	struct cmd_q	*wq;
+
+	if (wc == NULL || !wc->locked) {
+		cmdq_error(cmdq, "channel %s not locked", name);
+		return (CMD_RETURN_ERROR);
+	}
+
+	if ((wq = TAILQ_FIRST(&wc->lockers)) != NULL) {
+		TAILQ_REMOVE(&wc->lockers, wq, waitentry);
+		if (!cmdq_free(wq))
+			cmdq_continue(wq);
+	} else {
+		wc->locked = 0;
+		if (TAILQ_EMPTY(&wc->waiters)) {
+			RB_REMOVE(wait_channels, &wait_channels, wc);
+			free((void*) wc->name);
+			free(wc);
+		}
+	}
+
+	return (CMD_RETURN_NORMAL);
+}
+

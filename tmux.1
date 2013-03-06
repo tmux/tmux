@@ -3554,16 +3554,20 @@ If the command doesn't return success, the exit status is also displayed.
 .D1 (alias: Ic info )
 Show server information and terminal details.
 .It Xo Ic wait-for
-.Fl S
+.Fl LSU
 .Ar channel
 .Xc
 .D1 (alias: Ic wait )
-When used without
-.Fl S ,
-prevents the client from exiting until woken using
+When used without options, prevents the client from exiting until woken using
 .Ic wait-for
 .Fl S
 with the same channel.
+When
+.Fl L
+is used, the channel is locked and any clients that try to lock the same
+channel are made to wait until the channel is unlocked with
+.Ic wait-for
+.Fl U .
 This command only works from outside
 .Nm .
 .El
