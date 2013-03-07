@@ -270,7 +270,7 @@ client_main(int argc, char **argv, int flags)
 	if (msg == MSG_COMMAND) {
 		/* Fill in command line arguments. */
 		cmddata.pid = environ_pid;
-		cmddata.idx = environ_idx;
+		cmddata.session_id = environ_session_id;
 
 		/* Prepare command for server. */
 		cmddata.argc = argc;
