@@ -154,7 +154,7 @@ control_notify_attached_session_changed(struct client *c)
 		return;
 	s = c->session;
 
-	control_write(c, "%%session-changed %d %s", s->idx, s->name);
+	control_write(c, "%%session-changed %d %s", s->id, s->name);
 }
 
 void

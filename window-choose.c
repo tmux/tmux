@@ -859,7 +859,7 @@ window_choose_add_session(struct window_pane *wp, struct client *c,
 	struct window_choose_data	*wcd;
 
 	wcd = window_choose_data_create(TREE_SESSION, c, c->session);
-	wcd->idx = s->idx;
+	wcd->idx = s->id;
 
 	wcd->tree_session = s;
 	wcd->tree_session->references++;
