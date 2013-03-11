@@ -29,10 +29,16 @@
 
 enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_q *);
 
+char		*cmd_capture_pane_append(char *, size_t *, char *, size_t);
+char		*cmd_capture_pane_pending(struct args *, struct window_pane *,
+		     size_t *);
+char		*cmd_capture_pane_history(struct args *, struct cmd_q *,
+		     struct window_pane *, size_t *);
+
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
-	"ab:CeE:JpqS:t:", 0, 0,
-	"[-aCeJpq] [-b buffer-index] [-E end-line] [-S start-line]"
+	"ab:CeE:JpPqS:t:", 0, 0,
+	"[-aCeJpPq] [-b buffer-index] [-E end-line] [-S start-line]"
 	CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
@@ -40,92 +46,140 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	cmd_capture_pane_exec
 };
 
+char *
+cmd_capture_pane_append(char *buf, size_t *len, char *line, size_t linelen)
+{
+	buf = xrealloc(buf, 1, *len + linelen + 1);
+	memcpy(buf + *len, line, linelen);
+	*len += linelen;
+	return (buf);
+}
+
+char *
+cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
+    size_t *len)
+{
+	char	*buf, *line, tmp[5];
+	size_t	 linelen;
+	u_int	 i;
+
+	if (wp->ictx.since_ground == NULL)
+		return (xstrdup(""));
+
+	line = EVBUFFER_DATA(wp->ictx.since_ground);
+	linelen = EVBUFFER_LENGTH(wp->ictx.since_ground);
+
+	buf = NULL;
+	if (args_has(args, 'C')) {
+		for (i = 0; i < linelen; i++) {
+			if (line[i] >= ' ') {
+				tmp[0] = line[i];
+				tmp[1] = '\0';
+			} else
+				xsnprintf(tmp, sizeof tmp, "\\%03o", line[i]);
+			buf = cmd_capture_pane_append(buf, len, tmp,
+			    strlen(tmp));
+		}
+	} else
+		buf = cmd_capture_pane_append(buf, len, line, linelen);
+	return (buf);
+}
+
+char *
+cmd_capture_pane_history(struct args *args, struct cmd_q *cmdq,
+    struct window_pane *wp, size_t *len)
+{
+	struct grid		*gd;
+	const struct grid_line	*gl;
+	struct grid_cell	*gc = NULL;
+	int			 n, with_codes, escape_c0, join_lines;
+	u_int			 i, sx, top, bottom, tmp;
+	char			*cause, *buf, *line;
+	size_t			 linelen;
+
+	sx = screen_size_x(&wp->base);
+	if (args_has(args, 'a')) {
+		gd = wp->saved_grid;
+		if (gd == NULL) {
+			if (!args_has(args, 'q')) {
+				cmdq_error(cmdq, "no alternate screen");
+				return (NULL);
+			}
+			return (xstrdup(""));
+		}
+	} else
+		gd = wp->base.grid;
+
+	n = args_strtonum(args, 'S', INT_MIN, SHRT_MAX, &cause);
+	if (cause != NULL) {
+		top = gd->hsize;
+		free(cause);
+	} else if (n < 0 && (u_int) -n > gd->hsize)
+		top = 0;
+	else
+		top = gd->hsize + n;
+	if (top > gd->hsize + gd->sy - 1)
+		top = gd->hsize + gd->sy - 1;
+
+	n = args_strtonum(args, 'E', INT_MIN, SHRT_MAX, &cause);
+	if (cause != NULL) {
+		bottom = gd->hsize + gd->sy - 1;
+		free(cause);
+	} else if (n < 0 && (u_int) -n > gd->hsize)
+		bottom = 0;
+	else
+		bottom = gd->hsize + n;
+	if (bottom > gd->hsize + gd->sy - 1)
+		bottom = gd->hsize + gd->sy - 1;
+
+	if (bottom < top) {
+		tmp = bottom;
+		bottom = top;
+		top = tmp;
+	}
+
+	with_codes = args_has(args, 'e');
+	escape_c0 = args_has(args, 'C');
+	join_lines = args_has(args, 'J');
+
+	buf = NULL;
+	for (i = top; i <= bottom; i++) {
+		line = grid_string_cells(gd, 0, i, sx, &gc, with_codes,
+		    escape_c0, !join_lines);
+		linelen = strlen(line);
+
+		buf = cmd_capture_pane_append(buf, len, line, linelen);
+
+		gl = grid_peek_line(gd, i);
+		if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
+			buf[(*len)++] = '\n';
+
+		free(line);
+	}
+	return (buf);
+}
+
 enum cmd_retval
 cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct client		*c;
 	struct window_pane	*wp;
-	char			*buf, *line, *cause;
-	struct screen		*s;
-	struct grid		*gd;
-	int			 buffer, n, with_codes, escape_c0, join_lines;
-	u_int			 i, limit, top, bottom, tmp, sx;
-	size_t			 len, linelen;
-	struct grid_cell	*gc;
-	const struct grid_line	*gl;
+	char			*buf, *cause;
+	int			 buffer;
+	u_int			 limit;
+	size_t			 len;
 
 	if (cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
 
-	if (args_has(args, 'a')) {
-		s = NULL;
-		gd = wp->saved_grid;
-		sx = screen_size_x(&wp->base);
-		if (gd == NULL && !args_has(args, 'q')) {
-			cmdq_error(cmdq, "no alternate screen");
-			return (CMD_RETURN_ERROR);
-		}
-	} else {
-		s = &wp->base;
-		sx = screen_size_x(s);
-		gd = s->grid;
-	}
-
-	buf = NULL;
 	len = 0;
-
-	if (gd != NULL) {
-		n = args_strtonum(args, 'S', INT_MIN, SHRT_MAX, &cause);
-		if (cause != NULL) {
-			top = gd->hsize;
-			free(cause);
-		} else if (n < 0 && (u_int) -n > gd->hsize)
-			top = 0;
-		else
-			top = gd->hsize + n;
-		if (top > gd->hsize + gd->sy - 1)
-			top = gd->hsize + gd->sy - 1;
-
-		n = args_strtonum(args, 'E', INT_MIN, SHRT_MAX, &cause);
-		if (cause != NULL) {
-			bottom = gd->hsize + gd->sy - 1;
-			free(cause);
-		} else if (n < 0 && (u_int) -n > gd->hsize)
-			bottom = 0;
-		else
-			bottom = gd->hsize + n;
-		if (bottom > gd->hsize + gd->sy - 1)
-			bottom = gd->hsize + gd->sy - 1;
-
-		if (bottom < top) {
-			tmp = bottom;
-			bottom = top;
-			top = tmp;
-		}
-
-		with_codes = args_has(args, 'e');
-		escape_c0 = args_has(args, 'C');
-		join_lines = args_has(args, 'J');
-
-		gc = NULL;
-		for (i = top; i <= bottom; i++) {
-			line = grid_string_cells(gd, 0, i, sx, &gc, with_codes,
-			    escape_c0, !join_lines);
-			linelen = strlen(line);
-
-			buf = xrealloc(buf, 1, len + linelen + 1);
-			memcpy(buf + len, line, linelen);
-			len += linelen;
-
-			gl = grid_peek_line(gd, i);
-			if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
-				buf[len++] = '\n';
-
-			free(line);
-		}
-	} else
-		buf = xstrdup("");
+	if (args_has(args, 'P'))
+		buf = cmd_capture_pane_pending(args, wp, &len);
+	else
+		buf = cmd_capture_pane_history(args, cmdq, wp, &len);
+	if (buf == NULL)
+		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'p')) {
 		c = cmdq->client;

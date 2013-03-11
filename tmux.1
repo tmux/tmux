@@ -1066,7 +1066,7 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .It Xo Ic capture-pane
-.Op Fl aepq
+.Op Fl aepPq
 .Op Fl b Ar buffer-index
 .Op Fl E Ar end-line
 .Op Fl S Ar start-line
@@ -1093,6 +1093,9 @@ attributes.
 also escapes non-printable characters as octal \\xxx.
 .Fl J
 joins wrapped lines and preserves trailing spaces at each line's end.
+.Fl P
+captures only any output that the pane has received that is the beginning of an
+as-yet incomplete escape sequence.
 .Pp
 .Fl S
 and
