@@ -45,7 +45,7 @@ control_notify_input(struct client *c, struct window_pane *wp,
 	 */
 	if (winlink_find_by_window(&c->session->windows, wp->window) != NULL) {
 		message = evbuffer_new();
-		evbuffer_add_printf(message, "%%output %%%u ", wp->id);
+		evbuffer_add_printf(message, "%%output %u ", wp->id);
 		for (i = 0; i < len; i++)
 			evbuffer_add_printf(message, "%02hhx", buf[i]);
 		control_write_buffer(c, message);
@@ -141,7 +141,7 @@ control_notify_window_renamed(struct window *w)
 			continue;
 		s = c->session;
 
-                control_write(c, "%%window-renamed %u %s", w->id, w->name);
+		control_write(c, "%%window-renamed %u %s", w->id, w->name);
 	}
 }
 
@@ -154,7 +154,7 @@ control_notify_attached_session_changed(struct client *c)
 		return;
 	s = c->session;
 
-	control_write(c, "%%session-changed %d %s", s->id, s->name);
+	control_write(c, "%%session-changed %u %s", s->id, s->name);
 }
 
 void
