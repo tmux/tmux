@@ -53,8 +53,11 @@ AM_CONDITIONAL(IS_DEBUG, test "x$found_debug" = xyes)
 AC_ARG_ENABLE(
        static,
        AC_HELP_STRING(--enable-static, create a static build),
-       [LDFLAGS="$LDFLAGS -static"]
+       found_static=$enable_static
 )
+if test "x$found_static" = xyes; then
+   LDFLAGS="$LDFLAGS -static"
+fi
 
 # Is this gcc?
 AM_CONDITIONAL(IS_GCC, test "x$GCC" = xyes)

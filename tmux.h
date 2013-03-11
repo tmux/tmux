@@ -462,8 +462,8 @@ enum msgtype {
  * Don't forget to bump PROTOCOL_VERSION if any of these change!
  */
 struct msg_command_data {
-	pid_t		pid;	/* PID from $TMUX or -1 */
-	int		idx;	/* index from $TMUX or -1 */
+	pid_t		pid;		/* from $TMUX or -1 */
+	int		session_id;	/* from $TMUX or -1 */
 
 	int		argc;
 	char		argv[COMMAND_LENGTH];
@@ -1086,7 +1086,7 @@ struct session_group {
 TAILQ_HEAD(session_groups, session_group);
 
 struct session {
-	u_int		 idx;
+	u_int		 id;
 
 	char		*name;
 	char		*cwd;
@@ -1412,10 +1412,15 @@ struct cmd_q {
 	struct cmd_q_item	*item;
 	struct cmd		*cmd;
 
+	time_t			 time;
+	u_int			 number;
+
 	void			 (*emptyfn)(struct cmd_q *);
 	void			*data;
 
 	struct msg_command_data	*msgdata;
+
+	TAILQ_ENTRY(cmd_q)       waitentry;
 };
 
 /* Command definition. */
@@ -1511,7 +1516,7 @@ extern char	 socket_path[MAXPATHLEN];
 extern int	 login_shell;
 extern char	*environ_path;
 extern pid_t	 environ_pid;
-extern int	 environ_idx;
+extern int	 environ_session_id;
 void		 logfile(const char *);
 const char	*getshell(void);
 int		 checkshell(const char *);
@@ -1835,6 +1840,7 @@ extern const struct cmd_entry cmd_switch_client_entry;
 extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
 extern const struct cmd_entry cmd_up_pane_entry;
+extern const struct cmd_entry cmd_wait_for_entry;
 
 /* cmd-attach-session.c */
 enum cmd_retval	 cmd_attach_session(struct cmd_q *, const char*, int, int);
@@ -1850,6 +1856,7 @@ int		 cmdq_free(struct cmd_q *);
 void printflike2 cmdq_print(struct cmd_q *, const char *, ...);
 void printflike2 cmdq_info(struct cmd_q *, const char *, ...);
 void printflike2 cmdq_error(struct cmd_q *, const char *, ...);
+void		 cmdq_guard(struct cmd_q *, const char *);
 void		 cmdq_run(struct cmd_q *, struct cmd_list *);
 void		 cmdq_append(struct cmd_q *, struct cmd_list *);
 int		 cmdq_continue(struct cmd_q *);
@@ -2284,7 +2291,7 @@ int	session_cmp(struct session *, struct session *);
 RB_PROTOTYPE(sessions, session, entry, session_cmp);
 int		 session_alive(struct session *);
 struct session	*session_find(const char *);
-struct session	*session_find_by_index(u_int);
+struct session	*session_find_by_id(u_int);
 struct session	*session_create(const char *, const char *, const char *,
 		     struct environ *, struct termios *, int, u_int, u_int,
 		     char **);

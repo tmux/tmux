@@ -39,7 +39,7 @@ server_fill_environ(struct session *s, struct environ *env)
 		term = options_get_string(&s->options, "default-terminal");
 		environ_set(env, "TERM", term);
 
-		idx = s->idx;
+		idx = s->id;
 	} else
 		idx = -1;
 	pid = getpid();
@@ -546,6 +546,10 @@ server_push_stderr(struct client *c)
 	struct msg_stderr_data data;
 	size_t                 size;
 
+	if (c->stderr_data == c->stdout_data) {
+		server_push_stdout(c);
+		return;
+	}
 	size = EVBUFFER_LENGTH(c->stderr_data);
 	if (size == 0)
 		return;

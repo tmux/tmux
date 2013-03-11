@@ -135,6 +135,7 @@ dist_tmux_SOURCES = \
 	cmd-switch-client.c \
 	cmd-unbind-key.c \
 	cmd-unlink-window.c \
+	cmd-wait-for.c \
 	cmd.c \
 	colour.c \
 	control.c \

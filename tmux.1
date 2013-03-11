@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 28lquvV
+.Op Fl 28lCquvV
 .Op Fl c Ar shell-command
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
@@ -102,6 +102,11 @@ to assume the terminal supports 256 colours.
 Like
 .Fl 2 ,
 but indicates that the terminal supports 88 colours.
+.It Fl C
+Start in control mode.
+Given twice
+.Xo ( Fl CC ) Xc
+disables echo.
 .It Fl c Ar shell-command
 Execute
 .Ar shell-command
@@ -369,9 +374,9 @@ Clients may be listed with the
 command.
 .Pp
 .Ar target-session
-is either the name of a session (as listed by the
+is the session id prefixed with a $, the name of a session (as listed by the
 .Ic list-sessions
-command) or the name of a client with the same syntax as
+command), or the name of a client with the same syntax as
 .Ar target-client ,
 in which case the session attached to the client is used.
 When looking for the session name,
@@ -1619,7 +1624,7 @@ is given in lines or cells (the default is 1).
 .Pp
 With
 .Fl Z ,
-the active pane is toggled between occupying the whole of the window and it's
+the active pane is toggled between occupying the whole of the window and its
 normal position in the layout.
 .It Xo Ic respawn-pane
 .Op Fl k
@@ -3085,6 +3090,7 @@ The following variables are available, where appropriate:
 .It Li "session_group" Ta "Number of session group"
 .It Li "session_grouped" Ta "1 if session in a group"
 .It Li "session_height" Ta "Height of session"
+.It Li "session_id" Ta "Unique session ID"
 .It Li "session_name" Ta "Name of session"
 .It Li "session_width" Ta "Width of session"
 .It Li "session_windows" Ta "Number of windows in session"
@@ -3553,6 +3559,23 @@ If the command doesn't return success, the exit status is also displayed.
 .It Ic server-info
 .D1 (alias: Ic info )
 Show server information and terminal details.
+.It Xo Ic wait-for
+.Fl LSU
+.Ar channel
+.Xc
+.D1 (alias: Ic wait )
+When used without options, prevents the client from exiting until woken using
+.Ic wait-for
+.Fl S
+with the same channel.
+When
+.Fl L
+is used, the channel is locked and any clients that try to lock the same
+channel are made to wait until the channel is unlocked with
+.Ic wait-for
+.Fl U .
+This command only works from outside
+.Nm .
 .El
 .Sh TERMINFO EXTENSIONS
 .Nm
@@ -3591,6 +3614,92 @@ See the
 option above and the
 .Xr xterm 1
 man page.
+.El
+.Sh CONTROL MODE
+.Nm
+offers a textual interface called
+.Em control mode .
+This allows applications to communicate with
+.Nm
+using a simple text-only protocol.
+.Pp
+In control mode, a client sends
+.Nm
+commands or command sequences terminated by newlines on standard input.
+Each command will produce one block of output on standard output.
+An output block consists of a
+.Em %begin
+line followed by the output (which may be empty).
+The output block ends with a
+.Em %end
+or
+.Em %error .
+.Em %begin
+and matching
+.Em %end
+or
+.Em %error
+have two arguments: an integer time (as seconds from epoch) and command number.
+For example:
+.Bd -literal -offset indent
+%begin 1363006971 2
+0: ksh* (1 panes) [80x24] [layout b25f,80x24,0,0,2] @2 (active)
+%end 1363006971 2
+.Ed
+.Pp
+In control mode,
+.Nm
+outputs notifications.
+A notification will never occur inside an output block.
+.Pp
+The following notifications are defined:
+.Pp
+.Bl -tag -width Ds
+.It Ic %exit Op Ar reason
+The
+.Nm
+client is exiting immediately, either because it is not attached to any session
+or an error occurred.
+If present,
+.Ar reason
+describes why the client exited.
+.It Ic %layout-change Ar window-id Ar window-layout
+The layout of a window with ID
+.Ar window-id
+changed.
+The new layout is
+.Ar window-layout .
+.It Ic %output Ar pane-id Ar value
+A window pane produced output.
+.Ar value
+contains that output with each byte encoded as two hex digits.
+.It Ic %session-changed Ar session-id Ar name
+The client is now attached to the session with ID
+.Ar session-id ,
+which is named
+.Ar name .
+.It Ic %session-renamed Ar name
+The current session was renamed to
+.Ar name .
+.It Ic %sessions-changed
+A session was created or destroyed.
+.It Ic %unlinked-window-add Ar window-id
+The window with ID
+.Ar window-id
+was created but is not linked to the current session.
+.It Ic %window-add Ar window-id
+The window with ID
+.Ar window-id
+was linked to the current session.
+.It Ic %window-close Ar window-id
+The window with ID
+.Ar window-id
+closed.
+.It Ic %window-renamed Ar window-id Ar name
+The window with ID
+.Ar window-id
+was renamed to
+.Ar name .
 .El
 .Sh FILES
 .Bl -tag -width "/etc/tmux.confXXX" -compact
