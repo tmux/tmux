@@ -68,8 +68,13 @@ control_callback(struct client *c, int closed, unused void *data)
 		}
 
 		if (cmd_string_parse(line, &cmdlist, NULL, 0, &cause) != 0) {
-			control_write(c, "%%error in line \"%s\": %s", line,
-			    cause);
+			c->cmdq->time = time(NULL);
+			c->cmdq->number++;
+
+			cmdq_guard(c->cmdq, "begin");
+			control_write(c, "parse error: %s", cause);
+			cmdq_guard(c->cmdq, "error");
+
 			free(cause);
 		} else {
 			cmdq_run(c->cmdq, cmdlist);
