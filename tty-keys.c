@@ -82,6 +82,13 @@ const struct tty_default_key_raw tty_default_raw_keys[] = {
 	{ "\033[C", KEYC_RIGHT },
 	{ "\033[D", KEYC_LEFT },
 
+	/* Other (xterm) "cursor" keys. */
+	{ "\033OH", KEYC_HOME },
+	{ "\033OF", KEYC_END },
+
+	{ "\033[H", KEYC_HOME },
+	{ "\033[F", KEYC_END },
+
 	/* rxvt-style arrow + modifier keys. */
 	{ "\033Oa", KEYC_UP|KEYC_CTRL },
 	{ "\033Ob", KEYC_DOWN|KEYC_CTRL },
