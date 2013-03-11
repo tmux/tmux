@@ -163,7 +163,7 @@ cmdq_guard(struct cmd_q *cmdq, const char *guard)
 		return;
 
 	evbuffer_add_printf(c->stdout_data, "%%%s %ld %u\n", guard,
-	    cmdq->time, cmdq->number);
+	    (long) cmdq->time, cmdq->number);
 	server_push_stdout(c);
 }
 
