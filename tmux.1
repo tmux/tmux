@@ -1624,8 +1624,8 @@ is given in lines or cells (the default is 1).
 .Pp
 With
 .Fl Z ,
-the active pane is toggled between occupying the whole of the window and its
-normal position in the layout.
+the active pane is toggled between zoomed (occupying the whole of the window)
+and unzoomed (its normal position in the layout).
 .It Xo Ic respawn-pane
 .Op Fl k
 .Op Fl t Ar target-pane
@@ -3257,6 +3257,7 @@ The flag is one of the following symbols appended to the window name:
 .It Li "!" Ta "A bell has occurred in the window."
 .It Li "+" Ta "Window is monitored for content and it has appeared."
 .It Li "~" Ta "The window has been silent for the monitor-silence interval."
+.It Li "Z" Ta "The window's active pane is zoomed."
 .El
 .Pp
 The # symbol relates to the
