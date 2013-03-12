@@ -3672,7 +3672,7 @@ The new layout is
 .It Ic %output Ar pane-id Ar value
 A window pane produced output.
 .Ar value
-contains that output with each byte encoded as two hex digits.
+escapes non-printable characters and backslash as octal \\xxx.
 .It Ic %session-changed Ar session-id Ar name
 The client is now attached to the session with ID
 .Ar session-id ,
