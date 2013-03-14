@@ -90,7 +90,10 @@ cmd_display_message_exec(struct cmd *self, struct cmd_q *cmdq)
 	msg = format_expand(ft, out);
 	if (args_has(self->args, 'p'))
 		cmdq_print(cmdq, "%s", msg);
-	else
+	else if (c == NULL) {
+		cmdq_error(cmdq, "no client available");
+		return (CMD_RETURN_ERROR);
+	} else
 		status_message_set(c, "%s", msg);
 	free(msg);
 	format_free(ft);
