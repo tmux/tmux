@@ -70,6 +70,18 @@ cmd_display_message_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_ERROR);
 	}
 
+	if (args_has(args, 'c')) {
+	    c = cmd_find_client(cmdq, args_get(args, 'c'), 0);
+	    if (c == NULL)
+		return (CMD_RETURN_ERROR);
+	} else {
+		c = cmd_current_client(cmdq);
+		if (c == NULL && !args_has(self->args, 'p')) {
+			cmdq_error(cmdq, "no client available");
+			return (CMD_RETURN_ERROR);
+		}
+	}
+
 	template = args_get(args, 'F');
 	if (args->argc != 0)
 		template = args->argv[0];
@@ -77,7 +89,7 @@ cmd_display_message_exec(struct cmd *self, struct cmd_q *cmdq)
 		template = DISPLAY_MESSAGE_TEMPLATE;
 
 	ft = format_create();
-	if ((c = cmd_find_client(cmdq, args_get(args, 'c'), 1)) != NULL)
+	if (c != NULL)
 		format_client(ft, c);
 	format_session(ft, s);
 	format_winlink(ft, s, wl);

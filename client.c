@@ -524,6 +524,7 @@ client_dispatch_wait(void *data)
 
 			event_del(&client_stdin);
 			client_attached = 1;
+			client_write_server(MSG_RESIZE, NULL, 0);
 			break;
 		case MSG_STDIN:
 			if (datalen != 0)
