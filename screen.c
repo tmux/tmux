@@ -362,15 +362,10 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 
 /* Reflow wrapped lines. */
 void
-screen_reflow(struct screen *s, u_int sx)
+screen_reflow(struct screen *s, u_int new_x)
 {
-	struct grid	*old, *new;
+	struct grid	*old = s->grid;
 
-	old = s->grid;
-	new = grid_create(old->sx, old->sy, old->hlimit);
-
-	s->cy -= grid_reflow(new, old, sx);
-	s->grid = new;
-
-	grid_destroy(old);
+	s->grid = grid_create(old->sx, old->sy, old->hlimit);
+	s->cy -= grid_reflow(s->grid, old, new_x);
 }
