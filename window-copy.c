@@ -54,7 +54,8 @@ void	window_copy_start_selection(struct window_pane *);
 int	window_copy_update_selection(struct window_pane *);
 void   *window_copy_get_selection(struct window_pane *, size_t *);
 void	window_copy_copy_buffer(struct window_pane *, int, void *, size_t);
-void	window_copy_copy_pipe(struct window_pane *, int, const char *);
+void	window_copy_copy_pipe(
+	    struct window_pane *, struct session *, int, const char *);
 void	window_copy_copy_selection(struct window_pane *, int);
 void	window_copy_clear_selection(struct window_pane *);
 void	window_copy_copy_line(
@@ -539,7 +540,7 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 		break;
 	case MODEKEYCOPY_COPYPIPE:
 		if (sess != NULL) {
-			window_copy_copy_pipe(wp, data->numprefix, arg);
+			window_copy_copy_pipe(wp, sess, data->numprefix, arg);
 			window_pane_reset_mode(wp);
 			return;
 		}
@@ -1397,21 +1398,20 @@ window_copy_copy_buffer(struct window_pane *wp, int idx, void *buf, size_t len)
 }
 
 void
-window_copy_copy_pipe(struct window_pane *wp, int idx, const char *arg)
+window_copy_copy_pipe(
+    struct window_pane *wp, struct session *sess, int idx, const char *arg)
 {
-	void*	buf;
-	size_t	len;
-	FILE*	f;
+	void		*buf;
+	size_t		 len;
+	struct job	*job;
+
 
 	buf = window_copy_get_selection(wp, &len);
 	if (buf == NULL)
 		return;
 
-	f = popen(arg, "w");
-	if (f != NULL) {
-		fwrite(buf, 1, len, f);
-		pclose(f);
-	}
+	job = job_run(arg, sess, NULL, NULL, NULL);
+	bufferevent_write(job->event, buf, len);
 
 	window_copy_copy_buffer(wp, idx, buf, len);
 }

@@ -89,7 +89,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 	cdata->cmdq = cmdq;
 	cmdq->references++;
 
-	job_run(shellcmd, cmd_if_shell_callback, cmd_if_shell_free, cdata);
+	job_run(shellcmd, s, cmd_if_shell_callback, cmd_if_shell_free, cdata);
 	free(shellcmd);
 
 	if (cdata->bflag)
