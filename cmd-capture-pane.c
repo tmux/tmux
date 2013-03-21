@@ -24,15 +24,16 @@
 #include "tmux.h"
 
 /*
- * Write the entire contents of a pane to a buffer.
+ * Write the entire contents of a pane to a buffer or stdout.
  */
 
 enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
-	"b:E:S:t:", 0, 0,
-	"[-b buffer-index] [-E end-line] [-S start-line] "
+	"b:c:E:pS:t:", 0, 0,
+	"[-p] [-c target-client] [-b buffer-index] [-E end-line] "
+	"[-S start-line] "
 	CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
@@ -44,6 +45,7 @@ enum cmd_retval
 cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
+	struct client		*c;
 	struct window_pane	*wp;
 	char 			*buf, *line, *cause;
 	struct screen		*s;
@@ -51,6 +53,9 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	int			 buffer, n;
 	u_int			 i, limit, top, bottom, tmp;
 	size_t         		 len, linelen;
+
+	if ((c = cmd_find_client(ctx, args_get(args, 'c'))) == NULL)
+		return (CMD_RETURN_ERROR);
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
@@ -100,25 +105,33 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	       free(line);
 	}
 
-	limit = options_get_number(&global_options, "buffer-limit");
+	if (args_has(args, 'p')) {
+		if (c == NULL) {
+			ctx->error(ctx, "can't write to stdout");
+			return (CMD_RETURN_ERROR);
+		}
+		evbuffer_add(c->stdout_data, buf, len);
+		server_push_stdout(c);
+	} else {
+		limit = options_get_number(&global_options, "buffer-limit");
+		if (!args_has(args, 'b')) {
+			paste_add(&global_buffers, buf, len, limit);
+			return (CMD_RETURN_NORMAL);
+		}
 
-	if (!args_has(args, 'b')) {
-		paste_add(&global_buffers, buf, len, limit);
-		return (CMD_RETURN_NORMAL);
-	}
+		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
+		if (cause != NULL) {
+			ctx->error(ctx, "buffer %s", cause);
+			free(buf);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
 
-	buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
-	if (cause != NULL) {
-		ctx->error(ctx, "buffer %s", cause);
-		free(buf);
-		free(cause);
-		return (CMD_RETURN_ERROR);
-	}
-
-	if (paste_replace(&global_buffers, buffer, buf, len) != 0) {
-		ctx->error(ctx, "no buffer %d", buffer);
-		free(buf);
-		return (CMD_RETURN_ERROR);
+		if (paste_replace(&global_buffers, buffer, buf, len) != 0) {
+			ctx->error(ctx, "no buffer %d", buffer);
+			free(buf);
+			return (CMD_RETURN_ERROR);
+		}
 	}
 
 	return (CMD_RETURN_NORMAL);
