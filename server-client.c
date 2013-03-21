@@ -418,6 +418,7 @@ server_client_handle_key(struct client *c, int key)
 	if (!(c->flags & CLIENT_PREFIX)) {
 		if (isprefix) {
 			c->flags |= CLIENT_PREFIX;
+			server_status_client(c);
 			return;
 		}
 
@@ -432,6 +433,7 @@ server_client_handle_key(struct client *c, int key)
 
 	/* Prefix key already pressed. Reset prefix and lookup key. */
 	c->flags &= ~CLIENT_PREFIX;
+	server_status_client(c);
 	if ((bd = key_bindings_lookup(key | KEYC_PREFIX)) == NULL) {
 		/* If repeating, treat this as a key, else ignore. */
 		if (c->flags & CLIENT_REPEAT) {
@@ -587,8 +589,11 @@ server_client_repeat_timer(unused int fd, unused short events, void *data)
 {
 	struct client	*c = data;
 
-	if (c->flags & CLIENT_REPEAT)
+	if (c->flags & CLIENT_REPEAT) {
+		if (c->flags & CLIENT_PREFIX)
+			server_status_client(c);
 		c->flags &= ~(CLIENT_PREFIX|CLIENT_REPEAT);
+	}
 }
 
 /* Check if client should be exited. */

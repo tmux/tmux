@@ -251,10 +251,11 @@ format_expand(struct format_tree *ft, const char *fmt)
 					continue;
 				}
 			}
-			while (len - off < 2) {
+			while (len - off < 3) {
 				buf = xrealloc(buf, 2, len);
 				len *= 2;
 			}
+			buf[off++] = '#';
 			buf[off++] = ch;
 			continue;
 		}
@@ -320,6 +321,8 @@ format_client(struct format_tree *ft, struct client *c)
 	tim = ctime(&t);
 	*strchr(tim, '\n') = '\0';
 	format_add(ft, "client_activity_string", "%s", tim);
+
+	format_add(ft, "client_prefix", "%d", !!(c->flags & CLIENT_PREFIX));
 
 	if (c->tty.flags & TTY_UTF8)
 		format_add(ft, "client_utf8", "%d", 1);
