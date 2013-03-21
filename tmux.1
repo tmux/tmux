@@ -1125,9 +1125,7 @@ section.
 This command works only if at least one client is attached.
 .It Xo
 .Ic choose-tree
-.Op Fl s
-.Op Fl w
-.Op Fl u
+.Op Fl suw
 .Op Fl b Ar session-template
 .Op Fl c Ar window-template
 .Op Fl S Ar format
@@ -1152,25 +1150,30 @@ is given, will show sessions.
 If
 .Fl w
 is given, will show windows.
-If
+.Pp
+By default, the tree is collapsed and sessions must be expanded to windows
+with the right arrow key.
+The
 .Fl u
-is given, the tree is uncollapsed by default.
+will start with all all sessions expanded instead.
+.Pp
 If
 .Fl b
 is given, will override the default session command.
 Note that
 .Ql %%
-can be used, and will be replaced with the session name.
+can be used and will be replaced with the session name.
 The default option if not specified is "switch-client -t '%%'".
 If
 .Fl c
 is given, will override the default window command.
-Note that
+Like
+.Fl b ,
 .Ql %%
-can be used, and will be replaced with the session name and window index.
-This command will run
-.Ar session-template
-before it.
+can be used and will be replaced with the session name and window index.
+When a window is chosen from the list, the session command is run before the
+window command.
+.Pp
 If
 .Fl S
 is given will display the specified format instead of the default session
@@ -1186,6 +1189,7 @@ and
 options, see the
 .Sx FORMATS
 section.
+.Pp
 This command works only if at least one client is attached.
 .It Xo
 .Ic choose-window
@@ -1938,6 +1942,19 @@ command.
 All window options are documented with the
 .Ic set-window-option
 command.
+.Pp
+.Nm
+also supports user options which are prefixed with a
+.Ql \&@ .
+User options may have any name, so long as it is prefixed with
+.Ql \&@,
+and be set to any string.
+For example
+.Bd -literal -offset indent
+$ tmux setw -q @foo "abc123"
+$ tmux showw -v @foo
+abc123
+.Ed
 .Pp
 Commands which set options are as follows:
 .Bl -tag -width Ds
@@ -2865,7 +2882,7 @@ If this option is set, searches will wrap around the end of the pane contents.
 The default is on.
 .El
 .It Xo Ic show-options
-.Op Fl gsw
+.Op Fl gsvw
 .Op Fl t Ar target-session | Ar target-window
 .Op Ar option
 .Xc
@@ -2881,8 +2898,10 @@ otherwise the session options for
 Global session or window options are listed if
 .Fl g
 is used.
+.Fl v
+shows only the option value, not the name.
 .It Xo Ic show-window-options
-.Op Fl g
+.Op Fl gv
 .Op Fl t Ar target-window
 .Op Ar option
 .Xc
@@ -2892,6 +2911,8 @@ List the window options or a single option for
 or the global window options if
 .Fl g
 is used.
+.Fl v
+shows only the option value, not the name.
 .El
 .Sh FORMATS
 Certain commands accept the
@@ -2935,6 +2956,7 @@ The following variables are available, where appropriate:
 .It Li "client_created_string" Ta "String time client created"
 .It Li "client_cwd" Ta "Working directory of client"
 .It Li "client_height" Ta "Height of client"
+.It Li "client_prefix" Ta "1 if prefix key has been pressed"
 .It Li "client_readonly" Ta "1 if client is readonly"
 .It Li "client_termname" Ta "Terminal name of client"
 .It Li "client_tty" Ta "Pseudo terminal of client"
