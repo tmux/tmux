@@ -1572,12 +1572,11 @@ long long options_get_number(struct options *, const char *);
 extern const struct options_table_entry server_options_table[];
 extern const struct options_table_entry session_options_table[];
 extern const struct options_table_entry window_options_table[];
-void	options_table_populate_tree(
-	    const struct options_table_entry *, struct options *);
-const char *options_table_print_entry(
-	    const struct options_table_entry *, struct options_entry *);
-int	options_table_find(
-	    const char *, const struct options_table_entry **,
+void	options_table_populate_tree(const struct options_table_entry *,
+	    struct options *);
+const char *options_table_print_entry(const struct options_table_entry *,
+	    struct options_entry *, int);
+int	options_table_find(const char *, const struct options_table_entry **,
 	    const struct options_table_entry **);
 
 /* job.c */
@@ -1725,7 +1724,7 @@ int		 cmd_find_index(
 		     struct cmd_ctx *, const char *, struct session **);
 struct winlink	*cmd_find_pane(struct cmd_ctx *,
 		     const char *, struct session **, struct window_pane **);
-char		*cmd_template_replace(char *, const char *, int);
+char		*cmd_template_replace(const char *, const char *, int);
 const char     	*cmd_get_default_path(struct cmd_ctx *, const char *);
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
@@ -1970,7 +1969,7 @@ void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int);
 void	 grid_duplicate_lines(
 	     struct grid *, u_int, struct grid *, u_int, u_int);
-u_int	 grid_reflow(struct grid *, const struct grid *, u_int);
+u_int	 grid_reflow(struct grid *, struct grid *, u_int);
 
 /* grid-cell.c */
 u_int	 grid_cell_width(const struct grid_cell *);
@@ -2209,13 +2208,13 @@ void	window_choose_data_free(struct window_choose_data *);
 void	window_choose_data_run(struct window_choose_data *);
 struct window_choose_data	*window_choose_add_window(struct window_pane *,
 			struct client *, struct session *, struct winlink *,
-			const char *, char *, u_int);
+			const char *, const char *, u_int);
 struct window_choose_data	*window_choose_add_session(struct window_pane *,
 			struct client *, struct session *, const char *,
-			char *, u_int);
+			const char *, u_int);
 struct window_choose_data	*window_choose_add_item(struct window_pane *,
 			struct client *, struct winlink *, const char *,
-			char *, u_int);
+			const char *, u_int);
 void	window_choose_expand_all(struct window_pane *);
 
 /* names.c */
