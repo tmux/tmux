@@ -27,7 +27,10 @@
  * Set an option.
  */
 
-enum cmd_retval	 cmd_set_option_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	cmd_set_option_exec(struct cmd *, struct cmd_ctx *);
+
+enum cmd_retval	cmd_set_option_user(struct cmd *, struct cmd_ctx *,
+		    const char *, const char *);
 
 int	cmd_set_option_unset(struct cmd *, struct cmd_ctx *,
 	    const struct options_table_entry *, struct options *,
@@ -102,6 +105,10 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		valstr = args->argv[1];
 
+	/* Is this a user option? */
+	if (*optstr == '@')
+		return (cmd_set_option_user(self, ctx, optstr, valstr));
+
 	/* Find the option entry, try each table. */
 	table = oe = NULL;
 	if (options_table_find(optstr, &table, &oe) != 0) {
@@ -171,6 +178,63 @@ cmd_set_option_exec(struct cmd *self, struct cmd_ctx *ctx)
 	return (CMD_RETURN_NORMAL);
 }
 
+/* Set user option. */
+enum cmd_retval
+cmd_set_option_user(struct cmd *self, struct cmd_ctx *ctx, const char* optstr,
+    const char *valstr)
+{
+	struct args	*args = self->args;
+	struct session	*s;
+	struct winlink	*wl;
+	struct options	*oo;
+
+	if (args_has(args, 's'))
+		oo = &global_options;
+	else if (args_has(self->args, 'w') ||
+	    self->entry == &cmd_set_window_option_entry) {
+		if (args_has(self->args, 'g'))
+			oo = &global_w_options;
+		else {
+			wl = cmd_find_window(ctx, args_get(args, 't'), NULL);
+			if (wl == NULL)
+				return (CMD_RETURN_ERROR);
+			oo = &wl->window->options;
+		}
+	} else {
+		if (args_has(self->args, 'g'))
+			oo = &global_s_options;
+		else {
+			s = cmd_find_session(ctx, args_get(args, 't'), 0);
+			if (s == NULL)
+				return (CMD_RETURN_ERROR);
+			oo = &s->options;
+		}
+	}
+
+	if (args_has(args, 'u')) {
+		if (options_find1(oo, optstr) == NULL) {
+			ctx->error(ctx, "unknown option: %s", optstr);
+			return (CMD_RETURN_ERROR);
+		}
+		if (valstr != NULL) {
+			ctx->error(ctx, "value passed to unset option: %s",
+			    optstr);
+			return (CMD_RETURN_ERROR);
+		}
+		options_remove(oo, optstr);
+	} else {
+		if (valstr == NULL) {
+			ctx->error(ctx, "empty value");
+			return (CMD_RETURN_ERROR);
+		}
+		options_set_string(oo, optstr, "%s", valstr);
+		if (!args_has(args, 'q'))
+			ctx->info(ctx, "set option: %s -> %s", optstr, valstr);
+	}
+	return (CMD_RETURN_NORMAL);
+}
+
+
 /* Unset an option. */
 int
 cmd_set_option_unset(struct cmd *self, struct cmd_ctx *ctx,
@@ -234,7 +298,7 @@ cmd_set_option_set(struct cmd *self, struct cmd_ctx *ctx,
 	if (o == NULL)
 		return (-1);
 
-	s = options_table_print_entry(oe, o);
+	s = options_table_print_entry(oe, o, 0);
 	if (!args_has(args, 'q'))
 		ctx->info(ctx, "set option: %s -> %s", oe->name, s);
 	return (0);
