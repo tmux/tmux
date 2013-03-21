@@ -37,7 +37,7 @@ enum cmd_retval	cmd_choose_tree_exec(struct cmd *, struct cmd_ctx *);
 const struct cmd_entry cmd_choose_tree_entry = {
 	"choose-tree", NULL,
 	"S:W:swub:c:t:", 0, 1,
-	"[-swu] [-b session-template] [-c window template] [-S format] " \
+	"[-suw] [-b session-template] [-c window template] [-S format] " \
 	"[-W format] " CMD_TARGET_WINDOW_USAGE,
 	0,
 	NULL,
@@ -174,7 +174,7 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_ctx *ctx)
 		}
 
 		wcd = window_choose_add_session(wl->window->active,
-		    c, s2, ses_template, (char *)ses_action, idx_ses);
+		    c, s2, ses_template, ses_action, idx_ses);
 
 		/* If we're just choosing sessions, skip choosing windows. */
 		if (sflag && !wflag) {
@@ -203,8 +203,8 @@ windows_only:
 					cur_win = idx_ses;
 			}
 
-			xasprintf(&final_win_action, "%s ; %s", win_action,
-			    wcd ? wcd->command : "");
+			xasprintf(&final_win_action, "%s ; %s",
+			    wcd ? wcd->command : "",  win_action);
 
 			if (win_ses != win_max)
 				cur_win_template = final_win_template_middle;
