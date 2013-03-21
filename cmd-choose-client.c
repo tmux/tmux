@@ -30,7 +30,6 @@
 enum cmd_retval	 cmd_choose_client_exec(struct cmd *, struct cmd_ctx *);
 
 void	cmd_choose_client_callback(struct window_choose_data *);
-void	cmd_choose_client_free(struct window_choose_data *);
 
 const struct cmd_entry cmd_choose_client_entry = {
 	"choose-client", NULL,
@@ -50,15 +49,16 @@ enum cmd_retval
 cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
+	struct client			*c;
+	struct client			*c1;
 	struct window_choose_data	*cdata;
 	struct winlink			*wl;
-	struct client			*c;
 	const char			*template;
 	char				*action;
 	u_int			 	 i, idx, cur;
 
-	if (ctx->curclient == NULL) {
-		ctx->error(ctx, "must be run interactively");
+	if ((c = cmd_current_client(ctx)) == NULL) {
+		ctx->error(ctx, "no client available");
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -78,30 +78,29 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	cur = idx = 0;
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
+		c1 = ARRAY_ITEM(&clients, i);
+		if (c1 == NULL || c1->session == NULL)
 			continue;
-		if (c == ctx->curclient)
+		if (c1 == ctx->curclient)
 			cur = idx;
 		idx++;
 
-		cdata = window_choose_data_create(ctx);
+		cdata = window_choose_data_create(TREE_OTHER, c, c->session);
 		cdata->idx = i;
-		cdata->client->references++;
 
 		cdata->ft_template = xstrdup(template);
 		format_add(cdata->ft, "line", "%u", i);
-		format_session(cdata->ft, c->session);
-		format_client(cdata->ft, c);
+		format_session(cdata->ft, c1->session);
+		format_client(cdata->ft, c1);
 
-		cdata->command = cmd_template_replace(action, c->tty.path, 1);
+		cdata->command = cmd_template_replace(action, c1->tty.path, 1);
 
 		window_choose_add(wl->window->active, cdata);
 	}
 	free(action);
 
-	window_choose_ready(wl->window->active,
-	    cur, cmd_choose_client_callback, cmd_choose_client_free);
+	window_choose_ready(wl->window->active, cur,
+	    cmd_choose_client_callback);
 
 	return (CMD_RETURN_NORMAL);
 }
@@ -113,7 +112,7 @@ cmd_choose_client_callback(struct window_choose_data *cdata)
 
 	if (cdata == NULL)
 		return;
-	if (cdata->client->flags & CLIENT_DEAD)
+	if (cdata->start_client->flags & CLIENT_DEAD)
 		return;
 
 	if (cdata->idx > ARRAY_LENGTH(&clients) - 1)
@@ -122,19 +121,5 @@ cmd_choose_client_callback(struct window_choose_data *cdata)
 	if (c == NULL || c->session == NULL)
 		return;
 
-	window_choose_ctx(cdata);
-}
-
-void
-cmd_choose_client_free(struct window_choose_data *cdata)
-{
-	if (cdata == NULL)
-		return;
-
-	cdata->client->references--;
-
-	free(cdata->ft_template);
-	free(cdata->command);
-	format_free(cdata->ft);
-	free(cdata);
+	window_choose_data_run(cdata);
 }

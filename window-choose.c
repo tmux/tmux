@@ -31,6 +31,8 @@ void	window_choose_key(struct window_pane *, struct session *, int);
 void	window_choose_mouse(
 	    struct window_pane *, struct session *, struct mouse_event *);
 
+void	window_choose_default_callback(struct window_choose_data *);
+
 void	window_choose_fire_callback(
 	    struct window_pane *, struct window_choose_data *);
 void	window_choose_redraw_screen(struct window_pane *);
@@ -101,8 +103,7 @@ window_choose_add(struct window_pane *wp, struct window_choose_data *wcd)
 
 void
 window_choose_ready(struct window_pane *wp, u_int cur,
-    void (*callbackfn)(struct window_choose_data *),
-    void (*freefn)(struct window_choose_data *))
+    void (*callbackfn)(struct window_choose_data *))
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -112,7 +113,8 @@ window_choose_ready(struct window_pane *wp, u_int cur,
 		data->top = ARRAY_LENGTH(&data->list) - screen_size_y(s);
 
 	data->callbackfn = callbackfn;
-	data->freefn = freefn;
+	if (data->callbackfn == NULL)
+		data->callbackfn = window_choose_default_callback;
 
 	ARRAY_CONCAT(&data->old_list, &data->list);
 
@@ -154,22 +156,93 @@ window_choose_init(struct window_pane *wp)
 }
 
 struct window_choose_data *
-window_choose_data_create(struct cmd_ctx *ctx)
+window_choose_data_create(int type, struct client *c, struct session *s)
 {
 	struct window_choose_data	*wcd;
 
 	wcd = xmalloc(sizeof *wcd);
+	wcd->type = type;
+
 	wcd->ft = format_create();
 	wcd->ft_template = NULL;
+
 	wcd->command = NULL;
+
 	wcd->wl = NULL;
-	wcd->tree_session = NULL;
-	wcd->client = ctx->curclient;
-	wcd->session = ctx->curclient->session;
+	wcd->pane_id = -1;
 	wcd->idx = -1;
-	wcd->type = 0;
+
+	wcd->tree_session = NULL;
+
+	wcd->start_client = c;
+	wcd->start_client->references++;
+	wcd->start_session = s;
+	wcd->start_session->references++;
 
 	return (wcd);
+}
+
+void
+window_choose_data_free(struct window_choose_data *wcd)
+{
+	wcd->start_client->references--;
+	wcd->start_session->references--;
+
+	if (wcd->tree_session != NULL)
+		wcd->tree_session->references--;
+
+	free(wcd->ft_template);
+	format_free(wcd->ft);
+
+	free(wcd->command);
+	free(wcd);
+}
+
+void
+window_choose_data_run(struct window_choose_data *cdata)
+{
+	struct cmd_ctx		 ctx;
+	struct cmd_list		*cmdlist;
+	char			*cause;
+
+	/*
+	 * The command template will have already been replaced. But if it's
+	 * NULL, bail here.
+	 */
+	if (cdata->command == NULL)
+		return;
+
+	if (cmd_string_parse(cdata->command, &cmdlist, &cause) != 0) {
+		if (cause != NULL) {
+			*cause = toupper((u_char) *cause);
+			status_message_set(cdata->start_client, "%s", cause);
+			free(cause);
+		}
+		return;
+	}
+
+	ctx.msgdata = NULL;
+	ctx.curclient = cdata->start_client;
+
+	ctx.error = key_bindings_error;
+	ctx.print = key_bindings_print;
+	ctx.info = key_bindings_info;
+
+	ctx.cmdclient = NULL;
+
+	cmd_list_exec(cmdlist, &ctx);
+	cmd_list_free(cmdlist);
+}
+
+void
+window_choose_default_callback(struct window_choose_data *wcd)
+{
+	if (wcd == NULL)
+		return;
+	if (wcd->start_client->flags & CLIENT_DEAD)
+		return;
+
+	window_choose_data_run(wcd);
 }
 
 void
@@ -181,8 +254,7 @@ window_choose_free(struct window_pane *wp)
 
 	for (i = 0; i < ARRAY_LENGTH(&data->old_list); i++) {
 		item = &ARRAY_ITEM(&data->old_list, i);
-		if (data->freefn != NULL && item->wcd != NULL)
-			data->freefn(item->wcd);
+		window_choose_data_free(item->wcd);
 		free(item->name);
 	}
 	ARRAY_FREE(&data->list);
@@ -209,7 +281,7 @@ window_choose_resize(struct window_pane *wp, u_int sx, u_int sy)
 
 void
 window_choose_fire_callback(
-	struct window_pane *wp, struct window_choose_data *wcd)
+    struct window_pane *wp, struct window_choose_data *wcd)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	const struct window_mode	*oldmode;
@@ -299,7 +371,7 @@ window_choose_collapse_all(struct window_pane *wp)
 	struct session			*s, *chosen;
 	u_int				 i;
 
-	chosen = ARRAY_ITEM(&data->list, data->selected).wcd->session;
+	chosen = ARRAY_ITEM(&data->list, data->selected).wcd->start_session;
 
 	RB_FOREACH(s, sessions, &sessions)
 		window_choose_collapse(wp, s);
@@ -790,58 +862,23 @@ window_choose_scroll_down(struct window_pane *wp)
 	screen_write_stop(&ctx);
 }
 
-void
-window_choose_ctx(struct window_choose_data *cdata)
-{
-	struct cmd_ctx		 ctx;
-	struct cmd_list		*cmdlist;
-	char			*cause;
-
-	/* The command template will have already been replaced.  But if it's
-	 * NULL, bail here.
-	 */
-	if (cdata->command == NULL)
-		return;
-
-	if (cmd_string_parse(cdata->command, &cmdlist, &cause) != 0) {
-		if (cause != NULL) {
-			*cause = toupper((u_char) *cause);
-			status_message_set(cdata->client, "%s", cause);
-			free(cause);
-		}
-		return;
-	}
-
-	ctx.msgdata = NULL;
-	ctx.curclient = cdata->client;
-
-	ctx.error = key_bindings_error;
-	ctx.print = key_bindings_print;
-	ctx.info = key_bindings_info;
-
-	ctx.cmdclient = NULL;
-
-	cmd_list_exec(cmdlist, &ctx);
-	cmd_list_free(cmdlist);
-}
-
 struct window_choose_data *
-window_choose_add_session(struct window_pane *wp, struct cmd_ctx *ctx,
+window_choose_add_session(struct window_pane *wp, struct client *c,
     struct session *s, const char *template, char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
 
-	wcd = window_choose_data_create(ctx);
+	wcd = window_choose_data_create(TREE_SESSION, c, c->session);
 	wcd->idx = s->idx;
+
 	wcd->tree_session = s;
-	wcd->type = TREE_SESSION;
-	wcd->command = cmd_template_replace(action, s->name, 1);
+	wcd->tree_session->references++;
+
 	wcd->ft_template = xstrdup(template);
 	format_add(wcd->ft, "line", "%u", idx);
 	format_session(wcd->ft, s);
 
-	wcd->client->references++;
-	wcd->session->references++;
+	wcd->command = cmd_template_replace(action, s->name, 1);
 
 	window_choose_add(wp, wcd);
 
@@ -849,63 +886,60 @@ window_choose_add_session(struct window_pane *wp, struct cmd_ctx *ctx,
 }
 
 struct window_choose_data *
-window_choose_add_item(struct window_pane *wp, struct cmd_ctx *ctx,
+window_choose_add_item(struct window_pane *wp, struct client *c,
     struct winlink *wl, const char *template, char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
-	char				*action_data;
+	char				*expanded;
 
-	wcd = window_choose_data_create(ctx);
+	wcd = window_choose_data_create(TREE_OTHER, c, c->session);
 	wcd->idx = wl->idx;
+
 	wcd->ft_template = xstrdup(template);
 	format_add(wcd->ft, "line", "%u", idx);
-	format_session(wcd->ft, wcd->session);
-	format_winlink(wcd->ft, wcd->session, wl);
+	format_session(wcd->ft, wcd->start_session);
+	format_winlink(wcd->ft, wcd->start_session, wl);
 	format_window_pane(wcd->ft, wl->window->active);
 
-	wcd->client->references++;
-	wcd->session->references++;
+	/*
+	 * Interpolate action here, since the data we pass back is the expanded
+	 * template itself.
+	 */
+	xasprintf(&expanded, "%s", format_expand(wcd->ft, wcd->ft_template));
+	wcd->command = cmd_template_replace(action, expanded, 1);
+	free(expanded);
 
 	window_choose_add(wp, wcd);
-
-	/*
-	 * Interpolate action_data here, since the data we pass back is the
-	 * expanded template itself.
-	 */
-	xasprintf(&action_data, "%s", format_expand(wcd->ft, wcd->ft_template));
-	wcd->command = cmd_template_replace(action, action_data, 1);
-	free(action_data);
 
 	return (wcd);
 
 }
 
 struct window_choose_data *
-window_choose_add_window(struct window_pane *wp, struct cmd_ctx *ctx,
+window_choose_add_window(struct window_pane *wp, struct client *c,
     struct session *s, struct winlink *wl, const char *template,
     char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
-	char				*action_data;
+	char				*expanded;
 
-	wcd = window_choose_data_create(ctx);
-
-	xasprintf(&action_data, "%s:%d", s->name, wl->idx);
-	wcd->command = cmd_template_replace(action, action_data, 1);
-	free(action_data);
-
+	wcd = window_choose_data_create(TREE_WINDOW, c, c->session);
 	wcd->idx = wl->idx;
+
 	wcd->wl = wl;
+
 	wcd->tree_session = s;
-	wcd->type = TREE_WINDOW;
+	wcd->tree_session->references++;
+
 	wcd->ft_template = xstrdup(template);
 	format_add(wcd->ft, "line", "%u", idx);
 	format_session(wcd->ft, s);
 	format_winlink(wcd->ft, s, wl);
 	format_window_pane(wcd->ft, wl->window->active);
 
-	wcd->client->references++;
-	wcd->session->references++;
+	xasprintf(&expanded, "%s:%d", s->name, wl->idx);
+	wcd->command = cmd_template_replace(action, expanded, 1);
+	free(expanded);
 
 	window_choose_add(wp, wcd);
 

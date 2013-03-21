@@ -33,9 +33,6 @@
 
 enum cmd_retval cmd_choose_list_exec(struct cmd *, struct cmd_ctx *);
 
-void cmd_choose_list_callback(struct window_choose_data *);
-void cmd_choose_list_free(struct window_choose_data *);
-
 const struct cmd_entry cmd_choose_list_entry = {
 	"choose-list", NULL,
 	"l:t:", 0, 1,
@@ -50,13 +47,14 @@ enum cmd_retval
 cmd_choose_list_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args			*args = self->args;
+	struct client			*c;
 	struct winlink			*wl;
 	const char			*list1;
 	char				*template, *item, *copy, *list;
 	u_int				 idx;
 
-	if (ctx->curclient == NULL) {
-		ctx->error(ctx, "must be run interactively");
+	if ((c = cmd_current_client(ctx)) == NULL) {
+		ctx->error(ctx, "no client available");
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -80,7 +78,7 @@ cmd_choose_list_exec(struct cmd *self, struct cmd_ctx *ctx)
 	{
 		if (*item == '\0') /* no empty entries */
 			continue;
-		window_choose_add_item(wl->window->active, ctx, wl, item,
+		window_choose_add_item(wl->window->active, c, wl, item,
 		    template, idx);
 		idx++;
 	}
@@ -92,32 +90,9 @@ cmd_choose_list_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (CMD_RETURN_ERROR);
 	}
 
-	window_choose_ready(wl->window->active, 0, cmd_choose_list_callback,
-	    cmd_choose_list_free);
+	window_choose_ready(wl->window->active, 0, NULL);
 
 	free(template);
 
 	return (CMD_RETURN_NORMAL);
-}
-
-void
-cmd_choose_list_callback(struct window_choose_data *cdata)
-{
-	if (cdata == NULL || (cdata->client->flags & CLIENT_DEAD))
-		return;
-
-	window_choose_ctx(cdata);
-}
-
-void
-cmd_choose_list_free(struct window_choose_data *cdata)
-{
-	cdata->session->references--;
-	cdata->client->references--;
-
-	free(cdata->ft_template);
-	free(cdata->command);
-	format_free(cdata->ft);
-	free(cdata);
-
 }
