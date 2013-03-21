@@ -1385,10 +1385,14 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 void
 window_copy_copy_buffer(struct window_pane *wp, int idx, void *buf, size_t len)
 {
-	u_int	limit;
+	u_int			limit;
+	struct screen_write_ctx	ctx;
 
-	if (options_get_number(&global_options, "set-clipboard"))
-		screen_write_setselection(&wp->ictx.ctx, buf, len);
+	if (options_get_number(&global_options, "set-clipboard")) {
+		screen_write_start(&ctx, wp, NULL);
+		screen_write_setselection(&ctx, buf, len);
+		screen_write_stop(&ctx);
+	}
 
 	if (idx == -1) {
 		limit = options_get_number(&global_options, "buffer-limit");
