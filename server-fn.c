@@ -239,6 +239,9 @@ server_lock_client(struct client *c)
 	size_t			 cmdlen;
 	struct msg_lock_data	 lockdata;
 
+	if (!(c->flags & CLIENT_CONTROL))
+		return;
+
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
 
