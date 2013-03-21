@@ -1674,7 +1674,7 @@ int		 tty_term_flag(struct tty_term *, enum tty_code_code);
 const char	*tty_acs_get(struct tty *, u_char);
 
 /* tty-keys.c */
-void	tty_keys_init(struct tty *);
+void	tty_keys_build(struct tty *);
 void	tty_keys_free(struct tty *);
 int	tty_keys_next(struct tty *);
 
