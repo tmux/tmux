@@ -353,17 +353,19 @@ tty_keys_build(struct tty *tty)
 		tdkr = &tty_default_raw_keys[i];
 
 		s = tdkr->string;
-		if (s[0] == '\033' && s[1] != '\0')
-			tty_keys_add(tty, s + 1, tdkr->key);
+		if (*s != '\0')
+			tty_keys_add(tty, s, tdkr->key);
 	}
 	for (i = 0; i < nitems(tty_default_code_keys); i++) {
 		tdkc = &tty_default_code_keys[i];
 
 		s = tty_term_string(tty->term, tdkc->code);
-		if (s[0] == '\033' || s[1] == '\0')
-			tty_keys_add(tty, s + 1, tdkc->key);
+		if (*s != '\0')
+			tty_keys_add(tty, s, tdkc->key);
 
 	}
+
+	tty_keys_add(tty, "abc", 'x');
 }
 
 /* Free the entire key tree. */
@@ -439,34 +441,18 @@ tty_keys_next(struct tty *tty)
 	cc_t		 bspace;
 	int		 key, delay;
 
+	/* Get key buffer. */
 	buf = EVBUFFER_DATA(tty->event->input);
 	len = EVBUFFER_LENGTH(tty->event->input);
 	if (len == 0)
 		return (0);
 	log_debug("keys are %zu (%.*s)", len, (int) len, buf);
 
-	/* If a normal key, return it. */
-	if (*buf != '\033') {
-		key = (u_char) *buf;
-		evbuffer_drain(tty->event->input, 1);
-
-		/*
-		 * Check for backspace key using termios VERASE - the terminfo
-		 * kbs entry is extremely unreliable, so cannot be safely
-		 * used. termios should have a better idea.
-		 */
-		bspace = tty->tio.c_cc[VERASE];
-		if (bspace != _POSIX_VDISABLE && key == bspace)
-			key = KEYC_BSPACE;
-		goto handle_key;
-	}
-
 	/* Is this device attributes response? */
 	switch (tty_keys_device(tty, buf, len, &size)) {
 	case 0:		/* yes */
-		evbuffer_drain(tty->event->input, size);
 		key = KEYC_NONE;
-		goto handle_key;
+		goto complete_key;
 	case -1:	/* no, or not valid */
 		break;
 	case 1:		/* partial */
@@ -476,9 +462,8 @@ tty_keys_next(struct tty *tty)
 	/* Is this a mouse key press? */
 	switch (tty_keys_mouse(tty, buf, len, &size)) {
 	case 0:		/* yes */
-		evbuffer_drain(tty->event->input, size);
 		key = KEYC_MOUSE;
-		goto handle_key;
+		goto complete_key;
 	case -1:	/* no, or not valid */
 		break;
 	case 1:		/* partial */
@@ -488,8 +473,7 @@ tty_keys_next(struct tty *tty)
 	/* Try to parse a key with an xterm-style modifier. */
 	switch (xterm_keys_find(buf, len, &size, &key)) {
 	case 0:		/* found */
-		evbuffer_drain(tty->event->input, size);
-		goto handle_key;
+		goto complete_key;
 	case -1:	/* not found */
 		break;
 	case 1:
@@ -497,93 +481,90 @@ tty_keys_next(struct tty *tty)
 	}
 
 	/* Look for matching key string and return if found. */
-	tk = tty_keys_find(tty, buf + 1, len - 1, &size);
+	tk = tty_keys_find(tty, buf, len, &size);
 	if (tk != NULL) {
+		if (tk->next != NULL)
+			goto partial_key;
 		key = tk->key;
-		goto found_key;
+		goto complete_key;
 	}
 
-	/* Skip the escape. */
-	buf++;
-	len--;
+	/* Is this a meta key? */
+	if (len >= 2 && buf[0] == '\033') {
+		if (buf[1] != '\033') {
+			key = buf[1] | KEYC_ESCAPE;
+			size = 2;
+			goto complete_key;
+		}
 
-	/* Is there a normal key following? */
-	if (len != 0 && *buf != '\033') {
-		key = *buf | KEYC_ESCAPE;
-		evbuffer_drain(tty->event->input, 2);
-		goto handle_key;
-	}
-
-	/* Or a key string? */
-	if (len > 1) {
 		tk = tty_keys_find(tty, buf + 1, len - 1, &size);
 		if (tk != NULL) {
-			key = tk->key | KEYC_ESCAPE;
 			size++;	/* include escape */
-			goto found_key;
+			if (tk->next != NULL)
+				goto partial_key;
+			key = tk->key;
+			if (key != KEYC_NONE)
+				key |= KEYC_ESCAPE;
+			goto complete_key;
 		}
 	}
 
-	/* Escape and then nothing useful - fall through. */
+first_key:
+	/* No key found, take first. */
+	key = (u_char) *buf;
+	size = 1;
+
+	/*
+	 * Check for backspace key using termios VERASE - the terminfo
+	 * kbs entry is extremely unreliable, so cannot be safely
+	 * used. termios should have a better idea.
+	 */
+	bspace = tty->tio.c_cc[VERASE];
+	if (bspace != _POSIX_VDISABLE && key == bspace)
+		key = KEYC_BSPACE;
+
+	goto complete_key;
 
 partial_key:
-	/*
-	 * Escape but no key string. If have already seen an escape and the
-	 * timer has expired, give up waiting and send the escape.
-	 */
-	if ((tty->flags & TTY_ESCAPE) &&
-	    evtimer_initialized(&tty->key_timer) &&
-	    !evtimer_pending(&tty->key_timer, NULL)) {
-		evbuffer_drain(tty->event->input, 1);
-		key = '\033';
-		goto handle_key;
+	log_debug("partial key %.*s", (int) len, buf);
+
+	/* If timer is going, check for expiration. */
+	if (tty->flags & TTY_TIMER) {
+		if (evtimer_initialized(&tty->key_timer) &&
+		    !evtimer_pending(&tty->key_timer, NULL))
+			goto first_key;
+		return (0);
 	}
 
-	/* Fall through to start the timer. */
-
-start_timer:
-	/* If already waiting for timer, do nothing. */
-	if (evtimer_initialized(&tty->key_timer) &&
-	    evtimer_pending(&tty->key_timer, NULL))
-		return (0);
-
-	/* Start the timer and wait for expiry or more data. */
+	/* Get the time period. */
 	delay = options_get_number(&global_options, "escape-time");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
+	/* Start the timer. */
 	if (event_initialized(&tty->key_timer))
 		evtimer_del(&tty->key_timer);
 	evtimer_set(&tty->key_timer, tty_keys_callback, tty);
 	evtimer_add(&tty->key_timer, &tv);
 
-	tty->flags |= TTY_ESCAPE;
+	tty->flags |= TTY_TIMER;
 	return (0);
 
-found_key:
-	if (tk->next != NULL) {
-		/* Partial key. Start the timer if not already expired. */
-		if (!(tty->flags & TTY_ESCAPE))
-			goto start_timer;
+complete_key:
+	log_debug("complete key %.*s %#x", (int) size, buf, key);
 
-		/* Otherwise, if no key, send the escape alone. */
-		if (tk->key == KEYC_NONE)
-			goto partial_key;
+	/* Remove data from buffer. */
+	evbuffer_drain(tty->event->input, size);
 
-		/* Or fall through to send the partial key found. */
-	}
-	evbuffer_drain(tty->event->input, size + 1);
-
-	goto handle_key;
-
-handle_key:
+	/* Remove key timer. */
 	if (event_initialized(&tty->key_timer))
 		evtimer_del(&tty->key_timer);
+	tty->flags &= ~TTY_TIMER;
 
+	/* Fire the key. */
 	if (key != KEYC_NONE)
 		server_client_handle_key(tty->client, key);
 
-	tty->flags &= ~TTY_ESCAPE;
 	return (1);
 }
 
@@ -594,11 +575,10 @@ tty_keys_callback(unused int fd, unused short events, void *data)
 {
 	struct tty	*tty = data;
 
-	if (!(tty->flags & TTY_ESCAPE))
-		return;
-
-	while (tty_keys_next(tty))
-		;
+	if (tty->flags & TTY_TIMER) {
+		while (tty_keys_next(tty))
+			;
+	}
 }
 
 /*
