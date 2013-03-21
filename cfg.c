@@ -131,8 +131,10 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		buf = copy;
 		while (isspace((u_char)*buf))
 			buf++;
-		if (*buf == '\0')
+		if (*buf == '\0') {
+			free(copy);
 			continue;
+		}
 
 		if (cmd_string_parse(buf, &cmdlist, &cause) != 0) {
 			free(copy);
