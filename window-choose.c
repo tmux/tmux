@@ -75,9 +75,9 @@ struct window_choose_mode_data {
 	char			*input_str;
 
 	void 			(*callbackfn)(struct window_choose_data *);
-	void			(*freefn)(struct window_choose_data *);
 };
 
+void	window_choose_free1(struct window_choose_mode_data *);
 int     window_choose_key_index(struct window_choose_mode_data *, u_int);
 int     window_choose_index_key(struct window_choose_mode_data *, int);
 void	window_choose_prompt_input(enum window_choose_input_type,
@@ -131,7 +131,6 @@ window_choose_init(struct window_pane *wp)
 	wp->modedata = data = xmalloc(sizeof *data);
 
 	data->callbackfn = NULL;
-	data->freefn = NULL;
 	data->input_type = WINDOW_CHOOSE_NORMAL;
 	data->input_str = xstrdup("");
 	data->input_prompt = NULL;
@@ -248,9 +247,18 @@ window_choose_default_callback(struct window_choose_data *wcd)
 void
 window_choose_free(struct window_pane *wp)
 {
-	struct window_choose_mode_data	*data = wp->modedata;
+	if (wp->modedata != NULL)
+		window_choose_free1(wp->modedata);
+}
+
+void
+window_choose_free1(struct window_choose_mode_data *data)
+{
 	struct window_choose_mode_item	*item;
 	u_int				 i;
+
+	if (data == NULL)
+		return;
 
 	for (i = 0; i < ARRAY_LENGTH(&data->old_list); i++) {
 		item = &ARRAY_ITEM(&data->old_list, i);
@@ -284,14 +292,13 @@ window_choose_fire_callback(
     struct window_pane *wp, struct window_choose_data *wcd)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
-	const struct window_mode	*oldmode;
 
-	oldmode = wp->mode;
-	wp->mode = NULL;
+	wp->modedata = NULL;
+	window_pane_reset_mode(wp);
 
 	data->callbackfn(wcd);
 
-	wp->mode = oldmode;
+	window_choose_free1(data);
 }
 
 void
@@ -502,7 +509,6 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 			}
 			item = &ARRAY_ITEM(&data->list, n);
 			window_choose_fire_callback(wp, item->wcd);
-			window_pane_reset_mode(wp);
 			break;
 		case MODEKEYCHOICE_BACKSPACE:
 			input_len = strlen(data->input_str);
@@ -523,12 +529,10 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 	switch (mode_key_lookup(&data->mdata, key)) {
 	case MODEKEYCHOICE_CANCEL:
 		window_choose_fire_callback(wp, NULL);
-		window_pane_reset_mode(wp);
 		break;
 	case MODEKEYCHOICE_CHOOSE:
 		item = &ARRAY_ITEM(&data->list, data->selected);
 		window_choose_fire_callback(wp, item->wcd);
-		window_pane_reset_mode(wp);
 		break;
 	case MODEKEYCHOICE_TREE_TOGGLE:
 		item = &ARRAY_ITEM(&data->list, data->selected);
@@ -678,7 +682,6 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 
 		item = &ARRAY_ITEM(&data->list, data->selected);
 		window_choose_fire_callback(wp, item->wcd);
-		window_pane_reset_mode(wp);
 		break;
 	}
 }
@@ -707,7 +710,6 @@ window_choose_mouse(
 
 	item = &ARRAY_ITEM(&data->list, data->selected);
 	window_choose_fire_callback(wp, item->wcd);
-	window_pane_reset_mode(wp);
 }
 
 void
@@ -864,7 +866,7 @@ window_choose_scroll_down(struct window_pane *wp)
 
 struct window_choose_data *
 window_choose_add_session(struct window_pane *wp, struct client *c,
-    struct session *s, const char *template, char *action, u_int idx)
+    struct session *s, const char *template, const char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
 
@@ -887,7 +889,7 @@ window_choose_add_session(struct window_pane *wp, struct client *c,
 
 struct window_choose_data *
 window_choose_add_item(struct window_pane *wp, struct client *c,
-    struct winlink *wl, const char *template, char *action, u_int idx)
+    struct winlink *wl, const char *template, const char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
 	char				*expanded;
@@ -918,7 +920,7 @@ window_choose_add_item(struct window_pane *wp, struct client *c,
 struct window_choose_data *
 window_choose_add_window(struct window_pane *wp, struct client *c,
     struct session *s, struct winlink *wl, const char *template,
-    char *action, u_int idx)
+    const char *action, u_int idx)
 {
 	struct window_choose_data	*wcd;
 	char				*expanded;

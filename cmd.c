@@ -1222,14 +1222,14 @@ cmd_find_pane_offset(const char *paneptr, struct winlink *wl)
 
 /* Replace the first %% or %idx in template by s. */
 char *
-cmd_template_replace(char *template, const char *s, int idx)
+cmd_template_replace(const char *template, const char *s, int idx)
 {
-	char	 ch;
-	char	*buf, *ptr;
-	int	 replaced;
-	size_t	 len;
+	char		 ch, *buf;
+	const char	*ptr;
+	int	 	 replaced;
+	size_t	 	 len;
 
-	if (strstr(template, "%") == NULL)
+	if (strchr(template, '%') == NULL)
 		return (xstrdup(template));
 
 	buf = xmalloc(1);
