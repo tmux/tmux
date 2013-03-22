@@ -105,7 +105,7 @@ extern char   **environ;
 
 /* Default templates for choose-tree. */
 #define CHOOSE_TREE_SESSION_TEMPLATE				\
-	"#{session_name}: #{session_windows} windows "		\
+	"#{session_name}: #{session_windows} windows"		\
 	"#{?session_grouped, (group ,}"				\
 	"#{session_group}#{?session_grouped,),}"		\
 	"#{?session_attached, (attached),}"
