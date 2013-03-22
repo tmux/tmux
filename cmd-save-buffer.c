@@ -45,7 +45,7 @@ enum cmd_retval
 cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
-	struct client		*c = ctx->cmdclient;
+	struct client		*c;
 	struct session          *s;
 	struct paste_buffer	*pb;
 	const char		*path, *newpath, *wd;
@@ -76,13 +76,17 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	path = args->argv[0];
 	if (strcmp(path, "-") == 0) {
+		c = ctx->curclient;
+		if (c == NULL || !(c->flags & CLIENT_CONTROL))
+			c = ctx->cmdclient;
 		if (c == NULL) {
-			ctx->error(ctx, "%s: can't write to stdout", path);
+			ctx->error(ctx, "can't write to stdout");
 			return (CMD_RETURN_ERROR);
 		}
 		evbuffer_add(c->stdout_data, pb->data, pb->size);
 		server_push_stdout(c);
 	} else {
+		c = ctx->cmdclient;
 		if (c != NULL)
 			wd = c->cwd;
 		else if ((s = cmd_current_session(ctx, 0)) != NULL) {
