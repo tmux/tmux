@@ -389,7 +389,8 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 	tty_term_override(term, overrides);
 
 	/* Delete curses data. */
-#if !defined(__FreeBSD_version) || __FreeBSD_version >= 700000
+#if !defined(NCURSES_VERSION_MAJOR) || NCURSES_VERSION_MAJOR > 5 || \
+    (NCURSES_VERSION_MAJOR == 5 && NCURSES_VERSION_MINOR > 6)
 	del_curterm(cur_term);
 #endif
 
