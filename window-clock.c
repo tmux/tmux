@@ -83,7 +83,6 @@ window_clock_resize(struct window_pane *wp, u_int sx, u_int sy)
 	window_clock_draw_screen(wp);
 }
 
-/* ARGSUSED */
 void
 window_clock_key(
     struct window_pane *wp, unused struct session *sess, unused int key)

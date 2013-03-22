@@ -39,7 +39,6 @@ const struct cmd_entry cmd_list_buffers_entry = {
 	cmd_list_buffers_exec
 };
 
-/* ARGSUSED */
 enum cmd_retval
 cmd_list_buffers_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 {

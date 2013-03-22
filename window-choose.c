@@ -480,7 +480,6 @@ window_choose_expand(struct window_pane *wp, struct session *s, u_int pos)
 	}
 }
 
-/* ARGSUSED */
 void
 window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 {
@@ -686,7 +685,6 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 	}
 }
 
-/* ARGSUSED */
 void
 window_choose_mouse(
     struct window_pane *wp, unused struct session *sess, struct mouse_event *m)

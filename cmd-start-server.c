@@ -36,7 +36,6 @@ const struct cmd_entry cmd_start_server_entry = {
 	cmd_start_server_exec
 };
 
-/* ARGSUSED */
 enum cmd_retval
 cmd_start_server_exec(unused struct cmd *self, unused struct cmd_ctx *ctx)
 {

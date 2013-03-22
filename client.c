@@ -360,7 +360,6 @@ client_update_event(void)
 }
 
 /* Callback to handle signals in the client. */
-/* ARGSUSED */
 void
 client_signal(int sig, unused short events, unused void *data)
 {
@@ -407,7 +406,6 @@ client_signal(int sig, unused short events, unused void *data)
 }
 
 /* Callback for client imsg read events. */
-/* ARGSUSED */
 void
 client_callback(unused int fd, short events, void *data)
 {
@@ -442,7 +440,6 @@ lost_server:
 }
 
 /* Callback for client stdin read events. */
-/* ARGSUSED */
 void
 client_stdin_callback(unused int fd, unused short events, unused void *data1)
 {
@@ -571,7 +568,6 @@ client_dispatch_wait(void *data)
 }
 
 /* Dispatch imsgs in attached state (after MSG_READY). */
-/* ARGSUSED */
 int
 client_dispatch_attached(void)
 {

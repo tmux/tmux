@@ -40,13 +40,11 @@ int			 cfg_finished;
 int	 		 cfg_references;
 struct causelist	 cfg_causes;
 
-/* ARGSUSED */
 void printflike2
 cfg_print(unused struct cmd_ctx *ctx, unused const char *fmt, ...)
 {
 }
 
-/* ARGSUSED */
 void printflike2
 cfg_error(unused struct cmd_ctx *ctx, const char *fmt, ...)
 {
