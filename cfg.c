@@ -97,7 +97,7 @@ load_cfg(const char *path, struct cmd_ctx *ctxin, struct causelist *causes)
 		/* Trim \n. */
 		if (buf[len - 1] == '\n')
 			len--;
-		log_debug ("%s: %s", path, buf);
+		log_debug("%s: %.*s", path, (int)len, buf);
 
 		/* Current line is the continuation of the previous one. */
 		if (line != NULL) {
