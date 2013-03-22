@@ -97,7 +97,7 @@ cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
 	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
 		if (guards)
 			ctx->print(ctx, "%%begin");
-		n = cmd_exec(cmd, ctx);
+		n = cmd->entry->exec(cmd, ctx);
 		if (guards)
 			ctx->print(ctx, "%%end");
 
@@ -146,7 +146,8 @@ cmd_list_free(struct cmd_list *cmdlist)
 	while (!TAILQ_EMPTY(&cmdlist->list)) {
 		cmd = TAILQ_FIRST(&cmdlist->list);
 		TAILQ_REMOVE(&cmdlist->list, cmd, qentry);
-		cmd_free(cmd);
+		args_free(cmd->args);
+		free(cmd);
 	}
 	free(cmdlist);
 }

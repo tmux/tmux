@@ -133,6 +133,39 @@ struct winlink	*cmd_find_window_offset(const char *, struct session *, int *);
 int		 cmd_find_index_offset(const char *, struct session *, int *);
 struct window_pane *cmd_find_pane_offset(const char *, struct winlink *);
 
+struct cmd_ctx *
+cmd_get_ctx(void)
+{
+	struct cmd_ctx	*ctx;
+
+	ctx = xcalloc(1, sizeof *ctx);
+	ctx->references = 0;
+
+	cmd_ref_ctx(ctx);
+	return (ctx);
+}
+
+void
+cmd_free_ctx(struct cmd_ctx *ctx)
+{
+	if (ctx->cmdclient != NULL)
+		ctx->cmdclient->references--;
+	if (ctx->curclient != NULL)
+		ctx->curclient->references--;
+	if (--ctx->references == 0)
+		free(ctx);
+}
+
+void
+cmd_ref_ctx(struct cmd_ctx *ctx)
+{
+	ctx->references++;
+	if (ctx->cmdclient != NULL)
+		ctx->cmdclient->references++;
+	if (ctx->curclient != NULL)
+		ctx->curclient->references++;
+}
+
 int
 cmd_pack_argv(int argc, char **argv, char *buf, size_t len)
 {
@@ -280,19 +313,6 @@ usage:
 		args_free(args);
 	xasprintf(cause, "usage: %s %s", entry->name, entry->usage);
 	return (NULL);
-}
-
-enum cmd_retval
-cmd_exec(struct cmd *cmd, struct cmd_ctx *ctx)
-{
-	return (cmd->entry->exec(cmd, ctx));
-}
-
-void
-cmd_free(struct cmd *cmd)
-{
-	args_free(cmd->args);
-	free(cmd);
 }
 
 size_t

@@ -47,7 +47,7 @@ const struct cmd_entry cmd_run_shell_entry = {
 
 struct cmd_run_shell_data {
 	char		*cmd;
-	struct cmd_ctx	 ctx;
+	struct cmd_ctx	*ctx;
 	u_int		 wp_id;
 };
 
@@ -55,7 +55,7 @@ void
 cmd_run_shell_print(struct job *job, const char *msg)
 {
 	struct cmd_run_shell_data	*cdata = job->data;
-	struct cmd_ctx			*ctx = &cdata->ctx;
+	struct cmd_ctx			*ctx = cdata->ctx;
 	struct window_pane		*wp;
 
 	wp = window_pane_find_by_id(cdata->wp_id);
@@ -84,12 +84,9 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
 	cdata = xmalloc(sizeof *cdata);
 	cdata->cmd = xstrdup(args->argv[0]);
 	cdata->wp_id = wp->id;
-	memcpy(&cdata->ctx, ctx, sizeof cdata->ctx);
 
-	if (ctx->cmdclient != NULL)
-		ctx->cmdclient->references++;
-	if (ctx->curclient != NULL)
-		ctx->curclient->references++;
+	cdata->ctx = ctx;
+	cmd_ref_ctx(ctx);
 
 	job_run(shellcmd, cmd_run_shell_callback, cmd_run_shell_free, cdata);
 
@@ -100,7 +97,7 @@ void
 cmd_run_shell_callback(struct job *job)
 {
 	struct cmd_run_shell_data	*cdata = job->data;
-	struct cmd_ctx			*ctx = &cdata->ctx;
+	struct cmd_ctx			*ctx = cdata->ctx;
 	char				*cmd, *msg, *line;
 	size_t				 size;
 	int				 retcode;
@@ -154,14 +151,11 @@ void
 cmd_run_shell_free(void *data)
 {
 	struct cmd_run_shell_data	*cdata = data;
-	struct cmd_ctx			*ctx = &cdata->ctx;
+	struct cmd_ctx			*ctx = cdata->ctx;
 
-	if (ctx->cmdclient != NULL) {
-		ctx->cmdclient->references--;
+	if (ctx->cmdclient != NULL)
 		ctx->cmdclient->flags |= CLIENT_EXIT;
-	}
-	if (ctx->curclient != NULL)
-		ctx->curclient->references--;
+	cmd_free_ctx(ctx);
 
 	free(cdata->cmd);
 	free(cdata);
