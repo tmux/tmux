@@ -41,7 +41,6 @@ screen_write_start(
 }
 
 /* Finish writing. */
-/* ARGSUSED */
 void
 screen_write_stop(unused struct screen_write_ctx *ctx)
 {
@@ -56,7 +55,9 @@ screen_write_reset(struct screen_write_ctx *ctx)
 
 	screen_reset_tabs(s);
 	screen_write_scrollregion(ctx, 0, screen_size_y(s) - 1);
-	s->mode &= ~(MODE_INSERT|MODE_KCURSOR|MODE_KKEYPAD|ALL_MOUSE_MODES);
+
+	s->mode &= ~(MODE_INSERT|MODE_KCURSOR|MODE_KKEYPAD);
+	s->mode &= ~(ALL_MOUSE_MODES|MODE_MOUSE_UTF8|MODE_MOUSE_SGR);
 
 	screen_write_clearscreen(ctx);
 	screen_write_cursormove(ctx, 0, 0);
