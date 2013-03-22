@@ -676,7 +676,7 @@ status_job_callback(struct job *job)
 			memcpy(buf, EVBUFFER_DATA(job->event->input), len);
 		buf[len] = '\0';
 	} else
-		buf = xstrdup(line);
+		buf = line;
 
 	so->out = buf;
 	server_status_client(c);
@@ -1042,7 +1042,7 @@ status_prompt_key(struct client *c, int key)
 	size_t			 size, n, off, idx;
 
 	size = strlen(c->prompt_buffer);
-	switch (mode_key_lookup(&c->prompt_mdata, key)) {
+	switch (mode_key_lookup(&c->prompt_mdata, key, NULL)) {
 	case MODEKEYEDIT_CURSORLEFT:
 		if (c->prompt_index > 0) {
 			c->prompt_index--;
