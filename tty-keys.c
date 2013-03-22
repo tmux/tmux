@@ -498,6 +498,7 @@ tty_keys_next(struct tty *tty)
 		goto complete_key;
 	}
 
+first_key:
 	/* Is this a meta key? */
 	if (len >= 2 && buf[0] == '\033') {
 		if (buf[1] != '\033') {
@@ -518,7 +519,6 @@ tty_keys_next(struct tty *tty)
 		}
 	}
 
-first_key:
 	/* No key found, take first. */
 	key = (u_char) *buf;
 	size = 1;
