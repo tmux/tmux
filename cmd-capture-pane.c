@@ -31,8 +31,8 @@ enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
-	"b:E:pS:t:", 0, 0,
-	"[-p] [-b buffer-index] [-E end-line] [-S start-line]"
+	"b:CeE:JpS:t:", 0, 0,
+	"[-CeJp] [-b buffer-index] [-E end-line] [-S start-line]"
 	CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
@@ -44,14 +44,16 @@ enum cmd_retval
 cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 {
 	struct args		*args = self->args;
-	struct client		*c = ctx->cmdclient;
+	struct client		*c;
 	struct window_pane	*wp;
-	char 			*buf, *line, *cause;
+	char			*buf, *line, *cause;
 	struct screen		*s;
 	struct grid		*gd;
-	int			 buffer, n;
+	int			 buffer, n, with_codes, escape_c0, join_lines;
 	u_int			 i, limit, top, bottom, tmp;
-	size_t         		 len, linelen;
+	size_t			 len, linelen;
+	struct grid_cell	*gc;
+	const struct grid_line	*gl;
 
 	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
@@ -89,19 +91,31 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		top = tmp;
 	}
 
+	with_codes = args_has(args, 'e');
+	escape_c0 = args_has(args, 'C');
+	join_lines = args_has(args, 'J');
+
+	gc = NULL;
 	for (i = top; i <= bottom; i++) {
-	       line = grid_string_cells(s->grid, 0, i, screen_size_x(s));
-	       linelen = strlen(line);
+		line = grid_string_cells(s->grid, 0, i, screen_size_x(s),
+		    &gc, with_codes, escape_c0);
+		linelen = strlen(line);
 
-	       buf = xrealloc(buf, 1, len + linelen + 1);
-	       memcpy(buf + len, line, linelen);
-	       len += linelen;
-	       buf[len++] = '\n';
+		buf = xrealloc(buf, 1, len + linelen + 1);
+		memcpy(buf + len, line, linelen);
+		len += linelen;
 
-	       free(line);
+		gl = grid_peek_line(s->grid, i);
+		if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
+			buf[len++] = '\n';
+
+		free(line);
 	}
 
 	if (args_has(args, 'p')) {
+		c = ctx->curclient;
+		if (c == NULL || !(c->flags & CLIENT_CONTROL))
+			c = ctx->cmdclient;
 		if (c == NULL) {
 			ctx->error(ctx, "can't write to stdout");
 			return (CMD_RETURN_ERROR);
