@@ -155,6 +155,7 @@ extern char   **environ;
 
 /* Default templates for break-pane, new-window and split-window. */
 #define BREAK_PANE_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
+#define NEW_SESSION_TEMPLATE "#{session_name}:"
 #define NEW_WINDOW_TEMPLATE BREAK_PANE_TEMPLATE
 #define SPLIT_WINDOW_TEMPLATE BREAK_PANE_TEMPLATE
 
