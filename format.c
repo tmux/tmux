@@ -384,29 +384,63 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 		size += gl->cellsize * sizeof *gl->celldata;
 	}
 	size += gd->hsize * sizeof *gd->linedata;
+	format_add(ft, "history_size", "%u", gd->hsize);
+	format_add(ft, "history_limit", "%u", gd->hlimit);
+	format_add(ft, "history_bytes", "%llu", size);
 
 	if (window_pane_index(wp, &idx) != 0)
 		fatalx("index not found");
+	format_add(ft, "pane_index", "%u", idx);
 
 	format_add(ft, "pane_width", "%u", wp->sx);
 	format_add(ft, "pane_height", "%u", wp->sy);
 	format_add(ft, "pane_title", "%s", wp->base.title);
-	format_add(ft, "pane_index", "%u", idx);
-	format_add(ft, "history_size", "%u", gd->hsize);
-	format_add(ft, "history_limit", "%u", gd->hlimit);
-	format_add(ft, "history_bytes", "%llu", size);
 	format_add(ft, "pane_id", "%%%u", wp->id);
 	format_add(ft, "pane_active", "%d", wp == wp->window->active);
 	format_add(ft, "pane_dead", "%d", wp->fd == -1);
+
+	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
+
+	if (wp->tty != NULL)
+		format_add(ft, "pane_tty", "%s", wp->tty);
+	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
 	if (wp->cmd != NULL)
 		format_add(ft, "pane_start_command", "%s", wp->cmd);
 	if (wp->cwd != NULL)
 		format_add(ft, "pane_start_path", "%s", wp->cwd);
 	if ((cwd = get_proc_cwd(wp->fd)) != NULL)
 		format_add(ft, "pane_current_path", "%s", cwd);
-	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
-	if (wp->tty != NULL)
-		format_add(ft, "pane_tty", "%s", wp->tty);
+
+	format_add(ft, "cursor_x", "%d", wp->base.cx);
+	format_add(ft, "cursor_y", "%d", wp->base.cy);
+	format_add(ft, "scroll_region_upper", "%d", wp->base.rupper);
+	format_add(ft, "scroll_region_lower", "%d", wp->base.rlower);
+	format_add(ft, "saved_cursor_x", "%d", wp->ictx.old_cx);
+	format_add(ft, "saved_cursor_y", "%d", wp->ictx.old_cy);
+
+	format_add(ft, "alternate_on", "%d", wp->saved_grid ? 1 : 0);
+	format_add(ft, "alternate_saved_x", "%d", wp->saved_cx);
+	format_add(ft, "alternate_saved_y", "%d", wp->saved_cy);
+
+	format_add(ft, "cursor_flag", "%d",
+	    !!(wp->base.mode & MODE_CURSOR));
+	format_add(ft, "insert_flag", "%d",
+	    !!(wp->base.mode & MODE_INSERT));
+	format_add(ft, "keypad_cursor_flag", "%d",
+	    !!(wp->base.mode & MODE_KCURSOR));
+	format_add(ft, "keypad_flag", "%d",
+	    !!(wp->base.mode & MODE_KKEYPAD));
+	format_add(ft, "wrap_flag", "%d",
+	    !!(wp->base.mode & MODE_WRAP));
+
+	format_add(ft, "mouse_standard_flag", "%d",
+	    !!(wp->base.mode & MODE_MOUSE_STANDARD));
+	format_add(ft, "mouse_button_flag", "%d",
+	    !!(wp->base.mode & MODE_MOUSE_BUTTON));
+	format_add(ft, "mouse_any_flag", "%d",
+	    !!(wp->base.mode & MODE_MOUSE_ANY));
+	format_add(ft, "mouse_utf8_flag", "%d",
+	    !!(wp->base.mode & MODE_MOUSE_UTF8));
 }
 
 void
