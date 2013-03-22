@@ -31,8 +31,8 @@ enum cmd_retval	 cmd_resize_pane_exec(struct cmd *, struct cmd_ctx *);
 
 const struct cmd_entry cmd_resize_pane_entry = {
 	"resize-pane", "resizep",
-	"DLRt:U", 0, 1,
-	"[-DLRU] " CMD_TARGET_PANE_USAGE " [adjustment]",
+	"DLRt:Ux:y:", 0, 1,
+	"[-DLRU] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " [adjustment]",
 	0,
 	cmd_resize_pane_key_binding,
 	NULL,
@@ -87,8 +87,10 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct args		*args = self->args;
 	struct winlink		*wl;
 	const char	       	*errstr;
+	char			*cause;
 	struct window_pane	*wp;
 	u_int			 adjust;
+	int			 x, y;
 
 	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
@@ -101,6 +103,27 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 			ctx->error(ctx, "adjustment %s", errstr);
 			return (CMD_RETURN_ERROR);
 		}
+	}
+
+	if (args_has(self->args, 'x')) {
+		x = args_strtonum(self->args, 'x', PANE_MINIMUM, INT_MAX,
+		    &cause);
+		if (cause != NULL) {
+			ctx->error(ctx, "width %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+		layout_resize_pane_to(wp, LAYOUT_LEFTRIGHT, x);
+	}
+	if (args_has(self->args, 'y')) {
+		y = args_strtonum(self->args, 'y', PANE_MINIMUM, INT_MAX,
+		    &cause);
+		if (cause != NULL) {
+			ctx->error(ctx, "height %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+		layout_resize_pane_to(wp, LAYOUT_TOPBOTTOM, y);
 	}
 
 	if (args_has(self->args, 'L'))

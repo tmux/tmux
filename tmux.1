@@ -1553,17 +1553,25 @@ if specified, to
 .It Xo Ic resize-pane
 .Op Fl DLRU
 .Op Fl t Ar target-pane
+.Op Fl x Ar width
+.Op Fl y Ar height
 .Op Ar adjustment
 .Xc
 .D1 (alias: Ic resizep )
-Resize a pane, upward with
-.Fl U
-(the default), downward with
+Resize a pane, up, down, left or right by
+.Ar adjustment
+with
+.Fl U ,
 .Fl D ,
-to the left with
 .Fl L
-and to the right with
-.Fl R .
+or
+.Fl R ,
+or
+to an absolute size
+with
+.Fl x
+or
+.Fl y .
 The
 .Ar adjustment
 is given in lines or cells (the default is 1).
