@@ -566,6 +566,7 @@ enum mode_key_cmd {
 	MODEKEYCOPY_BOTTOMLINE,
 	MODEKEYCOPY_CANCEL,
 	MODEKEYCOPY_CLEARSELECTION,
+	MODEKEYCOPY_COPYPIPE,
 	MODEKEYCOPY_COPYLINE,
 	MODEKEYCOPY_COPYENDOFLINE,
 	MODEKEYCOPY_COPYSELECTION,
@@ -632,12 +633,13 @@ struct mode_key_data {
 
 /* Binding between a key and a command. */
 struct mode_key_binding {
-	int			key;
+	int				 key;
 
-	int			mode;
-	enum mode_key_cmd	cmd;
+	int				 mode;
+	enum mode_key_cmd		 cmd;
+	const char			*arg;
 
-	RB_ENTRY(mode_key_binding) entry;
+	RB_ENTRY(mode_key_binding)	 entry;
 };
 RB_HEAD(mode_key_tree, mode_key_binding);
 
@@ -1548,7 +1550,7 @@ enum mode_key_cmd mode_key_fromstring(const struct mode_key_cmdstr *,
 const struct mode_key_table *mode_key_findtable(const char *);
 void	mode_key_init_trees(void);
 void	mode_key_init(struct mode_key_data *, struct mode_key_tree *);
-enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int);
+enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int, const char **);
 
 /* notify.c */
 void	notify_enable(void);
@@ -1716,7 +1718,7 @@ long long	 args_strtonum(
 		    struct args *, u_char, long long, long long, char **);
 
 /* cmd.c */
-struct cmd_ctx	*cmd_get_ctx(void);
+struct cmd_ctx	*cmd_get_ctx(struct client *, struct client *);
 void		 cmd_free_ctx(struct cmd_ctx *);
 void		 cmd_ref_ctx(struct cmd_ctx *);
 int		 cmd_pack_argv(int, char **, char *, size_t);
@@ -1971,6 +1973,7 @@ void	 grid_scroll_history(struct grid *);
 void	 grid_scroll_history_region(struct grid *, u_int, u_int);
 void	 grid_expand_line(struct grid *, u_int, u_int);
 const struct grid_cell *grid_peek_cell(struct grid *, u_int, u_int);
+const struct grid_line *grid_peek_line(struct grid *, u_int);
 struct grid_cell *grid_get_cell(struct grid *, u_int, u_int);
 void	 grid_set_cell(struct grid *, u_int, u_int, const struct grid_cell *);
 void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int);
@@ -1978,7 +1981,7 @@ void	 grid_clear_lines(struct grid *, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
-	     struct grid_cell **, int);
+	     struct grid_cell **, int, int);
 void	 grid_duplicate_lines(
 	     struct grid *, u_int, struct grid *, u_int, u_int);
 u_int	 grid_reflow(struct grid *, struct grid *, u_int);
@@ -2277,6 +2280,7 @@ int		 session_next(struct session *, int);
 int		 session_previous(struct session *, int);
 int		 session_select(struct session *, int);
 int		 session_last(struct session *);
+int		 session_set_current(struct session *, struct winlink *);
 struct session_group *session_group_find(struct session *);
 u_int		 session_group_index(struct session_group *);
 void		 session_group_add(struct session *, struct session *);
