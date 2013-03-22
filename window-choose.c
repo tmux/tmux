@@ -200,7 +200,7 @@ window_choose_data_free(struct window_choose_data *wcd)
 void
 window_choose_data_run(struct window_choose_data *cdata)
 {
-	struct cmd_ctx		 ctx;
+	struct cmd_ctx		*ctx;
 	struct cmd_list		*cmdlist;
 	char			*cause;
 
@@ -220,17 +220,15 @@ window_choose_data_run(struct window_choose_data *cdata)
 		return;
 	}
 
-	ctx.msgdata = NULL;
-	ctx.curclient = cdata->start_client;
+	ctx = cmd_get_ctx();
+	ctx->curclient = cdata->start_client;
+	ctx->error = key_bindings_error;
+	ctx->print = key_bindings_print;
+	ctx->info = key_bindings_info;
 
-	ctx.error = key_bindings_error;
-	ctx.print = key_bindings_print;
-	ctx.info = key_bindings_info;
-
-	ctx.cmdclient = NULL;
-
-	cmd_list_exec(cmdlist, &ctx);
+	cmd_list_exec(cmdlist, ctx);
 	cmd_list_free(cmdlist);
+	cmd_free_ctx(ctx);
 }
 
 void

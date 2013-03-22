@@ -262,18 +262,15 @@ key_bindings_info(struct cmd_ctx *ctx, const char *fmt, ...)
 void
 key_bindings_dispatch(struct key_binding *bd, struct client *c)
 {
-	struct cmd_ctx	 ctx;
+	struct cmd_ctx	*ctx;
 	struct cmd	*cmd;
 	int		 readonly;
 
-	ctx.msgdata = NULL;
-	ctx.curclient = c;
-
-	ctx.error = key_bindings_error;
-	ctx.print = key_bindings_print;
-	ctx.info = key_bindings_info;
-
-	ctx.cmdclient = NULL;
+	ctx = cmd_get_ctx();
+	ctx->curclient = c;
+	ctx->error = key_bindings_error;
+	ctx->print = key_bindings_print;
+	ctx->info = key_bindings_info;
 
 	readonly = 1;
 	TAILQ_FOREACH(cmd, &bd->cmdlist->list, qentry) {
@@ -281,9 +278,10 @@ key_bindings_dispatch(struct key_binding *bd, struct client *c)
 			readonly = 0;
 	}
 	if (!readonly && c->flags & CLIENT_READONLY) {
-		key_bindings_info(&ctx, "Client is read-only");
+		key_bindings_info(ctx, "client is read-only");
 		return;
 	}
 
-	cmd_list_exec(bd->cmdlist, &ctx);
+	cmd_list_exec(bd->cmdlist, ctx);
+	cmd_free_ctx(ctx);
 }
