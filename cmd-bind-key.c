@@ -46,7 +46,7 @@ enum cmd_retval
 cmd_bind_key_check(struct args *args)
 {
 	if (args_has(args, 't')) {
-		if (args->argc != 2)
+		if (args->argc != 2 && args->argc != 3)
 			return (CMD_RETURN_ERROR);
 	} else {
 		if (args->argc < 2)
@@ -93,6 +93,7 @@ cmd_bind_key_table(struct cmd *self, struct cmd_ctx *ctx, int key)
 	const struct mode_key_table	*mtab;
 	struct mode_key_binding		*mbind, mtmp;
 	enum mode_key_cmd		 cmd;
+	const char			*arg;
 
 	tablename = args_get(args, 't');
 	if ((mtab = mode_key_findtable(tablename)) == NULL) {
@@ -106,16 +107,29 @@ cmd_bind_key_table(struct cmd *self, struct cmd_ctx *ctx, int key)
 		return (CMD_RETURN_ERROR);
 	}
 
+	if (cmd != MODEKEYCOPY_COPYPIPE) {
+		if (args->argc != 2) {
+			ctx->error(ctx, "no argument allowed");
+			return (CMD_RETURN_ERROR);
+		}
+		arg = NULL;
+	} else {
+		if (args->argc != 3) {
+			ctx->error(ctx, "no argument given");
+			return (CMD_RETURN_ERROR);
+		}
+		arg = args->argv[2];
+	}
+
 	mtmp.key = key;
 	mtmp.mode = !!args_has(args, 'c');
-	if ((mbind = RB_FIND(mode_key_tree, mtab->tree, &mtmp)) != NULL) {
-		mbind->cmd = cmd;
-		return (CMD_RETURN_NORMAL);
+	if ((mbind = RB_FIND(mode_key_tree, mtab->tree, &mtmp)) == NULL) {
+		mbind = xmalloc(sizeof *mbind);
+		mbind->key = mtmp.key;
+		mbind->mode = mtmp.mode;
+		RB_INSERT(mode_key_tree, mtab->tree, mbind);
 	}
-	mbind = xmalloc(sizeof *mbind);
-	mbind->key = mtmp.key;
-	mbind->mode = mtmp.mode;
 	mbind->cmd = cmd;
-	RB_INSERT(mode_key_tree, mtab->tree, mbind);
+	mbind->arg = arg != NULL ? xstrdup(arg) : NULL;
 	return (CMD_RETURN_NORMAL);
 }
