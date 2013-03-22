@@ -92,7 +92,7 @@ load_cfg(const char *path, struct cmd_ctx *ctx, struct causelist *causes)
 	if (ctx != NULL)
 		cmd_ref_ctx(ctx);
 	else {
-		ctx = cmd_get_ctx();
+		ctx = cmd_get_ctx(NULL, NULL);
 		ctx->error = cfg_error;
 		ctx->print = cfg_print;
 		ctx->info = cfg_print;

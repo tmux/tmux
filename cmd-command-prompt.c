@@ -184,8 +184,7 @@ cmd_command_prompt_callback(void *data, const char *s)
 		return (0);
 	}
 
-	ctx = cmd_get_ctx();
-	ctx->curclient = c;
+	ctx = cmd_get_ctx(NULL, c);
 	ctx->error = key_bindings_error;
 	ctx->print = key_bindings_print;
 	ctx->info = key_bindings_info;
