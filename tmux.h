@@ -1366,8 +1366,10 @@ struct cmd_ctx {
 	 * cmdclient and curclient may both be NULL if the command is in the
 	 * configuration file.
 	 */
-	struct client  *curclient;
-	struct client  *cmdclient;
+	struct client		*curclient;
+	struct client		*cmdclient;
+
+	int			 references;
 
 	struct msg_command_data	*msgdata;
 
@@ -1714,13 +1716,14 @@ long long	 args_strtonum(
 		    struct args *, u_char, long long, long long, char **);
 
 /* cmd.c */
+struct cmd_ctx	*cmd_get_ctx(void);
+void		 cmd_free_ctx(struct cmd_ctx *);
+void		 cmd_ref_ctx(struct cmd_ctx *);
 int		 cmd_pack_argv(int, char **, char *, size_t);
 int		 cmd_unpack_argv(char *, size_t, int, char ***);
 char	       **cmd_copy_argv(int, char *const *);
 void		 cmd_free_argv(int, char **);
 struct cmd	*cmd_parse(int, char **, char **);
-enum cmd_retval	 cmd_exec(struct cmd *, struct cmd_ctx *);
-void		 cmd_free(struct cmd *);
 size_t		 cmd_print(struct cmd *, char *, size_t);
 struct session	*cmd_current_session(struct cmd_ctx *, int);
 struct client	*cmd_current_client(struct cmd_ctx *);
@@ -1974,7 +1977,8 @@ void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_clear_lines(struct grid *, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
-char	*grid_string_cells(struct grid *, u_int, u_int, u_int);
+char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
+	     struct grid_cell **, int);
 void	 grid_duplicate_lines(
 	     struct grid *, u_int, struct grid *, u_int, u_int);
 u_int	 grid_reflow(struct grid *, struct grid *, u_int);

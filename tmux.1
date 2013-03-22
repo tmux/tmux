@@ -1036,9 +1036,9 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .It Xo Ic capture-pane
+.Op Fl e
 .Op Fl p
 .Op Fl b Ar buffer-index
-.Op Fl c Ar target-client
 .Op Fl E Ar end-line
 .Op Fl S Ar start-line
 .Op Fl t Ar target-pane
@@ -1047,11 +1047,12 @@ but a different format may be specified with
 Capture the contents of a pane.
 If
 .Fl p
-is given, the output goes to
-.Ar target-client
-stdout, otherwise to the buffer specified with
+is given, the output goes to stdout, otherwise to the buffer specified with
 .Fl b
 or a new buffer if omitted.
+If
+.Fl e
+is given, the output includes escape sequences for text and background attributes.
 .Pp
 .Fl S
 and
