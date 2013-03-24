@@ -48,7 +48,7 @@ cmd_show_messages_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*tim;
 	u_int			 i;
 
-	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
+	if ((c = cmd_find_client(ctx, args_get(args, 't'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	for (i = 0; i < ARRAY_LENGTH(&c->message_log); i++) {

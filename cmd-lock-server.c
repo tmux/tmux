@@ -74,7 +74,7 @@ cmd_lock_server_exec(struct cmd *self, unused struct cmd_ctx *ctx)
 			return (CMD_RETURN_ERROR);
 		server_lock_session(s);
 	} else {
-		if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
+		if ((c = cmd_find_client(ctx, args_get(args, 't'), 0)) == NULL)
 			return (CMD_RETURN_ERROR);
 		server_lock_client(c);
 	}

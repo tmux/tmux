@@ -61,7 +61,7 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 				server_write_client(c, msgtype, NULL, 0);
 		}
 	} else {
-		c = cmd_find_client(ctx, args_get(args, 't'));
+		c = cmd_find_client(ctx, args_get(args, 't'), 0);
 		if (c == NULL)
 			return (CMD_RETURN_ERROR);
 

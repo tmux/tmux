@@ -44,7 +44,7 @@ cmd_refresh_client_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const char	*size;
 	u_int		 w, h;
 
-	if ((c = cmd_find_client(ctx, args_get(args, 't'))) == NULL)
+	if ((c = cmd_find_client(ctx, args_get(args, 't'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'C')) {
