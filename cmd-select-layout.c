@@ -92,6 +92,7 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), NULL)) == NULL)
 		return (CMD_RETURN_ERROR);
+	server_unzoom_window(wl->window);
 
 	next = self->entry == &cmd_next_layout_entry;
 	if (args_has(self->args, 'n'))

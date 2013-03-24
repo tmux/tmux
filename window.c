@@ -319,7 +319,7 @@ window_create(const char *name, const char *cmd, const char *shell,
 
 	w = window_create1(sx, sy);
 	wp = window_add_pane(w, hlimit);
-	layout_init(w);
+	layout_init(w, wp);
 
 	if (*cmd != '\0') {
 		prefix = options_get_string(&w->options, "command-prefix");
@@ -347,6 +347,8 @@ void
 window_destroy(struct window *w)
 {
 	u_int	i;
+
+	window_unzoom(w);
 
 	if (window_index(w, &i) != 0)
 		fatalx("index not found");
@@ -468,6 +470,54 @@ window_find_string(struct window *w, const char *s)
 		return (NULL);
 
 	return (window_get_active_at(w, x, y));
+}
+
+int
+window_zoom(struct window_pane *wp)
+{
+	struct window		*w = wp->window;
+	struct window_pane	*wp1;
+
+	if (w->flags & WINDOW_ZOOMED)
+		return (-1);
+
+	if (!window_pane_visible(wp))
+		return (-1);
+	if (w->active != wp)
+		window_set_active_pane(w, wp);
+
+	TAILQ_FOREACH(wp1, &w->panes, entry) {
+		wp1->saved_layout_cell = wp1->layout_cell;
+		wp1->layout_cell = NULL;
+	}
+
+	w->saved_layout_root = w->layout_root;
+	layout_init(w, wp);
+	w->flags |= WINDOW_ZOOMED;
+
+	return (0);
+}
+
+int
+window_unzoom(struct window *w)
+{
+	struct window_pane	*wp, *wp1;
+
+	if (!(w->flags & WINDOW_ZOOMED))
+		return (-1);
+	wp = w->active;
+
+	w->flags &= ~WINDOW_ZOOMED;
+	layout_free(w);
+	w->layout_root = w->saved_layout_root;
+
+	TAILQ_FOREACH(wp1, &w->panes, entry) {
+		wp1->layout_cell = wp1->saved_layout_cell;
+		wp1->saved_layout_cell = NULL;
+	}
+	layout_fix_panes(w, w->sx, w->sy);
+
+	return (0);
 }
 
 struct window_pane *
@@ -600,6 +650,8 @@ window_printable_flags(struct session *s, struct winlink *wl)
 		flags[pos++] = '*';
 	if (wl == TAILQ_FIRST(&s->lastw))
 		flags[pos++] = '-';
+	if (wl->window->flags & WINDOW_ZOOMED)
+		flags[pos++] = 'Z';
 	if (pos == 0)
 		flags[pos++] = ' ';
 	flags[pos] = '\0';
@@ -1027,6 +1079,8 @@ window_pane_visible(struct window_pane *wp)
 {
 	struct window	*w = wp->window;
 
+	if (wp->layout_cell == NULL)
+		return (0);
 	if (wp->xoff >= w->sx || wp->yoff >= w->sy)
 		return (0);
 	if (wp->xoff + wp->sx > w->sx || wp->yoff + wp->sy > w->sy)

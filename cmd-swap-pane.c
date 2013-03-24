@@ -63,6 +63,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (dst_wl == NULL)
 		return (CMD_RETURN_ERROR);
 	dst_w = dst_wl->window;
+	server_unzoom_window(dst_w);
 
 	if (!args_has(args, 's')) {
 		src_w = dst_w;
@@ -82,6 +83,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_ERROR);
 		src_w = src_wl->window;
 	}
+	server_unzoom_window(src_w);
 
 	if (src_wp == dst_wp)
 		return (CMD_RETURN_NORMAL);

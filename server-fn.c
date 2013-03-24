@@ -377,6 +377,7 @@ server_destroy_pane(struct window_pane *wp)
 		return;
 	}
 
+	server_unzoom_window(w);
 	layout_close_pane(wp);
 	window_remove_pane(w, wp);
 
@@ -587,4 +588,12 @@ server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
 	server_write_client(c, MSG_STDIN, NULL, 0);
 
 	return (0);
+}
+
+void
+server_unzoom_window(struct window *w)
+{
+	window_unzoom(w);
+	server_redraw_window(w);
+	server_status_window(w);
 }

@@ -150,6 +150,7 @@ key_bindings_init(void)
 		{ 't', 			  0, &cmd_clock_mode_entry },
 		{ 'w', 			  0, &cmd_choose_window_entry },
 		{ 'x', 			  0, &cmd_confirm_before_entry },
+		{ 'z',			  0, &cmd_resize_pane_entry },
 		{ '{',			  0, &cmd_swap_pane_entry },
 		{ '}',			  0, &cmd_swap_pane_entry },
 		{ '~',			  0, &cmd_show_messages_entry },
