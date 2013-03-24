@@ -29,7 +29,7 @@
  */
 
 void		 cmd_split_window_key_binding(struct cmd *, int);
-enum cmd_retval	 cmd_split_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_split_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_split_window_entry = {
 	"split-window", "splitw",
@@ -51,7 +51,7 @@ cmd_split_window_key_binding(struct cmd *self, int key)
 }
 
 enum cmd_retval
-cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct session		*s;
@@ -70,7 +70,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct format_tree	*ft;
 	char			*cp;
 
-	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
+	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
 	w = wl->window;
 
@@ -83,7 +83,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		cmd = options_get_string(&s->options, "default-command");
 	else
 		cmd = args->argv[0];
-	cwd = cmd_get_default_path(ctx, args_get(args, 'c'));
+	cwd = cmd_get_default_path(cmdq, args_get(args, 'c'));
 
 	type = LAYOUT_TOPBOTTOM;
 	if (args_has(args, 'h'))
@@ -152,14 +152,14 @@ cmd_split_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			template = SPLIT_WINDOW_TEMPLATE;
 
 		ft = format_create();
-		if ((c = cmd_find_client(ctx, NULL, 1)) != NULL)
-		    format_client(ft, c);
+		if ((c = cmd_find_client(cmdq, NULL, 1)) != NULL)
+			format_client(ft, c);
 		format_session(ft, s);
 		format_winlink(ft, s, wl);
 		format_window_pane(ft, new_wp);
 
 		cp = format_expand(ft, template);
-		ctx->print(ctx, "%s", cp);
+		cmdq_print(cmdq, "%s", cp);
 		free(cp);
 
 		format_free(ft);
@@ -171,7 +171,7 @@ error:
 	environ_free(&env);
 	if (new_wp != NULL)
 		window_remove_pane(w, new_wp);
-	ctx->error(ctx, "create pane failed: %s", cause);
+	cmdq_error(cmdq, "create pane failed: %s", cause);
 	free(cause);
 	return (CMD_RETURN_ERROR);
 }

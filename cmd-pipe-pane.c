@@ -32,7 +32,7 @@
  * Open pipe to redirect pane output. If already open, close first.
  */
 
-enum cmd_retval	 cmd_pipe_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_pipe_pane_exec(struct cmd *, struct cmd_q *);
 
 void	cmd_pipe_pane_error_callback(struct bufferevent *, short, void *);
 
@@ -47,7 +47,7 @@ const struct cmd_entry cmd_pipe_pane_entry = {
 };
 
 enum cmd_retval
-cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_pipe_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct client		*c;
@@ -55,9 +55,9 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*command;
 	int			 old_fd, pipe_fd[2], null_fd;
 
-	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
+	if (cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
-	c = cmd_find_client(ctx, NULL, 1);
+	c = cmd_find_client(cmdq, NULL, 1);
 
 	/* Destroy the old pipe. */
 	old_fd = wp->pipe_fd;
@@ -82,14 +82,14 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	/* Open the new pipe. */
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pipe_fd) != 0) {
-		ctx->error(ctx, "socketpair error: %s", strerror(errno));
+		cmdq_error(cmdq, "socketpair error: %s", strerror(errno));
 		return (CMD_RETURN_ERROR);
 	}
 
 	/* Fork the child. */
 	switch (fork()) {
 	case -1:
-		ctx->error(ctx, "fork error: %s", strerror(errno));
+		cmdq_error(cmdq, "fork error: %s", strerror(errno));
 		return (CMD_RETURN_ERROR);
 	case 0:
 		/* Child process. */

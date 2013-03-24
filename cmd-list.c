@@ -24,7 +24,8 @@
 #include "tmux.h"
 
 struct cmd_list *
-cmd_list_parse(int argc, char **argv, char **cause)
+cmd_list_parse(int argc, char **argv, const char* file, u_int line,
+    char **cause)
 {
 	struct cmd_list	*cmdlist;
 	struct cmd	*cmd;
@@ -34,7 +35,7 @@ cmd_list_parse(int argc, char **argv, char **cause)
 
 	copy_argv = cmd_copy_argv(argc, argv);
 
-	cmdlist = xmalloc(sizeof *cmdlist);
+	cmdlist = xcalloc(1, sizeof *cmdlist);
 	cmdlist->references = 1;
 	TAILQ_INIT(&cmdlist->list);
 
@@ -55,7 +56,7 @@ cmd_list_parse(int argc, char **argv, char **cause)
 		if (arglen != 1)
 			new_argc++;
 
-		cmd = cmd_parse(new_argc, new_argv, cause);
+		cmd = cmd_parse(new_argc, new_argv, file, line, cause);
 		if (cmd == NULL)
 			goto bad;
 		TAILQ_INSERT_TAIL(&cmdlist->list, cmd, qentry);
@@ -64,7 +65,8 @@ cmd_list_parse(int argc, char **argv, char **cause)
 	}
 
 	if (lastsplit != argc) {
-		cmd = cmd_parse(argc - lastsplit, copy_argv + lastsplit, cause);
+		cmd = cmd_parse(argc - lastsplit, copy_argv + lastsplit,
+		    file, line, cause);
 		if (cmd == NULL)
 			goto bad;
 		TAILQ_INSERT_TAIL(&cmdlist->list, cmd, qentry);
@@ -79,76 +81,21 @@ bad:
 	return (NULL);
 }
 
-enum cmd_retval
-cmd_list_exec(struct cmd_list *cmdlist, struct cmd_ctx *ctx)
-{
-	struct client	*c = ctx->curclient;
-	struct cmd	*cmd;
-	enum cmd_retval	 retval;
-	int		 guards, n;
-
-	guards = 0;
-	if (c != NULL && c->session != NULL)
-		guards = c->flags & CLIENT_CONTROL;
-
-	notify_disable();
-
-	retval = 0;
-	TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
-		if (guards)
-			ctx->print(ctx, "%%begin");
-		n = cmd->entry->exec(cmd, ctx);
-		if (guards)
-			ctx->print(ctx, "%%end");
-
-		switch (n)
-		{
-		case CMD_RETURN_ERROR:
-			return (CMD_RETURN_ERROR);
-		case CMD_RETURN_ATTACH:
-			/* Client is being attached (send MSG_READY). */
-			retval = CMD_RETURN_ATTACH;
-
-			/*
-			 * Mangle the context to treat any following commands
-			 * as if they were called from inside.
-			 */
-			if (ctx->curclient == NULL) {
-				ctx->curclient = ctx->cmdclient;
-				ctx->cmdclient = NULL;
-
-				ctx->error = key_bindings_error;
-				ctx->print = key_bindings_print;
-				ctx->info = key_bindings_info;
-			}
-			break;
-		case CMD_RETURN_YIELD:
-			if (retval == CMD_RETURN_NORMAL)
-				retval = CMD_RETURN_YIELD;
-			break;
-		case CMD_RETURN_NORMAL:
-			break;
-		}
-	}
-
-	notify_enable();
-	return (retval);
-}
-
 void
 cmd_list_free(struct cmd_list *cmdlist)
 {
-	struct cmd	*cmd;
+	struct cmd	*cmd, *cmd1;
 
 	if (--cmdlist->references != 0)
 		return;
 
-	while (!TAILQ_EMPTY(&cmdlist->list)) {
-		cmd = TAILQ_FIRST(&cmdlist->list);
+	TAILQ_FOREACH_SAFE(cmd, &cmdlist->list, qentry, cmd1) {
 		TAILQ_REMOVE(&cmdlist->list, cmd, qentry);
 		args_free(cmd->args);
+		free(cmd->file);
 		free(cmd);
 	}
+
 	free(cmdlist);
 }
 

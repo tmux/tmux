@@ -59,7 +59,8 @@ cmd_string_ungetc(size_t *p)
  * string, or NULL for empty command.
  */
 int
-cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
+cmd_string_parse(const char *s, struct cmd_list **cmdlist, const char *file,
+    u_int line, char **cause)
 {
 	size_t		p;
 	int		ch, i, argc, rval;
@@ -131,7 +132,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, char **cause)
 			if (argc == 0)
 				goto out;
 
-			*cmdlist = cmd_list_parse(argc, argv, cause);
+			*cmdlist = cmd_list_parse(argc, argv, file, line, cause);
 			if (*cmdlist == NULL)
 				goto out;
 

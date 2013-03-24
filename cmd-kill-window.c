@@ -24,7 +24,7 @@
  * Destroy window.
  */
 
-enum cmd_retval	 cmd_kill_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_kill_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_kill_window_entry = {
 	"kill-window", "killw",
@@ -37,13 +37,13 @@ const struct cmd_entry cmd_kill_window_entry = {
 };
 
 enum cmd_retval
-cmd_kill_window_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_kill_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 	struct winlink	*wl, *wl2, *wl3;
 	struct session	*s;
 
-	if ((wl = cmd_find_window(ctx, args_get(args, 't'), &s)) == NULL)
+	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), &s)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'a')) {

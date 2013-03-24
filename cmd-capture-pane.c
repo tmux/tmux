@@ -27,7 +27,7 @@
  * Write the entire contents of a pane to a buffer or stdout.
  */
 
-enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_capture_pane_entry = {
 };
 
 enum cmd_retval
-cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct client		*c;
@@ -55,7 +55,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct grid_cell	*gc;
 	const struct grid_line	*gl;
 
-	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
+	if (cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
 	s = &wp->base;
 	gd = s->grid;
@@ -113,11 +113,10 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	}
 
 	if (args_has(args, 'p')) {
-		c = ctx->curclient;
-		if (c == NULL || !(c->flags & CLIENT_CONTROL))
-			c = ctx->cmdclient;
-		if (c == NULL) {
-			ctx->error(ctx, "can't write to stdout");
+		c = cmdq->client;
+		if (c == NULL ||
+		    (c->session != NULL && !(c->flags & CLIENT_CONTROL))) {
+			cmdq_error(cmdq, "can't write to stdout");
 			return (CMD_RETURN_ERROR);
 		}
 		evbuffer_add(c->stdout_data, buf, len);
@@ -131,14 +130,14 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 		if (cause != NULL) {
-			ctx->error(ctx, "buffer %s", cause);
+			cmdq_error(cmdq, "buffer %s", cause);
 			free(buf);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
 
 		if (paste_replace(&global_buffers, buffer, buf, len) != 0) {
-			ctx->error(ctx, "no buffer %d", buffer);
+			cmdq_error(cmdq, "no buffer %d", buffer);
 			free(buf);
 			return (CMD_RETURN_ERROR);
 		}

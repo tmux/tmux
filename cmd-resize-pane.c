@@ -27,7 +27,7 @@
  */
 
 void		 cmd_resize_pane_key_binding(struct cmd *, int);
-enum cmd_retval	 cmd_resize_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_resize_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_resize_pane_entry = {
 	"resize-pane", "resizep",
@@ -82,7 +82,7 @@ cmd_resize_pane_key_binding(struct cmd *self, int key)
 }
 
 enum cmd_retval
-cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
@@ -92,7 +92,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int			 adjust;
 	int			 x, y;
 
-	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp)) == NULL)
+	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if (args->argc == 0)
@@ -100,7 +100,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else {
 		adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
-			ctx->error(ctx, "adjustment %s", errstr);
+			cmdq_error(cmdq, "adjustment %s", errstr);
 			return (CMD_RETURN_ERROR);
 		}
 	}
@@ -109,7 +109,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		x = args_strtonum(self->args, 'x', PANE_MINIMUM, INT_MAX,
 		    &cause);
 		if (cause != NULL) {
-			ctx->error(ctx, "width %s", cause);
+			cmdq_error(cmdq, "width %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
@@ -119,7 +119,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		y = args_strtonum(self->args, 'y', PANE_MINIMUM, INT_MAX,
 		    &cause);
 		if (cause != NULL) {
-			ctx->error(ctx, "height %s", cause);
+			cmdq_error(cmdq, "height %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}

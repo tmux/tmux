@@ -27,7 +27,7 @@
  * Suspend client with SIGTSTP.
  */
 
-enum cmd_retval	 cmd_suspend_client_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_suspend_client_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_suspend_client_entry = {
 	"suspend-client", "suspendc",
@@ -40,12 +40,12 @@ const struct cmd_entry cmd_suspend_client_entry = {
 };
 
 enum cmd_retval
-cmd_suspend_client_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_suspend_client_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 	struct client	*c;
 
-	if ((c = cmd_find_client(ctx, args_get(args, 't'), 0)) == NULL)
+	if ((c = cmd_find_client(cmdq, args_get(args, 't'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	tty_stop_tty(&c->tty);

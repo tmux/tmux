@@ -26,7 +26,7 @@
  * Link a window into another session.
  */
 
-enum cmd_retval	 cmd_link_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_link_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_link_window_entry = {
 	"link-window", "linkw",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_link_window_entry = {
 };
 
 enum cmd_retval
-cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_link_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 	struct session	*src, *dst;
@@ -47,15 +47,15 @@ cmd_link_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char		*cause;
 	int		 idx, kflag, dflag;
 
-	if ((wl = cmd_find_window(ctx, args_get(args, 's'), &src)) == NULL)
+	if ((wl = cmd_find_window(cmdq, args_get(args, 's'), &src)) == NULL)
 		return (CMD_RETURN_ERROR);
-	if ((idx = cmd_find_index(ctx, args_get(args, 't'), &dst)) == -2)
+	if ((idx = cmd_find_index(cmdq, args_get(args, 't'), &dst)) == -2)
 		return (CMD_RETURN_ERROR);
 
 	kflag = args_has(self->args, 'k');
 	dflag = args_has(self->args, 'd');
 	if (server_link_window(src, wl, dst, idx, kflag, !dflag, &cause) != 0) {
-		ctx->error(ctx, "can't link window: %s", cause);
+		cmdq_error(cmdq, "can't link window: %s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}

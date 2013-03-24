@@ -27,7 +27,7 @@
  * Enter choice mode to choose a buffer.
  */
 
-enum cmd_retval	 cmd_choose_buffer_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_choose_buffer_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_choose_buffer_entry = {
 	"choose-buffer", NULL,
@@ -40,7 +40,7 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 };
 
 enum cmd_retval
-cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_choose_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
 	struct client			*c;
@@ -51,15 +51,15 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	const char			*template;
 	u_int				 idx;
 
-	if ((c = cmd_current_client(ctx)) == NULL) {
-		ctx->error(ctx, "no client available");
+	if ((c = cmd_current_client(cmdq)) == NULL) {
+		cmdq_error(cmdq, "no client available");
 		return (CMD_RETURN_ERROR);
 	}
 
 	if ((template = args_get(args, 'F')) == NULL)
 		template = CHOOSE_BUFFER_TEMPLATE;
 
-	if ((wl = cmd_find_window(ctx, args_get(args, 't'), NULL)) == NULL)
+	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), NULL)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if (paste_get_top(&global_buffers) == NULL)

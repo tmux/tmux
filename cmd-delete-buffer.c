@@ -26,7 +26,7 @@
  * Delete a paste buffer.
  */
 
-enum cmd_retval	 cmd_delete_buffer_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_delete_buffer_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_delete_buffer_entry = {
 	"delete-buffer", "deleteb",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_delete_buffer_entry = {
 };
 
 enum cmd_retval
-cmd_delete_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_delete_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 	char		*cause;
@@ -52,13 +52,13 @@ cmd_delete_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 	if (cause != NULL) {
-		ctx->error(ctx, "buffer %s", cause);
+		cmdq_error(cmdq, "buffer %s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}
 
 	if (paste_free_index(&global_buffers, buffer) != 0) {
-		ctx->error(ctx, "no buffer %d", buffer);
+		cmdq_error(cmdq, "no buffer %d", buffer);
 		return (CMD_RETURN_ERROR);
 	}
 

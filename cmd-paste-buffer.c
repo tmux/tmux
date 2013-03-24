@@ -28,7 +28,7 @@
  * Paste paste buffer if present.
  */
 
-enum cmd_retval	 cmd_paste_buffer_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_paste_buffer_exec(struct cmd *, struct cmd_q *);
 
 void	cmd_paste_buffer_filter(struct window_pane *,
 	    const char *, size_t, const char *, int);
@@ -44,7 +44,7 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 };
 
 enum cmd_retval
-cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_paste_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct window_pane	*wp;
@@ -55,7 +55,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	int			 buffer;
 	int			 pflag;
 
-	if (cmd_find_pane(ctx, args_get(args, 't'), &s, &wp) == NULL)
+	if (cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if (!args_has(args, 'b'))
@@ -63,7 +63,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else {
 		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 		if (cause != NULL) {
-			ctx->error(ctx, "buffer %s", cause);
+			cmdq_error(cmdq, "buffer %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
@@ -74,7 +74,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else {
 		pb = paste_get_index(&global_buffers, buffer);
 		if (pb == NULL) {
-			ctx->error(ctx, "no buffer %d", buffer);
+			cmdq_error(cmdq, "no buffer %d", buffer);
 			return (CMD_RETURN_ERROR);
 		}
 	}

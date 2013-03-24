@@ -30,7 +30,7 @@
  * Loads a paste buffer from a file.
  */
 
-enum cmd_retval	 cmd_load_buffer_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_load_buffer_exec(struct cmd *, struct cmd_q *);
 void		 cmd_load_buffer_callback(struct client *, int, void *);
 
 const struct cmd_entry cmd_load_buffer_entry = {
@@ -44,10 +44,10 @@ const struct cmd_entry cmd_load_buffer_entry = {
 };
 
 enum cmd_retval
-cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_load_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
-	struct client	*c = ctx->cmdclient;
+	struct client	*c = cmdq->client;
 	struct session  *s;
 	FILE		*f;
 	const char	*path, *newpath, *wd;
@@ -61,7 +61,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else {
 		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 		if (cause != NULL) {
-			ctx->error(ctx, "buffer %s", cause);
+			cmdq_error(cmdq, "buffer %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
@@ -75,16 +75,16 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		error = server_set_stdin_callback (c, cmd_load_buffer_callback,
 		    buffer_ptr, &cause);
 		if (error != 0) {
-			ctx->error(ctx, "%s: %s", path, cause);
+			cmdq_error(cmdq, "%s: %s", path, cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		return (CMD_RETURN_YIELD);
+		return (CMD_RETURN_WAIT);
 	}
 
 	if (c != NULL)
 		wd = c->cwd;
-	else if ((s = cmd_current_session(ctx, 0)) != NULL) {
+	else if ((s = cmd_current_session(cmdq, 0)) != NULL) {
 		wd = options_get_string(&s->options, "default-path");
 		if (*wd == '\0')
 			wd = s->cwd;
@@ -96,7 +96,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 			path = newpath;
 	}
 	if ((f = fopen(path, "rb")) == NULL) {
-		ctx->error(ctx, "%s: %s", path, strerror(errno));
+		cmdq_error(cmdq, "%s: %s", path, strerror(errno));
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -105,14 +105,14 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 	while ((ch = getc(f)) != EOF) {
 		/* Do not let the server die due to memory exhaustion. */
 		if ((new_pdata = realloc(pdata, psize + 2)) == NULL) {
-			ctx->error(ctx, "realloc error: %s", strerror(errno));
+			cmdq_error(cmdq, "realloc error: %s", strerror(errno));
 			goto error;
 		}
 		pdata = new_pdata;
 		pdata[psize++] = ch;
 	}
 	if (ferror(f)) {
-		ctx->error(ctx, "%s: read error", path);
+		cmdq_error(cmdq, "%s: read error", path);
 		goto error;
 	}
 	if (pdata != NULL)
@@ -126,7 +126,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (CMD_RETURN_NORMAL);
 	}
 	if (paste_replace(&global_buffers, buffer, pdata, psize) != 0) {
-		ctx->error(ctx, "no buffer %d", buffer);
+		cmdq_error(cmdq, "no buffer %d", buffer);
 		free(pdata);
 		return (CMD_RETURN_ERROR);
 	}
@@ -153,12 +153,13 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 	c->stdin_callback = NULL;
 
 	c->references--;
-	c->flags |= CLIENT_EXIT;
+	if (c->flags & CLIENT_DEAD)
+		return;
 
 	psize = EVBUFFER_LENGTH(c->stdin_data);
 	if (psize == 0 || (pdata = malloc(psize + 1)) == NULL) {
 		free(data);
-		return;
+		goto out;
 	}
 	memcpy(pdata, EVBUFFER_DATA(c->stdin_data), psize);
 	pdata[psize] = '\0';
@@ -174,4 +175,7 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 	}
 
 	free(data);
+
+out:
+	cmdq_continue(c->cmdq);
 }

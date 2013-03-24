@@ -330,8 +330,6 @@ main(int argc, char **argv)
 	options_init(&global_w_options, NULL);
 	options_table_populate_tree(window_options_table, &global_w_options);
 
-	ARRAY_INIT(&cfg_causes);
-
 	/* Enable UTF-8 if the first client is on UTF-8 terminal. */
 	if (flags & IDENTIFY_UTF8) {
 		options_set_number(&global_s_options, "status-utf8", 1);

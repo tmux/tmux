@@ -45,10 +45,6 @@ void	server_client_msg_identify(
 	    struct client *, struct msg_identify_data *, int);
 void	server_client_msg_shell(struct client *);
 
-void printflike2 server_client_msg_error(struct cmd_ctx *, const char *, ...);
-void printflike2 server_client_msg_print(struct cmd_ctx *, const char *, ...);
-void printflike2 server_client_msg_info(struct cmd_ctx *, const char *, ...);
-
 /* Create a new client. */
 void
 server_client_create(int fd)
@@ -66,6 +62,9 @@ server_client_create(int fd)
 	if (gettimeofday(&c->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
 	memcpy(&c->activity_time, &c->creation_time, sizeof c->activity_time);
+
+	c->cmdq = cmdq_new(c);
+	c->cmdq->client_exit = 1;
 
 	c->stdin_data = evbuffer_new ();
 	c->stdout_data = evbuffer_new ();
@@ -180,6 +179,10 @@ server_client_lost(struct client *c)
 	free(c->prompt_string);
 	free(c->prompt_buffer);
 	free(c->cwd);
+
+	c->cmdq->dead = 1;
+	cmdq_free(c->cmdq);
+	c->cmdq = NULL;
 
 	environ_free(&c->environ);
 
@@ -901,71 +904,18 @@ server_client_msg_dispatch(struct client *c)
 	}
 }
 
-/* Callback to send error message to client. */
-void printflike2
-server_client_msg_error(struct cmd_ctx *ctx, const char *fmt, ...)
-{
-	va_list	ap;
-
-	va_start(ap, fmt);
-	evbuffer_add_vprintf(ctx->cmdclient->stderr_data, fmt, ap);
-	va_end(ap);
-
-	evbuffer_add(ctx->cmdclient->stderr_data, "\n", 1);
-	server_push_stderr(ctx->cmdclient);
-	ctx->cmdclient->retcode = 1;
-}
-
-/* Callback to send print message to client. */
-void printflike2
-server_client_msg_print(struct cmd_ctx *ctx, const char *fmt, ...)
-{
-	va_list	ap;
-
-	va_start(ap, fmt);
-	evbuffer_add_vprintf(ctx->cmdclient->stdout_data, fmt, ap);
-	va_end(ap);
-
-	evbuffer_add(ctx->cmdclient->stdout_data, "\n", 1);
-	server_push_stdout(ctx->cmdclient);
-}
-
-/* Callback to send print message to client, if not quiet. */
-void printflike2
-server_client_msg_info(struct cmd_ctx *ctx, const char *fmt, ...)
-{
-	va_list	ap;
-
-	if (options_get_number(&global_options, "quiet"))
-		return;
-
-	va_start(ap, fmt);
-	evbuffer_add_vprintf(ctx->cmdclient->stdout_data, fmt, ap);
-	va_end(ap);
-
-	evbuffer_add(ctx->cmdclient->stdout_data, "\n", 1);
-	server_push_stdout(ctx->cmdclient);
-}
-
 /* Handle command message. */
 void
 server_client_msg_command(struct client *c, struct msg_command_data *data)
 {
-	struct cmd_ctx	*ctx;
 	struct cmd_list	*cmdlist = NULL;
 	int		 argc;
 	char	       **argv, *cause;
 
-	ctx = cmd_get_ctx(c, NULL);
-	ctx->msgdata = data;
-	ctx->error = server_client_msg_error;
-	ctx->print = server_client_msg_print;
-	ctx->info = server_client_msg_info;
-
 	argc = data->argc;
 	data->argv[(sizeof data->argv) - 1] = '\0';
 	if (cmd_unpack_argv(data->argv, sizeof data->argv, argc, &argv) != 0) {
-		server_client_msg_error(ctx, "command too long");
+		cmdq_error(c->cmdq, "command too long");
 		goto error;
 	}
 
@@ -975,31 +925,20 @@ server_client_msg_command(struct client *c, struct msg_command_data *data)
 		*argv = xstrdup("new-session");
 	}
 
-	if ((cmdlist = cmd_list_parse(argc, argv, &cause)) == NULL) {
-		server_client_msg_error(ctx, "%s", cause);
+	if ((cmdlist = cmd_list_parse(argc, argv, NULL, 0, &cause)) == NULL) {
+		cmdq_error(c->cmdq, "%s", cause);
 		cmd_free_argv(argc, argv);
 		goto error;
 	}
 	cmd_free_argv(argc, argv);
 
-	switch (cmd_list_exec(cmdlist, ctx))
-	{
-	case CMD_RETURN_ERROR:
-	case CMD_RETURN_NORMAL:
-		c->flags |= CLIENT_EXIT;
-		break;
-	case CMD_RETURN_ATTACH:
-	case CMD_RETURN_YIELD:
-		break;
-	}
+	cmdq_run(c->cmdq, cmdlist);
 	cmd_list_free(cmdlist);
-	cmd_free_ctx(ctx);
 	return;
 
 error:
 	if (cmdlist != NULL)
 		cmd_list_free(cmdlist);
-	cmd_free_ctx(ctx);
 
 	c->flags |= CLIENT_EXIT;
 }

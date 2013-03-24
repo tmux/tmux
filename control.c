@@ -25,46 +25,6 @@
 
 #include "tmux.h"
 
-void printflike2 control_msg_error(struct cmd_ctx *, const char *, ...);
-void printflike2 control_msg_print(struct cmd_ctx *, const char *, ...);
-void printflike2 control_msg_info(struct cmd_ctx *, const char *, ...);
-
-/* Command error callback. */
-void printflike2
-control_msg_error(struct cmd_ctx *ctx, const char *fmt, ...)
-{
-	struct client	*c = ctx->curclient;
-	va_list		 ap;
-
-	va_start(ap, fmt);
-	evbuffer_add_vprintf(c->stdout_data, fmt, ap);
-	va_end(ap);
-
-	evbuffer_add(c->stdout_data, "\n", 1);
-	server_push_stdout(c);
-}
-
-/* Command print callback. */
-void printflike2
-control_msg_print(struct cmd_ctx *ctx, const char *fmt, ...)
-{
-	struct client	*c = ctx->curclient;
-	va_list		 ap;
-
-	va_start(ap, fmt);
-	evbuffer_add_vprintf(c->stdout_data, fmt, ap);
-	va_end(ap);
-
-	evbuffer_add(c->stdout_data, "\n", 1);
-	server_push_stdout(c);
-}
-
-/* Command info callback. */
-void printflike2
-control_msg_info(unused struct cmd_ctx *ctx, unused const char *fmt, ...)
-{
-}
-
 /* Write a line. */
 void printflike2
 control_write(struct client *c, const char *fmt, ...)
@@ -93,7 +53,6 @@ void
 control_callback(struct client *c, int closed, unused void *data)
 {
 	char		*line, *cause;
-	struct cmd_ctx	*ctx;
 	struct cmd_list	*cmdlist;
 
 	if (closed)
@@ -108,20 +67,14 @@ control_callback(struct client *c, int closed, unused void *data)
 			break;
 		}
 
-		ctx = cmd_get_ctx(NULL, c);
-		ctx->error = control_msg_error;
-		ctx->print = control_msg_print;
-		ctx->info = control_msg_info;
-
-		if (cmd_string_parse(line, &cmdlist, &cause) != 0) {
+		if (cmd_string_parse(line, &cmdlist, NULL, 0, &cause) != 0) {
 			control_write(c, "%%error in line \"%s\": %s", line,
 			    cause);
 			free(cause);
 		} else {
-			cmd_list_exec(cmdlist, ctx);
+			cmdq_run(c->cmdq, cmdlist);
 			cmd_list_free(cmdlist);
 		}
-		cmd_free_ctx(ctx);
 
 		free(line);
 	}

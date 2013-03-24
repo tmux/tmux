@@ -28,7 +28,7 @@
  * List all sessions.
  */
 
-enum cmd_retval	 cmd_list_sessions_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_list_sessions_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_list_sessions_entry = {
 	"list-sessions", "ls",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_list_sessions_entry = {
 };
 
 enum cmd_retval
-cmd_list_sessions_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_list_sessions_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct session		*s;
@@ -60,7 +60,7 @@ cmd_list_sessions_exec(struct cmd *self, struct cmd_ctx *ctx)
 		format_session(ft, s);
 
 		line = format_expand(ft, template);
-		ctx->print(ctx, "%s", line);
+		cmdq_print(cmdq, "%s", line);
 		free(line);
 
 		format_free(ft);

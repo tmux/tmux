@@ -27,7 +27,7 @@
  */
 
 void		 cmd_swap_pane_key_binding(struct cmd *, int);
-enum cmd_retval	 cmd_swap_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_swap_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_swap_pane_entry = {
 	"swap-pane", "swapp",
@@ -50,7 +50,7 @@ cmd_swap_pane_key_binding(struct cmd *self, int key)
 }
 
 enum cmd_retval
-cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_swap_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct winlink		*src_wl, *dst_wl;
@@ -59,7 +59,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct layout_cell	*src_lc, *dst_lc;
 	u_int			 sx, sy, xoff, yoff;
 
-	dst_wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &dst_wp);
+	dst_wl = cmd_find_pane(cmdq, args_get(args, 't'), NULL, &dst_wp);
 	if (dst_wl == NULL)
 		return (CMD_RETURN_ERROR);
 	dst_w = dst_wl->window;
@@ -77,7 +77,7 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		} else
 			return (CMD_RETURN_NORMAL);
 	} else {
-		src_wl = cmd_find_pane(ctx, args_get(args, 's'), NULL, &src_wp);
+		src_wl = cmd_find_pane(cmdq, args_get(args, 's'), NULL, &src_wp);
 		if (src_wl == NULL)
 			return (CMD_RETURN_ERROR);
 		src_w = src_wl->window;

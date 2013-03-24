@@ -27,7 +27,7 @@
  * Note this deliberately has no alias to make it hard to hit by accident.
  */
 
-enum cmd_retval	 cmd_kill_session_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_kill_session_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_kill_session_entry = {
 	"kill-session", NULL,
@@ -40,12 +40,12 @@ const struct cmd_entry cmd_kill_session_entry = {
 };
 
 enum cmd_retval
-cmd_kill_session_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_kill_session_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 	struct session	*s, *s2, *s3;
 
-	if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
+	if ((s = cmd_find_session(cmdq, args_get(args, 't'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'a')) {

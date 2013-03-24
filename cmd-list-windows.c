@@ -27,11 +27,11 @@
  * List windows on given session.
  */
 
-enum cmd_retval	 cmd_list_windows_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_list_windows_exec(struct cmd *, struct cmd_q *);
 
-void	cmd_list_windows_server(struct cmd *, struct cmd_ctx *);
+void	cmd_list_windows_server(struct cmd *, struct cmd_q *);
 void	cmd_list_windows_session(
-	    struct cmd *, struct session *, struct cmd_ctx *, int);
+	    struct cmd *, struct session *, struct cmd_q *, int);
 
 const struct cmd_entry cmd_list_windows_entry = {
 	"list-windows", "lsw",
@@ -44,35 +44,35 @@ const struct cmd_entry cmd_list_windows_entry = {
 };
 
 enum cmd_retval
-cmd_list_windows_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_list_windows_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 	struct session	*s;
 
 	if (args_has(args, 'a'))
-		cmd_list_windows_server(self, ctx);
+		cmd_list_windows_server(self, cmdq);
 	else {
-		s = cmd_find_session(ctx, args_get(args, 't'), 0);
+		s = cmd_find_session(cmdq, args_get(args, 't'), 0);
 		if (s == NULL)
 			return (CMD_RETURN_ERROR);
-		cmd_list_windows_session(self, s, ctx, 0);
+		cmd_list_windows_session(self, s, cmdq, 0);
 	}
 
 	return (CMD_RETURN_NORMAL);
 }
 
 void
-cmd_list_windows_server(struct cmd *self, struct cmd_ctx *ctx)
+cmd_list_windows_server(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct session	*s;
 
 	RB_FOREACH(s, sessions, &sessions)
-		cmd_list_windows_session(self, s, ctx, 1);
+		cmd_list_windows_session(self, s, cmdq, 1);
 }
 
 void
 cmd_list_windows_session(
-    struct cmd *self, struct session *s, struct cmd_ctx *ctx, int type)
+    struct cmd *self, struct session *s, struct cmd_q *cmdq, int type)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
@@ -102,7 +102,7 @@ cmd_list_windows_session(
 		format_window_pane(ft, wl->window->active);
 
 		line = format_expand(ft, template);
-		ctx->print(ctx, "%s", line);
+		cmdq_print(cmdq, "%s", line);
 		free(line);
 
 		format_free(ft);

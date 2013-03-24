@@ -26,7 +26,7 @@
  * Swap one window with another.
  */
 
-enum cmd_retval	cmd_swap_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	cmd_swap_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_swap_window_entry = {
 	"swap-window", "swapw",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_swap_window_entry = {
 };
 
 enum cmd_retval
-cmd_swap_window_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_swap_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	const char		*target_src, *target_dst;
@@ -49,17 +49,17 @@ cmd_swap_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 	struct window		*w;
 
 	target_src = args_get(args, 's');
-	if ((wl_src = cmd_find_window(ctx, target_src, &src)) == NULL)
+	if ((wl_src = cmd_find_window(cmdq, target_src, &src)) == NULL)
 		return (CMD_RETURN_ERROR);
 	target_dst = args_get(args, 't');
-	if ((wl_dst = cmd_find_window(ctx, target_dst, &dst)) == NULL)
+	if ((wl_dst = cmd_find_window(cmdq, target_dst, &dst)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	sg_src = session_group_find(src);
 	sg_dst = session_group_find(dst);
 	if (src != dst &&
 	    sg_src != NULL && sg_dst != NULL && sg_src == sg_dst) {
-		ctx->error(ctx, "can't move window, sessions are grouped");
+		cmdq_error(cmdq, "can't move window, sessions are grouped");
 		return (CMD_RETURN_ERROR);
 	}
 

@@ -27,7 +27,7 @@
  * Show client message log.
  */
 
-enum cmd_retval	 cmd_show_messages_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_show_messages_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_show_messages_entry = {
 	"show-messages", "showmsgs",
@@ -40,7 +40,7 @@ const struct cmd_entry cmd_show_messages_entry = {
 };
 
 enum cmd_retval
-cmd_show_messages_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_show_messages_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct client		*c;
@@ -48,7 +48,7 @@ cmd_show_messages_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*tim;
 	u_int			 i;
 
-	if ((c = cmd_find_client(ctx, args_get(args, 't'), 0)) == NULL)
+	if ((c = cmd_find_client(cmdq, args_get(args, 't'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	for (i = 0; i < ARRAY_LENGTH(&c->message_log); i++) {
@@ -57,7 +57,7 @@ cmd_show_messages_exec(struct cmd *self, struct cmd_ctx *ctx)
 		tim = ctime(&msg->msg_time);
 		*strchr(tim, '\n') = '\0';
 
-		ctx->print(ctx, "%s %s", tim, msg->msg);
+		cmdq_print(cmdq, "%s %s", tim, msg->msg);
 	}
 
 	return (CMD_RETURN_NORMAL);

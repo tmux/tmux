@@ -28,7 +28,7 @@
  * Respawn a pane (restart the command). Kill existing if -k given.
  */
 
-enum cmd_retval	 cmd_respawn_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_respawn_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_respawn_pane_entry = {
 	"respawn-pane", "respawnp",
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_respawn_pane_entry = {
 };
 
 enum cmd_retval
-cmd_respawn_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_respawn_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
@@ -53,14 +53,14 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	char			*cause;
 	u_int			 idx;
 
-	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), &s, &wp)) == NULL)
+	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
 	w = wl->window;
 
 	if (!args_has(self->args, 'k') && wp->fd != -1) {
 		if (window_pane_index(wp, &idx) != 0)
 			fatalx("index not found");
-		ctx->error(ctx, "pane still active: %s:%u.%u",
+		cmdq_error(cmdq, "pane still active: %s:%u.%u",
 		    s->name, wl->idx, idx);
 		return (CMD_RETURN_ERROR);
 	}
@@ -79,7 +79,7 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else
 		cmd = NULL;
 	if (window_pane_spawn(wp, cmd, NULL, NULL, &env, s->tio, &cause) != 0) {
-		ctx->error(ctx, "respawn pane failed: %s", cause);
+		cmdq_error(cmdq, "respawn pane failed: %s", cause);
 		free(cause);
 		environ_free(&env);
 		return (CMD_RETURN_ERROR);

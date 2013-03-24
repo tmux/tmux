@@ -60,12 +60,10 @@ SRCS=	arguments.c \
 	cmd-select-pane.c \
 	cmd-select-window.c \
 	cmd-send-keys.c \
-	cmd-send-prefix.c \
 	cmd-server-info.c \
 	cmd-set-buffer.c \
 	cmd-set-environment.c \
 	cmd-set-option.c \
-	cmd-show-buffer.c \
 	cmd-show-environment.c \
 	cmd-show-messages.c \
 	cmd-show-options.c \
@@ -80,6 +78,7 @@ SRCS=	arguments.c \
 	cmd-unbind-key.c \
 	cmd-unlink-window.c \
 	cmd.c \
+	cmd-queue.c \
 	colour.c \
 	control.c \
 	control-notify.c \
