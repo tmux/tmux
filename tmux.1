@@ -1992,7 +1992,7 @@ abc123
 Commands which set options are as follows:
 .Bl -tag -width Ds
 .It Xo Ic set-option
-.Op Fl agqsuw
+.Op Fl agoqsuw
 .Op Fl t Ar target-session | Ar target-window
 .Ar option Ar value
 .Xc
@@ -2019,6 +2019,10 @@ The
 flag unsets an option, so a session inherits the option from the global
 options.
 It is not possible to unset a global option.
+.Pp
+The
+.Fl o
+flag prevents setting an option that is already set.
 .Pp
 The
 .Fl q
@@ -3466,6 +3470,7 @@ Miscellaneous commands are as follows:
 Display a large clock.
 .It Xo Ic if-shell
 .Op Fl t Ar target-pane
+.Op Fl b
 .Ar shell-command command
 .Op Ar command
 .Xc
@@ -3481,12 +3486,17 @@ Before being executed, shell-command is expanded using the rules specified in th
 .Sx FORMATS
 section, including those relevant to
 .Ar target-pane .
+With
+.Fl b ,
+.Ar shell-command
+is run in the background.
 .It Ic lock-server
 .D1 (alias: Ic lock )
 Lock each client individually by running the command specified by the
 .Ic lock-command
 option.
 .It Xo Ic run-shell
+.Fl b
 .Op Fl t Ar target-pane
 .Ar shell-command
 .Xc
@@ -3498,6 +3508,9 @@ Before being executed, shell-command is expanded using the rules specified in
 the
 .Sx FORMATS
 section.
+With
+.Fl b ,
+the command is run in the background.
 After it finishes, any output to stdout is displayed in copy mode (in the pane
 specified by
 .Fl t
