@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/ioctl.h>
 
 #include <event.h>
 #include <fcntl.h>
@@ -28,6 +29,8 @@
 
 #include "tmux.h"
 
+void	server_client_check_focus(struct window_pane *);
+void	server_client_check_resize(struct window_pane *);
 void	server_client_check_mouse(struct client *, struct window_pane *);
 void	server_client_repeat_timer(int, short, void *);
 void	server_client_check_exit(struct client *);
@@ -93,6 +96,8 @@ server_client_create(int fd)
 	c->tty.mouse.sx = c->tty.mouse.sy = -1;
 	c->tty.mouse.event = MOUSE_EVENT_UP;
 	c->tty.mouse.flags = 0;
+
+	c->flags |= CLIENT_FOCUSED;
 
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
 
@@ -495,7 +500,7 @@ server_client_loop(void)
 
 	/*
 	 * Any windows will have been redrawn as part of clients, so clear
-	 * their flags now.
+	 * their flags now. Also check pane focus and resize.
 	 */
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);
@@ -503,9 +508,90 @@ server_client_loop(void)
 			continue;
 
 		w->flags &= ~WINDOW_REDRAW;
-		TAILQ_FOREACH(wp, &w->panes, entry)
+		TAILQ_FOREACH(wp, &w->panes, entry) {
+			server_client_check_focus(wp);
+			server_client_check_resize(wp);
 			wp->flags &= ~PANE_REDRAW;
+		}
 	}
+}
+
+/* Check if pane should be resized. */
+void
+server_client_check_resize(struct window_pane *wp)
+{
+	struct winsize	ws;
+
+	if (wp->fd == -1 || !(wp->flags & PANE_RESIZE))
+		return;
+
+	memset(&ws, 0, sizeof ws);
+	ws.ws_col = wp->sx;
+	ws.ws_row = wp->sy;
+
+	if (ioctl(wp->fd, TIOCSWINSZ, &ws) == -1) {
+#ifdef __sun
+		/*
+		 * Some versions of Solaris apparently can return an error when
+		 * resizing; don't know why this happens, can't reproduce on
+		 * other platforms and ignoring it doesn't seem to cause any
+		 * issues.
+		 */
+		if (errno != EINVAL)
+#endif
+		fatal("ioctl failed");
+	}
+
+	wp->flags &= ~PANE_RESIZE;
+}
+
+/* Check whether pane should be focused. */
+void
+server_client_check_focus(struct window_pane *wp)
+{
+	u_int		 i;
+	struct client	*c;
+
+	/* If we don't care about focus, forget it. */
+	if (!(wp->base.mode & MODE_FOCUSON))
+		return;
+
+	/* If we're not the active pane in our window, we're not focused. */
+	if (wp->window->active != wp)
+		goto not_focused;
+
+	/* If we're in a mode, we're not focused. */
+	if (wp->screen != &wp->base)
+		goto not_focused;
+
+	/*
+	 * If our window is the current window in any focused clients with an
+	 * attached session, we're focused.
+	 */
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c == NULL || c->session == NULL)
+			continue;
+
+		if (!(c->flags & CLIENT_FOCUSED))
+			continue;
+		if (c->session->flags & SESSION_UNATTACHED)
+			continue;
+
+		if (c->session->curw->window == wp->window)
+			goto focused;
+	}
+
+not_focused:
+	if (wp->flags & PANE_FOCUSED)
+		bufferevent_write(wp->event, "\033[O", 3);
+	wp->flags &= ~PANE_FOCUSED;
+	return;
+
+focused:
+	if (!(wp->flags & PANE_FOCUSED))
+		bufferevent_write(wp->event, "\033[I", 3);
+	wp->flags |= PANE_FOCUSED;
 }
 
 /*

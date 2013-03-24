@@ -241,6 +241,9 @@ enum key_code {
 	KEYC_KP_ENTER,
 	KEYC_KP_ZERO,
 	KEYC_KP_PERIOD,
+
+	KEYC_FOCUS_IN,
+	KEYC_FOCUS_OUT,
 };
 
 /* Termcap codes. */
@@ -669,6 +672,7 @@ struct mode_key_table {
 #define MODE_MOUSE_UTF8 0x100
 #define MODE_MOUSE_SGR 0x200
 #define MODE_BRACKETPASTE 0x400
+#define MODE_FOCUSON 0x800
 
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)
 
@@ -930,6 +934,8 @@ struct window_pane {
 	int		 flags;
 #define PANE_REDRAW 0x1
 #define PANE_DROP 0x2
+#define PANE_FOCUSED 0x4
+#define PANE_RESIZE 0x8
 
 	char		*cmd;
 	char		*shell;
@@ -1317,6 +1323,7 @@ struct client {
 #define CLIENT_READONLY 0x800
 #define CLIENT_REDRAWWINDOW 0x1000
 #define CLIENT_CONTROL 0x2000
+#define CLIENT_FOCUSED 0x4000
 	int		 flags;
 
 	struct event	 identify_timer;
@@ -1729,7 +1736,7 @@ struct cmd	*cmd_parse(int, char **, char **);
 size_t		 cmd_print(struct cmd *, char *, size_t);
 struct session	*cmd_current_session(struct cmd_ctx *, int);
 struct client	*cmd_current_client(struct cmd_ctx *);
-struct client	*cmd_find_client(struct cmd_ctx *, const char *);
+struct client	*cmd_find_client(struct cmd_ctx *, const char *, int);
 struct session	*cmd_find_session(struct cmd_ctx *, const char *, int);
 struct winlink	*cmd_find_window(
 		     struct cmd_ctx *, const char *, struct session **);
