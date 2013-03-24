@@ -1260,6 +1260,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case 1003:
 			screen_write_mode_clear(&ictx->ctx, ALL_MOUSE_MODES);
 			break;
+		case 1004:
+			screen_write_mode_clear(&ictx->ctx, MODE_FOCUSON);
+			break;
 		case 1005:
 			screen_write_mode_clear(&ictx->ctx, MODE_MOUSE_UTF8);
 			break;
@@ -1325,6 +1328,12 @@ input_csi_dispatch(struct input_ctx *ictx)
 		case 1003:
 			screen_write_mode_clear(&ictx->ctx, ALL_MOUSE_MODES);
 			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_ANY);
+			break;
+		case 1004:
+			if (s->mode & MODE_FOCUSON)
+				break;
+			screen_write_mode_set(&ictx->ctx, MODE_FOCUSON);
+			wp->flags &= ~PANE_FOCUSED; /* force update if needed */
 			break;
 		case 1005:
 			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_UTF8);
