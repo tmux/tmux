@@ -477,7 +477,6 @@ const struct options_table_entry window_options_table[] = {
 	  .default_num = 1
 	},
 
-
 	{ .name = "c0-change-trigger",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .default_num = 250,
@@ -501,6 +500,11 @@ const struct options_table_entry window_options_table[] = {
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .choices = options_table_clock_mode_style_list,
 	  .default_num = 1
+	},
+
+	{ .name = "command-prefix",
+	  .type = OPTIONS_TABLE_STRING,
+	  .default_str = "exec "
 	},
 
 	{ .name = "force-height",
