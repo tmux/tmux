@@ -666,7 +666,7 @@ command.
 Lock all clients attached to
 .Ar target-session .
 .It Xo Ic new-session
-.Op Fl d
+.Op Fl AdD
 .Op Fl n Ar window-name
 .Op Fl s Ar session-name
 .Op Fl t Ar target-session
@@ -696,6 +696,21 @@ specify the size of the initial window (80 by 24 if not given).
 If run from a terminal, any
 .Xr termios 4
 special characters are saved and used for new windows in the new session.
+.Pp
+The
+.Fl A
+flag makes
+.Ic new-session
+behave like
+.Ic attach-session
+if
+.Ar session-name
+already exists; in the case,
+.Fl D
+behaves like
+.Fl d
+to
+.Ic attach-session .
 .Pp
 If
 .Fl t
@@ -1568,7 +1583,7 @@ Rename the current window, or the window at
 if specified, to
 .Ar new-name .
 .It Xo Ic resize-pane
-.Op Fl DLRU
+.Op Fl DLRUZ
 .Op Fl t Ar target-pane
 .Op Fl x Ar width
 .Op Fl y Ar height
@@ -1592,6 +1607,11 @@ or
 The
 .Ar adjustment
 is given in lines or cells (the default is 1).
+.Pp
+With
+.Fl Z ,
+the active pane is toggled between occupying the whole of the window and its
+normal position in the layout.
 .It Xo Ic respawn-pane
 .Op Fl k
 .Op Fl t Ar target-pane

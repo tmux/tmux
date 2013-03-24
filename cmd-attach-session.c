@@ -39,9 +39,8 @@ const struct cmd_entry cmd_attach_session_entry = {
 };
 
 enum cmd_retval
-cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_attach_session(struct cmd_q *cmdq, const char* tflag, int dflag, int rflag)
 {
-	struct args	*args = self->args;
 	struct session	*s;
 	struct client	*c;
 	const char	*update;
@@ -53,14 +52,14 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if ((s = cmd_find_session(cmdq, args_get(args, 't'), 1)) == NULL)
+	if ((s = cmd_find_session(cmdq, tflag, 1)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if (cmdq->client == NULL)
 		return (CMD_RETURN_NORMAL);
 
 	if (cmdq->client->session != NULL) {
-		if (args_has(self->args, 'd')) {
+		if (dflag) {
 			/*
 			 * Can't use server_write_session in case attaching to
 			 * the same session as currently attached to.
@@ -87,10 +86,10 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_ERROR);
 		}
 
-		if (args_has(self->args, 'r'))
+		if (rflag)
 			cmdq->client->flags |= CLIENT_READONLY;
 
-		if (args_has(self->args, 'd'))
+		if (dflag)
 			server_write_session(s, MSG_DETACH, NULL, 0);
 
 		update = options_get_string(&s->options, "update-environment");
@@ -109,4 +108,13 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	server_update_socket();
 
 	return (CMD_RETURN_NORMAL);
+}
+
+enum cmd_retval
+cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
+{
+	struct args	*args = self->args;
+
+	return (cmd_attach_session(cmdq, args_get(args, 't'),
+	    args_has(args, 'd'), args_has(args, 'r')));
 }

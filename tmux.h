@@ -929,7 +929,9 @@ struct window_pane {
 	u_int		 id;
 
 	struct window	*window;
+
 	struct layout_cell *layout_cell;
+	struct layout_cell *saved_layout_cell;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -994,6 +996,7 @@ struct window {
 
 	int		 lastlayout;
 	struct layout_cell *layout_root;
+	struct layout_cell *saved_layout_root;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1003,6 +1006,7 @@ struct window {
 #define WINDOW_ACTIVITY 0x2
 #define WINDOW_REDRAW 0x4
 #define WINDOW_SILENCE 0x8
+#define WINDOW_ZOOMED 0x10
 
 	struct options	 options;
 
@@ -1836,6 +1840,9 @@ extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
 extern const struct cmd_entry cmd_up_pane_entry;
 
+/* cmd-attach-session.c */
+enum cmd_retval	 cmd_attach_session(struct cmd_q *, const char*, int, int);
+
 /* cmd-list.c */
 struct cmd_list	*cmd_list_parse(int, char **, const char *, u_int, char **);
 void		 cmd_list_free(struct cmd_list *);
@@ -1929,6 +1936,7 @@ void	 server_push_stdout(struct client *);
 void	 server_push_stderr(struct client *);
 int	 server_set_stdin_callback(struct client *, void (*)(struct client *,
 	     int, void *), void *, char **);
+void	 server_unzoom_window(struct window *);
 
 /* status.c */
 int	 status_out_cmp(struct status_out *, struct status_out *);
@@ -2132,6 +2140,8 @@ struct window_pane *window_find_string(struct window *, const char *);
 void		 window_set_active_pane(struct window *, struct window_pane *);
 struct window_pane *window_add_pane(struct window *, u_int);
 void		 window_resize(struct window *, u_int, u_int);
+int		 window_zoom(struct window_pane *);
+int		 window_unzoom(struct window *);
 void		 window_remove_pane(struct window *, struct window_pane *);
 struct window_pane *window_pane_at_index(struct window *, u_int);
 struct window_pane *window_pane_next_by_number(struct window *,
@@ -2188,7 +2198,7 @@ void		 layout_fix_panes(struct window *, u_int, u_int);
 u_int		 layout_resize_check(struct layout_cell *, enum layout_type);
 void		 layout_resize_adjust(
 		     struct layout_cell *, enum layout_type, int);
-void		 layout_init(struct window *);
+void		 layout_init(struct window *, struct window_pane *);
 void		 layout_free(struct window *);
 void		 layout_resize(struct window *, u_int, u_int);
 void		 layout_resize_pane(struct window_pane *, enum layout_type,
