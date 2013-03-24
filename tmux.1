@@ -2704,6 +2704,13 @@ Set clock colour.
 .Xc
 Set clock hour format.
 .Pp
+.It Ic command-prefix Ar string
+String prefixed to commands (apart from a plain shell as set by the
+.Ic default-shell
+option).
+The default is
+.Ql "exec\ " .
+.Pp
 .It Ic force-height Ar height
 .It Ic force-width Ar width
 Prevent
@@ -3016,6 +3023,7 @@ The following variables are available, where appropriate:
 .It Li "mouse_standard_flag" Ta "Pane mouse standard flag"
 .It Li "mouse_utf8_flag" Ta "Pane mouse UTF-8 flag"
 .It Li "pane_active" Ta "1 if active pane"
+.It Li "pane_current_command" Ta "Current command if available"
 .It Li "pane_current_path" Ta "Current path if available"
 .It Li "pane_dead" Ta "1 if pane is dead"
 .It Li "pane_height" Ta "Height of pane"
@@ -3025,6 +3033,7 @@ The following variables are available, where appropriate:
 .It Li "pane_pid" Ta "PID of first process in pane"
 .It Li "pane_start_command" Ta "Command pane started with"
 .It Li "pane_start_path" Ta "Path pane started with"
+.It Li "pane_tabs" Ta "Pane tab positions"
 .It Li "pane_title" Ta "Title of pane"
 .It Li "pane_tty" Ta "Pseudo terminal of pane"
 .It Li "pane_width" Ta "Width of pane"
@@ -3455,7 +3464,11 @@ Miscellaneous commands are as follows:
 .Bl -tag -width Ds
 .It Ic clock-mode Op Fl t Ar target-pane
 Display a large clock.
-.It Ic if-shell Ar shell-command command Op Ar command
+.It Xo Ic if-shell
+.Op Fl t Ar target-pane
+.Ar shell-command command
+.Op Ar command
+.Xc
 .D1 (alias: Ic if )
 Execute the first
 .Ar command
@@ -3464,6 +3477,10 @@ if
 returns success or the second
 .Ar command
 otherwise.
+Before being executed, shell-command is expanded using the rules specified in the
+.Sx FORMATS
+section, including those relevant to
+.Ar target-pane .
 .It Ic lock-server
 .D1 (alias: Ic lock )
 Lock each client individually by running the command specified by the
@@ -3477,6 +3494,10 @@ option.
 Execute
 .Ar shell-command
 in the background without creating a window.
+Before being executed, shell-command is expanded using the rules specified in
+the
+.Sx FORMATS
+section.
 After it finishes, any output to stdout is displayed in copy mode (in the pane
 specified by
 .Fl t
