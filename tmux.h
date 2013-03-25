@@ -159,6 +159,7 @@ extern char   **environ;
 
 /* Default templates for break-pane, new-window and split-window. */
 #define BREAK_PANE_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
+#define NEW_SESSION_TEMPLATE "#{session_name}:"
 #define NEW_WINDOW_TEMPLATE BREAK_PANE_TEMPLATE
 #define SPLIT_WINDOW_TEMPLATE BREAK_PANE_TEMPLATE
 
@@ -779,9 +780,6 @@ struct job {
 
 	int		 fd;
 	struct bufferevent *event;
-
-	struct bufferevent *out;
-	int		outdone;
 
 	void		(*callbackfn)(struct job *);
 	void		(*freefn)(void *);
@@ -1416,6 +1414,9 @@ struct cmd_q {
 	struct cmd_q_item	*item;
 	struct cmd		*cmd;
 
+	time_t			 time;
+	u_int			 number;
+
 	void			 (*emptyfn)(struct cmd_q *);
 	void			*data;
 
@@ -1611,8 +1612,8 @@ int	options_table_find(const char *, const struct options_table_entry **,
 
 /* job.c */
 extern struct joblist all_jobs;
-struct job *job_run(
-	    const char *, void (*)(struct job *), void (*)(void *), void *);
+struct job *job_run(const char *, struct session *,
+	    void (*)(struct job *), void (*)(void *), void *);
 void	job_free(struct job *);
 void	job_died(struct job *, int);
 
@@ -1857,6 +1858,7 @@ int		 cmdq_free(struct cmd_q *);
 void printflike2 cmdq_print(struct cmd_q *, const char *, ...);
 void printflike2 cmdq_info(struct cmd_q *, const char *, ...);
 void printflike2 cmdq_error(struct cmd_q *, const char *, ...);
+int		 cmdq_guard(struct cmd_q *, const char *);
 void		 cmdq_run(struct cmd_q *, struct cmd_list *);
 void		 cmdq_append(struct cmd_q *, struct cmd_list *);
 int		 cmdq_continue(struct cmd_q *);

@@ -35,9 +35,9 @@ enum cmd_retval	 cmd_new_session_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_new_session_entry = {
 	"new-session", "new",
-	"AdDn:s:t:x:y:", 0, 1,
-	"[-AdD] [-n window-name] [-s session-name] " CMD_TARGET_SESSION_USAGE
-	" [-x width] [-y height] [command]",
+	"AdDF:n:Ps:t:x:y:", 0, 1,
+	"[-AdDP] [-F format] [-n window-name] [-s session-name] "
+	CMD_TARGET_SESSION_USAGE " [-x width] [-y height] [command]",
 	CMD_STARTSERVER|CMD_CANTNEST|CMD_SENDENVIRON,
 	NULL,
 	cmd_new_session_check,
@@ -55,19 +55,20 @@ cmd_new_session_check(struct args *args)
 enum cmd_retval
 cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 {
-	struct args	*args = self->args;
-	struct client	*c = cmdq->client;
-	struct session	*s, *groupwith;
-	struct window	*w;
-	struct environ	 env;
-	struct termios	 tio, *tiop;
-	struct passwd	*pw;
-	const char	*newname, *target, *update, *cwd, *errstr;
-	char		*cmd, *cause;
-	int		 detached, idx;
-	u_int		 sx, sy;
-	int		 already_attached;
-
+	struct args		*args = self->args;
+	struct client		*c = cmdq->client;
+	struct session		*s, *groupwith;
+	struct window		*w;
+	struct environ		 env;
+	struct termios		 tio, *tiop;
+	struct passwd		*pw;
+	const char		*newname, *target, *update, *cwd, *errstr;
+	const char		*template;
+	char			*cmd, *cause, *cp;
+	int			 detached, idx;
+	u_int			 sx, sy;
+	int			 already_attached;
+	struct format_tree	*ft;
 
 	newname = args_get(args, 's');
 	if (newname != NULL) {
@@ -232,6 +233,23 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	 */
 	if (cfg_finished)
 		cfg_show_causes(s);
+
+	/* Print if requested. */
+	if (args_has(args, 'P')) {
+		if ((template = args_get(args, 'F')) == NULL)
+			template = NEW_SESSION_TEMPLATE;
+
+		ft = format_create();
+		if ((c = cmd_find_client(cmdq, NULL, 1)) != NULL)
+			format_client(ft, c);
+		format_session(ft, s);
+
+		cp = format_expand(ft, template);
+		cmdq_print(cmdq, "%s", cp);
+		free(cp);
+
+		format_free(ft);
+	}
 
 	if (!detached)
 		cmdq->client_exit = 0;
