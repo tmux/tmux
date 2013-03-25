@@ -918,6 +918,8 @@ window_pane_resize(struct window_pane *wp, u_int sx, u_int sy)
 	screen_resize(&wp->base, sx, sy, wp->saved_grid == NULL);
 	if (wp->mode != NULL)
 		wp->mode->resize(wp, sx, sy);
+
+	wp->flags |= PANE_RESIZE;
 }
 
 /*
