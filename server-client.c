@@ -154,7 +154,8 @@ server_client_lost(struct client *c)
 
 	evbuffer_free (c->stdin_data);
 	evbuffer_free (c->stdout_data);
-	evbuffer_free (c->stderr_data);
+	if (c->stderr_data != c->stdout_data)
+		evbuffer_free (c->stderr_data);
 
 	status_free_jobs(&c->status_new);
 	status_free_jobs(&c->status_old);
@@ -956,6 +957,8 @@ server_client_msg_identify(
 
 	if (data->flags & IDENTIFY_CONTROL) {
 		c->stdin_callback = control_callback;
+		evbuffer_free(c->stderr_data);
+		c->stderr_data = c->stdout_data;
 		c->flags |= CLIENT_CONTROL;
 		if (data->flags & IDENTIFY_TERMIOS)
 			evbuffer_add_printf(c->stdout_data, "\033P1000p");

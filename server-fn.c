@@ -546,6 +546,10 @@ server_push_stderr(struct client *c)
 	struct msg_stderr_data data;
 	size_t                 size;
 
+	if (c->stderr_data == c->stdout_data) {
+		server_push_stdout(c);
+		return;
+	}
 	size = EVBUFFER_LENGTH(c->stderr_data);
 	if (size == 0)
 		return;
