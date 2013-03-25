@@ -1333,7 +1333,7 @@ cmd_get_default_path(struct cmd_q *cmdq, const char *cwd)
 		if (c != NULL && c->session == NULL && c->cwd != NULL)
 			root = c->cwd;
 		else if (s->curw != NULL)
-			root = get_proc_cwd(s->curw->window->active->fd);
+			root = osdep_get_cwd(s->curw->window->active->fd);
 		else
 			return (s->cwd);
 		skip = 0;

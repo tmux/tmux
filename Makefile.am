@@ -116,12 +116,10 @@ dist_tmux_SOURCES = \
 	cmd-select-pane.c \
 	cmd-select-window.c \
 	cmd-send-keys.c \
-	cmd-send-prefix.c \
 	cmd-server-info.c \
 	cmd-set-buffer.c \
 	cmd-set-environment.c \
 	cmd-set-option.c \
-	cmd-show-buffer.c \
 	cmd-show-environment.c \
 	cmd-show-messages.c \
 	cmd-show-options.c \
@@ -135,6 +133,7 @@ dist_tmux_SOURCES = \
 	cmd-switch-client.c \
 	cmd-unbind-key.c \
 	cmd-unlink-window.c \
+	cmd-wait-for.c \
 	cmd.c \
 	colour.c \
 	control.c \
