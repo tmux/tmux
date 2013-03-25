@@ -63,7 +63,7 @@ layout_dump(struct window *w)
 	if (layout_append(w->layout_root, layout, sizeof layout) != 0)
 		return (NULL);
 
-	xasprintf(&out, "%4x,%s", layout_checksum(layout), layout);
+	xasprintf(&out, "%04x,%s", layout_checksum(layout), layout);
 	return (out);
 }
 
@@ -206,11 +206,11 @@ layout_construct(struct layout_cell *lcparent, const char **layout)
 {
 	struct layout_cell     *lc, *lcchild;
 	u_int			sx, sy, xoff, yoff;
+	const char	       *saved;
 
 	if (!isdigit((u_char) **layout))
 		return (NULL);
-	if (sscanf(*layout, "%ux%u,%u,%u,%*u", &sx, &sy, &xoff, &yoff) != 4 &&
-	    sscanf(*layout, "%ux%u,%u,%u", &sx, &sy, &xoff, &yoff) != 4)
+	if (sscanf(*layout, "%ux%u,%u,%u", &sx, &sy, &xoff, &yoff) != 4)
 		return (NULL);
 
 	while (isdigit((u_char) **layout))
@@ -231,9 +231,12 @@ layout_construct(struct layout_cell *lcparent, const char **layout)
 	while (isdigit((u_char) **layout))
 		(*layout)++;
 	if (**layout == ',') {
+		saved = *layout;
 		(*layout)++;
 		while (isdigit((u_char) **layout))
 			(*layout)++;
+		if (**layout == 'x')
+			*layout = saved;
 	}
 
 	lc = layout_create_cell(lcparent);
