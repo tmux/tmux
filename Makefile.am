@@ -24,7 +24,7 @@ endif
 # Set flags for gcc. gcc4 whines abouts silly stuff so it needs slightly
 # different flags.
 if IS_GCC
-CFLAGS += -std=c99
+CFLAGS += -std=gnu99
 if IS_DEBUG
 CFLAGS += -O0 -g
 CFLAGS += -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
