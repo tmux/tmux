@@ -22,7 +22,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include "compat/vis.h"
 
 #include "tmux.h"
 
