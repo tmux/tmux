@@ -41,6 +41,7 @@ load_cfg(const char *path, struct cmd_q *cmdq, char **cause)
 	size_t		 len, oldlen;
 	struct cmd_list	*cmdlist;
 
+	log_debug("loading %s", path);
 	if ((f = fopen(path, "rb")) == NULL) {
 		xasprintf(cause, "%s: %s", path, strerror(errno));
 		return (-1);
