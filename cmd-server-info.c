@@ -102,7 +102,7 @@ cmd_server_info_exec(unused struct cmd *self, struct cmd_q *cmdq)
 		*strchr(tim, '\n') = '\0';
 
 		cmdq_print(cmdq, "%2u: %s: %u windows (created %s) [%ux%u] "
-		    "[flags=0x%x]", s->idx, s->name,
+		    "[flags=0x%x]", s->id, s->name,
 		    winlink_count(&s->windows), tim, s->sx, s->sy, s->flags);
 		RB_FOREACH(wl, winlinks, &s->windows) {
 			w = wl->window;

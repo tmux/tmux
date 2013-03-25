@@ -466,8 +466,8 @@ enum msgtype {
  * Don't forget to bump PROTOCOL_VERSION if any of these change!
  */
 struct msg_command_data {
-	pid_t		pid;	/* PID from $TMUX or -1 */
-	int		idx;	/* index from $TMUX or -1 */
+	pid_t		pid;		/* from $TMUX or -1 */
+	int		session_id;	/* from $TMUX or -1 */
 
 	int		argc;
 	char		argv[COMMAND_LENGTH];
@@ -1090,7 +1090,7 @@ struct session_group {
 TAILQ_HEAD(session_groups, session_group);
 
 struct session {
-	u_int		 idx;
+	u_int		 id;
 
 	char		*name;
 	char		*cwd;
@@ -1517,7 +1517,7 @@ extern char	 socket_path[MAXPATHLEN];
 extern int	 login_shell;
 extern char	*environ_path;
 extern pid_t	 environ_pid;
-extern int	 environ_idx;
+extern int	 environ_session_id;
 void		 logfile(const char *);
 const char	*getshell(void);
 int		 checkshell(const char *);
@@ -2291,7 +2291,7 @@ int	session_cmp(struct session *, struct session *);
 RB_PROTOTYPE(sessions, session, entry, session_cmp);
 int		 session_alive(struct session *);
 struct session	*session_find(const char *);
-struct session	*session_find_by_index(u_int);
+struct session	*session_find_by_id(u_int);
 struct session	*session_create(const char *, const char *, const char *,
 		     struct environ *, struct termios *, int, u_int, u_int,
 		     char **);

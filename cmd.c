@@ -123,6 +123,7 @@ struct session	*cmd_choose_session(int);
 struct client	*cmd_choose_client(struct clients *);
 struct client	*cmd_lookup_client(const char *);
 struct session	*cmd_lookup_session(const char *, int *);
+struct session	*cmd_lookup_session_id(const char *);
 struct winlink	*cmd_lookup_window(struct session *, const char *, int *);
 int		 cmd_lookup_index(struct session *, const char *, int *);
 struct window_pane *cmd_lookup_paneid(const char *);
@@ -358,8 +359,8 @@ cmd_current_session(struct cmd_q *cmdq, int prefer_unattached)
 	}
 
 	/* Use the session from the TMUX environment variable. */
-	if (data != NULL && data->pid == getpid() && data->idx != -1) {
-		s = session_find_by_index(data->idx);
+	if (data != NULL && data->pid == getpid() && data->session_id != -1) {
+		s = session_find_by_id(data->session_id);
 		if (s != NULL)
 			return (s);
 	}
@@ -551,6 +552,21 @@ cmd_lookup_client(const char *name)
 	return (NULL);
 }
 
+/* Find the target session or report an error and return NULL. */
+struct session *
+cmd_lookup_session_id(const char *arg)
+{
+	char	*endptr;
+	long	 id;
+
+	if (arg[0] != '$')
+		return (NULL);
+	id = strtol(arg + 1, &endptr, 10);
+	if (arg[1] != '\0' && *endptr == '\0')
+		return (session_find_by_id(id));
+	return (NULL);
+}
+
 /* Lookup a session by name. If no session is found, NULL is returned. */
 struct session *
 cmd_lookup_session(const char *name, int *ambiguous)
@@ -558,6 +574,10 @@ cmd_lookup_session(const char *name, int *ambiguous)
 	struct session	*s, *sfound;
 
 	*ambiguous = 0;
+
+	/* Look for $id first. */
+	if ((s = cmd_lookup_session_id(name)) != NULL)
+		return (s);
 
 	/*
 	 * Look for matches. First look for exact matches - session names must

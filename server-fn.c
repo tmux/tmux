@@ -39,7 +39,7 @@ server_fill_environ(struct session *s, struct environ *env)
 		term = options_get_string(&s->options, "default-terminal");
 		environ_set(env, "TERM", term);
 
-		idx = s->idx;
+		idx = s->id;
 	} else
 		idx = -1;
 	pid = getpid();
