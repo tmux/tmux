@@ -29,9 +29,9 @@
  */
 
 void		 cmd_join_pane_key_binding(struct cmd *, int);
-enum cmd_retval	 cmd_join_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_join_pane_exec(struct cmd *, struct cmd_q *);
 
-enum cmd_retval	 join_pane(struct cmd *, struct cmd_ctx *, int);
+enum cmd_retval	 join_pane(struct cmd *, struct cmd_q *, int);
 
 const struct cmd_entry cmd_join_pane_entry = {
 	"join-pane", "joinp",
@@ -68,13 +68,13 @@ cmd_join_pane_key_binding(struct cmd *self, int key)
 }
 
 enum cmd_retval
-cmd_join_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_join_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
-	return (join_pane(self, ctx, self->entry == &cmd_join_pane_entry));
+	return (join_pane(self, cmdq, self->entry == &cmd_join_pane_entry));
 }
 
 enum cmd_retval
-join_pane(struct cmd *self, struct cmd_ctx *ctx, int not_same_window)
+join_pane(struct cmd *self, struct cmd_q *cmdq, int not_same_window)
 {
 	struct args		*args = self->args;
 	struct session		*dst_s;
@@ -86,23 +86,25 @@ join_pane(struct cmd *self, struct cmd_ctx *ctx, int not_same_window)
 	enum layout_type	 type;
 	struct layout_cell	*lc;
 
-	dst_wl = cmd_find_pane(ctx, args_get(args, 't'), &dst_s, &dst_wp);
+	dst_wl = cmd_find_pane(cmdq, args_get(args, 't'), &dst_s, &dst_wp);
 	if (dst_wl == NULL)
 		return (CMD_RETURN_ERROR);
 	dst_w = dst_wl->window;
 	dst_idx = dst_wl->idx;
+	server_unzoom_window(dst_w);
 
-	src_wl = cmd_find_pane(ctx, args_get(args, 's'), NULL, &src_wp);
+	src_wl = cmd_find_pane(cmdq, args_get(args, 's'), NULL, &src_wp);
 	if (src_wl == NULL)
 		return (CMD_RETURN_ERROR);
 	src_w = src_wl->window;
+	server_unzoom_window(src_w);
 
 	if (not_same_window && src_w == dst_w) {
-		ctx->error(ctx, "can't join a pane to its own window");
+		cmdq_error(cmdq, "can't join a pane to its own window");
 		return (CMD_RETURN_ERROR);
 	}
 	if (!not_same_window && src_wp == dst_wp) {
-		ctx->error(ctx, "source and target panes must be different");
+		cmdq_error(cmdq, "source and target panes must be different");
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -114,14 +116,14 @@ join_pane(struct cmd *self, struct cmd_ctx *ctx, int not_same_window)
 	if (args_has(args, 'l')) {
 		size = args_strtonum(args, 'l', 0, INT_MAX, &cause);
 		if (cause != NULL) {
-			ctx->error(ctx, "size %s", cause);
+			cmdq_error(cmdq, "size %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
 	} else if (args_has(args, 'p')) {
 		percentage = args_strtonum(args, 'p', 0, 100, &cause);
 		if (cause != NULL) {
-			ctx->error(ctx, "percentage %s", cause);
+			cmdq_error(cmdq, "percentage %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
@@ -132,7 +134,7 @@ join_pane(struct cmd *self, struct cmd_ctx *ctx, int not_same_window)
 	}
 	lc = layout_split_pane(dst_wp, type, size, args_has(args, 'b'));
 	if (lc == NULL) {
-		ctx->error(ctx, "create pane failed: pane too small");
+		cmdq_error(cmdq, "create pane failed: pane too small");
 		return (CMD_RETURN_ERROR);
 	}
 

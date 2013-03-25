@@ -29,7 +29,7 @@
  * Runs a command without a window.
  */
 
-enum cmd_retval	 cmd_run_shell_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_run_shell_exec(struct cmd *, struct cmd_q *);
 
 void	cmd_run_shell_callback(struct job *);
 void	cmd_run_shell_free(void *);
@@ -37,8 +37,8 @@ void	cmd_run_shell_print(struct job *, const char *);
 
 const struct cmd_entry cmd_run_shell_entry = {
 	"run-shell", "run",
-	"t:", 1, 1,
-	CMD_TARGET_PANE_USAGE " command",
+	"bt:", 1, 1,
+	"[-b] " CMD_TARGET_PANE_USAGE " shell-command",
 	0,
 	NULL,
 	NULL,
@@ -47,20 +47,21 @@ const struct cmd_entry cmd_run_shell_entry = {
 
 struct cmd_run_shell_data {
 	char		*cmd;
-	struct cmd_ctx	 ctx;
-	u_int		 wp_id;
+	struct cmd_q	*cmdq;
+	int		 bflag;
+	int		 wp_id;
 };
 
 void
 cmd_run_shell_print(struct job *job, const char *msg)
 {
 	struct cmd_run_shell_data	*cdata = job->data;
-	struct cmd_ctx			*ctx = &cdata->ctx;
-	struct window_pane		*wp;
+	struct window_pane		*wp = NULL;
 
-	wp = window_pane_find_by_id(cdata->wp_id);
+	if (cdata->wp_id != -1)
+		wp = window_pane_find_by_id(cdata->wp_id);
 	if (wp == NULL) {
-		ctx->print(ctx, "%s", msg);
+		cmdq_print(cdata->cmdq, "%s", msg);
 		return;
 	}
 
@@ -71,50 +72,63 @@ cmd_run_shell_print(struct job *job, const char *msg)
 }
 
 enum cmd_retval
-cmd_run_shell_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
 	struct cmd_run_shell_data	*cdata;
-	const char			*shellcmd = args->argv[0];
-	struct window_pane		*wp;
+	char				*shellcmd;
+	struct session			*s = NULL;
+	struct winlink			*wl = NULL;
+	struct window_pane		*wp = NULL;
+	struct format_tree		*ft;
 
-	if (cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp) == NULL)
-		return (CMD_RETURN_ERROR);
+	if (args_has(args, 't'))
+		wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp);
+
+	ft = format_create();
+	if (s != NULL)
+		format_session(ft, s);
+	if (s != NULL && wl != NULL)
+		format_winlink(ft, s, wl);
+	if (wp != NULL)
+		format_window_pane(ft, wp);
+	shellcmd = format_expand(ft, args->argv[0]);
+	format_free(ft);
 
 	cdata = xmalloc(sizeof *cdata);
-	cdata->cmd = xstrdup(args->argv[0]);
-	cdata->wp_id = wp->id;
-	memcpy(&cdata->ctx, ctx, sizeof cdata->ctx);
+	cdata->cmd = shellcmd;
+	cdata->bflag = args_has(args, 'b');
+	cdata->wp_id = wp != NULL ? (int) wp->id : -1;
 
-	if (ctx->cmdclient != NULL)
-		ctx->cmdclient->references++;
-	if (ctx->curclient != NULL)
-		ctx->curclient->references++;
+	cdata->cmdq = cmdq;
+	cmdq->references++;
 
-	job_run(shellcmd, cmd_run_shell_callback, cmd_run_shell_free, cdata);
+	job_run(shellcmd, s, cmd_run_shell_callback, cmd_run_shell_free, cdata);
 
-	return (CMD_RETURN_YIELD);	/* don't let client exit */
+	if (cdata->bflag)
+		return (CMD_RETURN_NORMAL);
+	return (CMD_RETURN_WAIT);
 }
 
 void
 cmd_run_shell_callback(struct job *job)
 {
 	struct cmd_run_shell_data	*cdata = job->data;
-	struct cmd_ctx			*ctx = &cdata->ctx;
+	struct cmd_q			*cmdq = cdata->cmdq;
 	char				*cmd, *msg, *line;
 	size_t				 size;
 	int				 retcode;
 	u_int				 lines;
 
-	if (ctx->cmdclient != NULL && ctx->cmdclient->flags & CLIENT_DEAD)
+	if (cmdq->dead)
 		return;
-	if (ctx->curclient != NULL && ctx->curclient->flags & CLIENT_DEAD)
-		return;
+	cmd = cdata->cmd;
 
 	lines = 0;
 	do {
 		if ((line = evbuffer_readline(job->event->input)) != NULL) {
-			cmd_run_shell_print (job, line);
+			cmd_run_shell_print(job, line);
+			free(line);
 			lines++;
 		}
 	} while (line != NULL);
@@ -131,8 +145,6 @@ cmd_run_shell_callback(struct job *job)
 		free(line);
 	}
 
-	cmd = cdata->cmd;
-
 	msg = NULL;
 	if (WIFEXITED(job->status)) {
 		if ((retcode = WEXITSTATUS(job->status)) != 0)
@@ -143,7 +155,7 @@ cmd_run_shell_callback(struct job *job)
 	}
 	if (msg != NULL) {
 		if (lines == 0)
-			ctx->info(ctx, "%s", msg);
+			cmdq_info(cmdq, "%s", msg);
 		else
 			cmd_run_shell_print(job, msg);
 		free(msg);
@@ -154,14 +166,10 @@ void
 cmd_run_shell_free(void *data)
 {
 	struct cmd_run_shell_data	*cdata = data;
-	struct cmd_ctx			*ctx = &cdata->ctx;
+	struct cmd_q			*cmdq = cdata->cmdq;
 
-	if (ctx->cmdclient != NULL) {
-		ctx->cmdclient->references--;
-		ctx->cmdclient->flags |= CLIENT_EXIT;
-	}
-	if (ctx->curclient != NULL)
-		ctx->curclient->references--;
+	if (!cmdq_free(cmdq) && !cdata->bflag)
+		cmdq_continue(cmdq);
 
 	free(cdata->cmd);
 	free(cdata);

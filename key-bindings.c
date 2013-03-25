@@ -150,6 +150,7 @@ key_bindings_init(void)
 		{ 't', 			  0, &cmd_clock_mode_entry },
 		{ 'w', 			  0, &cmd_choose_window_entry },
 		{ 'x', 			  0, &cmd_confirm_before_entry },
+		{ 'z',			  0, &cmd_resize_pane_entry },
 		{ '{',			  0, &cmd_swap_pane_entry },
 		{ '}',			  0, &cmd_swap_pane_entry },
 		{ '~',			  0, &cmd_show_messages_entry },
@@ -182,11 +183,11 @@ key_bindings_init(void)
 	RB_INIT(&key_bindings);
 
 	for (i = 0; i < nitems(table); i++) {
-		cmdlist = xmalloc(sizeof *cmdlist);
-		TAILQ_INIT(&cmdlist->list);
+		cmdlist = xcalloc(1, sizeof *cmdlist);
 		cmdlist->references = 1;
+		TAILQ_INIT(&cmdlist->list);
 
-		cmd = xmalloc(sizeof *cmd);
+		cmd = xcalloc(1, sizeof *cmd);
 		cmd->entry = table[i].entry;
 		if (cmd->entry->key_binding != NULL)
 			cmd->entry->key_binding(cmd, table[i].key);
@@ -199,91 +200,21 @@ key_bindings_init(void)
 	}
 }
 
-void printflike2
-key_bindings_error(struct cmd_ctx *ctx, const char *fmt, ...)
-{
-	va_list	ap;
-	char   *msg;
-
-	if (ctx->curclient->session == NULL)
-		return;
-
-	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
-	va_end(ap);
-
-	*msg = toupper((u_char) *msg);
-	status_message_set(ctx->curclient, "%s", msg);
-	free(msg);
-}
-
-void printflike2
-key_bindings_print(struct cmd_ctx *ctx, const char *fmt, ...)
-{
-	struct winlink	*wl;
-	va_list		 ap;
-
-	if (ctx->curclient->session == NULL)
-		return;
-
-	wl = ctx->curclient->session->curw;
-	if (wl->window->active->mode != &window_copy_mode) {
-		window_pane_reset_mode(wl->window->active);
-		window_pane_set_mode(wl->window->active, &window_copy_mode);
-		window_copy_init_for_output(wl->window->active);
-	}
-
-	va_start(ap, fmt);
-	window_copy_vadd(wl->window->active, fmt, ap);
-	va_end(ap);
-}
-
-void printflike2
-key_bindings_info(struct cmd_ctx *ctx, const char *fmt, ...)
-{
-	va_list	ap;
-	char   *msg;
-
-	if (ctx->curclient->session == NULL)
-		return;
-
-	if (options_get_number(&global_options, "quiet"))
-		return;
-
-	va_start(ap, fmt);
-	xvasprintf(&msg, fmt, ap);
-	va_end(ap);
-
-	*msg = toupper((u_char) *msg);
-	status_message_set(ctx->curclient, "%s", msg);
-	free(msg);
-}
-
 void
 key_bindings_dispatch(struct key_binding *bd, struct client *c)
 {
-	struct cmd_ctx	 ctx;
 	struct cmd	*cmd;
 	int		 readonly;
-
-	ctx.msgdata = NULL;
-	ctx.curclient = c;
-
-	ctx.error = key_bindings_error;
-	ctx.print = key_bindings_print;
-	ctx.info = key_bindings_info;
-
-	ctx.cmdclient = NULL;
 
 	readonly = 1;
 	TAILQ_FOREACH(cmd, &bd->cmdlist->list, qentry) {
 		if (!(cmd->entry->flags & CMD_READONLY))
 			readonly = 0;
 	}
-	if (!readonly && c->flags & CLIENT_READONLY) {
-		key_bindings_info(&ctx, "Client is read-only");
+	if (!readonly && (c->flags & CLIENT_READONLY)) {
+		cmdq_info(c->cmdq, "client is read-only");
 		return;
 	}
 
-	cmd_list_exec(bd->cmdlist, &ctx);
+	cmdq_run(c->cmdq, bd->cmdlist);
 }

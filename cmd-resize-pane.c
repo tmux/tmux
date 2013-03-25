@@ -27,12 +27,12 @@
  */
 
 void		 cmd_resize_pane_key_binding(struct cmd *, int);
-enum cmd_retval	 cmd_resize_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_resize_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_resize_pane_entry = {
 	"resize-pane", "resizep",
-	"DLRt:U", 0, 1,
-	"[-DLRU] " CMD_TARGET_PANE_USAGE " [adjustment]",
+	"DLRt:Ux:y:Z", 0, 1,
+	"[-DLRUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " [adjustment]",
 	0,
 	cmd_resize_pane_key_binding,
 	NULL,
@@ -75,6 +75,10 @@ cmd_resize_pane_key_binding(struct cmd *self, int key)
 		self->args = args_create(1, "5");
 		args_set(self->args, 'R', NULL);
 		break;
+	case 'z':
+		self->args = args_create(0);
+		args_set(self->args, 'Z', NULL);
+		break;
 	default:
 		self->args = args_create(0);
 		break;
@@ -82,25 +86,61 @@ cmd_resize_pane_key_binding(struct cmd *self, int key)
 }
 
 enum cmd_retval
-cmd_resize_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
+	struct window		*w;
 	const char	       	*errstr;
+	char			*cause;
 	struct window_pane	*wp;
 	u_int			 adjust;
+	int			 x, y;
 
-	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp)) == NULL)
+	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
+	w = wl->window;
+
+	if (args_has(args, 'Z')) {
+		if (w->flags & WINDOW_ZOOMED)
+			window_unzoom(w);
+		else
+			window_zoom(wp);
+		server_redraw_window(w);
+		server_status_window(w);
+		return (CMD_RETURN_NORMAL);
+	}
+	server_unzoom_window(w);
 
 	if (args->argc == 0)
 		adjust = 1;
 	else {
 		adjust = strtonum(args->argv[0], 1, INT_MAX, &errstr);
 		if (errstr != NULL) {
-			ctx->error(ctx, "adjustment %s", errstr);
+			cmdq_error(cmdq, "adjustment %s", errstr);
 			return (CMD_RETURN_ERROR);
 		}
+	}
+
+	if (args_has(self->args, 'x')) {
+		x = args_strtonum(self->args, 'x', PANE_MINIMUM, INT_MAX,
+		    &cause);
+		if (cause != NULL) {
+			cmdq_error(cmdq, "width %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+		layout_resize_pane_to(wp, LAYOUT_LEFTRIGHT, x);
+	}
+	if (args_has(self->args, 'y')) {
+		y = args_strtonum(self->args, 'y', PANE_MINIMUM, INT_MAX,
+		    &cause);
+		if (cause != NULL) {
+			cmdq_error(cmdq, "height %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+		layout_resize_pane_to(wp, LAYOUT_TOPBOTTOM, y);
 	}
 
 	if (args_has(self->args, 'L'))

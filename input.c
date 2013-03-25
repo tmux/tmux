@@ -1033,10 +1033,10 @@ input_esc_dispatch(struct input_ctx *ictx)
 		screen_write_reverseindex(sctx);
 		break;
 	case INPUT_ESC_DECKPAM:
-		screen_write_kkeypadmode(sctx, 1);
+		screen_write_mode_set(sctx, MODE_KKEYPAD);
 		break;
 	case INPUT_ESC_DECKPNM:
-		screen_write_kkeypadmode(sctx, 0);
+		screen_write_mode_clear(sctx, MODE_KKEYPAD);
 		break;
 	case INPUT_ESC_DECSC:
 		memcpy(&ictx->old_cell, &ictx->cell, sizeof ictx->old_cell);
@@ -1232,7 +1232,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_RM:
 		switch (input_get(ictx, 0, 0, -1)) {
 		case 4:		/* IRM */
-			screen_write_insertmode(&ictx->ctx, 0);
+			screen_write_mode_clear(&ictx->ctx, MODE_INSERT);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -1242,23 +1242,32 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_RM_PRIVATE:
 		switch (input_get(ictx, 0, 0, -1)) {
 		case 1:		/* GATM */
-			screen_write_kcursormode(&ictx->ctx, 0);
+			screen_write_mode_clear(&ictx->ctx, MODE_KCURSOR);
 			break;
 		case 3:		/* DECCOLM */
 			screen_write_cursormove(&ictx->ctx, 0, 0);
 			screen_write_clearscreen(&ictx->ctx);
 			break;
+		case 7:		/* DECAWM */
+			screen_write_mode_clear(&ictx->ctx, MODE_WRAP);
+			break;
 		case 25:	/* TCEM */
-			screen_write_cursormode(&ictx->ctx, 0);
+			screen_write_mode_clear(&ictx->ctx, MODE_CURSOR);
 			break;
 		case 1000:
 		case 1001:
 		case 1002:
 		case 1003:
-			screen_write_mousemode_off(&ictx->ctx);
+			screen_write_mode_clear(&ictx->ctx, ALL_MOUSE_MODES);
+			break;
+		case 1004:
+			screen_write_mode_clear(&ictx->ctx, MODE_FOCUSON);
 			break;
 		case 1005:
-			screen_write_utf8mousemode(&ictx->ctx, 0);
+			screen_write_mode_clear(&ictx->ctx, MODE_MOUSE_UTF8);
+			break;
+		case 1006:
+			screen_write_mode_clear(&ictx->ctx, MODE_MOUSE_SGR);
 			break;
 		case 47:
 		case 1047:
@@ -1268,7 +1277,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 			window_pane_alternate_off(wp, &ictx->cell, 1);
 			break;
 		case 2004:
-			screen_write_bracketpaste(&ictx->ctx, 0);
+			screen_write_mode_clear(&ictx->ctx, MODE_BRACKETPASTE);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -1286,7 +1295,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_SM:
 		switch (input_get(ictx, 0, 0, -1)) {
 		case 4:		/* IRM */
-			screen_write_insertmode(&ictx->ctx, 1);
+			screen_write_mode_set(&ictx->ctx, MODE_INSERT);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
@@ -1296,28 +1305,41 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_SM_PRIVATE:
 		switch (input_get(ictx, 0, 0, -1)) {
 		case 1:		/* GATM */
-			screen_write_kcursormode(&ictx->ctx, 1);
+			screen_write_mode_set(&ictx->ctx, MODE_KCURSOR);
 			break;
 		case 3:		/* DECCOLM */
 			screen_write_cursormove(&ictx->ctx, 0, 0);
 			screen_write_clearscreen(&ictx->ctx);
 			break;
+		case 7:		/* DECAWM */
+			screen_write_mode_set(&ictx->ctx, MODE_WRAP);
+			break;
 		case 25:	/* TCEM */
-			screen_write_cursormode(&ictx->ctx, 1);
+			screen_write_mode_set(&ictx->ctx, MODE_CURSOR);
 			break;
 		case 1000:
-			screen_write_mousemode_on(
-			    &ictx->ctx, MODE_MOUSE_STANDARD);
+			screen_write_mode_clear(&ictx->ctx, ALL_MOUSE_MODES);
+			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_STANDARD);
 			break;
 		case 1002:
-			screen_write_mousemode_on(
-			    &ictx->ctx, MODE_MOUSE_BUTTON);
+			screen_write_mode_clear(&ictx->ctx, ALL_MOUSE_MODES);
+			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_BUTTON);
 			break;
 		case 1003:
-			screen_write_mousemode_on(&ictx->ctx, MODE_MOUSE_ANY);
+			screen_write_mode_clear(&ictx->ctx, ALL_MOUSE_MODES);
+			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_ANY);
+			break;
+		case 1004:
+			if (s->mode & MODE_FOCUSON)
+				break;
+			screen_write_mode_set(&ictx->ctx, MODE_FOCUSON);
+			wp->flags &= ~PANE_FOCUSED; /* force update if needed */
 			break;
 		case 1005:
-			screen_write_utf8mousemode(&ictx->ctx, 1);
+			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_UTF8);
+			break;
+		case 1006:
+			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_SGR);
 			break;
 		case 47:
 		case 1047:
@@ -1327,7 +1349,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 			window_pane_alternate_on(wp, &ictx->cell, 1);
 			break;
 		case 2004:
-			screen_write_bracketpaste(&ictx->ctx, 1);
+			screen_write_mode_set(&ictx->ctx, MODE_BRACKETPASTE);
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);

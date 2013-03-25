@@ -27,7 +27,7 @@
  * Show environment.
  */
 
-enum cmd_retval	 cmd_show_environment_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_show_environment_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_show_environment_entry = {
 	"show-environment", "showenv",
@@ -40,7 +40,7 @@ const struct cmd_entry cmd_show_environment_entry = {
 };
 
 enum cmd_retval
-cmd_show_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_show_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct session		*s;
@@ -50,7 +50,7 @@ cmd_show_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args_has(self->args, 'g'))
 		env = &global_environ;
 	else {
-		if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
+		if ((s = cmd_find_session(cmdq, args_get(args, 't'), 0)) == NULL)
 			return (CMD_RETURN_ERROR);
 		env = &s->environ;
 	}
@@ -58,21 +58,21 @@ cmd_show_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args->argc != 0) {
 		envent = environ_find(env, args->argv[0]);
 		if (envent == NULL) {
-			ctx->error(ctx, "unknown variable: %s", args->argv[0]);
+			cmdq_error(cmdq, "unknown variable: %s", args->argv[0]);
 			return (CMD_RETURN_ERROR);
 		}
 		if (envent->value != NULL)
-			ctx->print(ctx, "%s=%s", envent->name, envent->value);
+			cmdq_print(cmdq, "%s=%s", envent->name, envent->value);
 		else
-			ctx->print(ctx, "-%s", envent->name);
+			cmdq_print(cmdq, "-%s", envent->name);
 		return (CMD_RETURN_NORMAL);
 	}
 
 	RB_FOREACH(envent, environ, env) {
 		if (envent->value != NULL)
-			ctx->print(ctx, "%s=%s", envent->name, envent->value);
+			cmdq_print(cmdq, "%s=%s", envent->name, envent->value);
 		else
-			ctx->print(ctx, "-%s", envent->name);
+			cmdq_print(cmdq, "-%s", envent->name);
 	}
 
 	return (CMD_RETURN_NORMAL);

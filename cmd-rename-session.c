@@ -26,7 +26,7 @@
  * Change session name.
  */
 
-enum cmd_retval	 cmd_rename_session_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_rename_session_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_rename_session_entry = {
 	"rename-session", "rename",
@@ -39,7 +39,7 @@ const struct cmd_entry cmd_rename_session_entry = {
 };
 
 enum cmd_retval
-cmd_rename_session_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_rename_session_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 	struct session	*s;
@@ -47,15 +47,15 @@ cmd_rename_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	newname = args->argv[0];
 	if (!session_check_name(newname)) {
-		ctx->error(ctx, "bad session name: %s", newname);
+		cmdq_error(cmdq, "bad session name: %s", newname);
 		return (CMD_RETURN_ERROR);
 	}
 	if (session_find(newname) != NULL) {
-		ctx->error(ctx, "duplicate session: %s", newname);
+		cmdq_error(cmdq, "duplicate session: %s", newname);
 		return (CMD_RETURN_ERROR);
 	}
 
-	if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
+	if ((s = cmd_find_session(cmdq, args_get(args, 't'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	RB_REMOVE(sessions, &sessions, s);

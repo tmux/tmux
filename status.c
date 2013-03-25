@@ -393,13 +393,6 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 	long	limit;
 	u_int	idx;
 
-	if (s == NULL)
-		s = c->session;
-	if (wl == NULL)
-		wl = s->curw;
-	if (wp == NULL)
-		wp = wl->window->active;
-
 	errno = 0;
 	limit = strtol(*iptr, &endptr, 10);
 	if ((limit == 0 && errno != EINVAL) ||
@@ -444,8 +437,7 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 	case 'P':
 		if (window_pane_index(wp, &idx) != 0)
 			fatalx("index not found");
-		xsnprintf(
-		    tmp, sizeof tmp, "%u", idx);
+		xsnprintf(tmp, sizeof tmp, "%u", idx);
 		ptr = tmp;
 		goto do_replace;
 	case 'S':
@@ -468,6 +460,9 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 		 */
 		ch = ']';
 		goto skip_to;
+	case '{':
+		ptr = (char *) "#{";
+		goto do_replace;
 	case '#':
 		*(*optr)++ = '#';
 		break;
@@ -507,12 +502,20 @@ char *
 status_replace(struct client *c, struct session *s, struct winlink *wl,
     struct window_pane *wp, const char *fmt, time_t t, int jobsflag)
 {
-	static char	out[BUFSIZ];
-	char		in[BUFSIZ], ch, *iptr, *optr;
-	size_t		len;
+	static char		 out[BUFSIZ];
+	char			 in[BUFSIZ], ch, *iptr, *optr, *expanded;
+	size_t			 len;
+	struct format_tree	*ft;
 
 	if (fmt == NULL)
 		return (xstrdup(""));
+
+	if (s == NULL)
+		s = c->session;
+	if (wl == NULL)
+		wl = s->curw;
+	if (wp == NULL)
+		wp = wl->window->active;
 
 	len = strftime(in, sizeof in, fmt, localtime(&t));
 	in[len] = '\0';
@@ -534,7 +537,14 @@ status_replace(struct client *c, struct session *s, struct winlink *wl,
 	}
 	*optr = '\0';
 
-	return (xstrdup(out));
+	ft = format_create();
+	format_client(ft, c);
+	format_session(ft, s);
+	format_winlink(ft, s, wl);
+	format_window_pane(ft, wp);
+	expanded = format_expand(ft, out);
+	format_free(ft);
+	return (expanded);
 }
 
 /* Figure out job name and get its result, starting it off if necessary. */
@@ -584,7 +594,7 @@ status_find_job(struct client *c, char **iptr)
 
 	/* If not found at all, start the job and add to the tree. */
 	if (so == NULL) {
-		job_run(cmd, status_job_callback, status_job_free, c);
+		job_run(cmd, NULL, status_job_callback, status_job_free, c);
 		c->references++;
 
 		so = xmalloc(sizeof *so);
@@ -666,7 +676,7 @@ status_job_callback(struct job *job)
 			memcpy(buf, EVBUFFER_DATA(job->event->input), len);
 		buf[len] = '\0';
 	} else
-		buf = xstrdup(line);
+		buf = line;
 
 	so->out = buf;
 	server_status_client(c);
@@ -819,7 +829,6 @@ status_message_clear(struct client *c)
 }
 
 /* Clear status line message after timer expires. */
-/* ARGSUSED */
 void
 status_message_callback(unused int fd, unused short event, void *data)
 {
@@ -1033,7 +1042,7 @@ status_prompt_key(struct client *c, int key)
 	size_t			 size, n, off, idx;
 
 	size = strlen(c->prompt_buffer);
-	switch (mode_key_lookup(&c->prompt_mdata, key)) {
+	switch (mode_key_lookup(&c->prompt_mdata, key, NULL)) {
 	case MODEKEYEDIT_CURSORLEFT:
 		if (c->prompt_index > 0) {
 			c->prompt_index--;

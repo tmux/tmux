@@ -149,19 +149,18 @@ tty_open(struct tty *tty, const char *overrides, char **cause)
 	}
 	tty->flags |= TTY_OPENED;
 
-	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_ESCAPE);
+	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_TIMER);
 
 	tty->event = bufferevent_new(
 	    tty->fd, tty_read_callback, NULL, tty_error_callback, tty);
 
 	tty_start_tty(tty);
 
-	tty_keys_init(tty);
+	tty_keys_build(tty);
 
 	return (0);
 }
 
-/* ARGSUSED */
 void
 tty_read_callback(unused struct bufferevent *bufev, void *data)
 {
@@ -171,7 +170,6 @@ tty_read_callback(unused struct bufferevent *bufev, void *data)
 		;
 }
 
-/* ARGSUSED */
 void
 tty_error_callback(
     unused struct bufferevent *bufev, unused short what, unused void *data)
@@ -220,10 +218,10 @@ tty_start_tty(struct tty *tty)
 
 	tty_putcode(tty, TTYC_CNORM);
 	if (tty_term_has(tty->term, TTYC_KMOUS))
-		tty_puts(tty, "\033[?1000l");
+		tty_puts(tty, "\033[?1000l\033[?1006l\033[?1005l");
 
 	if (tty_term_has(tty->term, TTYC_XT))
-		tty_puts(tty, "\033[c");
+		tty_puts(tty, "\033[c\033[>4;1m\033[?1004h");
 
 	tty->cx = UINT_MAX;
 	tty->cy = UINT_MAX;
@@ -267,8 +265,6 @@ tty_stop_tty(struct tty *tty)
 	if (tcsetattr(tty->fd, TCSANOW, &tty->tio) == -1)
 		return;
 
-	setblocking(tty->fd, 1);
-
 	tty_raw(tty, tty_term_string2(tty->term, TTYC_CSR, 0, ws.ws_row - 1));
 	if (tty_use_acs(tty))
 		tty_raw(tty, tty_term_string(tty->term, TTYC_RMACS));
@@ -285,9 +281,14 @@ tty_stop_tty(struct tty *tty)
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
 	if (tty_term_has(tty->term, TTYC_KMOUS))
-		tty_raw(tty, "\033[?1000l");
+		tty_raw(tty, "\033[?1000l\033[?1006l\033[?1005l");
+
+	if (tty_term_has(tty->term, TTYC_XT))
+		tty_raw(tty, "\033[>4m\033[?1004l");
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
+
+	setblocking(tty->fd, 1);
 }
 
 void
@@ -332,7 +333,21 @@ tty_free(struct tty *tty)
 void
 tty_raw(struct tty *tty, const char *s)
 {
-	write(tty->fd, s, strlen(s));
+	ssize_t	n, slen;
+	u_int	i;
+
+	slen = strlen(s);
+	for (i = 0; i < 5; i++) {
+		n = write(tty->fd, s, slen);
+		if (n >= 0) {
+			s += n;
+			slen -= n;
+			if (slen == 0)
+				break;
+		} else if (n == -1 && errno != EAGAIN)
+			break;
+		usleep(100);
+	}
 }
 
 void
@@ -474,10 +489,21 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 		}
 		tty->cstyle = s->cstyle;
 	}
-	if (changed & ALL_MOUSE_MODES) {
+	if (changed & (ALL_MOUSE_MODES|MODE_MOUSE_UTF8)) {
 		if (mode & ALL_MOUSE_MODES) {
+			/*
+			 * Enable the UTF-8 (1005) extension if configured to.
+			 * Enable the SGR (1006) extension unconditionally, as
+			 * this is safe from misinterpretation. Do it in this
+			 * order, because in some terminals it's the last one
+			 * that takes effect and SGR is the preferred one.
+			 */
 			if (mode & MODE_MOUSE_UTF8)
 				tty_puts(tty, "\033[?1005h");
+			else
+				tty_puts(tty, "\033[?1005l");
+			tty_puts(tty, "\033[?1006h");
+
 			if (mode & MODE_MOUSE_ANY)
 				tty_puts(tty, "\033[?1003h");
 			else if (mode & MODE_MOUSE_BUTTON)
@@ -491,6 +517,8 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 				tty_puts(tty, "\033[?1002l");
 			else if (tty->mode & MODE_MOUSE_STANDARD)
 				tty_puts(tty, "\033[?1000l");
+
+			tty_puts(tty, "\033[?1006l");
 			if (tty->mode & MODE_MOUSE_UTF8)
 				tty_puts(tty, "\033[?1005l");
 		}

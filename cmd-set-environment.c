@@ -27,7 +27,7 @@
  * Set an environment variable.
  */
 
-enum cmd_retval	 cmd_set_environment_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_set_environment_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_set_environment_entry = {
 	"set-environment", "setenv",
@@ -40,7 +40,7 @@ const struct cmd_entry cmd_set_environment_entry = {
 };
 
 enum cmd_retval
-cmd_set_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_set_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 	struct session	*s;
@@ -49,11 +49,11 @@ cmd_set_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
 
 	name = args->argv[0];
 	if (*name == '\0') {
-		ctx->error(ctx, "empty variable name");
+		cmdq_error(cmdq, "empty variable name");
 		return (CMD_RETURN_ERROR);
 	}
 	if (strchr(name, '=') != NULL) {
-		ctx->error(ctx, "variable name contains =");
+		cmdq_error(cmdq, "variable name contains =");
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -65,26 +65,26 @@ cmd_set_environment_exec(struct cmd *self, struct cmd_ctx *ctx)
 	if (args_has(self->args, 'g'))
 		env = &global_environ;
 	else {
-		if ((s = cmd_find_session(ctx, args_get(args, 't'), 0)) == NULL)
+		if ((s = cmd_find_session(cmdq, args_get(args, 't'), 0)) == NULL)
 			return (CMD_RETURN_ERROR);
 		env = &s->environ;
 	}
 
 	if (args_has(self->args, 'u')) {
 		if (value != NULL) {
-			ctx->error(ctx, "can't specify a value with -u");
+			cmdq_error(cmdq, "can't specify a value with -u");
 			return (CMD_RETURN_ERROR);
 		}
 		environ_unset(env, name);
 	} else if (args_has(self->args, 'r')) {
 		if (value != NULL) {
-			ctx->error(ctx, "can't specify a value with -r");
+			cmdq_error(cmdq, "can't specify a value with -r");
 			return (CMD_RETURN_ERROR);
 		}
 		environ_set(env, name, NULL);
 	} else {
 		if (value == NULL) {
-			ctx->error(ctx, "no value specified");
+			cmdq_error(cmdq, "no value specified");
 			return (CMD_RETURN_ERROR);
 		}
 		environ_set(env, name, value);

@@ -26,7 +26,7 @@
  * Create a new window.
  */
 
-enum cmd_retval	cmd_new_window_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	cmd_new_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_new_window_entry = {
 	"new-window", "neww",
@@ -40,21 +40,19 @@ const struct cmd_entry cmd_new_window_entry = {
 };
 
 enum cmd_retval
-cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct session		*s;
 	struct winlink		*wl;
 	struct client		*c;
-	const char		*cmd, *cwd;
-	const char		*template;
-	char			*cause;
+	const char		*cmd, *cwd, *template;
+	char			*cause, *cp;
 	int			 idx, last, detached;
 	struct format_tree	*ft;
-	char			*cp;
 
 	if (args_has(args, 'a')) {
-		wl = cmd_find_window(ctx, args_get(args, 't'), &s);
+		wl = cmd_find_window(cmdq, args_get(args, 't'), &s);
 		if (wl == NULL)
 			return (CMD_RETURN_ERROR);
 		idx = wl->idx + 1;
@@ -65,7 +63,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 				break;
 		}
 		if (last == INT_MAX) {
-			ctx->error(ctx, "no free window indexes");
+			cmdq_error(cmdq, "no free window indexes");
 			return (CMD_RETURN_ERROR);
 		}
 
@@ -76,7 +74,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			server_unlink_window(s, wl);
 		}
 	} else {
-		if ((idx = cmd_find_index(ctx, args_get(args, 't'), &s)) == -2)
+		if ((idx = cmd_find_index(cmdq, args_get(args, 't'), &s)) == -2)
 			return (CMD_RETURN_ERROR);
 	}
 	detached = args_has(args, 'd');
@@ -105,13 +103,13 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 		cmd = options_get_string(&s->options, "default-command");
 	else
 		cmd = args->argv[0];
-	cwd = cmd_get_default_path(ctx, args_get(args, 'c'));
+	cwd = cmd_get_default_path(cmdq, args_get(args, 'c'));
 
 	if (idx == -1)
 		idx = -1 - options_get_number(&s->options, "base-index");
 	wl = session_new(s, args_get(args, 'n'), cmd, cwd, idx, &cause);
 	if (wl == NULL) {
-		ctx->error(ctx, "create window failed: %s", cause);
+		cmdq_error(cmdq, "create window failed: %s", cause);
 		free(cause);
 		return (CMD_RETURN_ERROR);
 	}
@@ -126,14 +124,14 @@ cmd_new_window_exec(struct cmd *self, struct cmd_ctx *ctx)
 			template = NEW_WINDOW_TEMPLATE;
 
 		ft = format_create();
-		if ((c = cmd_find_client(ctx, NULL)) != NULL)
-		    format_client(ft, c);
+		if ((c = cmd_find_client(cmdq, NULL, 1)) != NULL)
+			format_client(ft, c);
 		format_session(ft, s);
 		format_winlink(ft, s, wl);
 		format_window_pane(ft, wl->window->active);
 
 		cp = format_expand(ft, template);
-		ctx->print(ctx, "%s", cp);
+		cmdq_print(cmdq, "%s", cp);
 		free(cp);
 
 		format_free(ft);

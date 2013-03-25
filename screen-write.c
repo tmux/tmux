@@ -41,7 +41,6 @@ screen_write_start(
 }
 
 /* Finish writing. */
-/* ARGSUSED */
 void
 screen_write_stop(unused struct screen_write_ctx *ctx)
 {
@@ -52,14 +51,13 @@ screen_write_stop(unused struct screen_write_ctx *ctx)
 void
 screen_write_reset(struct screen_write_ctx *ctx)
 {
-	screen_reset_tabs(ctx->s);
+	struct screen	*s = ctx->s;
 
-	screen_write_scrollregion(ctx, 0, screen_size_y(ctx->s) - 1);
+	screen_reset_tabs(s);
+	screen_write_scrollregion(ctx, 0, screen_size_y(s) - 1);
 
-	screen_write_insertmode(ctx, 0);
-	screen_write_kcursormode(ctx, 0);
-	screen_write_kkeypadmode(ctx, 0);
-	screen_write_mousemode_off(ctx);
+	s->mode &= ~(MODE_INSERT|MODE_KCURSOR|MODE_KKEYPAD);
+	s->mode &= ~(ALL_MOUSE_MODES|MODE_MOUSE_UTF8|MODE_MOUSE_SGR);
 
 	screen_write_clearscreen(ctx);
 	screen_write_cursormove(ctx, 0, 0);
@@ -454,6 +452,24 @@ screen_write_initctx(
 	memcpy(&ttyctx->last_cell, gc, sizeof ttyctx->last_cell);
 }
 
+/* Set a mode. */
+void
+screen_write_mode_set(struct screen_write_ctx *ctx, int mode)
+{
+	struct screen	*s = ctx->s;
+
+	s->mode |= mode;
+}
+
+/* Clear a mode. */
+void
+screen_write_mode_clear(struct screen_write_ctx *ctx, int mode)
+{
+	struct screen	*s = ctx->s;
+
+	s->mode &= ~mode;
+}
+
 /* Cursor up by ny. */
 void
 screen_write_cursorup(struct screen_write_ctx *ctx, u_int ny)
@@ -805,18 +821,6 @@ screen_write_cursormove(struct screen_write_ctx *ctx, u_int px, u_int py)
 	s->cy = py;
 }
 
-/* Set cursor mode. */
-void
-screen_write_cursormode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_CURSOR;
-	else
-		s->mode &= ~MODE_CURSOR;
-}
-
 /* Reverse index (up with scroll).  */
 void
 screen_write_reverseindex(struct screen_write_ctx *ctx)
@@ -856,61 +860,6 @@ screen_write_scrollregion(
 	s->rlower = rlower;
 }
 
-/* Set insert mode. */
-void
-screen_write_insertmode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_INSERT;
-	else
-		s->mode &= ~MODE_INSERT;
-}
-
-/* Set UTF-8 mouse mode.  */
-void
-screen_write_utf8mousemode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_MOUSE_UTF8;
-	else
-		s->mode &= ~MODE_MOUSE_UTF8;
-}
-
-/* Set mouse mode off. */
-void
-screen_write_mousemode_off(struct screen_write_ctx *ctx)
-{
-	struct screen	*s = ctx->s;
-
-	s->mode &= ~ALL_MOUSE_MODES;
-}
-
-/* Set mouse mode on. */
-void
-screen_write_mousemode_on(struct screen_write_ctx *ctx, int mode)
-{
-	struct screen	*s = ctx->s;
-
-	s->mode &= ~ALL_MOUSE_MODES;
-	s->mode |= mode;
-}
-
-/* Set bracketed paste mode. */
-void
-screen_write_bracketpaste(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_BRACKETPASTE;
-	else
-		s->mode &= ~MODE_BRACKETPASTE;
-}
-
 /* Line feed. */
 void
 screen_write_linefeed(struct screen_write_ctx *ctx, int wrapped)
@@ -943,30 +892,6 @@ screen_write_carriagereturn(struct screen_write_ctx *ctx)
 	struct screen	*s = ctx->s;
 
 	s->cx = 0;
-}
-
-/* Set keypad cursor keys mode. */
-void
-screen_write_kcursormode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_KCURSOR;
-	else
-		s->mode &= ~MODE_KCURSOR;
-}
-
-/* Set keypad number keys mode. */
-void
-screen_write_kkeypadmode(struct screen_write_ctx *ctx, int state)
-{
-	struct screen	*s = ctx->s;
-
-	if (state)
-		s->mode |= MODE_KKEYPAD;
-	else
-		s->mode &= ~MODE_KKEYPAD;
 }
 
 /* Clear to end of screen from cursor. */
@@ -1054,10 +979,10 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
-	u_int		 	 width, xx;
+	u_int		 	 width, xx, last;
 	struct grid_cell 	 tmp_gc, *tmp_gcp;
 	struct utf8_data	 ud;
-	int			 insert = 0;
+	int			 insert;
 
 	/* Ignore padding. */
 	if (gc->flags & GRID_FLAG_PADDING)
@@ -1095,7 +1020,8 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		xx = screen_size_x(s) - s->cx - width;
 		grid_move_cells(s->grid, s->cx + width, s->cx, s->cy, xx);
 		insert = 1;
-	}
+	} else
+		insert = 0;
 
 	/* Check this will fit on the current line and wrap if not. */
 	if ((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - width) {
@@ -1103,9 +1029,8 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		s->cx = 0;	/* carriage return */
 	}
 
-	/* Sanity checks. */
-	if (((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - width)
-	    || s->cy > screen_size_y(s) - 1)
+	/* Sanity check cursor position. */
+	if (s->cx > screen_size_x(s) - width || s->cy > screen_size_y(s) - 1)
 		return;
 
 	/* Handle overwriting of UTF-8 characters. */
@@ -1124,8 +1049,15 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	/* Set the cell. */
 	grid_view_set_cell(gd, s->cx, s->cy, gc);
 
-	/* Move the cursor. */
-	s->cx += width;
+	/*
+	 * Move the cursor. If not wrapping, stick at the last character and
+	 * replace it.
+	 */
+	last = !(s->mode & MODE_WRAP);
+	if (s->cx <= screen_size_x(s) - last - width)
+		s->cx += width;
+	else
+		s->cx = screen_size_x(s) - last;
 
 	/* Draw to the screen if necessary. */
 	if (insert) {

@@ -26,8 +26,8 @@
 
 #include "tmux.h"
 
-void	 window_name_callback(unused int, unused short, void *);
-char	*parse_window_name(const char *);
+void	 window_name_callback(int, short, void *);
+char	*parse_window_name(struct window *, const char *);
 
 void
 queue_window_name(struct window *w)
@@ -43,7 +43,6 @@ queue_window_name(struct window *w)
 	evtimer_add(&w->name_timer, &tv);
 }
 
-/* ARGSUSED */
 void
 window_name_callback(unused int fd, unused short events, void *data)
 {
@@ -74,9 +73,9 @@ window_name_callback(unused int fd, unused short events, void *data)
 		 */
 		if (w->active->cmd != NULL && *w->active->cmd == '\0' &&
 		    name != NULL && name[0] == '-' && name[1] != '\0')
-			wname = parse_window_name(name + 1);
+			wname = parse_window_name(w, name + 1);
 		else
-			wname = parse_window_name(name);
+			wname = parse_window_name(w, name);
 		free(name);
 	}
 
@@ -99,18 +98,22 @@ default_window_name(struct window *w)
 	if (w->active->screen != &w->active->base)
 		return (xstrdup("[tmux]"));
 	if (w->active->cmd != NULL && *w->active->cmd != '\0')
-		return (parse_window_name(w->active->cmd));
-	return (parse_window_name(w->active->shell));
+		return (parse_window_name(w, w->active->cmd));
+	return (parse_window_name(w, w->active->shell));
 }
 
 char *
-parse_window_name(const char *in)
+parse_window_name(struct window *w, const char *in)
 {
-	char	*copy, *name, *ptr;
+	char	*copy, *name, *ptr, *prefix;
+	size_t	 prefixlen;
+
+	prefix = options_get_string(&w->options, "command-prefix");
+	prefixlen = strlen(prefix);
 
 	name = copy = xstrdup(in);
-	if (strncmp(name, "exec ", (sizeof "exec ") - 1) == 0)
-		name = name + (sizeof "exec ") - 1;
+	if (strncmp(name, prefix, prefixlen) == 0)
+		name = name + prefixlen;
 
 	while (*name == ' ')
 		name++;

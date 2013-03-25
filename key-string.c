@@ -136,9 +136,10 @@ key_string_get_modifiers(const char **string)
 int
 key_string_lookup_string(const char *string)
 {
-	int	key, modifiers;
-	u_short	u;
-	int	size;
+	static const char	*other = "!#()+,-.0123456789:;<=>?'\r\t";
+	int			 key, modifiers;
+	u_short			 u;
+	int			 size;
 
 	/* Is this a hexadecimal value? */
 	if (string[0] == '0' && string[1] == 'x') {
@@ -170,7 +171,7 @@ key_string_lookup_string(const char *string)
 	}
 
 	/* Convert the standard control keys. */
-	if (key < KEYC_BASE && (modifiers & KEYC_CTRL)) {
+	if (key < KEYC_BASE && (modifiers & KEYC_CTRL) && !strchr(other, key)) {
 		if (key >= 97 && key <= 122)
 			key -= 96;
 		else if (key >= 64 && key <= 95)
@@ -193,7 +194,7 @@ key_string_lookup_key(int key)
 {
 	static char	out[24];
 	char		tmp[8];
-	u_int	   	i;
+	u_int		i;
 
 	*out = '\0';
 

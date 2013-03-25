@@ -99,6 +99,7 @@ const struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_BOTTOMLINE, "bottom-line" },
 	{ MODEKEYCOPY_CANCEL, "cancel" },
 	{ MODEKEYCOPY_CLEARSELECTION, "clear-selection" },
+	{ MODEKEYCOPY_COPYPIPE, "copy-pipe" },
 	{ MODEKEYCOPY_COPYLINE, "copy-line" },
 	{ MODEKEYCOPY_COPYENDOFLINE, "copy-end-of-line" },
 	{ MODEKEYCOPY_COPYSELECTION, "copy-selection" },
@@ -413,7 +414,6 @@ const struct mode_key_entry mode_key_emacs_copy[] = {
 	{ '\026' /* C-v */,	    0, MODEKEYCOPY_NEXTPAGE },
 	{ '\027' /* C-w */,	    0, MODEKEYCOPY_COPYSELECTION },
 	{ '\033' /* Escape */,	    0, MODEKEYCOPY_CANCEL },
-	{ 'N',			    0, MODEKEYCOPY_SEARCHREVERSE },
 	{ 'b' | KEYC_ESCAPE,	    0, MODEKEYCOPY_PREVIOUSWORD },
 	{ 'f',			    0, MODEKEYCOPY_JUMP },
 	{ 'f' | KEYC_ESCAPE,	    0, MODEKEYCOPY_NEXTWORDEND },
@@ -514,6 +514,7 @@ mode_key_init_trees(void)
 			mbind->key = ment->key;
 			mbind->mode = ment->mode;
 			mbind->cmd = ment->cmd;
+			mbind->arg = NULL;
 			RB_INSERT(mode_key_tree, mtab->tree, mbind);
 		}
 	}
@@ -527,7 +528,7 @@ mode_key_init(struct mode_key_data *mdata, struct mode_key_tree *mtree)
 }
 
 enum mode_key_cmd
-mode_key_lookup(struct mode_key_data *mdata, int key)
+mode_key_lookup(struct mode_key_data *mdata, int key, const char **arg)
 {
 	struct mode_key_binding	*mbind, mtmp;
 
@@ -547,6 +548,8 @@ mode_key_lookup(struct mode_key_data *mdata, int key)
 		mdata->mode = 1 - mdata->mode;
 		/* FALLTHROUGH */
 	default:
+		if (arg != NULL)
+			*arg = mbind->arg;
 		return (mbind->cmd);
 	}
 }

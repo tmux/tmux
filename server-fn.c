@@ -39,7 +39,7 @@ server_fill_environ(struct session *s, struct environ *env)
 		term = options_get_string(&s->options, "default-terminal");
 		environ_set(env, "TERM", term);
 
-		idx = s->idx;
+		idx = s->id;
 	} else
 		idx = -1;
 	pid = getpid();
@@ -194,7 +194,7 @@ server_status_window(struct window *w)
 
 	/*
 	 * This is slightly different. We want to redraw the status line of any
-	 * clients containing this window rather than any where it is the
+	 * clients containing this window rather than anywhere it is the
 	 * current window.
 	 */
 
@@ -238,6 +238,9 @@ server_lock_client(struct client *c)
 	const char		*cmd;
 	size_t			 cmdlen;
 	struct msg_lock_data	 lockdata;
+
+	if (c->flags & CLIENT_CONTROL)
+		return;
 
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
@@ -374,6 +377,7 @@ server_destroy_pane(struct window_pane *wp)
 		return;
 	}
 
+	server_unzoom_window(w);
 	layout_close_pane(wp);
 	window_remove_pane(w, wp);
 
@@ -491,7 +495,6 @@ server_clear_identify(struct client *c)
 	}
 }
 
-/* ARGSUSED */
 void
 server_callback_identify(unused int fd, unused short events, void *data)
 {
@@ -543,6 +546,10 @@ server_push_stderr(struct client *c)
 	struct msg_stderr_data data;
 	size_t                 size;
 
+	if (c->stderr_data == c->stdout_data) {
+		server_push_stdout(c);
+		return;
+	}
 	size = EVBUFFER_LENGTH(c->stderr_data);
 	if (size == 0)
 		return;
@@ -561,7 +568,7 @@ int
 server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
     void *), void *cb_data, char **cause)
 {
-	if (c == NULL) {
+	if (c == NULL || c->session != NULL) {
 		*cause = xstrdup("no client with stdin");
 		return (-1);
 	}
@@ -585,4 +592,12 @@ server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
 	server_write_client(c, MSG_STDIN, NULL, 0);
 
 	return (0);
+}
+
+void
+server_unzoom_window(struct window *w)
+{
+	window_unzoom(w);
+	server_redraw_window(w);
+	server_status_window(w);
 }

@@ -188,7 +188,8 @@ client_main(int argc, char **argv, int flags)
 		 * later in server) but it is necessary to get the start server
 		 * flag.
 		 */
-		if ((cmdlist = cmd_list_parse(argc, argv, &cause)) == NULL) {
+		cmdlist = cmd_list_parse(argc, argv, NULL, 0, &cause);
+		if (cmdlist == NULL) {
 			fprintf(stderr, "%s\n", cause);
 			return (1);
 		}
@@ -269,7 +270,7 @@ client_main(int argc, char **argv, int flags)
 	if (msg == MSG_COMMAND) {
 		/* Fill in command line arguments. */
 		cmddata.pid = environ_pid;
-		cmddata.idx = environ_idx;
+		cmddata.session_id = environ_session_id;
 
 		/* Prepare command for server. */
 		cmddata.argc = argc;
@@ -295,8 +296,16 @@ client_main(int argc, char **argv, int flags)
 		ppid = getppid();
 		if (client_exittype == MSG_DETACHKILL && ppid > 1)
 			kill(ppid, SIGHUP);
-	} else if (flags & IDENTIFY_TERMIOS)
+	} else if (flags & IDENTIFY_TERMIOS) {
+		if (flags & IDENTIFY_CONTROL) {
+			if (client_exitreason != CLIENT_EXIT_NONE)
+			    printf("%%exit %s\n", client_exit_message());
+			else
+			    printf("%%exit\n");
+			printf("\033\\");
+		}
 		tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
+	}
 	setblocking(STDIN_FILENO, 1);
 	return (client_exitval);
 }
@@ -364,7 +373,6 @@ client_update_event(void)
 }
 
 /* Callback to handle signals in the client. */
-/* ARGSUSED */
 void
 client_signal(int sig, unused short events, unused void *data)
 {
@@ -411,7 +419,6 @@ client_signal(int sig, unused short events, unused void *data)
 }
 
 /* Callback for client imsg read events. */
-/* ARGSUSED */
 void
 client_callback(unused int fd, short events, void *data)
 {
@@ -446,7 +453,6 @@ lost_server:
 }
 
 /* Callback for client stdin read events. */
-/* ARGSUSED */
 void
 client_stdin_callback(unused int fd, unused short events, unused void *data1)
 {
@@ -518,6 +524,7 @@ client_dispatch_wait(void *data)
 
 			event_del(&client_stdin);
 			client_attached = 1;
+			client_write_server(MSG_RESIZE, NULL, 0);
 			break;
 		case MSG_STDIN:
 			if (datalen != 0)
@@ -575,7 +582,6 @@ client_dispatch_wait(void *data)
 }
 
 /* Dispatch imsgs in attached state (after MSG_READY). */
-/* ARGSUSED */
 int
 client_dispatch_attached(void)
 {

@@ -25,7 +25,7 @@
  */
 
 void		 cmd_select_pane_key_binding(struct cmd *, int);
-enum cmd_retval	 cmd_select_pane_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_select_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_select_pane_entry = {
 	"select-pane", "selectp",
@@ -64,22 +64,23 @@ cmd_select_pane_key_binding(struct cmd *self, int key)
 }
 
 enum cmd_retval
-cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
 	struct window_pane	*wp;
 
 	if (self->entry == &cmd_last_pane_entry || args_has(args, 'l')) {
-		wl = cmd_find_window(ctx, args_get(args, 't'), NULL);
+		wl = cmd_find_window(cmdq, args_get(args, 't'), NULL);
 		if (wl == NULL)
 			return (CMD_RETURN_ERROR);
 
 		if (wl->window->last == NULL) {
-			ctx->error(ctx, "no last pane");
+			cmdq_error(cmdq, "no last pane");
 			return (CMD_RETURN_ERROR);
 		}
 
+		server_unzoom_window(wl->window);
 		window_set_active_pane(wl->window, wl->window->last);
 		server_status_window(wl->window);
 		server_redraw_window_borders(wl->window);
@@ -87,11 +88,12 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if ((wl = cmd_find_pane(ctx, args_get(args, 't'), NULL, &wp)) == NULL)
+	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
 
+	server_unzoom_window(wp->window);
 	if (!window_pane_visible(wp)) {
-		ctx->error(ctx, "pane not visible");
+		cmdq_error(cmdq, "pane not visible");
 		return (CMD_RETURN_ERROR);
 	}
 
@@ -104,7 +106,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_ctx *ctx)
 	else if (args_has(self->args, 'D'))
 		wp = window_pane_find_down(wp);
 	if (wp == NULL) {
-		ctx->error(ctx, "pane not found");
+		cmdq_error(cmdq, "pane not found");
 		return (CMD_RETURN_ERROR);
 	}
 

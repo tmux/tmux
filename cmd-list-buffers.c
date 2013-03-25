@@ -27,7 +27,7 @@
  * List paste buffers.
  */
 
-enum cmd_retval	 cmd_list_buffers_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_list_buffers_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_list_buffers_entry = {
 	"list-buffers", "lsb",
@@ -39,9 +39,8 @@ const struct cmd_entry cmd_list_buffers_entry = {
 	cmd_list_buffers_exec
 };
 
-/* ARGSUSED */
 enum cmd_retval
-cmd_list_buffers_exec(unused struct cmd *self, struct cmd_ctx *ctx)
+cmd_list_buffers_exec(unused struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct paste_buffer	*pb;
@@ -60,7 +59,7 @@ cmd_list_buffers_exec(unused struct cmd *self, struct cmd_ctx *ctx)
 		format_paste_buffer(ft, pb);
 
 		line = format_expand(ft, template);
-		ctx->print(ctx, "%s", line);
+		cmdq_print(cmdq, "%s", line);
 		free(line);
 
 		format_free(ft);

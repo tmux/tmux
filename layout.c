@@ -374,13 +374,13 @@ layout_destroy_cell(struct layout_cell *lc, struct layout_cell **lcroot)
 }
 
 void
-layout_init(struct window *w)
+layout_init(struct window *w, struct window_pane *wp)
 {
 	struct layout_cell	*lc;
 
 	lc = w->layout_root = layout_create_cell(NULL);
 	layout_set_size(lc, w->sx, w->sy, 0, 0);
-	layout_make_leaf(lc, TAILQ_FIRST(&w->panes));
+	layout_make_leaf(lc, wp);
 
 	layout_fix_panes(w, w->sx, w->sy);
 }
@@ -443,6 +443,39 @@ layout_resize(struct window *w, u_int sx, u_int sy)
 	layout_fix_panes(w, sx, sy);
 }
 
+/* Resize a pane to an absolute size. */
+void
+layout_resize_pane_to(struct window_pane *wp, enum layout_type type,
+    u_int new_size)
+{
+	struct layout_cell     *lc, *lcparent;
+	int			change, size;
+
+	lc = wp->layout_cell;
+
+	/* Find next parent of the same type. */
+	lcparent = lc->parent;
+	while (lcparent != NULL && lcparent->type != type) {
+		lc = lcparent;
+		lcparent = lc->parent;
+	}
+	if (lcparent == NULL)
+		return;
+
+	/* Work out the size adjustment. */
+	if (type == LAYOUT_LEFTRIGHT)
+		size = lc->sx;
+	else
+		size = lc->sy;
+	if (lc == TAILQ_LAST(&lcparent->cells, layout_cells))
+		change = size - new_size;
+	else
+		change = new_size - size;
+
+	/* Resize the pane. */
+	layout_resize_pane(wp, type, change);
+}
+
 /* Resize a single pane within the layout. */
 void
 layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
@@ -486,6 +519,7 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
 	notify_window_layout_changed(wp->window);
 }
 
+/* Resize pane based on mouse events. */
 void
 layout_resize_pane_mouse(struct client *c)
 {
@@ -534,6 +568,7 @@ layout_resize_pane_mouse(struct client *c)
 		m->flags &= ~MOUSE_RESIZE_PANE;
 }
 
+/* Helper function to grow pane. */
 int
 layout_resize_pane_grow(
     struct layout_cell *lc, enum layout_type type, int needed)
@@ -574,6 +609,7 @@ layout_resize_pane_grow(
 	return (size);
 }
 
+/* Helper function to shrink pane. */
 int
 layout_resize_pane_shrink(
     struct layout_cell *lc, enum layout_type type, int needed)

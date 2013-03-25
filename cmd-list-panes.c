@@ -27,13 +27,13 @@
  * List panes on given window.
  */
 
-enum cmd_retval	 cmd_list_panes_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	 cmd_list_panes_exec(struct cmd *, struct cmd_q *);
 
-void	cmd_list_panes_server(struct cmd *, struct cmd_ctx *);
+void	cmd_list_panes_server(struct cmd *, struct cmd_q *);
 void	cmd_list_panes_session(
-	    struct cmd *, struct session *, struct cmd_ctx *, int);
+	    struct cmd *, struct session *, struct cmd_q *, int);
 void	cmd_list_panes_window(struct cmd *,
-	    struct session *, struct winlink *, struct cmd_ctx *, int);
+	    struct session *, struct winlink *, struct cmd_q *, int);
 
 const struct cmd_entry cmd_list_panes_entry = {
 	"list-panes", "lsp",
@@ -46,51 +46,51 @@ const struct cmd_entry cmd_list_panes_entry = {
 };
 
 enum cmd_retval
-cmd_list_panes_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_list_panes_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 	struct session	*s;
 	struct winlink	*wl;
 
 	if (args_has(args, 'a'))
-		cmd_list_panes_server(self, ctx);
+		cmd_list_panes_server(self, cmdq);
 	else if (args_has(args, 's')) {
-		s = cmd_find_session(ctx, args_get(args, 't'), 0);
+		s = cmd_find_session(cmdq, args_get(args, 't'), 0);
 		if (s == NULL)
 			return (CMD_RETURN_ERROR);
-		cmd_list_panes_session(self, s, ctx, 1);
+		cmd_list_panes_session(self, s, cmdq, 1);
 	} else {
-		wl = cmd_find_window(ctx, args_get(args, 't'), &s);
+		wl = cmd_find_window(cmdq, args_get(args, 't'), &s);
 		if (wl == NULL)
 			return (CMD_RETURN_ERROR);
-		cmd_list_panes_window(self, s, wl, ctx, 0);
+		cmd_list_panes_window(self, s, wl, cmdq, 0);
 	}
 
 	return (CMD_RETURN_NORMAL);
 }
 
 void
-cmd_list_panes_server(struct cmd *self, struct cmd_ctx *ctx)
+cmd_list_panes_server(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct session	*s;
 
 	RB_FOREACH(s, sessions, &sessions)
-		cmd_list_panes_session(self, s, ctx, 2);
+		cmd_list_panes_session(self, s, cmdq, 2);
 }
 
 void
 cmd_list_panes_session(
-    struct cmd *self, struct session *s, struct cmd_ctx *ctx, int type)
+    struct cmd *self, struct session *s, struct cmd_q *cmdq, int type)
 {
 	struct winlink	*wl;
 
 	RB_FOREACH(wl, winlinks, &s->windows)
-		cmd_list_panes_window(self, s, wl, ctx, type);
+		cmd_list_panes_window(self, s, wl, cmdq, type);
 }
 
 void
 cmd_list_panes_window(struct cmd *self,
-    struct session *s, struct winlink *wl, struct cmd_ctx *ctx, int type)
+    struct session *s, struct winlink *wl, struct cmd_q *cmdq, int type)
 {
 	struct args		*args = self->args;
 	struct window_pane	*wp;
@@ -135,7 +135,7 @@ cmd_list_panes_window(struct cmd *self,
 		format_window_pane(ft, wp);
 
 		line = format_expand(ft, template);
-		ctx->print(ctx, "%s", line);
+		cmdq_print(cmdq, "%s", line);
 		free(line);
 
 		format_free(ft);

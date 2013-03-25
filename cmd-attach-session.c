@@ -26,7 +26,7 @@
  * Attach existing session to the current terminal.
  */
 
-enum cmd_retval	cmd_attach_session_exec(struct cmd *, struct cmd_ctx *);
+enum cmd_retval	cmd_attach_session_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_attach_session_entry = {
 	"attach-session", "attach",
@@ -39,9 +39,8 @@ const struct cmd_entry cmd_attach_session_entry = {
 };
 
 enum cmd_retval
-cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
+cmd_attach_session(struct cmd_q *cmdq, const char* tflag, int dflag, int rflag)
 {
-	struct args	*args = self->args;
 	struct session	*s;
 	struct client	*c;
 	const char	*update;
@@ -49,18 +48,18 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 	u_int		 i;
 
 	if (RB_EMPTY(&sessions)) {
-		ctx->error(ctx, "no sessions");
+		cmdq_error(cmdq, "no sessions");
 		return (CMD_RETURN_ERROR);
 	}
 
-	if ((s = cmd_find_session(ctx, args_get(args, 't'), 1)) == NULL)
+	if ((s = cmd_find_session(cmdq, tflag, 1)) == NULL)
 		return (CMD_RETURN_ERROR);
 
-	if (ctx->cmdclient == NULL && ctx->curclient == NULL)
+	if (cmdq->client == NULL)
 		return (CMD_RETURN_NORMAL);
 
-	if (ctx->cmdclient == NULL) {
-		if (args_has(self->args, 'd')) {
+	if (cmdq->client->session != NULL) {
+		if (dflag) {
 			/*
 			 * Can't use server_write_session in case attaching to
 			 * the same session as currently attached to.
@@ -69,43 +68,53 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_ctx *ctx)
 				c = ARRAY_ITEM(&clients, i);
 				if (c == NULL || c->session != s)
 					continue;
-				if (c == ctx->curclient)
+				if (c == cmdq->client)
 					continue;
 				server_write_client(c, MSG_DETACH, NULL, 0);
 			}
 		}
 
-		ctx->curclient->session = s;
-		notify_attached_session_changed(ctx->curclient);
+		cmdq->client->session = s;
+		notify_attached_session_changed(cmdq->client);
 		session_update_activity(s);
-		server_redraw_client(ctx->curclient);
+		server_redraw_client(cmdq->client);
 		s->curw->flags &= ~WINLINK_ALERTFLAGS;
 	} else {
-		if (server_client_open(ctx->cmdclient, s, &cause) != 0) {
-			ctx->error(ctx, "open terminal failed: %s", cause);
+		if (server_client_open(cmdq->client, s, &cause) != 0) {
+			cmdq_error(cmdq, "open terminal failed: %s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
 
-		if (args_has(self->args, 'r'))
-			ctx->cmdclient->flags |= CLIENT_READONLY;
+		if (rflag)
+			cmdq->client->flags |= CLIENT_READONLY;
 
-		if (args_has(self->args, 'd'))
+		if (dflag)
 			server_write_session(s, MSG_DETACH, NULL, 0);
 
-		ctx->cmdclient->session = s;
-		notify_attached_session_changed(ctx->cmdclient);
-		session_update_activity(s);
-		server_write_ready(ctx->cmdclient);
-
 		update = options_get_string(&s->options, "update-environment");
-		environ_update(update, &ctx->cmdclient->environ, &s->environ);
+		environ_update(update, &cmdq->client->environ, &s->environ);
 
-		server_redraw_client(ctx->cmdclient);
+		cmdq->client->session = s;
+		notify_attached_session_changed(cmdq->client);
+		session_update_activity(s);
+		server_redraw_client(cmdq->client);
 		s->curw->flags &= ~WINLINK_ALERTFLAGS;
+
+		server_write_ready(cmdq->client);
+		cmdq->client_exit = 0;
 	}
 	recalculate_sizes();
 	server_update_socket();
 
-	return (CMD_RETURN_ATTACH);
+	return (CMD_RETURN_NORMAL);
+}
+
+enum cmd_retval
+cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
+{
+	struct args	*args = self->args;
+
+	return (cmd_attach_session(cmdq, args_get(args, 't'),
+	    args_has(args, 'd'), args_has(args, 'r')));
 }
