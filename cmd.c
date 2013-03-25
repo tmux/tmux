@@ -1245,8 +1245,8 @@ cmd_template_replace(const char *template, const char *s, int idx)
 {
 	char		 ch, *buf;
 	const char	*ptr;
-	int	 	 replaced;
-	size_t	 	 len;
+	int		 replaced;
+	size_t		 len;
 
 	if (strchr(template, '%') == NULL)
 		return (xstrdup(template));
