@@ -1062,8 +1062,7 @@ By default, it uses the format
 but a different format may be specified with
 .Fl F .
 .It Xo Ic capture-pane
-.Op Fl e
-.Op Fl p
+.Op Fl aepq
 .Op Fl b Ar buffer-index
 .Op Fl E Ar end-line
 .Op Fl S Ar start-line
@@ -1077,13 +1076,19 @@ is given, the output goes to stdout, otherwise to the buffer specified with
 .Fl b
 or a new buffer if omitted.
 If
+.Fl a
+is given, the alternate screen is used, and the history is not accessible.
+If no alternate screen exists, an error will be returned unless
+.Fl q
+is given.
+If
 .Fl e
 is given, the output includes escape sequences for text and background
 attributes.
 .Fl C
 also escapes non-printable characters as octal \exxx.
 .Fl J
-joins wrapped lines.
+joins wrapped lines and preserves trailing spaces at each line's end.
 .Pp
 .Fl S
 and
@@ -2946,7 +2951,7 @@ If this option is set, searches will wrap around the end of the pane contents.
 The default is on.
 .El
 .It Xo Ic show-options
-.Op Fl gsvw
+.Op Fl gqsvw
 .Op Fl t Ar target-session | Ar target-window
 .Op Ar option
 .Xc
@@ -2964,6 +2969,11 @@ Global session or window options are listed if
 is used.
 .Fl v
 shows only the option value, not the name.
+If
+.Fl q
+is set, no error will be returned if
+.Ar option
+is unset.
 .It Xo Ic show-window-options
 .Op Fl gv
 .Op Fl t Ar target-window
@@ -3539,6 +3549,23 @@ If the command doesn't return success, the exit status is also displayed.
 .It Ic server-info
 .D1 (alias: Ic info )
 Show server information and terminal details.
+.It Xo Ic wait-for
+.Fl LSU
+.Ar channel
+.Xc
+.D1 (alias: Ic wait )
+When used without options, prevents the client from exiting until woken using
+.Ic wait-for
+.Fl S
+with the same channel.
+When
+.Fl L
+is used, the channel is locked and any clients that try to lock the same
+channel are made to wait until the channel is unlocked with
+.Ic wait-for
+.Fl U .
+This command only works from outside
+.Nm .
 .El
 .Sh TERMINFO EXTENSIONS
 .Nm
