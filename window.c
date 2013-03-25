@@ -314,24 +314,15 @@ window_create(const char *name, const char *cmd, const char *shell,
 {
 	struct window		*w;
 	struct window_pane	*wp;
-	const char		*prefix;
-	char			*cmd1;
 
 	w = window_create1(sx, sy);
 	wp = window_add_pane(w, hlimit);
 	layout_init(w, wp);
 
-	if (*cmd != '\0') {
-		prefix = options_get_string(&w->options, "command-prefix");
-		xasprintf(&cmd1, "%s%s", prefix, cmd);
-	} else
-		cmd1 = xstrdup("");
-	if (window_pane_spawn(wp, cmd1, shell, cwd, env, tio, cause) != 0) {
+	if (window_pane_spawn(wp, cmd, shell, cwd, env, tio, cause) != 0) {
 		window_destroy(w);
-		free(cmd1);
 		return (NULL);
 	}
-	free(cmd1);
 
 	w->active = TAILQ_FIRST(&w->panes);
 	if (name != NULL) {

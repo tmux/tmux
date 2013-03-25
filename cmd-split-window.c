@@ -59,8 +59,8 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window		*w;
 	struct window_pane	*wp, *new_wp = NULL;
 	struct environ		 env;
-	const char		*cmd, *cwd, *shell, *prefix;
-	char			*cause, *new_cause, *cmd1;
+	const char		*cmd, *cwd, *shell;
+	char			*cause, *new_cause;
 	u_int			 hlimit;
 	int			 size, percentage;
 	enum layout_type	 type;
@@ -123,18 +123,9 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		goto error;
 	}
 	new_wp = window_add_pane(w, hlimit);
-
-	if (*cmd != '\0') {
-		prefix = options_get_string(&w->options, "command-prefix");
-		xasprintf(&cmd1, "%s%s", prefix, cmd);
-	} else
-		cmd1 = xstrdup("");
-	if (window_pane_spawn(new_wp, cmd1, shell, cwd, &env, s->tio,
-	    &cause) != 0) {
-		free(cmd1);
+	if (window_pane_spawn(
+	    new_wp, cmd, shell, cwd, &env, s->tio, &cause) != 0)
 		goto error;
-	}
-	free(cmd1);
 	layout_assign_pane(lc, new_wp);
 
 	server_redraw_window(w);
