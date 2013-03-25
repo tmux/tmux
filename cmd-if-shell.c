@@ -59,19 +59,21 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct args			*args = self->args;
 	struct cmd_if_shell_data	*cdata;
 	char				*shellcmd;
-	struct session			*s;
-	struct winlink			*wl;
-	struct window_pane		*wp;
+	struct session			*s = NULL;
+	struct winlink			*wl = NULL;
+	struct window_pane		*wp = NULL;
 	struct format_tree		*ft;
 
-	wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp);
-	if (wl == NULL)
-		return (CMD_RETURN_ERROR);
+	if (args_has(args, 't'))
+		wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp);
 
 	ft = format_create();
-	format_session(ft, s);
-	format_winlink(ft, s, wl);
-	format_window_pane(ft, wp);
+	if (s != NULL)
+		format_session(ft, s);
+	if (s != NULL && wl != NULL)
+		format_winlink(ft, s, wl);
+	if (wp != NULL)
+		format_window_pane(ft, wp);
 	shellcmd = format_expand(ft, args->argv[0]);
 	format_free(ft);
 
@@ -87,7 +89,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 	cdata->cmdq = cmdq;
 	cmdq->references++;
 
-	job_run(shellcmd, cmd_if_shell_callback, cmd_if_shell_free, cdata);
+	job_run(shellcmd, s, cmd_if_shell_callback, cmd_if_shell_free, cdata);
 	free(shellcmd);
 
 	if (cdata->bflag)
