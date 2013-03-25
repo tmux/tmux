@@ -1420,6 +1420,8 @@ struct cmd_q {
 	void			*data;
 
 	struct msg_command_data	*msgdata;
+
+	TAILQ_ENTRY(cmd_q)       waitentry;
 };
 
 /* Command definition. */
@@ -1839,6 +1841,7 @@ extern const struct cmd_entry cmd_switch_client_entry;
 extern const struct cmd_entry cmd_unbind_key_entry;
 extern const struct cmd_entry cmd_unlink_window_entry;
 extern const struct cmd_entry cmd_up_pane_entry;
+extern const struct cmd_entry cmd_wait_for_entry;
 
 /* cmd-attach-session.c */
 enum cmd_retval	 cmd_attach_session(struct cmd_q *, const char*, int, int);
@@ -2006,7 +2009,7 @@ void	 grid_clear_lines(struct grid *, u_int, u_int);
 void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
-	     struct grid_cell **, int, int);
+	     struct grid_cell **, int, int, int);
 void	 grid_duplicate_lines(
 	     struct grid *, u_int, struct grid *, u_int, u_int);
 u_int	 grid_reflow(struct grid *, struct grid *, u_int);

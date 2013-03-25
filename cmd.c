@@ -113,6 +113,7 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_switch_client_entry,
 	&cmd_unbind_key_entry,
 	&cmd_unlink_window_entry,
+	&cmd_wait_for_entry,
 	NULL
 };
 
@@ -327,9 +328,9 @@ cmd_current_session(struct cmd_q *cmdq, int prefer_unattached)
 		return (c->session);
 
 	/*
-	 * If the name of the calling client's pty is know, build a list of the
-	 * sessions that contain it and if any choose either the first or the
-	 * newest.
+	 * If the name of the calling client's pty is known, build a list of
+	 * the sessions that contain it and if any choose either the first or
+	 * the newest.
 	 */
 	path = c == NULL ? NULL : c->tty.path;
 	if (path != NULL) {
@@ -532,7 +533,7 @@ cmd_lookup_client(const char *name)
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
+		if (c == NULL || c->session == NULL || c->tty.path == NULL)
 			continue;
 		path = c->tty.path;
 
