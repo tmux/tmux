@@ -501,11 +501,6 @@ const struct options_table_entry window_options_table[] = {
 	  .default_num = 1
 	},
 
-	{ .name = "command-prefix",
-	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = "exec "
-	},
-
 	{ .name = "force-height",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .minimum = 0,
