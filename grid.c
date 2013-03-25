@@ -725,7 +725,7 @@ void
 grid_reflow_split(struct grid *dst, u_int *py, struct grid_line *src_gl,
     u_int new_x, u_int offset)
 {
-	struct grid_line	*dst_gl;
+	struct grid_line	*dst_gl = NULL;
 	u_int			 to_copy;
 
 	/* Loop and copy sections of the source line. */
@@ -756,7 +756,8 @@ grid_reflow_split(struct grid *dst, u_int *py, struct grid_line *src_gl,
 	}
 
 	/* Last line is not wrapped. */
-	dst_gl->flags &= ~GRID_LINE_WRAPPED;
+	if (dst_gl != NULL)
+		dst_gl->flags &= ~GRID_LINE_WRAPPED;
 }
 
 /* Move line data. */
