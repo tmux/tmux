@@ -957,6 +957,8 @@ server_client_msg_identify(
 	if (data->flags & IDENTIFY_CONTROL) {
 		c->stdin_callback = control_callback;
 		c->flags |= CLIENT_CONTROL;
+		if (data->flags & IDENTIFY_TERMIOS)
+			evbuffer_add_printf(c->stdout_data, "\033P1000p");
 		server_write_client(c, MSG_STDIN, NULL, 0);
 
 		c->tty.fd = -1;
