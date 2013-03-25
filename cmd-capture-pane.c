@@ -31,8 +31,8 @@ enum cmd_retval	 cmd_capture_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
-	"b:CeE:JpS:t:", 0, 0,
-	"[-CeJp] [-b buffer-index] [-E end-line] [-S start-line]"
+	"ab:CeE:JpqS:t:", 0, 0,
+	"[-aCeJpq] [-b buffer-index] [-E end-line] [-S start-line]"
 	CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
@@ -50,67 +50,82 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct screen		*s;
 	struct grid		*gd;
 	int			 buffer, n, with_codes, escape_c0, join_lines;
-	u_int			 i, limit, top, bottom, tmp;
+	u_int			 i, limit, top, bottom, tmp, sx;
 	size_t			 len, linelen;
 	struct grid_cell	*gc;
 	const struct grid_line	*gl;
 
 	if (cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
-	s = &wp->base;
-	gd = s->grid;
+
+	if (args_has(args, 'a')) {
+		s = NULL;
+		gd = wp->saved_grid;
+		sx = screen_size_x(&wp->base);
+		if (gd == NULL && !args_has(args, 'q')) {
+			cmdq_error(cmdq, "no alternate screen");
+			return (CMD_RETURN_ERROR);
+		}
+	} else {
+		s = &wp->base;
+		sx = screen_size_x(s);
+		gd = s->grid;
+	}
 
 	buf = NULL;
 	len = 0;
 
-	n = args_strtonum(args, 'S', INT_MIN, SHRT_MAX, &cause);
-	if (cause != NULL) {
-		top = gd->hsize;
-		free(cause);
-	} else if (n < 0 && (u_int) -n > gd->hsize)
-		top = 0;
-	else
-		top = gd->hsize + n;
-	if (top > gd->hsize + gd->sy - 1)
-		top = gd->hsize + gd->sy - 1;
+	if (gd != NULL) {
+		n = args_strtonum(args, 'S', INT_MIN, SHRT_MAX, &cause);
+		if (cause != NULL) {
+			top = gd->hsize;
+			free(cause);
+		} else if (n < 0 && (u_int) -n > gd->hsize)
+			top = 0;
+		else
+			top = gd->hsize + n;
+		if (top > gd->hsize + gd->sy - 1)
+			top = gd->hsize + gd->sy - 1;
 
-	n = args_strtonum(args, 'E', INT_MIN, SHRT_MAX, &cause);
-	if (cause != NULL) {
-		bottom = gd->hsize + gd->sy - 1;
-		free(cause);
-	} else if (n < 0 && (u_int) -n > gd->hsize)
-		bottom = 0;
-	else
-		bottom = gd->hsize + n;
-	if (bottom > gd->hsize + gd->sy - 1)
-		bottom = gd->hsize + gd->sy - 1;
+		n = args_strtonum(args, 'E', INT_MIN, SHRT_MAX, &cause);
+		if (cause != NULL) {
+			bottom = gd->hsize + gd->sy - 1;
+			free(cause);
+		} else if (n < 0 && (u_int) -n > gd->hsize)
+			bottom = 0;
+		else
+			bottom = gd->hsize + n;
+		if (bottom > gd->hsize + gd->sy - 1)
+			bottom = gd->hsize + gd->sy - 1;
 
-	if (bottom < top) {
-		tmp = bottom;
-		bottom = top;
-		top = tmp;
-	}
+		if (bottom < top) {
+			tmp = bottom;
+			bottom = top;
+			top = tmp;
+		}
 
-	with_codes = args_has(args, 'e');
-	escape_c0 = args_has(args, 'C');
-	join_lines = args_has(args, 'J');
+		with_codes = args_has(args, 'e');
+		escape_c0 = args_has(args, 'C');
+		join_lines = args_has(args, 'J');
 
-	gc = NULL;
-	for (i = top; i <= bottom; i++) {
-		line = grid_string_cells(s->grid, 0, i, screen_size_x(s),
-		    &gc, with_codes, escape_c0);
-		linelen = strlen(line);
+		gc = NULL;
+		for (i = top; i <= bottom; i++) {
+			line = grid_string_cells(gd, 0, i, sx, &gc, with_codes,
+			    escape_c0, !join_lines);
+			linelen = strlen(line);
 
-		buf = xrealloc(buf, 1, len + linelen + 1);
-		memcpy(buf + len, line, linelen);
-		len += linelen;
+			buf = xrealloc(buf, 1, len + linelen + 1);
+			memcpy(buf + len, line, linelen);
+			len += linelen;
 
-		gl = grid_peek_line(s->grid, i);
-		if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
-			buf[len++] = '\n';
+			gl = grid_peek_line(gd, i);
+			if (!join_lines || !(gl->flags & GRID_LINE_WRAPPED))
+				buf[len++] = '\n';
 
-		free(line);
-	}
+			free(line);
+		}
+	} else
+		buf = xstrdup("");
 
 	if (args_has(args, 'p')) {
 		c = cmdq->client;
