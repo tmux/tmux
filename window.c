@@ -483,6 +483,10 @@ window_zoom(struct window_pane *wp)
 
 	if (!window_pane_visible(wp))
 		return (-1);
+
+	if (window_count_panes(w) == 1)
+		return (-1);
+
 	if (w->active != wp)
 		window_set_active_pane(w, wp);
 
