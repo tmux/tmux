@@ -22,6 +22,7 @@
 #include <event.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "tmux.h"
 

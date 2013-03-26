@@ -99,14 +99,12 @@ void
 control_notify_window_unlinked(unused struct session *s, struct window *w)
 {
 	struct client	*c;
-	struct session	*cs;
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
-		cs = c->session;
 
 		control_write(c, "%%window-close @%u", w->id);
 	}
@@ -136,14 +134,12 @@ void
 control_notify_window_renamed(struct window *w)
 {
 	struct client	*c;
-	struct session	*s;
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
-		s = c->session;
 
 		control_write(c, "%%window-renamed @%u %s", w->id, w->name);
 	}
