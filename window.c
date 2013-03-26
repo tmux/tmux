@@ -493,19 +493,18 @@ window_zoom(struct window_pane *wp)
 int
 window_unzoom(struct window *w)
 {
-	struct window_pane	*wp, *wp1;
+	struct window_pane	*wp;
 
 	if (!(w->flags & WINDOW_ZOOMED))
 		return (-1);
-	wp = w->active;
 
 	w->flags &= ~WINDOW_ZOOMED;
 	layout_free(w);
 	w->layout_root = w->saved_layout_root;
 
-	TAILQ_FOREACH(wp1, &w->panes, entry) {
-		wp1->layout_cell = wp1->saved_layout_cell;
-		wp1->saved_layout_cell = NULL;
+	TAILQ_FOREACH(wp, &w->panes, entry) {
+		wp->layout_cell = wp->saved_layout_cell;
+		wp->saved_layout_cell = NULL;
 	}
 	layout_fix_panes(w, w->sx, w->sy);
 
