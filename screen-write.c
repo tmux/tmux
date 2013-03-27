@@ -488,6 +488,8 @@ screen_write_cursorup(struct screen_write_ctx *ctx, u_int ny)
 		if (ny > s->cy - s->rupper)
 			ny = s->cy - s->rupper;
 	}
+	if (s->cx == screen_size_x(s))
+	    s->cx--;
 	if (ny == 0)
 		return;
 
@@ -512,6 +514,8 @@ screen_write_cursordown(struct screen_write_ctx *ctx, u_int ny)
 		if (ny > s->rlower - s->cy)
 			ny = s->rlower - s->cy;
 	}
+	if (s->cx == screen_size_x(s))
+	    s->cx--;
 	if (ny == 0)
 		return;
 
