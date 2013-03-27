@@ -17,7 +17,7 @@ Normal Changes
 * run-shell learnt '-t' to specify the pane to use when displaying output.
 * Support for middle-click pasting.
 * choose-tree learns '-u' to start uncollapsed.
-* select-window learnt '-T; to toggle to the last window if it's already
+* select-window learnt '-T' to toggle to the last window if it's already
   current.
 * New session option 'assume-paste-time' for pasting text versus key-binding
   actions.
@@ -37,9 +37,9 @@ Normal Changes
   the 'source-file' command.
 * 'copy-pipe' mode command to copy selection and pipe the selection to a
   command.
-* Changes panes can now emit focus notifications for certain applications
+* Panes can now emit focus notifications for certain applications
   which use those.
-* run-shell and if-shell now accept format placeholders.
+* run-shell and if-shell now accept formats.
 * resize-pane learnt '-Z' for zooming a pane temporarily.
 * new-session learnt '-A' to make it behave like attach-session.
 * set-option learnt '-o' to prevent setting an option which is already set.
