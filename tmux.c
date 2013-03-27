@@ -164,10 +164,12 @@ makesocketpath(const char *label)
 	u_int		uid;
 
 	uid = getuid();
-	if ((s = getenv("TMPDIR")) == NULL || *s == '\0')
-		xsnprintf(base, sizeof base, "%s/tmux-%u", _PATH_TMP, uid);
-	else
+	if ((s = getenv("TMUX_TMPDIR")) != NULL && *s != '\0')
+		xsnprintf(base, sizeof base, "%s/", s);
+	else if ((s = getenv("TMPDIR")) != NULL && *s != '\0')
 		xsnprintf(base, sizeof base, "%s/tmux-%u", s, uid);
+	else
+		xsnprintf(base, sizeof base, "%s/tmux-%u", _PATH_TMP, uid);
 
 	if (mkdir(base, S_IRWXU) != 0 && errno != EEXIST)
 		return (NULL);
@@ -244,15 +246,10 @@ main(int argc, char **argv)
 	quiet = flags = 0;
 	label = path = NULL;
 	login_shell = (**argv == '-');
-	while ((opt = getopt(argc, argv, "28c:Cdf:lL:qS:uUv")) != -1) {
+	while ((opt = getopt(argc, argv, "2c:Cdf:lL:qS:uUv")) != -1) {
 		switch (opt) {
 		case '2':
 			flags |= IDENTIFY_256COLOURS;
-			flags &= ~IDENTIFY_88COLOURS;
-			break;
-		case '8':
-			flags |= IDENTIFY_88COLOURS;
-			flags &= ~IDENTIFY_256COLOURS;
 			break;
 		case 'c':
 			free(shell_cmd);
