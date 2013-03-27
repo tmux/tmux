@@ -481,7 +481,7 @@ struct msg_identify_data {
 
 #define IDENTIFY_UTF8 0x1
 #define IDENTIFY_256COLOURS 0x2
-#define IDENTIFY_88COLOURS 0x4
+/* 0x4 unused */
 #define IDENTIFY_CONTROL 0x8
 #define IDENTIFY_TERMIOS 0x10
 	int		flags;
@@ -1141,8 +1141,7 @@ struct tty_term {
 	struct tty_code	 codes[NTTYCODE];
 
 #define TERM_256COLOURS 0x1
-#define TERM_88COLOURS 0x2
-#define TERM_EARLYWRAP 0x4
+#define TERM_EARLYWRAP 0x2
 	int		 flags;
 
 	LIST_ENTRY(tty_term) entry;
@@ -1986,7 +1985,6 @@ void	 colour_set_bg(struct grid_cell *, int);
 const char *colour_tostring(int);
 int	 colour_fromstring(const char *);
 u_char	 colour_256to16(u_char);
-u_char	 colour_256to88(u_char);
 
 /* attributes.c */
 const char *attributes_tostring(u_char);

@@ -981,8 +981,6 @@ server_client_msg_identify(
 		c->tty.flags |= TTY_UTF8;
 	if (data->flags & IDENTIFY_256COLOURS)
 		c->tty.term_flags |= TERM_256COLOURS;
-	else if (data->flags & IDENTIFY_88COLOURS)
-		c->tty.term_flags |= TERM_88COLOURS;
 
 	tty_resize(&c->tty);
 
