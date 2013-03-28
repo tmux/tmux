@@ -1,155 +1,118 @@
-NOTES
-=====
+- command bits and pieces:
+	* use "--" to mark start of command w/ neww etc to avoid quoting
+	* why doesn't command-prompt work if made read-only?
+	* allow multiple targets: fnmatch for -t/-c, for example detach all
+	  clients with -t*
+	* add -c for new-session like new-window
+	* attach should take a pane and select it as well as attaching
+	* ' and " should be parsed the same (eg "\e" vs '\e') in config
+	  and command prompt
+	* last-pane across sessions
 
-This file describes rough notes regarding ideas for potential future tmux
-development.  It's not necessarily guaranteed that items in this TODO file
-will ever get implemented.
+- make command sequences more usable
+	* don't require space after ;
+	* options for error handling: && and ||?
 
-It is asked therefore, that anyone thinking of undertaking a task in this
-TODO file, email tmux-users@lists.sf.net to discuss the feature.
+- options bits and pieces:
+	* set-remain-on-exit is a complete hack
+	* way to set socket path from config file
 
-Thie file is split up between tmux user interface (UI) issues, and terminal
-compatibility issues.
+- format improvements:
+	* option to quote format (#{session_name:quoted})
+	* formats need conditions for >0 (for #P)
+	* some way to pad # stuff with spaces, #!2T maybe
+	* status stuff is redundant with formats
 
-TMUX UI ISSUES
-==============
+- choose mode improvements:
+	* choose-pane command (augment choose-tree to do this?)
+	* choose-mode and copy-mode are very similar, make choose-mode a subset?
+	* flag to choose-* for sort order
+	* chose mode would be better per client than per window
 
-- implicitly add exec to the commands for new windows (switch to disable it)?
-- bring back detach-session to detach all clients on a session?
-- allow fnmatch for -c, so that you can, eg, detach all clients
-- garbage collect window history (100 lines at a time?) if it hasn't been used
-  in $x time
-- flags to centre screen in window
-- activity/bell should be per-window not per-link? what if it is cur win in
-  session not being watched?
-- should be able to move to a hidden pane and it would be moved into view. pane
-  number in status line/top-right would be cool for this
-- support other mouse modes (highlight etc) and use it in copy mode
-- set-remain-on-exit is a bit of a hack, some way to do it generically?
-- would be nice to be able to use "--" to mark start of command w/ neww etc
-  to avoid quoting
-- make command sequences more usable: don't require space after ;, handle
-  errors better
-- choice and more mode would be better per client than per window?
-- hooks to which commands may be attached, for example: tmux add-hook
-  "new-session" if-shell "[ -e $HOME/.tmux-session.conf ]" source-file
-  $HOME/.tmux-session.conf
-- way to set socket path from config file
-- warts on current naming:
-  	- display-time but message-fg/bg/attr
-	- list-* vs show-*
-	- server-info
-	- up-pane/down-pane/swap-pane -U/swap-pane -D vs next-*/previous-*
-	- split-window -> split-pane??
-- some way to force a screen to use the entire terminal even if it is forced
-  to be smaller by other clients. pan smaller terminal? (like screen F)
-	-- idea of a "view" onto a window, need base x/y offsets for redraw
-- commands should be able to succeed or fail and have || or && for command
-  lists
-- some way to keep a command running continually and just use its last line of
-  output
-- UTF-8 to a non-UTF-8 terminal should not be able to balls up
-  the terminal - www/ruby-addressable; make regress
-- support esc-esc to quit in modes
-- fix ctrl+F1-F4 output. to what?
-- better utf8 support: window names, prompt input, message display
-- option to move copy mode indicator into status line
-- selection behaviour closer to vi in vi mode
-- live update: server started with -U connects to server, requests sessions and
-  windows, receives fds
-- sort out inheriting config from shell on new sessions/windows:
-        should pick up default-path/termios/etc from client if possible,
-	else leave empty/default
+- improve monitor-*:
+	* straighten out rules for multiple clients
+	* think about what happens across sessions
+	* monitor changes within a region
+	* perhaps monitor /all/ panes in the window not just one
+
+- panning over window (window larger than visible)
+
 - link panes into multiple windows
-- bells should be passed between sessions with visual-bell etc
-  sequence until its shell exits, to allow them to be used from the config file
-- better session sharing: create-socket command to create socket somewhere (-r
-  flag for readonly)
-- multiline status line (no?)
-- support title stack, both internally and externally
+
+- improve mouse support:
+	* bind commands to mouse in different areas? 
+	* more fine-grained options
+	* commands executed when clicking on a pattern (URL)
+
+- hooks!
+
+- warts on current naming:
+  	* display-time but message-fg/bg/attr
+	* list-* vs show-*
+	* server-info
+	* split-window -> split-pane??
+
+- way to keep a job running just read its last line of output for #()
+
+- better UTF-8 support:
+	* window names and titles
+	* message display
+	* prompt input
+	* multibyte key input
+
+- live update: server started with -U connects to server, requests sessions and
+  windows, receives file descriptors
+
+- there are inconsistencies in what we get from old shell and what comes from
+  config for new sessions and windows
+
+- multiline status line?
+
+- support title stack, both internally and externally (restore on detach)
 	http://docs.freebsd.org/cgi/getmsg.cgi?fetch=1149299+0+archive/2010/freebsd-questions/20100207.freebsd-questions
-- some way to pad # stuff with spaces, #!2T maybe
-- a binding to "scroll down and exit at bottom" copy mode
-- some way to pass keystrokes in copy mode through to underlying window. why?
-- last window update time and # replacement for it for display-message
-- find-window across sessions - other ways to make session handling easier?
-- ' and " should be parsed the same (eg "\e" vs '\e') in config and command
-  prompt?
-- command to toggle selection not to move it in copy-mode
-- audit of escape sequence support vs xterm
-- support binding keys to mouse (mouse-select-pane -> mouse-keys or something,
-  mouse click == select-pane -t %%, mouse scroll up == copy-mode)
-- bind commands to key sequences? -- make it so ALL keys go through a table,
-  first an implicit table in which C-b is the only default binding to a
-  command that says "next key from $othertable" and so on. means -n can
-  go away as well
-- monitor, bell etc should monitor /all/ panes in the window not just one
-- a history of commands that can be reversed (reverse member of each command,
-  and a buffer)
-- info() when changing to same window
-- way to add dest for break-pane; maybe some easier way to unbreak-pane
-- case insensitive searching
-- incremental searching in copy mode.
-- configurable borders and empty space filler for when panes < window?
-- mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets the
-  flag on w/o checking the others before calling tty_update_mode)
-- pass shell commands as argv rather than strings, allow them to be specified
-  in commands without quotes
-- named buffers and allow gaps in the stack
-- monitor-activity is broken in several ways with multiple clients
-- monitor-activity should be more powerful (eg set a region)
-- maybe a way to put pane names instead of window names in status line
-- support for borderless panes
-- wait-for command 20130222153957.GY6782@yelena.nicm.ath.cx
-- last-pane across sessions
+
+- last window update time and format for it
+
+- bind commands to key sequences -- make it so ALL keys go through a table,
+  first an implicit table in which C-b is the only default binding to a command
+  that says "next key from $othertable" and so on. means -n can go away as well
+
+- why are -s and -t different for swap- and move-pane?
+
+- copy/paste improvements:
+	* case insensitive searching
+	* incremental searching
+	* append to buffer
+	* paste w/o trailing whitespace
+	* named buffers and allow gaps in the stack
+	* command to toggle selection not to move it in copy-mode
+
+- mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets the flag
+  on w/o checking the others before calling tty_update_mode)
+
 - panes should have names like windows
-- command-prompt doesn't work if made read-only. why?
-- option to quote format eg #{session_name:quoted}
-- formats need conditions for >0 (for #P)
-- fetch full command line on !Linux, and add option to strip prefixes
-  such as "sh " "/bin/sh " etc etc
-- synchronize-windows option
-- append to buffer in copy mode
-- way to paste w/o trailing whitespace
-- flag to switch-client to switch all clients
-- history of layouts and undo/redo flags to selectl
+
 - way to tag a layout as a number/name
+
 - optimize pane redraws, 20120318184853.GK10965@yelena.nicm.ath.cx
-- support multibyte key strings
-- allow commands to be executed when certain patterns in a screen
-  are clicked on with the mouse
-- flag to make next/previous commands skip a window
-- way to do tmux command/run-shell from mode keys
-- send command to all windows
-- choose-pane command (augment choose-tree to do this?)
-- choose-mode and copy-mode are very similar. Perhaps make choose-mode a subset
-  of copy-mode in that it inherits key-bindings and other traits but not all
-- add -c for new-session like new-window
-- flag to choose-* for sort order (eg sort windows/sessions/clients by last
-  used time) - perhaps using formats (but what about numeric sort)?
+
 - instead of separate window and session options, just one master options list
   with each option having a type (window or session), then options on window,
   on session, and global. for window options we look window->session->global,
   and for session we look session->global
+
 - maybe keep last layout + size around and if size reverts just put it back
+
 - way to set hints/limits about pane size for resizing
+
 - revamp layouts: they are too complicated, should be more closely integrated,
   should support hints, layout sets should just be a special case of custom
   layouts, and we should support panes that are not attached to a cell at
   all. this could be the time to introduce panelink to replace layout_cell
-- run-shell/if-shell should support formats
-- attach should take a pane and select it as well as attaching
-- attach should have a flag to create session if it doesn't exist. or better
-  new a flag to attach it
-
-TERMINAL ISSUES
-================
 
 - use a better termcap internally instead of screen, perhaps xterm
-- clear window title on exit (see using xterm title stack)
-- get it passing all the vttest tests that don't require resizing the terminal
-- support for bce
+
 - use screen-256color when started on 256 colour terminal?
-* We need a tmux terminfo entry to document the extensions we are using in
-  upstream terminfo. Must NOT change (only add or remove) anything from
-  TERM=screen so we can fallback!
+
+- we need a tmux terminfo entry to document the extensions we are using in
+  upstream terminfo
