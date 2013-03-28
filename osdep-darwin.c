@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <Availability.h>
 #include <event.h>
 #include <libproc.h>
 #include <stdlib.h>
@@ -33,6 +34,7 @@ struct event_base	*osdep_event_init(void);
 char *
 osdep_get_name(int fd, unused char *tty)
 {
+#ifdef __MAC_10_7
 	struct proc_bsdshortinfo	bsdinfo;
 	pid_t				pgrp;
 	int				ret;
@@ -44,6 +46,7 @@ osdep_get_name(int fd, unused char *tty)
 	    &bsdinfo, sizeof bsdinfo);
 	if (ret == sizeof bsdinfo && *bsdinfo.pbsi_comm != '\0')
 		return (strdup(bsdinfo.pbsi_comm));
+#endif
 	return (NULL);
 }
 
