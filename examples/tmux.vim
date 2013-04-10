@@ -56,7 +56,7 @@ syn keyword tmuxCmds
 	\ list-buffers loadb load-buffer pasteb paste-buffer saveb save-buffer
 	\ setb set-buffer showb show-buffer
 	\ clock-mode if[-shell] lock[-server] run[-shell] server-info info
-	\ choose-list
+	\ choose-list wait-for
 
 syn keyword tmuxOptsSet
 	\ buffer-limit escape-time exit-unattached exit-unattached quiet
