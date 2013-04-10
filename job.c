@@ -109,7 +109,7 @@ job_run(const char *cmd, struct session *s,
 
 	job->event = bufferevent_new(job->fd, NULL, job_write_callback,
 	    job_callback, job);
-	bufferevent_enable(job->event, EV_READ);
+	bufferevent_enable(job->event, EV_READ|EV_WRITE);
 
 	log_debug("run job %p: %s, pid %ld", job, job->cmd, (long) job->pid);
 	return (job);
