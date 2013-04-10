@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
+#include <errno.h>
 #include <event.h>
 #include <fcntl.h>
 #include <stdlib.h>
