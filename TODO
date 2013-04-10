@@ -27,7 +27,7 @@
 	* choose-pane command (augment choose-tree to do this?)
 	* choose-mode and copy-mode are very similar, make choose-mode a subset?
 	* flag to choose-* for sort order
-	* chose mode would be better per client than per window
+	* choose mode would be better per client than per window
 
 - improve monitor-*:
 	* straighten out rules for multiple clients
@@ -76,8 +76,6 @@
 - bind commands to key sequences -- make it so ALL keys go through a table,
   first an implicit table in which C-b is the only default binding to a command
   that says "next key from $othertable" and so on. means -n can go away as well
-
-- why are -s and -t different for swap- and move-pane?
 
 - copy/paste improvements:
 	* case insensitive searching
