@@ -22,6 +22,7 @@
 #include <errno.h>
 #include <event.h>
 #include <fcntl.h>
+#include <locale.h>
 #include <paths.h>
 #include <pwd.h>
 #include <stdlib.h>
@@ -242,6 +243,8 @@ main(int argc, char **argv)
 #ifdef DEBUG
 	malloc_options = (char *) "AFGJPX";
 #endif
+
+	setlocale(LC_TIME, "");
 
 	quiet = flags = 0;
 	label = path = NULL;
