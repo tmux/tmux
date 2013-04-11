@@ -47,7 +47,7 @@
 - hooks!
 
 - warts on current naming:
-  	* display-time but message-fg/bg/attr
+	* display-time but message-fg/bg/attr
 	* list-* vs show-*
 	* server-info
 	* split-window -> split-pane??
@@ -55,6 +55,7 @@
 - way to keep a job running just read its last line of output for #()
 
 - better UTF-8 support:
+	* #22T can split in the middle of UTF-8 characters!
 	* window names and titles
 	* message display
 	* prompt input
