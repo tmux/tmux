@@ -534,18 +534,8 @@ server_client_check_resize(struct window_pane *wp)
 	ws.ws_col = wp->sx;
 	ws.ws_row = wp->sy;
 
-	if (ioctl(wp->fd, TIOCSWINSZ, &ws) == -1) {
-#ifdef __sun
-		/*
-		 * Some versions of Solaris apparently can return an error when
-		 * resizing; don't know why this happens, can't reproduce on
-		 * other platforms and ignoring it doesn't seem to cause any
-		 * issues.
-		 */
-		if (errno != EINVAL)
-#endif
+	if (ioctl(wp->fd, TIOCSWINSZ, &ws) == -1)
 		fatal("ioctl failed");
-	}
 
 	wp->flags &= ~PANE_RESIZE;
 }
@@ -981,8 +971,6 @@ server_client_msg_identify(
 		c->tty.flags |= TTY_UTF8;
 	if (data->flags & IDENTIFY_256COLOURS)
 		c->tty.term_flags |= TERM_256COLOURS;
-	else if (data->flags & IDENTIFY_88COLOURS)
-		c->tty.term_flags |= TERM_88COLOURS;
 
 	tty_resize(&c->tty);
 
