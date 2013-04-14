@@ -253,7 +253,7 @@ main(int argc, char **argv)
 	quiet = flags = 0;
 	label = path = NULL;
 	login_shell = (**argv == '-');
-	while ((opt = getopt(argc, argv, "2c:Cdf:lL:qS:uUv")) != -1) {
+	while ((opt = getopt(argc, argv, "2c:Cdf:lL:qS:uUVv")) != -1) {
 		switch (opt) {
 		case '2':
 			flags |= IDENTIFY_256COLOURS;
