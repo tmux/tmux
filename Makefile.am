@@ -2,12 +2,14 @@
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
-dist_man1_MANS = tmux.1
+nodist_man1_MANS = tmux.1
+CLEANFILES = tmux.1
 
 # Distribution tarball options.
 EXTRA_DIST = \
 	CHANGES FAQ README TODO examples compat \
-	array.h compat.h tmux.h osdep-*.c
+	array.h compat.h tmux.h osdep-*.c mdoc2man.awk \
+	tmux.1.in
 dist-hook:
 	grep "^#found_debug=" configure
 	find $(distdir) -name .svn -type d|xargs rm -Rf
@@ -231,6 +233,14 @@ endif
 if NO_B64_NTOP
 nodist_tmux_SOURCES += compat/b64_ntop.c
 endif
+
+# Build tmux.1 in the right format.
+tmux.1: tmux.1.in
+	if test x@MANFORMAT@ = xmdoc; then \
+		cp tmux.1.in tmux.1; \
+	else \
+		$(AWK) -fmdoc2man.awk tmux.1.in >tmux.1; \
+	fi
 
 # Update SF web site.
 upload-index.html: update-index.html

@@ -416,6 +416,10 @@ else
 	AC_MSG_RESULT(no)
 fi
 
+# Man page defaults to mdoc.
+MANFORMAT=mdoc
+AC_SUBST(MANFORMAT)
+
 # Figure out the platform for osdep-*.c and forkpty-*.c.
 AC_MSG_CHECKING(platform)
 case "$host_os" in
@@ -455,6 +459,7 @@ case "$host_os" in
 	*solaris*)
 		AC_MSG_RESULT(sunos)
 		PLATFORM=sunos
+		MANFORMAT=man
 		;;
 	*hpux*)
 		AC_MSG_RESULT(hpux)
