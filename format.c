@@ -288,7 +288,7 @@ format_session(struct format_tree *ft, struct session *s)
 		format_add(ft, "session_group", "%u", session_group_index(sg));
 
 	t = s->creation_time.tv_sec;
-	format_add(ft, "session_created", "%ld", (long) t);
+	format_add(ft, "session_created", "%lld", (long long) t);
 	tim = ctime(&t);
 	*strchr(tim, '\n') = '\0';
 	format_add(ft, "session_created_string", "%s", tim);
@@ -314,13 +314,13 @@ format_client(struct format_tree *ft, struct client *c)
 	format_add(ft, "client_termname", "%s", c->tty.termname);
 
 	t = c->creation_time.tv_sec;
-	format_add(ft, "client_created", "%ld", (long) t);
+	format_add(ft, "client_created", "%lld", (long long) t);
 	tim = ctime(&t);
 	*strchr(tim, '\n') = '\0';
 	format_add(ft, "client_created_string", "%s", tim);
 
 	t = c->activity_time.tv_sec;
-	format_add(ft, "client_activity", "%ld", (long) t);
+	format_add(ft, "client_activity", "%lld", (long long) t);
 	tim = ctime(&t);
 	*strchr(tim, '\n') = '\0';
 	format_add(ft, "client_activity_string", "%s", tim);
