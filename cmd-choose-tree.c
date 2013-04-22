@@ -228,9 +228,12 @@ windows_only:
 	free(final_win_template_last);
 
 	window_choose_ready(wl->window->active, cur_win, NULL);
+	window_choose_collapse_all(wl->window->active);
 
-	if (args_has(args, 'u'))
+	if (args_has(args, 'u')) {
 		window_choose_expand_all(wl->window->active);
+		window_choose_set_current(wl->window->active, cur_win);
+	}
 
 	return (CMD_RETURN_NORMAL);
 }
