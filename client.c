@@ -78,8 +78,8 @@ client_get_lock(char *lockfile)
 	if ((lockfd = open(lockfile, O_WRONLY|O_CREAT, 0600)) == -1)
 		fatal("open failed");
 
-	if (flock(lockfd, LOCK_EX|LOCK_NB) == -1 && errno == EWOULDBLOCK) {
-		while (flock(lockfd, LOCK_EX) == -1 && errno == EINTR)
+	if (lockf(lockfd, F_TLOCK, 0) == -1 && errno == EAGAIN) {
+		while (lockf(lockfd, F_LOCK, 0) == -1 && errno == EINTR)
 			/* nothing */;
 		close(lockfd);
 		return (-1);
