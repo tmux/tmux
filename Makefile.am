@@ -242,7 +242,7 @@ tmux.1: tmux.1.in
 	if test x@MANFORMAT@ = xmdoc; then \
 		cp tmux.1.in tmux.1; \
 	else \
-		$(AWK) -fmdoc2man.awk tmux.1.in >tmux.1; \
+		$(AWK) -fmdoc2man.awk <tmux.1.in >tmux.1; \
 	fi
 
 # Update SF web site.
