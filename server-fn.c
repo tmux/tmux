@@ -283,6 +283,7 @@ server_kill_window(struct window *w)
 		if (options_get_number(&s->options, "renumber-windows"))
 			session_renumber_windows(s);
 	}
+	recalculate_sizes();
 }
 
 int
