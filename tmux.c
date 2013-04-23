@@ -23,7 +23,6 @@
 #include <event.h>
 #include <fcntl.h>
 #include <locale.h>
-#include <paths.h>
 #include <pwd.h>
 #include <stdlib.h>
 #include <string.h>

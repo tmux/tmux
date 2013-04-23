@@ -313,6 +313,13 @@ if test "x$found_strnvis" = xyes; then
 fi
 AM_CONDITIONAL(NO_VIS, [test "x$found_strnvis" = xno])
 
+# Look for cfmakeraw, compat/cfmakeraw.c used if missing.
+AC_CHECK_FUNC(cfmakeraw, found_cfmakeraw=yes, found_cfmakeraw=no)
+if test "x$found_cfmakeraw" = xyes; then
+	AC_DEFINE(HAVE_CFMAKERAW)
+fi
+AM_CONDITIONAL(NO_CFMAKERAW, [test "x$found_cfmakeraw" = xno])
+
 # Look for getopt. glibc's getopt does not enforce argument order and the ways
 # of making it do so are stupid, so just use our own instead.
 AC_CHECK_FUNC(getopt, found_getopt=yes, found_getopt=no)
@@ -345,6 +352,7 @@ AC_CHECK_FUNCS(
 		dirfd \
 		setproctitle \
 		sysconf \
+		cfmakeraw \
 	]
 )
 

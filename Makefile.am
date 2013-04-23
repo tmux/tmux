@@ -233,13 +233,16 @@ endif
 if NO_B64_NTOP
 nodist_tmux_SOURCES += compat/b64_ntop.c
 endif
+if NO_CFMAKERAW
+nodist_tmux_SOURCES += compat/cfmakeraw.c
+endif
 
 # Build tmux.1 in the right format.
 tmux.1: tmux.1.in
 	if test x@MANFORMAT@ = xmdoc; then \
 		cp tmux.1.in tmux.1; \
 	else \
-		$(AWK) -fmdoc2man.awk tmux.1.in >tmux.1; \
+		$(AWK) -fmdoc2man.awk <tmux.1.in >tmux.1; \
 	fi
 
 # Update SF web site.
