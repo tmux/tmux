@@ -15,7 +15,7 @@ dist-hook:
 	find $(distdir) -name .svn -type d|xargs rm -Rf
 
 # Preprocessor flags.
-CPPFLAGS += @XOPEN_DEFINES@
+CPPFLAGS += @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
 
 # glibc as usual does things ass-backwards and hides useful things by default,
 # so everyone has to add this.
@@ -240,9 +240,10 @@ endif
 # Build tmux.1 in the right format.
 tmux.1: tmux.1.in
 	if test x@MANFORMAT@ = xmdoc; then \
-		cp tmux.1.in tmux.1; \
+		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" tmux.1.in >tmux.1; \
 	else \
-		$(AWK) -fmdoc2man.awk <tmux.1.in >tmux.1; \
+		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" tmux.1.in| \
+		$(AWK) -fmdoc2man.awk >tmux.1; \
 	fi
 
 # Update SF web site.

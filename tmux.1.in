@@ -122,7 +122,7 @@ Specify an alternative configuration file.
 By default,
 .Nm
 loads the system configuration file from
-.Pa /etc/tmux.conf ,
+.Pa @SYSCONFDIR@/tmux.conf ,
 if present, then looks for a user configuration file at
 .Pa ~/.tmux.conf .
 .Pp
@@ -3705,12 +3705,12 @@ was renamed to
 .Ar name .
 .El
 .Sh FILES
-.Bl -tag -width "/etc/tmux.confXXX" -compact
+.Bl -tag -width "@SYSCONFDIR@/tmux.confXXX" -compact
 .It Pa ~/.tmux.conf
 Default
 .Nm
 configuration file.
-.It Pa /etc/tmux.conf
+.It Pa @SYSCONFDIR@/tmux.conf
 System-wide configuration file.
 .El
 .Sh EXAMPLES
