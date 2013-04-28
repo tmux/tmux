@@ -240,10 +240,11 @@ endif
 # Build tmux.1 in the right format.
 tmux.1: tmux.1.in
 	if test x@MANFORMAT@ = xmdoc; then \
-		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" tmux.1.in >tmux.1; \
+		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" $(srcdir)/tmux.1.in \
+		>$(srcdir)/tmux.1; \
 	else \
-		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" tmux.1.in| \
-		$(AWK) -fmdoc2man.awk >tmux.1; \
+		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" $(srcdir)/tmux.1.in| \
+		$(AWK) -fmdoc2man.awk >$(srcdir)/tmux.1; \
 	fi
 
 # Update SF web site.
