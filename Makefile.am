@@ -2,14 +2,12 @@
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
-nodist_man1_MANS = tmux.1
-CLEANFILES = tmux.1
+CLEANFILES = tmux.1.mdoc tmux.1.man
 
 # Distribution tarball options.
 EXTRA_DIST = \
 	CHANGES FAQ README TODO examples compat \
-	array.h compat.h tmux.h osdep-*.c mdoc2man.awk \
-	tmux.1.in
+	array.h compat.h tmux.h osdep-*.c mdoc2man.awk tmux.1
 dist-hook:
 	grep "^#found_debug=" configure
 	find $(distdir) -name .svn -type d|xargs rm -Rf
@@ -237,13 +235,15 @@ if NO_CFMAKERAW
 nodist_tmux_SOURCES += compat/cfmakeraw.c
 endif
 
-# Build tmux.1 in the right format.
-tmux.1: tmux.1.in
+# Install tmux.1 in the right format.
+install-exec-hook:
 	if test x@MANFORMAT@ = xmdoc; then \
-		cp tmux.1.in tmux.1; \
+		cp tmux.1 tmux.1.mdoc; \
 	else \
-		$(AWK) -fmdoc2man.awk <tmux.1.in >tmux.1; \
+		$(AWK) -fmdoc2man.awk <tmux.1 >tmux.1.man; \
 	fi
+	$(MKDIR_P) $(DESTDIR)$(mandir)/man1
+	$(INSTALL_DATA) tmux.1.@MANFORMAT@ $(DESTDIR)$(mandir)/man1/tmux.1
 
 # Update SF web site.
 upload-index.html: update-index.html
