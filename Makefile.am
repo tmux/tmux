@@ -13,7 +13,7 @@ dist-hook:
 	find $(distdir) -name .svn -type d|xargs rm -Rf
 
 # Preprocessor flags.
-CPPFLAGS += @XOPEN_DEFINES@
+CPPFLAGS += @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
 
 # glibc as usual does things ass-backwards and hides useful things by default,
 # so everyone has to add this.
@@ -238,12 +238,15 @@ endif
 # Install tmux.1 in the right format.
 install-exec-hook:
 	if test x@MANFORMAT@ = xmdoc; then \
-		cp tmux.1 tmux.1.mdoc; \
+		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" $(srcdir)/tmux.1 \
+			>$(srcdir)/tmux.1.mdoc; \
 	else \
-		$(AWK) -fmdoc2man.awk <tmux.1 >tmux.1.man; \
+		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" $(srcdir)/tmux.1| \
+			$(AWK) -fmdoc2man.awk >$(srcdir)/tmux.1.man; \
 	fi
 	$(MKDIR_P) $(DESTDIR)$(mandir)/man1
-	$(INSTALL_DATA) tmux.1.@MANFORMAT@ $(DESTDIR)$(mandir)/man1/tmux.1
+	$(INSTALL_DATA) $(srcdir)/tmux.1.@MANFORMAT@ \
+		$(DESTDIR)$(mandir)/man1/tmux.1
 
 # Update SF web site.
 upload-index.html: update-index.html

@@ -89,10 +89,7 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if ((s = c->session) == NULL)
-		return (CMD_RETURN_ERROR);
-
-	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), NULL)) == NULL)
+	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), &s)) == NULL)
 		return (CMD_RETURN_ERROR);
 
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
@@ -231,9 +228,12 @@ windows_only:
 	free(final_win_template_last);
 
 	window_choose_ready(wl->window->active, cur_win, NULL);
+	window_choose_collapse_all(wl->window->active);
 
-	if (args_has(args, 'u'))
+	if (args_has(args, 'u')) {
 		window_choose_expand_all(wl->window->active);
+		window_choose_set_current(wl->window->active, cur_win);
+	}
 
 	return (CMD_RETURN_NORMAL);
 }

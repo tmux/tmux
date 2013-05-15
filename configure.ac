@@ -18,6 +18,9 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PROG_INSTALL
 
+# Default tmux.conf goes in /etc not ${prefix}/etc.
+test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
+
 # Check for various headers. Alternatives included from compat.h.
 AC_CHECK_HEADERS(
 	[ \

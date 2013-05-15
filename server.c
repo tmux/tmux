@@ -170,13 +170,13 @@ server_start(int lockfd, char *lockfile)
 	cfg_references = 1;
 	ARRAY_INIT(&cfg_causes);
 
-	if (access(SYSTEM_CFG, R_OK) == 0) {
-		if (load_cfg(SYSTEM_CFG, cfg_cmd_q, &cause) == -1) {
-			xasprintf(&cause, "%s: %s", SYSTEM_CFG, cause);
+	if (access(TMUX_CONF, R_OK) == 0) {
+		if (load_cfg(TMUX_CONF, cfg_cmd_q, &cause) == -1) {
+			xasprintf(&cause, "%s: %s", TMUX_CONF, cause);
 			ARRAY_ADD(&cfg_causes, cause);
 		}
 	} else if (errno != ENOENT) {
-		xasprintf(&cause, "%s: %s", SYSTEM_CFG, strerror(errno));
+		xasprintf(&cause, "%s: %s", TMUX_CONF, strerror(errno));
 		ARRAY_ADD(&cfg_causes, cause);
 	}
 	if (cfg_file != NULL) {
