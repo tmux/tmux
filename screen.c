@@ -366,7 +366,13 @@ void
 screen_reflow(struct screen *s, u_int new_x)
 {
 	struct grid	*old = s->grid;
+	u_int		 change;
 
 	s->grid = grid_create(old->sx, old->sy, old->hlimit);
-	s->cy -= grid_reflow(s->grid, old, new_x);
+
+	change = grid_reflow(s->grid, old, new_x);
+	if (change < s->cy)
+		s->cy -= change;
+	else
+		s->cy = 0;
 }
