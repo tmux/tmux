@@ -294,8 +294,8 @@ cmd_print(struct cmd *cmd, char *buf, size_t len)
 	size_t	off, used;
 
 	off = xsnprintf(buf, len, "%s ", cmd->entry->name);
-	if (off < len) {
-		used = args_print(cmd->args, buf + off, len - off);
+	if (off + 1 < len) {
+		used = args_print(cmd->args, buf + off, len - off - 1);
 		if (used == 0)
 			off--;
 		else

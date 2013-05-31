@@ -236,6 +236,11 @@ int		 setenv(const char *, const char *, int);
 int		 unsetenv(const char *);
 #endif
 
+#ifndef HAVE_CFMAKERAW
+/* cfmakeraw.c */
+void		cfmakeraw(struct termios *tio);
+#endif
+
 #ifdef HAVE_GETOPT
 #include <getopt.h>
 #else

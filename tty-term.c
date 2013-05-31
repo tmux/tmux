@@ -410,11 +410,9 @@ tty_term_find(char *name, int fd, const char *overrides, char **cause)
 		goto error;
 	}
 
-	/* Figure out if we have 256 or 88 colours. */
+	/* Figure out if we have 256. */
 	if (tty_term_number(term, TTYC_COLORS) == 256)
 		term->flags |= TERM_256COLOURS;
-	if (tty_term_number(term, TTYC_COLORS) == 88)
-		term->flags |= TERM_88COLOURS;
 
 	/*
 	 * Terminals without xenl (eat newline glitch) wrap at at $COLUMNS - 1

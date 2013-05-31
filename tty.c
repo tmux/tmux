@@ -35,7 +35,6 @@ void	tty_read_callback(struct bufferevent *, void *);
 void	tty_error_callback(struct bufferevent *, short, void *);
 
 int	tty_try_256(struct tty *, u_char, const char *);
-int	tty_try_88(struct tty *, u_char, const char *);
 
 void	tty_colours(struct tty *, const struct grid_cell *);
 void	tty_check_fg(struct tty *, struct grid_cell *);
@@ -221,7 +220,7 @@ tty_start_tty(struct tty *tty)
 		tty_puts(tty, "\033[?1000l\033[?1006l\033[?1005l");
 
 	if (tty_term_has(tty->term, TTYC_XT))
-		tty_puts(tty, "\033[c\033[>4;1m\033[?1004h");
+		tty_puts(tty, "\033[c\033[>4;1m\033[?1004h\033[m");
 
 	tty->cx = UINT_MAX;
 	tty->cy = UINT_MAX;
@@ -284,7 +283,7 @@ tty_stop_tty(struct tty *tty)
 		tty_raw(tty, "\033[?1000l\033[?1006l\033[?1005l");
 
 	if (tty_term_has(tty->term, TTYC_XT))
-		tty_raw(tty, "\033[>4m\033[?1004l");
+		tty_raw(tty, "\033[>4m\033[?1004l\033[m");
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
 
@@ -1446,9 +1445,7 @@ tty_check_fg(struct tty *tty, struct grid_cell *gc)
 	/* Is this a 256-colour colour? */
 	if (gc->flags & GRID_FLAG_FG256) {
 		/* And not a 256 colour mode? */
-		if (!(tty->term->flags & TERM_88COLOURS) &&
-		    !(tty->term_flags & TERM_88COLOURS) &&
-		    !(tty->term->flags & TERM_256COLOURS) &&
+		if (!(tty->term->flags & TERM_256COLOURS) &&
 		    !(tty->term_flags & TERM_256COLOURS)) {
 			gc->fg = colour_256to16(gc->fg);
 			if (gc->fg & 8) {
@@ -1481,9 +1478,7 @@ tty_check_bg(struct tty *tty, struct grid_cell *gc)
 		 * palette. Bold background doesn't exist portably, so just
 		 * discard the bold bit if set.
 		 */
-		if (!(tty->term->flags & TERM_88COLOURS) &&
-		    !(tty->term_flags & TERM_88COLOURS) &&
-		    !(tty->term->flags & TERM_256COLOURS) &&
+		if (!(tty->term->flags & TERM_256COLOURS) &&
 		    !(tty->term_flags & TERM_256COLOURS)) {
 			gc->bg = colour_256to16(gc->bg);
 			if (gc->bg & 8)
@@ -1511,10 +1506,8 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 
 	/* Is this a 256-colour colour? */
 	if (gc->flags & GRID_FLAG_FG256) {
-		/* Try as 256 colours or translating to 88. */
+		/* Try as 256 colours. */
 		if (tty_try_256(tty, fg, "38") == 0)
-			goto save_fg;
-		if (tty_try_88(tty, fg, "38") == 0)
 			goto save_fg;
 		/* Else already handled by tty_check_fg. */
 		return;
@@ -1546,10 +1539,8 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 
 	/* Is this a 256-colour colour? */
 	if (gc->flags & GRID_FLAG_BG256) {
-		/* Try as 256 colours or translating to 88. */
+		/* Try as 256 colours. */
 		if (tty_try_256(tty, bg, "48") == 0)
-			goto save_bg;
-		if (tty_try_88(tty, bg, "48") == 0)
 			goto save_bg;
 		/* Else already handled by tty_check_bg. */
 		return;
@@ -1585,21 +1576,6 @@ tty_try_256(struct tty *tty, u_char colour, const char *type)
 	if (!(tty->term->flags & TERM_256COLOURS) &&
 	    !(tty->term_flags & TERM_256COLOURS))
 		return (-1);
-
-	xsnprintf(s, sizeof s, "\033[%s;5;%hhum", type, colour);
-	tty_puts(tty, s);
-	return (0);
-}
-
-int
-tty_try_88(struct tty *tty, u_char colour, const char *type)
-{
-	char	s[32];
-
-	if (!(tty->term->flags & TERM_88COLOURS) &&
-	    !(tty->term_flags & TERM_88COLOURS))
-		return (-1);
-	colour = colour_256to88(colour);
 
 	xsnprintf(s, sizeof s, "\033[%s;5;%hhum", type, colour);
 	tty_puts(tty, s);

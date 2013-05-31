@@ -226,7 +226,7 @@ input_mouse(struct window_pane *wp, struct session *s, struct mouse_event *m)
 			len += utf8_split2(m->x + 33, &buf[len]);
 			len += utf8_split2(m->y + 33, &buf[len]);
 		} else {
-			if (m->xb > 223 || m->x >= 222 || m->y > 222)
+			if (m->xb > 223)
 				return;
 			len = xsnprintf(buf, sizeof buf, "\033[M");
 			buf[len++] = m->xb + 32;

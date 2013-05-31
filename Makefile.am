@@ -2,18 +2,18 @@
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
-dist_man1_MANS = tmux.1
+CLEANFILES = tmux.1.mdoc tmux.1.man
 
 # Distribution tarball options.
 EXTRA_DIST = \
 	CHANGES FAQ README TODO examples compat \
-	array.h compat.h tmux.h osdep-*.c
+	array.h compat.h tmux.h osdep-*.c mdoc2man.awk tmux.1
 dist-hook:
 	grep "^#found_debug=" configure
 	find $(distdir) -name .svn -type d|xargs rm -Rf
 
 # Preprocessor flags.
-CPPFLAGS += @XOPEN_DEFINES@
+CPPFLAGS += @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
 
 # glibc as usual does things ass-backwards and hides useful things by default,
 # so everyone has to add this.
@@ -231,6 +231,22 @@ endif
 if NO_B64_NTOP
 nodist_tmux_SOURCES += compat/b64_ntop.c
 endif
+if NO_CFMAKERAW
+nodist_tmux_SOURCES += compat/cfmakeraw.c
+endif
+
+# Install tmux.1 in the right format.
+install-exec-hook:
+	if test x@MANFORMAT@ = xmdoc; then \
+		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" $(srcdir)/tmux.1 \
+			>$(srcdir)/tmux.1.mdoc; \
+	else \
+		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" $(srcdir)/tmux.1| \
+			$(AWK) -fmdoc2man.awk >$(srcdir)/tmux.1.man; \
+	fi
+	$(MKDIR_P) $(DESTDIR)$(mandir)/man1
+	$(INSTALL_DATA) $(srcdir)/tmux.1.@MANFORMAT@ \
+		$(DESTDIR)$(mandir)/man1/tmux.1
 
 # Update SF web site.
 upload-index.html: update-index.html

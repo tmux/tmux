@@ -158,7 +158,7 @@ cmdq_guard(struct cmd_q *cmdq, const char *guard)
 {
 	struct client	*c = cmdq->client;
 
-	if (c == NULL || c->session == NULL)
+	if (c == NULL)
 		return 0;
 	if (!(c->flags & CLIENT_CONTROL))
 		return 0;
