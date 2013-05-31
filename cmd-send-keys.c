@@ -56,7 +56,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window_pane	*wp;
 	struct session		*s;
 	struct input_ctx	*ictx;
-	const char		*str;
+	const u_char		*str;
 	int			 i, key;
 
 	if (cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp) == NULL)
