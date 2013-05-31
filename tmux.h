@@ -1361,13 +1361,18 @@ struct client {
 };
 ARRAY_DECL(clients, struct client *);
 
-/* Parsed arguments. */
-struct args {
-	bitstr_t	*flags;
-	char		*values[SCHAR_MAX]; /* XXX This is awfully big. */
+/* Parsed arguments structures. */
+struct args_entry {
+	u_char			 flag;
+	char			*value;
+	RB_ENTRY(args_entry)	 entry;
+};
+RB_HEAD(args_tree, args_entry);
 
-	int		 argc;
-	char	       **argv;
+struct args {
+	struct args_tree	  tree;
+	int		 	  argc;
+	char	       		**argv;
 };
 
 /* Command and list of commands. */
@@ -1724,6 +1729,8 @@ extern const char clock_table[14][5][5];
 void		 clock_draw(struct screen_write_ctx *, int, int);
 
 /* arguments.c */
+int		 args_cmp(struct args_entry *, struct args_entry *);
+RB_PROTOTYPE(args_tree, args_entry, entry, args_cmp);
 struct args	*args_create(int, ...);
 struct args	*args_parse(const char *, int, char **);
 void		 args_free(struct args *);

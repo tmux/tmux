@@ -18,11 +18,25 @@
 
 #include <sys/types.h>
 
-#include <bitstring.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
+
+/*
+ * Manipulate command arguments.
+ */
+
+struct args_entry	*args_find(struct args *, u_char);
+
+RB_GENERATE(args_tree, args_entry, entry, args_cmp);
+
+/* Arguments tree comparison function. */
+int
+args_cmp(struct args_entry *a1, struct args_entry *a2)
+{
+	return (a1->flag - a2->flag);
+}
 
 /* Create an arguments set with no flags. */
 struct args *
@@ -33,8 +47,6 @@ args_create(int argc, ...)
 	int		 i;
 
 	args = xcalloc(1, sizeof *args);
-	if ((args->flags = bit_alloc(SCHAR_MAX)) == NULL)
-		fatal("bit_alloc failed");
 
 	args->argc = argc;
 	if (argc == 0)
@@ -50,6 +62,16 @@ args_create(int argc, ...)
 	return (args);
 }
 
+/* Find a flag in the arguments tree. */
+struct args_entry *
+args_find(struct args *args, u_char ch)
+{
+	struct args_entry	entry;
+
+	entry.flag = ch;
+	return (RB_FIND(args_tree, &args->tree, &entry));
+}
+
 /* Parse an argv and argc into a new argument set. */
 struct args *
 args_parse(const char *template, int argc, char **argv)
@@ -59,26 +81,18 @@ args_parse(const char *template, int argc, char **argv)
 	int		 opt;
 
 	args = xcalloc(1, sizeof *args);
-	if ((args->flags = bit_alloc(SCHAR_MAX)) == NULL)
-		fatal("bit_alloc failed");
 
 	optreset = 1;
 	optind = 1;
 
 	while ((opt = getopt(argc, argv, template)) != -1) {
-		if (opt < 0 || opt >= SCHAR_MAX)
+		if (opt < 0)
 			continue;
 		if (opt == '?' || (ptr = strchr(template, opt)) == NULL) {
-			free(args->flags);
-			free(args);
+			args_free(args);
 			return (NULL);
 		}
-
-		bit_set(args->flags, opt);
-		if (ptr[1] == ':') {
-			free(args->values[opt]);
-			args->values[opt] = xstrdup(optarg);
-		}
+		args_set(args, opt, optarg);
 	}
 	argc -= optind;
 	argv += optind;
@@ -93,14 +107,17 @@ args_parse(const char *template, int argc, char **argv)
 void
 args_free(struct args *args)
 {
-	u_int	i;
+	struct args_entry	*entry;
+	struct args_entry	*entry1;
 
 	cmd_free_argv(args->argc, args->argv);
 
-	for (i = 0; i < SCHAR_MAX; i++)
-		free(args->values[i]);
+	RB_FOREACH_SAFE(entry, args_tree, &args->tree, entry1) {
+		RB_REMOVE(args_tree, &args->tree, entry);
+		free(entry->value);
+		free(entry);
+	}
 
-	free(args->flags);
 	free(args);
 }
 
@@ -108,9 +125,10 @@ args_free(struct args *args)
 size_t
 args_print(struct args *args, char *buf, size_t len)
 {
-	size_t		 off;
-	int		 i;
-	const char	*quotes;
+	size_t		 	 off;
+	int			 i;
+	const char		*quotes;
+	struct args_entry	*entry;
 
 	/* There must be at least one byte at the start. */
 	if (len == 0)
@@ -119,23 +137,23 @@ args_print(struct args *args, char *buf, size_t len)
 
 	/* Process the flags first. */
 	buf[off++] = '-';
-	for (i = 0; i < SCHAR_MAX; i++) {
-		if (!bit_test(args->flags, i) || args->values[i] != NULL)
+	RB_FOREACH(entry, args_tree, &args->tree) {
+		if (entry->value != NULL)
 			continue;
 
 		if (off == len - 1) {
 			buf[off] = '\0';
 			return (len);
 		}
-		buf[off++] = i;
+		buf[off++] = entry->flag;
 		buf[off] = '\0';
 	}
 	if (off == 1)
 		buf[--off] = '\0';
 
 	/* Then the flags with arguments. */
-	for (i = 0; i < SCHAR_MAX; i++) {
-		if (!bit_test(args->flags, i) || args->values[i] == NULL)
+	RB_FOREACH(entry, args_tree, &args->tree) {
+		if (entry->value == NULL)
 			continue;
 
 		if (off >= len) {
@@ -143,12 +161,13 @@ args_print(struct args *args, char *buf, size_t len)
 			return (len);
 		}
 
-		if (strchr(args->values[i], ' ') != NULL)
+		if (strchr(entry->value, ' ') != NULL)
 			quotes = "\"";
 		else
 			quotes = "";
 		off += xsnprintf(buf + off, len - off, "%s-%c %s%s%s",
-		    off != 0 ? " " : "", i, quotes, args->values[i], quotes);
+		    off != 0 ? " " : "", entry->flag, quotes, entry->value,
+		    quotes);
 	}
 
 	/* And finally the argument vector. */
@@ -173,42 +192,59 @@ args_print(struct args *args, char *buf, size_t len)
 int
 args_has(struct args *args, u_char ch)
 {
-	return (bit_test(args->flags, ch));
+	return (args_find(args, ch) == NULL ? 0 : 1);
 }
 
-/* Set argument value. */
+/* Set argument value in the arguments tree. */
 void
 args_set(struct args *args, u_char ch, const char *value)
 {
-	free(args->values[ch]);
+	struct args_entry	*entry;
+
+	/* Replace existing argument. */
+	if ((entry = args_find(args, ch)) != NULL) {
+		free(entry->value);
+		if (value != NULL)
+			entry->value = xstrdup(value);
+		else
+			entry->value = NULL;
+		return;
+	}
+
+	entry = xcalloc(1, sizeof *entry);
+	entry->flag = ch;
 	if (value != NULL)
-		args->values[ch] = xstrdup(value);
-	else
-		args->values[ch] = NULL;
-	bit_set(args->flags, ch);
+		entry->value = xstrdup(value);
+
+	RB_INSERT(args_tree, &args->tree, entry);
 }
 
 /* Get argument value. Will be NULL if it isn't present. */
 const char *
 args_get(struct args *args, u_char ch)
 {
-	return (args->values[ch]);
+	struct args_entry	*entry;
+
+	if ((entry = args_find(args, ch)) == NULL)
+		return (NULL);
+	return (entry->value);
 }
 
 /* Convert an argument value to a number. */
 long long
-args_strtonum(struct args *args,
-    u_char ch, long long minval, long long maxval, char **cause)
+args_strtonum(struct args *args, u_char ch, long long minval, long long maxval,
+    char **cause)
 {
-	const char	*errstr;
-	long long 	 ll;
+	const char		*errstr;
+	long long 	 	 ll;
+	struct args_entry	*entry;
 
-	if (!args_has(args, ch)) {
+	if ((entry = args_find(args, ch)) == NULL) {
 		*cause = xstrdup("missing");
 		return (0);
 	}
 
-	ll = strtonum(args->values[ch], minval, maxval, &errstr);
+	ll = strtonum(entry->value, minval, maxval, &errstr);
 	if (errstr != NULL) {
 		*cause = xstrdup(errstr);
 		return (0);
