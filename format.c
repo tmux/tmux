@@ -46,8 +46,8 @@ format_cmp(struct format_entry *fe1, struct format_entry *fe2)
 	return (strcmp(fe1->key, fe2->key));
 }
 
-/* Single-character aliases. */
-const char *format_aliases[26] = {
+/* Single-character uppercase aliases. */
+const char *format_upper[] = {
 	NULL,		/* A */
 	NULL,		/* B */
 	NULL,		/* C */
@@ -76,18 +76,52 @@ const char *format_aliases[26] = {
 	NULL 		/* Z */
 };
 
+/* Single-character lowercase aliases. */
+const char *format_lower[] = {
+	NULL,		/* a */
+	NULL,		/* b */
+	NULL,		/* c */
+	NULL,		/* d */
+	NULL,		/* e */
+	NULL,		/* f */
+	NULL,		/* g */
+	"host_short",	/* h */
+	NULL,		/* i */
+	NULL,		/* j */
+	NULL,		/* k */
+	NULL,		/* l */
+	NULL,		/* m */
+	NULL,		/* n */
+	NULL,		/* o */
+	NULL,		/* p */
+	NULL,		/* q */
+	NULL,		/* r */
+	NULL,		/* s */
+	NULL,		/* t */
+	NULL,		/* u */
+	NULL,		/* v */
+	NULL,		/* w */
+	NULL,		/* x */
+	NULL,		/* y */
+	NULL		/* z */
+};
+
 /* Create a new tree. */
 struct format_tree *
 format_create(void)
 {
 	struct format_tree	*ft;
-	char			 host[MAXHOSTNAMELEN];
+	char			 host[MAXHOSTNAMELEN], *ptr;
 
 	ft = xmalloc(sizeof *ft);
 	RB_INIT(ft);
 
-	if (gethostname(host, sizeof host) == 0)
+	if (gethostname(host, sizeof host) == 0) {
 		format_add(ft, "host", "%s", host);
+		if ((ptr = strrchr(host, '.')) != NULL)
+			*ptr = '\0';
+		format_add(ft, "host_short", "%s", host);
+	}
 
 	return (ft);
 }
@@ -109,7 +143,7 @@ format_free(struct format_tree *ft)
 		free(fe);
 	}
 
-	free (ft);
+	free(ft);
 }
 
 /* Add a key-value pair. */
@@ -230,6 +264,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 		fmt++;
 
 		ch = (u_char) *fmt++;
+
 		switch (ch) {
 		case '{':
 			ptr = strchr(fmt, '}');
@@ -242,22 +277,23 @@ format_expand(struct format_tree *ft, const char *fmt)
 			fmt += n + 1;
 			continue;
 		default:
-			if (ch >= 'A' && ch <= 'Z') {
-				s = format_aliases[ch - 'A'];
-				if (s != NULL) {
-					n = strlen(s);
-					if (format_replace (
-					    ft, s, n, &buf, &len, &off) != 0)
-						break;
-					continue;
+			s = NULL;
+			if (ch >= 'A' && ch <= 'Z')
+				s = format_upper[ch - 'A'];
+			else if (ch >= 'a' && ch <= 'z')
+				s = format_lower[ch - 'a'];
+			if (s == NULL) {
+				while (len - off < 3) {
+					buf = xrealloc(buf, 2, len);
+					len *= 2;
 				}
+				buf[off++] = '#';
+				buf[off++] = ch;
+				continue;
 			}
-			while (len - off < 3) {
-				buf = xrealloc(buf, 2, len);
-				len *= 2;
-			}
-			buf[off++] = '#';
-			buf[off++] = ch;
+			n = strlen(s);
+			if (format_replace(ft, s, n, &buf, &len, &off) != 0)
+				break;
 			continue;
 		}
 
