@@ -38,8 +38,7 @@ void	status_job_free(void *);
 void	status_job_callback(struct job *);
 char   *status_print(
 	    struct client *, struct winlink *, time_t, struct grid_cell *);
-void	status_replace1(struct client *, struct session *, struct winlink *,
-	    struct window_pane *, char **, char **, char *, size_t, int);
+void	status_replace1(struct client *, char **, char **, char *, size_t, int);
 void	status_message_callback(int, short, void *);
 
 const char *status_prompt_up_history(u_int *);
@@ -384,14 +383,12 @@ out:
 
 /* Replace a single special sequence (prefixed by #). */
 void
-status_replace1(struct client *c, struct session *s, struct winlink *wl,
-    struct window_pane *wp, char **iptr, char **optr, char *out,
+status_replace1(struct client *c, char **iptr, char **optr, char *out,
     size_t outsize, int jobsflag)
 {
-	char	ch, tmp[256], *ptr, *endptr, *freeptr;
+	char	ch, tmp[256], *ptr, *endptr;
 	size_t	ptrlen;
 	long	limit;
-	u_int	idx;
 
 	errno = 0;
 	limit = strtol(*iptr, &endptr, 10);
@@ -403,8 +400,6 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 	if (limit <= 0)
 		limit = LONG_MAX;
 
-	freeptr = NULL;
-
 	switch (*(*iptr)++) {
 	case '(':
 		if (!jobsflag) {
@@ -413,45 +408,6 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 		}
 		if ((ptr = status_find_job(c, iptr)) == NULL)
 			return;
-		goto do_replace;
-	case 'D':
-		xsnprintf(tmp, sizeof tmp, "%%%u", wp->id);
-		ptr = tmp;
-		goto do_replace;
-	case 'H':
-		if (gethostname(tmp, sizeof tmp) != 0)
-			fatal("gethostname failed");
-		ptr = tmp;
-		goto do_replace;
-	case 'h':
-		if (gethostname(tmp, sizeof tmp) != 0)
-			fatal("gethostname failed");
-		if ((ptr = strchr(tmp, '.')) != NULL)
-			*ptr = '\0';
-		ptr = tmp;
-		goto do_replace;
-	case 'I':
-		xsnprintf(tmp, sizeof tmp, "%d", wl->idx);
-		ptr = tmp;
-		goto do_replace;
-	case 'P':
-		if (window_pane_index(wp, &idx) != 0)
-			fatalx("index not found");
-		xsnprintf(tmp, sizeof tmp, "%u", idx);
-		ptr = tmp;
-		goto do_replace;
-	case 'S':
-		ptr = s->name;
-		goto do_replace;
-	case 'T':
-		ptr = wp->base.title;
-		goto do_replace;
-	case 'W':
-		ptr = wl->window->name;
-		goto do_replace;
-	case 'F':
-		ptr = window_printable_flags(s, wl);
-		freeptr = ptr;
 		goto do_replace;
 	case '[':
 		/*
@@ -466,6 +422,10 @@ status_replace1(struct client *c, struct session *s, struct winlink *wl,
 	case '#':
 		*(*optr)++ = '#';
 		break;
+	default:
+		xsnprintf(tmp, sizeof tmp, "#%c", *(*iptr - 1));
+		ptr = tmp;
+		goto do_replace;
 	}
 
 	return;
@@ -476,14 +436,12 @@ do_replace:
 		ptrlen = limit;
 
 	if (*optr + ptrlen >= out + outsize - 1)
-		goto out;
+		return;
 	while (ptrlen > 0 && *ptr != '\0') {
 		*(*optr)++ = *ptr++;
 		ptrlen--;
 	}
 
-out:
-	free(freeptr);
 	return;
 
 skip_to:
@@ -532,8 +490,7 @@ status_replace(struct client *c, struct session *s, struct winlink *wl,
 			*optr++ = ch;
 			continue;
 		}
-		status_replace1(
-		    c, s, wl, wp, &iptr, &optr, out, sizeof out, jobsflag);
+		status_replace1(c, &iptr, &optr, out, sizeof out, jobsflag);
 	}
 	*optr = '\0';
 
