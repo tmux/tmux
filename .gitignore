@@ -15,4 +15,4 @@ tmux
 Makefile
 Makefile.in
 configure
-tmux.1
+tmux.1.*
