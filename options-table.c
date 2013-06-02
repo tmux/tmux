@@ -416,8 +416,8 @@ const struct options_table_entry session_options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .default_str = "*256col*:colors=256"
 	                 ",xterm*:XT:Ms=\\E]52;%p1%s;%p2%s\\007"
-	                 ":Cc=\\E]12;%p1%s\\007:Cr=\\E]112\\007"
-			 ":Cs=\\E[%p1%d q:Csr=\\E[2 q,screen*:XT"
+	                 ":Cs=\\E]12;%p1%s\\007:Cr=\\E]112\\007"
+			 ":Ss=\\E[%p1%d q:Se=\\E[2 q,screen*:XT"
 	},
 
 	{ .name = "update-environment",
