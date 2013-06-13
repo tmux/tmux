@@ -249,15 +249,13 @@ enum tty_code_code {
 	TTYC_BEL,	/* bell, bl */
 	TTYC_BLINK,	/* enter_blink_mode, mb */
 	TTYC_BOLD,	/* enter_bold_mode, md */
-	TTYC_CC,	/* set colour cursor, Cc */
 	TTYC_CIVIS,	/* cursor_invisible, vi */
 	TTYC_CLEAR,	/* clear_screen, cl */
 	TTYC_CNORM,	/* cursor_normal, ve */
 	TTYC_COLORS,	/* max_colors, Co */
 	TTYC_CR,	/* restore cursor colour, Cr */
-	TTYC_CS1,	/* set cursor style, Cs */
+	TTYC_CS,	/* set cursor colour, Cs */
 	TTYC_CSR,	/* change_scroll_region, cs */
-	TTYC_CSR1,	/* reset cursor style, Csr */
 	TTYC_CUB,	/* parm_left_cursor, LE */
 	TTYC_CUB1,	/* cursor_left, le */
 	TTYC_CUD,	/* parm_down_cursor, DO */
@@ -387,6 +385,7 @@ enum tty_code_code {
 	TTYC_RMACS,	/* exit_alt_charset_mode */
 	TTYC_RMCUP,	/* exit_ca_mode, te */
 	TTYC_RMKX,	/* keypad_local, ke */
+	TTYC_SE,	/* reset cursor style, Se */
 	TTYC_SETAB,	/* set_a_background, AB */
 	TTYC_SETAF,	/* set_a_foreground, AF */
 	TTYC_SGR0,	/* exit_attribute_mode, me */
@@ -396,6 +395,7 @@ enum tty_code_code {
 	TTYC_SMKX,	/* keypad_xmit, ks */
 	TTYC_SMSO,	/* enter_standout_mode, so */
 	TTYC_SMUL,	/* enter_underline_mode, us */
+	TTYC_SS,	/* set cursor style, Ss */
 	TTYC_TSL,	/* to_status_line, tsl */
 	TTYC_VPA,	/* row_address, cv */
 	TTYC_XENL,	/* eat_newline_glitch, xn */

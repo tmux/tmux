@@ -3575,7 +3575,7 @@ This command only works from outside
 understands some extensions to
 .Xr terminfo 5 :
 .Bl -tag -width Ds
-.It Em Cc , Cr
+.It Em Cs , Cr
 Set the cursor colour.
 The first takes a single string argument and is used to set the colour;
 the second takes no arguments and restores the default cursor colour.
@@ -3585,7 +3585,7 @@ to change the cursor colour from inside
 .Bd -literal -offset indent
 $ printf '\e033]12;red\e033\e\e'
 .Ed
-.It Em Cs , Csr
+.It Em \&Ss , Se
 Change the cursor style.
 If set, a sequence such as this may be used
 to change the cursor to an underline:
