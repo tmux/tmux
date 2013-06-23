@@ -1333,7 +1333,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 			if (s->mode & MODE_FOCUSON)
 				break;
 			screen_write_mode_set(&ictx->ctx, MODE_FOCUSON);
-			wp->flags &= ~PANE_FOCUSED; /* force update if needed */
+			wp->flags |= PANE_FOCUSPUSH; /* force update */
 			break;
 		case 1005:
 			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_UTF8);
