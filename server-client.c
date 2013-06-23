@@ -548,6 +548,15 @@ server_client_check_focus(struct window_pane *wp)
 {
 	u_int		 i;
 	struct client	*c;
+	int		 push;
+
+	/* Are focus events off? */
+	if (!options_get_number(&global_options, "focus-events"))
+		return;
+
+	/* Do we need to push the focus state? */
+	push = wp->flags & PANE_FOCUSPUSH;
+	wp->flags &= ~PANE_FOCUSPUSH;
 
 	/* If we don't care about focus, forget it. */
 	if (!(wp->base.mode & MODE_FOCUSON))
@@ -580,13 +589,13 @@ server_client_check_focus(struct window_pane *wp)
 	}
 
 not_focused:
-	if (wp->flags & PANE_FOCUSED)
+	if (push || (wp->flags & PANE_FOCUSED))
 		bufferevent_write(wp->event, "\033[O", 3);
 	wp->flags &= ~PANE_FOCUSED;
 	return;
 
 focused:
-	if (!(wp->flags & PANE_FOCUSED))
+	if (push || !(wp->flags & PANE_FOCUSED))
 		bufferevent_write(wp->event, "\033[I", 3);
 	wp->flags |= PANE_FOCUSED;
 }
