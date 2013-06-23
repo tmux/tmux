@@ -2096,6 +2096,14 @@ The default is 500 milliseconds.
 .Op Ic on | off
 .Xc
 If enabled, the server will exit when there are no attached clients.
+.It Xo Ic focus-events
+.Op Ic on | off
+.Xc
+When enabled, focus events are requested from the terminal if supported and
+passed through to applications running in
+.Nm .
+Attached clients should be detached and attached again after changing this
+option.
 .It Xo Ic quiet
 .Op Ic on | off
 .Xc
