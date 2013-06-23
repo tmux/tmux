@@ -157,14 +157,17 @@ int
 cmdq_guard(struct cmd_q *cmdq, const char *guard)
 {
 	struct client	*c = cmdq->client;
+	int		 flags;
 
 	if (c == NULL)
 		return 0;
 	if (!(c->flags & CLIENT_CONTROL))
 		return 0;
 
-	evbuffer_add_printf(c->stdout_data, "%%%s %ld %u\n", guard,
-	    (long) cmdq->time, cmdq->number);
+	flags = !!(cmdq->cmd->flags & CMD_CONTROL);
+
+	evbuffer_add_printf(c->stdout_data, "%%%s %ld %u %d\n", guard,
+	    (long) cmdq->time, cmdq->number, flags);
 	server_push_stdout(c);
 	return 1;
 }
