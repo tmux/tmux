@@ -6,7 +6,7 @@ CLEANFILES = tmux.1.mdoc tmux.1.man
 
 # Distribution tarball options.
 EXTRA_DIST = \
-	CHANGES FAQ README TODO examples compat \
+	CHANGES FAQ README TODO COPYING examples compat \
 	array.h compat.h tmux.h osdep-*.c mdoc2man.awk tmux.1
 dist-hook:
 	grep "^#found_debug=" configure
@@ -48,7 +48,11 @@ endif
 
 # Set flags for Solaris.
 if IS_SUNOS
+if IS_GCC
+CPPFLAGS += -D_XPG6 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
+else
 CPPFLAGS += -D_XPG4_2 -D__EXTENSIONS__ -D_POSIX_PTHREAD_SEMANTICS
+endif
 endif
 
 # Set flags for Sun CC.
