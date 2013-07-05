@@ -262,8 +262,9 @@ server_lock_client(struct client *c)
 void
 server_kill_window(struct window *w)
 {
-	struct session	*s, *next_s;
-	struct winlink	*wl;
+	struct session		*s, *next_s, *target_s;
+	struct session_group	*sg;
+	struct winlink		*wl;
 
 	next_s = RB_MIN(sessions, &sessions);
 	while (next_s != NULL) {
@@ -280,8 +281,13 @@ server_kill_window(struct window *w)
 				server_redraw_session_group(s);
 		}
 
-		if (options_get_number(&s->options, "renumber-windows"))
-			session_renumber_windows(s);
+		if (options_get_number(&s->options, "renumber-windows")) {
+			if ((sg = session_group_find(s)) != NULL) {
+				TAILQ_FOREACH(target_s, &sg->sessions, gentry)
+					session_renumber_windows(target_s);
+			} else
+				session_renumber_windows(s);
+		}
 	}
 	recalculate_sizes();
 }
