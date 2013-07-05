@@ -39,9 +39,6 @@
 extern char    *__progname;
 extern char   **environ;
 
-/* Default global configuration file. */
-#define TMUX_CONF "/etc/tmux.conf"
-
 /* Default prompt history length. */
 #define PROMPT_HISTORY 100
 
@@ -937,6 +934,7 @@ struct window_pane {
 #define PANE_DROP 0x2
 #define PANE_FOCUSED 0x4
 #define PANE_RESIZE 0x8
+#define PANE_FOCUSPUSH 0x10
 
 	char		*cmd;
 	char		*shell;
@@ -1228,6 +1226,7 @@ struct tty {
 #define TTY_UTF8 0x8
 #define TTY_STARTED 0x10
 #define TTY_OPENED 0x20
+#define TTY_FOCUS 0x40
 	int		 flags;
 
 	int		 term_flags;
@@ -1378,6 +1377,9 @@ struct cmd {
 
 	char			*file;
 	u_int			 line;
+
+#define CMD_CONTROL 0x1
+	int			 flags;
 
 	TAILQ_ENTRY(cmd)	 qentry;
 };

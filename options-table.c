@@ -75,6 +75,11 @@ const struct options_table_entry server_options_table[] = {
 	  .default_num = 0
 	},
 
+	{ .name = "focus-events",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .default_num = 0
+	},
+
 	{ .name = "quiet",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .default_num = 0 /* overridden in main() */

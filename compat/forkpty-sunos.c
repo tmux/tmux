@@ -21,6 +21,7 @@
 
 #include <fcntl.h>
 #include <stdlib.h>
+#include <strings.h>
 #include <stropts.h>
 #include <unistd.h>
 
