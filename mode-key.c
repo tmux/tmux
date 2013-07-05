@@ -35,9 +35,7 @@
  *
  * vi command mode is handled by having a mode flag in the struct which allows
  * two sets of bindings to be swapped between. A couple of editing commands
- * (MODEKEYEDIT_SWITCHMODE, MODEKEYEDIT_SWITCHMODEAPPEND,
- * MODEKEYEDIT_SWITCHMODEAPPENDLINE, and MODEKEYEDIT_SWITCHMODEBEGINLINE)
- * are special-cased to do this.
+ * (any matching MODEKEYEDIT_SWITCHMODE*) are special-cased to do this.
  */
 
 /* Edit keys command strings. */
@@ -67,6 +65,9 @@ const struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 	{ MODEKEYEDIT_SWITCHMODEAPPEND, "switch-mode-append" },
 	{ MODEKEYEDIT_SWITCHMODEAPPENDLINE, "switch-mode-append-line" },
 	{ MODEKEYEDIT_SWITCHMODEBEGINLINE, "switch-mode-begin-line" },
+	{ MODEKEYEDIT_SWITCHMODECHANGELINE, "switch-mode-change-line" },
+	{ MODEKEYEDIT_SWITCHMODESUBSTITUTE, "switch-mode-substitute" },
+	{ MODEKEYEDIT_SWITCHMODESUBSTITUTELINE, "switch-mode-substitute-line" },
 	{ MODEKEYEDIT_TRANSPOSECHARS, "transpose-chars" },
 
 	{ 0, NULL }
@@ -166,9 +167,11 @@ const struct mode_key_entry mode_key_vi_edit[] = {
 	{ '0',			    1, MODEKEYEDIT_STARTOFLINE },
 	{ 'A',			    1, MODEKEYEDIT_SWITCHMODEAPPENDLINE },
 	{ 'B',			    1, MODEKEYEDIT_PREVIOUSSPACE },
+	{ 'C',			    1, MODEKEYEDIT_SWITCHMODECHANGELINE },
 	{ 'D',			    1, MODEKEYEDIT_DELETETOENDOFLINE },
 	{ 'E',			    1, MODEKEYEDIT_NEXTSPACEEND },
 	{ 'I',			    1, MODEKEYEDIT_SWITCHMODEBEGINLINE },
+	{ 'S',			    1, MODEKEYEDIT_SWITCHMODESUBSTITUTELINE },
 	{ 'W',			    1, MODEKEYEDIT_NEXTSPACE },
 	{ 'X',			    1, MODEKEYEDIT_BACKSPACE },
 	{ '\003' /* C-c */,	    1, MODEKEYEDIT_CANCEL },
@@ -185,6 +188,7 @@ const struct mode_key_entry mode_key_vi_edit[] = {
 	{ 'k',			    1, MODEKEYEDIT_HISTORYUP },
 	{ 'l',			    1, MODEKEYEDIT_CURSORRIGHT },
 	{ 'p',			    1, MODEKEYEDIT_PASTE },
+	{ 's',			    1, MODEKEYEDIT_SWITCHMODESUBSTITUTE },
 	{ 'w',			    1, MODEKEYEDIT_NEXTWORD },
 	{ 'x',			    1, MODEKEYEDIT_DELETE },
 	{ KEYC_BSPACE,		    1, MODEKEYEDIT_BACKSPACE },
@@ -227,8 +231,8 @@ const struct mode_key_entry mode_key_vi_choice[] = {
 	{ KEYC_UP | KEYC_CTRL,	    0, MODEKEYCHOICE_SCROLLUP },
 	{ KEYC_UP,		    0, MODEKEYCHOICE_UP },
 	{ ' ',			    0, MODEKEYCHOICE_TREE_TOGGLE },
-	{ KEYC_LEFT,                0, MODEKEYCHOICE_TREE_COLLAPSE },
-	{ KEYC_RIGHT,               0, MODEKEYCHOICE_TREE_EXPAND },
+	{ KEYC_LEFT,		    0, MODEKEYCHOICE_TREE_COLLAPSE },
+	{ KEYC_RIGHT,		    0, MODEKEYCHOICE_TREE_EXPAND },
 	{ KEYC_LEFT | KEYC_CTRL,    0, MODEKEYCHOICE_TREE_COLLAPSE_ALL },
 	{ KEYC_RIGHT | KEYC_CTRL,   0, MODEKEYCHOICE_TREE_EXPAND_ALL },
 
@@ -369,8 +373,8 @@ const struct mode_key_entry mode_key_emacs_choice[] = {
 	{ KEYC_UP | KEYC_CTRL,	    0, MODEKEYCHOICE_SCROLLUP },
 	{ KEYC_UP,		    0, MODEKEYCHOICE_UP },
 	{ ' ',			    0, MODEKEYCHOICE_TREE_TOGGLE },
-	{ KEYC_LEFT,                0, MODEKEYCHOICE_TREE_COLLAPSE },
-	{ KEYC_RIGHT,               0, MODEKEYCHOICE_TREE_EXPAND },
+	{ KEYC_LEFT,		    0, MODEKEYCHOICE_TREE_COLLAPSE },
+	{ KEYC_RIGHT,		    0, MODEKEYCHOICE_TREE_EXPAND },
 	{ KEYC_LEFT | KEYC_CTRL,    0, MODEKEYCHOICE_TREE_COLLAPSE_ALL },
 	{ KEYC_RIGHT | KEYC_CTRL,   0, MODEKEYCHOICE_TREE_EXPAND_ALL },
 
@@ -545,6 +549,9 @@ mode_key_lookup(struct mode_key_data *mdata, int key, const char **arg)
 	case MODEKEYEDIT_SWITCHMODEAPPEND:
 	case MODEKEYEDIT_SWITCHMODEAPPENDLINE:
 	case MODEKEYEDIT_SWITCHMODEBEGINLINE:
+	case MODEKEYEDIT_SWITCHMODECHANGELINE:
+	case MODEKEYEDIT_SWITCHMODESUBSTITUTE:
+	case MODEKEYEDIT_SWITCHMODESUBSTITUTELINE:
 		mdata->mode = 1 - mdata->mode;
 		/* FALLTHROUGH */
 	default:

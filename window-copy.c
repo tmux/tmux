@@ -1116,7 +1116,7 @@ window_copy_write_line(
 	struct options			*oo = &wp->window->options;
 	struct grid_cell		 gc;
 	char				 hdr[32];
-	size_t	 			 last, xoff = 0, size = 0;
+	size_t				 last, xoff = 0, size = 0;
 
 	window_mode_attrs(&gc, oo);
 
@@ -1894,6 +1894,7 @@ void
 window_copy_cursor_next_word_end(struct window_pane *wp, const char *separators)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
+	struct options			*oo = &wp->window->options;
 	struct screen			*back_s = data->backing;
 	u_int				 px, py, xx, yy;
 	int				 expected = 1;
@@ -1926,6 +1927,10 @@ window_copy_cursor_next_word_end(struct window_pane *wp, const char *separators)
 		}
 		expected = !expected;
 	} while (expected == 0);
+
+	/* Back up to the end-of-word like vi. */
+	if (options_get_number(oo, "status-keys") == MODEKEY_VI && px != 0)
+		px--;
 
 	window_copy_update_cursor(wp, px, data->cy);
 	if (window_copy_update_selection(wp))
