@@ -460,6 +460,8 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_dead", "%d", wp->fd == -1);
 
 	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
+	format_add(ft, "pane_synchronized", "%d",
+	    !!options_get_number(&wp->window->options, "synchronize-panes"));
 
 	if (wp->tty != NULL)
 		format_add(ft, "pane_tty", "%s", wp->tty);

@@ -128,8 +128,13 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 			oo = &global_w_options;
 		else {
 			wl = cmd_find_window(cmdq, args_get(args, 't'), NULL);
-			if (wl == NULL)
+			if (wl == NULL) {
+				cmdq_error(cmdq,
+				    "couldn't set '%s'%s", optstr,
+				    (!args_has(args, 't') && !args_has(args,
+				    'g')) ? " need target window or -g" : "");
 				return (CMD_RETURN_ERROR);
+			}
 			oo = &wl->window->options;
 		}
 	} else if (table == session_options_table) {
@@ -137,8 +142,13 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 			oo = &global_s_options;
 		else {
 			s = cmd_find_session(cmdq, args_get(args, 't'), 0);
-			if (s == NULL)
+			if (s == NULL) {
+				cmdq_error(cmdq,
+				    "couldn't set '%s'%s", optstr,
+				    (!args_has(args, 't') && !args_has(args,
+				    'g')) ? " need target session or -g" : "");
 				return (CMD_RETURN_ERROR);
+			}
 			oo = &s->options;
 		}
 	} else {

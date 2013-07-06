@@ -142,10 +142,8 @@ status_set_window_at(struct client *c, u_int x)
 
 	x += c->wlmouse;
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		if (x < wl->status_width &&
-			session_select(s, wl->idx) == 0) {
+		if (x < wl->status_width && session_select(s, wl->idx) == 0)
 			server_redraw_session(s);
-		}
 		x -= wl->status_width + 1;
 	}
 }
@@ -938,6 +936,7 @@ status_prompt_redraw(struct client *c)
 	off = 0;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
+
 	/* Change colours for command mode. */
 	if (c->prompt_mdata.mode == 1) {
 		colour_set_fg(&gc, options_get_number(&s->options, "message-command-fg"));
@@ -1099,6 +1098,7 @@ status_prompt_key(struct client *c, int key)
 		}
 		break;
 	case MODEKEYEDIT_DELETE:
+	case MODEKEYEDIT_SWITCHMODESUBSTITUTE:
 		if (c->prompt_index != size) {
 			memmove(c->prompt_buffer + c->prompt_index,
 			    c->prompt_buffer + c->prompt_index + 1,
@@ -1107,11 +1107,13 @@ status_prompt_key(struct client *c, int key)
 		}
 		break;
 	case MODEKEYEDIT_DELETELINE:
+	case MODEKEYEDIT_SWITCHMODESUBSTITUTELINE:
 		*c->prompt_buffer = '\0';
 		c->prompt_index = 0;
 		c->flags |= CLIENT_STATUS;
 		break;
 	case MODEKEYEDIT_DELETETOENDOFLINE:
+	case MODEKEYEDIT_SWITCHMODECHANGELINE:
 		if (c->prompt_index < size) {
 			c->prompt_buffer[c->prompt_index] = '\0';
 			c->flags |= CLIENT_STATUS;
@@ -1189,6 +1191,11 @@ status_prompt_key(struct client *c, int key)
 			if (strchr(wsep, c->prompt_buffer[c->prompt_index]))
 				break;
 		}
+
+		/* Back up to the end-of-word like vi. */
+		if (options_get_number(oo, "status-keys") == MODEKEY_VI &&
+		    c->prompt_index != 0)
+			c->prompt_index--;
 
 		c->flags |= CLIENT_STATUS;
 		break;
