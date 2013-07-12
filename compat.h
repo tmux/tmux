@@ -30,6 +30,10 @@
 #define __packed __attribute__ ((__packed__))
 #endif
 
+#ifndef ECHOPRT
+#define ECHOPRT 0
+#endif
+
 #ifndef HAVE_BSD_TYPES
 typedef uint8_t u_int8_t;
 typedef uint16_t u_int16_t;
@@ -210,6 +214,7 @@ int	 	 daemon(int, int);
 
 #ifndef HAVE_B64_NTOP
 /* b64_ntop.c */
+#undef b64_ntop /* for Cygwin */
 int		 b64_ntop(const char *, size_t, char *, size_t);
 #endif
 

@@ -328,8 +328,13 @@ client_send_identify(int flags)
 	    strlcpy(data.term, term, sizeof data.term) >= sizeof data.term)
 		*data.term = '\0';
 
+#ifdef __CYGWIN__
+	snprintf(&data.ttyname, sizeof data.ttyname, "%s",
+	    ttyname(STDIN_FILENO));
+#else
 	if ((fd = dup(STDIN_FILENO)) == -1)
 		fatal("dup failed");
+#endif
 	imsg_compose(&client_ibuf,
 	    MSG_IDENTIFY, PROTOCOL_VERSION, -1, fd, &data, sizeof data);
 	client_update_event();

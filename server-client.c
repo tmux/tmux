@@ -825,9 +825,12 @@ server_client_msg_dispatch(struct client *c)
 		case MSG_IDENTIFY:
 			if (datalen != sizeof identifydata)
 				fatalx("bad MSG_IDENTIFY size");
+			memcpy(&identifydata, imsg.data, sizeof identifydata);
+#ifdef __CYGWIN__
+			imsg.fd = open(identifydata.ttyname, O_RDWR|O_NOCTTY);
+#endif
 			if (imsg.fd == -1)
 				fatalx("MSG_IDENTIFY missing fd");
-			memcpy(&identifydata, imsg.data, sizeof identifydata);
 
 			server_client_msg_identify(c, &identifydata, imsg.fd);
 			break;

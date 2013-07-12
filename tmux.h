@@ -471,6 +471,10 @@ struct msg_identify_data {
 
 	char		term[TERMINAL_LENGTH];
 
+#ifdef __CYGWIN__
+	char		ttyname[TTY_NAME_MAX];
+#endif
+
 #define IDENTIFY_UTF8 0x1
 #define IDENTIFY_256COLOURS 0x2
 /* 0x4 unused */
