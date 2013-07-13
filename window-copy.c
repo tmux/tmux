@@ -1897,12 +1897,16 @@ window_copy_cursor_next_word_end(struct window_pane *wp, const char *separators)
 	struct options			*oo = &wp->window->options;
 	struct screen			*back_s = data->backing;
 	u_int				 px, py, xx, yy;
-	int				 expected = 1;
+	int				 keys, expected = 1;
 
 	px = data->cx;
 	py = screen_hsize(back_s) + data->cy - data->oy;
 	xx = window_copy_find_length(wp, py);
 	yy = screen_hsize(back_s) + screen_size_y(back_s) - 1;
+
+	keys = options_get_number(oo, "mode-keys");
+	if (keys == MODEKEY_VI && !window_copy_in_set(wp, px, py, separators))
+		px++;
 
 	/*
 	 * First skip past any word characters, then any nonword characters.
@@ -1928,8 +1932,7 @@ window_copy_cursor_next_word_end(struct window_pane *wp, const char *separators)
 		expected = !expected;
 	} while (expected == 0);
 
-	/* Back up to the end-of-word like vi. */
-	if (options_get_number(oo, "status-keys") == MODEKEY_VI && px != 0)
+	if (keys == MODEKEY_VI && px != 0)
 		px--;
 
 	window_copy_update_cursor(wp, px, data->cy);
