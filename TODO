@@ -118,3 +118,12 @@
 
 - we need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo
+
+- the way pane, window, session destroy is handled is too complicated and the
+  distinction between session.c, window.c and server-fn.c functions is not
+  clear. could we just have kill_pane(), kill_window(), unlink_window(),
+  kill_session() that fix up all data structures (flagging sessions as dead)
+  and return a value to say whether clients need to be checked for dead
+  sessions? sort of like session_detach now but more so. or some other scheme
+  to make it simpler and clearer? also would be nice to remove/rename
+  server-fn.c.
