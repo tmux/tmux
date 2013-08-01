@@ -829,9 +829,6 @@ server_client_msg_dispatch(struct client *c)
 #ifdef __CYGWIN__
 			imsg.fd = open(identifydata.ttyname, O_RDWR|O_NOCTTY);
 #endif
-			if (imsg.fd == -1)
-				fatalx("MSG_IDENTIFY missing fd");
-
 			server_client_msg_identify(c, &identifydata, imsg.fd);
 			break;
 		case MSG_STDIN:
@@ -975,6 +972,8 @@ server_client_msg_identify(
 		return;
 	}
 
+	if (fd == -1)
+		return;
 	if (!isatty(fd)) {
 		close(fd);
 		return;
