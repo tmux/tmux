@@ -151,6 +151,7 @@ void
 format_add(struct format_tree *ft, const char *key, const char *fmt, ...)
 {
 	struct format_entry	*fe;
+	struct format_entry	*fe_now;
 	va_list			 ap;
 
 	fe = xmalloc(sizeof *fe);
@@ -160,7 +161,13 @@ format_add(struct format_tree *ft, const char *key, const char *fmt, ...)
 	xvasprintf(&fe->value, fmt, ap);
 	va_end(ap);
 
-	RB_INSERT(format_tree, ft, fe);
+	fe_now = RB_INSERT(format_tree, ft, fe);
+	if (fe_now != NULL) {
+		free(fe_now->value);
+		fe_now->value = fe->value;
+		free(fe->key);
+		free(fe);
+	}
 }
 
 /* Find a format entry. */
