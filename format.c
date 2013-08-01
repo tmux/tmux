@@ -346,8 +346,10 @@ format_client(struct format_tree *ft, struct client *c)
 	format_add(ft, "client_cwd", "%s", c->cwd);
 	format_add(ft, "client_height", "%u", c->tty.sy);
 	format_add(ft, "client_width", "%u", c->tty.sx);
-	format_add(ft, "client_tty", "%s", c->tty.path);
-	format_add(ft, "client_termname", "%s", c->tty.termname);
+	if (c->tty.path != NULL)
+		format_add(ft, "client_tty", "%s", c->tty.path);
+	if (c->tty.termname != NULL)
+		format_add(ft, "client_termname", "%s", c->tty.termname);
 
 	t = c->creation_time.tv_sec;
 	format_add(ft, "client_created", "%lld", (long long) t);
