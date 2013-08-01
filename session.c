@@ -150,6 +150,7 @@ void
 session_destroy(struct session *s)
 {
 	struct winlink	*wl;
+
 	log_debug("session %s destroyed", s->name);
 
 	RB_REMOVE(sessions, &sessions, s);
