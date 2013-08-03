@@ -18,6 +18,8 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
+#include <errno.h>
 #include <netdb.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -188,17 +190,39 @@ format_find(struct format_tree *ft, const char *key)
  * #{?blah,a,b} is replace with a if blah exists and is nonzero else b.
  */
 int
-format_replace(struct format_tree *ft,
-    const char *key, size_t keylen, char **buf, size_t *len, size_t *off)
+format_replace(struct format_tree *ft, const char *key, size_t keylen,
+    char **buf, size_t *len, size_t *off)
 {
-	char		*copy, *ptr;
+	char		*copy, *copy0, *endptr, *ptr;
 	const char	*value;
 	size_t		 valuelen;
+	u_long		 limit = ULONG_MAX;
 
 	/* Make a copy of the key. */
-	copy = xmalloc(keylen + 1);
+	copy0 = copy = xmalloc(keylen + 1);
 	memcpy(copy, key, keylen);
 	copy[keylen] = '\0';
+
+	/* Is there a length limit or whatnot? */
+	if (!islower((u_char) *copy) && *copy != '?') {
+		while (*copy != ':' && *copy != '\0') {
+			switch (*copy) {
+			case '=':
+				errno = 0;
+				limit = strtoul(copy + 1, &endptr, 10);
+				if (errno == ERANGE && limit == ULONG_MAX)
+					goto fail;
+				copy = endptr;
+				break;
+			default:
+				copy++;
+				break;
+			}
+		}
+		if (*copy != ':')
+			goto fail;
+		copy++;
+	}
 
 	/*
 	 * Is this a conditional? If so, check it exists and extract either the
@@ -230,6 +254,10 @@ format_replace(struct format_tree *ft,
 	}
 	valuelen = strlen(value);
 
+	/* Truncate the value if needed. */
+	if (valuelen > limit)
+		valuelen = limit;
+
 	/* Expand the buffer and copy in the value. */
 	while (*len - *off < valuelen + 1) {
 		*buf = xrealloc(*buf, 2, *len);
@@ -238,11 +266,11 @@ format_replace(struct format_tree *ft,
 	memcpy(*buf + *off, value, valuelen);
 	*off += valuelen;
 
-	free(copy);
+	free(copy0);
 	return (0);
 
 fail:
-	free(copy);
+	free(copy0);
 	return (-1);
 }
 
