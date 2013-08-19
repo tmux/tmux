@@ -1549,16 +1549,19 @@ int		 format_cmp(struct format_entry *, struct format_entry *);
 RB_PROTOTYPE(format_tree, format_entry, entry, format_cmp);
 struct format_tree *format_create(void);
 void		 format_free(struct format_tree *);
-void printflike3 format_add(
-		     struct format_tree *, const char *, const char *, ...);
+void printflike3 format_add(struct format_tree *, const char *, const char *,
+		     ...);
 const char	*format_find(struct format_tree *, const char *);
 char		*format_expand(struct format_tree *, const char *);
 void		 format_session(struct format_tree *, struct session *);
 void		 format_client(struct format_tree *, struct client *);
-void		 format_winlink(
-		     struct format_tree *, struct session *, struct winlink *);
-void		 format_window_pane(struct format_tree *, struct window_pane *);
-void		 format_paste_buffer(struct format_tree *, struct paste_buffer *);
+void		 format_window(struct format_tree *, struct window *);
+void		 format_winlink(struct format_tree *, struct session *,
+		     struct winlink *);
+void		 format_window_pane(struct format_tree *,
+		     struct window_pane *);
+void		 format_paste_buffer(struct format_tree *,
+		     struct paste_buffer *);
 
 /* mode-key.c */
 extern const struct mode_key_table mode_key_tables[];
@@ -2272,8 +2275,10 @@ void	window_choose_collapse_all(struct window_pane *);
 void	window_choose_set_current(struct window_pane *, u_int);
 
 /* names.c */
-void		 queue_window_name(struct window *);
-char		*default_window_name(struct window *);
+void	 queue_window_name(struct window *);
+char	*default_window_name(struct window *);
+char	*format_window_name(struct window *);
+char	*parse_window_name(const char *);
 
 /* signal.c */
 void	set_signals(void(*)(int, short, void *));

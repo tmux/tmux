@@ -2710,8 +2710,8 @@ The default is on.
 Control automatic window renaming.
 When this setting is enabled,
 .Nm
-will attempt - on supported platforms - to rename the window to reflect the
-command currently running in it.
+will rename the window automatically using the format specified by
+.Ic automatic-rename-format .
 This flag is automatically disabled for an individual window when a name
 is specified at creation with
 .Ic new-window
@@ -2724,6 +2724,13 @@ It may be switched off globally with:
 .Bd -literal -offset indent
 set-window-option -g automatic-rename off
 .Ed
+.Pp
+.It Ic automatic-rename-format Ar format
+The format (see
+.Sx FORMATS )
+used when the
+.Ic automatic-rename
+option is enabled.
 .Pp
 .It Ic c0-change-interval Ar interval
 .It Ic c0-change-trigger Ar trigger
