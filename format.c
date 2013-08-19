@@ -193,7 +193,7 @@ int
 format_replace(struct format_tree *ft, const char *key, size_t keylen,
     char **buf, size_t *len, size_t *off)
 {
-	char		*copy, *copy0, *endptr, *ptr;
+	char		*copy, *copy0, *endptr, *ptr, *saved;
 	const char	*value;
 	size_t		 valuelen;
 	u_long		 limit = ULONG_MAX;
@@ -247,10 +247,13 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 				goto fail;
 			value = ptr + 1;
 		}
+		saved = format_expand(ft, value);
+		value = saved;
 	} else {
 		value = format_find(ft, copy);
 		if (value == NULL)
 			value = "";
+		saved = NULL;
 	}
 	valuelen = strlen(value);
 
@@ -266,6 +269,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	memcpy(*buf + *off, value, valuelen);
 	*off += valuelen;
 
+	free(saved);
 	free(copy0);
 	return (0);
 
@@ -278,10 +282,10 @@ fail:
 char *
 format_expand(struct format_tree *ft, const char *fmt)
 {
-	char		*buf, *ptr;
-	const char	*s;
+	char		*buf;
+	const char	*ptr, *s;
 	size_t		 off, len, n;
-	int     	 ch;
+	int     	 ch, brackets;
 
 	len = 64;
 	buf = xmalloc(len);
@@ -299,11 +303,16 @@ format_expand(struct format_tree *ft, const char *fmt)
 		fmt++;
 
 		ch = (u_char) *fmt++;
-
 		switch (ch) {
 		case '{':
-			ptr = strchr(fmt, '}');
-			if (ptr == NULL)
+			brackets = 1;
+			for (ptr = fmt; *ptr != '\0'; ptr++) {
+				if (*ptr == '{')
+					brackets++;
+				if (*ptr == '}' && --brackets == 0)
+					break;
+			}
+			if (*ptr != '}' || brackets != 0)
 				break;
 			n = ptr - fmt;
 
