@@ -81,6 +81,7 @@ int     window_choose_key_index(struct window_choose_mode_data *, u_int);
 int     window_choose_index_key(struct window_choose_mode_data *, int);
 void	window_choose_prompt_input(enum window_choose_input_type,
 	    const char *, struct window_pane *, int);
+void	window_choose_reset_top(struct window_pane *, u_int);
 
 void
 window_choose_add(struct window_pane *wp, struct window_choose_data *wcd)
@@ -107,8 +108,17 @@ window_choose_set_current(struct window_pane *wp, u_int cur)
 	struct screen			*s = &data->screen;
 
 	data->selected = cur;
-	if (data->selected > screen_size_y(s) - 1)
-		data->top = ARRAY_LENGTH(&data->list) - screen_size_y(s);
+	window_choose_reset_top(wp, screen_size_y(s));
+}
+
+void
+window_choose_reset_top(struct window_pane *wp, u_int sy)
+{
+	struct window_choose_mode_data	*data = wp->modedata;
+
+	data->top = 0;
+	if (data->selected > sy - 1)
+		data->top = data->selected - (sy - 1);
 
 	window_choose_redraw_screen(wp);
 }
@@ -277,10 +287,7 @@ window_choose_resize(struct window_pane *wp, u_int sx, u_int sy)
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 
-	data->top = 0;
-	if (data->selected > sy - 1)
-		data->top = data->selected - (sy - 1);
-
+	window_choose_reset_top(wp, sy);
 	screen_resize(s, sx, sy, 0);
 	window_choose_redraw_screen(wp);
 }
@@ -373,6 +380,7 @@ window_choose_collapse_all(struct window_pane *wp)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct window_choose_mode_item	*item;
+	struct screen			*scr = &data->screen;
 	struct session			*s, *chosen;
 	u_int				 i;
 
@@ -391,7 +399,7 @@ window_choose_collapse_all(struct window_pane *wp)
 		if (item->wcd->type & TREE_SESSION)
 			data->selected = i;
 	}
-	window_choose_redraw_screen(wp);
+	window_choose_reset_top(wp, screen_size_y(scr));
 }
 
 void
@@ -399,6 +407,7 @@ window_choose_expand_all(struct window_pane *wp)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct window_choose_mode_item	*item;
+	struct screen			*scr = &data->screen;
 	struct session			*s;
 	u_int				 i;
 
@@ -414,7 +423,7 @@ window_choose_expand_all(struct window_pane *wp)
 		}
 	}
 
-	window_choose_redraw_screen(wp);
+	window_choose_reset_top(wp, screen_size_y(scr));
 }
 
 void
