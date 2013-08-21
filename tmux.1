@@ -99,7 +99,9 @@ Force
 .Nm
 to assume the terminal supports 256 colours.
 .It Fl C
-Start in control mode.
+Start in control mode (see the
+.Sx CONTROL MODE
+section).
 Given twice
 .Xo ( Fl CC ) Xc
 disables echo.
@@ -626,9 +628,10 @@ If it does exist, exit with 0.
 Kill the
 .Nm
 server and clients and destroy all sessions.
-.It Ic kill-session
+.It Xo Ic kill-session
 .Op Fl a
 .Op Fl t Ar target-session
+.Xc
 Destroy the given session, closing any windows linked to it and no other
 sessions, and detaching all clients attached to it.
 If
