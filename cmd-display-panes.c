@@ -32,7 +32,6 @@ const struct cmd_entry cmd_display_panes_entry = {
 	CMD_TARGET_CLIENT_USAGE,
 	0,
 	NULL,
-	NULL,
 	cmd_display_panes_exec
 };
 

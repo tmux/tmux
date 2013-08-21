@@ -39,7 +39,6 @@ const struct cmd_entry cmd_load_buffer_entry = {
 	CMD_BUFFER_USAGE " path",
 	0,
 	NULL,
-	NULL,
 	cmd_load_buffer_exec
 };
 

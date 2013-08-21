@@ -27,7 +27,6 @@
  * Bind a key to a command, this recurses through cmd_*.
  */
 
-enum cmd_retval	 cmd_bind_key_check(struct args *);
 enum cmd_retval	 cmd_bind_key_exec(struct cmd *, struct cmd_q *);
 
 enum cmd_retval	 cmd_bind_key_table(struct cmd *, struct cmd_q *, int);
@@ -38,22 +37,8 @@ const struct cmd_entry cmd_bind_key_entry = {
 	"[-cnr] [-t key-table] key command [arguments]",
 	0,
 	NULL,
-	cmd_bind_key_check,
 	cmd_bind_key_exec
 };
-
-enum cmd_retval
-cmd_bind_key_check(struct args *args)
-{
-	if (args_has(args, 't')) {
-		if (args->argc != 2 && args->argc != 3)
-			return (CMD_RETURN_ERROR);
-	} else {
-		if (args->argc < 2)
-			return (CMD_RETURN_ERROR);
-	}
-	return (CMD_RETURN_NORMAL);
-}
 
 enum cmd_retval
 cmd_bind_key_exec(struct cmd *self, struct cmd_q *cmdq)
@@ -62,6 +47,18 @@ cmd_bind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 	char		*cause;
 	struct cmd_list	*cmdlist;
 	int		 key;
+
+	if (args_has(args, 't')) {
+		if (args->argc != 2 && args->argc != 3) {
+			cmdq_error(cmdq, "not enough arguments");
+			return (CMD_RETURN_ERROR);
+		}
+	} else {
+		if (args->argc < 2) {
+			cmdq_error(cmdq, "not enough arguments");
+			return (CMD_RETURN_ERROR);
+		}
+	}
 
 	key = key_string_lookup_string(args->argv[0]);
 	if (key == KEYC_NONE) {

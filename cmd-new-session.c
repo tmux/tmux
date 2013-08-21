@@ -30,7 +30,6 @@
  * Create a new session and attach to the current terminal unless -d is given.
  */
 
-enum cmd_retval	 cmd_new_session_check(struct args *);
 enum cmd_retval	 cmd_new_session_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_new_session_entry = {
@@ -40,17 +39,8 @@ const struct cmd_entry cmd_new_session_entry = {
 	CMD_TARGET_SESSION_USAGE " [-x width] [-y height] [command]",
 	CMD_STARTSERVER|CMD_CANTNEST|CMD_SENDENVIRON,
 	NULL,
-	cmd_new_session_check,
 	cmd_new_session_exec
 };
-
-enum cmd_retval
-cmd_new_session_check(struct args *args)
-{
-	if (args_has(args, 't') && (args->argc != 0 || args_has(args, 'n')))
-		return (CMD_RETURN_ERROR);
-	return (CMD_RETURN_NORMAL);
-}
 
 enum cmd_retval
 cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
@@ -69,6 +59,11 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	u_int			 sx, sy;
 	int			 already_attached;
 	struct format_tree	*ft;
+
+	if (args_has(args, 't') && (args->argc != 0 || args_has(args, 'n'))) {
+		cmdq_error(cmdq, "command or window name given with target");
+		return (CMD_RETURN_ERROR);
+	}
 
 	newname = args_get(args, 's');
 	if (newname != NULL) {

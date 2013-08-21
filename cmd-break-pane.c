@@ -34,7 +34,6 @@ const struct cmd_entry cmd_break_pane_entry = {
 	"[-dP] [-F format] " CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
-	NULL,
 	cmd_break_pane_exec
 };
 
