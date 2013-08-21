@@ -30,6 +30,7 @@
 	* choose-mode and copy-mode are very similar, make choose-mode a subset?
 	* flag to choose-* for sort order
 	* choose mode would be better per client than per window
+	* two choices (first one then second, for swap-pane and join-pane)
 
 - improve monitor-*:
 	* straighten out rules for multiple clients
