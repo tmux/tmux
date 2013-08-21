@@ -18,6 +18,8 @@
 - options bits and pieces:
 	* set-remain-on-exit is a complete hack
 	* way to set socket path from config file
+	* -fg/-bg/-attr is crap - better just foo-style options which accept
+	  fg=,bg=,bright and so on like #[]
 
 - format improvements:
 	* option to quote format (#{session_name:quoted})
