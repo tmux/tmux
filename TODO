@@ -94,8 +94,6 @@
 - mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets the flag
   on w/o checking the others before calling tty_update_mode)
 
-- panes should have names like windows
-
 - way to tag a layout as a number/name
 
 - optimize pane redraws, 20120318184853.GK10965@yelena.nicm.ath.cx
