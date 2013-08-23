@@ -1243,6 +1243,7 @@ winlink_clear_flags(struct winlink *wl)
 				continue;
 
 			wm->flags &= ~WINLINK_ALERTFLAGS;
+			wm->window->flags &= ~WINDOW_ALERTFLAGS;
 			server_status_session(s);
 		}
 	}

@@ -35,7 +35,6 @@ const struct cmd_entry cmd_new_window_entry = {
 	CMD_TARGET_WINDOW_USAGE " [command]",
 	0,
 	NULL,
-	NULL,
 	cmd_new_window_exec
 };
 

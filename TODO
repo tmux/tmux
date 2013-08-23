@@ -18,6 +18,8 @@
 - options bits and pieces:
 	* set-remain-on-exit is a complete hack
 	* way to set socket path from config file
+	* -fg/-bg/-attr is crap - better just foo-style options which accept
+	  fg=,bg=,bright and so on like #[]
 
 - format improvements:
 	* option to quote format (#{session_name:quoted})
@@ -30,6 +32,7 @@
 	* choose-mode and copy-mode are very similar, make choose-mode a subset?
 	* flag to choose-* for sort order
 	* choose mode would be better per client than per window
+	* two choices (first one then second, for swap-pane and join-pane)
 
 - improve monitor-*:
 	* straighten out rules for multiple clients
@@ -90,8 +93,6 @@
 
 - mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets the flag
   on w/o checking the others before calling tty_update_mode)
-
-- panes should have names like windows
 
 - way to tag a layout as a number/name
 

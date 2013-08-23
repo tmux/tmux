@@ -1005,6 +1005,7 @@ struct window {
 #define WINDOW_REDRAW 0x4
 #define WINDOW_SILENCE 0x8
 #define WINDOW_ZOOMED 0x10
+#define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
 	struct options	 options;
 
@@ -1451,7 +1452,6 @@ struct cmd_entry {
 	int		 flags;
 
 	void		 (*key_binding)(struct cmd *, int);
-	int		 (*check)(struct args *);
 	enum cmd_retval	 (*exec)(struct cmd *, struct cmd_q *);
 };
 

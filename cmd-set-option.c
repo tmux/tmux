@@ -67,7 +67,6 @@ const struct cmd_entry cmd_set_option_entry = {
 	"[-agosquw] [-t target-session|target-window] option [value]",
 	0,
 	NULL,
-	NULL,
 	cmd_set_option_exec
 };
 
@@ -76,7 +75,6 @@ const struct cmd_entry cmd_set_window_option_entry = {
 	"agoqt:u", 1, 2,
 	"[-agoqu] " CMD_TARGET_WINDOW_USAGE " option [value]",
 	0,
-	NULL,
 	NULL,
 	cmd_set_option_exec
 };

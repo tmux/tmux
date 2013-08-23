@@ -254,8 +254,6 @@ cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 		goto usage;
 	if (entry->args_upper != -1 && args->argc > entry->args_upper)
 		goto usage;
-	if (entry->check != NULL && entry->check(args) != 0)
-		goto usage;
 
 	cmd = xcalloc(1, sizeof *cmd);
 	cmd->entry = entry;

@@ -34,7 +34,6 @@ const struct cmd_entry cmd_rename_session_entry = {
 	CMD_TARGET_SESSION_USAGE " new-name",
 	0,
 	NULL,
-	NULL,
 	cmd_rename_session_exec
 };
 

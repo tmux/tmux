@@ -36,7 +36,6 @@ const struct cmd_entry cmd_list_clients_entry = {
 	"[-F format] " CMD_TARGET_SESSION_USAGE,
 	CMD_READONLY,
 	NULL,
-	NULL,
 	cmd_list_clients_exec
 };
 

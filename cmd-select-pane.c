@@ -33,7 +33,6 @@ const struct cmd_entry cmd_select_pane_entry = {
 	"[-lDLRU] " CMD_TARGET_PANE_USAGE,
 	0,
 	cmd_select_pane_key_binding,
-	NULL,
 	cmd_select_pane_exec
 };
 
@@ -42,7 +41,6 @@ const struct cmd_entry cmd_last_pane_entry = {
 	"t:", 0, 0,
 	CMD_TARGET_WINDOW_USAGE,
 	0,
-	NULL,
 	NULL,
 	cmd_select_pane_exec
 };

@@ -36,7 +36,6 @@ const struct cmd_entry cmd_wait_for_entry = {
 	"[-LSU] channel",
 	0,
 	NULL,
-	NULL,
 	cmd_wait_for_exec
 };
 
