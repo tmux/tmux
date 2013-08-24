@@ -553,7 +553,7 @@ layout_resize_pane_mouse(struct client *c)
 		}
 		if (pane_border)
 			server_redraw_window(w);
-	} else if (~m->event & MOUSE_EVENT_UP) {
+	} else if (m->event & MOUSE_EVENT_DOWN) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if ((wp->xoff + wp->sx == m->x &&
 			    wp->yoff <= 1 + m->y &&
