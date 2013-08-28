@@ -144,7 +144,7 @@ extern char   **environ;
 	"[layout #{window_layout}] #{window_id}"		\
 	"#{?window_active, (active),}";
 #define LIST_WINDOWS_WITH_SESSION_TEMPLATE			\
-	"#{session_name}: "					\
+	"#{session_name}:"					\
 	"#{window_index}: #{window_name}#{window_flags} "	\
 	"(#{window_panes} panes) "				\
 	"[#{window_width}x#{window_height}] "
