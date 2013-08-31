@@ -421,4 +421,19 @@ On OS X, reattach-to-usernamespace lets pbcopy/pbpaste work:
 
         https://github.com/ChrisJohnsen/tmux-MacOSX-pasteboard
  
+* Why do I see dots around a session when I attach to it?
+
+tmux limits the size of the window to the smallest attached session. If
+it didn't do this then it would be impossible to see the entire window.
+The dots mark the size of the window tmux can display.
+
+To avoid this, detach all other clients when attaching:
+
+	$ tmux attach -d
+
+Or from inside tmux by detaching individual clients with C-b D or all
+using:
+
+	C-b : attach -d
+
 $Id$
