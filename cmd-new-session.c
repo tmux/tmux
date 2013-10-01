@@ -34,9 +34,10 @@ enum cmd_retval	 cmd_new_session_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_new_session_entry = {
 	"new-session", "new",
-	"AdDF:n:Ps:t:x:y:", 0, 1,
-	"[-AdDP] [-F format] [-n window-name] [-s session-name] "
-	CMD_TARGET_SESSION_USAGE " [-x width] [-y height] [command]",
+	"Ac:dDF:n:Ps:t:x:y:", 0, 1,
+	"[-AdDP] [-c start-directory] [-F format] [-n window-name] "
+	"[-s session-name] " CMD_TARGET_SESSION_USAGE " [-x width] [-y height] "
+	"[command]",
 	CMD_STARTSERVER|CMD_CANTNEST|CMD_SENDENVIRON,
 	NULL,
 	cmd_new_session_exec
@@ -52,8 +53,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct environ		 env;
 	struct termios		 tio, *tiop;
 	struct passwd		*pw;
-	const char		*newname, *target, *update, *cwd, *errstr;
-	const char		*template;
+	const char		*newname, *target, *update, *base, *cwd;
+	const char		*errstr, *template;
 	char			*cmd, *cause, *cp;
 	int			 detached, idx;
 	u_int			 sx, sy;
@@ -126,14 +127,19 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	/* Get the new session working directory. */
 	if (c != NULL && c->cwd != NULL)
-		cwd = c->cwd;
+		base = c->cwd;
 	else {
 		pw = getpwuid(getuid());
 		if (pw->pw_dir != NULL && *pw->pw_dir != '\0')
-			cwd = pw->pw_dir;
+			base = pw->pw_dir;
 		else
-			cwd = "/";
+			base = "/";
 	}
+	if (args_has(args, 'c'))
+		cwd = args_get(args, 'c');
+	else
+		cwd = options_get_string(&global_s_options, "default-path");
+	cwd = cmd_default_path(base, base, cwd);
 
 	/* Find new session size. */
 	if (c != NULL) {

@@ -82,7 +82,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		cmd = options_get_string(&s->options, "default-command");
 	else
 		cmd = args->argv[0];
-	cwd = cmd_get_default_path(cmdq, args_get(args, 'c'));
+	cwd = cmdq_default_path(cmdq, args_get(args, 'c'));
 
 	type = LAYOUT_TOPBOTTOM;
 	if (args_has(args, 'h'))

@@ -283,3 +283,27 @@ cmdq_flush(struct cmd_q *cmdq)
 	}
 	cmdq->item = NULL;
 }
+
+/* Get default path using command queue. */
+const char *
+cmdq_default_path(struct cmd_q *cmdq, const char *cwd)
+{
+	struct client	*c = cmdq->client;
+	struct session	*s;
+	const char	*current;
+
+	if ((s = cmd_current_session(cmdq, 0)) == NULL)
+		return (NULL);
+
+	if (cwd == NULL)
+		cwd = options_get_string(&s->options, "default-path");
+
+	if (c != NULL && c->session == NULL && c->cwd != NULL)
+		current = c->cwd;
+	else if (s->curw != NULL)
+		current = osdep_get_cwd(s->curw->window->active->fd);
+	else
+		current = NULL;
+
+	return (cmd_default_path(s->cwd, current, cwd));
+}
