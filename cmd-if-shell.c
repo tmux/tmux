@@ -147,6 +147,9 @@ cmd_if_shell_done(struct cmd_q *cmdq1)
 	struct cmd_if_shell_data	*cdata = cmdq1->data;
 	struct cmd_q			*cmdq = cdata->cmdq;
 
+	if (cmdq1->client_exit >= 0)
+		cmdq->client_exit = cmdq1->client_exit;
+
 	if (!cmdq_free(cmdq) && !cdata->bflag)
 		cmdq_continue(cmdq);
 
