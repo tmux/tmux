@@ -121,7 +121,7 @@ format_create(void)
 
 	if (gethostname(host, sizeof host) == 0) {
 		format_add(ft, "host", "%s", host);
-		if ((ptr = strrchr(host, '.')) != NULL)
+		if ((ptr = strchr(host, '.')) != NULL)
 			*ptr = '\0';
 		format_add(ft, "host_short", "%s", host);
 	}

@@ -36,7 +36,7 @@ const struct cmd_entry cmd_split_window_entry = {
 	"[-dhvP] [-c start-directory] [-F format] [-p percentage|-l size] "
 	CMD_TARGET_PANE_USAGE " [command]",
 	0,
-	NULL,
+	cmd_split_window_key_binding,
 	cmd_split_window_exec
 };
 

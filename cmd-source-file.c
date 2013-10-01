@@ -95,6 +95,9 @@ cmd_source_file_done(struct cmd_q *cmdq1)
 {
 	struct cmd_q	*cmdq = cmdq1->data;
 
+	if (cmdq1->client_exit >= 0)
+		cmdq->client_exit = cmdq1->client_exit;
+
 	cmdq_free(cmdq1);
 
 	cfg_references--;
