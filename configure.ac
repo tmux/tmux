@@ -4,7 +4,7 @@
 AC_INIT(tmux, 1.9)
 
 AC_CONFIG_AUX_DIR(etc)
-AM_INIT_AUTOMAKE([foreign])
+AM_INIT_AUTOMAKE([foreign subdir-objects])
 
 AC_CANONICAL_HOST
 
