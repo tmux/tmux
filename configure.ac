@@ -135,7 +135,7 @@ fi
 # Look for curses.
 AC_SEARCH_LIBS(
 	setupterm,
-	[terminfo curses ncurses],
+	[terminfo curses ncurses tinfo],
 	found_curses=yes,
 	found_curses=no
 )
