@@ -264,17 +264,17 @@ main(int argc, char **argv)
 	while ((opt = getopt(argc, argv, "2c:Cdf:lL:qS:uUVv")) != -1) {
 		switch (opt) {
 		case '2':
-			flags |= IDENTIFY_256COLOURS;
+			flags |= CLIENT_256COLOURS;
 			break;
 		case 'c':
 			free(shell_cmd);
 			shell_cmd = xstrdup(optarg);
 			break;
 		case 'C':
-			if (flags & IDENTIFY_CONTROL)
-				flags |= IDENTIFY_TERMIOS;
+			if (flags & CLIENT_CONTROL)
+				flags |= CLIENT_CONTROLCONTROL;
 			else
-				flags |= IDENTIFY_CONTROL;
+				flags |= CLIENT_CONTROL;
 			break;
 		case 'V':
 			printf("%s %s\n", __progname, VERSION);
@@ -298,7 +298,7 @@ main(int argc, char **argv)
 			path = xstrdup(optarg);
 			break;
 		case 'u':
-			flags |= IDENTIFY_UTF8;
+			flags |= CLIENT_UTF8;
 			break;
 		case 'v':
 			debug_level++;
@@ -313,7 +313,7 @@ main(int argc, char **argv)
 	if (shell_cmd != NULL && argc != 0)
 		usage();
 
-	if (!(flags & IDENTIFY_UTF8)) {
+	if (!(flags & CLIENT_UTF8)) {
 		/*
 		 * If the user has set whichever of LC_ALL, LC_CTYPE or LANG
 		 * exist (in that order) to contain UTF-8, it is a safe
@@ -327,7 +327,7 @@ main(int argc, char **argv)
 		}
 		if (s != NULL && (strcasestr(s, "UTF-8") != NULL ||
 		    strcasestr(s, "UTF8") != NULL))
-			flags |= IDENTIFY_UTF8;
+			flags |= CLIENT_UTF8;
 	}
 
 	environ_init(&global_environ);
@@ -346,7 +346,7 @@ main(int argc, char **argv)
 	options_table_populate_tree(window_options_table, &global_w_options);
 
 	/* Enable UTF-8 if the first client is on UTF-8 terminal. */
-	if (flags & IDENTIFY_UTF8) {
+	if (flags & CLIENT_UTF8) {
 		options_set_number(&global_s_options, "status-utf8", 1);
 		options_set_number(&global_s_options, "mouse-utf8", 1);
 		options_set_number(&global_w_options, "utf8", 1);

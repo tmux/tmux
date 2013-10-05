@@ -956,12 +956,12 @@ server_client_msg_identify(
 	if (*data->cwd != '\0')
 		c->cwd = xstrdup(data->cwd);
 
-	if (data->flags & IDENTIFY_CONTROL) {
+	if (data->flags & CLIENT_CONTROL) {
 		c->stdin_callback = control_callback;
 		evbuffer_free(c->stderr_data);
 		c->stderr_data = c->stdout_data;
 		c->flags |= CLIENT_CONTROL;
-		if (data->flags & IDENTIFY_TERMIOS)
+		if (data->flags & CLIENT_CONTROLCONTROL)
 			evbuffer_add_printf(c->stdout_data, "\033P1000p");
 		server_write_client(c, MSG_STDIN, NULL, 0);
 
@@ -980,14 +980,14 @@ server_client_msg_identify(
 	}
 	data->term[(sizeof data->term) - 1] = '\0';
 	tty_init(&c->tty, c, fd, data->term);
-	if (data->flags & IDENTIFY_UTF8)
+	if (data->flags & CLIENT_UTF8)
 		c->tty.flags |= TTY_UTF8;
-	if (data->flags & IDENTIFY_256COLOURS)
+	if (data->flags & CLIENT_256COLOURS)
 		c->tty.term_flags |= TERM_256COLOURS;
 
 	tty_resize(&c->tty);
 
-	if (!(data->flags & IDENTIFY_CONTROL))
+	if (!(data->flags & CLIENT_CONTROL))
 		c->flags |= CLIENT_TERMINAL;
 }
 

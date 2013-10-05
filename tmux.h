@@ -484,11 +484,6 @@ struct msg_identify_data {
 	char		ttyname[TTY_NAME_MAX];
 #endif
 
-#define IDENTIFY_UTF8 0x1
-#define IDENTIFY_256COLOURS 0x2
-/* 0x4 unused */
-#define IDENTIFY_CONTROL 0x8
-#define IDENTIFY_TERMIOS 0x10
 	int		flags;
 };
 
@@ -1341,7 +1336,11 @@ struct client {
 #define CLIENT_READONLY 0x800
 #define CLIENT_REDRAWWINDOW 0x1000
 #define CLIENT_CONTROL 0x2000
-#define CLIENT_FOCUSED 0x4000
+#define CLIENT_CONTROLCONTROL 0x4000
+#define CLIENT_FOCUSED 0x8000
+#define CLIENT_UTF8 0x10000
+#define CLIENT_256COLOURS 0x20000
+#define CLIENT_IDENTIFIED 0x40000
 	int		 flags;
 
 	struct event	 identify_timer;
