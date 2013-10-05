@@ -54,7 +54,8 @@ int		client_get_lock(char *);
 int		client_connect(char *, int);
 void		client_send_identify(int);
 void		client_send_environ(void);
-void		client_write_server(enum msgtype, void *, size_t);
+int		client_write_one(enum msgtype, int, const void *, size_t);
+int		client_write_server(enum msgtype, const void *, size_t);
 void		client_update_event(void);
 void		client_signal(int, short, void *);
 void		client_stdin_callback(int, short, void *);
@@ -165,12 +166,13 @@ client_main(int argc, char **argv, int flags)
 {
 	struct cmd		*cmd;
 	struct cmd_list		*cmdlist;
-	struct msg_command_data	 cmddata;
-	int			 cmdflags, fd;
+	struct msg_command_data	*data;
+	int			 cmdflags, fd, i;
 	pid_t			 ppid;
 	enum msgtype		 msg;
 	char			*cause;
 	struct termios		 tio, saved_tio;
+	size_t			 size;
 
 	/* Set up the initial command. */
 	cmdflags = 0;
@@ -265,19 +267,32 @@ client_main(int argc, char **argv, int flags)
 
 	/* Send first command. */
 	if (msg == MSG_COMMAND) {
+		/* How big is the command? */
+		size = 0;
+		for (i = 0; i < argc; i++)
+			size += strlen(argv[i]) + 1;
+		data = xmalloc((sizeof *data) + size);
+
 		/* Fill in command line arguments. */
-		cmddata.pid = environ_pid;
-		cmddata.session_id = environ_session_id;
+		data->pid = environ_pid;
+		data->session_id = environ_session_id;
 
 		/* Prepare command for server. */
-		cmddata.argc = argc;
-		if (cmd_pack_argv(
-		    argc, argv, cmddata.argv, sizeof cmddata.argv) != 0) {
+		data->argc = argc;
+		if (cmd_pack_argv(argc, argv, (char*)(data + 1), size) != 0) {
 			fprintf(stderr, "command too long\n");
+			free(data);
 			return (1);
 		}
+		size += sizeof *data;
 
-		client_write_server(msg, &cmddata, sizeof cmddata);
+		/* Send the command. */
+		if (client_write_server(msg, data, size) != 0) {
+			fprintf(stderr, "failed to send command\n");
+			free(data);
+			return (1);
+		}
+		free(data);
 	} else if (msg == MSG_SHELL)
 		client_write_server(msg, NULL, 0);
 
@@ -349,12 +364,29 @@ client_send_environ(void)
 	}
 }
 
-/* Write a message to the server without a file descriptor. */
-void
-client_write_server(enum msgtype type, void *buf, size_t len)
+/* Helper to send one message. */
+int
+client_write_one(enum msgtype type, int fd, const void *buf, size_t len)
 {
-	imsg_compose(&client_ibuf, type, PROTOCOL_VERSION, -1, -1, buf, len);
-	client_update_event();
+	int	retval;
+
+	retval = imsg_compose(&client_ibuf, type, PROTOCOL_VERSION, -1, fd,
+	    (void*)buf, len);
+	if (retval != 1)
+		return (-1);
+	return (0);
+}
+
+/* Write a message to the server without a file descriptor. */
+int
+client_write_server(enum msgtype type, const void *buf, size_t len)
+{
+	int	retval;
+
+	retval = client_write_one(type, -1, buf, len);
+	if (retval == 0)
+		client_update_event();
+	return (retval);
 }
 
 /* Update client event based on whether it needs to read or read and write. */
@@ -537,14 +569,16 @@ client_dispatch_wait(void *data0)
 				fatalx("bad MSG_STDOUT size");
 			memcpy(&stdoutdata, data, sizeof stdoutdata);
 
-			client_write(STDOUT_FILENO, stdoutdata.data, stdoutdata.size);
+			client_write(STDOUT_FILENO, stdoutdata.data,
+			    stdoutdata.size);
 			break;
 		case MSG_STDERR:
 			if (datalen != sizeof stderrdata)
 				fatalx("bad MSG_STDERR size");
 			memcpy(&stderrdata, data, sizeof stderrdata);
 
-			client_write(STDERR_FILENO, stderrdata.data, stderrdata.size);
+			client_write(STDERR_FILENO, stderrdata.data,
+			    stderrdata.size);
 			break;
 		case MSG_VERSION:
 			if (datalen != 0)

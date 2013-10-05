@@ -55,7 +55,6 @@ extern char   **environ;
  * Maximum sizes of strings in message data. Don't forget to bump
  * PROTOCOL_VERSION if any of these change!
  */
-#define COMMAND_LENGTH 2048	/* packed argv size */
 #define TERMINAL_LENGTH 128	/* length of TERM environment variable */
 #define ENVIRON_LENGTH 1024	/* environment variable length */
 
@@ -468,16 +467,14 @@ enum msgtype {
  * Don't forget to bump PROTOCOL_VERSION if any of these change!
  */
 struct msg_command_data {
-	pid_t		pid;		/* from $TMUX or -1 */
-	int		session_id;	/* from $TMUX or -1 */
+	pid_t	pid;		/* from $TMUX or -1 */
+	int	session_id;	/* from $TMUX or -1 */
 
-	int		argc;
-	char		argv[COMMAND_LENGTH];
-};
+	int	argc;
+}; /* followed by packed argv */
 
 struct msg_identify_data {
 	char		cwd[MAXPATHLEN];
-
 	char		term[TERMINAL_LENGTH];
 
 #ifdef __CYGWIN__
@@ -1316,7 +1313,7 @@ struct client {
 #define CLIENT_EXIT 0x4
 #define CLIENT_REDRAW 0x8
 #define CLIENT_STATUS 0x10
-#define CLIENT_REPEAT 0x20 /* allow command to repeat within repeat time */
+#define CLIENT_REPEAT 0x20
 #define CLIENT_SUSPENDED 0x40
 #define CLIENT_BAD 0x80
 #define CLIENT_IDENTIFY 0x100
@@ -1919,10 +1916,10 @@ void	 server_window_loop(void);
 /* server-fn.c */
 void	 server_fill_environ(struct session *, struct environ *);
 void	 server_write_ready(struct client *);
-int	 server_write_client(
-	     struct client *, enum msgtype, const void *, size_t);
-void	 server_write_session(
-	     struct session *, enum msgtype, const void *, size_t);
+int	 server_write_client(struct client *, enum msgtype, const void *,
+	     size_t);
+void	 server_write_session(struct session *, enum msgtype, const void *,
+	     size_t);
 void	 server_redraw_client(struct client *);
 void	 server_status_client(struct client *);
 void	 server_redraw_session(struct session *);

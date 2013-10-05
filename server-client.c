@@ -40,7 +40,7 @@ void	server_client_reset_state(struct client *);
 int	server_client_assume_paste(struct session *);
 
 int	server_client_msg_dispatch(struct client *);
-void	server_client_msg_command(struct client *, struct msg_command_data *);
+void	server_client_msg_command(struct client *, struct imsg *);
 void	server_client_msg_identify(
 	    struct client *, struct msg_identify_data *, int);
 void	server_client_msg_shell(struct client *);
@@ -786,10 +786,10 @@ int
 server_client_msg_dispatch(struct client *c)
 {
 	struct imsg		 imsg;
-	struct msg_command_data	 commanddata;
 	struct msg_identify_data identifydata;
 	struct msg_environ_data	 environdata;
 	struct msg_stdin_data	 stdindata;
+	const char		*data;
 	ssize_t			 n, datalen;
 
 	if ((n = imsg_read(&c->ibuf)) == -1 || n == 0)
@@ -800,6 +800,8 @@ server_client_msg_dispatch(struct client *c)
 			return (-1);
 		if (n == 0)
 			return (0);
+
+		data = imsg.data;
 		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
 
 		if (imsg.hdr.peerid != PROTOCOL_VERSION) {
@@ -811,13 +813,6 @@ server_client_msg_dispatch(struct client *c)
 
 		log_debug("got %d from client %d", imsg.hdr.type, c->ibuf.fd);
 		switch (imsg.hdr.type) {
-		case MSG_COMMAND:
-			if (datalen != sizeof commanddata)
-				fatalx("bad MSG_COMMAND size");
-			memcpy(&commanddata, imsg.data, sizeof commanddata);
-
-			server_client_msg_command(c, &commanddata);
-			break;
 		case MSG_IDENTIFY:
 			if (datalen != sizeof identifydata)
 				fatalx("bad MSG_IDENTIFY size");
@@ -827,10 +822,13 @@ server_client_msg_dispatch(struct client *c)
 #endif
 			server_client_msg_identify(c, &identifydata, imsg.fd);
 			break;
+		case MSG_COMMAND:
+			server_client_msg_command(c, &imsg);
+			break;
 		case MSG_STDIN:
 			if (datalen != sizeof stdindata)
 				fatalx("bad MSG_STDIN size");
-			memcpy(&stdindata, imsg.data, sizeof stdindata);
+			memcpy(&stdindata, data, sizeof stdindata);
 
 			if (c->stdin_callback == NULL)
 				break;
@@ -905,15 +903,26 @@ server_client_msg_dispatch(struct client *c)
 
 /* Handle command message. */
 void
-server_client_msg_command(struct client *c, struct msg_command_data *data)
+server_client_msg_command(struct client *c, struct imsg *imsg)
 {
-	struct cmd_list	*cmdlist = NULL;
-	int		 argc;
-	char	       **argv, *cause;
+	struct msg_command_data	  data;
+	char			 *buf;
+	size_t			  len;
+	struct cmd_list		 *cmdlist = NULL;
+	int			  argc;
+	char			**argv, *cause;
 
-	argc = data->argc;
-	data->argv[(sizeof data->argv) - 1] = '\0';
-	if (cmd_unpack_argv(data->argv, sizeof data->argv, argc, &argv) != 0) {
+	if (imsg->hdr.len - IMSG_HEADER_SIZE < sizeof data)
+		fatalx("bad MSG_COMMAND size");
+	memcpy(&data, imsg->data, sizeof data);
+
+	buf = (char*)imsg->data + sizeof data;
+	len = imsg->hdr.len  - IMSG_HEADER_SIZE - sizeof data;
+	if (len > 0 && buf[len - 1] != '\0')
+		fatalx("bad MSG_COMMAND string");
+
+	argc = data.argc;
+	if (cmd_unpack_argv(buf, len, argc, &argv) != 0) {
 		cmdq_error(c->cmdq, "command too long");
 		goto error;
 	}

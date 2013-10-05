@@ -236,7 +236,6 @@ void
 server_lock_client(struct client *c)
 {
 	const char	*cmd;
-	size_t		 cmdlen;
 
 	if (c->flags & CLIENT_CONTROL)
 		return;
