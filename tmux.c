@@ -130,23 +130,25 @@ areshell(const char *shell)
 const char *
 get_full_path(const char *wd, const char *path)
 {
-	int		fd;
-	static char	newpath[MAXPATHLEN];
+	int		 fd;
+	static char	 newpath[MAXPATHLEN];
+	const char	*retval;
 
 	fd = open(".", O_RDONLY);
 	if (fd == -1)
 		return (NULL);
 
-	if (chdir(wd) != 0)
-		return (NULL);
-	if (realpath(path, newpath) != 0)
-		return (NULL);
+	retval = NULL;
+	if (chdir(wd) == 0) {
+		if (realpath(path, newpath) == 0)
+			retval = newpath;
+	}
 
 	if (fchdir(fd) != 0)
 		chdir("/");
 	close(fd);
 
-	return (newpath);
+	return (retval);
 }
 
 void
