@@ -128,7 +128,7 @@ const struct options_table_entry session_options_table[] = {
 
 	{ .name = "default-path",
 	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = ""
+	  .default_str = "~"
 	},
 
 	{ .name = "default-shell",
