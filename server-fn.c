@@ -235,9 +235,8 @@ server_lock_session(struct session *s)
 void
 server_lock_client(struct client *c)
 {
-	const char		*cmd;
-	size_t			 cmdlen;
-	struct msg_lock_data	 lockdata;
+	const char	*cmd;
+	size_t		 cmdlen;
 
 	if (c->flags & CLIENT_CONTROL)
 		return;
@@ -246,8 +245,7 @@ server_lock_client(struct client *c)
 		return;
 
 	cmd = options_get_string(&c->session->options, "lock-command");
-	cmdlen = strlcpy(lockdata.cmd, cmd, sizeof lockdata.cmd);
-	if (cmdlen >= sizeof lockdata.cmd)
+	if (strlen(cmd) + 1 > MAX_IMSGSIZE - IMSG_HEADER_SIZE)
 		return;
 
 	tty_stop_tty(&c->tty);
@@ -256,7 +254,7 @@ server_lock_client(struct client *c)
 	tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_E3));
 
 	c->flags |= CLIENT_SUSPENDED;
-	server_write_client(c, MSG_LOCK, &lockdata, sizeof lockdata);
+	server_write_client(c, MSG_LOCK, cmd, strlen(cmd) + 1);
 }
 
 void

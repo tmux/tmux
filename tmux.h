@@ -487,20 +487,8 @@ struct msg_identify_data {
 	int		flags;
 };
 
-struct msg_lock_data {
-	char		cmd[COMMAND_LENGTH];
-};
-
 struct msg_environ_data {
 	char		var[ENVIRON_LENGTH];
-};
-
-struct msg_shell_data {
-	char		shell[MAXPATHLEN];
-};
-
-struct msg_exit_data {
-	int		retcode;
 };
 
 struct msg_stdin_data {

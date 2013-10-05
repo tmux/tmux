@@ -695,8 +695,6 @@ server_client_repeat_timer(unused int fd, unused short events, void *data)
 void
 server_client_check_exit(struct client *c)
 {
-	struct msg_exit_data	exitdata;
-
 	if (!(c->flags & CLIENT_EXIT))
 		return;
 
@@ -707,9 +705,7 @@ server_client_check_exit(struct client *c)
 	if (EVBUFFER_LENGTH(c->stderr_data) != 0)
 		return;
 
-	exitdata.retcode = c->retval;
-	server_write_client(c, MSG_EXIT, &exitdata, sizeof exitdata);
-
+	server_write_client(c, MSG_EXIT, &c->retval, sizeof c->retval);
 	c->flags &= ~CLIENT_EXIT;
 }
 
@@ -995,16 +991,12 @@ server_client_msg_identify(
 void
 server_client_msg_shell(struct client *c)
 {
-	struct msg_shell_data	 data;
-	const char		*shell;
+	const char	*shell;
 
 	shell = options_get_string(&global_s_options, "default-shell");
-
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
-	if (strlcpy(data.shell, shell, sizeof data.shell) >= sizeof data.shell)
-		strlcpy(data.shell, _PATH_BSHELL, sizeof data.shell);
+	server_write_client(c, MSG_SHELL, shell, strlen(shell) + 1);
 
-	server_write_client(c, MSG_SHELL, &data, sizeof data);
 	c->flags |= CLIENT_BAD;	/* it will die after exec */
 }

@@ -488,33 +488,33 @@ client_write(int fd, const char *data, size_t size)
 
 /* Dispatch imsgs when in wait state (before MSG_READY). */
 int
-client_dispatch_wait(void *data)
+client_dispatch_wait(void *data0)
 {
-	struct imsg		imsg;
-	ssize_t			n, datalen;
-	struct msg_shell_data	shelldata;
-	struct msg_exit_data	exitdata;
-	struct msg_stdout_data	stdoutdata;
-	struct msg_stderr_data	stderrdata;
-	const char             *shellcmd = data;
+	struct imsg		 imsg;
+	char			*data;
+	ssize_t			 n, datalen;
+	struct msg_stdout_data	 stdoutdata;
+	struct msg_stderr_data	 stderrdata;
+	int			 retval;
 
 	for (;;) {
 		if ((n = imsg_get(&client_ibuf, &imsg)) == -1)
 			fatalx("imsg_get failed");
 		if (n == 0)
 			return (0);
+
+		data = imsg.data;
 		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
 
 		log_debug("got %d from server", imsg.hdr.type);
 		switch (imsg.hdr.type) {
 		case MSG_EXIT:
 		case MSG_SHUTDOWN:
-			if (datalen != sizeof exitdata) {
-				if (datalen != 0)
-					fatalx("bad MSG_EXIT size");
-			} else {
-				memcpy(&exitdata, imsg.data, sizeof exitdata);
-				client_exitval = exitdata.retcode;
+			if (datalen != sizeof retval && datalen != 0)
+				fatalx("bad MSG_EXIT size");
+			if (datalen == sizeof retval) {
+				memcpy(&retval, data, sizeof retval);
+				client_exitval = retval;
 			}
 			imsg_free(&imsg);
 			return (-1);
@@ -534,15 +534,15 @@ client_dispatch_wait(void *data)
 			break;
 		case MSG_STDOUT:
 			if (datalen != sizeof stdoutdata)
-				fatalx("bad MSG_STDOUT");
-			memcpy(&stdoutdata, imsg.data, sizeof stdoutdata);
+				fatalx("bad MSG_STDOUT size");
+			memcpy(&stdoutdata, data, sizeof stdoutdata);
 
 			client_write(STDOUT_FILENO, stdoutdata.data, stdoutdata.size);
 			break;
 		case MSG_STDERR:
 			if (datalen != sizeof stderrdata)
-				fatalx("bad MSG_STDERR");
-			memcpy(&stderrdata, imsg.data, sizeof stderrdata);
+				fatalx("bad MSG_STDERR size");
+			memcpy(&stderrdata, data, sizeof stderrdata);
 
 			client_write(STDERR_FILENO, stderrdata.data, stderrdata.size);
 			break;
@@ -558,14 +558,11 @@ client_dispatch_wait(void *data)
 			imsg_free(&imsg);
 			return (-1);
 		case MSG_SHELL:
-			if (datalen != sizeof shelldata)
-				fatalx("bad MSG_SHELL size");
-			memcpy(&shelldata, imsg.data, sizeof shelldata);
-			shelldata.shell[(sizeof shelldata.shell) - 1] = '\0';
+			if (data[datalen - 1] != '\0')
+				fatalx("bad MSG_SHELL string");
 
 			clear_signals(0);
-
-			shell_exec(shelldata.shell, shellcmd);
+			shell_exec(data, data0);
 			/* NOTREACHED */
 		case MSG_DETACH:
 			client_write_server(MSG_EXITING, NULL, 0);
@@ -585,16 +582,18 @@ client_dispatch_wait(void *data)
 int
 client_dispatch_attached(void)
 {
-	struct imsg		imsg;
-	struct msg_lock_data	lockdata;
-	struct sigaction	sigact;
-	ssize_t			n, datalen;
+	struct imsg		 imsg;
+	struct sigaction	 sigact;
+	char			*data;
+	ssize_t			 n, datalen;
 
 	for (;;) {
 		if ((n = imsg_get(&client_ibuf, &imsg)) == -1)
 			fatalx("imsg_get failed");
 		if (n == 0)
 			return (0);
+
+		data = imsg.data;
 		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
 
 		log_debug("got %d from server", imsg.hdr.type);
@@ -612,8 +611,7 @@ client_dispatch_attached(void)
 			client_write_server(MSG_EXITING, NULL, 0);
 			break;
 		case MSG_EXIT:
-			if (datalen != 0 &&
-			    datalen != sizeof (struct msg_exit_data))
+			if (datalen != 0 && datalen != sizeof (int))
 				fatalx("bad MSG_EXIT size");
 
 			client_write_server(MSG_EXITING, NULL, 0);
@@ -646,12 +644,10 @@ client_dispatch_attached(void)
 			kill(getpid(), SIGTSTP);
 			break;
 		case MSG_LOCK:
-			if (datalen != sizeof lockdata)
-				fatalx("bad MSG_LOCK size");
-			memcpy(&lockdata, imsg.data, sizeof lockdata);
+			if (data[datalen - 1] != '\0')
+				fatalx("bad MSG_LOCK string");
 
-			lockdata.cmd[(sizeof lockdata.cmd) - 1] = '\0';
-			system(lockdata.cmd);
+			system(data);
 			client_write_server(MSG_UNLOCK, NULL, 0);
 			break;
 		default:
