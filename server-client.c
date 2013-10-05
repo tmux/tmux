@@ -707,7 +707,7 @@ server_client_check_exit(struct client *c)
 	if (EVBUFFER_LENGTH(c->stderr_data) != 0)
 		return;
 
-	exitdata.retcode = c->retcode;
+	exitdata.retcode = c->retval;
 	server_write_client(c, MSG_EXIT, &exitdata, sizeof exitdata);
 
 	c->flags &= ~CLIENT_EXIT;

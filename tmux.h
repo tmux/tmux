@@ -1295,8 +1295,9 @@ RB_HEAD(status_out_tree, status_out);
 /* Client connection. */
 struct client {
 	struct imsgbuf	 ibuf;
+
 	struct event	 event;
-	int		 retcode;
+	int		 retval;
 
 	struct timeval	 creation_time;
 	struct timeval	 activity_time;
