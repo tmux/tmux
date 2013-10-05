@@ -135,7 +135,7 @@ error:
 	return (NULL);
 }
 
-char*
+char *
 osdep_get_cwd(int fd)
 {
 	int		name[] = { CTL_KERN, KERN_PROC_CWD, 0 };
