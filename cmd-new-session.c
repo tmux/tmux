@@ -115,7 +115,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_ERROR);
 		}
 		cwd = fd;
-	} else if (c->session == NULL)
+	} else if (c != NULL && c->session == NULL)
 		cwd = c->cwd;
 	else if ((c0 = cmd_current_client(cmdq)) != NULL)
 		cwd = c0->session->cwd;
