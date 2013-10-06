@@ -580,7 +580,7 @@ client_dispatch_wait(void *data0)
 			imsg_free(&imsg);
 			return (-1);
 		case MSG_SHELL:
-			if (data[datalen - 1] != '\0')
+			if (datalen == 0 || data[datalen - 1] != '\0')
 				fatalx("bad MSG_SHELL string");
 
 			clear_signals(0);
@@ -664,7 +664,7 @@ client_dispatch_attached(void)
 			kill(getpid(), SIGTSTP);
 			break;
 		case MSG_LOCK:
-			if (data[datalen - 1] != '\0')
+			if (datalen == 0 || data[datalen - 1] != '\0')
 				fatalx("bad MSG_LOCK string");
 
 			system(data);
