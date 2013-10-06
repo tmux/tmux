@@ -284,10 +284,6 @@ client_main(int argc, char **argv, int flags)
 			size += strlen(argv[i]) + 1;
 		data = xmalloc((sizeof *data) + size);
 
-		/* Fill in command line arguments. */
-		data->pid = environ_pid;
-		data->session_id = environ_session_id;
-
 		/* Prepare command for server. */
 		data->argc = argc;
 		if (cmd_pack_argv(argc, argv, (char*)(data + 1), size) != 0) {

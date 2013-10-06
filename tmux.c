@@ -48,11 +48,8 @@ time_t		 start_time;
 char		 socket_path[MAXPATHLEN];
 int		 login_shell;
 char		*environ_path;
-pid_t		 environ_pid = -1;
-int		 environ_session_id = -1;
 
 __dead void	 usage(void);
-void	 	 parseenvironment(void);
 char 		*makesocketpath(const char *);
 
 #ifndef HAVE___PROGNAME
@@ -125,23 +122,6 @@ areshell(const char *shell)
 	if (strcmp(ptr, progname) == 0)
 		return (1);
 	return (0);
-}
-
-void
-parseenvironment(void)
-{
-	char	*env, path[256];
-	long	 pid;
-	int	 id;
-
-	if ((env = getenv("TMUX")) == NULL)
-		return;
-
-	if (sscanf(env, "%255[^,],%ld,%d", path, &pid, &id) != 3)
-		return;
-	environ_path = xstrdup(path);
-	environ_pid = pid;
-	environ_session_id = id;
 }
 
 char *
@@ -226,7 +206,9 @@ main(int argc, char **argv)
 {
 	struct passwd	*pw;
 	char		*s, *path, *label, *home, **var, tmp[MAXPATHLEN];
-	int	 	 opt, flags, quiet, keys;
+	char		 in[256];
+	long long	 pid;
+	int	 	 opt, flags, quiet, keys, session;
 
 #if defined(DEBUG) && defined(__OpenBSD__)
 	malloc_options = (char *) "AFGJPX";
@@ -357,11 +339,15 @@ main(int argc, char **argv)
 		}
 	}
 
+	/* Get path from environment. */
+	s = getenv("TMUX");
+	if (s != NULL && sscanf(s, "%255[^,],%lld,%d", in, &pid, &session) == 3)
+		environ_path = xstrdup(in);
+
 	/*
 	 * Figure out the socket path. If specified on the command-line with -S
 	 * or -L, use it, otherwise try $TMUX or assume -L default.
 	 */
-	parseenvironment();
 	if (path == NULL) {
 		/* If no -L, use the environment. */
 		if (label == NULL) {

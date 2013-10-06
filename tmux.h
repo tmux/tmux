@@ -457,9 +457,6 @@ enum msgtype {
  * Don't forget to bump PROTOCOL_VERSION if any of these change!
  */
 struct msg_command_data {
-	pid_t	pid;		/* from $TMUX or -1 */
-	int	session_id;	/* from $TMUX or -1 */
-
 	int	argc;
 }; /* followed by packed argv */
 
@@ -1401,8 +1398,6 @@ struct cmd_q {
 	void			 (*emptyfn)(struct cmd_q *);
 	void			*data;
 
-	struct msg_command_data	*msgdata;
-
 	TAILQ_ENTRY(cmd_q)       waitentry;
 };
 
@@ -1496,8 +1491,6 @@ extern time_t	 start_time;
 extern char	 socket_path[MAXPATHLEN];
 extern int	 login_shell;
 extern char	*environ_path;
-extern pid_t	 environ_pid;
-extern int	 environ_session_id;
 void		 logfile(const char *);
 const char	*getshell(void);
 int		 checkshell(const char *);
