@@ -127,30 +127,6 @@ areshell(const char *shell)
 	return (0);
 }
 
-const char *
-get_full_path(const char *wd, const char *path)
-{
-	int		 fd;
-	static char	 newpath[MAXPATHLEN];
-	const char	*retval;
-
-	fd = open(".", O_RDONLY);
-	if (fd == -1)
-		return (NULL);
-
-	retval = NULL;
-	if (chdir(wd) == 0) {
-		if (realpath(path, newpath) == 0)
-			retval = newpath;
-	}
-
-	if (fchdir(fd) != 0)
-		chdir("/");
-	close(fd);
-
-	return (retval);
-}
-
 void
 parseenvironment(void)
 {
@@ -249,7 +225,7 @@ int
 main(int argc, char **argv)
 {
 	struct passwd	*pw;
-	char		*s, *path, *label, *home, **var;
+	char		*s, *path, *label, *home, **var, tmp[MAXPATHLEN];
 	int	 	 opt, flags, quiet, keys;
 
 #if defined(DEBUG) && defined(__OpenBSD__)
@@ -333,6 +309,8 @@ main(int argc, char **argv)
 	environ_init(&global_environ);
 	for (var = environ; *var != NULL; var++)
 		environ_put(&global_environ, *var);
+	if (getcwd(tmp, sizeof tmp) != NULL)
+		environ_set(&global_environ, "PWD", tmp);
 
 	options_init(&global_options, NULL);
 	options_table_populate_tree(server_options_table, &global_options);

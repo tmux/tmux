@@ -568,6 +568,7 @@ The following commands are available to manage clients and sessions:
 .Bl -tag -width Ds
 .It Xo Ic attach-session
 .Op Fl dr
+.Op Fl c Ar working-directory
 .Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic attach )
@@ -601,6 +602,10 @@ needs to select the most recently used session, it will prefer the most
 recently used
 .Em unattached
 session.
+.Pp
+.Fl c
+will set the session working directory (used for new windows) to
+.Ar working-directory .
 .It Xo Ic detach-client
 .Op Fl P
 .Op Fl a
@@ -1513,13 +1518,6 @@ is not specified, the value of the
 option is used.
 .Fl c
 specifies the working directory in which the new window is created.
-It may have an absolute path or one of the following values (or a subdirectory):
-.Bl -column "XXXXXXXXXXXX" "XXXXXXXXXXXXXXXXXXXXXXXX" -offset indent
-.It Li "Empty string" Ta "Current pane's directory"
-.It Li "~" Ta "User's home directory"
-.It Li "-" Ta "Where session was started"
-.It Li "." Ta "Where server was started"
-.El
 .Pp
 When the shell command completes, the window closes.
 See the
@@ -2179,15 +2177,6 @@ The default is an empty string, which instructs
 to create a login shell using the value of the
 .Ic default-shell
 option.
-.It Ic default-path Ar path
-Set the default working directory for new panes.
-If empty (the default), the working directory is determined from the process
-running in the active pane, from the command line environment or from the
-working directory where the session was created.
-Otherwise the same options are available as for the
-.Fl c
-flag to
-.Ic new-window .
 .It Ic default-shell Ar path
 Specify the default shell.
 This is used as the login shell for new windows when the
@@ -3056,7 +3045,6 @@ The following variables are available, where appropriate:
 .It Li "client_activity_string" Ta "" Ta "String time client last had activity"
 .It Li "client_created" Ta "" Ta "Integer time client created"
 .It Li "client_created_string" Ta "" Ta "String time client created"
-.It Li "client_cwd" Ta "" Ta "Working directory of client"
 .It Li "client_height" Ta "" Ta "Height of client"
 .It Li "client_last_session" Ta "" Ta "Name of the client's last session"
 .It Li "client_prefix" Ta "" Ta "1 if prefix key has been pressed"

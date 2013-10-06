@@ -56,8 +56,8 @@ server_write_ready(struct client *c)
 }
 
 int
-server_write_client(
-    struct client *c, enum msgtype type, const void *buf, size_t len)
+server_write_client(struct client *c, enum msgtype type, const void *buf,
+    size_t len)
 {
 	struct imsgbuf	*ibuf = &c->ibuf;
 	int              error;
@@ -73,8 +73,8 @@ server_write_client(
 }
 
 void
-server_write_session(
-    struct session *s, enum msgtype type, const void *buf, size_t len)
+server_write_session(struct session *s, enum msgtype type, const void *buf,
+    size_t len)
 {
 	struct client	*c;
 	u_int		 i;

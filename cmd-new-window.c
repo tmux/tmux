@@ -18,7 +18,11 @@
 
 #include <sys/types.h>
 
+#include <errno.h>
+#include <fcntl.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -45,9 +49,9 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct session		*s;
 	struct winlink		*wl;
 	struct client		*c;
-	const char		*cmd, *cwd, *template;
+	const char		*cmd, *template;
 	char			*cause, *cp;
-	int			 idx, last, detached;
+	int			 idx, last, detached, cwd, fd = -1;
 	struct format_tree	*ft;
 
 	if (args_has(args, 'a')) {
@@ -102,7 +106,29 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		cmd = options_get_string(&s->options, "default-command");
 	else
 		cmd = args->argv[0];
-	cwd = cmdq_default_path(cmdq, args_get(args, 'c'));
+
+	if (args_has(args, 'c')) {
+		ft = format_create();
+		if ((c = cmd_find_client(cmdq, NULL, 1)) != NULL)
+			format_client(ft, c);
+		format_session(ft, s);
+		format_winlink(ft, s, s->curw);
+		format_window_pane(ft, s->curw->window->active);
+		cp = format_expand(ft, args_get(args, 'c'));
+		format_free(ft);
+
+		fd = open(cp, O_RDONLY|O_DIRECTORY);
+		free(cp);
+		if (fd == -1) {
+			cmdq_error(cmdq, "bad working directory: %s",
+			    strerror(errno));
+			return (CMD_RETURN_ERROR);
+		}
+		cwd = fd;
+	} else if (cmdq->client->session == NULL)
+		cwd = cmdq->client->cwd;
+	else
+		cwd = s->cwd;
 
 	if (idx == -1)
 		idx = -1 - options_get_number(&s->options, "base-index");
@@ -110,7 +136,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (wl == NULL) {
 		cmdq_error(cmdq, "create window failed: %s", cause);
 		free(cause);
-		return (CMD_RETURN_ERROR);
+		goto error;
 	}
 	if (!detached) {
 		session_select(s, wl->idx);
@@ -136,5 +162,12 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		format_free(ft);
 	}
 
+	if (fd != -1)
+		close(fd);
 	return (CMD_RETURN_NORMAL);
+
+error:
+	if (fd != -1)
+		close(fd);
+	return (CMD_RETURN_ERROR);
 }
