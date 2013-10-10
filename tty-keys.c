@@ -676,11 +676,17 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 		log_debug("mouse input: %.*s", (int) *size, buf);
 
 		/* Check and return the mouse input. */
-		if (b < 32 || x < 33 || y < 33)
+		if (b < 32)
 			return (-1);
 		b -= 32;
-		x -= 33;
-		y -= 33;
+		if (x >= 33)
+			x -= 33;
+		else
+			x = 256 - x;
+		if (y >= 33)
+			y -= 33;
+		else
+			y = 256 - y;
 	} else if (buf[2] == '<') {
 		/* Read the three inputs. */
 		*size = 3;
