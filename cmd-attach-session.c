@@ -77,7 +77,9 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 					continue;
 				if (c == cmdq->client)
 					continue;
-				server_write_client(c, MSG_DETACH, NULL, 0);
+				server_write_client(c, MSG_DETACH,
+				    c->session->name,
+				    strlen(c->session->name) + 1);
 			}
 		}
 
@@ -138,8 +140,10 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 		if (rflag)
 			cmdq->client->flags |= CLIENT_READONLY;
 
-		if (dflag)
-			server_write_session(s, MSG_DETACH, NULL, 0);
+		if (dflag) {
+			server_write_session(s, MSG_DETACH, s->name,
+			    strlen(s->name) + 1);
+		}
 
 		update = options_get_string(&s->options, "update-environment");
 		environ_update(update, &cmdq->client->environ, &s->environ);

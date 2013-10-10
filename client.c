@@ -48,6 +48,7 @@ enum {
 } client_exitreason = CLIENT_EXIT_NONE;
 int		client_exitval;
 enum msgtype	client_exittype;
+const char     *client_exitsession;
 int		client_attached;
 
 int		client_get_lock(char *);
@@ -138,12 +139,24 @@ failed:
 const char *
 client_exit_message(void)
 {
+	static char msg[256];
+
 	switch (client_exitreason) {
 	case CLIENT_EXIT_NONE:
 		break;
 	case CLIENT_EXIT_DETACHED:
+		if (client_exitsession != NULL) {
+			xsnprintf(msg, sizeof msg, "detached "
+			    "(from session %s)", client_exitsession);
+			return (msg);
+		}
 		return ("detached");
 	case CLIENT_EXIT_DETACHED_HUP:
+		if (client_exitsession != NULL) {
+			xsnprintf(msg, sizeof msg, "detached and SIGHUP "
+			    "(from session %s)", client_exitsession);
+			return (msg);
+		}
 		return ("detached and SIGHUP");
 	case CLIENT_EXIT_LOST_TTY:
 		return ("lost tty");
@@ -582,6 +595,7 @@ client_dispatch_wait(void *data0)
 			shell_exec(data, data0);
 			/* NOTREACHED */
 		case MSG_DETACH:
+		case MSG_DETACHKILL:
 			client_write_server(MSG_EXITING, NULL, 0);
 			break;
 		case MSG_EXITED:
@@ -613,11 +627,12 @@ client_dispatch_attached(void)
 
 		log_debug("got %d from server", imsg.hdr.type);
 		switch (imsg.hdr.type) {
-		case MSG_DETACHKILL:
 		case MSG_DETACH:
-			if (datalen != 0)
-				fatalx("bad MSG_DETACH size");
+		case MSG_DETACHKILL:
+			if (datalen == 0 || data[datalen - 1] != '\0')
+				fatalx("bad MSG_DETACH string");
 
+			client_exitsession = xstrdup(data);
 			client_exittype = imsg.hdr.type;
 			if (imsg.hdr.type == MSG_DETACHKILL)
 				client_exitreason = CLIENT_EXIT_DETACHED_HUP;
