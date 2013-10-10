@@ -92,7 +92,7 @@ recalculate_sizes(void)
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);
-		if (w == NULL)
+		if (w == NULL || w->active == NULL)
 			continue;
 		flag = options_get_number(&w->options, "aggressive-resize");
 
