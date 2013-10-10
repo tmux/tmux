@@ -54,7 +54,8 @@ int		client_get_lock(char *);
 int		client_connect(char *, int);
 void		client_send_identify(int);
 void		client_send_environ(void);
-void		client_write_server(enum msgtype, void *, size_t);
+int		client_write_one(enum msgtype, int, const void *, size_t);
+int		client_write_server(enum msgtype, const void *, size_t);
 void		client_update_event(void);
 void		client_signal(int, short, void *);
 void		client_stdin_callback(int, short, void *);
@@ -165,12 +166,13 @@ client_main(int argc, char **argv, int flags)
 {
 	struct cmd		*cmd;
 	struct cmd_list		*cmdlist;
-	struct msg_command_data	 cmddata;
-	int			 cmdflags, fd;
+	struct msg_command_data	*data;
+	int			 cmdflags, fd, i;
 	pid_t			 ppid;
 	enum msgtype		 msg;
 	char			*cause;
 	struct termios		 tio, saved_tio;
+	size_t			 size;
 
 	/* Set up the initial command. */
 	cmdflags = 0;
@@ -234,7 +236,7 @@ client_main(int argc, char **argv, int flags)
 	setblocking(STDIN_FILENO, 0);
 	event_set(&client_stdin, STDIN_FILENO, EV_READ|EV_PERSIST,
 	    client_stdin_callback, NULL);
-	if (flags & IDENTIFY_TERMIOS) {
+	if (flags & CLIENT_CONTROLCONTROL) {
 		if (tcgetattr(STDIN_FILENO, &saved_tio) != 0) {
 			fprintf(stderr, "tcgetattr failed: %s\n",
 			    strerror(errno));
@@ -261,19 +263,32 @@ client_main(int argc, char **argv, int flags)
 
 	/* Send first command. */
 	if (msg == MSG_COMMAND) {
+		/* How big is the command? */
+		size = 0;
+		for (i = 0; i < argc; i++)
+			size += strlen(argv[i]) + 1;
+		data = xmalloc((sizeof *data) + size);
+
 		/* Fill in command line arguments. */
-		cmddata.pid = environ_pid;
-		cmddata.session_id = environ_session_id;
+		data->pid = environ_pid;
+		data->session_id = environ_session_id;
 
 		/* Prepare command for server. */
-		cmddata.argc = argc;
-		if (cmd_pack_argv(
-		    argc, argv, cmddata.argv, sizeof cmddata.argv) != 0) {
+		data->argc = argc;
+		if (cmd_pack_argv(argc, argv, (char*)(data + 1), size) != 0) {
 			fprintf(stderr, "command too long\n");
+			free(data);
 			return (1);
 		}
+		size += sizeof *data;
 
-		client_write_server(msg, &cmddata, sizeof cmddata);
+		/* Send the command. */
+		if (client_write_server(msg, data, size) != 0) {
+			fprintf(stderr, "failed to send command\n");
+			free(data);
+			return (1);
+		}
+		free(data);
 	} else if (msg == MSG_SHELL)
 		client_write_server(msg, NULL, 0);
 
@@ -289,14 +304,12 @@ client_main(int argc, char **argv, int flags)
 		ppid = getppid();
 		if (client_exittype == MSG_DETACHKILL && ppid > 1)
 			kill(ppid, SIGHUP);
-	} else if (flags & IDENTIFY_TERMIOS) {
-		if (flags & IDENTIFY_CONTROL) {
-			if (client_exitreason != CLIENT_EXIT_NONE)
-			    printf("%%exit %s\n", client_exit_message());
-			else
-			    printf("%%exit\n");
-			printf("\033\\");
-		}
+	} else if (flags & CLIENT_CONTROLCONTROL) {
+		if (client_exitreason != CLIENT_EXIT_NONE)
+			printf("%%exit %s\n", client_exit_message());
+		else
+			printf("%%exit\n");
+		printf("\033\\");
 		tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
 	}
 	setblocking(STDIN_FILENO, 1);
@@ -342,12 +355,29 @@ client_send_environ(void)
 	}
 }
 
-/* Write a message to the server without a file descriptor. */
-void
-client_write_server(enum msgtype type, void *buf, size_t len)
+/* Helper to send one message. */
+int
+client_write_one(enum msgtype type, int fd, const void *buf, size_t len)
 {
-	imsg_compose(&client_ibuf, type, PROTOCOL_VERSION, -1, -1, buf, len);
-	client_update_event();
+	int	retval;
+
+	retval = imsg_compose(&client_ibuf, type, PROTOCOL_VERSION, -1, fd,
+	    (void*)buf, len);
+	if (retval != 1)
+		return (-1);
+	return (0);
+}
+
+/* Write a message to the server without a file descriptor. */
+int
+client_write_server(enum msgtype type, const void *buf, size_t len)
+{
+	int	retval;
+
+	retval = client_write_one(type, -1, buf, len);
+	if (retval == 0)
+		client_update_event();
+	return (retval);
 }
 
 /* Update client event based on whether it needs to read or read and write. */
@@ -481,33 +511,33 @@ client_write(int fd, const char *data, size_t size)
 
 /* Dispatch imsgs when in wait state (before MSG_READY). */
 int
-client_dispatch_wait(void *data)
+client_dispatch_wait(void *data0)
 {
-	struct imsg		imsg;
-	ssize_t			n, datalen;
-	struct msg_shell_data	shelldata;
-	struct msg_exit_data	exitdata;
-	struct msg_stdout_data	stdoutdata;
-	struct msg_stderr_data	stderrdata;
-	const char             *shellcmd = data;
+	struct imsg		 imsg;
+	char			*data;
+	ssize_t			 n, datalen;
+	struct msg_stdout_data	 stdoutdata;
+	struct msg_stderr_data	 stderrdata;
+	int			 retval;
 
 	for (;;) {
 		if ((n = imsg_get(&client_ibuf, &imsg)) == -1)
 			fatalx("imsg_get failed");
 		if (n == 0)
 			return (0);
+
+		data = imsg.data;
 		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
 
 		log_debug("got %d from server", imsg.hdr.type);
 		switch (imsg.hdr.type) {
 		case MSG_EXIT:
 		case MSG_SHUTDOWN:
-			if (datalen != sizeof exitdata) {
-				if (datalen != 0)
-					fatalx("bad MSG_EXIT size");
-			} else {
-				memcpy(&exitdata, imsg.data, sizeof exitdata);
-				client_exitval = exitdata.retcode;
+			if (datalen != sizeof retval && datalen != 0)
+				fatalx("bad MSG_EXIT size");
+			if (datalen == sizeof retval) {
+				memcpy(&retval, data, sizeof retval);
+				client_exitval = retval;
 			}
 			imsg_free(&imsg);
 			return (-1);
@@ -527,17 +557,19 @@ client_dispatch_wait(void *data)
 			break;
 		case MSG_STDOUT:
 			if (datalen != sizeof stdoutdata)
-				fatalx("bad MSG_STDOUT");
-			memcpy(&stdoutdata, imsg.data, sizeof stdoutdata);
+				fatalx("bad MSG_STDOUT size");
+			memcpy(&stdoutdata, data, sizeof stdoutdata);
 
-			client_write(STDOUT_FILENO, stdoutdata.data, stdoutdata.size);
+			client_write(STDOUT_FILENO, stdoutdata.data,
+			    stdoutdata.size);
 			break;
 		case MSG_STDERR:
 			if (datalen != sizeof stderrdata)
-				fatalx("bad MSG_STDERR");
-			memcpy(&stderrdata, imsg.data, sizeof stderrdata);
+				fatalx("bad MSG_STDERR size");
+			memcpy(&stderrdata, data, sizeof stderrdata);
 
-			client_write(STDERR_FILENO, stderrdata.data, stderrdata.size);
+			client_write(STDERR_FILENO, stderrdata.data,
+			    stderrdata.size);
 			break;
 		case MSG_VERSION:
 			if (datalen != 0)
@@ -551,14 +583,11 @@ client_dispatch_wait(void *data)
 			imsg_free(&imsg);
 			return (-1);
 		case MSG_SHELL:
-			if (datalen != sizeof shelldata)
-				fatalx("bad MSG_SHELL size");
-			memcpy(&shelldata, imsg.data, sizeof shelldata);
-			shelldata.shell[(sizeof shelldata.shell) - 1] = '\0';
+			if (data[datalen - 1] != '\0')
+				fatalx("bad MSG_SHELL string");
 
 			clear_signals(0);
-
-			shell_exec(shelldata.shell, shellcmd);
+			shell_exec(data, data0);
 			/* NOTREACHED */
 		case MSG_DETACH:
 			client_write_server(MSG_EXITING, NULL, 0);
@@ -578,16 +607,18 @@ client_dispatch_wait(void *data)
 int
 client_dispatch_attached(void)
 {
-	struct imsg		imsg;
-	struct msg_lock_data	lockdata;
-	struct sigaction	sigact;
-	ssize_t			n, datalen;
+	struct imsg		 imsg;
+	struct sigaction	 sigact;
+	char			*data;
+	ssize_t			 n, datalen;
 
 	for (;;) {
 		if ((n = imsg_get(&client_ibuf, &imsg)) == -1)
 			fatalx("imsg_get failed");
 		if (n == 0)
 			return (0);
+
+		data = imsg.data;
 		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
 
 		log_debug("got %d from server", imsg.hdr.type);
@@ -605,8 +636,7 @@ client_dispatch_attached(void)
 			client_write_server(MSG_EXITING, NULL, 0);
 			break;
 		case MSG_EXIT:
-			if (datalen != 0 &&
-			    datalen != sizeof (struct msg_exit_data))
+			if (datalen != 0 && datalen != sizeof (int))
 				fatalx("bad MSG_EXIT size");
 
 			client_write_server(MSG_EXITING, NULL, 0);
@@ -639,12 +669,10 @@ client_dispatch_attached(void)
 			kill(getpid(), SIGTSTP);
 			break;
 		case MSG_LOCK:
-			if (datalen != sizeof lockdata)
-				fatalx("bad MSG_LOCK size");
-			memcpy(&lockdata, imsg.data, sizeof lockdata);
+			if (data[datalen - 1] != '\0')
+				fatalx("bad MSG_LOCK string");
 
-			lockdata.cmd[(sizeof lockdata.cmd) - 1] = '\0';
-			system(lockdata.cmd);
+			system(data);
 			client_write_server(MSG_UNLOCK, NULL, 0);
 			break;
 		default:

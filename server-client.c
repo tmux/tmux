@@ -40,7 +40,7 @@ void	server_client_reset_state(struct client *);
 int	server_client_assume_paste(struct session *);
 
 int	server_client_msg_dispatch(struct client *);
-void	server_client_msg_command(struct client *, struct msg_command_data *);
+void	server_client_msg_command(struct client *, struct imsg *);
 void	server_client_msg_identify(
 	    struct client *, struct msg_identify_data *, int);
 void	server_client_msg_shell(struct client *);
@@ -695,8 +695,6 @@ server_client_repeat_timer(unused int fd, unused short events, void *data)
 void
 server_client_check_exit(struct client *c)
 {
-	struct msg_exit_data	exitdata;
-
 	if (!(c->flags & CLIENT_EXIT))
 		return;
 
@@ -707,9 +705,7 @@ server_client_check_exit(struct client *c)
 	if (EVBUFFER_LENGTH(c->stderr_data) != 0)
 		return;
 
-	exitdata.retcode = c->retcode;
-	server_write_client(c, MSG_EXIT, &exitdata, sizeof exitdata);
-
+	server_write_client(c, MSG_EXIT, &c->retval, sizeof c->retval);
 	c->flags &= ~CLIENT_EXIT;
 }
 
@@ -790,10 +786,10 @@ int
 server_client_msg_dispatch(struct client *c)
 {
 	struct imsg		 imsg;
-	struct msg_command_data	 commanddata;
 	struct msg_identify_data identifydata;
 	struct msg_environ_data	 environdata;
 	struct msg_stdin_data	 stdindata;
+	const char		*data;
 	ssize_t			 n, datalen;
 
 	if ((n = imsg_read(&c->ibuf)) == -1 || n == 0)
@@ -804,6 +800,8 @@ server_client_msg_dispatch(struct client *c)
 			return (-1);
 		if (n == 0)
 			return (0);
+
+		data = imsg.data;
 		datalen = imsg.hdr.len - IMSG_HEADER_SIZE;
 
 		if (imsg.hdr.peerid != PROTOCOL_VERSION) {
@@ -815,13 +813,6 @@ server_client_msg_dispatch(struct client *c)
 
 		log_debug("got %d from client %d", imsg.hdr.type, c->ibuf.fd);
 		switch (imsg.hdr.type) {
-		case MSG_COMMAND:
-			if (datalen != sizeof commanddata)
-				fatalx("bad MSG_COMMAND size");
-			memcpy(&commanddata, imsg.data, sizeof commanddata);
-
-			server_client_msg_command(c, &commanddata);
-			break;
 		case MSG_IDENTIFY:
 			if (datalen != sizeof identifydata)
 				fatalx("bad MSG_IDENTIFY size");
@@ -829,10 +820,13 @@ server_client_msg_dispatch(struct client *c)
 
 			server_client_msg_identify(c, &identifydata, imsg.fd);
 			break;
+		case MSG_COMMAND:
+			server_client_msg_command(c, &imsg);
+			break;
 		case MSG_STDIN:
 			if (datalen != sizeof stdindata)
 				fatalx("bad MSG_STDIN size");
-			memcpy(&stdindata, imsg.data, sizeof stdindata);
+			memcpy(&stdindata, data, sizeof stdindata);
 
 			if (c->stdin_callback == NULL)
 				break;
@@ -907,15 +901,26 @@ server_client_msg_dispatch(struct client *c)
 
 /* Handle command message. */
 void
-server_client_msg_command(struct client *c, struct msg_command_data *data)
+server_client_msg_command(struct client *c, struct imsg *imsg)
 {
-	struct cmd_list	*cmdlist = NULL;
-	int		 argc;
-	char	       **argv, *cause;
+	struct msg_command_data	  data;
+	char			 *buf;
+	size_t			  len;
+	struct cmd_list		 *cmdlist = NULL;
+	int			  argc;
+	char			**argv, *cause;
 
-	argc = data->argc;
-	data->argv[(sizeof data->argv) - 1] = '\0';
-	if (cmd_unpack_argv(data->argv, sizeof data->argv, argc, &argv) != 0) {
+	if (imsg->hdr.len - IMSG_HEADER_SIZE < sizeof data)
+		fatalx("bad MSG_COMMAND size");
+	memcpy(&data, imsg->data, sizeof data);
+
+	buf = (char*)imsg->data + sizeof data;
+	len = imsg->hdr.len  - IMSG_HEADER_SIZE - sizeof data;
+	if (len > 0 && buf[len - 1] != '\0')
+		fatalx("bad MSG_COMMAND string");
+
+	argc = data.argc;
+	if (cmd_unpack_argv(buf, len, argc, &argv) != 0) {
 		cmdq_error(c->cmdq, "command too long");
 		goto error;
 	}
@@ -954,12 +959,12 @@ server_client_msg_identify(
 	if (*data->cwd != '\0')
 		c->cwd = xstrdup(data->cwd);
 
-	if (data->flags & IDENTIFY_CONTROL) {
+	if (data->flags & CLIENT_CONTROL) {
 		c->stdin_callback = control_callback;
 		evbuffer_free(c->stderr_data);
 		c->stderr_data = c->stdout_data;
 		c->flags |= CLIENT_CONTROL;
-		if (data->flags & IDENTIFY_TERMIOS)
+		if (data->flags & CLIENT_CONTROLCONTROL)
 			evbuffer_add_printf(c->stdout_data, "\033P1000p");
 		server_write_client(c, MSG_STDIN, NULL, 0);
 
@@ -978,14 +983,14 @@ server_client_msg_identify(
 	}
 	data->term[(sizeof data->term) - 1] = '\0';
 	tty_init(&c->tty, c, fd, data->term);
-	if (data->flags & IDENTIFY_UTF8)
+	if (data->flags & CLIENT_UTF8)
 		c->tty.flags |= TTY_UTF8;
-	if (data->flags & IDENTIFY_256COLOURS)
+	if (data->flags & CLIENT_256COLOURS)
 		c->tty.term_flags |= TERM_256COLOURS;
 
 	tty_resize(&c->tty);
 
-	if (!(data->flags & IDENTIFY_CONTROL))
+	if (!(data->flags & CLIENT_CONTROL))
 		c->flags |= CLIENT_TERMINAL;
 }
 
@@ -993,16 +998,12 @@ server_client_msg_identify(
 void
 server_client_msg_shell(struct client *c)
 {
-	struct msg_shell_data	 data;
-	const char		*shell;
+	const char	*shell;
 
 	shell = options_get_string(&global_s_options, "default-shell");
-
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
-	if (strlcpy(data.shell, shell, sizeof data.shell) >= sizeof data.shell)
-		strlcpy(data.shell, _PATH_BSHELL, sizeof data.shell);
+	server_write_client(c, MSG_SHELL, shell, strlen(shell) + 1);
 
-	server_write_client(c, MSG_SHELL, &data, sizeof data);
 	c->flags |= CLIENT_BAD;	/* it will die after exec */
 }

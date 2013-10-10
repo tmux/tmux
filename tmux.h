@@ -19,7 +19,7 @@
 #ifndef TMUX_H
 #define TMUX_H
 
-#define PROTOCOL_VERSION 7
+#define PROTOCOL_VERSION 8
 
 #include <sys/param.h>
 #include <sys/time.h>
@@ -62,7 +62,6 @@ extern char   **environ;
  * Maximum sizes of strings in message data. Don't forget to bump
  * PROTOCOL_VERSION if any of these change!
  */
-#define COMMAND_LENGTH 2048	/* packed argv size */
 #define TERMINAL_LENGTH 128	/* length of TERM environment variable */
 #define ENVIRON_LENGTH 1024	/* environment variable length */
 
@@ -437,27 +436,36 @@ ARRAY_DECL(causelist, char *);
 
 /* Message codes. */
 enum msgtype {
-	MSG_COMMAND,
+	MSG_VERSION = 12,
+
+	MSG_IDENTIFY_FLAGS = 100,
+	MSG_IDENTIFY_TERM,
+	MSG_IDENTIFY_TTYNAME,
+	MSG_IDENTIFY_CWD,
+	MSG_IDENTIFY_STDIN,
+	MSG_IDENTIFY_ENVIRON,
+	MSG_IDENTIFY_DONE,
+
+	MSG_COMMAND = 200,
 	MSG_DETACH,
-	MSG_ERROR,
+	MSG_DETACHKILL,
 	MSG_EXIT,
 	MSG_EXITED,
 	MSG_EXITING,
-	MSG_IDENTIFY,
-	MSG_STDIN,
+	MSG_LOCK,
 	MSG_READY,
 	MSG_RESIZE,
-	MSG_SHUTDOWN,
-	MSG_SUSPEND,
-	MSG_VERSION,
-	MSG_WAKEUP,
-	MSG_ENVIRON,
-	MSG_UNLOCK,
-	MSG_LOCK,
 	MSG_SHELL,
+	MSG_SHUTDOWN,
 	MSG_STDERR,
+	MSG_STDIN,
 	MSG_STDOUT,
-	MSG_DETACHKILL
+	MSG_SUSPEND,
+	MSG_UNLOCK,
+	MSG_WAKEUP,
+
+	MSG_IDENTIFY = 300,
+	MSG_ENVIRON
 };
 
 /*
@@ -466,40 +474,21 @@ enum msgtype {
  * Don't forget to bump PROTOCOL_VERSION if any of these change!
  */
 struct msg_command_data {
-	pid_t		pid;		/* from $TMUX or -1 */
-	int		session_id;	/* from $TMUX or -1 */
+	pid_t	pid;		/* from $TMUX or -1 */
+	int	session_id;	/* from $TMUX or -1 */
 
-	int		argc;
-	char		argv[COMMAND_LENGTH];
-};
+	int	argc;
+}; /* followed by packed argv */
 
 struct msg_identify_data {
 	char		cwd[MAXPATHLEN];
-
 	char		term[TERMINAL_LENGTH];
 
-#define IDENTIFY_UTF8 0x1
-#define IDENTIFY_256COLOURS 0x2
-/* 0x4 unused */
-#define IDENTIFY_CONTROL 0x8
-#define IDENTIFY_TERMIOS 0x10
 	int		flags;
-};
-
-struct msg_lock_data {
-	char		cmd[COMMAND_LENGTH];
 };
 
 struct msg_environ_data {
 	char		var[ENVIRON_LENGTH];
-};
-
-struct msg_shell_data {
-	char		shell[MAXPATHLEN];
-};
-
-struct msg_exit_data {
-	int		retcode;
 };
 
 struct msg_stdin_data {
@@ -1294,8 +1283,9 @@ RB_HEAD(status_out_tree, status_out);
 /* Client connection. */
 struct client {
 	struct imsgbuf	 ibuf;
+
 	struct event	 event;
-	int		 retcode;
+	int		 retval;
 
 	struct timeval	 creation_time;
 	struct timeval	 activity_time;
@@ -1326,7 +1316,7 @@ struct client {
 #define CLIENT_EXIT 0x4
 #define CLIENT_REDRAW 0x8
 #define CLIENT_STATUS 0x10
-#define CLIENT_REPEAT 0x20 /* allow command to repeat within repeat time */
+#define CLIENT_REPEAT 0x20
 #define CLIENT_SUSPENDED 0x40
 #define CLIENT_BAD 0x80
 #define CLIENT_IDENTIFY 0x100
@@ -1335,7 +1325,11 @@ struct client {
 #define CLIENT_READONLY 0x800
 #define CLIENT_REDRAWWINDOW 0x1000
 #define CLIENT_CONTROL 0x2000
-#define CLIENT_FOCUSED 0x4000
+#define CLIENT_CONTROLCONTROL 0x4000
+#define CLIENT_FOCUSED 0x8000
+#define CLIENT_UTF8 0x10000
+#define CLIENT_256COLOURS 0x20000
+#define CLIENT_IDENTIFIED 0x40000
 	int		 flags;
 
 	struct event	 identify_timer;
@@ -1925,10 +1919,10 @@ void	 server_window_loop(void);
 /* server-fn.c */
 void	 server_fill_environ(struct session *, struct environ *);
 void	 server_write_ready(struct client *);
-int	 server_write_client(
-	     struct client *, enum msgtype, const void *, size_t);
-void	 server_write_session(
-	     struct session *, enum msgtype, const void *, size_t);
+int	 server_write_client(struct client *, enum msgtype, const void *,
+	     size_t);
+void	 server_write_session(struct session *, enum msgtype, const void *,
+	     size_t);
 void	 server_redraw_client(struct client *);
 void	 server_status_client(struct client *);
 void	 server_redraw_session(struct session *);
