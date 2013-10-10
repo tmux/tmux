@@ -961,12 +961,12 @@ server_client_msg_identify(struct client *c, struct imsg *imsg)
 		c->flags |= flags;
 		break;
 	case MSG_IDENTIFY_TERM:
-		if (data[datalen - 1] != '\0')
+		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_IDENTIFY_TERM string");
 		c->term = xstrdup(data);
 		break;
 	case MSG_IDENTIFY_TTYNAME:
-		if (data[datalen - 1] != '\0')
+		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_IDENTIFY_TTYNAME string");
 		c->ttyname = xstrdup(data);
 		break;
@@ -981,7 +981,7 @@ server_client_msg_identify(struct client *c, struct imsg *imsg)
 		c->fd = imsg->fd;
 		break;
 	case MSG_IDENTIFY_ENVIRON:
-		if (data[datalen - 1] != '\0')
+		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_IDENTIFY_ENVIRON string");
 		if (strchr(data, '=') != NULL)
 			environ_put(&c->environ, data);
