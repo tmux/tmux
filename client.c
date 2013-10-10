@@ -53,7 +53,6 @@ int		client_attached;
 int		client_get_lock(char *);
 int		client_connect(char *, int);
 void		client_send_identify(int);
-void		client_send_environ(void);
 int		client_write_one(enum msgtype, int, const void *, size_t);
 int		client_write_server(enum msgtype, const void *, size_t);
 void		client_update_event(void);
@@ -257,8 +256,7 @@ client_main(int argc, char **argv, int flags)
 	/* Establish signal handlers. */
 	set_signals(client_signal);
 
-	/* Send initial environment. */
-	client_send_environ();
+	/* Send identify messages. */
 	client_send_identify(flags);
 
 	/* Send first command. */
@@ -316,43 +314,37 @@ client_main(int argc, char **argv, int flags)
 	return (client_exitval);
 }
 
-/* Send identify message to server with the file descriptors. */
+/* Send identify messages to server. */
 void
 client_send_identify(int flags)
 {
-	struct msg_identify_data	data;
-	char			       *term;
-	int				fd;
+	const char	*s;
+	char		**ss;
+	int		 fd;
 
-	data.flags = flags;
+	client_write_one(MSG_IDENTIFY_FLAGS, -1, &flags, sizeof flags);
 
-	if (getcwd(data.cwd, sizeof data.cwd) == NULL)
-		*data.cwd = '\0';
+	if ((s = getenv("TERM")) == NULL)
+		s = "";
+	client_write_one(MSG_IDENTIFY_TERM, -1, s, strlen(s) + 1);
 
-	term = getenv("TERM");
-	if (term == NULL ||
-	    strlcpy(data.term, term, sizeof data.term) >= sizeof data.term)
-		*data.term = '\0';
+	if ((s = ttyname(STDIN_FILENO)) == NULL)
+		s = "";
+	client_write_one(MSG_IDENTIFY_TTYNAME, -1, s, strlen(s) + 1);
+
+	if ((fd = open(".", O_RDONLY)) == -1)
+		fd = open("/", O_RDONLY);
+	client_write_one(MSG_IDENTIFY_CWD, fd, NULL, 0);
 
 	if ((fd = dup(STDIN_FILENO)) == -1)
 		fatal("dup failed");
-	imsg_compose(&client_ibuf,
-	    MSG_IDENTIFY, PROTOCOL_VERSION, -1, fd, &data, sizeof data);
+	client_write_one(MSG_IDENTIFY_STDIN, fd, NULL, 0);
+
+	for (ss = environ; *ss != NULL; ss++)
+		client_write_one(MSG_IDENTIFY_ENVIRON, -1, *ss, strlen(*ss) + 1);
+	client_write_one(MSG_IDENTIFY_DONE, -1, NULL, 0);
+
 	client_update_event();
-}
-
-/* Forward entire environment to server. */
-void
-client_send_environ(void)
-{
-	struct msg_environ_data	data;
-	char		      **var;
-
-	for (var = environ; *var != NULL; var++) {
-		if (strlcpy(data.var, *var, sizeof data.var) >= sizeof data.var)
-			continue;
-		client_write_server(MSG_ENVIRON, &data, sizeof data);
-	}
 }
 
 /* Helper to send one message. */
@@ -595,8 +587,6 @@ client_dispatch_wait(void *data0)
 		case MSG_EXITED:
 			imsg_free(&imsg);
 			return (-1);
-		default:
-			fatalx("unexpected message");
 		}
 
 		imsg_free(&imsg);
@@ -675,8 +665,6 @@ client_dispatch_attached(void)
 			system(data);
 			client_write_server(MSG_UNLOCK, NULL, 0);
 			break;
-		default:
-			fatalx("unexpected message");
 		}
 
 		imsg_free(&imsg);

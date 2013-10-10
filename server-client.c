@@ -41,8 +41,7 @@ int	server_client_assume_paste(struct session *);
 
 int	server_client_msg_dispatch(struct client *);
 void	server_client_msg_command(struct client *, struct imsg *);
-void	server_client_msg_identify(
-	    struct client *, struct msg_identify_data *, int);
+void	server_client_msg_identify(struct client *, struct imsg *);
 void	server_client_msg_shell(struct client *);
 
 /* Create a new client. */
@@ -151,6 +150,8 @@ server_client_lost(struct client *c)
 	 */
 	if (c->flags & CLIENT_TERMINAL)
 		tty_free(&c->tty);
+	free(c->ttyname);
+	free(c->term);
 
 	evbuffer_free (c->stdin_data);
 	evbuffer_free (c->stdout_data);
@@ -162,6 +163,7 @@ server_client_lost(struct client *c)
 	screen_free(&c->status);
 
 	free(c->title);
+	close(c->cwd);
 
 	evtimer_del(&c->repeat_timer);
 
@@ -179,7 +181,6 @@ server_client_lost(struct client *c)
 
 	free(c->prompt_string);
 	free(c->prompt_buffer);
-	free(c->cwd);
 
 	c->cmdq->dead = 1;
 	cmdq_free(c->cmdq);
@@ -786,8 +787,6 @@ int
 server_client_msg_dispatch(struct client *c)
 {
 	struct imsg		 imsg;
-	struct msg_identify_data identifydata;
-	struct msg_environ_data	 environdata;
 	struct msg_stdin_data	 stdindata;
 	const char		*data;
 	ssize_t			 n, datalen;
@@ -813,12 +812,14 @@ server_client_msg_dispatch(struct client *c)
 
 		log_debug("got %d from client %d", imsg.hdr.type, c->ibuf.fd);
 		switch (imsg.hdr.type) {
-		case MSG_IDENTIFY:
-			if (datalen != sizeof identifydata)
-				fatalx("bad MSG_IDENTIFY size");
-			memcpy(&identifydata, imsg.data, sizeof identifydata);
-
-			server_client_msg_identify(c, &identifydata, imsg.fd);
+		case MSG_IDENTIFY_FLAGS:
+		case MSG_IDENTIFY_TERM:
+		case MSG_IDENTIFY_TTYNAME:
+		case MSG_IDENTIFY_CWD:
+		case MSG_IDENTIFY_STDIN:
+		case MSG_IDENTIFY_ENVIRON:
+		case MSG_IDENTIFY_DONE:
+			server_client_msg_identify(c, &imsg);
 			break;
 		case MSG_COMMAND:
 			server_client_msg_command(c, &imsg);
@@ -876,23 +877,12 @@ server_client_msg_dispatch(struct client *c)
 			server_redraw_client(c);
 			recalculate_sizes();
 			break;
-		case MSG_ENVIRON:
-			if (datalen != sizeof environdata)
-				fatalx("bad MSG_ENVIRON size");
-			memcpy(&environdata, imsg.data, sizeof environdata);
-
-			environdata.var[(sizeof environdata.var) - 1] = '\0';
-			if (strchr(environdata.var, '=') != NULL)
-				environ_put(&c->environ, environdata.var);
-			break;
 		case MSG_SHELL:
 			if (datalen != 0)
 				fatalx("bad MSG_SHELL size");
 
 			server_client_msg_shell(c);
 			break;
-		default:
-			fatalx("unexpected message");
 		}
 
 		imsg_free(&imsg);
@@ -951,46 +941,99 @@ error:
 
 /* Handle identify message. */
 void
-server_client_msg_identify(
-    struct client *c, struct msg_identify_data *data, int fd)
+server_client_msg_identify(struct client *c, struct imsg *imsg)
 {
-	c->cwd = NULL;
-	data->cwd[(sizeof data->cwd) - 1] = '\0';
-	if (*data->cwd != '\0')
-		c->cwd = xstrdup(data->cwd);
+	const char	*data;
+	size_t	 	 datalen;
+	int		 flags;
 
-	if (data->flags & CLIENT_CONTROL) {
+	if (c->flags & CLIENT_IDENTIFIED)
+		fatalx("out-of-order identify message");
+
+	data = imsg->data;
+	datalen = imsg->hdr.len - IMSG_HEADER_SIZE;
+
+	switch (imsg->hdr.type)	{
+	case MSG_IDENTIFY_FLAGS:
+		if (datalen != sizeof flags)
+			fatalx("bad MSG_IDENTIFY_FLAGS size");
+		memcpy(&flags, data, sizeof flags);
+		c->flags |= flags;
+		break;
+	case MSG_IDENTIFY_TERM:
+		if (data[datalen - 1] != '\0')
+			fatalx("bad MSG_IDENTIFY_TERM string");
+		c->term = xstrdup(data);
+		break;
+	case MSG_IDENTIFY_TTYNAME:
+		if (data[datalen - 1] != '\0')
+			fatalx("bad MSG_IDENTIFY_TTYNAME string");
+		c->ttyname = xstrdup(data);
+		break;
+	case MSG_IDENTIFY_CWD:
+		if (datalen != 0)
+			fatalx("bad MSG_IDENTIFY_CWD size");
+		c->cwd = imsg->fd;
+		break;
+	case MSG_IDENTIFY_STDIN:
+		if (datalen != 0)
+			fatalx("bad MSG_IDENTIFY_STDIN size");
+		c->fd = imsg->fd;
+		break;
+	case MSG_IDENTIFY_ENVIRON:
+		if (data[datalen - 1] != '\0')
+			fatalx("bad MSG_IDENTIFY_ENVIRON string");
+		if (strchr(data, '=') != NULL)
+			environ_put(&c->environ, data);
+		break;
+	default:
+		break;
+	}
+
+	if (imsg->hdr.type != MSG_IDENTIFY_DONE)
+		return;
+	c->flags |= CLIENT_IDENTIFIED;
+
+#ifdef __CYGWIN__
+	c->fd = open(c->ttyname, O_RDWR|O_NOCTTY);
+	c->cwd = open(".", O_RDONLY);
+#endif
+
+	if (c->flags & CLIENT_CONTROL) {
 		c->stdin_callback = control_callback;
+
 		evbuffer_free(c->stderr_data);
 		c->stderr_data = c->stdout_data;
-		c->flags |= CLIENT_CONTROL;
-		if (data->flags & CLIENT_CONTROLCONTROL)
+
+		if (c->flags & CLIENT_CONTROLCONTROL)
 			evbuffer_add_printf(c->stdout_data, "\033P1000p");
 		server_write_client(c, MSG_STDIN, NULL, 0);
 
 		c->tty.fd = -1;
 		c->tty.log_fd = -1;
 
-		close(fd);
+		close(c->fd);
+		c->fd = -1;
+
 		return;
 	}
 
-	if (fd == -1)
+	if (c->fd == -1)
 		return;
-	if (!isatty(fd)) {
-		close(fd);
+	if (!isatty(c->fd)) {
+		close(c->fd);
+		c->fd = -1;
 		return;
 	}
-	data->term[(sizeof data->term) - 1] = '\0';
-	tty_init(&c->tty, c, fd, data->term);
-	if (data->flags & CLIENT_UTF8)
+	tty_init(&c->tty, c, c->fd, c->term);
+	if (c->flags & CLIENT_UTF8)
 		c->tty.flags |= TTY_UTF8;
-	if (data->flags & CLIENT_256COLOURS)
+	if (c->flags & CLIENT_256COLOURS)
 		c->tty.term_flags |= TERM_256COLOURS;
 
 	tty_resize(&c->tty);
 
-	if (!(data->flags & CLIENT_CONTROL))
+	if (!(c->flags & CLIENT_CONTROL))
 		c->flags |= CLIENT_TERMINAL;
 }
 

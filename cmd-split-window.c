@@ -18,8 +18,11 @@
 
 #include <sys/types.h>
 
+#include <errno.h>
+#include <fcntl.h>
 #include <paths.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -58,16 +61,14 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window		*w;
 	struct window_pane	*wp, *new_wp = NULL;
 	struct environ		 env;
-	const char		*cmd, *cwd, *shell;
-	char			*cause, *new_cause;
+	const char		*cmd, *shell, *template;
+	char			*cause, *new_cause, *cp;
 	u_int			 hlimit;
-	int			 size, percentage;
+	int			 size, percentage, cwd, fd = -1;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
-	const char		*template;
 	struct client		*c;
 	struct format_tree	*ft;
-	char			*cp;
 
 	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
@@ -83,7 +84,29 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		cmd = options_get_string(&s->options, "default-command");
 	else
 		cmd = args->argv[0];
-	cwd = cmdq_default_path(cmdq, args_get(args, 'c'));
+
+	if (args_has(args, 'c')) {
+		ft = format_create();
+		if ((c = cmd_find_client(cmdq, NULL, 1)) != NULL)
+			format_client(ft, c);
+		format_session(ft, s);
+		format_winlink(ft, s, s->curw);
+		format_window_pane(ft, s->curw->window->active);
+		cp = format_expand(ft, args_get(args, 'c'));
+		format_free(ft);
+
+		fd = open(cp, O_RDONLY|O_DIRECTORY);
+		free(cp);
+		if (fd == -1) {
+			cmdq_error(cmdq, "bad working directory: %s",
+			    strerror(errno));
+			return (CMD_RETURN_ERROR);
+		}
+		cwd = fd;
+	} else if (cmdq->client->session == NULL)
+		cwd = cmdq->client->cwd;
+	else
+		cwd = s->cwd;
 
 	type = LAYOUT_TOPBOTTOM;
 	if (args_has(args, 'h'))
@@ -156,6 +179,9 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		format_free(ft);
 	}
 	notify_window_layout_changed(w);
+
+	if (fd != -1)
+		close(fd);
 	return (CMD_RETURN_NORMAL);
 
 error:
@@ -164,5 +190,7 @@ error:
 		window_remove_pane(w, new_wp);
 	cmdq_error(cmdq, "create pane failed: %s", cause);
 	free(cause);
+	if (fd != -1)
+		close(fd);
 	return (CMD_RETURN_ERROR);
 }
