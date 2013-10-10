@@ -36,7 +36,6 @@ const struct cmd_entry cmd_display_message_entry = {
 	" [message]",
 	0,
 	NULL,
-	NULL,
 	cmd_display_message_exec
 };
 
@@ -71,9 +70,9 @@ cmd_display_message_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 
 	if (args_has(args, 'c')) {
-	    c = cmd_find_client(cmdq, args_get(args, 'c'), 0);
-	    if (c == NULL)
-		return (CMD_RETURN_ERROR);
+		c = cmd_find_client(cmdq, args_get(args, 'c'), 0);
+		if (c == NULL)
+			return (CMD_RETURN_ERROR);
 	} else {
 		c = cmd_current_client(cmdq);
 		if (c == NULL && !args_has(self->args, 'p')) {
