@@ -34,9 +34,10 @@
  * string.
  */
 
-int	format_replace(struct format_tree *, const char *, size_t, char **,
-	    size_t *, size_t *);
-void	format_window_pane_tabs(struct format_tree *, struct window_pane *);
+int	 format_replace(struct format_tree *, const char *, size_t, char **,
+	     size_t *, size_t *);
+char	*format_get_command(struct window_pane *);
+void	 format_window_pane_tabs(struct format_tree *, struct window_pane *);
 
 /* Format key-value replacement entry. */
 RB_GENERATE(format_tree, format_entry, entry, format_cmp);
@@ -120,7 +121,7 @@ format_create(void)
 
 	if (gethostname(host, sizeof host) == 0) {
 		format_add(ft, "host", "%s", host);
-		if ((ptr = strrchr(host, '.')) != NULL)
+		if ((ptr = strchr(host, '.')) != NULL)
 			*ptr = '\0';
 		format_add(ft, "host_short", "%s", host);
 	}
@@ -348,6 +349,21 @@ format_expand(struct format_tree *ft, const char *fmt)
 	return (buf);
 }
 
+/* Get command name for format. */
+char *
+format_get_command(struct window_pane *wp)
+{
+	char	*cmd;
+
+	cmd = get_proc_name(wp->fd, wp->tty);
+	if (cmd == NULL || *cmd == '\0') {
+		cmd = wp->cmd;
+		if (cmd == NULL || *cmd == '\0')
+			cmd = wp->shell;
+	}
+	return (parse_window_name(cmd));
+}
+
 /* Set default format keys for a session. */
 void
 format_session(struct format_tree *ft, struct session *s)
@@ -427,25 +443,38 @@ format_client(struct format_tree *ft, struct client *c)
 		format_add(ft, "client_last_session", "%s", s->name);
 }
 
+/* Set default format keys for a window. */
+void
+format_window(struct format_tree *ft, struct window *w)
+{
+	char	*layout;
+
+	layout = layout_dump(w);
+
+	format_add(ft, "window_id", "@%u", w->id);
+	format_add(ft, "window_name", "%s", w->name);
+	format_add(ft, "window_width", "%u", w->sx);
+	format_add(ft, "window_height", "%u", w->sy);
+	format_add(ft, "window_layout", "%s", layout);
+	format_add(ft, "window_panes", "%u", window_count_panes(w));
+
+	free(layout);
+}
+
 /* Set default format keys for a winlink. */
 void
 format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 {
 	struct window	*w = wl->window;
-	char		*layout, *flags;
+	char		*flags;
 
-	layout = layout_dump(w);
 	flags = window_printable_flags(s, wl);
 
-	format_add(ft, "window_id", "@%u", w->id);
+	format_window(ft, w);
+
 	format_add(ft, "window_index", "%d", wl->idx);
-	format_add(ft, "window_name", "%s", w->name);
-	format_add(ft, "window_width", "%u", w->sx);
-	format_add(ft, "window_height", "%u", w->sy);
 	format_add(ft, "window_flags", "%s", flags);
-	format_add(ft, "window_layout", "%s", layout);
 	format_add(ft, "window_active", "%d", wl == s->curw);
-	format_add(ft, "window_panes", "%u", window_count_panes(w));
 
 	format_add(ft, "window_bell_flag", "%u",
 	    !!(wl->flags & WINLINK_BELL));
@@ -456,8 +485,8 @@ format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 	format_add(ft, "window_silence_flag", "%u",
 	    !!(wl->flags & WINLINK_SILENCE));
 
+
 	free(flags);
-	free(layout);
 }
 
 /* Add window pane tabs. */
