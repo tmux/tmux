@@ -318,10 +318,13 @@ cmd_string_expand_tilde(const char *s, size_t *p)
 {
 	struct passwd		*pw;
 	struct environ_entry	*envent;
-	char			*home, *path, *username;
+	char			*home, *path, *user, *cp;
+	int			 last;
 
 	home = NULL;
-	if (cmd_string_getc(s, p) == '/') {
+
+	last = cmd_string_getc(s, p);
+	if (last == EOF || last == '/' || last == ' '|| last == '\t') {
 		envent = environ_find(&global_environ, "HOME");
 		if (envent != NULL && *envent->value != '\0')
 			home = envent->value;
@@ -329,15 +332,27 @@ cmd_string_expand_tilde(const char *s, size_t *p)
 			home = pw->pw_dir;
 	} else {
 		cmd_string_ungetc(p);
-		if ((username = cmd_string_string(s, p, '/', 0)) == NULL)
-			return (NULL);
-		if ((pw = getpwnam(username)) != NULL)
+
+		cp = user = xmalloc(strlen(s));
+		for (;;) {
+			last = cmd_string_getc(s, p);
+			if (last == EOF || last == '/' || last == ' '|| last == '\t')
+				break;
+			*cp++ = last;
+		}
+		*cp = '\0';
+
+		if ((pw = getpwnam(user)) != NULL)
 			home = pw->pw_dir;
-		free(username);
+		free(user);
 	}
+
 	if (home == NULL)
 		return (NULL);
 
-	xasprintf(&path, "%s/", home);
+	if (last != EOF)
+		xasprintf(&path, "%s%c", home, last);
+	else
+		xasprintf(&path, "%s", home);
 	return (path);
 }
