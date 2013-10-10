@@ -323,6 +323,13 @@ if test "x$found_cfmakeraw" = xyes; then
 fi
 AM_CONDITIONAL(NO_CFMAKERAW, [test "x$found_cfmakeraw" = xno])
 
+# Look for openat, compat/openat.c used if missing.
+AC_CHECK_FUNC(openat, found_openat=yes, found_openat=no)
+if test "x$found_openat" = xyes; then
+	AC_DEFINE(HAVE_OPENAT)
+fi
+AM_CONDITIONAL(NO_OPENAT, [test "x$found_openat" = xno])
+
 # Look for getopt. glibc's getopt does not enforce argument order and the ways
 # of making it do so are stupid, so just use our own instead.
 AC_CHECK_FUNC(getopt, found_getopt=yes, found_getopt=no)

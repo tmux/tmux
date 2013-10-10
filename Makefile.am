@@ -238,6 +238,9 @@ endif
 if NO_CFMAKERAW
 nodist_tmux_SOURCES += compat/cfmakeraw.c
 endif
+if NO_OPENAT
+nodist_tmux_SOURCES += compat/openat.c
+endif
 
 # Install tmux.1 in the right format.
 install-exec-hook:

@@ -144,7 +144,7 @@ job_write_callback(unused struct bufferevent *bufev, void *data)
 	size_t		 len = EVBUFFER_LENGTH(EVBUFFER_OUTPUT(job->event));
 
 	log_debug("job write %p: %s, pid %ld, output left %zu", job, job->cmd,
-		    (long) job->pid, len);
+	    (long) job->pid, len);
 
 	if (len == 0) {
 		shutdown(job->fd, SHUT_WR);
