@@ -353,7 +353,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 char *
 format_get_command(struct window_pane *wp)
 {
-	char	*cmd;
+	char	*cmd, *out;
 
 	cmd = get_proc_name(wp->fd, wp->tty);
 	if (cmd == NULL || *cmd == '\0') {
@@ -361,7 +361,9 @@ format_get_command(struct window_pane *wp)
 		if (cmd == NULL || *cmd == '\0')
 			cmd = wp->shell;
 	}
-	return (parse_window_name(cmd));
+	out = parse_window_name(cmd);
+	free(cmd);
+	return (out);
 }
 
 /* Set default format keys for a session. */
