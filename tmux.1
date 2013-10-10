@@ -3024,6 +3024,12 @@ will include the string
 if the session is attached and the string
 .Ql not attached
 if it is unattached.
+A limit may be placed on the length of the resultant string by prefixing it
+by an
+.Ql = ,
+a number and a colon, so
+.Ql #{=10:pane_title}
+will include at most the first 10 characters of the pane title.
 .Pp
 The following variables are available, where appropriate:
 .Bl -column "XXXXXXXXXXXXXXXXXXX" "XXXXX"
