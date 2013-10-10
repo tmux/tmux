@@ -2317,7 +2317,6 @@ u_int	utf8_split2(u_int, u_char *);
 
 /* procname.c */
 char   *get_proc_name(int, char *);
-char   *get_proc_cwd(int);
 
 /* log.c */
 void		 log_open(int, const char *);
