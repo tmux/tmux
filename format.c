@@ -151,6 +151,7 @@ void
 format_add(struct format_tree *ft, const char *key, const char *fmt, ...)
 {
 	struct format_entry	*fe;
+	struct format_entry	*fe_now;
 	va_list			 ap;
 
 	fe = xmalloc(sizeof *fe);
@@ -160,7 +161,13 @@ format_add(struct format_tree *ft, const char *key, const char *fmt, ...)
 	xvasprintf(&fe->value, fmt, ap);
 	va_end(ap);
 
-	RB_INSERT(format_tree, ft, fe);
+	fe_now = RB_INSERT(format_tree, ft, fe);
+	if (fe_now != NULL) {
+		free(fe_now->value);
+		fe_now->value = fe->value;
+		free(fe->key);
+		free(fe);
+	}
 }
 
 /* Find a format entry. */
@@ -346,8 +353,10 @@ format_client(struct format_tree *ft, struct client *c)
 	format_add(ft, "client_cwd", "%s", c->cwd);
 	format_add(ft, "client_height", "%u", c->tty.sy);
 	format_add(ft, "client_width", "%u", c->tty.sx);
-	format_add(ft, "client_tty", "%s", c->tty.path);
-	format_add(ft, "client_termname", "%s", c->tty.termname);
+	if (c->tty.path != NULL)
+		format_add(ft, "client_tty", "%s", c->tty.path);
+	if (c->tty.termname != NULL)
+		format_add(ft, "client_termname", "%s", c->tty.termname);
 
 	t = c->creation_time.tv_sec;
 	format_add(ft, "client_created", "%lld", (long long) t);
@@ -400,6 +409,15 @@ format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 	format_add(ft, "window_layout", "%s", layout);
 	format_add(ft, "window_active", "%d", wl == s->curw);
 	format_add(ft, "window_panes", "%u", window_count_panes(w));
+
+	format_add(ft, "window_bell_flag", "%u",
+	    !!(wl->flags & WINLINK_BELL));
+	format_add(ft, "window_content_flag", "%u",
+	    !!(wl->flags & WINLINK_CONTENT));
+	format_add(ft, "window_activity_flag", "%u",
+	    !!(wl->flags & WINLINK_ACTIVITY));
+	format_add(ft, "window_silence_flag", "%u",
+	    !!(wl->flags & WINLINK_SILENCE));
 
 	free(flags);
 	free(layout);
