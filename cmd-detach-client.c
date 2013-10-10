@@ -32,7 +32,6 @@ const struct cmd_entry cmd_detach_client_entry = {
 	"[-P] [-a] [-s target-session] " CMD_TARGET_CLIENT_USAGE,
 	CMD_READONLY,
 	NULL,
-	NULL,
 	cmd_detach_client_exec
 };
 

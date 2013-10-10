@@ -41,7 +41,6 @@ const struct cmd_entry cmd_run_shell_entry = {
 	"[-b] " CMD_TARGET_PANE_USAGE " shell-command",
 	0,
 	NULL,
-	NULL,
 	cmd_run_shell_exec
 };
 

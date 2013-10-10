@@ -33,7 +33,6 @@ const struct cmd_entry cmd_select_layout_entry = {
 	"[-np] " CMD_TARGET_WINDOW_USAGE " [layout-name]",
 	0,
 	cmd_select_layout_key_binding,
-	NULL,
 	cmd_select_layout_exec
 };
 
@@ -43,7 +42,6 @@ const struct cmd_entry cmd_next_layout_entry = {
 	CMD_TARGET_WINDOW_USAGE,
 	0,
 	NULL,
-	NULL,
 	cmd_select_layout_exec
 };
 
@@ -52,7 +50,6 @@ const struct cmd_entry cmd_previous_layout_entry = {
 	"t:", 0, 0,
 	CMD_TARGET_WINDOW_USAGE,
 	0,
-	NULL,
 	NULL,
 	cmd_select_layout_exec
 };

@@ -32,7 +32,6 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	"[-S] [-C size] " CMD_TARGET_CLIENT_USAGE,
 	0,
 	NULL,
-	NULL,
 	cmd_refresh_client_exec
 };
 

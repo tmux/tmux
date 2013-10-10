@@ -35,7 +35,6 @@ const struct cmd_entry cmd_show_environment_entry = {
 	"[-g] " CMD_TARGET_SESSION_USAGE " [name]",
 	0,
 	NULL,
-	NULL,
 	cmd_show_environment_exec
 };
 

@@ -30,7 +30,6 @@
  */
 
 void	cmd_command_prompt_key_binding(struct cmd *, int);
-int	cmd_command_prompt_check(struct args *);
 enum cmd_retval	cmd_command_prompt_exec(struct cmd *, struct cmd_q *);
 
 int	cmd_command_prompt_callback(void *, const char *);
@@ -42,7 +41,6 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	"[-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE " [template]",
 	0,
 	cmd_command_prompt_key_binding,
-	NULL,
 	cmd_command_prompt_exec
 };
 

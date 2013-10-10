@@ -34,7 +34,6 @@ const struct cmd_entry cmd_move_window_entry = {
 	"[-dkr] " CMD_SRCDST_WINDOW_USAGE,
 	0,
 	NULL,
-	NULL,
 	cmd_move_window_exec
 };
 

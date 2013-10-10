@@ -37,7 +37,6 @@ const struct cmd_entry cmd_choose_client_entry = {
 	CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
 	0,
 	NULL,
-	NULL,
 	cmd_choose_client_exec
 };
 

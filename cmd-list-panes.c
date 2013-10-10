@@ -41,7 +41,6 @@ const struct cmd_entry cmd_list_panes_entry = {
 	"[-as] [-F format] " CMD_TARGET_WINDOW_USAGE,
 	0,
 	NULL,
-	NULL,
 	cmd_list_panes_exec
 };
 

@@ -35,7 +35,6 @@ const struct cmd_entry cmd_swap_pane_entry = {
 	"[-dDU] " CMD_SRCDST_PANE_USAGE,
 	0,
 	cmd_swap_pane_key_binding,
-	NULL,
 	cmd_swap_pane_exec
 };
 

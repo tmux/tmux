@@ -36,7 +36,6 @@ const struct cmd_entry cmd_switch_client_entry = {
 	"[-lnpr] [-c target-client] [-t target-session]",
 	CMD_READONLY,
 	cmd_switch_client_key_binding,
-	NULL,
 	cmd_switch_client_exec
 };
 

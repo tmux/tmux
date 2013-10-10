@@ -41,7 +41,6 @@ const struct cmd_entry cmd_choose_tree_entry = {
 	"[-W format] " CMD_TARGET_WINDOW_USAGE,
 	0,
 	NULL,
-	NULL,
 	cmd_choose_tree_exec
 };
 
@@ -51,7 +50,6 @@ const struct cmd_entry cmd_choose_session_entry = {
 	CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
 	0,
 	NULL,
-	NULL,
 	cmd_choose_tree_exec
 };
 
@@ -60,7 +58,6 @@ const struct cmd_entry cmd_choose_window_entry = {
 	"F:t:", 0, 1,
 	CMD_TARGET_WINDOW_USAGE "[-F format] [template]",
 	0,
-	NULL,
 	NULL,
 	cmd_choose_tree_exec
 };
@@ -228,7 +225,6 @@ windows_only:
 	free(final_win_template_last);
 
 	window_choose_ready(wl->window->active, cur_win, NULL);
-	window_choose_collapse_all(wl->window->active);
 
 	if (args_has(args, 'u')) {
 		window_choose_expand_all(wl->window->active);

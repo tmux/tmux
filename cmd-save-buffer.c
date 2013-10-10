@@ -38,7 +38,6 @@ const struct cmd_entry cmd_save_buffer_entry = {
 	"[-a] " CMD_BUFFER_USAGE " path",
 	0,
 	NULL,
-	NULL,
 	cmd_save_buffer_exec
 };
 
@@ -47,7 +46,6 @@ const struct cmd_entry cmd_show_buffer_entry = {
 	"b:", 0, 0,
 	CMD_BUFFER_USAGE,
 	0,
-	NULL,
 	NULL,
 	cmd_save_buffer_exec
 };

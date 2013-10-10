@@ -34,7 +34,6 @@ const struct cmd_entry cmd_link_window_entry = {
 	"[-dk] " CMD_SRCDST_WINDOW_USAGE,
 	0,
 	NULL,
-	NULL,
 	cmd_link_window_exec
 };
 

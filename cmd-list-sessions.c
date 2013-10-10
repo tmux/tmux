@@ -36,7 +36,6 @@ const struct cmd_entry cmd_list_sessions_entry = {
 	"[-F format]",
 	0,
 	NULL,
-	NULL,
 	cmd_list_sessions_exec
 };
 
