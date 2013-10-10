@@ -143,7 +143,7 @@ cmdq_error(struct cmd_q *cmdq, const char *fmt, ...)
 		evbuffer_add(c->stderr_data, "\n", 1);
 
 		server_push_stderr(c);
-		c->retcode = 1;
+		c->retval = 1;
 	} else {
 		*msg = toupper((u_char) *msg);
 		status_message_set(c, "%s", msg);
