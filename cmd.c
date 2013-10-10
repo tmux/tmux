@@ -314,7 +314,6 @@ cmd_print(struct cmd *cmd, char *buf, size_t len)
 struct session *
 cmd_current_session(struct cmd_q *cmdq, int prefer_unattached)
 {
-	struct msg_command_data	*data = cmdq->msgdata;
 	struct client		*c = cmdq->client;
 	struct session		*s;
 	struct sessionslist	 ss;
@@ -352,13 +351,6 @@ cmd_current_session(struct cmd_q *cmdq, int prefer_unattached)
 
 		s = cmd_choose_session_list(&ss);
 		ARRAY_FREE(&ss);
-		if (s != NULL)
-			return (s);
-	}
-
-	/* Use the session from the TMUX environment variable. */
-	if (data != NULL && data->pid == getpid() && data->session_id != -1) {
-		s = session_find_by_id(data->session_id);
 		if (s != NULL)
 			return (s);
 	}

@@ -62,6 +62,8 @@ server_client_create(int fd)
 		fatal("gettimeofday failed");
 	memcpy(&c->activity_time, &c->creation_time, sizeof c->activity_time);
 
+	environ_init(&c->environ);
+
 	c->cmdq = cmdq_new(c);
 	c->cmdq->client_exit = 1;
 
