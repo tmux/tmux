@@ -33,9 +33,8 @@ enum cmd_retval cmd_wait_for_exec(struct cmd *, struct cmd_q *);
 const struct cmd_entry cmd_wait_for_entry = {
 	"wait-for", "wait",
 	"LSU", 1, 1,
-	"[-LSU] channel",
+	"[-L|-S|-U] channel",
 	0,
-	NULL,
 	NULL,
 	cmd_wait_for_exec
 };
