@@ -533,6 +533,9 @@ layout_resize_pane_mouse(struct client *c)
 	pane_border = 0;
 	if (m->event & MOUSE_EVENT_DRAG && m->flags & MOUSE_RESIZE_PANE) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
+			if (!window_pane_visible(wp))
+				continue;
+
 			if (wp->xoff + wp->sx == m->lx &&
 			    wp->yoff <= 1 + m->ly &&
 			    wp->yoff + wp->sy >= m->ly) {
@@ -550,7 +553,7 @@ layout_resize_pane_mouse(struct client *c)
 		}
 		if (pane_border)
 			server_redraw_window(w);
-	} else if (~m->event & MOUSE_EVENT_UP) {
+	} else if (m->event & MOUSE_EVENT_DOWN) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if ((wp->xoff + wp->sx == m->x &&
 			    wp->yoff <= 1 + m->y &&
