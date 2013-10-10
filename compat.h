@@ -243,7 +243,13 @@ int		 unsetenv(const char *);
 
 #ifndef HAVE_CFMAKERAW
 /* cfmakeraw.c */
-void		cfmakeraw(struct termios *tio);
+void		cfmakeraw(struct termios *);
+#endif
+
+#ifndef HAVE_OPENAT
+/* openat.c */
+#define AT_FDCWD -100
+int		openat(int, const char *, int, ...);
 #endif
 
 #ifdef HAVE_GETOPT
