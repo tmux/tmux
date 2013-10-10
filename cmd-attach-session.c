@@ -32,8 +32,7 @@ const struct cmd_entry cmd_attach_session_entry = {
 	"attach-session", "attach",
 	"drt:", 0, 0,
 	"[-dr] " CMD_TARGET_SESSION_USAGE,
-	CMD_CANTNEST|CMD_STARTSERVER|CMD_SENDENVIRON,
-	NULL,
+	CMD_CANTNEST|CMD_STARTSERVER,
 	NULL,
 	cmd_attach_session_exec
 };

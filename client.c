@@ -179,7 +179,7 @@ client_main(int argc, char **argv, int flags)
 		cmdflags = CMD_STARTSERVER;
 	} else if (argc == 0) {
 		msg = MSG_COMMAND;
-		cmdflags = CMD_STARTSERVER|CMD_SENDENVIRON|CMD_CANTNEST;
+		cmdflags = CMD_STARTSERVER|CMD_CANTNEST;
 	} else {
 		msg = MSG_COMMAND;
 
@@ -197,8 +197,6 @@ client_main(int argc, char **argv, int flags)
 		TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
 			if (cmd->entry->flags & CMD_STARTSERVER)
 				cmdflags |= CMD_STARTSERVER;
-			if (cmd->entry->flags & CMD_SENDENVIRON)
-				cmdflags |= CMD_SENDENVIRON;
 			if (cmd->entry->flags & CMD_CANTNEST)
 				cmdflags |= CMD_CANTNEST;
 		}
@@ -258,8 +256,7 @@ client_main(int argc, char **argv, int flags)
 	set_signals(client_signal);
 
 	/* Send initial environment. */
-	if (cmdflags & CMD_SENDENVIRON)
-		client_send_environ();
+	client_send_environ();
 	client_send_identify(flags);
 
 	/* Send first command. */

@@ -151,7 +151,7 @@ extern char   **environ;
 	"[layout #{window_layout}] #{window_id}"		\
 	"#{?window_active, (active),}";
 #define LIST_WINDOWS_WITH_SESSION_TEMPLATE			\
-	"#{session_name}: "					\
+	"#{session_name}:"					\
 	"#{window_index}: #{window_name}#{window_flags} "	\
 	"(#{window_panes} panes) "				\
 	"[#{window_width}x#{window_height}] "
@@ -1008,6 +1008,7 @@ struct window {
 #define WINDOW_REDRAW 0x4
 #define WINDOW_SILENCE 0x8
 #define WINDOW_ZOOMED 0x10
+#define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
 	struct options	 options;
 
@@ -1449,12 +1450,10 @@ struct cmd_entry {
 
 #define CMD_STARTSERVER 0x1
 #define CMD_CANTNEST 0x2
-#define CMD_SENDENVIRON 0x4
-#define CMD_READONLY 0x8
+#define CMD_READONLY 0x4
 	int		 flags;
 
 	void		 (*key_binding)(struct cmd *, int);
-	int		 (*check)(struct args *);
 	enum cmd_retval	 (*exec)(struct cmd *, struct cmd_q *);
 };
 
@@ -1552,16 +1551,19 @@ int		 format_cmp(struct format_entry *, struct format_entry *);
 RB_PROTOTYPE(format_tree, format_entry, entry, format_cmp);
 struct format_tree *format_create(void);
 void		 format_free(struct format_tree *);
-void printflike3 format_add(
-		     struct format_tree *, const char *, const char *, ...);
+void printflike3 format_add(struct format_tree *, const char *, const char *,
+		     ...);
 const char	*format_find(struct format_tree *, const char *);
 char		*format_expand(struct format_tree *, const char *);
 void		 format_session(struct format_tree *, struct session *);
 void		 format_client(struct format_tree *, struct client *);
-void		 format_winlink(
-		     struct format_tree *, struct session *, struct winlink *);
-void		 format_window_pane(struct format_tree *, struct window_pane *);
-void		 format_paste_buffer(struct format_tree *, struct paste_buffer *);
+void		 format_window(struct format_tree *, struct window *);
+void		 format_winlink(struct format_tree *, struct session *,
+		     struct winlink *);
+void		 format_window_pane(struct format_tree *,
+		     struct window_pane *);
+void		 format_paste_buffer(struct format_tree *,
+		     struct paste_buffer *);
 
 /* mode-key.c */
 extern const struct mode_key_table mode_key_tables[];
@@ -1767,7 +1769,7 @@ int		 cmd_find_index(struct cmd_q *, const char *,
 struct winlink	*cmd_find_pane(struct cmd_q *, const char *, struct session **,
 		     struct window_pane **);
 char		*cmd_template_replace(const char *, const char *, int);
-const char     	*cmd_get_default_path(struct cmd_q *, const char *);
+const char     	*cmd_default_path(const char *, const char *, const char *);
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
@@ -1876,6 +1878,7 @@ void		 cmdq_run(struct cmd_q *, struct cmd_list *);
 void		 cmdq_append(struct cmd_q *, struct cmd_list *);
 int		 cmdq_continue(struct cmd_q *);
 void		 cmdq_flush(struct cmd_q *);
+const char     	*cmdq_default_path(struct cmd_q *, const char *);
 
 /* cmd-string.c */
 int	cmd_string_parse(const char *, struct cmd_list **, const char *,
@@ -2275,8 +2278,10 @@ void	window_choose_collapse_all(struct window_pane *);
 void	window_choose_set_current(struct window_pane *, u_int);
 
 /* names.c */
-void		 queue_window_name(struct window *);
-char		*default_window_name(struct window *);
+void	 queue_window_name(struct window *);
+char	*default_window_name(struct window *);
+char	*format_window_name(struct window *);
+char	*parse_window_name(const char *);
 
 /* signal.c */
 void	set_signals(void(*)(int, short, void *));
