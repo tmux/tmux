@@ -99,7 +99,9 @@ Force
 .Nm
 to assume the terminal supports 256 colours.
 .It Fl C
-Start in control mode.
+Start in control mode (see the
+.Sx CONTROL MODE
+section).
 Given twice
 .Xo ( Fl CC ) Xc
 disables echo.
@@ -622,9 +624,10 @@ If it does exist, exit with 0.
 Kill the
 .Nm
 server and clients and destroy all sessions.
-.It Ic kill-session
+.It Xo Ic kill-session
 .Op Fl a
 .Op Fl t Ar target-session
+.Xc
 Destroy the given session, closing any windows linked to it and no other
 sessions, and detaching all clients attached to it.
 If
@@ -669,6 +672,7 @@ Lock all clients attached to
 .Ar target-session .
 .It Xo Ic new-session
 .Op Fl AdDP
+.Op Fl c Ar start-directory
 .Op Fl F Ar format
 .Op Fl n Ar window-name
 .Op Fl s Ar session-name
@@ -2708,8 +2712,8 @@ The default is on.
 Control automatic window renaming.
 When this setting is enabled,
 .Nm
-will attempt - on supported platforms - to rename the window to reflect the
-command currently running in it.
+will rename the window automatically using the format specified by
+.Ic automatic-rename-format .
 This flag is automatically disabled for an individual window when a name
 is specified at creation with
 .Ic new-window
@@ -2722,6 +2726,13 @@ It may be switched off globally with:
 .Bd -literal -offset indent
 set-window-option -g automatic-rename off
 .Ed
+.Pp
+.It Ic automatic-rename-format Ar format
+The format (see
+.Sx FORMATS )
+used when the
+.Ic automatic-rename
+option is enabled.
 .Pp
 .It Ic c0-change-interval Ar interval
 .It Ic c0-change-trigger Ar trigger
@@ -3570,7 +3581,7 @@ If the command doesn't return success, the exit status is also displayed.
 .D1 (alias: Ic info )
 Show server information and terminal details.
 .It Xo Ic wait-for
-.Fl LSU
+.Op Fl L | S | U
 .Ar channel
 .Xc
 .D1 (alias: Ic wait )
