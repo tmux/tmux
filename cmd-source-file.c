@@ -37,7 +37,6 @@ const struct cmd_entry cmd_source_file_entry = {
 	"path",
 	0,
 	NULL,
-	NULL,
 	cmd_source_file_exec
 };
 
@@ -95,6 +94,9 @@ void
 cmd_source_file_done(struct cmd_q *cmdq1)
 {
 	struct cmd_q	*cmdq = cmdq1->data;
+
+	if (cmdq1->client_exit >= 0)
+		cmdq->client_exit = cmdq1->client_exit;
 
 	cmdq_free(cmdq1);
 
