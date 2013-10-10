@@ -103,7 +103,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_ERROR);
 		}
 		cwd = fd;
-	} else if (cmdq->client->session == NULL)
+	} else if (cmdq->client != NULL && cmdq->client->session == NULL)
 		cwd = cmdq->client->cwd;
 	else
 		cwd = s->cwd;
