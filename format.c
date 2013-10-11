@@ -522,8 +522,7 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	struct grid		*gd = wp->base.grid;
 	struct grid_line	*gl;
 	unsigned long long	 size;
-	u_int			 i, idx;
-	const char		*cmd;
+	u_int			 i, idx, cwd;
 	char			*cmd;
 
 	size = 0;
