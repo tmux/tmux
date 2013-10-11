@@ -357,9 +357,12 @@ format_get_command(struct window_pane *wp)
 
 	cmd = get_proc_name(wp->fd, wp->tty);
 	if (cmd == NULL || *cmd == '\0') {
-		cmd = wp->cmd;
-		if (cmd == NULL || *cmd == '\0')
-			cmd = wp->shell;
+		free(cmd);
+		cmd = xstrdup(wp->cmd);
+		if (cmd == NULL || *cmd == '\0') {
+			free(cmd);
+			cmd = xstrdup(wp->shell);
+		}
 	}
 	out = parse_window_name(cmd);
 	free(cmd);
