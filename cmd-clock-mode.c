@@ -32,7 +32,6 @@ const struct cmd_entry cmd_clock_mode_entry = {
 	CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
-	NULL,
 	cmd_clock_mode_exec
 };
 

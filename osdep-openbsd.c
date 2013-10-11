@@ -37,9 +37,7 @@
 	((p)->p_stat == SSTOP || (p)->p_stat == SZOMB || (p)->p_stat == SDEAD)
 
 struct kinfo_proc	*cmp_procs(struct kinfo_proc *, struct kinfo_proc *);
-char			*osdep_get_name(int, char *);
-char			*osdep_get_cwd(int);
-struct event_base	*osdep_event_init(void);
+char			*get_proc_name(int, char *);
 
 struct kinfo_proc *
 cmp_procs(struct kinfo_proc *p1, struct kinfo_proc *p2)
@@ -133,24 +131,4 @@ retry:
 error:
 	free(buf);
 	return (NULL);
-}
-
-char*
-osdep_get_cwd(int fd)
-{
-	int		name[] = { CTL_KERN, KERN_PROC_CWD, 0 };
-	static char	path[MAXPATHLEN];
-	size_t		pathlen = sizeof path;
-
-	if ((name[2] = tcgetpgrp(fd)) == -1)
-		return (NULL);
-	if (sysctl(name, 3, path, &pathlen, NULL, 0) != 0)
-		return (NULL);
-	return (path);
-}
-
-struct event_base *
-osdep_event_init(void)
-{
-	return (event_init());
 }

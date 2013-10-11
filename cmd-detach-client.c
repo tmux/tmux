@@ -18,6 +18,8 @@
 
 #include <sys/types.h>
 
+#include <string.h>
+
 #include "tmux.h"
 
 /*
@@ -32,7 +34,6 @@ const struct cmd_entry cmd_detach_client_entry = {
 	"[-P] [-a] [-s target-session] " CMD_TARGET_CLIENT_USAGE,
 	CMD_READONLY,
 	NULL,
-	NULL,
 	cmd_detach_client_exec
 };
 
@@ -41,8 +42,8 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 	struct client	*c, *c2;
-	struct session 	*s;
-	enum msgtype     msgtype;
+	struct session	*s;
+	enum msgtype	 msgtype;
 	u_int 		 i;
 
 	if (args_has(args, 'P'))
@@ -57,8 +58,10 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_q *cmdq)
 
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 			c = ARRAY_ITEM(&clients, i);
-			if (c != NULL && c->session == s)
-				server_write_client(c, msgtype, NULL, 0);
+			if (c == NULL || c->session != s)
+				continue;
+			server_write_client(c, msgtype, c->session->name,
+			    strlen(c->session->name) + 1);
 		}
 	} else {
 		c = cmd_find_client(cmdq, args_get(args, 't'), 0);
@@ -70,10 +73,14 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_q *cmdq)
 				c2 = ARRAY_ITEM(&clients, i);
 				if (c2 == NULL || c == c2)
 					continue;
-				server_write_client(c2, msgtype, NULL, 0);
+				server_write_client(c2, msgtype,
+				    c2->session->name,
+				    strlen(c2->session->name) + 1);
 			}
-		} else
-			server_write_client(c, msgtype, NULL, 0);
+		} else {
+			server_write_client(c, msgtype, c->session->name,
+			    strlen(c->session->name) + 1);
+		}
 	}
 
 	return (CMD_RETURN_STOP);

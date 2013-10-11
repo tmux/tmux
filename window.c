@@ -306,7 +306,7 @@ window_create1(u_int sx, u_int sy)
 
 struct window *
 window_create(const char *name, const char *cmd, const char *shell,
-    const char *cwd, struct environ *env, struct termios *tio,
+    int cwd, struct environ *env, struct termios *tio,
     u_int sx, u_int sy, u_int hlimit, char **cause)
 {
 	struct window		*w;
@@ -672,7 +672,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	wp->cmd = NULL;
 	wp->shell = NULL;
-	wp->cwd = NULL;
+	wp->cwd = -1;
 
 	wp->fd = -1;
 	wp->event = NULL;
@@ -727,7 +727,7 @@ window_pane_destroy(struct window_pane *wp)
 
 	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
 
-	free(wp->cwd);
+	close(wp->cwd);
 	free(wp->shell);
 	free(wp->cmd);
 	free(wp);
@@ -735,7 +735,7 @@ window_pane_destroy(struct window_pane *wp)
 
 int
 window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
-    const char *cwd, struct environ *env, struct termios *tio, char **cause)
+    int cwd, struct environ *env, struct termios *tio, char **cause)
 {
 	struct winsize	 ws;
 	char		*argv0, paneid[16];
@@ -754,9 +754,9 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 		free(wp->shell);
 		wp->shell = xstrdup(shell);
 	}
-	if (cwd != NULL) {
-		free(wp->cwd);
-		wp->cwd = xstrdup(cwd);
+	if (cwd != -1) {
+		close(wp->cwd);
+		wp->cwd = dup(cwd);
 	}
 
 	log_debug("spawn: %s -- %s", wp->shell, wp->cmd);
@@ -771,7 +771,7 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 		xasprintf(cause, "%s: %s", cmd, strerror(errno));
 		return (-1);
 	case 0:
-		if (chdir(wp->cwd) != 0)
+		if (fchdir(wp->cwd) != 0)
 			chdir("/");
 
 		if (tcgetattr(STDIN_FILENO, &tio2) != 0)
@@ -1243,6 +1243,7 @@ winlink_clear_flags(struct winlink *wl)
 				continue;
 
 			wm->flags &= ~WINLINK_ALERTFLAGS;
+			wm->window->flags &= ~WINDOW_ALERTFLAGS;
 			server_status_session(s);
 		}
 	}

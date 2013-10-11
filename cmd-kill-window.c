@@ -32,7 +32,6 @@ const struct cmd_entry cmd_kill_window_entry = {
 	"[-a] " CMD_TARGET_WINDOW_USAGE,
 	0,
 	NULL,
-	NULL,
 	cmd_kill_window_exec
 };
 

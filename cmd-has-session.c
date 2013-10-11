@@ -32,7 +32,6 @@ const struct cmd_entry cmd_has_session_entry = {
 	CMD_TARGET_SESSION_USAGE,
 	0,
 	NULL,
-	NULL,
 	cmd_has_session_exec
 };
 

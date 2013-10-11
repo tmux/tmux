@@ -73,9 +73,9 @@ control_callback(struct client *c, int closed, unused void *data)
 			c->cmdq->time = time(NULL);
 			c->cmdq->number++;
 
-			cmdq_guard(c->cmdq, "begin");
+			cmdq_guard(c->cmdq, "begin", 1);
 			control_write(c, "parse error: %s", cause);
-			cmdq_guard(c->cmdq, "error");
+			cmdq_guard(c->cmdq, "error", 1);
 
 			free(cause);
 		} else {

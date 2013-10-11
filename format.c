@@ -18,6 +18,8 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
+#include <errno.h>
 #include <netdb.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -32,9 +34,10 @@
  * string.
  */
 
-int	format_replace(struct format_tree *, const char *, size_t, char **,
-	    size_t *, size_t *);
-void	format_window_pane_tabs(struct format_tree *, struct window_pane *);
+int	 format_replace(struct format_tree *, const char *, size_t, char **,
+	     size_t *, size_t *);
+char	*format_get_command(struct window_pane *);
+void	 format_window_pane_tabs(struct format_tree *, struct window_pane *);
 
 /* Format key-value replacement entry. */
 RB_GENERATE(format_tree, format_entry, entry, format_cmp);
@@ -118,7 +121,7 @@ format_create(void)
 
 	if (gethostname(host, sizeof host) == 0) {
 		format_add(ft, "host", "%s", host);
-		if ((ptr = strrchr(host, '.')) != NULL)
+		if ((ptr = strchr(host, '.')) != NULL)
 			*ptr = '\0';
 		format_add(ft, "host_short", "%s", host);
 	}
@@ -151,6 +154,7 @@ void
 format_add(struct format_tree *ft, const char *key, const char *fmt, ...)
 {
 	struct format_entry	*fe;
+	struct format_entry	*fe_now;
 	va_list			 ap;
 
 	fe = xmalloc(sizeof *fe);
@@ -160,7 +164,13 @@ format_add(struct format_tree *ft, const char *key, const char *fmt, ...)
 	xvasprintf(&fe->value, fmt, ap);
 	va_end(ap);
 
-	RB_INSERT(format_tree, ft, fe);
+	fe_now = RB_INSERT(format_tree, ft, fe);
+	if (fe_now != NULL) {
+		free(fe_now->value);
+		fe_now->value = fe->value;
+		free(fe->key);
+		free(fe);
+	}
 }
 
 /* Find a format entry. */
@@ -181,17 +191,39 @@ format_find(struct format_tree *ft, const char *key)
  * #{?blah,a,b} is replace with a if blah exists and is nonzero else b.
  */
 int
-format_replace(struct format_tree *ft,
-    const char *key, size_t keylen, char **buf, size_t *len, size_t *off)
+format_replace(struct format_tree *ft, const char *key, size_t keylen,
+    char **buf, size_t *len, size_t *off)
 {
-	char		*copy, *ptr;
+	char		*copy, *copy0, *endptr, *ptr, *saved;
 	const char	*value;
 	size_t		 valuelen;
+	u_long		 limit = ULONG_MAX;
 
 	/* Make a copy of the key. */
-	copy = xmalloc(keylen + 1);
+	copy0 = copy = xmalloc(keylen + 1);
 	memcpy(copy, key, keylen);
 	copy[keylen] = '\0';
+
+	/* Is there a length limit or whatnot? */
+	if (!islower((u_char) *copy) && *copy != '?') {
+		while (*copy != ':' && *copy != '\0') {
+			switch (*copy) {
+			case '=':
+				errno = 0;
+				limit = strtoul(copy + 1, &endptr, 10);
+				if (errno == ERANGE && limit == ULONG_MAX)
+					goto fail;
+				copy = endptr;
+				break;
+			default:
+				copy++;
+				break;
+			}
+		}
+		if (*copy != ':')
+			goto fail;
+		copy++;
+	}
 
 	/*
 	 * Is this a conditional? If so, check it exists and extract either the
@@ -216,12 +248,19 @@ format_replace(struct format_tree *ft,
 				goto fail;
 			value = ptr + 1;
 		}
+		saved = format_expand(ft, value);
+		value = saved;
 	} else {
 		value = format_find(ft, copy);
 		if (value == NULL)
 			value = "";
+		saved = NULL;
 	}
 	valuelen = strlen(value);
+
+	/* Truncate the value if needed. */
+	if (valuelen > limit)
+		valuelen = limit;
 
 	/* Expand the buffer and copy in the value. */
 	while (*len - *off < valuelen + 1) {
@@ -231,11 +270,12 @@ format_replace(struct format_tree *ft,
 	memcpy(*buf + *off, value, valuelen);
 	*off += valuelen;
 
-	free(copy);
+	free(saved);
+	free(copy0);
 	return (0);
 
 fail:
-	free(copy);
+	free(copy0);
 	return (-1);
 }
 
@@ -243,10 +283,10 @@ fail:
 char *
 format_expand(struct format_tree *ft, const char *fmt)
 {
-	char		*buf, *ptr;
-	const char	*s;
+	char		*buf;
+	const char	*ptr, *s;
 	size_t		 off, len, n;
-	int     	 ch;
+	int     	 ch, brackets;
 
 	len = 64;
 	buf = xmalloc(len);
@@ -264,11 +304,16 @@ format_expand(struct format_tree *ft, const char *fmt)
 		fmt++;
 
 		ch = (u_char) *fmt++;
-
 		switch (ch) {
 		case '{':
-			ptr = strchr(fmt, '}');
-			if (ptr == NULL)
+			brackets = 1;
+			for (ptr = fmt; *ptr != '\0'; ptr++) {
+				if (*ptr == '{')
+					brackets++;
+				if (*ptr == '}' && --brackets == 0)
+					break;
+			}
+			if (*ptr != '}' || brackets != 0)
 				break;
 			n = ptr - fmt;
 
@@ -302,6 +347,26 @@ format_expand(struct format_tree *ft, const char *fmt)
 	buf[off] = '\0';
 
 	return (buf);
+}
+
+/* Get command name for format. */
+char *
+format_get_command(struct window_pane *wp)
+{
+	char	*cmd, *out;
+
+	cmd = get_proc_name(wp->fd, wp->tty);
+	if (cmd == NULL || *cmd == '\0') {
+		free(cmd);
+		cmd = xstrdup(wp->cmd);
+		if (cmd == NULL || *cmd == '\0') {
+			free(cmd);
+			cmd = xstrdup(wp->shell);
+		}
+	}
+	out = parse_window_name(cmd);
+	free(cmd);
+	return (out);
 }
 
 /* Set default format keys for a session. */
@@ -343,11 +408,12 @@ format_client(struct format_tree *ft, struct client *c)
 	time_t		 t;
 	struct session	*s;
 
-	format_add(ft, "client_cwd", "%s", c->cwd);
 	format_add(ft, "client_height", "%u", c->tty.sy);
 	format_add(ft, "client_width", "%u", c->tty.sx);
-	format_add(ft, "client_tty", "%s", c->tty.path);
-	format_add(ft, "client_termname", "%s", c->tty.termname);
+	if (c->tty.path != NULL)
+		format_add(ft, "client_tty", "%s", c->tty.path);
+	if (c->tty.termname != NULL)
+		format_add(ft, "client_termname", "%s", c->tty.termname);
 
 	t = c->creation_time.tv_sec;
 	format_add(ft, "client_created", "%lld", (long long) t);
@@ -381,28 +447,50 @@ format_client(struct format_tree *ft, struct client *c)
 		format_add(ft, "client_last_session", "%s", s->name);
 }
 
+/* Set default format keys for a window. */
+void
+format_window(struct format_tree *ft, struct window *w)
+{
+	char	*layout;
+
+	layout = layout_dump(w);
+
+	format_add(ft, "window_id", "@%u", w->id);
+	format_add(ft, "window_name", "%s", w->name);
+	format_add(ft, "window_width", "%u", w->sx);
+	format_add(ft, "window_height", "%u", w->sy);
+	format_add(ft, "window_layout", "%s", layout);
+	format_add(ft, "window_panes", "%u", window_count_panes(w));
+
+	free(layout);
+}
+
 /* Set default format keys for a winlink. */
 void
 format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 {
 	struct window	*w = wl->window;
-	char		*layout, *flags;
+	char		*flags;
 
-	layout = layout_dump(w);
 	flags = window_printable_flags(s, wl);
 
-	format_add(ft, "window_id", "@%u", w->id);
+	format_window(ft, w);
+
 	format_add(ft, "window_index", "%d", wl->idx);
-	format_add(ft, "window_name", "%s", w->name);
-	format_add(ft, "window_width", "%u", w->sx);
-	format_add(ft, "window_height", "%u", w->sy);
 	format_add(ft, "window_flags", "%s", flags);
-	format_add(ft, "window_layout", "%s", layout);
 	format_add(ft, "window_active", "%d", wl == s->curw);
-	format_add(ft, "window_panes", "%u", window_count_panes(w));
+
+	format_add(ft, "window_bell_flag", "%u",
+	    !!(wl->flags & WINLINK_BELL));
+	format_add(ft, "window_content_flag", "%u",
+	    !!(wl->flags & WINLINK_CONTENT));
+	format_add(ft, "window_activity_flag", "%u",
+	    !!(wl->flags & WINLINK_ACTIVITY));
+	format_add(ft, "window_silence_flag", "%u",
+	    !!(wl->flags & WINLINK_SILENCE));
+
 
 	free(flags);
-	free(layout);
 }
 
 /* Add window pane tabs. */
@@ -435,7 +523,6 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	struct grid_line	*gl;
 	unsigned long long	 size;
 	u_int			 i, idx;
-	const char		*cwd;
 	char			*cmd;
 
 	size = 0;
@@ -468,11 +555,7 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
 	if (wp->cmd != NULL)
 		format_add(ft, "pane_start_command", "%s", wp->cmd);
-	if (wp->cwd != NULL)
-		format_add(ft, "pane_start_path", "%s", wp->cwd);
-	if ((cwd = osdep_get_cwd(wp->fd)) != NULL)
-		format_add(ft, "pane_current_path", "%s", cwd);
-	if ((cmd = osdep_get_name(wp->fd, wp->tty)) != NULL) {
+	if ((cmd = format_get_command(wp)) != NULL) {
 		format_add(ft, "pane_current_command", "%s", cmd);
 		free(cmd);
 	}

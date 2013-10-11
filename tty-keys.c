@@ -676,11 +676,17 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 		log_debug("mouse input: %.*s", (int) *size, buf);
 
 		/* Check and return the mouse input. */
-		if (b < 32 || x < 33 || y < 33)
+		if (b < 32)
 			return (-1);
 		b -= 32;
-		x -= 33;
-		y -= 33;
+		if (x >= 33)
+			x -= 33;
+		else
+			x = 256 - x;
+		if (y >= 33)
+			y -= 33;
+		else
+			y = 256 - y;
 	} else if (buf[2] == '<') {
 		/* Read the three inputs. */
 		*size = 3;
@@ -740,6 +746,8 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 	m->sgr = sgr;
 	m->sgr_xb = sgr_b;
 	m->sgr_rel = sgr_rel;
+	m->x = x;
+	m->y = y;
 	if (b & 64) { /* wheel button */
 		b &= 3;
 		if (b == 0)
@@ -767,8 +775,6 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 		}
 		m->button = (b & 3);
 	}
-	m->x = x;
-	m->y = y;
 
 	return (0);
 }

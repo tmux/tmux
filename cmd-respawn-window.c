@@ -35,7 +35,6 @@ const struct cmd_entry cmd_respawn_window_entry = {
 	"[-k] " CMD_TARGET_WINDOW_USAGE " [command]",
 	0,
 	NULL,
-	NULL,
 	cmd_respawn_window_exec
 };
 
@@ -80,7 +79,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		cmd = args->argv[0];
 	else
 		cmd = NULL;
-	if (window_pane_spawn(wp, cmd, NULL, NULL, &env, s->tio, &cause) != 0) {
+	if (window_pane_spawn(wp, cmd, NULL, -1, &env, s->tio, &cause) != 0) {
 		cmdq_error(cmdq, "respawn window failed: %s", cause);
 		free(cause);
 		environ_free(&env);

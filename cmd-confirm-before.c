@@ -38,7 +38,6 @@ const struct cmd_entry cmd_confirm_before_entry = {
 	"[-p prompt] " CMD_TARGET_CLIENT_USAGE " command",
 	0,
 	cmd_confirm_before_key_binding,
-	NULL,
 	cmd_confirm_before_exec
 };
 

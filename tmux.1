@@ -99,7 +99,9 @@ Force
 .Nm
 to assume the terminal supports 256 colours.
 .It Fl C
-Start in control mode.
+Start in control mode (see the
+.Sx CONTROL MODE
+section).
 Given twice
 .Xo ( Fl CC ) Xc
 disables echo.
@@ -566,6 +568,7 @@ The following commands are available to manage clients and sessions:
 .Bl -tag -width Ds
 .It Xo Ic attach-session
 .Op Fl dr
+.Op Fl c Ar working-directory
 .Op Fl t Ar target-session
 .Xc
 .D1 (alias: Ic attach )
@@ -599,6 +602,10 @@ needs to select the most recently used session, it will prefer the most
 recently used
 .Em unattached
 session.
+.Pp
+.Fl c
+will set the session working directory (used for new windows) to
+.Ar working-directory .
 .It Xo Ic detach-client
 .Op Fl P
 .Op Fl a
@@ -626,9 +633,10 @@ If it does exist, exit with 0.
 Kill the
 .Nm
 server and clients and destroy all sessions.
-.It Ic kill-session
+.It Xo Ic kill-session
 .Op Fl a
 .Op Fl t Ar target-session
+.Xc
 Destroy the given session, closing any windows linked to it and no other
 sessions, and detaching all clients attached to it.
 If
@@ -673,6 +681,7 @@ Lock all clients attached to
 .Ar target-session .
 .It Xo Ic new-session
 .Op Fl AdDP
+.Op Fl c Ar start-directory
 .Op Fl F Ar format
 .Op Fl n Ar window-name
 .Op Fl s Ar session-name
@@ -1509,13 +1518,6 @@ is not specified, the value of the
 option is used.
 .Fl c
 specifies the working directory in which the new window is created.
-It may have an absolute path or one of the following values (or a subdirectory):
-.Bl -column "XXXXXXXXXXXX" "XXXXXXXXXXXXXXXXXXXXXXXX" -offset indent
-.It Li "Empty string" Ta "Current pane's directory"
-.It Li "~" Ta "User's home directory"
-.It Li "-" Ta "Where session was started"
-.It Li "." Ta "Where server was started"
-.El
 .Pp
 When the shell command completes, the window closes.
 See the
@@ -2175,15 +2177,6 @@ The default is an empty string, which instructs
 to create a login shell using the value of the
 .Ic default-shell
 option.
-.It Ic default-path Ar path
-Set the default working directory for new panes.
-If empty (the default), the working directory is determined from the process
-running in the active pane, from the command line environment or from the
-working directory where the session was created.
-Otherwise the same options are available as for the
-.Fl c
-flag to
-.Ic new-window .
 .It Ic default-shell Ar path
 Specify the default shell.
 This is used as the login shell for new windows when the
@@ -2710,8 +2703,8 @@ The default is on.
 Control automatic window renaming.
 When this setting is enabled,
 .Nm
-will attempt - on supported platforms - to rename the window to reflect the
-command currently running in it.
+will rename the window automatically using the format specified by
+.Ic automatic-rename-format .
 This flag is automatically disabled for an individual window when a name
 is specified at creation with
 .Ic new-window
@@ -2724,6 +2717,13 @@ It may be switched off globally with:
 .Bd -literal -offset indent
 set-window-option -g automatic-rename off
 .Ed
+.Pp
+.It Ic automatic-rename-format Ar format
+The format (see
+.Sx FORMATS )
+used when the
+.Ic automatic-rename
+option is enabled.
 .Pp
 .It Ic c0-change-interval Ar interval
 .It Ic c0-change-trigger Ar trigger
@@ -2738,8 +2738,8 @@ instead redraw it entirely every
 .Ar interval
 milliseconds.
 This helps to prevent fast output (such as
-.Xr yes 1
-overwhelming the terminal).
+.Xr yes 1 )
+overwhelming the terminal.
 The default is a trigger of 250 and an interval of 100.
 A trigger of zero disables the rate limiting.
 .Pp
@@ -3026,6 +3026,12 @@ will include the string
 if the session is attached and the string
 .Ql not attached
 if it is unattached.
+A limit may be placed on the length of the resultant string by prefixing it
+by an
+.Ql = ,
+a number and a colon, so
+.Ql #{=10:pane_title}
+will include at most the first 10 characters of the pane title.
 .Pp
 The following variables are available, where appropriate:
 .Bl -column "XXXXXXXXXXXXXXXXXXX" "XXXXX"
@@ -3039,7 +3045,6 @@ The following variables are available, where appropriate:
 .It Li "client_activity_string" Ta "" Ta "String time client last had activity"
 .It Li "client_created" Ta "" Ta "Integer time client created"
 .It Li "client_created_string" Ta "" Ta "String time client created"
-.It Li "client_cwd" Ta "" Ta "Working directory of client"
 .It Li "client_height" Ta "" Ta "Height of client"
 .It Li "client_last_session" Ta "" Ta "Name of the client's last session"
 .It Li "client_prefix" Ta "" Ta "1 if prefix key has been pressed"
@@ -3067,7 +3072,6 @@ The following variables are available, where appropriate:
 .It Li "mouse_utf8_flag" Ta "" Ta "Pane mouse UTF-8 flag"
 .It Li "pane_active" Ta "" Ta "1 if active pane"
 .It Li "pane_current_command" Ta "" Ta "Current command if available"
-.It Li "pane_current_path" Ta "" Ta "Current path if available"
 .It Li "pane_dead" Ta "" Ta "1 if pane is dead"
 .It Li "pane_height" Ta "" Ta "Height of pane"
 .It Li "pane_id" Ta "#D" Ta "Unique pane ID"
@@ -3096,6 +3100,9 @@ The following variables are available, where appropriate:
 .It Li "session_width" Ta "" Ta "Width of session"
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
 .It Li "window_active" Ta "" Ta "1 if window active"
+.It Li "window_activity_flag" Ta "" Ta "1 if window has activity alert"
+.It Li "window_bell_flag" Ta "" Ta "1 if window has bell"
+.It Li "window_content_flag" Ta "" Ta "1 if window has content alert"
 .It Li "window_find_matches" Ta "" Ta "Matched data from the find-window"
 .It Li "window_flags" Ta "#F" Ta "Window flags"
 .It Li "window_height" Ta "" Ta "Height of window"
@@ -3104,6 +3111,7 @@ The following variables are available, where appropriate:
 .It Li "window_layout" Ta "" Ta "Window layout description"
 .It Li "window_name" Ta "#W" Ta "Name of window"
 .It Li "window_panes" Ta "" Ta "Number of panes in window"
+.It Li "window_silence_flag" Ta "" Ta "1 if window has silence alert"
 .It Li "window_width" Ta "" Ta "Width of window"
 .It Li "wrap_flag" Ta "" Ta "Pane wrap flag"
 .El
@@ -3562,7 +3570,7 @@ If the command doesn't return success, the exit status is also displayed.
 .D1 (alias: Ic info )
 Show server information and terminal details.
 .It Xo Ic wait-for
-.Fl LSU
+.Op Fl L | S | U
 .Ar channel
 .Xc
 .D1 (alias: Ic wait )
@@ -3803,4 +3811,4 @@ bind-key S command-prompt "new-window -n %1 'ssh %1'"
 .Sh SEE ALSO
 .Xr pty 4
 .Sh AUTHORS
-.An Nicholas Marriott Aq nicm@users.sourceforge.net
+.An Nicholas Marriott Aq Mt nicm@users.sourceforge.net

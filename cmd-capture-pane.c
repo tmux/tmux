@@ -42,7 +42,6 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
-	NULL,
 	cmd_capture_pane_exec
 };
 

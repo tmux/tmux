@@ -39,7 +39,6 @@ const struct cmd_entry cmd_choose_list_entry = {
 	"[-l items] " CMD_TARGET_WINDOW_USAGE "[template]",
 	0,
 	NULL,
-	NULL,
 	cmd_choose_list_exec
 };
 

@@ -33,7 +33,6 @@ const struct cmd_entry cmd_copy_mode_entry = {
 	"[-u] " CMD_TARGET_PANE_USAGE,
 	0,
 	cmd_copy_mode_key_binding,
-	NULL,
 	cmd_copy_mode_exec
 };
 

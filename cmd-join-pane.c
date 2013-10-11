@@ -39,7 +39,6 @@ const struct cmd_entry cmd_join_pane_entry = {
 	"[-bdhv] [-p percentage|-l size] [-s src-pane] [-t dst-pane]",
 	0,
 	cmd_join_pane_key_binding,
-	NULL,
 	cmd_join_pane_exec
 };
 
@@ -48,7 +47,6 @@ const struct cmd_entry cmd_move_pane_entry = {
 	"bdhvp:l:s:t:", 0, 0,
 	"[-bdhv] [-p percentage|-l size] [-s src-pane] [-t dst-pane]",
 	0,
-	NULL,
 	NULL,
 	cmd_join_pane_exec
 };

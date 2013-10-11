@@ -254,8 +254,6 @@ cmd_parse(int argc, char **argv, const char *file, u_int line, char **cause)
 		goto usage;
 	if (entry->args_upper != -1 && args->argc > entry->args_upper)
 		goto usage;
-	if (entry->check != NULL && entry->check(args) != 0)
-		goto usage;
 
 	cmd = xcalloc(1, sizeof *cmd);
 	cmd->entry = entry;
@@ -315,7 +313,6 @@ cmd_print(struct cmd *cmd, char *buf, size_t len)
 struct session *
 cmd_current_session(struct cmd_q *cmdq, int prefer_unattached)
 {
-	struct msg_command_data	*data = cmdq->msgdata;
 	struct client		*c = cmdq->client;
 	struct session		*s;
 	struct sessionslist	 ss;
@@ -353,13 +350,6 @@ cmd_current_session(struct cmd_q *cmdq, int prefer_unattached)
 
 		s = cmd_choose_session_list(&ss);
 		ARRAY_FREE(&ss);
-		if (s != NULL)
-			return (s);
-	}
-
-	/* Use the session from the TMUX environment variable. */
-	if (data != NULL && data->pid == getpid() && data->session_id != -1) {
-		s = session_find_by_id(data->session_id);
 		if (s != NULL)
 			return (s);
 	}
@@ -1277,88 +1267,4 @@ cmd_template_replace(const char *template, const char *s, int idx)
 	}
 
 	return (buf);
-}
-
-/*
- * Return the default path for a new pane, using the given path or the
- * default-path option if it is NULL. Several special values are accepted: the
- * empty string or relative path for the current pane's working directory, ~
- * for the user's home, - for the session working directory, . for the tmux
- * server's working directory. The default on failure is the session's working
- * directory.
- */
-const char *
-cmd_get_default_path(struct cmd_q *cmdq, const char *cwd)
-{
-	struct client		*c = cmdq->client;
-	struct session		*s;
-	struct environ_entry	*envent;
-	const char		*root;
-	char			 tmp[MAXPATHLEN];
-	struct passwd		*pw;
-	int			 n;
-	size_t			 skip;
-	static char		 path[MAXPATHLEN];
-
-	if ((s = cmd_current_session(cmdq, 0)) == NULL)
-		return (NULL);
-
-	if (cwd == NULL)
-		cwd = options_get_string(&s->options, "default-path");
-
-	skip = 1;
-	if (strcmp(cwd, "$HOME") == 0 || strncmp(cwd, "$HOME/", 6) == 0) {
-		/* User's home directory - $HOME. */
-		skip = 5;
-		goto find_home;
-	} else if (cwd[0] == '~' && (cwd[1] == '\0' || cwd[1] == '/')) {
-		/* User's home directory - ~. */
-		goto find_home;
-	} else if (cwd[0] == '-' && (cwd[1] == '\0' || cwd[1] == '/')) {
-		/* Session working directory. */
-		root = s->cwd;
-		goto complete_path;
-	} else if (cwd[0] == '.' && (cwd[1] == '\0' || cwd[1] == '/')) {
-		/* Server working directory. */
-		if (getcwd(tmp, sizeof tmp) != NULL) {
-			root = tmp;
-			goto complete_path;
-		}
-		return (s->cwd);
-	} else if (*cwd == '/') {
-		/* Absolute path. */
-		return (cwd);
-	} else {
-		/* Empty or relative path. */
-		if (c != NULL && c->session == NULL && c->cwd != NULL)
-			root = c->cwd;
-		else if (s->curw != NULL)
-			root = osdep_get_cwd(s->curw->window->active->fd);
-		else
-			return (s->cwd);
-		skip = 0;
-		if (root != NULL)
-			goto complete_path;
-	}
-
-	return (s->cwd);
-
-find_home:
-	envent = environ_find(&global_environ, "HOME");
-	if (envent != NULL && *envent->value != '\0')
-		root = envent->value;
-	else if ((pw = getpwuid(getuid())) != NULL)
-		root = pw->pw_dir;
-	else
-		return (s->cwd);
-
-complete_path:
-	if (root[skip] == '\0') {
-		strlcpy(path, root, sizeof path);
-		return (path);
-	}
-	n = snprintf(path, sizeof path, "%s/%s", root, cwd + skip);
-	if (n > 0 && (size_t)n < sizeof path)
-		return (path);
-	return (s->cwd);
 }
