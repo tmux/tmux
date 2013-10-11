@@ -349,10 +349,6 @@ client_send_identify(int flags)
 		fd = open("/", O_RDONLY);
 	client_write_one(MSG_IDENTIFY_CWD, fd, NULL, 0);
 
-#ifdef __CYGWIN__
-	snprintf(&data.ttyname, sizeof data.ttyname, "%s",
-	    ttyname(STDIN_FILENO));
-#else
 	if ((fd = dup(STDIN_FILENO)) == -1)
 		fatal("dup failed");
 	client_write_one(MSG_IDENTIFY_STDIN, fd, NULL, 0);

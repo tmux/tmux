@@ -355,7 +355,7 @@ format_get_command(struct window_pane *wp)
 {
 	char	*cmd, *out;
 
-	cmd = get_proc_name(wp->fd, wp->tty);
+	cmd = osdep_get_name(wp->fd, wp->tty);
 	if (cmd == NULL || *cmd == '\0') {
 		free(cmd);
 		cmd = xstrdup(wp->cmd);
