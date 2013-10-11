@@ -808,6 +808,8 @@ server_client_msg_dispatch(struct client *c)
 		if (imsg.hdr.peerid != PROTOCOL_VERSION) {
 			server_write_client(c, MSG_VERSION, NULL, 0);
 			c->flags |= CLIENT_BAD;
+			if (imsg.fd != -1)
+				close(imsg.fd);
 			imsg_free(&imsg);
 			continue;
 		}
