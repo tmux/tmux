@@ -26,6 +26,10 @@
 
 #include "tmux.h"
 
+char			*osdep_get_name(int, char *);
+char			*osdep_get_cwd(int);
+struct event_base	*osdep_event_init(void);
+
 char *
 osdep_get_name(int fd, unused char *tty)
 {
