@@ -50,7 +50,6 @@ cmd_unbind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 			cmdq_error(cmdq, "missing key");
 			return (CMD_RETURN_ERROR);
 		}
-		return (CMD_RETURN_ERROR);
 		key = key_string_lookup_string(args->argv[0]);
 		if (key == KEYC_NONE) {
 			cmdq_error(cmdq, "unknown key: %s", args->argv[0]);
