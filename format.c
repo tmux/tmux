@@ -353,15 +353,20 @@ format_expand(struct format_tree *ft, const char *fmt)
 char *
 format_get_command(struct window_pane *wp)
 {
-	char	*cmd;
+	char	*cmd, *out;
 
 	cmd = osdep_get_name(wp->fd, wp->tty);
 	if (cmd == NULL || *cmd == '\0') {
-		cmd = wp->cmd;
-		if (cmd == NULL || *cmd == '\0')
-			cmd = wp->shell;
+		free(cmd);
+		cmd = xstrdup(wp->cmd);
+		if (cmd == NULL || *cmd == '\0') {
+			free(cmd);
+			cmd = xstrdup(wp->shell);
+		}
 	}
-	return (parse_window_name(cmd));
+	out = parse_window_name(cmd);
+	free(cmd);
+	return (out);
 }
 
 /* Set default format keys for a session. */
@@ -518,7 +523,7 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	struct grid_line	*gl;
 	unsigned long long	 size;
 	u_int			 i, idx;
-	const char		*cwd;
+	const char		*cmd;
 	char			*cmd;
 
 	size = 0;
