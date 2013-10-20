@@ -168,6 +168,9 @@ server_start(int lockfd, char *lockfile)
 	cfg_finished = 0;
 	cfg_references = 1;
 	ARRAY_INIT(&cfg_causes);
+	cfg_client = ARRAY_FIRST(&clients);
+	if (cfg_client != NULL)
+		cfg_client->references++;
 
 	if (access(TMUX_CONF, R_OK) == 0) {
 		if (load_cfg(TMUX_CONF, cfg_cmd_q, &cause) == -1) {
