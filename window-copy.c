@@ -65,6 +65,7 @@ u_int	window_copy_find_length(struct window_pane *, u_int);
 void	window_copy_cursor_start_of_line(struct window_pane *);
 void	window_copy_cursor_back_to_indentation(struct window_pane *);
 void	window_copy_cursor_end_of_line(struct window_pane *);
+void	window_copy_other_end(struct window_pane *);
 void	window_copy_cursor_left(struct window_pane *);
 void	window_copy_cursor_right(struct window_pane *);
 void	window_copy_cursor_up(struct window_pane *, int);
@@ -415,6 +416,10 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 	case MODEKEYCOPY_CANCEL:
 		window_pane_reset_mode(wp);
 		return;
+	case MODEKEYCOPY_OTHEREND:
+		for (; np != 0; np--)
+			window_copy_other_end(wp);
+		break;
 	case MODEKEYCOPY_LEFT:
 		for (; np != 0; np--)
 			window_copy_cursor_left(wp);
@@ -1616,6 +1621,39 @@ window_copy_cursor_end_of_line(struct window_pane *wp)
 
 	if (window_copy_update_selection(wp))
 		window_copy_redraw_lines(wp, data->cy, 1);
+}
+
+void
+window_copy_other_end(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*s = &data->screen;
+	u_int				 selx, sely, cx, cy, yy;
+
+	if (!s->sel.flag)
+		return;
+
+	selx = data->selx;
+	sely = data->sely;
+	cx = data->cx;
+	cy = data->cy;
+	yy = screen_hsize(data->backing) + data->cy - data->oy;
+
+	data->selx = cx;
+	data->sely = yy;
+	data->cx = selx;
+
+	if (sely < screen_hsize(data->backing) - data->oy) {
+		data->oy = screen_hsize(data->backing) - sely;
+		data->cy = 0;
+	} else if (sely > screen_hsize(data->backing) - data->oy + screen_size_y(s)) {
+		data->oy = screen_hsize(data->backing) - sely + screen_size_y(s) - 1;
+		data->cy = screen_size_y(s) - 1;
+
+	} else
+		data->cy = cy + sely - yy;
+
+	window_copy_redraw_screen(wp);
 }
 
 void
