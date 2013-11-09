@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -41,11 +42,11 @@ void	window_copy_write_lines(
 
 void	window_copy_scroll_to(struct window_pane *, u_int, u_int);
 int	window_copy_search_compare(
-	    struct grid *, u_int, u_int, struct grid *, u_int);
+	    struct grid *, u_int, u_int, struct grid *, u_int, int);
 int	window_copy_search_lr(
-	    struct grid *, struct grid *, u_int *, u_int, u_int, u_int);
+	    struct grid *, struct grid *, u_int *, u_int, u_int, u_int, int);
 int	window_copy_search_rl(
-	    struct grid *, struct grid *, u_int *, u_int, u_int, u_int);
+	    struct grid *, struct grid *, u_int *, u_int, u_int, u_int, int);
 void	window_copy_search_up(struct window_pane *, const char *);
 void	window_copy_search_down(struct window_pane *, const char *);
 void	window_copy_goto_line(struct window_pane *, const char *);
@@ -921,7 +922,7 @@ window_copy_scroll_to(struct window_pane *wp, u_int px, u_int py)
 
 int
 window_copy_search_compare(
-    struct grid *gd, u_int px, u_int py, struct grid *sgd, u_int spx)
+    struct grid *gd, u_int px, u_int py, struct grid *sgd, u_int spx, int cis)
 {
 	const struct grid_cell	*gc, *sgc;
 	struct utf8_data	 ud, sud;
@@ -933,21 +934,28 @@ window_copy_search_compare(
 
 	if (ud.size != sud.size || ud.width != sud.width)
 		return (0);
+
+	if (cis && ud.size == 1)
+		return (tolower(ud.data[0]) == sud.data[0]);
+
 	return (memcmp(ud.data, sud.data, ud.size) == 0);
 }
 
 int
 window_copy_search_lr(struct grid *gd,
-    struct grid *sgd, u_int *ppx, u_int py, u_int first, u_int last)
+    struct grid *sgd, u_int *ppx, u_int py, u_int first, u_int last, int cis)
 {
 	u_int	ax, bx, px;
+	int	matched;
 
 	for (ax = first; ax < last; ax++) {
 		if (ax + sgd->sx >= gd->sx)
 			break;
 		for (bx = 0; bx < sgd->sx; bx++) {
 			px = ax + bx;
-			if (!window_copy_search_compare(gd, px, py, sgd, bx))
+			matched = window_copy_search_compare(gd, px, py, sgd,
+			    bx, cis);
+			if (!matched)
 				break;
 		}
 		if (bx == sgd->sx) {
@@ -960,16 +968,19 @@ window_copy_search_lr(struct grid *gd,
 
 int
 window_copy_search_rl(struct grid *gd,
-    struct grid *sgd, u_int *ppx, u_int py, u_int first, u_int last)
+    struct grid *sgd, u_int *ppx, u_int py, u_int first, u_int last, int cis)
 {
 	u_int	ax, bx, px;
+	int	matched;
 
 	for (ax = last + 1; ax > first; ax--) {
 		if (gd->sx - (ax - 1) < sgd->sx)
 			continue;
 		for (bx = 0; bx < sgd->sx; bx++) {
 			px = ax - 1 + bx;
-			if (!window_copy_search_compare(gd, px, py, sgd, bx))
+			matched = window_copy_search_compare(gd, px, py, sgd,
+			    bx, cis);
+			if (!matched)
 				break;
 		}
 		if (bx == sgd->sx) {
@@ -990,7 +1001,8 @@ window_copy_search_up(struct window_pane *wp, const char *searchstr)
 	struct grid_cell	 	 gc;
 	size_t				 searchlen;
 	u_int				 i, last, fx, fy, px;
-	int				 utf8flag, n, wrapped, wrapflag;
+	int				 utf8flag, n, wrapped, wrapflag, cis;
+	const char			*ptr;
 
 	if (*searchstr == '\0')
 		return;
@@ -1016,13 +1028,21 @@ window_copy_search_up(struct window_pane *wp, const char *searchstr)
 		fx--;
 	n = wrapped = 0;
 
+	cis = 1;
+	for (ptr = searchstr; *ptr != '\0'; ptr++) {
+		if (*ptr != tolower(*ptr)) {
+			cis = 0;
+			break;
+		}
+	}
+
 retry:
 	sgd = ss.grid;
 	for (i = fy + 1; i > 0; i--) {
 		last = screen_size_x(s);
 		if (i == fy + 1)
 			last = fx;
-		n = window_copy_search_rl(gd, sgd, &px, i - 1, 0, last);
+		n = window_copy_search_rl(gd, sgd, &px, i - 1, 0, last, cis);
 		if (n) {
 			window_copy_scroll_to(wp, px, i - 1);
 			break;
@@ -1048,7 +1068,8 @@ window_copy_search_down(struct window_pane *wp, const char *searchstr)
 	struct grid_cell	 	 gc;
 	size_t				 searchlen;
 	u_int				 i, first, fx, fy, px;
-	int				 utf8flag, n, wrapped, wrapflag;
+	int				 utf8flag, n, wrapped, wrapflag, cis;
+	const char			*ptr;
 
 	if (*searchstr == '\0')
 		return;
@@ -1074,13 +1095,22 @@ window_copy_search_down(struct window_pane *wp, const char *searchstr)
 		fx++;
 	n = wrapped = 0;
 
+	cis = 1;
+	for (ptr = searchstr; *ptr != '\0'; ptr++) {
+		if (*ptr != tolower(*ptr)) {
+			cis = 0;
+			break;
+		}
+	}
+
 retry:
 	sgd = ss.grid;
 	for (i = fy + 1; i < gd->hsize + gd->sy + 1; i++) {
 		first = 0;
 		if (i == fy + 1)
 			first = fx;
-		n = window_copy_search_lr(gd, sgd, &px, i - 1, first, gd->sx);
+		n = window_copy_search_lr(gd, sgd, &px, i - 1, first, gd->sx,
+		    cis);
 		if (n) {
 			window_copy_scroll_to(wp, px, i - 1);
 			break;
