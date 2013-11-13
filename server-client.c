@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 
+#include <errno.h>
 #include <event.h>
 #include <fcntl.h>
 #include <paths.h>
@@ -222,7 +223,8 @@ server_client_callback(int fd, short events, void *data)
 		return;
 
 	if (fd == c->ibuf.fd) {
-		if (events & EV_WRITE && msgbuf_write(&c->ibuf.w) < 0)
+		if (events & EV_WRITE && msgbuf_write(&c->ibuf.w) < 0 &&
+		    errno != EAGAIN)
 			goto client_lost;
 
 		if (c->flags & CLIENT_BAD) {
