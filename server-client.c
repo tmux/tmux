@@ -155,8 +155,8 @@ server_client_lost(struct client *c)
 	free(c->ttyname);
 	free(c->term);
 
-	evbuffer_free (c->stdin_data);
-	evbuffer_free (c->stdout_data);
+	evbuffer_free(c->stdin_data);
+	evbuffer_free(c->stdout_data);
 	if (c->stderr_data != c->stdout_data)
 		evbuffer_free (c->stderr_data);
 
@@ -222,7 +222,8 @@ server_client_callback(int fd, short events, void *data)
 		return;
 
 	if (fd == c->ibuf.fd) {
-		if (events & EV_WRITE && msgbuf_write(&c->ibuf.w) < 0)
+		if (events & EV_WRITE && msgbuf_write(&c->ibuf.w) < 0 &&
+		    errno != EAGAIN)
 			goto client_lost;
 
 		if (c->flags & CLIENT_BAD) {
@@ -932,7 +933,10 @@ server_client_msg_command(struct client *c, struct imsg *imsg)
 	}
 	cmd_free_argv(argc, argv);
 
-	cmdq_run(c->cmdq, cmdlist);
+	if (c != cfg_client || cfg_finished)
+		cmdq_run(c->cmdq, cmdlist);
+	else
+		cmdq_append(c->cmdq, cmdlist);
 	cmd_list_free(cmdlist);
 	return;
 

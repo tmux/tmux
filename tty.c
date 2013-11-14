@@ -224,7 +224,7 @@ tty_start_tty(struct tty *tty)
 			tty->flags |= TTY_FOCUS;
 			tty_puts(tty, "\033[?1004h");
 		}
-		tty_puts(tty, "\033[c\033[>4;1m\033[m");
+		tty_puts(tty, "\033[c");
 	}
 
 	tty->cx = UINT_MAX;
@@ -292,7 +292,6 @@ tty_stop_tty(struct tty *tty)
 			tty->flags &= ~TTY_FOCUS;
 			tty_puts(tty, "\033[?1004l");
 		}
-		tty_raw(tty, "\033[>4m\033[m");
 	}
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_RMCUP));
