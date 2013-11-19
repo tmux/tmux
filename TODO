@@ -119,6 +119,8 @@
 - we need a tmux terminfo entry to document the extensions we are using in
   upstream terminfo
 
+- send arrow key sequences for mouse scroll wheel when in alternate screen
+
 - the way pane, window, session destroy is handled is too complicated and the
   distinction between session.c, window.c and server-fn.c functions is not
   clear. could we just have kill_pane(), kill_window(), unlink_window(),
