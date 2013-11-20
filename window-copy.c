@@ -1030,7 +1030,7 @@ window_copy_search_up(struct window_pane *wp, const char *searchstr)
 
 	cis = 1;
 	for (ptr = searchstr; *ptr != '\0'; ptr++) {
-		if (*ptr != tolower(*ptr)) {
+		if (*ptr != tolower((u_char)*ptr)) {
 			cis = 0;
 			break;
 		}
@@ -1097,7 +1097,7 @@ window_copy_search_down(struct window_pane *wp, const char *searchstr)
 
 	cis = 1;
 	for (ptr = searchstr; *ptr != '\0'; ptr++) {
-		if (*ptr != tolower(*ptr)) {
+		if (*ptr != tolower((u_char)*ptr)) {
 			cis = 0;
 			break;
 		}
