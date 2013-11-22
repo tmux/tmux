@@ -107,13 +107,16 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		cp = format_expand(ft, args_get(args, 'c'));
 		format_free(ft);
 
-		fd = open(cp, O_RDONLY|O_DIRECTORY);
-		free(cp);
-		if (fd == -1) {
-			cmdq_error(cmdq, "bad working directory: %s",
-			    strerror(errno));
-			return (CMD_RETURN_ERROR);
-		}
+		if (cp != NULL && *cp != '\0') {
+			fd = open(cp, O_RDONLY|O_DIRECTORY);
+			free(cp);
+			if (fd == -1) {
+				cmdq_error(cmdq, "bad working directory: %s",
+				    strerror(errno));
+				return (CMD_RETURN_ERROR);
+			}
+		} else if (cp != NULL)
+			free(cp);
 		cwd = fd;
 	} else if (c != NULL && c->session == NULL)
 		cwd = c->cwd;
