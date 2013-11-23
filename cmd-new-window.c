@@ -82,26 +82,6 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 	detached = args_has(args, 'd');
 
-	wl = NULL;
-	if (idx != -1)
-		wl = winlink_find_by_index(&s->windows, idx);
-	if (wl != NULL && args_has(args, 'k')) {
-		/*
-		 * Can't use session_detach as it will destroy session if this
-		 * makes it empty.
-		 */
-		notify_window_unlinked(s, wl->window);
-		wl->flags &= ~WINLINK_ALERTFLAGS;
-		winlink_stack_remove(&s->lastw, wl);
-		winlink_remove(&s->windows, wl);
-
-		/* Force select/redraw if current. */
-		if (wl == s->curw) {
-			detached = 0;
-			s->curw = NULL;
-		}
-	}
-
 	if (args->argc == 0)
 		cmd = options_get_string(&s->options, "default-command");
 	else
@@ -132,6 +112,26 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		cwd = cmdq->client->cwd;
 	else
 		cwd = s->cwd;
+
+	wl = NULL;
+	if (idx != -1)
+		wl = winlink_find_by_index(&s->windows, idx);
+	if (wl != NULL && args_has(args, 'k')) {
+		/*
+		 * Can't use session_detach as it will destroy session if this
+		 * makes it empty.
+		 */
+		notify_window_unlinked(s, wl->window);
+		wl->flags &= ~WINLINK_ALERTFLAGS;
+		winlink_stack_remove(&s->lastw, wl);
+		winlink_remove(&s->windows, wl);
+
+		/* Force select/redraw if current. */
+		if (wl == s->curw) {
+			detached = 0;
+			s->curw = NULL;
+		}
+	}
 
 	if (idx == -1)
 		idx = -1 - options_get_number(&s->options, "base-index");
