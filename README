@@ -7,7 +7,7 @@ simple, modern, BSD-licensed alternative to programs such as GNU screen.
 This release runs on OpenBSD, FreeBSD, NetBSD, Linux and OS X and may still
 run on Solaris and AIX (although they haven't been tested in a while).
 
-Since the 1.2 release tmux depends on libevent. Download it from:
+tmux depends on libevent 2.x. Download it from:
 
 	http://www.monkey.org/~provos/libevent/
 
