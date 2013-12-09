@@ -139,3 +139,6 @@
   or even guarantee that cmdq->c != NULL and provide a better way to tell when
   in the config file - then we use cmdq->c if we need a client w/o a session
   else cmd_current_client
+
+- buffer_sample and the choose-* could let UTF-8 through and display it
+  properly.
