@@ -125,6 +125,10 @@ typedef uint64_t u_int64_t;
 #define CMSG_LEN(len) (CMSG_ALIGN(sizeof(struct cmsghdr)) + (len))
 #endif
 
+#ifndef O_DIRECTORY
+#define O_DIRECTORY 0
+#endif
+
 #ifndef INFTIM
 #define INFTIM -1
 #endif
