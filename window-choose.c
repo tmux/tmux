@@ -345,8 +345,7 @@ window_choose_collapse(struct window_pane *wp, struct session *s)
 	 * assign the actual result we want to render and copy the new one over
 	 * the top of it.
 	 */
-	for (i = 0; i < ARRAY_LENGTH(&data->list); i++)
-	{
+	for (i = 0; i < ARRAY_LENGTH(&data->list); i++) {
 		item = &ARRAY_ITEM(&data->list, i);
 		wcd = item->wcd;
 

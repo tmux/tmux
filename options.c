@@ -26,7 +26,7 @@
 
 /*
  * Option handling; each option has a name, type and value and is stored in
- * a splay tree.
+ * a red-black tree.
  */
 
 RB_GENERATE(options_tree, options_entry, entry, options_cmp);
