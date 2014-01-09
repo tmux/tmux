@@ -361,7 +361,11 @@ main(int argc, char **argv)
 		}
 	}
 	free(label);
-	strlcpy(socket_path, path, sizeof socket_path);
+
+	if (strlcpy(socket_path, path, sizeof socket_path) >= sizeof socket_path) {
+		fprintf(stderr, "socket path too long: %s\n", path);
+		exit(1);
+	}
 	free(path);
 
 	/* Set process title. */

@@ -232,7 +232,8 @@ client_main(int argc, char **argv, int flags)
 	/* Initialise the client socket and start the server. */
 	fd = client_connect(socket_path, cmdflags & CMD_STARTSERVER);
 	if (fd == -1) {
-		fprintf(stderr, "failed to connect to server\n");
+		fprintf(stderr, "failed to connect to server: %s\n",
+		    strerror(errno));
 		return (1);
 	}
 
