@@ -118,10 +118,15 @@ retry:
 		close(fd);
 
 		xasprintf(&lockfile, "%s.lock", path);
-		if ((lockfd = client_get_lock(lockfile)) == -1)
+		if ((lockfd = client_get_lock(lockfile)) == -1) {
+			free(lockfile);
 			goto retry;
-		if (unlink(path) != 0 && errno != ENOENT)
+		}
+		if (unlink(path) != 0 && errno != ENOENT) {
+			free(lockfile);
+			close(lockfd);
 			return (-1);
+		}
 		fd = server_start(lockfd, lockfile);
 		free(lockfile);
 		close(lockfd);
