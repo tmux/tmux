@@ -202,8 +202,9 @@ int
 main(int argc, char **argv)
 {
 	struct passwd	*pw;
-	char		*s, *path, *label, *home, **var, tmp[MAXPATHLEN];
+	char		*s, *path, *label, **var, tmp[MAXPATHLEN];
 	char		 in[256];
+	const char	*home;
 	long long	 pid;
 	int	 	 opt, flags, quiet, keys, session;
 
@@ -325,11 +326,15 @@ main(int argc, char **argv)
 			pw = getpwuid(getuid());
 			if (pw != NULL)
 				home = pw->pw_dir;
+			else
+				home = NULL;
 		}
-		xasprintf(&cfg_file, "%s/.tmux.conf", home);
-		if (access(cfg_file, R_OK) != 0 && errno == ENOENT) {
-			free(cfg_file);
-			cfg_file = NULL;
+		if (home != NULL) {
+			xasprintf(&cfg_file, "%s/.tmux.conf", home);
+			if (access(cfg_file, R_OK) != 0 && errno == ENOENT) {
+				free(cfg_file);
+				cfg_file = NULL;
+			}
 		}
 	}
 
