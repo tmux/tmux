@@ -78,7 +78,6 @@ struct args *
 args_parse(const char *template, int argc, char **argv)
 {
 	struct args	*args;
-	char		*ptr;
 	int		 opt;
 
 	args = xcalloc(1, sizeof *args);
@@ -89,7 +88,7 @@ args_parse(const char *template, int argc, char **argv)
 	while ((opt = getopt(argc, argv, template)) != -1) {
 		if (opt < 0)
 			continue;
-		if (opt == '?' || (ptr = strchr(template, opt)) == NULL) {
+		if (opt == '?' || strchr(template, opt) == NULL) {
 			args_free(args);
 			return (NULL);
 		}

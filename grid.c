@@ -124,7 +124,7 @@ grid_compare(struct grid *ga, struct grid *gb)
 	struct grid_cell	*gca, *gcb;
 	u_int			 xx, yy;
 
-	if (ga->sx != gb->sx || ga->sy != ga->sy)
+	if (ga->sx != gb->sx || ga->sy != gb->sy)
 		return (1);
 
 	for (yy = 0; yy < ga->sy; yy++) {
