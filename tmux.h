@@ -1732,6 +1732,8 @@ int		 cmd_find_index(struct cmd_q *, const char *,
 struct winlink	*cmd_find_pane(struct cmd_q *, const char *, struct session **,
 		     struct window_pane **);
 char		*cmd_template_replace(const char *, const char *, int);
+struct window	*cmd_lookup_windowid(const char *);
+struct window_pane *cmd_lookup_paneid(const char *);
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;

@@ -111,12 +111,8 @@ screen_set_cursor_colour(struct screen *s, const char *colour_string)
 void
 screen_set_title(struct screen *s, const char *title)
 {
-	char	tmp[BUFSIZ];
-
-	strlcpy(tmp, title, sizeof tmp);
-
 	free(s->title);
-	s->title = xstrdup(tmp);
+	s->title = xstrdup(title);
 }
 
 /* Resize screen. */

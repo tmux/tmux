@@ -321,6 +321,13 @@ format_expand(struct format_tree *ft, const char *fmt)
 				break;
 			fmt += n + 1;
 			continue;
+		case '#':
+			while (len - off < 2) {
+				buf = xrealloc(buf, 2, len);
+				len *= 2;
+			}
+			buf[off++] = '#';
+			continue;
 		default:
 			s = NULL;
 			if (ch >= 'A' && ch <= 'Z')

@@ -118,10 +118,15 @@ retry:
 		close(fd);
 
 		xasprintf(&lockfile, "%s.lock", path);
-		if ((lockfd = client_get_lock(lockfile)) == -1)
+		if ((lockfd = client_get_lock(lockfile)) == -1) {
+			free(lockfile);
 			goto retry;
-		if (unlink(path) != 0 && errno != ENOENT)
+		}
+		if (unlink(path) != 0 && errno != ENOENT) {
+			free(lockfile);
+			close(lockfd);
 			return (-1);
+		}
 		fd = server_start(lockfd, lockfile);
 		free(lockfile);
 		close(lockfd);
@@ -232,7 +237,8 @@ client_main(int argc, char **argv, int flags)
 	/* Initialise the client socket and start the server. */
 	fd = client_connect(socket_path, cmdflags & CMD_STARTSERVER);
 	if (fd == -1) {
-		fprintf(stderr, "failed to connect to server\n");
+		fprintf(stderr, "failed to connect to server: %s\n",
+		    strerror(errno));
 		return (1);
 	}
 
