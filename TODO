@@ -142,3 +142,6 @@
 
 - buffer_sample and the choose-* could let UTF-8 through and display it
   properly.
+
+- formats to show if a window is linked into multiple sessions, into multiple
+  attached sessions, and is the active window in multiple attached sessions?
