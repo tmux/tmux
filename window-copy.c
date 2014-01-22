@@ -750,8 +750,10 @@ window_copy_key_input(struct window_pane *wp, int key)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	size_t				 inputlen;
+	size_t				 inputlen, n;
 	int				 np;
+	struct paste_buffer		*pb;
+	u_char				 ch;
 
 	switch (mode_key_lookup(&data->mdata, key, NULL)) {
 	case MODEKEYEDIT_CANCEL:
@@ -764,6 +766,20 @@ window_copy_key_input(struct window_pane *wp, int key)
 		break;
 	case MODEKEYEDIT_DELETELINE:
 		*data->inputstr = '\0';
+		break;
+	case MODEKEYEDIT_PASTE:
+		if ((pb = paste_get_top(&global_buffers)) == NULL)
+			break;
+		for (n = 0; n < pb->size; n++) {
+			ch = (u_char) pb->data[n];
+			if (ch < 32 || ch == 127)
+				break;
+		}
+		inputlen = strlen(data->inputstr);
+
+		data->inputstr = xrealloc(data->inputstr, 1, inputlen + n + 1);
+		memcpy(data->inputstr + inputlen, pb->data, n);
+		data->inputstr[inputlen + n] = '\0';
 		break;
 	case MODEKEYEDIT_ENTER:
 		np = data->numprefix;
@@ -1154,8 +1170,8 @@ window_copy_write_line(
 	struct screen			*s = &data->screen;
 	struct options			*oo = &wp->window->options;
 	struct grid_cell		 gc;
-	char				 hdr[32];
-	size_t				 last, xoff = 0, size = 0;
+	char				 hdr[512];
+	size_t				 last, xoff = 0, size = 0, limit;
 
 	window_mode_attrs(&gc, oo);
 
@@ -1168,11 +1184,14 @@ window_copy_write_line(
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
 		screen_write_puts(ctx, &gc, "%s", hdr);
 	} else if (py == last && data->inputtype != WINDOW_COPY_OFF) {
+		limit = sizeof hdr;
+		if (limit > screen_size_x(s))
+			limit = screen_size_x(s);
 		if (data->inputtype == WINDOW_COPY_NUMERICPREFIX) {
-			xoff = size = xsnprintf(hdr, sizeof hdr,
+			xoff = size = xsnprintf(hdr, limit,
 			    "Repeat: %u", data->numprefix);
 		} else {
-			xoff = size = xsnprintf(hdr, sizeof hdr,
+			xoff = size = xsnprintf(hdr, limit,
 			    "%s: %s", data->inputprompt, data->inputstr);
 		}
 		screen_write_cursormove(ctx, 0, last);
