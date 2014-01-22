@@ -770,15 +770,24 @@ is specified, only update the client's status bar.
 Rename the session to
 .Ar new-name .
 .It Xo Ic show-messages
+.Op Fl IJT
 .Op Fl t Ar target-client
 .Xc
 .D1 (alias: Ic showmsgs )
+Show client messages or server information.
 Any messages displayed on the status line are saved in a per-client message
 log, up to a maximum of the limit set by the
 .Ar message-limit
 session option for the session attached to that client.
-This command displays the log for
+With
+.Fl t ,
+display the log for
 .Ar target-client .
+.Fl I,
+.Fl J
+and
+.Fl T
+show debugging information about the running server, jobs and terminals.
 .It Ic source-file Ar path
 .D1 (alias: Ic source )
 Execute commands from
@@ -3566,9 +3575,6 @@ specified by
 .Fl t
 or the current pane if omitted).
 If the command doesn't return success, the exit status is also displayed.
-.It Ic server-info
-.D1 (alias: Ic info )
-Show server information and terminal details.
 .It Xo Ic wait-for
 .Op Fl L | S | U
 .Ar channel
