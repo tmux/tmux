@@ -68,7 +68,6 @@ SRCS=	arguments.c \
 	cmd-show-options.c \
 	cmd-source-file.c \
 	cmd-split-window.c \
-	cmd-start-server.c \
 	cmd-string.c \
 	cmd-suspend-client.c \
 	cmd-swap-pane.c \
