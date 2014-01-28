@@ -1028,6 +1028,8 @@ struct layout_cell {
 	u_int		 yoff;
 
 	struct window_pane *wp;
+	struct window_pane *lastwp;
+
 	struct layout_cells cells;
 
 	TAILQ_ENTRY(layout_cell) entry;

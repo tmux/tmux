@@ -61,6 +61,10 @@ struct window_pane_tree all_window_panes;
 u_int	next_window_pane_id;
 u_int	next_window_id;
 
+struct window_pane *window_pane_active_set(struct window_pane *,
+	    struct window_pane *);
+void	window_pane_active_lost(struct window_pane *, struct window_pane *);
+
 void	window_pane_timer_callback(int, short, void *);
 void	window_pane_read_callback(struct bufferevent *, void *);
 void	window_pane_error_callback(struct bufferevent *, short, void *);
@@ -386,6 +390,59 @@ window_resize(struct window *w, u_int sx, u_int sy)
 	w->sy = sy;
 }
 
+/*
+ * Restore previously active pane when changing from wp to nextwp. The intended
+ * pane is in nextwp and it returns the previously focused pane.
+ */
+struct window_pane *
+window_pane_active_set(struct window_pane *wp, struct window_pane *nextwp)
+{
+	struct layout_cell	*lc;
+	struct window_pane	*lastwp;
+
+	/* Target pane's parent must not be an ancestor of source pane. */
+	for (lc = wp->layout_cell->parent; lc != NULL; lc = lc->parent) {
+		if (lc == nextwp->layout_cell->parent)
+			return (nextwp);
+	}
+
+	/*
+	 * Previously active pane, if any, must not be the same as the source
+	 * pane.
+	 */
+	if (nextwp->layout_cell->parent != NULL) {
+		lastwp = nextwp->layout_cell->parent->lastwp;
+		if (lastwp != wp && window_pane_visible(lastwp))
+			return (lastwp);
+	}
+	return (nextwp);
+}
+
+/* Remember previously active pane when changing from wp to nextwp. */
+void
+window_pane_active_lost(struct window_pane *wp, struct window_pane *nextwp)
+{
+	struct layout_cell	*lc, *lc2;
+
+	/* Save the target pane in its parent. */
+	nextwp->layout_cell->parent->lastwp = nextwp;
+
+	/*
+	 * Save the source pane in all of its parents up to, but not including,
+	 * the common ancestor of itself and the target panes.
+	 */
+	if (wp == NULL)
+		return;
+	for (lc = wp->layout_cell->parent; lc != NULL; lc = lc->parent) {
+		lc2 = nextwp->layout_cell->parent;
+		for (; lc2 != NULL; lc2 = lc2->parent) {
+			if (lc == lc2)
+				return;
+		}
+		lc->lastwp = wp;
+	}
+}
+
 void
 window_set_active_pane(struct window *w, struct window_pane *wp)
 {
@@ -393,6 +450,7 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 		return;
 	w->last = w->active;
 	w->active = wp;
+	window_pane_active_lost(w->last, wp);
 	while (!window_pane_visible(w->active)) {
 		w->active = TAILQ_PREV(w->active, window_panes, entry);
 		if (w->active == NULL)
@@ -707,6 +765,16 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 void
 window_pane_destroy(struct window_pane *wp)
 {
+	struct window_pane	*wp2;
+
+	/* Forget removed pane in all layout cells that remember it. */
+	RB_FOREACH(wp2, window_pane_tree, &all_window_panes) {
+		if (wp2->layout_cell != NULL &&
+		    wp2->layout_cell->parent != NULL &&
+		    wp2->layout_cell->parent->lastwp == wp)
+			wp2->layout_cell->parent->lastwp = NULL;
+	}
+
 	window_pane_reset_mode(wp);
 
 	if (event_initialized(&wp->changes_timer))
@@ -1130,7 +1198,7 @@ window_pane_find_up(struct window_pane *wp)
 		if (wp2->yoff + wp2->sy + 1 != top)
 			continue;
 		if (left >= wp2->xoff && left <= wp2->xoff + wp2->sx)
-			return (wp2);
+			return (window_pane_active_set(wp, wp2));
 	}
 	return (NULL);
 }
@@ -1156,7 +1224,7 @@ window_pane_find_down(struct window_pane *wp)
 		if (wp2->yoff != bottom)
 			continue;
 		if (left >= wp2->xoff && left <= wp2->xoff + wp2->sx)
-			return (wp2);
+			return (window_pane_active_set(wp, wp2));
 	}
 	return (NULL);
 }
@@ -1185,7 +1253,7 @@ window_pane_find_left(struct window_pane *wp)
 		if (wp2->xoff + wp2->sx + 1 != left)
 			continue;
 		if (top >= wp2->yoff && top <= wp2->yoff + wp2->sy)
-			return (wp2);
+			return (window_pane_active_set(wp, wp2));
 	}
 	return (NULL);
 }
@@ -1214,7 +1282,7 @@ window_pane_find_right(struct window_pane *wp)
 		if (wp2->xoff != right)
 			continue;
 		if (top >= wp2->yoff && top <= wp2->yoff + wp2->sy)
-			return (wp2);
+			return (window_pane_active_set(wp, wp2));
 	}
 	return (NULL);
 }
