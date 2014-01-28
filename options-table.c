@@ -856,7 +856,7 @@ options_table_populate_tree(
 			options_set_string(oo, oe->name, "%s", oe->default_str);
 			break;
 		case OPTIONS_TABLE_STYLE:
-			options_set_style(oo, oe->name, oe->default_str);
+			options_set_style(oo, oe->name, oe->default_str, 0);
 			break;
 		default:
 			options_set_number(oo, oe->name, oe->default_num);
