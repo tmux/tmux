@@ -224,7 +224,7 @@ screen_redraw_screen(struct client *c, int status_only, int borders_only)
 	struct window_pane	*wp;
 	struct grid_cell	 active_gc, other_gc;
 	u_int		 	 i, j, type, top;
-	int		 	 status, spos, fg, bg;
+	int		 	 status, spos;
 
 	/* Suspended clients should not be updated. */
 	if (c->flags & CLIENT_SUSPENDED)
@@ -251,17 +251,9 @@ screen_redraw_screen(struct client *c, int status_only, int borders_only)
 	}
 
 	/* Set up pane border attributes. */
-	memcpy(&other_gc, &grid_marker_cell, sizeof other_gc);
-	memcpy(&active_gc, &grid_marker_cell, sizeof active_gc);
-	active_gc.attr = other_gc.attr = GRID_ATTR_CHARSET;
-	fg = options_get_number(oo, "pane-border-fg");
-	colour_set_fg(&other_gc, fg);
-	bg = options_get_number(oo, "pane-border-bg");
-	colour_set_bg(&other_gc, bg);
-	fg = options_get_number(oo, "pane-active-border-fg");
-	colour_set_fg(&active_gc, fg);
-	bg = options_get_number(oo, "pane-active-border-bg");
-	colour_set_bg(&active_gc, bg);
+	style_apply(&other_gc, oo, "pane-border-style");
+	style_apply(&active_gc, oo, "pane-active-border-style");
+	active_gc.attr = other_gc.attr = GRID_ATTR_CHARSET; /* nuke existing */
 
 	/* Draw background and borders. */
 	for (j = 0; j < tty->sy - status; j++) {
@@ -368,7 +360,7 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 	px -= len * 3;
 	py -= 2;
 
-	memcpy(&gc, &grid_marker_cell, sizeof gc);
+	memcpy(&gc, &grid_default_cell, sizeof gc);
 	if (w->active == wp)
 		colour_set_bg(&gc, active_colour);
 	else
@@ -395,7 +387,7 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 	tty_cursor(tty, xoff + wp->sx - len, yoff);
 
 draw_text:
-	memcpy(&gc, &grid_marker_cell, sizeof gc);
+	memcpy(&gc, &grid_default_cell, sizeof gc);
 	if (w->active == wp)
 		colour_set_fg(&gc, active_colour);
 	else

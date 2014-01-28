@@ -2060,11 +2060,6 @@ otherwise a session option.
 If
 .Fl g
 is specified, the global session or window option is set.
-With
-.Fl a ,
-and if the option expects a string,
-.Ar value
-is appended to the existing setting.
 The
 .Fl u
 flag unsets an option, so a session inherits the option from the global
@@ -2080,6 +2075,32 @@ The
 flag suppresses the informational message (as if the
 .Ic quiet
 server option was set).
+.Pp
+With
+.Fl a ,
+and if the option expects a string or a style,
+.Ar value
+is appended to the existing setting.
+For example:
+.Bd -literal -offset indent
+set -g status-left "foo"
+set -ag status-left "bar"
+.Ed
+.Pp
+Will result in
+.Ql foobar .
+And:
+.Bd -literal -offset indent
+set -g status-style "bg=red"
+set -ag status-style "fg=blue"
+.Ed
+.Pp
+Will result in a red background
+.Em and
+blue foreground.
+Without
+.Fl a ,
+the result would be the default background and a blue foreground.
 .Pp
 Available window options are listed under
 .Ic set-window-option .
@@ -2272,26 +2293,18 @@ the entire server will lock after
 .Em all
 sessions would have locked.
 This has no effect as a session option; it must be set as a global option.
-.It Ic message-attr Ar attributes
-Set status line message attributes, where
-.Ar attributes
-is either
-.Ic none
-or a comma-delimited list of one or more of:
-.Ic bright
-(or
-.Ic bold ) ,
-.Ic dim ,
-.Ic underscore ,
-.Ic blink ,
-.Ic reverse ,
-.Ic hidden ,
-or
-.Ic italics .
-.It Ic message-bg Ar colour
-Set status line message background colour, where
-.Ar colour
-is one of:
+.It Ic message-command-style Ar style
+Set status line message command style, where
+.Ar style
+is a comma-separated list of characteristics to be specified.
+.Pp
+These may be
+.Ql bg=colour
+to set the background colour,
+.Ql fg=colour
+to set the foreground colour, and a list of attributes as specified below.
+.Pp
+The colour is one of:
 .Ic black ,
 .Ic red ,
 .Ic green ,
@@ -2312,18 +2325,46 @@ from the 256-colour set,
 or a hexadecimal RGB string such as
 .Ql #ffffff ,
 which chooses the closest match from the default 256-colour set.
-.It Ic message-command-attr Ar attributes
-Set status line message attributes when in command mode.
-.It Ic message-command-bg Ar colour
-Set status line message background colour when in command mode.
-.It Ic message-command-fg Ar colour
-Set status line message foreground colour when in command mode.
-.It Ic message-fg Ar colour
-Set status line message foreground colour.
+.Pp
+The attributes is either
+.Ic none
+or a comma-delimited list of one or more of:
+.Ic bright
+(or
+.Ic bold ) ,
+.Ic dim ,
+.Ic underscore ,
+.Ic blink ,
+.Ic reverse ,
+.Ic hidden ,
+or
+.Ic italics ,
+to turn an attribute on, or an attribute prefixed with
+.Ql no
+to turn one off.
+.Pp
+Examples are:
+.Bd -literal -offset indent
+fg=yellow,bold,underscore,blink
+bg=black,fg=default,noreverse
+.Ed
+.Pp
+With the
+.Fl a
+flag to the
+.Ic set-option
+command the new style is added otherwise the existing style is replaced.
 .It Ic message-limit Ar number
 Set the number of error or information messages to save in the message log for
 each client.
 The default is 20.
+.It Ic message-style Ar style
+Set status line message style.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
 .It Xo Ic mouse-resize-pane
 .Op Ic on | off
 .Xc
@@ -2347,12 +2388,22 @@ window.
 .Op Ic on | off
 .Xc
 If enabled, request mouse input as UTF-8 on UTF-8 terminals.
-.It Ic pane-active-border-bg Ar colour
-.It Ic pane-active-border-fg Ar colour
-Set the pane border colour for the currently active pane.
-.It Ic pane-border-bg Ar colour
-.It Ic pane-border-fg Ar colour
-Set the pane border colour for panes aside from the active pane.
+.It Ic pane-active-border-style Ar style
+Set the pane border style for the currently active pane.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
+Attributes are ignored.
+.It Ic pane-border-style Ar style
+Set the pane border style for paneas aside from the active pane.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
+Attributes are ignored.
 .It Ic prefix Ar key
 Set the key accepted as a prefix key.
 .It Ic prefix2 Ar key
@@ -2418,12 +2469,6 @@ option.
 .Op Ic on | off
 .Xc
 Show or hide the status line.
-.It Ic status-attr Ar attributes
-Set status line attributes.
-.It Ic status-bg Ar colour
-Set status line background colour.
-.It Ic status-fg Ar colour
-Set status line foreground colour.
 .It Ic status-interval Ar interval
 Update the status bar every
 .Ar interval
@@ -2481,19 +2526,10 @@ section).
 For details on how the names and titles can be set see the
 .Sx "NAMES AND TITLES"
 section.
+For a list of allowed attributes see the
+.Ic message-command-style
+option.
 .Pp
-#[attributes] allows a comma-separated list of attributes to be specified,
-these may be
-.Ql fg=colour
-to set the foreground colour,
-.Ql bg=colour
-to set the background colour, the name of one of the attributes (listed under
-the
-.Ic message-attr
-option) to turn an attribute on, or an attribute prefixed with
-.Ql no
-to turn one off, for example
-.Ic nobright .
 Examples are:
 .Bd -literal -offset indent
 #(sysctl vm.loadavg)
@@ -2509,17 +2545,18 @@ By default, UTF-8 in
 is not interpreted, to enable UTF-8, use the
 .Ic status-utf8
 option.
-.It Ic status-left-attr Ar attributes
-Set the attribute of the left part of the status line.
-.It Ic status-left-bg Ar colour
-Set the background colour of the left part of the status line.
-.It Ic status-left-fg Ar colour
-Set the foreground colour of the left part of the status line.
 .It Ic status-left-length Ar length
 Set the maximum
 .Ar length
 of the left component of the status bar.
 The default is 10.
+.It Ic status-left-style Ar style
+Set the style of the left part of the status line.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
 .It Xo Ic status-position
 .Op Ic top | bottom
 .Xc
@@ -2538,17 +2575,25 @@ will be passed to
 character pairs are replaced, and UTF-8 is dependent on the
 .Ic status-utf8
 option.
-.It Ic status-right-attr Ar attributes
-Set the attribute of the right part of the status line.
-.It Ic status-right-bg Ar colour
-Set the background colour of the right part of the status line.
-.It Ic status-right-fg Ar colour
-Set the foreground colour of the right part of the status line.
 .It Ic status-right-length Ar length
 Set the maximum
 .Ar length
 of the right component of the status bar.
 The default is 40.
+.It Ic status-right-style Ar style
+Set the style of the right part of the status line.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
+.It Ic status-style Ar style
+Set status line style.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
 .It Xo Ic status-utf8
 .Op Ic on | off
 .Xc
@@ -2775,15 +2820,6 @@ or
 .Ic main-vertical
 layouts.
 .Pp
-.It Ic mode-attr Ar attributes
-Set window modes attributes.
-.Pp
-.It Ic mode-bg Ar colour
-Set window modes background colour.
-.Pp
-.It Ic mode-fg Ar colour
-Set window modes foreground colour.
-.Pp
 .It Xo Ic mode-keys
 .Op Ic vi | emacs
 .Xc
@@ -2808,6 +2844,14 @@ If set to
 .Em copy-mode ,
 the mouse behaves as set to on, but cannot be used to enter copy
 mode.
+.Pp
+.It Ic mode-style Ar style
+Set window modes style.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
 .Pp
 .It Xo Ic monitor-activity
 .Op Ic on | off
@@ -2879,64 +2923,42 @@ Instructs
 .Nm
 to expect UTF-8 sequences to appear in this window.
 .Pp
-.It Ic window-status-bell-attr Ar attributes
-Set status line attributes for windows which have a bell alert.
+.It Ic window-status-activity-style Ar style
+Set status line style for windows with an activity alert.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
 .Pp
-.It Ic window-status-bell-bg Ar colour
-Set status line background colour for windows with a bell alert.
+.It Ic window-status-bell-style Ar style
+Set status line style for windows with a bell alert.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
 .Pp
-.It Ic window-status-bell-fg Ar colour
-Set status line foreground colour for windows with a bell alert.
-.Pp
-.It Ic window-status-content-attr Ar attributes
-Set status line attributes for windows which have a content alert.
-.Pp
-.It Ic window-status-content-bg Ar colour
-Set status line background colour for windows with a content alert.
-.Pp
-.It Ic window-status-content-fg Ar colour
-Set status line foreground colour for windows with a content alert.
-.Pp
-.It Ic window-status-activity-attr Ar attributes
-Set status line attributes for windows which have an activity (or silence) alert.
-.Pp
-.It Ic window-status-activity-bg Ar colour
-Set status line background colour for windows with an activity alert.
-.Pp
-.It Ic window-status-activity-fg Ar colour
-Set status line foreground colour for windows with an activity alert.
-.Pp
-.It Ic window-status-attr Ar attributes
-Set status line attributes for a single window.
-.Pp
-.It Ic window-status-bg Ar colour
-Set status line background colour for a single window.
-.Pp
-.It Ic window-status-current-attr Ar attributes
-Set status line attributes for the currently active window.
-.Pp
-.It Ic window-status-current-bg Ar colour
-Set status line background colour for the currently active window.
-.Pp
-.It Ic window-status-current-fg Ar colour
-Set status line foreground colour for the currently active window.
+.It Ic window-status-content-style Ar style
+Set status line style for windows with a content alert.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
 .Pp
 .It Ic window-status-current-format Ar string
 Like
 .Ar window-status-format ,
 but is the format used when the window is the current window.
 .Pp
-.It Ic window-status-last-attr Ar attributes
-Set status line attributes for the last active window.
-.Pp
-.It Ic window-status-last-bg Ar colour
-Set status line background colour for the last active window.
-.Pp
-.It Ic window-status-last-fg Ar colour
-Set status line foreground colour for the last active window.
-.Pp
-.It Ic window-status-fg Ar colour
-Set status line foreground colour for a single window.
+.It Ic window-status-current-style Ar style
+Set status line style for the currently active window.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
 .Pp
 .It Ic window-status-format Ar string
 Set the format in which the window is displayed in the status line window list.
@@ -2946,9 +2968,25 @@ option for details of special character sequences available.
 The default is
 .Ql #I:#W#F .
 .Pp
+.It Ic window-status-last-style Ar style
+Set status line style for the last active window.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
+.Pp
 .It Ic window-status-separator Ar string
 Sets the separator drawn between windows in the status line.
 The default is a single space character.
+.Pp
+.It Ic window-status-style Ar style
+Set status line style for a single window.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
 .Pp
 .It Xo Ic xterm-keys
 .Op Ic on | off
@@ -3288,16 +3326,10 @@ content) is present.
 .Pp
 The colour and attributes of the status line may be configured, the entire
 status line using the
-.Ic status-attr ,
-.Ic status-fg
-and
-.Ic status-bg
-session options and individual windows using the
-.Ic window-status-attr ,
-.Ic window-status-fg
-and
-.Ic window-status-bg
-window options.
+.Ic status-style
+session option and individual windows using the
+.Ic window-status-style
+window option.
 .Pp
 The status line is automatically refreshed at interval if it has changed, the
 interval may be controlled with the
@@ -3798,7 +3830,7 @@ bind-key C-a send-prefix
 Turning the status line off, or changing its colour:
 .Bd -literal -offset indent
 set-option -g status off
-set-option -g status-bg blue
+set-option -g status-style bg=blue
 .Ed
 .Pp
 Setting other options, such as the default command,

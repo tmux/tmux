@@ -60,6 +60,9 @@ struct options_entry *cmd_set_option_flag(struct cmd *, struct cmd_q *,
 struct options_entry *cmd_set_option_choice(struct cmd *, struct cmd_q *,
 	    const struct options_table_entry *, struct options *,
 	    const char *);
+struct options_entry *cmd_set_option_style(struct cmd *, struct cmd_q *,
+	    const struct options_table_entry *, struct options *,
+	    const char *);
 
 const struct cmd_entry cmd_set_option_entry = {
 	"set-option", "set",
@@ -304,15 +307,20 @@ cmd_set_option_set(struct cmd *self, struct cmd_q *cmdq,
 		break;
 	case OPTIONS_TABLE_COLOUR:
 		o = cmd_set_option_colour(self, cmdq, oe, oo, value);
+		style_update_new(oo, o->name, oe->style);
 		break;
 	case OPTIONS_TABLE_ATTRIBUTES:
 		o = cmd_set_option_attributes(self, cmdq, oe, oo, value);
+		style_update_new(oo, o->name, oe->style);
 		break;
 	case OPTIONS_TABLE_FLAG:
 		o = cmd_set_option_flag(self, cmdq, oe, oo, value);
 		break;
 	case OPTIONS_TABLE_CHOICE:
 		o = cmd_set_option_choice(self, cmdq, oe, oo, value);
+		break;
+	case OPTIONS_TABLE_STYLE:
+		o = cmd_set_option_style(self, cmdq, oe, oo, value);
 		break;
 	}
 	if (o == NULL)
@@ -461,4 +469,24 @@ cmd_set_option_choice(unused struct cmd *self, struct cmd_q *cmdq,
 	}
 
 	return (options_set_number(oo, oe->name, choice));
+}
+
+/* Set a style option. */
+struct options_entry *
+cmd_set_option_style(struct cmd *self, struct cmd_q *cmdq,
+    const struct options_table_entry *oe, struct options *oo,
+    const char *value)
+{
+	struct args		*args = self->args;
+	struct options_entry	*o;
+	int			 append;
+
+	append = args_has(args, 'a');
+	if ((o = options_set_style(oo, oe->name, value, append)) == NULL) {
+		cmdq_error(cmdq, "bad style: %s", value);
+		return (NULL);
+	}
+
+	style_update_old(oo, oe->name, &o->style);
+	return (o);
 }

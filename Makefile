@@ -113,6 +113,7 @@ SRCS=	arguments.c \
 	session.c \
 	signal.c \
 	status.c \
+	style.c \
 	tmux.c \
 	tty-acs.c \
 	tty-keys.c \

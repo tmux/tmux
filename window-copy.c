@@ -1173,7 +1173,7 @@ window_copy_write_line(
 	char				 hdr[512];
 	size_t				 last, xoff = 0, size = 0, limit;
 
-	window_mode_attrs(&gc, oo);
+	style_apply(&gc, oo, "mode-style");
 
 	last = screen_size_y(s) - 1;
 	if (py == 0) {
@@ -1290,7 +1290,7 @@ window_copy_update_selection(struct window_pane *wp, int may_redraw)
 		return (0);
 
 	/* Set colours. */
-	window_mode_attrs(&gc, oo);
+	style_apply(&gc, oo, "mode-style");
 
 	/* Find top of screen. */
 	ty = screen_hsize(data->backing) - data->oy;

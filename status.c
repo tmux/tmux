@@ -80,18 +80,9 @@ status_redraw_get_left(struct client *c,
 {
 	struct session	*s = c->session;
 	char		*left;
-	int		 fg, bg, attr;
 	size_t		 leftlen;
 
-	fg = options_get_number(&s->options, "status-left-fg");
-	if (fg != 8)
-		colour_set_fg(gc, fg);
-	bg = options_get_number(&s->options, "status-left-bg");
-	if (bg != 8)
-		colour_set_bg(gc, bg);
-	attr = options_get_number(&s->options, "status-left-attr");
-	if (attr != 0)
-		gc->attr = attr;
+	style_apply_update(gc, &s->options, "status-left-style");
 
 	left = status_replace(c, NULL,
 	    NULL, NULL, options_get_string(&s->options, "status-left"), t, 1);
@@ -110,18 +101,9 @@ status_redraw_get_right(struct client *c,
 {
 	struct session	*s = c->session;
 	char		*right;
-	int		 fg, bg, attr;
 	size_t		 rightlen;
 
-	fg = options_get_number(&s->options, "status-right-fg");
-	if (fg != 8)
-		colour_set_fg(gc, fg);
-	bg = options_get_number(&s->options, "status-right-bg");
-	if (bg != 8)
-		colour_set_bg(gc, bg);
-	attr = options_get_number(&s->options, "status-right-attr");
-	if (attr != 0)
-		gc->attr = attr;
+	style_apply_update(gc, &s->options, "status-right-style");
 
 	right = status_replace(c, NULL,
 	    NULL, NULL, options_get_string(&s->options, "status-right"), t, 1);
@@ -177,10 +159,7 @@ status_redraw(struct client *c)
 	t = c->status_timer.tv_sec;
 
 	/* Set up default colour. */
-	memcpy(&stdgc, &grid_default_cell, sizeof gc);
-	colour_set_fg(&stdgc, options_get_number(&s->options, "status-fg"));
-	colour_set_bg(&stdgc, options_get_number(&s->options, "status-bg"));
-	stdgc.attr |= options_get_number(&s->options, "status-attr");
+	style_apply(&stdgc, &s->options, "status-style");
 
 	/* Create the target screen. */
 	memcpy(&old_status, &c->status, sizeof old_status);
@@ -646,73 +625,22 @@ status_print(
 	struct session	*s = c->session;
 	const char	*fmt;
 	char   		*text;
-	int		 fg, bg, attr;
 
-	fg = options_get_number(oo, "window-status-fg");
-	if (fg != 8)
-		colour_set_fg(gc, fg);
-	bg = options_get_number(oo, "window-status-bg");
-	if (bg != 8)
-		colour_set_bg(gc, bg);
-	attr = options_get_number(oo, "window-status-attr");
-	if (attr != 0)
-		gc->attr = attr;
+	style_apply_update(gc, oo, "window-status-style");
 	fmt = options_get_string(oo, "window-status-format");
 	if (wl == s->curw) {
-		fg = options_get_number(oo, "window-status-current-fg");
-		if (fg != 8)
-			colour_set_fg(gc, fg);
-		bg = options_get_number(oo, "window-status-current-bg");
-		if (bg != 8)
-			colour_set_bg(gc, bg);
-		attr = options_get_number(oo, "window-status-current-attr");
-		if (attr != 0)
-			gc->attr = attr;
+		style_apply_update(gc, oo, "window-status-current-style");
 		fmt = options_get_string(oo, "window-status-current-format");
 	}
-	if (wl == TAILQ_FIRST(&s->lastw)) {
-		fg = options_get_number(oo, "window-status-last-fg");
-		if (fg != 8)
-			colour_set_fg(gc, fg);
-		bg = options_get_number(oo, "window-status-last-bg");
-		if (bg != 8)
-			colour_set_bg(gc, bg);
-		attr = options_get_number(oo, "window-status-last-attr");
-		if (attr != 0)
-			gc->attr = attr;
-	}
+	if (wl == TAILQ_FIRST(&s->lastw))
+		style_apply_update(gc, oo, "window-status-last-style");
 
-	if (wl->flags & WINLINK_BELL) {
-		fg = options_get_number(oo, "window-status-bell-fg");
-		if (fg != 8)
-			colour_set_fg(gc, fg);
-		bg = options_get_number(oo, "window-status-bell-bg");
-		if (bg != 8)
-			colour_set_bg(gc, bg);
-		attr = options_get_number(oo, "window-status-bell-attr");
-		if (attr != 0)
-			gc->attr = attr;
-	} else if (wl->flags & WINLINK_CONTENT) {
-		fg = options_get_number(oo, "window-status-content-fg");
-		if (fg != 8)
-			colour_set_fg(gc, fg);
-		bg = options_get_number(oo, "window-status-content-bg");
-		if (bg != 8)
-			colour_set_bg(gc, bg);
-		attr = options_get_number(oo, "window-status-content-attr");
-		if (attr != 0)
-			gc->attr = attr;
-	} else if (wl->flags & (WINLINK_ACTIVITY|WINLINK_SILENCE)) {
-		fg = options_get_number(oo, "window-status-activity-fg");
-		if (fg != 8)
-			colour_set_fg(gc, fg);
-		bg = options_get_number(oo, "window-status-activity-bg");
-		if (bg != 8)
-			colour_set_bg(gc, bg);
-		attr = options_get_number(oo, "window-status-activity-attr");
-		if (attr != 0)
-			gc->attr = attr;
-	}
+	if (wl->flags & WINLINK_BELL)
+		style_apply_update(gc, oo, "window-status-bell-style");
+	else if (wl->flags & WINLINK_CONTENT)
+		style_apply_update(gc, oo, "window-status-content-style");
+	else if (wl->flags & (WINLINK_ACTIVITY|WINLINK_SILENCE))
+		style_apply_update(gc, oo, "window-status-activity-style");
 
 	text = status_replace(c, NULL, wl, NULL, fmt, t, 1);
 	return (text);
@@ -814,10 +742,7 @@ status_message_redraw(struct client *c)
 	if (len > c->tty.sx)
 		len = c->tty.sx;
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	colour_set_fg(&gc, options_get_number(&s->options, "message-fg"));
-	colour_set_bg(&gc, options_get_number(&s->options, "message-bg"));
-	gc.attr |= options_get_number(&s->options, "message-attr");
+	style_apply(&gc, &s->options, "message-style");
 
 	screen_write_start(&ctx, NULL, &c->status);
 
@@ -935,18 +860,11 @@ status_prompt_redraw(struct client *c)
 		len = c->tty.sx;
 	off = 0;
 
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-
 	/* Change colours for command mode. */
-	if (c->prompt_mdata.mode == 1) {
-		colour_set_fg(&gc, options_get_number(&s->options, "message-command-fg"));
-		colour_set_bg(&gc, options_get_number(&s->options, "message-command-bg"));
-		gc.attr |= options_get_number(&s->options, "message-command-attr");
-	} else {
-		colour_set_fg(&gc, options_get_number(&s->options, "message-fg"));
-		colour_set_bg(&gc, options_get_number(&s->options, "message-bg"));
-		gc.attr |= options_get_number(&s->options, "message-attr");
-	}
+	if (c->prompt_mdata.mode == 1)
+		style_apply(&gc, &s->options, "message-command-style");
+	else
+		style_apply(&gc, &s->options, "message-style");
 
 	screen_write_start(&ctx, NULL, &c->status);
 
