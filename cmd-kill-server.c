@@ -38,10 +38,20 @@ const struct cmd_entry cmd_kill_server_entry = {
 	cmd_kill_server_exec
 };
 
+const struct cmd_entry cmd_start_server_entry = {
+	"start-server", "start",
+	"", 0, 0,
+	"",
+	CMD_STARTSERVER,
+	NULL,
+	cmd_kill_server_exec
+};
+
 enum cmd_retval
-cmd_kill_server_exec(unused struct cmd *self, unused struct cmd_q *cmdq)
+cmd_kill_server_exec(struct cmd *self, unused struct cmd_q *cmdq)
 {
-	kill(getpid(), SIGTERM);
+	if (self->entry == &cmd_kill_server_entry)
+		kill(getpid(), SIGTERM);
 
 	return (CMD_RETURN_NORMAL);
 }

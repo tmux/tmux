@@ -82,6 +82,37 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 	detached = args_has(args, 'd');
 
+	if (args->argc == 0)
+		cmd = options_get_string(&s->options, "default-command");
+	else
+		cmd = args->argv[0];
+
+	if (args_has(args, 'c')) {
+		ft = format_create();
+		if ((c = cmd_find_client(cmdq, NULL, 1)) != NULL)
+			format_client(ft, c);
+		format_session(ft, s);
+		format_winlink(ft, s, s->curw);
+		format_window_pane(ft, s->curw->window->active);
+		cp = format_expand(ft, args_get(args, 'c'));
+		format_free(ft);
+
+		if (cp != NULL && *cp != '\0') {
+			fd = open(cp, O_RDONLY|O_DIRECTORY);
+			free(cp);
+			if (fd == -1) {
+				cmdq_error(cmdq, "bad working directory: %s",
+				    strerror(errno));
+				return (CMD_RETURN_ERROR);
+			}
+		} else if (cp != NULL)
+			free(cp);
+		cwd = fd;
+	} else if (cmdq->client != NULL && cmdq->client->session == NULL)
+		cwd = cmdq->client->cwd;
+	else
+		cwd = s->cwd;
+
 	wl = NULL;
 	if (idx != -1)
 		wl = winlink_find_by_index(&s->windows, idx);
@@ -101,34 +132,6 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 			s->curw = NULL;
 		}
 	}
-
-	if (args->argc == 0)
-		cmd = options_get_string(&s->options, "default-command");
-	else
-		cmd = args->argv[0];
-
-	if (args_has(args, 'c')) {
-		ft = format_create();
-		if ((c = cmd_find_client(cmdq, NULL, 1)) != NULL)
-			format_client(ft, c);
-		format_session(ft, s);
-		format_winlink(ft, s, s->curw);
-		format_window_pane(ft, s->curw->window->active);
-		cp = format_expand(ft, args_get(args, 'c'));
-		format_free(ft);
-
-		fd = open(cp, O_RDONLY|O_DIRECTORY);
-		free(cp);
-		if (fd == -1) {
-			cmdq_error(cmdq, "bad working directory: %s",
-			    strerror(errno));
-			return (CMD_RETURN_ERROR);
-		}
-		cwd = fd;
-	} else if (cmdq->client != NULL && cmdq->client->session == NULL)
-		cwd = cmdq->client->cwd;
-	else
-		cwd = s->cwd;
 
 	if (idx == -1)
 		idx = -1 - options_get_number(&s->options, "base-index");

@@ -195,32 +195,43 @@ const struct options_table_entry session_options_table[] = {
 
 	{ .name = "message-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = 0
+	  .default_num = 0,
+	  .style = "message-style"
 	},
 
 	{ .name = "message-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 3
+	  .default_num = 3,
+	  .style = "message-style"
 	},
 
 	{ .name = "message-command-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = 0
+	  .default_num = 0,
+	  .style = "message-command-style"
 	},
 
 	{ .name = "message-command-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 0
+	  .default_num = 0,
+	  .style = "message-command-style"
 	},
 
 	{ .name = "message-command-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 3
+	  .default_num = 3,
+	  .style = "message-command-style"
+	},
+
+	{ .name = "message-command-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "bg=black,fg=yellow"
 	},
 
 	{ .name = "message-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 0
+	  .default_num = 0,
+	  .style = "message-style"
 	},
 
 	{ .name = "message-limit",
@@ -228,6 +239,11 @@ const struct options_table_entry session_options_table[] = {
 	  .minimum = 0,
 	  .maximum = INT_MAX,
 	  .default_num = 20
+	},
+
+	{ .name = "message-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "bg=yellow,fg=black"
 	},
 
 	{ .name = "mouse-resize-pane",
@@ -252,22 +268,36 @@ const struct options_table_entry session_options_table[] = {
 
 	{ .name = "pane-active-border-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	  .default_num = 8,
+	  .style = "pane-active-border-style"
 	},
 
 	{ .name = "pane-active-border-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 2
+	  .default_num = 2,
+	  .style = "pane-active-border-style"
+	},
+
+	{ .name = "pane-active-border-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "fg=green"
 	},
 
 	{ .name = "pane-border-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	  .default_num = 8,
+	  .style = "pane-border-style"
 	},
 
 	{ .name = "pane-border-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	  .default_num = 8,
+	  .style = "pane-border-style"
+	},
+
+	{ .name = "pane-border-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "default"
 	},
 
 	{ .name = "prefix",
@@ -314,17 +344,20 @@ const struct options_table_entry session_options_table[] = {
 
 	{ .name = "status-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = 0
+	  .default_num = 0,
+	  .style = "status-style"
 	},
 
 	{ .name = "status-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 2
+	  .default_num = 2,
+	  .style = "status-style"
 	},
 
 	{ .name = "status-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 0
+	  .default_num = 0,
+	  .style = "status-style"
 	},
 
 	{ .name = "status-interval",
@@ -353,17 +386,20 @@ const struct options_table_entry session_options_table[] = {
 
 	{ .name = "status-left-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = 0
+	  .default_num = 0,
+	  .style = "status-left-style"
 	},
 
 	{ .name = "status-left-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	  .default_num = 8,
+	  .style = "status-left-style"
 	},
 
 	{ .name = "status-left-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	  .default_num = 8,
+	  .style = "status-left-style"
 	},
 
 	{ .name = "status-left-length",
@@ -371,6 +407,11 @@ const struct options_table_entry session_options_table[] = {
 	  .minimum = 0,
 	  .maximum = SHRT_MAX,
 	  .default_num = 10
+	},
+
+	{ .name = "status-left-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "default"
 	},
 
 	{ .name = "status-position",
@@ -386,17 +427,20 @@ const struct options_table_entry session_options_table[] = {
 
 	{ .name = "status-right-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = 0
+	  .default_num = 0,
+	  .style = "status-right-style"
 	},
 
 	{ .name = "status-right-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	  .default_num = 8,
+	  .style = "status-right-style"
 	},
 
 	{ .name = "status-right-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	  .default_num = 8,
+	  .style = "status-right-style"
 	},
 
 	{ .name = "status-right-length",
@@ -404,6 +448,16 @@ const struct options_table_entry session_options_table[] = {
 	  .minimum = 0,
 	  .maximum = SHRT_MAX,
 	  .default_num = 40
+	},
+
+	{ .name = "status-right-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "default"
+	},
+
+	{ .name = "status-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "bg=green,fg=black"
 	},
 
 	{ .name = "status-utf8",
@@ -536,17 +590,20 @@ const struct options_table_entry window_options_table[] = {
 
 	{ .name = "mode-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = 0
+	  .default_num = 0,
+	  .style = "mode-style"
 	},
 
 	{ .name = "mode-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 3
+	  .default_num = 3,
+	  .style = "mode-style"
 	},
 
 	{ .name = "mode-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 0
+	  .default_num = 0,
+	  .style = "mode-style"
 	},
 
 	{ .name = "mode-keys",
@@ -559,6 +616,11 @@ const struct options_table_entry window_options_table[] = {
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .choices = options_table_mode_mouse_list,
 	  .default_num = 0
+	},
+
+	{ .name = "mode-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "bg=yellow,fg=black"
 	},
 
 	{ .name = "monitor-activity",
@@ -616,72 +678,101 @@ const struct options_table_entry window_options_table[] = {
 
 	{ .name = "window-status-activity-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = GRID_ATTR_REVERSE
+	  .default_num = GRID_ATTR_REVERSE,
+	  .style = "window-status-activity-style"
 	},
 
 	{ .name = "window-status-activity-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	  .default_num = 8,
+	  .style = "window-status-activity-style"
 	},
 
 	{ .name = "window-status-activity-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	  .default_num = 8,
+	  .style = "window-status-activity-style"
 	},
 
-	{ .name = "window-status-bell-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = GRID_ATTR_REVERSE
-	},
-
-	{ .name = "window-status-bell-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
-	},
-
-	{ .name = "window-status-bell-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
-	},
-
-	{ .name = "window-status-content-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = GRID_ATTR_REVERSE
-	},
-
-	{ .name = "window-status-content-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
-	},
-
-	{ .name = "window-status-content-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	{ .name = "window-status-activity-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "reverse"
 	},
 
 	{ .name = "window-status-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = 0
+	  .default_num = 0,
+	  .style = "window-status-style"
+	},
+
+	{ .name = "window-status-bell-attr",
+	  .type = OPTIONS_TABLE_ATTRIBUTES,
+	  .default_num = GRID_ATTR_REVERSE,
+	  .style = "window-status-bell-style"
+	},
+
+	{ .name = "window-status-bell-bg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 8,
+	  .style = "window-status-bell-style"
+	},
+
+	{ .name = "window-status-bell-fg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 8,
+	  .style = "window-status-bell-style"
+	},
+
+	{ .name = "window-status-bell-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "reverse"
 	},
 
 	{ .name = "window-status-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	  .default_num = 8,
+	  .style = "window-status-style"
+	},
+
+	{ .name = "window-status-content-attr",
+	  .type = OPTIONS_TABLE_ATTRIBUTES,
+	  .default_num = GRID_ATTR_REVERSE,
+	  .style = "window-status-content-style"
+	},
+
+	{ .name = "window-status-content-bg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 8,
+	  .style = "window-status-content-style"
+	},
+
+	{ .name = "window-status-content-fg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 8,
+	  .style = "window-status-content-style"
+	},
+
+	{ .name = "window-status-content-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "reverse"
 	},
 
 	{ .name = "window-status-current-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = 0
+	  .default_num = 0,
+	  .style = "window-status-current-style"
 	},
 
 	{ .name = "window-status-current-bg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	  .default_num = 8,
+	  .style = "window-status-current-style"
 	},
 
 	{ .name = "window-status-current-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	  .default_num = 8,
+	  .style = "window-status-current-style"
 	},
 
 	{ .name = "window-status-current-format",
@@ -689,24 +780,15 @@ const struct options_table_entry window_options_table[] = {
 	  .default_str = "#I:#W#F"
 	},
 
-	{ .name = "window-status-last-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = 0
-	},
-
-	{ .name = "window-status-last-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
-	},
-
-	{ .name = "window-status-last-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	{ .name = "window-status-current-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "default"
 	},
 
 	{ .name = "window-status-fg",
 	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8
+	  .default_num = 8,
+	  .style = "window-status-style"
 	},
 
 	{ .name = "window-status-format",
@@ -714,9 +796,37 @@ const struct options_table_entry window_options_table[] = {
 	  .default_str = "#I:#W#F"
 	},
 
+	{ .name = "window-status-last-attr",
+	  .type = OPTIONS_TABLE_ATTRIBUTES,
+	  .default_num = 0,
+	  .style = "window-status-last-style"
+	},
+
+	{ .name = "window-status-last-bg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 8,
+	  .style = "window-status-last-style"
+	},
+
+	{ .name = "window-status-last-fg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 8,
+	  .style = "window-status-last-style"
+	},
+
+	{ .name = "window-status-last-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "default"
+	},
+
 	{ .name = "window-status-separator",
 	  .type = OPTIONS_TABLE_STRING,
 	  .default_str = " "
+	},
+
+	{ .name = "window-status-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "default"
 	},
 
 	{ .name = "wrap-search",
@@ -740,10 +850,17 @@ options_table_populate_tree(
 	const struct options_table_entry	*oe;
 
 	for (oe = table; oe->name != NULL; oe++) {
-		if (oe->default_str != NULL)
+		switch (oe->type) {
+		case OPTIONS_TABLE_STRING:
 			options_set_string(oo, oe->name, "%s", oe->default_str);
-		else
+			break;
+		case OPTIONS_TABLE_STYLE:
+			options_set_style(oo, oe->name, oe->default_str, 0);
+			break;
+		default:
 			options_set_number(oo, oe->name, oe->default_num);
+			break;
+		}
 	}
 }
 
@@ -786,6 +903,10 @@ options_table_print_entry(const struct options_table_entry *oe,
 		break;
 	case OPTIONS_TABLE_CHOICE:
 		s = oe->choices[o->num];
+		xsnprintf(out, sizeof out, "%s", s);
+		break;
+	case OPTIONS_TABLE_STYLE:
+		s = style_tostring(&o->style);
 		xsnprintf(out, sizeof out, "%s", s);
 		break;
 	}

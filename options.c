@@ -26,7 +26,7 @@
 
 /*
  * Option handling; each option has a name, type and value and is stored in
- * a splay tree.
+ * a red-black tree.
  */
 
 RB_GENERATE(options_tree, options_entry, entry, options_cmp);
@@ -109,6 +109,7 @@ options_set_string(struct options *oo, const char *name, const char *fmt, ...)
 		o = xmalloc(sizeof *o);
 		o->name = xstrdup(name);
 		RB_INSERT(options_tree, &oo->tree, o);
+		memcpy(&o->style, &grid_default_cell, sizeof o->style);
 	} else if (o->type == OPTIONS_STRING)
 		free(o->str);
 
@@ -140,6 +141,7 @@ options_set_number(struct options *oo, const char *name, long long value)
 		o = xmalloc(sizeof *o);
 		o->name = xstrdup(name);
 		RB_INSERT(options_tree, &oo->tree, o);
+		memcpy(&o->style, &grid_default_cell, sizeof o->style);
 	} else if (o->type == OPTIONS_STRING)
 		free(o->str);
 
@@ -158,4 +160,38 @@ options_get_number(struct options *oo, const char *name)
 	if (o->type != OPTIONS_NUMBER)
 		fatalx("option not a number");
 	return (o->num);
+}
+
+struct options_entry *
+options_set_style(struct options *oo, const char *name, const char *value,
+    int append)
+{
+	struct options_entry	*o;
+
+	if ((o = options_find1(oo, name)) == NULL) {
+		o = xmalloc(sizeof *o);
+		o->name = xstrdup(name);
+		RB_INSERT(options_tree, &oo->tree, o);
+	} else if (o->type == OPTIONS_STRING)
+		free(o->str);
+
+	if (!append)
+		memcpy(&o->style, &grid_default_cell, sizeof o->style);
+
+	o->type = OPTIONS_STYLE;
+	if (style_parse(&grid_default_cell, &o->style, value) == -1)
+		return (NULL);
+	return (o);
+}
+
+struct grid_cell *
+options_get_style(struct options *oo, const char *name)
+{
+	struct options_entry	*o;
+
+	if ((o = options_find(oo, name)) == NULL)
+		fatalx("missing option");
+	if (o->type != OPTIONS_STYLE)
+		fatalx("option not a style");
+	return (&o->style);
 }
