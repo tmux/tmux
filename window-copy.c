@@ -750,8 +750,10 @@ window_copy_key_input(struct window_pane *wp, int key)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	size_t				 inputlen;
+	size_t				 inputlen, n;
 	int				 np;
+	struct paste_buffer		*pb;
+	u_char				 ch;
 
 	switch (mode_key_lookup(&data->mdata, key, NULL)) {
 	case MODEKEYEDIT_CANCEL:
@@ -764,6 +766,20 @@ window_copy_key_input(struct window_pane *wp, int key)
 		break;
 	case MODEKEYEDIT_DELETELINE:
 		*data->inputstr = '\0';
+		break;
+	case MODEKEYEDIT_PASTE:
+		if ((pb = paste_get_top(&global_buffers)) == NULL)
+			break;
+		for (n = 0; n < pb->size; n++) {
+			ch = (u_char) pb->data[n];
+			if (ch < 32 || ch == 127)
+				break;
+		}
+		inputlen = strlen(data->inputstr);
+
+		data->inputstr = xrealloc(data->inputstr, 1, inputlen + n + 1);
+		memcpy(data->inputstr + inputlen, pb->data, n);
+		data->inputstr[inputlen + n] = '\0';
 		break;
 	case MODEKEYEDIT_ENTER:
 		np = data->numprefix;
@@ -853,8 +869,12 @@ window_copy_mouse(
 		} else if (m->wheel == MOUSE_WHEEL_DOWN) {
 			for (i = 0; i < 5; i++)
 				window_copy_cursor_down(wp, 1);
-			if (data->oy == 0)
-				goto reset_mode;
+			/*
+			 * We reached the bottom, leave copy mode,
+			 * but only if no selection is in progress.
+			 */
+			if (data->oy == 0 && !s->sel.flag)
+			    goto reset_mode;
 		}
 		return;
 	}
@@ -1150,10 +1170,10 @@ window_copy_write_line(
 	struct screen			*s = &data->screen;
 	struct options			*oo = &wp->window->options;
 	struct grid_cell		 gc;
-	char				 hdr[32];
-	size_t				 last, xoff = 0, size = 0;
+	char				 hdr[512];
+	size_t				 last, xoff = 0, size = 0, limit;
 
-	window_mode_attrs(&gc, oo);
+	style_apply(&gc, oo, "mode-style");
 
 	last = screen_size_y(s) - 1;
 	if (py == 0) {
@@ -1164,11 +1184,14 @@ window_copy_write_line(
 		screen_write_cursormove(ctx, screen_size_x(s) - size, 0);
 		screen_write_puts(ctx, &gc, "%s", hdr);
 	} else if (py == last && data->inputtype != WINDOW_COPY_OFF) {
+		limit = sizeof hdr;
+		if (limit > screen_size_x(s))
+			limit = screen_size_x(s);
 		if (data->inputtype == WINDOW_COPY_NUMERICPREFIX) {
-			xoff = size = xsnprintf(hdr, sizeof hdr,
+			xoff = size = xsnprintf(hdr, limit,
 			    "Repeat: %u", data->numprefix);
 		} else {
-			xoff = size = xsnprintf(hdr, sizeof hdr,
+			xoff = size = xsnprintf(hdr, limit,
 			    "%s: %s", data->inputprompt, data->inputstr);
 		}
 		screen_write_cursormove(ctx, 0, last);
@@ -1267,7 +1290,7 @@ window_copy_update_selection(struct window_pane *wp, int may_redraw)
 		return (0);
 
 	/* Set colours. */
-	window_mode_attrs(&gc, oo);
+	style_apply(&gc, oo, "mode-style");
 
 	/* Find top of screen. */
 	ty = screen_hsize(data->backing) - data->oy;

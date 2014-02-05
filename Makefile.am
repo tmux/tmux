@@ -122,7 +122,6 @@ dist_tmux_SOURCES = \
 	cmd-select-pane.c \
 	cmd-select-window.c \
 	cmd-send-keys.c \
-	cmd-server-info.c \
 	cmd-set-buffer.c \
 	cmd-set-environment.c \
 	cmd-set-option.c \
@@ -131,7 +130,6 @@ dist_tmux_SOURCES = \
 	cmd-show-options.c \
 	cmd-source-file.c \
 	cmd-split-window.c \
-	cmd-start-server.c \
 	cmd-string.c \
 	cmd-suspend-client.c \
 	cmd-swap-pane.c \
@@ -175,6 +173,7 @@ dist_tmux_SOURCES = \
 	session.c \
 	signal.c \
 	status.c \
+	style.c \
 	tmux.c \
 	tty-acs.c \
 	tty-keys.c \

@@ -74,6 +74,7 @@ void	input_csi_dispatch_rm(struct input_ctx *);
 void	input_csi_dispatch_rm_private(struct input_ctx *);
 void	input_csi_dispatch_sm(struct input_ctx *);
 void	input_csi_dispatch_sm_private(struct input_ctx *);
+void	input_csi_dispatch_winops(struct input_ctx *);
 void	input_csi_dispatch_sgr(struct input_ctx *);
 int	input_dcs_dispatch(struct input_ctx *);
 int	input_utf8_open(struct input_ctx *);
@@ -154,6 +155,7 @@ enum input_csi_type {
 	INPUT_CSI_SM_PRIVATE,
 	INPUT_CSI_TBC,
 	INPUT_CSI_VPA,
+	INPUT_CSI_WINOPS,
 };
 
 /* Control (CSI) command table. */
@@ -188,6 +190,7 @@ const struct input_table_entry input_csi_table[] = {
 	{ 'q', " ", INPUT_CSI_DECSCUSR },
 	{ 'r', "",  INPUT_CSI_DECSTBM },
 	{ 's', "",  INPUT_CSI_SCP },
+	{ 't', "",  INPUT_CSI_WINOPS },
 	{ 'u', "",  INPUT_CSI_RCP },
 };
 
@@ -1077,7 +1080,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct screen_write_ctx	       *sctx = &ictx->ctx;
 	struct screen		       *s = sctx->s;
 	struct input_table_entry       *entry;
-	int			 	n, m;
+	int				n, m;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
@@ -1116,6 +1119,9 @@ input_csi_dispatch(struct input_ctx *ictx)
 		n = input_get(ictx, 0, 1, 1);
 		m = input_get(ictx, 1, 1, 1);
 		screen_write_cursormove(sctx, m - 1, n - 1);
+		break;
+	case INPUT_CSI_WINOPS:
+		input_csi_dispatch_winops(ictx);
 		break;
 	case INPUT_CSI_CUU:
 		screen_write_cursorup(sctx, input_get(ictx, 0, 1, 1));
@@ -1427,6 +1433,55 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
 			break;
 		}
+	}
+}
+
+/* Handle CSI window operations. */
+void
+input_csi_dispatch_winops(struct input_ctx *ictx)
+{
+	struct window_pane	*wp = ictx->wp;
+	int			 n, m;
+
+	m = 0;
+	while ((n = input_get(ictx, m, 0, -1)) != -1) {
+		switch (n) {
+		case 1:
+		case 2:
+		case 5:
+		case 6:
+		case 7:
+		case 11:
+		case 13:
+		case 14:
+		case 19:
+		case 20:
+		case 21:
+		case 24:
+			break;
+		case 3:
+		case 4:
+		case 8:
+			m++;
+			if (input_get(ictx, m, 0, -1) == -1)
+				return;
+			/* FALLTHROUGH */
+		case 9:
+		case 10:
+		case 22:
+		case 23:
+			m++;
+			if (input_get(ictx, m, 0, -1) == -1)
+				return;
+			break;
+		case 18:
+			input_reply(ictx, "\033[8;%u;%u", wp->sy, wp->sx);
+			break;
+		default:
+			log_debug("%s: unknown '%c'", __func__, ictx->ch);
+			break;
+		}
+		m++;
 	}
 }
 

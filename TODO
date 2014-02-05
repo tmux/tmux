@@ -18,14 +18,16 @@
 - options bits and pieces:
 	* set-remain-on-exit is a complete hack
 	* way to set socket path from config file
-	* -fg/-bg/-attr is crap - better just foo-style options which accept
-	  fg=,bg=,bright and so on like #[]
 
 - format improvements:
 	* option to quote format (#{session_name:quoted})
 	* formats need conditions for >0 (for #P)
 	* some way to pad # stuff with spaces, #!2T maybe
 	* status stuff is redundant with formats
+	* last window update time and format for it
+	* formats to show if a window is linked into multiple sessions, into
+	  multiple attached sessions, and is the active window in multiple
+	  attached sessions?
 
 - choose mode improvements:
 	* choose-pane command (augment choose-tree to do this?)
@@ -40,24 +42,20 @@
 	* monitor changes within a region
 	* perhaps monitor /all/ panes in the window not just one
 
-- panning over window (window larger than visible)
-
-- link panes into multiple windows
-
 - improve mouse support:
 	* bind commands to mouse in different areas? 
 	* more fine-grained options
 	* commands executed when clicking on a pattern (URL)
+	* send arrow key sequences for mouse scroll wheel in alternate screen
+	* mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets
+	  the flag on w/o checking the others before calling tty_update_mode)
 
 - hooks!
 
 - warts on current naming:
 	* display-time but message-fg/bg/attr
 	* list-* vs show-*
-	* server-info
 	* split-window -> split-pane??
-
-- way to keep a job running just read its last line of output for #()
 
 - better UTF-8 support:
 	* #22T can split in the middle of UTF-8 characters!
@@ -65,80 +63,71 @@
 	* message display
 	* prompt input
 	* multibyte key input
-
-- live update: server started with -U connects to server, requests sessions and
-  windows, receives file descriptors
-
-- there are inconsistencies in what we get from old shell and what comes from
-  config for new sessions and windows
-
-- multiline status line?
-
-- support title stack, both internally and externally (restore on detach)
-	http://docs.freebsd.org/cgi/getmsg.cgi?fetch=1149299+0+archive/2010/freebsd-questions/20100207.freebsd-questions
-
-- last window update time and format for it
-
-- bind commands to key sequences -- make it so ALL keys go through a table,
-  first an implicit table in which C-b is the only default binding to a command
-  that says "next key from $othertable" and so on. means -n can go away as well
+	* buffer_sample and the choose-* could show UTF-8 properly
 
 - copy/paste improvements:
-	* case insensitive searching
 	* incremental searching
 	* append to buffer
 	* paste w/o trailing whitespace
 	* named buffers and allow gaps in the stack
 	* command to toggle selection not to move it in copy-mode
 
-- mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets the flag
-  on w/o checking the others before calling tty_update_mode)
+- layout stuff
+	* way to tag a layout as a number/name
+	* maybe keep last layout + size around and if size reverts just put it
+          back
+	* revamp layouts: they are too complicated, should be more closely
+	  integrated, should support hints, layout sets should just be a
+	  special case of custom layouts, and we should support panes that are
+	  not attached to a cell at all. this could be the time to introduce
+	  panelink to replace layout_cell
+	* way to set hints/limits about pane size for resizing
+	* panning over window (window larger than visible)
 
-- way to tag a layout as a number/name
+- terminfo bits
+	* use a better termcap internally instead of screen, perhaps xterm
+	* use screen-256color when started on 256 colour terminal?
+	* need a tmux terminfo entry to document the extensions we are using in
+	  upstream terminfo
+	* support title stack, both internally and externally (restore on
+	  detach) http://docs.freebsd.org/cgi/getmsg.cgi?fetch=1149299+0+archive/2010/freebsd-questions/20100207.freebsd-questions
 
-- optimize pane redraws, 20120318184853.GK10965@yelena.nicm.ath.cx
+- code cleanup
+	* instead of separate window and session options, just one master
+	  options list with each option having a type (window or session), then
+	  options on window, on session, and global. for window options we look
+	  window->session->global, and for session we look session->global
+	* the way pane, window, session destroy is handled is too complicated
+	  and the distinction between session.c, window.c and server-fn.c
+	  functions is not clear. could we just have kill_pane(),
+	  kill_window(), unlink_window(), kill_session() that fix up all data
+	  structures (flagging sessions as dead) and return a value to say
+	  whether clients need to be checked for dead sessions? sort of like
+	  session_detach now but more so. or some other scheme to make it
+	  simpler and clearer? also would be nice to remove/rename server-fn.c
+	* more readable way to work out the various things commands need to
+	  know about the client, notably:
+		- is this the config file? (cmdq->c == NULL)
+		- is this a command client? (cmdq->c != NULL &&
+                  cmdq->c->session == NULL)
+		- is this a control client?
+		- can i do stdin or stdout to this client?
+	  or even guarantee that cmdq->c != NULL and provide a better way to
+	  tell when in the config file - then we use cmdq->c if we need a
+	  client w/o a session else cmd_current_client
+	* optimize pane redraws, 20120318184853.GK10965@yelena.nicm.ath.cx
 
-- instead of separate window and session options, just one master options list
-  with each option having a type (window or session), then options on window,
-  on session, and global. for window options we look window->session->global,
-  and for session we look session->global
+- miscellaneous
+	* way to keep a job running just read its last line of output for #()
+	 link panes into multiple windows
+	* live update: server started with -U connects to server, requests
+	  sessions and windows, receives file descriptors
+	* there are inconsistencies in what we get from old shell and what
+	  comes from config for new sessions and windows
+	* multiline status line?
+	* bind commands to key sequences -- make it so ALL keys go through a
+	  table, first an implicit table in which C-b is the only default
+	  binding to a command that says "next key from $othertable" and so
+	  on. means -n can go away as well
 
-- maybe keep last layout + size around and if size reverts just put it back
 
-- way to set hints/limits about pane size for resizing
-
-- revamp layouts: they are too complicated, should be more closely integrated,
-  should support hints, layout sets should just be a special case of custom
-  layouts, and we should support panes that are not attached to a cell at
-  all. this could be the time to introduce panelink to replace layout_cell
-
-- use a better termcap internally instead of screen, perhaps xterm
-
-- use screen-256color when started on 256 colour terminal?
-
-- we need a tmux terminfo entry to document the extensions we are using in
-  upstream terminfo
-
-- send arrow key sequences for mouse scroll wheel when in alternate screen
-
-- the way pane, window, session destroy is handled is too complicated and the
-  distinction between session.c, window.c and server-fn.c functions is not
-  clear. could we just have kill_pane(), kill_window(), unlink_window(),
-  kill_session() that fix up all data structures (flagging sessions as dead)
-  and return a value to say whether clients need to be checked for dead
-  sessions? sort of like session_detach now but more so. or some other scheme
-  to make it simpler and clearer? also would be nice to remove/rename
-  server-fn.c
-
-- more readable way to work out the various things commands need to know about
-  the client, notably:
-      - is this the config file? (cmdq->c == NULL)
-      - is this a command client? (cmdq->c != NULL && cmdq->c->session == NULL)
-      - is this a control client?
-      - can i do stdin or stdout to this client?
-  or even guarantee that cmdq->c != NULL and provide a better way to tell when
-  in the config file - then we use cmdq->c if we need a client w/o a session
-  else cmd_current_client
-
-- buffer_sample and the choose-* could let UTF-8 through and display it
-  properly.

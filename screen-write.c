@@ -248,7 +248,7 @@ screen_write_cnputs(struct screen_write_ctx *ctx,
 			}
 			*last = '\0';
 
-			screen_write_parsestyle(gc, &lgc, ptr);
+			style_parse(gc, &lgc, ptr);
 			ptr = last + 1;
 			continue;
 		}
@@ -286,89 +286,6 @@ screen_write_cnputs(struct screen_write_ctx *ctx,
 	}
 
 	free(msg);
-}
-
-/* Parse an embedded style of the form "fg=colour,bg=colour,bright,...". */
-void
-screen_write_parsestyle(
-    struct grid_cell *defgc, struct grid_cell *gc, const char *in)
-{
-	const char	delimiters[] = " ,";
-	char		tmp[32];
-	int		val;
-	size_t		end;
-	u_char		fg, bg, attr, flags;
-
-	if (*in == '\0')
-		return;
-	if (strchr(delimiters, in[strlen(in) - 1]) != NULL)
-		return;
-
-	fg = gc->fg;
-	bg = gc->bg;
-	attr = gc->attr;
-	flags = gc->flags;
-	do {
-		end = strcspn(in, delimiters);
-		if (end > (sizeof tmp) - 1)
-			return;
-		memcpy(tmp, in, end);
-		tmp[end] = '\0';
-
-		if (strcasecmp(tmp, "default") == 0) {
-			fg = defgc->fg;
-			bg = defgc->bg;
-			attr = defgc->attr;
-			flags &= ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
-			flags |=
-			    defgc->flags & (GRID_FLAG_FG256|GRID_FLAG_BG256);
-		} else if (end > 3 && strncasecmp(tmp + 1, "g=", 2) == 0) {
-			if ((val = colour_fromstring(tmp + 3)) == -1)
-				return;
-			if (*in == 'f' || *in == 'F') {
-				if (val != 8) {
-					if (val & 0x100) {
-						flags |= GRID_FLAG_FG256;
-						val &= ~0x100;
-					} else
-						flags &= ~GRID_FLAG_FG256;
-					fg = val;
-				} else {
-					fg = defgc->fg;
-					flags &= ~GRID_FLAG_FG256;
-					flags |= defgc->flags & GRID_FLAG_FG256;
-				}
-			} else if (*in == 'b' || *in == 'B') {
-				if (val != 8) {
-					if (val & 0x100) {
-						flags |= GRID_FLAG_BG256;
-						val &= ~0x100;
-					} else
-						flags &= ~GRID_FLAG_BG256;
-					bg = val;
-				} else {
-					bg = defgc->bg;
-					flags &= ~GRID_FLAG_BG256;
-					flags |= defgc->flags & GRID_FLAG_BG256;
-				}
-			} else
-				return;
-		} else if (end > 2 && strncasecmp(tmp, "no", 2) == 0) {
-			if ((val = attributes_fromstring(tmp + 2)) == -1)
-				return;
-			attr &= ~val;
-		} else {
-			if ((val = attributes_fromstring(tmp)) == -1)
-				return;
-			attr |= val;
-		}
-
-		in += end + strspn(in + end, delimiters);
-	} while (*in != '\0');
-	gc->fg = fg;
-	gc->bg = bg;
-	gc->attr = attr;
-	gc->flags = flags;
 }
 
 /* Copy from another screen. */

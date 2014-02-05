@@ -719,11 +719,12 @@ struct options_entry {
 	enum {
 		OPTIONS_STRING,
 		OPTIONS_NUMBER,
-		OPTIONS_DATA,
+		OPTIONS_STYLE
 	} type;
 
-	char		*str;
-	long long	 num;
+	char			*str;
+	long long	 	 num;
+	struct grid_cell	 style;
 
 	RB_ENTRY(options_entry) entry;
 };
@@ -1021,6 +1022,8 @@ struct layout_cell {
 	u_int		 yoff;
 
 	struct window_pane *wp;
+	struct window_pane *lastwp;
+
 	struct layout_cells cells;
 
 	TAILQ_ENTRY(layout_cell) entry;
@@ -1444,7 +1447,8 @@ enum options_table_type {
 	OPTIONS_TABLE_COLOUR,
 	OPTIONS_TABLE_ATTRIBUTES,
 	OPTIONS_TABLE_FLAG,
-	OPTIONS_TABLE_CHOICE
+	OPTIONS_TABLE_CHOICE,
+	OPTIONS_TABLE_STYLE
 };
 
 struct options_table_entry {
@@ -1457,6 +1461,8 @@ struct options_table_entry {
 
 	const char	       *default_str;
 	long long		default_num;
+
+	const char	       *style;
 };
 
 /* Tree of format entries. */
@@ -1568,12 +1574,15 @@ void	options_free(struct options *);
 struct options_entry *options_find1(struct options *, const char *);
 struct options_entry *options_find(struct options *, const char *);
 void	options_remove(struct options *, const char *);
-struct options_entry *printflike3 options_set_string(
-	    struct options *, const char *, const char *, ...);
+struct options_entry *printflike3 options_set_string(struct options *,
+	    const char *, const char *, ...);
 char   *options_get_string(struct options *, const char *);
-struct options_entry *options_set_number(
-	    struct options *, const char *, long long);
+struct options_entry *options_set_number(struct options *, const char *,
+	    long long);
 long long options_get_number(struct options *, const char *);
+struct options_entry *options_set_style(struct options *, const char *,
+	    const char *, int);
+struct grid_cell *options_get_style(struct options *, const char *);
 
 /* options-table.c */
 extern const struct options_table_entry server_options_table[];
@@ -2033,8 +2042,6 @@ void printflike5 screen_write_nputs(struct screen_write_ctx *,
 	     ssize_t, struct grid_cell *, int, const char *, ...);
 void	 screen_write_vnputs(struct screen_write_ctx *,
 	     ssize_t, struct grid_cell *, int, const char *, va_list);
-void	 screen_write_parsestyle(
-	     struct grid_cell *, struct grid_cell *, const char *);
 void	 screen_write_putc(
 	     struct screen_write_ctx *, struct grid_cell *, u_char);
 void	 screen_write_copy(struct screen_write_ctx *,
@@ -2070,7 +2077,7 @@ void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);
 
 /* screen-redraw.c */
-void	 screen_redraw_screen(struct client *, int, int);
+void	 screen_redraw_screen(struct client *, int, int, int);
 void	 screen_redraw_pane(struct client *, struct window_pane *);
 
 /* screen.c */
@@ -2164,7 +2171,6 @@ struct window_pane *window_pane_find_right(struct window_pane *);
 void		 window_set_name(struct window *, const char *);
 void		 window_remove_ref(struct window *);
 void		 winlink_clear_flags(struct winlink *);
-void		 window_mode_attrs(struct grid_cell *, struct options *);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);
@@ -2337,5 +2343,15 @@ int printflike2	 xasprintf(char **, const char *, ...);
 int		 xvasprintf(char **, const char *, va_list);
 int printflike3	 xsnprintf(char *, size_t, const char *, ...);
 int		 xvsnprintf(char *, size_t, const char *, va_list);
+
+/* style.c */
+int		 style_parse(const struct grid_cell *,
+		     struct grid_cell *, const char *);
+const char	*style_tostring(struct grid_cell *);
+void		 style_update_new(struct options *, const char *, const char *);
+void		 style_update_old(struct options *, const char *,
+		     struct grid_cell *);
+void	style_apply(struct grid_cell *, struct options *, const char *);
+void	style_apply_update(struct grid_cell *, struct options *, const char *);
 
 #endif /* TMUX_H */

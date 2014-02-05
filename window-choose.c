@@ -736,7 +736,7 @@ window_choose_write_line(
 	utf8flag = options_get_number(&wp->window->options, "utf8");
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	if (data->selected == data->top + py)
-		window_mode_attrs(&gc, oo);
+		style_apply(&gc, oo, "mode-style");
 
 	screen_write_cursormove(ctx, 0, py);
 	if (data->top + py  < ARRAY_LENGTH(&data->list)) {
@@ -763,7 +763,7 @@ window_choose_write_line(
 		screen_write_putc(ctx, &gc, ' ');
 
 	if (data->input_type != WINDOW_CHOOSE_NORMAL) {
-		window_mode_attrs(&gc, oo);
+		style_apply(&gc, oo, "mode-style");
 
 		xoff = xsnprintf(hdr, sizeof hdr,
 			"%s: %s", data->input_prompt, data->input_str);

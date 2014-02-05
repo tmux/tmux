@@ -133,7 +133,7 @@ xterm_keys_match(const char *template, const char *buf, size_t len)
 	do {
 		if (*template != '_' && buf[pos] != *template)
 			return (-1);
-	} while (pos++ != len && *++template != '\0');
+	} while (*++template != '\0' && ++pos != len);
 
 	if (*template != '\0')	/* partial */
 		return (1);
