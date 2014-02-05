@@ -31,32 +31,29 @@ syn keyword tmuxAction	any current none
 syn keyword tmuxBoolean	off on
 
 syn keyword tmuxCmds
-	\ attach[-session] detach[-client] has[-session] kill-server
-	\ kill-session lsc list-clients lscm list-commands ls list-sessions
-	\ lockc lock-client locks lock-session new[-session] refresh[-client]
-	\ rename[-session] showmsgs show-messages source[-file] start[-server]
-	\ suspendc suspend-client switchc switch-client
-	\ copy-mode
-	\ breakp break-pane capturep capture-pane choose-client choose-session
-	\ choose-tree choose-window displayp display-panes findw find-window
-	\ joinp join-pane killp kill-pane killw kill-window lastp last-pane
-	\ last[-window] linkw link-window lsp list-panes lsw list-windows movep
-	\ move-pane movew move-window neww new-window nextl next-layout
-	\ next[-window] pipep pipe-pane prevl previous-layout prev[ious-window]
-	\ renamew rename-window resizep resize-pane respawnp respawn-pane
-	\ respawnw respawn-window rotatew rotate-window selectl select-layout
-	\ selectp select-pane selectw select-window splitw split-window swapp
-	\ swap-pane swapw swap-window unlinkw unlink-window
-	\ bind[-key] lsk list-keys send[-keys] send-prefix unbind[-key]
-	\ set[-option] setw set-window-option show[-options] showw
-	\ show-window-options
-	\ setenv set-environment showenv show-environment
-	\ command-prompt confirm[-before] display[-message]
-	\ choose-buffer clearhist clear-history deleteb delete-buffer lsb
-	\ list-buffers loadb load-buffer pasteb paste-buffer saveb save-buffer
-	\ setb set-buffer showb show-buffer
-	\ clock-mode if[-shell] lock[-server] run[-shell] server-info info
-	\ choose-list wait-for
+	\ attach[-session] bind[-key] break-pane breakp capture-pane capturep
+	\ choose-buffer choose-client choose-list choose-session choose-tree
+	\ choose-window clear-history clearhist clock-mode command-prompt
+	\ confirm[-before] copy-mode delete-buffer deleteb detach[-client]
+	\ display[-message] display-panes displayp find-window findw
+	\ has[-session] if[-shell] join-pane joinp kill-pane killp kill-server
+	\ kill-session kill-window killw last-pane lastp last[-window]
+	\ link-window linkw list-buffers lsb list-clients lsc
+	\ list-commands lscm list-keys lsk list-panes lsp list-sessions ls
+	\ list-windows lsw load-buffer loadb lock-client lockc lock[-server]
+	\ lock-session locks move-pane movep move-window movew new[-session]
+	\ next-layout nextl next[-window] paste-buffer pasteb pipe-pane pipep
+	\ previous-layout prevl prev[ious-window] refresh[-client]
+	\ rename[-session] rename-window renamew resize-pane resizep
+	\ respawn-pane respawnp respawn-window respawnw rotate-window rotatew
+	\ run[-shell] save-buffer saveb select-layout selectl
+	\ select-pane selectp select-window selectw send[-keys] send-prefix
+	\ server-info info set-buffer setb set-environment setenv set[-option]
+	\ set-window-option setw show-buffer showb show-environment showenv
+	\ show-messages showmsgs show[-options] show-window-options showw
+	\ source[-file] split-window splitw start[-server]
+	\ suspend-client suspendc swap-pane swapp swap-window swapw
+	\ switch-client switchc unbind[-key] unlink-window unlinkw wait[-for]
 
 syn keyword tmuxOptsSet
 	\ buffer-limit escape-time exit-unattached exit-unattached quiet
