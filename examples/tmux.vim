@@ -56,43 +56,34 @@ syn keyword tmuxCmds
 	\ switch-client switchc unbind[-key] unlink-window unlinkw wait[-for]
 
 syn keyword tmuxOptsSet
-	\ buffer-limit escape-time exit-unattached exit-unattached quiet
-	\ set-clipboard
-	\ base-index bell-action bell-on-alert default-command default-path
+	\ buffer-limit escape-time exit-unattached exit-unattached focus-events
+	\ quiet set-clipboard
+	\ assume-paste-time base-index bell-action bell-on-alert default-command
 	\ default-shell default-terminal destroy-unattached detach-on-destroy
 	\ display-panes-active-colour display-panes-colour display-panes-time
-	\ display-time history-limit
-	\ lock-after-time lock-command lock-server
-	\ message-command-attr message-attr message-command-bg message-bg
-	\ message-command-fg message-fg message-limit
-	\ mouse-resize-pane mouse-select-pane mouse-select-window mouse-utf8
-	\ pane-active-border-bg pane-border-bg pane-active-border-fg
-	\ pane-border-fg prefix prefix2
+	\ display-time history-limit lock-after-time lock-command lock-server
+	\ message-command-style message-limit message-style mouse-resize-pane
+	\ mouse-select-pane mouse-select-window mouse-utf8
+	\ pane-active-border-style pane-border-style prefix prefix2
 	\ renumber-windows repeat-time set-remain-on-exit set-titles
-	\ set-titles-string status status-attr status-bg status-fg
-	\ status-interval status-justify status-keys status-left
-	\ status-left-attr status-left-bg status-left-fg status-left-length
-	\ status-position status-right status-right-attr status-right-bg
-	\ status-right-fg status-right-length status-utf8 terminal-overrides
-	\ update-environment visual-activity visual-bell visual-content
-	\ visual-silence word-separators
+	\ set-titles-string status status-interval status-justify status-keys
+	\ status-left status-left-length status-left-style status-position
+	\ status-right status-right-length staus-right-style status-utf8
+	\ terminal-overrides update-environment visual-activity visual-bell
+	\ visual-content visual-silence word-separators
 
 syn keyword tmuxOptsSetw
-	\ aggressive-resize alternate-screen automatic-rename
+	\ aggressive-resize allow-rename alternate-screen automatic-rename
 	\ c0-change-interval c0-change-trigger clock-mode-colour
-	\ clock-mode-style force-height force-width layout-history-limit
-	\ main-pane-height main-pane-width mode-attr mode-bg mode-fg move-keys
-	\ mode-mouse monitor-activity monitor-content monitor-silence
+	\ clock-mode-style force-height force-width force-height
+	\ force-width main-pane-height main-pane-width mode-keys
+	\ mode-mouse mode-style monitor-activity monitor-content monitor-silence
 	\ other-pane-height other-pane-width pane-base-index remain-on-exit
-	\ synchronize-panes utf8 window-status-bell-attr window-status-bell-bg
-	\ window-status-bell-fg window-status-content-attr
-	\ window-status-content-bg window-status-content-fg
-	\ window-status-activity-attr window-status-activity-bg
-	\ window-status-activity-fg window-status-attr
-	\ window-status-current-attr window-status-attr window-status-current-bg
-	\ window-status-bg window-status-current-fg window-status-fg
-	\ window-status-current-format window-status-format
-	\ window-status-separator xterm-keys wrap-search
+	\ synchronize-panes utf8 window-status-activity-style
+	\ window-status-bell-style window-status-content-style
+	\ window-status-current-format window-status-current-style
+	\ window-status-format window-status-last-style window-status-separator
+	\ window-status-style wrap-search xterm-keys
 
 syn keyword tmuxTodo FIXME NOTE TODO XXX contained
 
