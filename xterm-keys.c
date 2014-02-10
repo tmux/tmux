@@ -131,7 +131,9 @@ xterm_keys_match(const char *template, const char *buf, size_t len)
 
 	pos = 0;
 	do {
-		if (*template != '_' && buf[pos] != *template)
+		if (*template == '_' && buf[pos] >= '1' && buf[pos] <= '8')
+			continue;
+		if (buf[pos] != *template)
 			return (-1);
 	} while (*++template != '\0' && ++pos != len);
 

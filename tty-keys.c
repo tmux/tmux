@@ -479,6 +479,15 @@ tty_keys_next(struct tty *tty)
 		goto partial_key;
 	}
 
+	/* Look for matching key string and return if found. */
+	tk = tty_keys_find(tty, buf, len, &size);
+	if (tk != NULL) {
+		if (tk->next != NULL)
+			goto partial_key;
+		key = tk->key;
+		goto complete_key;
+	}
+
 	/* Try to parse a key with an xterm-style modifier. */
 	switch (xterm_keys_find(buf, len, &size, &key)) {
 	case 0:		/* found */
@@ -487,15 +496,6 @@ tty_keys_next(struct tty *tty)
 		break;
 	case 1:
 		goto partial_key;
-	}
-
-	/* Look for matching key string and return if found. */
-	tk = tty_keys_find(tty, buf, len, &size);
-	if (tk != NULL) {
-		if (tk->next != NULL)
-			goto partial_key;
-		key = tk->key;
-		goto complete_key;
 	}
 
 first_key:
