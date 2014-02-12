@@ -61,7 +61,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct client		*c;
-	struct session		*s;
+	struct session		*s = NULL;
 	struct winlink		*wl = NULL;
 	struct window 		*w = NULL;
 	struct window_pane	*wp = NULL;
