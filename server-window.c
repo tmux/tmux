@@ -76,7 +76,7 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 		wl->flags |= WINLINK_BELL;
 	if (s->flags & SESSION_UNATTACHED)
 		return (0);
-	if (s->curw->window == wl->window)
+	if (s->curw->window == w)
 		w->flags &= ~WINDOW_BELL;
 
 	visual = options_get_number(&s->options, "visual-bell");
@@ -93,10 +93,8 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 		}
 		if (c->session->curw->window == w)
 			status_message_set(c, "Bell in current window");
-		else if (action == BELL_ANY) {
-			status_message_set(c, "Bell in window %u",
-				winlink_find_by_window(&s->windows, w)->idx);
-		}
+		else if (action == BELL_ANY)
+			status_message_set(c, "Bell in window %u", wl->idx);
 	}
 
 	return (1);
@@ -110,7 +108,7 @@ server_window_check_activity(struct session *s, struct winlink *wl)
 	struct window	*w = wl->window;
 	u_int		 i;
 
-	if (s->curw->window == wl->window)
+	if (s->curw->window == w)
 		w->flags &= ~WINDOW_ACTIVITY;
 
 	if (!(w->flags & WINDOW_ACTIVITY) || wl->flags & WINLINK_ACTIVITY)
@@ -130,8 +128,7 @@ server_window_check_activity(struct session *s, struct winlink *wl)
 			c = ARRAY_ITEM(&clients, i);
 			if (c == NULL || c->session != s)
 				continue;
-			status_message_set(c, "Activity in window %u",
-			    winlink_find_by_window(&s->windows, w)->idx);
+			status_message_set(c, "Activity in window %u", wl->idx);
 		}
 	}
 
@@ -182,8 +179,7 @@ server_window_check_silence(struct session *s, struct winlink *wl)
 			c = ARRAY_ITEM(&clients, i);
 			if (c == NULL || c->session != s)
 				continue;
-			status_message_set(c, "Silence in window %u",
-			    winlink_find_by_window(&s->windows, w)->idx);
+			status_message_set(c, "Silence in window %u", wl->idx);
 		}
 	}
 
@@ -225,8 +221,7 @@ server_window_check_content(
 			c = ARRAY_ITEM(&clients, i);
 			if (c == NULL || c->session != s)
 				continue;
-			status_message_set(c, "Content in window %u",
-			    winlink_find_by_window(&s->windows, w)->idx);
+			status_message_set(c, "Content in window %u", wl->idx);
 		}
 	}
 
