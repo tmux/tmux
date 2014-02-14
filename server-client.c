@@ -280,7 +280,7 @@ server_client_status_timer(void)
 		interval = options_get_number(&s->options, "status-interval");
 
 		difference = tv.tv_sec - c->status_timer.tv_sec;
-		if (difference >= interval) {
+		if (interval != 0 && difference >= interval) {
 			status_update_jobs(c);
 			c->flags |= CLIENT_STATUS;
 		}
