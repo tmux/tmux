@@ -172,7 +172,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 
 	/* Start or stop timers when automatic-rename changed. */
-	if (strcmp (oe->name, "automatic-rename") == 0) {
+	if (strcmp(oe->name, "automatic-rename") == 0) {
 		for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 			if ((w = ARRAY_ITEM(&windows, i)) == NULL)
 				continue;

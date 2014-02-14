@@ -749,7 +749,7 @@ grid_reflow_split(struct grid *dst, u_int *py, struct grid_line *src_gl,
 		dst_gl->flags |= GRID_LINE_WRAPPED;
 
 		/* Copy the data. */
-		memcpy (&dst_gl->celldata[0], &src_gl->celldata[offset],
+		memcpy(&dst_gl->celldata[0], &src_gl->celldata[offset],
 		    to_copy * sizeof dst_gl->celldata[0]);
 
 		/* Move offset and reduce old line size. */

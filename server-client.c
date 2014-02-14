@@ -68,9 +68,9 @@ server_client_create(int fd)
 	c->cmdq = cmdq_new(c);
 	c->cmdq->client_exit = 1;
 
-	c->stdin_data = evbuffer_new ();
-	c->stdout_data = evbuffer_new ();
-	c->stderr_data = evbuffer_new ();
+	c->stdin_data = evbuffer_new();
+	c->stdout_data = evbuffer_new();
+	c->stderr_data = evbuffer_new();
 
 	c->tty.fd = -1;
 	c->title = NULL;
@@ -123,7 +123,7 @@ server_client_open(struct client *c, struct session *s, char **cause)
 		return (0);
 
 	if (!(c->flags & CLIENT_TERMINAL)) {
-		*cause = xstrdup ("not a terminal");
+		*cause = xstrdup("not a terminal");
 		return (-1);
 	}
 
@@ -174,7 +174,7 @@ server_client_lost(struct client *c)
 		evtimer_del(&c->identify_timer);
 
 	free(c->message_string);
-	if (event_initialized (&c->message_timer))
+	if (event_initialized(&c->message_timer))
 		evtimer_del(&c->message_timer);
 	for (i = 0; i < ARRAY_LENGTH(&c->message_log); i++) {
 		msg = &ARRAY_ITEM(&c->message_log, i);
