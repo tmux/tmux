@@ -119,7 +119,7 @@
 
 - miscellaneous
 	* way to keep a job running just read its last line of output for #()
-	 link panes into multiple windows
+	* link panes into multiple windows
 	* live update: server started with -U connects to server, requests
 	  sessions and windows, receives file descriptors
 	* there are inconsistencies in what we get from old shell and what
