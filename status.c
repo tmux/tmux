@@ -445,11 +445,11 @@ status_replace(struct client *c, struct session *s, struct winlink *wl,
 	if (fmt == NULL)
 		return (xstrdup(""));
 
-	if (s == NULL)
+	if (s == NULL && c != NULL)
 		s = c->session;
-	if (wl == NULL)
+	if (wl == NULL && s != NULL)
 		wl = s->curw;
-	if (wp == NULL)
+	if (wp == NULL && wl != NULL)
 		wp = wl->window->active;
 
 	len = strftime(in, sizeof in, fmt, localtime(&t));
@@ -472,10 +472,14 @@ status_replace(struct client *c, struct session *s, struct winlink *wl,
 	*optr = '\0';
 
 	ft = format_create();
-	format_client(ft, c);
-	format_session(ft, s);
-	format_winlink(ft, s, wl);
-	format_window_pane(ft, wp);
+	if (c != NULL)
+		format_client(ft, c);
+	if (s != NULL)
+		format_session(ft, s);
+	if (s != NULL && wl != NULL)
+		format_winlink(ft, s, wl);
+	if (wp != NULL)
+		format_window_pane(ft, wp);
 	expanded = format_expand(ft, out);
 	format_free(ft);
 	return (expanded);
@@ -686,7 +690,7 @@ status_message_set(struct client *c, const char *fmt, ...)
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
-	if (event_initialized (&c->message_timer))
+	if (event_initialized(&c->message_timer))
 		evtimer_del(&c->message_timer);
 	evtimer_set(&c->message_timer, status_message_callback, c);
 	evtimer_add(&c->message_timer, &tv);

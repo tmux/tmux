@@ -787,7 +787,7 @@ With
 .Fl t ,
 display the log for
 .Ar target-client .
-.Fl I,
+.Fl I ,
 .Fl J
 and
 .Fl T
@@ -2503,7 +2503,7 @@ Display
 will be passed through
 .Xr strftime 3
 and formats (see
-.Sx FORMATS Ns )
+.Sx FORMATS )
 will be expanded.
 It may also contain any of the following special character sequences:
 .Bl -column "Character pair" "Replaced with" -offset indent
@@ -2641,9 +2641,9 @@ The terminal entry value is passed through
 before interpretation.
 The default value forcibly corrects the
 .Ql colors
-entry for terminals which support 88 or 256 colours:
+entry for terminals which support 256 colours:
 .Bd -literal -offset indent
-"*88col*:colors=88,*256col*:colors=256,xterm*:XT"
+"*256col*:colors=256,xterm*:XT"
 .Ed
 .It Ic update-environment Ar variables
 Set a space-separated string containing a list of environment variables to be
