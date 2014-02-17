@@ -307,11 +307,13 @@ cmd_set_option_set(struct cmd *self, struct cmd_q *cmdq,
 		break;
 	case OPTIONS_TABLE_COLOUR:
 		o = cmd_set_option_colour(self, cmdq, oe, oo, value);
-		style_update_new(oo, o->name, oe->style);
+		if (o != NULL)
+			style_update_new(oo, o->name, oe->style);
 		break;
 	case OPTIONS_TABLE_ATTRIBUTES:
 		o = cmd_set_option_attributes(self, cmdq, oe, oo, value);
-		style_update_new(oo, o->name, oe->style);
+		if (o != NULL)
+			style_update_new(oo, o->name, oe->style);
 		break;
 	case OPTIONS_TABLE_FLAG:
 		o = cmd_set_option_flag(self, cmdq, oe, oo, value);
