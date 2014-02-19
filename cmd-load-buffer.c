@@ -169,6 +169,7 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 		/* No context so can't use server_client_msg_error. */
 		evbuffer_add_printf(c->stderr_data, "no buffer %d\n", *buffer);
 		server_push_stderr(c);
+		free(pdata);
 	}
 
 	free(data);

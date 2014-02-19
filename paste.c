@@ -130,8 +130,10 @@ paste_replace(struct paste_stack *ps, u_int idx, char *data, size_t size)
 {
 	struct paste_buffer	*pb;
 
-	if (size == 0)
+	if (size == 0) {
+		free(data);
 		return (0);
+	}
 
 	if (idx >= ARRAY_LENGTH(ps))
 		return (-1);

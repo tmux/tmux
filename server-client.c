@@ -323,9 +323,9 @@ server_client_check_mouse(struct client *c, struct window_pane *wp)
 	else if (statusat > 0 && m->y >= (u_int)statusat)
 		m->y = statusat - 1;
 
-	/* Is this a pane selection? Allow down only in copy mode. */
+	/* Is this a pane selection? */
 	if (options_get_number(oo, "mouse-select-pane") &&
-	    (m->event == MOUSE_EVENT_DOWN || wp->mode != &window_copy_mode)) {
+	    (m->event == MOUSE_EVENT_DOWN || m->event == MOUSE_EVENT_WHEEL)) {
 		window_set_active_at(wp->window, m->x, m->y);
 		server_redraw_window_borders(wp->window);
 		wp = wp->window->active; /* may have changed */
