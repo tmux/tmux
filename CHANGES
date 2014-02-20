@@ -1,3 +1,58 @@
+CHANGES FROM 1.8 to 1.9, 20 February 2014
+
+NOTE:  This release has bumped the tmux protocol version.  It is therefore
+advised that the prior tmux server is restarted when this version of tmux is
+installed, to avoid protocol mismatch errors for newer clients trying to
+talk to an older running tmux server.
+
+Incompatible Changes
+====================
+
+* 88 colour support has been removed.
+* 'default-path' has been removed.  The new-window command accepts '-c' to
+  cater for this.  The previous value of "." can be replaced with: 'neww -c
+  $PWD', the previous value of '' which meant current path of the pane can
+  be specified as:  'neww -c "#{pane_current_path}"'
+
+Deprecated Changes
+==================
+
+* The single format specifiers:  #A -> #Z (where defined) have been
+  deprecated and replaced with longer-named equivalents, as listed in the
+  FORMATS section of the tmux manpage.
+* The various foo-{fg,bg,attr} commands have been deprecated and replaced
+  with equivalent foo-style option instead.  Currently this is still
+  backwards-compatible, but will be removed over time.
+
+Normal Changes
+==============
+
+* A new environment variable TMUX_TMPDIR is now honoured, allowing the
+  socket directory to be set outside of TMPDIR (/tmp/ if not set).
+* If -s not given to swap-pane the current pane is assumed.
+* A #{pane_syncronized} format specifier has been added to be a conditional
+  format if a pane is in a syncronised mode (c.f. syncronize-panes)
+* Tmux now runs under Cygwin natively.
+* Formats can now be nested within each other and expanded accordingly.
+* Added 'automatic-rename-format' option to allow the automatic rename
+  mechanism to use something other than the default of
+  #{pane_current_command}.
+* new-session learnt '-c' to specify the starting directory for that session
+  and all subsequent windows therein.
+* The session name is now shown in the message printed to the terminal when
+  a session is detached.
+* Lots more format specifiers have been added.
+* Server race conditions have been fixed; in particular commands are not run
+  until after the configuration file is read completely.
+* Case insensitive searching in tmux's copy-mode is now possible.
+* attach-session and switch-client learnt the '-t' option to accept a window
+  and/or a pane to use.
+* Copy-mode is only exited if no selection is in progress.
+* Paste key in copy-mode is now possible to enter text from the clipboard.
+* status-interval set to '0' now works as intended.
+* tmux now supports 256 colours running under fbterm.
+* Many bug fixes!
+
 CHANGES FROM 1.7 to 1.8, 26 March 2013
 
 Incompatible Changes

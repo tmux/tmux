@@ -45,7 +45,7 @@ AC_CHECK_HEADERS(
 )
 
 # Is this a debug build?
-found_debug=yes
+#found_debug=yes
 AC_ARG_ENABLE(
 	debug,
 	AC_HELP_STRING(--enable-debug, create a debug build),
