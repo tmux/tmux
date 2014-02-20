@@ -1,7 +1,7 @@
 # $Id$
 
 # Miscellaneous autofoo bullshit.
-AC_INIT(tmux, 1.9)
+AC_INIT(tmux, 1.10)
 
 AC_CONFIG_AUX_DIR(etc)
 AM_INIT_AUTOMAKE([foreign subdir-objects])
@@ -45,7 +45,7 @@ AC_CHECK_HEADERS(
 )
 
 # Is this a debug build?
-#found_debug=yes
+found_debug=yes
 AC_ARG_ENABLE(
 	debug,
 	AC_HELP_STRING(--enable-debug, create a debug build),
