@@ -9,6 +9,7 @@ EXTRA_DIST = \
 	CHANGES FAQ README TODO COPYING examples compat \
 	array.h compat.h tmux.h osdep-*.c mdoc2man.awk tmux.1
 dist-hook:
+	make clean
 	grep "^#found_debug=" configure
 	find $(distdir) -name .svn -type d|xargs rm -Rf
 
