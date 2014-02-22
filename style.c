@@ -203,8 +203,14 @@ style_apply(struct grid_cell *gc, struct options *oo, const char *name)
 
 	memcpy(gc, &grid_default_cell, sizeof *gc);
 	gcp = options_get_style(oo, name);
-	colour_set_fg(gc, gcp->fg);
-	colour_set_bg(gc, gcp->bg);
+	if (gcp->flags & GRID_FLAG_FG256)
+		colour_set_fg(gc, gcp->fg | 0x100);
+	else
+		colour_set_fg(gc, gcp->fg);
+	if (gcp->flags & GRID_FLAG_BG256)
+		colour_set_bg(gc, gcp->bg | 0x100);
+	else
+		colour_set_bg(gc, gcp->bg);
 	gc->attr |= gcp->attr;
 }
 
@@ -215,10 +221,18 @@ style_apply_update(struct grid_cell *gc, struct options *oo, const char *name)
 	struct grid_cell	*gcp;
 
 	gcp = options_get_style(oo, name);
-	if (gcp->fg != 8)
-		colour_set_fg(gc, gcp->fg);
-	if (gcp->bg != 8)
-		colour_set_bg(gc, gcp->bg);
+	if (gcp->fg != 8) {
+		if (gcp->flags & GRID_FLAG_FG256)
+			colour_set_fg(gc, gcp->fg | 0x100);
+		else
+			colour_set_fg(gc, gcp->fg);
+	}
+	if (gcp->bg != 8) {
+		if (gcp->flags & GRID_FLAG_BG256)
+			colour_set_bg(gc, gcp->bg | 0x100);
+		else
+			colour_set_bg(gc, gcp->bg);
+	}
 	if (gcp->attr != 0)
 		gc->attr |= gcp->attr;
 }
