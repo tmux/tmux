@@ -238,6 +238,31 @@ would be welcome.
 
 vim users may also want to set the "ttyfast" option inside tmux.
 
+* How do I make ctrl and shift arrow keys work in emacs?
+
+The terminal-init-screen function in term/screen.el is called for new frames,
+but it doesn't configure any function keys.
+
+If the tmux xterm-keys option is on, it is enough to define the same keys as
+xterm. Add the following to init.el or .emacs to do this:
+
+(defadvice terminal-init-screen
+  ;; The advice is named `tmux', and is run before `terminal-init-screen' runs.
+  (before tmux activate)
+  ;; Docstring.  This describes the advice and is made available inside emacs;
+  ;; for example when doing C-h f terminal-init-screen RET
+  "Apply xterm keymap, allowing use of keys passed through tmux."
+  ;; This is the elisp code that is run before `terminal-init-screen'.
+  (if (getenv "TMUX")
+    (let ((map (copy-keymap xterm-function-map)))
+    (set-keymap-parent map (keymap-parent input-decode-map))
+    (set-keymap-parent input-decode-map map))))
+
+And ensure .tmux.conf contains "set -g xterm-keys on".
+
+Alternatively, the screen.el file can be copied to the load path and
+customized.
+
 * Why doesn't elinks set the window title inside tmux?
 
 There isn't a way to detect if a terminal supports setting the window title, so
