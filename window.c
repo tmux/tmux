@@ -410,8 +410,9 @@ window_pane_active_set(struct window_pane *wp, struct window_pane *nextwp)
 	 * Previously active pane, if any, must not be the same as the source
 	 * pane.
 	 */
-	if (nextwp->layout_cell->parent != NULL) {
-		lastwp = nextwp->layout_cell->parent->lastwp;
+	lc = nextwp->layout_cell->parent;
+	if (lc != NULL && lc->lastwp != NULL) {
+		lastwp = lc->lastwp;
 		if (lastwp != wp && window_pane_visible(lastwp))
 			return (lastwp);
 	}
