@@ -1,3 +1,14 @@
+CHANGES FROM 1.9 to 1.9a 22 February 2014
+
+NOTE:  This is a bug-fix release to address some important bugs which just
+missed the 1.9 deadline, but were found afterwards.
+
+Normal Changes
+==============
+
+* Fix crash due to uninitialized lastwp member of layout_cell
+* Fix -fg/-bg/-style with 256 colour terminals.  
+
 CHANGES FROM 1.8 to 1.9, 20 February 2014
 
 NOTE:  This release has bumped the tmux protocol version.  It is therefore
