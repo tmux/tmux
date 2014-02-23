@@ -83,6 +83,8 @@
 	  panelink to replace layout_cell
 	* way to set hints/limits about pane size for resizing
 	* panning over window (window larger than visible)
+	* a mode where one application can cross two panes (ie x|y, width =
+          COLUMNS/2 but height = ROWS * 2)
 
 - terminfo bits
 	* use a better termcap internally instead of screen, perhaps xterm
