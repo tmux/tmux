@@ -1650,7 +1650,7 @@ void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 void	tty_force_cursor_colour(struct tty *, const char *);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int);
-int	tty_open(struct tty *, const char *, char **);
+int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
 void	tty_write(
@@ -1679,7 +1679,7 @@ void	tty_bell(struct tty *);
 /* tty-term.c */
 extern struct tty_terms tty_terms;
 extern const struct tty_term_code_entry tty_term_codes[NTTYCODE];
-struct tty_term *tty_term_find(char *, int, const char *, char **);
+struct tty_term *tty_term_find(char *, int, char **);
 void		 tty_term_free(struct tty_term *);
 int		 tty_term_has(struct tty_term *, enum tty_code_code);
 const char	*tty_term_string(struct tty_term *, enum tty_code_code);
@@ -1893,7 +1893,7 @@ void	 server_add_accept(int);
 /* server-client.c */
 void	 server_client_handle_key(struct client *, int);
 void	 server_client_create(int);
-int      server_client_open(struct client *, struct session *, char **);
+int      server_client_open(struct client *, char **);
 void	 server_client_lost(struct client *);
 void	 server_client_callback(int, short, void *);
 void	 server_client_status_timer(void);

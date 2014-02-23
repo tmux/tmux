@@ -145,7 +145,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	/* Open the terminal if necessary. */
 	if (!detached && !already_attached) {
-		if (server_client_open(c, NULL, &cause) != 0) {
+		if (server_client_open(c, &cause) != 0) {
 			cmdq_error(cmdq, "open terminal failed: %s", cause);
 			free(cause);
 			goto error;
