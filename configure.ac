@@ -144,7 +144,7 @@ if test "x$found_curses" = xno; then
     AC_MSG_ERROR("curses not found")
 fi
 
-# Look for utempter
+# Look for utempter.
 AC_CHECK_HEADER(utempter.h, have_utempter=yes, have_utempter=no)
 if test "x$have_utempter" = xyes; then
    AC_DEFINE(HAVE_UTEMPTER)
