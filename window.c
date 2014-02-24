@@ -893,7 +893,7 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 	}
 
 #ifdef HAVE_UTEMPTER
-	xsnprintf(s, sizeof s, "tmux(%lu):%%%u", (long) getpid(), wp->id);
+	xsnprintf(s, sizeof s, "tmux(%lu).%%%u", (long) getpid(), wp->id);
 	utempter_add_record(wp->fd, s);
 #endif
 
