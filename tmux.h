@@ -32,6 +32,10 @@
 #include <stdio.h>
 #include <termios.h>
 
+#ifdef HAVE_UTEMPTER
+#include <utempter.h>
+#endif
+
 #include "array.h"
 
 #include "compat.h"

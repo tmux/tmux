@@ -361,6 +361,9 @@ server_destroy_pane(struct window_pane *wp)
 
 	old_fd = wp->fd;
 	if (wp->fd != -1) {
+#ifdef HAVE_UTEMPTER
+		utempter_remove_record(wp->fd);
+#endif
 		bufferevent_free(wp->event);
 		close(wp->fd);
 		wp->fd = -1;

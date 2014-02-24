@@ -144,6 +144,13 @@ if test "x$found_curses" = xno; then
     AC_MSG_ERROR("curses not found")
 fi
 
+# Look for utempter
+AC_CHECK_HEADER(utempter.h, have_utempter=yes, have_utempter=no)
+if test "x$have_utempter" = xyes; then
+   AC_DEFINE(HAVE_UTEMPTER)
+   LIBS="$LIBS -lutempter"
+fi
+
 # Check for b64_ntop.
 AC_MSG_CHECKING(for b64_ntop)
 AC_TRY_LINK(
