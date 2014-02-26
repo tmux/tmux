@@ -1147,7 +1147,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	case INPUT_CSI_DA_TWO:
 		switch (input_get(ictx, 0, 0, 0)) {
 		case 0:
-			input_reply(ictx, "\033[>0;95;0c");
+			input_reply(ictx, "\033[>84;0;0c");
 			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
