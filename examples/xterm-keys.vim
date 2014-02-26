@@ -49,3 +49,4 @@ endfunction
 
 if exists('$TMUX')
   call s:SetXtermCapabilities()
+endif
