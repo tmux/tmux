@@ -32,7 +32,8 @@ background) and reattach them to a different terminal. And do a lot more. See
 the manual</a>.</p>
 
 <p><b><a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">
-Download tmux %%VERSION%%</a></b> or
+Download tmux %%VERSION%%</a></b>
+<b><a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/CHANGES">(Changelog)</a></b> or
 <a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/">
 get the development version.</a>
 tmux is hosted on
