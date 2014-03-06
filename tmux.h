@@ -1125,18 +1125,26 @@ struct tty_term {
 };
 LIST_HEAD(tty_terms, tty_term);
 
+/* Mouse button masks. */
+#define MOUSE_MASK_BUTTONS 3
+#define MOUSE_MASK_SHIFT 4
+#define MOUSE_MASK_META 8
+#define MOUSE_MASK_CTRL 16
+#define MOUSE_MASK_DRAG 32
+#define MOUSE_MASK_WHEEL 64
+
 /* Mouse wheel states. */
 #define MOUSE_WHEEL_UP 0
 #define MOUSE_WHEEL_DOWN 1
 
-/* Mouse events. */
+/* Mouse event bits. */
 #define MOUSE_EVENT_DOWN 0x1
 #define MOUSE_EVENT_DRAG 0x2
 #define MOUSE_EVENT_UP 0x4
 #define MOUSE_EVENT_CLICK 0x8
 #define MOUSE_EVENT_WHEEL 0x10
 
-/* Mouse flags. */
+/* Mouse flag bits. */
 #define MOUSE_RESIZE_PANE 0x1
 
 /*
