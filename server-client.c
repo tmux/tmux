@@ -547,7 +547,7 @@ server_client_check_resize(struct window_pane *wp)
 		 * resizing; don't know why this happens, can't reproduce on
 		 * other platforms and ignoring it doesn't seem to cause any
 		 * issues.
-                 */
+		 */
 		if (errno != EINVAL)
 #endif
 		fatal("ioctl failed");
