@@ -58,6 +58,7 @@ void	window_copy_copy_buffer(struct window_pane *, int, void *, size_t);
 void	window_copy_copy_pipe(
 	    struct window_pane *, struct session *, int, const char *);
 void	window_copy_copy_selection(struct window_pane *, int);
+void	window_copy_append_selection(struct window_pane *, int);
 void	window_copy_clear_selection(struct window_pane *);
 void	window_copy_copy_line(
 	    struct window_pane *, char **, size_t *, u_int, u_int, u_int);
@@ -414,6 +415,13 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 
 	cmd = mode_key_lookup(&data->mdata, key, &arg);
 	switch (cmd) {
+	case MODEKEYCOPY_APPENDSELECTION:
+		if (sess != NULL) {
+			window_copy_append_selection(wp, data->numprefix);
+			window_pane_reset_mode(wp);
+			return;
+		}
+		break;
 	case MODEKEYCOPY_CANCEL:
 		window_pane_reset_mode(wp);
 		return;
@@ -1489,6 +1497,46 @@ window_copy_copy_selection(struct window_pane *wp, int idx)
 		return;
 
 	window_copy_copy_buffer(wp, idx, buf, len);
+}
+
+void
+window_copy_append_selection(struct window_pane *wp, int idx)
+{
+	char			*buf;
+	struct paste_buffer	*pb;
+	size_t			 len;
+	u_int			 limit;
+	struct screen_write_ctx	 ctx;
+
+	buf = window_copy_get_selection(wp, &len);
+	if (buf == NULL)
+		return;
+
+	if (options_get_number(&global_options, "set-clipboard")) {
+		screen_write_start(&ctx, wp, NULL);
+		screen_write_setselection(&ctx, buf, len);
+		screen_write_stop(&ctx);
+	}
+
+	if (idx == -1)
+		idx = 0;
+
+	if (idx == 0 && paste_get_top(&global_buffers) == NULL) {
+		limit = options_get_number(&global_options, "buffer-limit");
+		paste_add(&global_buffers, buf, len, limit);
+		return;
+	}
+
+	pb = paste_get_index(&global_buffers, idx);
+	if (pb != NULL) {
+		buf = xrealloc(buf, 1, len + pb->size);
+		memmove(buf + pb->size, buf, len);
+		memcpy(buf, pb->data, pb->size);
+		len += pb->size;
+	}
+
+	if (paste_replace(&global_buffers, idx, buf, len) != 0)
+		free(buf);
 }
 
 void

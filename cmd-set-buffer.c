@@ -24,15 +24,15 @@
 #include "tmux.h"
 
 /*
- * Add or set a paste buffer.
+ * Add, set, or append to a paste buffer.
  */
 
 enum cmd_retval	 cmd_set_buffer_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_set_buffer_entry = {
 	"set-buffer", "setb",
-	"b:", 1, 1,
-	CMD_BUFFER_USAGE " data",
+	"ab:", 1, 1,
+	"[-a] " CMD_BUFFER_USAGE " data",
 	0,
 	NULL,
 	cmd_set_buffer_exec
@@ -41,35 +41,48 @@ const struct cmd_entry cmd_set_buffer_entry = {
 enum cmd_retval
 cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 {
-	struct args	*args = self->args;
-	u_int		 limit;
-	char		*pdata, *cause;
-	size_t		 psize;
-	int		 buffer;
+	struct args		*args = self->args;
+	struct paste_buffer	*pb;
+	u_int			 limit;
+	char			*pdata, *cause;
+	size_t			 psize, newsize;
+	int			 buffer;
 
 	limit = options_get_number(&global_options, "buffer-limit");
 
-	pdata = xstrdup(args->argv[0]);
-	psize = strlen(pdata);
+	psize = 0;
+	pdata = NULL;
 
-	if (!args_has(args, 'b')) {
+	if (args_has(args, 'b')) {
+		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
+		if (cause != NULL) {
+			cmdq_error(cmdq, "buffer %s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+		pb = paste_get_index(&global_buffers, buffer);
+		if (pb == NULL) {
+			cmdq_error(cmdq, "no buffer %d", buffer);
+			return (CMD_RETURN_ERROR);
+		}
+		if (args_has(args, 'a')) {
+			psize = pb->size;
+			pdata = xmalloc(psize);
+			memcpy(pdata, pb->data, psize);
+		}
+	} else
+		buffer = -1;
+
+	newsize = strlen(args->argv[0]);
+
+	pdata = xrealloc(pdata, 1, psize + newsize);
+	memcpy(pdata + psize, args->argv[0], newsize);
+	psize += newsize;
+
+	if (buffer == -1)
 		paste_add(&global_buffers, pdata, psize, limit);
-		return (CMD_RETURN_NORMAL);
-	}
-
-	buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
-	if (cause != NULL) {
-		cmdq_error(cmdq, "buffer %s", cause);
-		free(cause);
-		free(pdata);
-		return (CMD_RETURN_ERROR);
-	}
-
-	if (paste_replace(&global_buffers, buffer, pdata, psize) != 0) {
-		cmdq_error(cmdq, "no buffer %d", buffer);
-		free(pdata);
-		return (CMD_RETURN_ERROR);
-	}
+	else
+		paste_replace(&global_buffers, buffer, pdata, psize);
 
 	return (CMD_RETURN_NORMAL);
 }
