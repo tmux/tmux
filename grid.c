@@ -151,8 +151,6 @@ grid_collect_history(struct grid *gd)
 {
 	u_int	yy;
 
-	GRID_DEBUG(gd, "");
-
 	if (gd->hsize < gd->hlimit)
 		return;
 
@@ -173,8 +171,6 @@ grid_scroll_history(struct grid *gd)
 {
 	u_int	yy;
 
-	GRID_DEBUG(gd, "");
-
 	yy = gd->hsize + gd->sy;
 	gd->linedata = xrealloc(gd->linedata, yy + 1, sizeof *gd->linedata);
 	memset(&gd->linedata[yy], 0, sizeof gd->linedata[yy]);
@@ -188,8 +184,6 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower)
 {
 	struct grid_line	*gl_history, *gl_upper, *gl_lower;
 	u_int			 yy;
-
-	GRID_DEBUG(gd, "upper=%u, lower=%u", upper, lower);
 
 	/* Create a space for a new line. */
 	yy = gd->hsize + gd->sy;
@@ -282,8 +276,6 @@ grid_clear(struct grid *gd, u_int px, u_int py, u_int nx, u_int ny)
 {
 	u_int	xx, yy;
 
-	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u, ny=%u", px, py, nx, ny);
-
 	if (nx == 0 || ny == 0)
 		return;
 
@@ -319,8 +311,6 @@ grid_clear_lines(struct grid *gd, u_int py, u_int ny)
 	struct grid_line	*gl;
 	u_int			 yy;
 
-	GRID_DEBUG(gd, "py=%u, ny=%u", py, ny);
-
 	if (ny == 0)
 		return;
 
@@ -341,8 +331,6 @@ void
 grid_move_lines(struct grid *gd, u_int dy, u_int py, u_int ny)
 {
 	u_int	yy;
-
-	GRID_DEBUG(gd, "dy=%u, py=%u, ny=%u", dy, py, ny);
 
 	if (ny == 0 || py == dy)
 		return;
@@ -380,8 +368,6 @@ grid_move_cells(struct grid *gd, u_int dx, u_int px, u_int py, u_int nx)
 {
 	struct grid_line	*gl;
 	u_int			 xx;
-
-	GRID_DEBUG(gd, "dx=%u, px=%u, py=%u, nx=%u", dx, px, py, nx);
 
 	if (nx == 0 || px == dx)
 		return;
@@ -592,8 +578,6 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 	u_int			 xx;
 	const struct grid_line	*gl;
 
-	GRID_DEBUG(gd, "px=%u, py=%u, nx=%u", px, py, nx);
-
 	if (lastgc != NULL && *lastgc == NULL) {
 		memcpy(&lastgc1, &grid_default_cell, sizeof lastgc1);
 		*lastgc = &lastgc1;
@@ -660,8 +644,6 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 {
 	struct grid_line	*dstl, *srcl;
 	u_int			 yy;
-
-	GRID_DEBUG(src, "dy=%u, sy=%u, ny=%u", dy, sy, ny);
 
 	if (dy + ny > dst->hsize + dst->sy)
 		ny = dst->hsize + dst->sy - dy;
