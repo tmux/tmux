@@ -80,6 +80,13 @@ const struct options_table_entry server_options_table[] = {
 	  .default_num = 0
 	},
 
+	{ .name = "message-limit",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .minimum = 0,
+	  .maximum = INT_MAX,
+	  .default_num = 100
+	},
+
 	{ .name = "quiet",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .default_num = 0 /* overridden in main() */
@@ -232,13 +239,6 @@ const struct options_table_entry session_options_table[] = {
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .default_num = 0,
 	  .style = "message-style"
-	},
-
-	{ .name = "message-limit",
-	  .type = OPTIONS_TABLE_NUMBER,
-	  .minimum = 0,
-	  .maximum = INT_MAX,
-	  .default_num = 20
 	},
 
 	{ .name = "message-style",

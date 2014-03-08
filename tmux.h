@@ -660,16 +660,6 @@ struct utf8_data {
 	u_int	width;
 };
 
-/* Grid output. */
-#if defined(DEBUG) && \
-    ((defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L) || \
-     (defined(__GNUC__) && __GNUC__ >= 3))
-#define GRID_DEBUG(gd, fmt, ...) log_debug2("%s: (sx=%u, sy=%u, hsize=%u) " \
-    fmt, __func__, (gd)->sx, (gd)->sy, (gd)->hsize, ## __VA_ARGS__)
-#else
-#define GRID_DEBUG(...)
-#endif
-
 /* Grid attributes. */
 #define GRID_ATTR_BRIGHT 0x1
 #define GRID_ATTR_DIM 0x2
@@ -2340,13 +2330,9 @@ char		*osdep_get_cwd(int);
 struct event_base *osdep_event_init(void);
 
 /* log.c */
-void		 log_open(int, const char *);
+void		 log_open(const char *);
 void		 log_close(void);
-void printflike1 log_warn(const char *, ...);
-void printflike1 log_warnx(const char *, ...);
-void printflike1 log_info(const char *, ...);
 void printflike1 log_debug(const char *, ...);
-void printflike1 log_debug2(const char *, ...);
 __dead void printflike1 log_fatal(const char *, ...);
 __dead void printflike1 log_fatalx(const char *, ...);
 
