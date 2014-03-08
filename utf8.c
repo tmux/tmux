@@ -313,7 +313,7 @@ utf8_combine(const struct utf8_data *utf8data)
 		value = utf8data->data[3] & 0x3f;
 		value |= (utf8data->data[2] & 0x3f) << 6;
 		value |= (utf8data->data[1] & 0x3f) << 12;
-		value |= (utf8data->data[0] & 0x3f) << 18;
+		value |= (utf8data->data[0] & 0x07) << 18;
 		break;
 	}
 	return (value);
