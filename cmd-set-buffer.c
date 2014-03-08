@@ -53,6 +53,9 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	psize = 0;
 	pdata = NULL;
 
+	pb = NULL;
+	buffer = -1;
+
 	if (args_has(args, 'b')) {
 		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 		if (cause != NULL) {
@@ -65,13 +68,17 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 			cmdq_error(cmdq, "no buffer %d", buffer);
 			return (CMD_RETURN_ERROR);
 		}
-		if (args_has(args, 'a')) {
-			psize = pb->size;
-			pdata = xmalloc(psize);
-			memcpy(pdata, pb->data, psize);
-		}
-	} else
-		buffer = -1;
+	} else if (args_has(args, 'a')) {
+		pb = paste_get_top(&global_buffers);
+		if (pb != NULL)
+			buffer = 0;
+	}
+
+	if (args_has(args, 'a') && pb != NULL) {
+		psize = pb->size;
+		pdata = xmalloc(psize);
+		memcpy(pdata, pb->data, psize);
+	}
 
 	newsize = strlen(args->argv[0]);
 
