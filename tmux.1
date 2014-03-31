@@ -851,6 +851,7 @@ option).
 The following keys are supported as appropriate for the mode:
 .Bl -column "FunctionXXXXXXXXXXXXXXXXX" "viXXXXXXXXXX" "emacs" -offset indent
 .It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
+.It Li "Append selection" Ta "A" Ta ""
 .It Li "Back to indentation" Ta "^" Ta "M-m"
 .It Li "Bottom of history" Ta "G" Ta "M-<"
 .It Li "Clear selection" Ta "Escape" Ta "C-g"
@@ -3543,12 +3544,16 @@ The
 .Fl a
 option appends to rather than overwriting the file.
 .It Xo Ic set-buffer
+.Op Fl a
 .Op Fl b Ar buffer-index
 .Ar data
 .Xc
 .D1 (alias: Ic setb )
 Set the contents of the specified buffer to
 .Ar data .
+The
+.Fl a
+option appends to rather than overwriting the buffer.
 .It Xo Ic show-buffer
 .Op Fl b Ar buffer-index
 .Xc

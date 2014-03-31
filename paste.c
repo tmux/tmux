@@ -172,7 +172,7 @@ paste_print(struct paste_buffer *pb, size_t width)
 
 /* Paste into a window pane, filtering '\n' according to separator. */
 void
-paste_send_pane (struct paste_buffer *pb, struct window_pane *wp,
+paste_send_pane(struct paste_buffer *pb, struct window_pane *wp,
     const char *sep, int bracket)
 {
 	const char	*data = pb->data, *end = data + pb->size, *lf;
