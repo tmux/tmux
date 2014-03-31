@@ -139,6 +139,9 @@ cmd_pack_argv(int argc, char **argv, char *buf, size_t len)
 	size_t	arglen;
 	int	i;
 
+	if (argc == 0)
+		return (0);
+
 	*buf = '\0';
 	for (i = 0; i < argc; i++) {
 		if (strlcpy(buf, argv[i], len) >= len)
