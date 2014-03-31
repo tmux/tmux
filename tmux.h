@@ -1133,14 +1133,14 @@ LIST_HEAD(tty_terms, tty_term);
 #define MOUSE_WHEEL_DOWN 1
 
 /* Mouse events. */
-#define MOUSE_EVENT_DOWN (1 << 0)
-#define MOUSE_EVENT_DRAG (1 << 1)
-#define MOUSE_EVENT_UP (1 << 2)
-#define MOUSE_EVENT_CLICK (1 << 3)
-#define MOUSE_EVENT_WHEEL (1 << 4)
+#define MOUSE_EVENT_DOWN 0x1
+#define MOUSE_EVENT_DRAG 0x2
+#define MOUSE_EVENT_UP 0x4
+#define MOUSE_EVENT_CLICK 0x8
+#define MOUSE_EVENT_WHEEL 0x10
 
 /* Mouse flags. */
-#define MOUSE_RESIZE_PANE (1 << 0)
+#define MOUSE_RESIZE_PANE 0x1
 
 /*
  * Mouse input. When sent by xterm:
