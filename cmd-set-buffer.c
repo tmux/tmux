@@ -56,6 +56,9 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	pb = NULL;
 	buffer = -1;
 
+	if ((newsize = strlen(args->argv[0])) == 0)
+		return (CMD_RETURN_NORMAL);
+
 	if (args_has(args, 'b')) {
 		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
 		if (cause != NULL) {
@@ -79,8 +82,6 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		pdata = xmalloc(psize);
 		memcpy(pdata, pb->data, psize);
 	}
-
-	newsize = strlen(args->argv[0]);
 
 	pdata = xrealloc(pdata, 1, psize + newsize);
 	memcpy(pdata + psize, args->argv[0], newsize);
