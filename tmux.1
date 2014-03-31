@@ -778,7 +778,7 @@ Show client messages or server information.
 Any messages displayed on the status line are saved in a per-client message
 log, up to a maximum of the limit set by the
 .Ar message-limit
-session option for the session attached to that client.
+server option.
 With
 .Fl t ,
 display the log for
@@ -2134,6 +2134,10 @@ passed through to applications running in
 .Nm .
 Attached clients should be detached and attached again after changing this
 option.
+.It Ic message-limit Ar number
+Set the number of error or information messages to save in the message log for
+each client.
+The default is 100.
 .It Xo Ic quiet
 .Op Ic on | off
 .Xc
@@ -2391,10 +2395,6 @@ With the
 flag to the
 .Ic set-option
 command the new style is added otherwise the existing style is replaced.
-.It Ic message-limit Ar number
-Set the number of error or information messages to save in the message log for
-each client.
-The default is 20.
 .It Ic message-style Ar style
 Set status line message style.
 For how to specify
