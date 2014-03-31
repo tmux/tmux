@@ -401,10 +401,8 @@ format_session(struct format_tree *ft, struct session *s)
 	*strchr(tim, '\n') = '\0';
 	format_add(ft, "session_created_string", "%s", tim);
 
-	if (s->flags & SESSION_UNATTACHED)
-		format_add(ft, "session_attached", "%d", 0);
-	else
-		format_add(ft, "session_attached", "%d", 1);
+	format_add(ft, "session_attached", "%u", s->attached);
+	format_add(ft, "session_many_attached", "%u", s->attached > 1);
 }
 
 /* Set default format keys for a client. */
