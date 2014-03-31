@@ -41,7 +41,7 @@ __dead void	 log_vfatal(const char *, va_list);
 void
 log_event_cb(unused int severity, const char *msg)
 {
-	log_warnx("%s", msg);
+	log_debug("%s", msg);
 }
 
 /* Open logging to file. */
@@ -84,45 +84,6 @@ log_vwrite(const char *msg, va_list ap)
 		exit(1);
 	fflush(log_file);
 	free(fmt);
-}
-
-/* Log a warning with error string. */
-void printflike1
-log_warn(const char *msg, ...)
-{
-	va_list	 ap;
-	char	*fmt;
-
-	va_start(ap, msg);
-	if (asprintf(&fmt, "%s: %s", msg, strerror(errno)) == -1)
-		exit(1);
-	log_vwrite(fmt, ap);
-	free(fmt);
-	va_end(ap);
-}
-
-/* Log a warning. */
-void printflike1
-log_warnx(const char *msg, ...)
-{
-	va_list	ap;
-
-	va_start(ap, msg);
-	log_vwrite(msg, ap);
-	va_end(ap);
-}
-
-/* Log an informational message. */
-void printflike1
-log_info(const char *msg, ...)
-{
-	va_list	ap;
-
-	if (log_level > -1) {
-		va_start(ap, msg);
-		log_vwrite(msg, ap);
-		va_end(ap);
-	}
 }
 
 /* Log a debug message. */
