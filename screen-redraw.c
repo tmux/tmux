@@ -381,7 +381,7 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 		for (j = 0; j < 5; j++) {
 			for (i = px; i < px + 5; i++) {
 				tty_cursor(tty, xoff + i, yoff + py + j);
-				if (clock_table[idx][j][i - px])
+				if (window_clock_table[idx][j][i - px])
 					tty_putc(tty, ' ');
 			}
 		}

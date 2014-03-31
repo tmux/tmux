@@ -1713,10 +1713,6 @@ char		*paste_print(struct paste_buffer *, size_t);
 void		 paste_send_pane(struct paste_buffer *, struct window_pane *,
 		     const char *, int);
 
-/* clock.c */
-extern const char clock_table[14][5][5];
-void		 clock_draw(struct screen_write_ctx *, int, int);
-
 /* arguments.c */
 int		 args_cmp(struct args_entry *, struct args_entry *);
 RB_PROTOTYPE(args_tree, args_entry, entry, args_cmp);
@@ -2222,6 +2218,7 @@ void		 layout_set_active_changed(struct window *);
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;
+extern const char window_clock_table[14][5][5];
 
 /* window-copy.c */
 extern const struct window_mode window_copy_mode;
