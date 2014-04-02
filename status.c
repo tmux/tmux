@@ -396,9 +396,6 @@ status_replace1(struct client *c, char **iptr, char **optr, char *out,
 	case '{':
 		ptr = (char *) "#{";
 		goto do_replace;
-	case '#':
-		*(*optr)++ = '#';
-		break;
 	default:
 		xsnprintf(tmp, sizeof tmp, "#%c", *(*iptr - 1));
 		ptr = tmp;
