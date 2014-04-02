@@ -49,6 +49,7 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	char				*action, *action_data;
 	const char			*template;
 	u_int				 idx;
+	int				 utf8flag;
 
 	if ((c = cmd_current_client(cmdq)) == NULL) {
 		cmdq_error(cmdq, "no client available");
@@ -60,6 +61,7 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), NULL)) == NULL)
 		return (CMD_RETURN_ERROR);
+	utf8flag = options_get_number(&wl->window->options, "utf8");
 
 	if (paste_get_top(&global_buffers) == NULL)
 		return (CMD_RETURN_NORMAL);
@@ -79,7 +81,7 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 
 		cdata->ft_template = xstrdup(template);
 		format_add(cdata->ft, "line", "%u", idx - 1);
-		format_paste_buffer(cdata->ft, pb);
+		format_paste_buffer(cdata->ft, pb, utf8flag);
 
 		xasprintf(&action_data, "%u", idx - 1);
 		cdata->command = cmd_template_replace(action, action_data, 1);

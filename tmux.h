@@ -85,7 +85,7 @@ extern char   **environ;
 
 /* Default template for choose-buffer. */
 #define CHOOSE_BUFFER_TEMPLATE					\
-	"#{line}: #{buffer_size} bytes: \"#{buffer_sample}\""
+	"#{line}: #{buffer_size} bytes: #{buffer_sample}"
 
 /* Default template for choose-client. */
 #define CHOOSE_CLIENT_TEMPLATE					\
@@ -1544,7 +1544,7 @@ void		 format_winlink(struct format_tree *, struct session *,
 void		 format_window_pane(struct format_tree *,
 		     struct window_pane *);
 void		 format_paste_buffer(struct format_tree *,
-		     struct paste_buffer *);
+		     struct paste_buffer *, int);
 
 /* mode-key.c */
 extern const struct mode_key_table mode_key_tables[];
@@ -1714,7 +1714,7 @@ int		 paste_free_top(struct paste_stack *);
 int		 paste_free_index(struct paste_stack *, u_int);
 void		 paste_add(struct paste_stack *, char *, size_t, u_int);
 int		 paste_replace(struct paste_stack *, u_int, char *, size_t);
-char		*paste_print(struct paste_buffer *, size_t);
+char		*paste_make_sample(struct paste_buffer *, int);
 void		 paste_send_pane(struct paste_buffer *, struct window_pane *,
 		     const char *, int);
 
@@ -2326,6 +2326,7 @@ int	utf8_open(struct utf8_data *, u_char);
 int	utf8_append(struct utf8_data *, u_char);
 u_int	utf8_combine(const struct utf8_data *);
 u_int	utf8_split2(u_int, u_char *);
+int	utf8_strvis(char *, const char *, size_t, int);
 
 /* procname.c */
 char   *get_proc_name(int, char *);
