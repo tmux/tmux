@@ -1168,6 +1168,7 @@ struct mouse_event {
 
 	u_int	button;
 	u_int	clicks;
+	u_int	scroll;
 
 	int	wheel;
 	int     event;

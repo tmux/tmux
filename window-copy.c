@@ -871,18 +871,19 @@ window_copy_mouse(
 
 	/* If mouse wheel (buttons 4 and 5), scroll. */
 	if (m->event == MOUSE_EVENT_WHEEL) {
-		if (m->wheel == MOUSE_WHEEL_UP) {
-			for (i = 0; i < 5; i++)
+		for (i = 0; i < m->scroll; i++) {
+			if (m->wheel == MOUSE_WHEEL_UP)
 				window_copy_cursor_up(wp, 1);
-		} else if (m->wheel == MOUSE_WHEEL_DOWN) {
-			for (i = 0; i < 5; i++)
+			else {
 				window_copy_cursor_down(wp, 1);
-			/*
-			 * We reached the bottom, leave copy mode,
-			 * but only if no selection is in progress.
-			 */
-			if (data->oy == 0 && !s->sel.flag)
-			    goto reset_mode;
+
+				/*
+				 * We reached the bottom, leave copy mode, but
+				 * only if no selection is in progress.
+				 */
+				if (data->oy == 0 && !s->sel.flag)
+					goto reset_mode;
+			}
 		}
 		return;
 	}

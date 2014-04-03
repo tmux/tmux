@@ -749,6 +749,15 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 	m->x = x;
 	m->y = y;
 	if (b & MOUSE_MASK_WHEEL) {
+		if (b & MOUSE_MASK_SHIFT)
+			m->scroll = 1;
+		else
+			m->scroll = 3;
+		if (b & MOUSE_MASK_META)
+			m->scroll *= 3;
+		if (b & MOUSE_MASK_CTRL)
+			m->scroll *= 3;
+
 		b &= MOUSE_MASK_BUTTONS;
 		if (b == 0)
 			m->wheel = MOUSE_WHEEL_UP;
