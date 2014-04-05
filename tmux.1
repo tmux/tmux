@@ -2170,6 +2170,42 @@ disallowedWindowOps: 20,21,SetXprop
 Or changing this property from the
 .Xr xterm 1
 interactive menu when required.
+.It Ic terminal-overrides Ar string
+Contains a list of entries which override terminal descriptions read using
+.Xr terminfo 5 .
+.Ar string
+is a comma-separated list of items each a colon-separated string made up of a
+terminal type pattern (matched using
+.Xr fnmatch 3 )
+and a set of
+.Em name=value
+entries.
+.Pp
+For example, to set the
+.Ql clear
+.Xr terminfo 5
+entry to
+.Ql \ee[H\ee[2J
+for all terminal types and the
+.Ql dch1
+entry to
+.Ql \ee[P
+for the
+.Ql rxvt
+terminal type, the option could be set to the string:
+.Bd -literal -offset indent
+"*:clear=\ee[H\ee[2J,rxvt:dch1=\ee[P"
+.Ed
+.Pp
+The terminal entry value is passed through
+.Xr strunvis 3
+before interpretation.
+The default value forcibly corrects the
+.Ql colors
+entry for terminals which support 256 colours:
+.Bd -literal -offset indent
+"*256col*:colors=256,xterm*:XT"
+.Ed
 .El
 .Pp
 Available session options are:
@@ -2610,42 +2646,6 @@ and
 .Ic status-right
 strings as UTF-8; notably, this is important for wide characters.
 This option defaults to off.
-.It Ic terminal-overrides Ar string
-Contains a list of entries which override terminal descriptions read using
-.Xr terminfo 5 .
-.Ar string
-is a comma-separated list of items each a colon-separated string made up of a
-terminal type pattern (matched using
-.Xr fnmatch 3 )
-and a set of
-.Em name=value
-entries.
-.Pp
-For example, to set the
-.Ql clear
-.Xr terminfo 5
-entry to
-.Ql \ee[H\ee[2J
-for all terminal types and the
-.Ql dch1
-entry to
-.Ql \ee[P
-for the
-.Ql rxvt
-terminal type, the option could be set to the string:
-.Bd -literal -offset indent
-"*:clear=\ee[H\ee[2J,rxvt:dch1=\ee[P"
-.Ed
-.Pp
-The terminal entry value is passed through
-.Xr strunvis 3
-before interpretation.
-The default value forcibly corrects the
-.Ql colors
-entry for terminals which support 256 colours:
-.Bd -literal -offset indent
-"*256col*:colors=256,xterm*:XT"
-.Ed
 .It Ic update-environment Ar variables
 Set a space-separated string containing a list of environment variables to be
 copied into the session environment when a new session is created or an
@@ -3091,7 +3091,7 @@ The following variables are available, where appropriate:
 .It Li "alternate_on" Ta "" Ta "If pane is in alternate screen"
 .It Li "alternate_saved_x" Ta "" Ta "Saved cursor X in alternate screen"
 .It Li "alternate_saved_y" Ta "" Ta "Saved cursor Y in alternate screen"
-.It Li "buffer_sample" Ta "" Ta "First 50 characters from buffer"
+.It Li "buffer_sample" Ta "" Ta "Sample of start of buffer"
 .It Li "buffer_size" Ta "" Ta "Size of the specified buffer in bytes"
 .It Li "client_activity" Ta "" Ta "Integer time client last had activity"
 .It Li "client_activity_string" Ta "" Ta "String time client last had activity"
@@ -3133,7 +3133,6 @@ The following variables are available, where appropriate:
 .It Li "pane_index" Ta "#P" Ta "Index of pane"
 .It Li "pane_pid" Ta "" Ta "PID of first process in pane"
 .It Li "pane_start_command" Ta "" Ta "Command pane started with"
-.It Li "pane_start_path" Ta "" Ta "Path pane started with"
 .It Li "pane_tabs" Ta "" Ta "Pane tab positions"
 .It Li "pane_title" Ta "#T" Ta "Title of pane"
 .It Li "pane_tty" Ta "" Ta "Pseudo terminal of pane"

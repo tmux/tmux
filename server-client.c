@@ -113,11 +113,8 @@ server_client_create(int fd)
 
 /* Open client terminal if needed. */
 int
-server_client_open(struct client *c, struct session *s, char **cause)
+server_client_open(struct client *c, char **cause)
 {
-	struct options	*oo = s != NULL ? &s->options : &global_s_options;
-	char		*overrides;
-
 	if (c->flags & CLIENT_CONTROL)
 		return (0);
 
@@ -126,8 +123,7 @@ server_client_open(struct client *c, struct session *s, char **cause)
 		return (-1);
 	}
 
-	overrides = options_get_string(oo, "terminal-overrides");
-	if (tty_open(&c->tty, overrides, cause) != 0)
+	if (tty_open(&c->tty, cause) != 0)
 		return (-1);
 
 	return (0);
