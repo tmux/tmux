@@ -19,7 +19,6 @@
 #include <sys/types.h>
 
 #include <string.h>
-#include <vis.h>
 
 #include "tmux.h"
 
