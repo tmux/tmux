@@ -112,7 +112,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		if (fd != -1)
 			f = fdopen(fd, "ab");
 	} else {
-		fd = openat(cwd, path, O_CREAT|O_RDWR, 0600);
+		fd = openat(cwd, path, O_CREAT|O_RDWR|O_TRUNC, 0600);
 		if (fd != -1)
 			f = fdopen(fd, "wb");
 	}
