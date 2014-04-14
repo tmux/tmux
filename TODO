@@ -132,3 +132,4 @@
 	  binding to a command that says "next key from $othertable" and so
 	  on. means -n can go away as well
 	* customizable command aliases
+	* any remaining clients in wait-for should be woken when server exits
