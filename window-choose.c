@@ -721,7 +721,17 @@ window_choose_mouse(
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	struct window_choose_mode_item	*item;
-	u_int				 idx;
+	u_int				 i, idx;
+
+	if (m->event == MOUSE_EVENT_WHEEL) {
+		for (i = 0; i < m->scroll; i++) {
+			if (m->wheel == MOUSE_WHEEL_UP)
+				window_choose_key(wp, sess, KEYC_UP);
+			else
+				window_choose_key(wp, sess, KEYC_DOWN);
+		}
+		return;
+	}
 
 	if (~m->event & MOUSE_EVENT_CLICK)
 		return;

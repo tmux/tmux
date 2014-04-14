@@ -603,12 +603,14 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 
 /* Set default format keys for paste buffer. */
 void
-format_paste_buffer(struct format_tree *ft, struct paste_buffer *pb)
+format_paste_buffer(struct format_tree *ft, struct paste_buffer *pb,
+    int utf8flag)
 {
-	char	*pb_print = paste_print(pb, 50);
+	char	*s;
 
 	format_add(ft, "buffer_size", "%zu", pb->size);
-	format_add(ft, "buffer_sample", "%s", pb_print);
 
-	free(pb_print);
+	s = paste_make_sample(pb, utf8flag);
+	format_add(ft, "buffer_sample", "%s", s);
+	free(s);
 }

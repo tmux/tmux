@@ -147,25 +147,26 @@ paste_replace(struct paste_stack *ps, u_int idx, char *data, size_t size)
 	return (0);
 }
 
-/* Convert a buffer into a visible string. */
+/* Convert start of buffer into a nice string. */
 char *
-paste_print(struct paste_buffer *pb, size_t width)
+paste_make_sample(struct paste_buffer *pb, int utf8flag)
 {
-	char	*buf;
-	size_t	 len, used;
-
-	if (width < 3)
-		width = 3;
-	buf = xmalloc(width * 4 + 1);
+	char		*buf;
+	size_t		 len, used;
+	const int	 flags = VIS_OCTAL|VIS_TAB|VIS_NL;
+	const size_t	 width = 200;
 
 	len = pb->size;
 	if (len > width)
 		len = width;
+	buf = xmalloc(len * 4 + 4);
 
-	used = strvisx(buf, pb->data, len, VIS_OCTAL|VIS_TAB|VIS_NL);
+	if (utf8flag)
+		used = utf8_strvis(buf, pb->data, len, flags);
+	else
+		used = strvisx(buf, pb->data, len, flags);
 	if (pb->size > width || used > width)
-		strlcpy(buf + width - 3, "...", 4);
-
+		strlcpy(buf + width, "...", 4);
 	return (buf);
 }
 

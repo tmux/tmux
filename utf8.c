@@ -352,3 +352,45 @@ utf8_width(const struct utf8_data *utf8data)
 	}
 	return (1);
 }
+
+/*
+ * Encode len characters from src into dst, which is guaranteed to have four
+ * bytes available for each character from src (for \abc or UTF-8) plus space
+ * for \0.
+ */
+int
+utf8_strvis(char *dst, const char *src, size_t len, int flag)
+{
+	struct utf8_data	 utf8data;
+	const char		*start, *end;
+	int			 more;
+	size_t			 i;
+
+	start = dst;
+	end = src + len;
+
+	while (src < end) {
+		if (utf8_open(&utf8data, *src)) {
+			more = 1;
+			while (++src < end && more)
+				more = utf8_append(&utf8data, *src);
+			if (!more) {
+				/* UTF-8 character finished. */
+				for (i = 0; i < utf8data.size; i++)
+					*dst++ = utf8data.data[i];
+				continue;
+			} else if (utf8data.have > 0) {
+				/* Not a complete UTF-8 character. */
+				src -= utf8data.have;
+			}
+		}
+		if (src < end - 1)
+			dst = vis(dst, src[0], flag, src[1]);
+		else if (src < end)
+			dst = vis(dst, src[0], flag, '\0');
+		src++;
+	}
+
+	*dst = '\0';
+	return (dst - start);
+}

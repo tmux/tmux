@@ -128,7 +128,7 @@ tty_set_size(struct tty *tty, u_int sx, u_int sy) {
 }
 
 int
-tty_open(struct tty *tty, const char *overrides, char **cause)
+tty_open(struct tty *tty, char **cause)
 {
 	char	out[64];
 	int	fd;
@@ -141,7 +141,7 @@ tty_open(struct tty *tty, const char *overrides, char **cause)
 		tty->log_fd = fd;
 	}
 
-	tty->term = tty_term_find(tty->termname, tty->fd, overrides, cause);
+	tty->term = tty_term_find(tty->termname, tty->fd, cause);
 	if (tty->term == NULL) {
 		tty_close(tty);
 		return (-1);

@@ -85,10 +85,11 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 		return (0);
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session != s || (c->flags & CLIENT_CONTROL))
+		if (c == NULL || c->session != s || c->flags & CLIENT_CONTROL)
 			continue;
 		if (!visual) {
-			tty_bell(&c->tty);
+			if (c->session->curw->window == w || action == BELL_ANY)
+				tty_bell(&c->tty);
 			continue;
 		}
 		if (c->session->curw->window == w)

@@ -55,7 +55,7 @@ cmd_list_buffers_exec(unused struct cmd *self, struct cmd_q *cmdq)
 	while ((pb = paste_walk_stack(&global_buffers, &idx)) != NULL) {
 		ft = format_create();
 		format_add(ft, "line", "%u", idx - 1);
-		format_paste_buffer(ft, pb);
+		format_paste_buffer(ft, pb, 0);
 
 		line = format_expand(ft, template);
 		cmdq_print(cmdq, "%s", line);

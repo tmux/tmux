@@ -82,7 +82,7 @@ extern char   **environ;
 
 /* Default template for choose-buffer. */
 #define CHOOSE_BUFFER_TEMPLATE					\
-	"#{line}: #{buffer_size} bytes: \"#{buffer_sample}\""
+	"#{line}: #{buffer_size} bytes: #{buffer_sample}"
 
 /* Default template for choose-client. */
 #define CHOOSE_CLIENT_TEMPLATE					\
@@ -1165,6 +1165,7 @@ struct mouse_event {
 
 	u_int	button;
 	u_int	clicks;
+	u_int	scroll;
 
 	int	wheel;
 	int     event;
@@ -1541,7 +1542,7 @@ void		 format_winlink(struct format_tree *, struct session *,
 void		 format_window_pane(struct format_tree *,
 		     struct window_pane *);
 void		 format_paste_buffer(struct format_tree *,
-		     struct paste_buffer *);
+		     struct paste_buffer *, int);
 
 /* mode-key.c */
 extern const struct mode_key_table mode_key_tables[];
@@ -1652,7 +1653,7 @@ void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 void	tty_force_cursor_colour(struct tty *, const char *);
 void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int);
-int	tty_open(struct tty *, const char *, char **);
+int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
 void	tty_write(
@@ -1681,7 +1682,7 @@ void	tty_bell(struct tty *);
 /* tty-term.c */
 extern struct tty_terms tty_terms;
 extern const struct tty_term_code_entry tty_term_codes[NTTYCODE];
-struct tty_term *tty_term_find(char *, int, const char *, char **);
+struct tty_term *tty_term_find(char *, int, char **);
 void		 tty_term_free(struct tty_term *);
 int		 tty_term_has(struct tty_term *, enum tty_code_code);
 const char	*tty_term_string(struct tty_term *, enum tty_code_code);
@@ -1711,7 +1712,7 @@ int		 paste_free_top(struct paste_stack *);
 int		 paste_free_index(struct paste_stack *, u_int);
 void		 paste_add(struct paste_stack *, char *, size_t, u_int);
 int		 paste_replace(struct paste_stack *, u_int, char *, size_t);
-char		*paste_print(struct paste_buffer *, size_t);
+char		*paste_make_sample(struct paste_buffer *, int);
 void		 paste_send_pane(struct paste_buffer *, struct window_pane *,
 		     const char *, int);
 
@@ -1891,7 +1892,7 @@ void	 server_add_accept(int);
 /* server-client.c */
 void	 server_client_handle_key(struct client *, int);
 void	 server_client_create(int);
-int      server_client_open(struct client *, struct session *, char **);
+int      server_client_open(struct client *, char **);
 void	 server_client_lost(struct client *);
 void	 server_client_callback(int, short, void *);
 void	 server_client_status_timer(void);
@@ -2323,6 +2324,7 @@ int	utf8_open(struct utf8_data *, u_char);
 int	utf8_append(struct utf8_data *, u_char);
 u_int	utf8_combine(const struct utf8_data *);
 u_int	utf8_split2(u_int, u_char *);
+int	utf8_strvis(char *, const char *, size_t, int);
 
 /* osdep-*.c */
 char		*osdep_get_name(int, char *);
