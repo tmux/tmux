@@ -2335,7 +2335,6 @@ char   *get_proc_name(int, char *);
 void		 log_open(const char *);
 void		 log_close(void);
 void printflike1 log_debug(const char *, ...);
-void printflike1 log_debug2(const char *, ...);
 __dead void printflike1 log_fatal(const char *, ...);
 __dead void printflike1 log_fatalx(const char *, ...);
 
@@ -2356,7 +2355,9 @@ const char	*style_tostring(struct grid_cell *);
 void		 style_update_new(struct options *, const char *, const char *);
 void		 style_update_old(struct options *, const char *,
 		     struct grid_cell *);
-void	style_apply(struct grid_cell *, struct options *, const char *);
-void	style_apply_update(struct grid_cell *, struct options *, const char *);
+void		 style_apply(struct grid_cell *, struct options *,
+		     const char *);
+void		 style_apply_update(struct grid_cell *, struct options *,
+		     const char *);
 
 #endif /* TMUX_H */
