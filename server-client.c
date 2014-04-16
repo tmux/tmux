@@ -119,6 +119,11 @@ server_client_open(struct client *c, char **cause)
 	if (c->flags & CLIENT_CONTROL)
 		return (0);
 
+	if (strcmp(c->ttyname, "/dev/tty") == 0) {
+		*cause = xstrdup("can't use /dev/tty");
+		return (-1);
+	}
+
 	if (!(c->flags & CLIENT_TERMINAL)) {
 		*cause = xstrdup("not a terminal");
 		return (-1);
