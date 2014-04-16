@@ -96,7 +96,7 @@ get_proc_name(int fd, char *tty)
 
 retry:
 	if (sysctl(mib, nitems(mib), NULL, &len, NULL, 0) == -1)
-		return (NULL);
+		goto error;
 	len = (len * 5) / 4;
 
 	if ((newbuf = realloc(buf, len)) == NULL)

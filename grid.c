@@ -624,7 +624,7 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		off += size;
 	}
 
-        if (trim) {
+	if (trim) {
 		while (off > 0 && buf[off - 1] == ' ')
 			off--;
 	}

@@ -142,7 +142,6 @@ do_print:
 		return (CMD_RETURN_ERROR);
 	}
 	msg = NULL;
-	msglen = 0;
 
 	used = 0;
 	while (used != pb->size) {
