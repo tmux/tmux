@@ -548,8 +548,8 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 }
 
 void
-tty_emulate_repeat(
-    struct tty *tty, enum tty_code_code code, enum tty_code_code code1, u_int n)
+tty_emulate_repeat(struct tty *tty, enum tty_code_code code,
+    enum tty_code_code code1, u_int n)
 {
 	if (tty_term_has(tty->term, code))
 		tty_putcode1(tty, code, n);

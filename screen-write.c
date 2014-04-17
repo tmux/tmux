@@ -65,7 +65,8 @@ screen_write_reset(struct screen_write_ctx *ctx)
 
 /* Write character. */
 void
-screen_write_putc(struct screen_write_ctx *ctx, struct grid_cell *gc, u_char ch)
+screen_write_putc(struct screen_write_ctx *ctx, struct grid_cell *gc,
+    u_char ch)
 {
 	grid_cell_one(gc, ch);
 	screen_write_cell(ctx, gc);

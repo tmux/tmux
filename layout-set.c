@@ -23,8 +23,8 @@
 #include "tmux.h"
 
 /*
- * Set window layouts - predefined methods to arrange windows. These are one-off
- * and generate a layout tree.
+ * Set window layouts - predefined methods to arrange windows. These are
+ * one-off and generate a layout tree.
  */
 
 void	layout_set_even_h(struct window *);

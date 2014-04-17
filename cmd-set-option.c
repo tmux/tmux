@@ -267,7 +267,8 @@ cmd_set_option_user(struct cmd *self, struct cmd_q *cmdq, const char* optstr,
 /* Unset an option. */
 int
 cmd_set_option_unset(struct cmd *self, struct cmd_q *cmdq,
-    const struct options_table_entry *oe, struct options *oo, const char *value)
+    const struct options_table_entry *oe, struct options *oo,
+    const char *value)
 {
 	struct args	*args = self->args;
 
@@ -287,7 +288,8 @@ cmd_set_option_unset(struct cmd *self, struct cmd_q *cmdq,
 /* Set an option. */
 int
 cmd_set_option_set(struct cmd *self, struct cmd_q *cmdq,
-    const struct options_table_entry *oe, struct options *oo, const char *value)
+    const struct options_table_entry *oe, struct options *oo,
+    const char *value)
 {
 	struct options_entry	*o;
 
@@ -335,7 +337,8 @@ cmd_set_option_set(struct cmd *self, struct cmd_q *cmdq,
 /* Set a string option. */
 struct options_entry *
 cmd_set_option_string(struct cmd *self, unused struct cmd_q *cmdq,
-    const struct options_table_entry *oe, struct options *oo, const char *value)
+    const struct options_table_entry *oe, struct options *oo,
+    const char *value)
 {
 	struct args		*args = self->args;
 	struct options_entry	*o;
@@ -356,7 +359,8 @@ cmd_set_option_string(struct cmd *self, unused struct cmd_q *cmdq,
 /* Set a number option. */
 struct options_entry *
 cmd_set_option_number(unused struct cmd *self, struct cmd_q *cmdq,
-    const struct options_table_entry *oe, struct options *oo, const char *value)
+    const struct options_table_entry *oe, struct options *oo,
+    const char *value)
 {
 	long long	 ll;
 	const char     	*errstr;
@@ -373,7 +377,8 @@ cmd_set_option_number(unused struct cmd *self, struct cmd_q *cmdq,
 /* Set a key option. */
 struct options_entry *
 cmd_set_option_key(unused struct cmd *self, struct cmd_q *cmdq,
-    const struct options_table_entry *oe, struct options *oo, const char *value)
+    const struct options_table_entry *oe, struct options *oo,
+    const char *value)
 {
 	int	key;
 
@@ -388,7 +393,8 @@ cmd_set_option_key(unused struct cmd *self, struct cmd_q *cmdq,
 /* Set a colour option. */
 struct options_entry *
 cmd_set_option_colour(unused struct cmd *self, struct cmd_q *cmdq,
-    const struct options_table_entry *oe, struct options *oo, const char *value)
+    const struct options_table_entry *oe, struct options *oo,
+    const char *value)
 {
 	int	colour;
 
@@ -403,7 +409,8 @@ cmd_set_option_colour(unused struct cmd *self, struct cmd_q *cmdq,
 /* Set an attributes option. */
 struct options_entry *
 cmd_set_option_attributes(unused struct cmd *self, struct cmd_q *cmdq,
-    const struct options_table_entry *oe, struct options *oo, const char *value)
+    const struct options_table_entry *oe, struct options *oo,
+    const char *value)
 {
 	int	attr;
 
@@ -418,7 +425,8 @@ cmd_set_option_attributes(unused struct cmd *self, struct cmd_q *cmdq,
 /* Set a flag option. */
 struct options_entry *
 cmd_set_option_flag(unused struct cmd *self, struct cmd_q *cmdq,
-    const struct options_table_entry *oe, struct options *oo, const char *value)
+    const struct options_table_entry *oe, struct options *oo,
+    const char *value)
 {
 	int	flag;
 

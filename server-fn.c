@@ -291,7 +291,8 @@ server_kill_window(struct window *w)
 
 int
 server_link_window(struct session *src, struct winlink *srcwl,
-    struct session *dst, int dstidx, int killflag, int selectflag, char **cause)
+    struct session *dst, int dstidx, int killflag, int selectflag,
+    char **cause)
 {
 	struct winlink		*dstwl;
 	struct session_group	*srcsg, *dstsg;

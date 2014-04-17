@@ -131,7 +131,8 @@ grid_view_insert_lines(struct grid *gd, u_int py, u_int ny)
 
 /* Insert lines in region. */
 void
-grid_view_insert_lines_region(struct grid *gd, u_int rlower, u_int py, u_int ny)
+grid_view_insert_lines_region(struct grid *gd, u_int rlower, u_int py,
+    u_int ny)
 {
 	u_int	ny2;
 
@@ -160,7 +161,8 @@ grid_view_delete_lines(struct grid *gd, u_int py, u_int ny)
 
 /* Delete lines inside scroll region. */
 void
-grid_view_delete_lines_region(struct grid *gd, u_int rlower, u_int py, u_int ny)
+grid_view_delete_lines_region(struct grid *gd, u_int rlower, u_int py,
+    u_int ny)
 {
 	u_int	ny2;
 

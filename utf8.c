@@ -247,8 +247,7 @@ utf8_append(struct utf8_data *utf8data, u_char ch)
 
 /* Check if two width tree entries overlap. */
 int
-utf8_overlap(
-    struct utf8_width_entry *item1, struct utf8_width_entry *item2)
+utf8_overlap(struct utf8_width_entry *item1, struct utf8_width_entry *item2)
 {
 	if (item1->first >= item2->first && item1->first <= item2->last)
 		return (1);

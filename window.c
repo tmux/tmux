@@ -1162,7 +1162,8 @@ window_pane_visible(struct window_pane *wp)
 }
 
 char *
-window_pane_search(struct window_pane *wp, const char *searchstr, u_int *lineno)
+window_pane_search(struct window_pane *wp, const char *searchstr,
+    u_int *lineno)
 {
 	struct screen	*s = &wp->base;
 	char		*newsearchstr, *line, *msg;
