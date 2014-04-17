@@ -2306,7 +2306,7 @@ struct winlink	*session_new(struct session *, const char *, const char *,
 struct winlink	*session_attach(
 		     struct session *, struct window *, int, char **);
 int		 session_detach(struct session *, struct winlink *);
-struct winlink*	 session_has(struct session *, struct window *);
+struct winlink	*session_has(struct session *, struct window *);
 int		 session_next(struct session *, int);
 int		 session_previous(struct session *, int);
 int		 session_select(struct session *, int);
@@ -2322,12 +2322,17 @@ void		 session_group_synchronize1(struct session *, struct session *);
 void		 session_renumber_windows(struct session *);
 
 /* utf8.c */
-void	utf8_build(void);
-int	utf8_open(struct utf8_data *, u_char);
-int	utf8_append(struct utf8_data *, u_char);
-u_int	utf8_combine(const struct utf8_data *);
-u_int	utf8_split2(u_int, u_char *);
-int	utf8_strvis(char *, const char *, size_t, int);
+void		 utf8_build(void);
+void		 utf8_set(struct utf8_data *, u_char);
+int		 utf8_open(struct utf8_data *, u_char);
+int		 utf8_append(struct utf8_data *, u_char);
+u_int		 utf8_combine(const struct utf8_data *);
+u_int		 utf8_split2(u_int, u_char *);
+int		 utf8_strvis(char *, const char *, size_t, int);
+struct utf8_data *utf8_fromcstr(const char *);
+char		*utf8_tocstr(struct utf8_data *);
+u_int		 utf8_cstrwidth(const char *);
+char		*utf8_trimcstr(const char *, u_int);
 
 /* procname.c */
 char   *get_proc_name(int, char *);
