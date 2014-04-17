@@ -528,7 +528,8 @@ const struct options_table_entry window_options_table[] = {
 
 	{ .name = "automatic-rename-format",
 	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = "#{?pane_in_mode,[tmux],#{pane_current_command}}#{?pane_dead,[dead],}"
+	  .default_str = "#{?pane_in_mode,[tmux],#{pane_current_command}}"
+	                 "#{?pane_dead,[dead],}"
 	},
 
 	{ .name = "c0-change-trigger",

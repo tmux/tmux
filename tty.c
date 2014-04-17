@@ -388,7 +388,8 @@ tty_putcode_ptr1(struct tty *tty, enum tty_code_code code, const void *a)
 }
 
 void
-tty_putcode_ptr2(struct tty *tty, enum tty_code_code code, const void *a, const void *b)
+tty_putcode_ptr2(struct tty *tty, enum tty_code_code code, const void *a,
+    const void *b)
 {
 	if (a != NULL && b != NULL)
 		tty_puts(tty, tty_term_ptr2(tty->term, code, a, b));
