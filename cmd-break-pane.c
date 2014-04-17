@@ -65,16 +65,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	server_unzoom_window(w);
 
 	TAILQ_REMOVE(&w->panes, wp, entry);
-	if (wp == w->active) {
-		w->active = w->last;
-		w->last = NULL;
-		if (w->active == NULL) {
-			w->active = TAILQ_PREV(wp, window_panes, entry);
-			if (w->active == NULL)
-				w->active = TAILQ_NEXT(wp, entry);
-		}
-	} else if (wp == w->last)
-		w->last = NULL;
+	window_lost_pane(w, wp);
 	layout_close_pane(wp);
 
 	w = wp->window = window_create1(s->sx, s->sy);
