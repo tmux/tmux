@@ -117,8 +117,11 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_ERROR);
 	}
 	if (oe == NULL) {
-		cmdq_error(cmdq, "unknown option: %s", optstr);
-		return (CMD_RETURN_ERROR);
+		if (!args_has(args, 'q')) {
+			cmdq_error(cmdq, "unknown option: %s", optstr);
+			return (CMD_RETURN_ERROR);
+		}
+		return (CMD_RETURN_NORMAL);
 	}
 
 	/* Work out the tree from the table. */
@@ -163,8 +166,10 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_ERROR);
 	} else {
 		if (args_has(args, 'o') && options_find1(oo, optstr) != NULL) {
-			if (!args_has(args, 'q'))
-				cmdq_print(cmdq, "already set: %s", optstr);
+			if (!args_has(args, 'q')) {
+				cmdq_error(cmdq, "already set: %s", optstr);
+				return (CMD_RETURN_ERROR);
+			}
 			return (CMD_RETURN_NORMAL);
 		}
 		if (cmd_set_option_set(self, cmdq, oe, oo, valstr) != 0)
@@ -229,8 +234,11 @@ cmd_set_option_user(struct cmd *self, struct cmd_q *cmdq, const char* optstr,
 
 	if (args_has(args, 'u')) {
 		if (options_find1(oo, optstr) == NULL) {
-			cmdq_error(cmdq, "unknown option: %s", optstr);
-			return (CMD_RETURN_ERROR);
+			if (!args_has(args, 'q')) {
+				cmdq_error(cmdq, "unknown option: %s", optstr);
+				return (CMD_RETURN_ERROR);
+			}
+			return (CMD_RETURN_NORMAL);
 		}
 		if (valstr != NULL) {
 			cmdq_error(cmdq, "value passed to unset option: %s",
@@ -244,8 +252,10 @@ cmd_set_option_user(struct cmd *self, struct cmd_q *cmdq, const char* optstr,
 			return (CMD_RETURN_ERROR);
 		}
 		if (args_has(args, 'o') && options_find1(oo, optstr) != NULL) {
-			if (!args_has(args, 'q'))
-				cmdq_print(cmdq, "already set: %s", optstr);
+			if (!args_has(args, 'q')) {
+				cmdq_error(cmdq, "already set: %s", optstr);
+				return CMD_RETURN_ERROR;
+			}
 			return (CMD_RETURN_NORMAL);
 		}
 		options_set_string(oo, optstr, "%s", valstr);
