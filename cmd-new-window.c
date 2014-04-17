@@ -49,10 +49,11 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct session		*s;
 	struct winlink		*wl;
 	struct client		*c;
-	const char		*cmd, *template;
+	const char		*cmd, *path, *template;
 	char			*cause, *cp;
 	int			 idx, last, detached, cwd, fd = -1;
 	struct format_tree	*ft;
+	struct environ_entry	*envent;
 
 	if (args_has(args, 'a')) {
 		wl = cmd_find_window(cmdq, args_get(args, 't'), &s);
@@ -77,7 +78,8 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 			server_unlink_window(s, wl);
 		}
 	} else {
-		if ((idx = cmd_find_index(cmdq, args_get(args, 't'), &s)) == -2)
+		idx = cmd_find_index(cmdq, args_get(args, 't'), &s);
+		if (idx == -2)
 			return (CMD_RETURN_ERROR);
 	}
 	detached = args_has(args, 'd');
@@ -86,6 +88,14 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		cmd = options_get_string(&s->options, "default-command");
 	else
 		cmd = args->argv[0];
+
+	path = NULL;
+	if (cmdq->client != NULL && cmdq->client->session == NULL)
+		envent = environ_find(&cmdq->client->environ, "PATH");
+	else
+		envent = environ_find(&s->environ, "PATH");
+	if (envent != NULL)
+		path = envent->value;
 
 	if (args_has(args, 'c')) {
 		ft = format_create();
@@ -135,7 +145,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (idx == -1)
 		idx = -1 - options_get_number(&s->options, "base-index");
-	wl = session_new(s, args_get(args, 'n'), cmd, cwd, idx, &cause);
+	wl = session_new(s, args_get(args, 'n'), cmd, path, cwd, idx, &cause);
 	if (wl == NULL) {
 		cmdq_error(cmdq, "create window failed: %s", cause);
 		free(cause);

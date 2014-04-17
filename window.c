@@ -308,8 +308,8 @@ window_create1(u_int sx, u_int sy)
 }
 
 struct window *
-window_create(const char *name, const char *cmd, const char *shell,
-    int cwd, struct environ *env, struct termios *tio,
+window_create(const char *name, const char *cmd, const char *path,
+    const char *shell, int cwd, struct environ *env, struct termios *tio,
     u_int sx, u_int sy, u_int hlimit, char **cause)
 {
 	struct window		*w;
@@ -319,7 +319,8 @@ window_create(const char *name, const char *cmd, const char *shell,
 	wp = window_add_pane(w, hlimit);
 	layout_init(w, wp);
 
-	if (window_pane_spawn(wp, cmd, shell, cwd, env, tio, cause) != 0) {
+	if (window_pane_spawn(wp, cmd, path, shell, cwd, env, tio,
+	    cause) != 0) {
 		window_destroy(w);
 		return (NULL);
 	}
@@ -810,8 +811,9 @@ window_pane_destroy(struct window_pane *wp)
 }
 
 int
-window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
-    int cwd, struct environ *env, struct termios *tio, char **cause)
+window_pane_spawn(struct window_pane *wp, const char *cmd, const char *path,
+    const char *shell, int cwd, struct environ *env, struct termios *tio,
+    char **cause)
 {
 	struct winsize	 ws;
 	char		*argv0, paneid[16];
@@ -860,6 +862,8 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *shell,
 
 		closefrom(STDERR_FILENO + 1);
 
+		if (path != NULL)
+			environ_set(env, "PATH", path);
 		xsnprintf(paneid, sizeof paneid, "%%%u", wp->id);
 		environ_set(env, "TMUX_PANE", paneid);
 		environ_push(env);

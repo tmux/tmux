@@ -2129,9 +2129,9 @@ void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 int		 window_index(struct window *, u_int *);
 struct window	*window_find_by_id(u_int);
 struct window	*window_create1(u_int, u_int);
-struct window	*window_create(const char *, const char *, const char *, int,
-		     struct environ *, struct termios *, u_int, u_int, u_int,
-		     char **);
+struct window	*window_create(const char *, const char *, const char *,
+		     const char *, int, struct environ *, struct termios *,
+		     u_int, u_int, u_int, char **);
 void		 window_destroy(struct window *);
 struct window_pane *window_get_active_at(struct window *, u_int, u_int);
 void		 window_set_active_at(struct window *, u_int, u_int);
@@ -2156,8 +2156,8 @@ struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
 void		 window_pane_timer_start(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *, const char *,
-		     const char *, int, struct environ *, struct termios *,
-		     char **);
+		     const char *, const char *, int, struct environ *,
+		     struct termios *, char **);
 void		 window_pane_resize(struct window_pane *, u_int, u_int);
 void		 window_pane_alternate_on(struct window_pane *,
 		     struct grid_cell *, int);
@@ -2293,7 +2293,7 @@ RB_PROTOTYPE(sessions, session, entry, session_cmp);
 int		 session_alive(struct session *);
 struct session	*session_find(const char *);
 struct session	*session_find_by_id(u_int);
-struct session	*session_create(const char *, const char *, int,
+struct session	*session_create(const char *, const char *, const char *, int,
 		     struct environ *, struct termios *, int, u_int, u_int,
 		     char **);
 void		 session_destroy(struct session *);
@@ -2301,8 +2301,8 @@ int		 session_check_name(const char *);
 void		 session_update_activity(struct session *);
 struct session	*session_next_session(struct session *);
 struct session	*session_previous_session(struct session *);
-struct winlink	*session_new(struct session *, const char *, const char *, int,
-		     int, char **);
+struct winlink	*session_new(struct session *, const char *, const char *,
+		     const char *, int, int, char **);
 struct winlink	*session_attach(
 		     struct session *, struct window *, int, char **);
 int		 session_detach(struct session *, struct winlink *);

@@ -54,10 +54,12 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct environ		 env;
 	struct termios		 tio, *tiop;
 	const char		*newname, *target, *update, *errstr, *template;
+	const char		*path;
 	char			*cmd, *cause, *cp;
 	int			 detached, already_attached, idx, cwd, fd = -1;
 	u_int			 sx, sy;
 	struct format_tree	*ft;
+	struct environ_entry	*envent;
 
 	if (args_has(args, 't') && (args->argc != 0 || args_has(args, 'n'))) {
 		cmdq_error(cmdq, "command or window name given with target");
@@ -188,6 +190,14 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	else
 		cmd = options_get_string(&global_s_options, "default-command");
 
+	path = NULL;
+	if (c != NULL && c->session == NULL)
+		envent = environ_find(&c->environ, "PATH");
+	else
+		envent = environ_find(&global_environ, "PATH");
+	if (envent != NULL)
+		path = envent->value;
+
 	/* Construct the environment. */
 	environ_init(&env);
 	update = options_get_string(&global_s_options, "update-environment");
@@ -196,7 +206,8 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	/* Create the new session. */
 	idx = -1 - options_get_number(&global_s_options, "base-index");
-	s = session_create(newname, cmd, cwd, &env, tiop, idx, sx, sy, &cause);
+	s = session_create(newname, cmd, path, cwd, &env, tiop, idx, sx, sy,
+	    &cause);
 	if (s == NULL) {
 		cmdq_error(cmdq, "create session failed: %s", cause);
 		free(cause);
