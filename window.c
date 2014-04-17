@@ -17,14 +17,10 @@
  */
 
 #include <sys/types.h>
-#include <sys/ioctl.h>
 
 #include <errno.h>
 #include <fcntl.h>
 #include <fnmatch.h>
-#include <paths.h>
-#include <pwd.h>
-#include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

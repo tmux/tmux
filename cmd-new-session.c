@@ -20,7 +20,6 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <pwd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <termios.h>
