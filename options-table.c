@@ -491,11 +491,6 @@ const struct options_table_entry session_options_table[] = {
 	  .default_num = 0
 	},
 
-	{ .name = "visual-content",
-	  .type = OPTIONS_TABLE_FLAG,
-	  .default_num = 0
-	},
-
 	{ .name = "visual-silence",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .default_num = 0
@@ -629,11 +624,6 @@ const struct options_table_entry window_options_table[] = {
 	  .default_num = 0
 	},
 
-	{ .name = "monitor-content",
-	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = ""
-	},
-
 	{ .name = "monitor-silence",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .minimum = 0,
@@ -733,29 +723,6 @@ const struct options_table_entry window_options_table[] = {
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .default_num = 8,
 	  .style = "window-status-style"
-	},
-
-	{ .name = "window-status-content-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = GRID_ATTR_REVERSE,
-	  .style = "window-status-content-style"
-	},
-
-	{ .name = "window-status-content-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8,
-	  .style = "window-status-content-style"
-	},
-
-	{ .name = "window-status-content-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8,
-	  .style = "window-status-content-style"
-	},
-
-	{ .name = "window-status-content-style",
-	  .type = OPTIONS_TABLE_STYLE,
-	  .default_str = "reverse"
 	},
 
 	{ .name = "window-status-current-attr",

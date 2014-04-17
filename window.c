@@ -699,8 +699,6 @@ window_printable_flags(struct session *s, struct winlink *wl)
 		flags[pos++] = '#';
 	if (wl->flags & WINLINK_BELL)
 		flags[pos++] = '!';
-	if (wl->flags & WINLINK_CONTENT)
-		flags[pos++] = '+';
 	if (wl->flags & WINLINK_SILENCE)
 		flags[pos++] = '~';
 	if (wl == s->curw)

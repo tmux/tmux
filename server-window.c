@@ -27,19 +27,16 @@
 int	server_window_check_bell(struct session *, struct winlink *);
 int	server_window_check_activity(struct session *, struct winlink *);
 int	server_window_check_silence(struct session *, struct winlink *);
-int	server_window_check_content(
-	    struct session *, struct winlink *, struct window_pane *);
 void	ring_bell(struct session *);
 
 /* Window functions that need to happen every loop. */
 void
 server_window_loop(void)
 {
-	struct window		*w;
-	struct winlink		*wl;
-	struct window_pane	*wp;
-	struct session		*s;
-	u_int		 	 i;
+	struct window	*w;
+	struct winlink	*wl;
+	struct session	*s;
+	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);
@@ -55,8 +52,6 @@ server_window_loop(void)
 			    server_window_check_activity(s, wl) ||
 			    server_window_check_silence(s, wl))
 				server_status_session(s);
-			TAILQ_FOREACH(wp, &w->panes, entry)
-				server_window_check_content(s, wl, wp);
 		}
 	}
 }
@@ -181,48 +176,6 @@ server_window_check_silence(struct session *s, struct winlink *wl)
 			if (c == NULL || c->session != s)
 				continue;
 			status_message_set(c, "Silence in window %u", wl->idx);
-		}
-	}
-
-	return (1);
-}
-
-/* Check for content change in window. */
-int
-server_window_check_content(
-    struct session *s, struct winlink *wl, struct window_pane *wp)
-{
-	struct client	*c;
-	struct window	*w = wl->window;
-	u_int		 i;
-	char		*found, *ptr;
-
-	/* Activity flag must be set for new content. */
-	if (s->curw->window == w)
-		w->flags &= ~WINDOW_ACTIVITY;
-
-	if (!(w->flags & WINDOW_ACTIVITY) || wl->flags & WINLINK_CONTENT)
-		return (0);
-	if (s->curw == wl && !(s->flags & SESSION_UNATTACHED))
-		return (0);
-
-	ptr = options_get_string(&w->options, "monitor-content");
-	if (ptr == NULL || *ptr == '\0')
-		return (0);
-	if ((found = window_pane_search(wp, ptr, NULL)) == NULL)
-		return (0);
-	free(found);
-
-	if (options_get_number(&s->options, "bell-on-alert"))
-		ring_bell(s);
-	wl->flags |= WINLINK_CONTENT;
-
-	if (options_get_number(&s->options, "visual-content")) {
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c == NULL || c->session != s)
-				continue;
-			status_message_set(c, "Content in window %u", wl->idx);
 		}
 	}
 

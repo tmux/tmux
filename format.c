@@ -487,8 +487,6 @@ format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 
 	format_add(ft, "window_bell_flag", "%u",
 	    !!(wl->flags & WINLINK_BELL));
-	format_add(ft, "window_content_flag", "%u",
-	    !!(wl->flags & WINLINK_CONTENT));
 	format_add(ft, "window_activity_flag", "%u",
 	    !!(wl->flags & WINLINK_ACTIVITY));
 	format_add(ft, "window_silence_flag", "%u",

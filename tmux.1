@@ -2644,15 +2644,6 @@ through to the terminal (which normally makes a sound).
 Also see the
 .Ic bell-action
 option.
-.It Xo Ic visual-content
-.Op Ic on | off
-.Xc
-Like
-.Ic visual-activity ,
-display a message when content is present in a window
-for which the
-.Ic monitor-content
-window option is enabled.
 .It Xo Ic visual-silence
 .Op Ic on | off
 .Xc
@@ -2834,14 +2825,6 @@ option.
 Monitor for activity in the window.
 Windows with activity are highlighted in the status line.
 .Pp
-.It Ic monitor-content Ar match-string
-Monitor content in the window.
-When
-.Xr fnmatch 3
-pattern
-.Ar match-string
-appears in the window, it is highlighted in the status line.
-.Pp
 .It Xo Ic monitor-silence
 .Op Ic interval
 .Xc
@@ -2908,14 +2891,6 @@ option.
 .Pp
 .It Ic window-status-bell-style Ar style
 Set status line style for windows with a bell alert.
-For how to specify
-.Ar style ,
-see the
-.Ic message-command-style
-option.
-.Pp
-.It Ic window-status-content-style Ar style
-Set status line style for windows with a content alert.
 For how to specify
 .Ar style ,
 see the
@@ -3124,7 +3099,6 @@ The following variables are available, where appropriate:
 .It Li "window_active" Ta "" Ta "1 if window active"
 .It Li "window_activity_flag" Ta "" Ta "1 if window has activity alert"
 .It Li "window_bell_flag" Ta "" Ta "1 if window has bell"
-.It Li "window_content_flag" Ta "" Ta "1 if window has content alert"
 .It Li "window_find_matches" Ta "" Ta "Matched data from the find-window"
 .It Li "window_flags" Ta "#F" Ta "Window flags"
 .It Li "window_height" Ta "" Ta "Height of window"
@@ -3286,18 +3260,15 @@ The flag is one of the following symbols appended to the window name:
 .It Li "-" Ta "Marks the last window (previously selected)."
 .It Li "#" Ta "Window is monitored and activity has been detected."
 .It Li "!" Ta "A bell has occurred in the window."
-.It Li "+" Ta "Window is monitored for content and it has appeared."
 .It Li "~" Ta "The window has been silent for the monitor-silence interval."
 .It Li "Z" Ta "The window's active pane is zoomed."
 .El
 .Pp
 The # symbol relates to the
 .Ic monitor-activity
-and + to the
-.Ic monitor-content
-window options.
+window option.
 The window name is printed in inverted colours if an alert (bell, activity or
-content) is present.
+silence) is present.
 .Pp
 The colour and attributes of the status line may be configured, the entire
 status line using the
