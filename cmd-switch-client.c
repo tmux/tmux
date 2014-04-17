@@ -71,13 +71,10 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'r')) {
-		if (c->flags & CLIENT_READONLY) {
+		if (c->flags & CLIENT_READONLY)
 			c->flags &= ~CLIENT_READONLY;
-			cmdq_info(cmdq, "made client writable");
-		} else {
+		else
 			c->flags |= CLIENT_READONLY;
-			cmdq_info(cmdq, "made client read-only");
-		}
 	}
 
 	tflag = args_get(args, 't');

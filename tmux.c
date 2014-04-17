@@ -206,7 +206,7 @@ main(int argc, char **argv)
 	char		 in[256];
 	const char	*home;
 	long long	 pid;
-	int	 	 opt, flags, quiet, keys, session;
+	int	 	 opt, flags, keys, session;
 
 #ifdef DEBUG
 	malloc_options = (char *) "AFGJPX";
@@ -214,7 +214,7 @@ main(int argc, char **argv)
 
 	setlocale(LC_TIME, "");
 
-	quiet = flags = 0;
+	flags = 0;
 	label = path = NULL;
 	login_shell = (**argv == '-');
 	while ((opt = getopt(argc, argv, "2c:Cdf:lL:qS:uUv")) != -1) {
@@ -244,7 +244,6 @@ main(int argc, char **argv)
 			label = xstrdup(optarg);
 			break;
 		case 'q':
-			quiet = 1;
 			break;
 		case 'S':
 			free(path);
@@ -291,11 +290,11 @@ main(int argc, char **argv)
 
 	options_init(&global_options, NULL);
 	options_table_populate_tree(server_options_table, &global_options);
-	options_set_number(&global_options, "quiet", quiet);
 
 	options_init(&global_s_options, NULL);
 	options_table_populate_tree(session_options_table, &global_s_options);
-	options_set_string(&global_s_options, "default-shell", "%s", getshell());
+	options_set_string(&global_s_options, "default-shell", "%s",
+	    getshell());
 
 	options_init(&global_w_options, NULL);
 	options_table_populate_tree(window_options_table, &global_w_options);

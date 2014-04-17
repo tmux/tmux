@@ -86,37 +86,6 @@ cmdq_print(struct cmd_q *cmdq, const char *fmt, ...)
 	va_end(ap);
 }
 
-/* Show info from command. */
-void printflike2
-cmdq_info(struct cmd_q *cmdq, const char *fmt, ...)
-{
-	struct client	*c = cmdq->client;
-	va_list		 ap;
-	char		*msg;
-
-	if (options_get_number(&global_options, "quiet"))
-		return;
-
-	va_start(ap, fmt);
-
-	if (c == NULL)
-		/* nothing */;
-	else if (c->session == NULL || (c->flags & CLIENT_CONTROL)) {
-		evbuffer_add_vprintf(c->stdout_data, fmt, ap);
-
-		evbuffer_add(c->stdout_data, "\n", 1);
-		server_push_stdout(c);
-	} else {
-		xvasprintf(&msg, fmt, ap);
-		*msg = toupper((u_char) *msg);
-		status_message_set(c, "%s", msg);
-		free(msg);
-	}
-
-	va_end(ap);
-
-}
-
 /* Show error from command. */
 void printflike2
 cmdq_error(struct cmd_q *cmdq, const char *fmt, ...)

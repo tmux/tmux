@@ -90,7 +90,7 @@ const struct options_table_entry server_options_table[] = {
 
 	{ .name = "quiet",
 	  .type = OPTIONS_TABLE_FLAG,
-	  .default_num = 0 /* overridden in main() */
+	  .default_num = 0
 	},
 
 	{ .name = "set-clipboard",

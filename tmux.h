@@ -1851,7 +1851,6 @@ size_t		 cmd_list_print(struct cmd_list *, char *, size_t);
 struct cmd_q	*cmdq_new(struct client *);
 int		 cmdq_free(struct cmd_q *);
 void printflike2 cmdq_print(struct cmd_q *, const char *, ...);
-void printflike2 cmdq_info(struct cmd_q *, const char *, ...);
 void printflike2 cmdq_error(struct cmd_q *, const char *, ...);
 int		 cmdq_guard(struct cmd_q *, const char *, int);
 void		 cmdq_run(struct cmd_q *, struct cmd_list *);

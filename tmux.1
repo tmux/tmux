@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 2lCquv
+.Op Fl 2lCuv
 .Op Fl c Ar shell-command
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
@@ -168,10 +168,6 @@ server process to recreate it.
 Behave as a login shell.
 This flag currently has no effect and is for compatibility with other shells
 when using tmux as a login shell.
-.It Fl q
-Set the
-.Ic quiet
-server option to prevent the server sending various informational messages.
 .It Fl S Ar socket-path
 Specify a full alternative path to the server socket.
 If
@@ -2110,12 +2106,6 @@ option.
 Set the number of error or information messages to save in the message log for
 each client.
 The default is 100.
-.It Xo Ic quiet
-.Op Ic on | off
-.Xc
-Enable or disable the display of various informational messages (see also the
-.Fl q
-command line flag).
 .It Xo Ic set-clipboard
 .Op Ic on | off
 .Xc

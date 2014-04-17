@@ -259,10 +259,6 @@ cmd_set_option_user(struct cmd *self, struct cmd_q *cmdq, const char* optstr,
 			return (CMD_RETURN_NORMAL);
 		}
 		options_set_string(oo, optstr, "%s", valstr);
-		if (!args_has(args, 'q')) {
-			cmdq_info(cmdq, "set option: %s -> %s", optstr,
-			    valstr);
-		}
 	}
 	return (CMD_RETURN_NORMAL);
 }
@@ -285,8 +281,6 @@ cmd_set_option_unset(struct cmd *self, struct cmd_q *cmdq,
 	}
 
 	options_remove(oo, oe->name);
-	if (!args_has(args, 'q'))
-		cmdq_info(cmdq, "unset option: %s", oe->name);
 	return (0);
 }
 
@@ -295,9 +289,7 @@ int
 cmd_set_option_set(struct cmd *self, struct cmd_q *cmdq,
     const struct options_table_entry *oe, struct options *oo, const char *value)
 {
-	struct args		*args = self->args;
 	struct options_entry	*o;
-	const char		*s;
 
 	if (oe->type != OPTIONS_TABLE_FLAG && value == NULL) {
 		cmdq_error(cmdq, "empty value");
@@ -337,10 +329,6 @@ cmd_set_option_set(struct cmd *self, struct cmd_q *cmdq,
 	}
 	if (o == NULL)
 		return (-1);
-
-	s = options_table_print_entry(oe, o, 0);
-	if (!args_has(args, 'q'))
-		cmdq_info(cmdq, "set option: %s -> %s", oe->name, s);
 	return (0);
 }
 
