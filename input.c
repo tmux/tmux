@@ -55,6 +55,7 @@ void	input_set_state(struct window_pane *, const struct input_transition *);
 
 /* Transition entry/exit handlers. */
 void	input_clear(struct input_ctx *);
+void	input_ground(struct input_ctx *);
 void	input_enter_osc(struct input_ctx *);
 void	input_exit_osc(struct input_ctx *);
 void	input_enter_apc(struct input_ctx *);
@@ -242,7 +243,7 @@ const struct input_transition input_state_utf8_one_table[];
 /* ground state definition. */
 const struct input_state input_state_ground = {
 	"ground",
-	NULL, NULL,
+	input_ground, NULL,
 	input_state_ground_table
 };
 
@@ -701,6 +702,12 @@ input_init(struct window_pane *wp)
 	*ictx->param_buf = '\0';
 	ictx->param_len = 0;
 
+	ictx->input_space = INPUT_BUF_START;
+	ictx->input_buf = xmalloc(INPUT_BUF_START);
+
+	*ictx->input_buf = '\0';
+	ictx->input_len = 0;
+
 	ictx->state = &input_state_ground;
 	ictx->flags = 0;
 
@@ -711,8 +718,11 @@ input_init(struct window_pane *wp)
 void
 input_free(struct window_pane *wp)
 {
-	if (wp != NULL)
-		evbuffer_free(wp->ictx.since_ground);
+	if (wp == NULL)
+		return;
+
+	free(wp->ictx.input_buf);
+	evbuffer_free(wp->ictx.since_ground);
 }
 
 /* Change input state. */
@@ -720,14 +730,9 @@ void
 input_set_state(struct window_pane *wp, const struct input_transition *itr)
 {
 	struct input_ctx	*ictx = &wp->ictx;
-	struct evbuffer		*ground_evb = ictx->since_ground;
 
 	if (ictx->state->exit != NULL)
 		ictx->state->exit(ictx);
-
-	if (itr->state == &input_state_ground)
-		evbuffer_drain(ground_evb, EVBUFFER_LENGTH(ground_evb));
-
 	ictx->state = itr->state;
 	if (ictx->state->enter != NULL)
 		ictx->state->enter(ictx);
@@ -882,6 +887,18 @@ input_clear(struct input_ctx *ictx)
 	ictx->flags &= ~INPUT_DISCARD;
 }
 
+/* Reset for ground state. */
+void
+input_ground(struct input_ctx *ictx)
+{
+	evbuffer_drain(ictx->since_ground, EVBUFFER_LENGTH(ictx->since_ground));
+
+	if (ictx->input_space > INPUT_BUF_START) {
+		ictx->input_space = INPUT_BUF_START;
+		ictx->input_buf = xrealloc(ictx->input_buf, 1, INPUT_BUF_START);
+	}
+}
+
 /* Output this character to the screen. */
 int
 input_print(struct input_ctx *ictx)
@@ -924,12 +941,20 @@ input_parameter(struct input_ctx *ictx)
 int
 input_input(struct input_ctx *ictx)
 {
-	if (ictx->input_len == (sizeof ictx->input_buf) - 1)
-		ictx->flags |= INPUT_DISCARD;
-	else {
-		ictx->input_buf[ictx->input_len++] = ictx->ch;
-		ictx->input_buf[ictx->input_len] = '\0';
+	size_t available;
+
+	available = ictx->input_space;
+	while (ictx->input_len + 1 >= available) {
+		available *= 2;
+		if (available > INPUT_BUF_LIMIT) {
+			ictx->flags |= INPUT_DISCARD;
+			return (0);
+		}
+		ictx->input_buf = xrealloc(ictx->input_buf, 1, available);
+		ictx->input_space = available;
 	}
+	ictx->input_buf[ictx->input_len++] = ictx->ch;
+	ictx->input_buf[ictx->input_len] = '\0';
 
 	return (0);
 }
@@ -1666,8 +1691,8 @@ input_enter_osc(struct input_ctx *ictx)
 void
 input_exit_osc(struct input_ctx *ictx)
 {
-	u_char *p = ictx->input_buf;
-	int	option;
+	u_char	*p = ictx->input_buf;
+	int	 option;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return;

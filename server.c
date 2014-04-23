@@ -217,7 +217,7 @@ server_loop(void)
 	}
 }
 
-/* Check if the server should be shutting down (no more clients or sessions). */
+/* Check if the server should exit (no more clients or sessions). */
 int
 server_should_shutdown(void)
 {

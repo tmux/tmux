@@ -715,21 +715,23 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 }
 
 void
-window_choose_mouse(
-    struct window_pane *wp, unused struct session *sess, struct mouse_event *m)
+window_choose_mouse(struct window_pane *wp, struct session *sess,
+    struct mouse_event *m)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	struct window_choose_mode_item	*item;
-	u_int				 i, idx;
+	u_int				 idx;
 
 	if (m->event == MOUSE_EVENT_WHEEL) {
-		for (i = 0; i < m->scroll; i++) {
-			if (m->wheel == MOUSE_WHEEL_UP)
-				window_choose_key(wp, sess, KEYC_UP);
-			else
-				window_choose_key(wp, sess, KEYC_DOWN);
-		}
+		/*
+		 * Don't use m->scroll and just move line-by-line or it's
+		 * annoying.
+		 */
+		if (m->wheel == MOUSE_WHEEL_UP)
+			window_choose_key(wp, sess, KEYC_UP);
+		else
+			window_choose_key(wp, sess, KEYC_DOWN);
 		return;
 	}
 

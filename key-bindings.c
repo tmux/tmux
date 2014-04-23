@@ -212,7 +212,7 @@ key_bindings_dispatch(struct key_binding *bd, struct client *c)
 			readonly = 0;
 	}
 	if (!readonly && (c->flags & CLIENT_READONLY)) {
-		cmdq_info(c->cmdq, "client is read-only");
+		cmdq_error(c->cmdq, "client is read-only");
 		return;
 	}
 

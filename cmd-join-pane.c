@@ -138,11 +138,7 @@ join_pane(struct cmd *self, struct cmd_q *cmdq, int not_same_window)
 
 	layout_close_pane(src_wp);
 
-	if (src_w->active == src_wp) {
-		src_w->active = TAILQ_PREV(src_wp, window_panes, entry);
-		if (src_w->active == NULL)
-			src_w->active = TAILQ_NEXT(src_wp, entry);
-	}
+	window_lost_pane(src_w, src_wp);
 	TAILQ_REMOVE(&src_w->panes, src_wp, entry);
 
 	if (window_count_panes(src_w) == 0)

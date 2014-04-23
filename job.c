@@ -59,6 +59,8 @@ job_run(const char *cmd, struct session *s,
 	switch (pid = fork()) {
 	case -1:
 		environ_free(&env);
+		close(out[0]);
+		close(out[1]);
 		return (NULL);
 	case 0:		/* child */
 		clear_signals(1);

@@ -137,7 +137,8 @@ environ_unset(struct environ *env, const char *name)
  * environment.
  */
 void
-environ_update(const char *vars, struct environ *srcenv, struct environ *dstenv)
+environ_update(const char *vars, struct environ *srcenv,
+    struct environ *dstenv)
 {
 	struct environ_entry	*envent;
 	char			*copyvars, *var, *next;

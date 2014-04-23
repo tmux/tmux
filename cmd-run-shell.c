@@ -161,13 +161,9 @@ cmd_run_shell_callback(struct job *job)
 		retcode = WTERMSIG(job->status);
 		xasprintf(&msg, "'%s' terminated by signal %d", cmd, retcode);
 	}
-	if (msg != NULL) {
-		if (lines == 0)
-			cmdq_info(cmdq, "%s", msg);
-		else
-			cmd_run_shell_print(job, msg);
-		free(msg);
-	}
+	if (msg != NULL)
+		cmd_run_shell_print(job, msg);
+	free(msg);
 }
 
 void

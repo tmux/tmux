@@ -84,8 +84,9 @@ session_find_by_id(u_int id)
 
 /* Create a new session. */
 struct session *
-session_create(const char *name, const char *cmd, int cwd, struct environ *env,
-    struct termios *tio, int idx, u_int sx, u_int sy, char **cause)
+session_create(const char *name, const char *cmd, const char *path, int cwd,
+    struct environ *env, struct termios *tio, int idx, u_int sx, u_int sy,
+    char **cause)
 {
 	struct session	*s;
 
@@ -131,7 +132,7 @@ session_create(const char *name, const char *cmd, int cwd, struct environ *env,
 	RB_INSERT(sessions, &sessions, s);
 
 	if (cmd != NULL) {
-		if (session_new(s, NULL, cmd, cwd, idx, cause) == NULL) {
+		if (session_new(s, NULL, cmd, path, cwd, idx, cause) == NULL) {
 			session_destroy(s);
 			return (NULL);
 		}
@@ -225,8 +226,8 @@ session_previous_session(struct session *s)
 
 /* Create a new window on a session. */
 struct winlink *
-session_new(struct session *s, const char *name, const char *cmd, int cwd,
-    int idx, char **cause)
+session_new(struct session *s, const char *name, const char *cmd,
+    const char *path, int cwd, int idx, char **cause)
 {
 	struct window	*w;
 	struct winlink	*wl;
@@ -249,8 +250,8 @@ session_new(struct session *s, const char *name, const char *cmd, int cwd,
 		shell = _PATH_BSHELL;
 
 	hlimit = options_get_number(&s->options, "history-limit");
-	w = window_create(name, cmd, shell, cwd, &env, s->tio, s->sx, s->sy,
-	    hlimit, cause);
+	w = window_create(name, cmd, path, shell, cwd, &env, s->tio, s->sx,
+	    s->sy, hlimit, cause);
 	if (w == NULL) {
 		winlink_remove(&s->windows, wl);
 		environ_free(&env);

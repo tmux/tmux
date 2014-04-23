@@ -18,10 +18,6 @@
 
 #include <sys/types.h>
 
-#include <pwd.h>
-#include <string.h>
-#include <unistd.h>
-
 #include "tmux.h"
 
 /*

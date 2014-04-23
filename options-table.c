@@ -27,8 +27,8 @@
  * options. These tables are the master copy of the options with their real
  * (user-visible) types, range limits and default values. At start these are
  * copied into the runtime global options trees (which only has number and
- * string types). These tables are then used to loop up the real type when
- * the user sets an option or its value needs to be shown.
+ * string types). These tables are then used to look up the real type when the
+ * user sets an option or its value needs to be shown.
  */
 
 /* Choice option type lists. */
@@ -89,7 +89,7 @@ const struct options_table_entry server_options_table[] = {
 
 	{ .name = "quiet",
 	  .type = OPTIONS_TABLE_FLAG,
-	  .default_num = 0 /* overridden in main() */
+	  .default_num = 0
 	},
 
 	{ .name = "set-clipboard",
@@ -490,11 +490,6 @@ const struct options_table_entry session_options_table[] = {
 	  .default_num = 0
 	},
 
-	{ .name = "visual-content",
-	  .type = OPTIONS_TABLE_FLAG,
-	  .default_num = 0
-	},
-
 	{ .name = "visual-silence",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .default_num = 0
@@ -532,7 +527,8 @@ const struct options_table_entry window_options_table[] = {
 
 	{ .name = "automatic-rename-format",
 	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = "#{?pane_in_mode,[tmux],#{pane_current_command}}#{?pane_dead,[dead],}"
+	  .default_str = "#{?pane_in_mode,[tmux],#{pane_current_command}}"
+	                 "#{?pane_dead,[dead],}"
 	},
 
 	{ .name = "c0-change-trigger",
@@ -626,11 +622,6 @@ const struct options_table_entry window_options_table[] = {
 	{ .name = "monitor-activity",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .default_num = 0
-	},
-
-	{ .name = "monitor-content",
-	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = ""
 	},
 
 	{ .name = "monitor-silence",
@@ -732,29 +723,6 @@ const struct options_table_entry window_options_table[] = {
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .default_num = 8,
 	  .style = "window-status-style"
-	},
-
-	{ .name = "window-status-content-attr",
-	  .type = OPTIONS_TABLE_ATTRIBUTES,
-	  .default_num = GRID_ATTR_REVERSE,
-	  .style = "window-status-content-style"
-	},
-
-	{ .name = "window-status-content-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8,
-	  .style = "window-status-content-style"
-	},
-
-	{ .name = "window-status-content-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8,
-	  .style = "window-status-content-style"
-	},
-
-	{ .name = "window-status-content-style",
-	  .type = OPTIONS_TABLE_STYLE,
-	  .default_str = "reverse"
 	},
 
 	{ .name = "window-status-current-attr",

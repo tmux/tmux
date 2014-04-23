@@ -388,7 +388,8 @@ tty_putcode_ptr1(struct tty *tty, enum tty_code_code code, const void *a)
 }
 
 void
-tty_putcode_ptr2(struct tty *tty, enum tty_code_code code, const void *a, const void *b)
+tty_putcode_ptr2(struct tty *tty, enum tty_code_code code, const void *a,
+    const void *b)
 {
 	if (a != NULL && b != NULL)
 		tty_puts(tty, tty_term_ptr2(tty->term, code, a, b));
@@ -547,8 +548,8 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 }
 
 void
-tty_emulate_repeat(
-    struct tty *tty, enum tty_code_code code, enum tty_code_code code1, u_int n)
+tty_emulate_repeat(struct tty *tty, enum tty_code_code code,
+    enum tty_code_code code1, u_int n)
 {
 	if (tty_term_has(tty->term, code))
 		tty_putcode1(tty, code, n);

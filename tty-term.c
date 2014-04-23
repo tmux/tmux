@@ -512,7 +512,8 @@ tty_term_ptr1(struct tty_term *term, enum tty_code_code code, const void *a)
 }
 
 const char *
-tty_term_ptr2(struct tty_term *term, enum tty_code_code code, const void *a, const void *b)
+tty_term_ptr2(struct tty_term *term, enum tty_code_code code, const void *a,
+    const void *b)
 {
 	return (tparm((char *) tty_term_string(term, code), a, b, 0, 0, 0, 0, 0, 0, 0));
 }
