@@ -51,8 +51,6 @@ int		 server_shutdown;
 struct event	 server_ev_accept;
 struct event	 server_ev_second;
 
-struct paste_stack global_buffers;
-
 int		 server_create_socket(void);
 void		 server_loop(void);
 int		 server_should_shutdown(void);
@@ -147,7 +145,6 @@ server_start(int lockfd, char *lockfile)
 	RB_INIT(&sessions);
 	RB_INIT(&dead_sessions);
 	TAILQ_INIT(&session_groups);
-	ARRAY_INIT(&global_buffers);
 	mode_key_init_trees();
 	key_bindings_init();
 	utf8_build();

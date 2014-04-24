@@ -30,46 +30,48 @@
  * string!
  */
 
+ARRAY_DECL(, struct paste_buffer *) paste_buffers =  ARRAY_INITIALIZER;
+
 /* Return each item of the stack in turn. */
 struct paste_buffer *
-paste_walk_stack(struct paste_stack *ps, u_int *idx)
+paste_walk_stack(u_int *idx)
 {
 	struct paste_buffer	*pb;
 
-	pb = paste_get_index(ps, *idx);
+	pb = paste_get_index(*idx);
 	(*idx)++;
 	return (pb);
 }
 
 /* Get the top item on the stack. */
 struct paste_buffer *
-paste_get_top(struct paste_stack *ps)
+paste_get_top(void)
 {
-	if (ARRAY_LENGTH(ps) == 0)
+	if (ARRAY_LENGTH(&paste_buffers) == 0)
 		return (NULL);
-	return (ARRAY_FIRST(ps));
+	return (ARRAY_FIRST(&paste_buffers));
 }
 
 /* Get an item by its index. */
 struct paste_buffer *
-paste_get_index(struct paste_stack *ps, u_int idx)
+paste_get_index(u_int idx)
 {
-	if (idx >= ARRAY_LENGTH(ps))
+	if (idx >= ARRAY_LENGTH(&paste_buffers))
 		return (NULL);
-	return (ARRAY_ITEM(ps, idx));
+	return (ARRAY_ITEM(&paste_buffers, idx));
 }
 
 /* Free the top item on the stack. */
 int
-paste_free_top(struct paste_stack *ps)
+paste_free_top(void)
 {
 	struct paste_buffer	*pb;
 
-	if (ARRAY_LENGTH(ps) == 0)
+	if (ARRAY_LENGTH(&paste_buffers) == 0)
 		return (-1);
 
-	pb = ARRAY_FIRST(ps);
-	ARRAY_REMOVE(ps, 0);
+	pb = ARRAY_FIRST(&paste_buffers);
+	ARRAY_REMOVE(&paste_buffers, 0);
 
 	free(pb->data);
 	free(pb);
@@ -79,15 +81,15 @@ paste_free_top(struct paste_stack *ps)
 
 /* Free an item by index. */
 int
-paste_free_index(struct paste_stack *ps, u_int idx)
+paste_free_index(u_int idx)
 {
 	struct paste_buffer	*pb;
 
-	if (idx >= ARRAY_LENGTH(ps))
+	if (idx >= ARRAY_LENGTH(&paste_buffers))
 		return (-1);
 
-	pb = ARRAY_ITEM(ps, idx);
-	ARRAY_REMOVE(ps, idx);
+	pb = ARRAY_ITEM(&paste_buffers, idx);
+	ARRAY_REMOVE(&paste_buffers, idx);
 
 	free(pb->data);
 	free(pb);
@@ -100,22 +102,22 @@ paste_free_index(struct paste_stack *ps, u_int idx)
  * that the caller is responsible for allocating data.
  */
 void
-paste_add(struct paste_stack *ps, char *data, size_t size, u_int limit)
+paste_add(char *data, size_t size, u_int limit)
 {
 	struct paste_buffer	*pb;
 
 	if (size == 0)
 		return;
 
-	while (ARRAY_LENGTH(ps) >= limit) {
-		pb = ARRAY_LAST(ps);
+	while (ARRAY_LENGTH(&paste_buffers) >= limit) {
+		pb = ARRAY_LAST(&paste_buffers);
 		free(pb->data);
 		free(pb);
-		ARRAY_TRUNC(ps, 1);
+		ARRAY_TRUNC(&paste_buffers, 1);
 	}
 
 	pb = xmalloc(sizeof *pb);
-	ARRAY_INSERT(ps, 0, pb);
+	ARRAY_INSERT(&paste_buffers, 0, pb);
 
 	pb->data = data;
 	pb->size = size;
@@ -127,7 +129,7 @@ paste_add(struct paste_stack *ps, char *data, size_t size, u_int limit)
  * allocating data.
  */
 int
-paste_replace(struct paste_stack *ps, u_int idx, char *data, size_t size)
+paste_replace(u_int idx, char *data, size_t size)
 {
 	struct paste_buffer	*pb;
 
@@ -136,10 +138,10 @@ paste_replace(struct paste_stack *ps, u_int idx, char *data, size_t size)
 		return (0);
 	}
 
-	if (idx >= ARRAY_LENGTH(ps))
+	if (idx >= ARRAY_LENGTH(&paste_buffers))
 		return (-1);
 
-	pb = ARRAY_ITEM(ps, idx);
+	pb = ARRAY_ITEM(&paste_buffers, idx);
 	free(pb->data);
 
 	pb->data = data;

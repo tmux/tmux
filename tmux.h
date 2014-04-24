@@ -1037,7 +1037,6 @@ struct paste_buffer {
 	char		*data;
 	size_t		 size;
 };
-ARRAY_DECL(paste_stack, struct paste_buffer *);
 
 /* Environment variable. */
 struct environ_entry {
@@ -1709,13 +1708,13 @@ void	tty_keys_free(struct tty *);
 int	tty_keys_next(struct tty *);
 
 /* paste.c */
-struct paste_buffer *paste_walk_stack(struct paste_stack *, u_int *);
-struct paste_buffer *paste_get_top(struct paste_stack *);
-struct paste_buffer *paste_get_index(struct paste_stack *, u_int);
-int		 paste_free_top(struct paste_stack *);
-int		 paste_free_index(struct paste_stack *, u_int);
-void		 paste_add(struct paste_stack *, char *, size_t, u_int);
-int		 paste_replace(struct paste_stack *, u_int, char *, size_t);
+struct paste_buffer *paste_walk_stack(u_int *);
+struct paste_buffer *paste_get_top(void);
+struct paste_buffer *paste_get_index(u_int);
+int		 paste_free_top(void);
+int		 paste_free_index(u_int);
+void		 paste_add(char *, size_t, u_int);
+int		 paste_replace(u_int, char *, size_t);
 char		*paste_make_sample(struct paste_buffer *, int);
 void		 paste_send_pane(struct paste_buffer *, struct window_pane *,
 		     const char *, int);
@@ -1886,7 +1885,6 @@ const char *key_string_lookup_key(int);
 /* server.c */
 extern struct clients clients;
 extern struct clients dead_clients;
-extern struct paste_stack global_buffers;
 int	 server_start(int, char *);
 void	 server_update_socket(void);
 void	 server_add_accept(int);

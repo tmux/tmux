@@ -66,13 +66,13 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-		pb = paste_get_index(&global_buffers, buffer);
+		pb = paste_get_index(buffer);
 		if (pb == NULL) {
 			cmdq_error(cmdq, "no buffer %d", buffer);
 			return (CMD_RETURN_ERROR);
 		}
 	} else if (args_has(args, 'a')) {
-		pb = paste_get_top(&global_buffers);
+		pb = paste_get_top();
 		if (pb != NULL)
 			buffer = 0;
 	}
@@ -88,9 +88,9 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	psize += newsize;
 
 	if (buffer == -1)
-		paste_add(&global_buffers, pdata, psize, limit);
+		paste_add(pdata, psize, limit);
 	else
-		paste_replace(&global_buffers, buffer, pdata, psize);
+		paste_replace(buffer, pdata, psize);
 
 	return (CMD_RETURN_NORMAL);
 }
