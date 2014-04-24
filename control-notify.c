@@ -99,14 +99,19 @@ void
 control_notify_window_unlinked(unused struct session *s, struct window *w)
 {
 	struct client	*c;
+	struct session	*cs;
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
+		cs = c->session;
 
-		control_write(c, "%%window-close @%u", w->id);
+		if (winlink_find_by_window_id(&cs->windows, w->id) != NULL)
+			control_write(c, "%%window-close @%u", w->id);
+		else
+			control_write(c, "%%unlinked-window-close @%u", w->id);
 	}
 }
 
@@ -134,14 +139,22 @@ void
 control_notify_window_renamed(struct window *w)
 {
 	struct client	*c;
+	struct session	*cs;
 	u_int		 i;
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
+		cs = c->session;
 
-		control_write(c, "%%window-renamed @%u %s", w->id, w->name);
+		if (winlink_find_by_window_id(&cs->windows, w->id) != NULL) {
+			control_write(c, "%%window-renamed @%u %s", w->id,
+			    w->name);
+		} else {
+			control_write(c, "%%unlinked-window-renamed @%u %s",
+			    w->id, w->name);
+		}
 	}
 }
 

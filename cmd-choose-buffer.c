@@ -63,7 +63,7 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_ERROR);
 	utf8flag = options_get_number(&wl->window->options, "utf8");
 
-	if (paste_get_top(&global_buffers) == NULL)
+	if (paste_get_top() == NULL)
 		return (CMD_RETURN_NORMAL);
 
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
@@ -75,7 +75,7 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		action = xstrdup("paste-buffer -b '%%'");
 
 	idx = 0;
-	while ((pb = paste_walk_stack(&global_buffers, &idx)) != NULL) {
+	while ((pb = paste_walk_stack(&idx)) != NULL) {
 		cdata = window_choose_data_create(TREE_OTHER, c, c->session);
 		cdata->idx = idx - 1;
 

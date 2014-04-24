@@ -239,7 +239,7 @@ input_mouse(struct window_pane *wp, struct session *s, struct mouse_event *m)
 
 	if (m->button == 1 && (m->event & MOUSE_EVENT_CLICK) &&
 	    options_get_number(&wp->window->options, "mode-mouse") == 1) {
-		pb = paste_get_top(&global_buffers);
+		pb = paste_get_top();
 		if (pb != NULL) {
 			paste_send_pane(pb, wp, "\r",
 			    wp->screen->mode & MODE_BRACKETPASTE);

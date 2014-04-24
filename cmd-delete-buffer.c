@@ -45,7 +45,7 @@ cmd_delete_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	int		 buffer;
 
 	if (!args_has(args, 'b')) {
-		paste_free_top(&global_buffers);
+		paste_free_top();
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -56,7 +56,7 @@ cmd_delete_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (paste_free_index(&global_buffers, buffer) != 0) {
+	if (paste_free_index(buffer) != 0) {
 		cmdq_error(cmdq, "no buffer %d", buffer);
 		return (CMD_RETURN_ERROR);
 	}

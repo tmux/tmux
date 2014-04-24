@@ -776,7 +776,7 @@ window_copy_key_input(struct window_pane *wp, int key)
 		*data->inputstr = '\0';
 		break;
 	case MODEKEYEDIT_PASTE:
-		if ((pb = paste_get_top(&global_buffers)) == NULL)
+		if ((pb = paste_get_top()) == NULL)
 			break;
 		for (n = 0; n < pb->size; n++) {
 			ch = (u_char) pb->data[n];
@@ -1465,8 +1465,8 @@ window_copy_copy_buffer(struct window_pane *wp, int idx, void *buf, size_t len)
 
 	if (idx == -1) {
 		limit = options_get_number(&global_options, "buffer-limit");
-		paste_add(&global_buffers, buf, len, limit);
-	} else if (paste_replace(&global_buffers, idx, buf, len) != 0)
+		paste_add(buf, len, limit);
+	} else if (paste_replace(idx, buf, len) != 0)
 		free(buf);
 }
 
@@ -1524,13 +1524,13 @@ window_copy_append_selection(struct window_pane *wp, int idx)
 	if (idx == -1)
 		idx = 0;
 
-	if (idx == 0 && paste_get_top(&global_buffers) == NULL) {
+	if (idx == 0 && paste_get_top() == NULL) {
 		limit = options_get_number(&global_options, "buffer-limit");
-		paste_add(&global_buffers, buf, len, limit);
+		paste_add(buf, len, limit);
 		return;
 	}
 
-	pb = paste_get_index(&global_buffers, idx);
+	pb = paste_get_index(idx);
 	if (pb != NULL) {
 		buf = xrealloc(buf, 1, len + pb->size);
 		memmove(buf + pb->size, buf, len);
@@ -1538,7 +1538,7 @@ window_copy_append_selection(struct window_pane *wp, int idx)
 		len += pb->size;
 	}
 
-	if (paste_replace(&global_buffers, idx, buf, len) != 0)
+	if (paste_replace(idx, buf, len) != 0)
 		free(buf);
 }
 

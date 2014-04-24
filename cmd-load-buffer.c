@@ -119,10 +119,10 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	limit = options_get_number(&global_options, "buffer-limit");
 	if (buffer == -1) {
-		paste_add(&global_buffers, pdata, psize, limit);
+		paste_add(pdata, psize, limit);
 		return (CMD_RETURN_NORMAL);
 	}
-	if (paste_replace(&global_buffers, buffer, pdata, psize) != 0) {
+	if (paste_replace(buffer, pdata, psize) != 0) {
 		cmdq_error(cmdq, "no buffer %d", buffer);
 		free(pdata);
 		return (CMD_RETURN_ERROR);
@@ -164,8 +164,8 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 
 	limit = options_get_number(&global_options, "buffer-limit");
 	if (*buffer == -1)
-		paste_add(&global_buffers, pdata, psize, limit);
-	else if (paste_replace(&global_buffers, *buffer, pdata, psize) != 0) {
+		paste_add(pdata, psize, limit);
+	else if (paste_replace(*buffer, pdata, psize) != 0) {
 		/* No context so can't use server_client_msg_error. */
 		evbuffer_add_printf(c->stderr_data, "no buffer %d\n", *buffer);
 		server_push_stderr(c);
