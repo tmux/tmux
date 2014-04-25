@@ -193,7 +193,7 @@ tty_init_termios(int fd, struct termios *orig_tio, struct bufferevent *bufev)
 	tio.c_iflag |= IGNBRK;
 	tio.c_oflag &= ~(OPOST|ONLCR|OCRNL|ONLRET);
 	tio.c_lflag &= ~(IEXTEN|ICANON|ECHO|ECHOE|ECHONL|ECHOCTL|
-	    ECHOPRT|ECHOKE|ECHOCTL|ISIG);
+	    ECHOPRT|ECHOKE|ISIG);
 	tio.c_cc[VMIN] = 1;
 	tio.c_cc[VTIME] = 0;
 	if (tcsetattr(fd, TCSANOW, &tio) == 0)
