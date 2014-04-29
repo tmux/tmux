@@ -247,7 +247,7 @@ install-exec-hook:
 			>$(srcdir)/tmux.1.mdoc; \
 	else \
 		sed -e "s|@SYSCONFDIR@|$(sysconfdir)|g" $(srcdir)/tmux.1| \
-			$(AWK) -fmdoc2man.awk >$(srcdir)/tmux.1.man; \
+			$(AWK) -f $(srcdoc)/mdoc2man.awk >$(srcdir)/tmux.1.man; \
 	fi
 	$(MKDIR_P) $(DESTDIR)$(mandir)/man1
 	$(INSTALL_DATA) $(srcdir)/tmux.1.@MANFORMAT@ \
