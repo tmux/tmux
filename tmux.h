@@ -1130,6 +1130,9 @@ LIST_HEAD(tty_terms, tty_term);
 #define MOUSE_WHEEL_UP 0
 #define MOUSE_WHEEL_DOWN 1
 
+/* Mouse wheel multipler. */
+#define MOUSE_WHEEL_SCALE 3
+
 /* Mouse event bits. */
 #define MOUSE_EVENT_DOWN 0x1
 #define MOUSE_EVENT_DRAG 0x2
