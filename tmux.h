@@ -892,6 +892,7 @@ struct window_choose_mode_item {
 /* Child window structure. */
 struct window_pane {
 	u_int		 id;
+	u_int		 active_point;
 
 	struct window	*window;
 
@@ -948,6 +949,7 @@ struct window_pane {
 };
 TAILQ_HEAD(window_panes, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
+ARRAY_DECL(window_pane_list, struct window_pane *);
 
 /* Window structure. */
 struct window {
@@ -1025,8 +1027,6 @@ struct layout_cell {
 	u_int		 yoff;
 
 	struct window_pane *wp;
-	struct window_pane *lastwp;
-
 	struct layout_cells cells;
 
 	TAILQ_ENTRY(layout_cell) entry;
