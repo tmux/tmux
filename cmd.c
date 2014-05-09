@@ -180,7 +180,7 @@ cmd_unpack_argv(char *buf, size_t len, int argc, char ***argv)
 }
 
 char **
-cmd_copy_argv(int argc, char *const *argv)
+cmd_copy_argv(int argc, char **argv)
 {
 	char	**new_argv;
 	int	  i;

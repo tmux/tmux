@@ -1738,7 +1738,7 @@ long long	 args_strtonum(
 /* cmd.c */
 int		 cmd_pack_argv(int, char **, char *, size_t);
 int		 cmd_unpack_argv(char *, size_t, int, char ***);
-char	       **cmd_copy_argv(int, char *const *);
+char	       **cmd_copy_argv(int, char **);
 void		 cmd_free_argv(int, char **);
 struct cmd	*cmd_parse(int, char **, const char *, u_int, char **);
 size_t		 cmd_print(struct cmd *, char *, size_t);
