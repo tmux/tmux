@@ -478,11 +478,36 @@ It may be used alone to target a pane or the window containing it.
 arguments are
 .Xr sh 1
 commands.
-These must be passed as a single item, which typically means quoting them, for
-example:
+This may be a single argument passed to the shell, for example:
 .Bd -literal -offset indent
 new-window 'vi /etc/passwd'
 .Ed
+.Pp
+Will run:
+.Bd -literal -offset indent
+/bin/sh -c 'vi /etc/passwd'
+.Ed
+.Pp
+Additionally, the
+.Ic new-window ,
+.Ic new-session ,
+.Ic split-window ,
+.Ic respawn-window
+and
+.Ic respawn-pane
+commands allow
+.Ar shell-command
+to be given as multiple arguments and executed directly (without
+.Ql sh -c ) .
+This can avoid issues with shell quoting.
+For example:
+.Bd -literal -offset indent
+$ tmux new-window vi /etc/passwd
+.Ed
+.Pp
+Will run
+.Xr vi 1
+directly without invoking the shell.
 .Pp
 .Ar command
 .Op Ar arguments

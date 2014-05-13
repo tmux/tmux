@@ -85,11 +85,12 @@ session_find_by_id(u_int id)
 
 /* Create a new session. */
 struct session *
-session_create(const char *name, const char *cmd, const char *path, int cwd,
-    struct environ *env, struct termios *tio, int idx, u_int sx, u_int sy,
-    char **cause)
+session_create(const char *name, int argc, char **argv, const char *path,
+    int cwd, struct environ *env, struct termios *tio, int idx, u_int sx,
+    u_int sy, char **cause)
 {
 	struct session	*s;
+	struct winlink	*wl;
 
 	s = xmalloc(sizeof *s);
 	s->references = 0;
@@ -132,8 +133,9 @@ session_create(const char *name, const char *cmd, const char *path, int cwd,
 	}
 	RB_INSERT(sessions, &sessions, s);
 
-	if (cmd != NULL) {
-		if (session_new(s, NULL, cmd, path, cwd, idx, cause) == NULL) {
+	if (argc >= 0) {
+		wl = session_new(s, NULL, argc, argv, path, cwd, idx, cause);
+		if (wl == NULL) {
 			session_destroy(s);
 			return (NULL);
 		}
@@ -227,7 +229,7 @@ session_previous_session(struct session *s)
 
 /* Create a new window on a session. */
 struct winlink *
-session_new(struct session *s, const char *name, const char *cmd,
+session_new(struct session *s, const char *name, int argc, char **argv,
     const char *path, int cwd, int idx, char **cause)
 {
 	struct window	*w;
@@ -251,8 +253,8 @@ session_new(struct session *s, const char *name, const char *cmd,
 		shell = _PATH_BSHELL;
 
 	hlimit = options_get_number(&s->options, "history-limit");
-	w = window_create(name, cmd, path, shell, cwd, &env, s->tio, s->sx,
-	    s->sy, hlimit, cause);
+	w = window_create(name, argc, argv, path, shell, cwd, &env, s->tio,
+	    s->sx, s->sy, hlimit, cause);
 	if (w == NULL) {
 		winlink_remove(&s->windows, wl);
 		environ_free(&env);

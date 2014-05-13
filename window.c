@@ -307,7 +307,7 @@ window_create1(u_int sx, u_int sy)
 }
 
 struct window *
-window_create(const char *name, const char *cmd, const char *path,
+window_create(const char *name, int argc, char **argv, const char *path,
     const char *shell, int cwd, struct environ *env, struct termios *tio,
     u_int sx, u_int sy, u_int hlimit, char **cause)
 {
@@ -318,7 +318,7 @@ window_create(const char *name, const char *cmd, const char *path,
 	wp = window_add_pane(w, hlimit);
 	layout_init(w, wp);
 
-	if (window_pane_spawn(wp, cmd, path, shell, cwd, env, tio,
+	if (window_pane_spawn(wp, argc, argv, path, shell, cwd, env, tio,
 	    cause) != 0) {
 		window_destroy(w);
 		return (NULL);
@@ -678,7 +678,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->id = next_window_pane_id++;
 	RB_INSERT(window_pane_tree, &all_window_panes, wp);
 
-	wp->cmd = NULL;
+	wp->argc = 0;
+	wp->argv = NULL;
 	wp->shell = NULL;
 	wp->cwd = -1;
 
@@ -737,27 +738,29 @@ window_pane_destroy(struct window_pane *wp)
 
 	close(wp->cwd);
 	free(wp->shell);
-	free(wp->cmd);
+	cmd_free_argv(wp->argc, wp->argv);
 	free(wp);
 }
 
 int
-window_pane_spawn(struct window_pane *wp, const char *cmd, const char *path,
-    const char *shell, int cwd, struct environ *env, struct termios *tio,
-    char **cause)
+window_pane_spawn(struct window_pane *wp, int argc, char **argv,
+    const char *path, const char *shell, int cwd, struct environ *env,
+    struct termios *tio, char **cause)
 {
 	struct winsize	 ws;
-	char		*argv0, paneid[16];
-	const char	*ptr;
+	char		*argv0, *cmd, **argvp, paneid[16];
+	const char	*ptr, *first;
 	struct termios	 tio2;
+	int		 i;
 
 	if (wp->fd != -1) {
 		bufferevent_free(wp->event);
 		close(wp->fd);
 	}
-	if (cmd != NULL) {
-		free(wp->cmd);
-		wp->cmd = xstrdup(cmd);
+	if (argc > 0) {
+		cmd_free_argv(wp->argc, wp->argv);
+		wp->argc = argc;
+		wp->argv = cmd_copy_argv(argc, argv);
 	}
 	if (shell != NULL) {
 		free(wp->shell);
@@ -768,7 +771,10 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *path,
 		wp->cwd = dup(cwd);
 	}
 
-	log_debug("spawn: %s -- %s", wp->shell, wp->cmd);
+	cmd = cmd_stringify_argv(wp->argc, wp->argv);
+	log_debug("spawn: %s -- %s", wp->shell, cmd);
+	for (i = 0; i < wp->argc; i++)
+		log_debug("spawn: argv[%d] = %s", i, wp->argv[i]);
 
 	memset(&ws, 0, sizeof ws);
 	ws.ws_col = screen_size_x(&wp->base);
@@ -778,6 +784,7 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *path,
 	case -1:
 		wp->fd = -1;
 		xasprintf(cause, "%s: %s", cmd, strerror(errno));
+		free(cmd);
 		return (-1);
 	case 0:
 		if (fchdir(wp->cwd) != 0)
@@ -805,31 +812,42 @@ window_pane_spawn(struct window_pane *wp, const char *cmd, const char *path,
 		setenv("SHELL", wp->shell, 1);
 		ptr = strrchr(wp->shell, '/');
 
-		if (*wp->cmd != '\0') {
-			/* Use the command. */
+		/*
+		 * If given one argument, assume it should be passed to sh -c;
+		 * with more than one argument, use execvp(). If there is no
+		 * arguments, create a login shell.
+		 */
+		if (wp->argc > 0) {
+			if (wp->argc != 1) {
+				/* Copy to ensure argv ends in NULL. */
+				argvp = cmd_copy_argv(wp->argc, wp->argv);
+				execvp(argvp[0], argvp);
+				fatal("execvp failed");
+			}
+			first = wp->argv[0];
+
 			if (ptr != NULL && *(ptr + 1) != '\0')
 				xasprintf(&argv0, "%s", ptr + 1);
 			else
 				xasprintf(&argv0, "%s", wp->shell);
-			execl(wp->shell, argv0, "-c", wp->cmd, (char *) NULL);
+			execl(wp->shell, argv0, "-c", first, (char *)NULL);
 			fatal("execl failed");
 		}
-
-		/* No command; fork a login shell. */
 		if (ptr != NULL && *(ptr + 1) != '\0')
 			xasprintf(&argv0, "-%s", ptr + 1);
 		else
 			xasprintf(&argv0, "-%s", wp->shell);
-		execl(wp->shell, argv0, (char *) NULL);
+		execl(wp->shell, argv0, (char *)NULL);
 		fatal("execl failed");
 	}
 
 	setblocking(wp->fd, 0);
 
-	wp->event = bufferevent_new(wp->fd,
-	    window_pane_read_callback, NULL, window_pane_error_callback, wp);
+	wp->event = bufferevent_new(wp->fd, window_pane_read_callback, NULL,
+	    window_pane_error_callback, wp);
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 
+	free(cmd);
 	return (0);
 }
 

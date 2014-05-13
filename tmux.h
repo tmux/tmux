@@ -914,7 +914,8 @@ struct window_pane {
 #define PANE_RESIZE 0x8
 #define PANE_FOCUSPUSH 0x10
 
-	char		*cmd;
+	int		 argc;
+	char	       **argv;
 	char		*shell;
 	int		 cwd;
 
@@ -1750,6 +1751,7 @@ int		 cmd_pack_argv(int, char **, char *, size_t);
 int		 cmd_unpack_argv(char *, size_t, int, char ***);
 char	       **cmd_copy_argv(int, char **);
 void		 cmd_free_argv(int, char **);
+char		*cmd_stringify_argv(int, char **);
 struct cmd	*cmd_parse(int, char **, const char *, u_int, char **);
 size_t		 cmd_print(struct cmd *, char *, size_t);
 struct session	*cmd_current_session(struct cmd_q *, int);
@@ -2140,7 +2142,7 @@ void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 int		 window_index(struct window *, u_int *);
 struct window	*window_find_by_id(u_int);
 struct window	*window_create1(u_int, u_int);
-struct window	*window_create(const char *, const char *, const char *,
+struct window	*window_create(const char *, int, char **, const char *,
 		     const char *, int, struct environ *, struct termios *,
 		     u_int, u_int, u_int, char **);
 void		 window_destroy(struct window *);
@@ -2166,7 +2168,7 @@ struct window_pane *window_pane_find_by_id(u_int);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
 void		 window_pane_timer_start(struct window_pane *);
-int		 window_pane_spawn(struct window_pane *, const char *,
+int		 window_pane_spawn(struct window_pane *, int, char **,
 		     const char *, const char *, int, struct environ *,
 		     struct termios *, char **);
 void		 window_pane_resize(struct window_pane *, u_int, u_int);
@@ -2304,18 +2306,18 @@ RB_PROTOTYPE(sessions, session, entry, session_cmp);
 int		 session_alive(struct session *);
 struct session	*session_find(const char *);
 struct session	*session_find_by_id(u_int);
-struct session	*session_create(const char *, const char *, const char *, int,
-		     struct environ *, struct termios *, int, u_int, u_int,
-		     char **);
+struct session	*session_create(const char *, int, char **, const char *,
+		     int, struct environ *, struct termios *, int, u_int,
+		     u_int, char **);
 void		 session_destroy(struct session *);
 int		 session_check_name(const char *);
 void		 session_update_activity(struct session *);
 struct session	*session_next_session(struct session *);
 struct session	*session_previous_session(struct session *);
-struct winlink	*session_new(struct session *, const char *, const char *,
+struct winlink	*session_new(struct session *, const char *, int, char **,
 		     const char *, int, int, char **);
-struct winlink	*session_attach(
-		     struct session *, struct window *, int, char **);
+struct winlink	*session_attach(struct session *, struct window *, int,
+		     char **);
 int		 session_detach(struct session *, struct winlink *);
 struct winlink	*session_has(struct session *, struct window *);
 int		 session_next(struct session *, int);
