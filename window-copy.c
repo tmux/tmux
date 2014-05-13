@@ -61,8 +61,8 @@ void	window_copy_copy_pipe(struct window_pane *, struct session *,
 void	window_copy_copy_selection(struct window_pane *, const char *);
 void	window_copy_append_selection(struct window_pane *, const char *);
 void	window_copy_clear_selection(struct window_pane *);
-void	window_copy_copy_line(
-	    struct window_pane *, char **, size_t *, u_int, u_int, u_int);
+void	window_copy_copy_line(struct window_pane *, char **, size_t *, u_int,
+	    u_int, u_int);
 int	window_copy_in_set(struct window_pane *, u_int, u_int, const char *);
 u_int	window_copy_find_length(struct window_pane *, u_int);
 void	window_copy_cursor_start_of_line(struct window_pane *);
@@ -95,6 +95,7 @@ const struct window_mode window_copy_mode = {
 
 enum window_copy_input_type {
 	WINDOW_COPY_OFF,
+	WINDOW_COPY_NAMEDBUFFER,
 	WINDOW_COPY_NUMERICPREFIX,
 	WINDOW_COPY_SEARCHUP,
 	WINDOW_COPY_SEARCHDOWN,
@@ -677,6 +678,7 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 		case WINDOW_COPY_JUMPBACK:
 		case WINDOW_COPY_JUMPTOFORWARD:
 		case WINDOW_COPY_JUMPTOBACK:
+		case WINDOW_COPY_NAMEDBUFFER:
 		case WINDOW_COPY_NUMERICPREFIX:
 			break;
 		case WINDOW_COPY_SEARCHUP:
@@ -710,6 +712,11 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 	case MODEKEYCOPY_GOTOLINE:
 		data->inputtype = WINDOW_COPY_GOTOLINE;
 		data->inputprompt = "Goto Line";
+		*data->inputstr = '\0';
+		goto input_on;
+	case MODEKEYCOPY_STARTNAMEDBUFFER:
+		data->inputtype = WINDOW_COPY_NAMEDBUFFER;
+		data->inputprompt = "Buffer";
 		*data->inputstr = '\0';
 		goto input_on;
 	case MODEKEYCOPY_STARTNUMBERPREFIX:
@@ -815,6 +822,11 @@ window_copy_key_input(struct window_pane *wp, int key)
 			data->searchtype = data->inputtype;
 			data->searchstr = xstrdup(data->inputstr);
 			break;
+		case WINDOW_COPY_NAMEDBUFFER:
+			window_copy_copy_selection(wp, data->inputstr);
+			*data->inputstr = '\0';
+			window_pane_reset_mode(wp);
+			return (0);
 		case WINDOW_COPY_GOTOLINE:
 			window_copy_goto_line(wp, data->inputstr);
 			*data->inputstr = '\0';
