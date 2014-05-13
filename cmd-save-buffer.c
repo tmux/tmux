@@ -59,10 +59,10 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct client		*c = cmdq->client;
 	struct session          *s;
 	struct paste_buffer	*pb;
-	const char		*path;
-	char			*cause, *start, *end, *msg;
+	const char		*path, *bufname;
+	char			*start, *end, *msg;
 	size_t			 size, used, msglen;
-	int			 cwd, fd, buffer;
+	int			 cwd, fd;
 	FILE			*f;
 
 	if (!args_has(args, 'b')) {
@@ -71,16 +71,10 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_ERROR);
 		}
 	} else {
-		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
-		if (cause != NULL) {
-			cmdq_error(cmdq, "buffer %s", cause);
-			free(cause);
-			return (CMD_RETURN_ERROR);
-		}
-
-		pb = paste_get_index(buffer);
+		bufname = args_get(args, 'b');
+		pb = paste_get_name(bufname);
 		if (pb == NULL) {
-			cmdq_error(cmdq, "no buffer %d", buffer);
+			cmdq_error(cmdq, "no buffer %s", bufname);
 			return (CMD_RETURN_ERROR);
 		}
 	}

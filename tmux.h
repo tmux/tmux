@@ -85,7 +85,7 @@ extern char   **environ;
 
 /* Default template for choose-buffer. */
 #define CHOOSE_BUFFER_TEMPLATE					\
-	"#{line}: #{buffer_size} bytes: #{buffer_sample}"
+	"#{buffer_name}: #{buffer_size} bytes: #{buffer_sample}"
 
 /* Default template for choose-client. */
 #define CHOOSE_CLIENT_TEMPLATE					\
@@ -118,7 +118,8 @@ extern char   **environ;
 
 /* Default template for list-buffers. */
 #define LIST_BUFFERS_TEMPLATE					\
-	"#{line}: #{buffer_size} bytes: \"#{buffer_sample}\""
+	"#{buffer_name}: #{buffer_size} bytes: "		\
+	"\"#{buffer_sample}\""
 
 /* Default template for list-clients. */
 #define LIST_CLIENTS_TEMPLATE					\
@@ -1036,6 +1037,13 @@ struct layout_cell {
 struct paste_buffer {
 	char		*data;
 	size_t		 size;
+
+	char		*name;
+	int		 automatic;
+	u_int		 order;
+
+	RB_ENTRY(paste_buffer) name_entry;
+	RB_ENTRY(paste_buffer) time_entry;
 };
 
 /* Environment variable. */
@@ -1499,7 +1507,7 @@ RB_HEAD(format_tree, format_entry);
 #define CMD_SRCDST_WINDOW_USAGE "[-s src-window] [-t dst-window]"
 #define CMD_SRCDST_SESSION_USAGE "[-s src-session] [-t dst-session]"
 #define CMD_SRCDST_CLIENT_USAGE "[-s src-client] [-t dst-client]"
-#define CMD_BUFFER_USAGE "[-b buffer-index]"
+#define CMD_BUFFER_USAGE "[-b buffer-name]"
 
 /* tmux.c */
 extern struct options global_options;
@@ -1711,13 +1719,14 @@ void	tty_keys_free(struct tty *);
 int	tty_keys_next(struct tty *);
 
 /* paste.c */
-struct paste_buffer *paste_walk_stack(u_int *);
+struct paste_buffer *paste_walk(struct paste_buffer *);
 struct paste_buffer *paste_get_top(void);
-struct paste_buffer *paste_get_index(u_int);
+struct paste_buffer *paste_get_name(const char *);
 int		 paste_free_top(void);
-int		 paste_free_index(u_int);
-void		 paste_add(char *, size_t, u_int);
-int		 paste_replace(u_int, char *, size_t);
+int		 paste_free_name(const char *);
+void		 paste_add(char *, size_t);
+int		 paste_rename(const char *, const char *, char **);
+int		 paste_set(char *, size_t, const char *, char **);
 char		*paste_make_sample(struct paste_buffer *, int);
 void		 paste_send_pane(struct paste_buffer *, struct window_pane *,
 		     const char *, int);

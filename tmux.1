@@ -930,9 +930,6 @@ in emacs mode, and
 .Ql 10w
 in vi.
 .Pp
-When copying the selection, the repeat count indicates the buffer index to
-replace, if used.
-.Pp
 Mode key bindings are defined in a set of named tables:
 .Em vi-edit
 and
@@ -1090,7 +1087,7 @@ but a different format may be specified with
 .Fl F .
 .It Xo Ic capture-pane
 .Op Fl aepPq
-.Op Fl b Ar buffer-index
+.Op Fl b Ar buffer-name
 .Op Fl E Ar end-line
 .Op Fl S Ar start-line
 .Op Fl t Ar target-pane
@@ -3366,19 +3363,40 @@ is given, otherwise the active pane for the session attached to
 .El
 .Sh BUFFERS
 .Nm
-maintains a stack of
+maintains a set of named
 .Em paste buffers .
-Up to the value of the
+Each buffer may be either explicitly or automatically named.
+Explicitly named buffers are named when created with the
+.Ic set-buffer
+or
+.Ic load-buffer
+commands, or by renaming an automatically named buffer with
+.Ic set-buffer
+.Fl n .
+Automatically named buffers are given a name such as
+.Ql buffer0001 ,
+.Ql buffer0002
+and so on.
+When the
 .Ic buffer-limit
-option are kept; when a new buffer is added, the buffer at the bottom of the
-stack is removed.
+option is reached, the oldest automatically named buffer is deleted.
+Explicitly named are not subject to
+.Ic buffer-limit
+and may be deleted with
+.Ic delete-buffer
+command.
+.Pp
 Buffers may be added using
 .Ic copy-mode
 or the
 .Ic set-buffer
-command, and pasted into a window using the
+and
+.Ic load-buffer
+commands, and pasted into a window using the
 .Ic paste-buffer
 command.
+If a buffer command is used and no buffer is specified, the most
+recently added automatically named buffer is assumed.
 .Pp
 A configurable history buffer is also maintained for each window.
 By default, up to 2000 lines are kept; this can be altered with the
@@ -3399,7 +3417,7 @@ Put a window into buffer choice mode, where a buffer may be chosen
 interactively from a list.
 After a buffer is selected,
 .Ql %%
-is replaced by the buffer index in
+is replaced by the buffer name in
 .Ar template
 and the result executed as a command.
 If
@@ -3414,11 +3432,11 @@ This command works only if at least one client is attached.
 .It Ic clear-history Op Fl t Ar target-pane
 .D1 (alias: Ic clearhist )
 Remove and free the history for the specified pane.
-.It Ic delete-buffer Op Fl b Ar buffer-index
+.It Ic delete-buffer Op Fl b Ar buffer-name
 .D1 (alias: Ic deleteb )
-Delete the buffer at
-.Ar buffer-index ,
-or the top buffer if not specified.
+Delete the buffer named
+.Ar buffer-name ,
+or the most recently added automatically named buffer if not specified.
 .It Xo Ic list-buffers
 .Op Fl F Ar format
 .Xc
@@ -3430,7 +3448,7 @@ flag, see the
 .Sx FORMATS
 section.
 .It Xo Ic load-buffer
-.Op Fl b Ar buffer-index
+.Op Fl b Ar buffer-name
 .Ar path
 .Xc
 .D1 (alias: Ic loadb )
@@ -3438,7 +3456,7 @@ Load the contents of the specified paste buffer from
 .Ar path .
 .It Xo Ic paste-buffer
 .Op Fl dpr
-.Op Fl b Ar buffer-index
+.Op Fl b Ar buffer-name
 .Op Fl s Ar separator
 .Op Fl t Ar target-pane
 .Xc
@@ -3447,7 +3465,7 @@ Insert the contents of a paste buffer into the specified pane.
 If not specified, paste into the current one.
 With
 .Fl d ,
-also delete the paste buffer from the stack.
+also delete the paste buffer.
 When output, any linefeed (LF) characters in the paste buffer are replaced with
 a separator, by default carriage return (CR).
 A custom separator may be specified using the
@@ -3462,7 +3480,7 @@ is specified, paste bracket control codes are inserted around the
 buffer if the application has requested bracketed paste mode.
 .It Xo Ic save-buffer
 .Op Fl a
-.Op Fl b Ar buffer-index
+.Op Fl b Ar buffer-name
 .Ar path
 .Xc
 .D1 (alias: Ic saveb )
@@ -3473,7 +3491,8 @@ The
 option appends to rather than overwriting the file.
 .It Xo Ic set-buffer
 .Op Fl a
-.Op Fl b Ar buffer-index
+.Op Fl b Ar buffer-name
+.Op Fl n Ar new-buffer-name
 .Ar data
 .Xc
 .D1 (alias: Ic setb )
@@ -3482,8 +3501,12 @@ Set the contents of the specified buffer to
 The
 .Fl a
 option appends to rather than overwriting the buffer.
+The
+.Fl n
+option renames the buffer to
+.Ar new-buffer-name .
 .It Xo Ic show-buffer
-.Op Fl b Ar buffer-index
+.Op Fl b Ar buffer-name
 .Xc
 .D1 (alias: Ic showb )
 Display the contents of the specified buffer.

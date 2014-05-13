@@ -41,23 +41,16 @@ enum cmd_retval
 cmd_delete_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
-	char		*cause;
-	int		 buffer;
+	const char 	*bufname;
 
 	if (!args_has(args, 'b')) {
 		paste_free_top();
 		return (CMD_RETURN_NORMAL);
 	}
+	bufname = args_get(args, 'b');
 
-	buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
-	if (cause != NULL) {
-		cmdq_error(cmdq, "buffer %s", cause);
-		free(cause);
-		return (CMD_RETURN_ERROR);
-	}
-
-	if (paste_free_index(buffer) != 0) {
-		cmdq_error(cmdq, "no buffer %d", buffer);
+	if (paste_free_name(bufname) != 0) {
+		cmdq_error(cmdq, "no buffer %s", bufname);
 		return (CMD_RETURN_ERROR);
 	}
 

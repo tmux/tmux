@@ -36,7 +36,7 @@ void	cmd_paste_buffer_filter(struct window_pane *,
 const struct cmd_entry cmd_paste_buffer_entry = {
 	"paste-buffer", "pasteb",
 	"db:prs:t:", 0, 0,
-	"[-dpr] [-s separator] [-b buffer-index] " CMD_TARGET_PANE_USAGE,
+	"[-dpr] [-s separator] " CMD_BUFFER_USAGE " " CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
 	cmd_paste_buffer_exec
@@ -49,31 +49,22 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window_pane	*wp;
 	struct session		*s;
 	struct paste_buffer	*pb;
-	const char		*sepstr;
-	char			*cause;
-	int			 buffer;
+	const char		*sepstr, *bufname;
 	int			 pflag;
 
 	if (cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
 
-	if (!args_has(args, 'b'))
-		buffer = -1;
-	else {
-		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
-		if (cause != NULL) {
-			cmdq_error(cmdq, "buffer %s", cause);
-			free(cause);
-			return (CMD_RETURN_ERROR);
-		}
-	}
+	bufname = NULL;
+	if (args_has(args, 'b'))
+		bufname = args_get(args, 'b');
 
-	if (buffer == -1)
+	if (bufname == NULL)
 		pb = paste_get_top();
 	else {
-		pb = paste_get_index(buffer);
+		pb = paste_get_name(bufname);
 		if (pb == NULL) {
-			cmdq_error(cmdq, "no buffer %d", buffer);
+			cmdq_error(cmdq, "no buffer %s", bufname);
 			return (CMD_RETURN_ERROR);
 		}
 	}
@@ -92,10 +83,10 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	/* Delete the buffer if -d. */
 	if (args_has(args, 'd')) {
-		if (buffer == -1)
+		if (bufname == NULL)
 			paste_free_top();
 		else
-			paste_free_index(buffer);
+			paste_free_name(bufname);
 	}
 
 	return (CMD_RETURN_NORMAL);

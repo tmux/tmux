@@ -38,7 +38,7 @@ char		*cmd_capture_pane_history(struct args *, struct cmd_q *,
 const struct cmd_entry cmd_capture_pane_entry = {
 	"capture-pane", "capturep",
 	"ab:CeE:JpPqS:t:", 0, 0,
-	"[-aCeJpPq] [-b buffer-index] [-E end-line] [-S start-line]"
+	"[-aCeJpPq] " CMD_BUFFER_USAGE " [-E end-line] [-S start-line]"
 	CMD_TARGET_PANE_USAGE,
 	0,
 	NULL,
@@ -165,8 +165,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct client		*c;
 	struct window_pane	*wp;
 	char			*buf, *cause;
-	int			 buffer;
-	u_int			 limit;
+	const char		*bufname;
 	size_t			 len;
 
 	if (cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp) == NULL)
@@ -192,23 +191,15 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		    evbuffer_add(c->stdout_data, "\n", 1);
 		server_push_stdout(c);
 	} else {
-		limit = options_get_number(&global_options, "buffer-limit");
-		if (!args_has(args, 'b')) {
-			paste_add(buf, len, limit);
-			return (CMD_RETURN_NORMAL);
-		}
 
-		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
-		if (cause != NULL) {
-			cmdq_error(cmdq, "buffer %s", cause);
+		bufname = NULL;
+		if (args_has(args, 'b'))
+			bufname = args_get(args, 'b');
+
+		if (paste_set(buf, len, bufname, &cause) != 0) {
+			cmdq_error(cmdq, "%s", cause);
 			free(buf);
 			free(cause);
-			return (CMD_RETURN_ERROR);
-		}
-
-		if (paste_replace(buffer, buf, len) != 0) {
-			cmdq_error(cmdq, "no buffer %d", buffer);
-			free(buf);
 			return (CMD_RETURN_ERROR);
 		}
 	}

@@ -26,126 +26,236 @@
 #include "tmux.h"
 
 /*
- * Stack of paste buffers. Note that paste buffer data is not necessarily a C
+ * Set of paste buffers. Note that paste buffer data is not necessarily a C
  * string!
  */
 
-ARRAY_DECL(, struct paste_buffer *) paste_buffers =  ARRAY_INITIALIZER;
+u_int	paste_next_index;
+u_int	paste_next_order;
+u_int	paste_num_automatic;
+RB_HEAD(paste_name_tree, paste_buffer) paste_by_name;
+RB_HEAD(paste_time_tree, paste_buffer) paste_by_time;
 
-/* Return each item of the stack in turn. */
-struct paste_buffer *
-paste_walk_stack(u_int *idx)
+int paste_cmp_names(const struct paste_buffer *, const struct paste_buffer *);
+RB_PROTOTYPE(paste_name_tree, paste_buffer, name_entry, paste_cmp_names);
+RB_GENERATE(paste_name_tree, paste_buffer, name_entry, paste_cmp_names);
+
+int paste_cmp_times(const struct paste_buffer *, const struct paste_buffer *);
+RB_PROTOTYPE(paste_time_tree, paste_buffer, time_entry, paste_cmp_times);
+RB_GENERATE(paste_time_tree, paste_buffer, time_entry, paste_cmp_times);
+
+int
+paste_cmp_names(const struct paste_buffer *a, const struct paste_buffer *b)
 {
-	struct paste_buffer	*pb;
-
-	pb = paste_get_index(*idx);
-	(*idx)++;
-	return (pb);
+	return (strcmp(a->name, b->name));
 }
 
-/* Get the top item on the stack. */
+int
+paste_cmp_times(const struct paste_buffer *a, const struct paste_buffer *b)
+{
+	if (a->order > b->order)
+		return (-1);
+	if (a->order < b->order)
+		return (1);
+	return (0);
+}
+
+/* Walk paste buffers by name. */
+struct paste_buffer *
+paste_walk(struct paste_buffer *pb)
+{
+	if (pb == NULL)
+		return (RB_MIN(paste_time_tree, &paste_by_time));
+	return (RB_NEXT(paste_time_tree, &paste_by_time, pb));
+}
+
+/* Get the most recent automatic buffer */
 struct paste_buffer *
 paste_get_top(void)
 {
-	if (ARRAY_LENGTH(&paste_buffers) == 0)
+	struct paste_buffer	*pb;
+
+	pb = RB_MIN(paste_time_tree, &paste_by_time);
+	if (pb == NULL)
 		return (NULL);
-	return (ARRAY_FIRST(&paste_buffers));
+	return (pb);
 }
 
-/* Get an item by its index. */
-struct paste_buffer *
-paste_get_index(u_int idx)
-{
-	if (idx >= ARRAY_LENGTH(&paste_buffers))
-		return (NULL);
-	return (ARRAY_ITEM(&paste_buffers, idx));
-}
-
-/* Free the top item on the stack. */
+/* Free the most recent buffer */
 int
 paste_free_top(void)
 {
 	struct paste_buffer	*pb;
 
-	if (ARRAY_LENGTH(&paste_buffers) == 0)
+	pb = paste_get_top();
+	if (pb == NULL)
 		return (-1);
-
-	pb = ARRAY_FIRST(&paste_buffers);
-	ARRAY_REMOVE(&paste_buffers, 0);
-
-	free(pb->data);
-	free(pb);
-
-	return (0);
+	return (paste_free_name(pb->name));
 }
 
-/* Free an item by index. */
-int
-paste_free_index(u_int idx)
+/* Get a paste buffer by name. */
+struct paste_buffer *
+paste_get_name(const char *name)
 {
-	struct paste_buffer	*pb;
+	struct paste_buffer	pbfind;
 
-	if (idx >= ARRAY_LENGTH(&paste_buffers))
+	if (name == NULL || *name == '\0')
+		return (NULL);
+
+	pbfind.name = (char*)name;
+	return (RB_FIND(paste_name_tree, &paste_by_name, &pbfind));
+}
+
+/* Free a paste buffer by name. */
+int
+paste_free_name(const char *name)
+{
+	struct paste_buffer	*pb, pbfind;
+
+	if (name == NULL || *name == '\0')
 		return (-1);
 
-	pb = ARRAY_ITEM(&paste_buffers, idx);
-	ARRAY_REMOVE(&paste_buffers, idx);
+	pbfind.name = (char*)name;
+	pb = RB_FIND(paste_name_tree, &paste_by_name, &pbfind);
+	if (pb == NULL)
+		return (-1);
+
+	RB_REMOVE(paste_name_tree, &paste_by_name, pb);
+	RB_REMOVE(paste_time_tree, &paste_by_time, pb);
+	if (pb->automatic)
+		paste_num_automatic--;
 
 	free(pb->data);
+	free(pb->name);
 	free(pb);
-
 	return (0);
 }
 
 /*
- * Add an item onto the top of the stack, freeing the bottom if at limit. Note
+ * Add an automatic buffer, freeing the oldest automatic item if at limit. Note
  * that the caller is responsible for allocating data.
  */
 void
-paste_add(char *data, size_t size, u_int limit)
+paste_add(char *data, size_t size)
 {
-	struct paste_buffer	*pb;
+	struct paste_buffer	*pb, *pb1;
+	u_int			 limit;
 
 	if (size == 0)
 		return;
 
-	while (ARRAY_LENGTH(&paste_buffers) >= limit) {
-		pb = ARRAY_LAST(&paste_buffers);
-		free(pb->data);
-		free(pb);
-		ARRAY_TRUNC(&paste_buffers, 1);
+	limit = options_get_number(&global_options, "buffer-limit");
+	RB_FOREACH_REVERSE_SAFE(pb, paste_time_tree, &paste_by_time, pb1) {
+		if (paste_num_automatic < limit)
+			break;
+		if (pb->automatic)
+			paste_free_name(pb->name);
 	}
 
 	pb = xmalloc(sizeof *pb);
-	ARRAY_INSERT(&paste_buffers, 0, pb);
+
+	pb->name = NULL;
+	do {
+		free(pb->name);
+		xasprintf(&pb->name, "buffer%04u", paste_next_index);
+		paste_next_index++;
+	} while (paste_get_name(pb->name) != NULL);
 
 	pb->data = data;
 	pb->size = size;
+
+	pb->automatic = 1;
+	paste_num_automatic++;
+
+	pb->order = paste_next_order++;
+	RB_INSERT(paste_name_tree, &paste_by_name, pb);
+	RB_INSERT(paste_time_tree, &paste_by_time, pb);
 }
 
+/* Rename a paste buffer. */
+int
+paste_rename(const char *oldname, const char *newname, char **cause)
+{
+	struct paste_buffer	*pb;
+
+	if (cause != NULL)
+		*cause = NULL;
+
+	if (oldname == NULL || *oldname == '\0') {
+		if (cause != NULL)
+			*cause = xstrdup("no buffer");
+		return (-1);
+	}
+	if (newname == NULL || *newname == '\0') {
+		if (cause != NULL)
+			*cause = xstrdup("new name is empty");
+		return (-1);
+	}
+
+	pb = paste_get_name(oldname);
+	if (pb == NULL) {
+		if (cause != NULL)
+		    xasprintf(cause, "no buffer %s", oldname);
+		return (-1);
+	}
+
+	RB_REMOVE(paste_name_tree, &paste_by_name, pb);
+
+	free(pb->name);
+	pb->name = xstrdup(newname);
+
+	if (pb->automatic)
+		paste_num_automatic--;
+	pb->automatic = 0;
+
+	RB_INSERT(paste_name_tree, &paste_by_name, pb);
+
+	return (0);
+}
 
 /*
- * Replace an item on the stack. Note that the caller is responsible for
+ * Add or replace an item in the store. Note that the caller is responsible for
  * allocating data.
  */
 int
-paste_replace(u_int idx, char *data, size_t size)
+paste_set(char *data, size_t size, const char *name, char **cause)
 {
 	struct paste_buffer	*pb;
+
+	if (cause != NULL)
+		*cause = NULL;
 
 	if (size == 0) {
 		free(data);
 		return (0);
 	}
+	if (name == NULL) {
+		paste_add(data, size);
+		return (0);
+	}
 
-	if (idx >= ARRAY_LENGTH(&paste_buffers))
+	if (*name == '\0') {
+		if (cause != NULL)
+			*cause = xstrdup("empty buffer name");
 		return (-1);
+	}
 
-	pb = ARRAY_ITEM(&paste_buffers, idx);
-	free(pb->data);
+	pb = paste_get_name(name);
+	if (pb != NULL)
+		paste_free_name(name);
+
+	pb = xmalloc(sizeof *pb);
+
+	pb->name = xstrdup(name);
 
 	pb->data = data;
 	pb->size = size;
+
+	pb->automatic = 0;
+	pb->order = paste_next_order++;
+
+	RB_INSERT(paste_name_tree, &paste_by_name, pb);
+	RB_INSERT(paste_time_tree, &paste_by_time, pb);
 
 	return (0);
 }
