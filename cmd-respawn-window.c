@@ -31,7 +31,7 @@ enum cmd_retval	 cmd_respawn_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_respawn_window_entry = {
 	"respawn-window", "respawnw",
-	"kt:", 0, 1,
+	"kt:", 0, -1,
 	"[-k] " CMD_TARGET_WINDOW_USAGE " [command]",
 	0,
 	NULL,
@@ -47,7 +47,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window_pane	*wp;
 	struct session		*s;
 	struct environ		 env;
-	const char		*cmd, *path;
+	const char		*path;
 	char		 	*cause;
 	struct environ_entry	*envent;
 
@@ -76,10 +76,6 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	window_destroy_panes(w);
 	TAILQ_INSERT_HEAD(&w->panes, wp, entry);
 	window_pane_resize(wp, w->sx, w->sy);
-	if (args->argc != 0)
-		cmd = args->argv[0];
-	else
-		cmd = NULL;
 
 	path = NULL;
 	if (cmdq->client != NULL && cmdq->client->session == NULL)
@@ -89,8 +85,8 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (envent != NULL)
 		path = envent->value;
 
-	if (window_pane_spawn(wp, cmd, path, NULL, -1, &env, s->tio,
-	    &cause) != 0) {
+	if (window_pane_spawn(wp, args->argc, args->argv, path, NULL, -1, &env,
+	    s->tio, &cause) != 0) {
 		cmdq_error(cmdq, "respawn window failed: %s", cause);
 		free(cause);
 		environ_free(&env);

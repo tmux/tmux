@@ -34,7 +34,7 @@ enum cmd_retval	cmd_new_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_new_window_entry = {
 	"new-window", "neww",
-	"ac:dF:kn:Pt:", 0, 1,
+	"ac:dF:kn:Pt:", 0, -1,
 	"[-adkP] [-c start-directory] [-F format] [-n window-name] "
 	CMD_TARGET_WINDOW_USAGE " [command]",
 	0,
@@ -50,8 +50,8 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct winlink		*wl;
 	struct client		*c;
 	const char		*cmd, *path, *template;
-	char			*cause, *cp;
-	int			 idx, last, detached, cwd, fd = -1;
+	char		       **argv, *cause, *cp;
+	int			 argc, idx, last, detached, cwd, fd = -1;
 	struct format_tree	*ft;
 	struct environ_entry	*envent;
 
@@ -84,10 +84,19 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 	detached = args_has(args, 'd');
 
-	if (args->argc == 0)
+	if (args->argc == 0) {
 		cmd = options_get_string(&s->options, "default-command");
-	else
-		cmd = args->argv[0];
+		if (cmd != NULL && *cmd != '\0') {
+			argc = 1;
+			argv = (char**)&cmd;
+		} else {
+			argc = 0;
+			argv = NULL;
+		}
+	} else {
+		argc = args->argc;
+		argv = args->argv;
+	}
 
 	path = NULL;
 	if (cmdq->client != NULL && cmdq->client->session == NULL)
@@ -145,7 +154,8 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (idx == -1)
 		idx = -1 - options_get_number(&s->options, "base-index");
-	wl = session_new(s, args_get(args, 'n'), cmd, path, cwd, idx, &cause);
+	wl = session_new(s, args_get(args, 'n'), argc, argv, path, cwd, idx,
+		&cause);
 	if (wl == NULL) {
 		cmdq_error(cmdq, "create window failed: %s", cause);
 		free(cause);
