@@ -27,7 +27,6 @@
 RB_GENERATE(key_bindings, key_binding, entry, key_bindings_cmp);
 
 struct key_bindings	key_bindings;
-struct key_bindings	dead_key_bindings;
 
 int
 key_bindings_cmp(struct key_binding *bd1, struct key_binding *bd2)
@@ -78,20 +77,8 @@ key_bindings_remove(int key)
 	if ((bd = key_bindings_lookup(key)) == NULL)
 		return;
 	RB_REMOVE(key_bindings, &key_bindings, bd);
-	RB_INSERT(key_bindings, &dead_key_bindings, bd);
-}
-
-void
-key_bindings_clean(void)
-{
-	struct key_binding	*bd;
-
-	while (!RB_EMPTY(&dead_key_bindings)) {
-		bd = RB_ROOT(&dead_key_bindings);
-		RB_REMOVE(key_bindings, &dead_key_bindings, bd);
-		cmd_list_free(bd->cmdlist);
-		free(bd);
-	}
+	cmd_list_free(bd->cmdlist);
+	free(bd);
 }
 
 void

@@ -208,7 +208,6 @@ server_loop(void)
 		server_window_loop();
 		server_client_loop();
 
-		key_bindings_clean();
 		server_clean_dead();
 	}
 }
