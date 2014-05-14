@@ -1442,17 +1442,10 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 	}
 
 	/* Copy the lines. */
-	if (sy == ey)
-		window_copy_copy_line(wp, &buf, &off, sy, firstsx, lastex);
-	else {
-		window_copy_copy_line(wp, &buf, &off, sy, firstsx, restex);
-		if (ey - sy > 1) {
-			for (i = sy + 1; i < ey; i++) {
-				window_copy_copy_line(
-				    wp, &buf, &off, i, restsx, restex);
-			}
-		}
-		window_copy_copy_line(wp, &buf, &off, ey, restsx, lastex);
+	for (i = sy; i <= ey; i++) {
+		window_copy_copy_line(wp, &buf, &off, i,
+		    (i == sy ? firstsx : restsx),
+		    (i == ey ? lastex : restex));
 	}
 
 	/* Don't bother if no data. */
