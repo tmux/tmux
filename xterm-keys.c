@@ -40,8 +40,8 @@
  * We accept any but always output the latter (it comes first in the table).
  */
 
-int	xterm_keys_match(const char *, const char *, size_t);
-int	xterm_keys_modifiers(const char *, const char *, size_t);
+int	xterm_keys_match(const char *, const char *, size_t, size_t *, u_int *);
+int	xterm_keys_modifiers(const char *, size_t, size_t *, u_int *);
 
 struct xterm_keys_entry {
 	int		 key;
@@ -122,49 +122,62 @@ const struct xterm_keys_entry xterm_keys_table[] = {
  * 0 for match, 1 if the end of the buffer is reached (need more data).
  */
 int
-xterm_keys_match(const char *template, const char *buf, size_t len)
+xterm_keys_match(const char *template, const char *buf, size_t len,
+    size_t *size, u_int *modifiers)
 {
 	size_t	pos;
+	int	retval;
 
 	if (len == 0)
 		return (0);
 
 	pos = 0;
 	do {
-		if (*template == '_' && buf[pos] >= '1' && buf[pos] <= '8')
+		if (*template == '_') {
+			retval = xterm_keys_modifiers(buf, len, &pos,
+			    modifiers);
+			if (retval != 0)
+				return (retval);
 			continue;
+		}
 		if (buf[pos] != *template)
 			return (-1);
-	} while (*++template != '\0' && ++pos != len);
+		pos++;
+	} while (*++template != '\0' && pos != len);
 
 	if (*template != '\0')	/* partial */
 		return (1);
 
+	*size = pos;
 	return (0);
 }
 
-/* Find modifiers based on template. */
+/* Find modifiers from buffer. */
 int
-xterm_keys_modifiers(const char *template, const char *buf, size_t len)
+xterm_keys_modifiers(const char *buf, size_t len, size_t *pos, u_int *modifiers)
 {
-	size_t	idx;
-	int     param, modifiers;
+	u_int	flags;
 
-	idx = strcspn(template, "_");
-	if (idx >= len)
-		return (0);
-	param = buf[idx] - '1';
+	if (len - *pos < 2)
+		return (1);
 
-	modifiers = 0;
-	if (param & 1)
-		modifiers |= KEYC_SHIFT;
-	if (param & 2)
-		modifiers |= KEYC_ESCAPE;
-	if (param & 4)
-		modifiers |= KEYC_CTRL;
-	if (param & 8)
-		modifiers |= KEYC_ESCAPE;
-	return (modifiers);
+	if (buf[*pos] < '0' || buf[*pos] > '9')
+		return (-1);
+	flags = buf[(*pos)++] - '0';
+	if (buf[*pos] >= '0' && buf[*pos] <= '9')
+		flags = (flags * 10) + (buf[(*pos)++] - '0');
+	flags -= 1;
+
+	*modifiers = 0;
+	if (flags & 1)
+		*modifiers |= KEYC_SHIFT;
+	if (flags & 2)
+		*modifiers |= KEYC_ESCAPE;
+	if (flags & 4)
+		*modifiers |= KEYC_CTRL;
+	if (flags & 8)
+		*modifiers |= KEYC_ESCAPE;
+	return (0);
 }
 
 /*
@@ -175,19 +188,19 @@ int
 xterm_keys_find(const char *buf, size_t len, size_t *size, int *key)
 {
 	const struct xterm_keys_entry	*entry;
-	u_int				 i;
+	u_int				 i, modifiers;
+	int				 matched;
 
 	for (i = 0; i < nitems(xterm_keys_table); i++) {
 		entry = &xterm_keys_table[i];
-		switch (xterm_keys_match(entry->template, buf, len)) {
-		case 0:
-			*size = strlen(entry->template);
-			*key = entry->key;
-			*key |= xterm_keys_modifiers(entry->template, buf, len);
-			return (0);
-		case 1:
-			return (1);
-		}
+
+		matched = xterm_keys_match(entry->template, buf, len, size,
+		    &modifiers);
+		if (matched == -1)
+			continue;
+		if (matched == 0)
+			*key = entry->key | modifiers;
+		return (matched);
 	}
 	return (-1);
 }
