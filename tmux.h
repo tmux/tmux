@@ -803,14 +803,22 @@ struct screen_write_ctx {
 #define screen_hsize(s) ((s)->grid->hsize)
 #define screen_hlimit(s) ((s)->grid->hlimit)
 
+/* Input parser cell. */
+struct input_cell {
+	struct grid_cell	cell;
+	int			set;
+	int			g0set;	/* 1 if ACS */
+	int			g1set;	/* 1 if ACS */
+};
+
 /* Input parser context. */
 struct input_ctx {
 	struct window_pane     *wp;
 	struct screen_write_ctx ctx;
 
-	struct grid_cell	cell;
+	struct input_cell	cell;
 
-	struct grid_cell	old_cell;
+	struct input_cell	old_cell;
 	u_int 			old_cx;
 	u_int			old_cy;
 
@@ -822,7 +830,7 @@ struct input_ctx {
 
 #define INPUT_BUF_START 32
 #define INPUT_BUF_LIMIT 1048576
-	u_char*			input_buf;
+	u_char		       *input_buf;
 	size_t			input_len;
 	size_t			input_space;
 
