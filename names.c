@@ -68,9 +68,15 @@ window_name_callback(unused int fd, unused short events, void *data)
 char *
 default_window_name(struct window *w)
 {
-	if (w->active->cmd != NULL && *w->active->cmd != '\0')
-		return (parse_window_name(w->active->cmd));
-	return (parse_window_name(w->active->shell));
+	char    *cmd, *s;
+
+	cmd = cmd_stringify_argv(w->active->argc, w->active->argv);
+	if (cmd != NULL && *cmd != '\0')
+		s = parse_window_name(cmd);
+	else
+		s = parse_window_name(w->active->shell);
+	free(cmd);
+	return (s);
 }
 
 char *

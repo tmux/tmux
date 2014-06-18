@@ -117,7 +117,7 @@ style_tostring(struct grid_cell *gc)
 
 	*s = '\0';
 
-	if (gc->fg != 8) {
+	if (gc->fg != 8 || gc->flags & GRID_FLAG_FG256) {
 		if (gc->flags & GRID_FLAG_FG256)
 			c = gc->fg | 0x100;
 		else
@@ -126,7 +126,7 @@ style_tostring(struct grid_cell *gc)
 		comma = 1;
 	}
 
-	if (gc->bg != 8) {
+	if (gc->bg != 8 || gc->flags & GRID_FLAG_BG256) {
 		if (gc->flags & GRID_FLAG_BG256)
 			c = gc->bg | 0x100;
 		else
@@ -221,13 +221,13 @@ style_apply_update(struct grid_cell *gc, struct options *oo, const char *name)
 	struct grid_cell	*gcp;
 
 	gcp = options_get_style(oo, name);
-	if (gcp->fg != 8) {
+	if (gcp->fg != 8 || gcp->flags & GRID_FLAG_FG256) {
 		if (gcp->flags & GRID_FLAG_FG256)
 			colour_set_fg(gc, gcp->fg | 0x100);
 		else
 			colour_set_fg(gc, gcp->fg);
 	}
-	if (gcp->bg != 8) {
+	if (gcp->bg != 8 || gcp->flags & GRID_FLAG_BG256) {
 		if (gcp->flags & GRID_FLAG_BG256)
 			colour_set_bg(gc, gcp->bg | 0x100);
 		else

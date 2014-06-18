@@ -721,17 +721,22 @@ window_choose_mouse(struct window_pane *wp, struct session *sess,
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
 	struct window_choose_mode_item	*item;
-	u_int				 idx;
+	u_int				 idx, i, n;
 
 	if (m->event == MOUSE_EVENT_WHEEL) {
 		/*
-		 * Don't use m->scroll and just move line-by-line or it's
-		 * annoying.
+		 * Multiple line scrolling by default is annoying, so scale
+		 * m->scroll back down.
 		 */
-		if (m->wheel == MOUSE_WHEEL_UP)
-			window_choose_key(wp, sess, KEYC_UP);
-		else
-			window_choose_key(wp, sess, KEYC_DOWN);
+		n = m->scroll;
+		if (n >= MOUSE_WHEEL_SCALE)
+			n /= MOUSE_WHEEL_SCALE;
+		for (i = 0; i < n; i++) {
+			if (m->wheel == MOUSE_WHEEL_UP)
+				window_choose_key(wp, sess, KEYC_UP);
+			else
+				window_choose_key(wp, sess, KEYC_DOWN);
+		}
 		return;
 	}
 

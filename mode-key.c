@@ -141,6 +141,7 @@ const struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_SEARCHREVERSE, "search-reverse" },
 	{ MODEKEYCOPY_SEARCHUP, "search-backward" },
 	{ MODEKEYCOPY_SELECTLINE, "select-line" },
+	{ MODEKEYCOPY_STARTNAMEDBUFFER, "start-named-buffer" },
 	{ MODEKEYCOPY_STARTNUMBERPREFIX, "start-number-prefix" },
 	{ MODEKEYCOPY_STARTOFLINE, "start-of-line" },
 	{ MODEKEYCOPY_STARTSELECTION, "begin-selection" },
@@ -257,6 +258,7 @@ struct mode_key_tree mode_key_tree_vi_choice;
 /* vi copy mode keys. */
 const struct mode_key_entry mode_key_vi_copy[] = {
 	{ ' ',			    0, MODEKEYCOPY_STARTSELECTION },
+	{ '"',			    0, MODEKEYCOPY_STARTNAMEDBUFFER },
 	{ '$',			    0, MODEKEYCOPY_ENDOFLINE },
 	{ ',',			    0, MODEKEYCOPY_JUMPREVERSE },
 	{ ';',			    0, MODEKEYCOPY_JUMPAGAIN },

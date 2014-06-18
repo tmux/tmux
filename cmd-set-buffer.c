@@ -31,8 +31,8 @@ enum cmd_retval	 cmd_set_buffer_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_set_buffer_entry = {
 	"set-buffer", "setb",
-	"ab:", 1, 1,
-	"[-a] " CMD_BUFFER_USAGE " data",
+	"ab:n:", 0, 1,
+	"[-a] " CMD_BUFFER_USAGE " [-n new-buffer-name] data",
 	0,
 	NULL,
 	cmd_set_buffer_exec
@@ -43,38 +43,59 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct paste_buffer	*pb;
-	u_int			 limit;
 	char			*pdata, *cause;
+	const char		*bufname;
 	size_t			 psize, newsize;
-	int			 buffer;
 
-	limit = options_get_number(&global_options, "buffer-limit");
+	bufname = NULL;
+
+	if (args_has(args, 'n')) {
+		if (args->argc > 0) {
+			cmdq_error(cmdq, "don't provide data with n flag");
+			return (CMD_RETURN_ERROR);
+		}
+
+		if (args_has(args, 'b'))
+			bufname = args_get(args, 'b');
+
+		if (bufname == NULL) {
+			pb = paste_get_top();
+			if (pb == NULL) {
+				cmdq_error(cmdq, "no buffer");
+				return (CMD_RETURN_ERROR);
+			}
+			bufname = pb->name;
+		}
+
+		if (paste_rename(bufname, args_get(args, 'n'), &cause) != 0) {
+			cmdq_error(cmdq, "%s", cause);
+			free(cause);
+			return (CMD_RETURN_ERROR);
+		}
+
+		return (CMD_RETURN_NORMAL);
+	}
+
+	if (args->argc != 1) {
+		cmdq_error(cmdq, "no data specified");
+		return (CMD_RETURN_ERROR);
+	}
 
 	psize = 0;
 	pdata = NULL;
 
 	pb = NULL;
-	buffer = -1;
 
 	if ((newsize = strlen(args->argv[0])) == 0)
 		return (CMD_RETURN_NORMAL);
 
 	if (args_has(args, 'b')) {
-		buffer = args_strtonum(args, 'b', 0, INT_MAX, &cause);
-		if (cause != NULL) {
-			cmdq_error(cmdq, "buffer %s", cause);
-			free(cause);
-			return (CMD_RETURN_ERROR);
-		}
-		pb = paste_get_index(buffer);
-		if (pb == NULL) {
-			cmdq_error(cmdq, "no buffer %d", buffer);
-			return (CMD_RETURN_ERROR);
-		}
+		bufname = args_get(args, 'b');
+		pb = paste_get_name(bufname);
 	} else if (args_has(args, 'a')) {
 		pb = paste_get_top();
 		if (pb != NULL)
-			buffer = 0;
+			bufname = pb->name;
 	}
 
 	if (args_has(args, 'a') && pb != NULL) {
@@ -87,10 +108,12 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	memcpy(pdata + psize, args->argv[0], newsize);
 	psize += newsize;
 
-	if (buffer == -1)
-		paste_add(pdata, psize, limit);
-	else
-		paste_replace(buffer, pdata, psize);
+	if (paste_set(pdata, psize, bufname, &cause) != 0) {
+		cmdq_error(cmdq, "%s", cause);
+		free(pdata);
+		free(cause);
+		return (CMD_RETURN_ERROR);
+	}
 
 	return (CMD_RETURN_NORMAL);
 }

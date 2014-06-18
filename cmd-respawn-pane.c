@@ -32,7 +32,7 @@ enum cmd_retval	 cmd_respawn_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_respawn_pane_entry = {
 	"respawn-pane", "respawnp",
-	"kt:", 0, 1,
+	"kt:", 0, -1,
 	"[-k] " CMD_TARGET_PANE_USAGE " [command]",
 	0,
 	NULL,
@@ -48,7 +48,7 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window_pane	*wp;
 	struct session		*s;
 	struct environ		 env;
-	const char		*cmd, *path;
+	const char		*path;
 	char			*cause;
 	u_int			 idx;
 	struct environ_entry	*envent;
@@ -74,11 +74,6 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	screen_reinit(&wp->base);
 	input_init(wp);
 
-	if (args->argc != 0)
-		cmd = args->argv[0];
-	else
-		cmd = NULL;
-
 	path = NULL;
 	if (cmdq->client != NULL && cmdq->client->session == NULL)
 		envent = environ_find(&cmdq->client->environ, "PATH");
@@ -87,8 +82,8 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (envent != NULL)
 		path = envent->value;
 
-	if (window_pane_spawn(wp, cmd, path, NULL, -1, &env, s->tio,
-	    &cause) != 0) {
+	if (window_pane_spawn(wp, args->argc, args->argv, path, NULL, -1, &env,
+	    s->tio, &cause) != 0) {
 		cmdq_error(cmdq, "respawn pane failed: %s", cause);
 		free(cause);
 		environ_free(&env);

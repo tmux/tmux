@@ -368,7 +368,7 @@ format_get_command(struct window_pane *wp)
 	cmd = osdep_get_name(wp->fd, wp->tty);
 	if (cmd == NULL || *cmd == '\0') {
 		free(cmd);
-		cmd = xstrdup(wp->cmd);
+		cmd = cmd_stringify_argv(wp->argc, wp->argv);
 		if (cmd == NULL || *cmd == '\0') {
 			free(cmd);
 			cmd = xstrdup(wp->shell);
@@ -559,10 +559,12 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	if (wp->tty != NULL)
 		format_add(ft, "pane_tty", "%s", wp->tty);
 	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
-	if (wp->cmd != NULL)
-		format_add(ft, "pane_start_command", "%s", wp->cmd);
 	if ((cwd = osdep_get_cwd(wp->fd)) != NULL)
 		format_add(ft, "pane_current_path", "%s", cwd);
+	if ((cmd = cmd_stringify_argv(wp->argc, wp->argv)) != NULL) {
+		format_add(ft, "pane_start_command", "%s", cmd);
+		free(cmd);
+	}
 	if ((cmd = format_get_command(wp)) != NULL) {
 		format_add(ft, "pane_current_command", "%s", cmd);
 		free(cmd);
@@ -610,6 +612,7 @@ format_paste_buffer(struct format_tree *ft, struct paste_buffer *pb,
 	char	*s;
 
 	format_add(ft, "buffer_size", "%zu", pb->size);
+	format_add(ft, "buffer_name", "%s", pb->name);
 
 	s = paste_make_sample(pb, utf8flag);
 	format_add(ft, "buffer_sample", "%s", s);

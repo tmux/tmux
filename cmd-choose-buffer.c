@@ -75,19 +75,20 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		action = xstrdup("paste-buffer -b '%%'");
 
 	idx = 0;
-	while ((pb = paste_walk_stack(&idx)) != NULL) {
+	pb = NULL;
+	while ((pb = paste_walk(pb)) != NULL) {
 		cdata = window_choose_data_create(TREE_OTHER, c, c->session);
-		cdata->idx = idx - 1;
+		cdata->idx = idx;
 
 		cdata->ft_template = xstrdup(template);
-		format_add(cdata->ft, "line", "%u", idx - 1);
 		format_paste_buffer(cdata->ft, pb, utf8flag);
 
-		xasprintf(&action_data, "%u", idx - 1);
+		xasprintf(&action_data, "%s", pb->name);
 		cdata->command = cmd_template_replace(action, action_data, 1);
 		free(action_data);
 
 		window_choose_add(wl->window->active, cdata);
+		idx++;
 	}
 	free(action);
 
