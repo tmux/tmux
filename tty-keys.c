@@ -783,6 +783,8 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 		else if (b == 1)
 			m->wheel = MOUSE_WHEEL_DOWN;
 		m->event = MOUSE_EVENT_WHEEL;
+
+		m->button = 3;
 	} else if ((b & MOUSE_MASK_BUTTONS) == 3) {
 		if (~m->event & MOUSE_EVENT_DRAG && x == m->x && y == m->y)
 			m->event = MOUSE_EVENT_CLICK;
