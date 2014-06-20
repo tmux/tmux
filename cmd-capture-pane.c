@@ -94,6 +94,7 @@ cmd_capture_pane_history(struct args *args, struct cmd_q *cmdq,
 	int			 n, with_codes, escape_c0, join_lines;
 	u_int			 i, sx, top, bottom, tmp;
 	char			*cause, *buf, *line;
+	const char		*Sflag, *Eflag;
 	size_t			 linelen;
 
 	sx = screen_size_x(&wp->base);
@@ -109,27 +110,37 @@ cmd_capture_pane_history(struct args *args, struct cmd_q *cmdq,
 	} else
 		gd = wp->base.grid;
 
-	n = args_strtonum(args, 'S', INT_MIN, SHRT_MAX, &cause);
-	if (cause != NULL) {
-		top = gd->hsize;
-		free(cause);
-	} else if (n < 0 && (u_int) -n > gd->hsize)
+	Sflag = args_get(args, 'S');
+	if (Sflag != NULL && strcmp(Sflag, "-") == 0)
 		top = 0;
-	else
-		top = gd->hsize + n;
-	if (top > gd->hsize + gd->sy - 1)
-		top = gd->hsize + gd->sy - 1;
+	else {
+		n = args_strtonum(args, 'S', INT_MIN, SHRT_MAX, &cause);
+		if (cause != NULL) {
+			top = gd->hsize;
+			free(cause);
+		} else if (n < 0 && (u_int) -n > gd->hsize)
+			top = 0;
+		else
+			top = gd->hsize + n;
+		if (top > gd->hsize + gd->sy - 1)
+			top = gd->hsize + gd->sy - 1;
+	}
 
-	n = args_strtonum(args, 'E', INT_MIN, SHRT_MAX, &cause);
-	if (cause != NULL) {
+	Eflag = args_get(args, 'E');
+	if (Eflag != NULL && strcmp(Eflag, "-") == 0)
 		bottom = gd->hsize + gd->sy - 1;
-		free(cause);
-	} else if (n < 0 && (u_int) -n > gd->hsize)
-		bottom = 0;
-	else
-		bottom = gd->hsize + n;
-	if (bottom > gd->hsize + gd->sy - 1)
-		bottom = gd->hsize + gd->sy - 1;
+	else {
+		n = args_strtonum(args, 'E', INT_MIN, SHRT_MAX, &cause);
+		if (cause != NULL) {
+			bottom = gd->hsize + gd->sy - 1;
+			free(cause);
+		} else if (n < 0 && (u_int) -n > gd->hsize)
+			bottom = 0;
+		else
+			bottom = gd->hsize + n;
+		if (bottom > gd->hsize + gd->sy - 1)
+			bottom = gd->hsize + gd->sy - 1;
+	}
 
 	if (bottom < top) {
 		tmp = bottom;
