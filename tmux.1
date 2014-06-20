@@ -1152,6 +1152,12 @@ and
 .Fl E
 specify the starting and ending line numbers, zero is the first line of the
 visible pane and negative numbers are lines in the history.
+.Ql -
+to
+.Fl S
+is the start of the history and to
+.Fl E
+the end of the visible pane.
 The default is to capture only the visible contents of the pane.
 .It Xo
 .Ic choose-client
@@ -1865,7 +1871,7 @@ Commands related to key bindings are as follows:
 .Bl -tag -width Ds
 .It Xo Ic bind-key
 .Op Fl cnr
-.Op Fl t Ar key-table
+.Op Fl t Ar mode-table
 .Ar key Ar command Op Ar arguments
 .Xc
 .D1 (alias: Ic bind )
@@ -1894,7 +1900,7 @@ If
 is present,
 .Ar key
 is bound in
-.Ar key-table :
+.Ar mode-table :
 the binding for command mode with
 .Fl c
 or for normal mode without.
@@ -1952,7 +1958,7 @@ Send the prefix key, or with
 the secondary prefix key, to a window as if it was pressed.
 .It Xo Ic unbind-key
 .Op Fl acn
-.Op Fl t Ar key-table
+.Op Fl t Ar mode-table
 .Ar key
 .Xc
 .D1 (alias: Ic unbind )
@@ -1974,7 +1980,7 @@ If
 is present,
 .Ar key
 in
-.Ar key-table
+.Ar mode-table
 is unbound: the binding for command mode with
 .Fl c
 or for normal mode without.
@@ -3079,18 +3085,22 @@ The following variables are available, where appropriate:
 .It Li "mouse_standard_flag" Ta "" Ta "Pane mouse standard flag"
 .It Li "mouse_utf8_flag" Ta "" Ta "Pane mouse UTF-8 flag"
 .It Li "pane_active" Ta "" Ta "1 if active pane"
+.It Li "pane_bottom" Ta "" Ta "Bottom of pane"
 .It Li "pane_current_command" Ta "" Ta "Current command if available"
 .It Li "pane_current_path" Ta "" Ta "Current path if available"
 .It Li "pane_dead" Ta "" Ta "1 if pane is dead"
 .It Li "pane_height" Ta "" Ta "Height of pane"
 .It Li "pane_id" Ta "#D" Ta "Unique pane ID"
 .It Li "pane_in_mode" Ta "" Ta "If pane is in a mode"
-.It Li "pane_synchronized" Ta "" Ta "If pane is synchronized"
 .It Li "pane_index" Ta "#P" Ta "Index of pane"
+.It Li "pane_left" Ta "" Ta "Left of pane"
 .It Li "pane_pid" Ta "" Ta "PID of first process in pane"
+.It Li "pane_right" Ta "" Ta "Right of pane"
 .It Li "pane_start_command" Ta "" Ta "Command pane started with"
+.It Li "pane_synchronized" Ta "" Ta "If pane is synchronized"
 .It Li "pane_tabs" Ta "" Ta "Pane tab positions"
 .It Li "pane_title" Ta "#T" Ta "Title of pane"
+.It Li "pane_top" Ta "" Ta "Top of pane"
 .It Li "pane_tty" Ta "" Ta "Pseudo terminal of pane"
 .It Li "pane_width" Ta "" Ta "Width of pane"
 .It Li "saved_cursor_x" Ta "" Ta "Saved cursor X in pane"

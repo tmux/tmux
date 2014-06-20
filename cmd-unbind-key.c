@@ -27,12 +27,12 @@
  */
 
 enum cmd_retval	 cmd_unbind_key_exec(struct cmd *, struct cmd_q *);
-enum cmd_retval	 cmd_unbind_key_table(struct cmd *, struct cmd_q *, int);
+enum cmd_retval	 cmd_unbind_key_mode_table(struct cmd *, struct cmd_q *, int);
 
 const struct cmd_entry cmd_unbind_key_entry = {
 	"unbind-key", "unbind",
 	"acnt:", 0, 1,
-	"[-acn] [-t key-table] key",
+	"[-acn] [-t mode-table] key",
 	0,
 	NULL,
 	cmd_unbind_key_exec
@@ -64,7 +64,7 @@ cmd_unbind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 
 	if (args_has(args, 't'))
-		return (cmd_unbind_key_table(self, cmdq, key));
+		return (cmd_unbind_key_mode_table(self, cmdq, key));
 
 	if (key == KEYC_NONE) {
 		while (!RB_EMPTY(&key_bindings)) {
@@ -81,7 +81,7 @@ cmd_unbind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 }
 
 enum cmd_retval
-cmd_unbind_key_table(struct cmd *self, struct cmd_q *cmdq, int key)
+cmd_unbind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, int key)
 {
 	struct args			*args = self->args;
 	const char			*tablename;

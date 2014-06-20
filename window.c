@@ -891,7 +891,6 @@ window_pane_timer_callback(unused int fd, unused short events, void *data)
 	if (wp->changes_redraw++ == interval) {
 		wp->flags |= PANE_REDRAW;
 		wp->changes_redraw = 0;
-
 	}
 
 	if (trigger == 0 || wp->changes < trigger) {
