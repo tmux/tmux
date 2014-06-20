@@ -1,5 +1,4 @@
 - command bits and pieces:
-	* use "--" to mark start of command w/ neww etc to avoid quoting
 	* why doesn't command-prompt work if made read-only?
 	* allow multiple targets: fnmatch for -t/-c, for example detach all
 	  clients with -t*
@@ -20,10 +19,10 @@
 	* way to set socket path from config file
 
 - format improvements:
+	* last bits of status_replace into formats?
 	* option to quote format (#{session_name:quoted})
 	* formats need conditions for >0 (for #P)
 	* some way to pad # stuff with spaces, #!2T maybe
-	* status stuff is redundant with formats
 	* last window update time and format for it
 	* formats to show if a window is linked into multiple sessions, into
 	  multiple attached sessions, and is the active window in multiple
@@ -33,7 +32,7 @@
 	* choose-pane command (augment choose-tree to do this?)
 	* choose-mode and copy-mode are very similar, make choose-mode a subset?
 	* flag to choose-* for sort order
-	* choose mode would be better per client than per window
+	* choose mode would be better per client than per window?
 	* two choices (first one then second, for swap-pane and join-pane)
 
 - improve monitor-*:
@@ -44,9 +43,8 @@
 
 - improve mouse support:
 	* bind commands to mouse in different areas? 
-	* more fine-grained options
+	* more fine-grained options?
 	* commands executed when clicking on a pattern (URL)
-	* send arrow key sequences for mouse scroll wheel in alternate screen
 	* mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets
 	  the flag on w/o checking the others before calling tty_update_mode)
 
@@ -58,18 +56,15 @@
 	* split-window -> split-pane??
 
 - better UTF-8 support:
-	* #22T can split in the middle of UTF-8 characters!
 	* window names and titles
 	* message display
 	* prompt input
 	* multibyte key input
-	* buffer_sample and the choose-* could show UTF-8 properly
 
 - copy/paste improvements:
 	* incremental searching
 	* append to buffer
 	* paste w/o trailing whitespace
-	* named buffers and allow gaps in the stack
 	* command to toggle selection not to move it in copy-mode
 
 - layout stuff
@@ -91,8 +86,6 @@
 	* use screen-256color when started on 256 colour terminal?
 	* need a tmux terminfo entry to document the extensions we are using in
 	  upstream terminfo
-	* support title stack, both internally and externally (restore on
-	  detach) http://docs.freebsd.org/cgi/getmsg.cgi?fetch=1149299+0+archive/2010/freebsd-questions/20100207.freebsd-questions
 
 - code cleanup
 	* instead of separate window and session options, just one master
@@ -125,7 +118,9 @@
 	* live update: server started with -U connects to server, requests
 	  sessions and windows, receives file descriptors
 	* there are inconsistencies in what we get from old shell and what
-	  comes from config for new sessions and windows
+	  comes from config for new sessions and windows. likewise, panes and
+	  jobs and run-shell and lock command all start with slightly different
+	  environments
 	* multiline status line?
 	* bind commands to key sequences -- make it so ALL keys go through a
 	  table, first an implicit table in which C-b is the only default
