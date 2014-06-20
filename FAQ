@@ -95,9 +95,6 @@ aware of are (bearing in mind I haven't used screen for a few years now):
 - screen has builtin serial and telnet support; this is bloat and is unlikely
   to be added to tmux.
 
-- screen has support for updating utmp. Nobody has really come up with a clean,
-  portable way to do this without making tmux setuid or setgid yet.
-
 - Environment handling is different.
 
 - tmux tends to be more demanding on the terminal so tends to show up terminal
