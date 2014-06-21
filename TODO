@@ -47,6 +47,25 @@
 	* commands executed when clicking on a pattern (URL)
 	* mouse-select-pane will screw up with !MODE_MOUSE_STANDARD (it sets
 	  the flag on w/o checking the others before calling tty_update_mode)
+	* mouse can be like normal key bindings?
+	      - {button-{1,2,3},wheel-{up,down}}-{status,pane,border} and
+	        drag-{start,end}-{status,pane,border} plus the modifiers
+	      - resize and copy can be special cases - once you call something
+	        like copy-mode -M or resize-pane -M to start the drag, it tracks
+	        mouse until you call -m to stop the drag. or just keep drags
+	        entirely special?
+	      - what happens with stuff that wants mouse inside? especially for
+	        pane clicks which need to run command AND pass event through
+	        (like mouse-select-pane). maybe just a flag to say whether it
+		always runs or only if pane hasn't taken mouse? or it could be
+		eg bind Button1Pane "select-pane -t=; send-keys -Mt='
+	      - also need a) some way to tell commands bound to key which
+	        window or pane the mouse key binding applies to (maybe a new
+	        special char in target, or pass targets through formats?) b) a
+	        way to bind repeat count to mode keys so that wheel up/down can
+	        do multiple lines c) send-keys -M to pass a mouse event through?
+	      - what does the mouse->KEYC_* conversion and find-the-pane bit?
+                server_client_handle_key?
 
 - hooks!
 
