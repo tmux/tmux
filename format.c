@@ -552,6 +552,13 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_active", "%d", wp == wp->window->active);
 	format_add(ft, "pane_dead", "%d", wp->fd == -1);
 
+	if (window_pane_visible(wp)) {
+		format_add(ft, "pane_left", "%u", wp->xoff);
+		format_add(ft, "pane_top", "%u", wp->yoff);
+		format_add(ft, "pane_right", "%u", wp->xoff + wp->sx - 1);
+		format_add(ft, "pane_bottom", "%u", wp->yoff + wp->sy - 1);
+	}
+
 	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
 	format_add(ft, "pane_synchronized", "%d",
 	    !!options_get_number(&wp->window->options, "synchronize-panes"));

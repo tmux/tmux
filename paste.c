@@ -175,7 +175,7 @@ paste_add(char *data, size_t size)
 int
 paste_rename(const char *oldname, const char *newname, char **cause)
 {
-	struct paste_buffer	*pb;
+	struct paste_buffer	*pb, *pb_new;
 
 	if (cause != NULL)
 		*cause = NULL;
@@ -194,7 +194,14 @@ paste_rename(const char *oldname, const char *newname, char **cause)
 	pb = paste_get_name(oldname);
 	if (pb == NULL) {
 		if (cause != NULL)
-		    xasprintf(cause, "no buffer %s", oldname);
+			xasprintf(cause, "no buffer %s", oldname);
+		return (-1);
+	}
+
+	pb_new = paste_get_name(newname);
+	if (pb_new != NULL) {
+		if (cause != NULL)
+			xasprintf(cause, "buffer %s already exists", newname);
 		return (-1);
 	}
 

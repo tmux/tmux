@@ -475,6 +475,8 @@ tty_keys_next(struct tty *tty)
 		goto complete_key;
 	case -1:	/* no, or not valid */
 		break;
+	case -2:	/* yes, but we don't care. */
+		goto discard_key;
 	case 1:		/* partial */
 		goto partial_key;
 	}
@@ -584,6 +586,14 @@ complete_key:
 	/* Fire the key. */
 	if (key != KEYC_NONE)
 		server_client_handle_key(tty->client, key);
+
+	return (1);
+
+discard_key:
+	log_debug("discard key %.*s %#x", (int) size, buf, key);
+
+	/* Remove data from buffer. */
+	evbuffer_drain(tty->event->input, size);
 
 	return (1);
 }
@@ -730,6 +740,15 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 		sgr = 1;
 		sgr_rel = (c == 'm');
 
+		/*
+		 * Some terminals (like PuTTY 0.63) mistakenly send
+		 * button-release events for scroll-wheel button-press event.
+		 * Discard it before it reaches any program running inside
+		 * tmux.
+		 */
+		if (sgr_rel && (sgr_b & 64))
+		    return (-2);
+
 		/* Figure out what b would be in old format. */
 		b = sgr_b;
 		if (sgr_rel)
@@ -764,6 +783,8 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 		else if (b == 1)
 			m->wheel = MOUSE_WHEEL_DOWN;
 		m->event = MOUSE_EVENT_WHEEL;
+
+		m->button = 3;
 	} else if ((b & MOUSE_MASK_BUTTONS) == 3) {
 		if (~m->event & MOUSE_EVENT_DRAG && x == m->x && y == m->y)
 			m->event = MOUSE_EVENT_CLICK;

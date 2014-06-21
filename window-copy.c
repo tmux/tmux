@@ -1360,7 +1360,7 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 	struct screen			*s = &data->screen;
 	char				*buf;
 	size_t				 off;
-	u_int				 i, xx, yy, sx, sy, ex, ey;
+	u_int				 i, xx, yy, sx, sy, ex, ey, ey_last;
 	u_int				 firstsx, lastex, restex, restsx;
 	int				 keys;
 
@@ -1389,9 +1389,9 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 	}
 
 	/* Trim ex to end of line. */
-	xx = window_copy_find_length(wp, ey);
-	if (ex > xx)
-		ex = xx;
+	ey_last = window_copy_find_length(wp, ey);
+	if (ex > ey_last)
+		ex = ey_last;
 
 	/*
 	 * Deal with rectangle-copy if necessary; four situations: start of
@@ -1442,17 +1442,10 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 	}
 
 	/* Copy the lines. */
-	if (sy == ey)
-		window_copy_copy_line(wp, &buf, &off, sy, firstsx, lastex);
-	else {
-		window_copy_copy_line(wp, &buf, &off, sy, firstsx, restex);
-		if (ey - sy > 1) {
-			for (i = sy + 1; i < ey; i++) {
-				window_copy_copy_line(
-				    wp, &buf, &off, i, restsx, restex);
-			}
-		}
-		window_copy_copy_line(wp, &buf, &off, ey, restsx, lastex);
+	for (i = sy; i <= ey; i++) {
+		window_copy_copy_line(wp, &buf, &off, i,
+		    (i == sy ? firstsx : restsx),
+		    (i == ey ? lastex : restex));
 	}
 
 	/* Don't bother if no data. */
@@ -1460,7 +1453,9 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 		free(buf);
 		return (NULL);
 	}
-	*len = off - 1;	/* remove final \n */
+	if (keys == MODEKEY_EMACS || lastex <= ey_last)
+		off -= 1; /* remove final \n (unless at end in vi mode) */
+	*len = off;
 	return (buf);
 }
 
