@@ -786,25 +786,24 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 
 		m->button = 3;
 	} else if ((b & MOUSE_MASK_BUTTONS) == 3) {
-		if (~m->event & MOUSE_EVENT_DRAG && x == m->x && y == m->y)
+		if (~m->event & MOUSE_EVENT_DRAG && x == m->sx && y == m->sy) {
 			m->event = MOUSE_EVENT_CLICK;
-		else
+			m->clicks = (m->clicks + 1) % 3;
+		} else
 			m->event = MOUSE_EVENT_DRAG;
 		m->event |= MOUSE_EVENT_UP;
 	} else {
 		if (b & MOUSE_MASK_DRAG)
 			m->event = MOUSE_EVENT_DRAG;
 		else {
-			if (m->event & MOUSE_EVENT_UP && x == m->x && y == m->y)
-				m->clicks = (m->clicks + 1) % 3;
-			else
-				m->clicks = 0;
-			m->sx = x;
-			m->sy = y;
 			m->event = MOUSE_EVENT_DOWN;
+			if (x != m->sx || y != m->sy)
+				m->clicks = 0;
 		}
 		m->button = (b & MOUSE_MASK_BUTTONS);
 	}
+	m->sx = x;
+	m->sy = y;
 
 	return (0);
 }
