@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <util.h>
 
 #include "tmux.h"
 
@@ -36,9 +37,10 @@ int
 load_cfg(const char *path, struct cmd_q *cmdq, char **cause)
 {
 	FILE		*f;
-	u_int		 n, found;
-	char		*buf, *copy, *line, *cause1, *msg;
-	size_t		 len, oldlen;
+	char		 delim[3] = { '\\', '\\', '\0' };
+	u_int		 found;
+	size_t		 line = 0;
+	char		*buf, *cause1, *msg, *p;
 	struct cmd_list	*cmdlist;
 
 	log_debug("loading %s", path);
@@ -47,60 +49,30 @@ load_cfg(const char *path, struct cmd_q *cmdq, char **cause)
 		return (-1);
 	}
 
-	n = found = 0;
-	line = NULL;
-	while ((buf = fgetln(f, &len))) {
-		/* Trim \n. */
-		if (buf[len - 1] == '\n')
-			len--;
-		log_debug("%s: %.*s", path, (int)len, buf);
-
-		/* Current line is the continuation of the previous one. */
-		if (line != NULL) {
-			oldlen = strlen(line);
-			line = xrealloc(line, 1, oldlen + len + 1);
-		} else {
-			oldlen = 0;
-			line = xmalloc(len + 1);
-		}
-
-		/* Append current line to the previous. */
-		memcpy(line + oldlen, buf, len);
-		line[oldlen + len] = '\0';
-		n++;
-
-		/* Continuation: get next line? */
-		len = strlen(line);
-		if (len > 0 && line[len - 1] == '\\') {
-			line[len - 1] = '\0';
-
-			/* Ignore escaped backslash at EOL. */
-			if (len > 1 && line[len - 2] != '\\')
-				continue;
-		}
-		copy = line;
-		line = NULL;
+	found = 0;
+	while ((buf = fparseln(f, NULL, &line, delim, 0))) {
+		log_debug("%s: %s", path, buf);
 
 		/* Skip empty lines. */
-		buf = copy;
-		while (isspace((u_char)*buf))
-			buf++;
-		if (*buf == '\0') {
-			free(copy);
+		p = buf;
+		while (isspace((u_char) *p))
+			p++;
+		if (*p == '\0') {
+			free(buf);
 			continue;
 		}
 
 		/* Parse and run the command. */
-		if (cmd_string_parse(buf, &cmdlist, path, n, &cause1) != 0) {
-			free(copy);
+		if (cmd_string_parse(p, &cmdlist, path, line, &cause1) != 0) {
+			free(buf);
 			if (cause1 == NULL)
 				continue;
-			xasprintf(&msg, "%s:%u: %s", path, n, cause1);
+			xasprintf(&msg, "%s:%zu: %s", path, line, cause1);
 			ARRAY_ADD(&cfg_causes, msg);
 			free(cause1);
 			continue;
 		}
-		free(copy);
+		free(buf);
 
 		if (cmdlist == NULL)
 			continue;
@@ -108,8 +80,6 @@ load_cfg(const char *path, struct cmd_q *cmdq, char **cause)
 		cmd_list_free(cmdlist);
 		found++;
 	}
-	if (line != NULL)
-		free(line);
 	fclose(f);
 
 	return (found);
