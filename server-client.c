@@ -875,6 +875,9 @@ server_client_msg_dispatch(struct client *c)
 				break;
 			c->flags &= ~CLIENT_SUSPENDED;
 
+			if (c->tty.fd == -1) /* exited in the meantime */
+				break;
+
 			if (gettimeofday(&c->activity_time, NULL) != 0)
 				fatal("gettimeofday");
 			if (c->session != NULL)
