@@ -111,6 +111,7 @@ server_start(int lockfd, char *lockfile)
 	/* The first client is special and gets a socketpair; create it. */
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
 		fatal("socketpair failed");
+	log_debug("starting server");
 
 	switch (fork()) {
 	case -1:

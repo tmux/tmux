@@ -77,13 +77,18 @@ client_get_lock(char *lockfile)
 
 	if ((lockfd = open(lockfile, O_WRONLY|O_CREAT, 0600)) == -1)
 		fatal("open failed");
+	log_debug("lock file is %s", lockfile);
 
-	if (lockf(lockfd, F_TLOCK, 0) == -1 && errno == EAGAIN) {
-		while (lockf(lockfd, F_LOCK, 0) == -1 && errno == EINTR)
+	if (flock(lockfd, LOCK_EX|LOCK_NB) == -1) {
+		log_debug("flock failed: %s", strerror(errno));
+		if (errno != EAGAIN)
+			return (lockfd);
+		while (flock(lockfd, LOCK_EX) == -1 && errno == EINTR)
 			/* nothing */;
 		close(lockfd);
 		return (-1);
 	}
+	log_debug("flock succeeded");
 
 	return (lockfd);
 }
@@ -94,8 +99,8 @@ client_connect(char *path, int start_server)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
-	int			fd, lockfd;
-	char		       *lockfile;
+	int			fd, lockfd = -1, locked = 0;
+	char		       *lockfile = NULL;
 
 	memset(&sa, 0, sizeof sa);
 	sa.sun_family = AF_UNIX;
@@ -104,29 +109,48 @@ client_connect(char *path, int start_server)
 		errno = ENAMETOOLONG;
 		return (-1);
 	}
+	log_debug("socket is %s", path);
 
 retry:
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
 		fatal("socket failed");
 
+	log_debug("trying connect");
 	if (connect(fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1) {
+		log_debug("connect failed: %s", strerror(errno));
 		if (errno != ECONNREFUSED && errno != ENOENT)
 			goto failed;
 		if (!start_server)
 			goto failed;
 		close(fd);
 
-		xasprintf(&lockfile, "%s.lock", path);
-		if ((lockfd = client_get_lock(lockfile)) == -1) {
-			free(lockfile);
+		if (!locked) {
+			xasprintf(&lockfile, "%s.lock", path);
+			if ((lockfd = client_get_lock(lockfile)) == -1) {
+				log_debug("didn't get lock");
+				free(lockfile);
+				goto retry;
+			}
+			log_debug("got lock");
+
+			/*
+			 * Always retry at least once, even if we got the lock,
+			 * because another client could have taken the lock,
+			 * started the server and released the lock between our
+			 * connect() and flock().
+			 */
+			locked = 1;
 			goto retry;
 		}
+
 		if (unlink(path) != 0 && errno != ENOENT) {
 			free(lockfile);
 			close(lockfd);
 			return (-1);
 		}
 		fd = server_start(lockfd, lockfile);
+	}
+	if (locked) {
 		free(lockfile);
 		close(lockfd);
 	}
@@ -233,17 +257,17 @@ client_main(int argc, char **argv, int flags)
 		return (1);
 	}
 
-	/* Initialise the client socket and start the server. */
+	/* Set process title, log and signals now this is the client. */
+	setproctitle("client (%s)", socket_path);
+	logfile("client");
+
+	/* Initialize the client socket and start the server. */
 	fd = client_connect(socket_path, cmdflags & CMD_STARTSERVER);
 	if (fd == -1) {
 		fprintf(stderr, "failed to connect to server: %s\n",
 		    strerror(errno));
 		return (1);
 	}
-
-	/* Set process title, log and signals now this is the client. */
-	setproctitle("client (%s)", socket_path);
-	logfile("client");
 
 	/* Create imsg. */
 	imsg_init(&client_ibuf, fd);
