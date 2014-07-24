@@ -213,6 +213,9 @@ endif
 if NO_FGETLN
 nodist_tmux_SOURCES += compat/fgetln.c
 endif
+if NO_FPARSELN
+nodist_tmux_SOURCES += compat/fparseln.c
+endif
 if NO_GETOPT
 nodist_tmux_SOURCES += compat/getopt.c
 endif

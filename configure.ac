@@ -295,6 +295,13 @@ if test "x$found_fgetln" = xyes; then
 fi
 AM_CONDITIONAL(NO_FGETLN, [test "x$found_fgetln" = xno])
 
+# Look for fparseln, compat/fparseln.c used if missing.
+AC_CHECK_FUNC(fparseln, found_fparseln=yes, found_fparseln=no)
+if test "x$found_fparseln" = xyes; then
+	AC_DEFINE(HAVE_FPARSELN)
+fi
+AM_CONDITIONAL(NO_FPARSELN, [test "x$found_fparseln" = xno])
+
 # Look for strcasestr, compat/strcasestr.c used if missing.
 AC_CHECK_FUNC(strcasestr, found_strcasestr=yes, found_strcasestr=no)
 if test "x$found_strcasestr" = xyes; then
