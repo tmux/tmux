@@ -131,6 +131,15 @@ And if happy:
 
 % git push origin master
 
+Keeping an eye on libutil in OpenBSD
+====================================
+
+A lot of the compat/ code in tmux comes from libutil, especially imsg.
+Sometimes the API can change, etc., which might cause interesting problems
+trying to run the portable version of tmux.  It's worth checking
+periodically for any changes to libutil in OpenBSD and syncing those files
+to compat/ as and when appropriate.
+
 Release tmux for next version
 =============================
 
