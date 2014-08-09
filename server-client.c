@@ -647,7 +647,7 @@ server_client_reset_state(struct client *c)
 	 */
 	mode = s->mode;
 	if ((c->tty.mouse.flags & MOUSE_RESIZE_PANE) &&
-	    !(mode & (MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)))
+	    !(mode & MODE_MOUSE_BUTTON))
 		mode |= MODE_MOUSE_BUTTON;
 
 	/*

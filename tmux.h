@@ -682,13 +682,13 @@ struct mode_key_table {
 #define MODE_WRAP 0x10		/* whether lines wrap */
 #define MODE_MOUSE_STANDARD 0x20
 #define MODE_MOUSE_BUTTON 0x40
-#define MODE_MOUSE_ANY 0x80
+/* 0x80 unused */
 #define MODE_MOUSE_UTF8 0x100
 #define MODE_MOUSE_SGR 0x200
 #define MODE_BRACKETPASTE 0x400
 #define MODE_FOCUSON 0x800
 
-#define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)
+#define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON)
 
 /* A single UTF-8 character. */
 struct utf8_data {

@@ -601,8 +601,6 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	    !!(wp->base.mode & MODE_MOUSE_STANDARD));
 	format_add(ft, "mouse_button_flag", "%d",
 	    !!(wp->base.mode & MODE_MOUSE_BUTTON));
-	format_add(ft, "mouse_any_flag", "%d",
-	    !!(wp->base.mode & MODE_MOUSE_ANY));
 	format_add(ft, "mouse_utf8_flag", "%d",
 	    !!(wp->base.mode & MODE_MOUSE_UTF8));
 

@@ -1374,7 +1374,6 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 		case 1000:
 		case 1001:
 		case 1002:
-		case 1003:
 			screen_write_mode_clear(&ictx->ctx, ALL_MOUSE_MODES);
 			break;
 		case 1004:
@@ -1450,10 +1449,6 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 		case 1002:
 			screen_write_mode_clear(&ictx->ctx, ALL_MOUSE_MODES);
 			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_BUTTON);
-			break;
-		case 1003:
-			screen_write_mode_clear(&ictx->ctx, ALL_MOUSE_MODES);
-			screen_write_mode_set(&ictx->ctx, MODE_MOUSE_ANY);
 			break;
 		case 1004:
 			if (ictx->ctx.s->mode & MODE_FOCUSON)
