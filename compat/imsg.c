@@ -1,5 +1,5 @@
 /* $Id$ */
-/*	$OpenBSD: imsg.c,v 1.3 2010/05/26 13:56:07 nicm Exp $	*/
+/*	$OpenBSD: imsg.c,v 1.6 2014/06/30 00:26:22 deraadt Exp $	*/
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -17,19 +17,54 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/param.h>
+#include <sys/types.h>
+#include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
 
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 #include <unistd.h>
 
 #include "tmux.h"
+#include "imsg.h"
+
+int	 imsg_fd_overhead = 0;
 
 int	 imsg_get_fd(struct imsgbuf *);
+
+int	 available_fds(unsigned int);
+
+/* TA:  2014-09-08:  Note that the original code calls getdtablecount() which is
+ * OpenBSD specific.  Until such time that it's ported elsewhere from
+ * <unistd.h>, I've mimicked what OpenSMTPD are doing, by using available_fds()
+ * instead.
+ */
+
+int
+available_fds(unsigned int n)
+{
+	unsigned int	i;
+	int		ret, fds[256];
+
+	if (n > (sizeof(fds)/sizeof(fds[0])))
+		return (1);
+
+	ret = 0;
+	for (i = 0; i < n; i++) {
+		fds[i] = -1;
+		if ((fds[i] = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+			ret = 1;
+			break;
+		}
+	}
+
+	for (i = 0; i < n && fds[i] >= 0; i++)
+		close(fds[i]);
+
+	return (ret);
+}
 
 void
 imsg_init(struct imsgbuf *ibuf, int fd)
@@ -49,10 +84,10 @@ imsg_read(struct imsgbuf *ibuf)
 	struct cmsghdr		*cmsg;
 	union {
 		struct cmsghdr hdr;
-		char	buf[CMSG_SPACE(sizeof(int) * 16)];
+		char	buf[CMSG_SPACE(sizeof(int) * 1)];
 	} cmsgbuf;
 	struct iovec		 iov;
-	ssize_t			 n;
+	ssize_t			 n = -1;
 	int			 fd;
 	struct imsg_fd		*ifd;
 
@@ -65,11 +100,23 @@ imsg_read(struct imsgbuf *ibuf)
 	msg.msg_control = &cmsgbuf.buf;
 	msg.msg_controllen = sizeof(cmsgbuf.buf);
 
+	if ((ifd = calloc(1, sizeof(struct imsg_fd))) == NULL)
+		return (-1);
+
+again:
+	if (available_fds(imsg_fd_overhead +
+	    (CMSG_SPACE(sizeof(int))-CMSG_SPACE(0))/sizeof(int))) {
+		errno = EAGAIN;
+		free(ifd);
+		return (-1);
+	}
+
 	if ((n = recvmsg(ibuf->fd, &msg, 0)) == -1) {
-		if (errno != EINTR && errno != EAGAIN) {
-			return (-1);
-		}
-		return (-2);
+		if (errno == EMSGSIZE)
+			goto fail;
+		if (errno != EINTR && errno != EAGAIN)
+			goto fail;
+		goto again;
 	}
 
 	ibuf->r.wpos += n;
@@ -78,17 +125,33 @@ imsg_read(struct imsgbuf *ibuf)
 	    cmsg = CMSG_NXTHDR(&msg, cmsg)) {
 		if (cmsg->cmsg_level == SOL_SOCKET &&
 		    cmsg->cmsg_type == SCM_RIGHTS) {
-			fd = (*(int *)CMSG_DATA(cmsg));
-			if ((ifd = calloc(1, sizeof(struct imsg_fd))) == NULL) {
-				close(fd);
-				return (-1);
+			int i;
+			int j;
+
+			/*
+			 * We only accept one file descriptor.  Due to C
+			 * padding rules, our control buffer might contain
+			 * more than one fd, and we must close them.
+			 */
+			j = ((char *)cmsg + cmsg->cmsg_len -
+			    (char *)CMSG_DATA(cmsg)) / sizeof(int);
+			for (i = 0; i < j; i++) {
+				fd = ((int *)CMSG_DATA(cmsg))[i];
+				if (ifd != NULL) {
+					ifd->fd = fd;
+					TAILQ_INSERT_TAIL(&ibuf->fds, ifd,
+					    entry);
+					ifd = NULL;
+				} else
+					close(fd);
 			}
-			ifd->fd = fd;
-			TAILQ_INSERT_TAIL(&ibuf->fds, ifd, entry);
 		}
 		/* we do not handle other ctl data level */
 	}
 
+fail:
+	if (ifd)
+		free(ifd);
 	return (n);
 }
 
@@ -112,7 +175,7 @@ imsg_get(struct imsgbuf *ibuf, struct imsg *imsg)
 		return (0);
 	datalen = imsg->hdr.len - IMSG_HEADER_SIZE;
 	ibuf->r.rptr = ibuf->r.buf + IMSG_HEADER_SIZE;
-	if ((imsg->data = malloc(datalen)) == NULL && datalen != 0)
+	if ((imsg->data = malloc(datalen)) == NULL)
 		return (-1);
 
 	if (imsg->hdr.flags & IMSGF_HASFD)
@@ -134,7 +197,7 @@ imsg_get(struct imsgbuf *ibuf, struct imsg *imsg)
 
 int
 imsg_compose(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
-    pid_t pid, int fd, void *data, u_int16_t datalen)
+    pid_t pid, int fd, const void *data, u_int16_t datalen)
 {
 	struct ibuf	*wbuf;
 
@@ -204,7 +267,7 @@ imsg_create(struct imsgbuf *ibuf, u_int32_t type, u_int32_t peerid,
 }
 
 int
-imsg_add(struct ibuf *msg, void *data, u_int16_t datalen)
+imsg_add(struct ibuf *msg, const void *data, u_int16_t datalen)
 {
 	if (datalen)
 		if (ibuf_add(msg, data, datalen) == -1) {

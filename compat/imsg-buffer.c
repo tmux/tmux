@@ -1,5 +1,5 @@
 /* $Id$ */
-/*	$OpenBSD: imsg-buffer.c,v 1.3 2010/05/26 13:56:07 nicm Exp $	*/
+/*	$OpenBSD: imsg-buffer.c,v 1.4 2014/06/30 00:25:17 deraadt Exp $	*/
 
 /*
  * Copyright (c) 2003, 2004 Henning Brauer <henning@openbsd.org>
@@ -17,17 +17,19 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/param.h>
+#include <sys/types.h>
+#include <sys/queue.h>
 #include <sys/socket.h>
 #include <sys/uio.h>
 
+#include <limits.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 #include <unistd.h>
 
 #include "tmux.h"
+#include "imsg.h"
 
 int	ibuf_realloc(struct ibuf *, size_t);
 void	ibuf_enqueue(struct msgbuf *, struct ibuf *);
@@ -158,22 +160,23 @@ ibuf_write(struct msgbuf *msgbuf)
 		i++;
 	}
 
+again:
 	if ((n = writev(msgbuf->fd, iov, i)) == -1) {
-		if (errno == EAGAIN || errno == ENOBUFS ||
-		    errno == EINTR)	/* try later */
-			return (0);
-		else
-			return (-1);
+		if (errno == EINTR)
+			goto again;
+		if (errno == ENOBUFS)
+			errno = EAGAIN;
+		return (-1);
 	}
 
 	if (n == 0) {			/* connection closed */
 		errno = 0;
-		return (-2);
+		return (0);
 	}
 
 	msgbuf_drain(msgbuf, n);
 
-	return (0);
+	return (1);
 }
 
 void
@@ -257,17 +260,18 @@ msgbuf_write(struct msgbuf *msgbuf)
 		*(int *)CMSG_DATA(cmsg) = buf->fd;
 	}
 
+again:
 	if ((n = sendmsg(msgbuf->fd, &msg, 0)) == -1) {
-		if (errno == EAGAIN || errno == ENOBUFS ||
-		    errno == EINTR)	/* try later */
-			return (0);
-		else
-			return (-1);
+		if (errno == EINTR)
+			goto again;
+		if (errno == ENOBUFS)
+			errno = EAGAIN;
+		return (-1);
 	}
 
 	if (n == 0) {			/* connection closed */
 		errno = 0;
-		return (-2);
+		return (0);
 	}
 
 	/*
@@ -281,7 +285,7 @@ msgbuf_write(struct msgbuf *msgbuf)
 
 	msgbuf_drain(msgbuf, n);
 
-	return (0);
+	return (1);
 }
 
 void
