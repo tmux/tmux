@@ -1065,9 +1065,6 @@ window_pane_key(struct window_pane *wp, struct session *sess, int key)
 {
 	struct window_pane	*wp2;
 
-	if (!window_pane_visible(wp))
-		return;
-
 	if (wp->mode != NULL) {
 		if (wp->mode->key != NULL)
 			wp->mode->key(wp, sess, key);

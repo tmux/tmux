@@ -56,14 +56,14 @@ const struct input_key_ent input_keys[] = {
 	{ KEYC_F10,		"\033[21~",	0 },
 	{ KEYC_F11,		"\033[23~",	0 },
 	{ KEYC_F12,		"\033[24~",	0 },
-	{ KEYC_F13,		"\033[25~",	0 },
-	{ KEYC_F14,		"\033[26~",	0 },
-	{ KEYC_F15,		"\033[28~",	0 },
-	{ KEYC_F16,		"\033[29~",	0 },
-	{ KEYC_F17,		"\033[31~",	0 },
-	{ KEYC_F18,		"\033[32~",	0 },
-	{ KEYC_F19,		"\033[33~",	0 },
-	{ KEYC_F20,		"\033[34~",	0 },
+	{ KEYC_F1|KEYC_SHIFT,	"\033[25~",	0 },
+	{ KEYC_F2|KEYC_SHIFT,	"\033[26~",	0 },
+	{ KEYC_F3|KEYC_SHIFT,	"\033[28~",	0 },
+	{ KEYC_F4|KEYC_SHIFT,	"\033[29~",	0 },
+	{ KEYC_F5|KEYC_SHIFT,	"\033[31~",	0 },
+	{ KEYC_F6|KEYC_SHIFT,	"\033[32~",	0 },
+	{ KEYC_F7|KEYC_SHIFT,	"\033[33~",	0 },
+	{ KEYC_F8|KEYC_SHIFT,	"\033[34~",	0 },
 	{ KEYC_IC,		"\033[2~",	0 },
 	{ KEYC_DC,		"\033[3~",	0 },
 	{ KEYC_HOME,		"\033[1~",	0 },
@@ -204,21 +204,6 @@ input_mouse(struct window_pane *wp, struct session *s, struct mouse_event *m)
 	char			 buf[40];
 	size_t			 len;
 	struct paste_buffer	*pb;
-	u_int			 i;
-
-	/*
-	 * If the alternate screen is active and hasn't enabled the mouse, send
-	 * up and down key presses for the mouse wheel.
-	 */
-	if (wp->saved_grid != NULL && !(wp->screen->mode & ALL_MOUSE_MODES)) {
-		for (i = 0; i < m->scroll; i++) {
-			if (m->wheel == MOUSE_WHEEL_UP)
-				input_key(wp, KEYC_UP);
-			else
-				input_key(wp, KEYC_DOWN);
-		}
-		return;
-	}
 
 	if (wp->screen->mode & ALL_MOUSE_MODES) {
 		/*

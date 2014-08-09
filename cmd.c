@@ -794,8 +794,11 @@ cmd_find_session(struct cmd_q *cmdq, const char *arg, int prefer_unattached)
 	int			 ambiguous;
 
 	/* A NULL argument means the current session. */
-	if (arg == NULL)
-		return (cmd_current_session(cmdq, prefer_unattached));
+	if (arg == NULL) {
+		if ((s = cmd_current_session(cmdq, prefer_unattached)) == NULL)
+			cmdq_error(cmdq, "can't establish current session");
+		return (s);
+	}
 
 	/* Lookup as pane id or window id. */
 	if ((wp = cmd_lookup_paneid(arg)) != NULL)
@@ -812,7 +815,9 @@ cmd_find_session(struct cmd_q *cmdq, const char *arg, int prefer_unattached)
 	/* An empty session name is the current session. */
 	if (*tmparg == '\0') {
 		free(tmparg);
-		return (cmd_current_session(cmdq, prefer_unattached));
+		if ((s = cmd_current_session(cmdq, prefer_unattached)) == NULL)
+			cmdq_error(cmdq, "can't establish current session");
+		return (s);
 	}
 
 	/* Find the session, if any. */

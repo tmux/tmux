@@ -223,7 +223,7 @@ server_client_callback(int fd, short events, void *data)
 		return;
 
 	if (fd == c->ibuf.fd) {
-		if (events & EV_WRITE && msgbuf_write(&c->ibuf.w) < 0 &&
+		if (events & EV_WRITE && msgbuf_write(&c->ibuf.w) <= 0 &&
 		    errno != EAGAIN)
 			goto client_lost;
 
@@ -656,7 +656,7 @@ server_client_reset_state(struct client *c)
 	 */
 	mode = s->mode;
 	if ((c->tty.mouse.flags & MOUSE_RESIZE_PANE) &&
-	    !(mode & (MODE_MOUSE_BUTTON|MODE_MOUSE_ANY)))
+	    !(mode & MODE_MOUSE_BUTTON))
 		mode |= MODE_MOUSE_BUTTON;
 
 	/*
@@ -883,6 +883,9 @@ server_client_msg_dispatch(struct client *c)
 			if (!(c->flags & CLIENT_SUSPENDED))
 				break;
 			c->flags &= ~CLIENT_SUSPENDED;
+
+			if (c->tty.fd == -1) /* exited in the meantime */
+				break;
 
 			if (gettimeofday(&c->activity_time, NULL) != 0)
 				fatal("gettimeofday");
