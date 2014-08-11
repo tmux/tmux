@@ -199,6 +199,7 @@ window_copy_init(struct window_pane *wp)
 		mode_key_init(&data->mdata, &mode_key_tree_emacs_copy);
 	else
 		mode_key_init(&data->mdata, &mode_key_tree_vi_copy);
+	s->sel.modekeys = keys;
 
 	data->backing = NULL;
 

@@ -794,6 +794,7 @@ LIST_HEAD(joblist, job);
 struct screen_sel {
 	int		 flag;
 	int		 rectflag;
+	int		 modekeys;
 
 	u_int		 sx;
 	u_int		 sy;
