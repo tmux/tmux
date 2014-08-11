@@ -29,8 +29,8 @@ enum cmd_retval	 cmd_select_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_select_pane_entry = {
 	"select-pane", "selectp",
-	"lDLRt:U", 0, 0,
-	"[-lDLRU] " CMD_TARGET_PANE_USAGE,
+	"DdeLlRt:U", 0, 0,
+	"[-DdeLlRU] " CMD_TARGET_PANE_USAGE,
 	0,
 	cmd_select_pane_key_binding,
 	cmd_select_pane_exec
@@ -38,8 +38,8 @@ const struct cmd_entry cmd_select_pane_entry = {
 
 const struct cmd_entry cmd_last_pane_entry = {
 	"last-pane", "lastp",
-	"t:", 0, 0,
-	CMD_TARGET_WINDOW_USAGE,
+	"det:", 0, 0,
+	"[-de] " CMD_TARGET_WINDOW_USAGE,
 	0,
 	NULL,
 	cmd_select_pane_exec
@@ -78,10 +78,16 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_ERROR);
 		}
 
-		server_unzoom_window(wl->window);
-		window_set_active_pane(wl->window, wl->window->last);
-		server_status_window(wl->window);
-		server_redraw_window_borders(wl->window);
+		if (args_has(self->args, 'e'))
+			wl->window->last->flags &= ~PANE_INPUTOFF;
+		else if (args_has(self->args, 'd'))
+			wl->window->last->flags |= PANE_INPUTOFF;
+		else {
+			server_unzoom_window(wl->window);
+			window_set_active_pane(wl->window, wl->window->last);
+			server_status_window(wl->window);
+			server_redraw_window_borders(wl->window);
+		}
 
 		return (CMD_RETURN_NORMAL);
 	}
@@ -108,9 +114,15 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_ERROR);
 	}
 
-	window_set_active_pane(wl->window, wp);
-	server_status_window(wl->window);
-	server_redraw_window_borders(wl->window);
+	if (args_has(self->args, 'e'))
+		wp->flags &= ~PANE_INPUTOFF;
+	else if (args_has(self->args, 'd'))
+		wp->flags |= PANE_INPUTOFF;
+	else {
+		window_set_active_pane(wl->window, wp);
+		server_status_window(wl->window);
+		server_redraw_window_borders(wl->window);
+	}
 
 	return (CMD_RETURN_NORMAL);
 }
