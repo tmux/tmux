@@ -298,6 +298,9 @@ paste_send_pane(struct paste_buffer *pb, struct window_pane *wp,
 	const char	*data = pb->data, *end = data + pb->size, *lf;
 	size_t		 seplen;
 
+	if (wp->flags & PANE_INPUTOFF)
+		return;
+
 	if (bracket)
 		bufferevent_write(wp->event, "\033[200~", 6);
 
