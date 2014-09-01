@@ -1924,6 +1924,9 @@ void		 cmdq_flush(struct cmd_q *);
 int	cmd_string_parse(const char *, struct cmd_list **, const char *,
 	    u_int, char **);
 
+/* cmd-wait-for.c */
+void	cmd_wait_for_flush(void);
+
 /* client.c */
 int	client_main(int, char **, int);
 

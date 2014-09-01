@@ -194,3 +194,25 @@ cmd_wait_for_unlock(struct cmd_q *cmdq, const char *name,
 	return (CMD_RETURN_NORMAL);
 }
 
+void
+cmd_wait_for_flush(void)
+{
+	struct wait_channel	*wc, *wc1;
+	struct cmd_q		*wq, *wq1;
+
+	RB_FOREACH_SAFE(wc, wait_channels, &wait_channels, wc1) {
+		TAILQ_FOREACH_SAFE(wq, &wc->waiters, waitentry, wq1) {
+			TAILQ_REMOVE(&wc->waiters, wq, waitentry);
+			if (!cmdq_free(wq))
+				cmdq_continue(wq);
+		}
+		while ((wq = TAILQ_FIRST(&wc->lockers)) != NULL) {
+			TAILQ_REMOVE(&wc->lockers, wq, waitentry);
+			if (!cmdq_free(wq))
+				cmdq_continue(wq);
+		}
+		RB_REMOVE(wait_channels, &wait_channels, wc);
+		free((void *)wc->name);
+		free(wc);
+	}
+}

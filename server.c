@@ -217,16 +217,30 @@ server_loop(void)
 int
 server_should_shutdown(void)
 {
-	u_int	i;
+	struct client	*c;
+	u_int		 i;
 
 	if (!options_get_number(&global_options, "exit-unattached")) {
 		if (!RB_EMPTY(&sessions))
 			return (0);
 	}
+
+	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+		c = ARRAY_ITEM(&clients, i);
+		if (c != NULL && c->session != NULL)
+			return (0);
+	}
+
+	/*
+	 * No attached clients therefore want to exit - flush any waiting
+	 * clients but don't actually exit until they've gone.
+	 */
+	cmd_wait_for_flush();
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		if (ARRAY_ITEM(&clients, i) != NULL)
 			return (0);
 	}
+
 	return (1);
 }
 
@@ -237,6 +251,8 @@ server_send_shutdown(void)
 	struct client	*c;
 	struct session	*s, *next_s;
 	u_int		 i;
+
+	cmd_wait_for_flush();
 
 	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
 		c = ARRAY_ITEM(&clients, i);
