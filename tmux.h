@@ -2325,7 +2325,7 @@ void	set_signals(void(*)(int, short, void *));
 void	clear_signals(int);
 
 /* control.c */
-void	control_callback(struct client *, int, void*);
+void	control_callback(struct client *, int, void *);
 void printflike2 control_write(struct client *, const char *, ...);
 void	control_write_buffer(struct client *, struct evbuffer *);
 

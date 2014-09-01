@@ -311,7 +311,7 @@ client_main(int argc, char **argv, int flags)
 
 		/* Prepare command for server. */
 		data->argc = argc;
-		if (cmd_pack_argv(argc, argv, (char*)(data + 1), size) != 0) {
+		if (cmd_pack_argv(argc, argv, (char *)(data + 1), size) != 0) {
 			fprintf(stderr, "command too long\n");
 			free(data);
 			return (1);
@@ -393,7 +393,7 @@ client_write_one(enum msgtype type, int fd, const void *buf, size_t len)
 	int	retval;
 
 	retval = imsg_compose(&client_ibuf, type, PROTOCOL_VERSION, -1, fd,
-	    (void*)buf, len);
+	    (void *)buf, len);
 	if (retval != 1)
 		return (-1);
 	return (0);

@@ -327,7 +327,7 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 				return (0);
 
 			if (py == sel->sy && px < sel->sx)
-				return 0;
+				return (0);
 
 			if (py == sel->ey && px > sel->ex)
 				return (0);

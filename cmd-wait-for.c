@@ -108,7 +108,7 @@ cmd_wait_for_signal(struct cmd_q *cmdq, const char *name,
 
 	if (!wc->locked) {
 		RB_REMOVE(wait_channels, &wait_channels, wc);
-		free((void*) wc->name);
+		free((void *)wc->name);
 		free(wc);
 	}
 
@@ -186,7 +186,7 @@ cmd_wait_for_unlock(struct cmd_q *cmdq, const char *name,
 		wc->locked = 0;
 		if (TAILQ_EMPTY(&wc->waiters)) {
 			RB_REMOVE(wait_channels, &wait_channels, wc);
-			free((void*) wc->name);
+			free((void *)wc->name);
 			free(wc);
 		}
 	}

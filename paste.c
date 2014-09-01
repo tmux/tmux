@@ -102,7 +102,7 @@ paste_get_name(const char *name)
 	if (name == NULL || *name == '\0')
 		return (NULL);
 
-	pbfind.name = (char*)name;
+	pbfind.name = (char *)name;
 	return (RB_FIND(paste_name_tree, &paste_by_name, &pbfind));
 }
 
@@ -115,7 +115,7 @@ paste_free_name(const char *name)
 	if (name == NULL || *name == '\0')
 		return (-1);
 
-	pbfind.name = (char*)name;
+	pbfind.name = (char *)name;
 	pb = RB_FIND(paste_name_tree, &paste_by_name, &pbfind);
 	if (pb == NULL)
 		return (-1);

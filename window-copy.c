@@ -1498,8 +1498,8 @@ window_copy_copy_pipe(struct window_pane *wp, struct session *sess,
 void
 window_copy_copy_selection(struct window_pane *wp, const char *bufname)
 {
-	void*	buf;
-	size_t	len;
+	void	*buf;
+	size_t	 len;
 
 	buf = window_copy_get_selection(wp, &len);
 	if (buf == NULL)

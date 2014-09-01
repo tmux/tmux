@@ -572,7 +572,7 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 	const struct grid_cell	*gc;
 	static struct grid_cell	 lastgc1;
 	struct utf8_data	 ud;
-	const char*		 data;
+	const char		*data;
 	char			*buf, code[128];
 	size_t			 len, off, size, codelen;
 	u_int			 xx;
