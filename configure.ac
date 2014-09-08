@@ -528,5 +528,5 @@ AM_CONDITIONAL(IS_SUNOS, test "x$PLATFORM" = xsunos)
 AM_CONDITIONAL(IS_HPUX, test "x$PLATFORM" = xhpux)
 AM_CONDITIONAL(IS_UNKNOWN, test "x$PLATFORM" = xunknown)
 
-# autoconf should create a Makefile. A shock!
+# autoconf should create a Makefile.
 AC_OUTPUT(Makefile)
