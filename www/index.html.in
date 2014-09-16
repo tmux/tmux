@@ -11,7 +11,7 @@
 	    <div id="left-menu-container">
 		<p id="upper-left-title">tmux</p>
 		<ul id="left-menu">
-		<li><a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">Download</a></li>
+		<li><a href="http://downloads.sourceforge.net/tmux/tmux-%%RELEASE%%.tar.gz">Download</a></li>
 		<li><a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/README">README</a></li>
 		<li><a href="http://www.openbsd.org/cgi-bin/man.cgi?query=tmux&sektion=1">Manual Page</a></li>
 		<li><a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/FAQ">FAQ</a></li>
@@ -31,9 +31,9 @@ background) and reattach them to a different terminal. And do a lot more. See
 <a href="http://www.openbsd.org/cgi-bin/man.cgi?query=tmux&sektion=1">
 the manual</a>.</p>
 
-<p><b><a href="http://downloads.sourceforge.net/tmux/tmux-%%VERSION%%.tar.gz">
-Download tmux %%VERSION%%</a></b>
-<b><a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/CHANGES">(Changelog)</a></b> or
+<p><b><a href="http://downloads.sourceforge.net/tmux/tmux-%%RELEASE%%.tar.gz">
+Download tmux %%RELEASE%%</a></b>
+<b><a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/CHANGES">(changelog)</a></b> or
 <a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/">
 get the development version.</a>
 tmux is hosted on
@@ -41,8 +41,7 @@ tmux is hosted on
 and needs
 <a href="http://www.monkey.org/~provos/libevent/">libevent</a>
 and
-<a href="http://invisible-island.net/ncurses/">ncurses</a>
-.</p>
+<a href="http://invisible-island.net/ncurses/">ncurses</a>.</p>
 
 <p>For support contact the
 <a href="mailto:tmux-users@lists.sf.net">tmux-users@lists.sf.net</a>

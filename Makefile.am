@@ -267,4 +267,4 @@ update-index.html:
 			convert "$$i" -resize 200x150 "small-$$i"; \
 		done \
 	)
-	sed "s/%%VERSION%%/${VERSION}/g" www/index.html.in >www/index.html
+	sed "s/%%RELEASE%%/${RELEASE}/g" www/index.html.in >www/index.html
