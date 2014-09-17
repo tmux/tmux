@@ -514,20 +514,18 @@ grid_string_cells_code(const struct grid_cell *lastgc,
 			s[n++] = attrs[i].code;
 	}
 
-	/* If the foreground c changed, append its parameters. */
+	/* If the foreground colour changed, append its parameters. */
 	nnewc = grid_string_cells_fg(gc, newc);
 	noldc = grid_string_cells_fg(lastgc, oldc);
-	if (nnewc != noldc ||
-	    memcmp(newc,oldc, nnewc * sizeof newc[0]) != 0) {
+	if (nnewc != noldc || memcmp(newc, oldc, nnewc * sizeof newc[0]) != 0) {
 		for (i = 0; i < nnewc; i++)
 			s[n++] = newc[i];
 	}
 
-	/* If the background c changed, append its parameters. */
+	/* If the background colour changed, append its parameters. */
 	nnewc = grid_string_cells_bg(gc, newc);
 	noldc = grid_string_cells_bg(lastgc, oldc);
-	if (nnewc != noldc ||
-	    memcmp(newc, oldc, nnewc * sizeof newc[0]) != 0) {
+	if (nnewc != noldc || memcmp(newc, oldc, nnewc * sizeof newc[0]) != 0) {
 		for (i = 0; i < nnewc; i++)
 			s[n++] = newc[i];
 	}
