@@ -23,15 +23,19 @@
 #include <stdlib.h>
 #include <stropts.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "tmux.h"
 
 pid_t
 forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)
 {
-	int	slave, fd;
-	char   *path;
+	int	slave, fd, pipe_fd[2];
+	char   *path, dummy;
 	pid_t	pid;
+
+	if (pipe(pipe_fd) == -1)
+		return (-1);
 
 	if ((*master = open("/dev/ptc", O_RDWR|O_NOCTTY)) == -1)
 		return (-1);
@@ -46,6 +50,13 @@ forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)
 		goto out;
 	case 0:
 		close(*master);
+
+		close(pipe_fd[1]);
+		while (read(pipe_fd[0], &dummy, 1) == -1) {
+			if (errno != EINTR)
+				break;
+		}
+		close(pipe_fd[0]);
 
 		fd = open(_PATH_TTY, O_RDWR|O_NOCTTY);
 		if (fd >= 0) {
@@ -80,13 +91,20 @@ forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)
 		dup2(slave, 2);
 		if (slave > 2)
 			close(slave);
+
 		return (0);
 	}
+
+	close(pipe_fd[0]);
+	close(pipe_fd[1]);
 
 	close(slave);
 	return (pid);
 
 out:
+	close(pipe_fd[0]);
+	close(pipe_fd[1]);
+
 	if (*master != -1)
 		close(*master);
 	if (slave != -1)
