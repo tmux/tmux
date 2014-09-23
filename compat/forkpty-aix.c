@@ -30,7 +30,7 @@
 pid_t
 forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)
 {
-	int	slave, fd, pipe_fd[2];
+	int	slave = -1, fd, pipe_fd[2];
 	char   *path, dummy;
 	pid_t	pid;
 
@@ -38,7 +38,7 @@ forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)
 		return (-1);
 
 	if ((*master = open("/dev/ptc", O_RDWR|O_NOCTTY)) == -1)
-		return (-1);
+		goto out;
 
 	if ((path = ttyname(*master)) == NULL)
 		goto out;
@@ -95,19 +95,19 @@ forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)
 		return (0);
 	}
 
+	close(slave);
+
 	close(pipe_fd[0]);
 	close(pipe_fd[1]);
-
-	close(slave);
 	return (pid);
 
 out:
-	close(pipe_fd[0]);
-	close(pipe_fd[1]);
-
 	if (*master != -1)
 		close(*master);
 	if (slave != -1)
 		close(slave);
+
+	close(pipe_fd[0]);
+	close(pipe_fd[1]);
 	return (-1);
 }
