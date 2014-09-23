@@ -176,6 +176,13 @@ typedef uint64_t u_int64_t;
 #define TTY_NAME_MAX 32
 #endif
 
+#ifndef HAVE_FLOCK
+#define LOCK_SH 0
+#define LOCK_EX 0
+#define LOCK_NB 0
+#define flock(fd, op) (0)
+#endif
+
 #ifndef HAVE_BZERO
 #undef bzero
 #define bzero(buf, len) memset(buf, 0, len);

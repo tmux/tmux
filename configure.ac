@@ -386,6 +386,7 @@ AC_CHECK_FUNCS(
 	[ \
 		bzero \
 		dirfd \
+		flock \
 		setproctitle \
 		sysconf \
 		cfmakeraw \
