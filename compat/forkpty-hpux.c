@@ -29,7 +29,7 @@
 pid_t
 forkpty(int *master, char *name, struct termios *tio, struct winsize *ws)
 {
-	int	slave;
+	int	slave = -1;
 	char   *path;
 	pid_t	pid;
 
