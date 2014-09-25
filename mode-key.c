@@ -130,6 +130,7 @@ const struct mode_key_cmdstr mode_key_cmdstr_copy[] = {
 	{ MODEKEYCOPY_NEXTSPACEEND, "next-space-end" },
 	{ MODEKEYCOPY_NEXTWORD, "next-word" },
 	{ MODEKEYCOPY_NEXTWORDEND, "next-word-end" },
+	{ MODEKEYCOPY_OTHEREND, "other-end" },
 	{ MODEKEYCOPY_PREVIOUSPAGE, "page-up" },
 	{ MODEKEYCOPY_PREVIOUSSPACE, "previous-space" },
 	{ MODEKEYCOPY_PREVIOUSWORD, "previous-word" },

@@ -277,6 +277,7 @@ int
 screen_check_selection(struct screen *s, u_int px, u_int py)
 {
 	struct screen_sel	*sel = &s->sel;
+	u_int			 xx;
 
 	if (!sel->flag)
 		return (0);
@@ -326,16 +327,24 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 			if (py < sel->sy || py > sel->ey)
 				return (0);
 
-			if ((py == sel->sy && px < sel->sx)
-			    || (py == sel->ey && px > sel->ex))
+			if (py == sel->sy && px < sel->sx)
+				return (0);
+
+			if (py == sel->ey && px > sel->ex)
 				return (0);
 		} else if (sel->sy > sel->ey) {
 			/* starting line > ending line -- upward selection. */
 			if (py > sel->sy || py < sel->ey)
 				return (0);
 
-			if ((py == sel->sy && px >= sel->sx)
-			    || (py == sel->ey && px < sel->ex))
+			if (py == sel->ey && px < sel->ex)
+				return (0);
+
+			if (sel->modekeys == MODEKEY_EMACS)
+				xx = sel->sx - 1;
+			else
+				xx = sel->sx;
+			if (py == sel->sy && px > xx)
 				return (0);
 		} else {
 			/* starting line == ending line. */
@@ -344,7 +353,11 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 
 			if (sel->ex < sel->sx) {
 				/* cursor (ex) is on the left */
-				if (px > sel->sx || px < sel->ex)
+				if (sel->modekeys == MODEKEY_EMACS)
+					xx = sel->sx - 1;
+				else
+					xx = sel->sx;
+				if (px > xx || px < sel->ex)
 					return (0);
 			} else {
 				/* selection start (sx) is on the left */

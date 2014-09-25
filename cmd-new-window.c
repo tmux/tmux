@@ -88,7 +88,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		cmd = options_get_string(&s->options, "default-command");
 		if (cmd != NULL && *cmd != '\0') {
 			argc = 1;
-			argv = (char**)&cmd;
+			argv = (char **)&cmd;
 		} else {
 			argc = 0;
 			argv = NULL;
