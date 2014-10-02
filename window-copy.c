@@ -1552,6 +1552,7 @@ window_copy_copy_line(struct window_pane *wp,
 	struct grid_line		*gl;
 	struct utf8_data		 ud;
 	u_int				 i, xx, wrapped = 0;
+	const char			*s;
 
 	if (sx > ex)
 		return;
@@ -1580,6 +1581,13 @@ window_copy_copy_line(struct window_pane *wp,
 			if (gc->flags & GRID_FLAG_PADDING)
 				continue;
 			grid_cell_get(gc, &ud);
+			if (ud.size == 1 && (gc->attr & GRID_ATTR_CHARSET)) {
+				s = tty_acs_get(NULL, ud.data[0]);
+				if (s != NULL && strlen(s) <= sizeof ud.data) {
+					ud.size = strlen(s);
+					memcpy (ud.data, s, ud.size);
+				}
+			}
 
 			*buf = xrealloc(*buf, 1, (*off) + ud.size);
 			memcpy(*buf + *off, ud.data, ud.size);
