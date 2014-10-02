@@ -69,10 +69,19 @@ osdep_get_cwd(int fd)
 {
 	static char	 target[MAXPATHLEN + 1];
 	char		*path;
+	const char	*ttypath;
 	ssize_t		 n;
 	pid_t		 pgrp;
+	int		 retval, ttyfd;
 
-	if ((pgrp = tcgetpgrp(fd)) == -1)
+	if ((ttypath = ptsname(fd)) == NULL)
+		return (NULL);
+	if ((ttyfd = open(ttypath, O_RDONLY|O_NOCTTY)) == -1)
+		return (NULL);
+
+	retval = ioctl(ttyfd, TIOCGPGRP, &pgrp);
+	close(ttyfd);
+	if (retval == -1)
 		return (NULL);
 
 	xasprintf(&path, "/proc/%u/path/cwd", (u_int) pgrp);
