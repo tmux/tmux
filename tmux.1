@@ -1296,7 +1296,7 @@ flag, see the
 section.
 This command works only if at least one client is attached.
 .It Ic display-panes Op Fl t Ar target-client
-.D1 (alias: Ic displayp)
+.D1 (alias: Ic displayp )
 Display a visible indicator of each pane shown by
 .Ar target-client .
 See the
@@ -1386,9 +1386,16 @@ The
 .Fl a
 option kills all but the window given with
 .Fl t .
-.It Ic last-pane Op Fl t Ar target-window
+.It Xo Ic last-pane
+.Op Fl de
+.Op Fl t Ar target-window
+.Xc
 .D1 (alias: Ic lastp )
 Select the last (previously selected) pane.
+.Fl e
+enables or
+.Fl d
+disables input to the pane.
 .It Ic last-window Op Fl t Ar target-session
 .D1 (alias: Ic last )
 Select the last (previously selected) window.
@@ -1705,7 +1712,7 @@ and
 .Ic previous-layout
 commands.
 .It Xo Ic select-pane
-.Op Fl lDLRU
+.Op Fl DdeLlRU
 .Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic selectp )
@@ -1725,6 +1732,10 @@ target pane is used.
 is the same as using the
 .Ic last-pane
 command.
+.Fl e
+enables or
+.Fl d
+disables input to the pane.
 .It Xo Ic select-window
 .Op Fl lnpT
 .Op Fl t Ar target-window
@@ -2429,7 +2440,7 @@ see the
 option.
 Attributes are ignored.
 .It Ic pane-border-style Ar style
-Set the pane border style for paneas aside from the active pane.
+Set the pane border style for panes aside from the active pane.
 For how to specify
 .Ar style ,
 see the
@@ -3126,11 +3137,13 @@ The following variables are available, where appropriate:
 .It Li "window_height" Ta "" Ta "Height of window"
 .It Li "window_id" Ta "" Ta "Unique window ID"
 .It Li "window_index" Ta "#I" Ta "Index of window"
+.It Li "window_last_flag" Ta "" Ta "1 if window is the last used"
 .It Li "window_layout" Ta "" Ta "Window layout description"
 .It Li "window_name" Ta "#W" Ta "Name of window"
 .It Li "window_panes" Ta "" Ta "Number of panes in window"
 .It Li "window_silence_flag" Ta "" Ta "1 if window has silence alert"
 .It Li "window_width" Ta "" Ta "Width of window"
+.It Li "window_zoomed_flag" Ta "" Ta "1 if window is zoomed"
 .It Li "wrap_flag" Ta "" Ta "Pane wrap flag"
 .El
 .Sh NAMES AND TITLES

@@ -199,6 +199,7 @@ window_copy_init(struct window_pane *wp)
 		mode_key_init(&data->mdata, &mode_key_tree_emacs_copy);
 	else
 		mode_key_init(&data->mdata, &mode_key_tree_vi_copy);
+	s->sel.modekeys = keys;
 
 	data->backing = NULL;
 
@@ -428,7 +429,7 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 		window_pane_reset_mode(wp);
 		return;
 	case MODEKEYCOPY_OTHEREND:
-		for (; np != 0; np--)
+		if (np % 2)
 			window_copy_other_end(wp);
 		break;
 	case MODEKEYCOPY_LEFT:
@@ -1497,8 +1498,8 @@ window_copy_copy_pipe(struct window_pane *wp, struct session *sess,
 void
 window_copy_copy_selection(struct window_pane *wp, const char *bufname)
 {
-	void*	buf;
-	size_t	len;
+	void	*buf;
+	size_t	 len;
 
 	buf = window_copy_get_selection(wp, &len);
 	if (buf == NULL)

@@ -494,7 +494,10 @@ format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 	    !!(wl->flags & WINLINK_ACTIVITY));
 	format_add(ft, "window_silence_flag", "%u",
 	    !!(wl->flags & WINLINK_SILENCE));
-
+	format_add(ft, "window_last_flag", "%u",
+	    !!(wl == TAILQ_FIRST(&s->lastw)));
+	format_add(ft, "window_zoomed_flag", "%u",
+	    !!(wl->flags & WINDOW_ZOOMED));
 
 	free(flags);
 }

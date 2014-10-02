@@ -62,7 +62,7 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	path = args->argv[0];
 	if (strcmp(path, "-") == 0) {
 		error = server_set_stdin_callback(c, cmd_load_buffer_callback,
-		    (void*)bufname, &cause);
+		    (void *)bufname, &cause);
 		if (error != 0) {
 			cmdq_error(cmdq, "%s: %s", path, cause);
 			free(cause);
