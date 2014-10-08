@@ -104,7 +104,7 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		memcpy(pdata, pb->data, psize);
 	}
 
-	pdata = xrealloc(pdata, 1, psize + newsize);
+	pdata = xrealloc(pdata, psize + newsize);
 	memcpy(pdata + psize, args->argv[0], newsize);
 	psize += newsize;
 

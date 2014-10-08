@@ -992,7 +992,7 @@ status_prompt_key(struct client *c, int key)
 		/* Insert the new word. */
 		size += strlen(s);
 		off = first - c->prompt_buffer;
-		c->prompt_buffer = xrealloc(c->prompt_buffer, 1, size + 1);
+		c->prompt_buffer = xrealloc(c->prompt_buffer, size + 1);
 		first = c->prompt_buffer + off;
 		memmove(first + strlen(s), first, n);
 		memcpy(first, s, strlen(s));
@@ -1170,7 +1170,7 @@ status_prompt_key(struct client *c, int key)
 				break;
 		}
 
-		c->prompt_buffer = xrealloc(c->prompt_buffer, 1, size + n + 1);
+		c->prompt_buffer = xrealloc(c->prompt_buffer, size + n + 1);
 		if (c->prompt_index == size) {
 			memcpy(c->prompt_buffer + c->prompt_index, pb->data, n);
 			c->prompt_index += n;
@@ -1210,7 +1210,7 @@ status_prompt_key(struct client *c, int key)
 	case MODEKEY_OTHER:
 		if ((key & 0xff00) != 0 || key < 32 || key == 127)
 			break;
-		c->prompt_buffer = xrealloc(c->prompt_buffer, 1, size + 2);
+		c->prompt_buffer = xrealloc(c->prompt_buffer, size + 2);
 
 		if (c->prompt_index == size) {
 			c->prompt_buffer[c->prompt_index++] = key;

@@ -172,7 +172,8 @@ grid_scroll_history(struct grid *gd)
 	u_int	yy;
 
 	yy = gd->hsize + gd->sy;
-	gd->linedata = xrealloc(gd->linedata, yy + 1, sizeof *gd->linedata);
+	gd->linedata = xreallocarray(gd->linedata, yy + 1,
+	    sizeof *gd->linedata);
 	memset(&gd->linedata[yy], 0, sizeof gd->linedata[yy]);
 
 	gd->hsize++;
@@ -187,7 +188,8 @@ grid_scroll_history_region(struct grid *gd, u_int upper, u_int lower)
 
 	/* Create a space for a new line. */
 	yy = gd->hsize + gd->sy;
-	gd->linedata = xrealloc(gd->linedata, yy + 1, sizeof *gd->linedata);
+	gd->linedata = xreallocarray(gd->linedata, yy + 1,
+	    sizeof *gd->linedata);
 
 	/* Move the entire screen down to free a space for this line. */
 	gl_history = &gd->linedata[gd->hsize];
@@ -221,7 +223,7 @@ grid_expand_line(struct grid *gd, u_int py, u_int sx)
 	if (sx <= gl->cellsize)
 		return;
 
-	gl->celldata = xrealloc(gl->celldata, sx, sizeof *gl->celldata);
+	gl->celldata = xreallocarray(gl->celldata, sx, sizeof *gl->celldata);
 	for (xx = gl->cellsize; xx < sx; xx++)
 		grid_put_cell(gd, xx, py, &grid_default_cell);
 	gl->cellsize = sx;
@@ -610,7 +612,7 @@ grid_string_cells(struct grid *gd, u_int px, u_int py, u_int nx,
 		}
 
 		while (len < off + size + codelen + 1) {
-			buf = xrealloc(buf, 2, len);
+			buf = xreallocarray(buf, 2, len);
 			len *= 2;
 		}
 
@@ -685,7 +687,7 @@ grid_reflow_join(struct grid *dst, u_int *py, struct grid_line *src_gl,
 	nx = ox + to_copy;
 
 	/* Resize the destination line. */
-	dst_gl->celldata = xrealloc(dst_gl->celldata, nx,
+	dst_gl->celldata = xreallocarray(dst_gl->celldata, nx,
 	    sizeof *dst_gl->celldata);
 	dst_gl->cellsize = nx;
 
@@ -724,7 +726,7 @@ grid_reflow_split(struct grid *dst, u_int *py, struct grid_line *src_gl,
 			to_copy = src_gl->cellsize;
 
 		/* Expand destination line. */
-		dst_gl->celldata = xrealloc(NULL, to_copy,
+		dst_gl->celldata = xreallocarray(NULL, to_copy,
 		    sizeof *dst_gl->celldata);
 		dst_gl->cellsize = to_copy;
 		dst_gl->flags |= GRID_LINE_WRAPPED;

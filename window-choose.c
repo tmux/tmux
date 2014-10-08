@@ -317,7 +317,7 @@ window_choose_prompt_input(enum window_choose_input_type input_type,
 	data->input_prompt = prompt;
 	input_len = strlen(data->input_str) + 2;
 
-	data->input_str = xrealloc(data->input_str, 1, input_len);
+	data->input_str = xrealloc(data->input_str, input_len);
 	data->input_str[input_len - 2] = key;
 	data->input_str[input_len - 1] = '\0';
 

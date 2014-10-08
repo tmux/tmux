@@ -215,8 +215,8 @@ screen_resize_y(struct screen *s, u_int sy)
 	}
 
 	/* Resize line arrays. */
-	gd->linedata = xrealloc(
-	    gd->linedata, gd->hsize + sy, sizeof *gd->linedata);
+	gd->linedata = xreallocarray(gd->linedata, gd->hsize + sy,
+	    sizeof *gd->linedata);
 
 	/* Size increasing. */
 	if (sy > oldy) {

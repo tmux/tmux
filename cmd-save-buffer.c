@@ -147,7 +147,7 @@ do_print:
 			size = pb->size - used;
 
 		msglen = size * 4 + 1;
-		msg = xrealloc(msg, 1, msglen);
+		msg = xrealloc(msg, msglen);
 
 		strvisx(msg, start, size, VIS_OCTAL|VIS_TAB);
 		cmdq_print(cmdq, "%s", msg);
