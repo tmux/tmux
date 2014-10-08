@@ -724,7 +724,8 @@ grid_reflow_split(struct grid *dst, u_int *py, struct grid_line *src_gl,
 			to_copy = src_gl->cellsize;
 
 		/* Expand destination line. */
-		dst_gl->celldata = xmalloc(to_copy * sizeof *dst_gl->celldata);
+		dst_gl->celldata = xrealloc(NULL, to_copy,
+		    sizeof *dst_gl->celldata);
 		dst_gl->cellsize = to_copy;
 		dst_gl->flags |= GRID_LINE_WRAPPED;
 

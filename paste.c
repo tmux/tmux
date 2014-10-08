@@ -279,7 +279,7 @@ paste_make_sample(struct paste_buffer *pb, int utf8flag)
 	len = pb->size;
 	if (len > width)
 		len = width;
-	buf = xmalloc(len * 4 + 4);
+	buf = xrealloc(NULL, len, 4 + 4);
 
 	if (utf8flag)
 		used = utf8_strvis(buf, pb->data, len, flags);
