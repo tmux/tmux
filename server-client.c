@@ -550,7 +550,7 @@ server_client_check_resize(struct window_pane *wp)
 		 * other platforms and ignoring it doesn't seem to cause any
 		 * issues.
 		 */
-		if (errno != EINVAL)
+		if (errno != EINVAL && errno != ENXIO)
 #endif
 		fatal("ioctl failed");
 	}
