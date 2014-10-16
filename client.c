@@ -437,15 +437,11 @@ client_signal(int sig, unused short events, unused void *data)
 	struct sigaction sigact;
 	int		 status;
 
-	if (!client_attached) {
-		switch (sig) {
-		case SIGCHLD:
-			waitpid(WAIT_ANY, &status, WNOHANG);
-			break;
-		case SIGTERM:
+	if (sig == SIGCHLD)
+		waitpid(WAIT_ANY, &status, WNOHANG);
+	else if (!client_attached) {
+		if (sig == SIGTERM)
 			event_loopexit(NULL);
-			break;
-		}
 	} else {
 		switch (sig) {
 		case SIGHUP:

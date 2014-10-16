@@ -267,7 +267,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 
 	/* Expand the buffer and copy in the value. */
 	while (*len - *off < valuelen + 1) {
-		*buf = xrealloc(*buf, 2, *len);
+		*buf = xreallocarray(*buf, 2, *len);
 		*len *= 2;
 	}
 	memcpy(*buf + *off, value, valuelen);
@@ -298,7 +298,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 	while (*fmt != '\0') {
 		if (*fmt != '#') {
 			while (len - off < 2) {
-				buf = xrealloc(buf, 2, len);
+				buf = xreallocarray(buf, 2, len);
 				len *= 2;
 			}
 			buf[off++] = *fmt++;
@@ -326,7 +326,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 			continue;
 		case '#':
 			while (len - off < 2) {
-				buf = xrealloc(buf, 2, len);
+				buf = xreallocarray(buf, 2, len);
 				len *= 2;
 			}
 			buf[off++] = '#';
@@ -339,7 +339,7 @@ format_expand(struct format_tree *ft, const char *fmt)
 				s = format_lower[ch - 'a'];
 			if (s == NULL) {
 				while (len - off < 3) {
-					buf = xrealloc(buf, 2, len);
+					buf = xreallocarray(buf, 2, len);
 					len *= 2;
 				}
 				buf[off++] = '#';
