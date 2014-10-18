@@ -3648,7 +3648,7 @@ to change the cursor colour from inside
 $ printf '\e033]12;red\e033\e\e'
 .Ed
 .It Em \&Ss , Se
-Change the cursor style.
+Set or reset the cursor style.
 If set, a sequence such as this may be used
 to change the cursor to an underline:
 .Bd -literal -offset indent
@@ -3656,10 +3656,8 @@ $ printf '\e033[4 q'
 .Ed
 .Pp
 If
-.Em Csr
-is set, it will be used to reset the cursor style instead
-of
-.Em Cs .
+.Em Se
+is not set, \&Ss with argument 0 will be used to reset the cursor style instead.
 .It Em \&Ms
 This sequence can be used by
 .Nm
