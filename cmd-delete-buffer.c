@@ -33,7 +33,6 @@ const struct cmd_entry cmd_delete_buffer_entry = {
 	"b:", 0, 0,
 	CMD_BUFFER_USAGE,
 	0,
-	NULL,
 	cmd_delete_buffer_exec
 };
 

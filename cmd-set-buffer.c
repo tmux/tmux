@@ -34,7 +34,6 @@ const struct cmd_entry cmd_set_buffer_entry = {
 	"ab:n:", 0, 1,
 	"[-a] " CMD_BUFFER_USAGE " [-n new-buffer-name] data",
 	0,
-	NULL,
 	cmd_set_buffer_exec
 };
 

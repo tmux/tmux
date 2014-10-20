@@ -1492,7 +1492,6 @@ struct cmd_entry {
 #define CMD_READONLY 0x4
 	int		 flags;
 
-	void		 (*key_binding)(struct cmd *, int);
 	enum cmd_retval	 (*exec)(struct cmd *, struct cmd_q *);
 };
 

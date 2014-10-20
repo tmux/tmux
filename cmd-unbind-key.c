@@ -34,7 +34,6 @@ const struct cmd_entry cmd_unbind_key_entry = {
 	"acnt:", 0, 1,
 	"[-acn] [-t mode-table] key",
 	0,
-	NULL,
 	cmd_unbind_key_exec
 };
 

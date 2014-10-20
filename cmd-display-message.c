@@ -35,7 +35,6 @@ const struct cmd_entry cmd_display_message_entry = {
 	"[-p] [-c target-client] [-F format] " CMD_TARGET_PANE_USAGE
 	" [message]",
 	0,
-	NULL,
 	cmd_display_message_exec
 };
 

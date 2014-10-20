@@ -40,7 +40,6 @@ const struct cmd_entry cmd_if_shell_entry = {
 	"bt:", 2, 3,
 	"[-b] " CMD_TARGET_PANE_USAGE " shell-command command [command]",
 	0,
-	NULL,
 	cmd_if_shell_exec
 };
 

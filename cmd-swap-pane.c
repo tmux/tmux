@@ -26,7 +26,6 @@
  * Swap two panes.
  */
 
-void		 cmd_swap_pane_key_binding(struct cmd *, int);
 enum cmd_retval	 cmd_swap_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_swap_pane_entry = {
@@ -34,19 +33,8 @@ const struct cmd_entry cmd_swap_pane_entry = {
 	"dDs:t:U", 0, 0,
 	"[-dDU] " CMD_SRCDST_PANE_USAGE,
 	0,
-	cmd_swap_pane_key_binding,
 	cmd_swap_pane_exec
 };
-
-void
-cmd_swap_pane_key_binding(struct cmd *self, int key)
-{
-	self->args = args_create(0);
-	if (key == '{')
-		args_set(self->args, 'U', NULL);
-	else if (key == '}')
-		args_set(self->args, 'D', NULL);
-}
 
 enum cmd_retval
 cmd_swap_pane_exec(struct cmd *self, struct cmd_q *cmdq)

@@ -24,7 +24,6 @@
  * Rotate the panes in a window.
  */
 
-void		 cmd_rotate_window_key_binding(struct cmd *, int);
 enum cmd_retval	 cmd_rotate_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_rotate_window_entry = {
@@ -32,17 +31,8 @@ const struct cmd_entry cmd_rotate_window_entry = {
 	"Dt:U", 0, 0,
 	"[-DU] " CMD_TARGET_WINDOW_USAGE,
 	0,
-	cmd_rotate_window_key_binding,
 	cmd_rotate_window_exec
 };
-
-void
-cmd_rotate_window_key_binding(struct cmd *self, int key)
-{
-	self->args = args_create(0);
-	if (key == ('o' | KEYC_ESCAPE))
-		args_set(self->args, 'D', NULL);
-}
 
 enum cmd_retval
 cmd_rotate_window_exec(struct cmd *self, struct cmd_q *cmdq)

@@ -34,7 +34,6 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 	"F:t:", 0, 1,
 	CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
 	0,
-	NULL,
 	cmd_choose_buffer_exec
 };
 

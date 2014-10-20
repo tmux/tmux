@@ -36,7 +36,6 @@ const struct cmd_entry cmd_source_file_entry = {
 	"", 1, 1,
 	"path",
 	0,
-	NULL,
 	cmd_source_file_exec
 };
 

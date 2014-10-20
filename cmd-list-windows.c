@@ -38,7 +38,6 @@ const struct cmd_entry cmd_list_windows_entry = {
 	"F:at:", 0, 0,
 	"[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
 	0,
-	NULL,
 	cmd_list_windows_exec
 };
 

@@ -34,7 +34,6 @@ const struct cmd_entry cmd_suspend_client_entry = {
 	"t:", 0, 0,
 	CMD_TARGET_CLIENT_USAGE,
 	0,
-	NULL,
 	cmd_suspend_client_exec
 };
 

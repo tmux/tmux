@@ -34,7 +34,6 @@ const struct cmd_entry cmd_show_environment_entry = {
 	"gt:", 0, 1,
 	"[-g] " CMD_TARGET_SESSION_USAGE " [name]",
 	0,
-	NULL,
 	cmd_show_environment_exec
 };
 

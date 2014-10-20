@@ -40,7 +40,6 @@ const struct cmd_entry cmd_new_session_entry = {
 	"[-s session-name] " CMD_TARGET_SESSION_USAGE " [-x width] "
 	"[-y height] [command]",
 	CMD_STARTSERVER|CMD_CANTNEST,
-	NULL,
 	cmd_new_session_exec
 };
 

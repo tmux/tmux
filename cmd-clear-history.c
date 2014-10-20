@@ -31,7 +31,6 @@ const struct cmd_entry cmd_clear_history_entry = {
 	"t:", 0, 0,
 	CMD_TARGET_PANE_USAGE,
 	0,
-	NULL,
 	cmd_clear_history_exec
 };
 

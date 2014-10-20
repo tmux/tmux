@@ -39,7 +39,6 @@ const struct cmd_entry cmd_show_options_entry = {
 	"gqst:vw", 0, 1,
 	"[-gqsvw] [-t target-session|target-window] [option]",
 	0,
-	NULL,
 	cmd_show_options_exec
 };
 
@@ -48,7 +47,6 @@ const struct cmd_entry cmd_show_window_options_entry = {
 	"gvt:", 0, 1,
 	"[-gv] " CMD_TARGET_WINDOW_USAGE " [option]",
 	0,
-	NULL,
 	cmd_show_options_exec
 };
 

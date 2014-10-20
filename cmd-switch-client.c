@@ -27,7 +27,6 @@
  * Switch client to a different session.
  */
 
-void		 cmd_switch_client_key_binding(struct cmd *, int);
 enum cmd_retval	 cmd_switch_client_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_switch_client_entry = {
@@ -35,26 +34,8 @@ const struct cmd_entry cmd_switch_client_entry = {
 	"lc:npt:r", 0, 0,
 	"[-lnpr] [-c target-client] [-t target-session]",
 	CMD_READONLY,
-	cmd_switch_client_key_binding,
 	cmd_switch_client_exec
 };
-
-void
-cmd_switch_client_key_binding(struct cmd *self, int key)
-{
-	self->args = args_create(0);
-	switch (key) {
-	case '(':
-		args_set(self->args, 'p', NULL);
-		break;
-	case ')':
-		args_set(self->args, 'n', NULL);
-		break;
-	case 'L':
-		args_set(self->args, 'l', NULL);
-		break;
-	}
-}
 
 enum cmd_retval
 cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
