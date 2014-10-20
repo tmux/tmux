@@ -27,12 +27,22 @@
  */
 
 enum cmd_retval	 cmd_list_keys_exec(struct cmd *, struct cmd_q *);
+
 enum cmd_retval	 cmd_list_keys_table(struct cmd *, struct cmd_q *);
+enum cmd_retval	 cmd_list_keys_commands(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_list_keys_entry = {
 	"list-keys", "lsk",
 	"t:", 0, 0,
 	"[-t key-table]",
+	0,
+	cmd_list_keys_exec
+};
+
+const struct cmd_entry cmd_list_commands_entry = {
+	"list-commands", "lscm",
+	"", 0, 0,
+	"",
 	0,
 	cmd_list_keys_exec
 };
@@ -46,6 +56,9 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 	char			 tmp[BUFSIZ], flags[8];
 	size_t			 used;
 	int			 width, keywidth;
+
+	if (self->entry == &cmd_list_commands_entry)
+		return (cmd_list_keys_commands(self, cmdq));
 
 	if (args_has(args, 't'))
 		return (cmd_list_keys_table(self, cmdq));
@@ -143,6 +156,25 @@ cmd_list_keys_table(struct cmd *self, struct cmd_q *cmdq)
 			    mbind->arg != NULL ? mbind->arg : "",
 			    mbind->arg != NULL ? "\"": "");
 		}
+	}
+
+	return (CMD_RETURN_NORMAL);
+}
+
+enum cmd_retval
+cmd_list_keys_commands(unused struct cmd *self, struct cmd_q *cmdq)
+{
+	const struct cmd_entry	**entryp;
+	struct cmd_entry	 *entry;
+
+	for (entryp = cmd_table; *entryp != NULL; entryp++) {
+		entry = *entryp;
+		if (entry->alias == NULL) {
+			cmdq_print(cmdq, "%s %s", entry->name, entry->usage);
+			continue;
+		}
+		cmdq_print(cmdq, "%s (%s) %s", entry->name, entry->alias,
+		    entry->usage);
 	}
 
 	return (CMD_RETURN_NORMAL);

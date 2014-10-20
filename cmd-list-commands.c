@@ -26,14 +26,6 @@
 
 enum cmd_retval	 cmd_list_commands_exec(struct cmd *, struct cmd_q *);
 
-const struct cmd_entry cmd_list_commands_entry = {
-	"list-commands", "lscm",
-	"", 0, 0,
-	"",
-	0,
-	cmd_list_commands_exec
-};
-
 enum cmd_retval
 cmd_list_commands_exec(unused struct cmd *self, struct cmd_q *cmdq)
 {
