@@ -27,11 +27,23 @@
  * List windows on given session.
  */
 
+#define LIST_WINDOWS_TEMPLATE					\
+	"#{window_index}: #{window_name}#{window_flags} "	\
+	"(#{window_panes} panes) "				\
+	"[#{window_width}x#{window_height}] "			\
+	"[layout #{window_layout}] #{window_id}"		\
+	"#{?window_active, (active),}";
+#define LIST_WINDOWS_WITH_SESSION_TEMPLATE			\
+	"#{session_name}:"					\
+	"#{window_index}: #{window_name}#{window_flags} "	\
+	"(#{window_panes} panes) "				\
+	"[#{window_width}x#{window_height}] "
+
 enum cmd_retval	 cmd_list_windows_exec(struct cmd *, struct cmd_q *);
 
 void	cmd_list_windows_server(struct cmd *, struct cmd_q *);
-void	cmd_list_windows_session(
-	    struct cmd *, struct session *, struct cmd_q *, int);
+void	cmd_list_windows_session(struct cmd *, struct session *,
+	    struct cmd_q *, int);
 
 const struct cmd_entry cmd_list_windows_entry = {
 	"list-windows", "lsw",

@@ -27,6 +27,12 @@
  * Enter choice mode to choose a client.
  */
 
+#define CHOOSE_CLIENT_TEMPLATE					\
+	"#{client_tty}: #{session_name} "			\
+	"[#{client_width}x#{client_height} #{client_termname}]"	\
+	"#{?client_utf8, (utf8),}#{?client_readonly, (ro),} "	\
+	"(last used #{client_activity_string})"
+
 enum cmd_retval	 cmd_choose_client_exec(struct cmd *, struct cmd_q *);
 
 void	cmd_choose_client_callback(struct window_choose_data *);

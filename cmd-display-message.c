@@ -27,6 +27,11 @@
  * Displays a message in the status line.
  */
 
+#define DISPLAY_MESSAGE_TEMPLATE			\
+	"[#{session_name}] #{window_index}:"		\
+	"#{window_name}, current pane #{pane_index} "	\
+	"- (%H:%M %d-%b-%y)"
+
 enum cmd_retval	 cmd_display_message_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_display_message_entry = {

@@ -28,6 +28,11 @@
  * Find window containing text.
  */
 
+#define FIND_WINDOW_TEMPLATE					\
+	"#{window_index}: #{window_name} "			\
+	"[#{window_width}x#{window_height}] "			\
+	"(#{window_panes} panes) #{window_find_matches}"
+
 enum cmd_retval	 cmd_find_window_exec(struct cmd *, struct cmd_q *);
 
 void	cmd_find_window_callback(struct window_choose_data *);

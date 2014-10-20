@@ -32,6 +32,15 @@
  * Enter choice mode to choose a session and/or window.
  */
 
+#define CHOOSE_TREE_SESSION_TEMPLATE				\
+	"#{session_name}: #{session_windows} windows"		\
+	"#{?session_grouped, (group ,}"				\
+	"#{session_group}#{?session_grouped,),}"		\
+	"#{?session_attached, (attached),}"
+#define CHOOSE_TREE_WINDOW_TEMPLATE				\
+	"#{window_index}: #{window_name}#{window_flags} "	\
+	"\"#{pane_title}\""
+
 enum cmd_retval	cmd_choose_tree_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_choose_tree_entry = {
