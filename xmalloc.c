@@ -16,10 +16,8 @@
  * OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/param.h>
+#include <sys/types.h>
 
-#include <errno.h>
-#include <libgen.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

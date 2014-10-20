@@ -165,7 +165,7 @@ enum cmd_retval
 cmd_list_keys_commands(unused struct cmd *self, struct cmd_q *cmdq)
 {
 	const struct cmd_entry	**entryp;
-	struct cmd_entry	 *entry;
+	const struct cmd_entry	 *entry;
 
 	for (entryp = cmd_table; *entryp != NULL; entryp++) {
 		entry = *entryp;
