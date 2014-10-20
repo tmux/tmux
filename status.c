@@ -651,7 +651,7 @@ status_print(
 }
 
 /* Set a status line message. */
-void printflike2
+void
 status_message_set(struct client *c, const char *fmt, ...)
 {
 	struct timeval		 tv;

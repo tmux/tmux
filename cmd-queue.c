@@ -57,7 +57,7 @@ cmdq_free(struct cmd_q *cmdq)
 }
 
 /* Show message from command. */
-void printflike2
+void
 cmdq_print(struct cmd_q *cmdq, const char *fmt, ...)
 {
 	struct client	*c = cmdq->client;
@@ -87,7 +87,7 @@ cmdq_print(struct cmd_q *cmdq, const char *fmt, ...)
 }
 
 /* Show error from command. */
-void printflike2
+void
 cmdq_error(struct cmd_q *cmdq, const char *fmt, ...)
 {
 	struct client	*c = cmdq->client;

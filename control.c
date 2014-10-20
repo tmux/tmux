@@ -27,7 +27,7 @@
 #include "tmux.h"
 
 /* Write a line. */
-void printflike2
+void
 control_write(struct client *c, const char *fmt, ...)
 {
 	va_list		 ap;

@@ -94,7 +94,7 @@ xreallocarray(void *oldptr, size_t nmemb, size_t size)
 	return (newptr);
 }
 
-int printflike2
+int
 xasprintf(char **ret, const char *fmt, ...)
 {
 	va_list ap;
@@ -119,7 +119,7 @@ xvasprintf(char **ret, const char *fmt, va_list ap)
 	return (i);
 }
 
-int printflike3
+int
 xsnprintf(char *buf, size_t len, const char *fmt, ...)
 {
 	va_list ap;

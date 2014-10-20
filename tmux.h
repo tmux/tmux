@@ -69,11 +69,7 @@ extern char   **environ;
 #define unused __attribute__ ((unused))
 
 /* Attribute to make gcc check printf-like arguments. */
-#define printflike1 __attribute__ ((format (printf, 1, 2)))
-#define printflike2 __attribute__ ((format (printf, 2, 3)))
-#define printflike3 __attribute__ ((format (printf, 3, 4)))
-#define printflike4 __attribute__ ((format (printf, 4, 5)))
-#define printflike5 __attribute__ ((format (printf, 5, 6)))
+#define printflike(a, b) __attribute__ ((format (printf, a, b)))
 
 /* Number of items in array. */
 #ifndef nitems
@@ -1515,8 +1511,8 @@ int		 format_cmp(struct format_entry *, struct format_entry *);
 RB_PROTOTYPE(format_tree, format_entry, entry, format_cmp);
 struct format_tree *format_create(void);
 void		 format_free(struct format_tree *);
-void printflike3 format_add(struct format_tree *, const char *, const char *,
-		     ...);
+void printflike(3, 4) format_add(struct format_tree *, const char *,
+		     const char *, ...);
 const char	*format_find(struct format_tree *, const char *);
 char		*format_expand(struct format_tree *, const char *);
 void		 format_session(struct format_tree *, struct session *);
@@ -1569,7 +1565,7 @@ void	options_free(struct options *);
 struct options_entry *options_find1(struct options *, const char *);
 struct options_entry *options_find(struct options *, const char *);
 void	options_remove(struct options *, const char *);
-struct options_entry *printflike3 options_set_string(struct options *,
+struct options_entry *printflike(3, 4) options_set_string(struct options *,
 	    const char *, const char *, ...);
 char   *options_get_string(struct options *, const char *);
 struct options_entry *options_set_number(struct options *, const char *,
@@ -1836,8 +1832,8 @@ size_t		 cmd_list_print(struct cmd_list *, char *, size_t);
 /* cmd-queue.c */
 struct cmd_q	*cmdq_new(struct client *);
 int		 cmdq_free(struct cmd_q *);
-void printflike2 cmdq_print(struct cmd_q *, const char *, ...);
-void printflike2 cmdq_error(struct cmd_q *, const char *, ...);
+void printflike(2, 3) cmdq_print(struct cmd_q *, const char *, ...);
+void printflike(2, 3) cmdq_error(struct cmd_q *, const char *, ...);
 int		 cmdq_guard(struct cmd_q *, const char *, int);
 void		 cmdq_run(struct cmd_q *, struct cmd_list *);
 void		 cmdq_append(struct cmd_q *, struct cmd_list *);
@@ -1932,9 +1928,9 @@ void	 status_free_jobs(struct status_out_tree *);
 void	 status_update_jobs(struct client *);
 void	 status_set_window_at(struct client *, u_int);
 int	 status_redraw(struct client *);
-char	*status_replace(struct client *, struct session *,
-	     struct winlink *, struct window_pane *, const char *, time_t, int);
-void printflike2 status_message_set(struct client *, const char *, ...);
+char	*status_replace(struct client *, struct session *, struct winlink *,
+	     struct window_pane *, const char *, time_t, int);
+void printflike(2, 3) status_message_set(struct client *, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
 void	 status_prompt_set(struct client *, const char *, const char *,
@@ -2024,13 +2020,13 @@ void	 screen_write_start(
 	     struct screen_write_ctx *, struct window_pane *, struct screen *);
 void	 screen_write_stop(struct screen_write_ctx *);
 void	 screen_write_reset(struct screen_write_ctx *);
-size_t printflike2 screen_write_cstrlen(int, const char *, ...);
-void printflike5 screen_write_cnputs(struct screen_write_ctx *,
+size_t printflike(2, 3) screen_write_cstrlen(int, const char *, ...);
+void printflike(5, 6) screen_write_cnputs(struct screen_write_ctx *,
 	     ssize_t, struct grid_cell *, int, const char *, ...);
-size_t printflike2 screen_write_strlen(int, const char *, ...);
-void printflike3 screen_write_puts(struct screen_write_ctx *,
+size_t printflike(2, 3) screen_write_strlen(int, const char *, ...);
+void printflike(3, 4) screen_write_puts(struct screen_write_ctx *,
 	     struct grid_cell *, const char *, ...);
-void printflike5 screen_write_nputs(struct screen_write_ctx *,
+void printflike(5, 6) screen_write_nputs(struct screen_write_ctx *,
 	     ssize_t, struct grid_cell *, int, const char *, ...);
 void	 screen_write_vnputs(struct screen_write_ctx *,
 	     ssize_t, struct grid_cell *, int, const char *, va_list);
@@ -2214,7 +2210,7 @@ extern const char window_clock_table[14][5][5];
 extern const struct window_mode window_copy_mode;
 void		 window_copy_init_from_pane(struct window_pane *);
 void		 window_copy_init_for_output(struct window_pane *);
-void printflike2 window_copy_add(struct window_pane *, const char *, ...);
+void printflike(2, 3) window_copy_add(struct window_pane *, const char *, ...);
 void		 window_copy_vadd(struct window_pane *, const char *, va_list);
 void		 window_copy_pageup(struct window_pane *);
 
@@ -2253,7 +2249,7 @@ void	clear_signals(int);
 
 /* control.c */
 void	control_callback(struct client *, int, void *);
-void printflike2 control_write(struct client *, const char *, ...);
+void printflike(2, 3) control_write(struct client *, const char *, ...);
 void	control_write_buffer(struct client *, struct evbuffer *);
 
 /* control-notify.c */
@@ -2324,9 +2320,9 @@ char   *get_proc_name(int, char *);
 /* log.c */
 void		 log_open(const char *);
 void		 log_close(void);
-void printflike1 log_debug(const char *, ...);
-__dead void printflike1 log_fatal(const char *, ...);
-__dead void printflike1 log_fatalx(const char *, ...);
+void printflike(1, 2) log_debug(const char *, ...);
+__dead void printflike(1, 2) log_fatal(const char *, ...);
+__dead void printflike(1, 2) log_fatalx(const char *, ...);
 
 /* xmalloc.c */
 char		*xstrdup(const char *);
@@ -2334,9 +2330,9 @@ void		*xcalloc(size_t, size_t);
 void		*xmalloc(size_t);
 void		*xrealloc(void *, size_t);
 void		*xreallocarray(void *, size_t, size_t);
-int printflike2	 xasprintf(char **, const char *, ...);
+int printflike(2, 3) xasprintf(char **, const char *, ...);
 int		 xvasprintf(char **, const char *, va_list);
-int printflike3	 xsnprintf(char *, size_t, const char *, ...);
+int printflike(3, 4) xsnprintf(char *, size_t, const char *, ...);
 int		 xvsnprintf(char *, size_t, const char *, va_list);
 
 /* style.c */
