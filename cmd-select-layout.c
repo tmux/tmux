@@ -30,6 +30,7 @@ const struct cmd_entry cmd_select_layout_entry = {
 	"select-layout", "selectl",
 	"npt:", 0, 1,
 	"[-np] " CMD_TARGET_WINDOW_USAGE " [layout-name]",
+	0,
 	cmd_select_layout_exec
 };
 
