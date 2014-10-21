@@ -31,7 +31,7 @@ void		server_callback_identify(int, short, void *);
 void
 server_fill_environ(struct session *s, struct environ *env)
 {
-	char	var[MAXPATHLEN], *term;
+	char	var[PATH_MAX], *term;
 	u_int	idx;
 	long	pid;
 

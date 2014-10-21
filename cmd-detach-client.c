@@ -33,7 +33,14 @@ const struct cmd_entry cmd_detach_client_entry = {
 	"as:t:P", 0, 0,
 	"[-P] [-a] [-s target-session] " CMD_TARGET_CLIENT_USAGE,
 	CMD_READONLY,
-	NULL,
+	cmd_detach_client_exec
+};
+
+const struct cmd_entry cmd_suspend_client_entry = {
+	"suspend-client", "suspendc",
+	"t:", 0, 0,
+	CMD_TARGET_CLIENT_USAGE,
+	0,
 	cmd_detach_client_exec
 };
 
@@ -45,6 +52,15 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct session	*s;
 	enum msgtype	 msgtype;
 	u_int 		 i;
+
+	if (self->entry == &cmd_suspend_client_entry) {
+		if ((c = cmd_find_client(cmdq, args_get(args, 't'), 0)) == NULL)
+			return (CMD_RETURN_ERROR);
+		tty_stop_tty(&c->tty);
+		c->flags |= CLIENT_SUSPENDED;
+		server_write_client(c, MSG_SUSPEND, NULL, 0);
+		return (CMD_RETURN_NORMAL);
+	}
 
 	if (args_has(args, 'P'))
 		msgtype = MSG_DETACHKILL;

@@ -909,7 +909,7 @@ input_ground(struct input_ctx *ictx)
 
 	if (ictx->input_space > INPUT_BUF_START) {
 		ictx->input_space = INPUT_BUF_START;
-		ictx->input_buf = xrealloc(ictx->input_buf, 1, INPUT_BUF_START);
+		ictx->input_buf = xrealloc(ictx->input_buf, INPUT_BUF_START);
 	}
 }
 
@@ -974,7 +974,7 @@ input_input(struct input_ctx *ictx)
 			ictx->flags |= INPUT_DISCARD;
 			return (0);
 		}
-		ictx->input_buf = xrealloc(ictx->input_buf, 1, available);
+		ictx->input_buf = xrealloc(ictx->input_buf, available);
 		ictx->input_space = available;
 	}
 	ictx->input_buf[ictx->input_len++] = ictx->ch;

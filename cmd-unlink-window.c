@@ -31,7 +31,6 @@ const struct cmd_entry cmd_unlink_window_entry = {
 	"kt:", 0, 0,
 	"[-k] " CMD_TARGET_WINDOW_USAGE,
 	0,
-	NULL,
 	cmd_unlink_window_exec
 };
 

@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/param.h>
 
 #include <event.h>
 #include <stdio.h>
@@ -50,7 +51,7 @@ osdep_get_name(int fd, unused char *tty)
 	while ((ch = fgetc(f)) != EOF) {
 		if (ch == '\0')
 			break;
-		buf = xrealloc(buf, 1, len + 2);
+		buf = xrealloc(buf, len + 2);
 		buf[len++] = ch;
 	}
 	if (buf != NULL)

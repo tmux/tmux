@@ -26,7 +26,6 @@
  * Select window by index.
  */
 
-void		 cmd_select_window_key_binding(struct cmd *, int);
 enum cmd_retval	 cmd_select_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_select_window_entry = {
@@ -34,7 +33,6 @@ const struct cmd_entry cmd_select_window_entry = {
 	"lnpTt:", 0, 0,
 	"[-lnpT] " CMD_TARGET_WINDOW_USAGE,
 	0,
-	cmd_select_window_key_binding,
 	cmd_select_window_exec
 };
 
@@ -43,7 +41,6 @@ const struct cmd_entry cmd_next_window_entry = {
 	"at:", 0, 0,
 	"[-a] " CMD_TARGET_SESSION_USAGE,
 	0,
-	cmd_select_window_key_binding,
 	cmd_select_window_exec
 };
 
@@ -52,7 +49,6 @@ const struct cmd_entry cmd_previous_window_entry = {
 	"at:", 0, 0,
 	"[-a] " CMD_TARGET_SESSION_USAGE,
 	0,
-	cmd_select_window_key_binding,
 	cmd_select_window_exec
 };
 
@@ -61,23 +57,8 @@ const struct cmd_entry cmd_last_window_entry = {
 	"t:", 0, 0,
 	CMD_TARGET_SESSION_USAGE,
 	0,
-	NULL,
 	cmd_select_window_exec
 };
-
-void
-cmd_select_window_key_binding(struct cmd *self, int key)
-{
-	char	tmp[16];
-
-	self->args = args_create(0);
-	if (key >= '0' && key <= '9') {
-		xsnprintf(tmp, sizeof tmp, ":%d", key - '0');
-		args_set(self->args, 't', tmp);
-	}
-	if (key == ('n' | KEYC_ESCAPE) || key == ('p' | KEYC_ESCAPE))
-		args_set(self->args, 'a', NULL);
-}
 
 enum cmd_retval
 cmd_select_window_exec(struct cmd *self, struct cmd_q *cmdq)

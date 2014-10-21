@@ -41,14 +41,13 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	"[-aCeJpPq] " CMD_BUFFER_USAGE " [-E end-line] [-S start-line]"
 	CMD_TARGET_PANE_USAGE,
 	0,
-	NULL,
 	cmd_capture_pane_exec
 };
 
 char *
 cmd_capture_pane_append(char *buf, size_t *len, char *line, size_t linelen)
 {
-	buf = xrealloc(buf, 1, *len + linelen + 1);
+	buf = xrealloc(buf, *len + linelen + 1);
 	memcpy(buf + *len, line, linelen);
 	*len += linelen;
 	return (buf);

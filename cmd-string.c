@@ -107,10 +107,11 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, const char *file,
 		case ' ':
 		case '\t':
 			if (buf != NULL) {
-				buf = xrealloc(buf, 1, len + 1);
+				buf = xrealloc(buf, len + 1);
 				buf[len] = '\0';
 
-				argv = xrealloc(argv, argc + 1, sizeof *argv);
+				argv = xreallocarray(argv, argc + 1,
+				    sizeof *argv);
 				argv[argc++] = buf;
 
 				buf = NULL;
@@ -151,7 +152,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, const char *file,
 			if (len >= SIZE_MAX - 2)
 				goto error;
 
-			buf = xrealloc(buf, 1, len + 1);
+			buf = xrealloc(buf, len + 1);
 			buf[len++] = ch;
 			break;
 		}
@@ -179,7 +180,7 @@ cmd_string_copy(char **dst, char *src, size_t *len)
 
 	srclen = strlen(src);
 
-	*dst = xrealloc(*dst, 1, *len + srclen + 1);
+	*dst = xrealloc(*dst, *len + srclen + 1);
 	strlcpy(*dst + *len, src, srclen + 1);
 
 	*len += srclen;
@@ -231,11 +232,11 @@ cmd_string_string(const char *s, size_t *p, char endch, int esc)
 
 		if (len >= SIZE_MAX - 2)
 			goto error;
-		buf = xrealloc(buf, 1, len + 1);
+		buf = xrealloc(buf, len + 1);
 		buf[len++] = ch;
 	}
 
-	buf = xrealloc(buf, 1, len + 1);
+	buf = xrealloc(buf, len + 1);
 	buf[len] = '\0';
 	return (buf);
 
@@ -278,7 +279,7 @@ cmd_string_variable(const char *s, size_t *p)
 			return (t);
 		}
 
-		buf = xrealloc(buf, 1, len + 1);
+		buf = xrealloc(buf, len + 1);
 		buf[len++] = ch;
 
 		for (;;) {
@@ -288,7 +289,7 @@ cmd_string_variable(const char *s, size_t *p)
 			else {
 				if (len >= SIZE_MAX - 3)
 					goto error;
-				buf = xrealloc(buf, 1, len + 1);
+				buf = xrealloc(buf, len + 1);
 				buf[len++] = ch;
 			}
 		}
@@ -299,7 +300,7 @@ cmd_string_variable(const char *s, size_t *p)
 	if (ch != EOF && fch != '{')
 		cmd_string_ungetc(p); /* ch */
 
-	buf = xrealloc(buf, 1, len + 1);
+	buf = xrealloc(buf, len + 1);
 	buf[len] = '\0';
 
 	envent = environ_find(&global_environ, buf);

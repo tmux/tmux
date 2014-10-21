@@ -32,6 +32,15 @@
  * Enter choice mode to choose a session and/or window.
  */
 
+#define CHOOSE_TREE_SESSION_TEMPLATE				\
+	"#{session_name}: #{session_windows} windows"		\
+	"#{?session_grouped, (group ,}"				\
+	"#{session_group}#{?session_grouped,),}"		\
+	"#{?session_attached, (attached),}"
+#define CHOOSE_TREE_WINDOW_TEMPLATE				\
+	"#{window_index}: #{window_name}#{window_flags} "	\
+	"\"#{pane_title}\""
+
 enum cmd_retval	cmd_choose_tree_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_choose_tree_entry = {
@@ -40,7 +49,6 @@ const struct cmd_entry cmd_choose_tree_entry = {
 	"[-suw] [-b session-template] [-c window template] [-S format] " \
 	"[-W format] " CMD_TARGET_WINDOW_USAGE,
 	0,
-	NULL,
 	cmd_choose_tree_exec
 };
 
@@ -49,7 +57,6 @@ const struct cmd_entry cmd_choose_session_entry = {
 	"F:t:", 0, 1,
 	CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
 	0,
-	NULL,
 	cmd_choose_tree_exec
 };
 
@@ -58,7 +65,6 @@ const struct cmd_entry cmd_choose_window_entry = {
 	"F:t:", 0, 1,
 	CMD_TARGET_WINDOW_USAGE "[-F format] [template]",
 	0,
-	NULL,
 	cmd_choose_tree_exec
 };
 

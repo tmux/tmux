@@ -33,7 +33,6 @@ const struct cmd_entry cmd_link_window_entry = {
 	"dks:t:", 0, 0,
 	"[-dk] " CMD_SRCDST_WINDOW_USAGE,
 	0,
-	NULL,
 	cmd_link_window_exec
 };
 

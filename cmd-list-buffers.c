@@ -27,6 +27,9 @@
  * List paste buffers.
  */
 
+#define LIST_BUFFERS_TEMPLATE						\
+	"#{buffer_name}: #{buffer_size} bytes: \"#{buffer_sample}\""
+
 enum cmd_retval	 cmd_list_buffers_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_list_buffers_entry = {
@@ -34,7 +37,6 @@ const struct cmd_entry cmd_list_buffers_entry = {
 	"F:", 0, 0,
 	"[-F format]",
 	0,
-	NULL,
 	cmd_list_buffers_exec
 };
 

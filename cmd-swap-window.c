@@ -33,7 +33,6 @@ const struct cmd_entry cmd_swap_window_entry = {
 	"ds:t:", 0, 0,
 	"[-d] " CMD_SRCDST_WINDOW_USAGE,
 	0,
-	NULL,
 	cmd_swap_window_exec
 };
 

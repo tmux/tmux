@@ -24,7 +24,6 @@
  * Select pane.
  */
 
-void		 cmd_select_pane_key_binding(struct cmd *, int);
 enum cmd_retval	 cmd_select_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_select_pane_entry = {
@@ -32,7 +31,6 @@ const struct cmd_entry cmd_select_pane_entry = {
 	"DdeLlRt:U", 0, 0,
 	"[-DdeLlRU] " CMD_TARGET_PANE_USAGE,
 	0,
-	cmd_select_pane_key_binding,
 	cmd_select_pane_exec
 };
 
@@ -41,25 +39,8 @@ const struct cmd_entry cmd_last_pane_entry = {
 	"det:", 0, 0,
 	"[-de] " CMD_TARGET_WINDOW_USAGE,
 	0,
-	NULL,
 	cmd_select_pane_exec
 };
-
-void
-cmd_select_pane_key_binding(struct cmd *self, int key)
-{
-	self->args = args_create(0);
-	if (key == KEYC_UP)
-		args_set(self->args, 'U', NULL);
-	if (key == KEYC_DOWN)
-		args_set(self->args, 'D', NULL);
-	if (key == KEYC_LEFT)
-		args_set(self->args, 'L', NULL);
-	if (key == KEYC_RIGHT)
-		args_set(self->args, 'R', NULL);
-	if (key == 'o')
-		args_set(self->args, 't', ":.+");
-}
 
 enum cmd_retval
 cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
