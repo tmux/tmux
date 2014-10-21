@@ -176,6 +176,10 @@ typedef uint64_t u_int64_t;
 #define TTY_NAME_MAX 32
 #endif
 
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX 255
+#endif
+
 #ifndef HAVE_FLOCK
 #define LOCK_SH 0
 #define LOCK_EX 0
