@@ -27,6 +27,9 @@
  * Enter choice mode to choose a buffer.
  */
 
+#define CHOOSE_BUFFER_TEMPLATE						\
+	"#{buffer_name}: #{buffer_size} bytes: #{buffer_sample}"
+
 enum cmd_retval	 cmd_choose_buffer_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_choose_buffer_entry = {
@@ -34,7 +37,6 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 	"F:t:", 0, 1,
 	CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
 	0,
-	NULL,
 	cmd_choose_buffer_exec
 };
 

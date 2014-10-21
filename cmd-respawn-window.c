@@ -34,7 +34,6 @@ const struct cmd_entry cmd_respawn_window_entry = {
 	"kt:", 0, -1,
 	"[-k] " CMD_TARGET_WINDOW_USAGE " [command]",
 	0,
-	NULL,
 	cmd_respawn_window_exec
 };
 

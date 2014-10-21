@@ -26,6 +26,8 @@
  * Break pane off into a window.
  */
 
+#define BREAK_PANE_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
+
 enum cmd_retval	 cmd_break_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_break_pane_entry = {
@@ -33,7 +35,6 @@ const struct cmd_entry cmd_break_pane_entry = {
 	"dPF:t:", 0, 0,
 	"[-dP] [-F format] " CMD_TARGET_PANE_USAGE,
 	0,
-	NULL,
 	cmd_break_pane_exec
 };
 

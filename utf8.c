@@ -420,7 +420,7 @@ utf8_fromcstr(const char *src)
 
 	n = 0;
 	while (*src != '\0') {
-		dst = xrealloc(dst, n + 1, sizeof *dst);
+		dst = xreallocarray(dst, n + 1, sizeof *dst);
 		if (utf8_open(&dst[n], *src)) {
 			more = 1;
 			while (*++src != '\0' && more)
@@ -437,7 +437,7 @@ utf8_fromcstr(const char *src)
 		n++;
 	}
 
-	dst = xrealloc(dst, n + 1, sizeof *dst);
+	dst = xreallocarray(dst, n + 1, sizeof *dst);
 	dst[n].size = 0;
 	return (dst);
 }
@@ -453,12 +453,12 @@ utf8_tocstr(struct utf8_data *src)
 
 	n = 0;
 	for(; src->size != 0; src++) {
-		dst = xrealloc(dst, n + src->size, 1);
+		dst = xreallocarray(dst, n + src->size, 1);
 		memcpy(dst + n, src->data, src->size);
 		n += src->size;
 	}
 
-	dst = xrealloc(dst, n + 1, 1);
+	dst = xreallocarray(dst, n + 1, 1);
 	dst[n] = '\0';
 	return (dst);
 }

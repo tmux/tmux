@@ -84,107 +84,99 @@ key_bindings_remove(int key)
 void
 key_bindings_init(void)
 {
-	static const struct {
-		int			 key;
-		int			 can_repeat;
-		const struct cmd_entry	*entry;
-	} table[] = {
-		{ ' ',			  0, &cmd_next_layout_entry },
-		{ '!', 			  0, &cmd_break_pane_entry },
-		{ '"', 			  0, &cmd_split_window_entry },
-		{ '#', 			  0, &cmd_list_buffers_entry },
-		{ '$',			  0, &cmd_command_prompt_entry },
-		{ '%', 			  0, &cmd_split_window_entry },
-		{ '&', 			  0, &cmd_confirm_before_entry },
-		{ '(',                    0, &cmd_switch_client_entry },
-		{ ')',                    0, &cmd_switch_client_entry },
-		{ ',', 			  0, &cmd_command_prompt_entry },
-		{ '-', 			  0, &cmd_delete_buffer_entry },
-		{ '.', 			  0, &cmd_command_prompt_entry },
-		{ '0', 			  0, &cmd_select_window_entry },
-		{ '1', 			  0, &cmd_select_window_entry },
-		{ '2', 			  0, &cmd_select_window_entry },
-		{ '3', 			  0, &cmd_select_window_entry },
-		{ '4', 			  0, &cmd_select_window_entry },
-		{ '5', 			  0, &cmd_select_window_entry },
-		{ '6', 			  0, &cmd_select_window_entry },
-		{ '7', 			  0, &cmd_select_window_entry },
-		{ '8', 			  0, &cmd_select_window_entry },
-		{ '9', 			  0, &cmd_select_window_entry },
-		{ ':', 			  0, &cmd_command_prompt_entry },
-		{ ';', 			  0, &cmd_last_pane_entry },
-		{ '=', 			  0, &cmd_choose_buffer_entry },
-		{ '?', 			  0, &cmd_list_keys_entry },
-		{ 'D',			  0, &cmd_choose_client_entry },
-		{ 'L',			  0, &cmd_switch_client_entry },
-		{ '[', 			  0, &cmd_copy_mode_entry },
-		{ '\'',			  0, &cmd_command_prompt_entry },
-		{ '\002', /* C-b */	  0, &cmd_send_prefix_entry },
-		{ '\017', /* C-o */	  0, &cmd_rotate_window_entry },
-		{ '\032', /* C-z */	  0, &cmd_suspend_client_entry },
-		{ ']', 			  0, &cmd_paste_buffer_entry },
-		{ 'c', 			  0, &cmd_new_window_entry },
-		{ 'd', 			  0, &cmd_detach_client_entry },
-		{ 'f', 			  0, &cmd_command_prompt_entry },
-		{ 'i',			  0, &cmd_display_message_entry },
-		{ 'l', 			  0, &cmd_last_window_entry },
-		{ 'n', 			  0, &cmd_next_window_entry },
-		{ 'o', 			  0, &cmd_select_pane_entry },
-		{ 'p', 			  0, &cmd_previous_window_entry },
-		{ 'q',			  0, &cmd_display_panes_entry },
-		{ 'r', 			  0, &cmd_refresh_client_entry },
-		{ 's', 			  0, &cmd_choose_tree_entry },
-		{ 't', 			  0, &cmd_clock_mode_entry },
-		{ 'w', 			  0, &cmd_choose_window_entry },
-		{ 'x', 			  0, &cmd_confirm_before_entry },
-		{ 'z',			  0, &cmd_resize_pane_entry },
-		{ '{',			  0, &cmd_swap_pane_entry },
-		{ '}',			  0, &cmd_swap_pane_entry },
-		{ '~',			  0, &cmd_show_messages_entry },
-		{ '1' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
-		{ '2' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
-		{ '3' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
-		{ '4' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
-		{ '5' | KEYC_ESCAPE,	  0, &cmd_select_layout_entry },
-		{ KEYC_PPAGE, 		  0, &cmd_copy_mode_entry },
-		{ 'n' | KEYC_ESCAPE, 	  0, &cmd_next_window_entry },
-		{ 'o' | KEYC_ESCAPE,	  0, &cmd_rotate_window_entry },
-		{ 'p' | KEYC_ESCAPE, 	  0, &cmd_previous_window_entry },
-		{ KEYC_UP, 		  1, &cmd_select_pane_entry },
-		{ KEYC_DOWN, 		  1, &cmd_select_pane_entry },
-		{ KEYC_LEFT, 		  1, &cmd_select_pane_entry },
-		{ KEYC_RIGHT, 		  1, &cmd_select_pane_entry },
-		{ KEYC_UP | KEYC_ESCAPE,  1, &cmd_resize_pane_entry },
-		{ KEYC_DOWN | KEYC_ESCAPE,  1, &cmd_resize_pane_entry },
-		{ KEYC_LEFT | KEYC_ESCAPE,  1, &cmd_resize_pane_entry },
-		{ KEYC_RIGHT | KEYC_ESCAPE, 1, &cmd_resize_pane_entry },
-		{ KEYC_UP | KEYC_CTRL,    1, &cmd_resize_pane_entry },
-		{ KEYC_DOWN | KEYC_CTRL,  1, &cmd_resize_pane_entry },
-		{ KEYC_LEFT | KEYC_CTRL,  1, &cmd_resize_pane_entry },
-		{ KEYC_RIGHT | KEYC_CTRL, 1, &cmd_resize_pane_entry },
+	static const char* defaults[] = {
+		"bind C-b send-prefix",
+		"bind C-o rotate-window",
+		"bind C-z suspend-client",
+		"bind Space next-layout",
+		"bind ! break-pane",
+		"bind '\"' split-window",
+		"bind '#' list-buffers",
+		"bind '$' command-prompt -I'#S' \"rename-session '%%'\"",
+		"bind % split-window -h",
+		"bind & confirm-before -p\"kill-window #W? (y/n)\" kill-window",
+		"bind \"'\" command-prompt -pindex \"select-window -t ':%%'\"",
+		"bind ( switch-client -p",
+		"bind ) switch-client -n",
+		"bind , command-prompt -I'#W' \"rename-window '%%'\"",
+		"bind - delete-buffer",
+		"bind . command-prompt \"move-window -t '%%'\"",
+		"bind 0 select-window -t:0",
+		"bind 1 select-window -t:1",
+		"bind 2 select-window -t:2",
+		"bind 3 select-window -t:3",
+		"bind 4 select-window -t:4",
+		"bind 5 select-window -t:5",
+		"bind 6 select-window -t:6",
+		"bind 7 select-window -t:7",
+		"bind 8 select-window -t:8",
+		"bind 9 select-window -t:9",
+		"bind : command-prompt",
+		"bind \\; last-pane",
+		"bind = choose-buffer",
+		"bind ? list-keys",
+		"bind D choose-client",
+		"bind L switch-client -l",
+		"bind [ copy-mode",
+		"bind ] paste-buffer",
+		"bind c new-window",
+		"bind d detach-client",
+		"bind f command-prompt \"find-window '%%'\"",
+		"bind i display-message",
+		"bind l last-window",
+		"bind n next-window",
+		"bind o select-pane -t:.+",
+		"bind p previous-window",
+		"bind q display-panes",
+		"bind r refresh-client",
+		"bind s choose-tree",
+		"bind t clock-mode",
+		"bind w choose-window",
+		"bind x confirm-before -p\"kill-pane #P? (y/n)\" kill-pane",
+		"bind z resize-pane -Z",
+		"bind { swap-pane -U",
+		"bind } swap-pane -D",
+		"bind '~' show-messages",
+		"bind PPage copy-mode -u",
+		"bind -r Up select-pane -U",
+		"bind -r Down select-pane -D",
+		"bind -r Left select-pane -L",
+		"bind -r Right select-pane -R",
+		"bind M-1 select-layout even-horizontal",
+		"bind M-2 select-layout even-vertical",
+		"bind M-3 select-layout main-horizontal",
+		"bind M-4 select-layout main-vertical",
+		"bind M-5 select-layout tiled",
+		"bind M-n next-window -a",
+		"bind M-o rotate-window -D",
+		"bind M-p previous-window -a",
+		"bind -r M-Up resize-pane -U 5",
+		"bind -r M-Down resize-pane -D 5",
+		"bind -r M-Left resize-pane -L 5",
+		"bind -r M-Right resize-pane -R 5",
+		"bind -r C-Up resize-pane -U",
+		"bind -r C-Down resize-pane -D",
+		"bind -r C-Left resize-pane -L",
+		"bind -r C-Right resize-pane -R",
 	};
 	u_int		 i;
-	struct cmd	*cmd;
 	struct cmd_list	*cmdlist;
+	char*            cause;
+	int		 error;
+	struct cmd_q	*cmdq;
 
 	RB_INIT(&key_bindings);
 
-	for (i = 0; i < nitems(table); i++) {
-		cmdlist = xcalloc(1, sizeof *cmdlist);
-		cmdlist->references = 1;
-		TAILQ_INIT(&cmdlist->list);
-
-		cmd = xcalloc(1, sizeof *cmd);
-		cmd->entry = table[i].entry;
-		if (cmd->entry->key_binding != NULL)
-			cmd->entry->key_binding(cmd, table[i].key);
-		else
-			cmd->args = args_create(0);
-		TAILQ_INSERT_HEAD(&cmdlist->list, cmd, qentry);
-
-		key_bindings_add(
-		    table[i].key | KEYC_PREFIX, table[i].can_repeat, cmdlist);
+	cmdq = cmdq_new (NULL);
+	for (i = 0; i < nitems(defaults); i++) {
+		error = cmd_string_parse(defaults[i], &cmdlist,
+		    "<default-keys>", i, &cause);
+		if (error != 0)
+			fatalx("bad default key");
+		cmdq_run (cmdq, cmdlist);
+		cmd_list_free (cmdlist);
 	}
+	cmdq_free (cmdq);
 }
 
 void

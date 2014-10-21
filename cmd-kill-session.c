@@ -34,7 +34,6 @@ const struct cmd_entry cmd_kill_session_entry = {
 	"at:", 0, 0,
 	"[-a] " CMD_TARGET_SESSION_USAGE,
 	0,
-	NULL,
 	cmd_kill_session_exec
 };
 

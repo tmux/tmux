@@ -28,6 +28,11 @@
  * List all clients.
  */
 
+#define LIST_CLIENTS_TEMPLATE					\
+	"#{client_tty}: #{session_name} "			\
+	"[#{client_width}x#{client_height} #{client_termname}]"	\
+	"#{?client_utf8, (utf8),} #{?client_readonly, (ro),}"
+
 enum cmd_retval	cmd_list_clients_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_list_clients_entry = {
@@ -35,7 +40,6 @@ const struct cmd_entry cmd_list_clients_entry = {
 	"F:t:", 0, 0,
 	"[-F format] " CMD_TARGET_SESSION_USAGE,
 	CMD_READONLY,
-	NULL,
 	cmd_list_clients_exec
 };
 

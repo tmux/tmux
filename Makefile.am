@@ -82,7 +82,6 @@ dist_tmux_SOURCES = \
 	cmd-display-message.c \
 	cmd-display-panes.c \
 	cmd-find-window.c \
-	cmd-has-session.c \
 	cmd-if-shell.c \
 	cmd-join-pane.c \
 	cmd-kill-pane.c \
@@ -92,7 +91,6 @@ dist_tmux_SOURCES = \
 	cmd-link-window.c \
 	cmd-list-buffers.c \
 	cmd-list-clients.c \
-	cmd-list-commands.c \
 	cmd-list-keys.c \
 	cmd-list-panes.c \
 	cmd-list-sessions.c \
@@ -128,7 +126,6 @@ dist_tmux_SOURCES = \
 	cmd-source-file.c \
 	cmd-split-window.c \
 	cmd-string.c \
-	cmd-suspend-client.c \
 	cmd-swap-pane.c \
 	cmd-swap-window.c \
 	cmd-switch-client.c \

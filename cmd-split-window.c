@@ -30,7 +30,8 @@
  * Split a window (add a new pane).
  */
 
-void		 cmd_split_window_key_binding(struct cmd *, int);
+#define SPLIT_WINDOW_TEMPLATE "#{session_name}:#{window_index}.#{pane_index}"
+
 enum cmd_retval	 cmd_split_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_split_window_entry = {
@@ -39,17 +40,8 @@ const struct cmd_entry cmd_split_window_entry = {
 	"[-dhvP] [-c start-directory] [-F format] [-p percentage|-l size] "
 	CMD_TARGET_PANE_USAGE " [command]",
 	0,
-	cmd_split_window_key_binding,
 	cmd_split_window_exec
 };
-
-void
-cmd_split_window_key_binding(struct cmd *self, int key)
-{
-	self->args = args_create(0);
-	if (key == '%')
-		args_set(self->args, 'h', NULL);
-}
 
 enum cmd_retval
 cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
