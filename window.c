@@ -386,11 +386,11 @@ window_resize(struct window *w, u_int sx, u_int sy)
 	w->sy = sy;
 }
 
-void
+int
 window_set_active_pane(struct window *w, struct window_pane *wp)
 {
 	if (wp == w->active)
-		return;
+		return (0);
 	w->last = w->active;
 	w->active = wp;
 	while (!window_pane_visible(w->active)) {
@@ -398,9 +398,10 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 		if (w->active == NULL)
 			w->active = TAILQ_LAST(&w->panes, window_panes);
 		if (w->active == wp)
-			return;
+			return (1);
 	}
 	w->active->active_point = next_active_point++;
+	return (1);
 }
 
 struct window_pane *
