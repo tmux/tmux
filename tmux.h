@@ -2296,6 +2296,7 @@ struct session_group *session_group_find(struct session *);
 u_int		 session_group_index(struct session_group *);
 void		 session_group_add(struct session *, struct session *);
 void		 session_group_remove(struct session *);
+u_int		 session_group_count(struct session_group *);
 void		 session_group_synchronize_to(struct session *);
 void		 session_group_synchronize_from(struct session *);
 void		 session_group_synchronize1(struct session *, struct session *);

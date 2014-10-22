@@ -492,6 +492,19 @@ session_group_remove(struct session *s)
 	}
 }
 
+/* Count number of sessions in session group. */
+u_int
+session_group_count(struct session_group *sg)
+{
+	struct session	*s;
+	u_int		 n;
+
+	n = 0;
+	TAILQ_FOREACH(s, &sg->sessions, gentry)
+	    n++;
+	return (n);
+}
+
 /* Synchronize a session to its session group. */
 void
 session_group_synchronize_to(struct session *s)
@@ -579,8 +592,9 @@ session_group_synchronize1(struct session *target, struct session *s)
 	/* Then free the old winlinks list. */
 	while (!RB_EMPTY(&old_windows)) {
 		wl = RB_ROOT(&old_windows);
-		if (winlink_find_by_window_id(&s->windows, wl->window->id) == NULL)
-		    notify_window_unlinked(s, wl->window);
+		wl2 = winlink_find_by_window_id(&s->windows, wl->window->id);
+		if (wl2 == NULL)
+			notify_window_unlinked(s, wl->window);
 		winlink_remove(&old_windows, wl);
 	}
 }

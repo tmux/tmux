@@ -69,7 +69,6 @@ SRCS=	arguments.c \
 	cmd-swap-window.c \
 	cmd-switch-client.c \
 	cmd-unbind-key.c \
-	cmd-unlink-window.c \
 	cmd-wait-for.c \
 	cmd.c \
 	cmd-queue.c \

@@ -34,23 +34,48 @@ const struct cmd_entry cmd_kill_window_entry = {
 	cmd_kill_window_exec
 };
 
+const struct cmd_entry cmd_unlink_window_entry = {
+	"unlink-window", "unlinkw",
+	"kt:", 0, 0,
+	"[-k] " CMD_TARGET_WINDOW_USAGE,
+	0,
+	cmd_kill_window_exec
+};
+
 enum cmd_retval
 cmd_kill_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
-	struct args	*args = self->args;
-	struct winlink	*wl, *wl2, *wl3;
-	struct session	*s;
+	struct args		*args = self->args;
+	struct winlink		*wl, *wl2, *wl3;
+	struct window		*w;
+	struct session		*s;
+	struct session_group	*sg;
+	u_int			 references;
 
 	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), &s)) == NULL)
 		return (CMD_RETURN_ERROR);
+	w = wl->window;
 
-	if (args_has(args, 'a')) {
-		RB_FOREACH_SAFE(wl2, winlinks, &s->windows, wl3) {
-			if (wl != wl2)
-				server_kill_window(wl2->window);
+	if (self->entry == &cmd_unlink_window_entry) {
+		sg = session_group_find(s);
+		if (sg != NULL)
+			references = session_group_count(sg);
+		else
+			references = 1;
+		if (!args_has(self->args, 'k') && w->references == references) {
+			cmdq_error(cmdq, "window only linked to one session");
+			return (CMD_RETURN_ERROR);
 		}
-	} else
-		server_kill_window(wl->window);
+		server_unlink_window(s, wl);
+	} else {
+		if (args_has(args, 'a')) {
+			RB_FOREACH_SAFE(wl2, winlinks, &s->windows, wl3) {
+				if (wl != wl2)
+					server_kill_window(wl2->window);
+			}
+		} else
+			server_kill_window(wl->window);
+	}
 
 	recalculate_sizes();
 	return (CMD_RETURN_NORMAL);
