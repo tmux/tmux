@@ -162,7 +162,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	xasprintf(&searchstr, "*%s*", str);
 	RB_FOREACH(wm, winlinks, &s->windows)
-	    cmd_find_window_match (&find_list, match_flags, wm, str, searchstr);
+	    cmd_find_window_match(&find_list, match_flags, wm, str, searchstr);
 	free(searchstr);
 
 	if (ARRAY_LENGTH(&find_list) == 0) {

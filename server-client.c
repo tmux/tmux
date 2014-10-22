@@ -160,7 +160,7 @@ server_client_lost(struct client *c)
 	evbuffer_free(c->stdin_data);
 	evbuffer_free(c->stdout_data);
 	if (c->stderr_data != c->stdout_data)
-		evbuffer_free (c->stderr_data);
+		evbuffer_free(c->stderr_data);
 
 	status_free_jobs(&c->status_new);
 	status_free_jobs(&c->status_old);
@@ -638,7 +638,7 @@ server_client_reset_state(struct client *c)
 	if (!window_pane_visible(wp) || wp->yoff + s->cy >= c->tty.sy - status)
 		tty_cursor(&c->tty, 0, 0);
 	else {
-		o = status && options_get_number (oo, "status-position") == 0;
+		o = status && options_get_number(oo, "status-position") == 0;
 		tty_cursor(&c->tty, wp->xoff + s->cx, o + wp->yoff + s->cy);
 	}
 

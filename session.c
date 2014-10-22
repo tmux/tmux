@@ -127,7 +127,7 @@ session_create(const char *name, int argc, char **argv, const char *path,
 		s->name = NULL;
 		do {
 			s->id = next_session_id++;
-			free (s->name);
+			free(s->name);
 			xasprintf(&s->name, "%u", s->id);
 		} while (RB_FIND(sessions, &sessions, s) != NULL);
 	}

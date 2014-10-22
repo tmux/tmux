@@ -1585,7 +1585,7 @@ window_copy_copy_line(struct window_pane *wp,
 				s = tty_acs_get(NULL, ud.data[0]);
 				if (s != NULL && strlen(s) <= sizeof ud.data) {
 					ud.size = strlen(s);
-					memcpy (ud.data, s, ud.size);
+					memcpy(ud.data, s, ud.size);
 				}
 			}
 

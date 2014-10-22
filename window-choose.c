@@ -98,7 +98,7 @@ window_choose_add(struct window_pane *wp, struct window_choose_data *wcd)
 	item->pos = ARRAY_LENGTH(&data->list) - 1;
 	item->state = 0;
 
-	data->width = xsnprintf (tmp, sizeof tmp , "%u", item->pos);
+	data->width = xsnprintf(tmp, sizeof tmp , "%u", item->pos);
 }
 
 void
@@ -787,9 +787,9 @@ window_choose_write_line(
 
 		key = window_choose_key_index(data, data->top + py);
 		if (key != -1)
-			xsnprintf (label, sizeof label, "(%c)", key);
+			xsnprintf(label, sizeof label, "(%c)", key);
 		else
-			xsnprintf (label, sizeof label, "(%d)", item->pos);
+			xsnprintf(label, sizeof label, "(%d)", item->pos);
 		screen_write_nputs(ctx, screen_size_x(s) - 1, &gc, utf8flag,
 		    "%*s %s %s", data->width + 2, label,
 		    /*
