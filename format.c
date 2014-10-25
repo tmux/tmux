@@ -554,6 +554,7 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_id", "%%%u", wp->id);
 	format_add(ft, "pane_active", "%d", wp == wp->window->active);
 	format_add(ft, "pane_dead", "%d", wp->fd == -1);
+	format_add(ft, "pane_input_off", "%d", !!(wp->flags & PANE_INPUTOFF));
 
 	if (window_pane_visible(wp)) {
 		format_add(ft, "pane_left", "%u", wp->xoff);
