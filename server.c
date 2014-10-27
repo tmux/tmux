@@ -165,25 +165,18 @@ server_start(int lockfd, char *lockfile)
 	cfg_cmd_q->emptyfn = cfg_default_done;
 	cfg_finished = 0;
 	cfg_references = 1;
-	ARRAY_INIT(&cfg_causes);
 	cfg_client = ARRAY_FIRST(&clients);
 	if (cfg_client != NULL)
 		cfg_client->references++;
 
 	if (access(TMUX_CONF, R_OK) == 0) {
-		if (load_cfg(TMUX_CONF, cfg_cmd_q, &cause) == -1) {
-			xasprintf(&cause, "%s: %s", TMUX_CONF, cause);
-			ARRAY_ADD(&cfg_causes, cause);
-		}
-	} else if (errno != ENOENT) {
-		xasprintf(&cause, "%s: %s", TMUX_CONF, strerror(errno));
-		ARRAY_ADD(&cfg_causes, cause);
-	}
+		if (load_cfg(TMUX_CONF, cfg_cmd_q, &cause) == -1)
+			cfg_add_cause("%s: %s", TMUX_CONF, cause);
+	} else if (errno != ENOENT)
+		cfg_add_cause("%s: %s", TMUX_CONF, strerror(errno));
 	if (cfg_file != NULL) {
-		if (load_cfg(cfg_file, cfg_cmd_q, &cause) == -1) {
-			xasprintf(&cause, "%s: %s", cfg_file, cause);
-			ARRAY_ADD(&cfg_causes, cause);
-		}
+		if (load_cfg(cfg_file, cfg_cmd_q, &cause) == -1)
+			cfg_add_cause("%s: %s", cfg_file, cause);
 	}
 	cmdq_continue(cfg_cmd_q);
 

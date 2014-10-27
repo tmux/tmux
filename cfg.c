@@ -30,7 +30,7 @@
 struct cmd_q		*cfg_cmd_q;
 int			 cfg_finished;
 int			 cfg_references;
-struct causelist	 cfg_causes;
+ARRAY_DECL (, char *)	 cfg_causes = ARRAY_INITIALIZER;
 struct client		*cfg_client;
 
 int
@@ -40,7 +40,7 @@ load_cfg(const char *path, struct cmd_q *cmdq, char **cause)
 	char		 delim[3] = { '\\', '\\', '\0' };
 	u_int		 found;
 	size_t		 line = 0;
-	char		*buf, *cause1, *msg, *p;
+	char		*buf, *cause1, *p;
 	struct cmd_list	*cmdlist;
 
 	log_debug("loading %s", path);
@@ -67,8 +67,7 @@ load_cfg(const char *path, struct cmd_q *cmdq, char **cause)
 			free(buf);
 			if (cause1 == NULL)
 				continue;
-			xasprintf(&msg, "%s:%zu: %s", path, line, cause1);
-			ARRAY_ADD(&cfg_causes, msg);
+			cfg_add_cause("%s:%zu: %s", path, line, cause1);
 			free(cause1);
 			continue;
 		}
@@ -111,6 +110,33 @@ cfg_default_done(unused struct cmd_q *cmdq)
 		cfg_client->references--;
 		cfg_client = NULL;
 	}
+}
+
+void
+cfg_add_cause(const char* fmt, ...)
+{
+	va_list	ap;
+	char*	msg;
+
+	va_start(ap, fmt);
+	xvasprintf(&msg, fmt, ap);
+	va_end (ap);
+
+	ARRAY_ADD(&cfg_causes, msg);
+}
+
+void
+cfg_print_causes(struct cmd_q *cmdq)
+{
+	char	*cause;
+	u_int	 i;
+
+	for (i = 0; i < ARRAY_LENGTH(&cfg_causes); i++) {
+		cause = ARRAY_ITEM(&cfg_causes, i);
+		cmdq_print(cmdq, "%s", cause);
+		free(cause);
+	}
+	ARRAY_FREE(&cfg_causes);
 }
 
 void

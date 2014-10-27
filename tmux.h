@@ -381,9 +381,6 @@ struct tty_term_code_entry {
 	const char	       *name;
 };
 
-/* List of error causes. */
-ARRAY_DECL(causelist, char *);
-
 /* Message codes. */
 enum msgtype {
 	MSG_VERSION = 12,
@@ -1500,10 +1497,11 @@ __dead void	 shell_exec(const char *, const char *);
 extern struct cmd_q *cfg_cmd_q;
 extern int cfg_finished;
 extern int cfg_references;
-extern struct causelist cfg_causes;
 extern struct client *cfg_client;
 int		 load_cfg(const char *, struct cmd_q *, char **);
 void		 cfg_default_done(struct cmd_q *);
+void		 cfg_add_cause(const char *, ...);
+void		 cfg_print_causes(struct cmd_q *);
 void		 cfg_show_causes(struct session *);
 
 /* format.c */
