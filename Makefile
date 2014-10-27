@@ -28,7 +28,6 @@ SRCS=	arguments.c \
 	cmd-kill-server.c \
 	cmd-kill-session.c \
 	cmd-kill-window.c \
-	cmd-link-window.c \
 	cmd-list-buffers.c \
 	cmd-list-clients.c \
 	cmd-list-keys.c \
