@@ -88,7 +88,6 @@ dist_tmux_SOURCES = \
 	cmd-kill-server.c \
 	cmd-kill-session.c \
 	cmd-kill-window.c \
-	cmd-link-window.c \
 	cmd-list-buffers.c \
 	cmd-list-clients.c \
 	cmd-list-keys.c \
@@ -130,7 +129,6 @@ dist_tmux_SOURCES = \
 	cmd-swap-window.c \
 	cmd-switch-client.c \
 	cmd-unbind-key.c \
-	cmd-unlink-window.c \
 	cmd-wait-for.c \
 	cmd.c \
 	colour.c \

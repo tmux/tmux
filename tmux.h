@@ -379,9 +379,6 @@ struct tty_term_code_entry {
 	const char	       *name;
 };
 
-/* List of error causes. */
-ARRAY_DECL(causelist, char *);
-
 /* Message codes. */
 enum msgtype {
 	MSG_VERSION = 12,
@@ -1498,10 +1495,11 @@ __dead void	 shell_exec(const char *, const char *);
 extern struct cmd_q *cfg_cmd_q;
 extern int cfg_finished;
 extern int cfg_references;
-extern struct causelist cfg_causes;
 extern struct client *cfg_client;
 int		 load_cfg(const char *, struct cmd_q *, char **);
 void		 cfg_default_done(struct cmd_q *);
+void		 cfg_add_cause(const char *, ...);
+void		 cfg_print_causes(struct cmd_q *);
 void		 cfg_show_causes(struct session *);
 
 /* format.c */
@@ -2114,7 +2112,7 @@ void		 window_destroy(struct window *);
 struct window_pane *window_get_active_at(struct window *, u_int, u_int);
 void		 window_set_active_at(struct window *, u_int, u_int);
 struct window_pane *window_find_string(struct window *, const char *);
-void		 window_set_active_pane(struct window *, struct window_pane *);
+int		 window_set_active_pane(struct window *, struct window_pane *);
 struct window_pane *window_add_pane(struct window *, u_int);
 void		 window_resize(struct window *, u_int, u_int);
 int		 window_zoom(struct window_pane *);
@@ -2294,6 +2292,7 @@ struct session_group *session_group_find(struct session *);
 u_int		 session_group_index(struct session_group *);
 void		 session_group_add(struct session *, struct session *);
 void		 session_group_remove(struct session *);
+u_int		 session_group_count(struct session_group *);
 void		 session_group_synchronize_to(struct session *);
 void		 session_group_synchronize_from(struct session *);
 void		 session_group_synchronize1(struct session *, struct session *);
