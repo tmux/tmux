@@ -301,7 +301,7 @@ paste_send_pane(struct paste_buffer *pb, struct window_pane *wp,
 	if (wp->flags & PANE_INPUTOFF)
 		return;
 
-	if (bracket)
+	if (bracket && (wp->screen->mode & MODE_BRACKETPASTE))
 		bufferevent_write(wp->event, "\033[200~", 6);
 
 	seplen = strlen(sep);
@@ -315,6 +315,6 @@ paste_send_pane(struct paste_buffer *pb, struct window_pane *wp,
 	if (end != data)
 		bufferevent_write(wp->event, data, end - data);
 
-	if (bracket)
+	if (bracket && (wp->screen->mode & MODE_BRACKETPASTE))
 		bufferevent_write(wp->event, "\033[201~", 6);
 }
