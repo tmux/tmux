@@ -193,9 +193,9 @@ status_redraw(struct client *c)
 	 */
 	needed = 0;
 	if (llen != 0)
-		needed += llen + 1;
+		needed += llen;
 	if (rlen != 0)
-		needed += rlen + 1;
+		needed += rlen;
 	if (c->tty.sx == 0 || c->tty.sx <= needed)
 		goto out;
 	wlavailable = c->tty.sx - needed;
@@ -300,10 +300,8 @@ draw:
 
 	/* Draw the left string and arrow. */
 	screen_write_cursormove(&ctx, 0, 0);
-	if (llen != 0) {
+	if (llen != 0)
 		screen_write_cnputs(&ctx, llen, &lgc, utf8flag, "%s", left);
-		screen_write_putc(&ctx, &stdgc, ' ');
-	}
 	if (larrow != 0) {
 		memcpy(&gc, &stdgc, sizeof gc);
 		if (larrow == -1)
@@ -313,21 +311,19 @@ draw:
 
 	/* Draw the right string and arrow. */
 	if (rarrow != 0) {
-		screen_write_cursormove(&ctx, c->tty.sx - rlen - 2, 0);
+		screen_write_cursormove(&ctx, c->tty.sx - rlen - 1, 0);
 		memcpy(&gc, &stdgc, sizeof gc);
 		if (rarrow == -1)
 			gc.attr ^= GRID_ATTR_REVERSE;
 		screen_write_putc(&ctx, &gc, '>');
 	} else
-		screen_write_cursormove(&ctx, c->tty.sx - rlen - 1, 0);
-	if (rlen != 0) {
-		screen_write_putc(&ctx, &stdgc, ' ');
+		screen_write_cursormove(&ctx, c->tty.sx - rlen, 0);
+	if (rlen != 0)
 		screen_write_cnputs(&ctx, rlen, &rgc, utf8flag, "%s", right);
-	}
 
 	/* Figure out the offset for the window list. */
 	if (llen != 0)
-		wloffset = llen + 1;
+		wloffset = llen;
 	else
 		wloffset = 0;
 	if (wlwidth < wlavailable) {
