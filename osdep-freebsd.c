@@ -132,8 +132,8 @@ error:
 	return (NULL);
 }
 
-char *
-osdep_get_cwd(int fd)
+static char *
+osdep_get_cwd_fallback(int fd)
 {
 	static char		 wd[PATH_MAX];
 	struct kinfo_file	*info = NULL;
@@ -157,6 +157,38 @@ osdep_get_cwd(int fd)
 	free(info);
 	return (NULL);
 }
+
+#ifdef KERN_PROC_CWD
+char *
+osdep_get_cwd(int fd)
+{
+	static struct kinfo_file	info;
+	static int			fallback;
+	int	name[] = { CTL_KERN, KERN_PROC, KERN_PROC_CWD, 0 };
+	size_t	len = sizeof info;
+
+	if (fallback)
+		return (osdep_get_cwd_fallback(fd));
+
+	if ((name[3] = tcgetpgrp(fd)) == -1)
+		return (NULL);
+
+	if (sysctl(name, 4, &info, &len, NULL, 0) == -1) {
+		if (errno == ENOENT) {
+			fallback = 1;
+			return (osdep_get_cwd_fallback(fd));
+		}
+		return (NULL);
+	}
+	return (info.kf_path);
+}
+#else /* !KERN_PROC_CWD */
+char *
+osdep_get_cwd(int fd)
+{
+	return (osdep_get_cwd_fallback(fd));
+}
+#endif /* KERN_PROC_CWD */
 
 struct event_base *
 osdep_event_init(void)
