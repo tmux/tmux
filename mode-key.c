@@ -289,6 +289,7 @@ const struct mode_key_entry mode_key_vi_copy[] = {
 	{ 'M',			    0, MODEKEYCOPY_MIDDLELINE },
 	{ 'N',			    0, MODEKEYCOPY_SEARCHREVERSE },
 	{ 'T',			    0, MODEKEYCOPY_JUMPTOBACK },
+	{ 'V',			    0, MODEKEYCOPY_SELECTLINE },
 	{ 'W',			    0, MODEKEYCOPY_NEXTSPACE },
 	{ '\002' /* C-b */,	    0, MODEKEYCOPY_PREVIOUSPAGE },
 	{ '\003' /* C-c */,	    0, MODEKEYCOPY_CANCEL },
