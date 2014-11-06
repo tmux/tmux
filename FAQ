@@ -403,7 +403,7 @@ always (or ever) be added to the scrollback.
 You can make tmux use the normal screen by telling it that your terminal does
 not have an alternate screen. Put the following in ~/.tmux.conf:
 
-        set -g terminal-overrides 'xterm*:smcup@:rmcup@'
+        set -ga terminal-overrides ',xterm*:smcup@:rmcup@'
 
 Adjust if your $TERM does not start with xterm.
 
