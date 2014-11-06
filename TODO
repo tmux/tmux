@@ -99,6 +99,8 @@
 	* panning over window (window larger than visible)
 	* a mode where one application can cross two panes (ie x|y, width =
           COLUMNS/2 but height = ROWS * 2)
+        * general key to space cells out evenly (horiz or vert) within their
+          parent cell (could replace even-vert/even-horiz layouts)
 
 - terminfo bits
 	* use a better termcap internally instead of screen, perhaps xterm
