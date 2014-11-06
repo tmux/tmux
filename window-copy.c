@@ -239,7 +239,6 @@ window_copy_init_for_output(struct window_pane *wp)
 	data->backing = xmalloc(sizeof *data->backing);
 	screen_init(data->backing, screen_size_x(&wp->base),
 	    screen_size_y(&wp->base), UINT_MAX);
-	data->backing->mode &= ~MODE_WRAP;
 }
 
 void
@@ -280,7 +279,7 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 	struct screen_write_ctx	 	 back_ctx, ctx;
 	struct grid_cell		 gc;
 	int				 utf8flag;
-	u_int				 old_hsize;
+	u_int				 old_hsize, old_cy;
 
 	if (backing == &wp->base)
 		return;
@@ -299,6 +298,7 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 		screen_write_linefeed(&back_ctx, 0);
 	} else
 		data->backing_written = 1;
+	old_cy = backing->cy;
 	screen_write_vnputs(&back_ctx, 0, &gc, utf8flag, fmt, ap);
 	screen_write_stop(&back_ctx);
 
@@ -313,9 +313,8 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 	if (screen_hsize(data->backing))
 		window_copy_redraw_lines(wp, 0, 1);
 
-	/* Write the line, if it's visible. */
-	if (backing->cy + data->oy < screen_size_y(backing))
-		window_copy_redraw_lines(wp, backing->cy, 1);
+	/* Write the new lines. */
+	window_copy_redraw_lines(wp, old_cy, backing->cy - old_cy + 1);
 
 	screen_write_stop(&ctx);
 }
@@ -345,9 +344,9 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 	struct screen			*s = &data->screen;
 	struct screen_write_ctx	 	 ctx;
 
-	screen_resize(s, sx, sy, 0);
+	screen_resize(s, sx, sy, 1);
 	if (data->backing != &wp->base)
-		screen_resize(data->backing, sx, sy, 0);
+		screen_resize(data->backing, sx, sy, 1);
 
 	if (data->cy > sy - 1)
 		data->cy = sy - 1;
