@@ -1,5 +1,3 @@
-/* $Id$ */
-
 /*
  * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
  *

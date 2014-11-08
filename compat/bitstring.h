@@ -1,4 +1,3 @@
-/* $Id$ */
 /*	$OpenBSD: bitstring.h,v 1.5 2003/06/02 19:34:12 millert Exp $	*/
 /*	$NetBSD: bitstring.h,v 1.5 1997/05/14 15:49:55 pk Exp $	*/
 

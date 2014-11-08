@@ -1,4 +1,3 @@
-/* $Id$ */
 /*	$OpenBSD: imsg-buffer.c,v 1.4 2014/06/30 00:25:17 deraadt Exp $	*/
 
 /*
