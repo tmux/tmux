@@ -270,6 +270,7 @@ screen_clear_selection(struct screen *s)
 	struct screen_sel	*sel = &s->sel;
 
 	sel->flag = 0;
+	sel->lineflag = LINE_SEL_NONE;
 }
 
 /* Check if cell in selection. */

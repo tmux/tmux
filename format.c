@@ -237,7 +237,8 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 		*ptr = '\0';
 
 		value = format_find(ft, copy + 1);
-		if (value != NULL && (value[0] != '0' || value[1] != '\0')) {
+		if (value != NULL && *value != '\0' &&
+		    (value[0] != '0' || value[1] != '\0')) {
 			value = ptr + 1;
 			ptr = strchr(value, ',');
 			if (ptr == NULL)

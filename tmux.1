@@ -879,10 +879,10 @@ The following keys are supported as appropriate for the mode:
 .It Sy "Function" Ta Sy "vi" Ta Sy "emacs"
 .It Li "Append selection" Ta "A" Ta ""
 .It Li "Back to indentation" Ta "^" Ta "M-m"
-.It Li "Copy to named buffer" Ta \&" Ta ""
 .It Li "Bottom of history" Ta "G" Ta "M-<"
 .It Li "Clear selection" Ta "Escape" Ta "C-g"
 .It Li "Copy selection" Ta "Enter" Ta "M-w"
+.It Li "Copy to named buffer" Ta \&" Ta ""
 .It Li "Cursor down" Ta "j" Ta "Down"
 .It Li "Cursor left" Ta "h" Ta "Left"
 .It Li "Cursor right" Ta "l" Ta "Right"
@@ -896,12 +896,12 @@ The following keys are supported as appropriate for the mode:
 .It Li "Go to line" Ta ":" Ta "g"
 .It Li "Half page down" Ta "C-d" Ta "M-Down"
 .It Li "Half page up" Ta "C-u" Ta "M-Up"
-.It Li "Jump forward" Ta "f" Ta "f"
-.It Li "Jump to forward" Ta "t" Ta ""
-.It Li "Jump backward" Ta "F" Ta "F"
-.It Li "Jump to backward" Ta "T" Ta ""
 .It Li "Jump again" Ta ";" Ta ";"
 .It Li "Jump again in reverse" Ta "," Ta ","
+.It Li "Jump backward" Ta "F" Ta "F"
+.It Li "Jump forward" Ta "f" Ta "f"
+.It Li "Jump to backward" Ta "T" Ta ""
+.It Li "Jump to forward" Ta "t" Ta ""
 .It Li "Next page" Ta "C-f" Ta "Page down"
 .It Li "Next space" Ta "W" Ta ""
 .It Li "Next space, end of word" Ta "E" Ta ""
@@ -910,8 +910,8 @@ The following keys are supported as appropriate for the mode:
 .It Li "Other end of selection" Ta "o" Ta ""
 .It Li "Paste buffer" Ta "p" Ta "C-y"
 .It Li "Previous page" Ta "C-b" Ta "Page up"
-.It Li "Previous word" Ta "b" Ta "M-b"
 .It Li "Previous space" Ta "B" Ta ""
+.It Li "Previous word" Ta "b" Ta "M-b"
 .It Li "Quit mode" Ta "q" Ta "Escape"
 .It Li "Rectangle toggle" Ta "v" Ta "R"
 .It Li "Scroll down" Ta "C-Down or C-e" Ta "C-Down"
@@ -920,6 +920,7 @@ The following keys are supported as appropriate for the mode:
 .It Li "Search again in reverse" Ta "N" Ta "N"
 .It Li "Search backward" Ta "?" Ta "C-r"
 .It Li "Search forward" Ta "/" Ta "C-s"
+.It Li "Select line" Ta "V" Ta ""
 .It Li "Start of line" Ta "0" Ta "C-a"
 .It Li "Start selection" Ta "Space" Ta "C-Space"
 .It Li "Top of history" Ta "g" Ta "M->"
@@ -2585,6 +2586,9 @@ By default, UTF-8 in
 is not interpreted, to enable UTF-8, use the
 .Ic status-utf8
 option.
+.Pp
+The default is
+.Ql "[#S] " .
 .It Ic status-left-length Ar length
 Set the maximum
 .Ar length

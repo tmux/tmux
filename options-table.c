@@ -389,7 +389,7 @@ const struct options_table_entry session_options_table[] = {
 
 	{ .name = "status-left",
 	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = "[#S]"
+	  .default_str = "[#S] "
 	},
 
 	{ .name = "status-left-attr",
@@ -430,7 +430,7 @@ const struct options_table_entry session_options_table[] = {
 
 	{ .name = "status-right",
 	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = "\"#{=22:pane_title}\" %H:%M %d-%b-%y"
+	  .default_str = " \"#{=22:pane_title}\" %H:%M %d-%b-%y"
 	},
 
 	{ .name = "status-right-attr",

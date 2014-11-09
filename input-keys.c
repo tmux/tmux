@@ -204,6 +204,7 @@ input_mouse(struct window_pane *wp, struct session *s, struct mouse_event *m)
 	char			 buf[40];
 	size_t			 len;
 	struct paste_buffer	*pb;
+	int			 event;
 
 	if (wp->screen->mode & ALL_MOUSE_MODES) {
 		/*
@@ -237,19 +238,16 @@ input_mouse(struct window_pane *wp, struct session *s, struct mouse_event *m)
 		return;
 	}
 
-	if (m->button == 1 && (m->event & MOUSE_EVENT_CLICK) &&
-	    options_get_number(&wp->window->options, "mode-mouse") == 1) {
+	if (options_get_number(&wp->window->options, "mode-mouse") != 1)
+		return;
+	event = m->event & (MOUSE_EVENT_CLICK|MOUSE_EVENT_WHEEL);
+	if (wp->mode == NULL && m->button == 1 && event == MOUSE_EVENT_CLICK) {
 		pb = paste_get_top();
-		if (pb != NULL) {
-			paste_send_pane(pb, wp, "\r",
-			    wp->screen->mode & MODE_BRACKETPASTE);
-		}
-	} else if (m->button != 1 &&
-	    options_get_number(&wp->window->options, "mode-mouse") == 1) {
-		if (window_pane_set_mode(wp, &window_copy_mode) == 0) {
-			window_copy_init_from_pane(wp);
-			if (wp->mode->mouse != NULL)
-				wp->mode->mouse(wp, s, m);
-		}
+		if (pb != NULL)
+			paste_send_pane(pb, wp, "\r", 1);
+	} else if (window_pane_set_mode(wp, &window_copy_mode) == 0) {
+		window_copy_init_from_pane(wp);
+		if (wp->mode->mouse != NULL)
+			wp->mode->mouse(wp, s, m);
 	}
 }
