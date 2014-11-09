@@ -1479,17 +1479,27 @@ void
 window_copy_copy_pipe(struct window_pane *wp, struct session *sess,
     const char *bufname, const char *arg)
 {
-	void		*buf;
-	size_t		 len;
-	struct job	*job;
-
+	void			*buf;
+	size_t			 len;
+	struct job		*job;
+	struct format_tree	*ft;
+	char			*expanded;
 
 	buf = window_copy_get_selection(wp, &len);
 	if (buf == NULL)
 		return;
 
-	job = job_run(arg, sess, NULL, NULL, NULL);
+	ft = format_create();
+	format_window_pane(ft, wp);
+	if (sess != NULL)
+		format_session(ft, sess);
+	expanded = format_expand(ft, arg);
+
+	job = job_run(expanded, sess, NULL, NULL, NULL);
 	bufferevent_write(job->event, buf, len);
+
+	free(expanded);
+	format_free(ft);
 
 	window_copy_copy_buffer(wp, bufname, buf, len);
 }
