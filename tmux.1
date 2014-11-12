@@ -1757,7 +1757,7 @@ is given and the selected window is already the current window,
 the command behaves like
 .Ic last-window .
 .It Xo Ic split-window
-.Op Fl dhvP
+.Op Fl bdhvP
 .Op Fl c Ar start-directory
 .Oo Fl l
 .Ar size |
@@ -1781,6 +1781,10 @@ and
 .Fl p
 options specify the size of the new pane in lines (for vertical split) or in
 cells (for horizontal split), or as a percentage, respectively.
+The
+.Fl b
+option causes the new pane to be created to the left of or above
+.Ar target-pane .
 All other options have the same meaning as for the
 .Ic new-window
 command.

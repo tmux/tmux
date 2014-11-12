@@ -37,8 +37,8 @@ enum cmd_retval	 cmd_split_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_split_window_entry = {
 	"split-window", "splitw",
-	"c:dF:l:hp:Pt:v", 0, -1,
-	"[-dhvP] [-c start-directory] [-F format] [-p percentage|-l size] "
+	"bc:dF:l:hp:Pt:v", 0, -1,
+	"[-bdhvP] [-c start-directory] [-F format] [-p percentage|-l size] "
 	CMD_TARGET_PANE_USAGE " [command]",
 	0,
 	cmd_split_window_exec
@@ -145,7 +145,8 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 
-	if ((lc = layout_split_pane(wp, type, size, 0)) == NULL) {
+	lc = layout_split_pane(wp, type, size, args_has(args, 'b'));
+	if (lc == NULL) {
 		cause = xstrdup("pane too small");
 		goto error;
 	}
