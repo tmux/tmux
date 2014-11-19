@@ -278,8 +278,37 @@ screen_redraw_draw_borders(struct client *c, int status, u_int top)
 	struct options		*oo = &c->session->options;
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
-	struct grid_cell	 active_gc, other_gc;
-	u_int		 	 i, j, type;
+	struct grid_cell	 active_gc, other_gc, msg_gc;
+	u_int		 	 i, j, type, msgx = 0, msgy = 0;
+	int			 small, flags;
+	char			 msg[256];
+	const char		*tmp;
+	size_t			 msglen = 0;
+
+	small = (tty->sy - status + top > w->sy) || (tty->sx > w->sx);
+	if (small) {
+		flags = w->flags & (WINDOW_FORCEWIDTH|WINDOW_FORCEHEIGHT);
+		if (flags == (WINDOW_FORCEWIDTH|WINDOW_FORCEHEIGHT))
+			tmp = "force-width, force-height";
+		else if (flags == WINDOW_FORCEWIDTH)
+			tmp = "force-width";
+		else if (flags == WINDOW_FORCEHEIGHT)
+			tmp = "force-height";
+		else
+			tmp = "a smaller client";
+		xsnprintf(msg, sizeof msg, "(size %ux%u from %s)",
+		    w->sx, w->sy, tmp);
+		msglen = strlen(msg);
+
+		if (tty->sy - 1 - status + top > w->sy && tty->sx >= msglen) {
+			msgx = tty->sx - msglen;
+			msgy = tty->sy - 1 - status + top;
+		} else if (tty->sx - w->sx > msglen) {
+			msgx = tty->sx - msglen;
+			msgy = tty->sy - 1 - status + top;
+		} else
+			small = 0;
+	}
 
 	style_apply(&other_gc, oo, "pane-border-style");
 	style_apply(&active_gc, oo, "pane-active-border-style");
@@ -290,6 +319,9 @@ screen_redraw_draw_borders(struct client *c, int status, u_int top)
 			type = screen_redraw_check_cell(c, i, j, &wp);
 			if (type == CELL_INSIDE)
 				continue;
+			if (type == CELL_OUTSIDE &&
+			    small && i > msgx && j == msgy)
+				continue;
 			if (screen_redraw_check_active(i, j, type, w, wp))
 				tty_attributes(tty, &active_gc);
 			else
@@ -297,6 +329,13 @@ screen_redraw_draw_borders(struct client *c, int status, u_int top)
 			tty_cursor(tty, i, top + j);
 			tty_putc(tty, CELL_BORDERS[type]);
 		}
+	}
+
+	if (small) {
+		memcpy(&msg_gc, &grid_default_cell, sizeof msg_gc);
+		tty_attributes(tty, &msg_gc);
+		tty_cursor(tty, msgx, msgy);
+		tty_puts(tty, msg);
 	}
 }
 
