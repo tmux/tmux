@@ -2236,9 +2236,6 @@ struct window_choose_data	*window_choose_add_window(struct window_pane *,
 struct window_choose_data	*window_choose_add_session(struct window_pane *,
 			struct client *, struct session *, const char *,
 			const char *, u_int);
-struct window_choose_data	*window_choose_add_item(struct window_pane *,
-			struct client *, struct winlink *, const char *,
-			const char *, u_int);
 void	window_choose_expand_all(struct window_pane *);
 void	window_choose_collapse_all(struct window_pane *);
 void	window_choose_set_current(struct window_pane *, u_int);
