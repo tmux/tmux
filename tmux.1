@@ -3039,12 +3039,17 @@ and
 .Ql } ,
 for example
 .Ql #{session_name} .
-Some variables also have an shorter alias such as
-.Ql #S .
+The possible variables are listed in the table below, or the name of a
+.Nm
+option may be used for an option's value.
+Some variables have a shorter alias such as
+.Ql #S ,
+and
 .Ql ##
 is replaced by a single
 .Ql # .
-Conditionals are also accepted by prefixing with
+.Pp
+Conditionals are available by prefixing with
 .Ql \&?
 and separating two alternatives with a comma;
 if the specified variable exists and is not zero, the first alternative
@@ -3055,7 +3060,15 @@ will include the string
 .Ql attached
 if the session is attached and the string
 .Ql not attached
-if it is unattached.
+if it is unattached, or
+.Ql #{?automatic-rename,yes,no}
+will include
+.Ql yes
+if
+.Ic automatic-rename
+is enabled, or
+.Ql no
+if not.
 A limit may be placed on the length of the resultant string by prefixing it
 by an
 .Ql = ,
