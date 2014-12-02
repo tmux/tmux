@@ -3589,7 +3589,7 @@ Miscellaneous commands are as follows:
 .It Ic clock-mode Op Fl t Ar target-pane
 Display a large clock.
 .It Xo Ic if-shell
-.Op Fl b
+.Op Fl bF
 .Op Fl t Ar target-pane
 .Ar shell-command command
 .Op Ar command
@@ -3602,7 +3602,9 @@ if
 returns success or the second
 .Ar command
 otherwise.
-Before being executed, shell-command is expanded using the rules specified in the
+Before being executed,
+.Ar shell-command
+is expanded using the rules specified in the
 .Sx FORMATS
 section, including those relevant to
 .Ar target-pane .
@@ -3610,6 +3612,13 @@ With
 .Fl b ,
 .Ar shell-command
 is run in the background.
+.Pp
+If
+.Fl F
+is given,
+.Ar shell-command
+is not executed but considered success if neither empty nor zero (after formats
+are expanded).
 .It Ic lock-server
 .D1 (alias: Ic lock )
 Lock each client individually by running the command specified by the
