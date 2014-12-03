@@ -1459,15 +1459,6 @@ struct options_table_entry {
 	const char	       *style;
 };
 
-/* Tree of format entries. */
-struct format_entry {
-	char		       *key;
-	char		       *value;
-
-	RB_ENTRY(format_entry)	entry;
-};
-RB_HEAD(format_tree, format_entry);
-
 /* Common command usages. */
 #define CMD_TARGET_PANE_USAGE "[-t target-pane]"
 #define CMD_TARGET_WINDOW_USAGE "[-t target-window]"
@@ -1511,8 +1502,7 @@ void		 cfg_print_causes(struct cmd_q *);
 void		 cfg_show_causes(struct session *);
 
 /* format.c */
-int		 format_cmp(struct format_entry *, struct format_entry *);
-RB_PROTOTYPE(format_tree, format_entry, entry, format_cmp);
+struct format_tree;
 struct format_tree *format_create(void);
 void		 format_free(struct format_tree *);
 void printflike(3, 4) format_add(struct format_tree *, const char *,
@@ -2233,9 +2223,6 @@ struct window_choose_data	*window_choose_add_window(struct window_pane *,
 			const char *, const char *, u_int);
 struct window_choose_data	*window_choose_add_session(struct window_pane *,
 			struct client *, struct session *, const char *,
-			const char *, u_int);
-struct window_choose_data	*window_choose_add_item(struct window_pane *,
-			struct client *, struct winlink *, const char *,
 			const char *, u_int);
 void	window_choose_expand_all(struct window_pane *);
 void	window_choose_collapse_all(struct window_pane *);
