@@ -890,6 +890,7 @@ struct window_pane {
 
 	pid_t		 pid;
 	char		 tty[TTY_NAME_MAX];
+	int		 status;
 
 	u_int		 changes;
 	struct event	 changes_timer;

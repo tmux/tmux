@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include <ctype.h>
 #include <errno.h>
@@ -581,6 +582,7 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	unsigned long long	 size;
 	u_int			 i, idx;
 	char			*cmd;
+	int			 status;
 
 	if (ft->w == NULL)
 		ft->w = wp->window;
@@ -604,8 +606,12 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_title", "%s", wp->base.title);
 	format_add(ft, "pane_id", "%%%u", wp->id);
 	format_add(ft, "pane_active", "%d", wp == wp->window->active);
-	format_add(ft, "pane_dead", "%d", wp->fd == -1);
 	format_add(ft, "pane_input_off", "%d", !!(wp->flags & PANE_INPUTOFF));
+
+	status = wp->status;
+	if (wp->fd == -1 && WIFEXITED(status))
+		format_add(ft, "pane_dead_status", "%d", WEXITSTATUS(status));
+	format_add(ft, "pane_dead", "%d", wp->fd == -1);
 
 	if (window_pane_visible(wp)) {
 		format_add(ft, "pane_left", "%u", wp->xoff);
