@@ -491,6 +491,7 @@ window_zoom(struct window_pane *wp)
 	w->saved_layout_root = w->layout_root;
 	layout_init(w, wp);
 	w->flags |= WINDOW_ZOOMED;
+	notify_window_layout_changed(w);
 
 	return (0);
 }
@@ -512,6 +513,7 @@ window_unzoom(struct window *w)
 		wp->saved_layout_cell = NULL;
 	}
 	layout_fix_panes(w, w->sx, w->sy);
+	notify_window_layout_changed(w);
 
 	return (0);
 }
