@@ -33,6 +33,7 @@ int	window_copy_key_numeric_prefix(struct window_pane *, int);
 void	window_copy_mouse(struct window_pane *, struct session *,
 	    struct mouse_event *);
 
+void	window_copy_redraw_selection(struct window_pane *, u_int);
 void	window_copy_redraw_lines(struct window_pane *, u_int, u_int);
 void	window_copy_redraw_screen(struct window_pane *);
 void	window_copy_write_line(struct window_pane *, struct screen_write_ctx *,
@@ -874,7 +875,7 @@ window_copy_mouse(struct window_pane *wp, struct session *sess,
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	u_int				 i;
+	u_int				 i, old_cy;
 
 	if (m->x >= screen_size_x(s))
 		return;
@@ -907,9 +908,10 @@ window_copy_mouse(struct window_pane *wp, struct session *sess,
 	 */
 	if (s->mode & MODE_MOUSE_BUTTON) {
 		if (~m->event & MOUSE_EVENT_UP) {
+			old_cy = data->cy;
 			window_copy_update_cursor(wp, m->x, m->y);
 			if (window_copy_update_selection(wp, 1))
-				window_copy_redraw_screen(wp);
+				window_copy_redraw_selection(wp, old_cy);
 			return;
 		}
 		goto reset_mode;
@@ -1243,6 +1245,23 @@ window_copy_write_lines(struct window_pane *wp, struct screen_write_ctx *ctx,
 
 	for (yy = py; yy < py + ny; yy++)
 		window_copy_write_line(wp, ctx, py);
+}
+
+void
+window_copy_redraw_selection(struct window_pane *wp, u_int old_y)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	u_int				 new_y, start, end;
+
+	new_y = data->cy;
+	if (old_y <= new_y) {
+		start = old_y;
+		end = new_y;
+	} else {
+		start = new_y;
+		end = old_y;
+	}
+	window_copy_redraw_lines(wp, start, end - start + 1);
 }
 
 void
