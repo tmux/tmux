@@ -54,10 +54,12 @@ vasprintf(char **ret, const char *fmt, va_list ap)
 		free(*ret);
 		goto error;
 	}
+	va_end(ap2);
 
 	return (n);
 
 error:
+	va_end(ap2);
 	*ret = NULL;
 	return (-1);
 }
