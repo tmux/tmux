@@ -42,9 +42,6 @@ function! s:SetXtermCapabilities()
   execute "set <F10>=\e[21;*~"
   execute "set <F11>=\e[23;*~"
   execute "set <F12>=\e[24;*~"
-
-  execute "set t_kP=^[[5;*~"
-  execute "set t_kN=^[[6;*~"
 endfunction
 
 if exists('$TMUX')
