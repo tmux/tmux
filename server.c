@@ -442,6 +442,7 @@ server_child_exited(pid_t pid, int status)
 			continue;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->pid == pid) {
+				wp->status = status;
 				server_destroy_pane(wp);
 				break;
 			}
