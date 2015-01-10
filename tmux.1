@@ -251,6 +251,10 @@ Split the current pane into two, left and right.
 Kill the current window.
 .It '
 Prompt for a window index to select.
+.It \&(
+Switch the attached client to the previous session.
+.It \&)
+Switch the attached client to the next session.
 .It ,
 Rename the current window.
 .It -
@@ -271,6 +275,8 @@ Choose which buffer to paste interactively from a list.
 List all key bindings.
 .It D
 Choose a client to detach.
+.It L
+Switch the attached client back to the last session.
 .It \&[
 Enter copy mode to copy text or view the history.
 .It \&]
@@ -297,14 +303,14 @@ Briefly display pane indexes.
 Force redraw of the attached client.
 .It s
 Select a new session for the attached client interactively.
-.It L
-Switch the attached client back to the last session.
 .It t
 Show the time.
 .It w
 Choose the current window interactively.
 .It x
 Kill the current pane.
+.It z
+Toggle zoom state of the current pane.
 .It {
 Swap the current pane with the previous pane.
 .It }
@@ -322,6 +328,8 @@ pane.
 .It M-1 to M-5
 Arrange panes in one of the five preset layouts: even-horizontal,
 even-vertical, main-horizontal, main-vertical, or tiled.
+.It Space
+Arrange the current window in the next preset layout.
 .It M-n
 Move to the next window with a bell or activity marker.
 .It M-o

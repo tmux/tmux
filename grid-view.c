@@ -184,10 +184,7 @@ grid_view_insert_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 	px = grid_view_x(gd, px);
 	py = grid_view_y(gd, py);
 
-	if (gd->linedata[py].cellsize + nx < gd->sx)
-		sx = grid_view_x(gd, gd->linedata[py].cellsize + nx);
-	else
-		sx = grid_view_x(gd, gd->sx);
+	sx = grid_view_x(gd, gd->sx);
 
 	if (px == sx - 1)
 		grid_clear(gd, px, py, 1, 1);
@@ -204,9 +201,7 @@ grid_view_delete_cells(struct grid *gd, u_int px, u_int py, u_int nx)
 	px = grid_view_x(gd, px);
 	py = grid_view_y(gd, py);
 
-	sx = grid_view_x(gd, gd->linedata[py].cellsize);
-	if (sx < px + nx)
-		sx = px + nx;
+	sx = grid_view_x(gd, gd->sx);
 
 	grid_move_cells(gd, px, px + nx, py, sx - px - nx);
 	grid_clear(gd, sx - nx, py, px + nx - (sx - nx), 1);

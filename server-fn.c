@@ -270,6 +270,7 @@ server_kill_window(struct window *w)
 
 		if (session_has(s, w) == NULL)
 			continue;
+		server_unzoom_window(w);
 		while ((wl = winlink_find_by_window(&s->windows, w)) != NULL) {
 			if (session_detach(s, wl)) {
 				server_destroy_session_group(s);
