@@ -36,12 +36,12 @@ CFLAGS += -Wdeclaration-after-statement
 CPPFLAGS += -DDEBUG
 endif
 if IS_GCC4
-CPPFLAGS += -iquote. -I/usr/local/include
+CPPFLAGS += -iquote.
 if IS_DEBUG
 CFLAGS += -Wno-pointer-sign
 endif
 else
-CPPFLAGS += -I. -I- -I/usr/local/include
+CPPFLAGS += -I. -I-
 endif
 endif
 
