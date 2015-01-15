@@ -390,13 +390,16 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 			if (data->inputtype == WINDOW_COPY_JUMPFORWARD) {
 				for (; np != 0; np--)
 					window_copy_cursor_jump(wp);
-			} else if (data->inputtype == WINDOW_COPY_JUMPBACK) {
+			}
+			if (data->inputtype == WINDOW_COPY_JUMPBACK) {
 				for (; np != 0; np--)
 					window_copy_cursor_jump_back(wp);
-			} else if (data->inputtype == WINDOW_COPY_JUMPTOFORWARD) {
+			}
+			if (data->inputtype == WINDOW_COPY_JUMPTOFORWARD) {
 				for (; np != 0; np--)
 					window_copy_cursor_jump_to(wp);
-			} else if (data->inputtype == WINDOW_COPY_JUMPTOBACK) {
+			}
+			if (data->inputtype == WINDOW_COPY_JUMPTOBACK) {
 				for (; np != 0; np--)
 					window_copy_cursor_jump_to_back(wp);
 			}
@@ -1771,7 +1774,7 @@ window_copy_other_end(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	u_int				 selx, sely, cx, cy, yy;
+	u_int				 selx, sely, cx, cy, yy, hsize;
 
 	if (!s->sel.flag && s->sel.lineflag == LINE_SEL_NONE)
 		return;
@@ -1791,13 +1794,13 @@ window_copy_other_end(struct window_pane *wp)
 	data->sely = yy;
 	data->cx = selx;
 
-	if (sely < screen_hsize(data->backing) - data->oy) {
-		data->oy = screen_hsize(data->backing) - sely;
+	hsize = screen_hsize(data->backing);
+	if (sely < hsize - data->oy) {
+		data->oy = hsize - sely;
 		data->cy = 0;
-	} else if (sely > screen_hsize(data->backing) - data->oy + screen_size_y(s)) {
-		data->oy = screen_hsize(data->backing) - sely + screen_size_y(s) - 1;
+	} else if (sely > hsize - data->oy + screen_size_y(s)) {
+		data->oy = hsize - sely + screen_size_y(s) - 1;
 		data->cy = screen_size_y(s) - 1;
-
 	} else
 		data->cy = cy + sely - yy;
 
