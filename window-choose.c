@@ -330,14 +330,12 @@ window_choose_collapse(struct window_pane *wp, struct session *s)
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct window_choose_mode_item	*item, *chosen;
 	struct window_choose_data	*wcd;
-	u_int				 i, pos;
+	u_int				 i;
 
 	ARRAY_DECL(, struct window_choose_mode_item) list_copy;
 	ARRAY_INIT(&list_copy);
 
-	pos = data->selected;
-
-	chosen = &ARRAY_ITEM(&data->list, pos);
+	chosen = &ARRAY_ITEM(&data->list, data->selected);
 	chosen->state &= ~TREE_EXPANDED;
 
 	/*
@@ -353,9 +351,8 @@ window_choose_collapse(struct window_pane *wp, struct session *s)
 			/* We only show the session when collapsed. */
 			if (wcd->type & TREE_SESSION) {
 				item->state &= ~TREE_EXPANDED;
+				ARRAY_ADD(&list_copy, *item);
 
-				ARRAY_ADD(&list_copy,
-						ARRAY_ITEM(&data->list, i));
 				/*
 				 * Update the selection to this session item so
 				 * we don't end up highlighting a non-existent

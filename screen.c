@@ -32,11 +32,11 @@ void	screen_resize_y(struct screen *, u_int);
 void
 screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 {
-	char host[HOST_NAME_MAX];
+	char host[HOST_NAME_MAX+1];
 
 	s->grid = grid_create(sx, sy, hlimit);
 
-	if (gethostname(host, HOST_NAME_MAX) == 0)
+	if (gethostname(host, sizeof(host)) == 0)
 		s->title = xstrdup(host);
 	else
 		s->title = xstrdup("");
