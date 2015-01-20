@@ -175,6 +175,7 @@ enum tty_code_code {
 	TTYC_CUP,	/* cursor_address, cm */
 	TTYC_CUU,	/* parm_up_cursor, UP */
 	TTYC_CUU1,	/* cursor_up, up */
+	TTYC_CVVIS,	/* cursor_visible, vs */
 	TTYC_DCH,	/* parm_dch, DC */
 	TTYC_DCH1,	/* delete_character, dc */
 	TTYC_DIM,	/* enter_dim_mode, mh */
@@ -600,7 +601,7 @@ struct mode_key_table {
 #define MODE_WRAP 0x10		/* whether lines wrap */
 #define MODE_MOUSE_STANDARD 0x20
 #define MODE_MOUSE_BUTTON 0x40
-/* 0x80 unused */
+#define MODE_BLINKING 0x80
 #define MODE_MOUSE_UTF8 0x100
 #define MODE_MOUSE_SGR 0x200
 #define MODE_BRACKETPASTE 0x400
