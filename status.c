@@ -328,7 +328,7 @@ draw:
 		wloffset = 0;
 	if (wlwidth < wlavailable) {
 		switch (options_get_number(&s->options, "status-justify")) {
-		case 1:	/* centered */
+		case 1:	/* centred */
 			wloffset += (wlavailable - wlwidth) / 2;
 			break;
 		case 2:	/* right */
