@@ -342,8 +342,8 @@ AC_CHECK_FUNC(strnvis, found_strnvis=yes, found_strnvis=no)
 if test "x$found_strnvis" = xyes; then
 	AC_MSG_CHECKING(if strnvis is broken)
 	AC_EGREP_HEADER([strnvis\(char \*, const char \*, size_t, int\)],
-		        vis.h,
-		        AC_MSG_RESULT(no),
+			vis.h,
+			AC_MSG_RESULT(no),
 			[found_strnvis=no])
 	if test "x$found_strnvis" = xno; then
 		AC_MSG_RESULT(yes)
@@ -402,7 +402,7 @@ AC_COMPILE_IFELSE([AC_LANG_SOURCE(
 		#include <stdint.h>
 		#else
 		#include <inttypes.h>
-		#endif	
+		#endif
 		int main(void)
 		{ u_int8_t u8; u_int16_t u16; u_int32_t u32; u_int64_t u64; }
 	])],
