@@ -134,7 +134,7 @@ struct format_tree *
 format_create(void)
 {
 	struct format_tree	*ft;
-	char			 host[MAXHOSTNAMELEN], *ptr;
+	char			 host[HOST_NAME_MAX+1], *ptr;
 
 	ft = xcalloc(1, sizeof *ft);
 	RB_INIT(&ft->tree);
