@@ -290,7 +290,7 @@ tty_stop_tty(struct tty *tty)
 	if (tty_term_has(tty->term, TTYC_XT)) {
 		if (tty->flags & TTY_FOCUS) {
 			tty->flags &= ~TTY_FOCUS;
-			tty_puts(tty, "\033[?1004l");
+			tty_raw(tty, "\033[?1004l");
 		}
 	}
 
