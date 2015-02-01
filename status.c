@@ -75,17 +75,18 @@ status_at_line(struct client *c)
 
 /* Retrieve options for left string. */
 char *
-status_redraw_get_left(struct client *c,
-    time_t t, int utf8flag, struct grid_cell *gc, size_t *size)
+status_redraw_get_left(struct client *c, time_t t, int utf8flag,
+    struct grid_cell *gc, size_t *size)
 {
 	struct session	*s = c->session;
+	const char	*template;
 	char		*left;
 	size_t		 leftlen;
 
 	style_apply_update(gc, &s->options, "status-left-style");
 
-	left = status_replace(c, NULL,
-	    NULL, NULL, options_get_string(&s->options, "status-left"), t, 1);
+	template = options_get_string(&s->options, "status-left");
+	left = status_replace(c, NULL, template , t, 1);
 
 	*size = options_get_number(&s->options, "status-left-length");
 	leftlen = screen_write_cstrlen(utf8flag, "%s", left);
@@ -96,17 +97,18 @@ status_redraw_get_left(struct client *c,
 
 /* Retrieve options for right string. */
 char *
-status_redraw_get_right(struct client *c,
-    time_t t, int utf8flag, struct grid_cell *gc, size_t *size)
+status_redraw_get_right(struct client *c, time_t t, int utf8flag,
+    struct grid_cell *gc, size_t *size)
 {
 	struct session	*s = c->session;
+	const char	*template;
 	char		*right;
 	size_t		 rightlen;
 
 	style_apply_update(gc, &s->options, "status-right-style");
 
-	right = status_replace(c, NULL,
-	    NULL, NULL, options_get_string(&s->options, "status-right"), t, 1);
+	template = options_get_string(&s->options, "status-right");
+	right = status_replace(c, NULL, template, t, 1);
 
 	*size = options_get_number(&s->options, "status-right-length");
 	rightlen = screen_write_cstrlen(utf8flag, "%s", right);
@@ -432,9 +434,11 @@ skip_to:
 
 /* Replace special sequences in fmt. */
 char *
-status_replace(struct client *c, struct session *s, struct winlink *wl,
-    struct window_pane *wp, const char *fmt, time_t t, int jobsflag)
+status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t,
+    int jobsflag)
 {
+	struct session		*s = NULL;
+	struct window_pane	*wp = NULL;
 	static char		 out[BUFSIZ];
 	char			 in[BUFSIZ], ch, *iptr, *optr, *expanded;
 	size_t			 len;
@@ -443,11 +447,11 @@ status_replace(struct client *c, struct session *s, struct winlink *wl,
 	if (fmt == NULL)
 		return (xstrdup(""));
 
-	if (s == NULL && c != NULL)
+	if (c != NULL)
 		s = c->session;
 	if (wl == NULL && s != NULL)
 		wl = s->curw;
-	if (wp == NULL && wl != NULL)
+	if (wl != NULL)
 		wp = wl->window->active;
 
 	len = strftime(in, sizeof in, fmt, localtime(&t));
@@ -620,8 +624,8 @@ status_job_callback(struct job *job)
 
 /* Return winlink status line entry and adjust gc as necessary. */
 char *
-status_print(
-    struct client *c, struct winlink *wl, time_t t, struct grid_cell *gc)
+status_print(struct client *c, struct winlink *wl, time_t t,
+    struct grid_cell *gc)
 {
 	struct options	*oo = &wl->window->options;
 	struct session	*s = c->session;
@@ -642,7 +646,7 @@ status_print(
 	else if (wl->flags & (WINLINK_ACTIVITY|WINLINK_SILENCE))
 		style_apply_update(gc, oo, "window-status-activity-style");
 
-	text = status_replace(c, NULL, wl, NULL, fmt, t, 1);
+	text = status_replace(c, wl, fmt, t, 1);
 	return (text);
 }
 
@@ -768,11 +772,9 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 	status_message_clear(c);
 	status_prompt_clear(c);
 
-	c->prompt_string = status_replace(c, NULL, NULL, NULL, msg,
-	    time(NULL), 0);
+	c->prompt_string = status_replace(c, NULL, msg, time(NULL), 0);
 
-	c->prompt_buffer = status_replace(c, NULL, NULL, NULL, input,
-	    time(NULL), 0);
+	c->prompt_buffer = status_replace(c, NULL, input, time(NULL), 0);
 	c->prompt_index = strlen(c->prompt_buffer);
 
 	c->prompt_callbackfn = callbackfn;
@@ -820,12 +822,10 @@ void
 status_prompt_update(struct client *c, const char *msg, const char *input)
 {
 	free(c->prompt_string);
-	c->prompt_string = status_replace(c, NULL, NULL, NULL, msg,
-	    time(NULL), 0);
+	c->prompt_string = status_replace(c, NULL, msg, time(NULL), 0);
 
 	free(c->prompt_buffer);
-	c->prompt_buffer = status_replace(c, NULL, NULL, NULL, input,
-	    time(NULL), 0);
+	c->prompt_buffer = status_replace(c, NULL, input, time(NULL), 0);
 	c->prompt_index = strlen(c->prompt_buffer);
 
 	c->prompt_hindex = 0;

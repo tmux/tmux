@@ -1926,8 +1926,8 @@ void	 status_free_jobs(struct status_out_tree *);
 void	 status_update_jobs(struct client *);
 void	 status_set_window_at(struct client *, u_int);
 int	 status_redraw(struct client *);
-char	*status_replace(struct client *, struct session *, struct winlink *,
-	     struct window_pane *, const char *, time_t, int);
+char	*status_replace(struct client *, struct winlink *, const char *, time_t,
+	     int);
 void printflike(2, 3) status_message_set(struct client *, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);

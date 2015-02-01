@@ -779,7 +779,7 @@ server_client_set_title(struct client *c)
 
 	template = options_get_string(&s->options, "set-titles-string");
 
-	title = status_replace(c, NULL, NULL, NULL, template, time(NULL), 1);
+	title = status_replace(c, NULL, template, time(NULL), 1);
 	if (c->title == NULL || strcmp(title, c->title) != 0) {
 		free(c->title);
 		c->title = xstrdup(title);
