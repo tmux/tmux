@@ -59,7 +59,6 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	int			 argc, size, percentage, cwd, fd = -1;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
-	struct client		*c;
 	struct format_tree	*ft;
 	struct environ_entry	*envent;
 

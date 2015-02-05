@@ -49,7 +49,6 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct args		*args = self->args;
 	struct session		*s;
 	struct winlink		*wl;
-	struct client		*c;
 	const char		*cmd, *path, *template;
 	char		       **argv, *cause, *cp;
 	int			 argc, idx, last, detached, cwd, fd = -1;
