@@ -83,7 +83,7 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		cdata->idx = idx;
 
 		cdata->ft_template = xstrdup(template);
-		format_paste_buffer(cdata->ft, pb, utf8flag);
+		format_defaults_paste_buffer(cdata->ft, pb, utf8flag);
 
 		xasprintf(&action_data, "%s", pb->name);
 		cdata->command = cmd_template_replace(action, action_data, 1);

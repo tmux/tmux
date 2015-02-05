@@ -194,9 +194,7 @@ cmd_find_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		format_add(cdata->ft, "line", "%u", i);
 		format_add(cdata->ft, "window_find_matches", "%s",
 		    ARRAY_ITEM(&find_list, i).list_ctx);
-		format_session(cdata->ft, s);
-		format_winlink(cdata->ft, s, wm);
-		format_window_pane(cdata->ft, wm->window->active);
+		format_defaults(cdata->ft, NULL, s, wm, NULL);
 
 		window_choose_add(wl->window->active, cdata);
 	}

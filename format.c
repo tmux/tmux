@@ -38,7 +38,12 @@
 int	 format_replace(struct format_tree *, const char *, size_t, char **,
 	     size_t *, size_t *);
 char	*format_get_command(struct window_pane *);
-void	 format_window_pane_tabs(struct format_tree *, struct window_pane *);
+
+void	 format_defaults_pane_tabs(struct format_tree *, struct window_pane *);
+void	 format_defaults_session(struct format_tree *, struct session *);
+void	 format_defaults_client(struct format_tree *, struct client *);
+void	 format_defaults_winlink(struct format_tree *, struct session *,
+	     struct winlink *);
 
 /* Entry in format tree. */
 struct format_entry {
@@ -418,9 +423,31 @@ format_get_command(struct window_pane *wp)
 	return (out);
 }
 
+/* Set defaults for any of arguments that are not NULL. */
+void
+format_defaults(struct format_tree *ft, struct client *c, struct session *s,
+    struct winlink *wl, struct window_pane *wp)
+{
+	if (s == NULL && c != NULL)
+		s = c->session;
+	if (wl == NULL && s != NULL)
+		wl = s->curw;
+	if (wp == NULL && wl != NULL)
+		wp = wl->window->active;
+
+	if (c != NULL)
+		format_defaults_client(ft, c);
+	if (s != NULL)
+		format_defaults_session(ft, s);
+	if (s != NULL && wl != NULL)
+		format_defaults_winlink(ft, s, wl);
+	if (wp != NULL)
+		format_defaults_pane(ft, wp);
+}
+
 /* Set default format keys for a session. */
 void
-format_session(struct format_tree *ft, struct session *s)
+format_defaults_session(struct format_tree *ft, struct session *s)
 {
 	struct session_group	*sg;
 	char			*tim;
@@ -451,7 +478,7 @@ format_session(struct format_tree *ft, struct session *s)
 
 /* Set default format keys for a client. */
 void
-format_client(struct format_tree *ft, struct client *c)
+format_defaults_client(struct format_tree *ft, struct client *c)
 {
 	char		*tim;
 	time_t		 t;
@@ -501,7 +528,7 @@ format_client(struct format_tree *ft, struct client *c)
 
 /* Set default format keys for a window. */
 void
-format_window(struct format_tree *ft, struct window *w)
+format_defaults_window(struct format_tree *ft, struct window *w)
 {
 	char	*layout;
 
@@ -523,7 +550,8 @@ format_window(struct format_tree *ft, struct window *w)
 
 /* Set default format keys for a winlink. */
 void
-format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
+format_defaults_winlink(struct format_tree *ft, struct session *s,
+    struct winlink *wl)
 {
 	struct window	*w = wl->window;
 	char		*flags;
@@ -533,7 +561,7 @@ format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 
 	flags = window_printable_flags(s, wl);
 
-	format_window(ft, w);
+	format_defaults_window(ft, w);
 
 	format_add(ft, "window_index", "%d", wl->idx);
 	format_add(ft, "window_flags", "%s", flags);
@@ -553,7 +581,7 @@ format_winlink(struct format_tree *ft, struct session *s, struct winlink *wl)
 
 /* Add window pane tabs. */
 void
-format_window_pane_tabs(struct format_tree *ft, struct window_pane *wp)
+format_defaults_pane_tabs(struct format_tree *ft, struct window_pane *wp)
 {
 	struct evbuffer	*buffer;
 	u_int		 i;
@@ -575,7 +603,7 @@ format_window_pane_tabs(struct format_tree *ft, struct window_pane *wp)
 
 /* Set default format keys for a window pane. */
 void
-format_window_pane(struct format_tree *ft, struct window_pane *wp)
+format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 {
 	struct grid		*gd = wp->base.grid;
 	struct grid_line	*gl;
@@ -665,12 +693,12 @@ format_window_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "mouse_utf8_flag", "%d",
 	    !!(wp->base.mode & MODE_MOUSE_UTF8));
 
-	format_window_pane_tabs(ft, wp);
+	format_defaults_pane_tabs(ft, wp);
 }
 
 /* Set default format keys for paste buffer. */
 void
-format_paste_buffer(struct format_tree *ft, struct paste_buffer *pb,
+format_defaults_paste_buffer(struct format_tree *ft, struct paste_buffer *pb,
     int utf8flag)
 {
 	char	*s;

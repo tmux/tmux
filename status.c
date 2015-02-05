@@ -474,14 +474,7 @@ status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t,
 	*optr = '\0';
 
 	ft = format_create();
-	if (c != NULL)
-		format_client(ft, c);
-	if (s != NULL)
-		format_session(ft, s);
-	if (s != NULL && wl != NULL)
-		format_winlink(ft, s, wl);
-	if (wp != NULL)
-		format_window_pane(ft, wp);
+	format_defaults(ft, c, s, wl, wp);
 	expanded = format_expand(ft, out);
 	format_free(ft);
 	return (expanded);

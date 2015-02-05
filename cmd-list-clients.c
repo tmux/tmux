@@ -74,8 +74,7 @@ cmd_list_clients_exec(struct cmd *self, struct cmd_q *cmdq)
 
 		ft = format_create();
 		format_add(ft, "line", "%u", i);
-		format_session(ft, c->session);
-		format_client(ft, c);
+		format_defaults(ft, c, NULL, NULL, NULL);
 
 		line = format_expand(ft, template);
 		cmdq_print(cmdq, "%s", line);
