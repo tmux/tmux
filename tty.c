@@ -281,6 +281,8 @@ tty_stop_tty(struct tty *tty)
 		else
 			tty_raw(tty, tty_term_string1(tty->term, TTYC_SS, 0));
 	}
+	if (tty->mode & MODE_BRACKETPASTE)
+		tty_raw(tty, "\033[?2004l");
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CR));
 
 	tty_raw(tty, tty_term_string(tty->term, TTYC_CNORM));
