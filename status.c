@@ -760,14 +760,20 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
     int (*callbackfn)(void *, const char *), void (*freefn)(void *),
     void *data, int flags)
 {
-	int	keys;
+	struct format_tree	*ft;
+	int			 keys;
+	time_t			 t;
+
+	ft = format_create();
+	format_defaults(ft, c, NULL, NULL, NULL);
+	t = time(NULL);
 
 	status_message_clear(c);
 	status_prompt_clear(c);
 
-	c->prompt_string = status_replace(c, NULL, msg, time(NULL), 0);
+	c->prompt_string = format_expand_time(ft, msg, time(NULL));
 
-	c->prompt_buffer = status_replace(c, NULL, input, time(NULL), 0);
+	c->prompt_buffer = format_expand_time(ft, input, time(NULL));
 	c->prompt_index = strlen(c->prompt_buffer);
 
 	c->prompt_callbackfn = callbackfn;
@@ -786,6 +792,8 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 
 	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_STATUS;
+
+	format_free(ft);
 }
 
 /* Remove status line prompt. */
@@ -814,16 +822,25 @@ status_prompt_clear(struct client *c)
 void
 status_prompt_update(struct client *c, const char *msg, const char *input)
 {
+	struct format_tree	*ft;
+	time_t			 t;
+
+	ft = format_create();
+	format_defaults(ft, c, NULL, NULL, NULL);
+	t = time(NULL);
+
 	free(c->prompt_string);
-	c->prompt_string = status_replace(c, NULL, msg, time(NULL), 0);
+	c->prompt_string = format_expand_time(ft, msg, time(NULL));
 
 	free(c->prompt_buffer);
-	c->prompt_buffer = status_replace(c, NULL, input, time(NULL), 0);
+	c->prompt_buffer = format_expand_time(ft, input, time(NULL));
 	c->prompt_index = strlen(c->prompt_buffer);
 
 	c->prompt_hindex = 0;
 
 	c->flags |= CLIENT_STATUS;
+
+	format_free(ft);
 }
 
 /* Draw client prompt on status line of present else on last line. */

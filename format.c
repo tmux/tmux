@@ -326,6 +326,33 @@ fail:
 	return (-1);
 }
 
+/* Expand keys in a template, passing through strftime first. */
+char *
+format_expand_time(struct format_tree *ft, const char *fmt, time_t t)
+{
+	char		*tmp, *expanded;
+	size_t		 tmplen;
+	struct tm	*tm;
+
+	if (fmt == NULL)
+		return (xstrdup(""));
+
+	tm = localtime(&t);
+
+	tmp = NULL;
+	tmplen = strlen(fmt);
+
+	do {
+		tmp = xreallocarray(tmp, 2, tmplen);
+		tmplen *= 2;
+	} while (strftime(tmp, tmplen, fmt, tm) == 0);
+
+	expanded = format_expand(ft, tmp);
+	free(tmp);
+
+	return (expanded);
+}
+
 /* Expand keys in a template. */
 char *
 format_expand(struct format_tree *ft, const char *fmt)
@@ -334,6 +361,9 @@ format_expand(struct format_tree *ft, const char *fmt)
 	const char	*ptr, *s;
 	size_t		 off, len, n;
 	int     	 ch, brackets;
+
+	if (fmt == NULL)
+		return (xstrdup(""));
 
 	len = 64;
 	buf = xmalloc(len);
