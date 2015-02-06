@@ -29,16 +29,17 @@
 
 #include "tmux.h"
 
-char   *status_redraw_get_left(
-	    struct client *, time_t, int, struct grid_cell *, size_t *);
-char   *status_redraw_get_right(
-	    struct client *, time_t, int, struct grid_cell *, size_t *);
+char   *status_redraw_get_left(struct client *, time_t, int, struct grid_cell *,
+	    size_t *);
+char   *status_redraw_get_right(struct client *, time_t, int,
+	    struct grid_cell *, size_t *);
 char   *status_find_job(struct client *, char **);
 void	status_job_free(void *);
 void	status_job_callback(struct job *);
-char   *status_print(
-	    struct client *, struct winlink *, time_t, struct grid_cell *);
-void	status_replace1(struct client *, char **, char **, char *, size_t, int);
+char   *status_print(struct client *, struct winlink *, time_t,
+	    struct grid_cell *);
+char   *status_replace(struct client *, struct winlink *, const char *, time_t);
+void	status_replace1(struct client *, char **, char **, char *, size_t);
 void	status_message_callback(int, short, void *);
 
 const char *status_prompt_up_history(u_int *);
@@ -86,7 +87,7 @@ status_redraw_get_left(struct client *c, time_t t, int utf8flag,
 	style_apply_update(gc, &s->options, "status-left-style");
 
 	template = options_get_string(&s->options, "status-left");
-	left = status_replace(c, NULL, template , t, 1);
+	left = status_replace(c, NULL, template, t);
 
 	*size = options_get_number(&s->options, "status-left-length");
 	leftlen = screen_write_cstrlen(utf8flag, "%s", left);
@@ -108,7 +109,7 @@ status_redraw_get_right(struct client *c, time_t t, int utf8flag,
 	style_apply_update(gc, &s->options, "status-right-style");
 
 	template = options_get_string(&s->options, "status-right");
-	right = status_replace(c, NULL, template, t, 1);
+	right = status_replace(c, NULL, template, t);
 
 	*size = options_get_number(&s->options, "status-right-length");
 	rightlen = screen_write_cstrlen(utf8flag, "%s", right);
@@ -364,7 +365,7 @@ out:
 /* Replace a single special sequence (prefixed by #). */
 void
 status_replace1(struct client *c, char **iptr, char **optr, char *out,
-    size_t outsize, int jobsflag)
+    size_t outsize)
 {
 	char	ch, tmp[256], *ptr, *endptr;
 	size_t	ptrlen;
@@ -382,10 +383,6 @@ status_replace1(struct client *c, char **iptr, char **optr, char *out,
 
 	switch (*(*iptr)++) {
 	case '(':
-		if (!jobsflag) {
-			ch = ')';
-			goto skip_to;
-		}
 		if ((ptr = status_find_job(c, iptr)) == NULL)
 			return;
 		goto do_replace;
@@ -434,11 +431,8 @@ skip_to:
 
 /* Replace special sequences in fmt. */
 char *
-status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t,
-    int jobsflag)
+status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t)
 {
-	struct session		*s = NULL;
-	struct window_pane	*wp = NULL;
 	static char		 out[BUFSIZ];
 	char			 in[BUFSIZ], ch, *iptr, *optr, *expanded;
 	size_t			 len;
@@ -446,13 +440,6 @@ status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t,
 
 	if (fmt == NULL)
 		return (xstrdup(""));
-
-	if (c != NULL)
-		s = c->session;
-	if (wl == NULL && s != NULL)
-		wl = s->curw;
-	if (wl != NULL)
-		wp = wl->window->active;
 
 	len = strftime(in, sizeof in, fmt, localtime(&t));
 	in[len] = '\0';
@@ -469,12 +456,12 @@ status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t,
 			*optr++ = ch;
 			continue;
 		}
-		status_replace1(c, &iptr, &optr, out, sizeof out, jobsflag);
+		status_replace1(c, &iptr, &optr, out, sizeof out);
 	}
 	*optr = '\0';
 
 	ft = format_create();
-	format_defaults(ft, c, s, wl, wp);
+	format_defaults(ft, c, NULL, wl, NULL);
 	expanded = format_expand(ft, out);
 	format_free(ft);
 	return (expanded);
@@ -639,7 +626,7 @@ status_print(struct client *c, struct winlink *wl, time_t t,
 	else if (wl->flags & (WINLINK_ACTIVITY|WINLINK_SILENCE))
 		style_apply_update(gc, oo, "window-status-activity-style");
 
-	text = status_replace(c, wl, fmt, t, 1);
+	text = status_replace(c, wl, fmt, t);
 	return (text);
 }
 
