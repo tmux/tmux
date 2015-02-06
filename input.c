@@ -1342,6 +1342,9 @@ input_csi_dispatch_rm(struct input_ctx *ictx)
 		case 4:		/* IRM */
 			screen_write_mode_clear(&ictx->ctx, MODE_INSERT);
 			break;
+		case 34:
+			screen_write_mode_set(&ictx->ctx, MODE_BLINKING);
+			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
 			break;
@@ -1367,6 +1370,9 @@ input_csi_dispatch_rm_private(struct input_ctx *ictx)
 			break;
 		case 7:		/* DECAWM */
 			screen_write_mode_clear(&ictx->ctx, MODE_WRAP);
+			break;
+		case 12:
+			screen_write_mode_clear(&ictx->ctx, MODE_BLINKING);
 			break;
 		case 25:	/* TCEM */
 			screen_write_mode_clear(&ictx->ctx, MODE_CURSOR);
@@ -1413,6 +1419,9 @@ input_csi_dispatch_sm(struct input_ctx *ictx)
 		case 4:		/* IRM */
 			screen_write_mode_set(&ictx->ctx, MODE_INSERT);
 			break;
+		case 34:
+			screen_write_mode_clear(&ictx->ctx, MODE_BLINKING);
+			break;
 		default:
 			log_debug("%s: unknown '%c'", __func__, ictx->ch);
 			break;
@@ -1438,6 +1447,9 @@ input_csi_dispatch_sm_private(struct input_ctx *ictx)
 			break;
 		case 7:		/* DECAWM */
 			screen_write_mode_set(&ictx->ctx, MODE_WRAP);
+			break;
+		case 12:
+			screen_write_mode_set(&ictx->ctx, MODE_BLINKING);
 			break;
 		case 25:	/* TCEM */
 			screen_write_mode_set(&ictx->ctx, MODE_CURSOR);

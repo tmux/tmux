@@ -48,7 +48,7 @@ enum cmd_retval
 cmd_detach_client_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
-	struct client	*c, *c2;
+	struct client	*c, *cloop;
 	struct session	*s;
 	enum msgtype	 msgtype;
 	u_int 		 i;
@@ -73,32 +73,35 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_ERROR);
 
 		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c == NULL || c->session != s)
+			cloop = ARRAY_ITEM(&clients, i);
+			if (cloop == NULL || cloop->session != s)
 				continue;
-			server_write_client(c, msgtype, c->session->name,
-			    strlen(c->session->name) + 1);
+			server_write_client(cloop, msgtype,
+			    cloop->session->name,
+			    strlen(cloop->session->name) + 1);
 		}
-	} else {
-		c = cmd_find_client(cmdq, args_get(args, 't'), 0);
-		if (c == NULL)
-			return (CMD_RETURN_ERROR);
-
-		if (args_has(args, 'a')) {
-			for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-				c2 = ARRAY_ITEM(&clients, i);
-				if (c2 == NULL || c2->session == NULL ||
-				    c2 == c)
-					continue;
-				server_write_client(c2, msgtype,
-				    c2->session->name,
-				    strlen(c2->session->name) + 1);
-			}
-		} else {
-			server_write_client(c, msgtype, c->session->name,
-			    strlen(c->session->name) + 1);
-		}
+		return (CMD_RETURN_STOP);
 	}
 
+	c = cmd_find_client(cmdq, args_get(args, 't'), 0);
+	if (c == NULL)
+		return (CMD_RETURN_ERROR);
+
+	if (args_has(args, 'a')) {
+		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
+			cloop = ARRAY_ITEM(&clients, i);
+			if (cloop == NULL || cloop->session == NULL)
+				continue;
+			if (cloop == c)
+				continue;
+			server_write_client(cloop, msgtype,
+			    cloop->session->name,
+			    strlen(cloop->session->name) + 1);
+		}
+		return (CMD_RETURN_NORMAL);
+	}
+
+	server_write_client(c, msgtype, c->session->name,
+	    strlen(c->session->name) + 1);
 	return (CMD_RETURN_STOP);
 }

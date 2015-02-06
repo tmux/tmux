@@ -128,9 +128,7 @@ cmd_list_panes_window(struct cmd *self,
 	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
 		ft = format_create();
 		format_add(ft, "line", "%u", n);
-		format_session(ft, s);
-		format_winlink(ft, s, wl);
-		format_window_pane(ft, wp);
+		format_defaults(ft, NULL, s, wl, wp);
 
 		line = format_expand(ft, template);
 		cmdq_print(cmdq, "%s", line);

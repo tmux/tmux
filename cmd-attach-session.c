@@ -106,11 +106,8 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 
 		if (cflag != NULL) {
 			ft = format_create();
-			if ((c = cmd_find_client(cmdq, NULL, 1)) != NULL)
-				format_client(ft, c);
-			format_session(ft, s);
-			format_winlink(ft, s, s->curw);
-			format_window_pane(ft, s->curw->window->active);
+			format_defaults(ft, cmd_find_client(cmdq, NULL, 1), s,
+			    NULL, NULL);
 			cp = format_expand(ft, cflag);
 			format_free(ft);
 
@@ -139,11 +136,8 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 
 		if (cflag != NULL) {
 			ft = format_create();
-			if ((c = cmd_find_client(cmdq, NULL, 1)) != NULL)
-				format_client(ft, c);
-			format_session(ft, s);
-			format_winlink(ft, s, s->curw);
-			format_window_pane(ft, s->curw->window->active);
+			format_defaults(ft, cmd_find_client(cmdq, NULL, 1), s,
+			    NULL, NULL);
 			cp = format_expand(ft, cflag);
 			format_free(ft);
 

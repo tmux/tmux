@@ -58,7 +58,6 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	int			 argc, size, percentage, cwd, fd = -1;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
-	struct client		*c;
 	struct format_tree	*ft;
 	struct environ_entry	*envent;
 
@@ -88,11 +87,8 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (args_has(args, 'c')) {
 		ft = format_create();
-		if ((c = cmd_find_client(cmdq, NULL, 1)) != NULL)
-			format_client(ft, c);
-		format_session(ft, s);
-		format_winlink(ft, s, s->curw);
-		format_window_pane(ft, s->curw->window->active);
+		format_defaults(ft, cmd_find_client(cmdq, NULL, 1), s, NULL,
+		    NULL);
 		cp = format_expand(ft, args_get(args, 'c'));
 		format_free(ft);
 
@@ -180,11 +176,8 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 			template = SPLIT_WINDOW_TEMPLATE;
 
 		ft = format_create();
-		if ((c = cmd_find_client(cmdq, NULL, 1)) != NULL)
-			format_client(ft, c);
-		format_session(ft, s);
-		format_winlink(ft, s, wl);
-		format_window_pane(ft, new_wp);
+		format_defaults(ft, cmd_find_client(cmdq, NULL, 1), s, wl,
+		    new_wp);
 
 		cp = format_expand(ft, template);
 		cmdq_print(cmdq, "%s", cp);

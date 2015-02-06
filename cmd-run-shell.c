@@ -93,12 +93,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 
 	ft = format_create();
-	if (s != NULL)
-		format_session(ft, s);
-	if (s != NULL && wl != NULL)
-		format_winlink(ft, s, wl);
-	if (wp != NULL)
-		format_window_pane(ft, wp);
+	format_defaults(ft, NULL, s, wl, wp);
 	shellcmd = format_expand(ft, args->argv[0]);
 	format_free(ft);
 

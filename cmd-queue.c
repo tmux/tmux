@@ -117,20 +117,17 @@ cmdq_error(struct cmd_q *cmdq, const char *fmt, ...)
 }
 
 /* Print a guard line. */
-int
+void
 cmdq_guard(struct cmd_q *cmdq, const char *guard, int flags)
 {
 	struct client	*c = cmdq->client;
 
-	if (c == NULL)
-		return (0);
-	if (!(c->flags & CLIENT_CONTROL))
-		return (0);
+	if (c == NULL || !(c->flags & CLIENT_CONTROL))
+		return;
 
 	evbuffer_add_printf(c->stdout_data, "%%%s %ld %u %d\n", guard,
 	    (long) cmdq->time, cmdq->number, flags);
 	server_push_stdout(c);
-	return (1);
 }
 
 /* Add command list to queue and begin processing if needed. */
@@ -163,7 +160,7 @@ cmdq_continue(struct cmd_q *cmdq)
 {
 	struct cmd_q_item	*next;
 	enum cmd_retval		 retval;
-	int			 empty, guard, flags;
+	int			 empty, flags;
 	char			 s[1024];
 
 	notify_disable();
@@ -188,16 +185,14 @@ cmdq_continue(struct cmd_q *cmdq)
 			cmdq->number++;
 
 			flags = !!(cmdq->cmd->flags & CMD_CONTROL);
-			guard = cmdq_guard(cmdq, "begin", flags);
+			cmdq_guard(cmdq, "begin", flags);
 
 			retval = cmdq->cmd->entry->exec(cmdq->cmd, cmdq);
 
-			if (guard) {
-				if (retval == CMD_RETURN_ERROR)
-					cmdq_guard(cmdq, "error", flags);
-				else
-					cmdq_guard(cmdq, "end", flags);
-			}
+			if (retval == CMD_RETURN_ERROR)
+				cmdq_guard(cmdq, "error", flags);
+			else
+				cmdq_guard(cmdq, "end", flags);
 
 			if (retval == CMD_RETURN_ERROR)
 				break;

@@ -1512,9 +1512,7 @@ window_copy_copy_pipe(struct window_pane *wp, struct session *sess,
 		return;
 
 	ft = format_create();
-	format_window_pane(ft, wp);
-	if (sess != NULL)
-		format_session(ft, sess);
+	format_defaults(ft, NULL, sess, NULL, wp);
 	expanded = format_expand(ft, arg);
 
 	job = job_run(expanded, sess, NULL, NULL, NULL);

@@ -94,8 +94,7 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_q *cmdq)
 
 		cdata->ft_template = xstrdup(template);
 		format_add(cdata->ft, "line", "%u", i);
-		format_session(cdata->ft, c1->session);
-		format_client(cdata->ft, c1);
+		format_defaults(cdata->ft, c1, NULL, NULL, NULL);
 
 		cdata->command = cmd_template_replace(action, c1->tty.path, 1);
 

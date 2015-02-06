@@ -86,8 +86,8 @@ format_window_name(struct window *w)
 	char			*fmt, *name;
 
 	ft = format_create();
-	format_window(ft, w);
-	format_window_pane(ft, w->active);
+	format_defaults_window(ft, w);
+	format_defaults_pane(ft, w->active);
 
 	fmt = options_get_string(&w->options, "automatic-rename-format");
 	name = format_expand(ft, fmt);

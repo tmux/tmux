@@ -134,7 +134,7 @@ makesocketpath(const char *label)
 
 	uid = getuid();
 	if ((s = getenv("TMUX_TMPDIR")) != NULL && *s != '\0')
-		xsnprintf(base, sizeof base, "%s/", s);
+		xsnprintf(base, sizeof base, "%s/tmux-%u", s, uid);
 	else if ((s = getenv("TMPDIR")) != NULL && *s != '\0')
 		xsnprintf(base, sizeof base, "%s/tmux-%u", s, uid);
 	else
@@ -149,8 +149,7 @@ makesocketpath(const char *label)
 		errno = ENOTDIR;
 		return (NULL);
 	}
-	if (sb.st_uid != uid || (!S_ISDIR(sb.st_mode) &&
-		sb.st_mode & (S_IRWXG|S_IRWXO)) != 0) {
+	if (sb.st_uid != uid || (sb.st_mode & S_IRWXO) != 0) {
 		errno = EACCES;
 		return (NULL);
 	}
