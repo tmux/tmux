@@ -275,40 +275,6 @@ const struct options_table_entry session_options_table[] = {
 	  .default_num = 0
 	},
 
-	{ .name = "pane-active-border-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8,
-	  .style = "pane-active-border-style"
-	},
-
-	{ .name = "pane-active-border-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 2,
-	  .style = "pane-active-border-style"
-	},
-
-	{ .name = "pane-active-border-style",
-	  .type = OPTIONS_TABLE_STYLE,
-	  .default_str = "fg=green"
-	},
-
-	{ .name = "pane-border-bg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8,
-	  .style = "pane-border-style"
-	},
-
-	{ .name = "pane-border-fg",
-	  .type = OPTIONS_TABLE_COLOUR,
-	  .default_num = 8,
-	  .style = "pane-border-style"
-	},
-
-	{ .name = "pane-border-style",
-	  .type = OPTIONS_TABLE_STYLE,
-	  .default_str = "default"
-	},
-
 	{ .name = "prefix",
 	  .type = OPTIONS_TABLE_KEY,
 	  .default_num = '\002',
@@ -646,11 +612,45 @@ const struct options_table_entry window_options_table[] = {
 	  .default_num = 0
 	},
 
+	{ .name = "pane-active-border-bg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 8,
+	  .style = "pane-active-border-style"
+	},
+
+	{ .name = "pane-active-border-fg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 2,
+	  .style = "pane-active-border-style"
+	},
+
+	{ .name = "pane-active-border-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "fg=green"
+	},
+
 	{ .name = "pane-base-index",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .minimum = 0,
 	  .maximum = USHRT_MAX,
 	  .default_num = 0
+	},
+
+	{ .name = "pane-border-bg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 8,
+	  .style = "pane-border-style"
+	},
+
+	{ .name = "pane-border-fg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .default_num = 8,
+	  .style = "pane-border-style"
+	},
+
+	{ .name = "pane-border-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "default"
 	},
 
 	{ .name = "remain-on-exit",

@@ -275,7 +275,7 @@ void
 screen_redraw_draw_borders(struct client *c, int status, u_int top)
 {
 	struct window		*w = c->session->curw->window;
-	struct options		*oo = &c->session->options;
+	struct options		*oo = &w->options;
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	struct grid_cell	 active_gc, other_gc, msg_gc;
