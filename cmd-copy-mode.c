@@ -21,7 +21,7 @@
 #include "tmux.h"
 
 /*
- * Enter copy mode.
+ * Enter copy or clock mode.
  */
 
 enum cmd_retval	 cmd_copy_mode_exec(struct cmd *, struct cmd_q *);
@@ -34,6 +34,14 @@ const struct cmd_entry cmd_copy_mode_entry = {
 	cmd_copy_mode_exec
 };
 
+const struct cmd_entry cmd_clock_mode_entry = {
+	"clock-mode", NULL,
+	"t:", 0, 0,
+	CMD_TARGET_PANE_USAGE,
+	0,
+	cmd_copy_mode_exec
+};
+
 enum cmd_retval
 cmd_copy_mode_exec(struct cmd *self, struct cmd_q *cmdq)
 {
@@ -42,6 +50,11 @@ cmd_copy_mode_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp) == NULL)
 		return (CMD_RETURN_ERROR);
+
+	if (self->entry == &cmd_clock_mode_entry) {
+		window_pane_set_mode(wp, &window_clock_mode);
+		return (CMD_RETURN_NORMAL);
+	}
 
 	if (wp->mode != &window_copy_mode) {
 		if (window_pane_set_mode(wp, &window_copy_mode) != 0)
