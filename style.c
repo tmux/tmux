@@ -28,16 +28,18 @@ int
 style_parse(const struct grid_cell *defgc, struct grid_cell *gc,
     const char *in)
 {
-	const char	delimiters[] = " ,";
-	char		tmp[32];
-	int		val;
-	size_t		end;
-	u_char		fg, bg, attr, flags;
+	struct grid_cell	savedgc;
+	const char		delimiters[] = " ,";
+	char			tmp[32];
+	int			val;
+	size_t			end;
+	u_char			fg, bg, attr, flags;
 
 	if (*in == '\0')
 		return (0);
 	if (strchr(delimiters, in[strlen(in) - 1]) != NULL)
 		return (-1);
+	memcpy(&savedgc, gc, sizeof savedgc);
 
 	fg = gc->fg;
 	bg = gc->bg;
@@ -46,7 +48,7 @@ style_parse(const struct grid_cell *defgc, struct grid_cell *gc,
 	do {
 		end = strcspn(in, delimiters);
 		if (end > (sizeof tmp) - 1)
-			return (-1);
+			goto error;
 		memcpy(tmp, in, end);
 		tmp[end] = '\0';
 
@@ -59,7 +61,7 @@ style_parse(const struct grid_cell *defgc, struct grid_cell *gc,
 			    defgc->flags & (GRID_FLAG_FG256|GRID_FLAG_BG256);
 		} else if (end > 3 && strncasecmp(tmp + 1, "g=", 2) == 0) {
 			if ((val = colour_fromstring(tmp + 3)) == -1)
-				return (-1);
+				goto error;
 			if (*in == 'f' || *in == 'F') {
 				if (val != 8) {
 					if (val & 0x100) {
@@ -87,16 +89,16 @@ style_parse(const struct grid_cell *defgc, struct grid_cell *gc,
 					flags |= defgc->flags & GRID_FLAG_BG256;
 				}
 			} else
-				return (-1);
+				goto error;
 		} else if (strcasecmp(tmp, "none") == 0)
 			attr = 0;
 		else if (end > 2 && strncasecmp(tmp, "no", 2) == 0) {
 			if ((val = attributes_fromstring(tmp + 2)) == -1)
-				return (-1);
+				goto error;
 			attr &= ~val;
 		} else {
 			if ((val = attributes_fromstring(tmp)) == -1)
-				return (-1);
+				goto error;
 			attr |= val;
 		}
 
@@ -108,6 +110,10 @@ style_parse(const struct grid_cell *defgc, struct grid_cell *gc,
 	gc->flags = flags;
 
 	return (0);
+
+error:
+	memcpy(gc, &savedgc, sizeof *gc);
+	return (-1);
 }
 
 /* Convert style to a string. */
