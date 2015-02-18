@@ -262,7 +262,7 @@ window_find_by_id(u_int id)
 
 	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
 		w = ARRAY_ITEM(&windows, i);
-		if (w->id == id)
+		if (w != NULL && w->id == id)
 			return (w);
 	}
 	return (NULL);

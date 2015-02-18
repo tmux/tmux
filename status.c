@@ -758,9 +758,9 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 	status_message_clear(c);
 	status_prompt_clear(c);
 
-	c->prompt_string = format_expand_time(ft, msg, time(NULL));
+	c->prompt_string = format_expand_time(ft, msg, t);
 
-	c->prompt_buffer = format_expand_time(ft, input, time(NULL));
+	c->prompt_buffer = format_expand_time(ft, input, t);
 	c->prompt_index = strlen(c->prompt_buffer);
 
 	c->prompt_callbackfn = callbackfn;
@@ -817,10 +817,10 @@ status_prompt_update(struct client *c, const char *msg, const char *input)
 	t = time(NULL);
 
 	free(c->prompt_string);
-	c->prompt_string = format_expand_time(ft, msg, time(NULL));
+	c->prompt_string = format_expand_time(ft, msg, t);
 
 	free(c->prompt_buffer);
-	c->prompt_buffer = format_expand_time(ft, input, time(NULL));
+	c->prompt_buffer = format_expand_time(ft, input, t);
 	c->prompt_index = strlen(c->prompt_buffer);
 
 	c->prompt_hindex = 0;

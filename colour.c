@@ -236,28 +236,28 @@ colour_fromstring(const char *s)
 	if (strcasecmp(s, "default") == 0 || (s[0] == '8' && s[1] == '\0'))
 		return (8);
 	if (strcasecmp(s, "brightblack") == 0 ||
-	    (s[0] == '9' && s[1] == '0' && s[1] == '\0'))
+	    (s[0] == '9' && s[1] == '0' && s[2] == '\0'))
 		return (90);
 	if (strcasecmp(s, "brightred") == 0 ||
-	    (s[0] == '9' && s[1] == '1' && s[1] == '\0'))
+	    (s[0] == '9' && s[1] == '1' && s[2] == '\0'))
 		return (91);
 	if (strcasecmp(s, "brightgreen") == 0 ||
-	    (s[0] == '9' && s[1] == '2' && s[1] == '\0'))
+	    (s[0] == '9' && s[1] == '2' && s[2] == '\0'))
 		return (92);
 	if (strcasecmp(s, "brightyellow") == 0 ||
-	    (s[0] == '9' && s[1] == '3' && s[1] == '\0'))
+	    (s[0] == '9' && s[1] == '3' && s[2] == '\0'))
 		return (93);
 	if (strcasecmp(s, "brightblue") == 0 ||
-	    (s[0] == '9' && s[1] == '4' && s[1] == '\0'))
+	    (s[0] == '9' && s[1] == '4' && s[2] == '\0'))
 		return (94);
 	if (strcasecmp(s, "brightmagenta") == 0 ||
-	    (s[0] == '9' && s[1] == '5' && s[1] == '\0'))
+	    (s[0] == '9' && s[1] == '5' && s[2] == '\0'))
 		return (95);
 	if (strcasecmp(s, "brightcyan") == 0 ||
-	    (s[0] == '9' && s[1] == '6' && s[1] == '\0'))
+	    (s[0] == '9' && s[1] == '6' && s[2] == '\0'))
 		return (96);
 	if (strcasecmp(s, "brightwhite") == 0 ||
-	    (s[0] == '9' && s[1] == '7' && s[1] == '\0'))
+	    (s[0] == '9' && s[1] == '7' && s[2] == '\0'))
 		return (97);
 	return (-1);
 }
