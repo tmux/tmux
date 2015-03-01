@@ -18,6 +18,8 @@ AC_CANONICAL_HOST
 # Set up the compiler in two different ways and say yes we may want to install.
 AC_PROG_CC
 AM_PROG_CC_C_O
+AC_PROG_CPP
+AC_PROG_EGREP
 AC_PROG_INSTALL
 
 # Default tmux.conf goes in /etc not ${prefix}/etc.
