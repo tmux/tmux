@@ -52,7 +52,7 @@ char	*BSDoptarg;		/* argument associated with option */
 int
 BSDgetopt(int nargc, char *const *nargv, const char *ostr)
 {
-	static char *place = EMSG;		/* option letter processing */
+	static const char *place = EMSG;	/* option letter processing */
 	char *oli;				/* option letter list index */
 
 	if (ostr == NULL)
@@ -105,7 +105,7 @@ BSDgetopt(int nargc, char *const *nargv, const char *ostr)
 				    __progname, BSDoptopt);
 			return (BADCH);
 		}
-	 	else				/* white space */
+		else				/* white space */
 			BSDoptarg = nargv[BSDoptind];
 		place = EMSG;
 		++BSDoptind;
