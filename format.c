@@ -37,6 +37,7 @@
 
 int	 format_replace(struct format_tree *, const char *, size_t, char **,
 	     size_t *, size_t *);
+char	*format_time_string(time_t);
 char	*format_get_command(struct window_pane *);
 
 void	 format_defaults_pane_tabs(struct format_tree *, struct window_pane *);
@@ -453,6 +454,18 @@ format_get_command(struct window_pane *wp)
 	return (out);
 }
 
+/* Get time as a string. */
+char *
+format_time_string(time_t t)
+{
+	char	*tim;
+
+	tim = ctime(&t);
+	*strchr(tim, '\n') = '\0';
+
+	return (tim);
+}
+
 /* Set defaults for any of arguments that are not NULL. */
 void
 format_defaults(struct format_tree *ft, struct client *c, struct session *s,
@@ -480,7 +493,6 @@ void
 format_defaults_session(struct format_tree *ft, struct session *s)
 {
 	struct session_group	*sg;
-	char			*tim;
 	time_t			 t;
 
 	ft->s = s;
@@ -498,9 +510,11 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 
 	t = s->creation_time.tv_sec;
 	format_add(ft, "session_created", "%lld", (long long) t);
-	tim = ctime(&t);
-	*strchr(tim, '\n') = '\0';
-	format_add(ft, "session_created_string", "%s", tim);
+	format_add(ft, "session_created_string", "%s", format_time_string(t));
+
+	t = s->activity_time.tv_sec;
+	format_add(ft, "session_activity", "%lld", (long long) t);
+	format_add(ft, "session_activity_string", "%s", format_time_string(t));
 
 	format_add(ft, "session_attached", "%u", s->attached);
 	format_add(ft, "session_many_attached", "%d", s->attached > 1);
@@ -510,9 +524,8 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 void
 format_defaults_client(struct format_tree *ft, struct client *c)
 {
-	char		*tim;
-	time_t		 t;
 	struct session	*s;
+	time_t		 t;
 
 	if (ft->s == NULL)
 		ft->s = c->session;
@@ -526,15 +539,11 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 
 	t = c->creation_time.tv_sec;
 	format_add(ft, "client_created", "%lld", (long long) t);
-	tim = ctime(&t);
-	*strchr(tim, '\n') = '\0';
-	format_add(ft, "client_created_string", "%s", tim);
+	format_add(ft, "client_created_string", "%s", format_time_string(t));
 
 	t = c->activity_time.tv_sec;
 	format_add(ft, "client_activity", "%lld", (long long) t);
-	tim = ctime(&t);
-	*strchr(tim, '\n') = '\0';
-	format_add(ft, "client_activity_string", "%s", tim);
+	format_add(ft, "client_activity_string", "%s", format_time_string(t));
 
 	format_add(ft, "client_prefix", "%d", !!(c->flags & CLIENT_PREFIX));
 
