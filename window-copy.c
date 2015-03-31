@@ -1216,7 +1216,7 @@ window_copy_write_line(struct window_pane *wp, struct screen_write_ctx *ctx,
 			limit = screen_size_x(s) + 1;
 		if (data->inputtype == WINDOW_COPY_NUMERICPREFIX) {
 			xoff = size = xsnprintf(hdr, limit,
-			    "Repeat: %u", data->numprefix);
+			    "Repeat: %d", data->numprefix);
 		} else {
 			xoff = size = xsnprintf(hdr, limit,
 			    "%s: %s", data->inputprompt, data->inputstr);

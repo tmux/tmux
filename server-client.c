@@ -824,7 +824,7 @@ server_client_msg_dispatch(struct client *c)
 			continue;
 		}
 
-		log_debug("got %d from client %d", imsg.hdr.type, c->ibuf.fd);
+		log_debug("got %u from client %d", imsg.hdr.type, c->ibuf.fd);
 		switch (imsg.hdr.type) {
 		case MSG_IDENTIFY_FLAGS:
 		case MSG_IDENTIFY_TERM:

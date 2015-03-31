@@ -59,7 +59,7 @@ cmd_respawn_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (!args_has(self->args, 'k') && wp->fd != -1) {
 		if (window_pane_index(wp, &idx) != 0)
 			fatalx("index not found");
-		cmdq_error(cmdq, "pane still active: %s:%u.%u",
+		cmdq_error(cmdq, "pane still active: %s:%d.%u",
 		    s->name, wl->idx, idx);
 		return (CMD_RETURN_ERROR);
 	}

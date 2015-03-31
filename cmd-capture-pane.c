@@ -74,7 +74,7 @@ cmd_capture_pane_pending(struct args *args, struct window_pane *wp,
 				tmp[0] = line[i];
 				tmp[1] = '\0';
 			} else
-				xsnprintf(tmp, sizeof tmp, "\\%03o", line[i]);
+				xsnprintf(tmp, sizeof tmp, "\\%03hho", line[i]);
 			buf = cmd_capture_pane_append(buf, len, tmp,
 			    strlen(tmp));
 		}

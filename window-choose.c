@@ -98,7 +98,7 @@ window_choose_add(struct window_pane *wp, struct window_choose_data *wcd)
 	item->pos = ARRAY_LENGTH(&data->list) - 1;
 	item->state = 0;
 
-	data->width = xsnprintf(tmp, sizeof tmp , "%u", item->pos);
+	data->width = xsnprintf(tmp, sizeof tmp , "%d", item->pos);
 }
 
 void

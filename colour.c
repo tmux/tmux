@@ -147,7 +147,7 @@ colour_tostring(int c)
 	static char	s[32];
 
 	if (c & 0x100) {
-		xsnprintf(s, sizeof s, "colour%u", c & ~0x100);
+		xsnprintf(s, sizeof s, "colour%d", c & ~0x100);
 		return (s);
 	}
 

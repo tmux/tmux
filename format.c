@@ -503,7 +503,7 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 	format_add(ft, "session_created_string", "%s", tim);
 
 	format_add(ft, "session_attached", "%u", s->attached);
-	format_add(ft, "session_many_attached", "%u", s->attached > 1);
+	format_add(ft, "session_many_attached", "%d", s->attached > 1);
 }
 
 /* Set default format keys for a client. */
@@ -572,7 +572,7 @@ format_defaults_window(struct format_tree *ft, struct window *w)
 	format_add(ft, "window_height", "%u", w->sy);
 	format_add(ft, "window_layout", "%s", layout);
 	format_add(ft, "window_panes", "%u", window_count_panes(w));
-	format_add(ft, "window_zoomed_flag", "%u",
+	format_add(ft, "window_zoomed_flag", "%d",
 	    !!(w->flags & WINDOW_ZOOMED));
 
 	free(layout);
@@ -597,13 +597,13 @@ format_defaults_winlink(struct format_tree *ft, struct session *s,
 	format_add(ft, "window_flags", "%s", flags);
 	format_add(ft, "window_active", "%d", wl == s->curw);
 
-	format_add(ft, "window_bell_flag", "%u",
+	format_add(ft, "window_bell_flag", "%d",
 	    !!(wl->flags & WINLINK_BELL));
-	format_add(ft, "window_activity_flag", "%u",
+	format_add(ft, "window_activity_flag", "%d",
 	    !!(wl->flags & WINLINK_ACTIVITY));
-	format_add(ft, "window_silence_flag", "%u",
+	format_add(ft, "window_silence_flag", "%d",
 	    !!(wl->flags & WINLINK_SILENCE));
-	format_add(ft, "window_last_flag", "%u",
+	format_add(ft, "window_last_flag", "%d",
 	    !!(wl == TAILQ_FIRST(&s->lastw)));
 
 	free(flags);
@@ -623,7 +623,7 @@ format_defaults_pane_tabs(struct format_tree *ft, struct window_pane *wp)
 
 		if (EVBUFFER_LENGTH(buffer) > 0)
 			evbuffer_add(buffer, ",", 1);
-		evbuffer_add_printf(buffer, "%d", i);
+		evbuffer_add_printf(buffer, "%u", i);
 	}
 
 	format_add(ft, "pane_tabs", "%.*s", (int) EVBUFFER_LENGTH(buffer),
@@ -694,16 +694,16 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 		free(cmd);
 	}
 
-	format_add(ft, "cursor_x", "%d", wp->base.cx);
-	format_add(ft, "cursor_y", "%d", wp->base.cy);
-	format_add(ft, "scroll_region_upper", "%d", wp->base.rupper);
-	format_add(ft, "scroll_region_lower", "%d", wp->base.rlower);
-	format_add(ft, "saved_cursor_x", "%d", wp->ictx.old_cx);
-	format_add(ft, "saved_cursor_y", "%d", wp->ictx.old_cy);
+	format_add(ft, "cursor_x", "%u", wp->base.cx);
+	format_add(ft, "cursor_y", "%u", wp->base.cy);
+	format_add(ft, "scroll_region_upper", "%u", wp->base.rupper);
+	format_add(ft, "scroll_region_lower", "%u", wp->base.rlower);
+	format_add(ft, "saved_cursor_x", "%u", wp->ictx.old_cx);
+	format_add(ft, "saved_cursor_y", "%u", wp->ictx.old_cy);
 
 	format_add(ft, "alternate_on", "%d", wp->saved_grid ? 1 : 0);
-	format_add(ft, "alternate_saved_x", "%d", wp->saved_cx);
-	format_add(ft, "alternate_saved_y", "%d", wp->saved_cy);
+	format_add(ft, "alternate_saved_x", "%u", wp->saved_cx);
+	format_add(ft, "alternate_saved_y", "%u", wp->saved_cy);
 
 	format_add(ft, "cursor_flag", "%d",
 	    !!(wp->base.mode & MODE_CURSOR));
