@@ -247,9 +247,6 @@ paste_set(char *data, size_t size, const char *name, char **cause)
 		return (-1);
 	}
 
-	pb = paste_get_name(name);
-	if (pb != NULL)
-		paste_free_name(name);
 
 	pb = xmalloc(sizeof *pb);
 
@@ -260,6 +257,9 @@ paste_set(char *data, size_t size, const char *name, char **cause)
 
 	pb->automatic = 0;
 	pb->order = paste_next_order++;
+
+	if (paste_get_name(name) != NULL)
+		paste_free_name(name);
 
 	RB_INSERT(paste_name_tree, &paste_by_name, pb);
 	RB_INSERT(paste_time_tree, &paste_by_time, pb);
