@@ -104,18 +104,34 @@ cmd_bind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, int key)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (cmd != MODEKEYCOPY_COPYPIPE) {
-		if (args->argc != 2) {
-			cmdq_error(cmdq, "no argument allowed");
-			return (CMD_RETURN_ERROR);
+	switch (cmd) {
+	case MODEKEYCOPY_APPENDSELECTION:
+	case MODEKEYCOPY_COPYSELECTION:
+	case MODEKEYCOPY_STARTNAMEDBUFFER:
+		if (args->argc == 2)
+			arg = NULL;
+		else {
+			arg = args->argv[2];
+			if (strcmp(arg, "-x") != 0) {
+				cmdq_error(cmdq, "unknown argument");
+				return (CMD_RETURN_ERROR);
+			}
 		}
-		arg = NULL;
-	} else {
+		break;
+	case MODEKEYCOPY_COPYPIPE:
 		if (args->argc != 3) {
 			cmdq_error(cmdq, "no argument given");
 			return (CMD_RETURN_ERROR);
 		}
 		arg = args->argv[2];
+		break;
+	default:
+		if (args->argc != 2) {
+			cmdq_error(cmdq, "no argument allowed");
+			return (CMD_RETURN_ERROR);
+		}
+		arg = NULL;
+		break;
 	}
 
 	mtmp.key = key;
