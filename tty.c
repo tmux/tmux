@@ -629,7 +629,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 		sx = tty->sx;
 
 	/*
-	 * Don't move the cursor to the start permission if it will wrap there
+	 * Don't move the cursor to the start position if it will wrap there
 	 * itself.
 	 */
 	gl = NULL;
@@ -1407,7 +1407,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 		 *
 		 * Otherwise, try to set the default colour only as needed.
 		 */
-		have_ax = tty_term_has(tty->term, TTYC_AX);
+		have_ax = tty_term_flag(tty->term, TTYC_AX);
 		if (!have_ax && tty_term_has(tty->term, TTYC_OP))
 			tty_reset(tty);
 		else {
