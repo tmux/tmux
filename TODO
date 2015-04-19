@@ -85,6 +85,7 @@
 	* append to buffer
 	* paste w/o trailing whitespace
 	* command to toggle selection not to move it in copy-mode
+	* regex searching
 
 - layout stuff
 	* way to tag a layout as a number/name
