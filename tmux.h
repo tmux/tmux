@@ -156,6 +156,7 @@ enum key_code {
 enum tty_code_code {
 	TTYC_AX = 0,
 	TTYC_ACSC,	/* acs_chars, ac */
+	TTYC_BCE,	/* back_color_erase, ut */
 	TTYC_BEL,	/* bell, bl */
 	TTYC_BLINK,	/* enter_blink_mode, mb */
 	TTYC_BOLD,	/* enter_bold_mode, md */
@@ -902,6 +903,8 @@ struct window_pane {
 
 	struct input_ctx ictx;
 
+	struct grid_cell colgc;
+
 	int		 pipe_fd;
 	struct bufferevent *pipe_event;
 	size_t		 pipe_off;
@@ -1606,7 +1609,8 @@ void	environ_push(struct environ *);
 /* tty.c */
 void	tty_init_termios(int, struct termios *, struct bufferevent *);
 void	tty_raw(struct tty *, const char *);
-void	tty_attributes(struct tty *, const struct grid_cell *);
+void	tty_attributes(struct tty *, const struct grid_cell *,
+	    const struct window_pane *);
 void	tty_reset(struct tty *);
 void	tty_region_pane(struct tty *, const struct tty_ctx *, u_int, u_int);
 void	tty_region(struct tty *, u_int, u_int);
@@ -1630,7 +1634,10 @@ void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
 void	tty_update_mode(struct tty *, int, struct screen *);
 void	tty_force_cursor_colour(struct tty *, const char *);
-void	tty_draw_line(struct tty *, struct screen *, u_int, u_int, u_int);
+void	tty_draw_pane(struct tty *, const struct window_pane *, u_int, u_int,
+	    u_int);
+void	tty_draw_line(struct tty *, const struct window_pane *, struct screen *,
+	    u_int, u_int, u_int);
 int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);

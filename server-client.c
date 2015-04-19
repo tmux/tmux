@@ -329,8 +329,7 @@ server_client_check_mouse(struct client *c, struct window_pane *wp)
 	if (options_get_number(oo, "mouse-select-pane") &&
 	    (m->event == MOUSE_EVENT_DOWN || m->event == MOUSE_EVENT_WHEEL)) {
 		window_set_active_at(wp->window, m->x, m->y);
-		server_status_window(wp->window);
-		server_redraw_window_borders(wp->window);
+		server_redraw_window(wp->window);
 		wp = wp->window->active; /* may have changed */
 	}
 

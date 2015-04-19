@@ -705,6 +705,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	wp->saved_grid = NULL;
 
+	memcpy(&wp->colgc, &grid_default_cell, sizeof wp->colgc);
+
 	screen_init(&wp->base, sx, sy, hlimit);
 	wp->screen = &wp->base;
 

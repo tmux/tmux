@@ -668,6 +668,16 @@ const struct options_table_entry window_options_table[] = {
 	  .default_num = 0 /* overridden in main() */
 	},
 
+	{ .name = "window-active-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "default"
+	},
+
+	{ .name = "window-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .default_str = "default"
+	},
+
 	{ .name = "window-status-activity-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
 	  .default_num = GRID_ATTR_REVERSE,

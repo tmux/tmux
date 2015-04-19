@@ -28,8 +28,8 @@ enum cmd_retval	 cmd_select_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_select_pane_entry = {
 	"select-pane", "selectp",
-	"DdeLlRt:U", 0, 0,
-	"[-DdeLlRU] " CMD_TARGET_PANE_USAGE,
+	"DdegLlP:Rt:U", 0, 0,
+	"[-DdegLlRU] [-P style] " CMD_TARGET_PANE_USAGE,
 	0,
 	cmd_select_pane_exec
 };
@@ -48,6 +48,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct args		*args = self->args;
 	struct winlink		*wl;
 	struct window_pane	*wp;
+	const char		*style;
 
 	if (self->entry == &cmd_last_pane_entry || args_has(args, 'l')) {
 		wl = cmd_find_window(cmdq, args_get(args, 't'), NULL);
@@ -80,6 +81,21 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (!window_pane_visible(wp)) {
 		cmdq_error(cmdq, "pane not visible");
 		return (CMD_RETURN_ERROR);
+	}
+
+	if (args_has(self->args, 'P') || args_has(self->args, 'g')) {
+		if (args_has(args, 'P')) {
+			style = args_get(args, 'P');
+			if (style_parse(&grid_default_cell, &wp->colgc,
+			    style) == -1) {
+				cmdq_error(cmdq, "bad style: %s", style);
+				return (CMD_RETURN_ERROR);
+			}
+			wp->flags |= PANE_REDRAW;
+		}
+		if (args_has(self->args, 'g'))
+			cmdq_print(cmdq, "%s", style_tostring(&wp->colgc));
+		return (CMD_RETURN_NORMAL);
 	}
 
 	if (args_has(self->args, 'L'))

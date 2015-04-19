@@ -35,6 +35,7 @@ struct tty_terms tty_terms = LIST_HEAD_INITIALIZER(tty_terms);
 const struct tty_term_code_entry tty_term_codes[NTTYCODE] = {
 	{ TTYC_ACSC, TTYCODE_STRING, "acsc" },
 	{ TTYC_AX, TTYCODE_FLAG, "AX" },
+	{ TTYC_BCE, TTYCODE_FLAG, "bce" },
 	{ TTYC_BEL, TTYCODE_STRING, "bel" },
 	{ TTYC_BLINK, TTYCODE_STRING, "blink" },
 	{ TTYC_BOLD, TTYCODE_STRING, "bold" },

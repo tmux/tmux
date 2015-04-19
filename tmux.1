@@ -1730,14 +1730,17 @@ and
 .Ic previous-layout
 commands.
 .It Xo Ic select-pane
-.Op Fl DdeLlRU
+.Op Fl DdegLlRU
+.Op Fl P Ar style
 .Op Fl t Ar target-pane
 .Xc
 .D1 (alias: Ic selectp )
 Make pane
 .Ar target-pane
 the active pane in window
-.Ar target-window .
+.Ar target-window ,
+or set it's style (with
+.Fl P ) .
 If one of
 .Fl D ,
 .Fl L ,
@@ -1754,6 +1757,22 @@ command.
 enables or
 .Fl d
 disables input to the pane.
+.Pp
+Each pane has a style: by default the
+.Ic window-style
+and
+.Ic window-active-style
+options are used,
+.Ic select-pane
+.Fl P
+sets the style for a single pane.
+For example, to set the pane 1 background to red:
+.Bd -literal -offset indent
+select-pane -t:.1 -P 'bg=red'
+.Ed
+.Pp
+.Fl g
+shows the current pane style.
 .It Xo Ic select-window
 .Op Fl lnpT
 .Op Fl t Ar target-window
@@ -2070,7 +2089,7 @@ also supports user options which are prefixed with a
 User options may have any name, so long as they are prefixed with
 .Ql \&@ ,
 and be set to any string.
-For example
+For example:
 .Bd -literal -offset indent
 $ tmux setw -q @foo "abc123"
 $ tmux showw -v @foo
@@ -2936,6 +2955,14 @@ Instructs
 .Nm
 to expect UTF-8 sequences to appear in this window.
 .Pp
+.It Ic window-active-style Ar style
+Set the style for the window's active pane.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
+.Pp
 .It Ic window-status-activity-style Ar style
 Set status line style for windows with an activity alert.
 For how to specify
@@ -2987,6 +3014,14 @@ The default is a single space character.
 .Pp
 .It Ic window-status-style Ar style
 Set status line style for a single window.
+For how to specify
+.Ar style ,
+see the
+.Ic message-command-style
+option.
+.Pp
+.It Ic window-style Ar style
+Set the default window style.
 For how to specify
 .Ar style ,
 see the
