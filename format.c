@@ -38,6 +38,7 @@
 
 int	 format_replace(struct format_tree *, const char *, size_t, char **,
 	     size_t *, size_t *);
+char	*format_time_string(time_t);
 char	*format_get_command(struct window_pane *);
 
 void	 format_defaults_pane_tabs(struct format_tree *, struct window_pane *);
@@ -454,6 +455,18 @@ format_get_command(struct window_pane *wp)
 	return (out);
 }
 
+/* Get time as a string. */
+char *
+format_time_string(time_t t)
+{
+	char	*tim;
+
+	tim = ctime(&t);
+	*strchr(tim, '\n') = '\0';
+
+	return (tim);
+}
+
 /* Set defaults for any of arguments that are not NULL. */
 void
 format_defaults(struct format_tree *ft, struct client *c, struct session *s,
@@ -481,7 +494,6 @@ void
 format_defaults_session(struct format_tree *ft, struct session *s)
 {
 	struct session_group	*sg;
-	char			*tim;
 	time_t			 t;
 
 	ft->s = s;
@@ -499,21 +511,22 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 
 	t = s->creation_time.tv_sec;
 	format_add(ft, "session_created", "%lld", (long long) t);
-	tim = ctime(&t);
-	*strchr(tim, '\n') = '\0';
-	format_add(ft, "session_created_string", "%s", tim);
+	format_add(ft, "session_created_string", "%s", format_time_string(t));
+
+	t = s->activity_time.tv_sec;
+	format_add(ft, "session_activity", "%lld", (long long) t);
+	format_add(ft, "session_activity_string", "%s", format_time_string(t));
 
 	format_add(ft, "session_attached", "%u", s->attached);
-	format_add(ft, "session_many_attached", "%u", s->attached > 1);
+	format_add(ft, "session_many_attached", "%d", s->attached > 1);
 }
 
 /* Set default format keys for a client. */
 void
 format_defaults_client(struct format_tree *ft, struct client *c)
 {
-	char		*tim;
-	time_t		 t;
 	struct session	*s;
+	time_t		 t;
 
 	if (ft->s == NULL)
 		ft->s = c->session;
@@ -527,15 +540,11 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 
 	t = c->creation_time.tv_sec;
 	format_add(ft, "client_created", "%lld", (long long) t);
-	tim = ctime(&t);
-	*strchr(tim, '\n') = '\0';
-	format_add(ft, "client_created_string", "%s", tim);
+	format_add(ft, "client_created_string", "%s", format_time_string(t));
 
 	t = c->activity_time.tv_sec;
 	format_add(ft, "client_activity", "%lld", (long long) t);
-	tim = ctime(&t);
-	*strchr(tim, '\n') = '\0';
-	format_add(ft, "client_activity_string", "%s", tim);
+	format_add(ft, "client_activity_string", "%s", format_time_string(t));
 
 	format_add(ft, "client_prefix", "%d", !!(c->flags & CLIENT_PREFIX));
 
@@ -573,7 +582,7 @@ format_defaults_window(struct format_tree *ft, struct window *w)
 	format_add(ft, "window_height", "%u", w->sy);
 	format_add(ft, "window_layout", "%s", layout);
 	format_add(ft, "window_panes", "%u", window_count_panes(w));
-	format_add(ft, "window_zoomed_flag", "%u",
+	format_add(ft, "window_zoomed_flag", "%d",
 	    !!(w->flags & WINDOW_ZOOMED));
 
 	free(layout);
@@ -598,13 +607,13 @@ format_defaults_winlink(struct format_tree *ft, struct session *s,
 	format_add(ft, "window_flags", "%s", flags);
 	format_add(ft, "window_active", "%d", wl == s->curw);
 
-	format_add(ft, "window_bell_flag", "%u",
+	format_add(ft, "window_bell_flag", "%d",
 	    !!(wl->flags & WINLINK_BELL));
-	format_add(ft, "window_activity_flag", "%u",
+	format_add(ft, "window_activity_flag", "%d",
 	    !!(wl->flags & WINLINK_ACTIVITY));
-	format_add(ft, "window_silence_flag", "%u",
+	format_add(ft, "window_silence_flag", "%d",
 	    !!(wl->flags & WINLINK_SILENCE));
-	format_add(ft, "window_last_flag", "%u",
+	format_add(ft, "window_last_flag", "%d",
 	    !!(wl == TAILQ_FIRST(&s->lastw)));
 
 	free(flags);
@@ -624,7 +633,7 @@ format_defaults_pane_tabs(struct format_tree *ft, struct window_pane *wp)
 
 		if (EVBUFFER_LENGTH(buffer) > 0)
 			evbuffer_add(buffer, ",", 1);
-		evbuffer_add_printf(buffer, "%d", i);
+		evbuffer_add_printf(buffer, "%u", i);
 	}
 
 	format_add(ft, "pane_tabs", "%.*s", (int) EVBUFFER_LENGTH(buffer),
@@ -697,16 +706,16 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 		free(cmd);
 	}
 
-	format_add(ft, "cursor_x", "%d", wp->base.cx);
-	format_add(ft, "cursor_y", "%d", wp->base.cy);
-	format_add(ft, "scroll_region_upper", "%d", wp->base.rupper);
-	format_add(ft, "scroll_region_lower", "%d", wp->base.rlower);
-	format_add(ft, "saved_cursor_x", "%d", wp->ictx.old_cx);
-	format_add(ft, "saved_cursor_y", "%d", wp->ictx.old_cy);
+	format_add(ft, "cursor_x", "%u", wp->base.cx);
+	format_add(ft, "cursor_y", "%u", wp->base.cy);
+	format_add(ft, "scroll_region_upper", "%u", wp->base.rupper);
+	format_add(ft, "scroll_region_lower", "%u", wp->base.rlower);
+	format_add(ft, "saved_cursor_x", "%u", wp->ictx.old_cx);
+	format_add(ft, "saved_cursor_y", "%u", wp->ictx.old_cy);
 
 	format_add(ft, "alternate_on", "%d", wp->saved_grid ? 1 : 0);
-	format_add(ft, "alternate_saved_x", "%d", wp->saved_cx);
-	format_add(ft, "alternate_saved_y", "%d", wp->saved_cy);
+	format_add(ft, "alternate_saved_x", "%u", wp->saved_cx);
+	format_add(ft, "alternate_saved_y", "%u", wp->saved_cy);
 
 	format_add(ft, "cursor_flag", "%d",
 	    !!(wp->base.mode & MODE_CURSOR));

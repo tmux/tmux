@@ -218,7 +218,7 @@ input_mouse(struct window_pane *wp, struct session *s, struct mouse_event *m)
 		 * legacy format.
 		 */
 		if (m->sgr && (wp->screen->mode & MODE_MOUSE_SGR)) {
-			len = xsnprintf(buf, sizeof buf, "\033[<%d;%d;%d%c",
+			len = xsnprintf(buf, sizeof buf, "\033[<%u;%u;%u%c",
 			    m->sgr_xb, m->x + 1, m->y + 1,
 			    m->sgr_rel ? 'm' : 'M');
 		} else if (wp->screen->mode & MODE_MOUSE_UTF8) {

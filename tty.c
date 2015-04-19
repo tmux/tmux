@@ -629,7 +629,7 @@ tty_draw_line(struct tty *tty, struct screen *s, u_int py, u_int ox, u_int oy)
 		sx = tty->sx;
 
 	/*
-	 * Don't move the cursor to the start permission if it will wrap there
+	 * Don't move the cursor to the start position if it will wrap there
 	 * itself.
 	 */
 	gl = NULL;
@@ -1407,7 +1407,7 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 		 *
 		 * Otherwise, try to set the default colour only as needed.
 		 */
-		have_ax = tty_term_has(tty->term, TTYC_AX);
+		have_ax = tty_term_flag(tty->term, TTYC_AX);
 		if (!have_ax && tty_term_has(tty->term, TTYC_OP))
 			tty_reset(tty);
 		else {
@@ -1453,6 +1453,8 @@ tty_check_fg(struct tty *tty, struct grid_cell *gc)
 {
 	u_int	colours;
 
+	colours = tty_term_number(tty->term, TTYC_COLORS);
+
 	/* Is this a 256-colour colour? */
 	if (gc->flags & GRID_FLAG_FG256) {
 		/* And not a 256 colour mode? */
@@ -1461,7 +1463,10 @@ tty_check_fg(struct tty *tty, struct grid_cell *gc)
 			gc->fg = colour_256to16(gc->fg);
 			if (gc->fg & 8) {
 				gc->fg &= 7;
-				gc->attr |= GRID_ATTR_BRIGHT;
+				if (colours >= 16)
+					gc->fg += 90;
+				else
+					gc->attr |= GRID_ATTR_BRIGHT;
 			} else
 				gc->attr &= ~GRID_ATTR_BRIGHT;
 			gc->flags &= ~GRID_FLAG_FG256;
@@ -1470,7 +1475,6 @@ tty_check_fg(struct tty *tty, struct grid_cell *gc)
 	}
 
 	/* Is this an aixterm colour? */
-	colours = tty_term_number(tty->term, TTYC_COLORS);
 	if (gc->fg >= 90 && gc->fg <= 97 && colours < 16) {
 		gc->fg -= 90;
 		gc->attr |= GRID_ATTR_BRIGHT;
@@ -1482,6 +1486,8 @@ tty_check_bg(struct tty *tty, struct grid_cell *gc)
 {
 	u_int	colours;
 
+	colours = tty_term_number(tty->term, TTYC_COLORS);
+
 	/* Is this a 256-colour colour? */
 	if (gc->flags & GRID_FLAG_BG256) {
 		/*
@@ -1492,20 +1498,19 @@ tty_check_bg(struct tty *tty, struct grid_cell *gc)
 		if (!(tty->term->flags & TERM_256COLOURS) &&
 		    !(tty->term_flags & TERM_256COLOURS)) {
 			gc->bg = colour_256to16(gc->bg);
-			if (gc->bg & 8)
+			if (gc->bg & 8) {
 				gc->bg &= 7;
-			gc->attr &= ~GRID_ATTR_BRIGHT;
+				if (colours >= 16)
+					gc->fg += 90;
+			}
 			gc->flags &= ~GRID_FLAG_BG256;
 		}
 		return;
 	}
 
 	/* Is this an aixterm colour? */
-	colours = tty_term_number(tty->term, TTYC_COLORS);
-	if (gc->bg >= 90 && gc->bg <= 97 && colours < 16) {
+	if (gc->bg >= 90 && gc->bg <= 97 && colours < 16)
 		gc->bg -= 90;
-		gc->attr |= GRID_ATTR_BRIGHT;
-	}
 }
 
 void
@@ -1559,14 +1564,9 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 
 	/* Is this an aixterm bright colour? */
 	if (bg >= 90 && bg <= 97) {
-		/* 16 colour terminals or above only. */
-		if (tty_term_number(tty->term, TTYC_COLORS) >= 16) {
-			xsnprintf(s, sizeof s, "\033[%dm", bg + 10);
-			tty_puts(tty, s);
-			goto save_bg;
-		}
-		bg -= 90;
-		/* no such thing as a bold background */
+		xsnprintf(s, sizeof s, "\033[%dm", bg + 10);
+		tty_puts(tty, s);
+		goto save_bg;
 	}
 
 	/* Otherwise set the background colour. */

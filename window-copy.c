@@ -147,6 +147,7 @@ struct window_copy_mode_data {
 	enum window_copy_input_type inputtype;
 	const char     *inputprompt;
 	char	       *inputstr;
+	int		inputexit;
 
 	int		numprefix;
 
@@ -424,8 +425,12 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 	case MODEKEYCOPY_APPENDSELECTION:
 		if (sess != NULL) {
 			window_copy_append_selection(wp, NULL);
-			window_pane_reset_mode(wp);
-			return;
+			if (arg == NULL) {
+				window_pane_reset_mode(wp);
+				return;
+			}
+			window_copy_clear_selection(wp);
+			window_copy_redraw_screen(wp);
 		}
 		break;
 	case MODEKEYCOPY_CANCEL:
@@ -572,8 +577,12 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 	case MODEKEYCOPY_COPYSELECTION:
 		if (sess != NULL) {
 			window_copy_copy_selection(wp, NULL);
-			window_pane_reset_mode(wp);
-			return;
+			if (arg == NULL) {
+				window_pane_reset_mode(wp);
+				return;
+			}
+			window_copy_clear_selection(wp);
+			window_copy_redraw_screen(wp);
 		}
 		break;
 	case MODEKEYCOPY_STARTOFLINE:
@@ -718,6 +727,7 @@ window_copy_key(struct window_pane *wp, struct session *sess, int key)
 		goto input_on;
 	case MODEKEYCOPY_STARTNAMEDBUFFER:
 		data->inputtype = WINDOW_COPY_NAMEDBUFFER;
+		data->inputexit = (arg == NULL);
 		data->inputprompt = "Buffer";
 		*data->inputstr = '\0';
 		goto input_on;
@@ -828,8 +838,13 @@ window_copy_key_input(struct window_pane *wp, int key)
 		case WINDOW_COPY_NAMEDBUFFER:
 			window_copy_copy_selection(wp, data->inputstr);
 			*data->inputstr = '\0';
-			window_pane_reset_mode(wp);
-			return (0);
+			if (data->inputexit) {
+				window_pane_reset_mode(wp);
+				return (0);
+			}
+			window_copy_clear_selection(wp);
+			window_copy_redraw_screen(wp);
+			break;
 		case WINDOW_COPY_GOTOLINE:
 			window_copy_goto_line(wp, data->inputstr);
 			*data->inputstr = '\0';
@@ -1216,7 +1231,7 @@ window_copy_write_line(struct window_pane *wp, struct screen_write_ctx *ctx,
 			limit = screen_size_x(s) + 1;
 		if (data->inputtype == WINDOW_COPY_NUMERICPREFIX) {
 			xoff = size = xsnprintf(hdr, limit,
-			    "Repeat: %u", data->numprefix);
+			    "Repeat: %d", data->numprefix);
 		} else {
 			xoff = size = xsnprintf(hdr, limit,
 			    "%s: %s", data->inputprompt, data->inputstr);

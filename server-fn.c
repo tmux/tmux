@@ -41,9 +41,9 @@ server_fill_environ(struct session *s, struct environ *env)
 
 		idx = s->id;
 	} else
-		idx = -1;
+		idx = (u_int)-1;
 	pid = getpid();
-	xsnprintf(var, sizeof var, "%s,%ld,%d", socket_path, pid, idx);
+	xsnprintf(var, sizeof var, "%s,%ld,%u", socket_path, pid, idx);
 	environ_set(env, "TMUX", var);
 }
 

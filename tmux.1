@@ -751,7 +751,7 @@ behave like
 .Ic attach-session
 if
 .Ar session-name
-already exists; in the case,
+already exists; in this case,
 .Fl D
 behaves like
 .Fl d
@@ -991,15 +991,27 @@ command and keys modified or removed with
 .Ic bind-key
 and
 .Ic unbind-key .
-One command accepts an argument,
-.Ic copy-pipe ,
-which copies the selection and pipes it to a command.
+If
+.Ic append-selection ,
+.Ic copy-selection ,
+or
+.Ic start-named-buffer
+are given the
+.Fl x
+flag,
+.Nm
+will not exit copy mode after copying.
+.Ic copy-pipe
+copies the selection and pipes it to a command.
 For example the following will bind
+.Ql C-w
+not to exit after copying and
 .Ql C-q
 to copy the selection into
 .Pa /tmp
 as well as the paste buffer:
 .Bd -literal -offset indent
+bind-key -temacs-copy C-w copy-selection -x
 bind-key -temacs-copy C-q copy-pipe "cat >/tmp/out"
 .Ed
 .Pp
@@ -2503,9 +2515,9 @@ variable is set.
 String used to set the window title if
 .Ic set-titles
 is on.
-Character sequences are replaced as for the
-.Ic status-left
-option.
+Formats are expanded, see the
+.Sx FORMATS
+section.
 .It Xo Ic status
 .Op Ic on | off
 .Xc
@@ -3153,6 +3165,8 @@ The following variables are available, where appropriate:
 .It Li "scroll_region_lower" Ta "" Ta "Bottom of scroll region in pane"
 .It Li "scroll_region_upper" Ta "" Ta "Top of scroll region in pane"
 .It Li "session_attached" Ta "" Ta "Number of clients session is attached to"
+.It Li "session_activity" Ta "" Ta "Integer time of session last activity"
+.It Li "session_activity_string" Ta "" Ta "String time of session last activity"
 .It Li "session_created" Ta "" Ta "Integer time session created"
 .It Li "session_created_string" Ta "" Ta "String time session created"
 .It Li "session_group" Ta "" Ta "Number of session group"

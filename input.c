@@ -1717,7 +1717,7 @@ void
 input_exit_osc(struct input_ctx *ictx)
 {
 	u_char	*p = ictx->input_buf;
-	int	 option;
+	u_int	 option;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return;
