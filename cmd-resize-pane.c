@@ -28,10 +28,13 @@
 
 enum cmd_retval	 cmd_resize_pane_exec(struct cmd *, struct cmd_q *);
 
+void	cmd_resize_pane_mouse_update(struct client *, struct mouse_event *);
+
 const struct cmd_entry cmd_resize_pane_entry = {
 	"resize-pane", "resizep",
-	"DLRt:Ux:y:Z", 0, 1,
-	"[-DLRUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " [adjustment]",
+	"DLMRt:Ux:y:Z", 0, 1,
+	"[-DLMRUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE
+	" [adjustment]",
 	0,
 	cmd_resize_pane_exec
 };
@@ -40,6 +43,8 @@ enum cmd_retval
 cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
+	struct client		*c = cmdq->client;
+	struct session		*s;
 	struct winlink		*wl;
 	struct window		*w;
 	const char	       	*errstr;
@@ -47,6 +52,16 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window_pane	*wp;
 	u_int			 adjust;
 	int			 x, y;
+
+	if (args_has(args, 'M')) {
+		if (cmd_mouse_window(&cmdq->item->mouse, &s) == NULL)
+			return (CMD_RETURN_NORMAL);
+		if (c == NULL || c->session != s)
+			return (CMD_RETURN_NORMAL);
+		c->tty.mouse_drag_update = cmd_resize_pane_mouse_update;
+		cmd_resize_pane_mouse_update(c, &cmdq->item->mouse);
+		return (CMD_RETURN_NORMAL);
+	}
 
 	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
@@ -105,4 +120,51 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	server_redraw_window(wl->window);
 
 	return (CMD_RETURN_NORMAL);
+}
+
+void
+cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
+{
+	struct winlink		*wl;
+	struct window_pane	*wp;
+	int			 found;
+	u_int			 y, ly;
+
+	wl = cmd_mouse_window(m, NULL);
+	if (wl == NULL) {
+		c->tty.mouse_drag_update = NULL;
+		return;
+	}
+
+	y = m->y;
+	if (m->statusat == 0 && y > 0)
+		y--;
+	else if (m->statusat > 0 && y >= (u_int)m->statusat)
+		y = m->statusat - 1;
+	ly = m->ly;
+	if (m->statusat == 0 && ly > 0)
+		ly--;
+	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
+		ly = m->statusat - 1;
+
+	found = 0;
+	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
+		if (!window_pane_visible(wp))
+			continue;
+
+		if (wp->xoff + wp->sx == m->lx &&
+		    wp->yoff <= 1 + ly && wp->yoff + wp->sy >= ly) {
+			layout_resize_pane(wp, LAYOUT_LEFTRIGHT, m->x - m->lx);
+			found = 1;
+		}
+		if (wp->yoff + wp->sy == ly &&
+		    wp->xoff <= 1 + m->lx && wp->xoff + wp->sx >= m->lx) {
+			layout_resize_pane(wp, LAYOUT_TOPBOTTOM, y - ly);
+			found = 1;
+		}
+	}
+	if (found)
+		server_redraw_window(wl->window);
+	else
+		c->tty.mouse_drag_update = NULL;
 }

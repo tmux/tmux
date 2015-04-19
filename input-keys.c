@@ -31,6 +31,8 @@
  * direction with output).
  */
 
+void	 input_key_mouse(struct window_pane *, struct mouse_event *);
+
 struct input_key_ent {
 	int		 key;
 	const char	*data;
@@ -135,7 +137,7 @@ const struct input_key_ent input_keys[] = {
 
 /* Translate a key code into an output key sequence. */
 void
-input_key(struct window_pane *wp, int key)
+input_key(struct window_pane *wp, int key, struct mouse_event *m)
 {
 	const struct input_key_ent     *ike;
 	u_int				i;
@@ -143,7 +145,14 @@ input_key(struct window_pane *wp, int key)
 	char			       *out;
 	u_char				ch;
 
-	log_debug("writing key 0x%x", key);
+	log_debug("writing key 0x%x (%s)", key, key_string_lookup_key(key));
+
+	/* If this is a mouse key, pass off to mouse function. */
+	if (KEYC_IS_MOUSE(key)) {
+		if (m != NULL && m->wp != -1 && (u_int)m->wp == wp->id)
+			input_key_mouse(wp, m);
+		return;
+	}
 
 	/*
 	 * If this is a normal 7-bit key, just send it, with a leading escape
@@ -200,55 +209,47 @@ input_key(struct window_pane *wp, int key)
 
 /* Translate mouse and output. */
 void
-input_mouse(struct window_pane *wp, struct session *s, struct mouse_event *m)
+input_key_mouse(struct window_pane *wp, struct mouse_event *m)
 {
-	char			 buf[40];
-	size_t			 len;
-	struct paste_buffer	*pb;
-	int			 event;
+	char	buf[40];
+	size_t	len;
+	u_int	x, y;
 
-	if (wp->screen->mode & ALL_MOUSE_MODES) {
-		/*
-		 * Use the SGR (1006) extension only if the application
-		 * requested it and the underlying terminal also sent the event
-		 * in this format (this is because an old style mouse release
-		 * event cannot be converted into the new SGR format, since the
-		 * released button is unknown). Otherwise pretend that tmux
-		 * doesn't speak this extension, and fall back to the UTF-8
-		 * (1005) extension if the application requested, or to the
-		 * legacy format.
-		 */
-		if (m->sgr && (wp->screen->mode & MODE_MOUSE_SGR)) {
-			len = xsnprintf(buf, sizeof buf, "\033[<%u;%u;%u%c",
-			    m->sgr_xb, m->x + 1, m->y + 1,
-			    m->sgr_rel ? 'm' : 'M');
-		} else if (wp->screen->mode & MODE_MOUSE_UTF8) {
-			len = xsnprintf(buf, sizeof buf, "\033[M");
-			len += utf8_split2(m->xb + 32, &buf[len]);
-			len += utf8_split2(m->x + 33, &buf[len]);
-			len += utf8_split2(m->y + 33, &buf[len]);
-		} else {
-			if (m->xb > 223)
-				return;
-			len = xsnprintf(buf, sizeof buf, "\033[M");
-			buf[len++] = m->xb + 32;
-			buf[len++] = m->x + 33;
-			buf[len++] = m->y + 33;
-		}
-		bufferevent_write(wp->event, buf, len);
+	if ((wp->screen->mode & ALL_MOUSE_MODES) == 0)
 		return;
-	}
+	if (!window_pane_visible(wp))
+		return;
+	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
+		return;
 
-	if (options_get_number(&wp->window->options, "mode-mouse") != 1)
+	/* If this pane is not in button mode, discard motion events. */
+	if (!(wp->screen->mode & MODE_MOUSE_BUTTON) && (m->b & MOUSE_MASK_DRAG))
 		return;
-	event = m->event & (MOUSE_EVENT_CLICK|MOUSE_EVENT_WHEEL);
-	if (wp->mode == NULL && m->button == 1 && event == MOUSE_EVENT_CLICK) {
-		pb = paste_get_top();
-		if (pb != NULL)
-			paste_send_pane(pb, wp, "\r", 1);
-	} else if (window_pane_set_mode(wp, &window_copy_mode) == 0) {
-		window_copy_init_from_pane(wp);
-		if (wp->mode->mouse != NULL)
-			wp->mode->mouse(wp, s, m);
+
+	/*
+	 * Use the SGR (1006) extension only if the application requested it
+	 * and the underlying terminal also sent the event in this format (this
+	 * is because an old style mouse release event cannot be converted into
+	 * the new SGR format, since the released button is unknown). Otherwise
+	 * pretend that tmux doesn't speak this extension, and fall back to the
+	 * UTF-8 (1005) extension if the application requested, or to the
+	 * legacy format.
+	 */
+	if (m->sgr_type != ' ' && (wp->screen->mode & MODE_MOUSE_SGR)) {
+		len = xsnprintf(buf, sizeof buf, "\033[<%u;%u;%u%c",
+		    m->sgr_b, x + 1, y + 1, m->sgr_type);
+	} else if (wp->screen->mode & MODE_MOUSE_UTF8) {
+		len = xsnprintf(buf, sizeof buf, "\033[M");
+		len += utf8_split2(m->b + 32, &buf[len]);
+		len += utf8_split2(x + 33, &buf[len]);
+		len += utf8_split2(y + 33, &buf[len]);
+	} else {
+		if (m->b > 223)
+			return;
+		len = xsnprintf(buf, sizeof buf, "\033[M");
+		buf[len++] = m->b + 32;
+		buf[len++] = x + 33;
+		buf[len++] = y + 33;
 	}
+	bufferevent_write(wp->event, buf, len);
 }

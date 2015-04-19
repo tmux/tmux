@@ -241,6 +241,10 @@ tty_start_tty(struct tty *tty)
 	tty->flags |= TTY_STARTED;
 
 	tty_force_cursor_colour(tty, "");
+
+	tty->mouse_drag_flag = 0;
+	tty->mouse_drag_update = NULL;
+	tty->mouse_drag_release = NULL;
 }
 
 void

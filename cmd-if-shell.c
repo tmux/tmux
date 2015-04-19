@@ -95,7 +95,7 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 			}
 			return (CMD_RETURN_ERROR);
 		}
-		cmdq_run(cmdq, cmdlist);
+		cmdq_run(cmdq, cmdlist, NULL);
 		cmd_list_free(cmdlist);
 		return (CMD_RETURN_NORMAL);
 	}
@@ -152,7 +152,7 @@ cmd_if_shell_callback(struct job *job)
 	cmdq1->emptyfn = cmd_if_shell_done;
 	cmdq1->data = cdata;
 
-	cmdq_run(cmdq1, cmdlist);
+	cmdq_run(cmdq1, cmdlist, NULL);
 	cmd_list_free(cmdlist);
 }
 

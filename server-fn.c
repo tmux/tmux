@@ -604,7 +604,8 @@ server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
 void
 server_unzoom_window(struct window *w)
 {
-	window_unzoom(w);
-	server_redraw_window(w);
-	server_status_window(w);
+	if (window_unzoom(w) == 0) {
+		server_redraw_window(w);
+		server_status_window(w);
+	}
 }

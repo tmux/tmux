@@ -36,9 +36,6 @@
 const char *options_table_mode_keys_list[] = {
 	"emacs", "vi", NULL
 };
-const char *options_table_mode_mouse_list[] = {
-	"off", "on", "copy-mode", NULL
-};
 const char *options_table_clock_mode_style_list[] = {
 	"12", "24", NULL
 };
@@ -255,17 +252,7 @@ const struct options_table_entry session_options_table[] = {
 	  .default_str = "bg=yellow,fg=black"
 	},
 
-	{ .name = "mouse-resize-pane",
-	  .type = OPTIONS_TABLE_FLAG,
-	  .default_num = 0
-	},
-
-	{ .name = "mouse-select-pane",
-	  .type = OPTIONS_TABLE_FLAG,
-	  .default_num = 0
-	},
-
-	{ .name = "mouse-select-window",
+	{ .name = "mouse",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .default_num = 0
 	},
@@ -573,12 +560,6 @@ const struct options_table_entry window_options_table[] = {
 	  .type = OPTIONS_TABLE_CHOICE,
 	  .choices = options_table_mode_keys_list,
 	  .default_num = MODEKEY_EMACS
-	},
-
-	{ .name = "mode-mouse",
-	  .type = OPTIONS_TABLE_CHOICE,
-	  .choices = options_table_mode_mouse_list,
-	  .default_num = 0
 	},
 
 	{ .name = "mode-style",

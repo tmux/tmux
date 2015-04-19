@@ -387,6 +387,18 @@ window_resize(struct window *w, u_int sx, u_int sy)
 }
 
 int
+window_has_pane(struct window *w, struct window_pane *wp)
+{
+	struct window_pane	*wp1;
+
+	TAILQ_FOREACH(wp1, &w->panes, entry) {
+		if (wp1 == wp)
+			return (1);
+	}
+	return (0);
+}
+
+int
 window_set_active_pane(struct window *w, struct window_pane *wp)
 {
 	if (wp == w->active)
@@ -1052,50 +1064,35 @@ window_pane_reset_mode(struct window_pane *wp)
 }
 
 void
-window_pane_key(struct window_pane *wp, struct session *sess, int key)
+window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
+    int key, struct mouse_event *m)
 {
 	struct window_pane	*wp2;
 
+	if (KEYC_IS_MOUSE(key) && m == NULL)
+		return;
+
 	if (wp->mode != NULL) {
 		if (wp->mode->key != NULL)
-			wp->mode->key(wp, sess, key);
+			wp->mode->key(wp, c, s, key, m);
 		return;
 	}
 
 	if (wp->fd == -1 || wp->flags & PANE_INPUTOFF)
 		return;
 
-	input_key(wp, key);
+	input_key(wp, key, m);
+
+	if (KEYC_IS_MOUSE(key))
+		return;
 	if (options_get_number(&wp->window->options, "synchronize-panes")) {
 		TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
 			if (wp2 == wp || wp2->mode != NULL)
 				continue;
 			if (wp2->fd != -1 && window_pane_visible(wp2))
-				input_key(wp2, key);
+				input_key(wp2, key, NULL);
 		}
 	}
-}
-
-void
-window_pane_mouse(struct window_pane *wp, struct session *sess,
-    struct mouse_event *m)
-{
-	if (!window_pane_visible(wp))
-		return;
-
-	if (m->x < wp->xoff || m->x >= wp->xoff + wp->sx)
-		return;
-	if (m->y < wp->yoff || m->y >= wp->yoff + wp->sy)
-		return;
-	m->x -= wp->xoff;
-	m->y -= wp->yoff;
-
-	if (wp->mode != NULL) {
-		if (wp->mode->mouse != NULL &&
-		    options_get_number(&wp->window->options, "mode-mouse"))
-			wp->mode->mouse(wp, sess, m);
-	} else if (wp->fd != -1)
-		input_mouse(wp, sess, m);
 }
 
 int

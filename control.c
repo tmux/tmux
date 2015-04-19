@@ -81,7 +81,7 @@ control_callback(struct client *c, int closed, unused void *data)
 		} else {
 			TAILQ_FOREACH(cmd, &cmdlist->list, qentry)
 				cmd->flags |= CMD_CONTROL;
-			cmdq_run(c->cmdq, cmdlist);
+			cmdq_run(c->cmdq, cmdlist, NULL);
 			cmd_list_free(cmdlist);
 		}
 

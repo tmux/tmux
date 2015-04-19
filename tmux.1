@@ -1019,13 +1019,16 @@ The synopsis for the
 command is:
 .Bl -tag -width Ds
 .It Xo Ic copy-mode
-.Op Fl u
+.Op Fl Mu
 .Op Fl t Ar target-pane
 .Xc
 Enter copy mode.
 The
 .Fl u
 option scrolls one page up.
+.Fl M
+begins a mouse drag (only valid if bound to a mouse key binding, see
+.Sx MOUSE SUPPORT Ns ).
 .El
 .Pp
 Each window displayed by
@@ -1643,7 +1646,7 @@ Rename the current window, or the window at
 if specified, to
 .Ar new-name .
 .It Xo Ic resize-pane
-.Op Fl DLRUZ
+.Op Fl DLMRUZ
 .Op Fl t Ar target-pane
 .Op Fl x Ar width
 .Op Fl y Ar height
@@ -1672,6 +1675,10 @@ With
 .Fl Z ,
 the active pane is toggled between zoomed (occupying the whole of the window)
 and unzoomed (its normal position in the layout).
+.Pp
+.Fl M
+begins mouse resizing (only valid if bound to a mouse key binding, see
+.Sx MOUSE SUPPORT Ns ).
 .It Xo Ic respawn-pane
 .Op Fl k
 .Op Fl t Ar target-pane
@@ -1980,7 +1987,7 @@ are listed; this may be one of:
 or
 .Em emacs-copy .
 .It Xo Ic send-keys
-.Op Fl lR
+.Op Fl lMR
 .Op Fl t Ar target-pane
 .Ar key Ar ...
 .Xc
@@ -2001,6 +2008,10 @@ All arguments are sent sequentially from first to last.
 The
 .Fl R
 flag causes the terminal state to be reset.
+.Pp
+.Fl M
+passes through a mouse event (only valid if bound to a mouse key binding, see
+.Sx MOUSE SUPPORT Ns ).
 .It Xo Ic send-prefix
 .Op Fl 2
 .Op Fl t Ar target-pane
@@ -2449,25 +2460,15 @@ For how to specify
 see the
 .Ic message-command-style
 option.
-.It Xo Ic mouse-resize-pane
+.It Xo Ic mouse
 .Op Ic on | off
 .Xc
 If on,
 .Nm
-captures the mouse and allows panes to be resized by dragging on their borders.
-.It Xo Ic mouse-select-pane
-.Op Ic on | off
-.Xc
-If on,
-.Nm
-captures the mouse and when a window is split into multiple panes the mouse may
-be used to select the current pane.
-The mouse click is also passed through to the application as normal.
-.It Xo Ic mouse-select-window
-.Op Ic on | off
-.Xc
-If on, clicking the mouse on a window name in the status line will select that
-window.
+captures the mouse and allows mouse events to be bound as key bindings.
+See the
+.Sx MOUSE SUPPORT
+section for details.
 .It Xo Ic mouse-utf8
 .Op Ic on | off
 .Xc
@@ -2855,18 +2856,6 @@ or
 contains
 .Ql vi .
 .Pp
-.It Xo Ic mode-mouse
-.Op Ic on | off | copy-mode
-.Xc
-Mouse state in modes.
-If on, the mouse may be used to enter copy mode and copy a selection by
-dragging, to enter copy mode and scroll with the mouse wheel, or to select an
-option in choice mode.
-If set to
-.Em copy-mode ,
-the mouse behaves as set to on, but cannot be used to enter copy
-mode.
-.Pp
 .It Ic mode-style Ar style
 Set window modes style.
 For how to specify
@@ -3083,6 +3072,56 @@ is used.
 .Fl v
 shows only the option value, not the name.
 .El
+.Sh MOUSE SUPPORT
+If the
+.Ic mouse
+option is on (the default is off),
+.Nm
+allows mouse events to be bound as keys.
+The name of each key is made up of a mouse event (such as
+.Ql MouseUp1 )
+and a location suffix (one of
+.Ql Pane
+for the contents of a pane,
+.Ql Border
+for a pane border or
+.Ql Status
+for the status line).
+The following mouse events are available:
+.Bl -column "MouseDown1" "MouseDrag1" "WheelDown" -offset indent
+.It Li "MouseDown1" Ta "MouseUp1" Ta "MouseDrag1"
+.It Li "MouseDown2" Ta "MouseUp2" Ta "MouseDrag2"
+.It Li "MouseDown3" Ta "MouseUp3" Ta "MouseDrag3"
+.It Li "WheelUp" Ta "WheelDown"
+.El
+.Pp
+Each should be suffixed with a location, for example
+.Ql MouseDown1Status .
+.Pp
+The special character
+.Ql =
+may be used as
+.Ar target-window
+or
+.Ar target-pane
+in commands bound to mouse key bindings.
+It resolves to the window or pane over which the mouse event took place
+(for example, the window in the status line over which button 1 was released for a
+.Ql MouseUp1Status
+binding, or the pane over which the wheel was scrolled for a
+.Ql WheelDownPane
+binding).
+.Pp
+The
+.Ic send-keys
+.Fl M
+flag may be used to forward a mouse event to a pane.
+.Pp
+The default key bindings allow the mouse to be used to select and resize panes,
+to copy text and to change window using the status line.
+These take effect if the
+.Ic mouse
+option is turned on.
 .Sh FORMATS
 Certain commands accept the
 .Fl F

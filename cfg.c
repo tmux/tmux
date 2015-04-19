@@ -75,7 +75,7 @@ load_cfg(const char *path, struct cmd_q *cmdq, char **cause)
 
 		if (cmdlist == NULL)
 			continue;
-		cmdq_append(cmdq, cmdlist);
+		cmdq_append(cmdq, cmdlist, NULL);
 		cmd_list_free(cmdlist);
 		found++;
 	}
