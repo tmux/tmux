@@ -65,7 +65,7 @@
 	        way to bind repeat count to mode keys so that wheel up/down can
 	        do multiple lines c) send-keys -M to pass a mouse event through?
 	      - what does the mouse->KEYC_* conversion and find-the-pane bit?
-                server_client_handle_key?
+		server_client_handle_key?
 
 - hooks!
 
@@ -90,7 +90,7 @@
 - layout stuff
 	* way to tag a layout as a number/name
 	* maybe keep last layout + size around and if size reverts just put it
-          back
+	  back
 	* revamp layouts: they are too complicated, should be more closely
 	  integrated, should support hints, layout sets should just be a
 	  special case of custom layouts, and we should support panes that are
@@ -99,9 +99,10 @@
 	* way to set hints/limits about pane size for resizing
 	* panning over window (window larger than visible)
 	* a mode where one application can cross two panes (ie x|y, width =
-          COLUMNS/2 but height = ROWS * 2)
-        * general key to space cells out evenly (horiz or vert) within their
-          parent cell (could replace even-vert/even-horiz layouts)
+	  COLUMNS/2 but height = ROWS * 2)
+	* general key to space cells out evenly (horiz or vert) within their
+	  parent cell (could replace even-vert/even-horiz layouts)
+	* separate active panes for different clients
 
 - terminfo bits
 	* use a better termcap internally instead of screen, perhaps xterm
@@ -126,7 +127,7 @@
 	  know about the client, notably:
 		- is this the config file? (cmdq->c == NULL)
 		- is this a command client? (cmdq->c != NULL &&
-                  cmdq->c->session == NULL)
+		  cmdq->c->session == NULL)
 		- is this a control client?
 		- can i do stdin or stdout to this client?
 	  or even guarantee that cmdq->c != NULL and provide a better way to
@@ -134,9 +135,9 @@
 	  client w/o a session else cmd_current_client
 	* optimize pane redraws, 20120318184853.GK10965@yelena.nicm.ath.cx
 	* cmd_find_* could be much simpler - parse everything the same, only
-          difference is what to choose when not given a ":" or "." (such as a
-          plain "0" could be session, window or pane). So just cmd_find_target
-          with a type (session, window, or pane)..
+	  difference is what to choose when not given a ":" or "." (such as a
+	  plain "0" could be session, window or pane). So just cmd_find_target
+	  with a type (session, window, or pane)..
 
 - miscellaneous
 	* way to keep a job running just read its last line of output for #()
