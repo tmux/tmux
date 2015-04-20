@@ -838,6 +838,7 @@ Suspend a client by sending
 .Op Fl lnpr
 .Op Fl c Ar target-client
 .Op Fl t Ar target-session
+.Op Fl T Ar key-table
 .Xc
 .D1 (alias: Ic switchc )
 Switch the current session for client
@@ -855,6 +856,22 @@ respectively.
 toggles whether a client is read-only (see the
 .Ic attach-session
 command).
+.Pp
+.Fl T
+sets the client's key table; the next key from the client will be interpreted from
+.Ar key-table .
+This may be used to configure multiple prefix keys, or to bind commands to
+sequences of keys.
+For example, to make typing
+.Ql abc
+run the
+.Ic list-keys
+command:
+.Bd -literal -offset indent
+bind-key -Ttable2 c list-keys
+bind-key -Ttable1 b switch-client -Ttable2
+bind-key -Troot   a switch-client -Ttable1
+.Ed
 .El
 .Sh WINDOWS AND PANES
 A
@@ -1931,6 +1948,7 @@ Commands related to key bindings are as follows:
 .It Xo Ic bind-key
 .Op Fl cnr
 .Op Fl t Ar mode-table
+.Op Fl T Ar key-table
 .Ar key Ar command Op Ar arguments
 .Xc
 .D1 (alias: Ic bind )
@@ -1938,16 +1956,40 @@ Bind key
 .Ar key
 to
 .Ar command .
-By default (without
-.Fl t )
-the primary key bindings are modified (those normally activated with the prefix
-key); in this case, if
-.Fl n
-is specified, it is not necessary to use the prefix key,
-.Ar command
+Keys are bound in a key table.
+By default (without -T), the key is bound in
+the
+.Em prefix
+key table.
+This table is used for keys pressed after the prefix key (for example,
+by default
+.Ql c
 is bound to
-.Ar key
-alone.
+.Ic new-window
+in the
+.Em prefix
+table, so
+.Ql C-b c
+creates a new window).
+The
+.Em root
+table is used for keys pressed without the prefix key: binding
+.Ql c
+to
+.Ic new-window
+in the
+.Em root
+table (not recommended) means a plain
+.Ql c
+will create a new window.
+.Fl n
+is an alias
+for
+.Fl T Ar root .
+Keys may also be bound in custom key tables and the
+.Ic switch-client
+.Fl T
+command used to switch to them from a key binding.
 The
 .Fl r
 flag indicates this key may repeat, see the
@@ -1962,22 +2004,33 @@ is bound in
 .Ar mode-table :
 the binding for command mode with
 .Fl c
-or for normal mode without.
+or for normal mode without. See the
+.Sx WINDOWS AND PANES
+section and the
+.Ic list-keys
+command for information on mode key bindings.
+.Pp
 To view the default bindings and possible commands, see the
 .Ic list-keys
 command.
-.It Ic list-keys Op Fl t Ar key-table
+.It Xo Ic list-keys
+.Op Fl t Ar mode-table
+.Op Fl T Ar key-table
+.Xc
 .D1 (alias: Ic lsk )
 List all key bindings.
 Without
-.Fl t
-the primary key bindings - those executed when preceded by the prefix key -
-are printed.
+.Fl T
+all key tables are printed.
+With
+.Fl T
+only
+.Ar key-table .
 .Pp
 With
 .Fl t ,
 the key bindings in
-.Ar key-table
+.Ar mode-table
 are listed; this may be one of:
 .Em vi-edit ,
 .Em emacs-edit ,
@@ -2022,31 +2075,22 @@ the secondary prefix key, to a window as if it was pressed.
 .It Xo Ic unbind-key
 .Op Fl acn
 .Op Fl t Ar mode-table
+.Op Fl T Ar key-table
 .Ar key
 .Xc
 .D1 (alias: Ic unbind )
 Unbind the command bound to
 .Ar key .
-Without
+.Fl c ,
+.Fl n ,
+.Fl T
+and
 .Fl t
-the primary key bindings are modified; in this case, if
-.Fl n
-is specified, the command bound to
-.Ar key
-without a prefix (if any) is removed.
+are the same as for
+.Ic bind-key .
 If
 .Fl a
 is present, all key bindings are removed.
-.Pp
-If
-.Fl t
-is present,
-.Ar key
-in
-.Ar mode-table
-is unbound: the binding for command mode with
-.Fl c
-or for normal mode without.
 .El
 .Sh OPTIONS
 The appearance and behaviour of

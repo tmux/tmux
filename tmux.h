@@ -89,10 +89,9 @@ extern char   **environ;
 #define KEYC_ESCAPE 0x2000
 #define KEYC_CTRL 0x4000
 #define KEYC_SHIFT 0x8000
-#define KEYC_PREFIX 0x10000
 
 /* Mask to obtain key w/o modifiers. */
-#define KEYC_MASK_MOD (KEYC_ESCAPE|KEYC_CTRL|KEYC_SHIFT|KEYC_PREFIX)
+#define KEYC_MASK_MOD (KEYC_ESCAPE|KEYC_CTRL|KEYC_SHIFT)
 #define KEYC_MASK_KEY (~KEYC_MASK_MOD)
 
 /* Is this a mouse key? */
@@ -1301,7 +1300,7 @@ struct client {
 	struct screen	 status;
 
 #define CLIENT_TERMINAL 0x1
-#define CLIENT_PREFIX 0x2
+/* 0x2 unused */
 #define CLIENT_EXIT 0x4
 #define CLIENT_REDRAW 0x8
 #define CLIENT_STATUS 0x10
@@ -1320,6 +1319,7 @@ struct client {
 #define CLIENT_256COLOURS 0x20000
 #define CLIENT_IDENTIFIED 0x40000
 	int		 flags;
+	struct key_table *keytable;
 
 	struct event	 identify_timer;
 
@@ -1440,15 +1440,24 @@ struct cmd_entry {
 	enum cmd_retval	 (*exec)(struct cmd *, struct cmd_q *);
 };
 
-/* Key binding. */
+/* Key binding and key table. */
 struct key_binding {
-	int		 key;
-	struct cmd_list	*cmdlist;
-	int		 can_repeat;
+	int			 key;
+	struct cmd_list		*cmdlist;
+	int			 can_repeat;
 
-	RB_ENTRY(key_binding) entry;
+	RB_ENTRY(key_binding)	 entry;
 };
 RB_HEAD(key_bindings, key_binding);
+struct key_table {
+	const char		 *name;
+	struct key_bindings	 key_bindings;
+
+	u_int			 references;
+
+	RB_ENTRY(key_table)	 entry;
+};
+RB_HEAD(key_tables, key_table);
 
 /*
  * Option table entries. The option table is the user-visible part of the
@@ -1876,12 +1885,16 @@ void	cmd_wait_for_flush(void);
 int	client_main(int, char **, int);
 
 /* key-bindings.c */
-extern struct key_bindings key_bindings;
-int	 key_bindings_cmp(struct key_binding *, struct key_binding *);
 RB_PROTOTYPE(key_bindings, key_binding, entry, key_bindings_cmp);
-struct key_binding *key_bindings_lookup(int);
-void	 key_bindings_add(int, int, struct cmd_list *);
-void	 key_bindings_remove(int);
+RB_PROTOTYPE(key_tables, key_table, entry, key_table_cmp);
+extern struct key_tables key_tables;
+int	 key_table_cmp(struct key_table *, struct key_table *);
+int	 key_bindings_cmp(struct key_binding *, struct key_binding *);
+struct 	 key_table *key_bindings_get_table(const char *, int);
+void 	 key_bindings_unref_table(struct key_table *);
+void	 key_bindings_add(const char *, int, int, struct cmd_list *);
+void	 key_bindings_remove(const char *, int);
+void	 key_bindings_remove_table(const char *);
 void	 key_bindings_init(void);
 void	 key_bindings_dispatch(struct key_binding *, struct client *,
 	     struct mouse_event *);
