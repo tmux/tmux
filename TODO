@@ -137,7 +137,9 @@
 	* cmd_find_* could be much simpler - parse everything the same, only
 	  difference is what to choose when not given a ":" or "." (such as a
 	  plain "0" could be session, window or pane). So just cmd_find_target
-	  with a type (session, window, or pane)..
+	  with a type (session, window, or pane)
+	* instead of all the obscure =, ^ -t codes, we should support something
+	  simpler and easier like -t:mouse:, -t:first:
 
 - miscellaneous
 	* way to keep a job running just read its last line of output for #()
