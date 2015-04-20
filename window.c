@@ -650,7 +650,7 @@ window_destroy_panes(struct window *w)
 char *
 window_printable_flags(struct session *s, struct winlink *wl)
 {
-	char	flags[BUFSIZ];
+	char	flags[32];
 	int	pos;
 
 	pos = 0;
