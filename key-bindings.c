@@ -158,6 +158,10 @@ key_bindings_init(void)
 		"bind -r C-Down resize-pane -D",
 		"bind -r C-Left resize-pane -L",
 		"bind -r C-Right resize-pane -R",
+		"bind -n MouseDown1Pane select-pane -t=\\; send-keys -M",
+		"bind -n MouseDrag1Border resize-pane -M",
+		"bind -n MouseDown1Status select-window -t=",
+		"bind -n MouseDrag1Pane copy-mode -M",
 	};
 	u_int		 i;
 	struct cmd_list	*cmdlist;
@@ -173,14 +177,15 @@ key_bindings_init(void)
 		    "<default-keys>", i, &cause);
 		if (error != 0)
 			fatalx("bad default key");
-		cmdq_run(cmdq, cmdlist);
-		cmd_list_free(cmdlist);
+		cmdq_run(cmdq, cmdlist, NULL);
+		cmd_list_free (cmdlist);
 	}
 	cmdq_free(cmdq);
 }
 
 void
-key_bindings_dispatch(struct key_binding *bd, struct client *c)
+key_bindings_dispatch(struct key_binding *bd, struct client *c,
+    struct mouse_event *m)
 {
 	struct cmd	*cmd;
 	int		 readonly;
@@ -195,5 +200,5 @@ key_bindings_dispatch(struct key_binding *bd, struct client *c)
 		return;
 	}
 
-	cmdq_run(c->cmdq, bd->cmdlist);
+	cmdq_run(c->cmdq, bd->cmdlist, m);
 }

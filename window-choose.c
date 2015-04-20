@@ -27,11 +27,12 @@
 struct screen *window_choose_init(struct window_pane *);
 void	window_choose_free(struct window_pane *);
 void	window_choose_resize(struct window_pane *, u_int, u_int);
-void	window_choose_key(struct window_pane *, struct session *, int);
-void	window_choose_mouse(
-	    struct window_pane *, struct session *, struct mouse_event *);
+void	window_choose_key(struct window_pane *, struct client *,
+	    struct session *, int, struct mouse_event *);
 
 void	window_choose_default_callback(struct window_choose_data *);
+struct window_choose_mode_item *window_choose_get_item(struct window_pane *,
+	    int, struct mouse_event *);
 
 void	window_choose_fire_callback(
 	    struct window_pane *, struct window_choose_data *);
@@ -42,7 +43,7 @@ void	window_choose_write_line(
 void	window_choose_scroll_up(struct window_pane *);
 void	window_choose_scroll_down(struct window_pane *);
 
-void	window_choose_collapse(struct window_pane *, struct session *);
+void	window_choose_collapse(struct window_pane *, struct session *, u_int);
 void	window_choose_expand(struct window_pane *, struct session *, u_int);
 
 enum window_choose_input_type {
@@ -55,7 +56,6 @@ const struct window_mode window_choose_mode = {
 	window_choose_free,
 	window_choose_resize,
 	window_choose_key,
-	window_choose_mouse,
 	NULL,
 };
 
@@ -160,8 +160,6 @@ window_choose_init(struct window_pane *wp)
 	s = &data->screen;
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 	s->mode &= ~MODE_CURSOR;
-	if (options_get_number(&wp->window->options, "mode-mouse"))
-		s->mode |= MODE_MOUSE_STANDARD;
 
 	keys = options_get_number(&wp->window->options, "mode-keys");
 	if (keys == MODEKEY_EMACS)
@@ -237,7 +235,7 @@ window_choose_data_run(struct window_choose_data *cdata)
 		return;
 	}
 
-	cmdq_run(cdata->start_client->cmdq, cmdlist);
+	cmdq_run(cdata->start_client->cmdq, cmdlist, NULL);
 	cmd_list_free(cmdlist);
 }
 
@@ -325,7 +323,7 @@ window_choose_prompt_input(enum window_choose_input_type input_type,
 }
 
 void
-window_choose_collapse(struct window_pane *wp, struct session *s)
+window_choose_collapse(struct window_pane *wp, struct session *s, u_int pos)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct window_choose_mode_item	*item, *chosen;
@@ -335,7 +333,7 @@ window_choose_collapse(struct window_pane *wp, struct session *s)
 	ARRAY_DECL(, struct window_choose_mode_item) list_copy;
 	ARRAY_INIT(&list_copy);
 
-	chosen = &ARRAY_ITEM(&data->list, data->selected);
+	chosen = &ARRAY_ITEM(&data->list, pos);
 	chosen->state &= ~TREE_EXPANDED;
 
 	/*
@@ -383,7 +381,7 @@ window_choose_collapse_all(struct window_pane *wp)
 	chosen = ARRAY_ITEM(&data->list, data->selected).wcd->start_session;
 
 	RB_FOREACH(s, sessions, &sessions)
-		window_choose_collapse(wp, s);
+		window_choose_collapse(wp, s, data->selected);
 
 	/* Reset the selection back to the starting session. */
 	for (i = 0; i < ARRAY_LENGTH(&data->list); i++) {
@@ -483,8 +481,27 @@ window_choose_expand(struct window_pane *wp, struct session *s, u_int pos)
 	}
 }
 
+struct window_choose_mode_item *
+window_choose_get_item(struct window_pane *wp, int key, struct mouse_event *m)
+{
+	struct window_choose_mode_data	*data = wp->modedata;
+	u_int				 x, y, idx;
+
+	if (!KEYC_IS_MOUSE(key))
+		return (&ARRAY_ITEM(&data->list, data->selected));
+
+	if (cmd_mouse_at(wp, m, &x, &y, 0) != 0)
+		return (NULL);
+
+	idx = data->top + y;
+	if (idx >= ARRAY_LENGTH(&data->list))
+		return (NULL);
+	return (&ARRAY_ITEM(&data->list, idx));
+}
+
 void
-window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
+window_choose_key(struct window_pane *wp, unused struct client *c,
+    unused struct session *sess, int key, struct mouse_event *m)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -533,23 +550,28 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 		window_choose_fire_callback(wp, NULL);
 		break;
 	case MODEKEYCHOICE_CHOOSE:
-		item = &ARRAY_ITEM(&data->list, data->selected);
+		if ((item = window_choose_get_item(wp, key, m)) == NULL)
+			break;
 		window_choose_fire_callback(wp, item->wcd);
 		break;
 	case MODEKEYCHOICE_TREE_TOGGLE:
-		item = &ARRAY_ITEM(&data->list, data->selected);
-		if (item->state & TREE_EXPANDED)
-			window_choose_collapse(wp, item->wcd->tree_session);
-		else {
+		if ((item = window_choose_get_item(wp, key, m)) == NULL)
+			break;
+		if (item->state & TREE_EXPANDED) {
+			window_choose_collapse(wp, item->wcd->tree_session,
+			    item->wcd->idx);
+		} else {
 			window_choose_expand(wp, item->wcd->tree_session,
-			    data->selected);
+			    item->wcd->idx);
 		}
 		window_choose_redraw_screen(wp);
 		break;
 	case MODEKEYCHOICE_TREE_COLLAPSE:
-		item = &ARRAY_ITEM(&data->list, data->selected);
+		if ((item = window_choose_get_item(wp, key, m)) == NULL)
+			break;
 		if (item->state & TREE_EXPANDED) {
-			window_choose_collapse(wp, item->wcd->tree_session);
+			window_choose_collapse(wp, item->wcd->tree_session,
+			    data->selected);
 			window_choose_redraw_screen(wp);
 		}
 		break;
@@ -557,7 +579,8 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 		window_choose_collapse_all(wp);
 		break;
 	case MODEKEYCHOICE_TREE_EXPAND:
-		item = &ARRAY_ITEM(&data->list, data->selected);
+		if ((item = window_choose_get_item(wp, key, m)) == NULL)
+			break;
 		if (!(item->state & TREE_EXPANDED)) {
 			window_choose_expand(wp, item->wcd->tree_session,
 			    data->selected);
@@ -709,48 +732,6 @@ window_choose_key(struct window_pane *wp, unused struct session *sess, int key)
 		window_choose_fire_callback(wp, item->wcd);
 		break;
 	}
-}
-
-void
-window_choose_mouse(struct window_pane *wp, struct session *sess,
-    struct mouse_event *m)
-{
-	struct window_choose_mode_data	*data = wp->modedata;
-	struct screen			*s = &data->screen;
-	struct window_choose_mode_item	*item;
-	u_int				 idx, i, n;
-
-	if (m->event == MOUSE_EVENT_WHEEL) {
-		/*
-		 * Multiple line scrolling by default is annoying, so scale
-		 * m->scroll back down.
-		 */
-		n = m->scroll;
-		if (n >= MOUSE_WHEEL_SCALE)
-			n /= MOUSE_WHEEL_SCALE;
-		for (i = 0; i < n; i++) {
-			if (m->wheel == MOUSE_WHEEL_UP)
-				window_choose_key(wp, sess, KEYC_UP);
-			else
-				window_choose_key(wp, sess, KEYC_DOWN);
-		}
-		return;
-	}
-
-	if (~m->event & MOUSE_EVENT_CLICK)
-		return;
-	if (m->x >= screen_size_x(s))
-		return;
-	if (m->y >= screen_size_y(s))
-		return;
-
-	idx = data->top + m->y;
-	if (idx >= ARRAY_LENGTH(&data->list))
-		return;
-	data->selected = idx;
-
-	item = &ARRAY_ITEM(&data->list, data->selected);
-	window_choose_fire_callback(wp, item->wcd);
 }
 
 void

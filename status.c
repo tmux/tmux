@@ -118,9 +118,9 @@ status_redraw_get_right(struct client *c, time_t t, int utf8flag,
 	return (right);
 }
 
-/* Set window at window list position. */
-void
-status_set_window_at(struct client *c, u_int x)
+/* Get window at window list position. */
+struct window *
+status_get_window_at(struct client *c, u_int x)
 {
 	struct session	*s = c->session;
 	struct winlink	*wl;
@@ -130,12 +130,13 @@ status_set_window_at(struct client *c, u_int x)
 	x += c->wlmouse;
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		oo = &wl->window->options;
-
 		len = strlen(options_get_string(oo, "window-status-separator"));
-		if (x < wl->status_width && session_select(s, wl->idx) == 0)
-			server_redraw_session(s);
+
+		if (x < wl->status_width)
+			return (wl->window);
 		x -= wl->status_width + len;
 	}
+	return (NULL);
 }
 
 /* Draw status for client on the last lines of given context. */

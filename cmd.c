@@ -347,6 +347,7 @@ cmd_current_session(struct cmd_q *cmdq, int prefer_unattached)
 	const char		*path;
 	int			 found;
 
+	/* Try the queue session. */
 	if (c != NULL && c->session != NULL)
 		return (c->session);
 
@@ -501,6 +502,74 @@ cmd_choose_client(struct clients *cc)
 	}
 
 	return (cbest);
+}
+
+/* Adjust current mouse position for a pane. */
+int
+cmd_mouse_at(struct window_pane *wp, struct mouse_event *m, u_int *xp,
+    u_int *yp, int last)
+{
+	u_int	x, y;
+
+	if (last) {
+		x = m->lx;
+		y = m->ly;
+	} else {
+		x = m->x;
+		y = m->y;
+	}
+
+	if (m->statusat == 0 && y > 0)
+		y--;
+	else if (m->statusat > 0 && y >= (u_int)m->statusat)
+		y = m->statusat - 1;
+
+	if (x < wp->xoff || x >= wp->xoff + wp->sx)
+		return (-1);
+	if (y < wp->yoff || y >= wp->yoff + wp->sy)
+		return (-1);
+
+	*xp = x - wp->xoff;
+	*yp = y - wp->yoff;
+	return (0);
+}
+
+/* Get current mouse window if any. */
+struct winlink *
+cmd_mouse_window(struct mouse_event *m, struct session **sp)
+{
+	struct session	*s;
+	struct window	*w;
+
+	if (!m->valid || m->s == -1 || m->w == -1)
+		return (NULL);
+	if ((s = session_find_by_id(m->s)) == NULL)
+		return (NULL);
+	if ((w = window_find_by_id(m->w)) == NULL)
+		return (NULL);
+
+	if (sp != NULL)
+		*sp = s;
+	return (winlink_find_by_window(&s->windows, w));
+}
+
+/* Get current mouse pane if any. */
+struct window_pane *
+cmd_mouse_pane(struct mouse_event *m, struct session **sp, struct winlink **wlp)
+{
+	struct winlink		*wl;
+	struct window_pane     	*wp;
+
+	if ((wl = cmd_mouse_window(m, sp)) == NULL)
+		return (NULL);
+	if ((wp = window_pane_find_by_id(m->wp)) == NULL)
+		return (NULL);
+	if (!window_has_pane(wl->window, wp))
+		return (NULL);
+
+	if (wlp != NULL)
+		*wlp = wl;
+	return (wp);
 }
 
 /* Find the target client or report an error and return NULL. */
@@ -927,7 +996,12 @@ no_colon:
 	 * No colon in the string, first try special cases, then as a window
 	 * and lastly as a session.
 	 */
-	if (arg[0] == '!' && arg[1] == '\0') {
+	if (arg[0] == '=' && arg[1] == '\0') {
+		if ((wl = cmd_mouse_window(&cmdq->item->mouse, &s)) == NULL) {
+			cmdq_error(cmdq, "no mouse target");
+			goto error;
+		}
+	} else if (arg[0] == '!' && arg[1] == '\0') {
 		if ((wl = TAILQ_FIRST(&s->lastw)) == NULL)
 			goto not_found;
 	} else if (arg[0] == '+' || arg[0] == '-') {
@@ -958,14 +1032,16 @@ no_session:
 		cmdq_error(cmdq, "multiple sessions: %s", arg);
 	else
 		cmdq_error(cmdq, "session not found: %s", arg);
-	free(sessptr);
-	return (NULL);
+	goto error;
 
 not_found:
 	if (ambiguous)
 		cmdq_error(cmdq, "multiple windows: %s", arg);
 	else
 		cmdq_error(cmdq, "window not found: %s", arg);
+	goto error;
+
+error:
 	free(sessptr);
 	return (NULL);
 }
@@ -1227,6 +1303,18 @@ lookup_string:
 	return (wl);
 
 no_period:
+	/* Check mouse event. */
+	if (arg[0] == '=' && arg[1] == '\0') {
+		*wpp = cmd_mouse_pane(&cmdq->item->mouse, &s, &wl);
+		if (*wpp == NULL) {
+			cmdq_error(cmdq, "no mouse target");
+			return (NULL);
+		}
+		if (sp != NULL)
+			*sp = s;
+		return (wl);
+	}
+
 	/* Try as a pane number alone. */
 	idx = strtonum(arg, 0, INT_MAX, &errstr);
 	if (errstr != NULL)

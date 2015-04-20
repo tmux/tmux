@@ -27,7 +27,8 @@
 struct screen *window_clock_init(struct window_pane *);
 void	window_clock_free(struct window_pane *);
 void	window_clock_resize(struct window_pane *, u_int, u_int);
-void	window_clock_key(struct window_pane *, struct session *, int);
+void	window_clock_key(struct window_pane *, struct client *,
+	    struct session *, int, struct mouse_event *);
 void	window_clock_timer(struct window_pane *);
 
 void	window_clock_draw_screen(struct window_pane *);
@@ -37,7 +38,6 @@ const struct window_mode window_clock_mode = {
 	window_clock_free,
 	window_clock_resize,
 	window_clock_key,
-	NULL,
 	window_clock_timer,
 };
 
@@ -157,8 +157,8 @@ window_clock_resize(struct window_pane *wp, u_int sx, u_int sy)
 }
 
 void
-window_clock_key(
-    struct window_pane *wp, unused struct session *sess, unused int key)
+window_clock_key(struct window_pane *wp, unused struct client *c,
+    unused struct session *sess, unused int key, unused struct mouse_event *m)
 {
 	window_pane_reset_mode(wp);
 }

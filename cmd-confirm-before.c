@@ -105,7 +105,7 @@ cmd_confirm_before_callback(void *data, const char *s)
 		return (0);
 	}
 
-	cmdq_run(c->cmdq, cmdlist);
+	cmdq_run(c->cmdq, cmdlist, NULL);
 	cmd_list_free(cmdlist);
 
 	return (0);
