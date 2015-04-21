@@ -163,7 +163,8 @@ If the socket is accidentally removed, the
 .Dv SIGUSR1
 signal may be sent to the
 .Nm
-server process to recreate it.
+server process to recreate it (note that this will fail if any parent
+directories are missing).
 .It Fl l
 Behave as a login shell.
 This flag currently has no effect and is for compatibility with other shells
@@ -2004,7 +2005,8 @@ is bound in
 .Ar mode-table :
 the binding for command mode with
 .Fl c
-or for normal mode without. See the
+or for normal mode without.
+See the
 .Sx WINDOWS AND PANES
 section and the
 .Ic list-keys

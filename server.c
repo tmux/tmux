@@ -79,23 +79,21 @@ server_create_socket(void)
 	size = strlcpy(sa.sun_path, socket_path, sizeof sa.sun_path);
 	if (size >= sizeof sa.sun_path) {
 		errno = ENAMETOOLONG;
-		fatal("socket failed");
+		return (-1);
 	}
 	unlink(sa.sun_path);
 
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-		fatal("socket failed");
+		return (-1);
 
 	mask = umask(S_IXUSR|S_IXGRP|S_IRWXO);
 	if (bind(fd, (struct sockaddr *) &sa, SUN_LEN(&sa)) == -1)
-		fatal("bind failed");
+		return (-1);
 	umask(mask);
 
 	if (listen(fd, 16) == -1)
-		fatal("listen failed");
+		return (-1);
 	setblocking(fd, 0);
-
-	server_update_socket();
 
 	return (fd);
 }
@@ -155,6 +153,9 @@ server_start(int lockfd, char *lockfile)
 	setproctitle("server (%s)", socket_path);
 
 	server_fd = server_create_socket();
+	if (server_fd == -1)
+		fatal("couldn't create socket");
+	server_update_socket();
 	server_client_create(pair[1]);
 
 	unlink(lockfile);
@@ -387,6 +388,7 @@ server_add_accept(int timeout)
 void
 server_signal_callback(int sig, unused short events, unused void *data)
 {
+	int	fd;
 	switch (sig) {
 	case SIGTERM:
 		server_shutdown = 1;
@@ -397,8 +399,12 @@ server_signal_callback(int sig, unused short events, unused void *data)
 		break;
 	case SIGUSR1:
 		event_del(&server_ev_accept);
-		close(server_fd);
-		server_fd = server_create_socket();
+		fd = server_create_socket();
+		if (fd != -1) {
+			close(server_fd);
+			server_fd = fd;
+			server_update_socket();
+		}
 		server_add_accept(0);
 		break;
 	}
