@@ -391,7 +391,7 @@ server_client_check_mouse(struct client *c)
 		c->tty.mouse_drag_release = NULL;
 
 		c->tty.mouse_drag_flag = 0;
-		return (KEYC_NONE);
+		return (KEYC_MOUSE); /* not a key, but still may want to pass */
 	}
 
 	/* Convert to a key binding. */
