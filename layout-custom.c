@@ -55,12 +55,12 @@ layout_checksum(const char *layout)
 
 /* Dump layout as a string. */
 char *
-layout_dump(struct window *w)
+layout_dump(struct layout_cell *root)
 {
 	char	layout[BUFSIZ], *out;
 
 	*layout = '\0';
-	if (layout_append(w->layout_root, layout, sizeof layout) != 0)
+	if (layout_append(root, layout, sizeof layout) != 0)
 		return (NULL);
 
 	xasprintf(&out, "%04x,%s", layout_checksum(layout), layout);

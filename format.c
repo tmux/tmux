@@ -577,7 +577,10 @@ format_defaults_window(struct format_tree *ft, struct window *w)
 
 	ft->w = w;
 
-	layout = layout_dump(w);
+	if (w->saved_layout_root != NULL)
+		layout = layout_dump(w->saved_layout_root);
+	else
+		layout = layout_dump(w->layout_root);
 
 	format_add(ft, "window_id", "@%u", w->id);
 	format_add(ft, "window_name", "%s", w->name);
