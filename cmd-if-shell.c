@@ -44,11 +44,14 @@ const struct cmd_entry cmd_if_shell_entry = {
 };
 
 struct cmd_if_shell_data {
-	char		*cmd_if;
-	char		*cmd_else;
-	struct cmd_q	*cmdq;
-	int		 bflag;
-	int		 started;
+	char			*cmd_if;
+	char			*cmd_else;
+
+	struct cmd_q		*cmdq;
+	struct mouse_event	 mouse;
+
+	int			 bflag;
+	int			 started;
 };
 
 enum cmd_retval
@@ -95,21 +98,24 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 			}
 			return (CMD_RETURN_ERROR);
 		}
-		cmdq_run(cmdq, cmdlist, NULL);
+		cmdq_run(cmdq, cmdlist, &cmdq->item->mouse);
 		cmd_list_free(cmdlist);
 		return (CMD_RETURN_NORMAL);
 	}
 
 	cdata = xmalloc(sizeof *cdata);
+
 	cdata->cmd_if = xstrdup(args->argv[1]);
 	if (args->argc == 3)
 		cdata->cmd_else = xstrdup(args->argv[2]);
 	else
 		cdata->cmd_else = NULL;
+
 	cdata->bflag = args_has(args, 'b');
 
 	cdata->started = 0;
 	cdata->cmdq = cmdq;
+	memcpy(&cdata->mouse, &cmdq->item->mouse, sizeof cdata->mouse);
 	cmdq->references++;
 
 	job_run(shellcmd, s, cmd_if_shell_callback, cmd_if_shell_free, cdata);
@@ -152,7 +158,7 @@ cmd_if_shell_callback(struct job *job)
 	cmdq1->emptyfn = cmd_if_shell_done;
 	cmdq1->data = cdata;
 
-	cmdq_run(cmdq1, cmdlist, NULL);
+	cmdq_run(cmdq1, cmdlist, &cdata->mouse);
 	cmd_list_free(cmdlist);
 }
 
