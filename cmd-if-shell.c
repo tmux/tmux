@@ -51,7 +51,7 @@ struct cmd_if_shell_data {
 	struct mouse_event	 mouse;
 
 	int			 bflag;
-	int			 started;
+	int			 references;
 };
 
 enum cmd_retval
@@ -113,11 +113,11 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	cdata->bflag = args_has(args, 'b');
 
-	cdata->started = 0;
 	cdata->cmdq = cmdq;
 	memcpy(&cdata->mouse, &cmdq->item->mouse, sizeof cdata->mouse);
 	cmdq->references++;
 
+	cdata->references = 1;
 	job_run(shellcmd, s, cmd_if_shell_callback, cmd_if_shell_free, cdata);
 	free(shellcmd);
 
@@ -152,12 +152,11 @@ cmd_if_shell_callback(struct job *job)
 		return;
 	}
 
-	cdata->started = 1;
-
 	cmdq1 = cmdq_new(cmdq->client);
 	cmdq1->emptyfn = cmd_if_shell_done;
 	cmdq1->data = cdata;
 
+	cdata->references++;
 	cmdq_run(cmdq1, cmdlist, &cdata->mouse);
 	cmd_list_free(cmdlist);
 }
@@ -170,11 +169,13 @@ cmd_if_shell_done(struct cmd_q *cmdq1)
 
 	if (cmdq1->client_exit >= 0)
 		cmdq->client_exit = cmdq1->client_exit;
+	cmdq_free(cmdq1);
+
+	if (--cdata->references != 0)
+		return;
 
 	if (!cmdq_free(cmdq) && !cdata->bflag)
 		cmdq_continue(cmdq);
-
-	cmdq_free(cmdq1);
 
 	free(cdata->cmd_else);
 	free(cdata->cmd_if);
@@ -187,7 +188,7 @@ cmd_if_shell_free(void *data)
 	struct cmd_if_shell_data	*cdata = data;
 	struct cmd_q			*cmdq = cdata->cmdq;
 
-	if (cdata->started)
+	if (--cdata->references != 0)
 		return;
 
 	if (!cmdq_free(cmdq) && !cdata->bflag)
