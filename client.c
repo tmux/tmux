@@ -265,8 +265,13 @@ client_main(int argc, char **argv, int flags)
 	/* Initialize the client socket and start the server. */
 	fd = client_connect(socket_path, cmdflags & CMD_STARTSERVER);
 	if (fd == -1) {
-		fprintf(stderr, "failed to connect to server: %s\n",
-		    strerror(errno));
+		if (errno == ECONNREFUSED) {
+			fprintf(stderr, "no server running on %s\n",
+			    socket_path);
+		} else {
+			fprintf(stderr, "error connecting to %s (%s)\n",
+			    socket_path, strerror(errno));
+		}
 		return (1);
 	}
 
