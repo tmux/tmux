@@ -2321,7 +2321,7 @@ struct winlink	*session_new(struct session *, const char *, int, char **,
 struct winlink	*session_attach(struct session *, struct window *, int,
 		     char **);
 int		 session_detach(struct session *, struct winlink *);
-struct winlink	*session_has(struct session *, struct window *);
+int		 session_has(struct session *, struct window *);
 int		 session_next(struct session *, int);
 int		 session_previous(struct session *, int);
 int		 session_select(struct session *, int);
