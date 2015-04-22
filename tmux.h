@@ -2141,7 +2141,6 @@ struct winlink	*winlink_previous_by_number(struct winlink *, struct session *,
 		     int);
 void		 winlink_stack_push(struct winlink_stack *, struct winlink *);
 void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
-int		 window_index(struct window *, u_int *);
 struct window	*window_find_by_id(u_int);
 struct window	*window_create1(u_int, u_int);
 struct window	*window_create(const char *, int, char **, const char *,

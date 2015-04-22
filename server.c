@@ -389,6 +389,7 @@ void
 server_signal_callback(int sig, unused short events, unused void *data)
 {
 	int	fd;
+
 	switch (sig) {
 	case SIGTERM:
 		server_shutdown = 1;
