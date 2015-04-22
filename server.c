@@ -137,7 +137,7 @@ server_start(int lockfd, char *lockfile)
 	logfile("server");
 	log_debug("server started, pid %ld", (long) getpid());
 
-	ARRAY_INIT(&windows);
+	RB_INIT(&windows);
 	RB_INIT(&all_window_panes);
 	ARRAY_INIT(&clients);
 	ARRAY_INIT(&dead_clients);
@@ -438,14 +438,11 @@ server_child_signal(void)
 void
 server_child_exited(pid_t pid, int status)
 {
-	struct window		*w;
+	struct window		*w, *w1;
 	struct window_pane	*wp;
 	struct job		*job;
-	u_int		 	 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		if ((w = ARRAY_ITEM(&windows, i)) == NULL)
-			continue;
+	RB_FOREACH_SAFE(w, windows, &windows, w1) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->pid == pid) {
 				wp->status = status;
@@ -469,14 +466,11 @@ server_child_stopped(pid_t pid, int status)
 {
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int			 i;
 
 	if (WSTOPSIG(status) == SIGTTIN || WSTOPSIG(status) == SIGTTOU)
 		return;
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		if ((w = ARRAY_ITEM(&windows, i)) == NULL)
-			continue;
+	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->pid == pid) {
 				if (killpg(pid, SIGCONT) != 0)
@@ -493,18 +487,13 @@ server_second_callback(unused int fd, unused short events, unused void *arg)
 	struct window		*w;
 	struct window_pane	*wp;
 	struct timeval		 tv;
-	u_int		 	 i;
 
 	if (options_get_number(&global_s_options, "lock-server"))
 		server_lock_server();
 	else
 		server_lock_sessions();
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		w = ARRAY_ITEM(&windows, i);
-		if (w == NULL)
-			continue;
-
+	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->mode != NULL && wp->mode->timer != NULL)
 				wp->mode->timer(wp);

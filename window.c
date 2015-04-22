@@ -64,6 +64,14 @@ void	window_pane_error_callback(struct bufferevent *, short, void *);
 
 struct window_pane *window_pane_choose_best(struct window_pane_list *);
 
+RB_GENERATE(windows, window, entry, window_cmp);
+
+int
+window_cmp(struct window *w1, struct window *w2)
+{
+	return (w1->id - w2->id);
+}
+
 RB_GENERATE(winlinks, winlink, entry, winlink_cmp);
 
 int
@@ -248,25 +256,18 @@ winlink_stack_remove(struct winlink_stack *stack, struct winlink *wl)
 struct window *
 window_find_by_id(u_int id)
 {
-	struct window	*w;
-	u_int		 i;
+	struct window	w;
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		w = ARRAY_ITEM(&windows, i);
-		if (w != NULL && w->id == id)
-			return (w);
-	}
-	return (NULL);
+	w.id = id;
+	return (RB_FIND(windows, &windows, &w));
 }
 
 struct window *
 window_create1(u_int sx, u_int sy)
 {
 	struct window	*w;
-	u_int		 i;
 
 	w = xcalloc(1, sizeof *w);
-	w->id = next_window_id++;
 	w->name = NULL;
 	w->flags = 0;
 
@@ -283,15 +284,10 @@ window_create1(u_int sx, u_int sy)
 	if (options_get_number(&w->options, "automatic-rename"))
 		queue_window_name(w);
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		if (ARRAY_ITEM(&windows, i) == NULL) {
-			ARRAY_SET(&windows, i, w);
-			break;
-		}
-	}
-	if (i == ARRAY_LENGTH(&windows))
-		ARRAY_ADD(&windows, w);
 	w->references = 0;
+
+	w->id = next_window_id++;
+	RB_INSERT (windows, &windows, w);
 
 	return (w);
 }
@@ -327,19 +323,9 @@ window_create(const char *name, int argc, char **argv, const char *path,
 void
 window_destroy(struct window *w)
 {
-	u_int	i;
-
 	window_unzoom(w);
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		if (w == ARRAY_ITEM(&windows, i))
-			break;
-	}
-	if (i == ARRAY_LENGTH(&windows))
-		fatalx("index not found");
-	ARRAY_SET(&windows, i, NULL);
-	while (!ARRAY_EMPTY(&windows) && ARRAY_LAST(&windows) == NULL)
-		ARRAY_TRUNC(&windows, 1);
+	RB_REMOVE(windows, &windows, w);
 
 	if (w->layout_root != NULL)
 		layout_free(w);
@@ -1328,26 +1314,18 @@ window_pane_find_right(struct window_pane *wp)
 void
 winlink_clear_flags(struct winlink *wl)
 {
-	struct winlink	*wm;
 	struct session	*s;
-	struct window	*w;
-	u_int		 i;
+	struct winlink	*wl_loop;
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		if ((w = ARRAY_ITEM(&windows, i)) == NULL)
-			continue;
-
-		RB_FOREACH(s, sessions, &sessions) {
-			if ((wm = session_has(s, w)) == NULL)
+	RB_FOREACH(s, sessions, &sessions) {
+		RB_FOREACH(wl_loop, winlinks, &s->windows) {
+			if (wl_loop->window != wl->window)
+				continue;
+			if ((wl_loop->flags & WINLINK_ALERTFLAGS) == 0)
 				continue;
 
-			if (wm->window != wl->window)
-				continue;
-			if ((wm->flags & WINLINK_ALERTFLAGS) == 0)
-				continue;
-
-			wm->flags &= ~WINLINK_ALERTFLAGS;
-			wm->window->flags &= ~WINDOW_ALERTFLAGS;
+			wl_loop->flags &= ~WINLINK_ALERTFLAGS;
+			wl_loop->window->flags &= ~WINDOW_ALERTFLAGS;
 			server_status_session(s);
 		}
 	}

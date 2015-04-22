@@ -176,9 +176,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	/* Start or stop timers when automatic-rename changed. */
 	if (strcmp(oe->name, "automatic-rename") == 0) {
-		for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-			if ((w = ARRAY_ITEM(&windows, i)) == NULL)
-				continue;
+		RB_FOREACH(w, windows, &windows) {
 			if (options_get_number(&w->options, "automatic-rename"))
 				queue_window_name(w);
 			else if (event_initialized(&w->name_timer))

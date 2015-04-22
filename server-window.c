@@ -34,24 +34,20 @@ void
 server_window_loop(void)
 {
 	struct window	*w;
-	struct winlink	*wl;
 	struct session	*s;
-	u_int		 i;
+	struct winlink	*wl;
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		w = ARRAY_ITEM(&windows, i);
-		if (w == NULL)
-			continue;
-
+	RB_FOREACH(w, windows, &windows) {
 		RB_FOREACH(s, sessions, &sessions) {
-			wl = session_has(s, w);
-			if (wl == NULL)
-				continue;
+			RB_FOREACH(wl, winlinks, &s->windows) {
+				if (wl->window != w)
+					continue;
 
-			if (server_window_check_bell(s, wl) ||
-			    server_window_check_activity(s, wl) ||
-			    server_window_check_silence(s, wl))
-				server_status_session(s);
+				if (server_window_check_bell(s, wl) ||
+				    server_window_check_activity(s, wl) ||
+				    server_window_check_silence(s, wl))
+					server_status_session(s);
+			}
 		}
 	}
 }
