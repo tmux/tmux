@@ -518,6 +518,7 @@ window_unzoom(struct window *w)
 	w->flags &= ~WINDOW_ZOOMED;
 	layout_free(w);
 	w->layout_root = w->saved_layout_root;
+	w->saved_layout_root = NULL;
 
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		wp->layout_cell = wp->saved_layout_cell;

@@ -44,11 +44,14 @@ const struct cmd_entry cmd_if_shell_entry = {
 };
 
 struct cmd_if_shell_data {
-	char		*cmd_if;
-	char		*cmd_else;
-	struct cmd_q	*cmdq;
-	int		 bflag;
-	int		 started;
+	char			*cmd_if;
+	char			*cmd_else;
+
+	struct cmd_q		*cmdq;
+	struct mouse_event	 mouse;
+
+	int			 bflag;
+	int			 references;
 };
 
 enum cmd_retval
@@ -95,23 +98,26 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 			}
 			return (CMD_RETURN_ERROR);
 		}
-		cmdq_run(cmdq, cmdlist, NULL);
+		cmdq_run(cmdq, cmdlist, &cmdq->item->mouse);
 		cmd_list_free(cmdlist);
 		return (CMD_RETURN_NORMAL);
 	}
 
 	cdata = xmalloc(sizeof *cdata);
+
 	cdata->cmd_if = xstrdup(args->argv[1]);
 	if (args->argc == 3)
 		cdata->cmd_else = xstrdup(args->argv[2]);
 	else
 		cdata->cmd_else = NULL;
+
 	cdata->bflag = args_has(args, 'b');
 
-	cdata->started = 0;
 	cdata->cmdq = cmdq;
+	memcpy(&cdata->mouse, &cmdq->item->mouse, sizeof cdata->mouse);
 	cmdq->references++;
 
+	cdata->references = 1;
 	job_run(shellcmd, s, cmd_if_shell_callback, cmd_if_shell_free, cdata);
 	free(shellcmd);
 
@@ -146,13 +152,12 @@ cmd_if_shell_callback(struct job *job)
 		return;
 	}
 
-	cdata->started = 1;
-
 	cmdq1 = cmdq_new(cmdq->client);
 	cmdq1->emptyfn = cmd_if_shell_done;
 	cmdq1->data = cdata;
 
-	cmdq_run(cmdq1, cmdlist, NULL);
+	cdata->references++;
+	cmdq_run(cmdq1, cmdlist, &cdata->mouse);
 	cmd_list_free(cmdlist);
 }
 
@@ -164,11 +169,13 @@ cmd_if_shell_done(struct cmd_q *cmdq1)
 
 	if (cmdq1->client_exit >= 0)
 		cmdq->client_exit = cmdq1->client_exit;
+	cmdq_free(cmdq1);
+
+	if (--cdata->references != 0)
+		return;
 
 	if (!cmdq_free(cmdq) && !cdata->bflag)
 		cmdq_continue(cmdq);
-
-	cmdq_free(cmdq1);
 
 	free(cdata->cmd_else);
 	free(cdata->cmd_if);
@@ -181,7 +188,7 @@ cmd_if_shell_free(void *data)
 	struct cmd_if_shell_data	*cdata = data;
 	struct cmd_q			*cmdq = cdata->cmdq;
 
-	if (cdata->started)
+	if (--cdata->references != 0)
 		return;
 
 	if (!cmdq_free(cmdq) && !cdata->bflag)

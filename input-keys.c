@@ -250,5 +250,6 @@ input_key_mouse(struct window_pane *wp, struct mouse_event *m)
 		buf[len++] = x + 33;
 		buf[len++] = y + 33;
 	}
+	log_debug("writing mouse %.*s", (int)len, buf);
 	bufferevent_write(wp->event, buf, len);
 }

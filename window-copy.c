@@ -2216,14 +2216,12 @@ window_copy_rectangle_toggle(struct window_pane *wp)
 void
 window_copy_start_drag(struct client *c, unused struct mouse_event *m)
 {
-	struct window_pane		*wp;
-	struct window_copy_mode_data	*data;
-	u_int				 x, y;
+	struct window_pane	*wp;
+	u_int			 x, y;
 
 	wp = cmd_mouse_pane(m, NULL, NULL);
-	if (wp->mode != &window_copy_mode)
+	if (wp == NULL || wp->mode != &window_copy_mode)
 		return;
-	data = wp->modedata;
 
 	if (cmd_mouse_at(wp, m, &x, &y, 1) != 0)
 		return;
@@ -2244,7 +2242,7 @@ window_copy_drag_update(unused struct client *c, struct mouse_event *m)
 	u_int				 x, y, old_cy;
 
 	wp = cmd_mouse_pane(m, NULL, NULL);
-	if (wp->mode != &window_copy_mode)
+	if (wp == NULL || wp->mode != &window_copy_mode)
 		return;
 	data = wp->modedata;
 
@@ -2260,13 +2258,11 @@ window_copy_drag_update(unused struct client *c, struct mouse_event *m)
 void
 window_copy_drag_release(unused struct client *c, struct mouse_event *m)
 {
-	struct window_pane		*wp;
-	struct window_copy_mode_data	*data;
+	struct window_pane	*wp;
 
 	wp = cmd_mouse_pane(m, NULL, NULL);
-	if (wp->mode != &window_copy_mode)
+	if (wp == NULL || wp->mode != &window_copy_mode)
 		return;
-	data = wp->modedata;
 
 	window_copy_copy_selection(wp, NULL);
 	window_pane_reset_mode(wp);

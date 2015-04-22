@@ -546,7 +546,11 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 	format_add(ft, "client_activity", "%lld", (long long) t);
 	format_add(ft, "client_activity_string", "%s", format_time_string(t));
 
-	format_add(ft, "client_prefix", "%d", !!(c->flags & CLIENT_PREFIX));
+	if (strcmp(c->keytable->name, "root") == 0)
+		format_add(ft, "client_prefix", "%d", 0);
+	else
+		format_add(ft, "client_prefix", "%d", 1);
+	format_add(ft, "client_key_table", "%s", c->keytable->name);
 
 	if (c->tty.flags & TTY_UTF8)
 		format_add(ft, "client_utf8", "%d", 1);
@@ -574,7 +578,10 @@ format_defaults_window(struct format_tree *ft, struct window *w)
 
 	ft->w = w;
 
-	layout = layout_dump(w);
+	if (w->saved_layout_root != NULL)
+		layout = layout_dump(w->saved_layout_root);
+	else
+		layout = layout_dump(w->layout_root);
 
 	format_add(ft, "window_id", "@%u", w->id);
 	format_add(ft, "window_name", "%s", w->name);
@@ -728,6 +735,8 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "wrap_flag", "%d",
 	    !!(wp->base.mode & MODE_WRAP));
 
+	format_add(ft, "mouse_any_flag", "%d",
+	    !!(wp->base.mode & (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON)));
 	format_add(ft, "mouse_standard_flag", "%d",
 	    !!(wp->base.mode & MODE_MOUSE_STANDARD));
 	format_add(ft, "mouse_button_flag", "%d",

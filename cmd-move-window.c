@@ -51,7 +51,7 @@ cmd_move_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct session	*src, *dst, *s;
 	struct winlink	*wl;
 	char		*cause;
-	int		 idx, kflag, dflag;
+	int		 idx, kflag, dflag, sflag;
 
 	if (args_has(args, 'r')) {
 		s = cmd_find_session(cmdq, args_get(args, 't'), 0);
@@ -71,6 +71,7 @@ cmd_move_window_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	kflag = args_has(self->args, 'k');
 	dflag = args_has(self->args, 'd');
+	sflag = args_has(self->args, 's');
 	if (server_link_window(src, wl, dst, idx, kflag, !dflag,
 	    &cause) != 0) {
 		cmdq_error(cmdq, "can't link window: %s", cause);
@@ -79,6 +80,15 @@ cmd_move_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 	if (self->entry == &cmd_move_window_entry)
 		server_unlink_window(src, wl);
+
+	/*
+	 * Renumber the winlinks in the src session only, the destination
+	 * session already has the correct winlink id to us, either
+	 * automatically or specified by -s.
+	 */
+	if (!sflag && options_get_number(&src->options, "renumber-windows"))
+		session_renumber_windows(src);
+
 	recalculate_sizes();
 
 	return (CMD_RETURN_NORMAL);

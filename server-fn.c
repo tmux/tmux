@@ -351,7 +351,6 @@ server_unlink_window(struct session *s, struct winlink *wl)
 		server_destroy_session_group(s);
 	else
 		server_redraw_session_group(s);
-	session_renumber_windows(s);
 }
 
 void

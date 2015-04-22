@@ -31,8 +31,8 @@ enum cmd_retval	 cmd_switch_client_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_switch_client_entry = {
 	"switch-client", "switchc",
-	"lc:npt:r", 0, 0,
-	"[-lnpr] [-c target-client] [-t target-session]",
+	"lc:npt:rT:", 0, 0,
+	"[-lnpr] [-c target-client] [-t target-session] [-T key-table]",
 	CMD_READONLY,
 	cmd_switch_client_exec
 };
@@ -46,7 +46,8 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct winlink		*wl = NULL;
 	struct window 		*w = NULL;
 	struct window_pane	*wp = NULL;
-	const char		*tflag;
+	const char		*tflag, *tablename;
+	struct key_table	*table;
 
 	if ((c = cmd_find_client(cmdq, args_get(args, 'c'), 0)) == NULL)
 		return (CMD_RETURN_ERROR);
@@ -56,6 +57,18 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 			c->flags &= ~CLIENT_READONLY;
 		else
 			c->flags |= CLIENT_READONLY;
+	}
+
+	tablename = args_get(args, 'T');
+	if (tablename != NULL) {
+		table = key_bindings_get_table(tablename, 0);
+		if (table == NULL) {
+			cmdq_error(cmdq, "table %s doesn't exist", tablename);
+			return (CMD_RETURN_ERROR);
+		}
+		table->references++;
+		key_bindings_unref_table(c->keytable);
+		c->keytable = table;
 	}
 
 	tflag = args_get(args, 't');

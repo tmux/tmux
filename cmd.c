@@ -780,14 +780,14 @@ cmd_lookup_index(struct session *s, const char *name, int *ambiguous)
 	const char	*errstr;
 	u_int		 idx;
 
+	idx = strtonum(name, 0, INT_MAX, &errstr);
+	if (errstr == NULL)
+		return (idx);
+
 	if ((wl = cmd_lookup_window(s, name, ambiguous)) != NULL)
 		return (wl->idx);
 	if (*ambiguous)
 		return (-1);
-
-	idx = strtonum(name, 0, INT_MAX, &errstr);
-	if (errstr == NULL)
-		return (idx);
 
 	return (-1);
 }
