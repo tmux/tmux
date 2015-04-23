@@ -657,7 +657,7 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 
 		memcpy(dstl, srcl, sizeof *dstl);
 		if (srcl->cellsize != 0) {
-			dstl->celldata = xcalloc(
+			dstl->celldata = xreallocarray(NULL,
 			    srcl->cellsize, sizeof *dstl->celldata);
 			memcpy(dstl->celldata, srcl->celldata,
 			    srcl->cellsize * sizeof *dstl->celldata);
