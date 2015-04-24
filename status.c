@@ -515,7 +515,7 @@ status_find_job(struct client *c, char **iptr)
 
 	/* If not found at all, start the job and add to the tree. */
 	if (so == NULL) {
-		job_run(cmd, NULL, status_job_callback, status_job_free, c);
+		job_run(cmd, NULL, -1, status_job_callback, status_job_free, c);
 		c->references++;
 
 		so = xmalloc(sizeof *so);
