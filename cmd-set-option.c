@@ -91,7 +91,6 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct options				*oo;
 	struct window				*w;
 	const char				*optstr, *valstr;
-	u_int					 i;
 
 	/* Get the option name and value. */
 	optstr = args->argv[0];
@@ -186,9 +185,8 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	/* Update sizes and redraw. May not need it but meh. */
 	recalculate_sizes();
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session != NULL)
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session != NULL)
 			server_redraw_client(c);
 	}
 

@@ -77,12 +77,8 @@ server_write_session(struct session *s, enum msgtype type, const void *buf,
     size_t len)
 {
 	struct client	*c;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
+	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session == s)
 			server_write_client(c, type, buf, len);
 	}
@@ -104,12 +100,8 @@ void
 server_redraw_session(struct session *s)
 {
 	struct client	*c;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
+	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session == s)
 			server_redraw_client(c);
 	}
@@ -132,12 +124,8 @@ void
 server_status_session(struct session *s)
 {
 	struct client	*c;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
+	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session == s)
 			server_status_client(c);
 	}
@@ -160,13 +148,9 @@ void
 server_redraw_window(struct window *w)
 {
 	struct client	*c;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (c->session->curw->window == w)
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session != NULL && c->session->curw->window == w)
 			server_redraw_client(c);
 	}
 	w->flags |= WINDOW_REDRAW;
@@ -176,13 +160,9 @@ void
 server_redraw_window_borders(struct window *w)
 {
 	struct client	*c;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		if (c->session->curw->window == w)
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session != NULL && c->session->curw->window == w)
 			c->flags |= CLIENT_BORDERS;
 	}
 }
@@ -208,13 +188,10 @@ void
 server_lock(void)
 {
 	struct client	*c;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-		server_lock_client(c);
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session != NULL)
+			server_lock_client(c);
 	}
 }
 
@@ -222,13 +199,10 @@ void
 server_lock_session(struct session *s)
 {
 	struct client	*c;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL || c->session != s)
-			continue;
-		server_lock_client(c);
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session == s)
+			server_lock_client(c);
 	}
 }
 
@@ -430,16 +404,14 @@ server_destroy_session(struct session *s)
 {
 	struct client	*c;
 	struct session	*s_new;
-	u_int		 i;
 
 	if (!options_get_number(&s->options, "detach-on-destroy"))
 		s_new = server_next_session(s);
 	else
 		s_new = NULL;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session != s)
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session != s)
 			continue;
 		if (s_new == NULL) {
 			c->session = NULL;

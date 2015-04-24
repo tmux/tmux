@@ -58,7 +58,6 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 {
 	struct client	*c;
 	struct window	*w = wl->window;
-	u_int		 i;
 	int		 action, visual;
 
 	if (!(w->flags & WINDOW_BELL) || wl->flags & WINLINK_BELL)
@@ -74,9 +73,8 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 	action = options_get_number(&s->options, "bell-action");
 	if (action == BELL_NONE)
 		return (0);
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session != s || c->flags & CLIENT_CONTROL)
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session != s || c->flags & CLIENT_CONTROL)
 			continue;
 		if (!visual) {
 			if (c->session->curw->window == w || action == BELL_ANY)
@@ -98,7 +96,6 @@ server_window_check_activity(struct session *s, struct winlink *wl)
 {
 	struct client	*c;
 	struct window	*w = wl->window;
-	u_int		 i;
 
 	if (s->curw->window == w)
 		w->flags &= ~WINDOW_ACTIVITY;
@@ -116,9 +113,8 @@ server_window_check_activity(struct session *s, struct winlink *wl)
 	wl->flags |= WINLINK_ACTIVITY;
 
 	if (options_get_number(&s->options, "visual-activity")) {
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c == NULL || c->session != s)
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (c->session != s)
 				continue;
 			status_message_set(c, "Activity in window %d", wl->idx);
 		}
@@ -134,7 +130,6 @@ server_window_check_silence(struct session *s, struct winlink *wl)
 	struct client	*c;
 	struct window	*w = wl->window;
 	struct timeval	 timer;
-	u_int		 i;
 	int		 silence_interval, timer_difference;
 
 	if (!(w->flags & WINDOW_SILENCE) || wl->flags & WINLINK_SILENCE)
@@ -167,9 +162,8 @@ server_window_check_silence(struct session *s, struct winlink *wl)
 	wl->flags |= WINLINK_SILENCE;
 
 	if (options_get_number(&s->options, "visual-silence")) {
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			c = ARRAY_ITEM(&clients, i);
-			if (c == NULL || c->session != s)
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (c->session != s)
 				continue;
 			status_message_set(c, "Silence in window %d", wl->idx);
 		}
@@ -183,11 +177,9 @@ void
 ring_bell(struct session *s)
 {
 	struct client	*c;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session == s && !(c->flags & CLIENT_CONTROL))
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session == s && !(c->flags & CLIENT_CONTROL))
 			tty_bell(&c->tty);
 	}
 }

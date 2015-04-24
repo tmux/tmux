@@ -64,11 +64,9 @@ control_notify_window_layout_changed(struct window *w)
 	struct session		*s;
 	struct format_tree	*ft;
 	struct winlink		*wl;
-	u_int			 i;
 	const char		*template;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
+	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
 		s = c->session;
@@ -100,10 +98,8 @@ control_notify_window_unlinked(unused struct session *s, struct window *w)
 {
 	struct client	*c;
 	struct session	*cs;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
+	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
 		cs = c->session;
@@ -120,10 +116,8 @@ control_notify_window_linked(unused struct session *s, struct window *w)
 {
 	struct client	*c;
 	struct session	*cs;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
+	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
 		cs = c->session;
@@ -140,10 +134,8 @@ control_notify_window_renamed(struct window *w)
 {
 	struct client	*c;
 	struct session	*cs;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
+	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
 			continue;
 		cs = c->session;
@@ -174,10 +166,8 @@ void
 control_notify_session_renamed(struct session *s)
 {
 	struct client	*c;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
+	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
 
@@ -189,10 +179,8 @@ void
 control_notify_session_created(unused struct session *s)
 {
 	struct client	*c;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
+	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
 
@@ -204,10 +192,8 @@ void
 control_notify_session_close(unused struct session *s)
 {
 	struct client	*c;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
+	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c))
 			continue;
 

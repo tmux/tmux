@@ -139,8 +139,8 @@ server_start(int lockfd, char *lockfile)
 
 	RB_INIT(&windows);
 	RB_INIT(&all_window_panes);
-	ARRAY_INIT(&clients);
-	ARRAY_INIT(&dead_clients);
+	TAILQ_INIT(&clients);
+	TAILQ_INIT(&dead_clients);
 	RB_INIT(&sessions);
 	RB_INIT(&dead_sessions);
 	TAILQ_INIT(&session_groups);
@@ -166,7 +166,7 @@ server_start(int lockfd, char *lockfile)
 	cfg_cmd_q->emptyfn = cfg_default_done;
 	cfg_finished = 0;
 	cfg_references = 1;
-	cfg_client = ARRAY_FIRST(&clients);
+	cfg_client = TAILQ_FIRST(&clients);
 	if (cfg_client != NULL)
 		cfg_client->references++;
 
@@ -212,16 +212,14 @@ int
 server_should_shutdown(void)
 {
 	struct client	*c;
-	u_int		 i;
 
 	if (!options_get_number(&global_options, "exit-unattached")) {
 		if (!RB_EMPTY(&sessions))
 			return (0);
 	}
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session != NULL)
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session != NULL)
 			return (0);
 	}
 
@@ -230,10 +228,8 @@ server_should_shutdown(void)
 	 * clients but don't actually exit until they've gone.
 	 */
 	cmd_wait_for_flush();
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		if (ARRAY_ITEM(&clients, i) != NULL)
-			return (0);
-	}
+	if (!TAILQ_EMPTY(&clients))
+		return (0);
 
 	return (1);
 }
@@ -242,55 +238,42 @@ server_should_shutdown(void)
 void
 server_send_shutdown(void)
 {
-	struct client	*c;
-	struct session	*s, *next_s;
-	u_int		 i;
+	struct client	*c, *c1;
+	struct session	*s, *s1;
 
 	cmd_wait_for_flush();
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL) {
-			if (c->flags & (CLIENT_BAD|CLIENT_SUSPENDED))
-				server_client_lost(c);
-			else
-				server_write_client(c, MSG_SHUTDOWN, NULL, 0);
-			c->session = NULL;
-		}
+	TAILQ_FOREACH_SAFE(c, &clients, entry, c1) {
+		if (c->flags & (CLIENT_BAD|CLIENT_SUSPENDED))
+			server_client_lost(c);
+		else
+			server_write_client(c, MSG_SHUTDOWN, NULL, 0);
+		c->session = NULL;
 	}
 
-	s = RB_MIN(sessions, &sessions);
-	while (s != NULL) {
-		next_s = RB_NEXT(sessions, &sessions, s);
+	RB_FOREACH_SAFE(s, sessions, &sessions, s1)
 		session_destroy(s);
-		s = next_s;
-	}
 }
 
 /* Free dead, unreferenced clients and sessions. */
 void
 server_clean_dead(void)
 {
-	struct session	*s, *next_s;
-	struct client	*c;
-	u_int		 i;
+	struct session	*s, *s1;
+	struct client	*c, *c1;
 
-	s = RB_MIN(sessions, &dead_sessions);
-	while (s != NULL) {
-		next_s = RB_NEXT(sessions, &dead_sessions, s);
-		if (s->references == 0) {
-			RB_REMOVE(sessions, &dead_sessions, s);
-			free(s->name);
-			free(s);
-		}
-		s = next_s;
+	RB_FOREACH_SAFE(s, sessions, &dead_sessions, s1) {
+		if (s->references != 0)
+			continue;
+		RB_REMOVE(sessions, &dead_sessions, s);
+		free(s->name);
+		free(s);
 	}
 
-	for (i = 0; i < ARRAY_LENGTH(&dead_clients); i++) {
-		c = ARRAY_ITEM(&dead_clients, i);
-		if (c == NULL || c->references != 0)
+	TAILQ_FOREACH_SAFE(c, &dead_clients, entry, c1) {
+		if (c->references != 0)
 			continue;
-		ARRAY_SET(&dead_clients, i, NULL);
+		TAILQ_REMOVE(&dead_clients, c, entry);
 		free(c);
 	}
 }

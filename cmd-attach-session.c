@@ -51,7 +51,6 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 	struct window_pane	*wp = NULL;
 	const char		*update;
 	char			*cause;
-	u_int			 i;
 	int			 fd;
 	struct format_tree	*ft;
 	char			*cp;
@@ -92,11 +91,8 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 			 * Can't use server_write_session in case attaching to
 			 * the same session as currently attached to.
 			 */
-			for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-				c = ARRAY_ITEM(&clients, i);
-				if (c == NULL || c->session != s)
-					continue;
-				if (c == cmdq->client)
+			TAILQ_FOREACH(c, &clients, entry) {
+				if (c->session != s || c == cmdq->client)
 					continue;
 				server_write_client(c, MSG_DETACH,
 				    c->session->name,

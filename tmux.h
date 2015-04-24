@@ -1349,8 +1349,10 @@ struct client {
 
 	struct cmd_q	*cmdq;
 	int		 references;
+
+	TAILQ_ENTRY(client) entry;
 };
-ARRAY_DECL(clients, struct client *);
+TAILQ_HEAD(clients, client);
 
 /* Parsed arguments structures. */
 struct args_entry {
