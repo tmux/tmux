@@ -636,10 +636,12 @@ void
 status_message_set(struct client *c, const char *fmt, ...)
 {
 	struct timeval		 tv;
-	struct message_entry	*msg;
+	struct message_entry	*msg, *msg1;
 	va_list			 ap;
 	int			 delay;
-	u_int			 i, limit;
+	u_int			 first, limit;
+
+	limit = options_get_number(&global_options, "message-limit");
 
 	status_prompt_clear(c);
 	status_message_clear(c);
@@ -648,19 +650,19 @@ status_message_set(struct client *c, const char *fmt, ...)
 	xvasprintf(&c->message_string, fmt, ap);
 	va_end(ap);
 
-	ARRAY_EXPAND(&c->message_log, 1);
-	msg = &ARRAY_LAST(&c->message_log);
+	msg = xcalloc(1, sizeof *msg);
 	msg->msg_time = time(NULL);
+	msg->msg_num = c->message_next++;
 	msg->msg = xstrdup(c->message_string);
+	TAILQ_INSERT_TAIL(&c->message_log, msg, entry);
 
-	limit = options_get_number(&global_options, "message-limit");
-	if (ARRAY_LENGTH(&c->message_log) > limit) {
-		limit = ARRAY_LENGTH(&c->message_log) - limit;
-		for (i = 0; i < limit; i++) {
-			msg = &ARRAY_FIRST(&c->message_log);
-			free(msg->msg);
-			ARRAY_REMOVE(&c->message_log, 0);
-		}
+	first = c->message_next - limit;
+	TAILQ_FOREACH_SAFE(msg, &c->message_log, entry, msg1) {
+		if (msg->msg_num >= first)
+			continue;
+		free(msg->msg);
+		TAILQ_REMOVE(&c->message_log, msg, entry);
+		free(msg);
 	}
 
 	delay = options_get_number(&c->session->options, "display-time");

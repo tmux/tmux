@@ -948,7 +948,6 @@ struct window_pane {
 };
 TAILQ_HEAD(window_panes, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
-ARRAY_DECL(window_pane_list, struct window_pane *);
 
 /* Window structure. */
 struct window {
@@ -1099,7 +1098,6 @@ struct session {
 	RB_ENTRY(session)    entry;
 };
 RB_HEAD(sessions, session);
-ARRAY_DECL(sessionslist, struct session *);
 
 /* TTY information. */
 struct tty_key {
@@ -1253,7 +1251,9 @@ struct tty_ctx {
 /* Saved message entry. */
 struct message_entry {
 	char   *msg;
+	u_int	msg_num;
 	time_t	msg_time;
+	TAILQ_ENTRY(message_entry) entry;
 };
 
 /* Status output data from a job. */
@@ -1325,7 +1325,8 @@ struct client {
 
 	char		*message_string;
 	struct event	 message_timer;
-	ARRAY_DECL(, struct message_entry) message_log;
+	u_int		 message_next;
+	TAILQ_HEAD(, message_entry) message_log;
 
 	char		*prompt_string;
 	char		*prompt_buffer;
@@ -1764,8 +1765,6 @@ int		 cmd_find_index(struct cmd_q *, const char *,
 struct winlink	*cmd_find_pane(struct cmd_q *, const char *, struct session **,
 		     struct window_pane **);
 char		*cmd_template_replace(const char *, const char *, int);
-struct window	*cmd_lookup_windowid(const char *);
-struct window_pane *cmd_lookup_paneid(const char *);
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
 extern const struct cmd_entry cmd_bind_key_entry;
@@ -2145,6 +2144,7 @@ struct winlink	*winlink_previous_by_number(struct winlink *, struct session *,
 		     int);
 void		 winlink_stack_push(struct winlink_stack *, struct winlink *);
 void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
+struct window	*window_find_by_id_str(const char *);
 struct window	*window_find_by_id(u_int);
 struct window	*window_create1(u_int, u_int);
 struct window	*window_create(const char *, int, char **, const char *,
@@ -2170,6 +2170,7 @@ struct window_pane *window_pane_previous_by_number(struct window *,
 int		 window_pane_index(struct window_pane *, u_int *);
 u_int		 window_count_panes(struct window *);
 void		 window_destroy_panes(struct window *);
+struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
@@ -2307,6 +2308,7 @@ int	session_cmp(struct session *, struct session *);
 RB_PROTOTYPE(sessions, session, entry, session_cmp);
 int		 session_alive(struct session *);
 struct session	*session_find(const char *);
+struct session	*session_find_by_id_str(const char *);
 struct session	*session_find_by_id(u_int);
 struct session	*session_create(const char *, int, char **, const char *,
 		     int, struct environ *, struct termios *, int, u_int,

@@ -69,9 +69,12 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 	} else {
 		if ((s = cmd_find_session(cmdq, tflag, 1)) == NULL)
 			return (CMD_RETURN_ERROR);
-		w = cmd_lookup_windowid(tflag);
-		if (w == NULL && (wp = cmd_lookup_paneid(tflag)) != NULL)
-			w = wp->window;
+		w = window_find_by_id_str(tflag);
+		if (w == NULL) {
+			wp = window_pane_find_by_id_str(tflag);
+			if (wp != NULL)
+				w = wp->window;
+		}
 		if (w != NULL)
 			wl = winlink_find_by_window(&s->windows, w);
 	}
