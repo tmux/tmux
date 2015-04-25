@@ -49,8 +49,6 @@
  * it reaches zero.
  */
 
-ARRAY_DECL(window_pane_list, struct window_pane *);
-
 /* Global window list. */
 struct windows windows;
 
@@ -64,7 +62,7 @@ void	window_pane_timer_callback(int, short, void *);
 void	window_pane_read_callback(struct bufferevent *, void *);
 void	window_pane_error_callback(struct bufferevent *, short, void *);
 
-struct window_pane *window_pane_choose_best(struct window_pane_list *);
+struct window_pane *window_pane_choose_best(struct window_pane **, u_int);
 
 RB_GENERATE(windows, window, entry, window_cmp);
 
@@ -256,7 +254,7 @@ winlink_stack_remove(struct winlink_stack *stack, struct winlink *wl)
 }
 
 struct window *
-window_find_by_id_str(const char* s)
+window_find_by_id_str(const char *s)
 {
 	const char	*errstr;
 	u_int		 id;
@@ -1149,17 +1147,17 @@ window_pane_search(struct window_pane *wp, const char *searchstr,
 
 /* Get MRU pane from a list. */
 struct window_pane *
-window_pane_choose_best(struct window_pane_list *list)
+window_pane_choose_best(struct window_pane **list, u_int size)
 {
 	struct window_pane	*next, *best;
 	u_int			 i;
 
-	if (ARRAY_LENGTH(list) == 0)
+	if (size == 0)
 		return (NULL);
 
-	best = ARRAY_FIRST(list);
-	for (i = 1; i < ARRAY_LENGTH(list); i++) {
-		next = ARRAY_ITEM(list, i);
+	best = list[0];
+	for (i = 1; i < size; i++) {
+		next = list[i];
 		if (next->active_point > best->active_point)
 			best = next;
 	}
@@ -1173,14 +1171,15 @@ window_pane_choose_best(struct window_pane_list *list)
 struct window_pane *
 window_pane_find_up(struct window_pane *wp)
 {
-	struct window_pane	*next, *best;
-	u_int			 edge, left, right, end;
-	struct window_pane_list	 list;
+	struct window_pane	*next, *best, **list;
+	u_int			 edge, left, right, end, size;
 	int			 found;
 
 	if (wp == NULL || !window_pane_visible(wp))
 		return (NULL);
-	ARRAY_INIT(&list);
+
+	list = NULL;
+	size = 0;
 
 	edge = wp->yoff;
 	if (edge == 0)
@@ -1203,12 +1202,14 @@ window_pane_find_up(struct window_pane *wp)
 			found = 1;
 		else if (end >= left && end <= right)
 			found = 1;
-		if (found)
-			ARRAY_ADD(&list, next);
+		if (!found)
+			continue;
+		list = xreallocarray(list, size + 1, sizeof *list);
+		list[size++] = next;
 	}
 
-	best = window_pane_choose_best(&list);
-	ARRAY_FREE(&list);
+	best = window_pane_choose_best(list, size);
+	free(list);
 	return (best);
 }
 
@@ -1216,14 +1217,15 @@ window_pane_find_up(struct window_pane *wp)
 struct window_pane *
 window_pane_find_down(struct window_pane *wp)
 {
-	struct window_pane	*next, *best;
-	u_int			 edge, left, right, end;
-	struct window_pane_list	 list;
+	struct window_pane	*next, *best, **list;
+	u_int			 edge, left, right, end, size;
 	int			 found;
 
 	if (wp == NULL || !window_pane_visible(wp))
 		return (NULL);
-	ARRAY_INIT(&list);
+
+	list = NULL;
+	size = 0;
 
 	edge = wp->yoff + wp->sy + 1;
 	if (edge >= wp->window->sy)
@@ -1246,12 +1248,14 @@ window_pane_find_down(struct window_pane *wp)
 			found = 1;
 		else if (end >= left && end <= right)
 			found = 1;
-		if (found)
-			ARRAY_ADD(&list, next);
+		if (!found)
+			continue;
+		list = xreallocarray(list, size + 1, sizeof *list);
+		list[size++] = next;
 	}
 
-	best = window_pane_choose_best(&list);
-	ARRAY_FREE(&list);
+	best = window_pane_choose_best(list, size);
+	free(list);
 	return (best);
 }
 
@@ -1259,14 +1263,15 @@ window_pane_find_down(struct window_pane *wp)
 struct window_pane *
 window_pane_find_left(struct window_pane *wp)
 {
-	struct window_pane	*next, *best;
-	u_int			 edge, top, bottom, end;
-	struct window_pane_list	 list;
+	struct window_pane	*next, *best, **list;
+	u_int			 edge, top, bottom, end, size;
 	int			 found;
 
 	if (wp == NULL || !window_pane_visible(wp))
 		return (NULL);
-	ARRAY_INIT(&list);
+
+	list = NULL;
+	size = 0;
 
 	edge = wp->xoff;
 	if (edge == 0)
@@ -1289,12 +1294,14 @@ window_pane_find_left(struct window_pane *wp)
 			found = 1;
 		else if (end >= top && end <= bottom)
 			found = 1;
-		if (found)
-			ARRAY_ADD(&list, next);
+		if (!found)
+			continue;
+		list = xreallocarray(list, size + 1, sizeof *list);
+		list[size++] = next;
 	}
 
-	best = window_pane_choose_best(&list);
-	ARRAY_FREE(&list);
+	best = window_pane_choose_best(list, size);
+	free(list);
 	return (best);
 }
 
@@ -1302,14 +1309,15 @@ window_pane_find_left(struct window_pane *wp)
 struct window_pane *
 window_pane_find_right(struct window_pane *wp)
 {
-	struct window_pane	*next, *best;
-	u_int			 edge, top, bottom, end;
-	struct window_pane_list	 list;
+	struct window_pane	*next, *best, **list;
+	u_int			 edge, top, bottom, end, size;
 	int			 found;
 
 	if (wp == NULL || !window_pane_visible(wp))
 		return (NULL);
-	ARRAY_INIT(&list);
+
+	list = NULL;
+	size = 0;
 
 	edge = wp->xoff + wp->sx + 1;
 	if (edge >= wp->window->sx)
@@ -1332,12 +1340,14 @@ window_pane_find_right(struct window_pane *wp)
 			found = 1;
 		else if (end >= top && end <= bottom)
 			found = 1;
-		if (found)
-			ARRAY_ADD(&list, next);
+		if (!found)
+			continue;
+		list = xreallocarray(list, size + 1, sizeof *list);
+		list[size++] = next;
 	}
 
-	best = window_pane_choose_best(&list);
-	ARRAY_FREE(&list);
+	best = window_pane_choose_best(list, size);
+	free(list);
 	return (best);
 }
 
