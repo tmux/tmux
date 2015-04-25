@@ -51,7 +51,6 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct client	*c, *cloop;
 	struct session	*s;
 	enum msgtype	 msgtype;
-	u_int 		 i;
 
 	if (self->entry == &cmd_suspend_client_entry) {
 		if ((c = cmd_find_client(cmdq, args_get(args, 't'), 0)) == NULL)
@@ -72,9 +71,8 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_q *cmdq)
 		if (s == NULL)
 			return (CMD_RETURN_ERROR);
 
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			cloop = ARRAY_ITEM(&clients, i);
-			if (cloop == NULL || cloop->session != s)
+		TAILQ_FOREACH(cloop, &clients, entry) {
+			if (cloop->session != s)
 				continue;
 			server_write_client(cloop, msgtype,
 			    cloop->session->name,
@@ -88,11 +86,8 @@ cmd_detach_client_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_ERROR);
 
 	if (args_has(args, 'a')) {
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			cloop = ARRAY_ITEM(&clients, i);
-			if (cloop == NULL || cloop->session == NULL)
-				continue;
-			if (cloop == c)
+		TAILQ_FOREACH(cloop, &clients, entry) {
+			if (cloop->session == NULL || cloop == c)
 				continue;
 			server_write_client(cloop, msgtype,
 			    cloop->session->name,

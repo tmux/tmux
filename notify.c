@@ -135,7 +135,6 @@ void
 notify_input(struct window_pane *wp, struct evbuffer *input)
 {
 	struct client	*c;
-	u_int		 i;
 
 	/*
 	 * notify_input() is not queued and only does anything when
@@ -144,9 +143,8 @@ notify_input(struct window_pane *wp, struct evbuffer *input)
 	if (!notify_enabled)
 		return;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && (c->flags & CLIENT_CONTROL))
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->flags & CLIENT_CONTROL)
 			control_notify_input(c, wp, input);
 	}
 }

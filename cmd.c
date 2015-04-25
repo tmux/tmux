@@ -115,10 +115,12 @@ const struct cmd_entry *cmd_table[] = {
 	NULL
 };
 
+ARRAY_DECL(client_list, struct client *);
+
 int		 cmd_session_better(struct session *, struct session *, int);
 struct session	*cmd_choose_session_list(struct sessionslist *);
 struct session	*cmd_choose_session(int);
-struct client	*cmd_choose_client(struct clients *);
+struct client	*cmd_choose_client(struct client_list *);
 struct client	*cmd_lookup_client(const char *);
 struct session	*cmd_lookup_session(struct cmd_q *, const char *, int *);
 struct session	*cmd_lookup_session_id(const char *);
@@ -451,8 +453,7 @@ cmd_current_client(struct cmd_q *cmdq)
 {
 	struct session		*s;
 	struct client		*c;
-	struct clients		 cc;
-	u_int			 i;
+	struct client_list	 cc;
 
 	if (cmdq->client != NULL && cmdq->client->session != NULL)
 		return (cmdq->client);
@@ -464,9 +465,7 @@ cmd_current_client(struct cmd_q *cmdq)
 	s = cmd_current_session(cmdq, 0);
 	if (s != NULL && !(s->flags & SESSION_UNATTACHED)) {
 		ARRAY_INIT(&cc);
-		for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-			if ((c = ARRAY_ITEM(&clients, i)) == NULL)
-				continue;
+		TAILQ_FOREACH(c, &clients, entry) {
 			if (s == c->session)
 				ARRAY_ADD(&cc, c);
 		}
@@ -477,12 +476,17 @@ cmd_current_client(struct cmd_q *cmdq)
 			return (c);
 	}
 
-	return (cmd_choose_client(&clients));
+	ARRAY_INIT(&cc);
+	TAILQ_FOREACH(c, &clients, entry)
+		ARRAY_ADD(&cc, c);
+	c = cmd_choose_client(&cc);
+	ARRAY_FREE(&cc);
+	return (c);
 }
 
 /* Choose the most recently used client from a list. */
 struct client *
-cmd_choose_client(struct clients *cc)
+cmd_choose_client(struct client_list *cc)
 {
 	struct client	*c, *cbest;
 	struct timeval	*tv = NULL;
@@ -614,11 +618,9 @@ cmd_lookup_client(const char *name)
 {
 	struct client	*c;
 	const char	*path;
-	u_int		 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL || c->tty.path == NULL)
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session == NULL || c->tty.path == NULL)
 			continue;
 		path = c->tty.path;
 

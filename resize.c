@@ -49,7 +49,7 @@ recalculate_sizes(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int			 i, j, ssx, ssy, has, limit;
+	u_int			 ssx, ssy, has, limit;
 	int			 flag, has_status, is_zoomed, forced;
 
 	RB_FOREACH(s, sessions, &sessions) {
@@ -57,9 +57,8 @@ recalculate_sizes(void)
 
 		s->attached = 0;
 		ssx = ssy = UINT_MAX;
-		for (j = 0; j < ARRAY_LENGTH(&clients); j++) {
-			c = ARRAY_ITEM(&clients, j);
-			if (c == NULL || c->flags & CLIENT_SUSPENDED)
+		TAILQ_FOREACH(c, &clients, entry) {
+			if (c->flags & CLIENT_SUSPENDED)
 				continue;
 			if (c->session == s) {
 				if (c->tty.sx < ssx)
@@ -92,9 +91,8 @@ recalculate_sizes(void)
 		s->sy = ssy;
 	}
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		w = ARRAY_ITEM(&windows, i);
-		if (w == NULL || w->active == NULL)
+	RB_FOREACH(w, windows, &windows) {
+		if (w->active == NULL)
 			continue;
 		flag = options_get_number(&w->options, "aggressive-resize");
 
@@ -105,7 +103,7 @@ recalculate_sizes(void)
 			if (flag)
 				has = s->curw->window == w;
 			else
-				has = session_has(s, w) != NULL;
+				has = session_has(s, w);
 			if (has) {
 				if (s->sx < ssx)
 					ssx = s->sx;

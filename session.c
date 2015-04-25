@@ -308,16 +308,16 @@ session_detach(struct session *s, struct winlink *wl)
 }
 
 /* Return if session has window. */
-struct winlink *
+int
 session_has(struct session *s, struct window *w)
 {
 	struct winlink	*wl;
 
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		if (wl->window == w)
-			return (wl);
+			return (1);
 	}
-	return (NULL);
+	return (0);
 }
 
 struct winlink *

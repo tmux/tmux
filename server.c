@@ -136,10 +136,10 @@ server_start(int lockfd, char *lockfile)
 	logfile("server");
 	log_debug("server started, pid %ld", (long) getpid());
 
-	ARRAY_INIT(&windows);
+	RB_INIT(&windows);
 	RB_INIT(&all_window_panes);
-	ARRAY_INIT(&clients);
-	ARRAY_INIT(&dead_clients);
+	TAILQ_INIT(&clients);
+	TAILQ_INIT(&dead_clients);
 	RB_INIT(&sessions);
 	RB_INIT(&dead_sessions);
 	TAILQ_INIT(&session_groups);
@@ -167,7 +167,7 @@ server_start(int lockfd, char *lockfile)
 	cfg_cmd_q->emptyfn = cfg_default_done;
 	cfg_finished = 0;
 	cfg_references = 1;
-	cfg_client = ARRAY_FIRST(&clients);
+	cfg_client = TAILQ_FIRST(&clients);
 	if (cfg_client != NULL)
 		cfg_client->references++;
 
@@ -213,16 +213,14 @@ int
 server_should_shutdown(void)
 {
 	struct client	*c;
-	u_int		 i;
 
 	if (!options_get_number(&global_options, "exit-unattached")) {
 		if (!RB_EMPTY(&sessions))
 			return (0);
 	}
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL && c->session != NULL)
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session != NULL)
 			return (0);
 	}
 
@@ -231,10 +229,8 @@ server_should_shutdown(void)
 	 * clients but don't actually exit until they've gone.
 	 */
 	cmd_wait_for_flush();
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		if (ARRAY_ITEM(&clients, i) != NULL)
-			return (0);
-	}
+	if (!TAILQ_EMPTY(&clients))
+		return (0);
 
 	return (1);
 }
@@ -243,55 +239,42 @@ server_should_shutdown(void)
 void
 server_send_shutdown(void)
 {
-	struct client	*c;
-	struct session	*s, *next_s;
-	u_int		 i;
+	struct client	*c, *c1;
+	struct session	*s, *s1;
 
 	cmd_wait_for_flush();
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c != NULL) {
-			if (c->flags & (CLIENT_BAD|CLIENT_SUSPENDED))
-				server_client_lost(c);
-			else
-				server_write_client(c, MSG_SHUTDOWN, NULL, 0);
-			c->session = NULL;
-		}
+	TAILQ_FOREACH_SAFE(c, &clients, entry, c1) {
+		if (c->flags & (CLIENT_BAD|CLIENT_SUSPENDED))
+			server_client_lost(c);
+		else
+			server_write_client(c, MSG_SHUTDOWN, NULL, 0);
+		c->session = NULL;
 	}
 
-	s = RB_MIN(sessions, &sessions);
-	while (s != NULL) {
-		next_s = RB_NEXT(sessions, &sessions, s);
+	RB_FOREACH_SAFE(s, sessions, &sessions, s1)
 		session_destroy(s);
-		s = next_s;
-	}
 }
 
 /* Free dead, unreferenced clients and sessions. */
 void
 server_clean_dead(void)
 {
-	struct session	*s, *next_s;
-	struct client	*c;
-	u_int		 i;
+	struct session	*s, *s1;
+	struct client	*c, *c1;
 
-	s = RB_MIN(sessions, &dead_sessions);
-	while (s != NULL) {
-		next_s = RB_NEXT(sessions, &dead_sessions, s);
-		if (s->references == 0) {
-			RB_REMOVE(sessions, &dead_sessions, s);
-			free(s->name);
-			free(s);
-		}
-		s = next_s;
+	RB_FOREACH_SAFE(s, sessions, &dead_sessions, s1) {
+		if (s->references != 0)
+			continue;
+		RB_REMOVE(sessions, &dead_sessions, s);
+		free(s->name);
+		free(s);
 	}
 
-	for (i = 0; i < ARRAY_LENGTH(&dead_clients); i++) {
-		c = ARRAY_ITEM(&dead_clients, i);
-		if (c == NULL || c->references != 0)
+	TAILQ_FOREACH_SAFE(c, &dead_clients, entry, c1) {
+		if (c->references != 0)
 			continue;
-		ARRAY_SET(&dead_clients, i, NULL);
+		TAILQ_REMOVE(&dead_clients, c, entry);
 		free(c);
 	}
 }
@@ -390,6 +373,7 @@ void
 server_signal_callback(int sig, unused short events, unused void *data)
 {
 	int	fd;
+
 	switch (sig) {
 	case SIGTERM:
 		server_shutdown = 1;
@@ -438,14 +422,11 @@ server_child_signal(void)
 void
 server_child_exited(pid_t pid, int status)
 {
-	struct window		*w;
+	struct window		*w, *w1;
 	struct window_pane	*wp;
 	struct job		*job;
-	u_int		 	 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		if ((w = ARRAY_ITEM(&windows, i)) == NULL)
-			continue;
+	RB_FOREACH_SAFE(w, windows, &windows, w1) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->pid == pid) {
 				wp->status = status;
@@ -469,14 +450,11 @@ server_child_stopped(pid_t pid, int status)
 {
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int			 i;
 
 	if (WSTOPSIG(status) == SIGTTIN || WSTOPSIG(status) == SIGTTOU)
 		return;
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		if ((w = ARRAY_ITEM(&windows, i)) == NULL)
-			continue;
+	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->pid == pid) {
 				if (killpg(pid, SIGCONT) != 0)
@@ -493,18 +471,13 @@ server_second_callback(unused int fd, unused short events, unused void *arg)
 	struct window		*w;
 	struct window_pane	*wp;
 	struct timeval		 tv;
-	u_int		 	 i;
 
 	if (options_get_number(&global_s_options, "lock-server"))
 		server_lock_server();
 	else
 		server_lock_sessions();
 
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		w = ARRAY_ITEM(&windows, i);
-		if (w == NULL)
-			continue;
-
+	RB_FOREACH(w, windows, &windows) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->mode != NULL && wp->mode->timer != NULL)
 				wp->mode->timer(wp);

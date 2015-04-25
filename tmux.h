@@ -981,8 +981,10 @@ struct window {
 	struct options	 options;
 
 	u_int		 references;
+
+	RB_ENTRY(window) entry;
 };
-ARRAY_DECL(windows, struct window *);
+RB_HEAD(windows, window);
 
 /* Entry on local window list. */
 struct winlink {
@@ -1345,8 +1347,10 @@ struct client {
 
 	struct cmd_q	*cmdq;
 	int		 references;
+
+	TAILQ_ENTRY(client) entry;
 };
-ARRAY_DECL(clients, struct client *);
+TAILQ_HEAD(clients, client);
 
 /* Parsed arguments structures. */
 struct args_entry {
@@ -1609,7 +1613,7 @@ int	options_table_find(const char *, const struct options_table_entry **,
 
 /* job.c */
 extern struct joblist all_jobs;
-struct job *job_run(const char *, struct session *,
+struct job *job_run(const char *, struct session *, int,
 	    void (*)(struct job *), void (*)(void *), void *);
 void	job_free(struct job *);
 void	job_died(struct job *, int);
@@ -2119,6 +2123,8 @@ void	 screen_reflow(struct screen *, u_int);
 /* window.c */
 extern struct windows windows;
 extern struct window_pane_tree all_window_panes;
+int		 window_cmp(struct window *, struct window *);
+RB_PROTOTYPE(windows, window, entry, window_cmp);
 int		 winlink_cmp(struct winlink *, struct winlink *);
 RB_PROTOTYPE(winlinks, winlink, entry, winlink_cmp);
 int		 window_pane_cmp(struct window_pane *, struct window_pane *);
@@ -2139,7 +2145,6 @@ struct winlink	*winlink_previous_by_number(struct winlink *, struct session *,
 		     int);
 void		 winlink_stack_push(struct winlink_stack *, struct winlink *);
 void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
-int		 window_index(struct window *, u_int *);
 struct window	*window_find_by_id(u_int);
 struct window	*window_create1(u_int, u_int);
 struct window	*window_create(const char *, int, char **, const char *,
@@ -2316,7 +2321,7 @@ struct winlink	*session_new(struct session *, const char *, int, char **,
 struct winlink	*session_attach(struct session *, struct window *, int,
 		     char **);
 int		 session_detach(struct session *, struct winlink *);
-struct winlink	*session_has(struct session *, struct window *);
+int		 session_has(struct session *, struct window *);
 int		 session_next(struct session *, int);
 int		 session_previous(struct session *, int);
 int		 session_select(struct session *, int);

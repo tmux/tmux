@@ -258,6 +258,9 @@ client_main(int argc, char **argv, int flags)
 		return (1);
 	}
 
+	/* Establish signal handlers. */
+	set_signals(client_signal);
+
 	/* Initialize the client socket and start the server. */
 	fd = client_connect(socket_path, cmdflags & CMD_STARTSERVER);
 	if (fd == -1) {
@@ -304,9 +307,6 @@ client_main(int argc, char **argv, int flags)
 		cfsetospeed(&tio, cfgetospeed(&saved_tio));
 		tcsetattr(STDIN_FILENO, TCSANOW, &tio);
 	}
-
-	/* Establish signal handlers. */
-	set_signals(client_signal);
 
 	/* Send identify messages. */
 	client_send_identify(flags);

@@ -66,16 +66,24 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct winlink			*wl = NULL;
 	struct window_pane		*wp = NULL;
 	struct format_tree		*ft;
+	int				 cwd;
 
-	if (args_has(args, 't'))
+	if (args_has(args, 't')) {
 		wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp);
-	else {
+		cwd = wp->cwd;
+	} else {
 		c = cmd_find_client(cmdq, NULL, 1);
 		if (c != NULL && c->session != NULL) {
 			s = c->session;
 			wl = s->curw;
 			wp = wl->window->active;
 		}
+		if (cmdq->client != NULL && cmdq->client->session == NULL)
+			cwd = cmdq->client->cwd;
+		else if (s != NULL)
+			cwd = s->cwd;
+		else
+			cwd = -1;
 	}
 
 	ft = format_create();
@@ -118,7 +126,8 @@ cmd_if_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 	cmdq->references++;
 
 	cdata->references = 1;
-	job_run(shellcmd, s, cmd_if_shell_callback, cmd_if_shell_free, cdata);
+	job_run(shellcmd, s, cwd, cmd_if_shell_callback, cmd_if_shell_free,
+	    cdata);
 	free(shellcmd);
 
 	if (cdata->bflag)

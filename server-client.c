@@ -59,7 +59,6 @@ void
 server_client_create(int fd)
 {
 	struct client	*c;
-	u_int		 i;
 
 	setblocking(fd, 0);
 
@@ -107,13 +106,7 @@ server_client_create(int fd)
 
 	evtimer_set(&c->repeat_timer, server_client_repeat_timer, c);
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		if (ARRAY_ITEM(&clients, i) == NULL) {
-			ARRAY_SET(&clients, i, c);
-			return;
-		}
-	}
-	ARRAY_ADD(&clients, c);
+	TAILQ_INSERT_TAIL(&clients, c, entry);
 	log_debug("new client %d", fd);
 }
 
@@ -147,10 +140,7 @@ server_client_lost(struct client *c)
 	struct message_entry	*msg;
 	u_int			 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		if (ARRAY_ITEM(&clients, i) == c)
-			ARRAY_SET(&clients, i, NULL);
-	}
+	TAILQ_REMOVE(&clients, c, entry);
 	log_debug("lost client %d", c->ibuf.fd);
 
 	/*
@@ -204,14 +194,7 @@ server_client_lost(struct client *c)
 	if (event_initialized(&c->event))
 		event_del(&c->event);
 
-	for (i = 0; i < ARRAY_LENGTH(&dead_clients); i++) {
-		if (ARRAY_ITEM(&dead_clients, i) == NULL) {
-			ARRAY_SET(&dead_clients, i, c);
-			break;
-		}
-	}
-	if (i == ARRAY_LENGTH(&dead_clients))
-		ARRAY_ADD(&dead_clients, c);
+	TAILQ_INSERT_TAIL(&dead_clients, c, entry);
 	c->flags |= CLIENT_DEAD;
 
 	server_add_accept(0); /* may be more file descriptors now */
@@ -262,16 +245,14 @@ server_client_status_timer(void)
 	struct client	*c;
 	struct session	*s;
 	struct timeval	 tv;
-	u_int		 i;
 	int		 interval;
 	time_t		 difference;
 
 	if (gettimeofday(&tv, NULL) != 0)
 		fatal("gettimeofday failed");
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session == NULL)
 			continue;
 		if (c->message_string != NULL || c->prompt_string != NULL) {
 			/*
@@ -701,13 +682,8 @@ server_client_loop(void)
 	struct client		*c;
 	struct window		*w;
 	struct window_pane	*wp;
-	u_int		 	 i;
 
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL)
-			continue;
-
+	TAILQ_FOREACH(c, &clients, entry) {
 		server_client_check_exit(c);
 		if (c->session != NULL) {
 			server_client_check_redraw(c);
@@ -719,11 +695,7 @@ server_client_loop(void)
 	 * Any windows will have been redrawn as part of clients, so clear
 	 * their flags now. Also check pane focus and resize.
 	 */
-	for (i = 0; i < ARRAY_LENGTH(&windows); i++) {
-		w = ARRAY_ITEM(&windows, i);
-		if (w == NULL)
-			continue;
-
+	RB_FOREACH(w, windows, &windows) {
 		w->flags &= ~WINDOW_REDRAW;
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->fd != -1) {
@@ -768,7 +740,6 @@ server_client_check_resize(struct window_pane *wp)
 void
 server_client_check_focus(struct window_pane *wp)
 {
-	u_int		 i;
 	struct client	*c;
 	int		 push;
 
@@ -796,12 +767,8 @@ server_client_check_focus(struct window_pane *wp)
 	 * If our window is the current window in any focused clients with an
 	 * attached session, we're focused.
 	 */
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c = ARRAY_ITEM(&clients, i);
-		if (c == NULL || c->session == NULL)
-			continue;
-
-		if (!(c->flags & CLIENT_FOCUSED))
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (c->session == NULL || !(c->flags & CLIENT_FOCUSED))
 			continue;
 		if (c->session->flags & SESSION_UNATTACHED)
 			continue;

@@ -59,7 +59,7 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct winlink			*wl;
 	const char			*template;
 	char				*action;
-	u_int			 	 i, idx, cur;
+	u_int			 	 idx, cur;
 
 	if ((c = cmd_current_client(cmdq)) == NULL) {
 		cmdq_error(cmdq, "no client available");
@@ -81,24 +81,24 @@ cmd_choose_client_exec(struct cmd *self, struct cmd_q *cmdq)
 		action = xstrdup("detach-client -t '%%'");
 
 	cur = idx = 0;
-	for (i = 0; i < ARRAY_LENGTH(&clients); i++) {
-		c1 = ARRAY_ITEM(&clients, i);
-		if (c1 == NULL || c1->session == NULL || c1->tty.path == NULL)
+	TAILQ_FOREACH(c1, &clients, entry) {
+		if (c1->session == NULL || c1->tty.path == NULL)
 			continue;
 		if (c1 == cmdq->client)
 			cur = idx;
-		idx++;
 
 		cdata = window_choose_data_create(TREE_OTHER, c, c->session);
-		cdata->idx = i;
+		cdata->idx = idx;
 
 		cdata->ft_template = xstrdup(template);
-		format_add(cdata->ft, "line", "%u", i);
+		format_add(cdata->ft, "line", "%u", idx);
 		format_defaults(cdata->ft, c1, NULL, NULL, NULL);
 
 		cdata->command = cmd_template_replace(action, c1->tty.path, 1);
 
 		window_choose_add(wl->window->active, cdata);
+
+		idx++;
 	}
 	free(action);
 
@@ -112,15 +112,19 @@ void
 cmd_choose_client_callback(struct window_choose_data *cdata)
 {
 	struct client  	*c;
+	u_int		 idx;
 
 	if (cdata == NULL)
 		return;
 	if (cdata->start_client->flags & CLIENT_DEAD)
 		return;
 
-	if (cdata->idx > ARRAY_LENGTH(&clients) - 1)
-		return;
-	c = ARRAY_ITEM(&clients, cdata->idx);
+	idx = 0;
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (idx == cdata->idx)
+			break;
+		idx++;
+	}
 	if (c == NULL || c->session == NULL)
 		return;
 
