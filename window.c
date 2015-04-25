@@ -49,6 +49,8 @@
  * it reaches zero.
  */
 
+ARRAY_DECL(window_pane_list, struct window_pane *);
+
 /* Global window list. */
 struct windows windows;
 

@@ -950,7 +950,6 @@ struct window_pane {
 };
 TAILQ_HEAD(window_panes, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
-ARRAY_DECL(window_pane_list, struct window_pane *);
 
 /* Window structure. */
 struct window {
@@ -1101,7 +1100,6 @@ struct session {
 	RB_ENTRY(session)    entry;
 };
 RB_HEAD(sessions, session);
-ARRAY_DECL(sessionslist, struct session *);
 
 /* TTY information. */
 struct tty_key {
@@ -1255,7 +1253,9 @@ struct tty_ctx {
 /* Saved message entry. */
 struct message_entry {
 	char   *msg;
+	u_int	msg_num;
 	time_t	msg_time;
+	TAILQ_ENTRY(message_entry) entry;
 };
 
 /* Status output data from a job. */
@@ -1327,7 +1327,8 @@ struct client {
 
 	char		*message_string;
 	struct event	 message_timer;
-	ARRAY_DECL(, struct message_entry) message_log;
+	u_int		 message_next;
+	TAILQ_HEAD(, message_entry) message_log;
 
 	char		*prompt_string;
 	char		*prompt_buffer;

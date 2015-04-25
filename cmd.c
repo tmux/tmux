@@ -117,6 +117,7 @@ const struct cmd_entry *cmd_table[] = {
 };
 
 ARRAY_DECL(client_list, struct client *);
+ARRAY_DECL(sessionslist, struct session *);
 
 int		 cmd_session_better(struct session *, struct session *, int);
 struct session	*cmd_choose_session_list(struct sessionslist *);
