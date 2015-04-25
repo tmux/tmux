@@ -27,12 +27,12 @@
 
 #include "tmux.h"
 
-struct cmd_q		*cfg_cmd_q;
-int			 cfg_finished;
-int			 cfg_references;
-char**			 cfg_causes;
-u_int			 cfg_ncauses;
-struct client		*cfg_client;
+struct cmd_q		 *cfg_cmd_q;
+int			  cfg_finished;
+int			  cfg_references;
+char			**cfg_causes;
+u_int			  cfg_ncauses;
+struct client		 *cfg_client;
 
 int
 load_cfg(const char *path, struct cmd_q *cmdq, char **cause)
@@ -114,10 +114,10 @@ cfg_default_done(unused struct cmd_q *cmdq)
 }
 
 void
-cfg_add_cause(const char* fmt, ...)
+cfg_add_cause(const char *fmt, ...)
 {
-	va_list	ap;
-	char*	msg;
+	va_list	 ap;
+	char	*msg;
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);

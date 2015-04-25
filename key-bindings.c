@@ -144,7 +144,7 @@ key_bindings_remove_table(const char *name)
 void
 key_bindings_init(void)
 {
-	static const char* defaults[] = {
+	static const char *defaults[] = {
 		"bind C-b send-prefix",
 		"bind C-o rotate-window",
 		"bind C-z suspend-client",
@@ -225,7 +225,7 @@ key_bindings_init(void)
 	};
 	u_int		 i;
 	struct cmd_list	*cmdlist;
-	char*            cause;
+	char		*cause;
 	int		 error;
 	struct cmd_q	*cmdq;
 
