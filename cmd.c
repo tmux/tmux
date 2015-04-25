@@ -124,7 +124,6 @@ struct session	*cmd_choose_session(int);
 struct client	*cmd_choose_client(struct client_list *);
 struct client	*cmd_lookup_client(const char *);
 struct session	*cmd_lookup_session(struct cmd_q *, const char *, int *);
-struct session	*cmd_lookup_session_id(const char *);
 struct winlink	*cmd_lookup_window(struct session *, const char *, int *);
 int		 cmd_lookup_index(struct session *, const char *, int *);
 struct winlink	*cmd_lookup_winlink_windowid(struct session *, const char *);
@@ -639,21 +638,6 @@ cmd_lookup_client(const char *name)
 	return (NULL);
 }
 
-/* Find the target session or report an error and return NULL. */
-struct session *
-cmd_lookup_session_id(const char *arg)
-{
-	char	*endptr;
-	long	 id;
-
-	if (arg[0] != '$')
-		return (NULL);
-	id = strtol(arg + 1, &endptr, 10);
-	if (arg[1] != '\0' && *endptr == '\0')
-		return (session_find_by_id(id));
-	return (NULL);
-}
-
 /* Lookup a session by name. If no session is found, NULL is returned. */
 struct session *
 cmd_lookup_session(struct cmd_q *cmdq, const char *name, int *ambiguous)
@@ -665,13 +649,13 @@ cmd_lookup_session(struct cmd_q *cmdq, const char *name, int *ambiguous)
 	*ambiguous = 0;
 
 	/* Look for $id first. */
-	if ((s = cmd_lookup_session_id(name)) != NULL)
+	if ((s = session_find_by_id_str(name)) != NULL)
 		return (s);
 
 	/* Try as pane or window id. */
-	if ((wp = cmd_lookup_paneid(name)) != NULL)
+	if ((wp = window_pane_find_by_id_str(name)) != NULL)
 		return (cmd_window_session(cmdq, wp->window, NULL));
-	if ((w = cmd_lookup_windowid(name)) != NULL)
+	if ((w = window_find_by_id_str(name)) != NULL)
 		return (cmd_window_session(cmdq, w, NULL));
 
 	/*
@@ -722,12 +706,12 @@ cmd_lookup_window(struct session *s, const char *name, int *ambiguous)
 	    return (wl);
 
 	/* Lookup as pane or window id. */
-	if ((wp = cmd_lookup_paneid(name)) != NULL) {
+	if ((wp = window_pane_find_by_id_str(name)) != NULL) {
 		wl = winlink_find_by_window(&s->windows, wp->window);
 		if (wl != NULL)
 			return (wl);
 	}
-	if ((w = cmd_lookup_windowid(name)) != NULL) {
+	if ((w = window_find_by_id_str(name)) != NULL) {
 		wl = winlink_find_by_window(&s->windows, w);
 		if (wl != NULL)
 			return (wl);
@@ -795,22 +779,6 @@ cmd_lookup_index(struct session *s, const char *name, int *ambiguous)
 	return (-1);
 }
 
-/* Lookup pane id. An initial % means a pane id. */
-struct window_pane *
-cmd_lookup_paneid(const char *arg)
-{
-	const char	*errstr;
-	u_int		 paneid;
-
-	if (*arg != '%')
-		return (NULL);
-
-	paneid = strtonum(arg + 1, 0, UINT_MAX, &errstr);
-	if (errstr != NULL)
-		return (NULL);
-	return (window_pane_find_by_id(paneid));
-}
-
 /* Lookup window id in a session. An initial @ means a window id. */
 struct winlink *
 cmd_lookup_winlink_windowid(struct session *s, const char *arg)
@@ -825,22 +793,6 @@ cmd_lookup_winlink_windowid(struct session *s, const char *arg)
 	if (errstr != NULL)
 		return (NULL);
 	return (winlink_find_by_window_id(&s->windows, windowid));
-}
-
-/* Lookup window id. An initial @ means a window id. */
-struct window *
-cmd_lookup_windowid(const char *arg)
-{
-	const char	*errstr;
-	u_int		 windowid;
-
-	if (*arg != '@')
-		return (NULL);
-
-	windowid = strtonum(arg + 1, 0, UINT_MAX, &errstr);
-	if (errstr != NULL)
-		return (NULL);
-	return (window_find_by_id(windowid));
 }
 
 /* Find session and winlink for window. */
@@ -1252,7 +1204,7 @@ cmd_find_pane(struct cmd_q *cmdq,
 	}
 
 	/* Lookup as pane id. */
-	if ((*wpp = cmd_lookup_paneid(arg)) != NULL) {
+	if ((*wpp = window_pane_find_by_id_str(arg)) != NULL) {
 		s = cmd_window_session(cmdq, (*wpp)->window, &wl);
 		if (sp != NULL)
 			*sp = s;
