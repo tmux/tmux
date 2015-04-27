@@ -77,12 +77,6 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
 
-	server_unzoom_window(wp->window);
-	if (!window_pane_visible(wp)) {
-		cmdq_error(cmdq, "pane not visible");
-		return (CMD_RETURN_ERROR);
-	}
-
 	if (args_has(self->args, 'P') || args_has(self->args, 'g')) {
 		if (args_has(args, 'P')) {
 			style = args_get(args, 'P');
@@ -111,11 +105,23 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (args_has(self->args, 'e'))
+	if (args_has(self->args, 'e')) {
 		wp->flags &= ~PANE_INPUTOFF;
-	else if (args_has(self->args, 'd'))
+		return (CMD_RETURN_NORMAL);
+	}
+	if (args_has(self->args, 'd')) {
 		wp->flags |= PANE_INPUTOFF;
-	else if (window_set_active_pane(wl->window, wp)) {
+		return (CMD_RETURN_NORMAL);
+	}
+
+	if (wp == wl->window->active)
+		return (CMD_RETURN_NORMAL);
+	server_unzoom_window(wp->window);
+	if (!window_pane_visible(wp)) {
+		cmdq_error(cmdq, "pane not visible");
+		return (CMD_RETURN_ERROR);
+	}
+	if (window_set_active_pane(wl->window, wp)) {
 		server_status_window(wl->window);
 		server_redraw_window_borders(wl->window);
 	}
