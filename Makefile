@@ -69,6 +69,7 @@ SRCS=	arguments.c \
 	cmd-unbind-key.c \
 	cmd-wait-for.c \
 	cmd.c \
+	cmd-find.c \
 	cmd-queue.c \
 	colour.c \
 	control.c \

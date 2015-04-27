@@ -93,7 +93,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (c != NULL && c->session == NULL)
 		cwd = c->cwd;
-	else if ((s = cmd_current_session(cmdq, 0)) != NULL)
+	else if ((s = cmd_find_current(cmdq)) != NULL)
 		cwd = s->cwd;
 	else
 		cwd = AT_FDCWD;

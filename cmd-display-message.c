@@ -78,7 +78,7 @@ cmd_display_message_exec(struct cmd *self, struct cmd_q *cmdq)
 		if (c == NULL)
 			return (CMD_RETURN_ERROR);
 	} else {
-		c = cmd_current_client(cmdq);
+		c = cmd_find_client(cmdq, NULL, 1);
 		if (c == NULL && !args_has(self->args, 'p')) {
 			cmdq_error(cmdq, "no client available");
 			return (CMD_RETURN_ERROR);

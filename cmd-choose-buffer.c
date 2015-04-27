@@ -53,7 +53,7 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	u_int				 idx;
 	int				 utf8flag;
 
-	if ((c = cmd_current_client(cmdq)) == NULL) {
+	if ((c = cmd_find_client(cmdq, NULL, 1)) == NULL) {
 		cmdq_error(cmdq, "no client available");
 		return (CMD_RETURN_ERROR);
 	}
