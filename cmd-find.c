@@ -131,7 +131,7 @@ cmd_find_best_client(struct client **clist, u_int csize)
 	} else {
 		TAILQ_FOREACH(c_loop, &clients, entry) {
 			if (cmd_find_client_better(c_loop, c))
-				c_loop = c;
+				c = c_loop;
 		}
 	}
 	return (c);
