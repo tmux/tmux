@@ -140,6 +140,7 @@ cfg_print_causes(struct cmd_q *cmdq)
 
 	free(cfg_causes);
 	cfg_causes = NULL;
+	cfg_ncauses = 0;
 }
 
 void
@@ -161,4 +162,5 @@ cfg_show_causes(struct session *s)
 
 	free(cfg_causes);
 	cfg_causes = NULL;
+	cfg_ncauses = 0;
 }
