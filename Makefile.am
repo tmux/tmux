@@ -80,6 +80,7 @@ dist_tmux_SOURCES = \
 	cmd-detach-client.c \
 	cmd-display-message.c \
 	cmd-display-panes.c \
+	cmd-find.c \
 	cmd-find-window.c \
 	cmd-if-shell.c \
 	cmd-join-pane.c \

@@ -87,7 +87,7 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_q *cmdq)
 	ses_template = win_template = NULL;
 	ses_action = win_action = NULL;
 
-	if ((c = cmd_current_client(cmdq)) == NULL) {
+	if ((c = cmd_find_client(cmdq, NULL, 1)) == NULL) {
 		cmdq_error(cmdq, "no client available");
 		return (CMD_RETURN_ERROR);
 	}

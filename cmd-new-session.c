@@ -137,7 +137,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		cwd = fd;
 	} else if (c != NULL && c->session == NULL)
 		cwd = c->cwd;
-	else if ((c0 = cmd_current_client(cmdq)) != NULL)
+	else if ((c0 = cmd_find_client(cmdq, NULL, 1)) != NULL)
 		cwd = c0->session->cwd;
 	else {
 		fd = open(".", O_RDONLY);

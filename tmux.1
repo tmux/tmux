@@ -362,6 +362,7 @@ argument with one of
 or
 .Ar target-pane .
 These specify the client, session, window or pane which a command should affect.
+.Pp
 .Ar target-client
 is the name of the
 .Xr pty 7
@@ -371,27 +372,35 @@ or
 .Pa ttyp1
 for the client attached to
 .Pa /dev/ttyp1 .
-If no client is specified, the current client is chosen, if possible, or an
-error is reported.
+If no client is specified,
+.Nm
+attempts to work out the client currently in use; if that fails, an error is
+reported.
 Clients may be listed with the
 .Ic list-clients
 command.
 .Pp
 .Ar target-session
-is the session id prefixed with a $, the name of a session (as listed by the
+is tried as, in order:
+.Bl -enum -offset Ds
+.It
+A session ID prefixed with a $.
+.It
+An exact name of a session (as listed by the
 .Ic list-sessions
-command), or the name of a client with the same syntax as
-.Ar target-client ,
-in which case the session attached to the client is used.
-When looking for the session name,
-.Nm
-initially searches for an exact match; if none is found, the session names
-are checked for any for which
-.Ar target-session
-is a prefix or for which it matches as an
+command).
+.It
+The start of a session name, for example
+.Ql mysess
+would match a session named
+.Ql mysession .
+.It
+An
 .Xr fnmatch 3
-pattern.
-If a single match is found, it is used as the target session; multiple matches
+pattern which is matched against the session name.
+.El
+.Pp
+If a single session is found, it is used as the target session; multiple matches
 produce an error.
 If a session is omitted, the current session is used if available; if no
 current session is available, the most recently used is chosen.
@@ -404,12 +413,29 @@ follows the same rules as for
 .Ar target-session ,
 and
 .Em window
-is looked for in order: as a window index, for example mysession:1;
-as a window ID, such as @1;
-as an exact window name, such as mysession:mywindow; then as an
+is looked for in order as:
+.Bl -enum -offset Ds
+.It
+A special token, listed below.
+.It
+A window index, for example
+.Ql mysession:1
+is window 1 in session
+.Ql mysession .
+.It
+A window ID, such as @1.
+.It
+An exact window name, such as
+.Ql mysession:mywindow .
+.It
+The start of a window name, such as
+.Ql mysession:mywin .
+.It
+As an
 .Xr fnmatch 3
-pattern or the start of a window name, such as mysession:mywin* or
-mysession:mywin.
+pattern matched against the window name.
+.El
+.Pp
 An empty window name specifies the next unused index if appropriate (for
 example the
 .Ic new-window
@@ -419,53 +445,50 @@ commands)
 otherwise the current window in
 .Em session
 is chosen.
-The special character
-.Ql \&!
-uses the last (previously current) window,
-.Ql ^
-selects the highest numbered window,
-.Ql $
-selects the lowest numbered window, and
-.Ql +
-and
-.Ql -
-select the next window or the previous window by number.
-When the argument does not contain a colon,
-.Nm
-first attempts to parse it as window; if that fails, an attempt is made to
-match a session.
+.Pp
+The following special tokens are available to indicate particular windows. Each
+has a single-character alternative form.
+.Bl -column "XXXXXXXXXX" "X"
+.It Sy "Token" Ta Sy "" Ta Sy "Meaning"
+.It Li "{start}" Ta "^" Ta "The lowest-numbered window"
+.It Li "{end}" Ta "$" Ta "The highest-numbered window"
+.It Li "{last}" Ta "!" Ta "The last (previously current) window"
+.It Li "{next}" Ta "+" Ta "The next window by number"
+.It Li "{previous}" Ta "-" Ta "The previous window by number"
+.It Li "{mouse}" Ta "=" Ta "The window where the mouse event happened"
+.El
 .Pp
 .Ar target-pane
-takes a similar form to
+may be a
+pane ID or takes a similar form to
 .Ar target-window
-but with the optional addition of a period followed by a pane index, for
-example: mysession:mywindow.1.
+but with the optional addition of a period followed by a pane index or pane ID,
+for example:
+.Ql mysession:mywindow.1 .
 If the pane index is omitted, the currently active pane in the specified
 window is used.
-If neither a colon nor period appears,
-.Nm
-first attempts to use the argument as a pane index; if that fails, it is looked
-up as for
-.Ar target-window .
-A
-.Ql + ,
-.Ql -
-or
-.Ql \&!
-indicate the next, previous or last pane.
-One of the strings
-.Em top ,
-.Em bottom ,
-.Em left ,
-.Em right ,
-.Em top-left ,
-.Em top-right ,
-.Em bottom-left
-or
-.Em bottom-right
-may be used instead of a pane index.
+The following special tokens are available for the pane index:
+.Bl -column "XXXXXXXXXXXXXX" "X"
+.It Sy "Token" Ta Sy "" Ta Sy "Meaning"
+.It Li "{last}" Ta "!" Ta "The last (previously active) pane"
+.It Li "{next}" Ta "+" Ta "The next pane by number"
+.It Li "{previous}" Ta "-" Ta "The previous pane by number"
+.It Li "{top}" Ta "" Ta "The top pane"
+.It Li "{bottom}" Ta "" Ta "The bottom pane"
+.It Li "{left}" Ta "" Ta "The leftmost pane"
+.It Li "{right}" Ta "" Ta "The rightmost pane"
+.It Li "{top-left}" Ta "" Ta "The top-left pane"
+.It Li "{top-right}" Ta "" Ta "The top-right pane"
+.It Li "{bottom-left}" Ta "" Ta "The bottom-left pane"
+.It Li "{bottom-right}" Ta "" Ta "The bottom-right pane"
+.It Li "{up}" Ta "" Ta "The pane above the active pane"
+.It Li "{down}" Ta "" Ta "The pane below the active pane"
+.It Li "{left}" Ta "" Ta "The pane to the left of the active pane"
+.It Li "{right}" Ta "" Ta "The pane to the right of the active pane"
+.It Li "{mouse}" Ta "=" Ta "The pane where the mouse event happened"
+.El
 .Pp
-The special characters
+The tokens
 .Ql +
 and
 .Ql -
@@ -474,19 +497,34 @@ may be followed by an offset, for example:
 select-window -t:+2
 .Ed
 .Pp
-When dealing with a session that doesn't contain sequential window indexes,
-they will be correctly skipped.
-.Pp
+Sessions, window and panes are each numbered with a unique ID; session IDs are
+prefixed with a
+.Ql $ ,
+windows with a
+.Ql @ ,
+and panes with a
+.Ql % .
+These are unique and are unchanged for the life of the session, window or pane
+in the
 .Nm
-also gives each pane created in a server an identifier consisting of a
-.Ql %
-and a number, starting from zero.
-A pane's identifier is unique for the life of the
-.Nm
-server and is passed to the child process of the pane in the
+server.
+The pane ID is passed to the child process of the pane in the
 .Ev TMUX_PANE
 environment variable.
-It may be used alone to target a pane or the window containing it.
+IDs may be displayed using the
+.Ql session_id ,
+.Ql window_id ,
+or
+.Ql pane_id
+formats (see the
+.Sx FORMATS
+section) and the
+.Ic display-message ,
+.Ic list-sessions ,
+.Ic list-windows
+or
+.Ic list-panes
+commands.
 .Pp
 .Ar shell-command
 arguments are
@@ -3148,7 +3186,9 @@ The following mouse events are available:
 Each should be suffixed with a location, for example
 .Ql MouseDown1Status .
 .Pp
-The special character
+The special token
+.Ql {mouse}
+or
 .Ql =
 may be used as
 .Ar target-window

@@ -1738,8 +1738,19 @@ size_t		 args_print(struct args *, char *, size_t);
 int		 args_has(struct args *, u_char);
 void		 args_set(struct args *, u_char, const char *);
 const char	*args_get(struct args *, u_char);
-long long	 args_strtonum(
-		    struct args *, u_char, long long, long long, char **);
+long long	 args_strtonum(struct args *, u_char, long long, long long,
+		     char **);
+
+/* cmd-find.c */
+struct session	*cmd_find_current(struct cmd_q *);
+struct session	*cmd_find_session(struct cmd_q *, const char *, int);
+struct winlink	*cmd_find_window(struct cmd_q *, const char *,
+		     struct session **);
+struct winlink	*cmd_find_pane(struct cmd_q *, const char *, struct session **,
+		     struct window_pane **);
+struct client	*cmd_find_client(struct cmd_q *, const char *, int);
+int		 cmd_find_index(struct cmd_q *, const char *,
+		     struct session **);
 
 /* cmd.c */
 int		 cmd_pack_argv(int, char **, char *, size_t);
@@ -1754,16 +1765,6 @@ int		 cmd_mouse_at(struct window_pane *, struct mouse_event *,
 struct winlink	*cmd_mouse_window(struct mouse_event *, struct session **);
 struct window_pane *cmd_mouse_pane(struct mouse_event *, struct session **,
 		     struct winlink **);
-struct session	*cmd_current_session(struct cmd_q *, int);
-struct client	*cmd_current_client(struct cmd_q *);
-struct client	*cmd_find_client(struct cmd_q *, const char *, int);
-struct session	*cmd_find_session(struct cmd_q *, const char *, int);
-struct winlink	*cmd_find_window(struct cmd_q *, const char *,
-		     struct session **);
-int		 cmd_find_index(struct cmd_q *, const char *,
-		     struct session **);
-struct winlink	*cmd_find_pane(struct cmd_q *, const char *, struct session **,
-		     struct window_pane **);
 char		*cmd_template_replace(const char *, const char *, int);
 extern const struct cmd_entry *cmd_table[];
 extern const struct cmd_entry cmd_attach_session_entry;
