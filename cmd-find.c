@@ -22,7 +22,6 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-#include <paths.h>
 
 #include "tmux.h"
 
