@@ -9,7 +9,7 @@
     <body>
 	<div id="body-wrapper">
 	    <div id="left-menu-container">
-		<p id="upper-left-title">tmux</p>
+		<img src="logo.png" alt="tmux"></img>
 		<ul id="left-menu">
 		<li><a href="http://downloads.sourceforge.net/tmux/tmux-%%RELEASE%%.tar.gz">Download</a></li>
 		<li><a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/README">README</a></li>

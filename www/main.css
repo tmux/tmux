@@ -5,6 +5,9 @@ body {
 }
 #body-wrapper {
     overflow: auto;
+    width: 900;
+    margin-left: auto;
+    margin-right: auto;
 }
 #upper-left-title {
     font-size:xx-large;
