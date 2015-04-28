@@ -446,8 +446,8 @@ otherwise the current window in
 .Em session
 is chosen.
 .Pp
-The following special tokens are available to indicate particular windows. Each
-has a single-character alternative form.
+The following special tokens are available to indicate particular windows.
+Each has a single-character alternative form.
 .Bl -column "XXXXXXXXXX" "X"
 .It Sy "Token" Ta Sy "" Ta Sy "Meaning"
 .It Li "{start}" Ta "^" Ta "The lowest-numbered window"
@@ -1779,7 +1779,7 @@ lower) with
 .Fl U
 or downward (numerically higher).
 .It Xo Ic select-layout
-.Op Fl np
+.Op Fl nop
 .Op Fl t Ar target-window
 .Op Ar layout-name
 .Xc
@@ -1796,6 +1796,8 @@ are equivalent to the
 and
 .Ic previous-layout
 commands.
+.Fl o
+applies the last set layout if possible (undoes the most recent layout change).
 .It Xo Ic select-pane
 .Op Fl DdegLlRU
 .Op Fl P Ar style

@@ -963,6 +963,7 @@ struct window {
 	int		 lastlayout;
 	struct layout_cell *layout_root;
 	struct layout_cell *saved_layout_root;
+	char		*old_layout;
 
 	u_int		 sx;
 	u_int		 sy;
