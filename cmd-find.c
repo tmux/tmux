@@ -125,13 +125,17 @@ cmd_find_best_client(struct client **clist, u_int csize)
 	c = NULL;
 	if (clist != NULL) {
 		for (i = 0; i < csize; i++) {
+			if (clist[i]->session == NULL)
+				continue;
 			if (cmd_find_client_better(clist[i], c))
 				c = clist[i];
 		}
 	} else {
 		TAILQ_FOREACH(c_loop, &clients, entry) {
+			if (c_loop->session == NULL)
+				continue;
 			if (cmd_find_client_better(c_loop, c))
-				c_loop = c;
+				c = c_loop;
 		}
 	}
 	return (c);
