@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="160px" height="160px" viewBox="0 0 160 160" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns">
+    <!-- Generator: Sketch 3.3.1 (12005) - http://www.bohemiancoding.com/sketch -->
+    <title>logomark copy</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" sketch:type="MSPage">
+        <g id="logomark-copy" sketch:type="MSLayerGroup">
+            <g id="status-bar" transform="translate(0.000000, 116.000000)" fill="#1BB91F" sketch:type="MSShapeGroup">
+                <path d="M0,0 L160,0 L160,28.9961276 C160,37.2825375 153.278035,44 145.001535,44 L14.9984654,44 C6.71504169,44 0,37.2934149 0,28.9961276 L0,0 Z M0,0 L160,0 L160,30 L0,30 L0,0 Z" id="Rectangle-5"></path>
+            </g>
+            <path d="M83,70 L83,0 L77,0 L77,146 L83,146 L83,76 L160,76 L160,70 L83,70 Z M0,15.0064867 C0,6.71863293 6.72196489,0 14.9984654,0 L145.001535,0 C153.284958,0 160,6.72491953 160,15.0064867 L160,146 L0,146 L0,15.0064867 Z" id="screen" fill="#3C3C3C" sketch:type="MSShapeGroup"></path>
+        </g>
+    </g>
+</svg>
