@@ -260,7 +260,10 @@ update-index.html:
 	(cd www/images && \
 		rm -f small-* && \
 		for i in *.png; do \
-			convert "$$i" -resize 200x150 "small-$$i"; \
+			convert "$$i" \
+				-resize '150x' -resize 'x100<' \
+				-gravity center -crop 150x100+0+0 +repage \
+				"small-$$i"; \
 		done \
 	)
 	sed "s/%%RELEASE%%/${RELEASE}/g" www/index.html.in >www/index.html
