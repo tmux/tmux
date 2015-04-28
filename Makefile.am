@@ -252,6 +252,7 @@ install-exec-hook:
 # Update SF web site.
 upload-index.html: update-index.html
 	scp www/index.html www/main.css www/images/*.png \
+		www/logo.png www/favicon.ico \
 		${USER},tmux@web.sf.net:/home/groups/t/tm/tmux/htdocs
 	rm -f www/index.html www/images/small-*
 
