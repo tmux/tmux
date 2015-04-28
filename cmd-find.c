@@ -243,10 +243,13 @@ cmd_find_current_session_with_client(struct cmd_find_state *fs)
 	struct window_pane	*wp;
 
 	/* If this is running in a pane, that's great. */
-	RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
-		if (strcmp(wp->tty, fs->cmdq->client->tty.path) == 0)
-			break;
-	}
+	if (fs->cmdq->client->tty.path != NULL) {
+		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+			if (strcmp(wp->tty, fs->cmdq->client->tty.path) == 0)
+				break;
+		}
+	} else
+		wp = NULL;
 
 	/* Not running in a pane. We know nothing. Find the best session. */
 	if (wp == NULL) {
