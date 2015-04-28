@@ -434,9 +434,11 @@ cmd_find_get_window(struct cmd_find_state *fs, const char *window)
 
 	/* Otherwise try as a session itself. */
 	if (cmd_find_get_session(fs, window) == 0) {
-		fs->wl = fs->s->curw;
-		fs->idx = fs->wl->idx;
-		fs->w = fs->wl->window;
+		if (~fs->flags & CMD_FIND_WINDOW_INDEX) {
+			fs->wl = fs->s->curw;
+			fs->w = fs->wl->window;
+			fs->idx = fs->wl->idx;
+		}
 		return (0);
 	}
 
