@@ -344,6 +344,7 @@ window_destroy(struct window *w)
 
 	if (w->layout_root != NULL)
 		layout_free(w);
+	free(w->old_layout);
 
 	if (event_initialized(&w->name_timer))
 		evtimer_del(&w->name_timer);

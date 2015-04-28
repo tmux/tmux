@@ -18,6 +18,8 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
+
 #include "tmux.h"
 
 /*
@@ -28,8 +30,8 @@ enum cmd_retval	 cmd_select_layout_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_select_layout_entry = {
 	"select-layout", "selectl",
-	"npt:", 0, 1,
-	"[-np] " CMD_TARGET_WINDOW_USAGE " [layout-name]",
+	"nopt:", 0, 1,
+	"[-nop] " CMD_TARGET_WINDOW_USAGE " [layout-name]",
 	0,
 	cmd_select_layout_exec
 };
@@ -55,46 +57,71 @@ cmd_select_layout_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 	struct winlink	*wl;
+	struct window	*w;
 	const char	*layoutname;
+	char		*oldlayout;
 	int		 next, previous, layout;
 
 	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), NULL)) == NULL)
 		return (CMD_RETURN_ERROR);
-	server_unzoom_window(wl->window);
+	w = wl->window;
+
+	server_unzoom_window(w);
 
 	next = self->entry == &cmd_next_layout_entry;
-	if (args_has(self->args, 'n'))
+	if (args_has(args, 'n'))
 		next = 1;
 	previous = self->entry == &cmd_previous_layout_entry;
-	if (args_has(self->args, 'p'))
+	if (args_has(args, 'p'))
 		previous = 1;
+
+	oldlayout = w->old_layout;
+	w->old_layout = layout_dump(w->layout_root);
 
 	if (next || previous) {
 		if (next)
-			layout = layout_set_next(wl->window);
+			layout_set_next(w);
 		else
-			layout = layout_set_previous(wl->window);
-		server_redraw_window(wl->window);
-		return (CMD_RETURN_NORMAL);
+			layout_set_previous(w);
+		goto changed;
 	}
 
-	if (args->argc == 0)
-		layout = wl->window->lastlayout;
-	else
-		layout = layout_set_lookup(args->argv[0]);
-	if (layout != -1) {
-		layout = layout_set_select(wl->window, layout);
-		server_redraw_window(wl->window);
-		return (CMD_RETURN_NORMAL);
-	}
-
-	if (args->argc != 0) {
-		layoutname = args->argv[0];
-		if (layout_parse(wl->window, layoutname) == -1) {
-			cmdq_error(cmdq, "can't set layout: %s", layoutname);
-			return (CMD_RETURN_ERROR);
+	if (!args_has(args, 'o')) {
+		if (args->argc == 0)
+			layout = w->lastlayout;
+		else
+			layout = layout_set_lookup(args->argv[0]);
+		if (layout != -1) {
+			layout_set_select(w, layout);
+			goto changed;
 		}
-		server_redraw_window(wl->window);
 	}
+
+	if (args->argc != 0)
+		layoutname = args->argv[0];
+	else if (args_has(args, 'o'))
+		layoutname = oldlayout;
+	else
+		layoutname = NULL;
+
+	if (layoutname != NULL) {
+		if (layout_parse(w, layoutname) == -1) {
+			cmdq_error(cmdq, "can't set layout: %s", layoutname);
+			goto error;
+		}
+		goto changed;
+	}
+
+	free(oldlayout);
 	return (CMD_RETURN_NORMAL);
+
+changed:
+	free(oldlayout);
+	server_redraw_window(w);
+	return (CMD_RETURN_NORMAL);
+
+error:
+	free(w->old_layout);
+	w->old_layout = oldlayout;
+	return (CMD_RETURN_ERROR);
 }
