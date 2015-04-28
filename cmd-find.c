@@ -426,7 +426,18 @@ cmd_find_get_window(struct cmd_find_state *fs, const char *window)
 	fs->s = fs->current->s;
 
 	/* We now only need to find the winlink in this session. */
-	return (cmd_find_get_window_with_session(fs, window));
+	if (cmd_find_get_window_with_session(fs, window) == 0)
+		return (0);
+
+	/* Otherwise try as a session itself. */
+	if (cmd_find_get_session(fs, window) == 0) {
+		fs->wl = fs->s->curw;
+		fs->idx = fs->wl->idx;
+		fs->w = fs->wl->window;
+		return (0);
+	}
+
+	return (-1);
 }
 
 /*
@@ -592,14 +603,23 @@ cmd_find_get_pane(struct cmd_find_state *fs, const char *pane)
 		return (cmd_find_best_session_with_window(fs));
 	}
 
-	/* Not a pane id, so use the current session and window. */
+	/* Not a pane id, so try the current session and window. */
 	fs->s = fs->current->s;
 	fs->wl = fs->current->wl;
 	fs->idx = fs->current->idx;
 	fs->w = fs->current->w;
 
 	/* We now only need to find the pane in this window. */
-	return (cmd_find_get_pane_with_window(fs, pane));
+	if (cmd_find_get_pane_with_window(fs, pane) == 0)
+		return (0);
+
+	/* Otherwise try as a window itself (this will also try as session). */
+	if (cmd_find_get_window(fs, pane) == 0) {
+		fs->wp = fs->w->active;
+		return (0);
+	}
+
+	return (-1);
 }
 
 /*
