@@ -34,6 +34,7 @@
 void	tty_read_callback(struct bufferevent *, void *);
 void	tty_error_callback(struct bufferevent *, short, void *);
 
+void	tty_set_italics(struct tty *);
 int	tty_try_256(struct tty *, u_char, const char *);
 
 void	tty_colours(struct tty *, const struct grid_cell *);
@@ -454,6 +455,21 @@ tty_putn(struct tty *tty, const void *buf, size_t len, u_int width)
 	if (tty->log_fd != -1)
 		write(tty->log_fd, buf, len);
 	tty->cx += width;
+}
+
+void
+tty_set_italics(struct tty *tty)
+{
+	const char	*s;
+
+	if (tty_term_has(tty->term, TTYC_SITM)) {
+		s = options_get_string(&global_options, "default-terminal");
+		if (strcmp(s, "screen") != 0 && strncmp(s, "screen-", 7) != 0) {
+			tty_putcode(tty, TTYC_SITM);
+			return;
+		}
+	}
+	tty_putcode(tty, TTYC_SMSO);
 }
 
 void
@@ -1396,12 +1412,8 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 		tty_putcode(tty, TTYC_BOLD);
 	if (changed & GRID_ATTR_DIM)
 		tty_putcode(tty, TTYC_DIM);
-	if (changed & GRID_ATTR_ITALICS) {
-		if (tty_term_has(tty->term, TTYC_SITM))
-			tty_putcode(tty, TTYC_SITM);
-		else
-			tty_putcode(tty, TTYC_SMSO);
-	}
+	if (changed & GRID_ATTR_ITALICS)
+		tty_set_italics(tty);
 	if (changed & GRID_ATTR_UNDERSCORE)
 		tty_putcode(tty, TTYC_SMUL);
 	if (changed & GRID_ATTR_BLINK)

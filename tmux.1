@@ -2270,6 +2270,19 @@ Available server options are:
 Set the number of buffers; as new buffers are added to the top of the stack,
 old ones are removed from the bottom if necessary to maintain this maximum
 length.
+.It Ic default-terminal Ar terminal
+Set the default terminal for new windows created in this session - the
+default value of the
+.Ev TERM
+environment variable.
+For
+.Nm
+to work correctly, this
+.Em must
+be set to
+.Ql screen ,
+.Ql tmux
+or a derivative of them.
 .It Ic escape-time Ar time
 Set the time in milliseconds for which
 .Nm
@@ -2409,18 +2422,6 @@ or
 This option should be configured when
 .Nm
 is used as a login shell.
-.It Ic default-terminal Ar terminal
-Set the default terminal for new windows created in this session - the
-default value of the
-.Ev TERM
-environment variable.
-For
-.Nm
-to work correctly, this
-.Em must
-be set to
-.Ql screen
-or a derivative of it.
 .It Xo Ic destroy-unattached
 .Op Ic on | off
 .Xc
