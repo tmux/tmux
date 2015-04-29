@@ -100,10 +100,8 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		wp = window_pane_find_up(wp);
 	else if (args_has(self->args, 'D'))
 		wp = window_pane_find_down(wp);
-	if (wp == NULL) {
-		cmdq_error(cmdq, "pane not found");
-		return (CMD_RETURN_ERROR);
-	}
+	if (wp == NULL)
+		return (CMD_RETURN_NORMAL);
 
 	if (args_has(self->args, 'e')) {
 		wp->flags &= ~PANE_INPUTOFF;
