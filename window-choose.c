@@ -559,10 +559,10 @@ window_choose_key(struct window_pane *wp, unused struct client *c,
 			break;
 		if (item->state & TREE_EXPANDED) {
 			window_choose_collapse(wp, item->wcd->tree_session,
-			    item->wcd->idx);
+			    data->selected);
 		} else {
 			window_choose_expand(wp, item->wcd->tree_session,
-			    item->wcd->idx);
+			    data->selected);
 		}
 		window_choose_redraw_screen(wp);
 		break;
