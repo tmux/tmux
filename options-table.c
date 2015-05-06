@@ -737,7 +737,7 @@ const struct options_table_entry window_options_table[] = {
 
 	{ .name = "window-status-current-format",
 	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = "#I:#W#F"
+	  .default_str = "#I:#W#{?window_flags,#{window_flags}, }"
 	},
 
 	{ .name = "window-status-current-style",
@@ -753,7 +753,7 @@ const struct options_table_entry window_options_table[] = {
 
 	{ .name = "window-status-format",
 	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = "#I:#W#F"
+	  .default_str = "#I:#W#{?window_flags,#{window_flags}, }"
 	},
 
 	{ .name = "window-status-last-attr",
