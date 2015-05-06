@@ -875,14 +875,12 @@ void
 server_client_check_redraw(struct client *c)
 {
 	struct session		*s = c->session;
+	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
 	int		 	 flags, redraw;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
-
-	flags = c->tty.flags & TTY_FREEZE;
-	c->tty.flags &= ~TTY_FREEZE;
 
 	if (c->flags & (CLIENT_REDRAW|CLIENT_STATUS)) {
 		if (options_get_number(&s->options, "set-titles"))
@@ -898,27 +896,39 @@ server_client_check_redraw(struct client *c)
 			c->flags &= ~CLIENT_STATUS;
 	}
 
+	flags = tty->flags & (TTY_FREEZE|TTY_NOCURSOR);
+	tty->flags = (tty->flags & ~TTY_FREEZE) | TTY_NOCURSOR;
+
 	if (c->flags & CLIENT_REDRAW) {
+		tty_update_mode(tty, tty->mode, NULL);
 		screen_redraw_screen(c, 1, 1, 1);
 		c->flags &= ~(CLIENT_STATUS|CLIENT_BORDERS);
 	} else if (c->flags & CLIENT_REDRAWWINDOW) {
+		tty_update_mode(tty, tty->mode, NULL);
 		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry)
 			screen_redraw_pane(c, wp);
 		c->flags &= ~CLIENT_REDRAWWINDOW;
 	} else {
 		TAILQ_FOREACH(wp, &c->session->curw->window->panes, entry) {
-			if (wp->flags & PANE_REDRAW)
+			if (wp->flags & PANE_REDRAW) {
+				tty_update_mode(tty, tty->mode, NULL);
 				screen_redraw_pane(c, wp);
+			}
 		}
 	}
 
-	if (c->flags & CLIENT_BORDERS)
+	if (c->flags & CLIENT_BORDERS) {
+		tty_update_mode(tty, tty->mode, NULL);
 		screen_redraw_screen(c, 0, 0, 1);
+	}
 
-	if (c->flags & CLIENT_STATUS)
+	if (c->flags & CLIENT_STATUS) {
+		tty_update_mode(tty, tty->mode, NULL);
 		screen_redraw_screen(c, 0, 1, 0);
+	}
 
-	c->tty.flags |= flags;
+	tty->flags = (tty->flags & ~(TTY_FREEZE|TTY_NOCURSOR)) | flags;
+	tty_update_mode(tty, tty->mode, NULL);
 
 	c->flags &= ~(CLIENT_REDRAW|CLIENT_STATUS|CLIENT_BORDERS);
 }
