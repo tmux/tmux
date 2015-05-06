@@ -43,9 +43,6 @@ extern char   **environ;
 /* Default global configuration file. */
 #define TMUX_CONF "/etc/tmux.conf"
 
-/* Default prompt history length. */
-#define PROMPT_HISTORY 100
-
 /*
  * Minimum layout cell size, NOT including separator line. The scroll region
  * cannot be one line in height so this must be at least two.

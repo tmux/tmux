@@ -45,10 +45,15 @@ void	status_message_callback(int, short, void *);
 const char *status_prompt_up_history(u_int *);
 const char *status_prompt_down_history(u_int *);
 void	status_prompt_add_history(const char *);
-char   *status_prompt_complete(const char *);
+
+const char **status_prompt_complete_list(u_int *, const char *);
+char   *status_prompt_complete_prefix(const char **, u_int);
+char   *status_prompt_complete(struct session *, const char *);
 
 /* Status prompt history. */
-ARRAY_DECL(, char *) status_prompt_history = ARRAY_INITIALIZER;
+#define PROMPT_HISTORY 100
+char	**status_prompt_hlist;
+u_int	  status_prompt_hsize;
 
 /* Status output tree. */
 RB_GENERATE(status_out_tree, status_out, entry, status_out_cmp);
@@ -977,7 +982,7 @@ status_prompt_key(struct client *c, int key)
 		word[last - first] = '\0';
 
 		/* And try to complete it. */
-		if ((s = status_prompt_complete(word)) == NULL)
+		if ((s = status_prompt_complete(sess, word)) == NULL)
 			break;
 
 		/* Trim out word. */
@@ -1235,114 +1240,235 @@ status_prompt_key(struct client *c, int key)
 const char *
 status_prompt_up_history(u_int *idx)
 {
-	u_int size;
-
 	/*
-	 * History runs from 0 to size - 1.
-	 *
-	 * Index is from 0 to size. Zero is empty.
+	 * History runs from 0 to size - 1. Index is from 0 to size. Zero is
+	 * empty.
 	 */
 
-	size = ARRAY_LENGTH(&status_prompt_history);
-	if (size == 0 || *idx == size)
+	if (status_prompt_hsize == 0 || *idx == status_prompt_hsize)
 		return (NULL);
 	(*idx)++;
-	return (ARRAY_ITEM(&status_prompt_history, size - *idx));
+	return (status_prompt_hlist[status_prompt_hsize - *idx]);
 }
 
 /* Get next line from the history. */
 const char *
 status_prompt_down_history(u_int *idx)
 {
-	u_int size;
-
-	size = ARRAY_LENGTH(&status_prompt_history);
-	if (size == 0 || *idx == 0)
+	if (status_prompt_hsize == 0 || *idx == 0)
 		return ("");
 	(*idx)--;
 	if (*idx == 0)
 		return ("");
-	return (ARRAY_ITEM(&status_prompt_history, size - *idx));
+	return (status_prompt_hlist[status_prompt_hsize - *idx]);
 }
 
 /* Add line to the history. */
 void
 status_prompt_add_history(const char *line)
 {
-	u_int size;
+	size_t	size;
 
-	size = ARRAY_LENGTH(&status_prompt_history);
-	if (size > 0 && strcmp(ARRAY_LAST(&status_prompt_history), line) == 0)
+	if (status_prompt_hsize > 0 &&
+	    strcmp(status_prompt_hlist[status_prompt_hsize - 1], line) == 0)
 		return;
 
-	if (size == PROMPT_HISTORY) {
-		free(ARRAY_FIRST(&status_prompt_history));
-		ARRAY_REMOVE(&status_prompt_history, 0);
+	if (status_prompt_hsize == PROMPT_HISTORY) {
+		free(status_prompt_hlist[0]);
+
+		size = (PROMPT_HISTORY - 1) * sizeof *status_prompt_hlist;
+		memmove(&status_prompt_hlist[0], &status_prompt_hlist[1], size);
+
+		status_prompt_hlist[status_prompt_hsize - 1] = xstrdup(line);
+		return;
 	}
 
-	ARRAY_ADD(&status_prompt_history, xstrdup(line));
+	status_prompt_hlist = xreallocarray(status_prompt_hlist,
+	    status_prompt_hsize + 1, sizeof *status_prompt_hlist);
+	status_prompt_hlist[status_prompt_hsize++] = xstrdup(line);
+}
+
+/* Build completion list. */
+const char **
+status_prompt_complete_list(u_int *size, const char *s)
+{
+	const char				**list = NULL, **layout;
+	const struct cmd_entry			**cmdent;
+	const struct options_table_entry	 *oe;
+	const char				 *layouts[] = {
+		"even-horizontal", "even-vertical", "main-horizontal",
+		"main-vertical", "tiled", NULL
+	};
+
+	*size = 0;
+	for (cmdent = cmd_table; *cmdent != NULL; cmdent++) {
+		if (strncmp((*cmdent)->name, s, strlen(s)) == 0) {
+			list = xreallocarray(list, (*size) + 1, sizeof *list);
+			list[(*size)++] = (*cmdent)->name;
+		}
+	}
+	for (oe = server_options_table; oe->name != NULL; oe++) {
+		if (strncmp(oe->name, s, strlen(s)) == 0) {
+			list = xreallocarray(list, (*size) + 1, sizeof *list);
+			list[(*size)++] = oe->name;
+		}
+	}
+	for (oe = session_options_table; oe->name != NULL; oe++) {
+		if (strncmp(oe->name, s, strlen(s)) == 0) {
+			list = xreallocarray(list, (*size) + 1, sizeof *list);
+			list[(*size)++] = oe->name;
+		}
+	}
+	for (oe = window_options_table; oe->name != NULL; oe++) {
+		if (strncmp(oe->name, s, strlen(s)) == 0) {
+			list = xreallocarray(list, (*size) + 1, sizeof *list);
+			list[(*size)++] = oe->name;
+		}
+	}
+	for (layout = layouts; *layout != NULL; layout++) {
+		if (strncmp(*layout, s, strlen(s)) == 0) {
+			list = xreallocarray(list, (*size) + 1, sizeof *list);
+			list[(*size)++] = *layout;
+		}
+	}
+	return (list);
+}
+
+/* Find longest prefix. */
+char *
+status_prompt_complete_prefix(const char **list, u_int size)
+{
+	char	 *out;
+	u_int	  i;
+	size_t	  j;
+
+	out = xstrdup(list[0]);
+	for (i = 1; i < size; i++) {
+		j = strlen(list[i]);
+		if (j > strlen(out))
+			j = strlen(out);
+		for (; j > 0; j--) {
+			if (out[j - 1] != list[i][j - 1])
+				out[j - 1] = '\0';
+		}
+	}
+	return (out);
 }
 
 /* Complete word. */
 char *
-status_prompt_complete(const char *s)
+status_prompt_complete(struct session *sess, const char *s)
 {
-	const struct cmd_entry 	  	       **cmdent;
-	const struct options_table_entry	*oe;
-	ARRAY_DECL(, const char *)		 list;
-	char					*prefix, *s2;
-	u_int					 i;
-	size_t				 	 j;
+	const char	**list = NULL, *colon;
+	u_int		  size = 0, i;
+	struct session	 *s_loop;
+	struct winlink	 *wl;
+	struct window	 *w;
+	char		 *copy, *out, *tmp;
 
 	if (*s == '\0')
 		return (NULL);
+	out = NULL;
 
-	/* First, build a list of all the possible matches. */
-	ARRAY_INIT(&list);
-	for (cmdent = cmd_table; *cmdent != NULL; cmdent++) {
-		if (strncmp((*cmdent)->name, s, strlen(s)) == 0)
-			ARRAY_ADD(&list, (*cmdent)->name);
+	if (strncmp(s, "-t", 2) != 0 && strncmp(s, "-s", 2) != 0) {
+		list = status_prompt_complete_list(&size, s);
+		if (size == 0)
+			out = NULL;
+		else if (size == 1)
+			xasprintf(&out, "%s ", list[0]);
+		else
+			out = status_prompt_complete_prefix(list, size);
+		free(list);
+		return (out);
 	}
-	for (oe = server_options_table; oe->name != NULL; oe++) {
-		if (strncmp(oe->name, s, strlen(s)) == 0)
-			ARRAY_ADD(&list, oe->name);
-	}
-	for (oe = session_options_table; oe->name != NULL; oe++) {
-		if (strncmp(oe->name, s, strlen(s)) == 0)
-			ARRAY_ADD(&list, oe->name);
-	}
-	for (oe = window_options_table; oe->name != NULL; oe++) {
-		if (strncmp(oe->name, s, strlen(s)) == 0)
-			ARRAY_ADD(&list, oe->name);
-	}
+	copy = xstrdup(s);
 
-	/* If none, bail now. */
-	if (ARRAY_LENGTH(&list) == 0) {
-		ARRAY_FREE(&list);
-		return (NULL);
-	}
+	colon = ":";
+	if (copy[strlen(copy) - 1] == ':')
+		copy[strlen(copy) - 1] = '\0';
+	else
+		colon = "";
+	s = copy + 2;
 
-	/* If an exact match, return it, with a trailing space. */
-	if (ARRAY_LENGTH(&list) == 1) {
-		xasprintf(&s2, "%s ", ARRAY_FIRST(&list));
-		ARRAY_FREE(&list);
-		return (s2);
-	}
-
-	/* Now loop through the list and find the longest common prefix. */
-	prefix = xstrdup(ARRAY_FIRST(&list));
-	for (i = 1; i < ARRAY_LENGTH(&list); i++) {
-		s = ARRAY_ITEM(&list, i);
-
-		j = strlen(s);
-		if (j > strlen(prefix))
-			j = strlen(prefix);
-		for (; j > 0; j--) {
-			if (prefix[j - 1] != s[j - 1])
-				prefix[j - 1] = '\0';
+	RB_FOREACH(s_loop, sessions, &sessions) {
+		if (strncmp(s_loop->name, s, strlen(s)) == 0) {
+			list = xreallocarray(list, size + 2, sizeof *list);
+			list[size++] = s_loop->name;
 		}
 	}
+	if (size == 1) {
+		out = xstrdup(list[0]);
+		if (session_find(list[0]) != NULL)
+			colon = ":";
+	} else if (size != 0)
+		out = status_prompt_complete_prefix(list, size);
+	if (out != NULL) {
+		xasprintf(&tmp, "-%c%s%s", copy[1], out, colon);
+		out = tmp;
+		goto found;
+	}
 
-	ARRAY_FREE(&list);
-	return (prefix);
+	colon = "";
+	if (*s == ':') {
+		RB_FOREACH(wl, winlinks, &sess->windows) {
+			xasprintf(&tmp, ":%s", wl->window->name);
+			if (strncmp(tmp, s, strlen(s)) == 0){
+				list = xreallocarray(list, size + 1,
+				    sizeof *list);
+				list[size++] = tmp;
+				continue;
+			}
+			free(tmp);
+
+			xasprintf(&tmp, ":%d", wl->idx);
+			if (strncmp(tmp, s, strlen(s)) == 0) {
+				list = xreallocarray(list, size + 1,
+				    sizeof *list);
+				list[size++] = tmp;
+				continue;
+			}
+			free(tmp);
+		}
+	} else {
+		RB_FOREACH(s_loop, sessions, &sessions) {
+			RB_FOREACH(wl, winlinks, &s_loop->windows) {
+				w = wl->window;
+
+				xasprintf(&tmp, "%s:%s", s_loop->name, w->name);
+				if (strncmp(tmp, s, strlen(s)) == 0) {
+					list = xreallocarray(list, size + 1,
+					    sizeof *list);
+					list[size++] = tmp;
+					continue;
+				}
+				free(tmp);
+
+				xasprintf(&tmp, "%s:%d", s_loop->name, wl->idx);
+				if (strncmp(tmp, s, strlen(s)) == 0) {
+					list = xreallocarray(list, size + 1,
+					    sizeof *list);
+					list[size++] = tmp;
+					continue;
+				}
+				free(tmp);
+			}
+		}
+	}
+	if (size == 1) {
+		out = xstrdup(list[0]);
+		colon = " ";
+	} else if (size != 0)
+		out = status_prompt_complete_prefix(list, size);
+	if (out != NULL) {
+		xasprintf(&tmp, "-%c%s%s", copy[1], out, colon);
+		out = tmp;
+	}
+
+	for (i = 0; i < size; i++)
+		free((void *)list[i]);
+
+found:
+	free(copy);
+	free(list);
+	return (out);
 }
