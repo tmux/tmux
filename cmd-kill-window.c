@@ -45,24 +45,17 @@ const struct cmd_entry cmd_unlink_window_entry = {
 enum cmd_retval
 cmd_kill_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
-	struct args		*args = self->args;
-	struct winlink		*wl, *wl2, *wl3;
-	struct window		*w;
-	struct session		*s;
-	struct session_group	*sg;
-	u_int			 references;
+	struct args	*args = self->args;
+	struct winlink	*wl, *wl2, *wl3;
+	struct window	*w;
+	struct session	*s;
 
 	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), &s)) == NULL)
 		return (CMD_RETURN_ERROR);
 	w = wl->window;
 
 	if (self->entry == &cmd_unlink_window_entry) {
-		sg = session_group_find(s);
-		if (sg != NULL)
-			references = session_group_count(sg);
-		else
-			references = 1;
-		if (!args_has(self->args, 'k') && w->references == references) {
+		if (!args_has(self->args, 'k') && !session_is_linked(s, w)) {
 			cmdq_error(cmdq, "window only linked to one session");
 			return (CMD_RETURN_ERROR);
 		}

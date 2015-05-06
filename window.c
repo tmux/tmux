@@ -642,7 +642,7 @@ window_destroy_panes(struct window *w)
 	}
 }
 
-/* Return list of printable window flag symbols. No flags is just a space. */
+/* Retuns the printable flags on a window, empty string if no flags set. */
 char *
 window_printable_flags(struct session *s, struct winlink *wl)
 {
@@ -662,8 +662,6 @@ window_printable_flags(struct session *s, struct winlink *wl)
 		flags[pos++] = '-';
 	if (wl->window->flags & WINDOW_ZOOMED)
 		flags[pos++] = 'Z';
-	if (pos == 0)
-		flags[pos++] = ' ';
 	flags[pos] = '\0';
 	return (xstrdup(flags));
 }

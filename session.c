@@ -336,6 +336,20 @@ session_has(struct session *s, struct window *w)
 	return (0);
 }
 
+/*
+ * Return 1 if a window is linked outside this session (not including session
+ * groups). The window must be in this session!
+ */
+int
+session_is_linked(struct session *s, struct window *w)
+{
+	struct session_group	*sg;
+
+	if ((sg = session_group_find(s)) != NULL)
+		return (w->references != session_group_count(sg));
+	return (w->references != 1);
+}
+
 struct winlink *
 session_next_alert(struct winlink *wl)
 {
