@@ -1,8 +1,8 @@
 # $Id$
 
 # Miscellaneous autofoo bullshit.
-AC_INIT(tmux, 2.0)
-RELEASE=1.9a
+AC_INIT(tmux, 2.1)
+RELEASE=2.0
 AC_SUBST(RELEASE)
 
 AC_CONFIG_AUX_DIR(etc)
