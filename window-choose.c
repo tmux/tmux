@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "array.h"
 #include "tmux.h"
 
 struct screen *window_choose_init(struct window_pane *);

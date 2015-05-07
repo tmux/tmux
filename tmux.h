@@ -35,8 +35,6 @@
 #include <stdio.h>
 #include <termios.h>
 
-#include "array.h"
-
 extern char    *__progname;
 extern char   **environ;
 
