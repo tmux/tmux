@@ -236,7 +236,7 @@ key_bindings_init(void)
 		if (error != 0)
 			fatalx("bad default key");
 		cmdq_run(cmdq, cmdlist, NULL);
-		cmd_list_free (cmdlist);
+		cmd_list_free(cmdlist);
 	}
 	cmdq_free(cmdq);
 }

@@ -168,12 +168,12 @@ style_update_new(struct options *oo, const char *name, const char *newname)
 
 	o = options_find1(oo, newname);
 	if (o == NULL)
-		o = options_set_style (oo, newname, "default", 0);
+		o = options_set_style(oo, newname, "default", 0);
 	gc = &o->style;
 
 	o = options_find1(oo, name);
 	if (o == NULL)
-		o = options_set_number (oo, name, 8);
+		o = options_set_number(oo, name, 8);
 	value = o->num;
 
 	if (strstr(name, "-bg") != NULL)

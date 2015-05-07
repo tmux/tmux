@@ -121,7 +121,7 @@ cfg_add_cause(const char *fmt, ...)
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
-	va_end (ap);
+	va_end(ap);
 
 	cfg_ncauses++;
 	cfg_causes = xreallocarray(cfg_causes, cfg_ncauses, sizeof *cfg_causes);

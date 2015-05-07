@@ -302,7 +302,7 @@ window_create1(u_int sx, u_int sy)
 	w->references = 0;
 
 	w->id = next_window_id++;
-	RB_INSERT (windows, &windows, w);
+	RB_INSERT(windows, &windows, w);
 
 	return (w);
 }
