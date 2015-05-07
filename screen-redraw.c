@@ -32,7 +32,7 @@ int	screen_redraw_check_active(u_int, u_int, int, struct window *,
 void	screen_redraw_draw_borders(struct client *, int, u_int);
 void	screen_redraw_draw_panes(struct client *, u_int);
 void	screen_redraw_draw_status(struct client *, u_int);
-void	screen_redraw_draw_number(struct client *, struct window_pane *);
+void	screen_redraw_draw_number(struct client *, struct window_pane *, u_int);
 
 #define CELL_INSIDE 0
 #define CELL_LEFTRIGHT 1
@@ -354,7 +354,7 @@ screen_redraw_draw_panes(struct client *c, u_int top)
 		for (i = 0; i < wp->sy; i++)
 			tty_draw_pane(tty, wp, i, wp->xoff, top + wp->yoff);
 		if (c->flags & CLIENT_IDENTIFY)
-			screen_redraw_draw_number(c, wp);
+			screen_redraw_draw_number(c, wp, top);
 	}
 }
 
@@ -372,7 +372,7 @@ screen_redraw_draw_status(struct client *c, u_int top)
 
 /* Draw number on a pane. */
 void
-screen_redraw_draw_number(struct client *c, struct window_pane *wp)
+screen_redraw_draw_number(struct client *c, struct window_pane *wp, u_int top)
 {
 	struct tty		*tty = &c->tty;
 	struct session		*s = c->session;
@@ -395,6 +395,9 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp)
 
 	px = wp->sx / 2; py = wp->sy / 2;
 	xoff = wp->xoff; yoff = wp->yoff;
+
+	if (top)
+		yoff++;
 
 	if (wp->sx < len * 6 || wp->sy < 5) {
 		tty_cursor(tty, xoff + px - len / 2, yoff + py);
