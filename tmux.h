@@ -785,55 +785,6 @@ struct screen_write_ctx {
 #define screen_hsize(s) ((s)->grid->hsize)
 #define screen_hlimit(s) ((s)->grid->hlimit)
 
-/* Input parser cell. */
-struct input_cell {
-	struct grid_cell	cell;
-	int			set;
-	int			g0set;	/* 1 if ACS */
-	int			g1set;	/* 1 if ACS */
-};
-
-/* Input parser context. */
-struct input_ctx {
-	struct window_pane     *wp;
-	struct screen_write_ctx ctx;
-
-	struct input_cell	cell;
-
-	struct input_cell	old_cell;
-	u_int 			old_cx;
-	u_int			old_cy;
-
-	u_char			interm_buf[4];
-	size_t			interm_len;
-
-	u_char			param_buf[64];
-	size_t			param_len;
-
-#define INPUT_BUF_START 32
-#define INPUT_BUF_LIMIT 1048576
-	u_char		       *input_buf;
-	size_t			input_len;
-	size_t			input_space;
-
-	int			param_list[24];	/* -1 not present */
-	u_int			param_list_len;
-
-	struct utf8_data	utf8data;
-
-	int			ch;
-	int			flags;
-#define INPUT_DISCARD 0x1
-
-	const struct input_state *state;
-
-	/*
-	 * All input received since we were last in the ground state. Sent to
-	 * control clients on connection.
-	 */
-	struct evbuffer	 	*since_ground;
-};
-
 /*
  * Window mode. Windows can be in several modes and this is used to call the
  * right function to handle input and output.
@@ -881,6 +832,7 @@ struct window_choose_mode_item {
 };
 
 /* Child window structure. */
+struct input_ctx;
 struct window_pane {
 	u_int		 id;
 	u_int		 active_point;
@@ -920,7 +872,7 @@ struct window_pane {
 	int		 fd;
 	struct bufferevent *event;
 
-	struct input_ctx ictx;
+	struct input_ctx *ictx;
 
 	struct grid_cell colgc;
 
@@ -1983,6 +1935,8 @@ void	 recalculate_sizes(void);
 /* input.c */
 void	 input_init(struct window_pane *);
 void	 input_free(struct window_pane *);
+void	 input_reset(struct window_pane *);
+struct evbuffer *input_pending(struct window_pane *);
 void	 input_parse(struct window_pane *);
 
 /* input-key.c */

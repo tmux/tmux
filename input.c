@@ -46,6 +46,55 @@
  *   be passed to the underlying teminal(s).
  */
 
+/* Input parser cell. */
+struct input_cell {
+	struct grid_cell	cell;
+	int			set;
+	int			g0set;	/* 1 if ACS */
+	int			g1set;	/* 1 if ACS */
+};
+
+/* Input parser context. */
+struct input_ctx {
+	struct window_pane     *wp;
+	struct screen_write_ctx ctx;
+
+	struct input_cell	cell;
+
+	struct input_cell	old_cell;
+	u_int 			old_cx;
+	u_int			old_cy;
+
+	u_char			interm_buf[4];
+	size_t			interm_len;
+
+	u_char			param_buf[64];
+	size_t			param_len;
+
+#define INPUT_BUF_START 32
+#define INPUT_BUF_LIMIT 1048576
+	u_char		       *input_buf;
+	size_t			input_len;
+	size_t			input_space;
+
+	int			param_list[24];	/* -1 not present */
+	u_int			param_list_len;
+
+	struct utf8_data	utf8data;
+
+	int			ch;
+	int			flags;
+#define INPUT_DISCARD 0x1
+
+	const struct input_state *state;
+
+	/*
+	 * All input received since we were last in the ground state. Sent to
+	 * control clients on connection.
+	 */
+	struct evbuffer	 	*since_ground;
+};
+
 /* Helper functions. */
 struct input_transition;
 int	input_split(struct input_ctx *);
@@ -706,7 +755,9 @@ input_reset_cell(struct input_ctx *ictx)
 void
 input_init(struct window_pane *wp)
 {
-	struct input_ctx	*ictx = &wp->ictx;
+	struct input_ctx	*ictx;
+
+	ictx = wp->ictx = xcalloc(1, sizeof *ictx);
 
 	input_reset_cell(ictx);
 
@@ -732,18 +783,46 @@ input_init(struct window_pane *wp)
 void
 input_free(struct window_pane *wp)
 {
-	if (wp == NULL)
-		return;
+	struct input_ctx	*ictx = wp->ictx;
 
-	free(wp->ictx.input_buf);
-	evbuffer_free(wp->ictx.since_ground);
+	free(ictx->input_buf);
+	evbuffer_free(ictx->since_ground);
+
+	free (ictx);
+	wp->ictx = NULL;
+}
+
+/* Reset input state and clear screen. */
+void
+input_reset(struct window_pane *wp)
+{
+	struct input_ctx	*ictx = wp->ictx;
+
+	memcpy(&ictx->cell, &grid_default_cell, sizeof ictx->cell);
+	memcpy(&ictx->old_cell, &ictx->cell, sizeof ictx->old_cell);
+	ictx->old_cx = 0;
+	ictx->old_cy = 0;
+
+	if (wp->mode == NULL)
+		screen_write_start(&ictx->ctx, wp, &wp->base);
+	else
+		screen_write_start(&ictx->ctx, NULL, &wp->base);
+	screen_write_reset(&ictx->ctx);
+	screen_write_stop(&ictx->ctx);
+}
+
+/* Return pending data. */
+struct evbuffer *
+input_pending(struct window_pane *wp)
+{
+	return (wp->ictx->since_ground);
 }
 
 /* Change input state. */
 void
 input_set_state(struct window_pane *wp, const struct input_transition *itr)
 {
-	struct input_ctx	*ictx = &wp->ictx;
+	struct input_ctx	*ictx = wp->ictx;
 
 	if (ictx->state->exit != NULL)
 		ictx->state->exit(ictx);
@@ -756,7 +835,7 @@ input_set_state(struct window_pane *wp, const struct input_transition *itr)
 void
 input_parse(struct window_pane *wp)
 {
-	struct input_ctx		*ictx = &wp->ictx;
+	struct input_ctx		*ictx = wp->ictx;
 	const struct input_transition	*itr;
 	struct evbuffer			*evb = wp->event->input;
 	u_char				*buf;
