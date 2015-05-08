@@ -823,14 +823,6 @@ struct window_choose_data {
 	char			*command;
 };
 
-struct window_choose_mode_item {
-	struct window_choose_data	*wcd;
-	char				*name;
-	int				 pos;
-	int				 state;
-#define TREE_EXPANDED 0x1
-};
-
 /* Child window structure. */
 struct input_ctx;
 struct window_pane {
