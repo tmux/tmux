@@ -689,7 +689,7 @@ struct options_entry {
 	} type;
 
 	char			*str;
-	long long	 	 num;
+	long long		 num;
 	struct grid_cell	 style;
 
 	RB_ENTRY(options_entry) entry;
@@ -804,7 +804,7 @@ struct window_choose_data {
 	struct winlink		*wl;
 	int			 pane_id;
 
-	char		        *ft_template;
+	char			*ft_template;
 	struct format_tree	*ft;
 
 	char			*command;
@@ -882,7 +882,7 @@ struct window {
 	u_int		 id;
 	char		*name;
 	struct event	 name_timer;
-	struct timeval   silence_timer;
+	struct timeval	 silence_timer;
 
 	struct window_pane *active;
 	struct window_pane *last;
@@ -923,7 +923,7 @@ struct winlink {
 	struct grid_cell status_cell;
 	char		*status_text;
 
-	int              flags;
+	int		 flags;
 #define WINLINK_BELL 0x1
 #define WINLINK_ACTIVITY 0x2
 #define WINLINK_SILENCE 0x4
@@ -1015,7 +1015,7 @@ struct session {
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
 	int		 flags;
 
-	u_int            attached;
+	u_int		 attached;
 
 	struct termios	*tio;
 
@@ -1027,33 +1027,6 @@ struct session {
 	RB_ENTRY(session)    entry;
 };
 RB_HEAD(sessions, session);
-
-/* TTY information. */
-struct tty_key {
-	char		 ch;
-	int		 key;
-
-	struct tty_key	*left;
-	struct tty_key	*right;
-
-	struct tty_key	*next;
-};
-
-struct tty_term {
-	char		*name;
-	u_int		 references;
-
-	char		 acs[UCHAR_MAX + 1][2];
-
-	struct tty_code	 codes[NTTYCODE];
-
-#define TERM_256COLOURS 0x1
-#define TERM_EARLYWRAP 0x2
-	int		 flags;
-
-	LIST_ENTRY(tty_term) entry;
-};
-LIST_HEAD(tty_terms, tty_term);
 
 /* Mouse button masks. */
 #define MOUSE_MASK_BUTTONS 3
@@ -1095,6 +1068,33 @@ struct mouse_event {
 	u_int	sgr_type;
 	u_int	sgr_b;
 };
+
+/* TTY information. */
+struct tty_key {
+	char		 ch;
+	int		 key;
+
+	struct tty_key	*left;
+	struct tty_key	*right;
+
+	struct tty_key	*next;
+};
+
+struct tty_term {
+	char		*name;
+	u_int		 references;
+
+	char		 acs[UCHAR_MAX + 1][2];
+
+	struct tty_code	 codes[NTTYCODE];
+
+#define TERM_256COLOURS 0x1
+#define TERM_EARLYWRAP 0x2
+	int		 flags;
+
+	LIST_ENTRY(tty_term) entry;
+};
+LIST_HEAD(tty_terms, tty_term);
 
 struct tty {
 	struct client	*client;
@@ -1143,7 +1143,7 @@ struct tty {
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);
 	void		(*mouse_drag_release)(struct client *,
-	    		    struct mouse_event *);
+			    struct mouse_event *);
 
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
@@ -1217,7 +1217,7 @@ struct client {
 	void		(*stdin_callback)(struct client *, int, void *);
 	void		*stdin_callback_data;
 	struct evbuffer	*stdin_data;
-	int              stdin_closed;
+	int		 stdin_closed;
 	struct evbuffer	*stdout_data;
 	struct evbuffer	*stderr_data;
 
@@ -1263,7 +1263,7 @@ struct client {
 	int		 (*prompt_callbackfn)(void *, const char *);
 	void		 (*prompt_freefn)(void *);
 	void		*prompt_data;
-	u_int            prompt_hindex;
+	u_int		 prompt_hindex;
 
 #define PROMPT_SINGLE 0x1
 	int		 prompt_flags;
@@ -1292,8 +1292,8 @@ RB_HEAD(args_tree, args_entry);
 
 struct args {
 	struct args_tree	  tree;
-	int		 	  argc;
-	char	       		**argv;
+	int			  argc;
+	char			**argv;
 };
 
 /* Command and list of commands. */
@@ -1311,8 +1311,8 @@ struct cmd {
 };
 
 struct cmd_list {
-	int		 	 references;
-	TAILQ_HEAD(, cmd) 	 list;
+	int			 references;
+	TAILQ_HEAD(, cmd)	 list;
 };
 
 /* Command return values. */
@@ -1351,7 +1351,7 @@ struct cmd_q {
 	void			 (*emptyfn)(struct cmd_q *);
 	void			*data;
 
-	TAILQ_ENTRY(cmd_q)       waitentry;
+	TAILQ_ENTRY(cmd_q)	 waitentry;
 };
 
 /* Command definition. */
@@ -1413,8 +1413,8 @@ struct options_table_entry {
 	const char	       *name;
 	enum options_table_type	type;
 
-	u_int		 	minimum;
-	u_int		 	maximum;
+	u_int			minimum;
+	u_int			maximum;
 	const char	      **choices;
 
 	const char	       *default_str;
@@ -1801,7 +1801,7 @@ void printflike(2, 3) cmdq_print(struct cmd_q *, const char *, ...);
 void printflike(2, 3) cmdq_error(struct cmd_q *, const char *, ...);
 void		 cmdq_guard(struct cmd_q *, const char *, int);
 void		 cmdq_run(struct cmd_q *, struct cmd_list *,
-	             struct mouse_event *);
+		     struct mouse_event *);
 void		 cmdq_append(struct cmd_q *, struct cmd_list *,
 		     struct mouse_event *);
 int		 cmdq_continue(struct cmd_q *);
@@ -1823,8 +1823,8 @@ RB_PROTOTYPE(key_tables, key_table, entry, key_table_cmp);
 extern struct key_tables key_tables;
 int	 key_table_cmp(struct key_table *, struct key_table *);
 int	 key_bindings_cmp(struct key_binding *, struct key_binding *);
-struct 	 key_table *key_bindings_get_table(const char *, int);
-void 	 key_bindings_unref_table(struct key_table *);
+struct	 key_table *key_bindings_get_table(const char *, int);
+void	 key_bindings_unref_table(struct key_table *);
 void	 key_bindings_add(const char *, int, int, struct cmd_list *);
 void	 key_bindings_remove(const char *, int);
 void	 key_bindings_remove_table(const char *);
@@ -1846,7 +1846,7 @@ void	 server_add_accept(int);
 /* server-client.c */
 void	 server_client_handle_key(struct client *, int);
 void	 server_client_create(int);
-int      server_client_open(struct client *, char **);
+int	 server_client_open(struct client *, char **);
 void	 server_client_lost(struct client *);
 void	 server_client_callback(int, short, void *);
 void	 server_client_status_timer(void);
@@ -2097,9 +2097,9 @@ void		 window_lost_pane(struct window *, struct window_pane *);
 void		 window_remove_pane(struct window *, struct window_pane *);
 struct window_pane *window_pane_at_index(struct window *, u_int);
 struct window_pane *window_pane_next_by_number(struct window *,
-		        struct window_pane *, u_int);
+			struct window_pane *, u_int);
 struct window_pane *window_pane_previous_by_number(struct window *,
-		        struct window_pane *, u_int);
+			struct window_pane *, u_int);
 int		 window_pane_index(struct window_pane *, u_int *);
 u_int		 window_count_panes(struct window *);
 void		 window_destroy_panes(struct window *);
