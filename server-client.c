@@ -1178,11 +1178,6 @@ server_client_msg_identify(struct client *c, struct imsg *imsg)
 		return;
 	c->flags |= CLIENT_IDENTIFIED;
 
-#ifdef __CYGWIN__
-	c->fd = open(c->ttyname, O_RDWR|O_NOCTTY);
-	c->cwd = open(".", O_RDONLY);
-#endif
-
 	if (c->flags & CLIENT_CONTROL) {
 		c->stdin_callback = control_callback;
 
