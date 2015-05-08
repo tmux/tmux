@@ -566,20 +566,6 @@ enum mode_key_cmd {
 	MODEKEYCOPY_UP,
 };
 
-/* Entry in the default mode key tables. */
-struct mode_key_entry {
-	int			key;
-
-	/*
-	 * Editing mode for vi: 0 is edit mode, keys not in the table are
-	 * returned as MODEKEY_OTHER; 1 is command mode, keys not in the table
-	 * are returned as MODEKEY_NONE. This is also matched on, allowing some
-	 * keys to be bound in edit mode.
-	 */
-	int			mode;
-	enum mode_key_cmd	cmd;
-};
-
 /* Data required while mode keys are in use. */
 struct mode_key_data {
 	struct mode_key_tree   *tree;
@@ -607,6 +593,7 @@ struct mode_key_cmdstr {
 };
 
 /* Named mode key table description. */
+struct mode_key_entry;
 struct mode_key_table {
 	const char			*name;
 	const struct mode_key_cmdstr	*cmdstr;
@@ -1192,16 +1179,16 @@ struct tty_ctx {
 
 /* Saved message entry. */
 struct message_entry {
-	char   *msg;
-	u_int	msg_num;
-	time_t	msg_time;
+	char	*msg;
+	u_int	 msg_num;
+	time_t	 msg_time;
 	TAILQ_ENTRY(message_entry) entry;
 };
 
 /* Status output data from a job. */
 struct status_out {
-	char   *cmd;
-	char   *out;
+	char	*cmd;
+	char	*out;
 
 	RB_ENTRY(status_out) entry;
 };
@@ -1322,6 +1309,7 @@ struct cmd {
 
 	TAILQ_ENTRY(cmd)	 qentry;
 };
+
 struct cmd_list {
 	int		 	 references;
 	TAILQ_HEAD(, cmd) 	 list;
@@ -1394,6 +1382,7 @@ struct key_binding {
 	RB_ENTRY(key_binding)	 entry;
 };
 RB_HEAD(key_bindings, key_binding);
+
 struct key_table {
 	const char		 *name;
 	struct key_bindings	 key_bindings;

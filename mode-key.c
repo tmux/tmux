@@ -38,6 +38,20 @@
  * (any matching MODEKEYEDIT_SWITCHMODE*) are special-cased to do this.
  */
 
+/* Entry in the default mode key tables. */
+struct mode_key_entry {
+	int			key;
+
+	/*
+	 * Editing mode for vi: 0 is edit mode, keys not in the table are
+	 * returned as MODEKEY_OTHER; 1 is command mode, keys not in the table
+	 * are returned as MODEKEY_NONE. This is also matched on, allowing some
+	 * keys to be bound in edit mode.
+	 */
+	int			mode;
+	enum mode_key_cmd	cmd;
+};
+
 /* Edit keys command strings. */
 const struct mode_key_cmdstr mode_key_cmdstr_edit[] = {
 	{ MODEKEYEDIT_BACKSPACE, "backspace" },
