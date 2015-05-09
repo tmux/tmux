@@ -49,15 +49,16 @@ const struct grid_cell grid_default_cell = { 0, 0, 8, 8, (1 << 4) | 1, " " };
 
 int	grid_check_y(struct grid *, u_int);
 
-#ifdef DEBUG
-int
-grid_check_y(struct grid *gd, u_int py)
-{
-	if ((py) >= (gd)->hsize + (gd)->sy)
-		log_fatalx("y out of range: %u", py);
-	return (0);
-}
-#else
+void	grid_reflow_join(struct grid *, u_int *, struct grid_line *, u_int);
+void	grid_reflow_split(struct grid *, u_int *, struct grid_line *, u_int,
+	    u_int);
+void	grid_reflow_move(struct grid *, u_int *, struct grid_line *);
+size_t	grid_string_cells_fg(const struct grid_cell *, int *);
+size_t	grid_string_cells_bg(const struct grid_cell *, int *);
+void	grid_string_cells_code(const struct grid_cell *,
+	    const struct grid_cell *, char *, size_t, int);
+
+/* Check grid y position. */
 int
 grid_check_y(struct grid *gd, u_int py)
 {
@@ -67,16 +68,6 @@ grid_check_y(struct grid *gd, u_int py)
 	}
 	return (0);
 }
-#endif
-
-void	grid_reflow_join(struct grid *, u_int *, struct grid_line *, u_int);
-void	grid_reflow_split(struct grid *, u_int *, struct grid_line *, u_int,
-	    u_int);
-void	grid_reflow_move(struct grid *, u_int *, struct grid_line *);
-size_t	grid_string_cells_fg(const struct grid_cell *, int *);
-size_t	grid_string_cells_bg(const struct grid_cell *, int *);
-void	grid_string_cells_code(const struct grid_cell *,
-	    const struct grid_cell *, char *, size_t, int);
 
 /* Create a new grid. */
 struct grid *

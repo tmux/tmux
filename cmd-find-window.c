@@ -59,11 +59,12 @@ struct cmd_find_window_data {
 	struct winlink	*wl;
 	char		*list_ctx;
 	u_int		 pane_id;
+	TAILQ_ENTRY(cmd_find_window_data) entry;
 };
-ARRAY_DECL(cmd_find_window_data_list, struct cmd_find_window_data);
+TAILQ_HEAD(cmd_find_window_list, cmd_find_window_data);
 
 u_int	cmd_find_window_match_flags(struct args *);
-void	cmd_find_window_match(struct cmd_find_window_data_list *, int,
+void	cmd_find_window_match(struct cmd_find_window_list *, int,
 	    struct winlink *, const char *, const char *);
 
 u_int
@@ -87,16 +88,16 @@ cmd_find_window_match_flags(struct args *args)
 }
 
 void
-cmd_find_window_match(struct cmd_find_window_data_list *find_list,
+cmd_find_window_match(struct cmd_find_window_list *find_list,
     int match_flags, struct winlink *wl, const char *str,
     const char *searchstr)
 {
-	struct cmd_find_window_data	 find_data;
+	struct cmd_find_window_data	*find_data;
 	struct window_pane		*wp;
 	u_int				 i, line;
 	char				*sres;
 
-	memset(&find_data, 0, sizeof find_data);
+	find_data = xcalloc(1, sizeof *find_data);
 
 	i = 0;
 	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
@@ -104,30 +105,32 @@ cmd_find_window_match(struct cmd_find_window_data_list *find_list,
 
 		if ((match_flags & CMD_FIND_WINDOW_BY_NAME) &&
 		    fnmatch(searchstr, wl->window->name, 0) == 0) {
-			find_data.list_ctx = xstrdup("");
+			find_data->list_ctx = xstrdup("");
 			break;
 		}
 
 		if ((match_flags & CMD_FIND_WINDOW_BY_TITLE) &&
 		    fnmatch(searchstr, wp->base.title, 0) == 0) {
-			xasprintf(&find_data.list_ctx,
+			xasprintf(&find_data->list_ctx,
 			    "pane %u title: \"%s\"", i - 1, wp->base.title);
 			break;
 		}
 
 		if (match_flags & CMD_FIND_WINDOW_BY_CONTENT &&
 		    (sres = window_pane_search(wp, str, &line)) != NULL) {
-			xasprintf(&find_data.list_ctx,
+			xasprintf(&find_data->list_ctx,
 			    "pane %u line %u: \"%s\"", i - 1, line + 1, sres);
 			free(sres);
 			break;
 		}
 	}
-	if (find_data.list_ctx != NULL) {
-		find_data.wl = wl;
-		find_data.pane_id = i - 1;
-		ARRAY_ADD(find_list, find_data);
-	}
+
+	if (find_data->list_ctx != NULL) {
+		find_data->wl = wl;
+		find_data->pane_id = i - 1;
+		TAILQ_INSERT_TAIL(find_list, find_data, entry);
+	} else
+		free(find_data);
 }
 
 enum cmd_retval
@@ -138,7 +141,9 @@ cmd_find_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window_choose_data	*cdata;
 	struct session			*s;
 	struct winlink			*wl, *wm;
-	struct cmd_find_window_data_list find_list;
+	struct cmd_find_window_list	 find_list;
+	struct cmd_find_window_data	*find_data;
+	struct cmd_find_window_data	*find_data1;
 	char				*str, *searchstr;
 	const char			*template;
 	u_int				 i, match_flags;
@@ -158,21 +163,20 @@ cmd_find_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	match_flags = cmd_find_window_match_flags(args);
 	str = args->argv[0];
 
-	ARRAY_INIT(&find_list);
+	TAILQ_INIT(&find_list);
 
 	xasprintf(&searchstr, "*%s*", str);
 	RB_FOREACH(wm, winlinks, &s->windows)
 	    cmd_find_window_match(&find_list, match_flags, wm, str, searchstr);
 	free(searchstr);
 
-	if (ARRAY_LENGTH(&find_list) == 0) {
+	if (TAILQ_EMPTY(&find_list)) {
 		cmdq_error(cmdq, "no windows matching: %s", str);
-		ARRAY_FREE(&find_list);
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (ARRAY_LENGTH(&find_list) == 1) {
-		if (session_select(s, ARRAY_FIRST(&find_list).wl->idx) == 0)
+	if (TAILQ_NEXT(TAILQ_FIRST(&find_list), entry) == NULL) {
+		if (session_select(s, TAILQ_FIRST(&find_list)->wl->idx) == 0)
 			server_redraw_session(s);
 		recalculate_sizes();
 		goto out;
@@ -181,30 +185,33 @@ cmd_find_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
 		goto out;
 
-	for (i = 0; i < ARRAY_LENGTH(&find_list); i++) {
-		wm = ARRAY_ITEM(&find_list, i).wl;
-
+	i = 0;
+	TAILQ_FOREACH(find_data, &find_list, entry) {
 		cdata = window_choose_data_create(TREE_OTHER, c, c->session);
-		cdata->idx = wm->idx;
-		cdata->wl = wm;
+		cdata->idx = find_data->wl->idx;
+		cdata->wl = find_data->wl;
 
 		cdata->ft_template = xstrdup(template);
-		cdata->pane_id = ARRAY_ITEM(&find_list, i).pane_id;
+		cdata->pane_id = find_data->pane_id;
 
 		format_add(cdata->ft, "line", "%u", i);
 		format_add(cdata->ft, "window_find_matches", "%s",
-		    ARRAY_ITEM(&find_list, i).list_ctx);
-		format_defaults(cdata->ft, NULL, s, wm, NULL);
+		    find_data->list_ctx);
+		format_defaults(cdata->ft, NULL, s, find_data->wl, NULL);
 
 		window_choose_add(wl->window->active, cdata);
+
+		i++;
 	}
 
 	window_choose_ready(wl->window->active, 0, cmd_find_window_callback);
 
 out:
-	for (i = 0; i < ARRAY_LENGTH(&find_list); i++)
-		free(ARRAY_ITEM(&find_list, i).list_ctx);
-	ARRAY_FREE(&find_list);
+	TAILQ_FOREACH_SAFE(find_data, &find_list, entry, find_data1) {
+		free(find_data->list_ctx);
+		TAILQ_REMOVE(&find_list, find_data, entry);
+		free(find_data);
+	}
 	return (CMD_RETURN_NORMAL);
 }
 

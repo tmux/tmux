@@ -46,7 +46,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct winlink		*wl = NULL;
 	struct window 		*w = NULL;
 	struct window_pane	*wp = NULL;
-	const char		*tflag, *tablename;
+	const char		*tflag, *tablename, *update;
 	struct key_table	*table;
 
 	if ((c = cmd_find_client(cmdq, args_get(args, 'c'), 0)) == NULL)
@@ -117,6 +117,11 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 				window_set_active_pane(wp->window, wp);
 			session_set_current(s, wl);
 		}
+	}
+
+	if (c != NULL && s != c->session) {
+		update = options_get_string(&s->options, "update-environment");
+		environ_update(update, &c->environ, &s->environ);
 	}
 
 	if (c->session != NULL)

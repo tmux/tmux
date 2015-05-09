@@ -34,15 +34,16 @@
 #include <utempter.h>
 #endif
 
-#include "array.h"
-
 #include "compat.h"
 
 extern char    *__progname;
 extern char   **environ;
 
-/* Default prompt history length. */
-#define PROMPT_HISTORY 100
+extern char    *__progname;
+extern char   **environ;
+
+/* Default global configuration file. */
+#define TMUX_CONF "/etc/tmux.conf"
 
 /*
  * Minimum layout cell size, NOT including separator line. The scroll region
@@ -569,20 +570,6 @@ enum mode_key_cmd {
 	MODEKEYCOPY_UP,
 };
 
-/* Entry in the default mode key tables. */
-struct mode_key_entry {
-	int			key;
-
-	/*
-	 * Editing mode for vi: 0 is edit mode, keys not in the table are
-	 * returned as MODEKEY_OTHER; 1 is command mode, keys not in the table
-	 * are returned as MODEKEY_NONE. This is also matched on, allowing some
-	 * keys to be bound in edit mode.
-	 */
-	int			mode;
-	enum mode_key_cmd	cmd;
-};
-
 /* Data required while mode keys are in use. */
 struct mode_key_data {
 	struct mode_key_tree   *tree;
@@ -610,6 +597,7 @@ struct mode_key_cmdstr {
 };
 
 /* Named mode key table description. */
+struct mode_key_entry;
 struct mode_key_table {
 	const char			*name;
 	const struct mode_key_cmdstr	*cmdstr;
@@ -705,7 +693,7 @@ struct options_entry {
 	} type;
 
 	char			*str;
-	long long	 	 num;
+	long long		 num;
 	struct grid_cell	 style;
 
 	RB_ENTRY(options_entry) entry;
@@ -788,55 +776,6 @@ struct screen_write_ctx {
 #define screen_hsize(s) ((s)->grid->hsize)
 #define screen_hlimit(s) ((s)->grid->hlimit)
 
-/* Input parser cell. */
-struct input_cell {
-	struct grid_cell	cell;
-	int			set;
-	int			g0set;	/* 1 if ACS */
-	int			g1set;	/* 1 if ACS */
-};
-
-/* Input parser context. */
-struct input_ctx {
-	struct window_pane     *wp;
-	struct screen_write_ctx ctx;
-
-	struct input_cell	cell;
-
-	struct input_cell	old_cell;
-	u_int 			old_cx;
-	u_int			old_cy;
-
-	u_char			interm_buf[4];
-	size_t			interm_len;
-
-	u_char			param_buf[64];
-	size_t			param_len;
-
-#define INPUT_BUF_START 32
-#define INPUT_BUF_LIMIT 1048576
-	u_char		       *input_buf;
-	size_t			input_len;
-	size_t			input_space;
-
-	int			param_list[24];	/* -1 not present */
-	u_int			param_list_len;
-
-	struct utf8_data	utf8data;
-
-	int			ch;
-	int			flags;
-#define INPUT_DISCARD 0x1
-
-	const struct input_state *state;
-
-	/*
-	 * All input received since we were last in the ground state. Sent to
-	 * control clients on connection.
-	 */
-	struct evbuffer	 	*since_ground;
-};
-
 /*
  * Window mode. Windows can be in several modes and this is used to call the
  * right function to handle input and output.
@@ -869,21 +808,14 @@ struct window_choose_data {
 	struct winlink		*wl;
 	int			 pane_id;
 
-	char		        *ft_template;
+	char			*ft_template;
 	struct format_tree	*ft;
 
 	char			*command;
 };
 
-struct window_choose_mode_item {
-	struct window_choose_data	*wcd;
-	char				*name;
-	int				 pos;
-	int				 state;
-#define TREE_EXPANDED 0x1
-};
-
 /* Child window structure. */
+struct input_ctx;
 struct window_pane {
 	u_int		 id;
 	u_int		 active_point;
@@ -923,7 +855,7 @@ struct window_pane {
 	int		 fd;
 	struct bufferevent *event;
 
-	struct input_ctx ictx;
+	struct input_ctx *ictx;
 
 	struct grid_cell colgc;
 
@@ -954,7 +886,7 @@ struct window {
 	u_int		 id;
 	char		*name;
 	struct event	 name_timer;
-	struct timeval   silence_timer;
+	struct timeval	 silence_timer;
 
 	struct window_pane *active;
 	struct window_pane *last;
@@ -995,7 +927,7 @@ struct winlink {
 	struct grid_cell status_cell;
 	char		*status_text;
 
-	int              flags;
+	int		 flags;
 #define WINLINK_BELL 0x1
 #define WINLINK_ACTIVITY 0x2
 #define WINLINK_SILENCE 0x4
@@ -1087,7 +1019,7 @@ struct session {
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
 	int		 flags;
 
-	u_int            attached;
+	u_int		 attached;
 
 	struct termios	*tio;
 
@@ -1099,33 +1031,6 @@ struct session {
 	RB_ENTRY(session)    entry;
 };
 RB_HEAD(sessions, session);
-
-/* TTY information. */
-struct tty_key {
-	char		 ch;
-	int		 key;
-
-	struct tty_key	*left;
-	struct tty_key	*right;
-
-	struct tty_key	*next;
-};
-
-struct tty_term {
-	char		*name;
-	u_int		 references;
-
-	char		 acs[UCHAR_MAX + 1][2];
-
-	struct tty_code	 codes[NTTYCODE];
-
-#define TERM_256COLOURS 0x1
-#define TERM_EARLYWRAP 0x2
-	int		 flags;
-
-	LIST_ENTRY(tty_term) entry;
-};
-LIST_HEAD(tty_terms, tty_term);
 
 /* Mouse button masks. */
 #define MOUSE_MASK_BUTTONS 3
@@ -1167,6 +1072,33 @@ struct mouse_event {
 	u_int	sgr_type;
 	u_int	sgr_b;
 };
+
+/* TTY information. */
+struct tty_key {
+	char		 ch;
+	int		 key;
+
+	struct tty_key	*left;
+	struct tty_key	*right;
+
+	struct tty_key	*next;
+};
+
+struct tty_term {
+	char		*name;
+	u_int		 references;
+
+	char		 acs[UCHAR_MAX + 1][2];
+
+	struct tty_code	 codes[NTTYCODE];
+
+#define TERM_256COLOURS 0x1
+#define TERM_EARLYWRAP 0x2
+	int		 flags;
+
+	LIST_ENTRY(tty_term) entry;
+};
+LIST_HEAD(tty_terms, tty_term);
 
 struct tty {
 	struct client	*client;
@@ -1215,7 +1147,7 @@ struct tty {
 	void		(*mouse_drag_update)(struct client *,
 			    struct mouse_event *);
 	void		(*mouse_drag_release)(struct client *,
-	    		    struct mouse_event *);
+			    struct mouse_event *);
 
 	struct event	 key_timer;
 	struct tty_key	*key_tree;
@@ -1251,16 +1183,16 @@ struct tty_ctx {
 
 /* Saved message entry. */
 struct message_entry {
-	char   *msg;
-	u_int	msg_num;
-	time_t	msg_time;
+	char	*msg;
+	u_int	 msg_num;
+	time_t	 msg_time;
 	TAILQ_ENTRY(message_entry) entry;
 };
 
 /* Status output data from a job. */
 struct status_out {
-	char   *cmd;
-	char   *out;
+	char	*cmd;
+	char	*out;
 
 	RB_ENTRY(status_out) entry;
 };
@@ -1289,7 +1221,7 @@ struct client {
 	void		(*stdin_callback)(struct client *, int, void *);
 	void		*stdin_callback_data;
 	struct evbuffer	*stdin_data;
-	int              stdin_closed;
+	int		 stdin_closed;
 	struct evbuffer	*stdout_data;
 	struct evbuffer	*stderr_data;
 
@@ -1335,7 +1267,7 @@ struct client {
 	int		 (*prompt_callbackfn)(void *, const char *);
 	void		 (*prompt_freefn)(void *);
 	void		*prompt_data;
-	u_int            prompt_hindex;
+	u_int		 prompt_hindex;
 
 #define PROMPT_SINGLE 0x1
 	int		 prompt_flags;
@@ -1364,8 +1296,8 @@ RB_HEAD(args_tree, args_entry);
 
 struct args {
 	struct args_tree	  tree;
-	int		 	  argc;
-	char	       		**argv;
+	int			  argc;
+	char			**argv;
 };
 
 /* Command and list of commands. */
@@ -1381,9 +1313,10 @@ struct cmd {
 
 	TAILQ_ENTRY(cmd)	 qentry;
 };
+
 struct cmd_list {
-	int		 	 references;
-	TAILQ_HEAD(, cmd) 	 list;
+	int			 references;
+	TAILQ_HEAD(, cmd)	 list;
 };
 
 /* Command return values. */
@@ -1422,7 +1355,7 @@ struct cmd_q {
 	void			 (*emptyfn)(struct cmd_q *);
 	void			*data;
 
-	TAILQ_ENTRY(cmd_q)       waitentry;
+	TAILQ_ENTRY(cmd_q)	 waitentry;
 };
 
 /* Command definition. */
@@ -1453,6 +1386,7 @@ struct key_binding {
 	RB_ENTRY(key_binding)	 entry;
 };
 RB_HEAD(key_bindings, key_binding);
+
 struct key_table {
 	const char		 *name;
 	struct key_bindings	 key_bindings;
@@ -1483,8 +1417,8 @@ struct options_table_entry {
 	const char	       *name;
 	enum options_table_type	type;
 
-	u_int		 	minimum;
-	u_int		 	maximum;
+	u_int			minimum;
+	u_int			maximum;
 	const char	      **choices;
 
 	const char	       *default_str;
@@ -1871,7 +1805,7 @@ void printflike(2, 3) cmdq_print(struct cmd_q *, const char *, ...);
 void printflike(2, 3) cmdq_error(struct cmd_q *, const char *, ...);
 void		 cmdq_guard(struct cmd_q *, const char *, int);
 void		 cmdq_run(struct cmd_q *, struct cmd_list *,
-	             struct mouse_event *);
+		     struct mouse_event *);
 void		 cmdq_append(struct cmd_q *, struct cmd_list *,
 		     struct mouse_event *);
 int		 cmdq_continue(struct cmd_q *);
@@ -1893,8 +1827,8 @@ RB_PROTOTYPE(key_tables, key_table, entry, key_table_cmp);
 extern struct key_tables key_tables;
 int	 key_table_cmp(struct key_table *, struct key_table *);
 int	 key_bindings_cmp(struct key_binding *, struct key_binding *);
-struct 	 key_table *key_bindings_get_table(const char *, int);
-void 	 key_bindings_unref_table(struct key_table *);
+struct	 key_table *key_bindings_get_table(const char *, int);
+void	 key_bindings_unref_table(struct key_table *);
 void	 key_bindings_add(const char *, int, int, struct cmd_list *);
 void	 key_bindings_remove(const char *, int);
 void	 key_bindings_remove_table(const char *);
@@ -1916,7 +1850,7 @@ void	 server_add_accept(int);
 /* server-client.c */
 void	 server_client_handle_key(struct client *, int);
 void	 server_client_create(int);
-int      server_client_open(struct client *, char **);
+int	 server_client_open(struct client *, char **);
 void	 server_client_lost(struct client *);
 void	 server_client_callback(int, short, void *);
 void	 server_client_status_timer(void);
@@ -1986,6 +1920,8 @@ void	 recalculate_sizes(void);
 /* input.c */
 void	 input_init(struct window_pane *);
 void	 input_free(struct window_pane *);
+void	 input_reset(struct window_pane *);
+struct evbuffer *input_pending(struct window_pane *);
 void	 input_parse(struct window_pane *);
 
 /* input-key.c */
@@ -2008,7 +1944,6 @@ int	 attributes_fromstring(const char *);
 
 /* grid.c */
 extern const struct grid_cell grid_default_cell;
-extern const struct grid_cell grid_marker_cell;
 struct grid *grid_create(u_int, u_int, u_int);
 void	 grid_destroy(struct grid *);
 int	 grid_compare(struct grid *, struct grid *);
@@ -2166,9 +2101,9 @@ void		 window_lost_pane(struct window *, struct window_pane *);
 void		 window_remove_pane(struct window *, struct window_pane *);
 struct window_pane *window_pane_at_index(struct window *, u_int);
 struct window_pane *window_pane_next_by_number(struct window *,
-		        struct window_pane *, u_int);
+			struct window_pane *, u_int);
 struct window_pane *window_pane_previous_by_number(struct window *,
-		        struct window_pane *, u_int);
+			struct window_pane *, u_int);
 int		 window_pane_index(struct window_pane *, u_int *);
 u_int		 window_count_panes(struct window *);
 void		 window_destroy_panes(struct window *);

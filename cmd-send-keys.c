@@ -52,7 +52,6 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct mouse_event	*m = &cmdq->item->mouse;
 	struct window_pane	*wp;
 	struct session		*s;
-	struct input_ctx	*ictx;
 	const u_char		*str;
 	int			 i, key;
 
@@ -78,21 +77,8 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (args_has(args, 'R')) {
-		ictx = &wp->ictx;
-
-		memcpy(&ictx->cell, &grid_default_cell, sizeof ictx->cell);
-		memcpy(&ictx->old_cell, &ictx->cell, sizeof ictx->old_cell);
-		ictx->old_cx = 0;
-		ictx->old_cy = 0;
-
-		if (wp->mode == NULL)
-			screen_write_start(&ictx->ctx, wp, &wp->base);
-		else
-			screen_write_start(&ictx->ctx, NULL, &wp->base);
-		screen_write_reset(&ictx->ctx);
-		screen_write_stop(&ictx->ctx);
-	}
+	if (args_has(args, 'R'))
+		input_reset(wp);
 
 	for (i = 0; i < args->argc; i++) {
 		str = args->argv[i];

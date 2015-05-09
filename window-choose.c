@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "array.h"
 #include "tmux.h"
 
 struct screen *window_choose_init(struct window_pane *);
@@ -57,6 +58,14 @@ const struct window_mode window_choose_mode = {
 	window_choose_resize,
 	window_choose_key,
 	NULL,
+};
+
+struct window_choose_mode_item {
+	struct window_choose_data	*wcd;
+	char				*name;
+	int				 pos;
+	int				 state;
+#define TREE_EXPANDED 0x1
 };
 
 struct window_choose_mode_data {

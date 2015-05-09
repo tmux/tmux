@@ -192,7 +192,7 @@ cmd_find_best_session_with_window(struct cmd_find_state *fs)
 	RB_FOREACH(s, sessions, &sessions) {
 		if (!session_has(s, fs->w))
 			continue;
-		slist = xreallocarray (slist, ssize + 1, sizeof *slist);
+		slist = xreallocarray(slist, ssize + 1, sizeof *slist);
 		slist[ssize++] = s;
 	}
 	if (ssize == 0)
@@ -200,7 +200,7 @@ cmd_find_best_session_with_window(struct cmd_find_state *fs)
 	fs->s = cmd_find_best_session(slist, ssize, fs->flags);
 	if (fs->s == NULL)
 		goto fail;
-	free (slist);
+	free(slist);
 	return (cmd_find_best_winlink_with_window(fs));
 
 fail:
@@ -328,7 +328,7 @@ cmd_find_current_client(struct cmd_q *cmdq)
 		TAILQ_FOREACH(c, &clients, entry) {
 			if (c->session != s)
 				continue;
-			clist = xreallocarray (clist, csize + 1, sizeof *clist);
+			clist = xreallocarray(clist, csize + 1, sizeof *clist);
 			clist[csize++] = c;
 		}
 		if (csize != 0) {
@@ -738,7 +738,7 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 void
 cmd_find_clear_state(struct cmd_find_state *fs, struct cmd_q *cmdq, int flags)
 {
-	memset (fs, 0, sizeof *fs);
+	memset(fs, 0, sizeof *fs);
 
 	fs->cmdq = cmdq;
 	fs->flags = flags;
