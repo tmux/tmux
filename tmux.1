@@ -2886,24 +2886,6 @@ used when the
 .Ic automatic-rename
 option is enabled.
 .Pp
-.It Ic c0-change-interval Ar interval
-.It Ic c0-change-trigger Ar trigger
-These two options configure a simple form of rate limiting for a pane.
-If
-.Nm
-sees more than
-.Ar trigger
-C0 sequences that modify the screen (for example, carriage returns, linefeeds
-or backspaces) in one millisecond, it will stop updating the pane immediately and
-instead redraw it entirely every
-.Ar interval
-milliseconds.
-This helps to prevent fast output (such as
-.Xr yes 1 )
-overwhelming the terminal.
-The default is a trigger of 250 and an interval of 100.
-A trigger of zero disables the rate limiting.
-.Pp
 .It Ic clock-mode-colour Ar colour
 Set clock colour.
 .Pp

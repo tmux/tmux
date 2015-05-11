@@ -844,10 +844,6 @@ struct window_pane {
 	char		 tty[TTY_NAME_MAX];
 	int		 status;
 
-	u_int		 changes;
-	struct event	 changes_timer;
-	u_int		 changes_redraw;
-
 	int		 fd;
 	struct bufferevent *event;
 
@@ -2107,7 +2103,6 @@ struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
-void		 window_pane_timer_start(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *, int, char **,
 		     const char *, const char *, int, struct environ *,
 		     struct termios *, char **);

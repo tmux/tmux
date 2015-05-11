@@ -58,7 +58,6 @@ u_int	next_window_pane_id;
 u_int	next_window_id;
 u_int	next_active_point;
 
-void	window_pane_timer_callback(int, short, void *);
 void	window_pane_read_callback(struct bufferevent *, void *);
 void	window_pane_error_callback(struct bufferevent *, short, void *);
 
@@ -741,9 +740,6 @@ window_pane_destroy(struct window_pane *wp)
 {
 	window_pane_reset_mode(wp);
 
-	if (event_initialized(&wp->changes_timer))
-		evtimer_del(&wp->changes_timer);
-
 	if (wp->fd != -1) {
 		bufferevent_free(wp->event);
 		close(wp->fd);
@@ -875,42 +871,6 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 
 	free(cmd);
 	return (0);
-}
-
-void
-window_pane_timer_start(struct window_pane *wp)
-{
-	struct timeval	tv;
-
-	tv.tv_sec = 0;
-	tv.tv_usec = 1000;
-
-	evtimer_del(&wp->changes_timer);
-	evtimer_set(&wp->changes_timer, window_pane_timer_callback, wp);
-	evtimer_add(&wp->changes_timer, &tv);
-}
-
-void
-window_pane_timer_callback(unused int fd, unused short events, void *data)
-{
-	struct window_pane	*wp = data;
-	struct window		*w = wp->window;
-	u_int			 interval, trigger;
-
-	interval = options_get_number(&w->options, "c0-change-interval");
-	trigger = options_get_number(&w->options, "c0-change-trigger");
-
-	if (wp->changes_redraw++ == interval) {
-		wp->flags |= PANE_REDRAW;
-		wp->changes_redraw = 0;
-	}
-
-	if (trigger == 0 || wp->changes < trigger) {
-		wp->flags |= PANE_REDRAW;
-		wp->flags &= ~PANE_DROP;
-	} else
-		window_pane_timer_start(wp);
-	wp->changes = 0;
 }
 
 void
