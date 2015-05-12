@@ -75,6 +75,7 @@ extern char   **environ;
 #define BELL_NONE 0
 #define BELL_ANY 1
 #define BELL_CURRENT 2
+#define BELL_OTHER 3
 
 /* Special key codes. */
 #define KEYC_NONE 0xfff

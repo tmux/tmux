@@ -77,13 +77,18 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 		if (c->session != s || c->flags & CLIENT_CONTROL)
 			continue;
 		if (!visual) {
-			if (c->session->curw->window == w || action == BELL_ANY)
+			if ((action == BELL_CURRENT &&
+			    c->session->curw->window == w) ||
+			    (action == BELL_OTHER &&
+			    c->session->curw->window != w) ||
+			    action == BELL_ANY)
 				tty_bell(&c->tty);
 			continue;
 		}
-		if (c->session->curw->window == w)
+		if (action == BELL_CURRENT && c->session->curw->window == w)
 			status_message_set(c, "Bell in current window");
-		else if (action == BELL_ANY)
+		else if (action == BELL_ANY || (action == BELL_OTHER &&
+		    c->session->curw->window != w))
 			status_message_set(c, "Bell in window %d", wl->idx);
 	}
 

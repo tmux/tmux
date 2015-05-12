@@ -49,7 +49,7 @@ const char *options_table_status_position_list[] = {
 	"top", "bottom", NULL
 };
 const char *options_table_bell_action_list[] = {
-	"none", "any", "current", NULL
+	"none", "any", "current", "other", NULL
 };
 
 /* Server options. */

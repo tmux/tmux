@@ -2375,16 +2375,18 @@ Set the base index from which an unused index should be searched when a new
 window is created.
 The default is zero.
 .It Xo Ic bell-action
-.Op Ic any | none | current
+.Op Ic any | none | current | other
 .Xc
 Set action on window bell.
 .Ic any
 means a bell in any window linked to a session causes a bell in the current
 window of that session,
 .Ic none
-means all bells are ignored and
+means all bells are ignored,
 .Ic current
-means only bells in windows other than the current window are ignored.
+means only bells in windows other than the current window are ignored and
+.Ic other
+means bells in the current window are ignored but not those in other windows.
 .It Xo Ic bell-on-alert
 .Op Ic on | off
 .Xc
