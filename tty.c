@@ -723,9 +723,23 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 	tty_update_mode(tty, tty->mode, s);
 }
 
+int
+tty_client_ready(struct client *c, struct window_pane *wp)
+{
+	if (c->session == NULL || c->tty.term == NULL)
+		return (0);
+	if (c->flags & CLIENT_SUSPENDED)
+		return (0);
+	if (c->tty.flags & TTY_FREEZE)
+		return (0);
+	if (c->session->curw->window != wp->window)
+		return (0);
+	return (1);
+}
+
 void
-tty_write(
-    void (*cmdfn)(struct tty *, const struct tty_ctx *), struct tty_ctx *ctx)
+tty_write(void (*cmdfn)(struct tty *, const struct tty_ctx *),
+    struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct client		*c;
@@ -740,13 +754,7 @@ tty_write(
 		return;
 
 	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session == NULL || c->tty.term == NULL)
-			continue;
-		if (c->flags & CLIENT_SUSPENDED)
-			continue;
-		if (c->tty.flags & TTY_FREEZE)
-			continue;
-		if (c->session->curw->window != wp->window)
+		if (!tty_client_ready(c, wp))
 			continue;
 
 		ctx->xoff = wp->xoff;

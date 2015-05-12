@@ -56,6 +56,16 @@ extern char   **environ;
  */
 #define UTF8_SIZE 9
 
+/*
+ * READ_SIZE is the maximum size of data to hold from a pty (the event high
+ * watermark). READ_BACKOFF is the amount of data waiting to be output to a tty
+ * before pty reads will be backed off. READ_TIME is how long to back off
+ * before the next read (in microseconds) if a tty is above READ_BACKOFF.
+ */
+#define READ_SIZE 1024
+#define READ_BACKOFF 512
+#define READ_TIME 100
+
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
 #define fatalx(msg) log_fatalx("%s: %s", __func__, msg);
@@ -847,6 +857,7 @@ struct window_pane {
 
 	int		 fd;
 	struct bufferevent *event;
+	struct event	 timer;
 
 	struct input_ctx *ictx;
 
@@ -1595,8 +1606,9 @@ void	tty_draw_line(struct tty *, const struct window_pane *, struct screen *,
 int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
-void	tty_write(
-	    void (*)(struct tty *, const struct tty_ctx *), struct tty_ctx *);
+void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
+	    struct tty_ctx *);
+int	tty_client_ready(struct client *, struct window_pane *wp);
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
 void	tty_cmd_cell(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearendofline(struct tty *, const struct tty_ctx *);
