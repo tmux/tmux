@@ -296,7 +296,7 @@ const struct options_table_entry session_options_table[] = {
 
 	{ .name = "set-titles-string",
 	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = "#S:#I:#W - \"#T\""
+	  .default_str = "#S:#I:#W - \"#T\" #{session_alerts}"
 	},
 
 	{ .name = "status",

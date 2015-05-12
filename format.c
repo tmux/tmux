@@ -494,6 +494,8 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 {
 	struct session_group	*sg;
 	time_t			 t;
+	struct winlink		*wl;
+	char			 alerts[256], tmp[16];
 
 	ft->s = s;
 
@@ -518,6 +520,24 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 
 	format_add(ft, "session_attached", "%u", s->attached);
 	format_add(ft, "session_many_attached", "%d", s->attached > 1);
+
+	*alerts = '\0';
+	RB_FOREACH (wl, winlinks, &s->windows) {
+		if ((wl->flags & WINLINK_ALERTFLAGS) == 0)
+			continue;
+		snprintf(tmp, sizeof tmp, "%u", wl->idx);
+
+		if (*alerts != '\0')
+			strlcat(alerts, ",", sizeof alerts);
+		strlcat(alerts, tmp, sizeof alerts);
+		if (wl->flags & WINLINK_ACTIVITY)
+			strlcat(alerts, "#", sizeof alerts);
+		if (wl->flags & WINLINK_BELL)
+			strlcat(alerts, "!", sizeof alerts);
+		if (wl->flags & WINLINK_SILENCE)
+			strlcat(alerts, "~", sizeof alerts);
+	}
+	format_add(ft, "session_alerts", "%s", alerts);
 }
 
 /* Set default format keys for a client. */
