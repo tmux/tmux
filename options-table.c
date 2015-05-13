@@ -48,7 +48,7 @@ const char *options_table_status_position_list[] = {
 	"top", "bottom", NULL
 };
 const char *options_table_bell_action_list[] = {
-	"none", "any", "current", NULL
+	"none", "any", "current", "other", NULL
 };
 
 /* Server options. */
@@ -295,7 +295,7 @@ const struct options_table_entry session_options_table[] = {
 
 	{ .name = "set-titles-string",
 	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = "#S:#I:#W - \"#T\""
+	  .default_str = "#S:#I:#W - \"#T\" #{session_alerts}"
 	},
 
 	{ .name = "status",
@@ -482,20 +482,6 @@ const struct options_table_entry window_options_table[] = {
 	  .type = OPTIONS_TABLE_STRING,
 	  .default_str = "#{?pane_in_mode,[tmux],#{pane_current_command}}"
 	                 "#{?pane_dead,[dead],}"
-	},
-
-	{ .name = "c0-change-trigger",
-	  .type = OPTIONS_TABLE_NUMBER,
-	  .default_num = 250,
-	  .minimum = 0,
-	  .maximum = USHRT_MAX
-	},
-
-	{ .name = "c0-change-interval",
-	  .type = OPTIONS_TABLE_NUMBER,
-	  .default_num = 100,
-	  .minimum = 1,
-	  .maximum = USHRT_MAX
 	},
 
 	{ .name = "clock-mode-colour",

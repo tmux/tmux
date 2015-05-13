@@ -60,6 +60,16 @@ extern char   **environ;
  */
 #define UTF8_SIZE 9
 
+/*
+ * READ_SIZE is the maximum size of data to hold from a pty (the event high
+ * watermark). READ_BACKOFF is the amount of data waiting to be output to a tty
+ * before pty reads will be backed off. READ_TIME is how long to back off
+ * before the next read (in microseconds) if a tty is above READ_BACKOFF.
+ */
+#define READ_SIZE 1024
+#define READ_BACKOFF 512
+#define READ_TIME 100
+
 /* Fatal errors. */
 #define fatal(msg) log_fatal("%s: %s", __func__, msg);
 #define fatalx(msg) log_fatalx("%s: %s", __func__, msg);
@@ -79,6 +89,7 @@ extern char   **environ;
 #define BELL_NONE 0
 #define BELL_ANY 1
 #define BELL_CURRENT 2
+#define BELL_OTHER 3
 
 /* Special key codes. */
 #define KEYC_NONE 0xfff
@@ -848,12 +859,9 @@ struct window_pane {
 	char		 tty[TTY_NAME_MAX];
 	int		 status;
 
-	u_int		 changes;
-	struct event	 changes_timer;
-	u_int		 changes_redraw;
-
 	int		 fd;
 	struct bufferevent *event;
+	struct event	 timer;
 
 	struct input_ctx *ictx;
 
@@ -1602,8 +1610,9 @@ void	tty_draw_line(struct tty *, const struct window_pane *, struct screen *,
 int	tty_open(struct tty *, char **);
 void	tty_close(struct tty *);
 void	tty_free(struct tty *);
-void	tty_write(
-	    void (*)(struct tty *, const struct tty_ctx *), struct tty_ctx *);
+void	tty_write(void (*)(struct tty *, const struct tty_ctx *),
+	    struct tty_ctx *);
+int	tty_client_ready(struct client *, struct window_pane *wp);
 void	tty_cmd_alignmenttest(struct tty *, const struct tty_ctx *);
 void	tty_cmd_cell(struct tty *, const struct tty_ctx *);
 void	tty_cmd_clearendofline(struct tty *, const struct tty_ctx *);
@@ -2111,7 +2120,6 @@ struct window_pane *window_pane_find_by_id_str(const char *);
 struct window_pane *window_pane_find_by_id(u_int);
 struct window_pane *window_pane_create(struct window *, u_int, u_int, u_int);
 void		 window_pane_destroy(struct window_pane *);
-void		 window_pane_timer_start(struct window_pane *);
 int		 window_pane_spawn(struct window_pane *, int, char **,
 		     const char *, const char *, int, struct environ *,
 		     struct termios *, char **);

@@ -2379,16 +2379,18 @@ Set the base index from which an unused index should be searched when a new
 window is created.
 The default is zero.
 .It Xo Ic bell-action
-.Op Ic any | none | current
+.Op Ic any | none | current | other
 .Xc
 Set action on window bell.
 .Ic any
 means a bell in any window linked to a session causes a bell in the current
 window of that session,
 .Ic none
-means all bells are ignored and
+means all bells are ignored,
 .Ic current
-means only bells in windows other than the current window are ignored.
+means only bells in windows other than the current window are ignored and
+.Ic other
+means bells in the current window are ignored but not those in other windows.
 .It Xo Ic bell-on-alert
 .Op Ic on | off
 .Xc
@@ -2890,24 +2892,6 @@ used when the
 .Ic automatic-rename
 option is enabled.
 .Pp
-.It Ic c0-change-interval Ar interval
-.It Ic c0-change-trigger Ar trigger
-These two options configure a simple form of rate limiting for a pane.
-If
-.Nm
-sees more than
-.Ar trigger
-C0 sequences that modify the screen (for example, carriage returns, linefeeds
-or backspaces) in one millisecond, it will stop updating the pane immediately and
-instead redraw it entirely every
-.Ar interval
-milliseconds.
-This helps to prevent fast output (such as
-.Xr yes 1 )
-overwhelming the terminal.
-The default is a trigger of 250 and an interval of 100.
-A trigger of zero disables the rate limiting.
-.Pp
 .It Ic clock-mode-colour Ar colour
 Set clock colour.
 .Pp
@@ -3325,6 +3309,7 @@ The following variables are available, where appropriate:
 .It Li "pane_width" Ta "" Ta "Width of pane"
 .It Li "scroll_region_lower" Ta "" Ta "Bottom of scroll region in pane"
 .It Li "scroll_region_upper" Ta "" Ta "Top of scroll region in pane"
+.It Li "session_alerts" Ta "" Ta "List of window indexes with alerts"
 .It Li "session_attached" Ta "" Ta "Number of clients session is attached to"
 .It Li "session_activity" Ta "" Ta "Integer time of session last activity"
 .It Li "session_activity_string" Ta "" Ta "String time of session last activity"

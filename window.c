@@ -740,8 +740,8 @@ window_pane_destroy(struct window_pane *wp)
 {
 	window_pane_reset_mode(wp);
 
-	if (event_initialized(&wp->changes_timer))
-		evtimer_del(&wp->changes_timer);
+	if (event_initialized(&wp->timer))
+		evtimer_del(&wp->timer);
 
 	if (wp->fd != -1) {
 #ifdef HAVE_UTEMPTER
@@ -885,6 +885,8 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 
 	wp->event = bufferevent_new(wp->fd, window_pane_read_callback, NULL,
 	    window_pane_error_callback, wp);
+
+	bufferevent_setwatermark(wp->event, EV_READ, 0, READ_SIZE);
 	bufferevent_enable(wp->event, EV_READ|EV_WRITE);
 
 	free(cmd);
@@ -892,57 +894,44 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 }
 
 void
-window_pane_timer_start(struct window_pane *wp)
-{
-	struct timeval	tv;
-
-	tv.tv_sec = 0;
-	tv.tv_usec = 1000;
-
-	evtimer_del(&wp->changes_timer);
-	evtimer_set(&wp->changes_timer, window_pane_timer_callback, wp);
-	evtimer_add(&wp->changes_timer, &tv);
-}
-
-void
 window_pane_timer_callback(unused int fd, unused short events, void *data)
 {
-	struct window_pane	*wp = data;
-	struct window		*w = wp->window;
-	u_int			 interval, trigger;
-
-	interval = options_get_number(&w->options, "c0-change-interval");
-	trigger = options_get_number(&w->options, "c0-change-trigger");
-
-	if (wp->changes_redraw++ == interval) {
-		wp->flags |= PANE_REDRAW;
-		wp->changes_redraw = 0;
-	}
-
-	if (trigger == 0 || wp->changes < trigger) {
-		wp->flags |= PANE_REDRAW;
-		wp->flags &= ~PANE_DROP;
-	} else
-		window_pane_timer_start(wp);
-	wp->changes = 0;
+	window_pane_read_callback(NULL, data);
 }
 
 void
 window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 {
-	struct window_pane     *wp = data;
-	char   		       *new_data;
-	size_t			new_size;
+	struct window_pane	*wp = data;
+	struct evbuffer		*evb = wp->event->input;
+	char			*new_data;
+	size_t			 new_size, available;
+	struct client		*c;
+	struct timeval		 tv;
 
-	new_size = EVBUFFER_LENGTH(wp->event->input) - wp->pipe_off;
+	if (event_initialized(&wp->timer))
+		evtimer_del(&wp->timer);
+
+	log_debug("%%%u has %zu bytes", wp->id, EVBUFFER_LENGTH(evb));
+
+	TAILQ_FOREACH(c, &clients, entry) {
+		if (!tty_client_ready(c, wp))
+			continue;
+
+		available = EVBUFFER_LENGTH(c->tty.event->output);
+		if (available > READ_BACKOFF)
+			goto start_timer;
+	}
+
+	new_size = EVBUFFER_LENGTH(evb) - wp->pipe_off;
 	if (wp->pipe_fd != -1 && new_size > 0) {
-		new_data = EVBUFFER_DATA(wp->event->input);
+		new_data = EVBUFFER_DATA(evb);
 		bufferevent_write(wp->pipe_event, new_data, new_size);
 	}
 
 	input_parse(wp);
 
-	wp->pipe_off = EVBUFFER_LENGTH(wp->event->input);
+	wp->pipe_off = EVBUFFER_LENGTH(evb);
 
 	/*
 	 * If we get here, we're not outputting anymore, so set the silence
@@ -951,11 +940,22 @@ window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 	wp->window->flags |= WINDOW_SILENCE;
 	if (gettimeofday(&wp->window->silence_timer, NULL) != 0)
 		fatal("gettimeofday failed.");
+	return;
+
+start_timer:
+	log_debug("%%%u backing off (%s %zu > %d)", wp->id, c->ttyname,
+	    available, READ_BACKOFF);
+
+	tv.tv_sec = 0;
+	tv.tv_usec = READ_TIME;
+
+	evtimer_set(&wp->timer, window_pane_timer_callback, wp);
+	evtimer_add(&wp->timer, &tv);
 }
 
 void
-window_pane_error_callback(
-    unused struct bufferevent *bufev, unused short what, void *data)
+window_pane_error_callback(unused struct bufferevent *bufev, unused short what,
+    void *data)
 {
 	struct window_pane *wp = data;
 
