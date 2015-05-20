@@ -335,7 +335,7 @@ format_expand_time(struct format_tree *ft, const char *fmt, time_t t)
 	size_t		 tmplen;
 	struct tm	*tm;
 
-	if (fmt == NULL)
+	if (fmt == NULL || *fmt == '\0')
 		return (xstrdup(""));
 
 	tm = localtime(&t);
