@@ -157,8 +157,6 @@ server_client_lost(struct client *c)
 	if (c->stderr_data != c->stdout_data)
 		evbuffer_free(c->stderr_data);
 
-	status_free_jobs(&c->status_new);
-	status_free_jobs(&c->status_old);
 	screen_free(&c->status);
 
 	free(c->title);
@@ -269,10 +267,8 @@ server_client_status_timer(void)
 		interval = options_get_number(&s->options, "status-interval");
 
 		difference = tv.tv_sec - c->status_timer.tv_sec;
-		if (interval != 0 && difference >= interval) {
-			status_update_jobs(c);
+		if (interval != 0 && difference >= interval)
 			c->flags |= CLIENT_STATUS;
-		}
 	}
 }
 

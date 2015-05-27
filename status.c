@@ -33,13 +33,10 @@ char   *status_redraw_get_left(struct client *, time_t, int, struct grid_cell *,
 	    size_t *);
 char   *status_redraw_get_right(struct client *, time_t, int,
 	    struct grid_cell *, size_t *);
-char   *status_find_job(struct client *, char **);
-void	status_job_free(void *);
-void	status_job_callback(struct job *);
 char   *status_print(struct client *, struct winlink *, time_t,
 	    struct grid_cell *);
 char   *status_replace(struct client *, struct winlink *, const char *, time_t);
-void	status_replace1(struct client *, char **, char **, char *, size_t);
+void	status_replace1(char **, char **, char *, size_t);
 void	status_message_callback(int, short, void *);
 
 const char *status_prompt_up_history(u_int *);
@@ -368,244 +365,23 @@ out:
 	return (1);
 }
 
-/* Replace a single special sequence (prefixed by #). */
-void
-status_replace1(struct client *c, char **iptr, char **optr, char *out,
-    size_t outsize)
-{
-	char	ch, tmp[256], *ptr, *endptr;
-	size_t	ptrlen;
-	long	limit;
-
-	errno = 0;
-	limit = strtol(*iptr, &endptr, 10);
-	if ((limit == 0 && errno != EINVAL) ||
-	    (limit == LONG_MIN && errno != ERANGE) ||
-	    (limit == LONG_MAX && errno != ERANGE) ||
-	    limit != 0)
-		*iptr = endptr;
-	if (limit <= 0)
-		limit = LONG_MAX;
-
-	switch (*(*iptr)++) {
-	case '(':
-		if ((ptr = status_find_job(c, iptr)) == NULL)
-			return;
-		goto do_replace;
-	case '[':
-		/*
-		 * Embedded style, handled at display time. Leave present and
-		 * skip input until ].
-		 */
-		ch = ']';
-		goto skip_to;
-	case '{':
-		ptr = (char *) "#{";
-		goto do_replace;
-	default:
-		xsnprintf(tmp, sizeof tmp, "#%c", *(*iptr - 1));
-		ptr = tmp;
-		goto do_replace;
-	}
-
-	return;
-
-do_replace:
-	ptrlen = strlen(ptr);
-	if ((size_t) limit < ptrlen)
-		ptrlen = limit;
-
-	if (*optr + ptrlen >= out + outsize - 1)
-		return;
-	while (ptrlen > 0 && *ptr != '\0') {
-		*(*optr)++ = *ptr++;
-		ptrlen--;
-	}
-
-	return;
-
-skip_to:
-	*(*optr)++ = '#';
-
-	(*iptr)--;	/* include ch */
-	while (**iptr != ch && **iptr != '\0') {
-		if (*optr >=  out + outsize - 1)
-			break;
-		*(*optr)++ = *(*iptr)++;
-	}
-}
-
 /* Replace special sequences in fmt. */
 char *
 status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t)
 {
-	static char		 out[BUFSIZ];
-	char			 in[BUFSIZ], ch, *iptr, *optr, *expanded;
-	size_t			 len;
 	struct format_tree	*ft;
+	char			*expanded;
 
 	if (fmt == NULL)
 		return (xstrdup(""));
 
-	len = strftime(in, sizeof in, fmt, localtime(&t));
-	in[len] = '\0';
-
-	iptr = in;
-	optr = out;
-
-	while (*iptr != '\0') {
-		if (optr >= out + (sizeof out) - 1)
-			break;
-		ch = *iptr++;
-
-		if (ch != '#' || *iptr == '\0') {
-			*optr++ = ch;
-			continue;
-		}
-		status_replace1(c, &iptr, &optr, out, sizeof out);
-	}
-	*optr = '\0';
-
-	ft = format_create();
+	ft = format_create_status(1);
 	format_defaults(ft, c, NULL, wl, NULL);
-	expanded = format_expand(ft, out);
+
+	expanded = format_expand_time(ft, fmt, t);
+
 	format_free(ft);
 	return (expanded);
-}
-
-/* Figure out job name and get its result, starting it off if necessary. */
-char *
-status_find_job(struct client *c, char **iptr)
-{
-	struct status_out	*so, so_find;
-	char   			*cmd;
-	int			 lastesc;
-	size_t			 len;
-
-	if (**iptr == '\0')
-		return (NULL);
-	if (**iptr == ')') {		/* no command given */
-		(*iptr)++;
-		return (NULL);
-	}
-
-	cmd = xmalloc(strlen(*iptr) + 1);
-	len = 0;
-
-	lastesc = 0;
-	for (; **iptr != '\0'; (*iptr)++) {
-		if (!lastesc && **iptr == ')')
-			break;		/* unescaped ) is the end */
-		if (!lastesc && **iptr == '\\') {
-			lastesc = 1;
-			continue;	/* skip \ if not escaped */
-		}
-		lastesc = 0;
-		cmd[len++] = **iptr;
-	}
-	if (**iptr == '\0')		/* no terminating ) */ {
-		free(cmd);
-		return (NULL);
-	}
-	(*iptr)++;			/* skip final ) */
-	cmd[len] = '\0';
-
-	/* First try in the new tree. */
-	so_find.cmd = cmd;
-	so = RB_FIND(status_out_tree, &c->status_new, &so_find);
-	if (so != NULL && so->out != NULL) {
-		free(cmd);
-		return (so->out);
-	}
-
-	/* If not found at all, start the job and add to the tree. */
-	if (so == NULL) {
-		job_run(cmd, NULL, -1, status_job_callback, status_job_free, c);
-		c->references++;
-
-		so = xmalloc(sizeof *so);
-		so->cmd = xstrdup(cmd);
-		so->out = NULL;
-		RB_INSERT(status_out_tree, &c->status_new, so);
-	}
-
-	/* Lookup in the old tree. */
-	so_find.cmd = cmd;
-	so = RB_FIND(status_out_tree, &c->status_old, &so_find);
-	free(cmd);
-	if (so != NULL)
-		return (so->out);
-	return (NULL);
-}
-
-/* Free job tree. */
-void
-status_free_jobs(struct status_out_tree *sotree)
-{
-	struct status_out	*so, *so_next;
-
-	so_next = RB_MIN(status_out_tree, sotree);
-	while (so_next != NULL) {
-		so = so_next;
-		so_next = RB_NEXT(status_out_tree, sotree, so);
-
-		RB_REMOVE(status_out_tree, sotree, so);
-		free(so->out);
-		free(so->cmd);
-		free(so);
-	}
-}
-
-/* Update jobs on status interval. */
-void
-status_update_jobs(struct client *c)
-{
-	/* Free the old tree. */
-	status_free_jobs(&c->status_old);
-
-	/* Move the new to old. */
-	memcpy(&c->status_old, &c->status_new, sizeof c->status_old);
-	RB_INIT(&c->status_new);
-}
-
-/* Free status job. */
-void
-status_job_free(void *data)
-{
-	struct client	*c = data;
-
-	c->references--;
-}
-
-/* Job has finished: save its result. */
-void
-status_job_callback(struct job *job)
-{
-	struct client		*c = job->data;
-	struct status_out	*so, so_find;
-	char			*line, *buf;
-	size_t			 len;
-
-	if (c->flags & CLIENT_DEAD)
-		return;
-
-	so_find.cmd = job->cmd;
-	so = RB_FIND(status_out_tree, &c->status_new, &so_find);
-	if (so == NULL || so->out != NULL)
-		return;
-
-	buf = NULL;
-	if ((line = evbuffer_readline(job->event->input)) == NULL) {
-		len = EVBUFFER_LENGTH(job->event->input);
-		buf = xmalloc(len + 1);
-		if (len != 0)
-			memcpy(buf, EVBUFFER_DATA(job->event->input), len);
-		buf[len] = '\0';
-	} else
-		buf = line;
-
-	so->out = buf;
-	server_status_client(c);
 }
 
 /* Return winlink status line entry and adjust gc as necessary. */
