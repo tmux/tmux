@@ -65,10 +65,9 @@ cmd_refresh_client_exec(struct cmd *self, struct cmd_q *cmdq)
 		}
 		if (tty_set_size(&c->tty, w, h))
 			recalculate_sizes();
-	} else if (args_has(args, 'S')) {
-		status_update_jobs(c);
+	} else if (args_has(args, 'S'))
 		server_status_client(c);
-	} else
+	else
 		server_redraw_client(c);
 
 	return (CMD_RETURN_NORMAL);

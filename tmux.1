@@ -2666,24 +2666,9 @@ will be expanded.
 It may also contain any of the following special character sequences:
 .Bl -column "Character pair" "Replaced with" -offset indent
 .It Sy "Character pair" Ta Sy "Replaced with"
-.It Li "#(shell-command)" Ta "First line of the command's output"
 .It Li "#[attributes]" Ta "Colour or attribute change"
 .It Li "##" Ta "A literal" Ql #
 .El
-.Pp
-The #(shell-command) form executes
-.Ql shell-command
-and inserts the first line of its output.
-Note that shell commands are only executed once at the interval specified by
-the
-.Ic status-interval
-option: if the status line is redrawn in the meantime, the previous result is
-used.
-Shell commands are executed with the
-.Nm
-global environment set (see the
-.Sx ENVIRONMENT
-section).
 .Pp
 For details on how the names and titles can be set see the
 .Sx "NAMES AND TITLES"
@@ -3248,6 +3233,23 @@ by an
 a number and a colon, so
 .Ql #{=10:pane_title}
 will include at most the first 10 characters of the pane title.
+.Pp
+In addition, the first line of a shell command's output may be inserted using
+.Ql #() .
+For example,
+.Ql #(uptime)
+will insert the system's uptime.
+When constructing formats,
+.Nm
+does not wait for
+.Ql #()
+commands to finish; instead, the previous result from running the same command is used,
+or a placeholder if the command has not been run before.
+Commands are executed with the
+.Nm
+global environment set (see the
+.Sx ENVIRONMENT
+section).
 .Pp
 The following variables are available, where appropriate:
 .Bl -column "XXXXXXXXXXXXXXXXXXX" "XXXXX"

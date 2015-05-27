@@ -36,6 +36,9 @@
  * string.
  */
 
+void	 format_job_callback(struct job *);
+const char *format_job_get(struct format_tree *, const char *);
+
 int	 format_replace(struct format_tree *, const char *, size_t, char **,
 	     size_t *, size_t *);
 char	*format_time_string(time_t);
@@ -47,6 +50,32 @@ void	 format_defaults_client(struct format_tree *, struct client *);
 void	 format_defaults_winlink(struct format_tree *, struct session *,
 	     struct winlink *);
 
+/* Entry in format job tree. */
+struct format_job {
+	const char		*cmd;
+
+	time_t			 last;
+	char			*out;
+
+	struct job		*job;
+	int			 status;
+
+	RB_ENTRY(format_job)	 entry;
+};
+
+/* Format job tree. */
+int	format_job_cmp(struct format_job *, struct format_job *);
+RB_HEAD(format_job_tree, format_job) format_jobs = RB_INITIALIZER();
+RB_PROTOTYPE(format_job_tree, format_job, entry, format_job_cmp);
+RB_GENERATE(format_job_tree, format_job, entry, format_job_cmp);
+
+/* Format job tree comparison function. */
+int
+format_job_cmp(struct format_job *fj1, struct format_job *fj2)
+{
+	return (strcmp(fj1->cmd, fj2->cmd));
+}
+
 /* Entry in format tree. */
 struct format_entry {
 	char		       *key;
@@ -55,22 +84,22 @@ struct format_entry {
 	RB_ENTRY(format_entry)	entry;
 };
 
-/* Tree of format entries. */
+/* Format entry tree. */
 struct format_tree {
 	struct window	*w;
 	struct session	*s;
 
-	RB_HEAD(format_rb_tree, format_entry) tree;
+	int		 status;
+
+	RB_HEAD(format_entry_tree, format_entry) tree;
 };
+int	format_entry_cmp(struct format_entry *, struct format_entry *);
+RB_PROTOTYPE(format_entry_tree, format_entry, entry, format_entry_cmp);
+RB_GENERATE(format_entry_tree, format_entry, entry, format_entry_cmp);
 
-/* Format key-value replacement entry. */
-int	format_cmp(struct format_entry *, struct format_entry *);
-RB_PROTOTYPE(format_rb_tree, format_entry, entry, format_cmp);
-RB_GENERATE(format_rb_tree, format_entry, entry, format_cmp);
-
-/* Format tree comparison function. */
+/* Format entry tree comparison function. */
 int
-format_cmp(struct format_entry *fe1, struct format_entry *fe2)
+format_entry_cmp(struct format_entry *fe1, struct format_entry *fe2)
 {
 	return (strcmp(fe1->key, fe2->key));
 }
@@ -135,15 +164,118 @@ const char *format_lower[] = {
 	NULL		/* z */
 };
 
+/* Format job callback. */
+void
+format_job_callback(struct job *job)
+{
+	struct format_job	*fj = job->data;
+	char			*line, *buf;
+	size_t			 len;
+	struct client		*c;
+
+	fj->job = NULL;
+	free(fj->out);
+
+	if (WIFEXITED(job->status) && WEXITSTATUS(job->status) != 0) {
+		xasprintf(&fj->out, "<'%s' exited with %d>", fj->cmd,
+		    WEXITSTATUS(job->status));
+		return;
+	}
+	if (WIFSIGNALED(job->status)) {
+		xasprintf(&fj->out, "<'%s' got signal %d>", fj->cmd,
+		    WTERMSIG(job->status));
+		return;
+	}
+
+	buf = NULL;
+	if ((line = evbuffer_readline(job->event->input)) == NULL) {
+		len = EVBUFFER_LENGTH(job->event->input);
+		buf = xmalloc(len + 1);
+		if (len != 0)
+			memcpy(buf, EVBUFFER_DATA(job->event->input), len);
+		buf[len] = '\0';
+	} else
+		buf = line;
+	fj->out = buf;
+
+	if (fj->status) {
+		TAILQ_FOREACH(c, &clients, entry)
+		    server_status_client(c);
+		fj->status = 0;
+	}
+}
+
+/* Find a job. */
+const char *
+format_job_get(struct format_tree *ft, const char *cmd)
+{
+	struct format_job	fj0, *fj;
+
+	fj0.cmd = cmd;
+	if ((fj = RB_FIND(format_job_tree, &format_jobs, &fj0)) == NULL)
+	{
+		fj = xcalloc(1, sizeof *fj);
+		fj->cmd = xstrdup(cmd);
+		fj->status = ft->status;
+
+		xasprintf(&fj->out, "<'%s' not ready>", fj->cmd);
+
+		RB_INSERT(format_job_tree, &format_jobs, fj);
+	}
+
+	if (fj->job == NULL && fj->last != time(NULL)) {
+		fj->job = job_run(fj->cmd, NULL, -1, format_job_callback,
+		    NULL, fj);
+		if (fj->job == NULL) {
+			free(fj->out);
+			xasprintf(&fj->out, "<'%s' didn't start>", fj->cmd);
+		}
+	}
+	fj->last = time(NULL);
+
+	return (fj->out);
+}
+
+/* Remove old jobs. */
+void
+format_clean(void)
+{
+	struct format_job	*fj, *fj1;
+	time_t			 now;
+
+	now = time(NULL);
+	RB_FOREACH_SAFE(fj, format_job_tree, &format_jobs, fj1) {
+		if (fj->last > now || now - fj->last < 3600)
+			continue;
+		RB_REMOVE(format_job_tree, &format_jobs, fj);
+
+		if (fj->job != NULL)
+			job_free(fj->job);
+
+		free((void*)fj->cmd);
+		free(fj->out);
+
+		free(fj);
+	}
+}
+
 /* Create a new tree. */
 struct format_tree *
 format_create(void)
 {
+	return (format_create_status(0));
+}
+
+/* Create a new tree for the status line. */
+struct format_tree *
+format_create_status(int status)
+{
 	struct format_tree	*ft;
-	char			 host[HOST_NAME_MAX+1], *ptr;
+	char			 host[HOST_NAME_MAX + 1], *ptr;
 
 	ft = xcalloc(1, sizeof *ft);
 	RB_INIT(&ft->tree);
+	ft->status = status;
 
 	if (gethostname(host, sizeof host) == 0) {
 		format_add(ft, "host", "%s", host);
@@ -161,8 +293,8 @@ format_free(struct format_tree *ft)
 {
 	struct format_entry	*fe, *fe1;
 
-	RB_FOREACH_SAFE(fe, format_rb_tree, &ft->tree, fe1) {
-		RB_REMOVE(format_rb_tree, &ft->tree, fe);
+	RB_FOREACH_SAFE(fe, format_entry_tree, &ft->tree, fe1) {
+		RB_REMOVE(format_entry_tree, &ft->tree, fe);
 		free(fe->value);
 		free(fe->key);
 		free(fe);
@@ -186,7 +318,7 @@ format_add(struct format_tree *ft, const char *key, const char *fmt, ...)
 	xvasprintf(&fe->value, fmt, ap);
 	va_end(ap);
 
-	fe_now = RB_INSERT(format_rb_tree, &ft->tree, fe);
+	fe_now = RB_INSERT(format_entry_tree, &ft->tree, fe);
 	if (fe_now != NULL) {
 		free(fe_now->value);
 		fe_now->value = fe->value;
@@ -225,7 +357,7 @@ format_find(struct format_tree *ft, const char *key)
 	}
 
 	fe_find.key = (char *) key;
-	fe = RB_FIND(format_rb_tree, &ft->tree, &fe_find);
+	fe = RB_FIND(format_entry_tree, &ft->tree, &fe_find);
 	if (fe == NULL)
 		return (NULL);
 	return (fe->value);
@@ -359,9 +491,9 @@ format_expand_time(struct format_tree *ft, const char *fmt, time_t t)
 char *
 format_expand(struct format_tree *ft, const char *fmt)
 {
-	char		*buf;
+	char		*buf, *tmp;
 	const char	*ptr, *s;
-	size_t		 off, len, n;
+	size_t		 off, len, n, slen;
 	int     	 ch, brackets;
 
 	if (fmt == NULL)
@@ -384,6 +516,34 @@ format_expand(struct format_tree *ft, const char *fmt)
 
 		ch = (u_char) *fmt++;
 		switch (ch) {
+		case '(':
+			brackets = 1;
+			for (ptr = fmt; *ptr != '\0'; ptr++) {
+				if (*ptr == '(')
+					brackets++;
+				if (*ptr == ')' && --brackets == 0)
+					break;
+			}
+			if (*ptr != ')' || brackets != 0)
+				break;
+			n = ptr - fmt;
+
+			tmp = xmalloc(n + 1);
+			memcpy(tmp, fmt, n);
+			tmp[n] = '\0';
+
+			s = format_job_get(ft, tmp);
+			slen = strlen(s);
+
+			while (len - off < slen + 1) {
+				buf = xreallocarray(buf, 2, len);
+				len *= 2;
+			}
+			memcpy(buf + off, s, slen);
+			off += slen;
+
+			fmt += n + 1;
+			continue;
 		case '{':
 			brackets = 1;
 			for (ptr = fmt; *ptr != '\0'; ptr++) {
