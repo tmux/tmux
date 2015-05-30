@@ -254,7 +254,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (groupwith != NULL) {
 		session_group_add(groupwith, s);
 		session_group_synchronize_to(s);
-		session_select(s, RB_ROOT(&s->windows)->idx);
+		session_select(s, RB_MIN(winlinks, &s->windows)->idx);
 	}
 
 	/*

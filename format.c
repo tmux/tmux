@@ -176,17 +176,6 @@ format_job_callback(struct job *job)
 	fj->job = NULL;
 	free(fj->out);
 
-	if (WIFEXITED(job->status) && WEXITSTATUS(job->status) != 0) {
-		xasprintf(&fj->out, "<'%s' exited with %d>", fj->cmd,
-		    WEXITSTATUS(job->status));
-		return;
-	}
-	if (WIFSIGNALED(job->status)) {
-		xasprintf(&fj->out, "<'%s' got signal %d>", fj->cmd,
-		    WTERMSIG(job->status));
-		return;
-	}
-
 	buf = NULL;
 	if ((line = evbuffer_readline(job->event->input)) == NULL) {
 		len = EVBUFFER_LENGTH(job->event->input);
@@ -491,7 +480,7 @@ format_expand_time(struct format_tree *ft, const char *fmt, time_t t)
 char *
 format_expand(struct format_tree *ft, const char *fmt)
 {
-	char		*buf, *tmp;
+	char		*buf, *tmp, *cmd;
 	const char	*ptr, *s;
 	size_t		 off, len, n, slen;
 	int     	 ch, brackets;
@@ -531,9 +520,13 @@ format_expand(struct format_tree *ft, const char *fmt)
 			tmp = xmalloc(n + 1);
 			memcpy(tmp, fmt, n);
 			tmp[n] = '\0';
+			cmd = format_expand(ft, tmp);
 
-			s = format_job_get(ft, tmp);
+			s = format_job_get(ft, cmd);
 			slen = strlen(s);
+
+			free(cmd);
+			free(tmp);
 
 			while (len - off < slen + 1) {
 				buf = xreallocarray(buf, 2, len);
