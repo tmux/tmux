@@ -1,5 +1,4 @@
 #!/bin/sh
-# $Id$
 
 if [ "x$(uname)" = "xOpenBSD" ]; then
 	[ -z "$AUTOMAKE_VERSION" ] && export AUTOMAKE_VERSION=1.10
