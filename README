@@ -4,8 +4,7 @@ tmux is a "terminal multiplexer", it enables a number of terminals (or windows)
 to be accessed and controlled from a single terminal. tmux is intended to be a
 simple, modern, BSD-licensed alternative to programs such as GNU screen.
 
-This release runs on OpenBSD, FreeBSD, NetBSD, Linux and OS X and may still
-run on Solaris and AIX (although they haven't been tested in a while).
+This release runs on OpenBSD, FreeBSD, NetBSD, Linux, OS X and Solaris.
 
 tmux depends on libevent 2.x. Download it from:
 
@@ -25,7 +24,7 @@ To get and build the latest from version control:
 
 For more information see https://sourceforge.net/scm/?type=git&group_id=200378
 and http://git-scm.com. Patches should be sent by email to the mailing list at
-tmux-users@lists.sourceforge.net.
+tmux-users@googlegroups.com.
 
 For documentation on using tmux, see the tmux.1 manpage. It can be viewed from
 the source tree with:
@@ -41,20 +40,22 @@ directory.
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
 
-tmux mailing lists are available. Visit:
+tmux mailing lists are available. For general discussion and bug reports:
 
-	https://sourceforge.net/mail/?group_id=200378
+	https://groups.google.com/forum/#!forum/tmux-users
+
+And for Git commit emails:
+
+	https://groups.google.com/forum/#!forum/tmux-git
 
 Bug reports, feature suggestions and especially code contributions are most
 welcome. Please send by email to:
 
-	tmux-users@lists.sourceforge.net
+	tmux-users@googlegroups.com
 
 This file and the CHANGES, FAQ and TODO files are licensed under the ISC
 license. Files under examples/ remain copyright their authors unless otherwise
 stated in the file but permission has been received to distribute them with
 tmux. All other files have a license and copyright notice at their start.
 
--- Nicholas Marriott <nicm@users.sf.net>
-
-$Id$
+-- Nicholas Marriott <nicholas.marriott@gmail.com>

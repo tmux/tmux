@@ -108,8 +108,8 @@ Check the latest version of tmux from Git to see if the problem is still
 reproducible.  Sometimes the length of time between releases means a lot of
 fixes can be sitting in Git and the problem might already be fixed.
 
-Please send bug reports by email to nicm@users.sourceforge.net or
-tmux-users@lists.sourceforge.net. Please include as much of the following
+Please send bug reports by email to nicholas.marriott@gmail.com or
+tmux-users@googlegroups.com. Please include as much of the following
 information as possible:
 
 - the version of tmux you are running;
@@ -123,7 +123,7 @@ information as possible:
 
 * Why doesn't tmux do $x?
 
-Please send feature requests by email to nicm@users.sourceforge.net.
+Please send feature requests by email to tmux-users@googlegroups.com.
 
 * Why do you use the screen terminal description inside tmux? It sucks.
 

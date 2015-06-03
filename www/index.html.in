@@ -17,7 +17,7 @@
 		<li><a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/FAQ">FAQ</a></li>
 		<li><a href="https://sourceforge.net/p/tmux/tmux-code/ci/master/tree/">Source Code</a></li>
 		<li><a href="http://sf.net/projects/tmux">SourceForge Page</a></li>
-		<li><a href="https://lists.sourceforge.net/lists/listinfo/tmux-users">Mailing List</a></li>
+		<li><a href="https://groups.google.com/forum/#!forum/tmux-users">Mailing List</a></li>
 		<li><a href="irc://irc.freenode.net/tmux">IRC Channel</a></li>
 		</ul>
 	    </div>
@@ -44,7 +44,7 @@ and
 <a href="http://invisible-island.net/ncurses/">ncurses</a>.</p>
 
 <p>For support contact the
-<a href="mailto:tmux-users@lists.sf.net">tmux-users@lists.sf.net</a>
+<a href="mailto:tmux-users@googlegroups.com">tmux-users@googlegroups.com</a>
 mailing list or IRC channel
 <a href="irc://irc.freenode.net/tmux">#tmux on freenode</a>.</p>
 
