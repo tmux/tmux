@@ -1924,5 +1924,3 @@ The list of older changes is below.
   emacs) that don't require scrolling regions (ESC[r) mostly work fine
   (including mutt, emacs). No status bar yet and no key remapping or other
   customisation.
-
-$Id$

@@ -461,5 +461,3 @@ Or from inside tmux by detaching individual clients with C-b D or all
 using:
 
 	C-b : attach -d
-
-$Id$
