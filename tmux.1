@@ -2273,21 +2273,19 @@ command),
 a server option with
 .Fl s ,
 otherwise a session option.
-.Pp
 If
 .Fl g
-is specified, the global session or window option is set.
+is given, the global session or window option is set.
 The
 .Fl u
 flag unsets an option, so a session inherits the option from the global
-options.
-It is not possible to unset a global option.
+options (or with
+.Fl g ,
+restores a global option to the default).
 .Pp
 The
 .Fl o
-flag prevents setting an option that is already set.
-.Pp
-The
+flag prevents setting an option that is already set and
 .Fl q
 flag suppresses errors about unknown options.
 .Pp
