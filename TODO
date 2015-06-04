@@ -32,6 +32,9 @@
 	* flag to choose-* for sort order
 	* choose mode would be better per client than per window?
 	* two choices (first one then second, for swap-pane and join-pane)
+	* choose modes should ditch the key bindings and just have fixed keys, and
+          be more customized to their purpose (d to delete a buffer for choose-buffer,
+          a preview of buffer contents, etc)
 
 - improve monitor-*:
 	* straighten out rules for multiple clients
@@ -55,6 +58,7 @@
 	* message display
 	* prompt input
 	* multibyte key input
+	* searching in copy mode
 
 - copy/paste improvements:
 	* incremental searching
@@ -119,3 +123,4 @@
 	  environments
 	* multiline status line?
 	* customizable command aliases
+	* automatic pane logging
