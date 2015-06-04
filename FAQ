@@ -357,8 +357,8 @@ bind x set lock-command '/usr/bin/vlock' \; lock-client \; set lock-command 'tpu
 GNU screen does not support italics and the "screen" terminfo description uses
 the italics escape sequence incorrectly.
 
-If default-terminal is set to "screen" or matches "screen-*", tmux will behave
-like screen and italics will be disabled.
+As of tmux 2.1, if default-terminal is set to "screen" or matches "screen-*",
+tmux will behave like screen and italics will be disabled.
 
 To enable italics, create a new terminfo entry called "tmux" (some platforms
 may already have this, you can check with "infocmp tmux"):
