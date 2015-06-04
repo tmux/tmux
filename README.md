@@ -1,3 +1,5 @@
+![Oh My Zsh](http://tmux.github.io/logo.png)
+
 Welcome to tmux!
 
 tmux is a "terminal multiplexer", it enables a number of terminals (or windows)
@@ -6,9 +8,15 @@ simple, modern, BSD-licensed alternative to programs such as GNU screen.
 
 This release runs on OpenBSD, FreeBSD, NetBSD, Linux, OS X and Solaris.
 
+##Getting Started
+
+###Prerequisites
+
 tmux depends on libevent 2.x. Download it from:
 
 	http://www.monkey.org/~provos/libevent/
+
+###Basic Installation
 
 To build tmux from a release tarball, do:
 
@@ -25,6 +33,8 @@ To get and build the latest from version control:
 For more information see http://git-scm.com. Patches should be sent by email to
 the mailing list at tmux-users@googlegroups.com.
 
+##Using tmux
+
 For documentation on using tmux, see the tmux.1 manpage. It can be viewed from
 the source tree with:
 
@@ -35,6 +45,8 @@ slightly out of date) guide is available in the OpenBSD FAQ at
 http://www.openbsd.org/faq/faq7.html#tmux. A rough todo list is in the TODO
 file and some example configurations and a Vim syntax file are in the examples
 directory.
+
+###Contributing
 
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
