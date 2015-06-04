@@ -17,14 +17,13 @@ To build tmux from a release tarball, do:
 
 To get and build the latest from version control:
 
-	$ git clone git://git.code.sf.net/p/tmux/tmux-code tmux
+	$ git clone https://github.com/tmux/tmux.git
 	$ cd tmux
 	$ sh autogen.sh
 	$ ./configure && make
 
-For more information see https://sourceforge.net/scm/?type=git&group_id=200378
-and http://git-scm.com. Patches should be sent by email to the mailing list at
-tmux-users@googlegroups.com.
+For more information see http://git-scm.com. Patches should be sent by email to
+the mailing list at tmux-users@googlegroups.com.
 
 For documentation on using tmux, see the tmux.1 manpage. It can be viewed from
 the source tree with:
