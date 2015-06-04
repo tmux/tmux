@@ -18,7 +18,7 @@ repository will take at least that long to appear in this git repository.
 OpenBSD code).
 
 It is assumed that the person doing the sync has read/write access to the
-tmux repository on SourceForge already.
+tmux repository on GitHub already.
 
 If you've never used git before, git tracks meta-data about the committer
 and the author, as part of a commit, hence:
