@@ -22,8 +22,7 @@ if IS_GLIBC
 CFLAGS += -D_GNU_SOURCE
 endif
 
-# Set flags for gcc. gcc4 whines abouts silly stuff so it needs slightly
-# different flags.
+# Set flags for gcc.
 if IS_GCC
 CFLAGS += -std=gnu99 -O2
 if IS_DEBUG
@@ -32,17 +31,10 @@ CFLAGS += -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 CFLAGS += -Wundef -Wbad-function-cast -Winline -Wcast-align
-CFLAGS += -Wdeclaration-after-statement
+CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign
 CPPFLAGS += -DDEBUG
 endif
-if IS_GCC4
 CPPFLAGS += -iquote.
-if IS_DEBUG
-CFLAGS += -Wno-pointer-sign
-endif
-else
-CPPFLAGS += -I. -I-
-endif
 endif
 
 # Set flags for Solaris.
