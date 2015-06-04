@@ -17,9 +17,6 @@ repository will take at least that long to appear in this git repository.
 (It might take longer, depending on the CVS mirror used to import the
 OpenBSD code).
 
-It is assumed that the person doing the sync has read/write access to the
-tmux repository on SourceForge already.
-
 If you've never used git before, git tracks meta-data about the committer
 and the author, as part of a commit, hence:
 
@@ -154,13 +151,13 @@ Release tmux for next version
 
 3. Tag with:
 
-   % git tag -a 1.X
+   % git tag -a 2.X
 
-   Where "1.X" is the next version.
+   Where "2.X" is the next version.
 
    Push the tag out with:
 
-   % git push 1.X
+   % git push 2.X
 
 4. Build the tarball with 'make dist'.
 
