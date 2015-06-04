@@ -47,7 +47,7 @@ cmd_swap_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window		*w;
 
 	target_src = args_get(args, 's');
-	if ((wl_src = cmd_find_window(cmdq, target_src, &src)) == NULL)
+	if ((wl_src = cmd_find_window_marked(cmdq, target_src, &src)) == NULL)
 		return (CMD_RETURN_ERROR);
 	target_dst = args_get(args, 't');
 	if ((wl_dst = cmd_find_window(cmdq, target_dst, &dst)) == NULL)

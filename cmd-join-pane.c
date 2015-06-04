@@ -74,7 +74,7 @@ join_pane(struct cmd *self, struct cmd_q *cmdq, int not_same_window)
 	dst_idx = dst_wl->idx;
 	server_unzoom_window(dst_w);
 
-	src_wl = cmd_find_pane(cmdq, args_get(args, 's'), NULL, &src_wp);
+	src_wl = cmd_find_pane_marked(cmdq, args_get(args, 's'), NULL, &src_wp);
 	if (src_wl == NULL)
 		return (CMD_RETURN_ERROR);
 	src_w = src_wl->window;
