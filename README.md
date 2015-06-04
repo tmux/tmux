@@ -1,6 +1,6 @@
 ![tmux](http://tmux.github.io/logo.png)
 
-[![Build Status](https://travis-ci.org/ThomasAdam/tmux.svg?branch=master)](https://travis-ci.org/ThomasAdam/tmux) 
+[![Build Status](https://travis-ci.org/tmux/tmux.svg?branch=master)](https://travis-ci.org/tmux/tmux)
 
 ##Welcome to tmux!
 
