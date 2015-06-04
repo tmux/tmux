@@ -1,10 +1,10 @@
 Preamble
 ========
 
-Tmux on SourceForge has two git repositories [1] "tmux-code" and "tmux-openbsd".
+Tmux portable relies on  repositories "tmux" and "tmux-openbsd".
 Here's a description of them:
 
-* "tmux-code" is the portable version, the one which contains code for other
+* "tmux" is the portable version, the one which contains code for other
   operating systems, and autotools, etc., which isn't found or needed in the
   OpenBSD base system.
 
@@ -18,7 +18,7 @@ repository will take at least that long to appear in this git repository.
 OpenBSD code).
 
 It is assumed that the person doing the sync has read/write access to the
-tmux-code repository on SourceForge already.
+tmux repository on SourceForge already.
 
 If you've never used git before, git tracks meta-data about the committer
 and the author, as part of a commit, hence:
@@ -37,11 +37,11 @@ this information has ever been set before.
 Cloning repositories
 ====================
 
-This involves having both tmux-code and tmux-openbsd cloned, as in:
+This involves having both tmux and tmux-openbsd cloned, as in:
 
 % cd /some/where/useful
-% git clone ssh://${USER}@git.code.sf.net/p/tmux/tmux
-% git clone ssh://${USER}@git.code.sf.net/p/tmux/tmux-openbsd
+% git clone https://github.com/tmux/tmux.git
+% git clone https://github.com/ThomasAdam/tmux-openbsd.git
 
 Note that you do not need additional checkouts to manage the sync -- an
 existing clone of either repositories will suffice.  So if you already have
@@ -50,56 +50,56 @@ these checkouts existing, skip that.
 Adding in git-remotes
 =====================
 
-Because the portable "tmux-code" git repository and the "tmux-openbsd"
+Because the portable "tmux" git repository and the "tmux-openbsd"
 repository do not inherently share any history between each other, the
 history has been faked between them.  This "faking of history" is something
 which has to be told to git for the purposes of comparing the "tmux" and
 "tmux-openbsd" repositories for syncing.  To do this, we must reference the
-clone of the "tmux-openbsd" repository from the "tmux-code" repository, as
+clone of the "tmux-openbsd" repository from the "tmux" repository, as
 shown by the following command:
 
-% cd /path/to/tmux-code
+% cd /path/to/tmux
 % git remote add obsd-tmux file:///path/to/tmux-openbsd
 
 So that now, the remote "obsd-tmux" can be used to reference branches and
 commits from the "tmux-openbsd" repository, but from the context of the
-portable "tmux-code" repository, which makes sense because it's the "tmux"
+portable "tmux" repository, which makes sense because it's the "tmux"
 repository which will have the updates applied to them.
 
 Fetching updates
 ================
 
 To ensure the latest commits from "tmux-openbsd" can be found from within
-"tmux-code", we have to ensure the "master" branch from "tmux-openbsd" is
-up-to-date first, and then reference that update in "tmux-code", as in:
+"tmux", we have to ensure the "master" branch from "tmux-openbsd" is
+up-to-date first, and then reference that update in "tmux", as in:
 
 % cd /path/to/tmux-openbsd
 % git checkout master
 % git pull
 
-Then back in "tmux-code":
+Then back in "tmux":
 
-% cd /path/to/tmux-code
-% git fetch obsd-tmux-code
+% cd /path/to/tmux
+% git fetch obsd-tmux
 
 Creating the necessary branches
 ===============================
 
-Now that "tmux-code" can see commits and branches from "tmux-openbsd" by way
+Now that "tmux" can see commits and branches from "tmux-openbsd" by way
 of the remote name "obsd-tmux", we can now create the master branch from
-"tmux-openbsd" in the "tmux-code" repository:
+"tmux-openbsd" in the "tmux" repository:
 
 % git checkout -b obsd-master obsd-tmux/master
 
 Adding in the fake history points
 ================================= 
 
-To tie both the "master" branch from "tmux-code" and the "obsd-master"
+To tie both the "master" branch from "tmux" and the "obsd-master"
 branch from "tmux-openbsd" together, the fake history points added to the
-"tmux-code" repository need to be added.  To do this, we must add an
+"tmux" repository need to be added.  To do this, we must add an
 additional refspec line, as in:
 
-% cd /path/to/tmux-code
+% cd /path/to/tmux
 % git config --add remote.origin.fetch '+refs/replace/*:refs/replace/*'
 % git fetch origin
 
@@ -110,7 +110,7 @@ Make sure the "master" branch is checked out:
 
 % git checkout master
 
-The following will show commits on OpenBSD not yet synched with "tmux-code":
+The following will show commits on OpenBSD not yet synched with "tmux":
 
 % git log master..obsd-master
 
@@ -162,22 +162,18 @@ Release tmux for next version
 
    % git push 1.X
 
-4. Build the tarball with make dist.  Now that it's using autoconf there
-   shouldn't be any weird files (such as the original and rejection files
-   from patch(1)) but it doesn't hurt taking a quick look at it.
+4. Build the tarball with 'make dist'.
 
-5. Split the release changes into a new file.  This should be named
-   tmux-$VERSION-readme to make sourceforge show it automagically in specific
-   parts of the project page.
+5. Check the tarball.  If it's good, go here to select the tag just pushed:
 
-6. Upload the tarball and the above file. Make the tarball the default
-   download by selecting all operating systems under the file details.
+   https://github.com/tmux/tmux/tags
 
-7. Run make update-index.html upload-index.html to replace %%VERSION%%.
+   Click the "Add release notes", upload the tarball and add a link in the
+   description field to the CHANGES file.
 
-8. Bump version in configure.ac and uncomment "found_debug=yes" to create
-   a debug build by default.
+7. Clone the tmux.github.io repository, and change the RELEASE version in
+   the Makefile.  Commit it, and run 'make' to replace %%VERSION%%.  Push
+   the result out.
 
-9. Update freshmeat.
-
-[1] https://sourceforge.net/p/tmux/_list/git
+8. Bump version in tmu/tmux.git configure.ac and uncomment "found_debug=yes" to
+   create a debug build by default.
