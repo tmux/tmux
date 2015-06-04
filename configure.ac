@@ -1,9 +1,7 @@
 # $Id$
 
-# Miscellaneous autofoo bullshit.
+# Miscellaneous bits.
 AC_INIT(tmux, 2.1)
-RELEASE=2.0
-AC_SUBST(RELEASE)
 
 AC_CONFIG_AUX_DIR(etc)
 AM_INIT_AUTOMAKE([foreign subdir-objects])

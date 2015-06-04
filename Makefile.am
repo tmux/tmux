@@ -248,22 +248,3 @@ install-exec-hook:
 	$(mkdir_p) $(DESTDIR)$(mandir)/man1
 	$(INSTALL_DATA) $(srcdir)/tmux.1.@MANFORMAT@ \
 		$(DESTDIR)$(mandir)/man1/tmux.1
-
-# Update SF web site.
-upload-index.html: update-index.html
-	scp www/index.html www/main.css www/images/*.png \
-		www/logo.png www/favicon.ico \
-		${USER},tmux@web.sf.net:/home/groups/t/tm/tmux/htdocs
-	rm -f www/index.html www/images/small-*
-
-update-index.html:
-	(cd www/images && \
-		rm -f small-* && \
-		for i in *.png; do \
-			convert "$$i" \
-				-resize '150x' -resize 'x100<' \
-				-gravity center -crop 150x100+0+0 +repage \
-				"small-$$i"; \
-		done \
-	)
-	sed "s/%%RELEASE%%/${RELEASE}/g" www/index.html.in >www/index.html
