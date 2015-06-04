@@ -177,6 +177,7 @@ key_bindings_init(void)
 		"bind ? list-keys",
 		"bind D choose-client",
 		"bind L switch-client -l",
+		"bind M select-pane -M",
 		"bind [ copy-mode",
 		"bind ] paste-buffer",
 		"bind c new-window",
@@ -184,6 +185,7 @@ key_bindings_init(void)
 		"bind f command-prompt \"find-window '%%'\"",
 		"bind i display-message",
 		"bind l last-window",
+		"bind m select-pane -m",
 		"bind n next-window",
 		"bind o select-pane -t:.+",
 		"bind p previous-window",
@@ -222,6 +224,7 @@ key_bindings_init(void)
 		"bind -n MouseDrag1Border resize-pane -M",
 		"bind -n MouseDown1Status select-window -t=",
 		"bind -n MouseDrag1Pane if -Ft= '#{mouse_any_flag}' 'if -Ft= \"#{pane_in_mode}\" \"copy-mode -M\" \"send-keys -M\"' 'copy-mode -M'",
+		"bind -n MouseDown3Pane select-pane -mt=",
 	};
 	u_int		 i;
 	struct cmd_list	*cmdlist;

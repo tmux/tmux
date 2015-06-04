@@ -29,6 +29,7 @@
 #define CMD_FIND_PREFER_UNATTACHED 0x1
 #define CMD_FIND_QUIET 0x2
 #define CMD_FIND_WINDOW_INDEX 0x4
+#define CMD_FIND_DEFAULT_MARKED 0x8
 
 enum cmd_find_type {
 	CMD_FIND_PANE,
@@ -759,7 +760,14 @@ cmd_find_target(struct cmd_q *cmdq, const char *target, enum cmd_find_type type,
 
 	/* Find current state. */
 	cmd_find_clear_state(&current, cmdq, flags);
-	if (cmd_find_current_session(&current) != 0) {
+	if (server_check_marked() && (flags & CMD_FIND_DEFAULT_MARKED)) {
+		current.s = marked_session;
+		current.wl = marked_winlink;
+		current.idx = current.wl->idx;
+		current.w = current.wl->window;
+		current.wp = marked_window_pane;
+	}
+	if (current.s == NULL && cmd_find_current_session(&current) != 0) {
 		if (~flags & CMD_FIND_QUIET)
 			cmdq_error(cmdq, "no current session");
 		goto error;
@@ -798,9 +806,24 @@ cmd_find_target(struct cmd_q *cmdq, const char *target, enum cmd_find_type type,
 		}
 		return (&fs);
 	}
-	copy = xstrdup(target);
+
+	/* Marked target is a plain ~ or {marked}. */
+	if (strcmp(target, "~") == 0 || strcmp(target, "{marked}") == 0) {
+		if (!server_check_marked()) {
+			if (~flags & CMD_FIND_QUIET)
+				cmdq_error(cmdq, "no marked target");
+			goto error;
+		}
+		fs.s = marked_session;
+		fs.wl = marked_winlink;
+		fs.idx = fs.wl->idx;
+		fs.w = fs.wl->window;
+		fs.wp = marked_window_pane;
+		return (&fs);
+	}
 
 	/* Find separators if they exist. */
+	copy = xstrdup(target);
 	colon = strchr(copy, ':');
 	if (colon != NULL)
 		*colon++ = '\0';
@@ -1053,6 +1076,24 @@ cmd_find_window(struct cmd_q *cmdq, const char *target, struct session **sp)
 	return (fs->wl);
 }
 
+/* Find the target window, defaulting to marked rather than current. */
+struct winlink *
+cmd_find_window_marked(struct cmd_q *cmdq, const char *target,
+    struct session **sp)
+{
+	struct cmd_find_state	*fs;
+	int			 flags = CMD_FIND_DEFAULT_MARKED;
+
+	fs = cmd_find_target(cmdq, target, CMD_FIND_WINDOW, flags);
+	cmd_find_log_state(__func__, target, fs);
+	if (fs == NULL)
+		return (NULL);
+
+	if (sp != NULL)
+		*sp = fs->s;
+	return (fs->wl);
+}
+
 /* Find the target pane and report an error and return NULL. */
 struct winlink *
 cmd_find_pane(struct cmd_q *cmdq, const char *target, struct session **sp,
@@ -1061,6 +1102,26 @@ cmd_find_pane(struct cmd_q *cmdq, const char *target, struct session **sp,
 	struct cmd_find_state	*fs;
 
 	fs = cmd_find_target(cmdq, target, CMD_FIND_PANE, 0);
+	cmd_find_log_state(__func__, target, fs);
+	if (fs == NULL)
+		return (NULL);
+
+	if (sp != NULL)
+		*sp = fs->s;
+	if (wpp != NULL)
+		*wpp = fs->wp;
+	return (fs->wl);
+}
+
+/* Find the target pane, defaulting to marked rather than current. */
+struct winlink *
+cmd_find_pane_marked(struct cmd_q *cmdq, const char *target,
+    struct session **sp, struct window_pane **wpp)
+{
+	struct cmd_find_state	*fs;
+	int			 flags = CMD_FIND_DEFAULT_MARKED;
+
+	fs = cmd_find_target(cmdq, target, CMD_FIND_PANE, flags);
 	cmd_find_log_state(__func__, target, fs);
 	if (fs == NULL)
 		return (NULL);
