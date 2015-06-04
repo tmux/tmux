@@ -1,6 +1,8 @@
 ![tmux](http://tmux.github.io/logo.png)
 
-Welcome to tmux!
+[![Build Status](https://travis-ci.org/ThomasAdam/tmux.svg?branch=master)](https://travis-ci.org/ThomasAdam/tmux) 
+
+##Welcome to tmux!
 
 tmux is a "terminal multiplexer", it enables a number of terminals (or windows)
 to be accessed and controlled from a single terminal. tmux is intended to be a
@@ -46,7 +48,7 @@ http://www.openbsd.org/faq/faq7.html#tmux. A rough todo list is in the TODO
 file and some example configurations and a Vim syntax file are in the examples
 directory.
 
-###Contributing
+##Contributing
 
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
