@@ -352,42 +352,33 @@ lock(1) or vlock(1)) by using the following:
 
 bind x set lock-command '/usr/bin/vlock' \; lock-client \; set lock-command 'tput civis && read -s -n1'
 
-* vim displays reverse video instead of italics, while less displays italics
-  (or just regular text) instead of reverse. What's wrong?
+* I don't see italics! Or less and vim show italics and reverse the wrong way round!
 
-Screen's terminfo description lacks italics mode and has standout mode in its
-place, but using the same escape sequence that urxvt uses for italics. This
-means applications (like vim) looking for italics will not find it and might
-turn to reverse in its place, while applications (like less) asking for
-standout will end up with italics instead of reverse. To make applications
-aware that tmux supports italics and to use a proper escape sequence for
-standout, you'll need to create a new terminfo file with modified sgr, smso,
-rmso, sitm and ritm entries:
+GNU screen does not support italics and the "screen" terminfo description uses
+the italics escape sequence incorrectly.
 
-	$ mkdir $HOME/.terminfo/
-	$ screen_terminfo="screen"
-	$ infocmp "$screen_terminfo" | sed \
-	  -e 's/^screen[^|]*|[^,]*,/screen-it|screen with italics support,/' \
-	  -e 's/%?%p1%t;3%/%?%p1%t;7%/' \
-	  -e 's/smso=[^,]*,/smso=\\E[7m,/' \
-	  -e 's/rmso=[^,]*,/rmso=\\E[27m,/' \
-	  -e '$s/$/ sitm=\\E[3m, ritm=\\E[23m,/' > /tmp/screen.terminfo
-	$ tic /tmp/screen.terminfo
+If default-terminal is set to "screen" or matches "screen-*", tmux will behave
+like screen and italics will be disabled.
+
+To enable italics, create a new terminfo entry called "tmux" (some platforms
+may already have this, you can check with "infocmp tmux"):
+
+	$ cat <<EOF|tic -x -
+	tmux|tmux terminal multiplexer,
+		ritm=\E[23m, rmso=\E[27m, sitm=\E[3m, smso=\E[7m, Ms@,
+		use=xterm+tmux, use=screen,
+
+	tmux-256color|tmux with 256 colors,
+		use=xterm+256setaf, use=tmux,
+	EOF
+	$
 
 And tell tmux to use it in ~/.tmux.conf:
 	
-	set -g default-terminal "screen-it"
+	set -g default-terminal "tmux"
 
-If your terminal supports 256 colors, use:
-
-	$ screen_terminfo="screen-256color"
-
-instead of "screen". See the FAQ entry about 256 colors support for more info.
-Also note that tmux will still display reverse video on terminals that do not
-support italics.
-
-If your urxvt cannot display italics at all, make sure you have an italics
-capable font enabled, for example, add to ~/.Xdefaults:
+If using urxvt, make sure you have an italics capable font enabled. for
+example, add to ~/.Xdefaults:
 
 	urxvt.italicFont: xft:Bitstream Vera Sans Mono:italic:autohint=true
 
