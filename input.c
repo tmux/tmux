@@ -43,7 +43,7 @@
  *   pretty stupid but not supporting it is more trouble than it is worth.
  *
  * - Special handling for ESC inside a DCS to allow arbitrary byte sequences to
- *   be passed to the underlying teminal(s).
+ *   be passed to the underlying terminals.
  */
 
 /* Input parser cell. */
