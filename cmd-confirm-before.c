@@ -117,7 +117,7 @@ cmd_confirm_before_free(void *data)
 	struct cmd_confirm_before_data	*cdata = data;
 	struct client			*c = cdata->client;
 
-	c->references--;
+	server_client_deref(c);
 
 	free(cdata->cmd);
 	free(cdata);

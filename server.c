@@ -41,9 +41,7 @@
  * Main server functions.
  */
 
-/* Client list. */
 struct clients	 clients;
-struct clients	 dead_clients;
 
 int		 server_fd;
 int		 server_shutdown;
@@ -205,7 +203,6 @@ server_start(int lockfd, char *lockfile)
 	RB_INIT(&windows);
 	RB_INIT(&all_window_panes);
 	TAILQ_INIT(&clients);
-	TAILQ_INIT(&dead_clients);
 	RB_INIT(&sessions);
 	RB_INIT(&dead_sessions);
 	TAILQ_INIT(&session_groups);
@@ -325,7 +322,6 @@ void
 server_clean_dead(void)
 {
 	struct session	*s, *s1;
-	struct client	*c, *c1;
 
 	RB_FOREACH_SAFE(s, sessions, &dead_sessions, s1) {
 		if (s->references != 0)
@@ -333,13 +329,6 @@ server_clean_dead(void)
 		RB_REMOVE(sessions, &dead_sessions, s);
 		free(s->name);
 		free(s);
-	}
-
-	TAILQ_FOREACH_SAFE(c, &dead_clients, entry, c1) {
-		if (c->references != 0)
-			continue;
-		TAILQ_REMOVE(&dead_clients, c, entry);
-		free(c);
 	}
 }
 
