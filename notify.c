@@ -123,7 +123,7 @@ notify_drain(void)
 		if (ne->client != NULL)
 			server_client_unref(ne->client);
 		if (ne->session != NULL)
-			ne->session->references--;
+			session_unref(ne->session);
 		if (ne->window != NULL)
 			window_remove_ref(ne->window);
 

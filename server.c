@@ -58,7 +58,6 @@ int	server_create_socket(void);
 void	server_loop(void);
 int	server_should_shutdown(void);
 void	server_send_shutdown(void);
-void	server_clean_dead(void);
 void	server_accept_callback(int, short, void *);
 void	server_signal_callback(int, short, void *);
 void	server_child_signal(void);
@@ -204,7 +203,6 @@ server_start(int lockfd, char *lockfile)
 	RB_INIT(&all_window_panes);
 	TAILQ_INIT(&clients);
 	RB_INIT(&sessions);
-	RB_INIT(&dead_sessions);
 	TAILQ_INIT(&session_groups);
 	mode_key_init_trees();
 	key_bindings_init();
@@ -264,8 +262,6 @@ server_loop(void)
 
 		server_window_loop();
 		server_client_loop();
-
-		server_clean_dead();
 	}
 }
 
@@ -315,21 +311,6 @@ server_send_shutdown(void)
 
 	RB_FOREACH_SAFE(s, sessions, &sessions, s1)
 		session_destroy(s);
-}
-
-/* Free dead, unreferenced clients and sessions. */
-void
-server_clean_dead(void)
-{
-	struct session	*s, *s1;
-
-	RB_FOREACH_SAFE(s, sessions, &dead_sessions, s1) {
-		if (s->references != 0)
-			continue;
-		RB_REMOVE(sessions, &dead_sessions, s);
-		free(s->name);
-		free(s);
-	}
 }
 
 /* Update socket execute permissions based on whether sessions are attached. */
