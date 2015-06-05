@@ -6,12 +6,11 @@ CLEANFILES = tmux.1.mdoc tmux.1.man
 
 # Distribution tarball options.
 EXTRA_DIST = \
-	CHANGES FAQ README TODO COPYING examples compat \
+	CHANGES FAQ README TODO COPYING examples compat/*.[ch] \
 	array.h compat.h tmux.h osdep-*.c mdoc2man.awk tmux.1
 dist-hook:
 	make clean
 	grep "^#found_debug=" configure
-	find $(distdir) -name .svn -type d|xargs rm -Rf
 
 # Preprocessor flags.
 CPPFLAGS += @XOPEN_DEFINES@ -DTMUX_CONF="\"$(sysconfdir)/tmux.conf\""
