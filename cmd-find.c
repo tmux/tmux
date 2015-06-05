@@ -476,7 +476,7 @@ cmd_find_get_window_with_session(struct cmd_find_state *fs, const char *window)
 	}
 
 	/* Try as an offset. */
-	if (!exact && window[0] == '+' || window[0] == '-') {
+	if (!exact && (window[0] == '+' || window[0] == '-')) {
 		if (window[1] != '\0')
 			n = strtonum(window + 1, 1, INT_MAX, NULL);
 		else
