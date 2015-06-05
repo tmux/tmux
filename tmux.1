@@ -404,6 +404,14 @@ An
 pattern which is matched against the session name.
 .El
 .Pp
+If the session name is prefixed with a
+.Ql = : ,
+only an exact match is accepted (so
+.Ql =mysess
+will only match exactly
+.Ql mysess ,
+not
+.Ql mysession ) .
 If a single session is found, it is used as the target session; multiple matches
 produce an error.
 If a session is omitted, the current session is used if available; if no
@@ -440,6 +448,9 @@ As an
 pattern matched against the window name.
 .El
 .Pp
+Like sessions, a
+.Ql =
+prefix will do an exact match only.
 An empty window name specifies the next unused index if appropriate (for
 example the
 .Ic new-window
