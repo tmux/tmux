@@ -126,6 +126,8 @@ void	input_csi_dispatch_rm_private(struct input_ctx *);
 void	input_csi_dispatch_sm(struct input_ctx *);
 void	input_csi_dispatch_sm_private(struct input_ctx *);
 void	input_csi_dispatch_winops(struct input_ctx *);
+void	input_csi_dispatch_sgr_256(struct input_ctx *, int, u_int *);
+void	input_csi_dispatch_sgr_rgb(struct input_ctx *, int, u_int *);
 void	input_csi_dispatch_sgr(struct input_ctx *);
 int	input_dcs_dispatch(struct input_ctx *);
 int	input_utf8_open(struct input_ctx *);
@@ -1609,13 +1611,71 @@ input_csi_dispatch_winops(struct input_ctx *ictx)
 	}
 }
 
+/* Handle CSI SGR for 256 colours. */
+void
+input_csi_dispatch_sgr_256(struct input_ctx *ictx, int fgbg, u_int *i)
+{
+	struct grid_cell	*gc = &ictx->cell.cell;
+	int			 c;
+
+	(*i)++;
+	c = input_get(ictx, *i, 0, -1);
+	if (c == -1) {
+		if (fgbg == 38) {
+			gc->flags &= ~GRID_FLAG_FG256;
+			gc->fg = 8;
+		} else if (fgbg == 48) {
+			gc->flags &= ~GRID_FLAG_BG256;
+			gc->bg = 8;
+		}
+	} else {
+		if (fgbg == 38) {
+			gc->flags |= GRID_FLAG_FG256;
+			gc->fg = c;
+		} else if (fgbg == 48) {
+			gc->flags |= GRID_FLAG_BG256;
+			gc->bg = c;
+		}
+	}
+}
+
+/* Handle CSI SGR for RGB colours. */
+void
+input_csi_dispatch_sgr_rgb(struct input_ctx *ictx, int fgbg, u_int *i)
+{
+	struct grid_cell	*gc = &ictx->cell.cell;
+	int			 c, r, g, b;
+
+	(*i)++;
+	r = input_get(ictx, *i, 0, -1);
+	if (r == -1 || r > 255)
+		return;
+	(*i)++;
+	g = input_get(ictx, *i, 0, -1);
+	if (g == -1 || g > 255)
+		return;
+	(*i)++;
+	b = input_get(ictx, *i, 0, -1);
+	if (b == -1 || b > 255)
+		return;
+
+	c = colour_find_rgb(r, g, b);
+	if (fgbg == 38) {
+		gc->flags |= GRID_FLAG_FG256;
+		gc->fg = c;
+	} else if (fgbg == 48) {
+		gc->flags |= GRID_FLAG_BG256;
+		gc->bg = c;
+	}
+}
+
 /* Handle CSI SGR. */
 void
 input_csi_dispatch_sgr(struct input_ctx *ictx)
 {
 	struct grid_cell	*gc = &ictx->cell.cell;
 	u_int			 i;
-	int			 n, m;
+	int			 n;
 
 	if (ictx->param_list_len == 0) {
 		memcpy(gc, &grid_default_cell, sizeof *gc);
@@ -1627,28 +1687,13 @@ input_csi_dispatch_sgr(struct input_ctx *ictx)
 
 		if (n == 38 || n == 48) {
 			i++;
-			if (input_get(ictx, i, 0, -1) != 5)
-				continue;
-
-			i++;
-			m = input_get(ictx, i, 0, -1);
-			if (m == -1) {
-				if (n == 38) {
-					gc->flags &= ~GRID_FLAG_FG256;
-					gc->fg = 8;
-				} else if (n == 48) {
-					gc->flags &= ~GRID_FLAG_BG256;
-					gc->bg = 8;
-				}
-
-			} else {
-				if (n == 38) {
-					gc->flags |= GRID_FLAG_FG256;
-					gc->fg = m;
-				} else if (n == 48) {
-					gc->flags |= GRID_FLAG_BG256;
-					gc->bg = m;
-				}
+			switch (input_get(ictx, i, 0, -1)) {
+			case 2:
+				input_csi_dispatch_sgr_rgb(ictx, n, &i);
+				break;
+			case 5:
+				input_csi_dispatch_sgr_256(ictx, n, &i);
+				break;
 			}
 			continue;
 		}

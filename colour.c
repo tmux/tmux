@@ -281,12 +281,11 @@ const struct colour_rgb colour_to_256[] = {
 	{ 214, 0xff, 0xff, 0xd7 }, { 215, 0xff, 0xff, 0xff },
 };
 
-int	colour_rgb_cmp(const void *, const void *);
-int	colour_rgb_find(struct colour_rgb *);
+int	colour_cmp_rgb(const void *, const void *);
 
 /* Compare function for bsearch(). */
 int
-colour_rgb_cmp(const void *lhs0, const void *rhs0)
+colour_cmp_rgb(const void *lhs0, const void *rhs0)
 {
 	const struct colour_rgb *lhs = lhs0, *rhs = rhs0;
 
@@ -310,23 +309,22 @@ colour_rgb_cmp(const void *lhs0, const void *rhs0)
 
 /* Work out the nearest colour from the 256 colour set. */
 int
-colour_rgb_find(struct colour_rgb *rgb)
+colour_find_rgb(u_char r, u_char g, u_char b)
 {
-	struct colour_rgb	*found;
-	u_int			 distance, lowest, colour, i;
-	int			 r, g, b;
+	struct colour_rgb	rgb = { .r = r, .g = g, .b = b }, *found;
+	u_int			distance, lowest, colour, i;
 
-	found = bsearch(rgb, colour_to_256, nitems(colour_to_256),
-	    sizeof colour_to_256[0], colour_rgb_cmp);
+	found = bsearch(&rgb, colour_to_256, nitems(colour_to_256),
+	    sizeof colour_to_256[0], colour_cmp_rgb);
 	if (found != NULL)
 		return (16 + found->i);
 
 	colour = 16;
 	lowest = UINT_MAX;
 	for (i = 0; i < 240; i++) {
-		r = colour_from_256[i].r - rgb->r;
-		g = colour_from_256[i].g - rgb->g;
-		b = colour_from_256[i].b - rgb->b;
+		r = colour_from_256[i].r - rgb.r;
+		g = colour_from_256[i].g - rgb.g;
+		b = colour_from_256[i].b - rgb.b;
 
 		distance = r * r + g * g + b * b;
 		if (distance < lowest) {
@@ -409,20 +407,20 @@ colour_tostring(int c)
 int
 colour_fromstring(const char *s)
 {
-	const char		*errstr;
-	const char		*cp;
-	struct colour_rgb	 rgb;
-	int			 n;
+	const char	*errstr;
+	const char	*cp;
+	int		 n;
+	u_char		 r, g, b;
 
 	if (*s == '#' && strlen(s) == 7) {
 		for (cp = s + 1; isxdigit((u_char) *cp); cp++)
 			;
 		if (*cp != '\0')
 			return (-1);
-		n = sscanf(s + 1, "%2hhx%2hhx%2hhx", &rgb.r, &rgb.g, &rgb.b);
+		n = sscanf(s + 1, "%2hhx%2hhx%2hhx", &r, &g, &b);
 		if (n != 3)
 			return (-1);
-		return (colour_rgb_find(&rgb) | 0x100);
+		return (colour_find_rgb(r, g, b) | 0x100);
 	}
 
 	if (strncasecmp(s, "colour", (sizeof "colour") - 1) == 0) {

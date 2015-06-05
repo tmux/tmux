@@ -1953,6 +1953,7 @@ char	*xterm_keys_lookup(int);
 int	 xterm_keys_find(const char *, size_t, size_t *, int *);
 
 /* colour.c */
+int	 colour_find_rgb(u_char, u_char, u_char);
 void	 colour_set_fg(struct grid_cell *, int);
 void	 colour_set_bg(struct grid_cell *, int);
 const char *colour_tostring(int);
