@@ -222,7 +222,7 @@ server_client_lost(struct client *c)
 	if (event_initialized(&c->event))
 		event_del(&c->event);
 
-	server_client_deref(c);
+	server_client_unref(c);
 
 	server_add_accept(0); /* may be more file descriptors now */
 
@@ -233,9 +233,9 @@ server_client_lost(struct client *c)
 
 /* Remove reference from a client. */
 void
-server_client_deref(struct client *c)
+server_client_unref(struct client *c)
 {
-	log_debug("deref client %d (%d references)", c->ibuf.fd, c->references);
+	log_debug("unref client %d (%d references)", c->ibuf.fd, c->references);
 
 	c->references--;
 	if (c->references == 0)

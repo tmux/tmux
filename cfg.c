@@ -108,7 +108,7 @@ cfg_default_done(unused struct cmd_q *cmdq)
 		 */
 		if (!TAILQ_EMPTY(&cfg_client->cmdq->queue))
 			cmdq_continue(cfg_client->cmdq);
-		cfg_client->references--;
+		server_client_unref(cfg_client);
 		cfg_client = NULL;
 	}
 }

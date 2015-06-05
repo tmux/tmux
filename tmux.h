@@ -1871,7 +1871,7 @@ int	 server_client_check_nested(struct client *);
 void	 server_client_handle_key(struct client *, int);
 void	 server_client_create(int);
 int	 server_client_open(struct client *, char **);
-void	 server_client_deref(struct client *);
+void	 server_client_unref(struct client *);
 void	 server_client_lost(struct client *);
 void	 server_client_callback(int, short, void *);
 void	 server_client_status_timer(void);

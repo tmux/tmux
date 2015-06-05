@@ -132,7 +132,7 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 		return;
 	c->stdin_callback = NULL;
 
-	server_client_deref(c);
+	server_client_unref(c);
 	if (c->flags & CLIENT_DEAD)
 		return;
 

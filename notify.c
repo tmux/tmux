@@ -121,7 +121,7 @@ notify_drain(void)
 		}
 
 		if (ne->client != NULL)
-			ne->client->references--;
+			server_client_unref(ne->client);
 		if (ne->session != NULL)
 			ne->session->references--;
 		if (ne->window != NULL)
