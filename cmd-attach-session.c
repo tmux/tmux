@@ -34,15 +34,15 @@ enum cmd_retval	cmd_attach_session_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_attach_session_entry = {
 	"attach-session", "attach",
-	"c:drt:", 0, 0,
-	"[-dr] [-c working-directory] " CMD_TARGET_SESSION_USAGE,
+	"c:drt:E", 0, 0,
+	"[-drE] [-c working-directory] " CMD_TARGET_SESSION_USAGE,
 	CMD_CANTNEST|CMD_STARTSERVER,
 	cmd_attach_session_exec
 };
 
 enum cmd_retval
 cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
-    const char *cflag)
+    const char *cflag, int Eflag)
 {
 	struct session		*s;
 	struct client		*c;
@@ -160,7 +160,8 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 		}
 
 		update = options_get_string(&s->options, "update-environment");
-		environ_update(update, &cmdq->client->environ, &s->environ);
+		if (!Eflag)
+			environ_update(update, &cmdq->client->environ, &s->environ);
 
 		cmdq->client->session = s;
 		notify_attached_session_changed(cmdq->client);
@@ -183,5 +184,6 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct args	*args = self->args;
 
 	return (cmd_attach_session(cmdq, args_get(args, 't'),
-	    args_has(args, 'd'), args_has(args, 'r'), args_get(args, 'c')));
+	    args_has(args, 'd'), args_has(args, 'r'), args_get(args, 'c'),
+		args_has(args, 'E')));
 }

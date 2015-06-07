@@ -702,6 +702,11 @@ session.
 .Fl c
 will set the session working directory (used for new windows) to
 .Ar working-directory .
+.Pp
+If
+.Fl E
+is used, the target session environment will not be updated. See
+.Ic update-environment .
 .It Xo Ic detach-client
 .Op Fl P
 .Op Fl a
@@ -776,7 +781,7 @@ command.
 Lock all clients attached to
 .Ar target-session .
 .It Xo Ic new-session
-.Op Fl AdDP
+.Op Fl AdDPE
 .Op Fl c Ar start-directory
 .Op Fl F Ar format
 .Op Fl n Ar window-name
@@ -851,6 +856,11 @@ By default, it uses the format
 .Ql #{session_name}:
 but a different format may be specified with
 .Fl F .
+.Pp
+If
+.Fl E
+is used, the session's environment will not be updated. See
+.Ic update-environment .
 .It Xo Ic refresh-client
 .Op Fl S
 .Op Fl t Ar target-client
@@ -905,7 +915,7 @@ Suspend a client by sending
 .Dv SIGTSTP
 (tty stop).
 .It Xo Ic switch-client
-.Op Fl lnpr
+.Op Fl lnprE
 .Op Fl c Ar target-client
 .Op Fl t Ar target-session
 .Op Fl T Ar key-table
@@ -926,6 +936,11 @@ respectively.
 toggles whether a client is read-only (see the
 .Ic attach-session
 command).
+.Pp
+If
+.Fl E
+is used, the target session environment will not be updated. See
+.Ic update-environment .
 .Pp
 .Fl T
 sets the client's key table; the next key from the client will be interpreted from
