@@ -6,8 +6,6 @@
 	* ' and " should be parsed the same (eg "\e" vs '\e') in config
 	  and command prompt
 	* last-pane across sessions
-	* exact match operator for targets (or break the substring match
-	  and require eg x* instead of just x)
 
 - make command sequences more usable
 	* don't require space after ;
