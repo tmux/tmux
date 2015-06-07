@@ -1,4 +1,3 @@
-# $Id$
 
 # Miscellaneous bits.
 AC_INIT(tmux, 2.1)

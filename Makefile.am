@@ -1,4 +1,3 @@
-# $Id$
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux
