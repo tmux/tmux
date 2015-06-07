@@ -42,7 +42,7 @@ const struct cmd_entry cmd_attach_session_entry = {
 
 enum cmd_retval
 cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
-    const char *cflag)
+    const char *cflag, int Eflag)
 {
 	struct session		*s;
 	struct client		*c;
@@ -160,7 +160,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 		}
 
 		update = options_get_string(&s->options, "update-environment");
-		if (!args_has(args, 'E')) 
+		if (!Eflag)
 			environ_update(update, &cmdq->client->environ, &s->environ);
 
 		cmdq->client->session = s;
@@ -184,5 +184,6 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct args	*args = self->args;
 
 	return (cmd_attach_session(cmdq, args_get(args, 't'),
-	    args_has(args, 'd'), args_has(args, 'r'), args_get(args, 'c')));
+	    args_has(args, 'd'), args_has(args, 'r'), args_get(args, 'c'),
+		args_has(args, 'E')));
 }
