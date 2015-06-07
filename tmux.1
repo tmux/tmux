@@ -905,7 +905,7 @@ Suspend a client by sending
 .Dv SIGTSTP
 (tty stop).
 .It Xo Ic switch-client
-.Op Fl lnprd
+.Op Fl lnprE
 .Op Fl c Ar target-client
 .Op Fl t Ar target-session
 .Op Fl T Ar key-table
@@ -928,7 +928,7 @@ toggles whether a client is read-only (see the
 command).
 .Pp
 If
-.Fl d
+.Fl E
 is used, the target session environment will not be updated. See
 .Ic update-environment .
 .Pp
