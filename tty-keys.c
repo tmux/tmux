@@ -501,6 +501,7 @@ tty_keys_next(struct tty *tty)
 	case -1:	/* no, or not valid */
 		break;
 	case -2:	/* yes, but we don't care. */
+		key = KEYC_MOUSE;
 		goto discard_key;
 	case 1:		/* partial */
 		goto partial_key;

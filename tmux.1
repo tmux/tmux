@@ -23,7 +23,7 @@
 .Sh SYNOPSIS
 .Nm tmux
 .Bk -words
-.Op Fl 2lCquvV
+.Op Fl 2CluvV
 .Op Fl c Ar shell-command
 .Op Fl f Ar file
 .Op Fl L Ar socket-name
@@ -408,6 +408,14 @@ An
 pattern which is matched against the session name.
 .El
 .Pp
+If the session name is prefixed with a
+.Ql = : ,
+only an exact match is accepted (so
+.Ql =mysess
+will only match exactly
+.Ql mysess ,
+not
+.Ql mysession ) .
 If a single session is found, it is used as the target session; multiple matches
 produce an error.
 If a session is omitted, the current session is used if available; if no
@@ -444,6 +452,9 @@ As an
 pattern matched against the window name.
 .El
 .Pp
+Like sessions, a
+.Ql =
+prefix will do an exact match only.
 An empty window name specifies the next unused index if appropriate (for
 example the
 .Ic new-window
@@ -663,7 +674,7 @@ section.
 The following commands are available to manage clients and sessions:
 .Bl -tag -width Ds
 .It Xo Ic attach-session
-.Op Fl dr
+.Op Fl dEr
 .Op Fl c Ar working-directory
 .Op Fl t Ar target-session
 .Xc
@@ -702,6 +713,12 @@ session.
 .Fl c
 will set the session working directory (used for new windows) to
 .Ar working-directory .
+.Pp
+If
+.Fl E
+is used,
+.Ic update-environment
+option will not be applied.
 .It Xo Ic detach-client
 .Op Fl P
 .Op Fl a
@@ -776,7 +793,7 @@ command.
 Lock all clients attached to
 .Ar target-session .
 .It Xo Ic new-session
-.Op Fl AdDP
+.Op Fl AdDEP
 .Op Fl c Ar start-directory
 .Op Fl F Ar format
 .Op Fl n Ar window-name
@@ -851,6 +868,13 @@ By default, it uses the format
 .Ql #{session_name}:
 but a different format may be specified with
 .Fl F .
+.Pp
+If
+.Fl E
+is used,
+.Ic update-environment
+option will not be applied.
+.Ic update-environment .
 .It Xo Ic refresh-client
 .Op Fl S
 .Op Fl t Ar target-client
@@ -905,7 +929,7 @@ Suspend a client by sending
 .Dv SIGTSTP
 (tty stop).
 .It Xo Ic switch-client
-.Op Fl lnpr
+.Op Fl Elnpr
 .Op Fl c Ar target-client
 .Op Fl t Ar target-session
 .Op Fl T Ar key-table
@@ -926,6 +950,12 @@ respectively.
 toggles whether a client is read-only (see the
 .Ic attach-session
 command).
+.Pp
+If
+.Fl E
+is used,
+.Ic update-environment
+option will not be applied.
 .Pp
 .Fl T
 sets the client's key table; the next key from the client will be interpreted from

@@ -30,6 +30,7 @@
 #include "tmux.h"
 
 void	server_client_key_table(struct client *, const char *);
+void	server_client_free(int, short, void *);
 void	server_client_check_focus(struct window_pane *);
 void	server_client_check_resize(struct window_pane *);
 int	server_client_check_mouse(struct client *);
@@ -44,6 +45,27 @@ int	server_client_msg_dispatch(struct client *);
 void	server_client_msg_command(struct client *, struct imsg *);
 void	server_client_msg_identify(struct client *, struct imsg *);
 void	server_client_msg_shell(struct client *);
+
+/* Check if this client is inside this server. */
+int
+server_client_check_nested(struct client *c)
+{
+	struct environ_entry	*envent;
+	struct window_pane	*wp;
+
+	if (c->tty.path == NULL)
+		return (0);
+
+	envent = environ_find(&c->environ, "TMUX");
+	if (envent == NULL || *envent->value == '\0')
+		return (0);
+
+	RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
+		if (strcmp(wp->tty, c->tty.path) == 0)
+			return (1);
+	}
+	return (0);
+}
 
 /* Set client key table. */
 void
@@ -63,7 +85,7 @@ server_client_create(int fd)
 	setblocking(fd, 0);
 
 	c = xcalloc(1, sizeof *c);
-	c->references = 0;
+	c->references = 1;
 	imsg_init(&c->ibuf, fd);
 	server_update_event(c);
 
@@ -139,6 +161,14 @@ server_client_lost(struct client *c)
 {
 	struct message_entry	*msg, *msg1;
 
+	c->flags |= CLIENT_DEAD;
+
+	status_prompt_clear(c);
+	status_message_clear(c);
+
+	if (c->stdin_callback != NULL)
+		c->stdin_callback(c, 1, c->stdin_callback_data);
+
 	TAILQ_REMOVE(&clients, c, entry);
 	log_debug("lost client %d", c->ibuf.fd);
 
@@ -191,14 +221,36 @@ server_client_lost(struct client *c)
 	if (event_initialized(&c->event))
 		event_del(&c->event);
 
-	TAILQ_INSERT_TAIL(&dead_clients, c, entry);
-	c->flags |= CLIENT_DEAD;
+	server_client_unref(c);
 
 	server_add_accept(0); /* may be more file descriptors now */
 
 	recalculate_sizes();
 	server_check_unattached();
 	server_update_socket();
+}
+
+/* Remove reference from a client. */
+void
+server_client_unref(struct client *c)
+{
+	log_debug("unref client %d (%d references)", c->ibuf.fd, c->references);
+
+	c->references--;
+	if (c->references == 0)
+		event_once(-1, EV_TIMEOUT, server_client_free, c, NULL);
+}
+
+/* Free dead client. */
+void
+server_client_free(unused int fd, unused short events, void *arg)
+{
+	struct client	*c = arg;
+
+	log_debug("free client %d (%d references)", c->ibuf.fd, c->references);
+
+	if (c->references == 0)
+		free(c);
 }
 
 /* Process a single client event. */

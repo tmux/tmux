@@ -31,8 +31,8 @@ enum cmd_retval	 cmd_switch_client_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_switch_client_entry = {
 	"switch-client", "switchc",
-	"lc:npt:rT:", 0, 0,
-	"[-lnpr] [-c target-client] [-t target-session] [-T key-table]",
+	"lc:Enpt:rT:", 0, 0,
+	"[-Elnpr] [-c target-client] [-t target-session] [-T key-table]",
 	CMD_READONLY,
 	cmd_switch_client_exec
 };
@@ -119,7 +119,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 		}
 	}
 
-	if (c != NULL && s != c->session) {
+	if (c != NULL && s != c->session && !args_has(args, 'E')) {
 		update = options_get_string(&s->options, "update-environment");
 		environ_update(update, &c->environ, &s->environ);
 	}

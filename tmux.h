@@ -1378,8 +1378,7 @@ struct cmd_entry {
 	const char	*usage;
 
 #define CMD_STARTSERVER 0x1
-#define CMD_CANTNEST 0x2
-#define CMD_READONLY 0x4
+#define CMD_READONLY 0x2
 	int		 flags;
 
 	enum cmd_retval	 (*exec)(struct cmd *, struct cmd_q *);
@@ -1806,7 +1805,7 @@ extern const struct cmd_entry cmd_wait_for_entry;
 
 /* cmd-attach-session.c */
 enum cmd_retval	 cmd_attach_session(struct cmd_q *, const char *, int, int,
-		     const char *);
+		     const char *, int);
 
 /* cmd-list.c */
 struct cmd_list	*cmd_list_parse(int, char **, const char *, u_int, char **);
@@ -1872,9 +1871,11 @@ void	 server_update_socket(void);
 void	 server_add_accept(int);
 
 /* server-client.c */
+int	 server_client_check_nested(struct client *);
 void	 server_client_handle_key(struct client *, int);
 void	 server_client_create(int);
 int	 server_client_open(struct client *, char **);
+void	 server_client_unref(struct client *);
 void	 server_client_lost(struct client *);
 void	 server_client_callback(int, short, void *);
 void	 server_client_status_timer(void);
@@ -1956,6 +1957,7 @@ char	*xterm_keys_lookup(int);
 int	 xterm_keys_find(const char *, size_t, size_t *, int *);
 
 /* colour.c */
+int	 colour_find_rgb(u_char, u_char, u_char);
 void	 colour_set_fg(struct grid_cell *, int);
 void	 colour_set_bg(struct grid_cell *, int);
 const char *colour_tostring(int);
@@ -2262,7 +2264,6 @@ void	control_notify_session_close(struct session *);
 
 /* session.c */
 extern struct sessions sessions;
-extern struct sessions dead_sessions;
 extern struct session_groups session_groups;
 int	session_cmp(struct session *, struct session *);
 RB_PROTOTYPE(sessions, session, entry, session_cmp);
@@ -2274,6 +2275,7 @@ struct session	*session_create(const char *, int, char **, const char *,
 		     int, struct environ *, struct termios *, int, u_int,
 		     u_int, char **);
 void		 session_destroy(struct session *);
+void		 session_unref(struct session *);
 int		 session_check_name(const char *);
 void		 session_update_activity(struct session *);
 struct session	*session_next_session(struct session *);

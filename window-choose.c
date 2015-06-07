@@ -209,11 +209,11 @@ window_choose_data_create(int type, struct client *c, struct session *s)
 void
 window_choose_data_free(struct window_choose_data *wcd)
 {
-	wcd->start_client->references--;
-	wcd->start_session->references--;
+	server_client_unref(wcd->start_client);
+	session_unref(wcd->start_session);
 
 	if (wcd->tree_session != NULL)
-		wcd->tree_session->references--;
+		session_unref(wcd->tree_session);
 
 	free(wcd->ft_template);
 	format_free(wcd->ft);

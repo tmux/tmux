@@ -222,7 +222,7 @@ client_main(int argc, char **argv, int flags)
 		cmdflags = CMD_STARTSERVER;
 	} else if (argc == 0) {
 		msg = MSG_COMMAND;
-		cmdflags = CMD_STARTSERVER|CMD_CANTNEST;
+		cmdflags = CMD_STARTSERVER;
 	} else {
 		msg = MSG_COMMAND;
 
@@ -240,22 +240,8 @@ client_main(int argc, char **argv, int flags)
 		TAILQ_FOREACH(cmd, &cmdlist->list, qentry) {
 			if (cmd->entry->flags & CMD_STARTSERVER)
 				cmdflags |= CMD_STARTSERVER;
-			if (cmd->entry->flags & CMD_CANTNEST)
-				cmdflags |= CMD_CANTNEST;
 		}
 		cmd_list_free(cmdlist);
-	}
-
-	/*
-	 * Check if this could be a nested session, if the command can't nest:
-	 * if the socket path matches $TMUX, this is probably the same server.
-	 */
-	if (shell_cmd == NULL && environ_path != NULL &&
-	    (cmdflags & CMD_CANTNEST) &&
-	    strcmp(socket_path, environ_path) == 0) {
-		fprintf(stderr, "sessions should be nested with care, "
-		    "unset $TMUX to force\n");
-		return (1);
 	}
 
 	/* Establish signal handlers. */
