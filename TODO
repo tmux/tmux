@@ -1,5 +1,4 @@
 - command bits and pieces:
-	* why doesn't command-prompt work if made read-only?
 	* allow multiple targets: fnmatch for -t/-c, for example detach all
 	  clients with -t*
 	* add -c for new-session like new-window
