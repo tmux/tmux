@@ -100,7 +100,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 			 * the same session as currently attached to.
 			 */
 			TAILQ_FOREACH(c_loop, &clients, entry) {
-				if (c_loop->session != s || c == c)
+				if (c_loop->session != s || c == c_loop)
 					continue;
 				server_write_client(c, MSG_DETACH,
 				    c_loop->session->name,
