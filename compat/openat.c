@@ -40,8 +40,10 @@ openat(int fd, const char *path, int flags, ...)
 		dotfd = open(".", O_RDONLY);
 		if (dotfd == -1)
 			return (-1);
-		if (fchdir(fd) != 0)
+		if (fchdir(fd) != 0){
+			close(dotfd);
 			return (-1);
+		}
 	}
 
 	retval = open(path, flags, mode);
