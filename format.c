@@ -872,8 +872,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_synchronized", "%d",
 	    !!options_get_number(&wp->window->options, "synchronize-panes"));
 
-	if (wp->tty != NULL)
-		format_add(ft, "pane_tty", "%s", wp->tty);
+	format_add(ft, "pane_tty", "%s", wp->tty);
 	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
 	if ((cmd = cmd_stringify_argv(wp->argc, wp->argv)) != NULL) {
 		format_add(ft, "pane_start_command", "%s", cmd);
