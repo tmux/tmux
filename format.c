@@ -272,6 +272,7 @@ format_create_status(int status)
 			*ptr = '\0';
 		format_add(ft, "host_short", "%s", host);
 	}
+	format_add(ft, "pid", "%ld", (long) getpid());
 
 	return (ft);
 }
@@ -704,6 +705,7 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 	if (ft->s == NULL)
 		ft->s = c->session;
 
+	format_add(ft, "client_pid", "%ld", (long) c->pid);
 	format_add(ft, "client_height", "%u", c->tty.sy);
 	format_add(ft, "client_width", "%u", c->tty.sx);
 	if (c->tty.path != NULL)
