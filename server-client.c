@@ -1044,6 +1044,7 @@ server_client_msg_dispatch(struct client *c)
 		case MSG_IDENTIFY_CWD:
 		case MSG_IDENTIFY_STDIN:
 		case MSG_IDENTIFY_ENVIRON:
+		case MSG_IDENTIFY_CLIENTPID:
 		case MSG_IDENTIFY_DONE:
 			server_client_msg_identify(c, &imsg);
 			break;
@@ -1217,6 +1218,11 @@ server_client_msg_identify(struct client *c, struct imsg *imsg)
 			fatalx("bad MSG_IDENTIFY_ENVIRON string");
 		if (strchr(data, '=') != NULL)
 			environ_put(&c->environ, data);
+		break;
+	case MSG_IDENTIFY_CLIENTPID:
+		if (datalen != sizeof c->pid)
+			fatalx("bad MSG_IDENTIFY_CLIENTPID size");
+		memcpy(&c->pid, data, sizeof c->pid);
 		break;
 	default:
 		break;
