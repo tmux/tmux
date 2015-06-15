@@ -295,6 +295,9 @@ window_create1(u_int sx, u_int sy)
 	w->sx = sx;
 	w->sy = sy;
 
+	if (gettimeofday(&w->activity_time, NULL) != 0)
+		fatal("gettimeofday failed");
+
 	options_init(&w->options, &global_w_options);
 	if (options_get_number(&w->options, "automatic-rename"))
 		queue_window_name(w);
