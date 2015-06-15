@@ -1,5 +1,3 @@
-# $Id$
-
 rm diff.out
 touch diff.out
 

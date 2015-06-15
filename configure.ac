@@ -1,4 +1,4 @@
-# $Id$
+# configure.ac
 
 # Miscellaneous bits.
 AC_INIT(tmux, 2.1)
