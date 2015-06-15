@@ -750,6 +750,7 @@ void
 format_defaults_window(struct format_tree *ft, struct window *w)
 {
 	char	*layout;
+	time_t	 t;
 
 	ft->w = w;
 
@@ -757,6 +758,10 @@ format_defaults_window(struct format_tree *ft, struct window *w)
 		layout = layout_dump(w->saved_layout_root);
 	else
 		layout = layout_dump(w->layout_root);
+
+	t = w->activity_time.tv_sec;
+	format_add(ft, "window_activity", "%lld", (long long) t);
+	format_add(ft, "window_activity_string", "%s", format_time_string(t));
 
 	format_add(ft, "window_id", "@%u", w->id);
 	format_add(ft, "window_name", "%s", w->name);
