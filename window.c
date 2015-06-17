@@ -1378,3 +1378,28 @@ winlink_clear_flags(struct winlink *wl)
 		}
 	}
 }
+
+int
+winlink_shuffle_up(struct session *s, struct winlink *wl)
+{
+	int	 idx, last;
+
+	idx = wl->idx + 1;
+
+	/* Find the next free index. */
+	for (last = idx; last < INT_MAX; last++) {
+		if (winlink_find_by_index(&s->windows, last) == NULL)
+			break;
+	}
+	if (last == INT_MAX)
+		return (-1);
+
+	/* Move everything from last - 1 to idx up a bit. */
+	for (; last > idx; last--) {
+		wl = winlink_find_by_index(&s->windows, last - 1);
+		server_link_window(s, wl, s, last, 0, 0, NULL);
+		server_unlink_window(s, wl);
+	}
+
+	return (idx);
+}

@@ -1544,7 +1544,7 @@ If no
 .Ar target-session
 is specified, select the last window of the current session.
 .It Xo Ic link-window
-.Op Fl dk
+.Op Fl adk
 .Op Fl s Ar src-window
 .Op Fl t Ar dst-window
 .Xc
@@ -1558,6 +1558,10 @@ If
 is specified and no such window exists, the
 .Ar src-window
 is linked there.
+With
+.Fl a ,
+the window is moved to the next index up (following windows
+are moved if necessary).
 If
 .Fl k
 is given and
@@ -1623,7 +1627,7 @@ and
 .Ar dst-pane
 may belong to the same window.
 .It Xo Ic move-window
-.Op Fl rdk
+.Op Fl ardk
 .Op Fl s Ar src-window
 .Op Fl t Ar dst-window
 .Xc
