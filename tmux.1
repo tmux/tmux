@@ -1237,12 +1237,14 @@ Commands related to windows and panes are as follows:
 .It Xo Ic break-pane
 .Op Fl dP
 .Op Fl F Ar format
-.Op Fl t Ar target-pane
+.Op Fl s Ar src-pane
+.Op Fl t Ar dst-pane
 .Xc
 .D1 (alias: Ic breakp )
 Break
-.Ar target-pane
-off from its containing window to make it the only pane in a new window.
+.Ar src-pane
+off from its containing window to make it the only pane in
+.Ar dst-window .
 If
 .Fl d
 is given, the new window does not become the current window.
