@@ -99,6 +99,8 @@ job_run(const char *cmd, struct session *s, int cwd,
 	close(out[1]);
 
 	job = xmalloc(sizeof *job);
+	job->state = JOB_RUNNING;
+
 	job->cmd = xstrdup(cmd);
 	job->pid = pid;
 	job->status = 0;
@@ -166,14 +168,13 @@ job_callback(unused struct bufferevent *bufev, unused short events, void *data)
 
 	log_debug("job error %p: %s, pid %ld", job, job->cmd, (long) job->pid);
 
-	if (job->pid == -1) {
+	if (job->state == JOB_DEAD) {
 		if (job->callbackfn != NULL)
 			job->callbackfn(job);
 		job_free(job);
 	} else {
 		bufferevent_disable(job->event, EV_READ);
-		close(job->fd);
-		job->fd = -1;
+		job->state = JOB_CLOSED;
 	}
 }
 
@@ -185,10 +186,12 @@ job_died(struct job *job, int status)
 
 	job->status = status;
 
-	if (job->fd == -1) {
+	if (job->state == JOB_CLOSED) {
 		if (job->callbackfn != NULL)
 			job->callbackfn(job);
 		job_free(job);
-	} else
+	} else {
 		job->pid = -1;
+		job->state = JOB_DEAD;
+	}
 }
