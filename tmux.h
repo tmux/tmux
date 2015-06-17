@@ -714,6 +714,12 @@ struct options {
 
 /* Scheduled job. */
 struct job {
+	enum {
+		JOB_RUNNING,
+		JOB_DEAD,
+		JOB_CLOSED
+	} state;
+
 	char		*cmd;
 	pid_t		 pid;
 	int		 status;
