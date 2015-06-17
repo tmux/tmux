@@ -30,7 +30,7 @@ enum cmd_retval	 cmd_move_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_move_window_entry = {
 	"move-window", "movew",
-	"dkrs:t:", 0, 0,
+	"adkrs:t:", 0, 0,
 	"[-dkr] " CMD_SRCDST_WINDOW_USAGE,
 	0,
 	cmd_move_window_exec
@@ -38,7 +38,7 @@ const struct cmd_entry cmd_move_window_entry = {
 
 const struct cmd_entry cmd_link_window_entry = {
 	"link-window", "linkw",
-	"dks:t:", 0, 0,
+	"adks:t:", 0, 0,
 	"[-dk] " CMD_SRCDST_WINDOW_USAGE,
 	0,
 	cmd_move_window_exec
@@ -72,6 +72,15 @@ cmd_move_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	kflag = args_has(self->args, 'k');
 	dflag = args_has(self->args, 'd');
 	sflag = args_has(self->args, 's');
+
+	if (args_has(self->args, 'a')) {
+		s = cmd_find_session(cmdq, args_get(args, 't'), 0);
+		if (s == NULL)
+			return (CMD_RETURN_ERROR);
+		if ((idx = winlink_shuffle_up(s, s->curw)) == -1)
+			return (CMD_RETURN_ERROR);
+	}
+
 	if (server_link_window(src, wl, dst, idx, kflag, !dflag,
 	    &cause) != 0) {
 		cmdq_error(cmdq, "can't link window: %s", cause);
