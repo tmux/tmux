@@ -404,14 +404,15 @@ An
 pattern which is matched against the session name.
 .El
 .Pp
-If the session name is prefixed with a
-.Ql = : ,
+If the session name is prefixed with an
+.Ql = ,
 only an exact match is accepted (so
 .Ql =mysess
 will only match exactly
 .Ql mysess ,
 not
 .Ql mysession ) .
+.Pp
 If a single session is found, it is used as the target session; multiple matches
 produce an error.
 If a session is omitted, the current session is used if available; if no
