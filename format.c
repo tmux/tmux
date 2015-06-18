@@ -338,7 +338,7 @@ format_find(struct format_tree *ft, const char *key)
 		case OPTIONS_STRING:
 			return (o->str);
 		case OPTIONS_NUMBER:
-			snprintf(s, sizeof s, "%lld", o->num);
+			xsnprintf(s, sizeof s, "%lld", o->num);
 			return (s);
 		case OPTIONS_STYLE:
 			return (style_tostring(&o->style));
@@ -679,7 +679,7 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 	RB_FOREACH (wl, winlinks, &s->windows) {
 		if ((wl->flags & WINLINK_ALERTFLAGS) == 0)
 			continue;
-		snprintf(tmp, sizeof tmp, "%u", wl->idx);
+		xsnprintf(tmp, sizeof tmp, "%u", wl->idx);
 
 		if (*alerts != '\0')
 			strlcat(alerts, ",", sizeof alerts);
