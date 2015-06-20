@@ -222,7 +222,6 @@ syn keyword tmuxOptsSet
 	\ update-environment
 	\ visual-activity
 	\ visual-bell
-	\ visual-content
 	\ visual-silence
 	\ word-separators
 
@@ -243,7 +242,6 @@ syn keyword tmuxOptsSetw
 	\ mode-mouse
 	\ mode-style
 	\ monitor-activity
-	\ monitor-content
 	\ monitor-silence
 	\ other-pane-height
 	\ other-pane-width
@@ -253,7 +251,6 @@ syn keyword tmuxOptsSetw
 	\ utf8
 	\ window-status-activity-style
 	\ window-status-bell-style
-	\ window-status-content-style
 	\ window-status-current-format
 	\ window-status-current-style
 	\ window-status-format
