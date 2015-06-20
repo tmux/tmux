@@ -32,8 +32,8 @@ enum cmd_retval	 cmd_break_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_break_pane_entry = {
 	"break-pane", "breakp",
-	"dPF:t:", 0, 0,
-	"[-dP] [-F format] " CMD_TARGET_PANE_USAGE,
+	"dPF:s:t:", 0, 0,
+	"[-dP] [-F format] " CMD_SRCDST_PANE_USAGE,
 	0,
 	cmd_break_pane_exec
 };
@@ -48,13 +48,19 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window		*w;
 	char			*name;
 	char			*cause;
-	int			 base_idx;
+	int			 idx;
 	struct format_tree	*ft;
 	const char		*template;
 	char			*cp;
 
-	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp)) == NULL)
+	if ((wl = cmd_find_pane(cmdq, args_get(args, 's'), &s, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
+	if ((idx = cmd_find_index(cmdq, args_get(args, 't'), &s)) == -2)
+		return (CMD_RETURN_ERROR);
+	if (idx != -1 && winlink_find_by_index(&s->windows, idx) != NULL) {
+		cmdq_error(cmdq, "index %d already in use", idx);
+		return (CMD_RETURN_ERROR);
+	}
 
 	if (window_count_panes(wl->window) == 1) {
 		cmdq_error(cmdq, "can't break with only one pane");
@@ -76,8 +82,9 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	free(name);
 	layout_init(w, wp);
 
-	base_idx = options_get_number(&s->options, "base-index");
-	wl = session_attach(s, w, -1 - base_idx, &cause); /* can't fail */
+	if (idx == -1)
+		idx = -1 - options_get_number(&s->options, "base-index");
+	wl = session_attach(s, w, idx, &cause); /* can't fail */
 	if (!args_has(self->args, 'd'))
 		session_select(s, wl->idx);
 

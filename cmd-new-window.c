@@ -51,7 +51,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct winlink		*wl;
 	const char		*cmd, *path, *template;
 	char		       **argv, *cause, *cp;
-	int			 argc, idx, last, detached, cwd, fd = -1;
+	int			 argc, idx, detached, cwd, fd = -1;
 	struct format_tree	*ft;
 	struct environ_entry	*envent;
 
@@ -59,23 +59,9 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		wl = cmd_find_window(cmdq, args_get(args, 't'), &s);
 		if (wl == NULL)
 			return (CMD_RETURN_ERROR);
-		idx = wl->idx + 1;
-
-		/* Find the next free index. */
-		for (last = idx; last < INT_MAX; last++) {
-			if (winlink_find_by_index(&s->windows, last) == NULL)
-				break;
-		}
-		if (last == INT_MAX) {
+		if ((idx = winlink_shuffle_up(s, wl)) == -1) {
 			cmdq_error(cmdq, "no free window indexes");
 			return (CMD_RETURN_ERROR);
-		}
-
-		/* Move everything from last - 1 to idx up a bit. */
-		for (; last > idx; last--) {
-			wl = winlink_find_by_index(&s->windows, last - 1);
-			server_link_window(s, wl, s, last, 0, 0, NULL);
-			server_unlink_window(s, wl);
 		}
 	} else {
 		idx = cmd_find_index(cmdq, args_get(args, 't'), &s);

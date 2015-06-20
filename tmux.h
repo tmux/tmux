@@ -429,6 +429,7 @@ enum msgtype {
 	MSG_IDENTIFY_STDIN,
 	MSG_IDENTIFY_ENVIRON,
 	MSG_IDENTIFY_DONE,
+	MSG_IDENTIFY_CLIENTPID,
 
 	MSG_COMMAND = 200,
 	MSG_DETACH,
@@ -717,6 +718,12 @@ struct options {
 
 /* Scheduled job. */
 struct job {
+	enum {
+		JOB_RUNNING,
+		JOB_DEAD,
+		JOB_CLOSED
+	} state;
+
 	char		*cmd;
 	pid_t		 pid;
 	int		 status;
@@ -895,6 +902,7 @@ struct window {
 	char		*name;
 	struct event	 name_timer;
 	struct timeval	 silence_timer;
+	struct timeval	 activity_time;
 
 	struct window_pane *active;
 	struct window_pane *last;
@@ -1210,6 +1218,7 @@ RB_HEAD(status_out_tree, status_out);
 struct client {
 	struct imsgbuf	 ibuf;
 
+	pid_t		 pid;
 	int		 fd;
 	struct event	 event;
 	int		 retval;
@@ -2161,6 +2170,7 @@ struct window_pane *window_pane_find_right(struct window_pane *);
 void		 window_set_name(struct window *, const char *);
 void		 window_remove_ref(struct window *);
 void		 winlink_clear_flags(struct winlink *);
+int		 winlink_shuffle_up(struct session *, struct winlink *);
 
 /* layout.c */
 u_int		 layout_count_cells(struct layout_cell *);

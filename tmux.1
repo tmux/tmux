@@ -408,14 +408,15 @@ An
 pattern which is matched against the session name.
 .El
 .Pp
-If the session name is prefixed with a
-.Ql = : ,
+If the session name is prefixed with an
+.Ql = ,
 only an exact match is accepted (so
 .Ql =mysess
 will only match exactly
 .Ql mysess ,
 not
 .Ql mysession ) .
+.Pp
 If a single session is found, it is used as the target session; multiple matches
 produce an error.
 If a session is omitted, the current session is used if available; if no
@@ -1237,12 +1238,14 @@ Commands related to windows and panes are as follows:
 .It Xo Ic break-pane
 .Op Fl dP
 .Op Fl F Ar format
-.Op Fl t Ar target-pane
+.Op Fl s Ar src-pane
+.Op Fl t Ar dst-pane
 .Xc
 .D1 (alias: Ic breakp )
 Break
-.Ar target-pane
-off from its containing window to make it the only pane in a new window.
+.Ar src-pane
+off from its containing window to make it the only pane in
+.Ar dst-window .
 If
 .Fl d
 is given, the new window does not become the current window.
@@ -1548,7 +1551,7 @@ If no
 .Ar target-session
 is specified, select the last window of the current session.
 .It Xo Ic link-window
-.Op Fl dk
+.Op Fl adk
 .Op Fl s Ar src-window
 .Op Fl t Ar dst-window
 .Xc
@@ -1562,6 +1565,10 @@ If
 is specified and no such window exists, the
 .Ar src-window
 is linked there.
+With
+.Fl a ,
+the window is moved to the next index up (following windows
+are moved if necessary).
 If
 .Fl k
 is given and
@@ -1627,7 +1634,7 @@ and
 .Ar dst-pane
 may belong to the same window.
 .It Xo Ic move-window
-.Op Fl rdk
+.Op Fl ardk
 .Op Fl s Ar src-window
 .Op Fl t Ar dst-window
 .Xc
@@ -3357,6 +3364,7 @@ The following variables are available, where appropriate:
 .It Li "client_created_string" Ta "" Ta "String time client created"
 .It Li "client_height" Ta "" Ta "Height of client"
 .It Li "client_last_session" Ta "" Ta "Name of the client's last session"
+.It Li "client_pid" Ta "" Ta "PID of client process"
 .It Li "client_prefix" Ta "" Ta "1 if prefix key has been pressed"
 .It Li "client_readonly" Ta "" Ta "1 if client is readonly"
 .It Li "client_session" Ta "" Ta "Name of the client's session"
@@ -3401,6 +3409,7 @@ The following variables are available, where appropriate:
 .It Li "pane_top" Ta "" Ta "Top of pane"
 .It Li "pane_tty" Ta "" Ta "Pseudo terminal of pane"
 .It Li "pane_width" Ta "" Ta "Width of pane"
+.It Li "pid" Ta ""  Ta "Server PID"
 .It Li "scroll_region_lower" Ta "" Ta "Bottom of scroll region in pane"
 .It Li "scroll_region_upper" Ta "" Ta "Top of scroll region in pane"
 .It Li "session_alerts" Ta "" Ta "List of window indexes with alerts"
@@ -3417,6 +3426,8 @@ The following variables are available, where appropriate:
 .It Li "session_name" Ta "#S" Ta "Name of session"
 .It Li "session_width" Ta "" Ta "Width of session"
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
+.It Li "window_activity" Ta "" Ta "Integer time of window last activity"
+.It Li "window_activity_string" Ta "" Ta "String time of window last activity"
 .It Li "window_active" Ta "" Ta "1 if window active"
 .It Li "window_activity_flag" Ta "" Ta "1 if window has activity alert"
 .It Li "window_bell_flag" Ta "" Ta "1 if window has bell"

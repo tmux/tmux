@@ -272,6 +272,7 @@ format_create_status(int status)
 			*ptr = '\0';
 		format_add(ft, "host_short", "%s", host);
 	}
+	format_add(ft, "pid", "%ld", (long) getpid());
 
 	return (ft);
 }
@@ -338,7 +339,7 @@ format_find(struct format_tree *ft, const char *key)
 		case OPTIONS_STRING:
 			return (o->str);
 		case OPTIONS_NUMBER:
-			snprintf(s, sizeof s, "%lld", o->num);
+			xsnprintf(s, sizeof s, "%lld", o->num);
 			return (s);
 		case OPTIONS_STYLE:
 			return (style_tostring(&o->style));
@@ -679,7 +680,7 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 	RB_FOREACH (wl, winlinks, &s->windows) {
 		if ((wl->flags & WINLINK_ALERTFLAGS) == 0)
 			continue;
-		snprintf(tmp, sizeof tmp, "%u", wl->idx);
+		xsnprintf(tmp, sizeof tmp, "%u", wl->idx);
 
 		if (*alerts != '\0')
 			strlcat(alerts, ",", sizeof alerts);
@@ -704,6 +705,7 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 	if (ft->s == NULL)
 		ft->s = c->session;
 
+	format_add(ft, "client_pid", "%ld", (long) c->pid);
 	format_add(ft, "client_height", "%u", c->tty.sy);
 	format_add(ft, "client_width", "%u", c->tty.sx);
 	if (c->tty.path != NULL)
@@ -748,6 +750,7 @@ void
 format_defaults_window(struct format_tree *ft, struct window *w)
 {
 	char	*layout;
+	time_t	 t;
 
 	ft->w = w;
 
@@ -755,6 +758,10 @@ format_defaults_window(struct format_tree *ft, struct window *w)
 		layout = layout_dump(w->saved_layout_root);
 	else
 		layout = layout_dump(w->layout_root);
+
+	t = w->activity_time.tv_sec;
+	format_add(ft, "window_activity", "%lld", (long long) t);
+	format_add(ft, "window_activity_string", "%s", format_time_string(t));
 
 	format_add(ft, "window_id", "@%u", w->id);
 	format_add(ft, "window_name", "%s", w->name);
@@ -873,8 +880,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_synchronized", "%d",
 	    !!options_get_number(&wp->window->options, "synchronize-panes"));
 
-	if (wp->tty != NULL)
-		format_add(ft, "pane_tty", "%s", wp->tty);
+	format_add(ft, "pane_tty", "%s", wp->tty);
 	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
 	if ((cwd = osdep_get_cwd(wp->fd)) != NULL)
 		format_add(ft, "pane_current_path", "%s", cwd);

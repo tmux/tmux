@@ -25,6 +25,8 @@
 
 #include "tmux.h"
 
+enum cmd_retval	cmdq_continue_one(struct cmd_q *);
+
 /* Create new command queue. */
 struct cmd_q *
 cmdq_new(struct client *c)
@@ -160,14 +162,39 @@ cmdq_append(struct cmd_q *cmdq, struct cmd_list *cmdlist, struct mouse_event *m)
 		item->mouse.valid = 0;
 }
 
+/* Process one command. */
+enum cmd_retval
+cmdq_continue_one(struct cmd_q *cmdq)
+{
+	struct cmd	*cmd = cmdq->cmd;
+	enum cmd_retval	 retval;
+	char		 tmp[1024];
+	int		 flags = !!(cmd->flags & CMD_CONTROL);
+
+	cmd_print(cmd, tmp, sizeof tmp);
+	log_debug("cmdq %p: %s", cmdq, tmp);
+
+	cmdq->time = time(NULL);
+	cmdq->number++;
+
+	cmdq_guard(cmdq, "begin", flags);
+
+	retval = cmd->entry->exec(cmd, cmdq);
+
+	if (retval == CMD_RETURN_ERROR)
+		cmdq_guard(cmdq, "error", flags);
+	else
+		cmdq_guard(cmdq, "end", flags);
+	return (retval);
+}
+
 /* Continue processing command queue. Returns 1 if finishes empty. */
 int
 cmdq_continue(struct cmd_q *cmdq)
 {
 	struct cmd_q_item	*next;
 	enum cmd_retval		 retval;
-	int			 empty, flags;
-	char			 s[1024];
+	int			 empty;
 
 	cmdq->references++;
 	notify_disable();
@@ -184,23 +211,7 @@ cmdq_continue(struct cmd_q *cmdq)
 
 	do {
 		while (cmdq->cmd != NULL) {
-			cmd_print(cmdq->cmd, s, sizeof s);
-			log_debug("cmdq %p: %s (client %d)", cmdq, s,
-			    cmdq->client != NULL ? cmdq->client->ibuf.fd : -1);
-
-			cmdq->time = time(NULL);
-			cmdq->number++;
-
-			flags = !!(cmdq->cmd->flags & CMD_CONTROL);
-			cmdq_guard(cmdq, "begin", flags);
-
-			retval = cmdq->cmd->entry->exec(cmdq->cmd, cmdq);
-
-			if (retval == CMD_RETURN_ERROR)
-				cmdq_guard(cmdq, "error", flags);
-			else
-				cmdq_guard(cmdq, "end", flags);
-
+			retval = cmdq_continue_one(cmdq);
 			if (retval == CMD_RETURN_ERROR)
 				break;
 			if (retval == CMD_RETURN_WAIT)
@@ -209,7 +220,6 @@ cmdq_continue(struct cmd_q *cmdq)
 				cmdq_flush(cmdq);
 				goto empty;
 			}
-
 			cmdq->cmd = TAILQ_NEXT(cmdq->cmd, qentry);
 		}
 		next = TAILQ_NEXT(cmdq->item, qentry);
