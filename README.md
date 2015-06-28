@@ -1,34 +1,41 @@
-Welcome to tmux!
+#tmux!
 
 tmux is a "terminal multiplexer", it enables a number of terminals (or windows)
 to be accessed and controlled from a single terminal. tmux is intended to be a
 simple, modern, BSD-licensed alternative to programs such as GNU screen.
 
+## install
 This release runs on OpenBSD, FreeBSD, NetBSD, Linux, OS X and Solaris.
 
-tmux depends on libevent 2.x. Download it from:
-
-	http://www.monkey.org/~provos/libevent/
+tmux depends on [libevent 2.x](http://www.monkey.org/~provos/libevent/)
 
 To build tmux from a release tarball, do:
 
+```
 	$ ./configure && make
 	$ sudo make install
+```
 
 To get and build the latest from version control:
 
+```
 	$ git clone https://github.com/tmux/tmux.git
 	$ cd tmux
 	$ sh autogen.sh
 	$ ./configure && make
+```
 
+
+## information
 For more information see http://git-scm.com. Patches should be sent by email to
 the mailing list at tmux-users@googlegroups.com.
 
 For documentation on using tmux, see the tmux.1 manpage. It can be viewed from
 the source tree with:
 
+```
 	$ nroff -mdoc tmux.1|less
+```
 
 Some common questions are answered in the FAQ file and a more extensive (but
 slightly out of date) guide is available in the OpenBSD FAQ at
@@ -52,9 +59,13 @@ welcome. Please send by email to:
 
 	tmux-users@googlegroups.com
 
+### license
+
 This file and the CHANGES, FAQ and TODO files are licensed under the ISC
 license. Files under examples/ remain copyright their authors unless otherwise
 stated in the file but permission has been received to distribute them with
 tmux. All other files have a license and copyright notice at their start.
+
+### maintained by
 
 -- Nicholas Marriott <nicholas.marriott@gmail.com>
