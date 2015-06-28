@@ -1,14 +1,13 @@
-Welcome to tmux!
+#tmux!
 
 tmux is a "terminal multiplexer", it enables a number of terminals (or windows)
 to be accessed and controlled from a single terminal. tmux is intended to be a
 simple, modern, BSD-licensed alternative to programs such as GNU screen.
 
+## OS
 This release runs on OpenBSD, FreeBSD, NetBSD, Linux, OS X and Solaris.
 
-tmux depends on libevent 2.x. Download it from:
-
-	http://www.monkey.org/~provos/libevent/
+tmux depends on [libevent 2.x](http://www.monkey.org/~provos/libevent/)
 
 To build tmux from a release tarball, do:
 
