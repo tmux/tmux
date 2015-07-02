@@ -662,6 +662,11 @@ const struct options_table_entry window_options_table[] = {
 	  .style = "window-status-activity-style"
 	},
 
+	{ .name = "window-status-activity-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .default_str = "#I:#W#{?window_flags,#{window_flags}, }"
+	},
+
 	{ .name = "window-status-activity-style",
 	  .type = OPTIONS_TABLE_STYLE,
 	  .default_str = "reverse"
@@ -689,6 +694,11 @@ const struct options_table_entry window_options_table[] = {
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .default_num = 8,
 	  .style = "window-status-bell-style"
+	},
+
+	{ .name = "window-status-bell-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .default_str = "#I:#W#{?window_flags,#{window_flags}, }"
 	},
 
 	{ .name = "window-status-bell-style",
@@ -757,6 +767,11 @@ const struct options_table_entry window_options_table[] = {
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .default_num = 8,
 	  .style = "window-status-last-style"
+	},
+
+	{ .name = "window-status-last-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .default_str = "#I:#W#{?window_flags,#{window_flags}, }"
 	},
 
 	{ .name = "window-status-last-style",
