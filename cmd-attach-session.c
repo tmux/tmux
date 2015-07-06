@@ -126,6 +126,12 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 			s->cwd = fd;
 		}
 
+		if (!Eflag) {
+			update = options_get_string(&s->options,
+			    "update-environment");
+			environ_update(update, &c->environ, &s->environ);
+		}
+
 		c->session = s;
 		notify_attached_session_changed(c);
 		session_update_activity(s);
