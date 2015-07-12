@@ -99,7 +99,6 @@ AC_CHECK_HEADERS(
 # Check for some functions that are replaced or omitted.
 AC_CHECK_FUNCS(
 	[ \
-		bzero \
 		dirfd \
 		flock \
 		setproctitle \

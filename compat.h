@@ -185,11 +185,6 @@ typedef uint64_t u_int64_t;
 #define flock(fd, op) (0)
 #endif
 
-#ifndef HAVE_BZERO
-#undef bzero
-#define bzero(buf, len) memset(buf, 0, len);
-#endif
-
 #ifndef HAVE_CLOSEFROM
 /* closefrom.c */
 void	closefrom(int);
