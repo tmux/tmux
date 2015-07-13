@@ -96,6 +96,8 @@ server_client_create(int fd)
 
 	environ_init(&c->environ);
 
+	c->cwd = -1;
+
 	c->cmdq = cmdq_new(c);
 	c->cmdq->client_exit = 1;
 
@@ -1253,12 +1255,11 @@ server_client_msg_identify(struct client *c, struct imsg *imsg)
 
 	if (c->fd == -1)
 		return;
-	if (!isatty(c->fd)) {
+	if (tty_init(&c->tty, c, c->fd, c->term) != 0) {
 		close(c->fd);
 		c->fd = -1;
 		return;
 	}
-	tty_init(&c->tty, c, c->fd, c->term);
 	if (c->flags & CLIENT_UTF8)
 		c->tty.flags |= TTY_UTF8;
 	if (c->flags & CLIENT_256COLOURS)
