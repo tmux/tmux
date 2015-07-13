@@ -3542,7 +3542,7 @@ flag unsets a variable.
 indicates the variable is to be removed from the environment before starting a
 new process.
 .It Xo Ic show-environment
-.Op Fl g
+.Op Fl gs
 .Op Fl t Ar target-session
 .Op Ar variable
 .Xc
@@ -3556,6 +3556,9 @@ If
 is omitted, all variables are shown.
 Variables removed from the environment are prefixed with
 .Ql - .
+If
+.Fl s
+is used, the output is formatted as a set of Bourne shell commands.
 .El
 .Sh STATUS LINE
 .Nm
