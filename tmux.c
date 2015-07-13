@@ -22,7 +22,6 @@
 #include <errno.h>
 #include <event.h>
 #include <fcntl.h>
-#include <getopt.h>
 #include <locale.h>
 #include <pwd.h>
 #include <stdlib.h>
