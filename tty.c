@@ -59,10 +59,13 @@ void	tty_default_colours(struct grid_cell *, const struct window_pane *);
 #define tty_pane_full_width(tty, ctx) \
 	((ctx)->xoff == 0 && screen_size_x((ctx)->wp->screen) >= (tty)->sx)
 
-void
+int
 tty_init(struct tty *tty, struct client *c, int fd, char *term)
 {
 	char	*path;
+
+	if (!isatty(fd))
+		return (-1);
 
 	memset(tty, 0, sizeof *tty);
 	tty->log_fd = -1;
@@ -75,13 +78,15 @@ tty_init(struct tty *tty, struct client *c, int fd, char *term)
 	tty->client = c;
 
 	if ((path = ttyname(fd)) == NULL)
-		fatalx("ttyname failed");
+		return (-1);
 	tty->path = xstrdup(path);
 	tty->cstyle = 0;
 	tty->ccolour = xstrdup("");
 
 	tty->flags = 0;
 	tty->term_flags = 0;
+
+	return (0);
 }
 
 int

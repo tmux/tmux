@@ -3362,6 +3362,7 @@ The following variables are available, where appropriate:
 .It Li "client_activity_string" Ta "" Ta "String time client last had activity"
 .It Li "client_created" Ta "" Ta "Integer time client created"
 .It Li "client_created_string" Ta "" Ta "String time client created"
+.It Li "client_control_mode" Ta "" Ta "1 if client is in control mode"
 .It Li "client_height" Ta "" Ta "Height of client"
 .It Li "client_last_session" Ta "" Ta "Name of the client's last session"
 .It Li "client_pid" Ta "" Ta "PID of client process"
@@ -3547,7 +3548,7 @@ flag unsets a variable.
 indicates the variable is to be removed from the environment before starting a
 new process.
 .It Xo Ic show-environment
-.Op Fl g
+.Op Fl gs
 .Op Fl t Ar target-session
 .Op Ar variable
 .Xc
@@ -3561,6 +3562,9 @@ If
 is omitted, all variables are shown.
 Variables removed from the environment are prefixed with
 .Ql - .
+If
+.Fl s
+is used, the output is formatted as a set of Bourne shell commands.
 .El
 .Sh STATUS LINE
 .Nm

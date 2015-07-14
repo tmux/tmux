@@ -712,6 +712,8 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 		format_add(ft, "client_tty", "%s", c->tty.path);
 	if (c->tty.termname != NULL)
 		format_add(ft, "client_termname", "%s", c->tty.termname);
+	format_add(ft, "client_control_mode", "%d",
+		!!(c->flags & CLIENT_CONTROL));
 
 	t = c->creation_time.tv_sec;
 	format_add(ft, "client_created", "%lld", (long long) t);
