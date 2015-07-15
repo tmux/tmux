@@ -40,6 +40,10 @@ forkpty(int *master, unused char *name, struct termios *tio, struct winsize *ws)
 
 	if ((path = ttyname(*master)) == NULL)
 		goto out;
+
+	if (name != NULL)
+		strlcpy(name, path, TTY_NAME_MAX);
+
 	if ((slave = open(path, O_RDWR|O_NOCTTY)) == -1)
 		goto out;
 
