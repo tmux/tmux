@@ -96,6 +96,7 @@ server_client_create(int fd)
 
 	environ_init(&c->environ);
 
+	c->fd = -1;
 	c->cwd = -1;
 
 	c->cmdq = cmdq_new(c);
