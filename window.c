@@ -341,12 +341,12 @@ window_create(const char *name, int argc, char **argv, const char *path,
 void
 window_destroy(struct window *w)
 {
-	window_unzoom(w);
-
 	RB_REMOVE(windows, &windows, w);
 
 	if (w->layout_root != NULL)
-		layout_free(w);
+		layout_free_cell(w->layout_root);
+	if (w->saved_layout_root != NULL)
+		layout_free_cell(w->saved_layout_root);
 	free(w->old_layout);
 
 	if (event_initialized(&w->name_timer))
