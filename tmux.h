@@ -368,6 +368,7 @@ enum tty_code_code {
 	TTYC_KUP5,
 	TTYC_KUP6,
 	TTYC_KUP7,
+	TTYC_MGC,	/* clear_margins, MC */
 	TTYC_MS,	/* modify xterm(1) selection */
 	TTYC_OP,	/* orig_pair, op */
 	TTYC_REV,	/* enter_reverse_mode, mr */
@@ -382,6 +383,7 @@ enum tty_code_code {
 	TTYC_SITM,	/* enter_italics_mode, it */
 	TTYC_SMACS,	/* enter_alt_charset_mode, as */
 	TTYC_SMCUP,	/* enter_ca_mode, ti */
+	TTYC_SMGLR,	/* set_lr_margin, ML */
 	TTYC_SMKX,	/* keypad_xmit, ks */
 	TTYC_SMSO,	/* enter_standout_mode, so */
 	TTYC_SMUL,	/* enter_underline_mode, us */
@@ -1127,6 +1129,8 @@ struct tty {
 
 	u_int		 cx;
 	u_int		 cy;
+	u_int		 pixel_x;
+	u_int		 pixel_y;
 	u_int		 cstyle;
 	char		*ccolour;
 
@@ -1641,6 +1645,7 @@ void	tty_cmd_linefeed(struct tty *, const struct tty_ctx *);
 void	tty_cmd_utf8character(struct tty *, const struct tty_ctx *);
 void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
 void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
+void	tty_cmd_write_sixel(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
 void	tty_bell(struct tty *);
 
@@ -2070,6 +2075,7 @@ void	 screen_write_clearscreen(struct screen_write_ctx *);
 void	 screen_write_clearhistory(struct screen_write_ctx *);
 void	 screen_write_cell(struct screen_write_ctx *, const struct grid_cell *);
 void	 screen_write_setselection(struct screen_write_ctx *, u_char *, u_int);
+void	 screen_write_sixel(struct screen_write_ctx *, u_char *, u_int);
 void	 screen_write_rawstring(struct screen_write_ctx *, u_char *, u_int);
 
 /* screen-redraw.c */
