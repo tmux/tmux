@@ -1473,6 +1473,7 @@ int		 checkshell(const char *);
 int		 areshell(const char *);
 void		 setblocking(int, int);
 __dead void	 shell_exec(const char *, const char *);
+const char	*find_home(void);
 
 /* cfg.c */
 extern struct cmd_q *cfg_cmd_q;
@@ -1947,6 +1948,8 @@ void	 status_prompt_clear(struct client *);
 int	 status_prompt_redraw(struct client *);
 void	 status_prompt_key(struct client *, int);
 void	 status_prompt_update(struct client *, const char *, const char *);
+void	 status_prompt_load_history(void);
+void	 status_prompt_save_history(void);
 
 /* resize.c */
 void	 recalculate_sizes(void);
