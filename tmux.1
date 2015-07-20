@@ -2713,12 +2713,10 @@ and
 .Xr terminfo 5
 entries if they exist.
 .Nm
-automatically sets these to the \ee]2;...\e007 sequence if
-the terminal appears to be an xterm.
+automatically sets these to the \ee]0;...\e007 sequence if
+the terminal appears to be
+.Xr xterm 1 .
 This option is off by default.
-Note that elinks
-will only attempt to set the window title if the STY environment
-variable is set.
 .It Ic set-titles-string Ar string
 String used to set the window title if
 .Ic set-titles
