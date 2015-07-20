@@ -240,6 +240,7 @@ server_start(int lockfd, char *lockfile)
 			cfg_add_cause("%s: %s", cfg_file, cause);
 	}
 	cmdq_continue(cfg_cmd_q);
+	status_prompt_load_history();
 
 	server_add_accept(0);
 
@@ -250,6 +251,7 @@ server_start(int lockfd, char *lockfile)
 
 	set_signals(server_signal_callback);
 	server_loop();
+	status_prompt_save_history();
 	exit(0);
 }
 
