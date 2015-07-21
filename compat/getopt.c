@@ -94,7 +94,7 @@ BSDgetopt(int nargc, char *const *nargv, const char *ostr)
 	}
 	else {					/* need an argument */
 		if (*place)			/* no white space */
-			BSDoptarg = place;
+			BSDoptarg = (char *)place;
 		else if (nargc <= ++BSDoptind) {	/* no arg */
 			place = EMSG;
 			if (*ostr == ':')
