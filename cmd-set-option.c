@@ -110,8 +110,11 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 	/* Find the option entry, try each table. */
 	table = oe = NULL;
 	if (options_table_find(optstr, &table, &oe) != 0) {
-		cmdq_error(cmdq, "ambiguous option: %s", optstr);
-		return (CMD_RETURN_ERROR);
+		if (!args_has(args, 'q')) {
+			cmdq_error(cmdq, "ambiguous option: %s", optstr);
+			return (CMD_RETURN_ERROR);
+		}
+		return (CMD_RETURN_NORMAL);
 	}
 	if (oe == NULL) {
 		if (!args_has(args, 'q')) {
