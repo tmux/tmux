@@ -70,11 +70,8 @@ cmd_show_messages_server(struct cmd_q *cmdq)
 int
 cmd_show_messages_terminals(struct cmd_q *cmdq, int blank)
 {
-	struct tty_term				*term;
-	const struct tty_term_code_entry	*ent;
-	struct tty_code				*code;
-	u_int					 i, n;
-	char					 out[80];
+	struct tty_term	*term;
+	u_int		 i, n;
 
 	n = 0;
 	LIST_FOREACH(term, &tty_terms, entry) {
@@ -85,31 +82,8 @@ cmd_show_messages_terminals(struct cmd_q *cmdq, int blank)
 		cmdq_print(cmdq, "Terminal %u: %s [references=%u, flags=0x%x]:",
 		    n, term->name, term->references, term->flags);
 		n++;
-		for (i = 0; i < NTTYCODE; i++) {
-			ent = &tty_term_codes[i];
-			code = &term->codes[ent->code];
-			switch (code->type) {
-			case TTYCODE_NONE:
-				cmdq_print(cmdq, "%4u: %s: [missing]",
-				    ent->code, ent->name);
-				break;
-			case TTYCODE_STRING:
-				strnvis(out, code->value.string, sizeof out,
-				    VIS_OCTAL|VIS_TAB|VIS_NL);
-				cmdq_print(cmdq, "%4u: %s: (string) %s",
-				    ent->code, ent->name, out);
-				break;
-			case TTYCODE_NUMBER:
-				cmdq_print(cmdq, "%4u: %s: (number) %d",
-				    ent->code, ent->name, code->value.number);
-				break;
-			case TTYCODE_FLAG:
-				cmdq_print(cmdq, "%4u: %s: (flag) %s",
-				    ent->code, ent->name,
-				    code->value.flag ? "true" : "false");
-				break;
-			}
-		}
+		for (i = 0; i < tty_term_ncodes(); i++)
+			cmdq_print(cmdq, "%s", tty_term_describe(term, i));
 	}
 	return (n != 0);
 }
