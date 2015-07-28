@@ -36,7 +36,6 @@ char   *status_redraw_get_right(struct client *, time_t, int,
 char   *status_print(struct client *, struct winlink *, time_t,
 	    struct grid_cell *);
 char   *status_replace(struct client *, struct winlink *, const char *, time_t);
-void	status_replace1(char **, char **, char *, size_t);
 void	status_message_callback(int, short, void *);
 
 const char *status_prompt_up_history(u_int *);
