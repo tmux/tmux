@@ -1176,15 +1176,6 @@ struct message_entry {
 	TAILQ_ENTRY(message_entry) entry;
 };
 
-/* Status output data from a job. */
-struct status_out {
-	char	*cmd;
-	char	*out;
-
-	RB_ENTRY(status_out) entry;
-};
-RB_HEAD(status_out_tree, status_out);
-
 /* Client connection. */
 struct client {
 	struct imsgbuf	 ibuf;
@@ -1215,8 +1206,6 @@ struct client {
 
 	struct event	 repeat_timer;
 
-	struct status_out_tree status_old;
-	struct status_out_tree status_new;
 	struct timeval	 status_timer;
 	struct screen	 status;
 
@@ -1904,11 +1893,7 @@ int	 server_set_stdin_callback(struct client *, void (*)(struct client *,
 void	 server_unzoom_window(struct window *);
 
 /* status.c */
-int	 status_out_cmp(struct status_out *, struct status_out *);
-RB_PROTOTYPE(status_out_tree, status_out, entry, status_out_cmp);
 int	 status_at_line(struct client *);
-void	 status_free_jobs(struct status_out_tree *);
-void	 status_update_jobs(struct client *);
 struct window *status_get_window_at(struct client *, u_int);
 int	 status_redraw(struct client *);
 void printflike(2, 3) status_message_set(struct client *, const char *, ...);
