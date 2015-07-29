@@ -142,16 +142,6 @@ status_prompt_save_history(void)
 
 }
 
-/* Status output tree. */
-RB_GENERATE(status_out_tree, status_out, entry, status_out_cmp);
-
-/* Output tree comparison function. */
-int
-status_out_cmp(struct status_out *so1, struct status_out *so2)
-{
-	return (strcmp(so1->cmd, so2->cmd));
-}
-
 /* Get screen line of status line. -1 means off. */
 int
 status_at_line(struct client *c)
