@@ -391,32 +391,6 @@ enum tty_code_code {
 	TTYC_XENL,	/* eat_newline_glitch, xn */
 	TTYC_XT,	/* xterm(1)-compatible title, XT */
 };
-#define NTTYCODE (TTYC_XT + 1)
-
-/* Termcap types. */
-enum tty_code_type {
-	TTYCODE_NONE = 0,
-	TTYCODE_STRING,
-	TTYCODE_NUMBER,
-	TTYCODE_FLAG,
-};
-
-/* Termcap code. */
-struct tty_code {
-	enum tty_code_type	type;
-	union {
-		char	       *string;
-		int		number;
-		int		flag;
-	} value;
-};
-
-/* Entry in terminal code table. */
-struct tty_term_code_entry {
-	enum tty_code_code	code;
-	enum tty_code_type	type;
-	const char	       *name;
-};
 
 /* Message codes. */
 enum msgtype {
@@ -1100,13 +1074,14 @@ struct tty_key {
 	struct tty_key	*next;
 };
 
+struct tty_code;
 struct tty_term {
 	char		*name;
 	u_int		 references;
 
 	char		 acs[UCHAR_MAX + 1][2];
 
-	struct tty_code	 codes[NTTYCODE];
+	struct tty_code	*codes;
 
 #define TERM_256COLOURS 0x1
 #define TERM_EARLYWRAP 0x2
@@ -1205,15 +1180,6 @@ struct message_entry {
 	TAILQ_ENTRY(message_entry) entry;
 };
 
-/* Status output data from a job. */
-struct status_out {
-	char	*cmd;
-	char	*out;
-
-	RB_ENTRY(status_out) entry;
-};
-RB_HEAD(status_out_tree, status_out);
-
 /* Client connection. */
 struct client {
 	struct imsgbuf	 ibuf;
@@ -1244,8 +1210,6 @@ struct client {
 
 	struct event	 repeat_timer;
 
-	struct status_out_tree status_old;
-	struct status_out_tree status_new;
 	struct timeval	 status_timer;
 	struct screen	 status;
 
@@ -1647,7 +1611,7 @@ void	tty_bell(struct tty *);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;
-extern const struct tty_term_code_entry tty_term_codes[NTTYCODE];
+u_int		 tty_term_ncodes(void);
 struct tty_term *tty_term_find(char *, int, char **);
 void		 tty_term_free(struct tty_term *);
 int		 tty_term_has(struct tty_term *, enum tty_code_code);
@@ -1661,6 +1625,7 @@ const char	*tty_term_ptr2(struct tty_term *, enum tty_code_code,
 		     const void *, const void *);
 int		 tty_term_number(struct tty_term *, enum tty_code_code);
 int		 tty_term_flag(struct tty_term *, enum tty_code_code);
+const char	*tty_term_describe(struct tty_term *, enum tty_code_code);
 
 /* tty-acs.c */
 const char	*tty_acs_get(struct tty *, u_char);
@@ -1932,11 +1897,7 @@ int	 server_set_stdin_callback(struct client *, void (*)(struct client *,
 void	 server_unzoom_window(struct window *);
 
 /* status.c */
-int	 status_out_cmp(struct status_out *, struct status_out *);
-RB_PROTOTYPE(status_out_tree, status_out, entry, status_out_cmp);
 int	 status_at_line(struct client *);
-void	 status_free_jobs(struct status_out_tree *);
-void	 status_update_jobs(struct client *);
 struct window *status_get_window_at(struct client *, u_int);
 int	 status_redraw(struct client *);
 void printflike(2, 3) status_message_set(struct client *, const char *, ...);

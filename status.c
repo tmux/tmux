@@ -36,7 +36,6 @@ char   *status_redraw_get_right(struct client *, time_t, int,
 char   *status_print(struct client *, struct winlink *, time_t,
 	    struct grid_cell *);
 char   *status_replace(struct client *, struct winlink *, const char *, time_t);
-void	status_replace1(char **, char **, char *, size_t);
 void	status_message_callback(int, short, void *);
 
 const char *status_prompt_up_history(u_int *);
@@ -141,16 +140,6 @@ status_prompt_save_history(void)
 	}
 	fclose(f);
 
-}
-
-/* Status output tree. */
-RB_GENERATE(status_out_tree, status_out, entry, status_out_cmp);
-
-/* Output tree comparison function. */
-int
-status_out_cmp(struct status_out *so1, struct status_out *so2)
-{
-	return (strcmp(so1->cmd, so2->cmd));
 }
 
 /* Get screen line of status line. -1 means off. */

@@ -114,8 +114,6 @@ server_client_create(int fd)
 	c->tty.sy = 24;
 
 	screen_init(&c->status, c->tty.sx, 1, 0);
-	RB_INIT(&c->status_new);
-	RB_INIT(&c->status_old);
 
 	c->message_string = NULL;
 	TAILQ_INIT(&c->message_log);
