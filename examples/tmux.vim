@@ -184,6 +184,7 @@ syn keyword tmuxOptsSet
 	\ escape-time
 	\ exit-unattached
 	\ focus-events
+	\ history-file
 	\ history-limit
 	\ lock-after-time
 	\ lock-command
