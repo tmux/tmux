@@ -102,10 +102,10 @@ const char *cmd_find_pane_table[][2] = {
 	{ "{top-right}", "top-right" },
 	{ "{bottom-left}", "bottom-left" },
 	{ "{bottom-right}", "bottom-right" },
-	{ "{up-of}", "{up}" },
-	{ "{down-of}", "{down}" },
-	{ "{left-of}", "{left}" },
-	{ "{right-up}", "{right}" },
+	{ "{up-of}", "{up-of}" },
+	{ "{down-of}", "{down-of}" },
+	{ "{left-of}", "{left-of}" },
+	{ "{right-of}", "{right-of}" },
 	{ NULL, NULL }
 };
 
@@ -699,22 +699,22 @@ cmd_find_get_pane_with_window(struct cmd_find_state *fs, const char *pane)
 			return (-1);
 		fs->wp = fs->w->last;
 		return (0);
-	} else if (strcmp(pane, "{up}") == 0) {
+	} else if (strcmp(pane, "{up-of}") == 0) {
 		fs->wp = window_pane_find_up(fs->w->active);
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
-	} else if (strcmp(pane, "{down}") == 0) {
+	} else if (strcmp(pane, "{down-of}") == 0) {
 		fs->wp = window_pane_find_down(fs->w->active);
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
-	} else if (strcmp(pane, "{left}") == 0) {
+	} else if (strcmp(pane, "{left-of}") == 0) {
 		fs->wp = window_pane_find_left(fs->w->active);
 		if (fs->wp == NULL)
 			return (-1);
 		return (0);
-	} else if (strcmp(pane, "{right}") == 0) {
+	} else if (strcmp(pane, "{right-of}") == 0) {
 		fs->wp = window_pane_find_right(fs->w->active);
 		if (fs->wp == NULL)
 			return (-1);
