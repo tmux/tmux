@@ -104,7 +104,7 @@ const char *cmd_find_pane_table[][2] = {
 	{ "{up-of}", "{up}" },
 	{ "{down-of}", "{down}" },
 	{ "{left-of}", "{left}" },
-	{ "{right-up}", "{right}" },
+	{ "{right-of}", "{right}" },
 	{ NULL, NULL }
 };
 
