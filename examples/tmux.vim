@@ -266,7 +266,9 @@ syn match tmuxOptions		/\s-\a\+/		display
 syn match tmuxVariable		/\w\+=/			display
 syn match tmuxVariableExpansion	/\${\=\w\+}\=/		display
 
-syn region tmuxComment	start=/#/ end=/$/ contains=tmuxTodo display oneline
+" Comments can span multiple lines, when the newline is escaped
+" (with a single) backslash at the end.
+syn region tmuxComment  start=/#/ skip=/\\\@<!\\$/ end=/$/ contains=tmuxTodo
 syn region tmuxString	start=/"/ end=/"/ display oneline
 syn region tmuxString	start=/'/ end=/'/ display oneline
 
