@@ -652,7 +652,8 @@ grid_duplicate_lines(struct grid *dst, u_int dy, struct grid *src, u_int sy,
 			    srcl->cellsize, sizeof *dstl->celldata);
 			memcpy(dstl->celldata, srcl->celldata,
 			    srcl->cellsize * sizeof *dstl->celldata);
-		}
+		} else
+			dstl->celldata = NULL;
 
 		sy++;
 		dy++;
