@@ -1199,6 +1199,7 @@ input_csi_dispatch(struct input_ctx *ictx)
 	struct screen		       *s = sctx->s;
 	struct input_table_entry       *entry;
 	int				n, m;
+	u_int				cx;
 
 	if (ictx->flags & INPUT_DISCARD)
 		return (0);
@@ -1217,12 +1218,16 @@ input_csi_dispatch(struct input_ctx *ictx)
 	switch (entry->type) {
 	case INPUT_CSI_CBT:
 		/* Find the previous tab point, n times. */
+		cx = s->cx;
+		if (cx > screen_size_x(s) - 1)
+			cx = screen_size_x(s) - 1;
 		n = input_get(ictx, 0, 1, 1);
-		while (s->cx > 0 && n-- > 0) {
+		while (cx > 0 && n-- > 0) {
 			do
-				s->cx--;
-			while (s->cx > 0 && !bit_test(s->tabs, s->cx));
+				cx--;
+			while (cx > 0 && !bit_test(s->tabs, cx));
 		}
+		s->cx = cx;
 		break;
 	case INPUT_CSI_CUB:
 		screen_write_cursorleft(sctx, input_get(ictx, 0, 1, 1));
