@@ -1207,7 +1207,7 @@ struct client {
 
 	struct event	 repeat_timer;
 
-	struct timeval	 status_timer;
+	struct event	 status_timer;
 	struct screen	 status;
 
 #define CLIENT_TERMINAL 0x1
@@ -1893,6 +1893,8 @@ int	 server_set_stdin_callback(struct client *, void (*)(struct client *,
 void	 server_unzoom_window(struct window *);
 
 /* status.c */
+void	 status_timer_start(struct client *);
+void	 status_timer_start_all(void);
 int	 status_at_line(struct client *);
 struct window *status_get_window_at(struct client *, u_int);
 int	 status_redraw(struct client *);

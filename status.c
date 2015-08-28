@@ -37,6 +37,7 @@ char   *status_print(struct client *, struct winlink *, time_t,
 	    struct grid_cell *);
 char   *status_replace(struct client *, struct winlink *, const char *, time_t);
 void	status_message_callback(int, short, void *);
+void	status_timer_callback(int, short, void *);
 
 const char *status_prompt_up_history(u_int *);
 const char *status_prompt_down_history(u_int *);
@@ -142,6 +143,55 @@ status_prompt_save_history(void)
 
 }
 
+/* Status timer callback. */
+void
+status_timer_callback(unused int fd, unused short events, void *arg)
+{
+	struct client	*c = arg;
+	struct session	*s = c->session;
+	struct timeval	 tv;
+
+	evtimer_del(&c->status_timer);
+
+	if (s == NULL)
+		return;
+
+	if (c->message_string == NULL && c->prompt_string == NULL)
+		c->flags |= CLIENT_STATUS;
+
+	timerclear(&tv);
+	tv.tv_sec = options_get_number(&s->options, "status-interval");
+
+	if (tv.tv_sec != 0)
+		evtimer_add(&c->status_timer, &tv);
+	log_debug("client %d, status interval %d", c->ibuf.fd, (int)tv.tv_sec);
+}
+
+/* Start status timer for client. */
+void
+status_timer_start(struct client *c)
+{
+	struct session	*s = c->session;
+
+	if (event_initialized(&c->status_timer))
+		evtimer_del(&c->status_timer);
+	else
+		evtimer_set(&c->status_timer, status_timer_callback, c);
+
+	if (s != NULL && options_get_number(&s->options, "status"))
+		status_timer_callback(-1, 0, c);
+}
+
+/* Start status timer for all clients. */
+void
+status_timer_start_all(void)
+{
+	struct client	*c;
+
+	TAILQ_FOREACH(c, &clients, entry)
+		status_timer_start(c);
+}
+
 /* Get screen line of status line. -1 means off. */
 int
 status_at_line(struct client *c)
@@ -244,10 +294,8 @@ status_redraw(struct client *c)
 	left = right = NULL;
 	larrow = rarrow = 0;
 
-	/* Update status timer. */
-	if (gettimeofday(&c->status_timer, NULL) != 0)
-		fatal("gettimeofday failed");
-	t = c->status_timer.tv_sec;
+	/* Store current time. */
+	t = time(NULL);
 
 	/* Set up default colour. */
 	style_apply(&stdgc, &s->options, "status-style");

@@ -419,6 +419,7 @@ server_destroy_session(struct session *s)
 		} else {
 			c->last_session = NULL;
 			c->session = s_new;
+			status_timer_start(c);
 			notify_attached_session_changed(c);
 			session_update_activity(s_new);
 			server_redraw_client(c);

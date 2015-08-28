@@ -176,7 +176,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_ERROR);
 	}
 
-	/* Start or stop timers when automatic-rename changed. */
+	/* Start or stop timers when name or status options changed. */
 	if (strcmp(oe->name, "automatic-rename") == 0) {
 		RB_FOREACH(w, windows, &windows) {
 			if (options_get_number(&w->options, "automatic-rename"))
@@ -185,6 +185,9 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 				evtimer_del(&w->name_timer);
 		}
 	}
+	if (strcmp(oe->name, "status") == 0 ||
+	    strcmp(oe->name, "status-interval") == 0)
+		status_timer_start_all();
 
 	/* Update sizes and redraw. May not need it but meh. */
 	recalculate_sizes();

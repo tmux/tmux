@@ -127,6 +127,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (c->session != NULL)
 		c->last_session = c->session;
 	c->session = s;
+	status_timer_start(c);
 	session_update_activity(s);
 
 	recalculate_sizes();

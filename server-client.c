@@ -188,6 +188,8 @@ server_client_lost(struct client *c)
 	if (c->stderr_data != c->stdout_data)
 		evbuffer_free(c->stderr_data);
 
+	if (event_initialized(&c->status_timer))
+		evtimer_del(&c->status_timer);
 	screen_free(&c->status);
 
 	free(c->title);
@@ -287,42 +289,6 @@ server_client_callback(int fd, short events, void *data)
 
 client_lost:
 	server_client_lost(c);
-}
-
-/* Handle client status timer. */
-void
-server_client_status_timer(void)
-{
-	struct client	*c;
-	struct session	*s;
-	struct timeval	 tv;
-	int		 interval;
-	time_t		 difference;
-
-	if (gettimeofday(&tv, NULL) != 0)
-		fatal("gettimeofday failed");
-
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session == NULL)
-			continue;
-		if (c->message_string != NULL || c->prompt_string != NULL) {
-			/*
-			 * Don't need timed redraw for messages/prompts so bail
-			 * now. The status timer isn't reset when they are
-			 * redrawn anyway.
-			 */
-			continue;
-		}
-		s = c->session;
-
-		if (!options_get_number(&s->options, "status"))
-			continue;
-		interval = options_get_number(&s->options, "status-interval");
-
-		difference = tv.tv_sec - c->status_timer.tv_sec;
-		if (interval != 0 && difference >= interval)
-			c->flags |= CLIENT_STATUS;
-	}
 }
 
 /* Check for mouse keys. */

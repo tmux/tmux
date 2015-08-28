@@ -275,6 +275,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		else if (c->session != NULL)
 			c->last_session = c->session;
 		c->session = s;
+		status_timer_start(c);
 		notify_attached_session_changed(c);
 		session_update_activity(s);
 		server_redraw_client(c);

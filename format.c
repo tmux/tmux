@@ -247,7 +247,7 @@ format_job_timer(unused int fd, unused short events, unused void *arg)
 		if (fj->job != NULL)
 			job_free(fj->job);
 
-		free((void*)fj->cmd);
+		free((void *)fj->cmd);
 		free(fj->out);
 
 		free(fj);
