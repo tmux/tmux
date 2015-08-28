@@ -412,6 +412,7 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 			return (1);
 	}
 	w->active->active_point = next_active_point++;
+	w->active->flags |= PANE_CHANGED;
 	return (1);
 }
 
