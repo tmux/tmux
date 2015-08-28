@@ -844,6 +844,8 @@ input_parse(struct window_pane *wp)
 	if (EVBUFFER_LENGTH(evb) == 0)
 		return;
 
+	wp->flags |= PANE_CHANGED;
+
 	wp->window->flags |= WINDOW_ACTIVITY;
 	wp->window->flags &= ~WINDOW_SILENCE;
 

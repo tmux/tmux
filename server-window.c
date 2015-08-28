@@ -147,7 +147,7 @@ server_window_check_silence(struct session *s, struct winlink *wl)
 		 * from this window.
 		 */
 		if (gettimeofday(&w->silence_timer, NULL) != 0)
-			fatal("gettimeofday failed.");
+			fatal("gettimeofday failed");
 
 		return (0);
 	}

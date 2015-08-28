@@ -411,6 +411,7 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 			return (1);
 	}
 	w->active->active_point = next_active_point++;
+	w->active->flags |= PANE_CHANGED;
 	return (1);
 }
 
@@ -947,7 +948,7 @@ window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 	 */
 	wp->window->flags |= WINDOW_SILENCE;
 	if (gettimeofday(&wp->window->silence_timer, NULL) != 0)
-		fatal("gettimeofday failed.");
+		fatal("gettimeofday failed");
 	return;
 
 start_timer:
