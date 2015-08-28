@@ -45,8 +45,12 @@ void	 format_job_timer(int, short, void *);
 void	 format_cb_host(struct format_tree *, struct format_entry *);
 void	 format_cb_host_short(struct format_tree *, struct format_entry *);
 void	 format_cb_pid(struct format_tree *, struct format_entry *);
+void	 format_cb_session_alerts(struct format_tree *, struct format_entry *);
+void	 format_cb_window_layout(struct format_tree *, struct format_entry *);
 void	 format_cb_start_command(struct format_tree *, struct format_entry *);
 void	 format_cb_current_command(struct format_tree *, struct format_entry *);
+void	 format_cb_history_bytes(struct format_tree *, struct format_entry *);
+void	 format_cb_pane_tabs(struct format_tree *, struct format_entry *);
 
 void	 format_add_cb(struct format_tree *, const char *, format_cb);
 int	 format_replace(struct format_tree *, const char *, size_t, char **,
@@ -301,6 +305,51 @@ format_cb_pid(unused struct format_tree *ft, struct format_entry *fe)
 	xasprintf(&fe->value, "%ld", (long)getpid());
 }
 
+/* Callback for session_alerts. */
+void
+format_cb_session_alerts(struct format_tree *ft, struct format_entry *fe)
+{
+	struct session	*s = ft->s;
+	struct winlink	*wl;
+	char		 alerts[256], tmp[16];
+
+	if (s == NULL)
+		return;
+
+	*alerts = '\0';
+	RB_FOREACH(wl, winlinks, &s->windows) {
+		if ((wl->flags & WINLINK_ALERTFLAGS) == 0)
+			continue;
+		xsnprintf(tmp, sizeof tmp, "%u", wl->idx);
+
+		if (*alerts != '\0')
+			strlcat(alerts, ",", sizeof alerts);
+		strlcat(alerts, tmp, sizeof alerts);
+		if (wl->flags & WINLINK_ACTIVITY)
+			strlcat(alerts, "#", sizeof alerts);
+		if (wl->flags & WINLINK_BELL)
+			strlcat(alerts, "!", sizeof alerts);
+		if (wl->flags & WINLINK_SILENCE)
+			strlcat(alerts, "~", sizeof alerts);
+	}
+	fe->value = xstrdup(alerts);
+}
+
+/* Callback for window_layout. */
+void
+format_cb_window_layout(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window	*w = ft->w;
+
+	if (w == NULL)
+		return;
+
+	if (w->saved_layout_root != NULL)
+		fe->value = layout_dump(w->saved_layout_root);
+	else
+		fe->value = layout_dump(w->layout_root);
+}
+
 /* Callback for pane_start_command. */
 void
 format_cb_start_command(struct format_tree *ft, struct format_entry *fe)
@@ -334,6 +383,56 @@ format_cb_current_command(struct format_tree *ft, struct format_entry *fe)
 	}
 	fe->value = parse_window_name(cmd);
 	free(cmd);
+}
+
+/* Callback for history_bytes. */
+void
+format_cb_history_bytes(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window_pane	*wp = ft->wp;
+	struct grid		*gd;
+	struct grid_line	*gl;
+	unsigned long long	 size;
+	u_int			 i;
+
+	if (wp == NULL)
+		return;
+	gd = wp->base.grid;
+
+	size = 0;
+	for (i = 0; i < gd->hsize; i++) {
+		gl = &gd->linedata[i];
+		size += gl->cellsize * sizeof *gl->celldata;
+	}
+	size += gd->hsize * sizeof *gd->linedata;
+
+	xasprintf(&fe->value, "%llu", size);
+}
+
+/* Callback for pane_tabs. */
+void
+format_cb_pane_tabs(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window_pane	*wp = ft->wp;
+	struct evbuffer		*buffer;
+	u_int			 i;
+	int			 size;
+
+	if (wp == NULL)
+		return;
+
+	buffer = evbuffer_new();
+	for (i = 0; i < wp->base.grid->sx; i++) {
+		if (!bit_test(wp->base.tabs, i))
+			continue;
+
+		if (EVBUFFER_LENGTH(buffer) > 0)
+			evbuffer_add(buffer, ",", 1);
+		evbuffer_add_printf(buffer, "%u", i);
+	}
+	size = EVBUFFER_LENGTH(buffer);
+	xasprintf(&fe->value, "%.*s", size, EVBUFFER_DATA(buffer));
+	evbuffer_free(buffer);
 }
 
 /* Create a new tree. */
@@ -756,8 +855,6 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 {
 	struct session_group	*sg;
 	time_t			 t;
-	struct winlink		*wl;
-	char			 alerts[256], tmp[16];
 
 	ft->s = s;
 
@@ -783,23 +880,7 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 	format_add(ft, "session_attached", "%u", s->attached);
 	format_add(ft, "session_many_attached", "%d", s->attached > 1);
 
-	*alerts = '\0';
-	RB_FOREACH (wl, winlinks, &s->windows) {
-		if ((wl->flags & WINLINK_ALERTFLAGS) == 0)
-			continue;
-		xsnprintf(tmp, sizeof tmp, "%u", wl->idx);
-
-		if (*alerts != '\0')
-			strlcat(alerts, ",", sizeof alerts);
-		strlcat(alerts, tmp, sizeof alerts);
-		if (wl->flags & WINLINK_ACTIVITY)
-			strlcat(alerts, "#", sizeof alerts);
-		if (wl->flags & WINLINK_BELL)
-			strlcat(alerts, "!", sizeof alerts);
-		if (wl->flags & WINLINK_SILENCE)
-			strlcat(alerts, "~", sizeof alerts);
-	}
-	format_add(ft, "session_alerts", "%s", alerts);
+	format_add_cb(ft, "session_alerts", format_cb_session_alerts);
 }
 
 /* Set default format keys for a client. */
@@ -858,15 +939,9 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 void
 format_defaults_window(struct format_tree *ft, struct window *w)
 {
-	char	*layout;
 	time_t	 t;
 
 	ft->w = w;
-
-	if (w->saved_layout_root != NULL)
-		layout = layout_dump(w->saved_layout_root);
-	else
-		layout = layout_dump(w->layout_root);
 
 	t = w->activity_time.tv_sec;
 	format_add(ft, "window_activity", "%lld", (long long) t);
@@ -876,12 +951,10 @@ format_defaults_window(struct format_tree *ft, struct window *w)
 	format_add(ft, "window_name", "%s", w->name);
 	format_add(ft, "window_width", "%u", w->sx);
 	format_add(ft, "window_height", "%u", w->sy);
-	format_add(ft, "window_layout", "%s", layout);
+	format_add_cb(ft, "window_layout", format_cb_window_layout);
 	format_add(ft, "window_panes", "%u", window_count_panes(w));
 	format_add(ft, "window_zoomed_flag", "%d",
 	    !!(w->flags & WINDOW_ZOOMED));
-
-	free(layout);
 }
 
 /* Set default format keys for a winlink. */
@@ -916,51 +989,21 @@ format_defaults_winlink(struct format_tree *ft, struct session *s,
 	free(flags);
 }
 
-/* Add window pane tabs. */
-void
-format_defaults_pane_tabs(struct format_tree *ft, struct window_pane *wp)
-{
-	struct evbuffer	*buffer;
-	u_int		 i;
-
-	buffer = evbuffer_new();
-	for (i = 0; i < wp->base.grid->sx; i++) {
-		if (!bit_test(wp->base.tabs, i))
-			continue;
-
-		if (EVBUFFER_LENGTH(buffer) > 0)
-			evbuffer_add(buffer, ",", 1);
-		evbuffer_add_printf(buffer, "%u", i);
-	}
-
-	format_add(ft, "pane_tabs", "%.*s", (int) EVBUFFER_LENGTH(buffer),
-	    EVBUFFER_DATA(buffer));
-	evbuffer_free(buffer);
-}
-
 /* Set default format keys for a window pane. */
 void
 format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 {
-	struct grid		*gd = wp->base.grid;
-	struct grid_line	*gl;
-	unsigned long long	 size;
-	u_int			 i, idx;
-	int			 status;
+	struct grid	*gd = wp->base.grid;
+	u_int		 idx;
+	int  		 status;
 
 	if (ft->w == NULL)
 		ft->w = wp->window;
 	ft->wp = wp;
 
-	size = 0;
-	for (i = 0; i < gd->hsize; i++) {
-		gl = &gd->linedata[i];
-		size += gl->cellsize * sizeof *gl->celldata;
-	}
-	size += gd->hsize * sizeof *gd->linedata;
 	format_add(ft, "history_size", "%u", gd->hsize);
 	format_add(ft, "history_limit", "%u", gd->hlimit);
-	format_add(ft, "history_bytes", "%llu", size);
+	format_add_cb(ft, "history_bytes", format_cb_history_bytes);
 
 	if (window_pane_index(wp, &idx) != 0)
 		fatalx("index not found");
@@ -1023,7 +1066,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "mouse_utf8_flag", "%d",
 	    !!(wp->base.mode & MODE_MOUSE_UTF8));
 
-	format_defaults_pane_tabs(ft, wp);
+	format_add_cb(ft, "pane_tabs", format_cb_pane_tabs);
 }
 
 /* Set default format keys for paste buffer. */
