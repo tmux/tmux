@@ -205,11 +205,6 @@ const struct options_table_entry session_options_table[] = {
 	  .default_str = "lock -np"
 	},
 
-	{ .name = "lock-server",
-	  .type = OPTIONS_TABLE_FLAG,
-	  .default_num = 1
-	},
-
 	{ .name = "message-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
 	  .default_num = 0,

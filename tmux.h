@@ -781,7 +781,6 @@ struct window_mode {
 	void	(*resize)(struct window_pane *, u_int, u_int);
 	void	(*key)(struct window_pane *, struct client *, struct session *,
 		    int, struct mouse_event *);
-	void	(*timer)(struct window_pane *);
 };
 
 /* Structures for choose mode. */
@@ -1211,7 +1210,7 @@ struct client {
 
 	struct event	 repeat_timer;
 
-	struct timeval	 status_timer;
+	struct event	 status_timer;
 	struct screen	 status;
 
 #define CLIENT_TERMINAL 0x1
@@ -1453,7 +1452,6 @@ void		 cfg_show_causes(struct session *);
 
 /* format.c */
 struct format_tree;
-void		 format_clean(void);
 struct format_tree *format_create(void);
 struct format_tree *format_create_status(int);
 void		 format_free(struct format_tree *);
@@ -1898,6 +1896,8 @@ int	 server_set_stdin_callback(struct client *, void (*)(struct client *,
 void	 server_unzoom_window(struct window *);
 
 /* status.c */
+void	 status_timer_start(struct client *);
+void	 status_timer_start_all(void);
 int	 status_at_line(struct client *);
 struct window *status_get_window_at(struct client *, u_int);
 int	 status_redraw(struct client *);
