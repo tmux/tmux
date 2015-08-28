@@ -57,7 +57,6 @@ const struct window_mode window_choose_mode = {
 	window_choose_free,
 	window_choose_resize,
 	window_choose_key,
-	NULL,
 };
 
 struct window_choose_mode_item {

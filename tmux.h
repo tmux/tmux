@@ -777,7 +777,6 @@ struct window_mode {
 	void	(*resize)(struct window_pane *, u_int, u_int);
 	void	(*key)(struct window_pane *, struct client *, struct session *,
 		    int, struct mouse_event *);
-	void	(*timer)(struct window_pane *);
 };
 
 /* Structures for choose mode. */
