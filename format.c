@@ -37,6 +37,7 @@
 
 void	 format_job_callback(struct job *);
 const char *format_job_get(struct format_tree *, const char *);
+void	 format_job_timer(int, short, void *);
 
 int	 format_replace(struct format_tree *, const char *, size_t, char **,
 	     size_t *, size_t *);
@@ -63,6 +64,7 @@ struct format_job {
 };
 
 /* Format job tree. */
+struct event format_job_event;
 int	format_job_cmp(struct format_job *, struct format_job *);
 RB_HEAD(format_job_tree, format_job) format_jobs = RB_INITIALIZER();
 RB_PROTOTYPE(format_job_tree, format_job, entry, format_job_cmp);
@@ -191,6 +193,8 @@ format_job_callback(struct job *job)
 		    server_status_client(c);
 		fj->status = 0;
 	}
+
+	log_debug("%s: %s: %s", __func__, fj->cmd, fj->out);
 }
 
 /* Find a job. */
@@ -226,16 +230,19 @@ format_job_get(struct format_tree *ft, const char *cmd)
 
 /* Remove old jobs. */
 void
-format_clean(void)
+format_job_timer(unused int fd, unused short events, unused void *arg)
 {
 	struct format_job	*fj, *fj1;
 	time_t			 now;
+	struct timeval		 tv = { .tv_sec = 60 };
 
 	now = time(NULL);
 	RB_FOREACH_SAFE(fj, format_job_tree, &format_jobs, fj1) {
 		if (fj->last > now || now - fj->last < 3600)
 			continue;
 		RB_REMOVE(format_job_tree, &format_jobs, fj);
+
+		log_debug("%s: %s", __func__, fj->cmd);
 
 		if (fj->job != NULL)
 			job_free(fj->job);
@@ -245,6 +252,9 @@ format_clean(void)
 
 		free(fj);
 	}
+
+	evtimer_del(&format_job_event);
+	evtimer_add(&format_job_event, &tv);
 }
 
 /* Create a new tree. */
@@ -260,6 +270,11 @@ format_create_status(int status)
 {
 	struct format_tree	*ft;
 	char			 host[HOST_NAME_MAX + 1], *ptr;
+
+	if (!event_initialized(&format_job_event)) {
+		evtimer_set(&format_job_event, format_job_timer, NULL);
+		format_job_timer(-1, 0, NULL);
+	}
 
 	ft = xcalloc(1, sizeof *ft);
 	RB_INIT(&ft->tree);

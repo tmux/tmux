@@ -1449,7 +1449,6 @@ void		 cfg_show_causes(struct session *);
 
 /* format.c */
 struct format_tree;
-void		 format_clean(void);
 struct format_tree *format_create(void);
 struct format_tree *format_create_status(int);
 void		 format_free(struct format_tree *);
