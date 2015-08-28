@@ -112,10 +112,6 @@ session_create(const char *name, int argc, char **argv, const char *path,
 	s->references = 1;
 	s->flags = 0;
 
-	if (gettimeofday(&s->creation_time, NULL) != 0)
-		fatal("gettimeofday failed");
-	session_update_activity(s);
-
 	s->cwd = dup(cwd);
 
 	s->curw = NULL;
@@ -132,6 +128,10 @@ session_create(const char *name, int argc, char **argv, const char *path,
 		s->tio = xmalloc(sizeof *s->tio);
 		memcpy(s->tio, tio, sizeof *s->tio);
 	}
+
+	if (gettimeofday(&s->creation_time, NULL) != 0)
+		fatal("gettimeofday failed");
+	session_update_activity(s, &s->creation_time);
 
 	s->sx = sx;
 	s->sy = sy;
@@ -224,12 +224,17 @@ session_check_name(const char *name)
 	return (*name != '\0' && name[strcspn(name, ":.")] == '\0');
 }
 
-/* Update session active time. */
+/* Update activity time. */
 void
-session_update_activity(struct session *s)
+session_update_activity(struct session *s, struct timeval *from)
 {
-	if (gettimeofday(&s->activity_time, NULL) != 0)
-		fatal("gettimeofday");
+	struct timeval	*last = &s->last_activity_time;
+
+	memcpy(last, &s->activity_time, sizeof *last);
+	if (from == NULL)
+		gettimeofday(&s->activity_time, NULL);
+	else
+		memcpy(&s->activity_time, from, sizeof s->activity_time);
 }
 
 /* Find the next usable session. */

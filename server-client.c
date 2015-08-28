@@ -561,9 +561,7 @@ server_client_handle_key(struct client *c, int key)
 	/* Update the activity timer. */
 	if (gettimeofday(&c->activity_time, NULL) != 0)
 		fatal("gettimeofday failed");
-	memcpy(&s->last_activity_time, &s->activity_time,
-	    sizeof s->last_activity_time);
-	memcpy(&s->activity_time, &c->activity_time, sizeof s->activity_time);
+	session_update_activity(s, &c->activity_time);
 
 	/* Number keys jump to pane in identify mode. */
 	if (c->flags & CLIENT_IDENTIFY && key >= '0' && key <= '9') {
@@ -981,6 +979,7 @@ server_client_msg_dispatch(struct client *c)
 	struct msg_stdin_data	 stdindata;
 	const char		*data;
 	ssize_t			 n, datalen;
+	struct session		*s;
 
 	if ((n = imsg_read(&c->ibuf)) == -1 || n == 0)
 		return (-1);
@@ -1064,11 +1063,12 @@ server_client_msg_dispatch(struct client *c)
 
 			if (c->tty.fd == -1) /* exited in the meantime */
 				break;
+			s = c->session;
 
 			if (gettimeofday(&c->activity_time, NULL) != 0)
 				fatal("gettimeofday");
-			if (c->session != NULL)
-				session_update_activity(c->session);
+			if (s != NULL)
+				session_update_activity(s, &c->activity_time);
 
 			tty_start_tty(&c->tty);
 			server_redraw_client(c);
