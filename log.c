@@ -67,11 +67,13 @@ void
 log_vwrite(const char *msg, va_list ap)
 {
 	char	*fmt;
+	time_t	 t;
 
 	if (log_file == NULL)
 		return;
 
-	if (asprintf(&fmt, "%s\n", msg) == -1)
+	t = time(NULL);
+	if (asprintf(&fmt, "%lld %s\n", (long long)t, msg) == -1)
 		exit(1);
 	if (vfprintf(log_file, fmt, ap) == -1)
 		exit(1);
