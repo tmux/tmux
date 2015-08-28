@@ -64,7 +64,6 @@ void	server_child_signal(void);
 void	server_child_exited(pid_t, int);
 void	server_child_stopped(pid_t, int);
 void	server_second_callback(int, short, void *);
-void	server_lock_server(void);
 void	server_lock_sessions(void);
 
 /* Set marked pane. */
@@ -506,36 +505,12 @@ server_second_callback(unused int fd, unused short events, unused void *arg)
 {
 	struct timeval		 tv;
 
-	if (options_get_number(&global_s_options, "lock-server"))
-		server_lock_server();
-	else
-		server_lock_sessions();
+	server_lock_sessions();
 
 	evtimer_del(&server_ev_second);
 	memset(&tv, 0, sizeof tv);
 	tv.tv_sec = 1;
 	evtimer_add(&server_ev_second, &tv);
-}
-
-/* Lock the server if ALL sessions have hit the time limit. */
-void
-server_lock_server(void)
-{
-	struct session  *s;
-	int		 timeout;
-	time_t           t;
-
-	t = time(NULL);
-	RB_FOREACH(s, sessions, &sessions) {
-		if (s->flags & SESSION_UNATTACHED)
-			continue;
-		timeout = options_get_number(&s->options, "lock-after-time");
-		if (timeout <= 0 || t <= s->activity_time.tv_sec + timeout)
-			return;	/* not timed out */
-	}
-
-	server_lock();
-	recalculate_sizes();
 }
 
 /* Lock any sessions which have timed out. */
