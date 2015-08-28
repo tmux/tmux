@@ -322,6 +322,7 @@ format_find(struct format_tree *ft, const char *key)
 {
 	struct format_entry	*fe, fe_find;
 	struct options_entry	*o;
+	struct environ_entry	*envent;
 	static char		 s[16];
 
 	o = options_find(&global_options, key);
@@ -347,9 +348,18 @@ format_find(struct format_tree *ft, const char *key)
 
 	fe_find.key = (char *) key;
 	fe = RB_FIND(format_entry_tree, &ft->tree, &fe_find);
-	if (fe == NULL)
-		return (NULL);
-	return (fe->value);
+	if (fe != NULL)
+		return (fe->value);
+
+	envent = NULL;
+	if (ft->s != NULL)
+		envent = environ_find(&ft->s->environ, key);
+	if (envent == NULL)
+		envent = environ_find(&global_environ, key);
+	if (envent != NULL)
+		return (envent->value);
+
+	return (NULL);
 }
 
 /*
@@ -371,7 +381,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	copy[keylen] = '\0';
 
 	/* Is there a length limit or whatnot? */
-	if (!islower((u_char) *copy) && *copy != '@' && *copy != '?') {
+	if (!isalpha((u_char) *copy) && *copy != '@' && *copy != '?') {
 		while (*copy != ':' && *copy != '\0') {
 			switch (*copy) {
 			case '=':
