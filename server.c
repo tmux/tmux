@@ -62,8 +62,6 @@ void	server_signal_callback(int, short, void *);
 void	server_child_signal(void);
 void	server_child_exited(pid_t, int);
 void	server_child_stopped(pid_t, int);
-void	server_second_callback(int, short, void *);
-void	server_lock_sessions(void);
 
 /* Set marked pane. */
 void
