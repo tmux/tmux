@@ -25,16 +25,37 @@
 
 #include "tmux.h"
 
+void	 window_name_callback(unused int, unused short, void *);
+
 void
-check_window_name(struct window *w)
+queue_window_name(struct window *w)
 {
-	char	*name;
+	struct timeval	tv;
+
+	tv.tv_sec = 0;
+	tv.tv_usec = NAME_INTERVAL * 1000L;
+
+	if (event_initialized(&w->name_timer))
+		evtimer_del(&w->name_timer);
+	evtimer_set(&w->name_timer, window_name_callback, w);
+	evtimer_add(&w->name_timer, &tv);
+}
+
+void
+window_name_callback(unused int fd, unused short events, void *data)
+{
+	struct window	*w = data;
+	char		*name;
 
 	if (w->active == NULL)
 		return;
 
-	if (!options_get_number(&w->options, "automatic-rename"))
+	if (!options_get_number(&w->options, "automatic-rename")) {
+		if (event_initialized(&w->name_timer))
+			event_del(&w->name_timer);
 		return;
+	}
+	queue_window_name(w);
 
 	if (~w->active->flags & PANE_CHANGED)
 		return;
@@ -42,12 +63,9 @@ check_window_name(struct window *w)
 
 	name = format_window_name(w);
 	if (strcmp(name, w->name) != 0) {
-		log_debug("@%u new name %s (was %s)", w->id, name, w->name);
 		window_set_name(w, name);
 		server_status_window(w);
-	} else
-		log_debug("@%u name not changed (still %s)", w->id, w->name);
-
+	}
 	free(name);
 }
 
