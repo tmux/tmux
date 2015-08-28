@@ -46,7 +46,6 @@ struct clients	 clients;
 int		 server_fd;
 int		 server_shutdown;
 struct event	 server_ev_accept;
-struct event	 server_ev_second;
 
 struct session		*marked_session;
 struct winlink		*marked_winlink;
@@ -163,9 +162,8 @@ server_create_socket(void)
 int
 server_start(int lockfd, char *lockfile)
 {
-	int	 	 pair[2];
-	struct timeval	 tv;
-	char		*cause;
+	int	 pair[2];
+	char	*cause;
 
 	/* The first client is special and gets a socketpair; create it. */
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
@@ -242,11 +240,6 @@ server_start(int lockfd, char *lockfile)
 	status_prompt_load_history();
 
 	server_add_accept(0);
-
-	memset(&tv, 0, sizeof tv);
-	tv.tv_sec = 1;
-	evtimer_set(&server_ev_second, server_second_callback, NULL);
-	evtimer_add(&server_ev_second, &tv);
 
 	set_signals(server_signal_callback);
 	server_loop();
@@ -495,40 +488,6 @@ server_child_stopped(pid_t pid, int status)
 				if (killpg(pid, SIGCONT) != 0)
 					kill(pid, SIGCONT);
 			}
-		}
-	}
-}
-
-/* Handle once-per-second timer events. */
-void
-server_second_callback(unused int fd, unused short events, unused void *arg)
-{
-	struct timeval		 tv;
-
-	server_lock_sessions();
-
-	evtimer_del(&server_ev_second);
-	memset(&tv, 0, sizeof tv);
-	tv.tv_sec = 1;
-	evtimer_add(&server_ev_second, &tv);
-}
-
-/* Lock any sessions which have timed out. */
-void
-server_lock_sessions(void)
-{
-	struct session  *s;
-	int		 timeout;
-	time_t		 t;
-
-	t = time(NULL);
-	RB_FOREACH(s, sessions, &sessions) {
-		if (s->flags & SESSION_UNATTACHED)
-			continue;
-		timeout = options_get_number(&s->options, "lock-after-time");
-		if (timeout > 0 && t > s->activity_time.tv_sec + timeout) {
-			server_lock_session(s);
-			recalculate_sizes();
 		}
 	}
 }

@@ -993,6 +993,8 @@ struct session {
 	struct timeval	 activity_time;
 	struct timeval	 last_activity_time;
 
+	struct event	 lock_timer;
+
 	u_int		 sx;
 	u_int		 sy;
 

@@ -33,6 +33,8 @@ struct session_groups session_groups;
 
 void	session_free(int, short, void *);
 
+void	session_lock_timer(int, short, void *);
+
 struct winlink *session_next_alert(struct winlink *);
 struct winlink *session_previous_alert(struct winlink *);
 
@@ -108,7 +110,7 @@ session_create(const char *name, int argc, char **argv, const char *path,
 	struct session	*s;
 	struct winlink	*wl;
 
-	s = xmalloc(sizeof *s);
+	s = xcalloc(1, sizeof *s);
 	s->references = 1;
 	s->flags = 0;
 
@@ -148,6 +150,10 @@ session_create(const char *name, int argc, char **argv, const char *path,
 		} while (RB_FIND(sessions, &sessions, s) != NULL);
 	}
 	RB_INSERT(sessions, &sessions, s);
+
+	if (gettimeofday(&s->creation_time, NULL) != 0)
+		fatal("gettimeofday failed");
+	session_update_activity(s, &s->creation_time);
 
 	if (argc >= 0) {
 		wl = session_new(s, NULL, argc, argv, path, cwd, idx, cause);
@@ -200,6 +206,9 @@ session_destroy(struct session *s)
 
 	free(s->tio);
 
+	if (event_initialized(&s->lock_timer))
+		event_del(&s->lock_timer);
+
 	session_group_remove(s);
 	environ_free(&s->environ);
 	options_free(&s->options);
@@ -224,17 +233,46 @@ session_check_name(const char *name)
 	return (*name != '\0' && name[strcspn(name, ":.")] == '\0');
 }
 
+/* Lock session if it has timed out. */
+void
+session_lock_timer(unused int fd, unused short events, void *arg)
+{
+	struct session	*s = arg;
+
+	if (s->flags & SESSION_UNATTACHED)
+		return;
+
+	log_debug("session %s locked, activity time %lld", s->name,
+	    (long long)s->activity_time.tv_sec);
+
+	server_lock_session(s);
+	recalculate_sizes();
+}
+
 /* Update activity time. */
 void
 session_update_activity(struct session *s, struct timeval *from)
 {
 	struct timeval	*last = &s->last_activity_time;
+	struct timeval	 tv;
 
 	memcpy(last, &s->activity_time, sizeof *last);
 	if (from == NULL)
 		gettimeofday(&s->activity_time, NULL);
 	else
 		memcpy(&s->activity_time, from, sizeof s->activity_time);
+
+	if (evtimer_initialized(&s->lock_timer))
+		evtimer_del(&s->lock_timer);
+	else
+		evtimer_set(&s->lock_timer, session_lock_timer, s);
+
+	if (~s->flags & SESSION_UNATTACHED) {
+		timerclear(&tv);
+		tv.tv_sec = options_get_number(&s->options, "lock-after-time");
+		if (tv.tv_sec != 0)
+			evtimer_add(&s->lock_timer, &tv);
+	}
 }
 
 /* Find the next usable session. */
