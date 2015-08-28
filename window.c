@@ -934,7 +934,7 @@ window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 	 */
 	wp->window->flags |= WINDOW_SILENCE;
 	if (gettimeofday(&wp->window->silence_timer, NULL) != 0)
-		fatal("gettimeofday failed.");
+		fatal("gettimeofday failed");
 	return;
 
 start_timer:
