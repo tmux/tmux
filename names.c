@@ -50,16 +50,16 @@ window_name_callback(unused int fd, unused short events, void *data)
 	if (w->active == NULL)
 		return;
 
-	if (~w->active->flags & PANE_CHANGED)
-		return;
-	w->active->flags &= ~PANE_CHANGED;
-
 	if (!options_get_number(&w->options, "automatic-rename")) {
 		if (event_initialized(&w->name_timer))
 			event_del(&w->name_timer);
 		return;
 	}
 	queue_window_name(w);
+
+	if (~w->active->flags & PANE_CHANGED)
+		return;
+	w->active->flags &= ~PANE_CHANGED;
 
 	name = format_window_name(w);
 	if (strcmp(name, w->name) != 0) {

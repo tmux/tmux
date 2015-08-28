@@ -424,7 +424,7 @@ server_destroy_session(struct session *s)
 			c->session = s_new;
 			status_timer_start(c);
 			notify_attached_session_changed(c);
-			session_update_activity(s_new);
+			session_update_activity(s_new, NULL);
 			server_redraw_client(c);
 		}
 	}

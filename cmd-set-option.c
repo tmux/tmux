@@ -176,7 +176,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_ERROR);
 	}
 
-	/* Start or stop timers when name or status options changed. */
+	/* Start or stop timers if necessary. */
 	if (strcmp(oe->name, "automatic-rename") == 0) {
 		RB_FOREACH(w, windows, &windows) {
 			if (options_get_number(&w->options, "automatic-rename"))

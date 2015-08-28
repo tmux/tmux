@@ -128,7 +128,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 		c->last_session = c->session;
 	c->session = s;
 	status_timer_start(c);
-	session_update_activity(s);
+	session_update_activity(s, NULL);
 
 	recalculate_sizes();
 	server_check_unattached();

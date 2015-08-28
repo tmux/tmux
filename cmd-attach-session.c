@@ -135,7 +135,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 		c->session = s;
 		status_timer_start(c);
 		notify_attached_session_changed(c);
-		session_update_activity(s);
+		session_update_activity(s, NULL);
 		server_redraw_client(c);
 		s->curw->flags &= ~WINLINK_ALERTFLAGS;
 	} else {
@@ -180,7 +180,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 		c->session = s;
 		status_timer_start(c);
 		notify_attached_session_changed(c);
-		session_update_activity(s);
+		session_update_activity(s, NULL);
 		server_redraw_client(c);
 		s->curw->flags &= ~WINLINK_ALERTFLAGS;
 
