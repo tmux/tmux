@@ -870,7 +870,6 @@ RB_HEAD(window_pane_tree, window_pane);
 struct window {
 	u_int		 id;
 	char		*name;
-	struct event	 name_timer;
 	struct timeval	 silence_timer;
 	struct timeval	 activity_time;
 
@@ -2209,7 +2208,7 @@ void	window_choose_collapse_all(struct window_pane *);
 void	window_choose_set_current(struct window_pane *, u_int);
 
 /* names.c */
-void	 queue_window_name(struct window *);
+void	 check_window_name(struct window *);
 char	*default_window_name(struct window *);
 char	*format_window_name(struct window *);
 char	*parse_window_name(const char *);

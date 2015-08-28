@@ -49,6 +49,7 @@ server_window_loop(void)
 					server_status_session(s);
 			}
 		}
+		check_window_name(w);
 	}
 }
 
