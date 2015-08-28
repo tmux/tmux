@@ -182,8 +182,10 @@ session_free(unused int fd, unused short events, void *arg)
 
 	log_debug("sesson %s freed (%d references)", s->name, s->references);
 
-	if (s->references == 0)
+	if (s->references == 0) {
+		free(s->name);
 		free(s);
+	}
 }
 
 /* Destroy a session. */
