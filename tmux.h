@@ -1452,8 +1452,6 @@ void		 paste_add(char *, size_t);
 int		 paste_rename(const char *, const char *, char **);
 int		 paste_set(char *, size_t, const char *, char **);
 char		*paste_make_sample(struct paste_buffer *, int);
-void		 paste_send_pane(struct paste_buffer *, struct window_pane *,
-		     const char *, int);
 
 /* format.c */
 struct format_tree;

@@ -319,32 +319,3 @@ paste_make_sample(struct paste_buffer *pb, int utf8flag)
 		strlcpy(buf + width, "...", 4);
 	return (buf);
 }
-
-/* Paste into a window pane, filtering '\n' according to separator. */
-void
-paste_send_pane(struct paste_buffer *pb, struct window_pane *wp,
-    const char *sep, int bracket)
-{
-	const char	*data = pb->data, *end = data + pb->size, *lf;
-	size_t		 seplen;
-
-	if (wp->flags & PANE_INPUTOFF)
-		return;
-
-	if (bracket && (wp->screen->mode & MODE_BRACKETPASTE))
-		bufferevent_write(wp->event, "\033[200~", 6);
-
-	seplen = strlen(sep);
-	while ((lf = memchr(data, '\n', end - data)) != NULL) {
-		if (lf != data)
-			bufferevent_write(wp->event, data, lf - data);
-		bufferevent_write(wp->event, sep, seplen);
-		data = lf + 1;
-	}
-
-	if (end != data)
-		bufferevent_write(wp->event, data, end - data);
-
-	if (bracket && (wp->screen->mode & MODE_BRACKETPASTE))
-		bufferevent_write(wp->event, "\033[201~", 6);
-}

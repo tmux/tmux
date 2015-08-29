@@ -57,8 +57,8 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct client		*c = cmdq->client;
 	struct session          *s;
 	struct paste_buffer	*pb;
-	const char		*path, *bufname, *bufdata;
-	char			*start, *end, *msg;
+	const char		*path, *bufname, *bufdata, *start, *end;
+	char			*msg;
 	size_t			 size, used, msglen, bufsize;
 	int			 cwd, fd;
 	FILE			*f;
