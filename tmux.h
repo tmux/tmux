@@ -47,8 +47,8 @@ extern char   **environ;
  */
 #define PANE_MINIMUM 2
 
-/* Automatic name refresh interval, in milliseconds. */
-#define NAME_INTERVAL 500
+/* Automatic name refresh interval, in microseconds. Must be < 1 second. */
+#define NAME_INTERVAL 500000
 
 /*
  * UTF-8 data size. This must be big enough to hold combined characters as well
@@ -869,8 +869,11 @@ RB_HEAD(window_pane_tree, window_pane);
 /* Window structure. */
 struct window {
 	u_int		 id;
+
 	char		*name;
-	struct event	 name_timer;
+	struct event	 name_event;
+	struct timeval	 name_time;
+
 	struct timeval	 silence_timer;
 	struct timeval	 activity_time;
 
@@ -2209,7 +2212,7 @@ void	window_choose_collapse_all(struct window_pane *);
 void	window_choose_set_current(struct window_pane *, u_int);
 
 /* names.c */
-void	 queue_window_name(struct window *);
+void	 check_window_name(struct window *);
 char	*default_window_name(struct window *);
 char	*format_window_name(struct window *);
 char	*parse_window_name(const char *);

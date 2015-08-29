@@ -180,9 +180,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (strcmp(oe->name, "automatic-rename") == 0) {
 		RB_FOREACH(w, windows, &windows) {
 			if (options_get_number(&w->options, "automatic-rename"))
-				queue_window_name(w);
-			else if (event_initialized(&w->name_timer))
-				evtimer_del(&w->name_timer);
+				w->active->flags |= PANE_CHANGED;
 		}
 	}
 	if (strcmp(oe->name, "status") == 0 ||
