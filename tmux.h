@@ -1841,7 +1841,6 @@ int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
 void	 server_client_lost(struct client *);
 void	 server_client_callback(int, short, void *);
-void	 server_client_status_timer(void);
 void	 server_client_loop(void);
 
 /* server-fn.c */
@@ -1863,7 +1862,6 @@ void	 server_status_window(struct window *);
 void	 server_lock(void);
 void	 server_lock_session(struct session *);
 void	 server_lock_client(struct client *);
-int	 server_unlock(const char *);
 void	 server_kill_window(struct window *);
 int	 server_link_window(struct session *,
 	     struct winlink *, struct session *, int, int, int, char **);
@@ -2013,7 +2011,6 @@ void	 screen_write_cursormove(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_reverseindex(struct screen_write_ctx *);
 void	 screen_write_scrollregion(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_linefeed(struct screen_write_ctx *, int);
-void	 screen_write_linefeedscreen(struct screen_write_ctx *, int);
 void	 screen_write_carriagereturn(struct screen_write_ctx *);
 void	 screen_write_clearendofscreen(struct screen_write_ctx *);
 void	 screen_write_clearstartofscreen(struct screen_write_ctx *);
@@ -2076,7 +2073,6 @@ struct window	*window_create(const char *, int, char **, const char *,
 		     u_int, u_int, u_int, char **);
 void		 window_destroy(struct window *);
 struct window_pane *window_get_active_at(struct window *, u_int, u_int);
-void		 window_set_active_at(struct window *, u_int, u_int);
 struct window_pane *window_find_string(struct window *, const char *);
 int		 window_has_pane(struct window *, struct window_pane *);
 int		 window_set_active_pane(struct window *, struct window_pane *);
@@ -2157,12 +2153,10 @@ char		*layout_dump(struct layout_cell *);
 int		 layout_parse(struct window *, const char *);
 
 /* layout-set.c */
-const char	*layout_set_name(u_int);
 int		 layout_set_lookup(const char *);
 u_int		 layout_set_select(struct window *, u_int);
 u_int		 layout_set_next(struct window *);
 u_int		 layout_set_previous(struct window *);
-void		 layout_set_active_changed(struct window *);
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;

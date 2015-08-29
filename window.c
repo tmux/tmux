@@ -440,16 +440,6 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 	return (NULL);
 }
 
-void
-window_set_active_at(struct window *w, u_int x, u_int y)
-{
-	struct window_pane	*wp;
-
-	wp = window_get_active_at(w, x, y);
-	if (wp != NULL && wp != w->active)
-		window_set_active_pane(w, wp);
-}
-
 struct window_pane *
 window_find_string(struct window *w, const char *s)
 {
