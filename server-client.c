@@ -717,6 +717,7 @@ server_client_loop(void)
 			}
 			wp->flags &= ~PANE_REDRAW;
 		}
+		check_window_name(w);
 	}
 }
 
