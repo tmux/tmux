@@ -957,19 +957,6 @@ struct layout_cell {
 	TAILQ_ENTRY(layout_cell) entry;
 };
 
-/* Paste buffer. */
-struct paste_buffer {
-	char		*data;
-	size_t		 size;
-
-	char		*name;
-	int		 automatic;
-	u_int		 order;
-
-	RB_ENTRY(paste_buffer) name_entry;
-	RB_ENTRY(paste_buffer) time_entry;
-};
-
 /* Environment variable. */
 struct environ_entry {
 	char		*name;
@@ -1452,6 +1439,22 @@ void		 cfg_add_cause(const char *, ...);
 void		 cfg_print_causes(struct cmd_q *);
 void		 cfg_show_causes(struct session *);
 
+/* paste.c */
+struct paste_buffer;
+const char	*paste_buffer_name(struct paste_buffer *);
+const char	*paste_buffer_data(struct paste_buffer *, size_t *);
+struct paste_buffer *paste_walk(struct paste_buffer *);
+struct paste_buffer *paste_get_top(const char **);
+struct paste_buffer *paste_get_name(const char *);
+int		 paste_free_top(void);
+int		 paste_free_name(const char *);
+void		 paste_add(char *, size_t);
+int		 paste_rename(const char *, const char *, char **);
+int		 paste_set(char *, size_t, const char *, char **);
+char		*paste_make_sample(struct paste_buffer *, int);
+void		 paste_send_pane(struct paste_buffer *, struct window_pane *,
+		     const char *, int);
+
 /* format.c */
 struct format_tree;
 struct format_tree *format_create(void);
@@ -1635,19 +1638,6 @@ const char	*tty_acs_get(struct tty *, u_char);
 void	tty_keys_build(struct tty *);
 void	tty_keys_free(struct tty *);
 int	tty_keys_next(struct tty *);
-
-/* paste.c */
-struct paste_buffer *paste_walk(struct paste_buffer *);
-struct paste_buffer *paste_get_top(void);
-struct paste_buffer *paste_get_name(const char *);
-int		 paste_free_top(void);
-int		 paste_free_name(const char *);
-void		 paste_add(char *, size_t);
-int		 paste_rename(const char *, const char *, char **);
-int		 paste_set(char *, size_t, const char *, char **);
-char		*paste_make_sample(struct paste_buffer *, int);
-void		 paste_send_pane(struct paste_buffer *, struct window_pane *,
-		     const char *, int);
 
 /* arguments.c */
 int		 args_cmp(struct args_entry *, struct args_entry *);

@@ -58,7 +58,7 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		bufname = args_get(args, 'b');
 
 	if (bufname == NULL)
-		pb = paste_get_top();
+		pb = paste_get_top(NULL);
 	else {
 		pb = paste_get_name(bufname);
 		if (pb == NULL) {

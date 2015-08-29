@@ -782,7 +782,8 @@ window_copy_key_input(struct window_pane *wp, int key)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	size_t				 inputlen, n;
+	const char			*bufdata;
+	size_t				 inputlen, n, bufsize;
 	int				 np;
 	struct paste_buffer		*pb;
 	u_char				 ch;
@@ -800,17 +801,18 @@ window_copy_key_input(struct window_pane *wp, int key)
 		*data->inputstr = '\0';
 		break;
 	case MODEKEYEDIT_PASTE:
-		if ((pb = paste_get_top()) == NULL)
+		if ((pb = paste_get_top(NULL)) == NULL)
 			break;
-		for (n = 0; n < pb->size; n++) {
-			ch = (u_char) pb->data[n];
+		bufdata = paste_buffer_data(pb, &bufsize);
+		for (n = 0; n < bufsize; n++) {
+			ch = (u_char)bufdata[n];
 			if (ch < 32 || ch == 127)
 				break;
 		}
 		inputlen = strlen(data->inputstr);
 
 		data->inputstr = xrealloc(data->inputstr, inputlen + n + 1);
-		memcpy(data->inputstr + inputlen, pb->data, n);
+		memcpy(data->inputstr + inputlen, bufdata, n);
 		data->inputstr[inputlen + n] = '\0';
 		break;
 	case MODEKEYEDIT_ENTER:
@@ -1491,7 +1493,8 @@ window_copy_append_selection(struct window_pane *wp, const char *bufname)
 {
 	char				*buf;
 	struct paste_buffer		*pb;
-	size_t				 len;
+	const char			*bufdata;
+	size_t				 len, bufsize;
 	struct screen_write_ctx		 ctx;
 
 	buf = window_copy_get_selection(wp, &len);
@@ -1504,17 +1507,16 @@ window_copy_append_selection(struct window_pane *wp, const char *bufname)
 		screen_write_stop(&ctx);
 	}
 
-	if (bufname == NULL || *bufname == '\0') {
-		pb = paste_get_top();
-		if (pb != NULL)
-			bufname = pb->name;
-	} else
+	if (bufname == NULL || *bufname == '\0')
+		pb = paste_get_top(&bufname);
+	else
 		pb = paste_get_name(bufname);
 	if (pb != NULL) {
-		buf = xrealloc(buf, len + pb->size);
-		memmove(buf + pb->size, buf, len);
-		memcpy(buf, pb->data, pb->size);
-		len += pb->size;
+		bufdata = paste_buffer_data(pb, &bufsize);
+		buf = xrealloc(buf, len + bufsize);
+		memmove(buf + bufsize, buf, len);
+		memcpy(buf, bufdata, bufsize);
+		len += bufsize;
 	}
 	if (paste_set(buf, len, bufname, NULL) != 0)
 		free(buf);

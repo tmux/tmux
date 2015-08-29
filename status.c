@@ -815,10 +815,9 @@ status_prompt_key(struct client *c, int key)
 	struct options		*oo = &sess->options;
 	struct paste_buffer	*pb;
 	char			*s, *first, *last, word[64], swapc;
-	const char		*histstr;
-	const char		*wsep = NULL;
+	const char		*histstr, *bufdata, *wsep = NULL;
 	u_char			 ch;
-	size_t			 size, n, off, idx;
+	size_t			 size, n, off, idx, bufsize;
 
 	size = strlen(c->prompt_buffer);
 	switch (mode_key_lookup(&c->prompt_mdata, key, NULL)) {
@@ -1067,24 +1066,25 @@ status_prompt_key(struct client *c, int key)
 		c->flags |= CLIENT_STATUS;
 		break;
 	case MODEKEYEDIT_PASTE:
-		if ((pb = paste_get_top()) == NULL)
+		if ((pb = paste_get_top(NULL)) == NULL)
 			break;
-		for (n = 0; n < pb->size; n++) {
-			ch = (u_char) pb->data[n];
+		bufdata = paste_buffer_data(pb, &bufsize);
+		for (n = 0; n < bufsize; n++) {
+			ch = (u_char)bufdata[n];
 			if (ch < 32 || ch == 127)
 				break;
 		}
 
 		c->prompt_buffer = xrealloc(c->prompt_buffer, size + n + 1);
 		if (c->prompt_index == size) {
-			memcpy(c->prompt_buffer + c->prompt_index, pb->data, n);
+			memcpy(c->prompt_buffer + c->prompt_index, bufdata, n);
 			c->prompt_index += n;
 			c->prompt_buffer[c->prompt_index] = '\0';
 		} else {
 			memmove(c->prompt_buffer + c->prompt_index + n,
 			    c->prompt_buffer + c->prompt_index,
 			    size + 1 - c->prompt_index);
-			memcpy(c->prompt_buffer + c->prompt_index, pb->data, n);
+			memcpy(c->prompt_buffer + c->prompt_index, bufdata, n);
 			c->prompt_index += n;
 		}
 
