@@ -1,7 +1,8 @@
 # $OpenBSD$
 
 PROG=	tmux
-SRCS=	arguments.c \
+SRCS=	alerts.c \
+	arguments.c \
 	attributes.c \
 	cfg.c \
 	client.c \
@@ -101,7 +102,6 @@ SRCS=	arguments.c \
 	screen.c \
 	server-client.c \
 	server-fn.c \
-	server-window.c \
 	server.c \
 	session.c \
 	signal.c \

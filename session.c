@@ -519,6 +519,7 @@ session_set_current(struct session *s, struct winlink *wl)
 	winlink_stack_push(&s->lastw, s->curw);
 	s->curw = wl;
 	winlink_clear_flags(wl);
+	window_update_activity(wl->window);
 	return (0);
 }
 

@@ -249,10 +249,13 @@ server_start(int lockfd, char *lockfile)
 void
 server_loop(void)
 {
+	struct window	*w;
+
 	while (!server_should_shutdown()) {
 		event_loop(EVLOOP_ONCE);
 
-		server_window_loop();
+		RB_FOREACH(w, windows, &windows)
+		    check_window_name(w);
 		server_client_loop();
 	}
 }

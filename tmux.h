@@ -874,7 +874,8 @@ struct window {
 	struct event	 name_event;
 	struct timeval	 name_time;
 
-	struct timeval	 silence_timer;
+	struct event	 alerts_timer;
+
 	struct timeval	 activity_time;
 
 	struct window_pane *active;
@@ -1829,6 +1830,10 @@ void	 key_bindings_dispatch(struct key_binding *, struct client *,
 int	 key_string_lookup_string(const char *);
 const char *key_string_lookup_key(int);
 
+/* alerts.c */
+void	alerts_reset_all(void);
+void	alerts_queue(struct window *, int);
+
 /* server.c */
 extern struct clients clients;
 extern struct clients dead_clients;
@@ -1855,9 +1860,6 @@ void	 server_client_lost(struct client *);
 void	 server_client_callback(int, short, void *);
 void	 server_client_status_timer(void);
 void	 server_client_loop(void);
-
-/* server-window.c */
-void	 server_window_loop(void);
 
 /* server-fn.c */
 void	 server_fill_environ(struct session *, struct environ *);
@@ -2084,6 +2086,7 @@ void		 winlink_stack_push(struct winlink_stack *, struct winlink *);
 void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 struct window	*window_find_by_id_str(const char *);
 struct window	*window_find_by_id(u_int);
+void		 window_update_activity(struct window *);
 struct window	*window_create1(u_int, u_int);
 struct window	*window_create(const char *, int, char **, const char *,
 		     const char *, int, struct environ *, struct termios *,

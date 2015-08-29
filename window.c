@@ -277,6 +277,13 @@ window_find_by_id(u_int id)
 	return (RB_FIND(windows, &windows, &w));
 }
 
+void
+window_update_activity(struct window *w)
+{
+	gettimeofday(&w->activity_time, NULL);
+	alerts_queue(w, WINDOW_ACTIVITY);
+}
+
 struct window *
 window_create1(u_int sx, u_int sy)
 {
@@ -295,15 +302,14 @@ window_create1(u_int sx, u_int sy)
 	w->sx = sx;
 	w->sy = sy;
 
-	if (gettimeofday(&w->activity_time, NULL) != 0)
-		fatal("gettimeofday failed");
-
 	options_init(&w->options, &global_w_options);
 
 	w->references = 0;
 
 	w->id = next_window_id++;
 	RB_INSERT(windows, &windows, w);
+
+	window_update_activity(w);
 
 	return (w);
 }
@@ -349,6 +355,9 @@ window_destroy(struct window *w)
 
 	if (event_initialized(&w->name_event))
 		evtimer_del(&w->name_event);
+
+	if (event_initialized(&w->alerts_timer))
+		evtimer_del(&w->alerts_timer);
 
 	options_free(&w->options);
 
@@ -929,14 +938,6 @@ window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 	input_parse(wp);
 
 	wp->pipe_off = EVBUFFER_LENGTH(evb);
-
-	/*
-	 * If we get here, we're not outputting anymore, so set the silence
-	 * flag on the window.
-	 */
-	wp->window->flags |= WINDOW_SILENCE;
-	if (gettimeofday(&wp->window->silence_timer, NULL) != 0)
-		fatal("gettimeofday failed");
 	return;
 
 start_timer:
