@@ -1203,7 +1203,7 @@ struct client {
 	struct screen	 status;
 
 #define CLIENT_TERMINAL 0x1
-/* 0x2 unused */
+#define CLIENT_LOGIN 0x2
 #define CLIENT_EXIT 0x4
 #define CLIENT_REDRAW 0x8
 #define CLIENT_STATUS 0x10
@@ -1412,14 +1412,12 @@ extern char	*shell_cmd;
 extern int	 debug_level;
 extern time_t	 start_time;
 extern char	 socket_path[PATH_MAX];
-extern int	 login_shell;
 extern char	*environ_path;
 void		 logfile(const char *);
 const char	*getshell(void);
 int		 checkshell(const char *);
 int		 areshell(const char *);
 void		 setblocking(int, int);
-__dead void	 shell_exec(const char *, const char *);
 const char	*find_home(void);
 
 /* cfg.c */

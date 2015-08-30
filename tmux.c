@@ -46,7 +46,6 @@ char		*shell_cmd;
 int		 debug_level;
 time_t		 start_time;
 char		 socket_path[PATH_MAX];
-int		 login_shell;
 char		*environ_path;
 
 __dead void	 usage(void);
@@ -170,32 +169,6 @@ setblocking(int fd, int state)
 	}
 }
 
-__dead void
-shell_exec(const char *shell, const char *shellcmd)
-{
-	const char	*shellname, *ptr;
-	char		*argv0;
-
-	ptr = strrchr(shell, '/');
-	if (ptr != NULL && *(ptr + 1) != '\0')
-		shellname = ptr + 1;
-	else
-		shellname = shell;
-	if (login_shell)
-		xasprintf(&argv0, "-%s", shellname);
-	else
-		xasprintf(&argv0, "%s", shellname);
-	setenv("SHELL", shell, 1);
-
-	setblocking(STDIN_FILENO, 1);
-	setblocking(STDOUT_FILENO, 1);
-	setblocking(STDERR_FILENO, 1);
-	closefrom(STDERR_FILENO + 1);
-
-	execl(shell, argv0, "-c", shellcmd, (char *) NULL);
-	fatal("execl failed");
-}
-
 const char *
 find_home(void)
 {
@@ -229,9 +202,12 @@ main(int argc, char **argv)
 
 	setlocale(LC_TIME, "");
 
-	flags = 0;
+	if (**argv == '-')
+		flags = CLIENT_LOGIN;
+	else
+		flags = 0;
+
 	label = path = NULL;
-	login_shell = (**argv == '-');
 	while ((opt = getopt(argc, argv, "2c:Cdf:lL:qS:uUv")) != -1) {
 		switch (opt) {
 		case '2':
@@ -252,7 +228,7 @@ main(int argc, char **argv)
 			cfg_file = xstrdup(optarg);
 			break;
 		case 'l':
-			login_shell = 1;
+			flags |= CLIENT_LOGIN;
 			break;
 		case 'L':
 			free(label);
