@@ -120,6 +120,8 @@ xterm_keys_match(const char *template, const char *buf, size_t len,
 	size_t	pos;
 	int	retval;
 
+	*modifiers = 0;
+
 	if (len == 0)
 		return (0);
 

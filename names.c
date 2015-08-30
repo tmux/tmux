@@ -25,47 +25,76 @@
 
 #include "tmux.h"
 
-void	 window_name_callback(unused int, unused short, void *);
+void	name_time_callback(int, short, void *);
+int	name_time_expired(struct window *, struct timeval *);
 
 void
-queue_window_name(struct window *w)
+name_time_callback(unused int fd, unused short events, void *arg)
 {
-	struct timeval	tv;
+	struct window	*w = arg;
 
-	tv.tv_sec = 0;
-	tv.tv_usec = NAME_INTERVAL * 1000L;
+	/* The event loop will call check_window_name for us on the way out. */
+	log_debug("@%u name timer expired", w->id);
+}
 
-	if (event_initialized(&w->name_timer))
-		evtimer_del(&w->name_timer);
-	evtimer_set(&w->name_timer, window_name_callback, w);
-	evtimer_add(&w->name_timer, &tv);
+int
+name_time_expired(struct window *w, struct timeval *tv)
+{
+	struct timeval	offset;
+
+	timersub(tv, &w->name_time, &offset);
+	if (offset.tv_sec != 0 || offset.tv_usec > NAME_INTERVAL)
+		return (0);
+	return (NAME_INTERVAL - offset.tv_usec);
 }
 
 void
-window_name_callback(unused int fd, unused short events, void *data)
+check_window_name(struct window *w)
 {
-	struct window	*w = data;
+	struct timeval	 tv, next;
 	char		*name;
+	int		 left;
 
 	if (w->active == NULL)
 		return;
 
-	if (!options_get_number(&w->options, "automatic-rename")) {
-		if (event_initialized(&w->name_timer))
-			event_del(&w->name_timer);
+	if (!options_get_number(&w->options, "automatic-rename"))
+		return;
+
+	if (~w->active->flags & PANE_CHANGED) {
+		log_debug("@%u active pane not changed", w->id);
 		return;
 	}
-	queue_window_name(w);
+	log_debug("@%u active pane changed", w->id);
 
-	if (~w->active->flags & PANE_CHANGED)
+	gettimeofday(&tv, NULL);
+	left = name_time_expired(w, &tv);
+	if (left != 0) {
+		if (!event_initialized(&w->name_event))
+			evtimer_set(&w->name_event, name_time_callback, w);
+		if (!evtimer_pending(&w->name_event, NULL)) {
+			log_debug("@%u name timer queued (%d left)", w->id, left);
+			timerclear(&next);
+			next.tv_usec = left;
+			event_add(&w->name_event, &next);
+		} else
+			log_debug("@%u name timer already queued (%d left)", w->id, left);
 		return;
+	}
+	memcpy(&w->name_time, &tv, sizeof w->name_time);
+	if (event_initialized(&w->name_event))
+		evtimer_del(&w->name_event);
+
 	w->active->flags &= ~PANE_CHANGED;
 
 	name = format_window_name(w);
 	if (strcmp(name, w->name) != 0) {
+		log_debug("@%u new name %s (was %s)", w->id, name, w->name);
 		window_set_name(w, name);
 		server_status_window(w);
-	}
+	} else
+		log_debug("@%u name not changed (still %s)", w->id, w->name);
+
 	free(name);
 }
 

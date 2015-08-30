@@ -51,8 +51,8 @@ extern char   **environ;
  */
 #define PANE_MINIMUM 2
 
-/* Automatic name refresh interval, in milliseconds. */
-#define NAME_INTERVAL 500
+/* Automatic name refresh interval, in microseconds. Must be < 1 second. */
+#define NAME_INTERVAL 500000
 
 /*
  * UTF-8 data size. This must be big enough to hold combined characters as well
@@ -873,9 +873,13 @@ RB_HEAD(window_pane_tree, window_pane);
 /* Window structure. */
 struct window {
 	u_int		 id;
+
 	char		*name;
-	struct event	 name_timer;
-	struct timeval	 silence_timer;
+	struct event	 name_event;
+	struct timeval	 name_time;
+
+	struct event	 alerts_timer;
+
 	struct timeval	 activity_time;
 
 	struct window_pane *active;
@@ -955,19 +959,6 @@ struct layout_cell {
 	struct layout_cells cells;
 
 	TAILQ_ENTRY(layout_cell) entry;
-};
-
-/* Paste buffer. */
-struct paste_buffer {
-	char		*data;
-	size_t		 size;
-
-	char		*name;
-	int		 automatic;
-	u_int		 order;
-
-	RB_ENTRY(paste_buffer) name_entry;
-	RB_ENTRY(paste_buffer) time_entry;
 };
 
 /* Environment variable. */
@@ -1270,13 +1261,8 @@ struct client {
 TAILQ_HEAD(clients, client);
 
 /* Parsed arguments structures. */
-struct args_entry {
-	u_char			 flag;
-	char			*value;
-	RB_ENTRY(args_entry)	 entry;
-};
+struct args_entry;
 RB_HEAD(args_tree, args_entry);
-
 struct args {
 	struct args_tree	  tree;
 	int			  argc;
@@ -1451,6 +1437,20 @@ void		 cfg_default_done(struct cmd_q *);
 void		 cfg_add_cause(const char *, ...);
 void		 cfg_print_causes(struct cmd_q *);
 void		 cfg_show_causes(struct session *);
+
+/* paste.c */
+struct paste_buffer;
+const char	*paste_buffer_name(struct paste_buffer *);
+const char	*paste_buffer_data(struct paste_buffer *, size_t *);
+struct paste_buffer *paste_walk(struct paste_buffer *);
+struct paste_buffer *paste_get_top(const char **);
+struct paste_buffer *paste_get_name(const char *);
+int		 paste_free_top(void);
+int		 paste_free_name(const char *);
+void		 paste_add(char *, size_t);
+int		 paste_rename(const char *, const char *, char **);
+int		 paste_set(char *, size_t, const char *, char **);
+char		*paste_make_sample(struct paste_buffer *, int);
 
 /* format.c */
 struct format_tree;
@@ -1636,19 +1636,6 @@ void	tty_keys_build(struct tty *);
 void	tty_keys_free(struct tty *);
 int	tty_keys_next(struct tty *);
 
-/* paste.c */
-struct paste_buffer *paste_walk(struct paste_buffer *);
-struct paste_buffer *paste_get_top(void);
-struct paste_buffer *paste_get_name(const char *);
-int		 paste_free_top(void);
-int		 paste_free_name(const char *);
-void		 paste_add(char *, size_t);
-int		 paste_rename(const char *, const char *, char **);
-int		 paste_set(char *, size_t, const char *, char **);
-char		*paste_make_sample(struct paste_buffer *, int);
-void		 paste_send_pane(struct paste_buffer *, struct window_pane *,
-		     const char *, int);
-
 /* arguments.c */
 int		 args_cmp(struct args_entry *, struct args_entry *);
 RB_PROTOTYPE(args_tree, args_entry, entry, args_cmp);
@@ -1830,6 +1817,10 @@ void	 key_bindings_dispatch(struct key_binding *, struct client *,
 int	 key_string_lookup_string(const char *);
 const char *key_string_lookup_key(int);
 
+/* alerts.c */
+void	alerts_reset_all(void);
+void	alerts_queue(struct window *, int);
+
 /* server.c */
 extern struct clients clients;
 extern struct clients dead_clients;
@@ -1854,11 +1845,7 @@ int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
 void	 server_client_lost(struct client *);
 void	 server_client_callback(int, short, void *);
-void	 server_client_status_timer(void);
 void	 server_client_loop(void);
-
-/* server-window.c */
-void	 server_window_loop(void);
 
 /* server-fn.c */
 void	 server_fill_environ(struct session *, struct environ *);
@@ -1879,7 +1866,6 @@ void	 server_status_window(struct window *);
 void	 server_lock(void);
 void	 server_lock_session(struct session *);
 void	 server_lock_client(struct client *);
-int	 server_unlock(const char *);
 void	 server_kill_window(struct window *);
 int	 server_link_window(struct session *,
 	     struct winlink *, struct session *, int, int, int, char **);
@@ -2029,7 +2015,6 @@ void	 screen_write_cursormove(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_reverseindex(struct screen_write_ctx *);
 void	 screen_write_scrollregion(struct screen_write_ctx *, u_int, u_int);
 void	 screen_write_linefeed(struct screen_write_ctx *, int);
-void	 screen_write_linefeedscreen(struct screen_write_ctx *, int);
 void	 screen_write_carriagereturn(struct screen_write_ctx *);
 void	 screen_write_clearendofscreen(struct screen_write_ctx *);
 void	 screen_write_clearstartofscreen(struct screen_write_ctx *);
@@ -2085,13 +2070,13 @@ void		 winlink_stack_push(struct winlink_stack *, struct winlink *);
 void		 winlink_stack_remove(struct winlink_stack *, struct winlink *);
 struct window	*window_find_by_id_str(const char *);
 struct window	*window_find_by_id(u_int);
+void		 window_update_activity(struct window *);
 struct window	*window_create1(u_int, u_int);
 struct window	*window_create(const char *, int, char **, const char *,
 		     const char *, int, struct environ *, struct termios *,
 		     u_int, u_int, u_int, char **);
 void		 window_destroy(struct window *);
 struct window_pane *window_get_active_at(struct window *, u_int, u_int);
-void		 window_set_active_at(struct window *, u_int, u_int);
 struct window_pane *window_find_string(struct window *, const char *);
 int		 window_has_pane(struct window *, struct window_pane *);
 int		 window_set_active_pane(struct window *, struct window_pane *);
@@ -2172,12 +2157,10 @@ char		*layout_dump(struct layout_cell *);
 int		 layout_parse(struct window *, const char *);
 
 /* layout-set.c */
-const char	*layout_set_name(u_int);
 int		 layout_set_lookup(const char *);
 u_int		 layout_set_select(struct window *, u_int);
 u_int		 layout_set_next(struct window *);
 u_int		 layout_set_previous(struct window *);
-void		 layout_set_active_changed(struct window *);
 
 /* window-clock.c */
 extern const struct window_mode window_clock_mode;
@@ -2213,7 +2196,7 @@ void	window_choose_collapse_all(struct window_pane *);
 void	window_choose_set_current(struct window_pane *, u_int);
 
 /* names.c */
-void	 queue_window_name(struct window *);
+void	 check_window_name(struct window *);
 char	*default_window_name(struct window *);
 char	*format_window_name(struct window *);
 char	*parse_window_name(const char *);

@@ -251,9 +251,10 @@ void
 server_loop(void)
 {
 	while (!server_should_shutdown()) {
+		log_debug("event dispatch enter");
 		event_loop(EVLOOP_ONCE);
+		log_debug("event dispatch exit");
 
-		server_window_loop();
 		server_client_loop();
 	}
 }

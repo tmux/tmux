@@ -65,7 +65,7 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_ERROR);
 	utf8flag = options_get_number(&wl->window->options, "utf8");
 
-	if (paste_get_top() == NULL)
+	if (paste_get_top(NULL) == NULL)
 		return (CMD_RETURN_NORMAL);
 
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
@@ -85,7 +85,7 @@ cmd_choose_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		cdata->ft_template = xstrdup(template);
 		format_defaults_paste_buffer(cdata->ft, pb, utf8flag);
 
-		xasprintf(&action_data, "%s", pb->name);
+		xasprintf(&action_data, "%s", paste_buffer_name(pb));
 		cdata->command = cmd_template_replace(action, action_data, 1);
 		free(action_data);
 

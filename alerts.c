@@ -1,7 +1,7 @@
 /* $OpenBSD$ */
 
 /*
- * Copyright (c) 2009 Nicholas Marriott <nicm@users.sourceforge.net>
+ * Copyright (c) 2015 Nicholas Marriott <nicm@users.sourceforge.net>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,42 +19,133 @@
 #include <sys/types.h>
 
 #include <event.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 #include "tmux.h"
 
-int	server_window_check_bell(struct session *, struct winlink *);
-int	server_window_check_activity(struct session *, struct winlink *);
-int	server_window_check_silence(struct session *, struct winlink *);
-void	ring_bell(struct session *);
+int	alerts_fired;
 
-/* Window functions that need to happen every loop. */
+void	alerts_timer(int, short, void *);
+int	alerts_enabled(struct window *, int);
+void	alerts_callback(int, short, void *);
+void	alerts_reset(struct window *);
+
+int	alerts_check_bell(struct session *, struct winlink *);
+int	alerts_check_activity(struct session *, struct winlink *);
+int	alerts_check_silence(struct session *, struct winlink *);
+void	alerts_ring_bell(struct session *);
+
 void
-server_window_loop(void)
+alerts_timer(unused int fd, unused short events, void *arg)
+{
+	struct window	*w = arg;
+
+	log_debug("@%u alerts timer expired", w->id);
+	alerts_reset(w);
+	alerts_queue(w, WINDOW_SILENCE);
+}
+
+void
+alerts_callback(unused int fd, unused short events, unused void *arg)
 {
 	struct window	*w;
 	struct session	*s;
 	struct winlink	*wl;
+	int		 flags, alerts;
 
 	RB_FOREACH(w, windows, &windows) {
 		RB_FOREACH(s, sessions, &sessions) {
 			RB_FOREACH(wl, winlinks, &s->windows) {
 				if (wl->window != w)
 					continue;
+				flags = w->flags;
 
-				if (server_window_check_bell(s, wl) ||
-				    server_window_check_activity(s, wl) ||
-				    server_window_check_silence(s, wl))
+				alerts  = alerts_check_bell(s, wl);
+				alerts |= alerts_check_activity(s, wl);
+				alerts |= alerts_check_silence(s, wl);
+				if (alerts != 0)
 					server_status_session(s);
+
+				log_debug("%s:%d @%u alerts check, alerts %#x, "
+				    "flags %#x", s->name, wl->idx, w->id,
+				    alerts, flags);
 			}
 		}
 	}
+	alerts_fired = 0;
 }
 
-/* Check for bell in window. */
 int
-server_window_check_bell(struct session *s, struct winlink *wl)
+alerts_enabled(struct window *w, int flags)
+{
+	struct session	*s;
+
+	if (flags & WINDOW_ACTIVITY) {
+		if (options_get_number(&w->options, "monitor-activity"))
+			return (1);
+	}
+	if (flags & WINDOW_SILENCE) {
+		if (options_get_number(&w->options, "monitor-silence") != 0)
+			return (1);
+	}
+	if (~flags & WINDOW_BELL)
+		return (0);
+	RB_FOREACH(s, sessions, &sessions) {
+		if (!session_has(s, w))
+			continue;
+		if (options_get_number(&s->options, "bell-action") != BELL_NONE)
+			return (1);
+	}
+	return (0);
+}
+
+void
+alerts_reset_all(void)
+{
+	struct window	*w;
+
+	RB_FOREACH(w, windows, &windows)
+		alerts_reset(w);
+}
+
+void
+alerts_reset(struct window *w)
+{
+	struct timeval	tv;
+
+	w->flags &= ~WINDOW_SILENCE;
+	event_del(&w->alerts_timer);
+
+	timerclear(&tv);
+	tv.tv_sec = options_get_number(&w->options, "monitor-silence");
+
+	log_debug("@%u alerts timer reset %u", w->id, (u_int)tv.tv_sec);
+	if (tv.tv_sec != 0)
+		event_add(&w->alerts_timer, &tv);
+}
+
+void
+alerts_queue(struct window *w, int flags)
+{
+	if (!event_initialized(&w->alerts_timer))
+		evtimer_set(&w->alerts_timer, alerts_timer, w);
+
+	if (w->flags & flags)
+		return;
+	w->flags |= flags;
+	log_debug("@%u alerts flags added %#x", w->id, flags);
+
+	if (!alerts_fired && alerts_enabled(w, flags)) {
+		log_debug("alerts check queued (by @%u)", w->id);
+		event_once(-1, EV_TIMEOUT, alerts_callback, NULL, NULL);
+		alerts_fired = 1;
+	}
+
+	if (flags & WINDOW_ACTIVITY)
+		alerts_reset(w);
+}
+
+int
+alerts_check_bell(struct session *s, struct winlink *wl)
 {
 	struct client	*c;
 	struct window	*w = wl->window;
@@ -69,10 +160,11 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 	if (s->curw->window == w)
 		w->flags &= ~WINDOW_BELL;
 
-	visual = options_get_number(&s->options, "visual-bell");
 	action = options_get_number(&s->options, "bell-action");
 	if (action == BELL_NONE)
 		return (0);
+
+	visual = options_get_number(&s->options, "visual-bell");
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session != s || c->flags & CLIENT_CONTROL)
 			continue;
@@ -92,12 +184,11 @@ server_window_check_bell(struct session *s, struct winlink *wl)
 			status_message_set(c, "Bell in window %d", wl->idx);
 	}
 
-	return (1);
+	return (WINDOW_BELL);
 }
 
-/* Check for activity in window. */
 int
-server_window_check_activity(struct session *s, struct winlink *wl)
+alerts_check_activity(struct session *s, struct winlink *wl)
 {
 	struct client	*c;
 	struct window	*w = wl->window;
@@ -114,7 +205,7 @@ server_window_check_activity(struct session *s, struct winlink *wl)
 		return (0);
 
 	if (options_get_number(&s->options, "bell-on-alert"))
-		ring_bell(s);
+		alerts_ring_bell(s);
 	wl->flags |= WINLINK_ACTIVITY;
 
 	if (options_get_number(&s->options, "visual-activity")) {
@@ -125,45 +216,28 @@ server_window_check_activity(struct session *s, struct winlink *wl)
 		}
 	}
 
-	return (1);
+	return (WINDOW_ACTIVITY);
 }
 
-/* Check for silence in window. */
 int
-server_window_check_silence(struct session *s, struct winlink *wl)
+alerts_check_silence(struct session *s, struct winlink *wl)
 {
 	struct client	*c;
 	struct window	*w = wl->window;
-	struct timeval	 timer;
-	int		 silence_interval, timer_difference;
+
+	if (s->curw->window == w)
+		w->flags &= ~WINDOW_SILENCE;
 
 	if (!(w->flags & WINDOW_SILENCE) || wl->flags & WINLINK_SILENCE)
 		return (0);
-
-	if (s->curw == wl && !(s->flags & SESSION_UNATTACHED)) {
-		/*
-		 * Reset the timer for this window if we've focused it.  We
-		 * don't want the timer tripping as soon as we've switched away
-		 * from this window.
-		 */
-		if (gettimeofday(&w->silence_timer, NULL) != 0)
-			fatal("gettimeofday failed");
-
-		return (0);
-	}
-
-	silence_interval = options_get_number(&w->options, "monitor-silence");
-	if (silence_interval == 0)
+	if (s->curw == wl && !(s->flags & SESSION_UNATTACHED))
 		return (0);
 
-	if (gettimeofday(&timer, NULL) != 0)
-		fatal("gettimeofday");
-	timer_difference = timer.tv_sec - w->silence_timer.tv_sec;
-	if (timer_difference <= silence_interval)
+	if (options_get_number(&w->options, "monitor-silence") == 0)
 		return (0);
 
 	if (options_get_number(&s->options, "bell-on-alert"))
-		ring_bell(s);
+		alerts_ring_bell(s);
 	wl->flags |= WINLINK_SILENCE;
 
 	if (options_get_number(&s->options, "visual-silence")) {
@@ -174,12 +248,11 @@ server_window_check_silence(struct session *s, struct winlink *wl)
 		}
 	}
 
-	return (1);
+	return (WINDOW_SILENCE);
 }
 
-/* Ring terminal bell. */
 void
-ring_bell(struct session *s)
+alerts_ring_bell(struct session *s)
 {
 	struct client	*c;
 

@@ -56,14 +56,14 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct client		*c = cmdq->client;
 	struct session          *s;
 	struct paste_buffer	*pb;
-	const char		*path, *bufname;
-	char			*start, *end, *msg;
-	size_t			 size, used, msglen;
+	const char		*path, *bufname, *bufdata, *start, *end;
+	char			*msg;
+	size_t			 size, used, msglen, bufsize;
 	int			 cwd, fd;
 	FILE			*f;
 
 	if (!args_has(args, 'b')) {
-		if ((pb = paste_get_top()) == NULL) {
+		if ((pb = paste_get_top(NULL)) == NULL) {
 			cmdq_error(cmdq, "no buffers");
 			return (CMD_RETURN_ERROR);
 		}
@@ -75,6 +75,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_ERROR);
 		}
 	}
+	bufdata = paste_buffer_data(pb, &bufsize);
 
 	if (self->entry == &cmd_show_buffer_entry)
 		path = "-";
@@ -113,7 +114,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		cmdq_error(cmdq, "%s: %s", path, strerror(errno));
 		return (CMD_RETURN_ERROR);
 	}
-	if (fwrite(pb->data, 1, pb->size, f) != pb->size) {
+	if (fwrite(bufdata, 1, bufsize, f) != bufsize) {
 		cmdq_error(cmdq, "%s: fwrite error", path);
 		fclose(f);
 		return (CMD_RETURN_ERROR);
@@ -123,25 +124,25 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_NORMAL);
 
 do_stdout:
-	evbuffer_add(c->stdout_data, pb->data, pb->size);
+	evbuffer_add(c->stdout_data, bufdata, bufsize);
 	server_push_stdout(c);
 	return (CMD_RETURN_NORMAL);
 
 do_print:
-	if (pb->size > (INT_MAX / 4) - 1) {
+	if (bufsize > (INT_MAX / 4) - 1) {
 		cmdq_error(cmdq, "buffer too big");
 		return (CMD_RETURN_ERROR);
 	}
 	msg = NULL;
 
 	used = 0;
-	while (used != pb->size) {
-		start = pb->data + used;
-		end = memchr(start, '\n', pb->size - used);
+	while (used != bufsize) {
+		start = bufdata + used;
+		end = memchr(start, '\n', bufsize - used);
 		if (end != NULL)
 			size = end - start;
 		else
-			size = pb->size - used;
+			size = bufsize - used;
 
 		msglen = size * 4 + 1;
 		msg = xrealloc(msg, msglen);

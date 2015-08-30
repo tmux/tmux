@@ -57,6 +57,7 @@ endif
 
 # List of sources.
 dist_tmux_SOURCES = \
+	alerts.c \
 	arguments.c \
 	attributes.c \
 	cfg.c \
@@ -156,7 +157,6 @@ dist_tmux_SOURCES = \
 	screen.c \
 	server-client.c \
 	server-fn.c \
-	server-window.c \
 	server.c \
 	session.c \
 	signal.c \

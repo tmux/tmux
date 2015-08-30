@@ -276,6 +276,13 @@ window_find_by_id(u_int id)
 	return (RB_FIND(windows, &windows, &w));
 }
 
+void
+window_update_activity(struct window *w)
+{
+	gettimeofday(&w->activity_time, NULL);
+	alerts_queue(w, WINDOW_ACTIVITY);
+}
+
 struct window *
 window_create1(u_int sx, u_int sy)
 {
@@ -294,17 +301,14 @@ window_create1(u_int sx, u_int sy)
 	w->sx = sx;
 	w->sy = sy;
 
-	if (gettimeofday(&w->activity_time, NULL) != 0)
-		fatal("gettimeofday failed");
-
 	options_init(&w->options, &global_w_options);
-	if (options_get_number(&w->options, "automatic-rename"))
-		queue_window_name(w);
 
 	w->references = 0;
 
 	w->id = next_window_id++;
 	RB_INSERT(windows, &windows, w);
+
+	window_update_activity(w);
 
 	return (w);
 }
@@ -348,8 +352,11 @@ window_destroy(struct window *w)
 		layout_free_cell(w->saved_layout_root);
 	free(w->old_layout);
 
-	if (event_initialized(&w->name_timer))
-		evtimer_del(&w->name_timer);
+	if (event_initialized(&w->name_event))
+		evtimer_del(&w->name_event);
+
+	if (event_initialized(&w->alerts_timer))
+		evtimer_del(&w->alerts_timer);
 
 	options_free(&w->options);
 
@@ -430,16 +437,6 @@ window_get_active_at(struct window *w, u_int x, u_int y)
 		return (wp);
 	}
 	return (NULL);
-}
-
-void
-window_set_active_at(struct window *w, u_int x, u_int y)
-{
-	struct window_pane	*wp;
-
-	wp = window_get_active_at(w, x, y);
-	if (wp != NULL && wp != w->active)
-		window_set_active_pane(w, wp);
 }
 
 struct window_pane *
@@ -703,6 +700,7 @@ struct window_pane *
 window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 {
 	struct window_pane	*wp;
+	char			 host[HOST_NAME_MAX + 1];
 
 	wp = xcalloc(1, sizeof *wp);
 	wp->window = w;
@@ -738,6 +736,9 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 
 	screen_init(&wp->base, sx, sy, hlimit);
 	wp->screen = &wp->base;
+
+	if (gethostname(host, sizeof host) == 0)
+		screen_set_title(&wp->base, host);
 
 	input_init(wp);
 
@@ -941,14 +942,6 @@ window_pane_read_callback(unused struct bufferevent *bufev, void *data)
 	input_parse(wp);
 
 	wp->pipe_off = EVBUFFER_LENGTH(evb);
-
-	/*
-	 * If we get here, we're not outputting anymore, so set the silence
-	 * flag on the window.
-	 */
-	wp->window->flags |= WINDOW_SILENCE;
-	if (gettimeofday(&wp->window->silence_timer, NULL) != 0)
-		fatal("gettimeofday failed");
 	return;
 
 start_timer:
@@ -1078,7 +1071,7 @@ window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode)
 
 	if ((s = wp->mode->init(wp)) != NULL)
 		wp->screen = s;
-	wp->flags |= PANE_REDRAW;
+	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
 	return (0);
 }
 
@@ -1092,7 +1085,7 @@ window_pane_reset_mode(struct window_pane *wp)
 	wp->mode = NULL;
 
 	wp->screen = &wp->base;
-	wp->flags |= PANE_REDRAW;
+	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
 }
 
 void

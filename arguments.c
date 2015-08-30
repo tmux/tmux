@@ -28,6 +28,12 @@
  * Manipulate command arguments.
  */
 
+struct args_entry {
+	u_char			 flag;
+	char			*value;
+	RB_ENTRY(args_entry)	 entry;
+};
+
 struct args_entry	*args_find(struct args *, u_char);
 
 RB_GENERATE(args_tree, args_entry, entry, args_cmp);

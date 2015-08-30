@@ -200,7 +200,7 @@ shell_exec(const char *shell, const char *shellcmd)
 	fatal("execl failed");
 }
 
-const char*
+const char *
 find_home(void)
 {
 	struct passwd	*pw;
@@ -215,7 +215,7 @@ find_home(void)
 			home = NULL;
 	}
 
-	return home;
+	return (home);
 }
 
 int

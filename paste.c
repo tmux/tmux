@@ -29,6 +29,18 @@
  * string!
  */
 
+struct paste_buffer {
+	char		*data;
+	size_t		 size;
+
+	char		*name;
+	int		 automatic;
+	u_int		 order;
+
+	RB_ENTRY(paste_buffer) name_entry;
+	RB_ENTRY(paste_buffer) time_entry;
+};
+
 u_int	paste_next_index;
 u_int	paste_next_order;
 u_int	paste_num_automatic;
@@ -59,6 +71,22 @@ paste_cmp_times(const struct paste_buffer *a, const struct paste_buffer *b)
 	return (0);
 }
 
+/* Get paste buffer name. */
+const char *
+paste_buffer_name(struct paste_buffer *pb)
+{
+	return (pb->name);
+}
+
+/* Get paste buffer data. */
+const char *
+paste_buffer_data(struct paste_buffer *pb, size_t *size)
+{
+	if (size != NULL)
+		*size = pb->size;
+	return (pb->data);
+}
+
 /* Walk paste buffers by name. */
 struct paste_buffer *
 paste_walk(struct paste_buffer *pb)
@@ -70,13 +98,15 @@ paste_walk(struct paste_buffer *pb)
 
 /* Get the most recent automatic buffer. */
 struct paste_buffer *
-paste_get_top(void)
+paste_get_top(const char **name)
 {
 	struct paste_buffer	*pb;
 
 	pb = RB_MIN(paste_time_tree, &paste_by_time);
 	if (pb == NULL)
 		return (NULL);
+	if (name != NULL)
+		*name = pb->name;
 	return (pb);
 }
 
@@ -86,7 +116,7 @@ paste_free_top(void)
 {
 	struct paste_buffer	*pb;
 
-	pb = paste_get_top();
+	pb = paste_get_top(NULL);
 	if (pb == NULL)
 		return (-1);
 	return (paste_free_name(pb->name));
@@ -287,33 +317,4 @@ paste_make_sample(struct paste_buffer *pb, int utf8flag)
 	if (pb->size > width || used > width)
 		strlcpy(buf + width, "...", 4);
 	return (buf);
-}
-
-/* Paste into a window pane, filtering '\n' according to separator. */
-void
-paste_send_pane(struct paste_buffer *pb, struct window_pane *wp,
-    const char *sep, int bracket)
-{
-	const char	*data = pb->data, *end = data + pb->size, *lf;
-	size_t		 seplen;
-
-	if (wp->flags & PANE_INPUTOFF)
-		return;
-
-	if (bracket && (wp->screen->mode & MODE_BRACKETPASTE))
-		bufferevent_write(wp->event, "\033[200~", 6);
-
-	seplen = strlen(sep);
-	while ((lf = memchr(data, '\n', end - data)) != NULL) {
-		if (lf != data)
-			bufferevent_write(wp->event, data, lf - data);
-		bufferevent_write(wp->event, sep, seplen);
-		data = lf + 1;
-	}
-
-	if (end != data)
-		bufferevent_write(wp->event, data, end - data);
-
-	if (bracket && (wp->screen->mode & MODE_BRACKETPASTE))
-		bufferevent_write(wp->event, "\033[201~", 6);
 }

@@ -550,13 +550,6 @@ server_client_handle_key(struct client *c, int key)
 	w = s->curw->window;
 	wp = w->active;
 
-	/* No session, do nothing. */
-	if (c->session == NULL)
-		return;
-	s = c->session;
-	w = c->session->curw->window;
-	wp = w->active;
-
 	/* Update the activity timer. */
 	if (gettimeofday(&c->activity_time, NULL) != 0)
 		fatal("gettimeofday failed");
@@ -716,6 +709,7 @@ server_client_loop(void)
 			}
 			wp->flags &= ~PANE_REDRAW;
 		}
+		check_window_name(w);
 	}
 }
 

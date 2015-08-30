@@ -44,12 +44,6 @@ const struct {
 	{ "tiled", layout_set_tiled },
 };
 
-const char *
-layout_set_name(u_int layout)
-{
-	return (layout_sets[layout].name);
-}
-
 int
 layout_set_lookup(const char *name)
 {
