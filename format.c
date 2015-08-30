@@ -373,7 +373,7 @@ format_cb_current_command(struct format_tree *ft, struct format_entry *fe)
 	if (wp == NULL)
 		return;
 
-	cmd = get_proc_name(wp->fd, wp->tty);
+	cmd = osdep_get_name(wp->fd, wp->tty);
 	if (cmd == NULL || *cmd == '\0') {
 		free(cmd);
 		cmd = cmd_stringify_argv(wp->argc, wp->argv);
