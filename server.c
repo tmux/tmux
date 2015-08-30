@@ -158,7 +158,7 @@ server_create_socket(void)
 
 /* Fork new server. */
 int
-server_start(int lockfd, char *lockfile)
+server_start(struct event_base *base, int lockfd, char *lockfile)
 {
 	int	 pair[2];
 	char	*cause;
@@ -188,7 +188,7 @@ server_start(int lockfd, char *lockfile)
 
 	/* event_init() was called in our parent, need to reinit. */
 	clear_signals(0);
-	if (event_reinit(ev_base) != 0)
+	if (event_reinit(base) != 0)
 		fatal("event_reinit failed");
 
 	logfile("server");

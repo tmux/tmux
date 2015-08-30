@@ -52,7 +52,7 @@ const char     *client_exitsession;
 int		client_attached;
 
 int		client_get_lock(char *);
-int		client_connect(char *, int);
+int		client_connect(struct event_base *, char *, int);
 void		client_send_identify(int);
 int		client_write_one(enum msgtype, int, const void *, size_t);
 int		client_write_server(enum msgtype, const void *, size_t);
@@ -96,7 +96,7 @@ client_get_lock(char *lockfile)
 
 /* Connect client to server. */
 int
-client_connect(char *path, int start_server)
+client_connect(struct event_base *base, char *path, int start_server)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
@@ -149,7 +149,7 @@ retry:
 			close(lockfd);
 			return (-1);
 		}
-		fd = server_start(lockfd, lockfile);
+		fd = server_start(base, lockfd, lockfile);
 	}
 	if (locked) {
 		free(lockfile);
@@ -203,7 +203,7 @@ client_exit_message(void)
 
 /* Client main loop. */
 int
-client_main(int argc, char **argv, int flags)
+client_main(struct event_base *base, int argc, char **argv, int flags)
 {
 	struct cmd		*cmd;
 	struct cmd_list		*cmdlist;
@@ -252,7 +252,7 @@ client_main(int argc, char **argv, int flags)
 	set_signals(client_signal);
 
 	/* Initialize the client socket and start the server. */
-	fd = client_connect(socket_path, cmdflags & CMD_STARTSERVER);
+	fd = client_connect(base, socket_path, cmdflags & CMD_STARTSERVER);
 	if (fd == -1) {
 		if (errno == ECONNREFUSED) {
 			fprintf(stderr, "no server running on %s\n",

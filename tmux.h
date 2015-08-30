@@ -1407,7 +1407,6 @@ extern struct options global_options;
 extern struct options global_s_options;
 extern struct options global_w_options;
 extern struct environ global_environ;
-extern struct event_base *ev_base;
 extern char	*cfg_file;
 extern char	*shell_cmd;
 extern int	 debug_level;
@@ -1792,7 +1791,7 @@ int	cmd_string_parse(const char *, struct cmd_list **, const char *,
 void	cmd_wait_for_flush(void);
 
 /* client.c */
-int	client_main(int, char **, int);
+int	client_main(struct event_base *, int, char **, int);
 
 /* key-bindings.c */
 RB_PROTOTYPE(key_bindings, key_binding, entry, key_bindings_cmp);
@@ -1829,7 +1828,7 @@ void	 server_clear_marked(void);
 int	 server_is_marked(struct session *, struct winlink *,
 	     struct window_pane *);
 int	 server_check_marked(void);
-int	 server_start(int, char *);
+int	 server_start(struct event_base *, int, char *);
 void	 server_update_socket(void);
 void	 server_add_accept(int);
 

@@ -41,8 +41,6 @@ struct options	 global_s_options;	/* session options */
 struct options	 global_w_options;	/* window options */
 struct environ	 global_environ;
 
-struct event_base *ev_base;
-
 char		*cfg_file;
 char		*shell_cmd;
 int		 debug_level;
@@ -386,6 +384,5 @@ main(int argc, char **argv)
 	setproctitle("%s (%s)", __progname, socket_path);
 
 	/* Pass control to the client. */
-	ev_base = event_init();
-	exit(client_main(argc, argv, flags));
+	exit(client_main(event_init(), argc, argv, flags));
 }
