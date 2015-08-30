@@ -58,12 +58,10 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 			src_wp = TAILQ_NEXT(dst_wp, entry);
 			if (src_wp == NULL)
 				src_wp = TAILQ_FIRST(&dst_w->panes);
-			src_wl = dst_wl;
 		} else if (args_has(self->args, 'U')) {
 			src_wp = TAILQ_PREV(dst_wp, window_panes, entry);
 			if (src_wp == NULL)
 				src_wp = TAILQ_LAST(&dst_w->panes, window_panes);
-			src_wl = dst_wl;
 		} else {
 			src_wl = cmd_find_pane_marked(cmdq, NULL, NULL,
 			    &src_wp);

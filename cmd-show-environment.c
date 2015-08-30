@@ -56,7 +56,7 @@ cmd_show_environment_escape(struct environ_entry *envent)
 	}
 	*out = '\0';
 
-	return ret;
+	return (ret);
 }
 
 void
