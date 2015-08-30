@@ -46,7 +46,6 @@ char		*shell_cmd;
 int		 debug_level;
 time_t		 start_time;
 char		 socket_path[PATH_MAX];
-char		*environ_path;
 
 __dead void	 usage(void);
 char 		*makesocketpath(const char *);
@@ -191,10 +190,8 @@ int
 main(int argc, char **argv)
 {
 	char		*s, *path, *label, **var, tmp[PATH_MAX];
-	char		 in[256];
 	const char	*home;
-	long long	 pid;
-	int	 	 opt, flags, keys, session;
+	int	 	 opt, flags, keys;
 
 #ifdef DEBUG
 	malloc_options = (char *) "AFGJPX";
@@ -321,11 +318,6 @@ main(int argc, char **argv)
 		}
 	}
 
-	/* Get path from environment. */
-	s = getenv("TMUX");
-	if (s != NULL && sscanf(s, "%255[^,],%lld,%d", in, &pid, &session) == 3)
-		environ_path = xstrdup(in);
-
 	/*
 	 * Figure out the socket path. If specified on the command-line with -S
 	 * or -L, use it, otherwise try $TMUX or assume -L default.
@@ -333,8 +325,15 @@ main(int argc, char **argv)
 	if (path == NULL) {
 		/* If no -L, use the environment. */
 		if (label == NULL) {
-			if (environ_path != NULL)
-				path = xstrdup(environ_path);
+			s = getenv("TMUX");
+			if (s != NULL) {
+				path = xstrdup(s);
+				path[strcspn (path, ",")] = '\0';
+				if (*path == '\0') {
+					free(path);
+					label = xstrdup("default");
+				}
+			}
 			else
 				label = xstrdup("default");
 		}
@@ -343,14 +342,15 @@ main(int argc, char **argv)
 		if (label != NULL) {
 			if ((path = makesocketpath(label)) == NULL) {
 				fprintf(stderr, "can't create socket: %s\n",
-					strerror(errno));
+				    strerror(errno));
 				exit(1);
 			}
 		}
 	}
 	free(label);
 
-	if (strlcpy(socket_path, path, sizeof socket_path) >= sizeof socket_path) {
+	if (strlcpy(socket_path, path, sizeof socket_path) >=
+	    sizeof socket_path) {
 		fprintf(stderr, "socket path too long: %s\n", path);
 		exit(1);
 	}

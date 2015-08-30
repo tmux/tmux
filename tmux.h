@@ -1412,7 +1412,6 @@ extern char	*shell_cmd;
 extern int	 debug_level;
 extern time_t	 start_time;
 extern char	 socket_path[PATH_MAX];
-extern char	*environ_path;
 void		 logfile(const char *);
 const char	*getshell(void);
 int		 checkshell(const char *);
