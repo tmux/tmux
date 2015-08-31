@@ -50,6 +50,7 @@ void	 format_cb_session_alerts(struct format_tree *, struct format_entry *);
 void	 format_cb_window_layout(struct format_tree *, struct format_entry *);
 void	 format_cb_start_command(struct format_tree *, struct format_entry *);
 void	 format_cb_current_command(struct format_tree *, struct format_entry *);
+void	 format_cb_current_path(struct format_tree *, struct format_entry *);
 void	 format_cb_history_bytes(struct format_tree *, struct format_entry *);
 void	 format_cb_pane_tabs(struct format_tree *, struct format_entry *);
 
@@ -384,6 +385,21 @@ format_cb_current_command(struct format_tree *ft, struct format_entry *fe)
 	}
 	fe->value = parse_window_name(cmd);
 	free(cmd);
+}
+
+/* Callback for pane_current_path. */
+void
+format_cb_current_path(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window_pane	*wp = ft->wp;
+	char			*cwd;
+
+	if (wp == NULL)
+		return;
+
+	cwd = osdep_get_cwd(wp->fd);
+	if (cwd != NULL)
+		fe->value = xstrdup(cwd);
 }
 
 /* Callback for history_bytes. */
@@ -1037,6 +1053,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
 	format_add_cb(ft, "pane_start_command", format_cb_start_command);
 	format_add_cb(ft, "pane_current_command", format_cb_current_command);
+	format_add_cb(ft, "pane_current_path", format_cb_current_path);
 
 	format_add(ft, "cursor_x", "%u", wp->base.cx);
 	format_add(ft, "cursor_y", "%u", wp->base.cy);
