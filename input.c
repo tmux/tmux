@@ -862,10 +862,12 @@ input_parse(struct window_pane *wp)
 	notify_input(wp, evb);
 	off = 0;
 
+	log_debug("%s: %s, %zu bytes: %.*s", __func__, ictx->state->name, len,
+	    (int)len, buf);
+
 	/* Parse the input. */
 	while (off < len) {
 		ictx->ch = buf[off++];
-		log_debug("%s: '%c' %s", __func__, ictx->ch, ictx->state->name);
 
 		/* Find the transition. */
 		itr = ictx->state->transitions;
@@ -1070,7 +1072,7 @@ input_c0_dispatch(struct input_ctx *ictx)
 	struct window_pane	*wp = ictx->wp;
 	struct screen		*s = sctx->s;
 
-	log_debug("%s: '%c", __func__, ictx->ch);
+	log_debug("%s: '%c'", __func__, ictx->ch);
 
 	switch (ictx->ch) {
 	case '\000':	/* NUL */
