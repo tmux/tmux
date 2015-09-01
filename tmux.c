@@ -41,7 +41,6 @@ struct options	 global_s_options;	/* session options */
 struct options	 global_w_options;	/* window options */
 struct environ	 global_environ;
 
-char		*cfg_file;
 char		*shell_cmd;
 int		 debug_level;
 time_t		 start_time;
@@ -171,8 +170,11 @@ setblocking(int fd, int state)
 const char *
 find_home(void)
 {
-	struct passwd	*pw;
-	const char	*home;
+	struct passwd		*pw;
+	static const char	*home;
+
+	if (home != NULL)
+		return (home);
 
 	home = getenv("HOME");
 	if (home == NULL || *home == '\0') {
@@ -189,9 +191,8 @@ find_home(void)
 int
 main(int argc, char **argv)
 {
-	char		*s, *path, *label, **var, tmp[PATH_MAX];
-	const char	*home;
-	int	 	 opt, flags, keys;
+	char	*s, *path, *label, **var, tmp[PATH_MAX];
+	int	 opt, flags, keys;
 
 #ifdef DEBUG
 	malloc_options = (char *) "AFGJPX";
@@ -221,8 +222,7 @@ main(int argc, char **argv)
 				flags |= CLIENT_CONTROL;
 			break;
 		case 'f':
-			free(cfg_file);
-			cfg_file = xstrdup(optarg);
+			set_cfg_file(optarg);
 			break;
 		case 'l':
 			flags |= CLIENT_LOGIN;
@@ -304,18 +304,6 @@ main(int argc, char **argv)
 			keys = MODEKEY_EMACS;
 		options_set_number(&global_s_options, "status-keys", keys);
 		options_set_number(&global_w_options, "mode-keys", keys);
-	}
-
-	/* Locate the configuration file. */
-	if (cfg_file == NULL) {
-		home = find_home();
-		if (home != NULL) {
-			xasprintf(&cfg_file, "%s/.tmux.conf", home);
-			if (access(cfg_file, R_OK) != 0 && errno == ENOENT) {
-				free(cfg_file);
-				cfg_file = NULL;
-			}
-		}
 	}
 
 	/*
