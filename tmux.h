@@ -1728,7 +1728,6 @@ void	alerts_queue(struct window *, int);
 
 /* server.c */
 extern struct clients clients;
-extern struct clients dead_clients;
 extern struct session *marked_session;
 extern struct winlink *marked_winlink;
 extern struct window_pane *marked_window_pane;
