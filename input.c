@@ -878,7 +878,7 @@ input_parse(struct window_pane *wp)
 		}
 		if (itr->first == -1 || itr->last == -1) {
 			/* No transition? Eh? */
-			fatalx("No transition from state!");
+			fatalx("no transition from state");
 		}
 
 		/*

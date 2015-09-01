@@ -560,7 +560,6 @@ tty_term_string(struct tty_term *term, enum tty_code_code code)
 	return (term->codes[code].value.string);
 }
 
-/* No vtparm. Fucking curses. */
 const char *
 tty_term_string1(struct tty_term *term, enum tty_code_code code, int a)
 {
