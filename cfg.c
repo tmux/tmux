@@ -23,16 +23,47 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <util.h>
 
 #include "tmux.h"
 
-struct cmd_q		 *cfg_cmd_q;
-int			  cfg_finished;
-int			  cfg_references;
-char			**cfg_causes;
-u_int			  cfg_ncauses;
-struct client		 *cfg_client;
+struct cmd_q	 *cfg_cmd_q;
+int		  cfg_finished;
+int		  cfg_references;
+char		**cfg_causes;
+u_int		  cfg_ncauses;
+struct client	 *cfg_client;
+
+void	cfg_default_done(struct cmd_q *);
+
+void
+start_cfg(void)
+{
+	char	*cause = NULL;
+
+	cfg_cmd_q = cmdq_new(NULL);
+	cfg_cmd_q->emptyfn = cfg_default_done;
+
+	cfg_finished = 0;
+	cfg_references = 1;
+
+	cfg_client = TAILQ_FIRST(&clients);
+	if (cfg_client != NULL)
+		cfg_client->references++;
+
+	if (access(TMUX_CONF, R_OK) == 0) {
+		if (load_cfg(TMUX_CONF, cfg_cmd_q, &cause) == -1)
+			cfg_add_cause("%s: %s", TMUX_CONF, cause);
+	} else if (errno != ENOENT)
+		cfg_add_cause("%s: %s", TMUX_CONF, strerror(errno));
+
+	if (cfg_file != NULL && load_cfg(cfg_file, cfg_cmd_q, &cause) == -1)
+		cfg_add_cause("%s: %s", cfg_file, cause);
+	free(cause);
+
+	cmdq_continue(cfg_cmd_q);
+}
 
 int
 load_cfg(const char *path, struct cmd_q *cmdq, char **cause)

@@ -160,8 +160,7 @@ server_create_socket(void)
 int
 server_start(struct event_base *base, int lockfd, char *lockfile)
 {
-	int	 pair[2];
-	char	*cause;
+	int	pair[2];
 
 	/* The first client is special and gets a socketpair; create it. */
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
@@ -217,24 +216,8 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	free(lockfile);
 	close(lockfd);
 
-	cfg_cmd_q = cmdq_new(NULL);
-	cfg_cmd_q->emptyfn = cfg_default_done;
-	cfg_finished = 0;
-	cfg_references = 1;
-	cfg_client = TAILQ_FIRST(&clients);
-	if (cfg_client != NULL)
-		cfg_client->references++;
+	start_cfg();
 
-	if (access(TMUX_CONF, R_OK) == 0) {
-		if (load_cfg(TMUX_CONF, cfg_cmd_q, &cause) == -1)
-			cfg_add_cause("%s: %s", TMUX_CONF, cause);
-	} else if (errno != ENOENT)
-		cfg_add_cause("%s: %s", TMUX_CONF, strerror(errno));
-	if (cfg_file != NULL) {
-		if (load_cfg(cfg_file, cfg_cmd_q, &cause) == -1)
-			cfg_add_cause("%s: %s", cfg_file, cause);
-	}
-	cmdq_continue(cfg_cmd_q);
 	status_prompt_load_history();
 
 	server_add_accept(0);
