@@ -326,22 +326,22 @@ if test "x$found_strtonum" = xyes; then
 fi
 AM_CONDITIONAL(NO_STRTONUM, [test "x$found_strtonum" = xno])
 
-# Look for strnvis, compat/{vis,unvis}.c used if missing.
-AC_CHECK_FUNC(strnvis, found_strnvis=yes, found_strnvis=no)
-if test "x$found_strnvis" = xyes; then
+# Look for stravis, compat/{vis,unvis}.c used if missing.
+AC_CHECK_FUNC(stravis, found_stravis=yes, found_stravis=no)
+if test "x$found_stravis" = xyes; then
 	AC_MSG_CHECKING(if strnvis is broken)
 	AC_EGREP_HEADER([strnvis\(char \*, const char \*, size_t, int\)],
 			vis.h,
 			AC_MSG_RESULT(no),
-			[found_strnvis=no])
-	if test "x$found_strnvis" = xno; then
+			[found_stravis=no])
+	if test "x$found_stravis" = xno; then
 		AC_MSG_RESULT(yes)
 	fi
 fi
-if test "x$found_strnvis" = xyes; then
+if test "x$found_stravis" = xyes; then
 	AC_DEFINE(HAVE_VIS)
 fi
-AM_CONDITIONAL(NO_VIS, [test "x$found_strnvis" = xno])
+AM_CONDITIONAL(NO_VIS, [test "x$found_stravis" = xno])
 
 # Look for cfmakeraw, compat/cfmakeraw.c used if missing.
 AC_CHECK_FUNC(cfmakeraw, found_cfmakeraw=yes, found_cfmakeraw=no)
