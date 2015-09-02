@@ -1596,7 +1596,6 @@ void	tty_cmd_utf8character(struct tty *, const struct tty_ctx *);
 void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
 void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
-void	tty_bell(struct tty *);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;
