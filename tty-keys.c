@@ -41,7 +41,6 @@ struct tty_key *tty_keys_find1(
 struct tty_key *tty_keys_find(struct tty *, const char *, size_t, size_t *);
 void		tty_keys_callback(int, short, void *);
 int		tty_keys_mouse(struct tty *, const char *, size_t, size_t *);
-int		tty_keys_device(struct tty *, const char *, size_t, size_t *);
 
 /* Default raw keys. */
 struct tty_default_key_raw {
@@ -482,17 +481,6 @@ tty_keys_next(struct tty *tty)
 		return (0);
 	log_debug("keys are %zu (%.*s)", len, (int) len, buf);
 
-	/* Is this device attributes response? */
-	switch (tty_keys_device(tty, buf, len, &size)) {
-	case 0:		/* yes */
-		key = KEYC_NONE;
-		goto complete_key;
-	case -1:	/* no, or not valid */
-		break;
-	case 1:		/* partial */
-		goto partial_key;
-	}
-
 	/* Is this a mouse key press? */
 	switch (tty_keys_mouse(tty, buf, len, &size)) {
 	case 0:		/* yes */
@@ -791,63 +779,6 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 	m->b = b;
 	m->sgr_type = sgr_type;
 	m->sgr_b = sgr_b;
-
-	return (0);
-}
-
-/*
- * Handle device attributes input. Returns 0 for success, -1 for failure, 1 for
- * partial.
- */
-int
-tty_keys_device(struct tty *tty, const char *buf, size_t len, size_t *size)
-{
-	u_int i, class;
-	char  tmp[64], *endptr;
-
-	/*
-	 * Primary device attributes are \033[?a;b and secondary are
-	 * \033[>a;b;c.
-	 */
-
-	*size = 0;
-
-	/* First three bytes are always \033[?. */
-	if (buf[0] != '\033')
-		return (-1);
-	if (len == 1)
-		return (1);
-	if (buf[1] != '[')
-		return (-1);
-	if (len == 2)
-		return (1);
-	if (buf[2] != '>' && buf[2] != '?')
-		return (-1);
-	if (len == 3)
-		return (1);
-
-	/* Copy the rest up to a 'c'. */
-	for (i = 0; i < (sizeof tmp) - 1 && buf[3 + i] != 'c'; i++) {
-		if (3 + i == len)
-			return (1);
-		tmp[i] = buf[3 + i];
-	}
-	if (i == (sizeof tmp) - 1)
-		return (-1);
-	tmp[i] = '\0';
-	*size = 4 + i;
-
-	/* Only primary is of interest. */
-	if (buf[2] != '?')
-		return (0);
-
-	/* Convert service class. */
-	class = strtoul(tmp, &endptr, 10);
-	if (*endptr != ';')
-		class = 0;
-
-	log_debug("received service class %u", class);
-	tty_set_class(tty, class);
 
 	return (0);
 }

@@ -233,7 +233,6 @@ tty_start_tty(struct tty *tty)
 			tty->flags |= TTY_FOCUS;
 			tty_puts(tty, "\033[?1004h");
 		}
-		tty_puts(tty, "\033[c");
 	}
 
 	tty->cx = UINT_MAX;
@@ -251,14 +250,6 @@ tty_start_tty(struct tty *tty)
 	tty->mouse_drag_flag = 0;
 	tty->mouse_drag_update = NULL;
 	tty->mouse_drag_release = NULL;
-}
-
-void
-tty_set_class(struct tty *tty, u_int class)
-{
-	if (tty->class != 0)
-		return;
-	tty->class = class;
 }
 
 void

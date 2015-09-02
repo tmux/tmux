@@ -1082,9 +1082,7 @@ LIST_HEAD(tty_terms, tty_term);
 
 struct tty {
 	struct client	*client;
-
 	char		*path;
-	u_int		 class;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1564,7 +1562,6 @@ void	tty_putn(struct tty *, const void *, size_t, u_int);
 int	tty_init(struct tty *, struct client *, int, char *);
 int	tty_resize(struct tty *);
 int	tty_set_size(struct tty *, u_int, u_int);
-void	tty_set_class(struct tty *, u_int);
 void	tty_start_tty(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
