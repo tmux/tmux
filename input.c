@@ -862,8 +862,8 @@ input_parse(struct window_pane *wp)
 	notify_input(wp, evb);
 	off = 0;
 
-	log_debug("%s: %s, %zu bytes: %.*s", __func__, ictx->state->name, len,
-	    (int)len, buf);
+	log_debug("%s: %%%u %s, %zu bytes: %.*s", __func__, wp->id,
+	    ictx->state->name, len, (int)len, buf);
 
 	/* Parse the input. */
 	while (off < len) {
