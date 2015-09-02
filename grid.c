@@ -395,29 +395,29 @@ grid_string_cells_fg(const struct grid_cell *gc, int *values)
 		values[n++] = gc->fg;
 	} else {
 		switch (gc->fg) {
-			case 0:
-			case 1:
-			case 2:
-			case 3:
-			case 4:
-			case 5:
-			case 6:
-			case 7:
-				values[n++] = gc->fg + 30;
-				break;
-			case 8:
-				values[n++] = 39;
-				break;
-			case 90:
-			case 91:
-			case 92:
-			case 93:
-			case 94:
-			case 95:
-			case 96:
-			case 97:
-				values[n++] = gc->fg;
-				break;
+		case 0:
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+		case 6:
+		case 7:
+			values[n++] = gc->fg + 30;
+			break;
+		case 8:
+			values[n++] = 39;
+			break;
+		case 90:
+		case 91:
+		case 92:
+		case 93:
+		case 94:
+		case 95:
+		case 96:
+		case 97:
+			values[n++] = gc->fg;
+			break;
 		}
 	}
 	return (n);
