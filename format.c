@@ -218,8 +218,7 @@ format_job_get(struct format_tree *ft, const char *cmd)
 	struct format_job	fj0, *fj;
 
 	fj0.cmd = cmd;
-	if ((fj = RB_FIND(format_job_tree, &format_jobs, &fj0)) == NULL)
-	{
+	if ((fj = RB_FIND(format_job_tree, &format_jobs, &fj0)) == NULL) {
 		fj = xcalloc(1, sizeof *fj);
 		fj->cmd = xstrdup(cmd);
 		fj->status = ft->status;

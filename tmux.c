@@ -321,8 +321,7 @@ main(int argc, char **argv)
 					free(path);
 					label = xstrdup("default");
 				}
-			}
-			else
+			} else
 				label = xstrdup("default");
 		}
 
