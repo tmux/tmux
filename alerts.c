@@ -174,7 +174,7 @@ alerts_check_bell(struct session *s, struct winlink *wl)
 			    (action == BELL_OTHER &&
 			    c->session->curw->window != w) ||
 			    action == BELL_ANY)
-				tty_bell(&c->tty);
+				tty_putcode(&c->tty, TTYC_BEL);
 			continue;
 		}
 		if (action == BELL_CURRENT && c->session->curw->window == w)
@@ -258,6 +258,6 @@ alerts_ring_bell(struct session *s)
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (c->session == s && !(c->flags & CLIENT_CONTROL))
-			tty_bell(&c->tty);
+			tty_putcode(&c->tty, TTYC_BEL);
 	}
 }

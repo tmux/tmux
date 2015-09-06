@@ -39,15 +39,10 @@ struct options	 global_s_options;	/* session options */
 struct options	 global_w_options;	/* window options */
 struct environ	 global_environ;
 
-struct event_base *ev_base;
-
-char		*cfg_file;
 char		*shell_cmd;
 int		 debug_level;
 time_t		 start_time;
 char		 socket_path[PATH_MAX];
-int		 login_shell;
-char		*environ_path;
 
 __dead void	 usage(void);
 char 		*makesocketpath(const char *);
@@ -174,37 +169,14 @@ setblocking(int fd, int state)
 	}
 }
 
-__dead void
-shell_exec(const char *shell, const char *shellcmd)
-{
-	const char	*shellname, *ptr;
-	char		*argv0;
-
-	ptr = strrchr(shell, '/');
-	if (ptr != NULL && *(ptr + 1) != '\0')
-		shellname = ptr + 1;
-	else
-		shellname = shell;
-	if (login_shell)
-		xasprintf(&argv0, "-%s", shellname);
-	else
-		xasprintf(&argv0, "%s", shellname);
-	setenv("SHELL", shell, 1);
-
-	setblocking(STDIN_FILENO, 1);
-	setblocking(STDOUT_FILENO, 1);
-	setblocking(STDERR_FILENO, 1);
-	closefrom(STDERR_FILENO + 1);
-
-	execl(shell, argv0, "-c", shellcmd, (char *) NULL);
-	fatal("execl failed");
-}
-
 const char *
 find_home(void)
 {
-	struct passwd	*pw;
-	const char	*home;
+	struct passwd		*pw;
+	static const char	*home;
+
+	if (home != NULL)
+		return (home);
 
 	home = getenv("HOME");
 	if (home == NULL || *home == '\0') {
@@ -221,11 +193,8 @@ find_home(void)
 int
 main(int argc, char **argv)
 {
-	char		*s, *path, *label, **var, tmp[PATH_MAX];
-	char		 in[256];
-	const char	*home;
-	long long	 pid;
-	int	 	 opt, flags, keys, session;
+	char	*s, *path, *label, **var, tmp[PATH_MAX];
+	int	 opt, flags, keys;
 
 #if defined(DEBUG) && defined(__OpenBSD__)
 	malloc_options = (char *) "AFGJPX";
@@ -233,9 +202,12 @@ main(int argc, char **argv)
 
 	setlocale(LC_TIME, "");
 
-	flags = 0;
+	if (**argv == '-')
+		flags = CLIENT_LOGIN;
+	else
+		flags = 0;
+
 	label = path = NULL;
-	login_shell = (**argv == '-');
 	while ((opt = getopt(argc, argv, "2c:Cdf:lL:qS:uUVv")) != -1) {
 		switch (opt) {
 		case '2':
@@ -255,11 +227,10 @@ main(int argc, char **argv)
 			printf("%s %s\n", __progname, VERSION);
 			exit(0);
 		case 'f':
-			free(cfg_file);
-			cfg_file = xstrdup(optarg);
+			set_cfg_file(optarg);
 			break;
 		case 'l':
-			login_shell = 1;
+			flags |= CLIENT_LOGIN;
 			break;
 		case 'L':
 			free(label);
@@ -340,23 +311,6 @@ main(int argc, char **argv)
 		options_set_number(&global_w_options, "mode-keys", keys);
 	}
 
-	/* Locate the configuration file. */
-	if (cfg_file == NULL) {
-		home = find_home();
-		if (home != NULL) {
-			xasprintf(&cfg_file, "%s/.tmux.conf", home);
-			if (access(cfg_file, R_OK) != 0 && errno == ENOENT) {
-				free(cfg_file);
-				cfg_file = NULL;
-			}
-		}
-	}
-
-	/* Get path from environment. */
-	s = getenv("TMUX");
-	if (s != NULL && sscanf(s, "%255[^,],%lld,%d", in, &pid, &session) == 3)
-		environ_path = xstrdup(in);
-
 	/*
 	 * Figure out the socket path. If specified on the command-line with -S
 	 * or -L, use it, otherwise try $TMUX or assume -L default.
@@ -364,9 +318,15 @@ main(int argc, char **argv)
 	if (path == NULL) {
 		/* If no -L, use the environment. */
 		if (label == NULL) {
-			if (environ_path != NULL)
-				path = xstrdup(environ_path);
-			else
+			s = getenv("TMUX");
+			if (s != NULL) {
+				path = xstrdup(s);
+				path[strcspn (path, ",")] = '\0';
+				if (*path == '\0') {
+					free(path);
+					label = xstrdup("default");
+				}
+			} else
 				label = xstrdup("default");
 		}
 
@@ -374,14 +334,15 @@ main(int argc, char **argv)
 		if (label != NULL) {
 			if ((path = makesocketpath(label)) == NULL) {
 				fprintf(stderr, "can't create socket: %s\n",
-					strerror(errno));
+				    strerror(errno));
 				exit(1);
 			}
 		}
 	}
 	free(label);
 
-	if (strlcpy(socket_path, path, sizeof socket_path) >= sizeof socket_path) {
+	if (strlcpy(socket_path, path, sizeof socket_path) >=
+	    sizeof socket_path) {
 		fprintf(stderr, "socket path too long: %s\n", path);
 		exit(1);
 	}
@@ -393,6 +354,5 @@ main(int argc, char **argv)
 #endif
 
 	/* Pass control to the client. */
-	ev_base = osdep_event_init();
-	exit(client_main(argc, argv, flags));
+	exit(client_main(event_init(), argc, argv, flags));
 }

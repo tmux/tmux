@@ -186,7 +186,7 @@ session_free(unused int fd, unused short events, void *arg)
 {
 	struct session	*s = arg;
 
-	log_debug("sesson %s freed (%d references)", s->name, s->references);
+	log_debug("session %s freed (%d references)", s->name, s->references);
 
 	if (s->references == 0) {
 		free(s->name);

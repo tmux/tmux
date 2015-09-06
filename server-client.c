@@ -1069,7 +1069,7 @@ server_client_msg_dispatch(struct client *c)
 			s = c->session;
 
 			if (gettimeofday(&c->activity_time, NULL) != 0)
-				fatal("gettimeofday");
+				fatal("gettimeofday failed");
 			if (s != NULL)
 				session_update_activity(s, &c->activity_time);
 

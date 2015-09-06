@@ -1086,9 +1086,7 @@ LIST_HEAD(tty_terms, tty_term);
 
 struct tty {
 	struct client	*client;
-
 	char		*path;
-	u_int		 class;
 
 	u_int		 sx;
 	u_int		 sy;
@@ -1207,7 +1205,7 @@ struct client {
 	struct screen	 status;
 
 #define CLIENT_TERMINAL 0x1
-/* 0x2 unused */
+#define CLIENT_LOGIN 0x2
 #define CLIENT_EXIT 0x4
 #define CLIENT_REDRAW 0x8
 #define CLIENT_STATUS 0x10
@@ -1411,29 +1409,24 @@ extern struct options global_options;
 extern struct options global_s_options;
 extern struct options global_w_options;
 extern struct environ global_environ;
-extern struct event_base *ev_base;
-extern char	*cfg_file;
 extern char	*shell_cmd;
 extern int	 debug_level;
 extern time_t	 start_time;
 extern char	 socket_path[PATH_MAX];
-extern int	 login_shell;
-extern char	*environ_path;
 void		 logfile(const char *);
 const char	*getshell(void);
 int		 checkshell(const char *);
 int		 areshell(const char *);
 void		 setblocking(int, int);
-__dead void	 shell_exec(const char *, const char *);
 const char	*find_home(void);
 
 /* cfg.c */
-extern struct cmd_q *cfg_cmd_q;
 extern int cfg_finished;
 extern int cfg_references;
 extern struct client *cfg_client;
+void		 start_cfg(void);
 int		 load_cfg(const char *, struct cmd_q *, char **);
-void		 cfg_default_done(struct cmd_q *);
+void		 set_cfg_file(const char *);
 void		 cfg_add_cause(const char *, ...);
 void		 cfg_print_causes(struct cmd_q *);
 void		 cfg_show_causes(struct session *);
@@ -1573,7 +1566,6 @@ void	tty_putn(struct tty *, const void *, size_t, u_int);
 int	tty_init(struct tty *, struct client *, int, char *);
 int	tty_resize(struct tty *);
 int	tty_set_size(struct tty *, u_int, u_int);
-void	tty_set_class(struct tty *, u_int);
 void	tty_start_tty(struct tty *);
 void	tty_stop_tty(struct tty *);
 void	tty_set_title(struct tty *, const char *);
@@ -1608,7 +1600,6 @@ void	tty_cmd_utf8character(struct tty *, const struct tty_ctx *);
 void	tty_cmd_reverseindex(struct tty *, const struct tty_ctx *);
 void	tty_cmd_setselection(struct tty *, const struct tty_ctx *);
 void	tty_cmd_rawstring(struct tty *, const struct tty_ctx *);
-void	tty_bell(struct tty *);
 
 /* tty-term.c */
 extern struct tty_terms tty_terms;
@@ -1679,92 +1670,6 @@ struct window_pane *cmd_mouse_pane(struct mouse_event *, struct session **,
 		     struct winlink **);
 char		*cmd_template_replace(const char *, const char *, int);
 extern const struct cmd_entry *cmd_table[];
-extern const struct cmd_entry cmd_attach_session_entry;
-extern const struct cmd_entry cmd_bind_key_entry;
-extern const struct cmd_entry cmd_break_pane_entry;
-extern const struct cmd_entry cmd_capture_pane_entry;
-extern const struct cmd_entry cmd_choose_buffer_entry;
-extern const struct cmd_entry cmd_choose_client_entry;
-extern const struct cmd_entry cmd_choose_session_entry;
-extern const struct cmd_entry cmd_choose_tree_entry;
-extern const struct cmd_entry cmd_choose_window_entry;
-extern const struct cmd_entry cmd_clear_history_entry;
-extern const struct cmd_entry cmd_clock_mode_entry;
-extern const struct cmd_entry cmd_command_prompt_entry;
-extern const struct cmd_entry cmd_confirm_before_entry;
-extern const struct cmd_entry cmd_copy_mode_entry;
-extern const struct cmd_entry cmd_delete_buffer_entry;
-extern const struct cmd_entry cmd_detach_client_entry;
-extern const struct cmd_entry cmd_display_message_entry;
-extern const struct cmd_entry cmd_display_panes_entry;
-extern const struct cmd_entry cmd_down_pane_entry;
-extern const struct cmd_entry cmd_find_window_entry;
-extern const struct cmd_entry cmd_has_session_entry;
-extern const struct cmd_entry cmd_if_shell_entry;
-extern const struct cmd_entry cmd_join_pane_entry;
-extern const struct cmd_entry cmd_kill_pane_entry;
-extern const struct cmd_entry cmd_kill_server_entry;
-extern const struct cmd_entry cmd_kill_session_entry;
-extern const struct cmd_entry cmd_kill_window_entry;
-extern const struct cmd_entry cmd_last_pane_entry;
-extern const struct cmd_entry cmd_last_window_entry;
-extern const struct cmd_entry cmd_link_window_entry;
-extern const struct cmd_entry cmd_list_buffers_entry;
-extern const struct cmd_entry cmd_list_clients_entry;
-extern const struct cmd_entry cmd_list_commands_entry;
-extern const struct cmd_entry cmd_list_keys_entry;
-extern const struct cmd_entry cmd_list_panes_entry;
-extern const struct cmd_entry cmd_list_sessions_entry;
-extern const struct cmd_entry cmd_list_windows_entry;
-extern const struct cmd_entry cmd_load_buffer_entry;
-extern const struct cmd_entry cmd_lock_client_entry;
-extern const struct cmd_entry cmd_lock_server_entry;
-extern const struct cmd_entry cmd_lock_session_entry;
-extern const struct cmd_entry cmd_move_pane_entry;
-extern const struct cmd_entry cmd_move_window_entry;
-extern const struct cmd_entry cmd_new_session_entry;
-extern const struct cmd_entry cmd_new_window_entry;
-extern const struct cmd_entry cmd_next_layout_entry;
-extern const struct cmd_entry cmd_next_window_entry;
-extern const struct cmd_entry cmd_paste_buffer_entry;
-extern const struct cmd_entry cmd_pipe_pane_entry;
-extern const struct cmd_entry cmd_previous_layout_entry;
-extern const struct cmd_entry cmd_previous_window_entry;
-extern const struct cmd_entry cmd_refresh_client_entry;
-extern const struct cmd_entry cmd_rename_session_entry;
-extern const struct cmd_entry cmd_rename_window_entry;
-extern const struct cmd_entry cmd_resize_pane_entry;
-extern const struct cmd_entry cmd_respawn_pane_entry;
-extern const struct cmd_entry cmd_respawn_window_entry;
-extern const struct cmd_entry cmd_rotate_window_entry;
-extern const struct cmd_entry cmd_run_shell_entry;
-extern const struct cmd_entry cmd_save_buffer_entry;
-extern const struct cmd_entry cmd_select_layout_entry;
-extern const struct cmd_entry cmd_select_pane_entry;
-extern const struct cmd_entry cmd_select_window_entry;
-extern const struct cmd_entry cmd_send_keys_entry;
-extern const struct cmd_entry cmd_send_prefix_entry;
-extern const struct cmd_entry cmd_server_info_entry;
-extern const struct cmd_entry cmd_set_buffer_entry;
-extern const struct cmd_entry cmd_set_environment_entry;
-extern const struct cmd_entry cmd_set_option_entry;
-extern const struct cmd_entry cmd_set_window_option_entry;
-extern const struct cmd_entry cmd_show_buffer_entry;
-extern const struct cmd_entry cmd_show_environment_entry;
-extern const struct cmd_entry cmd_show_messages_entry;
-extern const struct cmd_entry cmd_show_options_entry;
-extern const struct cmd_entry cmd_show_window_options_entry;
-extern const struct cmd_entry cmd_source_file_entry;
-extern const struct cmd_entry cmd_split_window_entry;
-extern const struct cmd_entry cmd_start_server_entry;
-extern const struct cmd_entry cmd_suspend_client_entry;
-extern const struct cmd_entry cmd_swap_pane_entry;
-extern const struct cmd_entry cmd_swap_window_entry;
-extern const struct cmd_entry cmd_switch_client_entry;
-extern const struct cmd_entry cmd_unbind_key_entry;
-extern const struct cmd_entry cmd_unlink_window_entry;
-extern const struct cmd_entry cmd_up_pane_entry;
-extern const struct cmd_entry cmd_wait_for_entry;
 
 /* cmd-attach-session.c */
 enum cmd_retval	 cmd_attach_session(struct cmd_q *, const char *, int, int,
@@ -1796,7 +1701,7 @@ int	cmd_string_parse(const char *, struct cmd_list **, const char *,
 void	cmd_wait_for_flush(void);
 
 /* client.c */
-int	client_main(int, char **, int);
+int	client_main(struct event_base *, int, char **, int);
 
 /* key-bindings.c */
 RB_PROTOTYPE(key_bindings, key_binding, entry, key_bindings_cmp);
@@ -1823,7 +1728,6 @@ void	alerts_queue(struct window *, int);
 
 /* server.c */
 extern struct clients clients;
-extern struct clients dead_clients;
 extern struct session *marked_session;
 extern struct winlink *marked_winlink;
 extern struct window_pane *marked_window_pane;
@@ -1833,7 +1737,7 @@ void	 server_clear_marked(void);
 int	 server_is_marked(struct session *, struct winlink *,
 	     struct window_pane *);
 int	 server_check_marked(void);
-int	 server_start(int, char *);
+int	 server_start(struct event_base *, int, char *);
 void	 server_update_socket(void);
 void	 server_add_accept(int);
 
