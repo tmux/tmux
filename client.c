@@ -268,6 +268,10 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 		}
 		return (1);
 	}
+	options_free(&global_options);
+	options_free(&global_s_options);
+	options_free(&global_w_options);
+	environ_free(&global_environ);
 
 	/* Create imsg. */
 	imsg_init(&client_ibuf, fd);
