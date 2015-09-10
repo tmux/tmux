@@ -981,6 +981,7 @@ struct session {
 	int		 cwd;
 
 	struct timeval	 creation_time;
+	struct timeval	 last_attached_time;
 	struct timeval	 activity_time;
 	struct timeval	 last_activity_time;
 

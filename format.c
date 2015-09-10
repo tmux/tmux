@@ -872,6 +872,13 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 	format_add(ft, "session_created", "%lld", (long long) t);
 	format_add(ft, "session_created_string", "%s", format_time_string(t));
 
+	t = s->last_attached_time.tv_sec;
+	if (t != 0) { /* zero if never attached */
+		format_add(ft, "session_last_attached", "%lld", (long long) t);
+		format_add(ft, "session_last_attached_string", "%s",
+		    format_time_string(t));
+	}
+
 	t = s->activity_time.tv_sec;
 	format_add(ft, "session_activity", "%lld", (long long) t);
 	format_add(ft, "session_activity_string", "%s", format_time_string(t));
