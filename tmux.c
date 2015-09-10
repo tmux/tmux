@@ -354,5 +354,5 @@ main(int argc, char **argv)
 #endif
 
 	/* Pass control to the client. */
-	exit(client_main(event_init(), argc, argv, flags));
+	exit(client_main(osdep_event_init(), argc, argv, flags));
 }
