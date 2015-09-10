@@ -97,7 +97,7 @@ load_cfg(const char *path, struct cmd_q *cmdq, char **cause)
 	}
 
 	found = 0;
-	while ((buf = fparseln(f, NULL, &line, delim, 0))) {
+	while ((buf = fparseln(f, NULL, &line, delim, 0)) != NULL) {
 		log_debug("%s: %s", path, buf);
 
 		/* Skip empty lines. */

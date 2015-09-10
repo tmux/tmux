@@ -425,6 +425,7 @@ server_destroy_session(struct session *s)
 			status_timer_start(c);
 			notify_attached_session_changed(c);
 			session_update_activity(s_new, NULL);
+			gettimeofday(&s_new->last_attached_time, NULL);
 			server_redraw_client(c);
 		}
 	}
