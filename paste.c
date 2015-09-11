@@ -111,18 +111,6 @@ paste_get_top(const char **name)
 	return (pb);
 }
 
-/* Free the most recent buffer. */
-int
-paste_free_top(void)
-{
-	struct paste_buffer	*pb;
-
-	pb = paste_get_top(NULL);
-	if (pb == NULL)
-		return (-1);
-	return (paste_free_name(pb->name));
-}
-
 /* Get a paste buffer by name. */
 struct paste_buffer *
 paste_get_name(const char *name)
@@ -136,20 +124,10 @@ paste_get_name(const char *name)
 	return (RB_FIND(paste_name_tree, &paste_by_name, &pbfind));
 }
 
-/* Free a paste buffer by name. */
-int
-paste_free_name(const char *name)
+/* Free a paste buffer. */
+void
+paste_free(struct paste_buffer *pb)
 {
-	struct paste_buffer	*pb, pbfind;
-
-	if (name == NULL || *name == '\0')
-		return (-1);
-
-	pbfind.name = (char *)name;
-	pb = RB_FIND(paste_name_tree, &paste_by_name, &pbfind);
-	if (pb == NULL)
-		return (-1);
-
 	RB_REMOVE(paste_name_tree, &paste_by_name, pb);
 	RB_REMOVE(paste_time_tree, &paste_by_time, pb);
 	if (pb->automatic)
@@ -158,7 +136,6 @@ paste_free_name(const char *name)
 	free(pb->data);
 	free(pb->name);
 	free(pb);
-	return (0);
 }
 
 /*
@@ -179,7 +156,7 @@ paste_add(char *data, size_t size)
 		if (paste_num_automatic < limit)
 			break;
 		if (pb->automatic)
-			paste_free_name(pb->name);
+			paste_free(pb);
 	}
 
 	pb = xmalloc(sizeof *pb);
@@ -257,7 +234,7 @@ paste_rename(const char *oldname, const char *newname, char **cause)
 int
 paste_set(char *data, size_t size, const char *name, char **cause)
 {
-	struct paste_buffer	*pb;
+	struct paste_buffer	*pb, *old;
 
 	if (cause != NULL)
 		*cause = NULL;
@@ -288,8 +265,8 @@ paste_set(char *data, size_t size, const char *name, char **cause)
 	pb->automatic = 0;
 	pb->order = paste_next_order++;
 
-	if (paste_get_name(name) != NULL)
-		paste_free_name(name);
+	if ((old = paste_get_name(name)) != NULL)
+		paste_free(old);
 
 	RB_INSERT(paste_name_tree, &paste_by_name, pb);
 	RB_INSERT(paste_time_tree, &paste_by_time, pb);
