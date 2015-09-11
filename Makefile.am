@@ -33,6 +33,10 @@ CFLAGS += -Wundef -Wbad-function-cast -Winline -Wcast-align
 CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign
 CPPFLAGS += -DDEBUG
 endif
+if IS_COVERAGE
+CFLAGS += -g -O0 --coverage
+LDFLAGS += --coverage
+endif
 CPPFLAGS += -iquote.
 endif
 

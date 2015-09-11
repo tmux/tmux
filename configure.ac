@@ -23,14 +23,22 @@ AC_PROG_INSTALL
 # Default tmux.conf goes in /etc not ${prefix}/etc.
 test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
 
-# Is this a debug build?
+# Is this --enable-debug?
 found_debug=yes
 AC_ARG_ENABLE(
 	debug,
-	AC_HELP_STRING(--enable-debug, create a debug build),
+	AC_HELP_STRING(--enable-debug, enable debug build flags),
 	found_debug=$enable_debug
 )
 AM_CONDITIONAL(IS_DEBUG, test "x$found_debug" = xyes)
+
+# Is this --enable-coverage?
+AC_ARG_ENABLE(
+	coverage,
+	AC_HELP_STRING(--enable-coverage, enable coverage build flags),
+	found_coverage=$enable_coverage
+)
+AM_CONDITIONAL(IS_COVERAGE, test "x$found_coverage" = xyes)
 
 # Is this a static build?
 AC_ARG_ENABLE(
