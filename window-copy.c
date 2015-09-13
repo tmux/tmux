@@ -135,7 +135,8 @@ struct window_copy_mode_data {
 	u_int			 selx;
 	u_int			 sely;
 
-	u_int			 rectflag; /* are we in rectangle copy mode? */
+	int			 rectflag;	/* in rectangle copy mode? */
+	int			 scroll_exit;	/* exit on scroll to end? */
 
 	u_int			 cx;
 	u_int			 cy;
@@ -175,6 +176,7 @@ window_copy_init(struct window_pane *wp)
 	data->backing_written = 0;
 
 	data->rectflag = 0;
+	data->scroll_exit = 0;
 
 	data->inputtype = WINDOW_COPY_OFF;
 	data->inputprompt = NULL;
@@ -206,7 +208,7 @@ window_copy_init(struct window_pane *wp)
 }
 
 void
-window_copy_init_from_pane(struct window_pane *wp)
+window_copy_init_from_pane(struct window_pane *wp, u_int scroll_exit)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -219,6 +221,7 @@ window_copy_init_from_pane(struct window_pane *wp)
 	data->backing = &wp->base;
 	data->cx = data->backing->cx;
 	data->cy = data->backing->cy;
+	data->scroll_exit = scroll_exit;
 
 	s->cx = data->cx;
 	s->cy = data->cy;
@@ -419,6 +422,13 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 	}
 
 	cmd = mode_key_lookup(&data->mdata, key, &arg);
+	if (cmd != MODEKEYCOPY_PREVIOUSPAGE &&
+	    cmd != MODEKEYCOPY_NEXTPAGE &&
+	    cmd != MODEKEYCOPY_SCROLLUP &&
+	    cmd != MODEKEYCOPY_SCROLLDOWN &&
+	    cmd != MODEKEYCOPY_HALFPAGEUP &&
+	    cmd != MODEKEYCOPY_HALFPAGEDOWN)
+		data->scroll_exit = 0;
 	switch (cmd) {
 	case MODEKEYCOPY_APPENDSELECTION:
 		if (sess != NULL) {
@@ -461,6 +471,10 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 	case MODEKEYCOPY_SCROLLDOWN:
 		for (; np != 0; np--)
 			window_copy_cursor_down(wp, 1);
+		if (data->scroll_exit && data->oy == 0) {
+			window_pane_reset_mode(wp);
+			return;
+		}
 		break;
 	case MODEKEYCOPY_PREVIOUSPAGE:
 		for (; np != 0; np--)
@@ -475,6 +489,10 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 				data->oy = 0;
 			else
 				data->oy -= n;
+		}
+		if (data->scroll_exit && data->oy == 0) {
+			window_pane_reset_mode(wp);
+			return;
 		}
 		window_copy_update_selection(wp, 1);
 		window_copy_redraw_screen(wp);
@@ -497,6 +515,10 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 				data->oy = 0;
 			else
 				data->oy -= n;
+		}
+		if (data->scroll_exit && data->oy == 0) {
+			window_pane_reset_mode(wp);
+			return;
 		}
 		window_copy_update_selection(wp, 1);
 		window_copy_redraw_screen(wp);
