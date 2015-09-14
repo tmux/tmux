@@ -47,6 +47,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
+	struct window		*w;
 	struct session		*s;
 	struct window_pane	*wp, *lastwp, *markedwp;
 	const char		*style;
@@ -55,21 +56,24 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		wl = cmd_find_window(cmdq, args_get(args, 't'), NULL);
 		if (wl == NULL)
 			return (CMD_RETURN_ERROR);
+		w = wl->window;
 
-		if (wl->window->last == NULL) {
+		if (w->last == NULL) {
 			cmdq_error(cmdq, "no last pane");
 			return (CMD_RETURN_ERROR);
 		}
 
 		if (args_has(self->args, 'e'))
-			wl->window->last->flags &= ~PANE_INPUTOFF;
+			w->last->flags &= ~PANE_INPUTOFF;
 		else if (args_has(self->args, 'd'))
-			wl->window->last->flags |= PANE_INPUTOFF;
+			w->last->flags |= PANE_INPUTOFF;
 		else {
-			server_unzoom_window(wl->window);
-			window_set_active_pane(wl->window, wl->window->last);
-			server_status_window(wl->window);
-			server_redraw_window_borders(wl->window);
+			server_unzoom_window(w);
+			window_redraw_active_switch(w, w->last);
+			if (window_set_active_pane(w, w->last)) {
+				server_status_window(w);
+				server_redraw_window_borders(w);
+			}
 		}
 
 		return (CMD_RETURN_NORMAL);
@@ -77,6 +81,7 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp)) == NULL)
 		return (CMD_RETURN_ERROR);
+	w = wl->window;
 
 	if (args_has(args, 'm') || args_has(args, 'M')) {
 		if (args_has(args, 'm') && !window_pane_visible(wp))
@@ -135,16 +140,17 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (wp == wl->window->active)
+	if (wp == w->active)
 		return (CMD_RETURN_NORMAL);
 	server_unzoom_window(wp->window);
 	if (!window_pane_visible(wp)) {
 		cmdq_error(cmdq, "pane not visible");
 		return (CMD_RETURN_ERROR);
 	}
-	if (window_set_active_pane(wl->window, wp)) {
-		server_status_window(wl->window);
-		server_redraw_window_borders(wl->window);
+	window_redraw_active_switch(w, wp);
+	if (window_set_active_pane(w, wp)) {
+		server_status_window(w);
+		server_redraw_window_borders(w);
 	}
 
 	return (CMD_RETURN_NORMAL);

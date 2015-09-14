@@ -423,6 +423,30 @@ window_set_active_pane(struct window *w, struct window_pane *wp)
 	return (1);
 }
 
+void
+window_redraw_active_switch(struct window *w, struct window_pane *wp)
+{
+	const struct grid_cell	*agc, *wgc;
+
+	if (wp == w->active)
+		return;
+
+	/*
+	 * If window-style and window-active-style are the same, we don't need
+	 * to redraw panes when switching active panes. Otherwise, if the
+	 * active or inactive pane do not have a custom style, they will need
+	 * to be redrawn.
+	 */
+	agc = options_get_style(&w->options, "window-active-style");
+	wgc = options_get_style(&w->options, "window-style");
+	if (style_equal(agc, wgc))
+		return;
+	if (style_equal(&grid_default_cell, &w->active->colgc))
+		w->active->flags |= PANE_REDRAW;
+	if (style_equal(&grid_default_cell, &wp->colgc))
+		wp->flags |= PANE_REDRAW;
+}
+
 struct window_pane *
 window_get_active_at(struct window *w, u_int x, u_int y)
 {
