@@ -104,7 +104,7 @@ struct format_tree {
 	struct session		*s;
 	struct window_pane	*wp;
 
-	int			 status;
+	int			 flags;
 
 	RB_HEAD(format_entry_tree, format_entry) tree;
 };
@@ -216,27 +216,31 @@ const char *
 format_job_get(struct format_tree *ft, const char *cmd)
 {
 	struct format_job	fj0, *fj;
+	time_t			t;
 
 	fj0.cmd = cmd;
 	if ((fj = RB_FIND(format_job_tree, &format_jobs, &fj0)) == NULL) {
 		fj = xcalloc(1, sizeof *fj);
 		fj->cmd = xstrdup(cmd);
-		fj->status = ft->status;
 
 		xasprintf(&fj->out, "<'%s' not ready>", fj->cmd);
 
 		RB_INSERT(format_job_tree, &format_jobs, fj);
 	}
 
-	if (fj->job == NULL && fj->last != time(NULL)) {
+	t = time(NULL);
+	if (fj->job == NULL && ((ft->flags & FORMAT_FORCE) || fj->last != t)) {
 		fj->job = job_run(fj->cmd, NULL, -1, format_job_callback,
 		    NULL, fj);
 		if (fj->job == NULL) {
 			free(fj->out);
 			xasprintf(&fj->out, "<'%s' didn't start>", fj->cmd);
 		}
+		fj->last = t;
 	}
-	fj->last = time(NULL);
+
+	if (ft->flags & FORMAT_STATUS)
+		fj->status = 1;
 
 	return (fj->out);
 }
@@ -438,12 +442,12 @@ format_cb_pane_tabs(struct format_tree *ft, struct format_entry *fe)
 struct format_tree *
 format_create(void)
 {
-	return (format_create_status(0));
+	return (format_create_flags(0));
 }
 
 /* Create a new tree for the status line. */
 struct format_tree *
-format_create_status(int status)
+format_create_flags(int flags)
 {
 	struct format_tree	*ft;
 
@@ -454,7 +458,7 @@ format_create_status(int status)
 
 	ft = xcalloc(1, sizeof *ft);
 	RB_INIT(&ft->tree);
-	ft->status = status;
+	ft->flags = flags;
 
 	format_add_cb(ft, "host", format_cb_host);
 	format_add_cb(ft, "host_short", format_cb_host_short);
