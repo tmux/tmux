@@ -562,7 +562,6 @@ cmd_find_get_window_with_session(struct cmd_find_state *fs, const char *window)
 		return (0);
 	}
 
-
 	/* Stop now if exact only. */
 	if (exact)
 		return (-1);
