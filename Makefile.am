@@ -1,4 +1,4 @@
-# $Id$
+# Makefile.am
 
 # Obvious program stuff.
 bin_PROGRAMS = tmux

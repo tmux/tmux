@@ -1,4 +1,4 @@
-# $Id$
+#!/bin/ksh
 
 rm diff.out
 touch diff.out
