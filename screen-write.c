@@ -46,7 +46,6 @@ screen_write_stop(unused struct screen_write_ctx *ctx)
 {
 }
 
-
 /* Reset screen state. */
 void
 screen_write_reset(struct screen_write_ctx *ctx)
