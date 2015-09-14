@@ -252,3 +252,15 @@ style_apply_update(struct grid_cell *gc, struct options *oo, const char *name)
 	if (gcp->attr != 0)
 		gc->attr |= gcp->attr;
 }
+
+/* Check if two styles are the same. */
+int
+style_equal(const struct grid_cell *gc1, const struct grid_cell *gc2)
+{
+	return gc1->fg == gc2->fg &&
+		gc1->bg == gc2->bg &&
+		(gc1->flags & ~GRID_FLAG_PADDING) ==
+		(gc2->flags & ~GRID_FLAG_PADDING) &&
+		(gc1->attr & ~GRID_ATTR_CHARSET) ==
+		(gc2->attr & ~GRID_ATTR_CHARSET);
+}

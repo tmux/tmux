@@ -1984,6 +1984,8 @@ struct window_pane *window_get_active_at(struct window *, u_int, u_int);
 struct window_pane *window_find_string(struct window *, const char *);
 int		 window_has_pane(struct window *, struct window_pane *);
 int		 window_set_active_pane(struct window *, struct window_pane *);
+void		 window_redraw_active_switch(struct window *,
+		     struct window_pane *);
 struct window_pane *window_add_pane(struct window *, u_int);
 void		 window_resize(struct window *, u_int, u_int);
 int		 window_zoom(struct window_pane *);
@@ -2072,7 +2074,7 @@ extern const char window_clock_table[14][5][5];
 
 /* window-copy.c */
 extern const struct window_mode window_copy_mode;
-void		 window_copy_init_from_pane(struct window_pane *, u_int);
+void		 window_copy_init_from_pane(struct window_pane *, int);
 void		 window_copy_init_for_output(struct window_pane *);
 void printflike(2, 3) window_copy_add(struct window_pane *, const char *, ...);
 void		 window_copy_vadd(struct window_pane *, const char *, va_list);
@@ -2213,5 +2215,7 @@ void		 style_apply(struct grid_cell *, struct options *,
 		     const char *);
 void		 style_apply_update(struct grid_cell *, struct options *,
 		     const char *);
+int		 style_equal(const struct grid_cell *,
+		     const struct grid_cell *);
 
 #endif /* TMUX_H */

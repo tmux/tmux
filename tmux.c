@@ -201,6 +201,7 @@ main(int argc, char **argv)
 #endif
 
 	setlocale(LC_TIME, "");
+	tzset();
 
 	if (**argv == '-')
 		flags = CLIENT_LOGIN;

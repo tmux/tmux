@@ -48,8 +48,6 @@ log_open(const char *path)
 
 	setvbuf(log_file, NULL, _IOLBF, 0);
 	event_set_log_callback(log_event_cb);
-
-	tzset();
 }
 
 /* Close logging. */
