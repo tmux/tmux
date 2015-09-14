@@ -1221,6 +1221,7 @@ struct client {
 #define CLIENT_UTF8 0x10000
 #define CLIENT_256COLOURS 0x20000
 #define CLIENT_IDENTIFIED 0x40000
+#define CLIENT_STATUSFORCE 0x80000
 	int		 flags;
 	struct key_table *keytable;
 
@@ -1436,17 +1437,18 @@ const char	*paste_buffer_data(struct paste_buffer *, size_t *);
 struct paste_buffer *paste_walk(struct paste_buffer *);
 struct paste_buffer *paste_get_top(const char **);
 struct paste_buffer *paste_get_name(const char *);
-int		 paste_free_top(void);
-int		 paste_free_name(const char *);
+void		 paste_free(struct paste_buffer *);
 void		 paste_add(char *, size_t);
 int		 paste_rename(const char *, const char *, char **);
 int		 paste_set(char *, size_t, const char *, char **);
 char		*paste_make_sample(struct paste_buffer *, int);
 
 /* format.c */
+#define FORMAT_STATUS 0x1
+#define FORMAT_FORCE 0x2
 struct format_tree;
 struct format_tree *format_create(void);
-struct format_tree *format_create_status(int);
+struct format_tree *format_create_flags(int);
 void		 format_free(struct format_tree *);
 void printflike(3, 4) format_add(struct format_tree *, const char *,
 		     const char *, ...);
@@ -2070,7 +2072,7 @@ extern const char window_clock_table[14][5][5];
 
 /* window-copy.c */
 extern const struct window_mode window_copy_mode;
-void		 window_copy_init_from_pane(struct window_pane *);
+void		 window_copy_init_from_pane(struct window_pane *, u_int);
 void		 window_copy_init_for_output(struct window_pane *);
 void printflike(2, 3) window_copy_add(struct window_pane *, const char *, ...);
 void		 window_copy_vadd(struct window_pane *, const char *, va_list);

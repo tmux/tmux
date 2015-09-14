@@ -97,7 +97,6 @@ cmd_wait_for_add(const char *name)
 void
 cmd_wait_for_remove(struct wait_channel *wc)
 {
-
 	if (wc->locked)
 		return;
 	if (!TAILQ_EMPTY(&wc->waiters) || !wc->woken)
@@ -241,7 +240,8 @@ cmd_wait_for_flush(void)
 			if (!cmdq_free(wq))
 				cmdq_continue(wq);
 		}
-		while ((wq = TAILQ_FIRST(&wc->lockers)) != NULL) {
+		wc->woken = 1;
+		TAILQ_FOREACH_SAFE(wq, &wc->lockers, waitentry, wq1) {
 			TAILQ_REMOVE(&wc->lockers, wq, waitentry);
 			if (!cmdq_free(wq))
 				cmdq_continue(wq);

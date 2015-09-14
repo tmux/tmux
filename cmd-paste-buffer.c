@@ -101,12 +101,8 @@ cmd_paste_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 			bufferevent_write(wp->event, "\033[201~", 6);
 	}
 
-	if (args_has(args, 'd')) {
-		if (bufname == NULL)
-			paste_free_top();
-		else
-			paste_free_name(bufname);
-	}
+	if (pb != NULL && args_has(args, 'd'))
+		paste_free(pb);
 
 	return (CMD_RETURN_NORMAL);
 }

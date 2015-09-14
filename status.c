@@ -503,7 +503,10 @@ status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t)
 	if (fmt == NULL)
 		return (xstrdup(""));
 
-	ft = format_create_status(1);
+	if (c->flags & CLIENT_STATUSFORCE)
+		ft = format_create_flags(FORMAT_STATUS|FORMAT_FORCE);
+	else
+		ft = format_create_flags(FORMAT_STATUS);
 	format_defaults(ft, c, NULL, wl, NULL);
 
 	expanded = format_expand_time(ft, fmt, t);

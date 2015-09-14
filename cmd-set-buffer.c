@@ -24,7 +24,7 @@
 #include "tmux.h"
 
 /*
- * Add, set, or append to a paste buffer.
+ * Add, set, append to or delete a paste buffer.
  */
 
 enum cmd_retval	 cmd_set_buffer_exec(struct cmd *, struct cmd_q *);
@@ -33,6 +33,14 @@ const struct cmd_entry cmd_set_buffer_entry = {
 	"set-buffer", "setb",
 	"ab:n:", 0, 1,
 	"[-a] " CMD_BUFFER_USAGE " [-n new-buffer-name] data",
+	0,
+	cmd_set_buffer_exec
+};
+
+const struct cmd_entry cmd_delete_buffer_entry = {
+	"delete-buffer", "deleteb",
+	"b:", 0, 0,
+	CMD_BUFFER_USAGE,
 	0,
 	cmd_set_buffer_exec
 };
@@ -46,31 +54,31 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	const char		*bufname, *olddata;
 	size_t			 bufsize, newsize;
 
-	bufname = NULL;
+	bufname = args_get(args, 'b');
+	if (bufname == NULL)
+		pb = paste_get_top(&bufname);
+	else
+		pb = paste_get_name(bufname);
 
-	if (args_has(args, 'n')) {
-		if (args->argc > 0) {
-			cmdq_error(cmdq, "don't provide data with n flag");
+	if (self->entry == &cmd_delete_buffer_entry) {
+		if (pb == NULL) {
+			cmdq_error(cmdq, "no buffer");
 			return (CMD_RETURN_ERROR);
 		}
+		paste_free(pb);
+		return (CMD_RETURN_NORMAL);
+	}
 
-		if (args_has(args, 'b'))
-			bufname = args_get(args, 'b');
-
-		if (bufname == NULL) {
-			pb = paste_get_top(&bufname);
-			if (pb == NULL) {
-				cmdq_error(cmdq, "no buffer");
-				return (CMD_RETURN_ERROR);
-			}
+	if (args_has(args, 'n')) {
+		if (pb == NULL) {
+			cmdq_error(cmdq, "no buffer");
+			return (CMD_RETURN_ERROR);
 		}
-
 		if (paste_rename(bufname, args_get(args, 'n'), &cause) != 0) {
 			cmdq_error(cmdq, "%s", cause);
 			free(cause);
 			return (CMD_RETURN_ERROR);
 		}
-
 		return (CMD_RETURN_NORMAL);
 	}
 
@@ -78,19 +86,11 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		cmdq_error(cmdq, "no data specified");
 		return (CMD_RETURN_ERROR);
 	}
-	pb = NULL;
-
-	bufsize = 0;
-	bufdata = NULL;
-
 	if ((newsize = strlen(args->argv[0])) == 0)
 		return (CMD_RETURN_NORMAL);
 
-	if (args_has(args, 'b')) {
-		bufname = args_get(args, 'b');
-		pb = paste_get_name(bufname);
-	} else if (args_has(args, 'a'))
-		pb = paste_get_top(&bufname);
+	bufsize = 0;
+	bufdata = NULL;
 
 	if (args_has(args, 'a') && pb != NULL) {
 		olddata = paste_buffer_data(pb, &bufsize);

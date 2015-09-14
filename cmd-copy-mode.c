@@ -28,8 +28,8 @@ enum cmd_retval	 cmd_copy_mode_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_copy_mode_entry = {
 	"copy-mode", NULL,
-	"Mt:u", 0, 0,
-	"[-Mu] " CMD_TARGET_PANE_USAGE,
+	"Met:u", 0, 0,
+	"[-Meu] " CMD_TARGET_PANE_USAGE,
 	0,
 	cmd_copy_mode_exec
 };
@@ -66,7 +66,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (wp->mode != &window_copy_mode) {
 		if (window_pane_set_mode(wp, &window_copy_mode) != 0)
 			return (CMD_RETURN_NORMAL);
-		window_copy_init_from_pane(wp);
+		window_copy_init_from_pane(wp, args_has(self->args, 'e'));
 	}
 	if (args_has(args, 'M')) {
 		if (wp->mode != NULL && wp->mode != &window_copy_mode)
