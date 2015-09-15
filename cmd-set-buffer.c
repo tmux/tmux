@@ -56,11 +56,13 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	bufname = args_get(args, 'b');
 	if (bufname == NULL)
-		pb = paste_get_top(&bufname);
+		pb = NULL;
 	else
 		pb = paste_get_name(bufname);
 
 	if (self->entry == &cmd_delete_buffer_entry) {
+		if (pb == NULL)
+			pb = paste_get_top(&bufname);
 		if (pb == NULL) {
 			cmdq_error(cmdq, "no buffer");
 			return (CMD_RETURN_ERROR);
@@ -70,6 +72,8 @@ cmd_set_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 
 	if (args_has(args, 'n')) {
+		if (pb == NULL)
+			pb = paste_get_top(&bufname);
 		if (pb == NULL) {
 			cmdq_error(cmdq, "no buffer");
 			return (CMD_RETURN_ERROR);

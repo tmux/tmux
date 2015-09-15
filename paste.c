@@ -253,7 +253,6 @@ paste_set(char *data, size_t size, const char *name, char **cause)
 		return (-1);
 	}
 
-
 	pb = xmalloc(sizeof *pb);
 
 	pb->name = xstrdup(name);

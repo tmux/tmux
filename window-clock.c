@@ -233,7 +233,6 @@ window_clock_draw_screen(struct window_pane *wp)
 			screen_write_puts(&ctx, &gc, "%s", tim);
 		}
 
-
 		screen_write_stop(&ctx);
 		return;
 	}

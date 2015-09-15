@@ -263,7 +263,6 @@ cmd_set_option_user(struct cmd *self, struct cmd_q *cmdq, const char *optstr,
 	return (CMD_RETURN_NORMAL);
 }
 
-
 /* Unset an option. */
 int
 cmd_set_option_unset(struct cmd *self, struct cmd_q *cmdq,
