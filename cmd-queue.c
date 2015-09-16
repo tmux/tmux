@@ -195,12 +195,16 @@ cmdq_continue_one(struct cmd_q *cmdq)
 int
 cmdq_continue(struct cmd_q *cmdq)
 {
+	struct client           *c = cmdq->client;
 	struct cmd_q_item	*next;
 	enum cmd_retval		 retval;
 	int			 empty;
 
 	cmdq->references++;
 	notify_disable();
+
+	log_debug("continuing cmdq %p: flags=%#x, client=%d", cmdq, cmdq->flags,
+	    c != NULL ? c->ibuf.fd : -1);
 
 	empty = TAILQ_EMPTY(&cmdq->queue);
 	if (empty)
