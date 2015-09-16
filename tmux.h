@@ -1305,7 +1305,8 @@ TAILQ_HEAD(cmd_q_items, cmd_q_item);
 /* Command queue. */
 struct cmd_q {
 	int			 references;
-	int			 dead;
+	int			 flags;
+#define CMD_Q_DEAD 0x1
 
 	struct client		*client;
 	int			 client_exit;

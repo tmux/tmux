@@ -214,7 +214,7 @@ server_client_lost(struct client *c)
 	free(c->prompt_string);
 	free(c->prompt_buffer);
 
-	c->cmdq->dead = 1;
+	c->cmdq->flags |= CMD_Q_DEAD;
 	cmdq_free(c->cmdq);
 	c->cmdq = NULL;
 

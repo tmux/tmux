@@ -35,7 +35,7 @@ cmdq_new(struct client *c)
 
 	cmdq = xcalloc(1, sizeof *cmdq);
 	cmdq->references = 1;
-	cmdq->dead = 0;
+	cmdq->flags = 0;
 
 	cmdq->client = c;
 	cmdq->client_exit = -1;
@@ -51,8 +51,11 @@ cmdq_new(struct client *c)
 int
 cmdq_free(struct cmd_q *cmdq)
 {
-	if (--cmdq->references != 0)
-		return (cmdq->dead);
+	if (--cmdq->references != 0) {
+		if (cmdq->flags & CMD_Q_DEAD)
+			return (1);
+		return (0);
+	}
 
 	cmdq_flush(cmdq);
 	free(cmdq);
