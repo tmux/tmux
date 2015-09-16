@@ -143,7 +143,7 @@ cmd_if_shell_callback(struct job *job)
 	struct cmd_list			*cmdlist;
 	char				*cause, *cmd;
 
-	if (cmdq->dead)
+	if (cmdq->flags & CMD_Q_DEAD)
 		return;
 
 	if (!WIFEXITED(job->status) || WEXITSTATUS(job->status) != 0)
