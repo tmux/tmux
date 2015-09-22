@@ -124,7 +124,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 		environ_update(update, &c->environ, &s->environ);
 	}
 
-	if (c->session != NULL)
+	if (c->session != NULL && c->session != s)
 		c->last_session = c->session;
 	c->session = s;
 	status_timer_start(c);
