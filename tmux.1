@@ -2440,6 +2440,20 @@ disallowedWindowOps: 20,21,SetXprop
 Or changing this property from the
 .Xr xterm 1
 interactive menu when required.
+.It Ic terminal-aliases Ar string
+Contains a list of entries which override terminal descriptions.
+.Ar string
+is a comma-separated list of items each a colon-separated pair of a
+terminal type pattern (matched using
+.Xr fnmatch 3 )
+and the name of the target terminal to use in its place.
+.Pp
+For example, to force 256 colours support on terminals that use
+.Ev TERM=xterm ,
+use:
+.Bd -literal -offset indent
+"xterm:xterm-256color"
+.Ed
 .It Ic terminal-overrides Ar string
 Contains a list of entries which override terminal descriptions read using
 .Xr terminfo 5 .

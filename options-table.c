@@ -104,6 +104,11 @@ const struct options_table_entry server_options_table[] = {
 	  .default_num = 1
 	},
 
+	{ .name = "terminal-aliases",
+	  .type = OPTIONS_TABLE_STRING,
+	  .default_str = NULL
+	},
+
 	{ .name = "terminal-overrides",
 	  .type = OPTIONS_TABLE_STRING,
 	  .default_str = "*256col*:colors=256"

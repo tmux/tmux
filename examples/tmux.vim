@@ -217,6 +217,7 @@ syn keyword tmuxOptsSet
 	\ status-right-length
 	\ status-utf8
 	\ staus-right-style
+	\ terminal-aliases
 	\ terminal-overrides
 	\ update-environment
 	\ visual-activity
