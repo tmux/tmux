@@ -62,6 +62,7 @@
 	* paste w/o trailing whitespace
 	* command to toggle selection not to move it in copy-mode
 	* regex searching
+	* copy-pipe should have -x as well
 
 - layout stuff
 	* way to tag a layout as a number/name
