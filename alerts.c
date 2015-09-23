@@ -126,6 +126,9 @@ alerts_reset(struct window *w)
 void
 alerts_queue(struct window *w, int flags)
 {
+	if (w->flags & WINDOW_ACTIVITY)
+		alerts_reset(w);
+
 	if (!event_initialized(&w->alerts_timer))
 		evtimer_set(&w->alerts_timer, alerts_timer, w);
 
@@ -139,9 +142,6 @@ alerts_queue(struct window *w, int flags)
 		event_once(-1, EV_TIMEOUT, alerts_callback, NULL, NULL);
 		alerts_fired = 1;
 	}
-
-	if (flags & WINDOW_ACTIVITY)
-		alerts_reset(w);
 }
 
 int
