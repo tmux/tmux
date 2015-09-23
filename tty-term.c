@@ -30,6 +30,7 @@
 
 #include "tmux.h"
 
+char	*tty_term_alias(const char *name, const char *aliases);
 void	 tty_term_override(struct tty_term *, const char *);
 char	*tty_term_strip(const char *);
 
@@ -295,6 +296,34 @@ tty_term_strip(const char *s)
 	return (xstrdup(buf));
 }
 
+char *
+tty_term_alias(const char *name, const char *aliases)
+{
+	char		*termnext, *termstr;
+	char		*entnext, *entstr;
+	char		*s, *new_name;
+
+	s = xstrdup(aliases);
+
+	new_name = NULL;
+	termnext = s;
+	while ((termstr = strsep(&termnext, ",")) != NULL) {
+		entnext = termstr;
+
+		entstr = strsep(&entnext, ":");
+		if (entstr == NULL || entnext == NULL)
+			continue;
+		if (fnmatch(entstr, name, 0) != 0)
+			continue;
+		new_name = xstrdup(entnext);
+		log_debug("terminal %s aliased to %s", name, new_name);
+		break;
+	}
+
+	free(s);
+	return new_name;
+}
+
 void
 tty_term_override(struct tty_term *term, const char *overrides)
 {
@@ -387,12 +416,18 @@ tty_term_find(char *name, int fd, char **cause)
 	struct tty_code				*code;
 	u_int					 i;
 	int		 			 n, error;
-	char					*s;
+	char					*s, *new_name;
 	const char				*acs;
+
+	s = options_get_string(&global_options, "terminal-aliases");
+	new_name = tty_term_alias(name, s);
+	if (new_name)
+		name = new_name;
 
 	LIST_FOREACH(term, &tty_terms, entry) {
 		if (strcmp(term->name, name) == 0) {
 			term->references++;
+			free(new_name);
 			return (term);
 		}
 	}
@@ -400,6 +435,8 @@ tty_term_find(char *name, int fd, char **cause)
 	log_debug("new term: %s", name);
 	term = xmalloc(sizeof *term);
 	term->name = xstrdup(name);
+	name = term->name;
+	free(new_name);
 	term->references = 1;
 	term->flags = 0;
 	term->codes = xcalloc (tty_term_ncodes(), sizeof *term->codes);
