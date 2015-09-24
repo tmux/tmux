@@ -153,15 +153,19 @@ retry:
 		}
 		fd = server_start(base, lockfd, lockfile);
 	}
+
 	if (locked) {
 		free(lockfile);
 		close(lockfd);
 	}
-
 	setblocking(fd, 0);
 	return (fd);
 
 failed:
+	if (locked) {
+		free(lockfile);
+		close(lockfd);
+	}
 	close(fd);
 	return (-1);
 }
