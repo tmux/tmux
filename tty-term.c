@@ -454,7 +454,7 @@ tty_term_find(char *name, int fd, char **cause)
 			if (n == -1)
 				break;
 			code->type = TTYCODE_FLAG;
-			code->value.number = n;
+			code->value.flag = n;
 			break;
 		}
 	}
