@@ -42,6 +42,9 @@ log_event_cb(unused int severity, const char *msg)
 void
 log_open(const char *path)
 {
+	if (log_file != NULL)
+		fclose(log_file);
+
 	log_file = fopen(path, "w");
 	if (log_file == NULL)
 		return;
