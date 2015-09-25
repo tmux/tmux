@@ -47,9 +47,7 @@ cmd_clear_history_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (wp->mode == &window_copy_mode)
 		window_pane_reset_mode(wp);
-
-	grid_move_lines(gd, 0, gd->hsize, gd->sy);
-	gd->hsize = 0;
+	grid_clear_history(gd);
 
 	return (CMD_RETURN_NORMAL);
 }
