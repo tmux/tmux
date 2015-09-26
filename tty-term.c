@@ -30,6 +30,7 @@
 
 #include "tmux.h"
 
+char	*tty_term_find_use_name(const char *, const char *);
 void	 tty_term_override(struct tty_term *, const char *);
 char	*tty_term_strip(const char *);
 
@@ -295,6 +296,53 @@ tty_term_strip(const char *s)
 	return (xstrdup(buf));
 }
 
+char *
+tty_term_find_use_name(const char *name, const char *overrides)
+{
+	char		*termnext, *termstr;
+	char		*entnext, *entstr;
+	char		*s, *ptr, *val;
+
+	val = NULL;
+
+	s = xstrdup(overrides);
+
+	termnext = s;
+	while ((termstr = strsep(&termnext, ",")) != NULL) {
+		entnext = termstr;
+
+		entstr = strsep(&entnext, ":");
+		if (entstr == NULL || entnext == NULL)
+			continue;
+		if (fnmatch(entstr, name, 0) != 0)
+			continue;
+		while ((entstr = strsep(&entnext, ":")) != NULL) {
+			if (*entstr == '\0')
+				continue;
+			if ((ptr = strchr(entstr, '=')) == NULL)
+				continue;
+			*ptr++ = '\0';
+			if (strcmp(entstr, "use") != 0)
+				continue;
+
+			val = xstrdup(ptr);
+			if (strunvis(val, ptr) == -1) {
+				free(val);
+				val = xstrdup(ptr);
+			}
+			log_debug("%s replaced with: %s", name, val);
+			break;
+		}
+	}
+
+	free(s);
+
+	if (!val)
+		val = xstrdup(name);
+
+	return val;
+}
+
 void
 tty_term_override(struct tty_term *term, const char *overrides)
 {
@@ -387,7 +435,7 @@ tty_term_find(char *name, int fd, char **cause)
 	struct tty_code				*code;
 	u_int					 i;
 	int		 			 n, error;
-	char					*s;
+	char					*s, *overrides, *use_name;
 	const char				*acs;
 
 	LIST_FOREACH(term, &tty_terms, entry) {
@@ -405,16 +453,19 @@ tty_term_find(char *name, int fd, char **cause)
 	term->codes = xcalloc (tty_term_ncodes(), sizeof *term->codes);
 	LIST_INSERT_HEAD(&tty_terms, term, entry);
 
+	overrides = options_get_string(&global_options, "terminal-overrides");
+	use_name = tty_term_find_use_name(name, overrides);
+
 	/* Set up curses terminal. */
-	if (setupterm(name, fd, &error) != OK) {
+	if (setupterm(use_name, fd, &error) != OK) {
 		switch (error) {
 		case 1:
 			xasprintf(
-			    cause, "can't use hardcopy terminal: %s", name);
+			    cause, "can't use hardcopy terminal: %s", use_name);
 			break;
 		case 0:
 			xasprintf(
-			    cause, "missing or unsuitable terminal: %s", name);
+			    cause, "missing or unsuitable terminal: %s", use_name);
 			break;
 		case -1:
 			xasprintf(cause, "can't find terminfo database");
@@ -425,6 +476,7 @@ tty_term_find(char *name, int fd, char **cause)
 		}
 		goto error;
 	}
+	free(use_name);
 
 	/* Fill in codes. */
 	for (i = 0; i < tty_term_ncodes(); i++) {
@@ -460,8 +512,7 @@ tty_term_find(char *name, int fd, char **cause)
 	}
 
 	/* Apply terminal overrides. */
-	s = options_get_string(&global_options, "terminal-overrides");
-	tty_term_override(term, s);
+	tty_term_override(term, overrides);
 
 	/* Delete curses data. */
 #if !defined(NCURSES_VERSION_MAJOR) || NCURSES_VERSION_MAJOR > 5 || \
@@ -526,6 +577,7 @@ tty_term_find(char *name, int fd, char **cause)
 	return (term);
 
 error:
+	free(use_name);
 	tty_term_free(term);
 	return (NULL);
 }
