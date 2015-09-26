@@ -78,6 +78,9 @@ recalculate_sizes(void)
 		}
 		s->flags &= ~SESSION_UNATTACHED;
 
+		if (options_get_number(&s->options, "bottom-border") && ssy > 0)
+			ssy--;
+
 		if (has_status && ssy == 0)
 			ssy = 1;
 
