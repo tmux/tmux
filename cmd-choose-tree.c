@@ -45,8 +45,8 @@ enum cmd_retval	cmd_choose_tree_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_choose_tree_entry = {
 	"choose-tree", NULL,
-	"S:W:swub:c:t:", 0, 1,
-	"[-suw] [-b session-template] [-c window template] [-S format] " \
+	"S:W:swuab:c:t:", 0, 1,
+	"[-suwa] [-b session-template] [-c window template] [-S format] " \
 	"[-W format] " CMD_TARGET_WINDOW_USAGE,
 	0,
 	cmd_choose_tree_exec
@@ -73,6 +73,7 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args			*args = self->args;
 	struct winlink			*wl, *wm;
+	struct winlink			**windows;
 	struct session			*s, *s2;
 	struct client			*c;
 	struct window_choose_data	*wcd = NULL;
@@ -82,7 +83,8 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_q *cmdq)
 	char				*final_win_template_last;
 	const char			*ses_action, *win_action;
 	u_int				 cur_win, idx_ses, win_ses, win_max;
-	u_int				 wflag, sflag;
+	u_int				 i;
+	u_int				 wflag, sflag, aflag;
 
 	ses_template = win_template = NULL;
 	ses_action = win_action = NULL;
@@ -97,6 +99,8 @@ cmd_choose_tree_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (window_pane_set_mode(wl->window->active, &window_choose_mode) != 0)
 		return (CMD_RETURN_NORMAL);
+
+	aflag = args_has(args, 'a');
 
 	/* Sort out which command this is. */
 	wflag = sflag = 0;
@@ -186,7 +190,29 @@ windows_only:
 		win_ses = win_max = -1;
 		RB_FOREACH(wm, winlinks, &s2->windows)
 			win_max++;
+
+		windows = xmalloc(sizeof(struct winlink *) * (win_max + 1));
+		i = 0;
 		RB_FOREACH(wm, winlinks, &s2->windows) {
+			windows[i++] = wm;
+		}
+
+		if (aflag) {
+			do {
+				wm = NULL;
+				for (i = 0; i < win_max; ++i) {
+					if (windows[i]->window->activity_time.tv_sec <
+					    windows[i+1]->window->activity_time.tv_sec) {
+						wm = windows[i+1];
+						windows[i+1] = windows[i];
+						windows[i] = wm;
+					}
+				}
+			} while (wm != NULL);
+		}
+
+		for (i = 0; i <= win_max; ++i) {
+			wm = windows[i];
 			win_ses++;
 			if (sflag && wflag)
 				idx_ses++;
@@ -219,6 +245,7 @@ windows_only:
 
 			free(final_win_action);
 		}
+		free(windows);
 
 		/*
 		 * If we're just drawing windows, don't consider moving on to
