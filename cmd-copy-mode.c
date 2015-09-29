@@ -59,6 +59,8 @@ cmd_copy_mode_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct client		*c = cmdq->client;
 	struct session		*s;
 	struct window_pane	*wp = cmdq->state.tflag.wp;
+	u_int			 b;
+	int			 scroll_exit;
 
 	if (args_has(args, 'M')) {
 		if ((wp = cmd_mouse_pane(&cmdq->item->mouse, &s, NULL)) == NULL)
@@ -72,18 +74,21 @@ cmd_copy_mode_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (wp->mode != &window_copy_mode) {
-		if (window_pane_set_mode(wp, &window_copy_mode) != 0)
-			return (CMD_RETURN_NORMAL);
-		window_copy_init_from_pane(wp, args_has(self->args, 'e'));
-	}
+	scroll_exit = args_has(self->args, 'e');
 	if (args_has(args, 'M')) {
-		if (wp->mode != NULL && wp->mode != &window_copy_mode)
+		b = cmdq->item->mouse.b;
+		if (MOUSE_DRAG(b))
+			window_copy_start_drag(c, &cmdq->item->mouse, scroll_exit);
+		else if (!MOUSE_WHEEL(b) && !MOUSE_RELEASE(b))
+			window_copy_mouse_down(c, &cmdq->item->mouse, scroll_exit);
+		else
+			return (CMD_RETURN_ERROR);
+	} else {
+		if (window_enter_copy_mode(wp, scroll_exit) != 0)
 			return (CMD_RETURN_NORMAL);
-		window_copy_start_drag(c, &cmdq->item->mouse);
+		if (args_has(self->args, 'u'))
+			window_copy_pageup(wp, 0);
 	}
-	if (wp->mode == &window_copy_mode && args_has(self->args, 'u'))
-		window_copy_pageup(wp, 0);
 
 	return (CMD_RETURN_NORMAL);
 }

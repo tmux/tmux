@@ -2227,13 +2227,14 @@ extern const char window_clock_table[14][5][5];
 
 /* window-copy.c */
 extern const struct window_mode window_copy_mode;
-void		 window_copy_init_from_pane(struct window_pane *, int);
+int		 window_enter_copy_mode(struct window_pane *, int);
 void		 window_copy_init_for_output(struct window_pane *);
 void printflike(2, 3) window_copy_add(struct window_pane *, const char *, ...);
 void		 window_copy_vadd(struct window_pane *, const char *, va_list);
 void		 window_copy_pageup(struct window_pane *, int);
-void		 window_copy_start_drag(struct client *, struct mouse_event *);
+void		 window_copy_start_drag(struct client *, struct mouse_event *, int);
 int		 window_copy_scroll_position(struct window_pane *);
+void		 window_copy_mouse_down(struct client *, struct mouse_event *, int);
 
 /* window-choose.c */
 extern const struct window_mode window_choose_mode;
