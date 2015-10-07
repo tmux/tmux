@@ -196,6 +196,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		if (c == NULL ||
 		    (c->session != NULL && !(c->flags & CLIENT_CONTROL))) {
 			cmdq_error(cmdq, "can't write to stdout");
+			free(buf);
 			return (CMD_RETURN_ERROR);
 		}
 		evbuffer_add(c->stdout_data, buf, len);
@@ -210,11 +211,12 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 
 		if (paste_set(buf, len, bufname, &cause) != 0) {
 			cmdq_error(cmdq, "%s", cause);
-			free(buf);
 			free(cause);
+			free(buf);
 			return (CMD_RETURN_ERROR);
 		}
 	}
 
+	free(buf);
 	return (CMD_RETURN_NORMAL);
 }
