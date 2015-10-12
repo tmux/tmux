@@ -141,6 +141,13 @@ const struct options_table_entry session_options_table[] = {
 	  .default_num = 0
 	},
 
+	{ .name = "command-cache-time",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .minimum = 0,
+	  .maximum = INT_MAX,
+	  .default_num = 15
+	},
+
 	{ .name = "default-command",
 	  .type = OPTIONS_TABLE_STRING,
 	  .default_str = ""
@@ -324,7 +331,7 @@ const struct options_table_entry session_options_table[] = {
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .minimum = 0,
 	  .maximum = INT_MAX,
-	  .default_num = 15
+	  .default_num = 1
 	},
 
 	{ .name = "status-justify",

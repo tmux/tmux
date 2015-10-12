@@ -219,6 +219,7 @@ format_job_get(struct format_tree *ft, const char *cmd)
 {
 	struct format_job	fj0, *fj;
 	time_t			t;
+	int			ct;
 
 	fj0.cmd = cmd;
 	if ((fj = RB_FIND(format_job_tree, &format_jobs, &fj0)) == NULL) {
@@ -230,8 +231,13 @@ format_job_get(struct format_tree *ft, const char *cmd)
 		RB_INSERT(format_job_tree, &format_jobs, fj);
 	}
 
+	if (ft->s)
+	    ct = options_get_number(&ft->s->options, "command-cache-time");
+	else
+	    ct = 1;
+
 	t = time(NULL);
-	if (fj->job == NULL && ((ft->flags & FORMAT_FORCE) || fj->last != t)) {
+	if (fj->job == NULL && ((ft->flags & FORMAT_FORCE) || fj->last + ct <= t)) {
 		fj->job = job_run(fj->cmd, NULL, -1, format_job_callback,
 		    NULL, fj);
 		if (fj->job == NULL) {

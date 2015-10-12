@@ -2509,6 +2509,11 @@ means bells in the current window are ignored but not those in other windows.
 .Xc
 If on, ring the terminal bell when an alert
 occurs.
+.It Xo Ic command-cache-time Ar time
+.Xc
+Set the time in seconds how long commands executed with
+.Ql #()
+will be cached (default 15).
 .It Ic default-command Ar shell-command
 Set the command used for new windows (if not specified when the window is
 created) to
@@ -2731,7 +2736,7 @@ Show or hide the status line.
 Update the status bar every
 .Ar interval
 seconds.
-By default, updates will occur every 15 seconds.
+By default, updates will occur every second.
 A setting of zero disables redrawing at interval.
 .It Xo Ic status-justify
 .Op Ic left | centre | right
@@ -3339,7 +3344,10 @@ When constructing formats,
 .Nm
 does not wait for
 .Ql #()
-commands to finish; instead, the previous result from running the same command is used,
+commands to finish, neither does it re-execute them if
+.Ic command-cache-time
+seconds have not been passed since the last run;
+instead, the previous result from running the same command is used,
 or a placeholder if the command has not been run before.
 Commands are executed with the
 .Nm
