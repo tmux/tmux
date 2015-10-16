@@ -200,11 +200,11 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_ERROR);
 		}
 		evbuffer_add(c->stdout_data, buf, len);
+		free(buf);
 		if (args_has(args, 'P') && len > 0)
 		    evbuffer_add(c->stdout_data, "\n", 1);
 		server_push_stdout(c);
 	} else {
-
 		bufname = NULL;
 		if (args_has(args, 'b'))
 			bufname = args_get(args, 'b');
@@ -217,6 +217,5 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		}
 	}
 
-	free(buf);
 	return (CMD_RETURN_NORMAL);
 }
