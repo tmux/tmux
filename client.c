@@ -55,7 +55,7 @@ int		client_attached;
 __dead void	client_exec(const char *);
 int		client_get_lock(char *);
 int		client_connect(struct event_base *, char *, int);
-void		client_send_identify(void);
+void		client_send_identify(const char *, int);
 int		client_write_one(enum msgtype, int, const void *, size_t);
 int		client_write_server(enum msgtype, const void *, size_t);
 void		client_update_event(void);
@@ -214,7 +214,8 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	struct cmd		*cmd;
 	struct cmd_list		*cmdlist;
 	struct msg_command_data	*data;
-	int			 cmdflags, fd, i;
+	int			 cmdflags, fd, i, cwd;
+	const char*              ttynam;
 	pid_t			 ppid;
 	enum msgtype		 msg;
 	char			*cause;
@@ -272,6 +273,26 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 		}
 		return (1);
 	}
+
+	/* Save these before pledge(). */
+	if ((cwd = open(".", O_RDONLY)) == -1)
+		cwd = open("/", O_RDONLY);
+	if ((ttynam = ttyname(STDIN_FILENO)) == NULL)
+		ttynam = "";
+
+	/*
+	 * Drop privileges for client. "proc exec" is needed for -c and for
+	 * locking (which uses system(3)).
+	 *
+	 * "tty" is needed to restore termios(4) and also for some reason -CC
+	 * does not work properly without it (input is not recognised).
+	 *
+	 * "sendfd" is dropped later in client_dispatch_wait().
+	 */
+	if (pledge("stdio unix sendfd proc exec tty", NULL) != 0)
+		fatal("pledge failed");
+
+	/* Free stuff that is not used in the client. */
 	options_free(&global_options);
 	options_free(&global_s_options);
 	options_free(&global_w_options);
@@ -304,7 +325,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	}
 
 	/* Send identify messages. */
-	client_send_identify();
+	client_send_identify(ttynam, cwd); /* closes cwd */
 
 	/* Send first command. */
 	if (msg == MSG_COMMAND) {
@@ -359,7 +380,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 
 /* Send identify messages to server. */
 void
-client_send_identify(void)
+client_send_identify(const char *ttynam, int cwd)
 {
 	const char	 *s;
 	char		**ss;
@@ -373,13 +394,8 @@ client_send_identify(void)
 		s = "";
 	client_write_one(MSG_IDENTIFY_TERM, -1, s, strlen(s) + 1);
 
-	if ((s = ttyname(STDIN_FILENO)) == NULL)
-		s = "";
-	client_write_one(MSG_IDENTIFY_TTYNAME, -1, s, strlen(s) + 1);
-
-	if ((fd = open(".", O_RDONLY)) == -1)
-		fd = open("/", O_RDONLY);
-	client_write_one(MSG_IDENTIFY_CWD, fd, NULL, 0);
+	client_write_one(MSG_IDENTIFY_TTYNAME, -1, ttynam, strlen(ttynam) + 1);
+	client_write_one(MSG_IDENTIFY_CWD, cwd, NULL, 0);
 
 	if ((fd = dup(STDIN_FILENO)) == -1)
 		fatal("dup failed");
@@ -395,8 +411,6 @@ client_send_identify(void)
 	}
 
 	client_write_one(MSG_IDENTIFY_DONE, -1, NULL, 0);
-
-	client_update_event();
 }
 
 /* Helper to send one message. */
@@ -587,6 +601,19 @@ client_dispatch_wait(void)
 	struct msg_stdout_data	 stdoutdata;
 	struct msg_stderr_data	 stderrdata;
 	int			 retval;
+	static int		 pledge_applied;
+
+	/*
+	 * "sendfd" is no longer required once all of the identify messages
+	 * have been sent. We know the server won't send us anything until that
+	 * point (because we don't ask it to), so we can drop "sendfd" once we
+	 * get the first message from the server.
+	 */
+	if (!pledge_applied) {
+		if (pledge("stdio unix proc exec tty", NULL) != 0)
+			fatal("pledge failed");
+		pledge_applied = 1;
+	};
 
 	for (;;) {
 		if ((n = imsg_get(&client_ibuf, &imsg)) == -1)
