@@ -1175,9 +1175,10 @@ server_client_msg_identify(struct client *c, struct imsg *imsg)
 		c->ttyname = xstrdup(data);
 		break;
 	case MSG_IDENTIFY_CWD:
-		if (datalen != 0)
-			fatalx("bad MSG_IDENTIFY_CWD size");
-		c->cwd = imsg->fd;
+		if (datalen == 0 || data[datalen - 1] != '\0')
+			fatalx("bad MSG_IDENTIFY_CWD string");
+		if ((c->cwd = open(data, O_RDONLY)) == -1)
+			c->cwd = open("/", O_RDONLY);
 		break;
 	case MSG_IDENTIFY_STDIN:
 		if (datalen != 0)

@@ -55,7 +55,7 @@ int		client_attached;
 __dead void	client_exec(const char *);
 int		client_get_lock(char *);
 int		client_connect(struct event_base *, char *, int);
-void		client_send_identify(const char *, int);
+void		client_send_identify(const char *, const char *);
 int		client_write_one(enum msgtype, int, const void *, size_t);
 int		client_write_server(enum msgtype, const void *, size_t);
 void		client_update_event(void);
@@ -214,11 +214,11 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	struct cmd		*cmd;
 	struct cmd_list		*cmdlist;
 	struct msg_command_data	*data;
-	int			 cmdflags, fd, i, cwd;
-	const char*              ttynam;
+	int			 cmdflags, fd, i;
+	const char		*ttynam, *cwd;
 	pid_t			 ppid;
 	enum msgtype		 msg;
-	char			*cause;
+	char			*cause, path[PATH_MAX];
 	struct termios		 tio, saved_tio;
 	size_t			 size;
 
@@ -271,8 +271,8 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	}
 
 	/* Save these before pledge(). */
-	if ((cwd = open(".", O_RDONLY)) == -1)
-		cwd = open("/", O_RDONLY);
+	if ((cwd = getcwd(path, sizeof path)) == NULL)
+		cwd = "/";
 	if ((ttynam = ttyname(STDIN_FILENO)) == NULL)
 		ttynam = "";
 
@@ -331,7 +331,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	}
 
 	/* Send identify messages. */
-	client_send_identify(ttynam, cwd); /* closes cwd */
+	client_send_identify(ttynam, cwd);
 
 	/* Send first command. */
 	if (msg == MSG_COMMAND) {
@@ -386,7 +386,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 
 /* Send identify messages to server. */
 void
-client_send_identify(const char *ttynam, int cwd)
+client_send_identify(const char *ttynam, const char *cwd)
 {
 	const char	 *s;
 	char		**ss;
@@ -401,7 +401,7 @@ client_send_identify(const char *ttynam, int cwd)
 	client_write_one(MSG_IDENTIFY_TERM, -1, s, strlen(s) + 1);
 
 	client_write_one(MSG_IDENTIFY_TTYNAME, -1, ttynam, strlen(ttynam) + 1);
-	client_write_one(MSG_IDENTIFY_CWD, cwd, NULL, 0);
+	client_write_one(MSG_IDENTIFY_CWD, -1, cwd, strlen(cwd) + 1);
 
 	if ((fd = dup(STDIN_FILENO)) == -1)
 		fatal("dup failed");
