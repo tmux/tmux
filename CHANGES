@@ -1,3 +1,54 @@
+CHANGES FROM 2.0 to 2.1 18 October 2015
+
+Incompatible Changes
+====================
+
+* Mouse-mode has been rewritten.  There's now no longer options for:
+	- mouse-resize-pane
+	- mouse-select-pane
+	- mouse-select-window
+	- mode-mouse
+
+  Instead there is just one option:  'mouse' which turns on mouse support
+  entirely.
+* 'default-terminal' is now a session option.  Furthermore, if this is set
+  to 'screen-*' then emulate what screen does.  If italics are wanted, this
+  can be set to 'tmux' but this is still new and not necessarily supported
+  on all platforms with older ncurses installs.
+* The c0-* options for rate-limiting have been removed.  Instead, a backoff
+  approach is used.
+
+Normal Changes
+==============
+
+* New formats:
+	- session_activity
+	- window_linked
+	- window_activity_format
+	- session_alerts
+	- session_last_attached
+	- client_pid
+	- pid
+* 'copy-selection', 'append-selection', 'start-named-buffer' now understand
+  an '-x' flag to prevent it exiting copying mode.
+* 'select-pane' now understands '-P' to set window/pane background colours.
+* 'renumber-windows' now understands windows which are unlinked.
+* 'bind' now understands multiple key tables.  Allows for key-chaining.
+* 'select-layout' understands '-o' to undo the last layout change.
+* The environment is updated when switching sessions as well as attaching.
+* 'select-pane' now understands '-M' for marking a pane.  This marked pane
+  can then be used with commands which understand src-pane specifiers
+  automatically.
+* If a session/window target is prefixed with '=' then only an exact match
+  is considered.
+* 'move-window' understands '-a'.
+* 'update-environment' understands '-E' when attach-session is used on an
+  already attached client.
+* 'show-environment' understands '-s' to output Bourne-compatible commands.
+* New option: 'history-file' to save/restore command prompt history.
+* Copy mode is exited if the history is cleared whilst in copy-mode.
+* 'copy-mode' learned '-e' to exit copy-mode when scrolling to end.
+
 CHANGES FROM 1.9a to 2.0 6 March 2015
 
 Incompatible Changes

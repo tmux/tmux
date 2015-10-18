@@ -24,7 +24,7 @@ AC_PROG_INSTALL
 test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
 
 # Is this --enable-debug?
-found_debug=yes
+#found_debug=yes
 AC_ARG_ENABLE(
 	debug,
 	AC_HELP_STRING(--enable-debug, enable debug build flags),
