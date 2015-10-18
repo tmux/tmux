@@ -1,7 +1,7 @@
 # configure.ac
 
 # Miscellaneous bits.
-AC_INIT(tmux, 2.1)
+AC_INIT(tmux, 2.2)
 
 AC_CONFIG_AUX_DIR(etc)
 AM_INIT_AUTOMAKE([foreign subdir-objects])
@@ -24,7 +24,7 @@ AC_PROG_INSTALL
 test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
 
 # Is this --enable-debug?
-#found_debug=yes
+found_debug=yes
 AC_ARG_ENABLE(
 	debug,
 	AC_HELP_STRING(--enable-debug, enable debug build flags),
