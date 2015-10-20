@@ -64,7 +64,7 @@ server_write_client(struct client *c, enum msgtype type, const void *buf,
 
 	if (c->flags & CLIENT_BAD)
 		return (-1);
-	log_debug("writing %d to client %d", type, c->ibuf.fd);
+	log_debug("writing %d to client %p", type, c);
 	error = imsg_compose(ibuf, type, PROTOCOL_VERSION, -1, -1,
 	    (void *) buf, len);
 	if (error == 1)

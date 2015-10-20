@@ -203,8 +203,8 @@ cmdq_continue(struct cmd_q *cmdq)
 	cmdq->references++;
 	notify_disable();
 
-	log_debug("continuing cmdq %p: flags=%#x, client=%d", cmdq, cmdq->flags,
-	    c != NULL ? c->ibuf.fd : -1);
+	log_debug("continuing cmdq %p: flags %#x, client %p", cmdq, cmdq->flags,
+	    c);
 
 	empty = TAILQ_EMPTY(&cmdq->queue);
 	if (empty)
