@@ -164,7 +164,7 @@ status_timer_callback(unused int fd, unused short events, void *arg)
 
 	if (tv.tv_sec != 0)
 		evtimer_add(&c->status_timer, &tv);
-	log_debug("client %d, status interval %d", c->ibuf.fd, (int)tv.tv_sec);
+	log_debug("client %p, status interval %d", c, (int)tv.tv_sec);
 }
 
 /* Start status timer for client. */
