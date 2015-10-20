@@ -541,7 +541,7 @@ server_client_handle_key(struct client *c, int key)
 	struct window		*w;
 	struct window_pane	*wp;
 	struct timeval		 tv;
-	struct key_table	*table = c->keytable;
+	struct key_table	*table;
 	struct key_binding	 bd_find, *bd;
 	int			 xtimeout;
 
@@ -607,7 +607,7 @@ server_client_handle_key(struct client *c, int key)
 retry:
 	/* Try to see if there is a key binding in the current table. */
 	bd_find.key = key;
-	bd = RB_FIND(key_bindings, &table->key_bindings, &bd_find);
+	bd = RB_FIND(key_bindings, &c->keytable->key_bindings, &bd_find);
 	if (bd != NULL) {
 		/*
 		 * Key was matched in this table. If currently repeating but a
@@ -625,6 +625,7 @@ retry:
 		 * Take a reference to this table to make sure the key binding
 		 * doesn't disappear.
 		 */
+		table = c->keytable;
 		table->references++;
 
 		/*
