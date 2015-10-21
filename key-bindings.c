@@ -225,6 +225,7 @@ key_bindings_init(void)
 		"bind -n MouseDown1Status select-window -t=",
 		"bind -n MouseDrag1Pane if -Ft= '#{mouse_any_flag}' 'if -Ft= \"#{pane_in_mode}\" \"copy-mode -M\" \"send-keys -M\"' 'copy-mode -M'",
 		"bind -n MouseDown3Pane select-pane -mt=",
+		"bind -n WheelUpPane if-shell -Ft= '#{mouse_any_flag}' 'send-keys -M' 'if -Ft= \"#{pane_in_mode}\" \"send-keys -M\" \"copy-mode -e\"'",
 	};
 	u_int		 i;
 	struct cmd_list	*cmdlist;
