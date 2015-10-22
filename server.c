@@ -44,7 +44,7 @@
 struct clients	 clients;
 
 int		 server_fd;
-int		 server_shutdown;
+int		 server_exit;
 struct event	 server_ev_accept;
 
 struct session		*marked_session;
@@ -55,8 +55,8 @@ struct layout_cell	*marked_layout_cell;
 
 int	server_create_socket(void);
 void	server_loop(void);
-int	server_should_shutdown(void);
-void	server_send_shutdown(void);
+int	server_should_exit(void);
+void	server_send_exit(void);
 void	server_accept_callback(int, short, void *);
 void	server_signal_callback(int, short, void *);
 void	server_child_signal(void);
@@ -232,7 +232,7 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 void
 server_loop(void)
 {
-	while (!server_should_shutdown()) {
+	while (!server_should_exit()) {
 		log_debug("event dispatch enter");
 		event_loop(EVLOOP_ONCE);
 		log_debug("event dispatch exit");
@@ -243,7 +243,7 @@ server_loop(void)
 
 /* Check if the server should exit (no more clients or sessions). */
 int
-server_should_shutdown(void)
+server_should_exit(void)
 {
 	struct client	*c;
 
@@ -268,9 +268,9 @@ server_should_shutdown(void)
 	return (1);
 }
 
-/* Shutdown the server by killing all clients and windows. */
+/* Exit the server by killing all clients and windows. */
 void
-server_send_shutdown(void)
+server_send_exit(void)
 {
 	struct client	*c, *c1;
 	struct session	*s, *s1;
@@ -281,7 +281,7 @@ server_send_shutdown(void)
 		if (c->flags & (CLIENT_BAD|CLIENT_SUSPENDED))
 			server_client_lost(c);
 		else
-			server_write_client(c, MSG_SHUTDOWN, NULL, 0);
+			server_write_client(c, MSG_EXIT, NULL, 0);
 		c->session = NULL;
 	}
 
@@ -348,7 +348,7 @@ server_accept_callback(int fd, short events, unused void *data)
 		}
 		fatal("accept failed");
 	}
-	if (server_shutdown) {
+	if (server_exit) {
 		close(newfd);
 		return;
 	}
@@ -386,8 +386,8 @@ server_signal_callback(int sig, unused short events, unused void *data)
 
 	switch (sig) {
 	case SIGTERM:
-		server_shutdown = 1;
-		server_send_shutdown();
+		server_exit = 1;
+		server_send_exit();
 		break;
 	case SIGCHLD:
 		server_child_signal();
