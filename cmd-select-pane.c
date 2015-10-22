@@ -120,14 +120,19 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if (args_has(self->args, 'L'))
+	if (args_has(self->args, 'L')) {
+		server_unzoom_window(wp->window);
 		wp = window_pane_find_left(wp);
-	else if (args_has(self->args, 'R'))
+	} else if (args_has(self->args, 'R')) {
+		server_unzoom_window(wp->window);
 		wp = window_pane_find_right(wp);
-	else if (args_has(self->args, 'U'))
+	} else if (args_has(self->args, 'U')) {
+		server_unzoom_window(wp->window);
 		wp = window_pane_find_up(wp);
-	else if (args_has(self->args, 'D'))
+	} else if (args_has(self->args, 'D')) {
+		server_unzoom_window(wp->window);
 		wp = window_pane_find_down(wp);
+	}
 	if (wp == NULL)
 		return (CMD_RETURN_NORMAL);
 
