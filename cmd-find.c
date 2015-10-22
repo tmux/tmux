@@ -254,24 +254,35 @@ cmd_find_current_session_with_client(struct cmd_find_state *fs)
 		wp = NULL;
 
 	/* Not running in a pane. We know nothing. Find the best session. */
-	if (wp == NULL) {
-		fs->s = cmd_find_best_session(NULL, 0, fs->flags);
-		if (fs->s == NULL)
-			return (-1);
-		fs->wl = fs->s->curw;
-		fs->idx = fs->wl->idx;
-		fs->w = fs->wl->window;
-		fs->wp = fs->w->active;
-		return (0);
-	}
+	if (wp == NULL)
+		goto unknown_pane;
 
 	/* We now know the window and pane. */
 	fs->w = wp->window;
 	fs->wp = wp;
 
 	/* Find the best session and winlink. */
-	if (cmd_find_best_session_with_window(fs) != 0)
+	if (cmd_find_best_session_with_window(fs) != 0) {
+		if (wp != NULL) {
+			/*
+			 * The window may have been destroyed but the pane
+			 * still on all_window_panes due to something else
+			 * holding a reference.
+			 */
+			goto unknown_pane;
+		}
 		return (-1);
+	}
+	return (0);
+
+unknown_pane:
+	fs->s = cmd_find_best_session(NULL, 0, fs->flags);
+	if (fs->s == NULL)
+		return (-1);
+	fs->wl = fs->s->curw;
+	fs->idx = fs->wl->idx;
+	fs->w = fs->wl->window;
+	fs->wp = fs->w->active;
 	return (0);
 }
 
