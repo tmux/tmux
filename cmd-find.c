@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <paths.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
@@ -51,6 +52,7 @@ struct cmd_find_state {
 	int			 idx;
 };
 
+struct session	*cmd_find_try_TMUX(struct client *, struct window *);
 int		 cmd_find_client_better(struct client *, struct client *);
 struct client	*cmd_find_best_client(struct client **, u_int);
 int		 cmd_find_session_better(struct session *, struct session *,
@@ -108,6 +110,33 @@ const char *cmd_find_pane_table[][2] = {
 	{ "{right-of}", "{right-of}" },
 	{ NULL, NULL }
 };
+
+/* Get session from TMUX if present. */
+struct session *
+cmd_find_try_TMUX(struct client *c, struct window *w)
+{
+	struct environ_entry	*envent;
+	char			 tmp[256];
+	long long		 pid;
+	u_int			 session;
+	struct session		*s;
+
+	envent = environ_find(&c->environ, "TMUX");
+	if (envent == NULL)
+		return (NULL);
+
+	if (sscanf(envent->value, "%255[^,],%lld,%d", tmp, &pid, &session) != 3)
+		return (NULL);
+	if (pid != getpid())
+		return (NULL);
+	log_debug("client %d TMUX is %s (session @%u)", c->ibuf.fd,
+	    envent->value, session);
+
+	s = session_find_by_id(session);
+	if (s == NULL || (w != NULL && !session_has(s, w)))
+		return (NULL);
+	return (s);
+}
 
 /* Is this client better? */
 int
@@ -191,6 +220,12 @@ cmd_find_best_session_with_window(struct cmd_find_state *fs)
 	struct session	**slist = NULL;
 	u_int		  ssize;
 	struct session	 *s;
+
+	if (fs->cmdq->client != NULL) {
+		fs->s = cmd_find_try_TMUX(fs->cmdq->client, fs->w);
+		if (fs->s != NULL)
+			return (cmd_find_best_winlink_with_window(fs));
+	}
 
 	ssize = 0;
 	RB_FOREACH(s, sessions, &sessions) {
@@ -277,7 +312,9 @@ cmd_find_current_session_with_client(struct cmd_find_state *fs)
 	return (0);
 
 unknown_pane:
-	fs->s = cmd_find_best_session(NULL, 0, fs->flags);
+	fs->s = cmd_find_try_TMUX(fs->cmdq->client, NULL);
+	if (fs->s == NULL)
+		fs->s = cmd_find_best_session(NULL, 0, fs->flags);
 	if (fs->s == NULL)
 		return (-1);
 	fs->wl = fs->s->curw;
