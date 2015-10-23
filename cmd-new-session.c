@@ -133,7 +133,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 				    strerror(errno));
 				return (CMD_RETURN_ERROR);
 			}
-		} else if (cp != NULL)
+		} else
 			free(cp);
 		cwd = fd;
 	} else if (c != NULL && c->session == NULL)

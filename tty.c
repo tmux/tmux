@@ -338,10 +338,8 @@ tty_free(struct tty *tty)
 	tty_close(tty);
 
 	free(tty->ccolour);
-	if (tty->path != NULL)
-		free(tty->path);
-	if (tty->termname != NULL)
-		free(tty->termname);
+	free(tty->path);
+	free(tty->termname);
 }
 
 void
