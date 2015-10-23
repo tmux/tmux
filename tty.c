@@ -228,7 +228,7 @@ tty_start_tty(struct tty *tty)
 	if (tty_term_has(tty->term, TTYC_KMOUS))
 		tty_puts(tty, "\033[?1000l\033[?1002l\033[?1006l\033[?1005l");
 
-	if (tty_term_has(tty->term, TTYC_XT)) {
+	if (tty_term_flag(tty->term, TTYC_XT)) {
 		if (options_get_number(&global_options, "focus-events")) {
 			tty->flags |= TTY_FOCUS;
 			tty_puts(tty, "\033[?1004h");
@@ -293,7 +293,7 @@ tty_stop_tty(struct tty *tty)
 	if (tty_term_has(tty->term, TTYC_KMOUS))
 		tty_raw(tty, "\033[?1000l\033[?1002l\033[?1006l\033[?1005l");
 
-	if (tty_term_has(tty->term, TTYC_XT)) {
+	if (tty_term_flag(tty->term, TTYC_XT)) {
 		if (tty->flags & TTY_FOCUS) {
 			tty->flags &= ~TTY_FOCUS;
 			tty_raw(tty, "\033[?1004l");
@@ -1648,6 +1648,13 @@ tty_try_256(struct tty *tty, u_char colour, const char *type)
 	char	s[32];
 
 	/*
+	 * If the user has specified -2 to the client, setaf and setab may not
+	 * work (or they may not want to use them), so send the usual sequence.
+	 */
+	if (tty->term_flags & TERM_256COLOURS)
+		goto fallback;
+
+	/*
 	 * If the terminfo entry has 256 colours and setaf and setab exist,
 	 * assume that they work correctly.
 	 */
@@ -1663,13 +1670,6 @@ tty_try_256(struct tty *tty, u_char colour, const char *type)
 		}
 		return (0);
 	}
-
-	/*
-	 * If the user has specified -2 to the client, setaf and setab may not
-	 * work, so send the usual sequence.
-	 */
-	if (tty->term_flags & TERM_256COLOURS)
-		goto fallback;
 
 	return (-1);
 
