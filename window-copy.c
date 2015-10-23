@@ -2219,6 +2219,16 @@ window_copy_scroll_down(struct window_pane *wp, u_int ny)
 	screen_write_stop(&ctx);
 }
 
+int
+window_copy_scroll_position(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+
+	if (wp->mode != &window_copy_mode)
+		return (-1);
+	return (data->oy);
+}
+
 void
 window_copy_rectangle_toggle(struct window_pane *wp)
 {
