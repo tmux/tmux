@@ -51,6 +51,8 @@ void	 format_cb_window_layout(struct format_tree *, struct format_entry *);
 void	 format_cb_start_command(struct format_tree *, struct format_entry *);
 void	 format_cb_current_command(struct format_tree *, struct format_entry *);
 void	 format_cb_current_path(struct format_tree *, struct format_entry *);
+void	 format_cb_current_path_basename(struct format_tree *,
+	     struct format_entry *);
 void	 format_cb_history_bytes(struct format_tree *, struct format_entry *);
 void	 format_cb_pane_tabs(struct format_tree *, struct format_entry *);
 
@@ -403,6 +405,31 @@ format_cb_current_path(struct format_tree *ft, struct format_entry *fe)
 	cwd = osdep_get_cwd(wp->fd);
 	if (cwd != NULL)
 		fe->value = xstrdup(cwd);
+}
+
+/* Callback for pane_current_path_basename. */
+void
+format_cb_current_path_basename(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window_pane	*wp = ft->wp;
+	char			*cwd;
+	char			*last_slash;
+
+	if (wp == NULL)
+		return;
+
+	cwd = osdep_get_cwd(wp->fd);
+	if (cwd != NULL) {
+		/*
+		 * Basename starts after the last slash in cwd when there is
+		 * a slash in it AND cwd is not at fs root
+		 */
+		last_slash = strrchr(cwd, '/');
+		if (last_slash != NULL && last_slash > cwd)
+			fe->value = xstrdup(last_slash + 1);
+		else
+			fe->value = xstrdup(cwd);
+	}
 }
 
 /* Callback for history_bytes. */
@@ -1064,6 +1091,8 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	format_add_cb(ft, "pane_start_command", format_cb_start_command);
 	format_add_cb(ft, "pane_current_command", format_cb_current_command);
 	format_add_cb(ft, "pane_current_path", format_cb_current_path);
+	format_add_cb(ft, "pane_current_path_basename",
+            format_cb_current_path_basename);
 
 	format_add(ft, "cursor_x", "%u", wp->base.cx);
 	format_add(ft, "cursor_y", "%u", wp->base.cy);
