@@ -177,9 +177,11 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	}
 	close(pair[0]);
 
+#ifdef __OpenBSD__
 	if (pledge("stdio rpath wpath cpath fattr unix recvfd proc exec tty "
 	    "ps", NULL) != 0)
 		fatal("pledge failed");
+#endif
 
 	/*
 	 * Must daemonise before loading configuration as the PID changes so
