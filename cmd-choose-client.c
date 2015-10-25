@@ -31,7 +31,7 @@
 	"#{client_tty}: #{session_name} "			\
 	"[#{client_width}x#{client_height} #{client_termname}]"	\
 	"#{?client_utf8, (utf8),}#{?client_readonly, (ro),} "	\
-	"(last used #{client_activity_string})"
+	"(last used #{t:client_activity})"
 
 enum cmd_retval	 cmd_choose_client_exec(struct cmd *, struct cmd_q *);
 

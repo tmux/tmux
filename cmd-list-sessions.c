@@ -30,7 +30,7 @@
 
 #define LIST_SESSIONS_TEMPLATE				\
 	"#{session_name}: #{session_windows} windows "	\
-	"(created #{session_created_string}) "		\
+	"(created #{t:session_created}) "		\
 	"[#{session_width}x#{session_height}]"		\
 	"#{?session_grouped, (group ,}"			\
 	"#{session_group}#{?session_grouped,),}"	\
