@@ -128,8 +128,6 @@ makesocketpath(const char *label)
 	uid = getuid();
 	if ((s = getenv("TMUX_TMPDIR")) != NULL && *s != '\0')
 		xsnprintf(base, sizeof base, "%s/tmux-%u", s, uid);
-	else if ((s = getenv("TMPDIR")) != NULL && *s != '\0')
-		xsnprintf(base, sizeof base, "%s/tmux-%u", s, uid);
 	else
 		xsnprintf(base, sizeof base, "%s/tmux-%u", _PATH_TMP, uid);
 
