@@ -39,7 +39,7 @@ struct format_entry;
 typedef void (*format_cb)(struct format_tree *, struct format_entry *);
 
 void	 format_job_callback(struct job *);
-const char *format_job_get(struct format_tree *, const char *);
+char	*format_job_get(struct format_tree *, const char *);
 void	 format_job_timer(int, short, void *);
 
 void	 format_cb_host(struct format_tree *, struct format_entry *);
@@ -212,7 +212,7 @@ format_job_callback(struct job *job)
 }
 
 /* Find a job. */
-const char *
+char *
 format_job_get(struct format_tree *ft, const char *cmd)
 {
 	struct format_job	fj0, *fj;
@@ -242,7 +242,7 @@ format_job_get(struct format_tree *ft, const char *cmd)
 	if (ft->flags & FORMAT_STATUS)
 		fj->status = 1;
 
-	return (fj->out);
+	return (format_expand(ft, fj->out));
 }
 
 /* Remove old jobs. */
@@ -709,9 +709,9 @@ format_expand_time(struct format_tree *ft, const char *fmt, time_t t)
 char *
 format_expand(struct format_tree *ft, const char *fmt)
 {
-	char		*buf, *tmp, *cmd;
+	char		*buf, *tmp, *cmd, *out;
 	const char	*ptr, *s, *saved = fmt;
-	size_t		 off, len, n, slen;
+	size_t		 off, len, n, outlen;
 	int     	 ch, brackets;
 
 	if (fmt == NULL)
@@ -751,18 +751,20 @@ format_expand(struct format_tree *ft, const char *fmt)
 			tmp[n] = '\0';
 			cmd = format_expand(ft, tmp);
 
-			s = format_job_get(ft, cmd);
-			slen = strlen(s);
+			out = format_job_get(ft, cmd);
+			outlen = strlen(out);
 
 			free(cmd);
 			free(tmp);
 
-			while (len - off < slen + 1) {
+			while (len - off < outlen + 1) {
 				buf = xreallocarray(buf, 2, len);
 				len *= 2;
 			}
-			memcpy(buf + off, s, slen);
-			off += slen;
+			memcpy(buf + off, out, outlen);
+			off += outlen;
+
+			free(out);
 
 			fmt += n + 1;
 			continue;
