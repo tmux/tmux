@@ -19,6 +19,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <err.h>
 #include <errno.h>
 #include <event.h>
 #include <fcntl.h>
@@ -259,6 +260,10 @@ main(int argc, char **argv)
 
 	if (shell_cmd != NULL && argc != 0)
 		usage();
+
+	if (pledge("stdio rpath wpath cpath flock fattr unix sendfd recvfd "
+	    "proc exec tty ps", NULL) != 0)
+		err(1, "pledge");
 
 	if (!(flags & CLIENT_UTF8)) {
 		/*

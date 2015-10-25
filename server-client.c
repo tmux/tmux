@@ -597,7 +597,7 @@ server_client_handle_key(struct client *c, int key)
 		m->valid = 0;
 
 	/* Treat everything as a regular key when pasting is detected. */
-	if (server_client_assume_paste(s)) {
+	if (!KEYC_IS_MOUSE(key) && server_client_assume_paste(s)) {
 		if (!(c->flags & CLIENT_READONLY))
 			window_pane_key(wp, c, s, key, m);
 		return;

@@ -177,6 +177,10 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	}
 	close(pair[0]);
 
+	if (pledge("stdio rpath wpath cpath fattr unix recvfd proc exec tty "
+	    "ps", NULL) != 0)
+		fatal("pledge failed");
+
 	/*
 	 * Must daemonise before loading configuration as the PID changes so
 	 * $TMUX would be wrong for sessions created in the config file.
