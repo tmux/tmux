@@ -145,7 +145,8 @@ input_key(struct window_pane *wp, int key, struct mouse_event *m)
 	char			       *out;
 	u_char				ch;
 
-	log_debug("writing key 0x%x (%s)", key, key_string_lookup_key(key));
+	log_debug("writing key 0x%x (%s) to %%%u", key,
+	    key_string_lookup_key(key), wp->id);
 
 	/* If this is a mouse key, pass off to mouse function. */
 	if (KEYC_IS_MOUSE(key)) {
@@ -251,6 +252,6 @@ input_key_mouse(struct window_pane *wp, struct mouse_event *m)
 		buf[len++] = x + 33;
 		buf[len++] = y + 33;
 	}
-	log_debug("writing mouse %.*s", (int)len, buf);
+	log_debug("writing mouse %.*s to %%%u", (int)len, buf, wp->id);
 	bufferevent_write(wp->event, buf, len);
 }
