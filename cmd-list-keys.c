@@ -77,8 +77,6 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 			continue;
 		RB_FOREACH(bd, key_bindings, &table->key_bindings) {
 			key = key_string_lookup_key(bd->key);
-			if (key == NULL)
-				continue;
 
 			if (bd->can_repeat)
 				repeat = 1;
@@ -97,8 +95,6 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 			continue;
 		RB_FOREACH(bd, key_bindings, &table->key_bindings) {
 			key = key_string_lookup_key(bd->key);
-			if (key == NULL)
-				continue;
 
 			if (!repeat)
 				r = "";
@@ -140,8 +136,6 @@ cmd_list_keys_table(struct cmd *self, struct cmd_q *cmdq)
 	any_mode = 0;
 	RB_FOREACH(mbind, mode_key_tree, mtab->tree) {
 		key = key_string_lookup_key(mbind->key);
-		if (key == NULL)
-			continue;
 
 		if (mbind->mode != 0)
 			any_mode = 1;
@@ -153,8 +147,6 @@ cmd_list_keys_table(struct cmd *self, struct cmd_q *cmdq)
 
 	RB_FOREACH(mbind, mode_key_tree, mtab->tree) {
 		key = key_string_lookup_key(mbind->key);
-		if (key == NULL)
-			continue;
 
 		mode = "";
 		if (mbind->mode != 0)
