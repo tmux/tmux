@@ -1454,7 +1454,6 @@ struct format_tree *format_create_flags(int);
 void		 format_free(struct format_tree *);
 void printflike(3, 4) format_add(struct format_tree *, const char *,
 		     const char *, ...);
-const char	*format_find(struct format_tree *, const char *);
 char		*format_expand_time(struct format_tree *, const char *, time_t);
 char		*format_expand(struct format_tree *, const char *);
 void		 format_defaults(struct format_tree *, struct client *,

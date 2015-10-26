@@ -3323,12 +3323,31 @@ if
 is enabled, or
 .Ql no
 if not.
+.Pp
 A limit may be placed on the length of the resultant string by prefixing it
 by an
 .Ql = ,
 a number and a colon, so
 .Ql #{=10:pane_title}
 will include at most the first 10 characters of the pane title.
+Prefixing a time variable with
+.Ql t:
+will convert it to a string, so if
+.Ql #{window_activity}
+gives
+.Ql 1445765102,
+.Ql #{t:window_activity}
+gives
+.Ql Sun Oct 25 09:25:02 2015 .
+The
+.Ql b:
+and
+.Ql d:
+prefixes are
+.Xr basename 3
+and
+.Xr dirname 3
+of the variable respectively.
 .Pp
 In addition, the first line of a shell command's output may be inserted using
 .Ql #() .
@@ -3356,9 +3375,7 @@ The following variables are available, where appropriate:
 .It Li "buffer_sample" Ta "" Ta "Sample of start of buffer"
 .It Li "buffer_size" Ta "" Ta "Size of the specified buffer in bytes"
 .It Li "client_activity" Ta "" Ta "Integer time client last had activity"
-.It Li "client_activity_string" Ta "" Ta "String time client last had activity"
 .It Li "client_created" Ta "" Ta "Integer time client created"
-.It Li "client_created_string" Ta "" Ta "String time client created"
 .It Li "client_control_mode" Ta "" Ta "1 if client is in control mode"
 .It Li "client_height" Ta "" Ta "Height of client"
 .It Li "client_key_table" Ta "" Ta "Current key table"
@@ -3415,11 +3432,8 @@ The following variables are available, where appropriate:
 .It Li "session_alerts" Ta "" Ta "List of window indexes with alerts"
 .It Li "session_attached" Ta "" Ta "Number of clients session is attached to"
 .It Li "session_activity" Ta "" Ta "Integer time of session last activity"
-.It Li "session_activity_string" Ta "" Ta "String time of session last activity"
 .It Li "session_created" Ta "" Ta "Integer time session created"
-.It Li "session_created_string" Ta "" Ta "String time session created"
 .It Li "session_last_attached" Ta "" Ta "Integer time session last attached"
-.It Li "session_last_attached_string" Ta "" Ta "String time session last attached"
 .It Li "session_group" Ta "" Ta "Number of session group"
 .It Li "session_grouped" Ta "" Ta "1 if session in a group"
 .It Li "session_height" Ta "" Ta "Height of session"
@@ -3429,9 +3443,7 @@ The following variables are available, where appropriate:
 .It Li "session_width" Ta "" Ta "Width of session"
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
 .It Li "window_activity" Ta "" Ta "Integer time of window last activity"
-.It Li "window_activity_string" Ta "" Ta "String time of window last activity"
 .It Li "window_active" Ta "" Ta "1 if window active"
-.It Li "window_activity_flag" Ta "" Ta "1 if window has activity alert"
 .It Li "window_bell_flag" Ta "" Ta "1 if window has bell"
 .It Li "window_find_matches" Ta "" Ta "Matched data from the find-window"
 .It Li "window_flags" Ta "#F" Ta "Window flags"

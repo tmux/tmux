@@ -22,6 +22,7 @@
 
 #include <ctype.h>
 #include <errno.h>
+#include <libgen.h>
 #include <netdb.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -54,7 +55,9 @@ void	 format_cb_current_path(struct format_tree *, struct format_entry *);
 void	 format_cb_history_bytes(struct format_tree *, struct format_entry *);
 void	 format_cb_pane_tabs(struct format_tree *, struct format_entry *);
 
+char	*format_find(struct format_tree *, const char *, int);
 void	 format_add_cb(struct format_tree *, const char *, format_cb);
+void	 format_add_tv(struct format_tree *, const char *, struct timeval *);
 int	 format_replace(struct format_tree *, const char *, size_t, char **,
 	     size_t *, size_t *);
 char	*format_time_string(time_t);
@@ -92,10 +95,16 @@ format_job_cmp(struct format_job *fj1, struct format_job *fj2)
 	return (strcmp(fj1->cmd, fj2->cmd));
 }
 
+/* Format modifiers. */
+#define FORMAT_TIMESTRING 0x1
+#define FORMAT_BASENAME 0x2
+#define FORMAT_DIRNAME 0x4
+
 /* Entry in format tree. */
 struct format_entry {
 	char			*key;
 	char			*value;
+	time_t			 t;
 	format_cb		 cb;
 	RB_ENTRY(format_entry)	 entry;
 };
@@ -520,10 +529,35 @@ format_add(struct format_tree *ft, const char *key, const char *fmt, ...)
 	}
 
 	fe->cb = NULL;
+	fe->t = 0;
 
 	va_start(ap, fmt);
 	xvasprintf(&fe->value, fmt, ap);
 	va_end(ap);
+}
+
+/* Add a key and time. */
+void
+format_add_tv(struct format_tree *ft, const char *key, struct timeval *tv)
+{
+	struct format_entry	*fe;
+	struct format_entry	*fe_now;
+
+	fe = xmalloc(sizeof *fe);
+	fe->key = xstrdup(key);
+
+	fe_now = RB_INSERT(format_entry_tree, &ft->tree, fe);
+	if (fe_now != NULL) {
+		free(fe->key);
+		free(fe);
+		free(fe_now->value);
+		fe = fe_now;
+	}
+
+	fe->cb = NULL;
+	fe->t = tv->tv_sec;
+
+	fe->value = NULL;
 }
 
 /* Add a key and function. */
@@ -545,57 +579,99 @@ format_add_cb(struct format_tree *ft, const char *key, format_cb cb)
 	}
 
 	fe->cb = cb;
+	fe->t = 0;
 
 	fe->value = NULL;
 }
 
 /* Find a format entry. */
-const char *
-format_find(struct format_tree *ft, const char *key)
+char *
+format_find(struct format_tree *ft, const char *key, int modifiers)
 {
 	struct format_entry	*fe, fe_find;
 	struct options_entry	*o;
 	struct environ_entry	*envent;
-	static char		 s[16];
+	static char		 s[64];
+	const char		*found;
+	char			*copy, *saved;
 
-	o = options_find(&global_options, key);
-	if (o == NULL && ft->w != NULL)
-		o = options_find(&ft->w->options, key);
-	if (o == NULL)
-		o = options_find(&global_w_options, key);
-	if (o == NULL && ft->s != NULL)
-		o = options_find(&ft->s->options, key);
-	if (o == NULL)
-		o = options_find(&global_s_options, key);
-	if (o != NULL) {
-		switch (o->type) {
-		case OPTIONS_STRING:
-			return (o->str);
-		case OPTIONS_NUMBER:
-			xsnprintf(s, sizeof s, "%lld", o->num);
-			return (s);
-		case OPTIONS_STYLE:
-			return (style_tostring(&o->style));
+	found = NULL;
+
+	if (~modifiers & FORMAT_TIMESTRING) {
+		o = options_find(&global_options, key);
+		if (o == NULL && ft->w != NULL)
+			o = options_find(&ft->w->options, key);
+		if (o == NULL)
+			o = options_find(&global_w_options, key);
+		if (o == NULL && ft->s != NULL)
+			o = options_find(&ft->s->options, key);
+		if (o == NULL)
+			o = options_find(&global_s_options, key);
+		if (o != NULL) {
+			switch (o->type) {
+			case OPTIONS_STRING:
+				found = o->str;
+				goto found;
+			case OPTIONS_NUMBER:
+				xsnprintf(s, sizeof s, "%lld", o->num);
+				found = s;
+				goto found;
+			case OPTIONS_STYLE:
+				found = style_tostring(&o->style);
+				goto found;
+			}
 		}
 	}
 
 	fe_find.key = (char *) key;
 	fe = RB_FIND(format_entry_tree, &ft->tree, &fe_find);
 	if (fe != NULL) {
+		if (modifiers & FORMAT_TIMESTRING) {
+			if (fe->t == 0)
+				return (NULL);
+			ctime_r(&fe->t, s);
+			s[strcspn(s, "\n")] = '\0';
+			found = s;
+			goto found;
+		}
+		if (fe->t != 0) {
+			xsnprintf(s, sizeof s, "%lld", (long long)fe->t);
+			found = s;
+			goto found;
+		}
 		if (fe->value == NULL && fe->cb != NULL)
 			fe->cb(ft, fe);
-		return (fe->value);
+		found = fe->value;
+		goto found;
 	}
 
-	envent = NULL;
-	if (ft->s != NULL)
-		envent = environ_find(&ft->s->environ, key);
-	if (envent == NULL)
-		envent = environ_find(&global_environ, key);
-	if (envent != NULL)
-		return (envent->value);
+	if (~modifiers & FORMAT_TIMESTRING) {
+		envent = NULL;
+		if (ft->s != NULL)
+			envent = environ_find(&ft->s->environ, key);
+		if (envent == NULL)
+			envent = environ_find(&global_environ, key);
+		if (envent != NULL) {
+			found = envent->value;
+			goto found;
+		}
+	}
 
 	return (NULL);
+
+found:
+	copy = xstrdup(found);
+	if (modifiers & FORMAT_BASENAME) {
+		saved = copy;
+		copy = xstrdup(basename(saved));
+		free(saved);
+	}
+	if (modifiers & FORMAT_DIRNAME) {
+		saved = copy;
+		copy = xstrdup(dirname(saved));
+		free(saved);
+	}
+	return (copy);
 }
 
 /*
@@ -606,10 +682,10 @@ int
 format_replace(struct format_tree *ft, const char *key, size_t keylen,
     char **buf, size_t *len, size_t *off)
 {
-	char		*copy, *copy0, *endptr, *ptr, *saved, *trimmed;
-	const char	*value;
+	char		*copy, *copy0, *endptr, *ptr, *saved, *trimmed, *value;
 	size_t		 valuelen;
 	u_long		 limit = 0;
+	int		 modifiers = 0;
 
 	/* Make a copy of the key. */
 	copy0 = copy = xmalloc(keylen + 1);
@@ -617,24 +693,34 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	copy[keylen] = '\0';
 
 	/* Is there a length limit or whatnot? */
-	if (!isalpha((u_char) *copy) && *copy != '@' && *copy != '?') {
-		while (*copy != ':' && *copy != '\0') {
-			switch (*copy) {
-			case '=':
-				errno = 0;
-				limit = strtoul(copy + 1, &endptr, 10);
-				if (errno == ERANGE && limit == ULONG_MAX)
-					goto fail;
-				copy = endptr;
-				break;
-			default:
-				copy++;
-				break;
-			}
-		}
-		if (*copy != ':')
-			goto fail;
-		copy++;
+	switch (copy[0]) {
+	case '=':
+		errno = 0;
+		limit = strtoul(copy + 1, &endptr, 10);
+		if (errno == ERANGE && limit == ULONG_MAX)
+			break;
+		if (*endptr != ':')
+			break;
+		copy = endptr + 1;
+		break;
+	case 'b':
+		if (copy[1] != ':')
+			break;
+		modifiers |= FORMAT_BASENAME;
+		copy += 2;
+		break;
+	case 'd':
+		if (copy[1] != ':')
+			break;
+		modifiers |= FORMAT_DIRNAME;
+		copy += 2;
+		break;
+	case 't':
+		if (copy[1] != ':')
+			break;
+		modifiers |= FORMAT_TIMESTRING;
+		copy += 2;
+		break;
 	}
 
 	/*
@@ -647,7 +733,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			goto fail;
 		*ptr = '\0';
 
-		value = format_find(ft, copy + 1);
+		value = saved = format_find(ft, copy + 1, modifiers);
 		if (value != NULL && *value != '\0' &&
 		    (value[0] != '0' || value[1] != '\0')) {
 			value = ptr + 1;
@@ -661,13 +747,13 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 				goto fail;
 			value = ptr + 1;
 		}
-		saved = format_expand(ft, value);
-		value = saved;
+		value = format_expand(ft, value);
+		free(saved);
+		saved = value;
 	} else {
-		value = format_find(ft, copy);
+		saved = value = format_find(ft, copy, modifiers);
 		if (value == NULL)
-			value = "";
-		saved = NULL;
+			saved = value = xstrdup("");
 	}
 
 	/* Truncate the value if needed. */
@@ -837,18 +923,6 @@ format_expand(struct format_tree *ft, const char *fmt)
 	return (buf);
 }
 
-/* Get time as a string. */
-char *
-format_time_string(time_t t)
-{
-	char	*tim;
-
-	tim = ctime(&t);
-	*strchr(tim, '\n') = '\0';
-
-	return (tim);
-}
-
 /* Set defaults for any of arguments that are not NULL. */
 void
 format_defaults(struct format_tree *ft, struct client *c, struct session *s,
@@ -876,7 +950,6 @@ void
 format_defaults_session(struct format_tree *ft, struct session *s)
 {
 	struct session_group	*sg;
-	time_t			 t;
 
 	ft->s = s;
 
@@ -891,20 +964,9 @@ format_defaults_session(struct format_tree *ft, struct session *s)
 	if (sg != NULL)
 		format_add(ft, "session_group", "%u", session_group_index(sg));
 
-	t = s->creation_time.tv_sec;
-	format_add(ft, "session_created", "%lld", (long long) t);
-	format_add(ft, "session_created_string", "%s", format_time_string(t));
-
-	t = s->last_attached_time.tv_sec;
-	if (t != 0) { /* zero if never attached */
-		format_add(ft, "session_last_attached", "%lld", (long long) t);
-		format_add(ft, "session_last_attached_string", "%s",
-		    format_time_string(t));
-	}
-
-	t = s->activity_time.tv_sec;
-	format_add(ft, "session_activity", "%lld", (long long) t);
-	format_add(ft, "session_activity_string", "%s", format_time_string(t));
+	format_add_tv(ft, "session_created", &s->creation_time);
+	format_add_tv(ft, "session_last_attached", &s->last_attached_time);
+	format_add_tv(ft, "session_activity", &s->activity_time);
 
 	format_add(ft, "session_attached", "%u", s->attached);
 	format_add(ft, "session_many_attached", "%d", s->attached > 1);
@@ -917,7 +979,6 @@ void
 format_defaults_client(struct format_tree *ft, struct client *c)
 {
 	struct session	*s;
-	time_t		 t;
 
 	if (ft->s == NULL)
 		ft->s = c->session;
@@ -932,13 +993,8 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 	format_add(ft, "client_control_mode", "%d",
 		!!(c->flags & CLIENT_CONTROL));
 
-	t = c->creation_time.tv_sec;
-	format_add(ft, "client_created", "%lld", (long long) t);
-	format_add(ft, "client_created_string", "%s", format_time_string(t));
-
-	t = c->activity_time.tv_sec;
-	format_add(ft, "client_activity", "%lld", (long long) t);
-	format_add(ft, "client_activity_string", "%s", format_time_string(t));
+	format_add_tv(ft, "client_created", &c->creation_time);
+	format_add_tv(ft, "client_activity", &c->activity_time);
 
 	if (strcmp(c->keytable->name, "root") == 0)
 		format_add(ft, "client_prefix", "%d", 0);
@@ -968,14 +1024,9 @@ format_defaults_client(struct format_tree *ft, struct client *c)
 void
 format_defaults_window(struct format_tree *ft, struct window *w)
 {
-	time_t	 t;
-
 	ft->w = w;
 
-	t = w->activity_time.tv_sec;
-	format_add(ft, "window_activity", "%lld", (long long) t);
-	format_add(ft, "window_activity_string", "%s", format_time_string(t));
-
+	format_add_tv(ft, "window_activity", &w->activity_time);
 	format_add(ft, "window_id", "@%u", w->id);
 	format_add(ft, "window_name", "%s", w->name);
 	format_add(ft, "window_width", "%u", w->sx);
