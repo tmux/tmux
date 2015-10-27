@@ -660,6 +660,8 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 	return (NULL);
 
 found:
+	if (found == NULL)
+		return (NULL);
 	copy = xstrdup(found);
 	if (modifiers & FORMAT_BASENAME) {
 		saved = copy;
@@ -685,7 +687,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	char		*copy, *copy0, *endptr, *ptr, *saved, *trimmed, *value;
 	size_t		 valuelen;
 	u_long		 limit = 0;
-	int		 modifiers = 0;
+	int		 modifiers = 0, brackets;
 
 	/* Make a copy of the key. */
 	copy0 = copy = xmalloc(keylen + 1);
@@ -733,20 +735,26 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 			goto fail;
 		*ptr = '\0';
 
-		value = saved = format_find(ft, copy + 1, modifiers);
-		if (value != NULL && *value != '\0' &&
-		    (value[0] != '0' || value[1] != '\0')) {
-			value = ptr + 1;
-			ptr = strchr(value, ',');
-			if (ptr == NULL)
-				goto fail;
-			*ptr = '\0';
-		} else {
-			ptr = strchr(ptr + 1, ',');
-			if (ptr == NULL)
-				goto fail;
-			value = ptr + 1;
+		value = ptr + 1;
+		saved = format_find(ft, copy + 1, modifiers);
+
+		brackets = 0;
+		for (ptr = ptr + 1; *ptr != '\0'; ptr++) {
+			if (*ptr == '{')
+				brackets++;
+			if (*ptr == '}')
+				brackets--;
+			if (*ptr == ',' && brackets == 0)
+				break;
 		}
+		if (*ptr == '\0')
+			goto fail;
+
+		if (saved != NULL && *saved != '\0' &&
+		    (saved[0] != '0' || saved[1] != '\0')) {
+			*ptr = '\0';
+		} else
+			value = ptr + 1;
 		value = format_expand(ft, value);
 		free(saved);
 		saved = value;
