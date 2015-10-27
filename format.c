@@ -643,6 +643,8 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 	return (NULL);
 
 found:
+	if (found == NULL)
+		return (NULL);
 	copy = xstrdup(found);
 	if (modifiers & FORMAT_BASENAME) {
 		saved = copy;
