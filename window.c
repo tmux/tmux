@@ -302,7 +302,7 @@ window_create1(u_int sx, u_int sy)
 	w->sx = sx;
 	w->sy = sy;
 
-	options_init(&w->options, &global_w_options);
+	w->options = options_create(global_w_options);
 
 	w->references = 0;
 
@@ -335,7 +335,7 @@ window_create(const char *name, int argc, char **argv, const char *path,
 	w->active = TAILQ_FIRST(&w->panes);
 	if (name != NULL) {
 		w->name = xstrdup(name);
-		options_set_number(&w->options, "automatic-rename", 0);
+		options_set_number(w->options, "automatic-rename", 0);
 	} else
 		w->name = default_window_name(w);
 
@@ -359,7 +359,7 @@ window_destroy(struct window *w)
 	if (event_initialized(&w->alerts_timer))
 		evtimer_del(&w->alerts_timer);
 
-	options_free(&w->options);
+	options_free(w->options);
 
 	window_destroy_panes(w);
 
@@ -437,8 +437,8 @@ window_redraw_active_switch(struct window *w, struct window_pane *wp)
 	 * active or inactive pane do not have a custom style, they will need
 	 * to be redrawn.
 	 */
-	agc = options_get_style(&w->options, "window-active-style");
-	wgc = options_get_style(&w->options, "window-style");
+	agc = options_get_style(w->options, "window-active-style");
+	wgc = options_get_style(w->options, "window-style");
 	if (style_equal(agc, wgc))
 		return;
 	if (style_equal(&grid_default_cell, &w->active->colgc))
@@ -598,7 +598,7 @@ window_pane_at_index(struct window *w, u_int idx)
 	struct window_pane	*wp;
 	u_int			 n;
 
-	n = options_get_number(&w->options, "pane-base-index");
+	n = options_get_number(w->options, "pane-base-index");
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if (n == idx)
 			return (wp);
@@ -636,7 +636,7 @@ window_pane_index(struct window_pane *wp, u_int *i)
 	struct window_pane	*wq;
 	struct window		*w = wp->window;
 
-	*i = options_get_number(&w->options, "pane-base-index");
+	*i = options_get_number(w->options, "pane-base-index");
 	TAILQ_FOREACH(wq, &w->panes, entry) {
 		if (wp == wq) {
 			return (0);
@@ -1002,7 +1002,7 @@ window_pane_alternate_on(struct window_pane *wp, struct grid_cell *gc,
 
 	if (wp->saved_grid != NULL)
 		return;
-	if (!options_get_number(&wp->window->options, "alternate-screen"))
+	if (!options_get_number(wp->window->options, "alternate-screen"))
 		return;
 	sx = screen_size_x(s);
 	sy = screen_size_y(s);
@@ -1032,7 +1032,7 @@ window_pane_alternate_off(struct window_pane *wp, struct grid_cell *gc,
 
 	if (wp->saved_grid == NULL)
 		return;
-	if (!options_get_number(&wp->window->options, "alternate-screen"))
+	if (!options_get_number(wp->window->options, "alternate-screen"))
 		return;
 	sx = screen_size_x(s);
 	sy = screen_size_y(s);
@@ -1120,7 +1120,7 @@ window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
 
 	if (KEYC_IS_MOUSE(key))
 		return;
-	if (options_get_number(&wp->window->options, "synchronize-panes")) {
+	if (options_get_number(wp->window->options, "synchronize-panes")) {
 		TAILQ_FOREACH(wp2, &wp->window->panes, entry) {
 			if (wp2 == wp || wp2->mode != NULL)
 				continue;

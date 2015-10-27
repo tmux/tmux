@@ -680,11 +680,6 @@ struct options_entry {
 	RB_ENTRY(options_entry) entry;
 };
 
-struct options {
-	RB_HEAD(options_tree, options_entry) tree;
-	struct options	*parent;
-};
-
 /* Scheduled job. */
 struct job {
 	enum {
@@ -866,6 +861,7 @@ TAILQ_HEAD(window_panes, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
 
 /* Window structure. */
+struct options;
 struct window {
 	u_int		 id;
 
@@ -899,7 +895,7 @@ struct window {
 #define WINDOW_FORCEHEIGHT 0x4000
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
-	struct options	 options;
+	struct options	*options;
 
 	u_int		 references;
 
@@ -993,7 +989,7 @@ struct session {
 	struct winlink_stack lastw;
 	struct winlinks	 windows;
 
-	struct options	 options;
+	struct options	*options;
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
 	int		 flags;
@@ -1405,9 +1401,9 @@ struct options_table_entry {
 #define CMD_BUFFER_USAGE "[-b buffer-name]"
 
 /* tmux.c */
-extern struct options global_options;
-extern struct options global_s_options;
-extern struct options global_w_options;
+extern struct options *global_options;
+extern struct options *global_s_options;
+extern struct options *global_w_options;
 extern struct environ global_environ;
 extern char	*shell_cmd;
 extern int	 debug_level;
@@ -1509,10 +1505,10 @@ void	notify_session_created(struct session *);
 void	notify_session_closed(struct session *);
 
 /* options.c */
-int	options_cmp(struct options_entry *, struct options_entry *);
-RB_PROTOTYPE(options_tree, options_entry, entry, options_cmp);
-void	options_init(struct options *, struct options *);
+struct options *options_create(struct options *);
 void	options_free(struct options *);
+struct options_entry *options_first(struct options *);
+struct options_entry *options_next(struct options_entry *);
 struct options_entry *options_find1(struct options *, const char *);
 struct options_entry *options_find(struct options *, const char *);
 void	options_remove(struct options *, const char *);

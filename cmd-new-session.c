@@ -197,7 +197,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 			goto error;
 		}
 	}
-	if (sy > 0 && options_get_number(&global_s_options, "status"))
+	if (sy > 0 && options_get_number(global_s_options, "status"))
 		sy--;
 	if (sx == 0)
 		sx = 1;
@@ -211,7 +211,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		argc = args->argc;
 		argv = args->argv;
 	} else if (target == NULL) {
-		cmd = options_get_string(&global_s_options, "default-command");
+		cmd = options_get_string(global_s_options, "default-command");
 		if (cmd != NULL && *cmd != '\0') {
 			argc = 1;
 			argv = &cmd;
@@ -232,13 +232,13 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	/* Construct the environment. */
 	environ_init(&env);
 	if (c != NULL && !args_has(args, 'E')) {
-		update = options_get_string(&global_s_options,
+		update = options_get_string(global_s_options,
 		    "update-environment");
 		environ_update(update, &c->environ, &env);
 	}
 
 	/* Create the new session. */
-	idx = -1 - options_get_number(&global_s_options, "base-index");
+	idx = -1 - options_get_number(global_s_options, "base-index");
 	s = session_create(newname, argc, argv, path, cwd, &env, tiop, idx, sx,
 	    sy, &cause);
 	if (s == NULL) {
@@ -252,7 +252,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (argc >= 0 && args_has(args, 'n')) {
 		w = s->curw->window;
 		window_set_name(w, args_get(args, 'n'));
-		options_set_number(&w->options, "automatic-rename", 0);
+		options_set_number(w->options, "automatic-rename", 0);
 	}
 
 	/*

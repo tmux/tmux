@@ -126,10 +126,10 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	/* Work out the tree from the table. */
 	if (table == server_options_table)
-		oo = &global_options;
+		oo = global_options;
 	else if (table == window_options_table) {
 		if (args_has(self->args, 'g'))
-			oo = &global_w_options;
+			oo = global_w_options;
 		else {
 			wl = cmd_find_window(cmdq, args_get(args, 't'), NULL);
 			if (wl == NULL) {
@@ -139,11 +139,11 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 				    'g')) ? " need target window or -g" : "");
 				return (CMD_RETURN_ERROR);
 			}
-			oo = &wl->window->options;
+			oo = wl->window->options;
 		}
 	} else if (table == session_options_table) {
 		if (args_has(self->args, 'g'))
-			oo = &global_s_options;
+			oo = global_s_options;
 		else {
 			s = cmd_find_session(cmdq, args_get(args, 't'), 0);
 			if (s == NULL) {
@@ -153,7 +153,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 				    'g')) ? " need target session or -g" : "");
 				return (CMD_RETURN_ERROR);
 			}
-			oo = &s->options;
+			oo = s->options;
 		}
 	} else {
 		cmdq_error(cmdq, "unknown table");
@@ -179,7 +179,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 	/* Start or stop timers if necessary. */
 	if (strcmp(oe->name, "automatic-rename") == 0) {
 		RB_FOREACH(w, windows, &windows) {
-			if (options_get_number(&w->options, "automatic-rename"))
+			if (options_get_number(w->options, "automatic-rename"))
 				w->active->flags |= PANE_CHANGED;
 		}
 	}
@@ -210,25 +210,25 @@ cmd_set_option_user(struct cmd *self, struct cmd_q *cmdq, const char *optstr,
 	struct options	*oo;
 
 	if (args_has(args, 's'))
-		oo = &global_options;
+		oo = global_options;
 	else if (args_has(self->args, 'w') ||
 	    self->entry == &cmd_set_window_option_entry) {
 		if (args_has(self->args, 'g'))
-			oo = &global_w_options;
+			oo = global_w_options;
 		else {
 			wl = cmd_find_window(cmdq, args_get(args, 't'), NULL);
 			if (wl == NULL)
 				return (CMD_RETURN_ERROR);
-			oo = &wl->window->options;
+			oo = wl->window->options;
 		}
 	} else {
 		if (args_has(self->args, 'g'))
-			oo = &global_s_options;
+			oo = global_s_options;
 		else {
 			s = cmd_find_session(cmdq, args_get(args, 't'), 0);
 			if (s == NULL)
 				return (CMD_RETURN_ERROR);
-			oo = &s->options;
+			oo = s->options;
 		}
 	}
 
@@ -276,7 +276,7 @@ cmd_set_option_unset(struct cmd *self, struct cmd_q *cmdq,
 		return (-1);
 	}
 
-	if (args_has(args, 'g') || oo == &global_options) {
+	if (args_has(args, 'g') || oo == global_options) {
 		switch (oe->type) {
 		case OPTIONS_TABLE_STRING:
 			options_set_string(oo, oe->name, "%s", oe->default_str);

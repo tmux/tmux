@@ -217,7 +217,7 @@ server_loop(void)
 
 	server_client_loop();
 
-	if (!options_get_number(&global_options, "exit-unattached")) {
+	if (!options_get_number(global_options, "exit-unattached")) {
 		if (!RB_EMPTY(&sessions))
 			return (0);
 	}

@@ -39,7 +39,7 @@ server_fill_environ(struct session *s, struct environ *env)
 	long	pid;
 
 	if (s != NULL) {
-		term = options_get_string(&global_options, "default-terminal");
+		term = options_get_string(global_options, "default-terminal");
 		environ_set(env, "TERM", term);
 
 		idx = s->id;
@@ -183,7 +183,7 @@ server_lock_client(struct client *c)
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
 
-	cmd = options_get_string(&c->session->options, "lock-command");
+	cmd = options_get_string(c->session->options, "lock-command");
 	if (strlen(cmd) + 1 > MAX_IMSGSIZE - IMSG_HEADER_SIZE)
 		return;
 
@@ -219,7 +219,7 @@ server_kill_window(struct window *w)
 				server_redraw_session_group(s);
 		}
 
-		if (options_get_number(&s->options, "renumber-windows")) {
+		if (options_get_number(s->options, "renumber-windows")) {
 			if ((sg = session_group_find(s)) != NULL) {
 				TAILQ_FOREACH(target_s, &sg->sessions, gentry)
 					session_renumber_windows(target_s);
@@ -272,7 +272,7 @@ server_link_window(struct session *src, struct winlink *srcwl,
 	}
 
 	if (dstidx == -1)
-		dstidx = -1 - options_get_number(&dst->options, "base-index");
+		dstidx = -1 - options_get_number(dst->options, "base-index");
 	dstwl = session_attach(dst, srcwl->window, dstidx, cause);
 	if (dstwl == NULL)
 		return (-1);
@@ -308,7 +308,7 @@ server_destroy_pane(struct window_pane *wp)
 		wp->fd = -1;
 	}
 
-	if (options_get_number(&w->options, "remain-on-exit")) {
+	if (options_get_number(w->options, "remain-on-exit")) {
 		if (old_fd == -1)
 			return;
 		screen_write_start(&ctx, wp, &wp->base);
@@ -371,7 +371,7 @@ server_destroy_session(struct session *s)
 	struct client	*c;
 	struct session	*s_new;
 
-	if (!options_get_number(&s->options, "detach-on-destroy"))
+	if (!options_get_number(s->options, "detach-on-destroy"))
 		s_new = server_next_session(s);
 	else
 		s_new = NULL;
@@ -407,7 +407,7 @@ server_check_unattached(void)
 	RB_FOREACH(s, sessions, &sessions) {
 		if (!(s->flags & SESSION_UNATTACHED))
 			continue;
-		if (options_get_number (&s->options, "destroy-unattached"))
+		if (options_get_number (s->options, "destroy-unattached"))
 			session_destroy(s);
 	}
 }
@@ -418,7 +418,7 @@ server_set_identify(struct client *c)
 	struct timeval	tv;
 	int		delay;
 
-	delay = options_get_number(&c->session->options, "display-panes-time");
+	delay = options_get_number(c->session->options, "display-panes-time");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 

@@ -120,10 +120,10 @@ session_create(const char *name, int argc, char **argv, const char *path,
 	TAILQ_INIT(&s->lastw);
 	RB_INIT(&s->windows);
 
-	options_init(&s->options, &global_s_options);
 	environ_init(&s->environ);
 	if (env != NULL)
 		environ_copy(env, &s->environ);
+	s->options = options_create(global_s_options);
 
 	s->tio = NULL;
 	if (tio != NULL) {
@@ -190,6 +190,9 @@ session_free(unused int fd, unused short events, void *arg)
 	log_debug("session %s freed (%d references)", s->name, s->references);
 
 	if (s->references == 0) {
+		environ_free(&s->environ);
+		options_free(s->options);
+
 		free(s->name);
 		free(s);
 	}
@@ -212,8 +215,6 @@ session_destroy(struct session *s)
 		event_del(&s->lock_timer);
 
 	session_group_remove(s);
-	environ_free(&s->environ);
-	options_free(&s->options);
 
 	while (!TAILQ_EMPTY(&s->lastw))
 		winlink_stack_remove(&s->lastw, TAILQ_FIRST(&s->lastw));
@@ -271,7 +272,7 @@ session_update_activity(struct session *s, struct timeval *from)
 
 	if (~s->flags & SESSION_UNATTACHED) {
 		timerclear(&tv);
-		tv.tv_sec = options_get_number(&s->options, "lock-after-time");
+		tv.tv_sec = options_get_number(s->options, "lock-after-time");
 		if (tv.tv_sec != 0)
 			evtimer_add(&s->lock_timer, &tv);
 	}
@@ -332,11 +333,11 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 	environ_copy(&s->environ, &env);
 	server_fill_environ(s, &env);
 
-	shell = options_get_string(&s->options, "default-shell");
+	shell = options_get_string(s->options, "default-shell");
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 
-	hlimit = options_get_number(&s->options, "history-limit");
+	hlimit = options_get_number(s->options, "history-limit");
 	w = window_create(name, argc, argv, path, shell, cwd, &env, s->tio,
 	    s->sx, s->sy, hlimit, cause);
 	if (w == NULL) {
@@ -348,8 +349,8 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 	notify_window_linked(s, w);
 	environ_free(&env);
 
-	if (options_get_number(&s->options, "set-remain-on-exit"))
-		options_set_number(&w->options, "remain-on-exit", 1);
+	if (options_get_number(s->options, "set-remain-on-exit"))
+		options_set_number(w->options, "remain-on-exit", 1);
 
 	session_group_synchronize_from(s);
 	return (wl);
@@ -712,7 +713,7 @@ session_renumber_windows(struct session *s)
 	RB_INIT(&s->windows);
 
 	/* Start renumbering from the base-index if it's set. */
-	new_idx = options_get_number(&s->options, "base-index");
+	new_idx = options_get_number(s->options, "base-index");
 	new_curw_idx = 0;
 
 	/* Go through the winlinks and assign new indexes. */

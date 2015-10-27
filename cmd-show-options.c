@@ -61,28 +61,28 @@ cmd_show_options_exec(struct cmd *self, struct cmd_q *cmdq)
 	int					 quiet;
 
 	if (args_has(self->args, 's')) {
-		oo = &global_options;
+		oo = global_options;
 		table = server_options_table;
 	} else if (args_has(self->args, 'w') ||
 	    self->entry == &cmd_show_window_options_entry) {
 		table = window_options_table;
 		if (args_has(self->args, 'g'))
-			oo = &global_w_options;
+			oo = global_w_options;
 		else {
 			wl = cmd_find_window(cmdq, args_get(args, 't'), NULL);
 			if (wl == NULL)
 				return (CMD_RETURN_ERROR);
-			oo = &wl->window->options;
+			oo = wl->window->options;
 		}
 	} else {
 		table = session_options_table;
 		if (args_has(self->args, 'g'))
-			oo = &global_s_options;
+			oo = global_s_options;
 		else {
 			s = cmd_find_session(cmdq, args_get(args, 't'), 0);
 			if (s == NULL)
 				return (CMD_RETURN_ERROR);
-			oo = &s->options;
+			oo = s->options;
 		}
 	}
 
@@ -151,13 +151,15 @@ cmd_show_options_all(struct cmd *self, struct cmd_q *cmdq,
 	struct options_entry			*o;
 	const char				*optval;
 
-	RB_FOREACH(o, options_tree, &oo->tree) {
+	o = options_first(oo);
+	while (o != NULL) {
 		if (*o->name == '@') {
 			if (args_has(self->args, 'v'))
 				cmdq_print(cmdq, "%s", o->str);
 			else
 				cmdq_print(cmdq, "%s \"%s\"", o->name, o->str);
 		}
+		o = options_next(o);
 	}
 
 	for (oe = table; oe->name != NULL; oe++) {

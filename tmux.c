@@ -38,9 +38,9 @@
 extern char	*malloc_options;
 #endif
 
-struct options	 global_options;	/* server options */
-struct options	 global_s_options;	/* session options */
-struct options	 global_w_options;	/* window options */
+struct options	*global_options;	/* server options */
+struct options	*global_s_options;	/* session options */
+struct options	*global_w_options;	/* window options */
 struct environ	 global_environ;
 
 char		*shell_cmd;
@@ -281,22 +281,21 @@ main(int argc, char **argv)
 	if (getcwd(tmp, sizeof tmp) != NULL)
 		environ_set(&global_environ, "PWD", tmp);
 
-	options_init(&global_options, NULL);
-	options_table_populate_tree(server_options_table, &global_options);
+	global_options = options_create(NULL);
+	options_table_populate_tree(server_options_table, global_options);
 
-	options_init(&global_s_options, NULL);
-	options_table_populate_tree(session_options_table, &global_s_options);
-	options_set_string(&global_s_options, "default-shell", "%s",
-	    getshell());
+	global_s_options = options_create(NULL);
+	options_table_populate_tree(session_options_table, global_s_options);
+	options_set_string(global_s_options, "default-shell", "%s", getshell());
 
-	options_init(&global_w_options, NULL);
-	options_table_populate_tree(window_options_table, &global_w_options);
+	global_w_options = options_create(NULL);
+	options_table_populate_tree(window_options_table, global_w_options);
 
 	/* Enable UTF-8 if the first client is on UTF-8 terminal. */
 	if (flags & CLIENT_UTF8) {
-		options_set_number(&global_s_options, "status-utf8", 1);
-		options_set_number(&global_s_options, "mouse-utf8", 1);
-		options_set_number(&global_w_options, "utf8", 1);
+		options_set_number(global_s_options, "status-utf8", 1);
+		options_set_number(global_s_options, "mouse-utf8", 1);
+		options_set_number(global_w_options, "utf8", 1);
 	}
 
 	/* Override keys to vi if VISUAL or EDITOR are set. */
@@ -307,8 +306,8 @@ main(int argc, char **argv)
 			keys = MODEKEY_VI;
 		else
 			keys = MODEKEY_EMACS;
-		options_set_number(&global_s_options, "status-keys", keys);
-		options_set_number(&global_w_options, "mode-keys", keys);
+		options_set_number(global_s_options, "status-keys", keys);
+		options_set_number(global_w_options, "mode-keys", keys);
 	}
 
 	/*

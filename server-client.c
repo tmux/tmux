@@ -490,7 +490,7 @@ server_client_assume_paste(struct session *s)
 	struct timeval	tv;
 	int		t;
 
-	if ((t = options_get_number(&s->options, "assume-paste-time")) == 0)
+	if ((t = options_get_number(s->options, "assume-paste-time")) == 0)
 		return (0);
 
 	timersub(&s->activity_time, &s->last_activity_time, &tv);
@@ -556,7 +556,7 @@ server_client_handle_key(struct client *c, int key)
 		m->valid = 1;
 		m->key = key;
 
-		if (!options_get_number(&s->options, "mouse"))
+		if (!options_get_number(s->options, "mouse"))
 			goto forward;
 	} else
 		m->valid = 0;
@@ -593,7 +593,7 @@ retry:
 		 * If this is a repeating key, start the timer. Otherwise reset
 		 * the client back to the root table.
 		 */
-		xtimeout = options_get_number(&s->options, "repeat-time");
+		xtimeout = options_get_number(s->options, "repeat-time");
 		if (xtimeout != 0 && bd->can_repeat) {
 			c->flags |= CLIENT_REPEAT;
 
@@ -635,8 +635,8 @@ retry:
 	 * No match, but in the root table. Prefix switches to the prefix table
 	 * and everything else is passed through.
 	 */
-	if (key == options_get_number(&s->options, "prefix") ||
-	    key == options_get_number(&s->options, "prefix2")) {
+	if (key == options_get_number(s->options, "prefix") ||
+	    key == options_get_number(s->options, "prefix2")) {
 		server_client_key_table(c, "prefix");
 		server_status_client(c);
 		return;
@@ -713,7 +713,7 @@ server_client_check_focus(struct window_pane *wp)
 	int		 push;
 
 	/* Are focus events off? */
-	if (!options_get_number(&global_options, "focus-events"))
+	if (!options_get_number(global_options, "focus-events"))
 		return;
 
 	/* Do we need to push the focus state? */
@@ -773,7 +773,7 @@ server_client_reset_state(struct client *c)
 	struct window		*w = c->session->curw->window;
 	struct window_pane	*wp = w->active;
 	struct screen		*s = wp->screen;
-	struct options		*oo = &c->session->options;
+	struct options		*oo = c->session->options;
 	int			 status, mode, o;
 
 	if (c->flags & CLIENT_SUSPENDED)
@@ -862,7 +862,7 @@ server_client_check_redraw(struct client *c)
 		return;
 
 	if (c->flags & (CLIENT_REDRAW|CLIENT_STATUS)) {
-		if (options_get_number(&s->options, "set-titles"))
+		if (options_get_number(s->options, "set-titles"))
 			server_client_set_title(c);
 
 		if (c->message_string != NULL)
@@ -922,7 +922,7 @@ server_client_set_title(struct client *c)
 	char			*title;
 	struct format_tree	*ft;
 
-	template = options_get_string(&s->options, "set-titles-string");
+	template = options_get_string(s->options, "set-titles-string");
 
 	ft = format_create();
 	format_defaults(ft, c, NULL, NULL, NULL);
@@ -1206,7 +1206,7 @@ server_client_dispatch_shell(struct client *c)
 {
 	const char	*shell;
 
-	shell = options_get_string(&global_s_options, "default-shell");
+	shell = options_get_string(global_s_options, "default-shell");
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 	proc_send_s(c->peer, MSG_SHELL, shell);

@@ -195,7 +195,7 @@ window_copy_init(struct window_pane *wp)
 	s = &data->screen;
 	screen_init(s, screen_size_x(&wp->base), screen_size_y(&wp->base), 0);
 
-	keys = options_get_number(&wp->window->options, "mode-keys");
+	keys = options_get_number(wp->window->options, "mode-keys");
 	if (keys == MODEKEY_EMACS)
 		mode_key_init(&data->mdata, &mode_key_tree_emacs_copy);
 	else
@@ -286,7 +286,7 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 	if (backing == &wp->base)
 		return;
 
-	utf8flag = options_get_number(&wp->window->options, "utf8");
+	utf8flag = options_get_number(wp->window->options, "utf8");
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 
 	old_hsize = screen_hsize(data->backing);
@@ -629,13 +629,13 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 		break;
 	case MODEKEYCOPY_NEXTWORD:
 		word_separators =
-		    options_get_string(&sess->options, "word-separators");
+		    options_get_string(sess->options, "word-separators");
 		for (; np != 0; np--)
 			window_copy_cursor_next_word(wp, word_separators);
 		break;
 	case MODEKEYCOPY_NEXTWORDEND:
 		word_separators =
-		    options_get_string(&sess->options, "word-separators");
+		    options_get_string(sess->options, "word-separators");
 		for (; np != 0; np--)
 			window_copy_cursor_next_word_end(wp, word_separators);
 		break;
@@ -645,7 +645,7 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 		break;
 	case MODEKEYCOPY_PREVIOUSWORD:
 		word_separators =
-		    options_get_string(&sess->options, "word-separators");
+		    options_get_string(sess->options, "word-separators");
 		for (; np != 0; np--)
 			window_copy_cursor_previous_word(wp, word_separators);
 		break;
@@ -777,7 +777,7 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 	return;
 
 input_on:
-	keys = options_get_number(&wp->window->options, "mode-keys");
+	keys = options_get_number(wp->window->options, "mode-keys");
 	if (keys == MODEKEY_EMACS)
 		mode_key_init(&data->mdata, &mode_key_tree_emacs_edit);
 	else
@@ -787,7 +787,7 @@ input_on:
 	return;
 
 input_off:
-	keys = options_get_number(&wp->window->options, "mode-keys");
+	keys = options_get_number(wp->window->options, "mode-keys");
 	if (keys == MODEKEY_EMACS)
 		mode_key_init(&data->mdata, &mode_key_tree_emacs_copy);
 	else
@@ -1026,8 +1026,8 @@ window_copy_search_up(struct window_pane *wp, const char *searchstr)
 
 	if (*searchstr == '\0')
 		return;
-	utf8flag = options_get_number(&wp->window->options, "utf8");
-	wrapflag = options_get_number(&wp->window->options, "wrap-search");
+	utf8flag = options_get_number(wp->window->options, "utf8");
+	wrapflag = options_get_number(wp->window->options, "wrap-search");
 	searchlen = screen_write_strlen(utf8flag, "%s", searchstr);
 
 	screen_init(&ss, searchlen, 1, 0);
@@ -1093,8 +1093,8 @@ window_copy_search_down(struct window_pane *wp, const char *searchstr)
 
 	if (*searchstr == '\0')
 		return;
-	utf8flag = options_get_number(&wp->window->options, "utf8");
-	wrapflag = options_get_number(&wp->window->options, "wrap-search");
+	utf8flag = options_get_number(wp->window->options, "utf8");
+	wrapflag = options_get_number(wp->window->options, "wrap-search");
 	searchlen = screen_write_strlen(utf8flag, "%s", searchstr);
 
 	screen_init(&ss, searchlen, 1, 0);
@@ -1168,7 +1168,7 @@ window_copy_write_line(struct window_pane *wp, struct screen_write_ctx *ctx,
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	struct options			*oo = &wp->window->options;
+	struct options			*oo = wp->window->options;
 	struct grid_cell		 gc;
 	char				 hdr[512];
 	size_t				 last, xoff = 0, size = 0, limit;
@@ -1301,7 +1301,7 @@ window_copy_update_selection(struct window_pane *wp, int may_redraw)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	struct options			*oo = &wp->window->options;
+	struct options			*oo = wp->window->options;
 	struct grid_cell		 gc;
 	u_int				 sx, sy, ty, cy;
 
@@ -1401,7 +1401,7 @@ window_copy_get_selection(struct window_pane *wp, size_t *len)
 	 * bottom-right-most, regardless of copy direction. If it is vi, also
 	 * keep bottom-right-most character.
 	 */
-	keys = options_get_number(&wp->window->options, "mode-keys");
+	keys = options_get_number(wp->window->options, "mode-keys");
 	if (data->rectflag) {
 		/*
 		 * Need to ignore the column with the cursor in it, which for
@@ -1460,7 +1460,7 @@ window_copy_copy_buffer(struct window_pane *wp, const char *bufname, void *buf,
 {
 	struct screen_write_ctx	ctx;
 
-	if (options_get_number(&global_options, "set-clipboard")) {
+	if (options_get_number(global_options, "set-clipboard")) {
 		screen_write_start(&ctx, wp, NULL);
 		screen_write_setselection(&ctx, buf, len);
 		screen_write_stop(&ctx);
@@ -1523,7 +1523,7 @@ window_copy_append_selection(struct window_pane *wp, const char *bufname)
 	if (buf == NULL)
 		return;
 
-	if (options_get_number(&global_options, "set-clipboard")) {
+	if (options_get_number(global_options, "set-clipboard")) {
 		screen_write_start(&ctx, wp, NULL);
 		screen_write_setselection(&ctx, buf, len);
 		screen_write_stop(&ctx);
@@ -2074,7 +2074,7 @@ window_copy_cursor_next_word_end(struct window_pane *wp,
     const char *separators)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
-	struct options			*oo = &wp->window->options;
+	struct options			*oo = wp->window->options;
 	struct screen			*back_s = data->backing;
 	u_int				 px, py, xx, yy;
 	int				 keys, expected = 1;

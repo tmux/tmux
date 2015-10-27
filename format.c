@@ -581,15 +581,15 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 	found = NULL;
 
 	if (~modifiers & FORMAT_TIMESTRING) {
-		o = options_find(&global_options, key);
+		o = options_find(global_options, key);
 		if (o == NULL && ft->w != NULL)
-			o = options_find(&ft->w->options, key);
+			o = options_find(ft->w->options, key);
 		if (o == NULL)
-			o = options_find(&global_w_options, key);
+			o = options_find(global_w_options, key);
 		if (o == NULL && ft->s != NULL)
-			o = options_find(&ft->s->options, key);
+			o = options_find(ft->s->options, key);
 		if (o == NULL)
-			o = options_find(&global_s_options, key);
+			o = options_find(global_s_options, key);
 		if (o != NULL) {
 			switch (o->type) {
 			case OPTIONS_STRING:
@@ -1101,7 +1101,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 
 	format_add(ft, "pane_in_mode", "%d", wp->screen != &wp->base);
 	format_add(ft, "pane_synchronized", "%d",
-	    !!options_get_number(&wp->window->options, "synchronize-panes"));
+	    !!options_get_number(wp->window->options, "synchronize-panes"));
 
 	format_add(ft, "pane_tty", "%s", wp->tty);
 	format_add(ft, "pane_pid", "%ld", (long) wp->pid);
