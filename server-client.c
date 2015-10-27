@@ -550,7 +550,6 @@ server_client_handle_key(struct client *c, int key)
 	if (s == NULL || (c->flags & (CLIENT_DEAD|CLIENT_SUSPENDED)) != 0)
 		return;
 	w = s->curw->window;
-	wp = w->active;
 
 	/* Update the activity timer. */
 	if (gettimeofday(&c->activity_time, NULL) != 0)
@@ -591,19 +590,14 @@ server_client_handle_key(struct client *c, int key)
 		m->valid = 1;
 		m->key = key;
 
-		if (!options_get_number(&s->options, "mouse")) {
-			window_pane_key(wp, c, s, key, m);
-			return;
-		}
+		if (!options_get_number(&s->options, "mouse"))
+			goto forward;
 	} else
 		m->valid = 0;
 
 	/* Treat everything as a regular key when pasting is detected. */
-	if (!KEYC_IS_MOUSE(key) && server_client_assume_paste(s)) {
-		if (!(c->flags & CLIENT_READONLY))
-			window_pane_key(wp, c, s, key, m);
-		return;
-	}
+	if (!KEYC_IS_MOUSE(key) && server_client_assume_paste(s))
+		goto forward;
 
 retry:
 	/* Try to see if there is a key binding in the current table. */
@@ -679,7 +673,17 @@ retry:
 	    key == options_get_number(&s->options, "prefix2")) {
 		server_client_key_table(c, "prefix");
 		server_status_client(c);
-	} else if (!(c->flags & CLIENT_READONLY))
+		return;
+	}
+
+forward:
+	if (c->flags & CLIENT_READONLY)
+		return;
+	if (KEYC_IS_MOUSE(key))
+		wp = cmd_mouse_pane(m, NULL, NULL);
+	else
+		wp = w->active;
+	if (wp != NULL)
 		window_pane_key(wp, c, s, key, m);
 }
 

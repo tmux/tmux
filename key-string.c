@@ -238,8 +238,10 @@ key_string_lookup_key(int key)
 	}
 
 	/* Invalid keys are errors. */
-	if (key == 127 || key > 255)
-		return (NULL);
+	if (key == 127 || key > 255) {
+		snprintf(out, sizeof out, "<INVALID#%04x>", key);
+		return (out);
+	}
 
 	/* Check for standard or control key. */
 	if (key >= 0 && key <= 32) {
