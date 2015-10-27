@@ -204,8 +204,8 @@ window_clock_draw_screen(struct window_pane *wp)
 	struct tm			*tm;
 	u_int				 i, j, x, y, idx;
 
-	colour = options_get_number(&wp->window->options, "clock-mode-colour");
-	style = options_get_number(&wp->window->options, "clock-mode-style");
+	colour = options_get_number(wp->window->options, "clock-mode-colour");
+	style = options_get_number(wp->window->options, "clock-mode-style");
 
 	screen_write_start(&ctx, NULL, s);
 

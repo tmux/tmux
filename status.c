@@ -61,7 +61,7 @@ status_prompt_find_history_file(void)
 	const char	*home, *history_file;
 	char		*path;
 
-	history_file = options_get_string(&global_options, "history-file");
+	history_file = options_get_string(global_options, "history-file");
 	if (*history_file == '\0')
 		return (NULL);
 	if (*history_file == '/')
@@ -160,7 +160,7 @@ status_timer_callback(unused int fd, unused short events, void *arg)
 		c->flags |= CLIENT_STATUS;
 
 	timerclear(&tv);
-	tv.tv_sec = options_get_number(&s->options, "status-interval");
+	tv.tv_sec = options_get_number(s->options, "status-interval");
 
 	if (tv.tv_sec != 0)
 		evtimer_add(&c->status_timer, &tv);
@@ -178,7 +178,7 @@ status_timer_start(struct client *c)
 	else
 		evtimer_set(&c->status_timer, status_timer_callback, c);
 
-	if (s != NULL && options_get_number(&s->options, "status"))
+	if (s != NULL && options_get_number(s->options, "status"))
 		status_timer_callback(-1, 0, c);
 }
 
@@ -198,10 +198,10 @@ status_at_line(struct client *c)
 {
 	struct session	*s = c->session;
 
-	if (!options_get_number(&s->options, "status"))
+	if (!options_get_number(s->options, "status"))
 		return (-1);
 
-	if (options_get_number(&s->options, "status-position") == 0)
+	if (options_get_number(s->options, "status-position") == 0)
 		return (0);
 	return (c->tty.sy - 1);
 }
@@ -216,12 +216,12 @@ status_redraw_get_left(struct client *c, time_t t, int utf8flag,
 	char		*left;
 	size_t		 leftlen;
 
-	style_apply_update(gc, &s->options, "status-left-style");
+	style_apply_update(gc, s->options, "status-left-style");
 
-	template = options_get_string(&s->options, "status-left");
+	template = options_get_string(s->options, "status-left");
 	left = status_replace(c, NULL, template, t);
 
-	*size = options_get_number(&s->options, "status-left-length");
+	*size = options_get_number(s->options, "status-left-length");
 	leftlen = screen_write_cstrlen(utf8flag, "%s", left);
 	if (leftlen < *size)
 		*size = leftlen;
@@ -238,12 +238,12 @@ status_redraw_get_right(struct client *c, time_t t, int utf8flag,
 	char		*right;
 	size_t		 rightlen;
 
-	style_apply_update(gc, &s->options, "status-right-style");
+	style_apply_update(gc, s->options, "status-right-style");
 
-	template = options_get_string(&s->options, "status-right");
+	template = options_get_string(s->options, "status-right");
 	right = status_replace(c, NULL, template, t);
 
-	*size = options_get_number(&s->options, "status-right-length");
+	*size = options_get_number(s->options, "status-right-length");
 	rightlen = screen_write_cstrlen(utf8flag, "%s", right);
 	if (rightlen < *size)
 		*size = rightlen;
@@ -261,7 +261,7 @@ status_get_window_at(struct client *c, u_int x)
 
 	x += c->wlmouse;
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		oo = &wl->window->options;
+		oo = wl->window->options;
 		len = strlen(options_get_string(oo, "window-status-separator"));
 
 		if (x < wl->status_width)
@@ -289,7 +289,7 @@ status_redraw(struct client *c)
 	int			larrow, rarrow, utf8flag;
 
 	/* No status line? */
-	if (c->tty.sy == 0 || !options_get_number(&s->options, "status"))
+	if (c->tty.sy == 0 || !options_get_number(s->options, "status"))
 		return (1);
 	left = right = NULL;
 	larrow = rarrow = 0;
@@ -298,7 +298,7 @@ status_redraw(struct client *c)
 	t = time(NULL);
 
 	/* Set up default colour. */
-	style_apply(&stdgc, &s->options, "status-style");
+	style_apply(&stdgc, s->options, "status-style");
 
 	/* Create the target screen. */
 	memcpy(&old_status, &c->status, sizeof old_status);
@@ -313,7 +313,7 @@ status_redraw(struct client *c)
 		goto out;
 
 	/* Get UTF-8 flag. */
-	utf8flag = options_get_number(&s->options, "status-utf8");
+	utf8flag = options_get_number(s->options, "status-utf8");
 
 	/* Work out left and right strings. */
 	memcpy(&lgc, &stdgc, sizeof lgc);
@@ -346,7 +346,7 @@ status_redraw(struct client *c)
 		if (wl == s->curw)
 			wloffset = wlwidth;
 
-		oo = &wl->window->options;
+		oo = wl->window->options;
 		sep = options_get_string(oo, "window-status-separator");
 		seplen = screen_write_strlen(utf8flag, "%s", sep);
 		wlwidth += wl->status_width + seplen;
@@ -361,7 +361,7 @@ status_redraw(struct client *c)
 		screen_write_cnputs(&ctx,
 		    -1, &wl->status_cell, utf8flag, "%s", wl->status_text);
 
-		oo = &wl->window->options;
+		oo = wl->window->options;
 		sep = options_get_string(oo, "window-status-separator");
 		screen_write_nputs(&ctx, -1, &stdgc, utf8flag, "%s", sep);
 	}
@@ -461,7 +461,7 @@ draw:
 	else
 		wloffset = 0;
 	if (wlwidth < wlavailable) {
-		switch (options_get_number(&s->options, "status-justify")) {
+		switch (options_get_number(s->options, "status-justify")) {
 		case 1:	/* centred */
 			wloffset += (wlavailable - wlwidth) / 2;
 			break;
@@ -520,7 +520,7 @@ char *
 status_print(struct client *c, struct winlink *wl, time_t t,
     struct grid_cell *gc)
 {
-	struct options	*oo = &wl->window->options;
+	struct options	*oo = wl->window->options;
 	struct session	*s = c->session;
 	const char	*fmt;
 	char   		*text;
@@ -553,7 +553,7 @@ status_message_set(struct client *c, const char *fmt, ...)
 	int			 delay;
 	u_int			 first, limit;
 
-	limit = options_get_number(&global_options, "message-limit");
+	limit = options_get_number(global_options, "message-limit");
 
 	status_prompt_clear(c);
 	status_message_clear(c);
@@ -577,7 +577,7 @@ status_message_set(struct client *c, const char *fmt, ...)
 		free(msg);
 	}
 
-	delay = options_get_number(&c->session->options, "display-time");
+	delay = options_get_number(c->session->options, "display-time");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
@@ -631,13 +631,13 @@ status_message_redraw(struct client *c)
 	memcpy(&old_status, &c->status, sizeof old_status);
 	screen_init(&c->status, c->tty.sx, 1, 0);
 
-	utf8flag = options_get_number(&s->options, "status-utf8");
+	utf8flag = options_get_number(s->options, "status-utf8");
 
 	len = screen_write_strlen(utf8flag, "%s", c->message_string);
 	if (len > c->tty.sx)
 		len = c->tty.sx;
 
-	style_apply(&gc, &s->options, "message-style");
+	style_apply(&gc, s->options, "message-style");
 
 	screen_write_start(&ctx, NULL, &c->status);
 
@@ -686,7 +686,7 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 
 	c->prompt_flags = flags;
 
-	keys = options_get_number(&c->session->options, "status-keys");
+	keys = options_get_number(c->session->options, "status-keys");
 	if (keys == MODEKEY_EMACS)
 		mode_key_init(&c->prompt_mdata, &mode_key_tree_emacs_edit);
 	else
@@ -761,7 +761,7 @@ status_prompt_redraw(struct client *c)
 	memcpy(&old_status, &c->status, sizeof old_status);
 	screen_init(&c->status, c->tty.sx, 1, 0);
 
-	utf8flag = options_get_number(&s->options, "status-utf8");
+	utf8flag = options_get_number(s->options, "status-utf8");
 
 	len = screen_write_strlen(utf8flag, "%s", c->prompt_string);
 	if (len > c->tty.sx)
@@ -770,9 +770,9 @@ status_prompt_redraw(struct client *c)
 
 	/* Change colours for command mode. */
 	if (c->prompt_mdata.mode == 1)
-		style_apply(&gc, &s->options, "message-command-style");
+		style_apply(&gc, s->options, "message-command-style");
 	else
-		style_apply(&gc, &s->options, "message-style");
+		style_apply(&gc, s->options, "message-style");
 
 	screen_write_start(&ctx, NULL, &c->status);
 
@@ -815,7 +815,7 @@ void
 status_prompt_key(struct client *c, int key)
 {
 	struct session		*sess = c->session;
-	struct options		*oo = &sess->options;
+	struct options		*oo = sess->options;
 	struct paste_buffer	*pb;
 	char			*s, *first, *last, word[64], swapc;
 	const char		*histstr, *bufdata, *wsep = NULL;

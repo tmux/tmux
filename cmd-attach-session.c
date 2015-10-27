@@ -113,21 +113,15 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 
 	if (c->session != NULL) {
 		if (dflag) {
-			/*
-			 * Can't use server_write_session in case attaching to
-			 * the same session as currently attached to.
-			 */
 			TAILQ_FOREACH(c_loop, &clients, entry) {
 				if (c_loop->session != s || c == c_loop)
 					continue;
-				server_write_client(c, MSG_DETACH,
-				    c_loop->session->name,
-				    strlen(c_loop->session->name) + 1);
+				proc_send_s(c->peer, MSG_DETACH, s->name);
 			}
 		}
 
 		if (!Eflag) {
-			update = options_get_string(&s->options,
+			update = options_get_string(s->options,
 			    "update-environment");
 			environ_update(update, &c->environ, &s->environ);
 		}
@@ -150,12 +144,15 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 			c->flags |= CLIENT_READONLY;
 
 		if (dflag) {
-			server_write_session(s, MSG_DETACH, s->name,
-			    strlen(s->name) + 1);
+			TAILQ_FOREACH(c_loop, &clients, entry) {
+				if (c_loop->session != s || c == c_loop)
+					continue;
+				proc_send_s(c->peer, MSG_DETACH, s->name);
+			}
 		}
 
 		if (!Eflag) {
-			update = options_get_string(&s->options,
+			update = options_get_string(s->options,
 			    "update-environment");
 			environ_update(update, &c->environ, &s->environ);
 		}
@@ -168,7 +165,8 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 		server_redraw_client(c);
 		s->curw->flags &= ~WINLINK_ALERTFLAGS;
 
-		server_write_ready(c);
+		if (~c->flags & CLIENT_CONTROL)
+			proc_send(c->peer, MSG_READY, -1, NULL, 0);
 		cmdq->client_exit = 0;
 	}
 	recalculate_sizes();

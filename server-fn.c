@@ -17,6 +17,7 @@
  */
 
 #include <sys/types.h>
+#include <sys/uio.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -36,7 +37,7 @@ server_fill_environ(struct session *s, struct environ *env)
 	long	pid;
 
 	if (s != NULL) {
-		term = options_get_string(&global_options, "default-terminal");
+		term = options_get_string(global_options, "default-terminal");
 		environ_set(env, "TERM", term);
 
 		idx = s->id;
@@ -45,43 +46,6 @@ server_fill_environ(struct session *s, struct environ *env)
 	pid = getpid();
 	xsnprintf(var, sizeof var, "%s,%ld,%u", socket_path, pid, idx);
 	environ_set(env, "TMUX", var);
-}
-
-void
-server_write_ready(struct client *c)
-{
-	if (c->flags & CLIENT_CONTROL)
-		return;
-	server_write_client(c, MSG_READY, NULL, 0);
-}
-
-int
-server_write_client(struct client *c, enum msgtype type, const void *buf,
-    size_t len)
-{
-	struct imsgbuf	*ibuf = &c->ibuf;
-	int              error;
-
-	if (c->flags & CLIENT_BAD)
-		return (-1);
-	log_debug("writing %d to client %p", type, c);
-	error = imsg_compose(ibuf, type, PROTOCOL_VERSION, -1, -1,
-	    (void *) buf, len);
-	if (error == 1)
-		server_update_event(c);
-	return (error == 1 ? 0 : -1);
-}
-
-void
-server_write_session(struct session *s, enum msgtype type, const void *buf,
-    size_t len)
-{
-	struct client	*c;
-
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session == s)
-			server_write_client(c, type, buf, len);
-	}
 }
 
 void
@@ -217,7 +181,7 @@ server_lock_client(struct client *c)
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
 
-	cmd = options_get_string(&c->session->options, "lock-command");
+	cmd = options_get_string(c->session->options, "lock-command");
 	if (strlen(cmd) + 1 > MAX_IMSGSIZE - IMSG_HEADER_SIZE)
 		return;
 
@@ -227,7 +191,7 @@ server_lock_client(struct client *c)
 	tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_E3));
 
 	c->flags |= CLIENT_SUSPENDED;
-	server_write_client(c, MSG_LOCK, cmd, strlen(cmd) + 1);
+	proc_send_s(c->peer, MSG_LOCK, cmd);
 }
 
 void
@@ -253,7 +217,7 @@ server_kill_window(struct window *w)
 				server_redraw_session_group(s);
 		}
 
-		if (options_get_number(&s->options, "renumber-windows")) {
+		if (options_get_number(s->options, "renumber-windows")) {
 			if ((sg = session_group_find(s)) != NULL) {
 				TAILQ_FOREACH(target_s, &sg->sessions, gentry)
 					session_renumber_windows(target_s);
@@ -306,7 +270,7 @@ server_link_window(struct session *src, struct winlink *srcwl,
 	}
 
 	if (dstidx == -1)
-		dstidx = -1 - options_get_number(&dst->options, "base-index");
+		dstidx = -1 - options_get_number(dst->options, "base-index");
 	dstwl = session_attach(dst, srcwl->window, dstidx, cause);
 	if (dstwl == NULL)
 		return (-1);
@@ -345,7 +309,7 @@ server_destroy_pane(struct window_pane *wp)
 		wp->fd = -1;
 	}
 
-	if (options_get_number(&w->options, "remain-on-exit")) {
+	if (options_get_number(w->options, "remain-on-exit")) {
 		if (old_fd == -1)
 			return;
 		screen_write_start(&ctx, wp, &wp->base);
@@ -408,7 +372,7 @@ server_destroy_session(struct session *s)
 	struct client	*c;
 	struct session	*s_new;
 
-	if (!options_get_number(&s->options, "detach-on-destroy"))
+	if (!options_get_number(s->options, "detach-on-destroy"))
 		s_new = server_next_session(s);
 	else
 		s_new = NULL;
@@ -444,7 +408,7 @@ server_check_unattached(void)
 	RB_FOREACH(s, sessions, &sessions) {
 		if (!(s->flags & SESSION_UNATTACHED))
 			continue;
-		if (options_get_number (&s->options, "destroy-unattached"))
+		if (options_get_number (s->options, "destroy-unattached"))
 			session_destroy(s);
 	}
 }
@@ -455,7 +419,7 @@ server_set_identify(struct client *c)
 	struct timeval	tv;
 	int		delay;
 
-	delay = options_get_number(&c->session->options, "display-panes-time");
+	delay = options_get_number(c->session->options, "display-panes-time");
 	tv.tv_sec = delay / 1000;
 	tv.tv_usec = (delay % 1000) * 1000L;
 
@@ -487,22 +451,6 @@ server_callback_identify(unused int fd, unused short events, void *data)
 	server_clear_identify(c);
 }
 
-void
-server_update_event(struct client *c)
-{
-	short	events;
-
-	events = 0;
-	if (!(c->flags & CLIENT_BAD))
-		events |= EV_READ;
-	if (c->ibuf.w.queued > 0)
-		events |= EV_WRITE;
-	if (event_initialized(&c->event))
-		event_del(&c->event);
-	event_set(&c->event, c->ibuf.fd, events, server_client_callback, c);
-	event_add(&c->event, NULL);
-}
-
 /* Push stdout to client if possible. */
 void
 server_push_stdout(struct client *c)
@@ -519,7 +467,7 @@ server_push_stdout(struct client *c)
 	memcpy(data.data, EVBUFFER_DATA(c->stdout_data), size);
 	data.size = size;
 
-	if (server_write_client(c, MSG_STDOUT, &data, sizeof data) == 0)
+	if (proc_send(c->peer, MSG_STDOUT, -1, &data, sizeof data) == 0)
 		evbuffer_drain(c->stdout_data, size);
 }
 
@@ -543,7 +491,7 @@ server_push_stderr(struct client *c)
 	memcpy(data.data, EVBUFFER_DATA(c->stderr_data), size);
 	data.size = size;
 
-	if (server_write_client(c, MSG_STDERR, &data, sizeof data) == 0)
+	if (proc_send(c->peer, MSG_STDERR, -1, &data, sizeof data) == 0)
 		evbuffer_drain(c->stderr_data, size);
 }
 
@@ -573,7 +521,7 @@ server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
 	if (c->stdin_closed)
 		c->stdin_callback(c, 1, c->stdin_callback_data);
 
-	server_write_client(c, MSG_STDIN, NULL, 0);
+	proc_send(c->peer, MSG_STDIN, -1, NULL, 0);
 
 	return (0);
 }

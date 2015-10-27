@@ -229,7 +229,7 @@ tty_start_tty(struct tty *tty)
 		tty_puts(tty, "\033[?1000l\033[?1002l\033[?1006l\033[?1005l");
 
 	if (tty_term_flag(tty->term, TTYC_XT)) {
-		if (options_get_number(&global_options, "focus-events")) {
+		if (options_get_number(global_options, "focus-events")) {
 			tty->flags |= TTY_FOCUS;
 			tty_puts(tty, "\033[?1004h");
 		}
@@ -457,7 +457,7 @@ tty_set_italics(struct tty *tty)
 	const char	*s;
 
 	if (tty_term_has(tty->term, TTYC_SITM)) {
-		s = options_get_string(&global_options, "default-terminal");
+		s = options_get_string(global_options, "default-terminal");
 		if (strcmp(s, "screen") != 0 && strncmp(s, "screen-", 7) != 0) {
 			tty_putcode(tty, TTYC_SITM);
 			return;
@@ -1686,8 +1686,8 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 		return;
 
 	pgc = &wp->colgc;
-	agc = options_get_style(&wp->window->options, "window-active-style");
-	wgc = options_get_style(&wp->window->options, "window-style");
+	agc = options_get_style(wp->window->options, "window-active-style");
+	wgc = options_get_style(wp->window->options, "window-style");
 
 	if (gc->fg == 8 && !(gc->flags & GRID_FLAG_FG256)) {
 		if (pgc->fg != 8 || (pgc->flags & GRID_FLAG_FG256)) {

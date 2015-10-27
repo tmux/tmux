@@ -460,7 +460,7 @@ tty_term_find(char *name, int fd, char **cause)
 	}
 
 	/* Apply terminal overrides. */
-	s = options_get_string(&global_options, "terminal-overrides");
+	s = options_get_string(global_options, "terminal-overrides");
 	tty_term_override(term, s);
 
 	/* Delete curses data. */

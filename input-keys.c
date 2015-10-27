@@ -170,7 +170,7 @@ input_key(struct window_pane *wp, int key, struct mouse_event *m)
 	 * Then try to look this up as an xterm key, if the flag to output them
 	 * is set.
 	 */
-	if (options_get_number(&wp->window->options, "xterm-keys")) {
+	if (options_get_number(wp->window->options, "xterm-keys")) {
 		if ((out = xterm_keys_lookup(key)) != NULL) {
 			bufferevent_write(wp->event, out, strlen(out));
 			free(out);

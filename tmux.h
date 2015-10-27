@@ -683,11 +683,6 @@ struct options_entry {
 	RB_ENTRY(options_entry) entry;
 };
 
-struct options {
-	RB_HEAD(options_tree, options_entry) tree;
-	struct options	*parent;
-};
-
 /* Scheduled job. */
 struct job {
 	enum {
@@ -869,6 +864,7 @@ TAILQ_HEAD(window_panes, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
 
 /* Window structure. */
+struct options;
 struct window {
 	u_int		 id;
 
@@ -902,7 +898,7 @@ struct window {
 #define WINDOW_FORCEHEIGHT 0x4000
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
-	struct options	 options;
+	struct options	*options;
 
 	u_int		 references;
 
@@ -996,7 +992,7 @@ struct session {
 	struct winlink_stack lastw;
 	struct winlinks	 windows;
 
-	struct options	 options;
+	struct options	*options;
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
 	int		 flags;
@@ -1171,8 +1167,10 @@ struct message_entry {
 };
 
 /* Client connection. */
+struct tmuxproc;
+struct tmuxpeer;
 struct client {
-	struct imsgbuf	 ibuf;
+	struct tmuxpeer	*peer;
 
 	pid_t		 pid;
 	int		 fd;
@@ -1210,7 +1208,7 @@ struct client {
 #define CLIENT_STATUS 0x10
 #define CLIENT_REPEAT 0x20
 #define CLIENT_SUSPENDED 0x40
-#define CLIENT_BAD 0x80
+/* 0x80 unused */
 #define CLIENT_IDENTIFY 0x100
 #define CLIENT_DEAD 0x200
 #define CLIENT_BORDERS 0x400
@@ -1406,9 +1404,9 @@ struct options_table_entry {
 #define CMD_BUFFER_USAGE "[-b buffer-name]"
 
 /* tmux.c */
-extern struct options global_options;
-extern struct options global_s_options;
-extern struct options global_w_options;
+extern struct options *global_options;
+extern struct options *global_s_options;
+extern struct options *global_w_options;
 extern struct environ global_environ;
 extern char	*shell_cmd;
 extern int	 debug_level;
@@ -1420,6 +1418,19 @@ int		 checkshell(const char *);
 int		 areshell(const char *);
 void		 setblocking(int, int);
 const char	*find_home(void);
+
+/* proc.c */
+struct imsg;
+int	proc_send(struct tmuxpeer *, enum msgtype, int, const void *, size_t);
+int	proc_send_s(struct tmuxpeer *, enum msgtype, const char *);
+struct tmuxproc *proc_start(const char *, struct event_base *, int,
+	    void (*)(int));
+void	proc_loop(struct tmuxproc *, int (*)(void));
+void	proc_exit(struct tmuxproc *);
+struct tmuxpeer *proc_add_peer(struct tmuxproc *, int,
+	    void (*)(struct imsg *, void *), void *);
+void	proc_remove_peer(struct tmuxpeer *);
+void	proc_kill_peer(struct tmuxpeer *);
 
 /* cfg.c */
 extern int cfg_finished;
@@ -1497,10 +1508,10 @@ void	notify_session_created(struct session *);
 void	notify_session_closed(struct session *);
 
 /* options.c */
-int	options_cmp(struct options_entry *, struct options_entry *);
-RB_PROTOTYPE(options_tree, options_entry, entry, options_cmp);
-void	options_init(struct options *, struct options *);
+struct options *options_create(struct options *);
 void	options_free(struct options *);
+struct options_entry *options_first(struct options *);
+struct options_entry *options_next(struct options_entry *);
 struct options_entry *options_find1(struct options *, const char *);
 struct options_entry *options_find(struct options *, const char *);
 void	options_remove(struct options *, const char *);
@@ -1728,6 +1739,7 @@ void	alerts_reset_all(void);
 void	alerts_queue(struct window *, int);
 
 /* server.c */
+extern struct tmuxproc *server_proc;
 extern struct clients clients;
 extern struct session *marked_session;
 extern struct winlink *marked_winlink;
@@ -1749,16 +1761,10 @@ void	 server_client_create(int);
 int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
 void	 server_client_lost(struct client *);
-void	 server_client_callback(int, short, void *);
 void	 server_client_loop(void);
 
 /* server-fn.c */
 void	 server_fill_environ(struct session *, struct environ *);
-void	 server_write_ready(struct client *);
-int	 server_write_client(struct client *, enum msgtype, const void *,
-	     size_t);
-void	 server_write_session(struct session *, enum msgtype, const void *,
-	     size_t);
 void	 server_redraw_client(struct client *);
 void	 server_status_client(struct client *);
 void	 server_redraw_session(struct session *);
@@ -1781,7 +1787,6 @@ void	 server_destroy_session(struct session *);
 void	 server_check_unattached(void);
 void	 server_set_identify(struct client *);
 void	 server_clear_identify(struct client *);
-void	 server_update_event(struct client *);
 void	 server_push_stdout(struct client *);
 void	 server_push_stderr(struct client *);
 int	 server_set_stdin_callback(struct client *, void (*)(struct client *,
@@ -2111,7 +2116,7 @@ char	*format_window_name(struct window *);
 char	*parse_window_name(const char *);
 
 /* signal.c */
-void	set_signals(void(*)(int, short, void *));
+void	set_signals(void(*)(int, short, void *), void *);
 void	clear_signals(int);
 
 /* control.c */

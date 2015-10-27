@@ -53,7 +53,7 @@ recalculate_sizes(void)
 	int			 flag, has_status, is_zoomed, forced;
 
 	RB_FOREACH(s, sessions, &sessions) {
-		has_status = options_get_number(&s->options, "status");
+		has_status = options_get_number(s->options, "status");
 
 		s->attached = 0;
 		ssx = ssy = UINT_MAX;
@@ -94,7 +94,7 @@ recalculate_sizes(void)
 	RB_FOREACH(w, windows, &windows) {
 		if (w->active == NULL)
 			continue;
-		flag = options_get_number(&w->options, "aggressive-resize");
+		flag = options_get_number(w->options, "aggressive-resize");
 
 		ssx = ssy = UINT_MAX;
 		RB_FOREACH(s, sessions, &sessions) {
@@ -115,12 +115,12 @@ recalculate_sizes(void)
 			continue;
 
 		forced = 0;
-		limit = options_get_number(&w->options, "force-width");
+		limit = options_get_number(w->options, "force-width");
 		if (limit >= PANE_MINIMUM && ssx > limit) {
 			ssx = limit;
 			forced |= WINDOW_FORCEWIDTH;
 		}
-		limit = options_get_number(&w->options, "force-height");
+		limit = options_get_number(w->options, "force-height");
 		if (limit >= PANE_MINIMUM && ssy > limit) {
 			ssy = limit;
 			forced |= WINDOW_FORCEHEIGHT;

@@ -70,9 +70,9 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (self->entry == &cmd_send_prefix_entry) {
 		if (args_has(args, '2'))
-			key = options_get_number(&s->options, "prefix2");
+			key = options_get_number(s->options, "prefix2");
 		else
-			key = options_get_number(&s->options, "prefix");
+			key = options_get_number(s->options, "prefix");
 		window_pane_key(wp, NULL, s, key, NULL);
 		return (CMD_RETURN_NORMAL);
 	}

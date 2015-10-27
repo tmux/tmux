@@ -154,6 +154,7 @@ dist_tmux_SOURCES = \
 	options-table.c \
 	options.c \
 	paste.c \
+	proc.c \
 	resize.c \
 	screen-redraw.c \
 	screen-write.c \

@@ -95,7 +95,7 @@ cmd_move_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	 * session already has the correct winlink id to us, either
 	 * automatically or specified by -s.
 	 */
-	if (!sflag && options_get_number(&src->options, "renumber-windows"))
+	if (!sflag && options_get_number(src->options, "renumber-windows"))
 		session_renumber_windows(src);
 
 	recalculate_sizes();

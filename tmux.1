@@ -143,11 +143,10 @@ session created, and continues to process the rest of the configuration file.
 .It Fl L Ar socket-name
 .Nm
 stores the server socket in a directory under
-.Ev TMUX_TMPDIR ,
-.Ev TMPDIR
-if it is unset, or
+.Ev TMUX_TMPDIR
+or
 .Pa /tmp
-if both are unset.
+if it is unset.
 The default socket is named
 .Em default .
 This option allows a different socket name to be specified, allowing several

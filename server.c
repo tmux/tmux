@@ -42,6 +42,7 @@
 
 struct clients	 clients;
 
+struct tmuxproc	*server_proc;
 int		 server_fd;
 int		 server_exit;
 struct event	 server_ev_accept;
@@ -53,11 +54,11 @@ struct window_pane	*marked_window_pane;
 struct layout_cell	*marked_layout_cell;
 
 int	server_create_socket(void);
-void	server_loop(void);
+int	server_loop(void);
 int	server_should_exit(void);
 void	server_send_exit(void);
-void	server_accept_callback(int, short, void *);
-void	server_signal_callback(int, short, void *);
+void	server_accept(int, short, void *);
+void	server_signal(int);
 void	server_child_signal(void);
 void	server_child_exited(pid_t, int);
 void	server_child_stopped(pid_t, int);
@@ -161,17 +162,11 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 {
 	int	pair[2];
 
-	/* The first client is special and gets a socketpair; create it. */
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, pair) != 0)
 		fatal("socketpair failed");
-	log_debug("starting server");
 
-	switch (fork()) {
-	case -1:
-		fatal("fork failed");
-	case 0:
-		break;
-	default:
+	server_proc = proc_start("server", base, 1, server_signal);
+	if (server_proc == NULL) {
 		close(pair[1]);
 		return (pair[0]);
 	}
@@ -183,21 +178,6 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 		fatal("pledge failed");
 #endif
 
-	/*
-	 * Must daemonise before loading configuration as the PID changes so
-	 * $TMUX would be wrong for sessions created in the config file.
-	 */
-	if (daemon(1, 0) != 0)
-		fatal("daemon failed");
-
-	/* event_init() was called in our parent, need to reinit. */
-	clear_signals(0);
-	if (event_reinit(base) != 0)
-		fatal("event_reinit failed");
-
-	logfile("server");
-	log_debug("server started, pid %ld", (long) getpid());
-
 	RB_INIT(&windows);
 	RB_INIT(&all_window_panes);
 	TAILQ_INIT(&clients);
@@ -208,10 +188,6 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	utf8_build();
 
 	start_time = time(NULL);
-	log_debug("socket path %s", socket_path);
-#ifdef HAVE_SETPROCTITLE
-	setproctitle("server (%s)", socket_path);
-#endif
 
 	server_fd = server_create_socket();
 	if (server_fd == -1)
@@ -229,32 +205,20 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 
 	server_add_accept(0);
 
-	set_signals(server_signal_callback);
-	server_loop();
+	proc_loop(server_proc, server_loop);
 	status_prompt_save_history();
 	exit(0);
 }
 
-/* Main server loop. */
-void
-server_loop(void)
-{
-	while (!server_should_exit()) {
-		log_debug("event dispatch enter");
-		event_loop(EVLOOP_ONCE);
-		log_debug("event dispatch exit");
-
-		server_client_loop();
-	}
-}
-
-/* Check if the server should exit (no more clients or sessions). */
+/* Server loop callback. */
 int
-server_should_exit(void)
+server_loop(void)
 {
 	struct client	*c;
 
-	if (!options_get_number(&global_options, "exit-unattached")) {
+	server_client_loop();
+
+	if (!options_get_number(global_options, "exit-unattached")) {
 		if (!RB_EMPTY(&sessions))
 			return (0);
 	}
@@ -285,10 +249,10 @@ server_send_exit(void)
 	cmd_wait_for_flush();
 
 	TAILQ_FOREACH_SAFE(c, &clients, entry, c1) {
-		if (c->flags & (CLIENT_BAD|CLIENT_SUSPENDED))
+		if (c->flags & CLIENT_SUSPENDED)
 			server_client_lost(c);
 		else
-			server_write_client(c, MSG_SHUTDOWN, NULL, 0);
+			proc_send(c->peer, MSG_SHUTDOWN, -1, NULL, 0);
 		c->session = NULL;
 	}
 
@@ -334,7 +298,7 @@ server_update_socket(void)
 
 /* Callback for server socket. */
 void
-server_accept_callback(int fd, short events, unused void *data)
+server_accept(int fd, short events, unused void *data)
 {
 	struct sockaddr_storage	sa;
 	socklen_t		slen = sizeof sa;
@@ -375,19 +339,19 @@ server_add_accept(int timeout)
 		event_del(&server_ev_accept);
 
 	if (timeout == 0) {
-		event_set(&server_ev_accept,
-		    server_fd, EV_READ, server_accept_callback, NULL);
+		event_set(&server_ev_accept, server_fd, EV_READ, server_accept,
+		    NULL);
 		event_add(&server_ev_accept, NULL);
 	} else {
-		event_set(&server_ev_accept,
-		    server_fd, EV_TIMEOUT, server_accept_callback, NULL);
+		event_set(&server_ev_accept, server_fd, EV_TIMEOUT,
+		    server_accept, NULL);
 		event_add(&server_ev_accept, &tv);
 	}
 }
 
 /* Signal handler. */
 void
-server_signal_callback(int sig, unused short events, unused void *data)
+server_signal(int sig)
 {
 	int	fd;
 

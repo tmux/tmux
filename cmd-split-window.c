@@ -72,7 +72,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	server_fill_environ(s, &env);
 
 	if (args->argc == 0) {
-		cmd = options_get_string(&s->options, "default-command");
+		cmd = options_get_string(s->options, "default-command");
 		if (cmd != NULL && *cmd != '\0') {
 			argc = 1;
 			argv = (char **)&cmd;
@@ -134,9 +134,9 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		else
 			size = (wp->sx * percentage) / 100;
 	}
-	hlimit = options_get_number(&s->options, "history-limit");
+	hlimit = options_get_number(s->options, "history-limit");
 
-	shell = options_get_string(&s->options, "default-shell");
+	shell = options_get_string(s->options, "default-shell");
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 

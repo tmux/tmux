@@ -32,7 +32,7 @@ struct event	ev_sigusr1;
 struct event	ev_sigwinch;
 
 void
-set_signals(void(*handler)(int, short, unused void *))
+set_signals(void (*handler)(int, short, void *), void *arg)
 {
 	struct sigaction	sigact;
 
@@ -49,17 +49,17 @@ set_signals(void(*handler)(int, short, unused void *))
 	if (sigaction(SIGTSTP, &sigact, NULL) != 0)
 		fatal("sigaction failed");
 
-	signal_set(&ev_sighup, SIGHUP, handler, NULL);
+	signal_set(&ev_sighup, SIGHUP, handler, arg);
 	signal_add(&ev_sighup, NULL);
-	signal_set(&ev_sigchld, SIGCHLD, handler, NULL);
+	signal_set(&ev_sigchld, SIGCHLD, handler, arg);
 	signal_add(&ev_sigchld, NULL);
-	signal_set(&ev_sigcont, SIGCONT, handler, NULL);
+	signal_set(&ev_sigcont, SIGCONT, handler, arg);
 	signal_add(&ev_sigcont, NULL);
-	signal_set(&ev_sigterm, SIGTERM, handler, NULL);
+	signal_set(&ev_sigterm, SIGTERM, handler, arg);
 	signal_add(&ev_sigterm, NULL);
-	signal_set(&ev_sigusr1, SIGUSR1, handler, NULL);
+	signal_set(&ev_sigusr1, SIGUSR1, handler, arg);
 	signal_add(&ev_sigusr1, NULL);
-	signal_set(&ev_sigwinch, SIGWINCH, handler, NULL);
+	signal_set(&ev_sigwinch, SIGWINCH, handler, arg);
 	signal_add(&ev_sigwinch, NULL);
 }
 

@@ -84,7 +84,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	layout_init(w, wp);
 
 	if (idx == -1)
-		idx = -1 - options_get_number(&dst_s->options, "base-index");
+		idx = -1 - options_get_number(dst_s->options, "base-index");
 	wl = session_attach(dst_s, w, idx, &cause); /* can't fail */
 	if (!args_has(self->args, 'd'))
 		session_select(dst_s, wl->idx);
