@@ -94,6 +94,7 @@ SRCS=	alerts.c \
 	options-table.c \
 	options.c \
 	paste.c \
+	proc.c \
 	procname.c \
 	resize.c \
 	screen-redraw.c \

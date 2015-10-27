@@ -129,8 +129,8 @@ cmd_find_try_TMUX(struct client *c, struct window *w)
 		return (NULL);
 	if (pid != getpid())
 		return (NULL);
-	log_debug("client %d TMUX is %s (session @%u)", c->ibuf.fd,
-	    envent->value, session);
+	log_debug("client %p TMUX is %s (session @%u)", c, envent->value,
+	    session);
 
 	s = session_find_by_id(session);
 	if (s == NULL || (w != NULL && !session_has(s, w)))
@@ -333,6 +333,8 @@ cmd_find_current_session(struct cmd_find_state *fs)
 {
 	/* If we know the current client, use it. */
 	if (fs->cmdq->client != NULL) {
+		log_debug("%s: have client %p%s", __func__, fs->cmdq->client,
+		    fs->cmdq->client->session == NULL ? "" : " (with session)");
 		if (fs->cmdq->client->session == NULL)
 			return (cmd_find_current_session_with_client(fs));
 		fs->s = fs->cmdq->client->session;
@@ -365,8 +367,11 @@ cmd_find_current_client(struct cmd_q *cmdq)
 	u_int		 	 csize;
 
 	/* If the queue client has a session, use it. */
-	if (cmdq->client != NULL && cmdq->client->session != NULL)
+	if (cmdq->client != NULL && cmdq->client->session != NULL) {
+		log_debug("%s: using cmdq %p client %p", __func__, cmdq,
+		    cmdq->client);
 		return (cmdq->client);
+	}
 
 	/* Otherwise find the current session. */
 	cmd_find_clear_state(&current, cmdq, 0);
@@ -375,6 +380,7 @@ cmd_find_current_client(struct cmd_q *cmdq)
 
 	/* If it is attached, find the best of it's clients. */
 	s = current.s;
+	log_debug("%s: current session $%u %s", __func__, s->id, s->name);
 	if (~s->flags & SESSION_UNATTACHED) {
 		csize = 0;
 		TAILQ_FOREACH(c, &clients, entry) {
@@ -1220,6 +1226,7 @@ cmd_find_client(struct cmd_q *cmdq, const char *target, int quiet)
 		c = cmd_find_current_client(cmdq);
 		if (c == NULL && !quiet)
 			cmdq_error(cmdq, "no current client");
+		log_debug("%s: no target, return %p", __func__, c);
 		return (c);
 	}
 	copy = xstrdup(target);
@@ -1251,6 +1258,7 @@ cmd_find_client(struct cmd_q *cmdq, const char *target, int quiet)
 		cmdq_error(cmdq, "can't find client %s", copy);
 
 	free(copy);
+	log_debug("%s: target %s, return %p", __func__, target, c);
 	return (c);
 }
 

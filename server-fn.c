@@ -17,7 +17,10 @@
  */
 
 #include <sys/types.h>
+#include <sys/queue.h>
+#include <sys/uio.h>
 
+#include <imsg.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -45,43 +48,6 @@ server_fill_environ(struct session *s, struct environ *env)
 	pid = getpid();
 	xsnprintf(var, sizeof var, "%s,%ld,%u", socket_path, pid, idx);
 	environ_set(env, "TMUX", var);
-}
-
-void
-server_write_ready(struct client *c)
-{
-	if (c->flags & CLIENT_CONTROL)
-		return;
-	server_write_client(c, MSG_READY, NULL, 0);
-}
-
-int
-server_write_client(struct client *c, enum msgtype type, const void *buf,
-    size_t len)
-{
-	struct imsgbuf	*ibuf = &c->ibuf;
-	int              error;
-
-	if (c->flags & CLIENT_BAD)
-		return (-1);
-	log_debug("writing %d to client %p", type, c);
-	error = imsg_compose(ibuf, type, PROTOCOL_VERSION, -1, -1,
-	    (void *) buf, len);
-	if (error == 1)
-		server_update_event(c);
-	return (error == 1 ? 0 : -1);
-}
-
-void
-server_write_session(struct session *s, enum msgtype type, const void *buf,
-    size_t len)
-{
-	struct client	*c;
-
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (c->session == s)
-			server_write_client(c, type, buf, len);
-	}
 }
 
 void
@@ -227,7 +193,7 @@ server_lock_client(struct client *c)
 	tty_raw(&c->tty, tty_term_string(c->tty.term, TTYC_E3));
 
 	c->flags |= CLIENT_SUSPENDED;
-	server_write_client(c, MSG_LOCK, cmd, strlen(cmd) + 1);
+	proc_send_s(c->peer, MSG_LOCK, cmd);
 }
 
 void
@@ -484,22 +450,6 @@ server_callback_identify(unused int fd, unused short events, void *data)
 	server_clear_identify(c);
 }
 
-void
-server_update_event(struct client *c)
-{
-	short	events;
-
-	events = 0;
-	if (!(c->flags & CLIENT_BAD))
-		events |= EV_READ;
-	if (c->ibuf.w.queued > 0)
-		events |= EV_WRITE;
-	if (event_initialized(&c->event))
-		event_del(&c->event);
-	event_set(&c->event, c->ibuf.fd, events, server_client_callback, c);
-	event_add(&c->event, NULL);
-}
-
 /* Push stdout to client if possible. */
 void
 server_push_stdout(struct client *c)
@@ -516,7 +466,7 @@ server_push_stdout(struct client *c)
 	memcpy(data.data, EVBUFFER_DATA(c->stdout_data), size);
 	data.size = size;
 
-	if (server_write_client(c, MSG_STDOUT, &data, sizeof data) == 0)
+	if (proc_send(c->peer, MSG_STDOUT, -1, &data, sizeof data) == 0)
 		evbuffer_drain(c->stdout_data, size);
 }
 
@@ -540,7 +490,7 @@ server_push_stderr(struct client *c)
 	memcpy(data.data, EVBUFFER_DATA(c->stderr_data), size);
 	data.size = size;
 
-	if (server_write_client(c, MSG_STDERR, &data, sizeof data) == 0)
+	if (proc_send(c->peer, MSG_STDERR, -1, &data, sizeof data) == 0)
 		evbuffer_drain(c->stderr_data, size);
 }
 
@@ -570,7 +520,7 @@ server_set_stdin_callback(struct client *c, void (*cb)(struct client *, int,
 	if (c->stdin_closed)
 		c->stdin_callback(c, 1, c->stdin_callback_data);
 
-	server_write_client(c, MSG_STDIN, NULL, 0);
+	proc_send(c->peer, MSG_STDIN, -1, NULL, 0);
 
 	return (0);
 }

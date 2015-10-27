@@ -29,6 +29,7 @@
 #include <pwd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "tmux.h"
@@ -346,9 +347,6 @@ main(int argc, char **argv)
 		exit(1);
 	}
 	free(path);
-
-	/* Set process title. */
-	setproctitle("%s (%s)", __progname, socket_path);
 
 	/* Pass control to the client. */
 	exit(client_main(event_init(), argc, argv, flags));
