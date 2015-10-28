@@ -1693,8 +1693,7 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 		if (pgc->fg != 8 || (pgc->flags & GRID_FLAG_FG256)) {
 			gc->fg = pgc->fg;
 			gc->flags |= (pgc->flags & GRID_FLAG_FG256);
-		} else if (wp == wp->window->active &&
-		    (agc->fg != 8 || (agc->flags & GRID_FLAG_FG256))) {
+		} else if (wp == wp->window->active) {
 			gc->fg = agc->fg;
 			gc->flags |= (agc->flags & GRID_FLAG_FG256);
 		} else {
@@ -1707,8 +1706,7 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 		if (pgc->bg != 8 || (pgc->flags & GRID_FLAG_BG256)) {
 			gc->bg = pgc->bg;
 			gc->flags |= (pgc->flags & GRID_FLAG_BG256);
-		} else if (wp == wp->window->active &&
-		    (agc->bg != 8 || (agc->flags & GRID_FLAG_BG256))) {
+		} else if (wp == wp->window->active) {
 			gc->bg = agc->bg;
 			gc->flags |= (agc->flags & GRID_FLAG_BG256);
 		} else {
