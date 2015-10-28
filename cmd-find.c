@@ -120,7 +120,7 @@ cmd_find_try_TMUX(struct client *c, struct window *w)
 	u_int			 session;
 	struct session		*s;
 
-	envent = environ_find(&c->environ, "TMUX");
+	envent = environ_find(c->environ, "TMUX");
 	if (envent == NULL)
 		return (NULL);
 
