@@ -41,7 +41,7 @@ extern char	*malloc_options;
 struct options	*global_options;	/* server options */
 struct options	*global_s_options;	/* session options */
 struct options	*global_w_options;	/* window options */
-struct environ	 global_environ;
+struct environ	*global_environ;
 
 char		*shell_cmd;
 int		 debug_level;
@@ -275,11 +275,11 @@ main(int argc, char **argv)
 			flags |= CLIENT_UTF8;
 	}
 
-	environ_init(&global_environ);
+	global_environ = environ_create();
 	for (var = environ; *var != NULL; var++)
-		environ_put(&global_environ, *var);
+		environ_put(global_environ, *var);
 	if (getcwd(tmp, sizeof tmp) != NULL)
-		environ_set(&global_environ, "PWD", tmp);
+		environ_set(global_environ, "PWD", tmp);
 
 	global_options = options_create(NULL);
 	options_table_populate_tree(server_options_table, global_options);

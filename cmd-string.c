@@ -126,7 +126,7 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, const char *file,
 				whitespace = argv[0] + strcspn(argv[0], " \t");
 				if (equals == NULL || equals > whitespace)
 					break;
-				environ_put(&global_environ, argv[0]);
+				environ_put(global_environ, argv[0]);
 				argc--;
 				memmove(argv, argv + 1, argc * (sizeof *argv));
 			}
@@ -303,7 +303,7 @@ cmd_string_variable(const char *s, size_t *p)
 	buf = xrealloc(buf, len + 1);
 	buf[len] = '\0';
 
-	envent = environ_find(&global_environ, buf);
+	envent = environ_find(global_environ, buf);
 	free(buf);
 	if (envent == NULL)
 		return (xstrdup(""));
@@ -326,7 +326,7 @@ cmd_string_expand_tilde(const char *s, size_t *p)
 
 	last = cmd_string_getc(s, p);
 	if (last == EOF || last == '/' || last == ' '|| last == '\t') {
-		envent = environ_find(&global_environ, "HOME");
+		envent = environ_find(global_environ, "HOME");
 		if (envent != NULL && *envent->value != '\0')
 			home = envent->value;
 		else if ((pw = getpwuid(getuid())) != NULL)

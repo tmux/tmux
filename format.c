@@ -631,9 +631,9 @@ format_find(struct format_tree *ft, const char *key, int modifiers)
 	if (~modifiers & FORMAT_TIMESTRING) {
 		envent = NULL;
 		if (ft->s != NULL)
-			envent = environ_find(&ft->s->environ, key);
+			envent = environ_find(ft->s->environ, key);
 		if (envent == NULL)
-			envent = environ_find(&global_environ, key);
+			envent = environ_find(global_environ, key);
 		if (envent != NULL) {
 			found = envent->value;
 			goto found;

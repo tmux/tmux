@@ -123,7 +123,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 		if (!Eflag) {
 			update = options_get_string(s->options,
 			    "update-environment");
-			environ_update(update, &c->environ, &s->environ);
+			environ_update(update, c->environ, s->environ);
 		}
 
 		c->session = s;
@@ -154,7 +154,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 		if (!Eflag) {
 			update = options_get_string(s->options,
 			    "update-environment");
-			environ_update(update, &c->environ, &s->environ);
+			environ_update(update, c->environ, s->environ);
 		}
 
 		c->session = s;

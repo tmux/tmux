@@ -120,9 +120,9 @@ session_create(const char *name, int argc, char **argv, const char *path,
 	TAILQ_INIT(&s->lastw);
 	RB_INIT(&s->windows);
 
-	environ_init(&s->environ);
+	s->environ = environ_create();
 	if (env != NULL)
-		environ_copy(env, &s->environ);
+		environ_copy(env, s->environ);
 	s->options = options_create(global_s_options);
 
 	s->tio = NULL;
@@ -190,7 +190,7 @@ session_free(unused int fd, unused short events, void *arg)
 	log_debug("session %s freed (%d references)", s->name, s->references);
 
 	if (s->references == 0) {
-		environ_free(&s->environ);
+		environ_free(s->environ);
 		options_free(s->options);
 
 		free(s->name);
@@ -319,7 +319,7 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 {
 	struct window	*w;
 	struct winlink	*wl;
-	struct environ	 env;
+	struct environ	*env;
 	const char	*shell;
 	u_int		 hlimit;
 
@@ -328,26 +328,26 @@ session_new(struct session *s, const char *name, int argc, char **argv,
 		return (NULL);
 	}
 
-	environ_init(&env);
-	environ_copy(&global_environ, &env);
-	environ_copy(&s->environ, &env);
-	server_fill_environ(s, &env);
+	env = environ_create();
+	environ_copy(global_environ, env);
+	environ_copy(s->environ, env);
+	server_fill_environ(s, env);
 
 	shell = options_get_string(s->options, "default-shell");
 	if (*shell == '\0' || areshell(shell))
 		shell = _PATH_BSHELL;
 
 	hlimit = options_get_number(s->options, "history-limit");
-	w = window_create(name, argc, argv, path, shell, cwd, &env, s->tio,
+	w = window_create(name, argc, argv, path, shell, cwd, env, s->tio,
 	    s->sx, s->sy, hlimit, cause);
 	if (w == NULL) {
 		winlink_remove(&s->windows, wl);
-		environ_free(&env);
+		environ_free(env);
 		return (NULL);
 	}
 	winlink_set_window(wl, w);
 	notify_window_linked(s, w);
-	environ_free(&env);
+	environ_free(env);
 
 	if (options_get_number(s->options, "set-remain-on-exit"))
 		options_set_number(w->options, "remain-on-exit", 1);

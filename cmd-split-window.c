@@ -52,7 +52,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct winlink		*wl;
 	struct window		*w;
 	struct window_pane	*wp, *new_wp = NULL;
-	struct environ		 env;
+	struct environ		*env;
 	const char		*cmd, *path, *shell, *template;
 	char		       **argv, *cause, *new_cause, *cp;
 	u_int			 hlimit;
@@ -67,10 +67,10 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	w = wl->window;
 	server_unzoom_window(w);
 
-	environ_init(&env);
-	environ_copy(&global_environ, &env);
-	environ_copy(&s->environ, &env);
-	server_fill_environ(s, &env);
+	env = environ_create();
+	environ_copy(global_environ, env);
+	environ_copy(s->environ, env);
+	server_fill_environ(s, env);
 
 	if (args->argc == 0) {
 		cmd = options_get_string(s->options, "default-command");
@@ -151,13 +151,13 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	path = NULL;
 	if (cmdq->client != NULL && cmdq->client->session == NULL)
-		envent = environ_find(&cmdq->client->environ, "PATH");
+		envent = environ_find(cmdq->client->environ, "PATH");
 	else
-		envent = environ_find(&s->environ, "PATH");
+		envent = environ_find(s->environ, "PATH");
 	if (envent != NULL)
 		path = envent->value;
 
-	if (window_pane_spawn(new_wp, argc, argv, path, shell, cwd, &env,
+	if (window_pane_spawn(new_wp, argc, argv, path, shell, cwd, env,
 	    s->tio, &cause) != 0)
 		goto error;
 
@@ -170,7 +170,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	} else
 		server_status_session(s);
 
-	environ_free(&env);
+	environ_free(env);
 
 	if (args_has(args, 'P')) {
 		if ((template = args_get(args, 'F')) == NULL)
@@ -193,7 +193,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	return (CMD_RETURN_NORMAL);
 
 error:
-	environ_free(&env);
+	environ_free(env);
 	if (new_wp != NULL) {
 		layout_close_pane(new_wp);
 		window_remove_pane(w, new_wp);

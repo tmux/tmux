@@ -27,6 +27,9 @@
  * Environment - manipulate a set of environment variables.
  */
 
+RB_HEAD(environ, environ_entry);
+int	environ_cmp(struct environ_entry *, struct environ_entry *);
+RB_PROTOTYPE(environ, environ_entry, entry, environ_cmp);
 RB_GENERATE(environ, environ_entry, entry, environ_cmp);
 
 int
@@ -36,25 +39,42 @@ environ_cmp(struct environ_entry *envent1, struct environ_entry *envent2)
 }
 
 /* Initialise the environment. */
-void
-environ_init(struct environ *env)
+struct environ *
+environ_create(void)
 {
+	struct environ	*env;
+
+	env = xcalloc(1, sizeof *env);
 	RB_INIT(env);
+
+	return (env);
 }
 
 /* Free an environment. */
 void
 environ_free(struct environ *env)
 {
-	struct environ_entry	*envent;
+	struct environ_entry	*envent, *envent1;
 
-	while (!RB_EMPTY(env)) {
-		envent = RB_ROOT(env);
+	RB_FOREACH_SAFE(envent, environ, env, envent1) {
 		RB_REMOVE(environ, env, envent);
 		free(envent->name);
 		free(envent->value);
 		free(envent);
 	}
+	free(env);
+}
+
+struct environ_entry *
+environ_first(struct environ *env)
+{
+	return (RB_MIN(environ, env));
+}
+
+struct environ_entry *
+environ_next(struct environ_entry *envent)
+{
+	return (RB_NEXT(environ, env, envent));
 }
 
 /* Copy one environment into another. */

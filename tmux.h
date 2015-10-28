@@ -36,6 +36,15 @@
 extern char    *__progname;
 extern char   **environ;
 
+struct client;
+struct environ;
+struct input_ctx;
+struct mouse_event;
+struct options;
+struct session;
+struct tmuxpeer;
+struct tmuxproc;
+
 /* Default global configuration file. */
 #define TMUX_CONF "/etc/tmux.conf"
 
@@ -762,9 +771,6 @@ struct screen_write_ctx {
  * Window mode. Windows can be in several modes and this is used to call the
  * right function to handle input and output.
  */
-struct client;
-struct session;
-struct mouse_event;
 struct window_mode {
 	struct screen *(*init)(struct window_pane *);
 	void	(*free)(struct window_pane *);
@@ -796,7 +802,6 @@ struct window_choose_data {
 };
 
 /* Child window structure. */
-struct input_ctx;
 struct window_pane {
 	u_int		 id;
 	u_int		 active_point;
@@ -861,7 +866,6 @@ TAILQ_HEAD(window_panes, window_pane);
 RB_HEAD(window_pane_tree, window_pane);
 
 /* Window structure. */
-struct options;
 struct window {
 	u_int		 id;
 
@@ -959,7 +963,6 @@ struct environ_entry {
 
 	RB_ENTRY(environ_entry) entry;
 };
-RB_HEAD(environ, environ_entry);
 
 /* Client session. */
 struct session_group {
@@ -998,7 +1001,7 @@ struct session {
 
 	struct termios	*tio;
 
-	struct environ	 environ;
+	struct environ	*environ;
 
 	int		 references;
 
@@ -1164,8 +1167,6 @@ struct message_entry {
 };
 
 /* Client connection. */
-struct tmuxproc;
-struct tmuxpeer;
 struct client {
 	struct tmuxpeer	*peer;
 
@@ -1177,7 +1178,7 @@ struct client {
 	struct timeval	 creation_time;
 	struct timeval	 activity_time;
 
-	struct environ	 environ;
+	struct environ	*environ;
 
 	char		*title;
 	int		 cwd;
@@ -1404,7 +1405,7 @@ struct options_table_entry {
 extern struct options *global_options;
 extern struct options *global_s_options;
 extern struct options *global_w_options;
-extern struct environ global_environ;
+extern struct environ *global_environ;
 extern char	*shell_cmd;
 extern int	 debug_level;
 extern time_t	 start_time;
@@ -1541,10 +1542,10 @@ void	job_free(struct job *);
 void	job_died(struct job *, int);
 
 /* environ.c */
-int	environ_cmp(struct environ_entry *, struct environ_entry *);
-RB_PROTOTYPE(environ, environ_entry, entry, environ_cmp);
-void	environ_init(struct environ *);
+struct environ *environ_create(void);
 void	environ_free(struct environ *);
+struct environ_entry *environ_first(struct environ *);
+struct environ_entry *environ_next(struct environ_entry *);
 void	environ_copy(struct environ *, struct environ *);
 struct environ_entry *environ_find(struct environ *, const char *);
 void	environ_set(struct environ *, const char *, const char *);

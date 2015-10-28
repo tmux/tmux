@@ -45,7 +45,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window		*w;
 	struct window_pane	*wp;
 	struct session		*s;
-	struct environ		 env;
+	struct environ		*env;
 	const char		*path;
 	char		 	*cause;
 	struct environ_entry	*envent;
@@ -64,10 +64,10 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		}
 	}
 
-	environ_init(&env);
-	environ_copy(&global_environ, &env);
-	environ_copy(&s->environ, &env);
-	server_fill_environ(s, &env);
+	env = environ_create();
+	environ_copy(global_environ, env);
+	environ_copy(s->environ, env);
+	server_fill_environ(s, env);
 
 	wp = TAILQ_FIRST(&w->panes);
 	TAILQ_REMOVE(&w->panes, wp, entry);
@@ -78,17 +78,17 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	path = NULL;
 	if (cmdq->client != NULL && cmdq->client->session == NULL)
-		envent = environ_find(&cmdq->client->environ, "PATH");
+		envent = environ_find(cmdq->client->environ, "PATH");
 	else
-		envent = environ_find(&s->environ, "PATH");
+		envent = environ_find(s->environ, "PATH");
 	if (envent != NULL)
 		path = envent->value;
 
-	if (window_pane_spawn(wp, args->argc, args->argv, path, NULL, -1, &env,
+	if (window_pane_spawn(wp, args->argc, args->argv, path, NULL, -1, env,
 	    s->tio, &cause) != 0) {
 		cmdq_error(cmdq, "respawn window failed: %s", cause);
 		free(cause);
-		environ_free(&env);
+		environ_free(env);
 		server_destroy_pane(wp);
 		return (CMD_RETURN_ERROR);
 	}
@@ -101,6 +101,6 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	recalculate_sizes();
 	server_redraw_window(w);
 
-	environ_free(&env);
+	environ_free(env);
 	return (CMD_RETURN_NORMAL);
 }

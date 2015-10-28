@@ -91,12 +91,12 @@ cmd_show_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct environ_entry	*envent;
 
 	if (args_has(self->args, 'g'))
-		env = &global_environ;
+		env = global_environ;
 	else {
 		s = cmd_find_session(cmdq, args_get(args, 't'), 0);
 		if (s == NULL)
 			return (CMD_RETURN_ERROR);
-		env = &s->environ;
+		env = s->environ;
 	}
 
 	if (args->argc != 0) {
@@ -109,7 +109,10 @@ cmd_show_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	RB_FOREACH(envent, environ, env)
+	envent = environ_first(env);
+	while (envent != NULL) {
 		cmd_show_environment_print(self, cmdq, envent);
+		envent = environ_next(envent);
+	}
 	return (CMD_RETURN_NORMAL);
 }

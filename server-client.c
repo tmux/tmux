@@ -59,7 +59,7 @@ server_client_check_nested(struct client *c)
 	if (c->tty.path == NULL)
 		return (0);
 
-	envent = environ_find(&c->environ, "TMUX");
+	envent = environ_find(c->environ, "TMUX");
 	if (envent == NULL || *envent->value == '\0')
 		return (0);
 
@@ -95,7 +95,7 @@ server_client_create(int fd)
 		fatal("gettimeofday failed");
 	memcpy(&c->activity_time, &c->creation_time, sizeof c->activity_time);
 
-	environ_init(&c->environ);
+	c->environ = environ_create();
 
 	c->fd = -1;
 	c->cwd = -1;
@@ -219,7 +219,7 @@ server_client_lost(struct client *c)
 	cmdq_free(c->cmdq);
 	c->cmdq = NULL;
 
-	environ_free(&c->environ);
+	environ_free(c->environ);
 
 	proc_remove_peer(c->peer);
 	c->peer = NULL;
@@ -1146,7 +1146,7 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_IDENTIFY_ENVIRON string");
 		if (strchr(data, '=') != NULL)
-			environ_put(&c->environ, data);
+			environ_put(c->environ, data);
 		log_debug("client %p IDENTIFY_ENVIRON %s", c, data);
 		break;
 	case MSG_IDENTIFY_CLIENTPID:
