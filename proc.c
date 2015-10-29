@@ -49,7 +49,8 @@ struct tmuxpeer {
 	void		*arg;
 };
 
-static void proc_update_event(struct tmuxpeer *);
+static int	peer_check_version(struct tmuxpeer *, struct imsg *);
+static void	proc_update_event(struct tmuxpeer *);
 
 static void
 proc_event_cb(unused int fd, short events, void *arg)
@@ -57,7 +58,6 @@ proc_event_cb(unused int fd, short events, void *arg)
 	struct tmuxpeer	*peer = arg;
 	ssize_t		 n;
 	struct imsg	 imsg;
-	int		 v;
 
 	if (!(peer->flags & PEER_BAD) && (events & EV_READ)) {
 		if ((n = imsg_read(&peer->ibuf)) == -1 || n == 0) {
@@ -73,14 +73,7 @@ proc_event_cb(unused int fd, short events, void *arg)
 				break;
 			log_debug("peer %p message %d", peer, imsg.hdr.type);
 
-			v = imsg.hdr.peerid;
-			if (imsg.hdr.type != MSG_VERSION &&
-			    v != PROTOCOL_VERSION) {
-				log_debug("peer %p bad version %d", peer, v);
-
-				proc_send(peer, MSG_VERSION, -1, NULL, 0);
-				peer->flags |= PEER_BAD;
-
+			if (peer_check_version(peer, &imsg) != 0) {
 				if (imsg.fd != -1)
 					close(imsg.fd);
 				imsg_free(&imsg);
@@ -113,6 +106,24 @@ proc_signal_cb(int signo, unused short events, void *arg)
 	struct tmuxproc	*tp = arg;
 
 	tp->signalcb(signo);
+}
+
+static int
+peer_check_version(struct tmuxpeer *peer, struct imsg *imsg)
+{
+	int	version;
+
+	version = imsg->hdr.peerid & 0xff;
+	if (imsg->hdr.type != MSG_VERSION && version != PROTOCOL_VERSION) {
+		log_debug("peer %p bad version %d", peer, version);
+
+		proc_send(peer, MSG_VERSION, -1, NULL, 0);
+		peer->flags |= PEER_BAD;
+
+		return (-1);
+	}
+	imsg->hdr.peerid >>= 8;
+	return (0);
 }
 
 static void
