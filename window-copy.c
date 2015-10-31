@@ -1488,7 +1488,7 @@ window_copy_copy_pipe(struct window_pane *wp, struct session *sess,
 	format_defaults(ft, NULL, sess, NULL, wp);
 	expanded = format_expand(ft, arg);
 
-	job = job_run(expanded, sess, -1, NULL, NULL, NULL);
+	job = job_run(expanded, sess, NULL, NULL, NULL, NULL);
 	bufferevent_write(job->event, buf, len);
 
 	free(expanded);

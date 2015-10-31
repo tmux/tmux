@@ -273,8 +273,10 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	client_peer = proc_add_peer(client_proc, fd, client_dispatch, NULL);
 
 	/* Save these before pledge(). */
-	if ((cwd = getcwd(path, sizeof path)) == NULL)
-		cwd = "/";
+	if ((cwd = getcwd(path, sizeof path)) == NULL) {
+		if ((cwd = find_home()) == NULL)
+			cwd = "/";
+	}
 	if ((ttynam = ttyname(STDIN_FILENO)) == NULL)
 		ttynam = "";
 

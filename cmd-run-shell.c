@@ -80,7 +80,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct winlink			*wl = NULL;
 	struct window_pane		*wp = NULL;
 	struct format_tree		*ft;
-	int				 cwd;
+	const char			*cwd;
 
 	if (args_has(args, 't')) {
 		wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp);
@@ -97,7 +97,7 @@ cmd_run_shell_exec(struct cmd *self, struct cmd_q *cmdq)
 		else if (s != NULL)
 			cwd = s->cwd;
 		else
-			cwd = -1;
+			cwd = NULL;
 	}
 
 	ft = format_create();

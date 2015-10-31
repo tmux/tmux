@@ -316,8 +316,8 @@ window_create1(u_int sx, u_int sy)
 
 struct window *
 window_create(const char *name, int argc, char **argv, const char *path,
-    const char *shell, int cwd, struct environ *env, struct termios *tio,
-    u_int sx, u_int sy, u_int hlimit, char **cause)
+    const char *shell, const char *cwd, struct environ *env,
+    struct termios *tio, u_int sx, u_int sy, u_int hlimit, char **cause)
 {
 	struct window		*w;
 	struct window_pane	*wp;
@@ -736,7 +736,7 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	wp->argc = 0;
 	wp->argv = NULL;
 	wp->shell = NULL;
-	wp->cwd = -1;
+	wp->cwd = NULL;
 
 	wp->fd = -1;
 	wp->event = NULL;
@@ -796,7 +796,7 @@ window_pane_destroy(struct window_pane *wp)
 
 	RB_REMOVE(window_pane_tree, &all_window_panes, wp);
 
-	close(wp->cwd);
+	free((void *)wp->cwd);
 	free(wp->shell);
 	cmd_free_argv(wp->argc, wp->argv);
 	free(wp);
@@ -804,12 +804,12 @@ window_pane_destroy(struct window_pane *wp)
 
 int
 window_pane_spawn(struct window_pane *wp, int argc, char **argv,
-    const char *path, const char *shell, int cwd, struct environ *env,
+    const char *path, const char *shell, const char *cwd, struct environ *env,
     struct termios *tio, char **cause)
 {
 	struct winsize	 ws;
 	char		*argv0, *cmd, **argvp, paneid[16];
-	const char	*ptr, *first;
+	const char	*ptr, *first, *home;
 	struct termios	 tio2;
 	int		 i;
 
@@ -826,9 +826,9 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 		free(wp->shell);
 		wp->shell = xstrdup(shell);
 	}
-	if (cwd != -1) {
-		close(wp->cwd);
-		wp->cwd = dup(cwd);
+	if (cwd != NULL) {
+		free((void *)wp->cwd);
+		wp->cwd = xstrdup(cwd);
 	}
 
 	cmd = cmd_stringify_argv(wp->argc, wp->argv);
@@ -847,8 +847,10 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 		free(cmd);
 		return (-1);
 	case 0:
-		if (fchdir(wp->cwd) != 0)
-			chdir("/");
+		if (chdir(wp->cwd) != 0) {
+			if ((home = find_home()) == NULL || chdir(home) != 0)
+				chdir("/");
+		}
 
 		if (tcgetattr(STDIN_FILENO, &tio2) != 0)
 			fatal("tcgetattr failed");

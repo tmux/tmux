@@ -104,8 +104,8 @@ session_find_by_id(u_int id)
 /* Create a new session. */
 struct session *
 session_create(const char *name, int argc, char **argv, const char *path,
-    int cwd, struct environ *env, struct termios *tio, int idx, u_int sx,
-    u_int sy, char **cause)
+    const char *cwd, struct environ *env, struct termios *tio, int idx,
+    u_int sx, u_int sy, char **cause)
 {
 	struct session	*s;
 	struct winlink	*wl;
@@ -114,7 +114,7 @@ session_create(const char *name, int argc, char **argv, const char *path,
 	s->references = 1;
 	s->flags = 0;
 
-	s->cwd = dup(cwd);
+	s->cwd = xstrdup(cwd);
 
 	s->curw = NULL;
 	TAILQ_INIT(&s->lastw);
@@ -224,7 +224,7 @@ session_destroy(struct session *s)
 		winlink_remove(&s->windows, wl);
 	}
 
-	close(s->cwd);
+	free((void *)s->cwd);
 
 	session_unref(s);
 }
@@ -315,7 +315,7 @@ session_previous_session(struct session *s)
 /* Create a new window on a session. */
 struct winlink *
 session_new(struct session *s, const char *name, int argc, char **argv,
-    const char *path, int cwd, int idx, char **cause)
+    const char *path, const char *cwd, int idx, char **cause)
 {
 	struct window	*w;
 	struct winlink	*wl;

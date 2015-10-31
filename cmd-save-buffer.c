@@ -57,10 +57,10 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct client		*c = cmdq->client;
 	struct session          *s;
 	struct paste_buffer	*pb;
-	const char		*path, *bufname, *bufdata, *start, *end;
-	char			*msg;
+	const char		*path, *bufname, *bufdata, *start, *end, *cwd;
+	const char		*flags;
+	char			*msg, *file, resolved[PATH_MAX];
 	size_t			 size, used, msglen, bufsize;
-	int			 cwd, fd;
 	FILE			*f;
 
 	if (!args_has(args, 'b')) {
@@ -97,26 +97,25 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	else if ((s = cmd_find_current(cmdq)) != NULL)
 		cwd = s->cwd;
 	else
-		cwd = AT_FDCWD;
+		cwd = ".";
 
-	f = NULL;
-	if (args_has(self->args, 'a')) {
-		fd = openat(cwd, path, O_CREAT|O_RDWR|O_APPEND, 0600);
-		if (fd != -1)
-			f = fdopen(fd, "ab");
-	} else {
-		fd = openat(cwd, path, O_CREAT|O_RDWR|O_TRUNC, 0600);
-		if (fd != -1)
-			f = fdopen(fd, "wb");
-	}
+	flags = "wb";
+	if (args_has(self->args, 'a'))
+		flags = "ab";
+
+	xasprintf(&file, "%s/%s", cwd, path);
+	if (realpath(file, resolved) == NULL)
+		f = NULL;
+	else
+		f = fopen(resolved, flags);
+	free(file);
 	if (f == NULL) {
-		if (fd != -1)
-			close(fd);
-		cmdq_error(cmdq, "%s: %s", path, strerror(errno));
+		cmdq_error(cmdq, "%s: %s", resolved, strerror(errno));
 		return (CMD_RETURN_ERROR);
 	}
+
 	if (fwrite(bufdata, 1, bufsize, f) != bufsize) {
-		cmdq_error(cmdq, "%s: fwrite error", path);
+		cmdq_error(cmdq, "%s: write error", resolved);
 		fclose(f);
 		return (CMD_RETURN_ERROR);
 	}

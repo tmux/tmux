@@ -63,10 +63,9 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct environ		*env;
 	struct termios		 tio, *tiop;
 	const char		*newname, *target, *update, *errstr, *template;
-	const char		*path;
+	const char		*path, *cwd, *to_free;
 	char		       **argv, *cmd, *cause, *cp;
-	int			 detached, already_attached, idx, cwd, fd = -1;
-	int			 argc;
+	int			 detached, already_attached, idx, argc;
 	u_int			 sx, sy;
 	struct format_tree	*ft;
 	struct environ_entry	*envent;
@@ -118,32 +117,26 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		already_attached = 1;
 
 	/* Get the new session working directory. */
+	to_free = NULL;
 	if (args_has(args, 'c')) {
 		ft = format_create();
 		format_defaults(ft, cmd_find_client(cmdq, NULL, 1), NULL, NULL,
 		    NULL);
-		cp = format_expand(ft, args_get(args, 'c'));
+		to_free = cwd = format_expand(ft, args_get(args, 'c'));
 		format_free(ft);
 
-		if (cp != NULL && *cp != '\0') {
-			fd = open(cp, O_RDONLY|O_DIRECTORY);
-			free(cp);
-			if (fd == -1) {
-				cmdq_error(cmdq, "bad working directory: %s",
-				    strerror(errno));
-				return (CMD_RETURN_ERROR);
-			}
-		} else
-			free(cp);
-		cwd = fd;
+		if (access(cwd, X_OK) != 0) {
+			free((void *)cwd);
+			cmdq_error(cmdq, "bad working directory: %s",
+			    strerror(errno));
+			return (CMD_RETURN_ERROR);
+		}
 	} else if (c != NULL && c->session == NULL)
 		cwd = c->cwd;
 	else if ((c0 = cmd_find_client(cmdq, NULL, 1)) != NULL)
 		cwd = c0->session->cwd;
-	else {
-		fd = open(".", O_RDONLY);
-		cwd = fd;
-	}
+	else
+		cwd = ".";
 
 	/*
 	 * If this is a new client, check for nesting and save the termios
@@ -311,12 +304,12 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (!detached)
 		cmdq->client_exit = 0;
 
-	if (fd != -1)
-		close(fd);
+	if (to_free != NULL)
+		free((void *)to_free);
 	return (CMD_RETURN_NORMAL);
 
 error:
-	if (fd != -1)
-		close(fd);
+	if (to_free != NULL)
+		free((void *)to_free);
 	return (CMD_RETURN_ERROR);
 }
