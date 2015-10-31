@@ -1178,7 +1178,6 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 		proc_send(c->peer, MSG_STDIN, -1, NULL, 0);
 
 		c->tty.fd = -1;
-		c->tty.log_fd = -1;
 
 		close(c->fd);
 		c->fd = -1;
