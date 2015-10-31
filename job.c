@@ -40,13 +40,14 @@ struct joblist	all_jobs = LIST_HEAD_INITIALIZER(all_jobs);
 
 /* Start a job running, if it isn't already. */
 struct job *
-job_run(const char *cmd, struct session *s, int cwd,
+job_run(const char *cmd, struct session *s, const char *cwd,
     void (*callbackfn)(struct job *), void (*freefn)(void *), void *data)
 {
 	struct job	*job;
 	struct environ	*env;
 	pid_t		 pid;
 	int		 nullfd, out[2];
+	const char	*home;
 
 	if (socketpair(AF_UNIX, SOCK_STREAM, PF_UNSPEC, out) != 0)
 		return (NULL);
@@ -66,8 +67,10 @@ job_run(const char *cmd, struct session *s, int cwd,
 	case 0:		/* child */
 		clear_signals(1);
 
-		if (cwd != -1 && fchdir(cwd) != 0)
-			chdir("/");
+		if (cwd == NULL || chdir(cwd) != 0) {
+			if ((home = find_home()) == NULL || chdir(home) != 0)
+				chdir("/");
+		}
 
 		environ_push(env);
 		environ_free(env);

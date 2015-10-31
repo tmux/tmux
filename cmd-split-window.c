@@ -52,10 +52,10 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window		*w;
 	struct window_pane	*wp, *new_wp = NULL;
 	struct environ		*env;
-	const char		*cmd, *path, *shell, *template;
+	const char		*cmd, *path, *shell, *template, *cwd, *to_free;
 	char		       **argv, *cause, *new_cause, *cp;
 	u_int			 hlimit;
-	int			 argc, size, percentage, cwd, fd = -1;
+	int			 argc, size, percentage;
 	enum layout_type	 type;
 	struct layout_cell	*lc;
 	struct format_tree	*ft;
@@ -85,24 +85,20 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		argv = args->argv;
 	}
 
+	to_free = NULL;
 	if (args_has(args, 'c')) {
 		ft = format_create();
 		format_defaults(ft, cmd_find_client(cmdq, NULL, 1), s, NULL,
 		    NULL);
-		cp = format_expand(ft, args_get(args, 'c'));
+		to_free = cwd = format_expand(ft, args_get(args, 'c'));
 		format_free(ft);
 
-		if (cp != NULL && *cp != '\0') {
-			fd = open(cp, O_RDONLY|O_DIRECTORY);
-			free(cp);
-			if (fd == -1) {
-				cmdq_error(cmdq, "bad working directory: %s",
-				    strerror(errno));
-				return (CMD_RETURN_ERROR);
-			}
-		} else
-			free(cp);
-		cwd = fd;
+		if (access(cwd, X_OK) != 0) {
+			free((void *)cwd);
+			cmdq_error(cmdq, "bad working directory: %s",
+			    strerror(errno));
+			return (CMD_RETURN_ERROR);
+		}
 	} else if (cmdq->client != NULL && cmdq->client->session == NULL)
 		cwd = cmdq->client->cwd;
 	else
@@ -187,8 +183,8 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 	notify_window_layout_changed(w);
 
-	if (fd != -1)
-		close(fd);
+	if (to_free != NULL)
+		free((void *)to_free);
 	return (CMD_RETURN_NORMAL);
 
 error:
@@ -199,7 +195,8 @@ error:
 	}
 	cmdq_error(cmdq, "create pane failed: %s", cause);
 	free(cause);
-	if (fd != -1)
-		close(fd);
+
+	if (to_free != NULL)
+		free((void *)to_free);
 	return (CMD_RETURN_ERROR);
 }

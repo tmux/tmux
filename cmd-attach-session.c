@@ -51,9 +51,8 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 	struct window_pane	*wp = NULL;
 	const char		*update;
 	char			*cause;
-	int			 fd;
 	struct format_tree	*ft;
-	char			*cp;
+	char			*cwd;
 
 	if (RB_EMPTY(&sessions)) {
 		cmdq_error(cmdq, "no sessions");
@@ -97,18 +96,17 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 		ft = format_create();
 		format_defaults(ft, cmd_find_client(cmdq, NULL, 1), s,
 		    NULL, NULL);
-		cp = format_expand(ft, cflag);
+		cwd = format_expand(ft, cflag);
 		format_free(ft);
 
-		fd = open(cp, O_RDONLY|O_DIRECTORY);
-		free(cp);
-		if (fd == -1) {
+		if (access(cwd, X_OK) != 0) {
+			free((void *)cwd);
 			cmdq_error(cmdq, "bad working directory: %s",
 			    strerror(errno));
 			return (CMD_RETURN_ERROR);
 		}
-		close(s->cwd);
-		s->cwd = fd;
+		free((void *)s->cwd);
+		s->cwd = cwd;
 	}
 
 	if (c->session != NULL) {

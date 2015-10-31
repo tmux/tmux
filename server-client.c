@@ -96,7 +96,7 @@ server_client_create(int fd)
 	c->environ = environ_create();
 
 	c->fd = -1;
-	c->cwd = -1;
+	c->cwd = NULL;
 
 	c->cmdq = cmdq_new(c);
 	c->cmdq->client_exit = 1;
@@ -192,7 +192,7 @@ server_client_lost(struct client *c)
 	screen_free(&c->status);
 
 	free(c->title);
-	close(c->cwd);
+	free((void *)c->cwd);
 
 	evtimer_del(&c->repeat_timer);
 
@@ -1107,7 +1107,7 @@ error:
 void
 server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 {
-	const char	*data;
+	const char	*data, *home;
 	size_t	 	 datalen;
 	int		 flags;
 
@@ -1140,8 +1140,12 @@ server_client_dispatch_identify(struct client *c, struct imsg *imsg)
 	case MSG_IDENTIFY_CWD:
 		if (datalen == 0 || data[datalen - 1] != '\0')
 			fatalx("bad MSG_IDENTIFY_CWD string");
-		if ((c->cwd = open(data, O_RDONLY)) == -1)
-			c->cwd = open("/", O_RDONLY);
+		if (access(data, X_OK) == 0)
+			c->cwd = xstrdup(data);
+		else if ((home = find_home()) != NULL)
+			c->cwd = xstrdup(home);
+		else
+			c->cwd = xstrdup("/");
 		log_debug("client %p IDENTIFY_CWD %s", c, data);
 		break;
 	case MSG_IDENTIFY_STDIN:
