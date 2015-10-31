@@ -99,13 +99,6 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		    NULL);
 		cwd = format_expand(ft, args_get(args, 'c'));
 		format_free(ft);
-
-		if (access(cwd, X_OK) != 0) {
-			free((void *)cwd);
-			cmdq_error(cmdq, "bad working directory: %s",
-			    strerror(errno));
-			return (CMD_RETURN_ERROR);
-		}
 	} else if (cmdq->client != NULL && cmdq->client->session == NULL)
 		cwd = cmdq->client->cwd;
 	else
