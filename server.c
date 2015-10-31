@@ -172,6 +172,9 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	}
 	close(pair[0]);
 
+	if (debug_level > 3)
+		tty_create_log();
+
 #ifdef __OpenBSD__
 	if (pledge("stdio rpath wpath cpath fattr unix recvfd proc exec tty "
 	    "ps", NULL) != 0)

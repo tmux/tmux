@@ -1105,8 +1105,6 @@ struct tty {
 	int		 fd;
 	struct bufferevent *event;
 
-	int		 log_fd;
-
 	struct termios	 tio;
 
 	struct grid_cell cell;
@@ -1558,6 +1556,7 @@ void	environ_update(const char *, struct environ *, struct environ *);
 void	environ_push(struct environ *);
 
 /* tty.c */
+void	tty_create_log(void);
 void	tty_init_termios(int, struct termios *, struct bufferevent *);
 void	tty_raw(struct tty *, const char *);
 void	tty_attributes(struct tty *, const struct grid_cell *,

@@ -121,7 +121,6 @@ peer_check_version(struct tmuxpeer *peer, struct imsg *imsg)
 
 		return (-1);
 	}
-	imsg->hdr.peerid >>= 8;
 	return (0);
 }
 

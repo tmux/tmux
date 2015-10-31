@@ -99,12 +99,6 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 		cwd = format_expand(ft, cflag);
 		format_free(ft);
 
-		if (access(cwd, X_OK) != 0) {
-			free((void *)cwd);
-			cmdq_error(cmdq, "bad working directory: %s",
-			    strerror(errno));
-			return (CMD_RETURN_ERROR);
-		}
 		free((void *)s->cwd);
 		s->cwd = cwd;
 	}

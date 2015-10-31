@@ -31,6 +31,8 @@
 
 #include "tmux.h"
 
+static int tty_log_fd = -1;
+
 void	tty_read_callback(struct bufferevent *, void *);
 void	tty_error_callback(struct bufferevent *, short, void *);
 
@@ -59,6 +61,18 @@ void	tty_default_colours(struct grid_cell *, const struct window_pane *);
 #define tty_pane_full_width(tty, ctx) \
 	((ctx)->xoff == 0 && screen_size_x((ctx)->wp->screen) >= (tty)->sx)
 
+void
+tty_create_log(void)
+{
+	char	name[64];
+
+	xsnprintf(name, sizeof name, "tmux-out-%ld.log", (long)getpid());
+
+	tty_log_fd = open(name, O_WRONLY|O_CREAT|O_TRUNC, 0644);
+	if (tty_log_fd != -1 && fcntl(tty_log_fd, F_SETFD, FD_CLOEXEC) == -1)
+		fatal("fcntl failed");
+}
+
 int
 tty_init(struct tty *tty, struct client *c, int fd, char *term)
 {
@@ -68,7 +82,6 @@ tty_init(struct tty *tty, struct client *c, int fd, char *term)
 		return (-1);
 
 	memset(tty, 0, sizeof *tty);
-	tty->log_fd = -1;
 
 	if (term == NULL || *term == '\0')
 		tty->termname = xstrdup("unknown");
@@ -139,17 +152,6 @@ tty_set_size(struct tty *tty, u_int sx, u_int sy) {
 int
 tty_open(struct tty *tty, char **cause)
 {
-	char	out[64];
-	int	fd;
-
-	if (debug_level > 3) {
-		xsnprintf(out, sizeof out, "tmux-out-%ld.log", (long) getpid());
-		fd = open(out, O_WRONLY|O_CREAT|O_TRUNC, 0644);
-		if (fd != -1 && fcntl(fd, F_SETFD, FD_CLOEXEC) == -1)
-			fatal("fcntl failed");
-		tty->log_fd = fd;
-	}
-
 	tty->term = tty_term_find(tty->termname, tty->fd, cause);
 	if (tty->term == NULL) {
 		tty_close(tty);
@@ -308,11 +310,6 @@ tty_stop_tty(struct tty *tty)
 void
 tty_close(struct tty *tty)
 {
-	if (tty->log_fd != -1) {
-		close(tty->log_fd);
-		tty->log_fd = -1;
-	}
-
 	if (event_initialized(&tty->key_timer))
 		evtimer_del(&tty->key_timer);
 	tty_stop_tty(tty);
@@ -406,8 +403,8 @@ tty_puts(struct tty *tty, const char *s)
 		return;
 	bufferevent_write(tty->event, s, strlen(s));
 
-	if (tty->log_fd != -1)
-		write(tty->log_fd, s, strlen(s));
+	if (tty_log_fd != -1)
+		write(tty_log_fd, s, strlen(s));
 }
 
 void
@@ -438,16 +435,16 @@ tty_putc(struct tty *tty, u_char ch)
 			tty->cx++;
 	}
 
-	if (tty->log_fd != -1)
-		write(tty->log_fd, &ch, 1);
+	if (tty_log_fd != -1)
+		write(tty_log_fd, &ch, 1);
 }
 
 void
 tty_putn(struct tty *tty, const void *buf, size_t len, u_int width)
 {
 	bufferevent_write(tty->event, buf, len);
-	if (tty->log_fd != -1)
-		write(tty->log_fd, buf, len);
+	if (tty_log_fd != -1)
+		write(tty_log_fd, buf, len);
 	tty->cx += width;
 }
 
