@@ -596,7 +596,7 @@ client_dispatch_wait(struct imsg *imsg)
 
 		fprintf(stderr, "protocol version mismatch "
 		    "(client %d, server %u)\n", PROTOCOL_VERSION,
-		    imsg->hdr.peerid);
+		    imsg->hdr.peerid & 0xff);
 		client_exitval = 1;
 		proc_exit(client_proc);
 		break;
