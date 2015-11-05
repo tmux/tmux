@@ -108,7 +108,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 			TAILQ_FOREACH(c_loop, &clients, entry) {
 				if (c_loop->session != s || c == c_loop)
 					continue;
-				proc_send_s(c->peer, MSG_DETACH, s->name);
+				proc_send_s(c_loop->peer, MSG_DETACH, s->name);
 			}
 		}
 
