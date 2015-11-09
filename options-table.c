@@ -50,6 +50,9 @@ const char *options_table_status_position_list[] = {
 const char *options_table_bell_action_list[] = {
 	"none", "any", "current", "other", NULL
 };
+const char *options_pane_border_linestyle_list[] = {
+	"single", "double", NULL
+};
 
 /* Server options. */
 const struct options_table_entry server_options_table[] = {
@@ -611,6 +614,12 @@ const struct options_table_entry window_options_table[] = {
 	  .type = OPTIONS_TABLE_COLOUR,
 	  .default_num = 8,
 	  .style = "pane-border-style"
+	},
+
+	{ .name = "pane-border-linestyle",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .choices = options_pane_border_linestyle_list,
+	  .default_num = 0,
 	},
 
 	{ .name = "pane-border-style",
