@@ -81,8 +81,9 @@ cmd_load_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 		file = xstrdup(path);
 	else
 		xasprintf(&file, "%s/%s", cwd, path);
-	if (realpath(file, resolved) == NULL) {
-		cmdq_error(cmdq, "%s: %s", file, strerror(errno));
+	if (realpath(file, resolved) == NULL &&
+	    strlcpy(resolved, file, sizeof resolved) >= sizeof resolved) {
+		cmdq_error(cmdq, "%s: %s", file, strerror(ENAMETOOLONG));
 		return (CMD_RETURN_ERROR);
 	}
 	f = fopen(resolved, "rb");
