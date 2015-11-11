@@ -102,11 +102,16 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (args_has(self->args, 'a'))
 		flags = "ab";
 
-	xasprintf(&file, "%s/%s", cwd, path);
-	if (realpath(file, resolved) == NULL)
-		f = NULL;
+	if (*path == '/')
+		file = xstrdup(path);
 	else
-		f = fopen(resolved, flags);
+		xasprintf(&file, "%s/%s", cwd, path);
+	if (realpath(file, resolved) == NULL &&
+	    strlcpy(resolved, file, sizeof resolved) >= sizeof resolved) {
+		cmdq_error(cmdq, "%s: %s", file, strerror(ENAMETOOLONG));
+		return (CMD_RETURN_ERROR);
+	}
+	f = fopen(resolved, flags);
 	free(file);
 	if (f == NULL) {
 		cmdq_error(cmdq, "%s: %s", resolved, strerror(errno));
