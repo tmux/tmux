@@ -301,7 +301,6 @@ main(int argc, char **argv)
 	/* Enable UTF-8 if the first client is on UTF-8 terminal. */
 	if (flags & CLIENT_UTF8) {
 		options_set_number(global_s_options, "status-utf8", 1);
-		options_set_number(global_s_options, "mouse-utf8", 1);
 		options_set_number(global_w_options, "utf8", 1);
 	}
 
