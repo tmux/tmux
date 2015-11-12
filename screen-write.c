@@ -112,7 +112,7 @@ screen_write_strlen(const char *fmt, ...)
 {
 	va_list			ap;
 	char   	       	       *msg;
-	struct utf8_data	utf8data;
+	struct utf8_data	ud;
 	u_char 	      	       *ptr;
 	size_t			left, size = 0;
 
@@ -122,17 +122,17 @@ screen_write_strlen(const char *fmt, ...)
 
 	ptr = msg;
 	while (*ptr != '\0') {
-		if (*ptr > 0x7f && utf8_open(&utf8data, *ptr)) {
+		if (*ptr > 0x7f && utf8_open(&ud, *ptr)) {
 			ptr++;
 
 			left = strlen(ptr);
-			if (left < utf8data.size - 1)
+			if (left < ud.size - 1)
 				break;
-			while (utf8_append(&utf8data, *ptr))
+			while (utf8_append(&ud, *ptr))
 				ptr++;
 			ptr++;
 
-			size += utf8data.width;
+			size += ud.width;
 		} else {
 			if (*ptr > 0x1f && *ptr < 0x7f)
 				size++;
@@ -173,7 +173,7 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
     struct grid_cell *gc, const char *fmt, va_list ap)
 {
 	char   		       *msg;
-	struct utf8_data	utf8data;
+	struct utf8_data	ud;
 	u_char 		       *ptr;
 	size_t		 	left, size = 0;
 
@@ -181,27 +181,27 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 
 	ptr = msg;
 	while (*ptr != '\0') {
-		if (*ptr > 0x7f && utf8_open(&utf8data, *ptr)) {
+		if (*ptr > 0x7f && utf8_open(&ud, *ptr)) {
 			ptr++;
 
 			left = strlen(ptr);
-			if (left < utf8data.size - 1)
+			if (left < ud.size - 1)
 				break;
-			while (utf8_append(&utf8data, *ptr))
+			while (utf8_append(&ud, *ptr))
 				ptr++;
 			ptr++;
 
 			if (maxlen > 0 &&
-			    size + utf8data.width > (size_t) maxlen) {
+			    size + ud.width > (size_t) maxlen) {
 				while (size < (size_t) maxlen) {
 					screen_write_putc(ctx, gc, ' ');
 					size++;
 				}
 				break;
 			}
-			size += utf8data.width;
+			size += ud.width;
 
-			grid_cell_set(gc, &utf8data);
+			grid_cell_set(gc, &ud);
 			screen_write_cell(ctx, gc);
 		} else {
 			if (maxlen > 0 && size + 1 > (size_t) maxlen)
@@ -226,7 +226,7 @@ screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
     struct grid_cell *gc, const char *fmt, ...)
 {
 	struct grid_cell	 lgc;
-	struct utf8_data	 utf8data;
+	struct utf8_data	 ud;
 	va_list			 ap;
 	char			*msg;
 	u_char 			*ptr, *last;
@@ -254,27 +254,27 @@ screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			continue;
 		}
 
-		if (*ptr > 0x7f && utf8_open(&utf8data, *ptr)) {
+		if (*ptr > 0x7f && utf8_open(&ud, *ptr)) {
 			ptr++;
 
 			left = strlen(ptr);
-			if (left < utf8data.size - 1)
+			if (left < ud.size - 1)
 				break;
-			while (utf8_append(&utf8data, *ptr))
+			while (utf8_append(&ud, *ptr))
 				ptr++;
 			ptr++;
 
 			if (maxlen > 0 &&
-			    size + utf8data.width > (size_t) maxlen) {
+			    size + ud.width > (size_t) maxlen) {
 				while (size < (size_t) maxlen) {
 					screen_write_putc(ctx, gc, ' ');
 					size++;
 				}
 				break;
 			}
-			size += utf8data.width;
+			size += ud.width;
 
-			grid_cell_set(&lgc, &utf8data);
+			grid_cell_set(&lgc, &ud);
 			screen_write_cell(ctx, &lgc);
 		} else {
 			if (maxlen > 0 && size + 1 > (size_t) maxlen)

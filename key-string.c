@@ -146,7 +146,7 @@ key_string_lookup_string(const char *string)
 	u_short			 u;
 	int			 size;
 	key_code		 modifiers;
-	struct utf8_data	 utf8data;
+	struct utf8_data	 ud;
 	u_int			 i;
 
 	/* Is this a hexadecimal value? */
@@ -173,12 +173,12 @@ key_string_lookup_string(const char *string)
 			return (KEYC_NONE);
 	} else {
 		/* Try as a UTF-8 key. */
-		if (utf8_open(&utf8data, (u_char)*string)) {
-			if (strlen(string) != utf8data.size)
+		if (utf8_open(&ud, (u_char)*string)) {
+			if (strlen(string) != ud.size)
 				return (KEYC_NONE);
-			for (i = 1; i < utf8data.size; i++)
-				utf8_append(&utf8data, (u_char)string[i]);
-			key = utf8_combine(&utf8data);
+			for (i = 1; i < ud.size; i++)
+				utf8_append(&ud, (u_char)string[i]);
+			key = utf8_combine(&ud);
 			return (key | modifiers);
 		}
 
@@ -213,7 +213,7 @@ key_string_lookup_key(key_code key)
 	static char		out[24];
 	char			tmp[8];
 	u_int			i;
-	struct utf8_data	utf8data;
+	struct utf8_data	ud;
 
 	*out = '\0';
 
@@ -253,9 +253,9 @@ key_string_lookup_key(key_code key)
 
 	/* Is this a UTF-8 key? */
 	if (key > 127 && key < KEYC_BASE) {
-		if (utf8_split(key, &utf8data) == 0) {
-			memcpy(out, utf8data.data, utf8data.size);
-			out[utf8data.size] = '\0';
+		if (utf8_split(key, &ud) == 0) {
+			memcpy(out, ud.data, ud.size);
+			out[ud.size] = '\0';
 			return (out);
 		}
 	}

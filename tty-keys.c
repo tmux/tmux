@@ -474,7 +474,7 @@ tty_keys_next(struct tty *tty)
 	cc_t			 bspace;
 	int			 delay, expired = 0;
 	key_code		 key;
-	struct utf8_data	 utf8data;
+	struct utf8_data	 ud;
 	u_int			 i;
 
 	/* Get key buffer. */
@@ -539,16 +539,16 @@ first_key:
 	}
 
 	/* Is this valid UTF-8? */
-	if (utf8_open(&utf8data, (u_char)*buf)) {
-		size = utf8data.size;
+	if (utf8_open(&ud, (u_char)*buf)) {
+		size = ud.size;
 		if (len < size) {
 			if (expired)
 				goto discard_key;
 			goto partial_key;
 		}
 		for (i = 1; i < size; i++)
-			utf8_append(&utf8data, (u_char)buf[i]);
-		key = utf8_combine(&utf8data);
+			utf8_append(&ud, (u_char)buf[i]);
+		key = utf8_combine(&ud);
 		log_debug("UTF-8 key %.*s %#llx", (int)size, buf, key);
 		goto complete_key;
 	}
@@ -650,7 +650,7 @@ int
 tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 {
 	struct mouse_event	*m = &tty->mouse;
-	struct utf8_data	 utf8data;
+	struct utf8_data	 ud;
 	u_int			 i, value, x, y, b, sgr_b;
 	u_char			 sgr_type, c;
 
@@ -693,14 +693,14 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 				return (1);
 
 			if (tty->mode & MODE_MOUSE_UTF8) {
-				if (utf8_open(&utf8data, buf[*size])) {
-					if (utf8data.size != 2)
+				if (utf8_open(&ud, buf[*size])) {
+					if (ud.size != 2)
 						return (-1);
 					(*size)++;
 					if (len <= *size)
 						return (1);
-					utf8_append(&utf8data, buf[*size]);
-					value = utf8_combine(&utf8data);
+					utf8_append(&ud, buf[*size]);
+					value = utf8_combine(&ud);
 				} else
 					value = (u_char)buf[*size];
 				(*size)++;
