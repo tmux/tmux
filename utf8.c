@@ -713,3 +713,24 @@ utf8_trimcstr(const char *s, u_int width)
 	free(tmp);
 	return (out);
 }
+
+/* Pad UTF-8 string to width. Caller frees. */
+char *
+utf8_padcstr(const char *s, u_int width)
+{
+	size_t	 slen;
+	char	*out;
+	u_int	  n, i;
+
+	n = utf8_cstrwidth(s);
+	if (n >= width)
+		return (xstrdup(s));
+
+	slen = strlen(s);
+	out = xmalloc(slen + 1 + (width - n));
+	memcpy(out, s, slen);
+	for (i = n; i < width; i++)
+		out[slen++] = ' ';
+	out[slen] = '\0';
+	return (out);
+}
