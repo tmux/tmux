@@ -84,7 +84,7 @@ const struct options_table_entry server_options_table[] = {
 
 	{ .name = "history-file",
 	  .type = OPTIONS_TABLE_STRING,
-	  .default_str = NULL
+	  .default_str = ""
 	},
 
 	{ .name = "message-limit",
