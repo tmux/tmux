@@ -33,11 +33,11 @@
  * into a ternary tree.
  */
 
-void		tty_keys_add1(struct tty_key **, const char *, int);
-void		tty_keys_add(struct tty *, const char *, int);
+void		tty_keys_add1(struct tty_key **, const char *, key_code);
+void		tty_keys_add(struct tty *, const char *, key_code);
 void		tty_keys_free1(struct tty_key *);
-struct tty_key *tty_keys_find1(
-		    struct tty_key *, const char *, size_t, size_t *);
+struct tty_key *tty_keys_find1(struct tty_key *, const char *, size_t,
+		    size_t *);
 struct tty_key *tty_keys_find(struct tty *, const char *, size_t, size_t *);
 void		tty_keys_callback(int, short, void *);
 int		tty_keys_mouse(struct tty *, const char *, size_t, size_t *);
@@ -45,7 +45,7 @@ int		tty_keys_mouse(struct tty *, const char *, size_t, size_t *);
 /* Default raw keys. */
 struct tty_default_key_raw {
 	const char	       *string;
-	int	 	 	key;
+	key_code	 	key;
 };
 const struct tty_default_key_raw tty_default_raw_keys[] = {
 	/*
@@ -165,7 +165,7 @@ const struct tty_default_key_raw tty_default_raw_keys[] = {
 /* Default terminfo(5) keys. */
 struct tty_default_key_code {
 	enum tty_code_code	code;
-	int	 	 	key;
+	key_code	 	key;
 };
 const struct tty_default_key_code tty_default_code_keys[] = {
 	/* Function keys. */
@@ -317,7 +317,7 @@ const struct tty_default_key_code tty_default_code_keys[] = {
 
 /* Add key to tree. */
 void
-tty_keys_add(struct tty *tty, const char *s, int key)
+tty_keys_add(struct tty *tty, const char *s, key_code key)
 {
 	struct tty_key	*tk;
 	size_t		 size;
@@ -325,17 +325,17 @@ tty_keys_add(struct tty *tty, const char *s, int key)
 
 	keystr = key_string_lookup_key(key);
 	if ((tk = tty_keys_find(tty, s, strlen(s), &size)) == NULL) {
-		log_debug("new key %s: 0x%x (%s)", s, key, keystr);
+		log_debug("new key %s: 0x%llx (%s)", s, key, keystr);
 		tty_keys_add1(&tty->key_tree, s, key);
 	} else {
-		log_debug("replacing key %s: 0x%x (%s)", s, key, keystr);
+		log_debug("replacing key %s: 0x%llx (%s)", s, key, keystr);
 		tk->key = key;
 	}
 }
 
 /* Add next node to the tree. */
 void
-tty_keys_add1(struct tty_key **tkp, const char *s, int key)
+tty_keys_add1(struct tty_key **tkp, const char *s, key_code key)
 {
 	struct tty_key	*tk;
 
@@ -464,15 +464,18 @@ tty_keys_find1(struct tty_key *tk, const char *buf, size_t len, size_t *size)
  * Process at least one key in the buffer and invoke tty->key_callback. Return
  * 0 if there are no further keys, or 1 if there could be more in the buffer.
  */
-int
+key_code
 tty_keys_next(struct tty *tty)
 {
-	struct tty_key	*tk;
-	struct timeval	 tv;
-	const char	*buf;
-	size_t		 len, size;
-	cc_t		 bspace;
-	int		 key, delay, expired = 0;
+	struct tty_key		*tk;
+	struct timeval		 tv;
+	const char		*buf;
+	size_t			 len, size;
+	cc_t			 bspace;
+	int			 delay, expired = 0;
+	key_code		 key;
+	struct utf8_data	 utf8data;
+	u_int			 i;
 
 	/* Get key buffer. */
 	buf = EVBUFFER_DATA(tty->event->input);
@@ -535,8 +538,23 @@ first_key:
 		}
 	}
 
+	/* Is this valid UTF-8? */
+	if (utf8_open(&utf8data, (u_char)*buf)) {
+		size = utf8data.size;
+		if (len < size) {
+			if (expired)
+				goto discard_key;
+			goto partial_key;
+		}
+		for (i = 1; i < size; i++)
+			utf8_append(&utf8data, (u_char)buf[i]);
+		key = utf8_combine(&utf8data);
+		log_debug("UTF-8 key %.*s %#llx", (int)size, buf, key);
+		goto complete_key;
+	}
+
 	/* No key found, take first. */
-	key = (u_char) *buf;
+	key = (u_char)*buf;
 	size = 1;
 
 	/*
@@ -578,7 +596,7 @@ partial_key:
 	return (0);
 
 complete_key:
-	log_debug("complete key %.*s %#x", (int) size, buf, key);
+	log_debug("complete key %.*s %#llx", (int)size, buf, key);
 
 	/* Remove data from buffer. */
 	evbuffer_drain(tty->event->input, size);
@@ -604,7 +622,7 @@ complete_key:
 	return (1);
 
 discard_key:
-	log_debug("discard key %.*s %#x", (int) size, buf, key);
+	log_debug("discard key %.*s %#llx", (int)size, buf, key);
 
 	/* Remove data from buffer. */
 	evbuffer_drain(tty->event->input, size);
@@ -684,10 +702,10 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 					utf8_append(&utf8data, buf[*size]);
 					value = utf8_combine(&utf8data);
 				} else
-					value = (u_char) buf[*size];
+					value = (u_char)buf[*size];
 				(*size)++;
 			} else {
-				value = (u_char) buf[*size];
+				value = (u_char)buf[*size];
 				(*size)++;
 			}
 

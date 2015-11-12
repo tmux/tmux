@@ -32,22 +32,22 @@
 
 #include "tmux.h"
 
-void	server_client_key_table(struct client *, const char *);
-void	server_client_free(int, short, void *);
-void	server_client_check_focus(struct window_pane *);
-void	server_client_check_resize(struct window_pane *);
-int	server_client_check_mouse(struct client *);
-void	server_client_repeat_timer(int, short, void *);
-void	server_client_check_exit(struct client *);
-void	server_client_check_redraw(struct client *);
-void	server_client_set_title(struct client *);
-void	server_client_reset_state(struct client *);
-int	server_client_assume_paste(struct session *);
+void		server_client_key_table(struct client *, const char *);
+void		server_client_free(int, short, void *);
+void		server_client_check_focus(struct window_pane *);
+void		server_client_check_resize(struct window_pane *);
+key_code	server_client_check_mouse(struct client *);
+void		server_client_repeat_timer(int, short, void *);
+void		server_client_check_exit(struct client *);
+void		server_client_check_redraw(struct client *);
+void		server_client_set_title(struct client *);
+void		server_client_reset_state(struct client *);
+int		server_client_assume_paste(struct session *);
 
-void	server_client_dispatch(struct imsg *, void *);
-void	server_client_dispatch_command(struct client *, struct imsg *);
-void	server_client_dispatch_identify(struct client *, struct imsg *);
-void	server_client_dispatch_shell(struct client *);
+void		server_client_dispatch(struct imsg *, void *);
+void		server_client_dispatch_command(struct client *, struct imsg *);
+void		server_client_dispatch_identify(struct client *, struct imsg *);
+void		server_client_dispatch_shell(struct client *);
 
 /* Check if this client is inside this server. */
 int
@@ -257,7 +257,7 @@ server_client_free(unused int fd, unused short events, void *arg)
 }
 
 /* Check for mouse keys. */
-int
+key_code
 server_client_check_mouse(struct client *c)
 {
 	struct session				*s = c->session;
@@ -267,7 +267,7 @@ server_client_check_mouse(struct client *c)
 	enum { NOTYPE, DOWN, UP, DRAG, WHEEL }	 type = NOTYPE;
 	enum { NOWHERE, PANE, STATUS, BORDER }	 where = NOWHERE;
 	u_int					 x, y, b;
-	int					 key;
+	key_code				 key;
 
 	log_debug("mouse %02x at %u,%u (last %u,%u) (%d)", m->b, m->x, m->y,
 	    m->lx, m->ly, c->tty.mouse_drag_flag);
@@ -501,7 +501,7 @@ server_client_assume_paste(struct session *s)
 
 /* Handle data key input from client. */
 void
-server_client_handle_key(struct client *c, int key)
+server_client_handle_key(struct client *c, key_code key)
 {
 	struct mouse_event	*m = &c->tty.mouse;
 	struct session		*s = c->session;
@@ -635,8 +635,8 @@ retry:
 	 * No match, but in the root table. Prefix switches to the prefix table
 	 * and everything else is passed through.
 	 */
-	if (key == options_get_number(s->options, "prefix") ||
-	    key == options_get_number(s->options, "prefix2")) {
+	if (key == (key_code)options_get_number(s->options, "prefix") ||
+	    key == (key_code)options_get_number(s->options, "prefix2")) {
 		server_client_key_table(c, "prefix");
 		server_status_client(c);
 		return;

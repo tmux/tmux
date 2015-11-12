@@ -1102,7 +1102,7 @@ window_pane_reset_mode(struct window_pane *wp)
 
 void
 window_pane_key(struct window_pane *wp, struct client *c, struct session *s,
-    int key, struct mouse_event *m)
+    key_code key, struct mouse_event *m)
 {
 	struct window_pane	*wp2;
 

@@ -57,6 +57,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 	char			 tmp[BUFSIZ];
 	size_t			 used;
 	int			 repeat, width, tablewidth, keywidth;
+	u_int			 i;
 
 	if (self->entry == &cmd_list_commands_entry)
 		return (cmd_list_keys_commands(self, cmdq));
@@ -83,8 +84,8 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 
 			width = strlen(table->name);
 			if (width > tablewidth)
-				tablewidth =width;
-			width = strlen(key);
+				tablewidth = width;
+			width = utf8_cstrwidth(key);
 			if (width > keywidth)
 				keywidth = width;
 		}
@@ -102,8 +103,12 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 				r = "-r ";
 			else
 				r = "   ";
-			used = xsnprintf(tmp, sizeof tmp, "%s-T %-*s %-*s ", r,
-			    (int)tablewidth, table->name, (int)keywidth, key);
+			used = xsnprintf(tmp, sizeof tmp, "%s-T %-*s %s", r,
+			    (int)tablewidth, table->name, key);
+			for (i = 0; i < keywidth - utf8_cstrwidth(key); i++) {
+				if (strlcat(tmp, " ", sizeof tmp) < sizeof tmp)
+					used++;
+			}
 			if (used < sizeof tmp) {
 				cmd_list_print(bd->cmdlist, tmp + used,
 				    (sizeof tmp) - used);

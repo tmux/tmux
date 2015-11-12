@@ -37,7 +37,11 @@ key_table_cmp(struct key_table *e1, struct key_table *e2)
 int
 key_bindings_cmp(struct key_binding *bd1, struct key_binding *bd2)
 {
-	return (bd1->key - bd2->key);
+	if (bd1->key < bd2->key)
+		return (-1);
+	if (bd1->key > bd2->key)
+		return (1);
+	return (0);
 }
 
 struct key_table *
@@ -80,7 +84,7 @@ key_bindings_unref_table(struct key_table *table)
 }
 
 void
-key_bindings_add(const char *name, int key, int can_repeat,
+key_bindings_add(const char *name, key_code key, int can_repeat,
     struct cmd_list *cmdlist)
 {
 	struct key_table	*table;
@@ -105,7 +109,7 @@ key_bindings_add(const char *name, int key, int can_repeat,
 }
 
 void
-key_bindings_remove(const char *name, int key)
+key_bindings_remove(const char *name, key_code key)
 {
 	struct key_table	*table;
 	struct key_binding	 bd_find, *bd;

@@ -22,12 +22,12 @@
 
 #include "tmux.h"
 
-int	key_string_search_table(const char *);
-int	key_string_get_modifiers(const char **);
+key_code	key_string_search_table(const char *);
+key_code	key_string_get_modifiers(const char **);
 
 const struct {
 	const char     *string;
-	int	 	key;
+	key_code	key;
 } key_string_table[] = {
 	/* Function keys. */
 	{ "F1",		KEYC_F1 },
@@ -98,7 +98,7 @@ const struct {
 };
 
 /* Find key string in table. */
-int
+key_code
 key_string_search_table(const char *string)
 {
 	u_int	i;
@@ -111,10 +111,10 @@ key_string_search_table(const char *string)
 }
 
 /* Find modifiers. */
-int
+key_code
 key_string_get_modifiers(const char **string)
 {
-	int	modifiers;
+	key_code	modifiers;
 
 	modifiers = 0;
 	while (((*string)[0] != '\0') && (*string)[1] == '-') {
@@ -138,13 +138,16 @@ key_string_get_modifiers(const char **string)
 }
 
 /* Lookup a string and convert to a key value. */
-int
+key_code
 key_string_lookup_string(const char *string)
 {
 	static const char	*other = "!#()+,-.0123456789:;<=>?'\r\t";
-	int			 key, modifiers;
+	key_code		 key;
 	u_short			 u;
 	int			 size;
+	key_code		 modifiers;
+	struct utf8_data	 utf8data;
+	u_int			 i;
 
 	/* Is this a hexadecimal value? */
 	if (string[0] == '0' && string[1] == 'x') {
@@ -164,11 +167,21 @@ key_string_lookup_string(const char *string)
 		return (KEYC_NONE);
 
 	/* Is this a standard ASCII key? */
-	if (string[1] == '\0') {
-		key = (u_char) string[0];
-		if (key < 32 || key == 127 || key > 255)
+	if (string[1] == '\0' && (u_char)string[0] <= 127) {
+		key = (u_char)string[0];
+		if (key < 32 || key == 127)
 			return (KEYC_NONE);
 	} else {
+		/* Try as a UTF-8 key. */
+		if (utf8_open(&utf8data, (u_char)*string)) {
+			if (strlen(string) != utf8data.size)
+				return (KEYC_NONE);
+			for (i = 1; i < utf8data.size; i++)
+				utf8_append(&utf8data, (u_char)string[i]);
+			key = utf8_combine(&utf8data);
+			return (key | modifiers);
+		}
+
 		/* Otherwise look the key up in the table. */
 		key = key_string_search_table(string);
 		if (key == KEYC_NONE)
@@ -195,11 +208,12 @@ key_string_lookup_string(const char *string)
 
 /* Convert a key code into string format, with prefix if necessary. */
 const char *
-key_string_lookup_key(int key)
+key_string_lookup_key(key_code key)
 {
-	static char	out[24];
-	char		tmp[8];
-	u_int		i;
+	static char		out[24];
+	char			tmp[8];
+	u_int			i;
+	struct utf8_data	utf8data;
 
 	*out = '\0';
 
@@ -237,23 +251,32 @@ key_string_lookup_key(int key)
 		return (out);
 	}
 
+	/* Is this a UTF-8 key? */
+	if (key > 127 && key < KEYC_BASE) {
+		if (utf8_split(key, &utf8data) == 0) {
+			memcpy(out, utf8data.data, utf8data.size);
+			out[utf8data.size] = '\0';
+			return (out);
+		}
+	}
+
 	/* Invalid keys are errors. */
 	if (key == 127 || key > 255) {
-		snprintf(out, sizeof out, "<INVALID#%04x>", key);
+		snprintf(out, sizeof out, "<INVALID#%llx>", key);
 		return (out);
 	}
 
 	/* Check for standard or control key. */
-	if (key >= 0 && key <= 32) {
+	if (key <= 32) {
 		if (key == 0 || key > 26)
-			xsnprintf(tmp, sizeof tmp, "C-%c", 64 + key);
+			xsnprintf(tmp, sizeof tmp, "C-%c", (int)(64 + key));
 		else
-			xsnprintf(tmp, sizeof tmp, "C-%c", 96 + key);
+			xsnprintf(tmp, sizeof tmp, "C-%c", (int)(96 + key));
 	} else if (key >= 32 && key <= 126) {
 		tmp[0] = key;
 		tmp[1] = '\0';
 	} else if (key >= 128)
-		xsnprintf(tmp, sizeof tmp, "\\%o", key);
+		xsnprintf(tmp, sizeof tmp, "\\%llo", key);
 
 	strlcat(out, tmp, sizeof out);
 	return (out);

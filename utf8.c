@@ -394,6 +394,8 @@ utf8_open(struct utf8_data *utf8data, u_char ch)
 int
 utf8_append(struct utf8_data *utf8data, u_char ch)
 {
+	/* XXX this should do validity checks too! */
+
 	if (utf8data->have >= utf8data->size)
 		fatalx("UTF-8 character overflow");
 	if (utf8data->size > sizeof utf8data->data)
@@ -467,16 +469,44 @@ utf8_combine(const struct utf8_data *utf8data)
 	case 3:
 		value = utf8data->data[2] & 0x3f;
 		value |= (utf8data->data[1] & 0x3f) << 6;
-		value |= (utf8data->data[0] & 0x0f) << 12;
+		value |= (utf8data->data[0] & 0xf) << 12;
 		break;
 	case 4:
 		value = utf8data->data[3] & 0x3f;
 		value |= (utf8data->data[2] & 0x3f) << 6;
 		value |= (utf8data->data[1] & 0x3f) << 12;
-		value |= (utf8data->data[0] & 0x07) << 18;
+		value |= (utf8data->data[0] & 0x7) << 18;
 		break;
 	}
 	return (value);
+}
+
+/* Split a UTF-8 character. */
+int
+utf8_split(u_int uc, struct utf8_data *utf8data)
+{
+	if (uc < 0x7f) {
+		utf8data->size = 1;
+		utf8data->data[0] = uc;
+	} else if (uc < 0x7ff) {
+		utf8data->size = 2;
+		utf8data->data[0] = 0xc0 | ((uc >> 6) & 0x1f);
+		utf8data->data[1] = 0x80 | (uc & 0x3f);
+	} else if (uc < 0xffff) {
+		utf8data->size = 3;
+		utf8data->data[0] = 0xe0 | ((uc >> 12) & 0xf);
+		utf8data->data[1] = 0x80 | ((uc >> 6) & 0x3f);
+		utf8data->data[2] = 0x80 | (uc & 0x3f);
+	} else if (uc < 0x1fffff) {
+		utf8data->size = 4;
+		utf8data->data[0] = 0xf0 | ((uc >> 18) & 0x7);
+		utf8data->data[1] = 0x80 | ((uc >> 12) & 0x3f);
+		utf8data->data[2] = 0x80 | ((uc >> 6) & 0x3f);
+		utf8data->data[3] = 0x80 | (uc & 0x3f);
+	} else
+		return (-1);
+	utf8data->width = utf8_width(utf8data);
+	return (0);
 }
 
 /* Split a two-byte UTF-8 character. */

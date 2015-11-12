@@ -40,11 +40,12 @@
  * We accept any but always output the latter (it comes first in the table).
  */
 
-int	xterm_keys_match(const char *, const char *, size_t, size_t *, u_int *);
-int	xterm_keys_modifiers(const char *, size_t, size_t *, u_int *);
+int	xterm_keys_match(const char *, const char *, size_t, size_t *,
+	    key_code *);
+int	xterm_keys_modifiers(const char *, size_t, size_t *, key_code *);
 
 struct xterm_keys_entry {
-	int		 key;
+	key_code	 key;
 	const char	*template;
 };
 
@@ -115,7 +116,7 @@ const struct xterm_keys_entry xterm_keys_table[] = {
  */
 int
 xterm_keys_match(const char *template, const char *buf, size_t len,
-    size_t *size, u_int *modifiers)
+    size_t *size, key_code *modifiers)
 {
 	size_t	pos;
 	int	retval;
@@ -148,7 +149,8 @@ xterm_keys_match(const char *template, const char *buf, size_t len,
 
 /* Find modifiers from buffer. */
 int
-xterm_keys_modifiers(const char *buf, size_t len, size_t *pos, u_int *modifiers)
+xterm_keys_modifiers(const char *buf, size_t len, size_t *pos,
+    key_code *modifiers)
 {
 	u_int	flags;
 
@@ -179,11 +181,12 @@ xterm_keys_modifiers(const char *buf, size_t len, size_t *pos, u_int *modifiers)
  * key), -1 for not found, 1 for partial match.
  */
 int
-xterm_keys_find(const char *buf, size_t len, size_t *size, int *key)
+xterm_keys_find(const char *buf, size_t len, size_t *size, key_code *key)
 {
 	const struct xterm_keys_entry	*entry;
-	u_int				 i, modifiers;
+	u_int				 i;
 	int				 matched;
+	key_code			 modifiers;
 
 	for (i = 0; i < nitems(xterm_keys_table); i++) {
 		entry = &xterm_keys_table[i];
@@ -201,11 +204,11 @@ xterm_keys_find(const char *buf, size_t len, size_t *size, int *key)
 
 /* Lookup a key number from the table. */
 char *
-xterm_keys_lookup(int key)
+xterm_keys_lookup(key_code key)
 {
 	const struct xterm_keys_entry	*entry;
 	u_int				 i;
-	int				 modifiers;
+	key_code			 modifiers;
 	char				*out;
 
 	modifiers = 1;
