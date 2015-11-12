@@ -1138,8 +1138,6 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 	    !!(wp->base.mode & MODE_MOUSE_STANDARD));
 	format_add(ft, "mouse_button_flag", "%d",
 	    !!(wp->base.mode & MODE_MOUSE_BUTTON));
-	format_add(ft, "mouse_utf8_flag", "%d",
-	    !!(wp->base.mode & MODE_MOUSE_UTF8));
 
 	format_add_cb(ft, "pane_tabs", format_cb_pane_tabs);
 }
