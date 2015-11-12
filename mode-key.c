@@ -40,7 +40,7 @@
 
 /* Entry in the default mode key tables. */
 struct mode_key_entry {
-	int			key;
+	key_code		key;
 
 	/*
 	 * Editing mode for vi: 0 is edit mode, keys not in the table are
@@ -523,9 +523,15 @@ RB_GENERATE(mode_key_tree, mode_key_binding, entry, mode_key_cmp);
 int
 mode_key_cmp(struct mode_key_binding *mbind1, struct mode_key_binding *mbind2)
 {
-	if (mbind1->mode != mbind2->mode)
-		return (mbind1->mode - mbind2->mode);
-	return (mbind1->key - mbind2->key);
+	if (mbind1->mode < mbind2->mode)
+		return (-1);
+	if (mbind1->mode > mbind2->mode)
+		return (1);
+	if (mbind1->key < mbind2->key)
+		return (-1);
+	if (mbind1->key > mbind2->key)
+		return (1);
+	return (0);
 }
 
 const char *
@@ -588,7 +594,7 @@ mode_key_init(struct mode_key_data *mdata, struct mode_key_tree *mtree)
 }
 
 enum mode_key_cmd
-mode_key_lookup(struct mode_key_data *mdata, int key, const char **arg)
+mode_key_lookup(struct mode_key_data *mdata, key_code key, const char **arg)
 {
 	struct mode_key_binding	*mbind, mtmp;
 

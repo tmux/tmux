@@ -26,8 +26,9 @@
  * Unbind key from command.
  */
 
-enum cmd_retval	 cmd_unbind_key_exec(struct cmd *, struct cmd_q *);
-enum cmd_retval	 cmd_unbind_key_mode_table(struct cmd *, struct cmd_q *, int);
+enum cmd_retval	cmd_unbind_key_exec(struct cmd *, struct cmd_q *);
+enum cmd_retval	cmd_unbind_key_mode_table(struct cmd *, struct cmd_q *,
+		    key_code);
 
 const struct cmd_entry cmd_unbind_key_entry = {
 	"unbind-key", "unbind",
@@ -41,7 +42,7 @@ enum cmd_retval
 cmd_unbind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
-	int		 key;
+	key_code	 key;
 	const char	*tablename;
 
 	if (!args_has(args, 'a')) {
@@ -95,7 +96,7 @@ cmd_unbind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 }
 
 enum cmd_retval
-cmd_unbind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, int key)
+cmd_unbind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, key_code key)
 {
 	struct args			*args = self->args;
 	const char			*tablename;

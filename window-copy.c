@@ -28,9 +28,9 @@ struct screen *window_copy_init(struct window_pane *);
 void	window_copy_free(struct window_pane *);
 void	window_copy_resize(struct window_pane *, u_int, u_int);
 void	window_copy_key(struct window_pane *, struct client *, struct session *,
-	    int, struct mouse_event *);
-int	window_copy_key_input(struct window_pane *, int);
-int	window_copy_key_numeric_prefix(struct window_pane *, int);
+	    key_code, struct mouse_event *);
+int	window_copy_key_input(struct window_pane *, key_code);
+int	window_copy_key_numeric_prefix(struct window_pane *, key_code);
 
 void	window_copy_redraw_selection(struct window_pane *, u_int);
 void	window_copy_redraw_lines(struct window_pane *, u_int, u_int);
@@ -280,13 +280,11 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 	struct screen			*backing = data->backing;
 	struct screen_write_ctx	 	 back_ctx, ctx;
 	struct grid_cell		 gc;
-	int				 utf8flag;
 	u_int				 old_hsize, old_cy;
 
 	if (backing == &wp->base)
 		return;
 
-	utf8flag = options_get_number(wp->window->options, "utf8");
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 
 	old_hsize = screen_hsize(data->backing);
@@ -301,7 +299,7 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 	} else
 		data->backing_written = 1;
 	old_cy = backing->cy;
-	screen_write_vnputs(&back_ctx, 0, &gc, utf8flag, fmt, ap);
+	screen_write_vnputs(&back_ctx, 0, &gc, fmt, ap);
 	screen_write_stop(&back_ctx);
 
 	data->oy += screen_hsize(data->backing) - old_hsize;
@@ -368,7 +366,7 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 
 void
 window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
-    int key, struct mouse_event *m)
+    key_code key, struct mouse_event *m)
 {
 	const char			*word_separators;
 	struct window_copy_mode_data	*data = wp->modedata;
@@ -800,7 +798,7 @@ input_off:
 }
 
 int
-window_copy_key_input(struct window_pane *wp, int key)
+window_copy_key_input(struct window_pane *wp, key_code key)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -897,7 +895,7 @@ window_copy_key_input(struct window_pane *wp, int key)
 }
 
 int
-window_copy_key_numeric_prefix(struct window_pane *wp, int key)
+window_copy_key_numeric_prefix(struct window_pane *wp, key_code key)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -1021,19 +1019,18 @@ window_copy_search_up(struct window_pane *wp, const char *searchstr)
 	struct grid_cell	 	 gc;
 	size_t				 searchlen;
 	u_int				 i, last, fx, fy, px;
-	int				 utf8flag, n, wrapped, wrapflag, cis;
+	int				 n, wrapped, wrapflag, cis;
 	const char			*ptr;
 
 	if (*searchstr == '\0')
 		return;
-	utf8flag = options_get_number(wp->window->options, "utf8");
 	wrapflag = options_get_number(wp->window->options, "wrap-search");
-	searchlen = screen_write_strlen(utf8flag, "%s", searchstr);
+	searchlen = screen_write_strlen("%s", searchstr);
 
 	screen_init(&ss, searchlen, 1, 0);
 	screen_write_start(&ctx, NULL, &ss);
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	screen_write_nputs(&ctx, -1, &gc, utf8flag, "%s", searchstr);
+	screen_write_nputs(&ctx, -1, &gc, "%s", searchstr);
 	screen_write_stop(&ctx);
 
 	fx = data->cx;
@@ -1088,19 +1085,18 @@ window_copy_search_down(struct window_pane *wp, const char *searchstr)
 	struct grid_cell	 	 gc;
 	size_t				 searchlen;
 	u_int				 i, first, fx, fy, px;
-	int				 utf8flag, n, wrapped, wrapflag, cis;
+	int				 n, wrapped, wrapflag, cis;
 	const char			*ptr;
 
 	if (*searchstr == '\0')
 		return;
-	utf8flag = options_get_number(wp->window->options, "utf8");
 	wrapflag = options_get_number(wp->window->options, "wrap-search");
-	searchlen = screen_write_strlen(utf8flag, "%s", searchstr);
+	searchlen = screen_write_strlen("%s", searchstr);
 
 	screen_init(&ss, searchlen, 1, 0);
 	screen_write_start(&ctx, NULL, &ss);
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	screen_write_nputs(&ctx, -1, &gc, utf8flag, "%s", searchstr);
+	screen_write_nputs(&ctx, -1, &gc, "%s", searchstr);
 	screen_write_stop(&ctx);
 
 	fx = data->cx;

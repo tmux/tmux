@@ -133,7 +133,7 @@ void
 cmd_load_buffer_callback(struct client *c, int closed, void *data)
 {
 	const char	*bufname = data;
-	char		*pdata, *cause;
+	char		*pdata, *cause, *saved;
 	size_t		 psize;
 
 	if (!closed)
@@ -154,6 +154,11 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 
 	if (paste_set(pdata, psize, bufname, &cause) != 0) {
 		/* No context so can't use server_client_msg_error. */
+		if (~c->flags & CLIENT_UTF8) {
+			saved = cause;
+			cause = utf8_sanitize(saved);
+			free(saved);
+		}
 		evbuffer_add_printf(c->stderr_data, "%s", cause);
 		server_push_stderr(c);
 		free(pdata);

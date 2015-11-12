@@ -29,11 +29,11 @@ struct screen *window_choose_init(struct window_pane *);
 void	window_choose_free(struct window_pane *);
 void	window_choose_resize(struct window_pane *, u_int, u_int);
 void	window_choose_key(struct window_pane *, struct client *,
-	    struct session *, int, struct mouse_event *);
+	    struct session *, key_code, struct mouse_event *);
 
 void	window_choose_default_callback(struct window_choose_data *);
 struct window_choose_mode_item *window_choose_get_item(struct window_pane *,
-	    int, struct mouse_event *);
+	    key_code, struct mouse_event *);
 
 void	window_choose_fire_callback(
 	    struct window_pane *, struct window_choose_data *);
@@ -86,9 +86,9 @@ struct window_choose_mode_data {
 
 void	window_choose_free1(struct window_choose_mode_data *);
 int     window_choose_key_index(struct window_choose_mode_data *, u_int);
-int     window_choose_index_key(struct window_choose_mode_data *, int);
+int     window_choose_index_key(struct window_choose_mode_data *, key_code);
 void	window_choose_prompt_input(enum window_choose_input_type,
-	    const char *, struct window_pane *, int);
+	    const char *, struct window_pane *, key_code);
 void	window_choose_reset_top(struct window_pane *, u_int);
 
 void
@@ -314,7 +314,7 @@ window_choose_fire_callback(
 
 void
 window_choose_prompt_input(enum window_choose_input_type input_type,
-    const char *prompt, struct window_pane *wp, int key)
+    const char *prompt, struct window_pane *wp, key_code key)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	size_t				 input_len;
@@ -490,7 +490,8 @@ window_choose_expand(struct window_pane *wp, struct session *s, u_int pos)
 }
 
 struct window_choose_mode_item *
-window_choose_get_item(struct window_pane *wp, int key, struct mouse_event *m)
+window_choose_get_item(struct window_pane *wp, key_code key,
+    struct mouse_event *m)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	u_int				 x, y, idx;
@@ -509,7 +510,7 @@ window_choose_get_item(struct window_pane *wp, int key, struct mouse_event *m)
 
 void
 window_choose_key(struct window_pane *wp, unused struct client *c,
-    unused struct session *sess, int key, struct mouse_event *m)
+    unused struct session *sess, key_code key, struct mouse_event *m)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -743,8 +744,8 @@ window_choose_key(struct window_pane *wp, unused struct client *c,
 }
 
 void
-window_choose_write_line(
-    struct window_pane *wp, struct screen_write_ctx *ctx, u_int py)
+window_choose_write_line(struct window_pane *wp, struct screen_write_ctx *ctx,
+    u_int py)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct window_choose_mode_item	*item;
@@ -753,13 +754,12 @@ window_choose_write_line(
 	struct grid_cell		 gc;
 	size_t				 last, xoff = 0;
 	char				 hdr[32], label[32];
-	int				 utf8flag, key;
+	int				 key;
 
 	if (data->callbackfn == NULL)
 		fatalx("called before callback assigned");
 
 	last = screen_size_y(s) - 1;
-	utf8flag = options_get_number(wp->window->options, "utf8");
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	if (data->selected == data->top + py)
 		style_apply(&gc, oo, "mode-style");
@@ -776,7 +776,7 @@ window_choose_write_line(
 			xsnprintf(label, sizeof label, "(%c)", key);
 		else
 			xsnprintf(label, sizeof label, "(%d)", item->pos);
-		screen_write_nputs(ctx, screen_size_x(s) - 1, &gc, utf8flag,
+		screen_write_nputs(ctx, screen_size_x(s) - 1, &gc,
 		    "%*s %s %s", data->width + 2, label,
 		    /*
 		     * Add indication to tree if necessary about whether it's
@@ -821,7 +821,7 @@ window_choose_key_index(struct window_choose_mode_data *data, u_int idx)
 }
 
 int
-window_choose_index_key(struct window_choose_mode_data *data, int key)
+window_choose_index_key(struct window_choose_mode_data *data, key_code key)
 {
 	static const char	keys[] = "0123456789"
 	                                 "abcdefghijklmnopqrstuvwxyz"
@@ -834,7 +834,7 @@ window_choose_index_key(struct window_choose_mode_data *data, int key)
 		mkey = mode_key_lookup(&data->mdata, *ptr, NULL);
 		if (mkey != MODEKEY_NONE && mkey != MODEKEY_OTHER)
 			continue;
-		if (key == *ptr)
+		if (key == (key_code)*ptr)
 			return (idx);
 		idx++;
 	}

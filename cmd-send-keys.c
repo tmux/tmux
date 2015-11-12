@@ -53,7 +53,8 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window_pane	*wp;
 	struct session		*s;
 	const u_char		*str;
-	int			 i, key;
+	int			 i;
+	key_code		 key;
 
 	if (args_has(args, 'M')) {
 		wp = cmd_mouse_pane(m, &s, NULL);

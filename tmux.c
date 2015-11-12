@@ -193,8 +193,9 @@ find_home(void)
 int
 main(int argc, char **argv)
 {
-	char	*s, *path, *label, **var, tmp[PATH_MAX];
-	int	 opt, flags, keys;
+	char		*path, *label, **var, tmp[PATH_MAX];
+	const char	*s;
+	int		 opt, flags, keys;
 
 #if defined(DEBUG) && defined(__OpenBSD__)
 	malloc_options = (char *) "AFGJPX";
@@ -265,20 +266,25 @@ main(int argc, char **argv)
 		err(1, "pledge");
 #endif
 
-	if (!(flags & CLIENT_UTF8)) {
-		/*
-		 * If the user has set whichever of LC_ALL, LC_CTYPE or LANG
-		 * exist (in that order) to contain UTF-8, it is a safe
-		 * assumption that either they are using a UTF-8 terminal, or
-		 * if not they know that output from UTF-8-capable programs may
-		 * be wrong.
-		 */
-		if ((s = getenv("LC_ALL")) == NULL || *s == '\0') {
-			if ((s = getenv("LC_CTYPE")) == NULL || *s == '\0')
-				s = getenv("LANG");
-		}
-		if (s != NULL && (strcasestr(s, "UTF-8") != NULL ||
-		    strcasestr(s, "UTF8") != NULL))
+	/*
+	 * tmux is a UTF-8 terminal, so if TMUX is set, assume UTF-8.
+	 * Otherwise, if the user has set LC_ALL, LC_CTYPE or LANG to contain
+	 * UTF-8, it is a safe assumption that either they are using a UTF-8
+	 * terminal, or if not they know that output from UTF-8-capable
+	 * programs may be wrong.
+	 */
+	if (getenv("TMUX") != NULL)
+		flags |= CLIENT_UTF8;
+	else {
+		s = getenv("LC_ALL");
+		if (s == NULL || *s == '\0')
+			s = getenv("LC_CTYPE");
+		if (s == NULL || *s == '\0')
+			s = getenv("LANG");
+		if (s == NULL || *s == '\0')
+			s = "";
+		if (strcasestr(s, "UTF-8") != NULL ||
+		    strcasestr(s, "UTF8") != NULL)
 			flags |= CLIENT_UTF8;
 	}
 
@@ -297,12 +303,6 @@ main(int argc, char **argv)
 
 	global_w_options = options_create(NULL);
 	options_table_populate_tree(window_options_table, global_w_options);
-
-	/* Enable UTF-8 if the first client is on UTF-8 terminal. */
-	if (flags & CLIENT_UTF8) {
-		options_set_number(global_s_options, "status-utf8", 1);
-		options_set_number(global_w_options, "utf8", 1);
-	}
 
 	/* Override keys to vi if VISUAL or EDITOR are set. */
 	if ((s = getenv("VISUAL")) != NULL || (s = getenv("EDITOR")) != NULL) {

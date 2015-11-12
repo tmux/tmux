@@ -394,7 +394,7 @@ cmd_set_option_key(unused struct cmd *self, struct cmd_q *cmdq,
     const struct options_table_entry *oe, struct options *oo,
     const char *value)
 {
-	int	key;
+	key_code	key;
 
 	if ((key = key_string_lookup_string(value)) == KEYC_NONE) {
 		cmdq_error(cmdq, "bad key: %s", value);

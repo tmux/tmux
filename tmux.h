@@ -98,13 +98,13 @@ struct tmuxproc;
 #define BELL_OTHER 3
 
 /* Special key codes. */
-#define KEYC_NONE 0xfff
-#define KEYC_BASE 0x1000
+#define KEYC_NONE 0xffff00000000ULL
+#define KEYC_BASE 0x100000000000ULL
 
 /* Key modifier bits. */
-#define KEYC_ESCAPE 0x2000
-#define KEYC_CTRL 0x4000
-#define KEYC_SHIFT 0x8000
+#define KEYC_ESCAPE 0x200000000000ULL
+#define KEYC_CTRL   0x400000000000ULL
+#define KEYC_SHIFT  0x800000000000ULL
 
 /* Mask to obtain key w/o modifiers. */
 #define KEYC_MASK_MOD (KEYC_ESCAPE|KEYC_CTRL|KEYC_SHIFT)
@@ -124,8 +124,14 @@ struct tmuxproc;
 	{ #s "Status", KEYC_ ## name ## _STATUS },	\
 	{ #s "Border", KEYC_ ## name ## _BORDER }
 
+/*
+ * A single key. This can be ASCII or Unicode or one of the keys starting at
+ * KEYC_BASE.
+ */
+typedef uint64_t key_code;
+
 /* Special key codes. */
-enum key_code {
+enum {
 	/* Focus events. */
 	KEYC_FOCUS_IN = KEYC_BASE,
 	KEYC_FOCUS_OUT,
@@ -573,7 +579,7 @@ struct mode_key_data {
 
 /* Binding between a key and a command. */
 struct mode_key_binding {
-	int				 key;
+	key_code			 key;
 
 	int				 mode;
 	enum mode_key_cmd		 cmd;
@@ -779,7 +785,7 @@ struct window_mode {
 	void	(*free)(struct window_pane *);
 	void	(*resize)(struct window_pane *, u_int, u_int);
 	void	(*key)(struct window_pane *, struct client *, struct session *,
-		    int, struct mouse_event *);
+		    key_code, struct mouse_event *);
 };
 
 /* Structures for choose mode. */
@@ -1033,31 +1039,31 @@ RB_HEAD(sessions, session);
 
 /* Mouse input. */
 struct mouse_event {
-	int	valid;
+	int		valid;
 
-	int	key;
-	int	statusat;
+	key_code	key;
+	int		statusat;
 
-	u_int	x;
-	u_int	y;
-	u_int	b;
+	u_int		x;
+	u_int		y;
+	u_int		b;
 
-	u_int	lx;
-	u_int	ly;
-	u_int	lb;
+	u_int		lx;
+	u_int		ly;
+	u_int		lb;
 
-	int	s;
-	int	w;
-	int	wp;
+	int		s;
+	int		w;
+	int		wp;
 
-	u_int	sgr_type;
-	u_int	sgr_b;
+	u_int		sgr_type;
+	u_int		sgr_b;
 };
 
 /* TTY information. */
 struct tty_key {
 	char		 ch;
-	int		 key;
+	key_code	 key;
 
 	struct tty_key	*left;
 	struct tty_key	*right;
@@ -1343,7 +1349,7 @@ struct cmd_entry {
 
 /* Key binding and key table. */
 struct key_binding {
-	int			 key;
+	key_code		 key;
 	struct cmd_list		*cmdlist;
 	int			 can_repeat;
 
@@ -1453,7 +1459,7 @@ void		 paste_free(struct paste_buffer *);
 void		 paste_add(char *, size_t);
 int		 paste_rename(const char *, const char *, char **);
 int		 paste_set(char *, size_t, const char *, char **);
-char		*paste_make_sample(struct paste_buffer *, int);
+char		*paste_make_sample(struct paste_buffer *);
 
 /* format.c */
 #define FORMAT_STATUS 0x1
@@ -1472,7 +1478,7 @@ void		 format_defaults_window(struct format_tree *, struct window *);
 void		 format_defaults_pane(struct format_tree *,
 		     struct window_pane *);
 void		 format_defaults_paste_buffer(struct format_tree *,
-		     struct paste_buffer *, int);
+		     struct paste_buffer *);
 
 /* mode-key.c */
 extern const struct mode_key_table mode_key_tables[];
@@ -1491,7 +1497,8 @@ enum mode_key_cmd mode_key_fromstring(const struct mode_key_cmdstr *,
 const struct mode_key_table *mode_key_findtable(const char *);
 void	mode_key_init_trees(void);
 void	mode_key_init(struct mode_key_data *, struct mode_key_tree *);
-enum mode_key_cmd mode_key_lookup(struct mode_key_data *, int, const char **);
+enum mode_key_cmd mode_key_lookup(struct mode_key_data *, key_code,
+	    const char **);
 
 /* notify.c */
 void	notify_enable(void);
@@ -1635,9 +1642,9 @@ const char	*tty_term_describe(struct tty_term *, enum tty_code_code);
 const char	*tty_acs_get(struct tty *, u_char);
 
 /* tty-keys.c */
-void	tty_keys_build(struct tty *);
-void	tty_keys_free(struct tty *);
-int	tty_keys_next(struct tty *);
+void		tty_keys_build(struct tty *);
+void		tty_keys_free(struct tty *);
+key_code	tty_keys_next(struct tty *);
 
 /* arguments.c */
 int		 args_cmp(struct args_entry *, struct args_entry *);
@@ -1723,16 +1730,16 @@ int	 key_table_cmp(struct key_table *, struct key_table *);
 int	 key_bindings_cmp(struct key_binding *, struct key_binding *);
 struct	 key_table *key_bindings_get_table(const char *, int);
 void	 key_bindings_unref_table(struct key_table *);
-void	 key_bindings_add(const char *, int, int, struct cmd_list *);
-void	 key_bindings_remove(const char *, int);
+void	 key_bindings_add(const char *, key_code, int, struct cmd_list *);
+void	 key_bindings_remove(const char *, key_code);
 void	 key_bindings_remove_table(const char *);
 void	 key_bindings_init(void);
 void	 key_bindings_dispatch(struct key_binding *, struct client *,
 	     struct mouse_event *);
 
 /* key-string.c */
-int	 key_string_lookup_string(const char *);
-const char *key_string_lookup_key(int);
+key_code	 key_string_lookup_string(const char *);
+const char	*key_string_lookup_key(key_code);
 
 /* alerts.c */
 void	alerts_reset_all(void);
@@ -1756,7 +1763,7 @@ void	 server_add_accept(int);
 
 /* server-client.c */
 int	 server_client_check_nested(struct client *);
-void	 server_client_handle_key(struct client *, int);
+void	 server_client_handle_key(struct client *, key_code);
 void	 server_client_create(int);
 int	 server_client_open(struct client *, char **);
 void	 server_client_unref(struct client *);
@@ -1806,7 +1813,7 @@ void	 status_prompt_set(struct client *, const char *, const char *,
 	     int (*)(void *, const char *), void (*)(void *), void *, int);
 void	 status_prompt_clear(struct client *);
 int	 status_prompt_redraw(struct client *);
-void	 status_prompt_key(struct client *, int);
+void	 status_prompt_key(struct client *, key_code);
 void	 status_prompt_update(struct client *, const char *, const char *);
 void	 status_prompt_load_history(void);
 void	 status_prompt_save_history(void);
@@ -1822,11 +1829,11 @@ struct evbuffer *input_pending(struct window_pane *);
 void	 input_parse(struct window_pane *);
 
 /* input-key.c */
-void	 input_key(struct window_pane *, int, struct mouse_event *);
+void	 input_key(struct window_pane *, key_code, struct mouse_event *);
 
 /* xterm-keys.c */
-char	*xterm_keys_lookup(int);
-int	 xterm_keys_find(const char *, size_t, size_t *, int *);
+char	*xterm_keys_lookup(key_code);
+int	 xterm_keys_find(const char *, size_t, size_t *, key_code *);
 
 /* colour.c */
 int	 colour_find_rgb(u_char, u_char, u_char);
@@ -1888,24 +1895,24 @@ void	 grid_view_delete_cells(struct grid *, u_int, u_int, u_int);
 char	*grid_view_string_cells(struct grid *, u_int, u_int, u_int);
 
 /* screen-write.c */
-void	 screen_write_start(
-	     struct screen_write_ctx *, struct window_pane *, struct screen *);
+void	 screen_write_start(struct screen_write_ctx *, struct window_pane *,
+	     struct screen *);
 void	 screen_write_stop(struct screen_write_ctx *);
 void	 screen_write_reset(struct screen_write_ctx *);
-size_t printflike(2, 3) screen_write_cstrlen(int, const char *, ...);
-void printflike(5, 6) screen_write_cnputs(struct screen_write_ctx *,
-	     ssize_t, struct grid_cell *, int, const char *, ...);
-size_t printflike(2, 3) screen_write_strlen(int, const char *, ...);
+size_t printflike(1, 2) screen_write_cstrlen(const char *, ...);
+void printflike(4, 5) screen_write_cnputs(struct screen_write_ctx *,
+	     ssize_t, struct grid_cell *, const char *, ...);
+size_t printflike(1, 2) screen_write_strlen(const char *, ...);
 void printflike(3, 4) screen_write_puts(struct screen_write_ctx *,
 	     struct grid_cell *, const char *, ...);
-void printflike(5, 6) screen_write_nputs(struct screen_write_ctx *,
-	     ssize_t, struct grid_cell *, int, const char *, ...);
-void	 screen_write_vnputs(struct screen_write_ctx *,
-	     ssize_t, struct grid_cell *, int, const char *, va_list);
-void	 screen_write_putc(
-	     struct screen_write_ctx *, struct grid_cell *, u_char);
-void	 screen_write_copy(struct screen_write_ctx *,
-	     struct screen *, u_int, u_int, u_int, u_int);
+void printflike(4, 5) screen_write_nputs(struct screen_write_ctx *,
+	     ssize_t, struct grid_cell *, const char *, ...);
+void	 screen_write_vnputs(struct screen_write_ctx *, ssize_t,
+	     struct grid_cell *, const char *, va_list);
+void	 screen_write_putc(struct screen_write_ctx *, struct grid_cell *,
+	     u_char);
+void	 screen_write_copy(struct screen_write_ctx *, struct screen *, u_int,
+	     u_int, u_int, u_int);
 void	 screen_write_backspace(struct screen_write_ctx *);
 void	 screen_write_mode_set(struct screen_write_ctx *, int);
 void	 screen_write_mode_clear(struct screen_write_ctx *, int);
@@ -2023,7 +2030,7 @@ int		 window_pane_set_mode(
 		     struct window_pane *, const struct window_mode *);
 void		 window_pane_reset_mode(struct window_pane *);
 void		 window_pane_key(struct window_pane *, struct client *,
-		     struct session *, int, struct mouse_event *);
+		     struct session *, key_code, struct mouse_event *);
 int		 window_pane_visible(struct window_pane *);
 char		*window_pane_search(
 		     struct window_pane *, const char *, u_int *);
@@ -2182,8 +2189,10 @@ void		 utf8_set(struct utf8_data *, u_char);
 int		 utf8_open(struct utf8_data *, u_char);
 int		 utf8_append(struct utf8_data *, u_char);
 u_int		 utf8_combine(const struct utf8_data *);
+int		 utf8_split(u_int, struct utf8_data *);
 u_int		 utf8_split2(u_int, u_char *);
 int		 utf8_strvis(char *, const char *, size_t, int);
+char		*utf8_sanitize(const char *);
 struct utf8_data *utf8_fromcstr(const char *);
 char		*utf8_tocstr(struct utf8_data *);
 u_int		 utf8_cstrwidth(const char *);
