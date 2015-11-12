@@ -2184,7 +2184,7 @@ void		 session_group_synchronize1(struct session *, struct session *);
 void		 session_renumber_windows(struct session *);
 
 /* utf8.c */
-void		 utf8_build(void);
+u_int		 utf8_width(u_int);
 void		 utf8_set(struct utf8_data *, u_char);
 int		 utf8_open(struct utf8_data *, u_char);
 int		 utf8_append(struct utf8_data *, u_char);
@@ -2197,6 +2197,7 @@ struct utf8_data *utf8_fromcstr(const char *);
 char		*utf8_tocstr(struct utf8_data *);
 u_int		 utf8_cstrwidth(const char *);
 char		*utf8_trimcstr(const char *, u_int);
+char		*utf8_padcstr(const char *, u_int);
 
 /* osdep-*.c */
 char		*osdep_get_name(int, char *);

@@ -34,7 +34,7 @@ struct utf8_width_entry {
 };
 
 /* Sorted, then repeatedly split in the middle to balance the tree. */
-struct utf8_width_entry utf8_width_table[] = {
+static struct utf8_width_entry utf8_width_table[] = {
 	{ 0x00b41, 0x00b44, 0, NULL, NULL },
 	{ 0x008e4, 0x00902, 0, NULL, NULL },
 	{ 0x006d6, 0x006dd, 0, NULL, NULL },
@@ -343,12 +343,9 @@ struct utf8_width_entry utf8_width_table[] = {
 	{ 0xe0100, 0xe01ef, 0, NULL, NULL },
 	{ 0x100000, 0x10fffd, 0, NULL, NULL },
 };
+static struct utf8_width_entry	*utf8_width_root = NULL;
 
-struct utf8_width_entry	*utf8_width_root = NULL;
-
-int	utf8_overlap(struct utf8_width_entry *, struct utf8_width_entry *);
-u_int	utf8_combine(const struct utf8_data *);
-u_int	utf8_width(const struct utf8_data *);
+static void	utf8_build(void);
 
 /* Set a single character. */
 void
@@ -404,39 +401,19 @@ utf8_append(struct utf8_data *utf8data, u_char ch)
 	if (utf8data->have != utf8data->size)
 		return (1);
 
-	utf8data->width = utf8_width(utf8data);
-	return (0);
-}
-
-/* Check if two width tree entries overlap. */
-int
-utf8_overlap(struct utf8_width_entry *item1, struct utf8_width_entry *item2)
-{
-	if (item1->first >= item2->first && item1->first <= item2->last)
-		return (1);
-	if (item1->last >= item2->first && item1->last <= item2->last)
-		return (1);
-	if (item2->first >= item1->first && item2->first <= item1->last)
-		return (1);
-	if (item2->last >= item1->first && item2->last <= item1->last)
-		return (1);
+	utf8data->width = utf8_width(utf8_combine(utf8data));
 	return (0);
 }
 
 /* Build UTF-8 width tree. */
-void
+static void
 utf8_build(void)
 {
 	struct utf8_width_entry	**ptr, *item, *node;
-	u_int			  i, j;
+	u_int			  i;
 
 	for (i = 0; i < nitems(utf8_width_table); i++) {
 		item = &utf8_width_table[i];
-
-		for (j = 0; j < nitems(utf8_width_table); j++) {
-			if (i != j && utf8_overlap(item, &utf8_width_table[j]))
-				log_fatalx("utf8 overlap: %u %u", i, j);
-		}
 
 		ptr = &utf8_width_root;
 		while (*ptr != NULL) {
@@ -448,6 +425,27 @@ utf8_build(void)
 		}
 		*ptr = item;
 	}
+}
+
+/* Lookup width of UTF-8 data in tree. */
+u_int
+utf8_width(u_int uc)
+{
+	struct utf8_width_entry	*item;
+
+	if (utf8_width_root == NULL)
+		utf8_build();
+
+	item = utf8_width_root;
+	while (item != NULL) {
+		if (uc < item->first)
+			item = item->left;
+		else if (uc > item->last)
+			item = item->right;
+		else
+			return (item->width);
+	}
+	return (1);
 }
 
 /* Combine UTF-8 into 32-bit Unicode. */
@@ -480,7 +478,7 @@ utf8_combine(const struct utf8_data *utf8data)
 	return (value);
 }
 
-/* Split a UTF-8 character. */
+/* Split 32-bit Unicode into UTF-8. */
 int
 utf8_split(u_int uc, struct utf8_data *utf8data)
 {
@@ -504,7 +502,7 @@ utf8_split(u_int uc, struct utf8_data *utf8data)
 		utf8data->data[3] = 0x80 | (uc & 0x3f);
 	} else
 		return (-1);
-	utf8data->width = utf8_width(utf8data);
+	utf8data->width = utf8_width(uc);
 	return (0);
 }
 
@@ -518,27 +516,6 @@ utf8_split2(u_int uc, u_char *ptr)
 		return (2);
 	}
 	ptr[0] = uc;
-	return (1);
-}
-
-/* Lookup width of UTF-8 data in tree. */
-u_int
-utf8_width(const struct utf8_data *utf8data)
-{
-	struct utf8_width_entry	*item;
-	u_int			 value;
-
-	value = utf8_combine(utf8data);
-
-	item = utf8_width_root;
-	while (item != NULL) {
-		if (value < item->first)
-			item = item->left;
-		else if (value > item->last)
-			item = item->right;
-		else
-			return (item->width);
-	}
 	return (1);
 }
 
@@ -733,5 +710,26 @@ utf8_trimcstr(const char *s, u_int width)
 
 	out = utf8_tocstr(tmp);
 	free(tmp);
+	return (out);
+}
+
+/* Pad UTF-8 string to width. Caller frees. */
+char *
+utf8_padcstr(const char *s, u_int width)
+{
+	size_t	 slen;
+	char	*out;
+	u_int	  n, i;
+
+	n = utf8_cstrwidth(s);
+	if (n >= width)
+		return (xstrdup(s));
+
+	slen = strlen(s);
+	out = xmalloc(slen + 1 + (width - n));
+	memcpy(out, s, slen);
+	for (i = n; i < width; i++)
+		out[slen++] = ' ';
+	out[slen] = '\0';
 	return (out);
 }

@@ -192,8 +192,8 @@ that UTF-8 is supported.
 .Pp
 Note that
 .Nm
-itself always accepts UTF-8, this controls whether it will send UTF-8
-characters to the terminal it is running it (if not, they are replaced by
+itself always accepts UTF-8; this controls whether it will send UTF-8
+characters to the terminal it is running (if not, they are replaced by
 .Ql _ ) .
 .It Fl v
 Request verbose logging.
@@ -2800,8 +2800,8 @@ As with
 .Ic status-left ,
 .Ar string
 will be passed to
-.Xr strftime 3 ,
-character pairs are replaced.
+.Xr strftime 3
+and character pairs are replaced.
 .It Ic status-right-length Ar length
 Set the maximum
 .Ar length

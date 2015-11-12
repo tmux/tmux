@@ -188,7 +188,6 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	TAILQ_INIT(&session_groups);
 	mode_key_init_trees();
 	key_bindings_init();
-	utf8_build();
 
 	start_time = time(NULL);
 

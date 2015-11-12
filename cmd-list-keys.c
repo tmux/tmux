@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
 #include <string.h>
 
 #include "tmux.h"
@@ -54,10 +55,9 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct key_table	*table;
 	struct key_binding	*bd;
 	const char		*key, *tablename, *r;
-	char			 tmp[BUFSIZ];
+	char			*cp, tmp[BUFSIZ];
 	size_t			 used;
 	int			 repeat, width, tablewidth, keywidth;
-	u_int			 i;
 
 	if (self->entry == &cmd_list_commands_entry)
 		return (cmd_list_keys_commands(self, cmdq));
@@ -82,7 +82,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 			if (bd->can_repeat)
 				repeat = 1;
 
-			width = strlen(table->name);
+			width = utf8_cstrwidth(table->name);
 			if (width > tablewidth)
 				tablewidth = width;
 			width = utf8_cstrwidth(key);
@@ -103,13 +103,20 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 				r = "-r ";
 			else
 				r = "   ";
-			used = xsnprintf(tmp, sizeof tmp, "%s-T %-*s %s", r,
-			    (int)tablewidth, table->name, key);
-			for (i = 0; i < keywidth - utf8_cstrwidth(key); i++) {
-				if (strlcat(tmp, " ", sizeof tmp) < sizeof tmp)
-					used++;
-			}
-			if (used < sizeof tmp) {
+			xsnprintf(tmp, sizeof tmp, "%s-T ", r);
+
+			cp = utf8_padcstr(table->name, tablewidth);
+			strlcat(tmp, cp, sizeof tmp);
+			strlcat(tmp, " ", sizeof tmp);
+			free(cp);
+
+			cp = utf8_padcstr(key, keywidth);
+			strlcat(tmp, cp, sizeof tmp);
+			strlcat(tmp, " ", sizeof tmp);
+			free(cp);
+
+			used = strlen(tmp);
+			if (used < (sizeof tmp) - 1) {
 				cmd_list_print(bd->cmdlist, tmp + used,
 				    (sizeof tmp) - used);
 			}
