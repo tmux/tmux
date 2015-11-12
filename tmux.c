@@ -191,8 +191,9 @@ find_home(void)
 int
 main(int argc, char **argv)
 {
-	char	*s, *path, *label, **var, tmp[PATH_MAX];
-	int	 opt, flags, keys;
+	char		*path, *label, **var, tmp[PATH_MAX];
+	const char	*s;
+	int		 opt, flags, keys;
 
 #ifdef DEBUG
 	malloc_options = (char *) "AFGJPX";
@@ -258,20 +259,25 @@ main(int argc, char **argv)
 	    "proc exec tty ps", NULL) != 0)
 		err(1, "pledge");
 
-	if (!(flags & CLIENT_UTF8)) {
-		/*
-		 * If the user has set whichever of LC_ALL, LC_CTYPE or LANG
-		 * exist (in that order) to contain UTF-8, it is a safe
-		 * assumption that either they are using a UTF-8 terminal, or
-		 * if not they know that output from UTF-8-capable programs may
-		 * be wrong.
-		 */
-		if ((s = getenv("LC_ALL")) == NULL || *s == '\0') {
-			if ((s = getenv("LC_CTYPE")) == NULL || *s == '\0')
-				s = getenv("LANG");
-		}
-		if (s != NULL && (strcasestr(s, "UTF-8") != NULL ||
-		    strcasestr(s, "UTF8") != NULL))
+	/*
+	 * tmux is a UTF-8 terminal, so if TMUX is set, assume UTF-8.
+	 * Otherwise, if the user has set LC_ALL, LC_CTYPE or LANG to contain
+	 * UTF-8, it is a safe assumption that either they are using a UTF-8
+	 * terminal, or if not they know that output from UTF-8-capable
+	 * programs may be wrong.
+	 */
+	if (getenv("TMUX") != NULL)
+		flags |= CLIENT_UTF8;
+	else {
+		s = getenv("LC_ALL");
+		if (s == NULL || *s == '\0')
+			s = getenv("LC_CTYPE");
+		if (s == NULL || *s == '\0')
+			s = getenv("LANG");
+		if (s == NULL || *s == '\0')
+			s = "";
+		if (strcasestr(s, "UTF-8") != NULL ||
+		    strcasestr(s, "UTF8") != NULL)
 			flags |= CLIENT_UTF8;
 	}
 
