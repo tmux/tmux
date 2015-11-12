@@ -416,11 +416,6 @@ const struct options_table_entry session_options_table[] = {
 	  .default_str = "bg=green,fg=black"
 	},
 
-	{ .name = "status-utf8",
-	  .type = OPTIONS_TABLE_FLAG,
-	  .default_num = 0 /* overridden in main() */
-	},
-
 	{ .name = "update-environment",
 	  .type = OPTIONS_TABLE_STRING,
 	  .default_str = "DISPLAY SSH_ASKPASS SSH_AUTH_SOCK SSH_AGENT_PID "
@@ -622,11 +617,6 @@ const struct options_table_entry window_options_table[] = {
 	{ .name = "synchronize-panes",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .default_num = 0
-	},
-
-	{ .name = "utf8",
-	  .type = OPTIONS_TABLE_FLAG,
-	  .default_num = 0 /* overridden in main() */
 	},
 
 	{ .name = "window-active-style",

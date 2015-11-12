@@ -1456,7 +1456,7 @@ void		 paste_free(struct paste_buffer *);
 void		 paste_add(char *, size_t);
 int		 paste_rename(const char *, const char *, char **);
 int		 paste_set(char *, size_t, const char *, char **);
-char		*paste_make_sample(struct paste_buffer *, int);
+char		*paste_make_sample(struct paste_buffer *);
 
 /* format.c */
 #define FORMAT_STATUS 0x1
@@ -1475,7 +1475,7 @@ void		 format_defaults_window(struct format_tree *, struct window *);
 void		 format_defaults_pane(struct format_tree *,
 		     struct window_pane *);
 void		 format_defaults_paste_buffer(struct format_tree *,
-		     struct paste_buffer *, int);
+		     struct paste_buffer *);
 
 /* mode-key.c */
 extern const struct mode_key_table mode_key_tables[];
@@ -1892,24 +1892,24 @@ void	 grid_view_delete_cells(struct grid *, u_int, u_int, u_int);
 char	*grid_view_string_cells(struct grid *, u_int, u_int, u_int);
 
 /* screen-write.c */
-void	 screen_write_start(
-	     struct screen_write_ctx *, struct window_pane *, struct screen *);
+void	 screen_write_start(struct screen_write_ctx *, struct window_pane *,
+	     struct screen *);
 void	 screen_write_stop(struct screen_write_ctx *);
 void	 screen_write_reset(struct screen_write_ctx *);
-size_t printflike(2, 3) screen_write_cstrlen(int, const char *, ...);
-void printflike(5, 6) screen_write_cnputs(struct screen_write_ctx *,
-	     ssize_t, struct grid_cell *, int, const char *, ...);
-size_t printflike(2, 3) screen_write_strlen(int, const char *, ...);
+size_t printflike(1, 2) screen_write_cstrlen(const char *, ...);
+void printflike(4, 5) screen_write_cnputs(struct screen_write_ctx *,
+	     ssize_t, struct grid_cell *, const char *, ...);
+size_t printflike(1, 2) screen_write_strlen(const char *, ...);
 void printflike(3, 4) screen_write_puts(struct screen_write_ctx *,
 	     struct grid_cell *, const char *, ...);
-void printflike(5, 6) screen_write_nputs(struct screen_write_ctx *,
-	     ssize_t, struct grid_cell *, int, const char *, ...);
-void	 screen_write_vnputs(struct screen_write_ctx *,
-	     ssize_t, struct grid_cell *, int, const char *, va_list);
-void	 screen_write_putc(
-	     struct screen_write_ctx *, struct grid_cell *, u_char);
-void	 screen_write_copy(struct screen_write_ctx *,
-	     struct screen *, u_int, u_int, u_int, u_int);
+void printflike(4, 5) screen_write_nputs(struct screen_write_ctx *,
+	     ssize_t, struct grid_cell *, const char *, ...);
+void	 screen_write_vnputs(struct screen_write_ctx *, ssize_t,
+	     struct grid_cell *, const char *, va_list);
+void	 screen_write_putc(struct screen_write_ctx *, struct grid_cell *,
+	     u_char);
+void	 screen_write_copy(struct screen_write_ctx *, struct screen *, u_int,
+	     u_int, u_int, u_int);
 void	 screen_write_backspace(struct screen_write_ctx *);
 void	 screen_write_mode_set(struct screen_write_ctx *, int);
 void	 screen_write_mode_clear(struct screen_write_ctx *, int);

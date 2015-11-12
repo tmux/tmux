@@ -29,10 +29,10 @@
 
 #include "tmux.h"
 
-char   *status_redraw_get_left(struct client *, time_t, int, struct grid_cell *,
+char   *status_redraw_get_left(struct client *, time_t, struct grid_cell *,
 	    size_t *);
-char   *status_redraw_get_right(struct client *, time_t, int,
-	    struct grid_cell *, size_t *);
+char   *status_redraw_get_right(struct client *, time_t, struct grid_cell *,
+	    size_t *);
 char   *status_print(struct client *, struct winlink *, time_t,
 	    struct grid_cell *);
 char   *status_replace(struct client *, struct winlink *, const char *, time_t);
@@ -208,8 +208,8 @@ status_at_line(struct client *c)
 
 /* Retrieve options for left string. */
 char *
-status_redraw_get_left(struct client *c, time_t t, int utf8flag,
-    struct grid_cell *gc, size_t *size)
+status_redraw_get_left(struct client *c, time_t t, struct grid_cell *gc,
+    size_t *size)
 {
 	struct session	*s = c->session;
 	const char	*template;
@@ -222,7 +222,7 @@ status_redraw_get_left(struct client *c, time_t t, int utf8flag,
 	left = status_replace(c, NULL, template, t);
 
 	*size = options_get_number(s->options, "status-left-length");
-	leftlen = screen_write_cstrlen(utf8flag, "%s", left);
+	leftlen = screen_write_cstrlen("%s", left);
 	if (leftlen < *size)
 		*size = leftlen;
 	return (left);
@@ -230,8 +230,8 @@ status_redraw_get_left(struct client *c, time_t t, int utf8flag,
 
 /* Retrieve options for right string. */
 char *
-status_redraw_get_right(struct client *c, time_t t, int utf8flag,
-    struct grid_cell *gc, size_t *size)
+status_redraw_get_right(struct client *c, time_t t, struct grid_cell *gc,
+    size_t *size)
 {
 	struct session	*s = c->session;
 	const char	*template;
@@ -244,7 +244,7 @@ status_redraw_get_right(struct client *c, time_t t, int utf8flag,
 	right = status_replace(c, NULL, template, t);
 
 	*size = options_get_number(s->options, "status-right-length");
-	rightlen = screen_write_cstrlen(utf8flag, "%s", right);
+	rightlen = screen_write_cstrlen("%s", right);
 	if (rightlen < *size)
 		*size = rightlen;
 	return (right);
@@ -286,7 +286,7 @@ status_redraw(struct client *c)
 	u_int			offset, needed;
 	u_int			wlstart, wlwidth, wlavailable, wloffset, wlsize;
 	size_t			llen, rlen, seplen;
-	int			larrow, rarrow, utf8flag;
+	int			larrow, rarrow;
 
 	/* No status line? */
 	if (c->tty.sy == 0 || !options_get_number(s->options, "status"))
@@ -312,14 +312,11 @@ status_redraw(struct client *c)
 	if (c->tty.sy <= 1)
 		goto out;
 
-	/* Get UTF-8 flag. */
-	utf8flag = options_get_number(s->options, "status-utf8");
-
 	/* Work out left and right strings. */
 	memcpy(&lgc, &stdgc, sizeof lgc);
-	left = status_redraw_get_left(c, t, utf8flag, &lgc, &llen);
+	left = status_redraw_get_left(c, t, &lgc, &llen);
 	memcpy(&rgc, &stdgc, sizeof rgc);
-	right = status_redraw_get_right(c, t, utf8flag, &rgc, &rlen);
+	right = status_redraw_get_right(c, t, &rgc, &rlen);
 
 	/*
 	 * Figure out how much space we have for the window list. If there
@@ -340,15 +337,14 @@ status_redraw(struct client *c)
 		free(wl->status_text);
 		memcpy(&wl->status_cell, &stdgc, sizeof wl->status_cell);
 		wl->status_text = status_print(c, wl, t, &wl->status_cell);
-		wl->status_width =
-		    screen_write_cstrlen(utf8flag, "%s", wl->status_text);
+		wl->status_width = screen_write_cstrlen("%s", wl->status_text);
 
 		if (wl == s->curw)
 			wloffset = wlwidth;
 
 		oo = wl->window->options;
 		sep = options_get_string(oo, "window-status-separator");
-		seplen = screen_write_strlen(utf8flag, "%s", sep);
+		seplen = screen_write_strlen("%s", sep);
 		wlwidth += wl->status_width + seplen;
 	}
 
@@ -358,12 +354,12 @@ status_redraw(struct client *c)
 	/* And draw the window list into it. */
 	screen_write_start(&ctx, NULL, &window_list);
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		screen_write_cnputs(&ctx,
-		    -1, &wl->status_cell, utf8flag, "%s", wl->status_text);
+		screen_write_cnputs(&ctx, -1, &wl->status_cell, "%s",
+		    wl->status_text);
 
 		oo = wl->window->options;
 		sep = options_get_string(oo, "window-status-separator");
-		screen_write_nputs(&ctx, -1, &stdgc, utf8flag, "%s", sep);
+		screen_write_nputs(&ctx, -1, &stdgc, "%s", sep);
 	}
 	screen_write_stop(&ctx);
 
@@ -435,7 +431,7 @@ draw:
 	/* Draw the left string and arrow. */
 	screen_write_cursormove(&ctx, 0, 0);
 	if (llen != 0)
-		screen_write_cnputs(&ctx, llen, &lgc, utf8flag, "%s", left);
+		screen_write_cnputs(&ctx, llen, &lgc, "%s", left);
 	if (larrow != 0) {
 		memcpy(&gc, &stdgc, sizeof gc);
 		if (larrow == -1)
@@ -453,7 +449,7 @@ draw:
 	} else
 		screen_write_cursormove(&ctx, c->tty.sx - rlen, 0);
 	if (rlen != 0)
-		screen_write_cnputs(&ctx, rlen, &rgc, utf8flag, "%s", right);
+		screen_write_cnputs(&ctx, rlen, &rgc, "%s", right);
 
 	/* Figure out the offset for the window list. */
 	if (llen != 0)
@@ -624,16 +620,13 @@ status_message_redraw(struct client *c)
 	struct screen		        old_status;
 	size_t			        len;
 	struct grid_cell		gc;
-	int				utf8flag;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
 	memcpy(&old_status, &c->status, sizeof old_status);
 	screen_init(&c->status, c->tty.sx, 1, 0);
 
-	utf8flag = options_get_number(s->options, "status-utf8");
-
-	len = screen_write_strlen(utf8flag, "%s", c->message_string);
+	len = screen_write_strlen("%s", c->message_string);
 	if (len > c->tty.sx)
 		len = c->tty.sx;
 
@@ -642,7 +635,7 @@ status_message_redraw(struct client *c)
 	screen_write_start(&ctx, NULL, &c->status);
 
 	screen_write_cursormove(&ctx, 0, 0);
-	screen_write_nputs(&ctx, len, &gc, utf8flag, "%s", c->message_string);
+	screen_write_nputs(&ctx, len, &gc, "%s", c->message_string);
 	for (; len < c->tty.sx; len++)
 		screen_write_putc(&ctx, &gc, ' ');
 
@@ -754,16 +747,13 @@ status_prompt_redraw(struct client *c)
 	struct screen		        old_status;
 	size_t			        i, size, left, len, off;
 	struct grid_cell		gc, *gcp;
-	int				utf8flag;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
 	memcpy(&old_status, &c->status, sizeof old_status);
 	screen_init(&c->status, c->tty.sx, 1, 0);
 
-	utf8flag = options_get_number(s->options, "status-utf8");
-
-	len = screen_write_strlen(utf8flag, "%s", c->prompt_string);
+	len = screen_write_strlen("%s", c->prompt_string);
 	if (len > c->tty.sx)
 		len = c->tty.sx;
 	off = 0;
@@ -777,19 +767,19 @@ status_prompt_redraw(struct client *c)
 	screen_write_start(&ctx, NULL, &c->status);
 
 	screen_write_cursormove(&ctx, 0, 0);
-	screen_write_nputs(&ctx, len, &gc, utf8flag, "%s", c->prompt_string);
+	screen_write_nputs(&ctx, len, &gc, "%s", c->prompt_string);
 
 	left = c->tty.sx - len;
 	if (left != 0) {
-		size = screen_write_strlen(utf8flag, "%s", c->prompt_buffer);
+		size = screen_write_strlen("%s", c->prompt_buffer);
 		if (c->prompt_index >= left) {
 			off = c->prompt_index - left + 1;
 			if (c->prompt_index == size)
 				left--;
 			size = left;
 		}
-		screen_write_nputs(
-		    &ctx, left, &gc, utf8flag, "%s", c->prompt_buffer + off);
+		screen_write_nputs(&ctx, left, &gc, "%s", c->prompt_buffer +
+		    off);
 
 		for (i = len + size; i < c->tty.sx; i++)
 			screen_write_putc(&ctx, &gc, ' ');

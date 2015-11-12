@@ -291,12 +291,6 @@ main(int argc, char **argv)
 	global_w_options = options_create(NULL);
 	options_table_populate_tree(window_options_table, global_w_options);
 
-	/* Enable UTF-8 if the first client is on UTF-8 terminal. */
-	if (flags & CLIENT_UTF8) {
-		options_set_number(global_s_options, "status-utf8", 1);
-		options_set_number(global_w_options, "utf8", 1);
-	}
-
 	/* Override keys to vi if VISUAL or EDITOR are set. */
 	if ((s = getenv("VISUAL")) != NULL || (s = getenv("EDITOR")) != NULL) {
 		if (strrchr(s, '/') != NULL)

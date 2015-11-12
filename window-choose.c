@@ -754,13 +754,12 @@ window_choose_write_line(struct window_pane *wp, struct screen_write_ctx *ctx,
 	struct grid_cell		 gc;
 	size_t				 last, xoff = 0;
 	char				 hdr[32], label[32];
-	int				 utf8flag, key;
+	int				 key;
 
 	if (data->callbackfn == NULL)
 		fatalx("called before callback assigned");
 
 	last = screen_size_y(s) - 1;
-	utf8flag = options_get_number(wp->window->options, "utf8");
 	memcpy(&gc, &grid_default_cell, sizeof gc);
 	if (data->selected == data->top + py)
 		style_apply(&gc, oo, "mode-style");
@@ -777,7 +776,7 @@ window_choose_write_line(struct window_pane *wp, struct screen_write_ctx *ctx,
 			xsnprintf(label, sizeof label, "(%c)", key);
 		else
 			xsnprintf(label, sizeof label, "(%d)", item->pos);
-		screen_write_nputs(ctx, screen_size_x(s) - 1, &gc, utf8flag,
+		screen_write_nputs(ctx, screen_size_x(s) - 1, &gc,
 		    "%*s %s %s", data->width + 2, label,
 		    /*
 		     * Add indication to tree if necessary about whether it's

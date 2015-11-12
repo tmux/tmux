@@ -1144,8 +1144,7 @@ format_defaults_pane(struct format_tree *ft, struct window_pane *wp)
 
 /* Set default format keys for paste buffer. */
 void
-format_defaults_paste_buffer(struct format_tree *ft, struct paste_buffer *pb,
-    int utf8flag)
+format_defaults_paste_buffer(struct format_tree *ft, struct paste_buffer *pb)
 {
 	size_t	 bufsize;
 	char	*s;
@@ -1154,7 +1153,7 @@ format_defaults_paste_buffer(struct format_tree *ft, struct paste_buffer *pb,
 	format_add(ft, "buffer_size", "%zu", bufsize);
 	format_add(ft, "buffer_name", "%s", paste_buffer_name(pb));
 
-	s = paste_make_sample(pb, utf8flag);
+	s = paste_make_sample(pb);
 	format_add(ft, "buffer_sample", "%s", s);
 	free(s);
 }

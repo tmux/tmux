@@ -190,13 +190,11 @@ flag explicitly informs
 .Nm
 that UTF-8 is supported.
 .Pp
-If the server is started from a client passed
-.Fl u
-or where UTF-8 is detected, the
-.Ic utf8
-and
-.Ic status-utf8
-options are enabled in the global window and session options respectively.
+Note that
+.Nm
+itself always accepts UTF-8, this controls whether it will send UTF-8
+characters to the terminal it is running it (if not, they are replaced by
+.Ql _ ) .
 .It Fl v
 Request verbose logging.
 This option may be specified multiple times for increasing verbosity.
@@ -2770,12 +2768,6 @@ Examples are:
 #[fg=yellow,bold]#(apm -l)%%#[default] [#S]
 .Ed
 .Pp
-By default, UTF-8 in
-.Ar string
-is not interpreted, to enable UTF-8, use the
-.Ic status-utf8
-option.
-.Pp
 The default is
 .Ql "[#S] " .
 .It Ic status-left-length Ar length
@@ -2805,9 +2797,7 @@ As with
 .Ar string
 will be passed to
 .Xr strftime 3 ,
-character pairs are replaced, and UTF-8 is dependent on the
-.Ic status-utf8
-option.
+character pairs are replaced.
 .It Ic status-right-length Ar length
 Set the maximum
 .Ar length
@@ -2827,17 +2817,6 @@ For how to specify
 see the
 .Ic message-command-style
 option.
-.It Xo Ic status-utf8
-.Op Ic on | off
-.Xc
-Instruct
-.Nm
-to treat top-bit-set characters in the
-.Ic status-left
-and
-.Ic status-right
-strings as UTF-8; notably, this is important for wide characters.
-This option defaults to off.
 .It Ic update-environment Ar variables
 Set a space-separated string containing a list of environment variables to be
 copied into the session environment when a new session is created or an
@@ -3083,13 +3062,6 @@ command.
 .Xc
 Duplicate input to any pane to all other panes in the same window (only
 for panes that are not in any special mode).
-.Pp
-.It Xo Ic utf8
-.Op Ic on | off
-.Xc
-Instructs
-.Nm
-to expect UTF-8 sequences to appear in this window.
 .Pp
 .It Ic window-active-style Ar style
 Set the style for the window's active pane.
