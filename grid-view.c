@@ -30,7 +30,7 @@
 #define grid_view_x(gd, x) (x)
 #define grid_view_y(gd, y) ((gd)->hsize + (y))
 
-/* Get cel. */
+/* Get cell. */
 void
 grid_view_get_cell(struct grid *gd, u_int px, u_int py, struct grid_cell *gc)
 {
