@@ -48,7 +48,8 @@ void	 format_cb_host_short(struct format_tree *, struct format_entry *);
 void	 format_cb_pid(struct format_tree *, struct format_entry *);
 void	 format_cb_session_alerts(struct format_tree *, struct format_entry *);
 void	 format_cb_window_layout(struct format_tree *, struct format_entry *);
-void format_cb_window_visible_layout(struct format_tree *, struct format_entry *);
+void	 format_cb_window_visible_layout(struct format_tree *,
+	     struct format_entry *);
 void	 format_cb_start_command(struct format_tree *, struct format_entry *);
 void	 format_cb_current_command(struct format_tree *, struct format_entry *);
 void	 format_cb_history_bytes(struct format_tree *, struct format_entry *);
