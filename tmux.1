@@ -3417,11 +3417,12 @@ The following variables are available, where appropriate:
 .It Li "window_id" Ta "" Ta "Unique window ID"
 .It Li "window_index" Ta "#I" Ta "Index of window"
 .It Li "window_last_flag" Ta "" Ta "1 if window is the last used"
-.It Li "window_layout" Ta "" Ta "Window layout description"
+.It Li "window_layout" Ta "" Ta "Window layout description, ignoring zoomed window panes"
 .It Li "window_linked" Ta "" Ta "1 if window is linked across sessions"
 .It Li "window_name" Ta "#W" Ta "Name of window"
 .It Li "window_panes" Ta "" Ta "Number of panes in window"
 .It Li "window_silence_flag" Ta "" Ta "1 if window has silence alert"
+.It Li "window_visible_layout" Ta "" Ta "Window layout description, respecting zoomed window panes"
 .It Li "window_width" Ta "" Ta "Width of window"
 .It Li "window_zoomed_flag" Ta "" Ta "1 if window is zoomed"
 .It Li "wrap_flag" Ta "" Ta "Pane wrap flag"
@@ -4012,12 +4013,16 @@ or an error occurred.
 If present,
 .Ar reason
 describes why the client exited.
-.It Ic %layout-change Ar window-id Ar window-layout
+.It Ic %layout-change Ar window-id Ar window-layout Ar window-visible-layout Ar window-flags
 The layout of a window with ID
 .Ar window-id
 changed.
 The new layout is
 .Ar window-layout .
+The window's visible layout is
+.Ar window-visible-layout
+and the window flags are
+.Ar window-flags .
 .It Ic %output Ar pane-id Ar value
 A window pane produced output.
 .Ar value

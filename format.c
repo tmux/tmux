@@ -49,6 +49,7 @@ void	 format_cb_host_short(struct format_tree *, struct format_entry *);
 void	 format_cb_pid(struct format_tree *, struct format_entry *);
 void	 format_cb_session_alerts(struct format_tree *, struct format_entry *);
 void	 format_cb_window_layout(struct format_tree *, struct format_entry *);
+void format_cb_window_visible_layout(struct format_tree *, struct format_entry *);
 void	 format_cb_start_command(struct format_tree *, struct format_entry *);
 void	 format_cb_current_command(struct format_tree *, struct format_entry *);
 void	 format_cb_current_path(struct format_tree *, struct format_entry *);
@@ -362,6 +363,18 @@ format_cb_window_layout(struct format_tree *ft, struct format_entry *fe)
 		fe->value = layout_dump(w->saved_layout_root);
 	else
 		fe->value = layout_dump(w->layout_root);
+}
+
+/* Callback for window_visible_layout. */
+void
+format_cb_window_visible_layout(struct format_tree *ft, struct format_entry *fe)
+{
+	struct window	*w = ft->w;
+
+	if (w == NULL)
+		return;
+
+	fe->value = layout_dump(w->layout_root);
 }
 
 /* Callback for pane_start_command. */
@@ -1041,6 +1054,8 @@ format_defaults_window(struct format_tree *ft, struct window *w)
 	format_add(ft, "window_width", "%u", w->sx);
 	format_add(ft, "window_height", "%u", w->sy);
 	format_add_cb(ft, "window_layout", format_cb_window_layout);
+	format_add_cb(ft, "window_visible_layout",
+	    format_cb_window_visible_layout);
 	format_add(ft, "window_panes", "%u", window_count_panes(w));
 	format_add(ft, "window_zoomed_flag", "%d",
 	    !!(w->flags & WINDOW_ZOOMED));
