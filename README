@@ -8,7 +8,7 @@ This release runs on OpenBSD, FreeBSD, NetBSD, Linux, OS X and Solaris.
 
 tmux depends on libevent 2.x. Download it from:
 
-	http://www.monkey.org/~provos/libevent/
+	http://libevent.org/
 
 To build tmux from a release tarball, do:
 
