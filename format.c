@@ -415,6 +415,7 @@ format_cb_history_bytes(struct format_tree *ft, struct format_entry *fe)
 	for (i = 0; i < gd->hsize; i++) {
 		gl = &gd->linedata[i];
 		size += gl->cellsize * sizeof *gl->celldata;
+		size += gl->extdsize * sizeof *gl->extddata;
 	}
 	size += gd->hsize * sizeof *gd->linedata;
 

@@ -621,11 +621,11 @@ struct mode_key_table {
 struct utf8_data {
 	u_char	data[UTF8_SIZE];
 
-	size_t	have;
-	size_t	size;
+	u_char	have;
+	u_char	size;
 
-	u_int	width;
-};
+	u_char	width;
+} __packed;
 
 /* Grid attributes. */
 #define GRID_ATTR_BRIGHT 0x1
@@ -641,41 +641,56 @@ struct utf8_data {
 #define GRID_FLAG_FG256 0x1
 #define GRID_FLAG_BG256 0x2
 #define GRID_FLAG_PADDING 0x4
+#define GRID_FLAG_EXTENDED 0x8
 
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
 
 /* Grid cell data. */
 struct grid_cell {
-	u_char	attr;
-	u_char	flags;
-	u_char	fg;
-	u_char	bg;
+	u_char			flags;
+	u_char			attr;
+	u_char			fg;
+	u_char			bg;
+	struct utf8_data	data;
 
-	u_char	xstate; /* top 4 bits width, bottom 4 bits size */
-	u_char	xdata[UTF8_SIZE];
+};
+struct grid_cell_entry {
+	u_char			flags;
+	union {
+		u_int		offset;
+		struct {
+			u_char	attr;
+			u_char	fg;
+			u_char	bg;
+			u_char	data;
+		} data;
+	};
 } __packed;
 
 /* Grid line. */
 struct grid_line {
-	u_int	cellsize;
-	struct grid_cell *celldata;
+	u_int			 cellsize;
+	struct grid_cell_entry	*celldata;
 
-	int	flags;
+	u_int			 extdsize;
+	struct grid_cell	*extddata;
+
+	int			 flags;
 } __packed;
 
 /* Entire grid of cells. */
 struct grid {
-	int	flags;
-#define GRID_HISTORY 0x1	/* scroll lines into history */
+	int			 flags;
+#define GRID_HISTORY 0x1 /* scroll lines into history */
 
-	u_int	sx;
-	u_int	sy;
+	u_int			 sx;
+	u_int			 sy;
 
-	u_int	hsize;
-	u_int	hlimit;
+	u_int			 hsize;
+	u_int			 hlimit;
 
-	struct grid_line *linedata;
+	struct grid_line	*linedata;
 };
 
 /* Option data structures. */
@@ -1854,9 +1869,8 @@ void	 grid_scroll_history(struct grid *);
 void	 grid_scroll_history_region(struct grid *, u_int, u_int);
 void	 grid_clear_history(struct grid *);
 void	 grid_expand_line(struct grid *, u_int, u_int);
-const struct grid_cell *grid_peek_cell(struct grid *, u_int, u_int);
 const struct grid_line *grid_peek_line(struct grid *, u_int);
-struct grid_cell *grid_get_cell(struct grid *, u_int, u_int);
+void	 grid_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
 void	 grid_set_cell(struct grid *, u_int, u_int, const struct grid_cell *);
 void	 grid_clear(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_clear_lines(struct grid *, u_int, u_int);
@@ -1868,17 +1882,10 @@ void	 grid_duplicate_lines(
 	     struct grid *, u_int, struct grid *, u_int, u_int);
 u_int	 grid_reflow(struct grid *, struct grid *, u_int);
 
-/* grid-cell.c */
-u_int	 grid_cell_width(const struct grid_cell *);
-void	 grid_cell_get(const struct grid_cell *, struct utf8_data *);
-void	 grid_cell_set(struct grid_cell *, const struct utf8_data *);
-void	 grid_cell_one(struct grid_cell *, u_char);
-
 /* grid-view.c */
-const struct grid_cell *grid_view_peek_cell(struct grid *, u_int, u_int);
-struct grid_cell *grid_view_get_cell(struct grid *, u_int, u_int);
-void	 grid_view_set_cell(
-	     struct grid *, u_int, u_int, const struct grid_cell *);
+void	 grid_view_get_cell(struct grid *, u_int, u_int, struct grid_cell *);
+void	 grid_view_set_cell(struct grid *, u_int, u_int,
+	     const struct grid_cell *);
 void	 grid_view_clear_history(struct grid *);
 void	 grid_view_clear(struct grid *, u_int, u_int, u_int, u_int);
 void	 grid_view_scroll_region_up(struct grid *, u_int, u_int);
@@ -2183,6 +2190,7 @@ void		 session_renumber_windows(struct session *);
 /* utf8.c */
 u_int		 utf8_width(u_int);
 void		 utf8_set(struct utf8_data *, u_char);
+void		 utf8_copy(struct utf8_data *, const struct utf8_data *);
 int		 utf8_open(struct utf8_data *, u_char);
 int		 utf8_append(struct utf8_data *, u_char);
 u_int		 utf8_combine(const struct utf8_data *);

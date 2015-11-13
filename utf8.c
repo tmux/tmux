@@ -352,10 +352,27 @@ static void	utf8_build(void);
 void
 utf8_set(struct utf8_data *ud, u_char ch)
 {
+	u_int	i;
+
 	*ud->data = ch;
 	ud->size = 1;
 
 	ud->width = 1;
+
+	for (i = ud->size; i < sizeof ud->data; i++)
+		ud->data[i] = '\0';
+}
+
+/* Copy UTF-8 character. */
+void
+utf8_copy(struct utf8_data *to, const struct utf8_data *from)
+{
+	u_int	i;
+
+	memcpy(to, from, sizeof *to);
+
+	for (i = to->size; i < sizeof to->data; i++)
+		to->data[i] = '\0';
 }
 
 /*
