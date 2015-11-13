@@ -282,10 +282,29 @@ screen_redraw_draw_borders(struct client *c, int status, u_int top)
 	struct grid_cell	 m_active_gc, active_gc, m_other_gc, other_gc;
 	struct grid_cell	 msg_gc;
 	u_int		 	 i, j, type, msgx = 0, msgy = 0;
-	int			 active, small, flags;
+	int			 active, small, flags, utf8flag, pane_border_linestyle;
 	char			 msg[256];
 	const char		*tmp;
 	size_t			 msglen = 0;
+
+	struct utf8_data cell_borders[] = {
+		{ .data = {226, 149, 0}, .size = 3, .width = 1 },
+		{ .data = {226, 149, 145}, .size = 3, .width = 1 },
+		{ .data = {226, 149, 144}, .size = 3, .width = 1 },
+		{ .data = {226, 149, 148}, .size = 3, .width = 1 },
+		{ .data = {226, 149, 151}, .size = 3, .width = 1 },
+		{ .data = {226, 149, 154}, .size = 3, .width = 1 },
+		{ .data = {226, 149, 157}, .size = 3, .width = 1 },
+		{ .data = {226, 149, 166}, .size = 3, .width = 1 },
+		{ .data = {226, 149, 169}, .size = 3, .width = 1 },
+		{ .data = {226, 149, 160}, .size = 3, .width = 1 },
+		{ .data = {226, 149, 163}, .size = 3, .width = 1 },
+		{ .data = {226, 149, 172}, .size = 3, .width = 1 },
+		{ .data = {226, 149, 0}, .size = 3, .width = 1 },
+	};
+
+	utf8flag = options_get_number(oo, "utf8");
+	pane_border_linestyle = options_get_number(oo, "pane-border-linestyle");
 
 	small = (tty->sy - status + top > w->sy) || (tty->sx > w->sx);
 	if (small) {
@@ -343,7 +362,11 @@ screen_redraw_draw_borders(struct client *c, int status, u_int top)
 			else
 				tty_attributes(tty, &other_gc, NULL);
 			tty_cursor(tty, i, top + j);
-			tty_putc(tty, CELL_BORDERS[type]);
+			if (pane_border_linestyle == 0 || !utf8flag) {
+				tty_putc(tty, CELL_BORDERS[type]);
+			} else {
+				tty_putn(tty, cell_borders[type].data, 3, 1);
+			}
 		}
 	}
 
