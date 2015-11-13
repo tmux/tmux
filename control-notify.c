@@ -19,6 +19,8 @@
 
 #include <sys/types.h>
 
+#include <stdlib.h>
+
 #include "tmux.h"
 
 #define CONTROL_SHOULD_NOTIFY_CLIENT(c) \
@@ -65,6 +67,10 @@ control_notify_window_layout_changed(struct window *w)
 	struct format_tree	*ft;
 	struct winlink		*wl;
 	const char		*template;
+	char			*expanded;
+
+	template = "%layout-change #{window_id} #{window_layout} "
+	    "#{window_visible_layout} #{window_flags}";
 
 	TAILQ_FOREACH(c, &clients, entry) {
 		if (!CONTROL_SHOULD_NOTIFY_CLIENT(c) || c->session == NULL)
@@ -81,13 +87,14 @@ control_notify_window_layout_changed(struct window *w)
 		 */
 		if (w->layout_root == NULL)
 			continue;
-		template = "%layout-change #{window_id} #{window_layout}";
 
 		ft = format_create();
 		wl = winlink_find_by_window(&s->windows, w);
 		if (wl != NULL) {
 			format_defaults(ft, c, NULL, wl, NULL);
-			control_write(c, "%s", format_expand(ft, template));
+			expanded = format_expand(ft, template);
+			control_write(c, "%s", expanded);
+			free(expanded);
 		}
 		format_free(ft);
 	}
