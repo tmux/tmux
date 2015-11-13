@@ -143,7 +143,7 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 	size_t				 dlen;
 	char				*out;
 	key_code			 justkey;
-	struct utf8_data		 utf8data;
+	struct utf8_data		 ud;
 
 	log_debug("writing key 0x%llx (%s) to %%%u", key,
 	    key_string_lookup_key(key), wp->id);
@@ -163,16 +163,16 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 	if (key != KEYC_NONE && justkey < 0x7f) {
 		if (key & KEYC_ESCAPE)
 			bufferevent_write(wp->event, "\033", 1);
-		utf8data.data[0] = justkey;
-		bufferevent_write(wp->event, &utf8data.data[0], 1);
+		ud.data[0] = justkey;
+		bufferevent_write(wp->event, &ud.data[0], 1);
 		return;
 	}
 	if (key != KEYC_NONE && justkey > 0x7f && justkey < KEYC_BASE) {
-		if (utf8_split(justkey, &utf8data) != 0)
+		if (utf8_split(justkey, &ud) != 0)
 			return;
 		if (key & KEYC_ESCAPE)
 			bufferevent_write(wp->event, "\033", 1);
-		bufferevent_write(wp->event, utf8data.data, utf8data.size);
+		bufferevent_write(wp->event, ud.data, ud.size);
 		return;
 	}
 

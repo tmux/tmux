@@ -349,12 +349,12 @@ static void	utf8_build(void);
 
 /* Set a single character. */
 void
-utf8_set(struct utf8_data *utf8data, u_char ch)
+utf8_set(struct utf8_data *ud, u_char ch)
 {
-	*utf8data->data = ch;
-	utf8data->size = 1;
+	*ud->data = ch;
+	ud->size = 1;
 
-	utf8data->width = 1;
+	ud->width = 1;
 }
 
 /*
@@ -367,18 +367,18 @@ utf8_set(struct utf8_data *utf8data, u_char ch)
  * Returns 1 if more UTF-8 to come, 0 if not UTF-8.
  */
 int
-utf8_open(struct utf8_data *utf8data, u_char ch)
+utf8_open(struct utf8_data *ud, u_char ch)
 {
-	memset(utf8data, 0, sizeof *utf8data);
+	memset(ud, 0, sizeof *ud);
 	if (ch >= 0xc2 && ch <= 0xdf)
-		utf8data->size = 2;
+		ud->size = 2;
 	else if (ch >= 0xe0 && ch <= 0xef)
-		utf8data->size = 3;
+		ud->size = 3;
 	else if (ch >= 0xf0 && ch <= 0xf4)
-		utf8data->size = 4;
+		ud->size = 4;
 	else
 		return (0);
-	utf8_append(utf8data, ch);
+	utf8_append(ud, ch);
 	return (1);
 }
 
@@ -388,20 +388,20 @@ utf8_open(struct utf8_data *utf8data, u_char ch)
  * Returns 1 if more UTF-8 data to come, 0 if finished.
  */
 int
-utf8_append(struct utf8_data *utf8data, u_char ch)
+utf8_append(struct utf8_data *ud, u_char ch)
 {
 	/* XXX this should do validity checks too! */
 
-	if (utf8data->have >= utf8data->size)
+	if (ud->have >= ud->size)
 		fatalx("UTF-8 character overflow");
-	if (utf8data->size > sizeof utf8data->data)
+	if (ud->size > sizeof ud->data)
 		fatalx("UTF-8 character size too large");
 
-	utf8data->data[utf8data->have++] = ch;
-	if (utf8data->have != utf8data->size)
+	ud->data[ud->have++] = ch;
+	if (ud->have != ud->size)
 		return (1);
 
-	utf8data->width = utf8_width(utf8_combine(utf8data));
+	ud->width = utf8_width(utf8_combine(ud));
 	return (0);
 }
 
@@ -450,29 +450,29 @@ utf8_width(u_int uc)
 
 /* Combine UTF-8 into 32-bit Unicode. */
 u_int
-utf8_combine(const struct utf8_data *utf8data)
+utf8_combine(const struct utf8_data *ud)
 {
 	u_int	value;
 
 	value = 0xff;
-	switch (utf8data->size) {
+	switch (ud->size) {
 	case 1:
-		value = utf8data->data[0];
+		value = ud->data[0];
 		break;
 	case 2:
-		value = utf8data->data[1] & 0x3f;
-		value |= (utf8data->data[0] & 0x1f) << 6;
+		value = ud->data[1] & 0x3f;
+		value |= (ud->data[0] & 0x1f) << 6;
 		break;
 	case 3:
-		value = utf8data->data[2] & 0x3f;
-		value |= (utf8data->data[1] & 0x3f) << 6;
-		value |= (utf8data->data[0] & 0xf) << 12;
+		value = ud->data[2] & 0x3f;
+		value |= (ud->data[1] & 0x3f) << 6;
+		value |= (ud->data[0] & 0xf) << 12;
 		break;
 	case 4:
-		value = utf8data->data[3] & 0x3f;
-		value |= (utf8data->data[2] & 0x3f) << 6;
-		value |= (utf8data->data[1] & 0x3f) << 12;
-		value |= (utf8data->data[0] & 0x7) << 18;
+		value = ud->data[3] & 0x3f;
+		value |= (ud->data[2] & 0x3f) << 6;
+		value |= (ud->data[1] & 0x3f) << 12;
+		value |= (ud->data[0] & 0x7) << 18;
 		break;
 	}
 	return (value);
@@ -480,29 +480,29 @@ utf8_combine(const struct utf8_data *utf8data)
 
 /* Split 32-bit Unicode into UTF-8. */
 int
-utf8_split(u_int uc, struct utf8_data *utf8data)
+utf8_split(u_int uc, struct utf8_data *ud)
 {
 	if (uc < 0x7f) {
-		utf8data->size = 1;
-		utf8data->data[0] = uc;
+		ud->size = 1;
+		ud->data[0] = uc;
 	} else if (uc < 0x7ff) {
-		utf8data->size = 2;
-		utf8data->data[0] = 0xc0 | ((uc >> 6) & 0x1f);
-		utf8data->data[1] = 0x80 | (uc & 0x3f);
+		ud->size = 2;
+		ud->data[0] = 0xc0 | ((uc >> 6) & 0x1f);
+		ud->data[1] = 0x80 | (uc & 0x3f);
 	} else if (uc < 0xffff) {
-		utf8data->size = 3;
-		utf8data->data[0] = 0xe0 | ((uc >> 12) & 0xf);
-		utf8data->data[1] = 0x80 | ((uc >> 6) & 0x3f);
-		utf8data->data[2] = 0x80 | (uc & 0x3f);
+		ud->size = 3;
+		ud->data[0] = 0xe0 | ((uc >> 12) & 0xf);
+		ud->data[1] = 0x80 | ((uc >> 6) & 0x3f);
+		ud->data[2] = 0x80 | (uc & 0x3f);
 	} else if (uc < 0x1fffff) {
-		utf8data->size = 4;
-		utf8data->data[0] = 0xf0 | ((uc >> 18) & 0x7);
-		utf8data->data[1] = 0x80 | ((uc >> 12) & 0x3f);
-		utf8data->data[2] = 0x80 | ((uc >> 6) & 0x3f);
-		utf8data->data[3] = 0x80 | (uc & 0x3f);
+		ud->size = 4;
+		ud->data[0] = 0xf0 | ((uc >> 18) & 0x7);
+		ud->data[1] = 0x80 | ((uc >> 12) & 0x3f);
+		ud->data[2] = 0x80 | ((uc >> 6) & 0x3f);
+		ud->data[3] = 0x80 | (uc & 0x3f);
 	} else
 		return (-1);
-	utf8data->width = utf8_width(uc);
+	ud->width = utf8_width(uc);
 	return (0);
 }
 
@@ -527,7 +527,7 @@ utf8_split2(u_int uc, u_char *ptr)
 int
 utf8_strvis(char *dst, const char *src, size_t len, int flag)
 {
-	struct utf8_data	 utf8data;
+	struct utf8_data	 ud;
 	const char		*start, *end;
 	int			 more;
 	size_t			 i;
@@ -536,18 +536,18 @@ utf8_strvis(char *dst, const char *src, size_t len, int flag)
 	end = src + len;
 
 	while (src < end) {
-		if (utf8_open(&utf8data, *src)) {
+		if (utf8_open(&ud, *src)) {
 			more = 1;
 			while (++src < end && more)
-				more = utf8_append(&utf8data, *src);
+				more = utf8_append(&ud, *src);
 			if (!more) {
 				/* UTF-8 character finished. */
-				for (i = 0; i < utf8data.size; i++)
-					*dst++ = utf8data.data[i];
+				for (i = 0; i < ud.size; i++)
+					*dst++ = ud.data[i];
 				continue;
-			} else if (utf8data.have > 0) {
+			} else if (ud.have > 0) {
 				/* Not a complete UTF-8 character. */
-				src -= utf8data.have;
+				src -= ud.have;
 			}
 		}
 		if (src < end - 1)
@@ -572,7 +572,7 @@ utf8_sanitize(const char *src)
 	char			*dst;
 	size_t			 n;
 	int			 more;
-	struct utf8_data	 utf8data;
+	struct utf8_data	 ud;
 	u_int			 i;
 
 	dst = NULL;
@@ -580,18 +580,18 @@ utf8_sanitize(const char *src)
 	n = 0;
 	while (*src != '\0') {
 		dst = xreallocarray(dst, n + 1, sizeof *dst);
-		if (utf8_open(&utf8data, *src)) {
+		if (utf8_open(&ud, *src)) {
 			more = 1;
 			while (*++src != '\0' && more)
-				more = utf8_append(&utf8data, *src);
+				more = utf8_append(&ud, *src);
 			if (!more) {
-				dst = xreallocarray(dst, n + utf8data.width,
+				dst = xreallocarray(dst, n + ud.width,
 				    sizeof *dst);
-				for (i = 0; i < utf8data.width; i++)
+				for (i = 0; i < ud.width; i++)
 					dst[n++] = '_';
 				continue;
 			}
-			src -= utf8data.have;
+			src -= ud.have;
 		}
 		if (*src > 0x1f && *src < 0x7f)
 			dst[n] = *src;
