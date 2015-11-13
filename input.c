@@ -1006,7 +1006,7 @@ input_print(struct input_ctx *ictx)
 	else
 		ictx->cell.cell.attr &= ~GRID_ATTR_CHARSET;
 
-	grid_cell_one(&ictx->cell.cell, ictx->ch);
+	utf8_set(&ictx->cell.cell.data, ictx->ch);
 	screen_write_cell(&ictx->ctx, &ictx->cell.cell);
 
 	ictx->cell.cell.attr &= ~GRID_ATTR_CHARSET;
@@ -1945,7 +1945,7 @@ input_utf8_close(struct input_ctx *ictx)
 
 	utf8_append(&ictx->utf8data, ictx->ch);
 
-	grid_cell_set(&ictx->cell.cell, &ictx->utf8data);
+	utf8_copy(&ictx->cell.cell.data, &ictx->utf8data);
 	screen_write_cell(&ictx->ctx, &ictx->cell.cell);
 
 	return (0);

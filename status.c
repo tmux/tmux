@@ -746,7 +746,7 @@ status_prompt_redraw(struct client *c)
 	struct session		       *s = c->session;
 	struct screen		        old_status;
 	size_t			        i, size, left, len, off;
-	struct grid_cell		gc, *gcp;
+	struct grid_cell		gc;
 
 	if (c->tty.sx == 0 || c->tty.sy == 0)
 		return (0);
@@ -789,8 +789,9 @@ status_prompt_redraw(struct client *c)
 
 	/* Apply fake cursor. */
 	off = len + c->prompt_index - off;
-	gcp = grid_view_get_cell(c->status.grid, off, 0);
-	gcp->attr ^= GRID_ATTR_REVERSE;
+	grid_view_get_cell(c->status.grid, off, 0, &gc);
+	gc.attr ^= GRID_ATTR_REVERSE;
+	grid_view_set_cell(c->status.grid, off, 0, &gc);
 
 	if (grid_compare(c->status.grid, old_status.grid) == 0) {
 		screen_free(&old_status);

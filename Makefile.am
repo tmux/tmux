@@ -136,7 +136,6 @@ dist_tmux_SOURCES = \
 	control-notify.c \
 	environ.c \
 	format.c \
-	grid-cell.c \
 	grid-view.c \
 	grid.c \
 	input-keys.c \
