@@ -863,8 +863,7 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 			memcpy(tio2.c_cc, tio->c_cc, sizeof tio2.c_cc);
 		tio2.c_cc[VERASE] = '\177';
 #ifdef IUTF8
-		if (options_get_number(wp->window->options, "utf8"))
-			tio2.c_iflag |= IUTF8;
+		tio2.c_iflag |= IUTF8;
 #endif
 		if (tcsetattr(STDIN_FILENO, TCSANOW, &tio2) != 0)
 			fatal("tcgetattr failed");
