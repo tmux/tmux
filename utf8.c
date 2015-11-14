@@ -264,7 +264,7 @@ static struct utf8_width_entry utf8_width_table[] = {
 	{ 0x0abe5, 0x0abe5, 0, NULL, NULL },
 	{ 0x0abed, 0x0abed, 0, NULL, NULL },
 	{ 0x0f900, 0x0fa6d, 2, NULL, NULL },
-	{ 0x0d800, 0x0f8ff, 0, NULL, NULL },
+	{ 0x0d800, 0x0dfff, 0, NULL, NULL },
 	{ 0x0fa70, 0x0fad9, 2, NULL, NULL },
 	{ 0x0fff9, 0x0fffb, 0, NULL, NULL },
 	{ 0x0fe30, 0x0fe52, 2, NULL, NULL },
