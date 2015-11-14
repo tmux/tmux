@@ -130,7 +130,7 @@ cmd_save_buffer_exec(struct cmd *self, struct cmd_q *cmdq)
 
 do_stdout:
 	evbuffer_add(c->stdout_data, bufdata, bufsize);
-	server_push_stdout(c);
+	server_client_push_stdout(c);
 	return (CMD_RETURN_NORMAL);
 
 do_print:

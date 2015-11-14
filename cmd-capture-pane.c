@@ -203,7 +203,7 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		free(buf);
 		if (args_has(args, 'P') && len > 0)
 		    evbuffer_add(c->stdout_data, "\n", 1);
-		server_push_stdout(c);
+		server_client_push_stdout(c);
 	} else {
 		bufname = NULL;
 		if (args_has(args, 'b'))
