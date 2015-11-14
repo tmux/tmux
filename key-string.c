@@ -144,10 +144,11 @@ key_string_lookup_string(const char *string)
 	static const char	*other = "!#()+,-.0123456789:;<=>?'\r\t";
 	key_code		 key;
 	u_short			 u;
-	int			 size, more;
+	int			 size;
 	key_code		 modifiers;
 	struct utf8_data	 ud;
 	u_int			 i;
+	enum utf8_state		 more;
 
 	/* Is this a hexadecimal value? */
 	if (string[0] == '0' && string[1] == 'x') {
@@ -173,13 +174,12 @@ key_string_lookup_string(const char *string)
 			return (KEYC_NONE);
 	} else {
 		/* Try as a UTF-8 key. */
-		if (utf8_open(&ud, (u_char)*string)) {
+		if ((more = utf8_open(&ud, (u_char)*string)) == UTF8_MORE) {
 			if (strlen(string) != ud.size)
 				return (KEYC_NONE);
-			more = 1;
 			for (i = 1; i < ud.size; i++)
 				more = utf8_append(&ud, (u_char)string[i]);
-			if (more != 0)
+			if (more != UTF8_DONE)
 				return (KEYC_NONE);
 			key = utf8_combine(&ud);
 			return (key | modifiers);
@@ -256,7 +256,7 @@ key_string_lookup_key(key_code key)
 
 	/* Is this a UTF-8 key? */
 	if (key > 127 && key < KEYC_BASE) {
-		if (utf8_split(key, &ud) == 0) {
+		if (utf8_split(key, &ud) == UTF8_DONE) {
 			memcpy(out, ud.data, ud.size);
 			out[ud.size] = '\0';
 			return (out);

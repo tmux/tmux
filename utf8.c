@@ -380,10 +380,8 @@ utf8_copy(struct utf8_data *to, const struct utf8_data *from)
  * 11000010-11011111 C2-DF start of 2-byte sequence
  * 11100000-11101111 E0-EF start of 3-byte sequence
  * 11110000-11110100 F0-F4 start of 4-byte sequence
- *
- * Returns 1 if more UTF-8 to come, 0 if not UTF-8.
  */
-int
+enum utf8_state
 utf8_open(struct utf8_data *ud, u_char ch)
 {
 	memset(ud, 0, sizeof *ud);
@@ -394,18 +392,13 @@ utf8_open(struct utf8_data *ud, u_char ch)
 	else if (ch >= 0xf0 && ch <= 0xf4)
 		ud->size = 4;
 	else
-		return (0);
+		return (UTF8_ERROR);
 	utf8_append(ud, ch);
-	return (1);
+	return (UTF8_MORE);
 }
 
-/*
- * Append character to UTF-8, closing if finished.
- *
- * Returns 1 if more UTF-8 data to come, 0 if finished and valid, -1 if
- * finished and invalid.
- */
-int
+/* Append character to UTF-8, closing if finished. */
+enum utf8_state
 utf8_append(struct utf8_data *ud, u_char ch)
 {
 	if (ud->have >= ud->size)
@@ -418,12 +411,12 @@ utf8_append(struct utf8_data *ud, u_char ch)
 
 	ud->data[ud->have++] = ch;
 	if (ud->have != ud->size)
-		return (1);
+		return (UTF8_MORE);
 
 	if (ud->width == 0xff)
-		return (-1);
+		return (UTF8_ERROR);
 	ud->width = utf8_width(utf8_combine(ud));
-	return (0);
+	return (UTF8_DONE);
 }
 
 /* Build UTF-8 width tree. */
@@ -473,34 +466,34 @@ utf8_width(u_int uc)
 u_int
 utf8_combine(const struct utf8_data *ud)
 {
-	u_int	value;
+	u_int	uc;
 
-	value = 0xff;
+	uc = 0xfffd;
 	switch (ud->size) {
 	case 1:
-		value = ud->data[0];
+		uc = ud->data[0];
 		break;
 	case 2:
-		value = ud->data[1] & 0x3f;
-		value |= (ud->data[0] & 0x1f) << 6;
+		uc = ud->data[1] & 0x3f;
+		uc |= (ud->data[0] & 0x1f) << 6;
 		break;
 	case 3:
-		value = ud->data[2] & 0x3f;
-		value |= (ud->data[1] & 0x3f) << 6;
-		value |= (ud->data[0] & 0xf) << 12;
+		uc = ud->data[2] & 0x3f;
+		uc |= (ud->data[1] & 0x3f) << 6;
+		uc |= (ud->data[0] & 0xf) << 12;
 		break;
 	case 4:
-		value = ud->data[3] & 0x3f;
-		value |= (ud->data[2] & 0x3f) << 6;
-		value |= (ud->data[1] & 0x3f) << 12;
-		value |= (ud->data[0] & 0x7) << 18;
+		uc = ud->data[3] & 0x3f;
+		uc |= (ud->data[2] & 0x3f) << 6;
+		uc |= (ud->data[1] & 0x3f) << 12;
+		uc |= (ud->data[0] & 0x7) << 18;
 		break;
 	}
-	return (value);
+	return (uc);
 }
 
 /* Split 32-bit Unicode into UTF-8. */
-int
+enum utf8_state
 utf8_split(u_int uc, struct utf8_data *ud)
 {
 	if (uc < 0x7f) {
@@ -522,9 +515,9 @@ utf8_split(u_int uc, struct utf8_data *ud)
 		ud->data[2] = 0x80 | ((uc >> 6) & 0x3f);
 		ud->data[3] = 0x80 | (uc & 0x3f);
 	} else
-		return (-1);
+		return (UTF8_ERROR);
 	ud->width = utf8_width(uc);
-	return (0);
+	return (UTF8_DONE);
 }
 
 /* Split a two-byte UTF-8 character. */
@@ -550,26 +543,24 @@ utf8_strvis(char *dst, const char *src, size_t len, int flag)
 {
 	struct utf8_data	 ud;
 	const char		*start, *end;
-	int			 more;
+	enum utf8_state		 more;
 	size_t			 i;
 
 	start = dst;
 	end = src + len;
 
 	while (src < end) {
-		if (utf8_open(&ud, *src)) {
-			more = 1;
-			while (++src < end && more == 1)
+		if ((more = utf8_open(&ud, *src)) == UTF8_MORE) {
+			while (++src < end && more == UTF8_MORE)
 				more = utf8_append(&ud, *src);
-			if (more == 0) {
+			if (more == UTF8_DONE) {
 				/* UTF-8 character finished. */
 				for (i = 0; i < ud.size; i++)
 					*dst++ = ud.data[i];
 				continue;
-			} else if (ud.have > 0) {
-				/* Not a complete, valid UTF-8 character. */
-				src -= ud.have;
 			}
+			/* Not a complete, valid UTF-8 character. */
+			src -= ud.have;
 		}
 		if (src < end - 1)
 			dst = vis(dst, src[0], flag, src[1]);
@@ -592,7 +583,7 @@ utf8_sanitize(const char *src)
 {
 	char			*dst;
 	size_t			 n;
-	int			 more;
+	enum utf8_state		 more;
 	struct utf8_data	 ud;
 	u_int			 i;
 
@@ -601,11 +592,10 @@ utf8_sanitize(const char *src)
 	n = 0;
 	while (*src != '\0') {
 		dst = xreallocarray(dst, n + 1, sizeof *dst);
-		if (utf8_open(&ud, *src)) {
-			more = 1;
-			while (*++src != '\0' && more == 1)
+		if ((more = utf8_open(&ud, *src)) == UTF8_MORE) {
+			while (*++src != '\0' && more == UTF8_MORE)
 				more = utf8_append(&ud, *src);
-			if (more != 1) {
+			if (more == UTF8_DONE) {
 				dst = xreallocarray(dst, n + ud.width,
 				    sizeof *dst);
 				for (i = 0; i < ud.width; i++)
@@ -616,6 +606,8 @@ utf8_sanitize(const char *src)
 		}
 		if (*src > 0x1f && *src < 0x7f)
 			dst[n++] = *src;
+		else
+			dst[n++] = '_';
 		src++;
 	}
 
@@ -633,27 +625,24 @@ utf8_fromcstr(const char *src)
 {
 	struct utf8_data	*dst;
 	size_t			 n;
-	int			 more;
+	enum utf8_state		 more;
 
 	dst = NULL;
 
 	n = 0;
 	while (*src != '\0') {
 		dst = xreallocarray(dst, n + 1, sizeof *dst);
-		if (utf8_open(&dst[n], *src)) {
-			more = 1;
-			while (*++src != '\0' && more == 1)
+		if ((more = utf8_open(&dst[n], *src)) == UTF8_MORE) {
+			while (*++src != '\0' && more == UTF8_MORE)
 				more = utf8_append(&dst[n], *src);
-			if (more != 1) {
+			if (more == UTF8_DONE) {
 				n++;
 				continue;
 			}
 			src -= dst[n].have;
 		}
-		if (*src > 0x1f && *src < 0x7f) {
-			utf8_set(&dst[n], *src);
-			n++;
-		}
+		utf8_set(&dst[n], *src);
+		n++;
 		src++;
 	}
 
@@ -689,21 +678,20 @@ utf8_cstrwidth(const char *s)
 {
 	struct utf8_data	tmp;
 	u_int			width;
-	int			more;
+	enum utf8_state		more;
 
 	width = 0;
 	while (*s != '\0') {
-		if (utf8_open(&tmp, *s)) {
-			more = 1;
-			while (*++s != '\0' && more == 1)
+		if ((more = utf8_open(&tmp, *s)) == UTF8_MORE) {
+			while (*++s != '\0' && more == UTF8_MORE)
 				more = utf8_append(&tmp, *s);
-			if (more != 1) {
+			if (more == UTF8_DONE) {
 				width += tmp.width;
 				continue;
 			}
 			s -= tmp.have;
 		}
-		if (*s > 0x1f && *s < 0x7f)
+		if (*s > 0x1f && *s != 0x7f)
 			width++;
 		s++;
 	}
