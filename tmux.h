@@ -627,7 +627,7 @@ struct utf8_data {
 	u_char	have;
 	u_char	size;
 
-	u_char	width;
+	u_char	width;	/* 0xff if invalid */
 } __packed;
 
 /* Grid attributes. */

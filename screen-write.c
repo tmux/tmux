@@ -115,6 +115,7 @@ screen_write_strlen(const char *fmt, ...)
 	struct utf8_data	ud;
 	u_char 	      	       *ptr;
 	size_t			left, size = 0;
+	int			more;
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
@@ -128,11 +129,12 @@ screen_write_strlen(const char *fmt, ...)
 			left = strlen(ptr);
 			if (left < (size_t)ud.size - 1)
 				break;
-			while (utf8_append(&ud, *ptr))
+			while ((more = utf8_append(&ud, *ptr)) == 1)
 				ptr++;
 			ptr++;
 
-			size += ud.width;
+			if (more == 0)
+				size += ud.width;
 		} else {
 			if (*ptr > 0x1f && *ptr < 0x7f)
 				size++;
@@ -176,6 +178,7 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 	struct utf8_data	ud;
 	u_char 		       *ptr;
 	size_t		 	left, size = 0;
+	int			more;
 
 	xvasprintf(&msg, fmt, ap);
 
@@ -187,22 +190,24 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			left = strlen(ptr);
 			if (left < (size_t)ud.size - 1)
 				break;
-			while (utf8_append(&ud, *ptr))
+			while ((more = utf8_append(&ud, *ptr)) == 1)
 				ptr++;
 			ptr++;
 
-			if (maxlen > 0 &&
-			    size + ud.width > (size_t) maxlen) {
-				while (size < (size_t) maxlen) {
-					screen_write_putc(ctx, gc, ' ');
-					size++;
+			if (more == 0) {
+				if (maxlen > 0 &&
+				    size + ud.width > (size_t) maxlen) {
+					while (size < (size_t) maxlen) {
+						screen_write_putc(ctx, gc, ' ');
+						size++;
+					}
+					break;
 				}
-				break;
-			}
-			size += ud.width;
+				size += ud.width;
 
-			utf8_copy(&gc->data, &ud);
-			screen_write_cell(ctx, gc);
+				utf8_copy(&gc->data, &ud);
+				screen_write_cell(ctx, gc);
+			}
 		} else {
 			if (maxlen > 0 && size + 1 > (size_t) maxlen)
 				break;
@@ -231,6 +236,7 @@ screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 	char			*msg;
 	u_char 			*ptr, *last;
 	size_t			 left, size = 0;
+	int			 more;
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
@@ -260,22 +266,24 @@ screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			left = strlen(ptr);
 			if (left < (size_t)ud.size - 1)
 				break;
-			while (utf8_append(&ud, *ptr))
+			while ((more = utf8_append(&ud, *ptr)) == 1)
 				ptr++;
 			ptr++;
 
-			if (maxlen > 0 &&
-			    size + ud.width > (size_t) maxlen) {
-				while (size < (size_t) maxlen) {
-					screen_write_putc(ctx, gc, ' ');
-					size++;
+			if (more == 0) {
+				if (maxlen > 0 &&
+				    size + ud.width > (size_t) maxlen) {
+					while (size < (size_t) maxlen) {
+						screen_write_putc(ctx, gc, ' ');
+						size++;
+					}
+					break;
 				}
-				break;
-			}
-			size += ud.width;
+				size += ud.width;
 
-			utf8_copy(&lgc.data, &ud);
-			screen_write_cell(ctx, &lgc);
+				utf8_copy(&lgc.data, &ud);
+				screen_write_cell(ctx, &lgc);
+			}
 		} else {
 			if (maxlen > 0 && size + 1 > (size_t) maxlen)
 				break;

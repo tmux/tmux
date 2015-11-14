@@ -402,22 +402,26 @@ utf8_open(struct utf8_data *ud, u_char ch)
 /*
  * Append character to UTF-8, closing if finished.
  *
- * Returns 1 if more UTF-8 data to come, 0 if finished.
+ * Returns 1 if more UTF-8 data to come, 0 if finished and valid, -1 if
+ * finished and invalid.
  */
 int
 utf8_append(struct utf8_data *ud, u_char ch)
 {
-	/* XXX this should do validity checks too! */
-
 	if (ud->have >= ud->size)
 		fatalx("UTF-8 character overflow");
 	if (ud->size > sizeof ud->data)
 		fatalx("UTF-8 character size too large");
 
+	if (ud->have != 0 && (ch & 0xc0) != 0x80)
+		ud->width = 0xff;
+
 	ud->data[ud->have++] = ch;
 	if (ud->have != ud->size)
 		return (1);
 
+	if (ud->width == 0xff)
+		return (-1);
 	ud->width = utf8_width(utf8_combine(ud));
 	return (0);
 }
@@ -555,15 +559,15 @@ utf8_strvis(char *dst, const char *src, size_t len, int flag)
 	while (src < end) {
 		if (utf8_open(&ud, *src)) {
 			more = 1;
-			while (++src < end && more)
+			while (++src < end && more == 1)
 				more = utf8_append(&ud, *src);
-			if (!more) {
+			if (more == 0) {
 				/* UTF-8 character finished. */
 				for (i = 0; i < ud.size; i++)
 					*dst++ = ud.data[i];
 				continue;
 			} else if (ud.have > 0) {
-				/* Not a complete UTF-8 character. */
+				/* Not a complete, valid UTF-8 character. */
 				src -= ud.have;
 			}
 		}
@@ -599,9 +603,9 @@ utf8_sanitize(const char *src)
 		dst = xreallocarray(dst, n + 1, sizeof *dst);
 		if (utf8_open(&ud, *src)) {
 			more = 1;
-			while (*++src != '\0' && more)
+			while (*++src != '\0' && more == 1)
 				more = utf8_append(&ud, *src);
-			if (!more) {
+			if (more != 1) {
 				dst = xreallocarray(dst, n + ud.width,
 				    sizeof *dst);
 				for (i = 0; i < ud.width; i++)
@@ -611,10 +615,8 @@ utf8_sanitize(const char *src)
 			src -= ud.have;
 		}
 		if (*src > 0x1f && *src < 0x7f)
-			dst[n] = *src;
+			dst[n++] = *src;
 		src++;
-
-		n++;
 	}
 
 	dst = xreallocarray(dst, n + 1, sizeof *dst);
@@ -640,18 +642,19 @@ utf8_fromcstr(const char *src)
 		dst = xreallocarray(dst, n + 1, sizeof *dst);
 		if (utf8_open(&dst[n], *src)) {
 			more = 1;
-			while (*++src != '\0' && more)
+			while (*++src != '\0' && more == 1)
 				more = utf8_append(&dst[n], *src);
-			if (!more) {
+			if (more != 1) {
 				n++;
 				continue;
 			}
 			src -= dst[n].have;
 		}
-		utf8_set(&dst[n], *src);
+		if (*src > 0x1f && *src < 0x7f) {
+			utf8_set(&dst[n], *src);
+			n++;
+		}
 		src++;
-
-		n++;
 	}
 
 	dst = xreallocarray(dst, n + 1, sizeof *dst);
@@ -692,15 +695,16 @@ utf8_cstrwidth(const char *s)
 	while (*s != '\0') {
 		if (utf8_open(&tmp, *s)) {
 			more = 1;
-			while (*++s != '\0' && more)
+			while (*++s != '\0' && more == 1)
 				more = utf8_append(&tmp, *s);
-			if (!more) {
+			if (more != 1) {
 				width += tmp.width;
 				continue;
 			}
 			s -= tmp.have;
 		}
-		width++;
+		if (*s > 0x1f && *s < 0x7f)
+			width++;
 		s++;
 	}
 	return (width);

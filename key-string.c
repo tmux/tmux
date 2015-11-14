@@ -144,7 +144,7 @@ key_string_lookup_string(const char *string)
 	static const char	*other = "!#()+,-.0123456789:;<=>?'\r\t";
 	key_code		 key;
 	u_short			 u;
-	int			 size;
+	int			 size, more;
 	key_code		 modifiers;
 	struct utf8_data	 ud;
 	u_int			 i;
@@ -176,8 +176,11 @@ key_string_lookup_string(const char *string)
 		if (utf8_open(&ud, (u_char)*string)) {
 			if (strlen(string) != ud.size)
 				return (KEYC_NONE);
+			more = 1;
 			for (i = 1; i < ud.size; i++)
-				utf8_append(&ud, (u_char)string[i]);
+				more = utf8_append(&ud, (u_char)string[i]);
+			if (more != 0)
+				return (KEYC_NONE);
 			key = utf8_combine(&ud);
 			return (key | modifiers);
 		}
