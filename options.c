@@ -150,9 +150,9 @@ options_get_string(struct options *oo, const char *name)
 	struct options_entry	*o;
 
 	if ((o = options_find(oo, name)) == NULL)
-		fatalx("missing option");
+		log_fatalx("missing option %s", name);
 	if (o->type != OPTIONS_STRING)
-		fatalx("option not a string");
+		log_fatalx("option %s not a string", name);
 	return (o->str);
 }
 
@@ -180,9 +180,9 @@ options_get_number(struct options *oo, const char *name)
 	struct options_entry	*o;
 
 	if ((o = options_find(oo, name)) == NULL)
-		fatalx("missing option");
+		log_fatalx("missing option %s", name);
 	if (o->type != OPTIONS_NUMBER)
-		fatalx("option not a number");
+		log_fatalx("option %s not a number", name);
 	return (o->num);
 }
 
@@ -220,8 +220,8 @@ options_get_style(struct options *oo, const char *name)
 	struct options_entry	*o;
 
 	if ((o = options_find(oo, name)) == NULL)
-		fatalx("missing option");
+		log_fatalx("missing option %s", name);
 	if (o->type != OPTIONS_STYLE)
-		fatalx("option not a style");
+		log_fatalx("option %s not a style", name);
 	return (&o->style);
 }
