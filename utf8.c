@@ -474,30 +474,30 @@ utf8_width(u_int uc)
 u_int
 utf8_combine(const struct utf8_data *ud)
 {
-	u_int	value;
+	u_int	uc;
 
-	value = 0xff;
+	uc = 0xfffd;
 	switch (ud->size) {
 	case 1:
-		value = ud->data[0];
+		uc = ud->data[0];
 		break;
 	case 2:
-		value = ud->data[1] & 0x3f;
-		value |= (ud->data[0] & 0x1f) << 6;
+		uc = ud->data[1] & 0x3f;
+		uc |= (ud->data[0] & 0x1f) << 6;
 		break;
 	case 3:
-		value = ud->data[2] & 0x3f;
-		value |= (ud->data[1] & 0x3f) << 6;
-		value |= (ud->data[0] & 0xf) << 12;
+		uc = ud->data[2] & 0x3f;
+		uc |= (ud->data[1] & 0x3f) << 6;
+		uc |= (ud->data[0] & 0xf) << 12;
 		break;
 	case 4:
-		value = ud->data[3] & 0x3f;
-		value |= (ud->data[2] & 0x3f) << 6;
-		value |= (ud->data[1] & 0x3f) << 12;
-		value |= (ud->data[0] & 0x7) << 18;
+		uc = ud->data[3] & 0x3f;
+		uc |= (ud->data[2] & 0x3f) << 6;
+		uc |= (ud->data[1] & 0x3f) << 12;
+		uc |= (ud->data[0] & 0x7) << 18;
 		break;
 	}
-	return (value);
+	return (uc);
 }
 
 /* Split 32-bit Unicode into UTF-8. */
