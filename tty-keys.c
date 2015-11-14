@@ -472,7 +472,7 @@ tty_keys_next(struct tty *tty)
 	const char		*buf;
 	size_t			 len, size;
 	cc_t			 bspace;
-	int			 delay, expired = 0;
+	int			 delay, expired = 0, more;
 	key_code		 key;
 	struct utf8_data	 ud;
 	u_int			 i;
@@ -547,7 +547,9 @@ first_key:
 			goto partial_key;
 		}
 		for (i = 1; i < size; i++)
-			utf8_append(&ud, (u_char)buf[i]);
+			more = utf8_append(&ud, (u_char)buf[i]);
+		if (more != 0)
+			goto discard_key;
 		key = utf8_combine(&ud);
 		log_debug("UTF-8 key %.*s %#llx", (int)size, buf, key);
 		goto complete_key;
@@ -653,6 +655,7 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 	struct utf8_data	 ud;
 	u_int			 i, value, x, y, b, sgr_b;
 	u_char			 sgr_type, c;
+	int			 more;
 
 	/*
 	 * Standard mouse sequences are \033[M followed by three characters
@@ -699,7 +702,9 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 					(*size)++;
 					if (len <= *size)
 						return (1);
-					utf8_append(&ud, buf[*size]);
+					more = utf8_append(&ud, buf[*size]);
+					if (more != 0)
+						return (-1);
 					value = utf8_combine(&ud);
 				} else
 					value = (u_char)buf[*size];
