@@ -546,6 +546,7 @@ first_key:
 				goto discard_key;
 			goto partial_key;
 		}
+		more = 1;
 		for (i = 1; i < size; i++)
 			more = utf8_append(&ud, (u_char)buf[i]);
 		if (more != 0)

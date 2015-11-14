@@ -176,6 +176,7 @@ key_string_lookup_string(const char *string)
 		if (utf8_open(&ud, (u_char)*string)) {
 			if (strlen(string) != ud.size)
 				return (KEYC_NONE);
+			more = 1;
 			for (i = 1; i < ud.size; i++)
 				more = utf8_append(&ud, (u_char)string[i]);
 			if (more != 0)
