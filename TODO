@@ -18,7 +18,6 @@
 	* option to quote format (#{session_name:quoted})
 	* formats need conditions for >0 (for #P)
 	* some way to pad # stuff with spaces
-	* last window update time and format for it
 	* formats to show if a window is linked into multiple sessions, into
 	  multiple attached sessions, and is the active window in multiple
 	  attached sessions?
@@ -51,10 +50,8 @@
 	* split-window -> split-pane?
 
 - better UTF-8 support:
-	* window names and titles
 	* message display
 	* prompt input
-	* multibyte key input
 	* searching in copy mode
 
 - copy/paste improvements:
