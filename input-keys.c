@@ -169,7 +169,7 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 		return;
 	}
 	if (key != KEYC_NONE && justkey > 0x7f && justkey < KEYC_BASE) {
-		if (utf8_split(justkey, &ud) != 0)
+		if (utf8_split(justkey, &ud) != UTF8_DONE)
 			return;
 		if (key & KEYC_ESCAPE)
 			bufferevent_write(wp->event, "\033", 1);

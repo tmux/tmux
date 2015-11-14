@@ -626,6 +626,11 @@ struct utf8_data {
 
 	u_char	width;	/* 0xff if invalid */
 } __packed;
+enum utf8_state {
+	UTF8_MORE,
+	UTF8_DONE,
+	UTF8_ERROR
+};
 
 /* Grid attributes. */
 #define GRID_ATTR_BRIGHT 0x1
@@ -2191,10 +2196,10 @@ void		 session_renumber_windows(struct session *);
 u_int		 utf8_width(u_int);
 void		 utf8_set(struct utf8_data *, u_char);
 void		 utf8_copy(struct utf8_data *, const struct utf8_data *);
-int		 utf8_open(struct utf8_data *, u_char);
-int		 utf8_append(struct utf8_data *, u_char);
+enum utf8_state	 utf8_open(struct utf8_data *, u_char);
+enum utf8_state	 utf8_append(struct utf8_data *, u_char);
 u_int		 utf8_combine(const struct utf8_data *);
-int		 utf8_split(u_int, struct utf8_data *);
+enum utf8_state	 utf8_split(u_int, struct utf8_data *);
 u_int		 utf8_split2(u_int, u_char *);
 int		 utf8_strvis(char *, const char *, size_t, int);
 char		*utf8_sanitize(const char *);

@@ -115,7 +115,7 @@ screen_write_strlen(const char *fmt, ...)
 	struct utf8_data	ud;
 	u_char 	      	       *ptr;
 	size_t			left, size = 0;
-	int			more;
+	enum utf8_state		more;
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
@@ -123,17 +123,17 @@ screen_write_strlen(const char *fmt, ...)
 
 	ptr = msg;
 	while (*ptr != '\0') {
-		if (*ptr > 0x7f && utf8_open(&ud, *ptr)) {
+		if (*ptr > 0x7f && utf8_open(&ud, *ptr) == UTF8_MORE) {
 			ptr++;
 
 			left = strlen(ptr);
 			if (left < (size_t)ud.size - 1)
 				break;
-			while ((more = utf8_append(&ud, *ptr)) == 1)
+			while ((more = utf8_append(&ud, *ptr)) == UTF8_MORE)
 				ptr++;
 			ptr++;
 
-			if (more == 0)
+			if (more == UTF8_DONE)
 				size += ud.width;
 		} else {
 			if (*ptr > 0x1f && *ptr < 0x7f)
@@ -178,23 +178,23 @@ screen_write_vnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 	struct utf8_data	ud;
 	u_char 		       *ptr;
 	size_t		 	left, size = 0;
-	int			more;
+	enum utf8_state		more;
 
 	xvasprintf(&msg, fmt, ap);
 
 	ptr = msg;
 	while (*ptr != '\0') {
-		if (*ptr > 0x7f && utf8_open(&ud, *ptr)) {
+		if (*ptr > 0x7f && utf8_open(&ud, *ptr) == UTF8_MORE) {
 			ptr++;
 
 			left = strlen(ptr);
 			if (left < (size_t)ud.size - 1)
 				break;
-			while ((more = utf8_append(&ud, *ptr)) == 1)
+			while ((more = utf8_append(&ud, *ptr)) == UTF8_MORE)
 				ptr++;
 			ptr++;
 
-			if (more == 0) {
+			if (more == UTF8_DONE) {
 				if (maxlen > 0 &&
 				    size + ud.width > (size_t) maxlen) {
 					while (size < (size_t) maxlen) {
@@ -236,7 +236,7 @@ screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 	char			*msg;
 	u_char 			*ptr, *last;
 	size_t			 left, size = 0;
-	int			 more;
+	enum utf8_state		 more;
 
 	va_start(ap, fmt);
 	xvasprintf(&msg, fmt, ap);
@@ -260,17 +260,17 @@ screen_write_cnputs(struct screen_write_ctx *ctx, ssize_t maxlen,
 			continue;
 		}
 
-		if (*ptr > 0x7f && utf8_open(&ud, *ptr)) {
+		if (*ptr > 0x7f && utf8_open(&ud, *ptr) == UTF8_MORE) {
 			ptr++;
 
 			left = strlen(ptr);
 			if (left < (size_t)ud.size - 1)
 				break;
-			while ((more = utf8_append(&ud, *ptr)) == 1)
+			while ((more = utf8_append(&ud, *ptr)) == UTF8_MORE)
 				ptr++;
 			ptr++;
 
-			if (more == 0) {
+			if (more == UTF8_DONE) {
 				if (maxlen > 0 &&
 				    size + ud.width > (size_t) maxlen) {
 					while (size < (size_t) maxlen) {
