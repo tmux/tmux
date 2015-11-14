@@ -1924,7 +1924,7 @@ input_utf8_open(struct input_ctx *ictx)
 	struct utf8_data	*ud = &ictx->utf8data;
 
 	if (utf8_open(ud, ictx->ch) != UTF8_MORE)
-		log_fatalx("UTF-8 open invalid %#hhx", ictx->ch);
+		log_fatalx("UTF-8 open invalid %#x", ictx->ch);
 
 	log_debug("%s %hhu", __func__, ud->size);
 
@@ -1938,7 +1938,7 @@ input_utf8_add(struct input_ctx *ictx)
 	struct utf8_data	*ud = &ictx->utf8data;
 
 	if (utf8_append(ud, ictx->ch) != UTF8_MORE)
-		log_fatalx("UTF-8 add invalid %#hhx", ictx->ch);
+		log_fatalx("UTF-8 add invalid %#x", ictx->ch);
 
 	log_debug("%s", __func__);
 
@@ -1952,7 +1952,7 @@ input_utf8_close(struct input_ctx *ictx)
 	struct utf8_data	*ud = &ictx->utf8data;
 
 	if (utf8_append(ud, ictx->ch) != UTF8_DONE)
-		log_fatalx("UTF-8 close invalid %#hhx", ictx->ch);
+		log_fatalx("UTF-8 close invalid %#x", ictx->ch);
 
 	log_debug("%s %hhu '%*s' (width %hhu)", __func__, ud->size,
 	    (int)ud->size, ud->data, ud->width);
