@@ -261,7 +261,7 @@ main(int argc, char **argv)
 		usage();
 
 #ifdef __OpenBSD__
-	if (pledge("stdio rpath wpath cpath flock fattr unix sendfd recvfd "
+	if (0 && pledge("stdio rpath wpath cpath flock fattr unix sendfd recvfd "
 	    "proc exec tty ps", NULL) != 0)
 		err(1, "pledge");
 #endif

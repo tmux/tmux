@@ -1043,9 +1043,6 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 		server_client_dispatch_shell(c);
 		break;
 	}
-
-	server_push_stdout(c);
-	server_push_stderr(c);
 }
 
 /* Handle command message. */
@@ -1226,4 +1223,91 @@ server_client_dispatch_shell(struct client *c)
 	proc_send_s(c->peer, MSG_SHELL, shell);
 
 	proc_kill_peer(c->peer);
+}
+
+/* Event callback to push more stdout data if any left. */
+static void
+server_client_stdout_cb(unused int fd, unused short events, void *arg)
+{
+	struct client	*c = arg;
+
+	if (~c->flags & CLIENT_DEAD)
+		server_client_push_stdout(c);
+	server_client_unref(c);
+}
+
+/* Push stdout to client if possible. */
+void
+server_client_push_stdout(struct client *c)
+{
+	struct msg_stdout_data data;
+	size_t                 sent, left;
+
+	left = EVBUFFER_LENGTH(c->stdout_data);
+	while (left != 0) {
+		sent = left;
+		if (sent > sizeof data.data)
+			sent = sizeof data.data;
+		memcpy(data.data, EVBUFFER_DATA(c->stdout_data), sent);
+		data.size = sent;
+
+		if (proc_send(c->peer, MSG_STDOUT, -1, &data, sizeof data) != 0)
+			break;
+		evbuffer_drain(c->stdout_data, sent);
+
+		left = EVBUFFER_LENGTH(c->stdout_data);
+		log_debug("%s: client %p, sent %zu, left %zu", __func__, c,
+		    sent, left);
+	}
+	if (left != 0) {
+		c->references++;
+		event_once(-1, EV_TIMEOUT, server_client_stdout_cb, c, NULL);
+		log_debug("%s: client %p, queued", __func__, c);
+	}
+}
+
+/* Event callback to push more stderr data if any left. */
+static void
+server_client_stderr_cb(unused int fd, unused short events, void *arg)
+{
+	struct client	*c = arg;
+
+	if (~c->flags & CLIENT_DEAD)
+		server_client_push_stderr(c);
+	server_client_unref(c);
+}
+
+/* Push stderr to client if possible. */
+void
+server_client_push_stderr(struct client *c)
+{
+	struct msg_stderr_data data;
+	size_t                 sent, left;
+
+	if (c->stderr_data == c->stdout_data) {
+		server_client_push_stdout(c);
+		return;
+	}
+
+	left = EVBUFFER_LENGTH(c->stderr_data);
+	while (left != 0) {
+		sent = left;
+		if (sent > sizeof data.data)
+			sent = sizeof data.data;
+		memcpy(data.data, EVBUFFER_DATA(c->stderr_data), sent);
+		data.size = sent;
+
+		if (proc_send(c->peer, MSG_STDERR, -1, &data, sizeof data) != 0)
+			break;
+		evbuffer_drain(c->stderr_data, sent);
+
+		left = EVBUFFER_LENGTH(c->stderr_data);
+		log_debug("%s: client %p, sent %zu, left %zu", __func__, c,
+		    sent, left);
+	}
+	if (left != 0) {
+		c->references++;
+		event_once(-1, EV_TIMEOUT, server_client_stderr_cb, c, NULL);
+		log_debug("%s: client %p, queued", __func__, c);
+	}
 }

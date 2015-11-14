@@ -289,7 +289,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	 *
 	 * "sendfd" is dropped later in client_dispatch_wait().
 	 */
-	if (pledge("stdio unix sendfd proc exec tty", NULL) != 0)
+	if (0 && pledge("stdio unix sendfd proc exec tty", NULL) != 0)
 		fatal("pledge failed");
 #endif
 
@@ -545,7 +545,7 @@ client_dispatch_wait(struct imsg *imsg)
 	 * get the first message from the server.
 	 */
 	if (!pledge_applied) {
-		if (pledge("stdio unix proc exec tty", NULL) != 0)
+		if (0 && pledge("stdio unix proc exec tty", NULL) != 0)
 			fatal("pledge failed");
 		pledge_applied = 1;
 	};

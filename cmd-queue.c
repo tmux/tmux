@@ -85,7 +85,7 @@ cmdq_print(struct cmd_q *cmdq, const char *fmt, ...)
 		} else
 			evbuffer_add_vprintf(c->stdout_data, fmt, ap);
 		evbuffer_add(c->stdout_data, "\n", 1);
-		server_push_stdout(c);
+		server_client_push_stdout(c);
 	} else {
 		w = c->session->curw->window;
 		if (w->active->mode != &window_copy_mode) {
@@ -125,7 +125,7 @@ cmdq_error(struct cmd_q *cmdq, const char *fmt, ...)
 		}
 		evbuffer_add(c->stderr_data, msg, msglen);
 		evbuffer_add(c->stderr_data, "\n", 1);
-		server_push_stderr(c);
+		server_client_push_stderr(c);
 		c->retval = 1;
 	} else {
 		*msg = toupper((u_char) *msg);
@@ -146,7 +146,7 @@ cmdq_guard(struct cmd_q *cmdq, const char *guard, int flags)
 
 	evbuffer_add_printf(c->stdout_data, "%%%s %ld %u %d\n", guard,
 	    (long) cmdq->time, cmdq->number, flags);
-	server_push_stdout(c);
+	server_client_push_stdout(c);
 }
 
 /* Add command list to queue and begin processing if needed. */

@@ -160,7 +160,7 @@ cmd_load_buffer_callback(struct client *c, int closed, void *data)
 			free(saved);
 		}
 		evbuffer_add_printf(c->stderr_data, "%s", cause);
-		server_push_stderr(c);
+		server_client_push_stderr(c);
 		free(pdata);
 		free(cause);
 	}
