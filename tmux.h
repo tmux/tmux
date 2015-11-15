@@ -58,12 +58,6 @@ struct tmuxproc;
 #define NAME_INTERVAL 500000
 
 /*
- * UTF-8 data size. This must be big enough to hold combined characters as well
- * as single.
- */
-#define UTF8_SIZE 9
-
-/*
  * READ_SIZE is the maximum size of data to hold from a pty (the event high
  * watermark). READ_BACKOFF is the amount of data waiting to be output to a tty
  * before pty reads will be backed off. READ_TIME is how long to back off
@@ -125,7 +119,7 @@ struct tmuxproc;
  * A single key. This can be ASCII or Unicode or one of the keys starting at
  * KEYC_BASE.
  */
-typedef uint64_t key_code;
+typedef unsigned long long key_code;
 
 /* Special key codes. */
 enum {
@@ -617,7 +611,11 @@ struct mode_key_table {
 
 #define ALL_MOUSE_MODES (MODE_MOUSE_STANDARD|MODE_MOUSE_BUTTON)
 
-/* A single UTF-8 character. */
+/*
+ * A single UTF-8 character. UTF8_SIZE must be big enough to hold at least one
+ * combining character as well.
+*/
+#define UTF8_SIZE 9
 struct utf8_data {
 	u_char	data[UTF8_SIZE];
 
