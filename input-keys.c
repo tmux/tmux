@@ -160,7 +160,7 @@ input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
 	 * if necessary. If it is a UTF-8 key, split it and send it.
 	 */
 	justkey = (key & ~KEYC_ESCAPE);
-	if (key != KEYC_NONE && justkey < 0x7f) {
+	if (key != KEYC_NONE && justkey <= 0x7f) {
 		if (key & KEYC_ESCAPE)
 			bufferevent_write(wp->event, "\033", 1);
 		ud.data[0] = justkey;
