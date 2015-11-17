@@ -25,16 +25,13 @@
 #include "tmux.h"
 
 char *
-xstrdup(const char *s)
+xstrdup(const char *str)
 {
-	char	*ptr;
-	size_t	 len;
+	char	*cp;
 
-	len = strlen(s) + 1;
-	ptr = xmalloc(len);
-
-	strlcpy(ptr, s, len);
-	return (ptr);
+	if ((cp = strdup(str)) == NULL)
+		fatal("xstrdup");
+	return (cp);
 }
 
 void *
@@ -43,11 +40,9 @@ xcalloc(size_t nmemb, size_t size)
 	void	*ptr;
 
 	if (size == 0 || nmemb == 0)
-		fatalx("zero size");
-	if (SIZE_MAX / nmemb < size)
-		fatalx("nmemb * size > SIZE_MAX");
+		fatalx("xcalloc: zero size");
 	if ((ptr = calloc(nmemb, size)) == NULL)
-		fatal("xcalloc failed");
+		log_fatal("xcalloc: allocating %zu bytes", size);
 
 	return (ptr);
 }
@@ -58,9 +53,9 @@ xmalloc(size_t size)
 	void	*ptr;
 
 	if (size == 0)
-		fatalx("zero size");
+		fatalx("xmalloc: zero size");
 	if ((ptr = malloc(size)) == NULL)
-		fatal("xmalloc failed");
+		log_fatal("xmalloc: allocating %zu bytes", size);
 
 	return (ptr);
 }
@@ -71,9 +66,9 @@ xrealloc(void *oldptr, size_t newsize)
 	void	*newptr;
 
 	if (newsize == 0)
-		fatalx("zero size");
+		fatalx("xrealloc: zero size");
 	if ((newptr = realloc(oldptr, newsize)) == NULL)
-		fatal("xrealloc failed");
+		log_fatal("xrealloc: allocating %zu bytes", newsize);
 
 	return (newptr);
 }
@@ -81,15 +76,13 @@ xrealloc(void *oldptr, size_t newsize)
 void *
 xreallocarray(void *oldptr, size_t nmemb, size_t size)
 {
-	size_t	 newsize = nmemb * size;
 	void	*newptr;
 
-	if (newsize == 0)
-		fatalx("zero size");
-	if (SIZE_MAX / nmemb < size)
-		fatalx("nmemb * size > SIZE_MAX");
-	if ((newptr = realloc(oldptr, newsize)) == NULL)
-		fatal("xreallocarray failed");
+	if (nmemb == 0 || size == 0)
+		fatalx("xreallocarray: zero size");
+	if ((newptr = reallocarray(oldptr, nmemb, size)) == NULL)
+		log_fatal("xreallocarray: allocating %zu * %zu bytes",
+		    nmemb, size);
 
 	return (newptr);
 }
@@ -114,7 +107,7 @@ xvasprintf(char **ret, const char *fmt, va_list ap)
 
 	i = vasprintf(ret, fmt, ap);
 	if (i < 0 || *ret == NULL)
-		fatal("xvasprintf failed");
+		fatal("xvasprintf");
 
 	return (i);
 }
@@ -138,11 +131,11 @@ xvsnprintf(char *buf, size_t len, const char *fmt, va_list ap)
 	int	i;
 
 	if (len > INT_MAX)
-		fatalx("len > INT_MAX");
+		fatalx("xvsnprintf: len > INT_MAX");
 
 	i = vsnprintf(buf, len, fmt, ap);
-	if (i < 0)
-		fatal("vsnprintf failed");
+	if (i < 0 || i >= (int)len)
+		fatalx("xvsnprintf: overflow");
 
 	return (i);
 }
