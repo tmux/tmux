@@ -234,6 +234,9 @@ endif
 if NO_OPENAT
 nodist_tmux_SOURCES += compat/openat.c
 endif
+if NO_REALLOCARRAY
+nodist_tmux_SOURCES += compat/reallocarray.c
+endif
 
 # Install tmux.1 in the right format.
 install-exec-hook:

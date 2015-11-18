@@ -365,6 +365,13 @@ if test "x$found_openat" = xyes; then
 fi
 AM_CONDITIONAL(NO_OPENAT, [test "x$found_openat" = xno])
 
+# Look for reallocarray, compat/reallocarray.c used if missing.
+AC_CHECK_FUNC(reallocarray, found_reallocarray=yes, found_reallocarray=no)
+if test "x$found_reallocarray" = xyes; then
+	AC_DEFINE(HAVE_REALLOCARRAY)
+fi
+AM_CONDITIONAL(NO_REALLOCARRAY, [test "x$found_reallocarray" = xno])
+
 # Look for getopt. glibc's getopt does not enforce argument order and the ways
 # of making it do so are stupid, so just use our own instead.
 AC_CHECK_FUNC(getopt, found_getopt=yes, found_getopt=no)
