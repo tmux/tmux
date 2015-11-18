@@ -48,6 +48,8 @@ struct session;
 struct tmuxpeer;
 struct tmuxproc;
 
+#include "xmalloc.h"
+
 /* Default global configuration file. */
 #define TMUX_CONF "/etc/tmux.conf"
 
@@ -69,10 +71,6 @@ struct tmuxproc;
 #define READ_SIZE 1024
 #define READ_BACKOFF 512
 #define READ_TIME 100
-
-/* Fatal errors. */
-#define fatal(msg) log_fatal("%s: %s", __func__, msg);
-#define fatalx(msg) log_fatalx("%s: %s", __func__, msg);
 
 /* Definition to shut gcc up about unused arguments. */
 #define unused __attribute__ ((unused))
@@ -2219,19 +2217,8 @@ struct event_base *osdep_event_init(void);
 void		 log_open(const char *);
 void		 log_close(void);
 void printflike(1, 2) log_debug(const char *, ...);
-__dead void printflike(1, 2) log_fatal(const char *, ...);
-__dead void printflike(1, 2) log_fatalx(const char *, ...);
-
-/* xmalloc.c */
-char		*xstrdup(const char *);
-void		*xcalloc(size_t, size_t);
-void		*xmalloc(size_t);
-void		*xrealloc(void *, size_t);
-void		*xreallocarray(void *, size_t, size_t);
-int printflike(2, 3) xasprintf(char **, const char *, ...);
-int		 xvasprintf(char **, const char *, va_list);
-int printflike(3, 4) xsnprintf(char *, size_t, const char *, ...);
-int		 xvsnprintf(char *, size_t, const char *, va_list);
+__dead void printflike(1, 2) fatal(const char *, ...);
+__dead void printflike(1, 2) fatalx(const char *, ...);
 
 /* style.c */
 int		 style_parse(const struct grid_cell *,

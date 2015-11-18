@@ -562,7 +562,7 @@ tty_term_string(struct tty_term *term, enum tty_code_code code)
 	if (!tty_term_has(term, code))
 		return ("");
 	if (term->codes[code].type != TTYCODE_STRING)
-		log_fatalx("not a string: %d", code);
+		fatalx("not a string: %d", code);
 	return (term->codes[code].value.string);
 }
 
@@ -597,7 +597,7 @@ tty_term_number(struct tty_term *term, enum tty_code_code code)
 	if (!tty_term_has(term, code))
 		return (0);
 	if (term->codes[code].type != TTYCODE_NUMBER)
-		log_fatalx("not a number: %d", code);
+		fatalx("not a number: %d", code);
 	return (term->codes[code].value.number);
 }
 
@@ -607,7 +607,7 @@ tty_term_flag(struct tty_term *term, enum tty_code_code code)
 	if (!tty_term_has(term, code))
 		return (0);
 	if (term->codes[code].type != TTYCODE_FLAG)
-		log_fatalx("not a flag: %d", code);
+		fatalx("not a flag: %d", code);
 	return (term->codes[code].value.flag);
 }
 
