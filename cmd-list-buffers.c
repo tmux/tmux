@@ -41,7 +41,7 @@ const struct cmd_entry cmd_list_buffers_entry = {
 };
 
 enum cmd_retval
-cmd_list_buffers_exec(unused struct cmd *self, struct cmd_q *cmdq)
+cmd_list_buffers_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct paste_buffer	*pb;

@@ -35,7 +35,7 @@ int	alerts_check_silence(struct session *, struct winlink *);
 void	alerts_ring_bell(struct session *);
 
 void
-alerts_timer(unused int fd, unused short events, void *arg)
+alerts_timer(__unused int fd, __unused short events, void *arg)
 {
 	struct window	*w = arg;
 
@@ -45,7 +45,7 @@ alerts_timer(unused int fd, unused short events, void *arg)
 }
 
 void
-alerts_callback(unused int fd, unused short events, unused void *arg)
+alerts_callback(__unused int fd, __unused short events, __unused void *arg)
 {
 	struct window	*w;
 	struct session	*s;

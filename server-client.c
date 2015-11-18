@@ -244,7 +244,7 @@ server_client_unref(struct client *c)
 
 /* Free dead client. */
 void
-server_client_free(unused int fd, unused short events, void *arg)
+server_client_free(__unused int fd, __unused short events, void *arg)
 {
 	struct client	*c = arg;
 
@@ -826,7 +826,7 @@ server_client_reset_state(struct client *c)
 
 /* Repeat time callback. */
 void
-server_client_repeat_timer(unused int fd, unused short events, void *data)
+server_client_repeat_timer(__unused int fd, __unused short events, void *data)
 {
 	struct client	*c = data;
 
@@ -1227,7 +1227,7 @@ server_client_dispatch_shell(struct client *c)
 
 /* Event callback to push more stdout data if any left. */
 static void
-server_client_stdout_cb(unused int fd, unused short events, void *arg)
+server_client_stdout_cb(__unused int fd, __unused short events, void *arg)
 {
 	struct client	*c = arg;
 
@@ -1268,7 +1268,7 @@ server_client_push_stdout(struct client *c)
 
 /* Event callback to push more stderr data if any left. */
 static void
-server_client_stderr_cb(unused int fd, unused short events, void *arg)
+server_client_stderr_cb(__unused int fd, __unused short events, void *arg)
 {
 	struct client	*c = arg;
 

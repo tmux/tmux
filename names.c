@@ -29,7 +29,7 @@ void	name_time_callback(int, short, void *);
 int	name_time_expired(struct window *, struct timeval *);
 
 void
-name_time_callback(unused int fd, unused short events, void *arg)
+name_time_callback(__unused int fd, __unused short events, void *arg)
 {
 	struct window	*w = arg;
 

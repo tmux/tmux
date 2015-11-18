@@ -42,7 +42,7 @@ screen_write_start(struct screen_write_ctx *ctx, struct window_pane *wp,
 
 /* Finish writing. */
 void
-screen_write_stop(unused struct screen_write_ctx *ctx)
+screen_write_stop(__unused struct screen_write_ctx *ctx)
 {
 }
 

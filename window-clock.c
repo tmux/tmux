@@ -120,7 +120,7 @@ const char window_clock_table[14][5][5] = {
 };
 
 void
-window_clock_timer_callback(unused int fd, unused short events, void *arg)
+window_clock_timer_callback(__unused int fd, __unused short events, void *arg)
 {
 	struct window_pane		*wp = arg;
 	struct window_clock_mode_data	*data = wp->modedata;
@@ -185,9 +185,9 @@ window_clock_resize(struct window_pane *wp, u_int sx, u_int sy)
 }
 
 void
-window_clock_key(struct window_pane *wp, unused struct client *c,
-    unused struct session *sess, unused key_code key,
-    unused struct mouse_event *m)
+window_clock_key(struct window_pane *wp, __unused struct client *c,
+    __unused struct session *sess, __unused key_code key,
+    __unused struct mouse_event *m)
 {
 	window_pane_reset_mode(wp);
 }

@@ -72,9 +72,6 @@ struct tmuxproc;
 #define READ_BACKOFF 512
 #define READ_TIME 100
 
-/* Definition to shut gcc up about unused arguments. */
-#define unused __attribute__ ((unused))
-
 /* Attribute to make gcc check printf-like arguments. */
 #define printflike(a, b) __attribute__ ((format (printf, a, b)))
 

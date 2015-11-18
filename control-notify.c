@@ -101,7 +101,7 @@ control_notify_window_layout_changed(struct window *w)
 }
 
 void
-control_notify_window_unlinked(unused struct session *s, struct window *w)
+control_notify_window_unlinked(__unused struct session *s, struct window *w)
 {
 	struct client	*c;
 	struct session	*cs;
@@ -119,7 +119,7 @@ control_notify_window_unlinked(unused struct session *s, struct window *w)
 }
 
 void
-control_notify_window_linked(unused struct session *s, struct window *w)
+control_notify_window_linked(__unused struct session *s, struct window *w)
 {
 	struct client	*c;
 	struct session	*cs;
@@ -183,7 +183,7 @@ control_notify_session_renamed(struct session *s)
 }
 
 void
-control_notify_session_created(unused struct session *s)
+control_notify_session_created(__unused struct session *s)
 {
 	struct client	*c;
 
@@ -196,7 +196,7 @@ control_notify_session_created(unused struct session *s)
 }
 
 void
-control_notify_session_close(unused struct session *s)
+control_notify_session_close(__unused struct session *s)
 {
 	struct client	*c;
 
