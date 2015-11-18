@@ -54,9 +54,6 @@ cmd_display_message_exec(struct cmd *self, struct cmd_q *cmdq)
 	const char		*template;
 	char			*msg;
 	struct format_tree	*ft;
-	char			 out[BUFSIZ];
-	time_t			 t;
-	size_t			 len;
 
 	if (args_has(args, 't')) {
 		wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp);
@@ -94,11 +91,7 @@ cmd_display_message_exec(struct cmd *self, struct cmd_q *cmdq)
 	ft = format_create();
 	format_defaults(ft, c, s, wl, wp);
 
-	t = time(NULL);
-	len = strftime(out, sizeof out, template, localtime(&t));
-	out[len] = '\0';
-
-	msg = format_expand(ft, out);
+	msg = format_expand_time(ft, template, time(NULL));
 	if (args_has(self->args, 'p'))
 		cmdq_print(cmdq, "%s", msg);
 	else
