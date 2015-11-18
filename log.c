@@ -32,7 +32,7 @@ void	 log_vwrite(const char *, va_list);
 
 /* Log callback for libevent. */
 void
-log_event_cb(unused int severity, const char *msg)
+log_event_cb(__unused int severity, const char *msg)
 {
 	log_debug("%s", msg);
 }

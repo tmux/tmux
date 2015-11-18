@@ -30,7 +30,7 @@
 enum cmd_retval	 cmd_list_keys_exec(struct cmd *, struct cmd_q *);
 
 enum cmd_retval	 cmd_list_keys_table(struct cmd *, struct cmd_q *);
-enum cmd_retval	 cmd_list_keys_commands(struct cmd *, struct cmd_q *);
+enum cmd_retval	 cmd_list_keys_commands(struct cmd_q *);
 
 const struct cmd_entry cmd_list_keys_entry = {
 	"list-keys", "lsk",
@@ -60,7 +60,7 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 	int			 repeat, width, tablewidth, keywidth;
 
 	if (self->entry == &cmd_list_commands_entry)
-		return (cmd_list_keys_commands(self, cmdq));
+		return (cmd_list_keys_commands(cmdq));
 
 	if (args_has(args, 't'))
 		return (cmd_list_keys_table(self, cmdq));
@@ -178,7 +178,7 @@ cmd_list_keys_table(struct cmd *self, struct cmd_q *cmdq)
 }
 
 enum cmd_retval
-cmd_list_keys_commands(unused struct cmd *self, struct cmd_q *cmdq)
+cmd_list_keys_commands(struct cmd_q *cmdq)
 {
 	const struct cmd_entry	**entryp;
 	const struct cmd_entry	 *entry;

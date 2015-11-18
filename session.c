@@ -180,7 +180,7 @@ session_unref(struct session *s)
 
 /* Free session. */
 void
-session_free(unused int fd, unused short events, void *arg)
+session_free(__unused int fd, __unused short events, void *arg)
 {
 	struct session	*s = arg;
 
@@ -235,7 +235,7 @@ session_check_name(const char *name)
 
 /* Lock session if it has timed out. */
 void
-session_lock_timer(unused int fd, unused short events, void *arg)
+session_lock_timer(__unused int fd, __unused short events, void *arg)
 {
 	struct session	*s = arg;
 

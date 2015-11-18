@@ -51,7 +51,7 @@ control_write_buffer(struct client *c, struct evbuffer *buffer)
 
 /* Control input callback. Read lines and fire commands. */
 void
-control_callback(struct client *c, int closed, unused void *data)
+control_callback(struct client *c, int closed, __unused void *data)
 {
 	char		*line, *cause;
 	struct cmd_list	*cmdlist;

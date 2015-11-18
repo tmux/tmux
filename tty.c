@@ -172,7 +172,7 @@ tty_open(struct tty *tty, char **cause)
 }
 
 void
-tty_read_callback(unused struct bufferevent *bufev, void *data)
+tty_read_callback(__unused struct bufferevent *bufev, void *data)
 {
 	struct tty	*tty = data;
 
@@ -181,8 +181,8 @@ tty_read_callback(unused struct bufferevent *bufev, void *data)
 }
 
 void
-tty_error_callback(
-    unused struct bufferevent *bufev, unused short what, unused void *data)
+tty_error_callback(__unused struct bufferevent *bufev, __unused short what,
+    __unused void *data)
 {
 }
 
@@ -591,7 +591,7 @@ tty_repeat_space(struct tty *tty, u_int n)
  * pane.
  */
 int
-tty_large_region(unused struct tty *tty, const struct tty_ctx *ctx)
+tty_large_region(__unused struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 
