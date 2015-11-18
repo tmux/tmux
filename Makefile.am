@@ -30,7 +30,7 @@ CFLAGS += -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
 CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 CFLAGS += -Wundef -Wbad-function-cast -Winline -Wcast-align
-CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign
+CFLAGS += -Wdeclaration-after-statement -Wno-pointer-sign -Wno-attributes
 CPPFLAGS += -DDEBUG
 endif
 if IS_COVERAGE
