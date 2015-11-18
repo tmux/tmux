@@ -3311,6 +3311,13 @@ prefixes are
 and
 .Xr dirname 3
 of the variable respectively.
+A prefix of the form
+.Ql s/foo/bar/:
+will substitute
+.Ql foo
+with
+.Ql bar
+throughout.
 .Pp
 In addition, the first line of a shell command's output may be inserted using
 .Ql #() .
