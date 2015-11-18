@@ -21,6 +21,9 @@
 #define __attribute__(a)
 #endif
 
+#ifndef __unused
+#define __unused __attribute__ ((__unused__))
+#endif
 #ifndef __dead
 #define __dead __attribute__ ((__noreturn__))
 #endif
