@@ -298,7 +298,7 @@ server_update_socket(void)
 
 /* Callback for server socket. */
 void
-server_accept(int fd, short events, unused void *data)
+server_accept(int fd, short events, __unused void *data)
 {
 	struct sockaddr_storage	sa;
 	socklen_t		slen = sizeof sa;

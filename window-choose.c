@@ -509,8 +509,8 @@ window_choose_get_item(struct window_pane *wp, key_code key,
 }
 
 void
-window_choose_key(struct window_pane *wp, unused struct client *c,
-    unused struct session *sess, key_code key, struct mouse_event *m)
+window_choose_key(struct window_pane *wp, __unused struct client *c,
+    __unused struct session *sess, key_code key, struct mouse_event *m)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;

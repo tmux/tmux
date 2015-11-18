@@ -111,7 +111,7 @@ cmd_wait_for_remove(struct wait_channel *wc)
 }
 
 enum cmd_retval
-cmd_wait_for_exec(struct cmd *self, unused struct cmd_q *cmdq)
+cmd_wait_for_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args     	*args = self->args;
 	const char		*name = args->argv[0];
@@ -130,7 +130,7 @@ cmd_wait_for_exec(struct cmd *self, unused struct cmd_q *cmdq)
 }
 
 enum cmd_retval
-cmd_wait_for_signal(unused struct cmd_q *cmdq, const char *name,
+cmd_wait_for_signal(__unused struct cmd_q *cmdq, const char *name,
     struct wait_channel *wc)
 {
 	struct cmd_q	*wq, *wq1;

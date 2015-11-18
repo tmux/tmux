@@ -259,7 +259,7 @@ format_job_get(struct format_tree *ft, const char *cmd)
 
 /* Remove old jobs. */
 void
-format_job_timer(unused int fd, unused short events, unused void *arg)
+format_job_timer(__unused int fd, __unused short events, __unused void *arg)
 {
 	struct format_job	*fj, *fj1;
 	time_t			 now;
@@ -288,7 +288,7 @@ format_job_timer(unused int fd, unused short events, unused void *arg)
 
 /* Callback for host. */
 void
-format_cb_host(unused struct format_tree *ft, struct format_entry *fe)
+format_cb_host(__unused struct format_tree *ft, struct format_entry *fe)
 {
 	char host[HOST_NAME_MAX + 1];
 
@@ -300,7 +300,7 @@ format_cb_host(unused struct format_tree *ft, struct format_entry *fe)
 
 /* Callback for host_short. */
 void
-format_cb_host_short(unused struct format_tree *ft, struct format_entry *fe)
+format_cb_host_short(__unused struct format_tree *ft, struct format_entry *fe)
 {
 	char host[HOST_NAME_MAX + 1], *cp;
 
@@ -315,7 +315,7 @@ format_cb_host_short(unused struct format_tree *ft, struct format_entry *fe)
 
 /* Callback for pid. */
 void
-format_cb_pid(unused struct format_tree *ft, struct format_entry *fe)
+format_cb_pid(__unused struct format_tree *ft, struct format_entry *fe)
 {
 	xasprintf(&fe->value, "%ld", (long)getpid());
 }

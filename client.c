@@ -410,7 +410,8 @@ client_send_identify(const char *ttynam, const char *cwd)
 
 /* Callback for client stdin read events. */
 void
-client_stdin_callback(unused int fd, unused short events, unused void *arg)
+client_stdin_callback(__unused int fd, __unused short events,
+    __unused void *arg)
 {
 	struct msg_stdin_data	data;
 
@@ -512,7 +513,7 @@ client_signal(int sig)
 
 /* Callback for client read events. */
 void
-client_dispatch(struct imsg *imsg, unused void *arg)
+client_dispatch(struct imsg *imsg, __unused void *arg)
 {
 	if (imsg == NULL) {
 		client_exitreason = CLIENT_EXIT_LOST_SERVER;

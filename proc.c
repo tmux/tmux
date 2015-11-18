@@ -53,7 +53,7 @@ static int	peer_check_version(struct tmuxpeer *, struct imsg *);
 static void	proc_update_event(struct tmuxpeer *);
 
 static void
-proc_event_cb(unused int fd, short events, void *arg)
+proc_event_cb(__unused int fd, short events, void *arg)
 {
 	struct tmuxpeer	*peer = arg;
 	ssize_t		 n;
@@ -101,7 +101,7 @@ proc_event_cb(unused int fd, short events, void *arg)
 }
 
 static void
-proc_signal_cb(int signo, unused short events, void *arg)
+proc_signal_cb(int signo, __unused short events, void *arg)
 {
 	struct tmuxproc	*tp = arg;
 

@@ -443,7 +443,7 @@ server_clear_identify(struct client *c)
 }
 
 void
-server_callback_identify(unused int fd, unused short events, void *data)
+server_callback_identify(__unused int fd, __unused short events, void *data)
 {
 	struct client	*c = data;
 

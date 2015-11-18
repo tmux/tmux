@@ -133,7 +133,7 @@ load_cfg(const char *path, struct cmd_q *cmdq, char **cause)
 }
 
 void
-cfg_default_done(unused struct cmd_q *cmdq)
+cfg_default_done(__unused struct cmd_q *cmdq)
 {
 	if (--cfg_references != 0)
 		return;

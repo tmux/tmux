@@ -142,8 +142,8 @@ cmd_pipe_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 }
 
 void
-cmd_pipe_pane_error_callback(
-    unused struct bufferevent *bufev, unused short what, void *data)
+cmd_pipe_pane_error_callback(__unused struct bufferevent *bufev,
+    __unused short what, void *data)
 {
 	struct window_pane	*wp = data;
 

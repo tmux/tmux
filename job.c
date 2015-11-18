@@ -150,7 +150,7 @@ job_free(struct job *job)
 
 /* Called when output buffer falls below low watermark (default is 0). */
 void
-job_write_callback(unused struct bufferevent *bufev, void *data)
+job_write_callback(__unused struct bufferevent *bufev, void *data)
 {
 	struct job	*job = data;
 	size_t		 len = EVBUFFER_LENGTH(EVBUFFER_OUTPUT(job->event));
@@ -166,7 +166,8 @@ job_write_callback(unused struct bufferevent *bufev, void *data)
 
 /* Job buffer error callback. */
 void
-job_callback(unused struct bufferevent *bufev, unused short events, void *data)
+job_callback(__unused struct bufferevent *bufev, __unused short events,
+    void *data)
 {
 	struct job	*job = data;
 
