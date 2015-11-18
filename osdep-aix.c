@@ -26,7 +26,7 @@
 #include "tmux.h"
 
 char *
-osdep_get_name(unused int fd, char *tty)
+osdep_get_name(__unused int fd, char *tty)
 {
 	struct psinfo	 p;
 	char		*path;

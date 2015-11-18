@@ -23,7 +23,7 @@
 #include "tmux.h"
 
 char *
-osdep_get_name(unused int fd, unused char *tty)
+osdep_get_name(__unused int fd, __unused char *tty)
 {
 	return (NULL);
 }
