@@ -130,10 +130,6 @@ session_create(const char *name, int argc, char **argv, const char *path,
 		memcpy(s->tio, tio, sizeof *s->tio);
 	}
 
-	if (gettimeofday(&s->creation_time, NULL) != 0)
-		fatal("gettimeofday failed");
-	session_update_activity(s, &s->creation_time);
-
 	s->sx = sx;
 	s->sy = sy;
 
@@ -149,6 +145,8 @@ session_create(const char *name, int argc, char **argv, const char *path,
 		} while (RB_FIND(sessions, &sessions, s) != NULL);
 	}
 	RB_INSERT(sessions, &sessions, s);
+
+	log_debug("new session %s $%u", s->name, s->id);
 
 	if (gettimeofday(&s->creation_time, NULL) != 0)
 		fatal("gettimeofday failed");
@@ -263,6 +261,10 @@ session_update_activity(struct session *s, struct timeval *from)
 		gettimeofday(&s->activity_time, NULL);
 	else
 		memcpy(&s->activity_time, from, sizeof s->activity_time);
+
+	log_debug("session %s activity %lld.%06d (last %lld.%06d)", s->name,
+	    (long long)s->activity_time.tv_sec, (int)s->activity_time.tv_usec,
+	    (long long)last->tv_sec, (int)last->tv_usec);
 
 	if (evtimer_initialized(&s->lock_timer))
 		evtimer_del(&s->lock_timer);
