@@ -33,6 +33,8 @@
 #include <stdio.h>
 #include <termios.h>
 
+#include "xmalloc.h"
+
 extern char    *__progname;
 extern char   **environ;
 
@@ -44,8 +46,6 @@ struct options;
 struct session;
 struct tmuxpeer;
 struct tmuxproc;
-
-#include "xmalloc.h"
 
 /* Default global configuration file. */
 #define TMUX_CONF "/etc/tmux.conf"
@@ -1014,6 +1014,7 @@ struct session {
 	struct options	*options;
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
+#define SESSION_PASTING 0x2
 	int		 flags;
 
 	u_int		 attached;
@@ -1147,7 +1148,7 @@ struct tty {
 	struct tty_key	*key_tree;
 };
 
-/* TTY command context and function pointer. */
+/* TTY command context. */
 struct tty_ctx {
 	struct window_pane *wp;
 
