@@ -355,6 +355,7 @@ utf8_set(struct utf8_data *ud, u_char ch)
 	u_int	i;
 
 	*ud->data = ch;
+	ud->have = 1;
 	ud->size = 1;
 
 	ud->width = 1;

@@ -97,7 +97,7 @@ cmd_new_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		ft = format_create();
 		format_defaults(ft, cmd_find_client(cmdq, NULL, 1), s, NULL,
 		    NULL);
-		cwd = format_expand(ft, args_get(args, 'c'));
+		cwd = to_free = format_expand(ft, args_get(args, 'c'));
 		format_free(ft);
 	} else if (cmdq->client != NULL && cmdq->client->session == NULL)
 		cwd = cmdq->client->cwd;
