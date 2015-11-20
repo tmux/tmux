@@ -77,22 +77,14 @@ alerts_callback(__unused int fd, __unused short events, __unused void *arg)
 int
 alerts_enabled(struct window *w, int flags)
 {
-	struct session	*s;
-
+	if (flags & WINDOW_BELL)
+		return (1);
 	if (flags & WINDOW_ACTIVITY) {
 		if (options_get_number(w->options, "monitor-activity"))
 			return (1);
 	}
 	if (flags & WINDOW_SILENCE) {
 		if (options_get_number(w->options, "monitor-silence") != 0)
-			return (1);
-	}
-	if (~flags & WINDOW_BELL)
-		return (0);
-	RB_FOREACH(s, sessions, &sessions) {
-		if (!session_has(s, w))
-			continue;
-		if (options_get_number(s->options, "bell-action") != BELL_NONE)
 			return (1);
 	}
 	return (0);
