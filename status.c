@@ -1205,19 +1205,7 @@ status_prompt_complete_list(u_int *size, const char *s)
 			list[(*size)++] = (*cmdent)->name;
 		}
 	}
-	for (oe = server_options_table; oe->name != NULL; oe++) {
-		if (strncmp(oe->name, s, strlen(s)) == 0) {
-			list = xreallocarray(list, (*size) + 1, sizeof *list);
-			list[(*size)++] = oe->name;
-		}
-	}
-	for (oe = session_options_table; oe->name != NULL; oe++) {
-		if (strncmp(oe->name, s, strlen(s)) == 0) {
-			list = xreallocarray(list, (*size) + 1, sizeof *list);
-			list[(*size)++] = oe->name;
-		}
-	}
-	for (oe = window_options_table; oe->name != NULL; oe++) {
+	for (oe = options_table; oe->name != NULL; oe++) {
 		if (strncmp(oe->name, s, strlen(s)) == 0) {
 			list = xreallocarray(list, (*size) + 1, sizeof *list);
 			list[(*size)++] = oe->name;
