@@ -35,6 +35,7 @@
 #endif
 
 #include "compat.h"
+#include "xmalloc.h"
 
 extern char    *__progname;
 extern char   **environ;
@@ -47,8 +48,6 @@ struct options;
 struct session;
 struct tmuxpeer;
 struct tmuxproc;
-
-#include "xmalloc.h"
 
 /* Default global configuration file. */
 #define TMUX_CONF "/etc/tmux.conf"
@@ -1017,6 +1016,7 @@ struct session {
 	struct options	*options;
 
 #define SESSION_UNATTACHED 0x1	/* not attached to any clients */
+#define SESSION_PASTING 0x2
 	int		 flags;
 
 	u_int		 attached;
@@ -1150,7 +1150,7 @@ struct tty {
 	struct tty_key	*key_tree;
 };
 
-/* TTY command context and function pointer. */
+/* TTY command context. */
 struct tty_ctx {
 	struct window_pane *wp;
 
@@ -1395,19 +1395,25 @@ enum options_table_type {
 	OPTIONS_TABLE_CHOICE,
 	OPTIONS_TABLE_STYLE
 };
+enum options_table_scope {
+	OPTIONS_TABLE_SERVER,
+	OPTIONS_TABLE_SESSION,
+	OPTIONS_TABLE_WINDOW,
+};
 
 struct options_table_entry {
-	const char	       *name;
-	enum options_table_type	type;
+	const char		 *name;
+	enum options_table_type	  type;
+	enum options_table_scope  scope;
 
-	u_int			minimum;
-	u_int			maximum;
-	const char	      **choices;
+	u_int			  minimum;
+	u_int			  maximum;
+	const char		**choices;
 
-	const char	       *default_str;
-	long long		default_num;
+	const char		 *default_str;
+	long long		  default_num;
 
-	const char	       *style;
+	const char		 *style;
 };
 
 /* Common command usages. */
@@ -1545,15 +1551,11 @@ struct options_entry *options_set_style(struct options *, const char *,
 struct grid_cell *options_get_style(struct options *, const char *);
 
 /* options-table.c */
-extern const struct options_table_entry server_options_table[];
-extern const struct options_table_entry session_options_table[];
-extern const struct options_table_entry window_options_table[];
-void	options_table_populate_tree(const struct options_table_entry *,
-	    struct options *);
+extern const struct options_table_entry options_table[];
+void	options_table_populate_tree(enum options_table_scope, struct options *);
 const char *options_table_print_entry(const struct options_table_entry *,
 	    struct options_entry *, int);
-int	options_table_find(const char *, const struct options_table_entry **,
-	    const struct options_table_entry **);
+int	options_table_find(const char *, const struct options_table_entry **);
 
 /* job.c */
 extern struct joblist all_jobs;

@@ -84,7 +84,7 @@ enum cmd_retval
 cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args				*args = self->args;
-	const struct options_table_entry	*table, *oe;
+	const struct options_table_entry	*oe;
 	struct session				*s;
 	struct winlink				*wl;
 	struct client				*c;
@@ -108,8 +108,8 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (cmd_set_option_user(self, cmdq, optstr, valstr));
 
 	/* Find the option entry, try each table. */
-	table = oe = NULL;
-	if (options_table_find(optstr, &table, &oe) != 0) {
+	oe = NULL;
+	if (options_table_find(optstr, &oe) != 0) {
 		if (!args_has(args, 'q')) {
 			cmdq_error(cmdq, "ambiguous option: %s", optstr);
 			return (CMD_RETURN_ERROR);
@@ -124,10 +124,10 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	/* Work out the tree from the table. */
-	if (table == server_options_table)
+	/* Work out the tree from the scope of the option. */
+	if (oe->scope == OPTIONS_TABLE_SERVER)
 		oo = global_options;
-	else if (table == window_options_table) {
+	else if (oe->scope == OPTIONS_TABLE_WINDOW) {
 		if (args_has(self->args, 'g'))
 			oo = global_w_options;
 		else {
@@ -141,7 +141,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 			}
 			oo = wl->window->options;
 		}
-	} else if (table == session_options_table) {
+	} else if (oe->scope == OPTIONS_TABLE_SESSION) {
 		if (args_has(self->args, 'g'))
 			oo = global_s_options;
 		else {

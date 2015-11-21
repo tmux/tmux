@@ -492,8 +492,16 @@ server_client_assume_paste(struct session *s)
 		return (0);
 
 	timersub(&s->activity_time, &s->last_activity_time, &tv);
-	if (tv.tv_sec == 0 && tv.tv_usec < t * 1000)
-		return (1);
+	if (tv.tv_sec == 0 && tv.tv_usec < t * 1000) {
+		log_debug("session %s pasting (flag %d)", s->name,
+		    !!(s->flags & SESSION_PASTING));
+		if (s->flags & SESSION_PASTING)
+			return (1);
+		s->flags |= SESSION_PASTING;
+		return (0);
+	}
+	log_debug("session %s not pasting", s->name);
+	s->flags &= ~SESSION_PASTING;
 	return (0);
 }
 
