@@ -14,8 +14,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "tmux.h"
-
 #ifndef HAVE_CLOSEFROM
 
 #include <sys/types.h>
@@ -46,6 +44,8 @@
 #  include <ndir.h>
 # endif
 #endif
+
+#include "tmux.h"
 
 #ifndef OPEN_MAX
 # define OPEN_MAX	256
