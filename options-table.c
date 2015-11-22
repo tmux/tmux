@@ -198,7 +198,7 @@ const struct options_table_entry options_table[] = {
 	{ .name = "display-time",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SESSION,
-	  .minimum = 1,
+	  .minimum = 0,
 	  .maximum = INT_MAX,
 	  .default_num = 750
 	},
