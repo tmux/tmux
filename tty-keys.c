@@ -481,6 +481,7 @@ tty_keys_next(struct tty *tty)
 	/* Get key buffer. */
 	buf = EVBUFFER_DATA(tty->event->input);
 	len = EVBUFFER_LENGTH(tty->event->input);
+
 	if (len == 0)
 		return (0);
 	log_debug("keys are %zu (%.*s)", len, (int) len, buf);
@@ -653,10 +654,8 @@ int
 tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 {
 	struct mouse_event	*m = &tty->mouse;
-	struct utf8_data	 ud;
-	u_int			 i, value, x, y, b, sgr_b;
+	u_int			 i, x, y, b, sgr_b;
 	u_char			 sgr_type, c;
-	enum utf8_state		 more;
 
 	/*
 	 * Standard mouse sequences are \033[M followed by three characters
@@ -686,8 +685,8 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 		return (1);
 
 	/*
-	 * Third byte is M in old standard and UTF-8 extension, < in SGR
-	 * extension.
+	 * Third byte is M in old standard (and UTF-8 extension which we do not
+	 * support), < in SGR extension.
 	 */
 	if (buf[2] == 'M') {
 		/* Read the three inputs. */
@@ -695,32 +694,13 @@ tty_keys_mouse(struct tty *tty, const char *buf, size_t len, size_t *size)
 		for (i = 0; i < 3; i++) {
 			if (len <= *size)
 				return (1);
-
-			if (tty->mode & MODE_MOUSE_UTF8) {
-				if (utf8_open(&ud, buf[*size]) == UTF8_MORE) {
-					if (ud.size != 2)
-						return (-1);
-					(*size)++;
-					if (len <= *size)
-						return (1);
-					more = utf8_append(&ud, buf[*size]);
-					if (more != UTF8_DONE)
-						return (-1);
-					value = utf8_combine(&ud);
-				} else
-					value = (u_char)buf[*size];
-				(*size)++;
-			} else {
-				value = (u_char)buf[*size];
-				(*size)++;
-			}
-
+			c = (u_char)buf[(*size)++];
 			if (i == 0)
-				b = value;
+				b = c;
 			else if (i == 1)
-				x = value;
+				x = c;
 			else
-				y = value;
+				y = c;
 		}
 		log_debug("mouse input: %.*s", (int)*size, buf);
 
