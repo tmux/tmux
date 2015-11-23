@@ -521,21 +521,15 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 		}
 		tty->cstyle = s->cstyle;
 	}
-	if (changed & (ALL_MOUSE_MODES|MODE_MOUSE_UTF8)) {
+	if (changed & ALL_MOUSE_MODES) {
 		if (mode & ALL_MOUSE_MODES) {
 			/*
-			 * Enable the UTF-8 (1005) extension if configured to.
 			 * Enable the SGR (1006) extension unconditionally, as
 			 * this is safe from misinterpretation. Do it in this
 			 * order, because in some terminals it's the last one
 			 * that takes effect and SGR is the preferred one.
 			 */
-			if (mode & MODE_MOUSE_UTF8)
-				tty_puts(tty, "\033[?1005h");
-			else
-				tty_puts(tty, "\033[?1005l");
 			tty_puts(tty, "\033[?1006h");
-
 			if (mode & MODE_MOUSE_BUTTON)
 				tty_puts(tty, "\033[?1002h");
 			else if (mode & MODE_MOUSE_STANDARD)
@@ -545,10 +539,7 @@ tty_update_mode(struct tty *tty, int mode, struct screen *s)
 				tty_puts(tty, "\033[?1002l");
 			else if (tty->mode & MODE_MOUSE_STANDARD)
 				tty_puts(tty, "\033[?1000l");
-
 			tty_puts(tty, "\033[?1006l");
-			if (tty->mode & MODE_MOUSE_UTF8)
-				tty_puts(tty, "\033[?1005l");
 		}
 	}
 	if (changed & MODE_KKEYPAD) {
