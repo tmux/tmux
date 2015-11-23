@@ -574,13 +574,15 @@ status_message_set(struct client *c, const char *fmt, ...)
 	}
 
 	delay = options_get_number(c->session->options, "display-time");
-	tv.tv_sec = delay / 1000;
-	tv.tv_usec = (delay % 1000) * 1000L;
+	if (delay > 0) {
+		tv.tv_sec = delay / 1000;
+		tv.tv_usec = (delay % 1000) * 1000L;
 
-	if (event_initialized(&c->message_timer))
-		evtimer_del(&c->message_timer);
-	evtimer_set(&c->message_timer, status_message_callback, c);
-	evtimer_add(&c->message_timer, &tv);
+		if (event_initialized(&c->message_timer))
+			evtimer_del(&c->message_timer);
+		evtimer_set(&c->message_timer, status_message_callback, c);
+		evtimer_add(&c->message_timer, &tv);
+	}
 
 	c->tty.flags |= (TTY_NOCURSOR|TTY_FREEZE);
 	c->flags |= CLIENT_STATUS;

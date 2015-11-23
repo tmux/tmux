@@ -176,8 +176,8 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 		tty_create_log();
 
 #ifdef __OpenBSD__
-	if (pledge("stdio rpath wpath cpath fattr unix recvfd proc exec tty "
-	    "ps", NULL) != 0)
+	if (pledge("stdio rpath wpath cpath fattr unix getpw recvfd proc exec "
+	    "tty ps", NULL) != 0)
 		fatal("pledge failed");
 #endif
 
