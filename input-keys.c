@@ -243,11 +243,17 @@ input_key_mouse(struct window_pane *wp, struct mouse_event *m)
 	 * is because an old style mouse release event cannot be converted into
 	 * the new SGR format, since the released button is unknown). Otherwise
 	 * pretend that tmux doesn't speak this extension, and fall back to the
+	 * UTF-8 (1005) extension if the application requested, or to the
 	 * legacy format.
 	 */
 	if (m->sgr_type != ' ' && (wp->screen->mode & MODE_MOUSE_SGR)) {
 		len = xsnprintf(buf, sizeof buf, "\033[<%u;%u;%u%c",
 		    m->sgr_b, x + 1, y + 1, m->sgr_type);
+	} else if (wp->screen->mode & MODE_MOUSE_UTF8) {
+		len = xsnprintf(buf, sizeof buf, "\033[M");
+		len += utf8_split2(m->b + 32, &buf[len]);
+		len += utf8_split2(x + 33, &buf[len]);
+		len += utf8_split2(y + 33, &buf[len]);
 	} else {
 		if (m->b > 223)
 			return;
