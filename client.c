@@ -53,7 +53,7 @@ enum msgtype	 client_exittype;
 const char	*client_exitsession;
 int		 client_attached;
 
-__dead void	client_exec(const char *);
+__dead void	client_exec(const char *,const char *);
 int		client_get_lock(char *);
 int		client_connect(struct event_base *, const char *, int);
 void		client_send_identify(const char *, const char *);
@@ -62,7 +62,7 @@ void		client_write(int, const char *, size_t);
 void		client_signal(int);
 void		client_dispatch(struct imsg *, void *);
 void		client_dispatch_attached(struct imsg *);
-void		client_dispatch_wait(struct imsg *);
+void		client_dispatch_wait(struct imsg *, const char *);
 const char     *client_exit_message(void);
 
 /*
@@ -213,7 +213,8 @@ client_exit_message(void)
 
 /* Client main loop. */
 int
-client_main(struct event_base *base, int argc, char **argv, int flags)
+client_main(struct event_base *base, int argc, char **argv, int flags,
+    const char *shellcmd)
 {
 	struct cmd		*cmd;
 	struct cmd_list		*cmdlist;
@@ -234,7 +235,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 
 	/* Set up the initial command. */
 	cmdflags = 0;
-	if (shell_cmd != NULL) {
+	if (shellcmd != NULL) {
 		msg = MSG_SHELL;
 		cmdflags = CMD_STARTSERVER;
 	} else if (argc == 0) {
@@ -276,7 +277,8 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 		}
 		return (1);
 	}
-	client_peer = proc_add_peer(client_proc, fd, client_dispatch, NULL);
+	client_peer = proc_add_peer(client_proc, fd, client_dispatch,
+	    (void *)shellcmd);
 
 	/* Save these before pledge(). */
 	if ((cwd = getcwd(path, sizeof path)) == NULL) {
@@ -450,12 +452,12 @@ client_write(int fd, const char *data, size_t size)
 
 /* Run command in shell; used for -c. */
 __dead void
-client_exec(const char *shell)
+client_exec(const char *shell, const char *shellcmd)
 {
 	const char	*name, *ptr;
 	char		*argv0;
 
-	log_debug("shell %s, command %s", shell, shell_cmd);
+	log_debug("shell %s, command %s", shell, shellcmd);
 
 	ptr = strrchr(shell, '/');
 	if (ptr != NULL && *(ptr + 1) != '\0')
@@ -473,7 +475,7 @@ client_exec(const char *shell)
 	setblocking(STDERR_FILENO, 1);
 	closefrom(STDERR_FILENO + 1);
 
-	execl(shell, argv0, "-c", shell_cmd, (char *) NULL);
+	execl(shell, argv0, "-c", shellcmd, (char *) NULL);
 	fatal("execl failed");
 }
 
@@ -519,7 +521,7 @@ client_signal(int sig)
 
 /* Callback for client read events. */
 void
-client_dispatch(struct imsg *imsg, __unused void *arg)
+client_dispatch(struct imsg *imsg, void *arg)
 {
 	if (imsg == NULL) {
 		client_exitreason = CLIENT_EXIT_LOST_SERVER;
@@ -531,12 +533,12 @@ client_dispatch(struct imsg *imsg, __unused void *arg)
 	if (client_attached)
 		client_dispatch_attached(imsg);
 	else
-		client_dispatch_wait(imsg);
+		client_dispatch_wait(imsg, arg);
 }
 
 /* Dispatch imsgs when in wait state (before MSG_READY). */
 void
-client_dispatch_wait(struct imsg *imsg)
+client_dispatch_wait(struct imsg *imsg, const char *shellcmd)
 {
 	char			*data;
 	ssize_t			 datalen;
@@ -616,7 +618,7 @@ client_dispatch_wait(struct imsg *imsg)
 			fatalx("bad MSG_SHELL string");
 
 		clear_signals(0);
-		client_exec(data);
+		client_exec(data, shellcmd);
 		/* NOTREACHED */
 	case MSG_DETACH:
 	case MSG_DETACHKILL:

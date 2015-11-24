@@ -39,7 +39,6 @@ struct options	*global_s_options;	/* session options */
 struct options	*global_w_options;	/* window options */
 struct environ	*global_environ;
 
-char		*shell_cmd;
 struct timeval	 start_time;
 const char	*socket_path;
 
@@ -184,7 +183,7 @@ find_home(void)
 int
 main(int argc, char **argv)
 {
-	char		*path, *label, **var, tmp[PATH_MAX];
+	char		*path, *label, **var, tmp[PATH_MAX], *shellcmd = NULL;
 	const char	*s;
 	int		 opt, flags, keys;
 
@@ -203,8 +202,8 @@ main(int argc, char **argv)
 			flags |= CLIENT_256COLOURS;
 			break;
 		case 'c':
-			free(shell_cmd);
-			shell_cmd = xstrdup(optarg);
+			free(shellcmd);
+			shellcmd = xstrdup(optarg);
 			break;
 		case 'C':
 			if (flags & CLIENT_CONTROL)
@@ -241,7 +240,7 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (shell_cmd != NULL && argc != 0)
+	if (shellcmd != NULL && argc != 0)
 		usage();
 
 	if (pledge("stdio rpath wpath cpath flock fattr unix getpw sendfd "
@@ -318,5 +317,5 @@ main(int argc, char **argv)
 	free(label);
 
 	/* Pass control to the client. */
-	exit(client_main(event_init(), argc, argv, flags));
+	exit(client_main(event_init(), argc, argv, flags, shellcmd));
 }
