@@ -44,7 +44,6 @@ struct options	*global_w_options;	/* window options */
 struct environ	*global_environ;
 
 char		*shell_cmd;
-int		 debug_level;
 time_t		 start_time;
 char		 socket_path[PATH_MAX];
 
@@ -59,18 +58,6 @@ usage(void)
 	    "            [-S socket-path] [command [flags]]\n",
 	    __progname);
 	exit(1);
-}
-
-void
-logfile(const char *name)
-{
-	char	*path;
-
-	if (debug_level > 0) {
-		xasprintf(&path, "tmux-%s-%ld.log", name, (long) getpid());
-		log_open(path);
-		free(path);
-	}
 }
 
 const char *
@@ -243,7 +230,7 @@ main(int argc, char **argv)
 			flags |= CLIENT_UTF8;
 			break;
 		case 'v':
-			debug_level++;
+			log_add_level();
 			break;
 		default:
 			usage();

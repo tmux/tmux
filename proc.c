@@ -188,7 +188,7 @@ proc_start(const char *name, struct event_base *base, int forkflag,
 			fatalx("event_reinit failed");
 	}
 
-	logfile(name);
+	log_open(name);
 	setproctitle("%s (%s)", name, socket_path);
 
 	log_debug("%s started (%ld): socket %s, protocol %d", name,

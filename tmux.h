@@ -1432,10 +1432,8 @@ extern struct options *global_s_options;
 extern struct options *global_w_options;
 extern struct environ *global_environ;
 extern char	*shell_cmd;
-extern int	 debug_level;
 extern time_t	 start_time;
 extern char	 socket_path[PATH_MAX];
-void		 logfile(const char *);
 const char	*getshell(void);
 int		 checkshell(const char *);
 int		 areshell(const char *);
@@ -2210,8 +2208,10 @@ char		*utf8_padcstr(const char *, u_int);
 char   *get_proc_name(int, char *);
 
 /* log.c */
-void		 log_open(const char *);
-void		 log_close(void);
+void	log_add_level(void);
+int	log_get_level(void);
+void	log_open(const char *);
+void	log_close(void);
 void printflike(1, 2) log_debug(const char *, ...);
 __dead void printflike(1, 2) fatal(const char *, ...);
 __dead void printflike(1, 2) fatalx(const char *, ...);

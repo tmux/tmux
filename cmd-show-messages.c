@@ -61,7 +61,6 @@ cmd_show_messages_server(struct cmd_q *cmdq)
 
 	cmdq_print(cmdq, "started %s", tim);
 	cmdq_print(cmdq, "socket path %s", socket_path);
-	cmdq_print(cmdq, "debug level %d", debug_level);
 	cmdq_print(cmdq, "protocol version %d", PROTOCOL_VERSION);
 
 	return (1);
