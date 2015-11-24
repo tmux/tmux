@@ -62,6 +62,8 @@ cmd_show_messages_server(struct cmd_q *cmdq)
 	cmdq_print(cmdq, "started %s", tim);
 	cmdq_print(cmdq, "socket path %s", socket_path);
 	cmdq_print(cmdq, "protocol version %d", PROTOCOL_VERSION);
+	cmdq_print(cmdq, "libevent %s (%s)", event_get_version(),
+	    event_get_method());
 
 	return (1);
 }
