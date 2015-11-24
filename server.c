@@ -187,7 +187,7 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	mode_key_init_trees();
 	key_bindings_init();
 
-	start_time = time(NULL);
+	gettimeofday(&start_time, NULL);
 
 	server_fd = server_create_socket();
 	if (server_fd == -1)

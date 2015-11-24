@@ -740,7 +740,7 @@ Kill the
 .Nm
 server and clients and destroy all sessions.
 .It Xo Ic kill-session
-.Op Fl a
+.Op Fl aC
 .Op Fl t Ar target-session
 .Xc
 Destroy the given session, closing any windows linked to it and no other
@@ -748,6 +748,10 @@ sessions, and detaching all clients attached to it.
 If
 .Fl a
 is given, all sessions but the specified one is killed.
+The
+.Fl C
+clears alerts (bell, activity, or silence) in all windows linked to the
+session.
 .It Xo Ic list-clients
 .Op Fl F Ar format
 .Op Fl t Ar target-session
@@ -887,7 +891,7 @@ is specified, only update the client's status bar.
 Rename the session to
 .Ar new-name .
 .It Xo Ic show-messages
-.Op Fl IJT
+.Op Fl JT
 .Op Fl t Ar target-client
 .Xc
 .D1 (alias: Ic showmsgs )
@@ -900,11 +904,10 @@ With
 .Fl t ,
 display the log for
 .Ar target-client .
-.Fl I ,
 .Fl J
 and
 .Fl T
-show debugging information about the running server, jobs and terminals.
+show debugging information about jobs and terminals.
 .It Ic source-file Ar path
 .D1 (alias: Ic source )
 Execute commands from
@@ -3410,6 +3413,7 @@ The following variables are available, where appropriate:
 .It Li "session_name" Ta "#S" Ta "Name of session"
 .It Li "session_width" Ta "" Ta "Width of session"
 .It Li "session_windows" Ta "" Ta "Number of windows in session"
+.It Li "start_time" Ta "" Ta "Server start time"
 .It Li "window_activity" Ta "" Ta "Integer time of window last activity"
 .It Li "window_active" Ta "" Ta "1 if window active"
 .It Li "window_bell_flag" Ta "" Ta "1 if window has bell"

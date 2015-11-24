@@ -44,7 +44,7 @@ struct options	*global_w_options;	/* window options */
 struct environ	*global_environ;
 
 char		*shell_cmd;
-time_t		 start_time;
+struct timeval	 start_time;
 char		 socket_path[PATH_MAX];
 
 __dead void	 usage(void);
