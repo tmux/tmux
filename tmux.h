@@ -1433,7 +1433,7 @@ extern struct options *global_w_options;
 extern struct environ *global_environ;
 extern char		*shell_cmd;
 extern struct timeval	 start_time;
-extern char		 socket_path[PATH_MAX];
+extern const char	*socket_path;
 const char	*getshell(void);
 int		 checkshell(const char *);
 int		 areshell(const char *);

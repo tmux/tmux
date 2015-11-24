@@ -55,7 +55,7 @@ int		 client_attached;
 
 __dead void	client_exec(const char *);
 int		client_get_lock(char *);
-int		client_connect(struct event_base *, char *, int);
+int		client_connect(struct event_base *, const char *, int);
 void		client_send_identify(const char *, const char *);
 void		client_stdin_callback(int, short, void *);
 void		client_write(int, const char *, size_t);
@@ -96,7 +96,7 @@ client_get_lock(char *lockfile)
 
 /* Connect client to server. */
 int
-client_connect(struct event_base *base, char *path, int start_server)
+client_connect(struct event_base *base, const char *path, int start_server)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
