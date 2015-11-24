@@ -76,8 +76,12 @@ client_get_lock(char *lockfile)
 {
 	int lockfd;
 
-	if ((lockfd = open(lockfile, O_WRONLY|O_CREAT, 0600)) == -1)
-		fatal("open failed");
+	if ((lockfd = open(lockfile, O_WRONLY|O_CREAT, 0600)) == -1) {
+		lockfd = open("/dev/null", O_WRONLY);
+		if (lockfd == -1)
+			fatal("open failed");
+		return (lockfd);
+	}
 	log_debug("lock file is %s", lockfile);
 
 	if (flock(lockfd, LOCK_EX|LOCK_NB) == -1) {
@@ -114,10 +118,10 @@ client_connect(struct event_base *base, const char *path, int start_server)
 
 retry:
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-		fatal("socket failed");
+		return (-1);
 
 	log_debug("trying connect");
-	if (connect(fd, (struct sockaddr *) &sa, sizeof(sa)) == -1) {
+	if (connect(fd, (struct sockaddr *)&sa, sizeof sa) == -1) {
 		log_debug("connect failed: %s", strerror(errno));
 		if (errno != ECONNREFUSED && errno != ENOENT)
 			goto failed;
@@ -255,6 +259,9 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 		cmd_list_free(cmdlist);
 	}
 
+	/* Create client process structure (starts logging). */
+	client_proc = proc_start("client", base, 0, client_signal);
+
 	/* Initialize the client socket and start the server. */
 	fd = client_connect(base, socket_path, cmdflags & CMD_STARTSERVER);
 	if (fd == -1) {
@@ -267,9 +274,6 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 		}
 		return (1);
 	}
-
-	/* Build process state. */
-	client_proc = proc_start("client", base, 0, client_signal);
 	client_peer = proc_add_peer(client_proc, fd, client_dispatch, NULL);
 
 	/* Save these before pledge(). */
@@ -365,7 +369,8 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 			printf("%%exit\n");
 		printf("\033\\");
 		tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
-	}
+	} else
+		fprintf(stderr, "%s\n", client_exit_message());
 	setblocking(STDIN_FILENO, 1);
 	return (client_exitval);
 }
@@ -517,7 +522,11 @@ client_dispatch(struct imsg *imsg, __unused void *arg)
 	if (imsg == NULL) {
 		client_exitreason = CLIENT_EXIT_LOST_SERVER;
 		client_exitval = 1;
-	} else if (client_attached)
+		proc_exit(client_proc);
+		return;
+	}
+
+	if (client_attached)
 		client_dispatch_attached(imsg);
 	else
 		client_dispatch_wait(imsg);
