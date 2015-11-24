@@ -79,13 +79,13 @@ cmd_set_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 			cmdq_error(cmdq, "can't specify a value with -r");
 			return (CMD_RETURN_ERROR);
 		}
-		environ_set(env, name, NULL);
+		environ_clear(env, name);
 	} else {
 		if (value == NULL) {
 			cmdq_error(cmdq, "no value specified");
 			return (CMD_RETURN_ERROR);
 		}
-		environ_set(env, name, value);
+		environ_set(env, name, "%s", value);
 	}
 
 	return (CMD_RETURN_NORMAL);

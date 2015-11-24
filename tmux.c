@@ -273,7 +273,7 @@ main(int argc, char **argv)
 	for (var = environ; *var != NULL; var++)
 		environ_put(global_environ, *var);
 	if (getcwd(tmp, sizeof tmp) != NULL)
-		environ_set(global_environ, "PWD", tmp);
+		environ_set(global_environ, "PWD", "%s", tmp);
 
 	global_options = options_create(NULL);
 	options_table_populate_tree(OPTIONS_TABLE_SERVER, global_options);
