@@ -73,9 +73,6 @@
  */
 #define	UNVIS_END	1	/* no more characters */
 
-#include <sys/cdefs.h>
-
-__BEGIN_DECLS
 char	*vis(char *, int, int, int);
 int	strvis(char *, const char *, int);
 int	stravis(char **, const char *, int);
@@ -84,7 +81,5 @@ int	strvisx(char *, const char *, size_t, int);
 int	strunvis(char *, const char *);
 int	unvis(char *, char, int *, int);
 ssize_t strnunvis(char *, const char *, size_t);
-
-__END_DECLS
 
 #endif /* !_VIS_H_ */
