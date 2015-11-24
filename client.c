@@ -303,11 +303,8 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	event_set(&client_stdin, STDIN_FILENO, EV_READ|EV_PERSIST,
 	    client_stdin_callback, NULL);
 	if (client_flags & CLIENT_CONTROLCONTROL) {
-		if (tcgetattr(STDIN_FILENO, &saved_tio) != 0) {
-			fprintf(stderr, "tcgetattr failed: %s\n",
-			    strerror(errno));
-			return (1);
-		}
+		if (tcgetattr(STDIN_FILENO, &saved_tio) != 0)
+			fatal("tcgetattr failed");
 		cfmakeraw(&tio);
 		tio.c_iflag = ICRNL|IXANY;
 		tio.c_oflag = OPOST|ONLCR;
@@ -389,7 +386,8 @@ client_send_identify(const char *ttynam, const char *cwd)
 		s = "";
 	proc_send(client_peer, MSG_IDENTIFY_TERM, -1, s, strlen(s) + 1);
 
-	proc_send(client_peer, MSG_IDENTIFY_TTYNAME, -1, ttynam, strlen(ttynam) + 1);
+	proc_send(client_peer, MSG_IDENTIFY_TTYNAME, -1, ttynam,
+	    strlen(ttynam) + 1);
 	proc_send(client_peer, MSG_IDENTIFY_CWD, -1, cwd, strlen(cwd) + 1);
 
 	if ((fd = dup(STDIN_FILENO)) == -1)
@@ -401,8 +399,9 @@ client_send_identify(const char *ttynam, const char *cwd)
 
 	for (ss = environ; *ss != NULL; ss++) {
 		sslen = strlen(*ss) + 1;
-		if (sslen <= MAX_IMSGSIZE - IMSG_HEADER_SIZE)
-			proc_send(client_peer, MSG_IDENTIFY_ENVIRON, -1, *ss, sslen);
+		if (sslen > MAX_IMSGSIZE - IMSG_HEADER_SIZE)
+			continue;
+		proc_send(client_peer, MSG_IDENTIFY_ENVIRON, -1, *ss, sslen);
 	}
 
 	proc_send(client_peer, MSG_IDENTIFY_DONE, -1, NULL, 0);
