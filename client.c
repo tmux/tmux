@@ -67,22 +67,20 @@ const char     *client_exit_message(void);
 
 /*
  * Get server create lock. If already held then server start is happening in
- * another client, so block until the lock is released and return -1 to
- * retry. Ignore other errors - just continue and start the server without the
- * lock.
+ * another client, so block until the lock is released and return -2 to
+ * retry. Return -1 on failure to continue and start the server anyway.
  */
 int
 client_get_lock(char *lockfile)
 {
 	int lockfd;
 
-	if ((lockfd = open(lockfile, O_WRONLY|O_CREAT, 0600)) == -1) {
-		lockfd = open("/dev/null", O_WRONLY);
-		if (lockfd == -1)
-			fatal("open failed");
-		return (lockfd);
-	}
 	log_debug("lock file is %s", lockfile);
+
+	if ((lockfd = open(lockfile, O_WRONLY|O_CREAT, 0600)) == -1) {
+		log_debug("open failed: %s", strerror(errno));
+		return (-1);
+	}
 
 	if (flock(lockfd, LOCK_EX|LOCK_NB) == -1) {
 		log_debug("flock failed: %s", strerror(errno));
@@ -91,7 +89,7 @@ client_get_lock(char *lockfile)
 		while (flock(lockfd, LOCK_EX) == -1 && errno == EINTR)
 			/* nothing */;
 		close(lockfd);
-		return (-1);
+		return (-2);
 	}
 	log_debug("flock succeeded");
 
@@ -131,12 +129,16 @@ retry:
 
 		if (!locked) {
 			xasprintf(&lockfile, "%s.lock", path);
-			if ((lockfd = client_get_lock(lockfile)) == -1) {
-				log_debug("didn't get lock");
+			if ((lockfd = client_get_lock(lockfile)) < 0) {
+				log_debug("didn't get lock (%d)", lockfd);
+
 				free(lockfile);
-				goto retry;
+				lockfile = NULL;
+
+				if (lockfd == -2)
+					goto retry;
 			}
-			log_debug("got lock");
+			log_debug("got lock (%d)", lockfd);
 
 			/*
 			 * Always retry at least once, even if we got the lock,
@@ -148,7 +150,7 @@ retry:
 			goto retry;
 		}
 
-		if (unlink(path) != 0 && errno != ENOENT) {
+		if (lockfd >= 0 && unlink(path) != 0 && errno != ENOENT) {
 			free(lockfile);
 			close(lockfd);
 			return (-1);
@@ -156,7 +158,7 @@ retry:
 		fd = server_start(base, lockfd, lockfile);
 	}
 
-	if (locked) {
+	if (locked && lockfd >= 0) {
 		free(lockfile);
 		close(lockfd);
 	}

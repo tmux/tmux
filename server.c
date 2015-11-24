@@ -195,9 +195,11 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	server_update_socket();
 	server_client_create(pair[1]);
 
-	unlink(lockfile);
-	free(lockfile);
-	close(lockfd);
+	if (lockfd >= 0) {
+		unlink(lockfile);
+		free(lockfile);
+		close(lockfd);
+	}
 
 	start_cfg();
 
