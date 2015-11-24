@@ -1394,6 +1394,7 @@ enum options_table_type {
 	OPTIONS_TABLE_STYLE
 };
 enum options_table_scope {
+	OPTIONS_TABLE_NONE,
 	OPTIONS_TABLE_SERVER,
 	OPTIONS_TABLE_SESSION,
 	OPTIONS_TABLE_WINDOW,
