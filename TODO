@@ -121,3 +121,13 @@
 	* automatic pane logging
 	* BCE? We are halfway there (output side is done for pane backgrounds),
 	  just need to change how screen/grid handles erase
+	* copy mode key bindings should just be a standard key table, using
+          something like "copy-mode start-selection"; it could use
+          command-prompt for search, goto, etc:
+
+              bind -Temacs command-prompt -p'Search Up: ' 'copy-mode search-up %%'
+
+          it'd need a separate lookup, because modes are per-pane, perhaps a
+          table() cb to give the table name ("vi" or "emacs"). anything in the
+          table fires the command, anything not in the table is injected as a
+          key
