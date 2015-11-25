@@ -32,8 +32,8 @@ enum cmd_retval	 cmd_show_messages_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_show_messages_entry = {
 	"show-messages", "showmsgs",
-	"IJTt:", 0, 0,
-	"[-IJT] " CMD_TARGET_CLIENT_USAGE,
+	"JTt:", 0, 0,
+	"[-JT] " CMD_TARGET_CLIENT_USAGE,
 	0,
 	cmd_show_messages_exec
 };
@@ -46,25 +46,8 @@ const struct cmd_entry cmd_server_info_entry = {
 	cmd_show_messages_exec
 };
 
-int	cmd_show_messages_server(struct cmd_q *);
 int	cmd_show_messages_terminals(struct cmd_q *, int);
 int	cmd_show_messages_jobs(struct cmd_q *, int);
-
-int
-cmd_show_messages_server(struct cmd_q *cmdq)
-{
-	char	*tim;
-
-	tim = ctime(&start_time);
-	*strchr(tim, '\n') = '\0';
-
-	cmdq_print(cmdq, "started %s", tim);
-	cmdq_print(cmdq, "socket path %s", socket_path);
-	cmdq_print(cmdq, "debug level %d", debug_level);
-	cmdq_print(cmdq, "protocol version %d", PROTOCOL_VERSION);
-
-	return (1);
-}
 
 int
 cmd_show_messages_terminals(struct cmd_q *cmdq, int blank)
@@ -116,10 +99,6 @@ cmd_show_messages_exec(struct cmd *self, struct cmd_q *cmdq)
 	int			 done, blank;
 
 	done = blank = 0;
-	if (args_has(args, 'I') || self->entry == &cmd_server_info_entry) {
-		blank = cmd_show_messages_server(cmdq);
-		done = 1;
-	}
 	if (args_has(args, 'T') || self->entry == &cmd_server_info_entry) {
 		blank = cmd_show_messages_terminals(cmdq, blank);
 		done = 1;

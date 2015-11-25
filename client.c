@@ -52,32 +52,34 @@ enum msgtype	 client_exittype;
 const char	*client_exitsession;
 int		 client_attached;
 
-__dead void	client_exec(const char *);
+__dead void	client_exec(const char *,const char *);
 int		client_get_lock(char *);
-int		client_connect(struct event_base *, char *, int);
+int		client_connect(struct event_base *, const char *, int);
 void		client_send_identify(const char *, const char *);
 void		client_stdin_callback(int, short, void *);
 void		client_write(int, const char *, size_t);
 void		client_signal(int);
 void		client_dispatch(struct imsg *, void *);
 void		client_dispatch_attached(struct imsg *);
-void		client_dispatch_wait(struct imsg *);
+void		client_dispatch_wait(struct imsg *, const char *);
 const char     *client_exit_message(void);
 
 /*
  * Get server create lock. If already held then server start is happening in
- * another client, so block until the lock is released and return -1 to
- * retry. Ignore other errors - just continue and start the server without the
- * lock.
+ * another client, so block until the lock is released and return -2 to
+ * retry. Return -1 on failure to continue and start the server anyway.
  */
 int
 client_get_lock(char *lockfile)
 {
 	int lockfd;
 
-	if ((lockfd = open(lockfile, O_WRONLY|O_CREAT, 0600)) == -1)
-		fatal("open failed");
 	log_debug("lock file is %s", lockfile);
+
+	if ((lockfd = open(lockfile, O_WRONLY|O_CREAT, 0600)) == -1) {
+		log_debug("open failed: %s", strerror(errno));
+		return (-1);
+	}
 
 	if (flock(lockfd, LOCK_EX|LOCK_NB) == -1) {
 		log_debug("flock failed: %s", strerror(errno));
@@ -86,7 +88,7 @@ client_get_lock(char *lockfile)
 		while (flock(lockfd, LOCK_EX) == -1 && errno == EINTR)
 			/* nothing */;
 		close(lockfd);
-		return (-1);
+		return (-2);
 	}
 	log_debug("flock succeeded");
 
@@ -95,7 +97,7 @@ client_get_lock(char *lockfile)
 
 /* Connect client to server. */
 int
-client_connect(struct event_base *base, char *path, int start_server)
+client_connect(struct event_base *base, const char *path, int start_server)
 {
 	struct sockaddr_un	sa;
 	size_t			size;
@@ -113,10 +115,10 @@ client_connect(struct event_base *base, char *path, int start_server)
 
 retry:
 	if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1)
-		fatal("socket failed");
+		return (-1);
 
 	log_debug("trying connect");
-	if (connect(fd, (struct sockaddr *) &sa, sizeof(sa)) == -1) {
+	if (connect(fd, (struct sockaddr *)&sa, sizeof sa) == -1) {
 		log_debug("connect failed: %s", strerror(errno));
 		if (errno != ECONNREFUSED && errno != ENOENT)
 			goto failed;
@@ -126,12 +128,16 @@ retry:
 
 		if (!locked) {
 			xasprintf(&lockfile, "%s.lock", path);
-			if ((lockfd = client_get_lock(lockfile)) == -1) {
-				log_debug("didn't get lock");
+			if ((lockfd = client_get_lock(lockfile)) < 0) {
+				log_debug("didn't get lock (%d)", lockfd);
+
 				free(lockfile);
-				goto retry;
+				lockfile = NULL;
+
+				if (lockfd == -2)
+					goto retry;
 			}
-			log_debug("got lock");
+			log_debug("got lock (%d)", lockfd);
 
 			/*
 			 * Always retry at least once, even if we got the lock,
@@ -143,7 +149,7 @@ retry:
 			goto retry;
 		}
 
-		if (unlink(path) != 0 && errno != ENOENT) {
+		if (lockfd >= 0 && unlink(path) != 0 && errno != ENOENT) {
 			free(lockfile);
 			close(lockfd);
 			return (-1);
@@ -151,7 +157,7 @@ retry:
 		fd = server_start(base, lockfd, lockfile);
 	}
 
-	if (locked) {
+	if (locked && lockfd >= 0) {
 		free(lockfile);
 		close(lockfd);
 	}
@@ -206,7 +212,8 @@ client_exit_message(void)
 
 /* Client main loop. */
 int
-client_main(struct event_base *base, int argc, char **argv, int flags)
+client_main(struct event_base *base, int argc, char **argv, int flags,
+    const char *shellcmd)
 {
 	struct cmd		*cmd;
 	struct cmd_list		*cmdlist;
@@ -227,7 +234,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 
 	/* Set up the initial command. */
 	cmdflags = 0;
-	if (shell_cmd != NULL) {
+	if (shellcmd != NULL) {
 		msg = MSG_SHELL;
 		cmdflags = CMD_STARTSERVER;
 	} else if (argc == 0) {
@@ -254,6 +261,9 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 		cmd_list_free(cmdlist);
 	}
 
+	/* Create client process structure (starts logging). */
+	client_proc = proc_start("client", base, 0, client_signal);
+
 	/* Initialize the client socket and start the server. */
 	fd = client_connect(base, socket_path, cmdflags & CMD_STARTSERVER);
 	if (fd == -1) {
@@ -266,10 +276,8 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 		}
 		return (1);
 	}
-
-	/* Build process state. */
-	client_proc = proc_start("client", base, 0, client_signal);
-	client_peer = proc_add_peer(client_proc, fd, client_dispatch, NULL);
+	client_peer = proc_add_peer(client_proc, fd, client_dispatch,
+	    (void *)shellcmd);
 
 	/* Save these before pledge(). */
 	if ((cwd = getcwd(path, sizeof path)) == NULL) {
@@ -304,11 +312,8 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 	event_set(&client_stdin, STDIN_FILENO, EV_READ|EV_PERSIST,
 	    client_stdin_callback, NULL);
 	if (client_flags & CLIENT_CONTROLCONTROL) {
-		if (tcgetattr(STDIN_FILENO, &saved_tio) != 0) {
-			fprintf(stderr, "tcgetattr failed: %s\n",
-			    strerror(errno));
-			return (1);
-		}
+		if (tcgetattr(STDIN_FILENO, &saved_tio) != 0)
+			fatal("tcgetattr failed");
 		cfmakeraw(&tio);
 		tio.c_iflag = ICRNL|IXANY;
 		tio.c_oflag = OPOST|ONLCR;
@@ -371,7 +376,8 @@ client_main(struct event_base *base, int argc, char **argv, int flags)
 			printf("%%exit\n");
 		printf("\033\\");
 		tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
-	}
+	} else if (client_exitreason != CLIENT_EXIT_NONE)
+		fprintf(stderr, "%s\n", client_exit_message());
 	setblocking(STDIN_FILENO, 1);
 	return (client_exitval);
 }
@@ -392,7 +398,8 @@ client_send_identify(const char *ttynam, const char *cwd)
 		s = "";
 	proc_send(client_peer, MSG_IDENTIFY_TERM, -1, s, strlen(s) + 1);
 
-	proc_send(client_peer, MSG_IDENTIFY_TTYNAME, -1, ttynam, strlen(ttynam) + 1);
+	proc_send(client_peer, MSG_IDENTIFY_TTYNAME, -1, ttynam,
+	    strlen(ttynam) + 1);
 	proc_send(client_peer, MSG_IDENTIFY_CWD, -1, cwd, strlen(cwd) + 1);
 
 	if ((fd = dup(STDIN_FILENO)) == -1)
@@ -404,8 +411,9 @@ client_send_identify(const char *ttynam, const char *cwd)
 
 	for (ss = environ; *ss != NULL; ss++) {
 		sslen = strlen(*ss) + 1;
-		if (sslen <= MAX_IMSGSIZE - IMSG_HEADER_SIZE)
-			proc_send(client_peer, MSG_IDENTIFY_ENVIRON, -1, *ss, sslen);
+		if (sslen > MAX_IMSGSIZE - IMSG_HEADER_SIZE)
+			continue;
+		proc_send(client_peer, MSG_IDENTIFY_ENVIRON, -1, *ss, sslen);
 	}
 
 	proc_send(client_peer, MSG_IDENTIFY_DONE, -1, NULL, 0);
@@ -447,12 +455,12 @@ client_write(int fd, const char *data, size_t size)
 
 /* Run command in shell; used for -c. */
 __dead void
-client_exec(const char *shell)
+client_exec(const char *shell, const char *shellcmd)
 {
 	const char	*name, *ptr;
 	char		*argv0;
 
-	log_debug("shell %s, command %s", shell, shell_cmd);
+	log_debug("shell %s, command %s", shell, shellcmd);
 
 	ptr = strrchr(shell, '/');
 	if (ptr != NULL && *(ptr + 1) != '\0')
@@ -470,7 +478,7 @@ client_exec(const char *shell)
 	setblocking(STDERR_FILENO, 1);
 	closefrom(STDERR_FILENO + 1);
 
-	execl(shell, argv0, "-c", shell_cmd, (char *) NULL);
+	execl(shell, argv0, "-c", shellcmd, (char *) NULL);
 	fatal("execl failed");
 }
 
@@ -516,20 +524,24 @@ client_signal(int sig)
 
 /* Callback for client read events. */
 void
-client_dispatch(struct imsg *imsg, __unused void *arg)
+client_dispatch(struct imsg *imsg, void *arg)
 {
 	if (imsg == NULL) {
 		client_exitreason = CLIENT_EXIT_LOST_SERVER;
 		client_exitval = 1;
-	} else if (client_attached)
+		proc_exit(client_proc);
+		return;
+	}
+
+	if (client_attached)
 		client_dispatch_attached(imsg);
 	else
-		client_dispatch_wait(imsg);
+		client_dispatch_wait(imsg, arg);
 }
 
 /* Dispatch imsgs when in wait state (before MSG_READY). */
 void
-client_dispatch_wait(struct imsg *imsg)
+client_dispatch_wait(struct imsg *imsg, const char *shellcmd)
 {
 	char			*data;
 	ssize_t			 datalen;
@@ -611,7 +623,7 @@ client_dispatch_wait(struct imsg *imsg)
 			fatalx("bad MSG_SHELL string");
 
 		clear_signals(0);
-		client_exec(data);
+		client_exec(data, shellcmd);
 		/* NOTREACHED */
 	case MSG_DETACH:
 	case MSG_DETACHKILL:

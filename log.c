@@ -22,29 +22,52 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "tmux.h"
 
-FILE	*log_file;
+static FILE	*log_file;
+static int	 log_level;
 
-void	 log_event_cb(int, const char *);
-void	 log_vwrite(const char *, va_list);
+static void	 log_event_cb(int, const char *);
+static void	 log_vwrite(const char *, va_list);
 
 /* Log callback for libevent. */
-void
+static void
 log_event_cb(__unused int severity, const char *msg)
 {
 	log_debug("%s", msg);
 }
 
+/* Increment log level. */
+void
+log_add_level(void)
+{
+	log_level++;
+}
+
+/* Get log level. */
+int
+log_get_level(void)
+{
+	return (log_level);
+}
+
 /* Open logging to file. */
 void
-log_open(const char *path)
+log_open(const char *name)
 {
+	char	*path;
+
+	if (log_level == 0)
+		return;
+
 	if (log_file != NULL)
 		fclose(log_file);
 
+	xasprintf(&path, "tmux-%s-%ld.log", name, (long)getpid());
 	log_file = fopen(path, "w");
+	free(path);
 	if (log_file == NULL)
 		return;
 
@@ -64,7 +87,7 @@ log_close(void)
 }
 
 /* Write a log message. */
-void
+static void
 log_vwrite(const char *msg, va_list ap)
 {
 	char		*fmt, *out;

@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 #include <sys/uio.h>
+#include <sys/utsname.h>
 
 #include <errno.h>
 #include <event.h>
@@ -168,6 +169,7 @@ proc_start(const char *name, struct event_base *base, int forkflag,
     void (*signalcb)(int))
 {
 	struct tmuxproc	*tp;
+	struct utsname	 u;
 
 	if (forkflag) {
 		switch (fork()) {
@@ -189,11 +191,17 @@ proc_start(const char *name, struct event_base *base, int forkflag,
 	logfile(name);
 
 #ifdef HAVE_SETPROCTITLE
+	log_open(name);
 	setproctitle("%s (%s)", name, socket_path);
 #endif
 
+	if (uname(&u) < 0)
+		memset(&u, 0, sizeof u);
+
 	log_debug("%s started (%ld): socket %s, protocol %d", name,
 	    (long)getpid(), socket_path, PROTOCOL_VERSION);
+	log_debug("on %s %s %s; libevent %s (%s)", u.sysname, u.release,
+	    u.version, event_get_version(), event_get_method());
 
 	tp = xcalloc(1, sizeof *tp);
 	tp->name = xstrdup(name);

@@ -172,7 +172,7 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	}
 	close(pair[0]);
 
-	if (debug_level > 3)
+	if (log_get_level() > 3)
 		tty_create_log();
 
 #ifdef __OpenBSD__
@@ -189,7 +189,7 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	mode_key_init_trees();
 	key_bindings_init();
 
-	start_time = time(NULL);
+	gettimeofday(&start_time, NULL);
 
 	server_fd = server_create_socket();
 	if (server_fd == -1)
@@ -197,9 +197,11 @@ server_start(struct event_base *base, int lockfd, char *lockfile)
 	server_update_socket();
 	server_client_create(pair[1]);
 
-	unlink(lockfile);
-	free(lockfile);
-	close(lockfd);
+	if (lockfd >= 0) {
+		unlink(lockfile);
+		free(lockfile);
+		close(lockfd);
+	}
 
 	start_cfg();
 
