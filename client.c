@@ -373,7 +373,7 @@ client_main(struct event_base *base, int argc, char **argv, int flags,
 			printf("%%exit\n");
 		printf("\033\\");
 		tcsetattr(STDOUT_FILENO, TCSAFLUSH, &saved_tio);
-	} else
+	} else if (client_exitreason != CLIENT_EXIT_NONE)
 		fprintf(stderr, "%s\n", client_exit_message());
 	setblocking(STDIN_FILENO, 1);
 	return (client_exitval);
