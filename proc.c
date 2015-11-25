@@ -188,8 +188,6 @@ proc_start(const char *name, struct event_base *base, int forkflag,
 			fatalx("event_reinit failed");
 	}
 
-	logfile(name);
-
 #ifdef HAVE_SETPROCTITLE
 	log_open(name);
 	setproctitle("%s (%s)", name, socket_path);
