@@ -1665,7 +1665,7 @@ RB_PROTOTYPE(args_tree, args_entry, entry, args_cmp);
 struct args	*args_create(int, ...);
 struct args	*args_parse(const char *, int, char **);
 void		 args_free(struct args *);
-size_t		 args_print(struct args *, char *, size_t);
+char		*args_print(struct args *);
 int		 args_has(struct args *, u_char);
 void		 args_set(struct args *, u_char, const char *);
 const char	*args_get(struct args *, u_char);
@@ -1694,7 +1694,7 @@ char	       **cmd_copy_argv(int, char **);
 void		 cmd_free_argv(int, char **);
 char		*cmd_stringify_argv(int, char **);
 struct cmd	*cmd_parse(int, char **, const char *, u_int, char **);
-size_t		 cmd_print(struct cmd *, char *, size_t);
+char		*cmd_print(struct cmd *);
 int		 cmd_mouse_at(struct window_pane *, struct mouse_event *,
 		     u_int *, u_int *, int);
 struct winlink	*cmd_mouse_window(struct mouse_event *, struct session **);
@@ -1710,7 +1710,7 @@ enum cmd_retval	 cmd_attach_session(struct cmd_q *, const char *, int, int,
 /* cmd-list.c */
 struct cmd_list	*cmd_list_parse(int, char **, const char *, u_int, char **);
 void		 cmd_list_free(struct cmd_list *);
-size_t		 cmd_list_print(struct cmd_list *, char *, size_t);
+char		*cmd_list_print(struct cmd_list *);
 
 /* cmd-queue.c */
 struct cmd_q	*cmdq_new(struct client *);

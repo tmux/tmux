@@ -128,77 +128,73 @@ args_free(struct args *args)
 	free(args);
 }
 
-/* Print a set of arguments. */
-size_t
-args_print(struct args *args, char *buf, size_t len)
+/* Add to string. */
+static void printflike(3, 4)
+args_print_add(char **buf, size_t *len, const char *fmt, ...)
 {
-	size_t		 	 off, used;
+	va_list  ap;
+	char	*s;
+	size_t	 slen;
+
+	va_start(ap, fmt);
+	slen = xvasprintf(&s, fmt, ap);
+	va_end(ap);
+
+	*len += slen;
+	*buf = xrealloc(*buf, *len);
+
+	strlcat(*buf, s, *len);
+	free(s);
+}
+
+/* Print a set of arguments. */
+char *
+args_print(struct args *args)
+{
+	size_t		 	 len;
+	char			*buf;
 	int			 i;
-	const char		*quotes;
 	struct args_entry	*entry;
 
-	/* There must be at least one byte at the start. */
-	if (len == 0)
-		return (0);
-	off = 0;
+	len = 1;
+	buf = xcalloc(1, len);
 
 	/* Process the flags first. */
-	buf[off++] = '-';
 	RB_FOREACH(entry, args_tree, &args->tree) {
 		if (entry->value != NULL)
 			continue;
 
-		if (off == len - 1) {
-			buf[off] = '\0';
-			return (len);
-		}
-		buf[off++] = entry->flag;
-		buf[off] = '\0';
+		if (*buf == '\0')
+			args_print_add(&buf, &len, "-");
+		args_print_add(&buf, &len, "%c", entry->flag);
 	}
-	if (off == 1)
-		buf[--off] = '\0';
 
 	/* Then the flags with arguments. */
 	RB_FOREACH(entry, args_tree, &args->tree) {
 		if (entry->value == NULL)
 			continue;
 
-		if (off >= len) {
-			/* snprintf will have zero terminated. */
-			return (len);
-		}
-
-		if (strchr(entry->value, ' ') != NULL)
-			quotes = "\"";
+		if (*buf != '\0')
+			args_print_add(&buf, &len, " -%c ", entry->flag);
 		else
-			quotes = "";
-		used = xsnprintf(buf + off, len - off, "%s-%c %s%s%s",
-		    off != 0 ? " " : "", entry->flag, quotes, entry->value,
-		    quotes);
-		if (used > len - off)
-			used = len - off;
-		off += used;
+			args_print_add(&buf, &len, "-%c ", entry->flag);
+		if (strchr(entry->value, ' ') != NULL)
+			args_print_add(&buf, &len, "\"%s\"", entry->value);
+		else
+			args_print_add(&buf, &len, "%s", entry->value);
 	}
 
 	/* And finally the argument vector. */
 	for (i = 0; i < args->argc; i++) {
-		if (off >= len) {
-			/* snprintf will have zero terminated. */
-			return (len);
-		}
-
+		if (*buf != '\0')
+			args_print_add(&buf, &len, " ");
 		if (strchr(args->argv[i], ' ') != NULL)
-			quotes = "\"";
+			args_print_add(&buf, &len, "\"%s\"", args->argv[i]);
 		else
-			quotes = "";
-		used = xsnprintf(buf + off, len - off, "%s%s%s%s",
-		    off != 0 ? " " : "", quotes, args->argv[i], quotes);
-		if (used > len - off)
-			used = len - off;
-		off += used;
+			args_print_add(&buf, &len, "%s", args->argv[i]);
 	}
 
-	return (off);
+	return (buf);
 }
 
 /* Return if an argument is present. */

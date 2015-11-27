@@ -384,21 +384,19 @@ usage:
 	return (NULL);
 }
 
-size_t
-cmd_print(struct cmd *cmd, char *buf, size_t len)
+char *
+cmd_print(struct cmd *cmd)
 {
-	size_t	off, used;
+	char	*out, *s;
 
-	off = xsnprintf(buf, len, "%s ", cmd->entry->name);
-	if (off + 1 < len) {
-		used = args_print(cmd->args, buf + off, len - off - 1);
-		if (used == 0)
-			off--;
-		else
-			off += used;
-		buf[off] = '\0';
-	}
-	return (off);
+	s = args_print(cmd->args);
+	if (*s != '\0')
+		xasprintf(&out, "%s %s", cmd->entry->name, s);
+	else
+		out = xstrdup(cmd->entry->name);
+	free(s);
+
+	return (out);
 }
 
 /* Adjust current mouse position for a pane. */
