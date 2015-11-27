@@ -184,11 +184,12 @@ cmdq_continue_one(struct cmd_q *cmdq)
 {
 	struct cmd	*cmd = cmdq->cmd;
 	enum cmd_retval	 retval;
-	char		 tmp[1024];
+	char		*s;
 	int		 flags = !!(cmd->flags & CMD_CONTROL);
 
-	cmd_print(cmd, tmp, sizeof tmp);
-	log_debug("cmdq %p: %s", cmdq, tmp);
+	s = cmd_print(cmd);
+	log_debug("cmdq %p: %s", cmdq, s);
+	free(s);
 
 	cmdq->time = time(NULL);
 	cmdq->number++;
