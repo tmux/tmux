@@ -743,6 +743,12 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "reverse"
 	},
 
+	{ .name = "window-status-activity-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "#I:#W#F"
+	},
+
 	{ .name = "window-status-attr",
 	  .type = OPTIONS_TABLE_ATTRIBUTES,
 	  .scope = OPTIONS_TABLE_WINDOW,
@@ -775,6 +781,12 @@ const struct options_table_entry options_table[] = {
 	  .type = OPTIONS_TABLE_STYLE,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_str = "reverse"
+	},
+
+	{ .name = "window-status-bell-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "#I:#W#F"
 	},
 
 	{ .name = "window-status-bg",

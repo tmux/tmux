@@ -530,10 +530,13 @@ status_print(struct client *c, struct winlink *wl, time_t t,
 	if (wl == TAILQ_FIRST(&s->lastw))
 		style_apply_update(gc, oo, "window-status-last-style");
 
-	if (wl->flags & WINLINK_BELL)
+	if (wl->flags & WINLINK_BELL) {
 		style_apply_update(gc, oo, "window-status-bell-style");
-	else if (wl->flags & (WINLINK_ACTIVITY|WINLINK_SILENCE))
+		fmt = options_get_string(oo, "window-status-bell-format");
+	} else if (wl->flags & (WINLINK_ACTIVITY|WINLINK_SILENCE)) {
 		style_apply_update(gc, oo, "window-status-activity-style");
+		fmt = options_get_string(oo, "window-status-activity-format");
+	}
 
 	text = status_replace(c, wl, fmt, t);
 	return (text);
