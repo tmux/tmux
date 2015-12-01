@@ -330,10 +330,11 @@ server_client_check_mouse(struct client *c)
 			where = BORDER;
 		else {
 			wp = window_get_active_at(s->curw->window, x, y);
-			if (wp != NULL)
+			if (wp != NULL) {
 				where = PANE;
-			log_debug("mouse at %u,%u is on pane %%%u", x, y,
-			    wp->id);
+				log_debug("mouse at %u,%u is on pane %%%u",
+				    x, y, wp->id);
+			}
 		}
 		if (where == NOWHERE)
 			return (KEYC_NONE);
