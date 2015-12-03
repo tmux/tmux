@@ -5,6 +5,8 @@
 	* ' and " should be parsed the same (eg "\e" vs '\e') in config
 	  and command prompt
 	* last-pane across sessions
+	* list-keys should quote output so that bindings can just be used in
+          config file as-is
 
 - make command sequences more usable
 	* don't require space after ;
@@ -15,7 +17,7 @@
 	* way to set socket path from config file
 
 - format improvements:
-	* option to quote format (#{session_name:quoted})
+	* option to quote format (#{q:session_name})
 	* formats need conditions for >0 (for #P)
 	* some way to pad # stuff with spaces
 	* formats to show if a window is linked into multiple sessions, into
