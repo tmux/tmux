@@ -56,7 +56,6 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct key_binding	*bd;
 	const char		*key, *tablename, *r;
 	char			*cp, tmp[BUFSIZ];
-	size_t			 used;
 	int			 repeat, width, tablewidth, keywidth;
 
 	if (self->entry == &cmd_list_commands_entry)
@@ -115,11 +114,9 @@ cmd_list_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 			strlcat(tmp, " ", sizeof tmp);
 			free(cp);
 
-			used = strlen(tmp);
-			if (used < (sizeof tmp) - 1) {
-				cmd_list_print(bd->cmdlist, tmp + used,
-				    (sizeof tmp) - used);
-			}
+			cp = cmd_list_print(bd->cmdlist);
+			strlcat(tmp, cp, sizeof tmp);
+			free(cp);
 
 			cmdq_print(cmdq, "bind-key %s", tmp);
 		}

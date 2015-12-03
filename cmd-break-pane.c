@@ -82,6 +82,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	window_set_name(w, name);
 	free(name);
 	layout_init(w, wp);
+	wp->flags |= PANE_CHANGED;
 
 	if (idx == -1)
 		idx = -1 - options_get_number(dst_s->options, "base-index");
