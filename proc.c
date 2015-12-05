@@ -61,7 +61,8 @@ proc_event_cb(__unused int fd, short events, void *arg)
 	struct imsg	 imsg;
 
 	if (!(peer->flags & PEER_BAD) && (events & EV_READ)) {
-		if ((n = imsg_read(&peer->ibuf)) == -1 || n == 0) {
+		if (((n = imsg_read(&peer->ibuf)) == -1 && errno != EAGAIN) ||
+		    n == 0) {
 			peer->dispatchcb(NULL, peer->arg);
 			return;
 		}
