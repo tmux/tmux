@@ -29,6 +29,7 @@ int	alerts_enabled(struct window *, int);
 void	alerts_callback(int, short, void *);
 void	alerts_reset(struct window *);
 
+int	alerts_check_all(struct session *, struct winlink *);
 int	alerts_check_bell(struct session *, struct winlink *);
 int	alerts_check_activity(struct session *, struct winlink *);
 int	alerts_check_silence(struct session *, struct winlink *);
@@ -54,16 +55,14 @@ alerts_callback(__unused int fd, __unused short events, __unused void *arg)
 
 	RB_FOREACH(w, windows, &windows) {
 		RB_FOREACH(s, sessions, &sessions) {
+			if (s->flags & SESSION_UNATTACHED)
+				continue;
 			RB_FOREACH(wl, winlinks, &s->windows) {
 				if (wl->window != w)
 					continue;
 				flags = w->flags;
 
-				alerts  = alerts_check_bell(s, wl);
-				alerts |= alerts_check_activity(s, wl);
-				alerts |= alerts_check_silence(s, wl);
-				if (alerts != 0)
-					server_status_session(s);
+				alerts = alerts_check_all(s, wl);
 
 				log_debug("%s:%d @%u alerts check, alerts %#x, "
 				    "flags %#x", s->name, wl->idx, w->id,
@@ -72,6 +71,29 @@ alerts_callback(__unused int fd, __unused short events, __unused void *arg)
 		}
 	}
 	alerts_fired = 0;
+}
+
+int
+alerts_check_all(struct session *s, struct winlink *wl)
+{
+	int	alerts;
+
+	alerts  = alerts_check_bell(s, wl);
+	alerts |= alerts_check_activity(s, wl);
+	alerts |= alerts_check_silence(s, wl);
+	if (alerts != 0)
+		server_status_session(s);
+
+	return (alerts);
+}
+
+void
+alerts_check_session(struct session *s)
+{
+	struct winlink	*wl;
+
+	RB_FOREACH(wl, winlinks, &s->windows)
+		alerts_check_all(s, wl);
 }
 
 int
@@ -143,12 +165,12 @@ alerts_check_bell(struct session *s, struct winlink *wl)
 	struct window	*w = wl->window;
 	int		 action, visual;
 
-	if (!(w->flags & WINDOW_BELL) || wl->flags & WINLINK_BELL)
+	if (!(w->flags & WINDOW_BELL))
 		return (0);
-	if (s->curw != wl || s->flags & SESSION_UNATTACHED)
+	if (s->curw != wl) {
 		wl->flags |= WINLINK_BELL;
-	if (s->flags & SESSION_UNATTACHED)
-		return (0);
+		w->flags &= ~WINDOW_BELL;
+	}
 	if (s->curw->window == w)
 		w->flags &= ~WINDOW_BELL;
 
@@ -190,7 +212,7 @@ alerts_check_activity(struct session *s, struct winlink *wl)
 
 	if (!(w->flags & WINDOW_ACTIVITY) || wl->flags & WINLINK_ACTIVITY)
 		return (0);
-	if (s->curw == wl && !(s->flags & SESSION_UNATTACHED))
+	if (s->curw == wl)
 		return (0);
 
 	if (!options_get_number(w->options, "monitor-activity"))
@@ -222,7 +244,7 @@ alerts_check_silence(struct session *s, struct winlink *wl)
 
 	if (!(w->flags & WINDOW_SILENCE) || wl->flags & WINLINK_SILENCE)
 		return (0);
-	if (s->curw == wl && !(s->flags & SESSION_UNATTACHED))
+	if (s->curw == wl)
 		return (0);
 
 	if (options_get_number(w->options, "monitor-silence") == 0)
