@@ -162,6 +162,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 		cmdq->client_exit = 0;
 	}
 	recalculate_sizes();
+	alerts_check_session(s);
 	server_update_socket();
 
 	return (CMD_RETURN_NORMAL);
