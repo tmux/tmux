@@ -1759,6 +1759,7 @@ const char	*key_string_lookup_key(key_code);
 /* alerts.c */
 void	alerts_reset_all(void);
 void	alerts_queue(struct window *, int);
+void	alerts_check_session(struct session *);
 
 /* server.c */
 extern struct tmuxproc *server_proc;
