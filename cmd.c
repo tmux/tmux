@@ -96,10 +96,12 @@ extern const struct cmd_entry cmd_send_prefix_entry;
 extern const struct cmd_entry cmd_server_info_entry;
 extern const struct cmd_entry cmd_set_buffer_entry;
 extern const struct cmd_entry cmd_set_environment_entry;
+extern const struct cmd_entry cmd_set_hook_entry;
 extern const struct cmd_entry cmd_set_option_entry;
 extern const struct cmd_entry cmd_set_window_option_entry;
 extern const struct cmd_entry cmd_show_buffer_entry;
 extern const struct cmd_entry cmd_show_environment_entry;
+extern const struct cmd_entry cmd_show_hooks_entry;
 extern const struct cmd_entry cmd_show_messages_entry;
 extern const struct cmd_entry cmd_show_options_entry;
 extern const struct cmd_entry cmd_show_window_options_entry;
@@ -183,10 +185,12 @@ const struct cmd_entry *cmd_table[] = {
 	&cmd_server_info_entry,
 	&cmd_set_buffer_entry,
 	&cmd_set_environment_entry,
+	&cmd_set_hook_entry,
 	&cmd_set_option_entry,
 	&cmd_set_window_option_entry,
 	&cmd_show_buffer_entry,
 	&cmd_show_environment_entry,
+	&cmd_show_hooks_entry,
 	&cmd_show_messages_entry,
 	&cmd_show_options_entry,
 	&cmd_show_window_options_entry,

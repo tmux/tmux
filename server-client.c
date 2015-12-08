@@ -256,6 +256,19 @@ server_client_free(__unused int fd, __unused short events, void *arg)
 		free(c);
 }
 
+/* Detach a client. */
+void
+server_client_detach(struct client *c, enum msgtype msgtype)
+{
+	struct session	*s = c->session;
+
+	if (s == NULL)
+		return;
+
+	hooks_run(c->session->hooks, "client-detached", c);
+	proc_send_s(c->peer, msgtype, s->name);
+}
+
 /* Check for mouse keys. */
 key_code
 server_client_check_mouse(struct client *c)
@@ -995,6 +1008,8 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 			recalculate_sizes();
 			server_redraw_client(c);
 		}
+		if (c->session != NULL)
+			hooks_run(c->session->hooks, "client-resized", c);
 		break;
 	case MSG_EXITING:
 		if (datalen != 0)
