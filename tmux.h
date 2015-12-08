@@ -693,10 +693,12 @@ struct grid {
 
 /* Hook data structures. */
 struct hook {
-	const char      *name;
-	struct cmd_q    *cmdq;
-	struct cmd_list *cmdlist;
-	RB_ENTRY(hook)   entry;
+	const char	*name;
+
+	struct cmd_q	*cmdq;
+	struct cmd_list	*cmdlist;
+
+	RB_ENTRY(hook)	 entry;
 };
 
 /* Option data structures. */
