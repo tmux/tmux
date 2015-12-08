@@ -370,7 +370,7 @@ These specify the client, session, window or pane which a command should affect.
 .Pp
 .Ar target-client
 is the name of the
-.Xr pty 7
+.Xr pty 4
 file to which the client is connected, for example either of
 .Pa /dev/ttyp1
 or
@@ -1319,7 +1319,7 @@ interactively from a list.
 After a client is chosen,
 .Ql %%
 is replaced by the client
-.Xr pty 7
+.Xr pty 4
 path in
 .Ar template
 and the result executed as a command.
@@ -4165,6 +4165,6 @@ bind-key / command-prompt "split-window 'exec man %%'"
 bind-key S command-prompt "new-window -n %1 'ssh %1'"
 .Ed
 .Sh SEE ALSO
-.Xr pty 7
+.Xr pty 4
 .Sh AUTHORS
 .An Nicholas Marriott Aq Mt nicm@users.sourceforge.net
