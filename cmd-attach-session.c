@@ -93,7 +93,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 	}
 
 	if (cflag != NULL) {
-		ft = format_create();
+		ft = format_create(0);
 		format_defaults(ft, cmd_find_client(cmdq, NULL, 1), s,
 		    NULL, NULL);
 		cwd = format_expand(ft, cflag);
