@@ -1,10 +1,9 @@
 Bob Beck		<beck@openbsd.org> beck <beck>
-Claudio Jeker           <claudio@openbsd.org> claudio <claudio>
+Claudio Jeker		<claudio@openbsd.org> claudio <claudio>
 Igor Sobrado		<sobrado@openbsd.org> sobrado <sobrado>
 Ingo Schwarze		<schwarze@openbsd.org> schwarze <schwarze>
 Jacek Masiulaniec	<jacekm@openbsd.org> jacekm <jacekm>
 Jason McIntyre		<jmc@openbsd.org> jmc <jmc>
-Jason McIntyre		<jmc@openbsd.org> jcm <jcm>
 Joel Sing		<jsing@openbsd.org> jsing <jsing>
 Jonathan Gray		<jsg@openbsd.org> jsg <jsg>
 Kenneth R Westerback	<krw@openbsd.org> krw <krw>
@@ -12,6 +11,7 @@ Marc Espie		<espie@openbsd.org> espie <espie>
 Matthew Dempsky		<matthew@openbsd.org> matthew <matthew>
 Matthias Kilian		<kili@openbsd.org> kili <kili>
 Matthieu Herrb		<matthieu@openbsd.org> matthieu <matthieu>
+Michael McConville	<mmcc@openbsd.org> mmcc <mmcc>
 Miod Vallat		<miod@openbsd.org> miod <miod>
 Nicholas Marriott	<nicholas.marriott@gmail.com> Nicholas Marriott <nicm@openbsd.org>
 Nicholas Marriott	<nicholas.marriott@gmail.com> nicm <nicm>
@@ -25,12 +25,12 @@ Sebastian Benoit	<benno@openbsd.org> benno <benno>
 Stefan Sperling		<stsp@openbsd.org> stsp <stsp>
 Stuart Henderson	<sthen@openbsd.org> sthen <sthen>
 Ted Unangst		<tedu@openbsd.org> tedu <tedu>
-Theo de Raadt		<deraadt@openbsd.org> deraadt <deraadt>
 Theo de Raadt		<deraadt@openbsd.org> Theo Deraadt <deraadt@openbsd.org>
+Theo de Raadt		<deraadt@openbsd.org> deraadt <deraadt>
 Thomas Adam		<thomas@xteddy.org> Thomas <thomas@xteddy.org>
-Thomas Adam		<thomas@xteddy.org> n6tadam <n6tadam@xteddy.org>
 Thomas Adam		<thomas@xteddy.org> Thomas Adam <thomas.adam@smoothwall.net>
-Tim van der Molen       <tim@openbsd.org> tim <tim>
+Thomas Adam		<thomas@xteddy.org> n6tadam <n6tadam@xteddy.org>
+Tim van der Molen	<tim@openbsd.org> tim <tim>
 Tobias Stoeckmann	<tobias@openbsd.org> tobias <tobias>
 Todd C Miller		<millert@openbsd.org> millert <millert>
 William Yodlowsky	<william@openbsd.org> william <william>
