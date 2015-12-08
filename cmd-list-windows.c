@@ -105,7 +105,7 @@ cmd_list_windows_session(
 
 	n = 0;
 	RB_FOREACH(wl, winlinks, &s->windows) {
-		ft = format_create();
+		ft = format_create(0);
 		format_add(ft, "line", "%u", n);
 		format_defaults(ft, NULL, s, wl, NULL);
 

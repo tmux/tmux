@@ -695,10 +695,12 @@ struct grid {
 
 /* Hook data structures. */
 struct hook {
-	const char      *name;
-	struct cmd_q    *cmdq;
-	struct cmd_list *cmdlist;
-	RB_ENTRY(hook)   entry;
+	const char	*name;
+
+	struct cmd_q	*cmdq;
+	struct cmd_list	*cmdlist;
+
+	RB_ENTRY(hook)	 entry;
 };
 
 /* Option data structures. */
@@ -1492,8 +1494,7 @@ char		*paste_make_sample(struct paste_buffer *);
 #define FORMAT_STATUS 0x1
 #define FORMAT_FORCE 0x2
 struct format_tree;
-struct format_tree *format_create(void);
-struct format_tree *format_create_flags(int);
+struct format_tree *format_create(int);
 void		 format_free(struct format_tree *);
 void printflike(3, 4) format_add(struct format_tree *, const char *,
 		     const char *, ...);

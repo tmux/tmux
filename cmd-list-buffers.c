@@ -54,7 +54,7 @@ cmd_list_buffers_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	pb = NULL;
 	while ((pb = paste_walk(pb)) != NULL) {
-		ft = format_create();
+		ft = format_create(0);
 		format_defaults_paste_buffer(ft, pb);
 
 		line = format_expand(ft, template);

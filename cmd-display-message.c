@@ -88,7 +88,7 @@ cmd_display_message_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (template == NULL)
 		template = DISPLAY_MESSAGE_TEMPLATE;
 
-	ft = format_create();
+	ft = format_create(0);
 	format_defaults(ft, c, s, wl, wp);
 
 	msg = format_expand_time(ft, template, time(NULL));

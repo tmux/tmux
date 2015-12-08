@@ -101,7 +101,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		if ((template = args_get(args, 'F')) == NULL)
 			template = BREAK_PANE_TEMPLATE;
 
-		ft = format_create();
+		ft = format_create(0);
 		format_defaults(ft, cmd_find_client(cmdq, NULL, 1), dst_s, wl,
 		    wp);
 

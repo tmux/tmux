@@ -482,14 +482,7 @@ format_cb_pane_tabs(struct format_tree *ft, struct format_entry *fe)
 
 /* Create a new tree. */
 struct format_tree *
-format_create(void)
-{
-	return (format_create_flags(0));
-}
-
-/* Create a new tree for the status line. */
-struct format_tree *
-format_create_flags(int flags)
+format_create(int flags)
 {
 	struct format_tree	*ft;
 

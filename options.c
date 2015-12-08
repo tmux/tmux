@@ -47,7 +47,7 @@ options_cmp(struct options_entry *o1, struct options_entry *o2)
 struct options *
 options_create(struct options *parent)
 {
-	struct options *oo;
+	struct options	*oo;
 
 	oo = xcalloc(1, sizeof *oo);
 	RB_INIT(&oo->tree);
