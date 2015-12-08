@@ -108,7 +108,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 			TAILQ_FOREACH(c_loop, &clients, entry) {
 				if (c_loop->session != s || c == c_loop)
 					continue;
-				proc_send_s(c_loop->peer, MSG_DETACH, s->name);
+				server_client_detach(c, MSG_DETACH);
 			}
 		}
 
@@ -139,7 +139,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 			TAILQ_FOREACH(c_loop, &clients, entry) {
 				if (c_loop->session != s || c == c_loop)
 					continue;
-				proc_send_s(c_loop->peer, MSG_DETACH, s->name);
+				server_client_detach(c_loop, MSG_DETACH);
 			}
 		}
 
@@ -159,6 +159,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 
 		if (~c->flags & CLIENT_CONTROL)
 			proc_send(c->peer, MSG_READY, -1, NULL, 0);
+		hooks_run(c->session->hooks, "client-attached", c);
 		cmdq->client_exit = 0;
 	}
 	recalculate_sizes();
