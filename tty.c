@@ -48,8 +48,8 @@ void	tty_colours_bg(struct tty *, const struct grid_cell *);
 int	tty_large_region(struct tty *, const struct tty_ctx *);
 int	tty_fake_bce(const struct tty *, const struct window_pane *);
 void	tty_redraw_region(struct tty *, const struct tty_ctx *);
-void	tty_emulate_repeat(
-	    struct tty *, enum tty_code_code, enum tty_code_code, u_int);
+void	tty_emulate_repeat(struct tty *, enum tty_code_code, enum tty_code_code,
+	    u_int);
 void	tty_repeat_space(struct tty *, u_int);
 void	tty_cell(struct tty *, const struct grid_cell *,
 	    const struct window_pane *);
@@ -161,8 +161,8 @@ tty_open(struct tty *tty, char **cause)
 
 	tty->flags &= ~(TTY_NOCURSOR|TTY_FREEZE|TTY_TIMER);
 
-	tty->event = bufferevent_new(
-	    tty->fd, tty_read_callback, NULL, tty_error_callback, tty);
+	tty->event = bufferevent_new(tty->fd, tty_read_callback, NULL,
+	    tty_error_callback, tty);
 
 	tty_start_tty(tty);
 
@@ -1188,8 +1188,8 @@ tty_reset(struct tty *tty)
 
 /* Set region inside pane. */
 void
-tty_region_pane(
-    struct tty *tty, const struct tty_ctx *ctx, u_int rupper, u_int rlower)
+tty_region_pane(struct tty *tty, const struct tty_ctx *ctx, u_int rupper,
+    u_int rlower)
 {
 	tty_region(tty, ctx->yoff + rupper, ctx->yoff + rlower);
 }

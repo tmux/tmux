@@ -35,11 +35,11 @@ void	window_choose_default_callback(struct window_choose_data *);
 struct window_choose_mode_item *window_choose_get_item(struct window_pane *,
 	    key_code, struct mouse_event *);
 
-void	window_choose_fire_callback(
-	    struct window_pane *, struct window_choose_data *);
+void	window_choose_fire_callback(struct window_pane *,
+	    struct window_choose_data *);
 void	window_choose_redraw_screen(struct window_pane *);
-void	window_choose_write_line(
-	    struct window_pane *, struct screen_write_ctx *, u_int);
+void	window_choose_write_line(struct window_pane *,
+	    struct screen_write_ctx *, u_int);
 
 void	window_choose_scroll_up(struct window_pane *);
 void	window_choose_scroll_down(struct window_pane *);
@@ -299,8 +299,8 @@ window_choose_resize(struct window_pane *wp, u_int sx, u_int sy)
 }
 
 void
-window_choose_fire_callback(
-    struct window_pane *wp, struct window_choose_data *wcd)
+window_choose_fire_callback(struct window_pane *wp,
+    struct window_choose_data *wcd)
 {
 	struct window_choose_mode_data	*data = wp->modedata;
 
@@ -614,10 +614,10 @@ window_choose_key(struct window_pane *wp, __unused struct client *c,
 			window_choose_scroll_up(wp);
 		else {
 			screen_write_start(&ctx, wp, NULL);
-			window_choose_write_line(
-			    wp, &ctx, data->selected - data->top);
-			window_choose_write_line(
-			    wp, &ctx, data->selected + 1 - data->top);
+			window_choose_write_line(wp, &ctx,
+			    data->selected - data->top);
+			window_choose_write_line(wp, &ctx,
+			    data->selected + 1 - data->top);
 			screen_write_stop(&ctx);
 		}
 		break;
@@ -634,10 +634,10 @@ window_choose_key(struct window_pane *wp, __unused struct client *c,
 
 		if (data->selected < data->top + screen_size_y(s)) {
 			screen_write_start(&ctx, wp, NULL);
-			window_choose_write_line(
-			    wp, &ctx, data->selected - data->top);
-			window_choose_write_line(
-			    wp, &ctx, data->selected - 1 - data->top);
+			window_choose_write_line(wp, &ctx,
+			    data->selected - data->top);
+			window_choose_write_line(wp, &ctx,
+			    data->selected - 1 - data->top);
 			screen_write_stop(&ctx);
 		} else
 			window_choose_scroll_down(wp);
@@ -649,8 +649,8 @@ window_choose_key(struct window_pane *wp, __unused struct client *c,
 			data->selected--;
 			window_choose_scroll_up(wp);
 			screen_write_start(&ctx, wp, NULL);
-			window_choose_write_line(
-			    wp, &ctx, screen_size_y(s) - 1);
+			window_choose_write_line(wp, &ctx,
+			    screen_size_y(s) - 1);
 			screen_write_stop(&ctx);
 		} else
 			window_choose_scroll_up(wp);

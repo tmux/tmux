@@ -81,8 +81,8 @@ cmd_list_windows_server(struct cmd *self, struct cmd_q *cmdq)
 }
 
 void
-cmd_list_windows_session(
-    struct cmd *self, struct session *s, struct cmd_q *cmdq, int type)
+cmd_list_windows_session(struct cmd *self, struct session *s,
+    struct cmd_q *cmdq, int type)
 {
 	struct args		*args = self->args;
 	struct winlink		*wl;
