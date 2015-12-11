@@ -85,9 +85,9 @@ layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 {
 	struct layout_cell	*lcchild;
 
-	log_debug(
-	    "%s:%*s%p type %u [parent %p] wp=%p [%u,%u %ux%u]", hdr, n, " ", lc,
-	    lc->type, lc->parent, lc->wp, lc->xoff, lc->yoff, lc->sx, lc->sy);
+	log_debug("%s:%*s%p type %u [parent %p] wp=%p [%u,%u %ux%u]", hdr, n,
+	    " ", lc, lc->type, lc->parent, lc->wp, lc->xoff, lc->yoff, lc->sx,
+	    lc->sy);
 	switch (lc->type) {
 	case LAYOUT_LEFTRIGHT:
 	case LAYOUT_TOPBOTTOM:
@@ -100,8 +100,8 @@ layout_print_cell(struct layout_cell *lc, const char *hdr, u_int n)
 }
 
 void
-layout_set_size(
-    struct layout_cell *lc, u_int sx, u_int sy, u_int xoff, u_int yoff)
+layout_set_size(struct layout_cell *lc, u_int sx, u_int sy, u_int xoff,
+    u_int yoff)
 {
 	lc->sx = sx;
 	lc->sy = sy;
@@ -521,8 +521,8 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
 
 /* Helper function to grow pane. */
 int
-layout_resize_pane_grow(
-    struct layout_cell *lc, enum layout_type type, int needed)
+layout_resize_pane_grow(struct layout_cell *lc, enum layout_type type,
+    int needed)
 {
 	struct layout_cell	*lcadd, *lcremove;
 	u_int			 size;
@@ -562,8 +562,8 @@ layout_resize_pane_grow(
 
 /* Helper function to shrink pane. */
 int
-layout_resize_pane_shrink(
-    struct layout_cell *lc, enum layout_type type, int needed)
+layout_resize_pane_shrink(struct layout_cell *lc, enum layout_type type,
+    int needed)
 {
 	struct layout_cell	*lcadd, *lcremove;
 	u_int			 size;
@@ -605,8 +605,8 @@ layout_assign_pane(struct layout_cell *lc, struct window_pane *wp)
  * split. This must be followed by layout_assign_pane before much else happens!
  **/
 struct layout_cell *
-layout_split_pane(
-    struct window_pane *wp, enum layout_type type, int size, int insert_before)
+layout_split_pane(struct window_pane *wp, enum layout_type type, int size,
+    int insert_before)
 {
 	struct layout_cell     *lc, *lcparent, *lcnew, *lc1, *lc2;
 	u_int			sx, sy, xoff, yoff, size1, size2;

@@ -1664,10 +1664,10 @@ void		 tty_term_free(struct tty_term *);
 int		 tty_term_has(struct tty_term *, enum tty_code_code);
 const char	*tty_term_string(struct tty_term *, enum tty_code_code);
 const char	*tty_term_string1(struct tty_term *, enum tty_code_code, int);
-const char	*tty_term_string2(
-		     struct tty_term *, enum tty_code_code, int, int);
-const char	*tty_term_ptr1(
-		     struct tty_term *, enum tty_code_code, const void *);
+const char	*tty_term_string2(struct tty_term *, enum tty_code_code, int,
+		     int);
+const char	*tty_term_ptr1(struct tty_term *, enum tty_code_code,
+		     const void *);
 const char	*tty_term_ptr2(struct tty_term *, enum tty_code_code,
 		     const void *, const void *);
 int		 tty_term_number(struct tty_term *, enum tty_code_code);
@@ -1904,8 +1904,8 @@ void	 grid_move_lines(struct grid *, u_int, u_int, u_int);
 void	 grid_move_cells(struct grid *, u_int, u_int, u_int, u_int);
 char	*grid_string_cells(struct grid *, u_int, u_int, u_int,
 	     struct grid_cell **, int, int, int);
-void	 grid_duplicate_lines(
-	     struct grid *, u_int, struct grid *, u_int, u_int);
+void	 grid_duplicate_lines(struct grid *, u_int, struct grid *, u_int,
+	     u_int);
 u_int	 grid_reflow(struct grid *, struct grid *, u_int);
 
 /* grid-view.c */
@@ -2056,14 +2056,14 @@ void		 window_pane_alternate_on(struct window_pane *,
 		     struct grid_cell *, int);
 void		 window_pane_alternate_off(struct window_pane *,
 		     struct grid_cell *, int);
-int		 window_pane_set_mode(
-		     struct window_pane *, const struct window_mode *);
+int		 window_pane_set_mode(struct window_pane *,
+		     const struct window_mode *);
 void		 window_pane_reset_mode(struct window_pane *);
 void		 window_pane_key(struct window_pane *, struct client *,
 		     struct session *, key_code, struct mouse_event *);
 int		 window_pane_visible(struct window_pane *);
-char		*window_pane_search(
-		     struct window_pane *, const char *, u_int *);
+char		*window_pane_search(struct window_pane *, const char *,
+		     u_int *);
 char		*window_printable_flags(struct session *, struct winlink *);
 struct window_pane *window_pane_find_up(struct window_pane *);
 struct window_pane *window_pane_find_down(struct window_pane *);
@@ -2079,17 +2079,17 @@ u_int		 layout_count_cells(struct layout_cell *);
 struct layout_cell *layout_create_cell(struct layout_cell *);
 void		 layout_free_cell(struct layout_cell *);
 void		 layout_print_cell(struct layout_cell *, const char *, u_int);
-void		 layout_destroy_cell(struct layout_cell *, struct layout_cell **);
-void		 layout_set_size(
-		     struct layout_cell *, u_int, u_int, u_int, u_int);
-void		 layout_make_leaf(
-		     struct layout_cell *, struct window_pane *);
+void		 layout_destroy_cell(struct layout_cell *,
+		     struct layout_cell **);
+void		 layout_set_size(struct layout_cell *, u_int, u_int, u_int,
+		     u_int);
+void		 layout_make_leaf(struct layout_cell *, struct window_pane *);
 void		 layout_make_node(struct layout_cell *, enum layout_type);
 void		 layout_fix_offsets(struct layout_cell *);
 void		 layout_fix_panes(struct window *, u_int, u_int);
 u_int		 layout_resize_check(struct layout_cell *, enum layout_type);
-void		 layout_resize_adjust(
-		     struct layout_cell *, enum layout_type, int);
+void		 layout_resize_adjust(struct layout_cell *, enum layout_type,
+		     int);
 void		 layout_init(struct window *, struct window_pane *);
 void		 layout_free(struct window *);
 void		 layout_resize(struct window *, u_int, u_int);
@@ -2098,8 +2098,8 @@ void		 layout_resize_pane(struct window_pane *, enum layout_type,
 void		 layout_resize_pane_to(struct window_pane *, enum layout_type,
 		     u_int);
 void		 layout_assign_pane(struct layout_cell *, struct window_pane *);
-struct layout_cell *layout_split_pane(
-		     struct window_pane *, enum layout_type, int, int);
+struct layout_cell *layout_split_pane(struct window_pane *, enum layout_type,
+		     int, int);
 void		 layout_close_pane(struct window_pane *);
 
 /* layout-custom.c */
