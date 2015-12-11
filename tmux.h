@@ -705,7 +705,7 @@ struct hook {
 
 /* Option data structures. */
 struct options_entry {
-	char		*name;
+	const char		*name;
 
 	enum {
 		OPTIONS_STRING,
@@ -1516,7 +1516,7 @@ struct hook	*hooks_first(struct hooks *);
 struct hook	*hooks_next(struct hook *);
 void		 hooks_add(struct hooks *, const char *, struct cmd_list *);
 void		 hooks_copy(struct hooks *, struct hooks *);
-void		 hooks_remove(struct hooks *, struct hook *);
+void		 hooks_remove(struct hooks *, const char *);
 struct hook	*hooks_find(struct hooks *, const char *);
 void		 hooks_run(struct hooks *, const char *, struct client *);
 

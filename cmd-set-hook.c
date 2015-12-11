@@ -93,8 +93,7 @@ cmd_set_hook_exec(struct cmd *self, struct cmd_q *cmdq)
 			    name);
 			return (CMD_RETURN_ERROR);
 		}
-		if ((hook = hooks_find(hooks, name)) != NULL)
-			hooks_remove(hooks, hook);
+		hooks_remove(hooks, name);
 		return (CMD_RETURN_NORMAL);
 	}
 
