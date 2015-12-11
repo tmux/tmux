@@ -150,19 +150,16 @@ PKG_CHECK_MODULES(
         [
                 CPPFLAGS="$LIBNCURSES_CFLAGS $CPPFLAGS"
                 LIBS="$LIBNCURSES_LIBS $LIBS"
-                found_libncurses=yes
-        ]
-)
-if test "x$found_libncurses" = xno; then
-        AC_MSG_ERROR("libncurses not found")
-fi
-
-# Look for curses.
-AC_SEARCH_LIBS(
-	setupterm,
-	[terminfo curses ncurses tinfo],
-	found_curses=yes,
-	found_curses=no
+                found_curses=yes
+        ],
+        [
+		AC_SEARCH_LIBS(
+			setupterm,
+			[terminfo curses ncurses tinfo],
+			found_curses=yes,
+			found_curses=no
+		)
+	]
 )
 if test "x$found_curses" = xno; then
 	AC_MSG_ERROR("curses not found")
