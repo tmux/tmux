@@ -1480,7 +1480,7 @@ window_copy_copy_pipe(struct window_pane *wp, struct session *sess,
 	if (buf == NULL)
 		return;
 
-	ft = format_create(0);
+	ft = format_create(NULL, 0);
 	format_defaults(ft, NULL, sess, NULL, wp);
 	expanded = format_expand(ft, arg);
 

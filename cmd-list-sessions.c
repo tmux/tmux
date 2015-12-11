@@ -61,7 +61,7 @@ cmd_list_sessions_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	n = 0;
 	RB_FOREACH(s, sessions, &sessions) {
-		ft = format_create(0);
+		ft = format_create(cmdq, 0);
 		format_add(ft, "line", "%u", n);
 		format_defaults(ft, NULL, s, NULL, NULL);
 
