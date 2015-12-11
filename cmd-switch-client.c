@@ -131,6 +131,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 	server_check_unattached();
 	server_redraw_client(c);
 	s->curw->flags &= ~WINLINK_ALERTFLAGS;
+	alerts_check_session(s);
 
 	return (CMD_RETURN_NORMAL);
 }

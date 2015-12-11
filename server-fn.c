@@ -389,6 +389,7 @@ server_destroy_session(struct session *s)
 			session_update_activity(s_new, NULL);
 			gettimeofday(&s_new->last_attached_time, NULL);
 			server_redraw_client(c);
+			alerts_check_session(s_new);
 		}
 	}
 	recalculate_sizes();
