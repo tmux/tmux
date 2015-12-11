@@ -186,7 +186,7 @@ window_choose_data_create(int type, struct client *c, struct session *s)
 	wcd = xmalloc(sizeof *wcd);
 	wcd->type = type;
 
-	wcd->ft = format_create(0);
+	wcd->ft = format_create(NULL, 0);
 	wcd->ft_template = NULL;
 
 	wcd->command = NULL;

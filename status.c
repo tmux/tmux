@@ -500,9 +500,9 @@ status_replace(struct client *c, struct winlink *wl, const char *fmt, time_t t)
 		return (xstrdup(""));
 
 	if (c->flags & CLIENT_STATUSFORCE)
-		ft = format_create(FORMAT_STATUS|FORMAT_FORCE);
+		ft = format_create(NULL, FORMAT_STATUS|FORMAT_FORCE);
 	else
-		ft = format_create(FORMAT_STATUS);
+		ft = format_create(NULL, FORMAT_STATUS);
 	format_defaults(ft, c, NULL, wl, NULL);
 
 	expanded = format_expand_time(ft, fmt, t);
@@ -661,7 +661,7 @@ status_prompt_set(struct client *c, const char *msg, const char *input,
 	int			 keys;
 	time_t			 t;
 
-	ft = format_create(0);
+	ft = format_create(NULL, 0);
 	format_defaults(ft, c, NULL, NULL, NULL);
 	t = time(NULL);
 
@@ -722,7 +722,7 @@ status_prompt_update(struct client *c, const char *msg, const char *input)
 	struct format_tree	*ft;
 	time_t			 t;
 
-	ft = format_create(0);
+	ft = format_create(NULL, 0);
 	format_defaults(ft, c, NULL, NULL, NULL);
 	t = time(NULL);
 
