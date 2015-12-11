@@ -18,9 +18,9 @@
 
 #include <sys/types.h>
 
-#ifdef HAVE_CURSES_H
+#if defined(HAVE_CURSES_H)
 #include <curses.h>
-#else
+#elif defined(HAVE_NCURSES_H)
 #include <ncurses.h>
 #endif
 #include <fnmatch.h>
