@@ -5,7 +5,7 @@ AC_INIT(tmux, 2.2)
 
 AC_CONFIG_AUX_DIR(etc)
 AM_INIT_AUTOMAKE([foreign subdir-objects])
-
+AM_SILENT_RULES([yes])
 AC_CANONICAL_HOST
 
 # When CFLAGS isn't set at this stage and gcc is detected by the macro below,
