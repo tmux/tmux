@@ -143,6 +143,20 @@ if test "x$found_libevent" = xno; then
 	AC_MSG_ERROR("libevent not found")
 fi
 
+# Look for ncurses
+PKG_CHECK_MODULES(
+        LIBNCURSES,
+        ncurses,
+        [
+                CPPFLAGS="$LIBNCURSES_CFLAGS $CPPFLAGS"
+                LIBS="$LIBNCURSES_LIBS $LIBS"
+                found_libncurses=yes
+        ]
+)
+if test "x$found_libncurses" = xno; then
+        AC_MSG_ERROR("libncurses not found")
+fi
+
 # Look for curses.
 AC_SEARCH_LIBS(
 	setupterm,
