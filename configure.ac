@@ -155,10 +155,16 @@ PKG_CHECK_MODULES(
         [
 		AC_SEARCH_LIBS(
 			setupterm,
-			[terminfo curses ncurses tinfo],
+			[terminfo curses tinfo],
 			found_curses=yes,
 			found_curses=no
 		)
+		AC_SEARCH_LIBS(
+                        addch,
+                        [ncurses],
+                        found_curses=yes,
+                        found_curses=no
+                )
 	]
 )
 if test "x$found_curses" = xno; then
