@@ -1124,8 +1124,8 @@ status_prompt_key(struct client *c, key_code key)
 		}
 
 		if (c->prompt_flags & PROMPT_SINGLE) {
-			if (c->prompt_callbackfn(
-			    c->prompt_data, c->prompt_buffer) == 0)
+			if (c->prompt_callbackfn(c->prompt_data,
+			    c->prompt_buffer) == 0)
 				status_prompt_clear(c);
 		}
 
