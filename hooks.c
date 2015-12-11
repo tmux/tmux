@@ -32,7 +32,8 @@ static int	hooks_cmp(struct hook *, struct hook *);
 RB_PROTOTYPE(hooks_tree, hook, entry, hooks_cmp);
 RB_GENERATE(hooks_tree, hook, entry, hooks_cmp);
 
-struct hook	*hooks_find1(struct hooks *, const char *);
+static struct hook	*hooks_find1(struct hooks *, const char *);
+static void		 hooks_free1(struct hooks *, struct hook *);
 
 static int
 hooks_cmp(struct hook *hook1, struct hook *hook2)
@@ -51,13 +52,22 @@ hooks_create(struct hooks *parent)
 	return (hooks);
 }
 
+static void
+hooks_free1(struct hooks *hooks, struct hook *hook)
+{
+	RB_REMOVE(hooks_tree, &hooks->tree, hook);
+	cmd_list_free(hook->cmdlist);
+	free((char *)hook->name);
+	free(hook);
+}
+
 void
 hooks_free(struct hooks *hooks)
 {
 	struct hook	*hook, *hook1;
 
 	RB_FOREACH_SAFE(hook, hooks_tree, &hooks->tree, hook1)
-		hooks_remove(hooks, hook);
+		hooks_free1(hooks, hook);
 	free(hooks);
 }
 
@@ -79,7 +89,7 @@ hooks_add(struct hooks *hooks, const char *name, struct cmd_list *cmdlist)
 	struct hook	*hook;
 
 	if ((hook = hooks_find1(hooks, name)) != NULL)
-		hooks_remove(hooks, hook);
+		hooks_free1(hooks, hook);
 
 	hook = xcalloc(1, sizeof *hook);
 	hook->name = xstrdup(name);
@@ -89,15 +99,15 @@ hooks_add(struct hooks *hooks, const char *name, struct cmd_list *cmdlist)
 }
 
 void
-hooks_remove(struct hooks *hooks, struct hook *hook)
+hooks_remove(struct hooks *hooks, const char *name)
 {
-	RB_REMOVE(hooks_tree, &hooks->tree, hook);
-	cmd_list_free(hook->cmdlist);
-	free((char *) hook->name);
-	free(hook);
+	struct hook	*hook;
+
+	if ((hook = hooks_find1(hooks, name)) != NULL)
+		hooks_free1(hooks, hook);
 }
 
-struct hook *
+static struct hook *
 hooks_find1(struct hooks *hooks, const char *name)
 {
 	struct hook	hook;

@@ -34,11 +34,13 @@ struct options {
 	struct options	*parent;
 };
 
-int	options_cmp(struct options_entry *, struct options_entry *);
+static int	options_cmp(struct options_entry *, struct options_entry *);
 RB_PROTOTYPE(options_tree, options_entry, entry, options_cmp);
 RB_GENERATE(options_tree, options_entry, entry, options_cmp);
 
-int
+static void	options_free1(struct options *, struct options_entry *);
+
+static int
 options_cmp(struct options_entry *o1, struct options_entry *o2)
 {
 	return (strcmp(o1->name, o2->name));
@@ -55,19 +57,23 @@ options_create(struct options *parent)
 	return (oo);
 }
 
+static void
+options_free1(struct options *oo, struct options_entry *o)
+{
+	RB_REMOVE(options_tree, &oo->tree, o);
+	free((char *)o->name);
+	if (o->type == OPTIONS_STRING)
+		free(o->str);
+	free(o);
+}
+
 void
 options_free(struct options *oo)
 {
-	struct options_entry	*o;
+	struct options_entry	*o, *o1;
 
-	while (!RB_EMPTY(&oo->tree)) {
-		o = RB_ROOT(&oo->tree);
-		RB_REMOVE(options_tree, &oo->tree, o);
-		free(o->name);
-		if (o->type == OPTIONS_STRING)
-			free(o->str);
-		free(o);
-	}
+	RB_FOREACH_SAFE (o, options_tree, &oo->tree, o1)
+		options_free1(oo, o);
 	free(oo);
 }
 
@@ -88,7 +94,7 @@ options_find1(struct options *oo, const char *name)
 {
 	struct options_entry	p;
 
-	p.name = (char *) name;
+	p.name = (char *)name;
 	return (RB_FIND(options_tree, &oo->tree, &p));
 }
 
@@ -97,7 +103,7 @@ options_find(struct options *oo, const char *name)
 {
 	struct options_entry	*o, p;
 
-	p.name = (char *) name;
+	p.name = (char *)name;
 	o = RB_FIND(options_tree, &oo->tree, &p);
 	while (o == NULL) {
 		oo = oo->parent;
@@ -113,14 +119,8 @@ options_remove(struct options *oo, const char *name)
 {
 	struct options_entry	*o;
 
-	if ((o = options_find1(oo, name)) == NULL)
-		return;
-
-	RB_REMOVE(options_tree, &oo->tree, o);
-	free(o->name);
-	if (o->type == OPTIONS_STRING)
-		free(o->str);
-	free(o);
+	if ((o = options_find1(oo, name)) != NULL)
+		options_free1(oo, o);
 }
 
 struct options_entry *
