@@ -51,7 +51,7 @@ cmd_unbind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 			return (CMD_RETURN_ERROR);
 		}
 		key = key_string_lookup_string(args->argv[0]);
-		if (key == KEYC_NONE) {
+		if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
 			cmdq_error(cmdq, "unknown key: %s", args->argv[0]);
 			return (CMD_RETURN_ERROR);
 		}
@@ -60,13 +60,13 @@ cmd_unbind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 			cmdq_error(cmdq, "key given with -a");
 			return (CMD_RETURN_ERROR);
 		}
-		key = KEYC_NONE;
+		key = KEYC_UNKNOWN;
 	}
 
 	if (args_has(args, 't'))
 		return (cmd_unbind_key_mode_table(self, cmdq, key));
 
-	if (key == KEYC_NONE) {
+	if (key == KEYC_UNKNOWN) {
 		tablename = args_get(args, 'T');
 		if (tablename == NULL) {
 			key_bindings_remove_table("root");
@@ -109,7 +109,7 @@ cmd_unbind_key_mode_table(struct cmd *self, struct cmd_q *cmdq, key_code key)
 		return (CMD_RETURN_ERROR);
 	}
 
-	if (key == KEYC_NONE) {
+	if (key == KEYC_UNKNOWN) {
 		while (!RB_EMPTY(mtab->tree)) {
 			mbind = RB_ROOT(mtab->tree);
 			RB_REMOVE(mode_key_tree, mtab->tree, mbind);

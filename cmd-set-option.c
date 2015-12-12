@@ -183,6 +183,10 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 				w->active->flags |= PANE_CHANGED;
 		}
 	}
+	if (strcmp(oe->name, "key-table") == 0) {
+		TAILQ_FOREACH(c, &clients, entry)
+			server_client_set_key_table(c, NULL);
+	}
 	if (strcmp(oe->name, "status") == 0 ||
 	    strcmp(oe->name, "status-interval") == 0)
 		status_timer_start_all();
@@ -396,7 +400,8 @@ cmd_set_option_key(__unused struct cmd *self, struct cmd_q *cmdq,
 {
 	key_code	key;
 
-	if ((key = key_string_lookup_string(value)) == KEYC_NONE) {
+	key = key_string_lookup_string(value);
+	if (key == KEYC_UNKNOWN) {
 		cmdq_error(cmdq, "bad key: %s", value);
 		return (NULL);
 	}

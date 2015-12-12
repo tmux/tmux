@@ -62,7 +62,7 @@ cmd_bind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 
 	key = key_string_lookup_string(args->argv[0]);
-	if (key == KEYC_NONE) {
+	if (key == KEYC_NONE || key == KEYC_UNKNOWN) {
 		cmdq_error(cmdq, "unknown key: %s", args->argv[0]);
 		return (CMD_RETURN_ERROR);
 	}

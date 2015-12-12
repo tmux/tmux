@@ -52,8 +52,8 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct mouse_event	*m = &cmdq->item->mouse;
 	struct window_pane	*wp;
 	struct session		*s;
-	const u_char		*str;
-	int			 i;
+	int			 i, literal;
+	const u_char		*keystr;
 	key_code		 key;
 
 	if (args_has(args, 'M')) {
@@ -82,14 +82,17 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 		input_reset(wp);
 
 	for (i = 0; i < args->argc; i++) {
-		str = args->argv[i];
-
-		if (!args_has(args, 'l') &&
-		    (key = key_string_lookup_string(str)) != KEYC_NONE) {
-			window_pane_key(wp, NULL, s, key, NULL);
-		} else {
-			for (; *str != '\0'; str++)
-				window_pane_key(wp, NULL, s, *str, NULL);
+		literal = args_has(args, 'l');
+		if (!literal) {
+			key = key_string_lookup_string(args->argv[i]);
+			if (key != KEYC_NONE && key != KEYC_UNKNOWN)
+				window_pane_key(wp, NULL, s, key, NULL);
+			else
+				literal = 1;
+		}
+		if (literal) {
+			for (keystr = args->argv[i]; *keystr != '\0'; keystr++)
+				window_pane_key(wp, NULL, s, *keystr, NULL);
 		}
 	}
 

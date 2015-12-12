@@ -65,6 +65,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 		table->references++;
 		key_bindings_unref_table(c->keytable);
 		c->keytable = table;
+		return (CMD_RETURN_NORMAL);
 	}
 
 	tflag = args_get(args, 't');
@@ -123,6 +124,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (c->session != NULL && c->session != s)
 		c->last_session = c->session;
 	c->session = s;
+	server_client_set_key_table(c, NULL);
 	status_timer_start(c);
 	session_update_activity(s, NULL);
 	gettimeofday(&s->last_attached_time, NULL);

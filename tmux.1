@@ -2576,6 +2576,11 @@ is in milliseconds.
 Set the maximum number of lines held in window history.
 This setting applies only to new windows - existing window histories are not
 resized and retain the limit at the point they were created.
+.It Ic key-table Ar key-table
+Set the default key table to
+.Ar key-table
+instead of
+.Em root .
 .It Ic lock-after-time Ar number
 Lock the session (like the
 .Ic lock-session
@@ -2668,8 +2673,19 @@ See the
 section for details.
 .It Ic prefix Ar key
 Set the key accepted as a prefix key.
+In addition to the standard keys described under
+.Sx KEY BINDINGS ,
+.Ic prefix
+can be set to the special key
+.Ql None
+to set no prefix.
 .It Ic prefix2 Ar key
 Set a secondary key accepted as a prefix key.
+Like
+.Ic prefix ,
+.Ic prefix2
+can be set to
+.Ql None .
 .It Xo Ic renumber-windows
 .Op Ic on | off
 .Xc
