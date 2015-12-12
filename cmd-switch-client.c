@@ -65,6 +65,7 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 		table->references++;
 		key_bindings_unref_table(c->keytable);
 		c->keytable = table;
+		return (CMD_RETURN_NORMAL);
 	}
 
 	tflag = args_get(args, 't');
