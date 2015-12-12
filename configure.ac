@@ -18,6 +18,7 @@ AM_PROG_CC_C_O
 AC_PROG_CPP
 AC_PROG_EGREP
 AC_PROG_INSTALL
+PKG_PROG_PKG_CONFIG
 
 # Default tmux.conf goes in /etc not ${prefix}/etc.
 test "$sysconfdir" = '${prefix}/etc' && sysconfdir=/etc
@@ -47,6 +48,7 @@ AC_ARG_ENABLE(
 )
 if test "x$found_static" = xyes; then
 	LDFLAGS="$LDFLAGS -static"
+	PKG_CONFIG="pkg-config --static"
 fi
 
 # Is this gcc?
