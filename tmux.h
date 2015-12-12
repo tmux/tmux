@@ -1800,6 +1800,8 @@ void	 server_update_socket(void);
 void	 server_add_accept(int);
 
 /* server-client.c */
+void	 server_client_set_key_table(struct client *, const char *);
+const char *server_client_get_key_table(struct client *);
 int	 server_client_check_nested(struct client *);
 void	 server_client_handle_key(struct client *, key_code);
 void	 server_client_create(int);

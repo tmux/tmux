@@ -32,7 +32,6 @@
 
 #include "tmux.h"
 
-void		server_client_key_table(struct client *, const char *);
 void		server_client_free(int, short, void *);
 void		server_client_check_focus(struct window_pane *);
 void		server_client_check_resize(struct window_pane *);
@@ -72,11 +71,30 @@ server_client_check_nested(struct client *c)
 
 /* Set client key table. */
 void
-server_client_key_table(struct client *c, const char *name)
+server_client_set_key_table(struct client *c, const char *name)
 {
+	if (name == NULL)
+		name = server_client_get_key_table(c);
+
 	key_bindings_unref_table(c->keytable);
 	c->keytable = key_bindings_get_table(name, 1);
 	c->keytable->references++;
+}
+
+/* Get default key table. */
+const char *
+server_client_get_key_table(struct client *c)
+{
+	struct session	*s = c->session;
+	const char	*name;
+
+	if (s == NULL)
+		return ("root");
+
+	name = options_get_string(s->options, "key-table");
+	if (*name == '\0')
+		return ("root");
+	return (name);
 }
 
 /* Create a new client. */
@@ -598,7 +616,7 @@ retry:
 		 * again in the root table.
 		 */
 		if ((c->flags & CLIENT_REPEAT) && !bd->can_repeat) {
-			server_client_key_table(c, "root");
+			server_client_set_key_table(c, NULL);
 			c->flags &= ~CLIENT_REPEAT;
 			server_status_client(c);
 			goto retry;
@@ -625,7 +643,7 @@ retry:
 			evtimer_add(&c->repeat_timer, &tv);
 		} else {
 			c->flags &= ~CLIENT_REPEAT;
-			server_client_key_table(c, "root");
+			server_client_set_key_table(c, NULL);
 		}
 		server_status_client(c);
 
@@ -640,15 +658,15 @@ retry:
 	 * root table and try again.
 	 */
 	if (c->flags & CLIENT_REPEAT) {
-		server_client_key_table(c, "root");
+		server_client_set_key_table(c, NULL);
 		c->flags &= ~CLIENT_REPEAT;
 		server_status_client(c);
 		goto retry;
 	}
 
 	/* If no match and we're not in the root table, that's it. */
-	if (strcmp(c->keytable->name, "root") != 0) {
-		server_client_key_table(c, "root");
+	if (strcmp(c->keytable->name, server_client_get_key_table(c)) != 0) {
+		server_client_set_key_table(c, NULL);
 		server_status_client(c);
 		return;
 	}
@@ -659,7 +677,7 @@ retry:
 	 */
 	if (key == (key_code)options_get_number(s->options, "prefix") ||
 	    key == (key_code)options_get_number(s->options, "prefix2")) {
-		server_client_key_table(c, "prefix");
+		server_client_set_key_table(c, "prefix");
 		server_status_client(c);
 		return;
 	}
@@ -834,7 +852,7 @@ server_client_repeat_timer(__unused int fd, __unused short events, void *data)
 	struct client	*c = data;
 
 	if (c->flags & CLIENT_REPEAT) {
-		server_client_key_table(c, "root");
+		server_client_set_key_table(c, NULL);
 		c->flags &= ~CLIENT_REPEAT;
 		server_status_client(c);
 	}

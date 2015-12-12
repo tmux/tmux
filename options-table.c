@@ -211,6 +211,12 @@ const struct options_table_entry options_table[] = {
 	  .default_num = 2000
 	},
 
+	{ .name = "key-table",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "root"
+	},
+
 	{ .name = "lock-after-time",
 	  .type = OPTIONS_TABLE_NUMBER,
 	  .scope = OPTIONS_TABLE_SESSION,

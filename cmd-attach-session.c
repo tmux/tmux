@@ -119,6 +119,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 		}
 
 		c->session = s;
+		server_client_set_key_table(c, NULL);
 		status_timer_start(c);
 		notify_attached_session_changed(c);
 		session_update_activity(s, NULL);
@@ -150,6 +151,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 		}
 
 		c->session = s;
+		server_client_set_key_table(c, NULL);
 		status_timer_start(c);
 		notify_attached_session_changed(c);
 		session_update_activity(s, NULL);

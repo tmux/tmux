@@ -384,6 +384,7 @@ server_destroy_session(struct session *s)
 		} else {
 			c->last_session = NULL;
 			c->session = s_new;
+			server_client_set_key_table(c, NULL);
 			status_timer_start(c);
 			notify_attached_session_changed(c);
 			session_update_activity(s_new, NULL);

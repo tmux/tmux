@@ -183,6 +183,10 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 				w->active->flags |= PANE_CHANGED;
 		}
 	}
+	if (strcmp(oe->name, "key-table") == 0) {
+		TAILQ_FOREACH(c, &clients, entry)
+			server_client_set_key_table(c, NULL);
+	}
 	if (strcmp(oe->name, "status") == 0 ||
 	    strcmp(oe->name, "status-interval") == 0)
 		status_timer_start_all();
