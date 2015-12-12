@@ -309,7 +309,7 @@ server_client_check_mouse(struct client *c)
 		log_debug("down at %u,%u", x, y);
 	}
 	if (type == NOTYPE)
-		return (KEYC_NONE);
+		return (KEYC_UNKNOWN);
 
 	/* Always save the session. */
 	m->s = s->id;
@@ -319,7 +319,7 @@ server_client_check_mouse(struct client *c)
 	if (m->statusat != -1 && y == (u_int)m->statusat) {
 		w = status_get_window_at(c, x);
 		if (w == NULL)
-			return (KEYC_NONE);
+			return (KEYC_UNKNOWN);
 		m->w = w->id;
 		where = STATUS;
 	} else
@@ -352,7 +352,7 @@ server_client_check_mouse(struct client *c)
 			}
 		}
 		if (where == NOWHERE)
-			return (KEYC_NONE);
+			return (KEYC_UNKNOWN);
 		m->wp = wp->id;
 		m->w = wp->window->id;
 	} else
@@ -371,7 +371,7 @@ server_client_check_mouse(struct client *c)
 	}
 
 	/* Convert to a key binding. */
-	key = KEYC_NONE;
+	key = KEYC_UNKNOWN;
 	switch (type) {
 	case NOTYPE:
 		break;
@@ -483,8 +483,8 @@ server_client_check_mouse(struct client *c)
 		}
 		break;
 	}
-	if (key == KEYC_NONE)
-		return (KEYC_NONE);
+	if (key == KEYC_UNKNOWN)
+		return (KEYC_UNKNOWN);
 
 	/* Apply modifiers if any. */
 	if (b & MOUSE_MASK_META)
@@ -572,7 +572,7 @@ server_client_handle_key(struct client *c, key_code key)
 		if (c->flags & CLIENT_READONLY)
 			return;
 		key = server_client_check_mouse(c);
-		if (key == KEYC_NONE)
+		if (key == KEYC_UNKNOWN)
 			return;
 
 		m->valid = 1;
