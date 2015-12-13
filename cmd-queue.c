@@ -199,6 +199,8 @@ cmdq_continue_one(struct cmd_q *cmdq)
 	if (cmd_prepare_state(cmd, cmdq) != 0)
 		goto error;
 	retval = cmd->entry->exec(cmd, cmdq);
+	if (retval == CMD_RETURN_ERROR)
+		goto error;
 
 	cmdq_guard(cmdq, "end", flags);
 	return (retval);

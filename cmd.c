@@ -432,12 +432,12 @@ cmd_set_state_flag(struct cmd *cmd, struct cmd_q *cmdq, char c)
 	struct cmd_state_flag	*statef = NULL;
 	const char		*flag;
 	int			 flags = cmd->entry->flags, everything = 0;
-	int			 allflags = 0, targetflags;
+	int			 allflags = 0, targetflags, error;
 	struct session		*s;
 	struct window		*w;
 	struct winlink		*wl;
 	struct window_pane	*wp;
-	struct cmd_find_state	*fs;
+	struct cmd_find_state	 fs;
 
 	/* Set up state for either -t or -s. */
 	if (c == 't') {
@@ -479,19 +479,19 @@ cmd_set_state_flag(struct cmd *cmd, struct cmd_q *cmdq, char c)
 	case CMD_SESSION_T|CMD_PANE_T:
 	case CMD_SESSION_S|CMD_PANE_S:
 		if (flag != NULL && flag[strcspn(flag, ":.")] != '\0') {
-			fs = cmd_find_target(cmdq, flag, CMD_FIND_PANE,
+			error = cmd_find_target(&fs, cmdq, flag, CMD_FIND_PANE,
 			    targetflags);
-			if (fs == NULL)
+			if (error != 0)
 				return (-1);
-			statef->s = fs->s;
-			statef->wl = fs->wl;
-			statef->wp = fs->wp;
+			statef->s = fs.s;
+			statef->wl = fs.wl;
+			statef->wp = fs.wp;
 		} else {
-			fs = cmd_find_target(cmdq, flag, CMD_FIND_SESSION,
-			    targetflags);
-			if (fs == NULL)
+			error = cmd_find_target(&fs, cmdq, flag,
+			    CMD_FIND_SESSION, targetflags);
+			if (error != 0)
 				return (-1);
-			statef->s = fs->s;
+			statef->s = fs.s;
 
 			if (flag == NULL) {
 				statef->wl = statef->s->curw;
@@ -515,24 +515,26 @@ cmd_set_state_flag(struct cmd *cmd, struct cmd_q *cmdq, char c)
 		break;
 	case CMD_MOVEW_R|CMD_INDEX_T:
 	case CMD_MOVEW_R|CMD_INDEX_S:
-		fs = cmd_find_target(cmdq, flag, CMD_FIND_SESSION, targetflags);
-		if (fs != NULL)
-			statef->s = fs->s;
+		error = cmd_find_target(&fs, cmdq, flag, CMD_FIND_SESSION,
+		    targetflags);
+		if (error == 0)
+			statef->s = fs.s;
 		else {
-			fs = cmd_find_target(cmdq, flag, CMD_FIND_WINDOW,
-			    CMD_FIND_WINDOW_INDEX);
-			if (fs == NULL)
+			error = cmd_find_target(&fs, cmdq, flag,
+			    CMD_FIND_WINDOW, CMD_FIND_WINDOW_INDEX);
+			if (error != 0)
 				return (-1);
-			statef->s = fs->s;
-			statef->idx = fs->idx;
+			statef->s = fs.s;
+			statef->idx = fs.idx;
 		}
 		break;
 	case CMD_SESSION_T:
 	case CMD_SESSION_S:
-		fs = cmd_find_target(cmdq, flag, CMD_FIND_SESSION, targetflags);
-		if (fs == NULL)
+		error = cmd_find_target(&fs, cmdq, flag, CMD_FIND_SESSION,
+		    targetflags);
+		if (error != 0)
 			return (-1);
-		statef->s = fs->s;
+		statef->s = fs.s;
 		break;
 	case CMD_WINDOW_MARKED_T:
 	case CMD_WINDOW_MARKED_S:
@@ -540,11 +542,12 @@ cmd_set_state_flag(struct cmd *cmd, struct cmd_q *cmdq, char c)
 		/* FALLTHROUGH */
 	case CMD_WINDOW_T:
 	case CMD_WINDOW_S:
-		fs = cmd_find_target(cmdq, flag, CMD_FIND_WINDOW, targetflags);
-		if (fs == NULL)
+		error = cmd_find_target(&fs, cmdq, flag, CMD_FIND_WINDOW,
+		    targetflags);
+		if (error != 0)
 			return (-1);
-		statef->s = fs->s;
-		statef->wl = fs->wl;
+		statef->s = fs.s;
+		statef->wl = fs.wl;
 		break;
 	case CMD_PANE_MARKED_T:
 	case CMD_PANE_MARKED_S:
@@ -552,21 +555,22 @@ cmd_set_state_flag(struct cmd *cmd, struct cmd_q *cmdq, char c)
 		/* FALLTHROUGH */
 	case CMD_PANE_T:
 	case CMD_PANE_S:
-		fs = cmd_find_target(cmdq, flag, CMD_FIND_PANE, targetflags);
-		if (fs == NULL)
+		error = cmd_find_target(&fs, cmdq, flag, CMD_FIND_PANE,
+		    targetflags);
+		if (error != 0)
 			return (-1);
-		statef->s = fs->s;
-		statef->wl = fs->wl;
-		statef->wp = fs->wp;
+		statef->s = fs.s;
+		statef->wl = fs.wl;
+		statef->wp = fs.wp;
 		break;
 	case CMD_INDEX_T:
 	case CMD_INDEX_S:
-		fs = cmd_find_target(cmdq, flag, CMD_FIND_WINDOW,
+		error = cmd_find_target(&fs, cmdq, flag, CMD_FIND_WINDOW,
 		    CMD_FIND_WINDOW_INDEX);
-		if (fs == NULL)
+		if (error != 0)
 			return (-1);
-		statef->s = fs->s;
-		statef->idx = fs->idx;
+		statef->s = fs.s;
+		statef->idx = fs.idx;
 		break;
 	default:
 		fatalx("too many -%c for %s", c, cmd->entry->name);
@@ -585,10 +589,10 @@ complete_everything:
 		if (state->c != NULL)
 			statef->s = state->c->session;
 		if (statef->s == NULL) {
-			fs = cmd_find_target(cmdq, NULL, CMD_FIND_SESSION,
-			    CMD_FIND_QUIET);
-			if (fs != NULL)
-				statef->s = fs->s;
+			error = cmd_find_target(&fs, cmdq, NULL,
+			    CMD_FIND_SESSION, CMD_FIND_QUIET);
+			if (error == 0)
+				statef->s = fs.s;
 		}
 		if (statef->s == NULL) {
 			if (flags & CMD_CANFAIL)
@@ -598,18 +602,18 @@ complete_everything:
 		}
 	}
 	if (statef->wl == NULL) {
-		fs = cmd_find_target(cmdq, flag, CMD_FIND_WINDOW, 0);
-		if (fs != NULL) {
-			statef->s = fs->s;
-			statef->wl = fs->wl;
+		error = cmd_find_target(&fs, cmdq, flag, CMD_FIND_WINDOW, 0);
+		if (error != 0) {
+			statef->s = fs.s;
+			statef->wl = fs.wl;
 		}
 	}
 	if (statef->wp == NULL) {
-		fs = cmd_find_target(cmdq, flag, CMD_FIND_PANE, 0);
-		if (fs != NULL) {
-			statef->s = fs->s;
-			statef->wl = fs->wl;
-			statef->wp = fs->wp;
+		error = cmd_find_target(&fs, cmdq, flag, CMD_FIND_PANE, 0);
+		if (error != 0) {
+			statef->s = fs.s;
+			statef->wl = fs.wl;
+			statef->wp = fs.wp;
 		}
 	}
 	return (0);
