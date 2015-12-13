@@ -35,12 +35,15 @@
 enum cmd_retval	cmd_new_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_new_window_entry = {
-	"new-window", "neww",
-	"ac:dF:kn:Pt:", 0, -1,
-	"[-adkP] [-c start-directory] [-F format] [-n window-name] "
-	CMD_TARGET_WINDOW_USAGE " [command]",
-	CMD_INDEX_T,
-	cmd_new_window_exec
+	.name = "new-window",
+	.alias = "neww",
+
+	.args = { "ac:dF:kn:Pt:", 0, -1 },
+	.usage = "[-adkP] [-c start-directory] [-F format] [-n window-name] "
+		 CMD_TARGET_WINDOW_USAGE " [command]",
+
+	.flags = CMD_INDEX_T,
+	.exec = cmd_new_window_exec
 };
 
 enum cmd_retval

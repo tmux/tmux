@@ -29,19 +29,25 @@
 enum cmd_retval	 cmd_detach_client_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_detach_client_entry = {
-	"detach-client", "detach",
-	"as:t:P", 0, 0,
-	"[-P] [-a] [-s target-session] " CMD_TARGET_CLIENT_USAGE,
-	CMD_READONLY|CMD_CLIENT_T|CMD_SESSION_S,
-	cmd_detach_client_exec
+	.name = "detach-client",
+	.alias = "detach",
+
+	.args = { "as:t:P", 0, 0 },
+	.usage = "[-P] [-a] [-s target-session] " CMD_TARGET_CLIENT_USAGE,
+
+	.flags = CMD_READONLY|CMD_CLIENT_T|CMD_SESSION_S,
+	.exec = cmd_detach_client_exec
 };
 
 const struct cmd_entry cmd_suspend_client_entry = {
-	"suspend-client", "suspendc",
-	"t:", 0, 0,
-	CMD_TARGET_CLIENT_USAGE,
-	CMD_CLIENT_T,
-	cmd_detach_client_exec
+	.name = "suspend-client",
+	.alias = "suspendc",
+
+	.args = { "t:", 0, 0 },
+	.usage = CMD_TARGET_CLIENT_USAGE,
+
+	.flags = CMD_CLIENT_T,
+	.exec = cmd_detach_client_exec
 };
 
 enum cmd_retval

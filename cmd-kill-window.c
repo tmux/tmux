@@ -27,19 +27,25 @@
 enum cmd_retval	 cmd_kill_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_kill_window_entry = {
-	"kill-window", "killw",
-	"at:", 0, 0,
-	"[-a] " CMD_TARGET_WINDOW_USAGE,
-	CMD_WINDOW_T,
-	cmd_kill_window_exec
+	.name = "kill-window",
+	.alias = "killw",
+
+	.args = { "at:", 0, 0 },
+	.usage = "[-a] " CMD_TARGET_WINDOW_USAGE,
+
+	.flags = CMD_WINDOW_T,
+	.exec = cmd_kill_window_exec
 };
 
 const struct cmd_entry cmd_unlink_window_entry = {
-	"unlink-window", "unlinkw",
-	"kt:", 0, 0,
-	"[-k] " CMD_TARGET_WINDOW_USAGE,
-	CMD_WINDOW_T,
-	cmd_kill_window_exec
+	.name = "unlink-window",
+	.alias = "unlinkw",
+
+	.args = { "kt:", 0, 0 },
+	.usage = "[-k] " CMD_TARGET_WINDOW_USAGE,
+
+	.flags = CMD_WINDOW_T,
+	.exec = cmd_kill_window_exec
 };
 
 enum cmd_retval

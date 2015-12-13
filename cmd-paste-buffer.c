@@ -34,11 +34,15 @@ void	cmd_paste_buffer_filter(struct window_pane *,
 	    const char *, size_t, const char *, int);
 
 const struct cmd_entry cmd_paste_buffer_entry = {
-	"paste-buffer", "pasteb",
-	"db:prs:t:", 0, 0,
-	"[-dpr] [-s separator] " CMD_BUFFER_USAGE " " CMD_TARGET_PANE_USAGE,
-	CMD_PANE_T,
-	cmd_paste_buffer_exec
+	.name = "paste-buffer",
+	.alias = "pasteb",
+
+	.args = { "db:prs:t:", 0, 0 },
+	.usage = "[-dpr] [-s separator] " CMD_BUFFER_USAGE " "
+		 CMD_TARGET_PANE_USAGE,
+
+	.flags = CMD_PANE_T,
+	.exec = cmd_paste_buffer_exec
 };
 
 enum cmd_retval

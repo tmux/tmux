@@ -36,11 +36,15 @@ void	cmd_if_shell_done(struct cmd_q *);
 void	cmd_if_shell_free(void *);
 
 const struct cmd_entry cmd_if_shell_entry = {
-	"if-shell", "if",
-	"bFt:", 2, 3,
-	"[-bF] " CMD_TARGET_PANE_USAGE " shell-command command [command]",
-	CMD_PANE_T|CMD_CANFAIL,
-	cmd_if_shell_exec
+	.name = "if-shell",
+	.alias = "if",
+
+	.args = { "bFt:", 2, 3 },
+	.usage = "[-bF] " CMD_TARGET_PANE_USAGE " shell-command command "
+		 "[command]",
+
+	.flags = CMD_PANE_T|CMD_CANFAIL,
+	.exec = cmd_if_shell_exec
 };
 
 struct cmd_if_shell_data {

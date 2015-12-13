@@ -27,11 +27,14 @@
 enum cmd_retval	 cmd_clear_history_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_clear_history_entry = {
-	"clear-history", "clearhist",
-	"t:", 0, 0,
-	CMD_TARGET_PANE_USAGE,
-	CMD_PANE_T,
-	cmd_clear_history_exec
+	.name = "clear-history",
+	.alias = "clearhist",
+
+	.args = { "t:", 0, 0 },
+	.usage = CMD_TARGET_PANE_USAGE,
+
+	.flags = CMD_PANE_T,
+	.exec = cmd_clear_history_exec
 };
 
 enum cmd_retval

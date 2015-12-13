@@ -31,11 +31,15 @@ enum cmd_retval	 cmd_resize_pane_exec(struct cmd *, struct cmd_q *);
 void	cmd_resize_pane_mouse_update(struct client *, struct mouse_event *);
 
 const struct cmd_entry cmd_resize_pane_entry = {
-	"resize-pane", "resizep",
-	"DLMRt:Ux:y:Z", 0, 1,
-	"[-DLMRUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " [adjustment]",
-	CMD_PANE_T,
-	cmd_resize_pane_exec
+	.name = "resize-pane",
+	.alias = "resizep",
+
+	.args = { "DLMRt:Ux:y:Z", 0, 1 },
+	.usage = "[-DLMRUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
+		 "[adjustment]",
+
+	.flags = CMD_PANE_T,
+	.exec = cmd_resize_pane_exec
 };
 
 enum cmd_retval

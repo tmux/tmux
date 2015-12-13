@@ -27,11 +27,14 @@
 enum cmd_retval	 cmd_display_panes_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_display_panes_entry = {
-	"display-panes", "displayp",
-	"t:", 0, 0,
-	CMD_TARGET_CLIENT_USAGE,
-	CMD_CLIENT_T,
-	cmd_display_panes_exec
+	.name = "display-panes",
+	.alias = "displayp",
+
+	.args = { "t:", 0, 0 },
+	.usage = CMD_TARGET_CLIENT_USAGE,
+
+	.flags = CMD_CLIENT_T,
+	.exec = cmd_display_panes_exec
 };
 
 enum cmd_retval

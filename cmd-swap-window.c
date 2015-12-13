@@ -29,11 +29,14 @@
 enum cmd_retval	cmd_swap_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_swap_window_entry = {
-	"swap-window", "swapw",
-	"ds:t:", 0, 0,
-	"[-d] " CMD_SRCDST_WINDOW_USAGE,
-	CMD_WINDOW_MARKED_S|CMD_WINDOW_MARKED_T,
-	cmd_swap_window_exec
+	.name = "swap-window",
+	.alias = "swapw",
+
+	.args = { "ds:t:", 0, 0 },
+	.usage = "[-d] " CMD_SRCDST_WINDOW_USAGE,
+
+	.flags = CMD_WINDOW_MARKED_S|CMD_WINDOW_MARKED_T,
+	.exec = cmd_swap_window_exec
 };
 
 enum cmd_retval

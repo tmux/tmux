@@ -36,12 +36,15 @@
 enum cmd_retval	 cmd_split_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_split_window_entry = {
-	"split-window", "splitw",
-	"bc:dF:l:hp:Pt:v", 0, -1,
-	"[-bdhvP] [-c start-directory] [-F format] [-p percentage|-l size] "
-	CMD_TARGET_PANE_USAGE " [command]",
-	CMD_PANE_T,
-	cmd_split_window_exec
+	.name = "split-window",
+	.alias = "splitw",
+
+	.args = { "bc:dF:l:hp:Pt:v", 0, -1 },
+	.usage = "[-bdhvP] [-c start-directory] [-F format] "
+		 "[-p percentage|-l size] " CMD_TARGET_PANE_USAGE " [command]",
+
+	.flags = CMD_PANE_T,
+	.exec = cmd_split_window_exec
 };
 
 enum cmd_retval

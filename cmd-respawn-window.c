@@ -30,11 +30,14 @@
 enum cmd_retval	 cmd_respawn_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_respawn_window_entry = {
-	"respawn-window", "respawnw",
-	"kt:", 0, -1,
-	"[-k] " CMD_TARGET_WINDOW_USAGE " [command]",
-	CMD_WINDOW_T,
-	cmd_respawn_window_exec
+	.name = "respawn-window",
+	.alias = "respawnw",
+
+	.args = { "kt:", 0, -1 },
+	.usage = "[-k] " CMD_TARGET_WINDOW_USAGE " [command]",
+
+	.flags = CMD_WINDOW_T,
+	.exec = cmd_respawn_window_exec
 };
 
 enum cmd_retval

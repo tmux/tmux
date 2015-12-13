@@ -27,27 +27,36 @@
 enum cmd_retval	 cmd_lock_server_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_lock_server_entry = {
-	"lock-server", "lock",
-	"", 0, 0,
-	"",
-	0,
-	cmd_lock_server_exec
+	.name = "lock-server",
+	.alias = "lock",
+
+	.args = { "", 0, 0 },
+	.usage = "",
+
+	.flags = 0,
+	.exec = cmd_lock_server_exec
 };
 
 const struct cmd_entry cmd_lock_session_entry = {
-	"lock-session", "locks",
-	"t:", 0, 0,
-	CMD_TARGET_SESSION_USAGE,
-	CMD_SESSION_T,
-	cmd_lock_server_exec
+	.name = "lock-session",
+	.alias = "locks",
+
+	.args = { "t:", 0, 0 },
+	.usage = CMD_TARGET_SESSION_USAGE,
+
+	.flags = CMD_SESSION_T,
+	.exec = cmd_lock_server_exec
 };
 
 const struct cmd_entry cmd_lock_client_entry = {
-	"lock-client", "lockc",
-	"t:", 0, 0,
-	CMD_TARGET_CLIENT_USAGE,
-	CMD_CLIENT_T,
-	cmd_lock_server_exec
+	.name = "lock-client",
+	.alias = "lockc",
+
+	.args = { "t:", 0, 0 },
+	.usage = CMD_TARGET_CLIENT_USAGE,
+
+	.flags = CMD_CLIENT_T,
+	.exec = cmd_lock_server_exec
 };
 
 enum cmd_retval

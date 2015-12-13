@@ -27,11 +27,14 @@
 enum cmd_retval	 cmd_rotate_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_rotate_window_entry = {
-	"rotate-window", "rotatew",
-	"Dt:U", 0, 0,
-	"[-DU] " CMD_TARGET_WINDOW_USAGE,
-	CMD_WINDOW_T,
-	cmd_rotate_window_exec
+	.name = "rotate-window",
+	.alias = "rotatew",
+
+	.args = { "Dt:U", 0, 0 },
+	.usage = "[-DU] " CMD_TARGET_WINDOW_USAGE,
+
+	.flags = CMD_WINDOW_T,
+	.exec = cmd_rotate_window_exec
 };
 
 enum cmd_retval

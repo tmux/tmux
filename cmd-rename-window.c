@@ -29,11 +29,14 @@
 enum cmd_retval	 cmd_rename_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_rename_window_entry = {
-	"rename-window", "renamew",
-	"t:", 1, 1,
-	CMD_TARGET_WINDOW_USAGE " new-name",
-	CMD_WINDOW_T,
-	cmd_rename_window_exec
+	.name = "rename-window",
+	.alias = "renamew",
+
+	.args = { "t:", 1, 1 },
+	.usage = CMD_TARGET_WINDOW_USAGE " new-name",
+
+	.flags = CMD_WINDOW_T,
+	.exec = cmd_rename_window_exec
 };
 
 enum cmd_retval

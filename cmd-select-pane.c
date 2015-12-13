@@ -27,19 +27,25 @@
 enum cmd_retval	 cmd_select_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_select_pane_entry = {
-	"select-pane", "selectp",
-	"DdegLlMmP:Rt:U", 0, 0,
-	"[-DdegLlMmRU] [-P style] " CMD_TARGET_PANE_USAGE,
-	CMD_PANE_T,
-	cmd_select_pane_exec
+	.name = "select-pane",
+	.alias = "selectp",
+
+	.args = { "DdegLlMmP:Rt:U", 0, 0 },
+	.usage = "[-DdegLlMmRU] [-P style] " CMD_TARGET_PANE_USAGE,
+
+	.flags = CMD_PANE_T,
+	.exec = cmd_select_pane_exec
 };
 
 const struct cmd_entry cmd_last_pane_entry = {
-	"last-pane", "lastp",
-	"det:", 0, 0,
-	"[-de] " CMD_TARGET_WINDOW_USAGE,
-	CMD_WINDOW_T,
-	cmd_select_pane_exec
+	.name = "last-pane",
+	.alias = "lastp",
+
+	.args = { "det:", 0, 0 },
+	.usage = "[-de] " CMD_TARGET_WINDOW_USAGE,
+
+	.flags = CMD_WINDOW_T,
+	.exec = cmd_select_pane_exec
 };
 
 enum cmd_retval

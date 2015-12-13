@@ -33,19 +33,25 @@ enum cmd_retval	 cmd_list_keys_table(struct cmd *, struct cmd_q *);
 enum cmd_retval	 cmd_list_keys_commands(struct cmd_q *);
 
 const struct cmd_entry cmd_list_keys_entry = {
-	"list-keys", "lsk",
-	"t:T:", 0, 0,
-	"[-t mode-table] [-T key-table]",
-	0,
-	cmd_list_keys_exec
+	.name = "list-keys",
+	.alias = "lsk",
+
+	.args = { "t:T:", 0, 0 },
+	.usage = "[-t mode-table] [-T key-table]",
+
+	.flags = 0,
+	.exec = cmd_list_keys_exec
 };
 
 const struct cmd_entry cmd_list_commands_entry = {
-	"list-commands", "lscm",
-	"", 0, 0,
-	"",
-	0,
-	cmd_list_keys_exec
+	.name = "list-commands",
+	.alias = "lscm",
+
+	.args = { "", 0, 0 },
+	.usage = "",
+
+	.flags = 0,
+	.exec = cmd_list_keys_exec
 };
 
 enum cmd_retval

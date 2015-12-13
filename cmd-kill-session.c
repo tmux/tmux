@@ -30,11 +30,14 @@
 enum cmd_retval	 cmd_kill_session_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_kill_session_entry = {
-	"kill-session", NULL,
-	"aCt:", 0, 0,
-	"[-aC] " CMD_TARGET_SESSION_USAGE,
-	CMD_SESSION_T,
-	cmd_kill_session_exec
+	.name = "kill-session",
+	.alias = NULL,
+
+	.args = { "aCt:", 0, 0 },
+	.usage = "[-aC] " CMD_TARGET_SESSION_USAGE,
+
+	.flags = CMD_SESSION_T,
+	.exec = cmd_kill_session_exec
 };
 
 enum cmd_retval

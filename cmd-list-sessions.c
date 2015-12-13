@@ -39,11 +39,14 @@
 enum cmd_retval	 cmd_list_sessions_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_list_sessions_entry = {
-	"list-sessions", "ls",
-	"F:", 0, 0,
-	"[-F format]",
-	0,
-	cmd_list_sessions_exec
+	.name = "list-sessions",
+	.alias = "ls",
+
+	.args = { "F:", 0, 0 },
+	.usage = "[-F format]",
+
+	.flags = 0,
+	.exec = cmd_list_sessions_exec
 };
 
 enum cmd_retval

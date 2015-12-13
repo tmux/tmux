@@ -30,11 +30,16 @@
 enum cmd_retval	 cmd_switch_client_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_switch_client_entry = {
-	"switch-client", "switchc",
-	"lc:Enpt:rT:", 0, 0,
-	"[-Elnpr] [-c target-client] [-t target-session] [-T key-table]",
-	CMD_READONLY|CMD_CLIENT_C|CMD_PANE_T|CMD_SESSION_T|CMD_PREFERUNATTACHED,
-	cmd_switch_client_exec
+	.name = "switch-client",
+	.alias = "switchc",
+
+	.args = { "lc:Enpt:rT:", 0, 0 },
+	.usage = "[-Elnpr] [-c target-client] [-t target-session] "
+		 "[-T key-table]",
+
+	.flags = CMD_READONLY|CMD_CLIENT_C|CMD_PANE_T|CMD_SESSION_T|
+		 CMD_PREFERUNATTACHED,
+	.exec = cmd_switch_client_exec
 };
 
 enum cmd_retval
@@ -47,7 +52,6 @@ cmd_switch_client_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct window_pane	*wp;
 	const char		*tablename, *update;
 	struct key_table	*table;
-
 
 	if (args_has(args, 'r'))
 		c->flags ^= CLIENT_READONLY;
