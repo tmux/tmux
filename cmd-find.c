@@ -27,31 +27,6 @@
 
 #include "tmux.h"
 
-#define CMD_FIND_PREFER_UNATTACHED 0x1
-#define CMD_FIND_QUIET 0x2
-#define CMD_FIND_WINDOW_INDEX 0x4
-#define CMD_FIND_DEFAULT_MARKED 0x8
-#define CMD_FIND_EXACT_SESSION 0x10
-#define CMD_FIND_EXACT_WINDOW 0x20
-
-enum cmd_find_type {
-	CMD_FIND_PANE,
-	CMD_FIND_WINDOW,
-	CMD_FIND_SESSION,
-};
-
-struct cmd_find_state {
-	struct cmd_q		*cmdq;
-	int			 flags;
-	struct cmd_find_state	*current;
-
-	struct session          *s;
-	struct winlink          *wl;
-	struct window		*w;
-	struct window_pane      *wp;
-	int			 idx;
-};
-
 struct session	*cmd_find_try_TMUX(struct client *, struct window *);
 int		 cmd_find_client_better(struct client *, struct client *);
 struct client	*cmd_find_best_client(struct client **, u_int);
@@ -77,9 +52,6 @@ int	cmd_find_get_pane_with_window(struct cmd_find_state *, const char *);
 
 void	cmd_find_clear_state(struct cmd_find_state *, struct cmd_q *, int);
 void	cmd_find_log_state(const char *, struct cmd_find_state *);
-
-struct cmd_find_state	*cmd_find_target(struct cmd_q *, const char *,
-	    enum cmd_find_type, int);
 
 const char *cmd_find_session_table[][2] = {
 	{ NULL, NULL }
@@ -1112,106 +1084,6 @@ cmd_find_log_state(const char *prefix, struct cmd_find_state *fs)
 		log_debug("%s: idx=none", prefix);
 }
 
-/* Find the current session. */
-struct session *
-cmd_find_current(struct cmd_q *cmdq)
-{
-	struct cmd_find_state	*fs;
-	int			 flags = CMD_FIND_QUIET;
-
-	fs = cmd_find_target(cmdq, NULL, CMD_FIND_SESSION, flags);
-	if (fs == NULL)
-		return (NULL);
-
-	return (fs->s);
-}
-
-/* Find the target session or report an error and return NULL. */
-struct session *
-cmd_find_session(struct cmd_q *cmdq, const char *target, int prefer_unattached)
-{
-	struct cmd_find_state	*fs;
-	int			 flags = 0;
-
-	if (prefer_unattached)
-		flags |= CMD_FIND_PREFER_UNATTACHED;
-
-	fs = cmd_find_target(cmdq, target, CMD_FIND_SESSION, flags);
-	if (fs == NULL)
-		return (NULL);
-
-	return (fs->s);
-}
-
-/* Find the target window or report an error and return NULL. */
-struct winlink *
-cmd_find_window(struct cmd_q *cmdq, const char *target, struct session **sp)
-{
-	struct cmd_find_state	*fs;
-
-	fs = cmd_find_target(cmdq, target, CMD_FIND_WINDOW, 0);
-	if (fs == NULL)
-		return (NULL);
-
-	if (sp != NULL)
-		*sp = fs->s;
-	return (fs->wl);
-}
-
-/* Find the target window, defaulting to marked rather than current. */
-struct winlink *
-cmd_find_window_marked(struct cmd_q *cmdq, const char *target,
-    struct session **sp)
-{
-	struct cmd_find_state	*fs;
-	int			 flags = CMD_FIND_DEFAULT_MARKED;
-
-	fs = cmd_find_target(cmdq, target, CMD_FIND_WINDOW, flags);
-	if (fs == NULL)
-		return (NULL);
-
-	if (sp != NULL)
-		*sp = fs->s;
-	return (fs->wl);
-}
-
-/* Find the target pane and report an error and return NULL. */
-struct winlink *
-cmd_find_pane(struct cmd_q *cmdq, const char *target, struct session **sp,
-    struct window_pane **wpp)
-{
-	struct cmd_find_state	*fs;
-
-	fs = cmd_find_target(cmdq, target, CMD_FIND_PANE, 0);
-	if (fs == NULL)
-		return (NULL);
-
-	if (sp != NULL)
-		*sp = fs->s;
-	if (wpp != NULL)
-		*wpp = fs->wp;
-	return (fs->wl);
-}
-
-/* Find the target pane, defaulting to marked rather than current. */
-struct winlink *
-cmd_find_pane_marked(struct cmd_q *cmdq, const char *target,
-    struct session **sp, struct window_pane **wpp)
-{
-	struct cmd_find_state	*fs;
-	int			 flags = CMD_FIND_DEFAULT_MARKED;
-
-	fs = cmd_find_target(cmdq, target, CMD_FIND_PANE, flags);
-	if (fs == NULL)
-		return (NULL);
-
-	if (sp != NULL)
-		*sp = fs->s;
-	if (wpp != NULL)
-		*wpp = fs->wp;
-	return (fs->wl);
-}
-
 /* Find the target client or report an error and return NULL. */
 struct client *
 cmd_find_client(struct cmd_q *cmdq, const char *target, int quiet)
@@ -1260,25 +1132,4 @@ cmd_find_client(struct cmd_q *cmdq, const char *target, int quiet)
 	free(copy);
 	log_debug("%s: target %s, return %p", __func__, target, c);
 	return (c);
-}
-
-/*
- * Find the target session and window index, whether or not it exists in the
- * session. Return -2 on error or -1 if no window index is specified. This is
- * used when parsing an argument for a window target that may not exist (for
- * example if it is going to be created).
- */
-int
-cmd_find_index(struct cmd_q *cmdq, const char *target, struct session **sp)
-{
-	struct cmd_find_state	*fs;
-	int			 flags = CMD_FIND_WINDOW_INDEX;
-
-	fs = cmd_find_target(cmdq, target, CMD_FIND_WINDOW, flags);
-	if (fs == NULL)
-		return (-2);
-
-	if (sp != NULL)
-		*sp = fs->s;
-	return (fs->idx);
 }

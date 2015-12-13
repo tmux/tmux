@@ -1407,6 +1407,32 @@ struct cmd_entry {
 #define CMD_ALL_S (CMD_SESSION_S|CMD_WINDOW_S|CMD_PANE_S|CMD_INDEX_S| \
     CMD_PANE_MARKED_S|CMD_WINDOW_MARKED_S)
 
+/* Command find structures. */
+enum cmd_find_type {
+	CMD_FIND_PANE,
+	CMD_FIND_WINDOW,
+	CMD_FIND_SESSION,
+};
+struct cmd_find_state {
+	struct cmd_q		*cmdq;
+	int			 flags;
+	struct cmd_find_state	*current;
+
+	struct session          *s;
+	struct winlink          *wl;
+	struct window		*w;
+	struct window_pane      *wp;
+	int			 idx;
+};
+
+/* Command fine flags. */
+#define CMD_FIND_PREFER_UNATTACHED 0x1
+#define CMD_FIND_QUIET 0x2
+#define CMD_FIND_WINDOW_INDEX 0x4
+#define CMD_FIND_DEFAULT_MARKED 0x8
+#define CMD_FIND_EXACT_SESSION 0x10
+#define CMD_FIND_EXACT_WINDOW 0x20
+
 /* Key binding and key table. */
 struct key_binding {
 	key_code		 key;
@@ -1734,19 +1760,9 @@ long long	 args_strtonum(struct args *, u_char, long long, long long,
 		     char **);
 
 /* cmd-find.c */
-struct session	*cmd_find_current(struct cmd_q *);
-struct session	*cmd_find_session(struct cmd_q *, const char *, int);
-struct winlink	*cmd_find_window(struct cmd_q *, const char *,
-		     struct session **);
-struct winlink	*cmd_find_window_marked(struct cmd_q *, const char *,
-		     struct session **);
-struct winlink	*cmd_find_pane(struct cmd_q *, const char *, struct session **,
-		     struct window_pane **);
-struct winlink	*cmd_find_pane_marked(struct cmd_q *, const char *,
-		     struct session **, struct window_pane **);
+struct cmd_find_state *cmd_find_target(struct cmd_q *, const char *,
+		     enum cmd_find_type, int);
 struct client	*cmd_find_client(struct cmd_q *, const char *, int);
-int		 cmd_find_index(struct cmd_q *, const char *,
-		     struct session **);
 
 /* cmd.c */
 int		 cmd_pack_argv(int, char **, char *, size_t);

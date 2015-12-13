@@ -433,13 +433,14 @@ cmd_set_state_flag(struct cmd *cmd, struct cmd_q *cmdq, char c)
 	struct cmd_state_flag	*statef = NULL;
 	const char		*flag;
 	int			 flags = cmd->entry->flags, everything = 0;
-	int			 allflags = 0;
-	int			 prefer = !!(flags & CMD_PREFERUNATTACHED);
+	int			 allflags = 0, targetflags;
 	struct session		*s;
 	struct window		*w;
 	struct winlink		*wl;
 	struct window_pane	*wp;
+	struct cmd_find_state	*fs;
 
+	/* Set up state for either -t or -s. */
 	if (c == 't') {
 		statef = &cmdq->state.tflag;
 		allflags = CMD_ALL_T;
@@ -469,26 +470,35 @@ cmd_set_state_flag(struct cmd *cmd, struct cmd_q *cmdq, char c)
 		goto complete_everything;
 
 	/* Fill in state using command (current or base) flags. */
+	if (flags & CMD_PREFERUNATTACHED)
+		targetflags = CMD_FIND_PREFER_UNATTACHED;
+	else
+		targetflags = 0;
 	switch (cmd->entry->flags & allflags) {
 	case 0:
 		break;
 	case CMD_SESSION_T|CMD_PANE_T:
 	case CMD_SESSION_S|CMD_PANE_S:
 		if (flag != NULL && flag[strcspn(flag, ":.")] != '\0') {
-			statef->wl = cmd_find_pane(cmdq, flag, &statef->s,
-			    &statef->wp);
-			if (statef->wl == NULL)
+			fs = cmd_find_target(cmdq, flag, CMD_FIND_PANE,
+			    targetflags);
+			if (fs == NULL)
 				return (-1);
+			statef->s = fs->s;
+			statef->wl = fs->wl;
+			statef->wp = fs->wp;
 		} else {
-			statef->s = cmd_find_session(cmdq, flag, prefer);
-			if (statef->s == NULL)
+			fs = cmd_find_target(cmdq, flag, CMD_FIND_SESSION,
+			    targetflags);
+			if (fs == NULL)
 				return (-1);
+			statef->s = fs->s;
 
-			s = statef->s;
 			if (flag == NULL) {
-				statef->wl = s->curw;
-				statef->wp = s->curw->window->active;
+				statef->wl = statef->s->curw;
+				statef->wp = statef->s->curw->window->active;
 			} else {
+				s = statef->s;
 				if ((w = window_find_by_id_str(flag)) != NULL)
 					wp = w->active;
 				else {
@@ -506,50 +516,58 @@ cmd_set_state_flag(struct cmd *cmd, struct cmd_q *cmdq, char c)
 		break;
 	case CMD_MOVEW_R|CMD_INDEX_T:
 	case CMD_MOVEW_R|CMD_INDEX_S:
-		statef->s = cmd_find_session(cmdq, flag, prefer);
-		if (statef->s == NULL) {
-			statef->idx = cmd_find_index(cmdq, flag, &statef->s);
-			if (statef->idx == -2)
+		fs = cmd_find_target(cmdq, flag, CMD_FIND_SESSION, targetflags);
+		if (fs != NULL)
+			statef->s = fs->s;
+		else {
+			fs = cmd_find_target(cmdq, flag, CMD_FIND_WINDOW,
+			    CMD_FIND_WINDOW_INDEX);
+			if (fs == NULL)
 				return (-1);
+			statef->s = fs->s;
+			statef->idx = fs->idx;
 		}
 		break;
 	case CMD_SESSION_T:
 	case CMD_SESSION_S:
-		statef->s = cmd_find_session(cmdq, flag, prefer);
-		if (statef->s == NULL)
+		fs = cmd_find_target(cmdq, flag, CMD_FIND_SESSION, targetflags);
+		if (fs == NULL)
 			return (-1);
-		break;
-	case CMD_WINDOW_T:
-	case CMD_WINDOW_S:
-		statef->wl = cmd_find_window(cmdq, flag, &statef->s);
-		if (statef->wl == NULL)
-			return (-1);
+		statef->s = fs->s;
 		break;
 	case CMD_WINDOW_MARKED_T:
 	case CMD_WINDOW_MARKED_S:
-		statef->wl = cmd_find_window_marked(cmdq, flag, &statef->s);
-		if (statef->wl == NULL)
+		targetflags |= CMD_FIND_DEFAULT_MARKED;
+		/* FALLTHROUGH */
+	case CMD_WINDOW_T:
+	case CMD_WINDOW_S:
+		fs = cmd_find_target(cmdq, flag, CMD_FIND_WINDOW, targetflags);
+		if (fs == NULL)
 			return (-1);
-		break;
-	case CMD_PANE_T:
-	case CMD_PANE_S:
-		statef->wl = cmd_find_pane(cmdq, flag, &statef->s,
-		    &statef->wp);
-		if (statef->wl == NULL)
-			return (-1);
+		statef->s = fs->s;
+		statef->wl = fs->wl;
 		break;
 	case CMD_PANE_MARKED_T:
 	case CMD_PANE_MARKED_S:
-		statef->wl = cmd_find_pane_marked(cmdq, flag, &statef->s,
-		    &statef->wp);
-		if (statef->wl == NULL)
+		targetflags |= CMD_FIND_DEFAULT_MARKED;
+		/* FALLTHROUGH */
+	case CMD_PANE_T:
+	case CMD_PANE_S:
+		fs = cmd_find_target(cmdq, flag, CMD_FIND_PANE, targetflags);
+		if (fs == NULL)
 			return (-1);
+		statef->s = fs->s;
+		statef->wl = fs->wl;
+		statef->wp = fs->wp;
 		break;
 	case CMD_INDEX_T:
 	case CMD_INDEX_S:
-		statef->idx = cmd_find_index(cmdq, flag, &statef->s);
-		if (statef->idx == -2)
+		fs = cmd_find_target(cmdq, flag, CMD_FIND_WINDOW,
+		    CMD_FIND_WINDOW_INDEX);
+		if (fs == NULL)
 			return (-1);
+		statef->s = fs->s;
+		statef->idx = fs->idx;
 		break;
 	default:
 		fatalx("too many -%c for %s", c, cmd->entry->name);
@@ -567,21 +585,34 @@ complete_everything:
 	if (statef->s == NULL) {
 		if (state->c != NULL)
 			statef->s = state->c->session;
-		if (statef->s == NULL)
-			statef->s = cmd_find_current(cmdq);
+		if (statef->s == NULL) {
+			fs = cmd_find_target(cmdq, NULL, CMD_FIND_SESSION,
+			    CMD_FIND_QUIET);
+			if (fs != NULL)
+				statef->s = fs->s;
+		}
 		if (statef->s == NULL) {
 			if (flags & CMD_CANFAIL)
 				return (0);
-
 			cmdq_error(cmdq, "no current session");
 			return (-1);
 		}
 	}
-	if (statef->wl == NULL)
-		statef->wl = cmd_find_window(cmdq, flag, &statef->s);
-	if (statef->wp == NULL)
-		statef->wl = cmd_find_pane(cmdq, flag, &statef->s, &statef->wp);
-
+	if (statef->wl == NULL) {
+		fs = cmd_find_target(cmdq, flag, CMD_FIND_WINDOW, 0);
+		if (fs != NULL) {
+			statef->s = fs->s;
+			statef->wl = fs->wl;
+		}
+	}
+	if (statef->wp == NULL) {
+		fs = cmd_find_target(cmdq, flag, CMD_FIND_PANE, 0);
+		if (fs != NULL) {
+			statef->s = fs->s;
+			statef->wl = fs->wl;
+			statef->wp = fs->wp;
+		}
+	}
 	return (0);
 }
 
