@@ -30,23 +30,18 @@ const struct cmd_entry cmd_rotate_window_entry = {
 	"rotate-window", "rotatew",
 	"Dt:U", 0, 0,
 	"[-DU] " CMD_TARGET_WINDOW_USAGE,
-	0,
+	CMD_WINDOW_T,
 	cmd_rotate_window_exec
 };
 
 enum cmd_retval
 cmd_rotate_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
-	struct args		*args = self->args;
-	struct winlink		*wl;
-	struct window		*w;
+	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct window		*w = wl->window;
 	struct window_pane	*wp, *wp2;
 	struct layout_cell	*lc;
 	u_int			 sx, sy, xoff, yoff;
-
-	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), NULL)) == NULL)
-		return (CMD_RETURN_ERROR);
-	w = wl->window;
 
 	if (args_has(self->args, 'D')) {
 		wp = TAILQ_LAST(&w->panes, window_panes);

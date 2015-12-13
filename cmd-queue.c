@@ -25,7 +25,7 @@
 
 #include "tmux.h"
 
-enum cmd_retval	cmdq_continue_one(struct cmd_q *);
+static enum cmd_retval	cmdq_continue_one(struct cmd_q *);
 
 /* Create new command queue. */
 struct cmd_q *
@@ -179,37 +179,40 @@ cmdq_append(struct cmd_q *cmdq, struct cmd_list *cmdlist, struct mouse_event *m)
 }
 
 /* Process one command. */
-enum cmd_retval
+static enum cmd_retval
 cmdq_continue_one(struct cmd_q *cmdq)
 {
 	struct cmd	*cmd = cmdq->cmd;
 	enum cmd_retval	 retval;
-	char		*s;
+	char		*tmp;
 	int		 flags = !!(cmd->flags & CMD_CONTROL);
 
-	s = cmd_print(cmd);
-	log_debug("cmdq %p: %s", cmdq, s);
-	free(s);
+	tmp = cmd_print(cmd);
+	log_debug("cmdq %p: %s", cmdq, tmp);
+	free(tmp);
 
 	cmdq->time = time(NULL);
 	cmdq->number++;
 
 	cmdq_guard(cmdq, "begin", flags);
 
+	if (cmd_prepare_state(cmd, cmdq) != 0)
+		goto error;
 	retval = cmd->entry->exec(cmd, cmdq);
 
-	if (retval == CMD_RETURN_ERROR)
-		cmdq_guard(cmdq, "error", flags);
-	else
-		cmdq_guard(cmdq, "end", flags);
+	cmdq_guard(cmdq, "end", flags);
 	return (retval);
+
+error:
+	cmdq_guard(cmdq, "error", flags);
+	return (CMD_RETURN_ERROR);
 }
 
 /* Continue processing command queue. Returns 1 if finishes empty. */
 int
 cmdq_continue(struct cmd_q *cmdq)
 {
-	struct client           *c = cmdq->client;
+	struct client		*c = cmdq->client;
 	struct cmd_q_item	*next;
 	enum cmd_retval		 retval;
 	int			 empty;

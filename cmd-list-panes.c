@@ -38,7 +38,7 @@ const struct cmd_entry cmd_list_panes_entry = {
 	"list-panes", "lsp",
 	"asF:t:", 0, 0,
 	"[-as] [-F format] " CMD_TARGET_WINDOW_USAGE,
-	0,
+	CMD_WINDOW_T,
 	cmd_list_panes_exec
 };
 
@@ -46,22 +46,15 @@ enum cmd_retval
 cmd_list_panes_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
-	struct session	*s;
-	struct winlink	*wl;
+	struct session	*s = cmdq->state.tflag.s;
+	struct winlink	*wl = cmdq->state.tflag.wl;
 
 	if (args_has(args, 'a'))
 		cmd_list_panes_server(self, cmdq);
-	else if (args_has(args, 's')) {
-		s = cmd_find_session(cmdq, args_get(args, 't'), 0);
-		if (s == NULL)
-			return (CMD_RETURN_ERROR);
+	else if (args_has(args, 's'))
 		cmd_list_panes_session(self, s, cmdq, 1);
-	} else {
-		wl = cmd_find_window(cmdq, args_get(args, 't'), &s);
-		if (wl == NULL)
-			return (CMD_RETURN_ERROR);
+	else
 		cmd_list_panes_window(self, s, wl, cmdq, 0);
-	}
 
 	return (CMD_RETURN_NORMAL);
 }

@@ -36,46 +36,25 @@ const struct cmd_entry cmd_attach_session_entry = {
 	"attach-session", "attach",
 	"c:dErt:", 0, 0,
 	"[-dEr] [-c working-directory] " CMD_TARGET_SESSION_USAGE,
-	CMD_STARTSERVER,
+	CMD_STARTSERVER|CMD_SESSION_T|CMD_PANE_T|CMD_PREFERUNATTACHED,
 	cmd_attach_session_exec
 };
 
 enum cmd_retval
-cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
-    const char *cflag, int Eflag)
+cmd_attach_session(struct cmd_q *cmdq, int dflag, int rflag, const char *cflag,
+    int Eflag)
 {
-	struct session		*s;
+	struct session		*s = cmdq->state.tflag.s;
 	struct client		*c = cmdq->client, *c_loop;
-	struct winlink		*wl = NULL;
-	struct window		*w = NULL;
-	struct window_pane	*wp = NULL;
+	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct window_pane	*wp = cmdq->state.tflag.wp;
 	const char		*update;
-	char			*cause;
+	char			*cause, *cwd;
 	struct format_tree	*ft;
-	char			*cwd;
 
 	if (RB_EMPTY(&sessions)) {
 		cmdq_error(cmdq, "no sessions");
 		return (CMD_RETURN_ERROR);
-	}
-
-	if (tflag == NULL) {
-		if ((s = cmd_find_session(cmdq, tflag, 1)) == NULL)
-			return (CMD_RETURN_ERROR);
-	} else if (tflag[strcspn(tflag, ":.")] != '\0') {
-		if ((wl = cmd_find_pane(cmdq, tflag, &s, &wp)) == NULL)
-			return (CMD_RETURN_ERROR);
-	} else {
-		if ((s = cmd_find_session(cmdq, tflag, 1)) == NULL)
-			return (CMD_RETURN_ERROR);
-		w = window_find_by_id_str(tflag);
-		if (w == NULL) {
-			wp = window_pane_find_by_id_str(tflag);
-			if (wp != NULL)
-				w = wp->window;
-		}
-		if (w != NULL)
-			wl = winlink_find_by_window(&s->windows, w);
 	}
 
 	if (c == NULL)
@@ -94,8 +73,7 @@ cmd_attach_session(struct cmd_q *cmdq, const char *tflag, int dflag, int rflag,
 
 	if (cflag != NULL) {
 		ft = format_create(cmdq, 0);
-		format_defaults(ft, cmd_find_client(cmdq, NULL, 1), s,
-		    NULL, NULL);
+		format_defaults(ft, c, s, wl, wp);
 		cwd = format_expand(ft, cflag);
 		format_free(ft);
 
@@ -176,7 +154,6 @@ cmd_attach_session_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 
-	return (cmd_attach_session(cmdq, args_get(args, 't'),
-	    args_has(args, 'd'), args_has(args, 'r'), args_get(args, 'c'),
-	    args_has(args, 'E')));
+	return (cmd_attach_session(cmdq, args_has(args, 'd'),
+	    args_has(args, 'r'), args_get(args, 'c'), args_has(args, 'E')));
 }

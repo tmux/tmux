@@ -32,7 +32,7 @@ const struct cmd_entry cmd_select_layout_entry = {
 	"select-layout", "selectl",
 	"nopt:", 0, 1,
 	"[-nop] " CMD_TARGET_WINDOW_USAGE " [layout-name]",
-	0,
+	CMD_WINDOW_T,
 	cmd_select_layout_exec
 };
 
@@ -40,7 +40,7 @@ const struct cmd_entry cmd_next_layout_entry = {
 	"next-layout", "nextl",
 	"t:", 0, 0,
 	CMD_TARGET_WINDOW_USAGE,
-	0,
+	CMD_WINDOW_T,
 	cmd_select_layout_exec
 };
 
@@ -48,7 +48,7 @@ const struct cmd_entry cmd_previous_layout_entry = {
 	"previous-layout", "prevl",
 	"t:", 0, 0,
 	CMD_TARGET_WINDOW_USAGE,
-	0,
+	CMD_WINDOW_T,
 	cmd_select_layout_exec
 };
 
@@ -56,16 +56,13 @@ enum cmd_retval
 cmd_select_layout_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
-	struct winlink	*wl;
+	struct winlink	*wl = cmdq->state.tflag.wl;
 	struct window	*w;
 	const char	*layoutname;
 	char		*oldlayout;
 	int		 next, previous, layout;
 
-	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), NULL)) == NULL)
-		return (CMD_RETURN_ERROR);
 	w = wl->window;
-
 	server_unzoom_window(w);
 
 	next = self->entry == &cmd_next_layout_entry;

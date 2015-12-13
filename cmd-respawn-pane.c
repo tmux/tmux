@@ -34,7 +34,7 @@ const struct cmd_entry cmd_respawn_pane_entry = {
 	"respawn-pane", "respawnp",
 	"kt:", 0, -1,
 	"[-k] " CMD_TARGET_PANE_USAGE " [command]",
-	0,
+	CMD_PANE_T,
 	cmd_respawn_pane_exec
 };
 
@@ -42,19 +42,15 @@ enum cmd_retval
 cmd_respawn_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
-	struct winlink		*wl;
-	struct window		*w;
-	struct window_pane	*wp;
-	struct session		*s;
+	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct window		*w = wl->window;
+	struct window_pane	*wp = cmdq->state.tflag.wp;
+	struct session		*s = cmdq->state.tflag.s;
 	struct environ		*env;
 	const char		*path;
 	char			*cause;
 	u_int			 idx;
 	struct environ_entry	*envent;
-
-	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp)) == NULL)
-		return (CMD_RETURN_ERROR);
-	w = wl->window;
 
 	if (!args_has(self->args, 'k') && wp->fd != -1) {
 		if (window_pane_index(wp, &idx) != 0)

@@ -30,20 +30,17 @@ const struct cmd_entry cmd_clear_history_entry = {
 	"clear-history", "clearhist",
 	"t:", 0, 0,
 	CMD_TARGET_PANE_USAGE,
-	0,
+	CMD_PANE_T,
 	cmd_clear_history_exec
 };
 
 enum cmd_retval
-cmd_clear_history_exec(struct cmd *self, struct cmd_q *cmdq)
+cmd_clear_history_exec(__unused struct cmd *self, struct cmd_q *cmdq)
 {
-	struct args		*args = self->args;
-	struct window_pane	*wp;
+	struct window_pane	*wp = cmdq->state.tflag.wp;
 	struct grid		*gd;
 
-	if (cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp) == NULL)
-		return (CMD_RETURN_ERROR);
-	gd = wp->base.grid;
+	gd = cmdq->state.tflag.wp->base.grid;
 
 	if (wp->mode == &window_copy_mode)
 		window_pane_reset_mode(wp);

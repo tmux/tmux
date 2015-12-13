@@ -33,7 +33,7 @@ const struct cmd_entry cmd_set_environment_entry = {
 	"set-environment", "setenv",
 	"grt:u", 1, 2,
 	"[-gru] " CMD_TARGET_SESSION_USAGE " name [value]",
-	0,
+	CMD_SESSION_T,
 	cmd_set_environment_exec
 };
 
@@ -41,7 +41,6 @@ enum cmd_retval
 cmd_set_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
-	struct session	*s;
 	struct environ	*env;
 	const char	*name, *value;
 
@@ -62,11 +61,8 @@ cmd_set_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (args_has(self->args, 'g'))
 		env = global_environ;
-	else {
-		if ((s = cmd_find_session(cmdq, args_get(args, 't'), 0)) == NULL)
-			return (CMD_RETURN_ERROR);
-		env = s->environ;
-	}
+	else
+		env = cmdq->state.tflag.s->environ;
 
 	if (args_has(self->args, 'u')) {
 		if (value != NULL) {

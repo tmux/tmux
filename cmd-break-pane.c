@@ -34,7 +34,7 @@ const struct cmd_entry cmd_break_pane_entry = {
 	"break-pane", "breakp",
 	"dPF:s:t:", 0, 0,
 	"[-dP] [-F format] " CMD_SRCDST_PANE_USAGE,
-	0,
+	CMD_PANE_S|CMD_INDEX_T,
 	cmd_break_pane_exec
 };
 
@@ -42,28 +42,22 @@ enum cmd_retval
 cmd_break_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
-	struct winlink		*wl;
-	struct session		*src_s;
-	struct session		*dst_s;
-	struct window_pane	*wp;
-	struct window		*w;
+	struct winlink		*wl = cmdq->state.sflag.wl;
+	struct session		*src_s = cmdq->state.sflag.s;
+	struct session		*dst_s = cmdq->state.tflag.s;
+	struct window_pane	*wp = cmdq->state.sflag.wp;
+	struct window		*w = wl->window;
 	char			*name;
 	char			*cause;
-	int			 idx;
+	int			 idx = cmdq->state.tflag.idx;
 	struct format_tree	*ft;
 	const char		*template;
 	char			*cp;
 
-	wl = cmd_find_pane(cmdq, args_get(args, 's'), &src_s, &wp);
-	if (wl == NULL)
-		return (CMD_RETURN_ERROR);
-	if ((idx = cmd_find_index(cmdq, args_get(args, 't'), &dst_s)) == -2)
-		return (CMD_RETURN_ERROR);
 	if (idx != -1 && winlink_find_by_index(&dst_s->windows, idx) != NULL) {
 		cmdq_error(cmdq, "index %d already in use", idx);
 		return (CMD_RETURN_ERROR);
 	}
-	w = wl->window;
 
 	if (window_count_panes(w) == 1) {
 		cmdq_error(cmdq, "can't break with only one pane");
@@ -102,8 +96,7 @@ cmd_break_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 			template = BREAK_PANE_TEMPLATE;
 
 		ft = format_create(cmdq, 0);
-		format_defaults(ft, cmd_find_client(cmdq, NULL, 1), dst_s, wl,
-		    wp);
+		format_defaults(ft, cmdq->state.c, dst_s, wl, wp);
 
 		cp = format_expand(ft, template);
 		cmdq_print(cmdq, "%s", cp);

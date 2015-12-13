@@ -45,8 +45,7 @@ cmd_source_file_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct cmd_q	*cmdq1;
 	char		*cause;
 
-	cmdq1 = cmdq_new(NULL);
-	cmdq1->client = cmdq->client;
+	cmdq1 = cmdq_new(cmdq->client);
 	cmdq1->emptyfn = cmd_source_file_done;
 	cmdq1->data = cmdq;
 

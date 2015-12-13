@@ -38,7 +38,7 @@ const struct cmd_entry cmd_show_options_entry = {
 	"show-options", "show",
 	"gqst:vw", 0, 1,
 	"[-gqsvw] [-t target-session|target-window] [option]",
-	0,
+	CMD_WINDOW_T,
 	cmd_show_options_exec
 };
 
@@ -46,19 +46,19 @@ const struct cmd_entry cmd_show_window_options_entry = {
 	"show-window-options", "showw",
 	"gvt:", 0, 1,
 	"[-gv] " CMD_TARGET_WINDOW_USAGE " [option]",
-	0,
+	CMD_WINDOW_T,
 	cmd_show_options_exec
 };
 
 enum cmd_retval
 cmd_show_options_exec(struct cmd *self, struct cmd_q *cmdq)
 {
-	struct args		*args = self->args;
-	struct session		*s;
-	struct winlink		*wl;
-	struct options		*oo;
-	int			 quiet;
-	enum options_table_scope scope;
+	struct args				*args = self->args;
+	struct session				*s = cmdq->state.tflag.s;
+	struct winlink				*wl = cmdq->state.tflag.wl;
+	struct options				*oo;
+	enum options_table_scope		 scope;
+	int					 quiet;
 
 	if (args_has(self->args, 's')) {
 		oo = global_options;
@@ -68,22 +68,14 @@ cmd_show_options_exec(struct cmd *self, struct cmd_q *cmdq)
 		scope = OPTIONS_TABLE_WINDOW;
 		if (args_has(self->args, 'g'))
 			oo = global_w_options;
-		else {
-			wl = cmd_find_window(cmdq, args_get(args, 't'), NULL);
-			if (wl == NULL)
-				return (CMD_RETURN_ERROR);
+		else
 			oo = wl->window->options;
-		}
 	} else {
 		scope = OPTIONS_TABLE_SESSION;
 		if (args_has(self->args, 'g'))
 			oo = global_s_options;
-		else {
-			s = cmd_find_session(cmdq, args_get(args, 't'), 0);
-			if (s == NULL)
-				return (CMD_RETURN_ERROR);
+		else
 			oo = s->options;
-		}
 	}
 
 	quiet = args_has(self->args, 'q');
