@@ -35,11 +35,15 @@ int	cmd_command_prompt_callback(void *, const char *);
 void	cmd_command_prompt_free(void *);
 
 const struct cmd_entry cmd_command_prompt_entry = {
-	"command-prompt", NULL,
-	"I:p:t:", 0, 1,
-	"[-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE " [template]",
-	CMD_CLIENT_T,
-	cmd_command_prompt_exec
+	.name = "command-prompt",
+	.alias = NULL,
+
+	.args = { "I:p:t:", 0, 1 },
+	.usage = "[-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE " "
+		 "[template]",
+
+	.flags = CMD_CLIENT_T,
+	.exec = cmd_command_prompt_exec
 };
 
 struct cmd_command_prompt_cdata {

@@ -27,11 +27,14 @@
 enum cmd_retval	 cmd_refresh_client_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_refresh_client_entry = {
-	"refresh-client", "refresh",
-	"C:St:", 0, 0,
-	"[-S] [-C size] " CMD_TARGET_CLIENT_USAGE,
-	CMD_CLIENT_T,
-	cmd_refresh_client_exec
+	.name = "refresh-client",
+	.alias = "refresh",
+
+	.args = { "C:St:", 0, 0 },
+	.usage = "[-S] [-C size] " CMD_TARGET_CLIENT_USAGE,
+
+	.flags = CMD_CLIENT_T,
+	.exec = cmd_refresh_client_exec
 };
 
 enum cmd_retval

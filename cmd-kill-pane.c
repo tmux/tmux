@@ -29,11 +29,14 @@
 enum cmd_retval	 cmd_kill_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_kill_pane_entry = {
-	"kill-pane", "killp",
-	"at:", 0, 0,
-	"[-a] " CMD_TARGET_PANE_USAGE,
-	CMD_PANE_T,
-	cmd_kill_pane_exec
+	.name = "kill-pane",
+	.alias = "killp",
+
+	.args = { "at:", 0, 0 },
+	.usage = "[-a] " CMD_TARGET_PANE_USAGE,
+
+	.flags = CMD_PANE_T,
+	.exec = cmd_kill_pane_exec
 };
 
 enum cmd_retval

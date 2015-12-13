@@ -34,11 +34,14 @@ void	 cmd_show_environment_print(struct cmd *, struct cmd_q *,
 	     struct environ_entry *);
 
 const struct cmd_entry cmd_show_environment_entry = {
-	"show-environment", "showenv",
-	"gst:", 0, 1,
-	"[-gs] " CMD_TARGET_SESSION_USAGE " [name]",
-	CMD_SESSION_T|CMD_CANFAIL,
-	cmd_show_environment_exec
+	.name = "show-environment",
+	.alias = "showenv",
+
+	.args = { "gst:", 0, 1 },
+	.usage = "[-gs] " CMD_TARGET_SESSION_USAGE " [name]",
+
+	.flags = CMD_SESSION_T|CMD_CANFAIL,
+	.exec = cmd_show_environment_exec
 };
 
 char *

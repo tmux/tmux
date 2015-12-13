@@ -31,19 +31,25 @@
 enum cmd_retval	 cmd_show_messages_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_show_messages_entry = {
-	"show-messages", "showmsgs",
-	"JTt:", 0, 0,
-	"[-JT] " CMD_TARGET_CLIENT_USAGE,
-	CMD_CLIENT_T,
-	cmd_show_messages_exec
+	.name = "show-messages",
+	.alias = "showmsgs",
+
+	.args = { "JTt:", 0, 0 },
+	.usage = "[-JT] " CMD_TARGET_CLIENT_USAGE,
+
+	.flags = CMD_CLIENT_T,
+	.exec = cmd_show_messages_exec
 };
 
 const struct cmd_entry cmd_server_info_entry = {
-	"server-info", "info",
-	"", 0, 0,
-	"",
-	0,
-	cmd_show_messages_exec
+	.name = "server-info",
+	.alias = "info",
+
+	.args = { "", 0, 0 },
+	.usage = "",
+
+	.flags = 0,
+	.exec = cmd_show_messages_exec
 };
 
 int	cmd_show_messages_terminals(struct cmd_q *, int);

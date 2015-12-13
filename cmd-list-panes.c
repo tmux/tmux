@@ -35,11 +35,14 @@ void	cmd_list_panes_window(struct cmd *, struct session *, struct winlink *,
 	    struct cmd_q *, int);
 
 const struct cmd_entry cmd_list_panes_entry = {
-	"list-panes", "lsp",
-	"asF:t:", 0, 0,
-	"[-as] [-F format] " CMD_TARGET_WINDOW_USAGE,
-	CMD_WINDOW_T,
-	cmd_list_panes_exec
+	.name = "list-panes",
+	.alias = "lsp",
+
+	.args = { "asF:t:", 0, 0 },
+	.usage = "[-as] [-F format] " CMD_TARGET_WINDOW_USAGE,
+
+	.flags = CMD_WINDOW_T,
+	.exec = cmd_list_panes_exec
 };
 
 enum cmd_retval

@@ -29,35 +29,47 @@
 enum cmd_retval	 cmd_select_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_select_window_entry = {
-	"select-window", "selectw",
-	"lnpTt:", 0, 0,
-	"[-lnpT] " CMD_TARGET_WINDOW_USAGE,
-	CMD_WINDOW_T,
-	cmd_select_window_exec
+	.name = "select-window",
+	.alias = "selectw",
+
+	.args = { "lnpTt:", 0, 0 },
+	.usage = "[-lnpT] " CMD_TARGET_WINDOW_USAGE,
+
+	.flags = CMD_WINDOW_T,
+	.exec = cmd_select_window_exec
 };
 
 const struct cmd_entry cmd_next_window_entry = {
-	"next-window", "next",
-	"at:", 0, 0,
-	"[-a] " CMD_TARGET_SESSION_USAGE,
-	CMD_SESSION_T,
-	cmd_select_window_exec
+	.name = "next-window",
+	.alias = "next",
+
+	.args = { "at:", 0, 0 },
+	.usage = "[-a] " CMD_TARGET_SESSION_USAGE,
+
+	.flags = CMD_SESSION_T,
+	.exec = cmd_select_window_exec
 };
 
 const struct cmd_entry cmd_previous_window_entry = {
-	"previous-window", "prev",
-	"at:", 0, 0,
-	"[-a] " CMD_TARGET_SESSION_USAGE,
-	CMD_SESSION_T,
-	cmd_select_window_exec
+	.name = "previous-window",
+	.alias = "prev",
+
+	.args = { "at:", 0, 0 },
+	.usage = "[-a] " CMD_TARGET_SESSION_USAGE,
+
+	.flags = CMD_SESSION_T,
+	.exec = cmd_select_window_exec
 };
 
 const struct cmd_entry cmd_last_window_entry = {
-	"last-window", "last",
-	"t:", 0, 0,
-	CMD_TARGET_SESSION_USAGE,
-	CMD_SESSION_T,
-	cmd_select_window_exec
+	.name = "last-window",
+	.alias = "last",
+
+	.args = { "t:", 0, 0 },
+	.usage = CMD_TARGET_SESSION_USAGE,
+
+	.flags = CMD_SESSION_T,
+	.exec = cmd_select_window_exec
 };
 
 enum cmd_retval

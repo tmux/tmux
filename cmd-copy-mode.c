@@ -27,19 +27,25 @@
 enum cmd_retval	 cmd_copy_mode_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_copy_mode_entry = {
-	"copy-mode", NULL,
-	"Met:u", 0, 0,
-	"[-Mu] " CMD_TARGET_PANE_USAGE,
-	CMD_PANE_T,
-	cmd_copy_mode_exec
+	.name = "copy-mode",
+	.alias = NULL,
+
+	.args = { "Met:u", 0, 0 },
+	.usage = "[-Mu] " CMD_TARGET_PANE_USAGE,
+
+	.flags = CMD_PANE_T,
+	.exec = cmd_copy_mode_exec
 };
 
 const struct cmd_entry cmd_clock_mode_entry = {
-	"clock-mode", NULL,
-	"t:", 0, 0,
-	CMD_TARGET_PANE_USAGE,
-	0,
-	cmd_copy_mode_exec
+	.name = "clock-mode",
+	.alias = NULL,
+
+	.args = { "t:", 0, 0 },
+	.usage = CMD_TARGET_PANE_USAGE,
+
+	.flags = 0,
+	.exec = cmd_copy_mode_exec
 };
 
 enum cmd_retval

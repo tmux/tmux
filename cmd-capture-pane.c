@@ -36,12 +36,15 @@ char		*cmd_capture_pane_history(struct args *, struct cmd_q *,
 		     struct window_pane *, size_t *);
 
 const struct cmd_entry cmd_capture_pane_entry = {
-	"capture-pane", "capturep",
-	"ab:CeE:JpPqS:t:", 0, 0,
-	"[-aCeJpPq] " CMD_BUFFER_USAGE " [-E end-line] [-S start-line]"
-	CMD_TARGET_PANE_USAGE,
-	CMD_PANE_T,
-	cmd_capture_pane_exec
+	.name = "capture-pane",
+	.alias = "capturep",
+
+	.args = { "ab:CeE:JpPqS:t:", 0, 0 },
+	.usage = "[-aCeJpPq] " CMD_BUFFER_USAGE " [-E end-line] "
+		 "[-S start-line]" CMD_TARGET_PANE_USAGE,
+
+	.flags = CMD_PANE_T,
+	.exec = cmd_capture_pane_exec
 };
 
 char *

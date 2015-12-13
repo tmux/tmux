@@ -33,19 +33,25 @@ enum cmd_retval	 cmd_join_pane_exec(struct cmd *, struct cmd_q *);
 enum cmd_retval	 join_pane(struct cmd *, struct cmd_q *, int);
 
 const struct cmd_entry cmd_join_pane_entry = {
-	"join-pane", "joinp",
-	"bdhvp:l:s:t:", 0, 0,
-	"[-bdhv] [-p percentage|-l size] " CMD_SRCDST_PANE_USAGE,
-	CMD_PANE_MARKED_S|CMD_PANE_T,
-	cmd_join_pane_exec
+	.name = "join-pane",
+	.alias = "joinp",
+
+	.args = { "bdhvp:l:s:t:", 0, 0 },
+	.usage = "[-bdhv] [-p percentage|-l size] " CMD_SRCDST_PANE_USAGE,
+
+	.flags = CMD_PANE_MARKED_S|CMD_PANE_T,
+	.exec = cmd_join_pane_exec
 };
 
 const struct cmd_entry cmd_move_pane_entry = {
-	"move-pane", "movep",
-	"bdhvp:l:s:t:", 0, 0,
-	"[-bdhv] [-p percentage|-l size] " CMD_SRCDST_PANE_USAGE,
-	CMD_PANE_S|CMD_PANE_T,
-	cmd_join_pane_exec
+	.name = "move-pane",
+	.alias = "movep",
+
+	.args = { "bdhvp:l:s:t:", 0, 0 },
+	.usage = "[-bdhv] [-p percentage|-l size] " CMD_SRCDST_PANE_USAGE,
+
+	.flags = CMD_PANE_S|CMD_PANE_T,
+	.exec = cmd_join_pane_exec
 };
 
 enum cmd_retval

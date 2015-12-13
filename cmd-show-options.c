@@ -35,19 +35,25 @@ enum cmd_retval cmd_show_options_all(struct cmd *, struct cmd_q *,
 	    	    struct options *, enum options_table_scope);
 
 const struct cmd_entry cmd_show_options_entry = {
-	"show-options", "show",
-	"gqst:vw", 0, 1,
-	"[-gqsvw] [-t target-session|target-window] [option]",
-	CMD_WINDOW_T|CMD_CANFAIL,
-	cmd_show_options_exec
+	.name = "show-options",
+	.alias = "show",
+
+	.args = { "gqst:vw", 0, 1 },
+	.usage = "[-gqsvw] [-t target-session|target-window] [option]",
+
+	.flags = CMD_WINDOW_T|CMD_CANFAIL,
+	.exec = cmd_show_options_exec
 };
 
 const struct cmd_entry cmd_show_window_options_entry = {
-	"show-window-options", "showw",
-	"gvt:", 0, 1,
-	"[-gv] " CMD_TARGET_WINDOW_USAGE " [option]",
-	CMD_WINDOW_T|CMD_CANFAIL,
-	cmd_show_options_exec
+	.name = "show-window-options",
+	.alias = "showw",
+
+	.args = { "gvt:", 0, 1 },
+	.usage = "[-gv] " CMD_TARGET_WINDOW_USAGE " [option]",
+
+	.flags = CMD_WINDOW_T|CMD_CANFAIL,
+	.exec = cmd_show_options_exec
 };
 
 enum cmd_retval

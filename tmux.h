@@ -1391,14 +1391,16 @@ struct cmd_q {
 
 /* Command definition. */
 struct cmd_entry {
-	const char	*name;
-	const char	*alias;
+	const char		*name;
+	const char		*alias;
 
-	const char	*args_template;
-	int		 args_lower;
-	int		 args_upper;
+	struct {
+		const char	*template;
+		int		 lower;
+		int		 upper;
+	} args;
 
-	const char	*usage;
+	const char		*usage;
 
 #define CMD_STARTSERVER 0x1
 #define CMD_READONLY 0x2
@@ -1420,9 +1422,9 @@ struct cmd_entry {
 #define CMD_WINDOW_MARKED_T 0x20000
 #define CMD_WINDOW_MARKED_S 0x40000
 #define CMD_CLIENT_CANFAIL 0x80000
-	int		 flags;
+	int			 flags;
 
-	enum cmd_retval	 (*exec)(struct cmd *, struct cmd_q *);
+	enum cmd_retval		 (*exec)(struct cmd *, struct cmd_q *);
 };
 #define CMD_ALL_T (CMD_SESSION_T|CMD_WINDOW_T|CMD_PANE_T|CMD_INDEX_T| \
     CMD_MOVEW_R|CMD_PANE_MARKED_T|CMD_WINDOW_MARKED_T)

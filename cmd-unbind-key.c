@@ -31,11 +31,14 @@ enum cmd_retval	cmd_unbind_key_mode_table(struct cmd *, struct cmd_q *,
 		    key_code);
 
 const struct cmd_entry cmd_unbind_key_entry = {
-	"unbind-key", "unbind",
-	"acnt:T:", 0, 1,
-	"[-acn] [-t mode-table] [-T key-table] key",
-	0,
-	cmd_unbind_key_exec
+	.name = "unbind-key",
+	.alias = "unbind",
+
+	.args = { "acnt:T:", 0, 1 },
+	.usage = "[-acn] [-t mode-table] [-T key-table] key",
+
+	.flags = 0,
+	.exec = cmd_unbind_key_exec
 };
 
 enum cmd_retval

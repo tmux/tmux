@@ -65,19 +65,25 @@ struct options_entry *cmd_set_option_style(struct cmd *, struct cmd_q *,
 	    const char *);
 
 const struct cmd_entry cmd_set_option_entry = {
-	"set-option", "set",
-	"agoqst:uw", 1, 2,
-	"[-agosquw] [-t target-window] option [value]",
-	CMD_WINDOW_T|CMD_CANFAIL,
-	cmd_set_option_exec
+	.name = "set-option",
+	.alias = "set",
+
+	.args = { "agoqst:uw", 1, 2 },
+	.usage = "[-agosquw] [-t target-window] option [value]",
+
+	.flags = CMD_WINDOW_T|CMD_CANFAIL,
+	.exec = cmd_set_option_exec
 };
 
 const struct cmd_entry cmd_set_window_option_entry = {
-	"set-window-option", "setw",
-	"agoqt:u", 1, 2,
-	"[-agoqu] " CMD_TARGET_WINDOW_USAGE " option [value]",
-	CMD_WINDOW_T|CMD_CANFAIL,
-	cmd_set_option_exec
+	.name = "set-window-option",
+	.alias = "setw",
+
+	.args = { "agoqt:u", 1, 2 },
+	.usage = "[-agoqu] " CMD_TARGET_WINDOW_USAGE " option [value]",
+
+	.flags = CMD_WINDOW_T|CMD_CANFAIL,
+	.exec = cmd_set_option_exec
 };
 
 enum cmd_retval

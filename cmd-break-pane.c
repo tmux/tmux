@@ -31,11 +31,14 @@
 enum cmd_retval	 cmd_break_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_break_pane_entry = {
-	"break-pane", "breakp",
-	"dPF:s:t:", 0, 0,
-	"[-dP] [-F format] " CMD_SRCDST_PANE_USAGE,
-	CMD_PANE_S|CMD_INDEX_T,
-	cmd_break_pane_exec
+	.name = "break-pane",
+	.alias = "breakp",
+
+	.args = { "dPF:s:t:", 0, 0 },
+	.usage = "[-dP] [-F format] " CMD_SRCDST_PANE_USAGE,
+
+	.flags = CMD_PANE_S|CMD_INDEX_T,
+	.exec = cmd_break_pane_exec
 };
 
 enum cmd_retval

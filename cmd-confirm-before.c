@@ -34,11 +34,14 @@ int		 cmd_confirm_before_callback(void *, const char *);
 void		 cmd_confirm_before_free(void *);
 
 const struct cmd_entry cmd_confirm_before_entry = {
-	"confirm-before", "confirm",
-	"p:t:", 1, 1,
-	"[-p prompt] " CMD_TARGET_CLIENT_USAGE " command",
-	CMD_CLIENT_T,
-	cmd_confirm_before_exec
+	.name = "confirm-before",
+	.alias = "confirm",
+
+	.args = { "p:t:", 1, 1 },
+	.usage = "[-p prompt] " CMD_TARGET_CLIENT_USAGE " command",
+
+	.flags = CMD_CLIENT_T,
+	.exec = cmd_confirm_before_exec
 };
 
 struct cmd_confirm_before_data {

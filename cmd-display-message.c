@@ -35,12 +35,15 @@
 enum cmd_retval	 cmd_display_message_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_display_message_entry = {
-	"display-message", "display",
-	"c:pt:F:", 0, 1,
-	"[-p] [-c target-client] [-F format] " CMD_TARGET_PANE_USAGE
-	" [message]",
-	CMD_CLIENT_C|CMD_PANE_T|CMD_CLIENT_CANFAIL,
-	cmd_display_message_exec
+	.name = "display-message",
+	.alias = "display",
+
+	.args = { "c:pt:F:", 0, 1 },
+	.usage = "[-p] [-c target-client] [-F format] "
+		 CMD_TARGET_PANE_USAGE " [message]",
+
+	.flags = CMD_CLIENT_C|CMD_PANE_T|CMD_CLIENT_CANFAIL,
+	.exec = cmd_display_message_exec
 };
 
 enum cmd_retval

@@ -31,11 +31,14 @@
 enum cmd_retval	 cmd_respawn_pane_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_respawn_pane_entry = {
-	"respawn-pane", "respawnp",
-	"kt:", 0, -1,
-	"[-k] " CMD_TARGET_PANE_USAGE " [command]",
-	CMD_PANE_T,
-	cmd_respawn_pane_exec
+	.name = "respawn-pane",
+	.alias = "respawnp",
+
+	.args = { "kt:", 0, -1 },
+	.usage = "[-k] " CMD_TARGET_PANE_USAGE " [command]",
+
+	.flags = CMD_PANE_T,
+	.exec = cmd_respawn_pane_exec
 };
 
 enum cmd_retval

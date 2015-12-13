@@ -36,11 +36,14 @@ void	cmd_run_shell_free(void *);
 void	cmd_run_shell_print(struct job *, const char *);
 
 const struct cmd_entry cmd_run_shell_entry = {
-	"run-shell", "run",
-	"bt:", 1, 1,
-	"[-b] " CMD_TARGET_PANE_USAGE " shell-command",
-	CMD_PANE_T|CMD_CANFAIL,
-	cmd_run_shell_exec
+	.name = "run-shell",
+	.alias = "run",
+
+	.args = { "bt:", 1, 1 },
+	.usage = "[-b] " CMD_TARGET_PANE_USAGE " shell-command",
+
+	.flags = CMD_PANE_T|CMD_CANFAIL,
+	.exec = cmd_run_shell_exec
 };
 
 struct cmd_run_shell_data {

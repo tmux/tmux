@@ -34,19 +34,25 @@
 enum cmd_retval	 cmd_save_buffer_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_save_buffer_entry = {
-	"save-buffer", "saveb",
-	"ab:", 1, 1,
-	"[-a] " CMD_BUFFER_USAGE " path",
-	0,
-	cmd_save_buffer_exec
+	.name = "save-buffer",
+	.alias = "saveb",
+
+	.args = { "ab:", 1, 1 },
+	.usage = "[-a] " CMD_BUFFER_USAGE " path",
+
+	.flags = 0,
+	.exec = cmd_save_buffer_exec
 };
 
 const struct cmd_entry cmd_show_buffer_entry = {
-	"show-buffer", "showb",
-	"b:", 0, 0,
-	CMD_BUFFER_USAGE,
-	0,
-	cmd_save_buffer_exec
+	.name = "show-buffer",
+	.alias = "showb",
+
+	.args = { "b:", 0, 0 },
+	.usage = CMD_BUFFER_USAGE,
+
+	.flags = 0,
+	.exec = cmd_save_buffer_exec
 };
 
 enum cmd_retval

@@ -29,27 +29,36 @@
 enum cmd_retval	 cmd_select_layout_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_select_layout_entry = {
-	"select-layout", "selectl",
-	"nopt:", 0, 1,
-	"[-nop] " CMD_TARGET_WINDOW_USAGE " [layout-name]",
-	CMD_WINDOW_T,
-	cmd_select_layout_exec
+	.name = "select-layout",
+	.alias = "selectl",
+
+	.args = { "nopt:", 0, 1 },
+	.usage = "[-nop] " CMD_TARGET_WINDOW_USAGE " [layout-name]",
+
+	.flags = CMD_WINDOW_T,
+	.exec = cmd_select_layout_exec
 };
 
 const struct cmd_entry cmd_next_layout_entry = {
-	"next-layout", "nextl",
-	"t:", 0, 0,
-	CMD_TARGET_WINDOW_USAGE,
-	CMD_WINDOW_T,
-	cmd_select_layout_exec
+	.name = "next-layout",
+	.alias = "nextl",
+
+	.args = { "t:", 0, 0 },
+	.usage = CMD_TARGET_WINDOW_USAGE,
+
+	.flags = CMD_WINDOW_T,
+	.exec = cmd_select_layout_exec
 };
 
 const struct cmd_entry cmd_previous_layout_entry = {
-	"previous-layout", "prevl",
-	"t:", 0, 0,
-	CMD_TARGET_WINDOW_USAGE,
-	CMD_WINDOW_T,
-	cmd_select_layout_exec
+	.name = "previous-layout",
+	.alias = "prevl",
+
+	.args = { "t:", 0, 0 },
+	.usage = CMD_TARGET_WINDOW_USAGE,
+
+	.flags = CMD_WINDOW_T,
+	.exec = cmd_select_layout_exec
 };
 
 enum cmd_retval

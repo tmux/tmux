@@ -46,11 +46,14 @@ void	cmd_list_windows_session(struct cmd *, struct session *,
 	    struct cmd_q *, int);
 
 const struct cmd_entry cmd_list_windows_entry = {
-	"list-windows", "lsw",
-	"F:at:", 0, 0,
-	"[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
-	CMD_SESSION_T,
-	cmd_list_windows_exec
+	.name = "list-windows",
+	.alias = "lsw",
+
+	.args = { "F:at:", 0, 0 },
+	.usage = "[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
+
+	.flags = CMD_SESSION_T,
+	.exec = cmd_list_windows_exec
 };
 
 enum cmd_retval

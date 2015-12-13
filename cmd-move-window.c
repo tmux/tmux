@@ -29,19 +29,25 @@
 enum cmd_retval	 cmd_move_window_exec(struct cmd *, struct cmd_q *);
 
 const struct cmd_entry cmd_move_window_entry = {
-	"move-window", "movew",
-	"adkrs:t:", 0, 0,
-	"[-dkr] " CMD_SRCDST_WINDOW_USAGE,
-	CMD_WINDOW_S|CMD_MOVEW_R|CMD_INDEX_T,
-	cmd_move_window_exec
+	.name = "move-window",
+	.alias = "movew",
+
+	.args = { "adkrs:t:", 0, 0 },
+	.usage = "[-dkr] " CMD_SRCDST_WINDOW_USAGE,
+
+	.flags = CMD_WINDOW_S|CMD_MOVEW_R|CMD_INDEX_T,
+	.exec = cmd_move_window_exec
 };
 
 const struct cmd_entry cmd_link_window_entry = {
-	"link-window", "linkw",
-	"adks:t:", 0, 0,
-	"[-dk] " CMD_SRCDST_WINDOW_USAGE,
-	CMD_WINDOW_S|CMD_INDEX_T,
-	cmd_move_window_exec
+	.name = "link-window",
+	.alias = "linkw",
+
+	.args = { "adks:t:", 0, 0 },
+	.usage = "[-dk] " CMD_SRCDST_WINDOW_USAGE,
+
+	.flags = CMD_WINDOW_S|CMD_INDEX_T,
+	.exec = cmd_move_window_exec
 };
 
 enum cmd_retval
