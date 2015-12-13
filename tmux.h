@@ -1293,18 +1293,37 @@ struct args {
 	char			**argv;
 };
 
-/* Context for a command about to be executed. */
-struct cmd_state_flag {
-	struct session		*s;
-	struct winlink		*wl;
-	struct window_pane	*wp;
-	int			 idx;
-
+/* Command find structures. */
+enum cmd_find_type {
+	CMD_FIND_PANE,
+	CMD_FIND_WINDOW,
+	CMD_FIND_SESSION,
 };
+struct cmd_find_state {
+	struct cmd_q		*cmdq;
+	int			 flags;
+	struct cmd_find_state	*current;
+
+	struct session          *s;
+	struct winlink          *wl;
+	struct window		*w;
+	struct window_pane      *wp;
+	int			 idx;
+};
+
+/* Command find flags. */
+#define CMD_FIND_PREFER_UNATTACHED 0x1
+#define CMD_FIND_QUIET 0x2
+#define CMD_FIND_WINDOW_INDEX 0x4
+#define CMD_FIND_DEFAULT_MARKED 0x8
+#define CMD_FIND_EXACT_SESSION 0x10
+#define CMD_FIND_EXACT_WINDOW 0x20
+
+/* Context for command being executed. */
 struct cmd_state {
 	struct client		*c;
-	struct cmd_state_flag	 tflag;
-	struct cmd_state_flag	 sflag;
+	struct cmd_find_state	 tflag;
+	struct cmd_find_state	 sflag;
 };
 
 /* Command and list of commands. */
@@ -1406,32 +1425,6 @@ struct cmd_entry {
     CMD_MOVEW_R|CMD_PANE_MARKED_T|CMD_WINDOW_MARKED_T)
 #define CMD_ALL_S (CMD_SESSION_S|CMD_WINDOW_S|CMD_PANE_S|CMD_INDEX_S| \
     CMD_PANE_MARKED_S|CMD_WINDOW_MARKED_S)
-
-/* Command find structures. */
-enum cmd_find_type {
-	CMD_FIND_PANE,
-	CMD_FIND_WINDOW,
-	CMD_FIND_SESSION,
-};
-struct cmd_find_state {
-	struct cmd_q		*cmdq;
-	int			 flags;
-	struct cmd_find_state	*current;
-
-	struct session          *s;
-	struct winlink          *wl;
-	struct window		*w;
-	struct window_pane      *wp;
-	int			 idx;
-};
-
-/* Command fine flags. */
-#define CMD_FIND_PREFER_UNATTACHED 0x1
-#define CMD_FIND_QUIET 0x2
-#define CMD_FIND_WINDOW_INDEX 0x4
-#define CMD_FIND_DEFAULT_MARKED 0x8
-#define CMD_FIND_EXACT_SESSION 0x10
-#define CMD_FIND_EXACT_WINDOW 0x20
 
 /* Key binding and key table. */
 struct key_binding {

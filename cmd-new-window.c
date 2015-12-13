@@ -39,12 +39,7 @@ const struct cmd_entry cmd_new_window_entry = {
 	"ac:dF:kn:Pt:", 0, -1,
 	"[-adkP] [-c start-directory] [-F format] [-n window-name] "
 	CMD_TARGET_WINDOW_USAGE " [command]",
-	/*
-	 * Using PREP_CANFAIL here ensures that the wl is filled in
-	 * regardless; making PREP_INDEX the thing we want -t to be used for
-	 * in the specific case.
-	 */
-	CMD_INDEX_T|CMD_CANFAIL,
+	CMD_INDEX_T,
 	cmd_new_window_exec
 };
 

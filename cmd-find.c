@@ -467,11 +467,10 @@ cmd_find_get_window(struct cmd_find_state *fs, const char *window)
 
 	/* Otherwise try as a session itself. */
 	if (cmd_find_get_session(fs, window) == 0) {
-		if (~fs->flags & CMD_FIND_WINDOW_INDEX) {
-			fs->wl = fs->s->curw;
-			fs->w = fs->wl->window;
+		fs->wl = fs->s->curw;
+		fs->w = fs->wl->window;
+		if (~fs->flags & CMD_FIND_WINDOW_INDEX)
 			fs->idx = fs->wl->idx;
-		}
 		return (0);
 	}
 
@@ -492,6 +491,13 @@ cmd_find_get_window_with_session(struct cmd_find_state *fs, const char *window)
 
 	log_debug("%s: %s", __func__, window);
 	exact = (fs->flags & CMD_FIND_EXACT_WINDOW);
+
+	/*
+	 * Start with the current window as the default. So if only an index is
+	 * found, the window will be the current.
+	 */
+	fs->wl = fs->s->curw;
+	fs->w = fs->wl->window;
 
 	/* Check for window ids starting with @. */
 	if (*window == '@') {
@@ -976,8 +982,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmd_q *cmdq,
 			/* This will fill in winlink and window. */
 			if (cmd_find_get_window_with_session(fs, window) != 0)
 				goto no_window;
-			if (~flags & CMD_FIND_WINDOW_INDEX)
-				fs->wp = fs->wl->window->active;
+			fs->wp = fs->wl->window->active;
 			goto found;
 		}
 
@@ -1017,8 +1022,7 @@ cmd_find_target(struct cmd_find_state *fs, struct cmd_q *cmdq,
 		/* This will fill in session, winlink and window. */
 		if (cmd_find_get_window(fs, window) != 0)
 			goto no_window;
-		if (~flags & CMD_FIND_WINDOW_INDEX)
-			fs->wp = fs->wl->window->active;
+		fs->wp = fs->wl->window->active;
 		goto found;
 	}
 
