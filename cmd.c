@@ -585,7 +585,7 @@ cmd_prepare_state(struct cmd *cmd, struct cmd_q *cmdq)
 	struct cmd_state	*state = &cmdq->state;
 	struct args		*args = cmd->args;
 	char			*tmp;
-	int			 error;
+	int			 error, quiet;
 
 	tmp = cmd_print(cmd);
 	log_debug("preparing state for: %s (client %p)", tmp, cmdq->client);
@@ -593,6 +593,11 @@ cmd_prepare_state(struct cmd *cmd, struct cmd_q *cmdq)
 
 	/* Start with an empty state. */
 	cmd_clear_state(state);
+
+	/* No error messages if can fail. */
+	quiet = 0;
+	if (cmd->entry->flags & CMD_CLIENT_CANFAIL)
+		quiet = 1;
 
 	/*
 	 * If the command wants a client and provides -c or -t, use it. If not,
@@ -604,13 +609,13 @@ cmd_prepare_state(struct cmd *cmd, struct cmd_q *cmdq)
 		state->c = cmd_find_client(cmdq, NULL, 1);
 		break;
 	case CMD_CLIENT_C:
-		state->c = cmd_find_client(cmdq, args_get(args, 'c'), 0);
-		if (state->c == NULL)
+		state->c = cmd_find_client(cmdq, args_get(args, 'c'), quiet);
+		if (!quiet && state->c == NULL)
 			return (-1);
 		break;
 	case CMD_CLIENT_T:
-		state->c = cmd_find_client(cmdq, args_get(args, 't'), 0);
-		if (state->c == NULL)
+		state->c = cmd_find_client(cmdq, args_get(args, 't'), quiet);
+		if (!quiet && state->c == NULL)
 			return (-1);
 		break;
 	default:
