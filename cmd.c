@@ -206,8 +206,9 @@ const struct cmd_entry *cmd_table[] = {
 	NULL
 };
 
-static void	cmd_clear_state(struct cmd_state *);
-static int	cmd_set_state_flag(struct cmd *, struct cmd_q *, char);
+static void		 cmd_clear_state(struct cmd_state *);
+static struct client	*cmd_get_state_client(struct cmd_q *, int);
+static int		 cmd_set_state_flag(struct cmd *, struct cmd_q *, char);
 
 int
 cmd_pack_argv(int argc, char **argv, char *buf, size_t len)
@@ -578,11 +579,30 @@ complete_everything:
 	return (0);
 }
 
+static struct client *
+cmd_get_state_client(struct cmd_q *cmdq, int quiet)
+{
+	struct cmd	*cmd = cmdq->cmd;
+	struct args	*args = cmd->args;
+
+	switch (cmd->entry->flags & (CMD_CLIENT_C|CMD_CLIENT_T)) {
+	case 0:
+		return (cmd_find_client(cmdq, NULL, 1));
+	case CMD_CLIENT_C:
+		return (cmd_find_client(cmdq, args_get(args, 'c'), quiet));
+	case CMD_CLIENT_T:
+		return (cmd_find_client(cmdq, args_get(args, 't'), quiet));
+	default:
+		fatalx("both -t and -c for %s", cmd->entry->name);
+	}
+}
+
 int
 cmd_prepare_state(struct cmd *cmd, struct cmd_q *cmdq)
 {
 	struct cmd_state	*state = &cmdq->state;
 	struct args		*args = cmd->args;
+	const char		*cflag, *tflag;
 	char			*tmp;
 	int			 error, quiet;
 
@@ -605,14 +625,23 @@ cmd_prepare_state(struct cmd *cmd, struct cmd_q *cmdq)
 	 */
 	switch (cmd->entry->flags & (CMD_CLIENT_C|CMD_CLIENT_T)) {
 	case 0:
-		state->c = cmd_find_client(cmdq, NULL, 1);
+		state->c = cmd_get_state_client(cmdq, 1);
 		break;
 	case CMD_CLIENT_C:
-		state->c = cmd_find_client(cmdq, args_get(args, 'c'), quiet);
+		cflag = args_get(args, 'c');
+		if (cflag == NULL)
+			state->c = cmd_get_state_client(cmdq, quiet);
+		else
+			state->c = cmd_find_client(cmdq, cflag, quiet);
 		if (!quiet && state->c == NULL)
 			return (-1);
 		break;
 	case CMD_CLIENT_T:
+		tflag = args_get(args, 't');
+		if (tflag == NULL)
+			state->c = cmd_get_state_client(cmdq, 0);
+		else
+			state->c = cmd_find_client(cmdq, tflag, 0);
 		state->c = cmd_find_client(cmdq, args_get(args, 't'), quiet);
 		if (!quiet && state->c == NULL)
 			return (-1);
