@@ -39,7 +39,7 @@ const struct cmd_entry cmd_display_message_entry = {
 	"c:pt:F:", 0, 1,
 	"[-p] [-c target-client] [-F format] " CMD_TARGET_PANE_USAGE
 	" [message]",
-	CMD_CLIENT_C|CMD_PANE_T,
+	CMD_CLIENT_C|CMD_PANE_T|CMD_CLIENT_CANFAIL,
 	cmd_display_message_exec
 };
 
