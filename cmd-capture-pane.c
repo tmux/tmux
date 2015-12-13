@@ -40,7 +40,7 @@ const struct cmd_entry cmd_capture_pane_entry = {
 	"ab:CeE:JpPqS:t:", 0, 0,
 	"[-aCeJpPq] " CMD_BUFFER_USAGE " [-E end-line] [-S start-line]"
 	CMD_TARGET_PANE_USAGE,
-	0,
+	CMD_PANE_T,
 	cmd_capture_pane_exec
 };
 
@@ -175,13 +175,10 @@ cmd_capture_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct client		*c;
-	struct window_pane	*wp;
+	struct window_pane	*wp = cmdq->state.tflag.wp;
 	char			*buf, *cause;
 	const char		*bufname;
 	size_t			 len;
-
-	if (cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp) == NULL)
-		return (CMD_RETURN_ERROR);
 
 	len = 0;
 	if (args_has(args, 'P'))

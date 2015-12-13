@@ -33,7 +33,7 @@ const struct cmd_entry cmd_respawn_window_entry = {
 	"respawn-window", "respawnw",
 	"kt:", 0, -1,
 	"[-k] " CMD_TARGET_WINDOW_USAGE " [command]",
-	0,
+	CMD_WINDOW_T,
 	cmd_respawn_window_exec
 };
 
@@ -41,25 +41,21 @@ enum cmd_retval
 cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
-	struct winlink		*wl;
-	struct window		*w;
+	struct session		*s = cmdq->state.tflag.s;
+	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct window		*w = wl->window;
 	struct window_pane	*wp;
-	struct session		*s;
 	struct environ		*env;
 	const char		*path;
 	char		 	*cause;
 	struct environ_entry	*envent;
 
-	if ((wl = cmd_find_window(cmdq, args_get(args, 't'), &s)) == NULL)
-		return (CMD_RETURN_ERROR);
-	w = wl->window;
-
 	if (!args_has(self->args, 'k')) {
 		TAILQ_FOREACH(wp, &w->panes, entry) {
 			if (wp->fd == -1)
 				continue;
-			cmdq_error(cmdq,
-			    "window still active: %s:%d", s->name, wl->idx);
+			cmdq_error(cmdq, "window still active: %s:%d", s->name,
+			    wl->idx);
 			return (CMD_RETURN_ERROR);
 		}
 	}

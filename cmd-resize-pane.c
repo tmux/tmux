@@ -33,9 +33,8 @@ void	cmd_resize_pane_mouse_update(struct client *, struct mouse_event *);
 const struct cmd_entry cmd_resize_pane_entry = {
 	"resize-pane", "resizep",
 	"DLMRt:Ux:y:Z", 0, 1,
-	"[-DLMRUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE
-	" [adjustment]",
-	0,
+	"[-DLMRUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " [adjustment]",
+	CMD_PANE_T,
 	cmd_resize_pane_exec
 };
 
@@ -43,13 +42,13 @@ enum cmd_retval
 cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
+	struct window_pane	*wp = cmdq->state.tflag.wp;
+	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct window		*w = wl->window;
 	struct client		*c = cmdq->client;
-	struct session		*s;
-	struct winlink		*wl;
-	struct window		*w;
+	struct session		*s = cmdq->state.tflag.s;
 	const char	       	*errstr;
 	char			*cause;
-	struct window_pane	*wp;
 	u_int			 adjust;
 	int			 x, y;
 
@@ -63,10 +62,7 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), NULL, &wp)) == NULL)
-		return (CMD_RETURN_ERROR);
 	w = wl->window;
-
 	if (args_has(args, 'Z')) {
 		if (w->flags & WINDOW_ZOOMED)
 			window_unzoom(w);

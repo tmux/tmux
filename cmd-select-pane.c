@@ -30,7 +30,7 @@ const struct cmd_entry cmd_select_pane_entry = {
 	"select-pane", "selectp",
 	"DdegLlMmP:Rt:U", 0, 0,
 	"[-DdegLlMmRU] [-P style] " CMD_TARGET_PANE_USAGE,
-	0,
+	CMD_PANE_T,
 	cmd_select_pane_exec
 };
 
@@ -38,7 +38,7 @@ const struct cmd_entry cmd_last_pane_entry = {
 	"last-pane", "lastp",
 	"det:", 0, 0,
 	"[-de] " CMD_TARGET_WINDOW_USAGE,
-	0,
+	CMD_WINDOW_T,
 	cmd_select_pane_exec
 };
 
@@ -46,19 +46,15 @@ enum cmd_retval
 cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
-	struct winlink		*wl;
-	struct window		*w;
-	struct session		*s;
-	struct window_pane	*wp, *lastwp, *markedwp;
+	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct window		*w = wl->window;
+	struct session		*s = cmdq->state.tflag.s;
+	struct window_pane	*wp = cmdq->state.tflag.wp, *lastwp, *markedwp;
 	const char		*style;
 
 	if (self->entry == &cmd_last_pane_entry || args_has(args, 'l')) {
-		wl = cmd_find_window(cmdq, args_get(args, 't'), NULL);
-		if (wl == NULL)
-			return (CMD_RETURN_ERROR);
-		w = wl->window;
 
-		if (w->last == NULL) {
+		if (wl->window->last == NULL) {
 			cmdq_error(cmdq, "no last pane");
 			return (CMD_RETURN_ERROR);
 		}
@@ -79,9 +75,11 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp)) == NULL)
+	server_unzoom_window(wp->window);
+	if (!window_pane_visible(wp)) {
+		cmdq_error(cmdq, "pane not visible");
 		return (CMD_RETURN_ERROR);
-	w = wl->window;
+	}
 
 	if (args_has(args, 'm') || args_has(args, 'M')) {
 		if (args_has(args, 'm') && !window_pane_visible(wp))

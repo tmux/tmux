@@ -39,7 +39,7 @@ const struct cmd_entry cmd_display_message_entry = {
 	"c:pt:F:", 0, 1,
 	"[-p] [-c target-client] [-F format] " CMD_TARGET_PANE_USAGE
 	" [message]",
-	0,
+	CMD_CLIENT_C|CMD_PANE_T,
 	cmd_display_message_exec
 };
 
@@ -47,39 +47,17 @@ enum cmd_retval
 cmd_display_message_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
-	struct client		*c;
-	struct session		*s;
-	struct winlink		*wl;
-	struct window_pane	*wp;
+	struct client		*c = cmdq->state.c;
+	struct session		*s = cmdq->state.tflag.s;
+	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct window_pane	*wp = cmdq->state.tflag.wp;
 	const char		*template;
 	char			*msg;
 	struct format_tree	*ft;
 
-	if (args_has(args, 't')) {
-		wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp);
-		if (wl == NULL)
-			return (CMD_RETURN_ERROR);
-	} else {
-		wl = cmd_find_pane(cmdq, NULL, &s, &wp);
-		if (wl == NULL)
-			return (CMD_RETURN_ERROR);
-	}
-
 	if (args_has(args, 'F') && args->argc != 0) {
 		cmdq_error(cmdq, "only one of -F or argument must be given");
 		return (CMD_RETURN_ERROR);
-	}
-
-	if (args_has(args, 'c')) {
-		c = cmd_find_client(cmdq, args_get(args, 'c'), 0);
-		if (c == NULL)
-			return (CMD_RETURN_ERROR);
-	} else {
-		c = cmd_find_client(cmdq, NULL, 1);
-		if (c == NULL && !args_has(self->args, 'p')) {
-			cmdq_error(cmdq, "no client available");
-			return (CMD_RETURN_ERROR);
-		}
 	}
 
 	template = args_get(args, 'F');

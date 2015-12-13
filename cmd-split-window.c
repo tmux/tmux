@@ -40,7 +40,7 @@ const struct cmd_entry cmd_split_window_entry = {
 	"bc:dF:l:hp:Pt:v", 0, -1,
 	"[-bdhvP] [-c start-directory] [-F format] [-p percentage|-l size] "
 	CMD_TARGET_PANE_USAGE " [command]",
-	0,
+	CMD_PANE_T,
 	cmd_split_window_exec
 };
 
@@ -48,10 +48,10 @@ enum cmd_retval
 cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
-	struct session		*s;
-	struct winlink		*wl;
-	struct window		*w;
-	struct window_pane	*wp, *new_wp = NULL;
+	struct session		*s = cmdq->state.tflag.s;
+	struct winlink		*wl = cmdq->state.tflag.wl;
+	struct window		*w = wl->window;
+	struct window_pane	*wp = cmdq->state.tflag.wp, *new_wp = NULL;
 	struct environ		*env;
 	const char		*cmd, *path, *shell, *template, *cwd, *to_free;
 	char		       **argv, *cause, *new_cause, *cp;
@@ -62,9 +62,6 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct format_tree	*ft;
 	struct environ_entry	*envent;
 
-	if ((wl = cmd_find_pane(cmdq, args_get(args, 't'), &s, &wp)) == NULL)
-		return (CMD_RETURN_ERROR);
-	w = wl->window;
 	server_unzoom_window(w);
 
 	env = environ_create();
@@ -89,8 +86,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 	to_free = NULL;
 	if (args_has(args, 'c')) {
 		ft = format_create(cmdq, 0);
-		format_defaults(ft, cmd_find_client(cmdq, NULL, 1), s, NULL,
-		    NULL);
+		format_defaults(ft, cmdq->state.c, s, NULL, NULL);
 		to_free = cwd = format_expand(ft, args_get(args, 'c'));
 		format_free(ft);
 	} else if (cmdq->client != NULL && cmdq->client->session == NULL)
@@ -166,8 +162,7 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 			template = SPLIT_WINDOW_TEMPLATE;
 
 		ft = format_create(cmdq, 0);
-		format_defaults(ft, cmd_find_client(cmdq, NULL, 1), s, wl,
-		    new_wp);
+		format_defaults(ft, cmdq->state.c, s, wl, new_wp);
 
 		cp = format_expand(ft, template);
 		cmdq_print(cmdq, "%s", cp);

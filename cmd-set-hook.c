@@ -33,7 +33,7 @@ const struct cmd_entry cmd_set_hook_entry = {
 	"set-hook", NULL,
 	"gt:u", 1, 2,
 	"[-gu] " CMD_TARGET_SESSION_USAGE " hook-name [command]",
-	0,
+	CMD_SESSION_T,
 	cmd_set_hook_exec
 };
 
@@ -41,7 +41,7 @@ const struct cmd_entry cmd_show_hooks_entry = {
 	"show-hooks", NULL,
 	"gt:", 0, 1,
 	"[-g] " CMD_TARGET_SESSION_USAGE,
-	0,
+	CMD_SESSION_T,
 	cmd_set_hook_exec
 };
 
@@ -49,7 +49,6 @@ enum cmd_retval
 cmd_set_hook_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
-	struct session	*s;
 	struct cmd_list	*cmdlist;
 	struct hooks	*hooks;
 	struct hook	*hook;
@@ -58,12 +57,8 @@ cmd_set_hook_exec(struct cmd *self, struct cmd_q *cmdq)
 
 	if (args_has(args, 'g'))
 		hooks = global_hooks;
-	else {
-		s = cmd_find_session(cmdq, args_get(args, 't'), 0);
-		if (s == NULL)
-			return (CMD_RETURN_ERROR);
-		hooks = s->hooks;
-	}
+	else
+		hooks = cmdq->state.tflag.s->hooks;
 
 	if (self->entry == &cmd_show_hooks_entry) {
 		hook = hooks_first(hooks);

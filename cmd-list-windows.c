@@ -49,7 +49,7 @@ const struct cmd_entry cmd_list_windows_entry = {
 	"list-windows", "lsw",
 	"F:at:", 0, 0,
 	"[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
-	0,
+	CMD_SESSION_T,
 	cmd_list_windows_exec
 };
 
@@ -57,16 +57,11 @@ enum cmd_retval
 cmd_list_windows_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
-	struct session	*s;
 
 	if (args_has(args, 'a'))
 		cmd_list_windows_server(self, cmdq);
-	else {
-		s = cmd_find_session(cmdq, args_get(args, 't'), 0);
-		if (s == NULL)
-			return (CMD_RETURN_ERROR);
-		cmd_list_windows_session(self, s, cmdq, 0);
-	}
+	else
+		cmd_list_windows_session(self, cmdq->state.tflag.s, cmdq, 0);
 
 	return (CMD_RETURN_NORMAL);
 }

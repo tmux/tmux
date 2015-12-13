@@ -33,7 +33,7 @@ const struct cmd_entry cmd_kill_session_entry = {
 	"kill-session", NULL,
 	"aCt:", 0, 0,
 	"[-aC] " CMD_TARGET_SESSION_USAGE,
-	0,
+	CMD_SESSION_T,
 	cmd_kill_session_exec
 };
 
@@ -44,8 +44,7 @@ cmd_kill_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct session	*s, *sloop, *stmp;
 	struct winlink	*wl;
 
-	if ((s = cmd_find_session(cmdq, args_get(args, 't'), 0)) == NULL)
-		return (CMD_RETURN_ERROR);
+	s = cmdq->state.tflag.s;
 
 	if (args_has(args, 'C')) {
 		RB_FOREACH(wl, winlinks, &s->windows) {
