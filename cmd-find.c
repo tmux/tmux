@@ -76,7 +76,7 @@ int	cmd_find_get_pane_with_session(struct cmd_find_state *, const char *);
 int	cmd_find_get_pane_with_window(struct cmd_find_state *, const char *);
 
 void	cmd_find_clear_state(struct cmd_find_state *, struct cmd_q *, int);
-void	cmd_find_log_state(const char *, const char *, struct cmd_find_state *);
+void	cmd_find_log_state(const char *, struct cmd_find_state *);
 
 struct cmd_find_state	*cmd_find_target(struct cmd_q *, const char *,
 	    enum cmd_find_type, int);
@@ -827,6 +827,13 @@ cmd_find_target(struct cmd_q *cmdq, const char *target, enum cmd_find_type type,
 	char				*colon, *period, *copy = NULL;
 	const char			*session, *window, *pane;
 
+	/* Log the arguments. */
+	if (target == NULL)
+		log_debug("%s: target none, type %d", __func__, type);
+	else
+		log_debug("%s: target %s, type %d", __func__, target, type);
+	log_debug("%s: cmdq %p, flags %#x", __func__, cmdq, flags);
+
 	/* Find current state. */
 	cmd_find_clear_state(&current, cmdq, flags);
 	if (server_check_marked() && (flags & CMD_FIND_DEFAULT_MARKED)) {
@@ -873,7 +880,7 @@ cmd_find_target(struct cmd_q *cmdq, const char *target, enum cmd_find_type type,
 				cmdq_error(cmdq, "no mouse target");
 			goto error;
 		}
-		return (&fs);
+		goto found;
 	}
 
 	/* Marked target is a plain ~ or {marked}. */
@@ -888,7 +895,7 @@ cmd_find_target(struct cmd_q *cmdq, const char *target, enum cmd_find_type type,
 		fs.idx = fs.wl->idx;
 		fs.w = fs.wl->window;
 		fs.wp = marked_window_pane;
-		return (&fs);
+		goto found;
 	}
 
 	/* Find separators if they exist. */
@@ -1053,13 +1060,16 @@ current:
 	free(copy);
 	if (flags & CMD_FIND_WINDOW_INDEX)
 		current.idx = -1;
+	cmd_find_log_state(__func__, &current);
 	return (&current);
 
 error:
 	free(copy);
+	log_debug("    error");
 	return (NULL);
 
 found:
+	cmd_find_log_state(__func__, &fs);
 	free(copy);
 	return (&fs);
 
@@ -1081,29 +1091,25 @@ no_pane:
 
 /* Log the result. */
 void
-cmd_find_log_state(const char *f, const char *target, struct cmd_find_state *fs)
+cmd_find_log_state(const char *prefix, struct cmd_find_state *fs)
 {
-	log_debug("%s: target %s%s", f, target == NULL ? "none" : target,
-	    fs != NULL ? "" : " (failed)");
-	if (fs == NULL)
-		return;
 	if (fs->s != NULL)
-		log_debug("\ts=$%u", fs->s->id);
+		log_debug("%s: s=$%u", prefix, fs->s->id);
 	else
-		log_debug("\ts=none");
+		log_debug("%s: s=none", prefix);
 	if (fs->wl != NULL) {
-		log_debug("\twl=%u %d w=@%u %s", fs->wl->idx,
+		log_debug("%s: wl=%u %d w=@%u %s", prefix, fs->wl->idx,
 		    fs->wl->window == fs->w, fs->w->id, fs->w->name);
 	} else
-		log_debug("\twl=none");
+		log_debug("%s: wl=none", prefix);
 	if (fs->wp != NULL)
-		log_debug("\twp=%%%u", fs->wp->id);
+		log_debug("%s: wp=%%%u", prefix, fs->wp->id);
 	else
-		log_debug("\twp=none");
+		log_debug("%s: wp=none", prefix);
 	if (fs->idx != -1)
-		log_debug("\tidx=%d", fs->idx);
+		log_debug("%s: idx=%d", prefix, fs->idx);
 	else
-		log_debug("\tidx=none");
+		log_debug("%s: idx=none", prefix);
 }
 
 /* Find the current session. */
@@ -1114,7 +1120,6 @@ cmd_find_current(struct cmd_q *cmdq)
 	int			 flags = CMD_FIND_QUIET;
 
 	fs = cmd_find_target(cmdq, NULL, CMD_FIND_SESSION, flags);
-	cmd_find_log_state(__func__, NULL, fs);
 	if (fs == NULL)
 		return (NULL);
 
@@ -1132,7 +1137,6 @@ cmd_find_session(struct cmd_q *cmdq, const char *target, int prefer_unattached)
 		flags |= CMD_FIND_PREFER_UNATTACHED;
 
 	fs = cmd_find_target(cmdq, target, CMD_FIND_SESSION, flags);
-	cmd_find_log_state(__func__, target, fs);
 	if (fs == NULL)
 		return (NULL);
 
@@ -1146,7 +1150,6 @@ cmd_find_window(struct cmd_q *cmdq, const char *target, struct session **sp)
 	struct cmd_find_state	*fs;
 
 	fs = cmd_find_target(cmdq, target, CMD_FIND_WINDOW, 0);
-	cmd_find_log_state(__func__, target, fs);
 	if (fs == NULL)
 		return (NULL);
 
@@ -1164,7 +1167,6 @@ cmd_find_window_marked(struct cmd_q *cmdq, const char *target,
 	int			 flags = CMD_FIND_DEFAULT_MARKED;
 
 	fs = cmd_find_target(cmdq, target, CMD_FIND_WINDOW, flags);
-	cmd_find_log_state(__func__, target, fs);
 	if (fs == NULL)
 		return (NULL);
 
@@ -1181,7 +1183,6 @@ cmd_find_pane(struct cmd_q *cmdq, const char *target, struct session **sp,
 	struct cmd_find_state	*fs;
 
 	fs = cmd_find_target(cmdq, target, CMD_FIND_PANE, 0);
-	cmd_find_log_state(__func__, target, fs);
 	if (fs == NULL)
 		return (NULL);
 
@@ -1201,7 +1202,6 @@ cmd_find_pane_marked(struct cmd_q *cmdq, const char *target,
 	int			 flags = CMD_FIND_DEFAULT_MARKED;
 
 	fs = cmd_find_target(cmdq, target, CMD_FIND_PANE, flags);
-	cmd_find_log_state(__func__, target, fs);
 	if (fs == NULL)
 		return (NULL);
 
@@ -1275,7 +1275,6 @@ cmd_find_index(struct cmd_q *cmdq, const char *target, struct session **sp)
 	int			 flags = CMD_FIND_WINDOW_INDEX;
 
 	fs = cmd_find_target(cmdq, target, CMD_FIND_WINDOW, flags);
-	cmd_find_log_state(__func__, target, fs);
 	if (fs == NULL)
 		return (-2);
 

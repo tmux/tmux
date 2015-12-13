@@ -538,8 +538,8 @@ cmd_set_state_flag(struct cmd *cmd, struct cmd_q *cmdq, char c)
 		if (statef->wl == NULL)
 			return (-1);
 		break;
-	case CMD_PANE_MARKED_S:
 	case CMD_PANE_MARKED_T:
+	case CMD_PANE_MARKED_S:
 		statef->wl = cmd_find_pane_marked(cmdq, flag, &statef->s,
 		    &statef->wp);
 		if (statef->wl == NULL)
@@ -595,8 +595,7 @@ cmd_prepare_state(struct cmd *cmd, struct cmd_q *cmdq)
 	int			 error;
 
 	tmp = cmd_print(cmd);
-	log_debug("preparing state for: %s (client %d)", tmp,
-	    cmdq->client != NULL ? cmdq->client->fd : -1);
+	log_debug("preparing state for: %s (client %p)", tmp, cmdq->client);
 	free(tmp);
 
 	/* Start with an empty state. */
