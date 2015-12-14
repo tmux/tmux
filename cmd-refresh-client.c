@@ -33,7 +33,9 @@ const struct cmd_entry cmd_refresh_client_entry = {
 	.args = { "C:St:", 0, 0 },
 	.usage = "[-S] [-C size] " CMD_TARGET_CLIENT_USAGE,
 
-	.flags = CMD_CLIENT_T,
+	.tflag = CMD_CLIENT,
+
+	.flags = 0,
 	.exec = cmd_refresh_client_exec
 };
 

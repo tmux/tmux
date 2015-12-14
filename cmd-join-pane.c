@@ -39,7 +39,10 @@ const struct cmd_entry cmd_join_pane_entry = {
 	.args = { "bdhvp:l:s:t:", 0, 0 },
 	.usage = "[-bdhv] [-p percentage|-l size] " CMD_SRCDST_PANE_USAGE,
 
-	.flags = CMD_PANE_MARKED_S|CMD_PANE_T,
+	.sflag = CMD_PANE_MARKED,
+	.tflag = CMD_PANE,
+
+	.flags = 0,
 	.exec = cmd_join_pane_exec
 };
 
@@ -50,7 +53,10 @@ const struct cmd_entry cmd_move_pane_entry = {
 	.args = { "bdhvp:l:s:t:", 0, 0 },
 	.usage = "[-bdhv] [-p percentage|-l size] " CMD_SRCDST_PANE_USAGE,
 
-	.flags = CMD_PANE_S|CMD_PANE_T,
+	.sflag = CMD_PANE,
+	.tflag = CMD_PANE,
+
+	.flags = 0,
 	.exec = cmd_join_pane_exec
 };
 

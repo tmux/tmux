@@ -42,7 +42,9 @@ const struct cmd_entry cmd_list_clients_entry = {
 	.args = { "F:t:", 0, 0 },
 	.usage = "[-F format] " CMD_TARGET_SESSION_USAGE,
 
-	.flags = CMD_READONLY|CMD_SESSION_T,
+	.tflag = CMD_SESSION,
+
+	.flags = CMD_READONLY,
 	.exec = cmd_list_clients_exec
 };
 

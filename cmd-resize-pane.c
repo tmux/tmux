@@ -38,7 +38,9 @@ const struct cmd_entry cmd_resize_pane_entry = {
 	.usage = "[-DLMRUZ] [-x width] [-y height] " CMD_TARGET_PANE_USAGE " "
 		 "[adjustment]",
 
-	.flags = CMD_PANE_T,
+	.tflag = CMD_PANE,
+
+	.flags = 0,
 	.exec = cmd_resize_pane_exec
 };
 

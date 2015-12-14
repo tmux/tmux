@@ -36,7 +36,9 @@ const struct cmd_entry cmd_set_environment_entry = {
 	.args = { "grt:u", 1, 2 },
 	.usage = "[-gru] " CMD_TARGET_SESSION_USAGE " name [value]",
 
-	.flags = CMD_SESSION_T,
+	.tflag = CMD_SESSION,
+
+	.flags = 0,
 	.exec = cmd_set_environment_exec
 };
 

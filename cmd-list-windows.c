@@ -52,7 +52,9 @@ const struct cmd_entry cmd_list_windows_entry = {
 	.args = { "F:at:", 0, 0 },
 	.usage = "[-a] [-F format] " CMD_TARGET_SESSION_USAGE,
 
-	.flags = CMD_SESSION_T,
+	.tflag = CMD_SESSION,
+
+	.flags = 0,
 	.exec = cmd_list_windows_exec
 };
 

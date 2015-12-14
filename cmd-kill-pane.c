@@ -35,7 +35,9 @@ const struct cmd_entry cmd_kill_pane_entry = {
 	.args = { "at:", 0, 0 },
 	.usage = "[-a] " CMD_TARGET_PANE_USAGE,
 
-	.flags = CMD_PANE_T,
+	.tflag = CMD_PANE,
+
+	.flags = 0,
 	.exec = cmd_kill_pane_exec
 };
 

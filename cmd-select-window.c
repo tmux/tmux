@@ -35,7 +35,9 @@ const struct cmd_entry cmd_select_window_entry = {
 	.args = { "lnpTt:", 0, 0 },
 	.usage = "[-lnpT] " CMD_TARGET_WINDOW_USAGE,
 
-	.flags = CMD_WINDOW_T,
+	.tflag = CMD_WINDOW,
+
+	.flags = 0,
 	.exec = cmd_select_window_exec
 };
 
@@ -46,7 +48,9 @@ const struct cmd_entry cmd_next_window_entry = {
 	.args = { "at:", 0, 0 },
 	.usage = "[-a] " CMD_TARGET_SESSION_USAGE,
 
-	.flags = CMD_SESSION_T,
+	.tflag = CMD_SESSION,
+
+	.flags = 0,
 	.exec = cmd_select_window_exec
 };
 
@@ -57,7 +61,9 @@ const struct cmd_entry cmd_previous_window_entry = {
 	.args = { "at:", 0, 0 },
 	.usage = "[-a] " CMD_TARGET_SESSION_USAGE,
 
-	.flags = CMD_SESSION_T,
+	.tflag = CMD_SESSION,
+
+	.flags = 0,
 	.exec = cmd_select_window_exec
 };
 
@@ -68,7 +74,9 @@ const struct cmd_entry cmd_last_window_entry = {
 	.args = { "t:", 0, 0 },
 	.usage = CMD_TARGET_SESSION_USAGE,
 
-	.flags = CMD_SESSION_T,
+	.tflag = CMD_SESSION,
+
+	.flags = 0,
 	.exec = cmd_select_window_exec
 };
 

@@ -33,7 +33,9 @@ const struct cmd_entry cmd_copy_mode_entry = {
 	.args = { "Met:u", 0, 0 },
 	.usage = "[-Mu] " CMD_TARGET_PANE_USAGE,
 
-	.flags = CMD_PANE_T,
+	.tflag = CMD_PANE,
+
+	.flags = 0,
 	.exec = cmd_copy_mode_exec
 };
 

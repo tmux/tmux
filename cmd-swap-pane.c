@@ -35,14 +35,16 @@ const struct cmd_entry cmd_swap_pane_entry = {
 	.args = { "dDs:t:U", 0, 0 },
 	.usage = "[-dDU] " CMD_SRCDST_PANE_USAGE,
 
-	.flags = CMD_PANE_MARKED_S|CMD_PANE_T,
+	.sflag = CMD_PANE_MARKED,
+	.tflag = CMD_PANE,
+
+	.flags = 0,
 	.exec = cmd_swap_pane_exec
 };
 
 enum cmd_retval
 cmd_swap_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
-	struct args		*args = self->args;
 	struct winlink          *src_wl, *dst_wl;
 	struct window		*src_w, *dst_w;
 	struct window_pane	*tmp_wp, *src_wp, *dst_wp;
@@ -52,22 +54,23 @@ cmd_swap_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 	dst_wl = cmdq->state.tflag.wl;
 	dst_w = dst_wl->window;
 	dst_wp = cmdq->state.tflag.wp;
-	src_wp = cmdq->state.sflag.wp;
 	src_wl = cmdq->state.sflag.wl;
 	src_w = src_wl->window;
+	src_wp = cmdq->state.sflag.wp;
 	server_unzoom_window(dst_w);
 
-	if (!args_has(args, 's')) {
+	if (args_has(self->args, 'D')) {
+		src_wl = dst_wl;
 		src_w = dst_w;
-		if (args_has(self->args, 'D')) {
-			src_wp = TAILQ_NEXT(dst_wp, entry);
-			if (src_wp == NULL)
-				src_wp = TAILQ_FIRST(&dst_w->panes);
-		} else if (args_has(self->args, 'U')) {
-			src_wp = TAILQ_PREV(dst_wp, window_panes, entry);
-			if (src_wp == NULL)
-				src_wp = TAILQ_LAST(&dst_w->panes, window_panes);
-		}
+		src_wp = TAILQ_NEXT(dst_wp, entry);
+		if (src_wp == NULL)
+			src_wp = TAILQ_FIRST(&dst_w->panes);
+	} else if (args_has(self->args, 'U')) {
+		src_wl = dst_wl;
+		src_w = dst_w;
+		src_wp = TAILQ_PREV(dst_wp, window_panes, entry);
+		if (src_wp == NULL)
+			src_wp = TAILQ_LAST(&dst_w->panes, window_panes);
 	}
 	server_unzoom_window(src_w);
 

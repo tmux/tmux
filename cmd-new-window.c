@@ -42,7 +42,9 @@ const struct cmd_entry cmd_new_window_entry = {
 	.usage = "[-adkP] [-c start-directory] [-F format] [-n window-name] "
 		 CMD_TARGET_WINDOW_USAGE " [command]",
 
-	.flags = CMD_INDEX_T,
+	.tflag = CMD_WINDOW_INDEX,
+
+	.flags = 0,
 	.exec = cmd_new_window_exec
 };
 

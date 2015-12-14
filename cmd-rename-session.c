@@ -35,7 +35,9 @@ const struct cmd_entry cmd_rename_session_entry = {
 	.args = { "t:", 1, 1 },
 	.usage = CMD_TARGET_SESSION_USAGE " new-name",
 
-	.flags = CMD_SESSION_T,
+	.tflag = CMD_SESSION,
+
+	.flags = 0,
 	.exec = cmd_rename_session_exec
 };
 

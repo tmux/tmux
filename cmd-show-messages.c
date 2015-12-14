@@ -37,7 +37,9 @@ const struct cmd_entry cmd_show_messages_entry = {
 	.args = { "JTt:", 0, 0 },
 	.usage = "[-JT] " CMD_TARGET_CLIENT_USAGE,
 
-	.flags = CMD_CLIENT_T,
+	.tflag = CMD_CLIENT,
+
+	.flags = 0,
 	.exec = cmd_show_messages_exec
 };
 

@@ -39,7 +39,9 @@ const struct cmd_entry cmd_choose_buffer_entry = {
 	.args = { "F:t:", 0, 1 },
 	.usage = CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
 
-	.flags = CMD_WINDOW_T,
+	.tflag = CMD_WINDOW,
+
+	.flags = 0,
 	.exec = cmd_choose_buffer_exec
 };
 

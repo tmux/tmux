@@ -33,7 +33,9 @@ const struct cmd_entry cmd_rotate_window_entry = {
 	.args = { "Dt:U", 0, 0 },
 	.usage = "[-DU] " CMD_TARGET_WINDOW_USAGE,
 
-	.flags = CMD_WINDOW_T,
+	.tflag = CMD_WINDOW,
+
+	.flags = 0,
 	.exec = cmd_rotate_window_exec
 };
 

@@ -35,7 +35,10 @@ const struct cmd_entry cmd_swap_window_entry = {
 	.args = { "ds:t:", 0, 0 },
 	.usage = "[-d] " CMD_SRCDST_WINDOW_USAGE,
 
-	.flags = CMD_WINDOW_MARKED_S|CMD_WINDOW_MARKED_T,
+	.sflag = CMD_WINDOW_MARKED,
+	.tflag = CMD_WINDOW,
+
+	.flags = 0,
 	.exec = cmd_swap_window_exec
 };
 

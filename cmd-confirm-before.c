@@ -40,7 +40,9 @@ const struct cmd_entry cmd_confirm_before_entry = {
 	.args = { "p:t:", 1, 1 },
 	.usage = "[-p prompt] " CMD_TARGET_CLIENT_USAGE " command",
 
-	.flags = CMD_CLIENT_T,
+	.tflag = CMD_CLIENT,
+
+	.flags = 0,
 	.exec = cmd_confirm_before_exec
 };
 

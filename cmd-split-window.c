@@ -42,7 +42,9 @@ const struct cmd_entry cmd_split_window_entry = {
 	.usage = "[-bdhvP] [-c start-directory] [-F format] "
 		 "[-p percentage|-l size] " CMD_TARGET_PANE_USAGE " [command]",
 
-	.flags = CMD_PANE_T,
+	.tflag = CMD_PANE,
+
+	.flags = 0,
 	.exec = cmd_split_window_exec
 };
 

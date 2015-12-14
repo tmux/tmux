@@ -40,7 +40,9 @@ const struct cmd_entry cmd_paste_buffer_entry = {
 	.usage = "[-dpr] [-s separator] " CMD_BUFFER_USAGE " "
 		 CMD_TARGET_PANE_USAGE,
 
-	.flags = CMD_PANE_T,
+	.tflag = CMD_PANE,
+
+	.flags = 0,
 	.exec = cmd_paste_buffer_exec
 };
 

@@ -35,7 +35,9 @@ const struct cmd_entry cmd_rename_window_entry = {
 	.args = { "t:", 1, 1 },
 	.usage = CMD_TARGET_WINDOW_USAGE " new-name",
 
-	.flags = CMD_WINDOW_T,
+	.tflag = CMD_WINDOW,
+
+	.flags = 0,
 	.exec = cmd_rename_window_exec
 };
 
