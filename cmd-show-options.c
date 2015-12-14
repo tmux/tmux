@@ -41,7 +41,9 @@ const struct cmd_entry cmd_show_options_entry = {
 	.args = { "gqst:vw", 0, 1 },
 	.usage = "[-gqsvw] [-t target-session|target-window] [option]",
 
-	.flags = CMD_WINDOW_T|CMD_CANFAIL,
+	.tflag = CMD_WINDOW_CANFAIL,
+
+	.flags = 0,
 	.exec = cmd_show_options_exec
 };
 
@@ -52,7 +54,9 @@ const struct cmd_entry cmd_show_window_options_entry = {
 	.args = { "gvt:", 0, 1 },
 	.usage = "[-gv] " CMD_TARGET_WINDOW_USAGE " [option]",
 
-	.flags = CMD_WINDOW_T|CMD_CANFAIL,
+	.tflag = CMD_WINDOW_CANFAIL,
+
+	.flags = 0,
 	.exec = cmd_show_options_exec
 };
 

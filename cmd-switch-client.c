@@ -37,8 +37,10 @@ const struct cmd_entry cmd_switch_client_entry = {
 	.usage = "[-Elnpr] [-c target-client] [-t target-session] "
 		 "[-T key-table]",
 
-	.flags = CMD_READONLY|CMD_CLIENT_C|CMD_PANE_T|CMD_SESSION_T|
-		 CMD_PREFERUNATTACHED,
+	.cflag = CMD_CLIENT,
+	.tflag = CMD_SESSION_WITHPANE,
+
+	.flags = CMD_READONLY,
 	.exec = cmd_switch_client_exec
 };
 

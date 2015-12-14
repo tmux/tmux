@@ -36,7 +36,9 @@ const struct cmd_entry cmd_kill_session_entry = {
 	.args = { "aCt:", 0, 0 },
 	.usage = "[-aC] " CMD_TARGET_SESSION_USAGE,
 
-	.flags = CMD_SESSION_T,
+	.tflag = CMD_SESSION,
+
+	.flags = 0,
 	.exec = cmd_kill_session_exec
 };
 

@@ -39,7 +39,9 @@ const struct cmd_entry cmd_attach_session_entry = {
 	.args = { "c:dErt:", 0, 0 },
 	.usage = "[-dEr] [-c working-directory] " CMD_TARGET_SESSION_USAGE,
 
-	.flags = CMD_STARTSERVER|CMD_SESSION_T|CMD_PANE_T|CMD_PREFERUNATTACHED,
+	.tflag = CMD_SESSION_WITHPANE,
+
+	.flags = CMD_STARTSERVER,
 	.exec = cmd_attach_session_exec
 };
 

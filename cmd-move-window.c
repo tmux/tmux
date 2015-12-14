@@ -35,7 +35,10 @@ const struct cmd_entry cmd_move_window_entry = {
 	.args = { "adkrs:t:", 0, 0 },
 	.usage = "[-dkr] " CMD_SRCDST_WINDOW_USAGE,
 
-	.flags = CMD_WINDOW_S|CMD_MOVEW_R|CMD_INDEX_T,
+	.sflag = CMD_WINDOW,
+	.tflag = CMD_MOVEW_R,
+
+	.flags = 0,
 	.exec = cmd_move_window_exec
 };
 
@@ -46,7 +49,10 @@ const struct cmd_entry cmd_link_window_entry = {
 	.args = { "adks:t:", 0, 0 },
 	.usage = "[-dk] " CMD_SRCDST_WINDOW_USAGE,
 
-	.flags = CMD_WINDOW_S|CMD_INDEX_T,
+	.sflag = CMD_WINDOW,
+	.tflag = CMD_WINDOW_INDEX,
+
+	.flags = 0,
 	.exec = cmd_move_window_exec
 };
 

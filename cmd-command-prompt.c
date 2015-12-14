@@ -42,7 +42,9 @@ const struct cmd_entry cmd_command_prompt_entry = {
 	.usage = "[-I inputs] [-p prompts] " CMD_TARGET_CLIENT_USAGE " "
 		 "[template]",
 
-	.flags = CMD_CLIENT_T,
+	.tflag = CMD_CLIENT,
+
+	.flags = 0,
 	.exec = cmd_command_prompt_exec
 };
 

@@ -43,7 +43,9 @@ const struct cmd_entry cmd_if_shell_entry = {
 	.usage = "[-bF] " CMD_TARGET_PANE_USAGE " shell-command command "
 		 "[command]",
 
-	.flags = CMD_PANE_T|CMD_CANFAIL,
+	.tflag = CMD_PANE_CANFAIL,
+
+	.flags = 0,
 	.exec = cmd_if_shell_exec
 };
 

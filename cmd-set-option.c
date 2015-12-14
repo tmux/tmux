@@ -71,7 +71,9 @@ const struct cmd_entry cmd_set_option_entry = {
 	.args = { "agoqst:uw", 1, 2 },
 	.usage = "[-agosquw] [-t target-window] option [value]",
 
-	.flags = CMD_WINDOW_T|CMD_CANFAIL,
+	.tflag = CMD_WINDOW_CANFAIL,
+
+	.flags = 0,
 	.exec = cmd_set_option_exec
 };
 
@@ -82,7 +84,9 @@ const struct cmd_entry cmd_set_window_option_entry = {
 	.args = { "agoqt:u", 1, 2 },
 	.usage = "[-agoqu] " CMD_TARGET_WINDOW_USAGE " option [value]",
 
-	.flags = CMD_WINDOW_T|CMD_CANFAIL,
+	.tflag = CMD_WINDOW_CANFAIL,
+
+	.flags = 0,
 	.exec = cmd_set_option_exec
 };
 

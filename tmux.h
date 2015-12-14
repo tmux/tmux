@@ -1387,6 +1387,30 @@ struct cmd_q {
 	TAILQ_ENTRY(cmd_q)	 waitentry;
 };
 
+/* Command -c, -t or -s flags. */
+enum cmd_entry_flag {
+	CMD_NONE,
+
+	CMD_CLIENT,
+	CMD_CLIENT_CANFAIL,
+
+	CMD_SESSION,
+	CMD_SESSION_CANFAIL,
+	CMD_SESSION_PREFERUNATTACHED,
+	CMD_SESSION_WITHPANE,
+
+	CMD_WINDOW,
+	CMD_WINDOW_CANFAIL,
+	CMD_WINDOW_MARKED,
+	CMD_WINDOW_INDEX,
+
+	CMD_PANE,
+	CMD_PANE_CANFAIL,
+	CMD_PANE_MARKED,
+
+	CMD_MOVEW_R,
+};
+
 /* Command definition. */
 struct cmd_entry {
 	const char		*name;
@@ -1397,37 +1421,18 @@ struct cmd_entry {
 		int		 lower;
 		int		 upper;
 	} args;
-
 	const char		*usage;
+
+	enum cmd_entry_flag	 tflag;
+	enum cmd_entry_flag	 sflag;
+	enum cmd_entry_flag	 cflag;
 
 #define CMD_STARTSERVER 0x1
 #define CMD_READONLY 0x2
-#define CMD_SESSION_T 0x4
-#define CMD_SESSION_S 0x8
-#define CMD_WINDOW_T 0x10
-#define CMD_WINDOW_S 0x20
-#define CMD_PANE_T 0x40
-#define CMD_PANE_S 0x80
-#define CMD_CLIENT_T 0x100
-#define CMD_CLIENT_C 0x200
-#define CMD_INDEX_T 0x400
-#define CMD_INDEX_S 0x800
-#define CMD_CANFAIL 0x1000
-#define CMD_PREFERUNATTACHED 0x2000
-#define CMD_MOVEW_R 0x4000 /* for movew -r only */
-#define CMD_PANE_MARKED_S 0x8000
-#define CMD_PANE_MARKED_T 0x10000
-#define CMD_WINDOW_MARKED_T 0x20000
-#define CMD_WINDOW_MARKED_S 0x40000
-#define CMD_CLIENT_CANFAIL 0x80000
-	int			 flags;
+	int		 flags;
 
 	enum cmd_retval		 (*exec)(struct cmd *, struct cmd_q *);
 };
-#define CMD_ALL_T (CMD_SESSION_T|CMD_WINDOW_T|CMD_PANE_T|CMD_INDEX_T| \
-    CMD_MOVEW_R|CMD_PANE_MARKED_T|CMD_WINDOW_MARKED_T)
-#define CMD_ALL_S (CMD_SESSION_S|CMD_WINDOW_S|CMD_PANE_S|CMD_INDEX_S| \
-    CMD_PANE_MARKED_S|CMD_WINDOW_MARKED_S)
 
 /* Key binding and key table. */
 struct key_binding {

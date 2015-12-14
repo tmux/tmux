@@ -40,7 +40,9 @@ const struct cmd_entry cmd_show_environment_entry = {
 	.args = { "gst:", 0, 1 },
 	.usage = "[-gs] " CMD_TARGET_SESSION_USAGE " [name]",
 
-	.flags = CMD_SESSION_T|CMD_CANFAIL,
+	.tflag = CMD_SESSION_CANFAIL,
+
+	.flags = 0,
 	.exec = cmd_show_environment_exec
 };
 

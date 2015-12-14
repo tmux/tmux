@@ -44,7 +44,9 @@ const struct cmd_entry cmd_new_session_entry = {
 		 "[-s session-name] " CMD_TARGET_SESSION_USAGE " [-x width] "
 		 "[-y height] [command]",
 
-	.flags = CMD_STARTSERVER|CMD_CANFAIL|CMD_SESSION_T,
+	.tflag = CMD_SESSION_CANFAIL,
+
+	.flags = CMD_STARTSERVER,
 	.exec = cmd_new_session_exec
 };
 
@@ -55,7 +57,9 @@ const struct cmd_entry cmd_has_session_entry = {
 	.args = { "t:", 0, 0 },
 	.usage = CMD_TARGET_SESSION_USAGE,
 
-	.flags = CMD_SESSION_T,
+	.tflag = CMD_SESSION,
+
+	.flags = 0,
 	.exec = cmd_new_session_exec
 };
 

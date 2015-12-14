@@ -144,6 +144,7 @@ fatalx(const char *msg, ...)
 	char	*fmt;
 	va_list	 ap;
 
+	abort();
 	va_start(ap, msg);
 	if (asprintf(&fmt, "fatal: %s", msg) == -1)
 		exit(1);

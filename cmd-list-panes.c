@@ -41,7 +41,9 @@ const struct cmd_entry cmd_list_panes_entry = {
 	.args = { "asF:t:", 0, 0 },
 	.usage = "[-as] [-F format] " CMD_TARGET_WINDOW_USAGE,
 
-	.flags = CMD_WINDOW_T,
+	.tflag = CMD_WINDOW,
+
+	.flags = 0,
 	.exec = cmd_list_panes_exec
 };
 

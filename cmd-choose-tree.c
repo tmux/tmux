@@ -51,7 +51,9 @@ const struct cmd_entry cmd_choose_tree_entry = {
 	.usage = "[-suw] [-b session-template] [-c window template] "
 		 "[-S format] [-W format] " CMD_TARGET_WINDOW_USAGE,
 
-	.flags = CMD_WINDOW_T,
+	.tflag = CMD_WINDOW,
+
+	.flags = 0,
 	.exec = cmd_choose_tree_exec
 };
 
@@ -60,10 +62,11 @@ const struct cmd_entry cmd_choose_session_entry = {
 	.alias = NULL,
 
 	.args = { "F:t:", 0, 1 },
-
 	.usage = CMD_TARGET_WINDOW_USAGE " [-F format] [template]",
-	.flags = CMD_WINDOW_T,
 
+	.tflag = CMD_WINDOW,
+
+	.flags = 0,
 	.exec = cmd_choose_tree_exec
 };
 
@@ -74,7 +77,9 @@ const struct cmd_entry cmd_choose_window_entry = {
 	.args = { "F:t:", 0, 1 },
 	.usage = CMD_TARGET_WINDOW_USAGE "[-F format] [template]",
 
-	.flags = CMD_WINDOW_T,
+	.tflag = CMD_WINDOW,
+
+	.flags = 0,
 	.exec = cmd_choose_tree_exec
 };
 

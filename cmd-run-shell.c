@@ -42,7 +42,9 @@ const struct cmd_entry cmd_run_shell_entry = {
 	.args = { "bt:", 1, 1 },
 	.usage = "[-b] " CMD_TARGET_PANE_USAGE " shell-command",
 
-	.flags = CMD_PANE_T|CMD_CANFAIL,
+	.tflag = CMD_PANE_CANFAIL,
+
+	.flags = 0,
 	.exec = cmd_run_shell_exec
 };
 
