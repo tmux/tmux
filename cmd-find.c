@@ -833,8 +833,8 @@ cmd_find_copy_state(struct cmd_find_state *dst, struct cmd_find_state *src)
 {
 	dst->s = src->s;
 	dst->wl = src->wl;
-	dst->idx = dst->wl->idx;
-	dst->w = dst->wl->window;
+	dst->idx = src->idx;
+	dst->w = src->w;
 	dst->wp = src->wp;
 }
 
