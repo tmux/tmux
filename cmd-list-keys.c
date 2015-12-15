@@ -39,7 +39,7 @@ const struct cmd_entry cmd_list_keys_entry = {
 	.args = { "t:T:", 0, 0 },
 	.usage = "[-t mode-table] [-T key-table]",
 
-	.flags = 0,
+	.flags = CMD_STARTSERVER,
 	.exec = cmd_list_keys_exec
 };
 
@@ -50,7 +50,7 @@ const struct cmd_entry cmd_list_commands_entry = {
 	.args = { "", 0, 0 },
 	.usage = "",
 
-	.flags = 0,
+	.flags = CMD_STARTSERVER,
 	.exec = cmd_list_keys_exec
 };
 
