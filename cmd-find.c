@@ -873,21 +873,22 @@ cmd_find_target(struct cmd_find_state *fs, struct cmd_q *cmdq,
 		log_debug("%s: target %s, type %d", __func__, target, type);
 	log_debug("%s: cmdq %p, flags %#x", __func__, cmdq, flags);
 
+	/* Clear new state. */
+	cmd_find_clear_state(fs, cmdq, flags);
+
 	/* Find current state. */
-	cmd_find_clear_state(&current, cmdq, flags);
+	fs->current = NULL;
 	if (server_check_marked() && (flags & CMD_FIND_DEFAULT_MARKED))
-		cmd_find_copy_state(&current, &marked_pane);
-	else {
+		fs->current = &marked_pane;
+	if (fs->current == NULL) {
+		cmd_find_clear_state(&current, cmdq, flags);
 		if (cmd_find_current_session(&current) != 0) {
 			if (~flags & CMD_FIND_QUIET)
 				cmdq_error(cmdq, "no current session");
 			goto error;
 		}
+		fs->current = &current;
 	}
-
-	/* Clear new state. */
-	cmd_find_clear_state(fs, cmdq, flags);
-	fs->current = &current;
 
 	/* An empty or NULL target is the current. */
 	if (target == NULL || *target == '\0')
@@ -1087,9 +1088,9 @@ cmd_find_target(struct cmd_find_state *fs, struct cmd_q *cmdq,
 
 current:
 	/* Use the current session. */
+	cmd_find_copy_state(fs, fs->current);
 	if (flags & CMD_FIND_WINDOW_INDEX)
-		current.idx = -1;
-	memcpy(fs, &current, sizeof *fs);
+		fs->idx = -1;
 	goto found;
 
 error:
