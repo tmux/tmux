@@ -34,6 +34,7 @@ RB_GENERATE(hooks_tree, hook, entry, hooks_cmp);
 
 static struct hook	*hooks_find1(struct hooks *, const char *);
 static void		 hooks_free1(struct hooks *, struct hook *);
+static void		 hooks_emptyfn(struct cmd_q *);
 
 static int
 hooks_cmp(struct hook *hook1, struct hook *hook2)
@@ -132,18 +133,78 @@ hooks_find(struct hooks *hooks, const char *name)
 	return (hook);
 }
 
-void
-hooks_run(struct hooks *hooks, const char *name, struct client *c)
+static void
+hooks_emptyfn(struct cmd_q *hooks_cmdq)
+{
+	struct cmd_q	*cmdq = hooks_cmdq->data;
+
+	if (cmdq != NULL) {
+		if (hooks_cmdq->client_exit >= 0)
+			cmdq->client_exit = hooks_cmdq->client_exit;
+		if (!cmdq_free(cmdq))
+			cmdq_continue(cmdq);
+	}
+	cmdq_free(hooks_cmdq);
+}
+
+int
+hooks_run(struct hooks *hooks, struct client *c, const char *fmt, ...)
 {
 	struct hook	*hook;
-	struct cmd_q	*cmdq;
+	struct cmd_q	*hooks_cmdq;
+	va_list		 ap;
+	char		*name;
+
+	va_start(ap, fmt);
+	xvasprintf(&name, fmt, ap);
+	va_end(ap);
 
 	hook = hooks_find(hooks, name);
-	if (hook == NULL)
-		return;
+	if (hook == NULL) {
+		free(name);
+		return (-1);
+	}
 	log_debug("running hook %s", name);
+	free(name);
 
-	cmdq = cmdq_new(c);
-	cmdq_run(cmdq, hook->cmdlist, NULL);
-	cmdq_free(cmdq);
+	hooks_cmdq = cmdq_new(c);
+	hooks_cmdq->flags |= CMD_Q_NOHOOKS;
+	hooks_cmdq->parent = NULL;
+
+	cmdq_run(hooks_cmdq, hook->cmdlist, NULL);
+	cmdq_free(hooks_cmdq);
+	return (0);
+}
+
+int
+hooks_wait(struct hooks *hooks, struct cmd_q *cmdq, const char *fmt, ...)
+{
+	struct hook	*hook;
+	struct cmd_q	*hooks_cmdq;
+	va_list		 ap;
+	char		*name;
+
+	va_start(ap, fmt);
+	xvasprintf(&name, fmt, ap);
+	va_end(ap);
+
+	hook = hooks_find(hooks, name);
+	if (hook == NULL) {
+		free(name);
+		return (-1);
+	}
+	log_debug("running hook %s (parent %p)", name, cmdq);
+	free(name);
+
+	hooks_cmdq = cmdq_new(cmdq->client);
+	hooks_cmdq->flags |= CMD_Q_NOHOOKS;
+	hooks_cmdq->parent = cmdq;
+
+	hooks_cmdq->emptyfn = hooks_emptyfn;
+	hooks_cmdq->data = cmdq;
+
+	if (cmdq != NULL)
+		cmdq->references++;
+	cmdq_run(hooks_cmdq, hook->cmdlist, NULL);
+	return (0);
 }

@@ -1368,6 +1368,8 @@ struct cmd_q {
 	int			 references;
 	int			 flags;
 #define CMD_Q_DEAD 0x1
+#define CMD_Q_REENTRY 0x2
+#define CMD_Q_NOHOOKS 0x4
 
 	struct client		*client;
 	int			 client_exit;
@@ -1375,6 +1377,7 @@ struct cmd_q {
 	struct cmd_q_items	 queue;
 	struct cmd_q_item	*item;
 	struct cmd		*cmd;
+	struct cmd_q		*parent;
 
 	struct cmd_state	 state;
 
@@ -1581,7 +1584,10 @@ void		 hooks_add(struct hooks *, const char *, struct cmd_list *);
 void		 hooks_copy(struct hooks *, struct hooks *);
 void		 hooks_remove(struct hooks *, const char *);
 struct hook	*hooks_find(struct hooks *, const char *);
-void		 hooks_run(struct hooks *, const char *, struct client *);
+int printflike(3, 4) hooks_run(struct hooks *, struct client *, const char *,
+		    ...);
+int printflike(3, 4) hooks_wait(struct hooks *, struct cmd_q *, const char *,
+		    ...);
 
 /* mode-key.c */
 extern const struct mode_key_table mode_key_tables[];
