@@ -331,9 +331,9 @@ screen_redraw_draw_borders(struct client *c, int status, u_int top)
 				continue;
 			active = screen_redraw_check_is(i, j, type, w,
 			    w->active, wp);
-			if (server_is_marked(s, s->curw, marked_window_pane) &&
+			if (server_is_marked(s, s->curw, marked_pane.wp) &&
 			    screen_redraw_check_is(i, j, type, w,
-			    marked_window_pane, wp)) {
+			    marked_pane.wp, wp)) {
 				if (active)
 					tty_attributes(tty, &m_active_gc, NULL);
 				else
