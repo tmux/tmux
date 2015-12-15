@@ -387,22 +387,6 @@ usage:
 	return (NULL);
 }
 
-static void
-cmd_clear_state(struct cmd_state *state)
-{
-	state->c = NULL;
-
-	state->tflag.s = NULL;
-	state->tflag.wl = NULL;
-	state->tflag.wp = NULL;
-	state->tflag.idx = -1;
-
-	state->sflag.s = NULL;
-	state->sflag.wl = NULL;
-	state->sflag.wp = NULL;
-	state->sflag.idx = -1;
-}
-
 static int
 cmd_prepare_state_flag(struct cmd_find_state *fs, enum cmd_entry_flag flag,
     const char *target, struct cmd_q *cmdq)
@@ -492,7 +476,9 @@ cmd_prepare_state(struct cmd *cmd, struct cmd_q *cmdq)
 	log_debug("preparing state for %s (client %p)", tmp, cmdq->client);
 	free(tmp);
 
-	cmd_clear_state(state);
+	state->c = NULL;
+	cmd_find_clear_state(&state->tflag, NULL, 0);
+	cmd_find_clear_state(&state->sflag, NULL, 0);
 
 	flag = cmd->entry->cflag;
 	if (flag == CMD_NONE) {

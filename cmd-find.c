@@ -49,9 +49,6 @@ int	cmd_find_get_pane(struct cmd_find_state *, const char *);
 int	cmd_find_get_pane_with_session(struct cmd_find_state *, const char *);
 int	cmd_find_get_pane_with_window(struct cmd_find_state *, const char *);
 
-void	cmd_find_clear_state(struct cmd_find_state *, struct cmd_q *, int);
-void	cmd_find_log_state(const char *, struct cmd_find_state *);
-
 const char *cmd_find_session_table[][2] = {
 	{ NULL, NULL }
 };

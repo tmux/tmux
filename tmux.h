@@ -1766,6 +1766,9 @@ long long	 args_strtonum(struct args *, u_char, long long, long long,
 int		 cmd_find_target(struct cmd_find_state *, struct cmd_q *,
 		     const char *, enum cmd_find_type, int);
 struct client	*cmd_find_client(struct cmd_q *, const char *, int);
+void		 cmd_find_clear_state(struct cmd_find_state *, struct cmd_q *,
+		     int);
+void		 cmd_find_log_state(const char *, struct cmd_find_state *);
 
 /* cmd.c */
 int		 cmd_pack_argv(int, char **, char *, size_t);
