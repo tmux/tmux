@@ -249,7 +249,11 @@ cmd_find_current_session_with_client(struct cmd_find_state *fs)
 {
 	struct window_pane	*wp;
 
-	/* If this is running in a pane, that's great. */
+	/*
+	 * If this is running in a pane, we can use that to limit the list of
+	 * sessions to those containing that pane (we still use the current
+	 * window in the best session).
+	 */
 	if (fs->cmdq->client->tty.path != NULL) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
 			if (strcmp(wp->tty, fs->cmdq->client->tty.path) == 0)
@@ -262,11 +266,8 @@ cmd_find_current_session_with_client(struct cmd_find_state *fs)
 	if (wp == NULL)
 		goto unknown_pane;
 
-	/* We now know the window and pane. */
+	/* Find the best session and winlink containing this pane. */
 	fs->w = wp->window;
-	fs->wp = wp;
-
-	/* Find the best session and winlink. */
 	if (cmd_find_best_session_with_window(fs) != 0) {
 		if (wp != NULL) {
 			/*
@@ -278,6 +279,13 @@ cmd_find_current_session_with_client(struct cmd_find_state *fs)
 		}
 		return (-1);
 	}
+
+	/* Use the current window and pane from this session. */
+	fs->wl = fs->s->curw;
+	fs->idx = fs->wl->idx;
+	fs->w = fs->wl->window;
+	fs->wp = fs->w->active;
+
 	return (0);
 
 unknown_pane:
@@ -290,6 +298,7 @@ unknown_pane:
 	fs->idx = fs->wl->idx;
 	fs->w = fs->wl->window;
 	fs->wp = fs->w->active;
+
 	return (0);
 }
 
