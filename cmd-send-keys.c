@@ -86,7 +86,7 @@ cmd_send_keys_exec(struct cmd *self, struct cmd_q *cmdq)
 	}
 
 	if (args_has(args, 'R'))
-		input_reset(wp);
+		input_reset(wp, 1);
 
 	for (i = 0; i < args->argc; i++) {
 		literal = args_has(args, 'l');
