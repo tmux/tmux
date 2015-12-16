@@ -36,7 +36,7 @@ const struct cmd_entry cmd_set_environment_entry = {
 	.args = { "grt:u", 1, 2 },
 	.usage = "[-gru] " CMD_TARGET_SESSION_USAGE " name [value]",
 
-	.tflag = CMD_SESSION,
+	.tflag = CMD_SESSION_CANFAIL,
 
 	.flags = 0,
 	.exec = cmd_set_environment_exec
@@ -64,7 +64,7 @@ cmd_set_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 	else
 		value = args->argv[1];
 
-	if (args_has(self->args, 'g'))
+	if (args_has(self->args, 'g') || cmdq->state.tflag.s == NULL)
 		env = global_environ;
 	else
 		env = cmdq->state.tflag.s->environ;
