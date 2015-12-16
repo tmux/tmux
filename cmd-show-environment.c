@@ -94,7 +94,7 @@ cmd_show_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct environ		*env;
 	struct environ_entry	*envent;
 
-	if (args_has(self->args, 'g'))
+	if (args_has(self->args, 'g') || cmdq->state.tflag.s == NULL)
 		env = global_environ;
 	else
 		env = cmdq->state.tflag.s->environ;
