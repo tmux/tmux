@@ -974,7 +974,7 @@ window_pane_error_callback(__unused struct bufferevent *bufev,
 {
 	struct window_pane *wp = data;
 
-	server_destroy_pane(wp);
+	server_destroy_pane(wp, 1);
 }
 
 void
