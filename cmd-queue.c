@@ -44,6 +44,9 @@ cmdq_new(struct client *c)
 	cmdq->item = NULL;
 	cmdq->cmd = NULL;
 
+	cmd_find_clear_state(&cmdq->current, NULL, 0);
+	cmdq->parent = NULL;
+
 	return (cmdq);
 }
 
@@ -286,3 +289,4 @@ cmdq_flush(struct cmd_q *cmdq)
 	}
 	cmdq->item = NULL;
 }
+

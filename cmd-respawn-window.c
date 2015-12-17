@@ -90,7 +90,7 @@ cmd_respawn_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		cmdq_error(cmdq, "respawn window failed: %s", cause);
 		free(cause);
 		environ_free(env);
-		server_destroy_pane(wp);
+		server_destroy_pane(wp, 0);
 		return (CMD_RETURN_ERROR);
 	}
 	layout_init(w, wp);

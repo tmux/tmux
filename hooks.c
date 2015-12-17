@@ -43,6 +43,14 @@ hooks_cmp(struct hook *hook1, struct hook *hook2)
 }
 
 struct hooks *
+hooks_get(struct session *s)
+{
+	if (s != NULL)
+		return (s->hooks);
+	return (global_hooks);
+}
+
+struct hooks *
 hooks_create(struct hooks *parent)
 {
 	struct hooks	*hooks;
@@ -148,7 +156,8 @@ hooks_emptyfn(struct cmd_q *hooks_cmdq)
 }
 
 int
-hooks_run(struct hooks *hooks, struct client *c, const char *fmt, ...)
+hooks_run(struct hooks *hooks, struct client *c, struct cmd_find_state *fs,
+    const char *fmt, ...)
 {
 	struct hook	*hook;
 	struct cmd_q	*hooks_cmdq;
@@ -169,6 +178,9 @@ hooks_run(struct hooks *hooks, struct client *c, const char *fmt, ...)
 
 	hooks_cmdq = cmdq_new(c);
 	hooks_cmdq->flags |= CMD_Q_NOHOOKS;
+
+	if (fs != NULL)
+		cmd_find_copy_state(&hooks_cmdq->current, fs);
 	hooks_cmdq->parent = NULL;
 
 	cmdq_run(hooks_cmdq, hook->cmdlist, NULL);
@@ -177,7 +189,8 @@ hooks_run(struct hooks *hooks, struct client *c, const char *fmt, ...)
 }
 
 int
-hooks_wait(struct hooks *hooks, struct cmd_q *cmdq, const char *fmt, ...)
+hooks_wait(struct hooks *hooks, struct cmd_q *cmdq, struct cmd_find_state *fs,
+    const char *fmt, ...)
 {
 	struct hook	*hook;
 	struct cmd_q	*hooks_cmdq;
@@ -198,6 +211,9 @@ hooks_wait(struct hooks *hooks, struct cmd_q *cmdq, const char *fmt, ...)
 
 	hooks_cmdq = cmdq_new(cmdq->client);
 	hooks_cmdq->flags |= CMD_Q_NOHOOKS;
+
+	if (fs != NULL)
+		cmd_find_copy_state(&hooks_cmdq->current, fs);
 	hooks_cmdq->parent = cmdq;
 
 	hooks_cmdq->emptyfn = hooks_emptyfn;

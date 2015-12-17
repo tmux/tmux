@@ -189,7 +189,7 @@ cmd_find_best_session_with_window(struct cmd_find_state *fs)
 	u_int		  ssize;
 	struct session	 *s;
 
-	if (fs->cmdq->client != NULL) {
+	if (fs->cmdq != NULL && fs->cmdq->client != NULL) {
 		fs->s = cmd_find_try_TMUX(fs->cmdq->client, fs->w);
 		if (fs->s != NULL)
 			return (cmd_find_best_winlink_with_window(fs));
@@ -253,7 +253,7 @@ cmd_find_current_session_with_client(struct cmd_find_state *fs)
 	 * sessions to those containing that pane (we still use the current
 	 * window in the best session).
 	 */
-	if (fs->cmdq->client->tty.path != NULL) {
+	if (fs->cmdq != NULL && fs->cmdq->client->tty.path != NULL) {
 		RB_FOREACH(wp, window_pane_tree, &all_window_panes) {
 			if (strcmp(wp->tty, fs->cmdq->client->tty.path) == 0)
 				break;
@@ -288,7 +288,9 @@ cmd_find_current_session_with_client(struct cmd_find_state *fs)
 	return (0);
 
 unknown_pane:
-	fs->s = cmd_find_try_TMUX(fs->cmdq->client, NULL);
+	fs->s = NULL;
+	if (fs->cmdq != NULL)
+		fs->s = cmd_find_try_TMUX(fs->cmdq->client, NULL);
 	if (fs->s == NULL)
 		fs->s = cmd_find_best_session(NULL, 0, fs->flags);
 	if (fs->s == NULL)
@@ -309,7 +311,7 @@ int
 cmd_find_current_session(struct cmd_find_state *fs)
 {
 	/* If we know the current client, use it. */
-	if (fs->cmdq->client != NULL) {
+	if (fs->cmdq != NULL && fs->cmdq->client != NULL) {
 		log_debug("%s: have client %p%s", __func__, fs->cmdq->client,
 		    fs->cmdq->client->session == NULL ? "" : " (with session)");
 		if (fs->cmdq->client->session == NULL)
@@ -859,6 +861,49 @@ cmd_find_log_state(const char *prefix, struct cmd_find_state *fs)
 		log_debug("%s: idx=%d", prefix, fs->idx);
 	else
 		log_debug("%s: idx=none", prefix);
+}
+
+/* Find state from a session. */
+int
+cmd_find_from_session(struct cmd_find_state *fs, struct session *s)
+{
+	cmd_find_clear_state(fs, NULL, 0);
+
+	fs->s = s;
+	fs->wl = fs->s->curw;
+	fs->w = fs->wl->window;
+	fs->wp = fs->w->active;
+
+	cmd_find_log_state(__func__, fs);
+	return (0);
+}
+
+/* Find state from a window. */
+int
+cmd_find_from_window(struct cmd_find_state *fs, struct window *w)
+{
+	cmd_find_clear_state(fs, NULL, 0);
+
+	fs->w = w;
+	if (cmd_find_best_session_with_window(fs) != 0)
+		return (-1);
+	if (cmd_find_best_winlink_with_window(fs) != 0)
+		return (-1);
+
+	cmd_find_log_state(__func__, fs);
+	return (0);
+}
+
+/* Find state from a pane. */
+int
+cmd_find_from_pane(struct cmd_find_state *fs, struct window_pane *wp)
+{
+	if (cmd_find_from_window(fs, wp->window) != 0)
+		return (-1);
+	fs->wp = wp;
+
+	cmd_find_log_state(__func__, fs);
+	return (0);
 }
 
 /*

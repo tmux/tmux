@@ -281,7 +281,7 @@ server_client_detach(struct client *c, enum msgtype msgtype)
 	if (s == NULL)
 		return;
 
-	hooks_run(c->session->hooks, c, "client-detached");
+	hooks_run(c->session->hooks, c, NULL, "client-detached");
 	proc_send_s(c->peer, msgtype, s->name);
 }
 
@@ -1035,7 +1035,7 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 			server_redraw_client(c);
 		}
 		if (c->session != NULL)
-			hooks_run(c->session->hooks, c, "client-resized");
+			hooks_run(c->session->hooks, c, NULL, "client-resized");
 		break;
 	case MSG_EXITING:
 		if (datalen != 0)

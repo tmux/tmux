@@ -1381,6 +1381,7 @@ struct cmd_q {
 	struct cmd		*cmd;
 	struct cmd_q		*parent;
 
+	struct cmd_find_state	 current;
 	struct cmd_state	 state;
 
 	time_t			 time;
@@ -1578,6 +1579,7 @@ void		 format_defaults_paste_buffer(struct format_tree *,
 
 /* hooks.c */
 struct hook;
+struct hooks 	*hooks_get(struct session *);
 struct hooks	*hooks_create(struct hooks *);
 void		 hooks_free(struct hooks *);
 struct hook	*hooks_first(struct hooks *);
@@ -1586,10 +1588,10 @@ void		 hooks_add(struct hooks *, const char *, struct cmd_list *);
 void		 hooks_copy(struct hooks *, struct hooks *);
 void		 hooks_remove(struct hooks *, const char *);
 struct hook	*hooks_find(struct hooks *, const char *);
-int printflike(3, 4) hooks_run(struct hooks *, struct client *, const char *,
-		    ...);
-int printflike(3, 4) hooks_wait(struct hooks *, struct cmd_q *, const char *,
-		    ...);
+int printflike(4, 5) hooks_run(struct hooks *, struct client *,
+		    struct cmd_find_state *, const char *, ...);
+int printflike(4, 5) hooks_wait(struct hooks *, struct cmd_q *,
+		    struct cmd_find_state *, const char *, ...);
 
 /* mode-key.c */
 extern const struct mode_key_table mode_key_tables[];
@@ -1778,6 +1780,11 @@ int		 cmd_find_valid_state(struct cmd_find_state *);
 void		 cmd_find_copy_state(struct cmd_find_state *,
 		     struct cmd_find_state *);
 void		 cmd_find_log_state(const char *, struct cmd_find_state *);
+int		 cmd_find_from_session(struct cmd_find_state *,
+		     struct session *);
+int		 cmd_find_from_window(struct cmd_find_state *, struct window *);
+int		 cmd_find_from_pane(struct cmd_find_state *,
+		     struct window_pane *);
 
 /* cmd.c */
 int		 cmd_pack_argv(int, char **, char *, size_t);
@@ -1898,7 +1905,7 @@ void	 server_kill_window(struct window *);
 int	 server_link_window(struct session *,
 	     struct winlink *, struct session *, int, int, int, char **);
 void	 server_unlink_window(struct session *, struct winlink *);
-void	 server_destroy_pane(struct window_pane *);
+void	 server_destroy_pane(struct window_pane *, int);
 void	 server_destroy_session_group(struct session *);
 void	 server_destroy_session(struct session *);
 void	 server_check_unattached(void);
@@ -1932,7 +1939,7 @@ void	 recalculate_sizes(void);
 /* input.c */
 void	 input_init(struct window_pane *);
 void	 input_free(struct window_pane *);
-void	 input_reset(struct window_pane *);
+void	 input_reset(struct window_pane *, int);
 struct evbuffer *input_pending(struct window_pane *);
 void	 input_parse(struct window_pane *);
 
