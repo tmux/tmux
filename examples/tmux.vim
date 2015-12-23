@@ -154,6 +154,7 @@ syn keyword tmuxCmds
 	\ set
 	\ set-buffer
 	\ set-environment
+	\ set-hook
 	\ set-option
 	\ set-window-option
 	\ setb
@@ -162,6 +163,7 @@ syn keyword tmuxCmds
 	\ show
 	\ show-buffer
 	\ show-environment
+	\ show-hooks
 	\ show-messages
 	\ show-options
 	\ show-window-options
@@ -216,7 +218,6 @@ syn keyword tmuxOptsSet
 	\ message-limit
 	\ message-style
 	\ mouse
-	\ mouse-utf8
 	\ prefix
 	\ prefix2
 	\ quiet
@@ -238,7 +239,6 @@ syn keyword tmuxOptsSet
 	\ status-right-length
 	\ status-right-style
 	\ status-style
-	\ status-utf8
 	\ terminal-overrides
 	\ update-environment
 	\ visual-activity
@@ -269,7 +269,6 @@ syn keyword tmuxOptsSetw
 	\ pane-border-style
 	\ remain-on-exit
 	\ synchronize-panes
-	\ utf8
 	\ window-active-style
 	\ window-status-activity-style
 	\ window-status-bell-style
