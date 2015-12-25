@@ -83,6 +83,23 @@ cmd_string_parse(const char *s, struct cmd_list **cmdlist, const char *file,
 	for (;;) {
 		ch = cmd_string_getc(s, &p);
 		switch (ch) {
+        case ';':
+            if (buf != NULL) {
+                buf = xrealloc(buf, len + 2);
+                buf[len++] = ch;
+                buf[len] = '\0';
+
+                argv = xreallocarray(argv, argc + 1,
+                    sizeof *argv);
+                argv[argc++] = buf;
+
+                buf = NULL;
+                len = 0;
+            } else {
+                buf = xrealloc(buf, len + 1);
+                buf[len++] = ch;
+            }
+            break;
 		case '\'':
 			if ((t = cmd_string_string(s, &p, '\'', 0)) == NULL)
 				goto error;
