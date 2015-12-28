@@ -94,10 +94,10 @@ screen_set_cursor_style(struct screen *s, u_int style)
 
 /* Set screen cursor colour. */
 void
-screen_set_cursor_colour(struct screen *s, const char *colour_string)
+screen_set_cursor_colour(struct screen *s, const char *colour)
 {
 	free(s->ccolour);
-	s->ccolour = xstrdup(colour_string);
+	s->ccolour = xstrdup(colour);
 }
 
 /* Set screen title. */
