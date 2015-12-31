@@ -85,12 +85,6 @@ cmd_select_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	server_unzoom_window(wp->window);
-	if (!window_pane_visible(wp)) {
-		cmdq_error(cmdq, "pane not visible");
-		return (CMD_RETURN_ERROR);
-	}
-
 	if (args_has(args, 'm') || args_has(args, 'M')) {
 		if (args_has(args, 'm') && !window_pane_visible(wp))
 			return (CMD_RETURN_NORMAL);
