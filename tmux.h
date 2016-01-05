@@ -1542,7 +1542,7 @@ extern struct client *cfg_client;
 void		 start_cfg(void);
 int		 load_cfg(const char *, struct cmd_q *, char **);
 void		 set_cfg_file(const char *);
-void		 cfg_add_cause(const char *, ...);
+void		 printflike(1, 2) cfg_add_cause(const char *, ...);
 void		 cfg_print_causes(struct cmd_q *);
 void		 cfg_show_causes(struct session *);
 
@@ -2014,7 +2014,7 @@ void printflike(3, 4) screen_write_puts(struct screen_write_ctx *,
 	     struct grid_cell *, const char *, ...);
 void printflike(4, 5) screen_write_nputs(struct screen_write_ctx *,
 	     ssize_t, struct grid_cell *, const char *, ...);
-void	 screen_write_vnputs(struct screen_write_ctx *, ssize_t,
+void printflike(4, 0) screen_write_vnputs(struct screen_write_ctx *, ssize_t,
 	     struct grid_cell *, const char *, va_list);
 void	 screen_write_putc(struct screen_write_ctx *, struct grid_cell *,
 	     u_char);
@@ -2198,7 +2198,7 @@ extern const struct window_mode window_copy_mode;
 void		 window_copy_init_from_pane(struct window_pane *, int);
 void		 window_copy_init_for_output(struct window_pane *);
 void printflike(2, 3) window_copy_add(struct window_pane *, const char *, ...);
-void		 window_copy_vadd(struct window_pane *, const char *, va_list);
+void printflike(2, 0) window_copy_vadd(struct window_pane *, const char *, va_list);
 void		 window_copy_pageup(struct window_pane *);
 void		 window_copy_start_drag(struct client *, struct mouse_event *);
 int		 window_copy_scroll_position(struct window_pane *);

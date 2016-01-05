@@ -560,6 +560,7 @@ session_group_index(struct session_group *sg)
 	}
 
 	fatalx("session group not found");
+	return 0; /* to pacify compiler */
 }
 
 /*
