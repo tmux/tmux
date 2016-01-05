@@ -30,7 +30,7 @@ static FILE	*log_file;
 static int	 log_level;
 
 static void	 log_event_cb(int, const char *);
-static void	 log_vwrite(const char *, va_list);
+static void	 printflike(1, 0) log_vwrite(const char *, va_list);
 
 /* Log callback for libevent. */
 static void
@@ -122,17 +122,21 @@ log_debug(const char *msg, ...)
 	va_end(ap);
 }
 
+# define log_write log_debug
+
 /* Log a critical error with error string and die. */
 __dead void
 fatal(const char *msg, ...)
 {
-	char	*fmt;
+	char	*err;
 	va_list	 ap;
 
 	va_start(ap, msg);
-	if (asprintf(&fmt, "fatal: %s: %s", msg, strerror(errno)) == -1)
+	if (vasprintf(&err, msg, ap) == -1)
 		exit(1);
-	log_vwrite(fmt, ap);
+	va_end(ap);
+
+	log_write("fatal: %s: %s", err, strerror(errno));
 	exit(1);
 }
 
@@ -140,12 +144,14 @@ fatal(const char *msg, ...)
 __dead void
 fatalx(const char *msg, ...)
 {
-	char	*fmt;
+	char	*err;
 	va_list	 ap;
 
 	va_start(ap, msg);
-	if (asprintf(&fmt, "fatal: %s", msg) == -1)
+	if (vasprintf(&err, msg, ap) == -1)
 		exit(1);
-	log_vwrite(fmt, ap);
+	va_end(ap);
+
+	log_write("fatal: %s", err);
 	exit(1);
 }

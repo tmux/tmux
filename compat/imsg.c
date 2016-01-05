@@ -137,7 +137,8 @@ again:
 			j = ((char *)cmsg + cmsg->cmsg_len -
 			    (char *)CMSG_DATA(cmsg)) / sizeof(int);
 			for (i = 0; i < j; i++) {
-				fd = ((int *)CMSG_DATA(cmsg))[i];
+				/* fd = ((int *)CMSG_DATA(cmsg))[i]; */
+				memcpy(&fd, CMSG_DATA(cmsg) + i * sizeof(int), sizeof(int));
 				if (ifd != NULL) {
 					ifd->fd = fd;
 					TAILQ_INSERT_TAIL(&ibuf->fds, ifd,
