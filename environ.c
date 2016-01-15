@@ -196,10 +196,10 @@ void
 environ_push(struct environ *env)
 {
 	struct environ_entry	 *envent;
-	char			**vp, *v;
+	char			*v;
 
-	for (vp = environ; *vp != NULL; vp++) {
-		v = xstrdup(*vp);
+	while (*environ != NULL) {
+		v = xstrdup(*environ);
 		v[strcspn(v, "=")] = '\0';
 
 		unsetenv(v);
