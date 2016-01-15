@@ -100,7 +100,7 @@ struct input_ctx {
 struct input_transition;
 int	input_split(struct input_ctx *);
 int	input_get(struct input_ctx *, u_int, int, int);
-void	input_reply(struct input_ctx *, const char *, ...);
+void printflike(2, 3) input_reply(struct input_ctx *, const char *, ...);
 void	input_set_state(struct window_pane *, const struct input_transition *);
 void	input_reset_cell(struct input_ctx *);
 
