@@ -1782,6 +1782,8 @@ void		 cmd_find_copy_state(struct cmd_find_state *,
 void		 cmd_find_log_state(const char *, struct cmd_find_state *);
 int		 cmd_find_from_session(struct cmd_find_state *,
 		     struct session *);
+int		 cmd_find_from_winlink(struct cmd_find_state *,
+		     struct session *, struct winlink *);
 int		 cmd_find_from_window(struct cmd_find_state *, struct window *);
 int		 cmd_find_from_pane(struct cmd_find_state *,
 		     struct window_pane *);
