@@ -29,6 +29,7 @@ int	alerts_enabled(struct window *, int);
 void	alerts_callback(int, short, void *);
 void	alerts_reset(struct window *);
 
+void	alerts_run_hook(struct session *, struct winlink *, int);
 int	alerts_check_all(struct session *, struct winlink *);
 int	alerts_check_bell(struct session *, struct winlink *);
 int	alerts_check_activity(struct session *, struct winlink *);
@@ -55,8 +56,6 @@ alerts_callback(__unused int fd, __unused short events, __unused void *arg)
 
 	RB_FOREACH(w, windows, &windows) {
 		RB_FOREACH(s, sessions, &sessions) {
-			if (s->flags & SESSION_UNATTACHED)
-				continue;
 			RB_FOREACH(wl, winlinks, &s->windows) {
 				if (wl->window != w)
 					continue;
@@ -73,6 +72,22 @@ alerts_callback(__unused int fd, __unused short events, __unused void *arg)
 	alerts_fired = 0;
 }
 
+void
+alerts_run_hook(struct session *s, struct winlink *wl, int flags)
+{
+	struct cmd_find_state	 fs;
+
+	if (cmd_find_from_winlink(&fs, s, wl) != 0)
+		return;
+
+	if (flags & WINDOW_BELL)
+		hooks_run(s->hooks, NULL, &fs, "alert-bell");
+	if (flags & WINDOW_SILENCE)
+		hooks_run(s->hooks, NULL, &fs, "alert-silence");
+	if (flags & WINDOW_ACTIVITY)
+		hooks_run(s->hooks, NULL, &fs, "alert-activity");
+}
+
 int
 alerts_check_all(struct session *s, struct winlink *wl)
 {
@@ -81,8 +96,10 @@ alerts_check_all(struct session *s, struct winlink *wl)
 	alerts  = alerts_check_bell(s, wl);
 	alerts |= alerts_check_activity(s, wl);
 	alerts |= alerts_check_silence(s, wl);
-	if (alerts != 0)
+	if (alerts != 0) {
+		alerts_run_hook(s, wl, alerts);
 		server_status_session(s);
+	}
 
 	return (alerts);
 }
