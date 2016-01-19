@@ -199,7 +199,7 @@ cmdq_continue_one(struct cmd_q *cmdq)
 
 	cmdq_guard(cmdq, "begin", flags);
 
-	if (cmd_prepare_state(cmd, cmdq) != 0)
+	if (cmd_prepare_state(cmd, cmdq, NULL) != 0)
 		goto error;
 	retval = cmd->entry->exec(cmd, cmdq);
 	if (retval == CMD_RETURN_ERROR)
