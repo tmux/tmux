@@ -1,7 +1,7 @@
 /* $OpenBSD$ */
 
 /*
- * Copyright (c) 2012 Nicholas Marriott <nicm@users.sourceforge.net>
+ * Copyright (c) 2012 Nicholas Marriott <nicholas.marriott@gmail.com>
  * Copyright (c) 2012 George Nachman <tmux@georgester.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
