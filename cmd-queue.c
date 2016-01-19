@@ -1,7 +1,7 @@
 /* $OpenBSD$ */
 
 /*
- * Copyright (c) 2013 Nicholas Marriott <nicm@users.sourceforge.net>
+ * Copyright (c) 2013 Nicholas Marriott <nicholas.marriott@gmail.com>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -199,7 +199,7 @@ cmdq_continue_one(struct cmd_q *cmdq)
 
 	cmdq_guard(cmdq, "begin", flags);
 
-	if (cmd_prepare_state(cmd, cmdq) != 0)
+	if (cmd_prepare_state(cmd, cmdq, NULL) != 0)
 		goto error;
 	retval = cmd->entry->exec(cmd, cmdq);
 	if (retval == CMD_RETURN_ERROR)
