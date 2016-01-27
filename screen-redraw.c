@@ -32,6 +32,7 @@ int	screen_redraw_check_is(u_int, u_int, int, struct window *,
 void	screen_redraw_draw_borders(struct client *, int, u_int);
 void	screen_redraw_draw_panes(struct client *, u_int);
 void	screen_redraw_draw_status(struct client *, u_int);
+void	screen_redraw_draw_aux_status(struct client *, u_int);
 void	screen_redraw_draw_number(struct client *, struct window_pane *, u_int);
 
 #define CELL_INSIDE 0
@@ -219,36 +220,48 @@ screen_redraw_check_is(u_int px, u_int py, int type, struct window *w,
 
 /* Redraw entire screen. */
 void
-screen_redraw_screen(struct client *c, int draw_panes, int draw_status,
+screen_redraw_screen(struct client *c, int draw_panes, int draw_statuses,
     int draw_borders)
 {
 	struct options	*oo = c->session->options;
 	struct tty	*tty = &c->tty;
-	u_int		 top;
-	int	 	 status, spos;
+	u_int		 top, top_filled;
+	int	 	 status, aux_status, row_redux, spos, apos;
 
 	/* Suspended clients should not be updated. */
 	if (c->flags & CLIENT_SUSPENDED)
 		return;
 
+	status = options_get_number(oo, "status");
+    aux_status = options_get_number(oo, "aux-status");
+    row_redux = status + aux_status;
+
 	/* Get status line, er, status. */
 	spos = options_get_number(oo, "status-position");
+	apos = options_get_number(oo, "aux-status-position");
 	if (c->message_string != NULL || c->prompt_string != NULL)
 		status = 1;
-	else
-		status = options_get_number(oo, "status");
+
 	top = 0;
+    top_filled = 0;
 	if (status && spos == 0)
 		top = 1;
-	if (!status)
-		draw_status = 0;
+	if ((!status) && (!aux_status))
+		draw_statuses = 0;
+
+    if ((status && aux_status) || (status && (spos==0)) || (aux_status && (apos==0)))
+        top_filled = 1;
 
 	if (draw_borders)
-		screen_redraw_draw_borders(c, status, top);
+		screen_redraw_draw_borders(c, row_redux, top_filled);
 	if (draw_panes)
-		screen_redraw_draw_panes(c, top);
-	if (draw_status)
-		screen_redraw_draw_status(c, top);
+		screen_redraw_draw_panes(c, top_filled);
+	if (draw_statuses){
+        if (status)
+            screen_redraw_draw_status(c, spos);
+        if (aux_status)
+            screen_redraw_draw_aux_status(c, apos);
+    }
 	tty_reset(tty);
 }
 
@@ -262,7 +275,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 		return;
 
 	yoff = wp->yoff;
-	if (status_at_line(c) == 0)
+	if (any_status_at_zero(c))
 		yoff++;
 
 	for (i = 0; i < wp->sy; i++)
@@ -272,7 +285,7 @@ screen_redraw_pane(struct client *c, struct window_pane *wp)
 
 /* Draw the borders. */
 void
-screen_redraw_draw_borders(struct client *c, int status, u_int top)
+screen_redraw_draw_borders(struct client *c, int row_redux, u_int top_filled)
 {
 	struct session		*s = c->session;
 	struct window		*w = s->curw->window;
@@ -287,7 +300,7 @@ screen_redraw_draw_borders(struct client *c, int status, u_int top)
 	const char		*tmp;
 	size_t			 msglen = 0;
 
-	small = (tty->sy - status + top > w->sy) || (tty->sx > w->sx);
+	small = ((tty->sy - row_redux + top_filled > w->sy) || (tty->sx > w->sx));
 	if (small) {
 		flags = w->flags & (WINDOW_FORCEWIDTH|WINDOW_FORCEHEIGHT);
 		if (flags == (WINDOW_FORCEWIDTH|WINDOW_FORCEHEIGHT))
@@ -302,12 +315,12 @@ screen_redraw_draw_borders(struct client *c, int status, u_int top)
 		    w->sx, w->sy, tmp);
 		msglen = strlen(msg);
 
-		if (tty->sy - 1 - status + top > w->sy && tty->sx >= msglen) {
+		if (tty->sy - 1 - row_redux + top_filled > w->sy && tty->sx >= msglen) {
 			msgx = tty->sx - msglen;
-			msgy = tty->sy - 1 - status + top;
+			msgy = tty->sy - 1 - row_redux + top_filled;
 		} else if (tty->sx - w->sx > msglen) {
 			msgx = tty->sx - msglen;
-			msgy = tty->sy - 1 - status + top;
+			msgy = tty->sy - 1 - row_redux + top_filled;
 		} else
 			small = 0;
 	}
@@ -321,7 +334,7 @@ screen_redraw_draw_borders(struct client *c, int status, u_int top)
 	memcpy(&m_active_gc, &active_gc, sizeof m_active_gc);
 	m_active_gc.attr ^= GRID_ATTR_REVERSE;
 
-	for (j = 0; j < tty->sy - status; j++) {
+	for (j = 0; j < tty->sy - row_redux; j++) {
 		for (i = 0; i < tty->sx; i++) {
 			type = screen_redraw_check_cell(c, i, j, &wp);
 			if (type == CELL_INSIDE)
@@ -342,7 +355,7 @@ screen_redraw_draw_borders(struct client *c, int status, u_int top)
 				tty_attributes(tty, &active_gc, NULL);
 			else
 				tty_attributes(tty, &other_gc, NULL);
-			tty_cursor(tty, i, top + j);
+			tty_cursor(tty, i, top_filled + j);
 			tty_putc(tty, CELL_BORDERS[type]);
 		}
 	}
@@ -357,7 +370,7 @@ screen_redraw_draw_borders(struct client *c, int status, u_int top)
 
 /* Draw the panes. */
 void
-screen_redraw_draw_panes(struct client *c, u_int top)
+screen_redraw_draw_panes(struct client *c, u_int top_filled)
 {
 	struct window		*w = c->session->curw->window;
 	struct tty		*tty = &c->tty;
@@ -368,27 +381,42 @@ screen_redraw_draw_panes(struct client *c, u_int top)
 		if (!window_pane_visible(wp))
 			continue;
 		for (i = 0; i < wp->sy; i++)
-			tty_draw_pane(tty, wp, i, wp->xoff, top + wp->yoff);
+            tty_draw_pane(tty, wp, i, wp->xoff, top_filled + wp->yoff);
 		if (c->flags & CLIENT_IDENTIFY)
-			screen_redraw_draw_number(c, wp, top);
+			screen_redraw_draw_number(c, wp, top_filled);
 	}
 }
 
 /* Draw the status line. */
 void
-screen_redraw_draw_status(struct client *c, u_int top)
+screen_redraw_draw_status(struct client *c, u_int spos)
 {
 	struct tty	*tty = &c->tty;
 
-	if (top)
-		tty_draw_line(tty, NULL, &c->status, 0, 0, 0);
-	else
-		tty_draw_line(tty, NULL, &c->status, 0, 0, tty->sy - 1);
+    // top
+    if (spos==0)
+	    tty_draw_line(tty, NULL, &c->status, 0, 0, 0);
+    else
+	    tty_draw_line(tty, NULL, &c->status, 0, 0, tty->sy - 1);
+}
+
+/* Draw the auxiliary status line. */
+void
+screen_redraw_draw_aux_status(struct client *c, u_int apos)
+{
+	struct tty	*tty = &c->tty;
+  
+    // top
+    if (apos==0)
+        tty_draw_line(tty, NULL, &c->aux_status, 0, 0, 0);
+    else
+        tty_draw_line(tty, NULL, &c->aux_status, 0, 0, tty->sy - 1);
 }
 
 /* Draw number on a pane. */
 void
-screen_redraw_draw_number(struct client *c, struct window_pane *wp, u_int top)
+screen_redraw_draw_number(struct client *c, struct window_pane *wp,
+                          u_int top_filled)
 {
 	struct tty		*tty = &c->tty;
 	struct session		*s = c->session;
@@ -412,7 +440,7 @@ screen_redraw_draw_number(struct client *c, struct window_pane *wp, u_int top)
 	px = wp->sx / 2; py = wp->sy / 2;
 	xoff = wp->xoff; yoff = wp->yoff;
 
-	if (top)
+	if (top_filled)
 		yoff++;
 
 	if (wp->sx < len * 6 || wp->sy < 5) {

@@ -33,6 +33,10 @@ char   *status_redraw_get_left(struct client *, time_t, struct grid_cell *,
 	    size_t *);
 char   *status_redraw_get_right(struct client *, time_t, struct grid_cell *,
 	    size_t *);
+char   *aux_status_redraw_get_left(struct client *, time_t, struct grid_cell *,
+	    size_t *);
+char   *aux_status_redraw_get_right(struct client *, time_t, struct grid_cell *,
+	    size_t *);
 char   *status_print(struct client *, struct winlink *, time_t,
 	    struct grid_cell *);
 char   *status_replace(struct client *, struct winlink *, const char *, time_t);
@@ -206,6 +210,54 @@ status_at_line(struct client *c)
 	return (c->tty.sy - 1);
 }
 
+/* Get screen line of aux_status line. -1 means off. */
+int
+aux_status_at_line(struct client *c)
+{
+	struct session	*s = c->session;
+
+	if (!options_get_number(s->options, "aux-status"))
+		return (-1);
+
+	if (options_get_number(s->options, "aux-status-position") == 0)
+		return (0);
+	return (c->tty.sy - 1);
+}
+
+/* Is there any status (main or aux) at line zero? (1 True, 0 False) */
+int
+any_status_at_zero(struct client *c)
+{
+    struct session *s = c->session;
+
+    if (options_get_number(s->options, "status") && 
+         (options_get_number(s->options, "status-position")==0))
+        return 1;
+    if (options_get_number(s->options, "aux-status") && 
+         (options_get_number(s->options, "aux-status-position")==0))
+        return 1;
+    return 0;
+}
+
+/* Is there any status (main or aux) on last line? (1 True, 0 False) */
+int
+any_status_on_last(struct client *c)
+{
+    struct session *s = c->session;
+    int status, aux_status;
+
+    status = options_get_number(s->options, "status");
+    aux_status = options_get_number(s->options, "aux-status");
+
+    if (status && aux_status)
+        return 1;
+    if (status && options_get_number(s->options, "status-position")!=0)
+        return 1;
+    if (aux_status && options_get_number(s->options, "aux-status-position")!=0)
+        return 1;
+    return 0;
+}
+
 /* Retrieve options for left string. */
 char *
 status_redraw_get_left(struct client *c, time_t t, struct grid_cell *gc,
@@ -244,6 +296,51 @@ status_redraw_get_right(struct client *c, time_t t, struct grid_cell *gc,
 	right = status_replace(c, NULL, template, t);
 
 	*size = options_get_number(s->options, "status-right-length");
+	rightlen = screen_write_cstrlen("%s", right);
+	if (rightlen < *size)
+		*size = rightlen;
+	return (right);
+}
+
+/* Retrieve options for left string of aux status. */
+char *
+aux_status_redraw_get_left(struct client *c, time_t t, struct grid_cell *gc,
+    size_t *size)
+{
+	struct session	*s = c->session;
+	const char	*template;
+	char		*left;
+	size_t		 leftlen;
+
+	style_apply_update(gc, s->options, "aux-status-left-style");
+
+	template = options_get_string(s->options, "aux-status-left");
+	left = status_replace(c, NULL, template, t);
+
+	*size = options_get_number(s->options, "aux-status-left-length");
+
+	leftlen = screen_write_cstrlen("%s", left);
+	if (leftlen < *size)
+		*size = leftlen;
+	return (left);
+}
+
+/* Retrieve options for right string of aux status. */
+char *
+aux_status_redraw_get_right(struct client *c, time_t t, struct grid_cell *gc,
+    size_t *size)
+{
+	struct session	*s = c->session;
+	const char	*template;
+	char		*right;
+	size_t		 rightlen;
+
+	style_apply_update(gc, s->options, "aux-status-right-style");
+
+	template = options_get_string(s->options, "aux-status-right");
+	right = status_replace(c, NULL, template, t);
+
+	*size = options_get_number(s->options, "aux-status-right-length");
 	rightlen = screen_write_cstrlen("%s", right);
 	if (rightlen < *size)
 		*size = rightlen;
@@ -486,6 +583,87 @@ out:
 		return (0);
 	}
 	screen_free(&old_status);
+	return (1);
+}
+
+/* Draw aux-status for client on the last lines of given context. */
+int
+aux_status_redraw(struct client *c)
+{
+	struct screen_write_ctx	ctx;
+	struct session	       *s = c->session;
+	struct screen		old_aux_status;
+	struct grid_cell	stdgc, lgc, rgc;
+	struct options	       *oo;
+	time_t			t;
+	char		       *left, *right;
+	u_int			offset, needed;
+	size_t			llen, rlen;
+
+	/* No aux-status? */
+	if (c->tty.sy == 0 || !options_get_number(s->options, "aux-status"))
+		return (1);
+	left = right = NULL;
+
+	/* Store current time. */
+	t = time(NULL);
+
+	/* Set up default colour. */
+	style_apply(&stdgc, s->options, "aux-status-style");
+
+	/* Create the target screen. */
+	memcpy(&old_aux_status, &c->aux_status, sizeof old_aux_status);
+	screen_init(&c->aux_status, c->tty.sx, 1, 0);
+	screen_write_start(&ctx, NULL, &c->aux_status);
+	for (offset = 0; offset < c->tty.sx; offset++)
+		screen_write_putc(&ctx, &stdgc, ' ');
+	screen_write_stop(&ctx);
+
+	/* If the height is two lines, blank status line. */
+	if (c->tty.sy <= 2)
+		goto out;
+
+	/* Work out left and right strings. */
+	memcpy(&lgc, &stdgc, sizeof lgc);
+	left = aux_status_redraw_get_left(c, t, &lgc, &llen);
+	memcpy(&rgc, &stdgc, sizeof rgc);
+	right = aux_status_redraw_get_right(c, t, &rgc, &rlen);
+
+	/*
+	 * Do we have enough room?
+	 */
+	needed = 0;
+	if (llen != 0)
+		needed += llen;
+	if (rlen != 0)
+		needed += rlen;
+	if (c->tty.sx == 0 || c->tty.sx <= needed)
+		goto out;
+
+	/* Begin drawing. */
+	screen_write_start(&ctx, NULL, &c->aux_status);
+
+	/* Draw the left string */
+	screen_write_cursormove(&ctx, 0, 0);
+	if (llen != 0)
+		screen_write_cnputs(&ctx, llen, &lgc, "%s", left);
+
+	/* Draw the right string */
+	screen_write_cursormove(&ctx, c->tty.sx - rlen, 0);
+	if (rlen != 0)
+		screen_write_cnputs(&ctx, rlen, &rgc, "%s", right);
+
+	screen_write_stop(&ctx);
+
+out:
+	free(left);
+	free(right);
+
+	if (grid_compare(c->aux_status.grid, old_aux_status.grid) == 0) {
+		screen_free(&old_aux_status);
+		return (0);
+	}
+	screen_free(&old_aux_status);
 	return (1);
 }
 

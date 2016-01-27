@@ -591,10 +591,10 @@ cmd_mouse_at(struct window_pane *wp, struct mouse_event *m, u_int *xp,
 		y = m->y;
 	}
 
-	if (m->statusat == 0 && y > 0)
-		y--;
-	else if (m->statusat > 0 && y >= (u_int)m->statusat)
-		y = m->statusat - 1;
+    if (m->anyatzero && y > 0)
+        y--;
+    if (m->anyonlast && y >= m->auxstatusat + m->statusat)
+        y = m->auxstatusat + m->statusat - 1;
 
 	if (x < wp->xoff || x >= wp->xoff + wp->sx)
 		return (-1);

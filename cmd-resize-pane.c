@@ -139,15 +139,15 @@ cmd_resize_pane_mouse_update(struct client *c, struct mouse_event *m)
 	}
 
 	y = m->y;
-	if (m->statusat == 0 && y > 0)
-		y--;
-	else if (m->statusat > 0 && y >= (u_int)m->statusat)
-		y = m->statusat - 1;
+    if (m->anyatzero && y > 0)
+        y--;
+    if (m->anyonlast && y >= m->auxstatusat + m->statusat)
+        y = m->auxstatusat + m->statusat - 1;
 	ly = m->ly;
-	if (m->statusat == 0 && ly > 0)
-		ly--;
-	else if (m->statusat > 0 && ly >= (u_int)m->statusat)
-		ly = m->statusat - 1;
+    if (m->anyatzero && y > 0)
+        ly--;
+    if (m->anyonlast && ly >= m->auxstatusat + m->statusat)
+        ly = m->auxstatusat + m->statusat - 1;
 
 	found = 0;
 	TAILQ_FOREACH(wp, &wl->window->panes, entry) {
