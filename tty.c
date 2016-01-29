@@ -36,8 +36,15 @@ static int tty_log_fd = -1;
 void	tty_read_callback(struct bufferevent *, void *);
 void	tty_error_callback(struct bufferevent *, short, void *);
 
+static int tty_same_fg(const struct grid_cell *, const struct grid_cell *);
+static int tty_same_bg(const struct grid_cell *, const struct grid_cell *);
+static int tty_same_colours(const struct grid_cell *, const struct grid_cell *);
+static int tty_is_fg(const struct grid_cell *, int);
+static int tty_is_bg(const struct grid_cell *, int);
+
 void	tty_set_italics(struct tty *);
 int	tty_try_256(struct tty *, u_char, const char *);
+int	tty_try_rgb(struct tty *, const struct grid_cell_rgb *, const char *);
 
 void	tty_colours(struct tty *, const struct grid_cell *);
 void	tty_check_fg(struct tty *, struct grid_cell *);
@@ -60,6 +67,74 @@ void	tty_default_colours(struct grid_cell *, const struct window_pane *);
 
 #define tty_pane_full_width(tty, ctx) \
 	((ctx)->xoff == 0 && screen_size_x((ctx)->wp->screen) >= (tty)->sx)
+
+static int
+tty_same_fg(const struct grid_cell *gc1, const struct grid_cell *gc2)
+{
+	int	flags1, flags2;
+
+	flags1 = (gc1->flags & (GRID_FLAG_FG256|GRID_FLAG_FGRGB));
+	flags2 = (gc2->flags & (GRID_FLAG_FG256|GRID_FLAG_FGRGB));
+
+	if (flags1 != flags2)
+	    return (0);
+
+	if (flags1 & GRID_FLAG_FGRGB) {
+		if (gc1->fg_rgb.r != gc2->fg_rgb.r)
+			return (0);
+		if (gc1->fg_rgb.g != gc2->fg_rgb.g)
+			return (0);
+		if (gc1->fg_rgb.b != gc2->fg_rgb.b)
+			return (0);
+		return (1);
+	}
+	return (gc1->fg == gc2->fg);
+}
+
+static int
+tty_same_bg(const struct grid_cell *gc1, const struct grid_cell *gc2)
+{
+	int	flags1, flags2;
+
+	flags1 = (gc1->flags & (GRID_FLAG_BG256|GRID_FLAG_BGRGB));
+	flags2 = (gc2->flags & (GRID_FLAG_BG256|GRID_FLAG_BGRGB));
+
+	if (flags1 != flags2)
+	    return (0);
+
+	if (flags1 & GRID_FLAG_BGRGB) {
+		if (gc1->bg_rgb.r != gc2->bg_rgb.r)
+			return (0);
+		if (gc1->bg_rgb.g != gc2->bg_rgb.g)
+			return (0);
+		if (gc1->bg_rgb.b != gc2->bg_rgb.b)
+			return (0);
+		return (1);
+	}
+	return (gc1->bg == gc2->bg);
+}
+
+static int
+tty_same_colours(const struct grid_cell *gc1, const struct grid_cell *gc2)
+{
+	return (tty_same_fg(gc1, gc2) && tty_same_bg(gc1, gc2));
+}
+
+static int
+tty_is_fg(const struct grid_cell *gc, int c)
+{
+	if (gc->flags & (GRID_FLAG_FG256|GRID_FLAG_FGRGB))
+		return (0);
+	return (gc->fg == c);
+}
+
+static int
+tty_is_bg(const struct grid_cell *gc, int c)
+{
+	if (gc->flags & (GRID_FLAG_BG256|GRID_FLAG_BGRGB))
+		return (0);
+	return (gc->bg == c);
+}
 
 void
 tty_create_log(void)
@@ -1423,12 +1498,10 @@ void
 tty_colours(struct tty *tty, const struct grid_cell *gc)
 {
 	struct grid_cell	*tc = &tty->cell;
-	u_char			 fg = gc->fg, bg = gc->bg, flags = gc->flags;
 	int			 have_ax, fg_default, bg_default;
 
 	/* No changes? Nothing is necessary. */
-	if (fg == tc->fg && bg == tc->bg &&
-	    ((flags ^ tc->flags) & (GRID_FLAG_FG256|GRID_FLAG_BG256)) == 0)
+	if (tty_same_colours(gc, tc))
 		return;
 
 	/*
@@ -1437,8 +1510,8 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 	 * case if only one is default need to fall onward to set the other
 	 * colour.
 	 */
-	fg_default = (fg == 8 && !(flags & GRID_FLAG_FG256));
-	bg_default = (bg == 8 && !(flags & GRID_FLAG_BG256));
+	fg_default = tty_is_fg(gc, 8);
+	bg_default = tty_is_bg(gc, 8);
 	if (fg_default || bg_default) {
 		/*
 		 * If don't have AX but do have op, send sgr0 (op can't
@@ -1451,48 +1524,52 @@ tty_colours(struct tty *tty, const struct grid_cell *gc)
 		if (!have_ax && tty_term_has(tty->term, TTYC_OP))
 			tty_reset(tty);
 		else {
-			if (fg_default &&
-			    (tc->fg != 8 || tc->flags & GRID_FLAG_FG256)) {
+			if (fg_default && !tty_is_fg(tc, 8)) {
 				if (have_ax)
 					tty_puts(tty, "\033[39m");
-				else if (tc->fg != 7 ||
-				    tc->flags & GRID_FLAG_FG256)
+				else if (!tty_is_fg(tc, 7))
 					tty_putcode1(tty, TTYC_SETAF, 7);
 				tc->fg = 8;
-				tc->flags &= ~GRID_FLAG_FG256;
+				tc->flags &= ~(GRID_FLAG_FG256|GRID_FLAG_FGRGB);
 			}
-			if (bg_default &&
-			    (tc->bg != 8 || tc->flags & GRID_FLAG_BG256)) {
+			if (bg_default && !tty_is_bg(tc, 8)) {
 				if (have_ax)
 					tty_puts(tty, "\033[49m");
-				else if (tc->bg != 0 ||
-				    tc->flags & GRID_FLAG_BG256)
+				else if (!tty_is_bg(tc, 0))
 					tty_putcode1(tty, TTYC_SETAB, 0);
 				tc->bg = 8;
-				tc->flags &= ~GRID_FLAG_BG256;
+				tc->flags &= ~(GRID_FLAG_BG256|GRID_FLAG_BGRGB);
 			}
 		}
 	}
 
 	/* Set the foreground colour. */
-	if (!fg_default && (fg != tc->fg ||
-	    ((flags & GRID_FLAG_FG256) != (tc->flags & GRID_FLAG_FG256))))
+	if (!fg_default && !tty_same_fg(gc, tc))
 		tty_colours_fg(tty, gc);
 
 	/*
 	 * Set the background colour. This must come after the foreground as
 	 * tty_colour_fg() can call tty_reset().
 	 */
-	if (!bg_default && (bg != tc->bg ||
-	    ((flags & GRID_FLAG_BG256) != (tc->flags & GRID_FLAG_BG256))))
+	if (!bg_default && !tty_same_bg(gc, tc))
 		tty_colours_bg(tty, gc);
 }
 
 void
 tty_check_fg(struct tty *tty, struct grid_cell *gc)
 {
-	u_int	colours;
+	struct grid_cell_rgb	*rgb = &gc->fg_rgb;
+	u_int			 colours;
 
+	/* Is this a 24-bit colour? */
+	if (gc->flags & GRID_FLAG_FGRGB) {
+		/* Not a 24-bit terminal? Translate to 256-colour palette. */
+		if (!tty_term_flag(tty->term, TTYC_TC)) {
+			gc->flags &= ~GRID_FLAG_FGRGB;
+			gc->flags |= GRID_FLAG_FG256;
+			gc->fg = colour_find_rgb(rgb->r, rgb->g, rgb->b);
+		}
+	}
 	colours = tty_term_number(tty->term, TTYC_COLORS);
 
 	/* Is this a 256-colour colour? */
@@ -1524,8 +1601,18 @@ tty_check_fg(struct tty *tty, struct grid_cell *gc)
 void
 tty_check_bg(struct tty *tty, struct grid_cell *gc)
 {
-	u_int	colours;
+	struct grid_cell_rgb	*rgb = &gc->bg_rgb;
+	u_int			 colours;
 
+	/* Is this a 24-bit colour? */
+	if (gc->flags & GRID_FLAG_BGRGB) {
+		/* Not a 24-bit terminal? Translate to 256-colour palette. */
+		if (!tty_term_flag(tty->term, TTYC_TC)) {
+			gc->flags &= ~GRID_FLAG_BGRGB;
+			gc->flags |= GRID_FLAG_BG256;
+			gc->bg = colour_find_rgb(rgb->r, rgb->g, rgb->b);
+		}
+	}
 	colours = tty_term_number(tty->term, TTYC_COLORS);
 
 	/* Is this a 256-colour colour? */
@@ -1560,12 +1647,21 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 	u_char			 fg = gc->fg;
 	char			 s[32];
 
+	tc->flags &= ~(GRID_FLAG_FG256|GRID_FLAG_FGRGB);
+
+	/* Is this a 24-bit colour? */
+	if (gc->flags & GRID_FLAG_FGRGB) {
+		if (tty_try_rgb(tty, &gc->fg_rgb, "38") == 0)
+			goto save_fg;
+		/* Should not get here, already converted in tty_check_fg. */
+		return;
+	}
+
 	/* Is this a 256-colour colour? */
 	if (gc->flags & GRID_FLAG_FG256) {
-		/* Try as 256 colours. */
 		if (tty_try_256(tty, fg, "38") == 0)
 			goto save_fg;
-		/* Else already handled by tty_check_fg. */
+		/* Should not get here, already converted in tty_check_fg. */
 		return;
 	}
 
@@ -1581,9 +1677,12 @@ tty_colours_fg(struct tty *tty, const struct grid_cell *gc)
 
 save_fg:
 	/* Save the new values in the terminal current cell. */
-	tc->fg = fg;
-	tc->flags &= ~GRID_FLAG_FG256;
-	tc->flags |= gc->flags & GRID_FLAG_FG256;
+	if (gc->flags & GRID_FLAG_FGRGB)
+		memcpy(&tc->fg_rgb, &gc->fg_rgb, sizeof tc->fg_rgb);
+	else
+		tc->fg = fg;
+	tc->flags &= ~(GRID_FLAG_FGRGB|GRID_FLAG_FG256);
+	tc->flags |= (gc->flags & (GRID_FLAG_FG256|GRID_FLAG_FGRGB));
 }
 
 void
@@ -1593,12 +1692,19 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 	u_char			 bg = gc->bg;
 	char			 s[32];
 
+	/* Is this a 24-bit colour? */
+	if (gc->flags & GRID_FLAG_BGRGB) {
+		if (tty_try_rgb(tty, &gc->bg_rgb, "48") == 0)
+			goto save_bg;
+		/* Should not get here, already converted in tty_check_bg. */
+		return;
+	}
+
 	/* Is this a 256-colour colour? */
 	if (gc->flags & GRID_FLAG_BG256) {
-		/* Try as 256 colours. */
 		if (tty_try_256(tty, bg, "48") == 0)
 			goto save_bg;
-		/* Else already handled by tty_check_bg. */
+		/* Should not get here, already converted in tty_check_bg. */
 		return;
 	}
 
@@ -1614,9 +1720,12 @@ tty_colours_bg(struct tty *tty, const struct grid_cell *gc)
 
 save_bg:
 	/* Save the new values in the terminal current cell. */
-	tc->bg = bg;
-	tc->flags &= ~GRID_FLAG_BG256;
-	tc->flags |= gc->flags & GRID_FLAG_BG256;
+	if (gc->flags & GRID_FLAG_BGRGB)
+		memcpy(&tc->bg_rgb, &gc->bg_rgb, sizeof tc->bg_rgb);
+	else
+		tc->bg = bg;
+	tc->flags &= ~(GRID_FLAG_BGRGB|GRID_FLAG_BG256);
+	tc->flags |= (gc->flags & (GRID_FLAG_BG256|GRID_FLAG_BGRGB));
 }
 
 int
@@ -1652,6 +1761,20 @@ tty_try_256(struct tty *tty, u_char colour, const char *type)
 
 fallback:
 	xsnprintf(s, sizeof s, "\033[%s;5;%hhum", type, colour);
+	tty_puts(tty, s);
+	return (0);
+}
+
+int
+tty_try_rgb(struct tty *tty, const struct grid_cell_rgb *rgb, const char *type)
+{
+	char	s[32];
+
+	if (!tty_term_flag(tty->term, TTYC_TC))
+		return (-1);
+
+	xsnprintf(s, sizeof s, "\033[%s;2;%hhu;%hhu;%hhum", type, rgb->r,
+	    rgb->g, rgb->b);
 	tty_puts(tty, s);
 	return (0);
 }
