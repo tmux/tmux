@@ -40,6 +40,10 @@ A vim(1) syntax file is available at:
    https://github.com/keith/tmux.vim
    https://raw.githubusercontent.com/keith/tmux.vim/master/syntax/tmux.vim
 
+And a bash(1) completion file at:
+
+   https://github.com/przepompownia/tmux-bash-completion
+
 For debugging, running tmux with -v or -vv will generate server and client log
 files in the current directory.
 
