@@ -60,10 +60,7 @@ welcome. Please send by email to:
 
 	tmux-users@googlegroups.com
 
-This file and the CHANGES, FAQ, SYNCING and TODO files are licensed under
-the ISC license. Files under examples/ remain copyright their authors unless
-otherwise stated in the file but permission has been received to distribute
-them with tmux. All other files have a license and copyright notice at their
-start.
+This file and the CHANGES, FAQ, SYNCING and TODO files are licensed under the
+ISC license. All other files have a license and copyright notice at their start.
 
 -- Nicholas Marriott <nicholas.marriott@gmail.com>
