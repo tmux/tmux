@@ -33,7 +33,7 @@ the source tree with:
 Some common questions are answered in the FAQ file and a more extensive (but
 slightly out of date) guide is available in the OpenBSD FAQ at
 http://www.openbsd.org/faq/faq7.html#tmux. A rough todo list is in the TODO
-file and some example configurations are in the examples directory.
+file and an example configuration in example_tmux.conf.
 
 A vim(1) syntax file is available at:
 
