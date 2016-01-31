@@ -452,6 +452,12 @@ grid_string_cells_fg(const struct grid_cell *gc, int *values)
 		values[n++] = 38;
 		values[n++] = 5;
 		values[n++] = gc->fg;
+	} else if (gc->flags & GRID_FLAG_FGRGB) {
+		values[n++] = 38;
+		values[n++] = 2;
+		values[n++] = gc->fg_rgb.r;
+		values[n++] = gc->fg_rgb.g;
+		values[n++] = gc->fg_rgb.b;
 	} else {
 		switch (gc->fg) {
 		case 0:
@@ -493,6 +499,12 @@ grid_string_cells_bg(const struct grid_cell *gc, int *values)
 		values[n++] = 48;
 		values[n++] = 5;
 		values[n++] = gc->bg;
+	} else if (gc->flags & GRID_FLAG_BGRGB) {
+		values[n++] = 48;
+		values[n++] = 2;
+		values[n++] = gc->bg_rgb.r;
+		values[n++] = gc->bg_rgb.g;
+		values[n++] = gc->bg_rgb.b;
 	} else {
 		switch (gc->bg) {
 		case 0:
@@ -532,7 +544,7 @@ void
 grid_string_cells_code(const struct grid_cell *lastgc,
     const struct grid_cell *gc, char *buf, size_t len, int escape_c0)
 {
-	int	oldc[16], newc[16], s[32];
+	int	oldc[64], newc[64], s[128];
 	size_t	noldc, nnewc, n, i;
 	u_int	attr = gc->attr;
 	u_int	lastattr = lastgc->attr;
