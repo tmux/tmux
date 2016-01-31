@@ -74,7 +74,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct environ		*env;
 	struct termios		 tio, *tiop;
 	const char		*newname, *target, *update, *errstr, *template;
-	const char		*path, *cwd, *to_free;
+	const char		*path, *cwd, *to_free = NULL;
 	char		       **argv, *cmd, *cause, *cp;
 	int			 detached, already_attached, idx, argc;
 	u_int			 sx, sy;
@@ -118,7 +118,12 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		}
 	}
 
-	if ((target = args_get(args, 't')) == NULL)
+	if ((target = args_get(args, 't')) != NULL) {
+		if (groupwith == NULL) {
+			cmdq_error(cmdq, "no such session: %s", target);
+			goto error;
+		}
+	} else
 		groupwith = NULL;
 
 	/* Set -d if no client. */
@@ -132,7 +137,6 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 		already_attached = 1;
 
 	/* Get the new session working directory. */
-	to_free = NULL;
 	if (args_has(args, 'c')) {
 		ft = format_create(cmdq, 0);
 		format_defaults(ft, c, NULL, NULL, NULL);
@@ -208,7 +212,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (!args_has(args, 't') && args->argc != 0) {
 		argc = args->argc;
 		argv = args->argv;
-	} else if (target == NULL) {
+	} else if (groupwith == NULL) {
 		cmd = options_get_string(global_s_options, "default-command");
 		if (cmd != NULL && *cmd != '\0') {
 			argc = 1;
@@ -257,7 +261,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 	 * If a target session is given, this is to be part of a session group,
 	 * so add it to the group and synchronize.
 	 */
-	if (args_has(args, 't')) {
+	if (groupwith != NULL) {
 		session_group_add(groupwith, s);
 		session_group_synchronize_to(s);
 		session_select(s, RB_MIN(winlinks, &s->windows)->idx);
