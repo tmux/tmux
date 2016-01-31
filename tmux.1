@@ -3377,9 +3377,13 @@ if not.
 A limit may be placed on the length of the resultant string by prefixing it
 by an
 .Ql = ,
-a number and a colon, so
-.Ql #{=10:pane_title}
-will include at most the first 10 characters of the pane title.
+a number and a colon.
+Positive numbers count from the start of the string and negative from the end,
+so
+.Ql #{=5:pane_title}
+will include at most the first 5 characters of the pane title, or
+.Ql #{=-5:pane_title}
+the last 5 characters.
 Prefixing a time variable with
 .Ql t:
 will convert it to a string, so if

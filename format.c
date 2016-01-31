@@ -684,7 +684,7 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	char		*copy, *copy0, *endptr, *ptr, *found, *new, *value;
 	char		*from = NULL, *to = NULL;
 	size_t		 valuelen, newlen, fromlen, tolen, used;
-	u_long		 limit = 0;
+	long		 limit = 0;
 	int		 modifiers = 0, brackets;
 
 	/* Make a copy of the key. */
@@ -696,8 +696,8 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	switch (copy[0]) {
 	case '=':
 		errno = 0;
-		limit = strtoul(copy + 1, &endptr, 10);
-		if (errno == ERANGE && limit == ULONG_MAX)
+		limit = strtol(copy + 1, &endptr, 10);
+		if (errno == ERANGE && (limit == LONG_MIN || limit == LONG_MAX))
 			break;
 		if (*endptr != ':')
 			break;
@@ -813,8 +813,12 @@ format_replace(struct format_tree *ft, const char *key, size_t keylen,
 	}
 
 	/* Truncate the value if needed. */
-	if (limit != 0) {
+	if (limit > 0) {
 		new = utf8_trimcstr(value, limit);
+		free(value);
+		value = new;
+	} else if (limit < 0) {
+		new = utf8_rtrimcstr(value, -limit);
 		free(value);
 		value = new;
 	}
