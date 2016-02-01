@@ -781,6 +781,17 @@ struct screen_sel {
 	struct grid_cell cell;
 };
 
+/* Screen highlights. */
+struct screen_hls {
+	u_int		 sx;
+	u_int		 ex;
+
+	u_int		 y;
+
+	struct grid_cell cell;
+	struct screen_hls *next;
+};
+
 /* Virtual screen. */
 struct screen {
 	char		*title;
@@ -801,6 +812,7 @@ struct screen {
 	bitstr_t	*tabs;
 
 	struct screen_sel sel;
+	struct screen_hls *hls;
 };
 
 /* Screen write context. */
@@ -2088,6 +2100,11 @@ void	 screen_set_selection(struct screen *,
 	     u_int, u_int, u_int, u_int, u_int, struct grid_cell *);
 void	 screen_clear_selection(struct screen *);
 int	 screen_check_selection(struct screen *, u_int, u_int);
+void	 screen_set_highlight(struct screen *,
+	     u_int, u_int, u_int, struct grid_cell *);
+void	 screen_clear_highlight(struct screen *);
+int	 screen_check_highlight(struct screen *, u_int, u_int,
+	     struct grid_cell **);
 void	 screen_reflow(struct screen *, u_int);
 
 /* window.c */

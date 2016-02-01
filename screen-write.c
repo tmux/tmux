@@ -907,7 +907,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
 	u_int		 	 width, xx, last;
-	struct grid_cell 	 tmp_gc;
+	struct grid_cell 	 tmp_gc, *cell = NULL;
 	int			 insert;
 
 	/* Ignore padding. */
@@ -998,6 +998,16 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		tmp_gc.flags &= ~(GRID_FLAG_FGRGB|GRID_FLAG_BGRGB);
 		tmp_gc.flags &= ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
 		tmp_gc.flags |= s->sel.cell.flags &
+		    (GRID_FLAG_FG256|GRID_FLAG_BG256);
+		ttyctx.cell = &tmp_gc;
+		tty_write(tty_cmd_cell, &ttyctx);
+	} else if (screen_check_highlight(s, s->cx - width, s->cy, &cell)) {
+		memcpy(&tmp_gc, cell, sizeof tmp_gc);
+		utf8_copy(&tmp_gc.data, &gc->data);
+		tmp_gc.attr = tmp_gc.attr & ~GRID_ATTR_CHARSET;
+		tmp_gc.attr |= gc->attr & GRID_ATTR_CHARSET;
+		tmp_gc.flags = gc->flags & ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
+		tmp_gc.flags |= cell->flags &
 		    (GRID_FLAG_FG256|GRID_FLAG_BG256);
 		ttyctx.cell = &tmp_gc;
 		tty_write(tty_cmd_cell, &ttyctx);

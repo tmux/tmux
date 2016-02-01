@@ -29,6 +29,8 @@ void	window_copy_free(struct window_pane *);
 void	window_copy_resize(struct window_pane *, u_int, u_int);
 void	window_copy_key(struct window_pane *, struct client *, struct session *,
 	    key_code, struct mouse_event *);
+void	window_copy_key_internal(struct window_pane *, struct client *,
+	    struct session *, key_code, struct mouse_event *);
 int	window_copy_key_input(struct window_pane *, key_code);
 int	window_copy_key_numeric_prefix(struct window_pane *, key_code);
 
@@ -53,6 +55,7 @@ int	window_copy_is_lowercase(const char *);
 void	window_copy_jump_to_searched_string(
 	    struct window_pane *, struct grid *, struct grid *, u_int, u_int,
 	    u_int, int, int, const int);
+void	window_copy_highlight_search(struct window_pane *);
 int	window_copy_coord_from_hist(
 	    struct window_pane *, const size_t, u_int *, u_int *);
 void	window_copy_clear_search_hist(struct window_pane *, u_int *, u_int *);
@@ -397,6 +400,17 @@ window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 void
 window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
     key_code key, struct mouse_event *m)
+{
+	window_copy_key_internal(wp, c, sess, key, m);
+
+	if (wp->mode != NULL) {
+		window_copy_highlight_search(wp);
+	}
+}
+
+void
+window_copy_key_internal(struct window_pane *wp, struct client *c,
+    struct session *sess, key_code key, struct mouse_event *m)
 {
 	const char			*word_separators;
 	struct window_copy_mode_data	*data = wp->modedata;
@@ -1159,6 +1173,67 @@ window_copy_jump_to_searched_string(struct window_pane *wp,
 			searchhist->found = 0;
 		}
 	}
+}
+
+void
+window_copy_highlight_search(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*s = data->backing, ss;
+	struct screen_write_ctx		 ctx;
+	struct grid			*gd = s->grid;
+	struct grid_cell		 gc;
+	struct options			*oo = wp->window->options;
+	const char			*searchstr = data->searchstr;
+	size_t				 searchlen;
+	u_int				 i, px, last, beginline, endline;
+	int				 found, cis, highlight;
+
+	highlight = options_get_number(
+		wp->window->options, "highlight-search");
+	if (!highlight) {
+		return;
+	}
+
+	screen_clear_highlight(&data->screen);
+
+	if ((searchstr != NULL) && (*searchstr != '\0')) {
+		searchlen = screen_write_strlen("%s", searchstr);
+
+		screen_init(&ss, searchlen, 1, 0);
+		screen_write_start(&ctx, NULL, &ss);
+		memcpy(&gc, &grid_default_cell, sizeof gc);
+		screen_write_nputs(&ctx, -1, &gc, "%s", searchstr);
+		screen_write_stop(&ctx);
+
+		cis = window_copy_is_lowercase(searchstr);
+
+		/* Set colours. */
+		style_apply(&gc, oo, "highlight-style");
+
+		beginline = screen_hsize(s) - data->oy;
+		endline = screen_hsize(s) - data->oy + screen_size_y(s) - 1;
+
+		for (i = beginline; i <= endline; ++i) {
+			last = 0;
+			do {
+				found = window_copy_search_lr(gd, ss.grid, &px,
+					i, last, gd->sx, cis);
+				if (found) {
+					screen_set_highlight(
+						&data->screen,
+						px,
+						px + searchlen - 1,
+						i - (screen_hsize(s)
+						     - data->oy),
+						&gc);
+					last += searchlen;
+				}
+			} while (found);
+		}
+	}
+
+	window_copy_redraw_screen(wp);
 }
 
 /* If it returns 0 then, according to search history, last time we searched
