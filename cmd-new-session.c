@@ -68,7 +68,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args		*args = self->args;
 	struct client		*c = cmdq->client;
-	struct session		*s, *attach_sess;
+	struct session		*s, *as;
 	struct session		*groupwith = cmdq->state.tflag.s;
 	struct window		*w;
 	struct environ		*env;
@@ -100,7 +100,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 			cmdq_error(cmdq, "bad session name: %s", newname);
 			return (CMD_RETURN_ERROR);
 		}
-		if ((attach_sess = session_find(newname)) != NULL) {
+		if ((as = session_find(newname)) != NULL) {
 			if (args_has(args, 'A')) {
 				/*
 				 * This cmdq is now destined for
@@ -108,7 +108,7 @@ cmd_new_session_exec(struct cmd *self, struct cmd_q *cmdq)
 				 * will have already been prepared, copy this
 				 * session into its tflag so it can be used.
 				 */
-				cmdq->state.tflag.s = attach_sess;
+				cmd_find_from_session(&cmdq->state.tflag, as);
 				return (cmd_attach_session(cmdq,
 				    args_has(args, 'D'), 0, NULL,
 				    args_has(args, 'E')));
