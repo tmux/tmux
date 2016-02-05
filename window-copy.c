@@ -1775,11 +1775,13 @@ void
 window_copy_cursor_left(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
+	u_int				 py;
 
-	if (data->cx == 0) {
+	py = screen_hsize(data->backing) + data->cy - data->oy;
+	if (data->cx == 0 && py > 0) {
 		window_copy_cursor_up(wp, 0);
 		window_copy_cursor_end_of_line(wp);
-	} else {
+	} else if (data->cx > 0) {
 		window_copy_update_cursor(wp, data->cx - 1, data->cy);
 		if (window_copy_update_selection(wp, 1))
 			window_copy_redraw_lines(wp, data->cy, 1);
@@ -1790,19 +1792,20 @@ void
 window_copy_cursor_right(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
-	u_int				 px, py;
+	u_int				 px, py, yy;
 
+	py = screen_hsize(data->backing) + data->cy - data->oy;
+	yy = screen_hsize(data->backing) + screen_size_y(data->backing) - 1;
 	if (data->screen.sel.flag && data->rectflag)
 		px = screen_size_x(&data->screen);
 	else {
-		py = screen_hsize(data->backing) + data->cy - data->oy;
 		px = window_copy_find_length(wp, py);
 	}
 
-	if (data->cx >= px) {
+	if (data->cx >= px && py < yy) {
 		window_copy_cursor_start_of_line(wp);
 		window_copy_cursor_down(wp, 0);
-	} else {
+	} else if (data->cx < px) {
 		window_copy_update_cursor(wp, data->cx + 1, data->cy);
 		if (window_copy_update_selection(wp, 1))
 			window_copy_redraw_lines(wp, data->cy, 1);
