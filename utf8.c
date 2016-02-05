@@ -723,6 +723,43 @@ utf8_trimcstr(const char *s, u_int width)
 	return (out);
 }
 
+/* Trim UTF-8 string to width. Caller frees. */
+char *
+utf8_rtrimcstr(const char *s, u_int width)
+{
+	struct utf8_data	*tmp, *next, *end;
+	char			*out;
+	u_int			 at;
+
+	tmp = utf8_fromcstr(s);
+
+	for (end = tmp; end->size != 0; end++)
+		/* nothing */;
+	if (end == tmp) {
+		free(tmp);
+		return (xstrdup(""));
+	}
+	next = end - 1;
+
+	at = 0;
+	for (;;)
+	{
+		if (at + next->width > width) {
+			next++;
+			break;
+		}
+		at += next->width;
+
+		if (next == tmp)
+			break;
+		next--;
+	}
+
+	out = utf8_tocstr(next);
+	free(tmp);
+	return (out);
+}
+
 /* Pad UTF-8 string to width. Caller frees. */
 char *
 utf8_padcstr(const char *s, u_int width)
