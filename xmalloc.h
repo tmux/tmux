@@ -19,6 +19,10 @@
 #ifndef XMALLOC_H
 #define XMALLOC_H
 
+#if !defined(__bounded__)
+# define __bounded__(x, y, z)
+#endif
+
 void	*xmalloc(size_t);
 void	*xcalloc(size_t, size_t);
 void	*xrealloc(void *, size_t);
