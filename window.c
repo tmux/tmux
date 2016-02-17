@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <fnmatch.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -915,6 +916,7 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 #ifdef HAVE_UTEMPTER
 	xsnprintf(s, sizeof s, "tmux(%lu).%%%u", (long) getpid(), wp->id);
 	utempter_add_record(wp->fd, s);
+	kill(getpid(), SIGCHLD);
 #endif
 
 	setblocking(wp->fd, 0);
