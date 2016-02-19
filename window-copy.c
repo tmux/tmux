@@ -2284,7 +2284,4 @@ window_copy_drag_release(__unused struct client *c, struct mouse_event *m)
 	wp = cmd_mouse_pane(m, NULL, NULL);
 	if (wp == NULL || wp->mode != &window_copy_mode)
 		return;
-
-	window_copy_copy_selection(wp, NULL);
-	window_pane_reset_mode(wp);
 }

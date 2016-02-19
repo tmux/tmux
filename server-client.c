@@ -382,8 +382,40 @@ server_client_check_mouse(struct client *c)
 		c->tty.mouse_drag_update = NULL;
 		c->tty.mouse_drag_release = NULL;
 
+		/* End out the mouse drag by passing a MouseUp key corresponding to the
+		   button that started the drag. */
+		switch (c->tty.mouse_drag_flag) {
+		case 1:
+			if (where == PANE)
+				key = KEYC_MOUSEUP1_PANE;
+			if (where == STATUS)
+				key = KEYC_MOUSEUP1_STATUS;
+			if (where == BORDER)
+				key = KEYC_MOUSEUP1_BORDER;
+			break;
+		case 2:
+			if (where == PANE)
+				key = KEYC_MOUSEUP2_PANE;
+			if (where == STATUS)
+				key = KEYC_MOUSEUP2_STATUS;
+			if (where == BORDER)
+				key = KEYC_MOUSEUP2_BORDER;
+			break;
+		case 3:
+			if (where == PANE)
+				key = KEYC_MOUSEUP3_PANE;
+			if (where == STATUS)
+				key = KEYC_MOUSEUP3_STATUS;
+			if (where == BORDER)
+				key = KEYC_MOUSEUP3_BORDER;
+			break;
+		default:
+			key = KEYC_MOUSE;
+		}
+
 		c->tty.mouse_drag_flag = 0;
-		return (KEYC_MOUSE); /* not a key, but still may want to pass */
+
+		return (key);
 	}
 
 	/* Convert to a key binding. */
@@ -423,7 +455,9 @@ server_client_check_mouse(struct client *c)
 			}
 		}
 
-		c->tty.mouse_drag_flag = 1;
+		/* Begin a drag by setting the flag to nonzero, where the value
+		   corresponds to the mouse button doing the dragging. */
+		c->tty.mouse_drag_flag = MOUSE_BUTTONS(b) + 1;
 		break;
 	case WHEEL:
 		if (MOUSE_BUTTONS(b) == MOUSE_WHEEL_UP) {
