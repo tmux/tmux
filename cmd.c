@@ -481,7 +481,6 @@ cmd_prepare_state_flag(char c, const char *target, enum cmd_entry_flag flag,
 		    CMD_FIND_SESSION, CMD_FIND_QUIET);
 		if (error == 0)
 			break;
-		flag = CMD_WINDOW_INDEX;
 		/* FALLTHROUGH */
 	case CMD_WINDOW:
 	case CMD_WINDOW_CANFAIL:

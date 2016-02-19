@@ -68,7 +68,6 @@ cmd_resize_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 		return (CMD_RETURN_NORMAL);
 	}
 
-	w = wl->window;
 	if (args_has(args, 'Z')) {
 		if (w->flags & WINDOW_ZOOMED)
 			window_unzoom(w);
