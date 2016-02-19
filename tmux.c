@@ -32,10 +32,6 @@
 
 #include "tmux.h"
 
-#if defined(DEBUG) && defined(__OpenBSD__)
-extern char	*malloc_options;
-#endif
-
 struct options	*global_options;	/* server options */
 struct options	*global_s_options;	/* session options */
 struct options	*global_w_options;	/* window options */
@@ -193,10 +189,6 @@ main(int argc, char **argv)
 	char		*path, *label, **var, tmp[PATH_MAX], *shellcmd = NULL;
 	const char	*s;
 	int		 opt, flags, keys;
-
-#if defined(DEBUG) && defined(__OpenBSD__)
-	malloc_options = (char *) "AFGJPX";
-#endif
 
 	setlocale(LC_TIME, "");
 	tzset();
