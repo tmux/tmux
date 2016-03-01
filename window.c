@@ -1085,6 +1085,8 @@ window_pane_set_mode(struct window_pane *wp, const struct window_mode *mode)
 	if ((s = wp->mode->init(wp)) != NULL)
 		wp->screen = s;
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
+
+	server_status_window(wp->window);
 	return (0);
 }
 
@@ -1099,6 +1101,8 @@ window_pane_reset_mode(struct window_pane *wp)
 
 	wp->screen = &wp->base;
 	wp->flags |= (PANE_REDRAW|PANE_CHANGED);
+
+	server_status_window(wp->window);
 }
 
 void
