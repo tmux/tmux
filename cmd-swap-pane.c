@@ -45,28 +45,23 @@ const struct cmd_entry cmd_swap_pane_entry = {
 enum cmd_retval
 cmd_swap_pane_exec(struct cmd *self, struct cmd_q *cmdq)
 {
-	struct winlink          *src_wl, *dst_wl;
 	struct window		*src_w, *dst_w;
 	struct window_pane	*tmp_wp, *src_wp, *dst_wp;
 	struct layout_cell	*src_lc, *dst_lc;
 	u_int			 sx, sy, xoff, yoff;
 
-	dst_wl = cmdq->state.tflag.wl;
-	dst_w = dst_wl->window;
+	dst_w = cmdq->state.tflag.wl->window;
 	dst_wp = cmdq->state.tflag.wp;
-	src_wl = cmdq->state.sflag.wl;
-	src_w = src_wl->window;
+	src_w = cmdq->state.sflag.wl->window;
 	src_wp = cmdq->state.sflag.wp;
 	server_unzoom_window(dst_w);
 
 	if (args_has(self->args, 'D')) {
-		src_wl = dst_wl;
 		src_w = dst_w;
 		src_wp = TAILQ_NEXT(dst_wp, entry);
 		if (src_wp == NULL)
 			src_wp = TAILQ_FIRST(&dst_w->panes);
 	} else if (args_has(self->args, 'U')) {
-		src_wl = dst_wl;
 		src_w = dst_w;
 		src_wp = TAILQ_PREV(dst_wp, window_panes, entry);
 		if (src_wp == NULL)

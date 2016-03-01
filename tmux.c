@@ -188,7 +188,6 @@ main(int argc, char **argv)
 	const char	*s;
 	int		 opt, flags, keys;
 
-
 	setlocale(LC_CTYPE, "en_US.UTF-8");
 	setlocale(LC_TIME, "");
 
