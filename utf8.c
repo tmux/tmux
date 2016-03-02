@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <wchar.h>
 
 #include "tmux.h"
 
