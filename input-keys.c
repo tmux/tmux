@@ -263,6 +263,8 @@ input_key_mouse(struct window_pane *wp, struct mouse_event *m)
 		len = xsnprintf(buf, sizeof buf, "\033[<%u;%u;%u%c",
 		    m->sgr_b, x + 1, y + 1, m->sgr_type);
 	} else if (wp->screen->mode & MODE_MOUSE_UTF8) {
+		if (m->b > 0x7ff - 32 || x > 0x7ff - 33 || y > 0x7ff - 33)
+			return;
 		len = xsnprintf(buf, sizeof buf, "\033[M");
 		len += input_split2(m->b + 32, &buf[len]);
 		len += input_split2(x + 33, &buf[len]);
