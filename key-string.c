@@ -149,6 +149,7 @@ key_string_lookup_string(const char *string)
 	struct utf8_data	 ud;
 	u_int			 i;
 	enum utf8_state		 more;
+	wchar_t			 wc;
 
 	/* Is this no key? */
 	if (strcasecmp(string, "None") == 0)
@@ -185,8 +186,9 @@ key_string_lookup_string(const char *string)
 				more = utf8_append(&ud, (u_char)string[i]);
 			if (more != UTF8_DONE)
 				return (KEYC_UNKNOWN);
-			key = utf8_combine(&ud);
-			return (key | modifiers);
+			if (utf8_combine(&ud, &wc) != UTF8_DONE)
+				return (KEYC_UNKNOWN);
+			return (wc | modifiers);
 		}
 
 		/* Otherwise look the key up in the table. */

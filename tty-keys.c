@@ -477,6 +477,7 @@ tty_keys_next(struct tty *tty)
 	struct utf8_data	 ud;
 	enum utf8_state		 more;
 	u_int			 i;
+	wchar_t			 wc;
 
 	/* Get key buffer. */
 	buf = EVBUFFER_DATA(tty->event->input);
@@ -552,7 +553,11 @@ first_key:
 			more = utf8_append(&ud, (u_char)buf[i]);
 		if (more != UTF8_DONE)
 			goto discard_key;
-		key = utf8_combine(&ud);
+
+		if (utf8_combine(&ud, &wc) != UTF8_DONE)
+			goto discard_key;
+		key = wc;
+
 		log_debug("UTF-8 key %.*s %#llx", (int)size, buf, key);
 		goto complete_key;
 	}

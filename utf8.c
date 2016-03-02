@@ -25,6 +25,8 @@
 
 #include "tmux.h"
 
+static int	utf8_width(wchar_t);
+
 /* Set a single character. */
 void
 utf8_set(struct utf8_data *ud, u_char ch)
@@ -80,6 +82,9 @@ utf8_open(struct utf8_data *ud, u_char ch)
 enum utf8_state
 utf8_append(struct utf8_data *ud, u_char ch)
 {
+	wchar_t	wc;
+	int	width;
+
 	if (ud->have >= ud->size)
 		fatalx("UTF-8 character overflow");
 	if (ud->size > sizeof ud->data)
@@ -94,39 +99,49 @@ utf8_append(struct utf8_data *ud, u_char ch)
 
 	if (ud->width == 0xff)
 		return (UTF8_ERROR);
-	ud->width = utf8_width(utf8_combine(ud));
+
+	if (utf8_combine(ud, &wc) != UTF8_DONE)
+		return (UTF8_ERROR);
+	if ((width = utf8_width(wc)) < 0)
+		return (UTF8_ERROR);
+	ud->width = width;
+
 	return (UTF8_DONE);
 }
 
 /* Get width of Unicode character. */
-u_int
+static int
 utf8_width(wchar_t wc)
 {
-	int width;
+	int	width;
 
 	width = wcwidth(wc);
-	if (width < 0)
-		return (0);
+	if (width < 0 || width > 0xff)
+		return (-1);
 	return (width);
 }
 
 /* Combine UTF-8 into Unicode. */
-wchar_t
-utf8_combine(const struct utf8_data *ud)
+enum utf8_state
+utf8_combine(const struct utf8_data *ud, wchar_t *wc)
 {
-	wchar_t wc;
-
-	if (mbtowc(&wc, ud->data, ud->size) <= 0)
-		return (0xfffd);
-	return (wc);
+	switch (mbtowc(wc, ud->data, ud->size)) {
+	case -1:
+		mbtowc(NULL, NULL, MB_CUR_MAX);
+		return (UTF8_ERROR);
+	case 0:
+		return (UTF8_ERROR);
+	default:
+		return (UTF8_DONE);
+	}
 }
 
 /* Split Unicode into UTF-8. */
 enum utf8_state
 utf8_split(wchar_t wc, struct utf8_data *ud)
 {
-	char s[MB_CUR_MAX];
-	int  slen;
+	char	s[MB_LEN_MAX];
+	int	slen;
 
 	slen = wctomb(s, wc);
 	if (slen <= 0 || slen > (int)sizeof ud->data)
