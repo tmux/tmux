@@ -721,7 +721,7 @@ will set the session working directory (used for new windows) to
 .Pp
 If
 .Fl E
-is used,
+is used, the
 .Ic update-environment
 option will not be applied.
 .It Xo Ic detach-client
@@ -857,13 +857,12 @@ with
 .Ar target-session .
 This means they share the same set of windows - all windows from
 .Ar target-session
-are linked to the new session and any subsequent new windows or windows being
-closed are applied to both sessions.
+are linked to the new session, any new windows are linked to both sessions and
+any windows closed removed from both sessions.
 The current and previous window and any session options remain independent and
 either session may be killed without affecting the other.
-Giving
 .Fl n
-or
+and
 .Ar shell-command
 are invalid if
 .Fl t
@@ -879,7 +878,7 @@ but a different format may be specified with
 .Pp
 If
 .Fl E
-is used,
+is used, the
 .Ic update-environment
 option will not be applied.
 .It Xo Ic refresh-client
@@ -1254,7 +1253,7 @@ Commands related to windows and panes are as follows:
 .Op Fl dP
 .Op Fl F Ar format
 .Op Fl s Ar src-pane
-.Op Fl t Ar dst-pane
+.Op Fl t Ar dst-window
 .Xc
 .D1 (alias: Ic breakp )
 Break

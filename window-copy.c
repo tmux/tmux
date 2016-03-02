@@ -2248,7 +2248,7 @@ window_copy_start_drag(struct client *c, struct mouse_event *m)
 		return;
 
 	c->tty.mouse_drag_update = window_copy_drag_update;
-	c->tty.mouse_drag_release = window_copy_drag_release;
+	c->tty.mouse_drag_release = NULL; /* will fire MouseUp key */
 
 	window_copy_update_cursor(wp, x, y);
 	window_copy_start_selection(wp);
@@ -2274,17 +2274,4 @@ window_copy_drag_update(__unused struct client *c, struct mouse_event *m)
 	window_copy_update_cursor(wp, x, y);
 	if (window_copy_update_selection(wp, 1))
 		window_copy_redraw_selection(wp, old_cy);
-}
-
-void
-window_copy_drag_release(__unused struct client *c, struct mouse_event *m)
-{
-	struct window_pane	*wp;
-
-	wp = cmd_mouse_pane(m, NULL, NULL);
-	if (wp == NULL || wp->mode != &window_copy_mode)
-		return;
-
-	window_copy_copy_selection(wp, NULL);
-	window_pane_reset_mode(wp);
 }

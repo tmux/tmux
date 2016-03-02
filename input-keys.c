@@ -134,6 +134,19 @@ const struct input_key_ent input_keys[] = {
 	{ KEYC_KP_PERIOD,	".",		0 },
 };
 
+/* Split a character into two UTF-8 bytes. */
+static size_t
+input_split2(u_int c, u_char *dst)
+{
+	if (c > 0x7f) {
+		dst[0] = (c >> 6) | 0xc0;
+		dst[1] = (c & 0x3f) | 0x80;
+		return (2);
+	}
+	dst[0] = c;
+	return (1);
+}
+
 /* Translate a key code into an output key sequence. */
 void
 input_key(struct window_pane *wp, key_code key, struct mouse_event *m)
@@ -249,10 +262,12 @@ input_key_mouse(struct window_pane *wp, struct mouse_event *m)
 		len = xsnprintf(buf, sizeof buf, "\033[<%u;%u;%u%c",
 		    m->sgr_b, x + 1, y + 1, m->sgr_type);
 	} else if (wp->screen->mode & MODE_MOUSE_UTF8) {
+		if (m->b > 0x7ff - 32 || x > 0x7ff - 33 || y > 0x7ff - 33)
+			return;
 		len = xsnprintf(buf, sizeof buf, "\033[M");
-		len += utf8_split2(m->b + 32, &buf[len]);
-		len += utf8_split2(x + 33, &buf[len]);
-		len += utf8_split2(y + 33, &buf[len]);
+		len += input_split2(m->b + 32, &buf[len]);
+		len += input_split2(x + 33, &buf[len]);
+		len += input_split2(y + 33, &buf[len]);
 	} else {
 		if (m->b > 223)
 			return;

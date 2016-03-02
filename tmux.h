@@ -29,6 +29,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <termios.h>
+#include <wchar.h>
 
 #ifdef HAVE_UTEMPTER
 #include <utempter.h>
@@ -2313,14 +2314,12 @@ void		 session_group_synchronize1(struct session *, struct session *);
 void		 session_renumber_windows(struct session *);
 
 /* utf8.c */
-u_int		 utf8_width(u_int);
 void		 utf8_set(struct utf8_data *, u_char);
 void		 utf8_copy(struct utf8_data *, const struct utf8_data *);
 enum utf8_state	 utf8_open(struct utf8_data *, u_char);
 enum utf8_state	 utf8_append(struct utf8_data *, u_char);
-u_int		 utf8_combine(const struct utf8_data *);
-enum utf8_state	 utf8_split(u_int, struct utf8_data *);
-u_int		 utf8_split2(u_int, u_char *);
+enum utf8_state	 utf8_combine(const struct utf8_data *, wchar_t *);
+enum utf8_state	 utf8_split(wchar_t, struct utf8_data *);
 int		 utf8_strvis(char *, const char *, size_t, int);
 char		*utf8_sanitize(const char *);
 struct utf8_data *utf8_fromcstr(const char *);
