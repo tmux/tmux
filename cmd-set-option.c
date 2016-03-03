@@ -100,7 +100,7 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct client				*c;
 	const struct options_table_entry	*oe;
 	struct options				*oo;
-	const char				*optstr, *valstr;
+	const char				*optstr, *valstr, *target;
 
 	/* Get the option name and value. */
 	optstr = args->argv[0];
@@ -140,29 +140,29 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 	else if (oe->scope == OPTIONS_TABLE_WINDOW) {
 		if (args_has(self->args, 'g'))
 			oo = global_w_options;
-		else {
-			if (wl == NULL) {
-				cmdq_error(cmdq,
-				    "couldn't set '%s'%s", optstr,
-				    (!args_has(args, 't') && !args_has(args,
-				    'g')) ? " need target window or -g" : "");
-				return (CMD_RETURN_ERROR);
-			}
+		else if (wl == NULL) {
+			target = args_get(args, 't');
+			if (target != NULL) {
+				cmdq_error(cmdq, "no such window: %s",
+				    target);
+			} else
+				cmdq_error(cmdq, "no current window");
+			return (CMD_RETURN_ERROR);
+		} else
 			oo = wl->window->options;
-		}
 	} else if (oe->scope == OPTIONS_TABLE_SESSION) {
 		if (args_has(self->args, 'g'))
 			oo = global_s_options;
-		else {
-			if (s == NULL) {
-				cmdq_error(cmdq,
-				    "couldn't set '%s'%s", optstr,
-				    (!args_has(args, 't') && !args_has(args,
-				    'g')) ? " need target session or -g" : "");
-				return (CMD_RETURN_ERROR);
-			}
+		else if (s == NULL) {
+			target = args_get(args, 't');
+			if (target != NULL) {
+				cmdq_error(cmdq, "no such session: %s",
+				    target);
+			} else
+				cmdq_error(cmdq, "no current session");
+			return (CMD_RETURN_ERROR);
+		} else
 			oo = s->options;
-		}
 	} else {
 		cmdq_error(cmdq, "unknown table");
 		return (CMD_RETURN_ERROR);
