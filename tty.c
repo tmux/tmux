@@ -1569,6 +1569,8 @@ tty_check_fg(struct tty *tty, struct grid_cell *gc)
 			gc->flags |= GRID_FLAG_FG256;
 			gc->fg = colour_find_rgb(rgb->r, rgb->g, rgb->b);
 		}
+		else
+			return;
 	}
 	colours = tty_term_number(tty->term, TTYC_COLORS);
 
@@ -1612,6 +1614,8 @@ tty_check_bg(struct tty *tty, struct grid_cell *gc)
 			gc->flags |= GRID_FLAG_BG256;
 			gc->bg = colour_find_rgb(rgb->r, rgb->g, rgb->b);
 		}
+		else
+			return;
 	}
 	colours = tty_term_number(tty->term, TTYC_COLORS);
 
