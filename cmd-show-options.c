@@ -63,12 +63,13 @@ const struct cmd_entry cmd_show_window_options_entry = {
 enum cmd_retval
 cmd_show_options_exec(struct cmd *self, struct cmd_q *cmdq)
 {
-	struct args				*args = self->args;
-	struct session				*s = cmdq->state.tflag.s;
-	struct winlink				*wl = cmdq->state.tflag.wl;
-	struct options				*oo;
-	enum options_table_scope		 scope;
-	int					 quiet;
+	struct args			*args = self->args;
+	struct session			*s = cmdq->state.tflag.s;
+	struct winlink			*wl = cmdq->state.tflag.wl;
+	struct options			*oo;
+	enum options_table_scope	 scope;
+	int				 quiet;
+	const char			*target;
 
 	if (args_has(self->args, 's')) {
 		oo = global_options;
@@ -78,13 +79,27 @@ cmd_show_options_exec(struct cmd *self, struct cmd_q *cmdq)
 		scope = OPTIONS_TABLE_WINDOW;
 		if (args_has(self->args, 'g'))
 			oo = global_w_options;
-		else
+		else if (wl == NULL) {
+			target = args_get(args, 't');
+			if (target != NULL) {
+				cmdq_error(cmdq, "no such window: %s", target);
+			} else
+				cmdq_error(cmdq, "no current window");
+			return (CMD_RETURN_ERROR);
+		} else
 			oo = wl->window->options;
 	} else {
 		scope = OPTIONS_TABLE_SESSION;
 		if (args_has(self->args, 'g'))
 			oo = global_s_options;
-		else
+		else if (s == NULL) {
+			target = args_get(args, 't');
+			if (target != NULL) {
+				cmdq_error(cmdq, "no such session: %s", target);
+			} else
+				cmdq_error(cmdq, "no current session");
+			return (CMD_RETURN_ERROR);
+		} else
 			oo = s->options;
 	}
 

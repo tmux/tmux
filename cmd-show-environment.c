@@ -93,11 +93,28 @@ cmd_show_environment_exec(struct cmd *self, struct cmd_q *cmdq)
 	struct args		*args = self->args;
 	struct environ		*env;
 	struct environ_entry	*envent;
+	const char		*target;
 
-	if (args_has(self->args, 'g') || cmdq->state.tflag.s == NULL)
+	if ((target = args_get(args, 't')) != NULL) {
+		if (cmdq->state.tflag.s == NULL) {
+			cmdq_error(cmdq, "no such session: %s", target);
+			return (CMD_RETURN_ERROR);
+		}
+	}
+
+	if (args_has(self->args, 'g'))
 		env = global_environ;
-	else
+	else {
+		if (cmdq->state.tflag.s == NULL) {
+			target = args_get(args, 't');
+			if (target != NULL)
+				cmdq_error(cmdq, "no such session: %s", target);
+			else
+				cmdq_error(cmdq, "no current session");
+			return (CMD_RETURN_ERROR);
+		}
 		env = cmdq->state.tflag.s->environ;
+	}
 
 	if (args->argc != 0) {
 		envent = environ_find(env, args->argv[0]);
