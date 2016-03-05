@@ -190,9 +190,12 @@ main(int argc, char **argv)
 	const char	*s;
 	int		 opt, flags, keys;
 
-	setlocale(LC_CTYPE, "en_US.UTF-8");
-	setlocale(LC_TIME, "");
+	if (setlocale(LC_CTYPE, "en_US.UTF-8") == NULL)
+		setlocale(LC_CTYPE, "");
+	if (wcwidth(0xfffd) != 1)
+		errx(1, "no UTF-8 locale; please set LC_CTYPE");
 
+	setlocale(LC_TIME, "");
 	tzset();
 
 	if (**argv == '-')
