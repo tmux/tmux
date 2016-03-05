@@ -23,6 +23,8 @@
 #include <errno.h>
 #include <event.h>
 #include <fcntl.h>
+#include <getopt.h>
+#include <langinfo.h>
 #include <locale.h>
 #include <pwd.h>
 #include <stdlib.h>
@@ -190,10 +192,14 @@ main(int argc, char **argv)
 	const char	*s;
 	int		 opt, flags, keys;
 
-	if (setlocale(LC_CTYPE, "en_US.UTF-8") == NULL)
-		setlocale(LC_CTYPE, "");
-	if (wcwidth(0xfffd) != 1)
-		errx(1, "no UTF-8 locale; please set LC_CTYPE");
+	if (setlocale(LC_CTYPE, "en_US.UTF-8") == NULL) {
+		if (setlocale(LC_CTYPE, "") == NULL)
+			errx(1, "invalid LC_ALL, LC_CTYPE or LANG");
+		s = nl_langinfo(CODESET);
+		if (strcasecmp(s, "UTF-8") != 0 &&
+		    strcasecmp(s, "UTF8") != 0)
+			errx(1, "need UTF-8 locale (LC_CTYPE) but have %s", s);
+	}
 
 	setlocale(LC_TIME, "");
 	tzset();
