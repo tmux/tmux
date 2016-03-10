@@ -58,7 +58,8 @@ void	window_copy_copy_buffer(struct window_pane *, const char *, void *,
 	    size_t);
 void	window_copy_copy_pipe(struct window_pane *, struct session *,
 	    const char *, const char *);
-void	window_copy_copy_selection(struct window_pane *, const char *);
+void	window_copy_copy_selection(struct window_pane *, struct session *,
+	    const char *);
 void	window_copy_append_selection(struct window_pane *, const char *);
 void	window_copy_clear_selection(struct window_pane *);
 void	window_copy_copy_line(struct window_pane *, char **, size_t *, u_int,
@@ -581,7 +582,7 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 		if (sess != NULL &&
 		    (cmd == MODEKEYCOPY_COPYLINE ||
 		    cmd == MODEKEYCOPY_COPYENDOFLINE)) {
-			window_copy_copy_selection(wp, NULL);
+			window_copy_copy_selection(wp, sess, NULL);
 			window_pane_reset_mode(wp);
 			return;
 		}
@@ -599,7 +600,7 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 		break;
 	case MODEKEYCOPY_COPYSELECTION:
 		if (sess != NULL) {
-			window_copy_copy_selection(wp, NULL);
+			window_copy_copy_selection(wp, sess, NULL);
 			if (arg == NULL) {
 				window_pane_reset_mode(wp);
 				return;
@@ -861,7 +862,7 @@ window_copy_key_input(struct window_pane *wp, key_code key)
 			data->searchstr = xstrdup(data->inputstr);
 			break;
 		case WINDOW_COPY_NAMEDBUFFER:
-			window_copy_copy_selection(wp, data->inputstr);
+			window_copy_copy_selection(wp, NULL, data->inputstr);
 			*data->inputstr = '\0';
 			if (data->inputexit) {
 				window_pane_reset_mode(wp);
@@ -1494,14 +1495,21 @@ window_copy_copy_pipe(struct window_pane *wp, struct session *sess,
 }
 
 void
-window_copy_copy_selection(struct window_pane *wp, const char *bufname)
+window_copy_copy_selection(struct window_pane *wp, struct session *sess,
+    const char *bufname)
 {
-	void	*buf;
-	size_t	 len;
+	void		*buf;
+	size_t		 len;
+	const char	*clipboard_cmd;
 
 	buf = window_copy_get_selection(wp, &len);
 	if (buf == NULL)
 		return;
+
+	clipboard_cmd = options_get_string(global_options, "set-clipboard-cmd");
+	if (*clipboard_cmd != '\0') {
+		window_copy_copy_pipe(wp, sess, bufname, clipboard_cmd);
+	}
 
 	window_copy_copy_buffer(wp, bufname, buf, len);
 }
