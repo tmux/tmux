@@ -782,7 +782,8 @@ window_pane_destroy(struct window_pane *wp)
 
 	if (wp->fd != -1) {
 #ifdef HAVE_UTEMPTER
-		utempter_remove_record(wp->fd);
+		if (!options_get_number(wp->window->options, "utmp-inhibit"))
+				utempter_remove_record(wp->fd);
 #endif
 		bufferevent_free(wp->event);
 		close(wp->fd);
@@ -914,9 +915,11 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 	}
 
 #ifdef HAVE_UTEMPTER
-	xsnprintf(s, sizeof s, "tmux(%lu).%%%u", (long) getpid(), wp->id);
-	utempter_add_record(wp->fd, s);
-	kill(getpid(), SIGCHLD);
+	if (!options_get_number(wp->window->options, "utmp-inhibit")) {
+		xsnprintf(s, sizeof s, "tmux(%lu).%%%u", (long) getpid(), wp->id);
+		utempter_add_record(wp->fd, s);
+		kill(getpid(), SIGCHLD);
+	}
 #endif
 
 	setblocking(wp->fd, 0);
