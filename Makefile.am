@@ -54,7 +54,7 @@ if IS_SUNCC
 CFLAGS += -erroff=E_EMPTY_DECLARATION
 endif
 
-# Set _LINUX_SOURCE_COMPAT for AIX for mallocing 0 bytes
+# Set _LINUX_SOURCE_COMPAT for AIX for malloc(0).
 if IS_AIX
 DEFS += -D_LINUX_SOURCE_COMPAT=1
 endif
