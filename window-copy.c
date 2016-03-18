@@ -26,6 +26,7 @@
 
 struct screen *window_copy_init(struct window_pane *);
 void	window_copy_free(struct window_pane *);
+void	window_copy_pagedown(struct window_pane *);
 void	window_copy_resize(struct window_pane *, u_int, u_int);
 void	window_copy_key(struct window_pane *, struct client *, struct session *,
 	    key_code, struct mouse_event *);
@@ -324,15 +325,80 @@ window_copy_pageup(struct window_pane *wp)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	u_int				 n;
+	u_int				 n, ox, oy;
+
+	oy = screen_hsize(data->backing) + data->cy - data->oy;
+	ox = window_copy_find_length(wp, oy);
+
+	if (s->sel.lineflag == LINE_SEL_LEFT_RIGHT && oy == data->sely)
+		window_copy_other_end(wp);
+
+	if (data->cx != ox) {
+		data->lastcx = data->cx;
+		data->lastsx = ox;
+	}
+	data->cx = data->lastcx;
 
 	n = 1;
 	if (screen_size_y(s) > 2)
 		n = screen_size_y(s) - 2;
+
 	if (data->oy + n > screen_hsize(data->backing))
 		data->oy = screen_hsize(data->backing);
 	else
 		data->oy += n;
+
+	if (!data->screen.sel.flag || !data->rectflag) {
+		u_int py = screen_hsize(data->backing) + data->cy - data->oy;
+		u_int px = window_copy_find_length(wp, py);
+		if ((data->cx >= data->lastsx && data->cx != px) || data->cx > px)
+			window_copy_cursor_end_of_line(wp);
+	}
+
+	window_copy_update_selection(wp, 1);
+	window_copy_redraw_screen(wp);
+}
+
+void
+window_copy_pagedown(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*s = &data->screen;
+	u_int				 n, ox, oy;
+
+	oy = screen_hsize(data->backing) + data->cy - data->oy;
+	ox = window_copy_find_length(wp, oy);
+
+	if (s->sel.lineflag == LINE_SEL_RIGHT_LEFT && oy == data->sely)
+		window_copy_other_end(wp);
+
+	if (data->cx != ox) {
+		data->lastcx = data->cx;
+		data->lastsx = ox;
+	}
+	data->cx = data->lastcx;
+
+	n = 1;
+	if (screen_size_y(s) > 2)
+		n = screen_size_y(s) - 2;
+
+	if (data->oy < n)
+		data->oy = 0;
+	else
+		data->oy -= n;
+
+	if (!data->screen.sel.flag || !data->rectflag) {
+		u_int py = screen_hsize(data->backing) + data->cy - data->oy;
+		u_int px = window_copy_find_length(wp, py);
+		if ((data->cx >= data->lastsx && data->cx != px) || data->cx > px)
+			window_copy_cursor_end_of_line(wp);
+	}
+
+	if (data->scroll_exit && data->oy == 0) {
+		window_pane_reset_mode(wp);
+		return;
+	}
+
 	window_copy_update_selection(wp, 1);
 	window_copy_redraw_screen(wp);
 }
@@ -479,21 +545,8 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 			window_copy_pageup(wp);
 		break;
 	case MODEKEYCOPY_NEXTPAGE:
-		n = 1;
-		if (screen_size_y(s) > 2)
-			n = screen_size_y(s) - 2;
-		for (; np != 0; np--) {
-			if (data->oy < n)
-				data->oy = 0;
-			else
-				data->oy -= n;
-		}
-		if (data->scroll_exit && data->oy == 0) {
-			window_pane_reset_mode(wp);
-			return;
-		}
-		window_copy_update_selection(wp, 1);
-		window_copy_redraw_screen(wp);
+		for (; np != 0; np--)
+			window_copy_pagedown(wp);
 		break;
 	case MODEKEYCOPY_HALFPAGEUP:
 		n = screen_size_y(s) / 2;
