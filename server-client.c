@@ -383,33 +383,33 @@ server_client_check_mouse(struct client *c)
 		c->tty.mouse_drag_release = NULL;
 
 		/*
-		 * End a mouse drag by passing a MouseUp key corresponding to
-		 * the button that started the drag.
+		 * End a mouse drag by passing a MouseDragEnd key corresponding
+		 * to the button that started the drag.
 		 */
 		switch (c->tty.mouse_drag_flag) {
 		case 1:
 			if (where == PANE)
-				key = KEYC_MOUSEUP1_PANE;
+				key = KEYC_MOUSEDRAGEND1_PANE;
 			if (where == STATUS)
-				key = KEYC_MOUSEUP1_STATUS;
+				key = KEYC_MOUSEDRAGEND1_STATUS;
 			if (where == BORDER)
-				key = KEYC_MOUSEUP1_BORDER;
+				key = KEYC_MOUSEDRAGEND1_BORDER;
 			break;
 		case 2:
 			if (where == PANE)
-				key = KEYC_MOUSEUP2_PANE;
+				key = KEYC_MOUSEDRAGEND2_PANE;
 			if (where == STATUS)
-				key = KEYC_MOUSEUP2_STATUS;
+				key = KEYC_MOUSEDRAGEND2_STATUS;
 			if (where == BORDER)
-				key = KEYC_MOUSEUP2_BORDER;
+				key = KEYC_MOUSEDRAGEND2_BORDER;
 			break;
 		case 3:
 			if (where == PANE)
-				key = KEYC_MOUSEUP3_PANE;
+				key = KEYC_MOUSEDRAGEND3_PANE;
 			if (where == STATUS)
-				key = KEYC_MOUSEUP3_STATUS;
+				key = KEYC_MOUSEDRAGEND3_STATUS;
 			if (where == BORDER)
-				key = KEYC_MOUSEUP3_BORDER;
+				key = KEYC_MOUSEDRAGEND3_BORDER;
 			break;
 		default:
 			key = KEYC_MOUSE;
