@@ -167,10 +167,17 @@ if test "x$found_curses" = xno; then
 fi
 
 # Look for utempter.
-AC_CHECK_HEADER(utempter.h, have_utempter=yes, have_utempter=no)
-if test "x$have_utempter" = xyes; then
-	AC_DEFINE(HAVE_UTEMPTER)
-	LIBS="$LIBS -lutempter"
+AC_CHECK_HEADER(utempter.h, found_utempter=yes, found_utempter=no)
+if test "x$found_utempter" = xyes; then
+	AC_SEARCH_LIBS(
+		utempter_add_record,
+		utempter,
+		found_utempter=yes,
+		found_utempter=no
+	)
+	if test "x$found_utempter" = xyes; then
+		AC_DEFINE(HAVE_UTEMPTER)
+	fi
 fi
 
 # Check for b64_ntop.
