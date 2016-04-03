@@ -123,7 +123,7 @@ server_create_socket(void)
 		return (-1);
 	umask(mask);
 
-	if (listen(fd, 16) == -1)
+	if (listen(fd, 128) == -1)
 		return (-1);
 	setblocking(fd, 0);
 
