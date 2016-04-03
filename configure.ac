@@ -167,16 +167,24 @@ if test "x$found_curses" = xno; then
 fi
 
 # Look for utempter.
-AC_CHECK_HEADER(utempter.h, found_utempter=yes, found_utempter=no)
+AC_ARG_ENABLE(
+	utempter,
+	AC_HELP_STRING(--enable-utempter, use utempter if it is installed),
+	found_utempter=$enable_utempter,
+	found_utempter=yes
+)
 if test "x$found_utempter" = xyes; then
-	AC_SEARCH_LIBS(
-		utempter_add_record,
-		utempter,
-		found_utempter=yes,
-		found_utempter=no
-	)
+	AC_CHECK_HEADER(utempter.h, found_utempter=yes, found_utempter=no)
 	if test "x$found_utempter" = xyes; then
-		AC_DEFINE(HAVE_UTEMPTER)
+		AC_SEARCH_LIBS(
+			utempter_add_record,
+			utempter,
+			found_utempter=yes,
+			found_utempter=no
+		)
+		if test "x$found_utempter" = xyes; then
+			AC_DEFINE(HAVE_UTEMPTER)
+		fi
 	fi
 fi
 
