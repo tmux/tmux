@@ -5,7 +5,7 @@
  * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland
  *                    All rights reserved
  * Versions of malloc and friends that check their results, and never return
- * failure (they call fatal if they encounter an error).
+ * failure (they call fatalx if they encounter an error).
  *
  * As far as I am concerned, the code I have written for this software
  * can be used freely for any purpose.  Any derived versions of this
@@ -29,10 +29,10 @@ xmalloc(size_t size)
 	void *ptr;
 
 	if (size == 0)
-		fatal("xmalloc: zero size");
+		fatalx("xmalloc: zero size");
 	ptr = malloc(size);
 	if (ptr == NULL)
-		fatal("xmalloc: allocating %zu bytes: %s",
+		fatalx("xmalloc: allocating %zu bytes: %s",
 		    size, strerror(errno));
 	return ptr;
 }
@@ -43,10 +43,10 @@ xcalloc(size_t nmemb, size_t size)
 	void *ptr;
 
 	if (size == 0 || nmemb == 0)
-		fatal("xcalloc: zero size");
+		fatalx("xcalloc: zero size");
 	ptr = calloc(nmemb, size);
 	if (ptr == NULL)
-		fatal("xcalloc: allocating %zu * %zu bytes: %s",
+		fatalx("xcalloc: allocating %zu * %zu bytes: %s",
 		    nmemb, size, strerror(errno));
 	return ptr;
 }
@@ -63,10 +63,10 @@ xreallocarray(void *ptr, size_t nmemb, size_t size)
 	void *new_ptr;
 
 	if (nmemb == 0 || size == 0)
-		fatal("xreallocarray: zero size");
+		fatalx("xreallocarray: zero size");
 	new_ptr = reallocarray(ptr, nmemb, size);
 	if (new_ptr == NULL)
-		fatal("xreallocarray: allocating %zu * %zu bytes: %s",
+		fatalx("xreallocarray: allocating %zu * %zu bytes: %s",
 		    nmemb, size, strerror(errno));
 	return new_ptr;
 }
@@ -77,7 +77,7 @@ xstrdup(const char *str)
 	char *cp;
 
 	if ((cp = strdup(str)) == NULL)
-		fatal("xstrdup: %s", strerror(errno));
+		fatalx("xstrdup: %s", strerror(errno));
 	return cp;
 }
 
@@ -102,7 +102,7 @@ xvasprintf(char **ret, const char *fmt, va_list ap)
 	i = vasprintf(ret, fmt, ap);
 
 	if (i < 0 || *ret == NULL)
-		fatal("xasprintf: %s", strerror(errno));
+		fatalx("xasprintf: %s", strerror(errno));
 
 	return i;
 }
@@ -126,12 +126,12 @@ xvsnprintf(char *str, size_t len, const char *fmt, va_list ap)
 	int i;
 
 	if (len > INT_MAX)
-		fatal("xsnprintf: len > INT_MAX");
+		fatalx("xsnprintf: len > INT_MAX");
 
 	i = vsnprintf(str, len, fmt, ap);
 
 	if (i < 0 || i >= (int)len)
-		fatal("xsnprintf: overflow");
+		fatalx("xsnprintf: overflow");
 
 	return i;
 }
