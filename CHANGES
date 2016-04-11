@@ -1,3 +1,69 @@
+CHANGES FROM 2.1 to 2.2 10 April 2016
+
+Incompatible Changes
+====================
+
+* The format strings which referenced time have been removed.  Instead:
+
+  #{t:window_activity}
+
+can be used.
+
+* Support for TMPDIR has been removed.  Use TMUX_TMPDIR instead.
+* UTF8 detection how happens automatically if the client supports it, hence
+  the:
+
+  mouse-utf8
+  utf8
+
+  options has been removed.
+* The:
+
+  mouse_utf8_flag
+
+  format string has been removed.
+* The -I option to show-messages has been removed.  See:
+
+  #{t:start_time}
+
+  format option instead.
+
+Normal Changes
+==============
+
+* Panes are unzoomed with selectp -LRUD
+* New formats added:
+
+  #{scroll_position}
+  #{socket_path}
+  #{=10:...} -- limit to N characters (from the start)
+  #{=-10:...} -- limit to N characters (from the end)
+  #{t:...} -- used to format time-based formats
+  #{b:...} -- used to ascertain basename from string
+  #{d:...} -- used to ascertain dirname from string
+  #{s:...} -- used to perform substitutions on a string
+
+* Job output is run via the format system, so formats work again
+* If display-time is set to 0, then the indicators wait for a key to be
+  pressed.
+* list-keys and list-commands can be run without starting the tmux server.
+* kill-session learns -C to clear all alerts in all windows of the session.
+* Support for hooks (internal for now), but hooks for the following have been
+  implemented:
+
+  alert-bell
+  alert-silence
+  alert-activity
+  client-attached
+  client-detached
+  client-resized
+  pane-died
+  pane-exited
+
+* RGB (24bit) colour support.  The 'Tc' flag must be set in the external TERM
+  entry (using terminal-overrides or a custom terminfo entry).
+
+
 CHANGES FROM 2.0 to 2.1 18 October 2015
 
 Incompatible Changes
