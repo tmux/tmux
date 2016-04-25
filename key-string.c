@@ -226,6 +226,7 @@ key_string_lookup_key(key_code key)
 	char			tmp[8];
 	u_int			i;
 	struct utf8_data	ud;
+	size_t			off;
 
 	*out = '\0';
 
@@ -270,8 +271,9 @@ key_string_lookup_key(key_code key)
 	/* Is this a UTF-8 key? */
 	if (key > 127 && key < KEYC_BASE) {
 		if (utf8_split(key, &ud) == UTF8_DONE) {
-			memcpy(out, ud.data, ud.size);
-			out[ud.size] = '\0';
+			off = strlen(out);
+			memcpy(out + off, ud.data, ud.size);
+			out[off + ud.size] = '\0';
 			return (out);
 		}
 	}
