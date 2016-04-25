@@ -22,6 +22,7 @@ To get and build the latest from version control:
 
 	$ git clone https://github.com/tmux/tmux.git
 	$ cd tmux
+	$ sudo apt-get -y install debhelper autotools-dev dh-autoreconf file libncurses5-dev libevent-dev pkg-config libutempter-dev build-essential
 	$ sh autogen.sh
 	$ ./configure && make
 
