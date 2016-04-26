@@ -18,6 +18,7 @@
 
 #include <sys/types.h>
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 #include <vis.h>
@@ -116,8 +117,10 @@ utf8_width(wchar_t wc)
 	int	width;
 
 	width = wcwidth(wc);
-	if (width < 0 || width > 0xff)
+	if (width < 0 || width > 0xff) {
+		log_debug("Unicode %04x, wcwidth() %d", wc, width);
 		return (-1);
+	}
 	return (width);
 }
 
@@ -127,6 +130,8 @@ utf8_combine(const struct utf8_data *ud, wchar_t *wc)
 {
 	switch (mbtowc(wc, ud->data, ud->size)) {
 	case -1:
+		log_debug("UTF-8 %.*s, mbtowc() %d", (int)ud->size, ud->data,
+		    errno);
 		mbtowc(NULL, NULL, MB_CUR_MAX);
 		return (UTF8_ERROR);
 	case 0:
