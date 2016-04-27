@@ -7,6 +7,7 @@
 	* last-pane across sessions
 	* list-keys should quote output so that bindings can just be used in
           config file as-is
+	* resize-pane -p to match split-window -p
 
 - make command sequences more usable
 	* don't require space after ;
