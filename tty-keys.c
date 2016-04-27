@@ -41,7 +41,7 @@ static struct tty_key *tty_keys_find1(struct tty_key *, const char *, size_t,
 static struct tty_key *tty_keys_find(struct tty *, const char *, size_t,
 		    size_t *);
 static int	tty_keys_next1(struct tty *, const char *, size_t, key_code *,
-		    size_t *);
+		    size_t *, int);
 static void	tty_keys_callback(int, short, void *);
 static int	tty_keys_mouse(struct tty *, const char *, size_t, size_t *);
 
@@ -466,7 +466,7 @@ tty_keys_find1(struct tty_key *tk, const char *buf, size_t len, size_t *size)
 /* Look up part of the next key. */
 static int
 tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
-    size_t *size)
+    size_t *size, int expired)
 {
 	struct tty_key		*tk, *tk1;
 	struct utf8_data	 ud;
@@ -474,36 +474,38 @@ tty_keys_next1(struct tty *tty, const char *buf, size_t len, key_code *key,
 	u_int			 i;
 	wchar_t			 wc;
 
-	log_debug("next key is %zu (%.*s)", len, (int)len, buf);
-
-	/* Empty buffer is a partial key. */
-	if (len == 0)
-		return (1);
+	log_debug("next key is %zu (%.*s) (expired=%d)", len, (int)len, buf,
+	    expired);
 
 	/* Is this a known key? */
 	tk = tty_keys_find(tty, buf, len, size);
-	if (tk != NULL) {
+	if (tk != NULL && tk->key != KEYC_UNKNOWN) {
 		tk1 = tk;
 		do
-			log_debug("keys in list: %#llx", tk->key);
+			log_debug("keys in list: %#llx", tk1->key);
 		while ((tk1 = tk1->next) != NULL);
+		if (tk->next != NULL && !expired)
+			return (1);
 		*key = tk->key;
-		return (tk->next != NULL);
+		return (0);
 	}
 
 	/* Is this valid UTF-8? */
 	more = utf8_open(&ud, (u_char)*buf);
 	if (more == UTF8_MORE) {
 		*size = ud.size;
-		if (len < ud.size)
-			return (1);
+		if (len < ud.size) {
+			if (!expired)
+				return (1);
+			return (-1);
+		}
 		for (i = 1; i < ud.size; i++)
 			more = utf8_append(&ud, (u_char)buf[i]);
 		if (more != UTF8_DONE)
-			return (0);
+			return (-1);
 
 		if (utf8_combine(&ud, &wc) != UTF8_DONE)
-			return (0);
+			return (-1);
 		*key = wc;
 
 		log_debug("UTF-8 key %.*s %#llx", (int)ud.size, buf, *key);
@@ -524,7 +526,7 @@ tty_keys_next(struct tty *tty)
 	const char	*buf;
 	size_t		 len, size;
 	cc_t		 bspace;
-	int		 delay, expired = 0;
+	int		 delay, expired = 0, n;
 	key_code	 key;
 
 	/* Get key buffer. */
@@ -550,76 +552,54 @@ tty_keys_next(struct tty *tty)
 	}
 
 first_key:
-	/* If escape is at the start, try without it. */
+	/* Handle keys starting with escape. */
 	if (*buf == '\033') {
-		switch (tty_keys_next1 (tty, buf + 1, len - 1, &key, &size)) {
-		case 0:		/* found */
-			if (key != KEYC_UNKNOWN)
-				key |= KEYC_ESCAPE;
-			size++; /* include escape */
+		/* A single escape goes as-is if the timer has expired. */
+		if (expired && len == 1) {
+			key = '\033';
+			size = 1;
 			goto complete_key;
-		case -1:	/* not found */
-			break;
-		case 1:
-			if (expired)
-				goto complete_key;
-			goto partial_key;
 		}
-	}
 
-	/* Try with the escape. */
-	switch (tty_keys_next1 (tty, buf, len, &key, &size)) {
-	case 0:		/* found */
-		goto complete_key;
-	case -1:	/* not found */
-		break;
-	case 1:
-		if (expired)
+		/* Look for a key without the escape. */
+		n = tty_keys_next1(tty, buf + 1, len - 1, &key, &size, expired);
+		if (n == 0) {	/* found */
+			key |= KEYC_ESCAPE;
+			size++;
 			goto complete_key;
-		goto partial_key;
-	}
+		}
+		if (n == 1)	/* partial */
+			goto partial_key;
 
-	/* Is this an an xterm(1) key? */
-	switch (xterm_keys_find(buf, len, &size, &key)) {
-	case 0:		/* found */
-		goto complete_key;
-	case -1:	/* not found */
-		break;
-	case 1:
-		if (expired)
-			break;
-		goto partial_key;
-	}
+		/* Try with the escape. */
+		n = tty_keys_next1(tty, buf, len, &key, &size, expired);
+		if (n == 0)	/* found */
+			goto complete_key;
+		if (n == 1)
+			goto partial_key;
 
-	/*
-	 * If this starts with escape and is at least two keys, it must be
-	 * complete even if the timer has not expired, because otherwise
-	 * tty_keys_next1 would have found a partial key. If just an escape
-	 * alone, it needs to wait for the timer first.
-	 */
-	if (*buf == '\033') {
+		/* Is this an an xterm(1) key? */
+		n = xterm_keys_find(buf, len, &size, &key);
+		if (n == 0)	/* found */
+			goto complete_key;
+		if (n == 1 && !expired)
+			goto partial_key;
+
+		/*
+		 * If this is at least two keys, then it must be complete -
+		 * whether or not the timer has expired - otherwise
+		 * tty_keys_next1 would have returned a partial.
+		 */
 		if (len >= 2) {
 			key = (u_char)buf[1] | KEYC_ESCAPE;
 			size = 2;
 			goto complete_key;
 		}
-		if (!expired)
-			goto partial_key;
 	}
 
 	/* No longer key found, use the first character. */
 	key = (u_char)*buf;
 	size = 1;
-
-	/*
-	 * Check for backspace key using termios VERASE - the terminfo
-	 * kbs entry is extremely unreliable, so cannot be safely
-	 * used. termios should have a better idea.
-	 */
-	bspace = tty->tio.c_cc[VERASE];
-	if (bspace != _POSIX_VDISABLE && key == bspace)
-		key = KEYC_BSPACE;
-
 	goto complete_key;
 
 partial_key:
@@ -651,6 +631,15 @@ partial_key:
 
 complete_key:
 	log_debug("complete key %.*s %#llx", (int)size, buf, key);
+
+	/*
+	 * Check for backspace key using termios VERASE - the terminfo
+	 * kbs entry is extremely unreliable, so cannot be safely
+	 * used. termios should have a better idea.
+	 */
+	bspace = tty->tio.c_cc[VERASE];
+	if (bspace != _POSIX_VDISABLE && (key & KEYC_MASK_KEY) == bspace)
+		key = (key & KEYC_MASK_MOD) | KEYC_BSPACE;
 
 	/* Remove data from buffer. */
 	evbuffer_drain(tty->event->input, size);
