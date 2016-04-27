@@ -27,6 +27,8 @@
 struct screen *window_copy_init(struct window_pane *);
 void	window_copy_free(struct window_pane *);
 void	window_copy_pagedown(struct window_pane *);
+void	window_copy_next_paragraph(struct window_pane *);
+void	window_copy_previous_paragraph(struct window_pane *);
 void	window_copy_resize(struct window_pane *, u_int, u_int);
 void	window_copy_key(struct window_pane *, struct client *, struct session *,
 	    key_code, struct mouse_event *);
@@ -404,6 +406,44 @@ window_copy_pagedown(struct window_pane *wp)
 }
 
 void
+window_copy_previous_paragraph(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	u_int				 ox, oy;
+
+	oy = screen_hsize(data->backing) + data->cy - data->oy;
+	ox = window_copy_find_length(wp, oy);
+
+	while (oy > 0 && window_copy_find_length(wp, oy) == 0)
+		oy--;
+
+	while (oy > 0 && window_copy_find_length(wp, oy) > 0)
+		oy--;
+
+	window_copy_scroll_to(wp, 0, oy);
+}
+
+void
+window_copy_next_paragraph(struct window_pane *wp)
+{
+	struct window_copy_mode_data	*data = wp->modedata;
+	struct screen			*s = &data->screen;
+	u_int				 maxy, ox, oy;
+
+	oy = screen_hsize(data->backing) + data->cy - data->oy;
+	maxy = screen_hsize(data->backing) + screen_size_y(s) - 1;
+
+	while (oy < maxy && window_copy_find_length(wp, oy) == 0)
+		oy++;
+
+	while (oy < maxy && window_copy_find_length(wp, oy) > 0)
+		oy++;
+
+	ox = window_copy_find_length(wp, oy);
+	window_copy_scroll_to(wp, ox, oy);
+}
+
+void
 window_copy_resize(struct window_pane *wp, u_int sx, u_int sy)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
@@ -547,6 +587,14 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 	case MODEKEYCOPY_NEXTPAGE:
 		for (; np != 0; np--)
 			window_copy_pagedown(wp);
+		break;
+	case MODEKEYCOPY_PREVIOUSPARAGRAPH:
+		for (; np != 0; np--)
+			window_copy_previous_paragraph(wp);
+		break;
+	case MODEKEYCOPY_NEXTPARAGRAPH:
+		for (; np != 0; np--)
+			window_copy_next_paragraph(wp);
 		break;
 	case MODEKEYCOPY_HALFPAGEUP:
 		n = screen_size_y(s) / 2;
