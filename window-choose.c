@@ -497,7 +497,7 @@ window_choose_expand(struct window_pane *wp, struct session *s, u_int pos)
 					    sizeof *data->list);
 					memmove(&data->list[pos + 2],
 					    &data->list[pos + 1],
-					    (data->list_size - pos) *
+					    (data->list_size - (pos + 1)) *
 					    sizeof *data->list);
 					memcpy(&data->list[pos + 1],
 					    &data->old_list[i],
