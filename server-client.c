@@ -1090,12 +1090,13 @@ server_client_dispatch(struct imsg *imsg, void *arg)
 
 		if (gettimeofday(&c->activity_time, NULL) != 0)
 			fatal("gettimeofday failed");
-		if (s != NULL)
-			session_update_activity(s, &c->activity_time);
 
 		tty_start_tty(&c->tty);
 		server_redraw_client(c);
 		recalculate_sizes();
+
+		if (s != NULL)
+			session_update_activity(s, &c->activity_time);
 		break;
 	case MSG_SHELL:
 		if (datalen != 0)
