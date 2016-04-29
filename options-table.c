@@ -334,6 +334,140 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "#S:#I:#W - \"#T\" #{session_alerts}"
 	},
 
+	{ .name = "aux-status",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 0
+	},
+
+	{ .name = "aux-status-attr",
+	  .type = OPTIONS_TABLE_ATTRIBUTES,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 0,
+	  .style = "aux-status-style"
+	},
+
+	{ .name = "aux-status-bg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 2,
+	  .style = "aux-status-style"
+	},
+
+	{ .name = "aux-status-fg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 0,
+	  .style = "aux-status-style"
+	},
+
+    /* aux status interval is the same as the main status interval */
+
+	{ .name = "aux-status-justify",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_status_justify_list,
+	  .default_num = 0
+	},
+
+    /* aux-status-keys is he same as the main status keys */
+
+	{ .name = "aux-status-left",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  /* .default_str = "this is the left" */
+	  .default_str = ""
+	},
+
+	{ .name = "aux-status-left-attr",
+	  .type = OPTIONS_TABLE_ATTRIBUTES,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 0,
+	  .style = "aux-status-left-style"
+	},
+
+	{ .name = "aux-status-left-bg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 8,
+	  .style = "aux-status-left-style"
+	},
+
+	{ .name = "aux-status-left-fg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 8,
+	  .style = "aux-status-left-style"
+	},
+
+	{ .name = "aux-status-left-length",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 0,
+	  .maximum = SHRT_MAX,
+	  .default_num = 10
+	},
+
+	{ .name = "aux-status-left-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "default"
+	},
+
+	{ .name = "aux-status-position",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .choices = options_table_status_position_list,
+	  .default_num = 0
+	},
+
+	{ .name = "aux-status-right",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "[#H]"
+	},
+
+	{ .name = "aux-status-right-attr",
+	  .type = OPTIONS_TABLE_ATTRIBUTES,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 0,
+	  .style = "aux-status-right-style"
+	},
+
+	{ .name = "aux-status-right-bg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 8,
+	  .style = "aux-status-right-style"
+	},
+
+	{ .name = "aux-status-right-fg",
+	  .type = OPTIONS_TABLE_COLOUR,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_num = 8,
+	  .style = "aux-status-right-style"
+	},
+
+	{ .name = "aux-status-right-length",
+	  .type = OPTIONS_TABLE_NUMBER,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .minimum = 0,
+	  .maximum = SHRT_MAX,
+	  .default_num = 40
+	},
+
+	{ .name = "aux-status-right-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "default"
+	},
+
+	{ .name = "aux-status-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .scope = OPTIONS_TABLE_SESSION,
+	  .default_str = "bg=green,fg=black"
+	},
+
 	{ .name = "status",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_SESSION,

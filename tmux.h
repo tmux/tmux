@@ -1082,6 +1082,9 @@ struct mouse_event {
 
 	key_code	key;
 	int		statusat;
+	int		auxstatusat;
+	int		anyatzero;
+	int		anyonlast;
 
 	u_int		x;
 	u_int		y;
@@ -1244,6 +1247,7 @@ struct client {
 
 	struct event	 status_timer;
 	struct screen	 status;
+	struct screen	 aux_status;
 
 #define CLIENT_TERMINAL 0x1
 #define CLIENT_LOGIN 0x2
@@ -1939,8 +1943,12 @@ void	 server_unzoom_window(struct window *);
 void	 status_timer_start(struct client *);
 void	 status_timer_start_all(void);
 int	 status_at_line(struct client *);
+int	 aux_status_at_line(struct client *);
+int	 any_status_at_zero(struct client *);
+int	 any_status_on_last(struct client *);
 struct window *status_get_window_at(struct client *, u_int);
 int	 status_redraw(struct client *);
+int	 aux_status_redraw(struct client *);
 void printflike(2, 3) status_message_set(struct client *, const char *, ...);
 void	 status_message_clear(struct client *);
 int	 status_message_redraw(struct client *);
