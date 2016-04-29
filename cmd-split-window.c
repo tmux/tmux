@@ -93,6 +93,9 @@ cmd_split_window_exec(struct cmd *self, struct cmd_q *cmdq)
 		format_defaults(ft, cmdq->state.c, s, NULL, NULL);
 		to_free = cwd = format_expand(ft, args_get(args, 'c'));
 		format_free(ft);
+        } else if ((cwd = osdep_get_cwd(wp->fd)) ||
+		   (cwd = osdep_get_cwd(s->curw->window->active->fd))) {
+		/* */
 	} else if (cmdq->client != NULL && cmdq->client->session == NULL)
 		cwd = cmdq->client->cwd;
 	else
