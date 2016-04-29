@@ -49,6 +49,7 @@ cmd_source_file_exec(struct cmd *self, struct cmd_q *cmdq)
 	char		*cause;
 
 	cmdq1 = cmdq_new(cmdq->client);
+	cmdq1->flags |= cmdq->flags & CMD_Q_NOHOOKS;
 	cmdq1->emptyfn = cmd_source_file_done;
 	cmdq1->data = cmdq;
 

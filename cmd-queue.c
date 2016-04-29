@@ -186,6 +186,9 @@ static enum cmd_retval
 cmdq_continue_one(struct cmd_q *cmdq)
 {
 	struct cmd	*cmd = cmdq->cmd;
+	const char	*name = cmd->entry->name;
+	struct session	*s;
+	struct hooks	*hooks;
 	enum cmd_retval	 retval;
 	char		*tmp;
 	int		 flags = !!(cmd->flags & CMD_CONTROL);
@@ -197,19 +200,51 @@ cmdq_continue_one(struct cmd_q *cmdq)
 	cmdq->time = time(NULL);
 	cmdq->number++;
 
-	cmdq_guard(cmdq, "begin", flags);
+	if (~cmdq->flags & CMD_Q_REENTRY)
+		cmdq_guard(cmdq, "begin", flags);
 
-	if (cmd_prepare_state(cmd, cmdq, NULL) != 0)
+	if (cmd_prepare_state(cmd, cmdq, cmdq->parent) != 0)
 		goto error;
+
+	if (~cmdq->flags & CMD_Q_NOHOOKS) {
+		s = NULL;
+		if (cmdq->state.tflag.s != NULL)
+			s = cmdq->state.tflag.s;
+		else if (cmdq->state.sflag.s != NULL)
+			s = cmdq->state.sflag.s;
+		else if (cmdq->state.c != NULL)
+			s = cmdq->state.c->session;
+		if (s != NULL)
+			hooks = s->hooks;
+		else
+			hooks = global_hooks;
+
+		if (~cmdq->flags & CMD_Q_REENTRY) {
+			cmdq->flags |= CMD_Q_REENTRY;
+			if (hooks_wait(hooks, cmdq, NULL,
+			    "before-%s", name) == 0)
+				return (CMD_RETURN_WAIT);
+			if (cmd_prepare_state(cmd, cmdq, cmdq->parent) != 0)
+				goto error;
+		}
+	} else
+		hooks = NULL;
+	cmdq->flags &= ~CMD_Q_REENTRY;
+
 	retval = cmd->entry->exec(cmd, cmdq);
 	if (retval == CMD_RETURN_ERROR)
 		goto error;
 
+	if (hooks != NULL && hooks_wait(hooks, cmdq, NULL,
+	    "after-%s", name) == 0)
+		retval = CMD_RETURN_WAIT;
 	cmdq_guard(cmdq, "end", flags);
+
 	return (retval);
 
 error:
 	cmdq_guard(cmdq, "error", flags);
+	cmdq->flags &= ~CMD_Q_REENTRY;
 	return (CMD_RETURN_ERROR);
 }
 
@@ -232,11 +267,18 @@ cmdq_continue(struct cmd_q *cmdq)
 	if (empty)
 		goto empty;
 
-	if (cmdq->item == NULL) {
-		cmdq->item = TAILQ_FIRST(&cmdq->queue);
-		cmdq->cmd = TAILQ_FIRST(&cmdq->item->cmdlist->list);
-	} else
-		cmdq->cmd = TAILQ_NEXT(cmdq->cmd, qentry);
+	/*
+	 * If the command isn't in the middle of running hooks (due to
+	 * CMD_RETURN_WAIT), move onto the next command; otherwise, leave the
+	 * state of the queue as it is.
+	 */
+	if (~cmdq->flags & CMD_Q_REENTRY) {
+		if (cmdq->item == NULL) {
+			cmdq->item = TAILQ_FIRST(&cmdq->queue);
+			cmdq->cmd = TAILQ_FIRST(&cmdq->item->cmdlist->list);
+		} else
+			cmdq->cmd = TAILQ_NEXT(cmdq->cmd, qentry);
+	}
 
 	do {
 		while (cmdq->cmd != NULL) {
