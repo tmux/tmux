@@ -201,6 +201,12 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 	if (strcmp(oe->name, "monitor-silence") == 0)
 		alerts_reset_all();
 
+	/* When the pane-border-status option has been changed, resize panes. */
+	if (strcmp(oe->name, "pane-border-status") == 0) {
+		RB_FOREACH(w, windows, &windows)
+			layout_fix_panes(w, w->sx, w->sy);
+	}
+
 	/* Update sizes and redraw. May not need it but meh. */
 	recalculate_sizes();
 	TAILQ_FOREACH(c, &clients, entry) {

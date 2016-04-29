@@ -50,6 +50,9 @@ const char *options_table_status_position_list[] = {
 const char *options_table_bell_action_list[] = {
 	"none", "any", "current", "other", NULL
 };
+const char *options_table_pane_status_list[] = {
+	"off", "top", "bottom", NULL
+};
 
 /* Server options. */
 const struct options_table_entry options_table[] = {
@@ -690,6 +693,19 @@ const struct options_table_entry options_table[] = {
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_num = 8,
 	  .style = "pane-border-style"
+	},
+
+	{ .name = "pane-border-format",
+	  .type = OPTIONS_TABLE_STRING,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "#{?pane_active,#[reverse],}#{pane_index}#[default] \"#{pane_title}\""
+	},
+
+	{ .name = "pane-border-status",
+	  .type = OPTIONS_TABLE_CHOICE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .choices = options_table_pane_status_list,
+	  .default_num = 0
 	},
 
 	{ .name = "pane-border-style",

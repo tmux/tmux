@@ -929,7 +929,7 @@ server_client_check_redraw(struct client *c)
 	struct session		*s = c->session;
 	struct tty		*tty = &c->tty;
 	struct window_pane	*wp;
-	int		 	 flags, redraw;
+	int		 	 flags, masked, redraw;
 
 	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
@@ -969,15 +969,15 @@ server_client_check_redraw(struct client *c)
 		}
 	}
 
-	if (c->flags & CLIENT_BORDERS) {
+	masked = c->flags & (CLIENT_BORDERS|CLIENT_STATUS);
+	if (masked != 0)
 		tty_update_mode(tty, tty->mode, NULL);
+	if (masked == CLIENT_BORDERS)
 		screen_redraw_screen(c, 0, 0, 1);
-	}
-
-	if (c->flags & CLIENT_STATUS) {
-		tty_update_mode(tty, tty->mode, NULL);
+	else if (masked == CLIENT_STATUS)
 		screen_redraw_screen(c, 0, 1, 0);
-	}
+	else if (masked != 0)
+		screen_redraw_screen(c, 0, 1, 1);
 
 	tty->flags = (tty->flags & ~(TTY_FREEZE|TTY_NOCURSOR)) | flags;
 	tty_update_mode(tty, tty->mode, NULL);

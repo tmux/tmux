@@ -2778,19 +2778,18 @@ will be passed through
 and formats (see
 .Sx FORMATS )
 will be expanded.
-It may also contain any of the following special character sequences:
-.Bl -column "Character pair" "Replaced with" -offset indent
-.It Sy "Character pair" Ta Sy "Replaced with"
-.It Li "#[attributes]" Ta "Colour or attribute change"
-.It Li "##" Ta "A literal" Ql #
-.El
+
+It may also contain the a special character sequence #[] to change the colour
+or attributes, for example
+.Ql #[fg=red,bright]
+to set a bright red foreground.
+See the
+.Ic message-command-style
+option for a description of colours and attributes.
 .Pp
 For details on how the names and titles can be set see the
 .Sx "NAMES AND TITLES"
 section.
-For a list of allowed attributes see the
-.Ic message-command-style
-option.
 .Pp
 Examples are:
 .Bd -literal -offset indent
@@ -3068,6 +3067,14 @@ Attributes are ignored.
 Like
 .Ic base-index ,
 but set the starting index for pane numbers.
+.Pp
+.It Ic pane-border-format Ar format
+Set the text shown in pane border status lines.
+.Pp
+.It Xo Ic pane-border-status
+.Op Ic off | top | bottom
+.Xc
+Turn pane border status lines off or set their position.
 .Pp
 .It Ic pane-border-style Ar style
 Set the pane border style for panes aside from the active pane.

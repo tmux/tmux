@@ -32,8 +32,11 @@
  * cell a pointer to its parent cell.
  */
 
-int	layout_resize_pane_grow(struct layout_cell *, enum layout_type, int);
-int	layout_resize_pane_shrink(struct layout_cell *, enum layout_type, int);
+static int	layout_resize_pane_grow(struct layout_cell *, enum layout_type,
+		    int);
+static int	layout_resize_pane_shrink(struct layout_cell *,
+		    enum layout_type, int);
+static int	layout_need_status(struct layout_cell *, int);
 
 struct layout_cell *
 layout_create_cell(struct layout_cell *lcparent)
@@ -163,6 +166,30 @@ layout_fix_offsets(struct layout_cell *lc)
 	}
 }
 
+/*
+ * Returns 1 if we need to reserve space for the pane status line. This is the
+ * case for the most upper panes only.
+ */
+static int
+layout_need_status(struct layout_cell *lc, int at_top)
+{
+	struct layout_cell	*first_lc;
+
+	if (lc->parent) {
+		if (lc->parent->type == LAYOUT_LEFTRIGHT)
+			return (layout_need_status(lc->parent, at_top));
+
+		if (at_top)
+			first_lc = TAILQ_FIRST(&lc->parent->cells);
+		else
+			first_lc = TAILQ_LAST(&lc->parent->cells,layout_cells);
+		if (lc == first_lc)
+			return (layout_need_status(lc->parent, at_top));
+		return (0);
+	}
+	return (1);
+}
+
 /* Update pane offsets and sizes based on their cells. */
 void
 layout_fix_panes(struct window *w, u_int wsx, u_int wsy)
@@ -170,12 +197,24 @@ layout_fix_panes(struct window *w, u_int wsx, u_int wsy)
 	struct window_pane	*wp;
 	struct layout_cell	*lc;
 	u_int			 sx, sy;
+	int			 shift, status, at_top;
 
+	status = options_get_number(w->options, "pane-border-status");
+	at_top = (status == 1);
 	TAILQ_FOREACH(wp, &w->panes, entry) {
 		if ((lc = wp->layout_cell) == NULL)
 			continue;
+
+		if (status != 0)
+			shift = layout_need_status(lc, at_top);
+		else
+			shift = 0;
+
 		wp->xoff = lc->xoff;
 		wp->yoff = lc->yoff;
+
+		if (shift && at_top)
+			wp->yoff += 1;
 
 		/*
 		 * Layout cells are limited by the smallest size of other cells
@@ -213,6 +252,9 @@ layout_fix_panes(struct window *w, u_int wsx, u_int wsy)
 			if (sy < 2)
 				sy = lc->sy;
 		}
+
+		if (shift)
+			sy -= 1;
 
 		window_pane_resize(wp, sx, sy);
 	}
@@ -520,7 +562,7 @@ layout_resize_pane(struct window_pane *wp, enum layout_type type, int change)
 }
 
 /* Helper function to grow pane. */
-int
+static int
 layout_resize_pane_grow(struct layout_cell *lc, enum layout_type type,
     int needed)
 {
@@ -561,7 +603,7 @@ layout_resize_pane_grow(struct layout_cell *lc, enum layout_type type,
 }
 
 /* Helper function to shrink pane. */
-int
+static int
 layout_resize_pane_shrink(struct layout_cell *lc, enum layout_type type,
     int needed)
 {

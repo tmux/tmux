@@ -764,6 +764,8 @@ window_pane_create(struct window *w, u_int sx, u_int sy, u_int hlimit)
 	screen_init(&wp->base, sx, sy, hlimit);
 	wp->screen = &wp->base;
 
+	screen_init(&wp->status_screen, 1, 1, 0);
+
 	if (gethostname(host, sizeof host) == 0)
 		screen_set_title(&wp->base, host);
 
