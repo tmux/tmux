@@ -777,9 +777,6 @@ window_pane_destroy(struct window_pane *wp)
 {
 	window_pane_reset_mode(wp);
 
-	if (event_initialized(&wp->timer))
-		evtimer_del(&wp->timer);
-
 	if (wp->fd != -1) {
 		bufferevent_free(wp->event);
 		close(wp->fd);
@@ -917,34 +914,15 @@ window_pane_spawn(struct window_pane *wp, int argc, char **argv,
 }
 
 void
-window_pane_timer_callback(__unused int fd, __unused short events, void *data)
-{
-	window_pane_read_callback(NULL, data);
-}
-
-void
 window_pane_read_callback(__unused struct bufferevent *bufev, void *data)
 {
 	struct window_pane	*wp = data;
 	struct evbuffer		*evb = wp->event->input;
 	char			*new_data;
-	size_t			 new_size, available;
-	struct client		*c;
-	struct timeval		 tv;
+	size_t			 new_size;
 
-	if (event_initialized(&wp->timer))
-		evtimer_del(&wp->timer);
-
-	log_debug("%%%u has %zu bytes", wp->id, EVBUFFER_LENGTH(evb));
-
-	TAILQ_FOREACH(c, &clients, entry) {
-		if (!tty_client_ready(c, wp))
-			continue;
-
-		available = EVBUFFER_LENGTH(c->tty.event->output);
-		if (available > READ_BACKOFF)
-			goto start_timer;
-	}
+	log_debug("%%%u has %zu bytes (of %zu)", wp->id, EVBUFFER_LENGTH(evb),
+	    (size_t)READ_SIZE);
 
 	new_size = EVBUFFER_LENGTH(evb) - wp->pipe_off;
 	if (wp->pipe_fd != -1 && new_size > 0) {
@@ -955,17 +933,6 @@ window_pane_read_callback(__unused struct bufferevent *bufev, void *data)
 	input_parse(wp);
 
 	wp->pipe_off = EVBUFFER_LENGTH(evb);
-	return;
-
-start_timer:
-	log_debug("%%%u backing off (%s %zu > %d)", wp->id, c->ttyname,
-	    available, READ_BACKOFF);
-
-	tv.tv_sec = 0;
-	tv.tv_usec = READ_TIME;
-
-	evtimer_set(&wp->timer, window_pane_timer_callback, wp);
-	evtimer_add(&wp->timer, &tv);
 }
 
 void
