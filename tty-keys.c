@@ -554,13 +554,6 @@ tty_keys_next(struct tty *tty)
 first_key:
 	/* Handle keys starting with escape. */
 	if (*buf == '\033') {
-		/* A single escape goes as-is if the timer has expired. */
-		if (expired && len == 1) {
-			key = '\033';
-			size = 1;
-			goto complete_key;
-		}
-
 		/* Look for a key without the escape. */
 		n = tty_keys_next1(tty, buf + 1, len - 1, &key, &size, expired);
 		if (n == 0) {	/* found */
@@ -570,36 +563,33 @@ first_key:
 		}
 		if (n == 1)	/* partial */
 			goto partial_key;
-
-		/* Try with the escape. */
-		n = tty_keys_next1(tty, buf, len, &key, &size, expired);
-		if (n == 0)	/* found */
-			goto complete_key;
-		if (n == 1)
-			goto partial_key;
-
-		/* Is this an an xterm(1) key? */
-		n = xterm_keys_find(buf, len, &size, &key);
-		if (n == 0)	/* found */
-			goto complete_key;
-		if (n == 1 && !expired)
-			goto partial_key;
-
-		/*
-		 * If this is at least two keys, then it must be complete -
-		 * whether or not the timer has expired - otherwise
-		 * tty_keys_next1 would have returned a partial.
-		 */
-		if (len >= 2) {
-			key = (u_char)buf[1] | KEYC_ESCAPE;
-			size = 2;
-			goto complete_key;
-		}
 	}
 
-	/* No longer key found, use the first character. */
-	key = (u_char)*buf;
-	size = 1;
+	/* Try to lookup key. */
+	n = tty_keys_next1(tty, buf, len, &key, &size, expired);
+	if (n == 0)	/* found */
+		goto complete_key;
+	if (n == 1)
+		goto partial_key;
+
+	/* Is this an an xterm(1) key? */
+	n = xterm_keys_find(buf, len, &size, &key);
+	if (n == 0)
+		goto complete_key;
+	if (n == 1 && !expired)
+		goto partial_key;
+
+	/*
+	 * At this point, we know the key is not partial (with or without
+	 * escape). So pass it through even if the timer has not expired.
+	 */
+	if (*buf == '\033' && len >= 2) {
+		key = (u_char)buf[1] | KEYC_ESCAPE;
+		size = 2;
+	} else {
+		key = (u_char)buf[0];
+		size = 1;
+	}
 	goto complete_key;
 
 partial_key:
