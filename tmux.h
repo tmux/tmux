@@ -2034,15 +2034,15 @@ void	 screen_write_stop(struct screen_write_ctx *);
 void	 screen_write_reset(struct screen_write_ctx *);
 size_t printflike(1, 2) screen_write_cstrlen(const char *, ...);
 void printflike(4, 5) screen_write_cnputs(struct screen_write_ctx *,
-	     ssize_t, struct grid_cell *, const char *, ...);
+	     ssize_t, const struct grid_cell *, const char *, ...);
 size_t printflike(1, 2) screen_write_strlen(const char *, ...);
 void printflike(3, 4) screen_write_puts(struct screen_write_ctx *,
-	     struct grid_cell *, const char *, ...);
+	     const struct grid_cell *, const char *, ...);
 void printflike(4, 5) screen_write_nputs(struct screen_write_ctx *,
-	     ssize_t, struct grid_cell *, const char *, ...);
+	     ssize_t, const struct grid_cell *, const char *, ...);
 void	 screen_write_vnputs(struct screen_write_ctx *, ssize_t,
-	     struct grid_cell *, const char *, va_list);
-void	 screen_write_putc(struct screen_write_ctx *, struct grid_cell *,
+	     const struct grid_cell *, const char *, va_list);
+void	 screen_write_putc(struct screen_write_ctx *, const struct grid_cell *,
 	     u_char);
 void	 screen_write_copy(struct screen_write_ctx *, struct screen *, u_int,
 	     u_int, u_int, u_int);
