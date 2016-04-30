@@ -42,6 +42,8 @@ static int tty_same_colours(const struct grid_cell *, const struct grid_cell *);
 static int tty_is_fg(const struct grid_cell *, int);
 static int tty_is_bg(const struct grid_cell *, int);
 
+static int tty_client_ready(struct client *, struct window_pane *);
+
 void	tty_set_italics(struct tty *);
 int	tty_try_256(struct tty *, u_char, const char *);
 int	tty_try_rgb(struct tty *, const struct grid_cell_rgb *, const char *);
@@ -776,7 +778,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 	tty_update_mode(tty, tty->mode, s);
 }
 
-int
+static int
 tty_client_ready(struct client *c, struct window_pane *wp)
 {
 	if (c->session == NULL || c->tty.term == NULL)
