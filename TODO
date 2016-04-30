@@ -45,8 +45,6 @@
 	* bind commands to mouse in different areas? 
 	* commands executed when clicking on a pattern (URL)
 
-- hooks!
-
 - warts on current naming:
 	* display-time but message-fg/bg/attr
 	* list-* vs show-*
@@ -76,7 +74,6 @@
 	* searching in copy mode should unwrap lines, so if you seach for "foobar"
           then it should be found even if it is now "foo\nbar" (if the WRAP flag
           is set on the line)
-	* {} to go to next/previous blank line in copy mode
 
 - layout stuff
 	* way to tag a layout as a number/name
