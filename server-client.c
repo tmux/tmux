@@ -862,10 +862,7 @@ server_client_reset_state(struct client *c)
 	struct options		*oo = c->session->options;
 	int			 status, mode, o;
 
-	if (c->flags & CLIENT_SUSPENDED)
-		return;
-
-	if (c->flags & CLIENT_CONTROL)
+	if (c->flags & (CLIENT_CONTROL|CLIENT_SUSPENDED))
 		return;
 
 	tty_region(&c->tty, 0, c->tty.sy - 1);
