@@ -83,7 +83,7 @@ cmd_copy_mode_exec(struct cmd *self, struct cmd_q *cmdq)
 		window_copy_start_drag(c, &cmdq->item->mouse);
 	}
 	if (wp->mode == &window_copy_mode && args_has(self->args, 'u'))
-		window_copy_pageup(wp);
+		window_copy_pageup(wp, 0);
 
 	return (CMD_RETURN_NORMAL);
 }

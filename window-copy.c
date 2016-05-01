@@ -26,7 +26,7 @@
 
 struct screen *window_copy_init(struct window_pane *);
 void	window_copy_free(struct window_pane *);
-void	window_copy_pagedown(struct window_pane *);
+void	window_copy_pagedown(struct window_pane *, int);
 void	window_copy_next_paragraph(struct window_pane *);
 void	window_copy_previous_paragraph(struct window_pane *);
 void	window_copy_resize(struct window_pane *, u_int, u_int);
@@ -323,7 +323,7 @@ window_copy_vadd(struct window_pane *wp, const char *fmt, va_list ap)
 }
 
 void
-window_copy_pageup(struct window_pane *wp)
+window_copy_pageup(struct window_pane *wp, int half_page)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -342,8 +342,12 @@ window_copy_pageup(struct window_pane *wp)
 	data->cx = data->lastcx;
 
 	n = 1;
-	if (screen_size_y(s) > 2)
-		n = screen_size_y(s) - 2;
+	if (screen_size_y(s) > 2) {
+		if (half_page)
+			n = screen_size_y(s) / 2;
+		else
+			n = screen_size_y(s) - 2;
+	}
 
 	if (data->oy + n > screen_hsize(data->backing))
 		data->oy = screen_hsize(data->backing);
@@ -362,7 +366,7 @@ window_copy_pageup(struct window_pane *wp)
 }
 
 void
-window_copy_pagedown(struct window_pane *wp)
+window_copy_pagedown(struct window_pane *wp, int half_page)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
@@ -381,8 +385,12 @@ window_copy_pagedown(struct window_pane *wp)
 	data->cx = data->lastcx;
 
 	n = 1;
-	if (screen_size_y(s) > 2)
-		n = screen_size_y(s) - 2;
+	if (screen_size_y(s) > 2) {
+		if (half_page)
+			n = screen_size_y(s) / 2;
+		else
+			n = screen_size_y(s) - 2;
+	}
 
 	if (data->oy < n)
 		data->oy = 0;
@@ -477,7 +485,7 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 	const char			*word_separators;
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = &data->screen;
-	u_int				 n, np;
+	u_int				 np;
 	int				 keys;
 	enum mode_key_cmd		 cmd;
 	const char			*arg, *ss;
@@ -582,11 +590,11 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 		break;
 	case MODEKEYCOPY_PREVIOUSPAGE:
 		for (; np != 0; np--)
-			window_copy_pageup(wp);
+			window_copy_pageup(wp, 0);
 		break;
 	case MODEKEYCOPY_NEXTPAGE:
 		for (; np != 0; np--)
-			window_copy_pagedown(wp);
+			window_copy_pagedown(wp, 0);
 		break;
 	case MODEKEYCOPY_PREVIOUSPARAGRAPH:
 		for (; np != 0; np--)
@@ -597,30 +605,12 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 			window_copy_next_paragraph(wp);
 		break;
 	case MODEKEYCOPY_HALFPAGEUP:
-		n = screen_size_y(s) / 2;
-		for (; np != 0; np--) {
-			if (data->oy + n > screen_hsize(data->backing))
-				data->oy = screen_hsize(data->backing);
-			else
-				data->oy += n;
-		}
-		window_copy_update_selection(wp, 1);
-		window_copy_redraw_screen(wp);
+		for (; np != 0; np--)
+			window_copy_pageup(wp, 1);
 		break;
 	case MODEKEYCOPY_HALFPAGEDOWN:
-		n = screen_size_y(s) / 2;
-		for (; np != 0; np--) {
-			if (data->oy < n)
-				data->oy = 0;
-			else
-				data->oy -= n;
-		}
-		if (data->scroll_exit && data->oy == 0) {
-			window_pane_reset_mode(wp);
-			return;
-		}
-		window_copy_update_selection(wp, 1);
-		window_copy_redraw_screen(wp);
+		for (; np != 0; np--)
+			window_copy_pagedown(wp, 1);
 		break;
 	case MODEKEYCOPY_TOPLINE:
 		data->cx = 0;
