@@ -623,6 +623,12 @@ const struct options_table_entry options_table[] = {
 	  .default_str = "bg=yellow,fg=black"
 	},
 
+	{ .name = "highlight-style",
+	  .type = OPTIONS_TABLE_STYLE,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_str = "bg=green,fg=black"
+	},
+
 	{ .name = "monitor-activity",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW,
@@ -892,6 +898,12 @@ const struct options_table_entry options_table[] = {
 	},
 
 	{ .name = "wrap-search",
+	  .type = OPTIONS_TABLE_FLAG,
+	  .scope = OPTIONS_TABLE_WINDOW,
+	  .default_num = 1
+	},
+
+	{ .name = "highlight-search",
 	  .type = OPTIONS_TABLE_FLAG,
 	  .scope = OPTIONS_TABLE_WINDOW,
 	  .default_num = 1

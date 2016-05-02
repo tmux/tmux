@@ -37,6 +37,7 @@ screen_init(struct screen *s, u_int sx, u_int sy, u_int hlimit)
 	s->cstyle = 0;
 	s->ccolour = xstrdup("");
 	s->tabs = NULL;
+	s->hls = NULL;
 
 	screen_reinit(s);
 }
@@ -58,6 +59,7 @@ screen_reinit(struct screen *s)
 	grid_clear_lines(s->grid, s->grid->hsize, s->grid->sy);
 
 	screen_clear_selection(s);
+	screen_clear_highlight(s);
 }
 
 /* Destroy a screen. */
@@ -68,6 +70,7 @@ screen_free(struct screen *s)
 	free(s->title);
 	free(s->ccolour);
 	grid_destroy(s->grid);
+	screen_clear_highlight(s);
 }
 
 /* Reset tabs to default, eight spaces apart. */
@@ -360,6 +363,56 @@ screen_check_selection(struct screen *s, u_int px, u_int py)
 	}
 
 	return (1);
+}
+
+/* Set highlight. */
+void
+screen_set_highlight(struct screen *s,
+    u_int sx, u_int ex, u_int y, struct grid_cell *gc)
+{
+	struct screen_hls	*hls = xmalloc(sizeof (struct screen_hls));
+
+	hls->sx = sx;
+	hls->ex = ex;
+	hls->y = y;
+	hls->next = s->hls;
+
+	memcpy(&hls->cell, gc, sizeof hls->cell);
+
+	s->hls = hls;
+}
+
+/* Clear highlights. */
+void
+screen_clear_highlight(struct screen *s)
+{
+	struct screen_hls	*hls = s->hls, *hlsPrev;
+
+	while (hls != NULL) {
+		hlsPrev = hls;
+		hls = hls->next;
+		free(hlsPrev);
+	}
+
+	s->hls = NULL;
+}
+
+/* Check if cell in highlight. */
+int
+screen_check_highlight(struct screen *s, u_int px, u_int py,
+    struct grid_cell **cell)
+{
+	struct screen_hls	*hls = s->hls;
+
+	while (hls != NULL) {
+		if (hls->sx <= px && px <= hls->ex && hls->y == py) {
+			*cell = &hls->cell;
+			return 1;
+		}
+		hls = hls->next;
+	}
+
+	return 0;
 }
 
 /* Reflow wrapped lines. */

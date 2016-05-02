@@ -726,6 +726,7 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 {
 	struct grid_cell	 gc;
 	struct grid_line	*gl;
+	struct grid_cell	*cell = NULL;
 	u_int			 i, sx;
 	int			 flags;
 
@@ -756,6 +757,10 @@ tty_draw_line(struct tty *tty, const struct window_pane *wp,
 		if (screen_check_selection(s, i, py)) {
 			gc.flags &= ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
 			gc.flags |= s->sel.cell.flags &
+			    (GRID_FLAG_FG256|GRID_FLAG_BG256);
+		} else if (screen_check_highlight(s, i, py, &cell)) {
+			gc.flags &= ~(GRID_FLAG_FG256|GRID_FLAG_BG256);
+			gc.flags |= cell->flags &
 			    (GRID_FLAG_FG256|GRID_FLAG_BG256);
 		}
 		tty_cell(tty, &gc, wp);
