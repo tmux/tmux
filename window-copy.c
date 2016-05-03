@@ -50,8 +50,14 @@ int	window_copy_search_lr(struct grid *, struct grid *, u_int *, u_int,
 	    u_int, u_int, int);
 int	window_copy_search_rl(struct grid *, struct grid *, u_int *, u_int,
 	    u_int, u_int, int);
-void	window_copy_search_up(struct window_pane *, const char *);
-void	window_copy_search_down(struct window_pane *, const char *);
+void	window_copy_move_left(struct screen *, u_int *, u_int *);
+void	window_copy_move_right(struct screen *, u_int *, u_int *);
+int	window_copy_is_lowercase(const char *);
+void	window_copy_search_jump(struct window_pane *, struct grid *,
+	    struct grid *, u_int, u_int, u_int, int, int, int);
+void	window_copy_search(struct window_pane *, const char *, int, int);
+void	window_copy_search_up(struct window_pane *, const char *, int);
+void	window_copy_search_down(struct window_pane *, const char *, int);
 void	window_copy_goto_line(struct window_pane *, const char *);
 void	window_copy_update_cursor(struct window_pane *, u_int, u_int);
 void	window_copy_start_selection(struct window_pane *);
@@ -816,20 +822,20 @@ window_copy_key(struct window_pane *wp, struct client *c, struct session *sess,
 			ss = data->searchstr;
 			if (cmd == MODEKEYCOPY_SEARCHAGAIN) {
 				for (; np != 0; np--)
-					window_copy_search_up(wp, ss);
+					window_copy_search_up(wp, ss, 1);
 			} else {
 				for (; np != 0; np--)
-					window_copy_search_down(wp, ss);
+					window_copy_search_down(wp, ss, 1);
 			}
 			break;
 		case WINDOW_COPY_SEARCHDOWN:
 			ss = data->searchstr;
 			if (cmd == MODEKEYCOPY_SEARCHAGAIN) {
 				for (; np != 0; np--)
-					window_copy_search_down(wp, ss);
+					window_copy_search_down(wp, ss, 1);
 			} else {
 				for (; np != 0; np--)
-					window_copy_search_up(wp, ss);
+					window_copy_search_up(wp, ss, 1);
 			}
 			break;
 		}
@@ -940,16 +946,16 @@ window_copy_key_input(struct window_pane *wp, key_code key)
 		case WINDOW_COPY_NUMERICPREFIX:
 			break;
 		case WINDOW_COPY_SEARCHUP:
-			for (; np != 0; np--)
-				window_copy_search_up(wp, data->inputstr);
 			data->searchtype = data->inputtype;
 			data->searchstr = xstrdup(data->inputstr);
+			for (; np != 0; np--)
+				window_copy_search_up(wp, data->inputstr, 0);
 			break;
 		case WINDOW_COPY_SEARCHDOWN:
-			for (; np != 0; np--)
-				window_copy_search_down(wp, data->inputstr);
 			data->searchtype = data->inputtype;
 			data->searchstr = xstrdup(data->inputstr);
+			for (; np != 0; np--)
+				window_copy_search_down(wp, data->inputstr, 0);
 			break;
 		case WINDOW_COPY_NAMEDBUFFER:
 			window_copy_copy_selection(wp, data->inputstr);
@@ -1101,136 +1107,141 @@ window_copy_search_rl(struct grid *gd,
 }
 
 void
-window_copy_search_up(struct window_pane *wp, const char *searchstr)
+window_copy_move_left(struct screen *s, u_int *fx, u_int *fy)
+{
+	if (*fx == 0) {	/* left */
+		if (*fy == 0) /* top */
+			return;
+		*fx = screen_size_x(s) - 1;
+		*fy = *fy - 1;
+	} else
+		*fx = *fx - 1;
+}
+
+void
+window_copy_move_right(struct screen *s, u_int *fx, u_int *fy)
+{
+	if (*fx == screen_size_x(s) - 1) { /* right */
+		if (*fy == screen_hsize(s) + screen_size_y(s)) /* bottom */
+			return;
+		*fx = 0;
+		*fy = *fy + 1;
+	} else
+		*fx = *fx + 1;
+}
+
+int
+window_copy_is_lowercase(const char *ptr)
+{
+	while (*ptr != '\0') {
+		if (*ptr != tolower((u_char)*ptr))
+			return (0);
+		++ptr;
+	}
+	return (1);
+}
+
+/*
+ * Search for text stored in sgd starting from position fx,fy up to endline. If
+ * found, jump to it. If cis then ignore case. The direction is 0 for searching
+ * up, down otherwise. If wrap then go to begin/end of grid and try again if
+ * not found.
+ */
+void
+window_copy_search_jump(struct window_pane *wp, struct grid *gd,
+    struct grid *sgd, u_int fx, u_int fy, u_int endline, int cis, int wrap,
+    int direction)
+{
+	u_int	i, px;
+	int	found;
+
+	found = 0;
+	if (direction) {
+		for (i = fy; i <= endline; i++) {
+			found = window_copy_search_lr(gd, sgd, &px, i, fx,
+			    gd->sx, cis);
+			if (found)
+				break;
+			fx = 0;
+		}
+	} else {
+		for (i = fy + 1; endline < i; i--) {
+			found = window_copy_search_rl(gd, sgd, &px, i - 1, 0,
+			    fx, cis);
+			if (found) {
+				i--;
+				break;
+			}
+			fx = gd->sx;
+		}
+	}
+
+	if (found)
+		window_copy_scroll_to(wp, px, i);
+	else if (wrap) {
+		window_copy_search_jump(wp, gd, sgd, direction ? 0 : gd->sx - 1,
+		    direction ? 0 : gd->hsize + gd->sy - 1, fy, cis, 0,
+		    direction);
+	}
+}
+
+/*
+ * Search in for text searchstr. If direction is 0 then search up, otherwise
+ * down. If moveflag is 0 then look for string at the current cursor position
+ * as well.
+ */
+void
+window_copy_search(struct window_pane *wp, const char *searchstr, int direction,
+    int moveflag)
 {
 	struct window_copy_mode_data	*data = wp->modedata;
 	struct screen			*s = data->backing, ss;
 	struct screen_write_ctx		 ctx;
-	struct grid			*gd = s->grid, *sgd;
-	struct grid_cell	 	 gc;
-	size_t				 searchlen;
-	u_int				 i, last, fx, fy, px;
-	int				 n, wrapped, wrapflag, cis;
-	const char			*ptr;
-
-	if (*searchstr == '\0')
-		return;
-	wrapflag = options_get_number(wp->window->options, "wrap-search");
-	searchlen = screen_write_strlen("%s", searchstr);
-
-	screen_init(&ss, searchlen, 1, 0);
-	screen_write_start(&ctx, NULL, &ss);
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	screen_write_nputs(&ctx, -1, &gc, "%s", searchstr);
-	screen_write_stop(&ctx);
+	struct grid			*gd = s->grid;
+	u_int				 fx, fy, endline;
+	int				 wrapflag, cis;
 
 	fx = data->cx;
-	fy = gd->hsize - data->oy + data->cy;
+	fy = screen_hsize(data->backing) - data->oy + data->cy;
 
-	if (fx == 0) {
-		if (fy == 0)
-			return;
-		fx = gd->sx - 1;
-		fy--;
-	} else
-		fx--;
-	n = wrapped = 0;
+	screen_init(&ss, screen_write_strlen("%s", searchstr), 1, 0);
+	screen_write_start(&ctx, NULL, &ss);
+	screen_write_nputs(&ctx, -1, &grid_default_cell, "%s", searchstr);
+	screen_write_stop(&ctx);
 
-	cis = 1;
-	for (ptr = searchstr; *ptr != '\0'; ptr++) {
-		if (*ptr != tolower((u_char)*ptr)) {
-			cis = 0;
-			break;
-		}
+	if (moveflag) {
+		if (direction)
+			window_copy_move_right(s, &fx, &fy);
+		else
+			window_copy_move_left(s, &fx, &fy);
 	}
+	window_copy_clear_selection(wp);
 
-retry:
-	sgd = ss.grid;
-	for (i = fy + 1; i > 0; i--) {
-		last = screen_size_x(s);
-		if (i == fy + 1)
-			last = fx;
-		n = window_copy_search_rl(gd, sgd, &px, i - 1, 0, last, cis);
-		if (n) {
-			window_copy_scroll_to(wp, px, i - 1);
-			break;
-		}
-	}
-	if (wrapflag && !n && !wrapped) {
-		fx = gd->sx - 1;
-		fy = gd->hsize + gd->sy - 1;
-		wrapped = 1;
-		goto retry;
-	}
+	wrapflag = options_get_number(wp->window->options, "wrap-search");
+	cis = window_copy_is_lowercase(searchstr);
+
+	if (direction)
+		endline = gd->hsize + gd->sy - 1;
+	else
+		endline = 0;
+	window_copy_search_jump(wp, gd, ss.grid, fx, fy, endline, cis, wrapflag,
+	    direction);
 
 	screen_free(&ss);
 }
 
 void
-window_copy_search_down(struct window_pane *wp, const char *searchstr)
+window_copy_search_up(struct window_pane *wp, const char *searchstr,
+    int moveflag)
 {
-	struct window_copy_mode_data	*data = wp->modedata;
-	struct screen			*s = data->backing, ss;
-	struct screen_write_ctx		 ctx;
-	struct grid			*gd = s->grid, *sgd;
-	struct grid_cell	 	 gc;
-	size_t				 searchlen;
-	u_int				 i, first, fx, fy, px;
-	int				 n, wrapped, wrapflag, cis;
-	const char			*ptr;
+	window_copy_search(wp, searchstr, 0, moveflag);
+}
 
-	if (*searchstr == '\0')
-		return;
-	wrapflag = options_get_number(wp->window->options, "wrap-search");
-	searchlen = screen_write_strlen("%s", searchstr);
-
-	screen_init(&ss, searchlen, 1, 0);
-	screen_write_start(&ctx, NULL, &ss);
-	memcpy(&gc, &grid_default_cell, sizeof gc);
-	screen_write_nputs(&ctx, -1, &gc, "%s", searchstr);
-	screen_write_stop(&ctx);
-
-	fx = data->cx;
-	fy = gd->hsize - data->oy + data->cy;
-
-	if (fx == gd->sx - 1) {
-		if (fy == gd->hsize + gd->sy)
-			return;
-		fx = 0;
-		fy++;
-	} else
-		fx++;
-	n = wrapped = 0;
-
-	cis = 1;
-	for (ptr = searchstr; *ptr != '\0'; ptr++) {
-		if (*ptr != tolower((u_char)*ptr)) {
-			cis = 0;
-			break;
-		}
-	}
-
-retry:
-	sgd = ss.grid;
-	for (i = fy + 1; i < gd->hsize + gd->sy + 1; i++) {
-		first = 0;
-		if (i == fy + 1)
-			first = fx;
-		n = window_copy_search_lr(gd, sgd, &px, i - 1, first, gd->sx,
-		    cis);
-		if (n) {
-			window_copy_scroll_to(wp, px, i - 1);
-			break;
-		}
-	}
-	if (wrapflag && !n && !wrapped) {
-		fx = 0;
-		fy = 0;
-		wrapped = 1;
-		goto retry;
-	}
-
-	screen_free(&ss);
+void
+window_copy_search_down(struct window_pane *wp, const char *searchstr,
+    int moveflag)
+{
+	window_copy_search(wp, searchstr, 1, moveflag);
 }
 
 void
