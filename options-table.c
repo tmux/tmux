@@ -699,7 +699,8 @@ const struct options_table_entry options_table[] = {
 	{ .name = "pane-border-format",
 	  .type = OPTIONS_TABLE_STRING,
 	  .scope = OPTIONS_TABLE_WINDOW,
-	  .default_str = "#{?pane_active,#[reverse],}#{pane_index}#[default] \"#{pane_title}\""
+	  .default_str = "#{?pane_active,#[reverse],}#{pane_index}#[default] "
+	                 "\"#{pane_title}\""
 	},
 
 	{ .name = "pane-border-status",
