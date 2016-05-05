@@ -48,7 +48,7 @@ AC_ARG_ENABLE(
 )
 if test "x$found_static" = xyes; then
 	LDFLAGS="$LDFLAGS -static"
-	PKG_CONFIG="pkg-config --static"
+	test "x$PKG_CONFIG" != x && PKG_CONFIG="$PKG_CONFIG --static"
 fi
 
 # Is this gcc?

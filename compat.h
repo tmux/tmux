@@ -190,7 +190,7 @@ typedef uint64_t u_int64_t;
 
 #ifndef HAVE_CLOSEFROM
 /* closefrom.c */
-void	closefrom(int);
+void		 closefrom(int);
 #endif
 
 #ifndef HAVE_STRCASESTR
