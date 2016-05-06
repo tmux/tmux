@@ -21,6 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <endian.h>
 
 #include "tmux.h"
 
@@ -204,6 +205,7 @@ window_clock_draw_screen(struct window_pane *wp)
 	time_t				 t;
 	struct tm			*tm;
 	u_int				 i, j, x, y, idx;
+	u_int32_t			 hour, min;
 
 	colour = options_get_number(wp->window->options, "clock-mode-colour");
 	style = options_get_number(wp->window->options, "clock-mode-style");
@@ -218,8 +220,21 @@ window_clock_draw_screen(struct window_pane *wp)
 			strlcat(tim, "PM", sizeof tim);
 		else
 			strlcat(tim, "AM", sizeof tim);
-	} else
+	} else if (style == 1) {
 		strftime(tim, sizeof tim, "%H:%M", tm);
+	} else {
+		hour = htole32(tm->tm_hour);
+		min = htole32(tm->tm_min);
+
+		for (i = 0; i < 5; ++i)
+			tim[4 - i] = '0' + !!((1 << i) & hour);
+		tim[i] = ':';
+		i += 6;
+		for (j = 0; j < 6; ++j) {
+			tim[i - j] =  '0' + !!((1 << j) & min);
+		}
+		tim[i + 1] = '\0';
+	}
 
 	screen_write_clearscreen(&ctx);
 
