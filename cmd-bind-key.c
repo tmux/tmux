@@ -54,7 +54,7 @@ cmd_bind_key_exec(struct cmd *self, struct cmd_q *cmdq)
 	const char	*tablename;
 
 	if (args_has(args, 't')) {
-		if (args->argc != 2 && args->argc != 3) {
+		if (args->argc < 3) {
 			cmdq_error(cmdq, "not enough arguments");
 			return (CMD_RETURN_ERROR);
 		}
