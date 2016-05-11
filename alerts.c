@@ -163,15 +163,15 @@ alerts_queue(struct window *w, int flags)
 	if (!event_initialized(&w->alerts_timer))
 		evtimer_set(&w->alerts_timer, alerts_timer, w);
 
-	if (!alerts_fired) {
+	if ((w->flags & flags) != flags) {
 		w->flags |= flags;
 		log_debug("@%u alerts flags added %#x", w->id, flags);
+	}
 
-		if (alerts_enabled(w, flags)) {
-			log_debug("alerts check queued (by @%u)", w->id);
-			event_once(-1, EV_TIMEOUT, alerts_callback, NULL, NULL);
-			alerts_fired = 1;
-		}
+	if (!alerts_fired && alerts_enabled(w, flags)) {
+		log_debug("alerts check queued (by @%u)", w->id);
+		event_once(-1, EV_TIMEOUT, alerts_callback, NULL, NULL);
+		alerts_fired = 1;
 	}
 }
 
