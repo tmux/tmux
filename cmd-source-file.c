@@ -34,8 +34,8 @@ const struct cmd_entry cmd_source_file_entry = {
 	.name = "source-file",
 	.alias = "source",
 
-	.args = { "", 1, 1 },
-	.usage = "path",
+	.args = { "q", 1, 1 },
+	.usage = "[-q] path",
 
 	.flags = 0,
 	.exec = cmd_source_file_exec
@@ -46,28 +46,26 @@ cmd_source_file_exec(struct cmd *self, struct cmd_q *cmdq)
 {
 	struct args	*args = self->args;
 	struct cmd_q	*cmdq1;
-	char		*cause;
+	int		 quiet;
 
 	cmdq1 = cmdq_new(cmdq->client);
 	cmdq1->flags |= cmdq->flags & CMD_Q_NOHOOKS;
 	cmdq1->emptyfn = cmd_source_file_done;
 	cmdq1->data = cmdq;
 
-	switch (load_cfg(args->argv[0], cmdq1, &cause)) {
+	quiet = args_has(args, 'q');
+	switch (load_cfg(args->argv[0], cmdq1, quiet)) {
 	case -1:
+		cmdq_free(cmdq1);
 		if (cfg_references == 0) {
-			cmdq_free(cmdq1);
-			cmdq_error(cmdq, "%s", cause);
-			free(cause);
+			cfg_print_causes(cmdq);
 			return (CMD_RETURN_ERROR);
 		}
-		cfg_add_cause("%s", cause);
-		free(cause);
-		/* FALLTHROUGH */
+		return (CMD_RETURN_NORMAL);
 	case 0:
+		cmdq_free(cmdq1);
 		if (cfg_references == 0)
 			cfg_print_causes(cmdq);
-		cmdq_free(cmdq1);
 		return (CMD_RETURN_NORMAL);
 	}
 

@@ -917,10 +917,18 @@ display the log for
 and
 .Fl T
 show debugging information about jobs and terminals.
-.It Ic source-file Ar path
+.It Xo Ic source-file
+.Op Fl q
+.Ar path
+.Xc
 .D1 (alias: Ic source )
 Execute commands from
 .Ar path .
+If
+.Fl q
+is given, no error will be returned if
+.Ar path
+does not exist.
 .It Ic start-server
 .D1 (alias: Ic start )
 Start the
