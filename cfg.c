@@ -48,8 +48,8 @@ set_cfg_file(const char *path)
 void
 start_cfg(void)
 {
-	char		*cause = NULL;
 	const char	*home;
+	int		 quiet = 0;
 
 	cfg_cmd_q = cmdq_new(NULL);
 	cfg_cmd_q->emptyfn = cfg_default_done;
@@ -61,28 +61,20 @@ start_cfg(void)
 	if (cfg_client != NULL)
 		cfg_client->references++;
 
-	if (access(TMUX_CONF, R_OK) == 0) {
-		if (load_cfg(TMUX_CONF, cfg_cmd_q, &cause) == -1)
-			cfg_add_cause("%s: %s", TMUX_CONF, cause);
-	} else if (errno != ENOENT)
-		cfg_add_cause("%s: %s", TMUX_CONF, strerror(errno));
+	load_cfg(TMUX_CONF, cfg_cmd_q, 1);
 
 	if (cfg_file == NULL && (home = find_home()) != NULL) {
 		xasprintf(&cfg_file, "%s/.tmux.conf", home);
-		if (access(cfg_file, R_OK) != 0 && errno == ENOENT) {
-			free(cfg_file);
-			cfg_file = NULL;
-		}
+		quiet = 1;
 	}
-	if (cfg_file != NULL && load_cfg(cfg_file, cfg_cmd_q, &cause) == -1)
-		cfg_add_cause("%s: %s", cfg_file, cause);
-	free(cause);
+	if (cfg_file != NULL)
+		load_cfg(cfg_file, cfg_cmd_q, quiet);
 
 	cmdq_continue(cfg_cmd_q);
 }
 
 int
-load_cfg(const char *path, struct cmd_q *cmdq, char **cause)
+load_cfg(const char *path, struct cmd_q *cmdq, int quiet)
 {
 	FILE		*f;
 	char		 delim[3] = { '\\', '\\', '\0' };
@@ -93,7 +85,9 @@ load_cfg(const char *path, struct cmd_q *cmdq, char **cause)
 
 	log_debug("loading %s", path);
 	if ((f = fopen(path, "rb")) == NULL) {
-		xasprintf(cause, "%s: %s", path, strerror(errno));
+		if (errno == ENOENT && quiet)
+			return (0);
+		cfg_add_cause("%s: %s", path, strerror(errno));
 		return (-1);
 	}
 

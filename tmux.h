@@ -1555,7 +1555,7 @@ extern int cfg_finished;
 extern int cfg_references;
 extern struct client *cfg_client;
 void		 start_cfg(void);
-int		 load_cfg(const char *, struct cmd_q *, char **);
+int		 load_cfg(const char *, struct cmd_q *, int);
 void		 set_cfg_file(const char *);
 void printflike(1, 2) cfg_add_cause(const char *, ...);
 void		 cfg_print_causes(struct cmd_q *);
