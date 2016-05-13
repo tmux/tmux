@@ -172,5 +172,5 @@ Release tmux for next version
    the Makefile.  Commit it, and run 'make' to replace %%VERSION%%.  Push
    the result out.
 
-8. Bump version in tmu/tmux.git configure.ac and uncomment "found_debug=yes" to
+8. Bump version in tmux/tmux.git configure.ac and uncomment "found_debug=yes" to
    create a debug build by default.
