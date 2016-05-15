@@ -70,6 +70,7 @@ dist_tmux_SOURCES = \
 	cmd-bind-key.c \
 	cmd-break-pane.c \
 	cmd-capture-pane.c \
+	cmd-change-session-directory.c \
 	cmd-choose-buffer.c \
 	cmd-choose-client.c \
 	cmd-choose-tree.c \
