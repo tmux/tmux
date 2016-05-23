@@ -867,27 +867,18 @@ fail:
 char *
 format_expand_time(struct format_tree *ft, const char *fmt, time_t t)
 {
-	char		*tmp, *expanded;
-	size_t		 tmplen;
 	struct tm	*tm;
+	char		 s[2048];
 
 	if (fmt == NULL || *fmt == '\0')
 		return (xstrdup(""));
 
 	tm = localtime(&t);
 
-	tmp = NULL;
-	tmplen = strlen(fmt);
+	if (strftime(s, sizeof s, fmt, tm) == 0)
+		return (xstrdup(""));
 
-	do {
-		tmp = xreallocarray(tmp, 2, tmplen);
-		tmplen *= 2;
-	} while (strftime(tmp, tmplen, fmt, tm) == 0);
-
-	expanded = format_expand(ft, tmp);
-	free(tmp);
-
-	return (expanded);
+	return (format_expand(ft, s));
 }
 
 /* Expand keys in a template. */
