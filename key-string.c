@@ -146,8 +146,7 @@ key_string_lookup_string(const char *string)
 {
 	static const char	*other = "!#()+,-.0123456789:;<=>?'\r\t";
 	key_code		 key;
-	u_short			 u;
-	int			 size;
+	u_int			 u;
 	key_code		 modifiers;
 	struct utf8_data	 ud;
 	u_int			 i;
@@ -160,7 +159,9 @@ key_string_lookup_string(const char *string)
 
 	/* Is this a hexadecimal value? */
 	if (string[0] == '0' && string[1] == 'x') {
-	        if (sscanf(string + 2, "%hx%n", &u, &size) != 1 || size > 4)
+	        if (sscanf(string + 2, "%x", &u) != 1)
+	                return (KEYC_UNKNOWN);
+		if (u > 0x1fffff)
 	                return (KEYC_UNKNOWN);
 	        return (u);
 	}
