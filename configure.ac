@@ -113,7 +113,7 @@ AC_CHECK_FUNCS(
 	[ \
 		dirfd \
 		flock \
-		setproctitle \
+		prctl \
 		sysconf \
 		cfmakeraw \
 	]
@@ -298,6 +298,20 @@ if test "x$found_daemon" = xyes; then
 fi
 AM_CONDITIONAL(NO_DAEMON, [test "x$found_daemon" = xno])
 
+# Look for getprogname, compat/getprogname.c used if missing.
+AC_CHECK_FUNC(getprogname, found_getprogname=yes, found_getprogname=no)
+if test "x$found_getprogname" = xyes; then
+	AC_DEFINE(HAVE_GETPROGNAME)
+fi
+AM_CONDITIONAL(NO_GETPROGNAME, [test "x$found_getprogname" = xno])
+
+# Look for setproctitle, compat/setproctitle.c used if missing.
+AC_CHECK_FUNC(setproctitle, found_setproctitle=yes, found_setproctitle=no)
+if test "x$found_setproctitle" = xyes; then
+	AC_DEFINE(HAVE_SETPROCTITLE)
+fi
+AM_CONDITIONAL(NO_SETPROCTITLE, [test "x$found_setproctitle" = xno])
+
 # Look for setenv, compat/setenv.c used if missing.
 AC_CHECK_FUNC(setenv, found_setenv=yes, found_setenv=no)
 if test "x$found_setenv" = xyes; then
@@ -473,6 +487,31 @@ AC_LINK_IFELSE([AC_LANG_SOURCE(
 	])],
 	[AC_DEFINE(HAVE___PROGNAME) AC_MSG_RESULT(yes)],
 	AC_MSG_RESULT(no)
+)
+
+# Look for program_invocation_short_name.
+AC_MSG_CHECKING(for program_invocation_short_name)
+AC_LINK_IFELSE([AC_LANG_SOURCE(
+	[
+		#include <stdio.h>
+		#include <stdlib.h>
+		extern char *program_invocation_short_name;
+		int main(void) {
+			const char *cp = program_invocation_short_name;
+			printf("%s\n", cp);
+			exit(0);
+		}
+	])],
+	[AC_DEFINE(HAVE_PROGRAM_INVOCATION_SHORT_NAME) AC_MSG_RESULT(yes)],
+	AC_MSG_RESULT(no)
+)
+
+# Look for prctl(PR_SET_NAME).
+AC_CHECK_DECL(
+	PR_SET_NAME,
+	AC_DEFINE(HAVE_PR_SET_NAME),
+	,
+	[#include <sys/prctl.h>]
 )
 
 # Look for fcntl(F_CLOSEM).

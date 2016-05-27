@@ -26,7 +26,7 @@ if IS_GCC
 CFLAGS += -std=gnu99 -O2
 if IS_DEBUG
 CFLAGS += -g
-CFLAGS += -Wno-long-long -Wall -W -Wnested-externs -Wformat=2
+CFLAGS += -Wno-long-long -Wall -W -Wformat=2
 CFLAGS += -Wmissing-prototypes -Wstrict-prototypes -Wmissing-declarations
 CFLAGS += -Wwrite-strings -Wshadow -Wpointer-arith -Wsign-compare
 CFLAGS += -Wundef -Wbad-function-cast -Winline -Wcast-align
@@ -193,6 +193,15 @@ nodist_tmux_SOURCES += compat/closefrom.c
 endif
 if NO_DAEMON
 nodist_tmux_SOURCES += compat/daemon.c
+endif
+if NO_DAEMON
+nodist_tmux_SOURCES += compat/daemon.c
+endif
+if NO_GETPROGNAME
+nodist_tmux_SOURCES += compat/getprogname.c
+endif
+if NO_SETPROCTITLE
+nodist_tmux_SOURCES += compat/setproctitle.c
 endif
 if NO_SETENV
 nodist_tmux_SOURCES += compat/setenv.c

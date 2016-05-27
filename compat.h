@@ -223,6 +223,16 @@ size_t	 	 strlcat(char *, const char *, size_t);
 int	 	 daemon(int, int);
 #endif
 
+#ifndef HAVE_GETPROGNAME
+/* getprogname.c */
+const char	*getprogname(void);
+#endif
+
+#ifndef HAVE_SETPROCTITLE
+/* setproctitle.c */
+void		 setproctitle(const char *, ...);
+#endif
+
 #ifndef HAVE_B64_NTOP
 /* b64_ntop.c */
 #undef b64_ntop /* for Cygwin */
