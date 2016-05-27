@@ -32,6 +32,10 @@ static void	screen_write_overwrite(struct screen_write_ctx *, u_int);
 static int	screen_write_combine(struct screen_write_ctx *,
 		    const struct utf8_data *);
 
+static const struct grid_cell screen_write_pad_cell = {
+	GRID_FLAG_PADDING, 0, { .fg = 8 }, { .bg = 8 }, { { 0 }, 0, 0, 0 }
+};
+
 /* Initialise writing with a window. */
 void
 screen_write_start(struct screen_write_ctx *ctx, struct window_pane *wp,
@@ -972,11 +976,8 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	 * If the new character is UTF-8 wide, fill in padding cells. Have
 	 * already ensured there is enough room.
 	 */
-	memcpy(&tmp_gc, &grid_default_cell, sizeof tmp_gc);
-	tmp_gc.flags |= GRID_FLAG_PADDING;
-	tmp_gc.data.width = 0;
 	for (xx = s->cx + 1; xx < s->cx + width; xx++)
-		grid_view_set_cell(gd, xx, s->cy, &tmp_gc);
+		grid_view_set_cell(gd, xx, s->cy, &screen_write_pad_cell);
 
 	/* Set the cell. */
 	grid_view_set_cell(gd, s->cx, s->cy, gc);
