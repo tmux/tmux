@@ -191,9 +191,7 @@ proc_start(const char *name, struct event_base *base, int forkflag,
 
 	log_open(name);
 
-#ifdef HAVE_SETPROCTITLE
 	setproctitle("%s (%s)", name, socket_path);
-#endif
 
 	if (uname(&u) < 0)
 		memset(&u, 0, sizeof u);
