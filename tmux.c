@@ -53,7 +53,7 @@ usage(void)
 	fprintf(stderr,
 	    "usage: %s [-2Cluv] [-c shell-command] [-f file] [-L socket-name]\n"
 	    "            [-S socket-path] [command [flags]]\n",
-	    __progname);
+	    getprogname());
 	exit(1);
 }
 
@@ -95,7 +95,7 @@ areshell(const char *shell)
 		ptr++;
 	else
 		ptr = shell;
-	progname = __progname;
+	progname = getprogname();
 	if (*progname == '-')
 		progname++;
 	if (strcmp(ptr, progname) == 0)

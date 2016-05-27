@@ -36,7 +36,6 @@
 
 #include "xmalloc.h"
 
-extern char    *__progname;
 extern char   **environ;
 
 struct client;
