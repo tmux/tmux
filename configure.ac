@@ -40,6 +40,14 @@ AC_ARG_ENABLE(
 )
 AM_CONDITIONAL(IS_COVERAGE, test "x$found_coverage" = xyes)
 
+# Is this --enable-profile?
+AC_ARG_ENABLE(
+	profile,
+	AC_HELP_STRING(--enable-profile, enable profile build flags),
+	found_profile=$enable_profile
+)
+AM_CONDITIONAL(IS_PROFILE, test "x$found_profile" = xyes)
+
 # Is this a static build?
 AC_ARG_ENABLE(
 	static,

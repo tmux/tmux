@@ -37,6 +37,10 @@ if IS_COVERAGE
 CFLAGS += -g -O0 --coverage
 LDFLAGS += --coverage
 endif
+if IS_PROFILE
+CFLAGS += -g -O0 -pg
+LDFLAGS += -pg
+endif
 CPPFLAGS += -iquote.
 endif
 
