@@ -225,7 +225,7 @@ main(int argc, char **argv)
 				flags |= CLIENT_CONTROL;
 			break;
 		case 'V':
-			printf("%s %s\n", __progname, VERSION);
+			printf("%s %s\n", getprogname(), VERSION);
 			exit(0);
 		case 'f':
 			set_cfg_file(optarg);

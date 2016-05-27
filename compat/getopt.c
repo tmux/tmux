@@ -84,7 +84,8 @@ BSDgetopt(int nargc, char *const *nargv, const char *ostr)
 			++BSDoptind;
 		if (BSDopterr && *ostr != ':')
 			(void)fprintf(stderr,
-			    "%s: unknown option -- %c\n", __progname, BSDoptopt);
+			    "%s: unknown option -- %c\n", getprogname(),
+			    BSDoptopt);
 		return (BADCH);
 	}
 	if (*++oli != ':') {			/* don't need argument */
@@ -102,7 +103,7 @@ BSDgetopt(int nargc, char *const *nargv, const char *ostr)
 			if (BSDopterr)
 				(void)fprintf(stderr,
 				    "%s: option requires an argument -- %c\n",
-				    __progname, BSDoptopt);
+				    getprogname(), BSDoptopt);
 			return (BADCH);
 		}
 		else				/* white space */
