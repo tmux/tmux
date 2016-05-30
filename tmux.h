@@ -945,9 +945,13 @@ struct window {
 #define WINDOW_ZOOMED 0x1000
 #define WINDOW_FORCEWIDTH 0x2000
 #define WINDOW_FORCEHEIGHT 0x4000
+#define WINDOW_STYLECHANGED 0x8000
 #define WINDOW_ALERTFLAGS (WINDOW_BELL|WINDOW_ACTIVITY|WINDOW_SILENCE)
 
 	struct options	*options;
+
+	struct grid_cell style;
+	struct grid_cell active_style;
 
 	u_int		 references;
 

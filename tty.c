@@ -676,7 +676,8 @@ tty_fake_bce(const struct tty *tty, const struct window_pane *wp)
 	struct grid_cell	gc;
 
 	memcpy(&gc, &grid_default_cell, sizeof gc);
-	tty_default_colours(&gc, wp);
+	if (wp != NULL)
+		tty_default_colours(&gc, wp);
 
 	if (gc.bg == 8 && !(gc.flags & GRID_FLAG_BG256))
 		return (0);
@@ -1133,10 +1134,10 @@ tty_cmd_cell(struct tty *tty, const struct tty_ctx *ctx)
 {
 	struct window_pane	*wp = ctx->wp;
 	struct screen		*s = wp->screen;
-	u_int			 cx;
-	u_int			 width;
+	u_int			 cx, width;
 
-	tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
+	if (ctx->ocy == ctx->orlower)
+		tty_region_pane(tty, ctx, ctx->orupper, ctx->orlower);
 
 	/* Is the cursor in the very last position? */
 	width = ctx->cell->data.width;
@@ -1345,7 +1346,7 @@ tty_cursor(struct tty *tty, u_int cx, u_int cy)
 		 */
 
 		/* To left edge. */
-		if (cx == 0)	{
+		if (cx == 0) {
 			tty_putc(tty, '\r');
 			goto out;
 		}
@@ -1373,6 +1374,11 @@ tty_cursor(struct tty *tty, u_int cx, u_int cy)
 			tty_putcode1(tty, TTYC_HPA, cx);
 			goto out;
 		} else if (change > 0 && tty_term_has(term, TTYC_CUB)) {
+			if (change == 2 && tty_term_has(term, TTYC_CUB1)) {
+				tty_putcode(tty, TTYC_CUB1);
+				tty_putcode(tty, TTYC_CUB1);
+				goto out;
+			}
 			tty_putcode1(tty, TTYC_CUB, change);
 			goto out;
 		} else if (change < 0 && tty_term_has(term, TTYC_CUF)) {
@@ -1438,7 +1444,8 @@ tty_attributes(struct tty *tty, const struct grid_cell *gc,
 	u_char			 changed;
 
 	memcpy(&gc2, gc, sizeof gc2);
-	tty_default_colours(&gc2, wp);
+	if (wp != NULL)
+		tty_default_colours(&gc2, wp);
 
 	/*
 	 * If no setab, try to use the reverse attribute as a best-effort for a
@@ -1788,20 +1795,27 @@ tty_try_rgb(struct tty *tty, const struct grid_cell_rgb *rgb, const char *type)
 void
 tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 {
-	const struct grid_cell        *agc, *pgc, *wgc;
+	struct window		*w = wp->window;
+	struct options		*oo = w->options;
+	const struct grid_cell	*agc, *pgc, *wgc;
 
-	if (wp == NULL)
-		return;
-
+	if (w->flags & WINDOW_STYLECHANGED) {
+		w->flags &= ~WINDOW_STYLECHANGED;
+		agc = options_get_style(oo, "window-active-style");
+		memcpy(&w->active_style, agc, sizeof w->active_style);
+		wgc = options_get_style(oo, "window-style");
+		memcpy(&w->style, wgc, sizeof w->style);
+	} else {
+		agc = &w->active_style;
+		wgc = &w->style;
+	}
 	pgc = &wp->colgc;
-	agc = options_get_style(wp->window->options, "window-active-style");
-	wgc = options_get_style(wp->window->options, "window-style");
 
 	if (gc->fg == 8 && !(gc->flags & GRID_FLAG_FG256)) {
 		if (pgc->fg != 8 || (pgc->flags & GRID_FLAG_FG256)) {
 			gc->fg = pgc->fg;
 			gc->flags |= (pgc->flags & GRID_FLAG_FG256);
-		} else if (wp == wp->window->active &&
+		} else if (wp == w->active &&
 		    (agc->fg != 8 || (agc->flags & GRID_FLAG_FG256))) {
 			gc->fg = agc->fg;
 			gc->flags |= (agc->flags & GRID_FLAG_FG256);
@@ -1815,7 +1829,7 @@ tty_default_colours(struct grid_cell *gc, const struct window_pane *wp)
 		if (pgc->bg != 8 || (pgc->flags & GRID_FLAG_BG256)) {
 			gc->bg = pgc->bg;
 			gc->flags |= (pgc->flags & GRID_FLAG_BG256);
-		} else if (wp == wp->window->active &&
+		} else if (wp == w->active &&
 		    (agc->bg != 8 || (agc->flags & GRID_FLAG_BG256))) {
 			gc->bg = agc->bg;
 			gc->flags |= (agc->flags & GRID_FLAG_BG256);
