@@ -291,7 +291,7 @@ window_create1(u_int sx, u_int sy)
 
 	w = xcalloc(1, sizeof *w);
 	w->name = NULL;
-	w->flags = 0;
+	w->flags = WINDOW_STYLECHANGED;
 
 	TAILQ_INIT(&w->panes);
 	w->active = NULL;

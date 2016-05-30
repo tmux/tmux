@@ -200,6 +200,11 @@ cmd_set_option_exec(struct cmd *self, struct cmd_q *cmdq)
 		status_timer_start_all();
 	if (strcmp(oe->name, "monitor-silence") == 0)
 		alerts_reset_all();
+	if (strcmp(oe->name, "window-style") == 0 ||
+	    strcmp(oe->name, "window-active-style") == 0) {
+		RB_FOREACH(w, windows, &windows)
+			w->flags |= WINDOW_STYLECHANGED;
+	}
 
 	/* When the pane-border-status option has been changed, resize panes. */
 	if (strcmp(oe->name, "pane-border-status") == 0) {
