@@ -46,10 +46,6 @@ const char	*socket_path;
 __dead void	 usage(void);
 static char	*make_label(const char *);
 
-#ifndef HAVE___PROGNAME
-char      *__progname = (char *) "tmux";
-#endif
-
 __dead void
 usage(void)
 {
