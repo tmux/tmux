@@ -28,7 +28,8 @@ static void	screen_write_initctx(struct screen_write_ctx *,
 static void	screen_write_save_last(struct screen_write_ctx *,
 		    struct tty_ctx *);
 
-static void	screen_write_overwrite(struct screen_write_ctx *, u_int);
+static int	screen_write_overwrite(struct screen_write_ctx *,
+		    struct grid_cell *, u_int);
 static int	screen_write_combine(struct screen_write_ctx *,
 		    const struct utf8_data *);
 
@@ -917,8 +918,8 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	struct grid		*gd = s->grid;
 	struct tty_ctx		 ttyctx;
 	u_int		 	 width, xx, last;
-	struct grid_cell 	 tmp_gc;
-	int			 insert;
+	struct grid_cell 	 tmp_gc, now_gc;
+	int			 insert, skip, selected;
 
 	/* Ignore padding. */
 	if (gc->flags & GRID_FLAG_PADDING)
@@ -947,9 +948,8 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		return;
 	}
 
-	/* Initialise the redraw context, saving the last cell. */
+	/* Initialise the redraw context. */
 	screen_write_initctx(ctx, &ttyctx);
-	screen_write_save_last(ctx, &ttyctx);
 
 	/* If in insert mode, make space for the cells. */
 	if ((s->mode & MODE_INSERT) && s->cx <= screen_size_x(s) - width) {
@@ -958,11 +958,13 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		insert = 1;
 	} else
 		insert = 0;
+	skip = !insert;
 
 	/* Check this will fit on the current line and wrap if not. */
 	if ((s->mode & MODE_WRAP) && s->cx > screen_size_x(s) - width) {
 		screen_write_linefeed(ctx, 1);
 		s->cx = 0;	/* carriage return */
+		skip = 0;
 	}
 
 	/* Sanity check cursor position. */
@@ -970,17 +972,26 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		return;
 
 	/* Handle overwriting of UTF-8 characters. */
-	screen_write_overwrite(ctx, width);
+	grid_view_get_cell(gd, s->cx, s->cy, &now_gc);
+	if (screen_write_overwrite(ctx, &now_gc, width))
+		skip = 0;
 
 	/*
 	 * If the new character is UTF-8 wide, fill in padding cells. Have
 	 * already ensured there is enough room.
 	 */
-	for (xx = s->cx + 1; xx < s->cx + width; xx++)
+	for (xx = s->cx + 1; xx < s->cx + width; xx++) {
 		grid_view_set_cell(gd, xx, s->cy, &screen_write_pad_cell);
+		skip = 0;
+	}
+
+	/* If no change, do not draw. */
+	if (skip)
+		skip = (memcmp(&now_gc, gc, sizeof now_gc) == 0);
 
 	/* Set the cell. */
-	grid_view_set_cell(gd, s->cx, s->cy, gc);
+	if (!skip)
+		grid_view_set_cell(gd, s->cx, s->cy, gc);
 
 	/*
 	 * Move the cursor. If not wrapping, stick at the last character and
@@ -992,12 +1003,23 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 	else
 		s->cx = screen_size_x(s) - last;
 
-	/* Draw to the screen if necessary. */
+	/* Create space for character in insert mode. */
 	if (insert) {
 		ttyctx.num = width;
 		tty_write(tty_cmd_insertcharacter, &ttyctx);
 	}
-	if (screen_check_selection(s, s->cx - width, s->cy)) {
+
+	/* Check if this is selected. */
+	selected = screen_check_selection(s, s->cx - width, s->cy);
+	if (selected)
+		skip = 0;
+
+	/* Save last cell if it will be needed. */
+	if (!skip && ctx->wp != NULL && ttyctx.ocx > ctx->wp->sx - width)
+		screen_write_save_last(ctx, &ttyctx);
+
+	/* Write to the screen. */
+	if (selected) {
 		memcpy(&tmp_gc, &s->sel.cell, sizeof tmp_gc);
 		utf8_copy(&tmp_gc.data, &gc->data);
 		tmp_gc.attr = tmp_gc.attr & ~GRID_ATTR_CHARSET;
@@ -1009,7 +1031,7 @@ screen_write_cell(struct screen_write_ctx *ctx, const struct grid_cell *gc)
 		    (GRID_FLAG_FG256|GRID_FLAG_BG256);
 		ttyctx.cell = &tmp_gc;
 		tty_write(tty_cmd_cell, &ttyctx);
-	} else {
+	} else if (!skip) {
 		ttyctx.cell = gc;
 		tty_write(tty_cmd_cell, &ttyctx);
 	}
@@ -1057,16 +1079,17 @@ screen_write_combine(struct screen_write_ctx *ctx, const struct utf8_data *ud)
  * character, it is necessary to also overwrite any other cells which covered
  * by the same character.
  */
-static void
-screen_write_overwrite(struct screen_write_ctx *ctx, u_int width)
+static int
+screen_write_overwrite(struct screen_write_ctx *ctx, struct grid_cell *gc,
+    u_int width)
 {
 	struct screen		*s = ctx->s;
 	struct grid		*gd = s->grid;
-	struct grid_cell	 gc;
+	struct grid_cell	 tmp_gc;
 	u_int			 xx;
+	int			 done = 0;
 
-	grid_view_get_cell(gd, s->cx, s->cy, &gc);
-	if (gc.flags & GRID_FLAG_PADDING) {
+	if (gc->flags & GRID_FLAG_PADDING) {
 		/*
 		 * A padding cell, so clear any following and leading padding
 		 * cells back to the character. Don't overwrite the current
@@ -1074,27 +1097,33 @@ screen_write_overwrite(struct screen_write_ctx *ctx, u_int width)
 		 */
 		xx = s->cx + 1;
 		while (--xx > 0) {
-			grid_view_get_cell(gd, xx, s->cy, &gc);
-			if (~gc.flags & GRID_FLAG_PADDING)
+			grid_view_get_cell(gd, xx, s->cy, &tmp_gc);
+			if (~tmp_gc.flags & GRID_FLAG_PADDING)
 				break;
 			grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
 		}
 
 		/* Overwrite the character at the start of this padding. */
 		grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
+		done = 1;
 	}
 
 	/*
 	 * Overwrite any padding cells that belong to a UTF-8 character
 	 * we'll be overwriting with the current character.
 	 */
-	xx = s->cx + width - 1;
-	while (++xx < screen_size_x(s)) {
-		grid_view_get_cell(gd, xx, s->cy, &gc);
-		if (~gc.flags & GRID_FLAG_PADDING)
-			break;
-		grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
+	if (gc->data.width != 1 || gc->flags & GRID_FLAG_PADDING) {
+		xx = s->cx + width - 1;
+		while (++xx < screen_size_x(s)) {
+			grid_view_get_cell(gd, xx, s->cy, &tmp_gc);
+			if (~tmp_gc.flags & GRID_FLAG_PADDING)
+				break;
+			grid_view_set_cell(gd, xx, s->cy, &grid_default_cell);
+			done = 1;
+		}
 	}
+
+	return (done);
 }
 
 void
