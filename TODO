@@ -119,7 +119,12 @@
 	  or even guarantee that cmdq->c != NULL and provide a better way to
 	  tell when in the config file - then we use cmdq->c if we need a
 	  client w/o a session else cmd_current_client
-	* optimize pane redraws, 20120318184853.GK10965@yelena.nicm.ath.cx
+	* we do more work than we should if a single read() contains operations
+          that cancel each other out: for example, writing twice to the same
+          cell, or writing and then clearing a line; it would be nice to
+          optimize these. would it mean processing the entire read() data first
+          then applying changes? or an initial optimization step? or something
+          else?
 
 - miscellaneous
 	* way to keep a job running just read its last line of output for #()
