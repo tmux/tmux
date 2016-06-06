@@ -644,6 +644,7 @@ enum utf8_state {
 #define GRID_FLAG_EXTENDED 0x8
 #define GRID_FLAG_FGRGB 0x10
 #define GRID_FLAG_BGRGB 0x20
+#define GRID_FLAG_SELECTED 0x40
 
 /* Grid line flags. */
 #define GRID_LINE_WRAPPED 0x1
@@ -2132,7 +2133,8 @@ int		 window_has_pane(struct window *, struct window_pane *);
 int		 window_set_active_pane(struct window *, struct window_pane *);
 void		 window_redraw_active_switch(struct window *,
 		     struct window_pane *);
-struct window_pane *window_add_pane(struct window *, u_int);
+struct window_pane *window_add_pane(struct window *, struct window_pane *,
+		     u_int);
 void		 window_resize(struct window *, u_int, u_int);
 int		 window_zoom(struct window_pane *);
 int		 window_unzoom(struct window *);

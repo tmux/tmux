@@ -257,16 +257,19 @@ status_get_window_at(struct client *c, u_int x)
 	struct session	*s = c->session;
 	struct winlink	*wl;
 	struct options	*oo;
-	size_t		 len;
+	const char	*sep;
+	size_t		 seplen;
 
 	x += c->wlmouse;
 	RB_FOREACH(wl, winlinks, &s->windows) {
 		oo = wl->window->options;
-		len = strlen(options_get_string(oo, "window-status-separator"));
+
+		sep = options_get_string(oo, "window-status-separator");
+		seplen = screen_write_cstrlen("%s", sep);
 
 		if (x < wl->status_width)
 			return (wl->window);
-		x -= wl->status_width + len;
+		x -= wl->status_width + seplen;
 	}
 	return (NULL);
 }
@@ -344,7 +347,7 @@ status_redraw(struct client *c)
 
 		oo = wl->window->options;
 		sep = options_get_string(oo, "window-status-separator");
-		seplen = screen_write_strlen("%s", sep);
+		seplen = screen_write_cstrlen("%s", sep);
 		wlwidth += wl->status_width + seplen;
 	}
 
@@ -359,7 +362,7 @@ status_redraw(struct client *c)
 
 		oo = wl->window->options;
 		sep = options_get_string(oo, "window-status-separator");
-		screen_write_nputs(&ctx, -1, &stdgc, "%s", sep);
+		screen_write_cnputs(&ctx, -1, &stdgc, "%s", sep);
 	}
 	screen_write_stop(&ctx);
 
