@@ -294,7 +294,7 @@ Pt = Start VT105 graphics on a VT125
 
 ==============================================================================
 
-    Indepenent control functions (from Appendix E of X3.64-1977).
+    Independent control functions (from Appendix E of X3.64-1977).
     These four controls have the same meaning regardless of the current
     definition of the C0 and C1 control sets.  Each control is a two-character
     ESCape sequence, the 2nd character is lowercase.
