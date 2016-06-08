@@ -19,7 +19,7 @@ Standardized Video Terminals" in the April-1984 issue of BYTE magazine.
 ANSI X3.4-1977 defines the 7-bit ASCII character set (C0 and G0).  It was
 written in 1968, revised in 1977, and explains the decisions made in laying out
 the ASCII code.  In particular, it explains why ANSI chose to make ASCII
-incompatible with EBCDIC in order to make it self-consistant.
+incompatible with EBCDIC in order to make it self-consistent.
 
 ANSI X3.41-1974 introduces the idea of an 8-bit ASCII character set (C1 and G1
 in addition to the existing C0 and G0).  It describes how to use the 8-bit
